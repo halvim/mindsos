@@ -1,4 +1,4 @@
-# Phase NN — Confirmation
+# Phase 00 — Confirmation
 
 > Template for `confirmation_docs/PHASE_NN_CONFIRMED.md`. Fill in every field
 > below, then commit. Phase 00 is hand-filled (no `confirm-phase` wrapper yet);
