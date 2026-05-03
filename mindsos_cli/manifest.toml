@@ -32,4 +32,4 @@ version = "3.12.3"
 # Until tools/lock.sh has been run on the tester's box, this is "PENDING_LOCK"
 # so `mindsos doctor --self-test` reports a clear diagnostic instead of a hex
 # mismatch.
-requirements_txt_sha256 = "PENDING_LOCK"
+requirements_txt_sha256 = "2951a4f353699e78fc70d848027be55d45585acde9ce9f0c9cd2ed8e6374ee2d" 
