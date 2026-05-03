@@ -66,6 +66,7 @@ COPY mindsos_cli ./mindsos_cli
 
 RUN pip install --no-cache-dir --no-deps .
 
+RUN chown -R mindsos:mindsos /app
 CMD ["mindsos", "--help"]
 
 # ----------------------------------------------------------------------------
@@ -78,7 +79,7 @@ ARG MINDSOS_IMAGE_HASH=unknown
 ENV MINDSOS_GIT_SHA=${MINDSOS_GIT_SHA} \
     MINDSOS_IMAGE_HASH=${MINDSOS_IMAGE_HASH}
 
-COPY requirements-test.txt ./
+COPY requirements.txt requirements-test.txt ./
 RUN pip install --no-cache-dir --require-hashes -r requirements-test.txt
 
 COPY pyproject.toml README.md ./
@@ -87,4 +88,5 @@ COPY tests ./tests
 
 RUN pip install --no-cache-dir --no-deps .
 
+RUN chown -R mindsos:mindsos /app
 CMD ["pytest", "tests/phase_00", "-v"]
