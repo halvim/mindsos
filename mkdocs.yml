@@ -1,0 +1,17 @@
+site_name: MindsOS
+site_description: A 5-layer intelligence system on FalkorDB metagraphs.
+docs_dir: docs
+
+# Phase 38 lifts this to `true` once broken cross-links are eradicated.
+# See PHASE_MAP §7 open question 5.
+strict: false
+
+theme:
+  name: mkdocs
+
+nav:
+  - Home: index.md
+  - Get started:
+      - Install: getting-started/install.md
+  - Developer guide:
+      - Repo layout: dev/repo-layout.md

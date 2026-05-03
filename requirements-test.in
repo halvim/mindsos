@@ -1,0 +1,7 @@
+# mindsos_cli test-stage dependencies (Phase 00).
+# Includes everything in requirements.in plus pytest and friends.
+# Used only by the `test` Docker stage; the `prod` stage installs requirements.txt only.
+
+-r requirements.in
+
+pytest>=8.0,<11.0

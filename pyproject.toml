@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mindsos-cli"
+version = "0.0.0+phase00"
+description = "MindsOS command-line interface — Phase 00 runtime infrastructure."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "Henrique Alvim", email = "sanmyaku.entertainment@gmail.com" },
+]
+license = { text = "Proprietary" }
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "typer",
+    "falkordb",
+]
+
+[project.scripts]
+mindsos = "mindsos_cli.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["mindsos_cli*"]
+
+[tool.setuptools.package-data]
+mindsos_cli = ["manifest.toml"]
