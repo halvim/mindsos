@@ -35,7 +35,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | Confirmation doc as artifact | The confirmation doc is **a markdown template the tester can edit by hand**. The `mindsos confirm-phase` wrapper (Phase 01+) generates a draft from the template; the tester reviews, possibly edits, and commits. **CI does NOT validate the doc's structure** beyond "exists and non-empty" — keeping the doc human-authoritative, not tool-authoritative. |
 | Confirmation doc schema (template fields) | `phase_number`, `phase_title`, `git_sha`, `image_build_hash`, `falkordb_version`, `automated_test_summary` (count + suite hash), `tester_notes`, `timestamp_utc`, `mkdocs_pages_updated`. |
 | Failure path | Tester does NOT run `confirm-phase`; describes problem; phase chat iterates; or abandon → close branch, rewrite map row. |
-| Tests in-container | `docker compose run --rm mindsos pytest tests/phase_NN` is the canonical pass criterion. Host-side runs allowed for dev iteration but do not count. |
+| Tests in-container | `docker compose run --rm mindsos-test pytest tests/phase_NN` is the canonical pass criterion. (`mindsos-test` is the test-stage image from the multi-stage Dockerfile; it adds pytest to the `prod` runtime. The slim `mindsos` runtime image contains no test deps.) Host-side runs allowed for dev iteration but do not count. |
 | CLI backward compat | Breaking changes between phases allowed; documented in version notes. |
 | Test layout | Existing `tests/`, `tests_l3/`, `tests_server/` preserved. Phase-specific tests live in `tests/phase_NN/`. Pre-existing tests must continue to pass on every phase. |
 | Reproducibility | Base image pinned by SHA256 digest; `requirements.txt` via `pip-compile --generate-hashes`; FalkorDB image pinned; multi-stage build; no build tools in final layer. |
@@ -135,51 +135,68 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 
 ### Phase 00 — Runtime infrastructure
 
-  **Status:** Pending
+  **Status:** In progress (refining + implementing — this chat, 2026-05-03)
   **Branch:** phase-00
   **Tag on confirm:** phase-00-confirmed
   **Depends on:** —
   **Layer(s):** cross
-  **Net-new code?:** Yes — `mindsos_cli` package skeleton, `Dockerfile`, `docker-compose.yml`, lockfile, `confirmation_docs/_template.md`.
+  **Net-new code?:** Yes — `mindsos_cli` package skeleton, `pyproject.toml`, `Dockerfile`, `entrypoint.sh`, `docker-compose.yml`, `mindsos_cli/manifest.toml`, `requirements.in`, `tools/lock.sh`, `mkdocs.yml`, two stub doc pages, `confirmation_docs/_template.md`, `.gitignore`, minimal `README.md`.
+
+  **Locked decisions (this chat — 2026-05-03):**
+    - **FalkorDB image:** `falkordb/falkordb:v4.18.3@sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b3e46c1d90848845ba`.
+    - **Python image:** `python:3.12.3-slim-bookworm@sha256:afc139a0a640942491ec481ad8dda10f2c5b753f5c969393b12480155fe15a63`. Overrides §9's original `3.11-slim-bookworm` recommendation to match tester's host Python and reduce debugging surface.
+    - **Multi-stage Dockerfile:** stages `base` → `prod` (slim runtime, no test deps) → `test` (extends `base`, adds pytest + dev deps). Compose declares both `mindsos` (target=prod) and `mindsos-test` (target=test) services. Canonical pytest invocation: `docker compose run --rm mindsos-test pytest tests/phase_NN`.
+    - **Container user:** UID/GID `1000` named `mindsos`. `entrypoint.sh` chowns mounted volumes on first run (idempotent), then drops privileges via `gosu`.
+    - **Volume host paths (relative to repo root):** `./.mindsos/falkordb-data/` (FalkorDB persistence), `./.mindsos/logs/` (CLI logs). Both gitignored.
+    - **Lockfile generation:** `requirements.in` shipped (CLI deps only — no full-repo surface yet). `tools/lock.sh` runs `pip-compile --generate-hashes` *inside the pinned Python image* to produce `requirements.txt` with bit-identical hashes. Tester runs `tools/lock.sh` once on the Linux box; resulting `requirements.txt` is committed.
+    - **Canonical truth file:** `mindsos_cli/manifest.toml` is the hand-maintained source of truth for runtime pins (FalkorDB digest, Python digest, version strings, requirements.txt sha256). Dockerfile / compose / requirements are checked *against* the manifest by `mindsos doctor --self-test` — any drift exits non-zero.
+    - **mkdocs scaffolded here:** minimal `mkdocs.yml` + `docs/getting-started/install.md` + `docs/dev/repo-layout.md` so Phase 01's `mkdocs build --quiet` verification has something to verify.
 
   **Features in scope (capability-level):**
-    - A `mindsos` Docker image (multi-stage, slim, base pinned by SHA256 digest, non-root user).
-    - A `docker-compose.yml` running the `mindsos` image alongside a pinned `falkordb` sidecar with a healthcheck.
-    - Host-mounted volumes for FalkorDB persistence and CLI logs.
+    - A `mindsos` Docker image (multi-stage, slim, base pinned by SHA256 digest, non-root user UID 1000).
+    - A `docker-compose.yml` running `mindsos` alongside a pinned `falkordb` sidecar with healthcheck, plus a `mindsos-test` service for the test image.
+    - Host-mounted volumes at `./.mindsos/falkordb-data/` and `./.mindsos/logs/`; entrypoint chowns on first run.
     - `mindsos_cli` package skeleton exposing four base commands:
         * version reporter (semantic version + git SHA + image build hash).
         * help reporter (top-level + per-subcommand).
         * doctor: end-to-end smoke check — pings FalkorDB, prints all pinned versions and the lockfile hash.
-        * doctor self-test: drift detection — exits non-zero if any pin diverges from the canonical manifest.
-    - Locked `requirements.txt` with hashes (via `pip-compile --generate-hashes`).
-    - A markdown template at `confirmation_docs/_template.md` that the Phase 00 tester fills by hand to produce `PHASE_00_CONFIRMED.md`. (The `confirm-phase` CLI wrapper ships in Phase 01.)
+        * doctor self-test: drift detection — exits non-zero if any pin diverges from `mindsos_cli/manifest.toml`.
+    - `requirements.in` (CLI deps) + `tools/lock.sh` (generates locked `requirements.txt` with hashes inside the pinned Python image).
+    - `mindsos_cli/manifest.toml` — canonical truth file.
+    - `confirmation_docs/_template.md` — markdown template the Phase 00 tester fills by hand to produce `PHASE_00_CONFIRMED.md`.
+    - mkdocs scaffold (`mkdocs.yml` + 2 stub pages) so Phase 01's mkdocs verification has a tree.
 
   **Modules touched:**
-    - `mindsos_cli/` (new package, skeleton only).
-    - `Dockerfile`, `docker-compose.yml`, `requirements.in`, `requirements.txt`.
-    - `confirmation_docs/_template.md` (new).
+    - `mindsos_cli/` (new package skeleton): `__init__.py`, `__main__.py`, `app.py`, `manifest.toml`, `commands/__init__.py`, `commands/version.py`, `commands/doctor.py`.
+    - `pyproject.toml` (new — declares `mindsos_cli` as the installable package; entry point `mindsos`).
+    - `Dockerfile`, `entrypoint.sh`, `docker-compose.yml`.
+    - `requirements.in`, `tools/lock.sh` (and, post-tester-run, `requirements.txt`).
+    - `mkdocs.yml`, `docs/getting-started/install.md`, `docs/dev/repo-layout.md`.
+    - `confirmation_docs/_template.md`, `confirmation_docs/PHASE_MAP.md` (refined here).
+    - `.gitignore`, `README.md`.
 
   **Automated tests:**
-    - `tests/phase_00/` — version command exits 0; doctor reports pinned versions against a running `falkordb`; doctor self-test passes against the canonical manifest; compose stack reaches healthy.
+    - `tests/phase_00/` — version command exits 0 and prints semver+SHA; doctor reports both pinned versions against a running `falkordb`; doctor self-test passes against the canonical manifest; compose stack reaches healthy.
 
   **Confirmation command:**
-    Phase 00 has no wrapper yet. Tester copies `confirmation_docs/_template.md` to `confirmation_docs/PHASE_00_CONFIRMED.md`, fills the fields by hand, commits.
+    Phase 00 has no `confirm-phase` wrapper yet. Tester copies `confirmation_docs/_template.md` → `confirmation_docs/PHASE_00_CONFIRMED.md`, fills the fields by hand, commits.
 
   **Pass criterion:**
-    - On a clean Linux box: clone repo + checkout branch + `docker compose up -d` succeeds.
-    - `mindsos doctor` exits 0 and reports both pinned versions.
-    - `mindsos doctor --self-test` exits 0.
-    - All `tests/phase_00/` tests pass in-container.
+    - On a clean Linux box: `git pull` of `phase-00` + `tools/lock.sh` (one-time) + `docker compose up -d` succeeds.
+    - `docker compose run --rm mindsos-test pytest tests/phase_00` is green.
+    - `docker compose run --rm mindsos doctor` exits 0 and reports both pinned versions.
+    - `docker compose run --rm mindsos doctor --self-test` exits 0.
     - Tester is satisfied that the runtime is reproducible (same digests in, same image out).
 
   **Risks / known issues to watch:**
-    - FalkorDB image drift between branch creation and tester's `compose pull` — pin by digest, not just version.
-    - The `mindsos` image must build deterministically; non-deterministic timestamp leakage in pip-installed wheels is the usual culprit.
+    - FalkorDB and Python base images are both pinned by digest above — `compose pull` is bit-identical to the originally locked images.
+    - `pip-compile --generate-hashes` is run inside the pinned Python image (via `tools/lock.sh`) so resolved versions and hashes match what `pip install` will produce inside the build.
+    - `entrypoint.sh` chowns the mounted volumes; if the tester's host UID isn't 1000, files inside `.mindsos/` will appear owned by a numeric UID 1000 outside the container. Documented in `docs/getting-started/install.md`.
     - Phase 00 has no CI yet (CI lands in Phase 01); the tester is the only verifier.
 
   **Doc sections this phase confirms:**
-    - `docs/getting-started/install.md` — Docker quickstart slice.
-    - `docs/dev/repo-layout.md` — `mindsos_cli` and `confirmation_docs/` mention.
+    - `docs/getting-started/install.md` — Docker quickstart slice (stub here, fleshed out in 01).
+    - `docs/dev/repo-layout.md` — `mindsos_cli/`, `confirmation_docs/`, `tools/`, `.mindsos/` mentions.
 
   **Breaking changes from prior phase:** none (first phase).
 
@@ -814,8 +831,8 @@ Resolved by newer-date precedence; logged for transparency.
 - [ ] Delete the GHCR PAT (no longer needed).
 - [ ] Tester's Linux box has Docker (Compose v2), git, and `python3 ≥ 3.11` available.
 - [ ] Tester has SSH key on GitHub (or accepts HTTPS with a `repo`-only PAT).
-- [ ] Pin a FalkorDB image **version + digest** before opening the Phase 00 PR.
-- [ ] Decide tester's Python version (recommended `python:3.11-slim-bookworm`, also pinned by digest).
+- [x] **FalkorDB image pinned** (Phase 00 chat, 2026-05-03): `falkordb/falkordb:v4.18.3@sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b3e46c1d90848845ba`.
+- [x] **Python image pinned** (Phase 00 chat, 2026-05-03): `python:3.12.3-slim-bookworm@sha256:afc139a0a640942491ec481ad8dda10f2c5b753f5c969393b12480155fe15a63`. Overrides the original `3.11-slim-bookworm` recommendation in this section to match tester's host Python (3.12.3) and reduce debug-time surface area.
 
 ---
 

@@ -1,0 +1,66 @@
+# MindsOS Phase 00 — Compose stack.
+#
+# Services
+#   falkordb     — long-running graph database (brought up by `docker compose up -d`).
+#   mindsos      — on-demand CLI (profile=cli; invoked via `docker compose run --rm mindsos ...`).
+#   mindsos-test — on-demand pytest runner (profile=test; invoked via `docker compose run --rm mindsos-test ...`).
+#
+# Profiles keep `compose up -d` minimal — only falkordb starts. The CLI and test
+# images are built lazily on first `compose run` for that service.
+#
+# Volumes (host paths relative to repo root)
+#   ./.mindsos/falkordb-data → FalkorDB persistence (RDB / AOF).
+#   ./.mindsos/logs          → mindsos CLI logs.
+
+services:
+
+  falkordb:
+    image: falkordb/falkordb@sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b3e46c1d90848845ba
+    container_name: mindsos-falkordb
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./.mindsos/falkordb-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  mindsos:
+    build:
+      context: .
+      target: prod
+      args:
+        MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
+        MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
+    image: mindsos:phase00-prod
+    profiles: ["cli"]
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    environment:
+      FALKORDB_HOST: falkordb
+      FALKORDB_PORT: "6379"
+    volumes:
+      - ./.mindsos/logs:/var/log/mindsos
+
+  mindsos-test:
+    build:
+      context: .
+      target: test
+      args:
+        MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
+        MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
+    image: mindsos:phase00-test
+    profiles: ["test"]
+    depends_on:
+      falkordb:
+        condition: service_healthy
+    environment:
+      FALKORDB_HOST: falkordb
+      FALKORDB_PORT: "6379"
+    volumes:
+      - ./.mindsos/logs:/var/log/mindsos

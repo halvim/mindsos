@@ -1,0 +1,9 @@
+# mindsos_cli runtime dependencies (Phase 00).
+# Edit this file when adding/removing top-level deps; then run tools/lock.sh
+# to regenerate requirements.txt with hashes.
+#
+# Phase 00 keeps the surface intentionally small. Later phases add deps for the
+# packages they bring online (mindsos_core, mindsos_knowledge, etc.).
+
+typer>=0.12,<1.0
+falkordb>=1.6.1,<2.0

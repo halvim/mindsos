@@ -1,0 +1,35 @@
+# mindsos canonical truth file — single source of pinned versions and digests.
+#
+# All other files (Dockerfile, docker-compose.yml, requirements.txt) are checked
+# AGAINST this file by `mindsos doctor --self-test`. Drift exits non-zero.
+#
+# When updating a pinned version: edit this file FIRST, then update the consumers
+# (Dockerfile FROM lines, docker-compose.yml image refs, requirements.txt).
+# `tools/lock.sh` regenerates requirements.txt and prints the new sha256 to paste
+# below.
+#
+# This file is hand-maintained. Do not auto-generate from Dockerfile/compose —
+# that would defeat the drift-detection purpose.
+
+[mindsos]
+phase = "00"
+version = "0.0.0+phase00"
+
+[runtime.falkordb]
+image = "falkordb/falkordb"
+tag = "v4.18.3"
+digest = "sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b3e46c1d90848845ba"
+version = "4.18.3"
+
+[runtime.python]
+image = "python"
+tag = "3.12.3-slim-bookworm"
+digest = "sha256:afc139a0a640942491ec481ad8dda10f2c5b753f5c969393b12480155fe15a63"
+version = "3.12.3"
+
+[lockfile]
+# sha256 of requirements.txt — populated by tools/lock.sh after pip-compile.
+# Until tools/lock.sh has been run on the tester's box, this is "PENDING_LOCK"
+# so `mindsos doctor --self-test` reports a clear diagnostic instead of a hex
+# mismatch.
+requirements_txt_sha256 = "PENDING_LOCK"
