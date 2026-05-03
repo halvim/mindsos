@@ -1,0 +1,822 @@
+# MindsOS PHASE_MAP
+
+**Authoritative phased test-rollout plan for L0–L3.** Frozen 2026-05-02.
+
+L4 (Intelligence) and L5 (Mental Model) are explicitly **out of scope**. The FOL layer is also deferred. A separate follow-up plan will cover them.
+
+---
+
+## 0. How a phase chat reads this file (load-bearing rule)
+
+To prevent context bloat as phases compound, every phase chat reads:
+
+1. **§1** (settled cross-cutting decisions).
+2. **Its own row** in §3 / §4 / §5.
+3. **The two prior phase rows** (for transitive dependency context).
+4. **The most recent `confirmation_docs/PHASE_<N-1>_CONFIRMED.md`** only — not the full historical chain.
+5. **Only the docs paths named in its own row**, not the full `docs/` tree.
+
+Phase chats do **not** re-read older confirmation docs unless explicitly debugging a regression that traces to one. PHASE_MAP itself is the durable contract; confirmation docs are point-in-time evidence.
+
+---
+
+## 1. Settled cross-cutting decisions
+
+| Topic | Decision |
+|---|---|
+| Repackage vs rewrite | Repackage existing code; net-new code allowed only where an ADR is locked-but-not-coded (called out per phase). |
+| Tester driver | New package `mindsos_cli` (Typer/Click). Sane defaults; every command supports `--json`; errors to stderr; non-zero exit on failure. |
+| Distribution | Docker Compose: one `mindsos` image (multi-stage, slim, base pinned by SHA256 digest) + one `falkordb` sidecar (version-pinned). Source-only primary install. Hybrid fallback: `docker save` tarballs attached to GitHub Releases (5-phase rolling window). |
+| Repo + registry | `halvim/mindsos` (lowercased). **No GHCR.** GitHub Releases hold tarballs. |
+| CI | GitHub Actions, `GITHUB_TOKEN` only. Push to `phase-*` branch → in-container test suite. Tag `phase-NN-confirmed` → build + test + create Release with tarball + Dockerfile snapshot + lockfile snapshot + checksums; release body auto-generated from the confirmation doc. Retention prunes tarballs older than 5 most-recent confirmed phases. |
+| Branching | Branch `phase-NN` off main → PR → squash merge → tag `phase-NN-confirmed`. `latest` follows the most recent confirmed phase. |
+| **Phase rollback / supersession** | If Phase N+k reveals a regression in already-confirmed Phase N: tag `phase-NN-superseded` on main; rewrite the row in this map; open a new branch `phase-NN-v2`; tester reverts to `phase-(N-1)-confirmed` while v2 is built; on confirm, tag `phase-NN-v2-confirmed`. The original `phase-NN-confirmed` tag remains in history as evidence but is no longer the install target for that index. |
+| Per-phase workflow | (a) implement on `phase-NN`; (b) automated tests green in container; (c) tester does manual CLI exploration; (d) tester runs `mindsos confirm-phase --init-notes phase-NN` (Phase 01+) or hand-fills the markdown template (Phase 00); (e) tester reviews and edits the resulting `confirmation_docs/PHASE_NN_CONFIRMED.md`; (f) phase chat updates `docs/` mkdocs source + this map's row for phase NN+1; (g) tester pushes branch + opens PR; (h) merge → tag → CI builds Release. |
+| Confirmation doc as artifact | The confirmation doc is **a markdown template the tester can edit by hand**. The `mindsos confirm-phase` wrapper (Phase 01+) generates a draft from the template; the tester reviews, possibly edits, and commits. **CI does NOT validate the doc's structure** beyond "exists and non-empty" — keeping the doc human-authoritative, not tool-authoritative. |
+| Confirmation doc schema (template fields) | `phase_number`, `phase_title`, `git_sha`, `image_build_hash`, `falkordb_version`, `automated_test_summary` (count + suite hash), `tester_notes`, `timestamp_utc`, `mkdocs_pages_updated`. |
+| Failure path | Tester does NOT run `confirm-phase`; describes problem; phase chat iterates; or abandon → close branch, rewrite map row. |
+| Tests in-container | `docker compose run --rm mindsos pytest tests/phase_NN` is the canonical pass criterion. Host-side runs allowed for dev iteration but do not count. |
+| CLI backward compat | Breaking changes between phases allowed; documented in version notes. |
+| Test layout | Existing `tests/`, `tests_l3/`, `tests_server/` preserved. Phase-specific tests live in `tests/phase_NN/`. Pre-existing tests must continue to pass on every phase. |
+| Reproducibility | Base image pinned by SHA256 digest; `requirements.txt` via `pip-compile --generate-hashes`; FalkorDB image pinned; multi-stage build; no build tools in final layer. |
+| Logs / data | Host-mounted volumes from Phase 00 (paths set in phase chat). |
+| Linux + Compose v2 | `docker compose` (v2 syntax). |
+| Conflict resolution in source docs | Most recent date wins by default. Surface to **Open Questions** only when a newer doc silently contradicts an explicit earlier lock/invariant. |
+| Foundations-first grouping | Independents share a phase; dependents go in the next phase. |
+| **Integration phases are an exception to the foundations-first rule** | Phases 26 and 32 are convergence points that depend on **all prior shipped phases**. They add no new feature; they catch cross-phase regressions via one scripted scenario. |
+| Mkdocs page evolution | A doc page may be touched by multiple phases. Each phase only **amends** the slice it owns; final-pass review is at Phase 38. Pages carry a `last_confirmed_phase: NN` front-matter field (stored, not rendered) so a future audit can identify pages whose evolution stalled. |
+| Out of scope | L4 + L5 + FOL + 7 L4 critique pushes + 5 L1 design-critique pushes (latter mostly addressed by L1 redesign locks). |
+
+---
+
+## 2. Per-phase row schema
+
+```
+### Phase NN — <Title>
+
+  **Status:** Pending | In progress | Confirmed | Superseded | Abandoned
+  **Branch:** phase-NN
+  **Tag on confirm:** phase-NN-confirmed
+  **Depends on:** <list of phase NNs that must be Confirmed first>
+  **Layer(s):** <L0 / L1 / L2 / L3 / cross>
+  **Net-new code?:** No (repackage only) | Yes (specify what)
+  **Features in scope (capability-level — implementation chosen by phase chat):**
+    - <terse capability list>
+  **Modules touched (best-effort; phase chat finalises):**
+    - <package/module list>
+  **Automated tests (location + intent — names chosen by phase chat):**
+    - tests/phase_NN/ — <what they verify>
+  **Confirmation command (Phase 01+):**
+    `mindsos confirm-phase --phase NN --notes-file notes.md`
+    (Phase 00 only: tester writes the confirmation doc by hand from the template.)
+  **Pass criterion (what the tester verifies):**
+    - <bulleted, terse>
+  **Risks / known issues to watch:**
+    - <bulleted>
+  **Doc sections this phase confirms (mkdocs paths):**
+    - docs/<...>.md — <one-line slice description>
+  **Breaking changes from prior phase:**
+    - <list, or "none">
+```
+
+---
+
+## 3. Phase index
+
+| # | Title | Layer | Deps |
+|---|---|---|---|
+| 00 | Runtime infrastructure — image + Compose + base CLI | cross | — |
+| 01 | Tooling infrastructure — CI workflows, retention, `confirm-phase` wrapper, mkdocs verify | cross | 00 |
+| 02 | L1 Identity — IRIs, IdentityRegistry, IdStrategy | L1 | 01 |
+| 03 | L1 Graph elements — Graph, Node, Edge, HyperEdge | L1 | 02 |
+| 04 | L1 Schema — NodeType, EdgeType, opt-in strict | L1 | 02 |
+| 05 | L1 Metagraph elements — Metagraph, MetaEdge, MetaHyperEdge, CompositionalMetaEdge | L1 | 03 |
+| 06 | L1 Instancing — `mindsos_instances` package | L1 | 03, 05 |
+| 07 | L1 Persistence — Client, FalkorClient, InMemoryClient, AsyncClient, repositories, WAL, indexes, OCC | L1 | 03, 04, 05, 06 |
+| 08 | L1 Reconstruction — loaders, streaming loader, refresh | L1 | 07 |
+| 09 | L1 XRef — primitive, repository, loader, ref:global cutover | L1 | 07, 08 |
+| 10 | L1 Snapshot + soft-delete + RemovalImpact | L1 | 07, 08 |
+| 11 | L1 Cypher builders + integrity scanner + schema migration | L1 | 07 |
+| 12 | L2 Identifiers + role IRIs + REF_TYPES | L2 | 02 |
+| 13 | L2 Schemas — alignment, lexicon, ontology, concepts | L2 | 04, 12 |
+| 14 | L2 KnowledgeLayer + role-graph bootstrap (Global + Local) + MetagraphView (read-only) | L2 | 05, 07, 08, 12, 13 |
+| 15 | L2 Importers — DOLCE, OEWN, FrameNet, Alignments | L2 | 13, 14 |
+| 16 | L2 Promotion machinery | L2 | 14 |
+| 17 | L2 Versioning + breadcrumbs | L2 | 14 |
+| 18 | Server: user store + auth | L0 | 07 |
+| 19 | Server: sessions | L0 | 18 |
+| 20 | Server: bootstrap CLI + admin reset + last-admin protection | L0 | 19 |
+| 21 | Server: audit log | L0 | 19 |
+| 22 | Server: admin ops | L0 | 19, 21 |
+| 23 | Server: promotion lock + MetagraphSnapshot rollback | L0 | 10, 16, 19 |
+| 24 | Server: per-user transactional promotion (ADR-0118 full impl). **NEW CODE.** | L0 | 23 |
+| 25 | Server: SessionProtocol seam in L2 + hydrate/extract hooks | cross | 14, 19 |
+| **26** | **Integration A — L0+L1+L2 end-to-end scripted scenario** | cross | 02–25 |
+| 27 | L3 DataStates + capacity primitives | L3 | 02, 05, 06 |
+| 28 | L3 12 categories + dual metagraph + role-graph bootstrap + capability gate | L3 | 14, 25, 27 |
+| 29 | L3 Discovery + Constraints | L3 | 28 |
+| 30 | L3 Pipeline finder + invoke runtime + ProblemTraceRecord | L3 | 27, 28, 29 |
+| 31 | L3 Residents + built-in text capacities + pathfinding | L3 | 30 |
+| **32** | **Integration B — L0+L1+L2+L3 read-side end-to-end scripted scenario** | cross | 02–31 |
+| 33 | L3 write capacities — 5 categories (ADR-0145). **NEW CODE.** | L3 | 25, 30, 31 |
+| 34 | L3 symmetric write contract (ADR-0146). **NEW CODE.** | L3 | 33 |
+| 35 | L3 per-flow build pattern (ADR-0147). **NEW CODE.** | L3 | 34 |
+| 36 | L2 hybrid validators home (ADR-0139). **NEW CODE.** | L2 | 35 |
+| 37 | Server-owns-importers (ADR-0144). **NEW CODE.** | L0 + L2 | 15, 36 |
+| 38 | End-to-end vertical slice — text-realm + code-slice cookbook | cross | all |
+
+**Total: 39 phases (00 through 38).** Two of them (26, 32) are integration / regression-catching phases. Six (24, 33, 34, 35, 36, 37) carry **NEW CODE** beyond repackaging.
+
+---
+
+## 4. Phases 00–03 — full detail
+
+(Implementation-specific decisions — exact CLI verbs, file paths, library choices — are deliberately **not** committed in this map. The phase chat picks them when it begins, refines its row, then implements.)
+
+### Phase 00 — Runtime infrastructure
+
+  **Status:** Pending
+  **Branch:** phase-00
+  **Tag on confirm:** phase-00-confirmed
+  **Depends on:** —
+  **Layer(s):** cross
+  **Net-new code?:** Yes — `mindsos_cli` package skeleton, `Dockerfile`, `docker-compose.yml`, lockfile, `confirmation_docs/_template.md`.
+
+  **Features in scope (capability-level):**
+    - A `mindsos` Docker image (multi-stage, slim, base pinned by SHA256 digest, non-root user).
+    - A `docker-compose.yml` running the `mindsos` image alongside a pinned `falkordb` sidecar with a healthcheck.
+    - Host-mounted volumes for FalkorDB persistence and CLI logs.
+    - `mindsos_cli` package skeleton exposing four base commands:
+        * version reporter (semantic version + git SHA + image build hash).
+        * help reporter (top-level + per-subcommand).
+        * doctor: end-to-end smoke check — pings FalkorDB, prints all pinned versions and the lockfile hash.
+        * doctor self-test: drift detection — exits non-zero if any pin diverges from the canonical manifest.
+    - Locked `requirements.txt` with hashes (via `pip-compile --generate-hashes`).
+    - A markdown template at `confirmation_docs/_template.md` that the Phase 00 tester fills by hand to produce `PHASE_00_CONFIRMED.md`. (The `confirm-phase` CLI wrapper ships in Phase 01.)
+
+  **Modules touched:**
+    - `mindsos_cli/` (new package, skeleton only).
+    - `Dockerfile`, `docker-compose.yml`, `requirements.in`, `requirements.txt`.
+    - `confirmation_docs/_template.md` (new).
+
+  **Automated tests:**
+    - `tests/phase_00/` — version command exits 0; doctor reports pinned versions against a running `falkordb`; doctor self-test passes against the canonical manifest; compose stack reaches healthy.
+
+  **Confirmation command:**
+    Phase 00 has no wrapper yet. Tester copies `confirmation_docs/_template.md` to `confirmation_docs/PHASE_00_CONFIRMED.md`, fills the fields by hand, commits.
+
+  **Pass criterion:**
+    - On a clean Linux box: clone repo + checkout branch + `docker compose up -d` succeeds.
+    - `mindsos doctor` exits 0 and reports both pinned versions.
+    - `mindsos doctor --self-test` exits 0.
+    - All `tests/phase_00/` tests pass in-container.
+    - Tester is satisfied that the runtime is reproducible (same digests in, same image out).
+
+  **Risks / known issues to watch:**
+    - FalkorDB image drift between branch creation and tester's `compose pull` — pin by digest, not just version.
+    - The `mindsos` image must build deterministically; non-deterministic timestamp leakage in pip-installed wheels is the usual culprit.
+    - Phase 00 has no CI yet (CI lands in Phase 01); the tester is the only verifier.
+
+  **Doc sections this phase confirms:**
+    - `docs/getting-started/install.md` — Docker quickstart slice.
+    - `docs/dev/repo-layout.md` — `mindsos_cli` and `confirmation_docs/` mention.
+
+  **Breaking changes from prior phase:** none (first phase).
+
+---
+
+### Phase 01 — Tooling infrastructure
+
+  **Status:** Pending
+  **Branch:** phase-01
+  **Tag on confirm:** phase-01-confirmed
+  **Depends on:** 00
+  **Layer(s):** cross
+  **Net-new code?:** Yes — GitHub Actions workflows, retention pruning logic, `confirm-phase` CLI wrapper, mkdocs build verification step.
+
+  **Features in scope (capability-level):**
+    - GitHub Actions CI: on push to any `phase-*` branch, builds the image and runs the in-container test suite.
+    - GitHub Actions Release: on tag matching `phase-NN-confirmed`, runs the test suite, exports the image as a gzipped tarball, creates a GitHub Release with the tarball + Dockerfile snapshot + lockfile snapshot + SHA256 checksums; release body is generated from the corresponding `confirmation_docs/PHASE_NN_CONFIRMED.md`.
+    - Tarball retention: keep the tarball asset for the last 5 confirmed phases; older confirmed-phase Releases survive but their tarball asset is replaced with a "source-rebuild required" note.
+    - `mindsos confirm-phase` subcommand:
+        * `--init-notes phase-NN` writes a notes-template file the tester fills.
+        * `--phase NN --notes-file <PATH>` reads the notes, runs the in-container test suite, and writes `confirmation_docs/PHASE_NN_CONFIRMED.md` populated from the schema fields. The tester is expected to review and possibly hand-edit before commit. CI does not later validate the file's internal structure beyond exists-and-non-empty.
+    - mkdocs build verification: `mkdocs build --quiet` runs as part of CI on every `phase-*` push and must exit 0.
+
+  **Modules touched:**
+    - `.github/workflows/phase-ci.yml` (new).
+    - `.github/workflows/release.yml` (new), including retention-pruning step.
+    - `mindsos_cli/commands/confirm_phase.py` (new — wraps the Phase 00 template).
+    - `confirmation_docs/_template_notes.md` (new — what `--init-notes` writes).
+
+  **Automated tests:**
+    - `tests/phase_01/` — `confirm-phase --init-notes` writes a non-empty file with all schema fields present; `confirm-phase --phase 01 --notes-file fixture.md` produces a valid confirmation doc; mkdocs builds; on fixture release, the workflow's retention step correctly identifies the 5-phase window.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 01 --notes-file notes-phase-01.md`
+    (This is the first phase to actually exercise the wrapper end-to-end. If it produces nonsense, the tester edits the resulting `PHASE_01_CONFIRMED.md` by hand before commit.)
+
+  **Pass criterion:**
+    - Push to `phase-01` branch triggers the CI workflow; tests pass green.
+    - Tag `phase-01-confirmed` triggers the release workflow; a GitHub Release exists with all expected assets and SHA256-verified.
+    - Retention step does not delete anything yet (only one confirmed phase exists), but its log shows the expected 5-phase logic.
+    - `mindsos confirm-phase --init-notes phase-02` works (forward-compat smoke).
+    - `mkdocs build` exits 0 against the current `docs/` tree (broken cross-links remain non-fatal per existing `strict: false`).
+
+  **Risks / known issues to watch:**
+    - GitHub Actions `GITHUB_TOKEN` permission scoping: `contents: write` required for Release creation, `contents: read` for everything else.
+    - Retention pruning must delete the *asset* (tarball), not the *Release* — bug here would lose history.
+    - The `confirm-phase` wrapper bootstraps Phase 02+ workflow; if it ships broken, the tester falls back to hand-editing the template file (the Phase 00 path) — confirm this fallback in the Phase 01 confirmation doc.
+    - `mindsos doctor --self-test` must now also verify the CI workflow files exist and parse — extends the manifest.
+
+  **Doc sections this phase confirms:**
+    - `docs/dev/release.md` — full (tag-driven Release flow + retention policy).
+    - `docs/dev/contributing.md` — branching policy paragraph + per-phase workflow.
+    - `docs/dev/repo-layout.md` — `.github/workflows/` mention.
+    - `docs/dev/conventions.md` — CLI conventions: `--json`, exit codes.
+    - `docs/dev/testing.md` — in-container = canonical.
+
+  **Breaking changes from prior phase:** none (additive tooling).
+
+---
+
+### Phase 02 — L1 Identity
+
+  **Status:** Pending
+  **Branch:** phase-02
+  **Tag on confirm:** phase-02-confirmed
+  **Depends on:** 01
+  **Layer(s):** L1
+  **Net-new code?:** No — repackages existing identity primitives in `mindsos_core` behind CLI commands.
+
+  **Features in scope (capability-level):**
+    - Parse and report the structure of an IRI (scheme, role, name, version-qualifier, etc. — exact field set decided by phase chat).
+    - Mint a fresh IRI given an `IdStrategy` choice (UUID4, UUID5-from-content, IRI-passthrough).
+    - Inspect a metagraph-wide `IdentityRegistry` (debug-style listing).
+    - All commands honour `--json` for test-friendly output.
+
+  **Modules touched:**
+    - Existing identity / cypher-identifier code in `mindsos_core` (no logic change).
+    - `mindsos_cli/commands/...` (new glue, names chosen by phase chat).
+
+  **Automated tests:**
+    - `tests/phase_02/` — IRI parse round-trip; mint with each strategy; UUID5-from-content is deterministic for the same seed; pre-existing `tests/unit/test_identity.py` continues to pass.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 02 --notes-file notes-phase-02.md`
+
+  **Pass criterion:**
+    - Tester can parse a sample IRI and read its structured output.
+    - Tester can mint distinct IRIs across strategies; UUID5-from-content is reproducible for the same seed.
+    - All Phase 02 + prior tests pass.
+
+  **Risks / known issues to watch:**
+    - The IRI grammar isn't formally locked anywhere; the `--json` output schema becomes a de-facto contract — phase chat must pin it.
+    - `IdStrategy` is pluggable per ADR-0131; the CLI must not silently default-pin a strategy.
+
+  **Doc sections this phase confirms:**
+    - `docs/concepts/identity.md` — full.
+    - `docs/api/core/identity-registry.md` — partial (intro slice; full registry semantics in Phase 05).
+    - `docs/decisions/adr/0131-pluggable-id-strategy.md` — confirmed against shipped behaviour.
+
+  **Breaking changes from prior phase:** none.
+
+---
+
+### Phase 03 — L1 Graph elements
+
+  **Status:** Pending
+  **Branch:** phase-03
+  **Tag on confirm:** phase-03-confirmed
+  **Depends on:** 02
+  **Layer(s):** L1
+  **Net-new code?:** No.
+
+  **Features in scope (capability-level):**
+    - Create an in-memory Graph with a role label.
+    - Inspect a Graph (counts of nodes/edges/hyperedges; attached schema, if any).
+    - Add nodes, edges, and hyperedges with property bags; list each.
+    - Reset a Graph.
+    - Tester can build a graph incrementally across multiple commands; the cross-invocation persistence mechanism is decided by the phase chat (in-memory + state file, in-DB ephemeral graph, or other — phase chat picks based on what is least confusing for a tester).
+
+  **Modules touched:**
+    - Existing `mindsos_core/models/graph.py`, `node.py`, `edge.py`, `hyperedge.py`.
+    - `mindsos_cli/commands/...` (new glue).
+    - `mindsos_cli/state.py` (new — only if the phase chat picks a state-file approach for cross-invocation persistence).
+
+  **Automated tests:**
+    - `tests/phase_03/` — Graph CRUD; Node CRUD with duplicate-IRI rejection; Edge CRUD with rel-type validation per ADR-0021; HyperEdge CRUD with N members; cross-invocation incremental build round-trips.
+    - Pre-existing `tests/unit/test_graph.py` continues to pass.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 03 --notes-file notes-phase-03.md`
+
+  **Pass criterion:**
+    - Tester can build a small graph (≥ 3 nodes, ≥ 2 edges, ≥ 1 hyperedge) interactively across multiple invocations.
+    - Adding a node with an invalid IRI prints a structured error and exits non-zero.
+    - All Phase 03 + prior tests pass.
+
+  **Risks / known issues to watch:**
+    - HyperEdge member ordering must be canonicalised before storage (exists-or-doesn't-exist tests rely on it).
+    - `--prop k=v` parsing must handle JSON-typed values (lists, ints, bools); guard with tests.
+    - The cross-invocation persistence mechanism, whatever the phase chat picks, must not leak between independent test runs — `mindsos doctor` should warn or `--reset` should be available.
+
+  **Doc sections this phase confirms:**
+    - `docs/concepts/graphs-and-metagraphs.md` — partial (Graph + atomic elements; metagraph framing held for Phase 05).
+    - `docs/usage/core/building-graphs.md` — full.
+    - `docs/api/core/graph.md`, `node.md`, `edge.md`, `hyperedge.md` — full.
+    - `docs/decisions/adr/0014-layer-boundary-core-only.md`, `0021-cypher-rel-type-validation.md`, `0023-two-step-writes-merge-then-set.md` — confirmed.
+
+  **Breaking changes from prior phase:** introduces whatever cross-invocation persistence mechanism the phase chat selects; tester must understand how to reset between independent runs.
+
+---
+
+## 5. Phases 04–38 — skeleton rows
+
+Each row is intentionally terse. The phase chat reads it, refines its scope, and updates the row before implementing.
+
+### Phase 04 — L1 Schema (NodeType, EdgeType, opt-in strict)
+
+  **Deps:** 02. **Layer:** L1. **Net-new?** No.
+  **Independent of Phase 03 by foundations-first rule** (Schema and Graph elements are sibling primitives). Sequenced after 03 only for tester-flow continuity; if Phase 03 is abandoned, Phase 04's CLI surface uses a fresh in-memory Graph internally.
+  **Features:** declare schema; declare NodeType / EdgeType with property type vocab; attach schema to a graph; validate.
+  **Tests:** strict vs non-strict; type mismatch; edge with disallowed src-type.
+  **Risks:** property-type vocabulary for the CLI must be small and explicit.
+  **Docs:** `docs/usage/core/schema.md`, `docs/api/core/schema.md`, `types.md`, ADR-0017.
+
+### Phase 05 — L1 Metagraph elements
+
+  **Deps:** 03. **Layer:** L1. **Net-new?** No.
+  **Features:** Metagraph CRUD; place a Graph inside a Metagraph; binary MetaEdge; n-ary MetaHyperEdge; CompositionalMetaEdge unwrap.
+  **Tests:** metagraph-wide IdentityRegistry shared across contained Graphs (ADR-0020); CompositionalMetaEdge cardinality.
+  **Risks:** Phase 03's graph CLI must not bypass metagraph-wide registry.
+  **Docs:** `docs/concepts/graphs-and-metagraphs.md`, `docs/usage/core/metagraphs.md`, ADRs 0020 / 0117.
+
+### Phase 06 — L1 Instancing (`mindsos_instances`)
+
+  **Deps:** 03, 05. **Layer:** L1. **Net-new?** No (per ADR-0132 the package is shipped; only CLI glue is new).
+  **Features:** ElementInstance with sparse overrides; CompositeInstance bundle-level overrides (no propagation); lazy materialisation.
+  **Tests:** override semantics (ADR-0025/0026); materialisation determinism.
+  **Risks:** ADR-0132 backward-compat shim must keep working for any imports from `mindsos_core` of instancing classes.
+  **Docs:** `docs/concepts/instancing.md`, ADRs 0015/0019/0025/0026/0132.
+
+### Phase 07 — L1 Persistence
+
+  **Deps:** 03, 04, 05, 06. **Layer:** L1. **Net-new?** Partial — verifies coverage of W1–W6 mitigations (WAL, indexes, AsyncClient, OCC) per ADRs 0121–0127.
+  **Features:** save graph; save metagraph; client diagnose; integrity verify.
+  **Tests:** save → reload via Phase 08; WAL replay after simulated crash; OCC rejects stale write; AsyncClient round-trips off the main thread.
+  **Risks:** WAL semantics across phase rollbacks (a phase rollback may leave WAL entries on disk).
+  **Docs:** `docs/usage/core/persistence.md`, ADRs 0030/0121/0122/0123/0126/0127.
+
+### Phase 08 — L1 Reconstruction (loaders, streaming, refresh)
+
+  **Deps:** 07. **Layer:** L1. **Net-new?** No.
+  **Features:** load graph; load metagraph (full + streaming per ADR-0124); refresh.
+  **Tests:** save+load round-trip; streaming load against a 10k-node fixture stays under a memory budget; refresh after external mutation reflects the change.
+  **Risks:** lazy-Local-hydration interaction (ADR-0125) — `refresh` must respect LRU eviction.
+  **Docs:** `docs/usage/core/persistence.md`, ADRs 0124/0125.
+
+### Phase 09 — L1 XRef (cross-metagraph refs)
+
+  **Deps:** 07, 08. **Layer:** L1. **Net-new?** Mostly no — XRef primitive shipped; **but** ADR-0142 (XRef cutover for `ref:global`) requires migration of legacy `ref:global_*` properties — that part is **NEW CODE** if any legacy refs exist in fixtures.
+  **Features:** XRef CRUD; one-shot migration from legacy `ref:` properties.
+  **Tests:** XRef round-trip; migration preserves role; legacy properties not duplicated.
+  **Risks:** migration path must be reversible or audited.
+  **Docs:** `docs/concepts/references.md`, ADRs 0128/0142.
+
+### Phase 10 — L1 Snapshot + soft-delete + RemovalImpact
+
+  **Deps:** 07, 08. **Layer:** L1. **Net-new?** Soft-delete partial (ADR-0133 properties exist; full enforcement may be NEW CODE).
+  **Features:** snapshot take + restore (in-process only per ADR-0028); deprecate / dispute element with reason; removal-impact report.
+  **Tests:** snapshot → mutate → restore; deprecated nodes still queryable but flagged; RemovalImpact correct on a 3-deep fixture.
+  **Risks:** soft-delete read-path enforcement scope is an open question (§7).
+  **Docs:** `docs/usage/core/snapshots.md`, ADRs 0027/0028/0129/0130/0133/0135.
+
+### Phase 11 — L1 Cypher builders + integrity scanner + schema migration
+
+  **Deps:** 07. **Layer:** L1. **Net-new?** No.
+  **Features:** cypher-build debug; integrity verify with report; schema-migrate dry-run vs apply (ADR-0134).
+  **Tests:** rel-type validation enforced (ADR-0021); integrity scanner detects 3 seeded violations; migration dry-run vs apply.
+  **Risks:** schema migration is invasive — must be reversible or guarded by snapshot.
+  **Docs:** `docs/api/core/cypher.md`, ADRs 0021/0022/0023/0123/0134.
+
+### Phase 12 — L2 Identifiers + role IRIs + REF_TYPES
+
+  **Deps:** 02. **Layer:** L2. **Net-new?** No.
+  **Features:** L2-aware IRI parse (extends Phase 02); IRI build by role; REF_TYPES list.
+  **Tests:** dolce / oewn / framenet / alignment IRI builders round-trip; REF_TYPES parity test against L3 (ADR-0067).
+  **Risks:** REF_TYPES extension recipe (ADR-0047) must not be loosened.
+  **Docs:** `docs/api/knowledge/identifiers.md`, `ref-types.md`, ADRs 0045/0047/0067.
+
+### Phase 13 — L2 Schemas
+
+  **Deps:** 04, 12. **Layer:** L2. **Net-new?** No.
+  **Features:** show role schema; validate role-graph against schema.
+  **Tests:** alignment / lexicon / ontology / concepts schemas validate respective fixtures.
+  **Risks:** schema changes are breaking; anchor each role-schema's contract in a confirmation fixture.
+  **Docs:** `docs/usage/knowledge/overview.md`, role-specific pages.
+
+### Phase 14 — L2 KnowledgeLayer + role-graph bootstrap + MetagraphView
+
+  **Deps:** 05, 07, 08, 12, 13. **Layer:** L2. **Net-new?** Partial — `MetagraphView` read-only enforcement per ADR-0141; if any write methods leaked, removing them is NEW CODE.
+  **Features:** Global + Local bootstrap; ensure-role-graph idempotent; read-only view.
+  **Tests:** memories live in Local (ADR-0044); MetagraphView has no public write methods.
+  **Risks:** ADR-0044 must be honoured by bootstrap.
+  **Docs:** `docs/usage/knowledge/overview.md`, `global-local.md`, ADRs 0042/0043/0044/0141.
+
+### Phase 15 — L2 Importers (DOLCE, OEWN, FrameNet, Alignments)
+
+  **Deps:** 13, 14. **Layer:** L2. **Net-new?** No (locations may move in Phase 37 but stay in L2 for this phase).
+  **Features:** import each source; report counts.
+  **Tests:** small fixture per importer; counts match; identifiers match ADR-0045 builders.
+  **Risks:** importer dataset versions must be pinned per phase.
+  **Docs:** `docs/knowledge-sources/*.md`.
+
+### Phase 16 — L2 Promotion machinery
+
+  **Deps:** 14. **Layer:** L2. **Net-new?** No (verify which of `promotion.py` / `promotion_v2.py` is canonical — see §7 open question).
+  **Features:** list candidates; emit similarity report (content-hash report_id, ADR-0052); execute promote with optional force.
+  **Tests:** baseline similarity heuristic deterministic (ADR-0055); promote refuses without report unless `--force` (ADR-0049); per-candidate atomic rollback (ADR-0053).
+  **Risks:** keep this phase pure-KL (no auth gate); the Server gate goes in Phase 23.
+  **Docs:** ADRs 0049–0056.
+
+### Phase 17 — L2 Versioning + breadcrumbs
+
+  **Deps:** 14. **Layer:** L2. **Net-new?** No.
+  **Features:** active-version query; map of versions per role; PROMOTED breadcrumb in views.
+  **Tests:** version-qualified IRI parsing; PROMOTED ref preserved through promotion (ADR-0051).
+  **Risks:** ADR-0142 (XRef cutover, Phase 09) interacts with breadcrumbs.
+  **Docs:** `docs/usage/knowledge/versioning.md`, ADR-0051.
+
+### Phase 18 — Server: user store + auth
+
+  **Deps:** 07. **Layer:** L0. **Net-new?** No.
+  **Features:** user create / list / verify; capability assignment per role.
+  **Tests:** password verification; argon2id hashing; unknown user fails with structured error.
+  **Risks:** prohibited-action policy: CLI must NEVER read passwords from arguments — `--password-stdin` only.
+  **Docs:** `docs/usage/server/auth.md`, ADR-0003.
+
+### Phase 19 — Server: sessions
+
+  **Deps:** 18. **Layer:** L0. **Net-new?** No.
+  **Features:** login (returns opaque token); whoami; logout; refuse-concurrent-login (ADR-0005).
+  **Tests:** sliding TTL refresh on use; absolute TTL hard-stop; concurrent login rejected; self-evict via repeated credentials.
+  **Risks:** token storage on the host filesystem — phase chat picks (in-memory only with `--token` argument, or restricted-perms volume).
+  **Docs:** `docs/usage/server/sessions.md`, ADRs 0002/0005.
+
+### Phase 20 — Server: bootstrap CLI + admin reset + last-admin protection
+
+  **Deps:** 19. **Layer:** L0. **Net-new?** No.
+  **Features:** first-admin bootstrap; reset-admin recovery; last-admin removal blocked.
+  **Tests:** bootstrap idempotent; reset-admin rotates credentials; last-admin removal refuses.
+  **Docs:** `docs/usage/server/bootstrap.md`, ADR-0012.
+
+### Phase 21 — Server: audit log
+
+  **Deps:** 19. **Layer:** L0. **Net-new?** No.
+  **Features:** audit query (since/until/user/event); audit stats; capability-gated.
+  **Tests:** every login/logout/bootstrap emits an audit record; non-admin rejected.
+  **Docs:** `docs/usage/server/audit.md`, ADR-0013.
+
+### Phase 22 — Server: admin ops
+
+  **Deps:** 19, 21. **Layer:** L0. **Net-new?** No.
+  **Features:** admin user mgmt; kill session; cross-user read with refcount-install (ADR-0008).
+  **Tests:** non-admin call rejected; cross-user read leaves no flush behind; kill-session immediate.
+  **Risks:** admin actions cross the privacy boundary; audit must be exhaustive.
+  **Docs:** `docs/usage/server/sessions.md`, ADR-0008.
+
+### Phase 23 — Server: promotion lock + MetagraphSnapshot rollback
+
+  **Deps:** 10, 16, 19. **Layer:** L0. **Net-new?** No.
+  **Features:** promotion orchestration under GLOBAL_PROMOTE_LOCK with snapshot-rollback on failure.
+  **Tests:** concurrent promotes serialise; failure mid-promote restores from snapshot; non-CAN_PROMOTE caller rejected.
+  **Risks:** snapshot scope narrowed to release-ship per ADR-0129 — Phase 23 must respect, not widen.
+  **Docs:** `docs/usage/server/promotion.md`, ADRs 0006/0007/0129.
+
+### Phase 24 — Server: per-user transactional promotion (full ADR-0118 implementation)
+
+  **Deps:** 23. **Layer:** L0. **Net-new?** **Yes.** Full ADR-0118 model beyond the vertical slice: STRUCTURE/SUBGRAPH/PIPELINE proposers (currently NotImplementedError); RELEASE_SHIP_LOCK; release manifest in `version_db/`; per-user transactional model.
+  **Features:** propose-for-promotion (ATOM + STRUCTURE + SUBGRAPH + PIPELINE); release create from manifest; release ship under RELEASE_SHIP_LOCK.
+  **Tests:** all four kinds proposable; release-ship atomicity across multiple atoms; rollback on partial failure; pending_global buffer survives restart.
+  **Risks:** ADRs 0113–0117 / 0119 / 0120 are reserved but not drafted (§7); phase chat must draft them as part of this phase.
+  **Docs:** `docs/usage/server/promotion.md`, ADRs 0113–0120 (drafted in this phase), ADR-0118 confirmed.
+
+### Phase 25 — Server: SessionProtocol seam in L2 + hydrate/extract hooks
+
+  **Deps:** 14, 19. **Layer:** cross. **Net-new?** No.
+  **Features:** L2 accepts session via SessionProtocol duck-typing; install/extract hooks driven by login/logout.
+  **Tests:** capability parity (ADR-0041); hydration on login; extraction on logout; ADR-0042 hooks fire in correct order.
+  **Risks:** L2 must not import `mindsos_server` (ADR-0010) — parity test enforces.
+  **Docs:** `docs/usage/server/auth.md`, ADRs 0010/0038/0040/0041/0042.
+
+### Phase 26 — Integration A: L0+L1+L2 end-to-end scripted scenario
+
+  **Deps:** 02–25 (every prior shipped phase). **Layer:** cross. **Net-new?** No (composes shipped pieces).
+  **Scope (deliberately narrow — one scripted scenario, no feature additions):**
+    1. Bootstrap server (Phase 20).
+    2. Create one user (Phase 18); login (Phase 19) and capture token.
+    3. Bootstrap KL Global + Local for that user (Phase 14, 25).
+    4. Import a 10-row fixture into Global (Phase 15).
+    5. Walk the role-graph via MetagraphView; assert expected counts.
+    6. Logout.
+    7. Audit query confirms each step emitted a record (Phase 21).
+  **Tests:** one end-to-end test that runs the script in a clean container; golden-output diff on every assertion; same script via the CLI is the tester's manual confirmation.
+  **Pass criterion:** scenario runs in under N seconds (set in phase chat); golden outputs stable across re-runs.
+  **Risks:** scope creep — Phase 26 is regression-catching, not feature-adding. If a scenario step needs a new CLI flag, it's a regression in an earlier phase, not a new phase-26 feature.
+  **Docs:** none new; this phase amends `docs/usage/cookbook/` only as a scaffolding placeholder for Phase 38.
+
+### Phase 27 — L3 DataStates + capacity primitives
+
+  **Deps:** 02, 05, 06. **Layer:** L3. **Net-new?** No.
+  **Features:** DataState define with shape; Capacity / Monitor / Adapter define; IRI form `capacity:<category>:<name>` enforced.
+  **Tests:** strict_compatible / list_of_compat / opaque_tag round-trip; stable IRIs (ADR-0066); REF_TYPES shared with L2 (ADR-0067).
+  **Docs:** `docs/usage/capacity/data-states.md`, ADRs 0062/0063/0066/0067.
+
+### Phase 28 — L3 12 categories + dual metagraph + role-graph bootstrap + capability gate
+
+  **Deps:** 14, 25, 27. **Layer:** L3. **Net-new?** No.
+  **Features:** L3 Global + Local bootstrap; ensure-category-graph; CAN_WRITE_GLOBAL gate (ADR-0078).
+  **Tests:** Local-wins lookup (ADR-0061); 12 categories registered; capability-string parity with server (ADR-0078).
+  **Risks:** bootstrap carve-out (ADR-0080) must not regress.
+  **Docs:** `docs/usage/capacity/overview.md`, `categories.md`, ADRs 0061/0064/0065/0078/0080/0085.
+
+### Phase 29 — L3 Discovery + Constraints
+
+  **Deps:** 28. **Layer:** L3. **Net-new?** No.
+  **Features:** auto-discover TYPE_COMPAT (ADRs 0069/0086); constraint add for the 5 admin-authored kinds (ADRs 0070/0092).
+  **Tests:** auto-discovered marked `discovered_automatically=True`; rediscover-all preserves manual edges; CONSTRAINT typed correctly (constraint_kind property, ADR-0068).
+  **Docs:** ADRs 0068/0069/0070/0086/0092.
+
+### Phase 30 — L3 Pipeline finder + invoke runtime + ProblemTraceRecord
+
+  **Deps:** 27, 28, 29. **Layer:** L3. **Net-new?** No.
+  **Features:** BFS pipeline find (ADR-0071); invoke returns InvocationResult; failures emit ProblemTraceRecord (ADR-0072); problem-trace tail.
+  **Tests:** shortest path; invoke returns failed=True without raising; ProblemTraceSink captures.
+  **Risks:** ADR-0071 deliberately ignores constraints in finder — L4-style filtering not in scope here.
+  **Docs:** `docs/usage/capacity/retrieval.md`, ADRs 0071/0072/0074.
+
+### Phase 31 — L3 Residents + built-in text capacities + pathfinding
+
+  **Deps:** 30. **Layer:** L3. **Net-new?** No.
+  **Features:** resident start / list (descriptive only, no thread spawn — ADR-0073); install text builtins (raw text / tokens / sentences + space/sentence split); install pathfinding.
+  **Tests:** resident registration is descriptive; text capacities round-trip; pathfinding shortest paths.
+  **Docs:** `docs/usage/capacity/reactive-resident.md`, ADRs 0073/0088/0099/0100.
+
+### Phase 32 — Integration B: L0+L1+L2+L3 read-side end-to-end scripted scenario
+
+  **Deps:** 02–31 (every prior shipped phase). **Layer:** cross. **Net-new?** No.
+  **Scope (deliberately narrow):**
+    1. Phase 26 baseline (server bootstrap, user, login, KL bootstrap + import).
+    2. L3 Global + Local bootstrap (Phase 28).
+    3. Register a built-in text capacity (Phase 31).
+    4. Find a pipeline raw-text → tokens (Phase 30).
+    5. Invoke the pipeline on a one-sentence fixture; assert output shape.
+    6. Tail the problem-trace; assert empty.
+    7. Logout; audit confirms all steps recorded.
+  **Tests:** one end-to-end test that runs the script; golden-output diff.
+  **Pass criterion:** scenario runs deterministically; golden outputs stable.
+  **Risks:** same as Phase 26 — no scope creep. Failure here means a regression in Phases 02–31, not a need for new Phase 32 features.
+  **Docs:** none new (scaffolding for Phase 38 vertical slice).
+
+### Phase 33 — L3 write capacities (ADR-0145)
+
+  **Deps:** 25, 30, 31. **Layer:** L3. **Net-new?** **Yes — five write categories** (consolidate, trace, promote, author, state). Currently no L3 write capacities exist.
+  **Features:** five write capacities; each calls `KLWriteHandle` (Phase 34 wires the actual handle; this phase ships capacities with the stub still raising contract-typed errors).
+  **Tests:** each write capacity registers in the right category with stable IRI; stub failure raises a contract-typed error, not a leaky `NotImplementedError`.
+  **Risks:** order — capacities exist before the handle they call works.
+  **Docs:** `docs/usage/capacity/categories.md` (write-side section), ADR-0145.
+
+### Phase 34 — L3 symmetric write contract (ADR-0146)
+
+  **Deps:** 33. **Layer:** L3. **Net-new?** **Yes.**
+  **Features:** `KLWriteHandle.write_and_validate(...)` becomes functional; every write capacity submits through the handle; symmetric invocation contract.
+  **Tests:** each write category exercises the handle; failure path emits ProblemTraceRecord (consistent with ADR-0072).
+  **Risks:** idempotency / retry semantics of `KLWriteHandle` (ADR-0143) need pinning here.
+  **Docs:** ADRs 0143/0146.
+
+### Phase 35 — L3 per-flow build pattern (ADR-0147)
+
+  **Deps:** 34. **Layer:** L3. **Net-new?** **Yes.**
+  **Features:** `KLWriteHandle.graph()` applies per-flow validators; concrete builder per write category.
+  **Tests:** per-flow validator runs before commit; mismatched flow-vs-category rejected.
+  **Docs:** ADR-0147.
+
+### Phase 36 — L2 hybrid validators home (ADR-0139)
+
+  **Deps:** 35. **Layer:** L2. **Net-new?** **Yes — `mindsos_knowledge/validators.py` does not yet exist.** Splits validation into structural (L1, exists) + semantic (L2, new).
+  **Features:** validators run with scope structural / semantic / both; semantic validator per role.
+  **Tests:** semantic catches a seeded violation that structural misses; both run via Phase 35's `write_and_validate`.
+  **Docs:** ADR-0139.
+
+### Phase 37 — Server-owns-importers (ADR-0144)
+
+  **Deps:** 15, 36. **Layer:** L0 + L2. **Net-new?** **Yes — relocation.** Importers move from `mindsos_knowledge/importers/` to `mindsos_server/importers/` (or sibling).
+  **Features:** server-side import each source; deprecated L2 path emits warning then is removed.
+  **Tests:** golden-output diff vs Phase 15; audit records emitted under server's gate.
+  **Risks:** import paths in third-party callers (none expected).
+  **Docs:** `docs/knowledge-sources/*.md` (location update), ADR-0144.
+
+### Phase 38 — End-to-end vertical slice
+
+  **Deps:** all prior. **Layer:** cross. **Net-new?** No (composes shipped pieces).
+  **Features:** cookbook text-realm + code-slice end-to-end via CLI through L0 → L1 → L2 → L3.
+  **Tests:** golden-output for both cookbook flows; runs in under N seconds against the test fixture.
+  **Pass criterion:** the vertical slice that lives today across `tests/` produces the same artefacts via the CLI — no surprises. Final mkdocs pass: lift `strict: true` if all broken links are gone, and a final review of every page's `last_confirmed_phase` front-matter for orphans.
+  **Docs:** `docs/usage/cookbook/text-realm.md`, `nlu-slice.md`, `code-slice.md` — full.
+
+---
+
+## 6. Doc-to-phase map
+
+For every existing doc-tree entry, the phase that confirms it. A page touched by multiple phases is **amended** (not finalised) by each; the `last_confirmed_phase` front-matter field tracks the latest. Final review at Phase 38.
+
+### Get Started
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/index.md` | 38 |
+| `docs/getting-started/install.md` | 00 + 01 |
+| `docs/getting-started/quickstart.md` | 03 |
+| `docs/getting-started/first-graph.md` | 03 |
+| `docs/getting-started/first-metagraph.md` | 05 |
+| `docs/getting-started/first-mental-model.md` | **out of scope** (L5) |
+| `docs/getting-started/whats-new-v4.md` | 38 |
+| `docs/getting-started/facts-and-figures.md` | 38 |
+
+### Concepts
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/concepts/layers.md` | 38 |
+| `docs/concepts/graphs-and-metagraphs.md` | 03 + 05 |
+| `docs/concepts/identity.md` | 02 |
+| `docs/concepts/instancing.md` | 06 |
+| `docs/concepts/references.md` | 09 |
+| `docs/concepts/memory-tiers.md` | **out of scope** |
+| `docs/concepts/capacity-vs-intelligence.md` | 27 + 30 |
+| `docs/concepts/global-local.md` | 14 |
+| `docs/concepts/release-model.md` | 24 |
+| `docs/concepts/society-of-mind.md` | 38 |
+| `docs/concepts/glossary.md` | 38 |
+
+### Usage / Core (L1)
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/usage/core/building-graphs.md` | 03 |
+| `docs/usage/core/metagraphs.md` | 05 |
+| `docs/usage/core/schema.md` | 04 |
+| `docs/usage/core/persistence.md` | 07 + 08 |
+| `docs/usage/core/snapshots.md` | 10 |
+
+### Usage / Knowledge (L2)
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/usage/knowledge/overview.md` | 14 |
+| `docs/usage/knowledge/global-local.md` | 14 |
+| `docs/usage/knowledge/writing.md` | 16 (promotion writes); 33–35 (L3 write side) |
+| `docs/usage/knowledge/walking.md` | 14 |
+| `docs/usage/knowledge/versioning.md` | 17 |
+| `docs/usage/knowledge/alignments.md` | 15 |
+| `docs/usage/knowledge/memories.md` | **out of scope** |
+
+### Usage / Capacity (L3)
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/usage/capacity/overview.md` | 27 + 28 |
+| `docs/usage/capacity/categories.md` | 28 + 29 |
+| `docs/usage/capacity/data-states.md` | 27 |
+| `docs/usage/capacity/building.md` | 27 + 28 |
+| `docs/usage/capacity/reactive-resident.md` | 31 |
+| `docs/usage/capacity/retrieval.md` | 30 |
+| `docs/usage/capacity/promotion.md` | 23 + 24 (server side); 33–35 (L3 write side) |
+
+### Usage / Intelligence + Mental Model
+
+**All `docs/usage/intelligence/*.md` and `docs/usage/mental-model/*.md` are out of scope.** They remain `tag: design` until the L4/L5 follow-up plan ships.
+
+### Usage / Server
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/usage/server/overview.md` | 18 + 19 |
+| `docs/usage/server/bootstrap.md` | 20 |
+| `docs/usage/server/sessions.md` | 19 + 22 |
+| `docs/usage/server/auth.md` | 18 + 25 |
+| `docs/usage/server/promotion.md` | 23 + 24 |
+| `docs/usage/server/audit.md` | 21 |
+
+### Usage / Cookbook
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/usage/cookbook/text-realm.md` | 38 |
+| `docs/usage/cookbook/nlu-slice.md` | 38 |
+| `docs/usage/cookbook/code-slice.md` | 38 |
+
+### API Reference
+
+API pages map 1:1 to the phase that ships their corresponding code surface. Each phase confirms the API pages it touches.
+
+### Decisions / ADRs
+
+| ADR range | Confirms in phase |
+|---|---|
+| 0001–0013 (Server originals) | 18 (0001 fact); 0002 / 0005 in 19; 0003 in 18; 0004 in 07 + 18; 0006 / 0007 in 23; 0008 in 22; 0009 in 16; 0010 in 25; 0011 in 07; 0012 in 20; 0013 in 21 |
+| 0014–0024 (L1 originals) | 0014 in 03; 0015 / 0019 / 0025 / 0026 in 06; 0016 in 09 (XRef supersession noted); 0017 in 04; 0018 in 07; 0020 in 05; 0021 in 03 + 11; 0022 / 0023 in 07; 0024 in 10 |
+| 0027–0037 | 0027 / 0028 / 0029 in 10; 0030 in 07; 0031 / 0032 in 08; 0033 in 10; 0034 in 09; 0035 in 02; 0036 in 07; 0037 in 06 |
+| 0038–0057 (L2) | 0038–0042 in 25; 0043 in 14; 0044 in 14; 0045 / 0047 in 12; 0046 in 18; 0048 in 14; 0049–0056 in 16; 0057 in 13 |
+| 0060–0100 (L3) | 0060 / 0084 in 27 + 28; 0061 / 0064 / 0065 / 0085 in 28; 0062 / 0063 / 0066 in 27; 0067 in 12; 0068–0070 / 0086 / 0092 in 29; 0071 / 0072 / 0074 in 30; 0073 / 0088 / 0100 in 31; 0075 / 0076 in 28; 0077–0081 in 25 (cross with 28); 0082 / 0083 / 0094 / 0095 / 0096 / 0097 — L4 implications **out of scope**; only the L3 surface they imply ships; 0091 / 0098 / 0099 in 31; 0093 in 27 |
+| 0118 | 24 |
+| 0121–0137 (L1 redesign) | 0121 in 07; 0122 in 07; 0123 in 07 + 11; 0124 in 08; 0125 in 08; 0126 in 07; 0127 in 07; 0128 in 09; 0129 in 10; 0130 in 10 (or 05 if property bag lands earlier); 0131 in 02; 0132 in 06; 0133 in 10; 0134 in 11; 0135 in 10; 0136 in 18; 0137 in 23 + 24 |
+| 0138–0144 (L2 closure) | 0138 in 14 (verify removed); 0139 in **36 — NEW CODE**; 0140 in 36 (constraints on writes); 0141 in 14; 0142 in 09; 0143 in 34; 0144 in **37 — NEW CODE** |
+| 0145–0147 (L3 write side) | 0145 in **33 — NEW CODE**; 0146 in **34 — NEW CODE**; 0147 in **35 — NEW CODE** |
+
+### Knowledge Sources
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/knowledge-sources/*.md` | 15 (location); 37 (location update on relocation) |
+
+### Developer Guide / Changelog
+
+| Page | Confirms in phase |
+|---|---|
+| `docs/dev/contributing.md` | 01 (release flow + branching policy) |
+| `docs/dev/repo-layout.md` | 00 + 01 (`mindsos_cli`, `confirmation_docs/`, workflows); 06 (`mindsos_instances`); 37 (importer relocation) |
+| `docs/dev/conventions.md` | 01 (CLI conventions) |
+| `docs/dev/testing.md` | 01 (in-container = canonical) |
+| `docs/dev/internals/*.md` | each per its layer's phase block |
+| `docs/dev/handoffs/*.md` | each per its layer's phase block |
+| `docs/dev/recipes/*.md` | the phase that introduces the surface being recipe-d |
+| `docs/dev/release.md` | 01 |
+| `docs/dev/coordinated-changes/*.md` | historical archive — confirmed once at 38 |
+| `docs/changelog/*.md` | each phase appends a "Phase NN" line; final pass at 38 |
+
+---
+
+## 7. Open questions
+
+These require user adjudication before the affected phase chat can proceed.
+
+1. **`promotion.py` vs `promotion_v2.py` canonicalisation.** Both files exist in `mindsos_knowledge/`. **Affects Phase 16.** Question: which is canonical, and is the other deprecated?
+
+2. **ADRs 0113–0117 / 0119 / 0120 reserved but undrafted.** **Affects Phase 24.** Recommend the phase chat draft them as part of the phase. Confirm or specify alternative.
+
+3. **Soft-delete read-path enforcement (ADR-0133).** Property keys exist; runtime filtering not confirmed. **Affects Phase 10.** Question: do queries hide deprecated nodes by default, or is soft-delete advisory only?
+
+4. **Property-bag on Metagraph / Graph (ADR-0130).** Memory says locked; code inventory does not directly confirm a `properties` dict on Metagraph/Graph. **Affects Phase 05 or 10.** Question: implementation extent?
+
+5. **Mkdocs `strict: false` policy.** 55 broken cross-links per `docs/_inbox/LINK_TODO.md`. The plan repairs links per page touched. Question: lift to `strict: true` at end of Phase 38 (default), or earlier?
+
+6. **L3 ADRs 0082 / 0083 (Proposed but unbuilt).** Out of scope per L4 boundary, but Phase 33's `KLWriteHandle.promote()` cannot fully wire transitive promotion without 0083. Recommend: leave Phase 33 with atomic-per-capacity promotion and defer transitive to L4/L5 plan. Confirm.
+
+7. **CLI session-state mechanism (Phase 03).** The phase chat picks; if the choice has cross-phase impact, it surfaces here.
+
+8. **FOL layer placement, definitively.** Default = clean defer. Question: any portion in this plan's tail (e.g. as a Phase 39 capacity-design preview)? Recommend no.
+
+9. **`_source_backup/` retention.** Currently kept as read-only reference. Question: keep, or delete during Phase 38?
+
+10. **`docs/_inbox/LINK_TODO.md` and the 55 broken cross-links.** Many broken links may belong to L4/L5 design pages (out of scope). Question at Phase 38: remove `LINK_TODO.md` and accept residual broken links on out-of-scope pages, or block on fixing them?
+
+11. **`docs/concepts/capacity:retrieval` (ADR-0097) scope.** Marked partial in code inventory. Question: Phase 30 confirms 0097 only at the level the BFS finder satisfies, deferring richer retrieval to L4/L5 plan?
+
+12. **`mindsos_contracts` package (L2 critique §5.2).** Continuation handoff recommended; closure handoff deferred. Code inventory shows no such package. Question: accept the deferral as permanent for this plan?
+
+---
+
+## 8. Doc-contradictions audit (newer-wins by default)
+
+Resolved by newer-date precedence; logged for transparency.
+
+1. **L2 write API.** Pre-2026-04-22 docs describe `KnowledgeLayer.add_local_node(...)` etc. ADR-0138 (L2 closure) drops the write API. **Resolution:** newer wins. Phase 14 verifies absence; Phase 16 / 33–35 own the new write surfaces.
+
+2. **Six meta-pipelines vs two (L4 critique).** Out of scope — L4. Logged for follow-up plan.
+
+3. **MetagraphSnapshot scope.** ADR-0007 had broad scope. ADR-0129 narrows to release-ship only. **Resolution:** narrowed scope is current. Phases 10, 23, 24 enforce.
+
+4. **Promotion cascade / transactional model.** Old L3 handoff §5 frames as UX problem. Appendix C (post-pivot) resolves via release model. **Resolution:** Appendix C is current. ADR-0118 / Phase 24 implement.
+
+5. **Importer location.** L2 docs put importers in `mindsos_knowledge/`. ADR-0144 moves them to Server. **Resolution:** ADR-0144 is current; Phase 37 relocates.
+
+6. **Instancing package location.** Old L1 handoff puts instancing inside `mindsos_core`. ADR-0132 moves to sibling `mindsos_instances`. **Resolution:** ADR-0132 is current; backward-compat re-exports keep old imports working through the v4–v5 transition.
+
+7. **L3 fixed-not-learned.** ADR-0060 stands; L4 owns learned state. No conflict.
+
+---
+
+## 9. Prerequisites for the user (before Phase 00 begins)
+
+- [ ] Confirm `halvim/mindsos` exists on GitHub (lowercased) and is empty or near-empty.
+- [ ] Delete the GHCR PAT (no longer needed).
+- [ ] Tester's Linux box has Docker (Compose v2), git, and `python3 ≥ 3.11` available.
+- [ ] Tester has SSH key on GitHub (or accepts HTTPS with a `repo`-only PAT).
+- [ ] Pin a FalkorDB image **version + digest** before opening the Phase 00 PR.
+- [ ] Decide tester's Python version (recommended `python:3.11-slim-bookworm`, also pinned by digest).
+
+---
+
+*End of PHASE_MAP.md. Phase chats refine and append; never silently overwrite.*
