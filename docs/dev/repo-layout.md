@@ -1,18 +1,27 @@
 ---
-last_confirmed_phase: 00
+last_confirmed_phase: 01
 ---
 
 # Repo layout
 
-After Phase 00, the repository contains:
+After Phase 01, the repository contains:
 
 ```
 .
-├── confirmation_docs/    # PHASE_MAP.md + per-phase confirmation docs.
+├── .github/workflows/    # CI and Release workflows (Phase 01).
+│   ├── phase-ci.yml      # On push to phase-* → build + tests + mkdocs build.
+│   └── release.yml       # On tag phase-NN-confirmed → tarball + GitHub Release.
+├── confirmation_docs/    # PHASE_MAP.md + per-phase confirmation docs + templates.
 ├── docs/                 # mkdocs source tree.
 ├── mindsos_cli/          # CLI package (Typer-based).
-│   └── manifest.toml     # Canonical truth file: pinned versions and digests.
+│   ├── manifest.toml     # Canonical truth file: pinned versions and digests.
+│   ├── _retention.py     # Pure-Python retention-window selector (Phase 01).
+│   └── commands/
+│       ├── confirm_phase.py  # `mindsos confirm-phase` (Phase 01).
+│       ├── doctor.py         # `mindsos doctor` (Phase 00; extended in Phase 01).
+│       └── version.py        # `mindsos version` (Phase 00).
 ├── tests/phase_00/       # Phase 00 automated test suite.
+├── tests/phase_01/       # Phase 01 automated test suite.
 ├── tools/                # Helper scripts (lock.sh, ...).
 ├── .mindsos/             # Host-mounted volumes (gitignored).
 ├── Dockerfile            # Multi-stage: base / prod / test.

@@ -1,0 +1,68 @@
+# MindsOS Phase CI — runs on every push to a phase-* branch.
+#
+# Steps:
+#   1. Build the test image (multi-stage; pulls pinned Python + FalkorDB).
+#   2. Bring FalkorDB up via compose.
+#   3. Run `pytest tests/` cumulatively (every shipped phase's tests).
+#   4. Install pinned mkdocs ad-hoc and `mkdocs build --quiet`.
+#
+# Per PHASE_MAP §1:
+#   - GITHUB_TOKEN scope is `contents: read` (default).
+#   - In-container test run is the canonical pass criterion.
+#   - mkdocs version pin lives in mindsos_cli/manifest.toml [ci] mkdocs_version.
+
+name: phase-ci
+
+on:
+  push:
+    branches:
+      - 'phase-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Read mkdocs version pin from manifest
+        id: pins
+        run: |
+          MKDOCS_VERSION=$(python3 -c "import tomllib,sys;d=tomllib.load(open('mindsos_cli/manifest.toml','rb'));print(d.get('ci',{}).get('mkdocs_version','1.6.1'))")
+          echo "mkdocs_version=${MKDOCS_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build test image
+        run: |
+          docker compose --profile test build mindsos-test
+
+      - name: Bring FalkorDB up
+        run: |
+          docker compose up -d falkordb
+          # Wait up to 30s for healthcheck to flip to healthy.
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' mindsos-falkordb 2>/dev/null || echo "starting")
+            if [ "$status" = "healthy" ]; then
+              echo "FalkorDB healthy after ${i}s"; break
+            fi
+            sleep 1
+          done
+
+      - name: Run cumulative test suite
+        run: |
+          docker compose run --rm mindsos-test pytest tests/ -v
+
+      - name: Install pinned mkdocs (ad-hoc)
+        run: |
+          python3 -m pip install --user "mkdocs==${{ steps.pins.outputs.mkdocs_version }}"
+
+      - name: mkdocs build (verify docs tree)
+        run: |
+          python3 -m mkdocs build --quiet

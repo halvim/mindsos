@@ -1,0 +1,222 @@
+# MindsOS Release — runs on every push of a `phase-NN-confirmed` tag.
+#
+# Steps:
+#   1. Checkout the tagged commit.
+#   2. Build the prod image (the slim runtime, target=prod).
+#   3. Build the test image and run pytest tests/ as a sanity gate.
+#   4. `docker save | gzip` the prod image to mindsos-phaseNN.tar.gz.
+#   5. Compute SHA256 of the tarball + Dockerfile + lockfiles → checksums.txt.
+#   6. Create a GitHub Release with body = confirmation_docs/PHASE_NN_CONFIRMED.md
+#      and upload the tarball + Dockerfile snapshot + requirements*.txt + checksums.
+#   7. Retention prune: list all phase-*-confirmed releases; for any whose phase
+#      number is outside the top-5 window, replace the tarball asset (via
+#      `gh release upload --clobber`) with a 1-line placeholder. Never deletes
+#      a Release. Idempotent.
+#
+# Per PHASE_MAP §1:
+#   - GITHUB_TOKEN needs `contents: write` to create/upload Release assets.
+#   - Retention deletes the *asset*, not the *Release* — see retention step below.
+
+name: release
+
+on:
+  push:
+    tags:
+      - 'phase-*-confirmed'
+
+# Workflow-scope permissions stay default (`contents: read`); the only job
+# that needs write access (Release create + asset upload) declares it locally.
+# Reduces blast radius if a future job is added that doesn't need write.
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the tagged commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Extract phase number from tag
+        id: phase
+        run: |
+          # Accepts both `phase-NN-confirmed` and `phase-NN-vM-confirmed`.
+          TAG="${GITHUB_REF##refs/tags/}"
+          if ! [[ "$TAG" =~ ^phase-([0-9]+)(-v([0-9]+))?-confirmed$ ]]; then
+            echo "::error::Tag does not match phase-NN(-vM)?-confirmed: $TAG"
+            exit 1
+          fi
+          NN="${BASH_REMATCH[1]}"
+          VSUFFIX="${BASH_REMATCH[2]}"  # empty for v1, "-vM" for supersession
+          NN_PADDED=$(printf '%02d' "$NN")
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "nn=${NN_PADDED}" >> "$GITHUB_OUTPUT"
+          echo "vsuffix=${VSUFFIX}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build prod image
+        run: |
+          docker compose --profile cli build mindsos
+
+      - name: Build test image
+        run: |
+          docker compose --profile test build mindsos-test
+
+      - name: Run cumulative test suite (release gate)
+        run: |
+          docker compose up -d falkordb
+          for i in $(seq 1 30); do
+            status=$(docker inspect --format='{{.State.Health.Status}}' mindsos-falkordb 2>/dev/null || echo "starting")
+            if [ "$status" = "healthy" ]; then break; fi
+            sleep 1
+          done
+          docker compose run --rm mindsos-test pytest tests/ -v
+
+      - name: Export image tarball
+        id: tarball
+        run: |
+          NN="${{ steps.phase.outputs.nn }}"
+          VSUFFIX="${{ steps.phase.outputs.vsuffix }}"
+          IMAGE="mindsos:phase${NN}-prod"
+          OUT="mindsos-phase${NN}${VSUFFIX}.tar.gz"
+          docker save "$IMAGE" | gzip > "$OUT"
+          ls -lh "$OUT"
+          echo "path=${OUT}" >> "$GITHUB_OUTPUT"
+
+      - name: Compute checksums
+        run: |
+          TARBALL="${{ steps.tarball.outputs.path }}"
+          {
+            sha256sum "$TARBALL"
+            sha256sum Dockerfile
+            sha256sum requirements.txt
+            sha256sum requirements-test.txt
+          } > checksums.txt
+          cat checksums.txt
+
+      - name: Verify confirmation doc exists
+        id: confirmdoc
+        run: |
+          # PHASE_MAP §1 supersession rule: v1 → confirmation_docs/PHASE_NN_CONFIRMED.md;
+          # vM (M >= 2) → confirmation_docs/PHASE_NN_vM_CONFIRMED.md (sibling file,
+          # original kept untouched on disk).
+          NN="${{ steps.phase.outputs.nn }}"
+          VSUFFIX="${{ steps.phase.outputs.vsuffix }}"
+          if [ -z "$VSUFFIX" ]; then
+            DOC="confirmation_docs/PHASE_${NN}_CONFIRMED.md"
+          else
+            # VSUFFIX is "-vM"; strip the leading dash for the filename component.
+            VPART="${VSUFFIX#-}"
+            DOC="confirmation_docs/PHASE_${NN}_${VPART}_CONFIRMED.md"
+          fi
+          if [ ! -s "$DOC" ]; then
+            echo "::error::Confirmation doc missing or empty: $DOC"
+            exit 1
+          fi
+          echo "doc=${DOC}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NN="${{ steps.phase.outputs.nn }}"
+          TAG="${{ steps.phase.outputs.tag }}"
+          DOC="${{ steps.confirmdoc.outputs.doc }}"
+          TARBALL="${{ steps.tarball.outputs.path }}"
+          TITLE="Phase ${NN} — confirmed"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG exists; updating notes."
+            gh release edit "$TAG" --title "$TITLE" --notes-file "$DOC"
+          else
+            gh release create "$TAG" --title "$TITLE" --notes-file "$DOC"
+          fi
+
+          gh release upload "$TAG" \
+            "$TARBALL" \
+            Dockerfile \
+            requirements.txt \
+            requirements-test.txt \
+            checksums.txt \
+            --clobber
+
+      - name: Retention prune (keep last 5 confirmed-phase tarballs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Delegates the selection logic to mindsos_cli._retention so the
+          # rules are unit-tested (tests/phase_01/test_retention.py). The
+          # workflow is responsible for asset I/O only.
+          #
+          # Tag grammar honoured: phase-NN-confirmed AND phase-NN-vM-confirmed.
+          # Within a slot (same NN), older versions evict immediately. Across
+          # slots, the 5 highest-numbered install targets keep their tarball.
+          set -euo pipefail
+
+          # `export` so the Python heredoc below (a child process) inherits
+          # the value via os.environ. Without this, Python sees KeyError.
+          export ALL_TAGS=$(gh release list --limit 100 --json tagName --jq '.[].tagName' \
+                            | grep -E '^phase-[0-9]+(-v[0-9]+)?-confirmed$' || true)
+
+          if [ -z "$ALL_TAGS" ]; then
+            echo "no confirmed-phase releases yet — nothing to prune"
+            exit 0
+          fi
+
+          echo "all confirmed releases:"
+          echo "$ALL_TAGS"
+
+          # Run the retention selector and emit a JSON decision.
+          DECISION_JSON=$(python3 - <<'PY'
+          import json
+          import os
+          import sys
+          sys.path.insert(0, os.getcwd())
+          from mindsos_cli._retention import select_retention
+
+          tags = [t for t in os.environ["ALL_TAGS"].splitlines() if t.strip()]
+          decision = select_retention(tags, window=5)
+          print(json.dumps({"keep": decision.keep, "evict": decision.evict}))
+          PY
+          )
+
+          KEEP=$(echo "$DECISION_JSON" | jq -r '.keep[]?')
+          EVICT=$(echo "$DECISION_JSON" | jq -r '.evict[]?')
+
+          echo "kept:    $(echo "$KEEP" | xargs || echo '(none)')"
+          echo "evicting: $(echo "$EVICT" | xargs || echo '(none)')"
+
+          if [ -z "$EVICT" ]; then
+            echo "nothing to evict"
+            exit 0
+          fi
+
+          # For each evicted tag, derive the tarball asset name and replace
+          # it with a 1-line placeholder via `gh release upload --clobber`.
+          for tag in $EVICT; do
+            # `phase-NN-vM-confirmed` and `phase-NN-confirmed` both use a
+            # tarball named `mindsos-phaseNN-{vM-,}.tar.gz` — derive both.
+            nn=$(echo "$tag" | sed -E 's/^phase-([0-9]+)(-v[0-9]+)?-confirmed$/\1/')
+            vsuffix=$(echo "$tag" | sed -nE 's/^phase-[0-9]+(-v[0-9]+)-confirmed$/\1/p')
+            nn_padded=$(printf '%02d' "$nn")
+            asset="mindsos-phase${nn_padded}${vsuffix}.tar.gz"
+            placeholder=$(mktemp)
+            cat > "$placeholder" <<EOF
+          source-rebuild required — outside 5-phase retention window.
+          To rebuild: git checkout ${tag} && docker compose build mindsos
+          EOF
+            mv "$placeholder" "$asset"
+            if gh release upload "$tag" "$asset" --clobber 2>/dev/null; then
+              echo "evicted tarball asset for $tag → placeholder uploaded"
+            else
+              echo "warning: could not replace asset for $tag (may already be evicted)"
+            fi
+            rm -f "$asset"
+          done
+
+          echo "retention prune complete"

@@ -63,6 +63,11 @@ RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
 COPY pyproject.toml README.md ./
 COPY mindsos_cli ./mindsos_cli
+# Phase 01: doctor --self-test (workflow + compose drift checks) and
+# confirm-phase --init-notes need these static inputs at runtime.
+COPY .github ./.github
+COPY docker-compose.yml ./
+COPY confirmation_docs ./confirmation_docs
 
 RUN pip install --no-cache-dir --no-deps .
 
@@ -85,8 +90,15 @@ RUN pip install --no-cache-dir --require-hashes -r requirements-test.txt
 COPY pyproject.toml README.md ./
 COPY mindsos_cli ./mindsos_cli
 COPY tests ./tests
+# Phase 01: tests/phase_01/test_workflows_present.py and
+# test_doctor_workflow_check.py read these from the host repo at /app/.
+# tests/phase_01/test_init_notes.py invokes confirm-phase --init-notes which
+# reads confirmation_docs/_template_notes.md.
+COPY .github ./.github
+COPY docker-compose.yml ./
+COPY confirmation_docs ./confirmation_docs
 
 RUN pip install --no-cache-dir --no-deps .
 
 RUN chown -R mindsos:mindsos /app
-CMD ["pytest", "tests/phase_00", "-v"]
+CMD ["pytest", "tests/", "-v"]

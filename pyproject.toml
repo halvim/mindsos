@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase00"
-description = "MindsOS command-line interface — Phase 00 runtime infrastructure."
+version = "0.0.0+phase01"
+description = "MindsOS command-line interface — Phase 01 tooling infrastructure."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
