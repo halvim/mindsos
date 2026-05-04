@@ -1,0 +1,47 @@
+"""Cumulative sentinel-paths list driving the image-completeness test.
+
+The test at ``tests/test_image_completeness.py`` parametrises over this
+list. Each phase that adds a new static input the CLI reads at runtime
+appends to the list here AND adds a Dockerfile ``COPY`` line in both prod
+and test stages.
+
+History: Phase 01 §10.1 surfaced a Dockerfile drift where ``.github/``,
+``docker-compose.yml``, and ``confirmation_docs/`` were not COPYed into
+the prod / test image. The result: 10 in-container test failures
+including a Phase 00 regression. Phase 02 introduced this guard at
+``tests/phase_02/test_image_completeness.py``; Phase 03 promotes it to
+the root-level test (no longer phase-scoped) with this shared list.
+"""
+
+from __future__ import annotations
+
+#: Sentinel files that MUST be reachable from MINDSOS_REPO_ROOT.
+#: Cumulative — each phase appends.
+SENTINEL_PATHS: tuple[str, ...] = (
+    # Phase 00
+    "pyproject.toml",
+    "docker-compose.yml",
+    "mindsos_cli/manifest.toml",
+    "mindsos_cli/app.py",
+    "mindsos_cli/commands/doctor.py",
+    # Phase 01
+    "mindsos_cli/commands/confirm_phase.py",
+    ".github/workflows/phase-ci.yml",
+    ".github/workflows/release.yml",
+    "confirmation_docs/_template_notes.md",
+    "confirmation_docs/PHASE_MAP.md",
+    # Phase 02
+    "mindsos_cli/commands/identity.py",
+    "mindsos_core/__init__.py",
+    "mindsos_core/exceptions.py",
+    "mindsos_core/models/__init__.py",
+    "mindsos_core/models/identity.py",
+    # Phase 03
+    "mindsos_cli/commands/graph.py",
+    "mindsos_cli/state.py",
+    "mindsos_core/models/node.py",
+    "mindsos_core/models/edge.py",
+    "mindsos_core/models/graph.py",
+    "mindsos_core/cypher/__init__.py",
+    "mindsos_core/cypher/identifiers.py",
+)

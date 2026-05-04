@@ -376,44 +376,171 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
   **Tag on confirm:** phase-03-confirmed
   **Depends on:** 02
   **Layer(s):** L1
-  **Net-new code?:** No.
+  **Net-new code?:** **Yes (limited).** Repackages `mindsos_core/models/{graph,node,edge}.py` (note: `HyperEdge` lives in `edge.py` next to `Edge` in the parent project — there is no separate `hyperedge.py`) plus `mindsos_core/cypher/identifiers.py` (load-bearing for ADR-0021). Net-new beyond repackage: (1) `mindsos graph` Typer subcommand surface; (2) `mindsos_cli/state.py` — JSON state-file persistence at `${MINDSOS_STATE_DIR or ~/.mindsos}/graph-<name>.json` (parity with Phase 02 identity-registry pattern); (3) `tests/_shared/sentinel_paths.py` — extracts Phase 02's `_SENTINEL_PATHS` to a growing shared list every phase appends to (avoids per-phase duplication of the φ-class image-completeness test framework); (4) `mindsos_core/exceptions.py` extension with `SchemaError` + `CypherError` (the Schema *machinery* still defers to Phase 04; only the exception classes ship in 03 because `HyperEdge.__post_init__` and `validate_edge_type_identifier` raise them).
+
+  **Slim-port deferral list (locked in this row so future phase chats don't re-discover):**
+    - **`Schema` typing** + `validate_user_properties` / `validate_namespaced_properties` calls inside `Graph.add_*` → **Phase 04** (Schema). Phase 03 `add_*` methods take `properties` as a plain dict, no validation beyond `dict(...)` defensive copy.
+    - **Graph-level `properties` bag** (ADR-0130, PHASE_MAP §7 Q4 unresolved) → **Phase 05 or 10** per the open question. Slim Phase 03 `Graph.__init__` drops the `properties` parameter entirely.
+    - **`_version` field** on Node / Edge (ADR-0127 OCC) → **Phase 07**.
+    - **`deprecated_at` / `disputed_at`** fields + `iter_edges(include_deprecated=...)` + `deprecate_edge` / `undeprecate_edge` / `dispute_edge` / `undispute_edge` (ADR-0133) → **Phase 10**. Datetime import drops from `edge.py` accordingly.
+    - **`_restore_node` / `_restore_edge` / `_restore_hyperedge`** (private reconstruction helpers) → **Phase 08**. Phase 03 state-file rehydration uses the *public* `add_*(node_id=...)` / `add_edge(..., edge_id=...)` API instead.
+    - **`update_node_properties` / `update_edge_properties`** → **Phase 04** (their guards depend on Schema validation; without it they're a thin `dict.update`). Omitted from Phase 03 entirely; tester rebuilds via `reset` + re-add.
+    - **Pre-existing `tests/unit/test_graph.py`** (imports `Schema` / `NodeType` / `EdgeType` / `PropertyShapeError` / `UnknownTypeError`) → **Phase 04**, ported alongside Schema. Phase 03 ships only `tests/phase_03/`. The Phase 03 row's prior bullet "Pre-existing `tests/unit/test_graph.py` continues to pass" is **dropped**.
+    - **ADR-0023 confirmation** (two-step writes merge-then-set) → **Phase 07** (the ADR is about Cypher write semantics; Phase 03 has zero Cypher writes). Removed from Phase 03's confirmed-doc list.
 
   **Features in scope (capability-level):**
-    - Create an in-memory Graph with a role label.
-    - Inspect a Graph (counts of nodes/edges/hyperedges; attached schema, if any).
-    - Add nodes, edges, and hyperedges with property bags; list each.
-    - Reset a Graph.
-    - Tester can build a graph incrementally across multiple commands; the cross-invocation persistence mechanism is decided by the phase chat (in-memory + state file, in-DB ephemeral graph, or other — phase chat picks based on what is least confusing for a tester).
+    - `mindsos graph create --name <NAME> [--role ROLE]` — creates an empty Graph and writes the initial state file. Re-running with the same `--name` errors (use `reset` to clear). `--graph-id` is **not** exposed (reconstruction-only; Phase 08). `<NAME>` is validated against `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`; rejects with exit 2 + structured error otherwise (prevents accidental path traversal like `--name "foo/bar"` writing outside `$MINDSOS_STATE_DIR`).
+    - `mindsos graph inspect --name <NAME>` — counts of nodes / edges / hyperedges + role + graph_id; `--json` for machine-readable. The "attached schema" bullet from the original row drops since Schema is Phase 04.
+    - `mindsos graph add-node --name <NAME> <VALUE> --type <TYPE> [--prop k=v]... [--node-id IRI]` — `--node-id` is exposed for tester-driven IRI passthrough (parity with Phase 02 mint and required for the dup-id pass criterion). **`<VALUE>` parses with the same JSON-then-string-fallback rule as `--prop`:** try `json.loads(value)`; on `JSONDecodeError`, treat as literal string. So `add-node 42 ...` → int, `add-node '{"k":"v"}' ...` → dict, `add-node Alice ...` → string.
+    - `mindsos graph add-edge --name <NAME> --source <ID> --target <ID> --type <REL_TYPE> [--label LABEL] [--prop k=v]... [--edge-id ID]` — `--type` is validated by `validate_edge_type_identifier` per ADR-0021.
+    - `mindsos graph add-hyperedge --name <NAME> --member <ID> [--member <ID>]... [--label LABEL] [--prop k=v]... [--hyperedge-id ID]` — repeated singular `--member` flag (parity with Phase 02's `identity registry --register a --register b` pattern; better than comma-separated when ids contain commas or other special chars). Empty member set raises `SchemaError`; member ordering canonicalised by sorted `node_id` strings before serialization (exists-or-doesn't-exist tests rely on this).
+    - `mindsos graph list-nodes / list-edges / list-hyperedges --name <NAME>` — `--json` aware.
+    - `mindsos graph list` — enumerates every `graph-*.json` in `$MINDSOS_STATE_DIR`; reports name, role, graph_id, and counts per graph. `--json` aware. Useful tester-discovery surface (parity with the spirit of Phase 02's `identity registry --list`).
+    - `mindsos graph reset --name <NAME> | --all` — deletes the named state file or every `graph-*.json` in `$MINDSOS_STATE_DIR`. Refuses with exit 2 if neither flag is given (explicit intent required; no accidental wipes). The original row's `mindsos doctor` warning option is **dropped** — `--reset` is the only mechanism.
+    - `--prop k=v` JSON value parsing: try `json.loads(v)`; on `JSONDecodeError`, fall back to string. `--prop count=42` → int, `--prop tags='["a","b"]'` → list, `--prop active=true` → bool, `--prop name=Alice` → string. Tested.
+    - Cross-invocation persistence: state file at `${MINDSOS_STATE_DIR or ~/.mindsos}/graph-<name>.json` (parity with Phase 02's identity-registry-`<scope>`.json). Each CLI invocation reloads, mutates, writes back. Same `compose run --rm` gotcha as Phase 02 — documented; mitigation = bind-mount or run from host venv.
+    - Edge / HyperEdge serialization: store endpoints by `node_id` strings (`source_id`/`target_id` for Edge; sorted list of `member_ids` for HyperEdge). Rehydrate by lookup in the graph's `nodes` dict before constructing the Edge/HyperEdge object.
 
   **Modules touched:**
-    - Existing `mindsos_core/models/graph.py`, `node.py`, `edge.py`, `hyperedge.py`.
-    - `mindsos_cli/commands/...` (new glue).
-    - `mindsos_cli/state.py` (new — only if the phase chat picks a state-file approach for cross-invocation persistence).
+    - **Repackaged into `halvim_mindsos/`:** `mindsos_core/models/{graph,node,edge}.py` (HyperEdge ships in `edge.py` per parent layout); `mindsos_core/cypher/__init__.py` + `mindsos_core/cypher/identifiers.py` (new top-level subdirectory — must extend `[tool.setuptools.packages.find].include` with `mindsos_core.cypher` per Phase 02 §3.2 lesson). All imports stripped per the deferral list above.
+    - **Edited:** `mindsos_core/exceptions.py` (add `SchemaError`, `CypherError`); `mindsos_core/__init__.py` (export `Graph`, `Node`, `Edge`, `HyperEdge`, `SchemaError`, `CypherError`, `validate_edge_type_identifier`, `validate_label_identifier`); `mindsos_core/models/__init__.py` (re-export the new model classes for ergonomics).
+    - **New:** `mindsos_cli/commands/graph.py` — Typer subcommand group with `register_graph_app(app)` (parity with Phase 02's `register_identity_app`); wired into `mindsos_cli/app.py`. `mindsos_cli/state.py` — pure-function (de)serialization helpers (`load_graph_state`, `save_graph_state`, `state_file_path`, `iter_state_files`, `delete_state_file`).
+    - **New shared test infrastructure:** `tests/_shared/__init__.py`, `tests/_shared/sentinel_paths.py` — module exposes `SENTINEL_PATHS: list[Path]` (cumulative across phases). Phase 02's existing `tests/phase_02/test_image_completeness.py` migrates to import from the shared module; the test continues to live in `tests/phase_02/` (file boundary preserved per "phase tests live in `tests/phase_NN/`" rule); Phase 03 adds an extension parametrised over the new entries.
+    - **Edited (per-phase ritual):** `docker-compose.yml` (image tags `phase02-*` → `phase03-*`); `mindsos_cli/manifest.toml` (`[mindsos] phase` + `version`); `pyproject.toml` (`[project] version` + `description` only — `[tool.setuptools.packages.find].include` already uses `mindsos_core*` wildcard which auto-covers the new `mindsos_core.cypher` subpackage; no edit needed); `mindsos_cli/__init__.py` (`__version__`); `mkdocs.yml` — **`Usage` is a brand-new top-level nav section, inserted between `Concepts` and `API`**; sub-section `Core` containing `Building graphs`. Concepts gets `Graphs and metagraphs`. API > Core gets `Graph`, `Node`, `Edge`, `HyperEdge`. New top-level `Changelog` section appended last with `CHANGELOG.md` entry. Phase 04+ append Usage leaves (Schema, Persistence, etc.) and a `Knowledge` sub-section in their own time.
+    - **Unchanged:** `requirements.in` / `requirements.txt` (no new runtime deps — Phase 03's graph primitives are stdlib-only). `requirements_txt_sha256` field in `manifest.toml` therefore stays put. Same for `requirements-test.txt` (no new test deps).
+    - **Dockerfile:** verifying COPY of `mindsos_core/cypher/` is covered by the existing `COPY mindsos_core` in both prod + test stages (Phase 02 already copies `mindsos_core` wholesale); the image-completeness sentinel-list extension catches drift if a future Dockerfile edit fragments the COPY.
 
-  **Automated tests:**
-    - `tests/phase_03/` — Graph CRUD; Node CRUD with duplicate-IRI rejection; Edge CRUD with rel-type validation per ADR-0021; HyperEdge CRUD with N members; cross-invocation incremental build round-trips.
-    - Pre-existing `tests/unit/test_graph.py` continues to pass.
+  **Automated tests (location + intent):**
+    - `tests/phase_03/test_graph_create.py` — Graph creation; default UUID4 graph_id; `--role` round-trip; second `create` with same `--name` errors with structured `IdentityError`-style diagnostic.
+    - `tests/phase_03/test_graph_inspect.py` — counts after CRUD; `--json` shape stable.
+    - `tests/phase_03/test_graph_add_node.py` — happy path; explicit `--node-id`; duplicate explicit `--node-id` exits 1 with `IdentityError`; `--prop` JSON parsing across int / list / bool / string-fallback.
+    - `tests/phase_03/test_graph_add_edge.py` — happy path; missing source / target → `IdentityError` exit 1; lowercase rel-type (`works_at`) → `CypherError` exit 1 (ADR-0021); `--edge-id` explicit.
+    - `tests/phase_03/test_graph_add_hyperedge.py` — N-member happy path; empty `--members` → `SchemaError` exit 1; member ordering canonicalised by sorted `node_id` (assert state file's `member_ids` is sorted regardless of input order); `--hyperedge-id` explicit.
+    - `tests/phase_03/test_graph_reset.py` — `--name` deletes the named file; `--all` deletes every `graph-*.json` under `$MINDSOS_STATE_DIR`; neither → exit 2 with usage error.
+    - `tests/phase_03/test_graph_state_persistence.py` — round-trip across multiple subprocess invocations (mocked via `MINDSOS_STATE_DIR=tmp_path`); load → mutate → save → reload yields identical state.
+    - `tests/phase_03/test_graph_cypher_validation.py` — direct unit tests of `validate_edge_type_identifier` / `validate_label_identifier` (cypher safety regex coverage).
+    - `tests/phase_03/test_image_completeness_phase03.py` — parametrised over the *Phase 03 additions* to `SENTINEL_PATHS` (`mindsos_core/models/{graph,node,edge}.py`, `mindsos_core/cypher/__init__.py`, `mindsos_core/cypher/identifiers.py`).
+    - `tests/phase_03/conftest.py` — imports `_run_cli` from `tests/_shared/cli.py` (extracted in this phase per appendix #7). Adds an **autouse fixture** that sets `MINDSOS_STATE_DIR` to `tmp_path` (function-scoped) for every test in the package — prevents leakage between developer's actual `~/.mindsos/graph-*.json` files and test runs. ~5 LOC fixture.
+    - **Phase-agnostic test pattern** (Phase 02 §3.13): any test that needs "what phase am I" reads `[mindsos] phase` from `manifest.toml` at runtime; canonical helper at `tests/phase_01/test_confirm_phase.py:_current_phase`.
 
   **Confirmation command:**
     `mindsos confirm-phase --phase 03 --notes-file notes-phase-03.md`
 
   **Pass criterion:**
-    - Tester can build a small graph (≥ 3 nodes, ≥ 2 edges, ≥ 1 hyperedge) interactively across multiple invocations.
-    - Adding a node with an invalid IRI prints a structured error and exits non-zero.
-    - All Phase 03 + prior tests pass.
+    - Tester builds a small graph (≥ 3 nodes, ≥ 2 edges, ≥ 1 hyperedge) incrementally across multiple `mindsos graph add-*` invocations, then `inspect` reports the expected counts. (Multi-invocation works from host venv where `--rm` doesn't destroy the state file; documented compose `--rm` gotcha.)
+    - Adding a duplicate node id (explicit `--node-id`) exits non-zero with structured `IdentityError`.
+    - Adding an edge with an invalid Cypher rel-type (e.g. lowercase `--type works_at`) exits non-zero with structured `CypherError` per ADR-0021.
+    - `mindsos graph reset --name <NAME>` clears state; subsequent `inspect` reports node/edge/hyperedge counts of zero (or "graph not found", phase chat picks consistent semantics during impl).
+    - `mindsos graph reset` (no flag) exits 2 with a usage error.
+    - All Phase 03 + Phase 02 + Phase 01 + Phase 00 tests pass cumulatively in-container. Expected count: prior 108 + Phase 03 ~30 = ~138 + 1 skipped (`test_mkdocs_buildable.py`).
 
   **Risks / known issues to watch:**
-    - HyperEdge member ordering must be canonicalised before storage (exists-or-doesn't-exist tests rely on it).
-    - `--prop k=v` parsing must handle JSON-typed values (lists, ints, bools); guard with tests.
-    - The cross-invocation persistence mechanism, whatever the phase chat picks, must not leak between independent test runs — `mindsos doctor` should warn or `--reset` should be available.
+    - **State-file leak between independent test runs** — mitigated via `MINDSOS_STATE_DIR=tmp_path` env override in `tests/phase_03/conftest.py` + tester's `reset --name | --all`. The original "doctor warning" risk-line is dropped; `--reset` is the only mechanism.
+    - **HyperEdge member canonicalisation** — sorted `node_id` list locked in both `add_hyperedge` (in-memory) AND state-file (de)serializer; both paths tested; existence test (`is hyperedge {a,b,c} present?`) is sort-invariant by construction.
+    - **`--prop k=v` JSON parsing edge cases** — `--prop name=Alice` parses as string (json.loads fails on bare `Alice`), `--prop count=42` parses as int, `--prop active=true` parses as bool. The fall-back rule must NOT swallow malformed JSON like `--prop tags='[bad'` — that should error with a clear message, not silently become the literal string. Phase chat to decide where to draw the line; tested either way.
+    - **Compose `--rm` gotcha** — same as Phase 02 identity registry. Tester recipes: persistent demos run from host venv (`pip install -e .` per Phase 02 §8 step 9) OR via bind-mount (`-v ~/.mindsos:/root/.mindsos`); single-invocation demos use chained flags within one `compose run`.
+    - **Slim-port stripping is a real diff vs parent** (per the deferral list above). Phase 04+ chats must re-add the deferred surface as their feature rolls in. The deferral list is the contract.
 
   **Doc sections this phase confirms:**
-    - `docs/concepts/graphs-and-metagraphs.md` — partial (Graph + atomic elements; metagraph framing held for Phase 05).
-    - `docs/usage/core/building-graphs.md` — full.
-    - `docs/api/core/graph.md`, `node.md`, `edge.md`, `hyperedge.md` — full.
-    - `docs/decisions/adr/0014-layer-boundary-core-only.md`, `0021-cypher-rel-type-validation.md`, `0023-two-step-writes-merge-then-set.md` — confirmed.
+    - `docs/concepts/graphs-and-metagraphs.md` — **(new, partial)** — Graph + atomic elements; metagraph framing held for Phase 05.
+    - `docs/usage/core/building-graphs.md` — **(new, full)**.
+    - `docs/api/core/graph.md` — **(new, full)**.
+    - `docs/api/core/node.md` — **(new, full)**.
+    - `docs/api/core/edge.md` — **(new, full)**.
+    - `docs/api/core/hyperedge.md` — **(new, full)** — keeps its own page even though `HyperEdge` ships in `edge.py` (doc/code boundary intentionally diverges for reader ergonomics).
+    - `docs/changelog/CHANGELOG.md` — **(new)** — single append-only file per PHASE_MAP §6 ("each phase appends a 'Phase NN' line; final pass at 38"). Phase 03 creates the file and **backfills** Phase 00 / 01 / 02 entries (3 lines, derived from each phase's CONFIRMED doc title) + appends the Phase 03 entry. Phase 04+ append one line each.
+    - **ADR-0014** (layer boundary core-only) — **(referenced; ADR file not yet ported to slim repo — confirmed against shipped behaviour only; ADR text remains in parent project pending Phase 38 consolidation)**.
+    - **ADR-0021** (cypher rel-type validation) — **(referenced; ADR file not yet ported to slim repo — confirmed against shipped behaviour only)** — load-bearing for the invalid-rel-type pass criterion.
+    - **ADR-0023** (two-step writes merge-then-set) — **slipped to Phase 07** (Cypher writes ship there; nothing in Phase 03 to validate against).
 
-  **Breaking changes from prior phase:** introduces whatever cross-invocation persistence mechanism the phase chat selects; tester must understand how to reset between independent runs.
+  **Breaking changes from prior phase:**
+    - **`mindsos_core` exports grow** — `Graph`, `Node`, `Edge`, `HyperEdge`, `SchemaError`, `CypherError`, `validate_edge_type_identifier`, `validate_label_identifier` added to `__all__`. Code importing the *parent* project's full `mindsos_core` and relying on `Graph.properties`, `Node._version`, `Edge.deprecated_at` / `disputed_at`, `Graph._restore_*`, or `Graph.update_*_properties` will not find them in the slim Phase 03 surface — those land in their respective later phases per the deferral list. Document in `docs/changelog/phase-03.md`.
+    - **State-file conventions:** `${MINDSOS_STATE_DIR or ~/.mindsos}/graph-<name>.json`. Tester must `mindsos graph reset --name <NAME>` (or `--all`) between independent runs.
+    - **`tests/_shared/`** is now part of the test layout. Phase 04+ contributing to `SENTINEL_PATHS` extend the list there, not in `tests/phase_NN/test_image_completeness.py`.
+
+  **Final amendments (locked in this Phase 03 chat, 2026-05-04 — 15 items):**
+    1. **Cumulative test count baseline corrected.** Phase 02 tester-measured `117 + 1 skipped` is canonical (PHASE_02_CONFIRMED.md line 49) — not the `108` in PHASE_02_IMPLEMENTATION_LOG §6 (under-count: the impl log treated parametrised cases as 1 entry each). Phase 03 expected: **117 + ~34 in `tests/phase_03/` + 5 new sentinels at `tests/test_image_completeness.py` + ~6 in `tests/phase_03/test_state.py` + 1 in `tests/phase_03/test_graph_list.py` ≈ ~163 + 1 skipped.** **In-process / subprocess split (parity with Phase 02):** Mac dev sandbox runs in-process tests via `typer.testing.CliRunner`; ~6–8 subprocess CLI tests skip on Mac (Python 3.10 sandbox can't `pip install -e .` against `requires-python = ">=3.12"`) and run only in the test image. All ~163 pass in-container.
+    2. **`inspect` / `add-*` against a missing state file** → exit 1 with structured error: `Graph '<name>' not found at <path>; create it first with 'mindsos graph create --name <name>'`.
+    3. **Malformed `--prop` JSON value** (e.g. `--prop tags='[bad'`) → falls back to literal string `[bad`. Document as known limitation in `building-graphs.md`. Simplest rule wins: `try json.loads(v); except JSONDecodeError: v = literal_string`.
+    4. **State-file schema versioning.** Top-level JSON object includes `"_state_version": 1`. Phase 07+ may bump on shape change; loaders gate on it. Cheap insurance now, expensive retrofit later.
+    5. **State-file atomic write.** Write to `<path>.tmp` then `os.replace(<path>.tmp, <path>)`. Mid-write Ctrl-C cannot corrupt the canonical file. ~3 lines in `mindsos_cli/state.py:save_graph_state`.
+    6. **Image-completeness test relocates** to `tests/test_image_completeness.py` (root, single parametrised test over the cumulative `SENTINEL_PATHS` list). `tests/phase_02/test_image_completeness.py` is **removed** in the Phase 03 commit. Mutating an already-tagged Phase 02 file is the normal cross-phase refactor pattern; the `phase-02-confirmed` tag stays pointing at history.
+    7. **`_run_cli` env-merge helper extracts** from `tests/phase_02/conftest.py` to `tests/_shared/cli.py`. Both Phase 02 and Phase 03 conftests import directly from shared (`from tests._shared.cli import _run_cli`); the leading-underscore signals private convention so no re-export shim needed. The Phase 02 conftest's existing function definition is replaced by the import line.
+    8. **`mindsos_core/__init__.py:__all__` Phase 03 additions explicit.** 8 new entries: `"SchemaError"`, `"CypherError"`, `"Graph"`, `"Node"`, `"Edge"`, `"HyperEdge"`, `"validate_edge_type_identifier"`, `"validate_label_identifier"`. Cumulative total: 17.
+    9. **`mindsos graph create --name <NAME>` over an existing state file** → raises **`IdentityError`** (reusing the existing exception class — no new `StateError` class) with message: `Graph '<NAME>' already exists at <path>; use 'mindsos graph reset --name <NAME>' to clear.` CLI exits 1.
+    10. **HyperEdge state-file canonicalisation rule pinned exactly:** `member_ids = sorted(node.node_id for node in he.nodes)`. In-memory `he.nodes` remains `Set[Node]` (unchanged from parent). Two state files of the same hyperedges produce byte-identical JSON modulo property-dict ordering.
+    11. **`--prop k=v` parsing.** Split on first `=` only (`k, v = arg.split("=", 1)`). Empty key → exit 2 with usage error. Empty value (`--prop k=`) → empty-string property (json.loads("") raises → fall-back yields `""`).
+    12. **NEW — `tests/phase_03/test_state.py`** adds direct unit tests of `mindsos_cli/state.py` functions (`load_graph_state`, `save_graph_state`, `state_file_path`, `iter_state_files`, `delete_state_file`, atomic-write contract, corrupt-file handling). ~6 tests. Cheaper to debug pure-function failures than subprocess-CLI failures. Folded into the count above.
+    13. **NEW — `mindsos_cli/state.py` errors are plain Python exceptions.** Corruption raises `RuntimeError`; missing file lets `FileNotFoundError` propagate. The CLI command layer wraps with `typer.Exit(1)` + stderr structured message. **No new `StateError` class** in `mindsos_core.exceptions` — keeps the exception hierarchy aligned with Phase 02's "CoreError → IdentityError" tightness, plus only the two new domain classes (`SchemaError`, `CypherError`) ride in.
+    14. **NEW — Concurrent `mindsos graph add-*` race documented as known issue.** Two simultaneous CLI invocations against the same state file race (no advisory lock). Phase 02 J-02 deferral rationale carries forward: acceptable, debug-only, single-tester surface. Phase 07's persistence layer ships proper concurrency control. Added to "Risks / known issues to watch."
+    15. **NEW — `Dockerfile` comment update.** Lines 70–71 and 101–103 reference `tests/phase_02/test_image_completeness.py` as the sentinel-list owner. Phase 03 amends both COPY-block comments to point at `tests/test_image_completeness.py` + `tests/_shared/sentinel_paths.py`. Trivially small but failure-mode-relevant: comments mislead future debuggers if not updated.
+    16. **NEW — Docstring updates in slim `mindsos_core`.** `mindsos_core/__init__.py:1` ("MindsOS Core Layer — slim Phase 02 surface"), `mindsos_core/exceptions.py:1` ("Phase 02 slim"), `mindsos_core/models/__init__.py:1` ("Phase 02 ships only identity primitives") all reference Phase 02 in their opening docstrings. Phase 03 ritual updates each to a Phase 03-aware text describing the expanded surface (identity + graph elements + cypher safety) and the deferral list above. Implementation-time edit; verified during `mindsos doctor --self-test` only insofar as `__version__` parity is checked (docstrings are not lint-gated).
+    17. **NEW — Phase 01/02 deferral carry-forward.** `η` (`--no-build` flag for `confirm-phase`), `H` (`_run_tests` 600s timeout configurability), `D` (cumulative `pytest tests/` runtime explosion targeted at ~Phase 14) — **all three remain deferred in Phase 03.** No friction observed yet; revisit if a Phase 03+ rebuild cost or test runtime becomes load-bearing. `J-02` and `K-02` (identity-registry concurrency / gitignore) — Phase 03 graph state-file inherits both deferrals (acceptable: debug-only, single-tester surface).
+    18. **NEW — `mindsos graph list` discovery subcommand.** Enumerates `${MINDSOS_STATE_DIR}/graph-*.json`; reports name + role + graph_id + counts per graph; `--json` aware. ~15 LOC + 1 test. Tester-discovery surface; parity with the spirit of Phase 02's `identity registry --list`. Folded into the test count above.
+    19. **NEW — CLI exit code policy (locked, parity with Phase 02).** Exit `1` for domain errors (`IdentityError`, `SchemaError`, `CypherError`, malformed state file diagnosed via `RuntimeError`). Exit `2` for usage errors (missing required arg, malformed flag, empty `--prop` key, `reset` with neither `--name` nor `--all`, `--seed` JSON parse failure). Phase 02's `mindsos identity` CLI already follows this; Phase 03 graph CLI conforms.
+    20. **NEW — Doc inventory: every Phase 03 doc page is a NEW file.** None exist in the slim repo today (verified). `(new)` / `(amend)` markers added to the "Doc sections this phase confirms" list above for clarity at the Phase 38 final-pass review.
+    21. **NEW — `mkdocs.yml` nav entries.** Phase 02 added Concepts + API entries for identity. Phase 03 appends nav entries under Concepts (`graphs-and-metagraphs`), Usage / Core (`building-graphs`), API / Core (`graph`, `node`, `edge`, `hyperedge`), and a Changelog section if not yet present (`phase-03`). Folded into "Modules touched > Edited (per-phase ritual)" above.
+    22. **NEW — `requirements.in` / `requirements.txt` / `requirements-test.txt` unchanged.** Phase 03's graph primitives + state-file (de)serialization use only stdlib (`json`, `os`, `pathlib`). `manifest.toml`'s `requirements_txt_sha256` therefore stays put — `doctor --self-test` lockfile drift check unaffected.
+    23. **NEW — `mindsos_core/cypher/__init__.py` exports match parent's identifier-only set.** Phase 03 ships: `EDGE_TYPE_IDENTIFIER_RE`, `validate_edge_type_identifier`, `validate_label_identifier`. `LABEL_IDENTIFIER_RE` is **defined but NOT in `__all__`** (matches parent `mindsos_core/cypher/__init__.py` exactly). Builders (`build_create_node`, `build_create_edge`, etc.) ship in **Phase 11**; Phase 03's `cypher/__init__.py` imports only from `identifiers.py`. The slim cypher package has no `builders.py` file in Phase 03.
+    24. **NEW — Small in-row locks folded silently (no separate adjudication; pinned for impl-time clarity):**
+        - `mindsos_cli/state.py:state_file_path(name)` does the **`<name>` regex validation centrally** (raises `ValueError` if `name` violates `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`). CLI layer catches and exits 2. Avoids duplicating the regex check at every call site (CLI, future Phase 07 importers, tests).
+        - `mindsos graph list` output is **sorted by name** for deterministic CI / golden-output diffs.
+        - **Cypher rel-type rejection covers both lowercase AND mixed-case** (`works_at`, `Works_At`, `WORKS_at` — all rejected per the strict-uppercase regex `^[A-Z][A-Z0-9_]{0,63}$`). The pass-criterion test in `tests/phase_03/test_graph_cypher_validation.py` parametrises over all three.
+        - **`mindsos_cli/state.py` function signatures pinned:**
+            - `state_dir() -> Path`
+            - `state_file_path(name: str) -> Path` (validates name)
+            - `load_graph_state(name: str) -> dict`
+            - `save_graph_state(name: str, state: dict) -> None` (atomic via `<path>.tmp` + `os.replace`)
+            - `iter_state_files() -> Iterator[Path]`
+            - `delete_state_file(name: str) -> None`
+          All consume / return primitives + `Path` + plain `dict`; **no `Graph`-typed I/O at this layer** — the CLI command layer does the `Graph` ↔ `dict` (de)serialization. Keeps `mindsos_cli/state.py` pure-function and easy to unit-test directly (per `tests/phase_03/test_state.py` in appendix #12).
+        - **`pyproject.toml [tool.setuptools.packages.find].include` already uses `mindsos_core*` wildcard** (verified 2026-05-04 in this Phase 03 chat) — no edit needed for the new `mindsos_core.cypher` subpackage; auto-covered. Reverses the earlier appendix #2 / "Edited" claim that pyproject needs editing for the package include.
+    25. **NEW — `Graph` slim-port method inventory (explicit, locks the strip).** The slim Phase 03 `mindsos_core/models/graph.py` ships exactly:
+        - `__init__(name, *, role=None, graph_id=None, identity=None) -> None` — drops `schema`, `properties` params.
+        - `add_node(value, type_name, *, properties=None, node_id=None) -> Node` — no schema validation; `properties` is a defensive `dict(properties or {})`.
+        - `add_edge(source, target, type_name, *, label=None, properties=None, edge_id=None) -> Edge` — calls `validate_edge_type_identifier(type_name)` (ADR-0021); no schema validation of source/target types.
+        - `add_hyperedge(nodes, *, label=None, properties=None, edge_id=None) -> HyperEdge` — empty members → `SchemaError` (via `HyperEdge.__post_init__`).
+        - `remove_node(node_id, *, cascade=True) -> None`
+        - `remove_edge(edge_id) -> None`
+        - `remove_hyperedge(edge_id) -> None`
+        - `__repr__`
+        
+        **Dropped from parent's graph.py (per deferral list):** `iter_edges` / `iter_hyperedges` / `get_edges_for_node` (Phase 10 — soft-delete iterators); `deprecate_edge` / `undeprecate_edge` / `dispute_edge` / `undispute_edge` (Phase 10); `update_node_properties` / `update_edge_properties` (Phase 04); `_restore_node` / `_restore_edge` / `_restore_hyperedge` (Phase 08); `_validated_node_properties` / `_validated_edge_properties` (Phase 04 — schema-aware property validation).
+    26. **NEW — Slim-port dataclass field strips (explicit):**
+        - `Node` keeps: `value`, `type_name`, `node_id`, `properties`. **Drops** `_version` (ADR-0127 OCC, Phase 07).
+        - `Edge` keeps: `source`, `target`, `type_name`, `label`, `edge_id`, `properties`. **Drops** `deprecated_at`, `disputed_at` (ADR-0133, Phase 10) → also drops `from datetime import datetime` import.
+        - `HyperEdge` keeps: `nodes`, `label`, `edge_id`, `properties`. **Drops** `deprecated_at`, `disputed_at`.
+    27. **NEW — `_state_version` contract on load (forward + backward compat).** `load_graph_state` enforces:
+        - **Future versions rejected:** if `_state_version > 1` → raise `RuntimeError("State file <path> has _state_version=<N>; this CLI supports v1. Run a newer mindsos to read this file.")`. CLI exits 1.
+        - **Missing field rejected:** if `_state_version` key is absent → raise `RuntimeError("State file <path> missing required field '_state_version'.")`. CLI exits 1. (Strict — lenient handling encourages drift across phases.)
+        - **Equal version (v1) accepted:** normal load path.
+        Phase 07+ may bump `_state_version` and add backward-compat read paths there; Phase 03 sets the strict contract so future phase chats inherit explicit version awareness.
+    28. **NEW — State-file list ordering pinned for byte-stable output.** All three top-level arrays sorted by id before serialization:
+        - `nodes` sorted by `node_id`
+        - `edges` sorted by `edge_id`
+        - `hyperedges` sorted by `edge_id` (members within each hyperedge already sorted by `node_id` per item #10).
+        Same rule applied to CLI list output: `mindsos graph list-nodes / list-edges / list-hyperedges` sort by id (matches state-file order; deterministic for golden-diff CI). Reduces noise in tester's `cat <state-file>` inspections; insertion-order changes don't break diffs without semantic change.
+    29. **NEW — State-file JSON v1 schema pinned (avoids Phase 07+ drift).**
+        ```json
+        {
+          "_state_version": 1,
+          "graph_id": "<uuid4>",
+          "name": "<name>",
+          "role": "<role-or-null>",
+          "nodes": [
+            {"node_id": "<id>", "value": <any-json>, "type_name": "<type>", "properties": {}}
+          ],
+          "edges": [
+            {"edge_id": "<id>", "source_id": "<node-id>", "target_id": "<node-id>",
+             "type_name": "<type>", "label": "<label-or-null>", "properties": {}}
+          ],
+          "hyperedges": [
+            {"edge_id": "<id>", "member_ids": ["<sorted-node-id>", ...],
+             "label": "<label-or-null>", "properties": {}}
+          ]
+        }
+        ```
+        `member_ids` is always sorted (item #10). `value` is any JSON type per item #m above. Phase 07+ may bump `_state_version` if shape changes; loaders gate on it (item #4).
 
 ---
 
@@ -432,11 +559,12 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 05 — L1 Metagraph elements
 
-  **Deps:** 03. **Layer:** L1. **Net-new?** No.
+  **Deps:** 03. **Layer:** L1. **Net-new?** No (modulo Q13 below — if greenlit, intergraph edge primitive is **NEW CODE**).
   **Features:** Metagraph CRUD; place a Graph inside a Metagraph; binary MetaEdge; n-ary MetaHyperEdge; CompositionalMetaEdge unwrap.
+  **Design question to adjudicate before implementing (§7 Q13 — full analysis at `confirmation_docs/INTERGRAPH_EDGE_DESIGN_NOTE.md`):** Should L1 ship a fourth edge primitive — node↔node across graphs *inside* one metagraph — alongside the three existing graph-spanning constructs (MetaEdge / MetaHyperEdge / XRef)? Phase 05 chat MUST surface this to the user before writing Metagraph code; default = defer (status-quo: alignments-as-graph reification). If greenlit, draft an ADR + scope a feature increment to Phases 05 (primitive), 07 (persistence — `OWNS` ownership decision), 10 (snapshot scope), 11 (Cypher builders).
   **Tests:** metagraph-wide IdentityRegistry shared across contained Graphs (ADR-0020); CompositionalMetaEdge cardinality.
-  **Risks:** Phase 03's graph CLI must not bypass metagraph-wide registry.
-  **Docs:** `docs/concepts/graphs-and-metagraphs.md`, `docs/usage/core/metagraphs.md`, ADRs 0020 / 0117.
+  **Risks:** Phase 03's graph CLI must not bypass metagraph-wide registry. Q13 adjudication blocking.
+  **Docs:** `docs/concepts/graphs-and-metagraphs.md`, `docs/usage/core/metagraphs.md`, ADRs 0020 / 0117. (If Q13 greenlit: new ADR + `docs/concepts/intergraph-edges.md`.)
 
 ### Phase 06 — L1 Instancing (`mindsos_instances`)
 
@@ -854,13 +982,13 @@ These require user adjudication before the affected phase chat can proceed.
 
 3. **Soft-delete read-path enforcement (ADR-0133).** Property keys exist; runtime filtering not confirmed. **Affects Phase 10.** Question: do queries hide deprecated nodes by default, or is soft-delete advisory only?
 
-4. **Property-bag on Metagraph / Graph (ADR-0130).** Memory says locked; code inventory does not directly confirm a `properties` dict on Metagraph/Graph. **Affects Phase 05 or 10.** Question: implementation extent?
+4. **Property-bag on Metagraph / Graph (ADR-0130).** Memory says locked; code inventory does not directly confirm a `properties` dict on Metagraph/Graph. **Affects Phase 05 or 10.** Question: implementation extent? *(2026-05-04 — Phase 03 chat narrowed: Phase 03 row explicitly defers the Graph-level `properties` bag — slim `Graph.__init__` Phase 03 signature drops the `properties` parameter. Question now narrows to Phase 05 or 10; no Phase 03 interaction.)*
 
 5. **Mkdocs `strict: false` policy.** 55 broken cross-links per `docs/_inbox/LINK_TODO.md`. The plan repairs links per page touched. Question: lift to `strict: true` at end of Phase 38 (default), or earlier?
 
 6. **L3 ADRs 0082 / 0083 (Proposed but unbuilt).** Out of scope per L4 boundary, but Phase 33's `KLWriteHandle.promote()` cannot fully wire transitive promotion without 0083. Recommend: leave Phase 33 with atomic-per-capacity promotion and defer transitive to L4/L5 plan. Confirm.
 
-7. **CLI session-state mechanism (Phase 03).** The phase chat picks; if the choice has cross-phase impact, it surfaces here.
+7. **CLI session-state mechanism (Phase 03).** ~~The phase chat picks; if the choice has cross-phase impact, it surfaces here.~~ **Resolved 2026-05-04** — Phase 03 chat picked **JSON state file** at `${MINDSOS_STATE_DIR or ~/.mindsos}/graph-<name>.json`, parity with Phase 02's identity-registry pattern. Includes `_state_version: 1` field for forward-compat. Atomic write via `<path>.tmp` + `os.replace`. Same compose `--rm` gotcha as Phase 02 (state vanishes between containerised invocations; mitigation = host venv or bind-mount). See Phase 03 row Final amendments items 4, 5, 7.
 
 8. **FOL layer placement, definitively.** Default = clean defer. Question: any portion in this plan's tail (e.g. as a Phase 39 capacity-design preview)? Recommend no.
 
@@ -871,6 +999,8 @@ These require user adjudication before the affected phase chat can proceed.
 11. **`docs/concepts/capacity:retrieval` (ADR-0097) scope.** Marked partial in code inventory. Question: Phase 30 confirms 0097 only at the level the BFS finder satisfies, deferring richer retrieval to L4/L5 plan?
 
 12. **`mindsos_contracts` package (L2 critique §5.2).** Continuation handoff recommended; closure handoff deferred. Code inventory shows no such package. Question: accept the deferral as permanent for this plan?
+
+13. **Intergraph edge primitive (raised by user 2026-05-04, in Phase 03 chat).** Should L1 ship a fourth edge primitive — node↔node *across graphs but inside one metagraph* — distinct from the three existing graph-spanning constructs (`MetaEdge` graph↔graph binary, `MetaHyperEdge` graph↔...↔graph n-ary, `XRef` node↔node *across metagraphs*)? **Affects Phase 05** (the natural design slot — Metagraph context exists; persistence implications scoped before Phase 07). Status-quo alternative: alignments-as-a-graph (3rd-party reification node carrying refs to both endpoints, what L2 does today). Pushbacks recorded against adding the primitive: no Cypher `OWNS` home, snapshot scope breaks per-graph locality, schema validation has two competing schemas, OCC/WAL ownership becomes ambiguous, migration cost across DOLCE/OEWN/FrameNet/Alignments importers (Phase 15). **Full analysis + options + pushbacks + concrete asks: `confirmation_docs/INTERGRAPH_EDGE_DESIGN_NOTE.md`.** **Phase 05 chat must adjudicate before implementing Metagraph elements.**
 
 ---
 

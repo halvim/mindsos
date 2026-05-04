@@ -67,8 +67,9 @@ COPY mindsos_cli ./mindsos_cli
 COPY mindsos_core ./mindsos_core
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
-# Phase 02: tests/phase_02/test_image_completeness.py asserts the same
-# set is present at /app — keep this list aligned with that test's manifest.
+# Phase 03: tests/test_image_completeness.py (root-level cumulative)
+# asserts the same set is present at /app — keep this list aligned with
+# the SENTINEL_PATHS list in tests/_shared/sentinel_paths.py.
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
@@ -99,8 +100,10 @@ COPY tests ./tests
 # test_doctor_workflow_check.py read these from the host repo at /app/.
 # tests/phase_01/test_init_notes.py invokes confirm-phase --init-notes which
 # reads confirmation_docs/_template_notes.md.
-# Phase 02: tests/phase_02/test_image_completeness.py asserts these
-# sentinel files exist at /app/.
+# Phase 03: tests/test_image_completeness.py (root-level cumulative)
+# asserts these sentinel files exist at /app/. Sentinel list lives at
+# tests/_shared/sentinel_paths.py — append there when adding new static
+# inputs.
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs

@@ -1,3 +1,3 @@
-"""MindsOS CLI — Phase 02 L1 Identity (UUID / IdStrategy / IdentityRegistry)."""
+"""MindsOS CLI — Phase 03 L1 Graph elements (Graph / Node / Edge / HyperEdge + Cypher rel-type validation)."""
 
-__version__ = "0.0.0+phase02"
+__version__ = "0.0.0+phase03"

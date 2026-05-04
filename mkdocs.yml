@@ -15,11 +15,20 @@ nav:
       - Install: getting-started/install.md
   - Concepts:
       - Identity and IRIs: concepts/identity.md
+      - Graphs and metagraphs: concepts/graphs-and-metagraphs.md
+  - Usage:
+      - Core:
+          - Building graphs: usage/core/building-graphs.md
   - API:
       - Core IdentityRegistry: api/core/identity-registry.md
+      - Core Graph: api/core/graph.md
+      - Core Node: api/core/node.md
+      - Core Edge: api/core/edge.md
+      - Core HyperEdge: api/core/hyperedge.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md
       - CLI conventions: dev/conventions.md
       - Testing: dev/testing.md
       - Release flow: dev/release.md
+  - Changelog: changelog/CHANGELOG.md
