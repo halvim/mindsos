@@ -226,10 +226,14 @@ unit). Confirmation pending tester run on Linux box.
    docker compose run --rm mindsos identity registry --scope demo --register a   # duplicate → exit 1
    docker compose run --rm mindsos doctor --self-test
    ```
-   Verify the legacy doubled form still works:
-   ```sh
-   docker compose run --rm mindsos mindsos doctor                  # still works (parser absorbs the prefix)
-   ```
+   **Note (correction to original draft):** the legacy doubled form
+   `docker compose run --rm mindsos mindsos <subcommand>` is **broken**
+   in Phase 02. The compose entrypoint prepends `mindsos`, so the
+   doubled invocation becomes `mindsos mindsos <subcommand>` to the
+   binary; Typer reads the second `mindsos` as a subcommand and fails
+   with `No such command 'mindsos'`. Treat this as a deliberate
+   breaking change; update any recipe carrying the doubled form
+   forward from Phase 01.
 9. **[Linux]** Set up the host venv (one-time per machine, Phase 02 onward):
    ```sh
    cd halvim_mindsos

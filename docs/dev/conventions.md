@@ -58,10 +58,13 @@ compose `mindsos` service overrides the entrypoint to
 privilege drop and bind-mount chown but then prefixes every invocation
 with the `mindsos` binary.
 
-The Phase 01 form `docker compose run --rm mindsos mindsos <subcommand>`
-remains accepted (the prefix `mindsos` argument is passed through to the
-binary as a no-op, since the binary recognises `mindsos` as its own
-program name).
+**Breaking change vs Phase 01:** the doubled form `docker compose run
+--rm mindsos mindsos <subcommand>` no longer works. The compose
+entrypoint already prepends `mindsos`, so the doubled invocation becomes
+`mindsos mindsos <subcommand>` to the binary, and Typer reads the
+second `mindsos` as a subcommand and exits with `No such command
+'mindsos'`. Update any recipe carrying the doubled form forward from
+Phase 01.
 
 To get a shell inside the prod image (debug only — production code path
 must never need this), override the entrypoint at the compose-run
