@@ -215,10 +215,110 @@ to the chat transcript. Reproduced here for durability:
 
 - 30/30 host-runnable Phase 01 tests green.
 - 6/6 subprocess-only tests written (run in test image only).
-- All Phase 00 tests still pass (verified in last green run).
+- All Phase 00 tests still pass (verified in last green run on host).
 - YAML files parse under PyYAML.
 - `mindsos_cli/manifest.toml` consistent with `docker-compose.yml`
   for Phase 01.
 - Stuck `.git/*.lock` files prevent git commit from this sandbox;
   tester clears them on host before commit.
-- No further pushbacks from the design reviewer agent on this branch.
+
+---
+
+## 10. Post-checklist discoveries (during tester run, 2026-05-03)
+
+Two operational gaps surfaced after the tester started executing the
+checklist on the Linux box. Both are now fixed; documented here for
+future phase chats.
+
+### 10.1 — Dockerfile didn't COPY workflows / compose / confirmation_docs (φ)
+
+**Symptom:** `docker compose run --rm mindsos-test pytest tests/`
+on Linux → 10 failures, including a Phase 00 regression
+(`test_self_test_passes`).
+
+**Root cause:** the Dockerfile's `prod` and `test` stages COPYed only
+`pyproject.toml`, `README.md`, `mindsos_cli/`, and `tests/`. After
+Phase 01's `[ci.required_workflows]` extension, `doctor --self-test`
+inside the container resolved `_repo_root() = /app` and looked for
+`/app/.github/workflows/phase-ci.yml` — not present → "required CI
+workflow missing" failure. Same for `/app/docker-compose.yml`
+(compose drift check) and `/app/confirmation_docs/_template_notes.md`
+(`--init-notes` test).
+
+**Fix (Dockerfile, both stages):**
+```dockerfile
+COPY .github ./.github
+COPY docker-compose.yml ./
+COPY confirmation_docs ./confirmation_docs
+```
+
+**Bonus change:** test stage's `CMD` updated from
+`["pytest", "tests/phase_00", "-v"]` to `["pytest", "tests/", "-v"]`
+to match the cumulative-pytest convention.
+
+**Systemic-ness:** **YES, permanent.** Every future phase's tests
+that read static repo files (workflows, compose, manifest, docs)
+will now find them inside the container. Any future static input that
+`doctor` or `confirm-phase` reads must also be COPYed in — flag for
+phase chats that extend doctor.
+
+**Phase 00 regression caveat:** `test_self_test_passes` was a Phase 00
+test that implicitly assumed a manifest without `[ci]`. Phase 01's
+manifest extension changed what self-test checks. The test isn't a
+true regression — it's a manifest-evolution artifact. After the
+Dockerfile fix, it passes again.
+
+### 10.2 — Double `mindsos` in `docker compose run` invocations
+
+**Symptom:** `docker compose run --rm mindsos confirm-phase --init-notes phase-99`
+→ `error: exec: "confirm-phase": executable file not found in $PATH`.
+
+**Root cause:** `docker compose run --rm <SERVICE> <COMMAND> [args]`.
+The first `mindsos` is the compose service name; the second `mindsos`
+is the binary inside the container (the entry-point script installed
+by `[project.scripts]` in `pyproject.toml`). Phase 00's tester_notes
+flagged this as option (a) of the runtime UX trade-offs and accepted
+it — but Phase 01's checklist forgot to spell it out.
+
+**Fix:** every recipe in `docs/dev/release.md`, `docs/getting-started/install.md`,
+and PHASE_MAP examples uses the `mindsos mindsos <subcommand>` form.
+
+**Memory:** saved to `feedback_docker_compose_invocation.md` so
+future phase chats inherit the convention.
+
+**Systemic-ness:** **YES, permanent UX convention.** Every phase 02+
+chat must spell `mindsos` twice in container-run examples. Defer
+entrypoint rework (option to drop the double-typing) to Phase 02 if
+friction continues.
+
+### 10.3 — `confirm-phase` runs on host, not via compose
+
+**Symptom:** PHASE_MAP locked decision 2.1 says confirm-phase runs
+on the host. The original checklist contradicted this with
+`docker compose run --rm mindsos confirm-phase`. That invocation
+fails operationally even after fix 10.1 + 10.2 because the prod
+container has no `git`, no `docker` CLI, and no docker socket — all
+of which `confirm-phase` shells out to.
+
+**Fix:** new step Ζ in the checklist:
+```sh
+cd halvim_mindsos
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+Subsequent `mindsos confirm-phase …` invocations run from the venv
+on the Linux host. `pyproject.toml` requires Python ≥ 3.12 — verify
+with `python3 --version` first.
+
+**Systemic-ness:** **YES, permanent.** Every phase chat from 01 onward
+generates its CONFIRMED.md via host-installed `mindsos`, not via
+compose. PHASE_MAP §1 should make this explicit (currently only
+implicit in locked decision 2.1).
+
+### 10.4 — Two-machine setup (Mac + Linux) made implicit
+
+The Mac edits code; the Linux box runs Docker. Files sync via `git push/pull`
+(option 1, canonical) with `rsync over SSH` reserved (option 3, escape hatch).
+Saved to `user_two_machine_setup.md` so future phase chats stop tripping
+on it. Open: PHASE_MAP §1 doesn't make the split explicit — defer to Phase 02.
