@@ -213,9 +213,18 @@ to the chat transcript. Reproduced here for durability:
 
 ## 9. State at end of session
 
-- 30/30 host-runnable Phase 01 tests green.
-- 6/6 subprocess-only tests written (run in test image only).
-- All Phase 00 tests still pass (verified in last green run on host).
+- **In-container (canonical pass criterion): 62 passed + 1 skipped** —
+  6 Phase 00 + 56 Phase 01 + 1 skipped (`test_mkdocs_buildable` skips
+  because mkdocs is not installed in the test image; the actual
+  mkdocs build runs in a separate CI workflow step). Verified by
+  tester on Linux box, 2026-05-03, after Dockerfile fix in §10.1.
+- Host-runnable subset (Mac sandbox during this session): 30/30 green
+  (the pure-Python tests — retention + workflow YAML parsers +
+  confirm_phase internals). Subprocess-needing tests pass only when
+  `mindsos` is installed in PATH (test image OR host venv).
+- All Phase 00 tests pass; the Phase 00 `test_self_test_passes`
+  regression that surfaced when Phase 01 added the `[ci]` manifest
+  section is healed by the Dockerfile fix.
 - YAML files parse under PyYAML.
 - `mindsos_cli/manifest.toml` consistent with `docker-compose.yml`
   for Phase 01.
