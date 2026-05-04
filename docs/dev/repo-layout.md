@@ -1,10 +1,10 @@
 ---
-last_confirmed_phase: 01
+last_confirmed_phase: 02
 ---
 
 # Repo layout
 
-After Phase 01, the repository contains:
+After Phase 02, the repository contains:
 
 ```
 .
@@ -17,11 +17,18 @@ After Phase 01, the repository contains:
 │   ├── manifest.toml     # Canonical truth file: pinned versions and digests.
 │   ├── _retention.py     # Pure-Python retention-window selector (Phase 01).
 │   └── commands/
-│       ├── confirm_phase.py  # `mindsos confirm-phase` (Phase 01).
-│       ├── doctor.py         # `mindsos doctor` (Phase 00; extended in Phase 01).
+│       ├── confirm_phase.py  # `mindsos confirm-phase` (Phase 01; preflight in Phase 02).
+│       ├── doctor.py         # `mindsos doctor` (Phase 00; extended in 01 + 02).
+│       ├── identity.py       # `mindsos identity` (Phase 02 — mint, registry, strategies).
 │       └── version.py        # `mindsos version` (Phase 00).
+├── mindsos_core/         # Domain Layer 1 — slim Phase 02 surface (identity only).
+│   ├── exceptions.py     # CoreError, IdentityError (more land per phase).
+│   └── models/identity.py    # generate_uuid, IdStrategy, IdentityRegistry.
 ├── tests/phase_00/       # Phase 00 automated test suite.
 ├── tests/phase_01/       # Phase 01 automated test suite.
+├── tests/phase_02/       # Phase 02 automated test suite.
+├── tests/unit/           # Pre-existing unit tests (preserved per PHASE_MAP §1).
+│   └── test_identity.py  # Ported in Phase 02.
 ├── tools/                # Helper scripts (lock.sh, ...).
 ├── .mindsos/             # Host-mounted volumes (gitignored).
 ├── Dockerfile            # Multi-stage: base / prod / test.

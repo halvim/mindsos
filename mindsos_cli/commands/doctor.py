@@ -43,6 +43,53 @@ _COMPOSE_IMAGE_RE = re.compile(
 _REPO_ENV = "MINDSOS_REPO_ROOT"
 
 
+# Phase 02 — version-string drift across manifest / pyproject / __init__.py.
+# Anchored to start-of-line + optional whitespace so it tolerates docstring or
+# class-body false-positives in __init__.py (must literally be a top-level
+# `__version__ = "..."` assignment).
+_VERSION_LITERAL_RE = re.compile(
+    r"""^\s*__version__\s*=\s*['"]([^'"]+)['"]""",
+    re.MULTILINE,
+)
+
+
+def _read_pyproject_version(repo_root: Path) -> tuple[str | None, str | None]:
+    """Return ``(version, error)`` from pyproject.toml [project] version."""
+    path = repo_root / "pyproject.toml"
+    if not path.exists():
+        return None, f"pyproject.toml missing at {path}"
+    try:
+        with path.open("rb") as f:
+            data = tomllib.load(f)
+    except tomllib.TOMLDecodeError as exc:
+        return None, f"pyproject.toml is not valid TOML: {exc}"
+    version = data.get("project", {}).get("version")
+    if not isinstance(version, str):
+        return None, "pyproject.toml [project] version is missing or non-string"
+    return version, None
+
+
+def _read_init_version(repo_root: Path) -> tuple[str | None, str | None]:
+    """Return ``(version, error)`` from mindsos_cli/__init__.py:__version__."""
+    path = repo_root / "mindsos_cli" / "__init__.py"
+    if not path.exists():
+        return None, f"mindsos_cli/__init__.py missing at {path}"
+    body = path.read_text()
+    matches = _VERSION_LITERAL_RE.findall(body)
+    if not matches:
+        return None, (
+            "mindsos_cli/__init__.py has no top-level __version__ literal. "
+            "The drift check parses by regex (no import) — keep it as a plain "
+            "string assignment."
+        )
+    if len(matches) > 1:
+        return None, (
+            f"mindsos_cli/__init__.py has multiple __version__ literals: "
+            f"{matches!r}. Keep only one."
+        )
+    return matches[0], None
+
+
 def _repo_root() -> Path:
     """Return the repo root.
 
@@ -134,6 +181,16 @@ def doctor(
         "--self-test",
         help="Compare runtime state vs manifest; non-zero exit on drift.",
     ),
+    static_only: bool = typer.Option(
+        False,
+        "--static-only",
+        help=(
+            "With --self-test: skip the FalkorDB-reachability check. "
+            "Used by the Phase 02 confirm-phase preflight on the Linux host "
+            "venv, where the compose service `falkordb` is not resolvable "
+            "(only `localhost:6379` is). Has no effect without --self-test."
+        ),
+    ),
     json_out: bool = typer.Option(
         False, "--json", help="Emit JSON instead of human text."
     ),
@@ -146,7 +203,17 @@ def doctor(
 
     runtime_python = ".".join(str(x) for x in sys.version_info[:3])
     runtime_req_sha = _requirements_sha256()
-    falkordb_state = _ping_falkordb()
+    if static_only and self_test:
+        # Skip the live ping; use a sentinel so downstream report code knows
+        # we deliberately skipped reachability.
+        falkordb_state = {
+            "reachable": None,
+            "host": os.environ.get("FALKORDB_HOST", "falkordb"),
+            "port": int(os.environ.get("FALKORDB_PORT", "6379")),
+            "skipped": "static-only",
+        }
+    else:
+        falkordb_state = _ping_falkordb()
 
     report = {
         "manifest": {
@@ -215,7 +282,10 @@ def doctor(
             f"manifest={lockfile_pin}"
         )
 
-    if not falkordb_state["reachable"]:
+    if falkordb_state.get("skipped") == "static-only":
+        # Deliberate skip; do not flag.
+        pass
+    elif not falkordb_state["reachable"]:
         failures.append(f"falkordb unreachable: {falkordb_state['error']}")
     elif falkordb_state["version"] not in ("unknown", falkordb_pin["version"]):
         failures.append(
@@ -269,6 +339,31 @@ def doctor(
                     f"in compose to match."
                 )
         report["manifest"]["expected_compose_image_phase"] = expected_phase
+
+    # Phase 02+: version-string parity across manifest / pyproject / __init__.py.
+    # Phase 01 had to bump three places by hand; this catches forgotten bumps.
+    expected_version = manifest["mindsos"].get("version")
+    if isinstance(expected_version, str):
+        repo_root = _repo_root()
+        pyproject_version, pyproject_err = _read_pyproject_version(repo_root)
+        init_version, init_err = _read_init_version(repo_root)
+        if pyproject_err:
+            failures.append(f"pyproject.toml version unreadable: {pyproject_err}")
+        elif pyproject_version != expected_version:
+            failures.append(
+                f"pyproject.toml [project] version drift: "
+                f"pyproject={pyproject_version!r} manifest={expected_version!r}"
+            )
+        if init_err:
+            failures.append(f"mindsos_cli/__init__.py version unreadable: {init_err}")
+        elif init_version != expected_version:
+            failures.append(
+                f"mindsos_cli/__init__.py __version__ drift: "
+                f"init={init_version!r} manifest={expected_version!r}"
+            )
+        report["manifest"]["expected_version"] = expected_version
+        report["runtime"]["pyproject_version"] = pyproject_version
+        report["runtime"]["init_version"] = init_version
 
     result = {"ok": not failures, "failures": failures, **report}
 

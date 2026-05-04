@@ -38,6 +38,50 @@ import typer
 from mindsos_cli.commands.doctor import _load_manifest, _repo_root
 
 
+# ---------------------------------------------------------------------------
+# Phase 02 — preflight self-test (ζ from PHASE_01_IMPLEMENTATION_LOG §6)
+# ---------------------------------------------------------------------------
+
+
+def _preflight_self_test() -> tuple[bool, str]:
+    """Invoke the doctor self-test as a subprocess.
+
+    Returns ``(ok, summary)``. Avoids importing+calling ``doctor()``
+    directly because that function uses ``typer.Exit`` for control flow
+    and would short-circuit our caller. The subprocess gets a fresh
+    interpreter with the same `sys.executable` so a venv-installed
+    `mindsos` is found via PATH.
+
+    A non-FalkorDB-reachable failure is treated as fatal: the tester is
+    expected to bring up the compose stack before running confirm-phase.
+    Override with ``--skip-tests`` (which also skips this preflight, since
+    self-test is part of the canonical pass criterion).
+    """
+    # `--static-only` skips the FalkorDB ping. The preflight runs on the
+    # Linux host venv where the compose service name `falkordb` is NOT
+    # resolvable (only `localhost:6379` is), and we don't want to make the
+    # tester export FALKORDB_HOST=localhost just to get the preflight to
+    # pass. Static drift is what we care about here; in-container tests
+    # exercise the live FalkorDB.
+    cmd = [
+        sys.executable, "-m", "mindsos_cli",
+        "doctor", "--self-test", "--static-only", "--json",
+    ]
+    try:
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=_repo_root(),
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        return False, f"preflight invocation failed: {type(exc).__name__}: {exc}"
+
+    text = (proc.stdout or "") + (proc.stderr or "")
+    return proc.returncode == 0, text.strip() or "(no output)"
+
+
 _NOTES_TEMPLATE_RELPATH = "confirmation_docs/_template_notes.md"
 _TEMPLATE_NOTES_TITLE_SECTION = "## phase_title"
 _TEMPLATE_NOTES_NOTES_SECTION = "## tester_notes"
@@ -49,15 +93,26 @@ _TEMPLATE_NOTES_NOTES_SECTION = "## tester_notes"
 
 
 def _init_notes(phase_token: str, out_path: Path | None) -> Path:
-    """Write a notes file for `phase-NN`. Returns the written path."""
-    m = re.match(r"^phase-(\d{1,3})$", phase_token)
-    if not m:
+    """Write a notes file for ``NN`` (Phase 02+) or ``phase-NN`` (Phase 01 alias).
+
+    Phase 02 fix F (PHASE_01 §6 deferral): canonical shape is the bare
+    phase number (`--init-notes 02`), parity with `--phase NN`. The
+    `phase-NN` form is preserved as a parse-accepted alias for tester
+    muscle memory carried over from Phase 01.
+    """
+    bare = re.fullmatch(r"\d{1,3}", phase_token)
+    prefixed = re.fullmatch(r"phase-(\d{1,3})", phase_token)
+    if bare:
+        nn = phase_token.zfill(2)
+    elif prefixed:
+        nn = prefixed.group(1).zfill(2)
+    else:
         typer.echo(
-            f"--init-notes expects 'phase-NN' (e.g., phase-02), got: {phase_token!r}",
+            f"--init-notes expects 'NN' (e.g. '02') or 'phase-NN' (legacy alias), "
+            f"got: {phase_token!r}",
             err=True,
         )
         raise typer.Exit(code=2)
-    nn = m.group(1).zfill(2)
 
     template = _repo_root() / _NOTES_TEMPLATE_RELPATH
     if not template.exists():
@@ -460,6 +515,22 @@ def confirm_phase(
         }
         tests_failed = False
     else:
+        # Phase 02 — preflight `doctor --self-test` (ζ from PHASE_01 §6 deferral).
+        # Catches drift in version strings / compose tags / lockfile / workflows
+        # before the test suite runs and well before the doc is written. Kept
+        # off the --skip-tests path because that path is the deliberate hand-
+        # write escape hatch.
+        preflight_ok, preflight_text = _preflight_self_test()
+        if not preflight_ok:
+            typer.echo(
+                "preflight `doctor --self-test` failed — refusing to write the "
+                "confirmation doc. Fix drift then re-run, or use --skip-tests "
+                "for the emergency hand-write path.",
+                err=True,
+            )
+            typer.echo(preflight_text, err=True)
+            raise typer.Exit(code=1)
+
         test_summary = _run_tests()
         tests_failed = (
             test_summary["exit_code"] not in (0, None)

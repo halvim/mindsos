@@ -4,11 +4,12 @@ import typer
 
 from mindsos_cli.commands.confirm_phase import confirm_phase
 from mindsos_cli.commands.doctor import doctor
+from mindsos_cli.commands.identity import register_identity_app
 from mindsos_cli.commands.version import show_version
 
 app = typer.Typer(
     name="mindsos",
-    help="MindsOS command-line interface (Phase 01 — tooling infrastructure).",
+    help="MindsOS command-line interface (Phase 02 — L1 Identity).",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -23,3 +24,4 @@ app.command(
     name="confirm-phase",
     help="Generate or initialise a phase confirmation document.",
 )(confirm_phase)
+register_identity_app(app)
