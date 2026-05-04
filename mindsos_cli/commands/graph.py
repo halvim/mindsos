@@ -1,8 +1,8 @@
-"""`mindsos graph` — Phase 03 L1 Graph elements CLI surface.
+"""`mindsos graph` — Phase 04 L1 Graph elements + Schema integration CLI surface.
 
-Subcommands:
+Subcommands (Phase 03 set + Phase 04 additions):
 
-  mindsos graph create --name <NAME> [--role ROLE] [--json]
+  mindsos graph create --name <NAME> [--role ROLE] [--schema NAME] [--json]
   mindsos graph inspect --name <NAME> [--json]
   mindsos graph add-node <VALUE> --name <NAME> --type <TYPE>
                          [--prop k=v]... [--node-id IRI] [--json]
@@ -18,41 +18,87 @@ Subcommands:
   mindsos graph list [--json]
   mindsos graph reset (--name <NAME> | --all) [--json]
 
-Cross-invocation persistence: JSON state file at
-``${MINDSOS_STATE_DIR or ~/.mindsos}/graph-<name>.json``. Each command
-reloads, mutates, writes back. Same compose ``--rm`` gotcha as Phase 02
-identity-registry — documented; mitigation = host venv or bind-mount.
+Phase 04 additions:
 
-Exit codes (PHASE_MAP Phase 03 row appendix #19):
-  1 — domain errors (IdentityError, SchemaError, CypherError, malformed
-      state file).
-  2 — usage errors (missing required arg, malformed flag, empty --prop
-      key, reset without --name | --all, invalid <name> regex).
+  mindsos graph attach-schema --name <NAME> --schema <SCHEMA_NAME> [--json]
+      Attach a previously-declared schema to an existing graph. Eager
+      validation: every existing node + edge re-validated against the
+      schema; first violation prints a structured error including the
+      offending element id, then exits 1; the graph state file is NOT
+      modified. Re-attach is permitted (replaces the previous schema);
+      JSON output reports ``previous_schema``. If the new schema is
+      strict AND has zero NodeTypes, a stderr warning is emitted (the
+      graph cannot accept any further node adds).
+
+  mindsos graph detach-schema --name <NAME> [--json]
+      Clear ``schema_name`` from the graph's state file. Operates on
+      the raw JSON dict (does NOT route through schema rehydration), so
+      it works even when the referenced schema state file is missing —
+      that's the primary recovery path for dangling-reference graphs.
+      Exits 1 if no schema is currently attached.
+
+  mindsos graph set-prop --name <NAME> (--node-id <ID> | --edge-id <ID>)
+                          --prop k=v [--prop k2=v2 ...] [--replace] [--json]
+      Schema-validated property update. Default merge; ``--replace``
+      swaps the bag entirely BUT preserves cross-graph reference
+      properties (``ref:*`` keys); user-supplied ``ref:*`` values
+      overwrite existing ones on collision. There is no CLI path to
+      DROP a ``ref:*`` key in Phase 04; recovery via hand-edit, or
+      future Phase 09 XRef migration ships proper ref management.
+
+Cross-invocation persistence: JSON state file at
+``${MINDSOS_STATE_DIR or ~/.mindsos}/graph-<name>.json``. Phase 04 BUMPS
+the on-disk version to v=2 (Phase 03 wrote v=1). Phase 04 binary accepts
+both v=1 (legacy, no ``schema_name`` field) and v=2; writes v=2 on every
+save. v=1 → v=2 migration is one-way: first Phase 04 mutation upgrades
+the file; Phase 03 binary then refuses with the strict-version contract.
+
+Phase 04 backward-compat for legacy v=1 graphs that contain
+reserved-key or non-primitive properties (Phase 03 had no
+``validate_user_properties`` enforcement): rehydration calls
+``Graph.add_*`` with ``_validate=False`` so loads tolerate the legacy
+data. Mutations (``set-prop``, fresh ``add-node``, ``attach-schema``
+replay) keep the default ``_validate=True`` and continue to enforce
+the user-property contract — recovery from poisoned legacy nodes is
+via ``set-prop --replace``, which strips reserved keys.
+
+Exit codes (PHASE_MAP Phase 03 row appendix #19; Phase 04 inherits +
+extends):
+  1 — domain errors (IdentityError, SchemaError, CypherError,
+      UnknownTypeError, PropertyShapeError, malformed/missing state
+      file, detach-schema on a graph with no schema, attach-schema
+      with already-attached schema rejected by re-validation).
+  2 — usage errors (missing required arg, malformed flag, empty
+      ``--prop`` key, ``--node-id`` + ``--edge-id`` both passed,
+      set-prop without either flag, reset without ``--name`` |
+      ``--all``, invalid ``<name>`` regex).
 """
 
 from __future__ import annotations
 
 import json
-import sys
 from typing import Any, Optional
 
 import typer
 
 from mindsos_core import (
     CypherError,
-    Edge,
     Graph,
-    HyperEdge,
     IdentityError,
     Node,
+    PropertyShapeError,
+    REF_PROPERTY_PREFIX,
+    Schema,
     SchemaError,
+    UnknownTypeError,
 )
 from mindsos_cli import state as state_mod
+from mindsos_cli.commands.schema import _state_to_schema as _schema_state_to_schema
 
 
 graph_app = typer.Typer(
     name="graph",
-    help="L1 Graph elements — create, inspect, build, list, reset.",
+    help="L1 Graph elements + Phase 04 schema integration.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -64,12 +110,7 @@ graph_app = typer.Typer(
 
 
 def _parse_value(raw: str) -> Any:
-    """Try ``json.loads(raw)``; on failure, treat as literal string.
-
-    Same rule applied to ``<VALUE>`` in ``add-node`` and to ``--prop k=v``
-    values. ``42`` -> int, ``true`` -> bool, ``[1,2]`` -> list, ``Alice``
-    -> string, ``[bad`` -> string ``[bad`` (documented limitation).
-    """
+    """Try ``json.loads(raw)``; on failure, treat as literal string."""
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -98,20 +139,51 @@ def _parse_props(props: list[str]) -> dict[str, Any]:
     return out
 
 
-def _graph_to_state(g: Graph) -> dict:
-    """Serialize a ``Graph`` to the v1 state-file dict.
+def _load_schema_or_die(schema_name: str) -> Schema:
+    """Load and rehydrate a referenced schema; structured exit on failure."""
+    try:
+        state = state_mod.load_schema_state(schema_name)
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2)
+    except FileNotFoundError:
+        path = _schema_path_or_unknown(schema_name)
+        typer.echo(
+            f"Schema {schema_name!r} not found at {path}; "
+            f"create it first with 'mindsos schema create --name {schema_name}'",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    except RuntimeError as e:
+        typer.echo(f"State file error: {e}", err=True)
+        raise typer.Exit(code=1)
+    return _schema_state_to_schema(state)
 
-    Sorts top-level lists by id for byte-stable output.
-    HyperEdge member ids canonicalised (sorted) before serialization.
+
+def _schema_path_or_unknown(name: str) -> str:
+    try:
+        return str(state_mod.schema_file_path(name))
+    except ValueError:
+        return "<unknown>"
+
+
+def _graph_to_state(g: Graph, *, schema_name: Optional[str]) -> dict:
+    """Serialize a ``Graph`` to the v2 state-file dict.
+
+    Phase 04 always writes v=2 (``GRAPH_STATE_VERSION``). The optional
+    ``schema_name`` field is always emitted (None when no schema attached).
+    Sorts top-level lists by id for byte-stable output. HyperEdge member
+    ids canonicalised (sorted) before serialization.
     """
     nodes = sorted(g.nodes.values(), key=lambda n: n.node_id)
     edges = sorted(g.edges.values(), key=lambda e: e.edge_id)
     hyperedges = sorted(g.hyperedges.values(), key=lambda h: h.edge_id)
     return {
-        "_state_version": state_mod.STATE_VERSION,
+        "_state_version": state_mod.GRAPH_STATE_VERSION,
         "graph_id": g.graph_id,
         "name": g.name,
         "role": g.role,
+        "schema_name": schema_name,
         "nodes": [
             {
                 "node_id": n.node_id,
@@ -144,21 +216,38 @@ def _graph_to_state(g: Graph) -> dict:
     }
 
 
-def _state_to_graph(state: dict) -> Graph:
-    """Rehydrate a ``Graph`` from a v1 state-file dict.
+def _state_to_graph(state: dict) -> tuple[Graph, Optional[str]]:
+    """Rehydrate a ``Graph`` from a v=1 (Phase 03) or v=2 (Phase 04) state-file dict.
 
-    Uses public ``Graph.add_*`` methods with explicit ids (not the private
-    ``_restore_*`` helpers, which are deferred to Phase 08).
+    Returns a ``(graph, schema_name_or_None)`` tuple. The caller is
+    responsible for preserving ``schema_name`` round-trip on subsequent
+    saves. Phase 04 ALWAYS writes v=2 on save, so a v=1 file loaded here
+    becomes v=2 on the next mutation (one-way migration).
+
+    If the state file references a schema, the schema is loaded from
+    its own state file and attached via ``Graph(..., schema=...)``.
+    Schema-level checks (type registration, strict PropertyType maps)
+    DO run on rehydration; user-property checks
+    (``validate_user_properties`` — reserved keys, primitives only)
+    are SKIPPED via ``_validate=False`` so legacy v=1 files with
+    reserved-key or non-primitive properties (Phase 03 didn't validate)
+    load cleanly. Mutations on those legacy properties surface the
+    violation; recovery via ``set-prop --replace``.
+
+    Uses public ``Graph.add_*`` methods with explicit ids (not the
+    private ``_restore_*`` helpers, which are deferred to Phase 08).
     """
+    schema_name = state.get("schema_name")
+    schema: Optional[Schema] = None
+    if schema_name is not None:
+        schema = _load_schema_or_die(schema_name)
     g = Graph(
         name=state["name"],
         role=state.get("role"),
         graph_id=state["graph_id"],
+        schema=schema,
     )
-    # Avoid double-registering graph_id (Graph.__init__ registered it
-    # because we passed graph_id=...; actually __init__ only registers
-    # when graph_id is None). Phase 03 contract: state-file graph_id is
-    # explicit, so __init__ does NOT auto-register; register here.
+    # __init__ does NOT auto-register because graph_id was passed; register here.
     g.identity.register(state["graph_id"])
     for n in state.get("nodes", []):
         g.add_node(
@@ -166,6 +255,7 @@ def _state_to_graph(state: dict) -> Graph:
             type_name=n["type_name"],
             properties=dict(n.get("properties") or {}),
             node_id=n["node_id"],
+            _validate=False,  # rehydration: tolerate legacy v=1 garbage
         )
     for e in state.get("edges", []):
         src = g.nodes[e["source_id"]]
@@ -177,6 +267,7 @@ def _state_to_graph(state: dict) -> Graph:
             label=e.get("label"),
             properties=dict(e.get("properties") or {}),
             edge_id=e["edge_id"],
+            _validate=False,
         )
     for h in state.get("hyperedges", []):
         members = [g.nodes[mid] for mid in h["member_ids"]]
@@ -185,11 +276,12 @@ def _state_to_graph(state: dict) -> Graph:
             label=h.get("label"),
             properties=dict(h.get("properties") or {}),
             edge_id=h["edge_id"],
+            _validate=False,
         )
-    return g
+    return g, schema_name
 
 
-def _load_or_die(name: str) -> Graph:
+def _load_or_die(name: str) -> tuple[Graph, Optional[str]]:
     """Load and rehydrate a graph; die with structured exit on failure."""
     try:
         state = state_mod.load_graph_state(name)
@@ -210,20 +302,35 @@ def _load_or_die(name: str) -> Graph:
     return _state_to_graph(state)
 
 
-def _save_or_die(name: str, g: Graph) -> None:
+def _save_or_die(name: str, g: Graph, *, schema_name: Optional[str]) -> None:
     try:
-        state_mod.save_graph_state(name, _graph_to_state(g))
+        state_mod.save_graph_state(name, _graph_to_state(g, schema_name=schema_name))
     except ValueError as e:
         typer.echo(str(e), err=True)
         raise typer.Exit(code=2)
 
 
 def _path_or_unknown(name: str) -> str:
-    """Return the state-file path or '<unknown>' if name is invalid."""
     try:
         return str(state_mod.state_file_path(name))
     except ValueError:
         return "<unknown>"
+
+
+def _split_existing_refs(properties: dict[str, Any]) -> tuple[dict, dict]:
+    """Split a property bag into (ref:* keys, non-ref keys).
+
+    Used by ``set-prop --replace`` to preserve cross-graph reference
+    properties across a replace (Phase 04 — Pick D).
+    """
+    refs: dict[str, Any] = {}
+    rest: dict[str, Any] = {}
+    for k, v in properties.items():
+        if k.startswith(REF_PROPERTY_PREFIX):
+            refs[k] = v
+        else:
+            rest[k] = v
+    return refs, rest
 
 
 # ---------------------------------------------------------------------------
@@ -235,6 +342,11 @@ def _path_or_unknown(name: str) -> str:
 def create_cmd(
     name: str = typer.Option(..., "--name", help="Graph name."),
     role: Optional[str] = typer.Option(None, "--role", help="Optional semantic role."),
+    schema_name: Optional[str] = typer.Option(
+        None, "--schema",
+        help="Optional schema name to attach at creation time. "
+             "Schema must already exist (`mindsos schema create ...`).",
+    ),
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """Create an empty graph and write the initial state file."""
@@ -250,8 +362,11 @@ def create_cmd(
             err=True,
         )
         raise typer.Exit(code=1)
-    g = Graph(name=name, role=role)
-    _save_or_die(name, g)
+    schema: Optional[Schema] = None
+    if schema_name is not None:
+        schema = _load_schema_or_die(schema_name)
+    g = Graph(name=name, role=role, schema=schema)
+    _save_or_die(name, g, schema_name=schema_name)
     if json_out:
         typer.echo(
             json.dumps(
@@ -259,13 +374,17 @@ def create_cmd(
                     "name": g.name,
                     "role": g.role,
                     "graph_id": g.graph_id,
+                    "schema_name": schema_name,
                     "state_file": str(path),
                 },
                 indent=2,
             )
         )
     else:
-        typer.echo(f"created: name={g.name} role={g.role!r} graph_id={g.graph_id}")
+        schema_tag = f" schema={schema_name!r}" if schema_name else ""
+        typer.echo(
+            f"created: name={g.name} role={g.role!r} graph_id={g.graph_id}{schema_tag}"
+        )
         typer.echo(f"state_file={path}")
 
 
@@ -279,12 +398,14 @@ def inspect_cmd(
     name: str = typer.Option(..., "--name", help="Graph name."),
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
-    """Report counts + role + graph_id for the named graph."""
-    g = _load_or_die(name)
+    """Report counts + role + graph_id + attached schema for the named graph."""
+    g, schema_name = _load_or_die(name)
     summary = {
         "name": g.name,
         "role": g.role,
         "graph_id": g.graph_id,
+        "schema_name": schema_name,
+        "schema_strict": (g.schema.strict if g.schema is not None else None),
         "counts": {
             "nodes": len(g.nodes),
             "edges": len(g.edges),
@@ -295,7 +416,10 @@ def inspect_cmd(
     if json_out:
         typer.echo(json.dumps(summary, indent=2))
     else:
-        typer.echo(f"name={g.name} role={g.role!r} graph_id={g.graph_id}")
+        typer.echo(
+            f"name={g.name} role={g.role!r} graph_id={g.graph_id} "
+            f"schema={schema_name!r} strict={summary['schema_strict']}"
+        )
         typer.echo(
             f"nodes={summary['counts']['nodes']} "
             f"edges={summary['counts']['edges']} "
@@ -323,7 +447,7 @@ def add_node_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """Add a node to the named graph."""
-    g = _load_or_die(name)
+    g, schema_name = _load_or_die(name)
     parsed_value = _parse_value(value)
     props = _parse_props(prop or [])
     try:
@@ -336,7 +460,13 @@ def add_node_cmd(
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
         raise typer.Exit(code=1)
-    _save_or_die(name, g)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except PropertyShapeError as e:
+        typer.echo(f"PropertyShapeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    _save_or_die(name, g, schema_name=schema_name)
     if json_out:
         typer.echo(
             json.dumps(
@@ -376,7 +506,7 @@ def add_edge_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """Add a directed edge between two nodes in the named graph."""
-    g = _load_or_die(name)
+    g, schema_name = _load_or_die(name)
     if source not in g.nodes:
         typer.echo(
             f"IdentityError: Source node {source!r} not in graph {name!r}",
@@ -407,7 +537,13 @@ def add_edge_cmd(
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
         raise typer.Exit(code=1)
-    _save_or_die(name, g)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except PropertyShapeError as e:
+        typer.echo(f"PropertyShapeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    _save_or_die(name, g, schema_name=schema_name)
     if json_out:
         typer.echo(
             json.dumps(
@@ -450,9 +586,8 @@ def add_hyperedge_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """Add an n-ary hyperedge across the named members."""
-    g = _load_or_die(name)
+    g, schema_name = _load_or_die(name)
     members = list(member or [])
-    # Resolve members to Node objects; collect unknown ids for batch report.
     resolved: list[Node] = []
     for mid in members:
         if mid not in g.nodes:
@@ -476,7 +611,10 @@ def add_hyperedge_cmd(
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
         raise typer.Exit(code=1)
-    _save_or_die(name, g)
+    except PropertyShapeError as e:
+        typer.echo(f"PropertyShapeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    _save_or_die(name, g, schema_name=schema_name)
     sorted_member_ids = sorted(n.node_id for n in he.nodes)
     if json_out:
         typer.echo(
@@ -498,6 +636,323 @@ def add_hyperedge_cmd(
 
 
 # ---------------------------------------------------------------------------
+# attach-schema (Phase 04)
+# ---------------------------------------------------------------------------
+
+
+@graph_app.command("attach-schema")
+def attach_schema_cmd(
+    name: str = typer.Option(..., "--name", help="Graph name."),
+    schema_name: str = typer.Option(..., "--schema", help="Schema name to attach."),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Attach a schema to an existing graph with eager validation.
+
+    Every existing node and edge is re-validated against the schema. The
+    first violation prints a structured error including the offending
+    element id and exits 1; the graph state file is NOT modified.
+
+    Re-attach is permitted: if a schema is already attached, the new one
+    replaces it (after eager re-validation against the new schema). The
+    JSON output reports ``previous_schema``.
+
+    If the new schema is strict AND has zero NodeTypes, a stderr warning
+    is emitted (the graph cannot accept any further node adds).
+    """
+    g, previous_schema = _load_or_die(name)
+    new_schema = _load_schema_or_die(schema_name)
+
+    # Eager validation: rebuild a fresh schema-attached Graph by replaying
+    # every node + edge + hyperedge through the validation hooks. Each
+    # element is wrapped to attach the offending element id to the error.
+    validator = Graph(
+        name=g.name,
+        role=g.role,
+        graph_id=g.graph_id,
+        schema=new_schema,
+    )
+    # Graph.__init__ skips graph_id registration when graph_id is passed
+    # explicitly; the validator's identity is a fresh empty registry.
+    validator.identity.register(validator.graph_id)
+
+    def _validation_exit(kind: str, elt_id: str, exc: Exception) -> None:
+        typer.echo(
+            f"{kind} {elt_id}: {type(exc).__name__}: {exc} — schema "
+            f"{schema_name!r} NOT attached to graph {name!r}; existing "
+            f"data does not conform.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    for n in sorted(g.nodes.values(), key=lambda x: x.node_id):
+        try:
+            validator.add_node(
+                value=n.value,
+                type_name=n.type_name,
+                properties=dict(n.properties),
+                node_id=n.node_id,
+            )
+        except (UnknownTypeError, PropertyShapeError, IdentityError, SchemaError) as exc:
+            _validation_exit("node", n.node_id, exc)
+
+    for e in sorted(g.edges.values(), key=lambda x: x.edge_id):
+        try:
+            src = validator.nodes[e.source.node_id]
+            tgt = validator.nodes[e.target.node_id]
+            validator.add_edge(
+                source=src,
+                target=tgt,
+                type_name=e.type_name,
+                label=e.label,
+                properties=dict(e.properties),
+                edge_id=e.edge_id,
+            )
+        except (
+            CypherError,
+            UnknownTypeError,
+            PropertyShapeError,
+            IdentityError,
+            SchemaError,
+        ) as exc:
+            _validation_exit("edge", e.edge_id, exc)
+
+    for h in sorted(g.hyperedges.values(), key=lambda x: x.edge_id):
+        try:
+            members = [validator.nodes[m.node_id] for m in h.nodes]
+            validator.add_hyperedge(
+                nodes=members,
+                label=h.label,
+                properties=dict(h.properties),
+                edge_id=h.edge_id,
+            )
+        except (PropertyShapeError, IdentityError, SchemaError) as exc:
+            _validation_exit("hyperedge", h.edge_id, exc)
+
+    # Validation passed — persist the original graph (data is unchanged)
+    # with the new schema_name reference.
+    g.schema = new_schema
+    _save_or_die(name, g, schema_name=schema_name)
+
+    # Empty-strict-schema footgun warning (Phase 04 — Pick G).
+    if new_schema.strict and len(new_schema.node_types) == 0:
+        typer.echo(
+            f"warning: schema {schema_name!r} is strict but declares zero "
+            f"NodeTypes; subsequent 'graph add-node' calls will reject every "
+            f"type with UnknownTypeError. Add NodeTypes via 'mindsos schema "
+            f"add-node-type --schema {schema_name} --type-name <NAME>' or "
+            f"'mindsos graph detach-schema --name {name}'.",
+            err=True,
+        )
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "name": name,
+                    "schema_name": schema_name,
+                    "previous_schema": previous_schema,
+                    "strict": new_schema.strict,
+                    "validated": {
+                        "nodes": len(g.nodes),
+                        "edges": len(g.edges),
+                        "hyperedges": len(g.hyperedges),
+                    },
+                },
+                indent=2,
+            )
+        )
+    else:
+        prev_tag = (
+            f" (replaced previous={previous_schema!r})"
+            if previous_schema is not None
+            else ""
+        )
+        typer.echo(
+            f"ok: attached schema={schema_name!r} (strict={new_schema.strict}) "
+            f"to graph={name!r}{prev_tag}; validated {len(g.nodes)} node(s), "
+            f"{len(g.edges)} edge(s), {len(g.hyperedges)} hyperedge(s)."
+        )
+
+
+# ---------------------------------------------------------------------------
+# detach-schema (Phase 04)
+# ---------------------------------------------------------------------------
+
+
+@graph_app.command("detach-schema")
+def detach_schema_cmd(
+    name: str = typer.Option(..., "--name", help="Graph name."),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Clear ``schema_name`` from the graph's state file.
+
+    Operates on the raw JSON dict rather than routing through schema
+    rehydration, so it works EVEN WHEN the referenced schema state file
+    has been deleted. This is the primary recovery path for a graph
+    with a dangling schema reference.
+
+    Exits 1 if no schema is currently attached (idempotent-no-op refused
+    per the Phase 03 fail-loudly pattern).
+    """
+    try:
+        path = state_mod.state_file_path(name)
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2)
+
+    # Raw load — bypasses _load_or_die / _state_to_graph so a dangling
+    # schema reference doesn't block the recovery.
+    try:
+        state = state_mod.load_graph_state(name)
+    except FileNotFoundError:
+        typer.echo(
+            f"Graph {name!r} not found at {path}; nothing to detach.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    except RuntimeError as e:
+        typer.echo(f"State file error: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    previous_schema = state.get("schema_name")
+    if previous_schema is None:
+        typer.echo(
+            f"Graph {name!r} has no schema attached; nothing to detach.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    state["schema_name"] = None
+    # Always upgrade to v=2 on write (one-way migration; consistent with
+    # all other Phase 04 mutations).
+    state["_state_version"] = state_mod.GRAPH_STATE_VERSION
+    state_mod.save_graph_state(name, state)
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "name": name,
+                    "previous_schema": previous_schema,
+                    "schema_name": None,
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(
+            f"ok: detached schema={previous_schema!r} from graph={name!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# set-prop (Phase 04)
+# ---------------------------------------------------------------------------
+
+
+@graph_app.command("set-prop")
+def set_prop_cmd(
+    name: str = typer.Option(..., "--name", help="Graph name."),
+    node_id: Optional[str] = typer.Option(
+        None, "--node-id", help="Node id to update."
+    ),
+    edge_id: Optional[str] = typer.Option(
+        None, "--edge-id", help="Edge id to update."
+    ),
+    prop: list[str] = typer.Option(
+        [], "--prop", help="Repeat: k=v (JSON-or-string). Required."
+    ),
+    replace: bool = typer.Option(
+        False, "--replace",
+        help="Swap the property bag entirely (preserves ref:* keys; "
+             "user-supplied ref:* values overwrite existing ones). "
+             "Default merges via dict.update.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Update a node or edge's property bag (schema-validated when attached).
+
+    --replace semantics (Phase 04 — Pick D + N5):
+      The non-ref portion of the existing bag is dropped; the user-supplied
+      properties are stored. Cross-graph reference properties (``ref:*``
+      keys) in the existing bag are PRESERVED unless the user explicitly
+      provides a replacement (user ``ref:*`` values win on collision).
+      There is no CLI path to DROP a ref key in Phase 04 — recovery via
+      hand-edit, or future Phase 09 XRef migration.
+    """
+    if (node_id is None) == (edge_id is None):
+        typer.echo(
+            "Specify exactly one of --node-id <ID> or --edge-id <ID>.", err=True
+        )
+        raise typer.Exit(code=2)
+    if not prop:
+        typer.echo(
+            "set-prop requires at least one --prop k=v.", err=True
+        )
+        raise typer.Exit(code=2)
+    user_props = _parse_props(prop)
+    g, schema_name = _load_or_die(name)
+    try:
+        if node_id is not None:
+            existing = g.nodes[node_id].properties if node_id in g.nodes else None
+            props_to_apply = _build_replace_bag(existing, user_props) if replace else user_props
+            elt = g.update_node_properties(node_id, props_to_apply, replace=replace)
+            kind, kind_id, type_name = "node", elt.node_id, elt.type_name
+        else:
+            assert edge_id is not None  # mypy
+            existing = g.edges[edge_id].properties if edge_id in g.edges else None
+            props_to_apply = _build_replace_bag(existing, user_props) if replace else user_props
+            elt = g.update_edge_properties(edge_id, props_to_apply, replace=replace)
+            kind, kind_id, type_name = "edge", elt.edge_id, elt.type_name
+    except IdentityError as e:
+        typer.echo(f"IdentityError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except PropertyShapeError as e:
+        typer.echo(f"PropertyShapeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    _save_or_die(name, g, schema_name=schema_name)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "kind": kind,
+                    "id": kind_id,
+                    "type_name": type_name,
+                    "properties": dict(elt.properties),
+                    "replace": replace,
+                },
+                indent=2,
+            )
+        )
+    else:
+        verb = "replaced" if replace else "merged"
+        typer.echo(
+            f"ok: {verb} {kind} id={kind_id} type={type_name!r} "
+            f"properties={dict(elt.properties)}"
+        )
+
+
+def _build_replace_bag(
+    existing: Optional[dict[str, Any]], user_props: dict[str, Any]
+) -> dict[str, Any]:
+    """Build the replacement bag: existing-refs preserved, user wins on collision.
+
+    Phase 04 — Pick D + N5. Non-ref keys from existing are DROPPED (the
+    user is replacing them). Ref keys (``ref:*``) from existing are
+    PRESERVED unless the user supplies a new value for the same key —
+    user values always win.
+    """
+    if not existing:
+        return dict(user_props)
+    existing_refs, _ = _split_existing_refs(existing)
+    # User properties win on collision; existing refs fill in the gaps.
+    return {**existing_refs, **user_props}
+
+
+# ---------------------------------------------------------------------------
 # list-nodes / list-edges / list-hyperedges
 # ---------------------------------------------------------------------------
 
@@ -508,7 +963,7 @@ def list_nodes_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """List nodes in the named graph (sorted by node_id)."""
-    g = _load_or_die(name)
+    g, _ = _load_or_die(name)
     nodes = sorted(g.nodes.values(), key=lambda n: n.node_id)
     if json_out:
         typer.echo(
@@ -536,7 +991,7 @@ def list_edges_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """List edges in the named graph (sorted by edge_id)."""
-    g = _load_or_die(name)
+    g, _ = _load_or_die(name)
     edges = sorted(g.edges.values(), key=lambda e: e.edge_id)
     if json_out:
         typer.echo(
@@ -569,7 +1024,7 @@ def list_hyperedges_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """List hyperedges in the named graph (sorted by edge_id)."""
-    g = _load_or_die(name)
+    g, _ = _load_or_die(name)
     hyperedges = sorted(g.hyperedges.values(), key=lambda h: h.edge_id)
     if json_out:
         typer.echo(
@@ -603,7 +1058,16 @@ def list_hyperedges_cmd(
 def list_graphs_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
-    """Enumerate every graph in $MINDSOS_STATE_DIR (sorted by name)."""
+    """Enumerate every graph in $MINDSOS_STATE_DIR (sorted by name).
+
+    Note (Phase 04 — Pick P3): this command DELIBERATELY bypasses
+    ``load_graph_state``'s strict version check. It reads the JSON
+    directly so that future-version files (e.g. v=3 written by a
+    later phase) still appear in the listing rather than getting
+    hidden — better UX to show "exists, possibly newer" than to omit.
+    Mutating commands (``inspect``, ``add-*``, etc.) DO use the strict
+    loader and will refuse forward-version files cleanly.
+    """
     entries: list[dict] = []
     for path in state_mod.iter_state_files():
         try:
@@ -625,6 +1089,8 @@ def list_graphs_cmd(
                 "name": state.get("name"),
                 "role": state.get("role"),
                 "graph_id": state.get("graph_id"),
+                "schema_name": state.get("schema_name"),
+                "state_version": state.get("_state_version"),
                 "counts": {
                     "nodes": len(state.get("nodes") or []),
                     "edges": len(state.get("edges") or []),
@@ -650,9 +1116,12 @@ def list_graphs_cmd(
                 typer.echo(f"  {e['path']}  ERROR: {e['error']}")
             else:
                 c = e["counts"]
+                schema_tag = (
+                    f"  schema={e['schema_name']!r}" if e.get("schema_name") else ""
+                )
                 typer.echo(
                     f"  name={e['name']!r}  role={e['role']!r}  "
-                    f"graph_id={e['graph_id']}  "
+                    f"graph_id={e['graph_id']}  v={e['state_version']}{schema_tag}  "
                     f"nodes={c['nodes']} edges={c['edges']} hyperedges={c['hyperedges']}"
                 )
 

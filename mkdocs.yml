@@ -19,12 +19,15 @@ nav:
   - Usage:
       - Core:
           - Building graphs: usage/core/building-graphs.md
+          - Schemas: usage/core/schema.md
   - API:
       - Core IdentityRegistry: api/core/identity-registry.md
       - Core Graph: api/core/graph.md
       - Core Node: api/core/node.md
       - Core Edge: api/core/edge.md
       - Core HyperEdge: api/core/hyperedge.md
+      - Core Schema: api/core/schema.md
+      - Core Schema types: api/core/types.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md

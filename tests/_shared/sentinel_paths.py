@@ -44,4 +44,10 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_core/models/graph.py",
     "mindsos_core/cypher/__init__.py",
     "mindsos_core/cypher/identifiers.py",
+    # Phase 04
+    "mindsos_cli/commands/schema.py",
+    "mindsos_core/schema/__init__.py",
+    "mindsos_core/schema/types.py",
+    "mindsos_core/schema/schema.py",
+    "mindsos_core/schema/validation.py",
 )

@@ -74,11 +74,18 @@ def test_load_missing_state_version_field_raises(_isolated_state_dir):
 
 
 def test_load_future_state_version_rejected(_isolated_state_dir):
+    """Future versions (> ``GRAPH_STATE_VERSION``) are refused.
+
+    Phase 03 wrote v=1 and refused v>1; Phase 04 writes v=2 and refuses
+    v>2 (Pick A bumped the constant). The error message format references
+    the current ``GRAPH_STATE_VERSION`` value.
+    """
     path = state_mod.state_file_path("g")
     path.write_text(
         json.dumps({"_state_version": 99, "name": "g"}), encoding="utf-8"
     )
-    with pytest.raises(RuntimeError, match="this CLI supports v1"):
+    expected_msg = f"this CLI supports v{state_mod.GRAPH_STATE_VERSION}"
+    with pytest.raises(RuntimeError, match=expected_msg):
         state_mod.load_graph_state("g")
 
 

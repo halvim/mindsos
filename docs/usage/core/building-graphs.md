@@ -1,12 +1,34 @@
 ---
-last_confirmed_phase: 03
+last_confirmed_phase: 04
 ---
 
 # Building graphs
 
-The `mindsos graph` CLI (Phase 03) creates and manipulates an in-memory
-`Graph` that persists across invocations as a JSON state file at
-`${MINDSOS_STATE_DIR or ~/.mindsos}/graph-<name>.json`.
+The `mindsos graph` CLI (Phase 03 + Phase 04) creates and manipulates an
+in-memory `Graph` that persists across invocations as a JSON state file
+at `${MINDSOS_STATE_DIR or ~/.mindsos}/graph-<name>.json`.
+
+Phase 04 adds:
+
+* `mindsos graph create --schema <NAME>` — attach a Phase 04 schema at
+  creation time.
+* `mindsos graph attach-schema --name <GRAPH> --schema <SCHEMA>` —
+  attach a schema to an existing graph; eager validation rejects
+  non-conformant data with the offending element id named in the error.
+* `mindsos graph detach-schema --name <GRAPH>` — clear `schema_name`
+  on a graph (recovery path for dangling schema references).
+* `mindsos graph set-prop` — schema-validated property updates. Use
+  `--node-id <ID>` / `--edge-id <ID>` (renamed from `--node` / `--edge`
+  in Phase 04 for parity with `add-node --node-id`). `--replace`
+  preserves `ref:*` cross-graph reference keys; user-supplied
+  `ref:*` values overwrite existing on collision.
+
+**State file format BUMPED to v=2** in Phase 04. Phase 03 wrote v=1;
+Phase 04 reads both v=1 (legacy) and v=2; writes v=2 on every save.
+v=1 → v=2 migration is one-way — see [Schemas → Migration from
+Phase 03](schema.md#migration-from-phase-03).
+
+See [Schemas](schema.md) for the full schema surface.
 
 ## Quick tour
 
@@ -54,14 +76,15 @@ mindsos graph reset --all
 * `<name>` must match `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` — invalid names
   exit 2 (prevents accidental path traversal).
 
-## State file v1 schema
+## State file v=2 schema (Phase 04 bump)
 
 ```json
 {
-  "_state_version": 1,
+  "_state_version": 2,
   "graph_id": "<uuid4>",
   "name": "<name>",
   "role": "<role-or-null>",
+  "schema_name": "<schema-name-or-null>",
   "nodes":      [ {"node_id", "value", "type_name", "properties"} ],
   "edges":      [ {"edge_id", "source_id", "target_id",
                    "type_name", "label", "properties"} ],
@@ -70,9 +93,18 @@ mindsos graph reset --all
 ```
 
 * All three top-level lists are sorted by id on save (byte-stable diffs).
-* `_state_version` is strict on load — missing or > 1 raises an error.
+* `_state_version` is strict on load — Phase 04 binary accepts v=1 and
+  v=2; > 2 raises an error.
+* `schema_name` is **mandatory in v=2** (may be `null`). Phase 03 v=1
+  state files (no `schema_name` field) load fine; on the next mutation
+  Phase 04 re-saves at v=2 with `schema_name: null`. **The v=1 → v=2
+  migration is one-way** — Phase 03 binary can no longer read the file
+  after Phase 04 has touched it.
 * Atomic writes via `<path>.tmp` + `os.replace`; a Ctrl-C mid-write
   cannot corrupt the canonical file.
+
+See [Schemas → Migration from Phase 03](schema.md#migration-from-phase-03)
+for the full migration story including reserved-key recovery.
 
 ## `--prop k=v` and `<VALUE>` parsing
 
@@ -130,5 +162,5 @@ expectations.
 | Code | Meaning |
 |---|---|
 | `0` | Success. |
-| `1` | Domain error (`IdentityError`, `SchemaError`, `CypherError`, malformed state file). |
-| `2` | Usage error (missing required arg, malformed flag, empty `--prop` key, `reset` with neither `--name` nor `--all`, invalid `<name>` regex). |
+| `1` | Domain error (`IdentityError`, `SchemaError`, `CypherError`, `UnknownTypeError`, `PropertyShapeError`, malformed / missing state file). |
+| `2` | Usage error (missing required arg, malformed flag, empty `--prop` key, mutex flag violation on `set-prop`, `reset` with neither `--name` nor `--all`, invalid `<name>` regex). |
