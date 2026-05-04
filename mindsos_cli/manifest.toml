@@ -12,8 +12,8 @@
 # that would defeat the drift-detection purpose.
 
 [mindsos]
-phase = "00"
-version = "0.0.0+phase00"
+phase = "01"
+version = "0.0.0+phase01"
 
 [runtime.falkordb]
 image = "falkordb/falkordb"
@@ -31,5 +31,19 @@ version = "3.12.3"
 # sha256 of requirements.txt — populated by tools/lock.sh after pip-compile.
 # Until tools/lock.sh has been run on the tester's box, this is "PENDING_LOCK"
 # so `mindsos doctor --self-test` reports a clear diagnostic instead of a hex
-# mismatch.
-requirements_txt_sha256 = "2951a4f353699e78fc70d848027be55d45585acde9ce9f0c9cd2ed8e6374ee2d" 
+# mismatch. Phase 01 does NOT change requirements.in (only requirements-test.in
+# adds pytest-json-report), so this hash is unchanged from Phase 00.
+requirements_txt_sha256 = "2951a4f353699e78fc70d848027be55d45585acde9ce9f0c9cd2ed8e6374ee2d"
+
+[ci]
+# Workflow files that `doctor --self-test` verifies exist + non-empty + parse-shaped.
+# Added in Phase 01; checked from Phase 01 onward. Earlier-phase checkouts will
+# fail this assertion — that's intentional, you only run self-test on the
+# current-phase branch.
+required_workflows = [
+    ".github/workflows/phase-ci.yml",
+    ".github/workflows/release.yml",
+]
+# mkdocs is installed ad-hoc in CI (NOT in the test image — keeps the image
+# slim). `doctor --self-test` does not check mkdocs presence on the host.
+mkdocs_version = "1.6.1"

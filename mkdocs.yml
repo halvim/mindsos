@@ -14,4 +14,8 @@ nav:
   - Get started:
       - Install: getting-started/install.md
   - Developer guide:
+      - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md
+      - CLI conventions: dev/conventions.md
+      - Testing: dev/testing.md
+      - Release flow: dev/release.md

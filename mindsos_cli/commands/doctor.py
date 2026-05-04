@@ -9,12 +9,36 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import sys
 import tomllib
 from pathlib import Path
 from typing import Any
 
 import typer
+
+
+# Tolerates quoted YAML keys (`'on':`, `"on":`) and trailing whitespace before
+# the colon. Anchored to start-of-line via re.MULTILINE.
+_YAML_TOPLEVEL_KEY_RE = re.compile(r"^(['\"]?)(?P<key>[a-z_]+)\1\s*:", re.MULTILINE)
+
+
+def _yaml_top_keys(body: str) -> set[str]:
+    """Return the set of top-level YAML key names, ignoring quoting style."""
+    return {m.group("key") for m in _YAML_TOPLEVEL_KEY_RE.finditer(body)}
+
+
+# Matches `mindsos:phase<N>-<stage>` ONLY when it appears as the value of an
+# `image:` field — anchored to start-of-line + optional whitespace + `image:`.
+# This deliberately excludes:
+#   - YAML comments (whether full-line `# ...` or inline `key: val # ...`),
+#   - documentation strings inside other fields (`description: was phase00`),
+#   - any non-image YAML key that happens to contain the literal.
+# Used by --self-test to detect phase-tag drift between manifest and compose.
+_COMPOSE_IMAGE_RE = re.compile(
+    r"^\s*image:\s*mindsos:phase(?P<phase>\d+)-(?P<stage>[a-z]+)\b",
+    re.MULTILINE,
+)
 
 _REPO_ENV = "MINDSOS_REPO_ROOT"
 
@@ -198,6 +222,53 @@ def doctor(
             f"falkordb version drift: runtime={falkordb_state['version']} "
             f"manifest={falkordb_pin['version']}"
         )
+
+    # Phase 01+: required CI workflows must exist + non-empty + parse-shaped.
+    # Only checked when manifest declares them (Phase 00 manifest has no [ci]).
+    ci_section = manifest.get("ci") or {}
+    required_workflows = ci_section.get("required_workflows", [])
+    for relpath in required_workflows:
+        path = _repo_root() / relpath
+        if not path.exists():
+            failures.append(f"required CI workflow missing: {relpath}")
+            continue
+        body = path.read_text()
+        if not body.strip():
+            failures.append(f"required CI workflow empty: {relpath}")
+            continue
+        # Shape-check: top-level `on:` AND `jobs:` keys must appear (regex
+        # tolerates `on:`, `'on':`, `"on":`, and trailing whitespace).
+        keys = _yaml_top_keys(body)
+        missing = [k for k in ("on", "jobs") if k not in keys]
+        if missing:
+            failures.append(
+                f"required CI workflow shape-broken: {relpath} "
+                f"(missing top-level keys: {', '.join(missing)})"
+            )
+    if required_workflows:
+        report["manifest"]["ci_required_workflows"] = list(required_workflows)
+
+    # Phase 01+: compose image-tag parity. Every `mindsos:phaseNN-<stage>`
+    # reference in docker-compose.yml must match the manifest's [mindsos] phase.
+    # Catches the most common per-phase mistake (bumping manifest but leaving
+    # compose tags pointing at the prior phase).
+    expected_phase = manifest["mindsos"]["phase"]
+    compose_path = _repo_root() / "docker-compose.yml"
+    if compose_path.exists():
+        compose_body = compose_path.read_text()
+        bad: list[tuple[str, str]] = []  # (matched-phase, stage)
+        for m in _COMPOSE_IMAGE_RE.finditer(compose_body):
+            if m.group("phase") != expected_phase:
+                bad.append((m.group("phase"), m.group("stage")))
+        if bad:
+            for phase, stage in bad:
+                failures.append(
+                    f"compose image-tag drift: docker-compose.yml references "
+                    f"mindsos:phase{phase}-{stage}, but manifest [mindsos] phase "
+                    f"= {expected_phase}. Bump every mindsos:phase*-* literal "
+                    f"in compose to match."
+                )
+        report["manifest"]["expected_compose_image_phase"] = expected_phase
 
     result = {"ok": not failures, "failures": failures, **report}
 

@@ -1,3 +1,3 @@
-"""MindsOS CLI — Phase 00 runtime infrastructure."""
+"""MindsOS CLI — Phase 01 tooling infrastructure."""
 
-__version__ = "0.0.0+phase00"
+__version__ = "0.0.0+phase01"

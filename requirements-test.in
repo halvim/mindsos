@@ -1,7 +1,16 @@
-# mindsos_cli test-stage dependencies (Phase 00).
+# mindsos_cli test-stage dependencies (Phase 01).
 # Includes everything in requirements.in plus pytest and friends.
 # Used only by the `test` Docker stage; the `prod` stage installs requirements.txt only.
+#
+# Phase 01 additions:
+#   - PyYAML       — tests/phase_01/test_workflows_present.py parses workflow YAML.
+#
+# NOTE: requirements.in (runtime) is unchanged in Phase 01, so the manifest's
+# requirements_txt_sha256 stays the same. requirements-test.txt regenerates
+# — re-run tools/lock.sh once on the tester's Linux box and commit the resulting
+# requirements-test.txt before pushing the phase-01 branch.
 
 -r requirements.in
 
 pytest>=8.0,<11.0
+PyYAML>=6.0,<7.0

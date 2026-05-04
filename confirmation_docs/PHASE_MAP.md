@@ -30,7 +30,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | Repo + registry | `halvim/mindsos` (lowercased). **No GHCR.** GitHub Releases hold tarballs. |
 | CI | GitHub Actions, `GITHUB_TOKEN` only. Push to `phase-*` branch → in-container test suite. Tag `phase-NN-confirmed` → build + test + create Release with tarball + Dockerfile snapshot + lockfile snapshot + checksums; release body auto-generated from the confirmation doc. Retention prunes tarballs older than 5 most-recent confirmed phases. |
 | Branching | Branch `phase-NN` off main → PR → squash merge → tag `phase-NN-confirmed`. `latest` follows the most recent confirmed phase. |
-| **Phase rollback / supersession** | If Phase N+k reveals a regression in already-confirmed Phase N: tag `phase-NN-superseded` on main; rewrite the row in this map; open a new branch `phase-NN-v2`; tester reverts to `phase-(N-1)-confirmed` while v2 is built; on confirm, tag `phase-NN-v2-confirmed`. The original `phase-NN-confirmed` tag remains in history as evidence but is no longer the install target for that index. |
+| **Phase rollback / supersession** | If Phase N+k reveals a regression in already-confirmed Phase N: tag `phase-NN-superseded` on main; rewrite the row in this map; open a new branch `phase-NN-v2`; tester reverts to `phase-(N-1)-confirmed` while v2 is built; on confirm, tag `phase-NN-v2-confirmed`. The original `phase-NN-confirmed` tag remains in history as evidence but is no longer the install target for that index. **Confirmation doc:** v2 ships a sibling file `confirmation_docs/PHASE_NN_v2_CONFIRMED.md` (the original `PHASE_NN_CONFIRMED.md` stays untouched on disk, mirroring the tag-history rule). The release workflow derives the doc path from the tag's vsuffix. **Tarball naming:** `mindsos-phaseNN-v2.tar.gz` (vsuffix preserved). **Retention slot:** the (NN, vM) pair collapses to a single slot per phase NN — within the slot, the highest vM is the install target; lower vM tarballs evict immediately, regardless of the 5-phase window. |
 | Per-phase workflow | (a) implement on `phase-NN`; (b) automated tests green in container; (c) tester does manual CLI exploration; (d) tester runs `mindsos confirm-phase --init-notes phase-NN` (Phase 01+) or hand-fills the markdown template (Phase 00); (e) tester reviews and edits the resulting `confirmation_docs/PHASE_NN_CONFIRMED.md`; (f) phase chat updates `docs/` mkdocs source + this map's row for phase NN+1; (g) tester pushes branch + opens PR; (h) merge → tag → CI builds Release. |
 | Confirmation doc as artifact | The confirmation doc is **a markdown template the tester can edit by hand**. The `mindsos confirm-phase` wrapper (Phase 01+) generates a draft from the template; the tester reviews, possibly edits, and commits. **CI does NOT validate the doc's structure** beyond "exists and non-empty" — keeping the doc human-authoritative, not tool-authoritative. |
 | Confirmation doc schema (template fields) | `phase_number`, `phase_title`, `git_sha`, `image_build_hash`, `falkordb_version`, `automated_test_summary` (count + suite hash), `tester_notes`, `timestamp_utc`, `mkdocs_pages_updated`. |
@@ -204,54 +204,88 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 
 ### Phase 01 — Tooling infrastructure
 
-  **Status:** Pending
+  **Status:** In progress (refining + implementing — this chat, 2026-05-03)
   **Branch:** phase-01
   **Tag on confirm:** phase-01-confirmed
   **Depends on:** 00
   **Layer(s):** cross
-  **Net-new code?:** Yes — GitHub Actions workflows, retention pruning logic, `confirm-phase` CLI wrapper, mkdocs build verification step.
+  **Net-new code?:** Yes — GitHub Actions workflows (`phase-ci.yml`, `release.yml`), retention pruning step (inline in `release.yml`, no separate Python script), `mindsos confirm-phase` subcommand, manifest-driven `[ci.required_workflows]` parity check in `doctor --self-test`, mkdocs build CI step.
+
+  **Locked decisions (this chat — 2026-05-03):**
+    - **`confirm-phase` execution model:** runs **on the host**, shells out to `docker compose run --rm mindsos-test pytest tests/` (cumulative — runs every `tests/phase_NN/` dir present, not just the current one). Captures pytest's terminal summary line via `--json-report --json-report-file=-` (pytest-json-report plugin added to `requirements-test.in`). Falls back to text-summary parsing if the plugin import fails. Computes `suite_hash` as `sha256` of the sorted concatenation of every `tests/phase_NN/**/*.py` file's contents. Reads `git_sha` from `git rev-parse HEAD`. Reads `image_build_hash` from `docker inspect --format='{{.Id}}' mindsos:phase{NN}-prod` (the tag is derived from `[mindsos] phase` in `manifest.toml`, so the chat that opens phase NN bumps that single value).
+    - **`--phase` argument:** required positional value, must match `[mindsos] phase` in manifest. Mismatch is an error (prevents tester from accidentally generating Phase 02 doc on a Phase 01 branch).
+    - **`--skip-tests` flag:** emergency hand-write path. Skips the docker run, writes the doc with `automated_test_summary` blank-but-marked-skipped. Documented in `docs/dev/release.md`.
+    - **Notes file format:** plain markdown. Tester fills two human-authored fields only: `phase_title` and `tester_notes`. `mkdocs_pages_updated` is auto-derived from `git diff --name-only main..HEAD -- 'docs/'`. All other schema fields are auto-populated. Wrapper writes the assembled doc to `confirmation_docs/PHASE_NN_CONFIRMED.md` (overwrites if present, with a stderr warning).
+    - **`--init-notes phase-NN`:** writes `notes-phase-NN.md` (in `cwd` by default; `--out PATH` overrides). Content is a copy of `confirmation_docs/_template_notes.md` with `NN` substituted.
+    - **CI workflow trigger:** `phase-ci.yml` triggers on `push` to `refs/heads/phase-*` (single-segment match — also matches `phase-00-v2` per the rollback policy in §1).
+    - **CI workflow steps:** checkout → docker compose build mindsos-test → docker compose run --rm mindsos-test pytest tests/ → install pinned mkdocs ad-hoc (`pip install --user 'mkdocs==1.6.1'` — single workflow step, NOT in `requirements-test.in`, so the slim runtime image stays slim) → `mkdocs build --quiet`. No layer caching for v1 (cold builds ~2 min; revisit if slow).
+    - **Release workflow trigger:** `release.yml` triggers on `push` to tags matching `refs/tags/phase-*-confirmed`.
+    - **Release workflow steps:** checkout the tagged ref (fetch-depth=1 is sufficient — the tag already points to the commit with `PHASE_NN_CONFIRMED.md`) → build prod image → build test image + run tests/ → `docker save mindsos:phaseNN-prod | gzip > mindsos-phaseNN.tar.gz` → compute SHA256 of tarball → assemble release notes from the confirmation doc → `gh release create phase-NN-confirmed --title "Phase NN — <title>" --notes-file <body>` → `gh release upload` for: tarball, `Dockerfile`, `requirements.txt`, `requirements-test.txt`, `checksums.txt` (sha256 of the four prior files) → run retention prune step.
+    - **Retention pruning:** lists all `phase-NN-confirmed` AND `phase-NN-vM-confirmed` releases; selection logic delegated to `mindsos_cli/_retention.py` (host-unit-tested). Per supersession policy in §1: tags collapse by phase NN — within a slot, the highest vM is the install target and older vMs evict immediately; across slots, the 5 highest-numbered slots' install targets keep their tarball, the rest evict. For each evicted tag, replaces (`gh release upload --clobber`) the tarball asset (named `mindsos-phaseNN.tar.gz` or `mindsos-phaseNN-vM.tar.gz` matching the tag) with a 1-line text file containing "source-rebuild required — outside 5-phase retention window". Uses `--clobber` to swap content; never deletes a Release. Idempotent.
+    - **`gh release create` body:** the release body IS `confirmation_docs/PHASE_NN_CONFIRMED.md` verbatim (capped at GitHub's 125000-char limit; all phase docs will be far under).
+    - **GITHUB_TOKEN scope:** `contents: write` declared at **job-level** in `release.yml` (workflow-scope stays default `contents: read`); `phase-ci.yml` runs at default `contents: read`. No `id-token` or `packages` scopes.
+    - **Manifest extension:** add `[ci]` section with `required_workflows = [".github/workflows/phase-ci.yml", ".github/workflows/release.yml"]` and `mkdocs_version = "1.6.1"`. `doctor --self-test` reads this list, asserts each file exists, is non-empty, and has top-level `on:` and `jobs:` keys (regex check tolerates quoted YAML keys: `on:`, `'on':`, `"on":`). Bumps `[mindsos] phase = "01"`, `version = "0.0.0+phase01"`. `requirements_txt_sha256` does NOT change (mkdocs is workflow-installed, not test-image-installed; PyYAML adds to `requirements-test.in` so the test-image lockfile is regenerated — but `requirements.txt` is unchanged, so the manifest's tracked sha is unchanged).
+    - **Compose image-tag parity check:** `doctor --self-test` scans `docker-compose.yml` for every `mindsos:phaseNN-<stage>` literal and asserts the NN matches `[mindsos] phase`. Catches partial bumps (e.g., manifest at phase 02 but compose still references `phase01-test`). Implemented in `mindsos_cli/commands/doctor.py` via `_COMPOSE_IMAGE_RE`.
+    - **`confirm-phase` always rebuilds the test image:** `_run_tests` shells out with `docker compose run --build`. Layer-cached so the cost is small (<5s for source-only edits); guarantees the doc records the current code's results, not a stale image's. `--skip-tests` bypasses the build entirely.
 
   **Features in scope (capability-level):**
-    - GitHub Actions CI: on push to any `phase-*` branch, builds the image and runs the in-container test suite.
-    - GitHub Actions Release: on tag matching `phase-NN-confirmed`, runs the test suite, exports the image as a gzipped tarball, creates a GitHub Release with the tarball + Dockerfile snapshot + lockfile snapshot + SHA256 checksums; release body is generated from the corresponding `confirmation_docs/PHASE_NN_CONFIRMED.md`.
-    - Tarball retention: keep the tarball asset for the last 5 confirmed phases; older confirmed-phase Releases survive but their tarball asset is replaced with a "source-rebuild required" note.
-    - `mindsos confirm-phase` subcommand:
-        * `--init-notes phase-NN` writes a notes-template file the tester fills.
-        * `--phase NN --notes-file <PATH>` reads the notes, runs the in-container test suite, and writes `confirmation_docs/PHASE_NN_CONFIRMED.md` populated from the schema fields. The tester is expected to review and possibly hand-edit before commit. CI does not later validate the file's internal structure beyond exists-and-non-empty.
-    - mkdocs build verification: `mkdocs build --quiet` runs as part of CI on every `phase-*` push and must exit 0.
+    - GitHub Actions CI on push to `phase-*` branches: build image, run cumulative `pytest tests/`, build mkdocs.
+    - GitHub Actions Release on tag `phase-NN-confirmed`: build + test + tarball + Release with assets + retention prune of older tarballs.
+    - Tarball retention: keep the tarball asset for the 5 most-recent confirmed phases; older Releases survive with the asset replaced by a placeholder.
+    - `mindsos confirm-phase --init-notes phase-NN` writes a notes-template file the tester fills.
+    - `mindsos confirm-phase --phase NN --notes-file <PATH>` reads the notes, runs the cumulative test suite, writes `confirmation_docs/PHASE_NN_CONFIRMED.md`. `--skip-tests` available for emergency hand-write.
+    - mkdocs build verification: `mkdocs build --quiet` runs in CI and must exit 0.
+    - `doctor --self-test` extended to verify `[ci.required_workflows]` files exist + non-empty + parse-shaped.
 
   **Modules touched:**
     - `.github/workflows/phase-ci.yml` (new).
-    - `.github/workflows/release.yml` (new), including retention-pruning step.
-    - `mindsos_cli/commands/confirm_phase.py` (new — wraps the Phase 00 template).
-    - `confirmation_docs/_template_notes.md` (new — what `--init-notes` writes).
+    - `.github/workflows/release.yml` (new — includes retention prune step inline).
+    - `mindsos_cli/commands/confirm_phase.py` (new).
+    - `mindsos_cli/app.py` (wire confirm-phase in).
+    - `mindsos_cli/manifest.toml` (bump `[mindsos] phase` + `version`; add `[ci]` section).
+    - `mindsos_cli/__init__.py` (bump `__version__`).
+    - `mindsos_cli/commands/doctor.py` (extend `--self-test` with `[ci.required_workflows]` check).
+    - `Dockerfile` (bump `mindsos:phase01-prod` / `mindsos:phase01-test` ARG default tag references; if any).
+    - `docker-compose.yml` (bump `image: mindsos:phase01-{prod,test}`).
+    - `confirmation_docs/_template_notes.md` (new).
+    - `requirements-test.in` (add `pytest-json-report` pin); tester re-runs `tools/lock.sh` to regenerate `requirements-test.txt`.
 
   **Automated tests:**
-    - `tests/phase_01/` — `confirm-phase --init-notes` writes a non-empty file with all schema fields present; `confirm-phase --phase 01 --notes-file fixture.md` produces a valid confirmation doc; mkdocs builds; on fixture release, the workflow's retention step correctly identifies the 5-phase window.
+    - `tests/phase_01/test_init_notes.py` — `confirm-phase --init-notes phase-99 --out <tmp>` writes a non-empty file with both `phase_title` and `tester_notes` markers.
+    - `tests/phase_01/test_confirm_phase.py` — `--phase 01 --notes-file <fixture> --skip-tests --out <tmp>` writes a confirmation doc with all 9 schema fields populated; `--phase 02` (mismatched manifest) errors and exits non-zero; produced doc is structurally identical to a fixture copy of `PHASE_00_CONFIRMED.md` (same field names, in order).
+    - `tests/phase_01/test_workflows_present.py` — both workflow files exist, are non-empty, contain `on:` and `jobs:` keys; release.yml mentions `gh release create` and the retention prune step; YAML parses cleanly via `yaml.safe_load` (pyyaml is a transitive dep of mkdocs/typer; if not present, fall back to a regex shape check).
+    - `tests/phase_01/test_mkdocs_buildable.py` — runs `mkdocs build --quiet` against `mkdocs.yml` in a tmpdir; assert `site/index.html` exists. Skipped with reason if `mkdocs` import fails (e.g., not installed in test image — phase 01 keeps mkdocs out of the test image deliberately, so this test runs only in CI where mkdocs is installed ad-hoc OR locally if the dev has it).
+    - `tests/phase_01/test_doctor_workflow_check.py` — `doctor --self-test --json` succeeds on phase-01 (workflows present); when one workflow file is renamed (via tmp setup with monkeypatched repo_root), self-test reports the missing workflow as a failure.
+    - `tests/phase_01/test_retention_logic.py` — pure-Python unit test of the retention-window selection function (extracted to `mindsos_cli/_retention.py` so it's host-testable without needing GitHub).
 
   **Confirmation command:**
     `mindsos confirm-phase --phase 01 --notes-file notes-phase-01.md`
-    (This is the first phase to actually exercise the wrapper end-to-end. If it produces nonsense, the tester edits the resulting `PHASE_01_CONFIRMED.md` by hand before commit.)
+    First phase to exercise the wrapper end-to-end. Fallback: tester hand-edits the produced doc, or invokes with `--skip-tests` and copies `_template.md` manually.
 
   **Pass criterion:**
-    - Push to `phase-01` branch triggers the CI workflow; tests pass green.
-    - Tag `phase-01-confirmed` triggers the release workflow; a GitHub Release exists with all expected assets and SHA256-verified.
-    - Retention step does not delete anything yet (only one confirmed phase exists), but its log shows the expected 5-phase logic.
-    - `mindsos confirm-phase --init-notes phase-02` works (forward-compat smoke).
-    - `mkdocs build` exits 0 against the current `docs/` tree (broken cross-links remain non-fatal per existing `strict: false`).
+    - Push to `phase-01` branch triggers `phase-ci.yml`; build + tests + mkdocs all green.
+    - Tag `phase-01-confirmed` triggers `release.yml`; a GitHub Release exists with: `mindsos-phase01.tar.gz`, `Dockerfile`, `requirements.txt`, `requirements-test.txt`, `checksums.txt`. SHA256 of each asset matches `checksums.txt`.
+    - Retention step logs the 5-phase window logic; with only Phase 01 confirmed, log says `evicted=[] kept=[01]` and exits 0.
+    - `mindsos confirm-phase --init-notes phase-02 --out /tmp/notes-02.md` produces a non-empty notes file (forward-compat smoke).
+    - `docker compose run --rm mindsos doctor --self-test` exits 0; with one workflow file deleted on disk, exits non-zero with a structured failure pointing at the missing workflow.
+    - `mkdocs build --quiet` exits 0 (broken cross-links remain non-fatal per `strict: false`).
+    - All `tests/phase_00/` + `tests/phase_01/` tests pass in-container.
 
   **Risks / known issues to watch:**
-    - GitHub Actions `GITHUB_TOKEN` permission scoping: `contents: write` required for Release creation, `contents: read` for everything else.
-    - Retention pruning must delete the *asset* (tarball), not the *Release* — bug here would lose history.
-    - The `confirm-phase` wrapper bootstraps Phase 02+ workflow; if it ships broken, the tester falls back to hand-editing the template file (the Phase 00 path) — confirm this fallback in the Phase 01 confirmation doc.
-    - `mindsos doctor --self-test` must now also verify the CI workflow files exist and parse — extends the manifest.
+    - **GH Actions slow-build:** No build cache means every `phase-*` push spends ~2 min on `pip install`. Acceptable for v1; add `actions/cache` keyed on `requirements*.txt` sha if it becomes painful.
+    - **Retention idempotency:** `gh release upload --clobber` is idempotent; the prune step re-runs safely. But two tag pushes within the same minute could race. Accepted — single-developer repo.
+    - **`gh` CLI auth:** GH-hosted runners pre-authenticate `gh` via `GITHUB_TOKEN`; no PAT needed.
+    - **`pytest-json-report` adds a test-image dep:** lockfile (`requirements-test.txt`) regenerated and committed. Phase 01 confirmation doc must record the new sha and that `requirements_txt_sha256` (manifest field) is unchanged because that field tracks runtime, not test, deps.
+    - **`confirm-phase` fragility:** if it ships broken, tester falls back to copying `confirmation_docs/_template.md` and hand-filling the same fields they did for Phase 00. Document this fallback in `docs/dev/release.md`.
+    - **Image-tag bump per phase is one-line manual edit:** introduces a per-phase ritual that's easy to forget; `doctor --self-test` doesn't currently check tag consistency between compose and manifest. Consider adding such a check in a later phase if drift bites.
+    - **Test image does NOT contain mkdocs.** Phase 01's mkdocs build is a CI-only step (workflow installs mkdocs ad-hoc). Local-dev mkdocs builds require `pip install mkdocs==1.6.1` on the host. Trade-off: keeps test image lean, at the cost of local-dev parity with CI for the mkdocs check.
 
   **Doc sections this phase confirms:**
-    - `docs/dev/release.md` — full (tag-driven Release flow + retention policy).
-    - `docs/dev/contributing.md` — branching policy paragraph + per-phase workflow.
-    - `docs/dev/repo-layout.md` — `.github/workflows/` mention.
-    - `docs/dev/conventions.md` — CLI conventions: `--json`, exit codes.
-    - `docs/dev/testing.md` — in-container = canonical.
+    - `docs/dev/release.md` — new; full tag-driven Release flow, retention policy, fallback paths.
+    - `docs/dev/contributing.md` — new; branching policy + per-phase workflow.
+    - `docs/dev/repo-layout.md` — amend; mention `.github/workflows/`.
+    - `docs/dev/conventions.md` — new; `--json` everywhere, exit codes, errors-to-stderr rule.
+    - `docs/dev/testing.md` — new; in-container = canonical.
 
   **Breaking changes from prior phase:** none (additive tooling).
 
