@@ -13,6 +13,10 @@ nav:
   - Home: index.md
   - Get started:
       - Install: getting-started/install.md
+  - Concepts:
+      - Identity and IRIs: concepts/identity.md
+  - API:
+      - Core IdentityRegistry: api/core/identity-registry.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md

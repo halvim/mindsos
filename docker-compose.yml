@@ -36,8 +36,15 @@ services:
       args:
         MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
         MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
-    image: mindsos:phase01-prod
+    image: mindsos:phase02-prod
     profiles: ["cli"]
+    # Phase 02 — entrypoint forces the `mindsos` binary so
+    # `docker compose run --rm mindsos <subcommand>` works without the
+    # doubled `mindsos`. The wrapper still goes through entrypoint.sh, which
+    # does the gosu privilege drop + bind-mount chown. To get a shell inside
+    # the prod image, override at the compose-run boundary:
+    #   docker compose run --rm --entrypoint /bin/bash mindsos
+    entrypoint: ["/usr/local/bin/entrypoint.sh", "mindsos"]
     depends_on:
       falkordb:
         condition: service_healthy
@@ -54,8 +61,10 @@ services:
       args:
         MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
         MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
-    image: mindsos:phase01-test
+    image: mindsos:phase02-test
     profiles: ["test"]
+    # The test service keeps the bare entrypoint so `pytest tests/` works
+    # without a `mindsos` prefix.
     depends_on:
       falkordb:
         condition: service_healthy

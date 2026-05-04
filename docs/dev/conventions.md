@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 01
+last_confirmed_phase: 02
 ---
 
 # CLI conventions
@@ -49,3 +49,45 @@ optional overrides.
 Errors include enough context to fix the problem. Bad:
 `error: invalid argument`. Good: `error: --phase '02' mismatches manifest
 [mindsos] phase = '01'. Bump the manifest first, or run from the correct branch.`
+
+## Container invocation (Phase 02+)
+
+`docker compose run --rm mindsos <subcommand>` works directly — the
+compose `mindsos` service overrides the entrypoint to
+`["/usr/local/bin/entrypoint.sh", "mindsos"]`, which still runs the gosu
+privilege drop and bind-mount chown but then prefixes every invocation
+with the `mindsos` binary.
+
+**Breaking change vs Phase 01:** the doubled form `docker compose run
+--rm mindsos mindsos <subcommand>` no longer works. The compose
+entrypoint already prepends `mindsos`, so the doubled invocation becomes
+`mindsos mindsos <subcommand>` to the binary, and Typer reads the
+second `mindsos` as a subcommand and exits with `No such command
+'mindsos'`. Update any recipe carrying the doubled form forward from
+Phase 01.
+
+To get a shell inside the prod image (debug only — production code path
+must never need this), override the entrypoint at the compose-run
+boundary:
+
+```sh
+docker compose run --rm --entrypoint /bin/bash mindsos
+```
+
+The `mindsos-test` service keeps the bare entrypoint
+(`/usr/local/bin/entrypoint.sh`) so that `docker compose run --rm
+mindsos-test pytest tests/` works without a `mindsos` prefix.
+
+## `--json` is universal: identity command examples
+
+```json
+$ docker compose run --rm mindsos identity strategies --json
+{
+  "strategies": [
+    {"name": "uuid4", "class": "mindsos_core.UUID4Strategy", ...},
+    {"name": "uuid5", "class": "mindsos_core.UUID5FromContentStrategy", ...},
+    {"name": "iri",   "class": "mindsos_core.IRIPassthroughStrategy", ...}
+  ]
+}
+```
+
