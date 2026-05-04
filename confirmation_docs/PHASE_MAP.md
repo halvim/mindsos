@@ -550,12 +550,116 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 04 — L1 Schema (NodeType, EdgeType, opt-in strict)
 
-  **Deps:** 02. **Layer:** L1. **Net-new?** No.
-  **Independent of Phase 03 by foundations-first rule** (Schema and Graph elements are sibling primitives). Sequenced after 03 only for tester-flow continuity; if Phase 03 is abandoned, Phase 04's CLI surface uses a fresh in-memory Graph internally.
-  **Features:** declare schema; declare NodeType / EdgeType with property type vocab; attach schema to a graph; validate.
-  **Tests:** strict vs non-strict; type mismatch; edge with disallowed src-type.
-  **Risks:** property-type vocabulary for the CLI must be small and explicit.
-  **Docs:** `docs/usage/core/schema.md`, `docs/api/core/schema.md`, `types.md`, ADR-0017.
+  **Deps:** 02, 03. **Layer:** L1. **Net-new?** Repackage; **schema state-file format is genuinely net-new** (parent has no equivalent), inherited via Phase 03 state.py precedent. Plus three net-new CLI commands (`schema create/...`, `graph attach-schema`, `graph detach-schema`, `graph set-prop`) that are pure Phase 04 surface — no parent code to repackage.
+  **Foundations-first note:** Original PHASE_MAP §3 listed deps as `02` per foundations-first rule (Schema is a sibling primitive). Refined to `02, 03` because Phase 04 closes 4 entries from the Phase 03 deferral appendix (Schema typing on `Graph.__init__`, `validate_user_properties` helper, `update_*_properties`, `tests/unit/test_graph.py` port) AND adds `schema_name` reference to the graph state file — both transitively depend on Phase 03 having shipped. Phase 03 shipped first only for tester-flow continuity.
+
+  **Features (capability-level — phase chat refined 2026-05-04, locked across 5 design rounds):**
+    - Declare a `Schema` (`mindsos schema create --name X [--strict]`).
+    - Declare `NodeType` / `EdgeType` with the full 8-variant `PropertyType` vocabulary (STRING / INT / FLOAT / BOOL / LIST_STRING / LIST_INT / LIST_FLOAT / LIST_BOOL).
+    - Inspect / list / reset schemas (parity with Phase 03 graph subcommands).
+      `reset --name X` and `reset --all` BOTH walk every `graph-*.json` and refuse with exit 1 if any graph references a schema being deleted; `--force` overrides (resulting graphs need `mindsos graph detach-schema` to recover).
+    - Attach a schema to an existing graph (`mindsos graph attach-schema --name <GRAPH> --schema <SCHEMA>`); also attachable at create time (`mindsos graph create --name X --role ontology --schema <SCHEMA>`).
+    - **Eager attach validation** — every existing node + edge re-validated against the schema; first violation prints structured error including the offending element id + exits 1 (no `--force` escape hatch). **Re-attach is permitted** — JSON output includes `previous_schema`; new schema replaces old after eager re-validation.
+    - **Empty-strict-schema warning** — attaching a strict schema with zero NodeTypes emits a stderr warning (the graph cannot accept any further node adds).
+    - Detach schema from a graph (`mindsos graph detach-schema --name <GRAPH>`). Operates on raw JSON — works EVEN WHEN the referenced schema state file has been deleted (primary recovery path for dangling references). Exits 1 if no schema currently attached.
+    - Schema-validated property updates (`mindsos graph set-prop --name <GRAPH> (--node-id ID | --edge-id ID) --prop k=v [--prop k2=v2 ...] [--replace]`).
+      Default merge; `--replace` swaps the bag entirely BUT preserves `ref:*` cross-graph reference keys (user-supplied `ref:*` values overwrite existing on collision). NOTE: Phase 04 has NO CLI path to drop a `ref:*` key — recovery via hand-edit, or future Phase 09 XRef migration.
+    - All existing `add-node` / `add-edge` flows route through schema validation when a schema is attached (transparent, no opt-in).
+
+  **Modules touched:**
+    - `mindsos_core/schema/{__init__,types,schema,validation}.py` — slim port of parent (defer `validate_namespaced_properties` to Phase 05/10).
+    - `mindsos_core/exceptions.py` — adds `PropertyShapeError`, `UnknownTypeError` (both inherit `CoreError`).
+    - `mindsos_core/__init__.py` — exports `Schema`, `NodeType`, `EdgeType`, `PropertyType`, `PropertyShapeError`, `UnknownTypeError`, `validate_user_properties`, `RESERVED_PROPERTY_KEYS`, `REF_PROPERTY_PREFIX` (~9 new names; cumulative ~26).
+    - `mindsos_core/models/graph.py` — restores `schema: Optional[Schema] = None` ctor param + per-add validation hooks; adds `update_node_properties` / `update_edge_properties` (no `_version` bump — Phase 07 OCC ships that). Adds `_validate: bool = True` kwarg to `add_node` / `add_edge` / `add_hyperedge`; rehydration uses `_validate=False` to tolerate Phase 03 v=1 state files with reserved-key or non-primitive properties (Phase 03 had no `validate_user_properties` enforcement). Schema-level checks (type registration, strict PropertyType maps) ALWAYS run regardless.
+    - `mindsos_cli/commands/schema.py` — new Typer subapp; `_state_to_schema` wraps `PropertyType(v)` in try/except → RuntimeError (corrupt vocab UX); `reset_cmd` adds orphan check + `--force` flag.
+    - `mindsos_cli/commands/graph.py` — extends with `attach-schema`, `detach-schema`, `set-prop`, `--schema` flag on `create`. `_graph_to_state` writes v=2; `_state_to_graph` calls `add_*` with `_validate=False`. `attach-schema` per-element try/except → element id in error message; allows re-attach with `previous_schema` in JSON; empty-strict-schema warning. `set-prop` flag rename `--node` → `--node-id` / `--edge` → `--edge-id`; `--replace` preserves `ref:*` keys (user values win on collision). `detach-schema` operates on raw JSON dict (bypasses `_state_to_graph` so it works on dangling references).
+    - `mindsos_cli/state.py` — adds `schema_file_path` / `save_schema_state` / `load_schema_state` / `iter_schema_files` / `delete_schema_state_file`. **Bumps graph state-file format from v=1 to v=2** (adds optional `schema_name` field). Splits version constants per-kind: `GRAPH_STATE_VERSION = 2`, `SCHEMA_STATE_VERSION = 1`; `STATE_VERSION` kept as backward-compat alias = `GRAPH_STATE_VERSION`. `_load_state_file` accepts `max_version` kwarg. v=1 → v=2 migration is one-way: first Phase 04 mutation upgrades the file; Phase 03 binary then refuses with the existing strict-version contract.
+    - `mindsos_cli/app.py` — `register_schema_app` wired.
+    - `Dockerfile` — prod + test stages COPY `mindsos_core/schema/` + `mindsos_cli/commands/schema.py`.
+    - `tests/_shared/sentinel_paths.py` — `+5` entries.
+
+  **Persistence layout:**
+    - `${MINDSOS_STATE_DIR}/schema-<name>.json` (own state file, parity with `graph-<name>.json` / `identity-registry-<name>.json`).
+    - Schema state-file v=1 JSON shape (`SCHEMA_STATE_VERSION = 1`):
+      ```json
+      {"_state_version": 1, "name": "<n>", "strict": false,
+       "node_types": [{"name", "property_types": {"k": "<PropertyType.value>"}, "description"}],
+       "edge_types": [{"name", "allowed_sources": [...sorted], "allowed_targets": [...sorted],
+                       "property_types": {"k": "<PropertyType.value>"}, "description"}]}
+      ```
+      Top-level lists sorted by name (byte-stable); atomic write via `<path>.tmp` + `os.replace`.
+    - **Graph state-file v=2 JSON shape (`GRAPH_STATE_VERSION = 2` — Phase 04 BUMP from v=1):**
+      ```json
+      {"_state_version": 2,
+       "graph_id": "<uuid4>", "name": "<n>", "role": "<role-or-null>",
+       "schema_name": "<schema-name-or-null>",
+       "nodes": [...], "edges": [...], "hyperedges": [...]}
+      ```
+      Phase 04 binary accepts both v=1 (legacy, no `schema_name` field — loader treats missing as `null`) and v=2 (current); writes v=2 on every save. **v=1 → v=2 migration is one-way**: first Phase 04 mutation upgrades the file; Phase 03 binary then refuses with the existing strict-version contract.
+    - Graph state-file `schema_name` field: when set, loader resolves to `schema-<name>.json` and rebuilds the Schema in memory. Missing referenced schema → standard load fails (exit 1); recovery via `mindsos graph detach-schema` (raw-JSON path bypasses schema rehydration).
+
+  **Automated tests (location + intent):**
+    - `tests/phase_04/` — schema CRUD; eager attach validation against pre-existing nodes; set-prop merge / replace; strict-mode property type matching across all 8 variants; non-strict mode permits any primitive; edge with disallowed source/target type rejected; schema state-file round-trip; graph state-file `schema_name` round-trip.
+    - `tests/unit/test_graph.py` — ported back from parent (14 of 15 tests; `test_restore_node_registers_provided_id` ships with `@pytest.mark.skip(reason="_restore_node lands in Phase 08")`).
+
+  **Pass criterion:**
+    - Tester can declare a strict schema, attach it to a graph with existing data — first violation rejects (exit 1, structured error including the offending element id); clean data attaches successfully.
+    - `mindsos graph set-prop` round-trips through schema validation (rejects type mismatches under strict mode).
+    - `mindsos graph detach-schema` recovers a graph from a deleted-schema dangling reference.
+    - `mindsos schema reset --name X` refuses with exit 1 when graphs reference X; `--force` overrides.
+    - All 8 PropertyType variants round-trip in strict mode.
+    - **Cumulative tests pass: ≥ Phase 03 baseline (189 passed + 1 skipped) + Phase 04 added test files; tester records the post-collection actual count in `PHASE_04_CONFIRMED.md` `tester_notes` (sandbox-measured: 380 collected, 339 in-process pass + 40 subprocess fail-on-3.10 + 1 skipped + 1 redis collection error → expected in-container 379 passed + 2 skipped, where the 2 skips are existing `test_mkdocs_buildable.py` and new `test_restore_node_registers_provided_id`).
+
+  **Risks / known issues to watch:**
+    - Schema state-file persistence is net-new design (parent has no analogue). Phase 04 accepts the precedent set by Phase 03 (state.py), but later phases (Phase 07 real persistence) will need to migrate or supersede this format.
+    - **v=1 → v=2 graph state-file migration is one-way.** Phase 04 binary touching a Phase 03 v=1 file upgrades it to v=2 on first mutation; Phase 03 binary then refuses to read it (strict-version contract). Phase 04 supersession requires `rm -rf ~/.mindsos/graph-*.json` OR manual JSON downgrade (`_state_version: 1`, drop `schema_name`); recovery procedure documented in `docs/usage/core/schema.md` Migration section.
+    - **Phase 03 v=1 graphs with reserved-key or non-primitive properties tolerated on load.** Phase 03 had no `validate_user_properties` enforcement, so a Phase 03 graph could contain `{"id": "evil"}` etc. Phase 04 rehydration uses `_validate=False` to load such graphs cleanly. **Mutations on those properties surface the violation** (default merge fails because `validate_user_properties` runs on the full merged candidate); recovery via `set-prop --replace`, which strips reserved keys via the validated candidate bag (and preserves `ref:*` keys).
+    - **`set-prop --replace` cannot drop `ref:*` keys.** Pick D unconditionally preserves them across replace. If a tester needs to drop a ref, recovery is via hand-edit OR future Phase 09 XRef migration. Documented asymmetry; refs are linkage metadata with semantic significance — making them harder to drop is a feature.
+    - Eager attach validation crosses CLI/persistence boundaries: a schema attach that succeeds on a fresh graph but fails after a hand-edit of the graph state file could leave the graph state file with a stale `schema_name`. Acceptable: hand-edits are out-of-contract. Recovery via `mindsos graph detach-schema` (raw-JSON path).
+    - `update_node_properties` does NOT bump `_version` (Phase 07 OCC owns that). The Phase 04 tests must NOT assert any version field on Node — preserves Phase 03 slim-port (Node has no `_version`).
+    - **Empty strict schema attached to a graph rejects all subsequent `add-node` calls** (because `Schema.require_node_type` fails for any type_name). Phase 04 emits a stderr warning at attach time when the schema is strict AND has zero NodeTypes; the docs cover the footgun.
+
+  **Doc sections this phase confirms:**
+    - `docs/usage/core/schema.md` — full (NEW).
+    - `docs/api/core/schema.md` — full (NEW).
+    - `docs/api/core/types.md` — full (NEW; covers `NodeType` / `EdgeType` / `PropertyType`).
+    - `docs/usage/core/building-graphs.md` — amended with schema attach / set-prop section.
+    - `docs/changelog/CHANGELOG.md` — Phase 04 entry appended.
+    - ADR-0017 — referenced by number; ADR file ports in Phase 38 (locked precedent).
+
+  **Breaking changes from prior phase:**
+    - `Graph.__init__` regains `schema` keyword param. Existing callers pass nothing → backward-compatible default `None` (non-strict, no validation hooks). No CLI breakage.
+
+  **Final amendments (2026-05-04 — phase chat locks across 5 design rounds):**
+    1. Slim port of `mindsos_core/schema/{__init__,types,schema,validation}.py` from parent. `validate_namespaced_properties` deferred to Phase 05/10 (graph-level property bag).
+    2. `Schema` ctor stays parent-shape: `__init__(*, strict: bool = False)`. State-file basename is the identity; no `name` field added to the class.
+    3. Full 8-variant `PropertyType` enum ported (no subset — splitting forward-debts to Phase 05+).
+    4. Two new exceptions (`PropertyShapeError`, `UnknownTypeError`) inherit `CoreError`. Existing `SchemaError` (Phase 03 stub) keeps current raise sites; Phase 04 adds property-shape via `PropertyShapeError`, type-vocabulary via `UnknownTypeError`.
+    5. Schema attach: **eager validation** of every node + edge + hyperedge; first violation → exit 1 with structured error including the offending element id (Pick B); schema NOT attached. **Re-attach permitted**: new schema replaces old after eager re-validation; JSON output reports `previous_schema` (Pick N4 + NEW4). **Empty-strict-schema warning** at attach time (Pick G).
+    6. `mindsos graph set-prop` shape: single command, `--node-id | --edge-id` mutex flag (Pick I — renamed from `--node`/`--edge` for parity with `add-node --node-id`), repeatable `--prop k=v`, `--replace` flag. **`--replace` preserves `ref:*` keys** (Pick D); user-supplied `ref:*` values overwrite existing on collision (Pick N5). NO CLI path to drop a `ref:*` key in Phase 04 (Pick NEW6 deferred to Phase 09).
+    7. **Graph state-file format BUMPED to v=2** (Pick A + P1). Phase 03 wrote v=1; Phase 04 reads both v=1 (legacy, no `schema_name` field) and v=2; writes v=2 on every save. v=1 → v=2 migration is one-way (Pick N3 risk). Per-kind version constants split: `GRAPH_STATE_VERSION = 2`, `SCHEMA_STATE_VERSION = 1`.
+    8. Schema state-file v=1 schema pinned (item above under Persistence layout). NEW2: corrupt `PropertyType` vocab → RuntimeError → exit 1 with structured error.
+    9. **`Graph.add_*` gain `_validate: bool = True` kwarg** (Pick NEW1). Rehydration (`_state_to_graph`) calls with `_validate=False` to tolerate Phase 03 v=1 files with reserved-key / non-primitive properties (Phase 03 didn't enforce). Schema-level checks always run; only `validate_user_properties` is gated by the kwarg. Mutations keep default `_validate=True`; recovery from poisoned legacy nodes via `set-prop --replace`.
+    10. **`mindsos graph detach-schema`** ships in Phase 04 (Pick E + N1 + N6). Operates on raw JSON (bypasses schema rehydration) so it works on graphs with dangling schema references — primary recovery path. Exits 1 if no schema attached. Always upgrades the file to v=2 on write.
+    11. **`mindsos schema reset` orphan check + `--force`** (Pick F + NEW3). Both `--name X` and `--all` walk every `graph-*.json` checking `schema_name`; refuse with exit 1 if any references exist; `--force` overrides (resulting graphs need `detach-schema` to recover; warning emitted on stderr).
+    12. Carry-over deferrals from Phase 03 row that Phase 04 closes:
+        - `Schema` typing on `Graph.__init__` — restored.
+        - `validate_user_properties` helper — ported.
+        - `update_node_properties` / `update_edge_properties` — added (no `_version` bump).
+        - `tests/unit/test_graph.py` — ported (14 of 15; 1 skip for `_restore_node`).
+    13. Carry-forward deferrals (do NOT close in Phase 04):
+        - Graph `properties` bag (ADR-0130) — Phase 05/10.
+        - Node `_version` OCC (ADR-0127) — Phase 07.
+        - Edge / HyperEdge `deprecated_at` / `disputed_at` (ADR-0133) — Phase 10.
+        - `Graph._restore_*` reconstruction helpers — Phase 08 (will subsume the Phase 04 `_validate=False` kwarg pattern).
+        - Phase 01/02 deferrals (η, H, D, J-02, K-02) — defer further; no Phase 04 friction.
+        - Q13 intergraph edge — Phase 05 chat adjudicates; Phase 04 does not touch.
+        - `set-prop` ref-drop UX gap (Pick NEW6) — Phase 09 XRef migration owns proper ref management.
+    14. `pyproject.toml [tool.setuptools.packages.find].include` already wildcards `mindsos_core*` — covers new `mindsos_core.schema` subpackage; no edit needed.
+    15. `Dockerfile` COPY both new modules in prod stage AND test stage. Sentinel-paths additions ensure image-completeness regression test catches drift.
+    16. `requirements.{in,txt}` / `requirements-test.txt` — unchanged (stdlib-only; schema (de)serialization uses `json`).
+    17. `mindsos graph list` and `mindsos schema list` DELIBERATELY bypass `load_*_state`'s strict version check (Pick P3 — comment in code). Inclusive listing is correct for read-only enumeration; mutating commands DO use the strict loader.
+    18. Phase 03 tests `test_state_file_has_state_version` and `test_load_future_state_version_rejected` updated to reference `state_mod.GRAPH_STATE_VERSION` (rather than hard-coded `1`). Per PHASE_MAP §1 "Breaking changes between phases allowed" — the v=1 → v=2 bump is a deliberate breaking change; Phase 03 tests evolve to assert the current contract.
 
 ### Phase 05 — L1 Metagraph elements
 

@@ -49,10 +49,19 @@ def test_round_trip_full_graph(_isolated_state_dir):
 
 
 def test_state_file_has_state_version(_isolated_state_dir):
+    """State files always carry ``_state_version``.
+
+    Phase 03 wrote v=1; Phase 04 BUMPED to v=2 (added optional
+    ``schema_name`` field). This test now asserts the field exists and
+    matches the writer's current ``GRAPH_STATE_VERSION`` rather than
+    pinning a specific number — the bump is intentional per
+    PHASE_MAP §1 "Breaking changes between phases allowed".
+    """
+    from mindsos_cli import state as state_mod
     runner.invoke(app, ["graph", "create", "--name", "g1"])
     raw = (_isolated_state_dir / "graph-g1.json").read_text()
     state = json.loads(raw)
-    assert state["_state_version"] == 1
+    assert state["_state_version"] == state_mod.GRAPH_STATE_VERSION
 
 
 def test_state_file_lists_sorted_by_id(_isolated_state_dir):
