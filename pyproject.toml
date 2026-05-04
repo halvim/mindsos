@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase02"
-description = "MindsOS command-line interface — Phase 02 L1 Identity (UUID / IdStrategy / IdentityRegistry)."
+version = "0.0.0+phase03"
+description = "MindsOS command-line interface — Phase 03 L1 Graph elements (Graph / Node / Edge / HyperEdge + Cypher rel-type validation)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
