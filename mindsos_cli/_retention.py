@@ -4,20 +4,27 @@ Pure-Python so the workflow's retention step is testable without GitHub access.
 The release workflow shells out to `gh api` + `jq`, but the SELECTION logic
 (which phases to keep, which to evict) lives here and is unit-tested.
 
-Tag grammar (PHASE_MAP §1, "Phase rollback / supersession"):
+Tag grammar (PHASE_MAP §1, "Phase rollback / supersession" + SUPER-§1-EXT
+amendment from Phase 04-v2 letter sub-phases):
 
     phase-NN-confirmed                 — original confirmed tag for phase NN.
     phase-NN-vM-confirmed              — supersession M (M >= 2) for phase NN.
+    phase-NNa-confirmed                — letter sub-phase (e.g. ``phase-05a-``).
+    phase-NNa-vM-confirmed             — supersession of a letter sub-phase.
 
 Retention rules:
 
-    1. The "slot" a tag occupies is its phase number NN. Multiple tags for the
-       same NN (the original plus zero-or-more `-vM-`) all share one slot.
+    1. The "slot" a tag occupies is its (phase number NN, letter) tuple.
+       Multiple tags for the same slot (the original plus zero-or-more
+       `-vM-`) all share that slot. Letter sub-phases are SEPARATE slots
+       from the bare numeric phase (per Phase 04-v2 SUPER-§1-EXT lock):
+       e.g. ``phase-05`` and ``phase-05a`` are two different slots.
     2. Within a slot, the highest-version tag is the install target; older
        tags' tarballs are evicted regardless of the 5-phase window. (The
        Release records remain — only the tarball asset is replaced.)
     3. Across slots, the `window` highest-numbered slots keep their install-
-       target tarball; older slots evict.
+       target tarball; older slots evict. Slot ordering: tuple sort over
+       (phase, letter) — so 05 < 05a < 05b < 06.
 """
 
 from __future__ import annotations
@@ -26,8 +33,12 @@ import re
 from dataclasses import dataclass
 
 
-# Matches both `phase-NN-confirmed` and `phase-NN-vM-confirmed` (M >= 2).
-_TAG_RE = re.compile(r"^phase-(\d{1,3})(?:-v(\d+))?-confirmed$")
+# Matches all four supported tag forms:
+#   phase-NN-confirmed
+#   phase-NN-vM-confirmed         (supersession of bare numeric)
+#   phase-NNa-confirmed           (letter sub-phase)
+#   phase-NNa-vM-confirmed        (supersession of letter sub-phase)
+_TAG_RE = re.compile(r"^phase-(\d{1,3})([a-z])?(?:-v(\d+))?-confirmed$")
 
 
 @dataclass(frozen=True)
@@ -36,7 +47,16 @@ class TagInfo:
 
     tag: str
     phase: int
+    letter: str   # "" or a single lowercase letter (e.g. "a" for phase-05a-).
     version: int  # 1 for the original; >=2 for `-vM-` supersessions.
+
+    @property
+    def slot(self) -> tuple[int, str]:
+        """Composite slot key honouring SUPER-§1-EXT.
+
+        Tuple sort gives the desired ordering: 05 < 05a < 05b < 06.
+        """
+        return (self.phase, self.letter)
 
 
 @dataclass(frozen=True)
@@ -56,8 +76,9 @@ def parse_tag(tag: str) -> TagInfo | None:
     if not m:
         return None
     phase = int(m.group(1))
-    version = int(m.group(2)) if m.group(2) else 1
-    return TagInfo(tag=tag, phase=phase, version=version)
+    letter = m.group(2) or ""
+    version = int(m.group(3)) if m.group(3) else 1
+    return TagInfo(tag=tag, phase=phase, letter=letter, version=version)
 
 
 def parse_phase_number(tag: str) -> int | None:
@@ -95,27 +116,30 @@ def select_retention(
 
     parsed = [info for info in (parse_tag(t) for t in confirmed_tags) if info]
 
-    # Step 1: group by phase, pick highest-version per slot.
-    by_phase: dict[int, list[TagInfo]] = {}
+    # Step 1: group by SLOT (phase, letter), pick highest-version per slot.
+    # Letter sub-phases are SEPARATE slots (SUPER-§1-EXT lock).
+    by_slot: dict[tuple[int, str], list[TagInfo]] = {}
     for info in parsed:
-        by_phase.setdefault(info.phase, []).append(info)
+        by_slot.setdefault(info.slot, []).append(info)
 
     install_targets: list[TagInfo] = []
     superseded: list[TagInfo] = []
-    for phase, tags in by_phase.items():
+    for slot, tags in by_slot.items():
         tags_sorted = sorted(tags, key=lambda i: i.version, reverse=True)
         install_targets.append(tags_sorted[0])
         superseded.extend(tags_sorted[1:])
 
-    # Step 2: keep top `window` install targets by phase number.
-    install_targets.sort(key=lambda i: i.phase, reverse=True)
+    # Step 2: keep top `window` install targets by slot key.
+    # Tuple sort: 05 < 05a < 05b < 06.
+    install_targets.sort(key=lambda i: i.slot, reverse=True)
     kept_targets = install_targets[:window]
     evicted_targets = install_targets[window:]
 
     keep = [i.tag for i in kept_targets]
-    # Evict superseded + outside-window install targets, sorted desc by (phase, version).
+    # Evict superseded + outside-window install targets, sorted desc by
+    # (slot, version).
     evict_pool = superseded + evicted_targets
-    evict_pool.sort(key=lambda i: (i.phase, i.version), reverse=True)
+    evict_pool.sort(key=lambda i: (i.slot, i.version), reverse=True)
     evict = [i.tag for i in evict_pool]
 
     return RetentionDecision(keep=keep, evict=evict)

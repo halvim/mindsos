@@ -148,3 +148,93 @@ def test_supersession_outside_window_all_versions_evict():
         "phase-00-confirmed",
         "phase-00-v2-confirmed",
     ]
+
+
+# ── Letter sub-phase coverage (Phase 05a hotfix; SUPER-§1-EXT lock) ─────────
+
+
+def test_parse_tag_recognises_letter_sub_phase():
+    """phase-05a-confirmed parses with letter='a'."""
+    info = parse_tag("phase-05a-confirmed")
+    assert info is not None
+    assert info.phase == 5
+    assert info.letter == "a"
+    assert info.version == 1
+    assert info.slot == (5, "a")
+
+
+def test_parse_tag_letter_with_supersession():
+    """phase-05a-v2-confirmed combines letter + vM."""
+    info = parse_tag("phase-05a-v2-confirmed")
+    assert info is not None
+    assert info.phase == 5
+    assert info.letter == "a"
+    assert info.version == 2
+
+
+def test_parse_tag_bare_numeric_has_empty_letter():
+    """phase-05-confirmed has letter=''."""
+    info = parse_tag("phase-05-confirmed")
+    assert info is not None
+    assert info.letter == ""
+    assert info.slot == (5, "")
+
+
+def test_parse_phase_number_returns_numeric_part_only():
+    """Back-compat: parse_phase_number('phase-05a-confirmed') == 5."""
+    assert parse_phase_number("phase-05a-confirmed") == 5
+    assert parse_phase_number("phase-05b-v3-confirmed") == 5
+
+
+def test_letter_sub_phase_is_separate_slot_from_bare_numeric():
+    """phase-05 and phase-05a count as TWO slots, not one."""
+    tags = ["phase-05-confirmed", "phase-05a-confirmed", "phase-05b-confirmed"]
+    result = select_retention(tags, window=5)
+    # All three kept (3 distinct slots within window).
+    assert sorted(result.keep) == sorted(tags)
+    assert result.evict == []
+
+
+def test_letter_sub_phase_supersession_evicts_within_slot():
+    """phase-05a-v2 evicts phase-05a (same slot); phase-05a stays separate from phase-05."""
+    tags = [
+        "phase-05-confirmed",
+        "phase-05a-confirmed",
+        "phase-05a-v2-confirmed",
+    ]
+    result = select_retention(tags, window=5)
+    assert "phase-05a-v2-confirmed" in result.keep
+    assert "phase-05-confirmed" in result.keep      # different slot, kept
+    assert "phase-05a-confirmed" in result.evict   # same slot, evicted by v2
+
+
+def test_slot_ordering_05_lt_05a_lt_05b_lt_06():
+    """Tuple sort: 05 < 05a < 05b < 06. Window=2 keeps the 2 highest."""
+    tags = [
+        "phase-05-confirmed",
+        "phase-05a-confirmed",
+        "phase-05b-confirmed",
+        "phase-06-confirmed",
+    ]
+    result = select_retention(tags, window=2)
+    # Top 2 by slot: 06 then 05b.
+    assert result.keep == ["phase-06-confirmed", "phase-05b-confirmed"]
+    # 05a + 05 evict.
+    assert sorted(result.evict) == ["phase-05-confirmed", "phase-05a-confirmed"]
+
+
+def test_select_retention_letter_sub_phase_evicts_outside_window():
+    """5 numeric + 2 letter sub-phases; window=5 keeps top 5 slots by tuple sort."""
+    tags = [
+        f"phase-{i:02d}-confirmed" for i in range(5)
+    ] + ["phase-05a-confirmed", "phase-05b-confirmed"]
+    # Slots present: 00, 01, 02, 03, 04, 05a, 05b. 7 slots; top 5 = 05b, 05a, 04, 03, 02.
+    result = select_retention(tags, window=5)
+    assert result.keep == [
+        "phase-05b-confirmed",
+        "phase-05a-confirmed",
+        "phase-04-confirmed",
+        "phase-03-confirmed",
+        "phase-02-confirmed",
+    ]
+    assert sorted(result.evict) == ["phase-00-confirmed", "phase-01-confirmed"]
