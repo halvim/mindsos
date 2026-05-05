@@ -67,14 +67,17 @@ COPY mindsos_cli ./mindsos_cli
 # Phase 03: + mindsos_core/cypher/, mindsos_core/models/.
 # Phase 04: + mindsos_core/schema/.
 # Phase 04-v2: HyperEdgeType added to mindsos_core/schema/types.py (no new files).
+# Phase 05a: + mindsos_core/models/metagraph.py (slim port: Metagraph,
+#            MetaEdge, MetaHyperEdge); RESERVED_PROPERTY_KEYS extended
+#            in mindsos_core/schema/validation.py (P13).
 COPY mindsos_core ./mindsos_core
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
-# Phase 03 / 04 / 04-v2: tests/test_image_completeness.py (root-level cumulative)
-# asserts the same set is present at /app — keep this list aligned with
-# the SENTINEL_PATHS list in tests/_shared/sentinel_paths.py.
-# Phase 04-v2: NO sentinel additions (HyperEdgeType + update-hyperedge-type land
-# inside existing files).
+# Phase 03 / 04 / 04-v2 / 05a: tests/test_image_completeness.py (root-level
+# cumulative) asserts the same set is present at /app — keep this list
+# aligned with the SENTINEL_PATHS list in tests/_shared/sentinel_paths.py.
+# Phase 05a additions (sentinel-tracked): mindsos_cli/commands/metagraph.py
+# + mindsos_cli/migrations/{__init__,graph,schema,metagraph}.py.
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
@@ -105,12 +108,13 @@ COPY tests ./tests
 # test_doctor_workflow_check.py read these from the host repo at /app/.
 # tests/phase_01/test_init_notes.py invokes confirm-phase --init-notes which
 # reads confirmation_docs/_template_notes.md.
-# Phase 03 / 04 / 04-v2: tests/test_image_completeness.py (root-level cumulative)
-# asserts these sentinel files exist at /app/. Sentinel list lives at
-# tests/_shared/sentinel_paths.py — append there when adding new static
-# inputs (Phase 04 added 5 entries: mindsos_core/schema/{__init__,types,
-# schema,validation}.py + mindsos_cli/commands/schema.py). Phase 04-v2
-# adds NO new entries (HyperEdgeType lives in existing types.py).
+# Phase 03 / 04 / 04-v2 / 05a: tests/test_image_completeness.py (root-level
+# cumulative) asserts these sentinel files exist at /app/. Sentinel list
+# lives at tests/_shared/sentinel_paths.py — append there when adding new
+# static inputs (Phase 04 added 5 entries: mindsos_core/schema/{...}.py +
+# mindsos_cli/commands/schema.py). Phase 04-v2 adds NO new entries.
+# Phase 05a adds 5 entries: mindsos_cli/commands/metagraph.py +
+# mindsos_core/models/metagraph.py + mindsos_cli/migrations/{__init__,graph,schema,metagraph}.py.
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs

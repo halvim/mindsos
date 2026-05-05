@@ -1,55 +1,48 @@
-"""MindsOS Core Layer — Phase 04-v2 surface (identity + graph elements + cypher safety + schema incl. HyperEdgeType).
+"""MindsOS Core Layer — Phase 05a surface (identity + graph elements + cypher safety + schema incl. HyperEdgeType + Metagraph + MetaEdge + MetaHyperEdge).
 
 Phase 02 shipped identity primitives. Phase 03 added graph elements and
-the Cypher identifier-safety regex (ADR-0021). Phase 04 adds the
+the Cypher identifier-safety regex (ADR-0021). Phase 04 added the
 ``Schema`` machinery (NodeType / EdgeType / PropertyType + opt-in strict
-property typing) and restores ``Graph``'s ``schema`` ctor parameter +
-``update_node_properties`` / ``update_edge_properties`` (deferred from
-Phase 03). Phase 04-v2 adds ``HyperEdgeType`` + ``HyperEdge.type_name``
-+ ``Graph.update_hyperedge_properties`` + ``Graph.update_hyperedge_type``
-(MC-2 / HET-1 / SENT-1 / UHT-1 locks):
+property typing). Phase 04-v2 added ``HyperEdgeType`` + ``HyperEdge.type_name``
++ ``Graph.update_hyperedge_properties`` + ``Graph.update_hyperedge_type``.
 
-    from mindsos_core import (
-        # exceptions (Phase 02 + 03 + 04)
-        CoreError, IdentityError, SchemaError, CypherError,
-        PropertyShapeError, UnknownTypeError,
-        # identity (Phase 02)
-        IdentityRegistry, generate_uuid,
-        IdStrategy, UUID4Strategy, UUID5FromContentStrategy,
-        IRIPassthroughStrategy, NAMESPACE_MINDSOS,
-        # graph elements (Phase 03)
-        Graph, Node, Edge, HyperEdge,
-        # cypher safety (Phase 03 — ADR-0021)
-        validate_edge_type_identifier, validate_label_identifier,
-        # schema (Phase 04 + 04-v2 — ADR-0017)
-        Schema, NodeType, EdgeType, HyperEdgeType, PropertyType,
-        validate_user_properties,
-        RESERVED_PROPERTY_KEYS, REF_PROPERTY_PREFIX,
-    )
+Phase 05a slim port adds the metagraph primitives:
 
-Subsequent phases append: Phase 05 brings ``Metagraph``, Phase 07 brings
-persistence, etc. Each phase that adds a new sub-package must also extend
-``[tool.setuptools.packages.find].include`` in ``pyproject.toml`` if it
-introduces a new top-level subdirectory not covered by the existing
-wildcards (``mindsos_core*`` is wildcarded — auto-covers
-``mindsos_core.cypher``, ``mindsos_core.models``, and the new
-``mindsos_core.schema``).
+* ``Metagraph`` — graph-of-graphs container with shared
+  :class:`IdentityRegistry` (ADR-0020) and namespaced property bag
+  (ADR-0130 Accepted in 05a per N1-A1).
+* ``MetaEdge`` — directed typed graph↔graph edge.
+* ``MetaHyperEdge`` — n-ary typed graph-set edge.
 
-The Core Layer owns data primitives, schema, identity, persistence, and
-reconstruction. It owns no reasoning, no derivation, and no domain logic
-— those belong to the Intellectual Capacity, Intelligence, and Mental
-Model layers built on top of this package (ADR-0014).
+Round 1-4 design picks reflected in the slim shape:
 
-Slim-port deferral list (Phase 04 closes 4 entries from Phase 03's list;
-the remaining ports phase-by-phase):
+* P1 — soft-delete fields stripped from MetaEdge/MetaHyperEdge (Phase 10
+  adds across all 4 edge variants uniformly).
+* P3 — ``CompositionalMetaEdge`` dropped entirely (ADR-0117 Withdrawn in 05a).
+* P8 — kw_only dataclasses on MetaEdge + MetaHyperEdge.
+* P9 — ``__post_init__`` cypher rel-type regex on both edge types.
+* P11 — factories take graph_id strings (not ``Graph`` objects).
+* P15 — refuse self-loop MetaEdge + 1-member MetaHyperEdge.
+* P16 — ``add_graph`` post-conditions: shared identity, untouched
+  ``id_strategy``.
+* P19 — ``remove_graph`` is single-behavior always-cascade (no flag,
+  no RemovalImpact return).
 
-* ``Graph.properties`` bag (ADR-0130) → Phase 05 or 10.
-* ``Node._version`` / OCC bumps (ADR-0127) → Phase 07.
-* ``Edge.deprecated_at`` / ``disputed_at`` + soft-delete iterators
-  (ADR-0133) → Phase 10.
-* ``Graph._restore_*`` reconstruction helpers → Phase 08.
-* ``validate_namespaced_properties`` (graph-level / metagraph-level
-  property bag, ADR-0130) → Phase 05/10.
+Slim-port deferral list (subsequent phases append):
+
+* ``Metagraph.add_xref`` / ``iter_xrefs`` / ``remove_xref`` (ADR-0128) — Phase 09.
+* ``element_instances`` / ``composite_instances`` (ADR-0024 / ADR-0025) — Phase 06.
+* Soft-delete on edges/hyperedges/metaedges/metahyperedges (ADR-0133) — Phase 10.
+* ``RemovalImpact`` + ``force=True`` on ``remove_graph`` (ADR-0135) — Phase 10.
+* ``Metagraph.mint_id`` (ADR-0131 helper) — Phase 05b (consumer = IntergraphEdge).
+* ``Graph.properties`` graph-level property bag (ADR-0130) — Phase 10.
+* ``IntergraphEdge`` (binary 1-1 cross-graph node↔node) — Phase 05b.
+* ``IntergraphHyperEdge`` (n-ary cross-graph) — Phase 05c.
+* ``MetagraphSchema`` + ``MetaEdgeType`` / ``MetaHyperEdgeType`` /
+  ``IntergraphEdgeType`` — Phase 05b.
+* ``CompositionalMetaEdge`` — DROPPED (N3-D + P3 lock; ADR-0117 Withdrawn
+  in 05a per round-1 lock; the compositional concept moves to a flag on
+  intergraph primitives in 05b/05c).
 """
 
 from __future__ import annotations
@@ -77,6 +70,7 @@ from .models.identity import (
     UUID5FromContentStrategy,
     generate_uuid,
 )
+from .models.metagraph import MetaEdge, MetaHyperEdge, Metagraph
 from .models.node import Node
 from .schema import (
     EdgeType,
@@ -123,6 +117,10 @@ __all__ = [
     "validate_user_properties",
     "RESERVED_PROPERTY_KEYS",
     "REF_PROPERTY_PREFIX",
+    # metagraph (Phase 05a — ADR-0020 + ADR-0130)
+    "Metagraph",
+    "MetaEdge",
+    "MetaHyperEdge",
 ]
 
-__version__ = "0.0.0+phase04.v2"
+__version__ = "0.0.0+phase05a"

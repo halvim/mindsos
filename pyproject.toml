@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase04.v2"
-description = "MindsOS command-line interface — Phase 04-v2 L1 Schema (NodeType / EdgeType / HyperEdgeType + opt-in strict + attach to graph + schema-validated property updates + cumulative state-file migration v=2→v=3)."
+version = "0.0.0+phase05a"
+description = "MindsOS command-line interface — Phase 05a L1 Metagraph + MetaEdge + MetaHyperEdge (slim port + new `mindsos metagraph` subapp + cumulative graph state-file migration v=3→v=4 + new metagraph-<n>.json v=1)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

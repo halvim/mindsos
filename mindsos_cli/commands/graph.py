@@ -167,13 +167,18 @@ def _schema_path_or_unknown(name: str) -> str:
         return "<unknown>"
 
 
-def _graph_to_state(g: Graph, *, schema_name: Optional[str]) -> dict:
-    """Serialize a ``Graph`` to the v2 state-file dict.
+def _graph_to_state(
+    g: Graph,
+    *,
+    schema_name: Optional[str],
+    metagraph_name: Optional[str] = None,
+) -> dict:
+    """Serialize a ``Graph`` to the v=4 state-file dict (Phase 05a).
 
-    Phase 04 always writes v=2 (``GRAPH_STATE_VERSION``). The optional
-    ``schema_name`` field is always emitted (None when no schema attached).
-    Sorts top-level lists by id for byte-stable output. HyperEdge member
-    ids canonicalised (sorted) before serialization.
+    Phase 05a always writes v=4 (``GRAPH_STATE_VERSION``). Adds the
+    ``metagraph_name`` back-pointer field (B2 lock); ``None`` for
+    standalone graphs, set when the graph is owned by a metagraph.
+    Sorts top-level lists by id for byte-stable output.
     """
     nodes = sorted(g.nodes.values(), key=lambda n: n.node_id)
     edges = sorted(g.edges.values(), key=lambda e: e.edge_id)
@@ -184,6 +189,7 @@ def _graph_to_state(g: Graph, *, schema_name: Optional[str]) -> dict:
         "name": g.name,
         "role": g.role,
         "schema_name": schema_name,
+        "metagraph_name": metagraph_name,
         "nodes": [
             {
                 "node_id": n.node_id,
@@ -217,13 +223,14 @@ def _graph_to_state(g: Graph, *, schema_name: Optional[str]) -> dict:
     }
 
 
-def _state_to_graph(state: dict) -> tuple[Graph, Optional[str]]:
-    """Rehydrate a ``Graph`` from a v=1 (Phase 03) or v=2 (Phase 04) state-file dict.
+def _state_to_graph(state: dict) -> tuple[Graph, Optional[str], Optional[str]]:
+    """Rehydrate a ``Graph`` from a state-file dict (Phase 05a — v=4 current).
 
-    Returns a ``(graph, schema_name_or_None)`` tuple. The caller is
-    responsible for preserving ``schema_name`` round-trip on subsequent
-    saves. Phase 04 ALWAYS writes v=2 on save, so a v=1 file loaded here
-    becomes v=2 on the next mutation (one-way migration).
+    Returns a ``(graph, schema_name_or_None, metagraph_name_or_None)``
+    tuple. The caller is responsible for preserving both back-pointers
+    round-trip on subsequent saves. Phase 05a ALWAYS writes v=4 on save;
+    pre-v=4 files are forward-migrated by ``mindsos_cli.migrations.graph``
+    before reaching this rehydrator (one-way migration).
 
     If the state file references a schema, the schema is loaded from
     its own state file and attached via ``Graph(..., schema=...)``.
@@ -239,6 +246,7 @@ def _state_to_graph(state: dict) -> tuple[Graph, Optional[str]]:
     private ``_restore_*`` helpers, which are deferred to Phase 08).
     """
     schema_name = state.get("schema_name")
+    metagraph_name = state.get("metagraph_name")
     schema: Optional[Schema] = None
     if schema_name is not None:
         schema = _load_schema_or_die(schema_name)
@@ -283,11 +291,15 @@ def _state_to_graph(state: dict) -> tuple[Graph, Optional[str]]:
             edge_id=h["edge_id"],
             _validate=False,
         )
-    return g, schema_name
+    return g, schema_name, metagraph_name
 
 
-def _load_or_die(name: str) -> tuple[Graph, Optional[str]]:
-    """Load and rehydrate a graph; die with structured exit on failure."""
+def _load_or_die(name: str) -> tuple[Graph, Optional[str], Optional[str]]:
+    """Load and rehydrate a graph; die with structured exit on failure.
+
+    Returns ``(graph, schema_name, metagraph_name)``. The caller must
+    preserve both back-pointers round-trip on subsequent saves.
+    """
     try:
         state = state_mod.load_graph_state(name)
     except ValueError as e:
@@ -307,12 +319,82 @@ def _load_or_die(name: str) -> tuple[Graph, Optional[str]]:
     return _state_to_graph(state)
 
 
-def _save_or_die(name: str, g: Graph, *, schema_name: Optional[str]) -> None:
+def _save_or_die(
+    name: str,
+    g: Graph,
+    *,
+    schema_name: Optional[str],
+    metagraph_name: Optional[str] = None,
+) -> None:
     try:
-        state_mod.save_graph_state(name, _graph_to_state(g, schema_name=schema_name))
+        state_mod.save_graph_state(
+            name,
+            _graph_to_state(
+                g, schema_name=schema_name, metagraph_name=metagraph_name
+            ),
+        )
     except ValueError as e:
         typer.echo(str(e), err=True)
         raise typer.Exit(code=2)
+
+
+def _refuse_if_metagraph_owned(
+    name: str, metagraph_name: Optional[str], operation: str,
+    *,
+    suggested: Optional[str] = None,
+) -> None:
+    """Q4-B + P2 — refuse mutations on metagraph-owned graphs with a stderr suggestion.
+
+    Standalone-graph CLI mutations (``add-node`` / ``add-edge`` /
+    ``add-hyperedge`` / ``set-prop`` / ``update-hyperedge-type`` /
+    ``attach-schema`` / ``detach-schema``) are refused when the graph
+    has a non-null ``metagraph_name`` back-pointer. Reads (``inspect``,
+    ``list-*``) WARN-and-show; mutations REFUSE-and-exit-1.
+
+    Args:
+        name: Graph name (for the error message).
+        metagraph_name: The current back-pointer value; ``None`` means
+            standalone (no refusal).
+        operation: Human-readable operation tag for the error message.
+        suggested: Optional ``mindsos metagraph ...`` invocation tester
+            should use instead. Printed alongside the refusal per P2.
+    """
+    if metagraph_name is None:
+        return
+    msg = (
+        f"Graph {name!r} is owned by metagraph {metagraph_name!r}; "
+        f"{operation} via 'mindsos graph' is refused (Q4-B). "
+        f"Route through the metagraph subapp instead, e.g.:"
+    )
+    typer.echo(msg, err=True)
+    if suggested:
+        typer.echo(f"    {suggested}", err=True)
+    else:
+        typer.echo(
+            f"    mindsos metagraph <subcommand> --name {metagraph_name} ...",
+            err=True,
+        )
+    typer.echo(
+        f"  Or use 'mindsos graph detach-metagraph --name {name}' to "
+        f"clear the back-pointer (DM-A recovery path; metagraph state "
+        f"file MUST be missing or you will create a dangling reference).",
+        err=True,
+    )
+    raise typer.Exit(code=1)
+
+
+def _warn_if_metagraph_owned(
+    name: str, metagraph_name: Optional[str], operation: str
+) -> None:
+    """Q4-B read-side — emit a stderr warning but continue (warn-and-show)."""
+    if metagraph_name is None:
+        return
+    typer.echo(
+        f"warning: graph {name!r} is owned by metagraph {metagraph_name!r}; "
+        f"{operation} shows in-graph contents only. Use 'mindsos metagraph "
+        f"inspect --name {metagraph_name}' for the full metagraph view.",
+        err=True,
+    )
 
 
 def _path_or_unknown(name: str) -> str:
@@ -404,12 +486,15 @@ def inspect_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """Report counts + role + graph_id + attached schema for the named graph."""
-    g, schema_name = _load_or_die(name)
+    g, schema_name, metagraph_name = _load_or_die(name)
+    # Q4-B — warn-and-show on read for metagraph-owned graphs.
+    _warn_if_metagraph_owned(name, metagraph_name, "inspect")
     summary = {
         "name": g.name,
         "role": g.role,
         "graph_id": g.graph_id,
         "schema_name": schema_name,
+        "metagraph_name": metagraph_name,
         "schema_strict": (g.schema.strict if g.schema is not None else None),
         "counts": {
             "nodes": len(g.nodes),
@@ -423,7 +508,8 @@ def inspect_cmd(
     else:
         typer.echo(
             f"name={g.name} role={g.role!r} graph_id={g.graph_id} "
-            f"schema={schema_name!r} strict={summary['schema_strict']}"
+            f"schema={schema_name!r} strict={summary['schema_strict']} "
+            f"metagraph={metagraph_name!r}"
         )
         typer.echo(
             f"nodes={summary['counts']['nodes']} "
@@ -452,7 +538,17 @@ def add_node_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """Add a node to the named graph."""
-    g, schema_name = _load_or_die(name)
+    g, schema_name, metagraph_name = _load_or_die(name)
+    # Q4-B + P2 — refuse mutation on metagraph-owned graphs.
+    _refuse_if_metagraph_owned(
+        name, metagraph_name, "add-node",
+        suggested=(
+            "(metagraph-owned graphs do not yet have an in-place add-node "
+            "subcommand; detach via 'mindsos graph detach-metagraph "
+            f"--name {name}' to mutate standalone, OR add the node before "
+            "joining the metagraph)"
+        ),
+    )
     parsed_value = _parse_value(value)
     props = _parse_props(prop or [])
     try:
@@ -471,7 +567,7 @@ def add_node_cmd(
     except PropertyShapeError as e:
         typer.echo(f"PropertyShapeError: {e}", err=True)
         raise typer.Exit(code=1)
-    _save_or_die(name, g, schema_name=schema_name)
+    _save_or_die(name, g, schema_name=schema_name, metagraph_name=metagraph_name)
     if json_out:
         typer.echo(
             json.dumps(
@@ -511,7 +607,14 @@ def add_edge_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """Add a directed edge between two nodes in the named graph."""
-    g, schema_name = _load_or_die(name)
+    g, schema_name, metagraph_name = _load_or_die(name)
+    _refuse_if_metagraph_owned(
+        name, metagraph_name, "add-edge",
+        suggested=(
+            "(metagraph-owned graphs require detach via 'mindsos graph "
+            f"detach-metagraph --name {name}' before standalone mutation)"
+        ),
+    )
     if source not in g.nodes:
         typer.echo(
             f"IdentityError: Source node {source!r} not in graph {name!r}",
@@ -548,7 +651,7 @@ def add_edge_cmd(
     except PropertyShapeError as e:
         typer.echo(f"PropertyShapeError: {e}", err=True)
         raise typer.Exit(code=1)
-    _save_or_die(name, g, schema_name=schema_name)
+    _save_or_die(name, g, schema_name=schema_name, metagraph_name=metagraph_name)
     if json_out:
         typer.echo(
             json.dumps(
@@ -600,7 +703,14 @@ def add_hyperedge_cmd(
     registered as a HyperEdgeType and every member's type must be in
     the type's ``allowed_member_types``.
     """
-    g, schema_name = _load_or_die(name)
+    g, schema_name, metagraph_name = _load_or_die(name)
+    _refuse_if_metagraph_owned(
+        name, metagraph_name, "add-hyperedge",
+        suggested=(
+            "(metagraph-owned graphs require detach via 'mindsos graph "
+            f"detach-metagraph --name {name}' before standalone mutation)"
+        ),
+    )
     members = list(member or [])
     resolved: list[Node] = []
     for mid in members:
@@ -635,7 +745,7 @@ def add_hyperedge_cmd(
     except PropertyShapeError as e:
         typer.echo(f"PropertyShapeError: {e}", err=True)
         raise typer.Exit(code=1)
-    _save_or_die(name, g, schema_name=schema_name)
+    _save_or_die(name, g, schema_name=schema_name, metagraph_name=metagraph_name)
     sorted_member_ids = sorted(n.node_id for n in he.nodes)
     if json_out:
         typer.echo(
@@ -686,7 +796,14 @@ def update_hyperedge_type_cmd(
     (no ``update-edge-type`` / ``update-node-type`` ships). HyperEdge
     receives this surface solely as a Phase 04-v2 legacy-migration path.
     """
-    g, schema_name = _load_or_die(name)
+    g, schema_name, metagraph_name = _load_or_die(name)
+    _refuse_if_metagraph_owned(
+        name, metagraph_name, "update-hyperedge-type",
+        suggested=(
+            "(metagraph-owned graphs require detach via 'mindsos graph "
+            f"detach-metagraph --name {name}' before standalone mutation)"
+        ),
+    )
     he = g.hyperedges.get(hyperedge_id)
     if he is None:
         typer.echo(
@@ -706,7 +823,7 @@ def update_hyperedge_type_cmd(
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
         raise typer.Exit(code=1)
-    _save_or_die(name, g, schema_name=schema_name)
+    _save_or_die(name, g, schema_name=schema_name, metagraph_name=metagraph_name)
     if json_out:
         typer.echo(
             json.dumps(
@@ -749,7 +866,15 @@ def attach_schema_cmd(
     If the new schema is strict AND has zero NodeTypes, a stderr warning
     is emitted (the graph cannot accept any further node adds).
     """
-    g, previous_schema = _load_or_die(name)
+    g, previous_schema, metagraph_name = _load_or_die(name)
+    _refuse_if_metagraph_owned(
+        name, metagraph_name, "attach-schema",
+        suggested=(
+            "(schema attachment on metagraph-owned graphs is deferred to "
+            "Phase 14 via the metagraph subapp; detach first if you need "
+            "standalone schema operations)"
+        ),
+    )
     new_schema = _load_schema_or_die(schema_name)
 
     # Eager validation: rebuild a fresh schema-attached Graph by replaying
@@ -828,7 +953,7 @@ def attach_schema_cmd(
     # Validation passed — persist the original graph (data is unchanged)
     # with the new schema_name reference.
     g.schema = new_schema
-    _save_or_die(name, g, schema_name=schema_name)
+    _save_or_die(name, g, schema_name=schema_name, metagraph_name=metagraph_name)
 
     # Empty-strict-schema footgun warning (Phase 04 — Pick G).
     if new_schema.strict and len(new_schema.node_types) == 0:
@@ -920,8 +1045,9 @@ def detach_schema_cmd(
         raise typer.Exit(code=1)
 
     state["schema_name"] = None
-    # Always upgrade to v=2 on write (one-way migration; consistent with
-    # all other Phase 04 mutations).
+    # Always upgrade to current version on write (one-way migration). The
+    # migration chain has already migrated to v=4 on load, so this is a
+    # no-op other than the explicit version stamp.
     state["_state_version"] = state_mod.GRAPH_STATE_VERSION
     state_mod.save_graph_state(name, state)
 
@@ -939,6 +1065,89 @@ def detach_schema_cmd(
     else:
         typer.echo(
             f"ok: detached schema={previous_schema!r} from graph={name!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# detach-metagraph (Phase 05a — DM-A recovery path)
+# ---------------------------------------------------------------------------
+
+
+@graph_app.command("detach-metagraph")
+def detach_metagraph_cmd(
+    name: str = typer.Option(..., "--name", help="Graph name."),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Clear ``metagraph_name`` from the graph's state file (DM-A — Phase 05a).
+
+    Recovery path symmetric with ``detach-schema``: operates on the raw
+    JSON dict (does NOT route through metagraph rehydration), so it
+    works EVEN WHEN the referenced metagraph state file has been deleted
+    or is otherwise unreadable. Primary recovery for a graph with a
+    dangling back-pointer (e.g., after ``mindsos metagraph reset --force
+    --yes`` orphaned the back-pointer, OR after manual deletion of the
+    metagraph state file).
+
+    **Warning:** if the referenced metagraph state file STILL EXISTS and
+    references this graph, running ``detach-metagraph`` creates an
+    inconsistency — the metagraph thinks it owns this graph but the
+    graph no longer back-points. The fix in that case is
+    ``mindsos metagraph remove-graph --name <metagraph> --graph <graph>``,
+    not ``detach-metagraph``. Use this command only when the metagraph
+    state is gone or unrecoverable.
+
+    Exits 1 if no back-pointer is currently set (idempotent-no-op
+    refused per the Phase 03 fail-loudly pattern).
+    """
+    try:
+        path = state_mod.state_file_path(name)
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2)
+
+    # Raw load — bypasses _load_or_die / _state_to_graph so a dangling
+    # schema reference (or other rehydration failure) doesn't block the
+    # recovery. Migration chain still runs (forward-fills metagraph_name
+    # field for pre-v=4 files; populates with None default).
+    try:
+        state = state_mod.load_graph_state(name)
+    except FileNotFoundError:
+        typer.echo(
+            f"Graph {name!r} not found at {path}; nothing to detach.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    except RuntimeError as e:
+        typer.echo(f"State file error: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    previous_metagraph = state.get("metagraph_name")
+    if previous_metagraph is None:
+        typer.echo(
+            f"Graph {name!r} has no metagraph back-pointer; nothing to detach.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    state["metagraph_name"] = None
+    state["_state_version"] = state_mod.GRAPH_STATE_VERSION
+    state_mod.save_graph_state(name, state)
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "name": name,
+                    "previous_metagraph": previous_metagraph,
+                    "metagraph_name": None,
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(
+            f"ok: detached metagraph={previous_metagraph!r} back-pointer "
+            f"from graph={name!r}"
         )
 
 
@@ -998,7 +1207,17 @@ def set_prop_cmd(
         )
         raise typer.Exit(code=2)
     user_props = _parse_props(prop)
-    g, schema_name = _load_or_die(name)
+    g, schema_name, metagraph_name = _load_or_die(name)
+    _refuse_if_metagraph_owned(
+        name, metagraph_name, "set-prop",
+        suggested=(
+            "(use 'mindsos metagraph set-prop --name <metagraph> "
+            "--metaedge-id <id> ...' for metagraph-scoped properties; "
+            "graph-internal element properties on metagraph-owned "
+            f"graphs require detach via 'mindsos graph detach-metagraph "
+            f"--name {name}' first)"
+        ),
+    )
     try:
         if node_id is not None:
             existing = g.nodes[node_id].properties if node_id in g.nodes else None
@@ -1030,7 +1249,7 @@ def set_prop_cmd(
     except PropertyShapeError as e:
         typer.echo(f"PropertyShapeError: {e}", err=True)
         raise typer.Exit(code=1)
-    _save_or_die(name, g, schema_name=schema_name)
+    _save_or_die(name, g, schema_name=schema_name, metagraph_name=metagraph_name)
     if json_out:
         typer.echo(
             json.dumps(
@@ -1080,7 +1299,8 @@ def list_nodes_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """List nodes in the named graph (sorted by node_id)."""
-    g, _ = _load_or_die(name)
+    g, _schema, metagraph_name = _load_or_die(name)
+    _warn_if_metagraph_owned(name, metagraph_name, "list-nodes")
     nodes = sorted(g.nodes.values(), key=lambda n: n.node_id)
     if json_out:
         typer.echo(
@@ -1108,7 +1328,8 @@ def list_edges_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """List edges in the named graph (sorted by edge_id)."""
-    g, _ = _load_or_die(name)
+    g, _schema, metagraph_name = _load_or_die(name)
+    _warn_if_metagraph_owned(name, metagraph_name, "list-edges")
     edges = sorted(g.edges.values(), key=lambda e: e.edge_id)
     if json_out:
         typer.echo(
@@ -1141,7 +1362,8 @@ def list_hyperedges_cmd(
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
     """List hyperedges in the named graph (sorted by edge_id)."""
-    g, _ = _load_or_die(name)
+    g, _schema, metagraph_name = _load_or_die(name)
+    _warn_if_metagraph_owned(name, metagraph_name, "list-hyperedges")
     hyperedges = sorted(g.hyperedges.values(), key=lambda h: h.edge_id)
     if json_out:
         typer.echo(
@@ -1208,6 +1430,7 @@ def list_graphs_cmd(
                 "role": state.get("role"),
                 "graph_id": state.get("graph_id"),
                 "schema_name": state.get("schema_name"),
+                "metagraph_name": state.get("metagraph_name"),
                 "state_version": state.get("_state_version"),
                 "counts": {
                     "nodes": len(state.get("nodes") or []),
@@ -1237,9 +1460,14 @@ def list_graphs_cmd(
                 schema_tag = (
                     f"  schema={e['schema_name']!r}" if e.get("schema_name") else ""
                 )
+                metagraph_tag = (
+                    f"  metagraph={e['metagraph_name']!r}"
+                    if e.get("metagraph_name") else ""
+                )
                 typer.echo(
                     f"  name={e['name']!r}  role={e['role']!r}  "
-                    f"graph_id={e['graph_id']}  v={e['state_version']}{schema_tag}  "
+                    f"graph_id={e['graph_id']}  v={e['state_version']}"
+                    f"{schema_tag}{metagraph_tag}  "
                     f"nodes={c['nodes']} edges={c['edges']} hyperedges={c['hyperedges']}"
                 )
 
@@ -1274,6 +1502,22 @@ def reset_cmd(
 
     deleted: list[str] = []
     if name:
+        # Q4-B + P2 — refuse reset on metagraph-owned graphs.
+        try:
+            existing = state_mod.load_graph_state(name)
+        except (FileNotFoundError, RuntimeError, ValueError):
+            existing = None
+        if existing is not None and existing.get("metagraph_name") is not None:
+            typer.echo(
+                f"Graph {name!r} is owned by metagraph "
+                f"{existing['metagraph_name']!r}; reset via 'mindsos graph' "
+                f"is refused (Q4-B). Use 'mindsos metagraph remove-graph "
+                f"--name {existing['metagraph_name']} --graph {name}' to "
+                f"remove cleanly, OR 'mindsos graph detach-metagraph "
+                f"--name {name}' first to clear the back-pointer.",
+                err=True,
+            )
+            raise typer.Exit(code=1)
         try:
             state_mod.delete_state_file(name)
         except ValueError as e:

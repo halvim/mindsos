@@ -28,8 +28,9 @@ def test_v3_hyperedge_carries_type_name(_isolated_state_dir):
          "--member", "a", "--member", "b"],
     )
     raw = json.loads((_isolated_state_dir / "graph-g1.json").read_text())
+    # Phase 05a — current GRAPH_STATE_VERSION is 4 (was 3 in 04-v2).
+    # Hyperedges still carry type_name (Phase 04-v2 surface preserved).
     assert raw["_state_version"] == state_mod.GRAPH_STATE_VERSION
-    assert raw["_state_version"] == 3
     assert raw["hyperedges"][0]["type_name"] == "PAIR"
 
 

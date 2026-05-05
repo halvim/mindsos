@@ -21,6 +21,7 @@ def test_schema_file_path_rejects_invalid_name(_isolated_state_dir):
 
 
 def test_save_then_load_schema_state_round_trip(_isolated_state_dir):
+    """Phase 05a — migration chain forward-fills v=1 schema → current."""
     state = {
         "_state_version": 1,
         "name": "s1",
@@ -30,7 +31,11 @@ def test_save_then_load_schema_state_round_trip(_isolated_state_dir):
     }
     state_mod.save_schema_state("s1", state)
     loaded = state_mod.load_schema_state("s1")
-    assert loaded == state
+    assert loaded["_state_version"] == state_mod.SCHEMA_STATE_VERSION
+    assert loaded["name"] == "s1"
+    assert loaded["strict"] is True
+    # P04-v2 default: missing hyperedge_types treated as empty list.
+    assert loaded["hyperedge_types"] == []
 
 
 def test_save_schema_state_is_atomic(_isolated_state_dir):
@@ -108,7 +113,11 @@ def test_delete_schema_state_file_idempotence(_isolated_state_dir):
 
 
 def test_graph_state_file_v1_accepts_optional_schema_name(_isolated_state_dir):
-    """Phase 04: graph state file v1 may carry optional schema_name."""
+    """Phase 04: graph state file v1 may carry optional schema_name.
+
+    Phase 05a — migration chain forward-migrates on load; loaded dict
+    has current _state_version + metagraph_name field added.
+    """
     state = {
         "_state_version": 1,
         "graph_id": "00000000-0000-4000-8000-000000000001",
@@ -121,11 +130,19 @@ def test_graph_state_file_v1_accepts_optional_schema_name(_isolated_state_dir):
     }
     state_mod.save_graph_state("g", state)
     loaded = state_mod.load_graph_state("g")
-    assert loaded == state
+    assert loaded["_state_version"] == state_mod.GRAPH_STATE_VERSION
+    assert loaded["schema_name"] is None
+    assert loaded["metagraph_name"] is None
+    assert loaded["graph_id"] == state["graph_id"]
 
 
 def test_graph_state_file_v1_legacy_phase_03_loads(_isolated_state_dir):
-    """Phase 04: a Phase 03 graph state file (no schema_name field) loads."""
+    """Phase 04: a Phase 03 graph state file (no schema_name field) loads.
+
+    Phase 05a — migration chain populates schema_name=None and
+    metagraph_name=None defaults; the on-disk file is unchanged until
+    the next save.
+    """
     legacy = {
         "_state_version": 1,
         "graph_id": "00000000-0000-4000-8000-000000000002",
@@ -135,12 +152,18 @@ def test_graph_state_file_v1_legacy_phase_03_loads(_isolated_state_dir):
         "edges": [],
         "hyperedges": [],
     }
-    (_isolated_state_dir / "graph-g.json").write_text(
-        json.dumps(legacy), encoding="utf-8"
-    )
+    path = _isolated_state_dir / "graph-g.json"
+    path.write_text(json.dumps(legacy), encoding="utf-8")
     loaded = state_mod.load_graph_state("g")
-    assert "schema_name" not in loaded  # caller treats missing as None
+    # Migration chain populates default-None fields.
+    assert loaded["schema_name"] is None
+    assert loaded["metagraph_name"] is None
     assert loaded["name"] == "g"
+    # On-disk file unchanged (load is read-only).
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    assert raw["_state_version"] == 1
+    assert "schema_name" not in raw
+    assert "metagraph_name" not in raw
 
 
 def test_graph_state_file_v2_round_trip(_isolated_state_dir):
@@ -162,12 +185,15 @@ def test_graph_state_file_v2_round_trip(_isolated_state_dir):
     }
     state_mod.save_graph_state("g", state)
     loaded = state_mod.load_graph_state("g")
-    assert loaded == state
-    assert loaded["_state_version"] == 2
+    # Phase 05a — migration chain forward-migrates v=2 → current. Loader
+    # now returns the migrated dict (with metagraph_name=None default).
+    assert loaded["_state_version"] == state_mod.GRAPH_STATE_VERSION
+    assert loaded["schema_name"] == "s1"
+    assert loaded["metagraph_name"] is None
 
 
 def test_graph_state_v3_round_trip(_isolated_state_dir):
-    """Phase 04-v2 — writes + reads v=3 graph state files (current format)."""
+    """Phase 04-v2 v=3 file loads under Phase 05a (migration chain to v=4)."""
     state = {
         "_state_version": 3,
         "graph_id": "00000000-0000-4000-8000-000000000004",
@@ -180,14 +206,16 @@ def test_graph_state_v3_round_trip(_isolated_state_dir):
     }
     state_mod.save_graph_state("g", state)
     loaded = state_mod.load_graph_state("g")
-    assert loaded == state
-    assert loaded["_state_version"] == 3
+    # Phase 05a — migration chain forward-migrates v=3 → v=4 (default
+    # metagraph_name=None). The on-disk file is unchanged until next save.
+    assert loaded["_state_version"] == state_mod.GRAPH_STATE_VERSION
+    assert loaded["metagraph_name"] is None
 
 
-def test_graph_state_v4_refused(_isolated_state_dir):
-    """Phase 04-v2 max_version=3 refuses v=4 (future-version contract)."""
+def test_graph_state_future_version_refused(_isolated_state_dir):
+    """Forward-version files refused (Phase 05a current = v=4; v=5 not supported)."""
     future = {
-        "_state_version": 4,
+        "_state_version": state_mod.GRAPH_STATE_VERSION + 1,
         "graph_id": "00000000-0000-4000-8000-000000000005",
         "name": "g",
         "role": None,
@@ -203,13 +231,14 @@ def test_graph_state_v4_refused(_isolated_state_dir):
 
 
 def test_graph_state_version_constants_split(_isolated_state_dir):
-    """Per-kind version constants (Phase 04 — Pick P1; Phase 04-v2 bumps).
+    """Per-kind version constants (Phase 04 — Pick P1; Phase 04-v2/05a bumps).
 
-    Pre-implementation audit (Phase 04-v2 row appendix item 20): tests
-    reference ``state_mod.GRAPH_STATE_VERSION`` dynamically rather than
-    hard-coding the int — symmetric with Phase 04 B-04-prev fix.
+    Pre-implementation audit (PHASE_MAP §5 amendment 21): tests reference
+    ``state_mod.GRAPH_STATE_VERSION`` dynamically rather than hard-coding
+    the int.
     """
-    assert state_mod.GRAPH_STATE_VERSION == 3   # Phase 04-v2.
-    assert state_mod.SCHEMA_STATE_VERSION == 2  # Phase 04-v2.
+    assert state_mod.GRAPH_STATE_VERSION == 4   # Phase 05a.
+    assert state_mod.SCHEMA_STATE_VERSION == 2  # Phase 04-v2 (unchanged in 05a).
+    assert state_mod.METAGRAPH_STATE_VERSION == 1  # Phase 05a — NEW.
     # Backward-compat alias points at GRAPH_STATE_VERSION.
     assert state_mod.STATE_VERSION == state_mod.GRAPH_STATE_VERSION

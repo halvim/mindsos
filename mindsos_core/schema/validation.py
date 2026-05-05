@@ -52,6 +52,22 @@ RESERVED_PROPERTY_KEYS = frozenset({
     "disputed_at",
     # ADR-0127 — optimistic concurrency on Global writes.
     "_version",
+    # Phase 05a — P13 lock. Metagraph-structural top-level field names
+    # become reserved at user-property scope so a metagraph property bag
+    # (ADR-0130) cannot collide with serialization fields when Phase 07
+    # persistence stamps properties onto Cypher anchor rows alongside
+    # structural fields. ``_state_version`` is reserved across all
+    # state-file kinds. ``contained_graphs`` / ``metaedges`` /
+    # ``metahyperedges`` are top-level metagraph-state fields.
+    #
+    # Deliberately EXCLUDED (would break Phase 03/04 user-prop tests):
+    #   ``name``        — common user property key (e.g. Person.name).
+    #   ``properties``  — recursive bag use case is plausible.
+    "_state_version",
+    "contained_graphs",
+    "metaedges",
+    "metahyperedges",
+    "metagraph_name",  # graph-state v=4 back-pointer field (P05a B2).
 })
 
 #: Prefix for cross-graph reference properties. Properties whose key
