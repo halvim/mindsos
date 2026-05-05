@@ -30,7 +30,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | Repo + registry | `halvim/mindsos` (lowercased). **No GHCR.** GitHub Releases hold tarballs. |
 | CI | GitHub Actions, `GITHUB_TOKEN` only. Push to `phase-*` branch → in-container test suite. Tag `phase-NN-confirmed` → build + test + create Release with tarball + Dockerfile snapshot + lockfile snapshot + checksums; release body auto-generated from the confirmation doc. Retention prunes tarballs older than 5 most-recent confirmed phases. |
 | Branching | Branch `phase-NN` off main → PR → squash merge → tag `phase-NN-confirmed`. `latest` follows the most recent confirmed phase. |
-| **Phase rollback / supersession** | If Phase N+k reveals a regression in already-confirmed Phase N: tag `phase-NN-superseded` on main; rewrite the row in this map; open a new branch `phase-NN-v2`; tester reverts to `phase-(N-1)-confirmed` while v2 is built; on confirm, tag `phase-NN-v2-confirmed`. The original `phase-NN-confirmed` tag remains in history as evidence but is no longer the install target for that index. **Confirmation doc:** v2 ships a sibling file `confirmation_docs/PHASE_NN_v2_CONFIRMED.md` (the original `PHASE_NN_CONFIRMED.md` stays untouched on disk, mirroring the tag-history rule). The release workflow derives the doc path from the tag's vsuffix. **Tarball naming:** `mindsos-phaseNN-v2.tar.gz` (vsuffix preserved). **Retention slot:** the (NN, vM) pair collapses to a single slot per phase NN — within the slot, the highest vM is the install target; lower vM tarballs evict immediately, regardless of the 5-phase window. |
+| **Phase rollback / supersession** | If Phase N+k reveals **(a) a regression in already-confirmed Phase N OR (b) a need for additive scope expansion to N**: tag `phase-NN-superseded` on main; rewrite the row in this map; open a new branch `phase-NN-v2`; tester reverts to `phase-(N-1)-confirmed` while v2 is built; on confirm, tag `phase-NN-v2-confirmed`. The original `phase-NN-confirmed` tag remains in history as evidence but is no longer the install target for that index. **Supersession trigger** ("regression" vs "expansion") is recorded free-form in the v2 confirmation doc's `tester_notes` field (TRIG-1; Phase 04-v2 lock 2026-05-04). **Confirmation doc:** v2 ships a sibling file `confirmation_docs/PHASE_NN_v2_CONFIRMED.md` (the original `PHASE_NN_CONFIRMED.md` stays untouched on disk, mirroring the tag-history rule). The release workflow derives the doc path from the tag's vsuffix. **Tarball naming:** `mindsos-phaseNN-v2.tar.gz` (vsuffix preserved). **Retention slot:** the (NN, vM) pair collapses to a single slot per phase NN — within the slot, the highest vM is the install target; lower vM tarballs evict immediately, regardless of the 5-phase window. **Letter sub-phases** (e.g. `05a` / `05b`) count as **separate slots** in the 5-phase retention window (T1 lock; Phase 05a/05b 2026-05-04). |
 | Per-phase workflow | (a) [Mac] implement on `phase-NN` (branch off `origin/main`, **never** off the prior phase's branch); (b) [Linux] in-container automated tests green via `docker compose run --rm mindsos-test pytest tests/`; (c) [Linux] tester does manual CLI exploration; (d) [Linux] tester runs `mindsos confirm-phase --init-notes NN` (Phase 02+) or `--init-notes phase-NN` (Phase 01) or hand-fills the markdown template (Phase 00) — the wrapper preflights `doctor --self-test` and aborts on drift; (e) [Linux] tester reviews and edits the resulting `confirmation_docs/PHASE_NN_CONFIRMED.md`; (f) [Mac] phase chat updates `docs/` mkdocs source + this map's row for phase NN+1; (g) **[Mac] verify `notes-phase-NN.md` AND `confirmation_docs/PHASE_NN_CONFIRMED.md` are tracked + committed** (untracked files are silently dropped at squash-merge — Phase 01 hit a `release.yml` "Verify confirmation doc exists" failure for exactly this reason); (h) [Mac/Linux] tester pushes branch + opens PR; (i) merge → [Mac, on `main`] tag from the squash-merged commit, **not from the phase-NN branch**; push tag → CI builds Release. |
 | Two-machine workflow (Mac + Linux) | Code is edited on Mac (Claude sessions live there). In-container tests, manual CLI exploration, `confirm-phase`, and tag-and-push run on a separate Linux box. Sync is git push/pull (the Mac never sees Linux's filesystem and vice-versa). Recipes in this repo tag steps `[Mac]` or `[Linux]` explicitly. `confirm-phase` runs from a Python ≥ 3.12 venv on the Linux host (`pip install -e .` inside `halvim_mindsos/.venv`), **not** via `docker compose run` — the prod container has no `git`, no `docker` CLI, and no docker socket. |
 | `doctor --self-test` checks | (1) Python runtime version vs `[runtime.python] version`; (2) `requirements.txt` sha256 vs `[lockfile] requirements_txt_sha256`; (3) FalkorDB reachability + version vs `[runtime.falkordb] version`; (4) `[ci] required_workflows` files exist + non-empty + parse-shaped (Phase 01+); (5) `^\s*image:\s*mindsos:phase<NN>-<stage>` literals in `docker-compose.yml` match `[mindsos] phase` (Phase 01+); (6) **version-string parity across `[mindsos] version`, `pyproject.toml [project] version`, and `mindsos_cli/__init__.py:__version__`** (Phase 02+). Drift in any of these exits non-zero. |
@@ -91,8 +91,10 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 01 | Tooling infrastructure — CI workflows, retention, `confirm-phase` wrapper, mkdocs verify | cross | 00 |
 | 02 | L1 Identity — IRIs, IdentityRegistry, IdStrategy | L1 | 01 |
 | 03 | L1 Graph elements — Graph, Node, Edge, HyperEdge | L1 | 02 |
-| 04 | L1 Schema — NodeType, EdgeType, opt-in strict | L1 | 02 |
-| 05 | L1 Metagraph elements — Metagraph, MetaEdge, MetaHyperEdge, CompositionalMetaEdge | L1 | 03 |
+| 04 | L1 Schema — NodeType, EdgeType, opt-in strict ~~(SUPERSEDED by 04-v2)~~ | L1 | 02 |
+| 04-v2 | L1 Schema — HyperEdgeType + type_name (additive expansion) | L1 | 02, 03 |
+| 05a | L1 Metagraph port — Metagraph, MetaEdge, MetaHyperEdge, CompositionalMetaEdge | L1 | 03, 04-v2 |
+| 05b | L1 IntergraphEdge + MetagraphSchema + Meta*EdgeType (NEW CODE) | L1 | 05a |
 | 06 | L1 Instancing — `mindsos_instances` package | L1 | 03, 05 |
 | 07 | L1 Persistence — Client, FalkorClient, InMemoryClient, AsyncClient, repositories, WAL, indexes, OCC | L1 | 03, 04, 05, 06 |
 | 08 | L1 Reconstruction — loaders, streaming loader, refresh | L1 | 07 |
@@ -548,7 +550,9 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 
 Each row is intentionally terse. The phase chat reads it, refines its scope, and updates the row before implementing.
 
-### Phase 04 — L1 Schema (NodeType, EdgeType, opt-in strict)
+### Phase 04 — L1 Schema (NodeType, EdgeType, opt-in strict)  [SUPERSEDED BY 04-v2 — 2026-05-04]
+
+  **Status:** **Superseded by Phase 04-v2** (additive scope expansion: HyperEdgeType + HyperEdge.type_name + state-file v=2→v=3 + Schema state-file v=1→v=2). Original `phase-04-confirmed` tag remains in git history as evidence; install target for slot 04 is now `phase-04-v2-confirmed`. Original tarball asset evicts to "source-rebuild required" placeholder per (NN, vM) collapse policy. Original confirmation doc `PHASE_04_CONFIRMED.md` stays untouched on disk; v2 ships sibling `PHASE_04_v2_CONFIRMED.md`.
 
   **Deps:** 02, 03. **Layer:** L1. **Net-new?** Repackage; **schema state-file format is genuinely net-new** (parent has no equivalent), inherited via Phase 03 state.py precedent. Plus three net-new CLI commands (`schema create/...`, `graph attach-schema`, `graph detach-schema`, `graph set-prop`) that are pure Phase 04 surface — no parent code to repackage.
   **Foundations-first note:** Original PHASE_MAP §3 listed deps as `02` per foundations-first rule (Schema is a sibling primitive). Refined to `02, 03` because Phase 04 closes 4 entries from the Phase 03 deferral appendix (Schema typing on `Graph.__init__`, `validate_user_properties` helper, `update_*_properties`, `tests/unit/test_graph.py` port) AND adds `schema_name` reference to the graph state file — both transitively depend on Phase 03 having shipped. Phase 03 shipped first only for tester-flow continuity.
@@ -661,7 +665,193 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
     17. `mindsos graph list` and `mindsos schema list` DELIBERATELY bypass `load_*_state`'s strict version check (Pick P3 — comment in code). Inclusive listing is correct for read-only enumeration; mutating commands DO use the strict loader.
     18. Phase 03 tests `test_state_file_has_state_version` and `test_load_future_state_version_rejected` updated to reference `state_mod.GRAPH_STATE_VERSION` (rather than hard-coded `1`). Per PHASE_MAP §1 "Breaking changes between phases allowed" — the v=1 → v=2 bump is a deliberate breaking change; Phase 03 tests evolve to assert the current contract.
 
+### Phase 04-v2 — L1 Schema (HyperEdgeType — additive scope expansion)
+
+  **Status:** Pending (in design — refining + locking — this chat 2026-05-04, post 5-round adversarial pass).
+  **Branch:** phase-04-v2
+  **Tag on confirm:** phase-04-v2-confirmed
+  **Supersession trigger:** **expansion** (per supersession-policy amendment). Round-7 adjudication of MC-2 (override "drop MetaHyperEdgeType correction") + user override "we should add hyperedgeType as well (patch phase 04)" — symmetric typed-hyperedge surface required so 05b's MetaHyperEdgeType has a parent precedent.
+  **Depends on:** 02, 03. (Per supersession policy: starts from Phase 03 baseline; tester reverts to phase-03-confirmed while v2 is built. Implementation carries forward Phase 04's locked decisions PLUS this row's amendments.)
+  **Layer(s):** L1
+  **Net-new?:** **Yes (limited).** Adds `HyperEdgeType` dataclass to `mindsos_core/schema/types.py`; adds `Schema.hyperedge_types` map + `add_hyperedge_type` / `require_hyperedge_type` / `validate_hyperedge_properties` methods; adds `HyperEdge.type_name: str` field (required); extends `Graph.add_hyperedge(type_name=...)` (required) + `Graph.update_hyperedge_properties` + cypher rel-type validation. CLI: `mindsos schema add-hyperedge-type`, `mindsos graph add-hyperedge --type T` (required), `mindsos graph update-hyperedge-type` (UHT-1), `mindsos graph set-prop --hyperedge-id` (mutex extension). State-file: `GRAPH_STATE_VERSION = 3` (was 2); `SCHEMA_STATE_VERSION = 2` (was 1); cumulative migration (read v=1 ∪ v=2 ∪ v=3 graphs and v=1 ∪ v=2 schemas; write highest).
+
+  **Locked decisions (round-7 + 5 adversarial rounds — 2026-05-04):**
+
+    - **MC-2** — `HyperEdgeType` shipped (rejected MC-1 "drop MetaHyperEdgeType correction"); MetaHyperEdgeType in 05b inherits the parent.
+    - **HET-1** — `HyperEdgeType.allowed_member_types: list[str]` (every member's `type_name` must be in the set; no cardinality bounds; symmetric across all members; empty list permitted per AME-1).
+    - **MIG-1** — Graph state-file v=2 → v=3 one-way migration (mirror of Phase 04's v=1 → v=2). Pre-v=3 hyperedges receive `type_name="UNSPECIFIED"` on first read; strict-mode rejects until re-saved with a valid type via `update-hyperedge-type` (UHT-1) or recreated.
+    - **SS-1** — Schema state-file v=1 → v=2 one-way migration (adds `hyperedge_types` map). 04-v2 binary tolerates v=1 read (treats missing field as empty list); writes v=2 on every save.
+    - **PA-1** — ADR-0017 amended in place (no new ADR-0150). Amendment text in this row's appendix; ADR file edit deferred to Phase 38 per locked precedent.
+    - **CASC-1** — Strictly sequential cascade: 04-v2 confirmed → 05a row refinement starts → 05a confirmed → 05b row refinement starts → 05b confirmed.
+    - **SENT-1** — Sentinel literal is `"UNSPECIFIED"` (uppercase; satisfies cypher rel-type regex per ADR-0021). Original adversarial-round-1 surfacing of the cypher-regex conflict closed.
+    - **UHT-1** — `mindsos graph update-hyperedge-type --hyperedge-id ID --type T` ships in 04-v2 (asymmetric — Edge.type_name and Node.type_name remain immutable; legacy-migration recovery path only).
+    - **WARN-2** — Empty-strict warning condition unchanged from Phase 04 (warn iff zero NodeTypes); does NOT extend to HyperEdgeType emptiness.
+    - **AME-1** — Empty `allowed_member_types: []` permitted on `add-hyperedge-type` (mirrors `EdgeType` precedent).
+    - **VERSTR-1** — Python version literal `0.0.0+phase04.v2` (PEP 440 local version with period separator).
+    - **TRIG-1** — Supersession trigger recorded free-form in `tester_notes`; no new schema field.
+
+  **Features in scope (capability-level — locked):**
+
+    - `HyperEdgeType(name, allowed_member_types, property_types, description)` dataclass exported from `mindsos_core.schema`.
+    - `Schema.add_hyperedge_type(hyperedge_type)` registration; `Schema.require_hyperedge_type(name)` lookup; `Schema.validate_hyperedge_properties(type_name, properties)` strict-mode property check.
+    - `Schema.validate_hyperedge(type_name, member_type_names)` validates `type_name` exists + every `member_type_name` is in `allowed_member_types` (when non-empty) — checked at `Graph.add_hyperedge` time when schema attached.
+    - `HyperEdge.type_name: str` field (required); cypher rel-type validation per ADR-0021 at `__post_init__`.
+    - `Graph.add_hyperedge(nodes, type_name=..., ..., _validate=True)` — `type_name` becomes required; `_validate=False` rehydration tolerates legacy hyperedges with sentinel `UNSPECIFIED`.
+    - `Graph.update_hyperedge_properties(edge_id, properties, *, replace=False)` — symmetric with Phase 04 `update_node_properties` / `update_edge_properties`; no `_version` bump (ADR-0127 / Phase 07 owns).
+    - `Graph.update_hyperedge_type(edge_id, new_type_name)` — UHT-1 recovery path; cypher regex validation; schema validation if attached.
+    - `mindsos schema add-hyperedge-type --schema X --type-name T --allowed-member <T>... [--prop-type k=v] [--description STR]` — repeated `--allowed-member` flag; mirrors `add-edge-type`.
+    - `mindsos graph add-hyperedge --name <GRAPH> --type <REL_TYPE> --member <ID> [--member <ID>...] [--label LABEL] [--prop k=v]... [--hyperedge-id ID]` — `--type` becomes required; cypher regex on `--type`.
+    - `mindsos graph update-hyperedge-type --name <GRAPH> --hyperedge-id <ID> --type <NEW_TYPE>` — UHT-1.
+    - `mindsos graph set-prop --hyperedge-id <ID> --prop k=v ...` — mutex extends to `--node-id | --edge-id | --hyperedge-id`; `--replace` preserves `ref:*`.
+    - `mindsos schema inspect --json` output now includes `hyperedge_types`.
+    - `mindsos schema add-hyperedge-type` JSON output mirrors `add-edge-type`.
+    - Empty-strict warning at attach time when `strict=True AND zero NodeTypes` (WARN-2 — unchanged from Phase 04).
+    - Eager attach validation extends — every Node, then every Edge, then every HyperEdge (in that order); first violation prints structured error including offending element id; attach refused; state-file unchanged.
+
+  **Modules touched (locked):**
+
+    - `mindsos_core/schema/types.py` — `HyperEdgeType` dataclass added; `__all__` extends.
+    - `mindsos_core/schema/schema.py` — `_hyperedge_types: Dict[str, HyperEdgeType]`; `add_hyperedge_type` / `require_hyperedge_type` / `validate_hyperedge_properties` / `validate_hyperedge` methods; `_check_property_types` reused for hyperedge scope.
+    - `mindsos_core/schema/validation.py` — no change (RESERVED_PROPERTY_KEYS already covers `type_name` at top-level reservation; `hyperedge_id` already covered by `edge_id` precedent — confirmed: NO new reserved-key entries).
+    - `mindsos_core/schema/__init__.py` — re-export `HyperEdgeType`.
+    - `mindsos_core/models/edge.py` — `HyperEdge.type_name: str` field (required); cypher rel-type validation in `__post_init__`; comment block updated for ADR-0017 / Phase 04-v2.
+    - `mindsos_core/models/graph.py` — `add_hyperedge` signature gains required `type_name`; `update_hyperedge_properties` added; `update_hyperedge_type` added (UHT-1); eager attach validation extends to hyperedges; `_validated_hyperedge_properties` helper.
+    - `mindsos_core/__init__.py` — re-export `HyperEdgeType`; cumulative ~27.
+    - `mindsos_cli/commands/schema.py` — `add-hyperedge-type` subcommand; `_schema_to_state` writes `hyperedge_types`; `_state_to_schema` reads `hyperedge_types` (treats missing as empty list for v=1 backward-compat); `inspect_cmd` JSON includes `hyperedge_types`.
+    - `mindsos_cli/commands/graph.py` — `add-hyperedge` `--type <REL_TYPE>` required; `update-hyperedge-type` subcommand; `set-prop` mutex extends; `_graph_to_state` writes v=3 (hyperedge entry includes `type_name`); `_state_to_graph` reads v=1/v=2/v=3 (populates `type_name="UNSPECIFIED"` for missing).
+    - `mindsos_cli/state.py` — `GRAPH_STATE_VERSION = 3`; `SCHEMA_STATE_VERSION = 2`; `STATE_VERSION = GRAPH_STATE_VERSION` alias maintained.
+    - `mindsos_cli/manifest.toml` — `[mindsos] phase = "04-v2"`; `version = "0.0.0+phase04.v2"`.
+    - `mindsos_cli/__init__.py` — `__version__ = "0.0.0+phase04.v2"`.
+    - `pyproject.toml` — `version = "0.0.0+phase04.v2"`; description bumped.
+    - `docker-compose.yml` — `image: mindsos:phase04-v2-prod` / `mindsos:phase04-v2-test`.
+    - `Dockerfile` — comment lines bumped (Phase 04 → Phase 04-v2 references; HyperEdgeType note in COPY block).
+    - `mindsos_cli/commands/doctor.py` — `_COMPOSE_IMAGE_RE` regex extension to recognize `phaseNN-vM-<stage>` literal (one-line); phase-string parser tolerance extension `\d{2}([a-z]|-v\d+)?`.
+    - `mindsos_cli/commands/confirm_phase.py` — accepts `--phase 04-v2` / `--init-notes 04-v2`; backward-compat alias `--init-notes phase-04-v2`.
+    - `tests/_shared/sentinel_paths.py` — **no new entries** (HyperEdgeType lives inside existing files).
+
+  **Persistence layout (locked):**
+
+    - **Graph state-file v=3 JSON shape** (extends v=2 with hyperedge `type_name`):
+      ```json
+      {"_state_version": 3,
+       "graph_id": "<uuid4>", "name": "<n>", "role": "<role-or-null>",
+       "schema_name": "<schema-name-or-null>",
+       "nodes": [...],
+       "edges": [...],
+       "hyperedges": [{"edge_id": "...", "type_name": "<UPPER>",
+                       "member_ids": [...sorted by node_id],
+                       "label": "...", "properties": {...}}]}
+      ```
+      Top-level lists byte-stable sorted; atomic write via `<path>.tmp + os.replace` (Phase 03/04 inherited).
+    - **Schema state-file v=2 JSON shape** (extends v=1 with `hyperedge_types`):
+      ```json
+      {"_state_version": 2, "name": "<n>", "strict": false,
+       "node_types": [...sorted by name],
+       "edge_types": [...sorted by name],
+       "hyperedge_types": [{"name": "<n>", "allowed_member_types": [...sorted],
+                            "property_types": {"k": "<PropertyType.value>"},
+                            "description": "<text-or-null>"}]}
+      ```
+      04-v2 binary tolerates v=1 reads (missing `hyperedge_types` treated as empty list); writes v=2 on every save.
+    - **Cumulative migration on graph state-file:** 04-v2 binary reads v=1 ∪ v=2 ∪ v=3 (one-pass: populate `schema_name=null` for v=1 default per Phase 04 pattern; populate hyperedge `type_name="UNSPECIFIED"` for v=1/v=2 default); first mutation writes v=3.
+    - **Strict version contract:** Phase 03 binary loading v=3 file rejects (same `this CLI supports vN` message as Phase 04 v=1→v=2). Recovery: hand-edit JSON downgrade (drop `hyperedge.type_name` fields, drop `schema_name`, set `_state_version: 1`).
+
+  **Automated tests (location + intent — locked):**
+
+    - `tests/phase_04_v2/` — ~30 tests:
+      - `test_hyperedge_type.py` (3) — class round-trip, immutable frozen dataclass, default empty `allowed_member_types`.
+      - `test_schema_add_hyperedge_type.py` (5) — happy path, JSON output, cypher regex on type-name, empty allowed-member (AME-1), --prop-type all 8 PropertyType variants.
+      - `test_graph_add_hyperedge_type.py` (3) — `add-hyperedge --type T` required; cypher regex enforcement; schema validation when attached.
+      - `test_state_v3_round_trip.py` (3) — v=3 file shape, byte-stable sort, atomic write.
+      - `test_legacy_v1_v2_migration.py` (4) — v=1 graph load+populate UNSPECIFIED; v=2 graph load+populate UNSPECIFIED; first-mutation upgrades to v=3; v=2 schema load+empty `hyperedge_types`.
+      - `test_sentinel_unspecified.py` (1) — `validate_edge_type_identifier("UNSPECIFIED")` passes.
+      - `test_update_hyperedge_type.py` (5) — happy path, cypher regex on new type, schema validation rejection, no-op idempotent (UNSPECIFIED→UNSPECIFIED), missing hyperedge_id.
+      - `test_attach_schema_hyperedge_eager.py` (3) — eager validation order (node→edge→hyperedge); first violation surfaces hyperedge_id; attach refused leaves file unchanged.
+      - `test_set_prop_hyperedge.py` (3) — mutex extension; `--replace` ref:* preservation; reserved-key rejection.
+    - **Audit pass (pre-implementation):** review every `tests/phase_04/test_state*.py` for hard-coded `2` constants; update to use `state_mod.GRAPH_STATE_VERSION`. Symmetric with Phase 04 B-04-prev fix. Lock as pre-implementation task.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 04-v2 --notes-file notes-phase-04-v2.md`
+    (Init shape: `--init-notes 04-v2` is canonical; `--init-notes phase-04-v2` parses for backward-compat. Manifest stores `[mindsos] phase = "04-v2"`.)
+
+  **Pass criterion:**
+
+    - Tester can declare a HyperEdgeType with `--allowed-member`s; attach to a strict schema; `add-hyperedge --type T` validates against allowed members.
+    - Empty `--allowed-member` list permitted (AME-1) — under non-strict accepts any member; under strict rejects all.
+    - `update-hyperedge-type` recovers a legacy hyperedge from `UNSPECIFIED` to a valid type; validates against schema if attached.
+    - Phase 03 v=1 graph loads cleanly under 04-v2; hyperedges show `type_name=UNSPECIFIED`; first mutation upgrades file to v=3.
+    - Phase 04 v=2 graph loads cleanly under 04-v2; same upgrade path on first mutation.
+    - `set-prop --hyperedge-id ID --prop k=v` round-trips through schema validation.
+    - All Phase 03 + Phase 04 + Phase 04-v2 tests pass cumulatively in-container (`tests/`).
+    - **Cumulative tests pass: ≥ Phase 04 baseline (379+2) + ~30 Phase 04-v2 added; tester records actual count in `PHASE_04_v2_CONFIRMED.md`** (sandbox-projected: ~409 + 2 skipped in-container).
+
+  **Risks / known issues to watch:**
+
+    - **v=2 → v=3 graph state-file migration is one-way.** 04-v2 binary touching a Phase 04 v=2 file upgrades on first mutation; Phase 04 binary then refuses with `this CLI supports v2` strict-version contract. **Recovery:** `rm -rf ~/.mindsos/graph-*.json` OR hand-edit JSON downgrade (drop `hyperedge.type_name` fields, set `_state_version: 2`). Documented in `docs/usage/core/schema.md` Migration section.
+    - **v=1 → v=2 schema state-file migration is one-way** (parallel risk class).
+    - **UNSPECIFIED sentinel under strict mode** — legacy hyperedges hit eager validation if a strict schema is attached without an `UNSPECIFIED` HyperEdgeType. Tester opts into the "escape hatch" pattern: `mindsos schema add-hyperedge-type --schema X --type-name UNSPECIFIED --allowed-member ...` (allowed_member_types covering legacy member types). Documented in `docs/usage/core/schema.md` Migration section.
+    - **`add-hyperedge --type` is a CLI-breaking change.** Phase 03 invocations without `--type` no longer parse. Documented in Breaking Changes; tester updates scripts.
+    - **Asymmetry note:** `update-hyperedge-type` (UHT-1) ships solely as legacy-migration recovery; Edge.type_name and Node.type_name remain immutable post-create (no `update-edge-type` / `update-node-type` ships). Documented in row appendix.
+    - **Sentinel `UNSPECIFIED` is a tester-visible literal in inspect output** — under non-strict, the literal appears as `type_name`. Tester may mistake for a real type. Documented in user prose.
+    - **J-02 carry-forward** — no advisory locks on state files; debug-only single-tester surface. Phase 07 persistence ships proper concurrency control.
+
+  **Doc sections this phase confirms:**
+
+    - `docs/usage/core/schema.md` — amended with HyperEdgeType section + Migration section v=2→v=3 entry + UNSPECIFIED sentinel semantics + UHT-1 recovery + escape-hatch pattern. `last_confirmed_phase: 04-v2`.
+    - `docs/api/core/types.md` — amended with HyperEdgeType API + AME-1 empty-list semantic. `last_confirmed_phase: 04-v2`.
+    - `docs/api/core/hyperedge.md` — amended with `type_name` field + UHT-1 path. `last_confirmed_phase: 04-v2`.
+    - `docs/api/core/schema.md` — amended with `add_hyperedge_type` / `validate_hyperedge_properties` / `validate_hyperedge` methods. `last_confirmed_phase: 04-v2`.
+    - `docs/changelog/CHANGELOG.md` — Phase 04-v2 entry appended.
+    - ADR-0017 — amended in place per PA-1 (text in this row appendix; file edit Phase 38).
+
+  **Breaking changes from Phase 04:**
+
+    - `Graph.add_hyperedge(nodes, ...)` Python signature gains required `type_name`. Existing Phase 04 callers without `type_name` raise `TypeError`. Phase 04-v2 row appendix lists this and the CLI break together.
+    - `mindsos graph add-hyperedge --name X --member ID` (no `--type`) no longer parses; tester scripts add `--type T`.
+    - Graph state-file v=2 → v=3 + Schema state-file v=1 → v=2 (both one-way; documented above).
+
+  **Final amendments (2026-05-04 — phase chat locks across rounds 0-7 + 5 adversarial rounds):**
+
+    1. **MC-2** — HyperEdgeType ships in 04-v2 (NOT Phase 10 deferral). Reason: 05b's MetaHyperEdgeType needs a parent HyperEdgeType precedent for symmetric typed-hyperedge surface across L1.
+    2. **HET-1** — `allowed_member_types: list[str]` only; no cardinality / per-position constraints. Mirrors EdgeType simplicity.
+    3. **MIG-1** — Graph state-file v=2 → v=3 one-way migration. Pre-v=3 hyperedges receive `type_name="UNSPECIFIED"` on first read; strict-mode rejects until re-saved.
+    4. **SS-1** — Schema state-file v=1 → v=2 one-way migration; symmetric with MIG-1.
+    5. **PA-1** — ADR-0017 amended in place (no new ADR-0150). Amendment text below; file edit Phase 38.
+    6. **CASC-1** — Strictly sequential cascade 04-v2 → 05a → 05b. PAR-1 lock.
+    7. **SENT-1** — Sentinel literal `"UNSPECIFIED"` (uppercase; satisfies cypher rel-type regex per ADR-0021). Adversarial round 1 surfaced the regex conflict; locked here.
+    8. **UHT-1** — `update-hyperedge-type` CLI ships in 04-v2 (asymmetric — Edge/Node type_name remain immutable). Adversarial round 1 derived consequence.
+    9. **WARN-2** — Empty-strict warning unchanged from Phase 04 (warn iff zero NodeTypes); does NOT extend to HyperEdgeType emptiness. Self-correction of round-7 lock that would have regressed Phase 04 condition.
+    10. **AME-1** — Empty `allowed_member_types: []` permitted; mirrors EdgeType precedent.
+    11. **VERSTR-1** — Python version literal `0.0.0+phase04.v2` (PEP 440 local-version with period separator).
+    12. **TRIG-1** — Supersession trigger free-form in `tester_notes`; no new schema field.
+    13. **SUPER-§1-EXT** — PHASE_MAP §1 supersession-policy amendment extends to additive scope expansion. Letter sub-phases count as separate slots in the 5-phase retention window.
+    14. Eager attach validation order: every Node → every Edge → every HyperEdge. First violation surfaces element id; attach refused; state-file unchanged. Phase 04 pattern extended.
+    15. `_validate=False` rehydration kwarg extends to `Graph.add_hyperedge` for v=1/v=2 backward-compat (legacy hyperedges populated with sentinel UNSPECIFIED tolerate validation).
+    16. JSON-then-string `--prop k=v` parsing inherited from Phase 03/04. Same fallback for `--prop-type k=v` (PropertyType vocabulary).
+    17. `set-prop` 3-way mutex `--node-id | --edge-id | --hyperedge-id` (extends Phase 04's 2-way); detect-after-parse pattern; click.UsageError on ambiguity; `--replace` preserves `ref:*`.
+    18. `update-hyperedge-type` JSON output: `{previous_type_name, new_type_name, hyperedge_id}` (mirrors Phase 04 attach-schema's `previous_schema` reporting).
+    19. No-op idempotent `update-hyperedge-type` (UNSPECIFIED→UNSPECIFIED) exits 0; writes file (timestamp updates; content byte-stable). Phase 04 set-prop pattern.
+    20. Pre-implementation audit: every `tests/phase_04/test_state*.py` reviewed for hard-coded `_state_version: 2` constants; updated to use `state_mod.GRAPH_STATE_VERSION` dynamically. Symmetric with Phase 04 B-04-prev fix.
+    21. `mindsos graph list` and `mindsos schema list` continue to bypass strict version check (Phase 04 P3 inherited); `_state_version` field shown per row in human/JSON output.
+    22. Image tags `mindsos:phase04-v2-prod` / `mindsos:phase04-v2-test`. `_COMPOSE_IMAGE_RE` extension recognizes `phaseNN-vM-<stage>`. `confirm-phase --phase` parser accepts `04-v2` / `phase-04-v2`.
+    23. `requirements.{in,txt}` / `requirements-test.txt` unchanged (stdlib-only). `pyproject.toml [tool.setuptools.packages.find].include = ["mindsos_cli*", "mindsos_core*"]` already covers (no new sub-packages).
+    24. **No carry-forward closure** — none of Phase 04's residual concerns (M-04 through R-04) target 04-v2; Q13 closes in 05b; ADR-0117 status flip happens in 05a; all unchanged here.
+    25. **Phase 04 GitHub Release body unchanged** (verbatim copy of `PHASE_04_CONFIRMED.md`); only the tarball asset replaced by 1-line "source-rebuild required" placeholder per (NN, vM) eviction policy.
+    26. **`PHASE_04_CONFIRMED.md` stays untouched** as historical record. Supersession annotation lives in PHASE_MAP §3 / §5 only. v2 ships sibling `PHASE_04_v2_CONFIRMED.md`.
+    27. `tests/_shared/sentinel_paths.py` unchanged (HyperEdgeType lives inside existing `mindsos_core/schema/types.py`; `update-hyperedge-type` lives inside existing `mindsos_cli/commands/graph.py`).
+    28. `mkdocs.yml` nav unchanged (no new pages; existing pages amended).
+    29. `docs/dev/release.md` / `docs/dev/contributing.md` / `docs/dev/conventions.md` unchanged in 04-v2; sub-phase / v-suffix mention deferred to Phase 38 final pass (DOCREL-2).
+    30. `confirmation_docs/_template.md` and `_template_notes.md` unchanged (TRIG-1 free-form in existing `tester_notes` field).
+
+  **ADR-0017 amendment text (PA-1; deferred to Phase 38 file edit):**
+
+  > **2026-05-04 amendment (Phase 04-v2):** ADR-0017 schema vocabulary extended. Original vocabularies: `NodeType`, `EdgeType`. Added: `HyperEdgeType` — n-ary edge type whose constraint surface is `allowed_member_types: list[str]` (every member's `type_name` must be in the set; no cardinality bounds; symmetric across all members; empty list permitted per AME-1, mirroring `EdgeType` precedent). Schema validation extends: under a strict attached schema, `HyperEdge.type_name` must exist in the schema's `hyperedge_types` AND every member node's `type_name` must be in `allowed_member_types`. The `Graph.add_hyperedge` API gains a required `type_name: str` parameter (cypher rel-type validation per ADR-0021 applies). Graph state-file format bumps from v=2 to v=3 (one-way migration mirroring Phase 04's v=1→v=2 pattern); pre-v=3 hyperedges receive `type_name="UNSPECIFIED"` on first read — sentinel literal chosen to satisfy ADR-0021's cypher rel-type regex (SENT-1 lock) — and trigger strict-mode rejection until re-saved with a valid type via `mindsos graph update-hyperedge-type` (UHT-1) or recreated. Schema state-file format bumps from v=1 to v=2 to carry the `hyperedge_types` map.
+
+---
+
 ### Phase 05 — L1 Metagraph elements
+
+  **Status:** **Split into 05a + 05b** (G2 lock 2026-05-04). See sibling rows below.
 
   **Deps:** 03. **Layer:** L1. **Net-new?** No (modulo Q13 below — if greenlit, intergraph edge primitive is **NEW CODE**).
   **Features:** Metagraph CRUD; place a Graph inside a Metagraph; binary MetaEdge; n-ary MetaHyperEdge; CompositionalMetaEdge unwrap.

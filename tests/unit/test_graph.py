@@ -69,7 +69,7 @@ def test_non_primitive_property_rejected(schema):
 def test_hyperedge_must_have_members():
     g = Graph("world")
     with pytest.raises(SchemaError):
-        g.add_hyperedge([])
+        g.add_hyperedge([], type_name="MEMBERS")
 
 
 def test_remove_node_cascades_edges(schema):
@@ -147,11 +147,14 @@ def test_add_edge_honours_explicit_edge_id(schema):
     assert "edge-1" in g.identity
 
 
-def test_add_hyperedge_honours_explicit_edge_id(schema):
-    g = Graph("world", schema=schema)
+def test_add_hyperedge_honours_explicit_edge_id():
+    """Phase 04-v2 — non-schema graph; type_name still required (cypher regex)."""
+    g = Graph("world")
     a = g.add_node("Alice", "Person")
     o = g.add_node("Acme", "Org")
-    he = g.add_hyperedge([a, o], label="project-X", edge_id="he-1")
+    he = g.add_hyperedge(
+        [a, o], type_name="MEMBERS", label="project-X", edge_id="he-1",
+    )
     assert he.edge_id == "he-1"
     assert "he-1" in g.hyperedges
     assert "he-1" in g.identity

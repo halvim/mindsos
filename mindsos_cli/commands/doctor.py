@@ -28,15 +28,17 @@ def _yaml_top_keys(body: str) -> set[str]:
     return {m.group("key") for m in _YAML_TOPLEVEL_KEY_RE.finditer(body)}
 
 
-# Matches `mindsos:phase<N>-<stage>` ONLY when it appears as the value of an
-# `image:` field — anchored to start-of-line + optional whitespace + `image:`.
-# This deliberately excludes:
+# Matches `mindsos:phase<N>[-vM][a]-<stage>` ONLY when it appears as the value
+# of an `image:` field — anchored to start-of-line + optional whitespace +
+# `image:`. The phase token may carry a v-suffix (supersession, e.g.
+# `phase04-v2`) or letter sub-phase (e.g. `phase05a`) per Phase 04-v2 / 05a/05b
+# locks. This deliberately excludes:
 #   - YAML comments (whether full-line `# ...` or inline `key: val # ...`),
 #   - documentation strings inside other fields (`description: was phase00`),
 #   - any non-image YAML key that happens to contain the literal.
 # Used by --self-test to detect phase-tag drift between manifest and compose.
 _COMPOSE_IMAGE_RE = re.compile(
-    r"^\s*image:\s*mindsos:phase(?P<phase>\d+)-(?P<stage>[a-z]+)\b",
+    r"^\s*image:\s*mindsos:phase(?P<phase>\d+(?:-v\d+|[a-z])?)-(?P<stage>[a-z]+)\b",
     re.MULTILINE,
 )
 

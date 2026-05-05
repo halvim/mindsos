@@ -1,11 +1,65 @@
 ---
-last_confirmed_phase: 04
+last_confirmed_phase: 04-v2
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 04-v2 — L1 Schema additive expansion: HyperEdgeType (2026-05-04)
+
+**Supersession trigger: expansion** (per PHASE_MAP §1 amended in this
+phase to extend supersession-policy coverage from regression-only to
+"regression OR additive scope expansion"). The `phase-04-confirmed` tag
+remains in git history; install target for slot 04 is now
+`phase-04-v2-confirmed`.
+
+**`HyperEdgeType` ships (ADR-0017 amended in place — PA-1 lock).**
+Frozen dataclass with `allowed_member_types: FrozenSet[str]`
+(HET-1: simplest constraint surface; symmetric across all members; no
+cardinality bounds; AME-1: empty list permitted, mirrors `EdgeType`
+precedent), `property_types`, `description`. Validation extends:
+`Schema.add_hyperedge_type` / `Schema.require_hyperedge_type` /
+`Schema.validate_hyperedge` / `Schema.validate_hyperedge_properties`.
+Schema attach eager validation runs Node → Edge → HyperEdge in order.
+
+**`HyperEdge.type_name: str`** is now required (cypher rel-type regex
+per ADR-0021 enforced at `__post_init__`). The CLI break (`add-hyperedge`
+without `--type` no longer parses) is documented.
+
+**Graph state-file BUMPED to v=3** (adds `type_name` per hyperedge
+entry). **Schema state-file BUMPED to v=2** (adds `hyperedge_types`
+map). Both migrations are **one-way cumulative**: 04-v2 binary tolerates
+v=1 ∪ v=2 ∪ v=3 graph reads and v=1 ∪ v=2 schema reads; pre-current
+files upgrade on first mutation.
+
+**SENT-1 sentinel `"UNSPECIFIED"`** populates legacy hyperedges with no
+`type_name` field on load (chosen to satisfy ADR-0021's cypher rel-type
+regex — adversarial-round-1 surfaced the regex conflict with the
+original `_unspecified` lowercase candidate).
+
+**UHT-1: `mindsos graph update-hyperedge-type`** legacy-migration
+recovery CLI. Asymmetric — `Edge.type_name` and `Node.type_name`
+remain immutable; only `HyperEdge.type_name` is post-create mutable.
+
+**`set-prop` 3-way mutex extends:**
+`--node-id | --edge-id | --hyperedge-id`. `--replace` preserves `ref:*`
+keys symmetrically.
+
+**Per-kind version constants:** `GRAPH_STATE_VERSION = 3`,
+`SCHEMA_STATE_VERSION = 2`. `STATE_VERSION` alias = `GRAPH_STATE_VERSION`.
+
+**Tests added:** ~30 in `tests/phase_04_v2/`. Cumulative pytest baseline:
+~409 + 2 skipped (in-container Python 3.12).
+
+**Locks across rounds 0-7 + 5 adversarial rounds:**
+MC-2 (override drop-MetaHyperEdgeType correction; ship symmetric
+typed-hyperedge surface), HET-1, AME-1, MIG-1 (v=3 bump), SS-1
+(schema v=2 bump), PA-1 (amend ADR-0017 in place), CASC-1 (sequential
+04-v2 → 05a → 05b cascade), SENT-1, UHT-1, WARN-2 (empty-strict
+warning unchanged), VERSTR-1 (`0.0.0+phase04.v2`), TRIG-1
+(supersession trigger free-form in `tester_notes`).
 
 ## Phase 04 — L1 Schema (2026-05-04)
 

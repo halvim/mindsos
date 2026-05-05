@@ -146,7 +146,9 @@ def test_detach_writes_v2_state_file(_isolated_state_dir):
     raw = json.loads(
         (_isolated_state_dir / "graph-g1.json").read_text(encoding="utf-8")
     )
-    assert raw["_state_version"] == 2
+    # Phase 04-v2 — every write cumulatively bumps to current version.
+    from mindsos_cli import state as state_mod
+    assert raw["_state_version"] == state_mod.GRAPH_STATE_VERSION
     assert raw["schema_name"] is None
 
 

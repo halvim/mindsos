@@ -4,6 +4,12 @@
 schema: its name, optional property-type map, and (for edges) permitted
 source/target node types.
 
+``HyperEdgeType`` (Phase 04-v2 — ADR-0017 / MC-2 / HET-1) records the
+shape of an n-ary edge type: name, ``allowed_member_types`` (every
+member's ``type_name`` must be in the set; no cardinality bounds; empty
+list permitted per AME-1, mirroring ``EdgeType`` precedent), property
+type map, and description.
+
 ``PropertyType`` enumerates the primitive property value types that
 Schema can enforce when ``strict=True``. Lists of primitives are also
 allowed (Redis/FalkorDB stores them natively).
@@ -68,3 +74,30 @@ class EdgeType:
 
     def __repr__(self) -> str:
         return f"EdgeType({self.name!r})"
+
+
+@dataclass(frozen=True)
+class HyperEdgeType:
+    """Declaration of an n-ary hyperedge type (Phase 04-v2 — ADR-0017 / MC-2 / HET-1).
+
+    ``allowed_member_types`` restricts which node types may appear as
+    members of a hyperedge of this type. An empty set (``frozenset()``)
+    means "any" — mirrors ``EdgeType``'s ``allowed_sources`` /
+    ``allowed_targets`` precedent (AME-1 lock). The hyperedge type
+    ``name`` is used verbatim as the Cypher relationship identifier, so
+    it MUST match ``^[A-Z][A-Z0-9_]{0,63}$`` (validated at registration
+    time via :func:`mindsos_core.cypher.identifiers.validate_edge_type_identifier`;
+    SENT-1 sentinel ``"UNSPECIFIED"`` is a deliberate fit for this regex).
+
+    Symmetric across all members — no cardinality bounds (HET-1 lock);
+    no per-position role constraints. Tester wanting "exactly N
+    members of type X" must enforce in higher-layer code.
+    """
+
+    name: str
+    allowed_member_types: FrozenSet[str] = field(default_factory=frozenset)
+    property_types: Dict[str, PropertyType] = field(default_factory=dict)
+    description: Optional[str] = None
+
+    def __repr__(self) -> str:
+        return f"HyperEdgeType({self.name!r})"

@@ -66,7 +66,9 @@ def test_phase_03_v1_file_upgrades_to_v2_on_mutation(_isolated_state_dir):
     )
     assert res.exit_code == 0, res.output
     raw = json.loads(path.read_text(encoding="utf-8"))
-    assert raw["_state_version"] == 2
+    # Phase 04-v2 — first mutation cumulative-upgrades v=1 → v=3 (jump).
+    from mindsos_cli import state as state_mod
+    assert raw["_state_version"] == state_mod.GRAPH_STATE_VERSION
     # schema_name field was added (None) on write.
     assert "schema_name" in raw
     assert raw["schema_name"] is None

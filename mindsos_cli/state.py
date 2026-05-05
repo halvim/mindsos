@@ -1,5 +1,5 @@
 """Cross-invocation state-file persistence for the ``mindsos graph`` and
-``mindsos schema`` CLIs (Phase 04 surface).
+``mindsos schema`` CLIs (Phase 04-v2 surface).
 
 Pure-function (de)serialization helpers. The CLI command layer does the
 ``Graph`` / ``Schema`` ↔ ``dict`` conversion; this module only deals with
@@ -8,73 +8,80 @@ primitives, ``Path``, and plain ``dict``.
 State-file location: ``${MINDSOS_STATE_DIR or ~/.mindsos}/<kind>-<name>.json``.
 Parity with Phase 02's ``identity-registry-<scope>.json`` pattern.
 
-Phase 04 ships TWO state-file kinds with INDEPENDENT version stories:
+Phase 04-v2 ships TWO state-file kinds with INDEPENDENT version stories:
 
-  - ``graph-<name>.json``   — Phase 03 shipped v=1; Phase 04 BUMPS to v=2
-                              (adds optional ``schema_name`` field).
-                              Phase 04 binary accepts BOTH v=1 (legacy)
-                              and v=2 (current); writes v=2 on every
-                              save. v=1 → v=2 migration is one-way:
-                              first Phase 04 mutation upgrades the file;
-                              Phase 03 binary then refuses with the
-                              strict-version contract.
-  - ``schema-<name>.json``  — Phase 04 NEW. v=1 only (no prior schema
-                              format existed in the slim repo).
+  - ``graph-<name>.json``   — Phase 03 shipped v=1; Phase 04 BUMPED to v=2
+                              (adds optional ``schema_name`` field);
+                              Phase 04-v2 BUMPS to v=3 (adds required
+                              ``type_name`` per hyperedge entry).
+                              Phase 04-v2 binary accepts v=1 (legacy v=1
+                              from Phase 03), v=2 (Phase 04), and v=3
+                              (current); writes v=3 on every save.
+                              Cumulative migration is one-way: first
+                              Phase 04-v2 mutation upgrades any pre-v=3
+                              file directly to v=3; Phase 04 binary then
+                              refuses (strict-version contract). Pre-v=3
+                              hyperedges receive ``type_name="UNSPECIFIED"``
+                              on first read (SENT-1 sentinel literal,
+                              passes ADR-0021 cypher rel-type regex).
+  - ``schema-<name>.json``  — Phase 04 shipped v=1; Phase 04-v2 BUMPS
+                              to v=2 (adds optional ``hyperedge_types``
+                              field). Phase 04-v2 binary accepts v=1
+                              and v=2; writes v=2 on every save. v=1
+                              → v=2 migration is one-way; missing
+                              ``hyperedge_types`` treated as empty list.
 
-Per-kind version constants (Phase 04 — Pick P1):
+Per-kind version constants (Phase 04-v2):
 
-    GRAPH_STATE_VERSION  = 2  (Phase 03 wrote v=1; Phase 04 writes v=2)
-    SCHEMA_STATE_VERSION = 1  (Phase 04 fresh format)
+    GRAPH_STATE_VERSION  = 3  (Phase 03→v=1; Phase 04→v=2; Phase 04-v2→v=3)
+    SCHEMA_STATE_VERSION = 2  (Phase 04→v=1; Phase 04-v2→v=2)
 
 The legacy ``STATE_VERSION`` alias is kept for any external caller that
 imported it; it equals ``GRAPH_STATE_VERSION``.
 
-Graph state-file v2 schema (Phase 04):
+Graph state-file v3 schema (Phase 04-v2):
 
     {
-      "_state_version": 2,
+      "_state_version": 3,
       "graph_id": "<uuid4>",
       "name": "<name>",
       "role": "<role-or-null>",
-      "schema_name": "<schema-name-or-null>",   # Phase 04 — optional
+      "schema_name": "<schema-name-or-null>",
       "nodes": [ {"node_id", "value", "type_name", "properties"} ],
       "edges": [ {"edge_id", "source_id", "target_id", "type_name",
                   "label", "properties"} ],
-      "hyperedges": [ {"edge_id", "member_ids" (sorted), "label",
-                       "properties"} ]
+      "hyperedges": [ {"edge_id", "type_name" (Phase 04-v2 — required;
+                       UNSPECIFIED for legacy migration), "member_ids"
+                       (sorted), "label", "properties"} ]
     }
 
-Phase 03 v=1 files (no ``schema_name`` field) load fine — the loader
-treats missing as ``None``.
+Phase 03 v=1 files (no ``schema_name``, no hyperedge ``type_name``) and
+Phase 04 v=2 files (no hyperedge ``type_name``) load fine — the loader
+populates missing ``schema_name`` as ``None`` and missing hyperedge
+``type_name`` as the SENT-1 sentinel ``"UNSPECIFIED"``.
 
-Schema state-file v1 schema (Phase 04 — phase chat lock):
+Schema state-file v2 schema (Phase 04-v2):
 
     {
-      "_state_version": 1,
+      "_state_version": 2,
       "name": "<name>",
       "strict": false,
-      "node_types": [
-        {
-          "name": "<name>",
-          "property_types": {"<key>": "<PropertyType.value>"},
-          "description": "<text-or-null>"
-        }
-      ],
-      "edge_types": [
+      "node_types": [...sorted by name],
+      "edge_types": [...sorted by name],
+      "hyperedge_types": [   # Phase 04-v2 — optional; v=1 reads as empty.
         {
           "name": "<NAME>",
-          "allowed_sources": [ ...sorted ],
-          "allowed_targets": [ ...sorted ],
+          "allowed_member_types": [ ...sorted ],
           "property_types": {"<key>": "<PropertyType.value>"},
           "description": "<text-or-null>"
         }
       ]
     }
 
-Top-level ``node_types`` / ``edge_types`` lists sorted by ``name`` on
-save (byte-stable). ``allowed_sources`` / ``allowed_targets`` sorted on
-save. Atomic write via ``<path>.tmp`` + ``os.replace`` (parity with the
-graph state file).
+Top-level lists sorted by ``name`` on save (byte-stable).
+``allowed_sources`` / ``allowed_targets`` / ``allowed_member_types``
+sorted on save. Atomic write via ``<path>.tmp`` + ``os.replace`` (parity
+with the graph state file).
 
 Errors are plain Python exceptions; the CLI command layer wraps with
 ``typer.Exit(1)`` + stderr structured message. No new ``StateError``
@@ -96,13 +103,19 @@ from typing import Iterator
 _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 #: Strict on-disk version for ``graph-*.json``. Phase 03 wrote v=1.
-#: Phase 04 BUMPS to v=2 (adds optional ``schema_name`` field). Phase 04
-#: loaders accept both; writers always emit v=2 (one-way migration).
-GRAPH_STATE_VERSION = 2
+#: Phase 04 BUMPED to v=2 (adds optional ``schema_name`` field).
+#: Phase 04-v2 BUMPS to v=3 (adds required ``type_name`` per hyperedge
+#: entry). Phase 04-v2 loaders accept v=1 ∪ v=2 ∪ v=3; writers always
+#: emit v=3 (cumulative one-way migration; pre-v=3 hyperedges populated
+#: with SENT-1 sentinel ``"UNSPECIFIED"``).
+GRAPH_STATE_VERSION = 3
 
 #: Strict on-disk version for ``schema-*.json``. Phase 04 introduced
-#: this state-file kind at v=1; future phases may bump independently.
-SCHEMA_STATE_VERSION = 1
+#: this state-file kind at v=1. Phase 04-v2 BUMPS to v=2 (adds optional
+#: ``hyperedge_types`` field). Phase 04-v2 loaders accept v=1 ∪ v=2;
+#: writers always emit v=2 (one-way migration; missing
+#: ``hyperedge_types`` treated as empty list for v=1 backward-compat).
+SCHEMA_STATE_VERSION = 2
 
 #: Backward-compat alias for any external caller that imported the old
 #: name. Equals ``GRAPH_STATE_VERSION``. Will be removed when Phase 07
@@ -146,10 +159,16 @@ def iter_state_files() -> Iterator[Path]:
 def load_graph_state(name: str) -> dict:
     """Read and parse the state file for graph ``name``.
 
-    Phase 04 accepts ``_state_version ∈ {1, 2}``. v=1 is the Phase 03
-    legacy format (no ``schema_name`` field); v=2 is the Phase 04
-    current format. The loader treats missing ``schema_name`` as
-    ``None`` so Phase 03 files load transparently.
+    Phase 04-v2 accepts ``_state_version ∈ {1, 2, 3}``:
+      - v=1 (Phase 03 legacy): no ``schema_name`` field; no hyperedge
+        ``type_name`` field. Loader treats missing ``schema_name`` as
+        ``None`` and missing hyperedge ``type_name`` as the SENT-1
+        sentinel ``"UNSPECIFIED"``.
+      - v=2 (Phase 04 legacy): ``schema_name`` present; no hyperedge
+        ``type_name``. Loader populates SENT-1 sentinel as above.
+      - v=3 (Phase 04-v2 current): both fields present.
+    First mutation under Phase 04-v2 binary upgrades the file directly
+    to v=3 (cumulative one-way migration).
 
     Raises:
         ValueError: invalid ``name`` (via ``state_file_path``).
@@ -167,7 +186,7 @@ def save_graph_state(name: str, state: dict) -> None:
     Atomic: writes to ``<path>.tmp`` then ``os.replace`` onto the canonical
     path. A Ctrl-C mid-write cannot corrupt the canonical file.
 
-    Phase 04 always writes v=2 (callers MUST set ``_state_version: 2``
+    Phase 04-v2 always writes v=3 (callers MUST set ``_state_version: 3``
     in the dict; this function does not coerce).
 
     Raises:
@@ -212,8 +231,11 @@ def iter_schema_files() -> Iterator[Path]:
 def load_schema_state(name: str) -> dict:
     """Read and parse the state file for schema ``name``.
 
-    Phase 04 accepts ``_state_version == 1`` only (the only version
-    that exists). Future phases may bump.
+    Phase 04-v2 accepts ``_state_version ∈ {1, 2}``:
+      - v=1 (Phase 04 legacy): no ``hyperedge_types`` field. Loader
+        treats missing as empty list.
+      - v=2 (Phase 04-v2 current): ``hyperedge_types`` present.
+    First mutation under Phase 04-v2 binary upgrades to v=2.
 
     Raises:
         ValueError: invalid ``name``.

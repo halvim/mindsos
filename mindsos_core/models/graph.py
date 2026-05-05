@@ -211,26 +211,38 @@ class Graph:
     def add_hyperedge(
         self,
         nodes: Iterable[Node],
+        type_name: str,
         *,
         label: Optional[str] = None,
         properties: Optional[Dict[str, Any]] = None,
         edge_id: Optional[str] = None,
         _validate: bool = True,
     ) -> HyperEdge:
-        """Create and register a new n-ary hyperedge.
+        """Create and register a new n-ary hyperedge (Phase 04-v2 — ADR-0017 / MC-2).
 
-        HyperEdges are not typed in Phase 04 (no per-hyperedge ``type_name``);
-        the property bag is validated against the user-properties contract
-        only (no per-type ``PropertyType`` map).
+        Validates ``type_name`` against the Cypher rel-type identifier
+        regex (ADR-0021) at ``HyperEdge.__post_init__``. Under a
+        :class:`Schema`, also validates the type is registered AND every
+        member's node ``type_name`` is in the HyperEdgeType's
+        ``allowed_member_types`` (when non-empty per HET-1 / AME-1).
+        Under ``strict=True`` schema, additionally validates the property
+        bag against the per-type ``PropertyType`` map.
 
         Args:
+            type_name: Hyperedge type name (Phase 04-v2 required). Cypher
+                rel-type regex applies. SENT-1 sentinel ``"UNSPECIFIED"``
+                is a deliberate fit for the regex (used for legacy v=1/v=2
+                rehydration).
             edge_id: Optional explicit id. If ``None``, a UUID is generated.
             _validate: See :meth:`add_node`. Skips
                 ``validate_user_properties`` on the property bag.
 
         Raises:
             SchemaError: ``nodes`` is empty (via ``HyperEdge.__post_init__``).
+            CypherError: ``type_name`` is unsafe to splice into Cypher.
             IdentityError: any member is not in this graph.
+            UnknownTypeError: under a schema, ``type_name`` is unregistered
+                or any member's node type is outside the allowed_member_types.
             PropertyShapeError: the property bag fails validation
                 (only under ``_validate=True``).
         """
@@ -240,16 +252,25 @@ class Graph:
                 raise IdentityError(
                     f"HyperEdge member {n.node_id!r} not in graph {self.name!r}"
                 )
-        raw_props = properties or {}
-        props = (
-            validate_user_properties(raw_props, scope="hyperedge")
-            if _validate
-            else dict(raw_props)
+        # Phase 04-v2 — cypher regex enforced at HyperEdge.__post_init__.
+        # Schema-level type registration + member-type check before construction.
+        if self.schema is not None:
+            self.schema.validate_hyperedge(
+                type_name, [n.type_name for n in node_set]
+            )
+        props = self._validated_hyperedge_properties(
+            type_name, properties or {}, validate_user_props=_validate
         )
         if edge_id is not None:
-            he = HyperEdge(nodes=node_set, label=label, edge_id=edge_id, properties=props)
+            he = HyperEdge(
+                nodes=node_set, type_name=type_name, label=label,
+                edge_id=edge_id, properties=props,
+            )
         else:
-            he = HyperEdge(nodes=node_set, label=label, properties=props)
+            he = HyperEdge(
+                nodes=node_set, type_name=type_name, label=label,
+                properties=props,
+            )
         self.identity.register(he.edge_id)
         self.hyperedges[he.edge_id] = he
         return he
@@ -318,6 +339,79 @@ class Graph:
         else:
             edge.properties.update(validated)
         return edge
+
+    def update_hyperedge_properties(
+        self,
+        edge_id: str,
+        properties: Mapping[str, Any],
+        *,
+        replace: bool = False,
+    ) -> HyperEdge:
+        """Merge (or replace) a hyperedge's property bag (Phase 04-v2).
+
+        Symmetric with :meth:`update_node_properties` /
+        :meth:`update_edge_properties`. Routes through schema validation
+        when a :class:`Schema` is attached. Phase 04-v2 does NOT bump
+        any ``_version`` (Phase 07 ADR-0127 owns OCC).
+
+        Args:
+            replace: If ``True``, swap the property bag entirely (preserves
+                ``ref:*`` keys at the CLI ``set-prop --replace`` layer; this
+                Python API replaces verbatim).
+
+        Raises:
+            IdentityError: ``edge_id`` is not in this graph's hyperedges.
+            UnknownTypeError / PropertyShapeError: schema validation failed.
+        """
+        he = self.hyperedges.get(edge_id)
+        if he is None:
+            raise IdentityError(f"Unknown hyperedge id: {edge_id!r}")
+        candidate = dict(properties) if replace else {**he.properties, **properties}
+        validated = self._validated_hyperedge_properties(he.type_name, candidate)
+        if replace:
+            he.properties = validated
+        else:
+            he.properties.update(validated)
+        return he
+
+    def update_hyperedge_type(
+        self,
+        edge_id: str,
+        new_type_name: str,
+    ) -> HyperEdge:
+        """Update a hyperedge's type_name (Phase 04-v2 — UHT-1 recovery path).
+
+        Cypher rel-type regex validation per ADR-0021. Schema validation
+        if attached: ``new_type_name`` must be a registered HyperEdgeType
+        AND every member's node type must be in the new type's
+        ``allowed_member_types``.
+
+        Asymmetric with Edge / Node: Edge.type_name and Node.type_name
+        remain immutable (no ``update_edge_type`` / ``update_node_type``
+        ships). Justification: HyperEdge.type_name is a Phase 04-v2-new
+        field; legacy v=1/v=2 hyperedges loaded under SENT-1 carry the
+        ``"UNSPECIFIED"`` sentinel and need a recovery path. Edge / Node
+        type_name has no analogous legacy-migration concern.
+
+        Raises:
+            CypherError: ``new_type_name`` fails the cypher rel-type regex.
+            IdentityError: ``edge_id`` is not in this graph.
+            UnknownTypeError: under a schema, the type is unregistered or
+                some member's type is outside the allowed_member_types.
+        """
+        he = self.hyperedges.get(edge_id)
+        if he is None:
+            raise IdentityError(f"Unknown hyperedge id: {edge_id!r}")
+        # Cypher regex first (independent of schema).
+        from ..cypher.identifiers import validate_edge_type_identifier
+        validate_edge_type_identifier(new_type_name)
+        # Schema check next (if attached).
+        if self.schema is not None:
+            self.schema.validate_hyperedge(
+                new_type_name, [n.type_name for n in he.nodes]
+            )
+        he.type_name = new_type_name
+        return he
 
     # ── deletion ──────────────────────────────────────────────────────────
 
@@ -407,6 +501,23 @@ class Graph:
         if self.schema is not None:
             self.schema.require_edge_type(type_name)
             self.schema.validate_edge_properties(type_name, props)
+        return props
+
+    def _validated_hyperedge_properties(
+        self,
+        type_name: str,
+        properties: Mapping[str, Any],
+        *,
+        validate_user_props: bool = True,
+    ) -> Dict[str, Any]:
+        """Run user-property + (under schema) per-type validation (Phase 04-v2)."""
+        if validate_user_props:
+            props = validate_user_properties(properties, scope="hyperedge")
+        else:
+            props = dict(properties)
+        if self.schema is not None:
+            self.schema.require_hyperedge_type(type_name)
+            self.schema.validate_hyperedge_properties(type_name, props)
         return props
 
     def __repr__(self) -> str:

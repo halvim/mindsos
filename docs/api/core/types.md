@@ -1,8 +1,8 @@
 ---
-last_confirmed_phase: 04
+last_confirmed_phase: 04-v2
 ---
 
-# `mindsos_core.schema` — `NodeType` / `EdgeType` / `PropertyType`
+# `mindsos_core.schema` — `NodeType` / `EdgeType` / `HyperEdgeType` / `PropertyType`
 
 ## `PropertyType`
 
@@ -85,3 +85,33 @@ this is enforced at registration time by `Schema.add_edge_type`.
   NodeType is allowed" — used for unconstrained edges.
 * The `property_types` map is enforced under strict mode (same rules as
   `NodeType.property_types`).
+
+## `HyperEdgeType` (Phase 04-v2)
+
+```python
+@dataclass(frozen=True)
+class HyperEdgeType:
+    name: str
+    allowed_member_types: FrozenSet[str] = field(default_factory=frozenset)
+    property_types: Dict[str, PropertyType] = field(default_factory=dict)
+    description: Optional[str] = None
+```
+
+Frozen dataclass. The `name` MUST match `^[A-Z][A-Z0-9_]{0,63}$` (the
+Cypher rel-type regex per ADR-0021) — enforced at registration time by
+`Schema.add_hyperedge_type`. The SENT-1 sentinel `"UNSPECIFIED"` is a
+deliberate fit for this regex (used for legacy v=1/v=2 hyperedge
+rehydration; see `docs/usage/core/schema.md` Migration section).
+
+**Constraint surface (HET-1):** `allowed_member_types: list[str]` —
+every member's `type_name` must be in the set; no cardinality bounds;
+symmetric across all members. Empty list permitted (AME-1) — under
+non-strict accepts any member; under strict rejects all members until
+populated.
+
+* **Empty `allowed_member_types`** = "any registered NodeType is
+  allowed" — mirrors `EdgeType.allowed_sources` precedent.
+* `property_types` enforced under strict mode (same rules as `NodeType`
+  and `EdgeType`).
+* No `MetaHyperEdgeType` / `IntergraphEdgeType` here — those land in
+  Phase 05a / 05b under the metagraph-scoped `MetagraphSchema`.
