@@ -556,7 +556,12 @@ def confirm_phase(
         suite_hash=suite_hash,
     )
 
-    target = out or _repo_root() / "confirmation_docs" / f"PHASE_{nn}_CONFIRMED.md"
+    # Phase 04-v2 — translate v-suffix hyphen to underscore for filename
+    # consistency with `PHASE_NN_v2_IMPLEMENTATION_LOG.md` convention. Tags +
+    # branches retain hyphen (`phase-04-v2-confirmed`); confirmation docs use
+    # underscore (`PHASE_04_v2_CONFIRMED.md`).
+    filename_nn = nn.replace("-", "_")
+    target = out or _repo_root() / "confirmation_docs" / f"PHASE_{filename_nn}_CONFIRMED.md"
     if target.exists():
         typer.echo(f"warning: overwriting existing {target}", err=True)
     target.parent.mkdir(parents=True, exist_ok=True)

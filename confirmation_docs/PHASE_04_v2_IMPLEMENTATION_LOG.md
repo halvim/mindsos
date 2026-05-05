@@ -97,6 +97,7 @@ design-time issues before code:
 |---|---|---|
 | **D-04-v2** | Original sentinel `"_unspecified"` (lowercase) failed ADR-0021's cypher rel-type regex; `Graph.add_hyperedge` rehydration would have crashed at `__post_init__`. | SENT-1 lock: change sentinel literal to `"UNSPECIFIED"` (uppercase) — satisfies the regex and doubles as a tester-declarable HyperEdgeType for the "escape hatch" pattern. |
 | **D-04-v2-text** | Approved ADR-0017 amendment text from round 7 referenced `"_unspecified"` and didn't mention AME-1 / UHT-1 / ADR-0021 cross-reference; text would have shipped contradicting other locks. | TEXT-1 re-draft incorporated all five locks. |
+| **B-04-v2** | `confirm-phase --phase 04-v2` produced `confirmation_docs/PHASE_04-v2_CONFIRMED.md` (hyphen separator from `nn = "04-v2"` interpolation), inconsistent with the `PHASE_NN_v2_CONFIRMED.md` convention used by `PHASE_04_v2_IMPLEMENTATION_LOG.md` and the supersession-policy text in PHASE_MAP §1. Tags + branches retain hyphen (`phase-04-v2-confirmed`); confirmation docs use underscore. | `mindsos_cli/commands/confirm_phase.py:559` — translate hyphens to underscores in `filename_nn` before `f"PHASE_{filename_nn}_CONFIRMED.md"`. Surfaced by tester on first `confirm-phase --phase 04-v2` invocation. |
 
 ---
 
