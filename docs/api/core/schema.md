@@ -1,12 +1,12 @@
 ---
-last_confirmed_phase: 04
+last_confirmed_phase: 04-v2
 ---
 
 # `mindsos_core.schema.Schema`
 
-A `Schema` gathers `NodeType` and `EdgeType` declarations and exposes
-validation hooks called by the `Graph` primitive on `add_*` and
-`update_*`.
+A `Schema` gathers `NodeType`, `EdgeType`, and (Phase 04-v2) `HyperEdgeType`
+declarations and exposes validation hooks called by the `Graph` primitive
+on `add_*` and `update_*`.
 
 ## Constructor
 
@@ -25,9 +25,10 @@ layer.
 ```python
 def add_node_type(nt: NodeType) -> NodeType
 def add_edge_type(et: EdgeType) -> EdgeType
+def add_hyperedge_type(het: HyperEdgeType) -> HyperEdgeType   # Phase 04-v2
 ```
 
-Both raise `UnknownTypeError` on duplicate registration.
+All three raise `UnknownTypeError` on duplicate registration.
 
 `add_edge_type` additionally:
 
@@ -38,6 +39,13 @@ Both raise `UnknownTypeError` on duplicate registration.
 2. Verifies every name in `allowed_sources` / `allowed_targets` is a
    registered `NodeType`. Unknown ones raise `UnknownTypeError`.
 
+`add_hyperedge_type` additionally (Phase 04-v2):
+
+1. Same Cypher rel-type identifier check as `add_edge_type`.
+2. Verifies every name in `allowed_member_types` is a registered
+   `NodeType`. Unknown ones raise `UnknownTypeError`.
+3. Empty `allowed_member_types` is permitted (AME-1 lock).
+
 ## Queries
 
 ```python
@@ -45,9 +53,12 @@ Both raise `UnknownTypeError` on duplicate registration.
 def node_types(self) -> Mapping[str, NodeType]
 @property
 def edge_types(self) -> Mapping[str, EdgeType]
+@property
+def hyperedge_types(self) -> Mapping[str, HyperEdgeType]   # Phase 04-v2
 
-def require_node_type(name: str) -> NodeType    # raises UnknownTypeError
-def require_edge_type(name: str) -> EdgeType    # raises UnknownTypeError
+def require_node_type(name: str) -> NodeType            # raises UnknownTypeError
+def require_edge_type(name: str) -> EdgeType            # raises UnknownTypeError
+def require_hyperedge_type(name: str) -> HyperEdgeType  # raises UnknownTypeError
 ```
 
 The `*_types` properties return shallow copies — registration order is
@@ -68,6 +79,15 @@ def validate_node_properties(
 ) -> None    # PropertyShapeError under strict mode
 
 def validate_edge_properties(
+    type_name: str, properties: Mapping[str, Any],
+) -> None    # PropertyShapeError under strict mode
+
+def validate_hyperedge(                              # Phase 04-v2
+    hyperedge_type_name: str,
+    member_type_names: Iterable[str],
+) -> None    # UnknownTypeError on out-of-set member type
+
+def validate_hyperedge_properties(                   # Phase 04-v2
     type_name: str, properties: Mapping[str, Any],
 ) -> None    # PropertyShapeError under strict mode
 ```

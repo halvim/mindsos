@@ -144,7 +144,12 @@ def test_graph_state_file_v1_legacy_phase_03_loads(_isolated_state_dir):
 
 
 def test_graph_state_file_v2_round_trip(_isolated_state_dir):
-    """Phase 04: writes and reads v=2 graph state files."""
+    """Phase 04 — Phase 04-v2 still reads + accepts v=2 files (cumulative migration).
+
+    Note: Phase 04-v2 always WRITES v=3, so a save_graph_state call writing
+    a v=2 dict literal still loads (max_version=3). This test pins
+    backward-compat tolerance.
+    """
     state = {
         "_state_version": 2,
         "graph_id": "00000000-0000-4000-8000-000000000003",
@@ -161,11 +166,29 @@ def test_graph_state_file_v2_round_trip(_isolated_state_dir):
     assert loaded["_state_version"] == 2
 
 
-def test_graph_state_v3_refused(_isolated_state_dir):
-    """Phase 04 max_version=2 refuses v=3 (future-version contract)."""
-    future = {
+def test_graph_state_v3_round_trip(_isolated_state_dir):
+    """Phase 04-v2 — writes + reads v=3 graph state files (current format)."""
+    state = {
         "_state_version": 3,
         "graph_id": "00000000-0000-4000-8000-000000000004",
+        "name": "g",
+        "role": "ontology",
+        "schema_name": "s1",
+        "nodes": [],
+        "edges": [],
+        "hyperedges": [],
+    }
+    state_mod.save_graph_state("g", state)
+    loaded = state_mod.load_graph_state("g")
+    assert loaded == state
+    assert loaded["_state_version"] == 3
+
+
+def test_graph_state_v4_refused(_isolated_state_dir):
+    """Phase 04-v2 max_version=3 refuses v=4 (future-version contract)."""
+    future = {
+        "_state_version": 4,
+        "graph_id": "00000000-0000-4000-8000-000000000005",
         "name": "g",
         "role": None,
         "nodes": [],
@@ -180,8 +203,13 @@ def test_graph_state_v3_refused(_isolated_state_dir):
 
 
 def test_graph_state_version_constants_split(_isolated_state_dir):
-    """Per-kind version constants (Phase 04 — Pick P1)."""
-    assert state_mod.GRAPH_STATE_VERSION == 2
-    assert state_mod.SCHEMA_STATE_VERSION == 1
+    """Per-kind version constants (Phase 04 — Pick P1; Phase 04-v2 bumps).
+
+    Pre-implementation audit (Phase 04-v2 row appendix item 20): tests
+    reference ``state_mod.GRAPH_STATE_VERSION`` dynamically rather than
+    hard-coding the int — symmetric with Phase 04 B-04-prev fix.
+    """
+    assert state_mod.GRAPH_STATE_VERSION == 3   # Phase 04-v2.
+    assert state_mod.SCHEMA_STATE_VERSION == 2  # Phase 04-v2.
     # Backward-compat alias points at GRAPH_STATE_VERSION.
     assert state_mod.STATE_VERSION == state_mod.GRAPH_STATE_VERSION

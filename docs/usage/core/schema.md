@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 04
+last_confirmed_phase: 04-v2
 ---
 
 # Schemas
@@ -9,6 +9,12 @@ Phase 04 introduces the **`Schema`** primitive — a typed vocabulary
 `Graph` to enforce node/edge types and (optionally) per-property value
 types. Schemas are **opt-in**: a graph without a schema behaves exactly
 like Phase 03.
+
+**Phase 04-v2** extends the vocabulary with **`HyperEdgeType`** —
+n-ary edge types (`allowed_member_types`) — and makes
+`HyperEdge.type_name` a required field. See the *HyperEdgeType* section
+below and the *Migration from Phase 03 / Phase 04* section for the
+v=2 → v=3 graph state-file migration story.
 
 ## Quick tour
 
@@ -59,7 +65,8 @@ mindsos graph detach-schema --name folks
 | `create --name X [--strict] [--json]` | Declare a new schema. |
 | `add-node-type --schema X --type-name T [--prop-type k=V]... [--description TEXT] [--json]` | Register a NodeType. |
 | `add-edge-type --schema X --type-name REL [--allowed-source NT]... [--allowed-target NT]... [--prop-type k=V]... [--description TEXT] [--json]` | Register an EdgeType. |
-| `inspect --name X [--json]` | Report strictness + registered types. |
+| `add-hyperedge-type --schema X --type-name REL [--allowed-member NT]... [--prop-type k=V]... [--description TEXT] [--json]` | **Phase 04-v2.** Register a HyperEdgeType (n-ary; symmetric across all members; empty `--allowed-member` permitted per AME-1, mirrors EdgeType). |
+| `inspect --name X [--json]` | Report strictness + registered types (now includes `hyperedge_types`). |
 | `list [--json]` | Enumerate all schemas. |
 | `reset (--name X | --all) [--force] [--json]` | Delete schema(s). Refuses if any graph references the targeted schema(s); `--force` overrides. |
 
@@ -70,7 +77,9 @@ mindsos graph detach-schema --name folks
 | `create --name X [--role R] [--schema S] [--json]` | `--schema S` attaches at creation time. |
 | `attach-schema --name G --schema S [--json]` | Attach + eager-validate. Re-attach permitted; `previous_schema` in JSON output. Empty-strict warning emitted on stderr. |
 | `detach-schema --name G [--json]` | Clear `schema_name`. Operates on raw JSON — works even when the referenced schema is missing. |
-| `set-prop --name G (--node-id ID | --edge-id ID) --prop k=v ... [--replace] [--json]` | Schema-validated property update. |
+| `set-prop --name G (--node-id ID | --edge-id ID | --hyperedge-id ID) --prop k=v ... [--replace] [--json]` | Schema-validated property update. **Phase 04-v2 adds `--hyperedge-id` to the mutex.** |
+| `add-hyperedge --name G --type REL --member ID [--member ID]... [--label L] [--prop k=v]... [--hyperedge-id ID] [--json]` | **Phase 04-v2 — `--type` required** (cypher rel-type regex). Schema-validated when attached. |
+| `update-hyperedge-type --name G --hyperedge-id ID --type NEW [--json]` | **Phase 04-v2 (UHT-1).** Legacy-migration recovery — update a hyperedge's `type_name` from the SENT-1 sentinel `UNSPECIFIED` to a real type. Asymmetric note: Edge.type_name and Node.type_name remain immutable. |
 
 ## State file
 
@@ -392,3 +401,105 @@ Same conventions as Phase 03 — see [Building graphs](building-graphs.md).
 * **ADR-0133** — Soft-delete via `deprecated_at` / `disputed_at`
   (deferred to Phase 10; Phase 04 reserves the keys via
   `RESERVED_PROPERTY_KEYS`).
+
+---
+
+## HyperEdgeType (Phase 04-v2)
+
+Phase 04-v2 — additive scope expansion via the supersession policy
+("expansion" trigger per PHASE_MAP §1) — adds `HyperEdgeType` to the
+schema vocabulary and makes `HyperEdge.type_name` a required field.
+
+**Locks:** MC-2 (ship HyperEdgeType), HET-1 (`allowed_member_types`
+only; no cardinality), AME-1 (empty list permitted), SENT-1 (legacy
+sentinel `UNSPECIFIED`), UHT-1 (`update-hyperedge-type` recovery CLI).
+
+```sh
+# 1. Declare a HyperEdgeType.
+mindsos schema add-hyperedge-type --schema people-schema \
+    --type-name ATTENDS \
+    --allowed-member Person --allowed-member School \
+    --description "n-ary relationship — Person + School + ..."
+
+# 2. Use it. --type is now REQUIRED on add-hyperedge.
+mindsos graph add-hyperedge --name folks --type ATTENDS \
+    --member n-alice --member n-school
+
+# 3. set-prop now accepts --hyperedge-id (mutex with --node-id / --edge-id).
+mindsos graph set-prop --name folks --hyperedge-id he-1 --prop year=2024
+```
+
+**Constraint surface (HET-1):** `allowed_member_types` is a flat
+`list[str]` — every member's `type_name` must be in the set; no
+cardinality bounds; symmetric across all members. Empty list is
+permitted (AME-1) — under non-strict accepts any member; under strict
+rejects all members until populated. There's no
+`update-hyperedge-type-allowed-member` CLI; if you need to change the
+allowed set, declare a new HyperEdgeType.
+
+**Re-attach validation extends:** `mindsos graph attach-schema` now
+re-validates every existing hyperedge in addition to nodes and edges.
+The validation order is **every Node, then every Edge, then every
+HyperEdge** — first violation across the three categories surfaces
+the offending element id and refuses the attach.
+
+## Migration from Phase 03 / Phase 04 (v=2 → v=3)
+
+Phase 04-v2 bumps the **graph state-file** format from v=2 to v=3
+(adds `type_name` per hyperedge entry) AND the **schema state-file**
+format from v=1 to v=2 (adds `hyperedge_types` map). Both migrations
+are **one-way cumulative** — first Phase 04-v2 mutation upgrades any
+pre-current file directly to the current version.
+
+**Cumulative graph migration:** the Phase 04-v2 binary tolerates
+v=1 ∪ v=2 ∪ v=3 reads. Pre-v=3 hyperedges receive
+`type_name="UNSPECIFIED"` (the SENT-1 sentinel — chosen to satisfy
+ADR-0021's cypher rel-type regex). The first mutation writes v=3.
+
+**Strict-mode interaction with `UNSPECIFIED`.** A strict schema
+attached to a graph with legacy hyperedges **rejects** them on eager
+attach (the schema doesn't have `UNSPECIFIED` in `hyperedge_types`).
+Three recovery paths:
+
+1. **Update each legacy hyperedge to a real type** via UHT-1 *before*
+   attaching the strict schema:
+   ```sh
+   mindsos graph update-hyperedge-type --name folks \
+       --hyperedge-id he-1 --type PAIR
+   ```
+2. **Declare an `UNSPECIFIED` HyperEdgeType in the schema** as an
+   "escape hatch" that absorbs legacy hyperedges:
+   ```sh
+   mindsos schema add-hyperedge-type --schema people-schema \
+       --type-name UNSPECIFIED \
+       --allowed-member Person --allowed-member School
+   ```
+3. **Recreate the hyperedge** (delete via `remove-hyperedge` if
+   available, or reset the graph and rebuild — currently the only path
+   for getting rid of legacy hyperedges other than UHT-1).
+
+**Rolling back to Phase 04 (v=2).** Phase 04 binary loading a v=3 file
+rejects with `this CLI supports v2`. Recovery:
+
+* Cleanest: `rm -rf ~/.mindsos/graph-*.json && rm -rf ~/.mindsos/schema-*.json`
+  and rebuild from scratch.
+* Manual JSON downgrade per file:
+  - `graph-*.json`: set `"_state_version": 2`; drop the `type_name`
+    field from every hyperedge entry.
+  - `schema-*.json`: set `"_state_version": 1`; drop the
+    `hyperedge_types` field.
+
+Rolling all the way back to Phase 03 layers v=2→v=1 on top of the above
+(drop `schema_name`, set `"_state_version": 1`).
+
+## Asymmetry: `update-hyperedge-type` vs Edge / Node
+
+Phase 04-v2 ships **`update-hyperedge-type`** for HyperEdge. There is
+no equivalent `update-edge-type` or `update-node-type` — `Edge.type_name`
+and `Node.type_name` remain immutable after creation.
+
+**Why the asymmetry:** Phase 04-v2 introduces a new top-level field
+on HyperEdge mid-stream; legacy hyperedges loaded under SENT-1 carry
+the `UNSPECIFIED` sentinel and need a recovery path. Edge / Node
+type_name has no analogous legacy-migration concern; immutability
+remains a feature there.

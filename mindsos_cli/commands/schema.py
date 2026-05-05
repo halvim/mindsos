@@ -1,4 +1,4 @@
-"""`mindsos schema` — Phase 04 L1 Schema CLI surface.
+"""`mindsos schema` — Phase 04-v2 L1 Schema CLI surface.
 
 Subcommands:
 
@@ -11,6 +11,10 @@ Subcommands:
                                [--allowed-target <NODE_TYPE>]...
                                [--prop-type k=<PROPTYPE>]...
                                [--description TEXT] [--json]
+  mindsos schema add-hyperedge-type --schema <NAME> --type-name <REL_TYPE>
+                                    [--allowed-member <NODE_TYPE>]...
+                                    [--prop-type k=<PROPTYPE>]...
+                                    [--description TEXT] [--json]
   mindsos schema inspect --name <NAME> [--json]
   mindsos schema list [--json]
   mindsos schema reset (--name <NAME> | --all) [--force] [--json]
@@ -54,6 +58,7 @@ import typer
 from mindsos_core import (
     CypherError,
     EdgeType,
+    HyperEdgeType,
     NodeType,
     PropertyType,
     Schema,
@@ -115,15 +120,18 @@ def _parse_prop_types(args: List[str]) -> Dict[str, PropertyType]:
 
 
 def _schema_to_state(name: str, schema: Schema) -> dict:
-    """Serialize a ``Schema`` to the v1 state-file dict.
+    """Serialize a ``Schema`` to the v=2 state-file dict (Phase 04-v2).
 
     Sorts top-level lists by ``name``; sorts ``allowed_sources`` /
-    ``allowed_targets``; serialises ``PropertyType`` via ``.value``.
-    Always writes ``_state_version: SCHEMA_STATE_VERSION`` (= 1 in
-    Phase 04).
+    ``allowed_targets`` / ``allowed_member_types``; serialises
+    ``PropertyType`` via ``.value``. Always writes
+    ``_state_version: SCHEMA_STATE_VERSION`` (= 2 in Phase 04-v2).
     """
     node_types = sorted(schema.node_types.values(), key=lambda nt: nt.name)
     edge_types = sorted(schema.edge_types.values(), key=lambda et: et.name)
+    hyperedge_types = sorted(
+        schema.hyperedge_types.values(), key=lambda het: het.name
+    )
     return {
         "_state_version": state_mod.SCHEMA_STATE_VERSION,
         "name": name,
@@ -145,6 +153,18 @@ def _schema_to_state(name: str, schema: Schema) -> dict:
                 "description": et.description,
             }
             for et in edge_types
+        ],
+        # Phase 04-v2 — HyperEdgeType vocabulary added.
+        "hyperedge_types": [
+            {
+                "name": het.name,
+                "allowed_member_types": sorted(het.allowed_member_types),
+                "property_types": {
+                    k: v.value for k, v in het.property_types.items()
+                },
+                "description": het.description,
+            }
+            for het in hyperedge_types
         ],
     }
 
@@ -195,6 +215,24 @@ def _state_to_schema(state: dict) -> Schema:
                 allowed_targets=frozenset(et_dict.get("allowed_targets") or []),
                 property_types=property_types,
                 description=et_dict.get("description"),
+            )
+        )
+    # Phase 04-v2 — HyperEdgeType vocabulary. Tolerates v=1 schema state
+    # files (missing ``hyperedge_types`` field treated as empty list).
+    for het_dict in state.get("hyperedge_types", []) or []:
+        het_name = het_dict.get("name", "<unknown>")
+        property_types = {
+            k: _ptype(v, scope="hyperedge", type_name=het_name, key=k)
+            for k, v in (het_dict.get("property_types") or {}).items()
+        }
+        schema.add_hyperedge_type(
+            HyperEdgeType(
+                name=het_name,
+                allowed_member_types=frozenset(
+                    het_dict.get("allowed_member_types") or []
+                ),
+                property_types=property_types,
+                description=het_dict.get("description"),
             )
         )
     return schema
@@ -434,6 +472,84 @@ def add_edge_type_cmd(
 
 
 # ---------------------------------------------------------------------------
+# add-hyperedge-type (Phase 04-v2 — ADR-0017 / MC-2 / HET-1 / AME-1)
+# ---------------------------------------------------------------------------
+
+
+@schema_app.command("add-hyperedge-type")
+def add_hyperedge_type_cmd(
+    schema_name: str = typer.Option(..., "--schema", help="Schema name."),
+    type_name: str = typer.Option(
+        ..., "--type-name",
+        help="HyperEdge type / Cypher rel-type (must match ^[A-Z][A-Z0-9_]{0,63}$).",
+    ),
+    allowed_member: List[str] = typer.Option(
+        [], "--allowed-member",
+        help="Repeat: a NodeType name allowed as hyperedge member. "
+             "Empty = any (AME-1; mirrors EdgeType allowed_sources / "
+             "allowed_targets precedent).",
+    ),
+    prop_type: List[str] = typer.Option(
+        [], "--prop-type",
+        help="Repeat: k=<vocab> (same 8-variant PropertyType vocabulary as "
+             "add-edge-type).",
+    ),
+    description: Optional[str] = typer.Option(
+        None, "--description", help="Optional human-readable description."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Register a HyperEdgeType on the named schema (Phase 04-v2).
+
+    ``--type-name`` validates against the cypher rel-type regex per
+    ADR-0021 (the SENT-1 sentinel ``UNSPECIFIED`` is a deliberate fit).
+    ``--allowed-member`` may be empty (AME-1 lock); under non-strict the
+    type accepts any member, under strict the type rejects all members
+    until allowed-members are populated.
+
+    No cardinality bounds (HET-1 lock); symmetric across all members.
+    """
+    schema = _load_or_die(schema_name)
+    property_types = _parse_prop_types(prop_type or [])
+    try:
+        het = schema.add_hyperedge_type(
+            HyperEdgeType(
+                name=type_name,
+                allowed_member_types=frozenset(allowed_member or []),
+                property_types=property_types,
+                description=description,
+            )
+        )
+    except CypherError as e:
+        typer.echo(f"CypherError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    _save_or_die(schema_name, schema)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "name": het.name,
+                    "allowed_member_types": sorted(het.allowed_member_types),
+                    "property_types": {
+                        k: v.value for k, v in het.property_types.items()
+                    },
+                    "description": het.description,
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(
+            f"ok: added hyperedge type name={het.name!r} "
+            f"members={sorted(het.allowed_member_types)} "
+            f"(empty=any per AME-1)"
+        )
+
+
+# ---------------------------------------------------------------------------
 # inspect
 # ---------------------------------------------------------------------------
 
@@ -466,6 +582,18 @@ def inspect_cmd(
             }
             for et in sorted(schema.edge_types.values(), key=lambda x: x.name)
         ],
+        # Phase 04-v2 — HyperEdgeType vocabulary in inspect output.
+        "hyperedge_types": [
+            {
+                "name": het.name,
+                "allowed_member_types": sorted(het.allowed_member_types),
+                "property_types": {
+                    k: v.value for k, v in het.property_types.items()
+                },
+                "description": het.description,
+            }
+            for het in sorted(schema.hyperedge_types.values(), key=lambda x: x.name)
+        ],
         "state_file": str(state_mod.schema_file_path(name)),
     }
     if json_out:
@@ -484,6 +612,12 @@ def inspect_cmd(
                 f"  {et['name']!r}  sources={et['allowed_sources']} "
                 f"targets={et['allowed_targets']} "
                 f"property_types={et['property_types']}"
+            )
+        typer.echo(f"hyperedge_types ({len(summary['hyperedge_types'])}):")
+        for het in summary["hyperedge_types"]:
+            typer.echo(
+                f"  {het['name']!r}  members={het['allowed_member_types']} "
+                f"property_types={het['property_types']}"
             )
 
 
@@ -523,6 +657,7 @@ def list_schemas_cmd(
                 "counts": {
                     "node_types": len(state.get("node_types") or []),
                     "edge_types": len(state.get("edge_types") or []),
+                    "hyperedge_types": len(state.get("hyperedge_types") or []),
                 },
                 "path": str(path),
             }

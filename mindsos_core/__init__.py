@@ -1,11 +1,13 @@
-"""MindsOS Core Layer — Phase 04 surface (identity + graph elements + cypher safety + schema).
+"""MindsOS Core Layer — Phase 04-v2 surface (identity + graph elements + cypher safety + schema incl. HyperEdgeType).
 
 Phase 02 shipped identity primitives. Phase 03 added graph elements and
 the Cypher identifier-safety regex (ADR-0021). Phase 04 adds the
 ``Schema`` machinery (NodeType / EdgeType / PropertyType + opt-in strict
 property typing) and restores ``Graph``'s ``schema`` ctor parameter +
 ``update_node_properties`` / ``update_edge_properties`` (deferred from
-Phase 03):
+Phase 03). Phase 04-v2 adds ``HyperEdgeType`` + ``HyperEdge.type_name``
++ ``Graph.update_hyperedge_properties`` + ``Graph.update_hyperedge_type``
+(MC-2 / HET-1 / SENT-1 / UHT-1 locks):
 
     from mindsos_core import (
         # exceptions (Phase 02 + 03 + 04)
@@ -19,8 +21,8 @@ Phase 03):
         Graph, Node, Edge, HyperEdge,
         # cypher safety (Phase 03 — ADR-0021)
         validate_edge_type_identifier, validate_label_identifier,
-        # schema (Phase 04 — ADR-0017)
-        Schema, NodeType, EdgeType, PropertyType,
+        # schema (Phase 04 + 04-v2 — ADR-0017)
+        Schema, NodeType, EdgeType, HyperEdgeType, PropertyType,
         validate_user_properties,
         RESERVED_PROPERTY_KEYS, REF_PROPERTY_PREFIX,
     )
@@ -78,6 +80,7 @@ from .models.identity import (
 from .models.node import Node
 from .schema import (
     EdgeType,
+    HyperEdgeType,
     NodeType,
     PropertyType,
     REF_PROPERTY_PREFIX,
@@ -111,14 +114,15 @@ __all__ = [
     # cypher safety (Phase 03 — ADR-0021)
     "validate_edge_type_identifier",
     "validate_label_identifier",
-    # schema (Phase 04 — ADR-0017)
+    # schema (Phase 04 + 04-v2 — ADR-0017)
     "Schema",
     "NodeType",
     "EdgeType",
+    "HyperEdgeType",
     "PropertyType",
     "validate_user_properties",
     "RESERVED_PROPERTY_KEYS",
     "REF_PROPERTY_PREFIX",
 ]
 
-__version__ = "0.0.0+phase04"
+__version__ = "0.0.0+phase04.v2"

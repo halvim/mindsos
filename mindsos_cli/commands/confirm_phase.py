@@ -99,16 +99,22 @@ def _init_notes(phase_token: str, out_path: Path | None) -> Path:
     phase number (`--init-notes 02`), parity with `--phase NN`. The
     `phase-NN` form is preserved as a parse-accepted alias for tester
     muscle memory carried over from Phase 01.
+
+    Phase 04-v2 (T1 / VERSTR-1 lock): tolerant of letter sub-phases
+    (e.g. ``05a`` / ``05b``) AND v-suffix supersession (e.g. ``04-v2``).
+    The phase token regex accepts ``\\d{1,3}([a-z]|-v\\d+)?``.
     """
-    bare = re.fullmatch(r"\d{1,3}", phase_token)
-    prefixed = re.fullmatch(r"phase-(\d{1,3})", phase_token)
+    bare = re.fullmatch(r"\d{1,3}([a-z]|-v\d+)?", phase_token)
+    prefixed = re.fullmatch(r"phase-(\d{1,3}([a-z]|-v\d+)?)", phase_token)
     if bare:
-        nn = phase_token.zfill(2)
+        nn = phase_token if "-" in phase_token or any(c.isalpha() for c in phase_token) else phase_token.zfill(2)
     elif prefixed:
-        nn = prefixed.group(1).zfill(2)
+        inner = prefixed.group(1)
+        nn = inner if "-" in inner or any(c.isalpha() for c in inner) else inner.zfill(2)
     else:
         typer.echo(
-            f"--init-notes expects 'NN' (e.g. '02') or 'phase-NN' (legacy alias), "
+            f"--init-notes expects 'NN' (e.g. '02'), 'NNa' / 'NNb' (sub-phase), "
+            f"'NN-vM' (supersession), or 'phase-NN[a|-vM]' (legacy alias), "
             f"got: {phase_token!r}",
             err=True,
         )

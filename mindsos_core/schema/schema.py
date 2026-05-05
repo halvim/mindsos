@@ -18,11 +18,11 @@ class.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Iterable, Mapping
 
 from ..cypher.identifiers import validate_edge_type_identifier
 from ..exceptions import PropertyShapeError, UnknownTypeError
-from .types import EdgeType, NodeType, PropertyType
+from .types import EdgeType, HyperEdgeType, NodeType, PropertyType
 
 
 _TYPE_PY_MAP = {
@@ -44,6 +44,8 @@ class Schema:
         self.strict: bool = strict
         self._node_types: Dict[str, NodeType] = {}
         self._edge_types: Dict[str, EdgeType] = {}
+        # Phase 04-v2 — ADR-0017 / MC-2 — typed hyperedges via HyperEdgeType.
+        self._hyperedge_types: Dict[str, HyperEdgeType] = {}
 
     # ── registration ─────────────────────────────────────────────────────
 
@@ -70,6 +72,28 @@ class Schema:
         self._edge_types[et.name] = et
         return et
 
+    def add_hyperedge_type(self, het: HyperEdgeType) -> HyperEdgeType:
+        """Register a HyperEdgeType (Phase 04-v2 — ADR-0017 / MC-2 / HET-1).
+
+        ``het.name`` validates against the Cypher rel-type regex per
+        ADR-0021 (the SENT-1 sentinel ``"UNSPECIFIED"`` is a deliberate
+        fit). Every entry in ``het.allowed_member_types`` must already be
+        a registered :class:`NodeType` (mirrors EdgeType.allowed_sources
+        check). Empty ``allowed_member_types`` is permitted (AME-1).
+        """
+        validate_edge_type_identifier(het.name)
+        if het.name in self._hyperedge_types:
+            raise UnknownTypeError(
+                f"HyperEdge type {het.name!r} already registered"
+            )
+        for m in het.allowed_member_types:
+            if m not in self._node_types:
+                raise UnknownTypeError(
+                    f"HyperEdgeType {het.name!r} allowed_member {m!r} is not a registered NodeType"
+                )
+        self._hyperedge_types[het.name] = het
+        return het
+
     # ── queries ──────────────────────────────────────────────────────────
 
     @property
@@ -79,6 +103,10 @@ class Schema:
     @property
     def edge_types(self) -> Mapping[str, EdgeType]:
         return dict(self._edge_types)
+
+    @property
+    def hyperedge_types(self) -> Mapping[str, HyperEdgeType]:
+        return dict(self._hyperedge_types)
 
     def require_node_type(self, name: str) -> NodeType:
         nt = self._node_types.get(name)
@@ -91,6 +119,12 @@ class Schema:
         if et is None:
             raise UnknownTypeError(f"Unknown edge type: {name!r}")
         return et
+
+    def require_hyperedge_type(self, name: str) -> HyperEdgeType:
+        het = self._hyperedge_types.get(name)
+        if het is None:
+            raise UnknownTypeError(f"Unknown hyperedge type: {name!r}")
+        return het
 
     # ── validation ───────────────────────────────────────────────────────
 
@@ -112,6 +146,27 @@ class Schema:
                 f"{target_type_name!r} (allowed: {sorted(et.allowed_targets)})"
             )
 
+    def validate_hyperedge(
+        self,
+        hyperedge_type_name: str,
+        member_type_names: Iterable[str],
+    ) -> None:
+        """Phase 04-v2 — validate hyperedge type + member types.
+
+        Raises ``UnknownTypeError`` if the type is unregistered OR if any
+        member's type_name is not in ``allowed_member_types`` (when the
+        set is non-empty per HET-1 / AME-1 semantics).
+        """
+        het = self.require_hyperedge_type(hyperedge_type_name)
+        if het.allowed_member_types:
+            for member_type in member_type_names:
+                if member_type not in het.allowed_member_types:
+                    raise UnknownTypeError(
+                        f"HyperEdge type {hyperedge_type_name!r} does not "
+                        f"permit member type {member_type!r} "
+                        f"(allowed: {sorted(het.allowed_member_types)})"
+                    )
+
     def validate_node_properties(
         self, type_name: str, properties: Mapping[str, Any]
     ) -> None:
@@ -128,6 +183,15 @@ class Schema:
             return
         et = self.require_edge_type(type_name)
         self._check_property_types("edge", et.name, et.property_types, properties)
+
+    def validate_hyperedge_properties(
+        self, type_name: str, properties: Mapping[str, Any]
+    ) -> None:
+        """Phase 04-v2 — strict property-type checks for HyperEdgeType."""
+        if not self.strict:
+            return
+        het = self.require_hyperedge_type(type_name)
+        self._check_property_types("hyperedge", het.name, het.property_types, properties)
 
     # ── helpers ──────────────────────────────────────────────────────────
 

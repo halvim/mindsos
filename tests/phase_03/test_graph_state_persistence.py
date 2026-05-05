@@ -38,7 +38,7 @@ def test_round_trip_full_graph(_isolated_state_dir):
     )
     runner.invoke(
         app,
-        ["graph", "add-hyperedge", "--name", "g1",
+        ["graph", "add-hyperedge", "--name", "g1", "--type", "TRIO",
          "--member", "a", "--member", "b", "--member", "c"],
     )
 
@@ -92,7 +92,7 @@ def test_state_file_hyperedge_member_ids_sorted(_isolated_state_dir):
         )
     runner.invoke(
         app,
-        ["graph", "add-hyperedge", "--name", "g1",
+        ["graph", "add-hyperedge", "--name", "g1", "--type", "TRIO",
          "--member", "c", "--member", "a", "--member", "b"],
     )
     state = json.loads(

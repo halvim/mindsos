@@ -207,6 +207,7 @@ def _graph_to_state(g: Graph, *, schema_name: Optional[str]) -> dict:
         "hyperedges": [
             {
                 "edge_id": h.edge_id,
+                "type_name": h.type_name,  # Phase 04-v2 — required field.
                 "member_ids": sorted(n.node_id for n in h.nodes),
                 "label": h.label,
                 "properties": dict(h.properties),
@@ -271,8 +272,12 @@ def _state_to_graph(state: dict) -> tuple[Graph, Optional[str]]:
         )
     for h in state.get("hyperedges", []):
         members = [g.nodes[mid] for mid in h["member_ids"]]
+        # Phase 04-v2 — populate SENT-1 sentinel for legacy v=1/v=2
+        # hyperedges that pre-date the type_name field.
+        type_name = h.get("type_name") or "UNSPECIFIED"
         g.add_hyperedge(
             nodes=members,
+            type_name=type_name,
             label=h.get("label"),
             properties=dict(h.get("properties") or {}),
             edge_id=h["edge_id"],
@@ -573,6 +578,9 @@ def add_edge_cmd(
 @graph_app.command("add-hyperedge")
 def add_hyperedge_cmd(
     name: str = typer.Option(..., "--name", help="Graph name."),
+    type_name: str = typer.Option(
+        ..., "--type", help="Hyperedge relationship type (Phase 04-v2 — required)."
+    ),
     member: list[str] = typer.Option(
         [], "--member", help="Repeat: a node id to include in the hyperedge."
     ),
@@ -585,7 +593,13 @@ def add_hyperedge_cmd(
     ),
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
-    """Add an n-ary hyperedge across the named members."""
+    """Add an n-ary hyperedge across the named members.
+
+    Phase 04-v2 — ``--type`` is required; cypher rel-type regex applies
+    (ADR-0021). When a strict schema is attached, the type must be
+    registered as a HyperEdgeType and every member's type must be in
+    the type's ``allowed_member_types``.
+    """
     g, schema_name = _load_or_die(name)
     members = list(member or [])
     resolved: list[Node] = []
@@ -601,12 +615,19 @@ def add_hyperedge_cmd(
     try:
         he = g.add_hyperedge(
             nodes=resolved,
+            type_name=type_name,
             label=label,
             properties=props,
             edge_id=hyperedge_id,
         )
     except SchemaError as e:
         typer.echo(f"SchemaError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except CypherError as e:
+        typer.echo(f"CypherError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
         raise typer.Exit(code=1)
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
@@ -621,6 +642,7 @@ def add_hyperedge_cmd(
             json.dumps(
                 {
                     "edge_id": he.edge_id,
+                    "type_name": he.type_name,
                     "member_ids": sorted_member_ids,
                     "label": he.label,
                     "properties": dict(he.properties),
@@ -631,7 +653,75 @@ def add_hyperedge_cmd(
     else:
         typer.echo(
             f"ok: added hyperedge id={he.edge_id} "
+            f"type={he.type_name!r} "
             f"members={sorted_member_ids} label={he.label!r}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# update-hyperedge-type (Phase 04-v2 — UHT-1 legacy migration recovery)
+# ---------------------------------------------------------------------------
+
+
+@graph_app.command("update-hyperedge-type")
+def update_hyperedge_type_cmd(
+    name: str = typer.Option(..., "--name", help="Graph name."),
+    hyperedge_id: str = typer.Option(
+        ..., "--hyperedge-id", help="Hyperedge id whose type_name to update."
+    ),
+    new_type_name: str = typer.Option(
+        ..., "--type", help="New hyperedge type_name (cypher rel-type regex applies)."
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Update a hyperedge's ``type_name`` (Phase 04-v2 — UHT-1 recovery path).
+
+    Designed for legacy migration: pre-v=3 hyperedges load with the
+    SENT-1 sentinel ``"UNSPECIFIED"`` and need a path to receive a real
+    type_name. Cypher rel-type regex per ADR-0021 applies. Schema check
+    if attached: type must be registered AND every member's node type
+    must be in ``allowed_member_types``.
+
+    Asymmetric note: Edge.type_name and Node.type_name remain immutable
+    (no ``update-edge-type`` / ``update-node-type`` ships). HyperEdge
+    receives this surface solely as a Phase 04-v2 legacy-migration path.
+    """
+    g, schema_name = _load_or_die(name)
+    he = g.hyperedges.get(hyperedge_id)
+    if he is None:
+        typer.echo(
+            f"IdentityError: Unknown hyperedge id: {hyperedge_id!r}",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    previous_type_name = he.type_name
+    try:
+        g.update_hyperedge_type(hyperedge_id, new_type_name)
+    except CypherError as e:
+        typer.echo(f"CypherError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except IdentityError as e:
+        typer.echo(f"IdentityError: {e}", err=True)
+        raise typer.Exit(code=1)
+    _save_or_die(name, g, schema_name=schema_name)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "hyperedge_id": hyperedge_id,
+                    "previous_type_name": previous_type_name,
+                    "new_type_name": new_type_name,
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(
+            f"ok: updated hyperedge id={hyperedge_id} "
+            f"type {previous_type_name!r} -> {new_type_name!r}"
         )
 
 
@@ -721,11 +811,18 @@ def attach_schema_cmd(
             members = [validator.nodes[m.node_id] for m in h.nodes]
             validator.add_hyperedge(
                 nodes=members,
+                type_name=h.type_name,  # Phase 04-v2 — schema validation extends.
                 label=h.label,
                 properties=dict(h.properties),
                 edge_id=h.edge_id,
             )
-        except (PropertyShapeError, IdentityError, SchemaError) as exc:
+        except (
+            CypherError,
+            UnknownTypeError,
+            PropertyShapeError,
+            IdentityError,
+            SchemaError,
+        ) as exc:
             _validation_exit("hyperedge", h.edge_id, exc)
 
     # Validation passed — persist the original graph (data is unchanged)
@@ -859,6 +956,10 @@ def set_prop_cmd(
     edge_id: Optional[str] = typer.Option(
         None, "--edge-id", help="Edge id to update."
     ),
+    hyperedge_id: Optional[str] = typer.Option(
+        None, "--hyperedge-id",
+        help="Hyperedge id to update (Phase 04-v2 — added to mutex).",
+    ),
     prop: list[str] = typer.Option(
         [], "--prop", help="Repeat: k=v (JSON-or-string). Required."
     ),
@@ -870,7 +971,10 @@ def set_prop_cmd(
     ),
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
-    """Update a node or edge's property bag (schema-validated when attached).
+    """Update a node, edge, or hyperedge's property bag (schema-validated when attached).
+
+    Phase 04-v2 — 3-way mutex: exactly ONE of ``--node-id`` / ``--edge-id``
+    / ``--hyperedge-id`` must be supplied (no zero, no two, no three).
 
     --replace semantics (Phase 04 — Pick D + N5):
       The non-ref portion of the existing bag is dropped; the user-supplied
@@ -880,9 +984,12 @@ def set_prop_cmd(
       There is no CLI path to DROP a ref key in Phase 04 — recovery via
       hand-edit, or future Phase 09 XRef migration.
     """
-    if (node_id is None) == (edge_id is None):
+    # Phase 04-v2 — 3-way mutex (extends Phase 04's 2-way).
+    n_set = sum(1 for x in (node_id, edge_id, hyperedge_id) if x is not None)
+    if n_set != 1:
         typer.echo(
-            "Specify exactly one of --node-id <ID> or --edge-id <ID>.", err=True
+            "Specify exactly one of --node-id, --edge-id, or --hyperedge-id.",
+            err=True,
         )
         raise typer.Exit(code=2)
     if not prop:
@@ -898,12 +1005,22 @@ def set_prop_cmd(
             props_to_apply = _build_replace_bag(existing, user_props) if replace else user_props
             elt = g.update_node_properties(node_id, props_to_apply, replace=replace)
             kind, kind_id, type_name = "node", elt.node_id, elt.type_name
-        else:
-            assert edge_id is not None  # mypy
+        elif edge_id is not None:
             existing = g.edges[edge_id].properties if edge_id in g.edges else None
             props_to_apply = _build_replace_bag(existing, user_props) if replace else user_props
             elt = g.update_edge_properties(edge_id, props_to_apply, replace=replace)
             kind, kind_id, type_name = "edge", elt.edge_id, elt.type_name
+        else:
+            assert hyperedge_id is not None  # mypy
+            existing = (
+                g.hyperedges[hyperedge_id].properties
+                if hyperedge_id in g.hyperedges else None
+            )
+            props_to_apply = _build_replace_bag(existing, user_props) if replace else user_props
+            elt = g.update_hyperedge_properties(
+                hyperedge_id, props_to_apply, replace=replace
+            )
+            kind, kind_id, type_name = "hyperedge", elt.edge_id, elt.type_name
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
         raise typer.Exit(code=1)
@@ -1032,6 +1149,7 @@ def list_hyperedges_cmd(
                 [
                     {
                         "edge_id": h.edge_id,
+                        "type_name": h.type_name,  # Phase 04-v2.
                         "member_ids": sorted(n.node_id for n in h.nodes),
                         "label": h.label,
                         "properties": dict(h.properties),
