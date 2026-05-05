@@ -43,15 +43,20 @@ jobs:
       - name: Extract phase number from tag
         id: phase
         run: |
-          # Accepts both `phase-NN-confirmed` and `phase-NN-vM-confirmed`.
+          # Accepts all four forms (per SUPER-§1-EXT letter-sub-phase lock):
+          #   phase-NN-confirmed
+          #   phase-NN-vM-confirmed         (supersession)
+          #   phase-NNa-confirmed           (letter sub-phase, e.g. phase-05a-)
+          #   phase-NNa-vM-confirmed        (supersession of letter sub-phase)
           TAG="${GITHUB_REF##refs/tags/}"
-          if ! [[ "$TAG" =~ ^phase-([0-9]+)(-v([0-9]+))?-confirmed$ ]]; then
-            echo "::error::Tag does not match phase-NN(-vM)?-confirmed: $TAG"
+          if ! [[ "$TAG" =~ ^phase-([0-9]+)([a-z])?(-v([0-9]+))?-confirmed$ ]]; then
+            echo "::error::Tag does not match phase-NN[a-z]?(-vM)?-confirmed: $TAG"
             exit 1
           fi
-          NN="${BASH_REMATCH[1]}"
-          VSUFFIX="${BASH_REMATCH[2]}"  # empty for v1, "-vM" for supersession
-          NN_PADDED=$(printf '%02d' "$NN")
+          NN_NUM="${BASH_REMATCH[1]}"
+          LETTER="${BASH_REMATCH[2]}"   # empty or single lowercase letter
+          VSUFFIX="${BASH_REMATCH[3]}"  # empty or "-vM"
+          NN_PADDED="$(printf '%02d' "$NN_NUM")${LETTER}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "nn=${NN_PADDED}" >> "$GITHUB_OUTPUT"
           echo "vsuffix=${VSUFFIX}" >> "$GITHUB_OUTPUT"
@@ -153,15 +158,17 @@ jobs:
           # rules are unit-tested (tests/phase_01/test_retention.py). The
           # workflow is responsible for asset I/O only.
           #
-          # Tag grammar honoured: phase-NN-confirmed AND phase-NN-vM-confirmed.
-          # Within a slot (same NN), older versions evict immediately. Across
+          # Tag grammar honoured: phase-NN[a-z]?(-vM)?-confirmed (per
+          # SUPER-§1-EXT letter-sub-phase lock). Within a slot (same NN +
+          # same letter, if any), older versions evict immediately. Across
           # slots, the 5 highest-numbered install targets keep their tarball.
+          # Slot ordering: 05 < 05a < 05b < 06.
           set -euo pipefail
 
           # `export` so the Python heredoc below (a child process) inherits
           # the value via os.environ. Without this, Python sees KeyError.
           export ALL_TAGS=$(gh release list --limit 100 --json tagName --jq '.[].tagName' \
-                            | grep -E '^phase-[0-9]+(-v[0-9]+)?-confirmed$' || true)
+                            | grep -E '^phase-[0-9]+[a-z]?(-v[0-9]+)?-confirmed$' || true)
 
           if [ -z "$ALL_TAGS" ]; then
             echo "no confirmed-phase releases yet — nothing to prune"
@@ -199,11 +206,12 @@ jobs:
           # For each evicted tag, derive the tarball asset name and replace
           # it with a 1-line placeholder via `gh release upload --clobber`.
           for tag in $EVICT; do
-            # `phase-NN-vM-confirmed` and `phase-NN-confirmed` both use a
-            # tarball named `mindsos-phaseNN-{vM-,}.tar.gz` — derive both.
-            nn=$(echo "$tag" | sed -E 's/^phase-([0-9]+)(-v[0-9]+)?-confirmed$/\1/')
-            vsuffix=$(echo "$tag" | sed -nE 's/^phase-[0-9]+(-v[0-9]+)-confirmed$/\1/p')
-            nn_padded=$(printf '%02d' "$nn")
+            # `phase-NN[a-z]?(-vM)?-confirmed` → tarball is
+            # `mindsos-phaseNN[a-z]?(-vM)?.tar.gz` — derive both parts.
+            nn=$(echo "$tag" | sed -E 's/^phase-([0-9]+)[a-z]?(-v[0-9]+)?-confirmed$/\1/')
+            letter=$(echo "$tag" | sed -nE 's/^phase-[0-9]+([a-z])(-v[0-9]+)?-confirmed$/\1/p')
+            vsuffix=$(echo "$tag" | sed -nE 's/^phase-[0-9]+[a-z]?(-v[0-9]+)-confirmed$/\1/p')
+            nn_padded="$(printf '%02d' "$nn")${letter}"
             asset="mindsos-phase${nn_padded}${vsuffix}.tar.gz"
             placeholder=$(mktemp)
             cat > "$placeholder" <<EOF
