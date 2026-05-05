@@ -1,6 +1,18 @@
 # Phase 10 audit — what's in scope after pin reverts
 
-**Date:** 2026-05-04
+> **⚠️ PARTIALLY SUPERSEDED 2026-05-05.** The "Side finding" section about Phase 05 row + Round-3 #3 (single Phase 05 vs 05a/05b/05c split) is now obsolete. The Phase 05a row-refinement chat (2026-05-05) **kept the 05a/05b/05c split** AND further decided:
+>
+> - `CompositionalMetaEdge` is **dropped** (not deferred to 05c). The compositional concept moves to a flag on intergraph primitives.
+> - Phase 05 splits into 05a (port; ships in 05a) + 05b (binary `IntergraphEdge` + `MetagraphSchema` + 4 *EdgeTypes + ADR-0148 first draft + ADR-0117 Withdrawn) + 05c (n-ary `IntergraphHyperEdge` + `IntergraphHyperEdgeType` + ADR-0148 amended).
+> - This audit's recommendation ("revert round-3 #3") is **rejected** in favor of the new 3-way split.
+>
+> The Phase 10 ADR-scope verdict (six ADRs: 0027 / 0028 / 0129 / 0130 / 0133 / 0135) is **partially correct** — but ADR-0130 has now landed in Phase 05a (Metagraph property bag); only `Graph.properties` deferral remains for Phase 10. ADR-0130 row in §6 of PHASE_MAP reflects this.
+>
+> Canonical sources: `halvim_mindsos/confirmation_docs/PHASE_MAP.md` Phase 05a row + `INTERGRAPH_EDGES_DESIGN.md`.
+
+---
+
+**Date:** 2026-05-04 (original); 2026-05-05 supersession header added.
 **Audit context:** Round-6 pushback #37 ("if bag pulled forward, what's left in Phase 10?"). With #28 and #20 reverted (soft-delete audit verdict), this audit also confirms what was authored in Phase 10 originally.
 
 ## Phase 10 row (verbatim from slim PHASE_MAP)

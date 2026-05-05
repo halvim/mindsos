@@ -50,4 +50,11 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_core/schema/types.py",
     "mindsos_core/schema/schema.py",
     "mindsos_core/schema/validation.py",
+    # Phase 05a (P14 + slim metagraph port)
+    "mindsos_cli/commands/metagraph.py",
+    "mindsos_core/models/metagraph.py",
+    "mindsos_cli/migrations/__init__.py",
+    "mindsos_cli/migrations/graph.py",
+    "mindsos_cli/migrations/schema.py",
+    "mindsos_cli/migrations/metagraph.py",
 )

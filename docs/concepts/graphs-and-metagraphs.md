@@ -1,12 +1,14 @@
 ---
-last_confirmed_phase: 03
+last_confirmed_phase: 05a
 ---
 
 # Graphs and metagraphs
 
-> **Phase 03 confirms the Graph + atomic-elements section.** The metagraph
-> framing (Metagraph / MetaEdge / MetaHyperEdge / CompositionalMetaEdge)
-> arrives in Phase 05 — see PHASE_MAP §3 row 05.
+> **Phase 05a confirms the Metagraph + MetaEdge + MetaHyperEdge section.**
+> Per round-3 P3 lock, ``CompositionalMetaEdge`` was dropped entirely
+> (ADR-0117 Withdrawn in 05a); the compositional concept moves to a flag
+> on the intergraph primitives in 05b/05c (see
+> ``confirmation_docs/INTERGRAPH_EDGES_DESIGN.md``).
 
 ## What MindsOS Core ships
 
@@ -75,9 +77,58 @@ shipped in Phase 03 and arrive in their own phases:
 | Surface | Phase |
 |---|---|
 | `Optional[Schema]` typing + per-add validation | 04 |
-| Graph-level `properties` bag (ADR-0130) | 05 or 10 |
+| Graph-level `properties` bag (ADR-0130) | 10 |
 | `Node._version` / OCC bumps (ADR-0127) | 07 |
 | Soft-delete fields on Edge / HyperEdge (ADR-0133) | 10 |
 | Reconstruction `_restore_*` helpers | 08 |
 | `update_node_properties` / `update_edge_properties` | 04 |
-| `Metagraph` and its meta-edge primitives | 05 |
+| `Metagraph` + `MetaEdge` + `MetaHyperEdge` | 05a |
+| `Metagraph.properties` (ADR-0130) | 05a |
+| `IntergraphEdge` (binary) + `MetagraphSchema` | 05b |
+| `IntergraphHyperEdge` (n-ary) | 05c |
+| `CompositionalMetaEdge` | DROPPED (P3 lock; ADR-0117 Withdrawn in 05a) |
+
+## Metagraphs (Phase 05a)
+
+A `Metagraph` is a graph whose nodes are `Graph` objects. It owns:
+
+* A collection of contained `Graph` instances, each with a `metagraph_name`
+  back-pointer in its state file.
+* `MetaEdge` — a directed, typed graph↔graph edge.
+* `MetaHyperEdge` — an n-ary typed graph-set edge (n ≥ 2 per P15).
+* A namespaced property bag (ADR-0130; namespaced keys like `kl:`,
+  `server:`, `l3:`, `l4:`, `l5:`).
+
+The metagraph shares its `IdentityRegistry` with every contained graph
+(ADR-0020), so no two elements anywhere in the metagraph can share an id.
+
+### Two-app CLI surface (Q4-B + P2)
+
+* `mindsos graph` — for **standalone** graphs. Mutations refused on
+  metagraph-owned graphs (Q4-B); reads (`inspect`, `list-*`)
+  warn-and-show.
+* `mindsos metagraph` — for **metagraph-owned** elements (graphs
+  contained in a metagraph, metaedges, metahyperedges, metagraph
+  property bag).
+
+When the boundary surfaces during a tester session, refusal stderr
+suggests the equivalent `mindsos metagraph ...` invocation (P2).
+
+### `add_graph` invariants (P16)
+
+Per round-3 lock, after `mg.add_graph(g)`:
+
+* `g.identity is mg.identity` (shared reference, not clone).
+* `g.id_strategy` is **untouched** — a metagraph can contain graphs with
+  mixed id strategies. The metagraph's strategy applies only to
+  metagraph-level mints.
+
+### Recovery commands
+
+* `mindsos graph detach-metagraph --name G` — DM-A. Clears a dangling
+  back-pointer when the metagraph state file is missing or corrupted.
+* `mindsos metagraph remove-graph --name MG --graph G` — clean removal
+  from metagraph (clears back-pointer + cascades incident metaedges).
+* `mindsos metagraph reset --name MG --force --yes` — Q6-A + P5. Strips
+  back-pointers from all referencing graphs (warning) and deletes the
+  metagraph.

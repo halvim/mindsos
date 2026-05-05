@@ -93,8 +93,9 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 03 | L1 Graph elements — Graph, Node, Edge, HyperEdge | L1 | 02 |
 | 04 | L1 Schema — NodeType, EdgeType, opt-in strict ~~(SUPERSEDED by 04-v2)~~ | L1 | 02 |
 | 04-v2 | L1 Schema — HyperEdgeType + type_name (additive expansion) | L1 | 02, 03 |
-| 05a | L1 Metagraph port — Metagraph, MetaEdge, MetaHyperEdge, CompositionalMetaEdge | L1 | 03, 04-v2 |
-| 05b | L1 IntergraphEdge + MetagraphSchema + Meta*EdgeType (NEW CODE) | L1 | 05a |
+| 05a | L1 Metagraph port — Metagraph, MetaEdge, MetaHyperEdge (no CompositionalMetaEdge — dropped per N3-D) | L1 | 03, 04-v2 |
+| 05b | L1 IntergraphEdge (binary 1-1) + MetagraphSchema + MetaEdgeType + MetaHyperEdgeType + IntergraphEdgeType + compositional flag (NEW CODE; ADR-0148 first draft; ADR-0117 Withdrawn) | L1 | 05a |
+| 05c | L1 IntergraphHyperEdge (n-ary, NOT 1-1) + IntergraphHyperEdgeType (NEW CODE; ADR-0148 amended) | L1 | 05b |
 | 06 | L1 Instancing — `mindsos_instances` package | L1 | 03, 05 |
 | 07 | L1 Persistence — Client, FalkorClient, InMemoryClient, AsyncClient, repositories, WAL, indexes, OCC | L1 | 03, 04, 05, 06 |
 | 08 | L1 Reconstruction — loaders, streaming loader, refresh | L1 | 07 |
@@ -129,7 +130,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 37 | Server-owns-importers (ADR-0144). **NEW CODE.** | L0 + L2 | 15, 36 |
 | 38 | End-to-end vertical slice — text-realm + code-slice cookbook | cross | all |
 
-**Total: 39 phases (00 through 38).** Two of them (26, 32) are integration / regression-catching phases. Six (24, 33, 34, 35, 36, 37) carry **NEW CODE** beyond repackaging.
+**Total: 42 phases.** Two integration phases (26, 32). Eight phases carry **NEW CODE** beyond repackaging (05b, 05c, 24, 33, 34, 35, 36, 37). Phase 04 is Superseded by 04-v2 (slot collapsed); Phase 05 is split into 05a / 05b / 05c (three sub-phase slots, CASC-1 strict-sequential per the supersession-policy letter-sub-phases rule in §1).
 
 ---
 
@@ -849,16 +850,311 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ---
 
-### Phase 05 — L1 Metagraph elements
+### Phase 05 — L1 Metagraph elements [SPLIT 2026-05-04 / 2026-05-05]
 
-  **Status:** **Split into 05a + 05b** (G2 lock 2026-05-04). See sibling rows below.
+  **Status:** **Split into 05a + 05b + 05c** (G2 lock 2026-05-04; further split P2-B 2026-05-05 — see `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md` §8). See sibling rows below.
 
-  **Deps:** 03. **Layer:** L1. **Net-new?** No (modulo Q13 below — if greenlit, intergraph edge primitive is **NEW CODE**).
-  **Features:** Metagraph CRUD; place a Graph inside a Metagraph; binary MetaEdge; n-ary MetaHyperEdge; CompositionalMetaEdge unwrap.
-  **Design question to adjudicate before implementing (§7 Q13 — full analysis at `confirmation_docs/INTERGRAPH_EDGE_DESIGN_NOTE.md`):** Should L1 ship a fourth edge primitive — node↔node across graphs *inside* one metagraph — alongside the three existing graph-spanning constructs (MetaEdge / MetaHyperEdge / XRef)? Phase 05 chat MUST surface this to the user before writing Metagraph code; default = defer (status-quo: alignments-as-graph reification). If greenlit, draft an ADR + scope a feature increment to Phases 05 (primitive), 07 (persistence — `OWNS` ownership decision), 10 (snapshot scope), 11 (Cypher builders).
-  **Tests:** metagraph-wide IdentityRegistry shared across contained Graphs (ADR-0020); CompositionalMetaEdge cardinality.
-  **Risks:** Phase 03's graph CLI must not bypass metagraph-wide registry. Q13 adjudication blocking.
-  **Docs:** `docs/concepts/graphs-and-metagraphs.md`, `docs/usage/core/metagraphs.md`, ADRs 0020 / 0117. (If Q13 greenlit: new ADR + `docs/concepts/intergraph-edges.md`.)
+  **Q13 closed:** the original "should L1 ship a fourth edge primitive" question is GREENLIT and resolved into two primitives (`IntergraphEdge` binary in 05b + `IntergraphHyperEdge` n-ary in 05c). Canonical design at `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`.
+
+---
+
+### Phase 05a — L1 Metagraph port (Metagraph + MetaEdge + MetaHyperEdge)
+
+  **Status:** Pending (in design — refining + locking — this chat 2026-05-05, post 4 reanalysis rounds).
+  **Branch:** phase-05a
+  **Tag on confirm:** phase-05a-confirmed
+  **Depends on:** 03, 04-v2.
+  **Layer(s):** L1.
+  **Net-new?:** **Yes (limited).** New `mindsos metagraph` CLI subapp (~14 subcommands); new `metagraph-<n>.json` state-file format (v=1, no precedent); new `metagraph_name` back-pointer field on graph state file (v=3 → v=4 cumulative migration); `mindsos graph detach-metagraph` recovery command. Code-side: slim port of `Metagraph` + `MetaEdge` + `MetaHyperEdge` from parent `mindsos_core/models/metagraph.py`; `MetaHyperEdge.type_name: str` is a parent-code addition (per pre-lock C / Push C2 — symmetric with HyperEdge after Phase 04-v2). **CompositionalMetaEdge dropped** (per N3-D). **No IntergraphEdge / IntergraphHyperEdge** (deferred to 05b / 05c). **No MetagraphSchema** (deferred to 05b).
+
+  **Locked decisions (4 reanalysis rounds — 2026-05-05):**
+
+    - **B2** — Graph state-file v=3 → v=4 cumulative one-way migration (mirror of Phase 04-v2's v=2 → v=3 pattern). New optional field `metagraph_name: str | null`. Pre-v=4 graph files load with `metagraph_name=null` default.
+    - **C2** — `MetaHyperEdge.type_name: str` required (cypher rel-type regex per ADR-0021); MetaEdge.type_name already required in parent code (no change). **No UNSPECIFIED sentinel** (no legacy data exists; symmetric reasoning fails).
+    - **E2** — CASC-1 strict-sequential cascade: 04-v2 → 05a → 05b → 05c. **Plus 05b dry-run appendix** in this row §6 (below) — pre-resolves 05b decisions that could retroactively wish for 05a changes.
+    - **N1-A1** — Ship `Metagraph.properties: Dict[str, Any]` (ADR-0130 property bag) in 05a; supersedes ADR-0029 (`:MetagraphSettings`). State-file v=1 includes `properties` field from day one.
+    - **N1-A2** — **Strip backward-compat aliases** (`Metagraph._kl_active_graph_ids`, `Metagraph.user_id`) from slim port. No L2/Server consumer in 05a; aliases re-added in Phase 14 / Phase 18 when their consumers ship.
+    - **N2-B** — Keep `MetaEdge.deprecated_at` / `disputed_at` / `MetaHyperEdge.deprecated_at` / `disputed_at` fields on dataclass (default `None`). **No CLI surface for soft-delete in 05a** (no `deprecate-metaedge`, no `include_deprecated` iterator filtering). Phase 10 wires the CLI + filtering.
+    - **N3-D** — `CompositionalMetaEdge` dropped from 05a slim port. Compositional concept moves to `compositional: bool` flag on intergraph primitives (05b / 05c). ADR-0117 stays Reserved through 05a; Withdrawn in 05b.
+    - **N4-A** — Slim `Metagraph.remove_graph(graph_id, *, cascade=True)` — cascades incident metaedges/metahyperedges, raises `IdentityError` on unknown graph, no `RemovalImpact` return, no `force=True` flag, no XRef / `ref:*` walking. Phase 09 / Phase 10 add full ADR-0135 `RemovalImpact` machinery.
+    - **N6** — `MetaEdge.type_name: str` required (parent shape; no change needed).
+    - **N7-A** — `mindsos metagraph add-graph` refuses with structured error if the target graph already has `metagraph_name` back-pointer set (graph is metagraph-owned). Tester runs `metagraph remove-graph` on the prior owner first, OR `mindsos graph detach-metagraph` if the prior owner's state file is missing (DM-A recovery path).
+    - **Q1-B** — Separate `mindsos metagraph set-prop` subcommand (2-way mutex `--metaedge-id | --metahyperedge-id`); does NOT extend `mindsos graph set-prop`. Subapp boundary respected.
+    - **Q2** — `mindsos metagraph` subcommand list locked: `create / inspect / list / reset / add-graph / remove-graph / add-metaedge / remove-metaedge / add-metahyperedge / remove-metahyperedge / set-prop / list-metaedges / list-metahyperedges`. Plus **CR-A**: `create --name X [--metagraph-id ID] [--prop k=v]...` accepts properties at creation (mirrors Phase 03 / 04 `add-*` precedent).
+    - **Q3-A** — MetaHyperEdge `member_graphs` JSON serialization sorts by `graph_name` (string sort) for byte-stable output.
+    - **Q4-B** — Standalone `mindsos graph inspect <G>` on a metagraph-owned graph shows contents WITH stderr warning; mutations (`add-node`, `add-edge`, `set-prop`, etc.) on metagraph-owned graphs **refuse** with structured error pointing to `mindsos metagraph ...` subapp.
+    - **Q5-A** — Eager identity-collision check on `metagraph add-graph`: walk all currently-contained graphs' element ids; raise `IdentityError` on collision (matches parent code in-memory `add_graph` semantics).
+    - **Q6-A** — `metagraph reset --name X` and `--all` walk every `graph-*.json`; refuse with exit 1 if any graph references a metagraph being deleted; `--force` strips back-pointers from referenced graphs (warning emitted on stderr).
+    - **R3-B** — Strip `CompositionalImmutableError`, `RemoveGraphBlockedError`, `XRefIntegrityError` from `mindsos_core/exceptions.py` slim port. 05b adds `CompositionalImmutableError` back (consumer: `IntergraphEdge.compositional`); Phase 09 adds `XRefIntegrityError`; Phase 10 adds `RemoveGraphBlockedError`.
+    - **DM-A** — `mindsos graph detach-metagraph --name <G>` ships in 05a as the recovery path for dangling `metagraph_name` back-pointer (symmetric with Phase 04's `graph detach-schema`). Raw-JSON path bypasses metagraph load. Exits 1 if no back-pointer set.
+
+  **Features in scope (capability-level — locked):**
+
+    - `Metagraph(name, *, identity=None, metagraph_id=None, properties=None, id_strategy=None)` constructor (ADR-0130 property bag accepted; ADR-0131 IdStrategy parametric).
+    - `Metagraph.add_graph(graph) -> Graph` — unifies graph's IdentityRegistry into metagraph's; ADR-0020 enforcement; ADR-0138 INFO log on non-empty registry unification; eager id-collision check Q5-A; refuse if graph already has `metagraph_name` back-pointer (N7-A).
+    - `Metagraph.remove_graph(graph_id, *, cascade=True)` — slim per N4-A.
+    - `Metagraph.add_metaedge(source, target, type_name, *, label=None, properties=None) -> MetaEdge`.
+    - `Metagraph.remove_metaedge(edge_id) -> None`.
+    - `Metagraph.add_metahyperedge(graphs, *, type_name, label=None, properties=None) -> MetaHyperEdge` — `type_name` keyword-required (CLI surfaces it as required).
+    - `Metagraph.remove_metahyperedge(edge_id) -> None`.
+    - `Metagraph.iter_metaedges()`, `Metagraph.iter_metahyperedges()` — no `include_deprecated` kwarg in 05a (Phase 10 adds).
+    - `Metagraph.update_metaedge_properties(edge_id, properties, *, replace=False)` — symmetric with Phase 04's `update_node/edge/hyperedge_properties`; no `_version` bump.
+    - `Metagraph.update_metahyperedge_properties(...)` — same.
+    - `Metagraph.mint_id(kind, content=None) -> str` — ADR-0131 helper (parent code line 442).
+    - `Metagraph.__repr__` — slimmed (no XRef / instance / composite counts).
+    - **CLI** — `mindsos metagraph` subapp with subcommands per Q2 + CR-A.
+    - **CLI** — `mindsos graph detach-metagraph --name <G>` (DM-A).
+    - **State files** — `metagraph-<n>.json` v=1 (new format) + `graph-<n>.json` v=3 → v=4 cumulative migration adding `metagraph_name` back-pointer.
+    - **Doctor self-test extension** — recognize `mindsos:phase05a-prod` / `phase05a-test` image tags (regex extension to handle letter-suffix without v-prefix).
+
+  **Modules touched (locked):**
+
+    - `mindsos_core/models/metagraph.py` — slim port from parent. **Strips:** XRef methods (`add_xref` / `iter_xrefs` / `remove_xref` / `_verify_xref_target`), instancing methods (all 7 `instantiate_*` + `compose` + `_register_instance` + `remove_instance` + `_attach_instance` + `_attach_composite`), `element_instances` / `composite_instances` dicts, `xrefs` / `_xrefs_by_source` / `_xrefs_by_target` dicts, `RemovalImpact` class, `_compute_removal_impact`, `verify_invariants`, `_restore_metaedge` / `_restore_metahyperedge` / `_attach_graph`, `deprecate_metaedge` / `deprecate_metahyperedge`, `_kl_active_graph_ids` / `user_id` aliases (N1-A2), `CompositionalMetaEdge` class (N3-D). **Keeps:** `Metagraph.__init__` (with `properties` per N1-A1), `add_graph` / `remove_graph` (slim N4-A), `add_metaedge` / `remove_metaedge`, `add_metahyperedge` (with required `type_name` per C2) / `remove_metahyperedge`, `mint_id`, `__repr__` (slimmed), `MetaEdge` dataclass (with dormant soft-delete fields per N2-B), `MetaHyperEdge` dataclass (with new required `type_name` field).
+    - `mindsos_core/exceptions.py` — strip `CompositionalImmutableError` / `RemoveGraphBlockedError` / `XRefIntegrityError` (R3-B). Re-shipped by 05b / 09 / 10 respectively.
+    - `mindsos_core/__init__.py` — exports `Metagraph` + `MetaEdge` + `MetaHyperEdge` + `RemovalImpact` removed (Phase 10 adds back).
+    - `mindsos_cli/commands/metagraph.py` — **NEW file**. Typer subapp; all subcommands per Q2 + CR-A.
+    - `mindsos_cli/commands/graph.py` — extends with `detach-metagraph` subcommand (DM-A); `add-node` / `add-edge` / `add-hyperedge` / `set-prop` / `update-*` mutation commands gain the metagraph-owned check (Q4-B refuse-on-mutation); `inspect` gains the warn-and-show behavior (Q4-B); `_state_to_graph` reads v=1 ∪ v=2 ∪ v=3 ∪ v=4 (populates `metagraph_name=null` for missing); `_graph_to_state` writes v=4.
+    - `mindsos_cli/state.py` — `GRAPH_STATE_VERSION = 4` (was 3). New `METAGRAPH_STATE_VERSION = 1`. New helpers: `metagraph_file_path` / `save_metagraph_state` / `load_metagraph_state` / `iter_metagraph_files` / `delete_metagraph_state_file`.
+    - `mindsos_cli/app.py` — `register_metagraph_app` wired.
+    - `mindsos_cli/manifest.toml` — `[mindsos] phase = "05a"`; `version = "0.0.0+phase05a"`.
+    - `mindsos_cli/__init__.py` — `__version__ = "0.0.0+phase05a"`.
+    - `pyproject.toml` — version + description bumped.
+    - `docker-compose.yml` — `mindsos:phase05a-prod` / `mindsos:phase05a-test` image tags.
+    - `Dockerfile` — comment lines bumped (Phase 04-v2 → Phase 05a references); COPY block adds `mindsos_cli/commands/metagraph.py`.
+    - `mindsos_cli/commands/doctor.py` — `_COMPOSE_IMAGE_RE` regex extends to recognize `phaseNN<letter>-<stage>` form (without v-prefix). Extension: `phase\d{2}([a-z]|-v\d+)?-(prod|test)`. (Phase 04-v2 covered `-vM` form; 05a covers letter form.)
+    - `mindsos_cli/commands/confirm_phase.py` — accepts `--phase 05a` / `--init-notes 05a`. Backward-compat alias `phase-05a` per Phase 04-v2 pattern.
+    - `tests/_shared/sentinel_paths.py` — **+1 entry**: `mindsos_cli/commands/metagraph.py`.
+
+  **Persistence layout (locked):**
+
+    - **Metagraph state-file v=1 JSON shape** (NEW format):
+      ```json
+      {"_state_version": 1,
+       "metagraph_id": "<uuid4>", "name": "<n>",
+       "properties": {"k": "<value>"},
+       "contained_graphs": ["<graph-name>", ...],
+       "metaedges": [
+         {"edge_id": "...", "source_graph": "<gname>", "target_graph": "<gname>",
+          "type_name": "<UPPER>", "label": "<text-or-null>", "properties": {...}}
+       ],
+       "metahyperedges": [
+         {"edge_id": "...", "type_name": "<UPPER>",
+          "member_graphs": [...sorted by graph_name],
+          "label": "<text-or-null>", "properties": {...}}
+       ]}
+      ```
+      Top-level lists byte-stable sorted (contained_graphs by name; metaedges by edge_id; metahyperedges by edge_id). Atomic write via `<path>.tmp + os.replace` (Phase 03 / 04 / 04-v2 inherited). `properties` allowed empty `{}`. Soft-delete fields (`deprecated_at` / `disputed_at`) NOT serialized in 05a (always `None`); Phase 10 adds optional fields with v=1 → v=2 metagraph state-file bump.
+    - **Graph state-file v=4 JSON shape** (extends v=3 with `metagraph_name` back-pointer):
+      ```json
+      {"_state_version": 4,
+       "graph_id": "<uuid4>", "name": "<n>", "role": "<role-or-null>",
+       "schema_name": "<schema-name-or-null>",
+       "metagraph_name": "<metagraph-name-or-null>",
+       "nodes": [...], "edges": [...], "hyperedges": [...]}
+      ```
+    - **Cumulative migration on graph state-file:** 05a binary reads v=1 ∪ v=2 ∪ v=3 ∪ v=4 (one-pass: populate `schema_name=null` for v=1 default; populate hyperedge `type_name="UNSPECIFIED"` for v=1/v=2 default; populate `metagraph_name=null` for v=1/v=2/v=3 default); first mutation writes v=4.
+    - **Strict version contract:** Phase 04-v2 binary loading v=4 file rejects (`this CLI supports v3` message). Recovery: hand-edit JSON downgrade (drop `metagraph_name` field, set `_state_version: 3`). Documented in `docs/usage/core/metagraphs.md` Migration section.
+    - **Schema state-file unchanged from Phase 04-v2** (v=2; no MetagraphSchema until 05b).
+
+  **Automated tests (location + intent — locked):**
+
+    - `tests/phase_05a/` — ~35 tests:
+      - `test_metagraph_create.py` (4) — fresh metagraph, with properties via CR-A `--prop`, with `--metagraph-id`, idempotent JSON output.
+      - `test_metagraph_add_graph.py` (6) — happy path; ADR-0020 unification (ADR-0138 INFO log fires); identity-collision check Q5-A; refuse on already-owned (N7-A); back-pointer written to graph state file; multiple-graphs-in-metagraph round-trip.
+      - `test_metaedge.py` (4) — add with required type_name, cypher regex enforcement, `--prop` populates properties bag, source/target validation.
+      - `test_metahyperedge.py` (5) — add with required `--type`, cypher regex, `member_graphs` byte-stable sort by name (Q3-A), `--prop` populates, member-must-be-in-metagraph validation.
+      - `test_metagraph_state_v1.py` (3) — v=1 round-trip, byte-stable sort, atomic write.
+      - `test_metagraph_set_prop.py` (3) — Q1-B 2-way mutex, `--replace` preserves `ref:*`, reserved-key rejection.
+      - `test_metagraph_remove_graph.py` (3) — slim N4-A: cascade incident metaedges/metahyperedges; clears back-pointer on removed graph; raises `IdentityError` on unknown graph_id.
+      - `test_metagraph_reset.py` (3) — orphan check Q6-A, `--force` strips back-pointers, `--all` symmetric.
+      - `test_graph_state_v4.py` (3) — back-pointer round-trip; cumulative migration v=1/v=2/v=3 → v=4 first-mutation; v=5 future-version refused.
+      - `test_graph_inspect_metagraph_owned.py` (2) — Q4-B warn-and-show on read.
+      - `test_graph_mutation_metagraph_owned.py` (3) — Q4-B refuse-on-mutation (`add-node`, `add-edge`, `set-prop` each).
+      - `test_graph_detach_metagraph.py` (3) — DM-A happy path, dangling-back-pointer recovery, exit-1-if-no-back-pointer.
+      - `test_doctor_phase05a.py` (1) — image-tag regex covers `phase05a-prod`.
+    - **Audit pass (pre-implementation):** every `tests/phase_03/` / `tests/phase_04/` / `tests/phase_04_v2/test_state*.py` reviewed for hard-coded `_state_version: 3` constants; updated to use `state_mod.GRAPH_STATE_VERSION` dynamically. Symmetric with 04-v2 B-04-prev fix. Lock as pre-implementation task.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 05a --notes-file notes-phase-05a.md`
+    (Init shape: `--init-notes 05a` is canonical; backward-compat alias `phase-05a`. Manifest stores `[mindsos] phase = "05a"`.)
+
+  **Pass criterion:**
+
+    - Tester can create a metagraph, add 2-3 graphs to it, add metaedges + metahyperedges with required type_name, set properties on metaedges, list contents, and `inspect` round-trips state.
+    - `metagraph add-graph` refuses on already-owned graph (N7-A); `metagraph remove-graph` clears back-pointer; tester can re-add to a different metagraph after removal.
+    - `mindsos graph inspect <G>` on metagraph-owned graph WARNS but shows contents; `mindsos graph add-node <G>` on metagraph-owned graph REFUSES with pointer to `mindsos metagraph` subapp (Q4-B).
+    - `mindsos graph detach-metagraph` recovers a graph from a deleted-metagraph dangling back-pointer (DM-A).
+    - `metagraph reset` orphan check refuses with exit 1 when graphs reference target; `--force` strips back-pointers (Q6-A).
+    - Phase 04-v2 v=3 graph loads cleanly under 05a; first mutation upgrades file to v=4.
+    - All Phase 03 + Phase 04 + Phase 04-v2 + Phase 05a tests pass cumulatively in-container.
+    - **Cumulative tests pass: ≥ Phase 04-v2 baseline (412 + 2 skipped) + ~35 Phase 05a added; tester records actual count in `PHASE_05a_CONFIRMED.md`** (sandbox-projected: ~447 + 2 skipped).
+
+  **Risks / known issues to watch:**
+
+    - **v=3 → v=4 graph state-file migration is one-way.** 05a binary touching a Phase 04-v2 v=3 file upgrades on first mutation; Phase 04-v2 binary then refuses with `this CLI supports v3` message. Recovery: hand-edit JSON downgrade (drop `metagraph_name`, set `_state_version: 3`) OR `rm -rf ~/.mindsos/graph-*.json`. Documented in `docs/usage/core/metagraphs.md` Migration section.
+    - **Standalone graph CLI on metagraph-owned graphs is mutation-blocked.** Tester running `mindsos graph add-node` on a metagraph-owned graph hits a refusal (Q4-B). Recovery: route mutations through `mindsos metagraph`-subapp equivalents OR `mindsos graph detach-metagraph` if they want to mutate independently.
+    - **Identity-collision footgun on metagraph load**: if two contained graphs were independently mutated to share an element id (both have node id `bar`), the metagraph load fails. Recovery: hand-edit one graph's id OR re-create. ADR-0020 unification at metagraph load time enforces.
+    - **Eager identity-collision check Q5-A is O(N)** over all contained graphs' element ids. Acceptable for single-tester debug use; Phase 07 ships indexed lookup if perf becomes an issue.
+    - **`metagraph reset --force` strips back-pointers from all referenced graphs** but does not unify identity registries back to standalone form (in-memory unification was metagraph-scoped; per-graph registry rebuilds on next standalone load). Footgun if a previously-collided id pair survives in two graphs that are now standalone.
+    - **No advisory locks on state files** (J-02 carry-forward). Concurrent CLI invocations have race conditions; Phase 07 ships proper concurrency control.
+    - **No CLI to delete a single metaedge that lacks a metaedge_id**: tester needs `list-metaedges --json` to find ids first. Symmetric asymmetry with Phase 04 hyperedges.
+
+  **Doc sections this phase confirms:**
+
+    - `docs/concepts/graphs-and-metagraphs.md` — amended with Metagraph + MetaEdge + MetaHyperEdge sections + Metagraph-owned-graph semantics + back-pointer + recovery patterns. `last_confirmed_phase: 05a`.
+    - `docs/usage/core/metagraphs.md` — full (NEW). Covers all `mindsos metagraph` subcommands + state-file Migration v=3→v=4 + back-pointer + detach-metagraph recovery + Q4-B mutation-refuse semantics + Q5-A collision check + Q6-A reset orphan check. `last_confirmed_phase: 05a`.
+    - `docs/getting-started/first-metagraph.md` — full (NEW). Quickstart walkthrough.
+    - `docs/api/core/metagraph.md` — full (NEW). API reference.
+    - `docs/api/core/metaedge.md` — full (NEW).
+    - `docs/api/core/metahyperedge.md` — full (NEW).
+    - `docs/changelog/CHANGELOG.md` — Phase 05a entry appended.
+    - **ADR-0020** confirmed (metagraph-wide IdentityRegistry).
+    - **ADR-0117** stays Reserved (CompositionalMetaEdge dropped per N3-D; Withdrawn flip happens in 05b).
+    - **ADR-0029** Superseded by ADR-0130 (property bag in 05a). Annotation block added; file edit deferred to Phase 38.
+    - **ADR-0130** Accepted (property bag on Metagraph shipped; Graph property bag deferred to Phase 10 per N1 distinction).
+
+  **Breaking changes from Phase 04-v2:**
+
+    - `Graph` state file v=3 → v=4 (one-way; documented above).
+    - `mindsos graph add-node` / `add-edge` / `add-hyperedge` / `set-prop` / `update-*` REFUSE on metagraph-owned graphs (Q4-B). Tester scripts using these on graphs that get added to metagraphs need to switch to `mindsos metagraph` subapp.
+    - `mindsos graph inspect <G>` on metagraph-owned graph emits stderr warning (still exits 0; output still shown — Q4-B).
+
+  **Final amendments (2026-05-05 — locked across 4 reanalysis rounds):**
+
+    1. **B2** — graph state-file v=4 with `metagraph_name` back-pointer.
+    2. **C2** — MetaHyperEdge.type_name required; no UNSPECIFIED sentinel for metagraph-level edges.
+    3. **E2** — CASC-1 strict-sequential + 05b dry-run appendix (see §6 below).
+    4. **N1-A1** — Ship `Metagraph.properties` in 05a; supersedes ADR-0029.
+    5. **N1-A2** — Strip `_kl_active_graph_ids` and `user_id` aliases.
+    6. **N2-B** — Soft-delete fields kept dormant; no CLI in 05a.
+    7. **N3-D** — CompositionalMetaEdge dropped from 05a.
+    8. **N4-A** — Slim `remove_graph`; no RemovalImpact.
+    9. **N6** — MetaEdge.type_name required (already in parent; no change).
+    10. **N7-A** — Refuse on already-owned `add-graph`.
+    11. **Q1-B** — Separate `mindsos metagraph set-prop` subcommand.
+    12. **Q2 + CR-A** — Subcommand list locked; `create` accepts `--prop` at create time.
+    13. **Q3-A** — `member_graphs` sorted by `graph_name`.
+    14. **Q4-B** — Standalone-graph CLI: warn-and-show on read; refuse on mutation.
+    15. **Q5-A** — Eager identity-collision check on `metagraph add-graph`.
+    16. **Q6-A** — `metagraph reset` orphan check; `--force` strips back-pointers.
+    17. **R3-B** — Strip exception classes from slim port (`CompositionalImmutableError`, `RemoveGraphBlockedError`, `XRefIntegrityError`).
+    18. **DM-A** — `mindsos graph detach-metagraph` ships in 05a.
+    19. Eager-attach validation order from Phase 04 (Node → Edge → HyperEdge) extends per-graph; metagraph add-graph identity-collision check (Q5-A) runs FIRST before any other validation.
+    20. JSON-then-string `--prop k=v` parsing inherited from Phase 03 / 04 / 04-v2.
+    21. Pre-implementation audit: every `tests/phase_03/` / `tests/phase_04/` / `tests/phase_04_v2/` test file reviewed for hard-coded `_state_version: 3` constants; updated to use `state_mod.GRAPH_STATE_VERSION` dynamically (symmetric with Phase 04 B-04-prev / Phase 04-v2 audit).
+    22. Image tags `mindsos:phase05a-prod` / `mindsos:phase05a-test`; `_COMPOSE_IMAGE_RE` regex extension to recognize `phase\d{2}([a-z]|-v\d+)?-(prod|test)`. `confirm-phase --phase` parser accepts `05a` / `phase-05a`.
+    23. `requirements.{in,txt}` / `requirements-test.txt` unchanged (stdlib-only). `pyproject.toml` package wildcards already cover new files.
+    24. **No carry-forward closure** — Phase 04 §7 deferrals (M-04 through R-04) and Phase 04-v2 §7 deferrals (A-04-v2 through D-04-v2) all stay carry-forward. Q13 closes via the 05b/05c split (canonical at `INTERGRAPH_EDGES_DESIGN.md`).
+    25. **Phase 04-v2 GitHub Release body unchanged**; tarball asset survives in 5-phase retention window.
+    26. `confirmation_docs/PHASE_04_v2_CONFIRMED.md` stays untouched as historical record. 05a ships sibling `PHASE_05a_CONFIRMED.md`.
+    27. `tests/_shared/sentinel_paths.py` adds **+1 entry** (`mindsos_cli/commands/metagraph.py`).
+    28. `mkdocs.yml` nav: adds entries for new pages (`docs/usage/core/metagraphs.md`, `docs/getting-started/first-metagraph.md`, `docs/api/core/metagraph.md`, `docs/api/core/metaedge.md`, `docs/api/core/metahyperedge.md`).
+    29. `docs/dev/release.md` / `docs/dev/contributing.md` / `docs/dev/conventions.md` unchanged in 05a; sub-phase / letter-suffix mention deferred to Phase 38 final pass.
+    30. `confirmation_docs/_template.md` and `_template_notes.md` unchanged.
+
+  **Round 1-4 implementation-chat amendments (2026-05-05; 19 picks accepted by user; canonical reasoning + bug ledger at `confirmation_docs/PHASE_05a_IMPLEMENTATION_LOG.md`):**
+
+    31. **P1** — soft-delete fields STRIPPED from MetaEdge / MetaHyperEdge in 05a (overrides N2-B). Phase 10 lands the substrate uniformly across all 4 edge variants per SOFT_DELETE_AUDIT_NOTE recommendation.
+    32. **P2** — Q4-B mutation refusals on `mindsos graph` for metagraph-owned graphs include stderr suggestion of the equivalent `mindsos metagraph ...` invocation.
+    33. **P3** — ADR-0117 status flips Reserved → **Withdrawn in 05a** (one phase earlier than original CASC-1 placement; code drops the `CompositionalMetaEdge` class in 05a, ADR matches reality).
+    34. **P4** — test plan expanded from ~35 to ~63 (then ~99 final with edge-case coverage; user lock "test budget not a concern").
+    35. **P5** — `mindsos metagraph reset --force` and `--all` require `--yes` (destructive-command discipline).
+    36. **P6** — defer `_compositional` reserved-key addition to 05b alongside the actual flag (avoid dead code in 05a; supersedes the §6 dry-run "05a adds proactively" item).
+    37. **P7** — defer `Metagraph.mint_id` to 05b (no 05a consumer; lands with IntergraphEdge factory).
+    38. **P8** — `@dataclass(kw_only=True)` on MetaEdge + MetaHyperEdge. Resolves the field-ordering bug introduced by P1 + adding required `type_name` to MetaHyperEdge after a defaulted `graphs` field.
+    39. **P9** — `__post_init__` cypher rel-type regex (ADR-0021) on **both** edge types. Closes the dataclass-boundary validation gap on MetaEdge (parent had no `__post_init__`).
+    40. **P10** — `mindsos metagraph inspect` + `list` JSON shapes locked. inspect: `{name, metagraph_id, properties, contained_graphs, counts{graphs,metaedges,metahyperedges}, _state_version, state_file}`. list: `{state_dir, metagraphs:[{name, metagraph_id, contained_graphs_count, metaedges_count, metahyperedges_count, _state_version, path}]}`.
+    41. **P11** — `Metagraph.add_metaedge(source_graph_id: str, target_graph_id: str, type_name, ...)` takes graph_id STRINGS (not Graph objects). `add_metahyperedge(graph_ids: List[str], ...)` symmetric. Persistence stores graph **names** (CLI translates name→id at boundary; one source of truth: name-keyed JSON).
+    42. **P12 / P14** — per-file migration chain modules at `mindsos_cli/migrations/{__init__,graph,schema,metagraph}.py`. Each module exports `MIGRATIONS: List[Callable[[dict], dict]]` and `migrate(state) -> dict`. `state.py`'s `_load_state_file` becomes `_load_and_migrate` calling the per-kind chain. Replaces inline switch statements that grew O(N) per phase. Sentinel paths +4 entries.
+    43. **P13** — `RESERVED_PROPERTY_KEYS` (in `mindsos_core/schema/validation.py`) extended with metagraph-structural keys: `_state_version`, `contained_graphs`, `metaedges`, `metahyperedges`, `metagraph_name`. **Deliberately EXCLUDED**: `name` and `properties` (would break existing Phase 04 `test_legacy_node_set_prop_replace_recovers` which uses `name=Alice` as a node property).
+    44. **P15** — `add_metaedge` refuses self-loop (`source_graph_id == target_graph_id`). `add_metahyperedge` refuses < 2 members; duplicates within members rejected. Both raise `SchemaError`. Symmetric with INTERGRAPH_EDGES_DESIGN cardinality discipline.
+    45. **P16** — `add_graph` invariants locked: `g.identity is mg.identity` post-call (shared reference, not clone); `g.id_strategy` is **untouched** (mixed-strategy metagraphs supported — a metagraph can contain graphs with UUID4 + IRIPassthrough simultaneously). Documented in `docs/concepts/graphs-and-metagraphs.md` and tested.
+    46. **P17** — `mindsos metagraph set-prop --on-metagraph` marker flag operates on the metagraph's own ADR-0130 property bag. 3-way mutex `--on-metagraph | --metaedge-id | --metahyperedge-id`. Provides a CLI path for ADR-0130 mid-life updates (not just at create time per CR-A).
+    47. **P18** — `metagraph add-graph` two-file write order: graph state file (back-pointer set) FIRST, then metagraph state file. On metagraph-save failure, graph has dangling back-pointer — recovery via DM-A (`mindsos graph detach-metagraph`).
+    48. **P19** — `Metagraph.remove_graph(graph_id) -> None` is single-behavior always-cascade. Drops the `cascade` parameter, the `force` flag, and the `RemovalImpact` return entirely from the parent shape (overrides the original N4-A which kept the `cascade=True` parameter unspecified). Phase 10 reintroduces the full ADR-0135 surface.
+
+  **Test fixes for migration-chain semantics (mandated by P12/P14 + amendment 21 audit):**
+
+    49. `tests/phase_03/test_state.py:test_save_and_load_round_trip` — assertion updated to expect migrated dict (v=1 → v=4 with `schema_name=None` + `metagraph_name=None` defaults).
+    50. `tests/phase_04/test_state.py:test_save_then_load_schema_state_round_trip` — assertion updated for v=1 → v=2 schema chain (adds `hyperedge_types: []`).
+    51. `tests/phase_04/test_state.py:test_graph_state_file_v1_accepts_optional_schema_name` — assertion updated for migrated dict.
+    52. `tests/phase_04/test_state.py:test_graph_state_file_v1_legacy_phase_03_loads` — assertion updated; on-disk file unchanged check preserved.
+    53. `tests/phase_04/test_state.py:test_graph_state_file_v2_round_trip` — literal `loaded["_state_version"] == 2` removed; dynamic-only.
+    54. `tests/phase_04/test_state.py:test_graph_state_v3_round_trip` — same.
+    55. `tests/phase_04/test_state.py:test_graph_state_v4_refused` → renamed to `test_graph_state_future_version_refused`; uses `state_mod.GRAPH_STATE_VERSION + 1` instead of literal 4.
+    56. `tests/phase_04/test_state.py:test_graph_state_version_constants_split` — `GRAPH_STATE_VERSION == 4`; `METAGRAPH_STATE_VERSION == 1` added.
+    57. `tests/phase_04_v2/test_state_v3_round_trip.py:test_v3_hyperedge_carries_type_name` — literal `_state_version == 3` removed.
+
+  **§6 — 05b dry-run appendix (E2 lock; pre-resolves 05b decisions that could retroactively wish for 05a changes):**
+
+    - **05b will add `intergraph_edges` array + optional `schema_name` field** to metagraph state file → bump v=1 → v=2. **05a's v=1 shape is forward-compat:** missing fields default to empty/null. No 05a change needed.
+    - **05b's `IntergraphEdgeType` schema validation** uses Phase 04's `PropertyType` 8-variant vocabulary + new `allowed_source_graphs` / `allowed_target_graphs` constraints. **No 05a change needed** (PropertyType already shipped).
+    - **05b's `MetagraphSchema`** is attached to Metagraph similarly to how Phase 04's `Schema` attaches to Graph. **05a's `Metagraph` constructor does NOT yet accept a `schema` parameter** — 05b adds it. Tester scripts in 05a don't use `--schema` on `mindsos metagraph create`.
+    - **05b's `compositional: bool` flag on `IntergraphEdge`** persists as `_compositional` reserved property. ~~**05a adds `_compositional` to `RESERVED_PROPERTY_KEYS` set proactively**~~ — **superseded by P6 (round 1 amendment)**: 05b adds the reserved-key entry alongside the actual flag implementation. Adding a NEW reserved key is not a breaking change (no extant data uses `_compositional`), so atomicity in 05b is preferable to dead code in 05a.
+    - **05c's `compositional` flag immutability semantics** (raises `CompositionalImmutableError`) apply equally to `Metagraph.remove_graph` cascade — if a removed graph had compositional intergraph edges incident on it, removal must propagate the error. **05a's slim `remove_graph` is forward-compat:** it cascades incident metaedges/metahyperedges only (no intergraph edges in 05a). 05b/05c add the intergraph-edge cascade. No 05a change needed.
+    - **05b/05c's CLI `--compositional` flag (R2-A)** is a top-level boolean; no 05a action needed.
+
+  **ADR-0020 amendment text (2026-05-05; deferred to Phase 38 file edit):**
+
+  > **2026-05-05 amendment (Phase 05a):** Confirmed in slim CLI surface. `Metagraph` owns one shared `IdentityRegistry`; `add_graph` unifies the graph's registry into the metagraph's; ADR-0138 INFO log fires on non-empty unification. CLI surface (`mindsos metagraph add-graph`) enforces eager id-collision check (Q5-A) before unification. Symmetric for the 05a slim port; behavior matches parent code line 504 onward.
+
+  **ADR-0029 supersession annotation text (2026-05-05; deferred to Phase 38 file edit):**
+
+  > **2026-05-05 supersession (Phase 05a):** ADR-0029 (`:MetagraphSettings` JSON singletons) marked **Superseded by ADR-0130** (Metagraph property bag). Phase 05a ships `Metagraph.properties: Dict[str, Any]` per ADR-0130; the `:MetagraphSettings` mechanism is no longer used. Existing `kl:active_graph_ids` workaround migrates to `mg.properties["kl:active_graph_ids"]` when L2 lands in Phase 14.
+
+  **ADR-0130 acceptance text (2026-05-05; deferred to Phase 38 file edit):**
+
+  > **2026-05-05 acceptance (Phase 05a):** ADR-0130 status flips Proposed → Accepted. `Metagraph.properties: Dict[str, Any]` shipped in 05a slim port; namespaced keys (`kl:`, `server:`, `l3:`, `l4:`, `l5:`); validated via existing `validate_namespaced_properties` (Phase 04). Graph-level property bag (`Graph.properties`) deferred to Phase 10 (separate v=4 → v=5 graph state-file bump avoided in 05a per N1 distinction).
+
+---
+
+### Phase 05b — L1 IntergraphEdge (binary) + MetagraphSchema + MetaEdgeType + MetaHyperEdgeType + IntergraphEdgeType
+
+  **Status:** Pending (refines after 05a confirms; CASC-1).
+  **Branch:** phase-05b
+  **Tag on confirm:** phase-05b-confirmed
+  **Depends on:** 05a.
+  **Layer:** L1.
+  **Net-new?:** **Yes (substantial).** New `IntergraphEdge` primitive class + factory + persistence + CLI; new `MetagraphSchema` class + `MetaEdgeType` + `MetaHyperEdgeType` + `IntergraphEdgeType` schema vocabularies; ADR-0148 first draft (intergraph edge family); ADR-0117 Withdrawn; ADR-0014 amended.
+
+  **Features (preview — full row refinement happens in 05b chat):**
+    - `Metagraph.add_intergraph_edge(...)` factory with `compositional: bool = False` flag.
+    - `IntergraphEdge` dataclass with 10 fields per `INTERGRAPH_EDGES_DESIGN.md` §2.1.
+    - `MetagraphSchema` class attached to `Metagraph`; carries `MetaEdgeType` + `MetaHyperEdgeType` + `IntergraphEdgeType` vocabularies.
+    - CLI: `mindsos metagraph add-intergraph-edge` with `--compositional` flag (R2-A); `remove-intergraph-edge` (refuses on compositional); `set-prop --intergraph-edge-id ID`; `list-intergraph-edges`.
+    - `Metagraph.remove_graph` cascade extended to incident IntergraphEdges (refuses if any compositional).
+    - State files: metagraph state v=1 → v=2 (adds `intergraph_edges` + `schema_name`); MetagraphSchema in `metagraph-schema-<n>.json` (new file, v=1).
+
+  **Reads:** `INTERGRAPH_EDGES_DESIGN.md` §1 / §2.1 / §3 / §4 / §5 / §6 (CLI 05b section) / §7 / §9 / §10 / §11. (§2.2 = 05c.)
+
+  **Risks:** scope is significant (new primitive + 4 schema vocabularies + ADR drafts); 05a confirmation must hold; ADR-0117 supersession by ADR-0148 needs careful annotation.
+
+  **Docs:** `docs/concepts/intergraph-edges.md` (NEW), `docs/usage/core/metagraph-schema.md` (NEW), `docs/api/core/intergraph-edge.md` (NEW), `docs/api/core/metagraph-schema.md` (NEW), ADR-0148 (NEW; drafted in 05b row appendix; file edit Phase 38), ADR-0117 (Withdrawn), ADR-0014 (amendment text drafted; file edit Phase 38).
+
+---
+
+### Phase 05c — L1 IntergraphHyperEdge (n-ary) + IntergraphHyperEdgeType
+
+  **Status:** Pending (refines after 05b confirms; CASC-1).
+  **Branch:** phase-05c
+  **Tag on confirm:** phase-05c-confirmed
+  **Depends on:** 05b.
+  **Layer:** L1.
+  **Net-new?:** **Yes.** New `IntergraphHyperEdge` primitive (asymmetric anchors + members; n-ary; NOT 1-to-1) + factory + persistence + CLI; `IntergraphHyperEdgeType` schema vocabulary added to `MetagraphSchema`; ADR-0148 amended.
+
+  **Features (preview — full row refinement happens in 05c chat):**
+    - `Metagraph.add_intergraph_hyperedge(...)` factory with `compositional: bool = False` flag and cardinality enforcement (anchors ≥ 1, members ≥ 1, NOT 1-1).
+    - `IntergraphHyperEdge` dataclass with 9 fields per `INTERGRAPH_EDGES_DESIGN.md` §2.2.
+    - `IntergraphHyperEdgeType` schema vocabulary with `allowed_anchor_types` / `allowed_member_types` / `allowed_anchor_graphs` / `allowed_member_graphs` / `ordered: bool` fields.
+    - CLI: `mindsos metagraph add-intergraph-hyperedge` with `--anchor <G>/<N>` repeatable + `--member <G>/<N>` repeatable + `--compositional` flag.
+    - `Metagraph.remove_graph` cascade extended to incident IntergraphHyperEdges (refuses if any compositional).
+    - State files: metagraph state v=2 → v=3 (adds `intergraph_hyperedges`); MetagraphSchema state-file v=1 → v=2 (adds `intergraph_hyperedge_types` map).
+
+  **Reads:** `INTERGRAPH_EDGES_DESIGN.md` §1 / §2.2 / §3 / §4.2 / §4.3 / §5 / §6 (CLI 05c section) / §7 (cat=c+a+t example is the motivating use case) / §9 (ADR-0148 amendment) / §10 / §11.
+
+  **Risks:** anchor-member overlap detection must be efficient under large compositions; n-lock canonical ordering deadlock-avoidance correctness needs explicit testing under concurrent writes (Phase 07-relevant; 05c can ship in-memory only).
+
+  **Docs:** `docs/concepts/intergraph-edges.md` (amended for n-ary), `docs/usage/core/metagraph-schema.md` (amended for `IntergraphHyperEdgeType`), `docs/api/core/intergraph-hyperedge.md` (NEW), ADR-0148 (amended; file edit Phase 38).
 
 ### Phase 06 — L1 Instancing (`mindsos_instances`)
 
@@ -1147,7 +1443,7 @@ For every existing doc-tree entry, the phase that confirms it. A page touched by
 | `docs/getting-started/install.md` | 00 + 01 |
 | `docs/getting-started/quickstart.md` | 03 |
 | `docs/getting-started/first-graph.md` | 03 |
-| `docs/getting-started/first-metagraph.md` | 05 |
+| `docs/getting-started/first-metagraph.md` | 05a |
 | `docs/getting-started/first-mental-model.md` | **out of scope** (L5) |
 | `docs/getting-started/whats-new-v4.md` | 38 |
 | `docs/getting-started/facts-and-figures.md` | 38 |
@@ -1157,7 +1453,7 @@ For every existing doc-tree entry, the phase that confirms it. A page touched by
 | Page | Confirms in phase |
 |---|---|
 | `docs/concepts/layers.md` | 38 |
-| `docs/concepts/graphs-and-metagraphs.md` | 03 + 05 |
+| `docs/concepts/graphs-and-metagraphs.md` | 03 + 05a (+ 05b / 05c amend for intergraph edges) |
 | `docs/concepts/identity.md` | 02 |
 | `docs/concepts/instancing.md` | 06 |
 | `docs/concepts/references.md` | 09 |
@@ -1173,7 +1469,9 @@ For every existing doc-tree entry, the phase that confirms it. A page touched by
 | Page | Confirms in phase |
 |---|---|
 | `docs/usage/core/building-graphs.md` | 03 |
-| `docs/usage/core/metagraphs.md` | 05 |
+| `docs/usage/core/metagraphs.md` | 05a |
+| `docs/concepts/intergraph-edges.md` | 05b (+ 05c amend for n-ary) |
+| `docs/usage/core/metagraph-schema.md` | 05b (+ 05c amend for `IntergraphHyperEdgeType`) |
 | `docs/usage/core/schema.md` | 04 |
 | `docs/usage/core/persistence.md` | 07 + 08 |
 | `docs/usage/core/snapshots.md` | 10 |
@@ -1234,14 +1532,16 @@ API pages map 1:1 to the phase that ships their corresponding code surface. Each
 | ADR range | Confirms in phase |
 |---|---|
 | 0001–0013 (Server originals) | 18 (0001 fact); 0002 / 0005 in 19; 0003 in 18; 0004 in 07 + 18; 0006 / 0007 in 23; 0008 in 22; 0009 in 16; 0010 in 25; 0011 in 07; 0012 in 20; 0013 in 21 |
-| 0014–0024 (L1 originals) | 0014 in 03; 0015 / 0019 / 0025 / 0026 in 06; 0016 in 09 (XRef supersession noted); 0017 in 04; 0018 in 07; 0020 in 05; 0021 in 03 + 11; 0022 / 0023 in 07; 0024 in 10 |
-| 0027–0037 | 0027 / 0028 / 0029 in 10; 0030 in 07; 0031 / 0032 in 08; 0033 in 10; 0034 in 09; 0035 in 02; 0036 in 07; 0037 in 06 |
+| 0014–0024 (L1 originals) | **0014 in 03** (amended in 05b for IntergraphEdge / IntergraphHyperEdge primitives — text in 05b row appendix; file edit Phase 38); 0015 / 0019 / 0025 / 0026 in 06; 0016 in 09 (XRef supersession noted); 0017 in 04; 0018 in 07; **0020 confirmed in 05a** (amendment text drafted; file edit Phase 38); 0021 in 03 + 11; 0022 / 0023 in 07; 0024 in 10 |
+| 0027–0037 | 0027 / 0028 in 10; **0029 Superseded by 0130 in 05a** (annotation text in 05a row appendix; file edit Phase 38); 0030 in 07; 0031 / 0032 in 08; 0033 in 10; 0034 in 09; 0035 in 02; 0036 in 07; 0037 in 06 |
 | 0038–0057 (L2) | 0038–0042 in 25; 0043 in 14; 0044 in 14; 0045 / 0047 in 12; 0046 in 18; 0048 in 14; 0049–0056 in 16; 0057 in 13 |
 | 0060–0100 (L3) | 0060 / 0084 in 27 + 28; 0061 / 0064 / 0065 / 0085 in 28; 0062 / 0063 / 0066 in 27; 0067 in 12; 0068–0070 / 0086 / 0092 in 29; 0071 / 0072 / 0074 in 30; 0073 / 0088 / 0100 in 31; 0075 / 0076 in 28; 0077–0081 in 25 (cross with 28); 0082 / 0083 / 0094 / 0095 / 0096 / 0097 — L4 implications **out of scope**; only the L3 surface they imply ships; 0091 / 0098 / 0099 in 31; 0093 in 27 |
+| **0117** | **Reserved through 05a; Withdrawn in 05b** (originally graph-level CompositionalMetaEdge; concept moves to `compositional: bool` flag on `IntergraphEdge` / `IntergraphHyperEdge` per ADR-0148; canonical at `INTERGRAPH_EDGES_DESIGN.md`) |
 | 0118 | 24 |
-| 0121–0137 (L1 redesign) | 0121 in 07; 0122 in 07; 0123 in 07 + 11; 0124 in 08; 0125 in 08; 0126 in 07; 0127 in 07; 0128 in 09; 0129 in 10; 0130 in 10 (or 05 if property bag lands earlier); 0131 in 02; 0132 in 06; 0133 in 10; 0134 in 11; 0135 in 10; 0136 in 18; 0137 in 23 + 24 |
+| 0121–0137 (L1 redesign) | 0121 in 07; 0122 in 07; 0123 in 07 + 11; 0124 in 08; 0125 in 08; 0126 in 07; 0127 in 07; 0128 in 09; 0129 in 10; **0130 Accepted in 05a** (Metagraph property bag shipped per N1-A1; Graph property bag deferred to Phase 10); 0131 in 02; 0132 in 06; 0133 in 10; 0134 in 11; 0135 in 10; 0136 in 18; 0137 in 23 + 24 |
 | 0138–0144 (L2 closure) | 0138 in 14 (verify removed); 0139 in **36 — NEW CODE**; 0140 in 36 (constraints on writes); 0141 in 14; 0142 in 09; 0143 in 34; 0144 in **37 — NEW CODE** |
 | 0145–0147 (L3 write side) | 0145 in **33 — NEW CODE**; 0146 in **34 — NEW CODE**; 0147 in **35 — NEW CODE** |
+| **0148 (NEW; intergraph edge family)** | **drafted + Accepted in 05b** (`IntergraphEdge` binary + compositional flag); **amended in 05c** (`IntergraphHyperEdge` n-ary). Canonical spec at `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`. ADR file edit Phase 38 per locked precedent. |
 
 ### Knowledge Sources
 
@@ -1272,7 +1572,7 @@ These require user adjudication before the affected phase chat can proceed.
 
 1. **`promotion.py` vs `promotion_v2.py` canonicalisation.** Both files exist in `mindsos_knowledge/`. **Affects Phase 16.** Question: which is canonical, and is the other deprecated?
 
-2. **ADRs 0113–0117 / 0119 / 0120 reserved but undrafted.** **Affects Phase 24.** Recommend the phase chat draft them as part of the phase. Confirm or specify alternative.
+2. **ADRs 0113–0116 / 0119 / 0120 reserved but undrafted.** **Affects Phase 24.** Recommend the phase chat draft them as part of the phase. Confirm or specify alternative. *(2026-05-05 update: ADR-0117 removed from this list — to be Withdrawn in Phase 05b per the intergraph edge design refinement; canonical at `INTERGRAPH_EDGES_DESIGN.md`.)*
 
 3. **Soft-delete read-path enforcement (ADR-0133).** Property keys exist; runtime filtering not confirmed. **Affects Phase 10.** Question: do queries hide deprecated nodes by default, or is soft-delete advisory only?
 
@@ -1294,7 +1594,7 @@ These require user adjudication before the affected phase chat can proceed.
 
 12. **`mindsos_contracts` package (L2 critique §5.2).** Continuation handoff recommended; closure handoff deferred. Code inventory shows no such package. Question: accept the deferral as permanent for this plan?
 
-13. **Intergraph edge primitive (raised by user 2026-05-04, in Phase 03 chat).** Should L1 ship a fourth edge primitive — node↔node *across graphs but inside one metagraph* — distinct from the three existing graph-spanning constructs (`MetaEdge` graph↔graph binary, `MetaHyperEdge` graph↔...↔graph n-ary, `XRef` node↔node *across metagraphs*)? **Affects Phase 05** (the natural design slot — Metagraph context exists; persistence implications scoped before Phase 07). Status-quo alternative: alignments-as-a-graph (3rd-party reification node carrying refs to both endpoints, what L2 does today). Pushbacks recorded against adding the primitive: no Cypher `OWNS` home, snapshot scope breaks per-graph locality, schema validation has two competing schemas, OCC/WAL ownership becomes ambiguous, migration cost across DOLCE/OEWN/FrameNet/Alignments importers (Phase 15). **Full analysis + options + pushbacks + concrete asks: `confirmation_docs/INTERGRAPH_EDGE_DESIGN_NOTE.md`.** **Phase 05 chat must adjudicate before implementing Metagraph elements.**
+13. ~~**Intergraph edge primitive (raised by user 2026-05-04, in Phase 03 chat).**~~ **CLOSED 2026-05-04 (Phase 05 design chat) + refined 2026-05-05 (Phase 05a chat).** GREENLIT as **two primitives**: `IntergraphEdge` (binary 1-1, ships in 05b) + `IntergraphHyperEdge` (n-ary, NOT 1-1, ships in 05c). Both carry `compositional: bool` flag (immutable post-create) for identity-bearing composition (cat=c+a+t use case). All §4 concerns (OWNS / snapshots / schema / OCC / migration / existing constructs) resolved. **Canonical design: `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`.** Future chats read that file directly; do not consult older Q13 framing.
 
 ---
 

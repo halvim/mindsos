@@ -29,6 +29,14 @@ def test_state_file_path_validates_name():
 
 
 def test_save_and_load_round_trip(_isolated_state_dir):
+    """Save + load round-trip.
+
+    Phase 05a — the migration chain forward-migrates a saved v=1 file to
+    the current ``GRAPH_STATE_VERSION`` on load, populating
+    ``schema_name=None`` (P04 default) and ``metagraph_name=None``
+    (P05a default). The on-disk file is unchanged until next save;
+    the in-memory loaded dict reflects current shape.
+    """
     state = {
         "_state_version": 1,
         "graph_id": "abc",
@@ -40,7 +48,14 @@ def test_save_and_load_round_trip(_isolated_state_dir):
     }
     state_mod.save_graph_state("g", state)
     loaded = state_mod.load_graph_state("g")
-    assert loaded == state
+    # Migration chain populates current-version fields with defaults.
+    expected = {
+        **state,
+        "_state_version": state_mod.GRAPH_STATE_VERSION,
+        "schema_name": None,
+        "metagraph_name": None,
+    }
+    assert loaded == expected
 
 
 def test_save_is_atomic(_isolated_state_dir):

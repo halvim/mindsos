@@ -13,6 +13,7 @@ nav:
   - Home: index.md
   - Get started:
       - Install: getting-started/install.md
+      - Your first metagraph: getting-started/first-metagraph.md
   - Concepts:
       - Identity and IRIs: concepts/identity.md
       - Graphs and metagraphs: concepts/graphs-and-metagraphs.md
@@ -20,6 +21,7 @@ nav:
       - Core:
           - Building graphs: usage/core/building-graphs.md
           - Schemas: usage/core/schema.md
+          - Metagraphs: usage/core/metagraphs.md
   - API:
       - Core IdentityRegistry: api/core/identity-registry.md
       - Core Graph: api/core/graph.md
@@ -28,6 +30,9 @@ nav:
       - Core HyperEdge: api/core/hyperedge.md
       - Core Schema: api/core/schema.md
       - Core Schema types: api/core/types.md
+      - Core Metagraph: api/core/metagraph.md
+      - Core MetaEdge: api/core/metaedge.md
+      - Core MetaHyperEdge: api/core/metahyperedge.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md

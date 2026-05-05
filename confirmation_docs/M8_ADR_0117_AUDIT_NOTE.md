@@ -1,6 +1,16 @@
 # M8 / ADR-0117 audit — does CompositionalMetaEdge need the ADR-0130 property bag?
 
-**Date:** 2026-05-04
+> **⚠️ SUPERSEDED 2026-05-05.** This audit assumed `CompositionalMetaEdge` would ship in Phase 05c per HANDOFF L1 §12.10. The Phase 05a row-refinement chat (2026-05-05) **dropped `CompositionalMetaEdge` entirely.** ADR-0117 will be **Withdrawn in Phase 05b** (was: Reserved). The compositional concept moved to a `compositional: bool` flag on the new `IntergraphEdge` / `IntergraphHyperEdge` primitives.
+>
+> The audit's verdict ("composition does NOT need ADR-0130") remains correct as a property-bag design point, but the framing — that composition lives at the graph level — is now obsolete. The current canonical design is:
+>
+> **`halvim_mindsos/confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`** — covers `IntergraphEdge` (Phase 05b) + `IntergraphHyperEdge` (Phase 05c), both carrying `compositional: bool` flag with the same `CompositionalImmutableError` semantic, but at the node level (correct for cat=c+a+t).
+>
+> Future chats: read INTERGRAPH_EDGES_DESIGN.md for compositional design. This audit note is preserved for the property-bag-doesn't-need-composition-rules verdict only.
+
+---
+
+**Date:** 2026-05-04 (original); 2026-05-05 supersession header added.
 **Audit context:** Pre-Phase-05a gating decision (round-6 pushback #29 / #41).
 **Sources read:**
 
