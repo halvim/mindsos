@@ -17,9 +17,9 @@ import pytest
 def schema_attached(cli, _isolated_state_dir):
     """Build a metagraph with a schema attached, ready for stale-recovery tests."""
     cli("graph", "create", "--name", "lex", "--role", "lexicon")
-    cli("graph", "add-node", "--name", "lex", "--node-id", "n", "--value", "v", "--type", "Word")
+    cli("graph", "add-node", "v", "--name", "lex", "--node-id", "n", "--type", "Word")
     cli("graph", "create", "--name", "cpt", "--role", "concepts")
-    cli("graph", "add-node", "--name", "cpt", "--node-id", "n", "--value", "v", "--type", "Concept")
+    cli("graph", "add-node", "v", "--name", "cpt", "--node-id", "n", "--type", "Concept")
     cli("metagraph", "create", "--name", "mg")
     cli("metagraph", "add-graph", "--name", "mg", "--graph", "lex")
     cli("metagraph", "add-graph", "--name", "mg", "--graph", "cpt")

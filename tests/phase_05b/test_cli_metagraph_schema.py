@@ -22,9 +22,9 @@ def empty_schema(cli, _isolated_state_dir):
 @pytest.fixture
 def metagraph_with_two_graphs(cli, _isolated_state_dir):
     cli("graph", "create", "--name", "lex", "--role", "lexicon")
-    cli("graph", "add-node", "--name", "lex", "--node-id", "n_cat", "--value", "cat", "--type", "Word")
+    cli("graph", "add-node", "cat", "--name", "lex", "--node-id", "n_cat", "--type", "Word")
     cli("graph", "create", "--name", "cpt", "--role", "concepts")
-    cli("graph", "add-node", "--name", "cpt", "--node-id", "n_concept", "--value", "Cat#1", "--type", "Concept")
+    cli("graph", "add-node", "Cat#1", "--name", "cpt", "--node-id", "n_concept", "--type", "Concept")
     cli("metagraph", "create", "--name", "mg")
     cli("metagraph", "add-graph", "--name", "mg", "--graph", "lex")
     cli("metagraph", "add-graph", "--name", "mg", "--graph", "cpt")
@@ -209,9 +209,9 @@ class TestAttachSchemaCLI:
 
     def test_eager_validation_failure(self, cli, _isolated_state_dir):
         cli("graph", "create", "--name", "lex", "--role", "lexicon")
-        cli("graph", "add-node", "--name", "lex", "--node-id", "n", "--value", "v", "--type", "Word")
+        cli("graph", "add-node", "v", "--name", "lex", "--node-id", "n", "--type", "Word")
         cli("graph", "create", "--name", "cpt", "--role", "concepts")
-        cli("graph", "add-node", "--name", "cpt", "--node-id", "n", "--value", "v", "--type", "Concept")
+        cli("graph", "add-node", "v", "--name", "cpt", "--node-id", "n", "--type", "Concept")
         cli("metagraph", "create", "--name", "mg")
         cli("metagraph", "add-graph", "--name", "mg", "--graph", "lex")
         cli("metagraph", "add-graph", "--name", "mg", "--graph", "cpt")

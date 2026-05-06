@@ -15,9 +15,9 @@ import pytest
 def two_graph_metagraph(cli, _isolated_state_dir):
     """Build a metagraph with 2 graphs + 1 node each via CLI."""
     cli("graph", "create", "--name", "lex", "--role", "lexicon")
-    cli("graph", "add-node", "--name", "lex", "--node-id", "n_cat", "--value", "cat", "--type", "Word")
+    cli("graph", "add-node", "cat", "--name", "lex", "--node-id", "n_cat", "--type", "Word")
     cli("graph", "create", "--name", "cpt", "--role", "concepts")
-    cli("graph", "add-node", "--name", "cpt", "--node-id", "n_concept", "--value", "Cat#1", "--type", "Concept")
+    cli("graph", "add-node", "Cat#1", "--name", "cpt", "--node-id", "n_concept", "--type", "Concept")
     cli("metagraph", "create", "--name", "mg")
     cli("metagraph", "add-graph", "--name", "mg", "--graph", "lex")
     cli("metagraph", "add-graph", "--name", "mg", "--graph", "cpt")
