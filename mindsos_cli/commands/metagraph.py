@@ -989,9 +989,15 @@ def remove_graph_cmd(
         1 for mhe in mg.metahyperedges.values()
         if graph_id in mhe.graph_ids
     )
-    # Remove from metagraph (cascades).
+    # Remove from metagraph (cascades). Pushback 17-A — atomic precheck
+    # raises CompositionalImmutableError BEFORE any mutation if any
+    # incident intergraph_edge has compositional=True. Catch both error
+    # classes for a clean stderr + exit 1 (no traceback).
     try:
         mg.remove_graph(graph_id)
+    except CompositionalImmutableError as e:
+        typer.echo(f"CompositionalImmutableError: {e}", err=True)
+        raise typer.Exit(code=1)
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
         raise typer.Exit(code=1)
