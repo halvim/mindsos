@@ -70,14 +70,27 @@ COPY mindsos_cli ./mindsos_cli
 # Phase 05a: + mindsos_core/models/metagraph.py (slim port: Metagraph,
 #            MetaEdge, MetaHyperEdge); RESERVED_PROPERTY_KEYS extended
 #            in mindsos_core/schema/validation.py (P13).
+# Phase 05b: + mindsos_core/models/intergraph_edge.py (IntergraphEdge,
+#            ADR-0148 first draft); + mindsos_core/schema/metagraph_schema.py
+#            (MetagraphSchema container); IntergraphEdgeType added to
+#            mindsos_core/schema/types.py (no new file there);
+#            CompositionalImmutableError re-shipped in
+#            mindsos_core/exceptions.py; RESERVED_PROPERTY_KEYS extended
+#            in mindsos_core/schema/validation.py with intergraph_edges,
+#            schema_name, _compositional (Pushbacks 18-A + 6).
 COPY mindsos_core ./mindsos_core
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
-# Phase 03 / 04 / 04-v2 / 05a: tests/test_image_completeness.py (root-level
-# cumulative) asserts the same set is present at /app — keep this list
-# aligned with the SENTINEL_PATHS list in tests/_shared/sentinel_paths.py.
+# Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
+# (root-level cumulative) asserts the same set is present at /app — keep
+# this list aligned with the SENTINEL_PATHS list in
+# tests/_shared/sentinel_paths.py.
 # Phase 05a additions (sentinel-tracked): mindsos_cli/commands/metagraph.py
 # + mindsos_cli/migrations/{__init__,graph,schema,metagraph}.py.
+# Phase 05b additions (sentinel-tracked): mindsos_core/models/intergraph_edge.py
+# + mindsos_core/schema/metagraph_schema.py
+# + mindsos_cli/commands/metagraph_schema.py
+# + mindsos_cli/migrations/metagraph_schema.py.
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
@@ -108,13 +121,19 @@ COPY tests ./tests
 # test_doctor_workflow_check.py read these from the host repo at /app/.
 # tests/phase_01/test_init_notes.py invokes confirm-phase --init-notes which
 # reads confirmation_docs/_template_notes.md.
-# Phase 03 / 04 / 04-v2 / 05a: tests/test_image_completeness.py (root-level
-# cumulative) asserts these sentinel files exist at /app/. Sentinel list
-# lives at tests/_shared/sentinel_paths.py — append there when adding new
-# static inputs (Phase 04 added 5 entries: mindsos_core/schema/{...}.py +
-# mindsos_cli/commands/schema.py). Phase 04-v2 adds NO new entries.
+# Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
+# (root-level cumulative) asserts these sentinel files exist at /app/.
+# Sentinel list lives at tests/_shared/sentinel_paths.py — append there
+# when adding new static inputs (Phase 04 added 5 entries:
+# mindsos_core/schema/{...}.py + mindsos_cli/commands/schema.py).
+# Phase 04-v2 adds NO new entries.
 # Phase 05a adds 5 entries: mindsos_cli/commands/metagraph.py +
-# mindsos_core/models/metagraph.py + mindsos_cli/migrations/{__init__,graph,schema,metagraph}.py.
+# mindsos_core/models/metagraph.py +
+# mindsos_cli/migrations/{__init__,graph,schema,metagraph}.py.
+# Phase 05b adds 4 entries: mindsos_core/models/intergraph_edge.py +
+# mindsos_core/schema/metagraph_schema.py +
+# mindsos_cli/commands/metagraph_schema.py +
+# mindsos_cli/migrations/metagraph_schema.py.
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs

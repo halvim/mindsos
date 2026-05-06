@@ -1,28 +1,33 @@
-"""Cross-invocation state-file persistence (Phase 05a surface).
+"""Cross-invocation state-file persistence (Phase 05b surface).
 
 Pure-function (de)serialization helpers. The CLI command layer does the
-``Graph`` / ``Schema`` / ``Metagraph`` ↔ ``dict`` conversion; this module
-only deals with primitives, ``Path``, and plain ``dict``.
+``Graph`` / ``Schema`` / ``Metagraph`` / ``MetagraphSchema`` ↔ ``dict``
+conversion; this module only deals with primitives, ``Path``, and plain
+``dict``.
 
 State-file location: ``${MINDSOS_STATE_DIR or ~/.mindsos}/<kind>-<name>.json``.
 
-Phase 05a ships THREE state-file kinds with INDEPENDENT version stories:
+Phase 05b ships FOUR state-file kinds with INDEPENDENT version stories:
 
-  - ``graph-<name>.json``     — current v=4 (Phase 05a). v=1 (Phase 03)
-                                / v=2 (Phase 04) / v=3 (Phase 04-v2)
-                                load via the migration chain at
-                                ``mindsos_cli.migrations.graph``.
-                                Phase 05a adds an optional
-                                ``metagraph_name: str | null`` back-pointer
-                                field (B2 lock; populated by
-                                ``mindsos metagraph add-graph``).
-  - ``schema-<name>.json``    — current v=2 (Phase 04-v2). v=1 (Phase 04)
-                                loads via ``mindsos_cli.migrations.schema``.
-  - ``metagraph-<name>.json`` — current v=1 (Phase 05a — NEW state-file
-                                kind). Migration chain at
-                                ``mindsos_cli.migrations.metagraph``
-                                (empty in 05a; future bumps in
-                                05b / 05c / 10).
+  - ``graph-<name>.json``         — current v=4 (Phase 05a). v=1..3 load
+                                    via ``mindsos_cli.migrations.graph``.
+                                    Phase 05a added the optional
+                                    ``metagraph_name: str | null`` back-pointer
+                                    field (B2 lock).
+  - ``schema-<name>.json``        — current v=2 (Phase 04-v2). v=1 (Phase 04)
+                                    loads via ``mindsos_cli.migrations.schema``.
+  - ``metagraph-<name>.json``     — current v=2 (Phase 05b — Pushback 18-A
+                                    bump). v=1 (Phase 05a) loads via
+                                    ``mindsos_cli.migrations.metagraph``
+                                    chain. 05b adds top-level
+                                    ``intergraph_edges`` array + optional
+                                    ``schema_name: str | null`` reference
+                                    to a MetagraphSchema state file.
+  - ``metagraph-schema-<name>.json`` — current v=1 (Phase 05b — NEW
+                                    state-file kind). Migration chain at
+                                    ``mindsos_cli.migrations.metagraph_schema``
+                                    (empty in 05b; future bumps in
+                                    05c / 10).
 
 Migration chain (P14 lock):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -35,16 +40,17 @@ new version bump appends one migration step to the relevant module —
 never edits a prior step. This keeps ``_state_to_graph`` etc. focused on
 the current-version shape.
 
-Per-kind version constants (Phase 05a):
+Per-kind version constants (Phase 05b):
 
-    GRAPH_STATE_VERSION     = 4   (P03→1; P04→2; P04-v2→3; P05a→4)
-    SCHEMA_STATE_VERSION    = 2   (P04→1; P04-v2→2)
-    METAGRAPH_STATE_VERSION = 1   (P05a — NEW)
+    GRAPH_STATE_VERSION            = 4   (P03→1; P04→2; P04-v2→3; P05a→4)
+    SCHEMA_STATE_VERSION           = 2   (P04→1; P04-v2→2)
+    METAGRAPH_STATE_VERSION        = 2   (P05a→1; P05b→2)
+    METAGRAPH_SCHEMA_STATE_VERSION = 1   (P05b — NEW)
 
 The legacy ``STATE_VERSION`` alias is kept for any external caller; it
 equals ``GRAPH_STATE_VERSION``.
 
-Graph state-file v4 schema (Phase 05a):
+Graph state-file v4 schema (Phase 05a, unchanged in 05b):
 
     {
       "_state_version": 4,
@@ -60,13 +66,14 @@ Graph state-file v4 schema (Phase 05a):
                        "label", "properties"} ]
     }
 
-Metagraph state-file v1 schema (Phase 05a):
+Metagraph state-file v2 schema (Phase 05b — Pushback 18-A bump):
 
     {
-      "_state_version": 1,
+      "_state_version": 2,
       "metagraph_id": "<uuid4>",
       "name": "<name>",
       "properties": {"<k>": "<value>"},
+      "schema_name": "<metagraph-schema-name-or-null>",  # P05b — Pushback 11-A reference
       "contained_graphs": ["<gname>", ...sorted],
       "metaedges": [
         {"edge_id", "source_graph": "<gname>", "target_graph": "<gname>",
@@ -75,6 +82,29 @@ Metagraph state-file v1 schema (Phase 05a):
       "metahyperedges": [
         {"edge_id", "type_name": "<UPPER>",
          "member_graphs": [...sorted by gname], "label", "properties"}
+      ],
+      "intergraph_edges": [
+        {"edge_id", "source_graph": "<gname>", "source_node": "<node-id>",
+         "target_graph": "<gname>", "target_node": "<node-id>",
+         "type_name": "<UPPER>", "compositional": <bool>,
+         "label": "<text-or-null>", "properties": {...}}
+      ]
+    }
+
+MetagraphSchema state-file v1 schema (Phase 05b — NEW kind):
+
+    {
+      "_state_version": 1,
+      "name": "<name>",
+      "strict": <bool>,
+      "intergraph_edge_types": [
+        {"name": "<UPPER>",
+         "allowed_source_types": [...sorted],
+         "allowed_target_types": [...sorted],
+         "allowed_source_graphs": [...sorted],
+         "allowed_target_graphs": [...sorted],
+         "property_types": {"<k>": "<PropertyType.value>"},
+         "description": "<text-or-null>"}
       ]
     }
 
@@ -95,6 +125,7 @@ from typing import Iterator, Optional
 
 from mindsos_cli.migrations import graph as _graph_migrations
 from mindsos_cli.migrations import metagraph as _metagraph_migrations
+from mindsos_cli.migrations import metagraph_schema as _metagraph_schema_migrations
 from mindsos_cli.migrations import schema as _schema_migrations
 
 #: Safe-name regex for state files (avoids path traversal and weird
@@ -111,9 +142,13 @@ GRAPH_STATE_VERSION = _graph_migrations.CURRENT_VERSION  # = 4
 #: writers emit v=2.
 SCHEMA_STATE_VERSION = _schema_migrations.CURRENT_VERSION  # = 2
 
-#: Metagraph state-file version. P05a→1 (new state-file kind). Loaders
-#: accept v=1; writers emit v=1.
-METAGRAPH_STATE_VERSION = _metagraph_migrations.CURRENT_VERSION  # = 1
+#: Metagraph state-file version. P05a→1, P05b→2. Loaders accept
+#: v=1..2 (via migration chain); writers emit v=2.
+METAGRAPH_STATE_VERSION = _metagraph_migrations.CURRENT_VERSION  # = 2
+
+#: MetagraphSchema state-file version. P05b→1 (new state-file kind).
+#: Loaders accept v=1; writers emit v=1.
+METAGRAPH_SCHEMA_STATE_VERSION = _metagraph_schema_migrations.CURRENT_VERSION  # = 1
 
 #: Backward-compat alias for any external caller.
 STATE_VERSION = GRAPH_STATE_VERSION
@@ -246,6 +281,42 @@ def save_metagraph_state(name: str, state: dict) -> None:
 def delete_metagraph_state_file(name: str) -> None:
     """Remove the state file for metagraph ``name``."""
     path = metagraph_file_path(name)
+    path.unlink()  # FileNotFoundError if missing
+
+
+# ── metagraph-schema state file (Phase 05b — NEW) ──────────────────────────
+
+
+def metagraph_schema_file_path(name: str) -> Path:
+    """Compute the state-file path for metagraph-schema ``name``, validating the name."""
+    _validate_name(name, kind="metagraph-schema")
+    return state_dir() / f"metagraph-schema-{name}.json"
+
+
+def iter_metagraph_schema_files() -> Iterator[Path]:
+    """Yield every ``metagraph-schema-*.json`` in the state dir, sorted by name."""
+    return iter(sorted(state_dir().glob("metagraph-schema-*.json")))
+
+
+def load_metagraph_schema_state(name: str) -> dict:
+    """Read, parse, and migrate the state file for metagraph-schema ``name``."""
+    path = metagraph_schema_file_path(name)
+    return _load_and_migrate(
+        path,
+        _metagraph_schema_migrations.migrate,
+        current=METAGRAPH_SCHEMA_STATE_VERSION,
+    )
+
+
+def save_metagraph_schema_state(name: str, state: dict) -> None:
+    """Write ``state`` atomically to the state file for metagraph-schema ``name``."""
+    path = metagraph_schema_file_path(name)
+    _atomic_write(path, state)
+
+
+def delete_metagraph_schema_state_file(name: str) -> None:
+    """Remove the state file for metagraph-schema ``name``."""
+    path = metagraph_schema_file_path(name)
     path.unlink()  # FileNotFoundError if missing
 
 

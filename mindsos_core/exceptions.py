@@ -112,3 +112,39 @@ class UnknownTypeError(CoreError):
       source or target node type is outside the edge type's
       ``allowed_sources`` / ``allowed_targets``.
     """
+
+
+# ── Compositional immutability (Phase 05b — re-shipped after 05a R3-B strip) ──
+
+
+class CompositionalImmutableError(CoreError):
+    """Mutation refused on a ``compositional=True`` IntergraphEdge.
+
+    Per ADR-0148 + INTERGRAPH_EDGES_DESIGN.md §4.3, an intergraph edge with
+    ``compositional=True`` is identity-bearing — removing or mutating it
+    would silently corrupt the composition's identity contract. The flag
+    itself is also immutable post-create (Phase 05b Pushback 22-A
+    ``__setattr__`` override on :class:`IntergraphEdge`).
+
+    Phase 05b raise sites:
+
+    * :meth:`mindsos_core.models.metagraph.Metagraph.remove_intergraph_edge`
+      on a compositional edge.
+    * :meth:`mindsos_core.models.metagraph.Metagraph.update_intergraph_edge_properties`
+      on a compositional edge.
+    * :meth:`mindsos_core.models.metagraph.Metagraph.remove_graph` atomic
+      precheck (Pushback 17-A) when any incident intergraph_edge is
+      compositional.
+    * :meth:`mindsos_core.models.intergraph_edge.IntergraphEdge.__setattr__`
+      on any post-init write to the ``compositional`` field.
+
+    Tester recovery for a wedged metagraph: ``mindsos metagraph reset
+    --name <MG> --force --yes`` (full destroy + rebuild). Per Pushback 6-A
+    no demotion verb ships in 05b.
+
+    R3-B context: 05a stripped this exception class from the slim port
+    (no consumer in 05a after CompositionalMetaEdge was dropped per N3-D).
+    05b re-ships it with the IntergraphEdge primitive that consumes it.
+    Phase 09 / Phase 10 will re-ship :class:`XRefIntegrityError` /
+    :class:`RemoveGraphBlockedError` respectively under the same pattern.
+    """

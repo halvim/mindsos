@@ -101,3 +101,45 @@ class HyperEdgeType:
 
     def __repr__(self) -> str:
         return f"HyperEdgeType({self.name!r})"
+
+
+@dataclass(frozen=True)
+class IntergraphEdgeType:
+    """Declaration of a binary intergraph edge type (Phase 05b — ADR-0148).
+
+    Used by :class:`MetagraphSchema` to validate ``IntergraphEdge``
+    instances at metagraph factory time. Mirrors :class:`EdgeType`'s
+    constraint surface (allowed sources/targets) but adds a second axis:
+    *role-based graph constraints* via ``allowed_source_graphs`` /
+    ``allowed_target_graphs``. Per Pushback 4-A (round-1 Phase 05b lock)
+    the graph constraints check ``Graph.role`` (not ``Graph.name``), so
+    a constraint like ``allowed_source_graphs=frozenset({"lexicon"})``
+    matches any contained graph with ``role="lexicon"``.
+
+    Empty frozenset on any allowed-* field means "any" — mirrors
+    :class:`EdgeType` and :class:`HyperEdgeType` empty-set semantics.
+    Per Pushback 4-A note: ``Graph.role=None`` is unmatchable when the
+    constraint is non-empty (Python set membership: ``None not in
+    frozenset({"lexicon"})``).
+
+    The type ``name`` is used as the Cypher relationship identifier, so
+    it MUST match ADR-0021's ``^[A-Z][A-Z0-9_]{0,63}$`` regex (validated
+    at registration time via
+    :func:`mindsos_core.cypher.identifiers.validate_edge_type_identifier`).
+
+    Per Pushback 5-A, ``property_types`` enforcement gates only when the
+    owning :class:`MetagraphSchema` has ``strict=True``; in non-strict
+    mode types are registered but property values are not type-checked
+    (parity with Phase 04 :class:`Schema` strict semantics).
+    """
+
+    name: str
+    allowed_source_types: FrozenSet[str] = field(default_factory=frozenset)
+    allowed_target_types: FrozenSet[str] = field(default_factory=frozenset)
+    allowed_source_graphs: FrozenSet[str] = field(default_factory=frozenset)
+    allowed_target_graphs: FrozenSet[str] = field(default_factory=frozenset)
+    property_types: Dict[str, PropertyType] = field(default_factory=dict)
+    description: Optional[str] = None
+
+    def __repr__(self) -> str:
+        return f"IntergraphEdgeType({self.name!r})"

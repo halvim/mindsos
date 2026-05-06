@@ -33,7 +33,7 @@ Reference table for context (existing primitives):
 | **`IntergraphEdge` (Phase 05b)** | **Node ↔ Node** | **one Metagraph** |
 | **`IntergraphHyperEdge` (Phase 05c)** | **n × Node ↔ m × Node** | **one Metagraph** |
 
-`CompositionalMetaEdge` (originally proposed at the graph level under ADR-0117) has been **dropped**. The compositional concept moves to a `compositional: bool` flag on `IntergraphEdge` / `IntergraphHyperEdge`. ADR-0117 is Withdrawn in 05b. See §9.
+`CompositionalMetaEdge` (originally proposed at the graph level under ADR-0117) has been **dropped**. The compositional concept moves to a `compositional: bool` flag on `IntergraphEdge` / `IntergraphHyperEdge`. **ADR-0117 was Withdrawn in 05a per round-1 P3 amendment** (one phase earlier than originally planned in this doc; code drops the class in 05a, ADR status matches). See §9.
 
 ---
 
@@ -296,8 +296,8 @@ mg.add_intergraph_hyperedge(
 
 | Phase | Ships |
 |---|---|
-| **05a** (Metagraph port) | `Metagraph` + `MetaEdge` + `MetaHyperEdge`. **Neither IntergraphEdge nor compositional flag.** ADR-0117 stays Reserved. |
-| **05b** (binary intergraph + MetagraphSchema) | `IntergraphEdge` + `MetagraphSchema` + `MetaEdgeType` + `MetaHyperEdgeType` + `IntergraphEdgeType`. ADR-0148 (intergraph edge family ADR) drafted + Accepted. **ADR-0117 Withdrawn.** Metagraph state file v=1 → v=2. |
+| **05a** (Metagraph port) | `Metagraph` + `MetaEdge` + `MetaHyperEdge`. **Neither IntergraphEdge nor compositional flag.** **ADR-0117 Withdrawn here per round-1 P3 amendment** (was originally Reserved through 05a). **SHIPPED 2026-05-05.** |
+| **05b** (binary intergraph + MetagraphSchema) | `IntergraphEdge` + `MetagraphSchema` + `MetaEdgeType` + `MetaHyperEdgeType` + `IntergraphEdgeType`. ADR-0148 (intergraph edge family ADR) drafted + Accepted. **ADR-0117 was already Withdrawn in 05a — 05b skips that flip.** Metagraph state file v=1 → v=2. Plus carry-forward from 05a deferrals: `_compositional` reserved-key (P6) + `Metagraph.mint_id` (P7). |
 | **05c** (n-ary intergraph) | `IntergraphHyperEdge` + `IntergraphHyperEdgeType`. ADR-0148 amended to include n-ary. Metagraph state file v=2 → v=3. |
 
 CASC-1 strict sequential: 05a → 05b → 05c. Phase 06 (Instancing — `mindsos_instances`) depends on Phase 05a only; it can ship in parallel with 05b/05c if needed (re-evaluate at 05a confirm).
@@ -306,10 +306,10 @@ CASC-1 strict sequential: 05a → 05b → 05c. Phase 06 (Instancing — `mindsos
 
 ## 9. ADR plan
 
-- **ADR-0117** (originally Reserved for graph-level `CompositionalMetaEdge`) — **Withdrawn in 05b**. The graph-level CompositionalMetaEdge primitive does not ship. The compositional concept moves to the `compositional: bool` flag on intergraph primitives. Annotation block in the ADR file (when written in Phase 38) explains the supersession.
+- **ADR-0117** (originally Reserved for graph-level `CompositionalMetaEdge`) — **Withdrawn in 05a per round-1 P3 amendment** (was: "Withdrawn in 05b" in this doc's original wording; the 05a chat moved the flip up by one phase to match the code drop). The graph-level CompositionalMetaEdge primitive does not ship. The compositional concept moves to the `compositional: bool` flag on intergraph primitives. Annotation block in the ADR file (when written in Phase 38) cites Phase 05a as the supersession point, NOT Phase 05b.
 - **ADR-0148** (NEW; drafted in 05b, amended in 05c) — "Intergraph Edge family." Decision: introduce `IntergraphEdge` (binary, 1-to-1, node↔node across graphs in one metagraph) and `IntergraphHyperEdge` (n-ary, NOT 1-to-1) as L1 primitives. Both carry a `compositional: bool` flag (immutable post-create) for identity-bearing composition. Persistence via Pattern B anchor-node Cypher. Schema validation via `MetagraphSchema`. OCC via canonical-ordered locking.
 - **ADR-0014** (Layer boundary) — **amended** to extend Core's primitive list with `IntergraphEdge` and `IntergraphHyperEdge`. Amendment text drafted in 05b row appendix; file edit deferred to Phase 38 (locked precedent from Phase 04 / Phase 04-v2).
-- **ADR-0117** stays Reserved through 05a (no ADR file edit; Reserved → Withdrawn flip in 05b).
+- **(Removed)** "ADR-0117 stays Reserved through 05a" — superseded by P3 amendment; ADR-0117 was Withdrawn in 05a.
 
 ---
 

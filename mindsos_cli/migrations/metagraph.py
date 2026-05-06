@@ -1,29 +1,45 @@
-"""Metagraph state-file migration chain (Phase 05a — P14).
+"""Metagraph state-file migration chain (Phase 05a + Phase 05b — P14).
 
 Versions:
 
 * v=1 (Phase 05a) — initial shape; ``contained_graphs``, ``metaedges``,
   ``metahyperedges``, ``properties``.
+* v=2 (Phase 05b — Pushback 18-A) — adds ``intergraph_edges`` array and
+  ``schema_name: str | null`` reference to a MetagraphSchema state file.
 
 Future bumps (deferred to later phases per CASC-1):
 
-* v=2 (Phase 05b) — ``intergraph_edges`` array + optional ``schema_name``.
 * v=3 (Phase 05c) — ``intergraph_hyperedges`` array.
-* v=4 (Phase 10) — soft-delete fields on metaedges/metahyperedges
+* v=4 (Phase 10) — soft-delete fields on metaedges/metahyperedges/intergraph_edges
   (ADR-0133 substrate landed uniformly across all 4 edge variants).
 
-The migration list is empty in 05a (no prior versions). Subsequent phases
-append migration steps in their own row.
+Subsequent phases append migration steps; never edit a prior step.
 """
 
 from __future__ import annotations
 
 from typing import Callable, Dict, List
 
-CURRENT_VERSION = 1
+CURRENT_VERSION = 2
 
-#: ``MIGRATIONS[i]`` migrates v(i+1) → v(i+2). Empty in 05a.
-MIGRATIONS: List[Callable[[Dict], Dict]] = []
+
+def _v1_to_v2(state: Dict) -> Dict:
+    """Phase 05a → Phase 05b: introduce ``intergraph_edges`` + ``schema_name``.
+
+    Per Pushback 18-A, both new top-level fields default to empty/null
+    on migration: existing 05a metagraph state files have no
+    intergraph_edges to carry over and no schema attached. The defaults
+    are idempotent on re-migration.
+    """
+    state["intergraph_edges"] = state.get("intergraph_edges") or []
+    state["schema_name"] = state.get("schema_name")  # default None
+    return state
+
+
+#: ``MIGRATIONS[i]`` migrates v(i+1) → v(i+2).
+MIGRATIONS: List[Callable[[Dict], Dict]] = [
+    _v1_to_v2,
+]
 
 
 def migrate(state: Dict) -> Dict:
