@@ -157,10 +157,13 @@ class TestAttachSchemaCLI:
         assert out["validated_intergraph_edges"] == 0
 
     def test_validated_count(self, cli, empty_schema, metagraph_with_two_graphs):
+        """Pushback 30-A — `validated_intergraph_edges` count in JSON output."""
         cli(
             "metagraph-schema", "add-intergraph-edge-type",
             "--schema", "ms1", "--type-name", "EVOKES",
         )
+        # Add an edge BEFORE attaching the schema (no-schema path
+        # accepts any cypher-valid type_name).
         cli(
             "metagraph", "add-intergraph-edge",
             "--name", "mg",
@@ -168,18 +171,16 @@ class TestAttachSchemaCLI:
             "--target-graph", "cpt", "--target-node", "n_concept",
             "--type", "EVOKES",
         )
-        # Reset state to detached.
-        cli("metagraph-schema", "create", "--name", "ms2")
-        cli("metagraph-schema", "add-intergraph-edge-type",
-            "--schema", "ms2", "--type-name", "EVOKES")
+        # Attach now runs eager validation over 1 existing edge.
         r = cli(
-            "metagraph", "attach-schema", "--name", "mg", "--schema", "ms2",
+            "metagraph", "attach-schema", "--name", "mg", "--schema", "ms1",
             "--json",
         )
-        # Note: ms1 is already attached from above; this should refuse
-        # with "detach first" per Pushback 12-A.
-        assert r.returncode == 1
-        assert "IdentityError" in r.stderr
+        assert r.returncode == 0, r.stderr
+        out = json.loads(r.stdout)
+        assert out["validated_intergraph_edges"] == 1
+        assert out["new_schema"] == "ms1"
+        assert out["previous_schema"] is None
 
     def test_attach_while_attached_refuses(self, cli, empty_schema, metagraph_with_two_graphs):
         cli("metagraph-schema", "create", "--name", "ms2")
@@ -208,26 +209,33 @@ class TestAttachSchemaCLI:
         assert "lexicon" in r.stderr or "concepts" in r.stderr
 
     def test_eager_validation_failure(self, cli, _isolated_state_dir):
+        """Eager attach refuses when an existing intergraph_edge violates schema.
+
+        Use unique node ids per graph to avoid Q5-A id-collision on the
+        second add-graph (ADR-0020 unified identity registry).
+        """
         cli("graph", "create", "--name", "lex", "--role", "lexicon")
-        cli("graph", "add-node", "v", "--name", "lex", "--node-id", "n", "--type", "Word")
+        cli("graph", "add-node", "v", "--name", "lex", "--node-id", "n_lex", "--type", "Word")
         cli("graph", "create", "--name", "cpt", "--role", "concepts")
-        cli("graph", "add-node", "v", "--name", "cpt", "--node-id", "n", "--type", "Concept")
+        cli("graph", "add-node", "v", "--name", "cpt", "--node-id", "n_cpt", "--type", "Concept")
         cli("metagraph", "create", "--name", "mg")
         cli("metagraph", "add-graph", "--name", "mg", "--graph", "lex")
         cli("metagraph", "add-graph", "--name", "mg", "--graph", "cpt")
-        cli(
+        # Add edge with no schema attached → no schema-side validation.
+        r_add = cli(
             "metagraph", "add-intergraph-edge",
             "--name", "mg",
-            "--source-graph", "lex", "--source-node", "n",
-            "--target-graph", "cpt", "--target-node", "n",
+            "--source-graph", "lex", "--source-node", "n_lex",
+            "--target-graph", "cpt", "--target-node", "n_cpt",
             "--type", "EVOKES",
         )
+        assert r_add.returncode == 0, r_add.stderr
         # Build a schema with NO EVOKES type — eager validation refuses.
         cli("metagraph-schema", "create", "--name", "ms_empty")
         r = cli(
             "metagraph", "attach-schema", "--name", "mg", "--schema", "ms_empty",
         )
-        assert r.returncode == 1
+        assert r.returncode == 1, r.stdout
         assert "UnknownTypeError" in r.stderr
 
 

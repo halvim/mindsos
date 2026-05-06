@@ -303,7 +303,8 @@ class TestSetPropFourWayMutex:
         )
         assert r.returncode == 0
         out = json.loads(r.stdout)
-        assert out["properties"] == {"b": "2"}
+        # _parse_props tries JSON first, so "2" parses to int 2.
+        assert out["properties"] == {"b": 2}
 
 
 class TestInspectIncludesIntergraphEdgesCount:
