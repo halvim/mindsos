@@ -68,6 +68,22 @@ RESERVED_PROPERTY_KEYS = frozenset({
     "metaedges",
     "metahyperedges",
     "metagraph_name",  # graph-state v=4 back-pointer field (P05a B2).
+    # Phase 05b — Pushback 18-A. Top-level metagraph state v=2 fields
+    # become reserved at user-property scope (parity with P13 reasoning).
+    # ``intergraph_edges`` is the new top-level array introduced by 05b's
+    # state-file v=2 bump. ``schema_name`` is also top-level on metagraph
+    # state v=2 (and graph state v=2 since Phase 04 — reserving in 05b
+    # closes the user-property collision case for both kinds).
+    "intergraph_edges",
+    "schema_name",
+    # Phase 05b — P6 carry-forward (deferred from 05a). The ``_compositional``
+    # reserved key is the future Phase 07 Cypher emit's stamped property
+    # on the anchor-node Pattern B; reserving at user-property scope
+    # prevents the user-bag from colliding with the system-stamped key.
+    # Note: ``compositional`` (without underscore) is the dataclass field
+    # name + top-level state-file field (Pushback 2-A); only the
+    # underscore-prefixed Cypher-property form is reserved.
+    "_compositional",
 })
 
 #: Prefix for cross-graph reference properties. Properties whose key

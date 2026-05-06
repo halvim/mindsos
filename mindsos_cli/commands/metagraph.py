@@ -1,6 +1,7 @@
-"""``mindsos metagraph`` — Phase 05a L1 Metagraph subapp.
+"""``mindsos metagraph`` — Phase 05a base + Phase 05b extensions.
 
-Subcommands (Q2 + CR-A locked):
+Subcommands (Phase 05a Q2 + CR-A locked + Phase 05b 5 new subcommands +
+4-way set-prop mutex per Pushback 27-A):
 
   mindsos metagraph create --name <NAME> [--metagraph-id ID] [--prop k=v]... [--json]
   mindsos metagraph inspect --name <NAME> [--json]
@@ -18,10 +19,25 @@ Subcommands (Q2 + CR-A locked):
                                       [--metahyperedge-id ID] [--json]
   mindsos metagraph remove-metahyperedge --name <MG> --metahyperedge-id <ID> [--json]
   mindsos metagraph set-prop --name <MG>
-                              (--on-metagraph | --metaedge-id <ID> | --metahyperedge-id <ID>)
+                              (--on-metagraph
+                               | --metaedge-id <ID>
+                               | --metahyperedge-id <ID>
+                               | --intergraph-edge-id <ID>)         # P05b Pushback 27-A
                               --prop k=v [--prop k2=v2 ...] [--replace] [--json]
   mindsos metagraph list-metaedges --name <MG> [--json]
   mindsos metagraph list-metahyperedges --name <MG> [--json]
+  # ── Phase 05b additions (ADR-0148 first draft) ──
+  mindsos metagraph add-intergraph-edge --name <MG>
+                                        --source-graph <G> --source-node <N>
+                                        --target-graph <G> --target-node <N>
+                                        --type <REL_TYPE>
+                                        [--label L] [--prop k=v]...
+                                        [--compositional]
+                                        [--intergraph-edge-id ID] [--json]
+  mindsos metagraph remove-intergraph-edge --name <MG> --intergraph-edge-id <ID> [--json]
+  mindsos metagraph list-intergraph-edges --name <MG> [--json]
+  mindsos metagraph attach-schema --name <MG> --schema <MS> [--json]
+  mindsos metagraph detach-schema --name <MG> [--json]    # DMS-A unified command
 
 Locked round 1-4 design picks reflected here:
 
@@ -71,13 +87,16 @@ from typing import Any, List, Optional
 import typer
 
 from mindsos_core import (
+    CompositionalImmutableError,
     CypherError,
     Graph,
     IdentityError,
     Metagraph,
+    MetagraphSchema,
     PropertyShapeError,
     REF_PROPERTY_PREFIX,
     SchemaError,
+    UnknownTypeError,
 )
 from mindsos_cli import state as state_mod
 from mindsos_cli.commands.graph import (
@@ -103,27 +122,38 @@ metagraph_app = typer.Typer(
 
 
 def _metagraph_to_state(mg: Metagraph) -> dict:
-    """Serialize a ``Metagraph`` to the v=1 state-file dict (P10 shape).
+    """Serialize a ``Metagraph`` to the v=2 state-file dict (P10 + P05b shape).
 
-    Persistence keys metaedges by graph NAME (not graph_id) — readability
-    and locality. The serializer translates id→name via ``mg.graphs``
-    lookup. ``member_graphs`` sorted by graph_name (Q3-A) for byte-stable
-    output. Top-level lists sorted by edge_id (metaedges + metahyperedges)
-    and by name (contained_graphs).
+    Persistence keys metaedges/metahyperedges/intergraph_edges by graph
+    NAME (not graph_id) — readability and locality. The serializer
+    translates id→name via ``mg.graphs`` lookup. Per Phase 05a Q3-A
+    ``member_graphs`` is sorted by graph_name for byte-stable output.
+
+    Phase 05b additions (Pushback 18-A bump v=1 → v=2):
+    * ``intergraph_edges`` array — sorted by edge_id; each entry stores
+      source/target by graph NAME and node id.
+    * ``schema_name`` reference to attached :class:`MetagraphSchema`
+      state file (or null).
+
+    Top-level lists byte-stable sorted (Phase 05a P10 pattern extended).
     """
     # contained_graphs sorted by graph name for byte-stable output.
     contained_graphs = sorted(g.name for g in mg.graphs.values())
-    # id → name lookup for metaedge / metahyperedge serialization.
+    # id → name lookup for metaedge / metahyperedge / intergraph_edge serialization.
     id_to_name = {g.graph_id: g.name for g in mg.graphs.values()}
     metaedges = sorted(mg.metaedges.values(), key=lambda me: me.edge_id)
     metahyperedges = sorted(
         mg.metahyperedges.values(), key=lambda mhe: mhe.edge_id
+    )
+    intergraph_edges = sorted(
+        mg.intergraph_edges.values(), key=lambda ie: ie.edge_id
     )
     return {
         "_state_version": state_mod.METAGRAPH_STATE_VERSION,
         "metagraph_id": mg.metagraph_id,
         "name": mg.name,
         "properties": dict(mg.properties),
+        "schema_name": mg.schema_name,  # P05b — Pushback 11-A reference.
         "contained_graphs": contained_graphs,
         "metaedges": [
             {
@@ -149,22 +179,55 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
             }
             for mhe in metahyperedges
         ],
+        # P05b — Pushback 2-A: ``compositional`` top-level field on each
+        # entry. Pushback 27-A ordering: source-side first, target-side
+        # second, type/compositional/label/properties tail.
+        "intergraph_edges": [
+            {
+                "edge_id": ie.edge_id,
+                "source_graph": id_to_name[ie.source_graph_id],
+                "source_node": ie.source_node_id,
+                "target_graph": id_to_name[ie.target_graph_id],
+                "target_node": ie.target_node_id,
+                "type_name": ie.type_name,
+                "compositional": ie.compositional,
+                "label": ie.label,
+                "properties": dict(ie.properties),
+            }
+            for ie in intergraph_edges
+        ],
     }
 
 
 def _state_to_metagraph(state: dict) -> Metagraph:
-    """Rehydrate a ``Metagraph`` from a v=1 state-file dict.
+    """Rehydrate a ``Metagraph`` from a v=2 state-file dict (P05b shape).
 
     Walks ``contained_graphs`` (graph names) and loads each via
     ``mindsos_cli.state.load_graph_state`` → rehydrates → ``add_graph``.
     Each ``add_graph`` runs the ADR-0020 unification + Q5-A collision
     check (so corrupt states with id collisions surface here).
 
-    For metaedges: looks up source_graph / target_graph names in the
-    metagraph's contained graphs to resolve graph_ids, then constructs
-    MetaEdge instances directly (bypassing the factory's CLI-friendly
-    error UX since we're rehydrating known-valid persisted state).
+    For metaedges / metahyperedges / intergraph_edges: looks up
+    source_graph / target_graph / member_graphs names in the metagraph's
+    contained graphs to resolve graph_ids, then constructs the dataclass
+    instances directly (bypassing the factory's CLI-friendly error UX
+    since we're rehydrating known-valid persisted state).
+
+    Phase 05b additions (Pushback 18-A v=2):
+
+    * Walks ``intergraph_edges`` array; constructs :class:`IntergraphEdge`
+      instances; registers ``edge_id`` in ``mg.identity``.
+    * If ``schema_name`` is non-null, attempts to load the referenced
+      :class:`MetagraphSchema` state file. On success, calls
+      ``mg.attach_schema(ms, schema_name=...)`` (eager validation runs;
+      raises if drift since previous attach). On FileNotFoundError, sets
+      ``mg.schema_name`` to the dangling reference WITHOUT loading a
+      schema (DMS-A recovery — Pushback 28-A — surfaces via subsequent
+      schema-needing operations refusing with structured pointer to
+      ``mindsos metagraph detach-schema``). The dangling reference path
+      enables the unified detach-schema command's raw-JSON fallback.
     """
+    from mindsos_core.models.intergraph_edge import IntergraphEdge
     from mindsos_core.models.metagraph import MetaEdge, MetaHyperEdge
 
     mg = Metagraph(
@@ -188,7 +251,7 @@ def _state_to_metagraph(state: dict) -> Metagraph:
         g, _schema_name, _mg_back = _graph_state_to_graph(g_state)
         mg.add_graph(g)
 
-    # name → id lookup for metaedge / metahyperedge rehydration.
+    # name → id lookup for metaedge / metahyperedge / intergraph_edge rehydration.
     name_to_id = {g.name: g.graph_id for g in mg.graphs.values()}
 
     for me_dict in state.get("metaedges") or []:
@@ -215,7 +278,123 @@ def _state_to_metagraph(state: dict) -> Metagraph:
         mg.identity.register(mhe.edge_id)
         mg.metahyperedges[mhe.edge_id] = mhe
 
+    # Phase 05b — rehydrate intergraph_edges.
+    for ie_dict in state.get("intergraph_edges") or []:
+        ie = IntergraphEdge(
+            source_graph_id=name_to_id[ie_dict["source_graph"]],
+            source_node_id=ie_dict["source_node"],
+            target_graph_id=name_to_id[ie_dict["target_graph"]],
+            target_node_id=ie_dict["target_node"],
+            type_name=ie_dict["type_name"],
+            compositional=bool(ie_dict.get("compositional", False)),
+            edge_id=ie_dict["edge_id"],
+            label=ie_dict.get("label"),
+            properties=dict(ie_dict.get("properties") or {}),
+        )
+        mg.identity.register(ie.edge_id)
+        mg.intergraph_edges[ie.edge_id] = ie
+
+    # Phase 05b — rehydrate schema_name reference + attach if present.
+    schema_name = state.get("schema_name")
+    if schema_name:
+        try:
+            ms_state = state_mod.load_metagraph_schema_state(schema_name)
+        except FileNotFoundError:
+            # DMS-A — dangling reference. Set schema_name without
+            # loading the schema; subsequent schema-needing operations
+            # will refuse with the structured pointer (Pushback 28-A).
+            mg.schema_name = schema_name
+            mg.schema = None
+        except (ValueError, RuntimeError) as e:
+            # Malformed schema state file — surface via a RuntimeError
+            # at the caller boundary; CLI ``_load_or_die`` translates
+            # to exit-1.
+            raise RuntimeError(
+                f"Metagraph {state['name']!r} references metagraph-schema "
+                f"{schema_name!r} but the schema state file is malformed: "
+                f"{e}. Recovery: 'mindsos metagraph detach-schema --name "
+                f"{state['name']}' (DMS-A — Pushback 28-A)."
+            ) from e
+        else:
+            ms = _state_to_metagraph_schema(ms_state)
+            # mg.attach_schema runs eager validation; raises if drift.
+            try:
+                mg.attach_schema(ms, schema_name=schema_name)
+            except (UnknownTypeError, PropertyShapeError) as e:
+                raise RuntimeError(
+                    f"Metagraph {state['name']!r} fails eager validation "
+                    f"against schema {schema_name!r} (drift since previous "
+                    f"attach? Pushback 23-A footgun): {e}. Recovery: "
+                    f"'mindsos metagraph detach-schema --name "
+                    f"{state['name']}' to clear the reference."
+                ) from e
+
     return mg
+
+
+def _metagraph_schema_to_state(ms: MetagraphSchema, *, name: str) -> dict:
+    """Serialize a ``MetagraphSchema`` to the v=1 state-file dict.
+
+    Per Pushback 24-hybrid + 18-A: the ``name`` is the basename (passed
+    in by the CLI command since :class:`MetagraphSchema` is basename-keyed
+    on disk and has no ``name`` field). ``intergraph_edge_types``
+    byte-stable sorted by ``name``. Per-type frozensets serialized as
+    sorted lists.
+    """
+    iet_sorted = sorted(
+        ms.intergraph_edge_types.values(), key=lambda iet: iet.name
+    )
+    return {
+        "_state_version": state_mod.METAGRAPH_SCHEMA_STATE_VERSION,
+        "name": name,
+        "strict": ms.strict,
+        "intergraph_edge_types": [
+            {
+                "name": iet.name,
+                "allowed_source_types": sorted(iet.allowed_source_types),
+                "allowed_target_types": sorted(iet.allowed_target_types),
+                "allowed_source_graphs": sorted(iet.allowed_source_graphs),
+                "allowed_target_graphs": sorted(iet.allowed_target_graphs),
+                "property_types": {
+                    k: v.value for k, v in iet.property_types.items()
+                },
+                "description": iet.description,
+            }
+            for iet in iet_sorted
+        ],
+    }
+
+
+def _state_to_metagraph_schema(state: dict) -> MetagraphSchema:
+    """Rehydrate a :class:`MetagraphSchema` from a v=1 state-file dict.
+
+    Mirror of Phase 04 :class:`Schema` rehydration: cast frozensets back
+    from JSON arrays; ``PropertyType`` cast from ``.value`` strings;
+    duplicate-name registration cannot fire on a clean state file.
+    """
+    from mindsos_core import IntergraphEdgeType, PropertyType
+
+    ms = MetagraphSchema(strict=bool(state.get("strict", False)))
+    for iet_dict in state.get("intergraph_edge_types") or []:
+        prop_types_raw = iet_dict.get("property_types") or {}
+        try:
+            prop_types = {k: PropertyType(v) for k, v in prop_types_raw.items()}
+        except ValueError as e:
+            raise RuntimeError(
+                f"MetagraphSchema rehydration: unrecognised PropertyType "
+                f"value in intergraph_edge_type {iet_dict.get('name')!r}: {e}"
+            ) from e
+        iet = IntergraphEdgeType(
+            name=iet_dict["name"],
+            allowed_source_types=frozenset(iet_dict.get("allowed_source_types") or []),
+            allowed_target_types=frozenset(iet_dict.get("allowed_target_types") or []),
+            allowed_source_graphs=frozenset(iet_dict.get("allowed_source_graphs") or []),
+            allowed_target_graphs=frozenset(iet_dict.get("allowed_target_graphs") or []),
+            property_types=prop_types,
+            description=iet_dict.get("description"),
+        )
+        ms.add_intergraph_edge_type(iet)
+    return ms
 
 
 def _load_or_die(name: str) -> Metagraph:
@@ -367,17 +546,19 @@ def inspect_cmd(
 ) -> None:
     """Report counts + properties + contained-graphs for the named metagraph.
 
-    P10 JSON shape:
+    P10 JSON shape (extended in 05b per the locked Pushback 18-A v=2 bump):
 
         {
           "name": "<n>",
           "metagraph_id": "<uuid>",
           "properties": {...},
+          "schema_name": "<name|null>",                # P05b
           "contained_graphs": [...sorted graph names],
           "counts": {
             "graphs": int,
             "metaedges": int,
-            "metahyperedges": int
+            "metahyperedges": int,
+            "intergraph_edges": int                    # P05b
           },
           "_state_version": int,
           "state_file": "<path>"
@@ -389,11 +570,13 @@ def inspect_cmd(
         "name": mg.name,
         "metagraph_id": mg.metagraph_id,
         "properties": dict(mg.properties),
+        "schema_name": mg.schema_name,
         "contained_graphs": contained_graph_names,
         "counts": {
             "graphs": len(mg.graphs),
             "metaedges": len(mg.metaedges),
             "metahyperedges": len(mg.metahyperedges),
+            "intergraph_edges": len(mg.intergraph_edges),
         },
         "_state_version": state_mod.METAGRAPH_STATE_VERSION,
         "state_file": str(state_mod.metagraph_file_path(name)),
@@ -405,10 +588,12 @@ def inspect_cmd(
             f"name={mg.name} metagraph_id={mg.metagraph_id}"
         )
         typer.echo(f"properties={dict(mg.properties)}")
+        typer.echo(f"schema_name={mg.schema_name!r}")
         typer.echo(
             f"graphs={summary['counts']['graphs']} "
             f"metaedges={summary['counts']['metaedges']} "
-            f"metahyperedges={summary['counts']['metahyperedges']}"
+            f"metahyperedges={summary['counts']['metahyperedges']} "
+            f"intergraph_edges={summary['counts']['intergraph_edges']}"
         )
         typer.echo(f"contained={contained_graph_names}")
         typer.echo(f"state_file={summary['state_file']}")
@@ -430,16 +615,18 @@ def list_metagraphs_cmd(
     appear in the listing rather than getting hidden. Mutating commands
     (``inspect``, ``add-*``, etc.) DO use the strict loader.
 
-    P10 JSON shape:
+    P10 JSON shape (extended in 05b per Pushback 18-A v=2 bump):
 
         {
           "state_dir": "<path>",
           "metagraphs": [
             {
               "name": "<n>", "metagraph_id": "<uuid>",
+              "schema_name": "<name|null>",          # P05b
               "contained_graphs_count": int,
               "metaedges_count": int,
               "metahyperedges_count": int,
+              "intergraph_edges_count": int,         # P05b
               "_state_version": int,
               "path": "<path>"
             }, ...
@@ -463,9 +650,11 @@ def list_metagraphs_cmd(
             {
                 "name": state.get("name"),
                 "metagraph_id": state.get("metagraph_id"),
+                "schema_name": state.get("schema_name"),
                 "contained_graphs_count": len(state.get("contained_graphs") or []),
                 "metaedges_count": len(state.get("metaedges") or []),
                 "metahyperedges_count": len(state.get("metahyperedges") or []),
+                "intergraph_edges_count": len(state.get("intergraph_edges") or []),
                 "_state_version": state.get("_state_version"),
                 "path": str(path),
             }
@@ -800,9 +989,15 @@ def remove_graph_cmd(
         1 for mhe in mg.metahyperedges.values()
         if graph_id in mhe.graph_ids
     )
-    # Remove from metagraph (cascades).
+    # Remove from metagraph (cascades). Pushback 17-A — atomic precheck
+    # raises CompositionalImmutableError BEFORE any mutation if any
+    # incident intergraph_edge has compositional=True. Catch both error
+    # classes for a clean stderr + exit 1 (no traceback).
     try:
         mg.remove_graph(graph_id)
+    except CompositionalImmutableError as e:
+        typer.echo(f"CompositionalImmutableError: {e}", err=True)
+        raise typer.Exit(code=1)
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
         raise typer.Exit(code=1)
@@ -1088,7 +1283,7 @@ def remove_metahyperedge_cmd(
 
 
 # ---------------------------------------------------------------------------
-# set-prop (P17 — 3-way mutex incl. --on-metagraph)
+# set-prop (P17 — 3-way mutex; Phase 05b Pushback 27-A — extends to 4-way)
 # ---------------------------------------------------------------------------
 
 
@@ -1105,6 +1300,11 @@ def set_prop_cmd(
     metahyperedge_id: Optional[str] = typer.Option(
         None, "--metahyperedge-id", help="Metahyperedge id to update.",
     ),
+    intergraph_edge_id: Optional[str] = typer.Option(
+        None, "--intergraph-edge-id",
+        help="P05b Pushback 27-A: IntergraphEdge id to update. "
+             "Refuses if edge.compositional=True (design §4.3 + Pushback 6-A).",
+    ),
     prop: List[str] = typer.Option(
         [], "--prop", help="Repeat: k=v. Required.",
     ),
@@ -1114,23 +1314,29 @@ def set_prop_cmd(
     ),
     json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
 ) -> None:
-    """Update a metaedge / metahyperedge / metagraph property bag (P17).
+    """Update a metaedge / metahyperedge / intergraph_edge / metagraph property bag.
 
-    3-way mutex: exactly ONE of ``--on-metagraph`` / ``--metaedge-id`` /
-    ``--metahyperedge-id`` must be supplied.
+    Phase 05b — Pushback 27-A: 4-way mutex. Exactly ONE of
+    ``--on-metagraph`` / ``--metaedge-id`` / ``--metahyperedge-id`` /
+    ``--intergraph-edge-id`` must be supplied. Compositional intergraph
+    edges refuse with :class:`CompositionalImmutableError` (design §4.3
+    + Pushback 6-A — recovery via metagraph reset).
 
     --replace semantics: non-ref portion of existing bag dropped; ref:*
     keys preserved unless overridden by user-supplied values (Phase 04
     Pick D + N5 inherited).
     """
     n_set = sum(
-        1 for x in (on_metagraph, metaedge_id, metahyperedge_id)
+        1 for x in (
+            on_metagraph, metaedge_id, metahyperedge_id, intergraph_edge_id,
+        )
         if (x is True if isinstance(x, bool) else x is not None)
     )
     if n_set != 1:
         typer.echo(
-            "Specify exactly one of --on-metagraph, --metaedge-id, or "
-            "--metahyperedge-id (P17 3-way mutex).",
+            "Specify exactly one of --on-metagraph, --metaedge-id, "
+            "--metahyperedge-id, or --intergraph-edge-id "
+            "(Pushback 27-A 4-way mutex).",
             err=True,
         )
         raise typer.Exit(code=2)
@@ -1170,8 +1376,7 @@ def set_prop_cmd(
             )
             kind, kind_id, type_name = "metaedge", me.edge_id, me.type_name
             applied_props = dict(me.properties)
-        else:
-            assert metahyperedge_id is not None  # mypy
+        elif metahyperedge_id is not None:
             existing = (
                 mg.metahyperedges[metahyperedge_id].properties
                 if metahyperedge_id in mg.metahyperedges else None
@@ -1186,6 +1391,26 @@ def set_prop_cmd(
                 "metahyperedge", mhe.edge_id, mhe.type_name
             )
             applied_props = dict(mhe.properties)
+        else:
+            # Phase 05b — intergraph edge target.
+            assert intergraph_edge_id is not None  # mypy
+            existing = (
+                mg.intergraph_edges[intergraph_edge_id].properties
+                if intergraph_edge_id in mg.intergraph_edges else None
+            )
+            props_to_apply = (
+                _build_replace_bag(existing, user_props) if replace else user_props
+            )
+            ie = mg.update_intergraph_edge_properties(
+                intergraph_edge_id, props_to_apply, replace=replace,
+            )
+            kind, kind_id, type_name = (
+                "intergraph_edge", ie.edge_id, ie.type_name
+            )
+            applied_props = dict(ie.properties)
+    except CompositionalImmutableError as e:
+        typer.echo(f"CompositionalImmutableError: {e}", err=True)
+        raise typer.Exit(code=1)
     except IdentityError as e:
         typer.echo(f"IdentityError: {e}", err=True)
         raise typer.Exit(code=1)
@@ -1312,6 +1537,452 @@ def list_metahyperedges_cmd(
 # ---------------------------------------------------------------------------
 # Compatibility for app.py
 # ---------------------------------------------------------------------------
+
+
+# ===========================================================================
+# Phase 05b additions (ADR-0148 first draft) — 5 new subcommands.
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# add-intergraph-edge (Pushback 16-A 14-step + Pushback 22-A compositional)
+# ---------------------------------------------------------------------------
+
+
+@metagraph_app.command("add-intergraph-edge")
+def add_intergraph_edge_cmd(
+    name: str = typer.Option(..., "--name", help="Metagraph name."),
+    source_graph: str = typer.Option(
+        ..., "--source-graph",
+        help="Source graph name (must be contained; != target-graph).",
+    ),
+    source_node: str = typer.Option(
+        ..., "--source-node",
+        help="Source node id (must exist in source graph).",
+    ),
+    target_graph: str = typer.Option(
+        ..., "--target-graph",
+        help="Target graph name (must be contained; != source-graph).",
+    ),
+    target_node: str = typer.Option(
+        ..., "--target-node",
+        help="Target node id (must exist in target graph).",
+    ),
+    type_name: str = typer.Option(
+        ..., "--type",
+        help="Cypher rel-type (must match ^[A-Z][A-Z0-9_]{0,63}$ per ADR-0021).",
+    ),
+    label: Optional[str] = typer.Option(
+        None, "--label", help="Optional human-readable label.",
+    ),
+    prop: List[str] = typer.Option(
+        [], "--prop", help="Repeat: k=v.",
+    ),
+    compositional: bool = typer.Option(
+        False, "--compositional",
+        help="Pushback 2-A: identity-bearing flag. Default False; "
+             "immutable post-create (Pushback 22-A); refuses removal "
+             "and property mutation (design §4.3 + Pushback 6-A).",
+    ),
+    intergraph_edge_id: Optional[str] = typer.Option(
+        None, "--intergraph-edge-id",
+        help="Optional explicit edge id (mints via mg.mint_id otherwise).",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Add a directed binary node↔node intergraph edge.
+
+    Implements the Pushback 16-A 14-step validation order. Per the
+    locked Pushback 1-C scope, the source/target graphs MUST differ
+    (use ``mindsos graph add-edge`` for same-graph edges via the
+    metagraph subapp's Q4-B mediation pattern).
+    """
+    mg = _load_or_die(name)
+    src_id = _resolve_graph_id_or_die(mg, source_graph)
+    tgt_id = _resolve_graph_id_or_die(mg, target_graph)
+    props = _parse_props(prop or [])
+    try:
+        edge = mg.add_intergraph_edge(
+            source_graph_id=src_id,
+            source_node_id=source_node,
+            target_graph_id=tgt_id,
+            target_node_id=target_node,
+            type_name=type_name,
+            compositional=compositional,
+            label=label,
+            properties=props,
+            edge_id=intergraph_edge_id,
+        )
+    except SchemaError as e:
+        typer.echo(f"SchemaError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except CypherError as e:
+        typer.echo(f"CypherError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except IdentityError as e:
+        typer.echo(f"IdentityError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except PropertyShapeError as e:
+        typer.echo(f"PropertyShapeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    _save_or_die(name, mg)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "edge_id": edge.edge_id,
+                    "source_graph": source_graph,
+                    "source_node": edge.source_node_id,
+                    "target_graph": target_graph,
+                    "target_node": edge.target_node_id,
+                    "type_name": edge.type_name,
+                    "compositional": edge.compositional,
+                    "label": edge.label,
+                    "properties": dict(edge.properties),
+                },
+                indent=2,
+            )
+        )
+    else:
+        marker = " compositional" if edge.compositional else ""
+        typer.echo(
+            f"ok: added intergraph_edge id={edge.edge_id}{marker} "
+            f"{source_graph}.{edge.source_node_id} "
+            f"-[{edge.type_name}]-> "
+            f"{target_graph}.{edge.target_node_id}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# remove-intergraph-edge (refuses on compositional per Pushback 6-A)
+# ---------------------------------------------------------------------------
+
+
+@metagraph_app.command("remove-intergraph-edge")
+def remove_intergraph_edge_cmd(
+    name: str = typer.Option(..., "--name", help="Metagraph name."),
+    intergraph_edge_id: str = typer.Option(
+        ..., "--intergraph-edge-id",
+        help="Intergraph edge id to remove. Refuses if compositional=True.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Remove an intergraph edge by id; refuses on compositional."""
+    mg = _load_or_die(name)
+    try:
+        mg.remove_intergraph_edge(intergraph_edge_id)
+    except CompositionalImmutableError as e:
+        typer.echo(f"CompositionalImmutableError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except IdentityError as e:
+        typer.echo(f"IdentityError: {e}", err=True)
+        raise typer.Exit(code=1)
+    _save_or_die(name, mg)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {"intergraph_edge_id": intergraph_edge_id, "removed": True},
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(f"ok: removed intergraph_edge id={intergraph_edge_id}")
+
+
+# ---------------------------------------------------------------------------
+# list-intergraph-edges
+# ---------------------------------------------------------------------------
+
+
+@metagraph_app.command("list-intergraph-edges")
+def list_intergraph_edges_cmd(
+    name: str = typer.Option(..., "--name", help="Metagraph name."),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """List every intergraph edge in the named metagraph (sorted by edge_id).
+
+    JSON shape (Phase 05b):
+
+        {
+          "metagraph": "<name>",
+          "intergraph_edges": [
+            {"edge_id", "source_graph", "source_node",
+             "target_graph", "target_node",
+             "type_name", "compositional",
+             "label", "properties"}, ...
+          ]
+        }
+    """
+    mg = _load_or_die(name)
+    id_to_name = {g.graph_id: g.name for g in mg.graphs.values()}
+    entries = sorted(mg.intergraph_edges.values(), key=lambda ie: ie.edge_id)
+    payload = {
+        "metagraph": mg.name,
+        "intergraph_edges": [
+            {
+                "edge_id": ie.edge_id,
+                "source_graph": id_to_name[ie.source_graph_id],
+                "source_node": ie.source_node_id,
+                "target_graph": id_to_name[ie.target_graph_id],
+                "target_node": ie.target_node_id,
+                "type_name": ie.type_name,
+                "compositional": ie.compositional,
+                "label": ie.label,
+                "properties": dict(ie.properties),
+            }
+            for ie in entries
+        ],
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2))
+    else:
+        typer.echo(f"metagraph={mg.name} count={len(entries)}")
+        if not entries:
+            typer.echo("(no intergraph edges)")
+            return
+        for ie in entries:
+            marker = " compositional" if ie.compositional else ""
+            typer.echo(
+                f"  id={ie.edge_id}{marker} "
+                f"{id_to_name[ie.source_graph_id]}.{ie.source_node_id} "
+                f"-[{ie.type_name}]-> "
+                f"{id_to_name[ie.target_graph_id]}.{ie.target_node_id} "
+                f"label={ie.label!r}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# attach-schema (Pushbacks 7-A + 12-A + 19-B + 29-A + 32-A/D)
+# ---------------------------------------------------------------------------
+
+
+@metagraph_app.command("attach-schema")
+def attach_schema_cmd(
+    name: str = typer.Option(..., "--name", help="Metagraph name."),
+    schema: str = typer.Option(
+        ..., "--schema",
+        help="MetagraphSchema basename to attach (must exist as a "
+             "metagraph-schema-<name>.json state file).",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Attach a MetagraphSchema; eager-validate every existing intergraph_edge.
+
+    Pushback 12-A: refuses if a *different* schema is already attached
+    (tester runs ``detach-schema`` first). Re-attaching the same schema
+    re-runs eager validation (Pushback 32-D — surfaces drift since
+    previous attach per Pushback 23-A footgun).
+
+    Pushback 7-A + 9-A + 29-A: eager validation walks every existing
+    intergraph_edge against the schema's :class:`IntergraphEdgeType`
+    vocabulary. First violation refuses; metagraph state file unchanged.
+    Existing metaedges/metahyperedges are NOT validated in 05b
+    (Pushback 9-A — vocab not yet in MetagraphSchema until 05c).
+
+    Pushback 19-B: stderr warning if the schema references roles that
+    no contained graph satisfies.
+
+    JSON output (Pushback 30-A):
+
+        {
+          "metagraph": "<name>",
+          "previous_schema": "<name|null>",
+          "new_schema": "<name>",
+          "validated_intergraph_edges": <count>
+        }
+    """
+    mg = _load_or_die(name)
+    # Load schema state file.
+    try:
+        ms_state = state_mod.load_metagraph_schema_state(schema)
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2)
+    except FileNotFoundError:
+        typer.echo(
+            f"MetagraphSchema {schema!r} not found. Create with "
+            f"'mindsos metagraph-schema create --name {schema}'.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+    except RuntimeError as e:
+        typer.echo(f"State file error: {e}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        ms = _state_to_metagraph_schema(ms_state)
+    except RuntimeError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=1)
+
+    # Pushback 19-B — stderr warning on role gaps (non-blocking).
+    contained_roles = {g.role for g in mg.graphs.values() if g.role is not None}
+    referenced_roles: set[str] = set()
+    for iet in ms.intergraph_edge_types.values():
+        referenced_roles.update(iet.allowed_source_graphs)
+        referenced_roles.update(iet.allowed_target_graphs)
+    unmet = referenced_roles - contained_roles
+    if unmet:
+        typer.echo(
+            f"warning: schema {schema!r} references roles {sorted(unmet)!r} "
+            f"not satisfied by any contained graph; intergraph edges of "
+            f"types using these constraints will refuse until matching "
+            f"graphs are added (Pushback 19-B).",
+            err=True,
+        )
+
+    previous_schema = mg.schema_name
+    try:
+        mg.attach_schema(ms, schema_name=schema)
+    except IdentityError as e:
+        typer.echo(f"IdentityError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except PropertyShapeError as e:
+        typer.echo(f"PropertyShapeError: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    _save_or_die(name, mg)
+
+    validated_count = len(mg.intergraph_edges)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "metagraph": mg.name,
+                    "previous_schema": previous_schema,
+                    "new_schema": schema,
+                    "validated_intergraph_edges": validated_count,
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(
+            f"ok: attached schema={schema!r} to metagraph={mg.name!r} "
+            f"(previous={previous_schema!r}; validated "
+            f"{validated_count} intergraph_edge(s))"
+        )
+
+
+# ---------------------------------------------------------------------------
+# detach-schema (DMS-A — Pushback 28-A unified command)
+# ---------------------------------------------------------------------------
+
+
+@metagraph_app.command("detach-schema")
+def detach_schema_cmd(
+    name: str = typer.Option(..., "--name", help="Metagraph name."),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Detach the currently-attached MetagraphSchema (DMS-A unified command).
+
+    Per Pushback 28-A, this command operates in two modes via internal
+    fallback:
+
+    1. **Normal path**: rehydrate the metagraph through
+       ``_state_to_metagraph`` (which carries the schema attachment if
+       the schema state file is present + well-formed). On success, call
+       ``mg.detach_schema()`` and persist; refuses with exit 1 if no
+       schema attached.
+
+    2. **Raw-JSON fallback (DMS-A)**: if rehydration fails because the
+       referenced schema state file is missing OR malformed, operate on
+       the metagraph state file directly: clear ``schema_name`` →
+       ``None``, write atomically, bypass schema rehydration. Recovery
+       for the Pushback 28-A stale-reference case.
+
+    Note that if the schema state file is *missing* (FileNotFoundError),
+    ``_state_to_metagraph`` already handles that gracefully — it sets
+    ``mg.schema_name`` to the dangling reference and ``mg.schema = None``
+    without raising. The normal path then detaches cleanly. Only the
+    *malformed* schema case (or load errors) trips the raw-JSON fallback.
+    """
+    # Pre-flight: load the metagraph state file as raw JSON to check for
+    # both the existence and the schema_name reference. We use this
+    # parsed dict for both the normal path (via _state_to_metagraph)
+    # and the raw-JSON fallback (direct mutation + re-write).
+    try:
+        raw_state = state_mod.load_metagraph_state(name)
+    except ValueError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=2)
+    except FileNotFoundError:
+        path = _path_or_unknown(name)
+        typer.echo(
+            f"Metagraph {name!r} not found at {path}.", err=True,
+        )
+        raise typer.Exit(code=1)
+    except RuntimeError as e:
+        typer.echo(f"State file error: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    raw_schema_name = raw_state.get("schema_name")
+    if raw_schema_name is None:
+        typer.echo(
+            f"IdentityError: metagraph {name!r} has no schema attached; "
+            f"nothing to detach.",
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    used_raw_fallback = False
+    try:
+        mg = _state_to_metagraph(raw_state)
+    except RuntimeError as e:
+        # Malformed schema state file or eager-validation drift on load.
+        # DMS-A raw-JSON fallback: mutate the state dict in place,
+        # clear schema_name, write atomically, bypass rehydration.
+        typer.echo(
+            f"warning: rehydration failed ({e}); falling back to raw-JSON "
+            f"detach (DMS-A — Pushback 28-A).",
+            err=True,
+        )
+        previous = raw_schema_name
+        raw_state["schema_name"] = None
+        # Ensure version bump on disk (idempotent on v=2; defensive).
+        raw_state["_state_version"] = state_mod.METAGRAPH_STATE_VERSION
+        try:
+            state_mod.save_metagraph_state(name, raw_state)
+        except ValueError as save_err:
+            typer.echo(str(save_err), err=True)
+            raise typer.Exit(code=2)
+        used_raw_fallback = True
+    else:
+        # Normal path — rehydration succeeded; ``mg.schema_name`` matches
+        # raw_schema_name (or could be None if _state_to_metagraph had a
+        # FileNotFoundError that set the dangling ref — either way,
+        # detach handles it).
+        previous = mg.detach_schema()
+        if previous is None:
+            # Edge case: state file said schema_name was set but
+            # _state_to_metagraph left mg.schema_name as None. Use
+            # raw_schema_name as the canonical previous value.
+            previous = raw_schema_name
+            mg.schema_name = None  # idempotent
+        _save_or_die(name, mg)
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "metagraph": name,
+                    "previous_schema": previous,
+                    "detached": True,
+                    "used_raw_fallback": used_raw_fallback,
+                },
+                indent=2,
+            )
+        )
+    else:
+        suffix = " (DMS-A raw-JSON fallback)" if used_raw_fallback else ""
+        typer.echo(
+            f"ok: detached schema={previous!r} from metagraph={name!r}{suffix}"
+        )
 
 
 def register_metagraph_app(parent: typer.Typer) -> None:

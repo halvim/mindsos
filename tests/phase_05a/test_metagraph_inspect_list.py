@@ -15,7 +15,11 @@ runner = CliRunner()
 
 def test_inspect_json_shape_locked(_isolated_state_dir):
     """P10 — JSON shape: name / metagraph_id / properties / contained_graphs /
-    counts{graphs,metaedges,metahyperedges} / _state_version / state_file."""
+    counts{graphs,metaedges,metahyperedges,intergraph_edges} / _state_version / state_file.
+
+    Phase 05b extension: ``schema_name`` (top-level) and
+    ``counts.intergraph_edges`` added (Pushback 18-A v=2 bump).
+    """
     runner.invoke(
         app,
         [
@@ -27,22 +31,30 @@ def test_inspect_json_shape_locked(_isolated_state_dir):
     assert res.exit_code == 0, res.output
     data = json.loads(res.output)
     assert set(data.keys()) == {
-        "name", "metagraph_id", "properties", "contained_graphs",
-        "counts", "_state_version", "state_file",
+        "name", "metagraph_id", "properties", "schema_name",
+        "contained_graphs", "counts", "_state_version", "state_file",
     }
     assert set(data["counts"].keys()) == {
-        "graphs", "metaedges", "metahyperedges",
+        "graphs", "metaedges", "metahyperedges", "intergraph_edges",
     }
     assert data["properties"] == {"kl:active": "foo"}
     assert data["contained_graphs"] == []
-    assert data["counts"] == {"graphs": 0, "metaedges": 0, "metahyperedges": 0}
+    assert data["counts"] == {
+        "graphs": 0, "metaedges": 0, "metahyperedges": 0,
+        "intergraph_edges": 0,
+    }
+    assert data["schema_name"] is None
     assert data["_state_version"] == state_mod.METAGRAPH_STATE_VERSION
 
 
 def test_list_json_shape_locked(_isolated_state_dir):
     """P10 — list JSON shape: state_dir + array of {name, metagraph_id,
-    contained_graphs_count, metaedges_count, metahyperedges_count,
-    _state_version, path}."""
+    schema_name, contained_graphs_count, metaedges_count,
+    metahyperedges_count, intergraph_edges_count, _state_version, path}.
+
+    Phase 05b extension: ``schema_name`` and ``intergraph_edges_count``
+    added per Pushback 18-A.
+    """
     runner.invoke(app, ["metagraph", "create", "--name", "mg-a"])
     runner.invoke(app, ["metagraph", "create", "--name", "mg-z"])
     res = runner.invoke(app, ["metagraph", "list", "--json"])
@@ -55,6 +67,8 @@ def test_list_json_shape_locked(_isolated_state_dir):
     assert [m["name"] for m in data["metagraphs"]] == ["mg-a", "mg-z"]
     sample = data["metagraphs"][0]
     assert set(sample.keys()) == {
-        "name", "metagraph_id", "contained_graphs_count",
-        "metaedges_count", "metahyperedges_count", "_state_version", "path",
+        "name", "metagraph_id", "schema_name",
+        "contained_graphs_count", "metaedges_count",
+        "metahyperedges_count", "intergraph_edges_count",
+        "_state_version", "path",
     }

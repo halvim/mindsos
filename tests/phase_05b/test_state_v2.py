@@ -1,0 +1,215 @@
+"""Metagraph state-file v=2 round-trip + migration tests.
+
+Pushback 18-A — adds intergraph_edges + schema_name; v=1→v=2 cumulative
+one-way migration via mindsos_cli/migrations/metagraph.py.
+"""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+
+from mindsos_cli import state as state_mod
+from mindsos_cli.migrations import metagraph as mg_migrations
+
+
+class TestStateVersionConstants:
+    def test_metagraph_state_version_bumped_to_2(self):
+        assert state_mod.METAGRAPH_STATE_VERSION == 2
+
+    def test_metagraph_schema_state_version_is_1(self):
+        assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 1
+
+    def test_graph_state_version_unchanged_at_4(self):
+        # Phase 05b leaves graph state files at v=4 (intergraph_edges
+        # live on metagraph, not graph).
+        assert state_mod.GRAPH_STATE_VERSION == 4
+
+    def test_schema_state_version_unchanged_at_2(self):
+        # Phase 04-v2 schema state files unaffected by 05b.
+        assert state_mod.SCHEMA_STATE_VERSION == 2
+
+
+class TestMigrationV1ToV2:
+    def test_v1_to_v2_populates_defaults(self):
+        v1 = {
+            "_state_version": 1,
+            "metagraph_id": "mg-id",
+            "name": "test",
+            "properties": {},
+            "contained_graphs": [],
+            "metaedges": [],
+            "metahyperedges": [],
+        }
+        result = mg_migrations.migrate(v1)
+        assert result["_state_version"] == 2
+        assert result["intergraph_edges"] == []
+        assert result["schema_name"] is None
+
+    def test_v1_to_v2_preserves_existing_fields(self):
+        v1 = {
+            "_state_version": 1,
+            "metagraph_id": "mg-id",
+            "name": "test",
+            "properties": {"k": "v"},
+            "contained_graphs": ["g1"],
+            "metaedges": [{"edge_id": "e1"}],
+            "metahyperedges": [{"edge_id": "h1"}],
+        }
+        result = mg_migrations.migrate(v1)
+        assert result["properties"] == {"k": "v"}
+        assert result["contained_graphs"] == ["g1"]
+        assert result["metaedges"] == [{"edge_id": "e1"}]
+        assert result["metahyperedges"] == [{"edge_id": "h1"}]
+
+    def test_v2_idempotent(self):
+        """Migration is idempotent on v=2 input."""
+        v2 = {
+            "_state_version": 2,
+            "metagraph_id": "mg-id",
+            "name": "test",
+            "properties": {},
+            "schema_name": "ms1",
+            "contained_graphs": [],
+            "metaedges": [],
+            "metahyperedges": [],
+            "intergraph_edges": [{"edge_id": "ie1"}],
+        }
+        result = mg_migrations.migrate(v2)
+        assert result["_state_version"] == 2
+        assert result["intergraph_edges"] == [{"edge_id": "ie1"}]
+        assert result["schema_name"] == "ms1"
+
+    def test_forward_version_v3_refused(self):
+        v3 = {"_state_version": 3, "name": "test"}
+        with pytest.raises(ValueError) as exc:
+            mg_migrations.migrate(v3)
+        assert "v2" in str(exc.value)
+
+    def test_missing_state_version_refused(self):
+        with pytest.raises(ValueError, match="missing required field"):
+            mg_migrations.migrate({"name": "test"})
+
+    def test_non_int_state_version_refused(self):
+        with pytest.raises(ValueError):
+            mg_migrations.migrate({"_state_version": "1", "name": "test"})
+
+
+class TestMetagraphSchemaStateV1:
+    def test_initial_version_is_1(self):
+        assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 1
+
+    def test_v1_idempotent_migration(self):
+        from mindsos_cli.migrations import metagraph_schema as ms_migrations
+        v1 = {
+            "_state_version": 1,
+            "name": "test",
+            "strict": False,
+            "intergraph_edge_types": [],
+        }
+        result = ms_migrations.migrate(v1)
+        assert result["_state_version"] == 1
+
+    def test_forward_version_v2_refused(self):
+        from mindsos_cli.migrations import metagraph_schema as ms_migrations
+        with pytest.raises(ValueError):
+            ms_migrations.migrate({"_state_version": 2, "name": "test"})
+
+
+class TestStateRoundTrip:
+    def test_metagraph_v2_round_trip(self, _isolated_state_dir):
+        from mindsos_core import Graph, Metagraph
+        from mindsos_cli.commands.metagraph import (
+            _metagraph_to_state, _state_to_metagraph,
+        )
+
+        mg = Metagraph(name="rt")
+        g_lex = Graph(name="lex", role="lexicon")
+        g_cpt = Graph(name="cpt", role="concepts")
+        mg.add_graph(g_lex)
+        mg.add_graph(g_cpt)
+        n_lex = g_lex.add_node("v1", type_name="Word")
+        n_cpt = g_cpt.add_node("v2", type_name="Concept")
+        ie = mg.add_intergraph_edge(
+            g_lex.graph_id, n_lex.node_id,
+            g_cpt.graph_id, n_cpt.node_id, "EVOKES",
+            compositional=True, label="x", properties={"weight": 0.5},
+        )
+
+        # Serialize.
+        state = _metagraph_to_state(mg)
+        assert state["_state_version"] == 2
+        assert len(state["intergraph_edges"]) == 1
+        ie_dict = state["intergraph_edges"][0]
+        assert ie_dict["edge_id"] == ie.edge_id
+        assert ie_dict["source_graph"] == "lex"
+        assert ie_dict["source_node"] == n_lex.node_id
+        assert ie_dict["target_graph"] == "cpt"
+        assert ie_dict["target_node"] == n_cpt.node_id
+        assert ie_dict["type_name"] == "EVOKES"
+        assert ie_dict["compositional"] is True
+        assert ie_dict["label"] == "x"
+        assert ie_dict["properties"] == {"weight": 0.5}
+        assert state["schema_name"] is None
+
+    def test_byte_stable_sort_intergraph_edges(self, _isolated_state_dir):
+        from mindsos_core import Graph, Metagraph
+        from mindsos_cli.commands.metagraph import _metagraph_to_state
+
+        mg = Metagraph(name="rt")
+        g1 = Graph(name="g1", role="r1")
+        g2 = Graph(name="g2", role="r2")
+        mg.add_graph(g1)
+        mg.add_graph(g2)
+        n1 = g1.add_node("v1", type_name="N")
+        n2 = g2.add_node("v2", type_name="N")
+        # Add edges in reverse-id order.
+        ie_b = mg.add_intergraph_edge(
+            g1.graph_id, n1.node_id, g2.graph_id, n2.node_id, "X",
+            edge_id="bbb",
+        )
+        ie_a = mg.add_intergraph_edge(
+            g1.graph_id, n1.node_id, g2.graph_id, n2.node_id, "Y",
+            edge_id="aaa",
+        )
+        state = _metagraph_to_state(mg)
+        edge_ids_in_state = [e["edge_id"] for e in state["intergraph_edges"]]
+        assert edge_ids_in_state == sorted(edge_ids_in_state)
+        assert edge_ids_in_state == ["aaa", "bbb"]
+
+
+class TestPersistenceCLI:
+    def test_save_and_load_round_trip(self, _isolated_state_dir):
+        from mindsos_core import Graph, Metagraph
+        from mindsos_cli.commands.metagraph import (
+            _metagraph_to_state, _state_to_metagraph,
+        )
+
+        mg = Metagraph(name="persist")
+        g_lex = Graph(name="lex", role="lexicon")
+        g_cpt = Graph(name="cpt", role="concepts")
+        mg.add_graph(g_lex)
+        mg.add_graph(g_cpt)
+        n_lex = g_lex.add_node("v1", type_name="W")
+        n_cpt = g_cpt.add_node("v2", type_name="C")
+        # Save the contained graphs first (rehydration walks them).
+        from mindsos_cli.commands.graph import _graph_to_state, _save_or_die
+        _save_or_die("lex", g_lex, schema_name=None, metagraph_name="persist")
+        _save_or_die("cpt", g_cpt, schema_name=None, metagraph_name="persist")
+        ie = mg.add_intergraph_edge(
+            g_lex.graph_id, n_lex.node_id,
+            g_cpt.graph_id, n_cpt.node_id, "EVOKES",
+        )
+        # Save metagraph.
+        state_mod.save_metagraph_state("persist", _metagraph_to_state(mg))
+        # Reload.
+        loaded_state = state_mod.load_metagraph_state("persist")
+        assert loaded_state["_state_version"] == 2
+        assert len(loaded_state["intergraph_edges"]) == 1
+        # Rehydrate.
+        mg2 = _state_to_metagraph(loaded_state)
+        assert len(mg2.intergraph_edges) == 1
+        loaded_ie = next(iter(mg2.intergraph_edges.values()))
+        assert loaded_ie.edge_id == ie.edge_id
+        assert loaded_ie.type_name == "EVOKES"

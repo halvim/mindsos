@@ -93,8 +93,8 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 03 | L1 Graph elements — Graph, Node, Edge, HyperEdge | L1 | 02 |
 | 04 | L1 Schema — NodeType, EdgeType, opt-in strict ~~(SUPERSEDED by 04-v2)~~ | L1 | 02 |
 | 04-v2 | L1 Schema — HyperEdgeType + type_name (additive expansion) | L1 | 02, 03 |
-| 05a | L1 Metagraph port — Metagraph, MetaEdge, MetaHyperEdge (no CompositionalMetaEdge — dropped per N3-D) | L1 | 03, 04-v2 |
-| 05b | L1 IntergraphEdge (binary 1-1) + MetagraphSchema + MetaEdgeType + MetaHyperEdgeType + IntergraphEdgeType + compositional flag (NEW CODE; ADR-0148 first draft; ADR-0117 Withdrawn) | L1 | 05a |
+| 05a | L1 Metagraph port — Metagraph, MetaEdge, MetaHyperEdge (no CompositionalMetaEdge — dropped per N3-D; **ADR-0117 already Withdrawn here per round-1 P3**) **[CONFIRMED 2026-05-05]** | L1 | 03, 04-v2 |
+| 05b | L1 IntergraphEdge (binary 1-1) + MetagraphSchema + MetaEdgeType + MetaHyperEdgeType + IntergraphEdgeType + compositional flag (NEW CODE; ADR-0148 first draft; **ADR-0117 already Withdrawn in 05a — 05b skips that flip**; `_compositional` reserved key + `Metagraph.mint_id` deferred from 05a per P6/P7) | L1 | 05a |
 | 05c | L1 IntergraphHyperEdge (n-ary, NOT 1-1) + IntergraphHyperEdgeType (NEW CODE; ADR-0148 amended) | L1 | 05b |
 | 06 | L1 Instancing — `mindsos_instances` package | L1 | 03, 05 |
 | 07 | L1 Persistence — Client, FalkorClient, InMemoryClient, AsyncClient, repositories, WAL, indexes, OCC | L1 | 03, 04, 05, 06 |
@@ -1108,28 +1108,356 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ---
 
-### Phase 05b — L1 IntergraphEdge (binary) + MetagraphSchema + MetaEdgeType + MetaHyperEdgeType + IntergraphEdgeType
+### Phase 05b — L1 IntergraphEdge (binary) + IntergraphEdgeType + MetagraphSchema container
 
-  **Status:** Pending (refines after 05a confirms; CASC-1).
+  **Status:** Pending (refines after 05a confirms; CASC-1; row LOCKED 2026-05-05 across 6 reanalysis rounds).
   **Branch:** phase-05b
   **Tag on confirm:** phase-05b-confirmed
   **Depends on:** 05a.
-  **Layer:** L1.
-  **Net-new?:** **Yes (substantial).** New `IntergraphEdge` primitive class + factory + persistence + CLI; new `MetagraphSchema` class + `MetaEdgeType` + `MetaHyperEdgeType` + `IntergraphEdgeType` schema vocabularies; ADR-0148 first draft (intergraph edge family); ADR-0117 Withdrawn; ADR-0014 amended.
+  **Layer(s):** L1.
+  **Net-new?:** **Yes (substantial).** New `IntergraphEdge` primitive class + factory + persistence + CLI; new `MetagraphSchema` container class; new `IntergraphEdgeType` schema vocabulary; new `mindsos metagraph-schema` top-level CLI subapp; new `metagraph-schema-<n>.json` state-file kind (v=1); metagraph state-file v=1 → v=2 cumulative one-way migration (adds `intergraph_edges` + `schema_name`); 5 new subcommands on `mindsos metagraph` subapp (add-intergraph-edge / remove-intergraph-edge / list-intergraph-edges / attach-schema / detach-schema); 4-way mutex on `set-prop` (extends 05a's 3-way per P17). ADR-0148 first draft (intergraph edge family). ADR-0014 amended (Core primitive list extends with IntergraphEdge). **ADR-0117 already Withdrawn in 05a per round-1 P3 — 05b skips that flip.**
 
-  **Features (preview — full row refinement happens in 05b chat):**
-    - `Metagraph.add_intergraph_edge(...)` factory with `compositional: bool = False` flag.
-    - `IntergraphEdge` dataclass with 10 fields per `INTERGRAPH_EDGES_DESIGN.md` §2.1.
-    - `MetagraphSchema` class attached to `Metagraph`; carries `MetaEdgeType` + `MetaHyperEdgeType` + `IntergraphEdgeType` vocabularies.
-    - CLI: `mindsos metagraph add-intergraph-edge` with `--compositional` flag (R2-A); `remove-intergraph-edge` (refuses on compositional); `set-prop --intergraph-edge-id ID`; `list-intergraph-edges`.
-    - `Metagraph.remove_graph` cascade extended to incident IntergraphEdges (refuses if any compositional).
-    - State files: metagraph state v=1 → v=2 (adds `intergraph_edges` + `schema_name`); MetagraphSchema in `metagraph-schema-<n>.json` (new file, v=1).
+  **Scope narrowed (Pushback 1-C, round 1 lock):** 05b ships `IntergraphEdge` primitive + `IntergraphEdgeType` vocabulary + `MetagraphSchema` container ONLY. **`MetaEdgeType` + `MetaHyperEdgeType` are deferred to 05c** (alongside `IntergraphHyperEdge` + `IntergraphHyperEdgeType` for symmetric typed-edge surface across the metagraph in one phase).
 
-  **Reads:** `INTERGRAPH_EDGES_DESIGN.md` §1 / §2.1 / §3 / §4 / §5 / §6 (CLI 05b section) / §7 / §9 / §10 / §11. (§2.2 = 05c.)
+  **Carry-forward from 05a deferrals (round-1 P6 + P7 amendments):**
+    - **`_compositional` reserved-key addition** lands in 05b alongside the actual flag implementation (P6 deferred from 05a). Added to `RESERVED_PROPERTY_KEYS` in `mindsos_core/schema/validation.py` AT THE SAME COMMIT as the `compositional: bool` flag on `IntergraphEdge`.
+    - **`Metagraph.mint_id(kind, content)`** — ADR-0131 helper. P7 deferred from 05a (no consumer in 05a). Lands here as the IntergraphEdge factory's id-minting path. Slim port from parent `mindsos_core/models/metagraph.py:442`.
 
-  **Risks:** scope is significant (new primitive + 4 schema vocabularies + ADR drafts); 05a confirmation must hold; ADR-0117 supersession by ADR-0148 needs careful annotation.
+  **Locked decisions (6 reanalysis rounds — 2026-05-05; 34 numbered pushbacks; 4 future-work entries filed at `_source_backup/root/mindsos_future_plans.md`):**
 
-  **Docs:** `docs/concepts/intergraph-edges.md` (NEW), `docs/usage/core/metagraph-schema.md` (NEW), `docs/api/core/intergraph-edge.md` (NEW), `docs/api/core/metagraph-schema.md` (NEW), ADR-0148 (NEW; drafted in 05b row appendix; file edit Phase 38), ADR-0117 (Withdrawn), ADR-0014 (amendment text drafted; file edit Phase 38).
+    - **Pushback 1-C** — 05b scope narrows to IntergraphEdge primitive + IntergraphEdgeType vocab + MetagraphSchema container ONLY. MetaEdgeType + MetaHyperEdgeType deferred to 05c.
+    - **Pushback 2-A** — `compositional: bool` is a top-level dataclass field on `IntergraphEdge` AND a top-level field in `intergraph_edges[]` dict in metagraph state-file v=2. The reserved key `_compositional` is added to `RESERVED_PROPERTY_KEYS` to prevent user-property collision with the future Phase 07 Cypher emit (which uses `_compositional` as a Cypher property on the anchor-node Pattern B).
+    - **Pushback 3-A** — New top-level subapp `mindsos metagraph-schema` (parallel to `mindsos schema`) ships in 05b. Bindings via `mindsos metagraph attach-schema --name MG --schema MS` / `detach-schema --name MG`.
+    - **Pushback 4-A** — `IntergraphEdgeType.allowed_source_graphs: frozenset[str]` and `allowed_target_graphs: frozenset[str]` are ROLE-based (validate against `Graph.role`). Empty frozenset = any role accepted (matches `EdgeType.allowed_sources` / `allowed_targets` empty-set semantics). `Graph.role=None` is unmatchable when constraint is non-empty.
+    - **Pushback 5-A** — `MetagraphSchema.strict: bool = False` mirrors Phase 04 `Schema.strict` exactly: gates property-type validation only. Type-existence (`require_intergraph_edge_type`) is mandatory whenever a MetagraphSchema is attached, regardless of `strict`.
+    - **Pushback 6-A** — Compositional immutability has NO escape hatch in 05b. Tester recovery for a compositional-cascade-wedged metagraph: `mindsos metagraph reset --name MG --force --yes` (full destroy and rebuild). Documented in Risks. Future-work option C ("`demote-intergraph-edge` to flip `True → False`") is rejected per design §4.3 invariant.
+    - **Pushback 7-A** — Eager attach validation: `attach_schema(MS)` walks every existing `intergraph_edge`, schema-validates each (type-existence + role/name + property-typing if strict); first violation raises with offending edge_id, no mutation. Atomic precheck contract (Pushback 29-A).
+    - **Pushback 8-A** — 05c becomes the new heavyweight (3 *EdgeTypes + IntergraphHyperEdge + n-ary enforcement + 2 state-file bumps). Accept rather than re-supersede 05a (cost too high; 05a is `phase-05a-confirmed` + GitHub Released 2026-05-05).
+    - **Pushback 9-A** — Eager attach validates only against vocabularies the schema carries. In 05b (only IntergraphEdgeType), existing metaedges/metahyperedges are NOT validated; tester must re-attach in 05c when MetaEdgeType / MetaHyperEdgeType vocabularies arrive.
+    - **Pushback 10-A** — `MetagraphSchema(strict=False)` constructor ships from day one. State-file v=1 carries `strict: <bool>` field; rehydration via `MetagraphSchema(strict=state.get("strict", False))`.
+    - **Pushback 11-A** — `MetagraphSchema` is reusable across N metagraphs; lives at `metagraph-schema-<name>.json`; metagraph state-file v=2 carries `schema_name: str | null` reference (mirror Phase 04 graph schema).
+    - **Pushback 12-A** — One MetagraphSchema attached at most per metagraph; attach-while-attached refuses with `IdentityError: detach first`. Detach is non-destructive (clears `schema_name`; intergraph_edges and their type_names unchanged).
+    - **Pushback 13-A** — `add_intergraph_edge` source/target node-existence check is single: `source_node_id in source_graph.nodes` (and same for target). Belt-and-suspenders `mg.identity` check redundant per ADR-0020 unified registry; dropped.
+    - **Pushback 14-A** — `IntergraphEdge.edge_id` is ALWAYS minted via `mg.mint_id("intergraph_edge")` which delegates to `mg.id_strategy`. ADR-0131 pluggability story uniform.
+    - **Pushback 15-B** — Module file layout: NEW files `mindsos_core/models/intergraph_edge.py` (model + helpers) and `mindsos_core/schema/metagraph_schema.py` (schema container). `IntergraphEdgeType` lives in existing `mindsos_core/schema/types.py` next to `NodeType` / `EdgeType` / `HyperEdgeType`. `Metagraph` factory methods stay in `mindsos_core/models/metagraph.py` (extend by ~150 lines).
+    - **Pushback 16-A** — 14-step validation order at `add_intergraph_edge` locked in code-comment + row appendix (below). Documented for future cascade rows.
+    - **Pushback 17-A** — `Metagraph.remove_graph` runs an atomic precheck pass: walks all incident intergraph_edges; if ANY has `compositional=True` → raise `CompositionalImmutableError` with offending edge_id BEFORE any mutation. State unchanged on raise.
+    - **Pushback 18-A** — `RESERVED_PROPERTY_KEYS` extends with `intergraph_edges` (top-level metagraph state v=2 field) AND `schema_name` (top-level metagraph state v=2 field; also already top-level on graph state v=2 from Phase 04 — reserving in 05b creates a Phase 04→05b backward-compat subtlety, but theoretical zero-incidence; accepted for consistency).
+    - **Pushback 19-B** — Eager attach emits stderr warning when schema references roles that no contained graph satisfies: `warning: schema 'X' references roles {set} not satisfied by any contained graph; intergraph edges of types using these constraints will refuse until matching graphs are added.` Non-blocking.
+    - **Pushback 20-A** — `mindsos metagraph-schema reset` orphan check mirrors 05a Q6-A + Phase 04 schema reset: `--name X` walks every `metagraph-*.json`; refuses with exit 1 if any has `schema_name == X`; `--force --yes` strips back-pointers from referenced metagraphs (warning to stderr) then deletes; `--all` symmetric.
+    - **Pushback 22-A** — `IntergraphEdge.compositional` immutability enforced via `__setattr__` override on the dataclass. Post-`__post_init__` write to `compositional` raises `CompositionalImmutableError`. Other field mutations (`label`, `properties` via `update_intergraph_edge_properties`) work normally. ~15 LOC + 2 tests.
+    - **Pushback 23-A** — Schema mutation while attached: stderr warning at `mindsos metagraph-schema add-intergraph-edge-type` listing every metagraph currently attached. Documented in Risks as carry-forward Phase 04 footgun.
+    - **Pushback 24-hybrid** — Empty MetagraphSchema attach: succeeds with stderr warning ("no IntergraphEdgeType entries; attach validates nothing"). Pre-existing intergraph_edges with type_name not in vocab → in strict mode REFUSE attach (Phase 04 precedent); in non-strict, succeed silently.
+    - **Pushback 25-A** — `Graph.role` mutability is doc-convention-immutable; no `__setattr__` enforcement in 05b (would trigger Phase 03 retroactive supersession; cost too high). Schema validation against role is point-in-time at attach + each `add_intergraph_edge`. Filed Pushback 25-B as future work (`_source_backup/root/mindsos_future_plans.md` — "Schema invariant enforcement").
+    - **Pushback 26-A** — Detach-then-attach incompatible schema: refuse cleanly per Pushback 7-A eager-validation contract. Tester recovery is manual (`remove-intergraph-edge` for each offender, or reset for compositional-blocked cases). `--check-only` dry-run flag deferred to Phase 11 (ADR-0134 schema-migrate territory).
+    - **Pushback 27-A** — `mindsos metagraph set-prop` mutex extends from 05a's 3-way (`--on-metagraph | --metaedge-id | --metahyperedge-id`) to 4-way by adding `--intergraph-edge-id`. When `compositional=True` on the targeted intergraph_edge, `set-prop` refuses with `CompositionalImmutableError` per design §4.3.
+    - **Pushback 28-A + DMS-A** — Stale `schema_name` recovery: subsequent schema-needing operation on a metagraph whose `schema_name` references a missing schema state file refuses with structured pointer to recovery. Recovery via `mindsos metagraph detach-schema --name MG` — implemented as a unified command with internal raw-JSON fallback (DMS-A): try normal detach (load schema → clear reference); on schema-missing → fall through to raw-JSON path (operate on metagraph state file directly, bypass schema rehydration), clear `schema_name`. Single tester verb, two failure modes.
+    - **Pushback 29-A** — Attach atomicity contract: `Metagraph.attach_schema(MS, *, schema_name)` runs precheck pass over all intergraph_edges; first violation raises with offending edge_id; NO mutation to metagraph state file or in-memory metagraph on failure. On all-pass, sets `mg.schema_name = MS.name`, caches `mg.schema = MS instance`, writes state file once. Mirrors Phase 04 graph attach-schema atomicity.
+    - **Pushback 30-A** — `mindsos metagraph attach-schema --json` shape: `{metagraph: <name>, previous_schema: <name|null>, new_schema: <name>, validated_intergraph_edges: <count>}`. Mirror Phase 04 graph attach-schema shape with the 05b-specific count field added.
+    - **Pushback 31-A** — `IntergraphEdge.label` is set-at-create only (matches 05a metaedge / metahyperedge precedent). No `update-intergraph-edge-label` CLI verb in 05b. Tester recovery: `remove-intergraph-edge` then `add-intergraph-edge --intergraph-edge-id <orig-id>`. Filed Pushback 31-B as future work.
+    - **Pushback 32-A + 32-D** — `Metagraph.attach_schema(schema: MetagraphSchema, *, schema_name: str)` — explicit keyword name (model layer decoupled from `state_mod`). Re-attach with same `schema_name` runs FRESH eager validation (NOT silent no-op); raises if schema-mutation drift surfaces; on all-pass, idempotent at state-file level. Supersedes Pushback 12-A's "idempotent re-attach = no-op" framing.
+    - **Pushback 33-A** — `mindsos metagraph` subapp will hit ~18 subcommands after 05b, ~22 after 05c, ~30+ after Phase 10. 05b accepts the flat surface; documented in Risks. Filed Pushback 33-B (CLI two-level reorg) as future work.
+    - **Pushback 34-A + filing as 34-B** — No `remove-intergraph-edge-type` CLI verb in 05b (would create asymmetry with Phase 04 graph-schema vocabularies that also lack `remove-*-type`). Tester recovery: `mindsos metagraph-schema reset --name MS --force --yes`. Filed Pushback 34-B (symmetric backfix across all schema kinds) as future work.
+
+  **Features in scope (capability-level — locked):**
+
+    - `IntergraphEdge` dataclass — `@dataclass(kw_only=True)` (P8 pattern); fields per design §2.1 (10-field spec, soft-delete substrate dormant per Pushback-9 / SOFT_DELETE_AUDIT_NOTE deferral to Phase 10):
+      - `source_graph_id: str` (required; must be contained graph ≠ target_graph_id).
+      - `source_node_id: str` (required; must exist in `source_graph.nodes`).
+      - `target_graph_id: str` (required).
+      - `target_node_id: str` (required; must exist in `target_graph.nodes`).
+      - `type_name: str` (required; ADR-0021 cypher rel-type regex enforced at `__post_init__`).
+      - `compositional: bool = False` (immutable post-create per Pushback 22-A `__setattr__` override).
+      - `edge_id: str = field(default_factory=...)` — auto-minted via `mg.mint_id("intergraph_edge")` when factory called; field carries default for direct-construction paths (rehydration/tests).
+      - `label: Optional[str] = None`.
+      - `properties: Dict[str, Any] = field(default_factory=dict)` — namespaced; reserved-key-aware via `validate_user_properties(scope="intergraph_edge")`.
+      - Soft-delete fields `deprecated_at` / `disputed_at` — NOT shipped in 05b (per P1 + SOFT_DELETE_AUDIT_NOTE; lands uniformly across all 4 edge variants in Phase 10).
+      - `__post_init__` runs ADR-0021 cypher rel-type regex (P9 pattern); `__setattr__` enforces `compositional` immutability (Pushback 22-A); `__hash__` and `__eq__` by `edge_id`; `__repr__` slimmed.
+    - `IntergraphEdgeType` frozen dataclass — fields:
+      - `name: str` (required; ADR-0021 regex; `__post_init__` validates).
+      - `allowed_source_types: FrozenSet[str] = frozenset()` (Node type_name; empty = any).
+      - `allowed_target_types: FrozenSet[str] = frozenset()` (Node type_name; empty = any).
+      - `allowed_source_graphs: FrozenSet[str] = frozenset()` (Graph.role; empty = any; `role=None` unmatchable when non-empty per Pushback 4-A).
+      - `allowed_target_graphs: FrozenSet[str] = frozenset()` (Graph.role; empty = any).
+      - `property_types: Dict[str, PropertyType] = field(default_factory=dict)` (Phase 04 8-variant vocab).
+      - `description: Optional[str] = None`.
+    - `MetagraphSchema` class — basename-keyed (no `name` field; mirror Phase 04 Schema):
+      - `__init__(*, strict: bool = False)` constructor (Pushback 5-A + 10-A).
+      - `_intergraph_edge_types: Dict[str, IntergraphEdgeType]` storage.
+      - `add_intergraph_edge_type(iet: IntergraphEdgeType)` — refuses on duplicate name (`UnknownTypeError`); per Pushback 23-A, prints stderr warning listing attached metagraphs (which the CLI populates by walking metagraph files; the model layer just provides the API).
+      - `require_intergraph_edge_type(name: str) -> IntergraphEdgeType`.
+      - `intergraph_edge_types` property → `Mapping[str, IntergraphEdgeType]` (defensive copy).
+      - `validate_intergraph_edge(type_name, source_type_name, target_type_name, source_role, target_role)` → enforces allowed_*_types + allowed_*_graphs (empty = any).
+      - `validate_intergraph_edge_properties(type_name, properties)` → strict-only property-type check (Pushback 5-A).
+    - `Metagraph.add_intergraph_edge(source_graph_id, source_node_id, target_graph_id, target_node_id, type_name, *, label=None, properties=None, compositional=False, edge_id=None) -> IntergraphEdge` — 14-step validation order (appendix §A below). Returns the constructed edge after registration in `mg.identity`.
+    - `Metagraph.remove_intergraph_edge(edge_id) -> None` — refuses with `CompositionalImmutableError` if `compositional=True`; otherwise unregisters from `mg.identity` and removes from `mg.intergraph_edges`.
+    - `Metagraph.update_intergraph_edge_properties(edge_id, properties, *, replace=False) -> IntergraphEdge` — refuses with `CompositionalImmutableError` if `compositional=True`; otherwise merges (default) or replaces; mirror of 05a's `update_metaedge_properties`.
+    - `Metagraph.iter_intergraph_edges() -> Iterator[IntergraphEdge]` — no `include_deprecated` kwarg in 05b (Phase 10 adds).
+    - `Metagraph.attach_schema(schema: MetagraphSchema, *, schema_name: str) -> MetagraphSchema` — eager validation pass (Pushback 7-A + 9-A + 17-A + 19-B + 24-hybrid + 29-A + 32-D). Returns the schema instance for chaining; sets `mg.schema_name = schema_name` and `mg.schema = schema`.
+    - `Metagraph.detach_schema() -> Optional[str]` — clears `mg.schema_name` to `None` and `mg.schema` to `None`; returns previous schema_name (or `None` if not attached); refuses if no schema attached with `IdentityError` (Pushback 32-D carry-forward).
+    - `Metagraph.remove_graph(graph_id) -> None` — extends 05a's slim cascade (P19) with the Pushback 17-A precheck pass for compositional intergraph_edges. Cascade order: precheck (raise on first compositional incident) → cascade-remove non-compositional incident metaedges + metahyperedges + intergraph_edges → unregister graph's owned ids → delete graph entry.
+    - `Metagraph.mint_id(kind: str, content: Optional[str] = None) -> str` — ADR-0131 helper; delegates to `self.id_strategy.mint(kind, content)`; defaults to UUID4 via `UUID4Strategy` (already locked in 05a P16).
+    - `Metagraph.schema: Optional[MetagraphSchema]` — in-memory cached instance (set by `attach_schema`; cleared by `detach_schema`).
+    - `Metagraph.schema_name: Optional[str]` — persisted reference.
+    - `Metagraph.intergraph_edges: Dict[str, IntergraphEdge]` — in-memory storage keyed by `edge_id`.
+    - **CLI** — `mindsos metagraph` subapp adds 5 subcommands (Pushback 27-A 4-way mutex on existing `set-prop`):
+      - `add-intergraph-edge --name MG --source-graph G --source-node N --target-graph G --target-node N --type T [--label L] [--prop k=v]... [--compositional] [--intergraph-edge-id ID] [--json]`.
+      - `remove-intergraph-edge --name MG --intergraph-edge-id ID [--json]`.
+      - `list-intergraph-edges --name MG [--json]`.
+      - `attach-schema --name MG --schema MS [--json]` — refuses if another schema attached (per Pushback 12-A + 32-A); eager validation (per 7-A + 9-A); structured JSON output per Pushback 30-A.
+      - `detach-schema --name MG [--json]` — DMS-A unified command: try normal detach, on schema-missing fall through to raw-JSON path; refuses with exit 1 if no schema attached (Pushback 32-D / 28-A).
+      - `set-prop` extends to 4-way mutex: `(--on-metagraph | --metaedge-id | --metahyperedge-id | --intergraph-edge-id) --prop k=v ... [--replace]` (Pushback 27-A).
+    - **CLI** — NEW top-level `mindsos metagraph-schema` subapp (Pushback 3-A) with subcommands:
+      - `create --name MS [--strict] [--json]`.
+      - `inspect --name MS [--json]`.
+      - `list [--json]`.
+      - `reset (--name MS | --all) [--force] [--yes] [--json]` — orphan check (Pushback 20-A).
+      - `add-intergraph-edge-type --schema MS --type-name T [--allowed-source-type NT]... [--allowed-target-type NT]... [--allowed-source-graph ROLE]... [--allowed-target-graph ROLE]... [--prop-type k=PT]... [--description STR] [--json]` — emits stderr warning listing attached metagraphs per Pushback 23-A.
+    - **State files**:
+      - `metagraph-<n>.json` v=1 → v=2 cumulative one-way migration: adds `intergraph_edges: []` (default) and `schema_name: null` (default). Loaders accept v=1 ∪ v=2; writers emit v=2.
+      - `metagraph-schema-<n>.json` v=1 — NEW state-file kind. Migration chain at `mindsos_cli/migrations/metagraph_schema.py` (empty in 05b).
+    - **Doctor self-test extension** — None (05a's `phase\d{2}([a-z]|-v\d+)?-(prod|test)` regex already covers `phase05b-prod` / `phase05b-test`).
+
+  **Modules touched (locked):**
+
+    - `mindsos_core/models/intergraph_edge.py` — **NEW file**. `IntergraphEdge` dataclass + `__setattr__` immutability override + helpers.
+    - `mindsos_core/models/metagraph.py` — extends with `add_intergraph_edge` / `remove_intergraph_edge` / `update_intergraph_edge_properties` / `iter_intergraph_edges` / `attach_schema` / `detach_schema` / `mint_id` factory methods; extends `remove_graph` cascade with Pushback 17-A precheck for compositional intergraph_edges; adds `intergraph_edges` / `schema` / `schema_name` instance state.
+    - `mindsos_core/schema/metagraph_schema.py` — **NEW file**. `MetagraphSchema` class + validators.
+    - `mindsos_core/schema/types.py` — extends with `IntergraphEdgeType` frozen dataclass.
+    - `mindsos_core/schema/validation.py` — extends `RESERVED_PROPERTY_KEYS` with `_compositional` (P6 carry-forward) + `intergraph_edges` (Pushback 18-A) + `schema_name` (Pushback 18-A).
+    - `mindsos_core/exceptions.py` — re-adds `CompositionalImmutableError` (R3-B from 05a stripped it; 05b puts it back).
+    - `mindsos_core/__init__.py` — re-exports `IntergraphEdge`, `IntergraphEdgeType`, `MetagraphSchema`, `CompositionalImmutableError`.
+    - `mindsos_core/schema/__init__.py` — re-exports `IntergraphEdgeType`, `MetagraphSchema`.
+    - `mindsos_cli/commands/metagraph.py` — extends with 5 new subcommands + 4-way set-prop mutex; extends `inspect` / `list` JSON shapes (P10 amendment) with `intergraph_edges` count + `schema_name` field.
+    - `mindsos_cli/commands/metagraph_schema.py` — **NEW file**. Typer subapp; 5 subcommands (create / inspect / list / reset / add-intergraph-edge-type).
+    - `mindsos_cli/state.py` — adds `METAGRAPH_SCHEMA_STATE_VERSION = 1` + `metagraph_schema_file_path` / `iter_metagraph_schema_files` / `load_metagraph_schema_state` / `save_metagraph_schema_state` / `delete_metagraph_schema_state_file` helpers.
+    - `mindsos_cli/migrations/metagraph.py` — adds `_v1_to_v2(state)` step (sets `intergraph_edges: []` + `schema_name: None` defaults); `CURRENT_VERSION = 2`.
+    - `mindsos_cli/migrations/metagraph_schema.py` — **NEW file**. Empty `MIGRATIONS = []`; `CURRENT_VERSION = 1`.
+    - `mindsos_cli/app.py` — `register_metagraph_schema_app` wired.
+    - `mindsos_cli/__init__.py` — `__version__ = "0.0.0+phase05b"`.
+    - `mindsos_cli/manifest.toml` — `[mindsos] phase = "05b"`; `version = "0.0.0+phase05b"`.
+    - `pyproject.toml` — version + description bumped.
+    - `docker-compose.yml` — image tags `mindsos:phase05b-prod` / `mindsos:phase05b-test`.
+    - `Dockerfile` — comment lines bumped (Phase 05a → Phase 05b references); COPY block reaches new `mindsos_core/models/intergraph_edge.py`, `mindsos_core/schema/metagraph_schema.py`, `mindsos_cli/commands/metagraph_schema.py`, `mindsos_cli/migrations/metagraph_schema.py` via existing wildcards.
+    - `tests/_shared/sentinel_paths.py` — **+4 entries**: `mindsos_core/models/intergraph_edge.py`, `mindsos_core/schema/metagraph_schema.py`, `mindsos_cli/commands/metagraph_schema.py`, `mindsos_cli/migrations/metagraph_schema.py`.
+
+  **Persistence layout (locked):**
+
+    - **Metagraph state-file v=2 JSON shape** (extends v=1 with `intergraph_edges` + `schema_name`):
+      ```json
+      {"_state_version": 2,
+       "metagraph_id": "<uuid4>", "name": "<n>",
+       "properties": {"k": "<value>"},
+       "schema_name": "<schema-name-or-null>",
+       "contained_graphs": ["<graph-name>", ...],
+       "metaedges": [...],
+       "metahyperedges": [...],
+       "intergraph_edges": [
+         {"edge_id": "...",
+          "source_graph": "<gname>", "source_node": "<node-id>",
+          "target_graph": "<gname>", "target_node": "<node-id>",
+          "type_name": "<UPPER>",
+          "compositional": <bool>,
+          "label": "<text-or-null>", "properties": {...}}
+       ]}
+      ```
+      Top-level lists byte-stable sorted (intergraph_edges by edge_id; consistent with metaedges / metahyperedges from 05a). Atomic write via `<path>.tmp + os.replace`.
+    - **MetagraphSchema state-file v=1 JSON shape** (NEW file kind):
+      ```json
+      {"_state_version": 1,
+       "name": "<n>", "strict": <bool>,
+       "intergraph_edge_types": [
+         {"name": "<UPPER>",
+          "allowed_source_types": [...sorted],
+          "allowed_target_types": [...sorted],
+          "allowed_source_graphs": [...sorted],
+          "allowed_target_graphs": [...sorted],
+          "property_types": {"k": "<PropertyType.value>"},
+          "description": "<text-or-null>"}
+       ]}
+      ```
+      Top-level list byte-stable sorted by `name`. Atomic write.
+    - **Cumulative migration on metagraph state-file:** 05b binary reads v=1 ∪ v=2 (one-pass: populate `intergraph_edges=[]` + `schema_name=None` for v=1 default); first mutation writes v=2.
+    - **Strict version contract:** Phase 05a binary loading v=2 file rejects (`this CLI supports v1` message). Recovery: hand-edit JSON downgrade (drop `intergraph_edges` + `schema_name` fields, set `_state_version: 1`).
+    - **Graph state-file unchanged in 05b** — still v=4 (IntergraphEdges live on metagraph, not graph).
+
+  **Automated tests (location + intent — locked; test budget unlimited per `feedback_test_budget_unlimited.md`):**
+
+    - `tests/phase_05b/` — projected ~120-150 tests across ~12 files; final count whatever coverage requires:
+      - `test_intergraph_edge.py` — dataclass kw_only, post_init regex, `__setattr__` compositional immutability (Pushback 22-A), edge_id auto-mint, label round-trip, properties round-trip, source≠target enforcement, source/target node existence checks (Pushback 13-A).
+      - `test_intergraph_edge_type.py` — frozen dataclass, ADR-0021 regex on name, 8 PropertyType variants, role-based allowed_source/target_graphs, empty-set semantics (Pushback 4-A).
+      - `test_metagraph_schema.py` — strict/non-strict modes, add_intergraph_edge_type happy + duplicate refusal, state-file round-trip, N-metagraphs-share-one-schema reuse (Pushback 11-A).
+      - `test_metagraph_schema_attach.py` — happy path, eager validation skips metaedges/metahyperedges (Pushback 9-A), role-mismatch attach succeeds with stderr warning (Pushback 19-B), one-attached-at-most refusal (Pushback 12-A), detach clears + re-attach is fresh validation (Pushback 32-D), atomic precheck on failure (Pushback 29-A), Pushback 30-A JSON shape.
+      - `test_compositional.py` — flag immutability via `__setattr__` (Pushback 22-A), factory accepts compositional=True, compositional edge refuses remove + set-prop (design §4.3), `remove_graph` cascade precheck (Pushback 17-A) atomic refusal, non-compositional cascade-removes cleanly.
+      - `test_intergraph_edge_state_v2.py` — state-file v=2 round-trip with intergraph_edges + schema_name, byte-stable sort, atomic write.
+      - `test_metagraph_migration_v1_to_v2.py` — v=1 load+populate intergraph_edges=[] + schema_name=null, first mutation upgrades to v=2, idempotent on v=2, forward-version v=3 refused.
+      - `test_metagraph_schema_state_v1.py` — schema state-file shape, byte-stable sort, atomic write.
+      - `test_cli_intergraph_edge.py` — add-intergraph-edge happy + --compositional flag, remove refuses on compositional, set-prop --intergraph-edge-id (Pushback 27-A 4-way mutex), list-intergraph-edges JSON shape, role-based schema rejection, properties round-trip, edge-id override.
+      - `test_cli_metagraph_schema.py` — create / inspect / list / reset orphan check / reset --force --yes / add-intergraph-edge-type / attach-schema / detach-schema (DMS-A raw-JSON path).
+      - `test_mint_id.py` — UUID4 default + custom IdStrategy delegation, mixed-strategy metagraph round-trip.
+      - `test_reserved_keys.py` — `_compositional` rejected as user property, `intergraph_edges` rejected, `schema_name` rejected.
+      - `test_validation_order.py` — Pushback 16-A 14-step order; tests fail with the most specific first violation.
+      - `test_dms_a.py` — stale `schema_name` recovery via unified detach-schema fallback (Pushback 28-A).
+    - **Audit pass (pre-implementation):** review every `tests/phase_05a/test_state*.py` for hard-coded `_state_version: 1` (metagraph) constants; update to use `state_mod.METAGRAPH_STATE_VERSION` dynamically. Symmetric with 05a P14 / 04-v2 audit. Lock as pre-implementation task.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 05b --notes-file notes-phase-05b.md`
+    (Init shape: `--init-notes 05b` is canonical; backward-compat alias `phase-05b` per 04-v2 / 05a pattern. Manifest stores `[mindsos] phase = "05b"`.)
+
+  **Pass criterion:**
+
+    - Tester can create a metagraph schema (`metagraph-schema create`), add an IntergraphEdgeType with role-based source/target constraints, attach to a metagraph (`metagraph attach-schema`), add an intergraph edge between two contained graphs that satisfies the role constraints, and observe round-trip persistence at metagraph state v=2.
+    - Tester sees structured refusal when add-intergraph-edge violates type-existence (no schema match) / role mismatch (graph role not in `allowed_source_graphs`) / cypher regex (lowercase type) / self-graph (source == target).
+    - Tester sees `CompositionalImmutableError` on attempts to remove or set-prop on a compositional intergraph edge; tester can recover only via `mindsos metagraph reset --name MG --force --yes` (per Pushback 6-A).
+    - Tester sees atomic refusal when `metagraph remove-graph` would orphan a compositional intergraph edge (Pushback 17-A); state file unchanged on raise.
+    - Tester sees stderr warning when attach-schema succeeds with role gaps (Pushback 19-B); same warning when add-intergraph-edge-type runs while schema is attached to N metagraphs (Pushback 23-A).
+    - Tester recovers stale `schema_name` reference via `mindsos metagraph detach-schema --name MG` (DMS-A; works even when schema state file is missing).
+    - Phase 05a v=1 metagraph state file loads cleanly under 05b binary; first mutation upgrades to v=2.
+    - All Phase 03 + Phase 04 + Phase 04-v2 + Phase 05a + Phase 05b tests pass cumulatively in-container.
+    - **Cumulative tests pass: ≥ Phase 05a baseline (528 + 2 skipped) + ~120-150 Phase 05b added; tester records actual count in `PHASE_05b_CONFIRMED.md`** (sandbox-projected: ~648-678 + 2 skipped).
+
+  **Risks / known issues to watch:**
+
+    - **v=1 → v=2 metagraph state-file migration is one-way.** 05b binary touching a Phase 05a v=1 file upgrades on first mutation; Phase 05a binary then refuses with `this CLI supports v1` message. Recovery: hand-edit JSON downgrade (drop `intergraph_edges` + `schema_name`, set `_state_version: 1`).
+    - **Schema mutation while attached** is a documented carry-forward footgun (Pushback 23-A). Adding a new IntergraphEdgeType to a schema attached to N metagraphs does NOT trigger re-validation; existing intergraph_edges retain their type_names. Tester must re-attach to surface drift.
+    - **Compositional cascade wedges metagraphs** (Pushback 6-A + 17-A): a compositional intergraph_edge cannot be removed; if its source or target graph needs removal, metagraph is wedged. Recovery is full reset (`mindsos metagraph reset --name MG --force --yes`) — tester loses all metagraph contents.
+    - **`Graph.role` mutation post-attach** drifts schema validation silently (Pushback 25-A). Doc-convention immutable; no `__setattr__` enforcement in 05b. Tester scripts mutating role programmatically void the schema validation invariant.
+    - **`mindsos metagraph` subapp size** grows to ~18 subcommands after 05b; 22+ after 05c; 30+ after Phase 10 (Pushback 33-A). Filed as future work (Pushback 33-B in `_source_backup/root/mindsos_future_plans.md`).
+    - **No `remove-intergraph-edge-type` verb** (Pushback 34-A); typo recovery requires `mindsos metagraph-schema reset --name MS --force --yes` and full vocabulary rebuild. Filed as future work (Pushback 34-B).
+    - **No `update-intergraph-edge-label` verb** (Pushback 31-A); label-typo recovery requires remove-and-re-add with `--intergraph-edge-id <orig>` override. Filed as future work (Pushback 31-B).
+    - **Stale `schema_name` reference** if tester deletes a `metagraph-schema-X.json` state file by hand: subsequent schema-needing operation refuses with structured pointer to `mindsos metagraph detach-schema --name MG`; DMS-A recovery (Pushback 28-A) clears the stale reference via raw-JSON path.
+    - **Cross-metagraph intergraph edges are out-of-contract** (XRef = Phase 09). Per ADR-0020, each metagraph has its own IdentityRegistry; an `add_intergraph_edge` call with a node_id from a different metagraph fails identity lookup.
+    - **J-02 carry-forward** — no advisory locks on state files; debug-only single-tester surface. Phase 07 ships proper concurrency.
+
+  **Doc sections this phase confirms:**
+
+    - `docs/concepts/intergraph-edges.md` — full (NEW). `last_confirmed_phase: 05b`. Concept overview; cat=c+a+t example reserved for 05c (when IntergraphHyperEdge ships); 05b focuses on binary 1-1 case.
+    - `docs/usage/core/metagraph-schema.md` — full (NEW). `last_confirmed_phase: 05b`. Covers `mindsos metagraph-schema` subapp + attach/detach + role-based constraints + Pushback-23 mutation footgun + reset orphan check.
+    - `docs/usage/core/metagraphs.md` — amended (Phase 05a baseline) with intergraph-edge subcommands + DMS-A recovery + 4-way set-prop mutex + state-file v=1→v=2 migration. `last_confirmed_phase: 05b`.
+    - `docs/api/core/intergraph-edge.md` — full (NEW). API reference. `last_confirmed_phase: 05b`.
+    - `docs/api/core/metagraph-schema.md` — full (NEW). API reference. `last_confirmed_phase: 05b`.
+    - `docs/api/core/metagraph.md` — amended (Phase 05a baseline) with new factory methods + attach_schema / detach_schema / mint_id / extended remove_graph cascade. `last_confirmed_phase: 05b`.
+    - `docs/changelog/CHANGELOG.md` — Phase 05b entry appended.
+    - `mkdocs.yml` — nav entries for new pages.
+    - **ADR-0148** drafted (full text in row appendix §B below; file edit Phase 38).
+    - **ADR-0014** amended (full amendment text in row appendix §C below; file edit Phase 38).
+    - **ADR-0117** status edit deferred to Phase 38 per locked precedent — annotation says **Withdrawn in 05a**, not 05b.
+    - **ADR-0131** confirmed (mint_id ships; pluggable IdStrategy reaches its first non-uuid consumer — IntergraphEdge factory).
+
+  **Breaking changes from Phase 05a:**
+
+    - `Metagraph` state-file v=1 → v=2 (one-way; documented above).
+    - `mindsos metagraph set-prop` mutex extends from 3-way to 4-way (Pushback 27-A); tester scripts using only 05a's 3-way are forward-compatible (the 4th option is additive); error message text changes.
+    - `mindsos metagraph inspect --json` shape gains `counts.intergraph_edges` field + `schema_name` field (additive; tester scripts reading the 05a shape continue to work).
+    - `mindsos metagraph list --json` shape gains `intergraph_edges_count` + `schema_name` per entry (additive).
+    - `mindsos metagraph remove-graph --json` gains `cascaded_intergraph_edges` field (additive).
+    - New top-level subapp `mindsos metagraph-schema` registered (no conflict with existing surface).
+
+  **Final amendments (2026-05-05 — locked across 6 reanalysis rounds; 34 numbered pushbacks):**
+
+    1. **Pushback 1-C** — 05b scope narrowed to IntergraphEdge primitive + IntergraphEdgeType + MetagraphSchema container; MetaEdgeType + MetaHyperEdgeType deferred to 05c.
+    2. **Pushback 2-A** — `compositional` top-level dataclass field; `_compositional` reserved key for future Cypher emit.
+    3. **Pushback 3-A** — New `mindsos metagraph-schema` subapp + `attach-schema` / `detach-schema` on `metagraph`.
+    4. **Pushback 4-A** — `allowed_source_graphs` / `allowed_target_graphs` ROLE-based; `role=None` unmatchable when constraint non-empty.
+    5. **Pushback 5-A** — `MetagraphSchema.strict` mirrors Phase 04 `Schema.strict` (gates property typing only).
+    6. **Pushback 6-A** — No escape hatch for compositional cascade; tester recovery is full reset.
+    7. **Pushback 7-A** — Eager attach validation; first violation raises with offending edge_id.
+    8. **Pushback 8-A** — 05c becomes the heavyweight; accept rather than re-supersede 05a.
+    9. **Pushback 9-A** — Eager attach validates only against vocabularies the schema carries; metaedges/metahyperedges not validated in 05b.
+    10. **Pushback 10-A** — `MetagraphSchema(strict)` ships from day one in state file.
+    11. **Pushback 11-A** — `MetagraphSchema` reusable across N metagraphs; basename-keyed state file.
+    12. **Pushback 12-A** — One MetagraphSchema attached per metagraph; attach-while-attached refuses.
+    13. **Pushback 13-A** — Single source/target node existence check; redundant `mg.identity` check dropped.
+    14. **Pushback 14-A** — `IntergraphEdge.edge_id` minted via `mg.mint_id` always; ADR-0131 uniform.
+    15. **Pushback 15-B** — New files `intergraph_edge.py` + `metagraph_schema.py`; `IntergraphEdgeType` in existing `types.py`.
+    16. **Pushback 16-A** — 14-step validation order locked in code-comment + appendix §A.
+    17. **Pushback 17-A** — `remove_graph` atomic precheck for compositional intergraph_edges.
+    18. **Pushback 18-A** — `RESERVED_PROPERTY_KEYS` extended with `intergraph_edges` + `schema_name`.
+    19. **Pushback 19-B** — Eager attach emits stderr warning on role-mismatch; non-blocking.
+    20. **Pushback 20-A** — `metagraph-schema reset` orphan check mirrors 05a Q6-A.
+    21. **Pushback 22-A** — `__setattr__` override on `IntergraphEdge` for `compositional` immutability.
+    22. **Pushback 23-A** — Schema mutation while attached: stderr warning carry-forward Phase 04 footgun.
+    23. **Pushback 24-hybrid** — Empty MetagraphSchema attach: succeeds with warning + strict-mode add-time refusal.
+    24. **Pushback 25-A** — `Graph.role` doc-convention immutable; 25-B filed future work.
+    25. **Pushback 26-A** — Detach-then-attach incompatible schema: refuse cleanly per 7-A.
+    26. **Pushback 27-A** — 4-way mutex on `set-prop` (extends 05a 3-way).
+    27. **Pushback 28-A + DMS-A** — Stale `schema_name` recovery via unified `detach-schema` with raw-JSON fallback.
+    28. **Pushback 29-A** — Eager attach atomicity contract; state unchanged on raise.
+    29. **Pushback 30-A** — `attach-schema --json` shape with `validated_intergraph_edges` count.
+    30. **Pushback 31-A** — Label set-at-create only; 31-B filed future work.
+    31. **Pushback 32-A + 32-D** — `attach_schema(schema, *, schema_name)` model API; re-attach is fresh validation.
+    32. **Pushback 33-A** — `mindsos metagraph` subapp accepts flat surface; 33-B filed future work.
+    33. **Pushback 34-A + filing** — No `remove-*-type` in 05b; 34-B filed future work for symmetric backfix.
+    34. Test budget: unlimited per `feedback_test_budget_unlimited.md` (2026-05-05 lock); ~120-150 sandbox projection; final count whatever coverage requires.
+
+  **§A — 14-step validation order at `Metagraph.add_intergraph_edge` (Pushback 16-A; appendix lock):**
+
+    1. `source_graph_id` must be a key in `mg.graphs` → else `IdentityError`.
+    2. `target_graph_id` must be a key in `mg.graphs` → else `IdentityError`.
+    3. `source_graph_id != target_graph_id` → else `SchemaError("source and target must be different graphs")`.
+    4. `source_node_id` must be a key in `mg.graphs[source_graph_id].nodes` → else `IdentityError` (single check per Pushback 13-A).
+    5. `target_node_id` must be a key in `mg.graphs[target_graph_id].nodes` → else `IdentityError`.
+    6. `type_name` must satisfy ADR-0021 cypher rel-type regex — enforced at `IntergraphEdge.__post_init__` after dataclass instantiation (P9 pattern); raises `CypherError`.
+    7. `validate_user_properties(properties or {}, scope="intergraph_edge")` → reserved-key + primitive-only check; raises `PropertyShapeError`.
+    8. (if `mg.schema is not None`) `mg.schema.require_intergraph_edge_type(type_name)` → raises `UnknownTypeError` if vocab missing.
+    9. (if attached) `mg.schema.validate_intergraph_edge(type_name, source_node.type_name, target_node.type_name, source_graph.role, target_graph.role)` → raises `UnknownTypeError` if any constraint fails (allowed_source_types / allowed_target_types / allowed_source_graphs / allowed_target_graphs).
+    10. (if attached and `mg.schema.strict`) `mg.schema.validate_intergraph_edge_properties(type_name, properties)` → raises `PropertyShapeError`.
+    11. `edge_id = mg.mint_id("intergraph_edge")` (or use caller-supplied `edge_id` if not None — same unregister-and-re-register dance as 05a metaedge override).
+    12. Construct `IntergraphEdge(...)` (dataclass `__post_init__` runs cypher regex + `_initialized = True` for `__setattr__` override).
+    13. `mg.identity.register(edge_id)` → raises `IdentityError` on collision.
+    14. `mg.intergraph_edges[edge_id] = edge`. Return edge.
+
+  **§B — ADR-0148 first draft (full text; file edit Phase 38):**
+
+  > **ADR-0148: Intergraph Edge family**
+  >
+  > **Status:** Accepted (Phase 05b first draft 2026-05-05; amendment in Phase 05c for `IntergraphHyperEdge`).
+  >
+  > **Context.** L1 Core ships node-level edge primitives within a single Graph (`Edge` for binary, `HyperEdge` for n-ary, both Phase 03) and graph-level edge primitives within a single Metagraph (`MetaEdge` for binary, `MetaHyperEdge` for n-ary, both Phase 05a). Cross-metagraph node references (`XRef`) ship in Phase 09. The remaining gap is **node-level edges that span graphs within a single metagraph** — needed for use cases like (a) lexical-to-conceptual alignment (lexicon-graph node `cat` → concepts-graph node `Cat#1`), (b) compositional identity (word-graph `cat` decomposed into letter-graph `c`+`a`+`t`), (c) cross-graph relational data without graph-level reification. ADR-0117's original `CompositionalMetaEdge` (a graph-level subclass) was withdrawn in Phase 05a (round-1 P3 amendment) because graph-level binding can't carry the node-level identity that the cat=c+a+t use case requires.
+  >
+  > **Decision.** Introduce two new L1 primitives:
+  >
+  > - **`IntergraphEdge`** (Phase 05b, this ADR's first draft) — binary, 1-to-1, node↔node across two graphs in one metagraph. Owned by the metagraph (not by either graph); registered in the metagraph's `IdentityRegistry` (ADR-0020); persisted in metagraph state file. Required fields: `source_graph_id`, `source_node_id`, `target_graph_id`, `target_node_id`, `type_name` (cypher rel-type per ADR-0021). Optional: `label`, `properties` (namespaced bag), `compositional: bool` (default False).
+  >
+  > - **`IntergraphHyperEdge`** (Phase 05c, this ADR amended) — n-ary anchors + members, NOT 1-to-1 (cardinality enforcement at API boundary). Asymmetric: anchors are the "identity-bearing" side; members the "constituent" side. Same compositional flag. Same metagraph ownership.
+  >
+  > Both primitives carry an immutable-post-create `compositional: bool` flag. When `compositional=True`:
+  > (a) the edge cannot be removed (`remove_*_edge` raises `CompositionalImmutableError`);
+  > (b) properties cannot be mutated (`update_*_edge_properties` raises);
+  > (c) deprecation (Phase 10) raises;
+  > (d) `Metagraph.remove_graph` cascade refuses if any incident edge is compositional (atomic precheck);
+  > (e) the flag itself cannot be flipped at runtime (`__setattr__` enforcement).
+  >
+  > Schema validation lives in a metagraph-attached `MetagraphSchema` (also introduced in 05b). The schema carries `IntergraphEdgeType` (and in 05c, `IntergraphHyperEdgeType`) vocabularies with role-based graph constraints (`allowed_source_graphs` / `allowed_target_graphs` against `Graph.role`) plus type-based node constraints (`allowed_source_types` / `allowed_target_types` against `Node.type_name`) plus property-type maps. Validation is point-in-time at attach + each `add_intergraph_edge`.
+  >
+  > Persistence (Phase 07): Cypher Pattern B (anchor-node pattern) — the IntergraphEdge is materialized as `(:IntergraphEdge {edge_id, type_name, properties..., _compositional})` connected to source/target node anchors via typed relationships (`:SOURCE` / `:TARGET` for binary; `:ANCHOR` / `:MEMBER` for n-ary). Owned by `(:Metagraph)` via `:OWNS`. OCC: two-lock canonical ordering for binary; n-lock for n-ary (sort by `graph_id` string, acquire in order, release in reverse). Implementation deferred to Phase 07; 05b/05c lock the contract.
+  >
+  > **Consequences.**
+  >
+  > - L1 ships 6 edge primitives total: `Edge`, `HyperEdge` (within Graph); `MetaEdge`, `MetaHyperEdge` (between Graphs in Metagraph); `IntergraphEdge`, `IntergraphHyperEdge` (between Nodes across Graphs in Metagraph). XRef (Phase 09) adds the 7th (between Nodes across Metagraphs).
+  > - Compositional invariant is strong: tester recovery for a wedged metagraph requires full reset.
+  > - `MetagraphSchema` is the new schema home; reuse across metagraphs by name reference (mirror Phase 04 graph schema). Schema mutation while attached carries Phase 04 footgun (re-attach to validate drift).
+  > - `Metagraph.mint_id` lands as the IntergraphEdge factory's id-minting path; ADR-0131 pluggable IdStrategy reaches its first non-uuid consumer.
+  > - Persistence layer (Phase 07) gains 2 new node labels (`:IntergraphEdge`, `:IntergraphHyperEdge`) and the canonical-ordered-lock contract.
+  >
+  > **Supersedes:** ADR-0117 (`CompositionalMetaEdge`, Withdrawn in Phase 05a per round-1 P3).
+  >
+  > **Related:** ADR-0014 (Layer boundary, amended in 05b to extend Core's primitive list), ADR-0020 (unified IdentityRegistry), ADR-0021 (cypher identifier safety), ADR-0027 / ADR-0028 (Snapshot scope), ADR-0029 (superseded by ADR-0130 in 05a), ADR-0130 (property bag on Metagraph + Graph), ADR-0131 (pluggable IdStrategy).
+  >
+  > **Canonical design:** `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`.
+
+  **§C — ADR-0014 amendment text (full; file edit Phase 38):**
+
+  > **2026-05-05 amendment (Phase 05b):** L1 Core's primitive list extends with `IntergraphEdge` (binary, 1-to-1, node↔node across graphs in one metagraph) per ADR-0148 first draft. The amendment establishes that L1 owns the binary intergraph primitive at the model layer (`mindsos_core/models/intergraph_edge.py`); schema validation lives in a new `MetagraphSchema` container (`mindsos_core/schema/metagraph_schema.py`) that attaches to a metagraph by name reference and is reusable across N metagraphs (mirror Phase 04 graph schema). The 05c amendment to this ADR-0014 entry will add `IntergraphHyperEdge` (n-ary) once that primitive ships.
+
+  **§D — 05c dry-run appendix (pre-resolves 05c decisions that could retroactively wish for 05b changes):**
+
+    - **05c will add `intergraph_hyperedges` array to metagraph state file** → bump v=2 → v=3. **05b's v=2 shape is forward-compat:** missing field defaults to empty array. No 05b change needed.
+    - **05c's `IntergraphHyperEdgeType` schema vocabulary** + **05c's `MetaEdgeType` + `MetaHyperEdgeType` vocabularies** all add to MetagraphSchema. State file v=1 → v=2 in 05c. **05b's MetagraphSchema v=1 shape is forward-compat:** missing fields default to empty arrays. No 05b change needed.
+    - **05c's `compositional` cascade** through `Metagraph.remove_graph` extends to `IntergraphHyperEdge`. **05b's precheck pass** (Pushback 17-A) iterates `mg.intergraph_edges` only; 05c extends to also iterate `mg.intergraph_hyperedges`. No 05b change needed (additive in 05c).
+    - **05c's n-lock canonical ordering** for n-ary intergraph hyperedges generalizes 05b's two-lock-for-binary contract. Both lock the contract; Phase 07 implements both. No 05b change needed.
+    - **05c's `IntergraphHyperEdge.compositional`** flag is the same `_compositional` reserved key as 05b. **05b's reserved-key addition** (P6 carry-forward) covers both. No 05b change needed.
+    - **05c MAY surface a tester pain about `mindsos metagraph` subapp size** (Pushback 33-A); if so, the future-work entry (Pushback 33-B) escalates as candidate for promotion at that point.
 
 ---
 

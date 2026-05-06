@@ -92,8 +92,11 @@ def test_schema_chain_at_current_is_idempotent():
 # ── chain composition (metagraph) ───────────────────────────────────────────
 
 
-def test_metagraph_chain_at_current_v1():
-    """v=1 is current; chain is empty; idempotent passthrough."""
+def test_metagraph_chain_v1_migrates_to_current():
+    """Phase 05b bumped METAGRAPH_STATE_VERSION 1 → 2 (Pushback 18-A);
+    a v=1 input is forward-migrated to v=2 with default ``intergraph_edges=[]``
+    and ``schema_name=None`` populated.
+    """
     state = {
         "_state_version": 1,
         "metagraph_id": "mg-id", "name": "mg", "properties": {},
@@ -101,10 +104,17 @@ def test_metagraph_chain_at_current_v1():
         "metaedges": [], "metahyperedges": [],
     }
     out = metagraph_migrations.migrate(state)
-    assert out["_state_version"] == 1
+    assert out["_state_version"] == metagraph_migrations.CURRENT_VERSION  # = 2 in 05b
+    # 05b additions populated with defaults.
+    assert out["intergraph_edges"] == []
+    assert out["schema_name"] is None
 
 
 def test_metagraph_chain_rejects_forward_version():
-    """v=2 (future) raises ('this CLI supports v1')."""
-    with pytest.raises(ValueError, match="this CLI supports v1"):
-        metagraph_migrations.migrate({"_state_version": 2})
+    """Forward-version (CURRENT_VERSION + 1) raises ('this CLI supports v...')."""
+    forward = metagraph_migrations.CURRENT_VERSION + 1
+    with pytest.raises(
+        ValueError,
+        match=f"this CLI supports v{metagraph_migrations.CURRENT_VERSION}",
+    ):
+        metagraph_migrations.migrate({"_state_version": forward})

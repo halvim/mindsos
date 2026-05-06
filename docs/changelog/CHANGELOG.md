@@ -1,11 +1,64 @@
 ---
-last_confirmed_phase: 05a
+last_confirmed_phase: 05b
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 05b — L1 IntergraphEdge (binary) + IntergraphEdgeType + MetagraphSchema container (2026-05-05)
+
+**`IntergraphEdge` + `IntergraphEdgeType` + `MetagraphSchema` ship** per
+ADR-0148 first draft + 6-round-locked PHASE_MAP §5 row + 4 future-work
+entries filed at `_source_backup/root/mindsos_future_plans.md`. 34
+numbered pushbacks accepted by user across 6 reanalysis rounds. Key
+shape:
+
+* **Pushback 1-C** — Scope narrowing: 05b ships `IntergraphEdge` (binary)
+  + `IntergraphEdgeType` + `MetagraphSchema` container ONLY. `MetaEdgeType`
+  + `MetaHyperEdgeType` deferred to 05c (alongside `IntergraphHyperEdge`
+  + `IntergraphHyperEdgeType`).
+* **Pushback 2-A** — `compositional: bool` is a top-level dataclass field
+  on `IntergraphEdge`. The reserved key `_compositional` (in
+  `RESERVED_PROPERTY_KEYS` per Pushback 18-A) is reserved for the future
+  Phase 07 Cypher emit's stamped property.
+* **Pushback 3-A** — New top-level `mindsos metagraph-schema` subapp +
+  `mindsos metagraph attach-schema` / `detach-schema` bindings.
+* **Pushback 4-A** — Role-based graph constraints
+  (`allowed_source_graphs` / `allowed_target_graphs` against
+  `Graph.role`).
+* **Pushback 6-A** — Compositional immutability has no escape hatch.
+  Recovery via `mindsos metagraph reset --name <MG> --force --yes`.
+* **Pushback 17-A** — `Metagraph.remove_graph` runs an atomic precheck:
+  if any incident `intergraph_edge.compositional=True`, raise BEFORE
+  any mutation.
+* **Pushback 22-A** — `IntergraphEdge.__setattr__` enforces
+  `compositional` immutability post-init.
+* **Pushback 27-A** — `mindsos metagraph set-prop` 4-way mutex
+  (extends 05a's 3-way with `--intergraph-edge-id`).
+* **Pushback 28-A + DMS-A** — Unified `mindsos metagraph detach-schema`
+  with raw-JSON fallback for stale `schema_name` references.
+* **Test budget** — unlimited per `feedback_test_budget_unlimited.md`
+  (locked rule for all future cascade phases). 145 in-process tests
+  added; 3 CLI subprocess test files run in-container.
+
+**Filed as future work** (`_source_backup/root/mindsos_future_plans.md`):
+
+* Pushback 25-B — `Graph.role` immutability via `__setattr__` (Phase
+  03 retroactive supersession trigger).
+* Pushback 31-B — `update-intergraph-edge-label` CLI verb.
+* Pushback 33-B — `mindsos metagraph` subapp two-level reorganization.
+* Pushback 34-B — symmetric `remove-*-type` backfix across all schema
+  kinds.
+
+State files: metagraph state v=1 → v=2 cumulative one-way migration
+(adds `intergraph_edges` array + `schema_name` reference). New
+`metagraph-schema-<n>.json` v=1 state-file kind. `RESERVED_PROPERTY_KEYS`
+extends with `intergraph_edges`, `schema_name`, `_compositional`.
+`CompositionalImmutableError` re-shipped (R3-B 05a stripped).
+`Metagraph.mint_id` ADR-0131 helper landed (P7 carry-forward;
+consumer = IntergraphEdge factory).
 
 ## Phase 05a — L1 Metagraph slim port (2026-05-05)
 

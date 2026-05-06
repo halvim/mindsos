@@ -17,11 +17,13 @@ nav:
   - Concepts:
       - Identity and IRIs: concepts/identity.md
       - Graphs and metagraphs: concepts/graphs-and-metagraphs.md
+      - Intergraph edges: concepts/intergraph-edges.md
   - Usage:
       - Core:
           - Building graphs: usage/core/building-graphs.md
           - Schemas: usage/core/schema.md
           - Metagraphs: usage/core/metagraphs.md
+          - Metagraph schema: usage/core/metagraph-schema.md
   - API:
       - Core IdentityRegistry: api/core/identity-registry.md
       - Core Graph: api/core/graph.md
@@ -33,6 +35,8 @@ nav:
       - Core Metagraph: api/core/metagraph.md
       - Core MetaEdge: api/core/metaedge.md
       - Core MetaHyperEdge: api/core/metahyperedge.md
+      - Core IntergraphEdge: api/core/intergraph-edge.md
+      - Core MetagraphSchema: api/core/metagraph-schema.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md
