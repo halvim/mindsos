@@ -19,6 +19,8 @@ def test_inspect_json_shape_locked(_isolated_state_dir):
 
     Phase 05b extension: ``schema_name`` (top-level) and
     ``counts.intergraph_edges`` added (Pushback 18-A v=2 bump).
+    Phase 05c extension: ``counts.intergraph_hyperedges`` added
+    (P14-A smaller-items fold v=3 bump).
     """
     runner.invoke(
         app,
@@ -35,13 +37,14 @@ def test_inspect_json_shape_locked(_isolated_state_dir):
         "contained_graphs", "counts", "_state_version", "state_file",
     }
     assert set(data["counts"].keys()) == {
-        "graphs", "metaedges", "metahyperedges", "intergraph_edges",
+        "graphs", "metaedges", "metahyperedges",
+        "intergraph_edges", "intergraph_hyperedges",
     }
     assert data["properties"] == {"kl:active": "foo"}
     assert data["contained_graphs"] == []
     assert data["counts"] == {
         "graphs": 0, "metaedges": 0, "metahyperedges": 0,
-        "intergraph_edges": 0,
+        "intergraph_edges": 0, "intergraph_hyperedges": 0,
     }
     assert data["schema_name"] is None
     assert data["_state_version"] == state_mod.METAGRAPH_STATE_VERSION
@@ -54,6 +57,8 @@ def test_list_json_shape_locked(_isolated_state_dir):
 
     Phase 05b extension: ``schema_name`` and ``intergraph_edges_count``
     added per Pushback 18-A.
+    Phase 05c extension: ``intergraph_hyperedges_count`` added per
+    P14-A smaller-items fold v=3 bump.
     """
     runner.invoke(app, ["metagraph", "create", "--name", "mg-a"])
     runner.invoke(app, ["metagraph", "create", "--name", "mg-z"])
@@ -70,5 +75,6 @@ def test_list_json_shape_locked(_isolated_state_dir):
         "name", "metagraph_id", "schema_name",
         "contained_graphs_count", "metaedges_count",
         "metahyperedges_count", "intergraph_edges_count",
+        "intergraph_hyperedges_count",
         "_state_version", "path",
     }

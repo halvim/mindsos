@@ -1,28 +1,47 @@
-"""MetagraphSchema state-file migration chain (Phase 05b — P14 / NEW kind).
+"""MetagraphSchema state-file migration chain (Phase 05b + 05c — P14 / NEW kind).
 
 Versions:
 
 * v=1 (Phase 05b) — initial shape; ``intergraph_edge_types`` array;
   ``strict: bool`` flag.
+* v=2 (Phase 05c — P14-A smaller-items fold) — adds
+  ``intergraph_hyperedge_types`` array (default empty on migration).
+  Per 05c P1-B scope split, ``meta_edge_types`` + ``meta_hyperedge_types``
+  are NOT shipped in 05c — they defer to Phase 05d's v=2→v=3 bump.
 
 Future bumps (deferred to later phases per CASC-1):
 
-* v=2 (Phase 05c) — adds ``meta_edge_types`` + ``meta_hyperedge_types``
-  + ``intergraph_hyperedge_types`` arrays (3 new vocabularies in one
-  bump per Pushback 1-C scope split).
+* v=3 (Phase 05d — locked stub) — adds ``meta_edge_types`` +
+  ``meta_hyperedge_types`` arrays (defaults empty).
 
-The migration list is empty in 05b (no prior versions). Subsequent phases
-append migration steps in their own row.
+Subsequent phases append migration steps; never edit a prior step.
 """
 
 from __future__ import annotations
 
 from typing import Callable, Dict, List
 
-CURRENT_VERSION = 1
+CURRENT_VERSION = 2
 
-#: ``MIGRATIONS[i]`` migrates v(i+1) → v(i+2). Empty in 05b.
-MIGRATIONS: List[Callable[[Dict], Dict]] = []
+
+def _v1_to_v2(state: Dict) -> Dict:
+    """Phase 05b → Phase 05c: introduce ``intergraph_hyperedge_types``.
+
+    Single-step migration mirroring the 05b ``_v1_to_v2`` pattern on the
+    metagraph state file. Default empty list on migration; existing 05b
+    metagraph-schema state files have no IntergraphHyperEdgeType
+    declarations to carry over. Idempotent on re-migration.
+    """
+    state["intergraph_hyperedge_types"] = (
+        state.get("intergraph_hyperedge_types") or []
+    )
+    return state
+
+
+#: ``MIGRATIONS[i]`` migrates v(i+1) → v(i+2).
+MIGRATIONS: List[Callable[[Dict], Dict]] = [
+    _v1_to_v2,
+]
 
 
 def migrate(state: Dict) -> Dict:

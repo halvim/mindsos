@@ -1,11 +1,77 @@
 ---
-last_confirmed_phase: 05b
+last_confirmed_phase: 05c
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 05c — L1 IntergraphHyperEdge (n-ary, NOT 1-1) + IntergraphHyperEdgeType + replace-only update verb (2026-05-06)
+
+**`IntergraphHyperEdge` (n-ary) + `IntergraphHyperEdgeType` +
+`update_intergraph_hyperedge` ship** per ADR-0148 amended +
+4-round-locked PHASE_MAP §5 row + 2 future-work entries filed at
+`_source_backup/root/mindsos_future_plans.md`. 20 numbered pushbacks
+locked in design chat plus 5 implementation pushbacks (P26-P30) +
+2 follow-ups (P31-P32) accepted. Key shape:
+
+* **P1-B** — Scope split: 05c ships `IntergraphHyperEdge` primitive +
+  `IntergraphHyperEdgeType` vocab + replace-only update verb only.
+  `MetaEdgeType` + `MetaHyperEdgeType` further deferred to NEW Phase
+  05d.
+* **P2-refined + P27** — Strict `__setattr__` scope on
+  `IntergraphHyperEdge`: `compositional` always blocks; `anchors` /
+  `members` / `properties` block on direct user mutation regardless of
+  compositional flag; factory bypasses via `object.__setattr__`
+  ("set-via-factory" contract).
+* **P4-A** — CLI uses paired flags (`--anchor-graph G --anchor-node N`
+  repeatable, paired by parsing index); mismatched counts refuse
+  before any mutation.
+* **P5-refined / P9-A / P18-A** — `IntergraphHyperEdgeType.ordered:
+  bool = True` (default; permissive list semantics for cat=c+a+t case).
+  `ordered=False` opt-in via `--unordered`; canonicalizes anchors +
+  members at construction (sort+dedup).
+* **P8-A** — `compositional=True` + `ordered=False` refused at
+  validation step 10 (after canonicalization, before cardinality).
+* **P10-C** — Single replace-only `update_intergraph_hyperedge`
+  factory + CLI verb covers anchors + members + properties atomically.
+  Refuses if compositional. Atomic rollback on validation failure.
+* **P14-A** — 16-step validation order at
+  `Metagraph.add_intergraph_hyperedge`; canonicalize-BEFORE-cardinality
+  catches dedup-collapse-to-1-1 under `ordered=False`.
+* **P17-A extended** — `Metagraph.remove_graph` precheck pass walks
+  BOTH `intergraph_edges` AND `intergraph_hyperedges`; structured
+  error includes edge_kind + side disambiguation.
+* **P19-A** — Update collapsing to 1-to-1 cardinality refused at
+  validation step 8. No in-place hyperedge→edge downgrade.
+* **P20-A** — Update under detached schema validates structurally
+  only (no schema/role/property-type check).
+* **P32** — Cypher rel-type regex enforced at factory inline (step 5)
+  AND `__post_init__` (belt-and-suspenders for direct-construction
+  safety; rehydration paths defended).
+* **P31** — 05b CHANGELOG amendment ships on this branch + permanent
+  regression test for the P13-B workaround at
+  `tests/phase_05c/test_cli_intergraph_hyperedge.py::TestP13BWorkaround`.
+* **5-way set-prop mutex** — Extends 05b's 4-way with
+  `--intergraph-hyperedge-id`.
+* **P12-A** — Schema-mutation-while-attached footgun stderr warning
+  on `metagraph-schema add-intergraph-hyperedge-type`.
+
+**Filed as future work** (`_source_backup/root/mindsos_future_plans.md`
+"Intergraph primitive structural mutation" section):
+
+* Discoverable endpoint-update verb for IntergraphEdge (P11→P13-B).
+* In-place hyperedge→edge downgrade with edge_id stability (P19-A).
+
+State files: metagraph state v=2 → v=3 cumulative one-way migration
+(adds `intergraph_hyperedges` array). MetagraphSchema state v=1 → v=2
+cumulative one-way migration (adds `intergraph_hyperedge_types` array).
+`RESERVED_PROPERTY_KEYS` extends with `intergraph_hyperedges`,
+`intergraph_hyperedge_types`, `anchors`, `members`. P17-A:
+`mindsos metagraph` subapp now ~26 subcommands (future-work 33-B
+remains filed). ADR-0148 amended for n-ary primitive (file edit
+Phase 38). ADR-0014 second amendment (file edit Phase 38).
 
 ## Phase 05b — L1 IntergraphEdge (binary) + IntergraphEdgeType + MetagraphSchema container (2026-05-05)
 
@@ -51,6 +117,31 @@ shape:
 * Pushback 33-B — `mindsos metagraph` subapp two-level reorganization.
 * Pushback 34-B — symmetric `remove-*-type` backfix across all schema
   kinds.
+
+**2026-05-06 amendment (Phase 05c P11→P13-B retreat):**
+A symmetric `update_intergraph_edge_endpoints` factory + CLI verb on
+the binary primitive was considered for Phase 05c but rejected (cost
+of triggering 05b-v2 supersession judged disproportionate to the
+symmetry benefit). Documented workaround for re-pointing endpoints
+on a NON-compositional `IntergraphEdge` while preserving `edge_id`:
+
+```sh
+mindsos metagraph remove-intergraph-edge --name MG --intergraph-edge-id E
+mindsos metagraph add-intergraph-edge --name MG \
+    --source-graph G --source-node N \
+    --target-graph G2 --target-node N2 \
+    --type T --intergraph-edge-id E
+```
+
+The `--intergraph-edge-id <orig>` override flag (Push14-A) is the
+load-bearing mechanism that preserves edge_id stability across the
+remove + add. Compositional edges have no recovery path — they are
+truly immutable per design §4.3 + Pushback 6-A. Future work entry filed
+at `_source_backup/root/mindsos_future_plans.md` "Intergraph primitive
+structural mutation" / "Discoverable endpoint-update verb for
+IntergraphEdge". Permanent regression test at
+`tests/phase_05c/test_cli_intergraph_hyperedge.py::TestP13BWorkaround`
+covers the workaround under 05c (P31).
 
 State files: metagraph state v=1 → v=2 cumulative one-way migration
 (adds `intergraph_edges` array + `schema_name` reference). New

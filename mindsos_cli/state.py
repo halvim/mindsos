@@ -1,4 +1,4 @@
-"""Cross-invocation state-file persistence (Phase 05b surface).
+"""Cross-invocation state-file persistence (Phase 05c surface).
 
 Pure-function (de)serialization helpers. The CLI command layer does the
 ``Graph`` / ``Schema`` / ``Metagraph`` / ``MetagraphSchema`` ↔ ``dict``
@@ -7,27 +7,30 @@ conversion; this module only deals with primitives, ``Path``, and plain
 
 State-file location: ``${MINDSOS_STATE_DIR or ~/.mindsos}/<kind>-<name>.json``.
 
-Phase 05b ships FOUR state-file kinds with INDEPENDENT version stories:
+Phase 05c ships FOUR state-file kinds with INDEPENDENT version stories:
 
-  - ``graph-<name>.json``         — current v=4 (Phase 05a). v=1..3 load
-                                    via ``mindsos_cli.migrations.graph``.
+  - ``graph-<name>.json``         — current v=4 (Phase 05a; unchanged in
+                                    05b/05c). v=1..3 load via
+                                    ``mindsos_cli.migrations.graph``.
                                     Phase 05a added the optional
                                     ``metagraph_name: str | null`` back-pointer
                                     field (B2 lock).
-  - ``schema-<name>.json``        — current v=2 (Phase 04-v2). v=1 (Phase 04)
+  - ``schema-<name>.json``        — current v=2 (Phase 04-v2; unchanged
+                                    in 05a/05b/05c). v=1 (Phase 04)
                                     loads via ``mindsos_cli.migrations.schema``.
-  - ``metagraph-<name>.json``     — current v=2 (Phase 05b — Pushback 18-A
-                                    bump). v=1 (Phase 05a) loads via
-                                    ``mindsos_cli.migrations.metagraph``
-                                    chain. 05b adds top-level
-                                    ``intergraph_edges`` array + optional
-                                    ``schema_name: str | null`` reference
-                                    to a MetagraphSchema state file.
-  - ``metagraph-schema-<name>.json`` — current v=1 (Phase 05b — NEW
-                                    state-file kind). Migration chain at
-                                    ``mindsos_cli.migrations.metagraph_schema``
-                                    (empty in 05b; future bumps in
-                                    05c / 10).
+  - ``metagraph-<name>.json``     — current v=3 (Phase 05c — P14-A
+                                    smaller-items fold bump). v=1..2
+                                    load via ``mindsos_cli.migrations.metagraph``
+                                    chain. 05b added top-level
+                                    ``intergraph_edges`` + ``schema_name``;
+                                    05c adds ``intergraph_hyperedges``.
+  - ``metagraph-schema-<name>.json`` — current v=2 (Phase 05c — P14-A
+                                    smaller-items fold bump). v=1 (Phase
+                                    05b) loads via
+                                    ``mindsos_cli.migrations.metagraph_schema``.
+                                    05c adds ``intergraph_hyperedge_types``;
+                                    Phase 05d adds ``meta_edge_types`` +
+                                    ``meta_hyperedge_types``.
 
 Migration chain (P14 lock):
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -40,12 +43,12 @@ new version bump appends one migration step to the relevant module —
 never edits a prior step. This keeps ``_state_to_graph`` etc. focused on
 the current-version shape.
 
-Per-kind version constants (Phase 05b):
+Per-kind version constants (Phase 05c):
 
     GRAPH_STATE_VERSION            = 4   (P03→1; P04→2; P04-v2→3; P05a→4)
     SCHEMA_STATE_VERSION           = 2   (P04→1; P04-v2→2)
-    METAGRAPH_STATE_VERSION        = 2   (P05a→1; P05b→2)
-    METAGRAPH_SCHEMA_STATE_VERSION = 1   (P05b — NEW)
+    METAGRAPH_STATE_VERSION        = 3   (P05a→1; P05b→2; P05c→3)
+    METAGRAPH_SCHEMA_STATE_VERSION = 2   (P05b→1; P05c→2)
 
 The legacy ``STATE_VERSION`` alias is kept for any external caller; it
 equals ``GRAPH_STATE_VERSION``.
@@ -66,10 +69,11 @@ Graph state-file v4 schema (Phase 05a, unchanged in 05b):
                        "label", "properties"} ]
     }
 
-Metagraph state-file v2 schema (Phase 05b — Pushback 18-A bump):
+Metagraph state-file v3 schema (Phase 05c — P14-A bump; v=2 adds
+``intergraph_edges`` + ``schema_name``; v=3 adds ``intergraph_hyperedges``):
 
     {
-      "_state_version": 2,
+      "_state_version": 3,
       "metagraph_id": "<uuid4>",
       "name": "<name>",
       "properties": {"<k>": "<value>"},
@@ -88,13 +92,21 @@ Metagraph state-file v2 schema (Phase 05b — Pushback 18-A bump):
          "target_graph": "<gname>", "target_node": "<node-id>",
          "type_name": "<UPPER>", "compositional": <bool>,
          "label": "<text-or-null>", "properties": {...}}
+      ],
+      "intergraph_hyperedges": [
+        {"edge_id",
+         "anchors": [["<gname>", "<node-id>"], ...],
+         "members": [["<gname>", "<node-id>"], ...],
+         "type_name": "<UPPER>", "compositional": <bool>,
+         "label": "<text-or-null>", "properties": {...}}
       ]
     }
 
-MetagraphSchema state-file v1 schema (Phase 05b — NEW kind):
+MetagraphSchema state-file v2 schema (Phase 05c — v=1 added
+``intergraph_edge_types``; v=2 adds ``intergraph_hyperedge_types``):
 
     {
-      "_state_version": 1,
+      "_state_version": 2,
       "name": "<name>",
       "strict": <bool>,
       "intergraph_edge_types": [
@@ -103,6 +115,16 @@ MetagraphSchema state-file v1 schema (Phase 05b — NEW kind):
          "allowed_target_types": [...sorted],
          "allowed_source_graphs": [...sorted],
          "allowed_target_graphs": [...sorted],
+         "property_types": {"<k>": "<PropertyType.value>"},
+         "description": "<text-or-null>"}
+      ],
+      "intergraph_hyperedge_types": [
+        {"name": "<UPPER>",
+         "allowed_anchor_types": [...sorted],
+         "allowed_member_types": [...sorted],
+         "allowed_anchor_graphs": [...sorted],
+         "allowed_member_graphs": [...sorted],
+         "ordered": <bool>,
          "property_types": {"<k>": "<PropertyType.value>"},
          "description": "<text-or-null>"}
       ]
@@ -142,13 +164,13 @@ GRAPH_STATE_VERSION = _graph_migrations.CURRENT_VERSION  # = 4
 #: writers emit v=2.
 SCHEMA_STATE_VERSION = _schema_migrations.CURRENT_VERSION  # = 2
 
-#: Metagraph state-file version. P05a→1, P05b→2. Loaders accept
-#: v=1..2 (via migration chain); writers emit v=2.
-METAGRAPH_STATE_VERSION = _metagraph_migrations.CURRENT_VERSION  # = 2
+#: Metagraph state-file version. P05a→1, P05b→2, P05c→3. Loaders accept
+#: v=1..3 (via migration chain); writers emit v=3.
+METAGRAPH_STATE_VERSION = _metagraph_migrations.CURRENT_VERSION  # = 3
 
-#: MetagraphSchema state-file version. P05b→1 (new state-file kind).
-#: Loaders accept v=1; writers emit v=1.
-METAGRAPH_SCHEMA_STATE_VERSION = _metagraph_schema_migrations.CURRENT_VERSION  # = 1
+#: MetagraphSchema state-file version. P05b→1, P05c→2. Loaders accept
+#: v=1..2 (via migration chain); writers emit v=2.
+METAGRAPH_SCHEMA_STATE_VERSION = _metagraph_schema_migrations.CURRENT_VERSION  # = 2
 
 #: Backward-compat alias for any external caller.
 STATE_VERSION = GRAPH_STATE_VERSION
