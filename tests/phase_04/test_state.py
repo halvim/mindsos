@@ -237,9 +237,9 @@ def test_graph_state_version_constants_split(_isolated_state_dir):
     ``state_mod.GRAPH_STATE_VERSION`` dynamically rather than hard-coding
     the int.
     """
-    assert state_mod.GRAPH_STATE_VERSION == 4   # Phase 05a (unchanged in 05b).
-    assert state_mod.SCHEMA_STATE_VERSION == 2  # Phase 04-v2 (unchanged in 05a/05b).
-    assert state_mod.METAGRAPH_STATE_VERSION == 2  # Phase 05b — bumped from 1 (Pushback 18-A).
-    assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 1  # Phase 05b — NEW kind.
+    assert state_mod.GRAPH_STATE_VERSION == 4   # Phase 05a (unchanged in 05b/05c).
+    assert state_mod.SCHEMA_STATE_VERSION == 2  # Phase 04-v2 (unchanged in 05a/05b/05c).
+    assert state_mod.METAGRAPH_STATE_VERSION == 3  # Phase 05c — bumped from 2 (smaller-items fold).
+    assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 2  # Phase 05c — bumped from 1.
     # Backward-compat alias points at GRAPH_STATE_VERSION.
     assert state_mod.STATE_VERSION == state_mod.GRAPH_STATE_VERSION

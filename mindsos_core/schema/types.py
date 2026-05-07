@@ -143,3 +143,54 @@ class IntergraphEdgeType:
 
     def __repr__(self) -> str:
         return f"IntergraphEdgeType({self.name!r})"
+
+
+@dataclass(frozen=True)
+class IntergraphHyperEdgeType:
+    """Declaration of an n-ary intergraph hyperedge type (Phase 05c — ADR-0148 amended).
+
+    Used by :class:`MetagraphSchema` to validate
+    :class:`IntergraphHyperEdge` instances at metagraph factory time.
+    Mirrors :class:`IntergraphEdgeType`'s constraint surface (role-based
+    graph constraints + node-type constraints + property-type map) but
+    adds an ``ordered: bool`` flag controlling list-vs-set semantics for
+    the ``anchors`` / ``members`` fields:
+
+    * ``ordered=True`` (default per P18-A; permissive list semantics):
+      preserve insertion order; allow duplicates within a side. The
+      cat=c+a+t case requires this — word "letter" has
+      ``members=[(lg,l), (lg,e), (lg,t), (lg,t), (lg,e), (lg,r)]`` with
+      repeated characters.
+    * ``ordered=False`` (opt-in via CLI ``--unordered``): canonicalize
+      at construction (sort lexicographically by ``(graph_id, node_id)``
+      then dedup). Set semantics. Refused alongside ``compositional=True``
+      at the factory's validation step 10 (P8-A) — compositional implies
+      identity-bearing composition, incompatible with set semantics.
+
+    Per P9-A (no-schema default): when no MetagraphSchema is attached
+    OR no IntergraphHyperEdgeType is registered for the ``type_name``,
+    the factory treats as ``ordered=True`` (permissive list semantics; no
+    canonicalization). Re-attach with conflicting ``ordered`` setting
+    refuses per Pushback 7-A eager-validation contract.
+
+    Empty frozenset on any allowed-* field means "any" — same convention
+    as :class:`IntergraphEdgeType`. Per Pushback 4-A precedent,
+    ``Graph.role=None`` is unmatchable when the role constraint is
+    non-empty. The type ``name`` is the Cypher relationship identifier
+    (ADR-0021 regex enforced at registration).
+
+    Per Pushback 5-A precedent, ``property_types`` enforcement gates
+    only when the owning :class:`MetagraphSchema` has ``strict=True``.
+    """
+
+    name: str
+    allowed_anchor_types: FrozenSet[str] = field(default_factory=frozenset)
+    allowed_member_types: FrozenSet[str] = field(default_factory=frozenset)
+    allowed_anchor_graphs: FrozenSet[str] = field(default_factory=frozenset)
+    allowed_member_graphs: FrozenSet[str] = field(default_factory=frozenset)
+    ordered: bool = True  # P18-A — permissive default; opt-in to set semantics.
+    property_types: Dict[str, PropertyType] = field(default_factory=dict)
+    description: Optional[str] = None
+
+    def __repr__(self) -> str:
+        return f"IntergraphHyperEdgeType({self.name!r})"

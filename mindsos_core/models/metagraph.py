@@ -93,6 +93,7 @@ from ..cypher.identifiers import validate_edge_type_identifier
 from ..exceptions import (
     CompositionalImmutableError,
     IdentityError,
+    PropertyShapeError,
     SchemaError,
     UnknownTypeError,
 )
@@ -100,6 +101,7 @@ from ..schema.validation import validate_user_properties
 from .graph import Graph
 from .identity import IdentityRegistry, IdStrategy, UUID4Strategy, generate_uuid
 from .intergraph_edge import IntergraphEdge
+from .intergraph_hyperedge import IntergraphHyperEdge
 
 if TYPE_CHECKING:
     from ..schema.metagraph_schema import MetagraphSchema
@@ -271,8 +273,14 @@ class Metagraph:
         self.metahyperedges: Dict[str, MetaHyperEdge] = {}
 
         # Phase 05b — IntergraphEdge storage (ADR-0148 first draft;
-        # Pushback 1-C scope = binary only, IntergraphHyperEdge in 05c).
+        # Pushback 1-C scope = binary only).
         self.intergraph_edges: Dict[str, IntergraphEdge] = {}
+
+        # Phase 05c — IntergraphHyperEdge storage (ADR-0148 amended for
+        # n-ary). Per P1-B, 05c ships the n-ary primitive and replace-only
+        # update verb only; meta-vocabs (MetaEdgeType / MetaHyperEdgeType)
+        # defer to 05d.
+        self.intergraph_hyperedges: Dict[str, IntergraphHyperEdge] = {}
 
         # ADR-0130 — namespaced metagraph property bag (N1-A1 lock).
         self.properties: Dict[str, Any] = validate_user_properties(
@@ -345,18 +353,22 @@ class Metagraph:
         return graph
 
     def remove_graph(self, graph_id: str) -> None:
-        """Remove a contained graph and cascade incident edges (P19 + Pushback 17-A).
+        """Remove a contained graph and cascade incident edges (P19 + Pushback 17-A + Phase 05c).
 
         Always cascades: every incident :class:`MetaEdge`,
-        :class:`MetaHyperEdge`, AND :class:`IntergraphEdge` is removed.
-        Per Pushback 17-A, an atomic precheck pass runs BEFORE any
-        mutation: if any incident :class:`IntergraphEdge` has
+        :class:`MetaHyperEdge`, :class:`IntergraphEdge`, AND
+        :class:`IntergraphHyperEdge` is removed. Per Pushback 17-A
+        (extended in Phase 05c per the smaller-items fold of the row),
+        an atomic precheck pass runs BEFORE any mutation: walks BOTH
+        ``self.intergraph_edges`` AND ``self.intergraph_hyperedges``;
+        if any incident edge of either variant has
         ``compositional=True``, the entire ``remove_graph`` raises
         :class:`CompositionalImmutableError` with the offending edge_id
-        — no metaedges, metahyperedges, or intergraph_edges are removed
-        and the graph stays in the metagraph. Tester recovery is
-        ``mindsos metagraph reset --name <MG> --force --yes`` per
-        Pushback 6-A.
+        AND ``edge_kind`` (``"intergraph_edge"`` /
+        ``"intergraph_hyperedge"``) — no metaedges, metahyperedges, or
+        intergraph_edges/intergraph_hyperedges are removed and the graph
+        stays in the metagraph. Tester recovery is ``mindsos metagraph
+        reset --name <MG> --force --yes`` per Pushback 6-A.
 
         No ``force`` flag, no ``RemovalImpact`` return, no
         ``cascade=False`` semantic — Phase 10 reintroduces the full
@@ -366,27 +378,57 @@ class Metagraph:
         Raises:
             IdentityError: ``graph_id`` not contained in this metagraph.
             CompositionalImmutableError: any incident
-                :class:`IntergraphEdge` has ``compositional=True``.
-                State unchanged.
+                :class:`IntergraphEdge` OR
+                :class:`IntergraphHyperEdge` has
+                ``compositional=True``. State unchanged. Error message
+                names the offending edge_id AND edge_kind.
         """
         if graph_id not in self.graphs:
             raise IdentityError(f"Unknown graph id: {graph_id!r}")
 
-        # Pushback 17-A — atomic precheck for compositional intergraph_edges.
-        # Walk incident intergraph_edges; refuse with the first compositional
-        # incident BEFORE mutating anything.
+        # Pushback 17-A (extended for Phase 05c) — atomic precheck for
+        # compositional intergraph_edges AND intergraph_hyperedges. Walk
+        # incident edges of both variants; refuse with the first
+        # compositional incident BEFORE mutating anything.
         for ie in self.intergraph_edges.values():
             if (
                 ie.source_graph_id == graph_id or ie.target_graph_id == graph_id
             ) and ie.compositional:
                 raise CompositionalImmutableError(
                     f"Cannot remove graph {graph_id!r}: incident "
-                    f"IntergraphEdge {ie.edge_id} is compositional=True. "
-                    f"Recovery: 'mindsos metagraph reset --name <MG> "
-                    f"--force --yes' (Pushback 6-A)."
+                    f"intergraph_edge {ie.edge_id} is compositional=True "
+                    f"(edge_kind=intergraph_edge). Recovery: 'mindsos "
+                    f"metagraph reset --name <MG> --force --yes' "
+                    f"(Pushback 6-A)."
                 )
+        for ihe in self.intergraph_hyperedges.values():
+            # An IntergraphHyperEdge is incident on graph_id if any anchor
+            # OR member references the graph.
+            if not ihe.compositional:
+                continue
+            for (gid, _node_id) in ihe.anchors:
+                if gid == graph_id:
+                    raise CompositionalImmutableError(
+                        f"Cannot remove graph {graph_id!r}: incident "
+                        f"intergraph_hyperedge {ihe.edge_id} is "
+                        f"compositional=True "
+                        f"(edge_kind=intergraph_hyperedge; anchor side). "
+                        f"Recovery: 'mindsos metagraph reset --name <MG> "
+                        f"--force --yes' (Pushback 6-A)."
+                    )
+            for (gid, _node_id) in ihe.members:
+                if gid == graph_id:
+                    raise CompositionalImmutableError(
+                        f"Cannot remove graph {graph_id!r}: incident "
+                        f"intergraph_hyperedge {ihe.edge_id} is "
+                        f"compositional=True "
+                        f"(edge_kind=intergraph_hyperedge; member side). "
+                        f"Recovery: 'mindsos metagraph reset --name <MG> "
+                        f"--force --yes' (Pushback 6-A)."
+                    )
 
-        # Cascade incident metaedges + metahyperedges + intergraph_edges.
+        # Cascade incident metaedges + metahyperedges + intergraph_edges
+        # + intergraph_hyperedges.
         incident_meta = [
             eid for eid, me in self.metaedges.items()
             if me.source_graph_id == graph_id or me.target_graph_id == graph_id
@@ -399,15 +441,24 @@ class Metagraph:
             eid for eid, ie in self.intergraph_edges.items()
             if ie.source_graph_id == graph_id or ie.target_graph_id == graph_id
         ]
+        incident_ihe = [
+            eid for eid, ihe in self.intergraph_hyperedges.items()
+            if any(
+                gid == graph_id for (gid, _) in ihe.anchors
+            )
+            or any(gid == graph_id for (gid, _) in ihe.members)
+        ]
         for eid in incident_meta:
             self.remove_metaedge(eid)
         for eid in incident_mhe:
             self.remove_metahyperedge(eid)
-        # Note: incident_ie at this point are guaranteed non-compositional
-        # by the precheck above, so the per-edge ``remove_intergraph_edge``
-        # calls won't raise.
+        # Note: incident_ie / incident_ihe at this point are guaranteed
+        # non-compositional by the precheck above, so the per-edge
+        # ``remove_*`` calls won't raise.
         for eid in incident_ie:
             self.remove_intergraph_edge(eid)
+        for eid in incident_ihe:
+            self.remove_intergraph_hyperedge(eid)
 
         # Unregister every id that belonged to this graph.
         graph = self.graphs[graph_id]
@@ -827,6 +878,489 @@ class Metagraph:
             edge.properties = {**edge.properties, **new_props}
         return edge
 
+    # ── intergraph hyperedges (Phase 05c — ADR-0148 amended; P14-A 16-step) ──
+
+    def add_intergraph_hyperedge(
+        self,
+        anchors: Iterable[Tuple[str, str]],
+        members: Iterable[Tuple[str, str]],
+        type_name: str,
+        *,
+        compositional: bool = False,
+        label: Optional[str] = None,
+        properties: Optional[Dict[str, Any]] = None,
+        intergraph_hyperedge_id: Optional[str] = None,
+    ) -> IntergraphHyperEdge:
+        """Create an n-ary node↔node hyperedge across contained graphs (Phase 05c).
+
+        Implements the locked 16-step validation order at PHASE_MAP §5
+        Phase 05c row appendix §A (P14-A). Canonicalize-BEFORE-cardinality
+        catches dedup-collapse-to-1-1 under ``ordered=False`` types.
+
+        Validation order (factory perspective; ``__post_init__`` re-checks
+        cypher regex + cardinality + overlap as belt-and-suspenders for
+        direct-construction safety per P32):
+
+            1. For each ``(graph_id, _)`` in anchors: graph_id must be
+               in ``self.graphs`` → else IdentityError.
+            2. Same for members → IdentityError.
+            3. Node-existence per anchor (in source graph's nodes).
+            4. Node-existence per member.
+            5. Cypher rel-type regex on type_name (inline; ALSO at
+               ``IntergraphHyperEdge.__post_init__`` per P32 belt-and-
+               suspenders).
+            6. (if schema attached) ``require_intergraph_hyperedge_type``
+               → extracts ``type.ordered``. (P9-A no-schema default =
+               ordered=True.)
+            7. **Canonicalize** anchors + members per ``type.ordered``
+               (sort+dedup if False; preserve insertion if True).
+            8. **Cardinality check** on canonical: n≥1, m≥1, NOT 1-to-1.
+               (P19-A: collapse to 1-1 under ordered=False refused
+               here.)
+            9. **Anchor-member overlap check** on canonical.
+            10. **P8-A refusal**: compositional=True + ordered=False
+                → SchemaError.
+            11. ``validate_user_properties(scope="intergraph_hyperedge")``.
+            12. (if attached) ``schema.validate_intergraph_hyperedge``.
+            13. (if attached and strict)
+                ``schema.validate_intergraph_hyperedge_properties``.
+            14. Mint id (or use caller-supplied).
+            15. Construct dataclass (``__post_init__`` re-checks).
+            16. Register + insert.
+
+        Args:
+            anchors: iterable of ``(graph_id, node_id)`` pairs (n ≥ 1).
+            members: iterable of ``(graph_id, node_id)`` pairs (m ≥ 1;
+                NOT 1-1 with anchors).
+            type_name: Cypher rel-type (ADR-0021 regex).
+            compositional: identity-bearing flag (default False;
+                immutable post-create per P2-refined).
+            label: optional human-readable label (set-at-create only).
+            properties: optional namespaced bag.
+            intergraph_hyperedge_id: optional caller-supplied id (for
+                rehydration / deterministic ids in tests). When None,
+                mint via ``self.mint_id``.
+
+        Raises:
+            IdentityError: graph or node not found, or id collision.
+            SchemaError: cardinality violation (1-1 / n=0 / m=0),
+                anchor-member overlap, or compositional+ordered=False
+                (P8-A).
+            CypherError: invalid type_name.
+            UnknownTypeError: schema attached but type_name not in vocab,
+                or any allowed-* constraint violated.
+            PropertyShapeError: properties violate the contract or fail
+                strict-mode property typing.
+        """
+        # Normalize input to tuple-of-tuples up front so subsequent
+        # validation steps can iterate without mutating callers' lists.
+        anchors_t: Tuple[Tuple[str, str], ...] = tuple(
+            (g, n) for (g, n) in anchors
+        )
+        members_t: Tuple[Tuple[str, str], ...] = tuple(
+            (g, n) for (g, n) in members
+        )
+
+        # Step 1-2 — graph existence per anchor / member.
+        for (gid, _) in anchors_t:
+            if gid not in self.graphs:
+                raise IdentityError(
+                    f"IntergraphHyperEdge anchor graph {gid!r} not in "
+                    f"metagraph {self.name!r}"
+                )
+        for (gid, _) in members_t:
+            if gid not in self.graphs:
+                raise IdentityError(
+                    f"IntergraphHyperEdge member graph {gid!r} not in "
+                    f"metagraph {self.name!r}"
+                )
+        # Step 3-4 — node existence per anchor / member.
+        for (gid, nid) in anchors_t:
+            graph = self.graphs[gid]
+            if nid not in graph.nodes:
+                raise IdentityError(
+                    f"IntergraphHyperEdge anchor node {nid!r} not in "
+                    f"graph {graph.name!r}"
+                )
+        for (gid, nid) in members_t:
+            graph = self.graphs[gid]
+            if nid not in graph.nodes:
+                raise IdentityError(
+                    f"IntergraphHyperEdge member node {nid!r} not in "
+                    f"graph {graph.name!r}"
+                )
+        # Step 5 — cypher rel-type regex inline (P32 belt-and-suspenders;
+        # ``__post_init__`` re-checks on construction for direct paths).
+        validate_edge_type_identifier(type_name)
+
+        # Step 6 — schema type-existence lookup; extract type.ordered.
+        # Per P9-A, when no schema attached OR no type registered, treat
+        # as ordered=True (permissive list semantics; no canonicalization).
+        if self.schema is not None:
+            iht = self.schema.require_intergraph_hyperedge_type(type_name)
+            ordered = iht.ordered
+        else:
+            ordered = True
+
+        # Step 7 — canonicalize anchors + members per type.ordered.
+        # P5-refined: ordered=True preserves insertion order + duplicates;
+        # ordered=False sorts lexicographically by (graph_id, node_id)
+        # then dedups silently.
+        if ordered:
+            canon_anchors = anchors_t
+            canon_members = members_t
+        else:
+            # Dedup while preserving sort order. Use sorted+dict.fromkeys
+            # to dedup deterministically.
+            canon_anchors = tuple(sorted(set(anchors_t)))
+            canon_members = tuple(sorted(set(members_t)))
+
+        # Step 8 — cardinality on canonical (P14-A: catches dedup-collapse).
+        n = len(canon_anchors)
+        m = len(canon_members)
+        if n < 1:
+            raise SchemaError(
+                f"IntergraphHyperEdge requires at least 1 anchor; got 0"
+            )
+        if m < 1:
+            raise SchemaError(
+                f"IntergraphHyperEdge requires at least 1 member; got 0"
+            )
+        if n == 1 and m == 1:
+            raise SchemaError(
+                f"IntergraphHyperEdge is NOT 1-to-1 — use IntergraphEdge "
+                f"for the binary 1-1 case. After canonicalization "
+                f"(ordered={ordered}): n={n} anchors={list(canon_anchors)} "
+                f"m={m} members={list(canon_members)}."
+            )
+
+        # Step 9 — anchor-member overlap forbidden on canonical.
+        anchor_set = set(canon_anchors)
+        member_set = set(canon_members)
+        overlap = anchor_set & member_set
+        if overlap:
+            raise SchemaError(
+                f"IntergraphHyperEdge anchor-member overlap forbidden: "
+                f"{sorted(overlap)!r} appear(s) in both anchors and "
+                f"members (post-canonicalization, ordered={ordered})."
+            )
+
+        # Step 10 — P8-A refusal: compositional=True + ordered=False.
+        if compositional and not ordered:
+            raise SchemaError(
+                f"compositional hyperedges require ordered=True types "
+                f"(P8-A): IntergraphHyperEdge type {type_name!r} has "
+                f"ordered=False; refusing add. Either rebuild the type "
+                f"with ordered=True OR call add_intergraph_hyperedge "
+                f"with compositional=False."
+            )
+
+        # Step 11 — property bag validation (reserved + primitive).
+        props = validate_user_properties(
+            properties or {}, scope="intergraph_hyperedge"
+        )
+
+        # Step 12-13 — schema validators (only when attached). P5-A:
+        # validate_*_properties early-returns when not strict.
+        if self.schema is not None:
+            anchor_node_types = [
+                self.graphs[gid].nodes[nid].type_name
+                for (gid, nid) in canon_anchors
+            ]
+            member_node_types = [
+                self.graphs[gid].nodes[nid].type_name
+                for (gid, nid) in canon_members
+            ]
+            anchor_graph_roles = [
+                self.graphs[gid].role for (gid, _) in canon_anchors
+            ]
+            member_graph_roles = [
+                self.graphs[gid].role for (gid, _) in canon_members
+            ]
+            self.schema.validate_intergraph_hyperedge(
+                type_name=type_name,
+                anchor_node_types=anchor_node_types,
+                member_node_types=member_node_types,
+                anchor_graph_roles=anchor_graph_roles,
+                member_graph_roles=member_graph_roles,
+            )
+            self.schema.validate_intergraph_hyperedge_properties(
+                type_name, props
+            )
+
+        # Step 14 — mint or use caller-supplied id.
+        if intergraph_hyperedge_id is None:
+            intergraph_hyperedge_id = self.mint_id("intergraph_hyperedge")
+
+        # Step 15 — construct (cypher regex + cardinality + overlap +
+        # tuple-conversion + ``_initialized`` set in ``__post_init__``).
+        ihe = IntergraphHyperEdge(
+            anchors=canon_anchors,
+            members=canon_members,
+            type_name=type_name,
+            compositional=compositional,
+            edge_id=intergraph_hyperedge_id,
+            label=label,
+            properties=props,
+        )
+
+        # Step 16 — register + insert.
+        self.identity.register(ihe.edge_id)
+        self.intergraph_hyperedges[ihe.edge_id] = ihe
+        return ihe
+
+    def remove_intergraph_hyperedge(
+        self, intergraph_hyperedge_id: str
+    ) -> None:
+        """Remove an intergraph hyperedge by id; refuses on compositional.
+
+        Per design §4.3 (P05b Pushback 6-A; carry-forward to 05c — no
+        escape hatch), removal is refused with
+        :class:`CompositionalImmutableError` if the hyperedge has
+        ``compositional=True``. Tester recovery is metagraph reset.
+
+        Raises:
+            IdentityError: unknown id.
+            CompositionalImmutableError: ``ihe.compositional`` is True.
+        """
+        if intergraph_hyperedge_id not in self.intergraph_hyperedges:
+            raise IdentityError(
+                f"Unknown intergraph hyperedge id: "
+                f"{intergraph_hyperedge_id!r}"
+            )
+        ihe = self.intergraph_hyperedges[intergraph_hyperedge_id]
+        if ihe.compositional:
+            raise CompositionalImmutableError(
+                f"Cannot remove IntergraphHyperEdge "
+                f"{intergraph_hyperedge_id!r}: compositional=True "
+                f"(design §4.3 + Pushback 6-A). Recovery: 'mindsos "
+                f"metagraph reset --name <MG> --force --yes' to wipe "
+                f"and rebuild."
+            )
+        self.identity.unregister(intergraph_hyperedge_id)
+        del self.intergraph_hyperedges[intergraph_hyperedge_id]
+
+    def update_intergraph_hyperedge(
+        self,
+        intergraph_hyperedge_id: str,
+        *,
+        anchors: Optional[Iterable[Tuple[str, str]]] = None,
+        members: Optional[Iterable[Tuple[str, str]]] = None,
+        properties: Optional[Dict[str, Any]] = None,
+        replace_properties: bool = False,
+    ) -> IntergraphHyperEdge:
+        """Replace-only structural update on an intergraph hyperedge (P10-C; Phase 05c).
+
+        Per P10-C, this is a single combined factory + CLI verb covering
+        anchors, members, and properties. Refuses if compositional=True
+        (design §4.3 + Pushback 6-A). Re-runs the full 16-step validation
+        on the resolved replacement values; atomic rollback on failure
+        (no in-memory mutation). Any field passed as ``None`` retains the
+        current value.
+
+        Per P10-C ``replace_properties=False`` default: properties merge
+        with existing (carry-forward of 05b
+        :meth:`update_intergraph_edge_properties` precedent + the P28
+        accept). With ``replace_properties=True``, properties is fully
+        replaced.
+
+        Per P19-A, refusal of update calls that would collapse to 1-to-1
+        cardinality is enforced at the validation step 8 cardinality
+        check on resolved replacement values. No in-place
+        hyperedge→edge "downgrade".
+
+        Per P20-A, update under detached schema validates structurally
+        only (cardinality, overlap, regex; NO schema/role/property-type
+        check). Subsequent re-attach surfaces drift per Push7-A.
+
+        Args:
+            intergraph_hyperedge_id: target hyperedge id.
+            anchors: replacement anchors (or None to retain current).
+            members: replacement members (or None to retain current).
+            properties: new properties bag (or None to retain current).
+            replace_properties: when True, swap entire properties dict;
+                when False (default), merge with existing.
+
+        Returns:
+            The mutated :class:`IntergraphHyperEdge` instance (same id).
+
+        Raises:
+            IdentityError: unknown id.
+            CompositionalImmutableError: ``ihe.compositional`` is True.
+            SchemaError / CypherError / UnknownTypeError /
+                PropertyShapeError: any validation step fails. State
+                unchanged on raise.
+        """
+        if intergraph_hyperedge_id not in self.intergraph_hyperedges:
+            raise IdentityError(
+                f"Unknown intergraph hyperedge id: "
+                f"{intergraph_hyperedge_id!r}"
+            )
+        ihe = self.intergraph_hyperedges[intergraph_hyperedge_id]
+        if ihe.compositional:
+            raise CompositionalImmutableError(
+                f"Cannot update IntergraphHyperEdge "
+                f"{intergraph_hyperedge_id!r}: compositional=True "
+                f"(design §4.3 + Pushback 6-A). Recovery: 'mindsos "
+                f"metagraph reset --name <MG> --force --yes' to wipe "
+                f"and rebuild."
+            )
+
+        # Resolve replacement values (None = retain current).
+        new_anchors_in: Tuple[Tuple[str, str], ...]
+        new_members_in: Tuple[Tuple[str, str], ...]
+        if anchors is None:
+            new_anchors_in = ihe.anchors
+        else:
+            new_anchors_in = tuple((g, n) for (g, n) in anchors)
+        if members is None:
+            new_members_in = ihe.members
+        else:
+            new_members_in = tuple((g, n) for (g, n) in members)
+
+        # Resolve properties: merge or replace.
+        if properties is None:
+            new_props_in = dict(ihe.properties)
+        elif replace_properties:
+            # User-supplied bag wins entirely; reserved-key check happens
+            # at step 11.
+            new_props_in = dict(properties)
+        else:
+            # Merge (mirror update_intergraph_edge_properties default).
+            new_props_in = {**ihe.properties, **properties}
+
+        # Steps 1-2 — graph existence per anchor / member.
+        for (gid, _) in new_anchors_in:
+            if gid not in self.graphs:
+                raise IdentityError(
+                    f"IntergraphHyperEdge update: anchor graph {gid!r} "
+                    f"not in metagraph {self.name!r}"
+                )
+        for (gid, _) in new_members_in:
+            if gid not in self.graphs:
+                raise IdentityError(
+                    f"IntergraphHyperEdge update: member graph {gid!r} "
+                    f"not in metagraph {self.name!r}"
+                )
+        # Steps 3-4 — node existence.
+        for (gid, nid) in new_anchors_in:
+            if nid not in self.graphs[gid].nodes:
+                raise IdentityError(
+                    f"IntergraphHyperEdge update: anchor node {nid!r} "
+                    f"not in graph {self.graphs[gid].name!r}"
+                )
+        for (gid, nid) in new_members_in:
+            if nid not in self.graphs[gid].nodes:
+                raise IdentityError(
+                    f"IntergraphHyperEdge update: member node {nid!r} "
+                    f"not in graph {self.graphs[gid].name!r}"
+                )
+        # Step 5 — cypher regex on existing type_name (set-at-create;
+        # update doesn't change it but defense-in-depth re-validates).
+        validate_edge_type_identifier(ihe.type_name)
+        # Step 6 — schema type lookup + extract ordered. Per P20-A,
+        # detached schema → structural-only; ordered=True default.
+        if self.schema is not None:
+            iht = self.schema.require_intergraph_hyperedge_type(
+                ihe.type_name
+            )
+            ordered = iht.ordered
+        else:
+            ordered = True
+        # Step 7 — canonicalize.
+        if ordered:
+            canon_anchors = new_anchors_in
+            canon_members = new_members_in
+        else:
+            canon_anchors = tuple(sorted(set(new_anchors_in)))
+            canon_members = tuple(sorted(set(new_members_in)))
+        # Step 8 — cardinality (P19-A: collapse to 1-1 refused here).
+        n = len(canon_anchors)
+        m = len(canon_members)
+        if n < 1:
+            raise SchemaError(
+                f"IntergraphHyperEdge update: requires at least 1 "
+                f"anchor; got 0"
+            )
+        if m < 1:
+            raise SchemaError(
+                f"IntergraphHyperEdge update: requires at least 1 "
+                f"member; got 0"
+            )
+        if n == 1 and m == 1:
+            raise SchemaError(
+                f"IntergraphHyperEdge update would collapse to 1-to-1 "
+                f"cardinality (P19-A refusal). After canonicalization "
+                f"(ordered={ordered}): n={n} m={m}. No in-place "
+                f"hyperedge→edge downgrade in 05c — recovery is "
+                f"remove_intergraph_hyperedge + add_intergraph_edge "
+                f"(loses edge_id stability across the type boundary; "
+                f"future-work entry filed)."
+            )
+        # Step 9 — anchor-member overlap.
+        anchor_set = set(canon_anchors)
+        member_set = set(canon_members)
+        overlap = anchor_set & member_set
+        if overlap:
+            raise SchemaError(
+                f"IntergraphHyperEdge update: anchor-member overlap "
+                f"forbidden: {sorted(overlap)!r} appear(s) in both "
+                f"sides (post-canonicalization, ordered={ordered})."
+            )
+        # Step 10 — P8-A refusal (compositional=True + ordered=False).
+        # ihe.compositional is False here (the early refusal above
+        # rejects compositional updates), but defense-in-depth.
+        if ihe.compositional and not ordered:
+            raise SchemaError(
+                f"IntergraphHyperEdge update: compositional+ordered=False "
+                f"refused (P8-A)."
+            )
+        # Step 11 — property bag validation.
+        new_props = validate_user_properties(
+            new_props_in, scope="intergraph_hyperedge"
+        )
+        # Step 12-13 — schema validators (only when attached; P20-A).
+        if self.schema is not None:
+            anchor_node_types = [
+                self.graphs[gid].nodes[nid].type_name
+                for (gid, nid) in canon_anchors
+            ]
+            member_node_types = [
+                self.graphs[gid].nodes[nid].type_name
+                for (gid, nid) in canon_members
+            ]
+            anchor_graph_roles = [
+                self.graphs[gid].role for (gid, _) in canon_anchors
+            ]
+            member_graph_roles = [
+                self.graphs[gid].role for (gid, _) in canon_members
+            ]
+            self.schema.validate_intergraph_hyperedge(
+                type_name=ihe.type_name,
+                anchor_node_types=anchor_node_types,
+                member_node_types=member_node_types,
+                anchor_graph_roles=anchor_graph_roles,
+                member_graph_roles=member_graph_roles,
+            )
+            self.schema.validate_intergraph_hyperedge_properties(
+                ihe.type_name, new_props
+            )
+
+        # All validation passed. Skip step 14 (mint id — update keeps
+        # the existing edge_id) and step 16 (register/insert — already
+        # in identity + dict).
+        # Step 15 modified — replace tuple/dict in-place via
+        # ``object.__setattr__`` to bypass ``__setattr__`` gate (P27 A
+        # set-via-factory contract).
+        object.__setattr__(ihe, "anchors", canon_anchors)
+        object.__setattr__(ihe, "members", canon_members)
+        object.__setattr__(ihe, "properties", new_props)
+        return ihe
+
+    def iter_intergraph_hyperedges(self) -> Iterator[IntergraphHyperEdge]:
+        """Yield every intergraph hyperedge (no filtering in 05c; Phase 10 adds)."""
+        return iter(self.intergraph_hyperedges.values())
+
     # ── iterators ────────────────────────────────────────────────────────
 
     def iter_metaedges(self) -> Iterator[MetaEdge]:
@@ -923,6 +1457,53 @@ class Metagraph:
             schema.validate_intergraph_edge_properties(
                 edge.type_name, edge.properties
             )
+        # Phase 05c P6-A — extend eager-attach to walk
+        # ``intergraph_hyperedges`` IN ADDITION to ``intergraph_edges``
+        # (which 05b already walked above). Metaedges + metahyperedges
+        # remain skipped here (Push9-A from 05b carry-forward; expires
+        # in 05d when MetaEdgeType vocab arrives).
+        #
+        # Per Push7-A eager-validation contract, re-attach with a schema
+        # whose ``IntergraphHyperEdgeType.ordered`` setting conflicts with
+        # an existing hyperedge's canonical state surfaces here as a
+        # subtle drift case. The hyperedge stores already-canonicalized
+        # data (factory step 7); the schema's ``ordered`` flag determines
+        # whether the validator's allowed-* checks fire on the canonical
+        # state. Today both ordered=True and ordered=False produce
+        # canonical state that this validator examines uniformly via the
+        # iterables — there is no "ordered=True data fails an ordered=False
+        # type" structural mismatch at validate time. The drift surfaces
+        # downstream when a tester adds a NEW hyperedge under a
+        # newly-flipped ordered flag (factory step 7 produces different
+        # canonical data than what's persisted). 05c row Risks documents.
+        for ihe in self.intergraph_hyperedges.values():
+            # require_intergraph_hyperedge_type raises UnknownTypeError
+            # if type missing.
+            schema.require_intergraph_hyperedge_type(ihe.type_name)
+            anchor_node_types = [
+                self.graphs[gid].nodes[nid].type_name
+                for (gid, nid) in ihe.anchors
+            ]
+            member_node_types = [
+                self.graphs[gid].nodes[nid].type_name
+                for (gid, nid) in ihe.members
+            ]
+            anchor_graph_roles = [
+                self.graphs[gid].role for (gid, _) in ihe.anchors
+            ]
+            member_graph_roles = [
+                self.graphs[gid].role for (gid, _) in ihe.members
+            ]
+            schema.validate_intergraph_hyperedge(
+                type_name=ihe.type_name,
+                anchor_node_types=anchor_node_types,
+                member_node_types=member_node_types,
+                anchor_graph_roles=anchor_graph_roles,
+                member_graph_roles=member_graph_roles,
+            )
+            schema.validate_intergraph_hyperedge_properties(
+                ihe.type_name, ihe.properties
+            )
         # All-pass — commit attachment in memory.
         self.schema = schema
         self.schema_name = schema_name
@@ -953,6 +1534,7 @@ class Metagraph:
             f"graphs={len(self.graphs)}, "
             f"metaedges={len(self.metaedges)}, "
             f"metahyperedges={len(self.metahyperedges)}, "
-            f"intergraph_edges={len(self.intergraph_edges)}"
+            f"intergraph_edges={len(self.intergraph_edges)}, "
+            f"intergraph_hyperedges={len(self.intergraph_hyperedges)}"
             f"{', schema=' + repr(self.schema_name) if self.schema_name else ''})"
         )

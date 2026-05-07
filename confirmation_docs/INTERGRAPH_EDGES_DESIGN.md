@@ -2,9 +2,96 @@
 
 > **For future chats: this document is the single canonical source for `IntergraphEdge` and `IntergraphHyperEdge` design.** If you are looking for the cat=c+a+t composition pattern, n-ary anchors, the compositional flag, persistence shape, schema validation, OCC/WAL strategy, or anything else about node↔node-across-graphs primitives — read this file. Do not chase pointers across PHASE_MAP §7, MEMORY.md, the WSD coordinated-change handoff, or older ADR drafts; they all defer here.
 >
-> **Status:** GREENLIT 2026-05-04 (Phase 05 design chat). Refined 2026-05-05 (Phase 05a row-refinement chat). Two primitives + compositional flag pinned. 05b ships binary IntergraphEdge; 05c ships n-ary IntergraphHyperEdge.
+> **Status:** GREENLIT 2026-05-04 (Phase 05 design chat). Refined 2026-05-05 (Phase 05a row-refinement chat). 05b SHIPPED 2026-05-05/06 (740/2 in-container). 05c row LOCKED 2026-05-06 (4 reanalysis rounds; awaiting implementation). 05d row STUB authored 2026-05-06 (split via 05c P1-B for meta-vocabs). Two primitives + compositional flag pinned.
 >
 > **Replaces** the original Q13 open-question framing in `confirmation_docs/PHASE_MAP.md` §7. Q13 is CLOSED.
+
+---
+
+## 2026-05-06 amendment block (Phase 05c row-refinement chat locks)
+
+The locks below override or refine specific items in the body of this document. **When in conflict, this block wins.** Future chats: read this block before §3.3 / §4 / §6 / §11.
+
+### Ordered semantic (overrides §3.3 default + clarifies §11 open item)
+
+- **`IntergraphHyperEdgeType.ordered: bool = True`** (P18-A; overrides design §3.3's stated `False` default). `ordered=True` is permissive list semantics: preserves insertion order, allows duplicates within a side (cat=letter case). `ordered=False` is opt-in via CLI `--unordered` flag.
+- **`ordered=True` semantic**: anchors/members preserved as-given at construction. List equality. Duplicates allowed within a side.
+- **`ordered=False` semantic**: anchors/members canonicalized at construction — sort lexicographically by `(graph_id, node_id)` then dedup. Duplicate inputs accepted (deduped silently); cardinality check runs on canonicalized values, so `[a,a,a] + [b,b]` → `[a] + [b]` → fails 1-1 cardinality check with structured error.
+- **No-schema construction default**: when no MetagraphSchema attached OR no IntergraphHyperEdgeType registered for the type_name, treat as `ordered=True` (permissive; no canonicalization). Re-attach with conflicting `ordered` setting refuses per §3.3 / §4.1 / §11 eager-validation contract.
+
+### Compositional + ordered=False refusal (new constraint)
+
+- **`compositional=True` + `ordered=False` is refused** at the `add_intergraph_hyperedge` API boundary (P8-A; validation step 8.5 in the 16-step order). Rationale: compositional implies identity-bearing composition (cat=c+a+t — order/duplicates matter); set semantics is incompatible. Refusal is at construction-time, not at type-construction (the same type can serve both compositional and non-compositional callers — but only when `ordered=True`).
+
+### __setattr__ immutability scope (refines §4.3)
+
+- **`compositional` field**: always immutable post-`__post_init__` (raises `CompositionalImmutableError` on any post-init write).
+- **`anchors` / `members` / `properties` fields**: immutable post-init **only when `compositional=True`**. Non-compositional hyperedges support factory-mediated mutation; factories use `object.__setattr__` to bypass the `__setattr__` gate for legitimate updates. Direct user mutation of these fields on a non-compositional hyperedge still raises (set-via-factory contract).
+- **`anchors` / `members` field type**: stored as `Tuple[Tuple[str, str], ...]` post-`__post_init__` (tuple-conversion at construction regardless of compositional flag — eliminates list-mutation hole even for non-compositional hyperedges; updates produce new tuples).
+- **`type_name` / `edge_id` / `label`**: set-at-create only (raise on post-init mutation). Mirror 05b precedent.
+
+### Update API (extends §4 + §6)
+
+- **`Metagraph.update_intergraph_hyperedge(intergraph_hyperedge_id, *, anchors=None, members=None, properties=None, replace_properties=False)`** (P10-C) — single combined factory, **replace-only semantics** (no patch). Refuses if `compositional=True` (`CompositionalImmutableError`). Re-runs full 16-step validation order on resolved replacement values; atomic rollback on failure (no in-memory mutation). Any field passed as `None` retains current value.
+- **CLI**: `mindsos metagraph update-intergraph-hyperedge --name MG --intergraph-hyperedge-id ID [--anchor-graph G --anchor-node N]... [--member-graph G --member-node N]... [--prop k=v]... [--replace-properties] [--json]`. Paired-flags syntax matches `add-intergraph-hyperedge`.
+- **Update under detached schema** (P20-A): structural-only validation (cardinality, overlap, regex; NO schema/role/property-type checks). Subsequent re-attach surfaces drift per §3.3 eager-validation contract.
+- **Update collapsing to 1-1 cardinality**: refused (P19-A). No in-place hyperedge→edge downgrade — tester recovery is `remove-intergraph-hyperedge` + `add-intergraph-edge --intergraph-edge-id <orig>` (loses edge_id stability across the type boundary). Future-work entry filed at `_source_backup/root/mindsos_future_plans.md` "Intergraph primitive structural mutation" / "In-place hyperedge→edge downgrade with edge_id stability".
+
+### Symmetric IntergraphEdge endpoint update — REJECTED for v1
+
+- 05c chat's round-3 P11→P13-B retreat: **no `update_intergraph_edge_endpoints` factory + CLI verb on the binary primitive in 05c.** Triggering 05b-v2 supersession judged disproportionate to the symmetry benefit when the existing workaround (remove + add with `--intergraph-edge-id <orig>` override per Push14-A) preserves edge_id stability. Documented in 05b CHANGELOG amendment (lands on `phase-05c` branch). Future-work entry filed at `_source_backup/root/mindsos_future_plans.md` "Intergraph primitive structural mutation" / "Discoverable endpoint-update verb for IntergraphEdge".
+
+### CLI paired flags (overrides §6 slash-separator)
+
+- **`--anchor-graph G --anchor-node N`** repeatable, paired by parsing index (P4-A). Symmetric for `--member-graph` / `--member-node`. Mismatched counts (e.g., 3 `--anchor-graph` + 2 `--anchor-node`) refuse with structured error before any mutation. **Slash form `--anchor G/N` from §6 is NOT shipped** — ambiguous when graph names contain `/`.
+
+### 16-step validation order (extends §4.2)
+
+Locked at `Metagraph.add_intergraph_hyperedge` (full text in `PHASE_MAP.md` §5 Phase 05c row appendix §A):
+
+1-2. Graph existence per anchor/member.
+3-4. Node existence per anchor/member.
+5. Cypher rel-type regex on `type_name` (at `__post_init__`).
+6. Schema type-existence lookup (extracts `type.ordered`).
+7. **Canonicalize anchors + members** per `type.ordered` (sort+dedup if False; preserve insertion if True).
+8. **Cardinality check** on canonical (n≥1, m≥1, NOT 1-1).
+9. **Anchor-member overlap forbidden** check.
+10. **P8-A refusal**: `compositional=True` + `type.ordered=False` → `SchemaError`.
+11-13. Property + schema validation.
+14. Mint id.
+15. Construct dataclass.
+16. Register + insert.
+
+Update path: runs 1-13 on resolved replacement values; skips 14 + 16; replaces tuple in-place via `object.__setattr__` on existing edge.
+
+### Phase placement update (overrides §8)
+
+CASC-1 strict-sequential cascade is now **05a → 05b → 05c → 05d → 06** (was 05a → 05b → 05c → 06).
+
+| Phase | Ships |
+|---|---|
+| **05a** (Metagraph port) | `Metagraph` + `MetaEdge` + `MetaHyperEdge`. ADR-0117 Withdrawn. **SHIPPED 2026-05-05** (528/2). |
+| **05b** (binary intergraph + MetagraphSchema) | `IntergraphEdge` + `MetagraphSchema` + `IntergraphEdgeType` + compositional flag. ADR-0148 first draft. **MetaEdgeType + MetaHyperEdgeType were never in 05b's shipped scope** (Pushback 1-C narrowed pre-implementation). **SHIPPED 2026-05-05/06** (740/2). |
+| **05c** (n-ary intergraph) | `IntergraphHyperEdge` + `IntergraphHyperEdgeType` + replace-only update verb. ADR-0148 amended. ADR-0014 second amendment. Metagraph state file v=2 → v=3. Metagraph-schema state file v=1 → v=2. **Row LOCKED 2026-05-06.** |
+| **05d** (NEW; meta-vocabs) | `MetaEdgeType` + `MetaHyperEdgeType` schema vocab on `MetagraphSchema`. Eager-attach extension to walk metaedges + metahyperedges (Push9-A from 05b expires here). ADR-0017 amended. ADR-0014 third amendment. Metagraph-schema state file v=2 → v=3. **Row STUB authored 2026-05-06; awaits dedicated row-refinement chat.** Inherits MetaEdge.type_name field audit task (P3 deferred from 05c — may trigger 05a-v2 if absent). |
+
+### State file shapes (overrides §5 + adds 05d row)
+
+| File | 05a | 05b | 05c | 05d |
+|---|---|---|---|---|
+| `metagraph-<n>.json` | v=1 | v=2 (adds intergraph_edges + schema_name) | **v=3 (adds intergraph_hyperedges)** | v=3 (no change) |
+| `metagraph-schema-<n>.json` | n/a | v=1 (adds intergraph_edge_types) | **v=2 (adds intergraph_hyperedge_types)** | v=3 (adds meta_edge_types + meta_hyperedge_types) |
+
+Strict version contract on both files (P16-A): older binary loading newer file rejects with `this CLI supports vN` structured message. Recovery via hand-edit JSON downgrade.
+
+### §11 open items — resolved
+
+- **`IntergraphHyperEdgeType.ordered: bool` semantic** — RESOLVED above (type-driven set-vs-list; default True; `ordered=False` canonicalizes at construction; compositional+ordered=False refused).
+- **`compositional=True` cascade through `Metagraph.remove_graph`** — IMPLEMENTED in 05c per design intent. Atomic precheck pass walks BOTH `mg.intergraph_edges` AND `mg.intergraph_hyperedges`; raises `CompositionalImmutableError` with `edge_kind` + `edge_id` on first incident; state unchanged on raise.
+- **Index design for `iter_intergraph_*` performance** — STILL Phase 07 territory. 05c ships in-memory iteration only.
+- **ADR-0148 final wording** — first draft in 05b row appendix §B; amendment in 05c row appendix §B. File edit Phase 38 per locked precedent.
+
+---
 
 ---
 

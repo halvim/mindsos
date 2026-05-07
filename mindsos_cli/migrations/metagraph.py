@@ -1,4 +1,4 @@
-"""Metagraph state-file migration chain (Phase 05a + Phase 05b — P14).
+"""Metagraph state-file migration chain (Phase 05a + 05b + 05c — P14 + P14-A).
 
 Versions:
 
@@ -6,12 +6,18 @@ Versions:
   ``metahyperedges``, ``properties``.
 * v=2 (Phase 05b — Pushback 18-A) — adds ``intergraph_edges`` array and
   ``schema_name: str | null`` reference to a MetagraphSchema state file.
+* v=3 (Phase 05c — P14-A smaller-items fold) — adds
+  ``intergraph_hyperedges`` array (default empty on migration; existing
+  v=2 metagraph state files have no n-ary hyperedges to carry over).
 
 Future bumps (deferred to later phases per CASC-1):
 
-* v=3 (Phase 05c) — ``intergraph_hyperedges`` array.
-* v=4 (Phase 10) — soft-delete fields on metaedges/metahyperedges/intergraph_edges
-  (ADR-0133 substrate landed uniformly across all 4 edge variants).
+* (Phase 05d adds NOTHING here — meta-vocabs land in metagraph-schema
+  state file v=2→v=3, NOT in metagraph state file. Per P17-A: 05c is
+  the LAST metagraph state-file bump until Phase 10.)
+* v=4 (Phase 10) — soft-delete fields on metaedges/metahyperedges/
+  intergraph_edges/intergraph_hyperedges (ADR-0133 substrate landed
+  uniformly across all 5 edge variants per SOFT_DELETE_AUDIT_NOTE).
 
 Subsequent phases append migration steps; never edit a prior step.
 """
@@ -20,7 +26,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List
 
-CURRENT_VERSION = 2
+CURRENT_VERSION = 3
 
 
 def _v1_to_v2(state: Dict) -> Dict:
@@ -36,9 +42,22 @@ def _v1_to_v2(state: Dict) -> Dict:
     return state
 
 
+def _v2_to_v3(state: Dict) -> Dict:
+    """Phase 05b → Phase 05c: introduce ``intergraph_hyperedges``.
+
+    Per the Phase 05c row's smaller-items fold (single-step migration
+    pattern from 05b ``_v1_to_v2``), the new top-level field defaults
+    to empty list on migration: existing 05b metagraph state files have
+    no n-ary hyperedges to carry over. Idempotent on re-migration.
+    """
+    state["intergraph_hyperedges"] = state.get("intergraph_hyperedges") or []
+    return state
+
+
 #: ``MIGRATIONS[i]`` migrates v(i+1) → v(i+2).
 MIGRATIONS: List[Callable[[Dict], Dict]] = [
     _v1_to_v2,
+    _v2_to_v3,
 ]
 
 

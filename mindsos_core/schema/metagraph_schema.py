@@ -1,12 +1,13 @@
-"""``MetagraphSchema`` — metagraph-level schema container (Phase 05b).
+"""``MetagraphSchema`` — metagraph-level schema container (Phase 05b + 05c).
 
 Per ADR-0148 + ``confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`` §3.3, a
-metagraph schema gathers ``IntergraphEdgeType`` declarations (and in
-Phase 05c, ``IntergraphHyperEdgeType``; Phase 05c will also add
-``MetaEdgeType`` and ``MetaHyperEdgeType`` here per Pushback 1-C scope
-narrowing). The schema attaches to a metagraph by name reference and is
-reusable across N metagraphs (Pushback 11-A); one schema attached at
-most per metagraph (Pushback 12-A).
+metagraph schema gathers ``IntergraphEdgeType`` declarations (Phase 05b)
+plus ``IntergraphHyperEdgeType`` declarations (Phase 05c — ADR-0148
+amended). Phase 05d additionally lands ``MetaEdgeType`` +
+``MetaHyperEdgeType`` here per the 05c P1-B scope split. The schema
+attaches to a metagraph by name reference and is reusable across N
+metagraphs (Pushback 11-A); one schema attached at most per metagraph
+(Pushback 12-A).
 
 Constructor signature mirrors Phase 04 :class:`Schema` exactly: no
 ``name`` field on the class — the state-file basename is the identity
@@ -24,30 +25,40 @@ Validation API:
 * :meth:`validate_intergraph_edge_properties` enforces per-type
   property-type maps when ``strict=True``; early-returns when not
   strict (Phase 04 :meth:`Schema.validate_node_properties` precedent).
+* (Phase 05c) :meth:`validate_intergraph_hyperedge` — symmetric for
+  the n-ary primitive; enforces type-existence + role/name constraints
+  on anchors and members (``allowed_anchor_types`` /
+  ``allowed_member_types`` / ``allowed_anchor_graphs`` /
+  ``allowed_member_graphs``).
+* (Phase 05c) :meth:`validate_intergraph_hyperedge_properties` —
+  symmetric strict-only property-type check.
 
-Phase 05c adds:
-* ``MetaEdgeType`` + ``MetaHyperEdgeType`` + ``IntergraphHyperEdgeType``
-  vocabularies and matching validators.
-* State-file v=2 bump.
+Phase 05d adds (NOT in this module yet):
+* ``MetaEdgeType`` + ``MetaHyperEdgeType`` vocabularies and matching
+  validators.
+* State-file v=2 → v=3 bump (adds ``meta_edge_types`` +
+  ``meta_hyperedge_types`` arrays).
 
 Per Pushback 19-B (round 2), eager-attach time stderr warnings on
 role-mismatch are emitted by the CLI layer (which has access to the
 metagraph's contained graphs); the model layer just provides the
 validators.
 
-Per Pushback 23-A (round 4), schema mutation while attached is the
-documented Phase 04 footgun; the CLI layer emits the warning at
-``add-intergraph-edge-type`` time. The model layer's
-:meth:`add_intergraph_edge_type` is a pure registration call.
+Per Pushback 23-A (05b round 4) + P12-A (05c carry-forward), schema
+mutation while attached is the documented Phase 04 footgun; the CLI
+layer emits the warning at ``add-intergraph-edge-type`` /
+``add-intergraph-hyperedge-type`` time. The model layer's
+:meth:`add_intergraph_edge_type` / :meth:`add_intergraph_hyperedge_type`
+are pure registration calls.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
 
 from ..cypher.identifiers import validate_edge_type_identifier
 from ..exceptions import PropertyShapeError, UnknownTypeError
-from .types import IntergraphEdgeType, PropertyType
+from .types import IntergraphEdgeType, IntergraphHyperEdgeType, PropertyType
 
 
 _TYPE_PY_MAP = {
@@ -66,13 +77,18 @@ class MetagraphSchema:
     """Metagraph-level schema container with optional strict property typing.
 
     Phase 05b ships ``IntergraphEdgeType`` only. Phase 05c extends with
-    ``MetaEdgeType`` + ``MetaHyperEdgeType`` + ``IntergraphHyperEdgeType``
-    vocabularies (Pushback 1-C narrowing).
+    ``IntergraphHyperEdgeType`` (P1-B scope narrowing — meta-vocabs
+    further deferred to Phase 05d). Phase 05d adds ``MetaEdgeType`` +
+    ``MetaHyperEdgeType``.
     """
 
     def __init__(self, *, strict: bool = False) -> None:
         self.strict: bool = strict
         self._intergraph_edge_types: Dict[str, IntergraphEdgeType] = {}
+        # Phase 05c — IntergraphHyperEdgeType vocabulary (ADR-0148 amended).
+        self._intergraph_hyperedge_types: Dict[
+            str, IntergraphHyperEdgeType,
+        ] = {}
 
     # ── registration ─────────────────────────────────────────────────────
 
@@ -93,6 +109,32 @@ class MetagraphSchema:
         self._intergraph_edge_types[iet.name] = iet
         return iet
 
+    def add_intergraph_hyperedge_type(
+        self, iht: IntergraphHyperEdgeType
+    ) -> IntergraphHyperEdgeType:
+        """Register an :class:`IntergraphHyperEdgeType` (Phase 05c).
+
+        Raises:
+            CypherError: ``iht.name`` fails ADR-0021 cypher rel-type regex.
+            UnknownTypeError: duplicate name. Note that
+                ``IntergraphEdgeType`` and ``IntergraphHyperEdgeType``
+                vocabularies share a CYPHER NAMESPACE for FalkorDB
+                relationship types but are tracked in *separate* dicts on
+                the schema — the same name MAY appear in both vocabularies
+                (the binary case uses :class:`IntergraphEdgeType`; the
+                n-ary case uses :class:`IntergraphHyperEdgeType`). Phase
+                05c does NOT cross-check name collisions across
+                vocabularies; future Phase 11 schema-migration may flag
+                them.
+        """
+        validate_edge_type_identifier(iht.name)
+        if iht.name in self._intergraph_hyperedge_types:
+            raise UnknownTypeError(
+                f"IntergraphHyperEdge type {iht.name!r} already registered"
+            )
+        self._intergraph_hyperedge_types[iht.name] = iht
+        return iht
+
     # ── queries ──────────────────────────────────────────────────────────
 
     @property
@@ -104,6 +146,28 @@ class MetagraphSchema:
         if iet is None:
             raise UnknownTypeError(f"Unknown intergraph edge type: {name!r}")
         return iet
+
+    @property
+    def intergraph_hyperedge_types(
+        self,
+    ) -> Mapping[str, IntergraphHyperEdgeType]:
+        """Defensive copy of registered :class:`IntergraphHyperEdgeType`."""
+        return dict(self._intergraph_hyperedge_types)
+
+    def require_intergraph_hyperedge_type(
+        self, name: str
+    ) -> IntergraphHyperEdgeType:
+        """Look up an :class:`IntergraphHyperEdgeType` or raise.
+
+        Raises:
+            UnknownTypeError: type ``name`` not registered.
+        """
+        iht = self._intergraph_hyperedge_types.get(name)
+        if iht is None:
+            raise UnknownTypeError(
+                f"Unknown intergraph hyperedge type: {name!r}"
+            )
+        return iht
 
     # ── validation ───────────────────────────────────────────────────────
 
@@ -188,10 +252,121 @@ class MetagraphSchema:
                     f"expected {expected.value}, got {type(value).__name__}"
                 )
 
+    # ── n-ary intergraph hyperedge validation (Phase 05c) ────────────────
+
+    def validate_intergraph_hyperedge(
+        self,
+        type_name: str,
+        anchor_node_types: Iterable[str],
+        member_node_types: Iterable[str],
+        anchor_graph_roles: Iterable["str | None"],
+        member_graph_roles: Iterable["str | None"],
+    ) -> None:
+        """Enforce type-existence + role/name constraints for n-ary primitive (Phase 05c).
+
+        Always runs (independent of ``self.strict``). Empty frozenset on
+        any allowed-* axis means "any" (mirror :class:`IntergraphEdgeType`
+        empty-set semantics). ``Graph.role=None`` is unmatchable when the
+        ``allowed_*_graphs`` constraint is non-empty (Python set
+        membership: ``None not in frozenset({"x"})``).
+
+        The four iterables must each carry one entry per anchor or
+        member; iteration order does not matter (the check is set
+        membership, not positional). Per P5-refined, the factory-side
+        canonicalization step has already normalized order/dedup BEFORE
+        this validator runs, so the iterables reflect canonical state.
+
+        Raises:
+            UnknownTypeError: type not registered, or any constraint
+                violated. Error message names which constraint failed
+                AND which side (anchor / member) failed.
+        """
+        iht = self.require_intergraph_hyperedge_type(type_name)
+        # Anchor type-name constraints.
+        if iht.allowed_anchor_types:
+            for ant in anchor_node_types:
+                if ant not in iht.allowed_anchor_types:
+                    raise UnknownTypeError(
+                        f"IntergraphHyperEdge type {type_name!r} does not "
+                        f"permit anchor node type {ant!r} "
+                        f"(allowed_anchor_types: "
+                        f"{sorted(iht.allowed_anchor_types)})"
+                    )
+        # Member type-name constraints.
+        if iht.allowed_member_types:
+            for mnt in member_node_types:
+                if mnt not in iht.allowed_member_types:
+                    raise UnknownTypeError(
+                        f"IntergraphHyperEdge type {type_name!r} does not "
+                        f"permit member node type {mnt!r} "
+                        f"(allowed_member_types: "
+                        f"{sorted(iht.allowed_member_types)})"
+                    )
+        # Anchor graph-role constraints.
+        if iht.allowed_anchor_graphs:
+            for arole in anchor_graph_roles:
+                if arole not in iht.allowed_anchor_graphs:
+                    raise UnknownTypeError(
+                        f"IntergraphHyperEdge type {type_name!r} does not "
+                        f"permit anchor graph role {arole!r} "
+                        f"(allowed_anchor_graphs: "
+                        f"{sorted(iht.allowed_anchor_graphs)})"
+                    )
+        # Member graph-role constraints.
+        if iht.allowed_member_graphs:
+            for mrole in member_graph_roles:
+                if mrole not in iht.allowed_member_graphs:
+                    raise UnknownTypeError(
+                        f"IntergraphHyperEdge type {type_name!r} does not "
+                        f"permit member graph role {mrole!r} "
+                        f"(allowed_member_graphs: "
+                        f"{sorted(iht.allowed_member_graphs)})"
+                    )
+
+    def validate_intergraph_hyperedge_properties(
+        self, type_name: str, properties: Mapping[str, Any]
+    ) -> None:
+        """Enforce strict per-type property-type checks when ``strict=True`` (Phase 05c).
+
+        Mirror of :meth:`validate_intergraph_edge_properties`. Phase 04
+        :meth:`Schema.validate_node_properties` precedent: this method
+        early-returns when ``not self.strict``. Type-existence is
+        re-checked here so callers can invoke this as a standalone
+        validator without first calling
+        :meth:`validate_intergraph_hyperedge`.
+        """
+        if not self.strict:
+            return
+        iht = self.require_intergraph_hyperedge_type(type_name)
+        for key, value in properties.items():
+            if key.startswith("ref:"):
+                # ref:* validated upstream as a UUID-shaped str.
+                continue
+            expected = iht.property_types.get(key)
+            if expected is None:
+                # Under strict: unknown keys allowed only if declared
+                # map is empty (type author opted out of strict typing
+                # for this type). Mirror IntergraphEdgeType precedent.
+                if iht.property_types:
+                    raise PropertyShapeError(
+                        f"intergraph_hyperedge type {type_name!r} has strict "
+                        f"property typing but property {key!r} is not "
+                        f"declared"
+                    )
+                continue
+            if not _matches_type(value, expected):
+                raise PropertyShapeError(
+                    f"intergraph_hyperedge type {type_name!r} property "
+                    f"{key!r} expected {expected.value}, got "
+                    f"{type(value).__name__}"
+                )
+
     def __repr__(self) -> str:
         return (
             f"MetagraphSchema(strict={self.strict}, "
-            f"intergraph_edge_types={len(self._intergraph_edge_types)})"
+            f"intergraph_edge_types={len(self._intergraph_edge_types)}, "
+            f"intergraph_hyperedge_types="
+            f"{len(self._intergraph_hyperedge_types)})"
         )
 
 

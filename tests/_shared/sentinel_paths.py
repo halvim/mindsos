@@ -63,4 +63,8 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_core/schema/metagraph_schema.py",
     "mindsos_cli/commands/metagraph_schema.py",
     "mindsos_cli/migrations/metagraph_schema.py",
+    # Phase 05c (IntergraphHyperEdge n-ary primitive + IntergraphHyperEdgeType
+    # vocab + replace-only update verb; metagraph state-file v=2→v=3 +
+    # metagraph-schema state-file v=1→v=2)
+    "mindsos_core/models/intergraph_hyperedge.py",
 )

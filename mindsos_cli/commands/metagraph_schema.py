@@ -63,6 +63,7 @@ import typer
 from mindsos_core import (
     CypherError,
     IntergraphEdgeType,
+    IntergraphHyperEdgeType,
     MetagraphSchema,
     PropertyType,
     UnknownTypeError,
@@ -228,6 +229,7 @@ def create_cmd(
                     "name": name,
                     "strict": strict,
                     "intergraph_edge_types": [],
+                    "intergraph_hyperedge_types": [],
                     "state_file": str(path),
                 },
                 indent=2,
@@ -236,7 +238,7 @@ def create_cmd(
     else:
         typer.echo(
             f"created: name={name} strict={strict} "
-            f"intergraph_edge_types=0"
+            f"intergraph_edge_types=0 intergraph_hyperedge_types=0"
         )
         typer.echo(f"state_file={path}")
 
@@ -253,13 +255,17 @@ def inspect_cmd(
 ) -> None:
     """Report the schema's vocabulary + counts for the named metagraph-schema.
 
-    JSON shape:
+    JSON shape (Phase 05c — extends 05b shape with intergraph_hyperedge_types):
 
         {
           "name": "<n>",
           "strict": <bool>,
-          "counts": {"intergraph_edge_types": int},
+          "counts": {
+            "intergraph_edge_types": int,
+            "intergraph_hyperedge_types": int             # P05c
+          },
           "intergraph_edge_types": [...sorted by name],
+          "intergraph_hyperedge_types": [...sorted by name],   # P05c
           "_state_version": int,
           "state_file": "<path>",
           "attached_metagraphs": [...sorted names]
@@ -269,11 +275,15 @@ def inspect_cmd(
     iet_sorted = sorted(
         ms.intergraph_edge_types.values(), key=lambda iet: iet.name
     )
+    iht_sorted = sorted(
+        ms.intergraph_hyperedge_types.values(), key=lambda iht: iht.name
+    )
     summary = {
         "name": name,
         "strict": ms.strict,
         "counts": {
             "intergraph_edge_types": len(ms.intergraph_edge_types),
+            "intergraph_hyperedge_types": len(ms.intergraph_hyperedge_types),
         },
         "intergraph_edge_types": [
             {
@@ -289,6 +299,21 @@ def inspect_cmd(
             }
             for iet in iet_sorted
         ],
+        "intergraph_hyperedge_types": [
+            {
+                "name": iht.name,
+                "allowed_anchor_types": sorted(iht.allowed_anchor_types),
+                "allowed_member_types": sorted(iht.allowed_member_types),
+                "allowed_anchor_graphs": sorted(iht.allowed_anchor_graphs),
+                "allowed_member_graphs": sorted(iht.allowed_member_graphs),
+                "ordered": iht.ordered,
+                "property_types": {
+                    k: v.value for k, v in iht.property_types.items()
+                },
+                "description": iht.description,
+            }
+            for iht in iht_sorted
+        ],
         "_state_version": state_mod.METAGRAPH_SCHEMA_STATE_VERSION,
         "state_file": str(state_mod.metagraph_schema_file_path(name)),
         "attached_metagraphs": sorted(_find_attached_metagraphs(name)),
@@ -298,15 +323,25 @@ def inspect_cmd(
     else:
         typer.echo(f"name={name} strict={ms.strict}")
         typer.echo(
-            f"intergraph_edge_types={summary['counts']['intergraph_edge_types']}"
+            f"intergraph_edge_types={summary['counts']['intergraph_edge_types']} "
+            f"intergraph_hyperedge_types={summary['counts']['intergraph_hyperedge_types']}"
         )
         for iet in iet_sorted:
             typer.echo(
-                f"  {iet.name}: source_types="
+                f"  ie:{iet.name}: source_types="
                 f"{sorted(iet.allowed_source_types) or 'any'} "
                 f"target_types={sorted(iet.allowed_target_types) or 'any'} "
                 f"source_graphs={sorted(iet.allowed_source_graphs) or 'any'} "
                 f"target_graphs={sorted(iet.allowed_target_graphs) or 'any'}"
+            )
+        for iht in iht_sorted:
+            typer.echo(
+                f"  ih:{iht.name}: anchor_types="
+                f"{sorted(iht.allowed_anchor_types) or 'any'} "
+                f"member_types={sorted(iht.allowed_member_types) or 'any'} "
+                f"anchor_graphs={sorted(iht.allowed_anchor_graphs) or 'any'} "
+                f"member_graphs={sorted(iht.allowed_member_graphs) or 'any'} "
+                f"ordered={iht.ordered}"
             )
         typer.echo(f"attached_metagraphs={summary['attached_metagraphs']}")
         typer.echo(f"state_file={summary['state_file']}")
@@ -355,6 +390,9 @@ def list_schemas_cmd(
                 "intergraph_edge_types_count": len(
                     state.get("intergraph_edge_types") or []
                 ),
+                "intergraph_hyperedge_types_count": len(
+                    state.get("intergraph_hyperedge_types") or []
+                ),
                 "_state_version": state.get("_state_version"),
                 "path": str(path),
             }
@@ -381,7 +419,9 @@ def list_schemas_cmd(
                 typer.echo(
                     f"  name={e['name']!r}  strict={e['strict']}  "
                     f"v={e['_state_version']}  "
-                    f"intergraph_edge_types={e['intergraph_edge_types_count']}"
+                    f"intergraph_edge_types={e['intergraph_edge_types_count']} "
+                    f"intergraph_hyperedge_types="
+                    f"{e['intergraph_hyperedge_types_count']}"
                 )
 
 
@@ -637,6 +677,136 @@ def add_intergraph_edge_type_cmd(
         typer.echo(
             f"ok: registered IntergraphEdgeType {iet.name!r} on schema "
             f"{schema!r} (attached to {len(attached)} metagraph(s))"
+        )
+
+
+# ---------------------------------------------------------------------------
+# add-intergraph-hyperedge-type (Phase 05c — P12-A schema-mutation footgun)
+# ---------------------------------------------------------------------------
+
+
+@metagraph_schema_app.command("add-intergraph-hyperedge-type")
+def add_intergraph_hyperedge_type_cmd(
+    schema: str = typer.Option(..., "--schema", help="MetagraphSchema name."),
+    type_name: str = typer.Option(
+        ..., "--type-name",
+        help="Cypher rel-type (must match ^[A-Z][A-Z0-9_]{0,63}$ per ADR-0021).",
+    ),
+    allowed_anchor_type: List[str] = typer.Option(
+        [], "--allowed-anchor-type",
+        help="Repeat: NodeType.name allowed as anchor. Empty = any.",
+    ),
+    allowed_member_type: List[str] = typer.Option(
+        [], "--allowed-member-type",
+        help="Repeat: NodeType.name allowed as member. Empty = any.",
+    ),
+    allowed_anchor_graph: List[str] = typer.Option(
+        [], "--allowed-anchor-graph",
+        help="Repeat: Graph.role allowed as anchor graph. Empty = any role.",
+    ),
+    allowed_member_graph: List[str] = typer.Option(
+        [], "--allowed-member-graph",
+        help="Repeat: Graph.role allowed as member graph. Empty = any role.",
+    ),
+    ordered: bool = typer.Option(
+        True, "--ordered/--unordered",
+        help="P18-A: ordered=True (default) preserves insertion order + "
+             "allows duplicates within a side (cat=c+a+t case). "
+             "--unordered canonicalizes at construction (sort+dedup); "
+             "refused alongside compositional=True per P8-A.",
+    ),
+    prop_type: List[str] = typer.Option(
+        [], "--prop-type",
+        help="Repeat: k=<vocab>. Vocab is one of "
+             "string/int/float/bool/list[string]/list[int]/list[float]/list[bool].",
+    ),
+    description: Optional[str] = typer.Option(
+        None, "--description", help="Optional human-readable description.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Register an :class:`IntergraphHyperEdgeType` on the named schema (Phase 05c).
+
+    Per Phase 05c P12-A (carry-forward of 05b Pushback 23-A pattern), if
+    the schema is currently attached to one or more metagraphs, a stderr
+    warning lists them — schema mutation is the documented Phase 04
+    footgun: attached metagraphs do NOT re-validate against the new
+    vocabulary until the tester re-attaches.
+
+    Per P18-A, ``--ordered/--unordered`` defaults to ``--ordered``
+    (permissive list semantics; cat=c+a+t case). Set semantics
+    (``--unordered``) is opt-in.
+
+    Per Pushback 4-A precedent (carry-forward),
+    ``--allowed-anchor-graph`` / ``--allowed-member-graph`` are
+    role-based (compared against ``Graph.role``); empty means any role
+    accepted; ``role=None`` graphs are unmatchable when the constraint
+    is non-empty.
+    """
+    ms = _load_or_die(schema)
+    prop_types: Dict[str, PropertyType] = {}
+    for pt_arg in prop_type or []:
+        k, v = _parse_prop_type(pt_arg)
+        prop_types[k] = v
+    iht = IntergraphHyperEdgeType(
+        name=type_name,
+        allowed_anchor_types=frozenset(allowed_anchor_type or []),
+        allowed_member_types=frozenset(allowed_member_type or []),
+        allowed_anchor_graphs=frozenset(allowed_anchor_graph or []),
+        allowed_member_graphs=frozenset(allowed_member_graph or []),
+        ordered=ordered,
+        property_types=prop_types,
+        description=description,
+    )
+    try:
+        ms.add_intergraph_hyperedge_type(iht)
+    except CypherError as e:
+        typer.echo(f"CypherError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    # P12-A — stderr warning if attached (mirror P05b Pushback 23-A).
+    attached = _find_attached_metagraphs(schema)
+    if attached:
+        typer.echo(
+            f"warning: schema {schema!r} is currently attached to "
+            f"{len(attached)} metagraph(s): {sorted(attached)!r}. "
+            f"Adding {type_name!r} does NOT trigger re-validation; "
+            f"existing intergraph_hyperedges in those metagraphs may "
+            f"now violate the (extended) schema. Run 'mindsos metagraph "
+            f"attach-schema --name <MG> --schema {schema}' on each to "
+            f"surface drift (P12-A — schema-mutation footgun).",
+            err=True,
+        )
+
+    _save_or_die(schema, ms)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "schema": schema,
+                    "type_name": iht.name,
+                    "allowed_anchor_types": sorted(iht.allowed_anchor_types),
+                    "allowed_member_types": sorted(iht.allowed_member_types),
+                    "allowed_anchor_graphs": sorted(iht.allowed_anchor_graphs),
+                    "allowed_member_graphs": sorted(iht.allowed_member_graphs),
+                    "ordered": iht.ordered,
+                    "property_types": {
+                        k: v.value for k, v in iht.property_types.items()
+                    },
+                    "description": iht.description,
+                    "attached_metagraphs": sorted(attached),
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(
+            f"ok: registered IntergraphHyperEdgeType {iht.name!r} on "
+            f"schema {schema!r} (ordered={iht.ordered}; attached to "
+            f"{len(attached)} metagraph(s))"
         )
 
 

@@ -91,12 +91,14 @@ from .models.identity import (
     generate_uuid,
 )
 from .models.intergraph_edge import IntergraphEdge
+from .models.intergraph_hyperedge import IntergraphHyperEdge
 from .models.metagraph import MetaEdge, MetaHyperEdge, Metagraph
 from .models.node import Node
 from .schema import (
     EdgeType,
     HyperEdgeType,
     IntergraphEdgeType,
+    IntergraphHyperEdgeType,
     MetagraphSchema,
     NodeType,
     PropertyType,
@@ -145,10 +147,12 @@ __all__ = [
     "Metagraph",
     "MetaEdge",
     "MetaHyperEdge",
-    # intergraph (Phase 05b — ADR-0148)
+    # intergraph (Phase 05b + 05c — ADR-0148 + amended)
     "IntergraphEdge",
     "IntergraphEdgeType",
+    "IntergraphHyperEdge",
+    "IntergraphHyperEdgeType",
     "MetagraphSchema",
 ]
 
-__version__ = "0.0.0+phase05b"
+__version__ = "0.0.0+phase05c"

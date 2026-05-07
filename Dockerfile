@@ -78,6 +78,20 @@ COPY mindsos_cli ./mindsos_cli
 #            mindsos_core/exceptions.py; RESERVED_PROPERTY_KEYS extended
 #            in mindsos_core/schema/validation.py with intergraph_edges,
 #            schema_name, _compositional (Pushbacks 18-A + 6).
+# Phase 05c: + mindsos_core/models/intergraph_hyperedge.py
+#            (IntergraphHyperEdge, ADR-0148 amended for n-ary);
+#            IntergraphHyperEdgeType added to
+#            mindsos_core/schema/types.py (no new file there);
+#            mindsos_core/schema/metagraph_schema.py extended with
+#            intergraph_hyperedge vocabulary + validators;
+#            mindsos_core/models/metagraph.py extended with
+#            add_intergraph_hyperedge / remove_intergraph_hyperedge /
+#            update_intergraph_hyperedge / iter_intergraph_hyperedges
+#            factory methods; remove_graph cascade extended (P17-A);
+#            attach_schema eager-pass extended to walk hyperedges
+#            (P6-A); RESERVED_PROPERTY_KEYS extended with
+#            intergraph_hyperedges / intergraph_hyperedge_types /
+#            anchors / members.
 COPY mindsos_core ./mindsos_core
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
@@ -91,6 +105,8 @@ COPY mindsos_core ./mindsos_core
 # + mindsos_core/schema/metagraph_schema.py
 # + mindsos_cli/commands/metagraph_schema.py
 # + mindsos_cli/migrations/metagraph_schema.py.
+# Phase 05c additions (sentinel-tracked):
+# mindsos_core/models/intergraph_hyperedge.py.
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
@@ -134,6 +150,7 @@ COPY tests ./tests
 # mindsos_core/schema/metagraph_schema.py +
 # mindsos_cli/commands/metagraph_schema.py +
 # mindsos_cli/migrations/metagraph_schema.py.
+# Phase 05c adds 1 entry: mindsos_core/models/intergraph_hyperedge.py.
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs

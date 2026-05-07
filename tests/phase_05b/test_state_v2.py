@@ -1,7 +1,15 @@
 """Metagraph state-file v=2 round-trip + migration tests.
 
-Pushback 18-A — adds intergraph_edges + schema_name; v=1→v=2 cumulative
-one-way migration via mindsos_cli/migrations/metagraph.py.
+Pushback 18-A (Phase 05b) — adds intergraph_edges + schema_name; v=1→v=2
+cumulative one-way migration via mindsos_cli/migrations/metagraph.py.
+
+Phase 05c P26 audit: this file's constants and forward-version-refusal
+fixtures are now dynamic (``state_mod.METAGRAPH_STATE_VERSION`` /
+``mg_migrations.CURRENT_VERSION + 1``) so 05c's bump 2→3 doesn't
+invalidate the assertions. Test names retain "_v1_to_v2" / "_v2"
+shape since they verify the 05b-introduced migration step specifically;
+the 05c row's separate ``test_metagraph_migration_v2_to_v3.py`` covers
+the new step.
 """
 
 from __future__ import annotations
@@ -12,22 +20,28 @@ import pytest
 
 from mindsos_cli import state as state_mod
 from mindsos_cli.migrations import metagraph as mg_migrations
+from mindsos_cli.migrations import metagraph_schema as ms_migrations
 
 
 class TestStateVersionConstants:
-    def test_metagraph_state_version_bumped_to_2(self):
-        assert state_mod.METAGRAPH_STATE_VERSION == 2
+    def test_metagraph_state_version_at_current(self):
+        # P26 audit — dynamic check; 05b shipped at 2, 05c bumps to 3.
+        assert state_mod.METAGRAPH_STATE_VERSION == mg_migrations.CURRENT_VERSION
 
-    def test_metagraph_schema_state_version_is_1(self):
-        assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 1
+    def test_metagraph_schema_state_version_at_current(self):
+        # P26 audit — dynamic check; 05b shipped at 1, 05c bumps to 2.
+        assert (
+            state_mod.METAGRAPH_SCHEMA_STATE_VERSION
+            == ms_migrations.CURRENT_VERSION
+        )
 
     def test_graph_state_version_unchanged_at_4(self):
-        # Phase 05b leaves graph state files at v=4 (intergraph_edges
+        # Phase 05b/05c leave graph state files at v=4 (intergraph_*edges
         # live on metagraph, not graph).
         assert state_mod.GRAPH_STATE_VERSION == 4
 
     def test_schema_state_version_unchanged_at_2(self):
-        # Phase 04-v2 schema state files unaffected by 05b.
+        # Phase 04-v2 schema state files unaffected by 05b/05c.
         assert state_mod.SCHEMA_STATE_VERSION == 2
 
 
@@ -43,7 +57,10 @@ class TestMigrationV1ToV2:
             "metahyperedges": [],
         }
         result = mg_migrations.migrate(v1)
-        assert result["_state_version"] == 2
+        # P26 — chain may flow v=1 → v=2 → v=3 under 05c. Dynamic CURRENT_VERSION.
+        assert result["_state_version"] == mg_migrations.CURRENT_VERSION
+        # The v=1→v=2 step's payload defaults (ie + schema_name) survive
+        # any subsequent migration steps.
         assert result["intergraph_edges"] == []
         assert result["schema_name"] is None
 
@@ -63,8 +80,8 @@ class TestMigrationV1ToV2:
         assert result["metaedges"] == [{"edge_id": "e1"}]
         assert result["metahyperedges"] == [{"edge_id": "h1"}]
 
-    def test_v2_idempotent(self):
-        """Migration is idempotent on v=2 input."""
+    def test_v2_advances_to_current(self):
+        """A v=2 input migrates forward to CURRENT_VERSION (idempotent at v=2 in 05b; advances to v=3 under 05c)."""
         v2 = {
             "_state_version": 2,
             "metagraph_id": "mg-id",
@@ -77,15 +94,19 @@ class TestMigrationV1ToV2:
             "intergraph_edges": [{"edge_id": "ie1"}],
         }
         result = mg_migrations.migrate(v2)
-        assert result["_state_version"] == 2
+        # P26 — under 05b this asserted == 2 (idempotent). Under 05c the
+        # chain advances to v=3. Dynamic CURRENT_VERSION future-proofs.
+        assert result["_state_version"] == mg_migrations.CURRENT_VERSION
         assert result["intergraph_edges"] == [{"edge_id": "ie1"}]
         assert result["schema_name"] == "ms1"
 
-    def test_forward_version_v3_refused(self):
-        v3 = {"_state_version": 3, "name": "test"}
+    def test_forward_version_refused(self):
+        # P26 — fixture uses CURRENT_VERSION + 1 dynamically (was hard-coded v=3).
+        forward = mg_migrations.CURRENT_VERSION + 1
         with pytest.raises(ValueError) as exc:
-            mg_migrations.migrate(v3)
-        assert "v2" in str(exc.value)
+            mg_migrations.migrate({"_state_version": forward, "name": "test"})
+        # Error message mentions current supported version dynamically.
+        assert f"v{mg_migrations.CURRENT_VERSION}" in str(exc.value)
 
     def test_missing_state_version_refused(self):
         with pytest.raises(ValueError, match="missing required field"):
@@ -97,11 +118,14 @@ class TestMigrationV1ToV2:
 
 
 class TestMetagraphSchemaStateV1:
-    def test_initial_version_is_1(self):
-        assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 1
+    def test_initial_version_at_current(self):
+        # P26 — dynamic check.
+        assert (
+            state_mod.METAGRAPH_SCHEMA_STATE_VERSION
+            == ms_migrations.CURRENT_VERSION
+        )
 
-    def test_v1_idempotent_migration(self):
-        from mindsos_cli.migrations import metagraph_schema as ms_migrations
+    def test_v1_advances_to_current_migration(self):
         v1 = {
             "_state_version": 1,
             "name": "test",
@@ -109,12 +133,15 @@ class TestMetagraphSchemaStateV1:
             "intergraph_edge_types": [],
         }
         result = ms_migrations.migrate(v1)
-        assert result["_state_version"] == 1
+        # P26 — under 05b this was idempotent at v=1; under 05c the
+        # chain advances to v=2. Dynamic CURRENT_VERSION future-proofs.
+        assert result["_state_version"] == ms_migrations.CURRENT_VERSION
 
-    def test_forward_version_v2_refused(self):
-        from mindsos_cli.migrations import metagraph_schema as ms_migrations
+    def test_forward_version_refused(self):
+        # P26 — fixture uses CURRENT_VERSION + 1 dynamically.
+        forward = ms_migrations.CURRENT_VERSION + 1
         with pytest.raises(ValueError):
-            ms_migrations.migrate({"_state_version": 2, "name": "test"})
+            ms_migrations.migrate({"_state_version": forward, "name": "test"})
 
 
 class TestStateRoundTrip:
@@ -139,7 +166,8 @@ class TestStateRoundTrip:
 
         # Serialize.
         state = _metagraph_to_state(mg)
-        assert state["_state_version"] == 2
+        # P26 — writers emit CURRENT_VERSION (was hard-coded 2; 05c writes 3).
+        assert state["_state_version"] == state_mod.METAGRAPH_STATE_VERSION
         assert len(state["intergraph_edges"]) == 1
         ie_dict = state["intergraph_edges"][0]
         assert ie_dict["edge_id"] == ie.edge_id
@@ -205,7 +233,11 @@ class TestPersistenceCLI:
         state_mod.save_metagraph_state("persist", _metagraph_to_state(mg))
         # Reload.
         loaded_state = state_mod.load_metagraph_state("persist")
-        assert loaded_state["_state_version"] == 2
+        # P26 — dynamic CURRENT_VERSION (loader migrates forward).
+        assert (
+            loaded_state["_state_version"]
+            == state_mod.METAGRAPH_STATE_VERSION
+        )
         assert len(loaded_state["intergraph_edges"]) == 1
         # Rehydrate.
         mg2 = _state_to_metagraph(loaded_state)

@@ -84,6 +84,24 @@ RESERVED_PROPERTY_KEYS = frozenset({
     # name + top-level state-file field (Pushback 2-A); only the
     # underscore-prefixed Cypher-property form is reserved.
     "_compositional",
+    # Phase 05c — locked decision (smaller items folded; mirror P05b
+    # Pushback 18-A pattern). Top-level state-file fields introduced by
+    # the v=2→v=3 metagraph bump and v=1→v=2 metagraph-schema bump
+    # become reserved at user-property scope so a property bag (ADR-0130
+    # or per-element) cannot collide with serialization fields.
+    # ``intergraph_hyperedges`` is the new top-level array on metagraph
+    # state v=3. ``intergraph_hyperedge_types`` is the new top-level
+    # array on metagraph-schema state v=2. ``anchors`` / ``members`` are
+    # per-entry fields on intergraph_hyperedges; reserving them aligns
+    # with the established "structural keys can't be user properties"
+    # convention (mirror Phase 05a P13: ``contained_graphs`` /
+    # ``metaedges`` / ``metahyperedges`` reserved even though they're
+    # one level deeper than the user-property scope a typical caller
+    # uses; defense in depth).
+    "intergraph_hyperedges",
+    "intergraph_hyperedge_types",
+    "anchors",
+    "members",
 })
 
 #: Prefix for cross-graph reference properties. Properties whose key

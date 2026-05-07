@@ -15,7 +15,14 @@ from __future__ import annotations
 
 from .metagraph_schema import MetagraphSchema
 from .schema import Schema
-from .types import EdgeType, HyperEdgeType, IntergraphEdgeType, NodeType, PropertyType
+from .types import (
+    EdgeType,
+    HyperEdgeType,
+    IntergraphEdgeType,
+    IntergraphHyperEdgeType,
+    NodeType,
+    PropertyType,
+)
 from .validation import (
     REF_PROPERTY_PREFIX,
     RESERVED_PROPERTY_KEYS,
@@ -26,6 +33,7 @@ __all__ = [
     "EdgeType",
     "HyperEdgeType",
     "IntergraphEdgeType",
+    "IntergraphHyperEdgeType",
     "MetagraphSchema",
     "NodeType",
     "PropertyType",
