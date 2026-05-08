@@ -1759,42 +1759,110 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ---
 
-### Phase 05d — L1 MetaEdgeType + MetaHyperEdgeType vocab
+### Phase 05d — L1 MetaEdgeType + MetaHyperEdgeType vocab + eager-attach extension
 
-  **Status:** Pending (refines after 05c confirms; CASC-1; row STUB authored 2026-05-06 in 05c chat per P15-A).
+  **Status:** Row LOCKED 2026-05-07 across 7 reanalysis rounds. Rounds 1–6 (M1–M7 meta-plan + P1–P30 design picks) at `confirmation_docs/PHASE_05d_DESIGN_LOG.md`. Round 7 (implementation-chat re-analysis pass; P31–P44 reverse-or-refine prior locks) at `confirmation_docs/PHASE_05d_IMPLEMENTATION_LOG.md` §1. **Material rewrites in round 7:** P31 A drops the fingerprint mechanism entirely (and its `--accept-vocab-change` flag, metagraph state-file bump, validate `vocab_fingerprint_match` field, and instance-graph forward-compat assertion); P32 A adds `--schema MS` opt-in to `validate`; P39 A makes empty-vocab + non-strict eager-attach skip silently; P41 A splits exit code 2 into 2/3; P42 C lands a one-line ADR pointer instead of inline amendments; P44 A inverts the §C validation order to mirror the actual 05b precedent.
   **Branch:** phase-05d
   **Tag on confirm:** phase-05d-confirmed
   **Depends on:** 05c.
   **Layer(s):** L1.
-  **Net-new?:** **Yes (moderate).** New `MetaEdgeType` + `MetaHyperEdgeType` schema vocabularies on `MetagraphSchema` (deferred from 05b per Pushback 1-C, then from 05c per P1-B). Audit task: confirm 05a's `MetaEdge` and `MetaHyperEdge` dataclasses ship with a `type_name` field; if absent, 05d expands the dataclasses additively (with rehydration tolerance) OR triggers a separate 05a-v2 supersession decision at row-refinement time.
+  **Net-new?:** **Yes (small).** Two new vocab dataclasses (`MetaEdgeType` + `MetaHyperEdgeType`); 4-method extension to `MetagraphSchema`; eager-attach walk extended; 1 new CLI verb (`validate`) + 2 new `add-*-type` verbs; one schema state-file bump (v=2 → v=3). NO metagraph state-file bump (P31 A). NO new state-tracking pattern.
 
-  **Carry-forward from 05c deferrals:**
-    - **MetaEdgeType + MetaHyperEdgeType** (deferred from 05b Pushback 1-C → 05c P1-B → 05d).
-    - **MetaEdge.type_name field audit** (deferred from 05c P3).
-    - **Eager-attach extension** to walk metaedges + metahyperedges (Push9-A from 05b expires here).
+  **P3 audit RESOLVED 2026-05-07:** `MetaEdge.type_name: str` already present at `mindsos_core/models/metagraph.py:136` (required, ADR-0021 regex via `__post_init__`); `MetaHyperEdge.type_name: str` at `:180`. No dataclass expansion; no rehydration tolerance; no 05a-v2 supersession. 05d ships pure-vocab additions on top of an already-typed primitive.
 
-  **Features (preview — full row refinement happens in 05d chat):**
-    - `MetaEdgeType` frozen dataclass — fields: `name`, `allowed_source_graphs: FrozenSet[str]` (Graph.role; empty=any), `allowed_target_graphs: FrozenSet[str]`, `property_types: Dict[str, PropertyType]`, `description: Optional[str]`. Mirror 05b's `IntergraphEdgeType` minus the type-based constraints (metaedges connect graphs, not nodes; no `allowed_*_types` field).
-    - `MetaHyperEdgeType` frozen dataclass — fields: `name`, `allowed_member_graphs: FrozenSet[str]` (Graph.role; empty=any), `ordered: bool = True` (P18-A precedent), `property_types`, `description`. Cardinality enforcement is at the metaedge primitive (already shipped in 05a per metahyperedge n≥2 rule); type vocab adds role/property constraints only.
-    - `MetagraphSchema` extension — `add_meta_edge_type` / `require_meta_edge_type` / `validate_meta_edge` / `validate_meta_edge_properties`; symmetric for hyperedge.
-    - `Metagraph.add_metaedge` / `add_metahyperedge` validation order extends with type-existence (mandatory when schema attached) + role validation (allowed_*_graphs) + property-type validation (when strict).
-    - **MetaEdge.type_name field audit (P3 deferred):** if 05a's `MetaEdge` dataclass already has `type_name`, no expansion. If absent, 05d adds `type_name: Optional[str] = None` with `__post_init__` ADR-0021 regex enforcement only when present; rehydration tolerates legacy entries with no `type_name` field.
-    - **Eager-attach extension:** `Metagraph.attach_schema` walks metaedges + metahyperedges for the first time (Push9-A from 05b expires); validates each against `MetaEdgeType` / `MetaHyperEdgeType` vocab.
-    - CLI: `mindsos metagraph-schema add-meta-edge-type --schema MS --type-name T [--allowed-source-graph ROLE]... [--allowed-target-graph ROLE]... [--prop-type k=PT]... [--description STR] [--json]`; symmetric for `add-meta-hyperedge-type` with `--ordered/--unordered` flag and `--allowed-member-graph` repeatable.
-    - State file: `metagraph-schema-<n>.json` v=2 → v=3 cumulative one-way migration (adds `meta_edge_types: []` + `meta_hyperedge_types: []` defaults).
-    - Re-attach drift warning per P6-A: existing 05c-attached metagraphs re-validating in 05d may surface metaedge type_name violations if the metagraph-schema doesn't yet register the matching vocab; tester sees structured refusal per Push7-A eager-validation.
-    - ADR-0017 amended: `MetaEdgeType` and `MetaHyperEdgeType` extend Phase 04's strictness model to metagraph-scoped vocab.
-    - ADR-0014 third amendment: noting MetaEdgeType + MetaHyperEdgeType vocab additions.
+  **Carry-forward from 05c deferrals (all resolved in this row):**
+    - MetaEdgeType + MetaHyperEdgeType (deferred from 05b Pushback 1-C → 05c P1-B → 05d).
+    - MetaEdge.type_name field audit (P3 deferred from 05c) — RESOLVED above.
+    - Eager-attach extension to walk metaedges + metahyperedges (Push9-A from 05b expires here).
 
-  **Reads:** `INTERGRAPH_EDGES_DESIGN.md` §3.3 (analogous role-based constraint surface); 05b row §A (validation order precedent); 05c row §A (16-step pattern + canonicalization step is N/A for binary metaedge but applies for metahyperedge); `tests/_shared/sentinel_paths.py` (audit test for MetaEdge.type_name field); 05a row + `mindsos_core/models/metagraph.py` (MetaEdge dataclass — audit target).
+  **CRITICAL primitive distinction (load-bearing):** `MetaHyperEdge` connects GRAPHS with **NO graph repetition** (uniqueness enforced at `metagraph.py:194`). `IntergraphHyperEdge` connects NODES across graphs with repetition allowed (cat=c+a+t / "letter" compositional case). The 05c P18-A `ordered=True` rationale applies ONLY to `IntergraphHyperEdgeType` — NOT to `MetaHyperEdgeType`. Reference: memory `reference_mindsos_four_edge_primitives.md`.
+
+  **Features:**
+
+    **A. New vocab dataclasses (`mindsos_core/schema/types.py`):**
+
+    - `MetaEdgeType` (frozen dataclass): fields `name: str`, `allowed_source_graphs: FrozenSet[str] = frozenset()`, `allowed_target_graphs: FrozenSet[str] = frozenset()`, `property_types: Dict[str, PropertyType] = {}`, `description: Optional[str] = None`. `name` validated against ADR-0021 cypher rel-type regex at registration. Empty frozenset on any allowed-* axis means "any" (mirrors `EdgeType` precedent). `Graph.role=None` is unmatchable when `allowed_*_graphs` is non-empty (Python set semantics). Mirrors 05b `IntergraphEdgeType` minus `allowed_*_types` (metaedges connect graphs, not nodes).
+
+    - `MetaHyperEdgeType` (frozen dataclass): fields `name: str`, `allowed_member_graphs: FrozenSet[str] = frozenset()`, `property_types: Dict[str, PropertyType] = {}`, `description: Optional[str] = None`. **NO `ordered` field (P1 C lock).** Rationale: `MetaHyperEdge.graph_ids` is uniqueness-enforced at `metagraph.py:194`; the 05c P18-A "ordered=True permits duplicates" rationale collapses for graph-set semantics. Cardinality (n≥2) is enforced at the primitive (`metagraph.py:188-192`); type vocab adds role/property constraints only.
+
+    **B. `MetagraphSchema` extension (`mindsos_core/schema/metagraph_schema.py`):**
+
+    - `_meta_edge_types: Dict[str, MetaEdgeType] = {}` + `_meta_hyperedge_types: Dict[str, MetaHyperEdgeType] = {}` storage.
+    - `add_meta_edge_type(met) -> MetaEdgeType` — registers; raises `UnknownTypeError` on duplicate name within MetaEdgeType vocab; raises `CypherError` on regex violation.
+    - `require_meta_edge_type(name) -> MetaEdgeType` — lookup or raise `UnknownTypeError`. **Cross-vocab same-name informational hint (P38 B):** when name missing in MetaEdgeType but present in IntergraphEdgeType vocab, error message states "Name 'X' is registered in IntergraphEdgeType but not in MetaEdgeType." — information only, no editorial recommendation. Symmetric for MetaHyperEdge.
+    - `validate_meta_edge(type_name, source_graph_role, target_graph_role)` — type-existence + role constraints. Always runs (independent of `strict`).
+    - `validate_meta_edge_properties(type_name, properties)` — strict-only property-type checks (Phase 04 precedent: early-return when `not self.strict`).
+    - Symmetric `add_meta_hyperedge_type` / `require_meta_hyperedge_type` / `validate_meta_hyperedge(type_name, member_graph_roles)` / `validate_meta_hyperedge_properties`.
+    - **4-vocab Cypher namespace policy (P2 A):** the same `name` MAY appear in all four vocabularies (`IntergraphEdgeType`, `IntergraphHyperEdgeType`, `MetaEdgeType`, `MetaHyperEdgeType`). Mirrors 05c lock at `metagraph_schema.py:119-128`. Phase 11 schema-migrator owns deferred cross-vocab collision flagging (filed as future-work).
+
+    **C. `Metagraph.add_metaedge` / `add_metahyperedge` validation order (P44 A — mirrors actual 05b `add_intergraph_edge` precedent at `metagraph.py:735-798`):**
+
+    Order for `add_metaedge` when schema attached:
+      1. `source_graph_id in self.graphs` (raise `IdentityError` else).
+      2. `target_graph_id in self.graphs` (raise `IdentityError` else).
+      3. `source_graph_id != target_graph_id` (raise `SchemaError` else; existing P15 self-loop refusal).
+      4. `validate_user_properties` (reserved-key + `metaedge` scope).
+      5. (if `self.schema is not None`) `schema.require_meta_edge_type(type_name)`.
+      6. (if attached) `schema.validate_meta_edge(type_name, source_role, target_role)`.
+      7. (if attached and `schema.strict`) `schema.validate_meta_edge_properties(type_name, properties)`.
+      8. `self.identity.register(...)` then construct `MetaEdge(...)` (cypher regex fires in `__post_init__`).
+
+    `add_metahyperedge` order: (1) member-containment loop → (2) `validate_user_properties` → (3) (if schema) `require_meta_hyperedge_type` → (4) (if attached) `validate_meta_hyperedge(member_roles)` → (5) (if attached and strict) `validate_meta_hyperedge_properties` → (6) construct `MetaHyperEdge(...)` (n≥2 + uniqueness + regex enforced via `__post_init__`).
+
+    **Empty-vocab semantics on add (P39 A — preserves precedent asymmetry):** `require_meta_edge_type` raises on empty vocab regardless of `strict`. Operator workaround: detach schema, add metaedge, re-attach (eager-attach is permissive on empty vocab — see §D); or register the `MetaEdgeType` first and then add the metaedge.
+
+    **D. Eager-attach extension (`Metagraph.attach_schema`):**
+
+    Walks metaedges + metahyperedges for the first time (Push9-A from 05b expires). Iteration order is implementation-detail (P3 C); contract is "atomic precheck, refuses on first violation, error message names the offender unambiguously."
+
+    **Empty-vocab semantics on eager-attach (P39 A — mirrors 05b/05c "Pushback 24-hybrid" precedent for `IntergraphEdgeType`):**
+      - Empty `MetaEdgeType` vocab + non-strict + existing metaedges → **skip the metaedge walk silently**. Symmetric for `MetaHyperEdgeType`. Closes 05c-migration regression vector: 05c metagraphs migrate to 05d schemas with empty `meta_edge_types: []` and re-attach must succeed (or eager-attach refuses every existing metaedge).
+      - Empty vocab + strict + existing metaedges → fail (vocab-existence is the strict invariant; consistent with 05b/05c precedent for `IntergraphEdgeType`).
+      - Non-empty vocab → walk every metaedge / metahyperedge: `require_meta_*_type` then `validate_meta_*` (always) then `validate_meta_*_properties` (strict only — P13 A).
+
+    NO fingerprint computation (P31 A); no consent flag; no state mutation beyond `self.schema = schema; self.schema_name = schema_name` on all-pass.
+
+    **E. Drift narrative (reframed per M7):**
+
+    Re-attach drift = "metaedge `type_name` not registered in `MetaEdgeType` vocab" (vocab-gap), NOT field-absence. Recovery: populate the schema vocab with the missing `MetaEdgeType` / `MetaHyperEdgeType` entries, THEN re-attach. **No "non-strict attach" recovery (P4 A):** `MetagraphSchema.strict` gates property-type validation only; it cannot bypass eager-attach vocab-gap refusal. (Empty-vocab + non-strict pass-silently per §D is precedent-consistent and is NOT a "non-strict bypass" — it is the empty-vocab grandfathering rule.)
+
+    **F. State-file version bump (P31 A — single bump only; metagraph state-file untouched):**
+
+    - **Metagraph-schema state file v=2 → v=3:** adds `meta_edge_types: []` + `meta_hyperedge_types: []` default arrays. `_v2_to_v3` is a single-step append; defensive null→[] normalization for malformed inputs. Per-file migration chain extended at `mindsos_cli/migrations/metagraph_schema.py`.
+    - **Metagraph state file stays at v=3.** No fingerprint, no `--accept-vocab-change`, no metagraph migration step (P31 A removed the entire mechanism).
+
+    **G. CLI surface:**
+
+    - `mindsos metagraph-schema add-meta-edge-type --schema MS --type-name T [--allowed-source-graph ROLE]... [--allowed-target-graph ROLE]... [--prop-type k=PT]... [--description STR] [--json]` — registers a `MetaEdgeType`. P29 A: `--json` parity with 05c add verbs.
+    - `mindsos metagraph-schema add-meta-hyperedge-type --schema MS --type-name T [--allowed-member-graph ROLE]... [--prop-type k=PT]... [--description STR] [--json]` — symmetric. **No `--ordered/--unordered` flag** (P1 C dropped the field).
+    - `mindsos metagraph-schema validate --metagraph MG [--schema MS] [--json]` (P9 B + P32 A — NEW VERB): walk-only validation. Default resolves schema via `MG.schema_name`; **`--schema MS` opt-in (P32 A)** validates `MG` against the explicit `MS` (state-only; doesn't mutate `MG.schema_name` or `MG.schema`). Empty-vocab semantics mirror eager-attach (P39 A — non-strict + empty vocab passes silently). Exit codes (P41 A): **0 pass; 1 violation; 2 resource-not-found (schema or metagraph); 3 no-usable-schema (neither attached nor `--schema` supplied).** `--json` shape (P40 A — fingerprint field dropped per P31 A): `{ "passed": bool, "schema_name": str, "metagraph_name": str, "violations": [{"primitive": "MetaHyperEdge", "edge_id": "...", "type_name": "X", "rule": "allowed_member_graphs", "detail": "..."}, ...] }`.
+    - `mindsos metagraph attach-schema` is **unchanged** in 05d (no `--accept-vocab-change` flag — P31 A removed the consent mechanism).
+    - **Schema-mutation footgun (P8 A):** `add-meta-edge-type` / `add-meta-hyperedge-type` reuse `_find_attached_metagraphs` helper at `mindsos_cli/commands/metagraph_schema.py:171`; emit verbatim 05c warning "Schema 'X' is currently attached to N metagraph(s): [...]; mutations apply lazily but will surface at next attach validation."
+
+    **H. ADR pointer edits (P42 C):** Add a one-line pointer at the top of `docs/decisions/adr/0014-layer-boundary-core-only.md` and `docs/decisions/adr/0017-schema-strictness-opt-in.md`: "*See `confirmation_docs/PHASE_MAP.md` §5 for amendments through Phase 05d.*" Closes the discoverability gap for filename-search readers without breaking the deferred-full-transcription precedent (full text still ships in Phase 38). The pointer is added to BOTH files in 05d's PR even though it covers 05b/05c amendments too — single landing point.
+
+  **Reads:**
+    - `confirmation_docs/PHASE_05d_DESIGN_LOG.md` — rounds 1–6 pick log (M1–M7 + P1–P30).
+    - `confirmation_docs/PHASE_05d_IMPLEMENTATION_LOG.md` — round 7 pick log (P31–P44; load-bearing for the row's current shape).
+    - memory `reference_mindsos_four_edge_primitives.md` — primitive distinction.
+    - `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md` §3.3 — analogous role-based constraint surface.
+    - 05b row §A and `metagraph.py:735-798` — actual 05b `add_intergraph_edge` validation order (the precedent §C mirrors per P44 A).
+    - 05c row §A — schema-mutation footgun model; `_find_attached_metagraphs` helper.
+    - `mindsos_core/models/metagraph.py` (`MetaEdge:116`, `MetaHyperEdge:162`); `mindsos_core/schema/types.py` (existing `IntergraphEdgeType:107`, `IntergraphHyperEdgeType:149`); `mindsos_core/schema/metagraph_schema.py`; `mindsos_core/models/graph.py:94` (`role: Optional[str]`).
 
   **Risks:**
-    - **MetaEdge.type_name audit may trigger 05a-v2 supersession** if absent on 05a; cost vs benefit decision at 05d row-refinement (defer-with-rehydration-tolerance is cheaper; expansion to 05a costs cascade reorder).
-    - **Eager-attach drift across 05c → 05d**: existing 05c-attached metagraphs' metaedges/metahyperedges suddenly fall under validation; tester re-attach surfaces drift; recovery via re-attach with vocab-populated schema OR detach + non-strict attach.
-    - **Re-attach with mixed vocabs** (some types in vocab, others missing): refuse on first violation per Push7-A; structured error names the offender.
-    - **Schema-mutation footgun extends** to MetaEdgeType / MetaHyperEdgeType `add-*-type` operations (Push12-A pattern carry-forward; same stderr warning).
+    - **05c-migration: 05c metagraphs with metaedges + 05c schemas migrating to v=3 (gaining empty `meta_edge_types: []`).** P39 A's empty-vocab pass-silently rule on eager-attach is the closing mechanism. Tester verifies: attach a 05c-shipped metagraph (with metaedges) to a 05c-shipped schema migrated to v=3 (no `MetaEdgeType` registered) under non-strict — must succeed.
+    - **add-vs-attach asymmetry on empty vocab.** `add_metaedge` raises on empty vocab; eager-attach passes silently. Documented in §C and §D. Operator workaround for "I have a schema attached but vocab is empty and I want to add a metaedge": detach → add → re-attach. Mirrors the 05b/05c precedent for IntergraphEdgeType.
+    - **Schema-mutation footgun extends** to MetaEdgeType / MetaHyperEdgeType (P8 A — same stderr warning).
+    - **Cross-vocab name collisions** allowed (P2 A); Phase 11 owns deferred flagging (future-work).
 
-  **Docs:** `docs/usage/core/metagraph-schema.md` (amended for MetaEdgeType + MetaHyperEdgeType + new CLI verbs); `docs/api/core/metagraph-schema.md` (amended); `docs/changelog/CHANGELOG.md` (Phase 05d entry); ADR-0017 amended (file edit Phase 38); ADR-0014 third amendment (file edit Phase 38).
+  **Tests (no budget cap per `feedback_test_budget_unlimited.md`):** projected coverage spans new dataclass construction + cypher regex; schema registration verbs; validation paths (type-existence, role constraints, property types); eager-attach extension (non-empty vocab pass, vocab-gap refusal, empty-vocab + non-strict pass-silently per P39 A, empty-vocab + strict refusal); add-metaedge / add-metahyperedge validation order per P44 A; add-on-empty-vocab raises; `validate` verb (pass, violation, schema-not-attached → exit 3, schema-not-found → exit 2, metagraph-not-found → exit 2, `--schema MS` opt-in path, `--json` shape per P40 A); migration v=2→v=3 schema (idempotency on re-load, defensive null→[] normalization); cross-vocab informational hint per P38 B in error message. Migrate hard-coded schema-side `_state_version` constants in `tests/phase_05c/test_state_v3_round_trip.py` (4 sites per P43 audit) to dynamic `ms_migrations.CURRENT_VERSION` form.
+
+  **Docs:** `docs/usage/core/metagraph-schema.md` (amended for MetaEdgeType + MetaHyperEdgeType + `validate` verb); `docs/api/core/metagraph-schema.md` (amended); `docs/changelog/CHANGELOG.md` (Phase 05d entry); ADR-0014 + ADR-0017 pointer lines per §H + P42 C.
+
+  **Future-work entries filed (P24 B carry-forward; P33 A removes the instance-graph forward-compat assertion from the row but keeps the future-work entry):**
+    - **(i) Instance-graph role mutability (Phase 06)** — when Phase 06 ships `mindsos_instances`, the row must lock whether instance-graphs preserve their source graph's `role` immutably or permit override. 05d does NOT pre-bind this; vocab validation reads `Graph.role` from whichever Graph object is in the metagraph regardless of base-vs-instance.
+    - **(ii) Phase 11 cross-vocab name-collision flagging** — same `name` registered in `MetaEdgeType` AND `IntergraphEdgeType` (or any cross-vocab pair) is allowed at registration; Phase 11 schema-migrator should optionally flag these collisions for review.
 
 ### Phase 06 — L1 Instancing (`mindsos_instances`)
 

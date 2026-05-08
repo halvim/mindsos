@@ -497,6 +497,12 @@ class Metagraph:
             CypherError: invalid type_name (via ``__post_init__``).
             PropertyShapeError: properties violate the contract.
         """
+        # Phase 05d (round-7 P44 A) — validation order mirrors actual
+        # 05b ``add_intergraph_edge`` precedent at metagraph.py:735-798:
+        # containment → source≠target → properties bag → (if schema)
+        # require_*_type → validate_* → validate_*_properties (strict
+        # only) → register-and-construct (cypher regex via __post_init__).
+        # Step 1-2 — graph existence.
         if source_graph_id not in self.graphs:
             raise IdentityError(
                 f"MetaEdge source {source_graph_id!r} not in metagraph "
@@ -507,14 +513,31 @@ class Metagraph:
                 f"MetaEdge target {target_graph_id!r} not in metagraph "
                 f"{self.name!r}"
             )
-        # P15 — refuse self-loop. If Phase 14 KL ever wants graph-self
-        # references, it relaxes this with explicit semantic.
+        # Step 3 — P15 self-loop refusal.
         if source_graph_id == target_graph_id:
             raise SchemaError(
                 f"MetaEdge self-loop refused (P15 lock): "
                 f"source_graph_id == target_graph_id == {source_graph_id!r}"
             )
+        # Step 4 — property bag validation (reserved-key + primitive scope).
         props = validate_user_properties(properties or {}, scope="metaedge")
+        # Steps 5-7 — schema validation when attached. Per round-7 P39 A
+        # the empty-MetaEdgeType-vocab + add_metaedge case raises
+        # ``UnknownTypeError`` regardless of strict (preserves the
+        # precedent asymmetry surfaced for IntergraphEdgeType in 05b);
+        # operator workaround: detach → add → re-attach (eager-attach is
+        # permissive on empty vocab + non-strict per attach_schema).
+        if self.schema is not None:
+            source_graph = self.graphs[source_graph_id]
+            target_graph = self.graphs[target_graph_id]
+            self.schema.require_meta_edge_type(type_name)
+            self.schema.validate_meta_edge(
+                type_name=type_name,
+                source_graph_role=source_graph.role,
+                target_graph_role=target_graph.role,
+            )
+            self.schema.validate_meta_edge_properties(type_name, props)
+        # Step 8 — construct (cypher regex fires in __post_init__).
         me = MetaEdge(
             source_graph_id=source_graph_id,
             target_graph_id=target_graph_id,
@@ -590,6 +613,11 @@ class Metagraph:
             CypherError: invalid type_name.
             PropertyShapeError: properties violate contract.
         """
+        # Phase 05d (round-7 P44 A) — validation order mirrors 05b
+        # precedent: member containment → properties bag → (if schema)
+        # require_*_type → validate_* → validate_*_properties (strict
+        # only) → register-and-construct (n≥2 + uniqueness + cypher
+        # regex via __post_init__).
         gid_list = list(graph_ids)
         for gid in gid_list:
             if gid not in self.graphs:
@@ -598,6 +626,14 @@ class Metagraph:
                     f"{self.name!r}"
                 )
         props = validate_user_properties(properties or {}, scope="metahyperedge")
+        if self.schema is not None:
+            self.schema.require_meta_hyperedge_type(type_name)
+            member_roles = [self.graphs[gid].role for gid in gid_list]
+            self.schema.validate_meta_hyperedge(
+                type_name=type_name,
+                member_graph_roles=member_roles,
+            )
+            self.schema.validate_meta_hyperedge_properties(type_name, props)
         mhe = MetaHyperEdge(
             graph_ids=gid_list,
             type_name=type_name,
@@ -1400,16 +1436,19 @@ class Metagraph:
         all-pass: ``self.schema = schema`` + ``self.schema_name =
         schema_name``.
 
-        Per Pushback 9-A scope: 05b's MetagraphSchema only carries
-        ``IntergraphEdgeType`` vocabulary; metaedges and metahyperedges
-        are NOT validated here (no ``MetaEdgeType`` / ``MetaHyperEdgeType``
-        until 05c lands them).
+        Phase 05d (round-7 P39 A) extends the walk to metaedges +
+        metahyperedges, with the empty-vocab pass-silently precedent
+        carrying forward. Push9-A (from 05b) expires here: the schema
+        now covers all four vocabularies.
 
-        Per Pushback 24-hybrid for empty MetagraphSchema (no
-        IntergraphEdgeType registered): in non-strict mode, succeed
-        silently (no edges to validate against vocab); in strict mode,
-        any pre-existing intergraph_edges fail (their type_name is not
-        in the empty vocab).
+        Per Pushback 24-hybrid (extended uniformly to all four vocabs in
+        05d): when a vocab dict is empty AND ``schema.strict`` is False,
+        the corresponding walk is skipped (existing primitives are
+        grandfathered through the migration window). When a vocab dict
+        is empty AND ``schema.strict`` is True, the walk runs and every
+        existing primitive fails (its ``type_name`` is not in the empty
+        vocab). When a vocab dict is non-empty, every primitive MUST
+        resolve through it regardless of strict.
 
         Args:
             schema: the schema instance (loaded by CLI from
@@ -1459,9 +1498,9 @@ class Metagraph:
             )
         # Phase 05c P6-A — extend eager-attach to walk
         # ``intergraph_hyperedges`` IN ADDITION to ``intergraph_edges``
-        # (which 05b already walked above). Metaedges + metahyperedges
-        # remain skipped here (Push9-A from 05b carry-forward; expires
-        # in 05d when MetaEdgeType vocab arrives).
+        # (which 05b already walked above). Phase 05d (round-7 P39 A)
+        # additionally walks metaedges + metahyperedges; Push9-A from
+        # 05b expires here.
         #
         # Per Push7-A eager-validation contract, re-attach with a schema
         # whose ``IntergraphHyperEdgeType.ordered`` setting conflicts with
@@ -1504,6 +1543,42 @@ class Metagraph:
             schema.validate_intergraph_hyperedge_properties(
                 ihe.type_name, ihe.properties
             )
+        # Phase 05d (round-7 P39 A) — empty-vocab pass-silently rule
+        # (mirrors 05b/05c "Pushback 24-hybrid" precedent for
+        # IntergraphEdgeType): if the corresponding meta-vocab is empty
+        # AND ``schema.strict`` is False, skip the walk entirely (existing
+        # metaedges grandfathered through the migration window). If the
+        # vocab is empty under strict mode, fall through to the walk —
+        # ``require_meta_*_type`` will raise on every existing primitive
+        # (matches 05b/05c precedent for IntergraphEdgeType).
+        # If the vocab is non-empty, every metaedge / metahyperedge
+        # MUST resolve through it.
+        if schema._meta_edge_types or schema.strict:
+            for me in self.metaedges.values():
+                schema.require_meta_edge_type(me.type_name)
+                source_graph = self.graphs[me.source_graph_id]
+                target_graph = self.graphs[me.target_graph_id]
+                schema.validate_meta_edge(
+                    type_name=me.type_name,
+                    source_graph_role=source_graph.role,
+                    target_graph_role=target_graph.role,
+                )
+                schema.validate_meta_edge_properties(
+                    me.type_name, me.properties
+                )
+        if schema._meta_hyperedge_types or schema.strict:
+            for mhe in self.metahyperedges.values():
+                schema.require_meta_hyperedge_type(mhe.type_name)
+                member_roles = [
+                    self.graphs[gid].role for gid in mhe.graph_ids
+                ]
+                schema.validate_meta_hyperedge(
+                    type_name=mhe.type_name,
+                    member_graph_roles=member_roles,
+                )
+                schema.validate_meta_hyperedge_properties(
+                    mhe.type_name, mhe.properties
+                )
         # All-pass — commit attachment in memory.
         self.schema = schema
         self.schema_name = schema_name

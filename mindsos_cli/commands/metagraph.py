@@ -395,11 +395,11 @@ def _state_to_metagraph(state: dict) -> Metagraph:
 
 
 def _metagraph_schema_to_state(ms: MetagraphSchema, *, name: str) -> dict:
-    """Serialize a ``MetagraphSchema`` to the v=2 state-file dict (P05b + P05c).
+    """Serialize a ``MetagraphSchema`` to the v=3 state-file dict (P05b + P05c + P05d).
 
     Per Pushback 24-hybrid + 18-A: the ``name`` is the basename (passed
     in by the CLI command since :class:`MetagraphSchema` is basename-keyed
-    on disk and has no ``name`` field). Both vocab arrays byte-stable
+    on disk and has no ``name`` field). All four vocab arrays byte-stable
     sorted by ``name``. Per-type frozensets serialized as sorted lists.
 
     Phase 05c additions:
@@ -408,12 +408,26 @@ def _metagraph_schema_to_state(ms: MetagraphSchema, *, name: str) -> dict:
       ``allowed_member_types`` / ``allowed_anchor_graphs`` /
       ``allowed_member_graphs`` instead of source/target, plus
       ``ordered: bool`` flag (default True per P18-A).
+
+    Phase 05d additions (round-7 P31 A — schema state-file v=3):
+    * ``meta_edge_types`` array — ``name`` + ``allowed_source_graphs`` +
+      ``allowed_target_graphs`` + ``property_types`` + ``description``
+      (no ``allowed_*_types``; metaedges connect graphs, not nodes).
+    * ``meta_hyperedge_types`` array — ``name`` + ``allowed_member_graphs``
+      + ``property_types`` + ``description`` (no ``ordered``; per P1 C
+      MetaHyperEdge is graph-set semantics).
     """
     iet_sorted = sorted(
         ms.intergraph_edge_types.values(), key=lambda iet: iet.name
     )
     iht_sorted = sorted(
         ms.intergraph_hyperedge_types.values(), key=lambda iht: iht.name
+    )
+    met_sorted = sorted(
+        ms.meta_edge_types.values(), key=lambda met: met.name
+    )
+    mht_sorted = sorted(
+        ms.meta_hyperedge_types.values(), key=lambda mht: mht.name
     )
     return {
         "_state_version": state_mod.METAGRAPH_SCHEMA_STATE_VERSION,
@@ -449,11 +463,35 @@ def _metagraph_schema_to_state(ms: MetagraphSchema, *, name: str) -> dict:
             }
             for iht in iht_sorted
         ],
+        # P05d — ADR-0014 third amendment (round-7 P31 A locked shape).
+        "meta_edge_types": [
+            {
+                "name": met.name,
+                "allowed_source_graphs": sorted(met.allowed_source_graphs),
+                "allowed_target_graphs": sorted(met.allowed_target_graphs),
+                "property_types": {
+                    k: v.value for k, v in met.property_types.items()
+                },
+                "description": met.description,
+            }
+            for met in met_sorted
+        ],
+        "meta_hyperedge_types": [
+            {
+                "name": mht.name,
+                "allowed_member_graphs": sorted(mht.allowed_member_graphs),
+                "property_types": {
+                    k: v.value for k, v in mht.property_types.items()
+                },
+                "description": mht.description,
+            }
+            for mht in mht_sorted
+        ],
     }
 
 
 def _state_to_metagraph_schema(state: dict) -> MetagraphSchema:
-    """Rehydrate a :class:`MetagraphSchema` from a v=2 state-file dict (P05b + P05c).
+    """Rehydrate a :class:`MetagraphSchema` from a v=3 state-file dict (P05b + P05c + P05d).
 
     Mirror of Phase 04 :class:`Schema` rehydration: cast frozensets back
     from JSON arrays; ``PropertyType`` cast from ``.value`` strings;
@@ -464,8 +502,19 @@ def _state_to_metagraph_schema(state: dict) -> MetagraphSchema:
     migration chain which populates ``intergraph_hyperedge_types: []``
     default — so the loop body below iterates an empty list on legacy
     inputs.
+
+    Phase 05d adds rehydration of ``meta_edge_types`` +
+    ``meta_hyperedge_types`` from the v=3 state-file shape (round-7
+    P31 A locked shape — no fingerprint envelope, only the two new
+    vocab arrays). v=2 state files (Phase 05c) load via the migration
+    chain which populates both arrays as ``[]`` default.
     """
-    from mindsos_core import IntergraphEdgeType, IntergraphHyperEdgeType
+    from mindsos_core import (
+        IntergraphEdgeType,
+        IntergraphHyperEdgeType,
+        MetaEdgeType,
+        MetaHyperEdgeType,
+    )
 
     ms = MetagraphSchema(strict=bool(state.get("strict", False)))
     for iet_dict in state.get("intergraph_edge_types") or []:
@@ -521,6 +570,52 @@ def _state_to_metagraph_schema(state: dict) -> MetagraphSchema:
             description=iht_dict.get("description"),
         )
         ms.add_intergraph_hyperedge_type(iht)
+    # Phase 05d — rehydrate meta_edge_types vocabulary.
+    for met_dict in state.get("meta_edge_types") or []:
+        prop_types_raw = met_dict.get("property_types") or {}
+        try:
+            prop_types = {
+                k: PropertyType(v) for k, v in prop_types_raw.items()
+            }
+        except ValueError as e:
+            raise RuntimeError(
+                f"MetagraphSchema rehydration: unrecognised PropertyType "
+                f"value in meta_edge_type {met_dict.get('name')!r}: {e}"
+            ) from e
+        met = MetaEdgeType(
+            name=met_dict["name"],
+            allowed_source_graphs=frozenset(
+                met_dict.get("allowed_source_graphs") or []
+            ),
+            allowed_target_graphs=frozenset(
+                met_dict.get("allowed_target_graphs") or []
+            ),
+            property_types=prop_types,
+            description=met_dict.get("description"),
+        )
+        ms.add_meta_edge_type(met)
+    # Phase 05d — rehydrate meta_hyperedge_types vocabulary.
+    for mht_dict in state.get("meta_hyperedge_types") or []:
+        prop_types_raw = mht_dict.get("property_types") or {}
+        try:
+            prop_types = {
+                k: PropertyType(v) for k, v in prop_types_raw.items()
+            }
+        except ValueError as e:
+            raise RuntimeError(
+                f"MetagraphSchema rehydration: unrecognised PropertyType "
+                f"value in meta_hyperedge_type "
+                f"{mht_dict.get('name')!r}: {e}"
+            ) from e
+        mht = MetaHyperEdgeType(
+            name=mht_dict["name"],
+            allowed_member_graphs=frozenset(
+                mht_dict.get("allowed_member_graphs") or []
+            ),
+            property_types=prop_types,
+            description=mht_dict.get("description"),
+        )
+        ms.add_meta_hyperedge_type(mht)
     return ms
 
 

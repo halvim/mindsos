@@ -99,6 +99,8 @@ from .schema import (
     HyperEdgeType,
     IntergraphEdgeType,
     IntergraphHyperEdgeType,
+    MetaEdgeType,
+    MetaHyperEdgeType,
     MetagraphSchema,
     NodeType,
     PropertyType,
@@ -152,7 +154,10 @@ __all__ = [
     "IntergraphEdgeType",
     "IntergraphHyperEdge",
     "IntergraphHyperEdgeType",
+    # meta-vocabs (Phase 05d — ADR-0014 third amendment)
+    "MetaEdgeType",
+    "MetaHyperEdgeType",
     "MetagraphSchema",
 ]
 
-__version__ = "0.0.0+phase05c"
+__version__ = "0.0.0+phase05d"

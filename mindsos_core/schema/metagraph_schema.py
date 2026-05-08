@@ -1,9 +1,9 @@
-"""``MetagraphSchema`` — metagraph-level schema container (Phase 05b + 05c).
+"""``MetagraphSchema`` — metagraph-level schema container (Phase 05b + 05c + 05d).
 
 Per ADR-0148 + ``confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`` §3.3, a
 metagraph schema gathers ``IntergraphEdgeType`` declarations (Phase 05b)
 plus ``IntergraphHyperEdgeType`` declarations (Phase 05c — ADR-0148
-amended). Phase 05d additionally lands ``MetaEdgeType`` +
+amended). Phase 05d (ADR-0014 third amendment) lands ``MetaEdgeType`` +
 ``MetaHyperEdgeType`` here per the 05c P1-B scope split. The schema
 attaches to a metagraph by name reference and is reusable across N
 metagraphs (Pushback 11-A); one schema attached at most per metagraph
@@ -33,11 +33,13 @@ Validation API:
 * (Phase 05c) :meth:`validate_intergraph_hyperedge_properties` —
   symmetric strict-only property-type check.
 
-Phase 05d adds (NOT in this module yet):
-* ``MetaEdgeType`` + ``MetaHyperEdgeType`` vocabularies and matching
-  validators.
-* State-file v=2 → v=3 bump (adds ``meta_edge_types`` +
-  ``meta_hyperedge_types`` arrays).
+Phase 05d (round-7 P31 A) drops the locked-design fingerprint
+mechanism entirely; the v=2 → v=3 schema state-file bump is the only
+state surface change. Empty `MetaEdgeType` / `MetaHyperEdgeType` vocab
++ non-strict eager-attach passes silently per round-7 P39 A (mirrors
+05b/05c "Pushback 24-hybrid" precedent). `add_metaedge` / `add_metahyperedge`
+on empty vocab raises `UnknownTypeError` regardless of strict (preserves
+the precedent asymmetry surfaced in 05b for `IntergraphEdgeType`).
 
 Per Pushback 19-B (round 2), eager-attach time stderr warnings on
 role-mismatch are emitted by the CLI layer (which has access to the
@@ -58,7 +60,13 @@ from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
 
 from ..cypher.identifiers import validate_edge_type_identifier
 from ..exceptions import PropertyShapeError, UnknownTypeError
-from .types import IntergraphEdgeType, IntergraphHyperEdgeType, PropertyType
+from .types import (
+    IntergraphEdgeType,
+    IntergraphHyperEdgeType,
+    MetaEdgeType,
+    MetaHyperEdgeType,
+    PropertyType,
+)
 
 
 _TYPE_PY_MAP = {
@@ -89,6 +97,12 @@ class MetagraphSchema:
         self._intergraph_hyperedge_types: Dict[
             str, IntergraphHyperEdgeType,
         ] = {}
+        # Phase 05d — MetaEdgeType + MetaHyperEdgeType vocabularies
+        # (ADR-0014 third amendment). The 4-vocab Cypher namespace policy
+        # (P2 A): same `name` MAY appear in all four vocabularies; same-
+        # name lookup hint per P38 B is informational only.
+        self._meta_edge_types: Dict[str, MetaEdgeType] = {}
+        self._meta_hyperedge_types: Dict[str, MetaHyperEdgeType] = {}
 
     # ── registration ─────────────────────────────────────────────────────
 
@@ -361,12 +375,259 @@ class MetagraphSchema:
                     f"{type(value).__name__}"
                 )
 
+    # ── Phase 05d — meta-vocab registration ──────────────────────────────
+
+    def add_meta_edge_type(self, met: MetaEdgeType) -> MetaEdgeType:
+        """Register a :class:`MetaEdgeType` (Phase 05d — ADR-0014 third amendment).
+
+        Raises:
+            CypherError: ``met.name`` fails ADR-0021 cypher rel-type regex.
+            UnknownTypeError: duplicate name. Note that the four vocabs
+                share the FalkorDB Cypher relationship namespace but are
+                tracked in separate dicts (4-vocab namespace policy P2 A);
+                duplicate-detection runs WITHIN the MetaEdgeType vocab
+                only.
+        """
+        validate_edge_type_identifier(met.name)
+        if met.name in self._meta_edge_types:
+            raise UnknownTypeError(
+                f"MetaEdge type {met.name!r} already registered"
+            )
+        self._meta_edge_types[met.name] = met
+        return met
+
+    def add_meta_hyperedge_type(
+        self, mht: MetaHyperEdgeType
+    ) -> MetaHyperEdgeType:
+        """Register a :class:`MetaHyperEdgeType` (Phase 05d — ADR-0014 third amendment).
+
+        :class:`MetaHyperEdgeType` deliberately omits the ``ordered``
+        field present on :class:`IntergraphHyperEdgeType` because
+        :class:`MetaHyperEdge` enforces graph-set uniqueness at
+        ``__post_init__`` (no duplicate-preservation use case for
+        graph-level n-ary edges). See memory
+        ``reference_mindsos_four_edge_primitives.md`` for the canonical
+        primitive distinction.
+
+        Raises:
+            CypherError: ``mht.name`` fails ADR-0021 cypher rel-type regex.
+            UnknownTypeError: duplicate name within MetaHyperEdgeType vocab.
+        """
+        validate_edge_type_identifier(mht.name)
+        if mht.name in self._meta_hyperedge_types:
+            raise UnknownTypeError(
+                f"MetaHyperEdge type {mht.name!r} already registered"
+            )
+        self._meta_hyperedge_types[mht.name] = mht
+        return mht
+
+    @property
+    def meta_edge_types(self) -> Mapping[str, MetaEdgeType]:
+        """Defensive copy of registered :class:`MetaEdgeType`."""
+        return dict(self._meta_edge_types)
+
+    def require_meta_edge_type(self, name: str) -> MetaEdgeType:
+        """Look up a :class:`MetaEdgeType` or raise.
+
+        Per round-7 P38 B (informational cross-vocab hint, no editorial
+        recommendation): when ``name`` is missing in ``MetaEdgeType`` but
+        present in ``IntergraphEdgeType``, the error message reports the
+        sibling registration as an information point. The 4-vocab
+        namespace policy (P2 A) explicitly allows same-name registration
+        across vocabs; the hint does not second-guess that choice.
+
+        Raises:
+            UnknownTypeError: type ``name`` not registered.
+        """
+        met = self._meta_edge_types.get(name)
+        if met is None:
+            sibling = (
+                "IntergraphEdgeType"
+                if name in self._intergraph_edge_types
+                else None
+            )
+            hint = (
+                f" Name {name!r} is registered in {sibling} but not in "
+                f"MetaEdgeType."
+                if sibling
+                else ""
+            )
+            raise UnknownTypeError(
+                f"Unknown meta-edge type: {name!r}.{hint}"
+            )
+        return met
+
+    @property
+    def meta_hyperedge_types(self) -> Mapping[str, MetaHyperEdgeType]:
+        """Defensive copy of registered :class:`MetaHyperEdgeType`."""
+        return dict(self._meta_hyperedge_types)
+
+    def require_meta_hyperedge_type(self, name: str) -> MetaHyperEdgeType:
+        """Look up a :class:`MetaHyperEdgeType` or raise.
+
+        Per round-7 P38 B (informational cross-vocab hint): when ``name``
+        is missing in ``MetaHyperEdgeType`` but present in
+        ``IntergraphHyperEdgeType``, the error reports the sibling.
+
+        Raises:
+            UnknownTypeError: type ``name`` not registered.
+        """
+        mht = self._meta_hyperedge_types.get(name)
+        if mht is None:
+            sibling = (
+                "IntergraphHyperEdgeType"
+                if name in self._intergraph_hyperedge_types
+                else None
+            )
+            hint = (
+                f" Name {name!r} is registered in {sibling} but not in "
+                f"MetaHyperEdgeType."
+                if sibling
+                else ""
+            )
+            raise UnknownTypeError(
+                f"Unknown meta-hyperedge type: {name!r}.{hint}"
+            )
+        return mht
+
+    # ── Phase 05d — meta-vocab validation ────────────────────────────────
+
+    def validate_meta_edge(
+        self,
+        type_name: str,
+        source_graph_role: "str | None",
+        target_graph_role: "str | None",
+    ) -> None:
+        """Enforce type-existence + role constraints for meta-edge (Phase 05d).
+
+        Always runs (independent of ``self.strict``). Empty frozenset on
+        any allowed-* axis means "any". ``Graph.role=None`` is
+        unmatchable when the corresponding ``allowed_*_graphs`` is
+        non-empty (Python set membership semantics).
+
+        Raises:
+            UnknownTypeError: type not registered, or any role constraint
+                violated. Error message names which constraint failed.
+        """
+        met = self.require_meta_edge_type(type_name)
+        if (
+            met.allowed_source_graphs
+            and source_graph_role not in met.allowed_source_graphs
+        ):
+            raise UnknownTypeError(
+                f"MetaEdge type {type_name!r} does not permit source "
+                f"graph role {source_graph_role!r} "
+                f"(allowed_source_graphs: "
+                f"{sorted(met.allowed_source_graphs)})"
+            )
+        if (
+            met.allowed_target_graphs
+            and target_graph_role not in met.allowed_target_graphs
+        ):
+            raise UnknownTypeError(
+                f"MetaEdge type {type_name!r} does not permit target "
+                f"graph role {target_graph_role!r} "
+                f"(allowed_target_graphs: "
+                f"{sorted(met.allowed_target_graphs)})"
+            )
+
+    def validate_meta_edge_properties(
+        self, type_name: str, properties: Mapping[str, Any]
+    ) -> None:
+        """Enforce strict per-type property-type checks when ``strict=True``.
+
+        Mirrors :meth:`validate_intergraph_edge_properties`. Phase 04
+        :meth:`Schema.validate_node_properties` precedent: this method
+        early-returns when ``not self.strict``. Type-existence is
+        re-checked here so callers can invoke standalone.
+        """
+        if not self.strict:
+            return
+        met = self.require_meta_edge_type(type_name)
+        for key, value in properties.items():
+            if key.startswith("ref:"):
+                continue
+            expected = met.property_types.get(key)
+            if expected is None:
+                if met.property_types:
+                    raise PropertyShapeError(
+                        f"meta-edge type {type_name!r} has strict "
+                        f"property typing but property {key!r} is not "
+                        f"declared"
+                    )
+                continue
+            if not _matches_type(value, expected):
+                raise PropertyShapeError(
+                    f"meta-edge type {type_name!r} property {key!r} "
+                    f"expected {expected.value}, got {type(value).__name__}"
+                )
+
+    def validate_meta_hyperedge(
+        self,
+        type_name: str,
+        member_graph_roles: Iterable["str | None"],
+    ) -> None:
+        """Enforce type-existence + role constraints for meta-hyperedge (Phase 05d).
+
+        Always runs (independent of ``self.strict``). The iterable
+        carries one entry per member graph; iteration order is
+        non-positional (set membership). Empty frozenset on
+        ``allowed_member_graphs`` means "any".
+
+        Raises:
+            UnknownTypeError: type not registered, or any member role
+                constraint violated. Error message names the offending
+                role.
+        """
+        mht = self.require_meta_hyperedge_type(type_name)
+        if mht.allowed_member_graphs:
+            for mrole in member_graph_roles:
+                if mrole not in mht.allowed_member_graphs:
+                    raise UnknownTypeError(
+                        f"MetaHyperEdge type {type_name!r} does not "
+                        f"permit member graph role {mrole!r} "
+                        f"(allowed_member_graphs: "
+                        f"{sorted(mht.allowed_member_graphs)})"
+                    )
+
+    def validate_meta_hyperedge_properties(
+        self, type_name: str, properties: Mapping[str, Any]
+    ) -> None:
+        """Enforce strict per-type property-type checks when ``strict=True``.
+
+        Mirrors :meth:`validate_meta_edge_properties` symmetric for the
+        n-ary primitive.
+        """
+        if not self.strict:
+            return
+        mht = self.require_meta_hyperedge_type(type_name)
+        for key, value in properties.items():
+            if key.startswith("ref:"):
+                continue
+            expected = mht.property_types.get(key)
+            if expected is None:
+                if mht.property_types:
+                    raise PropertyShapeError(
+                        f"meta-hyperedge type {type_name!r} has strict "
+                        f"property typing but property {key!r} is not "
+                        f"declared"
+                    )
+                continue
+            if not _matches_type(value, expected):
+                raise PropertyShapeError(
+                    f"meta-hyperedge type {type_name!r} property "
+                    f"{key!r} expected {expected.value}, got "
+                    f"{type(value).__name__}"
+                )
+
     def __repr__(self) -> str:
         return (
             f"MetagraphSchema(strict={self.strict}, "
             f"intergraph_edge_types={len(self._intergraph_edge_types)}, "
             f"intergraph_hyperedge_types="
-            f"{len(self._intergraph_hyperedge_types)})"
+            f"{len(self._intergraph_hyperedge_types)}, "
+            f"meta_edge_types={len(self._meta_edge_types)}, "
+            f"meta_hyperedge_types={len(self._meta_hyperedge_types)})"
         )
 
 

@@ -1,4 +1,15 @@
-"""Phase 05c — metagraph state-file v=3 round-trip + migration tests."""
+"""Phase 05c — metagraph state-file v=3 round-trip + migration tests.
+
+Phase 05d round-7 P43 audit: schema-side ``_state_version`` constants
+in this file were hard-coded to ``2`` under the 05c shipped baseline.
+Phase 05d bumps the metagraph-schema state file v=2 → v=3 (round-7
+P31 A — only state-file bump that ships in 05d). Schema-side
+assertions migrated to dynamic ``ms_migrations.CURRENT_VERSION`` so
+the 05c step-coverage in this file survives the 05d bump unchanged.
+Metagraph-side assertions (``state_mod.METAGRAPH_STATE_VERSION ==
+3``) remain hard-coded to 3 because the metagraph state file is
+NOT bumped in 05d (P31 A removed the fingerprint mechanism).
+"""
 
 from __future__ import annotations
 
@@ -13,10 +24,18 @@ from mindsos_cli.migrations import metagraph_schema as ms_migrations
 
 class TestStateVersionConstants:
     def test_metagraph_state_version_is_3(self):
+        # Phase 05d: metagraph state file stays at v=3 (P31 A —
+        # fingerprint mechanism dropped, no bump). This assertion
+        # therefore remains valid under 05d.
         assert state_mod.METAGRAPH_STATE_VERSION == 3
 
-    def test_metagraph_schema_state_version_is_2(self):
-        assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 2
+    def test_metagraph_schema_state_version_at_current(self):
+        # Phase 05d (round-7 P43): dynamic — schema bumps v=2 → v=3
+        # under 05d's only state-file bump.
+        assert (
+            state_mod.METAGRAPH_SCHEMA_STATE_VERSION
+            == ms_migrations.CURRENT_VERSION
+        )
 
 
 class TestMetagraphMigrationV2ToV3:
@@ -86,7 +105,10 @@ class TestMetagraphSchemaMigrationV1ToV2:
             "intergraph_edge_types": [],
         }
         result = ms_migrations.migrate(v1)
-        assert result["_state_version"] == 2
+        # Phase 05d round-7 P43: dynamic — under 05d the chain advances
+        # v=1 → v=3. The v=1→v=2 step's payload (intergraph_hyperedge_types)
+        # survives subsequent steps.
+        assert result["_state_version"] == ms_migrations.CURRENT_VERSION
         assert result["intergraph_hyperedge_types"] == []
 
     def test_v1_preserves_existing_intergraph_edge_types(self):
@@ -100,7 +122,12 @@ class TestMetagraphSchemaMigrationV1ToV2:
         assert result["intergraph_edge_types"] == [{"name": "EVOKES"}]
         assert result["strict"] is True
 
-    def test_v2_idempotent(self):
+    def test_v2_advances_to_current(self):
+        """Phase 05d round-7 P43: under 05c, v=2 was idempotent. Under 05d
+        the chain advances v=2 → v=3 (adding meta_edge_types +
+        meta_hyperedge_types defaults). Dynamic CURRENT_VERSION
+        future-proofs.
+        """
         v2 = {
             "_state_version": 2,
             "name": "ms",
@@ -109,12 +136,16 @@ class TestMetagraphSchemaMigrationV1ToV2:
             "intergraph_hyperedge_types": [{"name": "COMPOSED_OF"}],
         }
         result = ms_migrations.migrate(v2)
-        assert result["_state_version"] == 2
+        assert result["_state_version"] == ms_migrations.CURRENT_VERSION
         assert result["intergraph_hyperedge_types"] == [{"name": "COMPOSED_OF"}]
 
-    def test_v3_forward_refused(self):
-        with pytest.raises(ValueError, match="v2"):
-            ms_migrations.migrate({"_state_version": 3, "name": "test"})
+    def test_forward_version_refused(self):
+        # Phase 05d round-7 P43: dynamic — fixture uses
+        # CURRENT_VERSION + 1 so the test moves with future bumps.
+        forward = ms_migrations.CURRENT_VERSION + 1
+        with pytest.raises(ValueError) as exc:
+            ms_migrations.migrate({"_state_version": forward, "name": "test"})
+        assert f"v{ms_migrations.CURRENT_VERSION}" in str(exc.value)
 
 
 class TestRoundTripMetagraphV3:

@@ -194,3 +194,79 @@ class IntergraphHyperEdgeType:
 
     def __repr__(self) -> str:
         return f"IntergraphHyperEdgeType({self.name!r})"
+
+
+@dataclass(frozen=True)
+class MetaEdgeType:
+    """Declaration of a binary meta-edge type (Phase 05d — ADR-0014 third amendment).
+
+    Used by :class:`MetagraphSchema` to validate :class:`MetaEdge`
+    instances at metagraph factory time. Connects GRAPHS within a
+    metagraph (not nodes). Mirrors :class:`IntergraphEdgeType`'s
+    constraint surface MINUS ``allowed_*_types`` because metaedge
+    primitives connect graphs (not nodes).
+
+    Per round-7 P44 A (mirror real 05b precedent), ``add_metaedge``
+    validation order: containment → source≠target → properties bag → (if
+    schema) ``require_meta_edge_type`` → ``validate_meta_edge`` →
+    ``validate_meta_edge_properties`` (strict only) → register-and-construct
+    (cypher regex via ``__post_init__``).
+
+    Empty frozenset on any allowed-* field means "any" (mirrors
+    :class:`EdgeType` / :class:`IntergraphEdgeType` precedent).
+    ``Graph.role=None`` is unmatchable when the constraint is non-empty
+    (Python set membership semantics).
+
+    The type ``name`` is the Cypher relationship identifier (ADR-0021
+    regex enforced at registration in :class:`MetagraphSchema`).
+
+    Per Pushback 5-A precedent, ``property_types`` enforcement gates
+    only when the owning :class:`MetagraphSchema` has ``strict=True``.
+    """
+
+    name: str
+    allowed_source_graphs: FrozenSet[str] = field(default_factory=frozenset)
+    allowed_target_graphs: FrozenSet[str] = field(default_factory=frozenset)
+    property_types: Dict[str, PropertyType] = field(default_factory=dict)
+    description: Optional[str] = None
+
+    def __repr__(self) -> str:
+        return f"MetaEdgeType({self.name!r})"
+
+
+@dataclass(frozen=True)
+class MetaHyperEdgeType:
+    """Declaration of an n-ary meta-hyperedge type (Phase 05d — ADR-0014 third amendment).
+
+    Used by :class:`MetagraphSchema` to validate :class:`MetaHyperEdge`
+    instances at metagraph factory time. Connects N≥2 GRAPHS within a
+    metagraph (graph-set semantics: uniqueness enforced at
+    ``MetaHyperEdge.__post_init__`` line 194).
+
+    **Deliberately omits ``ordered`` field (P1 C lock).** The 05c P18-A
+    rationale (cat=c+a+t case requires duplicate node membership)
+    applies ONLY to :class:`IntergraphHyperEdgeType` because its members
+    are nodes (which can repeat). :class:`MetaHyperEdge` graph_ids are
+    set-unique at construction; no duplicate-preservation use case
+    exists. See memory ``reference_mindsos_four_edge_primitives.md``.
+
+    **Deliberately omits ``allowed_member_types``** because metahyperedge
+    primitives connect graphs (not nodes). Cardinality (n≥2) is enforced
+    at the primitive (``metagraph.py:188-192``); type vocab adds role +
+    property constraints only.
+
+    Empty frozenset on ``allowed_member_graphs`` means "any" (mirrors
+    sibling vocab precedent). ``Graph.role=None`` is unmatchable when
+    non-empty.
+
+    The type ``name`` is the Cypher relationship identifier (ADR-0021
+    regex enforced at registration).
+    """
+
+    name: str
+    allowed_member_graphs: FrozenSet[str] = field(default_factory=frozenset)
+    property_types: Dict[str, PropertyType] = field(default_factory=dict)
+    description: Optional[str] = None
+
+    def __repr__(self) -> str:
+        return f"MetaHyperEdgeType({self.name!r})"
