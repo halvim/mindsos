@@ -1361,6 +1361,12 @@ def add_metaedge_cmd(
     except PropertyShapeError as e:
         typer.echo(f"PropertyShapeError: {e}", err=True)
         raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        # Phase 05d hotfix B-05d-T2: schema-attached path raises
+        # UnknownTypeError on vocab gap or role-constraint violation;
+        # mirror sibling 05b/05c add-* handlers' clean-exit pattern.
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
     _save_or_die(name, mg)
     if json_out:
         typer.echo(
@@ -1471,6 +1477,11 @@ def add_metahyperedge_cmd(
         raise typer.Exit(code=1)
     except PropertyShapeError as e:
         typer.echo(f"PropertyShapeError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        # Phase 05d hotfix B-05d-T2: schema-attached path raises
+        # UnknownTypeError on vocab gap or role-constraint violation.
+        typer.echo(f"UnknownTypeError: {e}", err=True)
         raise typer.Exit(code=1)
     _save_or_die(name, mg)
     # Q3-A — sort by graph_name for byte-stable output.

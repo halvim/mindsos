@@ -133,6 +133,14 @@ canonical in-container run.
 
 **Action item for future phases:** Step 0 audit scope should be ALL test files, not just the recent-phase test directories. The phase-row prompt template should be widened.
 
+#### B-05d-T2 (manual exploration Task 5): `add-metaedge` / `add-metahyperedge` CLI handlers leaked `UnknownTypeError` as Rich traceback instead of clean exit-1 + stderr.
+
+**Surfaced:** Tester ran `mindsos metagraph add-metaedge --type UNDECLARED` against an attached schema with non-empty `meta_edge_types` vocab. Factory raised `UnknownTypeError` correctly; CLI handler didn't catch it.
+
+**Cause:** Handler `try/except` block caught `SchemaError`, `CypherError`, `IdentityError`, `PropertyShapeError` but not `UnknownTypeError`. Existing 05b/05c add-* handlers caught it because their factories already raised it pre-05d (vocab existence enforced); 05d's `add_metaedge` / `add_metahyperedge` started raising it for the first time and the handler block didn't keep up.
+
+**Fix:** Added `except UnknownTypeError` arm to both handlers in `mindsos_cli/commands/metagraph.py` (`add_metaedge_cmd` + `add_metahyperedge_cmd`), mirroring the sibling pattern.
+
 ---
 
 ## §4 Implementation pushbacks (P45+)
