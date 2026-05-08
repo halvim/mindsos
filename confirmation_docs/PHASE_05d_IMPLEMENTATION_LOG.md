@@ -123,7 +123,15 @@ canonical in-container run.
 
 ### In-container bugs
 
-*(Filled by tester during the canonical in-container run.)*
+#### B-05d-T1 (CI test job, run 25556420410): hard-coded `METAGRAPH_SCHEMA_STATE_VERSION == 2` in `tests/phase_04/test_state.py:243`.
+
+**Surfaced:** GitHub Actions cumulative test run; `1 failed, 1012 passed, 2 skipped`.
+
+**Cause:** Step 0 audit was scoped to `tests/phase_05a/test_state*.py` / `phase_05b/test_state_v2.py` / `phase_05c/test_state_v3_round_trip.py` per the design-chat handoff prompt. `tests/phase_04/test_state.py::test_graph_state_version_constants_split` was outside that scope and held a hard-coded `assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 2` (literal) plus three siblings. Under 05d's bump, the constant becomes 3 → assertion fails.
+
+**Fix:** Migrated all four constant assertions in the test to dynamic `<...>_migrations.CURRENT_VERSION` form. Future bumps survive without test churn.
+
+**Action item for future phases:** Step 0 audit scope should be ALL test files, not just the recent-phase test directories. The phase-row prompt template should be widened.
 
 ---
 
