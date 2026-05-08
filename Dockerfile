@@ -92,6 +92,18 @@ COPY mindsos_cli ./mindsos_cli
 #            (P6-A); RESERVED_PROPERTY_KEYS extended with
 #            intergraph_hyperedges / intergraph_hyperedge_types /
 #            anchors / members.
+# Phase 05d: MetaEdgeType + MetaHyperEdgeType added to
+#            mindsos_core/schema/types.py (no new file); MetagraphSchema
+#            extended with meta_edge_types + meta_hyperedge_types vocabs
+#            + matching validators (round-7 P31 A drops the
+#            locked-design fingerprint mechanism — only schema
+#            state-file v=2→v=3 ships in 05d); attach_schema
+#            eager-pass extended to walk metaedges + metahyperedges
+#            with empty-vocab pass-silently rule (round-7 P39 A);
+#            add_metaedge / add_metahyperedge factories run vocab
+#            validation per round-7 P44 A (mirrors actual 05b
+#            precedent). New `mindsos metagraph-schema add-meta-edge-type`
+#            + `add-meta-hyperedge-type` + read-only `validate` verbs.
 COPY mindsos_core ./mindsos_core
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
@@ -107,6 +119,8 @@ COPY mindsos_core ./mindsos_core
 # + mindsos_cli/migrations/metagraph_schema.py.
 # Phase 05c additions (sentinel-tracked):
 # mindsos_core/models/intergraph_hyperedge.py.
+# Phase 05d adds NO new sentinel-tracked files (additive: extends
+# existing types.py + metagraph_schema.py + metagraph.py + CLI).
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
@@ -151,6 +165,7 @@ COPY tests ./tests
 # mindsos_cli/commands/metagraph_schema.py +
 # mindsos_cli/migrations/metagraph_schema.py.
 # Phase 05c adds 1 entry: mindsos_core/models/intergraph_hyperedge.py.
+# Phase 05d adds NO new sentinel-tracked test inputs (additive).
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs

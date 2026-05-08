@@ -1,11 +1,61 @@
 ---
-last_confirmed_phase: 05c
+last_confirmed_phase: 05d
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 05d — L1 MetaEdgeType + MetaHyperEdgeType vocab + eager-attach extension (2026-05-07)
+
+**`MetaEdgeType` + `MetaHyperEdgeType` vocabs ship on `MetagraphSchema`**
+per ADR-0014 third amendment + 6-round-locked PHASE_MAP §5 row + a
+round-7 reanalysis pass (P31–P44) that materially reshaped the row
+before code landed. Round-7 pushback ledger at
+`confirmation_docs/PHASE_05d_IMPLEMENTATION_LOG.md` §1.
+
+* **Round-7 P31 A** — Drop the locked-design fingerprint mechanism
+  entirely. No `last_attached_vocab_fingerprint`. No
+  `--accept-vocab-change` flag on `attach-schema`. No metagraph
+  state-file bump. Eager-attach + new walk extension is the consent
+  surface.
+* **Round-7 P32 A** — `mindsos metagraph-schema validate --metagraph
+  MG [--schema MS]` ships read-only. `--schema MS` opt-in validates
+  against an explicit schema without touching `MG.schema_name`.
+  Useful for dry-running schema edits before attach.
+* **Round-7 P33 A** — Strike P11 A's instance-graph forward-compat
+  assertion. Phase 06 owns the role mutability decision.
+* **Round-7 P38 B** — Cross-vocab same-name lookup hint becomes
+  informational only (no editorial recommendation about vocab
+  segregation; the 4-vocab namespace policy explicitly allows it).
+* **Round-7 P39 A** — Empty `MetaEdgeType` / `MetaHyperEdgeType` vocab
+  + non-strict eager-attach passes silently (mirrors 05b/05c
+  Pushback 24-hybrid precedent for `IntergraphEdgeType`). Closes the
+  05c-migration regression vector. `add_metaedge` / `add_metahyperedge`
+  on empty vocab raises `UnknownTypeError` regardless of strict
+  (precedent asymmetry preserved).
+* **Round-7 P40 A** — `validate --json` shape drops the now-meaningless
+  `vocab_fingerprint_match` field.
+* **Round-7 P41 A** — Exit codes split: 0 pass, 1 violation, 2
+  resource-not-found, 3 no-usable-schema.
+* **Round-7 P42 C** — One-line pointer added to `0014.md` + `0017.md`
+  ("See `confirmation_docs/PHASE_MAP.md` §5 for amendments through
+  Phase 05d") replaces inline transcription. Full transcription stays
+  Phase 38.
+* **Round-7 P44 A** — `add_metaedge` / `add_metahyperedge` validation
+  order mirrors actual 05b `add_intergraph_edge` precedent at
+  `metagraph.py:735-798` (containment first; cypher regex deferred to
+  `__post_init__`). The original P5 A claim "mirrors 05b precedent"
+  was factually wrong — verified against source.
+* **State-file bump** — `metagraph-schema-<n>.json` v=2 → v=3 (adds
+  `meta_edge_types: []` + `meta_hyperedge_types: []` defaults; defensive
+  null→[] normalization). `metagraph-<n>.json` stays at v=3.
+
+Net new code: ~80 LOC vocab dataclasses + ~280 LOC `MetagraphSchema`
+extension methods + ~50 LOC `attach_schema` walk extension + ~40 LOC
+factory wiring + ~50 LOC migration step + ~250 LOC CLI verbs (3 new) +
+~140 LOC `_walk_for_violations` helper + tests in `tests/phase_05d/`.
 
 ## Phase 05c — L1 IntergraphHyperEdge (n-ary, NOT 1-1) + IntergraphHyperEdgeType + replace-only update verb (2026-05-06)
 

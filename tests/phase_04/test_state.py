@@ -237,9 +237,19 @@ def test_graph_state_version_constants_split(_isolated_state_dir):
     ``state_mod.GRAPH_STATE_VERSION`` dynamically rather than hard-coding
     the int.
     """
-    assert state_mod.GRAPH_STATE_VERSION == 4   # Phase 05a (unchanged in 05b/05c).
-    assert state_mod.SCHEMA_STATE_VERSION == 2  # Phase 04-v2 (unchanged in 05a/05b/05c).
-    assert state_mod.METAGRAPH_STATE_VERSION == 3  # Phase 05c — bumped from 2 (smaller-items fold).
-    assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 2  # Phase 05c — bumped from 1.
+    # Per-kind constants drift across phases; assert against the canonical
+    # migration-chain CURRENT_VERSION so this test survives future bumps
+    # without requiring a chain of hard-coded literals (Phase 05d hotfix
+    # B-05d-T1: was hard-coded to 2 for METAGRAPH_SCHEMA_STATE_VERSION;
+    # 05d bump v=2→v=3 surfaced the regression in CI).
+    from mindsos_cli.migrations import graph as graph_migrations
+    from mindsos_cli.migrations import schema as schema_migrations
+    from mindsos_cli.migrations import metagraph as mg_migrations
+    from mindsos_cli.migrations import metagraph_schema as ms_migrations
+
+    assert state_mod.GRAPH_STATE_VERSION == graph_migrations.CURRENT_VERSION
+    assert state_mod.SCHEMA_STATE_VERSION == schema_migrations.CURRENT_VERSION
+    assert state_mod.METAGRAPH_STATE_VERSION == mg_migrations.CURRENT_VERSION
+    assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == ms_migrations.CURRENT_VERSION
     # Backward-compat alias points at GRAPH_STATE_VERSION.
     assert state_mod.STATE_VERSION == state_mod.GRAPH_STATE_VERSION

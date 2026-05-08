@@ -64,7 +64,10 @@ from mindsos_core import (
     CypherError,
     IntergraphEdgeType,
     IntergraphHyperEdgeType,
+    MetaEdgeType,
+    MetaHyperEdgeType,
     MetagraphSchema,
+    PropertyShapeError,
     PropertyType,
     UnknownTypeError,
 )
@@ -230,6 +233,8 @@ def create_cmd(
                     "strict": strict,
                     "intergraph_edge_types": [],
                     "intergraph_hyperedge_types": [],
+                    "meta_edge_types": [],
+                    "meta_hyperedge_types": [],
                     "state_file": str(path),
                 },
                 indent=2,
@@ -238,7 +243,8 @@ def create_cmd(
     else:
         typer.echo(
             f"created: name={name} strict={strict} "
-            f"intergraph_edge_types=0 intergraph_hyperedge_types=0"
+            f"intergraph_edge_types=0 intergraph_hyperedge_types=0 "
+            f"meta_edge_types=0 meta_hyperedge_types=0"
         )
         typer.echo(f"state_file={path}")
 
@@ -255,17 +261,22 @@ def inspect_cmd(
 ) -> None:
     """Report the schema's vocabulary + counts for the named metagraph-schema.
 
-    JSON shape (Phase 05c — extends 05b shape with intergraph_hyperedge_types):
+    JSON shape (Phase 05d — extends 05c shape with meta_edge_types +
+    meta_hyperedge_types):
 
         {
           "name": "<n>",
           "strict": <bool>,
           "counts": {
             "intergraph_edge_types": int,
-            "intergraph_hyperedge_types": int             # P05c
+            "intergraph_hyperedge_types": int,            # P05c
+            "meta_edge_types": int,                       # P05d
+            "meta_hyperedge_types": int                   # P05d
           },
           "intergraph_edge_types": [...sorted by name],
-          "intergraph_hyperedge_types": [...sorted by name],   # P05c
+          "intergraph_hyperedge_types": [...sorted by name],
+          "meta_edge_types": [...sorted by name],         # P05d
+          "meta_hyperedge_types": [...sorted by name],    # P05d
           "_state_version": int,
           "state_file": "<path>",
           "attached_metagraphs": [...sorted names]
@@ -278,12 +289,20 @@ def inspect_cmd(
     iht_sorted = sorted(
         ms.intergraph_hyperedge_types.values(), key=lambda iht: iht.name
     )
+    met_sorted = sorted(
+        ms.meta_edge_types.values(), key=lambda met: met.name
+    )
+    mht_sorted = sorted(
+        ms.meta_hyperedge_types.values(), key=lambda mht: mht.name
+    )
     summary = {
         "name": name,
         "strict": ms.strict,
         "counts": {
             "intergraph_edge_types": len(ms.intergraph_edge_types),
             "intergraph_hyperedge_types": len(ms.intergraph_hyperedge_types),
+            "meta_edge_types": len(ms.meta_edge_types),
+            "meta_hyperedge_types": len(ms.meta_hyperedge_types),
         },
         "intergraph_edge_types": [
             {
@@ -314,6 +333,30 @@ def inspect_cmd(
             }
             for iht in iht_sorted
         ],
+        # P05d — meta-vocab additions.
+        "meta_edge_types": [
+            {
+                "name": met.name,
+                "allowed_source_graphs": sorted(met.allowed_source_graphs),
+                "allowed_target_graphs": sorted(met.allowed_target_graphs),
+                "property_types": {
+                    k: v.value for k, v in met.property_types.items()
+                },
+                "description": met.description,
+            }
+            for met in met_sorted
+        ],
+        "meta_hyperedge_types": [
+            {
+                "name": mht.name,
+                "allowed_member_graphs": sorted(mht.allowed_member_graphs),
+                "property_types": {
+                    k: v.value for k, v in mht.property_types.items()
+                },
+                "description": mht.description,
+            }
+            for mht in mht_sorted
+        ],
         "_state_version": state_mod.METAGRAPH_SCHEMA_STATE_VERSION,
         "state_file": str(state_mod.metagraph_schema_file_path(name)),
         "attached_metagraphs": sorted(_find_attached_metagraphs(name)),
@@ -324,7 +367,9 @@ def inspect_cmd(
         typer.echo(f"name={name} strict={ms.strict}")
         typer.echo(
             f"intergraph_edge_types={summary['counts']['intergraph_edge_types']} "
-            f"intergraph_hyperedge_types={summary['counts']['intergraph_hyperedge_types']}"
+            f"intergraph_hyperedge_types={summary['counts']['intergraph_hyperedge_types']} "
+            f"meta_edge_types={summary['counts']['meta_edge_types']} "
+            f"meta_hyperedge_types={summary['counts']['meta_hyperedge_types']}"
         )
         for iet in iet_sorted:
             typer.echo(
@@ -342,6 +387,17 @@ def inspect_cmd(
                 f"anchor_graphs={sorted(iht.allowed_anchor_graphs) or 'any'} "
                 f"member_graphs={sorted(iht.allowed_member_graphs) or 'any'} "
                 f"ordered={iht.ordered}"
+            )
+        for met in met_sorted:
+            typer.echo(
+                f"  me:{met.name}: "
+                f"source_graphs={sorted(met.allowed_source_graphs) or 'any'} "
+                f"target_graphs={sorted(met.allowed_target_graphs) or 'any'}"
+            )
+        for mht in mht_sorted:
+            typer.echo(
+                f"  mh:{mht.name}: "
+                f"member_graphs={sorted(mht.allowed_member_graphs) or 'any'}"
             )
         typer.echo(f"attached_metagraphs={summary['attached_metagraphs']}")
         typer.echo(f"state_file={summary['state_file']}")
@@ -393,6 +449,13 @@ def list_schemas_cmd(
                 "intergraph_hyperedge_types_count": len(
                     state.get("intergraph_hyperedge_types") or []
                 ),
+                # P05d additions.
+                "meta_edge_types_count": len(
+                    state.get("meta_edge_types") or []
+                ),
+                "meta_hyperedge_types_count": len(
+                    state.get("meta_hyperedge_types") or []
+                ),
                 "_state_version": state.get("_state_version"),
                 "path": str(path),
             }
@@ -421,7 +484,9 @@ def list_schemas_cmd(
                     f"v={e['_state_version']}  "
                     f"intergraph_edge_types={e['intergraph_edge_types_count']} "
                     f"intergraph_hyperedge_types="
-                    f"{e['intergraph_hyperedge_types_count']}"
+                    f"{e['intergraph_hyperedge_types_count']} "
+                    f"meta_edge_types={e['meta_edge_types_count']} "
+                    f"meta_hyperedge_types={e['meta_hyperedge_types_count']}"
                 )
 
 
@@ -808,6 +873,470 @@ def add_intergraph_hyperedge_type_cmd(
             f"schema {schema!r} (ordered={iht.ordered}; attached to "
             f"{len(attached)} metagraph(s))"
         )
+
+
+# ---------------------------------------------------------------------------
+# add-meta-edge-type (Phase 05d — round-7 P31 A)
+# ---------------------------------------------------------------------------
+
+
+@metagraph_schema_app.command("add-meta-edge-type")
+def add_meta_edge_type_cmd(
+    schema: str = typer.Option(..., "--schema", help="MetagraphSchema name."),
+    type_name: str = typer.Option(
+        ..., "--type-name",
+        help="Cypher rel-type (must match ^[A-Z][A-Z0-9_]{0,63}$ per ADR-0021).",
+    ),
+    allowed_source_graph: List[str] = typer.Option(
+        [], "--allowed-source-graph",
+        help="Repeat: Graph.role allowed as source. Empty = any role.",
+    ),
+    allowed_target_graph: List[str] = typer.Option(
+        [], "--allowed-target-graph",
+        help="Repeat: Graph.role allowed as target. Empty = any role.",
+    ),
+    prop_type: List[str] = typer.Option(
+        [], "--prop-type",
+        help="Repeat: k=<vocab>. Vocab is one of "
+             "string/int/float/bool/list[string]/list[int]/list[float]/list[bool].",
+    ),
+    description: Optional[str] = typer.Option(
+        None, "--description", help="Optional human-readable description.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Register a :class:`MetaEdgeType` on the named schema (Phase 05d).
+
+    Per round-7 P8 A (carry-forward from 05c P12-A; carry-forward from
+    05b Pushback 23-A), if the schema is currently attached to one or
+    more metagraphs, a stderr warning lists them — schema mutation is
+    the documented Phase 04 footgun: attached metagraphs do NOT
+    re-validate against the new vocabulary until the tester re-attaches.
+
+    No node-type constraints (``allowed_*_types``) — meta-edges connect
+    graphs (not nodes). Only role-based graph constraints apply.
+    """
+    ms = _load_or_die(schema)
+    prop_types: Dict[str, PropertyType] = {}
+    for pt_arg in prop_type or []:
+        k, v = _parse_prop_type(pt_arg)
+        prop_types[k] = v
+    met = MetaEdgeType(
+        name=type_name,
+        allowed_source_graphs=frozenset(allowed_source_graph or []),
+        allowed_target_graphs=frozenset(allowed_target_graph or []),
+        property_types=prop_types,
+        description=description,
+    )
+    try:
+        ms.add_meta_edge_type(met)
+    except CypherError as e:
+        typer.echo(f"CypherError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    # P8 A — schema-mutation footgun warning (mirror 05b Pushback 23-A).
+    attached = _find_attached_metagraphs(schema)
+    if attached:
+        typer.echo(
+            f"warning: schema {schema!r} is currently attached to "
+            f"{len(attached)} metagraph(s): {sorted(attached)!r}. "
+            f"Adding {type_name!r} does NOT trigger re-validation; "
+            f"existing metaedges in those metagraphs may now violate "
+            f"the (extended) schema. Run 'mindsos metagraph "
+            f"attach-schema --name <MG> --schema {schema}' on each to "
+            f"surface drift (P8 A — schema-mutation footgun).",
+            err=True,
+        )
+
+    _save_or_die(schema, ms)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "schema": schema,
+                    "type_name": met.name,
+                    "allowed_source_graphs": sorted(met.allowed_source_graphs),
+                    "allowed_target_graphs": sorted(met.allowed_target_graphs),
+                    "property_types": {
+                        k: v.value for k, v in met.property_types.items()
+                    },
+                    "description": met.description,
+                    "attached_metagraphs": sorted(attached),
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(
+            f"ok: registered MetaEdgeType {met.name!r} on schema "
+            f"{schema!r} (attached to {len(attached)} metagraph(s))"
+        )
+
+
+# ---------------------------------------------------------------------------
+# add-meta-hyperedge-type (Phase 05d — round-7 P31 A; NO --ordered/--unordered)
+# ---------------------------------------------------------------------------
+
+
+@metagraph_schema_app.command("add-meta-hyperedge-type")
+def add_meta_hyperedge_type_cmd(
+    schema: str = typer.Option(..., "--schema", help="MetagraphSchema name."),
+    type_name: str = typer.Option(
+        ..., "--type-name",
+        help="Cypher rel-type (must match ^[A-Z][A-Z0-9_]{0,63}$ per ADR-0021).",
+    ),
+    allowed_member_graph: List[str] = typer.Option(
+        [], "--allowed-member-graph",
+        help="Repeat: Graph.role allowed as member graph. Empty = any role.",
+    ),
+    prop_type: List[str] = typer.Option(
+        [], "--prop-type",
+        help="Repeat: k=<vocab>. Vocab is one of "
+             "string/int/float/bool/list[string]/list[int]/list[float]/list[bool].",
+    ),
+    description: Optional[str] = typer.Option(
+        None, "--description", help="Optional human-readable description.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Register a :class:`MetaHyperEdgeType` on the named schema (Phase 05d).
+
+    **NO ``--ordered/--unordered`` flag** (P1 C dropped the field):
+    :class:`MetaHyperEdge` enforces graph-set uniqueness at
+    ``__post_init__``; the cat=c+a+t rationale that motivated the
+    ``ordered`` field on :class:`IntergraphHyperEdgeType` does not
+    apply at the metagraph layer (members are graphs, not nodes).
+
+    Per round-7 P8 A schema-mutation footgun, stderr warning lists every
+    metagraph the schema is attached to.
+    """
+    ms = _load_or_die(schema)
+    prop_types: Dict[str, PropertyType] = {}
+    for pt_arg in prop_type or []:
+        k, v = _parse_prop_type(pt_arg)
+        prop_types[k] = v
+    mht = MetaHyperEdgeType(
+        name=type_name,
+        allowed_member_graphs=frozenset(allowed_member_graph or []),
+        property_types=prop_types,
+        description=description,
+    )
+    try:
+        ms.add_meta_hyperedge_type(mht)
+    except CypherError as e:
+        typer.echo(f"CypherError: {e}", err=True)
+        raise typer.Exit(code=1)
+    except UnknownTypeError as e:
+        typer.echo(f"UnknownTypeError: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    attached = _find_attached_metagraphs(schema)
+    if attached:
+        typer.echo(
+            f"warning: schema {schema!r} is currently attached to "
+            f"{len(attached)} metagraph(s): {sorted(attached)!r}. "
+            f"Adding {type_name!r} does NOT trigger re-validation; "
+            f"existing metahyperedges in those metagraphs may now "
+            f"violate the (extended) schema. Run 'mindsos metagraph "
+            f"attach-schema --name <MG> --schema {schema}' on each to "
+            f"surface drift (P8 A — schema-mutation footgun).",
+            err=True,
+        )
+
+    _save_or_die(schema, ms)
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "schema": schema,
+                    "type_name": mht.name,
+                    "allowed_member_graphs": sorted(mht.allowed_member_graphs),
+                    "property_types": {
+                        k: v.value for k, v in mht.property_types.items()
+                    },
+                    "description": mht.description,
+                    "attached_metagraphs": sorted(attached),
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(
+            f"ok: registered MetaHyperEdgeType {mht.name!r} on schema "
+            f"{schema!r} (attached to {len(attached)} metagraph(s))"
+        )
+
+
+# ---------------------------------------------------------------------------
+# validate (Phase 05d — round-7 P9 B + P32 A; read-only walk-only)
+# ---------------------------------------------------------------------------
+
+
+@metagraph_schema_app.command("validate")
+def validate_cmd(
+    metagraph: str = typer.Option(
+        ..., "--metagraph",
+        help="Metagraph name to validate.",
+    ),
+    schema_arg: Optional[str] = typer.Option(
+        None, "--schema",
+        help="Optional schema name override (round-7 P32 A). When supplied, "
+             "validates the metagraph against this explicit schema rather "
+             "than its currently-attached schema. Read-only — does not "
+             "mutate `schema_name` on disk.",
+    ),
+    json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+) -> None:
+    """Validate a metagraph's primitives against a schema (Phase 05d).
+
+    Read-only walk-only: runs the same eager-attach validation logic
+    that ``mindsos metagraph attach-schema`` runs, without mutating the
+    metagraph's `schema_name` or `schema` attributes. Useful for
+    operators dry-running schema changes before committing to attach.
+
+    Per round-7 P39 A, empty-vocab semantics mirror eager-attach:
+    non-strict + empty vocab passes silently (existing primitives
+    grandfathered); strict + empty vocab fails (vocab-existence is the
+    strict invariant).
+
+    Exit codes (round-7 P41 A — split from prior single exit code 2):
+        0 — pass (no violations).
+        1 — at least one violation surfaced.
+        2 — resource not found (schema or metagraph state file missing
+            on disk OR malformed JSON).
+        3 — no usable schema (metagraph has no `schema_name` set AND
+            no ``--schema`` supplied; or ``--schema`` supplied but
+            schema is not registered).
+    """
+    # Load metagraph (lazy — only need state until we have a schema).
+    from mindsos_cli.commands.metagraph import (
+        _load_or_die as _metagraph_load_or_die,
+    )
+    try:
+        mg = _metagraph_load_or_die(metagraph)
+    except typer.Exit as exit_exc:
+        # _load_or_die raises Exit with code 1 on missing or corrupt
+        # state. Translate to round-7 P41 A's exit code 2 so
+        # "resource not found" is grep-able.
+        raise typer.Exit(code=2) from exit_exc
+
+    # Resolve which schema to validate against.
+    if schema_arg is not None:
+        # Explicit override path — load the named schema and use it
+        # without touching mg.schema_name.
+        try:
+            ms = _load_or_die(schema_arg)
+        except typer.Exit as exit_exc:
+            raise typer.Exit(code=2) from exit_exc
+        effective_schema_name = schema_arg
+    elif mg.schema_name is not None and mg.schema is not None:
+        ms = mg.schema
+        effective_schema_name = mg.schema_name
+    else:
+        # No usable schema (round-7 P41 A — exit code 3).
+        if json_out:
+            typer.echo(
+                json.dumps(
+                    {
+                        "passed": False,
+                        "schema_name": None,
+                        "metagraph_name": metagraph,
+                        "violations": [],
+                        "error": "no usable schema (metagraph not "
+                                 "attached and --schema not supplied)",
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            typer.echo(
+                f"error: metagraph {metagraph!r} has no schema attached "
+                f"and --schema was not supplied (exit 3 per P41 A).",
+                err=True,
+            )
+        raise typer.Exit(code=3)
+
+    violations = _walk_for_violations(mg, ms)
+    passed = len(violations) == 0
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "passed": passed,
+                    "schema_name": effective_schema_name,
+                    "metagraph_name": metagraph,
+                    "violations": violations,
+                },
+                indent=2,
+            )
+        )
+    else:
+        if passed:
+            typer.echo(
+                f"ok: metagraph {metagraph!r} validates against schema "
+                f"{effective_schema_name!r} (no violations)."
+            )
+        else:
+            typer.echo(
+                f"violations ({len(violations)}) against schema "
+                f"{effective_schema_name!r}:",
+                err=True,
+            )
+            for v in violations:
+                typer.echo(
+                    f"  - {v['primitive']} {v['edge_id']!r} "
+                    f"type={v['type_name']!r} rule={v['rule']!r}: "
+                    f"{v['detail']}",
+                    err=True,
+                )
+    if not passed:
+        raise typer.Exit(code=1)
+
+
+def _walk_for_violations(mg, ms) -> List[dict]:
+    """Run the same eager-attach validation logic and collect all violations.
+
+    Mirrors :meth:`Metagraph.attach_schema` walk shape EXCEPT first-failure
+    raises become collected entries — operators want the full list, not
+    just the first one. Empty-vocab pass-silently (round-7 P39 A) applies
+    uniformly.
+    """
+    violations: List[dict] = []
+
+    def _record(primitive: str, edge_id: str, type_name: str, rule: str, detail: str) -> None:
+        violations.append({
+            "primitive": primitive,
+            "edge_id": edge_id,
+            "type_name": type_name,
+            "rule": rule,
+            "detail": detail,
+        })
+
+    # IntergraphEdge walk (always — vocab-existence is mandatory unless
+    # vocab is empty + non-strict per Pushback 24-hybrid).
+    if ms.intergraph_edge_types or ms.strict:
+        for ie in mg.intergraph_edges.values():
+            try:
+                ms.require_intergraph_edge_type(ie.type_name)
+                source_graph = mg.graphs[ie.source_graph_id]
+                target_graph = mg.graphs[ie.target_graph_id]
+                source_node = source_graph.nodes[ie.source_node_id]
+                target_node = target_graph.nodes[ie.target_node_id]
+                ms.validate_intergraph_edge(
+                    type_name=ie.type_name,
+                    source_node_type=source_node.type_name,
+                    target_node_type=target_node.type_name,
+                    source_graph_role=source_graph.role,
+                    target_graph_role=target_graph.role,
+                )
+                ms.validate_intergraph_edge_properties(
+                    ie.type_name, ie.properties
+                )
+            except UnknownTypeError as e:
+                _record(
+                    "IntergraphEdge", ie.edge_id, ie.type_name,
+                    "type_or_role", str(e),
+                )
+            except PropertyShapeError as e:
+                _record(
+                    "IntergraphEdge", ie.edge_id, ie.type_name,
+                    "property", str(e),
+                )
+
+    # IntergraphHyperEdge walk.
+    if ms.intergraph_hyperedge_types or ms.strict:
+        for ihe in mg.intergraph_hyperedges.values():
+            try:
+                ms.require_intergraph_hyperedge_type(ihe.type_name)
+                anchor_node_types = [
+                    mg.graphs[gid].nodes[nid].type_name
+                    for (gid, nid) in ihe.anchors
+                ]
+                member_node_types = [
+                    mg.graphs[gid].nodes[nid].type_name
+                    for (gid, nid) in ihe.members
+                ]
+                anchor_graph_roles = [
+                    mg.graphs[gid].role for (gid, _) in ihe.anchors
+                ]
+                member_graph_roles = [
+                    mg.graphs[gid].role for (gid, _) in ihe.members
+                ]
+                ms.validate_intergraph_hyperedge(
+                    type_name=ihe.type_name,
+                    anchor_node_types=anchor_node_types,
+                    member_node_types=member_node_types,
+                    anchor_graph_roles=anchor_graph_roles,
+                    member_graph_roles=member_graph_roles,
+                )
+                ms.validate_intergraph_hyperedge_properties(
+                    ihe.type_name, ihe.properties
+                )
+            except UnknownTypeError as e:
+                _record(
+                    "IntergraphHyperEdge", ihe.edge_id, ihe.type_name,
+                    "type_or_role", str(e),
+                )
+            except PropertyShapeError as e:
+                _record(
+                    "IntergraphHyperEdge", ihe.edge_id, ihe.type_name,
+                    "property", str(e),
+                )
+
+    # MetaEdge walk (Phase 05d).
+    if ms.meta_edge_types or ms.strict:
+        for me in mg.metaedges.values():
+            try:
+                ms.require_meta_edge_type(me.type_name)
+                source_graph = mg.graphs[me.source_graph_id]
+                target_graph = mg.graphs[me.target_graph_id]
+                ms.validate_meta_edge(
+                    type_name=me.type_name,
+                    source_graph_role=source_graph.role,
+                    target_graph_role=target_graph.role,
+                )
+                ms.validate_meta_edge_properties(me.type_name, me.properties)
+            except UnknownTypeError as e:
+                _record(
+                    "MetaEdge", me.edge_id, me.type_name,
+                    "type_or_role", str(e),
+                )
+            except PropertyShapeError as e:
+                _record(
+                    "MetaEdge", me.edge_id, me.type_name,
+                    "property", str(e),
+                )
+
+    # MetaHyperEdge walk (Phase 05d).
+    if ms.meta_hyperedge_types or ms.strict:
+        for mhe in mg.metahyperedges.values():
+            try:
+                ms.require_meta_hyperedge_type(mhe.type_name)
+                member_roles = [
+                    mg.graphs[gid].role for gid in mhe.graph_ids
+                ]
+                ms.validate_meta_hyperedge(
+                    type_name=mhe.type_name,
+                    member_graph_roles=member_roles,
+                )
+                ms.validate_meta_hyperedge_properties(
+                    mhe.type_name, mhe.properties
+                )
+            except UnknownTypeError as e:
+                _record(
+                    "MetaHyperEdge", mhe.edge_id, mhe.type_name,
+                    "type_or_role", str(e),
+                )
+            except PropertyShapeError as e:
+                _record(
+                    "MetaHyperEdge", mhe.edge_id, mhe.type_name,
+                    "property", str(e),
+                )
+
+    return violations
 
 
 def register_metagraph_schema_app(parent: typer.Typer) -> None:
