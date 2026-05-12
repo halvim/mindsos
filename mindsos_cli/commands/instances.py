@@ -71,7 +71,21 @@ from mindsos_instances import (
 )
 
 # Re-use the metagraph state-loader.
-from mindsos_cli.commands.metagraph import _load_or_die
+from mindsos_cli.commands.metagraph import _load_or_die as _load_metagraph_or_die
+
+
+def _load_or_die(name: str):
+    """Phase 06 wrapper — Resource-not-found exits 2 per row §H (round-7
+    P53 A). The underlying Phase 05 ``_load_or_die`` uses exit 1 for
+    FileNotFoundError; we re-raise as exit 2 for the instances CLI.
+    """
+    try:
+        return _load_metagraph_or_die(name)
+    except typer.Exit as exc:
+        code = getattr(exc, "exit_code", 1)
+        if code == 1:
+            raise typer.Exit(code=EXIT_NOT_FOUND)
+        raise
 
 instances_app = typer.Typer(
     name="instances",

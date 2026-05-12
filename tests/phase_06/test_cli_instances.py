@@ -51,31 +51,22 @@ def _isolated_state_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
 @pytest.fixture
 def populated_mg(cli) -> dict:
     """Create a metagraph with one graph and two nodes via CLI; return
-    the names/ids."""
-    # Create metagraph.
-    r = cli("metagraph", "create", "--name", "MG_T")
+    the names/ids.
+
+    Workflow per Phase 05a: build the graph standalone first (mutations
+    on metagraph-owned graphs are refused — see ``_refuse_if_metagraph_owned``
+    in `mindsos_cli.commands.graph`), then attach to the metagraph.
+    """
+    # Standalone graph build.
+    r = cli("graph", "create", "--name", "G_T", "--role", "ontology")
     assert r.returncode == 0, r.stderr
-    # Create a graph attached to the metagraph.
-    r = cli(
-        "graph",
-        "create",
-        "--name",
-        "G_T",
-        "--metagraph",
-        "MG_T",
-        "--role",
-        "ontology",
-    )
-    assert r.returncode == 0, r.stderr
-    # Add two nodes.
     r1 = cli(
         "graph",
         "add-node",
+        "alice",
         "--name",
         "G_T",
-        "--value",
-        "alice",
-        "--type-name",
+        "--type",
         "Person",
         "--json",
     )
@@ -84,32 +75,37 @@ def populated_mg(cli) -> dict:
     r2 = cli(
         "graph",
         "add-node",
+        "bob",
         "--name",
         "G_T",
-        "--value",
-        "bob",
-        "--type-name",
+        "--type",
         "Person",
         "--json",
     )
     assert r2.returncode == 0, r2.stderr
     node2 = json.loads(r2.stdout)
-    # Add an edge.
     re = cli(
         "graph",
         "add-edge",
         "--name",
         "G_T",
-        "--source-id",
+        "--source",
         node1["node_id"],
-        "--target-id",
+        "--target",
         node2["node_id"],
-        "--type-name",
+        "--type",
         "KNOWS",
         "--json",
     )
     assert re.returncode == 0, re.stderr
     edge = json.loads(re.stdout)
+    # Now create metagraph and link the graph (graph becomes metagraph-
+    # owned — further mutations would be refused, but reads + instances
+    # work).
+    rmg = cli("metagraph", "create", "--name", "MG_T")
+    assert rmg.returncode == 0, rmg.stderr
+    rag = cli("metagraph", "add-graph", "--name", "MG_T", "--graph", "G_T")
+    assert rag.returncode == 0, rag.stderr
     return {"node1": node1, "node2": node2, "edge": edge}
 
 
