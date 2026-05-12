@@ -50,8 +50,14 @@ is the bridge.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Mapping, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
+from .._observers import (
+    ObserverHandle,
+    RemoveCallback,
+    _dispatch_precheck,
+    _register,
+)
 from ..cypher.identifiers import validate_edge_type_identifier
 from ..exceptions import IdentityError, SchemaError
 from ..schema import Schema, validate_user_properties
@@ -97,10 +103,38 @@ class Graph:
         self.nodes: Dict[str, Node] = {}
         self.edges: Dict[str, Edge] = {}
         self.hyperedges: Dict[str, HyperEdge] = {}
+        # Phase 06 (P31 A + round-7 P49 B + P65 A) — observer plumbing
+        # for cascade-delete notification. Core ships plumbing only;
+        # ``mindsos_instances.ElementRegistry`` subscribes on attach via
+        # ``mindsos_instances.attach_registry(metagraph)``. Precheck-style
+        # dispatch: callbacks fire BEFORE the underlying mutation; a
+        # callback that raises aborts the remove cleanly.
+        self._remove_observers: List[RemoveCallback] = []
         if graph_id is None:
             # Only register when we generated the id ourselves; restore
             # paths register explicitly after swapping in the DB id (Phase 08).
             self.identity.register(self.graph_id)
+
+    # ── observer plumbing (Phase 06 — P31 A + round-7 P49 B) ─────────────
+
+    def register_remove_observer(
+        self, callback: RemoveCallback
+    ) -> ObserverHandle:
+        """Subscribe ``callback`` to remove events on this graph.
+
+        Returns an :class:`ObserverHandle` whose ``unsubscribe()`` method
+        revokes the subscription. The callback is invoked with the id of
+        the element about to be removed (``node_id``, ``edge_id``, or
+        ``hyperedge_id``) BEFORE the underlying mutation runs
+        (precheck-style per round-7 P65 A).
+
+        Phase 06 single consumer:
+        :class:`mindsos_instances.ElementRegistry`. The registry
+        examines the removed id for both ``template_id`` matches on
+        element instances AND ``SubGraphInstance.node_ids/edge_ids``
+        membership (round-7 P59 A).
+        """
+        return _register(self._remove_observers, callback)
 
     # ── creation ──────────────────────────────────────────────────────────
 
@@ -421,6 +455,13 @@ class Graph:
         With ``cascade=True``, incident edges and hyperedges are removed
         as well. With ``cascade=False``, raises :class:`SchemaError` if
         any edge or hyperedge still references the node.
+
+        Phase 06 (P31 A + round-7 P65 A) — registered remove observers
+        fire **before** the actual deletion (precheck-style); a callback
+        that raises aborts the remove and the graph state stays intact.
+        Cascaded edges/hyperedges fire their own observer notifications
+        through ``remove_edge`` / ``remove_hyperedge`` (recursive
+        observer dispatch).
         """
         if node_id not in self.nodes:
             raise IdentityError(f"Unknown node id: {node_id!r}")
@@ -441,6 +482,12 @@ class Graph:
                 f"{len(incident_he_ids)} hyperedge(s) still reference it"
             )
 
+        # Phase 06 — observer precheck. A subscribed cascade-handler may
+        # raise here (e.g. ElementRegistry rejecting the remove because
+        # a downstream cleanup failed); in that case no Graph mutation
+        # happens and the exception propagates to the caller.
+        _dispatch_precheck(self._remove_observers, node_id)
+
         for eid in incident_edge_ids:
             self.remove_edge(eid)
         for hid in incident_he_ids:
@@ -450,14 +497,18 @@ class Graph:
         del self.nodes[node_id]
 
     def remove_edge(self, edge_id: str) -> None:
+        """Remove an edge. Fires precheck remove-observers (Phase 06)."""
         if edge_id not in self.edges:
             raise IdentityError(f"Unknown edge id: {edge_id!r}")
+        _dispatch_precheck(self._remove_observers, edge_id)
         self.identity.unregister(edge_id)
         del self.edges[edge_id]
 
     def remove_hyperedge(self, edge_id: str) -> None:
+        """Remove a hyperedge. Fires precheck remove-observers (Phase 06)."""
         if edge_id not in self.hyperedges:
             raise IdentityError(f"Unknown hyperedge id: {edge_id!r}")
+        _dispatch_precheck(self._remove_observers, edge_id)
         self.identity.unregister(edge_id)
         del self.hyperedges[edge_id]
 

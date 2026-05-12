@@ -87,8 +87,23 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, Iterator, List, Optional, TYPE_CHECKING
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    TYPE_CHECKING,
+)
 
+from .._observers import (
+    ObserverHandle,
+    RemoveCallback,
+    _dispatch_precheck,
+    _register,
+)
 from ..cypher.identifiers import validate_edge_type_identifier
 from ..exceptions import (
     CompositionalImmutableError,
@@ -296,8 +311,60 @@ class Metagraph:
         self.schema_name: Optional[str] = None
         self.schema: Optional["MetagraphSchema"] = None
 
+        # Phase 06 (P31 A + round-7 P49 B + P65 A) — observer plumbing
+        # for cascade-delete notification. Core ships plumbing only;
+        # ``mindsos_instances.ElementRegistry`` subscribes on attach via
+        # ``mindsos_instances.attach_registry(metagraph)``. Precheck-style
+        # dispatch: callbacks fire BEFORE the underlying mutation; a
+        # callback that raises aborts the remove cleanly.
+        self._remove_observers: List[RemoveCallback] = []
+        # Phase 06 round-7 P66 (implementation pushback): graphs added
+        # AFTER ``attach_registry`` would otherwise miss the per-graph
+        # remove-observer subscription. ``add_graph`` fires this list so
+        # the registry can wire itself to newcomers.
+        self._graph_added_observers: List[Callable[[Graph], None]] = []
+
         if metagraph_id is None:
             self.identity.register(self.metagraph_id)
+
+    # ── observer plumbing (Phase 06 — P31 A + round-7 P49 B) ─────────────
+
+    def register_remove_observer(
+        self, callback: RemoveCallback
+    ) -> ObserverHandle:
+        """Subscribe ``callback`` to remove events on this metagraph.
+
+        Returns an :class:`ObserverHandle` whose ``unsubscribe()`` method
+        revokes the subscription. The callback is invoked with the id of
+        the element about to be removed (``graph_id``, ``metaedge_id``,
+        ``metahyperedge_id``, ``intergraph_edge_id``, or
+        ``intergraph_hyperedge_id``) BEFORE the underlying mutation
+        runs (precheck-style per round-7 P65 A).
+
+        Phase 06 single consumer:
+        :class:`mindsos_instances.ElementRegistry`. The registry
+        examines the removed id for ``template_id`` matches on element
+        instances (including ``GraphInstance`` and ``SubGraphInstance``
+        when a contained ``Graph`` is removed) and for
+        ``SubGraphInstance.node_ids/edge_ids`` membership when a node/
+        edge inside a contained graph is removed (round-7 P59 A — the
+        per-graph subscription handles those cases).
+        """
+        return _register(self._remove_observers, callback)
+
+    def register_graph_added_observer(
+        self, callback: Callable[[Graph], None]
+    ) -> "ObserverHandle":
+        """Subscribe ``callback`` to ``add_graph`` events.
+
+        Phase 06 round-7 P66 — the registry uses this to wire a per-
+        ``Graph`` remove-observer when a graph is added AFTER
+        ``attach_registry`` was called. Callback receives the newly-
+        added :class:`Graph` (post-unification per P16).
+        """
+        # Local import: ObserverHandle is already imported at module top.
+        self._graph_added_observers.append(callback)
+        return ObserverHandle(self._graph_added_observers, callback)
 
     # ── graph membership ─────────────────────────────────────────────────
 
@@ -350,6 +417,10 @@ class Metagraph:
                 )
 
         self.graphs[graph.graph_id] = graph
+        # Phase 06 round-7 P66 — notify subscribed registries so they
+        # can wire their per-Graph remove-observer to the newcomer.
+        for cb in self._graph_added_observers:
+            cb(graph)
         return graph
 
     def remove_graph(self, graph_id: str) -> None:
@@ -426,6 +497,15 @@ class Metagraph:
                         f"Recovery: 'mindsos metagraph reset --name <MG> "
                         f"--force --yes' (Pushback 6-A)."
                     )
+
+        # Phase 06 (P31 A + round-7 P65 A) — observer precheck for the
+        # graph_id being removed. Fires AFTER compositional refusal but
+        # BEFORE any cascade mutation. A subscribed
+        # ``ElementRegistry`` examines the graph's contents and cascades
+        # any referencing ``GraphInstance`` / ``SubGraphInstance`` /
+        # element-level instance (round-7 P59 A handles the
+        # node/edge/hyperedge contents reachability).
+        _dispatch_precheck(self._remove_observers, graph_id)
 
         # Cascade incident metaedges + metahyperedges + intergraph_edges
         # + intergraph_hyperedges.
@@ -550,9 +630,10 @@ class Metagraph:
         return me
 
     def remove_metaedge(self, edge_id: str) -> None:
-        """Remove a metaedge by id."""
+        """Remove a metaedge by id. Fires precheck remove-observers (Phase 06)."""
         if edge_id not in self.metaedges:
             raise IdentityError(f"Unknown metaedge id: {edge_id!r}")
+        _dispatch_precheck(self._remove_observers, edge_id)
         self.identity.unregister(edge_id)
         del self.metaedges[edge_id]
 
@@ -645,9 +726,10 @@ class Metagraph:
         return mhe
 
     def remove_metahyperedge(self, edge_id: str) -> None:
-        """Remove a metahyperedge by id."""
+        """Remove a metahyperedge by id. Fires precheck remove-observers (Phase 06)."""
         if edge_id not in self.metahyperedges:
             raise IdentityError(f"Unknown metahyperedge id: {edge_id!r}")
+        _dispatch_precheck(self._remove_observers, edge_id)
         self.identity.unregister(edge_id)
         del self.metahyperedges[edge_id]
 
@@ -864,6 +946,7 @@ class Metagraph:
                 f"Recovery: 'mindsos metagraph reset --name <MG> "
                 f"--force --yes' to wipe and rebuild."
             )
+        _dispatch_precheck(self._remove_observers, edge_id)
         self.identity.unregister(edge_id)
         del self.intergraph_edges[edge_id]
 
@@ -1173,6 +1256,9 @@ class Metagraph:
                 f"metagraph reset --name <MG> --force --yes' to wipe "
                 f"and rebuild."
             )
+        _dispatch_precheck(
+            self._remove_observers, intergraph_hyperedge_id
+        )
         self.identity.unregister(intergraph_hyperedge_id)
         del self.intergraph_hyperedges[intergraph_hyperedge_id]
 

@@ -1861,16 +1861,255 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Docs:** `docs/usage/core/metagraph-schema.md` (amended for MetaEdgeType + MetaHyperEdgeType + `validate` verb); `docs/api/core/metagraph-schema.md` (amended); `docs/changelog/CHANGELOG.md` (Phase 05d entry); ADR-0014 + ADR-0017 pointer lines per §H + P42 C.
 
   **Future-work entries filed (P24 B carry-forward; P33 A removes the instance-graph forward-compat assertion from the row but keeps the future-work entry):**
-    - **(i) Instance-graph role mutability (Phase 06)** — when Phase 06 ships `mindsos_instances`, the row must lock whether instance-graphs preserve their source graph's `role` immutably or permit override. 05d does NOT pre-bind this; vocab validation reads `Graph.role` from whichever Graph object is in the metagraph regardless of base-vs-instance.
+    - **(i) Instance-graph role mutability (Phase 06)** — when Phase 06 ships `mindsos_instances`, the row must lock whether instance-graphs preserve their source graph's `role` immutably or permit override. 05d does NOT pre-bind this; vocab validation reads `Graph.role` from whichever Graph object is in the metagraph regardless of base-vs-instance. **RESOLVED 2026-05-11 in Phase 06 row-refinement chat: M6 A + P1 A locked option (a) immutable** (instance-graphs propagate `Graph.role` as read-only mirror; override attempts raise). No state-file change. See Phase 06 row §B (per-subclass allow-list — `GraphInstance` ships with empty scope, role excluded).
     - **(ii) Phase 11 cross-vocab name-collision flagging** — same `name` registered in `MetaEdgeType` AND `IntergraphEdgeType` (or any cross-vocab pair) is allowed at registration; Phase 11 schema-migrator should optionally flag these collisions for review.
 
-### Phase 06 — L1 Instancing (`mindsos_instances`)
+### Phase 06 — L1 Instancing (`mindsos_instances`) — sibling package with 8 instance subclasses + cascade-observer
 
-  **Deps:** 03, 05d (last in 05 cascade per CASC-1 strict-sequential). **Layer:** L1. **Net-new?** No (per ADR-0132 the package is shipped; only CLI glue is new).
-  **Features:** ElementInstance with sparse overrides; CompositeInstance bundle-level overrides (no propagation); lazy materialisation.
-  **Tests:** override semantics (ADR-0025/0026); materialisation determinism.
-  **Risks:** ADR-0132 backward-compat shim must keep working for any imports from `mindsos_core` of instancing classes.
-  **Docs:** `docs/concepts/instancing.md`, ADRs 0015/0019/0025/0026/0132.
+  **Status:** Row LOCKED 2026-05-11 across 6 design rounds + 1 implementation round-7 pass. Meta-plan picks (M1–M6) + design picks (P1–P44; 2 user overrides at P13 B + P24 B) at `confirmation_docs/PHASE_06_DESIGN_LOG.md`. **Round-7 reanalysis pass (P45–P65) ran BEFORE any code landed**, per 05d precedent — 21 numbered pushbacks (`confirmation_docs/PHASE_06_IMPLEMENTATION_LOG.md` §1) reshaped the row before implementation. **Material reshapes from initial stub:** ADR-0132's "move from Core" framing struck (P2 A); 4-verb CLI (P38 A); per-subclass structural override allow-list (P29 C + P36 A); cascade-delete observer in `mindsos_core` (P31 A). **Round-7 reshapes:** ADR file edits deferred to Phase 38 per cascade precedent (P45 B); ID derivation drops overrides-hash (P46 C); bifurcated override-validation routing (P64 A); endpoint-resolution walk in materialise (P58 A); SubGraphInstance cascade routing (P59 A); atomic Core observer (P65 A); GraphInstance materialise = full clone (P54 B); composite JSON wraps asdict with canonicalize (P63 A); package-integration checklist (P62 A); CLI exit codes (P53 A).
+  **Branch:** phase-06
+  **Tag on confirm:** phase-06-confirmed
+  **Depends on:** 05d (last in 05 cascade per CASC-1 strict-sequential).
+  **Layer(s):** L1.
+  **Net-new?:** **Yes (medium).** New sibling package `mindsos_instances/` (8 subclasses + ElementRegistry + materialise machinery + canonicalize utility); small `mindsos_core` hook for remove-observer (~15 LOC); ADR-0132 amended inline; ADR-0037 status flip; stale ADR-0024 reference fixed; new CLI subapp (`mindsos instances`) with 4 verbs. **No state-file bumps** (P8 B — persistence is Phase 07).
+
+  **P2 audit RESOLVED 2026-05-11:** `mindsos_core/models/` has no `instance.py` (confirmed via Glob); `mindsos_core/__init__.py:54` is a deferral comment, not active code; no `Metagraph.instantiate_*` factory methods exist; no `:ElementInstance` references anywhere in Core. ADR-0132's "move from Core" framing was written assuming pre-redesign Core had instancing; current Core does not. **Phase 06 ships fresh code in `mindsos_instances/`; ADR-0132 amended inline per P2 A to strike the move framing and the deprecated re-export plan.**
+
+  **Carry-forward from 05d:**
+    - Instance-graph role mutability open question (filed at `_source_backup/root/mindsos_future_plans.md` per 05d round-7 P33 A) → RESOLVED in this row via M6 A + P1 A: **immutable role** (instance-graphs propagate `Graph.role` as a read-only mirror; override attempts raise).
+    - Round-7 reshape precedent — implementation chat permitted to file P45+ if surface contradictions surface.
+
+  **CRITICAL semantic (load-bearing per user P24 + P27):** instances are *live* references representing current component state. They cannot exist without a real component reference. Hard-delete of a template cascades into the registry (P24 B + P31 A); cascade is recursive through composites (P44 A). Override never writes back to template (ADR-0015 holds); the instance is *the* deviation. In practice components are deleted only by admin at release boundaries (per L0 server pivot RELEASE_SHIP_LOCK semantics) — cascade rarely fires at per-session runtime but is a correctness invariant.
+
+  **Features:**
+
+    **A. New sibling package `mindsos_instances/` (per ADR-0132 amended per P2 A):**
+
+    Public API (`mindsos_instances/__init__.py`):
+    ```python
+    from mindsos_instances import (
+        ElementInstance,
+        NodeInstance, EdgeInstance, HyperEdgeInstance,
+        SubGraphInstance, GraphInstance,
+        MetaEdgeInstance, MetaHyperEdgeInstance,
+        CompositeInstance,
+        ElementRegistry,
+        DanglingTemplateError, CompositeCycleError,
+        CrossMetagraphCompositeError, SubGraphInvariantError,
+        OverrideScopeError,
+    )
+    ```
+
+    **B. Element instance subclasses (8) — `mindsos_instances/models/`:**
+
+    Each subclass carries: `id: str` (from shared `IdentityRegistry`), `template_id: str` (ID-reference per P23 A), `metagraph_id: str` (registry routing), `overrides: dict` (validated per P17 A + P36 A), `KIND: ClassVar[str]` (P26 C class-level discriminator). All `kw_only=True` dataclasses.
+
+    Each subclass also carries `_instance_seq: int` (round-7 P46 C — per-template per-metagraph sequence counter sourced from `mg.element_registry._next_seq_for(template_id)` at construction; used as the ID-derivation disambiguator in place of the original overrides-hash).
+
+    Per-subclass `KIND` constants + override allow-list (P36 A + round-7 P48 A `label` additions + round-7 P60 A `graph_ids` rename):
+    | Subclass | KIND | Allowed override keys |
+    |---|---|---|
+    | `NodeInstance` | `"node"` | user properties only |
+    | `EdgeInstance` | `"edge"` | user properties + `source_id`, `target_id`, `label` |
+    | `HyperEdgeInstance` | `"hyperedge"` | user properties + `member_ids` (set of node IDs), `label` |
+    | `SubGraphInstance` | `"subgraph"` | `node_ids` (set), `edge_ids` (set) only — no user property bag (P13 B) |
+    | `GraphInstance` | `"graph"` | empty override scope (no structural surface in Phase 06; user property bag is Phase 10) |
+    | `MetaEdgeInstance` | `"metaedge"` | user properties + `source_graph_id`, `target_graph_id`, `label` |
+    | `MetaHyperEdgeInstance` | `"metahyperedge"` | user properties + `graph_ids` (set), `label` |
+    | `CompositeInstance` | `"composite"` | bundle-level user properties only (member-list mutation via dedicated API per P37 A) |
+
+    **Universally forbidden override keys (round-7 P47 C — `source_id` redundancy removed):** `id`, `template_id`, `kind`, `metagraph_id`, `type_name` (Edge/HyperEdge/MetaEdge/MetaHyperEdge per P33 B). Raises `OverrideScopeError`. (The per-subclass allow-list above is authoritative for structural-field overrides; reserved field names like `source_id`/`label` are explicitly permitted only when they appear in a subclass's allow-list.)
+
+    **Override-validation routing (round-7 P64 A — bifurcated):** override-dict splits at validation time into two buckets:
+    1. **Structural bucket** — keys in the subclass's allow-list above. Typed-validated against the structural-field contract (string for ID-overrides; set/list for set-typed fields; primitive types for `label`).
+    2. **User-property bucket** — keys NOT in the structural allow-list. Routes through `validate_user_properties(props, scope=KIND)` (Phase 04 surface; `scope` is a free-form str per `validation.py:145`).
+
+    A key in `RESERVED_PROPERTY_KEYS` (`validation.py:34`) that lands in bucket 2 raises `OverrideScopeError`. The bifurcation lives in `mindsos_instances/models/_overrides.py`; Phase 04's `validate_user_properties` signature is unchanged.
+
+    **Set-typed structural fields (round-7 P57 A — list→set coercion):** keys `member_ids` (HyperEdgeInstance), `node_ids`/`edge_ids` (SubGraphInstance), `graph_ids` (MetaHyperEdgeInstance) accept JSON list input + coerce to Python `set` / `frozenset` at override-set time. Duplicates dedup silently (matches Python set semantics).
+
+    **SubGraphInstance invariant (P20 A — strict):** every edge in `edge_ids` must have BOTH endpoints in `node_ids`; every HyperEdge in `edge_ids` must have ALL members in `node_ids`. Enforced at construction via `SubGraphInvariantError`. Also enforced after each `set_override` mutation of `node_ids` or `edge_ids`.
+
+    **C. ElementRegistry (`mindsos_instances/registry.py`) — in-memory only (P4 B + P8 B):**
+
+    Per-metagraph registry. Attached to `Metagraph` via round-7 P49 A idempotent helper: `mindsos_instances.attach_registry(mg) -> ElementRegistry`. `Metagraph` itself has NO `element_registry` attribute set in Core (round-7 P49 B+A — Core/instances boundary preserved per ADR-0010). The helper installs the registry as `mg.element_registry` lazily on first call; subsequent calls return the same registry.
+
+    API:
+    - `add(instance: ElementInstance | CompositeInstance) -> None` — also calls `mg.identity.register(instance.id)` (P11 A shared registry).
+    - `get(instance_id: str) -> ElementInstance | CompositeInstance`
+    - `remove(instance_id: str) -> None` — fires recursive cascade through composites containing the removed instance (P44 A). **Round-7 P56 A:** also calls `mg.identity.unregister(instance_id)` after dict-delete (closes IdentityRegistry leak on cascade).
+    - `iter(kind: Optional[str] = None) -> Iterator[...]` — `None` returns all (element instances + composites); kind-specific filtering uses class-level `KIND` constants per P26 C.
+    - `_next_seq_for(template_id: str) -> int` (private, round-7 P46 C) — per-template monotonic counter; used by subclass `__init__` for the `_instance_seq` ID-derivation disambiguator.
+
+    `add_member` (on `CompositeInstance`) — round-7 P55 A enforcement: raises `IdentityError` if `instance.id not in registry`. Closes the stale-ref bug-class (cascade-removed instances cannot be re-added to composites).
+
+    Cross-metagraph composite members forbidden (P43 C + round-7 P50 A): `CompositeInstance.__init__` requires `metagraph_id` kw-only; `add_member` raises `CrossMetagraphCompositeError` if member's `metagraph_id` differs. Empty composites legal.
+
+    Lifecycle (P35 A): Python ownership. While metagraph lives, registry lives, observer subscriptions remain active. Round-7 P52: no explicit teardown event exists — registry is GC'd when its owning metagraph is. Tests assert the registered-cascade-active behavior; no teardown/unsubscribe tests (the underlying API doesn't exist).
+
+    **D. Canonicalization utility (`mindsos_instances/utils/canonicalize.py`):**
+
+    Round-7 P46 C: original P11 A use ("include overrides hash in ID derivation") is dropped — `UUID5FromContentStrategy`'s docstring (`identity.py:86-92`) explicitly warns against content-addressable IDs for mutation-prone objects, and instance overrides ARE mutation. Instance IDs now derive via `mg.id_strategy.generate("instance", content={"template_id": tid, "instance_seq": next_seq})` — overrides do not participate.
+
+    The canonicalize utility survives with two real consumers:
+    1. **`set_override`-time validation** — comparison of new-override-bundle vs old-override-bundle for change-detection on mutable instances (Phase 06 in-memory use; Phase 07 persistence-layer extends).
+    2. **Round-7 P63 A composite materialise JSON stability** — `dataclasses.asdict` on `HyperEdge` (with `Set[Node]` field) / `MetaHyperEdge` (with `FrozenSet[str]` field) produces non-deterministic list ordering; composite materialise wraps `asdict` output through canonicalize for stable JSON output (avoids golden-output test flakes).
+
+    Rule (P34 B): sets → sorted lists; dicts → sorted-key JSON; recursive on nested structures; output is `json.dumps(canonical, sort_keys=True)`. ~30 LOC.
+
+    **E. Materialise machinery (P6 A + P18 A + P40 A; round-7 P51 A + P54 B + P58 A + P63 A spec):**
+
+    Signature: `instance.materialise(metagraph: Metagraph) -> Core-object | dict[str, ...]`. Returns:
+
+    - **NodeInstance** → fresh `Node` with merged properties (template props ⊕ overrides). Fresh UUID per call.
+    - **EdgeInstance** → fresh `Edge`. Endpoint resolution per round-7 P58 A: if override carries `source_id` and/or `target_id`, helper `mindsos_instances/_resolve.py::resolve_node(metagraph, node_id)` walks `metagraph.graphs.values()` for the override-id'd Node; raises `IdentityError` if not found in any contained Graph. Without endpoint override, the template Edge's `source` and `target` Node objects are used directly. `label` override per round-7 P48 A passes through structural bucket. `type_name` forbidden per P33 B. Fresh `edge_id` per call.
+    - **HyperEdgeInstance** → fresh `HyperEdge`. Endpoint resolution: if override carries `member_ids` (set/list of node IDs per round-7 P57 A coercion), each ID resolves via `_resolve.resolve_node(metagraph, nid)`. Without override, template's `nodes: Set[Node]` is reused. Fresh `edge_id`.
+    - **SubGraphInstance** (round-7 P51 A spec) → fresh `Graph`:
+      - Fresh `IdentityRegistry` (independent of source metagraph's registry; matches "many cheap materialisations" intent from ADR-0019).
+      - Nodes for `node_ids`: looked up in source `Graph` (by `template_id`); each cloned via `dataclasses.replace(orig_node, node_id=new_uuid)` with deep-copy of `properties`.
+      - Edges for `edge_ids`: looked up in source `Graph`; cloned via `dataclasses.replace(orig_edge, edge_id=new_uuid, source=new_node_map[orig_edge.source.node_id], target=new_node_map[orig_edge.target.node_id])` with deep-copy of `properties`. HyperEdges symmetric.
+      - `role` inherited from source graph (P1 A immutable).
+      - No schema attached to the materialised Graph (attach is a separate concern).
+      - Fresh `graph_id`.
+    - **GraphInstance** (round-7 P54 B spec) → fresh `Graph` **full clone**: every node + edge + hyperedge of source Graph cloned with fresh IDs via the same `dataclasses.replace` pattern as SubGraphInstance materialise. Fresh `IdentityRegistry`. `role` inherited. Source's `properties` deep-copied. Audit-cleared use case: template-clone workflows (instantiate-graph-template → attach-elsewhere). GraphInstance's empty override scope (per §B) means materialise applies no overrides beyond the structural copy.
+    - **MetaEdgeInstance** → fresh `MetaEdge`. Endpoint resolution: `source_graph_id`/`target_graph_id` overrides validated via `metagraph.graphs[gid]` direct lookup (Metagraph already keys graphs by id; no walk required). Raises `IdentityError` if unknown gid.
+    - **MetaHyperEdgeInstance** → fresh `MetaHyperEdge`. `graph_ids` override (round-7 P60 A name + P57 A coercion) → each gid validated via `metagraph.graphs[gid]` direct lookup.
+    - **CompositeInstance** → recursive tree wrapped under top-level shape (P18 A + P39 A; round-7 P63 A canonicalize wrap):
+      ```
+      {
+        "kind": "composite",
+        "id": "...",
+        "metagraph_id": "...",
+        "bundle_overrides": {<canonicalize(composite.bundle_overrides)>},
+        "members": {member_id: <Core-object JSON-via-canonicalize(asdict) or recursive composite dict>}
+      }
+      ```
+      Each element-instance member materialised independently (ADR-0026 — no propagation of `bundle_overrides`); `dataclasses.asdict` output is wrapped through canonicalize utility for stable JSON ordering of set-typed fields. Caller combines (P30 A — no auto-combine helper in Phase 06).
+
+    Materialise does NOT re-validate against schema (P16 A — validation is attach-time concern, Phase 07). Materialise on instance with dangling template raises `DanglingTemplateError` (defense-in-depth; under normal cascade-observer operation the instance is removed before materialise can fire).
+
+    **F. Cascade-delete observer hook in `mindsos_core` (~50 LOC; P31 A + round-7 P49 B + P56 A + P59 A + P65 A):**
+
+    Round-7 P49 B+A — Core ships **plumbing only**; no import of `mindsos_instances` (preserves ADR-0010 boundary). Add observer-pattern extension to `Graph` (`remove_node` / `remove_edge` / `remove_hyperedge`) and `Metagraph` (`remove_graph` / `remove_metaedge` / `remove_metahyperedge` / `remove_intergraph_edge` / `remove_intergraph_hyperedge`):
+
+    - `register_remove_observer(callback: Callable[[str], None]) -> ObserverHandle` on each — returns an opaque handle that callers retain for explicit unsubscribe if needed.
+    - Each remove method runs the observer dispatch loop **atomically (round-7 P65 A)**: snapshot the to-be-removed entity (or referenced dict slot) → mutate → invoke registered callbacks with the removed id → on any callback exception, restore from snapshot + propagate the exception. State stays consistent across observer failures. ~10 LOC per remove method × 6 methods.
+    - `mindsos_instances.attach_registry(mg)` (round-7 P49 A idempotent helper) constructs `ElementRegistry(mg)` which subscribes to the metagraph's remove events; routes by `template_id`. Core does not import `mindsos_instances`.
+
+    Cascade chain on hard-remove of template T:
+    1. Core remove method finds T; snapshots state; deletes T from its container dict; calls observer callbacks (round-7 P65 A — exception in any callback rolls back the snapshot and re-raises before subsequent callbacks).
+    2. `element_registry` callback queries instances matching the removed id (round-7 P59 A — extended lookup):
+       - element-instance subclasses where `template_id == removed.id` → cascade-remove;
+       - `SubGraphInstance` whose `node_ids` or `edge_ids` contains `removed.id` → cascade-remove (closes the SubGraphInstance-stale-reference bug-class P59 surfaced).
+    3. `registry.remove(instance_id)` (per match) does three things atomically: dict-delete from internal store; `mg.identity.unregister(instance_id)` (round-7 P56 A — closes IdentityRegistry leak); checks composites containing the removed instance; recursively removes them (P44 A); fires its own cascade for those composites.
+    4. Depth bounded by composite-nesting depth (small).
+
+    Observer exception semantics (round-7 P65 A): atomic — if any subscribed observer raises, the originating Core remove method rolls back its mutation and propagates the exception. The live-instance invariant (P24 B / P27) is not violated by observer-side failures.
+
+    Soft-delete (Phase 10 `deprecated_at`/`disputed_at`) is orthogonal (P32 A); future-work entry tracks the eventual decision.
+
+    **G. ADR amendments — DEFERRED to Phase 38 per cascade precedent (round-7 P45 B):**
+
+    Audit run during round-7 confirms ADR files at `docs/decisions/adr/` do **not** exist on disk (verified via Glob — no `0132*`, `0014*`, `0015*`, etc. anywhere in the repo). 05d implementation log §70 documents the precedent: *"05b and 05c amendments are NOT on disk in those ADR files (they're deferred to Phase 38 per shipped precedent)."* P2 A's original "rewrite to match reality" justification is moot — there is no on-disk reality to rewrite. PHASE_MAP §5 row text stays canonical; Phase 38's full ADR-port batch absorbs the amendments below.
+
+    Deferred to Phase 38:
+    - ADR-0132 — material rewrite of Decision section per P2 A; status Proposed → Accepted on Phase 06 ship.
+    - ADR-0037 — status flip Proposed → Superseded (by ADR-0132) per P19 A.
+    - ADR-0015 / 0019 / 0025 / 0026 — pointer-line additions per 05d P42 C precedent.
+
+    On-disk amendment that survives in this PR (the only one with a target that exists today):
+    - **`mindsos_core/__init__.py:54`** — fix stale `ADR-0024 / ADR-0025` reference → `ADR-0015` per P19 A; update deferral comment to ship-status: `* element_instances / composite_instances (ADR-0015) — SHIPPED in Phase 06 via mindsos_instances package.`
+
+    **H. CLI surface (4 verbs; M4 B + P38 A + P41 A + P42 A):**
+
+    All verbs scope to one metagraph; require `--metagraph MG`; print JSON to stdout when `--materialise` is set; otherwise print the instance's JSON shape (no materialise).
+
+    - `mindsos instances instantiate-node --metagraph MG --template-id NODE_ID [--override key=val]... [--materialise] [--json]` — creates a `NodeInstance`; if `--materialise` flag, prints materialised `Node` JSON via `dataclasses.asdict`.
+    - `mindsos instances instantiate-edge --metagraph MG --template-id EDGE_ID [--override key=val]... [--materialise]` — symmetric for EdgeInstance.
+    - `mindsos instances instantiate-hyperedge --metagraph MG --template-id HE_ID [--override key=val]... [--materialise]` — symmetric for HyperEdgeInstance.
+    - `mindsos instances compose --metagraph MG --member-spec JSON [--member-spec JSON]... [--bundle-override key=val]... [--materialise]` — creates a `CompositeInstance` whose members are constructed from each `--member-spec` (inline JSON: `{"kind":"node","template_id":"N1","overrides":{...}}`). `--materialise` prints the composite materialise tree per §E.
+
+    `--override key=val` value parsing (P42 A): JSON-fragment. `--override age=31` parses as integer 31. Strings need quoting: `--override name='"Alicia"'`. Lists: `--override member_ids='["N1","N2"]'`.
+
+    No separate `materialise` verb (P38 A); no `set-override` verb (P12 B → flag-based).
+
+    Single-call demonstration semantics (P12 B + P8 B): each CLI invocation creates instances in a fresh `element_registry`, optionally materialises, prints, and exits. No state-file persistence across calls; container `--rm` destroys the in-memory state cleanly.
+
+    **CLI exit codes (round-7 P53 A — adopts 05d split):**
+    - `0` — success.
+    - `1` — invariant violation: `OverrideScopeError`, `SubGraphInvariantError`, `CompositeCycleError`, `CrossMetagraphCompositeError`, `DanglingTemplateError`.
+    - `2` — resource-not-found: unknown `--metagraph` (state-file missing); unknown `--template-id` (`IdentityError` from endpoint-resolution walk or template lookup).
+    - `3` — reserved (no Phase 06 use; preserved for cascade consistency with 05d's exit-code grammar).
+
+    **I. State-file impact: NONE in Phase 06 (P8 B).**
+
+    No new state file; no version bumps on metagraph/graph/schema state files. Instances live in-memory only. Persistence handed to Phase 07 (which lands `InstanceRepository` + `InstanceLoader`); MetagraphLoader extension point (`register_attach_handler`) lands in Phase 08.
+
+    **J. Drift narrative + speculative-feature audit (M5 C):**
+
+    Phase 06 ships 8 subclasses per ADR-0132 enumeration. M5 C audit per subclass:
+    - `NodeInstance` / `EdgeInstance` / `HyperEdgeInstance`: concrete Phase 03 primitive consumers; CLI-exercised.
+    - `CompositeInstance`: concrete (composite is the structural-deviation vehicle per P29 C).
+    - `SubGraphInstance` (P13 B): concrete semantic locked (triple + invariant); library-tested.
+    - `GraphInstance`: ships empty-scope; ADR-0132 enumeration justification + Phase 10 fills surface.
+    - `MetaEdgeInstance` / `MetaHyperEdgeInstance`: structural endpoint override is the primary use case; library-tested.
+
+    All 8 audit-cleared. No subclass deferred.
+
+    **K. Package integration (round-7 P62 A — first top-level package addition since Phase 02):**
+
+    `mindsos_instances/` is a new top-level Python package. The integration checklist:
+    1. **`pyproject.toml`** — add `mindsos_instances` to the `[tool.setuptools.packages.find]` list (or equivalent `packages = [...]` field if hatchling-style).
+    2. **`compose.yml`** — verify the `mindsos` service mount/build context picks up `mindsos_instances/` alongside `mindsos_core` and `mindsos_cli`; if explicit COPY directives exist in `Dockerfile`, add `mindsos_instances/`.
+    3. **`mindsos_cli/doctor.py`** — extend the version-string-parity check to assert `mindsos_instances.__version__ == mindsos_core.__version__ == mindsos_cli.__version__` (Phase 02 introduced the parity gate; Phase 06 adds the third checked package). Doctor import-check confirms `import mindsos_instances` succeeds.
+    4. **Version-string bump 4 sites** (`+phase05d` → `+phase06`): `mindsos_core/__init__.py:__version__`, `pyproject.toml`, `compose.yml`, manifest. **+1 new site** for `mindsos_instances/__init__.py:__version__`.
+
+    Without this checklist explicit, the version-string-drift bug-class that bit 05a (5-site regex audit per `feedback_tag_regex_audit.md`) recurs.
+
+  **Reads:**
+    - `confirmation_docs/PHASE_06_DESIGN_LOG.md` — full pick log (M1–M6 + P1–P44; 2 user overrides flagged).
+    - `confirmation_docs/PHASE_MAP.md` §1 — settled cross-cutting decisions.
+    - `confirmation_docs/PHASE_MAP.md` §5 Phase 05d row + Phase 05c row — predecessors.
+    - `confirmation_docs/PHASE_05d_CONFIRMED.md` `tester_notes` — most recent shipped phase.
+    - `confirmation_docs/PHASE_05d_IMPLEMENTATION_LOG.md` — round-7 reshape precedent.
+    - `docs/decisions/adr/0015-instancing-model.md`, `0019-materialisation-is-lazy.md`, `0025-instance-overrides-via-ov-prefix.md`, `0026-composite-overrides-bundle-only.md`, `0132-instancing-moved-to-mindsos-instances.md` — instancing ADR set.
+    - `docs/decisions/adr/0014-layer-boundary-core-only.md`, `0017-schema-strictness-opt-in.md` — pointer-line precedent from 05d.
+    - `mindsos_core/models/graph.py`, `mindsos_core/models/node.py`, `mindsos_core/models/edge.py`, `mindsos_core/models/metagraph.py` — current Core primitive surfaces (audit confirmed: no instance.py; remove methods present and observer-hook-receptive).
+    - `mindsos_core/schema/validation.py` — `RESERVED_PROPERTY_PREFIXES = ("ov__",)` already in place (Phase 04 lock); confirms ov__ reservation for Phase 07 serialization without new Phase 06 work.
+
+  **Risks:**
+    - **Cascade-observer attach timing (round-7 P49 B+A rewrite).** Core ships observer plumbing only; `mindsos_instances.attach_registry(mg)` is the caller-facing idempotent helper that constructs + attaches `ElementRegistry(mg)`. If the helper is not called before instances are created, `mg.element_registry` doesn't exist → instance construction fails (registry lookup raises). This is the intended failure mode — no silent registry-bypass possible. CLI `instantiate-*` verbs always call `attach_registry` as their first step.
+    - **Recursive cascade depth.** Deeply-nested composites (>1000 levels) could hit Python's recursion limit. Mitigation: cycle detection (P25 A) prevents infinite recursion; nested-depth >100 is implausible per L4/L5 mental-model use cases. Convert to iterative if profile shows depth issues.
+    - **Observer-callback exception atomicity (round-7 P65 A).** Each Core `remove_*` method runs `snapshot → mutate → call observers → on exception, restore + re-raise`. Implementation must ensure the snapshot/restore wraps the full remove operation. A bug in the wrap leaves state inconsistent on observer failure.
+    - **CLI single-call demo + multi-step library workflows divergence.** Testers exercising CLI may form mental models that don't match library mutation API surface. Mitigation: `docs/concepts/instancing.md` documents both paths explicitly.
+    - **JSON-fragment value parsing (P42 A) shell-quoting friction.** Recipe authors must quote string literals (`--override name='"Alicia"'`). Mitigation: examples in row recipes + future feedback memory if it hits twice.
+    - **GraphInstance ships empty-scope (but P54 B materialise = full clone).** Audit cleared (P36 A future-work entry); reviewers may flag as "useless class" — but round-7 P54 B locks GraphInstance materialise as a full deep-copy clone, giving the subclass a real Phase 06 use even before Phase 10's property-bag override surface arrives.
+    - **Endpoint-resolution walk cost (round-7 P58 A).** `_resolve.resolve_node(metagraph, node_id)` walks `metagraph.graphs.values()` — O(G×N) per resolution. Phase 06 single-call-demo scope absorbs the cost. Phase 07 persistence can add an indexed reverse-map if profile shows hotness.
+
+  **Tests (no budget cap per `feedback_test_budget_unlimited.md`):**
+
+  In-memory only (P8 B); no subprocess/CLI state-round-trip tests; no FalkorDB integration. Projected categories (round-7 P52/P59/P64 adjustments):
+  - Subclass construction + invariants (per-subclass override allow-list enforcement per P64 A bifurcation, identity-field-rejection, type_name-rejection, kind constant presence, `_instance_seq` monotonicity per P46 C) — ~45 tests.
+  - SubGraphInstance edge-validity invariant (strict pass/fail; structural override re-checks invariant) — ~15 tests.
+  - Override mutation (set / clear / repeated set; reserved-key + ov__-prefix rejection in property bucket; structural-bucket bypass per P64 A) — ~25 tests.
+  - Materialisation per subclass (type mapping per P6 A; fresh-UUID-per-call; structural fields appear in materialised object; user-property merge; round-7 P58 A endpoint resolution; round-7 P51 A SubGraphInstance copy; round-7 P54 B GraphInstance full clone; CompositeInstance tree per P18 A + P39 A + round-7 P63 A canonicalize-asdict) — ~50 tests.
+  - Composite (mutability per P37 A; duplicates allowed; remove_member by occurrence; cycle detection P25 A; cross-metagraph rejection P43 C + round-7 P50 A required-metagraph_id; round-7 P55 A stale-ref rejection; round-7 P61 A bundle_overrides validation with `scope="composite"`) — ~30 tests.
+  - Cascade observer (hard-remove on Graph triggers element_registry remove; recursive cascade through composites P44 A; round-7 P56 A mg.identity.unregister; round-7 P59 A SubGraphInstance referenced-element routing; round-7 P65 A atomic-rollback on observer exception) — **~30 tests; teardown/unsubscribe category struck per round-7 P52 A (no such API exists)**.
+  - Canonicalize utility (set→sorted-list; recursive nesting; JSON output stability) — ~15 tests.
+  - CLI (4 verbs × pass + override + materialise paths; JSON-fragment value parsing P42 A; list→set coercion per P57 A; compose inline JSON specs P41 A; error paths — unknown template ID, cross-metagraph, invalid override; exit-code split per round-7 P53 A) — ~30 tests.
+
+  Projected total: ~240 net-new tests. In-container baseline 05d = 1013 → projected Phase 06 = ~1250 in-container + 2 skipped (continuity).
+
+  Sandbox vs container split: subclass construction + override mutation + canonicalize + materialise structural correctness are sandbox-friendly (no FalkorDB, no subprocess). CLI tests require subprocess and run in-container only.
+
+  **Docs:** `docs/concepts/instancing.md` (new or amended — concept page covering 8 subclasses + override allow-list + composite + cascade); `docs/api/instances/` (new section — per-subclass API reference + ElementRegistry + canonicalize); `docs/usage/core/instances.md` (CLI usage; recipe examples for JSON-fragment quoting); `docs/changelog/CHANGELOG.md` (Phase 06 entry); `mindsos_core/__init__.py:54` stale-reference fix (the only on-disk ADR-ref edit; ADR file edits themselves deferred to Phase 38 per round-7 P45 B).
+
+  **Future-work entries filed (5 total — to be added to `_source_backup/root/mindsos_future_plans.md`):**
+    - **(i) GraphInstance override surface** — when Phase 10 ships ADR-0130 (graph property bag), GraphInstance's allow-list amends to include graph-level user properties. Phase 10 row picks up this thread.
+    - **(ii) Composite combine helper** — `mindsos_instances.combine_composite_into_graph(...)` (or equivalent) — revisit when L4 ships and the combination contract is concrete. P30 A locked caller-combines for Phase 06.
+    - **(iii) Cross-metagraph composite members** — P43 C forbids in Phase 06. Revisit when L4/L5 demonstrates a concrete task-composite spanning multiple metagraphs; likely requires multi-metagraph cascade-observer coordination.
+    - **(iv) Soft-delete × cascade-through-composites** — P32 A defers; Phase 10 row picks whether `deprecate_*` triggers partial-cascade (member-removal from composites) or stay-alive (composites preserved with deprecation-marker propagation).
+    - **(v) Type-name override permission** — P33 B forbids in Phase 06. Revisit if L4/L5 surfaces a polymorphic-template use case where an instance legitimately needs a different `type_name` than its template.
 
 ### Phase 07 — L1 Persistence
 

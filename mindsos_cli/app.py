@@ -6,6 +6,7 @@ from mindsos_cli.commands.confirm_phase import confirm_phase
 from mindsos_cli.commands.doctor import doctor
 from mindsos_cli.commands.graph import register_graph_app
 from mindsos_cli.commands.identity import register_identity_app
+from mindsos_cli.commands.instances import register_instances_app
 from mindsos_cli.commands.metagraph import register_metagraph_app
 from mindsos_cli.commands.metagraph_schema import register_metagraph_schema_app
 from mindsos_cli.commands.schema import register_schema_app
@@ -14,7 +15,7 @@ from mindsos_cli.commands.version import show_version
 app = typer.Typer(
     name="mindsos",
     help="MindsOS command-line interface "
-         "(Phase 05b — L1 IntergraphEdge + MetagraphSchema + Metagraph + Schema + Graph).",
+         "(Phase 06 — L1 Instancing + IntergraphEdge + MetagraphSchema + Metagraph + Schema + Graph).",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -34,3 +35,4 @@ register_graph_app(app)
 register_schema_app(app)
 register_metagraph_app(app)
 register_metagraph_schema_app(app)
+register_instances_app(app)
