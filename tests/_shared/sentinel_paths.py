@@ -67,4 +67,19 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # vocab + replace-only update verb; metagraph state-file v=2→v=3 +
     # metagraph-schema state-file v=1→v=2)
     "mindsos_core/models/intergraph_hyperedge.py",
+    # Phase 06 (mindsos_instances sibling package + Core observer plumbing
+    # + new instances CLI subapp). Round-7 P62 A package-integration
+    # checklist enforces these new sentinel paths.
+    "mindsos_core/_observers.py",
+    "mindsos_instances/__init__.py",
+    "mindsos_instances/exceptions.py",
+    "mindsos_instances/_resolve.py",
+    "mindsos_instances/materialise.py",
+    "mindsos_instances/registry.py",
+    "mindsos_instances/utils/__init__.py",
+    "mindsos_instances/utils/canonicalize.py",
+    "mindsos_instances/models/__init__.py",
+    "mindsos_instances/models/_overrides.py",
+    "mindsos_instances/models/element_instance.py",
+    "mindsos_cli/commands/instances.py",
 )
