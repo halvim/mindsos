@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase05d"
-description = "MindsOS command-line interface — Phase 05d L1 MetaEdgeType + MetaHyperEdgeType vocab + eager-attach extension (ADR-0014 third amendment; 2 new metagraph-schema add-meta-*-type verbs + 1 new read-only validate verb with --schema MS opt-in; metagraph-schema state-file v=2→v=3; round-7 P31 A dropped the locked-design fingerprint mechanism)."
+version = "0.0.0+phase06"
+description = "MindsOS command-line interface — Phase 06 L1 Instancing (mindsos_instances sibling package; 8 element-instance subclasses + ElementRegistry + materialise machinery + cascade-observer; round-7 P45-P66 reshape including ADR file edits deferred to Phase 38, ID derivation drops overrides-hash, bifurcated override validation, endpoint-resolution walk in materialise)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
@@ -25,7 +25,7 @@ dependencies = [
 mindsos = "mindsos_cli.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["mindsos_cli*", "mindsos_core*"]
+include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*"]
 
 [tool.setuptools.package-data]
 mindsos_cli = ["manifest.toml"]

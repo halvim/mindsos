@@ -51,7 +51,7 @@ Round 1-4 design picks reflected in the slim shape:
 Slim-port deferral list (subsequent phases append):
 
 * ``Metagraph.add_xref`` / ``iter_xrefs`` / ``remove_xref`` (ADR-0128) — Phase 09.
-* ``element_instances`` / ``composite_instances`` (ADR-0024 / ADR-0025) — Phase 06.
+* ``element_instances`` / ``composite_instances`` (ADR-0015) — SHIPPED in Phase 06 via mindsos_instances package.
 * Soft-delete on edges/hyperedges/metaedges/metahyperedges/intergraph_edges
   (ADR-0133) — Phase 10 uniformly across all 4 edge variants.
 * ``RemovalImpact`` + ``force=True`` on ``remove_graph`` (ADR-0135) — Phase 10.
@@ -160,4 +160,4 @@ __all__ = [
     "MetagraphSchema",
 ]
 
-__version__ = "0.0.0+phase05d"
+__version__ = "0.0.0+phase06"

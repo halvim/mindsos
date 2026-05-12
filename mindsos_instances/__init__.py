@@ -1,0 +1,81 @@
+"""MindsOS Instances — sibling package for L1 instancing (Phase 06).
+
+Per ADR-0132 (deferred Phase 38 file edit) and Phase 06 row §A. The
+package ships eight element-instance subclasses, a per-metagraph
+``ElementRegistry``, materialise machinery, a canonicalize utility, and
+an idempotent ``attach_registry`` helper that subscribes the registry
+to the metagraph's Core-side remove observers (Phase 06 row §F + §C +
+round-7 P49 A).
+
+Public surface (Phase 06):
+
+* :class:`ElementInstance` — abstract base.
+* :class:`NodeInstance`, :class:`EdgeInstance`, :class:`HyperEdgeInstance`,
+  :class:`SubGraphInstance`, :class:`GraphInstance`,
+  :class:`MetaEdgeInstance`, :class:`MetaHyperEdgeInstance`,
+  :class:`CompositeInstance` — eight concrete subclasses.
+* :class:`ElementRegistry` — per-metagraph in-memory registry.
+* :func:`attach_registry` — idempotent helper that constructs (or
+  returns the existing) :class:`ElementRegistry` for a metagraph.
+* Exceptions: :class:`DanglingTemplateError`,
+  :class:`CompositeCycleError`,
+  :class:`CrossMetagraphCompositeError`,
+  :class:`SubGraphInvariantError`,
+  :class:`OverrideScopeError`.
+
+Persistence (``InstanceRepository`` / ``InstanceLoader``) and the
+``MetagraphLoader.register_attach_handler`` extension point are
+deferred to Phases 07 + 08 per Phase 06 row §A (P4 B + P5 B).
+"""
+
+from __future__ import annotations
+
+from .exceptions import (
+    CompositeCycleError,
+    CrossMetagraphCompositeError,
+    DanglingTemplateError,
+    OverrideScopeError,
+    SubGraphInvariantError,
+)
+from .models import (
+    CompositeInstance,
+    EdgeInstance,
+    ElementInstance,
+    GraphInstance,
+    HyperEdgeInstance,
+    MetaEdgeInstance,
+    MetaHyperEdgeInstance,
+    NodeInstance,
+    SubGraphInstance,
+)
+from .registry import ElementRegistry, attach_registry
+from .utils.canonicalize import canonicalize
+
+#: Phase 06 version string. Doctor self-test asserts parity with
+#: ``mindsos_core.__version__`` and ``mindsos_cli.__version__``
+#: (round-7 P62 A — new top-level package adds a fourth checked site).
+__version__ = "0.0.0+phase06"
+
+__all__ = [
+    # exceptions
+    "CompositeCycleError",
+    "CrossMetagraphCompositeError",
+    "DanglingTemplateError",
+    "OverrideScopeError",
+    "SubGraphInvariantError",
+    # models
+    "CompositeInstance",
+    "EdgeInstance",
+    "ElementInstance",
+    "GraphInstance",
+    "HyperEdgeInstance",
+    "MetaEdgeInstance",
+    "MetaHyperEdgeInstance",
+    "NodeInstance",
+    "SubGraphInstance",
+    # registry + attach helper
+    "ElementRegistry",
+    "attach_registry",
+    # canonicalize utility
+    "canonicalize",
+]

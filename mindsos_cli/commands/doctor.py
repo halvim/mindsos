@@ -73,20 +73,32 @@ def _read_pyproject_version(repo_root: Path) -> tuple[str | None, str | None]:
 
 def _read_init_version(repo_root: Path) -> tuple[str | None, str | None]:
     """Return ``(version, error)`` from mindsos_cli/__init__.py:__version__."""
-    path = repo_root / "mindsos_cli" / "__init__.py"
+    return _read_package_init_version(repo_root, "mindsos_cli")
+
+
+def _read_package_init_version(
+    repo_root: Path, package: str
+) -> tuple[str | None, str | None]:
+    """Return ``(version, error)`` from ``<package>/__init__.py:__version__``.
+
+    Phase 06 round-7 P62 A — generalised so the doctor self-test can
+    check version-string parity across every Mindsos top-level package
+    (``mindsos_cli``, ``mindsos_core``, ``mindsos_instances``).
+    """
+    path = repo_root / package / "__init__.py"
     if not path.exists():
-        return None, f"mindsos_cli/__init__.py missing at {path}"
+        return None, f"{package}/__init__.py missing at {path}"
     body = path.read_text()
     matches = _VERSION_LITERAL_RE.findall(body)
     if not matches:
         return None, (
-            "mindsos_cli/__init__.py has no top-level __version__ literal. "
-            "The drift check parses by regex (no import) — keep it as a plain "
-            "string assignment."
+            f"{package}/__init__.py has no top-level __version__ literal. "
+            f"The drift check parses by regex (no import) — keep it as a "
+            f"plain string assignment."
         )
     if len(matches) > 1:
         return None, (
-            f"mindsos_cli/__init__.py has multiple __version__ literals: "
+            f"{package}/__init__.py has multiple __version__ literals: "
             f"{matches!r}. Keep only one."
         )
     return matches[0], None
@@ -363,9 +375,40 @@ def doctor(
                 f"mindsos_cli/__init__.py __version__ drift: "
                 f"init={init_version!r} manifest={expected_version!r}"
             )
+        # Phase 06 round-7 P62 A — version-string parity extended to
+        # ``mindsos_core`` and the new ``mindsos_instances`` sibling
+        # package. Forgetting any of the four bump sites surfaces here.
+        core_version, core_err = _read_package_init_version(
+            repo_root, "mindsos_core"
+        )
+        if core_err:
+            failures.append(
+                f"mindsos_core/__init__.py version unreadable: {core_err}"
+            )
+        elif core_version != expected_version:
+            failures.append(
+                f"mindsos_core/__init__.py __version__ drift: "
+                f"core={core_version!r} manifest={expected_version!r}"
+            )
+        instances_version, instances_err = _read_package_init_version(
+            repo_root, "mindsos_instances"
+        )
+        if instances_err:
+            failures.append(
+                f"mindsos_instances/__init__.py version unreadable: "
+                f"{instances_err}"
+            )
+        elif instances_version != expected_version:
+            failures.append(
+                f"mindsos_instances/__init__.py __version__ drift: "
+                f"instances={instances_version!r} "
+                f"manifest={expected_version!r}"
+            )
         report["manifest"]["expected_version"] = expected_version
         report["runtime"]["pyproject_version"] = pyproject_version
         report["runtime"]["init_version"] = init_version
+        report["runtime"]["core_version"] = core_version
+        report["runtime"]["instances_version"] = instances_version
 
     result = {"ok": not failures, "failures": failures, **report}
 

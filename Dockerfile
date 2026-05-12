@@ -105,6 +105,12 @@ COPY mindsos_cli ./mindsos_cli
 #            precedent). New `mindsos metagraph-schema add-meta-edge-type`
 #            + `add-meta-hyperedge-type` + read-only `validate` verbs.
 COPY mindsos_core ./mindsos_core
+# Phase 06: new sibling package — `mindsos_instances/` ships 8 element-
+# instance subclasses + ElementRegistry + materialise machinery +
+# cascade-observer wiring (round-7 P49 B Core/instances boundary
+# preserved). Round-7 P62 A package-integration checklist requires the
+# COPY directive in both prod + test stages.
+COPY mindsos_instances ./mindsos_instances
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -146,6 +152,7 @@ RUN pip install --no-cache-dir --require-hashes -r requirements-test.txt
 COPY pyproject.toml README.md ./
 COPY mindsos_cli ./mindsos_cli
 COPY mindsos_core ./mindsos_core
+COPY mindsos_instances ./mindsos_instances
 COPY tests ./tests
 # Phase 01: tests/phase_01/test_workflows_present.py and
 # test_doctor_workflow_check.py read these from the host repo at /app/.

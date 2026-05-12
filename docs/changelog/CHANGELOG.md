@@ -1,11 +1,66 @@
 ---
-last_confirmed_phase: 05d
+last_confirmed_phase: 06
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 06 — L1 Instancing (`mindsos_instances` sibling package) (2026-05-11)
+
+**Ships `mindsos_instances/` — new top-level package with 8 element-
+instance subclasses (`NodeInstance` / `EdgeInstance` /
+`HyperEdgeInstance` / `SubGraphInstance` / `GraphInstance` /
+`MetaEdgeInstance` / `MetaHyperEdgeInstance` / `CompositeInstance`) +
+`ElementRegistry` + materialise machinery + `canonicalize` utility +
+cascade-observer plumbing on `mindsos_core`** per Phase 06 row §A-§K.
+Design locked across 6 rounds (M1–M6 + P1–P44; 2 user overrides at
+P13 B + P24 B) + 1 implementation round-7 pass (P45–P66) that reshaped
+the row before code landed. Round-7 ledger at
+`confirmation_docs/PHASE_06_IMPLEMENTATION_LOG.md` §1.
+
+* **Round-7 P45 B** — ADR file edits deferred to Phase 38 per 5-cascade
+  precedent. `docs/decisions/adr/` doesn't exist on disk; the row's
+  original §G "rewrite ADR-0132 Decision section inline" plan dropped.
+  Only on-disk amendment: `mindsos_core/__init__.py:54` stale ADR-0024
+  reference → ADR-0015 (P19 A).
+* **Round-7 P46 C** — Instance ID derivation drops the overrides hash.
+  `UUID5FromContentStrategy` warns against content-addressable IDs for
+  mutation-prone objects; instance overrides ARE mutation. ID now
+  derives from `(template_id, instance_seq)` via the metagraph's
+  pluggable `id_strategy`. Instances are stable under `set_override`.
+* **Round-7 P49 B+A** — Core ships observer plumbing only; new
+  `mindsos_instances.attach_registry(mg)` idempotent helper constructs
+  + attaches `ElementRegistry`. ADR-0010 boundary preserved (no Core
+  import of `mindsos_instances`).
+* **Round-7 P58 A** — Edge/HyperEdge/MetaEdge/MetaHyperEdge materialise
+  resolves ID-overrides to Node/Graph objects via a walk of
+  `metagraph.graphs.values()` (O(G×N) — acceptable for Phase 06 single-
+  call demo; Phase 07 may add a reverse-index).
+* **Round-7 P59 A** — Cascade observer routes through
+  `SubGraphInstance.node_ids` / `edge_ids` membership when an inner
+  element is removed. Closes the stale-reference bug-class for
+  subgraph instances.
+* **Round-7 P64 A** — Override-validation routing is bifurcated:
+  structural-allow-list keys bypass `validate_user_properties`;
+  everything else routes through with `scope=KIND`.
+* **Round-7 P65 A** — Observer-callback exceptions abort the originating
+  Core `remove_*` method atomically (precheck-style dispatch — callbacks
+  fire BEFORE the underlying mutation).
+* **Round-7 P66 (implementation pushback)** —
+  `Metagraph.register_graph_added_observer` so graphs added AFTER
+  `attach_registry` get their per-Graph remove-observer subscription
+  wired. Closes a cascade regression caught by 9 failing tests in
+  `tests/phase_06/test_cascade_observer.py`.
+
+CLI surface (4 verbs per row §H): `mindsos instances instantiate-node`
+/ `instantiate-edge` / `instantiate-hyperedge` / `compose`. Each with
+`--materialise` flag + `--override key=val` JSON-fragment parsing
+(round-7 P57 A list→set coercion for set-typed structural fields).
+Exit codes per round-7 P53 A (0/1/2 — adopts 05d split).
+
+State files unchanged (P8 B — persistence is Phase 07).
 
 ## Phase 05d — L1 MetaEdgeType + MetaHyperEdgeType vocab + eager-attach extension (2026-05-07)
 
