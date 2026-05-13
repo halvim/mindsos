@@ -1,9 +1,12 @@
 """Bootstrap: create indexes required by the Core Layer (Phase 07).
 
 Run lazily once per :class:`FalkorClient` construction (P2 A). Safe to
-re-run — every statement uses ``CREATE INDEX IF NOT EXISTS`` (P42 B);
-already-exists errors are also caught defensively for FalkorDB versions
-that don't honour the ``IF NOT EXISTS`` clause.
+re-run — the bare ``CREATE INDEX FOR`` syntax is the only form FalkorDB
+v4.18.3 accepts (Step 0 probe B-07-T1 2026-05-13 confirmed
+``CREATE INDEX IF NOT EXISTS`` is a hard syntax error in the Cypher
+parser, not an "already exists" run-time error). Idempotency comes from
+the defensive try/except that catches the
+``Attribute 'id' is already indexed`` error returned on re-create.
 
 Per P95 B — **14 indexes total**:
 
@@ -65,16 +68,19 @@ DEFAULT_INDEXES: List[Tuple[IndexKind, str, str]] = [
 
 
 def _ddl_for(kind: IndexKind, label: str, prop: str) -> str:
-    """Render the ``CREATE INDEX IF NOT EXISTS`` DDL for one entry.
+    """Render the ``CREATE INDEX FOR`` DDL for one entry.
 
-    Per P89 A — relationship-index syntax differs from node-label syntax
-    in FalkorDB v4.18.3. Step 0 probe confirms both forms supported with
-    the ``IF NOT EXISTS`` clause.
+    Per P89 A + B-07-T1 hotfix (2026-05-13): relationship-index syntax
+    differs from node-label syntax. FalkorDB v4.18.3 does NOT support
+    ``CREATE INDEX IF NOT EXISTS`` (Cypher parser rejects ``IF NOT EXISTS``
+    as a syntax error); idempotency comes from the defensive try/except
+    in :func:`bootstrap` that swallows the
+    ``Attribute 'id' is already indexed`` re-create error.
     """
     if kind == "node":
-        return f"CREATE INDEX IF NOT EXISTS FOR (n:{label}) ON (n.{prop})"
+        return f"CREATE INDEX FOR (n:{label}) ON (n.{prop})"
     # kind == "rel"
-    return f"CREATE INDEX IF NOT EXISTS FOR ()-[r:{label}]-() ON (r.{prop})"
+    return f"CREATE INDEX FOR ()-[r:{label}]-() ON (r.{prop})"
 
 
 def bootstrap(client: Client) -> None:

@@ -22,15 +22,20 @@ def test_default_indexes_split_10_node_3_rel_1_hotpath() -> None:
 
 
 def test_ddl_node_form() -> None:
-    """Node-label DDL uses `(n:Label)` syntax."""
+    """Node-label DDL uses `(n:Label)` syntax (no IF NOT EXISTS per B-07-T1)."""
     q = _ddl_for("node", "Node", "id")
-    assert q == "CREATE INDEX IF NOT EXISTS FOR (n:Node) ON (n.id)"
+    assert q == "CREATE INDEX FOR (n:Node) ON (n.id)"
 
 
 def test_ddl_rel_form() -> None:
-    """Relationship-type DDL uses `()-[r:RelType]-()` syntax per P89 A."""
+    """Relationship-type DDL uses `()-[r:RelType]-()` syntax per P89 A.
+
+    Per B-07-T1 hotfix — bare ``CREATE INDEX FOR`` only; FalkorDB v4.18.3
+    rejects ``IF NOT EXISTS`` as a Cypher parser syntax error. Idempotency
+    via the bootstrap defensive try/except, not the clause.
+    """
     q = _ddl_for("rel", "Edge", "id")
-    assert q == "CREATE INDEX IF NOT EXISTS FOR ()-[r:Edge]-() ON (r.id)"
+    assert q == "CREATE INDEX FOR ()-[r:Edge]-() ON (r.id)"
 
 
 def test_bootstrap_emits_14_statements_against_inmemory() -> None:
@@ -42,13 +47,18 @@ def test_bootstrap_emits_14_statements_against_inmemory() -> None:
 
 
 def test_bootstrap_swallows_already_exists_errors() -> None:
-    """Bootstrap survives older-FalkorDB versions that don't honour IF NOT EXISTS."""
+    """Bootstrap survives re-runs via the defensive 'already indexed' catch.
+
+    Per B-07-T1 (2026-05-13) — FalkorDB v4.18.3 returns
+    ``Attribute 'id' is already indexed`` on duplicate index creation;
+    the substring ``already`` + ``indexed`` both match the catch.
+    """
     from mindsos_core.exceptions import PersistenceError
 
     class ExistsRaiser(InMemoryClient):
         def run_query(self, q, p=None):
             super().run_query(q, p)
-            raise PersistenceError("Index already exists for (n:Node) on (n.id)")
+            raise PersistenceError("Attribute 'id' is already indexed")
 
     c = ExistsRaiser()
     bootstrap(c)  # Should not raise.
