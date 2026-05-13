@@ -12,14 +12,22 @@
 # that would defeat the drift-detection purpose.
 
 [mindsos]
-phase = "06"
-version = "0.0.0+phase06"
+phase = "07"
+version = "0.0.0+phase07"
 
 [runtime.falkordb]
 image = "falkordb/falkordb"
 tag = "v4.18.3"
 digest = "sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b3e46c1d90848845ba"
 version = "4.18.3"
+
+# Phase 07 — [falkordb] section consumed by FalkorConfig.from_manifest()
+# (P5 → P15 A hybrid env + manifest). Password env-only (P15 A).
+# No `username` field per P86 B (FalkorDB-Redis auth has no username).
+[falkordb]
+host = "localhost"
+port = 6379
+graph = "mindsos"
 
 [runtime.python]
 image = "python"

@@ -11,7 +11,10 @@ import json
 import os
 import re
 import sys
-import tomllib
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+    import tomli as tomllib  # type: ignore[no-redef]
 from pathlib import Path
 from typing import Any
 
@@ -306,6 +309,46 @@ def doctor(
             f"falkordb version drift: runtime={falkordb_state['version']} "
             f"manifest={falkordb_pin['version']}"
         )
+
+    # Phase 07 — validate the new [falkordb] section (P15 A + P59 A).
+    # Absent section is a WARNING in self-test output (not a failure),
+    # per Phase 07 row §Doctor self-test extension: "absence means
+    # FalkorDB not configured" warning, not an error.
+    falkordb_cfg = manifest.get("falkordb")
+    if falkordb_cfg is None:
+        report["manifest"]["falkordb_config"] = {
+            "status": "absent",
+            "warning": (
+                "[falkordb] section missing in manifest.toml — Phase 07 "
+                "expects host/port/graph keys for FalkorConfig.from_manifest()."
+            ),
+        }
+    else:
+        cfg_failures = []
+        if "host" not in falkordb_cfg:
+            cfg_failures.append("[falkordb] missing 'host' key")
+        if "port" not in falkordb_cfg:
+            cfg_failures.append("[falkordb] missing 'port' key")
+        if "graph" not in falkordb_cfg:
+            cfg_failures.append("[falkordb] missing 'graph' key")
+        if "password" in falkordb_cfg:
+            cfg_failures.append(
+                "[falkordb] password MUST NOT be in manifest (env-only per P15 A)"
+            )
+        # P86 B — no username field in manifest either.
+        if "username" in falkordb_cfg:
+            cfg_failures.append(
+                "[falkordb] username MUST NOT be in manifest "
+                "(FalkorDB-Redis auth has no username concept; P86 B)"
+            )
+        report["manifest"]["falkordb_config"] = {
+            "status": "ok" if not cfg_failures else "drift",
+            "host": falkordb_cfg.get("host"),
+            "port": falkordb_cfg.get("port"),
+            "graph": falkordb_cfg.get("graph"),
+            "failures": cfg_failures,
+        }
+        failures.extend(cfg_failures)
 
     # Phase 01+: required CI workflows must exist + non-empty + parse-shaped.
     # Only checked when manifest declares them (Phase 00 manifest has no [ci]).
