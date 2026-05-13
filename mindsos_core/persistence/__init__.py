@@ -25,11 +25,21 @@ from __future__ import annotations
 from .async_client import AsyncClient, ThreadPoolAsyncClient
 from .bootstrap import DEFAULT_INDEXES, bootstrap
 from .client import Client, FalkorClient, InMemoryClient, QueryResult
+from .graph_repository import GraphRepository
 from .integrity import (
     IntegrityReport,
     PartialIntegrityReport,
     verify_invariants,
     verify_invariants_graph,
+)
+from .metagraph_repository import MetagraphRepository
+from .wal import (
+    WAL_ROLE,
+    WALEntry,
+    WriteAheadLog,
+    clear_replayers,
+    recover,
+    register_replayer,
 )
 
 __all__ = [
@@ -45,4 +55,12 @@ __all__ = [
     "PartialIntegrityReport",
     "verify_invariants",
     "verify_invariants_graph",
+    "GraphRepository",
+    "MetagraphRepository",
+    "WAL_ROLE",
+    "WALEntry",
+    "WriteAheadLog",
+    "register_replayer",
+    "clear_replayers",
+    "recover",
 ]
