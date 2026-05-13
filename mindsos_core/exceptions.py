@@ -148,3 +148,76 @@ class CompositionalImmutableError(CoreError):
     Phase 09 / Phase 10 will re-ship :class:`XRefIntegrityError` /
     :class:`RemoveGraphBlockedError` respectively under the same pattern.
     """
+
+
+# ── Persistence (Phase 07) ───────────────────────────────────────────────────
+#
+# Per P21 A amended P84 B — Phase 07 ships 4 persistence exceptions at L1.
+# ``MissingExpectedVersionError`` (the Global-write policy exception) lives
+# at L0/L2 with its raiser (the Global-policy repository wrapper), per
+# ADR-0127 §Implementation references amendment.
+
+
+class PersistenceError(CoreError):
+    """Base class for any error raised by ``mindsos_core.persistence``.
+
+    Raised directly on:
+
+    * FalkorDB driver import failure (``FalkorClient.__init__``).
+    * Connection failure on ``FalkorClient.__init__``.
+    * Cypher query failure on ``Client.run_query`` / ``run_batch``.
+    * ``_props_json`` write failures (narrow chained catch per P97 B) at
+      :meth:`MetagraphRepository.persist`.
+    * ``sync --replace`` refusal when uncommitted ``:WALEntry`` rows
+      reference the target graph (P91 A).
+    """
+
+
+class IntegrityCheckError(PersistenceError):
+    """Persist-time double-check (ADR-0123 §2) detected an invariant violation.
+
+    Raised by ``MetagraphRepository.persist`` / ``GraphRepository.persist``
+    after a batched MERGE when the post-write probe finds duplicate ids
+    for any element label. Carries the offending ``(label, [ids])``
+    pair so the caller can surface the data.
+
+    Distinct from the cumulative scanner output
+    (:class:`IntegrityReport`) returned by ``verify_invariants`` — that
+    is a value object, not an exception.
+    """
+
+
+class OptimisticConcurrencyConflict(PersistenceError):
+    """OCC predicate (ADR-0127) failed: stale ``_version`` on update.
+
+    Raised by ``GraphRepository.update_*_properties`` when the conditional
+    MATCH on ``_version: $expected_version`` returns zero rows. Carries
+    ``element_id``, ``expected_version``, and (when known) the
+    ``actual_version`` for caller-side retry decisions.
+    """
+
+    def __init__(
+        self,
+        element_id: str,
+        expected_version: int,
+        actual_version: int | None = None,
+    ) -> None:
+        msg = (
+            f"OCC conflict on element {element_id!r}: "
+            f"expected _version={expected_version}"
+        )
+        if actual_version is not None:
+            msg += f", actual={actual_version}"
+        super().__init__(msg)
+        self.element_id = element_id
+        self.expected_version = expected_version
+        self.actual_version = actual_version
+
+
+class OptimisticConcurrencyExhausted(PersistenceError):
+    """Retry loop wrapping :class:`OptimisticConcurrencyConflict` exceeded its budget.
+
+    Phase 07 ships this as a definition-only exception class (P57 A —
+    no raise-path at L1). L0/L2 retry wrappers raise it when their
+    bounded retry attempts all fail with :class:`OptimisticConcurrencyConflict`.
+    """
