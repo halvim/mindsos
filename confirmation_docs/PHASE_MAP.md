@@ -2113,11 +2113,278 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 07 — L1 Persistence
 
-  **Deps:** 03, 04, 05, 06. **Layer:** L1. **Net-new?** Partial — verifies coverage of W1–W6 mitigations (WAL, indexes, AsyncClient, OCC) per ADRs 0121–0127.
-  **Features:** save graph; save metagraph; client diagnose; integrity verify.
-  **Tests:** save → reload via Phase 08; WAL replay after simulated crash; OCC rejects stale write; AsyncClient round-trips off the main thread.
-  **Risks:** WAL semantics across phase rollbacks (a phase rollback may leave WAL entries on disk).
-  **Docs:** `docs/usage/core/persistence.md`, ADRs 0030/0121/0122/0123/0126/0127.
+  **Status:** Pending (in design — refining + locking — this chat 2026-05-12, post 3 design rounds + 4 meta-pick passes).
+  **Branch:** phase-07
+  **Tag on confirm:** phase-07-confirmed
+  **Depends on:** 03, 04-v2, 05a, 05b, 05c, 05d, 06 (last in 06 cascade per CASC-1 strict-sequential).
+  **Layer(s):** L1.
+  **Net-new?:** **Partial.** Slim-port v3 baseline `mindsos_core/persistence/*` + `mindsos_core/reconstruction/graph_loader.py` + `mindsos_core/cypher/builders.py` + sibling-package `mindsos_instances/persistence/instance_repository.py`. NEW CLI subapp `mindsos persistence` (5 verbs). NEW `requirements.in` entry: `falkordb` Python driver. NEW reserved property: `_version` field added to every core element-type dataclass (Node already has it per Phase 04 deferral note; Edge, HyperEdge, MetaEdge, MetaHyperEdge, IntergraphEdge, IntergraphHyperEdge, ElementInstance, CompositeInstance gain it). NO state-file bump (M0 B locked).
+
+  **Locked decisions (4 meta-pick passes + 3 design rounds — 2026-05-12):**
+
+    - **M0** — **Backend-only Phase.** JSON state files unchanged at v=4/v=2/v=1. `mindsos persistence sync --graph X` projects JSON contents → FalkorDB. Existing Phase 02-06 CLI verbs unchanged. JSON authoritative; FalkorDB projection (per ADR-0121).
+    - **M1** — Slim-port v3 baseline modules. Each port strips fields/methods out-of-scope for Phase 07 (XRef → Phase 09; metagraph loader + streaming → Phase 08; soft-delete read-filter → Phase 10).
+    - **M2** — Single Phase 07 (no 07a/07b split). Test budget fits inside 110-160 added tests per 05a-06 precedent given M11/M14/M15.
+    - **M3** — Flip ADRs 0122/0123/0126/0127 Proposed → Accepted **inline** (ADR file edits land in 07, overriding the Phase 06 P45 B "ADR edits → Phase 38" deferral for these 4 ADRs). Write `docs/dev/internals/core.md` "Persistence layer" section per P24 B.
+    - **M4** — Open-ended round count (closed at 3 design rounds + 4 meta-passes; pushback well dry per round-3 §4).
+    - **M5** — OCC `_version` enforcement wires on `update_*_properties` per ADR-0127; opt-in via `expected_version` parameter (P7 C).
+    - **M6** — Minimum scope: 5-bucket `verify_invariants` scanner unchanged from v3 + 3 CLI verbs (`diagnose` / `verify` / `inspect-state`).
+    - **M7** — Mechanism only; no Global/Local policy. `expected_version` opt-in per call site.
+    - **M8** — Trimmed reading scope.
+    - **M9** — **Observer-driven persist** via single `after_persist(mg)` callback on `Metagraph`. Instances persist sibling-side; preserves Phase 06 P49 B Core/instances boundary.
+    - **M10** — `tests/phase_07/` existing layout.
+    - **M11** — `pytest.mark.integration` tag on FalkorDB-requiring tests; conftest registers marker.
+    - **M12** — Bump `confirm-phase` timeout 600s → 900s (per `feedback_confirm_phase_timeout.md`; affects all phases).
+    - **M13** — `persistence reset` deferred to Phase 11 entirely; replaced in 07 by `inspect-state` (P13 B rename).
+    - **M14** — **Phase 07 strictly graph-scoped.** Ships single-Graph save+load round-trip. Metagraph sync AND metagraph load both deferred to Phase 08 (reverses Round-1 P3 B per P12 D).
+    - **M15** — Per-test fresh FalkorDB graph (`test_<uuid_hex8>` naming).
+    - **P16-pre** — Ship tombstone-WRITE primitives in 07; soft-delete READ-filter deferred to Phase 10.
+    - **P1 C** — 5-verb subapp: `sync` / `load` / `diagnose` / `verify` / `inspect-state`. Bootstrap implicit on Client construction.
+    - **P2 A** — Lazy bootstrap on `Client.__init__`; idempotent index creation.
+    - **P3 B → P12 D** — `sync` graph-only too (metagraph-sync moves to Phase 08).
+    - **P4 A** — Per-command connection lifecycle. Each CLI verb opens, runs, closes the FalkorDB connection.
+    - **P5 C → P15 A** — Env-and-manifest hybrid for `FalkorConfig`; password env-only (security).
+    - **P6 A** — Direct repository construction (`GraphRepository(client)`); caller manages client lifecycle.
+    - **P7 C** — `_version` field always bumps on update; OCC enforcement opt-in via `expected_version` parameter; field-bump is invariant.
+    - **P8 A → P9 C** — `_props_json` writer ships for Metagraph (per ADR-0130); skipped for Graph (Graph .properties deferred per PHASE_MAP §7 Q4).
+    - **P10 A** — `_version: int = 1` field added to ALL six core element types.
+    - **P11 A** — `_version` field on `ElementInstance` + `CompositeInstance` (cross-package — bumps `mindsos_instances` slim-port surface).
+    - **P12 D** — Symmetric Phase 07 scope: both `sync` and `load` graph-only.
+    - **P13 B** — `inspect-state` verb (renames the original `reset --dry-run`); read-only DB content lister.
+    - **P14 A** — 3 distinct verbs (`inspect-state` / `diagnose` / `verify`) — audience clarity over surface savings.
+    - **P15 A** — Manifest `[falkordb]` section holds `host` / `port` / `username` / `graph`; password env-only.
+    - **P16 A** — Standard lockfile regen via `tools/lock.sh`; tester re-runs once.
+    - **P17 C** — `load --graph X` default stdout summary; `--to-json` opt-in overwrites `~/.mindsos/graph-<name>.json`.
+    - **P18 D** — `sync --graph X` additive default (MERGE-on-id); `--replace` opt-in performs DETACH DELETE + rewrite.
+    - **P19 C** — `verify --source=memory|db`; default `memory`.
+    - **P20 B** — `RaisesOnNthCall` test wrapper for WAL mid-batch crash simulation.
+    - **P21 A** — Port 5 persistence exceptions: `PersistenceError`, `IntegrityCheckError`, `OptimisticConcurrencyConflict`, `OptimisticConcurrencyExhausted`, `MissingExpectedVersionError`.
+    - **P22 C** — Test-side `tests/_shared/graph_equality.py:assert_graphs_equal` helper.
+    - **P23 A** — Latest `falkordb` PyPI version; tester relocks.
+    - **P24 B** — Single "Persistence layer" section in `docs/dev/internals/core.md` with subsections per ADR concept (substrate / WAL / indexes / async / OCC).
+    - **P25 A** — Eager sentinel-paths additions (~14 entries) at row-implementation time.
+
+  **Features in scope (capability-level — locked):**
+
+    - **`Client` Protocol** (`mindsos_core.persistence.Client`) — sync surface per ADR-0030: `run_query(query, params)` / `run_batch(statements)` / `close()`. No transactions, no async (parallel `AsyncClient` Protocol per ADR-0126).
+    - **`FalkorClient`** — concrete sync impl backed by `falkordb` Python driver; lazy driver import; `PersistenceError` on connection failure.
+    - **`InMemoryClient`** — call-recorder mock for unit tests. Records statements; doesn't execute Cypher. Used where round-trip fidelity is NOT required.
+    - **`AsyncClient` Protocol** + **`ThreadPoolAsyncClient`** wrapper per ADR-0126; ~50 LOC; no current L1 consumer but ships now to prevent downstream layers from inventing their own.
+    - **`bootstrap(client)`** — idempotent index creation per ADR-0123 (15 indexes). Fires lazily on first `FalkorClient.__init__` (P2 A); `InMemoryClient` no-ops bootstrap.
+    - **`GraphRepository`** — `persist(graph, *, metagraph_id=None)` + `update_*_properties(*, expected_version=None)` + `remove_*` tombstone-write primitives (P16-pre).
+    - **`MetagraphRepository`** — `persist(metagraph)` orchestrates Core surface (anchor + `_props_json` per ADR-0130 + contained Graphs + MetaEdges + MetaHyperEdges). Fires `after_persist(mg)` observers AFTER Core writes. Instance persistence runs sibling-side via the observer (M9).
+    - **`InstanceRepository`** (sibling `mindsos_instances.persistence`) — `persist_element_instance(...)` / `persist_composite_instance(...)`; subscribes via `Metagraph.register_persist_observer` at `attach_registry(mg)` time (extends Phase 06 P49 B idempotent helper).
+    - **`WriteAheadLog`** + **`recover()`** + **`register_replayer`** per ADR-0122. Per-Metagraph `:WALEntry` sibling-graph store. Mechanism shipped; no L1 consumer (L0/L2 wire replayers later).
+    - **OCC mechanism** (`_version` field on every element type + `expected_version` opt-in parameter on `update_*_properties`); raises `OptimisticConcurrencyConflict` on stale write. No Global/Local policy at L1 (M7).
+    - **5-bucket integrity scanner** per ADR-0123: `verify_invariants(mg) -> IntegrityReport` (duplicate_ids / cross_graph_edges / orphan_hyperedges / orphan_metaedges / dangling_tombstones).
+    - **Single-Graph load** — `mindsos_core.reconstruction.graph_loader.load_graph(client, graph_id) -> Graph` (M14). Metagraph loader deferred to Phase 08.
+    - **CLI `mindsos persistence` subapp (5 verbs):**
+        * `sync --graph <NAME> [--replace]` — projects Graph contents JSON → FalkorDB; additive default (P18 D); `--replace` performs DETACH DELETE + rewrite.
+        * `load --graph <NAME> [--to-json]` — reconstructs Graph from FalkorDB; default stdout summary (P17 C); `--to-json` opt-in overwrites `~/.mindsos/graph-<name>.json`.
+        * `diagnose` — connectivity + 15-index presence + WAL uncommitted count. Read-only.
+        * `verify [--metagraph M | --graph G] [--source=memory|db]` — 5-bucket scanner. Source default `memory` (P19 C).
+        * `inspect-state` — lists current FalkorDB contents (graphs / metagraphs / instance counts). Read-only.
+    - **Doctor self-test extension** — when manifest `[falkordb]` section present, doctor pings DB; absence means "FalkorDB not configured" warning (not error).
+
+  **Modules touched (locked):**
+
+    - `mindsos_core/persistence/__init__.py` — **NEW**. Exports Client, FalkorClient, InMemoryClient, QueryResult, AsyncClient, ThreadPoolAsyncClient, bootstrap, DEFAULT_INDEXES, GraphRepository, MetagraphRepository, WriteAheadLog, WALEntry, register_replayer, recover, IntegrityReport, verify_invariants.
+    - `mindsos_core/persistence/client.py` — **NEW**. Slim port of v3 (Client Protocol + FalkorClient + InMemoryClient + QueryResult).
+    - `mindsos_core/persistence/async_client.py` — **NEW**. Slim port of v3 (~50 LOC; AsyncClient Protocol + ThreadPoolAsyncClient).
+    - `mindsos_core/persistence/bootstrap.py` — **NEW**. 15-index DEFAULT_INDEXES list + idempotent `bootstrap(client)` function.
+    - `mindsos_core/persistence/graph_repository.py` — **NEW**. Slim port of v3; adds `expected_version` parameter on update methods per ADR-0127.
+    - `mindsos_core/persistence/metagraph_repository.py` — **NEW**. Slim port of v3; strips direct InstanceRepository call (replaced by `after_persist` observer per M9); strips XRef call (Phase 09 territory); writes `_props_json` for Metagraph per ADR-0130 (P9 C — skipped for Graph).
+    - `mindsos_core/persistence/wal.py` — **NEW**. Slim port of v3 (WriteAheadLog + WALEntry + register_replayer + recover).
+    - `mindsos_core/persistence/integrity.py` — **NEW**. Slim port of v3 5-bucket scanner.
+    - `mindsos_core/reconstruction/__init__.py` — **NEW**. Exports `load_graph`.
+    - `mindsos_core/reconstruction/graph_loader.py` — **NEW**. Slim port from v3 single-graph reader; decodes `_props_json` on Graph anchor (no-op since P9 C skips writer; defensive read).
+    - `mindsos_core/cypher/builders.py` — **NEW**. Slim port of v3 (~200 LOC). Builders: `build_create_metagraph_anchor`, `build_create_graph_anchor`, `build_unwind_create_nodes/edges/hyperedges`, `build_create_tombstone`, `build_update_*_properties`, `build_remove_*`.
+    - `mindsos_core/config.py` — **NEW**. `FalkorConfig` dataclass + `from_env()` + `from_manifest()` classmethods (P5 → P15 hybrid).
+    - `mindsos_core/models/{edge,hyperedge,metaedge,metahyperedge}.py` — adds `_version: int = 1` field (P10 A). Node already has it per Phase 04 deferral.
+    - `mindsos_core/models/{intergraph_edge,intergraph_hyperedge}.py` — adds `_version: int = 1` field (P10 A).
+    - `mindsos_core/models/metagraph.py` — adds `register_persist_observer(cb)` + `_persist_observers` list (mirror of Phase 06 `_remove_observers`); `MetagraphRepository.persist` fires via this hook after Core writes.
+    - `mindsos_core/exceptions.py` — adds 5 persistence exceptions (P21 A).
+    - `mindsos_core/schema/validation.py` — `RESERVED_PROPERTY_KEYS` extended with `_version`.
+    - `mindsos_core/__init__.py` — re-exports persistence symbols + `_version`-reserved-key extension; `__version__` bumps to `"0.0.0+phase07"`.
+    - `mindsos_instances/persistence/__init__.py` — **NEW**. Exports `InstanceRepository`.
+    - `mindsos_instances/persistence/instance_repository.py` — **NEW**. Slim port of v3's instance_repository.
+    - `mindsos_instances/registry.py` (existing) — `attach_registry(mg)` extends to register `after_persist` observer (idempotent per Phase 06 P49 B precedent).
+    - `mindsos_instances/element_instance.py` + `composite_instance.py` — adds `_version: int = 1` field (P11 A).
+    - `mindsos_instances/__init__.py` — `__version__` bumps to `"0.0.0+phase07"`.
+    - `mindsos_cli/commands/persistence.py` — **NEW**. Typer subapp; 5 verbs (sync / load / diagnose / verify / inspect-state).
+    - `mindsos_cli/commands/doctor.py` — extends `--self-test` with FalkorDB ping when `[falkordb]` manifest section present.
+    - `mindsos_cli/commands/confirm_phase.py` — bumps `_CONFIRM_PHASE_TIMEOUT_SECONDS` from 600 → 900 (M12).
+    - `mindsos_cli/app.py` — `register_persistence_app` wired.
+    - `mindsos_cli/manifest.toml` — `[mindsos] phase = "07"`; `version = "0.0.0+phase07"`. NEW `[falkordb]` section: `host`, `port`, `username`, `graph`. NO password (env only per P15 A).
+    - `mindsos_cli/__init__.py` — `__version__ = "0.0.0+phase07"`.
+    - `pyproject.toml` — version + description bumped; package wildcards already cover new files.
+    - `docker-compose.yml` — `mindsos:phase07-prod` / `mindsos:phase07-test`. Compose env passes `FALKORDB_HOST` / `FALKORDB_PORT` / `FALKORDB_PASSWORD` / `FALKORDB_USERNAME` / `FALKORDB_GRAPH` to both services.
+    - `Dockerfile` — comment lines bumped (Phase 06 → Phase 07). No new COPY entries needed (new files live inside existing top-level packages `mindsos_core/`, `mindsos_instances/`, `mindsos_cli/`).
+    - `requirements.in` — adds `falkordb` (latest). `tools/lock.sh` regenerates `requirements.txt`; manifest `[lockfile] requirements_txt_sha256` updated.
+    - `tests/_shared/sentinel_paths.py` — **+14 entries** (P25 A): every new file path under `mindsos_core/persistence/` (8 entries) + `mindsos_core/reconstruction/` (2) + `mindsos_core/cypher/builders.py` (1) + `mindsos_core/config.py` (1) + `mindsos_instances/persistence/` (2) + `mindsos_cli/commands/persistence.py` (already counted in CLI commands? — verify at impl time).
+    - `tests/_shared/falkordb_fixture.py` — **NEW**. Per-test fresh-FalkorDB-graph fixture (`test_<uuid_hex8>` naming per M15).
+    - `tests/_shared/graph_equality.py` — **NEW**. `assert_graphs_equal(g1, g2)` walker (P22 C).
+    - `tests/_shared/raises_on_nth_call.py` — **NEW**. Client wrapper test helper (P20 B).
+    - `tests/conftest.py` — registers `pytest.mark.integration` marker.
+    - `docs/dev/internals/core.md` — **NEW "Persistence layer" section** with 5 subsections (Substrate / WAL / Indexes / AsyncClient / OCC) per P24 B + M3 A.
+
+  **Persistence layout (FalkorDB-side; backend addition):**
+
+    - **Anchor pattern:** `(:Metagraph {id, name, _props_json, _version})` + `(:Graph {id, name, role, metagraph_id?, _version})` + `(:Tombstone {graph_id})` per graph.
+    - **Element labels:** `:Node` (label per ADR-0021), `:Edge` (REL type), `:HyperEdge`, `:MetaEdge` (REL type), `:MetaHyperEdge`, `:IntergraphEdge` (REL type), `:IntergraphHyperEdge`, `:ElementInstance`, `:CompositeInstance`, `:WALEntry`. Each row carries `_version: int`.
+    - **`_props_json` encoding** (ADR-0130): Metagraph `.properties` dict JSON-encoded onto a single `_props_json` property on the anchor row. Graph `.properties` NOT shipped (P9 C; deferred per PHASE_MAP §7 Q4).
+    - **Indexes** (per `bootstrap`): all 15 from ADR-0123 + per-type `id` index + `graph_id` hot-path + `metagraph_id` hot-path.
+    - **WAL sibling graph** (per ADR-0122): `(:WALEntry {operation_id, kind, payload_json, started_at, committed, committed_at, metagraph_id})` with `:IN_METAGRAPH` edge to anchor.
+    - **JSON state files unchanged** (M0 B). `~/.mindsos/<kind>-<name>.json` at v=4/v=2/v=1 stay; NO bump.
+
+  **Automated tests (location + intent — locked):**
+
+    - `tests/phase_07/` — projected ~100-130 tests:
+        * `test_client_inmemory.py` (~5) — call recording; batch sequencing; scripted result return; close idempotent.
+        * `test_client_falkor.py` (~8, `@pytest.mark.integration`) — connect / run_query / run_batch / close lifecycle against live FalkorDB; lazy import failure path; bad config error message.
+        * `test_async_client.py` (~5) — wraps sync; propagates exceptions; CancelledError propagates from `to_thread`; close awaits.
+        * `test_bootstrap.py` (~6, `@pytest.mark.integration`) — idempotent; all 15 indexes present after first call; second call no-ops; error swallowed on "already exists."
+        * `test_graph_repository_persist.py` (~10, `@pytest.mark.integration`) — anchor + tombstone + UNWIND nodes + UNWIND edges grouped by type + UNWIND hyperedges; round-trip via `load_graph` + `assert_graphs_equal`.
+        * `test_graph_repository_update.py` (~8) — `update_*_properties(expected_version=None)` bumps `_version` only; with stale `expected_version` raises `OptimisticConcurrencyConflict`; with correct `expected_version` succeeds + bumps.
+        * `test_graph_repository_remove.py` (~5) — tombstone-write primitives; no read-filter applied (Phase 10 ships read-filter); removed-element still appears in subsequent reads.
+        * `test_metagraph_repository_persist.py` (~8, `@pytest.mark.integration`) — Metagraph anchor + `_props_json` round-trip via direct FalkorDB query; MetaEdge / MetaHyperEdge writes via cypher rel-type validation; `after_persist(mg)` observer fires once per persist call.
+        * `test_metagraph_persist_observer.py` (~4) — `register_persist_observer` + `attach_registry` idempotence; instance persistence routes sibling-side via observer; observer exception propagates cleanly.
+        * `test_instance_repository.py` (~8, `@pytest.mark.integration`) — port v3 instance persistence tests; ElementInstance + CompositeInstance round-trip; `_version` on each.
+        * `test_wal.py` (~12, mixed) — begin / commit / list_uncommitted / gc; replayer registry; `recover()` calls registered replayers; **mid-batch crash via `RaisesOnNthCall` (P20 B)** leaves entry uncommitted; replay completes commit.
+        * `test_occ.py` (~6) — `_version` default == 1 on every element type; bump on every update path; `MissingExpectedVersionError` NOT raised at L1 (mechanism per M7); stale write raises `OptimisticConcurrencyConflict`.
+        * `test_integrity.py` (~8) — 5-bucket scanner: each bucket triggered by a constructed offending fixture; `verify_invariants(mg).summary()` non-empty when issues present; `__bool__` returns True iff issues.
+        * `test_cypher_builders.py` (~10) — port v3 builder tests; cypher rel-type validation (ADR-0021) on edge/metaedge/intergraph; `_props_json` encoding round-trip.
+        * `test_cli_persistence_sync.py` (~5, `@pytest.mark.integration`) — `sync --graph X` end-to-end; `--replace` flag DETACH DELETE + rewrite; refuse on missing graph.
+        * `test_cli_persistence_load.py` (~5, `@pytest.mark.integration`) — `load --graph X` stdout summary; `--to-json` opt-in overwrites file; refuse on missing FalkorDB entry; round-trip equality preserved.
+        * `test_cli_persistence_diagnose.py` (~3, `@pytest.mark.integration`) — connectivity ok / not ok / WAL uncommitted count.
+        * `test_cli_persistence_verify.py` (~5, mixed) — `--source=memory` runs on JSON-loaded mg; `--source=db` reconstructs from FalkorDB; JSON output shape; exit codes.
+        * `test_cli_persistence_inspect_state.py` (~3, `@pytest.mark.integration`) — lists graphs+metagraphs+instance counts.
+        * `test_falkor_config.py` (~4) — `from_env()` reads env vars; `from_manifest()` reads `[falkordb]` section; password env-only enforcement (P15 A).
+        * `test_doctor_phase07.py` (~3) — image tag regex; manifest `[falkordb]` section validation; FalkorDB ping when section present.
+        * `test_confirm_phase_timeout.py` (~2) — `_CONFIRM_PHASE_TIMEOUT_SECONDS == 900`; pytest summary parser unchanged.
+        * `test_graph_equality_helper.py` (~3) — `assert_graphs_equal` walker (positive + 2 negatives).
+        * `test_raises_on_nth_call.py` (~3) — wrapper raises on N-th call; propagates real result before N; close called.
+        * `test_lockfile_falkordb_pin.py` (~2) — `requirements.in` contains `falkordb`; manifest `requirements_txt_sha256` matches.
+    - **Audit pass (pre-implementation):** review every `tests/phase_*/test_state*.py` for accidental dependencies on persistence-internal state; no state-file bump in 07 → no expected literal changes; audit confirms absence.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 07 --notes-file notes-phase-07.md`
+    (Init shape: `--init-notes 07` is canonical; backward-compat alias `phase-07`. Manifest stores `[mindsos] phase = "07"`. **Timeout 900s per M12.**)
+
+  **Pass criterion:**
+
+    - Tester can `mindsos persistence sync --graph G` and observe the Graph's nodes/edges/hyperedges in FalkorDB via direct Cypher introspection (`MATCH (n:Node {graph_id: $gid}) RETURN n`).
+    - Tester can `mindsos persistence sync --graph G --replace` and observe DETACH DELETE + rewrite (no zombie nodes).
+    - Tester can `mindsos persistence load --graph G` and see stdout summary; `--to-json` overwrites `~/.mindsos/graph-G.json` with FalkorDB-side state.
+    - Tester can `mindsos persistence diagnose` and see connectivity ok + 15 indexes present + WAL uncommitted count = 0.
+    - Tester can `mindsos persistence verify --source=memory` and see 5-bucket scanner output; `--source=db` reads FalkorDB.
+    - Tester can `mindsos persistence inspect-state` and see graphs+metagraphs+instance counts.
+    - `mindsos doctor --self-test` exits 0 including new `[falkordb]` manifest section validation.
+    - OCC mechanism verified end-to-end: construct Node → persist → bump `_version` externally → attempt `update_node_properties(expected_version=stale)` → see `OptimisticConcurrencyConflict`.
+    - WAL verified: `WriteAheadLog.begin` → mid-batch raise via `RaisesOnNthCall` → entry remains `committed=false` → `recover(client, mid)` replays.
+    - All Phase 03 + 04 + 04-v2 + 05a + 05b + 05c + 05d + 06 + 07 tests pass cumulatively in-container.
+    - **Cumulative tests pass: ≥ Phase 06 baseline (1127 + 2 skipped) + ~100-130 Phase 07 added; tester records actual count in `PHASE_07_CONFIRMED.md`** (sandbox-projected: ~1227-1257 + 2 skipped).
+
+  **Risks / known issues to watch:**
+
+    - **Graph `.properties` writer skip (P9 C) is asymmetric** with Metagraph `.properties`. PHASE_MAP §7 Q4 stays open; when it resolves (Phase 10 likely), Phase 07's `GraphRepository.persist` needs an additive amendment (no state-file impact; just adds `_props_json` to Graph anchor row).
+    - **WAL semantics across phase rollbacks (stub Risks line).** A `phase-07-superseded` rollback leaves FalkorDB data + WAL entries in `.mindsos/falkordb-data/`. Phase 06 binary doesn't know about FalkorDB. Recovery: tester wipes `.mindsos/falkordb-data/` on rollback (documented in row §Rollback hazards).
+    - **`persistence sync` is additive by default (P18 D).** Removing a node in memory does NOT remove it from FalkorDB unless `--replace`. Documented; tester convention is to use `--replace` after destructive in-memory edits.
+    - **`load --to-json` overwrites JSON state files (P17 C).** Opt-in flag; tester must explicitly accept FalkorDB-side state as authoritative. Footgun if tester forgets that FalkorDB is a projection (M0 B).
+    - **`InMemoryClient` records calls; doesn't execute Cypher.** Tests using it assert "right Cypher emitted" but NOT round-trip. Round-trip tests are `@pytest.mark.integration` and require live FalkorDB sidecar.
+    - **`expected_version=None` skips OCC enforcement** but `_version` still bumps on every update (P7 C). Downstream layers calling without `expected_version` get last-write-wins semantics — by design at L1; L0/L2 wire enforcement per ADR-0127.
+    - **WAL `recover()` is per-Metagraph.** Phase 07 ships `recover(client, metagraph_id)`; server boot path (Phase 18+) iterates over known metagraphs to call recover per-mg.
+    - **`falkordb` Python package version pin** changes `requirements.txt` sha256; doctor self-test parity check fires until tester reruns `tools/lock.sh`.
+    - **No advisory locks on state files** (J-02 carry-forward unchanged from 05a). Concurrent CLI invocations still racy on JSON side; FalkorDB OCC mitigates DB-side but doesn't solve JSON-side race.
+    - **Round-trip integration tests require live FalkorDB sidecar.** Tester running `docker compose --profile test run --rm mindsos-test pytest tests/phase_07/` MUST have falkordb sidecar reachable; documented in `docs/usage/core/persistence.md`.
+    - **`confirm-phase` timeout bump 600 → 900s (M12)** affects ALL phases retroactively; documented in row §Breaking changes.
+    - **Cross-package mindsos_instances bump.** P11 A adds `_version` field to `ElementInstance` + `CompositeInstance`; Phase 06 P62 A 3-package version-string parity check verifies the bump landed in all three packages.
+
+  **Rollback hazards (documented; `--force` reset deferred to Phase 11):**
+
+    1. FalkorDB data persists in `.mindsos/falkordb-data/` after rollback. Phase 06 binary ignores it.
+    2. `requirements.txt` includes `falkordb` post-Phase 07; Phase 06 lockfile doesn't. Manual revert via `tools/lock.sh` on phase-06-confirmed checkout.
+    3. FalkorDB indexes survive rollback (no clean DROP path in FalkorDB).
+    4. WAL `:WALEntry` entries persist on disk.
+    5. JSON state files unchanged (per M0 B) — no migration ambiguity.
+    **Recovery recipe:** `docker compose down -v` + `rm -rf .mindsos/falkordb-data/` + `git checkout phase-06-confirmed` + `tools/lock.sh` re-run + `docker compose build`.
+
+  **Doc sections this phase confirms:**
+
+    - `docs/usage/core/persistence.md` — full (NEW). Covers all 5 CLI verbs + sync semantics + load semantics + diagnose / verify / inspect-state output shapes + WAL operator concepts + OCC retry pattern + integration with `mindsos doctor --self-test` + rollback recipe. `last_confirmed_phase: 07`.
+    - `docs/dev/internals/core.md` — **NEW "Persistence layer" section** with 5 subsections per P24 B (Substrate / WAL / Indexes / AsyncClient / OCC). Cross-references ADRs 0030 / 0121-0127. `last_confirmed_phase: 07`.
+    - `docs/api/core/client.md` — full (NEW). Client + AsyncClient Protocol API. `last_confirmed_phase: 07`.
+    - `docs/api/core/repositories.md` — full (NEW). GraphRepository + MetagraphRepository + InstanceRepository API. `last_confirmed_phase: 07`.
+    - `docs/api/core/wal.md` — full (NEW). WriteAheadLog + replayer registry API. `last_confirmed_phase: 07`.
+    - `docs/api/core/integrity.md` — full (NEW). 5-bucket scanner + `verify_invariants`. `last_confirmed_phase: 07`.
+    - `docs/changelog/CHANGELOG.md` — Phase 07 entry appended.
+    - **ADR-0030** confirmed (already Accepted; no flip needed).
+    - **ADR-0121** confirmed (substrate commitment validated by impl).
+    - **ADR-0122** Proposed → **Accepted** (WAL infrastructure ships; M3 A inline flip; ADR file edit lands in 07).
+    - **ADR-0123** Proposed → **Accepted** (indexes + verify_invariants ship; ADR file edit lands in 07).
+    - **ADR-0126** Proposed → **Accepted** (AsyncClient ships; ADR file edit lands in 07).
+    - **ADR-0127** Proposed → **Accepted** (OCC mechanism ships; policy stays L0/L2 territory; ADR file edit lands in 07).
+    - **ADR-0124** (streaming loader) stays Proposed; consumer in Phase 08.
+    - **ADR-0125** (lazy local hydration) stays Proposed; consumer at L0+.
+
+  **Breaking changes from Phase 06:**
+
+    - **NEW `requirements.in` entry: `falkordb`.** Lockfile sha256 changes; tester re-runs `tools/lock.sh` once during Phase 07 prep.
+    - **NEW reserved property: `_version`** added to `RESERVED_PROPERTY_KEYS`. User properties named `_version` rejected. No backward data corruption (Phase 02-06 user data doesn't use `_version`).
+    - **`confirm-phase` default timeout 600s → 900s** (M12). Affects all phases retroactively; prior phase tests unaffected (well under 600s); only matters if a future phase brushes 900s.
+    - **NEW `[falkordb]` manifest section.** `doctor --self-test` validates presence; absence is a warning, not a fail.
+    - **NEW CLI top-level subapp `mindsos persistence`** (5 verbs).
+    - **`mindsos doctor --self-test` extended** to ping FalkorDB when `[falkordb]` section present.
+    - **`_version: int = 1` field added to 8 dataclasses** (6 core + 2 instance). Constructor signatures unchanged (default value).
+
+  **Final amendments (2026-05-12 — locked across 4 meta-pick passes + 3 design rounds):**
+
+    1. **M0** — Backend-only Phase; JSON unchanged.
+    2. **M1** — Slim-port v3 baseline + `cypher/builders.py` per P15 (round-2).
+    3. **M2** — Single Phase 07.
+    4. **M3** — Flip ADRs 0122/0123/0126/0127 inline; write `core.md` per P24.
+    5. **M4** — Open-ended round count (closed at 3).
+    6. **M5** — OCC wires in 07.
+    7. **M6** — Minimum verify+diagnose+inspect-state scope.
+    8. **M7** — Mechanism only.
+    9. **M8** — Trimmed reading.
+    10. **M9** — `after_persist(mg)` observer-driven persist for instances.
+    11. **M10** — `tests/phase_07/`.
+    12. **M11** — `pytest.mark.integration` marker.
+    13. **M12** — Bump `confirm-phase` timeout 600 → 900s.
+    14. **M13** — `reset --force` deferred to Phase 11; replaced by `inspect-state` (P13).
+    15. **M14** — Phase 07 strictly graph-scoped (reverses Round-1 P3 B per P12 D).
+    16. **M15** — Per-test fresh FalkorDB graph naming `test_<uuid_hex8>`.
+    17. **P16-pre** — Tombstone-write in 07; read-filter Phase 10.
+    18. **P9 C** — Graph .properties writer skipped (Q4 deferral); Metagraph .properties shipped.
+    19. **P10 A** — `_version` on all 6 core element types.
+    20. **P11 A** — `_version` on 2 instance types (mindsos_instances cross-package).
+    21. **P12 D** — REVERSES Round-1 P3 B; symmetric sync+load graph-only.
+    22. **P13 B** — `inspect-state` verb (rename of `reset --dry-run`).
+    23. **P14 A** — 3 distinct verbs.
+    24. **P15 A** — Manifest `[falkordb]` no password.
+    25. **P16 A** — Standard lockfile regen.
+    26. **P17 C** — `load` stdout default; `--to-json` opt-in.
+    27. **P18 D** — `sync` additive default; `--replace` opt-in.
+    28. **P19 C** — `verify --source=memory|db`; default memory.
+    29. **P20 B** — `RaisesOnNthCall` test wrapper.
+    30. **P21 A** — 5 persistence exceptions ported.
+    31. **P22 C** — Test-side `assert_graphs_equal` helper.
+    32. **P23 A** — Latest `falkordb`; tester relocks.
+    33. **P24 B** — Single "Persistence layer" section in `core.md`.
+    34. **P25 A** — Eager 14 sentinel-paths additions.
+    35. Pre-implementation audit: every `tests/phase_*/test_state*.py` reviewed; no Phase 07 state-file bump.
+    36. Image tags `mindsos:phase07-prod` / `mindsos:phase07-test`. Doctor `_COMPOSE_IMAGE_RE` already accepts `phase\d{2}` shape from 05a; no regex extension needed.
+    37. `requirements.{in,txt}` adds `falkordb`. `pyproject.toml` package wildcards already cover new files.
+    38. **No carry-forward closure** — PHASE_MAP §7 Q4 (Graph .properties) stays open per P9 C.
+    39. **Phase 06 GitHub Release body unchanged**; tarball asset survives in 5-phase retention window.
+    40. `confirmation_docs/PHASE_06_CONFIRMED.md` stays untouched; 07 ships sibling `PHASE_07_CONFIRMED.md`.
+    41. `mkdocs.yml` nav: adds entries for new pages (`docs/usage/core/persistence.md`, `docs/api/core/client.md`, `docs/api/core/repositories.md`, `docs/api/core/wal.md`, `docs/api/core/integrity.md`); amends `docs/dev/internals/core.md`.
+    42. `confirmation_docs/_template.md` and `_template_notes.md` unchanged.
+    43. **Cross-package version-string parity** (Phase 06 P62 A): bumps `mindsos_cli` + `mindsos_core` + `mindsos_instances` all to `0.0.0+phase07`.
+    44. **WAL recovery is per-Metagraph.** Server boot path (Phase 18+) iterates over known metagraphs calling `recover(client, mg_id)` per-mg.
+    45. **ADR file edits in 07 override Phase 06 P45 B precedent** for the 4 specific ADRs (0122/0123/0126/0127). User instruction 2026-05-12: "ADR decisions can be changed if decided in this chat." Status: Proposed → Accepted; semantic edits (if any surface during impl) stay deferred to Phase 38.
+    46. **`mindsos persistence` verb naming locked** (P1 C); no bikeshedding in implementation chat (`sync` not `push`/`project`/`materialize`).
 
 ### Phase 08 — L1 Reconstruction (loaders, streaming, refresh)
 
