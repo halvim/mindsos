@@ -1,12 +1,13 @@
-"""The ``Node`` primitive (Phase 03 slim port).
+"""The ``Node`` primitive (Phase 03 slim port + Phase 07 ``_version`` field).
 
 A ``Node`` is a typed, UUID-identified vertex with an open property bag.
 Properties are validated by the containing ``Graph`` / ``Schema`` before
 the node is inserted; construction itself never validates so that
 reconstruction and composition are always cheap.
 
-Phase 03 strips the ``_version`` field (ADR-0127 OCC) — that lands in
-Phase 07 with the persistence layer.
+Phase 07 adds the ``_version: int`` field per P26 A — the slim Phase 03
+form stripped it; Phase 07's persistence layer needs OCC support per
+ADR-0127.
 """
 
 from __future__ import annotations
@@ -30,12 +31,17 @@ class Node:
         node_id: UUID string (or caller-supplied IRI), stable for the
             lifetime of the object.
         properties: Open dict of domain attributes.
+        _version: Monotonic version counter (ADR-0127 OCC). Starts at 1
+            on construction; persistence layer bumps on every update
+            path. Reserved property key per Phase 04
+            ``schema/validation.py``.
     """
 
     value: Any
     type_name: str
     node_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
+    _version: int = 1
 
     def __hash__(self) -> int:
         return hash(self.node_id)

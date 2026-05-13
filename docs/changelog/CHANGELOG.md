@@ -1,11 +1,51 @@
 ---
-last_confirmed_phase: 06
+last_confirmed_phase: 07
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 07 — L1 Persistence (2026-05-13)
+
+**Ships the FalkorDB persistence layer for `mindsos_core` + sibling
+package** per Phase 07 row. `Client` Protocol (ADR-0030) +
+`FalkorClient` + `InMemoryClient` + `AsyncClient` (ADR-0126) +
+`bootstrap` with **14-index** `DEFAULT_INDEXES` (ADR-0123 amended per
+P89 A relationship-index syntax + P95 B final count: 10 node-label +
+3 relationship + 1 hot-path `:Node {graph_id}`) + `GraphRepository`
+(persist with persist-time check per ADR-0123 §2 + always-bump
+`_version` + opt-in OCC predicate per ADR-0127 + per-(graph, element)
+tombstones per P69 A) + `MetagraphRepository` with **4-step lifecycle
+P96 A** (Core → WAL commit → `after_persist` observer → return);
+programmatic-only at 07 per P60 A + `WriteAheadLog` (ADR-0122) with
+primary context-manager API per P50 B + 5-bucket `verify_invariants`
++ 3-bucket `verify_invariants_graph` sibling per P98 A + single-Graph
+`load_graph` per M14 + `_props_json` canonical encoding per ADR-0130
++ P62 A with no size cap (P83 C) and narrow chained driver-exception
+catch (P97 B) + `schema_name` plain Cypher property using the existing
+dataclass field per P100 A + `_version: int = 1` field on 9 dataclasses
+(7 core including Node restored per P26 A + 2 instance per P11 A) +
+sibling-package `InstanceRepository` (M9 observer-driven persist via
+`attach_registry` extension) + `mindsos persistence` 5-verb CLI subapp
+(sync / load / diagnose / verify / inspect-state) with Rich tables per
+P99 A + `--to-json` sibling `.fromdb.json` path per P85 B (M0 B JSON
+authority preserved) + `sync --replace` WAL-refusal per P91 A + new
+`[falkordb]` manifest section (host/port/graph; no username per
+P86 B; password env-only per P15 A) + doctor self-test extension per
+P59 A 5-cell matrix + collect-then-report per P75 B +
+`_CONFIRM_PHASE_TIMEOUT_SECONDS` bump 600 → 900 (M12 + P93 pre-build
+recipe) + 4 ADRs flipped `Proposed → Accepted` inline per M3 A (0122
+/ 0123 / 0126 / 0127; acceptance-criteria amended per P27 C; ADR-0127
+§Repository API amended per P28 B; `MissingExpectedVersionError`
+ships at L0/L2 not L1 per P84 B).
+
+Design locked 2026-05-12 across 3 design rounds + 4 meta-pick passes
+(M0–M15 + P1–P25); Round-6 addendum applied 2026-05-12 (53 pushbacks
+P26–P78); design-review supplement applied 2026-05-13 (22 pushbacks
+P79–P100). Test suite ~110-140 added per `feedback_test_budget_
+unlimited.md`.
 
 ## Phase 06 — L1 Instancing (`mindsos_instances` sibling package) (2026-05-11)
 

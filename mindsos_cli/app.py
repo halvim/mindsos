@@ -9,13 +9,22 @@ from mindsos_cli.commands.identity import register_identity_app
 from mindsos_cli.commands.instances import register_instances_app
 from mindsos_cli.commands.metagraph import register_metagraph_app
 from mindsos_cli.commands.metagraph_schema import register_metagraph_schema_app
+from mindsos_cli.commands.persistence import register_persistence_app
 from mindsos_cli.commands.schema import register_schema_app
 from mindsos_cli.commands.version import show_version
 
 app = typer.Typer(
     name="mindsos",
-    help="MindsOS command-line interface "
-         "(Phase 06 — L1 Instancing + IntergraphEdge + MetagraphSchema + Metagraph + Schema + Graph).",
+    help=(
+        "MindsOS command-line interface "
+        "(Phase 07 — L1 Persistence: Client / FalkorClient / "
+        "InMemoryClient / AsyncClient / GraphRepository / "
+        "MetagraphRepository (4-step lifecycle) / WAL with context-manager "
+        "API / 5-bucket integrity scanner / graph-scoped partial scanner / "
+        "single-Graph load_graph / 5-verb `mindsos persistence` subapp + "
+        "L1 Instancing + IntergraphEdge + MetagraphSchema + Metagraph + "
+        "Schema + Graph)."
+    ),
     no_args_is_help=True,
     add_completion=False,
 )
@@ -36,3 +45,4 @@ register_schema_app(app)
 register_metagraph_app(app)
 register_metagraph_schema_app(app)
 register_instances_app(app)
+register_persistence_app(app)

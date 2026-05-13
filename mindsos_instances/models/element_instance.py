@@ -90,6 +90,7 @@ class ElementInstance:
         "metagraph_id",
         "overrides",
         "_instance_seq",
+        "_version",  # Phase 07 — ADR-0127 OCC (P11 A).
     )
 
     def __init__(
@@ -116,6 +117,9 @@ class ElementInstance:
         self.id: str = _registry._mint_instance_id(
             template_id, self._instance_seq
         )
+        # Phase 07 — _version field for ADR-0127 OCC (P11 A). Persistence
+        # layer bumps on update path; ships at 1 on construction.
+        self._version: int = 1
         # Round-7 P64 A — bifurcated validation at construction. Empty
         # dict is the default state.
         self.overrides: Dict[str, Any] = {}
@@ -432,6 +436,7 @@ class CompositeInstance:
         "members",
         "bundle_overrides",
         "_instance_seq",
+        "_version",  # Phase 07 — ADR-0127 OCC (P11 A).
     )
 
     def __init__(
@@ -454,6 +459,8 @@ class CompositeInstance:
         self.id: str = _registry._mint_instance_id(
             "__composite__", self._instance_seq
         )
+        # Phase 07 — _version for ADR-0127 OCC (P11 A).
+        self._version: int = 1
         self.members: List[CompositeMember] = []
         # Round-7 P61 A — bundle_overrides validates against user-
         # property rules with scope="composite".

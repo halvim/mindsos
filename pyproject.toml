@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase06"
-description = "MindsOS command-line interface — Phase 06 L1 Instancing (mindsos_instances sibling package; 8 element-instance subclasses + ElementRegistry + materialise machinery + cascade-observer; round-7 P45-P66 reshape including ADR file edits deferred to Phase 38, ID derivation drops overrides-hash, bifurcated override validation, endpoint-resolution walk in materialise)."
+version = "0.0.0+phase07"
+description = "MindsOS command-line interface — Phase 07 L1 Persistence (Client Protocol + FalkorClient + InMemoryClient + AsyncClient + bootstrap with 14 indexes + GraphRepository + MetagraphRepository (4-step lifecycle) + WAL with context-manager API + 5-bucket integrity scanner + graph-scoped partial scanner + single-Graph load_graph + InstanceRepository sibling-package + `mindsos persistence` 5-verb CLI subapp)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

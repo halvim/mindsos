@@ -142,6 +142,7 @@ class IntergraphHyperEdge:
     edge_id: str = field(default_factory=generate_uuid)
     label: Optional[str] = None
     properties: Dict[str, Any] = field(default_factory=dict)
+    _version: int = 1  # Phase 07 — ADR-0127 OCC.
 
     def __post_init__(self) -> None:
         # P2-refined — tuple-conversion of ``anchors`` and ``members``

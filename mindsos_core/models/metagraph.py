@@ -100,7 +100,9 @@ from typing import (
 
 from .._observers import (
     ObserverHandle,
+    PersistCallback,
     RemoveCallback,
+    _dispatch_after_persist,
     _dispatch_precheck,
     _register,
 )
@@ -152,6 +154,7 @@ class MetaEdge:
     label: Optional[str] = None
     edge_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
+    _version: int = 1  # Phase 07 — ADR-0127 OCC.
 
     def __post_init__(self) -> None:
         # P9 — cypher rel-type regex enforced at dataclass boundary so direct
@@ -196,6 +199,7 @@ class MetaHyperEdge:
     label: Optional[str] = None
     edge_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
+    _version: int = 1  # Phase 07 — ADR-0127 OCC.
 
     def __post_init__(self) -> None:
         # P15 — minimum 2 members; 1-member n-ary is degenerate
@@ -324,6 +328,15 @@ class Metagraph:
         # the registry can wire itself to newcomers.
         self._graph_added_observers: List[Callable[[Graph], None]] = []
 
+        # Phase 07 (M9 + P96 A) — persist observer plumbing for
+        # sibling-side instance persistence. ``MetagraphRepository.persist``
+        # invokes ``_dispatch_after_persist(self, ...)`` AS STEP 3 of its
+        # 4-step lifecycle (after Core writes commit + WAL entries stamp
+        # ``committed=true``). Phase 07 consumer:
+        # :class:`mindsos_instances.ElementRegistry` (via
+        # ``attach_registry`` extension).
+        self._persist_observers: List[PersistCallback] = []
+
         if metagraph_id is None:
             self.identity.register(self.metagraph_id)
 
@@ -365,6 +378,30 @@ class Metagraph:
         # Local import: ObserverHandle is already imported at module top.
         self._graph_added_observers.append(callback)
         return ObserverHandle(self._graph_added_observers, callback)
+
+    def register_persist_observer(
+        self, callback: PersistCallback
+    ) -> ObserverHandle:
+        """Subscribe ``callback`` to persist-completion events (Phase 07 — M9 + P96 A).
+
+        Per M9: ``MetagraphRepository.persist`` orchestrates Core writes
+        and then fires this hook so consumers (e.g.
+        :class:`mindsos_instances.InstanceRepository` via
+        :func:`mindsos_instances.attach_registry`) can persist sibling
+        state.
+
+        Per P96 A 4-step lifecycle: callbacks fire AS STEP 3 — Core
+        writes have committed (step 1), WAL entries are stamped
+        ``committed=true`` (step 2), then observers fire. A callback
+        that raises leaves Core+WAL consistent but instance persistence
+        partial; tester convention (P33 A) is to re-run ``persist``
+        (MERGE-idempotent).
+
+        Returns an :class:`ObserverHandle` whose ``unsubscribe()``
+        revokes the subscription. The handle is the only public surface
+        for unsubscribe.
+        """
+        return _register(self._persist_observers, callback)
 
     # ── graph membership ─────────────────────────────────────────────────
 

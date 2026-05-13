@@ -11,7 +11,10 @@ import json
 import os
 import re
 import sys
-import tomllib
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+    import tomli as tomllib  # type: ignore[no-redef]
 from pathlib import Path
 from typing import Any
 
@@ -134,9 +137,19 @@ def _ping_falkordb() -> dict[str, Any]:
 
     Uses the `redis` client (transitive dep of `falkordb`) for the ping itself
     so the check works even if falkordb-py changes its public API.
+
+    Phase 07 B-07-T2 — env-then-manifest precedence per P67 A. When env
+    vars unset, falls back to the new ``[falkordb]`` manifest section
+    (host/port). Pre-Phase-07 hard-coded default ``"falkordb"`` (the
+    Compose service name) was wrong on host-side invocation; the
+    manifest default is ``localhost``.
     """
-    host = os.environ.get("FALKORDB_HOST", "falkordb")
-    port = int(os.environ.get("FALKORDB_PORT", "6379"))
+    manifest = _load_manifest()
+    falkordb_cfg = manifest.get("falkordb") or {}
+    default_host = falkordb_cfg.get("host") or "falkordb"
+    default_port = falkordb_cfg.get("port") or 6379
+    host = os.environ.get("FALKORDB_HOST", default_host)
+    port = int(os.environ.get("FALKORDB_PORT", str(default_port)))
     try:
         import redis
 
@@ -220,10 +233,14 @@ def doctor(
     if static_only and self_test:
         # Skip the live ping; use a sentinel so downstream report code knows
         # we deliberately skipped reachability.
+        # Phase 07 B-07-T2 — env-then-manifest precedence.
+        _falkordb_cfg = manifest.get("falkordb") or {}
+        _default_host = _falkordb_cfg.get("host") or "falkordb"
+        _default_port = _falkordb_cfg.get("port") or 6379
         falkordb_state = {
             "reachable": None,
-            "host": os.environ.get("FALKORDB_HOST", "falkordb"),
-            "port": int(os.environ.get("FALKORDB_PORT", "6379")),
+            "host": os.environ.get("FALKORDB_HOST", _default_host),
+            "port": int(os.environ.get("FALKORDB_PORT", str(_default_port))),
             "skipped": "static-only",
         }
     else:
@@ -306,6 +323,46 @@ def doctor(
             f"falkordb version drift: runtime={falkordb_state['version']} "
             f"manifest={falkordb_pin['version']}"
         )
+
+    # Phase 07 — validate the new [falkordb] section (P15 A + P59 A).
+    # Absent section is a WARNING in self-test output (not a failure),
+    # per Phase 07 row §Doctor self-test extension: "absence means
+    # FalkorDB not configured" warning, not an error.
+    falkordb_cfg = manifest.get("falkordb")
+    if falkordb_cfg is None:
+        report["manifest"]["falkordb_config"] = {
+            "status": "absent",
+            "warning": (
+                "[falkordb] section missing in manifest.toml — Phase 07 "
+                "expects host/port/graph keys for FalkorConfig.from_manifest()."
+            ),
+        }
+    else:
+        cfg_failures = []
+        if "host" not in falkordb_cfg:
+            cfg_failures.append("[falkordb] missing 'host' key")
+        if "port" not in falkordb_cfg:
+            cfg_failures.append("[falkordb] missing 'port' key")
+        if "graph" not in falkordb_cfg:
+            cfg_failures.append("[falkordb] missing 'graph' key")
+        if "password" in falkordb_cfg:
+            cfg_failures.append(
+                "[falkordb] password MUST NOT be in manifest (env-only per P15 A)"
+            )
+        # P86 B — no username field in manifest either.
+        if "username" in falkordb_cfg:
+            cfg_failures.append(
+                "[falkordb] username MUST NOT be in manifest "
+                "(FalkorDB-Redis auth has no username concept; P86 B)"
+            )
+        report["manifest"]["falkordb_config"] = {
+            "status": "ok" if not cfg_failures else "drift",
+            "host": falkordb_cfg.get("host"),
+            "port": falkordb_cfg.get("port"),
+            "graph": falkordb_cfg.get("graph"),
+            "failures": cfg_failures,
+        }
+        failures.extend(cfg_failures)
 
     # Phase 01+: required CI workflows must exist + non-empty + parse-shaped.
     # Only checked when manifest declares them (Phase 00 manifest has no [ci]).

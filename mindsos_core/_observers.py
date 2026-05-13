@@ -94,3 +94,32 @@ def _dispatch_precheck(
     """
     for callback in callbacks:
         callback(removed_id)
+
+
+# ── Phase 07 — persist observer (M9 + P96 A 4-step lifecycle) ──────────────
+
+#: Persist-event callback. Receives the :class:`Metagraph` that was just
+#: persisted (post-Core-write, post-WAL-commit) so consumers can run
+#: sibling-side persistence (e.g., ``mindsos_instances.InstanceRepository``
+#: persisting instances after the Core anchors and elements landed).
+#:
+#: Typed as ``Callable[[Any], None]`` to avoid an import cycle with
+#: ``models.metagraph`` — the consumer narrows the type at use site.
+PersistCallback = Callable[["object"], None]
+
+
+def _dispatch_after_persist(
+    callbacks: List[PersistCallback],
+    metagraph: "object",
+) -> None:
+    """Invoke each registered persist-callback with the persisted Metagraph.
+
+    Per M9 + P96 A 4-step lifecycle in
+    :class:`MetagraphRepository.persist`: callbacks fire AS STEP 3
+    (after Core writes succeed at step 1 and WAL entries commit at
+    step 2). A callback that raises leaves Core+WAL state consistent
+    but instance persistence may be partial; tester convention per
+    P33 A is to re-run ``persist`` (MERGE-idempotent).
+    """
+    for callback in callbacks:
+        callback(metagraph)

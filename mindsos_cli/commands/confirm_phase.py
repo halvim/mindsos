@@ -28,7 +28,10 @@ import os
 import re
 import subprocess
 import sys
-import tomllib
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+    import tomli as tomllib  # type: ignore[no-redef]
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +39,14 @@ import typer
 
 # Re-use doctor's repo-root resolver to keep the rules in one place.
 from mindsos_cli.commands.doctor import _load_manifest, _repo_root
+
+
+#: Phase 07 — M12 timeout bump. Phase 06 ran 578s; Phase 07 adds
+#: integration tests against live FalkorDB plus larger suite.
+#: Cap raised to 900s (15m) per `feedback_confirm_phase_timeout.md`.
+#: Recipe MUST pre-build the test image before invoking
+#: ``mindsos confirm-phase`` (P93) — build time eats this budget.
+_CONFIRM_PHASE_TIMEOUT_SECONDS: int = 900
 
 
 # ---------------------------------------------------------------------------
@@ -219,7 +230,7 @@ def _run_tests() -> dict[str, Any]:
             cwd=_repo_root(),
             capture_output=True,
             text=True,
-            timeout=600,
+            timeout=_CONFIRM_PHASE_TIMEOUT_SECONDS,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as exc:
         return {

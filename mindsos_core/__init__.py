@@ -160,4 +160,4 @@ __all__ = [
     "MetagraphSchema",
 ]
 
-__version__ = "0.0.0+phase06"
+__version__ = "0.0.0+phase07"

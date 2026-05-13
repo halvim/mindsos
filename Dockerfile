@@ -147,6 +147,11 @@ ENV MINDSOS_GIT_SHA=${MINDSOS_GIT_SHA} \
     MINDSOS_IMAGE_HASH=${MINDSOS_IMAGE_HASH}
 
 COPY requirements.txt requirements-test.txt ./
+# Phase 07 B-07-T3 — COPY requirements.in into the test image so
+# tests/phase_07/test_lockfile_falkordb_pin.py can verify the
+# falkordb pin syntax (P46 A). Without this, the test fires
+# FileNotFoundError in-container.
+COPY requirements.in ./
 RUN pip install --no-cache-dir --require-hashes -r requirements-test.txt
 
 COPY pyproject.toml README.md ./

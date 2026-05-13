@@ -54,7 +54,7 @@ from .utils.canonicalize import canonicalize
 #: Phase 06 version string. Doctor self-test asserts parity with
 #: ``mindsos_core.__version__`` and ``mindsos_cli.__version__``
 #: (round-7 P62 A — new top-level package adds a fourth checked site).
-__version__ = "0.0.0+phase06"
+__version__ = "0.0.0+phase07"
 
 __all__ = [
     # exceptions

@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 02
+last_confirmed_phase: 07
 ---
 
 # Repo layout
@@ -57,3 +57,22 @@ Later phases bring additional packages online inside this same repo:
 Each phase keeps its scope tight to the row in
 `confirmation_docs/PHASE_MAP.md`. Cross-cutting decisions live in §1 of that
 file; per-phase implementation notes live in `confirmation_docs/PHASE_NN_CONFIRMED.md`.
+
+## ADR locations (Model C hybrid — Phase 07 P30 A)
+
+**Architecture Decision Records live at the project root**
+(`/Layered Intelligence/docs/decisions/adr/`), NOT inside
+`halvim_mindsos/`. The Model C hybrid documented in
+`feedback_docs_source_of_truth.md` (memory) is:
+
+| Doc kind | Lives in | Tracked under |
+|---------|----------|---------------|
+| ADRs | `/Layered Intelligence/docs/decisions/adr/` | Project-root filesystem (Model C). |
+| Shipped concepts / API / usage | `halvim_mindsos/docs/` | `halvim_mindsos` git. |
+| Per-phase confirmation docs | `halvim_mindsos/confirmation_docs/` | `halvim_mindsos` git. |
+
+When editing an ADR, edit the canonical project-root copy. Phase 07
+is the first phase to flip ADRs `Proposed → Accepted` inline (ADRs
+0122 / 0123 / 0126 / 0127 per M3 A). Semantic ADR edits beyond
+status flips still defer to Phase 38 per the Phase 06 P45 B
+precedent.
