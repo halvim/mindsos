@@ -102,4 +102,8 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "tests/_shared/falkordb_fixture.py",
     "tests/_shared/graph_equality.py",
     "tests/_shared/raises_on_nth_call.py",
+    # Phase 07 B-07-T3 — requirements.in is now COPYed into the test
+    # image so test_lockfile_falkordb_pin.py can verify the falkordb
+    # pin syntax (P46 A).
+    "requirements.in",
 )

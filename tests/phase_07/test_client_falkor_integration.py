@@ -74,10 +74,32 @@ def test_occ_conflict_against_live(falkor_client) -> None:
         )
 
 
-def test_diagnose_reports_14_indexes(falkor_client) -> None:
-    """After bootstrap, CALL db.indexes() returns at least 14 rows."""
+def test_diagnose_reports_expected_indexed_labels(falkor_client) -> None:
+    """After bootstrap, CALL db.indexes() covers every expected label / rel-type.
+
+    Per B-07-T4 hotfix — FalkorDB v4.18.3's ``CALL db.indexes()`` groups
+    multi-property indexes per label (so ``:Node`` indexed on both
+    ``id`` AND ``graph_id`` appears as ONE row, not two). The original
+    P95 B-derived ``>= 14`` row-count assertion was wrong; the correct
+    invariant is "every expected label/rel-type appears at least once."
+    """
     try:
         ix = falkor_client.run_query("CALL db.indexes()")
     except Exception:
         pytest.skip("CALL db.indexes() unsupported on this FalkorDB version")
-    assert len(ix.rows) >= 14
+    # Collect the label/rel-type column. FalkorDB's column name is
+    # commonly 'label' (for node labels) — robust to driver shape, we
+    # join everything in the row to a string and substring-match.
+    rows_joined = ["|".join(str(v) for v in row.values()) for row in ix.rows]
+    blob = " ".join(rows_joined)
+    expected_labels = [
+        "Metagraph", "Graph", "Node", "HyperEdge", "MetaHyperEdge",
+        "IntergraphHyperEdge", "ElementInstance", "CompositeInstance",
+        "Tombstone", "WALEntry",
+    ]
+    expected_rel_types = ["Edge", "MetaEdge", "IntergraphEdge"]
+    missing = [l for l in (expected_labels + expected_rel_types) if l not in blob]
+    assert not missing, (
+        f"db.indexes() output missing expected labels/rel-types: {missing}\n"
+        f"Actual rows: {ix.rows!r}"
+    )
