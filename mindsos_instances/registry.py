@@ -265,6 +265,15 @@ def attach_registry(metagraph: Metagraph) -> ElementRegistry:
     after first attach. Core does NOT import ``mindsos_instances``;
     this attach helper is the boundary-preserving caller-facing entry
     point (round-7 P49 B + A).
+
+    Phase 07 extension (M9 + P96 A) — on first attach, subscribes a
+    persist-observer that routes sibling-side instance persistence
+    through :class:`mindsos_instances.persistence.InstanceRepository`.
+    The observer reads ``mg._persist_client`` to obtain the Client
+    instance at fire time (set by the caller of
+    ``MetagraphRepository.persist`` before invoking; ``None`` means
+    no-op — pure in-memory ``persist`` calls don't trigger DB writes).
+    Idempotent: re-attach does not double-subscribe.
     """
     existing = getattr(metagraph, "element_registry", None)
     if isinstance(existing, ElementRegistry):
@@ -273,4 +282,19 @@ def attach_registry(metagraph: Metagraph) -> ElementRegistry:
     # ``Metagraph`` is a plain class (not __slots__-locked); attribute
     # assignment is permitted.
     metagraph.element_registry = registry  # type: ignore[attr-defined]
+
+    # Phase 07 — persist observer wiring. Lives behind a `getattr`
+    # guard so older Metagraph instances (pre-Phase-07) without the
+    # ``register_persist_observer`` method don't crash on import.
+    register_persist = getattr(metagraph, "register_persist_observer", None)
+    if callable(register_persist):
+        def _on_persist(mg: Metagraph) -> None:
+            client = getattr(mg, "_persist_client", None)
+            if client is None:
+                return  # No DB binding; pure in-memory persist — no-op.
+            from .persistence import InstanceRepository
+
+            InstanceRepository(client).persist_all(registry)
+
+        register_persist(_on_persist)
     return registry

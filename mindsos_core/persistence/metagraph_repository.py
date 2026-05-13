@@ -182,7 +182,20 @@ class MetagraphRepository:
         # ── Step 2: WAL commit (mechanism-only at Phase 07; no caller). ─
 
         # ── Step 3: observers fire (M9). ────────────────────────────────
-        _dispatch_after_persist(metagraph._persist_observers, metagraph)
+        # Attach the active Client onto the metagraph so observer
+        # callbacks (e.g. ``mindsos_instances.attach_registry``'s
+        # persist hook) can locate it without a closure over us.
+        # Cleared after dispatch so the metagraph object stays
+        # detached between persists.
+        try:
+            metagraph._persist_client = self._client  # type: ignore[attr-defined]
+            _dispatch_after_persist(metagraph._persist_observers, metagraph)
+        finally:
+            if hasattr(metagraph, "_persist_client"):
+                try:
+                    delattr(metagraph, "_persist_client")
+                except AttributeError:
+                    pass
 
         # ── Step 4: return. ─────────────────────────────────────────────
 
