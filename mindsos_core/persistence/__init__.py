@@ -22,14 +22,27 @@ projects JSON contents → FalkorDB.
 
 from __future__ import annotations
 
+from .async_client import AsyncClient, ThreadPoolAsyncClient
 from .bootstrap import DEFAULT_INDEXES, bootstrap
 from .client import Client, FalkorClient, InMemoryClient, QueryResult
+from .integrity import (
+    IntegrityReport,
+    PartialIntegrityReport,
+    verify_invariants,
+    verify_invariants_graph,
+)
 
 __all__ = [
     "Client",
     "FalkorClient",
     "InMemoryClient",
     "QueryResult",
+    "AsyncClient",
+    "ThreadPoolAsyncClient",
     "DEFAULT_INDEXES",
     "bootstrap",
+    "IntegrityReport",
+    "PartialIntegrityReport",
+    "verify_invariants",
+    "verify_invariants_graph",
 ]

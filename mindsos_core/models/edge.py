@@ -31,7 +31,10 @@ from .node import Node
 
 @dataclass
 class Edge:
-    """A directed, typed relationship between two nodes."""
+    """A directed, typed relationship between two nodes.
+
+    Phase 07 — ``_version: int = 1`` field added (ADR-0127 OCC).
+    """
 
     source: Node
     target: Node
@@ -39,6 +42,7 @@ class Edge:
     label: Optional[str] = None
     edge_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
+    _version: int = 1
 
     def __hash__(self) -> int:
         return hash(self.edge_id)
@@ -76,6 +80,7 @@ class HyperEdge:
     label: Optional[str] = None
     edge_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
+    _version: int = 1  # Phase 07 — ADR-0127 OCC.
 
     def __post_init__(self) -> None:
         if not self.nodes:
