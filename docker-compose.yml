@@ -36,7 +36,7 @@ services:
       args:
         MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
         MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
-    image: mindsos:phase06-prod
+    image: mindsos:phase07-prod
     profiles: ["cli"]
     # Phase 02 — entrypoint forces the `mindsos` binary so
     # `docker compose run --rm mindsos <subcommand>` works without the
@@ -51,6 +51,11 @@ services:
     environment:
       FALKORDB_HOST: falkordb
       FALKORDB_PORT: "6379"
+      # Phase 07 P86 B — only FALKORDB_PASSWORD added. FalkorDB-Redis auth
+      # has no username concept; FALKORDB_GRAPH is a per-call parameter,
+      # not a connection-time env. Default empty so unconfigured deploys
+      # connect without auth.
+      FALKORDB_PASSWORD: "${FALKORDB_PASSWORD:-}"
     volumes:
       - ./.mindsos/logs:/var/log/mindsos
 
@@ -61,7 +66,7 @@ services:
       args:
         MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
         MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
-    image: mindsos:phase06-test
+    image: mindsos:phase07-test
     profiles: ["test"]
     # The test service keeps the bare entrypoint so `pytest tests/` works
     # without a `mindsos` prefix.
@@ -71,5 +76,6 @@ services:
     environment:
       FALKORDB_HOST: falkordb
       FALKORDB_PORT: "6379"
+      FALKORDB_PASSWORD: "${FALKORDB_PASSWORD:-}"
     volumes:
       - ./.mindsos/logs:/var/log/mindsos
