@@ -137,9 +137,19 @@ def _ping_falkordb() -> dict[str, Any]:
 
     Uses the `redis` client (transitive dep of `falkordb`) for the ping itself
     so the check works even if falkordb-py changes its public API.
+
+    Phase 07 B-07-T2 — env-then-manifest precedence per P67 A. When env
+    vars unset, falls back to the new ``[falkordb]`` manifest section
+    (host/port). Pre-Phase-07 hard-coded default ``"falkordb"`` (the
+    Compose service name) was wrong on host-side invocation; the
+    manifest default is ``localhost``.
     """
-    host = os.environ.get("FALKORDB_HOST", "falkordb")
-    port = int(os.environ.get("FALKORDB_PORT", "6379"))
+    manifest = _load_manifest()
+    falkordb_cfg = manifest.get("falkordb") or {}
+    default_host = falkordb_cfg.get("host") or "falkordb"
+    default_port = falkordb_cfg.get("port") or 6379
+    host = os.environ.get("FALKORDB_HOST", default_host)
+    port = int(os.environ.get("FALKORDB_PORT", str(default_port)))
     try:
         import redis
 
@@ -223,10 +233,14 @@ def doctor(
     if static_only and self_test:
         # Skip the live ping; use a sentinel so downstream report code knows
         # we deliberately skipped reachability.
+        # Phase 07 B-07-T2 — env-then-manifest precedence.
+        _falkordb_cfg = manifest.get("falkordb") or {}
+        _default_host = _falkordb_cfg.get("host") or "falkordb"
+        _default_port = _falkordb_cfg.get("port") or 6379
         falkordb_state = {
             "reachable": None,
-            "host": os.environ.get("FALKORDB_HOST", "falkordb"),
-            "port": int(os.environ.get("FALKORDB_PORT", "6379")),
+            "host": os.environ.get("FALKORDB_HOST", _default_host),
+            "port": int(os.environ.get("FALKORDB_PORT", str(_default_port))),
             "skipped": "static-only",
         }
     else:
