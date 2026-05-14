@@ -39,8 +39,10 @@ def test_instance_loader_two_pass_element_then_composite(falkor_client) -> None:
     comp = CompositeInstance(
         metagraph_id=mg.metagraph_id, _registry=registry,
     )
-    comp.add_member(inst1)
-    comp.add_member(inst2)
+    # CompositeInstance.add_member requires _registry kwarg per Phase 06
+    # round-7 P55 A (stale-ref rejection check).
+    comp.add_member(inst1, _registry=registry)
+    comp.add_member(inst2, _registry=registry)
     registry.add(comp)
 
     MetagraphRepository(falkor_client).persist(mg)

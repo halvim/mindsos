@@ -33,9 +33,12 @@ def test_structural_cap_intermediate_batches_nodes_only(falkor_client) -> None:
     _persist_graph_via_metagraph(falkor_client, mg, g)
 
     # Stream with batch_size=10 — yields should grow monotonically.
+    # B-08-T7 — use a FRESH IdentityRegistry for reconstruction; passing
+    # the build-time mg.identity (which already has every node id
+    # registered) collides on iter_load_graph's per-batch add_node.
     batches = list(
         iter_load_graph(
-            falkor_client, g.graph_id, identity=mg.identity, batch_size=10
+            falkor_client, g.graph_id, batch_size=10
         )
     )
     assert len(batches) >= 1

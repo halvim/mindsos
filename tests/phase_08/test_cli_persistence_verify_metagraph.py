@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import subprocess
-import sys
-
 import pytest
+import typer
 
 pytestmark = pytest.mark.integration
 
@@ -30,6 +28,7 @@ def test_verify_source_db_metagraph_M_unblocks_full_5_bucket_scanner(
 
     # PB-7 A unblock — no longer refuses with exit 1; runs the scanner.
     # An empty metagraph is invariant-clean → exit 0.
-    with pytest.raises(SystemExit) as excinfo:
+    # B-08-T8 — typer.Exit is NOT a SystemExit subclass.
+    with pytest.raises(typer.Exit) as excinfo:
         verify_cmd(metagraph="verify-mg", graph=None, source="db")
-    assert excinfo.value.code == 0
+    assert excinfo.value.exit_code == 0

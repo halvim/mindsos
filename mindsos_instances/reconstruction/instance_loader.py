@@ -390,25 +390,39 @@ def _template_resolves(
 
     Per-kind resolution:
 
-    * ``node`` / ``edge`` / ``hyperedge`` — ``source_graph_id`` must be
-      a contained graph; ``source_id`` must be a node/edge/hyperedge in
-      that graph (best-effort; we accept any matching id).
-    * ``subgraph`` / ``graph`` — ``source_graph_id`` (or ``source_id``
-      for plain Graph) must be a contained graph.
+    * ``node`` / ``edge`` / ``hyperedge`` — ``source_id`` must be a
+      node/edge/hyperedge in some contained graph. When
+      ``source_graph_id`` is supplied by the persist row, check that
+      graph directly; when ``None`` (Phase 07 deferral closed by Phase
+      08 B-08-T4 — Phase 07's ``InstanceRepository.persist_element_instance``
+      hard-codes ``source_graph_id=None``), walk all contained graphs.
+    * ``subgraph`` / ``graph`` — ``source_id`` must be a contained
+      graph (template_id IS the source Graph's id).
     * ``metaedge`` — ``source_id`` must be in ``mg.metaedges``.
     * ``metahyperedge`` — ``source_id`` must be in ``mg.metahyperedges``.
 
     Unknown kinds resolve False (caller treats as orphan).
     """
     if kind in {"node", "edge", "hyperedge"}:
-        if source_graph_id is None or source_graph_id not in mg.graphs:
-            return False
-        g = mg.graphs[source_graph_id]
-        if kind == "node":
-            return source_id in g.nodes
-        if kind == "edge":
-            return source_id in g.edges
-        return source_id in g.hyperedges
+        if source_graph_id is not None:
+            if source_graph_id not in mg.graphs:
+                return False
+            g = mg.graphs[source_graph_id]
+            if kind == "node":
+                return source_id in g.nodes
+            if kind == "edge":
+                return source_id in g.edges
+            return source_id in g.hyperedges
+        # B-08-T4 — source_graph_id absent (Phase 07 didn't resolve at
+        # persist time); walk contained graphs to find the container.
+        for g in mg.graphs.values():
+            if kind == "node" and source_id in g.nodes:
+                return True
+            if kind == "edge" and source_id in g.edges:
+                return True
+            if kind == "hyperedge" and source_id in g.hyperedges:
+                return True
+        return False
     if kind == "subgraph":
         # SubGraphInstance.template_id IS the source Graph id; field
         # ``source_id`` carries that value in the persist shape.

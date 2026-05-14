@@ -139,7 +139,13 @@ class IdentityRegistry:
     objects anywhere in the metagraph can share an id.
     """
 
-    __slots__ = ("_ids",)
+    # Phase 08 B-08-T5 — ``__weakref__`` added so external callers
+    # (L4 cached views per ADR-0124 §refresh / R4-7 C identity-
+    # preservation contract test) can hold ``weakref.proxy(mg.identity)``
+    # across :meth:`MetagraphLoader.refresh` calls. Without the slot,
+    # ``weakref.proxy`` raises ``TypeError: cannot create weak
+    # reference to 'IdentityRegistry' object``.
+    __slots__ = ("_ids", "__weakref__")
 
     def __init__(self) -> None:
         self._ids: Set[str] = set()

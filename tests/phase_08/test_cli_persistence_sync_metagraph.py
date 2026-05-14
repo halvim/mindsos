@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+import typer
 
 pytestmark = pytest.mark.integration
 
@@ -93,6 +94,8 @@ def test_sync_metagraph_replace_refuses_on_dependent_instances(
     sync_cmd(graph=None, metagraph="sync-deps-test", replace=False)
 
     # Now --replace should refuse with exit 2.
-    with pytest.raises(SystemExit) as excinfo:
+    # B-08-T8 — typer.Exit (= click.exceptions.Exit) is NOT a SystemExit
+    # subclass; pytest.raises(SystemExit) misses it.
+    with pytest.raises(typer.Exit) as excinfo:
         sync_cmd(graph=None, metagraph="sync-deps-test", replace=True)
-    assert excinfo.value.code == 2
+    assert excinfo.value.exit_code == 2

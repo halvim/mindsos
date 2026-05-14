@@ -247,15 +247,22 @@ def build_unwind_create_metahyperedges(
     """Batched MetaHyperEdge create.
 
     MetaHyperEdges connect N Graphs in the same Metagraph (n-ary).
-    Each row: ``id``, ``label``, ``props``, ``member_graph_ids`` (Sequence[str]),
-    ``_version``.
+    Each row: ``id``, ``type_name`` (Phase 08 B-08-T3 hotfix —
+    previously absent; round-trip required), ``label``, ``props``,
+    ``member_graph_ids`` (Sequence[str]), ``_version``.
     """
     query = (
         "MATCH (m:Metagraph {id: $mid}) "
         "UNWIND $rows AS row "
         "MERGE (mh:MetaHyperEdge {id: row.id}) "
         "ON CREATE SET mh._version = coalesce(row._version, 1) "
-        "SET mh.metagraph_id = $mid, mh.label = row.label, mh += row.props "
+        # Phase 08 B-08-T3 — also persist ``type_name`` so round-trip
+        # preserves the dataclass field. Phase 07 omitted this; load
+        # then read ``mh.type_name`` as None → CypherError on rehydrate.
+        "SET mh.metagraph_id = $mid, "
+        "    mh.label = row.label, "
+        "    mh.type_name = row.type_name, "
+        "    mh += row.props "
         "MERGE (mh)-[:IN_METAGRAPH]->(m) "
         "WITH mh, row "
         "UNWIND row.member_graph_ids AS gid "
@@ -324,8 +331,11 @@ def build_unwind_create_intergraph_hyperedges(
         "UNWIND $rows AS row "
         "MERGE (ih:IntergraphHyperEdge {id: row.id}) "
         "ON CREATE SET ih._version = coalesce(row._version, 1) "
+        # Phase 08 B-08-T3 — also persist ``type_name`` so round-trip
+        # preserves the dataclass field. Symmetric with MetaHyperEdge fix.
         "SET ih.metagraph_id = $mid, "
         "    ih.label = row.label, "
+        "    ih.type_name = row.type_name, "
         "    ih.ordered = row.ordered, "
         "    ih.compositional = row.compositional, "
         "    ih += row.props "
