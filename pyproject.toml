@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase07"
-description = "MindsOS command-line interface — Phase 07 L1 Persistence (Client Protocol + FalkorClient + InMemoryClient + AsyncClient + bootstrap with 14 indexes + GraphRepository + MetagraphRepository (4-step lifecycle) + WAL with context-manager API + 5-bucket integrity scanner + graph-scoped partial scanner + single-Graph load_graph + InstanceRepository sibling-package + `mindsos persistence` 5-verb CLI subapp)."
+version = "0.0.0+phase08"
+description = "MindsOS command-line interface — Phase 08 L1 Reconstruction (metagraph loader + streaming iter_load_graph + refresh + 3 new exception classes + after-load observer + first L1 WAL consumer (recover-on-load) + sibling InstanceLoader + `mindsos persistence sync/load --metagraph M` + `verify --source=db --metagraph M` unblock + `--graph G | --metagraph M` mutex)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

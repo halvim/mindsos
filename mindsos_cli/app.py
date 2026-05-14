@@ -17,13 +17,16 @@ app = typer.Typer(
     name="mindsos",
     help=(
         "MindsOS command-line interface "
-        "(Phase 07 — L1 Persistence: Client / FalkorClient / "
-        "InMemoryClient / AsyncClient / GraphRepository / "
-        "MetagraphRepository (4-step lifecycle) / WAL with context-manager "
-        "API / 5-bucket integrity scanner / graph-scoped partial scanner / "
-        "single-Graph load_graph / 5-verb `mindsos persistence` subapp + "
-        "L1 Instancing + IntergraphEdge + MetagraphSchema + Metagraph + "
-        "Schema + Graph)."
+        "(Phase 08 — L1 Reconstruction: MetagraphLoader + iter_load_graph "
+        "(streaming) + load_metagraph + InstanceLoader (sibling-package "
+        "after_load observer subscriber) + first L1 WAL consumer "
+        "(recover-on-load) + 3 new exception classes (RefreshUnsafeError "
+        "/ WALReplayerMissingError / RoleMismatchError) + `mindsos "
+        "persistence sync --metagraph M` + `load --metagraph M` "
+        "(9-line summary; --to-json sibling) + `verify --source=db "
+        "--metagraph M` unblock + `--graph G | --metagraph M` mutex; "
+        "inherits L1 Persistence / Instancing / IntergraphEdge / "
+        "MetagraphSchema / Metagraph / Schema / Graph)."
     ),
     no_args_is_help=True,
     add_completion=False,

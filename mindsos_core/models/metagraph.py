@@ -99,9 +99,11 @@ from typing import (
 )
 
 from .._observers import (
+    AfterLoadCallback,
     ObserverHandle,
     PersistCallback,
     RemoveCallback,
+    _dispatch_after_load,
     _dispatch_after_persist,
     _dispatch_precheck,
     _register,
@@ -337,6 +339,18 @@ class Metagraph:
         # ``attach_registry`` extension).
         self._persist_observers: List[PersistCallback] = []
 
+        # Phase 08 (PB-4 A + RR-9 A + RPB-9 A) — after-load observer
+        # plumbing for sibling-side reconstruction.
+        # :meth:`MetagraphLoader.load` fires
+        # ``_dispatch_after_load(self, ...)`` ONCE after all sub-reads
+        # complete (R4-1 A locked sequence). Phase 08 consumer:
+        # :class:`mindsos_instances.reconstruction.InstanceLoader` (via
+        # ``attach_registry`` extension). Phase 09 consumer:
+        # ``XRefLoader`` per RR-10 A. Per-observer exception isolation
+        # is enforced inside ``_dispatch_after_load`` (RR-9 A diverges
+        # from persist-side dispatch).
+        self._after_load_observers: List[AfterLoadCallback] = []
+
         if metagraph_id is None:
             self.identity.register(self.metagraph_id)
 
@@ -402,6 +416,35 @@ class Metagraph:
         for unsubscribe.
         """
         return _register(self._persist_observers, callback)
+
+    def register_after_load_observer(
+        self, callback: AfterLoadCallback
+    ) -> ObserverHandle:
+        """Subscribe ``callback`` to after-load events (Phase 08 — PB-4 A).
+
+        :meth:`mindsos_core.reconstruction.MetagraphLoader.load` fires
+        this hook ONCE after the locked R4-1 A read sequence completes
+        (recover → anchor → contained graphs → meta-edges →
+        meta-hyperedges → intergraph-edges → intergraph-hyperedges).
+        Phase 08 consumer:
+        :class:`mindsos_instances.reconstruction.InstanceLoader` (via
+        :func:`mindsos_instances.attach_registry` extension which
+        subscribes idempotently per Phase 06 P49 B). Phase 09 consumer
+        per RR-10 A: ``XRefLoader``.
+
+        **Per-observer exception isolation (RR-9 A)** — a failing
+        callback is logged at WARNING + swallowed; the originating load
+        returns the constructed Metagraph regardless of observer
+        outcomes. Diverges from :meth:`register_persist_observer` which
+        lets exceptions propagate. The locked rationale: a half-
+        rehydrated sibling-package should not tear down the entire
+        load; partial-rehydration is operator-visible via ``verify``.
+
+        Returns an :class:`ObserverHandle` whose ``unsubscribe()``
+        revokes the subscription. The handle is the only public surface
+        for unsubscribe.
+        """
+        return _register(self._after_load_observers, callback)
 
     # ── graph membership ─────────────────────────────────────────────────
 
@@ -597,6 +640,8 @@ class Metagraph:
         *,
         label: Optional[str] = None,
         properties: Optional[Dict[str, Any]] = None,
+        edge_id: Optional[str] = None,
+        _validate: bool = True,
     ) -> MetaEdge:
         """Create a directed graph-to-graph edge (P11 — id strings).
 
@@ -607,12 +652,28 @@ class Metagraph:
             type_name: Cypher rel-type (ADR-0021 regex).
             label: Optional human-readable label.
             properties: Optional namespaced bag.
+            edge_id: Optional explicit id. If ``None`` (default), the
+                dataclass mints a fresh UUID via its default factory.
+                Set ONLY by the reconstruction path
+                (:class:`mindsos_core.reconstruction.MetagraphLoader` in
+                Phase 08) to round-trip persisted ids. Mirrors the
+                Phase 05b ``add_intergraph_edge`` explicit-id precedent
+                (P60 — Phase 08 audit finding).
+            _validate: When ``True`` (default), run
+                ``validate_user_properties`` on the property bag. Set to
+                ``False`` ONLY by the reconstruction path to tolerate
+                Phase 07-persisted property bags (some may carry
+                namespaced keys outside the strict-user-properties
+                contract). Schema-level checks (type registration,
+                strict PropertyType maps) ALWAYS run regardless.
 
         Raises:
-            IdentityError: source or target not contained.
+            IdentityError: source or target not contained, or
+                ``edge_id`` collides with an existing metaedge id.
             SchemaError: source == target (P15 self-loop refusal).
             CypherError: invalid type_name (via ``__post_init__``).
-            PropertyShapeError: properties violate the contract.
+            PropertyShapeError: properties violate the contract
+                (only under ``_validate=True``).
         """
         # Phase 05d (round-7 P44 A) — validation order mirrors actual
         # 05b ``add_intergraph_edge`` precedent at metagraph.py:735-798:
@@ -636,8 +697,15 @@ class Metagraph:
                 f"MetaEdge self-loop refused (P15 lock): "
                 f"source_graph_id == target_graph_id == {source_graph_id!r}"
             )
-        # Step 4 — property bag validation (reserved-key + primitive scope).
-        props = validate_user_properties(properties or {}, scope="metaedge")
+        # Step 4 — property bag validation (reserved-key + primitive
+        # scope). Phase 08 P60 — under ``_validate=False`` the
+        # reconstruction path tolerates legacy / namespaced bags.
+        if _validate:
+            props = validate_user_properties(
+                properties or {}, scope="metaedge"
+            )
+        else:
+            props = dict(properties or {})
         # Steps 5-7 — schema validation when attached. Per round-7 P39 A
         # the empty-MetaEdgeType-vocab + add_metaedge case raises
         # ``UnknownTypeError`` regardless of strict (preserves the
@@ -655,13 +723,24 @@ class Metagraph:
             )
             self.schema.validate_meta_edge_properties(type_name, props)
         # Step 8 — construct (cypher regex fires in __post_init__).
-        me = MetaEdge(
-            source_graph_id=source_graph_id,
-            target_graph_id=target_graph_id,
-            type_name=type_name,
-            label=label,
-            properties=props,
-        )
+        # Phase 08 P60 — pass through explicit ``edge_id`` when supplied.
+        if edge_id is not None:
+            me = MetaEdge(
+                source_graph_id=source_graph_id,
+                target_graph_id=target_graph_id,
+                type_name=type_name,
+                label=label,
+                properties=props,
+                edge_id=edge_id,
+            )
+        else:
+            me = MetaEdge(
+                source_graph_id=source_graph_id,
+                target_graph_id=target_graph_id,
+                type_name=type_name,
+                label=label,
+                properties=props,
+            )
         self.identity.register(me.edge_id)
         self.metaedges[me.edge_id] = me
         return me
@@ -716,6 +795,8 @@ class Metagraph:
         type_name: str,
         label: Optional[str] = None,
         properties: Optional[Dict[str, Any]] = None,
+        edge_id: Optional[str] = None,
+        _validate: bool = True,
     ) -> MetaHyperEdge:
         """Create an n-ary graph-level hyperedge (P11 — id strings).
 
@@ -724,12 +805,25 @@ class Metagraph:
             type_name: Cypher rel-type (ADR-0021 regex).
             label: Optional label.
             properties: Optional namespaced bag.
+            edge_id: Optional explicit id. If ``None`` (default), the
+                dataclass mints a fresh UUID via its default factory.
+                Set ONLY by the reconstruction path
+                (:class:`mindsos_core.reconstruction.MetagraphLoader` in
+                Phase 08) to round-trip persisted ids. Mirrors the
+                Phase 05c ``add_intergraph_hyperedge`` explicit-id
+                precedent (P60 — Phase 08 audit finding).
+            _validate: When ``True`` (default), run
+                ``validate_user_properties`` on the property bag. Set to
+                ``False`` ONLY by reconstruction. Schema-level checks
+                always run regardless.
 
         Raises:
-            IdentityError: any member id not contained.
+            IdentityError: any member id not contained, or ``edge_id``
+                collides with an existing metahyperedge id.
             SchemaError: ``len(graph_ids) < 2`` (P15) OR duplicates.
             CypherError: invalid type_name.
-            PropertyShapeError: properties violate contract.
+            PropertyShapeError: properties violate contract
+                (only under ``_validate=True``).
         """
         # Phase 05d (round-7 P44 A) — validation order mirrors 05b
         # precedent: member containment → properties bag → (if schema)
@@ -743,7 +837,14 @@ class Metagraph:
                     f"MetaHyperEdge member {gid!r} not in metagraph "
                     f"{self.name!r}"
                 )
-        props = validate_user_properties(properties or {}, scope="metahyperedge")
+        # Phase 08 P60 — under ``_validate=False`` reconstruction
+        # tolerates legacy / namespaced bags.
+        if _validate:
+            props = validate_user_properties(
+                properties or {}, scope="metahyperedge"
+            )
+        else:
+            props = dict(properties or {})
         if self.schema is not None:
             self.schema.require_meta_hyperedge_type(type_name)
             member_roles = [self.graphs[gid].role for gid in gid_list]
@@ -752,12 +853,22 @@ class Metagraph:
                 member_graph_roles=member_roles,
             )
             self.schema.validate_meta_hyperedge_properties(type_name, props)
-        mhe = MetaHyperEdge(
-            graph_ids=gid_list,
-            type_name=type_name,
-            label=label,
-            properties=props,
-        )
+        # Phase 08 P60 — pass through explicit ``edge_id`` when supplied.
+        if edge_id is not None:
+            mhe = MetaHyperEdge(
+                graph_ids=gid_list,
+                type_name=type_name,
+                label=label,
+                properties=props,
+                edge_id=edge_id,
+            )
+        else:
+            mhe = MetaHyperEdge(
+                graph_ids=gid_list,
+                type_name=type_name,
+                label=label,
+                properties=props,
+            )
         self.identity.register(mhe.edge_id)
         self.metahyperedges[mhe.edge_id] = mhe
         return mhe

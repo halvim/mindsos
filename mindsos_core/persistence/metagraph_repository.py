@@ -158,6 +158,11 @@ class MetagraphRepository:
                 self._client.run_query(q, p)
 
         # ── Step 1f: intergraph hyperedges ──────────────────────────────
+        # Phase 08 P61 A — additively persist ``anchors`` alongside
+        # ``members`` so the dataclass n_anchors >= 1 invariant survives
+        # round-trip. Phase 07 wrote only the members list; Phase 08's
+        # builder accepts the new ``anchors`` row field and emits
+        # ``:ANCHOR`` rels in addition to ``:MEMBER`` rels.
         if metagraph.intergraph_hyperedges:
             rows = [
                 {
@@ -166,6 +171,10 @@ class MetagraphRepository:
                     "ordered": True,  # Phase 05c: ordered baked into type
                     "compositional": ih.compositional,
                     "props": dict(ih.properties),
+                    "anchors": [
+                        {"node_id": nid, "graph_id": gid}
+                        for (gid, nid) in ih.anchors
+                    ],
                     "members": [
                         {"node_id": nid, "graph_id": gid}
                         for (gid, nid) in ih.members

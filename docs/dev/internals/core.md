@@ -1,8 +1,8 @@
 ---
-last_confirmed_phase: 07
+last_confirmed_phase: 08
 ---
 
-# Core layer internals — Persistence (Phase 07)
+# Core layer internals — Persistence + Reconstruction (Phase 08)
 
 This page documents the persistence-layer mechanics for `mindsos_core`.
 The substrate decisions live in the ADRs at the project-root location
@@ -210,4 +210,130 @@ filter that excludes tombstoned elements lands in Phase 10
 `mindsos_core.reconstruction.load_graph(client, graph_id)` returns a
 reconstructed `Graph` with anchor + nodes + edges + hyperedges +
 `_version` fields restored from FalkorDB. Streaming loader (ADR-0124)
-and metagraph_loader (ADR-0125) defer to Phase 08.
+and metagraph_loader land in Phase 08 (below).
+
+## Reconstruction layer (Phase 08)
+
+Phase 08 ships the FalkorDB → Python read surface. ADR-0124 flips
+Accepted in Phase 08 (M3 A — flip-inline on consumer ship; acceptance
+criterion per P27 C; impl-refs amended per RR-6 A; signature shrinks
+per PB-3 A; `RefreshUnsafeError` enforcement deferred per PB-5 B).
+
+The package `mindsos_core.reconstruction/` exposes six load-side
+symbols + three re-exported exception classes (R4-12 A). See
+[the API reference](../../api/core/loaders.md) for signatures + raise
+paths.
+
+### `load_graph` (Phase 07 surface preserved)
+
+Phase 08 refactors the Phase 07 function internally to call
+`iter_load_graph` with a full-load sentinel per RR-12 A
+(`load_graph = drain(iter_load_graph(..., batch_size=_FULL))`).
+Result is byte-equivalent to the prior Phase 07 implementation.
+
+### `iter_load_graph` (NEW — RPB-1 A semantics)
+
+```python
+def iter_load_graph(client, graph_id, *, identity=None,
+                    schema=None, batch_size=10_000) -> Iterator[Graph]:
+    ...
+```
+
+Intermediate batches are **nodes-only**; the final batch trails any
+edges + hyperedges over the cumulative node set. The yielded `Graph`
+object identity is stable across yields (mutating in-place); the final
+yield holds the full assembled graph. RPB-10 A — `IntergraphEdge` /
+`IntergraphHyperEdge` are skipped (those load via `MetagraphLoader`).
+
+### `MetagraphLoader` + `load_metagraph` (NEW)
+
+Orchestrator class + module convenience function (PB-2 C hybrid).
+The class is **orchestration-only** (RR-8 A) — sibling loaders
+(InstanceLoader in Phase 08; XRefLoader in Phase 09 per RR-10 A)
+subscribe via `Metagraph.register_after_load_observer`, never via a
+sub-loader handle.
+
+**Locked load sequence** (R4-1 A / R4-8 A / M12):
+
+1. `recover(client, metagraph_id)` — first L1 WAL consumer (PB-6 B).
+   Narrow-catches `WALReplayerMissingError` (RPB-3 C); other failures
+   propagate as `PersistenceError`.
+2. Anchor row + property bag + `schema_name` plain property (PB-11 A
+   — name only; vocab content NOT auto-attached).
+3. Contained graphs via `load_graph` (default) or `iter_load_graph`
+   per-graph (`batch_size=int` per RR-2 D).
+4. MetaEdges (untyped MATCH + `r.metagraph_id` filter).
+5. MetaHyperEdges (`:MetaHyperEdge` node + `:MEMBER_GRAPH` rels).
+6. IntergraphEdges (untyped MATCH + cross-graph guard).
+7. IntergraphHyperEdges (`:ANCHOR` + `:MEMBER` rels — Phase 08 P61 A
+   fix; see below).
+8. `_dispatch_after_load(mg._after_load_observers, mg)` — single fire
+   (RPB-9 A); per-observer exception isolation (RR-9 A — diverges
+   from `_dispatch_after_persist` by design).
+
+### WAL recover-on-load (PB-6 B — first L1 consumer)
+
+`load_metagraph` ALWAYS calls `recover()` as step 0 of the locked
+sequence. The narrow-catch on `WALReplayerMissingError` (RPB-3 C)
+means Phase 08 loads with no registered replayers are silent no-ops;
+once L0/L2 (Phase 18+) register replayers, the same call becomes
+meaningful. Driver-level errors continue to propagate as
+`PersistenceError`. `load_graph` does NOT call `recover()` (RPB-5 A
+asymmetry — standalone Graph has no metagraph recovery context).
+
+### Observer-driven instance load (RR-9 A + PB-4 A)
+
+`Metagraph.register_after_load_observer(cb)` provides the
+sibling-package extension slot (PB-4 A). `mindsos_instances.attach_registry(mg)`
+subscribes an after-load observer that routes through
+`mindsos_instances.reconstruction.InstanceLoader.load_into(mg)`.
+
+The dispatcher `_dispatch_after_load` (in `mindsos_core/_observers.py`)
+applies **per-observer exception isolation** (RR-9 A): a failing
+observer is logged + swallowed; the originating load returns the
+constructed Metagraph regardless. Diverges from
+`_dispatch_after_persist` (Phase 07) which lets exceptions propagate;
+locked rationale: a half-rehydrated sibling-package should not tear
+down the entire load — partial-rehydration is operator-visible via
+`verify`.
+
+### `MetagraphLoader.refresh(mg, role)` (ADR-0124 §2)
+
+Drops role-graphs via `mg.remove_graph(gid)` (RPB-2 A — fires Phase 06
+remove-observer cascade for dependent instances); reloads via
+`load_graph`; fires `after_load` to rehydrate instances.
+
+* **Identity preservation** (R4-7 A+C) — `id(mg)` + `id(mg.identity)`
+  unchanged; downstream `weakref.proxy(mg.identity)` continues to
+  resolve.
+* **Empty role** (R4-2 D) — log WARNING + no-op return.
+* **Role mismatch** (R4-2 D) — raise `RoleMismatchError` with both
+  roles surfaced.
+* **`RefreshUnsafeError`** (PB-5 B) — class only; not raised in
+  Phase 08. Per-role mutation-flag tracking deferred.
+
+### Phase 08 P61 A — IntergraphHyperEdge anchor persist fix
+
+Phase 07's `build_unwind_create_intergraph_hyperedges` persisted only
+`:MEMBER` rels; `:ANCHOR` rels were absent. The
+`IntergraphHyperEdge` dataclass invariant `n_anchors ≥ 1` made
+round-trip impossible. Phase 08 P61 A additively extends the persist
+builder + persist-row construction to write `:ANCHOR` rels alongside
+`:MEMBER`. Phase 08's `MetagraphLoader._load_intergraph_hyperedges`
+reads both rel kinds.
+
+Old data persisted before the Phase 08 fix has no `:ANCHOR` rels —
+affected rows surface in the loader's WARNING log + are SKIPPED.
+Recovery: re-`sync --metagraph M --replace` under Phase 08 (after
+dropping dependent state per RPB-4 C).
+
+### Exception hierarchy additions (R4-3 A)
+
+* `RefreshUnsafeError` ← `PersistenceError` (PB-5 B class only).
+* `WALReplayerMissingError` ← `PersistenceError` (RPB-3 C narrow-catch
+  sentinel).
+* `RoleMismatchError` ← `PersistenceError` (R4-2 D refresh corruption
+  signal).
+
+No `ReconstructionError` umbrella class (R4-3 A — `PersistenceError`
+suffices).

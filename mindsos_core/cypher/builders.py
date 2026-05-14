@@ -304,8 +304,20 @@ def build_unwind_create_intergraph_hyperedges(
     """Batched IntergraphHyperEdge create (n-ary; cross-graph).
 
     Each row: ``id``, ``label``, ``ordered`` (bool), ``compositional``
-    (bool), ``props``, ``members`` (Sequence[Mapping] with ``node_id``
-    and ``graph_id`` per entry), ``_version``.
+    (bool), ``props``, ``anchors`` (Sequence[Mapping] with ``node_id``
+    and ``graph_id`` per entry — written via ``:ANCHOR`` rels per
+    ADR-0148 Pattern B amended; **Phase 08 P61 A** fix to Phase 07's
+    members-only persist), ``members`` (same shape — written via
+    ``:MEMBER``), ``_version``.
+
+    Per Phase 08 P61 A: Phase 07's implementation persisted only
+    ``:MEMBER`` rels, which left anchor information unrecoverable on
+    load. The dataclass invariant ``n_anchors ≥ 1`` made round-trip
+    impossible. The fix is additive — extends the persist row with
+    an ``anchors`` list and emits a second UNWIND for ``:ANCHOR`` rels.
+    Backwards-compatible with Phase 07 readers (they ignore the new
+    rels); forwards-compatible with Phase 08 load
+    (:class:`MetagraphLoader` reads both ``:ANCHOR`` + ``:MEMBER``).
     """
     query = (
         "MATCH (m:Metagraph {id: $mid}) "
@@ -318,6 +330,12 @@ def build_unwind_create_intergraph_hyperedges(
         "    ih.compositional = row.compositional, "
         "    ih += row.props "
         "MERGE (ih)-[:IN_METAGRAPH]->(m) "
+        "WITH ih, row "
+        # Phase 08 P61 A — write :ANCHOR rels alongside :MEMBER rels so
+        # the dataclass round-trip preserves both sides.
+        "UNWIND row.anchors AS anc "
+        "MATCH (an:Node {id: anc.node_id, graph_id: anc.graph_id}) "
+        "MERGE (ih)-[:ANCHOR]->(an) "
         "WITH ih, row "
         "UNWIND row.members AS mem "
         "MATCH (n:Node {id: mem.node_id, graph_id: mem.graph_id}) "
