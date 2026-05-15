@@ -56,7 +56,16 @@ jobs:
           NN_NUM="${BASH_REMATCH[1]}"
           LETTER="${BASH_REMATCH[2]}"   # empty or single lowercase letter
           VSUFFIX="${BASH_REMATCH[3]}"  # empty or "-vM"
-          NN_PADDED="$(printf '%02d' "$NN_NUM")${LETTER}"
+          # B-08-T9 — force base-10 to dodge bash's leading-zero octal
+          # trap. Phase 08's NN_NUM="08" triggered
+          # `printf: 08: invalid octal number` because 8 isn't a valid
+          # octal digit. Phase 01-07 (digits 0-7) were valid octal so
+          # the bug stayed dormant; Phase 09 would hit it too.
+          # ``$((10#$NN_NUM))`` interprets as base-10 regardless of
+          # leading zero. See feedback_tag_regex_audit.md for the full
+          # 5-site checklist (this is site 5a + 5c — release.yml
+          # Extract + Retention prune).
+          NN_PADDED="$(printf '%02d' "$((10#$NN_NUM))")${LETTER}"
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
           echo "nn=${NN_PADDED}" >> "$GITHUB_OUTPUT"
           echo "vsuffix=${VSUFFIX}" >> "$GITHUB_OUTPUT"
@@ -211,7 +220,8 @@ jobs:
             nn=$(echo "$tag" | sed -E 's/^phase-([0-9]+)[a-z]?(-v[0-9]+)?-confirmed$/\1/')
             letter=$(echo "$tag" | sed -nE 's/^phase-[0-9]+([a-z])(-v[0-9]+)?-confirmed$/\1/p')
             vsuffix=$(echo "$tag" | sed -nE 's/^phase-[0-9]+[a-z]?(-v[0-9]+)-confirmed$/\1/p')
-            nn_padded="$(printf '%02d' "$nn")${letter}"
+            # B-08-T9 — same base-10 force as the Extract step above.
+            nn_padded="$(printf '%02d' "$((10#$nn))")${letter}"
             asset="mindsos-phase${nn_padded}${vsuffix}.tar.gz"
             placeholder=$(mktemp)
             cat > "$placeholder" <<EOF
