@@ -1,4 +1,4 @@
-"""Bootstrap: create indexes required by the Core Layer (Phase 07).
+"""Bootstrap: create indexes + register WAL replayers (Phase 07 + Phase 09).
 
 Run lazily once per :class:`FalkorClient` construction (P2 A). Safe to
 re-run — the bare ``CREATE INDEX FOR`` syntax is the only form FalkorDB
@@ -8,7 +8,7 @@ parser, not an "already exists" run-time error). Idempotency comes from
 the defensive try/except that catches the
 ``Attribute 'id' is already indexed`` error returned on re-create.
 
-Per P95 B — **14 indexes total**:
+**Phase 07 ships 14 indexes per P95 B:**
 
 * **10 node-label `id` indexes**: ``:Metagraph``, ``:Graph``, ``:Node``,
   ``:HyperEdge``, ``:MetaHyperEdge``, ``:IntergraphHyperEdge``,
@@ -21,16 +21,29 @@ Per P95 B — **14 indexes total**:
   relationship-index syntax is ``CREATE INDEX FOR ()-[r:Edge]-() ON
   (r.id)``. Step 0 probe confirms support.
 * **1 hot-path index**: ``:Node {graph_id}`` for persist-time check
-  per ADR-0123 §2 (single-graph scan cost). Other hot-path indexes
-  (graph_id on additional labels; metagraph_id) deferred to Phase 08
-  when streaming/loader drives the actual scan needs.
+  per ADR-0123 §2.
 
-Total: 14.
+**Phase 09 adds 4 `:XRef` indexes per M15 (bootstrap grows 14 → 18):**
+
+* ``:XRef {id}`` — primary lookup by xref id.
+* ``:XRef {source_metagraph_id}`` — XRefLoader query
+  ``MATCH (x:XRef {source_metagraph_id: $mid})``.
+* ``:XRef {source_id}`` — forward walk
+  (``mg.iter_xrefs(source_id=...)``).
+* ``:XRef {target_metagraph_id, target_id}`` compound — reverse walk
+  (``mg.iter_xrefs(target_metagraph_id=..., target_id=...)``) +
+  ``--target-metagraph`` filter via prefix-match (RPB-5; tester probe
+  P56 verifies prefix-match works on FalkorDB v4.18.3).
+
+**Phase 09 WAL replayers** registered via
+:func:`register_all_l1_replayers` per RR-16. Per-kind modules own
+their registration; this central wrapper composes them. Phase 10/11
+extend the wrapper as new replayer kinds ship.
 """
 
 from __future__ import annotations
 
-from typing import List, Literal, Tuple
+from typing import List, Literal, Tuple, Union
 
 from ..exceptions import PersistenceError
 from .client import Client
@@ -40,10 +53,16 @@ from .client import Client
 #: "rel" → ``CREATE INDEX FOR ()-[r:RelType]-() ON (r.prop)``.
 IndexKind = Literal["node", "rel"]
 
+#: A single property name, or a tuple of property names for a compound
+#: index. Compound rendering: ``ON (n.p1, n.p2)``.
+IndexProp = Union[str, Tuple[str, ...]]
 
-#: 14 indexes per P95 B. Ordering: anchors first, then elements, then
-#: instance kinds, then relationship types, then the hot-path index.
-DEFAULT_INDEXES: List[Tuple[IndexKind, str, str]] = [
+
+#: 18 indexes total: 14 from Phase 07 + 4 :XRef from Phase 09 (M15).
+#: Ordering: anchors first, then elements, then instance kinds, then
+#: relationship types, then the hot-path index, then the Phase 09
+#: :XRef block.
+DEFAULT_INDEXES: List[Tuple[IndexKind, str, IndexProp]] = [
     # ── 10 node-label id indexes ───────────────────────────────────
     ("node", "Metagraph", "id"),
     ("node", "Graph", "id"),
@@ -64,10 +83,20 @@ DEFAULT_INDEXES: List[Tuple[IndexKind, str, str]] = [
     ("rel", "IntergraphEdge", "id"),
     # ── 1 hot-path index per ADR-0123 §2 ──────────────────────────
     ("node", "Node", "graph_id"),
+    # ── 4 :XRef indexes (Phase 09 M15) ─────────────────────────────
+    ("node", "XRef", "id"),
+    ("node", "XRef", "source_metagraph_id"),
+    ("node", "XRef", "source_id"),
+    # Compound (target_metagraph_id, target_id) — reverse-walk index +
+    # prefix-match for --target-metagraph alone (RPB-5). Tester probe
+    # P56 verifies FalkorDB v4.18.3 accepts the syntax + executes
+    # prefix-match against the compound; if it fails, fallback to
+    # 5-index ship per P56 option C (split into single + compound).
+    ("node", "XRef", ("target_metagraph_id", "target_id")),
 ]
 
 
-def _ddl_for(kind: IndexKind, label: str, prop: str) -> str:
+def _ddl_for(kind: IndexKind, label: str, prop: IndexProp) -> str:
     """Render the ``CREATE INDEX FOR`` DDL for one entry.
 
     Per P89 A + B-07-T1 hotfix (2026-05-13): relationship-index syntax
@@ -76,15 +105,23 @@ def _ddl_for(kind: IndexKind, label: str, prop: str) -> str:
     as a syntax error); idempotency comes from the defensive try/except
     in :func:`bootstrap` that swallows the
     ``Attribute 'id' is already indexed`` re-create error.
+
+    Phase 09 adds compound-index rendering: when ``prop`` is a tuple,
+    emits ``ON (n.p1, n.p2, ...)``.
     """
+    var = "n" if kind == "node" else "r"
+    if isinstance(prop, tuple):
+        prop_text = ", ".join(f"{var}.{p}" for p in prop)
+    else:
+        prop_text = f"{var}.{prop}"
     if kind == "node":
-        return f"CREATE INDEX FOR (n:{label}) ON (n.{prop})"
+        return f"CREATE INDEX FOR (n:{label}) ON ({prop_text})"
     # kind == "rel"
-    return f"CREATE INDEX FOR ()-[r:{label}]-() ON (r.{prop})"
+    return f"CREATE INDEX FOR ()-[r:{label}]-() ON ({prop_text})"
 
 
 def bootstrap(client: Client) -> None:
-    """Create all 14 indexes idempotently.
+    """Create all 18 indexes idempotently (14 Phase 07 + 4 :XRef Phase 09).
 
     Best-effort: per-statement failures matching known
     "already exists" / "indexed" patterns are swallowed so re-running
@@ -102,8 +139,29 @@ def bootstrap(client: Client) -> None:
             raise
 
 
+def register_all_l1_replayers(client: Client) -> None:
+    """Register every L1-owned WAL replayer on ``client`` (Phase 09 RR-16).
+
+    Per-kind modules own their registration function; this central
+    wrapper composes them. Phase 09 ships the first L1 replayers
+    (``xref_add`` + ``xref_remove``); Phase 10/11 extend with snapshot
+    + integrity replayers.
+
+    Called by :class:`FalkorClient.__init__` immediately after
+    :func:`bootstrap`. ``InMemoryClient`` may invoke it explicitly in
+    tests that exercise WAL recovery (per Phase 09 RR-16).
+    """
+    # Late import to break the bootstrap → xref_repository → builders
+    # → ... cycle.
+    from .xref_repository import register_xref_replayers
+
+    register_xref_replayers(client)
+
+
 __all__ = [
     "DEFAULT_INDEXES",
     "IndexKind",
+    "IndexProp",
     "bootstrap",
+    "register_all_l1_replayers",
 ]

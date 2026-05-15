@@ -27,7 +27,7 @@ class TestStateVersionConstants:
         # Phase 05d: metagraph state file stays at v=3 (P31 A —
         # fingerprint mechanism dropped, no bump). This assertion
         # therefore remains valid under 05d.
-        assert state_mod.METAGRAPH_STATE_VERSION == 3
+        assert state_mod.METAGRAPH_STATE_VERSION == mg_migrations.CURRENT_VERSION
 
     def test_metagraph_schema_state_version_at_current(self):
         # Phase 05d (round-7 P43): dynamic — schema bumps v=2 → v=3
@@ -52,10 +52,12 @@ class TestMetagraphMigrationV2ToV3:
             "intergraph_edges": [],
         }
         result = mg_migrations.migrate(v2)
-        assert result["_state_version"] == 3
+        # Phase 09 RR-12 — chain advances to current; v=2 input now
+        # walks v=2→v=3→v=4 picking up xrefs[] default in step 4.
+        assert result["_state_version"] == mg_migrations.CURRENT_VERSION
         assert result["intergraph_hyperedges"] == []
 
-    def test_v1_chain_through_to_v3(self):
+    def test_v1_chain_through_to_current(self):
         v1 = {
             "_state_version": 1,
             "metagraph_id": "mg-id",
@@ -66,15 +68,21 @@ class TestMetagraphMigrationV2ToV3:
             "metahyperedges": [],
         }
         result = mg_migrations.migrate(v1)
-        # v=1 → v=2 → v=3 chain.
-        assert result["_state_version"] == 3
+        # Phase 09 RR-12 — chain advances v=1→v=current.
+        assert result["_state_version"] == mg_migrations.CURRENT_VERSION
         # v=2 step adds intergraph_edges + schema_name defaults.
         assert result["intergraph_edges"] == []
         assert result["schema_name"] is None
         # v=3 step adds intergraph_hyperedges default.
         assert result["intergraph_hyperedges"] == []
+        # v=4 step adds xrefs default (Phase 09).
+        assert result["xrefs"] == []
 
-    def test_v3_idempotent(self):
+    def test_v3_migrates_to_current(self):
+        """Phase 09 RR-12 — v=3 input is no longer idempotent; migrates
+        forward to current adding ``xrefs`` default. Replaces the
+        Phase 05c-era ``test_v3_idempotent`` with the post-bump shape.
+        """
         v3 = {
             "_state_version": 3,
             "metagraph_id": "mg-id",
@@ -88,12 +96,20 @@ class TestMetagraphMigrationV2ToV3:
             "intergraph_hyperedges": [{"edge_id": "ihe1"}],
         }
         result = mg_migrations.migrate(v3)
-        assert result["_state_version"] == 3
+        assert result["_state_version"] == mg_migrations.CURRENT_VERSION
+        # Pre-existing intergraph_hyperedges preserved.
         assert result["intergraph_hyperedges"] == [{"edge_id": "ihe1"}]
+        # v=3→v=4 step adds xrefs default.
+        assert result["xrefs"] == []
 
-    def test_v4_forward_refused(self):
-        with pytest.raises(ValueError, match="v3"):
-            mg_migrations.migrate({"_state_version": 4, "name": "test"})
+    def test_forward_version_refused(self):
+        """Phase 09 RR-12 — forward fixture uses dynamic CURRENT_VERSION + 1
+        so the test moves with future bumps without literal-version edits.
+        """
+        forward = mg_migrations.CURRENT_VERSION + 1
+        with pytest.raises(ValueError) as exc:
+            mg_migrations.migrate({"_state_version": forward, "name": "test"})
+        assert f"v{mg_migrations.CURRENT_VERSION}" in str(exc.value)
 
 
 class TestMetagraphSchemaMigrationV1ToV2:
@@ -178,7 +194,8 @@ class TestRoundTripMetagraphV3:
         _g_save("letter", g_l, schema_name=None, metagraph_name="rt")
         # Serialize + persist metagraph.
         state = _metagraph_to_state(mg)
-        assert state["_state_version"] == 3
+        # Phase 09 RR-12 — serialized state is at CURRENT_VERSION (4 in P09).
+        assert state["_state_version"] == mg_migrations.CURRENT_VERSION
         assert len(state["intergraph_hyperedges"]) == 1
         ihe_dict = state["intergraph_hyperedges"][0]
         assert ihe_dict["edge_id"] == ihe.edge_id
@@ -192,7 +209,7 @@ class TestRoundTripMetagraphV3:
         # Round-trip through save + load.
         state_mod.save_metagraph_state("rt", state)
         loaded = state_mod.load_metagraph_state("rt")
-        assert loaded["_state_version"] == 3
+        assert loaded["_state_version"] == mg_migrations.CURRENT_VERSION
         mg2 = _state_to_metagraph(loaded)
         assert len(mg2.intergraph_hyperedges) == 1
         loaded_ihe = next(iter(mg2.intergraph_hyperedges.values()))

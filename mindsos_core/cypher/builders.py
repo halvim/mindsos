@@ -27,8 +27,9 @@ them straight to the Client's ``run_query`` method.
   are validated via :func:`validate_edge_type_identifier` before being
   spliced into Cypher text.
 
-XRef builders (v3) deferred to Phase 09. Streaming / iter_load
-(ADR-0124) deferred to Phase 08.
+XRef builders ship in Phase 09 (:func:`build_create_xref` +
+:func:`build_remove_xref`). Streaming / iter_load (ADR-0124) shipped
+in Phase 08.
 """
 
 from __future__ import annotations
@@ -510,6 +511,73 @@ def build_remove_hyperedge(
     return query, {"gid": graph_id, "hid": hyperedge_id, "by": removed_by}
 
 
+# ── XRef (Phase 09 — ADR-0128) ──────────────────────────────────────────────
+
+
+def build_create_xref(
+    *,
+    xref_id: str,
+    source_metagraph_id: str,
+    source_id: str,
+    target_metagraph_id: str,
+    target_role: str,
+    target_id: str,
+    ref_type: str,
+    properties: Mapping[str, Any],
+) -> Tuple[str, Dict[str, Any]]:
+    """Create an :XRef anchor row for a cross-metagraph reference (ADR-0128).
+
+    The row carries every field needed to round-trip the in-memory
+    :class:`mindsos_core.models.xref.XRef`. The ``:XREF_OF`` edge
+    links it to its source metagraph anchor for index-friendly
+    lookups (M2 + RPB-3 forward-cascade).
+
+    **Phase 09 P53 — 8 fields.** v3's ``target_stale`` and
+    ``deprecated_at`` columns are NOT written; both ship in Phase 10
+    with their setters.
+
+    **MERGE-based** so the WAL ``xref_add`` replayer (PB-8) is
+    idempotent on re-runs.
+    """
+    query = (
+        "MERGE (m:Metagraph {id: $smid}) "
+        "MERGE (x:XRef {id: $xid}) "
+        "SET x.source_metagraph_id = $smid, x.source_id = $sid, "
+        "    x.target_metagraph_id = $tmid, x.target_role = $trole, "
+        "    x.target_id = $tid, x.ref_type = $ref_type, "
+        "    x += $props "
+        "MERGE (x)-[:XREF_OF]->(m) "
+        "RETURN x.id AS id"
+    )
+    return query, {
+        "xid": xref_id,
+        "smid": source_metagraph_id,
+        "sid": source_id,
+        "tmid": target_metagraph_id,
+        "trole": target_role,
+        "tid": target_id,
+        "ref_type": ref_type,
+        "props": dict(properties),
+    }
+
+
+def build_remove_xref(xref_id: str) -> Tuple[str, Dict[str, Any]]:
+    """DETACH DELETE the :XRef row + its :XREF_OF edge (idempotent).
+
+    No tombstone row (XRefs aren't subject to soft-delete in Phase 09;
+    see ADR-0128 + RPB-3 forward-cascade contract). The WAL
+    ``xref_remove`` replayer re-runs this against the same xref_id
+    safely (DETACH DELETE on a non-existent row is a no-op in
+    FalkorDB).
+    """
+    query = (
+        "MATCH (x:XRef {id: $xid}) "
+        "DETACH DELETE x "
+        "RETURN $xid AS id"
+    )
+    return query, {"xid": xref_id}
+
+
 # ── instance persistence (consumed by mindsos_instances.persistence) ────────
 
 
@@ -639,6 +707,8 @@ __all__ = [
     "build_remove_node",
     "build_remove_edge",
     "build_remove_hyperedge",
+    "build_create_xref",
+    "build_remove_xref",
     "build_create_element_instance",
     "build_create_composite_instance",
 ]

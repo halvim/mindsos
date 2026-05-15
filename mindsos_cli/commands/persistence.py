@@ -255,6 +255,7 @@ def _sync_metagraph(metagraph_name: str, *, replace: bool) -> None:
             f"metahyperedges={len(mg.metahyperedges)}, "
             f"intergraph_edges={len(mg.intergraph_edges)}, "
             f"intergraph_hyperedges={len(mg.intergraph_hyperedges)}, "
+            f"xrefs={len(mg.xrefs)}, "
             f"replace={replace})"
         )
     finally:
@@ -288,12 +289,14 @@ def _metagraph_has_dependent_state(client, metagraph_id: str) -> str:
     if ci and int(ci.get("n", 0)) > 0:
         finds.append(f"{int(ci.get('n', 0))} CompositeInstance")
 
-    # XRef defensive — Phase 09 ships :XRef; pre-09 the label may not
-    # exist. Use a try/except so the substrate's "label not found"
-    # error is silently treated as zero.
+    # XRef per Phase 09 M11 — query field is ``source_metagraph_id``
+    # (v3 baseline schema; ``metagraph_id`` was a Phase 08 placeholder).
+    # try/except retained: pre-Phase-09 fixtures or substrates that
+    # haven't bootstrapped the :XRef label still treat zero hits as
+    # "no dependent state" rather than crashing.
     try:
         xr = client.run_query(
-            "MATCH (x:XRef {metagraph_id: $mid}) RETURN count(x) AS n",
+            "MATCH (x:XRef {source_metagraph_id: $mid}) RETURN count(x) AS n",
             {"mid": metagraph_id},
         ).first()
         if xr and int(xr.get("n", 0)) > 0:
@@ -507,8 +510,15 @@ def _load_metagraph_cmd(
         # a direct sibling-side population call.
         mg = load_metagraph(client, metagraph_id)
         attach_registry(mg)
-        # Run the after_load fire path now that the registry is attached
-        # — populates element_instances / composite_instances counts.
+        # B-09-T1 — wire the XRef loader BEFORE the after-load dispatch
+        # so xrefs[] populates alongside instances. Without this call,
+        # mg.xrefs stays empty even when :XRef rows exist in DB and
+        # the summary line reports xrefs=0 (Exercise 5 surfaced this).
+        from mindsos_core.reconstruction import attach_xref_loader
+        attach_xref_loader(mg)
+        # Run the after_load fire path now that BOTH the registry +
+        # the XRef loader are attached — populates element_instances /
+        # composite_instances + mg.xrefs.
         try:
             mg._persist_client = client  # type: ignore[attr-defined]
             from mindsos_core._observers import _dispatch_after_load
@@ -533,7 +543,11 @@ def _load_metagraph_cmd(
                 else:
                     ei_count += 1
 
-        # Summary payload for both 9-line + --json + --to-json paths.
+        # Summary payload for both stdout + --json + --to-json paths.
+        # Phase 09 — XRef count via len(mg.xrefs); the after-load
+        # observer subscribed by attach_xref_loader populates mg.xrefs
+        # before this point.
+        xref_count = len(mg.xrefs)
         summary = {
             "Metagraph": mg.name,
             "Metagraph id": mg.metagraph_id,
@@ -542,6 +556,7 @@ def _load_metagraph_cmd(
             "MetaHyperEdges": len(mg.metahyperedges),
             "IntergraphEdges": len(mg.intergraph_edges),
             "IntergraphHyperEdges": len(mg.intergraph_hyperedges),
+            "XRefs": xref_count,
             "ElementInstances": ei_count,
             "CompositeInstances": ci_count,
         }
@@ -567,19 +582,28 @@ def _load_metagraph_cmd(
             typer.echo(json.dumps(summary, sort_keys=True, indent=2))
             return
 
-        # R4-5 A — 9-line flat key:value stdout summary.
-        for key in (
-            "Metagraph",
-            "Metagraph id",
-            "Graphs",
-            "MetaEdges",
-            "MetaHyperEdges",
-            "IntergraphEdges",
-            "IntergraphHyperEdges",
-            "ElementInstances",
-            "CompositeInstances",
-        ):
-            _console.print(f"{key}: {summary[key]}")
+        # Phase 09 P52 — replace the prior 9-line flat list with a
+        # single structured ``Dependent state:`` line. The line grows
+        # additively as future phases add new bucket counts (Snapshots
+        # / RemovalImpact in P10; scanner output in P11). Tests assert
+        # by key not position; B-08-T1 dynamic-read pattern still
+        # applies but for keys, not line counts.
+        _console.print(f"Metagraph: {summary['Metagraph']}")
+        _console.print(f"Metagraph id: {summary['Metagraph id']}")
+        deps = " ".join(
+            f"{k.lower()}={summary[k]}"
+            for k in (
+                "Graphs",
+                "MetaEdges",
+                "MetaHyperEdges",
+                "IntergraphEdges",
+                "IntergraphHyperEdges",
+                "XRefs",
+                "ElementInstances",
+                "CompositeInstances",
+            )
+        )
+        _console.print(f"Dependent state: {deps}")
     finally:
         client.close()
 
@@ -651,6 +675,24 @@ def _build_metagraph_fromdb_payload(mg) -> dict:
             }
             for ih in mg.intergraph_hyperedges.values()
         ],
+        # Phase 09 RR-8 — 8-field XRef shape per P53. Sorted by
+        # ``xref_id`` for stable round-trip diffs.
+        "xrefs": sorted(
+            (
+                {
+                    "xref_id": x.xref_id,
+                    "source_metagraph_id": x.source_metagraph_id,
+                    "source_id": x.source_id,
+                    "target_metagraph_id": x.target_metagraph_id,
+                    "target_role": x.target_role,
+                    "target_id": x.target_id,
+                    "ref_type": x.ref_type,
+                    "properties": dict(x.properties),
+                }
+                for x in mg.xrefs.values()
+            ),
+            key=lambda d: d["xref_id"],
+        ),
     }
 
 
@@ -673,11 +715,16 @@ def diagnose_cmd() -> None:
         _refuse_with(f"FalkorDB ping failed: {e}", exit_code=2)
 
     try:
-        # Index count: query CALL db.indexes() if available, else assume bootstrap ran.
+        # Index parity per Phase 09 B-09-T2 hotfix + B-07-T4 substring-check
+        # pattern. FalkorDB v4.18.3 groups multi-property indexes per
+        # (kind, label) pair into a single row in CALL db.indexes(). Phase 09
+        # bootstrap ships 18 logical indexes across 14 distinct (kind, label)
+        # pairs (e.g. Node has both `id` and `graph_id` indexed → 1 row;
+        # XRef has 4 indexes → 1 row). Compare row count to distinct
+        # (kind, label) pair count, not to len(DEFAULT_INDEXES).
         from mindsos_core.persistence.bootstrap import DEFAULT_INDEXES
 
-        expected = len(DEFAULT_INDEXES)
-        # Lightweight: query indexes from FalkorDB via CALL db.indexes() if supported.
+        expected = len({(kind, label) for (kind, label, _prop) in DEFAULT_INDEXES})
         try:
             ix_res = client.run_query("CALL db.indexes()")
             present = len(ix_res.rows)
@@ -825,6 +872,131 @@ def _load_metagraph_from_state(name: str):
         _refuse_with(f"No state file for metagraph {name!r} at {path}", exit_code=1)
     state = state_mod.load_metagraph_state(name)
     return _state_to_metagraph(state)
+
+
+# ── xref-list (Phase 09 — PB-5 + RR-5 + RR-6 + P63) ────────────────────
+
+
+@persistence_app.command("xref-list")
+def xref_list_cmd(
+    metagraph: str = typer.Option(
+        ...,
+        "--metagraph",
+        help="Metagraph name (required). Direct-DB query (P63 A); does NOT load the metagraph or fire recover().",
+    ),
+    source_id: Optional[str] = typer.Option(
+        None, "--source-id", help="Filter: source element id (forward walk).",
+    ),
+    target_metagraph: Optional[str] = typer.Option(
+        None,
+        "--target-metagraph",
+        help="Filter: target metagraph id (uses (target_metagraph_id, target_id) compound prefix-match per RPB-5).",
+    ),
+    target_id: Optional[str] = typer.Option(
+        None, "--target-id", help="Filter: target element id (reverse walk).",
+    ),
+    ref_type: Optional[str] = typer.Option(
+        None,
+        "--ref-type",
+        help="Filter: ref_type vocabulary entry (SPECIALISES / INSTANCE_OF / ...).",
+    ),
+    out_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit machine-readable JSON instead of Rich table (RR-6).",
+    ),
+) -> None:
+    """List :XRef rows for a metagraph (Phase 09 PB-5 + RR-5 + RR-6).
+
+    Direct-DB query path (P63 A) — first verifies the ``:Metagraph``
+    anchor exists; raises exit 2 if not. Does NOT call
+    ``MetagraphLoader.load`` or fire ``recover()``; pure ``MATCH (x:XRef ...)``
+    read with optional WHERE clauses for the four filter flags.
+
+    Output (RR-6):
+
+    * Default — Rich table with truncated IDs (first 8 chars per
+      :class:`XRef.__repr__` precedent). Columns: ``xref_id`` /
+      ``source_id`` / ``target_metagraph_id`` / ``target_role`` /
+      ``target_id`` / ``ref_type``.
+    * ``--json`` — full IDs as a JSON array.
+
+    Exit codes per Phase 07 P64 A: 0 clean / 1 CLI usage / 2 system
+    error.
+
+    Phase 09 P53 — ``target_stale`` and ``deprecated_at`` columns are
+    NOT projected; both ship in Phase 10.
+    """
+    client = _build_client()
+    try:
+        # Resolve metagraph name → id (direct query; no load).
+        res = client.run_query(
+            "MATCH (m:Metagraph {name: $name}) RETURN m.id AS mid",
+            {"name": metagraph},
+        )
+        if not res.rows:
+            _refuse_with(
+                f"No :Metagraph with name {metagraph!r} in FalkorDB",
+                exit_code=2,
+            )
+        mid = res.rows[0]["mid"]
+
+        # Build the filtered MATCH. Source-metagraph anchor is always
+        # present; additional filters tack on as WHERE clauses so the
+        # compound index can be used by the planner.
+        where: list[str] = []
+        params: dict = {"mid": mid}
+        if source_id is not None:
+            where.append("x.source_id = $sid")
+            params["sid"] = source_id
+        if target_metagraph is not None:
+            where.append("x.target_metagraph_id = $tmid")
+            params["tmid"] = target_metagraph
+        if target_id is not None:
+            where.append("x.target_id = $tid")
+            params["tid"] = target_id
+        if ref_type is not None:
+            where.append("x.ref_type = $rtype")
+            params["rtype"] = ref_type
+
+        q = "MATCH (x:XRef {source_metagraph_id: $mid}) "
+        if where:
+            q += "WHERE " + " AND ".join(where) + " "
+        q += (
+            "RETURN x.id AS xref_id, x.source_id AS source_id, "
+            "       x.target_metagraph_id AS target_metagraph_id, "
+            "       x.target_role AS target_role, x.target_id AS target_id, "
+            "       x.ref_type AS ref_type "
+            "ORDER BY x.id"
+        )
+        rows = client.run_query(q, params).rows
+    finally:
+        client.close()
+
+    if out_json:
+        typer.echo(json.dumps(rows, sort_keys=True, indent=2))
+        return
+
+    table = Table(title=f"XRefs for {metagraph!r}")
+    for col in (
+        "xref_id",
+        "source_id",
+        "target_metagraph_id",
+        "target_role",
+        "target_id",
+        "ref_type",
+    ):
+        table.add_column(col)
+    for row in rows:
+        table.add_row(
+            str(row.get("xref_id") or "")[:8],
+            str(row.get("source_id") or "")[:8],
+            str(row.get("target_metagraph_id") or "")[:8],
+            str(row.get("target_role") or ""),
+            str(row.get("target_id") or "")[:8],
+            str(row.get("ref_type") or ""),
+        )
+    _console.print(table)
 
 
 # ── inspect-state ────────────────────────────────────────────────────────

@@ -24,9 +24,13 @@ story.
 ``gc``) remain accessible for failure-injection tests
 (``RaisesOnNthCall``) and direct programmatic use.
 
-**Replayer registry** — each higher layer registers a callable for the
-``kind`` strings it owns. Core never knows the semantics — it provides
-persistence + dispatch hooks only.
+**Replayer registry — Phase 09 P51 + P61 + P66 (per-Client).** Each
+:class:`Client` instance carries its own ``_replayers`` dict. The
+module-level :func:`register_replayer` / :func:`clear_replayers` /
+:func:`recover` functions take the client as their first positional
+argument and read the dict off it. Test isolation is automatic:
+distinct clients have distinct registries; no cross-test pollution
+from a module-level global.
 
 **Constraint** — WAL is per-Metagraph; ``WriteAheadLog`` instance
 binds to a specific ``metagraph_id`` at construction.
@@ -40,33 +44,49 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Callable, Dict, Iterator, List, Optional
 
-from ..exceptions import PersistenceError
+from ..exceptions import PersistenceError, WALReplayerMissingError
 from .client import Client
 
 
 # Sentinel role for the WAL graph inside a metagraph (parity with v3).
 WAL_ROLE = "_wal"
 
-# Replayer registry — maps ``kind`` to a callable that executes the
-# replay step for an uncommitted WAL entry. Core has no opinion on what
-# the replayers do; KL / server populate this at import time.
-_REPLAYERS: Dict[str, Callable[[Dict[str, Any]], None]] = {}
+# Attribute name used on Client instances for the per-client replayer
+# dict. We attach lazily on first registration so callers don't need
+# to subclass Client to participate.
+_REPLAYERS_ATTR = "_replayers"
+
+
+def _get_replayers(
+    client: Client,
+) -> Dict[str, Callable[[Dict[str, Any]], None]]:
+    """Return (lazy-initialising) the per-client replayer dict."""
+    reg = getattr(client, _REPLAYERS_ATTR, None)
+    if reg is None:
+        reg = {}
+        # Direct attribute set; Client is a Protocol so attribute is fine.
+        setattr(client, _REPLAYERS_ATTR, reg)
+    return reg
 
 
 def register_replayer(
-    kind: str, replayer: Callable[[Dict[str, Any]], None]
+    client: Client,
+    kind: str,
+    replayer: Callable[[Dict[str, Any]], None],
 ) -> None:
-    """Register a replayer for a WAL ``kind`` (ADR-0122).
+    """Register a replayer for a WAL ``kind`` on ``client`` (ADR-0122).
 
-    Replayers run during :func:`recover` for any uncommitted entry
-    matching ``kind``. They receive the entry's payload as a dict.
+    Phase 09 P51 + P61 — replayer registration is per-Client. The
+    replayer runs during :func:`recover` for any uncommitted entry
+    matching ``kind`` against ``client``. It receives the entry's
+    payload as a dict.
     """
-    _REPLAYERS[kind] = replayer
+    _get_replayers(client)[kind] = replayer
 
 
-def clear_replayers() -> None:
-    """Clear the replayer registry. Tests use this between cases."""
-    _REPLAYERS.clear()
+def clear_replayers(client: Client) -> None:
+    """Clear ``client``'s replayer registry. Tests use this between cases."""
+    _get_replayers(client).clear()
 
 
 @dataclass
@@ -213,6 +233,9 @@ class WriteAheadLog:
                     committed=False,
                 )
             )
+        # Phase 09 RPB-1 — FIFO across kinds. Sort by started_at so
+        # multi-kind recovery preserves causal write-order.
+        out.sort(key=lambda e: e.started_at)
         return out
 
     def count_uncommitted(self) -> int:
@@ -250,22 +273,35 @@ class WriteAheadLog:
 def recover(client: Client, metagraph_id: str) -> int:
     """Run replay/compensate for every uncommitted WAL entry (ADR-0122).
 
-    Called from server startup. For each uncommitted entry, looks up
-    the registered replayer for its ``kind`` and invokes it. On
-    replayer failure, the entry stays uncommitted; the next startup
-    retries (replayers must be idempotent).
+    Called from :class:`MetagraphLoader.load` step 0. For each
+    uncommitted entry, looks up the registered replayer for its
+    ``kind`` (in ``client._replayers``) and invokes it. On replayer
+    failure, the entry stays uncommitted; the next startup retries
+    (replayers must be idempotent).
+
+    **Phase 09 P62** — when a kind has NO registered replayer, raises
+    :class:`WALReplayerMissingError` (no longer silently skipped). The
+    Phase 08 narrow-catch in :class:`MetagraphLoader.load` was removed.
+
+    **Phase 09 RPB-1** — FIFO across kinds. Entries replay in
+    ``started_at`` order regardless of ``kind``.
 
     Returns the number of entries successfully replayed and committed.
     """
     wal = WriteAheadLog(client, metagraph_id)
+    replayers = _get_replayers(client)
     replayed = 0
     for e in wal.list_uncommitted():
-        replayer = _REPLAYERS.get(e.kind)
+        replayer = replayers.get(e.kind)
         if replayer is None:
-            continue
+            raise WALReplayerMissingError(
+                f"No replayer registered for WAL kind {e.kind!r} "
+                f"(operation {e.operation_id!r}, metagraph {metagraph_id!r})"
+            )
         try:
             replayer(e.payload)
         except Exception:
+            # Replayer failed; leave uncommitted; next recover() retries.
             continue
         wal.commit(e.operation_id)
         replayed += 1

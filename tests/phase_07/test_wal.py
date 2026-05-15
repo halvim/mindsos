@@ -1,10 +1,28 @@
-"""WAL tests (Phase 07 — P50 B context-manager API + P82 A whole_batch_refused)."""
+"""WAL tests (Phase 07 — P50 B + P82 A; refactored Phase 09 P51 + P62).
+
+Phase 09 cascade:
+
+* **P51 + P61 + P66 B** — replayer registration is per-Client; the
+  module-level helpers ``register_replayer`` / ``clear_replayers`` /
+  ``recover`` all take ``client`` as their first positional arg.
+  ``setup_function`` / ``teardown_function`` no longer needed —
+  each test creates its own throwaway :class:`InMemoryClient` so
+  there is no cross-test pollution.
+* **P62** — ``recover()`` raises :class:`WALReplayerMissingError`
+  when an uncommitted WAL entry has no registered replayer; the
+  Phase 08 silent narrow-catch was removed. The replacement test
+  ``test_recover_raises_on_unknown_kind`` verifies the loud-fail
+  contract.
+"""
 
 from __future__ import annotations
 
 import pytest
 
-from mindsos_core.exceptions import PersistenceError
+from mindsos_core.exceptions import (
+    PersistenceError,
+    WALReplayerMissingError,
+)
 from mindsos_core.persistence import InMemoryClient
 from mindsos_core.persistence.wal import (
     WriteAheadLog,
@@ -13,14 +31,6 @@ from mindsos_core.persistence.wal import (
     recover,
     register_replayer,
 )
-
-
-def setup_function(_):
-    clear_replayers()
-
-
-def teardown_function(_):
-    clear_replayers()
 
 
 def test_begin_emits_match_metagraph_plus_merge_walentry() -> None:
@@ -121,6 +131,7 @@ def test_whole_batch_refused_via_raises_on_nth_call() -> None:
 
 
 def test_recover_dispatches_replayer_and_commits() -> None:
+    """Phase 09 P51 — register_replayer + recover both take client positional."""
     c = InMemoryClient()
     # list_uncommitted scripted result.
     c.script([
@@ -134,21 +145,28 @@ def test_recover_dispatches_replayer_and_commits() -> None:
     # commit scripted result.
     c.script([{"op_id": "op3"}])
 
-    seen = []
-    register_replayer("test.kind", lambda payload: seen.append(payload))
+    seen: list = []
+    register_replayer(c, "test.kind", lambda payload: seen.append(payload))
     n = recover(c, "mg1")
     assert n == 1
     assert seen == [{"k": "v"}]
 
 
-def test_recover_skips_unknown_kinds() -> None:
+def test_recover_raises_on_unknown_kind() -> None:
+    """Phase 09 P62 — unknown kind raises WALReplayerMissingError loudly.
+
+    The Phase 08 silent narrow-catch was removed (P62). Phase 09's
+    ``register_all_l1_replayers`` registers ``xref_add`` /
+    ``xref_remove`` on FalkorClient construction; an unknown kind in
+    the WAL post-Phase-09 is a real bug, not a tolerable no-op.
+    """
     c = InMemoryClient()
     c.script([
         {"op_id": "op4", "kind": "unknown.kind", "payload_json": "{}",
          "started_at": "2026-05-13T00:00:00"}
     ])
-    n = recover(c, "mg1")
-    assert n == 0
+    with pytest.raises(WALReplayerMissingError, match="unknown.kind"):
+        recover(c, "mg1")
 
 
 def test_recover_skips_failing_replayers() -> None:
@@ -158,19 +176,22 @@ def test_recover_skips_failing_replayers() -> None:
         {"op_id": "op5", "kind": "boom.kind", "payload_json": "{}",
          "started_at": "2026-05-13T00:00:00"}
     ])
+
     def _boom(payload):
         raise RuntimeError("replayer failed")
-    register_replayer("boom.kind", _boom)
+
+    register_replayer(c, "boom.kind", _boom)
     n = recover(c, "mg1")
     assert n == 0
 
 
 def test_register_replayer_overwrites_previous() -> None:
-    seen = []
-    register_replayer("k1", lambda p: seen.append("v1"))
-    register_replayer("k1", lambda p: seen.append("v2"))
-
+    """Phase 09 P51 — same kind on same client overwrites; per-Client dict."""
     c = InMemoryClient()
+    seen: list = []
+    register_replayer(c, "k1", lambda p: seen.append("v1"))
+    register_replayer(c, "k1", lambda p: seen.append("v2"))
+
     c.script([
         {"op_id": "op6", "kind": "k1", "payload_json": "{}",
          "started_at": "2026-05-13T00:00:00"}
@@ -178,6 +199,50 @@ def test_register_replayer_overwrites_previous() -> None:
     c.script([{"op_id": "op6"}])
     recover(c, "mg1")
     assert seen == ["v2"]
+
+
+def test_per_client_replayer_isolation() -> None:
+    """Phase 09 P51 — replayers on client A are NOT visible to client B.
+
+    Locks the per-Client semantics: distinct InMemoryClient instances
+    have distinct ``_replayers`` dicts. Test pollution via module-
+    level singleton is impossible by construction.
+    """
+    c1 = InMemoryClient()
+    c2 = InMemoryClient()
+    seen: list = []
+    register_replayer(c1, "k1", lambda p: seen.append("c1"))
+    # c2 has no replayer for "k1"; recover() must raise per P62.
+    c2.script([
+        {"op_id": "op7", "kind": "k1", "payload_json": "{}",
+         "started_at": "2026-05-13T00:00:00"}
+    ])
+    with pytest.raises(WALReplayerMissingError):
+        recover(c2, "mg1")
+    assert seen == []
+
+
+def test_clear_replayers_per_client() -> None:
+    """Phase 09 P51 — clear_replayers takes client; clears that client only."""
+    c1 = InMemoryClient()
+    c2 = InMemoryClient()
+    register_replayer(c1, "k1", lambda p: None)
+    register_replayer(c2, "k1", lambda p: None)
+    clear_replayers(c1)
+    # c1 has no registered replayers; c2 still does.
+    c1.script([
+        {"op_id": "op8", "kind": "k1", "payload_json": "{}",
+         "started_at": "2026-05-13T00:00:00"}
+    ])
+    with pytest.raises(WALReplayerMissingError):
+        recover(c1, "mg1")
+    # c2 still has its replayer; recover() commits.
+    c2.script([
+        {"op_id": "op9", "kind": "k1", "payload_json": "{}",
+         "started_at": "2026-05-13T00:00:00"}
+    ])
+    c2.script([{"op_id": "op9"}])
+    assert recover(c2, "mg1") == 1
 
 
 def test_wal_entry_dataclass_round_trip() -> None:

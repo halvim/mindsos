@@ -54,6 +54,8 @@ def assert_metagraphs_equal(mg1: Any, mg2: Any) -> None:
     _assert_metahyperedges(mg1, mg2)
     _assert_intergraph_edges(mg1, mg2)
     _assert_intergraph_hyperedges(mg1, mg2)
+    # Phase 09 PB-3 + RR-4 — XRef id-set + per-id field-by-field check.
+    _assert_xrefs(mg1, mg2)
 
 
 def _assert_anchor(mg1: Any, mg2: Any) -> None:
@@ -250,4 +252,84 @@ def _assert_intergraph_hyperedges(mg1: Any, mg2: Any) -> None:
         assert dict(e1.properties) == dict(e2.properties)
 
 
-__all__ = ["assert_metagraphs_equal"]
+def _assert_xrefs(mg1: Any, mg2: Any) -> None:
+    """Phase 09 PB-3 + RR-4 — XRef id-set + per-id field-by-field check.
+
+    Round-trip path: source mg has the XRefs Persisted; loaded mg has
+    the XRefs Reconstructed. xref_id is preserved across the round
+    trip (UUID4 stable; persist + load both key by xref_id), so id-set
+    equality + per-id 8-field equality is the right shape (P53 dropped
+    ``target_stale`` + ``deprecated_at``; the equality check lives at
+    8 fields).
+    """
+    xrefs1 = getattr(mg1, "xrefs", {}) or {}
+    xrefs2 = getattr(mg2, "xrefs", {}) or {}
+    ids1 = set(xrefs1.keys())
+    ids2 = set(xrefs2.keys())
+    assert ids1 == ids2, (
+        f"XRef ids drift: missing={sorted(ids1 - ids2)}; "
+        f"extra={sorted(ids2 - ids1)}"
+    )
+    for xid in sorted(ids1):
+        x1 = xrefs1[xid]
+        x2 = xrefs2[xid]
+        assert x1.source_metagraph_id == x2.source_metagraph_id, (
+            f"XRef {xid!r} source_metagraph_id drift"
+        )
+        assert x1.source_id == x2.source_id, (
+            f"XRef {xid!r} source_id drift"
+        )
+        assert x1.target_metagraph_id == x2.target_metagraph_id, (
+            f"XRef {xid!r} target_metagraph_id drift"
+        )
+        assert x1.target_role == x2.target_role, (
+            f"XRef {xid!r} target_role drift"
+        )
+        assert x1.target_id == x2.target_id, (
+            f"XRef {xid!r} target_id drift"
+        )
+        assert x1.ref_type == x2.ref_type, (
+            f"XRef {xid!r} ref_type drift"
+        )
+        assert dict(x1.properties) == dict(x2.properties), (
+            f"XRef {xid!r} properties drift"
+        )
+
+
+def assert_xref_contents_equal(xrefs1: Any, xrefs2: Any) -> None:
+    """Phase 09 PB-3 + RR-4 sibling — content-tuple equality on XRef collections.
+
+    Designed for migration tests where xref_ids differ between source
+    and target (e.g., migration mints fresh UUIDs from legacy
+    property-string state). Compares as multiset of 7-tuples
+    (source_metagraph_id / source_id / target_metagraph_id /
+    target_role / target_id / ref_type / sorted properties tuple).
+
+    Accepts either a dict[str, XRef] (mg.xrefs shape) or an iterable
+    of XRefs.
+    """
+
+    def _to_tuples(xs: Any):
+        items = xs.values() if isinstance(xs, dict) else xs
+        return sorted(
+            (
+                x.source_metagraph_id,
+                x.source_id,
+                x.target_metagraph_id,
+                x.target_role,
+                x.target_id,
+                x.ref_type,
+                tuple(sorted(dict(x.properties).items())),
+            )
+            for x in items
+        )
+
+    t1 = _to_tuples(xrefs1)
+    t2 = _to_tuples(xrefs2)
+    assert t1 == t2, (
+        f"XRef content drift: only-in-1={set(t1) - set(t2)}, "
+        f"only-in-2={set(t2) - set(t1)}"
+    )
+
+
+__all__ = ["assert_metagraphs_equal", "assert_xref_contents_equal"]

@@ -1,4 +1,4 @@
-"""Bootstrap idempotency + index DDL tests (Phase 07)."""
+"""Bootstrap idempotency + index DDL tests (Phase 07; updated Phase 09 for M15)."""
 
 from __future__ import annotations
 
@@ -6,18 +6,25 @@ from mindsos_core.persistence import InMemoryClient, bootstrap, DEFAULT_INDEXES
 from mindsos_core.persistence.bootstrap import _ddl_for
 
 
-def test_default_indexes_count_equals_14() -> None:
-    """P95 B locked count."""
-    assert len(DEFAULT_INDEXES) == 14
+def test_default_indexes_count_phase07_baseline_plus_phase09_xref() -> None:
+    """P95 B locked Phase 07 baseline at 14; Phase 09 M15 grows to 18.
+
+    Replaces ``test_default_indexes_count_equals_14``. Counts hard-coded
+    so future bumps remain visible (audit cost analogous to state-file
+    version literals per ``feedback_state_version_audit_scope.md``).
+    """
+    # 14 from Phase 07 + 4 :XRef from Phase 09 (M15) = 18.
+    assert len(DEFAULT_INDEXES) == 18
+    xref_entries = [(k, l, p) for (k, l, p) in DEFAULT_INDEXES if l == "XRef"]
+    assert len(xref_entries) == 4
 
 
-def test_default_indexes_split_10_node_3_rel_1_hotpath() -> None:
-    """10 node-label `id` + 3 relationship `id` + 1 hot-path `:Node {graph_id}`.
-
-    Node-form DDL count = 10 unique labels + 1 hot-path = 11; rel-form = 3.
+def test_default_indexes_split_node_rel_phase09() -> None:
+    """Phase 09 split: 11 Phase 07 node-form + 4 XRef node-form = 15 node;
+    3 relationship-form unchanged.
     """
     kinds = [k for k, _, _ in DEFAULT_INDEXES]
-    assert kinds.count("node") == 11
+    assert kinds.count("node") == 15
     assert kinds.count("rel") == 3
 
 
@@ -38,12 +45,12 @@ def test_ddl_rel_form() -> None:
     assert q == "CREATE INDEX FOR ()-[r:Edge]-() ON (r.id)"
 
 
-def test_bootstrap_emits_14_statements_against_inmemory() -> None:
-    """One CREATE INDEX statement per DEFAULT_INDEXES entry."""
+def test_bootstrap_emits_one_statement_per_default_index() -> None:
+    """One CREATE INDEX statement per DEFAULT_INDEXES entry (Phase 09: 18)."""
     c = InMemoryClient()
     bootstrap(c)
     create_calls = [q for q, _ in c.calls if q.startswith("CREATE INDEX")]
-    assert len(create_calls) == 14
+    assert len(create_calls) == len(DEFAULT_INDEXES)
 
 
 def test_bootstrap_swallows_already_exists_errors() -> None:
@@ -62,7 +69,7 @@ def test_bootstrap_swallows_already_exists_errors() -> None:
 
     c = ExistsRaiser()
     bootstrap(c)  # Should not raise.
-    assert len(c.calls) == 14
+    assert len(c.calls) == len(DEFAULT_INDEXES)
 
 
 def test_bootstrap_reraises_unrelated_errors() -> None:

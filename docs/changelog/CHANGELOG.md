@@ -1,11 +1,71 @@
 ---
-last_confirmed_phase: 08
+last_confirmed_phase: 09
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 09 — L1 XRef (cross-metagraph refs) (2026-05-15)
+
+**Ships the first-class cross-metagraph reference primitive (ADR-0128
+hybrid model) + WAL-wrapped `XRefRepository` + clear-first
+`XRefLoader` + `attach_xref_loader` after-load observer helper +
+read-only `mindsos persistence xref-list` CLI verb + programmatic
+`migrate_in_memory` callable for legacy `ref:global_*` properties.**
+NEW `XRef` dataclass (`kw_only=True`; 8 fields — `target_stale` and
+`deprecated_at` deferred to Phase 10). NEW `Metagraph.add_xref` /
+`iter_xrefs` / `remove_xref` with optional `target_metagraph` write-
+time validation (`XRefIntegrityError` on miss); validation runs
+BEFORE the WAL entry opens (P59) so rejected writes never resurrect
+on `recover()`. NEW `_xrefs_dirty: Set[str]` dirty-tracking on
+`Metagraph`; programmatic `add_xref` without an attached client marks
+dirty; `MetagraphRepository.persist` drains the set (P54). NEW
+`build_create_xref` + `build_remove_xref` MERGE/DETACH-DELETE Cypher
+builders. NEW `XRefRepository(client).persist/remove` with WAL
+context-manager wrap (M16). NEW per-Client WAL replayer registration:
+`register_replayer` / `clear_replayers` / `recover` all take `client`
+as their first positional arg (P51 + P61); the prior module-level
+`_REPLAYERS` global is gone. NEW `register_all_l1_replayers(client)`
+wrapper composing per-kind module-owned registration functions
+(RR-16); `FalkorClient.__init__` calls it after `bootstrap`.
+WALReplayerMissingError narrow-catch in `MetagraphLoader.load`
+REMOVED (P62) — unknown kinds now propagate loudly. NEW
+`XRefLoader.load_into(mg)` clear-first semantics (PB-9 + P55 + P64):
+clears `mg.xrefs` + inverse indexes + identity unregistrations +
+dirty set BEFORE re-populating. NEW `attach_xref_loader(mg)`
+idempotent helper (M18) subscribing the loader to the after-load
+observer queue. CLI: NEW `xref-list --metagraph M [--source-id |
+--target-metagraph | --target-id | --ref-type | --json]` verb with
+direct-DB query path (P63 — does not load the metagraph or fire
+recover); Rich table default + `--json` opt-in. CLI: `load
+--metagraph M` summary REPLACED — Phase 08's 9-line flat list
+becomes a single `Dependent state: graphs=N metaedges=N ...
+xrefs=N ...` key=value line that grows additively (P52). CLI:
+`_metagraph_has_dependent_state` query field PATCHED from
+`metagraph_id` to `source_metagraph_id` (M11; closes the Phase 08
+defensive deferral). State-file metagraph **v=3 → v=4** adding
+`xrefs[]` array (M10 + RR-7 + RR-8 + RR-12); deserializer in
+`_state_to_metagraph` reads xrefs[] directly into `mg.xrefs` +
+manually rebuilds inverse indexes, leaves `_xrefs_dirty` empty
+(RR-18 + P64). 4 new `:XRef` indexes in bootstrap (M15; bootstrap
+grows 14 → 18) including `(target_metagraph_id, target_id)`
+compound. NEW `tests/_shared/cross_metagraph_fixture.py
+::make_source_and_target_metagraphs` helper (RR-13). EXTEND
+`tests/_shared/metagraph_equality.py::assert_metagraphs_equal` for
+XRef id-set + per-id field-by-field check; NEW sibling
+`assert_xref_contents_equal` for content-tuple comparison (PB-3 +
+RR-4). 30 test files in `tests/phase_09/` covering 53 active picks
+(RPB-7 ratio). 3-package version-string parity bumped to
+`0.0.0+phase09` (`mindsos_core` / `mindsos_cli` / `mindsos_instances`).
+ADR-0130 flips Proposed → Accepted (M7; closes §7 Q4) and adds
+`xref:` to the namespacing convention (item H). ADR-0128 stays
+Proposed; flips Accepted in Phase 14 once L2 `MetagraphView.follow_ref`
+consumes it (P50; §Revisions log appended with 5 amendments).
+ADR-0142 stays Proposed; acceptance-criteria amended with the
+3-commitment partition (Phase 09 ships L1 commitment; Phase 14 ships
+L2 fallback; Phase 18+ ships Server first-start hook).
 
 ## Phase 08 — L1 Reconstruction (2026-05-14)
 

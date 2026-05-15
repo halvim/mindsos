@@ -145,6 +145,13 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
       at construction time per ``type.ordered``; the persisted form
       reflects what's in memory).
 
+    Phase 09 additions (RR-7 + RR-8 + RR-12 + RR-18 bump v=3 → v=4):
+    * ``xrefs`` array — sorted by xref_id for stable round-trip diffs;
+      each entry is an 8-field dict (xref_id / source_metagraph_id /
+      source_id / target_metagraph_id / target_role / target_id /
+      ref_type / properties). P53 deferred fields (target_stale +
+      deprecated_at) NOT serialized.
+
     Top-level lists byte-stable sorted (Phase 05a P10 pattern extended).
     """
     # contained_graphs sorted by graph name for byte-stable output.
@@ -229,6 +236,25 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
             }
             for ihe in intergraph_hyperedges
         ],
+        # Phase 09 RR-8 — 8-field XRef shape per P53 (target_stale +
+        # deprecated_at deferred to P10). Sorted by xref_id for stable
+        # round-trip diffs.
+        "xrefs": sorted(
+            (
+                {
+                    "xref_id": x.xref_id,
+                    "source_metagraph_id": x.source_metagraph_id,
+                    "source_id": x.source_id,
+                    "target_metagraph_id": x.target_metagraph_id,
+                    "target_role": x.target_role,
+                    "target_id": x.target_id,
+                    "ref_type": x.ref_type,
+                    "properties": dict(x.properties),
+                }
+                for x in mg.xrefs.values()
+            ),
+            key=lambda d: d["xref_id"],
+        ),
     }
 
 
@@ -355,6 +381,36 @@ def _state_to_metagraph(state: dict) -> Metagraph:
         )
         mg.identity.register(ihe.edge_id)
         mg.intergraph_hyperedges[ihe.edge_id] = ihe
+
+    # Phase 09 RR-18 — rehydrate XRef rows directly into mg.xrefs +
+    # manually rebuild inverse indexes; bypass mg.add_xref (which would
+    # trigger inline DB writes if _persist_client were set). Per
+    # Phase 09 P64: leaves mg._xrefs_dirty EMPTY — state-file-shaped
+    # data is by definition already-persisted, so the dirty set must
+    # not be populated by deserialization.
+    from mindsos_core.models.xref import XRef as _XRef
+
+    for x_dict in state.get("xrefs") or []:
+        xref = _XRef(
+            xref_id=x_dict["xref_id"],
+            source_metagraph_id=x_dict["source_metagraph_id"],
+            source_id=x_dict["source_id"],
+            target_metagraph_id=x_dict["target_metagraph_id"],
+            target_role=x_dict["target_role"],
+            target_id=x_dict["target_id"],
+            ref_type=x_dict["ref_type"],
+            properties=dict(x_dict.get("properties") or {}),
+        )
+        mg.identity.register(xref.xref_id)
+        mg.xrefs[xref.xref_id] = xref
+        mg._xrefs_by_source.setdefault(xref.source_id, set()).add(
+            xref.xref_id
+        )
+        mg._xrefs_by_target.setdefault(
+            (xref.target_metagraph_id, xref.target_id), set()
+        ).add(xref.xref_id)
+    # P64 explicit: deserialization MUST NOT mark anything dirty.
+    mg._xrefs_dirty.clear()
 
     # Phase 05b — rehydrate schema_name reference + attach if present.
     schema_name = state.get("schema_name")

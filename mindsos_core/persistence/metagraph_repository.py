@@ -18,7 +18,6 @@ persistence partial; tester convention per P33 A is to re-run
 
 **Phase 07 changes from v3:**
 
-* Strips XRef call (Phase 09 territory).
 * Strips direct ``InstanceRepository`` call — replaced by observer
   (M9).
 * ``_props_json`` write wraps in narrow chained driver-exception
@@ -28,6 +27,17 @@ persistence partial; tester convention per P33 A is to re-run
   ``:MetagraphSchema`` labeled node; no ``:HAS_SCHEMA`` edge).
 * Programmatic-only — no CLI verb in 07 (P60 A); metagraph sync
   CLI lands Phase 08 per M14/P12 D.
+
+**Phase 09 changes (RR-17 + P54 dirty-tracking):**
+
+* New Step 1g — drains ``mg._xrefs_dirty`` via
+  :class:`XRefRepository`. Inline-persisted XRefs (added via
+  ``add_xref`` while ``mg._persist_client`` was set) are NOT in the
+  dirty set, so this step is a no-op for the loader-attached path.
+  Programmatic ``add_xref`` (no client attached) populates the dirty
+  set; this step writes those entries. P54 atomic-clear: dirty set is
+  cleared at end-of-loop, not per-entry — partial-crash mid-loop
+  retries the whole set on next persist (MERGE-idempotent so safe).
 """
 
 from __future__ import annotations
@@ -61,6 +71,7 @@ from ..exceptions import PersistenceError
 from ..models.metagraph import Metagraph
 from .client import Client
 from .graph_repository import GraphRepository
+from .xref_repository import XRefRepository
 
 _log = logging.getLogger(__name__)
 
@@ -193,6 +204,25 @@ class MetagraphRepository:
                 metagraph.metagraph_id, rows,
             )
             self._client.run_query(q, p)
+
+        # ── Step 1g: XRefs (Phase 09 RR-17 + P54 dirty-tracking). ───────
+        # Drain ``_xrefs_dirty``. Entries inline-persisted by
+        # ``Metagraph.add_xref`` (when ``_persist_client`` was set) are
+        # NOT in this set — that path already wrote them via
+        # ``XRefRepository.persist`` directly.
+        if metagraph._xrefs_dirty:
+            xref_repo = XRefRepository(self._client)
+            for xref_id in list(metagraph._xrefs_dirty):
+                xref = metagraph.xrefs.get(xref_id)
+                if xref is None:
+                    # Removed between add and persist; drop from dirty.
+                    metagraph._xrefs_dirty.discard(xref_id)
+                    continue
+                xref_repo.persist(xref)
+            # P54 — atomic clear at end-of-loop (only on full success).
+            # Mid-loop crash leaves dirty intact; next persist retries
+            # (MERGE-idempotent per PB-8 makes retry safe).
+            metagraph._xrefs_dirty.clear()
 
         # ── Step 2: WAL commit (mechanism-only at Phase 07; no caller). ─
 

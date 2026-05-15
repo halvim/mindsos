@@ -18,6 +18,7 @@ nav:
       - Identity and IRIs: concepts/identity.md
       - Graphs and metagraphs: concepts/graphs-and-metagraphs.md
       - Intergraph edges: concepts/intergraph-edges.md
+      - References (hybrid model): concepts/references.md
   - Usage:
       - Core:
           - Building graphs: usage/core/building-graphs.md
@@ -43,6 +44,7 @@ nav:
       - Core WriteAheadLog: api/core/wal.md
       - Core Integrity scanner: api/core/integrity.md
       - Core Loaders (Phase 08): api/core/loaders.md
+      - Core XRef (Phase 09): api/core/xref.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md

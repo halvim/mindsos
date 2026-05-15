@@ -112,4 +112,9 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_instances/reconstruction/instance_loader.py",
     "tests/_shared/metagraph_equality.py",
     "tests/_shared/large_graph_factory.py",
+    # Phase 09 (L1 XRef — RR-10 4-entry sentinel addition).
+    "mindsos_core/models/xref.py",
+    "mindsos_core/persistence/xref_repository.py",
+    "mindsos_core/persistence/xref_migration.py",
+    "mindsos_core/reconstruction/xref_loader.py",
 )

@@ -139,9 +139,14 @@ class FalkorClient:
         if not skip_bootstrap:
             # Late import to break the
             # ``persistence.bootstrap`` <-> ``persistence.client`` cycle.
-            from .bootstrap import bootstrap
+            # Phase 09 RR-16 — bootstrap creates indexes; the L1
+            # replayer wrapper then registers ``xref_add`` /
+            # ``xref_remove`` replayers onto this client's per-instance
+            # ``_replayers`` dict (P51).
+            from .bootstrap import bootstrap, register_all_l1_replayers
 
             bootstrap(self)
+            register_all_l1_replayers(self)
 
     # ── query ──────────────────────────────────────────────────────────
 
