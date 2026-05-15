@@ -145,6 +145,13 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
       at construction time per ``type.ordered``; the persisted form
       reflects what's in memory).
 
+    Phase 09 additions (RR-7 + RR-8 + RR-12 + RR-18 bump v=3 → v=4):
+    * ``xrefs`` array — sorted by xref_id for stable round-trip diffs;
+      each entry is an 8-field dict (xref_id / source_metagraph_id /
+      source_id / target_metagraph_id / target_role / target_id /
+      ref_type / properties). P53 deferred fields (target_stale +
+      deprecated_at) NOT serialized.
+
     Top-level lists byte-stable sorted (Phase 05a P10 pattern extended).
     """
     # contained_graphs sorted by graph name for byte-stable output.
@@ -229,6 +236,25 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
             }
             for ihe in intergraph_hyperedges
         ],
+        # Phase 09 RR-8 — 8-field XRef shape per P53 (target_stale +
+        # deprecated_at deferred to P10). Sorted by xref_id for stable
+        # round-trip diffs.
+        "xrefs": sorted(
+            (
+                {
+                    "xref_id": x.xref_id,
+                    "source_metagraph_id": x.source_metagraph_id,
+                    "source_id": x.source_id,
+                    "target_metagraph_id": x.target_metagraph_id,
+                    "target_role": x.target_role,
+                    "target_id": x.target_id,
+                    "ref_type": x.ref_type,
+                    "properties": dict(x.properties),
+                }
+                for x in mg.xrefs.values()
+            ),
+            key=lambda d: d["xref_id"],
+        ),
     }
 
 

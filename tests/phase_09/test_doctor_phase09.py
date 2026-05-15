@@ -4,9 +4,10 @@ from __future__ import annotations
 
 
 def test_manifest_phase_is_09():
-    from mindsos_cli.commands.doctor import _load_manifest, _repo_root
+    """B-09-T4 — _load_manifest takes no args (reads from default path)."""
+    from mindsos_cli.commands.doctor import _load_manifest
 
-    manifest = _load_manifest(_repo_root() / "mindsos_cli" / "manifest.toml")
+    manifest = _load_manifest()
     assert manifest["mindsos"]["phase"] == "09"
     assert manifest["mindsos"]["version"] == "0.0.0+phase09"
 
@@ -24,8 +25,6 @@ def test_three_package_version_parity():
 
 
 def test_compose_image_tags_at_phase09():
-    from pathlib import Path
-
     from mindsos_cli.commands.doctor import _repo_root
 
     compose = (_repo_root() / "docker-compose.yml").read_text()

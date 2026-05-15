@@ -10,8 +10,15 @@ import pytest
 pytestmark = pytest.mark.integration
 
 
-def test_load_metagraph_9_line_flat_summary(falkor_client, capsys, monkeypatch) -> None:
-    """R4-5 A — 9-line flat key:value summary shape."""
+def test_load_metagraph_dependent_state_summary(falkor_client, capsys, monkeypatch) -> None:
+    """Phase 09 P52 — replaces the Phase 08 R4-5 A 9-line flat summary
+    with a single structured ``Dependent state:`` key=value line.
+
+    Renamed from ``test_load_metagraph_9_line_flat_summary``. Tests
+    assert by KEY not by line count, so future bucket additions
+    (Phase 10 Snapshots / Phase 11 scanner output) extend the same
+    line without breaking this test.
+    """
     from mindsos_core.models.graph import Graph
     from mindsos_core.models.identity import IdentityRegistry
     from mindsos_core.models.metagraph import Metagraph
@@ -23,14 +30,10 @@ def test_load_metagraph_9_line_flat_summary(falkor_client, capsys, monkeypatch) 
     mg.add_graph(g1)
     MetagraphRepository(falkor_client).persist(mg)
 
-    # Monkeypatch _build_client to return the live falkor_client fixture.
     monkeypatch.setattr(
         "mindsos_cli.commands.persistence._build_client",
         lambda: falkor_client,
     )
-
-    # Disable client.close() in _load_metagraph_cmd (we're reusing the
-    # falkor_client fixture; closing breaks the fixture teardown).
     monkeypatch.setattr(falkor_client, "close", lambda: None)
 
     _load_metagraph_cmd(
@@ -39,16 +42,19 @@ def test_load_metagraph_9_line_flat_summary(falkor_client, capsys, monkeypatch) 
 
     captured = capsys.readouterr()
     out = captured.out
-    # 9 key:value lines per R4-5 A.
+    # Anchor lines unchanged.
     assert "Metagraph: cli-load" in out
     assert f"Metagraph id: {mg.metagraph_id}" in out
-    assert "Graphs: 1" in out
-    assert "MetaEdges: 0" in out
-    assert "MetaHyperEdges: 0" in out
-    assert "IntergraphEdges: 0" in out
-    assert "IntergraphHyperEdges: 0" in out
-    assert "ElementInstances: 0" in out
-    assert "CompositeInstances: 0" in out
+    # Phase 09 P52 — single structured key=value line.
+    assert "Dependent state:" in out
+    assert "graphs=1" in out
+    assert "metaedges=0" in out
+    assert "metahyperedges=0" in out
+    assert "intergraphedges=0" in out
+    assert "intergraphhyperedges=0" in out
+    assert "xrefs=0" in out
+    assert "elementinstances=0" in out
+    assert "compositeinstances=0" in out
 
 
 def test_load_metagraph_json_opt_in_machine_output(falkor_client, capsys, monkeypatch) -> None:
