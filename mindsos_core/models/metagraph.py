@@ -18,9 +18,13 @@ The metagraph shares its :class:`IdentityRegistry` with every contained
 graph (ADR-0020) so that no two elements anywhere in the metagraph can
 share an id.
 
+Phase 09 ships (this row): ``Metagraph.add_xref`` / ``iter_xrefs`` /
+``remove_xref`` (ADR-0128) — first-class cross-metagraph references with
+optional write-time validation (M4) + WAL crash-safety (M16) +
+dirty-tracking (P54) + validate-before-WAL ordering (P59).
+
 Phase 05a slim-port deferral list (kept for reference; ports phase-by-phase):
 
-* ``Metagraph.add_xref`` / ``iter_xrefs`` / ``remove_xref`` (ADR-0128) — Phase 09.
 * ``element_instances`` / ``composite_instances`` + ``instantiate_*`` /
   ``compose`` (ADR-0024 / ADR-0025) — Phase 06 (``mindsos_instances`` package).
 * Soft-delete fields on ``MetaEdge`` / ``MetaHyperEdge`` / ``IntergraphEdge``
@@ -95,6 +99,8 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Set,
+    Tuple,
     TYPE_CHECKING,
 )
 
@@ -115,14 +121,17 @@ from ..exceptions import (
     PropertyShapeError,
     SchemaError,
     UnknownTypeError,
+    XRefIntegrityError,
 )
 from ..schema.validation import validate_user_properties
 from .graph import Graph
 from .identity import IdentityRegistry, IdStrategy, UUID4Strategy, generate_uuid
 from .intergraph_edge import IntergraphEdge
 from .intergraph_hyperedge import IntergraphHyperEdge
+from .xref import XRef
 
 if TYPE_CHECKING:
+    from ..persistence.client import Client
     from ..schema.metagraph_schema import MetagraphSchema
 
 _log = logging.getLogger(__name__)
@@ -351,6 +360,25 @@ class Metagraph:
         # from persist-side dispatch).
         self._after_load_observers: List[AfterLoadCallback] = []
 
+        # Phase 09 (ADR-0128 + M2) — first-class cross-metagraph refs.
+        # Keyed by xref_id; indexed via ``_xrefs_by_source`` and
+        # ``_xrefs_by_target`` for forward/reverse iteration.
+        self.xrefs: Dict[str, XRef] = {}
+        self._xrefs_by_source: Dict[str, Set[str]] = {}
+        self._xrefs_by_target: Dict[Tuple[str, str], Set[str]] = {}
+        # Phase 09 P54 — dirty-tracking. Programmatic ``add_xref``
+        # without an attached client populates this set; the next
+        # ``MetagraphRepository.persist(mg)`` drains it. When
+        # ``self._persist_client`` is set (loader-attached), inline
+        # WAL+DB write happens immediately and the entry is NOT marked
+        # dirty (avoiding redundant MERGE on later persist).
+        self._xrefs_dirty: Set[str] = set()
+        # Phase 08 transient: set by ``MetagraphLoader.load`` (line 226)
+        # and ``.refresh`` (line 324) before firing after-load
+        # observers. Phase 09 ``add_xref`` reads it to decide whether to
+        # do an inline WAL+DB write (M16) vs in-memory + dirty-mark only.
+        self._persist_client: Optional["Client"] = None
+
         if metagraph_id is None:
             self.identity.register(self.metagraph_id)
 
@@ -445,6 +473,234 @@ class Metagraph:
         for unsubscribe.
         """
         return _register(self._after_load_observers, callback)
+
+    # ── XRef primitive (Phase 09 — ADR-0128 + M2 + M4 + P54 + P59) ──────
+
+    def add_xref(
+        self,
+        *,
+        source_id: str,
+        target_metagraph_id: str,
+        target_role: str,
+        target_id: str,
+        ref_type: str,
+        properties: Optional[Dict[str, Any]] = None,
+        target_metagraph: Optional["Metagraph"] = None,
+    ) -> XRef:
+        """Create a cross-metagraph reference (ADR-0128).
+
+        **Phase 09 P59 — validate-before-WAL ordering.** Validation
+        runs BEFORE the WAL entry context is opened, so a rejected
+        write never enters the WAL and :func:`recover` does not
+        resurrect it on the next load.
+
+        Validation order:
+          1. ``source_id`` must be registered in this metagraph's
+             :class:`IdentityRegistry`.
+          2. If ``target_metagraph`` is supplied, the target id must
+             exist in a contained graph with matching ``role``;
+             otherwise :class:`XRefIntegrityError`.
+          3. ``properties`` shape (reserved-key / primitive-only).
+
+        Then the in-memory mutation:
+          4. Construct the :class:`XRef` (UUID4 ``xref_id``).
+          5. Register in :attr:`identity` + :attr:`xrefs` + inverse
+             indexes :attr:`_xrefs_by_source` /
+             :attr:`_xrefs_by_target`.
+
+        Then the persistence path:
+          6. **If** ``self._persist_client`` is set (loader-attached),
+             do an inline WAL+DB write via
+             :class:`XRefRepository`.persist (M16 crash-safe). The
+             entry is NOT marked dirty in this branch (the inline
+             write already covers it; later
+             :meth:`MetagraphRepository.persist` skips it via
+             :attr:`_xrefs_dirty` check).
+          7. **Else** (programmatic add on a fresh metagraph), only
+             :attr:`_xrefs_dirty` is updated. The next
+             :meth:`MetagraphRepository.persist(mg)` drains it.
+
+        Args:
+            source_id: id of the source element (must exist in this
+                metagraph's identity registry).
+            target_metagraph_id: id of the target metagraph.
+            target_role: role of the target graph (``"lexicon"`` etc.).
+            target_id: id of the target element in the target metagraph.
+            ref_type: one of the KL ``REF_TYPES`` vocabulary
+                (``SPECIALISES``, ``INSTANCE_OF``, ``RENAMES``,
+                ``EXTENDS``, ``CONTRADICTS``, ``PROXY``, ``PROMOTED``).
+                Core does not enforce — KL does at the write boundary.
+            properties: optional per-XRef property bag.
+            target_metagraph: optional target :class:`Metagraph`
+                instance. When supplied, the target id must exist in a
+                contained graph with matching ``target_role``.
+
+        Returns:
+            The newly-constructed :class:`XRef`.
+
+        Raises:
+            IdentityError: ``source_id`` is not in this metagraph.
+            XRefIntegrityError: ``target_metagraph`` was supplied and
+                does not contain ``target_id`` under ``target_role``.
+            PropertyShapeError: ``properties`` violates reserved-key /
+                primitive-only contract.
+        """
+        # Step 1 — source identity check (P59 first validator).
+        if not self.identity.contains(source_id):
+            raise IdentityError(
+                f"XRef source {source_id!r} not registered in metagraph "
+                f"{self.metagraph_id!r}"
+            )
+
+        # Step 2 — optional target validation BEFORE WAL (P59 + M4).
+        if target_metagraph is not None:
+            self._verify_xref_target(
+                target_metagraph, target_role, target_id
+            )
+
+        # Step 3 — property shape (raises PropertyShapeError).
+        props = validate_user_properties(properties or {}, scope="xref")
+
+        # Steps 4-5 — construct + in-memory wiring.
+        xref = XRef(
+            source_metagraph_id=self.metagraph_id,
+            source_id=source_id,
+            target_metagraph_id=target_metagraph_id,
+            target_role=target_role,
+            target_id=target_id,
+            ref_type=ref_type,
+            properties=props,
+        )
+        self.identity.register(xref.xref_id)
+        self.xrefs[xref.xref_id] = xref
+        self._xrefs_by_source.setdefault(source_id, set()).add(xref.xref_id)
+        self._xrefs_by_target.setdefault(
+            (target_metagraph_id, target_id), set()
+        ).add(xref.xref_id)
+
+        # Steps 6-7 — inline WAL+DB if loader-attached, else dirty-mark.
+        if self._persist_client is not None:
+            # Lazy import to avoid persistence ↔ models cycle.
+            from ..persistence.xref_repository import XRefRepository
+
+            XRefRepository(self._persist_client).persist(xref)
+        else:
+            self._xrefs_dirty.add(xref.xref_id)
+
+        return xref
+
+    def iter_xrefs(
+        self,
+        *,
+        source_id: Optional[str] = None,
+        target_metagraph_id: Optional[str] = None,
+        target_id: Optional[str] = None,
+        ref_type: Optional[str] = None,
+    ) -> Iterator[XRef]:
+        """Iterate XRefs filtered AND-composed across all four predicates.
+
+        **Phase 09 PB-2 — AND semantics.** Unset filters are
+        wildcards; passed filters narrow the result. Passing
+        ``source_id`` AND ``ref_type`` returns XRefs matching both.
+
+        Performance: when ``source_id`` is set, the inverse index
+        :attr:`_xrefs_by_source` is consulted first; when both
+        ``target_metagraph_id`` AND ``target_id`` are set, the
+        :attr:`_xrefs_by_target` compound index is consulted.
+        Otherwise a full scan; remaining filters apply post-fetch.
+        """
+        # Pick the cheapest seed.
+        if source_id is not None:
+            ids = self._xrefs_by_source.get(source_id, set())
+            seed: Iterable[XRef] = (
+                self.xrefs[xid] for xid in ids if xid in self.xrefs
+            )
+        elif target_metagraph_id is not None and target_id is not None:
+            ids = self._xrefs_by_target.get(
+                (target_metagraph_id, target_id), set()
+            )
+            seed = (self.xrefs[xid] for xid in ids if xid in self.xrefs)
+        else:
+            seed = iter(self.xrefs.values())
+
+        # Apply remaining AND-composed filters post-fetch.
+        for x in seed:
+            if (
+                source_id is not None
+                and x.source_id != source_id
+            ):
+                continue
+            if (
+                target_metagraph_id is not None
+                and x.target_metagraph_id != target_metagraph_id
+            ):
+                continue
+            if target_id is not None and x.target_id != target_id:
+                continue
+            if ref_type is not None and x.ref_type != ref_type:
+                continue
+            yield x
+
+    def remove_xref(self, xref_id: str) -> None:
+        """Remove an XRef from this metagraph (ADR-0128).
+
+        In-memory + identity + inverse-indexes cleared. If
+        :attr:`_persist_client` is set, a WAL-wrapped DETACH DELETE
+        also runs inline (M16). Otherwise the dirty set is updated
+        for next persist (P54 — drains via
+        :meth:`MetagraphRepository.persist`).
+
+        Raises:
+            IdentityError: ``xref_id`` is not in this metagraph.
+        """
+        x = self.xrefs.get(xref_id)
+        if x is None:
+            raise IdentityError(
+                f"Unknown xref id: {xref_id!r}"
+            )
+        # In-memory cleanup.
+        self._xrefs_by_source.get(x.source_id, set()).discard(xref_id)
+        self._xrefs_by_target.get(
+            (x.target_metagraph_id, x.target_id), set()
+        ).discard(xref_id)
+        self.identity.unregister(xref_id)
+        del self.xrefs[xref_id]
+        # P54 — clear dirty set (in case the entry was queued but never
+        # persisted before removal).
+        self._xrefs_dirty.discard(xref_id)
+
+        if self._persist_client is not None:
+            # Lazy import to avoid persistence ↔ models cycle.
+            from ..persistence.xref_repository import XRefRepository
+
+            XRefRepository(self._persist_client).remove(xref_id)
+
+    def _verify_xref_target(
+        self,
+        target_metagraph: "Metagraph",
+        target_role: str,
+        target_id: str,
+    ) -> None:
+        """Write-time XRef target verification (M4).
+
+        Raises :class:`XRefIntegrityError` when ``target_id`` is not
+        registered in any contained graph of ``target_metagraph`` whose
+        role matches ``target_role``. Called by :meth:`add_xref` BEFORE
+        the WAL entry is opened (P59).
+        """
+        for g in target_metagraph.graphs.values():
+            if g.role != target_role:
+                continue
+            if (
+                target_id in g.nodes
+                or target_id in g.edges
+                or target_id in g.hyperedges
+            ):
+                return
+        raise XRefIntegrityError(
+            f"XRef target {target_id!r} not found in metagraph "
+            f"{target_metagraph.metagraph_id!r} under role {target_role!r}"
+        )
 
     # ── graph membership ─────────────────────────────────────────────────
 

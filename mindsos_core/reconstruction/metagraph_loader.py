@@ -16,9 +16,14 @@ Slim-port of the v3 baseline at
   ``RoleMismatchError`` are the only new raise paths in Phase 08.
 * **PB-6 B** — :meth:`MetagraphLoader.load` ALWAYS calls
   :func:`mindsos_core.persistence.wal.recover` BEFORE its reads. First
-  L1 WAL consumer ships via this path. Narrow-catches
-  :class:`WALReplayerMissingError` (RPB-3 C); propagates everything
-  else as :class:`PersistenceError`.
+  L1 WAL consumer ships via this path.
+* **Phase 09 P62** — the Phase 08 silent narrow-catch of
+  :class:`WALReplayerMissingError` was removed. Phase 09 ships actual
+  L1 replayers (``xref_add`` / ``xref_remove``) registered via
+  :func:`mindsos_core.persistence.bootstrap.register_all_l1_replayers`
+  on ``FalkorClient.__init__``. An unknown kind in WAL post-Phase-09
+  is a real bug; the exception now propagates as
+  :class:`PersistenceError`.
 * **PB-11 A** — ``schema_name`` plain Cypher property (Phase 07 P100 A)
   decoded into ``mg.schema_name``; MetagraphSchema content is NOT
   auto-attached (L2 territory; tester recipe is
@@ -56,7 +61,6 @@ from typing import Any, Dict, List, Optional
 from ..exceptions import (
     PersistenceError,
     RoleMismatchError,
-    WALReplayerMissingError,
 )
 from ..models.identity import IdentityRegistry
 from ..models.metagraph import Metagraph
@@ -102,9 +106,12 @@ class MetagraphLoader:
         Locked R4-1 A / R4-8 A sequence:
 
             0. ``recover(client, metagraph_id)`` — first L1 WAL consumer
-               (PB-6 B). No-op when no replayers are registered for the
-               affected ``kind`` (narrow-catches
-               :class:`WALReplayerMissingError` per RPB-3 C).
+               (PB-6 B). Phase 09 ships actual replayers via
+               :func:`register_all_l1_replayers` on
+               ``FalkorClient.__init__``; missing replayer for any
+               uncommitted kind raises :class:`WALReplayerMissingError`
+               per Phase 09 P62 (the Phase 08 silent narrow-catch was
+               removed).
             1. Load the ``:Metagraph`` anchor row (decode ``_props_json``).
             2. Construct the shell ``Metagraph`` with a fresh or shared
                :class:`IdentityRegistry`.
@@ -145,22 +152,12 @@ class MetagraphLoader:
                 ``id=metagraph_id``; or driver-level WAL recovery
                 failure; or any sub-read driver error.
         """
-        # Step 0 — WAL recover-on-load (PB-6 B + RPB-3 C narrow-catch).
-        try:
-            _wal_recover(self._client, metagraph_id)
-        except WALReplayerMissingError:
-            # RPB-3 C — no replayer registered for the affected kind;
-            # silent no-op. Once L0/L2 (Phase 18+) register replayers,
-            # the same call becomes meaningful. Verify scanner's
-            # ``dangling_wal_entries`` bucket surfaces the uncommitted
-            # entries for operator awareness.
-            _log.debug(
-                "recover(): no replayer registered for kind in WAL for "
-                "metagraph %r; proceeding (RPB-3 C narrow-catch)",
-                metagraph_id,
-            )
-        # Anything else (driver errors, real failures) propagates as
-        # PersistenceError per the locked narrow-catch contract.
+        # Step 0 — WAL recover-on-load (PB-6 B).
+        # Phase 09 P62 — the silent narrow-catch of
+        # WALReplayerMissingError was removed. Phase 09 ships actual L1
+        # replayers (xref_add / xref_remove) on FalkorClient.__init__.
+        # An unknown kind here is a real bug; let it propagate.
+        _wal_recover(self._client, metagraph_id)
 
         # Step 1 — anchor row.
         anchor = self._load_metagraph_anchor(metagraph_id)

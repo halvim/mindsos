@@ -1,4 +1,4 @@
-"""MindsOS Core Layer — Phase 05b surface.
+"""MindsOS Core Layer — Phase 09 surface.
 
 Phase 02 shipped identity primitives. Phase 03 added graph elements and
 the Cypher identifier-safety regex (ADR-0021). Phase 04 added the
@@ -50,7 +50,7 @@ Round 1-4 design picks reflected in the slim shape:
 
 Slim-port deferral list (subsequent phases append):
 
-* ``Metagraph.add_xref`` / ``iter_xrefs`` / ``remove_xref`` (ADR-0128) — Phase 09.
+* ``Metagraph.add_xref`` / ``iter_xrefs`` / ``remove_xref`` (ADR-0128) — SHIPPED in Phase 09.
 * ``element_instances`` / ``composite_instances`` (ADR-0015) — SHIPPED in Phase 06 via mindsos_instances package.
 * Soft-delete on edges/hyperedges/metaedges/metahyperedges/intergraph_edges
   (ADR-0133) — Phase 10 uniformly across all 4 edge variants.
@@ -78,6 +78,7 @@ from .exceptions import (
     PropertyShapeError,
     SchemaError,
     UnknownTypeError,
+    XRefIntegrityError,
 )
 from .models.edge import Edge, HyperEdge
 from .models.graph import Graph
@@ -94,6 +95,7 @@ from .models.intergraph_edge import IntergraphEdge
 from .models.intergraph_hyperedge import IntergraphHyperEdge
 from .models.metagraph import MetaEdge, MetaHyperEdge, Metagraph
 from .models.node import Node
+from .models.xref import XRef
 from .schema import (
     EdgeType,
     HyperEdgeType,
@@ -119,6 +121,7 @@ __all__ = [
     "PropertyShapeError",
     "UnknownTypeError",
     "CompositionalImmutableError",
+    "XRefIntegrityError",
     # identity (Phase 02)
     "IdentityRegistry",
     "generate_uuid",
@@ -158,6 +161,8 @@ __all__ = [
     "MetaEdgeType",
     "MetaHyperEdgeType",
     "MetagraphSchema",
+    # XRef cross-metagraph primitive (Phase 09 — ADR-0128)
+    "XRef",
 ]
 
-__version__ = "0.0.0+phase08"
+__version__ = "0.0.0+phase09"

@@ -1,8 +1,8 @@
 ---
-last_confirmed_phase: 08
+last_confirmed_phase: 09
 ---
 
-# Core layer internals — Persistence + Reconstruction (Phase 08)
+# Core layer internals — Persistence + Reconstruction (Phase 09)
 
 This page documents the persistence-layer mechanics for `mindsos_core`.
 The substrate decisions live in the ADRs at the project-root location
@@ -17,7 +17,68 @@ Cross-references:
 - [ADR-0123](../../decisions/adr/0123-indexes-and-verify-integrity.md) — indexes + integrity scanner.
 - [ADR-0126](../../decisions/adr/0126-async-client-via-thread-pool-wrapper.md) — AsyncClient via `asyncio.to_thread`.
 - [ADR-0127](../../decisions/adr/0127-optimistic-concurrency-on-global-writes.md) — OCC on Global writes.
-- [ADR-0130](../../decisions/adr/0130-property-bag-on-metagraph-graph.md) — `_props_json` encoding.
+- [ADR-0130](../../decisions/adr/0130-property-bag-on-metagraph-graph.md) — `_props_json` encoding (Accepted in Phase 09).
+- [ADR-0128](../../decisions/adr/0128-hybrid-xref-cross-metagraph-refs.md) — hybrid XRef primitive (Phase 09; Proposed until Phase 14 L2 consumer).
+- [ADR-0142](../../decisions/adr/0142-xref-cutover-for-ref-global.md) — XRef cutover (Phase 09 ships L1 commitment).
+
+## Phase 09 — XRef (cross-metagraph references)
+
+**Storage shape.** `:XRef` rows live in the source metagraph anchored
+by a `:XREF_OF` edge to the source `:Metagraph` row. Reverse lookups
+use the indexed `(target_metagraph_id, target_id)` compound (no
+edge traversal). The cascade contract is forward-only at Phase 09;
+Phase 10 ships reverse-dangling cleanup.
+
+**Indexes (4 new; bootstrap grows 14 → 18).**
+
+| Label | Property | Purpose |
+|-------|----------|---------|
+| `:XRef` | `id` | primary lookup by xref_id |
+| `:XRef` | `source_metagraph_id` | XRefLoader query (`MATCH (x:XRef {source_metagraph_id: $mid})`) |
+| `:XRef` | `source_id` | forward walk (`mg.iter_xrefs(source_id=...)`) |
+| `:XRef` | `(target_metagraph_id, target_id)` | reverse walk + `--target-metagraph` prefix-match |
+
+**WAL replayers.** Phase 09 is the first phase to register actual L1
+replayers. `register_all_l1_replayers(client)` (called by
+`FalkorClient.__init__` after `bootstrap`) wires per-kind module
+ownership: `mindsos_core/persistence/xref_repository.py::register_xref_replayers`
+attaches `xref_add` (MERGE-based; idempotent) and `xref_remove`
+(DETACH DELETE; idempotent) onto `client._replayers`. The
+module-level `_REPLAYERS` global from Phase 07 is gone — replayers
+are per-Client instance state, eliminating cross-test pollution.
+
+**`recover()` failure mode change.** The Phase 08 silent narrow-catch
+of `WALReplayerMissingError` in `MetagraphLoader.load` was removed
+(Phase 09 P62). With actual L1 replayers registered, an unknown kind
+in WAL is a real bug; the exception now propagates as
+`PersistenceError`.
+
+**Dirty-tracking on `Metagraph`.** `mg._xrefs_dirty: Set[str]` tracks
+XRefs added programmatically without a `_persist_client` attached.
+`MetagraphRepository.persist(mg)` drains this set after the standard
+4-step lifecycle; atomic clear at end-of-loop survives partial-crash
+retries (MERGE idempotency makes duplicate writes safe).
+
+**State-file v=3 → v=4.** Adds `xrefs[]` array. `_v3_to_v4(state)`
+in `mindsos_cli/migrations/metagraph.py` is single-line additive.
+The `_state_to_metagraph` deserializer reads `xrefs[]` directly into
+`mg.xrefs` + manually rebuilds `mg._xrefs_by_source` /
+`mg._xrefs_by_target` inverse indexes, leaving `mg._xrefs_dirty`
+empty (loaded XRefs are by definition already-persisted).
+
+**`load --metagraph M` summary shape change.** The Phase 08 9-line
+flat list is replaced by a single structured `Dependent state: ...`
+key=value line that grows additively. Future phases that add new
+buckets (Snapshots in Phase 10; integrity scanner output in Phase 11)
+extend the same line; tests assert by key, not by position.
+
+**XRefLoader subscription.** `attach_xref_loader(mg)` is the
+idempotent helper that subscribes the loader to `mg`'s after-load
+observer queue. The callback reads `mg._persist_client` at fire time
+(set transiently by `MetagraphLoader.load` line 226 +
+`.refresh` line 324). PB-9 clear-first semantics: every refresh
+clears `mg.xrefs` + inverse indexes + identity registrations +
+`_xrefs_dirty` BEFORE re-populating from the DB.
 
 ## Persistence layer
 

@@ -16,13 +16,20 @@ from mindsos_cli.migrations import metagraph_schema as ms_migrations
 
 
 class TestVersionConstants:
-    def test_metagraph_state_version_unchanged_at_3(self):
-        """P31 A: metagraph state file does NOT bump in 05d."""
-        assert state_mod.METAGRAPH_STATE_VERSION == 3
-        assert mg_migrations.CURRENT_VERSION == 3
+    def test_metagraph_state_version_at_current(self):
+        """Phase 09 RR-12 — metagraph state file bumps from v=3 → v=4.
+
+        Originally Phase 05d this asserted ``== 3`` (no bump in 05d
+        per P31 A). Phase 09 bumps to 4 adding ``xrefs[]`` per M10 +
+        RR-7. Dynamic check future-proofs subsequent bumps.
+        """
+        assert (
+            state_mod.METAGRAPH_STATE_VERSION
+            == mg_migrations.CURRENT_VERSION
+        )
 
     def test_metagraph_schema_state_version_at_3(self):
-        """P31 A: schema state file IS the only bump that ships in 05d."""
+        """Phase 09 — schema state file unchanged at v=3 (no schema bump in 09)."""
         assert state_mod.METAGRAPH_SCHEMA_STATE_VERSION == 3
         assert ms_migrations.CURRENT_VERSION == 3
 

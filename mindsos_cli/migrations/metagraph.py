@@ -1,4 +1,4 @@
-"""Metagraph state-file migration chain (Phase 05a + 05b + 05c — P14 + P14-A).
+"""Metagraph state-file migration chain (Phase 05a + 05b + 05c + 09 — P14 + P14-A + RR-12).
 
 Versions:
 
@@ -9,15 +9,17 @@ Versions:
 * v=3 (Phase 05c — P14-A smaller-items fold) — adds
   ``intergraph_hyperedges`` array (default empty on migration; existing
   v=2 metagraph state files have no n-ary hyperedges to carry over).
+* v=4 (Phase 09 — M10 + RR-7 + RR-12) — adds ``xrefs`` array (default
+  empty on migration; existing v=3 metagraph state files have no XRef
+  rows to carry over). XRef shape is the 8-field dict per Phase 09 P53
+  (``target_stale`` + ``deprecated_at`` deferred to Phase 10).
 
 Future bumps (deferred to later phases per CASC-1):
 
-* (Phase 05d adds NOTHING here — meta-vocabs land in metagraph-schema
-  state file v=2→v=3, NOT in metagraph state file. Per P17-A: 05c is
-  the LAST metagraph state-file bump until Phase 10.)
-* v=4 (Phase 10) — soft-delete fields on metaedges/metahyperedges/
-  intergraph_edges/intergraph_hyperedges (ADR-0133 substrate landed
-  uniformly across all 5 edge variants per SOFT_DELETE_AUDIT_NOTE).
+* v=5 (Phase 10) — soft-delete fields on metaedges/metahyperedges/
+  intergraph_edges/intergraph_hyperedges/xrefs (ADR-0133 substrate
+  landed uniformly across all 5 edge variants per
+  SOFT_DELETE_AUDIT_NOTE).
 
 Subsequent phases append migration steps; never edit a prior step.
 """
@@ -26,7 +28,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List
 
-CURRENT_VERSION = 3
+CURRENT_VERSION = 4
 
 
 def _v1_to_v2(state: Dict) -> Dict:
@@ -54,10 +56,23 @@ def _v2_to_v3(state: Dict) -> Dict:
     return state
 
 
+def _v3_to_v4(state: Dict) -> Dict:
+    """Phase 08 → Phase 09 (RR-7): introduce ``xrefs`` array.
+
+    Single-step single-line migration mirroring the Phase 05c
+    ``_v2_to_v3`` pattern. Existing v=3 metagraph state files have no
+    XRef rows to carry over; default empty list. Idempotent on
+    re-migration.
+    """
+    state["xrefs"] = state.get("xrefs") or []
+    return state
+
+
 #: ``MIGRATIONS[i]`` migrates v(i+1) → v(i+2).
 MIGRATIONS: List[Callable[[Dict], Dict]] = [
     _v1_to_v2,
     _v2_to_v3,
+    _v3_to_v4,
 ]
 
 

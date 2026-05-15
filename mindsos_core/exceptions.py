@@ -251,16 +251,41 @@ class RefreshUnsafeError(PersistenceError):
 class WALReplayerMissingError(PersistenceError):
     """No replayer registered for a WAL entry's ``kind`` during ``recover()``.
 
-    Raised internally by :func:`mindsos_core.persistence.wal.recover` when
-    an uncommitted :WALEntry row carries a ``kind`` that has no entry in
-    the ``_REPLAYERS`` map. :func:`mindsos_core.reconstruction.load_metagraph`
-    narrow-catches this on its initial ``recover()`` call (RPB-3 C) so a
-    Phase 08 load with no registered replayers degrades to a silent no-op
-    recovery; once L0/L2 (Phase 18+) register replayers the same call
-    becomes meaningful.
+    Raised by :func:`mindsos_core.persistence.wal.recover` when an
+    uncommitted :WALEntry row carries a ``kind`` that has no entry in
+    the per-client ``_replayers`` dict.
+
+    **Phase 09 P62** — the silent narrow-catch in
+    :class:`MetagraphLoader.load` was removed. Phase 09 ships actual
+    replayers (``xref_add`` / ``xref_remove``) registered via
+    :func:`mindsos_core.persistence.bootstrap.register_all_l1_replayers`
+    on ``FalkorClient.__init__``. An unknown kind in WAL post-Phase-09
+    is a real bug — either a writer wrote a kind nobody registered, or
+    replayer registration order is off. The exception now propagates
+    as :class:`PersistenceError`.
 
     Driver-level errors during ``recover()`` continue to propagate as
-    :class:`PersistenceError` per the locked narrow-catch contract.
+    :class:`PersistenceError`.
+    """
+
+
+# ── XRef integrity (Phase 09 — RR-3 + M4) ────────────────────────────────────
+
+
+class XRefIntegrityError(PersistenceError):
+    """``Metagraph.add_xref(target_metagraph=...)`` saw a missing target.
+
+    Raised by :meth:`Metagraph.add_xref` when the optional
+    ``target_metagraph`` kwarg is passed AND the target id is not
+    registered in that metagraph's identity registry.
+
+    Per Phase 09 P59: the validation check runs BEFORE
+    :meth:`WriteAheadLog.entry` opens its context; the rejected write
+    never enters the WAL, so :func:`recover` does not resurrect it.
+
+    Per ADR-0128 §Validation: when ``target_metagraph`` is **not**
+    passed, the write is "soft" — Core accepts it without validation.
+    Server-side registry-hook resolver path is deferred to Phase 18+.
     """
 
 

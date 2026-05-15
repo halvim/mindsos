@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase08"
-description = "MindsOS command-line interface — Phase 08 L1 Reconstruction (metagraph loader + streaming iter_load_graph + refresh + 3 new exception classes + after-load observer + first L1 WAL consumer (recover-on-load) + sibling InstanceLoader + `mindsos persistence sync/load --metagraph M` + `verify --source=db --metagraph M` unblock + `--graph G | --metagraph M` mutex)."
+version = "0.0.0+phase09"
+description = "MindsOS command-line interface — Phase 09 L1 XRef (cross-metagraph refs: first-class XRef primitive + Metagraph.add_xref/iter_xrefs/remove_xref + WAL-wrapped XRefRepository + per-Client replayer registration + XRefLoader after-load observer + xref-list CLI + migration callable + state-file v=4)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

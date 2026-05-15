@@ -2715,11 +2715,270 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 09 — L1 XRef (cross-metagraph refs)
 
-  **Deps:** 07, 08. **Layer:** L1. **Net-new?** Mostly no — XRef primitive shipped; **but** ADR-0142 (XRef cutover for `ref:global`) requires migration of legacy `ref:global_*` properties — that part is **NEW CODE** if any legacy refs exist in fixtures.
-  **Features:** XRef CRUD; one-shot migration from legacy `ref:` properties.
-  **Tests:** XRef round-trip; migration preserves role; legacy properties not duplicated.
-  **Risks:** migration path must be reversible or audited.
-  **Docs:** `docs/concepts/references.md`, ADRs 0128/0142.
+  **Status:** Pending (post-design — locked 2026-05-14; awaiting implementation).
+  **Branch:** phase-09
+  **Tag on confirm:** phase-09-confirmed
+  **Depends on:** 07, 08 (last in cascade per CASC-1 strict-sequential).
+  **Layer(s):** L1.
+  **Net-new?:** **Partial.** Slim-port v3 baseline `mindsos_core/{models/xref.py, persistence/xref_repository.py, persistence/xref_migration.py, reconstruction/xref_loader.py}` + NEW `build_create_xref` Cypher builder + NEW `XRefIntegrityError` exception class + NEW WAL integration (`with wal.entry(...)` wrap on every add/remove) + NEW first L1 replayer registration via `register_all_l1_replayers(client)` wrapper. NEW `mindsos persistence xref-list` read-only CLI verb. NEW `attach_xref_loader(mg)` helper subscribing after-load observer. **State-file bump metagraph v=3 → v=4** (adds `xrefs[]` array per M10). Inline closure of Phase 08 deferral: `_metagraph_has_dependent_state` query `:XRef {metagraph_id: $mid}` → `{source_metagraph_id: $mid}` per M11. NO new top-level Python package.
+
+  **Locked decisions (3 design rounds — 2026-05-14; full ledger in `PHASE_09_DESIGN_LOG.md`):**
+
+    - **M0** — Flip **ADR-0128** Proposed → **Accepted** inline with §Revisions log section listing 5 amendments (signature `source_id: str`; anchor edge `:XREF_OF`; 2 inert fields retained; flag key `xref:migrated_at`; `target_metagraph` kwarg). Phase 07 chunk-7 + Phase 08 M3 A precedent.
+    - **M1** — **ADR-0142** stays Proposed. P09 ships only L1 commitment (migration job); L2 fallback (`MetagraphView.follow_ref`) ships P14; Server first-start hook ships P18+.
+    - **M2** — Anchor edge `:XREF_OF` (to source Metagraph anchor; v3 baseline + repository docstring authoritative; ADR-0128 prose amended).
+    - **M3** — Keep v3 baseline `target_stale: bool` + `deprecated_at: Optional[datetime]` fields **as inert** in P09 (dataclass + builder + loader + `_CORE_XREF_FIELDS` carry verbatim). Setters ship Phase 10.
+    - **M4** — `add_xref(target_metagraph: Metagraph | None = None, ...)` kwarg. When passed, validate target via `target_metagraph.identity.has(target_id)`; raise `XRefIntegrityError`. Soft when absent. Registry-hook deferred to P18+.
+    - **M5** — Migration callable programmatic-only: `migrate_in_memory(mg, *, target_metagraph_id, default_ref_type="SPECIALISES")`. No CLI verb. Consumer is Server first-start hook (P18+).
+    - **M6** — Read-only `mindsos persistence xref-list` CLI verb only. No `xref-add` / `xref-remove` CLI. Write verbs land when consumer phase demands.
+    - **M7** — Flip **ADR-0130** Proposed → **Accepted** inline. Closes §7 Q4. `Metagraph.properties` already shipped Phase 06.
+    - **M8** — ADR-0132 stays Proposed (orthogonal; no opportunistic flip).
+    - **M9** — Migration flag property key = `mg.properties["xref:migrated_at"]` (renames v3's `server:xref_migrated_at`; ADR-0128 §Migration paragraph amended).
+    - **M10** — State-file bump metagraph **v=3 → v=4**: add `xrefs[]` array. Mirrors Phase 05c `_v2_to_v3` pattern; carries `feedback_state_version_audit_scope.md` audit cost (grep ALL `tests/` for v=3 literals).
+    - **M11** — Patch Phase 08 `mindsos_cli/commands/persistence.py:296` defensive query `:XRef {metagraph_id: $mid}` → `:XRef {source_metagraph_id: $mid}` (v3 baseline names). Inline-close Phase 08 deferral; mirrors P60/P61 A pattern.
+    - **M12** — 3-round target (M + PB + RPB + RR); 53 active picks (RR-2 superseded by RR-16). Addendum slot opens if late edge cases surface.
+    - **M13** — Test budget uncapped per Phase 08 RPB-7 user override (`feedback_test_budget_unlimited.md`).
+    - **M14** — 4 doc-footprint items: rewrite `docs/concepts/references.md` for hybrid model + NEW `docs/api/core/xref.md` + AMEND `docs/dev/internals/core.md` (XRef section) + APPEND `docs/changelog/CHANGELOG.md`.
+    - **M15** — 4 new `:XRef` indexes (id / source_metagraph_id / source_id / (target_metagraph_id, target_id) compound). Bootstrap grows 14 → 18. FalkorDB v4.18.3 substring-check test per B-07-T4.
+    - **M16** — Full WAL integration: `add_xref` + `remove_xref` wrap in `with wal.entry(kind="xref_add"|"xref_remove", payload=...):`. Phase 09 = first phase to register actual L1 replayers (Phase 08 shipped `recover()` as silent no-op).
+    - **M17** — `load --metagraph M` summary extended 9 → **10 lines** with `XRefs: N` inserted between `IntergraphHyperEdges` and `ElementInstances`. Additive breaking change; Phase 08 tests patched (B-08-T1 dynamic-read pattern).
+    - **M18** — XRefLoader subscription: new helper `mindsos_core/reconstruction/xref_loader.py::attach_xref_loader(mg)` subscribes after-load observer via `register_after_load_observer` (Phase 08 RR-10 A foreshadowed). Helper takes no `client` arg; observer reads `mg._persist_client` at fire time (set transiently by `MetagraphLoader.load` line 226 + `.refresh` line 324).
+    - **PB-1** — Slim-port v3 verbatim + Phase 07/08 substrate exception list (Cypher builders convention; FalkorDB v4.18.3 index DDL quirks per B-07-T1; `tests/phase_NN/conftest.py` `falkor_client` re-export per B-08-T2).
+    - **PB-2** — `mg.iter_xrefs(*, source_id=None, target_metagraph_id=None, target_id=None, ref_type=None)` filters AND-composed (unset = wildcard).
+    - **PB-3** — `tests/_shared/metagraph_equality.py` extended with XRef id-set + field-by-field on matched IDs; NEW sibling `assert_xref_contents_equal(xrefs1, xrefs2)` for content-tuple comparison (migration tests where UUIDs differ).
+    - **PB-4** — Migration callable signature v3-verbatim: `migrate_in_memory(mg, *, target_metagraph_id, default_ref_type="SPECIALISES")`. Caller supplies `target_metagraph_id`; tests pass synthetic value; Server consumer (P18+) supplies real value.
+    - **PB-5** — `mindsos persistence xref-list --metagraph M [--source-id SID] [--target-metagraph TMID] [--target-id TID] [--ref-type RT] [--json]`. Exit codes 0/1/2 per Phase 07 P64 A.
+    - **PB-6** — `mg.add_xref(...)` accepts duplicates (v3-verbatim; fresh UUID4 per call). Caller responsibility to `iter_xrefs` first if dedup needed. Migration's per-XRef `already` check handles dedup at the only site where it matters.
+    - **PB-7** — XRefLoader re-loads all XRefs on `MetagraphLoader.refresh` (after_load re-fire; Phase 08 R4-7 A identity preservation makes source_id valid post-refresh).
+    - **PB-8** — MERGE-based WAL replayers: `xref_add` re-runs `build_create_xref(...)` (MERGE idempotent); `xref_remove` runs `MATCH (x:XRef {id: $xid}) DETACH DELETE x` (idempotent).
+    - **PB-9** — `XRefLoader.load_into(mg)` clears `mg.xrefs` + inverse indexes + unregisters XRef IDs from `mg.identity` BEFORE re-populating from DB. Single-mode full-reset-on-every-fire semantics. No `MetagraphLoader.refresh` patch.
+    - **RPB-1** — WAL recovery FIFO across kinds: entries replay in write-order (by `created_at`) regardless of `kind`; each dispatches to its kind's replayer.
+    - **RPB-2** — Migration uses bare `mg.add_xref` calls; each inherits WAL crash safety per M16. Crash mid-migration → `recover()` replays partial entries → re-run migration completes the rest (idempotent).
+    - **RPB-3** — `:XREF_OF` cascade is **forward-only** on Metagraph removal. XRefs with `target_metagraph_id = m.id` (reverse-dangling) handled by Phase 10 (`target_stale = True` setter).
+    - **RPB-4** — No auto-trigger for migration; caller invokes explicitly after `load_metagraph`. P09 ships callable + one test demonstrating explicit-call pattern.
+    - **RPB-5** — Trust FalkorDB v4.18.3 compound-index prefix matching for `--target-metagraph` without `--target-id`. No separate single-property index.
+    - **RPB-6** — Test fixture scale: standard ≤10 XRefs; migration stress 1K XRefs `@pytest.mark.slow` opt-in.
+    - **RPB-7** — 5-8 integration tests (`@pytest.mark.integration`) + 20-30 unit tests. Phase 08 ratio (6 + 32) proven scale.
+    - **RPB-8** — Single chunk-N ADR file-edit commit at project-root (`docs/decisions/adr/`); covers ADR-0128 flip + 5 amendments + §Revisions section, ADR-0130 flip, ADR-0142 acceptance-criteria notes. Lands outside halvim_mindsos git tracking per Model C hybrid.
+    - **RR-1** — WAL payloads: `xref_add` = 10-field XRef dict; `xref_remove` = `{xref_id}`. Replayer converts `deprecated_at` ISO ↔ datetime on dispatch.
+    - **RR-3** — `XRefIntegrityError(PersistenceError)`. Phase 08 R4-3 A 3-class pattern; no umbrella `XRefError`.
+    - **RR-4** — Two-function walker extension shape (id-set + content-tuple).
+    - **RR-5** — `xref-list` final signature per PB-5 + RR-6 output.
+    - **RR-6** — Rich table default + `--json` opt-in. Columns: `xref_id[:8]`, `source_id[:8]`, `target_metagraph_id[:8]`, `target_role`, `target_id[:8]`, `ref_type`, `target_stale` + `deprecated_at` when non-default (M3 inert fields surfaced when set).
+    - **RR-7** — `_v3_to_v4(state)` body: `state["xrefs"] = state.get("xrefs") or []`. Single-step idempotent migration mirroring Phase 05c `_v2_to_v3`.
+    - **RR-8** — `xrefs[]` JSON shape: 10-field plain dict per XRef; `deprecated_at` ISO string per Phase 06 precedent; `null` when `None`. Mirrors WAL `xref_add` payload (RR-1 symmetry).
+    - **RR-9** — ADR-0128 §Revisions section appended at bottom listing 5 amendments dated 2026-05-14 (per PB12-C cap ≤5 × ≤30 words).
+    - **RR-10** — 4 sentinel-path entries: 4 new XRef files. New-files-only per `feedback_new_top_level_package.md` site 3.
+    - **RR-11** — `tests/phase_09/conftest.py` re-exports `falkor_client` per B-08-T2.
+    - **RR-12** — `mindsos_cli/migrations/metagraph.py`: `_v3_to_v4` function + `MIGRATIONS` append + `CURRENT_VERSION = 4`. Grep ALL `tests/` for `_state_version == 3` + `METAGRAPH_STATE_VERSION == 3` per `feedback_state_version_audit_scope.md`.
+    - **RR-13** — `tests/_shared/cross_metagraph_fixture.py::make_source_and_target_metagraphs() -> tuple[Metagraph, Metagraph]` for RPB-7 integration tests.
+    - **RR-14** — `mindsos persistence` help-text via Typer auto-generation from `xref-list` docstring. No manual help-string edits.
+    - **RR-15** — `mkdocs.yml` nav adds `docs/api/core/xref.md` under "API > Core".
+    - **RR-16** — Per-kind replayer module ownership: `mindsos_core/persistence/xref_repository.py::register_xref_replayers(client)`. Thin central wrapper `mindsos_core/persistence/bootstrap.py::register_all_l1_replayers(client)` composes; `FalkorClient.__init__` calls `bootstrap(self) + register_all_l1_replayers(self)`. Phase 10/11 grow the wrapper. Replayer body captures `client` via closure (Phase 07 `wal.py:56` signature is `(payload) -> None`). Tests use `clear_replayers()` between cases.
+    - **RR-17** — `MetagraphRepository.persist(mg)` extends inline: after persisting anchor + dependent state, iterates `mg.xrefs.values()` and calls `XRefRepository(self._client).persist(xref)` per XRef. Intra-package coupling (XRef lives in `mindsos_core` proper); no after-persist observer needed. MERGE idempotency handles redundant writes.
+    - **RR-18** — State-file deserializer (sync path) populates `mg.xrefs` direct + manually rebuilds `mg._xrefs_by_source` + `mg._xrefs_by_target` inverse indexes; bypasses `mg.add_xref` (would trigger DB write). Indexes built once at deserialization, not lazily.
+
+  **Features in scope (capability-level — locked):**
+
+    - **First-class `XRef` primitive** at `mindsos_core/models/xref.py` (dataclass; UUID4 `xref_id`; 10 fields including `target_stale` + `deprecated_at` inert).
+    - **`Metagraph.add_xref(*, source_id, target_metagraph_id, target_role, target_id, ref_type, properties=None, target_metagraph=None)`** — in-memory + DB write (via WAL); optional target validation.
+    - **`Metagraph.iter_xrefs(*, source_id=None, target_metagraph_id=None, target_id=None, ref_type=None)`** — 4-filter AND-composed iteration over `mg.xrefs`.
+    - **`Metagraph.remove_xref(xref_id)`** — removes from `mg.xrefs` + inverse indexes + WAL-wrapped DB DETACH DELETE.
+    - **`Metagraph.xrefs: Dict[str, XRef]`** + `_xrefs_by_source: Dict[str, Set[str]]` + `_xrefs_by_target: Dict[Tuple[str, str], Set[str]]` (in-memory collection + 2 inverse indexes).
+    - **`XRefRepository(client).persist(xref)`** + `.remove(xref_id)` — DB write surface with WAL wrap.
+    - **`XRefLoader(client).load_into(mg)`** — clears `mg.xrefs` first (PB-9), then re-populates from DB via `MATCH (x:XRef {source_metagraph_id: $mid})` query. Subscribed via `attach_xref_loader(mg)` to after-load observer (M18).
+    - **`build_create_xref(...)` Cypher builder** at `mindsos_core/cypher/builders.py` — MERGE `:XRef {id: $xid}` + MERGE `(x)-[:XREF_OF]->(m:Metagraph {id: $smid})`.
+    - **`migrate_in_memory(mg, *, target_metagraph_id, default_ref_type="SPECIALISES") -> int`** at `mindsos_core/persistence/xref_migration.py` — walks `mg.graphs.values()` → `node.properties.items()`; for each `ref:global_<role>` key, calls `mg.add_xref(...)` and removes the property + `ref_type` property if any. Idempotent via `mg.properties["xref:migrated_at"]` flag.
+    - **`XRefIntegrityError(PersistenceError)`** at `mindsos_core/exceptions.py` — raised by `add_xref` when `target_metagraph` is passed + target id not registered.
+    - **WAL replayers** for `xref_add` + `xref_remove` kinds; registered via `register_xref_replayers(client)` composed in `register_all_l1_replayers(client)` wrapper.
+    - **`MetagraphRepository.persist(mg)` extension** — iterates `mg.xrefs.values()` after anchor + dependent state.
+    - **`MetagraphLoader.refresh(mg, role)` integration** — fires after_load → XRefLoader observer → `XRefLoader.load_into(mg)` clears + reloads.
+    - **`mindsos persistence xref-list --metagraph M [filters] [--json]`** CLI verb.
+    - **`load --metagraph M` summary extension** — 10-line shape with `XRefs: N`.
+    - **`_metagraph_has_dependent_state` patch** — fixes Phase 08 defensive XRef query.
+    - **State-file v=4** — `xrefs[]` array carried through `sync`/`load --to-json` round-trip.
+    - **4 new indexes** in bootstrap; **2 new WAL replayers** registered.
+
+  **Modules touched (locked):**
+
+    - `mindsos_core/models/xref.py` — **NEW**. Slim port from v3 (`/Layered Intelligence/mindsos_core/models/xref.py`, ~74 LoC). Dataclass with 10 fields; M3 keeps `target_stale` + `deprecated_at` inert.
+    - `mindsos_core/models/metagraph.py` — **MODIFIED**. Adds `add_xref` / `iter_xrefs` / `remove_xref` methods; `xrefs: Dict[str, XRef]` + `_xrefs_by_source` + `_xrefs_by_target` instance fields in `__init__`.
+    - `mindsos_core/persistence/xref_repository.py` — **NEW**. Slim port (~52 LoC). `persist(xref)` + `remove(xref_id)` + `register_xref_replayers(client)` (RR-16).
+    - `mindsos_core/persistence/xref_migration.py` — **NEW**. Slim port (~87 LoC) minus M9 flag rename. `migrate_in_memory(mg, *, target_metagraph_id, default_ref_type)`.
+    - `mindsos_core/persistence/bootstrap.py` — **MODIFIED**. Add 4 new XRef indexes (M15); add `register_all_l1_replayers(client)` wrapper (RR-16).
+    - `mindsos_core/persistence/metagraph_repository.py` — **MODIFIED**. `MetagraphRepository.persist(mg)` extends inline-iteration over `mg.xrefs` (RR-17).
+    - `mindsos_core/reconstruction/xref_loader.py` — **NEW**. Slim port (~83 LoC) + PB-9 clear-first semantics + `attach_xref_loader(mg)` helper (M18).
+    - `mindsos_core/cypher/builders.py` — **MODIFIED**. Add `build_create_xref(...)` per v3 baseline (creates `:XRef` node + `:XREF_OF` edge).
+    - `mindsos_core/exceptions.py` — **MODIFIED**. Adds `XRefIntegrityError(PersistenceError)` per RR-3.
+    - `mindsos_core/__init__.py` — `__version__ = "0.0.0+phase09"`.
+    - `mindsos_core/reconstruction/__init__.py` — exports `attach_xref_loader`, `XRefLoader`.
+    - `mindsos_cli/commands/persistence.py` — **MODIFIED**. Adds `xref-list` verb (PB-5 + RR-5 + RR-6); patches `_metagraph_has_dependent_state` defensive query (M11); extends `load --metagraph M` summary to 10 lines (M17).
+    - `mindsos_cli/migrations/metagraph.py` — **MODIFIED**. Adds `_v3_to_v4` migration function; appends to `MIGRATIONS`; bumps `CURRENT_VERSION = 4` (RR-12).
+    - `mindsos_cli/manifest.toml` — `[mindsos] phase = "09"`; `version = "0.0.0+phase09"`.
+    - `mindsos_cli/__init__.py` — `__version__ = "0.0.0+phase09"`.
+    - `mindsos_instances/__init__.py` — `__version__ = "0.0.0+phase09"` (3-package parity per Phase 06 P62 A).
+    - `pyproject.toml` — version + description bumped.
+    - `docker-compose.yml` — image tags `mindsos:phase09-prod` / `mindsos:phase09-test`.
+    - `Dockerfile` — comment lines bumped Phase 08 → Phase 09; existing wildcard COPY of `mindsos_core/` covers new subdir files.
+    - `tests/_shared/sentinel_paths.py` — adds 4 entries for new XRef files (RR-10).
+    - `tests/_shared/metagraph_equality.py` — **MODIFIED**. Extends `assert_metagraphs_equal` with XRef id-set + field-by-field; adds sibling `assert_xref_contents_equal` (PB-3 + RR-4).
+    - `tests/_shared/cross_metagraph_fixture.py` — **NEW**. `make_source_and_target_metagraphs() -> tuple[Metagraph, Metagraph]` helper (RR-13).
+    - `tests/phase_09/conftest.py` — **NEW**. Re-exports `falkor_client` per B-08-T2 (RR-11).
+    - `tests/phase_09/test_*.py` — ~25-38 new files; integration + unit tier per RPB-7.
+    - `docs/concepts/references.md` — **REWRITE**. Hybrid model documentation per ADR-0128 (intra-metagraph `ref:<role>` strings + cross-metagraph `:XRef` rows); migration recipe; legacy `ref:global_*` deprecation note.
+    - `docs/api/core/xref.md` — **NEW**. Full API reference: `XRef` dataclass + `Metagraph.add_xref` / `iter_xrefs` / `remove_xref` + `XRefRepository` + `XRefLoader` + `attach_xref_loader` + `migrate_in_memory` + `XRefIntegrityError`.
+    - `docs/dev/internals/core.md` — **AMEND**. NEW "XRef" section under reconstruction; cross-references ADRs 0128/0130/0142.
+    - `docs/changelog/CHANGELOG.md` — Phase 09 entry appended.
+    - `mkdocs.yml` — nav adds `docs/api/core/xref.md` entry.
+    - **ADR file edits (chunk-N at project-root per RPB-8):**
+        * `/Layered Intelligence/docs/decisions/adr/0128-hybrid-xref-cross-metagraph-refs.md` — flip Proposed → Accepted + §Revisions log (5 amendments per RR-9).
+        * `/Layered Intelligence/docs/decisions/adr/0130-property-bag-on-metagraph-graph.md` — flip Proposed → Accepted (closes §7 Q4).
+        * `/Layered Intelligence/docs/decisions/adr/0142-xref-cutover-for-ref-global.md` — acceptance-criteria split note (3-commitment partition L1/L2/Server); stays Proposed.
+
+  **Persistence layout impact:**
+
+    - **FalkorDB:** new `:XRef` label + `:XREF_OF` rel type. 4 new indexes (M15). 2 new WAL kinds (`xref_add`, `xref_remove`) registered globally.
+    - **State-file (JSON sidecar):** metagraph v=3 → v=4 (add `xrefs[]` array per M10 + RR-7 + RR-8).
+
+  **Automated tests (location + intent — locked; uncapped per M13; targeted ~25-38 files per RPB-7):**
+
+    - `tests/phase_09/` — projected scope:
+        * `test_xref_dataclass.py` — `XRef` field defaults; `__hash__` + `__eq__` based on `xref_id`; `__repr__` truncates IDs.
+        * `test_metagraph_xref_api.py` — `add_xref` mints UUID4 (PB-6 no-dedup); `iter_xrefs` 4-filter combinations AND-composed (PB-2); `remove_xref` cleans inverse indexes + identity.
+        * `test_add_xref_validation.py` — M4: `target_metagraph` passed + missing target → `XRefIntegrityError`; passed + present → no raise; absent → soft accept.
+        * `test_xref_repository_unit.py` — InMemoryClient: right Cypher emitted for `persist` (MERGE `:XRef` + MERGE `:XREF_OF`) + `remove` (DETACH DELETE).
+        * `test_xref_repository_integration.py` (`@pytest.mark.integration`) — round-trip via FalkorDB: persist XRef → query DB → assert row + edge present.
+        * `test_xref_loader_unit.py` — InMemoryClient: clear-first semantics (mg pre-populated with stale XRefs → `load_into(mg)` clears + re-populates).
+        * `test_xref_loader_integration.py` (`@pytest.mark.integration`) — full round-trip: persist + load + `assert_xref_contents_equal`.
+        * `test_xref_loader_refresh.py` (`@pytest.mark.integration`) — PB-7 + PB-9: refresh re-fires after_load → XRefLoader observer → mg.xrefs cleared + re-populated; no IdentityRegistry collision (regression for v3 baseline collision risk).
+        * `test_attach_xref_loader.py` — M18: `attach_xref_loader(mg)` subscribes after-load observer idempotently; observer reads `mg._persist_client` at fire time.
+        * `test_xref_migration_unit.py` — Migration callable: walks `node.properties` for `ref:global_*` keys; calls `mg.add_xref` per match; idempotent flag set; re-run is no-op.
+        * `test_xref_migration_integration.py` (`@pytest.mark.integration`) — End-to-end migration from legacy-property fixture: 1 source metagraph with `ref:global_lexicon` + `ref_type` properties → migrate → assert XRef created + property removed + flag set.
+        * `test_xref_migration_idempotency.py` — Per-XRef `already` skip (v3 baseline behavior); second run with cleared flag still skips per-content-tuple.
+        * `test_xref_wal_add.py` (`@pytest.mark.integration`) — M16: `mg.add_xref(...)` writes `:WALEntry {kind: "xref_add"}`; commit clears uncommitted flag.
+        * `test_xref_wal_recovery.py` (`@pytest.mark.integration`) — M16 + PB-8: write begin-entry; skip commit (simulate crash); `wal.recover()` replays via MERGE; XRef row exists post-recovery; idempotent on re-recovery.
+        * `test_xref_wal_remove.py` (`@pytest.mark.integration`) — `mg.remove_xref(...)` writes `:WALEntry {kind: "xref_remove"}`; replayer DETACH DELETE idempotent.
+        * `test_wal_replayer_registration.py` — RR-16: `register_xref_replayers(client)` registers both kinds; `register_all_l1_replayers(client)` composes; replayer body captures client via closure; `clear_replayers()` between tests resets global state.
+        * `test_wal_recovery_ordering.py` (`@pytest.mark.integration`) — RPB-1: multi-entry FIFO replay across `xref_add` + `xref_remove` kinds; entries replay in `created_at` order.
+        * `test_metagraph_repository_persist_xrefs.py` (`@pytest.mark.integration`) — RR-17: `MetagraphRepository.persist(mg)` iterates `mg.xrefs` and writes via `XRefRepository.persist` per XRef; idempotent (MERGE).
+        * `test_state_file_v4.py` — RR-7: `_v3_to_v4` migration adds `xrefs: []`; idempotent re-migration; `CURRENT_VERSION == 4`.
+        * `test_state_file_xrefs_round_trip.py` (`@pytest.mark.integration`) — RR-8 + RR-18: state-file with `xrefs[]` → `sync --metagraph M` → DB; `load --to-json` → state-file with `xrefs[]` matches input.
+        * `test_state_file_v4_audit.py` — RR-12: confirm no Phase 02-08 test asserts `METAGRAPH_STATE_VERSION == 3` or `_state_version == 3` literal (post-bump regression guard).
+        * `test_cli_xref_list_unit.py` — PB-5 + RR-5: verb registered; filters accepted; exit codes 0/1/2.
+        * `test_cli_xref_list_integration.py` (`@pytest.mark.integration`) — End-to-end: persist XRefs → `mindsos persistence xref-list --metagraph M` → Rich table output (columns); `--json` opt-in machine output; filter combinations (source-id; target-metagraph; target-id; ref-type; multi-filter AND).
+        * `test_cli_load_metagraph_summary_10line.py` — M17: `load --metagraph M` 10-line shape with `XRefs: N` insertion between `IntergraphHyperEdges` and `ElementInstances`.
+        * `test_cli_sync_metagraph_dependent_state_patch.py` (`@pytest.mark.integration`) — M11: `_metagraph_has_dependent_state` query patched to `source_metagraph_id`; seeded XRef row triggers `--replace` refusal with operator guidance.
+        * `test_cross_metagraph_fixture.py` — RR-13: `make_source_and_target_metagraphs` helper produces two distinct Metagraph instances with disjoint identity.
+        * `test_metagraph_equality_xref.py` — PB-3 + RR-4: `assert_metagraphs_equal` extension for XRefs (id-set + field-by-field); `assert_xref_contents_equal` content-tuple comparison.
+        * `test_xref_integrity_error.py` — RR-3: `XRefIntegrityError` is a `PersistenceError` subclass; importable from `mindsos_core.exceptions`.
+        * `test_indexes_phase09.py` (`@pytest.mark.integration`) — M15: 4 new XRef indexes created at bootstrap; FalkorDB v4.18.3 substring-check (B-07-T4 pattern); idempotent re-bootstrap.
+        * `test_xref_loader_clear_first.py` — PB-9: `XRefLoader.load_into(mg)` clears `mg.xrefs` + inverse indexes + unregisters IDs; no IdentityRegistry collision on re-fire.
+        * `test_metagraph_xref_inverse_indexes.py` — In-memory inverse-index correctness: `add_xref` populates; `remove_xref` cleans; `iter_xrefs` uses indexes (assert via call recording).
+        * `test_doctor_phase09.py` — Manifest `[mindsos] phase = "09"`; 3-package version-string parity at `0.0.0+phase09`; image-tag regex parity at `phase09`.
+        * **Slow tier (`@pytest.mark.slow`):**
+            * `test_xref_migration_1k.py` — RPB-6: 1K-XRef migration stress; assert `created == 1000` + flag set + properties removed.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 09 --notes-file notes-phase-09.md`
+    (Init: `--init-notes 09`. Manifest stores `[mindsos] phase = "09"`. **Timeout 900s** carried from Phase 07 M12.)
+    **Pre-build recipe:** `docker compose --profile test build mindsos-test` BEFORE `mindsos confirm-phase` per `feedback_confirm_phase_timeout.md`.
+
+  **Pass criterion:**
+
+    - Tester can `mindsos persistence xref-list --metagraph M` and see Rich table of XRefs in M with truncated IDs (RR-6 columns); `--json` opt-in machine output; filter flags compose AND.
+    - Tester can `mg.add_xref(...)` programmatically (via Python in `docker compose run --rm --entrypoint /bin/bash mindsos`) and observe XRef in DB via direct Cypher; WAL `:WALEntry {kind: "xref_add"}` row written + committed.
+    - Tester can simulate crash (kill driver before commit) and observe `wal.recover()` replays the partial XRef on next load.
+    - Tester can run programmatic migration on a legacy-fixture metagraph (`ref:global_lexicon` property on a node) and observe XRef created + property removed + `xref:migrated_at` flag set.
+    - Tester can `mindsos persistence load --metagraph M` and see 10-line summary with `XRefs: N` line (M17 breaking change).
+    - Tester can `mindsos persistence sync --metagraph M --replace` against a metagraph with XRef rows and observe **refusal** with operator guidance per M11 + RPB-4 C carry.
+    - Tester can `mindsos persistence sync` a v=4 state file with `xrefs[]` array and observe XRefs persisted to DB + reloadable round-trip.
+    - Tester can `mindsos persistence load --metagraph M --to-json` and observe `~/.mindsos/metagraph-<name>.fromdb.json` v=4 with `xrefs[]` matching DB.
+    - `mindsos doctor --self-test` exits 0; 3-package version-string parity at `0.0.0+phase09`; image-tag parity to Phase 09; index parity reports 18 expected labels (B-07-T4 substring check).
+    - All Phase 02 + 03 + 04 + 04-v2 + 05a + 05b + 05c + 05d + 06 + 07 + 08 + 09 tests pass cumulatively in-container.
+    - **Cumulative tests pass: ≥ Phase 08 baseline (1374 + 2 skipped) + Phase 09 additions; tester records actual count in `PHASE_09_CONFIRMED.md`.** No projection per M13.
+
+  **Risks / known issues to watch:**
+
+    - **`target_stale` + `deprecated_at` ship as inert fields with no setters** (M3). Phase 10 ships the setters. Field shape may need amendment if P10 design surfaces require it.
+    - **WAL is now actively replaying** — Phase 08 shipped `recover()` as silent no-op (no replayers); Phase 09 = first phase where `recover()` does real work. Crash scenarios that worked in Phase 08 (silent no-op) now trigger partial-XRef replay. Document loudly in `docs/dev/internals/core.md`.
+    - **Migration is programmatic-only** (M5). Tester cannot run migration via CLI; Python session required. Server first-start hook (P18+) is the production trigger.
+    - **`add_xref` accepts duplicates by default** (PB-6). Caller dedups via `iter_xrefs` if needed. Migration handles dedup internally per v3 baseline.
+    - **State-file v=3 → v=4 bump** carries audit cost: grep ALL `tests/` for `_state_version == 3` + `METAGRAPH_STATE_VERSION == 3`. Phase 04 test_state.py + Phase 05a/b/c/d test files all checked at Step 0.
+    - **`:XREF_OF` cascade is forward-only** (RPB-3). Reverse-dangling XRefs (target metagraph removed) become orphans; Phase 10 handles cleanup via `target_stale` setter.
+    - **`xref-list` table truncates IDs to first 8 chars** (RR-6). Full IDs available via `--json` opt-in.
+    - **`MetagraphRepository.persist` writes ALL XRefs on every call** (RR-17). For metagraphs with many XRefs already persisted via programmatic `add_xref`, this is redundant (MERGE idempotent). Acceptable for sync-from-state-file workflow.
+    - **ADR-0142 stays Proposed** (M1). P09 ships only L1 commitment (migration job). L2 fallback + Server hook deferred. ADR-0142 acceptance pending P14 + P18+.
+    - **WAL replayer global state** — `register_replayer` is module-level singleton in Phase 07 `wal.py`. Tests use `clear_replayers()` between cases to avoid pollution.
+    - **Cross-metagraph test setup** requires two `:Metagraph` anchors in FalkorDB per integration test. Function-scoped fixture per RR-13 ensures cleanup.
+    - **Phase 08 `_metagraph_has_dependent_state` patch** changes Phase 08 behavior (M11). No Phase 08 tests assert literal query string; defensive try/except handles label-not-found in pre-P09 substrate; behavior preserved for pre-P09 metagraphs.
+
+  **Rollback hazards (documented; `--force` reset deferred to Phase 11):**
+
+    1. FalkorDB data persists in `.mindsos/falkordb-data/` after rollback (carried from Phase 07/08). State-file v=4 written by Phase 09 cannot be re-read by Phase 08 tools (`CURRENT_VERSION=3` rejects v=4 per existing migration pattern).
+    2. New `:XRef` rows + `:XREF_OF` edges persist in DB after rollback; Phase 08 substrate ignores them (no consumer).
+    3. New WAL replayers register globally on import; rollback to Phase 08 removes the import → `register_replayer` calls disappear; uncommitted `xref_*` WAL entries become unreplayable (silent no-op per Phase 08 RPB-3 C).
+    4. New `XRefIntegrityError` class survives rollback if downstream code imports it; on Phase 08 checkout, imports fail with `ImportError`. No P08 consumer.
+    5. New observer subscription via `attach_xref_loader(mg)`; rollback removes helper but in-memory observers may dangle. Tester convention: re-instantiate `Metagraph` on rollback.
+    6. New CLI verb `xref-list` survives rollback as no-op or `KeyError` on subcommand registry; harmless.
+    7. 4 new indexes survive rollback; Phase 08 bootstrap re-runs idempotently (existing index `already indexed` catch); no harm.
+    **Recovery recipe (Mac):** `docker compose down -v` + `rm -rf .mindsos/falkordb-data/` + `git checkout phase-08-confirmed` + `pip install --user -e . --force-reinstall --no-deps --break-system-packages` + `docker compose build`. Lockfile re-run NOT needed; no new pinned deps in Phase 09.
+
+  **Doc sections this phase confirms:**
+
+    - `docs/concepts/references.md` — **REWRITE**. Hybrid model per ADR-0128; intra-metagraph `ref:<role>` strings retained; cross-metagraph `:XRef` rows + indexed lookup; legacy `ref:global_*` deprecation + migration recipe. `last_confirmed_phase: 09`.
+    - `docs/api/core/xref.md` — **NEW**. Full API: dataclass + Metagraph methods + Repository + Loader + `attach_xref_loader` + migration callable + `XRefIntegrityError`. `last_confirmed_phase: 09`.
+    - `docs/dev/internals/core.md` — **AMEND**. NEW "XRef" section under reconstruction; observer subscription pattern; WAL replayer registration via per-kind module ownership; state-file v=4. `last_confirmed_phase: 09`.
+    - `docs/changelog/CHANGELOG.md` — Phase 09 entry appended.
+    - **ADR-0128** Proposed → **Accepted** (M0 inline flip; §Revisions section with 5 amendments per RR-9).
+    - **ADR-0130** Proposed → **Accepted** (M7 inline flip; closes §7 Q4).
+    - **ADR-0142** stays Proposed (M1); acceptance-criteria amended with 3-commitment partition (L1 migration done; L2 fallback + Server hook deferred).
+    - `mkdocs.yml` nav: adds entry for `docs/api/core/xref.md`; amends entries for `docs/concepts/references.md` + `docs/dev/internals/core.md`.
+
+  **Breaking changes from Phase 08:**
+
+    - **NEW `mindsos persistence xref-list` CLI verb** with 4 filter flags + `--json`.
+    - **`load --metagraph M` summary extended 9 → 10 lines** with `XRefs: N` insertion. Phase 08 tests asserting 9-line literal shape patched dynamically (B-08-T1 dynamic-read pattern carry).
+    - **`_metagraph_has_dependent_state` defensive query patched** (`metagraph_id` → `source_metagraph_id`). Phase 09 substrate populates rows; Phase 08 substrate had no `:XRef` rows so behavior preserved pre-P09.
+    - **State-file v=3 → v=4 bump.** Phase 08 state-files without `xrefs` field auto-migrate via `_v3_to_v4(state) → state["xrefs"] = []`. Phase 09 state-files unreadable by Phase 08 tools (`CURRENT_VERSION=3` rejects).
+    - **NEW exception class** `XRefIntegrityError(PersistenceError)`. Downstream code catching `PersistenceError` continues to work.
+    - **NEW Metagraph public API** `add_xref` / `iter_xrefs` / `remove_xref` / `xrefs` dict. Existing consumers unaffected.
+    - **NEW `:XRef` label + `:XREF_OF` rel** in FalkorDB. Phase 08 5-bucket scanner (`verify_invariants`) extends naturally; XRef rows surface as orphaned `:Node` candidates without metagraph match (no — `:XRef` is distinct label).
+    - **WAL `recover()` now does real work** when L1 XRef replayers registered. Phase 08's silent-no-op behavior replaced by actual replay for `xref_add` / `xref_remove` kinds.
+    - **`MetagraphRepository.persist(mg)` extends to iterate `mg.xrefs`** (RR-17). Existing callers see additional DB writes per persist; MERGE idempotency means no data corruption.
+    - **`falkordb` Python driver: no relock needed** — Phase 07 already pinned; Phase 09 adds no deps.
+
+  **Final amendments (2026-05-14 — locked across 3 design rounds; 53 active picks consolidated in `PHASE_09_DESIGN_LOG.md` lock table):**
+
+    1. **M0** — Flip ADR-0128 → Accepted with §Revisions log (5 amendments per RR-9).
+    2. **M1** — ADR-0142 stays Proposed; L1 commitment only in P09.
+    3. **M2** — Anchor edge `:XREF_OF` (to Metagraph anchor).
+    4. **M3** — Keep `target_stale` + `deprecated_at` inert (v3 verbatim).
+    5. **M4** — `target_metagraph` kwarg on `add_xref`; `XRefIntegrityError` class.
+    6. **M5** — Programmatic-only migration callable.
+    7. **M6** — Read-only `xref-list` CLI verb only.
+    8. **M7** — Flip ADR-0130 → Accepted (closes §7 Q4).
+    9. **M8** — ADR-0132 stays Proposed.
+    10. **M9** — Migration flag key = `xref:migrated_at`.
+    11. **M10** — Metagraph state-file v=3 → v=4 (add `xrefs[]`).
+    12. **M11** — Patch Phase 08 dependent-state check.
+    13. **M12** — 3-round target.
+    14. **M13** — Test budget uncapped (user override carry).
+    15. **M14** — 4 doc-footprint items.
+    16. **M15** — 4 new `:XRef` indexes (bootstrap 14 → 18).
+    17. **M16** — Full WAL integration.
+    18. **M17** — 10-line summary (additive breaking change).
+    19. **M18** — XRefLoader subscribes via `attach_xref_loader(mg)`.
+    20. **PB-1..9** — Round-1 strategic (slim-port boundary, filter semantics, walker shape, migration signature, CLI signature, dedup policy, refresh behavior, replayer body, collision-safety).
+    21. **RPB-1..8** — Round-2 cross-cutting (WAL replay ordering, migration WAL interaction, cascade scope, migration trigger, compound-index trust, fixture scale, integration density, ADR commit chunking).
+    22. **RR-1..18** — Round-3 details (WAL payload shape, replayer registration site, exception parent, walker extension, verb signature, output format, state-file migration body, JSON shape, ADR §Revisions, sentinel paths, conftest, migration chain, fixture, help text, mkdocs nav, per-kind replayer ownership, MetagraphRepository extension, deserializer direct-assignment).
+    23. **Step 0 audit performed 2026-05-14** — Phase 08 squash-merge on main + tag confirmed; v3 baseline XRef files present at project-root (~296 LoC); ADR statuses surfaced; cutover sizing 0/1/yes → single-phase no-split; ADR-0142 layer-mismatch flagged.
+    24. **Cross-package version-string parity** (Phase 06 P62 A): bumps `mindsos_cli` + `mindsos_core` + `mindsos_instances` all to `0.0.0+phase09`.
+    25. **Carry-forward closure** — §7 Q4 (ADR-0130 property bag) closes via M7 inline flip.
+    26. **Recipe pre-build step** `docker compose --profile test build mindsos-test` BEFORE `mindsos confirm-phase` per `feedback_confirm_phase_timeout.md`.
+    27. **ADR file edits in 09** — chunk-N commit at project-root (RPB-8); covers ADR-0128 flip + 5 amendments + §Revisions, ADR-0130 flip, ADR-0142 acceptance-criteria notes. Phase 07 chunk-7 + Phase 08 M3 A precedent.
+    28. **`mindsos persistence xref-list` verb naming locked** — no bikeshedding in implementation chat. Not `xref list`, not `list-xrefs`, not `xrefs`.
+    29. **WAL replayer registration pattern locked at RR-16** (per-kind module ownership + central wrapper); Phase 10/11 extend the wrapper as new replayer kinds ship.
+    30. **No state-file deserializer-bypass path** for XRefs — RR-18 direct assignment + manual inverse-index rebuild is the only deserialization entry point.
 
 ### Phase 10 — L1 Snapshot + soft-delete + RemovalImpact
 
