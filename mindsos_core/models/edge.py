@@ -4,10 +4,13 @@ An ``Edge`` connects two ``Node`` objects with a relationship type and an
 optional label. A ``HyperEdge`` connects any non-empty set of nodes with
 a relationship type (Phase 04-v2 — ADR-0017 / MC-2) and an optional label.
 
-Phase 03 stripped the soft-delete fields (``deprecated_at`` /
-``disputed_at``, ADR-0133) — those land in Phase 10 alongside the
-snapshot / RemovalImpact machinery. The ``datetime`` import drops
-accordingly.
+**Phase 10 — ADR-0133 soft-delete fields land.** ``deprecated_at`` and
+``disputed_at`` (both ``datetime | None`` with default ``None``) join
+``Edge`` and ``HyperEdge``. Setter quartet on ``Graph`` (Phase 10 M6)
+mutates these via the ``_resolve_at`` helper. Iterators on ``Graph``
+(also Phase 10 per P82 — `Graph.iter_edges` / `iter_hyperedges` /
+`get_edges_for_node` ship for the first time) filter by
+``include_deprecated=False`` default.
 
 Phase 04-v2 adds ``HyperEdge.type_name: str`` (required) — cypher
 rel-type validation per ADR-0021 in ``__post_init__``. Legacy v=1/v=2
@@ -21,6 +24,7 @@ update-hyperedge-type`` CLI.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Dict, Optional, Set
 
 from ..cypher.identifiers import validate_edge_type_identifier
@@ -34,6 +38,11 @@ class Edge:
     """A directed, typed relationship between two nodes.
 
     Phase 07 — ``_version: int = 1`` field added (ADR-0127 OCC).
+
+    Phase 10 — ``deprecated_at`` / ``disputed_at`` (ADR-0133 soft-delete).
+    Both default ``None`` (= active / not disputed). Mutated via
+    ``Graph.deprecate_edge`` / ``undeprecate_edge`` / ``dispute_edge`` /
+    ``undispute_edge`` quartet.
     """
 
     source: Node
@@ -43,6 +52,8 @@ class Edge:
     edge_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
     _version: int = 1
+    deprecated_at: Optional[datetime] = None
+    disputed_at: Optional[datetime] = None
 
     def __hash__(self) -> int:
         return hash(self.edge_id)
@@ -81,6 +92,12 @@ class HyperEdge:
     edge_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
     _version: int = 1  # Phase 07 — ADR-0127 OCC.
+    # Phase 10 — ADR-0133 soft-delete fields. Both default ``None`` (active /
+    # not disputed). Mutated via ``Graph.deprecate_hyperedge`` /
+    # ``undeprecate_hyperedge`` / ``dispute_hyperedge`` / ``undispute_hyperedge``
+    # quartet (M6 — fixes SD1 v3-baseline HyperEdge no-API gap).
+    deprecated_at: Optional[datetime] = None
+    disputed_at: Optional[datetime] = None
 
     def __post_init__(self) -> None:
         if not self.nodes:

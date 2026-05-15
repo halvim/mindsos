@@ -27,11 +27,18 @@ Phase 05a slim-port deferral list (kept for reference; ports phase-by-phase):
 
 * ``element_instances`` / ``composite_instances`` + ``instantiate_*`` /
   ``compose`` (ADR-0024 / ADR-0025) — Phase 06 (``mindsos_instances`` package).
-* Soft-delete fields on ``MetaEdge`` / ``MetaHyperEdge`` / ``IntergraphEdge``
-  (ADR-0133) — Phase 10 (uniformly across all 4 edge variants per
-  SOFT_DELETE_AUDIT_NOTE).
-* ``RemovalImpact`` return + ``force=True`` flag + ``cascade=False`` semantics
-  on ``remove_graph`` (ADR-0135) — Phase 10.
+* Soft-delete fields on ``MetaEdge`` / ``MetaHyperEdge`` (ADR-0133) —
+  **Phase 10 (landed).** Symmetric with Phase 10's ``Edge`` /
+  ``HyperEdge`` field additions per M5. ``IntergraphEdge`` /
+  ``IntergraphHyperEdge`` are **out of scope** for Phase 10 M5; revisit
+  in a later phase if a consumer needs intergraph soft-delete (open
+  item flagged as P83).
+* ``RemovalImpact`` return + ``force=False`` blocked-raise + ``cascade``
+  kwarg (default ``True``) on ``remove_graph`` (ADR-0135) — **Phase 10
+  (landing this row).** Signature: ``remove_graph(graph_id, *,
+  cascade=True, force=False) -> RemovalImpact``; raises
+  ``RemoveGraphBlockedError(blocked_reason=…)`` per P75 unified-exception
+  contract.
 * ``CompositionalMetaEdge`` (ADR-0117) — DROPPED entirely (N3-D + P3 lock;
   ADR-0117 Withdrawn in 05a). Compositional concept moves to a flag on
   intergraph primitives (05b ships ``IntergraphEdge.compositional``;
@@ -91,6 +98,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import (
     Any,
     Callable,
@@ -123,6 +131,7 @@ from ..exceptions import (
     UnknownTypeError,
     XRefIntegrityError,
 )
+from ..persistence.soft_delete import SoftDeleteKind, _resolve_at
 from ..schema.validation import validate_user_properties
 from .graph import Graph
 from .identity import IdentityRegistry, IdStrategy, UUID4Strategy, generate_uuid
@@ -166,6 +175,13 @@ class MetaEdge:
     edge_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
     _version: int = 1  # Phase 07 — ADR-0127 OCC.
+    # Phase 10 — ADR-0133 soft-delete fields (M5). Both default ``None``
+    # (active / not disputed). Mutated via ``Metagraph.deprecate_metaedge``
+    # / ``undeprecate_metaedge`` / ``dispute_metaedge`` /
+    # ``undispute_metaedge`` quartet (M6 — fixes SD2 v3 API inconsistency
+    # + SD3 missing dispute path).
+    deprecated_at: Optional[datetime] = None
+    disputed_at: Optional[datetime] = None
 
     def __post_init__(self) -> None:
         # P9 — cypher rel-type regex enforced at dataclass boundary so direct
@@ -211,6 +227,9 @@ class MetaHyperEdge:
     edge_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
     _version: int = 1  # Phase 07 — ADR-0127 OCC.
+    # Phase 10 — ADR-0133 soft-delete fields (M5). Symmetric with MetaEdge.
+    deprecated_at: Optional[datetime] = None
+    disputed_at: Optional[datetime] = None
 
     def __post_init__(self) -> None:
         # P15 — minimum 2 members; 1-member n-ary is degenerate
@@ -241,6 +260,52 @@ class MetaHyperEdge:
             f"graphs=[{', '.join(self.graph_ids)}], "
             f"id={self.edge_id[:8]})"
         )
+
+
+# ── RemovalImpact (Phase 10 — ADR-0135) ─────────────────────────────────────
+
+
+@dataclass
+class RemovalImpact:
+    """Report of cross-graph references that point into a graph being removed.
+
+    Returned by :meth:`Metagraph.remove_graph` (ADR-0135). Two reference
+    categories surface; the cascade-gate path (incident MetaEdges /
+    MetaHyperEdges + ``cascade=False``) raises with an "empty" impact
+    (both ref lists empty) since the cascade gate is checked before the
+    impact-compute pass.
+
+    Phase 10 M4 — v3 baseline slim-port shape. 4 fields:
+
+    * ``incoming_xrefs`` — XRefs whose ``target_id`` is a node id inside
+      the graph being removed. Indexed lookup via
+      :attr:`Metagraph._xrefs_by_target` (Phase 09 substrate; PB-5a
+      "in-memory only"). On ``force=True``, each gets stamped
+      ``target_stale=True`` before the graph is removed.
+    * ``incoming_ref_properties`` — ``(source_node_id, property_key)``
+      pairs for ``ref:<role>`` property strings in *other* graphs in the
+      metagraph whose value matches a node id inside the graph being
+      removed. O(N) over other graphs; documented as more expensive than
+      XRef lookup (ADR-0135 rationale — exactly the cost difference
+      that motivated Phase 09's XRef primitive). On ``force=True``,
+      property strings are LEFT DANGLING — caller responsible for
+      cleanup per ADR-0135 §Decision step 4.
+    * ``proceeded`` — ``True`` when removal actually completed,
+      ``False`` when blocked (raised path).
+    * ``blocked_reason`` — set when ``proceeded=False``; mirrors the
+      enum value on the raised :class:`mindsos_core.exceptions.RemoveGraphBlockedError`.
+
+    Per Phase 10 PA1 override of ADR-0135 §Decision step 2 (return-only
+    text): :meth:`Metagraph.remove_graph` raises
+    :class:`mindsos_core.exceptions.RemoveGraphBlockedError` carrying
+    the impact rather than returning a ``proceeded=False`` impact. The
+    field shape is retained for the ``proceeded=True`` return path.
+    """
+
+    incoming_xrefs: List[XRef] = field(default_factory=list)
+    incoming_ref_properties: List[Tuple[str, str]] = field(default_factory=list)
+    proceeded: bool = False
+    blocked_reason: Optional[str] = None
 
 
 # ── Metagraph ───────────────────────────────────────────────────────────────
@@ -373,6 +438,30 @@ class Metagraph:
         # WAL+DB write happens immediately and the entry is NOT marked
         # dirty (avoiding redundant MERGE on later persist).
         self._xrefs_dirty: Set[str] = set()
+        # Phase 10 M17b + RPB-4 + P72 — soft-delete dirty-tracking. Same
+        # M17b shape as Phase 09 ``_xrefs_dirty``: when
+        # :attr:`_persist_client` is set, the 12 Metagraph setter methods
+        # (M6 — 8 meta + 4 xref) inline-write WAL+DB; otherwise they mark
+        # dirty here and the next :meth:`MetagraphRepository.persist`
+        # drains in fixed order (RPB-5 + RR-17). Per P72 override of
+        # RPB-4 string-keyed shape, keys are :class:`SoftDeleteKind`
+        # enum values (typo-proof at setter and drain sites).
+        #
+        # Per P86 — Graph-side EDGE + HYPEREDGE dirty buckets live on
+        # ``Graph._soft_delete_dirty`` (the 8 Graph setters write there);
+        # this Metagraph-level dict carries the meta/xref kinds.
+        # Persist drain walks BOTH (Step 12).
+        #
+        # Declared in Step 5 per P79 ordering fix: snapshot allow-list
+        # (Step 6) references this field; setter Step 7 just writes to
+        # an already-declared field.
+        self._soft_delete_dirty: Dict[SoftDeleteKind, Set[str]] = {
+            SoftDeleteKind.EDGE: set(),
+            SoftDeleteKind.HYPEREDGE: set(),
+            SoftDeleteKind.METAEDGE: set(),
+            SoftDeleteKind.METAHYPEREDGE: set(),
+            SoftDeleteKind.XREF: set(),
+        }
         # Phase 08 transient: set by ``MetagraphLoader.load`` (line 226)
         # and ``.refresh`` (line 324) before firing after-load
         # observers. Phase 09 ``add_xref`` reads it to decide whether to
@@ -2089,6 +2178,175 @@ class Metagraph:
         self.schema = None
         self.schema_name = None
         return previous
+
+    # ── soft-delete setters (Phase 10 — M6 Metagraph quartet + XRef quartet PX2) ──
+    #
+    # 12 setters total at Metagraph scope:
+    #   * 4 MetaEdge quartet (deprecate/undeprecate/dispute/undispute) —
+    #     fixes SD2 v3-baseline API inconsistency + adds the missing
+    #     dispute path per SD3.
+    #   * 4 MetaHyperEdge quartet — same; SD2+SD3 fix.
+    #   * 4 XRef quartet (PX2): mark_xref_stale / unmark_xref_stale /
+    #     deprecate_xref / undeprecate_xref. Phase 09 P53 reversal supplies
+    #     ``target_stale`` (bool) + ``deprecated_at`` (datetime|None)
+    #     fields. ``mark_xref_stale`` is also called by
+    #     ``remove_graph(force=True)`` per ADR-0135 to stamp incoming XRefs.
+    #
+    # All setters:
+    #   1. Validate the element exists (raises IdentityError if not).
+    #   2. Mutate field via ``_resolve_at`` (PB-2).
+    #   3. Mark ``_soft_delete_dirty[<kind>]``.
+    #   4. Return the mutated element (PB-10).
+    #
+    # Inline-WAL path (M17b "when ``_persist_client`` set") is wired in
+    # Step 12 (Metagraph repository drain extension); Step 7 ships the
+    # dirty-tracking path only.
+
+    # ── MetaEdge quartet ─────────────────────────────────────────────────
+
+    def deprecate_metaedge(
+        self, metaedge_id: str, *, at: Optional[datetime] = None
+    ) -> MetaEdge:
+        """Stamp ``metaedge.deprecated_at`` (Phase 10 — ADR-0133; fixes SD2)."""
+        if metaedge_id not in self.metaedges:
+            raise IdentityError(f"Unknown metaedge id: {metaedge_id!r}")
+        me = self.metaedges[metaedge_id]
+        me.deprecated_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.METAEDGE].add(metaedge_id)
+        return me
+
+    def undeprecate_metaedge(self, metaedge_id: str) -> MetaEdge:
+        """Clear ``metaedge.deprecated_at`` (Phase 10)."""
+        if metaedge_id not in self.metaedges:
+            raise IdentityError(f"Unknown metaedge id: {metaedge_id!r}")
+        me = self.metaedges[metaedge_id]
+        me.deprecated_at = None
+        self._soft_delete_dirty[SoftDeleteKind.METAEDGE].add(metaedge_id)
+        return me
+
+    def dispute_metaedge(
+        self, metaedge_id: str, *, at: Optional[datetime] = None
+    ) -> MetaEdge:
+        """Stamp ``metaedge.disputed_at`` (Phase 10 — fixes SD3)."""
+        if metaedge_id not in self.metaedges:
+            raise IdentityError(f"Unknown metaedge id: {metaedge_id!r}")
+        me = self.metaedges[metaedge_id]
+        me.disputed_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.METAEDGE].add(metaedge_id)
+        return me
+
+    def undispute_metaedge(self, metaedge_id: str) -> MetaEdge:
+        """Clear ``metaedge.disputed_at`` (Phase 10)."""
+        if metaedge_id not in self.metaedges:
+            raise IdentityError(f"Unknown metaedge id: {metaedge_id!r}")
+        me = self.metaedges[metaedge_id]
+        me.disputed_at = None
+        self._soft_delete_dirty[SoftDeleteKind.METAEDGE].add(metaedge_id)
+        return me
+
+    # ── MetaHyperEdge quartet ────────────────────────────────────────────
+
+    def deprecate_metahyperedge(
+        self, metahyperedge_id: str, *, at: Optional[datetime] = None
+    ) -> MetaHyperEdge:
+        """Stamp ``metahyperedge.deprecated_at`` (Phase 10 — fixes SD2)."""
+        if metahyperedge_id not in self.metahyperedges:
+            raise IdentityError(
+                f"Unknown metahyperedge id: {metahyperedge_id!r}"
+            )
+        mhe = self.metahyperedges[metahyperedge_id]
+        mhe.deprecated_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.METAHYPEREDGE].add(metahyperedge_id)
+        return mhe
+
+    def undeprecate_metahyperedge(
+        self, metahyperedge_id: str
+    ) -> MetaHyperEdge:
+        """Clear ``metahyperedge.deprecated_at`` (Phase 10)."""
+        if metahyperedge_id not in self.metahyperedges:
+            raise IdentityError(
+                f"Unknown metahyperedge id: {metahyperedge_id!r}"
+            )
+        mhe = self.metahyperedges[metahyperedge_id]
+        mhe.deprecated_at = None
+        self._soft_delete_dirty[SoftDeleteKind.METAHYPEREDGE].add(metahyperedge_id)
+        return mhe
+
+    def dispute_metahyperedge(
+        self, metahyperedge_id: str, *, at: Optional[datetime] = None
+    ) -> MetaHyperEdge:
+        """Stamp ``metahyperedge.disputed_at`` (Phase 10 — fixes SD3)."""
+        if metahyperedge_id not in self.metahyperedges:
+            raise IdentityError(
+                f"Unknown metahyperedge id: {metahyperedge_id!r}"
+            )
+        mhe = self.metahyperedges[metahyperedge_id]
+        mhe.disputed_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.METAHYPEREDGE].add(metahyperedge_id)
+        return mhe
+
+    def undispute_metahyperedge(
+        self, metahyperedge_id: str
+    ) -> MetaHyperEdge:
+        """Clear ``metahyperedge.disputed_at`` (Phase 10)."""
+        if metahyperedge_id not in self.metahyperedges:
+            raise IdentityError(
+                f"Unknown metahyperedge id: {metahyperedge_id!r}"
+            )
+        mhe = self.metahyperedges[metahyperedge_id]
+        mhe.disputed_at = None
+        self._soft_delete_dirty[SoftDeleteKind.METAHYPEREDGE].add(metahyperedge_id)
+        return mhe
+
+    # ── XRef quartet (PX2 — Phase 09 P53 reversal consumer) ─────────────
+
+    def mark_xref_stale(self, xref_id: str) -> XRef:
+        """Stamp ``xref.target_stale = True`` (Phase 10 PX2 + ADR-0128 §a-3).
+
+        Also called by :meth:`remove_graph` (force=True) per ADR-0135 to
+        invalidate incoming XRefs whose target is being removed. Auto-firing
+        trigger on archived-target detection is deferred to Server first-start
+        hook (Phase 18+ per O1).
+        """
+        if xref_id not in self.xrefs:
+            raise IdentityError(f"Unknown xref id: {xref_id!r}")
+        xref = self.xrefs[xref_id]
+        xref.target_stale = True
+        self._soft_delete_dirty[SoftDeleteKind.XREF].add(xref_id)
+        return xref
+
+    def unmark_xref_stale(self, xref_id: str) -> XRef:
+        """Clear ``xref.target_stale`` (Phase 10 PX2)."""
+        if xref_id not in self.xrefs:
+            raise IdentityError(f"Unknown xref id: {xref_id!r}")
+        xref = self.xrefs[xref_id]
+        xref.target_stale = False
+        self._soft_delete_dirty[SoftDeleteKind.XREF].add(xref_id)
+        return xref
+
+    def deprecate_xref(
+        self, xref_id: str, *, at: Optional[datetime] = None
+    ) -> XRef:
+        """Stamp ``xref.deprecated_at`` (Phase 10 PX2 — symmetric with edge soft-delete).
+
+        No ``disputed_at`` on XRef per ADR-0128 amendment-3 (the dispute
+        path is edge-only).
+        """
+        if xref_id not in self.xrefs:
+            raise IdentityError(f"Unknown xref id: {xref_id!r}")
+        xref = self.xrefs[xref_id]
+        xref.deprecated_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.XREF].add(xref_id)
+        return xref
+
+    def undeprecate_xref(self, xref_id: str) -> XRef:
+        """Clear ``xref.deprecated_at`` (Phase 10 PX2)."""
+        if xref_id not in self.xrefs:
+            raise IdentityError(f"Unknown xref id: {xref_id!r}")
+        xref = self.xrefs[xref_id]
+        xref.deprecated_at = None
+        self._soft_delete_dirty[SoftDeleteKind.XREF].add(xref_id)
+        return xref
 
     # ── repr ────────────────────────────────────────────────────────────
 

@@ -14,10 +14,13 @@ Per the L1 redesign hybrid model:
 The class lives in Core; persistence + reconstruction follow the
 existing repository / loader pattern.
 
-**Phase 09 P53 — drop inert fields.** v3 baseline carried two fields
-with no setters (``target_stale`` + ``deprecated_at``); both ship in
-Phase 10 alongside their setters. P09 omits them so the deserialiser
-cannot smuggle stale values through state-file injection.
+**Phase 10 P53 reversal — fields restored.** v3 baseline carried
+``target_stale: bool`` and ``deprecated_at: datetime | None``; Phase 09
+P53 dropped them as inert until setters shipped. Phase 10 restores both
+alongside the XRef quartet (``mark_xref_stale`` / ``unmark_xref_stale`` /
+``deprecate_xref`` / ``undeprecate_xref`` — PX2). ``target_stale`` is
+also stamped by ``Metagraph.remove_graph(force=True)`` on every incoming
+XRef of the removed graph (ADR-0135).
 
 **Phase 09 P57 — kw_only.** Matches the Phase 05a precedent
 (``MetaEdge`` / ``MetaHyperEdge``). Eliminates positional API
@@ -27,7 +30,8 @@ fragility for future field reorders.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Dict
+from datetime import datetime
+from typing import Any, Dict, Optional
 
 from .identity import generate_uuid
 
@@ -48,6 +52,16 @@ class XRef:
             enforce the vocabulary — KL does at the write boundary.
         xref_id: UUID stable across the lifetime of the XRef.
         properties: Optional per-XRef property bag (rare; usually empty).
+        target_stale: ``True`` once the target metagraph removal/archival
+            invalidates this XRef's target id (Phase 10 P53 reversal;
+            stamped by ``Metagraph.remove_graph(force=True)`` per
+            ADR-0135, or by ``Metagraph.mark_xref_stale`` per ADR-0128
+            §Revisions amendment-3). Readers respect by filtering or
+            surfacing per consumer policy.
+        deprecated_at: ``datetime`` when the XRef itself was deprecated
+            (admin retired). ``None`` = active. Symmetric to Edge/HyperEdge
+            soft-delete (ADR-0133). No ``disputed_at`` on XRef per
+            ADR-0128 amendment-3.
     """
 
     source_metagraph_id: str
@@ -58,6 +72,9 @@ class XRef:
     ref_type: str
     xref_id: str = field(default_factory=generate_uuid)
     properties: Dict[str, Any] = field(default_factory=dict)
+    # Phase 10 P53 reversal — restored alongside the XRef quartet (PX2).
+    target_stale: bool = False
+    deprecated_at: Optional[datetime] = None
 
     def __hash__(self) -> int:
         return hash(self.xref_id)

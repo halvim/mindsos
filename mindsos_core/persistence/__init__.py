@@ -33,6 +33,7 @@ from .integrity import (
     verify_invariants_graph,
 )
 from .metagraph_repository import MetagraphRepository
+from .soft_delete import SoftDeleteKind
 from .wal import (
     WAL_ROLE,
     WALEntry,
@@ -57,6 +58,7 @@ __all__ = [
     "verify_invariants_graph",
     "GraphRepository",
     "MetagraphRepository",
+    "SoftDeleteKind",
     "WAL_ROLE",
     "WALEntry",
     "WriteAheadLog",
