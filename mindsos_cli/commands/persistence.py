@@ -715,11 +715,16 @@ def diagnose_cmd() -> None:
         _refuse_with(f"FalkorDB ping failed: {e}", exit_code=2)
 
     try:
-        # Index count: query CALL db.indexes() if available, else assume bootstrap ran.
+        # Index parity per Phase 09 B-09-T2 hotfix + B-07-T4 substring-check
+        # pattern. FalkorDB v4.18.3 groups multi-property indexes per
+        # (kind, label) pair into a single row in CALL db.indexes(). Phase 09
+        # bootstrap ships 18 logical indexes across 14 distinct (kind, label)
+        # pairs (e.g. Node has both `id` and `graph_id` indexed → 1 row;
+        # XRef has 4 indexes → 1 row). Compare row count to distinct
+        # (kind, label) pair count, not to len(DEFAULT_INDEXES).
         from mindsos_core.persistence.bootstrap import DEFAULT_INDEXES
 
-        expected = len(DEFAULT_INDEXES)
-        # Lightweight: query indexes from FalkorDB via CALL db.indexes() if supported.
+        expected = len({(kind, label) for (kind, label, _prop) in DEFAULT_INDEXES})
         try:
             ix_res = client.run_query("CALL db.indexes()")
             present = len(ix_res.rows)
