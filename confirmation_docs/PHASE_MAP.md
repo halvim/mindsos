@@ -2715,8 +2715,8 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 09 — L1 XRef (cross-metagraph refs)
 
-  **Status:** Pending (post-design — locked 2026-05-14; awaiting implementation).
-  **Branch:** phase-09
+  **Status:** **SHIPPED 2026-05-15.** Tag `phase-09-confirmed` on main (peeled `abc659f`). Squash-merge `abc659f Phase 09 — L1 XRef (cross-metagraph refs) (#16)`. Release CI green; assets published. Tester confirmation: `confirmation_docs/PHASE_09_CONFIRMED.md` + `notes-phase-09.md` + memory `project_mindsos_phase_09_implemented.md`. 13 review pushbacks (P50-P66 minus P60/P65 skipped) accepted before code; 7 in-flight hotfixes (B-09-T1..T7) closed before tag. 3 new feedback memories filed (`feedback_falkordb_compound_index_grouping.md`, `feedback_phase_baseline_literal_audit.md`, `feedback_state_file_serializer_deserializer_symmetry.md`). CASC-1 unblocks Phase 10.
+  **Branch:** phase-09 (deleted post-squash)
   **Tag on confirm:** phase-09-confirmed
   **Depends on:** 07, 08 (last in cascade per CASC-1 strict-sequential).
   **Layer(s):** L1.
@@ -2980,13 +2980,264 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
     29. **WAL replayer registration pattern locked at RR-16** (per-kind module ownership + central wrapper); Phase 10/11 extend the wrapper as new replayer kinds ship.
     30. **No state-file deserializer-bypass path** for XRefs — RR-18 direct assignment + manual inverse-index rebuild is the only deserialization entry point.
 
-### Phase 10 — L1 Snapshot + soft-delete + RemovalImpact
+### Phase 10 — L1 Snapshot + soft-delete substrate + RemovalImpact + XRef setters
 
-  **Deps:** 07, 08. **Layer:** L1. **Net-new?** Soft-delete partial (ADR-0133 properties exist; full enforcement may be NEW CODE).
-  **Features:** snapshot take + restore (in-process only per ADR-0028); deprecate / dispute element with reason; removal-impact report.
-  **Tests:** snapshot → mutate → restore; deprecated nodes still queryable but flagged; RemovalImpact correct on a 3-deep fixture.
-  **Risks:** soft-delete read-path enforcement scope is an open question (§7).
-  **Docs:** `docs/usage/core/snapshots.md`, ADRs 0027/0028/0129/0130/0133/0135.
+  **Status:** Design-locked 2026-05-15 across 6 pre-design pushback rounds + Step 0 audit + 4 design rounds (M + PB + RPB + RR). **64 active picks** (M0-M24 + PB-1..10 + RPB-1..11 + RR-1..19). Awaiting implementation chat on `phase-10` branch off `abc659f` (Phase 09 squash-merge tag `phase-09-confirmed`). Full design log: `confirmation_docs/PHASE_10_DESIGN_LOG.md`. Implementation-chat handoff: `confirmation_docs/PHASE_10_NEXT_CHAT_PROMPT.md`. Phase 10 closes Phase 09 P53 deferral (XRef `target_stale` + `deprecated_at` setters) + Phase 09 RPB-3 deferral (reverse-dangling XRef cleanup setter; auto-trigger deferred to Server first-start P18+) + ADR-0133 substrate (fields + setters; iterator/loader filter pass deferred to Phase 11 per Round-1 B2) + ADR-0135 (RemovalImpact + remove_graph signature change) + ADRs 0027/0028 slim-port (snapshot mutate-in-place + non-serialisable) + ADR-0129 scope-narrow note (snapshot docstring + module-level deprecation; lint rule deferred to L2/L3 phase) + ADR-0130 Graph-side acceptance closure (snapshot is the in-phase consumer).
+  **Branch:** phase-10 (off `abc659f`; tag `phase-09-confirmed`)
+  **Tag on confirm:** phase-10-confirmed
+  **Depends on:** 07, 08, 09 (CASC-1 strict-sequential; Phase 09 substrate load-bearing — XRef primitive + WAL replayer per-Client + ADR-0130 Metagraph-side acceptance + state-file v=4 + observer subscription pattern).
+  **Layer(s):** L1.
+  **Net-new?:** **Partial** (matches Phase 09 framing). Slim-port v3 baseline `mindsos_core/metagraph_snapshot.py` (~271 LoC; 4 strips + 2 additions per PB-1) + v3 `RemovalImpact` dataclass + `remove_graph(force, RemovalImpact return)` slim-port + soft-delete substrate (port-with-fixes addressing SOFT_DELETE_AUDIT_NOTE.md SD1+SD2+SD3 defects) + Phase 09 P53 reversal (`XRef.target_stale` + `deprecated_at` fields restored) + 8 new WAL replayer kinds (4 collapsed edge-side + 4 XRef setter) + `DeprecatedFilterPendingWarning` class + `RemoveGraphBlockedError` class + Phase 09 `xref-list` CLI patch (8 → 10 field surface). **State-file bumps:** metagraph v=4 → v=5 + graph v=4 → v=5 (both adds soft-delete fields per element kind; schema stays v=3). **NO new top-level Python package.**
+
+  **Locked decisions (4 design rounds + Step 0 audit — 2026-05-15; full ledger in `PHASE_10_DESIGN_LOG.md`):**
+
+    - **M0** — ADR status matrix: **0027** Accepted with §Revisions section (covered fields + identity-rebuild + `_xrefs_dirty` + `_soft_delete_dirty` capture); **0028** unchanged Accepted; **0129** stays Accepted (ship docstring + module-level deprecation note; no lint rule per Round-2 Q); **0130** flips Graph-side Accepted (Phase 10 acceptance; consumer = snapshot per T-rev.A); **0133** stays Proposed + §Revisions amendment-1 (substrate-only Phase 10; filter Phase 11) + amendment-2 (D1-rev: strip compositional clause; class retained per ADR-0148); **0135** flips Proposed → Accepted + §Revisions amendment-1 (drop `cascade` kwarg per PB1) + amendment-2 (raise-on-block per PA1) + amendment-3 (in-memory `_xrefs_by_target` only per PB-5a); **0128** stays Proposed (Phase 14 consumer flips) + §Revisions amendment-3 (cleanup setter exists; trigger Server-phase per O1).
+    - **M1** — Snapshot scope = slim-port v3 verbatim + 4 strips (PB-1): strip `_PIGGYBACK_ATTRS` + `_piggyback` field + 2 referencing loops + `_kl_active_graph_ids` skip-clause (PK1; closed by ADR-0130 Phase 09 acceptance). Add `_xrefs_dirty` capture/restore (RB1) + `_soft_delete_dirty` capture/restore (RPB-11). Amend `IdentityRegistry.clear()` docstring at port site (RF).
+    - **M2** — Snapshot path: `halvim/mindsos_core/metagraph_snapshot.py` (top-level; matches v3 per PT1).
+    - **M3** — Snapshot allow-list: `_metagraph_id`, `_metagraph_props`, `_graphs` (via `_GraphSnap` with `properties` field), `_metaedges`, `_metahyperedges`, `_element_instances`, `_composite_instances`, `_xrefs`, `_xrefs_dirty`, `_soft_delete_dirty`, `_identity_ids`. **Not covered:** `_persist_client` (shared by reference per V3).
+    - **M4** — `Metagraph.remove_graph(graph_id, *, force=False) -> RemovalImpact` (PB1: no `cascade` kwarg — incident MetaEdges/MetaHyperEdges always cascade-removed; PA1: raises `RemoveGraphBlockedError` on `force=False` + non-empty impact). `RemovalImpact` 4-field dataclass: `incoming_xrefs: list[XRef]`, `incoming_ref_properties: list[tuple[str, str]]`, `proceeded: bool`, `blocked_reason: str | None`. Slim-port v3.
+    - **M5** — Soft-delete field representation per ADR-0133: `deprecated_at: datetime | None = None` + `disputed_at: datetime | None = None` on `Edge`, `HyperEdge`, `MetaEdge`, `MetaHyperEdge` dataclasses. XRef restores `target_stale: bool = False` + `deprecated_at: datetime | None = None` (Phase 09 P53 reversal; no `disputed_at` on XRef per ADR-0128 amendment-3).
+    - **M6** — Setter method matrix: **20 setters** total. Graph: 8 (deprecate/undeprecate/dispute/undispute × Edge + HyperEdge — fixes SD1 HyperEdge no-API). Metagraph: 8 (deprecate/undeprecate/dispute/undispute × MetaEdge + MetaHyperEdge — fixes SD2+SD3 inconsistency + missing dispute). XRef quartet (PX2): `mark_xref_stale(xref_id)` / `unmark_xref_stale(xref_id)` / `deprecate_xref(xref_id, *, at=None)` / `undeprecate_xref(xref_id)`.
+    - **M7** — Iterator `include_deprecated` parameter **NOT shipped in Phase 10** (RA1). Iterators signature-identical to Phase 09. Phase 11 adds parameter + filter together.
+    - **M8** — **8 new WAL replayer kinds.** 4 collapsed for edge-side (`element_deprecate`, `element_undeprecate`, `element_dispute`, `element_undispute`) with payload `{element_id, element_kind, at}`. 4 XRef-specific (`xref_mark_stale`, `xref_unmark_stale`, `xref_deprecate`, `xref_undeprecate`). Wrapper `register_all_l1_replayers(client)` grows 2 → 10.
+    - **M9** — `DeprecatedFilterPendingWarning(UserWarning)` class at `mindsos_core/exceptions.py`. Each setter emits via `warnings.warn(..., DeprecatedFilterPendingWarning, stacklevel=2)`. Module-level `warnings.simplefilter('once', DeprecatedFilterPendingWarning)` in `mindsos_core/__init__.py` (fires once per process). Removed in Phase 11.
+    - **M10** — Schema reserved keys: `deprecated_at` + `disputed_at` join `RESERVED_PROPERTY_KEYS` in `mindsos_core/schema/validation.py`. `target_stale` is typed XRef dataclass field, not property-bag key — no reservation. Step 0 audit grep `tests/` for `node.properties["deprecated_at"]` etc. (expect zero per RPB-9 probe 7).
+    - **M11** — State-file bumps: **metagraph v=4 → v=5** (adds soft-delete fields to `metaedges[]` + `metahyperedges[]` + `xrefs[].target_stale` + `xrefs[].deprecated_at`) AND **graph v=4 → v=5** (adds soft-delete fields to `edges[]` + `hyperedges[]`). Schema state-file stays v=3 (immutable; Phase 05d). Single-step `_v4_to_v5(state)` per state-file kind (RPB-3 + RR-7).
+    - **M12** — CLI surface = **NONE for soft-delete or snapshot in Phase 10** (BB1 + II + CC1 + RR-6). Programmatic-only (matches Phase 09 M5 migration precedent). Phase 11 owns soft-delete CLI alongside filter pass. Phase 09 `xref-list` patched to surface 10 fields (M24 + RR-6).
+    - **M13** — `load --metagraph M` summary unchanged (G1). No new bucket (soft-delete is per-row property; snapshot in-process; RemovalImpact return-value).
+    - **M14** — Reverse-dangling XRef cleanup (Phase 09 RPB-3 deferral closure): ships `mark_xref_stale` setter only; auto-firing trigger deferred to Server first-start hook (Phase 18+ per O1). ADR-0128 §Revisions amendment-3 amends: *"cleanup means field exists for upper layers to set; firing trigger lives in Server."*
+    - **M15** — Doc footprint = **8 surfaces** (RD): 4 NEW (`docs/concepts/soft-delete.md`, `docs/api/core/soft-delete.md`, `docs/dev/internals/snapshots.md`, `docs/api/core/metagraph-snapshot.md`) + 2 AMEND (`docs/api/core/metagraph.md` remove_graph + RemovalImpact section; `docs/dev/internals/core.md` snapshot + soft-delete sections) + 1 APPEND (`docs/changelog/CHANGELOG.md`) + 4 mkdocs nav entries (RR-15).
+    - **M16** — Cypher builders: **22 new** at `mindsos_core/cypher/builders.py` (PB-4a per-method, matches Phase 09 per-XRef pattern). 16 edge-side (4 ops × Edge + HyperEdge + MetaEdge + MetaHyperEdge) + 4 XRef (`build_set_xref_target_stale`, `build_unset_xref_target_stale`, `build_set_xref_deprecated_at`, `build_unset_xref_deprecated_at`) + 2 `_compute_removal_impact` query builders (incoming-xref index probe via `(target_metagraph_id, target_id)` compound + intra-metagraph ref-property scan).
+    - **M17** — Persistence write-path = inline WAL + DB write when `_persist_client` set; else mark `_soft_delete_dirty` (M17b). `_soft_delete_dirty: Dict[str, Set[str]]` keyed by element kind (RPB-4). `MetagraphRepository.persist(mg)` drains in fixed order after Phase 09 Step 1g (RPB-5 + RR-17): edges → hyperedges → metaedges → metahyperedges → xrefs. Atomic clear at end.
+    - **M18** — Tombstone integration unchanged. Soft-delete (`deprecated_at = $now`) does NOT tombstone. `remove_graph` cascade-removal of incident MetaEdges/MetaHyperEdges still tombstones via Phase 07 per-(graph, element) path.
+    - **M19** — Test budget uncapped per `feedback_test_budget_unlimited.md`. Targeted ~70 new test files (~55-60 unit + ~12-15 integration; no slow tier per PB-8).
+    - **M20** — 4 design rounds (M + PB + RPB + RR); 64 active picks. Plus 6 pre-design pushback rounds + Step 0 audit. Addendum slot opens if late edge cases surface during implementation.
+    - **M21** — 5 sentinel-path entries (RPB-8 + RR-10 carry): `mindsos_core/metagraph_snapshot.py` + 4 new doc pages. No new top-level Python package → `feedback_new_top_level_package.md` 5-site checklist not triggered.
+    - **M22** — Cross-package version-string parity: bumps `mindsos_core` + `mindsos_cli` + `mindsos_instances` all to `0.0.0+phase10` (Phase 06 P62 A carry). `manifest.toml [mindsos] phase = "10"`. `pyproject.toml` description + version bumped. `docker-compose.yml` image tags `mindsos:phase10-prod` / `mindsos:phase10-test`.
+    - **M23** — Confirmation manifest: `mindsos confirm-phase --phase 10 --notes-file notes-phase-10.md`. Init: `--init-notes 10`. Timeout 900s (Phase 07 M12 carry). Pre-build recipe: `docker compose --profile test build mindsos-test` BEFORE `mindsos confirm-phase` per `feedback_confirm_phase_timeout.md`.
+    - **M24** — Phase 09 `xref-list` CLI patch: Rich table default surfaces `target_stale` + `deprecated_at` columns only when non-default (RR-6 carry pattern); `--json` output unconditionally extends 8 → 10 fields. Phase 09 tests asserting 8-field shape patched dynamically (B-09-T7 audit-class carry).
+    - **PB-1** — Slim-port boundary: ~280 LoC halvim (271 v3 + 2 additions − 4 strips).
+    - **PB-2** — Setter `at: datetime | None = None` keyword-only argument; helper `_resolve_at(at) -> datetime` resolves `None` → `datetime.now(timezone.utc)` (modernized from v3's deprecated `datetime.utcnow()`). WAL payload captures resolved `at`. v3 Metagraph overload-style (`at=None` clears) REJECTED at port.
+    - **PB-3** — No new observer hook for soft-delete (PB-3a). Phase 11 filter pass adds the hook IF a consumer demands.
+    - **PB-4** — Per-method cypher builders (PB-4a). 22 builders ship.
+    - **PB-5** — `_compute_removal_impact` uses in-memory `_xrefs_by_target` only (PB-5a). Cross-metagraph reverse-dangling stays upper-layer-trigger case per O1.
+    - **PB-6** — `MetagraphLoader.load` clears `_soft_delete_dirty` after reload (PB-6a). Mirrors Phase 09 P64 for `_xrefs_dirty`.
+    - **PB-7** — Snapshot ↔ MetagraphLoader.load gotcha documented in `docs/dev/internals/snapshots.md`. No code change.
+    - **PB-8** — Test fixture scale: standard ≤10 elements per type. No stress tier.
+    - **PB-9** — State-file v=5 tests assert by KEY (B-09-T7 carry).
+    - **PB-10** — All 20 setters return the mutated element dataclass (Phase 09 `add_xref -> XRef` + v3 baseline pattern).
+    - **RPB-1** — WAL replayer body bypasses public setter; uses cypher builders directly. No `DeprecatedFilterPendingWarning` fires on replay.
+    - **RPB-2** — WAL replay FIFO across all 8 new Phase 10 kinds by `created_at` (Phase 09 RPB-1 ordering carries).
+    - **RPB-3** — `_v4_to_v5(state)` body shape: explicit per-item walk; set missing soft-delete fields per item (None / False per type). Idempotent.
+    - **RPB-4** — `_soft_delete_dirty: Dict[str, Set[str]]` shape. Keys: `"edge"`, `"hyperedge"`, `"metaedge"`, `"metahyperedge"`, `"xref"`.
+    - **RPB-5** — `MetagraphRepository.persist(mg)` drain order: edges → hyperedges → metaedges → metahyperedges → xrefs.
+    - **RPB-6** — Test ratio: ~55-60 unit + ~12-15 integration = ~70 files. 3:1 ratio.
+    - **RPB-7** — Single chunk-10 ADR commit at project-root: 5 ADR file edits (0027 / 0128 / 0130 / 0133 / 0135).
+    - **RPB-8** — Sentinel-path entries: 5 new (snapshot module + 4 doc pages).
+    - **RPB-9** — Step 0 audit probe inventory: 11 probes (6 carried + 5 new from Rounds 5-6).
+    - **RPB-10** — `RemoveGraphBlockedError(CoreError)` at `mindsos_core/exceptions.py` with `.impact: RemovalImpact` attribute. Sibling pattern to Phase 09 `XRefIntegrityError`.
+    - **RPB-11** — `_soft_delete_dirty` joins snapshot allow-list (M3).
+    - **RR-1** — WAL payload shapes per kind (8 kinds): `{element_id, element_kind, at}` for collapsed kinds; `{xref_id}` for stale-toggle; `{xref_id, at}` for XRef deprecate ops. ISO ↔ datetime conversion on dispatch.
+    - **RR-2** — Setter docstrings reference Phase 11 filter pass + cross-reference `DeprecatedFilterPendingWarning`.
+    - **RR-3** — `DeprecatedFilterPendingWarning(UserWarning)` class at `mindsos_core/exceptions.py`. Module-level `warnings.simplefilter('once', ...)` in `mindsos_core/__init__.py`.
+    - **RR-4** — `tests/_shared/metagraph_equality.py` walker extension: per-id soft-delete field comparison when present. NEW sibling `assert_soft_delete_state_equal(element_a, element_b)` helper.
+    - **RR-5** — Test file structure flat at `tests/phase_10/` (~70 files).
+    - **RR-6** — Phase 09 `xref-list` patched: 10 fields in `--json`; 2 extra columns in default Rich table only when non-default.
+    - **RR-7** — Migration body locations: `mindsos_cli/migrations/metagraph.py` + `mindsos_cli/migrations/graph.py`. Each adds `_v4_to_v5` + `MIGRATIONS` append + `CURRENT_VERSION = 5`.
+    - **RR-8** — JSON shape: ISO-8601 strings for `deprecated_at` + `disputed_at`; plain bool for `target_stale`; `null` when None.
+    - **RR-9** — ADR §Revisions format: dated 2026-05-XX (ship date); ≤30 words; numbered. 7 amendments total across 4 §Revisions sections.
+    - **RR-10** — `tests/phase_10/conftest.py` re-exports `falkor_client` fixture (B-08-T2 carry).
+    - **RR-11** — Doctor parity-against-manifest assertions (B-09-T3/T6/T7 audit class).
+    - **RR-12** — State-file CURRENT_VERSION audit scope: grep `METAGRAPH_STATE_VERSION == 4` AND `GRAPH_STATE_VERSION == 4` across all `tests/`. Step 0 verified 0 hits.
+    - **RR-13** — `tests/_shared/soft_delete_fixture.py` NEW: `make_metagraph_with_soft_delete()` integration fixture.
+    - **RR-14** — Typer help-text auto-generation from docstring (Phase 09 RR-14 carry).
+    - **RR-15** — `mkdocs.yml` nav adds 4 entries.
+    - **RR-16** — Per-kind replayer registration: NEW `mindsos_core/persistence/soft_delete.py` containing only `register_soft_delete_replayers(client)` function (RR-16a; no class per PR1). XRef setter replayers extend existing `mindsos_core/persistence/xref_repository.py::register_xref_replayers(client)` (4 → 8 kinds). Wrapper `register_all_l1_replayers(client)` composes both.
+    - **RR-17** — `MetagraphRepository.persist(mg)` drain extends after Phase 09 Step 1g `mg._xrefs_dirty`. Per dirty element fires per-kind cypher builder + WAL entry.
+    - **RR-18** — State-file deserializer extension: read new soft-delete fields with ISO → datetime conversion. Bypasses setter methods. `_soft_delete_dirty` cleared after rebuild (P64 mirror).
+    - **RR-19** — State-file serializer extension: write new soft-delete fields with datetime → ISO conversion. Pair with RR-18 per `feedback_state_file_serializer_deserializer_symmetry.md`.
+
+  **Features in scope (capability-level — locked):**
+
+    - **`MetagraphSnapshot.of(mg)` + `restore_into(mg)`** at `mindsos_core/metagraph_snapshot.py` (slim-port from v3; ~280 LoC). Per-attribute deep-copy + identity-preserving restore via `mg.identity.clear()` + `register()`. Covered fields per M3 allow-list. `_persist_client` NOT covered (shared by reference).
+    - **`Metagraph.remove_graph(graph_id, *, force=False) -> RemovalImpact`** signature change (Phase 05a precedent). Raises `RemoveGraphBlockedError` on `force=False` + non-empty impact. Cascade-removes incident MetaEdges/MetaHyperEdges always (no `cascade` kwarg per PB1). Stamps `target_stale=True` on incoming XRefs on `force=True`.
+    - **`RemovalImpact` dataclass** at `mindsos_core/models/metagraph.py` (v3 slim-port; 4 fields).
+    - **`RemoveGraphBlockedError(CoreError)`** at `mindsos_core/exceptions.py` with `.impact` attribute.
+    - **Soft-delete fields:** `deprecated_at` + `disputed_at` on `Edge`, `HyperEdge`, `MetaEdge`, `MetaHyperEdge`. `target_stale` + `deprecated_at` restored on `XRef` (Phase 09 P53 reversal).
+    - **20 setter methods** (M6 matrix): Graph quartet × Edge + HyperEdge (8); Metagraph quartet × MetaEdge + MetaHyperEdge (8); XRef quartet (4).
+    - **`DeprecatedFilterPendingWarning(UserWarning)`** class + module-level once-per-process filter (M9).
+    - **8 new WAL replayer kinds** (M8) registered via `register_all_l1_replayers(client)` wrapper (wrapper 2 → 10).
+    - **22 new Cypher builders** at `mindsos_core/cypher/builders.py` (M16).
+    - **`_soft_delete_dirty: Dict[str, Set[str]]`** dirty-tracking dict on Metagraph (M17b + RPB-4).
+    - **State-file v=4 → v=5 bumps** for metagraph + graph state-files (M11).
+    - **Snapshot allow-list captures `_xrefs_dirty` + `_soft_delete_dirty`** (PB-1 + RPB-11).
+    - **`MetagraphLoader.load` clears `_soft_delete_dirty`** after reload (PB-6a + RR-18 P64 mirror).
+    - **Phase 09 `xref-list` CLI patch** (M24 + RR-6): 10-field `--json`; 2 extra columns in default Rich table when non-default.
+    - **Schema validation extension** (M10): `deprecated_at` + `disputed_at` join `RESERVED_PROPERTY_KEYS`.
+
+  **Modules touched (locked):**
+
+    - `mindsos_core/metagraph_snapshot.py` — **NEW**. Slim port from v3 (~271 LoC) + 4 strips + 2 additions per PB-1.
+    - `mindsos_core/models/metagraph.py` — **MODIFIED**. Adds `RemovalImpact` dataclass + `remove_graph(*, force=False) -> RemovalImpact` signature change + `_compute_removal_impact()` helper + 8 setter methods (Metagraph quartet × MetaEdge + MetaHyperEdge) + 4 XRef setters + `_soft_delete_dirty` field in `__init__`. v3 baseline overload-pattern setters REJECTED; quartet pattern adopted per M6.
+    - `mindsos_core/models/edge.py` — **MODIFIED**. Adds `deprecated_at: datetime | None = None` + `disputed_at: datetime | None = None` to `Edge` + `HyperEdge` dataclasses.
+    - `mindsos_core/models/xref.py` — **MODIFIED**. Restores `target_stale: bool = False` + `deprecated_at: datetime | None = None` fields (Phase 09 P53 reversal). 10 fields total.
+    - `mindsos_core/models/graph.py` — **MODIFIED**. Adds 8 setter methods (Graph quartet × Edge + HyperEdge — fixes SD1 HyperEdge no-API gap).
+    - `mindsos_core/persistence/soft_delete.py` — **NEW**. Single module-level `register_soft_delete_replayers(client)` function. No class (PR1 + RR-16a).
+    - `mindsos_core/persistence/xref_repository.py` — **MODIFIED**. `register_xref_replayers(client)` extends 2 → 6 kinds (adds 4 XRef setter replayers per M8).
+    - `mindsos_core/persistence/bootstrap.py` — **MODIFIED**. `register_all_l1_replayers(client)` wrapper composes `register_soft_delete_replayers(client)`. Total replayer kinds 2 → 10.
+    - `mindsos_core/persistence/metagraph_repository.py` — **MODIFIED**. `MetagraphRepository.persist(mg)` extends inline-drain of `_soft_delete_dirty` (RPB-5 + RR-17).
+    - `mindsos_core/reconstruction/metagraph_loader.py` — **MODIFIED**. `MetagraphLoader.load` clears `_soft_delete_dirty` after reload (PB-6a + RR-18).
+    - `mindsos_core/cypher/builders.py` — **MODIFIED**. Adds 22 new builders per M16 + PB-4a (16 edge-side + 4 XRef + 2 `_compute_removal_impact` queries).
+    - `mindsos_core/exceptions.py` — **MODIFIED**. Adds `RemoveGraphBlockedError(CoreError)` per RPB-10 + `DeprecatedFilterPendingWarning(UserWarning)` per M9 + RR-3.
+    - `mindsos_core/schema/validation.py` — **MODIFIED**. Adds `deprecated_at` + `disputed_at` to `RESERVED_PROPERTY_KEYS` per M10.
+    - `mindsos_core/__init__.py` — **MODIFIED**. `__version__ = "0.0.0+phase10"`. Adds module-level `warnings.simplefilter('once', DeprecatedFilterPendingWarning)` per M9. Exports `MetagraphSnapshot`, `RemovalImpact`, `RemoveGraphBlockedError`, `DeprecatedFilterPendingWarning`.
+    - `mindsos_cli/commands/persistence.py` — **MODIFIED**. Patches Phase 09 `xref-list` verb to surface `target_stale` + `deprecated_at` columns (when non-default) + 10-field `--json` output (M24 + RR-6).
+    - `mindsos_cli/commands/metagraph.py` — **MODIFIED**. `_metagraph_to_state` + `_state_to_metagraph` extend for v=5 soft-delete fields per RR-18 + RR-19.
+    - `mindsos_cli/commands/graph.py` — **MODIFIED**. `_graph_to_state` + `_state_to_graph` extend for v=5 soft-delete fields per RR-18 + RR-19.
+    - `mindsos_cli/migrations/metagraph.py` — **MODIFIED**. Adds `_v4_to_v5` migration function + appends to `MIGRATIONS` + bumps `CURRENT_VERSION = 5` (RR-7).
+    - `mindsos_cli/migrations/graph.py` — **MODIFIED**. Adds `_v4_to_v5` migration function + appends to `MIGRATIONS` + bumps `CURRENT_VERSION = 5` (RR-7).
+    - `mindsos_cli/manifest.toml` — `[mindsos] phase = "10"`; `version = "0.0.0+phase10"`.
+    - `mindsos_cli/__init__.py` — `__version__ = "0.0.0+phase10"`.
+    - `mindsos_instances/__init__.py` — `__version__ = "0.0.0+phase10"` (3-package parity per Phase 06 P62 A).
+    - `pyproject.toml` — version + description bumped.
+    - `docker-compose.yml` — image tags `mindsos:phase10-prod` / `mindsos:phase10-test`.
+    - `Dockerfile` — comment lines bumped Phase 09 → Phase 10; existing wildcard COPY of `mindsos_core/` covers new top-level `metagraph_snapshot.py`.
+    - `tests/_shared/sentinel_paths.py` — 5 new entries (RR-10 + RPB-8): `mindsos_core/metagraph_snapshot.py` + 4 new doc paths.
+    - `tests/_shared/metagraph_equality.py` — **MODIFIED**. Extends walker for soft-delete field comparison + adds `assert_soft_delete_state_equal` helper (RR-4).
+    - `tests/_shared/soft_delete_fixture.py` — **NEW**. `make_metagraph_with_soft_delete()` integration fixture (RR-13).
+    - `tests/phase_10/conftest.py` — **NEW**. Re-exports `falkor_client` fixture per B-08-T2 (RR-10).
+    - `tests/phase_10/test_*.py` — ~70 new files (RR-5 structure).
+    - `docs/concepts/soft-delete.md` — **NEW**. Concept page; `last_confirmed_phase: 10`.
+    - `docs/api/core/soft-delete.md` — **NEW**. Full API reference for all 20 setters; `last_confirmed_phase: 10`.
+    - `docs/dev/internals/snapshots.md` — **NEW**. Dev-internal page; `last_confirmed_phase: 10`.
+    - `docs/api/core/metagraph-snapshot.md` — **NEW**. API reference for `MetagraphSnapshot` class; `last_confirmed_phase: 10`.
+    - `docs/api/core/metagraph.md` — **AMEND**. `remove_graph` signature section + `RemovalImpact` shape + `RemoveGraphBlockedError` raise contract.
+    - `docs/dev/internals/core.md` — **AMEND**. NEW "Snapshot" section + NEW "Soft-delete substrate" section.
+    - `docs/changelog/CHANGELOG.md` — Phase 10 entry appended.
+    - `mkdocs.yml` — nav adds 4 entries per RR-15.
+    - **ADR file edits (chunk-10 commit at project-root per RPB-7):**
+        * `/Layered Intelligence/docs/decisions/adr/0027-metagraph-snapshot-restore-in-place.md` — append §Revisions section (1 amendment: covered fields + identity-rebuild + dirty sets).
+        * `/Layered Intelligence/docs/decisions/adr/0128-hybrid-xref-cross-metagraph-refs.md` — append §Revisions amendment-3 (cleanup setter exists; trigger Server-phase per O1).
+        * `/Layered Intelligence/docs/decisions/adr/0130-property-bag-on-metagraph-graph.md` — flip Graph-side §Acceptance line + Phase 10 acceptance note.
+        * `/Layered Intelligence/docs/decisions/adr/0133-soft-delete-via-deprecated-disputed-properties.md` — append §Revisions section (2 amendments: substrate-only Phase 10 + D1-rev strip-compositional with class-retained note).
+        * `/Layered Intelligence/docs/decisions/adr/0135-removal-impact-on-remove-graph.md` — flip Proposed → Accepted inline + §Revisions section (3 amendments: drop `cascade` kwarg + raise-on-block + in-memory index only).
+
+  **Persistence layout impact:**
+
+    - **FalkorDB:** no new labels or rel types. Soft-delete is property mutation on existing rows. 8 new WAL kinds registered globally. No new indexes (Phase 09's 18 indexes carry).
+    - **State-file (JSON sidecar):** metagraph v=4 → v=5 + graph v=4 → v=5 (both add soft-delete fields per element kind; schema stays v=3).
+
+  **Automated tests (location + intent — locked; uncapped per M19; targeted ~70 files per RR-5):**
+
+    - `tests/phase_10/` — projected scope per RR-5:
+        * **Snapshot tier (~8 files):** `test_snapshot_dataclass.py`, `test_snapshot_of_empty.py`, `test_snapshot_of_with_xrefs.py`, `test_snapshot_of_with_properties.py`, `test_snapshot_restore_identity_preservation.py`, `test_snapshot_restore_with_added_graph.py`, `test_snapshot_restore_with_removed_graph.py`, `test_snapshot_allow_list_coverage.py` (M3 + N1 allow-list per-field assertion).
+        * **Remove-graph tier (~8 files):** `test_remove_graph_signature.py`, `test_remove_graph_force_false_blocks.py`, `test_remove_graph_force_true_proceeds.py`, `test_remove_graph_force_true_stamps_xref_stale.py`, `test_remove_graph_cascade_metaedges.py` (PB1 always-cascade), `test_remove_graph_no_incoming_refs.py`, `test_remove_graph_blocked_error_carries_impact.py`, `test_compute_removal_impact_in_memory.py` (PB-5a `_xrefs_by_target` only).
+        * **Soft-delete tier (~20 files):** 4 setters × 5 element kinds = 20 unit tests. Each asserts: field mutation + return value (PB-10) + WAL entry written + `DeprecatedFilterPendingWarning` fires once (M9).
+        * **XRef setters tier (~6 files):** `test_xref_target_stale_setter.py`, `test_xref_unset_target_stale.py`, `test_xref_deprecate.py`, `test_xref_undeprecate.py`, `test_xref_setter_wal_replay.py` (replayer body bypasses setter per RPB-1), `test_xref_setter_in_memory_inverse_indexes.py`.
+        * **State-file v=5 tier (~6 files):** `test_state_file_metagraph_v5_migration.py` (RR-7), `test_state_file_graph_v5_migration.py`, `test_state_file_metagraph_v5_round_trip.py`, `test_state_file_graph_v5_round_trip.py`, `test_state_file_v5_audit.py` (RR-12), `test_state_file_serializer_deserializer_symmetry.py` (B-09-T4 audit-class regression guard).
+        * **WAL replay tier (~8 files):** 1 per kind × 8 kinds. Each writes begin-entry, skips commit, calls `wal.recover()`, asserts replayer body fires + DB state correct + replayer bypasses setter (no warning).
+        * **CLI patch tier (~4 files):** `test_cli_xref_list_phase10_10_field_json.py` (M24), `test_cli_xref_list_phase10_default_columns_when_non_default.py` (RR-6), `test_cli_phase09_xref_list_8_field_dynamic.py` (B-09-T7 carry regression), `test_doctor_phase10.py` (RR-11).
+        * **Shared (~10 files):** `conftest.py` (RR-10), `soft_delete_fixture.py` (RR-13), `test_remove_graph_blocked_error_class.py` (RPB-10), `test_deprecated_filter_pending_warning_class.py` (M9 + RR-3), `test_metagraph_equality_soft_delete_extension.py` (RR-4), `test_persist_drain_order.py` (RR-17), `test_metagraph_loader_clears_soft_delete_dirty.py` (PB-6a), `test_snapshot_load_gotcha.py` (PB-7), `test_register_soft_delete_replayers_module_path.py` (RR-16a), `test_resolve_at_helper.py` (PB-2).
+        * **No slow tier** (PB-8).
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 10 --notes-file notes-phase-10.md`
+    (Init: `--init-notes 10`. Manifest stores `[mindsos] phase = "10"`. **Timeout 900s** carried from Phase 07 M12.)
+    **Pre-build recipe:** `docker compose --profile test build mindsos-test` BEFORE `mindsos confirm-phase` per `feedback_confirm_phase_timeout.md`.
+
+  **Pass criterion:**
+
+    - Tester can take a snapshot via `MetagraphSnapshot.of(mg)` programmatically, mutate `mg`, call `snap.restore_into(mg)`, and observe `id(mg)` + `id(mg.identity)` preserved + state reverted.
+    - Tester can `mg.deprecate_edge(graph_id, edge_id)` programmatically and observe `edge.deprecated_at = now()` + `DeprecatedFilterPendingWarning` fires once + WAL `:WALEntry {kind: "element_deprecate"}` row written.
+    - Tester can `mg.remove_graph(graph_id, force=False)` against a graph with incoming XRefs and observe `RemoveGraphBlockedError` raised with `.impact` carrying the incoming-xref list. With `force=True`, observe graph removed + `target_stale=True` stamped on each incoming XRef + incident MetaEdges cascade-removed.
+    - Tester can simulate crash mid-setter and observe `wal.recover()` replays via cypher builder body (NOT via setter; no warning fires on replay per RPB-1).
+    - Tester can `mindsos persistence xref-list --metagraph M --json` and observe 10-field XRef output including `target_stale` + `deprecated_at`. Default Rich table shows extra columns only when fields non-default (RR-6).
+    - Tester can `mindsos persistence sync` a v=5 state file with soft-delete fields populated and observe round-trip preservation via `load --to-json`.
+    - Tester can `mindsos persistence load --metagraph M` and observe summary UNCHANGED from Phase 09 shape (G1 + M13).
+    - `mindsos doctor --self-test` exits 0; 3-package version-string parity at `0.0.0+phase10`; image-tag parity to Phase 10.
+    - All Phase 02 + 03 + 04 + 04-v2 + 05a + 05b + 05c + 05d + 06 + 07 + 08 + 09 + 10 tests pass cumulatively in-container.
+    - **Cumulative tests pass: ≥ Phase 09 baseline + Phase 10 additions (~70); tester records actual count in `PHASE_10_CONFIRMED.md`.** No projection per M19.
+
+  **Risks / known issues to watch:**
+
+    - **20-setter substrate without filter creates "looks broken" UX trap.** Setting `deprecated_at` does nothing user-visible until Phase 11 ships the filter. Defense: `DeprecatedFilterPendingWarning` fires once per process. Loud documentation in `docs/concepts/soft-delete.md`.
+    - **`include_deprecated` parameter NOT shipped in Phase 10** (RA1 + M7). Phase 11 adds parameter + filter together.
+    - **`remove_graph` signature change is breaking for Phase 05a callers** (L1). Audit at Step 0 identifies 19 callsite files in halvim; each updated in Phase 10. Caller pattern: `try: mg.remove_graph(gid) except RemoveGraphBlockedError as e: handle(e.impact)`.
+    - **`cascade` kwarg DROPPED from `remove_graph`** (PB1). Incident MetaEdges/MetaHyperEdges always cascade-removed. v3 baseline `cascade=True` default was rejected (no orphan failure mode in v1).
+    - **`_xrefs_dirty` + `_soft_delete_dirty` capture in snapshot** (RB1 + RPB-11). Pre-existing-dirty-state survives restore.
+    - **State-file v=4 → v=5 bumps carry audit cost** (RR-12). 0 hits in halvim tests at Step 0 (dynamic refs throughout). New regression test `test_state_file_v5_audit.py`.
+    - **`MetagraphRepository.persist(mg)` now has TWO XRef write paths** (RR-17 + Phase 09 RR-17): full-row from `add_xref` via `mg.xrefs` drain; targeted SET-only from XRef setters via `_soft_delete_dirty["xref"]` drain. MERGE idempotency tolerates redundancy.
+    - **Reverse-dangling XRef cleanup setter ships without auto-trigger** (M14 + O1). Server first-start hook (Phase 18+) supplies the trigger.
+    - **CompositionalImmutableError class retained but ADR-0133 clause stripped** (D1-rev). Class consumer is `IntergraphEdge.compositional` per ADR-0148. Phase 10 audit confirms class survives.
+    - **8 new WAL replayer kinds** push wrapper to 10 (M8). Phase 09 RR-16 per-Client substrate (P51 + P61 + P66) handles. Step 0 probe 8 verifies.
+    - **No CLI verbs for soft-delete or snapshot** (M12). Soft-delete CLI lands Phase 11 with filter pass; snapshot stays server-internal per ADR-0129.
+    - **ADR-0142 NOT amended** (PV1). XRef cleanup setter is ADR-0128 surface (§Revisions amendment-3).
+    - **ADR-0128 stays Proposed** (Phase 09 M1 carry; flips at Phase 14 with `MetagraphView.follow_ref` consumer).
+    - **`datetime.utcnow()` → `datetime.now(timezone.utc)` modernization at port** (PB-2). v3 baseline uses deprecated `utcnow()`.
+
+  **Rollback hazards (documented; `--force` reset deferred to Phase 11):**
+
+    1. FalkorDB data persists in `.mindsos/falkordb-data/` after rollback. Soft-delete fields written to existing rows survive rollback; Phase 09 substrate ignores them.
+    2. State-file v=5 cannot be re-read by Phase 09 tools (`CURRENT_VERSION=4` rejects v=5). Tester must `rm ~/.mindsos/*.json` before re-running Phase 09 sync.
+    3. New `:WALEntry {kind: "element_*"}` + `{kind: "xref_*"}` rows persist in DB after rollback; Phase 09 substrate's `recover()` raises `WALReplayerMissingError` per Phase 09 P62 loud-fail contract. Tester must clear WAL entries via cypher.
+    4. New exception classes (`RemoveGraphBlockedError`, `DeprecatedFilterPendingWarning`) survive rollback; imports fail on Phase 09 checkout with `ImportError`. No P09 consumer.
+    5. Snapshot module survives rollback as no-op import; no Phase 09 consumer.
+    6. ADR-0133 reserved keys survive rollback; Phase 09 `RESERVED_PROPERTY_KEYS` doesn't include them → property writes with these keys succeed in Phase 09 but fail when Phase 10 substrate validates.
+    **Recovery recipe (Mac):** `docker compose down -v` + `rm -rf .mindsos/falkordb-data/` + `rm ~/.mindsos/*.json` + `git checkout phase-09-confirmed` + `pip install --user -e . --force-reinstall --no-deps --break-system-packages` + `docker compose build`. Lockfile re-run NOT needed.
+
+  **Doc sections this phase confirms:**
+
+    - `docs/concepts/soft-delete.md` — **NEW**. `last_confirmed_phase: 10`.
+    - `docs/api/core/soft-delete.md` — **NEW**. `last_confirmed_phase: 10`.
+    - `docs/dev/internals/snapshots.md` — **NEW**. `last_confirmed_phase: 10`.
+    - `docs/api/core/metagraph-snapshot.md` — **NEW**. `last_confirmed_phase: 10`.
+    - `docs/api/core/metagraph.md` — **AMEND**. `remove_graph` signature section + `RemovalImpact` + `RemoveGraphBlockedError`.
+    - `docs/dev/internals/core.md` — **AMEND**. NEW "Snapshot" + NEW "Soft-delete substrate" sections.
+    - `docs/changelog/CHANGELOG.md` — Phase 10 entry appended.
+    - **ADR-0027** Accepted → Accepted (§Revisions amendment-1).
+    - **ADR-0128** Proposed → Proposed (§Revisions amendment-3; flips Phase 14).
+    - **ADR-0130** Accepted (Metagraph-side) → Accepted (full; Graph-side closure).
+    - **ADR-0133** Proposed → Proposed (§Revisions amendments-1 + 2; flips Phase 11 with filter pass).
+    - **ADR-0135** Proposed → **Accepted** (§Revisions amendments-1 + 2 + 3 inline).
+    - `mkdocs.yml` nav: adds 4 entries per RR-15.
+
+  **Breaking changes from Phase 09:**
+
+    - **`Metagraph.remove_graph(graph_id) -> None` → `remove_graph(graph_id, *, force=False) -> RemovalImpact`.** Signature change + new return type + new raise contract.
+    - **`cascade` kwarg DROPPED from `remove_graph`** (PB1). Callers passing `cascade=True` (v3 default) hit TypeError.
+    - **`XRef` dataclass grows 8 → 10 fields** (Phase 09 P53 reversal). `target_stale: bool = False` + `deprecated_at: datetime | None = None` restored.
+    - **State-file v=4 → v=5 (metagraph + graph).** Phase 09 v=4 sidecars auto-migrate via `_v4_to_v5` per kind. Phase 10 v=5 sidecars unreadable by Phase 09 tools.
+    - **`mindsos persistence xref-list --json` extends 8 → 10 fields** (M24 + RR-6). Phase 09 tests asserting 8-field shape patched dynamically per B-09-T7.
+    - **NEW Metagraph public API:** 8 metaedge/metahyperedge soft-delete methods + 4 XRef setters.
+    - **NEW Graph public API:** 8 edge/hyperedge soft-delete methods.
+    - **NEW exception classes** `RemoveGraphBlockedError(CoreError)` + `DeprecatedFilterPendingWarning(UserWarning)`.
+    - **NEW reserved property keys** `deprecated_at` + `disputed_at`. Property writes using these keys raise `PropertyShapeError`.
+    - **Soft-delete fields on Edge/HyperEdge/MetaEdge/MetaHyperEdge/XRef.** All default-None (or False for `target_stale`).
+    - **`MetagraphSnapshot` exported from `mindsos_core`.** New API surface.
+    - **`RemovalImpact` exported from `mindsos_core`.** New API surface.
+
+  **Final amendments (2026-05-15 — locked across 4 design rounds + 6 pre-design pushback rounds + Step 0 audit; 64 active picks consolidated in `PHASE_10_DESIGN_LOG.md` lock table):**
+
+    1. **6 pre-design pushback rounds + Step 0 audit completed before M-picks.** Rounds 1-6 surfaced 4 locked-pick overrides (K1→PA1; AA1→PB1; T1→T-rev.A; explicit V3 over N3 implicit). Step 0 audit confirmed v3 baseline material exists at `/Layered Intelligence/mindsos_core/metagraph_snapshot.py` (Round-1 #2 false claim corrected; 271 LoC slim-port source).
+    2. **5-ADR Phase 10 scope** (0027 / 0028 / 0129 / 0130 / 0133 / 0135) with ADR-0128 amendment-3 carry.
+    3. **20 setter methods** total (8 Graph + 8 Metagraph + 4 XRef quartet per PX2).
+    4. **8 new WAL replayer kinds** (4 collapsed + 4 XRef). Wrapper 2 → 10.
+    5. **22 new Cypher builders** (PB-4a per-method, matches Phase 09 per-XRef pattern).
+    6. **State-file bumps metagraph + graph v=4 → v=5.** Schema stays v=3. Two `_v4_to_v5` migration callables.
+    7. **No CLI verbs in Phase 10** for soft-delete or snapshot. Phase 09 `xref-list` patched 8 → 10 fields.
+    8. **8 doc surfaces** (4 NEW + 2 AMEND + 1 APPEND + mkdocs nav).
+    9. **No iterator filter parameter ships in Phase 10** (RA1). Phase 11 adds parameter + filter together.
+    10. **Cross-package version-string parity** at `0.0.0+phase10` (Phase 06 P62 A carry).
+    11. **Step 0 audit performed 2026-05-15** — 11 probes (6 carried + 5 new from Rounds 5-6).
+    12. **Phase 10 closes 2 Phase 09 deferrals + 1 ADR-0130 deferral:** XRef `target_stale` + `deprecated_at` setters (Phase 09 P53 reversal); reverse-dangling XRef cleanup setter (Phase 09 RPB-3; auto-trigger still Server-phase); Graph-side ADR-0130 acceptance.
+    13. **Recipe pre-build step** `docker compose --profile test build mindsos-test` BEFORE `mindsos confirm-phase` (Phase 07+ carry).
+    14. **ADR file edits in 10** — chunk-10 commit at project-root (RPB-7); covers 5 ADR edits.
+    15. **WAL replayer kind naming locked at RR-1.** 8 kinds: 4 collapsed `element_*` + 4 XRef-specific `xref_*`.
+    16. **No state-file deserializer-bypass path for soft-delete fields** — RR-18 direct assignment + manual `_soft_delete_dirty.clear()` after rebuild is the only deserialization entry point.
+    17. **`datetime.utcnow()` → `datetime.now(timezone.utc)` modernization at port** (PB-2). Single helper `_resolve_at(at)` centralizes.
+    18. **`CompositionalImmutableError` class retained** (D1-rev). Owned by `IntergraphEdge.compositional` per ADR-0148. ADR-0133 amendment-2 clarifies.
+    19. **Snapshot allow-list captures both Phase 09 `_xrefs_dirty` and Phase 10 `_soft_delete_dirty`** (RB1 + RPB-11). Pre-existing-dirty-state survives restore.
+    20. **Reverse-dangling auto-firing trigger deferred to Server first-start (Phase 18+)** per O1. Setter ships; ADR-0128 amendment-3 clarifies.
 
 ### Phase 11 — L1 Cypher builders + integrity scanner + schema migration
 
