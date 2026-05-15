@@ -510,8 +510,15 @@ def _load_metagraph_cmd(
         # a direct sibling-side population call.
         mg = load_metagraph(client, metagraph_id)
         attach_registry(mg)
-        # Run the after_load fire path now that the registry is attached
-        # — populates element_instances / composite_instances counts.
+        # B-09-T1 — wire the XRef loader BEFORE the after-load dispatch
+        # so xrefs[] populates alongside instances. Without this call,
+        # mg.xrefs stays empty even when :XRef rows exist in DB and
+        # the summary line reports xrefs=0 (Exercise 5 surfaced this).
+        from mindsos_core.reconstruction import attach_xref_loader
+        attach_xref_loader(mg)
+        # Run the after_load fire path now that BOTH the registry +
+        # the XRef loader are attached — populates element_instances /
+        # composite_instances + mg.xrefs.
         try:
             mg._persist_client = client  # type: ignore[attr-defined]
             from mindsos_core._observers import _dispatch_after_load
