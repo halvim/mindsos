@@ -221,3 +221,73 @@ class OptimisticConcurrencyExhausted(PersistenceError):
     no raise-path at L1). L0/L2 retry wrappers raise it when their
     bounded retry attempts all fail with :class:`OptimisticConcurrencyConflict`.
     """
+
+
+# Per Phase 08 R4-3 A — three new reconstruction-side exception classes.
+# Phase 08 row PB-5 B / RPB-3 C / R4-2 D drive the raise paths.
+# All inherit from ``PersistenceError`` so existing handlers continue to
+# catch the broader category; no new ``ReconstructionError`` umbrella
+# (R4-3 A — ``PersistenceError`` suffices).
+
+
+class RefreshUnsafeError(PersistenceError):
+    """``MetagraphLoader.refresh`` refused because the affected role has uncommitted in-memory mutations.
+
+    ADR-0124 §Constraint. Phase 08 ships this as a **class-only** exception
+    (per PB-5 B): no per-role mutation-flag tracking yet, so it is NOT
+    raised in Phase 08. The class is importable and inherits from
+    :class:`PersistenceError` so future-phase enforcement can switch on
+    raise-paths without callers re-catching.
+
+    .. note::
+
+       Callers using ``refresh`` after in-memory mutations LOSE those
+       mutations silently in Phase 08. Per-role mutation flag + enforcement
+       is deferred (PB-5 B; documented loud risk in
+       ``docs/usage/core/persistence.md``).
+    """
+
+
+class WALReplayerMissingError(PersistenceError):
+    """No replayer registered for a WAL entry's ``kind`` during ``recover()``.
+
+    Raised internally by :func:`mindsos_core.persistence.wal.recover` when
+    an uncommitted :WALEntry row carries a ``kind`` that has no entry in
+    the ``_REPLAYERS`` map. :func:`mindsos_core.reconstruction.load_metagraph`
+    narrow-catches this on its initial ``recover()`` call (RPB-3 C) so a
+    Phase 08 load with no registered replayers degrades to a silent no-op
+    recovery; once L0/L2 (Phase 18+) register replayers the same call
+    becomes meaningful.
+
+    Driver-level errors during ``recover()`` continue to propagate as
+    :class:`PersistenceError` per the locked narrow-catch contract.
+    """
+
+
+class RoleMismatchError(PersistenceError):
+    """``MetagraphLoader.refresh`` saw a role drift between in-memory and DB state.
+
+    Raised by :meth:`MetagraphLoader.refresh` when ``mg.graphs[gid].role``
+    in memory differs from the persisted ``:Graph.role`` for the same
+    ``graph_id`` (R4-2 D). Indicates substrate corruption — either an
+    external write race or a manual DB edit since the last persist —
+    rather than a user-recoverable error at runtime.
+
+    Carries both roles in the message so operators can decide between
+    a force-reset of the affected role and a deeper investigation.
+    """
+
+    def __init__(
+        self,
+        graph_id: str,
+        in_memory_role: str | None,
+        db_role: str | None,
+    ) -> None:
+        msg = (
+            f"Role mismatch on graph {graph_id!r}: "
+            f"in-memory role={in_memory_role!r}, DB role={db_role!r}"
+        )
+        super().__init__(msg)
+        self.graph_id = graph_id
+        self.in_memory_role = in_memory_role
+        self.db_role = db_role

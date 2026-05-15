@@ -106,4 +106,10 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # image so test_lockfile_falkordb_pin.py can verify the falkordb
     # pin syntax (P46 A).
     "requirements.in",
+    # Phase 08 (L1 Reconstruction — R4-14 A eager-add at impl time).
+    "mindsos_core/reconstruction/metagraph_loader.py",
+    "mindsos_instances/reconstruction/__init__.py",
+    "mindsos_instances/reconstruction/instance_loader.py",
+    "tests/_shared/metagraph_equality.py",
+    "tests/_shared/large_graph_factory.py",
 )

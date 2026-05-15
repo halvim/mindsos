@@ -1,0 +1,131 @@
+# Phase 08 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+L1 Reconstruction (metagraph loader + streaming + refresh)
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Cumulative tests: 1374 passed, 2 skipped in-container (+105 over Phase
+07's 1269). Two pre-existing skips (Phase 05a + 06 carry-forward).
+
+`automated_test_summary` reports `count: 0 / pytest_summary: no pytest
+summary line found` — pre-existing `_PYTEST_SUMMARY_RE` parser gap
+(Phase 05d / 06 / 07 same; not a Phase 08 regression). Canonical count
+is 1374 from a separate `docker compose --profile test run --rm
+mindsos-test pytest tests/ -q` invocation.
+
+## Hotfix ledger (8 patches; B-08-T1+T2 surfaced before integration
+tests could run; T3-T8 surfaced on first integration pass)
+
+- B-08-T1 — `tests/phase_07/test_doctor_phase07.py` hard-coded `"07"`
+  / `"0.0.0+phase07"` literals broke at Phase 08 ship. Rewrote to read
+  the manifest dynamically. Mirrors B-05d-T1 pattern per
+  `feedback_state_version_audit_scope.md`.
+- B-08-T2 — Phase 08 integration tests missed
+  `from tests._shared.falkordb_fixture import falkor_client`. Created
+  `tests/phase_08/conftest.py` that re-exports the fixture once for
+  the whole Phase 08 test directory.
+- B-08-T3 — Phase 07's `build_unwind_create_metahyperedges` +
+  `build_unwind_create_intergraph_hyperedges` never wrote `type_name`
+  to the persisted node. Phase 08 round-trip exposed this (load read
+  `None` → CypherError on rehydrate). Fix: builder SET clauses +
+  persist rows in `metagraph_repository.py` now include `type_name`.
+- B-08-T4 — Phase 07's `InstanceRepository.persist_element_instance`
+  hard-codes `source_graph_id=None` (docstring: "deferred to Phase
+  08"). Closed the deferral on the load side:
+  `_template_resolves` walks `mg.graphs` to find the container when
+  `source_graph_id` is absent.
+- B-08-T5 — `IdentityRegistry.__slots__` blocked `weakref.proxy`
+  creation (R4-7 C contract test). Added `__weakref__` to slots.
+- B-08-T6 — Test fix: `CompositeInstance.add_member` requires
+  `_registry` kwarg per Phase 06 P55 A; test omitted it.
+- B-08-T7 — Test fix: `iter_load_graph` integration test passed
+  `identity=mg.identity` (build-time registry already had every node
+  id registered) → collision on per-batch re-register. Dropped the
+  kwarg so reconstruction uses a fresh registry.
+- B-08-T8 — Test fix: 2 CLI tests caught `SystemExit` but `typer.Exit`
+  is `click.exceptions.Exit`, NOT a `SystemExit` subclass. Switched to
+  `pytest.raises(typer.Exit)` + `excinfo.value.exit_code`.
+
+## Implementation-time pushbacks (P60-P61)
+
+- P60 — `add_metaedge` / `add_metahyperedge` missed explicit-id
+  kwargs (asymmetric with Phase 05b/05c intergraph factories that
+  already shipped them). Phase 08 ships additive `edge_id` +
+  `_validate=False` on both metaedge factories. User-signed-off
+  pre-implementation.
+- P61 A — Phase 07's IntergraphHyperEdge persist wrote only
+  `:MEMBER` rels; `:ANCHOR` was missing → dataclass `n_anchors >= 1`
+  invariant blocked round-trip. Fix: builder + persist row additively
+  write `:ANCHOR` rels alongside `:MEMBER`. Old data persisted before
+  the Phase 08 fix surfaces in loader WARNING + is SKIPPED on read;
+  recovery is `sync --metagraph M --replace` (after dropping
+  dependent state per RPB-4 C).
+
+## Manual CLI exploration
+
+- `mindsos persistence sync --metagraph cli08` — OK; persists anchor
+  + 1 contained graph + 0 edges.
+- `mindsos persistence load --metagraph cli08` — 9-line flat summary
+  per R4-5 A; counts match the persisted state.
+- `mindsos persistence load --metagraph cli08 --json` — sorted-key
+  indented JSON.
+- `mindsos persistence load --metagraph cli08 --to-json` — wrote
+  `~/.mindsos/metagraph-cli08.fromdb.json`; canonical
+  `metagraph-cli08.json` untouched per RR-7 A.
+- `mindsos persistence load --graph cli08 --metagraph cli08` — exit
+  1 (R4-6 A mutex).
+- `mindsos persistence verify --source=db --metagraph cli08` — exit
+  0 clean (PB-7 A unblock confirmed; Phase 07 P49 A refusal dropped).
+- `mindsos persistence verify --source=db --graph cli08 --metagraph
+  cli08` — exit 1 (mutex symmetric on verify).
+- `mindsos persistence sync --metagraph cli08 --replace` with a
+  seeded `:ElementInstance` row in FalkorDB — exit 2 with operator
+  guidance: `Error: Metagraph 'cli08' has dependent state (1
+  ElementInstance); drop them or truncate WAL before --replace.`
+  (RPB-4 C).
+- `mindsos doctor --self-test` exit 0 — full check including
+  FalkorDB reachability + index parity + 3-package version-string
+  parity at `0.0.0+phase08`.
+- `mindsos persistence inspect-state` Rich tables show the cli08
+  metagraph + cli08 graph + 0 instances.
+- `mindsos persistence diagnose` reports
+  `indexes_present: 13 / expected: 14` — pre-existing FalkorDB
+  v4.18.3 multi-property-index grouping quirk per
+  `feedback_falkordb_index_ddl_quirks.md` (B-07-T4 carry-forward).
+  NOT a Phase 08 regression.
+- `mindsos persistence load --graph cli08` (Phase 07 surface) —
+  fixed-shape 7-line summary preserved unchanged (RR-12 A refactor
+  invisible to callers).
+
+## Substrate observations
+
+- FalkorDB v4.18.3 substrate quirks unchanged from Phase 07
+  (`CREATE INDEX IF NOT EXISTS` rejected; `db.indexes()` groups
+  multi-property per label).
+- WAL `recover()` is a silent no-op on Phase 08 loads (no replayers
+  registered yet; first L1 consumer per PB-6 B; meaningful once
+  L0/L2 in Phase 18+ register replayers per RPB-3 C narrow-catch).
+- 3-package version-string parity holds at `0.0.0+phase08` across
+  `mindsos_cli` / `mindsos_core` / `mindsos_instances`.
+
+## CASC-1 unblocks
+
+Phase 09 (XRef) — observer pattern locked in Phase 08; XRefLoader
+subscribes via `register_after_load_observer` per RR-10 A.
+Phase 10 (Snapshot) — `verify --source=db --metagraph M` now full
+bandwidth (PB-7 A).
+Phase 14 (L2 KL bootstrap) — `load_metagraph` is the foundation.

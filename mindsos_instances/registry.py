@@ -273,6 +273,18 @@ def attach_registry(metagraph: Metagraph) -> ElementRegistry:
     instance at fire time (set by the caller of
     ``MetagraphRepository.persist`` before invoking; ``None`` means
     no-op — pure in-memory ``persist`` calls don't trigger DB writes).
+
+    Phase 08 extension (PB-4 A + RR-9 A) — on first attach, ALSO
+    subscribes an after-load observer that routes sibling-side
+    reconstruction through
+    :class:`mindsos_instances.reconstruction.InstanceLoader`. The
+    observer reads ``mg._persist_client`` (transiently set by
+    :meth:`mindsos_core.reconstruction.MetagraphLoader.load` during
+    the locked R4-1 A sequence) to obtain the Client instance.
+    Per-observer exception isolation lives inside
+    :func:`mindsos_core._observers._dispatch_after_load` (RR-9 A) so
+    a failing rehydration does NOT tear down the Core load.
+
     Idempotent: re-attach does not double-subscribe.
     """
     existing = getattr(metagraph, "element_registry", None)
@@ -297,4 +309,26 @@ def attach_registry(metagraph: Metagraph) -> ElementRegistry:
             InstanceRepository(client).persist_all(registry)
 
         register_persist(_on_persist)
+
+    # Phase 08 — after-load observer wiring (PB-4 A). Same getattr-guard
+    # pattern as Phase 07 so pre-Phase-08 Metagraph instances don't
+    # crash on import / attach. The observer routes sibling-side
+    # reconstruction through ``InstanceLoader.load_into(mg)``.
+    register_after_load = getattr(
+        metagraph, "register_after_load_observer", None
+    )
+    if callable(register_after_load):
+        def _on_after_load(mg: Metagraph) -> None:
+            client = getattr(mg, "_persist_client", None)
+            if client is None:
+                return  # No DB binding; pure in-memory load — no-op.
+            # Local import keeps the boundary clean (Core does not
+            # import ``mindsos_instances``; this module sits in
+            # ``mindsos_instances`` so the import is allowed).
+            from .reconstruction.instance_loader import InstanceLoader
+
+            InstanceLoader(client).load_into(mg)
+
+        register_after_load(_on_after_load)
+
     return registry

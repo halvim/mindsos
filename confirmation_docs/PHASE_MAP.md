@@ -99,7 +99,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 05d | L1 MetaEdgeType + MetaHyperEdgeType vocab (NEW CODE; deferred from 05b/c per Pushback 1-C and 05c P1-B; ADR-0017 amended; **MetaEdge.type_name field audit per 05c P3 may trigger 05a-v2 if absent**) | L1 | 05c |
 | 06 | L1 Instancing — `mindsos_instances` package | L1 | 03, 05d |
 | 07 | L1 Persistence — Client, FalkorClient, InMemoryClient, AsyncClient, repositories, WAL, indexes, OCC | L1 | 03, 04, 05, 06 |
-| 08 | L1 Reconstruction — loaders, streaming loader, refresh | L1 | 07 |
+| 08 | L1 Reconstruction — metagraph loader + streaming + refresh (ADR-0124 flip; ADR-0125 stays Proposed) | L1 | 07 |
 | 09 | L1 XRef — primitive, repository, loader, ref:global cutover | L1 | 07, 08 |
 | 10 | L1 Snapshot + soft-delete + RemovalImpact | L1 | 07, 08 |
 | 11 | L1 Cypher builders + integrity scanner + schema migration | L1 | 07 |
@@ -2444,13 +2444,274 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
     66. **Step 0 audit performed 2026-05-13** — file-based items in this commit's chat; live-sidecar probes (P89 A node/rel index forms; P97 B driver-exception class on oversized write) deferred to tester recipe execution.
     67. **Test budget projection updated** ~110-140 added tests (was ~100-130); per `feedback_test_budget_unlimited.md` no cap applies.
 
-### Phase 08 — L1 Reconstruction (loaders, streaming, refresh)
+### Phase 08 — L1 Reconstruction (metagraph loader + streaming + refresh)
 
-  **Deps:** 07. **Layer:** L1. **Net-new?** No.
-  **Features:** load graph; load metagraph (full + streaming per ADR-0124); refresh.
-  **Tests:** save+load round-trip; streaming load against a 10k-node fixture stays under a memory budget; refresh after external mutation reflects the change.
-  **Risks:** lazy-Local-hydration interaction (ADR-0125) — `refresh` must respect LRU eviction.
-  **Docs:** `docs/usage/core/persistence.md`, ADRs 0124/0125.
+  **Status:** Pending (post-design — locked 2026-05-13; awaiting implementation).
+  **Branch:** phase-08
+  **Tag on confirm:** phase-08-confirmed
+  **Depends on:** 07 (last in cascade per CASC-1 strict-sequential).
+  **Layer(s):** L1.
+  **Net-new?:** **Partial.** Slim-port v3 baseline `mindsos_core/reconstruction/metagraph_loader.py` + sibling-package `mindsos_instances/reconstruction/instance_loader.py`. NEW `iter_load_graph` function in `mindsos_core/reconstruction/graph_loader.py`. NEW `register_after_load_observer` on `Metagraph` + `_dispatch_after_load` in `_observers.py` (mirrors Phase 07 M9/P96 A). NEW first L1 WAL consumer: `load_metagraph` calls `recover()` (PB-6 B). NEW 3 exception classes (R4-3 A). 2 NEW CLI verbs/flag extensions (`sync --metagraph M [--replace]`, `load --metagraph M [--to-json]`) + 1 CLI flag unblock (`verify --source=db --metagraph M` per PB-7 A). NO state-file bumps (M0 carried from Phase 07). NO new top-level Python package.
+
+  **Locked decisions (4 design rounds — 2026-05-13; full ledger in `PHASE_08_DESIGN_LOG.md`):**
+
+    - **M0** — **No state-file bump.** JSON state files at v=4 (graph) / v=3 (metagraph) / v=1 (schema) unchanged. Phase 08 is FalkorDB-side reads + 2 CLI verbs.
+    - **M1** — Slim-port v3 baseline modules. XRef sub-loader stripped (Phase 09). Legacy `:MetagraphSettings` migration stripped (RPB-6 A — substrate is fresh).
+    - **M2** — Single Phase 08 (no 08a/08b split).
+    - **M3** — Flip ADR-0124 Proposed → Accepted **inline** with P27 C wording (*"Accepted when L1 mechanism ships + `core.md` documents it; consumer integration tracked separately"*) + signature amendment per PB-3 A (drop redundant `metagraph_id` slot from `iter_load`) + impl-refs update per RR-6 A. **ADR-0125 untouched** (server-side per PB-1 A; no L1 consumer in Phase 08).
+    - **M4** — 3-round target; closed at **4 rounds** (Round 4 surfaced material edge cases — exception classes, load order, identity-preservation tests). 59 total picks.
+    - **M5** — **Uncapped test budget** per user override 2026-05-13 (`feedback_test_budget_unlimited.md`).
+    - **M6** — InMemoryClient call-recording for unit-side load assertions (RPB-13 B); `@pytest.mark.integration` for round-trip fidelity against live FalkorDB.
+    - **M7** — Ship `tests/_shared/metagraph_equality.py:assert_metagraphs_equal` + `tests/_shared/large_graph_factory.py:make_large_graph_fixture` (RR-13 A).
+    - **M8** — Streaming CLI surface deferred per PB-10 A; iter_load programmatic-only.
+    - **M9** — `inspect-state` stays global; per-metagraph drill-down deferred to Phase 11 (RR-11 B).
+    - **M10** — No pre-budgeted Round-5 addendum slot (RPB-11 B).
+    - **M11** — 1K-node test fixtures default; opt-in 10K via `pytest.mark.slow` (RPB-12 B+C).
+    - **M12** — **Locked edge-primitive load sequence** inside `MetagraphLoader.load`: `recover(client, mid)` → anchor read → contained Graphs (via `load_graph` or `iter_load_graph` if `batch_size` passed) → MetaEdges → MetaHyperEdges → IntergraphEdges → IntergraphHyperEdges → fire `after_load(mg)` observer (R4-1 A / R4-8 A).
+    - **M13** — 3 new exception classes: `RefreshUnsafeError` (ADR-0124 §Constraint; class only — enforcement deferred per PB-5 B), `WALReplayerMissingError` (RPB-3 C narrow-catch sentinel), `RoleMismatchError` (R4-2 D refresh corruption signal). All inherit from `PersistenceError`. `MissingExpectedVersionError` continues to live at L0/L2 per Phase 07 P84 B.
+    - **M14** — Single `PHASE_08_DESIGN_LOG.md` (no addendum sibling per R4-9 A).
+    - **M15** — Overwrite existing `PHASE_08_NEXT_CHAT_PROMPT.md` with implementation handoff after lock (R4-10 B).
+    - **PB-1 A** — ADR-0125 stays Proposed; Phase 08 ships NO consumer of LRU eviction (server-side; layer: Server in ADR frontmatter).
+    - **PB-2 C** — Loader shape: function `load_graph()` + function `iter_load_graph()` (stateless); class `MetagraphLoader(client)` with `.load(mid)` + `.refresh(mg, role)` (orchestration).
+    - **PB-3 A** — `iter_load_graph(client, graph_id, *, identity=None, batch_size=10_000) -> Iterator[Graph]`. ADR-0124 signature amends.
+    - **PB-4 A** — `register_after_load_observer` on `Metagraph`; `mindsos_instances.attach_registry()` extends to subscribe; `InstanceLoader` lives at `mindsos_instances/reconstruction/instance_loader.py` (ADR-0132 boundary preserved).
+    - **PB-5 B** — `RefreshUnsafeError` class only; no per-role mutation-flag tracking. Enforcement deferred; loud risk line.
+    - **PB-6 B** — `load_metagraph` ALWAYS calls `recover(client, mid)` before reads. First L1 WAL consumer ships in Phase 08 via the load path. NOT applied to `load_graph` (standalone Graph has no metagraph recovery context per RPB-5 A).
+    - **PB-7 A** — Phase 08 drops Phase 07 P49 A refusal. `verify --source=db --metagraph M` loads via `load_metagraph` then runs existing 5-bucket scanner.
+    - **PB-8 A** — `mindsos persistence sync --metagraph M [--replace]` ships in Phase 08. Programmatic side already in Phase 07.
+    - **PB-9 A** — `load` verb extended with mutually-exclusive `--graph G | --metagraph M` (Typer constraint; exit 1 on combo per R4-6 A).
+    - **PB-10 A** — Streaming CLI surface deferred; iter_load_graph is programmatic-only.
+    - **PB-11 A** — `load_metagraph` reads `schema_name` plain Cypher property (Phase 07 P100 A) and sets `mg.schema_name`; does NOT auto-attach MetagraphSchema content (L2 territory).
+    - **PB-12 C** — Memory-budget test = structural assertion `len(g.nodes) ≤ batch_size` per yield; real memory-pressure validation deferred to future scale-test phase.
+    - **PB-14 C** — ADR-0124 flip with P27 C acceptance wording + impl-refs list per RR-6 A.
+    - **RPB-1 A** — `iter_load_graph` cross-batch edges: intermediate batches are nodes-only; final batch yields any deferred cross-batch edges + hyperedges. Cross-batch fidelity test ships (RPB-8 A).
+    - **RPB-2 A** — `refresh` uses proper `mg.remove_graph(gid)` API; observer cascade fires (drops dependent SubGraphInstances / GraphInstances / ElementInstances); then load fires; `after_load` rehydrates from DB.
+    - **RPB-3 C** — `recover()` narrow-catches `WALReplayerMissingError`; propagates everything else (driver errors → `PersistenceError`).
+    - **RPB-4 C** — `sync --metagraph M --replace` refuses if any ElementInstance / CompositeInstance / XRef / uncommitted `:WALEntry` references the target Metagraph. Exit 2; operator guidance message.
+    - **RPB-5 A** — `load_graph` does NOT call recover(); documented asymmetry.
+    - **RPB-6 A** — Strip v3's `_migrate_legacy_settings(mg)` code; substrate is fresh.
+    - **RPB-7 (user override)** — Test budget uncapped; no projection.
+    - **RPB-8 A** — `iter_load_graph` test suite: (i) structural cap; (ii) equivalence `assemble(iter_load_graph(gid, B)) == load_graph(gid)` for B ∈ {1, 100, ∞}; (iii) explicit cross-batch edge fidelity (30-node fixture, batch_size=10, edge node-3 → node-23).
+    - **RPB-9 A** — `after_load` single fire after Core + all sub-reads complete.
+    - **RPB-10 A** — `iter_load_graph` loads ONLY intra-graph edges/hyperedges; IntergraphEdge / IntergraphHyperEdge load via `MetagraphLoader.load` only.
+    - **RPB-12 B+C** — Default 1K-node fixtures; opt-in `pytest.mark.slow` for 10K.
+    - **RPB-13 B** — InMemoryClient unit coverage for Cypher-shape assertions; `@pytest.mark.integration` for round-trip.
+    - **RPB-14 B** — Read Cypher stays inline in loader modules; builders stay write-side (v3 + Phase 07 precedent).
+    - **RR-1 A** — Step-0 audit at impl time: if `IdentityRegistry.unregister()` missing, Phase 08 adds it additively to `mindsos_core/models/identity.py`.
+    - **RR-2 D** — `load_metagraph(client, mid, *, batch_size=None, identity=None, schema=None)`. `batch_size=None` default → full-load per contained Graph; `batch_size=int` → uses `iter_load_graph` per contained graph + assemble.
+    - **RR-3 A** — InstanceLoader validates rehydrated overrides against Phase 06 per-subclass allow-list (P36 A); offenders raise `PersistenceError` with bad key surfaced.
+    - **RR-4 B** — Orphan instance (template_id missing) at load: `_log.warning(...)` + skip; surfaces as `verify` finding bucket.
+    - **RR-5 B** — Ship both: class `MetagraphLoader` + module convenience function `load_metagraph(client, mid, ...)` = `MetagraphLoader(client).load(mid, ...)`.
+    - **RR-6 A** — Phase 08 amends ADR-0124 §Implementation references to actual paths.
+    - **RR-7 A** — `load --metagraph M --to-json` writes `~/.mindsos/metagraph-<name>.fromdb.json` (sibling; canonical state file never overwritten per Phase 07 P85 B precedent).
+    - **RR-8 A** — `MetagraphLoader` is orchestrator only; no `_instance_loader` / `_xref_loader` handles. Sub-loaders subscribe via `after_load` observer.
+    - **RR-9 A** — `mindsos_core/_observers.py::_dispatch_after_load(observers, mg)` helper with per-observer exception isolation (mirrors Phase 07 `_dispatch_after_persist`).
+    - **RR-10 A** — Phase 09 XRefLoader subscribes via `after_load` observer (pattern locked in Phase 08; no MetagraphLoader extension needed).
+    - **RR-11 B** — `inspect-state` stays global.
+    - **RR-12 A** — `load_graph()` refactored to internally call `iter_load_graph(client, gid, batch_size=None_sentinel) + assemble`. ADR-0124 "load = list(iter_load)" claim honored.
+    - **RR-13 A** — Ship `tests/_shared/metagraph_equality.py` + `tests/_shared/large_graph_factory.py`.
+    - **RR-14 A** — `mindsos persistence` subapp help text bumped Phase 07 → Phase 08; mentions metagraph round-trip.
+    - **RR-15 A** — 5 doc-footprint items: amend persistence.md + amend core.md (NEW "Reconstruction layer" section) + NEW `docs/api/core/loaders.md` + ADR-0124 file edit + changelog append.
+    - **R4-1 A / R4-8 A** — Locked load sequence: `recover()` first; then anchor → contained Graphs → MetaEdges → MetaHyperEdges → IntergraphEdges → IntergraphHyperEdges → `after_load`.
+    - **R4-2 D** — `refresh` empty-role: `_log.warning(...)` + no-op; role-mismatch: raise `RoleMismatchError`.
+    - **R4-3 A** — 3 new exception classes in `mindsos_core/exceptions.py`: `RefreshUnsafeError`, `WALReplayerMissingError`, `RoleMismatchError`. All inherit from `PersistenceError`. Phase 08 does NOT add `ReconstructionError` umbrella (Phase 07's `PersistenceError` suffices).
+    - **R4-4 B** — `schema=None` kwarg accepted no-op on all Phase 08 load surfaces (parity with Phase 07 `load_graph`).
+    - **R4-5 A** — `load --metagraph M` stdout summary is 9-line flat key:value format:
+        ```
+        Metagraph: <name>
+        Metagraph id: <mid>
+        Graphs: <N>
+        MetaEdges: <N>
+        MetaHyperEdges: <N>
+        IntergraphEdges: <N>
+        IntergraphHyperEdges: <N>
+        ElementInstances: <N>
+        CompositeInstances: <N>
+        ```
+      `--json` opt-in for machine output.
+    - **R4-6 A** — Typer mutually-exclusive constraint on `--graph G | --metagraph M` for BOTH `load` and `verify`. Combo errors out with exit 1 (CLI usage error per Phase 07 P64 A).
+    - **R4-7 A+C** — Two identity-preservation tests for `refresh`: (A) explicit `id(mg)` + `id(mg.identity)` survives; (C) downstream weakref proxy still resolves post-refresh.
+    - **R4-11 A** — `MetagraphLoader(client)` minimal constructor. All other kwargs per-call.
+    - **R4-12 A** — `mindsos_core/reconstruction/__init__.py` exports 6 symbols: `load_graph`, `iter_load_graph`, `MetagraphLoader`, `load_metagraph`, `RefreshUnsafeError`, `RoleMismatchError`. (`WALReplayerMissingError` re-exported from exceptions for caller convenience; counts as 7 if including.)
+    - **R4-13 B** — `mindsos_instances/__init__.py` does NOT re-export `InstanceLoader`; deep-import only.
+    - **R4-14 A** — Eager-add ~15-20 Phase 08 paths to `tests/_shared/sentinel_paths.py`.
+    - **R4-15 A** — Manifest `[mindsos] phase = "08"`, `version = "0.0.0+phase08"`. 3-package version-string parity per Phase 06 P62 A.
+    - **R4-16 A** — Compose image tags `mindsos:phase08-prod` / `mindsos:phase08-test`. Doctor `_COMPOSE_IMAGE_RE` already accepts `phase\d{2}` form since Phase 05a; no regex extension.
+
+  **Features in scope (capability-level — locked):**
+
+    - **`iter_load_graph(client, graph_id, *, identity=None, batch_size=10_000) -> Iterator[Graph]`** — generator yielding partial Graph objects sized by `batch_size`. Intermediate batches are nodes-only + intra-batch edges; final batch carries any deferred cross-batch edges + hyperedges per RPB-1 A. Per-batch Cypher uses `ORDER BY n.id SKIP $offset LIMIT $limit` against `:Node {graph_id}` hot-path index (Phase 07 P95 B).
+    - **`load_graph(client, graph_id, *, identity=None, schema=None) -> Graph`** — Phase 07 surface, refactored internally to `list(iter_load_graph(client, gid, batch_size=None_sentinel)) + assemble`. Backward-compat per RR-12 A.
+    - **`class MetagraphLoader(client)`** — orchestrator (RR-8 A). Constructor takes `client` only. `.load(mid, *, batch_size=None, identity=None, schema=None)` returns reconstructed `Metagraph` per locked R4-1 sequence. `.refresh(mg, role, *, schema=None)` drops + reloads role-graphs in place; identity preservation guaranteed (R4-7 test).
+    - **`load_metagraph(client, mid, *, batch_size=None, identity=None, schema=None) -> Metagraph`** — module-level convenience function (RR-5 B); thin wrapper of `MetagraphLoader(client).load(mid, ...)`.
+    - **`Metagraph.register_after_load_observer(callback) -> ObserverHandle`** — new observer plumbing (mirror of Phase 07 `register_persist_observer`). Single fire after Core + all sub-reads (RPB-9 A).
+    - **`mindsos_core/_observers.py::_dispatch_after_load(observers, mg)`** — new helper with per-observer exception isolation (RR-9 A).
+    - **`InstanceLoader` (sibling `mindsos_instances.reconstruction`)** — `load_into(mg)`. Two-pass (element instances first, composites second). Validates overrides against Phase 06 P36 A allow-list (RR-3 A). Orphan templates: log + skip (RR-4 B). Subscribed via `mindsos_instances.attach_registry()`'s `after_load` observer subscription.
+    - **WAL recover-on-load** — `load_metagraph` calls `recover(client, mid)` as step 0 of locked sequence. First L1 WAL consumer (PB-6 B). Narrow-catch `WALReplayerMissingError` (RPB-3 C); propagate other errors.
+    - **3 new exception classes** — `RefreshUnsafeError`, `WALReplayerMissingError`, `RoleMismatchError` in `mindsos_core/exceptions.py` (R4-3 A).
+    - **`IdentityRegistry.unregister(uid)`** — additive public method if Step-0 audit finds missing (RR-1 A).
+    - **CLI `mindsos persistence` extensions:**
+        * `sync --metagraph M [--replace]` — NEW verb (PB-8 A). Programmatic side already in Phase 07. `--replace` refuses on dependent instances/xrefs/uncommitted-WAL (RPB-4 C; exit 2; operator guidance message).
+        * `load --metagraph M [--to-json]` — NEW flag combination (PB-9 A). 9-line flat stdout summary per R4-5 A; `--json` opt-in. `--to-json` writes `~/.mindsos/metagraph-<name>.fromdb.json` sibling (RR-7 A). Mutually exclusive with `--graph G` via Typer constraint (R4-6 A; exit 1 on combo).
+        * `verify --source=db --metagraph M` — UNBLOCK (PB-7 A; drops Phase 07 P49 A refusal). Runs full 5-bucket scanner against `load_metagraph(client, mid)` result.
+        * `verify --source=db --graph G --metagraph M` (combo) — exit 1 CLI usage error per R4-6 A.
+
+  **Modules touched (locked):**
+
+    - `mindsos_core/reconstruction/metagraph_loader.py` — **NEW**. Class `MetagraphLoader(client)` + module function `load_metagraph(client, mid, ...)`. Slim port from v3 (`/Layered Intelligence/mindsos_core/reconstruction/metagraph_loader.py`, 236 LOC). Strips XRef sub-loader (Phase 09) + legacy `:MetagraphSettings` migration (RPB-6 A). Implements R4-1 locked load sequence. R4-8 A recover() first.
+    - `mindsos_core/reconstruction/graph_loader.py` — **MODIFIED**. Adds `iter_load_graph(client, gid, *, identity, batch_size)` function. Refactors `load_graph` to call `iter_load_graph(batch_size=None_sentinel) + assemble` per RR-12 A. Keeps Phase 07 surface backward-compat.
+    - `mindsos_core/reconstruction/__init__.py` — **MODIFIED**. Exports 6 symbols per R4-12 A: `load_graph`, `iter_load_graph`, `MetagraphLoader`, `load_metagraph`, `RefreshUnsafeError`, `RoleMismatchError`. `__all__` populated explicitly.
+    - `mindsos_instances/reconstruction/__init__.py` — **NEW**. Exports `InstanceLoader`.
+    - `mindsos_instances/reconstruction/instance_loader.py` — **NEW**. Slim port from v3 (`/Layered Intelligence/mindsos_instances/reconstruction/instance_loader.py`). Two-pass design preserved; override allow-list validation at load (RR-3 A); orphan template handling (RR-4 B); `_version` field decoded per element.
+    - `mindsos_instances/registry.py` — **MODIFIED**. `attach_registry(mg)` extends to subscribe `after_load` observer (idempotent per Phase 06 P49 B helper); calls `InstanceLoader(client).load_into(mg)` on after_load fire.
+    - `mindsos_core/_observers.py` — **MODIFIED**. Adds `_dispatch_after_load(observers, mg)` helper with per-observer exception isolation (RR-9 A).
+    - `mindsos_core/models/metagraph.py` — **MODIFIED**. Adds `register_after_load_observer(callback) -> ObserverHandle` method + `_after_load_observers` list + handle bookkeeping (mirror of Phase 07 `register_persist_observer`).
+    - `mindsos_core/exceptions.py` — **MODIFIED**. Adds 3 new exception classes per R4-3 A: `RefreshUnsafeError`, `WALReplayerMissingError`, `RoleMismatchError`. All inherit from `PersistenceError`.
+    - `mindsos_core/models/identity.py` — **CONDITIONAL MODIFY** per RR-1 A. Step-0 audit at impl time: if `unregister(uid)` missing as public method, add additively. If present, no edit.
+    - `mindsos_cli/commands/persistence.py` — **MODIFIED**. Extensions: `sync --metagraph M [--replace]` (PB-8 A + RPB-4 C); `load --metagraph M [--to-json]` (PB-9 A + RR-7 A); `verify --source=db --metagraph M` unblock (PB-7 A); mutex enforcement `--graph G | --metagraph M` on both `load` and `verify` (R4-6 A; exit 1 on combo); 9-line flat stdout summary per R4-5 A.
+    - `mindsos_cli/app.py` — **MODIFIED**. Help-text bump Phase 07 → Phase 08; mentions metagraph round-trip (RR-14 A).
+    - `mindsos_cli/manifest.toml` — `[mindsos] phase = "08"`; `version = "0.0.0+phase08"` (R4-15 A).
+    - `mindsos_cli/__init__.py` — `__version__ = "0.0.0+phase08"`.
+    - `mindsos_core/__init__.py` — `__version__ = "0.0.0+phase08"`.
+    - `mindsos_instances/__init__.py` — `__version__ = "0.0.0+phase08"`. Does NOT re-export `InstanceLoader` (R4-13 B).
+    - `pyproject.toml` — version + description bumped.
+    - `docker-compose.yml` — image tags `mindsos:phase08-prod` / `mindsos:phase08-test` (R4-16 A).
+    - `Dockerfile` — comment lines bumped Phase 07 → Phase 08; COPY `mindsos_instances/reconstruction/` lands in both prod + test stages (subdir already-discovered by Phase 06 wildcard but explicit COPY adds safety per `feedback_new_top_level_package.md` site 2 — verify at impl time).
+    - `tests/_shared/sentinel_paths.py` — **~15-20 entries** added eagerly at impl time (R4-14 A): every new file path.
+    - `tests/_shared/metagraph_equality.py` — **NEW**. `assert_metagraphs_equal(mg1, mg2)` walker (RR-13 A).
+    - `tests/_shared/large_graph_factory.py` — **NEW**. `make_large_graph_fixture(client, gid, n_nodes, *, edge_density)` builder (RR-13 A).
+    - `tests/conftest.py` — `pytest.mark.slow` marker registered (RPB-12 B+C; opt-in fixture variants).
+
+  **Persistence layout impact:** None new. Phase 08 reads existing Phase 07 substrate.
+
+  **Automated tests (location + intent — locked; uncapped per M5):**
+
+    - `tests/phase_08/` — projected scope (no count cap per RPB-7 user override):
+        * `test_iter_load_graph_unit.py` — InMemoryClient call-recording: right Cypher emitted for paginated node fetch, edge fetch, hyperedge fetch (RPB-13 B).
+        * `test_iter_load_graph_integration.py` (`@pytest.mark.integration`) — three scenarios per RPB-8 A: (i) structural cap `len(g.nodes) ≤ batch_size`; (ii) equivalence `assemble(iter_load_graph(gid, B)) == load_graph(gid)` for B ∈ {1, 100, ∞}; (iii) explicit cross-batch edge fidelity (30-node fixture, batch_size=10, edge node-3 → node-23).
+        * `test_iter_load_graph_intergraph_excluded.py` (`@pytest.mark.integration`) — RPB-10 A: iter_load_graph skips IntergraphEdge / IntergraphHyperEdge rows even when endpoints are in the streamed graph.
+        * `test_load_metagraph_unit.py` — InMemoryClient: right Cypher emitted for anchor + contained-graph list + 4 edge primitives per locked R4-1 sequence.
+        * `test_load_metagraph_integration.py` (`@pytest.mark.integration`) — round-trip: persist mg → load_metagraph(client, mid) → `assert_metagraphs_equal`. 4 fixture variants: (a) single contained Graph; (b) 2 graphs + MetaEdges; (c) MetaHyperEdges + 3-graph fixture; (d) IntergraphEdges + IntergraphHyperEdges across 2 graphs.
+        * `test_load_metagraph_streaming.py` (`@pytest.mark.integration`) — `load_metagraph(client, mid, batch_size=100)` per RR-2 D against multi-graph fixture; round-trip equivalence with batch_size=None path.
+        * `test_load_metagraph_recovery.py` (`@pytest.mark.integration`) — PB-6 B + RPB-3 C: pre-insert uncommitted WAL entry; register fake replayer; assert replayer fires before any read query; `WALReplayerMissingError` narrow-caught when no replayer; driver errors propagate.
+        * `test_load_metagraph_schema_name.py` (`@pytest.mark.integration`) — PB-11 A: persisted `:Metagraph.schema_name` plain property round-trips into `mg.schema_name` field; vocab NOT auto-attached; None when absent.
+        * `test_metagraph_loader_class.py` — R4-11 A: `MetagraphLoader(client)` minimal constructor; per-call kwargs `batch_size` / `identity` / `schema` honored.
+        * `test_after_load_observer.py` — PB-4 A + RPB-9 A: register observer; `MetagraphLoader.load` fires it once after Core + sub-reads; exception isolation per RR-9 A (one failing observer logs + continues; doesn't tear down).
+        * `test_after_load_observer_dispatcher.py` — RR-9 A: `_dispatch_after_load` per-observer try/except boundary.
+        * `test_instance_loader_unit.py` — InMemoryClient: right Cypher for element + composite + member relationship fetch.
+        * `test_instance_loader_integration.py` (`@pytest.mark.integration`) — two-pass design: element instances rehydrate before composite member resolution; override allow-list validation (RR-3 A) raises `PersistenceError` on substrate-side bad key; orphan template (RR-4 B) logs warning + skips.
+        * `test_attach_registry_after_load.py` (`@pytest.mark.integration`) — `attach_registry(mg)` + `load_metagraph(client, mid)` end-to-end: instances populate via observer subscription; idempotent re-attach.
+        * `test_refresh_identity_preservation.py` (`@pytest.mark.integration`) — R4-7 A+C: `id(mg)` + `id(mg.identity)` survive refresh; downstream `weakref.proxy(mg.identity)` still resolves.
+        * `test_refresh_observer_choreography.py` (`@pytest.mark.integration`) — RPB-2 A: refresh drops role-graphs via `mg.remove_graph(gid)` API; observer cascade fires (instance-removals visible); then load + after_load rehydrates.
+        * `test_refresh_empty_role.py` — R4-2 D: no graphs with role=$role → log-warn + no-op return.
+        * `test_refresh_role_mismatch.py` (`@pytest.mark.integration`) — R4-2 D: DB role drift triggers `RoleMismatchError` with both roles in message.
+        * `test_refresh_unsafe_error_class.py` — PB-5 B: `RefreshUnsafeError` class is importable; inherits from `PersistenceError`; class shape verified (no enforcement test — deferred).
+        * `test_cli_persistence_sync_metagraph.py` (`@pytest.mark.integration`) — PB-8 A: end-to-end persist mg → `sync --metagraph M` rewrites; `--replace` DETACH DELETE + rewrite; **refuse `--replace` if dependent instances/xrefs/uncommitted-WAL** per RPB-4 C; refuse on missing metagraph.
+        * `test_cli_persistence_load_metagraph.py` (`@pytest.mark.integration`) — PB-9 A + R4-5 A: `load --metagraph M` 9-line flat summary shape; `--json` opt-in machine output; `--to-json` writes `~/.mindsos/metagraph-<name>.fromdb.json` sibling per RR-7 A; round-trip equality preserved.
+        * `test_cli_persistence_load_mutex.py` — R4-6 A: `load --graph G --metagraph M` combo exits 1; `verify --source=db --graph G --metagraph M` combo exits 1.
+        * `test_cli_persistence_verify_metagraph.py` (`@pytest.mark.integration`) — PB-7 A: `verify --source=db --metagraph M` runs full 5-bucket scanner; results match `--source=memory` reference; exit codes 0/1/2/3 per Phase 07 P64 A.
+        * `test_exceptions_phase08.py` — R4-3 A: 3 new classes (`RefreshUnsafeError`, `WALReplayerMissingError`, `RoleMismatchError`) exist; inherit from `PersistenceError`; importable from `mindsos_core.exceptions` AND re-exported via `mindsos_core.reconstruction`.
+        * `test_identity_registry_unregister.py` — RR-1 A: `IdentityRegistry.unregister(uid)` exists as public method (added additively if missing); raises `KeyError` on unknown id; idempotent for already-removed.
+        * `test_metagraph_equality_helper.py` — RR-13 A: `assert_metagraphs_equal` walker (positive + N negatives covering anchor mismatch, contained-graph mismatch, edge mismatch, intergraph mismatch, instance mismatch).
+        * `test_large_graph_factory.py` — RR-13 A: `make_large_graph_fixture` builds N nodes + edges with configurable density.
+        * `test_load_graph_refactor.py` — RR-12 A: `load_graph(client, gid)` calls `iter_load_graph` internally; result equivalent to direct iter assembly.
+        * `test_load_metagraph_helper_function.py` — RR-5 B: module function `load_metagraph(client, mid)` == `MetagraphLoader(client).load(mid)` programmatically.
+        * `test_legacy_metagraph_settings_stripped.py` — RPB-6 A: Phase 08 loader does NOT query `:MetagraphSettings` (assert via InMemoryClient call recording — no such query emitted).
+        * **Slow tier (`@pytest.mark.slow`):**
+            * `test_iter_load_graph_10k.py` — opt-in 10K-node streaming smoke test per RPB-12 C; structural assert per PB-12 C (no memory-pressure threshold).
+        * `test_doctor_phase08.py` — manifest `[mindsos] phase = "08"`; 3-package version-string parity per R4-15 A; image-tag regex parity.
+    - **Audit pass (pre-implementation):** Step 0 (this commit's chat) confirmed Phase 07 squash-merge on main + tag `phase-07-confirmed` + v3 baseline files present + ADR statuses + no state-file bump needed per `feedback_state_version_audit_scope.md`. RR-1 A audit (IdentityRegistry.unregister) deferred to implementation chat's Step 0.
+
+  **Confirmation command:**
+    `mindsos confirm-phase --phase 08 --notes-file notes-phase-08.md`
+    (Init: `--init-notes 08`. Manifest stores `[mindsos] phase = "08"`. **Timeout 900s** carried from Phase 07 M12.)
+    **Pre-build recipe:** `docker compose --profile test build mindsos-test` BEFORE `mindsos confirm-phase` per `feedback_confirm_phase_timeout.md`.
+
+  **Pass criterion:**
+
+    - Tester can `mindsos persistence sync --metagraph M` and observe Metagraph anchor + contained Graphs + MetaEdges + MetaHyperEdges + IntergraphEdges + IntergraphHyperEdges in FalkorDB via direct Cypher introspection.
+    - Tester can `mindsos persistence sync --metagraph M --replace` and observe DETACH DELETE + rewrite (no zombie rows); refusal fires when dependent instances/xrefs/uncommitted-WAL present per RPB-4 C.
+    - Tester can `mindsos persistence load --metagraph M` and see 9-line flat stdout summary per R4-5 A; `--json` opt-in machine output; `--to-json` writes `~/.mindsos/metagraph-<name>.fromdb.json` sibling (canonical file untouched).
+    - Tester can `mindsos persistence load --metagraph M --graph G` and see exit 1 CLI usage error (R4-6 A mutex).
+    - Tester can `mindsos persistence verify --source=db --metagraph M` and see full 5-bucket scanner output (PB-7 A unblock).
+    - Tester can construct a 30-node graph + cross-batch edge fixture; `iter_load_graph(client, gid, batch_size=10)` + assemble equals `load_graph(client, gid)` (RPB-8 A iii cross-batch fidelity).
+    - Tester can construct a multi-role metagraph; `MetagraphLoader(client).refresh(mg, role)` drops + reloads role-graphs in place; `id(mg)` and `id(mg.identity)` survive (R4-7 A identity preservation).
+    - Tester can construct a metagraph with attached `attach_registry(mg)`; `load_metagraph(client, mid)` populates `mg.element_instances` + `mg.composite_instances` via after_load observer.
+    - WAL recover-on-load verified: pre-insert uncommitted `:WALEntry` for mg; register fake replayer; `load_metagraph(client, mid)` fires replayer before any read query.
+    - `mindsos doctor --self-test` exits 0; 3-package version-string parity (R4-15 A); image-tag parity to Phase 08.
+    - All Phase 03 + 04 + 04-v2 + 05a + 05b + 05c + 05d + 06 + 07 + 08 tests pass cumulatively in-container.
+    - **Cumulative tests pass: ≥ Phase 07 baseline (1269 + 2 skipped) + Phase 08 additions; tester records actual count in `PHASE_08_CONFIRMED.md`.** No projection per M5.
+
+  **Risks / known issues to watch:**
+
+    - **`RefreshUnsafeError` class ships but is NEVER raised** (PB-5 B). Per-role mutation-flag tracking deferred. Callers using `refresh` after in-memory mutations LOSE those mutations silently. Document loudly in `docs/usage/core/persistence.md`. ADR-0124 §Constraint amends to "class shipped; enforcement deferred."
+    - **`recover()` is per-Metagraph only** (RPB-5 A). `load_graph` does NOT recover; standalone Graph has no metagraph context. Document asymmetry.
+    - **`recover()` no-replayer case is silent no-op at L1** (RPB-3 C). Uncommitted WAL entries remain visible to `verify --source=db`'s `dangling_wal_entries` bucket (Phase 07 5-bucket scanner). Once L0/L2 (Phase 18+) register replayers, recovery becomes meaningful.
+    - **`sync --metagraph M --replace` refuses with dependent state** (RPB-4 C). Operator must drop instances/xrefs or truncate WAL before destructive replace. By design — prevents silent data loss.
+    - **`load_metagraph` schema reattach is set-name-only** (PB-11 A). `mg.schema_name` populated; MetagraphSchema vocab content NOT auto-attached. L2 phases (Phase 13+) handle attach. Tester recipe: `mindsos metagraph attach-schema ...` after load if vocab needed in memory.
+    - **`refresh` empty-role is silent (log-warn) no-op** (R4-2 D). Programmatic callers must check `mg.graphs_by_role(role)` post-refresh to detect "nothing happened."
+    - **`refresh` role-mismatch raises `RoleMismatchError`** (R4-2 D). Indicates substrate corruption (external write race or manual edit); not a user-recoverable error at runtime.
+    - **`iter_load_graph` cross-batch edges trail in final batch** (RPB-1 A). Intermediate batches yield nodes-only Graphs (no edges). Callers using iter_load_graph for ad-hoc inspection must understand final-batch semantics.
+    - **Memory-budget test is structural, not pressure-based** (PB-12 C). Phase 08 ships no memory-pressure validation; real OEWN-scale validation requires future scale-test phase.
+    - **InstanceLoader orphan handling logs + skips** (RR-4 B). Surfaces as a `verify` finding bucket; tester convention: investigate via Cypher if persistent orphans appear.
+    - **`InstanceLoader` validates overrides at load** (RR-3 A). Substrate-side bad keys (manual edits) become loud `PersistenceError` failures.
+    - **ADR-0125 is server-side; stays Proposed** (PB-1 A). Phase 08 does NOT flip. Phase 18+ wires lazy hydration + LRU eviction.
+    - **WAL `recover()` per-Metagraph; server boot iterates** (carried from Phase 07). Server boot path (Phase 18+) calls `recover(client, mid)` per known metagraph.
+    - **`load_metagraph(..., batch_size=int)` per RR-2 D bounds per-graph memory, not whole-metagraph memory.** The assembled `Metagraph` returned still holds all contained graphs in memory. For multi-graph metagraphs above RAM, future "streaming metagraph iteration" surface (Phase 11+) needed.
+    - **Phase 09 XRef extends via after_load observer subscription** (RR-10 A). Architectural pattern locked in Phase 08; Phase 09 inherits cleanly without MetagraphLoader extension.
+
+  **Rollback hazards (documented; `--force` reset deferred to Phase 11):**
+
+    1. FalkorDB data persists in `.mindsos/falkordb-data/` after rollback (carried from Phase 07).
+    2. JSON state files unchanged (M0 carried) — no migration ambiguity.
+    3. Phase 08 indexes are subset of Phase 07's; no new index DDL in Phase 08.
+    4. 3 new exception classes survive rollback if downstream code imports them; on Phase 07 checkout, imports fail with `ImportError`. Phase 06 lockfile has no consumers.
+    5. New observer subscription on `Metagraph` (`register_after_load_observer`); rollback removes method but in-memory observers may dangle. Documented; tester convention: re-instantiate `Metagraph` on rollback.
+    6. New CLI verbs `sync --metagraph M` / `load --metagraph M` / `verify --source=db --metagraph M` survive rollback as no-op or `KeyError` on subcommand registry; harmless.
+    **Recovery recipe (Mac):** `docker compose down -v` + `rm -rf .mindsos/falkordb-data/` + `git checkout phase-07-confirmed` + `pip install --user -e . --force-reinstall --no-deps --break-system-packages` + `docker compose build`. Lockfile re-run NOT needed; no new pinned deps in Phase 08.
+
+  **Doc sections this phase confirms:**
+
+    - `docs/usage/core/persistence.md` — **AMEND**. New verbs/flags + recipes (metagraph round-trip + refresh + streaming usage); `RefreshUnsafeError` constraint documented prominently; `recover()` on load documented. `last_confirmed_phase: 08`.
+    - `docs/dev/internals/core.md` — **AMEND**. NEW "Reconstruction layer" section with 5 subsections (load_graph / iter_load_graph / MetagraphLoader / refresh / WAL recover-on-load + observer-driven instance load). Cross-references ADRs 0030 / 0121-0127 + 0124 (newly Accepted). `last_confirmed_phase: 08`.
+    - `docs/api/core/loaders.md` — **NEW**. Full API reference: `load_graph` + `iter_load_graph` + `MetagraphLoader` + module function `load_metagraph` + `refresh` + 3 new exception classes. `last_confirmed_phase: 08`.
+    - `docs/changelog/CHANGELOG.md` — Phase 08 entry appended.
+    - **ADR-0124** Proposed → **Accepted** (M3 A inline flip; P27 C acceptance wording per PB-14 C; signature amendment per PB-3 A; impl-refs update per RR-6 A; ADR file edit lands in 08).
+    - **ADR-0125** stays Proposed (PB-1 A — server-side; no Phase 08 consumer).
+    - `mkdocs.yml` nav: adds entry for `docs/api/core/loaders.md`; amends entries for `docs/usage/core/persistence.md` + `docs/dev/internals/core.md`.
+
+  **Breaking changes from Phase 07:**
+
+    - **NEW `mindsos persistence` CLI flags/verbs:** `sync --metagraph M [--replace]`, `load --metagraph M [--to-json]`, `verify --source=db --metagraph M`. The Phase 07 P49 A refusal for `verify --source=db --metagraph M` is dropped.
+    - **NEW mutex constraint:** `--graph G | --metagraph M` mutually exclusive on `load` and `verify`. Combo exits 1.
+    - **NEW exception classes** at L1: `RefreshUnsafeError`, `WALReplayerMissingError`, `RoleMismatchError` (all `PersistenceError` subclasses). Downstream code that catches `PersistenceError` continues to work.
+    - **`Metagraph.register_after_load_observer`** is a new public method. Existing consumers unaffected.
+    - **`load_graph()` internal refactor** (RR-12 A) — surface unchanged; result identical to Phase 07; implementation now wraps `iter_load_graph`.
+    - **`MetagraphSchema` migration code stripped** (RPB-6 A) — Phase 08 loader does NOT query `:MetagraphSettings`. If real v3 data import surfaces later, separate phase ships the migration.
+    - **`falkordb` Python driver: no relock needed** — Phase 07 already pinned; Phase 08 adds no deps.
+
+  **Final amendments (2026-05-13 — locked across 4 design rounds; 59 picks consolidated in `PHASE_08_DESIGN_LOG.md` lock table):**
+
+    1. **M0** — No state-file bump.
+    2. **M1** — Slim-port v3 baseline; XRef + legacy migration stripped.
+    3. **M2** — Single Phase 08.
+    4. **M3** — Flip ADR-0124 inline; ADR-0125 untouched.
+    5. **M4** — 4 rounds (target was 3); 59 picks.
+    6. **M5** — Test budget uncapped (user override).
+    7. **M6-M11** — Observer + fixture + scale + integration density policies.
+    8. **M12** — Locked edge-primitive load sequence (recover → anchor → graphs → MetaEdges → MetaHyperEdges → IntergraphEdges → IntergraphHyperEdges → after_load).
+    9. **M13** — 3 new exception classes.
+    10. **M14-M15** — Design-log + impl-chat handoff structure.
+    11. **PB-1..14** — Round-1 strategic decisions (ADR-0125 strip, loader shape, iter_load signature, observer-based instance load, refresh unsafe class only, WAL first consumer, verify unblock, sync-metagraph CLI, load CLI shape, streaming deferred, schema name only, structural batch test, round count, ADR-0124 acceptance).
+    12. **RPB-1..14** — Round-2 cross-cutting (cross-batch edges, refresh choreography, recover failure, sync-replace refusal, load_graph no-recover, legacy strip, uncapped tests, iter_load test methodology, after_load dispatch, intergraph exclusion, no Round-5 slot, fixture scale, integration density, read Cypher inline).
+    13. **RR-1..15** — Round-3 details (identity unregister, batch_size kwarg, override allow-list, orphan template, class+function dual, ADR impl-refs, fromdb.json sibling, orchestrator only, dispatcher, Phase 09 foreshadowing, inspect-state global, load_graph refactor, fixtures, help text, 5-doc footprint).
+    14. **R4-1..16** — Round-4 edge cases + mechanical (load order, refresh edge cases, exception classes, schema kwarg, summary shape, mutex, identity tests, recover order, design log, handoff naming, loader constructor, exports, instances re-export, sentinel paths, manifest, compose tags).
+    15. **Step 0 audit performed 2026-05-13** — Phase 07 squash-merge on main + tag confirmed; v3 baseline reconstruction files present; no state-file bump needed.
+    16. **Cross-package version-string parity** (Phase 06 P62 A): bumps `mindsos_cli` + `mindsos_core` + `mindsos_instances` all to `0.0.0+phase08`.
+    17. **No carry-forward closure** — Phase 07 P9 C (Graph .properties writer) stays open per PHASE_MAP §7 Q4.
+    18. **Recipe pre-build step** `docker compose --profile test build mindsos-test` BEFORE `mindsos confirm-phase` per `feedback_confirm_phase_timeout.md`.
+    19. **ADR file edit in 08** overrides Phase 06 P45 B precedent for ADR-0124. User instruction inherited from Phase 07: "ADR decisions can be changed if decided in this chat."
+    20. **`mindsos persistence` verb naming locked** — no bikeshedding in implementation chat. `sync --metagraph M` not `push-metagraph` / `project-metagraph` / `materialize-metagraph`.
 
 ### Phase 09 — L1 XRef (cross-metagraph refs)
 

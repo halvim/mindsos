@@ -1,11 +1,57 @@
 ---
-last_confirmed_phase: 07
+last_confirmed_phase: 08
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 08 — L1 Reconstruction (2026-05-14)
+
+**Ships the FalkorDB → Python read surface for `mindsos_core` + sibling
+`mindsos_instances/reconstruction/`.** Class `MetagraphLoader(client)`
++ module function `load_metagraph(client, mid, ...)` (RR-5 B + PB-2 C
+hybrid). NEW `iter_load_graph(client, gid, batch_size=10_000)`
+streaming variant (PB-3 A; RPB-1 A cross-batch trailer semantics;
+RPB-10 A intra-graph only). Phase 07's `load_graph` refactored
+internally to call `iter_load_graph` + assemble (RR-12 A). NEW
+sibling-package `mindsos_instances/reconstruction/instance_loader.py`
+(slim port from v3; RR-3 A override-allow-list validation at load;
+RR-4 B orphan template log+skip). NEW
+`Metagraph.register_after_load_observer` + `_dispatch_after_load`
+helper with per-observer exception isolation (RR-9 A — diverges from
+`_dispatch_after_persist`). NEW first L1 WAL consumer:
+`load_metagraph` always calls `recover(client, mid)` before reads
+(PB-6 B; narrow-catches `WALReplayerMissingError` per RPB-3 C).
+NEW 3 exception classes: `RefreshUnsafeError` (PB-5 B class only;
+no enforcement), `WALReplayerMissingError` (RPB-3 C sentinel),
+`RoleMismatchError` (R4-2 D refresh DB-drift signal). All inherit
+from `PersistenceError`; no `ReconstructionError` umbrella (R4-3 A).
+NEW CLI: `mindsos persistence sync --metagraph M [--replace]` (PB-8 A;
+`--replace` refuses on dependent state per RPB-4 C — exit 2);
+`load --metagraph M [--to-json] [--json]` (PB-9 A; 9-line flat
+summary per R4-5 A; `--to-json` writes
+`~/.mindsos/metagraph-<name>.fromdb.json` sibling per RR-7 A);
+`verify --source=db --metagraph M` UNBLOCKED (PB-7 A drops Phase 07
+P49 A refusal). Typer mutex `--graph G | --metagraph M` on load +
+verify + sync (R4-6 A; exit 1 on combo). P60 — additive `edge_id` +
+`_validate=False` kwargs on `Metagraph.add_metaedge` +
+`add_metahyperedge` to support round-trip id preservation (mirrors
+Phase 05b/05c precedent on intergraph factories). P61 A — additive
+fix to Phase 07's IntergraphHyperEdge persist: writes `:ANCHOR` rels
+alongside `:MEMBER` so the `n_anchors >= 1` invariant survives round-
+trip. ADR-0124 flipped Proposed → Accepted inline (M3 A); signature
+amendment per PB-3 A; impl-refs amended per RR-6 A; acceptance
+criterion per PB-14 C. ADR-0125 stays Proposed (PB-1 A — server-
+side). NO state-file bumps (M0 carried). Manifest + 3-package
+version-string parity bumped to `0.0.0+phase08` (R4-15 A); compose
+image tags `mindsos:phase08-{prod,test}` (R4-16 A). 5 doc-footprint
+items (RR-15 A): amend `persistence.md` + `core.md` (NEW
+"Reconstruction layer" section) + NEW `loaders.md` API ref + ADR-0124
+flip + changelog entry. NEW test fixtures: `metagraph_equality.py`
+(round-trip walker) + `large_graph_factory.py` (N-node builder).
+NEW `pytest.mark.slow` marker (RPB-12 B+C; 10K-node opt-in).
 
 ## Phase 07 — L1 Persistence (2026-05-13)
 

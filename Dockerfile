@@ -110,6 +110,9 @@ COPY mindsos_core ./mindsos_core
 # cascade-observer wiring (round-7 P49 B Core/instances boundary
 # preserved). Round-7 P62 A package-integration checklist requires the
 # COPY directive in both prod + test stages.
+# Phase 08: + mindsos_instances/reconstruction/ subpackage
+# (InstanceLoader; observer subscriber for Metagraph.register_after_load_observer).
+# Wildcard COPY picks up the new subdir automatically.
 COPY mindsos_instances ./mindsos_instances
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.

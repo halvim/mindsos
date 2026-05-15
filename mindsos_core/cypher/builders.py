@@ -247,15 +247,22 @@ def build_unwind_create_metahyperedges(
     """Batched MetaHyperEdge create.
 
     MetaHyperEdges connect N Graphs in the same Metagraph (n-ary).
-    Each row: ``id``, ``label``, ``props``, ``member_graph_ids`` (Sequence[str]),
-    ``_version``.
+    Each row: ``id``, ``type_name`` (Phase 08 B-08-T3 hotfix —
+    previously absent; round-trip required), ``label``, ``props``,
+    ``member_graph_ids`` (Sequence[str]), ``_version``.
     """
     query = (
         "MATCH (m:Metagraph {id: $mid}) "
         "UNWIND $rows AS row "
         "MERGE (mh:MetaHyperEdge {id: row.id}) "
         "ON CREATE SET mh._version = coalesce(row._version, 1) "
-        "SET mh.metagraph_id = $mid, mh.label = row.label, mh += row.props "
+        # Phase 08 B-08-T3 — also persist ``type_name`` so round-trip
+        # preserves the dataclass field. Phase 07 omitted this; load
+        # then read ``mh.type_name`` as None → CypherError on rehydrate.
+        "SET mh.metagraph_id = $mid, "
+        "    mh.label = row.label, "
+        "    mh.type_name = row.type_name, "
+        "    mh += row.props "
         "MERGE (mh)-[:IN_METAGRAPH]->(m) "
         "WITH mh, row "
         "UNWIND row.member_graph_ids AS gid "
@@ -304,20 +311,41 @@ def build_unwind_create_intergraph_hyperedges(
     """Batched IntergraphHyperEdge create (n-ary; cross-graph).
 
     Each row: ``id``, ``label``, ``ordered`` (bool), ``compositional``
-    (bool), ``props``, ``members`` (Sequence[Mapping] with ``node_id``
-    and ``graph_id`` per entry), ``_version``.
+    (bool), ``props``, ``anchors`` (Sequence[Mapping] with ``node_id``
+    and ``graph_id`` per entry — written via ``:ANCHOR`` rels per
+    ADR-0148 Pattern B amended; **Phase 08 P61 A** fix to Phase 07's
+    members-only persist), ``members`` (same shape — written via
+    ``:MEMBER``), ``_version``.
+
+    Per Phase 08 P61 A: Phase 07's implementation persisted only
+    ``:MEMBER`` rels, which left anchor information unrecoverable on
+    load. The dataclass invariant ``n_anchors ≥ 1`` made round-trip
+    impossible. The fix is additive — extends the persist row with
+    an ``anchors`` list and emits a second UNWIND for ``:ANCHOR`` rels.
+    Backwards-compatible with Phase 07 readers (they ignore the new
+    rels); forwards-compatible with Phase 08 load
+    (:class:`MetagraphLoader` reads both ``:ANCHOR`` + ``:MEMBER``).
     """
     query = (
         "MATCH (m:Metagraph {id: $mid}) "
         "UNWIND $rows AS row "
         "MERGE (ih:IntergraphHyperEdge {id: row.id}) "
         "ON CREATE SET ih._version = coalesce(row._version, 1) "
+        # Phase 08 B-08-T3 — also persist ``type_name`` so round-trip
+        # preserves the dataclass field. Symmetric with MetaHyperEdge fix.
         "SET ih.metagraph_id = $mid, "
         "    ih.label = row.label, "
+        "    ih.type_name = row.type_name, "
         "    ih.ordered = row.ordered, "
         "    ih.compositional = row.compositional, "
         "    ih += row.props "
         "MERGE (ih)-[:IN_METAGRAPH]->(m) "
+        "WITH ih, row "
+        # Phase 08 P61 A — write :ANCHOR rels alongside :MEMBER rels so
+        # the dataclass round-trip preserves both sides.
+        "UNWIND row.anchors AS anc "
+        "MATCH (an:Node {id: anc.node_id, graph_id: anc.graph_id}) "
+        "MERGE (ih)-[:ANCHOR]->(an) "
         "WITH ih, row "
         "UNWIND row.members AS mem "
         "MATCH (n:Node {id: mem.node_id, graph_id: mem.graph_id}) "

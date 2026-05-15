@@ -42,6 +42,7 @@ nav:
       - Core Repositories: api/core/repositories.md
       - Core WriteAheadLog: api/core/wal.md
       - Core Integrity scanner: api/core/integrity.md
+      - Core Loaders (Phase 08): api/core/loaders.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md

@@ -120,10 +120,14 @@ class MetagraphRepository:
                 self._client.run_query(q, p)
 
         # ── Step 1d: metahyperedges ─────────────────────────────────────
+        # Phase 08 B-08-T3 — row gains ``type_name`` so the builder can
+        # SET it on the persisted node; Phase 07 omitted this, blocking
+        # round-trip.
         if metagraph.metahyperedges:
             rows = [
                 {
                     "id": mh.edge_id,
+                    "type_name": mh.type_name,
                     "label": mh.label,
                     "props": dict(mh.properties),
                     "member_graph_ids": list(mh.graph_ids),
@@ -158,14 +162,25 @@ class MetagraphRepository:
                 self._client.run_query(q, p)
 
         # ── Step 1f: intergraph hyperedges ──────────────────────────────
+        # Phase 08 P61 A — additively persist ``anchors`` alongside
+        # ``members`` so the dataclass n_anchors >= 1 invariant survives
+        # round-trip. Phase 07 wrote only the members list.
+        # Phase 08 B-08-T3 — also include ``type_name`` in the row so
+        # the builder can SET it on the persisted node (Phase 07
+        # omitted this, breaking round-trip with CypherError on load).
         if metagraph.intergraph_hyperedges:
             rows = [
                 {
                     "id": ih.edge_id,
+                    "type_name": ih.type_name,
                     "label": ih.label,
                     "ordered": True,  # Phase 05c: ordered baked into type
                     "compositional": ih.compositional,
                     "props": dict(ih.properties),
+                    "anchors": [
+                        {"node_id": nid, "graph_id": gid}
+                        for (gid, nid) in ih.anchors
+                    ],
                     "members": [
                         {"node_id": nid, "graph_id": gid}
                         for (gid, nid) in ih.members
