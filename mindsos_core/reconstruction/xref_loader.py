@@ -25,7 +25,8 @@ the row-to-XRef constructor passes 7 named fields + filtered ``properties``.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List
+from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from .._observers import ObserverHandle
 from ..models.xref import XRef
@@ -33,6 +34,20 @@ from ..models.xref import XRef
 if TYPE_CHECKING:
     from ..models.metagraph import Metagraph
     from ..persistence.client import Client
+
+
+def _parse_iso(value: Any) -> Optional[datetime]:
+    """Parse an ISO-8601 datetime string or pass through (Phase 10 helper)."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 #: Core-owned fields the loader must NOT pass through as
@@ -118,7 +133,13 @@ class XRefLoader:
             ).add(xref.xref_id)
 
     def _fetch_xrefs(self, metagraph_id: str) -> List[Dict[str, Any]]:
-        """Run the indexed XRef read against ``:XRef {source_metagraph_id}``."""
+        """Run the indexed XRef read against ``:XRef {source_metagraph_id}``.
+
+        Phase 10 P53 reversal — query no longer needs new columns since
+        ``properties(x)`` already returns the whole row including the
+        restored ``target_stale`` + ``deprecated_at`` columns; the
+        row-to-XRef projector reads them from there.
+        """
         q = (
             "MATCH (x:XRef {source_metagraph_id: $mid}) "
             "RETURN x.id AS id, x.source_metagraph_id AS smid, "
@@ -129,10 +150,19 @@ class XRefLoader:
         return self._client.run_query(q, {"mid": metagraph_id}).rows
 
     def _row_to_xref(self, row: Dict[str, Any]) -> XRef:
-        """Project a raw DB row to a Phase-09-shape :class:`XRef` (8 fields)."""
+        """Project a raw DB row to a Phase-10-shape :class:`XRef` (10 fields).
+
+        Phase 10 P53 reversal — restores ``target_stale`` + ``deprecated_at``
+        from row properties. v3-legacy rows missing these columns get
+        sensible defaults (False / None).
+        """
+        raw_props = row.get("props") or {}
+        # Phase 10 P53 — extract restored fields from props before strip.
+        target_stale = bool(raw_props.get("target_stale") or False)
+        deprecated_at = _parse_iso(raw_props.get("deprecated_at"))
         props = {
             k: v
-            for k, v in (row.get("props") or {}).items()
+            for k, v in raw_props.items()
             if k not in _CORE_XREF_FIELDS
         }
         return XRef(
@@ -144,6 +174,8 @@ class XRefLoader:
             target_id=row["tid"],
             ref_type=row["ref_type"],
             properties=props,
+            target_stale=target_stale,
+            deprecated_at=deprecated_at,
         )
 
 

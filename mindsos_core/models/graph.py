@@ -15,10 +15,15 @@ behaves identically to Phase 03 (open property bags, no type vocabulary).
 
 Phase 04 slim-port still strips (deferral list inherited from Phase 03):
 
-* ``properties`` parameter / graph-level property bag (ADR-0130) — Phase 05/10.
+* ``properties`` parameter / graph-level property bag (ADR-0130) —
+  **Phase 10 (landed; T-rev.A + P85 backfill).** ADR-0130 Graph-side
+  acceptance closes inline with snapshot as the in-phase consumer per
+  the §Revisions amendment-1 (P69 caveat: snapshot-preservation basis;
+  re-evaluate when a typed-key consumer surfaces).
 * ``Node._version`` OCC bump on update (ADR-0127) — Phase 07.
   (``update_*_properties`` ships in Phase 04 WITHOUT the version bump.)
-* Soft-delete iterators / ``deprecate_*`` / ``dispute_*`` (ADR-0133) — Phase 10.
+* Soft-delete iterators / ``deprecate_*`` / ``dispute_*`` (ADR-0133) —
+  **Phase 10 (landing this row per P82 + P68 merge).**
 * ``_restore_*`` reconstruction helpers — Phase 08.
 
 Phase 04 ships exactly: ``__init__``, ``add_node``, ``add_edge``,
@@ -52,6 +57,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
+from datetime import datetime
+
 from .._observers import (
     ObserverHandle,
     RemoveCallback,
@@ -60,6 +67,7 @@ from .._observers import (
 )
 from ..cypher.identifiers import validate_edge_type_identifier
 from ..exceptions import IdentityError, SchemaError
+from ..persistence.soft_delete import SoftDeleteKind, _resolve_at
 from ..schema import Schema, validate_user_properties
 from .edge import Edge, HyperEdge
 from .identity import IdentityRegistry, generate_uuid
@@ -77,6 +85,7 @@ class Graph:
         graph_id: Optional[str] = None,
         identity: Optional[IdentityRegistry] = None,
         schema: Optional[Schema] = None,
+        properties: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Create an empty graph.
 
@@ -94,6 +103,11 @@ class Graph:
                 the schema's validation hooks. Without a schema, the
                 graph behaves identically to Phase 03 (open bags, no
                 type vocabulary).
+            properties: Optional ADR-0130 graph-level property bag.
+                Phase 10 T-rev.A + P85 backfill — Graph-side acceptance
+                of the property-bag pattern. Reserved-key-aware via
+                :func:`validate_user_properties` (scope="graph").
+                ``None`` → empty bag.
         """
         self.graph_id: str = graph_id or generate_uuid()
         self.name: str = name
@@ -103,6 +117,23 @@ class Graph:
         self.nodes: Dict[str, Node] = {}
         self.edges: Dict[str, Edge] = {}
         self.hyperedges: Dict[str, HyperEdge] = {}
+        # ADR-0130 — graph-level namespaced property bag. Phase 10
+        # T-rev.A + P85 backfill (Graph-side acceptance via snapshot
+        # consumer per P69 caveat). Mirrors ``Metagraph.properties``
+        # shape (P85).
+        self.properties: Dict[str, Any] = validate_user_properties(
+            properties or {}, scope="graph"
+        )
+        # Phase 10 M17b + P86 — graph-side soft-delete dirty tracking.
+        # Mirrors ``Metagraph._soft_delete_dirty`` shape but covers only
+        # EDGE + HYPEREDGE (the two soft-deletable element kinds owned
+        # by Graph). Persist drain (Step 12) reads
+        # ``mg.graphs[*]._soft_delete_dirty`` IN ADDITION TO
+        # ``mg._soft_delete_dirty`` for the meta/xref kinds.
+        self._soft_delete_dirty: Dict[SoftDeleteKind, set] = {
+            SoftDeleteKind.EDGE: set(),
+            SoftDeleteKind.HYPEREDGE: set(),
+        }
         # Phase 06 (P31 A + round-7 P49 B + P65 A) — observer plumbing
         # for cascade-delete notification. Core ships plumbing only;
         # ``mindsos_instances.ElementRegistry`` subscribes on attach via
@@ -511,6 +542,152 @@ class Graph:
         _dispatch_precheck(self._remove_observers, edge_id)
         self.identity.unregister(edge_id)
         del self.hyperedges[edge_id]
+
+    # ── iterators (Phase 10 — P82 + ADR-0133 soft-delete filter) ────────
+    #
+    # Phase 04 slim port stripped these methods (graph.py:21 deferral note);
+    # P82 + P68 merge ships them in Phase 10 as NEW methods with the
+    # ``include_deprecated: bool = False`` parameter from day-1 — closes
+    # ADR-0133 §"Affected methods" Graph-side acceptance + provides
+    # Phase 10 / Phase 14 readers with a filter-aware walk API.
+    #
+    # Filter semantics per ADR-0133:
+    # * ``include_deprecated=False`` (default) — skip rows whose
+    #   ``deprecated_at is not None``.
+    # * ``disputed_at`` does NOT filter — disputed edges stay visible
+    #   (caller decides whether to hide them).
+
+    def iter_edges(
+        self, *, include_deprecated: bool = False
+    ) -> Iterable[Edge]:
+        """Yield edges (Phase 10 — P82 new method; ADR-0133 filter)."""
+        for e in self.edges.values():
+            if not include_deprecated and e.deprecated_at is not None:
+                continue
+            yield e
+
+    def iter_hyperedges(
+        self, *, include_deprecated: bool = False
+    ) -> Iterable[HyperEdge]:
+        """Yield hyperedges (Phase 10 — P82 new method; ADR-0133 filter)."""
+        for h in self.hyperedges.values():
+            if not include_deprecated and h.deprecated_at is not None:
+                continue
+            yield h
+
+    def get_edges_for_node(
+        self, node_id: str, *, include_deprecated: bool = False
+    ) -> Iterable[Edge]:
+        """Yield edges incident on ``node_id`` (Phase 10 — P82 new method).
+
+        Edge is "incident on" ``node_id`` when ``edge.source.node_id ==
+        node_id`` OR ``edge.target.node_id == node_id``. ADR-0133 filter
+        applies per :meth:`iter_edges`.
+
+        Does not validate that ``node_id`` exists in this graph — yields
+        empty if not. Callers who need existence-checking should validate
+        upfront via ``node_id in self.nodes``.
+        """
+        for e in self.edges.values():
+            if e.source.node_id != node_id and e.target.node_id != node_id:
+                continue
+            if not include_deprecated and e.deprecated_at is not None:
+                continue
+            yield e
+
+    # ── soft-delete setters (Phase 10 — M6 Graph quartet × Edge + HyperEdge; P82+P86) ──
+    #
+    # 8 setters total. Each:
+    #   1. Validates the element exists (raises IdentityError if not).
+    #   2. Mutates ``deprecated_at`` or ``disputed_at`` via ``_resolve_at``
+    #      (PB-2 — datetime.now(timezone.utc) modernization).
+    #   3. Marks ``_soft_delete_dirty[<kind>]`` (P86 — Graph-side dirty).
+    #   4. Returns the mutated element (PB-10 — uniform return contract).
+    #
+    # Inline-WAL path (M17b "when ``_persist_client`` set") is wired in
+    # Step 12 (Metagraph repository drain extension); Step 7 ships the
+    # dirty-tracking path only. SD1 (v3 baseline HyperEdge no-API) closed
+    # by these 4 HyperEdge methods.
+
+    def deprecate_edge(
+        self, edge_id: str, *, at: Optional[datetime] = None
+    ) -> Edge:
+        """Stamp ``edge.deprecated_at`` (Phase 10 — ADR-0133)."""
+        if edge_id not in self.edges:
+            raise IdentityError(f"Unknown edge id: {edge_id!r}")
+        edge = self.edges[edge_id]
+        edge.deprecated_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.EDGE].add(edge_id)
+        return edge
+
+    def undeprecate_edge(self, edge_id: str) -> Edge:
+        """Clear ``edge.deprecated_at`` (Phase 10 — ADR-0133)."""
+        if edge_id not in self.edges:
+            raise IdentityError(f"Unknown edge id: {edge_id!r}")
+        edge = self.edges[edge_id]
+        edge.deprecated_at = None
+        self._soft_delete_dirty[SoftDeleteKind.EDGE].add(edge_id)
+        return edge
+
+    def dispute_edge(
+        self, edge_id: str, *, at: Optional[datetime] = None
+    ) -> Edge:
+        """Stamp ``edge.disputed_at`` (Phase 10 — ADR-0133)."""
+        if edge_id not in self.edges:
+            raise IdentityError(f"Unknown edge id: {edge_id!r}")
+        edge = self.edges[edge_id]
+        edge.disputed_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.EDGE].add(edge_id)
+        return edge
+
+    def undispute_edge(self, edge_id: str) -> Edge:
+        """Clear ``edge.disputed_at`` (Phase 10 — ADR-0133)."""
+        if edge_id not in self.edges:
+            raise IdentityError(f"Unknown edge id: {edge_id!r}")
+        edge = self.edges[edge_id]
+        edge.disputed_at = None
+        self._soft_delete_dirty[SoftDeleteKind.EDGE].add(edge_id)
+        return edge
+
+    def deprecate_hyperedge(
+        self, hyperedge_id: str, *, at: Optional[datetime] = None
+    ) -> HyperEdge:
+        """Stamp ``hyperedge.deprecated_at`` (Phase 10 — fixes SD1)."""
+        if hyperedge_id not in self.hyperedges:
+            raise IdentityError(f"Unknown hyperedge id: {hyperedge_id!r}")
+        he = self.hyperedges[hyperedge_id]
+        he.deprecated_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.HYPEREDGE].add(hyperedge_id)
+        return he
+
+    def undeprecate_hyperedge(self, hyperedge_id: str) -> HyperEdge:
+        """Clear ``hyperedge.deprecated_at`` (Phase 10 — fixes SD1)."""
+        if hyperedge_id not in self.hyperedges:
+            raise IdentityError(f"Unknown hyperedge id: {hyperedge_id!r}")
+        he = self.hyperedges[hyperedge_id]
+        he.deprecated_at = None
+        self._soft_delete_dirty[SoftDeleteKind.HYPEREDGE].add(hyperedge_id)
+        return he
+
+    def dispute_hyperedge(
+        self, hyperedge_id: str, *, at: Optional[datetime] = None
+    ) -> HyperEdge:
+        """Stamp ``hyperedge.disputed_at`` (Phase 10 — fixes SD1)."""
+        if hyperedge_id not in self.hyperedges:
+            raise IdentityError(f"Unknown hyperedge id: {hyperedge_id!r}")
+        he = self.hyperedges[hyperedge_id]
+        he.disputed_at = _resolve_at(at)
+        self._soft_delete_dirty[SoftDeleteKind.HYPEREDGE].add(hyperedge_id)
+        return he
+
+    def undispute_hyperedge(self, hyperedge_id: str) -> HyperEdge:
+        """Clear ``hyperedge.disputed_at`` (Phase 10 — fixes SD1)."""
+        if hyperedge_id not in self.hyperedges:
+            raise IdentityError(f"Unknown hyperedge id: {hyperedge_id!r}")
+        he = self.hyperedges[hyperedge_id]
+        he.disputed_at = None
+        self._soft_delete_dirty[SoftDeleteKind.HYPEREDGE].add(hyperedge_id)
+        return he
 
     # ── helpers ───────────────────────────────────────────────────────────
 

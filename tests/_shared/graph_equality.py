@@ -41,22 +41,29 @@ def assert_graphs_equal(actual, expected) -> None:
     e_nodes = {n.node_id: (n.value, n.type_name) for n in expected.nodes.values()}
     assert a_nodes == e_nodes, f"Node sets differ:\n  actual={a_nodes}\n  expected={e_nodes}"
 
+    # Phase 10 ADR-0133 — include soft-delete fields in tuple comparison.
+    # ``deprecated_at`` / ``disputed_at`` are datetime|None; equality is
+    # straightforward.
     a_edges = {
-        e.edge_id: (e.type_name, e.source.node_id, e.target.node_id, e.label)
+        e.edge_id: (e.type_name, e.source.node_id, e.target.node_id, e.label,
+                    e.deprecated_at, e.disputed_at)
         for e in actual.edges.values()
     }
     e_edges = {
-        e.edge_id: (e.type_name, e.source.node_id, e.target.node_id, e.label)
+        e.edge_id: (e.type_name, e.source.node_id, e.target.node_id, e.label,
+                    e.deprecated_at, e.disputed_at)
         for e in expected.edges.values()
     }
     assert a_edges == e_edges, f"Edge sets differ:\n  actual={a_edges}\n  expected={e_edges}"
 
     a_he = {
-        h.edge_id: (h.type_name, frozenset(n.node_id for n in h.nodes), h.label)
+        h.edge_id: (h.type_name, frozenset(n.node_id for n in h.nodes), h.label,
+                    h.deprecated_at, h.disputed_at)
         for h in actual.hyperedges.values()
     }
     e_he = {
-        h.edge_id: (h.type_name, frozenset(n.node_id for n in h.nodes), h.label)
+        h.edge_id: (h.type_name, frozenset(n.node_id for n in h.nodes), h.label,
+                    h.deprecated_at, h.disputed_at)
         for h in expected.hyperedges.values()
     }
     assert a_he == e_he, f"HyperEdge sets differ:\n  actual={a_he}\n  expected={e_he}"

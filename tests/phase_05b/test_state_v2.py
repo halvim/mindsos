@@ -35,10 +35,13 @@ class TestStateVersionConstants:
             == ms_migrations.CURRENT_VERSION
         )
 
-    def test_graph_state_version_unchanged_at_4(self):
-        # Phase 05b/05c leave graph state files at v=4 (intergraph_*edges
-        # live on metagraph, not graph).
-        assert state_mod.GRAPH_STATE_VERSION == 4
+    def test_graph_state_version_at_current(self):
+        """Phase 10 B-10-T3 — dynamic check; Phase 05b/05c left graph
+        state files at v=4, Phase 10 bumps to v=5 for soft-delete fields
+        (audit-class feedback_phase_baseline_literal_audit.md).
+        """
+        from mindsos_cli.migrations import graph as graph_migrations
+        assert state_mod.GRAPH_STATE_VERSION == graph_migrations.CURRENT_VERSION
 
     def test_schema_state_version_unchanged_at_2(self):
         # Phase 04-v2 schema state files unaffected by 05b/05c.
@@ -65,6 +68,10 @@ class TestMigrationV1ToV2:
         assert result["schema_name"] is None
 
     def test_v1_to_v2_preserves_existing_fields(self):
+        """Phase 10 B-10-T3 — chain runs v=1 → CURRENT (=5 in P10) which adds
+        soft-delete fields per element. Assertion narrowed to fields that
+        existed in v=1 (audit-class feedback_phase_baseline_literal_audit.md).
+        """
         v1 = {
             "_state_version": 1,
             "metagraph_id": "mg-id",
@@ -77,8 +84,10 @@ class TestMigrationV1ToV2:
         result = mg_migrations.migrate(v1)
         assert result["properties"] == {"k": "v"}
         assert result["contained_graphs"] == ["g1"]
-        assert result["metaedges"] == [{"edge_id": "e1"}]
-        assert result["metahyperedges"] == [{"edge_id": "h1"}]
+        # Check edge_id survived; subsequent migrations (P10 v=5) add
+        # deprecated_at + disputed_at as default-None fields.
+        assert result["metaedges"][0]["edge_id"] == "e1"
+        assert result["metahyperedges"][0]["edge_id"] == "h1"
 
     def test_v2_advances_to_current(self):
         """A v=2 input migrates forward to CURRENT_VERSION (idempotent at v=2 in 05b; advances to v=3 under 05c)."""

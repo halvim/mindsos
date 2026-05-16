@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 05a
+last_confirmed_phase: 10
 ---
 
 # `Metagraph` API
@@ -38,10 +38,38 @@ Metagraph(
   `IdentityRegistry` with the metagraph's. Q5-A eager id-collision
   check. P16 invariants: `g.identity is mg.identity` post-call;
   `g.id_strategy` untouched.
-* `remove_graph(graph_id: str) -> None` — P19 always-cascade slim:
-  removes incident metaedges + metahyperedges first, then the graph
-  itself. No `cascade` parameter, no `force` flag, no `RemovalImpact`
-  return — Phase 10 reintroduces.
+* `remove_graph(graph_id, *, cascade=True, force=False) -> RemovalImpact` —
+  Phase 10 [ADR-0135](../../decisions/adr/0135-removal-impact-on-remove-graph.md) full surface.
+  Returns a `RemovalImpact` (4 fields: `incoming_xrefs`,
+  `incoming_ref_properties`, `proceeded`, `blocked_reason`) describing
+  cross-graph refs pointing into the graph being removed. Two block paths
+  raise `RemoveGraphBlockedError` (carrying `.impact` + `.blocked_reason`):
+    * **`BlockedReason.DANGLING_REFS`** — `force=False` AND impact
+      non-empty. `force=True` proceeds and stamps `target_stale=True` on
+      each incoming XRef via `mark_xref_stale`.
+    * **`BlockedReason.INCIDENT_META_EDGES_CASCADE_FALSE`** —
+      `cascade=False` AND incident MetaEdges/MetaHyperEdges exist.
+      **Independent of `force`** per Phase 10 P81 — `force=True` overrides
+      only the dangling-refs gate, not the cascade gate.
+
+  Compositional precheck (Phase 05b Pushback 17-A) still raises
+  `CompositionalImmutableError` before either Phase 10 gate fires.
+
+### Soft-delete setters (Phase 10)
+
+* `deprecate_metaedge(metaedge_id, *, at=None) -> MetaEdge` — SD2 fix.
+* `undeprecate_metaedge(metaedge_id) -> MetaEdge`.
+* `dispute_metaedge(metaedge_id, *, at=None) -> MetaEdge` — SD3 fix.
+* `undispute_metaedge(metaedge_id) -> MetaEdge`.
+* `deprecate_metahyperedge(...)` / `undeprecate_metahyperedge` /
+  `dispute_metahyperedge` / `undispute_metahyperedge`.
+* `mark_xref_stale(xref_id) -> XRef` — sets `target_stale=True`.
+  Also called by `remove_graph(force=True)`.
+* `unmark_xref_stale(xref_id) -> XRef`.
+* `deprecate_xref(xref_id, *, at=None) -> XRef`.
+* `undeprecate_xref(xref_id) -> XRef`.
+
+See [Soft-delete API](soft-delete.md) for the full setter matrix.
 
 ### Metaedges (P11 — graph_id strings, not Graph objects)
 

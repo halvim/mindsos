@@ -71,15 +71,18 @@ from .cypher.identifiers import (
     validate_label_identifier,
 )
 from .exceptions import (
+    BlockedReason,
     CompositionalImmutableError,
     CoreError,
     CypherError,
     IdentityError,
     PropertyShapeError,
+    RemoveGraphBlockedError,
     SchemaError,
     UnknownTypeError,
     XRefIntegrityError,
 )
+from .persistence.soft_delete import SoftDeleteKind
 from .models.edge import Edge, HyperEdge
 from .models.graph import Graph
 from .models.identity import (
@@ -93,7 +96,8 @@ from .models.identity import (
 )
 from .models.intergraph_edge import IntergraphEdge
 from .models.intergraph_hyperedge import IntergraphHyperEdge
-from .models.metagraph import MetaEdge, MetaHyperEdge, Metagraph
+from .metagraph_snapshot import MetagraphSnapshot
+from .models.metagraph import MetaEdge, MetaHyperEdge, Metagraph, RemovalImpact
 from .models.node import Node
 from .models.xref import XRef
 from .schema import (
@@ -163,6 +167,14 @@ __all__ = [
     "MetagraphSchema",
     # XRef cross-metagraph primitive (Phase 09 — ADR-0128)
     "XRef",
+    # Phase 10 — ADR-0135 remove_graph block + P75 unified exception
+    "BlockedReason",
+    "RemoveGraphBlockedError",
+    "RemovalImpact",
+    # Phase 10 — ADR-0027/0028/0129 snapshot (slim-port + P84 allow-list)
+    "MetagraphSnapshot",
+    # Phase 10 — RR-16a + P72 soft-delete persistence wiring
+    "SoftDeleteKind",
 ]
 
-__version__ = "0.0.0+phase09"
+__version__ = "0.0.0+phase10"

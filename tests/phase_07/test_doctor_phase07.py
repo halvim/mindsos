@@ -12,9 +12,17 @@ def test_image_tag_regex_accepts_phase07() -> None:
     assert _COMPOSE_IMAGE_RE.search("    image: mindsos:phase07-test") is not None
 
 
-def test_confirm_phase_timeout_is_900s() -> None:
-    """M12 — bump 600 → 900s for Phase 07 + integration tests."""
-    assert _CONFIRM_PHASE_TIMEOUT_SECONDS == 900
+def test_confirm_phase_timeout_is_at_least_900s() -> None:
+    """M12 — bump 600 → 900s for Phase 07 + integration tests.
+
+    Phase 10 B-10-T7 — original literal ``== 900`` was broken by B-10-T4's
+    bump to 1800s once the cumulative suite outgrew 900s. Per
+    ``feedback_phase_baseline_literal_audit.md`` the fix is ``>= 900`` so
+    the test enforces "no regression below the Phase 07 floor" while
+    surviving future bumps. See ``feedback_confirm_phase_timeout.md`` for
+    the bump history (600 → 900 → 1800).
+    """
+    assert _CONFIRM_PHASE_TIMEOUT_SECONDS >= 900
 
 
 def test_manifest_falkordb_section_present() -> None:

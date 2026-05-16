@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase09"
-description = "MindsOS command-line interface — Phase 09 L1 XRef (cross-metagraph refs: first-class XRef primitive + Metagraph.add_xref/iter_xrefs/remove_xref + WAL-wrapped XRefRepository + per-Client replayer registration + XRefLoader after-load observer + xref-list CLI + migration callable + state-file v=4)."
+version = "0.0.0+phase10"
+description = "MindsOS command-line interface — Phase 10 L1 Snapshot + soft-delete substrate + RemovalImpact + XRef setters (MetagraphSnapshot.of/restore_into per ADR-0027/0028/0129 + 20 setter methods on Graph/Metagraph quartet + 4 XRef quartet PX2 + RemovalImpact dataclass with raise-on-block contract + iterator/loader filter pass + state-file v=5 + 10 WAL replayer kinds + xref-list 10-field surface)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

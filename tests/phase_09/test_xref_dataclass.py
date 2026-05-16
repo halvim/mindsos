@@ -34,8 +34,12 @@ def test_kw_construction_minimal():
     assert x.properties == {}
 
 
-def test_no_target_stale_or_deprecated_at_p53():
-    """P53 — target_stale + deprecated_at fields DROPPED until P10."""
+def test_target_stale_and_deprecated_at_p53_reversal_phase_10():
+    """Phase 10 B-10-T3 — Phase 09 P53 DROPPED target_stale + deprecated_at;
+    Phase 10 P53 REVERSAL restored them (P53 reversal per design lock M5 +
+    PHASE_MAP §Phase 10 row). Audit-class
+    feedback_phase_baseline_literal_audit.md.
+    """
     x = XRef(
         source_metagraph_id="mg-src",
         source_id="n1",
@@ -44,8 +48,11 @@ def test_no_target_stale_or_deprecated_at_p53():
         target_id="t1",
         ref_type="SPECIALISES",
     )
-    assert not hasattr(x, "target_stale")
-    assert not hasattr(x, "deprecated_at")
+    # Fields restored in Phase 10 with default-False / default-None.
+    assert hasattr(x, "target_stale")
+    assert hasattr(x, "deprecated_at")
+    assert x.target_stale is False
+    assert x.deprecated_at is None
 
 
 def test_explicit_xref_id_preserved():

@@ -26,6 +26,12 @@ The full hierarchy lives in the parent project at
 
 from __future__ import annotations
 
+from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .models.metagraph import RemovalImpact
+
 
 class CoreError(Exception):
     """Base class for every error raised by mindsos_core."""
@@ -316,3 +322,88 @@ class RoleMismatchError(PersistenceError):
         self.graph_id = graph_id
         self.in_memory_role = in_memory_role
         self.db_role = db_role
+
+
+# ── Remove-graph block (Phase 10 — RPB-10 + P75 unified-exception) ───────────
+
+
+class BlockedReason(str, Enum):
+    """Reason ``Metagraph.remove_graph`` blocked (Phase 10 P75 unified exception).
+
+    Two block paths converge on :class:`RemoveGraphBlockedError`; the
+    enum value distinguishes the cause for caller-side branch logic.
+
+    * :attr:`DANGLING_REFS` — ``force=False`` and the graph being removed
+      has incoming XRefs and/or incoming ``ref:<role>`` property strings
+      from other graphs in the metagraph. Caller's recourse: redirect /
+      mark stale / pass ``force=True`` to proceed (XRefs get stamped
+      ``target_stale=True``; ``ref:*`` property strings left dangling
+      and listed in :class:`RemovalImpact`).
+    * :attr:`INCIDENT_META_EDGES_CASCADE_FALSE` — ``cascade=False`` and
+      the graph being removed is incident to one or more MetaEdges or
+      MetaHyperEdges in the metagraph. **Independent of `force`** per
+      P81 v3-baseline contract: ``force=True`` overrides only the
+      dangling-refs gate, not the cascade gate. Caller's recourse:
+      explicitly remove the incident meta-edges first, or call again
+      with ``cascade=True`` (default).
+    """
+
+    DANGLING_REFS = "dangling-refs"
+    INCIDENT_META_EDGES_CASCADE_FALSE = "incident-meta-edges-cascade-false"
+
+
+class RemoveGraphBlockedError(CoreError):
+    """``Metagraph.remove_graph`` refused to proceed (ADR-0135).
+
+    Carries the :class:`RemovalImpact` report describing what blocked
+    the removal, plus a :class:`BlockedReason` enum value distinguishing
+    the two block paths. Per Phase 10 PA1 (overrides ADR-0135's
+    return-only Decision text per §Revisions amendment-2), the
+    raise-on-block contract is API-friendlier — callers can't silently
+    ignore ``proceeded=False``.
+
+    Phase 10 raise sites (both inside
+    :meth:`mindsos_core.models.metagraph.Metagraph.remove_graph`):
+
+    * :attr:`BlockedReason.DANGLING_REFS` — when ``force=False`` and
+      :class:`RemovalImpact.incoming_xrefs` or
+      :class:`RemovalImpact.incoming_ref_properties` is non-empty.
+    * :attr:`BlockedReason.INCIDENT_META_EDGES_CASCADE_FALSE` — when
+      ``cascade=False`` and any MetaEdge/MetaHyperEdge in the owning
+      metagraph is incident to the graph being removed (regardless of
+      ``force`` — P81).
+
+    Per Phase 09 R5-3 docstring prediction ("Phase 09 / Phase 10 will
+    re-ship XRefIntegrityError / RemoveGraphBlockedError respectively
+    under the same pattern" — exceptions.py:148-149), this class is the
+    Phase 10 sibling of Phase 09's :class:`XRefIntegrityError`.
+
+    Tester recovery: branch on ``e.blocked_reason`` to decide between
+    redirecting incoming refs / passing ``force=True`` / removing
+    incident meta-edges explicitly / passing ``cascade=True``.
+
+    Attributes:
+        graph_id: id of the graph whose removal was refused.
+        impact: :class:`RemovalImpact` report; populated for both
+            blocked_reason values (the cascade-gate path attaches an
+            impact with ``proceeded=False`` and the incident-meta-edge
+            count summarised in ``blocked_reason``'s message — XRef/ref
+            lists may be empty if the cascade gate hit before the
+            dangling-refs gate ran).
+        blocked_reason: :class:`BlockedReason` enum value.
+    """
+
+    def __init__(
+        self,
+        graph_id: str,
+        impact: "RemovalImpact",
+        blocked_reason: BlockedReason,
+    ) -> None:
+        msg = (
+            f"remove_graph({graph_id!r}) blocked: "
+            f"{blocked_reason.value}"
+        )
+        super().__init__(msg)
+        self.graph_id = graph_id
+        self.impact = impact
+        self.blocked_reason = blocked_reason

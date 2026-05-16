@@ -45,6 +45,7 @@ per-graph node scan.
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any, Dict, Iterator, List, Optional
 
 from ..exceptions import PersistenceError
@@ -68,7 +69,31 @@ _CORE_KEYS = frozenset({
     "_version",
     "_props_json",
     "schema_name",
+    # Phase 10 — ADR-0133 soft-delete fields are typed dataclass attrs,
+    # not user-property bag keys.
+    "deprecated_at",
+    "disputed_at",
 })
+
+
+def _parse_iso(value: Any) -> Optional[datetime]:
+    """Parse an ISO-8601 datetime string or pass through ``None`` / ``datetime``.
+
+    Phase 10 ADR-0133 helper — mirrors
+    :func:`mindsos_core.reconstruction.metagraph_loader._parse_iso`. Loaders
+    read soft-delete fields out of ``properties(row)`` driver dicts and
+    recover the in-memory ``datetime`` instance.
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 # Sentinel for ``batch_size=None`` (load_graph wraps iter_load_graph with
@@ -83,6 +108,7 @@ def iter_load_graph(
     identity: Optional[IdentityRegistry] = None,
     schema: Any = None,
     batch_size: int = 10_000,
+    include_deprecated: bool = False,
 ) -> Iterator[Graph]:
     """Yield partial :class:`Graph` objects in node-id order; trail edges + hyperedges in a final batch.
 
@@ -187,9 +213,13 @@ def iter_load_graph(
             if len(page_nodes) < page_limit:
                 break
         # Trailer — edges + hyperedges over all loaded nodes.
-        _load_edges(client, g)
-        _load_hyperedges(client, g)
+        _load_edges(client, g, include_deprecated=include_deprecated)
+        _load_hyperedges(client, g, include_deprecated=include_deprecated)
         _detect_cross_graph_leaks(client, g)
+        # Phase 10 PB-6a — clear graph-side soft-delete dirty after full
+        # load (loader-attached path; symmetric with MetagraphLoader path).
+        for kind in g._soft_delete_dirty:
+            g._soft_delete_dirty[kind].clear()
         yield g
         return
 
@@ -227,9 +257,12 @@ def iter_load_graph(
             break
 
     # Trailer — edges + hyperedges + cross-graph leak detection.
-    _load_edges(client, g)
-    _load_hyperedges(client, g)
+    _load_edges(client, g, include_deprecated=include_deprecated)
+    _load_hyperedges(client, g, include_deprecated=include_deprecated)
     _detect_cross_graph_leaks(client, g)
+    # Phase 10 PB-6a — clear graph-side soft-delete dirty after streamed load.
+    for kind in g._soft_delete_dirty:
+        g._soft_delete_dirty[kind].clear()
     yield g
 
 
@@ -239,6 +272,7 @@ def load_graph(
     *,
     identity: Optional[IdentityRegistry] = None,
     schema: Any = None,
+    include_deprecated: bool = False,
 ) -> Graph:
     """Reconstruct the :class:`Graph` with ``graph_id`` from FalkorDB.
 
@@ -275,6 +309,7 @@ def load_graph(
         identity=identity,
         schema=schema,
         batch_size=_FULL_LOAD_SENTINEL,  # type: ignore[arg-type]
+        include_deprecated=include_deprecated,
     )
     # Drain the iterator. Full-load path yields exactly once.
     g: Optional[Graph] = None
@@ -337,15 +372,24 @@ def _add_node_from_row(g: Graph, row: Dict[str, Any]) -> None:
         node._version = int(row["version"])
 
 
-def _load_edges(client: Client, g: Graph) -> None:
+def _load_edges(
+    client: Client, g: Graph, *, include_deprecated: bool = False
+) -> None:
     """Load edges where both endpoints live in this graph.
 
     Cross-graph rows skipped here; logged in
     :func:`_detect_cross_graph_leaks` for operator visibility.
+
+    Phase 10 ADR-0133 — when ``include_deprecated=False`` (default),
+    appends ``AND e.deprecated_at IS NULL`` to the WHERE clause.
+    Soft-delete fields round-tripped from row props onto the dataclass
+    post-construction.
     """
+    # Phase 10 — conditional WHERE clause.
+    where_extra = "" if include_deprecated else " AND e.deprecated_at IS NULL"
     q = (
         "MATCH (s:Node {graph_id: $gid})-[e]->(t:Node {graph_id: $gid}) "
-        "WHERE e.graph_id = $gid AND e.id IS NOT NULL "
+        f"WHERE e.graph_id = $gid AND e.id IS NOT NULL{where_extra} "
         "RETURN e.id AS id, e.type_name AS type_name, e.label AS label, "
         "       e._version AS version, "
         "       s.id AS source_id, t.id AS target_id, properties(e) AS props"
@@ -361,11 +405,13 @@ def _load_edges(client: Client, g: Graph) -> None:
                 row["id"], g.graph_id, row["source_id"], row["target_id"],
             )
             continue
-        # Skip rows already registered (defensive — should not happen
-        # when iter is invoked once per load).
         if row["id"] in g.edges:
             continue
-        props = _strip_core_keys(row.get("props") or {})
+        # Phase 10 — extract soft-delete fields BEFORE strip.
+        raw_props = row.get("props") or {}
+        dep_at = _parse_iso(raw_props.get("deprecated_at"))
+        dis_at = _parse_iso(raw_props.get("disputed_at"))
+        props = _strip_core_keys(raw_props)
         edge = g.add_edge(
             source=src,
             target=tgt,
@@ -377,12 +423,25 @@ def _load_edges(client: Client, g: Graph) -> None:
         )
         if row.get("version") is not None:
             edge._version = int(row["version"])
+        # Phase 10 — restore soft-delete fields onto the dataclass.
+        edge.deprecated_at = dep_at
+        edge.disputed_at = dis_at
 
 
-def _load_hyperedges(client: Client, g: Graph) -> None:
-    """Load hyperedges with their :MEMBER edges in a single round-trip."""
+def _load_hyperedges(
+    client: Client, g: Graph, *, include_deprecated: bool = False
+) -> None:
+    """Load hyperedges with their :MEMBER edges in a single round-trip.
+
+    Phase 10 ADR-0133 — when ``include_deprecated=False`` (default),
+    WHERE clause filters ``h.deprecated_at IS NULL``. Soft-delete fields
+    round-tripped from props onto the dataclass post-construction.
+    """
+    # Phase 10 — conditional WHERE clause.
+    where_extra = "" if include_deprecated else " WHERE h.deprecated_at IS NULL"
     q = (
         "MATCH (h:HyperEdge {graph_id: $gid}) "
+        f"{where_extra} "
         "OPTIONAL MATCH (h)-[:MEMBER]->(n:Node) "
         "WITH h, collect(n.id) AS member_ids "
         "RETURN h.id AS id, h.type_name AS type_name, h.label AS label, "
@@ -409,7 +468,11 @@ def _load_hyperedges(client: Client, g: Graph) -> None:
                 row["id"], g.graph_id,
             )
             continue
-        props = _strip_core_keys(row.get("props") or {})
+        # Phase 10 — extract soft-delete fields BEFORE strip.
+        raw_props = row.get("props") or {}
+        dep_at = _parse_iso(raw_props.get("deprecated_at"))
+        dis_at = _parse_iso(raw_props.get("disputed_at"))
+        props = _strip_core_keys(raw_props)
         type_name = row.get("type_name") or "UNSPECIFIED"
         h = g.add_hyperedge(
             nodes=members,
@@ -421,6 +484,9 @@ def _load_hyperedges(client: Client, g: Graph) -> None:
         )
         if row.get("version") is not None:
             h._version = int(row["version"])
+        # Phase 10 — restore soft-delete fields.
+        h.deprecated_at = dep_at
+        h.disputed_at = dis_at
 
 
 def _detect_cross_graph_leaks(client: Client, g: Graph) -> None:

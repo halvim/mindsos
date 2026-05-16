@@ -1,8 +1,8 @@
 ---
-last_confirmed_phase: 09
+last_confirmed_phase: 10
 ---
 
-# Core layer internals — Persistence + Reconstruction (Phase 09)
+# Core layer internals — Persistence + Reconstruction (Phase 10)
 
 This page documents the persistence-layer mechanics for `mindsos_core`.
 The substrate decisions live in the ADRs at the project-root location
@@ -20,6 +20,20 @@ Cross-references:
 - [ADR-0130](../../decisions/adr/0130-property-bag-on-metagraph-graph.md) — `_props_json` encoding (Accepted in Phase 09).
 - [ADR-0128](../../decisions/adr/0128-hybrid-xref-cross-metagraph-refs.md) — hybrid XRef primitive (Phase 09; Proposed until Phase 14 L2 consumer).
 - [ADR-0142](../../decisions/adr/0142-xref-cutover-for-ref-global.md) — XRef cutover (Phase 09 ships L1 commitment).
+
+## Phase 10 — Snapshot + soft-delete substrate + RemovalImpact + XRef setters
+
+Phase 10 ships:
+
+* **`MetagraphSnapshot`** ([ADR-0027](../../decisions/adr/0027-metagraph-snapshot-restore-in-place.md)) — slim-port from v3; 12-attribute allow-list (M3 + P84); mutate-in-place restore preserves `id(mg)` / `id(mg.identity)` / surviving `id(g)`. See [snapshot internals](snapshots.md).
+* **`RemovalImpact` + `RemoveGraphBlockedError` + `BlockedReason` enum** ([ADR-0135](../../decisions/adr/0135-removal-impact-on-remove-graph.md)) — `remove_graph(*, cascade=True, force=False) -> RemovalImpact` with two block paths (DANGLING_REFS + INCIDENT_META_EDGES_CASCADE_FALSE; P81 independence).
+* **Soft-delete substrate** ([ADR-0133](../../decisions/adr/0133-soft-delete-via-deprecated-disputed-properties.md)) — `deprecated_at` + `disputed_at` on `Edge` / `HyperEdge` / `MetaEdge` / `MetaHyperEdge`. XRef restores `target_stale` + `deprecated_at` (Phase 09 P53 reversal). 20 setter methods + iterator/loader filter pass (P68 merge).
+* **22 cypher builders** (M16 + PB-4a per-method): 16 edge-side + 4 XRef + 2 impact-query.
+* **10 WAL replayer kinds** (M8): 4 collapsed element-side + 4 XRef + Phase 09's 2 = 10. Wrapper grows 2 → 10 via composing `register_soft_delete_replayers` + extended `register_xref_replayers`.
+* **State-file v=5** (M11): metagraph + graph state-file bumps. Per-element soft-delete fields persist as ISO strings + bool. Forward-only `_v4_to_v5` per kind (RR-7).
+* **`mindsos persistence xref-list`** 8→10 fields (M24 + RR-6): JSON unconditional 10; Rich table grows columns only when non-default.
+
+Caller surface: see [Soft-delete API](../../api/core/soft-delete.md) + [Concept overview](../../concepts/soft-delete.md).
 
 ## Phase 09 — XRef (cross-metagraph references)
 

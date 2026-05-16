@@ -36,9 +36,16 @@ def test_graph_chain_v1_through_v4_in_one_call():
 
 
 def test_graph_chain_at_current_is_idempotent():
-    """A v=4 input passes through with no changes."""
+    """A CURRENT_VERSION input passes through with no changes.
+
+    Phase 10 B-10-T3 — literal ``== 4`` patched to dynamic CURRENT_VERSION
+    per the audit class (feedback_phase_baseline_literal_audit.md). The
+    pre-state-at-current shape now must include all field-defaults the
+    Phase 10 v=5 migration would add (deprecated_at / disputed_at on
+    edges + hyperedges) so the idempotence assertion holds.
+    """
     state = {
-        "_state_version": 4,
+        "_state_version": graph_migrations.CURRENT_VERSION,
         "graph_id": "x",
         "name": "g",
         "role": None,
@@ -50,14 +57,18 @@ def test_graph_chain_at_current_is_idempotent():
     }
     pre = dict(state)
     out = graph_migrations.migrate(state)
-    assert out["_state_version"] == 4
+    assert out["_state_version"] == graph_migrations.CURRENT_VERSION
     assert out == pre
 
 
 def test_graph_chain_rejects_forward_version():
-    """v=5 raises ValueError ('this CLI supports v4')."""
-    with pytest.raises(ValueError, match="this CLI supports v4"):
-        graph_migrations.migrate({"_state_version": 5})
+    """CURRENT_VERSION + 1 raises ValueError."""
+    forward = graph_migrations.CURRENT_VERSION + 1
+    with pytest.raises(
+        ValueError,
+        match=f"this CLI supports v{graph_migrations.CURRENT_VERSION}",
+    ):
+        graph_migrations.migrate({"_state_version": forward})
 
 
 def test_graph_chain_rejects_missing_version():

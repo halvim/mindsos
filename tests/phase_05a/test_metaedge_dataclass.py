@@ -106,22 +106,28 @@ def test_metahyperedge_kw_only_rejects_positional():
         MetaHyperEdge(["g1", "g2"], "REL")  # type: ignore[misc]
 
 
-# ── soft-delete fields stripped (P1) ─────────────────────────────────────────
+# ── soft-delete fields (P1 stripped in 05a → Phase 10 M5 lands them) ────────
 
 
-def test_metaedge_no_deprecated_at_field():
-    """P1 — soft-delete substrate stripped in 05a; lands uniformly in P10."""
+def test_metaedge_has_deprecated_at_field_phase_10():
+    """Phase 10 B-10-T3 — Phase 05a P1 stripped soft-delete fields; Phase 10
+    M5 re-adds them uniformly across all 4 edge variants (audit-class
+    feedback_phase_baseline_literal_audit.md)."""
     me = MetaEdge(
         source_graph_id="g1",
         target_graph_id="g2",
         type_name="REL",
     )
-    assert not hasattr(me, "deprecated_at")
-    assert not hasattr(me, "disputed_at")
+    assert hasattr(me, "deprecated_at")
+    assert hasattr(me, "disputed_at")
+    assert me.deprecated_at is None  # default
+    assert me.disputed_at is None    # default
 
 
-def test_metahyperedge_no_deprecated_at_field():
-    """P1 — symmetric on MetaHyperEdge."""
+def test_metahyperedge_has_deprecated_at_field_phase_10():
+    """Phase 10 B-10-T3 — symmetric on MetaHyperEdge."""
     mhe = MetaHyperEdge(graph_ids=["g1", "g2"], type_name="REL")
-    assert not hasattr(mhe, "deprecated_at")
-    assert not hasattr(mhe, "disputed_at")
+    assert hasattr(mhe, "deprecated_at")
+    assert hasattr(mhe, "disputed_at")
+    assert mhe.deprecated_at is None
+    assert mhe.disputed_at is None

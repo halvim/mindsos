@@ -181,6 +181,8 @@ def _assert_metaedges(mg1: Any, mg2: Any) -> None:
         )
         assert e1.label == e2.label
         assert dict(e1.properties) == dict(e2.properties)
+        # Phase 10 RR-4 — soft-delete field equality.
+        assert_soft_delete_state_equal(e1, e2)
 
 
 def _assert_metahyperedges(mg1: Any, mg2: Any) -> None:
@@ -202,6 +204,8 @@ def _assert_metahyperedges(mg1: Any, mg2: Any) -> None:
         assert e1.type_name == e2.type_name
         assert e1.label == e2.label
         assert dict(e1.properties) == dict(e2.properties)
+        # Phase 10 RR-4 — soft-delete field equality.
+        assert_soft_delete_state_equal(e1, e2)
 
 
 def _assert_intergraph_edges(mg1: Any, mg2: Any) -> None:
@@ -294,6 +298,17 @@ def _assert_xrefs(mg1: Any, mg2: Any) -> None:
         assert dict(x1.properties) == dict(x2.properties), (
             f"XRef {xid!r} properties drift"
         )
+        # Phase 10 PB-3 reversal + RR-4 — restored XRef fields:
+        # ``target_stale`` (bool) + ``deprecated_at`` (datetime|None).
+        # XRef has NO ``disputed_at`` per ADR-0128 amendment-3.
+        assert x1.target_stale == x2.target_stale, (
+            f"XRef {xid!r} target_stale drift: "
+            f"{x1.target_stale!r} vs {x2.target_stale!r}"
+        )
+        assert x1.deprecated_at == x2.deprecated_at, (
+            f"XRef {xid!r} deprecated_at drift: "
+            f"{x1.deprecated_at!r} vs {x2.deprecated_at!r}"
+        )
 
 
 def assert_xref_contents_equal(xrefs1: Any, xrefs2: Any) -> None:
@@ -332,4 +347,60 @@ def assert_xref_contents_equal(xrefs1: Any, xrefs2: Any) -> None:
     )
 
 
-__all__ = ["assert_metagraphs_equal", "assert_xref_contents_equal"]
+def assert_soft_delete_state_equal(element_a: Any, element_b: Any) -> None:
+    """Phase 10 RR-4 — assert soft-delete fields equal between two elements.
+
+    Per ADR-0133 — every soft-deletable element carries
+    ``deprecated_at: datetime|None`` + ``disputed_at: datetime|None``
+    (Edge / HyperEdge / MetaEdge / MetaHyperEdge). XRef carries
+    ``target_stale: bool`` + ``deprecated_at: datetime|None`` instead
+    (no ``disputed_at`` per ADR-0128 amendment-3).
+
+    Dispatches by ``hasattr`` so a single helper covers all 5 element
+    kinds. Used by:
+
+    * :func:`_assert_metaedges` / :func:`_assert_metahyperedges` /
+      :func:`_assert_xrefs` in this module (inline assertions per RR-4).
+    * Per-element round-trip tests in ``tests/phase_10/`` that need to
+      assert a setter-then-persist-then-load cycle preserved both
+      fields.
+
+    Both elements must be the same kind (Edge × Edge, XRef × XRef, …).
+    Raises :class:`AssertionError` with the kind-specific message.
+    """
+    # XRef path: target_stale + deprecated_at (no disputed_at).
+    if hasattr(element_a, "target_stale"):
+        assert element_a.target_stale == element_b.target_stale, (
+            f"XRef target_stale drift: "
+            f"{element_a.target_stale!r} vs {element_b.target_stale!r}"
+        )
+        assert element_a.deprecated_at == element_b.deprecated_at, (
+            f"XRef deprecated_at drift: "
+            f"{element_a.deprecated_at!r} vs {element_b.deprecated_at!r}"
+        )
+        return
+    # Edge / HyperEdge / MetaEdge / MetaHyperEdge: deprecated_at + disputed_at.
+    if hasattr(element_a, "deprecated_at") and hasattr(element_a, "disputed_at"):
+        kind = type(element_a).__name__
+        assert element_a.deprecated_at == element_b.deprecated_at, (
+            f"{kind} deprecated_at drift: "
+            f"{element_a.deprecated_at!r} vs {element_b.deprecated_at!r}"
+        )
+        assert element_a.disputed_at == element_b.disputed_at, (
+            f"{kind} disputed_at drift: "
+            f"{element_a.disputed_at!r} vs {element_b.disputed_at!r}"
+        )
+        return
+    raise TypeError(
+        f"assert_soft_delete_state_equal: element of type "
+        f"{type(element_a).__name__} has neither soft-delete shape "
+        f"(missing target_stale AND missing deprecated_at/disputed_at)"
+    )
+
+
+__all__ = [
+    "assert_metagraphs_equal",
+    "assert_xref_contents_equal",
+    # Phase 10 RR-4
+    "assert_soft_delete_state_equal",
+]

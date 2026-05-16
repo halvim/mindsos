@@ -8,6 +8,10 @@ Versions:
 * v=3 (Phase 04-v2) — adds required ``type_name`` per hyperedge entry
   (legacy entries populated with ``"UNSPECIFIED"`` sentinel — SENT-1 lock).
 * v=4 (Phase 05a) — adds optional ``metagraph_name`` back-pointer field.
+* v=5 (Phase 10 — M11 + RR-7) — soft-delete fields on edges/hyperedges
+  (ADR-0133). Per-edge / per-hyperedge: ``deprecated_at: null`` +
+  ``disputed_at: null`` defaults (active / not-disputed). ``target_stale``
+  is XRef-only (lives on metagraph state-file).
 
 Each migration step is a pure dict→dict function. Steps are idempotent if
 the field is already present (defensive read of ``state.get(...)``).
@@ -20,7 +24,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List
 
-CURRENT_VERSION = 4
+CURRENT_VERSION = 5
 
 
 def _v1_to_v2(state: Dict) -> Dict:
@@ -51,11 +55,34 @@ def _v3_to_v4(state: Dict) -> Dict:
     return state
 
 
+def _v4_to_v5(state: Dict) -> Dict:
+    """Phase 05a → Phase 10 (M11 + RPB-3 + RR-7): soft-delete fields land.
+
+    Per ADR-0133 — every edge / hyperedge gets ``deprecated_at: null`` +
+    ``disputed_at: null`` defaults (active / not-disputed). Explicit
+    per-item walk per RPB-3; idempotent on re-migration. Per RR-8 —
+    ISO-8601 string for ``deprecated_at`` / ``disputed_at`` (None → JSON
+    null on serialize).
+    """
+    for e in state.get("edges", []) or []:
+        if "deprecated_at" not in e:
+            e["deprecated_at"] = None
+        if "disputed_at" not in e:
+            e["disputed_at"] = None
+    for h in state.get("hyperedges", []) or []:
+        if "deprecated_at" not in h:
+            h["deprecated_at"] = None
+        if "disputed_at" not in h:
+            h["disputed_at"] = None
+    return state
+
+
 #: ``MIGRATIONS[i]`` migrates v(i+1) → v(i+2).
 MIGRATIONS: List[Callable[[Dict], Dict]] = [
     _v1_to_v2,
     _v2_to_v3,
     _v3_to_v4,
+    _v4_to_v5,
 ]
 
 

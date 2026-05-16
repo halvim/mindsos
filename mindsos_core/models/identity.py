@@ -199,5 +199,14 @@ class IdentityRegistry:
         self._ids.add(new_id)
 
     def clear(self) -> None:
-        """Remove every id. Primarily for tests."""
+        """Remove every id. Used by tests AND by snapshot restore.
+
+        Phase 10 RF — :meth:`mindsos_core.metagraph_snapshot.MetagraphSnapshot.restore_into`
+        calls this on the metagraph's shared registry as part of the
+        identity-preserving rebuild (per ADR-0027 mutate-in-place
+        contract + ADR-0020 shared-registry invariant). The registry
+        object's identity is preserved; only the ``_ids`` set is
+        emptied in place — KL's ``installed_locals`` references stay
+        valid through a snapshot/restore cycle.
+        """
         self._ids.clear()
