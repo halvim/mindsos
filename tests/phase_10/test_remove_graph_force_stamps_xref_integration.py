@@ -8,6 +8,7 @@ from mindsos_core import Graph, Metagraph
 from mindsos_core.persistence import MetagraphRepository
 from mindsos_core.persistence.bootstrap import bootstrap
 from mindsos_core.reconstruction.metagraph_loader import MetagraphLoader
+from mindsos_core.reconstruction.xref_loader import XRefLoader
 
 pytestmark = pytest.mark.integration
 
@@ -42,4 +43,5 @@ def test_force_true_stamps_target_stale_persists(falkor_client):
     # Persist the stamp + reload — DB sees the change.
     MetagraphRepository(falkor_client).persist(mg)
     loaded = MetagraphLoader(falkor_client).load(mg.metagraph_id)
+    XRefLoader(falkor_client).load_into(loaded)  # Phase 09 idiom — populate xrefs
     assert loaded.xrefs[xref.xref_id].target_stale is True
