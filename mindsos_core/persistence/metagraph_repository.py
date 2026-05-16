@@ -62,6 +62,27 @@ except Exception:  # pragma: no cover
 from .._observers import _dispatch_after_persist
 from ..cypher.builders import (
     build_create_metagraph_anchor,
+    # Phase 10 — soft-delete drain (per-method builders, PB-4a).
+    build_set_edge_deprecated_at,
+    build_set_edge_disputed_at,
+    build_set_hyperedge_deprecated_at,
+    build_set_hyperedge_disputed_at,
+    build_set_metaedge_deprecated_at,
+    build_set_metaedge_disputed_at,
+    build_set_metahyperedge_deprecated_at,
+    build_set_metahyperedge_disputed_at,
+    build_set_xref_deprecated_at,
+    build_set_xref_target_stale,
+    build_unset_edge_deprecated_at,
+    build_unset_edge_disputed_at,
+    build_unset_hyperedge_deprecated_at,
+    build_unset_hyperedge_disputed_at,
+    build_unset_metaedge_deprecated_at,
+    build_unset_metaedge_disputed_at,
+    build_unset_metahyperedge_deprecated_at,
+    build_unset_metahyperedge_disputed_at,
+    build_unset_xref_deprecated_at,
+    build_unset_xref_target_stale,
     build_unwind_create_intergraph_edges,
     build_unwind_create_intergraph_hyperedges,
     build_unwind_create_metaedges,
@@ -71,6 +92,7 @@ from ..exceptions import PersistenceError
 from ..models.metagraph import Metagraph
 from .client import Client
 from .graph_repository import GraphRepository
+from .soft_delete import SoftDeleteKind
 from .xref_repository import XRefRepository
 
 _log = logging.getLogger(__name__)
@@ -224,6 +246,30 @@ class MetagraphRepository:
             # (MERGE-idempotent per PB-8 makes retry safe).
             metagraph._xrefs_dirty.clear()
 
+        # ── Step 1h: soft-delete drain (Phase 10 — RPB-5 + RR-17). ──────
+        # Drain order locked at RPB-5: EDGE → HYPEREDGE → METAEDGE →
+        # METAHYPEREDGE → XREF.
+        #
+        # The 5 buckets live at TWO scopes per P86:
+        #   * Graph-side (EDGE + HYPEREDGE): mg.graphs[*]._soft_delete_dirty
+        #   * Metagraph-side (METAEDGE + METAHYPEREDGE + XREF):
+        #     mg._soft_delete_dirty
+        #
+        # Per M17b — this drain handles the "no _persist_client at setter
+        # time" path. Programmatic setter calls without a client attached
+        # populate the dirty buckets; this step emits cypher for each.
+        # The drain emits cypher only (no WAL) — crash-safety on the
+        # programmatic path is by-design absent in Phase 10 (mirrors
+        # Phase 09 _xrefs_dirty's no-WAL drain semantic; mid-drain
+        # crashes lose any unflushed mutations).
+        #
+        # Per RPB-1 — replayer bodies (Step 13) bypass public setters and
+        # call cypher builders directly. The drain here uses the same
+        # builders for shape parity. Each dirty element emits 2 SET
+        # statements (one per field) so the DB row matches the dataclass.
+        # Atomic clear per-bucket on full success (parallels Step 1g P54).
+        self._drain_soft_delete(metagraph)
+
         # ── Step 2: WAL commit (mechanism-only at Phase 07; no caller). ─
 
         # ── Step 3: observers fire (M9). ────────────────────────────────
@@ -278,6 +324,156 @@ class MetagraphRepository:
             raise PersistenceError(
                 f"Metagraph anchor write failed: {e}"
             ) from e
+
+    # ── Phase 10 soft-delete drain (Step 1h) ──────────────────────────────
+
+    def _drain_soft_delete(self, metagraph: Metagraph) -> None:
+        """Drain ``_soft_delete_dirty`` buckets in RPB-5 order (Phase 10).
+
+        Order locked at RPB-5: EDGE → HYPEREDGE → METAEDGE → METAHYPEREDGE
+        → XREF. Per-bucket atomic clear on full success; mid-bucket crash
+        leaves remaining entries for the next persist (idempotent SET is
+        safe to retry).
+
+        Per P86 — Graph-side buckets (EDGE + HYPEREDGE) live on
+        ``mg.graphs[*]._soft_delete_dirty``; Metagraph-side
+        (METAEDGE / METAHYPEREDGE / XREF) on ``mg._soft_delete_dirty``.
+        """
+        # ── Bucket 1: EDGE (Graph-side, P86) ─────────────────────────────
+        for g in metagraph.graphs.values():
+            edge_ids = g._soft_delete_dirty.get(SoftDeleteKind.EDGE)
+            if edge_ids:
+                for eid in list(edge_ids):
+                    edge = g.edges.get(eid)
+                    if edge is None:
+                        edge_ids.discard(eid)
+                        continue
+                    self._sync_pair(
+                        build_set_edge_deprecated_at,
+                        build_unset_edge_deprecated_at,
+                        g.graph_id, eid, edge.deprecated_at,
+                    )
+                    self._sync_pair(
+                        build_set_edge_disputed_at,
+                        build_unset_edge_disputed_at,
+                        g.graph_id, eid, edge.disputed_at,
+                    )
+                edge_ids.clear()
+
+        # ── Bucket 2: HYPEREDGE (Graph-side, P86) ───────────────────────
+        for g in metagraph.graphs.values():
+            he_ids = g._soft_delete_dirty.get(SoftDeleteKind.HYPEREDGE)
+            if he_ids:
+                for hid in list(he_ids):
+                    he = g.hyperedges.get(hid)
+                    if he is None:
+                        he_ids.discard(hid)
+                        continue
+                    self._sync_pair(
+                        build_set_hyperedge_deprecated_at,
+                        build_unset_hyperedge_deprecated_at,
+                        g.graph_id, hid, he.deprecated_at,
+                    )
+                    self._sync_pair(
+                        build_set_hyperedge_disputed_at,
+                        build_unset_hyperedge_disputed_at,
+                        g.graph_id, hid, he.disputed_at,
+                    )
+                he_ids.clear()
+
+        # ── Bucket 3: METAEDGE (Metagraph-side) ─────────────────────────
+        me_ids = metagraph._soft_delete_dirty.get(SoftDeleteKind.METAEDGE)
+        if me_ids:
+            for eid in list(me_ids):
+                me = metagraph.metaedges.get(eid)
+                if me is None:
+                    me_ids.discard(eid)
+                    continue
+                self._sync_pair(
+                    build_set_metaedge_deprecated_at,
+                    build_unset_metaedge_deprecated_at,
+                    metagraph.metagraph_id, eid, me.deprecated_at,
+                )
+                self._sync_pair(
+                    build_set_metaedge_disputed_at,
+                    build_unset_metaedge_disputed_at,
+                    metagraph.metagraph_id, eid, me.disputed_at,
+                )
+            me_ids.clear()
+
+        # ── Bucket 4: METAHYPEREDGE (Metagraph-side) ────────────────────
+        mhe_ids = metagraph._soft_delete_dirty.get(SoftDeleteKind.METAHYPEREDGE)
+        if mhe_ids:
+            for mhid in list(mhe_ids):
+                mhe = metagraph.metahyperedges.get(mhid)
+                if mhe is None:
+                    mhe_ids.discard(mhid)
+                    continue
+                self._sync_pair(
+                    build_set_metahyperedge_deprecated_at,
+                    build_unset_metahyperedge_deprecated_at,
+                    metagraph.metagraph_id, mhid, mhe.deprecated_at,
+                )
+                self._sync_pair(
+                    build_set_metahyperedge_disputed_at,
+                    build_unset_metahyperedge_disputed_at,
+                    metagraph.metagraph_id, mhid, mhe.disputed_at,
+                )
+            mhe_ids.clear()
+
+        # ── Bucket 5: XREF (Metagraph-side; target_stale + deprecated_at) ─
+        xref_ids = metagraph._soft_delete_dirty.get(SoftDeleteKind.XREF)
+        if xref_ids:
+            for xid in list(xref_ids):
+                xref = metagraph.xrefs.get(xid)
+                if xref is None:
+                    xref_ids.discard(xid)
+                    continue
+                # target_stale is bool — use set/unset directly.
+                if xref.target_stale:
+                    q, p = build_set_xref_target_stale(xid)
+                else:
+                    q, p = build_unset_xref_target_stale(xid)
+                self._client.run_query(q, p)
+                # deprecated_at — datetime|None.
+                self._sync_pair(
+                    build_set_xref_deprecated_at,
+                    build_unset_xref_deprecated_at,
+                    None, xid, xref.deprecated_at,
+                    xref_mode=True,
+                )
+            xref_ids.clear()
+
+    def _sync_pair(
+        self,
+        set_builder: Any,
+        unset_builder: Any,
+        scope_id: Any,
+        element_id: str,
+        value: Any,
+        *,
+        xref_mode: bool = False,
+    ) -> None:
+        """Emit a SET-or-UNSET pair for a single datetime field.
+
+        Phase 10 helper for :meth:`_drain_soft_delete`. When ``value`` is
+        non-None, calls ``set_builder(scope_id, element_id, iso_string)``
+        (or ``set_builder(element_id, iso_string)`` for XRef mode).
+        When ``value`` is None, calls ``unset_builder(scope_id, element_id)``
+        (or ``unset_builder(element_id)`` for XRef mode).
+        """
+        if value is not None:
+            iso = value.isoformat() if hasattr(value, "isoformat") else value
+            if xref_mode:
+                q, p = set_builder(element_id, iso)
+            else:
+                q, p = set_builder(scope_id, element_id, iso)
+        else:
+            if xref_mode:
+                q, p = unset_builder(element_id)
+            else:
+                q, p = unset_builder(scope_id, element_id)
+        self._client.run_query(q, p)
 
 
 __all__ = ["MetagraphRepository"]

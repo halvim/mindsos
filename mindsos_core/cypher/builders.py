@@ -578,6 +578,338 @@ def build_remove_xref(xref_id: str) -> Tuple[str, Dict[str, Any]]:
     return query, {"xid": xref_id}
 
 
+# ── soft-delete SET-only builders (Phase 10 — M16 PB-4a per-method) ─────────
+#
+# 22 builders total per Phase 10 design lock M16:
+#   * 16 edge-side: 4 ops × 4 element kinds (Edge / HyperEdge / MetaEdge /
+#     MetaHyperEdge). Ops = set/unset deprecated_at + set/unset disputed_at.
+#   * 4 XRef-specific: set/unset target_stale + set/unset deprecated_at
+#     (XRef has no disputed_at per ADR-0128 amendment-3).
+#   * 2 query builders for _compute_removal_impact: incoming-xref index
+#     probe + intra-metagraph ref-property scan.
+#
+# Consumed by:
+#   * MetagraphRepository.persist drain (Step 12) — reads dirty + emits.
+#   * WAL replayer bodies (Step 13) — bypass public setters per RPB-1.
+#
+# Per RR-8: ``at`` is serialized as an ISO-8601 string (FalkorDB stores
+# strings; ISO ↔ datetime conversion happens at the caller boundary).
+# ``target_stale`` is a plain bool. ``None`` passes through to FalkorDB
+# null on the unset path.
+
+
+# ── Edge soft-delete (untyped rel; MATCH any rel type by id+graph_id) ───────
+
+
+def build_set_edge_deprecated_at(
+    graph_id: str, edge_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``edge.deprecated_at`` with the resolved ISO timestamp (ADR-0133)."""
+    query = (
+        "MATCH ()-[e {id: $eid, graph_id: $gid}]->() "
+        "SET e.deprecated_at = $at "
+        "RETURN e.id AS id"
+    )
+    return query, {"gid": graph_id, "eid": edge_id, "at": at}
+
+
+def build_unset_edge_deprecated_at(
+    graph_id: str, edge_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``edge.deprecated_at`` (ADR-0133)."""
+    query = (
+        "MATCH ()-[e {id: $eid, graph_id: $gid}]->() "
+        "SET e.deprecated_at = NULL "
+        "RETURN e.id AS id"
+    )
+    return query, {"gid": graph_id, "eid": edge_id}
+
+
+def build_set_edge_disputed_at(
+    graph_id: str, edge_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``edge.disputed_at`` (ADR-0133)."""
+    query = (
+        "MATCH ()-[e {id: $eid, graph_id: $gid}]->() "
+        "SET e.disputed_at = $at "
+        "RETURN e.id AS id"
+    )
+    return query, {"gid": graph_id, "eid": edge_id, "at": at}
+
+
+def build_unset_edge_disputed_at(
+    graph_id: str, edge_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``edge.disputed_at`` (ADR-0133)."""
+    query = (
+        "MATCH ()-[e {id: $eid, graph_id: $gid}]->() "
+        "SET e.disputed_at = NULL "
+        "RETURN e.id AS id"
+    )
+    return query, {"gid": graph_id, "eid": edge_id}
+
+
+# ── HyperEdge soft-delete ───────────────────────────────────────────────────
+
+
+def build_set_hyperedge_deprecated_at(
+    graph_id: str, hyperedge_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``hyperedge.deprecated_at`` (Phase 10 — fixes v3 baseline SD1)."""
+    query = (
+        "MATCH (h:HyperEdge {id: $hid, graph_id: $gid}) "
+        "SET h.deprecated_at = $at "
+        "RETURN h.id AS id"
+    )
+    return query, {"gid": graph_id, "hid": hyperedge_id, "at": at}
+
+
+def build_unset_hyperedge_deprecated_at(
+    graph_id: str, hyperedge_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``hyperedge.deprecated_at``."""
+    query = (
+        "MATCH (h:HyperEdge {id: $hid, graph_id: $gid}) "
+        "SET h.deprecated_at = NULL "
+        "RETURN h.id AS id"
+    )
+    return query, {"gid": graph_id, "hid": hyperedge_id}
+
+
+def build_set_hyperedge_disputed_at(
+    graph_id: str, hyperedge_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``hyperedge.disputed_at`` (Phase 10 — fixes SD1)."""
+    query = (
+        "MATCH (h:HyperEdge {id: $hid, graph_id: $gid}) "
+        "SET h.disputed_at = $at "
+        "RETURN h.id AS id"
+    )
+    return query, {"gid": graph_id, "hid": hyperedge_id, "at": at}
+
+
+def build_unset_hyperedge_disputed_at(
+    graph_id: str, hyperedge_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``hyperedge.disputed_at``."""
+    query = (
+        "MATCH (h:HyperEdge {id: $hid, graph_id: $gid}) "
+        "SET h.disputed_at = NULL "
+        "RETURN h.id AS id"
+    )
+    return query, {"gid": graph_id, "hid": hyperedge_id}
+
+
+# ── MetaEdge soft-delete (untyped rel between Graphs in a Metagraph) ───────
+
+
+def build_set_metaedge_deprecated_at(
+    metagraph_id: str, metaedge_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``metaedge.deprecated_at`` (Phase 10 — fixes SD2)."""
+    query = (
+        "MATCH (:Graph)-[e {id: $eid, metagraph_id: $mid}]->(:Graph) "
+        "SET e.deprecated_at = $at "
+        "RETURN e.id AS id"
+    )
+    return query, {"mid": metagraph_id, "eid": metaedge_id, "at": at}
+
+
+def build_unset_metaedge_deprecated_at(
+    metagraph_id: str, metaedge_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``metaedge.deprecated_at``."""
+    query = (
+        "MATCH (:Graph)-[e {id: $eid, metagraph_id: $mid}]->(:Graph) "
+        "SET e.deprecated_at = NULL "
+        "RETURN e.id AS id"
+    )
+    return query, {"mid": metagraph_id, "eid": metaedge_id}
+
+
+def build_set_metaedge_disputed_at(
+    metagraph_id: str, metaedge_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``metaedge.disputed_at`` (Phase 10 — fixes SD3 — dispute path)."""
+    query = (
+        "MATCH (:Graph)-[e {id: $eid, metagraph_id: $mid}]->(:Graph) "
+        "SET e.disputed_at = $at "
+        "RETURN e.id AS id"
+    )
+    return query, {"mid": metagraph_id, "eid": metaedge_id, "at": at}
+
+
+def build_unset_metaedge_disputed_at(
+    metagraph_id: str, metaedge_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``metaedge.disputed_at``."""
+    query = (
+        "MATCH (:Graph)-[e {id: $eid, metagraph_id: $mid}]->(:Graph) "
+        "SET e.disputed_at = NULL "
+        "RETURN e.id AS id"
+    )
+    return query, {"mid": metagraph_id, "eid": metaedge_id}
+
+
+# ── MetaHyperEdge soft-delete (labeled node) ────────────────────────────────
+
+
+def build_set_metahyperedge_deprecated_at(
+    metagraph_id: str, metahyperedge_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``metahyperedge.deprecated_at`` (Phase 10 — fixes SD2+SD3)."""
+    query = (
+        "MATCH (mh:MetaHyperEdge {id: $eid, metagraph_id: $mid}) "
+        "SET mh.deprecated_at = $at "
+        "RETURN mh.id AS id"
+    )
+    return query, {"mid": metagraph_id, "eid": metahyperedge_id, "at": at}
+
+
+def build_unset_metahyperedge_deprecated_at(
+    metagraph_id: str, metahyperedge_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``metahyperedge.deprecated_at``."""
+    query = (
+        "MATCH (mh:MetaHyperEdge {id: $eid, metagraph_id: $mid}) "
+        "SET mh.deprecated_at = NULL "
+        "RETURN mh.id AS id"
+    )
+    return query, {"mid": metagraph_id, "eid": metahyperedge_id}
+
+
+def build_set_metahyperedge_disputed_at(
+    metagraph_id: str, metahyperedge_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``metahyperedge.disputed_at``."""
+    query = (
+        "MATCH (mh:MetaHyperEdge {id: $eid, metagraph_id: $mid}) "
+        "SET mh.disputed_at = $at "
+        "RETURN mh.id AS id"
+    )
+    return query, {"mid": metagraph_id, "eid": metahyperedge_id, "at": at}
+
+
+def build_unset_metahyperedge_disputed_at(
+    metagraph_id: str, metahyperedge_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``metahyperedge.disputed_at``."""
+    query = (
+        "MATCH (mh:MetaHyperEdge {id: $eid, metagraph_id: $mid}) "
+        "SET mh.disputed_at = NULL "
+        "RETURN mh.id AS id"
+    )
+    return query, {"mid": metagraph_id, "eid": metahyperedge_id}
+
+
+# ── XRef quartet (PX2 — Phase 09 P53 reversal consumer) ─────────────────────
+
+
+def build_set_xref_target_stale(xref_id: str) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``xref.target_stale = True`` (Phase 10 PX2 + ADR-0135 force-path)."""
+    query = (
+        "MATCH (x:XRef {id: $xid}) "
+        "SET x.target_stale = true "
+        "RETURN x.id AS id"
+    )
+    return query, {"xid": xref_id}
+
+
+def build_unset_xref_target_stale(xref_id: str) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``xref.target_stale``."""
+    query = (
+        "MATCH (x:XRef {id: $xid}) "
+        "SET x.target_stale = false "
+        "RETURN x.id AS id"
+    )
+    return query, {"xid": xref_id}
+
+
+def build_set_xref_deprecated_at(
+    xref_id: str, at: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Stamp ``xref.deprecated_at`` (Phase 10 PX2; symmetric with edge SD)."""
+    query = (
+        "MATCH (x:XRef {id: $xid}) "
+        "SET x.deprecated_at = $at "
+        "RETURN x.id AS id"
+    )
+    return query, {"xid": xref_id, "at": at}
+
+
+def build_unset_xref_deprecated_at(xref_id: str) -> Tuple[str, Dict[str, Any]]:
+    """Clear ``xref.deprecated_at``."""
+    query = (
+        "MATCH (x:XRef {id: $xid}) "
+        "SET x.deprecated_at = NULL "
+        "RETURN x.id AS id"
+    )
+    return query, {"xid": xref_id}
+
+
+# ── _compute_removal_impact query builders (Phase 10 — ADR-0135) ────────────
+#
+# Phase 10 primary impact-compute path uses the in-memory
+# :attr:`Metagraph._xrefs_by_target` index (PB-5a + ADR-0135 amendment-3).
+# These cypher builders ship as substrate for future-phase consumers
+# (Phase 14 :meth:`MetagraphView.follow_ref` walking XRefs at cross-DB
+# scope). Phase 10 :meth:`Metagraph._compute_removal_impact` does NOT
+# call these — the in-memory path is sufficient for the v1 single-process
+# scope.
+
+
+def build_query_incoming_xrefs_by_target(
+    target_metagraph_id: str, target_id: str
+) -> Tuple[str, Dict[str, Any]]:
+    """Return XRef rows whose target matches ``(target_metagraph_id, target_id)``.
+
+    Uses the Phase 09 ``(target_metagraph_id, target_id)`` compound index
+    per ADR-0123 amended. Equivalent to the in-memory
+    :attr:`Metagraph._xrefs_by_target` lookup but routed through FalkorDB
+    — Phase 14+ ``MetagraphView.follow_ref`` consumer expected.
+    """
+    query = (
+        "MATCH (x:XRef {target_metagraph_id: $tmid, target_id: $tid}) "
+        "RETURN x.id AS id, x.source_metagraph_id AS source_metagraph_id, "
+        "       x.source_id AS source_id, x.target_role AS target_role, "
+        "       x.ref_type AS ref_type, x.target_stale AS target_stale, "
+        "       x.deprecated_at AS deprecated_at"
+    )
+    return query, {"tmid": target_metagraph_id, "tid": target_id}
+
+
+def build_query_intra_metagraph_ref_properties(
+    metagraph_id: str, target_node_ids: Sequence[str]
+) -> Tuple[str, Dict[str, Any]]:
+    """Scan ``ref:*`` property strings in other graphs of the metagraph.
+
+    Returns ``(source_node_id, property_key)`` pairs where the property
+    value matches any id in ``target_node_ids``. O(N) over nodes in the
+    metagraph; documented as the more expensive impact-compute path
+    (ADR-0135 rationale — exactly the cost difference that motivated
+    Phase 09's XRef primitive).
+
+    Phase 10 :meth:`Metagraph._compute_removal_impact` may invoke this
+    when the in-memory scan path is uneconomic; for v1 single-process
+    scope, the in-memory walk over ``mg.graphs[*].nodes`` is preferred.
+    """
+    # FalkorDB doesn't have a native "any key starts with prefix"
+    # iterator, so the caller walks node property bags in Python via the
+    # in-memory Graph objects when possible. This builder exists for
+    # cases where the metagraph is loader-attached AND callers want a
+    # DB-side scan (Phase 14+ consumer pattern).
+    query = (
+        "MATCH (n:Node {metagraph_id: $mid}) "
+        "WITH n, keys(n) AS ks "
+        "UNWIND ks AS k "
+        "WITH n, k WHERE k STARTS WITH 'ref:' "
+        "WITH n, k, n[k] AS v "
+        "WHERE v IN $target_ids "
+        "RETURN n.id AS source_node_id, k AS property_key"
+    )
+    return query, {"mid": metagraph_id, "target_ids": list(target_node_ids)}
+
+
 # ── instance persistence (consumed by mindsos_instances.persistence) ────────
 
 

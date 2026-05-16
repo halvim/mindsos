@@ -124,15 +124,17 @@ from .._observers import (
 )
 from ..cypher.identifiers import validate_edge_type_identifier
 from ..exceptions import (
+    BlockedReason,
     CompositionalImmutableError,
     IdentityError,
     PropertyShapeError,
+    RemoveGraphBlockedError,
     SchemaError,
     UnknownTypeError,
     XRefIntegrityError,
 )
 from ..persistence.soft_delete import SoftDeleteKind, _resolve_at
-from ..schema.validation import validate_user_properties
+from ..schema.validation import REF_PROPERTY_PREFIX, validate_user_properties
 from .graph import Graph
 from .identity import IdentityRegistry, IdStrategy, UUID4Strategy, generate_uuid
 from .intergraph_edge import IntergraphEdge
@@ -685,12 +687,20 @@ class Metagraph:
         target_metagraph_id: Optional[str] = None,
         target_id: Optional[str] = None,
         ref_type: Optional[str] = None,
+        include_deprecated: bool = False,
     ) -> Iterator[XRef]:
-        """Iterate XRefs filtered AND-composed across all four predicates.
+        """Iterate XRefs filtered AND-composed across all predicates.
 
         **Phase 09 PB-2 — AND semantics.** Unset filters are
         wildcards; passed filters narrow the result. Passing
         ``source_id`` AND ``ref_type`` returns XRefs matching both.
+
+        **Phase 10 ADR-0133 — soft-delete filter.** Default
+        ``include_deprecated=False`` filters out XRefs whose
+        ``deprecated_at is not None``. ``target_stale`` does NOT filter
+        (callers may want to see invalidated refs to redirect); reader
+        policy decides whether to surface stale ones via the dataclass
+        flag.
 
         Performance: when ``source_id`` is set, the inverse index
         :attr:`_xrefs_by_source` is consulted first; when both
@@ -727,6 +737,9 @@ class Metagraph:
             if target_id is not None and x.target_id != target_id:
                 continue
             if ref_type is not None and x.ref_type != ref_type:
+                continue
+            # Phase 10 ADR-0133 — soft-delete filter (last gate).
+            if not include_deprecated and x.deprecated_at is not None:
                 continue
             yield x
 
@@ -848,36 +861,82 @@ class Metagraph:
             cb(graph)
         return graph
 
-    def remove_graph(self, graph_id: str) -> None:
-        """Remove a contained graph and cascade incident edges (P19 + Pushback 17-A + Phase 05c).
+    def remove_graph(
+        self,
+        graph_id: str,
+        *,
+        cascade: bool = True,
+        force: bool = False,
+    ) -> RemovalImpact:
+        """Remove a contained graph (Phase 10 — ADR-0135 surface).
 
-        Always cascades: every incident :class:`MetaEdge`,
-        :class:`MetaHyperEdge`, :class:`IntergraphEdge`, AND
-        :class:`IntergraphHyperEdge` is removed. Per Pushback 17-A
-        (extended in Phase 05c per the smaller-items fold of the row),
-        an atomic precheck pass runs BEFORE any mutation: walks BOTH
-        ``self.intergraph_edges`` AND ``self.intergraph_hyperedges``;
-        if any incident edge of either variant has
-        ``compositional=True``, the entire ``remove_graph`` raises
-        :class:`CompositionalImmutableError` with the offending edge_id
-        AND ``edge_kind`` (``"intergraph_edge"`` /
-        ``"intergraph_hyperedge"``) — no metaedges, metahyperedges, or
-        intergraph_edges/intergraph_hyperedges are removed and the graph
-        stays in the metagraph. Tester recovery is ``mindsos metagraph
-        reset --name <MG> --force --yes`` per Pushback 6-A.
+        **Phase 10 signature change** (Phase 05a P19 reverted; full
+        ADR-0135 surface lands per row M4 + P67 + P75 + P81):
 
-        No ``force`` flag, no ``RemovalImpact`` return, no
-        ``cascade=False`` semantic — Phase 10 reintroduces the full
-        ADR-0135 surface (which will likely add a force-bypass for the
-        compositional check).
+        * ``cascade: bool = True`` (default True per P67 v3-baseline
+          restoration) — when True, incident :class:`MetaEdge` /
+          :class:`MetaHyperEdge` cascade-remove. When False AND any
+          incident exists, raises
+          :class:`RemoveGraphBlockedError` with
+          ``BlockedReason.INCIDENT_META_EDGES_CASCADE_FALSE``,
+          **regardless of ``force``** (P81 — v3 verbatim; the cascade
+          gate is independent of the dangling-refs gate). Intergraph
+          edges/hyperedges always cascade regardless (intergraph
+          edges have their own compositional precheck per Pushback 17-A).
+        * ``force: bool = False`` — when False AND the impact has
+          incoming XRefs or incoming ``ref:*`` property strings, raises
+          :class:`RemoveGraphBlockedError` with
+          ``BlockedReason.DANGLING_REFS`` (P75 unified + PA1 raise-on-block).
+          When True, removal proceeds; ``target_stale=True`` is stamped
+          on every incoming XRef via :meth:`mark_xref_stale`. ``ref:*``
+          property strings are LEFT DANGLING per ADR-0135 §Decision step 4
+          (caller responsibility — no equivalent of ``target_stale`` for
+          property keys without mutating every source node).
+        * Returns :class:`RemovalImpact` with ``proceeded=True`` on
+          successful removal. ``proceeded=False`` shape is unused per
+          PA1 (the raise-on-block contract replaces the return-only
+          contract in ADR-0135 §Decision step 2).
+
+        **Precondition order (audit-class precedence):**
+          1. ``graph_id`` exists → else :class:`IdentityError`.
+          2. Pushback 17-A compositional precheck (Phase 05b/05c) →
+             :class:`CompositionalImmutableError` if any incident
+             intergraph-edge/hyperedge is ``compositional=True``.
+          3. ``cascade=False`` AND incident meta-edges/hyperedges →
+             :class:`RemoveGraphBlockedError(INCIDENT_META_EDGES_CASCADE_FALSE)`.
+          4. ``force=False`` AND impact non-empty (XRefs OR ref:* props) →
+             :class:`RemoveGraphBlockedError(DANGLING_REFS)`.
+          5. ``force=True`` AND incoming XRefs → stamp ``target_stale=True``
+             on each via :meth:`mark_xref_stale`.
+          6. Observer precheck (Phase 06).
+          7. Cascade-remove incident meta + intergraph primitives.
+          8. Unregister owned ids; delete the graph.
+          9. Return :class:`RemovalImpact` with ``proceeded=True``.
+
+        Args:
+            graph_id: id of the graph to remove.
+            cascade: opt-out of MetaEdge/MetaHyperEdge cascade. Default
+                ``True`` (v3 baseline; P67 restoration). ``False`` +
+                incident meta → raise.
+            force: opt-in to proceed past the dangling-refs gate.
+                Default ``False``. ``True`` stamps ``target_stale=True``
+                on incoming XRefs and proceeds.
+
+        Returns:
+            :class:`RemovalImpact` with ``proceeded=True`` and the
+            ``incoming_xrefs`` + ``incoming_ref_properties`` lists
+            populated as observed before removal.
 
         Raises:
             IdentityError: ``graph_id`` not contained in this metagraph.
-            CompositionalImmutableError: any incident
-                :class:`IntergraphEdge` OR
-                :class:`IntergraphHyperEdge` has
-                ``compositional=True``. State unchanged. Error message
-                names the offending edge_id AND edge_kind.
+            CompositionalImmutableError: any incident IntergraphEdge OR
+                IntergraphHyperEdge has ``compositional=True``.
+            RemoveGraphBlockedError: with
+                :attr:`BlockedReason.INCIDENT_META_EDGES_CASCADE_FALSE`
+                when ``cascade=False`` AND incident meta-edges/hyperedges
+                exist (independent of ``force`` per P81); OR with
+                :attr:`BlockedReason.DANGLING_REFS` when ``force=False``
+                AND incoming XRefs or ref:* property strings exist.
         """
         if graph_id not in self.graphs:
             raise IdentityError(f"Unknown graph id: {graph_id!r}")
@@ -923,17 +982,8 @@ class Metagraph:
                         f"--force --yes' (Pushback 6-A)."
                     )
 
-        # Phase 06 (P31 A + round-7 P65 A) — observer precheck for the
-        # graph_id being removed. Fires AFTER compositional refusal but
-        # BEFORE any cascade mutation. A subscribed
-        # ``ElementRegistry`` examines the graph's contents and cascades
-        # any referencing ``GraphInstance`` / ``SubGraphInstance`` /
-        # element-level instance (round-7 P59 A handles the
-        # node/edge/hyperedge contents reachability).
-        _dispatch_precheck(self._remove_observers, graph_id)
-
-        # Cascade incident metaedges + metahyperedges + intergraph_edges
-        # + intergraph_hyperedges.
+        # Phase 10 ADR-0135 — compute incident-meta lists first; gates
+        # below decide whether to proceed.
         incident_meta = [
             eid for eid, me in self.metaedges.items()
             if me.source_graph_id == graph_id or me.target_graph_id == graph_id
@@ -942,6 +992,54 @@ class Metagraph:
             eid for eid, mhe in self.metahyperedges.items()
             if graph_id in mhe.graph_ids
         ]
+
+        # Phase 10 cascade gate (P67 + P81 + P75) — cascade=False AND
+        # any incident meta-edges/hyperedges → raise, regardless of
+        # force. v3 baseline behavior (force overrides only the
+        # dangling-refs gate, not the cascade gate).
+        if not cascade and (incident_meta or incident_mhe):
+            blocked_impact = RemovalImpact(
+                proceeded=False,
+                blocked_reason=BlockedReason.INCIDENT_META_EDGES_CASCADE_FALSE.value,
+            )
+            raise RemoveGraphBlockedError(
+                graph_id=graph_id,
+                impact=blocked_impact,
+                blocked_reason=BlockedReason.INCIDENT_META_EDGES_CASCADE_FALSE,
+            )
+
+        # Phase 10 impact compute (ADR-0135 §Decision step 1 + PB-5a) —
+        # build the impact report BEFORE any removal. In-memory only:
+        # the XRef pass uses ``_xrefs_by_target``; the ref:* property
+        # scan walks other graphs in this metagraph.
+        impact = self._compute_removal_impact(graph_id)
+
+        # Phase 10 dangling-refs gate (P75 unified + PA1 raise-on-block) —
+        # force=False AND impact non-empty → raise.
+        if not force and (impact.incoming_xrefs or impact.incoming_ref_properties):
+            impact.proceeded = False
+            impact.blocked_reason = BlockedReason.DANGLING_REFS.value
+            raise RemoveGraphBlockedError(
+                graph_id=graph_id,
+                impact=impact,
+                blocked_reason=BlockedReason.DANGLING_REFS,
+            )
+
+        # Phase 10 force-stamp path (ADR-0135 §Decision step 3) — for
+        # each incoming XRef, stamp ``target_stale=True`` so readers
+        # can surface invalidation. ``ref:*`` property strings are left
+        # dangling per ADR-0135 §Decision step 4 (caller responsibility).
+        for xref in impact.incoming_xrefs:
+            self.mark_xref_stale(xref.xref_id)
+
+        # Phase 06 (P31 A + round-7 P65 A) — observer precheck for the
+        # graph_id being removed. Fires AFTER compositional refusal +
+        # Phase 10 gates but BEFORE any cascade mutation.
+        _dispatch_precheck(self._remove_observers, graph_id)
+
+        # Cascade incident metaedges + metahyperedges + intergraph_edges
+        # + intergraph_hyperedges. incident_meta/incident_mhe already
+        # computed above for the cascade gate.
         incident_ie = [
             eid for eid, ie in self.intergraph_edges.items()
             if ie.source_graph_id == graph_id or ie.target_graph_id == graph_id
@@ -974,6 +1072,60 @@ class Metagraph:
         for uid in owned_ids:
             self.identity.unregister(uid)
         del self.graphs[graph_id]
+
+        # Phase 10 ADR-0135 return path — proceeded=True; impact carries
+        # the lists of refs stamped or left dangling.
+        impact.proceeded = True
+        return impact
+
+    def _compute_removal_impact(self, graph_id: str) -> RemovalImpact:
+        """Compute the RemovalImpact for ``graph_id`` (ADR-0135 + PB-5a).
+
+        In-memory only path per Phase 10 PB-5a + ADR-0135 amendment-3:
+
+        1. **Incoming XRefs** — indexed lookup via
+           :attr:`_xrefs_by_target` (Phase 09 substrate). For each id in
+           the graph being removed (node ids + edge ids + hyperedge ids
+           since refs can point at any element id), probe the compound
+           ``(self.metagraph_id, element_id)`` key. O(K log N) overall.
+        2. **Incoming ref:* property strings** — O(N) scan over nodes in
+           OTHER graphs of this metagraph. ADR-0135 documented as the
+           more expensive path (the exact cost difference that motivated
+           Phase 09's XRef primitive). For Phase 10 v1 single-process
+           scope this is acceptable; future Phase 14+ consumers can
+           switch to the DB-side
+           :func:`mindsos_core.cypher.builders.build_query_intra_metagraph_ref_properties`
+           builder.
+
+        Cross-metagraph reverse-dangling cleanup is deferred to Server
+        first-start hook (Phase 18+) per Phase 10 M14 + O1.
+        """
+        impact = RemovalImpact()
+        graph = self.graphs[graph_id]
+
+        # Collect every id that lives inside the graph being removed.
+        # ADR-0135 — refs can target any element kind, not just nodes.
+        target_ids: Set[str] = set(graph.nodes.keys())
+        target_ids.update(graph.edges.keys())
+        target_ids.update(graph.hyperedges.keys())
+
+        # 1. Incoming XRefs — in-memory inverse index probe (PB-5a).
+        for tid in target_ids:
+            key = (self.metagraph_id, tid)
+            for xid in self._xrefs_by_target.get(key, set()):
+                if xid in self.xrefs:
+                    impact.incoming_xrefs.append(self.xrefs[xid])
+
+        # 2. Incoming ref:* property strings in OTHER graphs.
+        for other_gid, other_graph in self.graphs.items():
+            if other_gid == graph_id:
+                continue
+            for node_id, node in other_graph.nodes.items():
+                for key, value in node.properties.items():
+                    if key.startswith(REF_PROPERTY_PREFIX) and value in target_ids:
+                        impact.incoming_ref_properties.append((node_id, key))
+
+        return impact
 
     # ── metaedges (P11 + P15) ────────────────────────────────────────────
 
@@ -1978,13 +2130,29 @@ class Metagraph:
 
     # ── iterators ────────────────────────────────────────────────────────
 
-    def iter_metaedges(self) -> Iterator[MetaEdge]:
-        """Yield every metaedge (no filtering in 05a; Phase 10 adds)."""
-        return iter(self.metaedges.values())
+    def iter_metaedges(
+        self, *, include_deprecated: bool = False
+    ) -> Iterator[MetaEdge]:
+        """Yield metaedges (Phase 10 — ADR-0133 soft-delete filter).
 
-    def iter_metahyperedges(self) -> Iterator[MetaHyperEdge]:
-        """Yield every metahyperedge."""
-        return iter(self.metahyperedges.values())
+        Default ``include_deprecated=False`` filters out metaedges with
+        ``deprecated_at is not None`` (ADR-0133 §"Default read filter").
+        ``disputed_at`` does NOT filter — disputed metaedges remain
+        visible by default (per ADR-0133 semantic distinction).
+        """
+        for me in self.metaedges.values():
+            if not include_deprecated and me.deprecated_at is not None:
+                continue
+            yield me
+
+    def iter_metahyperedges(
+        self, *, include_deprecated: bool = False
+    ) -> Iterator[MetaHyperEdge]:
+        """Yield metahyperedges (Phase 10 — ADR-0133 soft-delete filter)."""
+        for mhe in self.metahyperedges.values():
+            if not include_deprecated and mhe.deprecated_at is not None:
+                continue
+            yield mhe
 
     def iter_intergraph_edges(self) -> Iterator[IntergraphEdge]:
         """Yield every intergraph edge (no filtering in 05b; Phase 10 adds)."""

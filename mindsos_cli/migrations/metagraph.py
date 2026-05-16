@@ -13,13 +13,13 @@ Versions:
   empty on migration; existing v=3 metagraph state files have no XRef
   rows to carry over). XRef shape is the 8-field dict per Phase 09 P53
   (``target_stale`` + ``deprecated_at`` deferred to Phase 10).
-
-Future bumps (deferred to later phases per CASC-1):
-
-* v=5 (Phase 10) — soft-delete fields on metaedges/metahyperedges/
-  intergraph_edges/intergraph_hyperedges/xrefs (ADR-0133 substrate
-  landed uniformly across all 5 edge variants per
-  SOFT_DELETE_AUDIT_NOTE).
+* v=5 (Phase 10 — M11 + RR-7 + RR-12) — soft-delete fields land per
+  ADR-0133. Per-metaedge / per-metahyperedge: ``deprecated_at: null`` +
+  ``disputed_at: null`` defaults (M5). Per-xref: ``target_stale: false``
+  + ``deprecated_at: null`` defaults (Phase 09 P53 reversal). Schema
+  state-file stays v=3 per M11 (immutable since 05d). IntergraphEdge /
+  IntergraphHyperEdge soft-delete is OUT per Phase 10 M5 + P83 (Phase 05b/c
+  primitives not in scope for this row; revisit when KL consumer surfaces).
 
 Subsequent phases append migration steps; never edit a prior step.
 """
@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Callable, Dict, List
 
-CURRENT_VERSION = 4
+CURRENT_VERSION = 5
 
 
 def _v1_to_v2(state: Dict) -> Dict:
@@ -68,11 +68,47 @@ def _v3_to_v4(state: Dict) -> Dict:
     return state
 
 
+def _v4_to_v5(state: Dict) -> Dict:
+    """Phase 09 → Phase 10 (M11 + RPB-3 + RR-7): soft-delete fields land.
+
+    Per ADR-0133 — every metaedge / metahyperedge gets
+    ``deprecated_at: null`` + ``disputed_at: null`` defaults (active /
+    not-disputed). Every xref gets ``target_stale: false`` +
+    ``deprecated_at: null`` defaults (Phase 09 P53 reversal restores
+    the inert fields).
+
+    Explicit per-item walk per RPB-3 — idempotent on re-migration (the
+    field-already-present case re-asserts the same defaults). Per RR-8 —
+    ISO-8601 string for ``deprecated_at`` / ``disputed_at`` (None →
+    JSON null on serialize); plain bool for ``target_stale``.
+
+    IntergraphEdge / IntergraphHyperEdge are out of scope per Phase 10
+    M5 + P83 (no soft-delete fields added to those state-file rows).
+    """
+    for me in state.get("metaedges", []) or []:
+        if "deprecated_at" not in me:
+            me["deprecated_at"] = None
+        if "disputed_at" not in me:
+            me["disputed_at"] = None
+    for mhe in state.get("metahyperedges", []) or []:
+        if "deprecated_at" not in mhe:
+            mhe["deprecated_at"] = None
+        if "disputed_at" not in mhe:
+            mhe["disputed_at"] = None
+    for x in state.get("xrefs", []) or []:
+        if "target_stale" not in x:
+            x["target_stale"] = False
+        if "deprecated_at" not in x:
+            x["deprecated_at"] = None
+    return state
+
+
 #: ``MIGRATIONS[i]`` migrates v(i+1) → v(i+2).
 MIGRATIONS: List[Callable[[Dict], Dict]] = [
     _v1_to_v2,
     _v2_to_v3,
     _v3_to_v4,
+    _v4_to_v5,
 ]
 
 

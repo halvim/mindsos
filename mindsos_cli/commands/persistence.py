@@ -906,26 +906,30 @@ def xref_list_cmd(
         help="Emit machine-readable JSON instead of Rich table (RR-6).",
     ),
 ) -> None:
-    """List :XRef rows for a metagraph (Phase 09 PB-5 + RR-5 + RR-6).
+    """List :XRef rows for a metagraph (Phase 09 PB-5 + RR-5 + RR-6 + Phase 10 M24).
 
     Direct-DB query path (P63 A) — first verifies the ``:Metagraph``
     anchor exists; raises exit 2 if not. Does NOT call
     ``MetagraphLoader.load`` or fire ``recover()``; pure ``MATCH (x:XRef ...)``
     read with optional WHERE clauses for the four filter flags.
 
-    Output (RR-6):
+    Output (RR-6 + Phase 10 M24):
 
     * Default — Rich table with truncated IDs (first 8 chars per
-      :class:`XRef.__repr__` precedent). Columns: ``xref_id`` /
+      :class:`XRef.__repr__` precedent). Base columns: ``xref_id`` /
       ``source_id`` / ``target_metagraph_id`` / ``target_role`` /
-      ``target_id`` / ``ref_type``.
-    * ``--json`` — full IDs as a JSON array.
+      ``target_id`` / ``ref_type``. **Phase 10 M24 + RR-6 carry pattern:**
+      ``target_stale`` and ``deprecated_at`` columns appear ONLY when
+      at least one row has a non-default value (``target_stale=True``
+      OR ``deprecated_at!=None``). Default-only output keeps the
+      Phase 09 6-column shape; populated state shows the soft-delete
+      detail without forcing it onto every render.
+    * ``--json`` — Phase 10 P53 reversal: 10 fields unconditionally
+      (M24). Phase 09 8-field consumers patch dynamically per B-09-T7
+      audit class.
 
     Exit codes per Phase 07 P64 A: 0 clean / 1 CLI usage / 2 system
     error.
-
-    Phase 09 P53 — ``target_stale`` and ``deprecated_at`` columns are
-    NOT projected; both ship in Phase 10.
     """
     client = _build_client()
     try:
@@ -966,36 +970,59 @@ def xref_list_cmd(
             "RETURN x.id AS xref_id, x.source_id AS source_id, "
             "       x.target_metagraph_id AS target_metagraph_id, "
             "       x.target_role AS target_role, x.target_id AS target_id, "
-            "       x.ref_type AS ref_type "
+            "       x.ref_type AS ref_type, "
+            # Phase 10 M24 + P53 reversal — restored 2 fields in RETURN.
+            "       x.target_stale AS target_stale, "
+            "       x.deprecated_at AS deprecated_at "
             "ORDER BY x.id"
         )
         rows = client.run_query(q, params).rows
     finally:
         client.close()
 
+    # Phase 10 M24 — JSON path emits all 10 fields unconditionally. Per
+    # RR-8 — ``target_stale`` defaults to ``False`` (not None) when
+    # missing from the DB row; ``deprecated_at`` defaults to None.
+    # Both fields are *explicitly set* in the dict so legacy v3 rows
+    # missing the columns serialize with the same 10-key shape.
     if out_json:
+        for r in rows:
+            if r.get("target_stale") is None:
+                r["target_stale"] = False
+            r.setdefault("deprecated_at", None)
         typer.echo(json.dumps(rows, sort_keys=True, indent=2))
         return
 
+    # Phase 10 M24 + RR-6 — extra columns only when non-default in any row.
+    any_stale = any(bool(r.get("target_stale")) for r in rows)
+    any_deprecated = any(r.get("deprecated_at") is not None for r in rows)
+
     table = Table(title=f"XRefs for {metagraph!r}")
-    for col in (
-        "xref_id",
-        "source_id",
-        "target_metagraph_id",
-        "target_role",
-        "target_id",
-        "ref_type",
-    ):
+    cols = [
+        "xref_id", "source_id", "target_metagraph_id",
+        "target_role", "target_id", "ref_type",
+    ]
+    if any_stale:
+        cols.append("target_stale")
+    if any_deprecated:
+        cols.append("deprecated_at")
+    for col in cols:
         table.add_column(col)
     for row in rows:
-        table.add_row(
+        cells = [
             str(row.get("xref_id") or "")[:8],
             str(row.get("source_id") or "")[:8],
             str(row.get("target_metagraph_id") or "")[:8],
             str(row.get("target_role") or ""),
             str(row.get("target_id") or "")[:8],
             str(row.get("ref_type") or ""),
-        )
+        ]
+        if any_stale:
+            cells.append(str(bool(row.get("target_stale"))))
+        if any_deprecated:
+            dep = row.get("deprecated_at")
+            cells.append(str(dep)[:19] if dep else "—")
+        table.add_row(*cells)
     _console.print(table)
 
 

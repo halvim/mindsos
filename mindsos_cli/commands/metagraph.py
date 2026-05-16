@@ -82,6 +82,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import datetime
 from typing import Any, List, Optional
 
 import typer
@@ -121,6 +122,29 @@ metagraph_app = typer.Typer(
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
+
+
+def _iso_or_null(value: Any) -> Any:
+    """Phase 10 RR-8 — serialize ``datetime|None`` to ``str|None`` (ISO-8601)."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value  # already-string or unknown — pass through unchanged.
+
+
+def _iso_to_datetime(value: Any) -> Any:
+    """Phase 10 RR-8 — deserialize ``str|None`` to ``datetime|None``."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return None
+    return None
 
 
 def _metagraph_to_state(mg: Metagraph) -> dict:
@@ -183,6 +207,9 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
                 "type_name": me.type_name,
                 "label": me.label,
                 "properties": dict(me.properties),
+                # Phase 10 RR-19 — soft-delete fields (M11 v=5 extension).
+                "deprecated_at": _iso_or_null(me.deprecated_at),
+                "disputed_at": _iso_or_null(me.disputed_at),
             }
             for me in metaedges
         ],
@@ -196,6 +223,9 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
                 ),
                 "label": mhe.label,
                 "properties": dict(mhe.properties),
+                # Phase 10 RR-19 — soft-delete fields.
+                "deprecated_at": _iso_or_null(mhe.deprecated_at),
+                "disputed_at": _iso_or_null(mhe.disputed_at),
             }
             for mhe in metahyperedges
         ],
@@ -236,9 +266,9 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
             }
             for ihe in intergraph_hyperedges
         ],
-        # Phase 09 RR-8 — 8-field XRef shape per P53 (target_stale +
-        # deprecated_at deferred to P10). Sorted by xref_id for stable
-        # round-trip diffs.
+        # Phase 09 RR-8 — XRef shape; Phase 10 P53 reversal restores
+        # ``target_stale`` + ``deprecated_at`` (10 fields total per
+        # M11 v=5 + RR-19). Sorted by xref_id for stable round-trip diffs.
         "xrefs": sorted(
             (
                 {
@@ -250,6 +280,9 @@ def _metagraph_to_state(mg: Metagraph) -> dict:
                     "target_id": x.target_id,
                     "ref_type": x.ref_type,
                     "properties": dict(x.properties),
+                    # Phase 10 P53 reversal + RR-19.
+                    "target_stale": x.target_stale,
+                    "deprecated_at": _iso_or_null(x.deprecated_at),
                 }
                 for x in mg.xrefs.values()
             ),
@@ -323,6 +356,10 @@ def _state_to_metagraph(state: dict) -> Metagraph:
             edge_id=me_dict["edge_id"],
             properties=dict(me_dict.get("properties") or {}),
         )
+        # Phase 10 RR-18 — restore soft-delete fields directly (bypass
+        # the public setter so dirty-tracking doesn't fire on rehydrate).
+        me.deprecated_at = _iso_to_datetime(me_dict.get("deprecated_at"))
+        me.disputed_at = _iso_to_datetime(me_dict.get("disputed_at"))
         mg.identity.register(me.edge_id)
         mg.metaedges[me.edge_id] = me
 
@@ -335,6 +372,9 @@ def _state_to_metagraph(state: dict) -> Metagraph:
             edge_id=mhe_dict["edge_id"],
             properties=dict(mhe_dict.get("properties") or {}),
         )
+        # Phase 10 RR-18 — restore soft-delete fields.
+        mhe.deprecated_at = _iso_to_datetime(mhe_dict.get("deprecated_at"))
+        mhe.disputed_at = _iso_to_datetime(mhe_dict.get("disputed_at"))
         mg.identity.register(mhe.edge_id)
         mg.metahyperedges[mhe.edge_id] = mhe
 
@@ -400,6 +440,9 @@ def _state_to_metagraph(state: dict) -> Metagraph:
             target_id=x_dict["target_id"],
             ref_type=x_dict["ref_type"],
             properties=dict(x_dict.get("properties") or {}),
+            # Phase 10 RR-18 + P53 reversal — restore Phase 10 fields.
+            target_stale=bool(x_dict.get("target_stale") or False),
+            deprecated_at=_iso_to_datetime(x_dict.get("deprecated_at")),
         )
         mg.identity.register(xref.xref_id)
         mg.xrefs[xref.xref_id] = xref

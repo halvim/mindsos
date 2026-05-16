@@ -77,6 +77,7 @@ extends):
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any, Optional
 
 import typer
@@ -167,6 +168,29 @@ def _schema_path_or_unknown(name: str) -> str:
         return "<unknown>"
 
 
+def _iso_or_null(value: Any) -> Any:
+    """Phase 10 RR-8 — serialize ``datetime|None`` to ``str|None`` (ISO-8601)."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return value
+
+
+def _iso_to_datetime(value: Any) -> Any:
+    """Phase 10 RR-8 — deserialize ``str|None`` to ``datetime|None``."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
 def _graph_to_state(
     g: Graph,
     *,
@@ -207,6 +231,9 @@ def _graph_to_state(
                 "type_name": e.type_name,
                 "label": e.label,
                 "properties": dict(e.properties),
+                # Phase 10 RR-19 — soft-delete fields (M11 v=5).
+                "deprecated_at": _iso_or_null(e.deprecated_at),
+                "disputed_at": _iso_or_null(e.disputed_at),
             }
             for e in edges
         ],
@@ -217,6 +244,9 @@ def _graph_to_state(
                 "member_ids": sorted(n.node_id for n in h.nodes),
                 "label": h.label,
                 "properties": dict(h.properties),
+                # Phase 10 RR-19 — soft-delete fields.
+                "deprecated_at": _iso_or_null(h.deprecated_at),
+                "disputed_at": _iso_or_null(h.disputed_at),
             }
             for h in hyperedges
         ],
@@ -269,7 +299,7 @@ def _state_to_graph(state: dict) -> tuple[Graph, Optional[str], Optional[str]]:
     for e in state.get("edges", []):
         src = g.nodes[e["source_id"]]
         tgt = g.nodes[e["target_id"]]
-        g.add_edge(
+        edge_obj = g.add_edge(
             source=src,
             target=tgt,
             type_name=e["type_name"],
@@ -278,12 +308,17 @@ def _state_to_graph(state: dict) -> tuple[Graph, Optional[str], Optional[str]]:
             edge_id=e["edge_id"],
             _validate=False,
         )
+        # Phase 10 RR-18 — restore soft-delete fields on the dataclass
+        # (bypasses setter so _soft_delete_dirty stays clean per P64
+        # mirror — state-file data is by definition already persisted).
+        edge_obj.deprecated_at = _iso_to_datetime(e.get("deprecated_at"))
+        edge_obj.disputed_at = _iso_to_datetime(e.get("disputed_at"))
     for h in state.get("hyperedges", []):
         members = [g.nodes[mid] for mid in h["member_ids"]]
         # Phase 04-v2 — populate SENT-1 sentinel for legacy v=1/v=2
         # hyperedges that pre-date the type_name field.
         type_name = h.get("type_name") or "UNSPECIFIED"
-        g.add_hyperedge(
+        he_obj = g.add_hyperedge(
             nodes=members,
             type_name=type_name,
             label=h.get("label"),
@@ -291,6 +326,14 @@ def _state_to_graph(state: dict) -> tuple[Graph, Optional[str], Optional[str]]:
             edge_id=h["edge_id"],
             _validate=False,
         )
+        # Phase 10 RR-18 — restore soft-delete fields.
+        he_obj.deprecated_at = _iso_to_datetime(h.get("deprecated_at"))
+        he_obj.disputed_at = _iso_to_datetime(h.get("disputed_at"))
+    # Phase 10 P64 mirror — state-file deserialization MUST NOT leave
+    # dirty buckets populated (loaded data is by definition already in
+    # the durable substrate; subsequent persist would otherwise re-write).
+    for kind in g._soft_delete_dirty:
+        g._soft_delete_dirty[kind].clear()
     return g, schema_name, metagraph_name
 
 

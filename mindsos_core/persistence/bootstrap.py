@@ -140,22 +140,33 @@ def bootstrap(client: Client) -> None:
 
 
 def register_all_l1_replayers(client: Client) -> None:
-    """Register every L1-owned WAL replayer on ``client`` (Phase 09 RR-16).
+    """Register every L1-owned WAL replayer on ``client`` (Phase 09 RR-16 + Phase 10 M8).
 
     Per-kind modules own their registration function; this central
-    wrapper composes them. Phase 09 ships the first L1 replayers
-    (``xref_add`` + ``xref_remove``); Phase 10/11 extend with snapshot
-    + integrity replayers.
+    wrapper composes them.
+
+    **Phase 10 — wrapper grows 2 → 10 kinds** per M8:
+
+    * Phase 09 (2 kinds): ``xref_add`` + ``xref_remove`` via
+      :func:`mindsos_core.persistence.xref_repository.register_xref_replayers`.
+    * Phase 10 XRef-side (4 kinds, PX2): ``xref_mark_stale`` /
+      ``xref_unmark_stale`` / ``xref_deprecate`` / ``xref_undeprecate`` —
+      extension of the same ``register_xref_replayers`` function (2 → 6).
+    * Phase 10 element-side (4 kinds, M8): ``element_deprecate`` /
+      ``element_undeprecate`` / ``element_dispute`` / ``element_undispute``
+      via :func:`mindsos_core.persistence.soft_delete.register_soft_delete_replayers`.
 
     Called by :class:`FalkorClient.__init__` immediately after
     :func:`bootstrap`. ``InMemoryClient`` may invoke it explicitly in
     tests that exercise WAL recovery (per Phase 09 RR-16).
     """
-    # Late import to break the bootstrap → xref_repository → builders
-    # → ... cycle.
+    # Late imports — break the bootstrap → xref_repository → builders →
+    # ... cycle.
+    from .soft_delete import register_soft_delete_replayers
     from .xref_repository import register_xref_replayers
 
-    register_xref_replayers(client)
+    register_xref_replayers(client)  # 6 kinds (2 Phase 09 + 4 Phase 10 PX2)
+    register_soft_delete_replayers(client)  # 4 Phase 10 element-side kinds
 
 
 __all__ = [

@@ -543,6 +543,58 @@ class Graph:
         self.identity.unregister(edge_id)
         del self.hyperedges[edge_id]
 
+    # ── iterators (Phase 10 — P82 + ADR-0133 soft-delete filter) ────────
+    #
+    # Phase 04 slim port stripped these methods (graph.py:21 deferral note);
+    # P82 + P68 merge ships them in Phase 10 as NEW methods with the
+    # ``include_deprecated: bool = False`` parameter from day-1 — closes
+    # ADR-0133 §"Affected methods" Graph-side acceptance + provides
+    # Phase 10 / Phase 14 readers with a filter-aware walk API.
+    #
+    # Filter semantics per ADR-0133:
+    # * ``include_deprecated=False`` (default) — skip rows whose
+    #   ``deprecated_at is not None``.
+    # * ``disputed_at`` does NOT filter — disputed edges stay visible
+    #   (caller decides whether to hide them).
+
+    def iter_edges(
+        self, *, include_deprecated: bool = False
+    ) -> Iterable[Edge]:
+        """Yield edges (Phase 10 — P82 new method; ADR-0133 filter)."""
+        for e in self.edges.values():
+            if not include_deprecated and e.deprecated_at is not None:
+                continue
+            yield e
+
+    def iter_hyperedges(
+        self, *, include_deprecated: bool = False
+    ) -> Iterable[HyperEdge]:
+        """Yield hyperedges (Phase 10 — P82 new method; ADR-0133 filter)."""
+        for h in self.hyperedges.values():
+            if not include_deprecated and h.deprecated_at is not None:
+                continue
+            yield h
+
+    def get_edges_for_node(
+        self, node_id: str, *, include_deprecated: bool = False
+    ) -> Iterable[Edge]:
+        """Yield edges incident on ``node_id`` (Phase 10 — P82 new method).
+
+        Edge is "incident on" ``node_id`` when ``edge.source.node_id ==
+        node_id`` OR ``edge.target.node_id == node_id``. ADR-0133 filter
+        applies per :meth:`iter_edges`.
+
+        Does not validate that ``node_id`` exists in this graph — yields
+        empty if not. Callers who need existence-checking should validate
+        upfront via ``node_id in self.nodes``.
+        """
+        for e in self.edges.values():
+            if e.source.node_id != node_id and e.target.node_id != node_id:
+                continue
+            if not include_deprecated and e.deprecated_at is not None:
+                continue
+            yield e
+
     # ── soft-delete setters (Phase 10 — M6 Graph quartet × Edge + HyperEdge; P82+P86) ──
     #
     # 8 setters total. Each:

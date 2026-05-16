@@ -56,7 +56,8 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Tuple
 
 from ..exceptions import (
     PersistenceError,
@@ -65,6 +66,7 @@ from ..exceptions import (
 from ..models.identity import IdentityRegistry
 from ..models.metagraph import Metagraph
 from ..persistence.client import Client
+from ..persistence.soft_delete import SoftDeleteKind
 from ..persistence.wal import recover as _wal_recover
 from .graph_loader import iter_load_graph, load_graph
 
@@ -100,8 +102,25 @@ class MetagraphLoader:
         batch_size: Optional[int] = None,
         identity: Optional[IdentityRegistry] = None,
         schema: Any = None,
+        include_deprecated: bool = False,
     ) -> Metagraph:
         """Reconstruct the :class:`Metagraph` with ``metagraph_id`` from FalkorDB.
+
+        **Phase 10 ADR-0133 — soft-delete filter at load time.** When
+        ``include_deprecated=False`` (default), MetaEdges and
+        MetaHyperEdges whose ``deprecated_at IS NOT NULL`` are filtered
+        out at the Cypher level — they are NOT materialized into the
+        in-memory :class:`Metagraph`. Consequence (ADR-0133 §Loader
+        behavior gotcha): subsequent calls to
+        :meth:`Metagraph.iter_metaedges` with ``include_deprecated=True``
+        return nothing extra (the deprecated rows were never loaded).
+        Audit-gate / repair-tool callers pass ``include_deprecated=True``
+        to load the full set.
+
+        Phase 10 PB-6a — :attr:`Metagraph._soft_delete_dirty` (per-Metagraph
+        + per-Graph buckets) is cleared post-load so refresh-then-persist
+        doesn't re-write loaded rows (P64 mirror — loaded rows are by
+        definition already persisted).
 
         Locked R4-1 A / R4-8 A sequence:
 
@@ -199,13 +218,16 @@ class MetagraphLoader:
 
         # Step 3 — contained graphs.
         for gid in self._list_graph_ids(metagraph_id):
-            self._attach_graph(mg, gid, batch_size=batch_size, schema=schema)
+            self._attach_graph(
+                mg, gid, batch_size=batch_size, schema=schema,
+                include_deprecated=include_deprecated,
+            )
 
         # Step 4 — meta-edges.
-        self._load_metaedges(mg)
+        self._load_metaedges(mg, include_deprecated=include_deprecated)
 
         # Step 5 — meta-hyperedges.
-        self._load_metahyperedges(mg)
+        self._load_metahyperedges(mg, include_deprecated=include_deprecated)
 
         # Step 6 — intergraph-edges.
         self._load_intergraph_edges(mg)
@@ -230,6 +252,11 @@ class MetagraphLoader:
                 except AttributeError:
                     pass
 
+        # Phase 10 PB-6a — clear soft-delete dirty after full load
+        # (P64 mirror). Loaded rows are by definition already in DB; the
+        # dirty set must be empty post-load.
+        _clear_soft_delete_dirty(mg)
+
         return mg
 
     def refresh(
@@ -238,6 +265,7 @@ class MetagraphLoader:
         role: str,
         *,
         schema: Any = None,
+        include_deprecated: bool = False,
     ) -> None:
         """Reload role-graph(s) of ``role`` in ``mg`` in place (ADR-0124).
 
@@ -312,7 +340,10 @@ class MetagraphLoader:
         # registry; identity preservation per R4-7 A).
         new_gids = self._list_graph_ids_for_role(mg.metagraph_id, role)
         for gid in new_gids:
-            self._attach_graph(mg, gid, batch_size=None, schema=schema)
+            self._attach_graph(
+                mg, gid, batch_size=None, schema=schema,
+                include_deprecated=include_deprecated,
+            )
 
         # Fire ``after_load(mg)`` so sibling-side reconstruction (e.g.
         # InstanceLoader) rehydrates against the new role-graph state.
@@ -328,6 +359,9 @@ class MetagraphLoader:
                 except AttributeError:
                     pass
 
+        # Phase 10 PB-6a — clear soft-delete dirty after refresh.
+        _clear_soft_delete_dirty(mg)
+
     # ── private read helpers ────────────────────────────────────────────
 
     def _attach_graph(
@@ -337,6 +371,7 @@ class MetagraphLoader:
         *,
         batch_size: Optional[int],
         schema: Any,
+        include_deprecated: bool = False,
     ) -> None:
         """Load one contained Graph (full or streamed) + attach to ``mg``."""
         if batch_size is None:
@@ -345,6 +380,7 @@ class MetagraphLoader:
                 graph_id,
                 identity=mg.identity,
                 schema=schema,
+                include_deprecated=include_deprecated,
             )
         else:
             # Drain the iterator; the assembled Graph is the final
@@ -356,6 +392,7 @@ class MetagraphLoader:
                 identity=mg.identity,
                 schema=schema,
                 batch_size=batch_size,
+                include_deprecated=include_deprecated,
             ):
                 g = partial
             if g is None:
@@ -424,17 +461,26 @@ class MetagraphLoader:
         )
         return {row["id"]: row.get("role") for row in res.rows}
 
-    def _load_metaedges(self, mg: Metagraph) -> None:
+    def _load_metaedges(
+        self, mg: Metagraph, *, include_deprecated: bool = False
+    ) -> None:
         """Load MetaEdges (graph→graph cross-graph rels) over all types.
 
         The persist side emits each MetaEdge with a Cypher rel-type
         equal to its ``type_name`` (per
         :func:`build_unwind_create_metaedges`); the read MATCHes
         untyped + filters via the ``r.metagraph_id`` property.
+
+        Phase 10 ADR-0133 — when ``include_deprecated=False`` (default),
+        the WHERE clause adds ``r.deprecated_at IS NULL``. Soft-delete
+        fields ``deprecated_at`` / ``disputed_at`` are round-tripped from
+        the row's properties bag onto the dataclass post-construction.
         """
+        # Phase 10 — conditional WHERE clause for deprecated_at filter.
+        where_extra = "" if include_deprecated else " AND r.deprecated_at IS NULL"
         q = (
             "MATCH (s:Graph)-[r]->(t:Graph) "
-            "WHERE r.metagraph_id = $mid AND r.id IS NOT NULL "
+            f"WHERE r.metagraph_id = $mid AND r.id IS NOT NULL{where_extra} "
             "RETURN r.id AS id, r.type_name AS type_name, r.label AS label, "
             "       r._version AS version, s.id AS sid, t.id AS tid, "
             "       properties(r) AS props"
@@ -442,9 +488,6 @@ class MetagraphLoader:
         res = self._client.run_query(q, {"mid": mg.metagraph_id})
         for row in res.rows:
             if row["sid"] not in mg.graphs or row["tid"] not in mg.graphs:
-                # Defensive — should not happen if reads landed in
-                # ``_list_graph_ids`` first; surfaces via
-                # ``verify --source=db --metagraph M`` integrity bucket.
                 _log.warning(
                     "MetaEdge %r references missing contained graph "
                     "(src=%r tgt=%r); skipping",
@@ -453,7 +496,11 @@ class MetagraphLoader:
                 continue
             if row["id"] in mg.metaedges:
                 continue
-            props = _strip_metaedge_keys(row.get("props") or {})
+            # Phase 10 — extract soft-delete fields BEFORE strip.
+            raw_props = row.get("props") or {}
+            dep_at = _parse_iso(raw_props.get("deprecated_at"))
+            dis_at = _parse_iso(raw_props.get("disputed_at"))
+            props = _strip_metaedge_keys(raw_props)
             me = mg.add_metaedge(
                 source_graph_id=row["sid"],
                 target_graph_id=row["tid"],
@@ -468,11 +515,25 @@ class MetagraphLoader:
                     me._version = int(row["version"])
                 except (TypeError, ValueError):
                     pass
+            # Phase 10 — restore soft-delete fields onto the dataclass.
+            me.deprecated_at = dep_at
+            me.disputed_at = dis_at
 
-    def _load_metahyperedges(self, mg: Metagraph) -> None:
-        """Load MetaHyperEdges (:MetaHyperEdge node + :MEMBER_GRAPH rels)."""
+    def _load_metahyperedges(
+        self, mg: Metagraph, *, include_deprecated: bool = False
+    ) -> None:
+        """Load MetaHyperEdges (:MetaHyperEdge node + :MEMBER_GRAPH rels).
+
+        Phase 10 ADR-0133 — when ``include_deprecated=False`` (default),
+        WHERE clause adds ``h.deprecated_at IS NULL``. Soft-delete fields
+        round-tripped onto the dataclass per :meth:`_load_metaedges`
+        pattern.
+        """
+        # Phase 10 — conditional WHERE clause for deprecated_at filter.
+        where_extra = "" if include_deprecated else " WHERE h.deprecated_at IS NULL"
         q = (
             "MATCH (h:MetaHyperEdge {metagraph_id: $mid}) "
+            f"{where_extra} "
             "OPTIONAL MATCH (h)-[:MEMBER_GRAPH]->(g:Graph) "
             "WITH h, collect(g.id) AS gids "
             "RETURN h.id AS id, h.type_name AS type_name, h.label AS label, "
@@ -483,7 +544,6 @@ class MetagraphLoader:
             if row["id"] in mg.metahyperedges:
                 continue
             gids = [gid for gid in (row.get("gids") or []) if gid]
-            # Skip rows whose member graph(s) didn't load.
             valid_gids = [gid for gid in gids if gid in mg.graphs]
             if len(valid_gids) < 2:
                 _log.warning(
@@ -492,7 +552,11 @@ class MetagraphLoader:
                     row["id"], valid_gids,
                 )
                 continue
-            props = _strip_metahyperedge_keys(row.get("props") or {})
+            # Phase 10 — extract soft-delete fields BEFORE strip.
+            raw_props = row.get("props") or {}
+            dep_at = _parse_iso(raw_props.get("deprecated_at"))
+            dis_at = _parse_iso(raw_props.get("disputed_at"))
+            props = _strip_metahyperedge_keys(raw_props)
             type_name = row.get("type_name") or "UNSPECIFIED"
             mhe = mg.add_metahyperedge(
                 graph_ids=valid_gids,
@@ -507,6 +571,9 @@ class MetagraphLoader:
                     mhe._version = int(row["version"])
                 except (TypeError, ValueError):
                     pass
+            # Phase 10 — restore soft-delete fields.
+            mhe.deprecated_at = dep_at
+            mhe.disputed_at = dis_at
 
     def _load_intergraph_edges(self, mg: Metagraph) -> None:
         """Load IntergraphEdges (binary node↔node across graphs).
@@ -664,12 +731,16 @@ def load_metagraph(
     batch_size: Optional[int] = None,
     identity: Optional[IdentityRegistry] = None,
     schema: Any = None,
+    include_deprecated: bool = False,
 ) -> Metagraph:
     """Reconstruct a :class:`Metagraph` from FalkorDB.
 
     Module-level convenience function (RR-5 B). Thin wrapper of
     :meth:`MetagraphLoader.load`. Symmetric with Phase 07
     :func:`load_graph`'s function-style surface.
+
+    Phase 10 — accepts ``include_deprecated`` per ADR-0133 §Loader
+    behavior.
 
     Args + Returns: see :meth:`MetagraphLoader.load`.
     """
@@ -678,6 +749,7 @@ def load_metagraph(
         batch_size=batch_size,
         identity=identity,
         schema=schema,
+        include_deprecated=include_deprecated,
     )
 
 
@@ -687,9 +759,14 @@ def load_metagraph(
 _METAEDGE_RESERVED = frozenset({
     "id", "type_name", "label", "metagraph_id",
     "source_graph_id", "target_graph_id", "_version",
+    # Phase 10 — ADR-0133 soft-delete fields are typed dataclass attrs,
+    # not user-property bag keys.
+    "deprecated_at", "disputed_at",
 })
 _METAHYPEREDGE_RESERVED = frozenset({
     "id", "type_name", "label", "metagraph_id", "_version",
+    # Phase 10 — ADR-0133 soft-delete fields.
+    "deprecated_at", "disputed_at",
 })
 _INTERGRAPH_EDGE_RESERVED = frozenset({
     "id", "type_name", "label", "metagraph_id",
@@ -701,6 +778,53 @@ _INTERGRAPH_HYPEREDGE_RESERVED = frozenset({
     "id", "type_name", "label", "metagraph_id",
     "compositional", "ordered", "_version",
 })
+
+
+def _parse_iso(value: Any) -> Optional[datetime]:
+    """Parse an ISO-8601 datetime string into a ``datetime`` or pass-through.
+
+    Phase 10 ADR-0133 — soft-delete fields persist as ISO strings (RR-8).
+    Loaders read via ``properties(row)`` (a Python dict from the driver)
+    and need to recover ``datetime`` instances onto the dataclass.
+
+    * ``None`` → ``None``.
+    * ``datetime`` → return as-is (driver path that already parses).
+    * ``str`` → ``datetime.fromisoformat(...)``; malformed → ``None``
+      (defensive — emit nothing rather than poison the dataclass).
+    """
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return datetime.fromisoformat(value)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _clear_soft_delete_dirty(mg: Metagraph) -> None:
+    """Clear soft-delete dirty buckets after load/refresh (Phase 10 PB-6a).
+
+    Mirrors Phase 09 P64 (XRef dirty post-load clear). Loaded rows are
+    by definition already persisted in FalkorDB; the dirty set must be
+    empty so a subsequent :meth:`MetagraphRepository.persist` does not
+    re-emit them.
+
+    Clears:
+
+    * ``mg._soft_delete_dirty[<SoftDeleteKind>]`` for all 5 metagraph-side
+      kinds (METAEDGE / METAHYPEREDGE / XREF + the EDGE / HYPEREDGE
+      buckets that exist for symmetry per P86 mirror).
+    * ``g._soft_delete_dirty[<SoftDeleteKind>]`` for each contained
+      ``Graph`` — Graph-side EDGE + HYPEREDGE buckets per P86.
+    """
+    for kind in mg._soft_delete_dirty:
+        mg._soft_delete_dirty[kind].clear()
+    for g in mg.graphs.values():
+        for kind in g._soft_delete_dirty:
+            g._soft_delete_dirty[kind].clear()
 
 
 def _strip_metaedge_keys(props: Dict[str, Any]) -> Dict[str, Any]:

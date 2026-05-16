@@ -38,6 +38,11 @@ from .wal import WriteAheadLog, register_replayer
 
 _KIND_ADD = "xref_add"
 _KIND_REMOVE = "xref_remove"
+# Phase 10 PX2 — 4 new XRef setter kinds (M8 + RR-1 payload shapes).
+_KIND_MARK_STALE = "xref_mark_stale"           # payload: {xref_id}
+_KIND_UNMARK_STALE = "xref_unmark_stale"       # payload: {xref_id}
+_KIND_DEPRECATE = "xref_deprecate"             # payload: {xref_id, at}
+_KIND_UNDEPRECATE = "xref_undeprecate"         # payload: {xref_id}
 
 
 def _xref_payload(xref: XRef) -> Dict[str, Any]:
@@ -109,17 +114,34 @@ class XRefRepository:
 
 
 def register_xref_replayers(client: Client) -> None:
-    """Register ``xref_add`` + ``xref_remove`` replayers on ``client`` (RR-16).
+    """Register XRef WAL replayers on ``client`` (Phase 09 RR-16 + Phase 10 PX2).
 
     Per Phase 09 P51 + P61 — replayers live on ``client._replayers``
     (per-Client dict; tests get isolation for free; no module-level
     pollution). Per Phase 09 PB-8 — MERGE-based for ``xref_add``,
     DETACH DELETE for ``xref_remove`` (both idempotent).
 
-    Replayer body captures ``client`` via closure (the
-    :class:`mindsos_core.persistence.wal.recover` callable signature
-    is ``(payload) -> None``; it does NOT pass the client back).
+    **Phase 10 PX2 extension** — registers 4 new XRef setter kinds:
+
+    * ``xref_mark_stale`` / ``xref_unmark_stale`` — toggle
+      ``target_stale`` bool field (payload: ``{xref_id}``).
+    * ``xref_deprecate`` / ``xref_undeprecate`` — set/clear
+      ``deprecated_at`` datetime field (payload: ``{xref_id, at}`` for
+      set; ``{xref_id}`` for clear).
+
+    Replayer bodies bypass public setters per RPB-1 (call cypher
+    builders directly via captured ``client`` closure). Per Phase 10
+    M8 — total Phase 10 wrapper kind count = 4 XRef setter +
+    4 collapsed element-side + 2 Phase 09 xref add/remove = 10.
     """
+    # Late import — same pattern as Phase 09 to avoid the bootstrap →
+    # xref_repository → builders cycle.
+    from ..cypher.builders import (
+        build_set_xref_deprecated_at,
+        build_set_xref_target_stale,
+        build_unset_xref_deprecated_at,
+        build_unset_xref_target_stale,
+    )
 
     def _replay_add(payload: Dict[str, Any]) -> None:
         q, p = build_create_xref(
@@ -138,8 +160,33 @@ def register_xref_replayers(client: Client) -> None:
         q, p = build_remove_xref(payload["xref_id"])
         client.run_query(q, p)
 
+    # Phase 10 PX2 — 4 new XRef setter replayers.
+    def _replay_mark_stale(payload: Dict[str, Any]) -> None:
+        q, p = build_set_xref_target_stale(payload["xref_id"])
+        client.run_query(q, p)
+
+    def _replay_unmark_stale(payload: Dict[str, Any]) -> None:
+        q, p = build_unset_xref_target_stale(payload["xref_id"])
+        client.run_query(q, p)
+
+    def _replay_deprecate(payload: Dict[str, Any]) -> None:
+        q, p = build_set_xref_deprecated_at(
+            payload["xref_id"], payload["at"],
+        )
+        client.run_query(q, p)
+
+    def _replay_undeprecate(payload: Dict[str, Any]) -> None:
+        q, p = build_unset_xref_deprecated_at(payload["xref_id"])
+        client.run_query(q, p)
+
+    # Phase 09 kinds.
     register_replayer(client, _KIND_ADD, _replay_add)
     register_replayer(client, _KIND_REMOVE, _replay_remove)
+    # Phase 10 PX2 kinds.
+    register_replayer(client, _KIND_MARK_STALE, _replay_mark_stale)
+    register_replayer(client, _KIND_UNMARK_STALE, _replay_unmark_stale)
+    register_replayer(client, _KIND_DEPRECATE, _replay_deprecate)
+    register_replayer(client, _KIND_UNDEPRECATE, _replay_undeprecate)
 
 
 __all__ = [
