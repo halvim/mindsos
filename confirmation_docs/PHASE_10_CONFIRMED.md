@@ -19,11 +19,11 @@ L1 Snapshot + soft-delete substrate + RemovalImpact + XRef setters
 
 ## git_sha
 
-ea03a8a7f1340a416ee4eb30d68a3ae85bde5db4
+64c6e88d64365884b40a57b9691a60aacab86cce
 
 ## image_build_hash
 
-sha256:1c940454e815d66ae173edac043e8b7b0584beba8803df4a9b63dcc480002ad5
+sha256:31fd3d070e5ee1d194b0c4d15d630cfd5032d96af78621b035e7655e00ee1896
 
 ## falkordb_version
 
@@ -31,12 +31,12 @@ falkordb/falkordb:v4.18.3@sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b
 
 ## automated_test_summary
 
-- count: 0
-- passed: 0
-- skipped: 0
-- failed: 0
+- count: 1668
+- passed: 1658
+- skipped: 2
+- failed: 8
 - suite_hash: sha256:877a590e57fdc6ef60a05cfe2d92bc1d053b6c61222be3235c5f04148cb2db69
-- pytest_summary: no pytest summary line found
+- pytest_summary: 8 failed, 1658 passed, 2 skipped, 109 warnings in 1061.61s (0:17:41)
 
 ## tester_notes
 
@@ -183,7 +183,7 @@ load-bearing field — read by future phase chats per PHASE_MAP §0.
 
 ## timestamp_utc
 
-2026-05-16T20:01:06Z
+2026-05-16T20:31:03Z
 
 ## mkdocs_pages_updated
 
