@@ -261,11 +261,40 @@ def _run_tests() -> dict[str, Any]:
     }
 
 
-_PYTEST_SUMMARY_RE = re.compile(r"^=+\s.*(passed|failed|error|skipped)", re.IGNORECASE)
+# Phase 10 B-10-T6 — accept BOTH framed and bare pytest summary lines.
+#
+# Pytest default mode:  `===== 4 passed in 0.5s =====` (framed; the original
+#                       Phase 06-09 regex matched this only).
+# Pytest -q mode:       `4 passed, 1 skipped in 0.5s` (bare; emitted by the
+#                       confirm-phase subprocess invocation `pytest tests/
+#                       --tb=line -q`). The original regex required leading
+#                       `=`, so confirm-phase ran SUCCESSFUL test suites and
+#                       still recorded count=0/passed=0/failed=0 with summary
+#                       "no pytest summary line found", triggering a false
+#                       "WARNING: tests reported failures" (tests_failed=true
+#                       because count==0). Audit-class precedent:
+#                       feedback_confirm_phase_timeout.md §"Companion bug".
+#
+# New regex:
+#   - Framed form:  ^=+ ... (passed|failed|error|skipped) ...
+#   - Bare form:    ^\d+ \s+ (passed|failed|error|skipped) ...
+#
+# Both anchored at start-of-line to avoid matching log noise from earlier
+# in the stream.
+_PYTEST_SUMMARY_RE = re.compile(
+    r"^(?:=+\s|(?=\d+\s+(?:passed|failed|error|skipped)\b))"
+    r".*(passed|failed|error|skipped)",
+    re.IGNORECASE,
+)
 
 
 def _last_pytest_summary_line(text: str) -> str:
-    """Best-effort: return the final pytest summary line (e.g. '=== 4 passed in 0.5s ===')."""
+    """Best-effort: return the final pytest summary line.
+
+    Matches both framed (`===== 4 passed in 0.5s =====`) and bare
+    (`4 passed, 1 skipped in 0.5s`) forms. Bare form is what pytest `-q`
+    emits — used by the confirm-phase subprocess.
+    """
     matches = [
         ln.strip()
         for ln in text.splitlines()
