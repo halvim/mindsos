@@ -133,6 +133,12 @@ COPY mindsos_instances ./mindsos_instances
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
+# Phase 10 B-10-T5 — bake notes-phase-NN.md into the prod image so
+# `docker compose run --rm mindsos confirm-phase --notes-file notes-phase-NN.md`
+# can find them at /app/notes-phase-NN.md. Phase 02-09 worked because
+# the tester ran `mindsos confirm-phase` host-native (pip install -e .);
+# the docker invocation path needs the explicit COPY.
+COPY notes-phase-*.md ./
 
 RUN pip install --no-cache-dir --no-deps .
 
@@ -184,6 +190,9 @@ COPY tests ./tests
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
+# Phase 10 B-10-T5 — same COPY in the test stage so tests/ that read
+# notes-phase-NN.md (if any) can find them. Symmetric with prod.
+COPY notes-phase-*.md ./
 
 RUN pip install --no-cache-dir --no-deps .
 

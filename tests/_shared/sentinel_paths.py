@@ -118,11 +118,14 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_core/persistence/xref_migration.py",
     "mindsos_core/reconstruction/xref_loader.py",
     # Phase 10 (L1 Snapshot + soft-delete + RemovalImpact + XRef setters —
-    # RPB-8 5-entry sentinel addition: snapshot module + 4 new doc pages).
+    # RPB-8 sentinel addition reduced to RUNTIME inputs only per B-10-T7).
+    # The 4 doc pages (docs/concepts/soft-delete.md, docs/api/core/soft-delete.md,
+    # docs/api/core/metagraph-snapshot.md, docs/dev/internals/snapshots.md) live
+    # in this repo but are NOT static inputs the CLI reads at runtime — they
+    # are mkdocs sources consumed at doc-build time only, and Dockerfile does
+    # NOT COPY docs/ into either prod or test stages. Including them caused 4
+    # spurious failures in the in-container image-completeness test. The two
+    # remaining entries below ARE Python modules imported at CLI runtime.
     "mindsos_core/metagraph_snapshot.py",
     "mindsos_core/persistence/soft_delete.py",
-    "docs/concepts/soft-delete.md",
-    "docs/api/core/soft-delete.md",
-    "docs/api/core/metagraph-snapshot.md",
-    "docs/dev/internals/snapshots.md",
 )
