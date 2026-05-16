@@ -19,11 +19,11 @@ L1 Snapshot + soft-delete substrate + RemovalImpact + XRef setters
 
 ## git_sha
 
-6339f360bd8abdef8452dafed90ed39dedce9fb2
+ea03a8a7f1340a416ee4eb30d68a3ae85bde5db4
 
 ## image_build_hash
 
-sha256:a5009a40067c9f06fd25172b58fcd8d785a76cd611282316f174c4600790ac2c
+sha256:1c940454e815d66ae173edac043e8b7b0584beba8803df4a9b63dcc480002ad5
 
 ## falkordb_version
 
@@ -36,7 +36,7 @@ falkordb/falkordb:v4.18.3@sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b
 - skipped: 0
 - failed: 0
 - suite_hash: sha256:877a590e57fdc6ef60a05cfe2d92bc1d053b6c61222be3235c5f04148cb2db69
-- pytest_summary: docker invocation failed: TimeoutExpired: Command '['docker', 'compose', 'run', '--build', '--rm', '-T', 'mindsos-test', 'pytest', 'tests/', '--tb=line', '-q']' timed out after 900 seconds
+- pytest_summary: no pytest summary line found
 
 ## tester_notes
 
@@ -183,7 +183,7 @@ load-bearing field — read by future phase chats per PHASE_MAP §0.
 
 ## timestamp_utc
 
-2026-05-16T17:03:36Z
+2026-05-16T20:01:06Z
 
 ## mkdocs_pages_updated
 
