@@ -1,11 +1,81 @@
 ---
-last_confirmed_phase: 09
+last_confirmed_phase: 10
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 10 — L1 Snapshot + soft-delete substrate + RemovalImpact + XRef setters (2026-05-16)
+
+**Ships the snapshot mutate-in-place helper (ADR-0027/0028/0129), the
+soft-delete substrate uniformly across 4 edge variants + XRef quartet
+(ADR-0133), `RemovalImpact` return + raise-on-block contract on
+`remove_graph` (ADR-0135), iterator + loader filter pass (P68 merge),
+and the Phase 09 P53 reversal restoring XRef.target_stale +
+deprecated_at.** NEW `MetagraphSnapshot.of(mg)` + `restore_into(mg)` at
+`mindsos_core/metagraph_snapshot.py` (~280 LoC slim-port; 12-attribute
+allow-list per M3 + P84). NEW `RemovalImpact` dataclass (4 fields:
+incoming_xrefs / incoming_ref_properties / proceeded / blocked_reason);
+NEW `RemoveGraphBlockedError` + `BlockedReason` str-Enum
+(DANGLING_REFS / INCIDENT_META_EDGES_CASCADE_FALSE). `remove_graph`
+signature changes to `remove_graph(graph_id, *, cascade=True,
+force=False) -> RemovalImpact` (P67 cascade restored from v3, P75
+unified exception, P81 cascade-vs-force independence). NEW `Edge` /
+`HyperEdge` / `MetaEdge` / `MetaHyperEdge` fields `deprecated_at` +
+`disputed_at` (M5). XRef restores `target_stale: bool` +
+`deprecated_at: datetime | None` (P53 reversal). NEW 20 setter
+methods: Graph quartet × Edge + HyperEdge (8; fixes SD1 v3 baseline
+HyperEdge no-API), Metagraph quartet × MetaEdge + MetaHyperEdge (8;
+fixes SD2 + SD3 v3 baseline API inconsistency + missing dispute path),
+XRef quartet PX2 (4: mark_xref_stale / unmark / deprecate_xref /
+undeprecate). NEW `_resolve_at(at)` helper (PB-2;
+`datetime.now(timezone.utc)` modernization). NEW
+`SoftDeleteKind` str-Enum (P72 typo-proof dirty-bucket keys). NEW 3
+Graph iterators (P82): `iter_edges` / `iter_hyperedges` /
+`get_edges_for_node` with `include_deprecated: bool = False`
+parameter. Phase 09 `iter_xrefs` + Phase 05a `iter_metaedges` /
+`iter_metahyperedges` extended with same parameter. 5 loader entry
+points (`load_metagraph` / `MetagraphLoader.load` / `.refresh` /
+`load_graph` / `iter_load_graph`) extended with parameter + Cypher
+WHERE-clause filtering. NEW 22 Cypher builders (M16 PB-4a
+per-method): 16 edge-side soft-delete setters + 4 XRef setters + 2
+`_compute_removal_impact` query builders. NEW
+`MetagraphRepository.persist` Step 1h drain in RPB-5 order (EDGE →
+HYPEREDGE → METAEDGE → METAHYPEREDGE → XREF) with atomic per-bucket
+clear. NEW 8 WAL replayer kinds (M8): 4 collapsed element-side
+(`element_deprecate` / `undeprecate` / `dispute` / `undispute`) + 4
+XRef-specific (`xref_mark_stale` / `unmark_stale` / `deprecate` /
+`undeprecate`); wrapper `register_all_l1_replayers` grows 2 → 10
+kinds. State-file v=4 → v=5 bumps (metagraph + graph) with
+`_v4_to_v5` per-kind migrations (RR-7); deserializer + serializer
+extended for soft-delete fields with ISO ↔ datetime conversion (RR-8
++ RR-18 + RR-19); P64 mirror — state-file deserialize clears dirty
+buckets. `mindsos persistence xref-list` patched to 10-field `--json`
+(M24); Rich table grows `target_stale` / `deprecated_at` columns only
+when non-default (RR-6). NEW P85 Graph `properties` parameter
+(ADR-0130 Graph-side acceptance via snapshot-preservation basis per
+P69 caveat). NEW P86 Graph-side `_soft_delete_dirty[EDGE +
+HYPEREDGE]` mirroring Metagraph `_soft_delete_dirty[METAEDGE +
+METAHYPEREDGE + XREF]`. ADR file edits at project-root (chunk-10
+commit per RPB-7): 0027 §Revisions a-1 (covered-fields + identity
+rebuild + dirty sets); 0128 §Revisions a-3 (cleanup setter exists;
+trigger Server-phase per O1); 0130 flip Graph-side §Acceptance with
+P69 caveat; 0133 flip Proposed → Accepted with D1-rev clause-strip
+(CompositionalImmutableError class retained per ADR-0148); 0135 flip
+Proposed → Accepted with 3 amendments (cascade default flip +
+raise-on-block + unified blocked_reason enum). Tests: ~145 unit + ~14
+integration = ~159 Phase-10 files. Cumulative: 1660 passed. B-10-T1
+(integration test XRefLoader.load_into idiom carry-from-Phase-09);
+B-10-T2 (WAL recovery uses wal.begin() vs raw cypher); B-10-T3
+(15 prior-phase tests patched to dynamic CURRENT_VERSION literals per
+the feedback_phase_baseline_literal_audit.md audit-class). Cross-package
+version-string parity bumped to `0.0.0+phase10` (3 packages);
+`manifest.toml [mindsos] phase = "10"`; `docker-compose.yml` image
+tags `mindsos:phase10-{prod,test}`. Confirmation manifest `phase =
+"10"`; tag `phase-10-confirmed`. Tests pass in-container; CASC-1
+strict-sequential dependency on Phase 09 honored.
 
 ## Phase 09 — L1 XRef (cross-metagraph refs) (2026-05-15)
 

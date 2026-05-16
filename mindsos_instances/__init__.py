@@ -55,7 +55,8 @@ from .utils.canonicalize import canonicalize
 #: ``mindsos_core.__version__`` and ``mindsos_cli.__version__``
 #: (round-7 P62 A — new top-level package adds a fourth checked site).
 #: Phase 09 bumps to phase09 per cross-package version-string parity.
-__version__ = "0.0.0+phase09"
+#: Phase 10 bumps to phase10 (Phase 06 P62 A 3-package parity carry).
+__version__ = "0.0.0+phase10"
 
 __all__ = [
     # exceptions

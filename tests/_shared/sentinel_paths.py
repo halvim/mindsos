@@ -117,4 +117,12 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_core/persistence/xref_repository.py",
     "mindsos_core/persistence/xref_migration.py",
     "mindsos_core/reconstruction/xref_loader.py",
+    # Phase 10 (L1 Snapshot + soft-delete + RemovalImpact + XRef setters —
+    # RPB-8 5-entry sentinel addition: snapshot module + 4 new doc pages).
+    "mindsos_core/metagraph_snapshot.py",
+    "mindsos_core/persistence/soft_delete.py",
+    "docs/concepts/soft-delete.md",
+    "docs/api/core/soft-delete.md",
+    "docs/api/core/metagraph-snapshot.md",
+    "docs/dev/internals/snapshots.md",
 )

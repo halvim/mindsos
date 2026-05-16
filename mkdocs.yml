@@ -19,6 +19,7 @@ nav:
       - Graphs and metagraphs: concepts/graphs-and-metagraphs.md
       - Intergraph edges: concepts/intergraph-edges.md
       - References (hybrid model): concepts/references.md
+      - Soft-delete (Phase 10): concepts/soft-delete.md
   - Usage:
       - Core:
           - Building graphs: usage/core/building-graphs.md
@@ -45,10 +46,13 @@ nav:
       - Core Integrity scanner: api/core/integrity.md
       - Core Loaders (Phase 08): api/core/loaders.md
       - Core XRef (Phase 09): api/core/xref.md
+      - Core Soft-delete (Phase 10): api/core/soft-delete.md
+      - Core MetagraphSnapshot (Phase 10): api/core/metagraph-snapshot.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md
       - Internals — Core: dev/internals/core.md
+      - Internals — Snapshot (Phase 10): dev/internals/snapshots.md
       - CLI conventions: dev/conventions.md
       - Testing: dev/testing.md
       - Release flow: dev/release.md
