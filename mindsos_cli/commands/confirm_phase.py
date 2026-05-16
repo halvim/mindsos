@@ -46,7 +46,16 @@ from mindsos_cli.commands.doctor import _load_manifest, _repo_root
 #: Cap raised to 900s (15m) per `feedback_confirm_phase_timeout.md`.
 #: Recipe MUST pre-build the test image before invoking
 #: ``mindsos confirm-phase`` (P93) — build time eats this budget.
-_CONFIRM_PHASE_TIMEOUT_SECONDS: int = 900
+#:
+#: Phase 10 B-10-T4 — cap raised to 1800s (30m). Phase 09 ran ~12m;
+#: Phase 10 adds ~162 tests (substrate + soft-delete + filter pass +
+#: WAL replay + state-file v=5 + 14 integration with FalkorDB) and
+#: ticked past the 900s wall on cumulative runs (~17m observed at
+#: Phase 10 confirm). Each subsequent phase will keep growing the
+#: cumulative budget — Phase 11+ may revisit. Tooling guard: if any
+#: future phase nears the 30m wall, evaluate splitting into
+#: ``--skip-tests`` + standalone pytest runs vs another bump.
+_CONFIRM_PHASE_TIMEOUT_SECONDS: int = 1800
 
 
 # ---------------------------------------------------------------------------
