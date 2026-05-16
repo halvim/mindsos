@@ -21,7 +21,11 @@ def _seed_mg_with_xref() -> Metagraph:
 
 
 def test_serialize_to_state_includes_xrefs_array_rr_8(tmp_path, monkeypatch):
-    """RR-8 — state-file shape carries xrefs[] with 8-field dict per entry."""
+    """Phase 10 B-10-T3 — RR-8 + Phase 10 P53 reversal: state-file shape
+    carries xrefs[] with 10-field dict per entry (8 Phase 09 + 2 Phase 10
+    restored: target_stale + deprecated_at). Audit-class
+    feedback_phase_baseline_literal_audit.md.
+    """
     from mindsos_cli import state as state_mod
     monkeypatch.setenv("MINDSOS_STATE_DIR", str(tmp_path))
 
@@ -34,7 +38,12 @@ def test_serialize_to_state_includes_xrefs_array_rr_8(tmp_path, monkeypatch):
         "xref_id", "source_metagraph_id", "source_id",
         "target_metagraph_id", "target_role", "target_id",
         "ref_type", "properties",
+        # Phase 10 P53 reversal (M5 + RR-19).
+        "target_stale", "deprecated_at",
     }
+    # Phase 10 defaults for a freshly-added XRef.
+    assert x_dict["target_stale"] is False
+    assert x_dict["deprecated_at"] is None
 
 
 def test_round_trip_through_save_and_load(tmp_path, monkeypatch):

@@ -26,8 +26,13 @@ def test_v4_back_pointer_round_trip(_isolated_state_dir):
     assert raw["metagraph_name"] == "mg"
 
 
-def test_cumulative_migration_v1_to_v4(_isolated_state_dir):
-    """Loading a Phase 03 v=1 file forward-migrates to v=4 in memory."""
+def test_cumulative_migration_v1_to_current(_isolated_state_dir):
+    """Loading a Phase 03 v=1 file forward-migrates to CURRENT_VERSION in memory.
+
+    Phase 10 B-10-T3 — Phase 05a baseline literal ``== 4`` patched to
+    dynamic ``state_mod.GRAPH_STATE_VERSION`` per the B-09-T3 audit class
+    (feedback_phase_baseline_literal_audit.md).
+    """
     legacy_v1 = {
         "_state_version": 1,
         "graph_id": "00000000-0000-4000-8000-00000000a001",
@@ -41,13 +46,13 @@ def test_cumulative_migration_v1_to_v4(_isolated_state_dir):
         json.dumps(legacy_v1), encoding="utf-8"
     )
     loaded = state_mod.load_graph_state("g1")
-    assert loaded["_state_version"] == 4
+    assert loaded["_state_version"] == state_mod.GRAPH_STATE_VERSION
     assert loaded["schema_name"] is None     # v=1 → v=2 default.
     assert loaded["metagraph_name"] is None  # v=3 → v=4 default.
 
 
-def test_cumulative_migration_v3_to_v4(_isolated_state_dir):
-    """Loading a Phase 04-v2 v=3 file forward-migrates to v=4."""
+def test_cumulative_migration_v3_to_current(_isolated_state_dir):
+    """Loading a Phase 04-v2 v=3 file forward-migrates to CURRENT_VERSION."""
     legacy_v3 = {
         "_state_version": 3,
         "graph_id": "00000000-0000-4000-8000-00000000a002",
@@ -62,14 +67,20 @@ def test_cumulative_migration_v3_to_v4(_isolated_state_dir):
         json.dumps(legacy_v3), encoding="utf-8"
     )
     loaded = state_mod.load_graph_state("g2")
-    assert loaded["_state_version"] == 4
+    assert loaded["_state_version"] == state_mod.GRAPH_STATE_VERSION
     assert loaded["metagraph_name"] is None
 
 
-def test_v5_future_version_refused(_isolated_state_dir):
-    """Forward-version (v=5) refused with strict-version contract."""
+def test_future_version_refused(_isolated_state_dir):
+    """Forward-version (CURRENT_VERSION + 1) refused with strict-version contract.
+
+    Phase 10 B-10-T3 — Phase 05a wrote this test against v=5 (then-future).
+    Phase 10 bumps to v=5 → v=5 is now CURRENT, no longer refused. Use
+    CURRENT+1 dynamically so the test stays valid through future bumps.
+    """
+    future_v = state_mod.GRAPH_STATE_VERSION + 1
     future = {
-        "_state_version": 5,
+        "_state_version": future_v,
         "graph_id": "00000000-0000-4000-8000-00000000a003",
         "name": "g3",
         "role": None,
@@ -78,5 +89,5 @@ def test_v5_future_version_refused(_isolated_state_dir):
     (_isolated_state_dir / "graph-g3.json").write_text(
         json.dumps(future), encoding="utf-8"
     )
-    with pytest.raises(RuntimeError, match="this CLI supports v4"):
+    with pytest.raises(RuntimeError, match=f"this CLI supports v{state_mod.GRAPH_STATE_VERSION}"):
         state_mod.load_graph_state("g3")
