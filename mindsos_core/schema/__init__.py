@@ -17,6 +17,11 @@ is the identity that the CLI persists by (mirror Phase 04 Schema).
 from __future__ import annotations
 
 from .metagraph_schema import MetagraphSchema
+from .migration import (
+    SchemaMigrationError,
+    SchemaViolation,
+    migrate_from,
+)
 from .schema import Schema
 from .types import (
     EdgeType,
@@ -47,5 +52,8 @@ __all__ = [
     "REF_PROPERTY_PREFIX",
     "RESERVED_PROPERTY_KEYS",
     "Schema",
+    "SchemaMigrationError",
+    "SchemaViolation",
+    "migrate_from",
     "validate_user_properties",
 ]

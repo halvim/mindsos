@@ -3239,13 +3239,13 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
     19. **Snapshot allow-list captures both Phase 09 `_xrefs_dirty` and Phase 10 `_soft_delete_dirty`** (RB1 + RPB-11). Pre-existing-dirty-state survives restore.
     20. **Reverse-dangling auto-firing trigger deferred to Server first-start (Phase 18+)** per O1. Setter ships; ADR-0128 amendment-3 clarifies.
 
-### Phase 11 — L1 Cypher builders + integrity scanner + schema migration
+### Phase 11 — L1 Loader policy + schema migration scanner (ADR-0134)
 
-  **Deps:** 07. **Layer:** L1. **Net-new?** No.
-  **Features:** cypher-build debug; integrity verify with report; schema-migrate dry-run vs apply (ADR-0134).
-  **Tests:** rel-type validation enforced (ADR-0021); integrity scanner detects 3 seeded violations; migration dry-run vs apply.
-  **Risks:** schema migration is invasive — must be reversible or guarded by snapshot.
-  **Docs:** `docs/api/core/cypher.md`, ADRs 0021/0022/0023/0123/0134.
+  **Deps:** 07, 10. **Layer:** L1. **Net-new?** No.
+  **Features:** Loader `unknown_edge_type_policy` (warn|error|ignore; env override `MINDSOS_UNKNOWN_EDGE_POLICY`); `LoadReport` + `MetagraphLoadReport` additive sibling APIs (PB-12 B / PB-13 A); `migrate_from(old, target, *, new, detail, old_schema_name) -> list[SchemaViolation]` detection-only scanner (PB-1 A; per-Graph + per-Metagraph dispatch per PB-17 C; Schema-level coverage per PB-7 C — Node + Edge + HyperEdge). CLI: `mindsos schema migrate-check`, `mindsos persistence load --unknown-edges=...`. **Strikes from prior row text:** "cypher-build debug" (PB-3 A — undefined, killed); "dry-run vs apply" (PB-1 A — ADR-0134 forbids apply); "integrity scanner detects 3 seeded violations" (already shipped Phase 07 ADR-0123).
+  **Tests:** rel-type validation regression (5-10 adversarial inputs) still passes; loader policy `warn`/`error`/`ignore` × schema-attached/unattached × env-var override; `LoadReport` + `MetagraphLoadReport` shape + aggregation; `migrate_from` per kind × element type; CLI `migrate-check` `--graph`/`--metagraph` mutex + `--detail` summary/each + `--json` + `--exit-zero`; CLI `load --unknown-edges` surfaces drop count; backward-compat (existing `load_graph` / `load_metagraph` / `MetagraphLoader.load` signatures unchanged); ADR-0134 §amendment-1 + 2 sentinel; phase-baseline self-consistency (`tests/phase_11/test_doctor_phase11.py`); confirm-phase pytest summary regex regression (PB-33).
+  **Risks:** **OBSOLETE** per detection-only lock (PB-1 A) + additive-sibling lock (PB-12 B + PB-13 A) + warn-not-mutate lock (PB-10 A). Original "schema migration is invasive — must be reversible or guarded by snapshot" applied to an apply path that ADR-0134 forbids. Re-introduce when an apply path lands (Phase 14+). Loader default flip `silent → warn` audited in Step-0 §5+6: zero log-cleanliness assertions in `tests/`; cascade prediction = 0.
+  **Docs:** `docs/dev/internals/core.md` §"Phase 11 — Loader policy + schema migration scanner"; `docs/dev/migration-playbook.md` (stub awaiting first KL consumer); ADRs 0021/0022/0023/0123 (already Accepted; untouched); ADR-0134 §Revisions amendments-1 + 2 (stays Proposed; KL consumer in Phase 12+ drives the Accepted flip). **Strikes:** `docs/api/core/cypher.md` (no cypher-surface change this phase).
 
 ### Phase 12 — L2 Identifiers + role IRIs + REF_TYPES
 

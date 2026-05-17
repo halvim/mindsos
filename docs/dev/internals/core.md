@@ -412,3 +412,92 @@ dropping dependent state per RPB-4 C).
 
 No `ReconstructionError` umbrella class (R4-3 A — `PersistenceError`
 suffices).
+
+## Phase 11 — Loader policy + schema migration scanner (ADR-0134)
+
+Phase 11 adds two L1 features per ADR-0134 + its Phase 11 §Revisions
+amendments-1 and -2:
+
+1. **Loader policy** — the loader optionally filters edges/hyperedges
+   whose `type_name` is absent from the attached `Schema`. Surfaces
+   drops as a structured `LoadReport` (per-Graph) /
+   `MetagraphLoadReport` (per-Metagraph aggregate). Default `warn`;
+   opt-in `error` raises `UnknownEdgeTypeError`; `ignore` silent.
+2. **Schema migration scanner** — `migrate_from(old, target, *, new,
+   detail, old_schema_name)` reports what would violate the new
+   schema if persisted data were re-validated. Detection only; no
+   apply path.
+
+### Loader policy plumbing
+
+* Public API — `mindsos_core.reconstruction.load_graph_with_report`
+  + `load_metagraph_with_report` as **additive siblings** of the
+  Phase 08 `load_graph` / `load_metagraph` (PB-12 B — existing
+  signatures unchanged; no callsite cascade). The `MetagraphLoader`
+  class grows a parallel `load_with_report(...)` method.
+* Per-call kwarg `unknown_edge_type_policy="warn"|"error"|"ignore"`.
+  When `None`, resolves via env var `MINDSOS_UNKNOWN_EDGE_POLICY`,
+  then to `"warn"` (PB-14 A precedence; per
+  `feedback_cli_config_manifest_fallback.md`).
+* **No-op when no schema attached** (PB-11 lock). A graph loaded
+  without a schema bypasses the filter entirely.
+* WARN granularity: one log per **distinct unknown type** with a
+  running count (PB-10 A — ADR-0134 §amendment-1). Not per-edge.
+* `error` raises `UnknownEdgeTypeError` immediately on the first
+  unknown type; subsequent rows are not tracked.
+* Policy lives on the loader call surface + env var, **NOT** on
+  `FalkorConfig` (ADR-0134 §amendment-2 — driver vs reconstruction
+  layer separation).
+
+CLI: `mindsos persistence load --unknown-edges=warn|error|ignore`.
+When omitted, plain `load_graph` / `load_metagraph` runs (Phase 08
+behavior exact). When set, routes through the report-returning
+sibling and prints `dropped_edges` + `dropped_by_type` (Rich) or
+includes them in `--json` output.
+
+### Schema migration scanner
+
+`mindsos_core/schema/migration.py` — `migrate_from(old, target, *,
+new=None, detail="summary", old_schema_name=None)`. Detection-only
+per ADR-0134's "What it does NOT do" section.
+
+* **Coverage** (PB-7 C) — `Schema`-level only: `NodeType`,
+  `EdgeType`, `HyperEdgeType`. `MetagraphSchema` migration
+  (MetaEdge / IntergraphEdge / etc.) deferred to Phase 12+.
+* **Dispatch** (PB-17 C) — one entry; `target: Graph | Metagraph`.
+  Per-Metagraph path walks every contained graph with an attached
+  schema. `old_schema_name` opt-in emits a logger WARNING (NOT a
+  `SchemaViolation`) when a graph's `schema_name` differs.
+* **Detail modes** (PB-8 A) — `summary` (default) aggregates per
+  `(kind, type_name, property_name)`; `each` emits one
+  `SchemaViolation` per offending element. Pathological output is
+  capped by default.
+* **Violation kinds** — `removed_node_type`, `removed_edge_type`,
+  `removed_hyperedge_type`, `tightened_property`,
+  `missing_required_property`.
+* **Property-tightening detection** — required-flag flip (key added
+  in `new.property_types`); type narrowing (changed `PropertyType`
+  variant with persisted value mismatching the new type). Defaults
+  / nullability are out-of-scope until `PropertyType` grows
+  nullable variants.
+
+CLI: `mindsos schema migrate-check --old <name> | --old-file <path>
+[--new <name>] (--graph G | --metagraph M) [--detail summary|each]
+[--json] [--exit-zero]`. Exit 1 on any violations (CI default);
+`--exit-zero` opts out for inspection runs.
+
+### Exception hierarchy additions (Phase 11)
+
+* `UnknownEdgeTypeError` ← `CoreError` — loader policy `"error"`
+  hit on unknown edge / hyperedge type.
+* `SchemaMigrationError` ← `CoreError` — invalid scanner input
+  (bad `detail` value; unsupported `target` type).
+
+### ADR-0134 acceptance contract
+
+Stays **Proposed** at Phase 11 ship. Flips to **Accepted** when a
+KL importer (Phase 12+) consumes scanner output for at least one
+role-graph schema bump and `docs/dev/migration-playbook.md`
+documents the cross-layer pattern. Phase 11 ships the L1 mechanism
++ amendments-1 + 2; the playbook ships as a stub awaiting first
+real consumer.

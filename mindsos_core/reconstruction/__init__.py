@@ -39,13 +39,26 @@ from ..exceptions import (
     RoleMismatchError,
     WALReplayerMissingError,
 )
-from .graph_loader import iter_load_graph, load_graph
-from .metagraph_loader import MetagraphLoader, load_metagraph
+from .graph_loader import (
+    iter_load_graph,
+    load_graph,
+    load_graph_with_report,
+)
+from .load_report import LoadReport, MetagraphLoadReport
+from .metagraph_loader import (
+    MetagraphLoader,
+    load_metagraph,
+    load_metagraph_with_report,
+)
 from .xref_loader import XRefLoader, attach_xref_loader
 
 __all__ = [
     "load_graph",
     "iter_load_graph",
+    "load_graph_with_report",
+    "load_metagraph_with_report",
+    "LoadReport",
+    "MetagraphLoadReport",
     "MetagraphLoader",
     "load_metagraph",
     "XRefLoader",

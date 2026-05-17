@@ -128,4 +128,11 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # remaining entries below ARE Python modules imported at CLI runtime.
     "mindsos_core/metagraph_snapshot.py",
     "mindsos_core/persistence/soft_delete.py",
+    # Phase 11 — ADR-0134 §scanner + §amendment-2 loader policy. Both
+    # are runtime Python modules; the docs surfaces
+    # (docs/dev/internals/core.md §"Phase 11 ..." +
+    # docs/dev/migration-playbook.md) are intentionally NOT sentinelled
+    # per feedback_sentinel_paths_runtime_only.md.
+    "mindsos_core/schema/migration.py",
+    "mindsos_core/reconstruction/load_report.py",
 )

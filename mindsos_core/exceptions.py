@@ -407,3 +407,48 @@ class RemoveGraphBlockedError(CoreError):
         self.graph_id = graph_id
         self.impact = impact
         self.blocked_reason = blocked_reason
+
+
+# ── Loader policy (Phase 11 — ADR-0134 §amendment-2) ─────────────────────────
+
+
+class UnknownEdgeTypeError(CoreError):
+    """Loader hit an edge whose ``type_name`` is not in the active schema.
+
+    Raised by :func:`mindsos_core.reconstruction.load_graph_with_report`
+    (and the metagraph-level sibling) when the
+    ``unknown_edge_type_policy`` kwarg is ``"error"`` AND the graph has
+    an attached :class:`Schema` AND a persisted edge row carries a
+    ``type_name`` absent from :attr:`Schema.edge_types` (or
+    :attr:`Schema.hyperedge_types` for hyperedges).
+
+    Phase 11 PB-11 lock: the policy is a no-op when ``graph.schema is
+    None``; this exception is never raised in that case. Per ADR-0134
+    §amendment-1: the loader's ``"warn"`` default surfaces the same
+    drop via WARN-level logging (per-distinct-type with counts) without
+    raising.
+
+    Use ``"error"`` in CI to catch silent drift between schemas and
+    persisted data.
+
+    Attributes:
+        graph_id: id of the graph being loaded.
+        type_name: the offending edge ``type_name``.
+        element_kind: ``"Edge"`` or ``"HyperEdge"`` — which element
+            family carried the unknown type.
+    """
+
+    def __init__(
+        self,
+        graph_id: str,
+        type_name: str,
+        element_kind: str,
+    ) -> None:
+        msg = (
+            f"load_graph({graph_id!r}): {element_kind} type {type_name!r} "
+            f"is not registered on the attached schema"
+        )
+        super().__init__(msg)
+        self.graph_id = graph_id
+        self.type_name = type_name
+        self.element_kind = element_kind
