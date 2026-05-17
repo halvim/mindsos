@@ -802,6 +802,271 @@ def reset_cmd(
 
 
 # ---------------------------------------------------------------------------
+# Phase 11 — `migrate-check` (ADR-0134 §scanner)
+# ---------------------------------------------------------------------------
+
+
+@schema_app.command("migrate-check")
+def migrate_check_cmd(
+    old: Optional[str] = typer.Option(
+        None, "--old",
+        help=(
+            "Old schema name (resolved against $MINDSOS_STATE_DIR or "
+            "~/.mindsos/schema-<name>.json). Mutually exclusive with "
+            "--old-file."
+        ),
+    ),
+    old_file: Optional[str] = typer.Option(
+        None, "--old-file",
+        help=(
+            "Path to an old-schema state file at any location. Mutually "
+            "exclusive with --old."
+        ),
+    ),
+    new: Optional[str] = typer.Option(
+        None, "--new",
+        help=(
+            "New schema name (state-dir resolved). When omitted, the "
+            "scanner uses the new schema already attached to the target "
+            "Graph (--graph) / each contained Graph (--metagraph). When "
+            "specified, applies the new schema explicitly to every "
+            "scanned Graph regardless of graph.schema_name."
+        ),
+    ),
+    graph: Optional[str] = typer.Option(
+        None, "--graph",
+        help=(
+            "Graph state-file name (state-dir resolved). Mutually "
+            "exclusive with --metagraph."
+        ),
+    ),
+    metagraph: Optional[str] = typer.Option(
+        None, "--metagraph",
+        help=(
+            "Metagraph state-file name. Walks every contained graph; "
+            "per PB-17 C policy warning emits when graph.schema_name "
+            "differs from --old's name. Mutually exclusive with --graph."
+        ),
+    ),
+    detail: str = typer.Option(
+        "summary", "--detail",
+        help=(
+            "summary (default) — one aggregate entry per "
+            "(kind, type_name, property). each — one entry per "
+            "offending element. See ADR-0134 §scanner / PB-8 A."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit JSON to stdout instead of Rich table."
+    ),
+    exit_zero: bool = typer.Option(
+        False, "--exit-zero",
+        help=(
+            "Exit 0 even when violations are detected. Default exits 1 "
+            "on any violations (CI-friendly per PB-15)."
+        ),
+    ),
+) -> None:
+    """Phase 11 ADR-0134 — scan persisted data for violations vs the new schema.
+
+    Detection-only (PB-1 A); never mutates. Reports nodes/edges/hyperedges
+    whose persisted shape no longer satisfies the new schema's
+    constraints. Exit-1 on any violations unless ``--exit-zero``.
+    """
+    from mindsos_core.schema import (
+        SchemaMigrationError,
+        migrate_from,
+    )
+
+    if (old is None) == (old_file is None):
+        typer.echo(
+            "Specify exactly one of --old <NAME> or --old-file <PATH>.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if (graph is None) == (metagraph is None):
+        typer.echo(
+            "Specify exactly one of --graph <NAME> or --metagraph <NAME>.",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+    if detail not in ("summary", "each"):
+        typer.echo(
+            f"--detail must be 'summary' or 'each'; got {detail!r}",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    # Resolve OLD schema.
+    if old is not None:
+        old_schema = _load_or_die(old)
+        old_name = old
+    else:
+        # --old-file path; bypass state_mod's basename-based lookup.
+        from pathlib import Path
+        path = Path(old_file).expanduser()
+        if not path.exists():
+            typer.echo(f"Old schema file not found: {path}", err=True)
+            raise typer.Exit(code=1)
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            typer.echo(f"Failed to read --old-file: {exc}", err=True)
+            raise typer.Exit(code=1)
+        try:
+            old_schema = _state_to_schema(raw)
+        except RuntimeError as e:
+            typer.echo(f"Old schema file error: {e}", err=True)
+            raise typer.Exit(code=1)
+        old_name = raw.get("name") or path.stem.removeprefix("schema-")
+
+    # Optionally resolve NEW schema (state-dir lookup; --old-file
+    # equivalent for new is deferred — Phase 11 scope kept tight).
+    new_schema = None
+    if new is not None:
+        new_schema = _load_or_die(new)
+
+    # Load the target (Graph or Metagraph).
+    target = _load_migrate_check_target(graph=graph, metagraph=metagraph)
+
+    # Scan.
+    try:
+        violations = migrate_from(
+            old_schema,
+            target,
+            new=new_schema,
+            detail=detail,
+            old_schema_name=old_name,
+        )
+    except SchemaMigrationError as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(code=1)
+
+    # Build summary payload.
+    payload = {
+        "schema": {
+            "old": old_name,
+            "new": new if new is not None else "<attached>",
+        },
+        "scope": {
+            "graph": graph,
+            "metagraph": metagraph,
+        },
+        "detail": detail,
+        "violation_count": len(violations),
+        "violations": [
+            {
+                "kind": v.kind,
+                "type_name": v.type_name,
+                "graph_id": v.graph_id,
+                "property_name": v.property_name,
+                "element_id": v.element_id,
+                "count": v.count,
+                "detail": v.detail,
+            }
+            for v in violations
+        ],
+    }
+
+    if json_out:
+        typer.echo(json.dumps(payload, sort_keys=True, indent=2))
+    else:
+        _console.print(
+            f"schema: old={payload['schema']['old']!r} "
+            f"new={payload['schema']['new']!r}"
+        )
+        _console.print(
+            f"scope: graph={graph!r} metagraph={metagraph!r} detail={detail!r}"
+        )
+        _console.print(f"violation_count: {len(violations)}")
+        for v in violations:
+            _console.print(
+                f"  {v.kind} type={v.type_name!r} "
+                f"prop={v.property_name!r} "
+                f"graph={v.graph_id!r} count={v.count}"
+            )
+
+    if violations and not exit_zero:
+        raise typer.Exit(code=1)
+
+
+def _load_migrate_check_target(
+    *, graph: Optional[str], metagraph: Optional[str]
+):
+    """Resolve the ``Graph`` or ``Metagraph`` named by the CLI flags.
+
+    Reads from the state dir; rehydrates via existing migration chain
+    (Phase 05a graph state v=4 / Phase 10 v=5; metagraph parity).
+    """
+    if graph is not None:
+        try:
+            state = state_mod.load_graph_state(graph)
+        except FileNotFoundError:
+            typer.echo(
+                f"Graph state file not found for {graph!r}", err=True
+            )
+            raise typer.Exit(code=1)
+        except (ValueError, RuntimeError) as e:
+            typer.echo(f"Graph state file error: {e}", err=True)
+            raise typer.Exit(code=1)
+        from mindsos_cli.migrations.graph import migrate as _g_migrate
+        from mindsos_core.models.graph import Graph
+        _g_migrate(state)
+        g = Graph(name=state["name"], graph_id=state.get("graph_id"))
+        for n in state.get("nodes", []):
+            g.add_node(
+                value=n.get("value"),
+                type_name=n["type_name"],
+                properties=dict(n.get("properties", {})),
+                node_id=n.get("id"),
+                _validate=False,
+            )
+        nodes_by_id = {n.node_id: n for n in g.nodes.values()}
+        for e in state.get("edges", []):
+            src = nodes_by_id.get(e["source_id"])
+            tgt = nodes_by_id.get(e["target_id"])
+            if src is None or tgt is None:
+                continue
+            g.add_edge(
+                source=src, target=tgt,
+                type_name=e["type_name"],
+                label=e.get("label"),
+                properties=dict(e.get("properties", {})),
+                edge_id=e.get("id"),
+                _validate=False,
+            )
+        for h in state.get("hyperedges", []):
+            members = [
+                nodes_by_id[mid] for mid in h.get("members", [])
+                if mid in nodes_by_id
+            ]
+            if not members:
+                continue
+            g.add_hyperedge(
+                nodes=members,
+                type_name=h.get("type_name", "UNSPECIFIED"),
+                label=h.get("label"),
+                properties=dict(h.get("properties", {})),
+                edge_id=h.get("id"),
+                _validate=False,
+            )
+        return g
+    # Metagraph path — rehydrate via metagraph CLI's existing helper.
+    try:
+        mg_state = state_mod.load_metagraph_state(metagraph)
+    except FileNotFoundError:
+        typer.echo(
+            f"Metagraph state file not found for {metagraph!r}", err=True
+        )
+        raise typer.Exit(code=1)
+    except (ValueError, RuntimeError) as e:
+        typer.echo(f"Metagraph state file error: {e}", err=True)
+        raise typer.Exit(code=1)
+    from mindsos_cli.commands.metagraph import _state_to_metagraph
+    return _state_to_metagraph(mg_state)
+
+
+# ---------------------------------------------------------------------------
 # Compatibility for app.py
 # ---------------------------------------------------------------------------
 

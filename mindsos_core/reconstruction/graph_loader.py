@@ -45,15 +45,57 @@ per-graph node scan.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-from ..exceptions import PersistenceError
+from ..exceptions import PersistenceError, UnknownEdgeTypeError
 from ..models.graph import Graph
 from ..models.identity import IdentityRegistry
 from ..persistence.client import Client
+from .load_report import LoadReport
 
 _log = logging.getLogger(__name__)
+
+
+# ── Phase 11 — loader policy (ADR-0134 §amendment-2) ─────────────────────────
+
+
+#: Default loader policy if neither the kwarg nor the env var is set.
+#: Per ADR-0134: "default flips from silent ignore to warn."
+_DEFAULT_UNKNOWN_EDGE_POLICY = "warn"
+
+#: Recognised values for ``unknown_edge_type_policy``.
+_VALID_UNKNOWN_EDGE_POLICIES = ("warn", "error", "ignore")
+
+#: Env var override (Phase 11 PB-14 A; symmetric with
+#: ``feedback_cli_config_manifest_fallback.md`` — env wins over default).
+_UNKNOWN_EDGE_POLICY_ENV = "MINDSOS_UNKNOWN_EDGE_POLICY"
+
+
+def _resolve_unknown_edge_policy(arg: Optional[str]) -> str:
+    """Resolve ``unknown_edge_type_policy`` per Phase 11 PB-14 A precedence.
+
+    Per-call kwarg wins → env var fallback → hard-coded default
+    (``"warn"``). Raises :class:`ValueError` on an unrecognised value
+    from either source.
+    """
+    if arg is not None:
+        if arg not in _VALID_UNKNOWN_EDGE_POLICIES:
+            raise ValueError(
+                f"unknown_edge_type_policy must be one of "
+                f"{_VALID_UNKNOWN_EDGE_POLICIES}; got {arg!r}"
+            )
+        return arg
+    env_val = os.environ.get(_UNKNOWN_EDGE_POLICY_ENV)
+    if env_val is not None:
+        if env_val not in _VALID_UNKNOWN_EDGE_POLICIES:
+            raise ValueError(
+                f"{_UNKNOWN_EDGE_POLICY_ENV} must be one of "
+                f"{_VALID_UNKNOWN_EDGE_POLICIES}; got {env_val!r}"
+            )
+        return env_val
+    return _DEFAULT_UNKNOWN_EDGE_POLICY
 
 
 # Reserved Cypher-row property keys stripped from the user-property bag
@@ -109,6 +151,8 @@ def iter_load_graph(
     schema: Any = None,
     batch_size: int = 10_000,
     include_deprecated: bool = False,
+    report: Optional[LoadReport] = None,
+    unknown_edge_type_policy: Optional[str] = None,
 ) -> Iterator[Graph]:
     """Yield partial :class:`Graph` objects in node-id order; trail edges + hyperedges in a final batch.
 
@@ -213,8 +257,19 @@ def iter_load_graph(
             if len(page_nodes) < page_limit:
                 break
         # Trailer — edges + hyperedges over all loaded nodes.
-        _load_edges(client, g, include_deprecated=include_deprecated)
-        _load_hyperedges(client, g, include_deprecated=include_deprecated)
+        _policy = _resolve_unknown_edge_policy(unknown_edge_type_policy)
+        _load_edges(
+            client, g,
+            include_deprecated=include_deprecated,
+            report=report,
+            unknown_edge_type_policy=_policy,
+        )
+        _load_hyperedges(
+            client, g,
+            include_deprecated=include_deprecated,
+            report=report,
+            unknown_edge_type_policy=_policy,
+        )
         _detect_cross_graph_leaks(client, g)
         # Phase 10 PB-6a — clear graph-side soft-delete dirty after full
         # load (loader-attached path; symmetric with MetagraphLoader path).
@@ -257,8 +312,19 @@ def iter_load_graph(
             break
 
     # Trailer — edges + hyperedges + cross-graph leak detection.
-    _load_edges(client, g, include_deprecated=include_deprecated)
-    _load_hyperedges(client, g, include_deprecated=include_deprecated)
+    _policy = _resolve_unknown_edge_policy(unknown_edge_type_policy)
+    _load_edges(
+        client, g,
+        include_deprecated=include_deprecated,
+        report=report,
+        unknown_edge_type_policy=_policy,
+    )
+    _load_hyperedges(
+        client, g,
+        include_deprecated=include_deprecated,
+        report=report,
+        unknown_edge_type_policy=_policy,
+    )
     _detect_cross_graph_leaks(client, g)
     # Phase 10 PB-6a — clear graph-side soft-delete dirty after streamed load.
     for kind in g._soft_delete_dirty:
@@ -324,6 +390,73 @@ def load_graph(
     return g
 
 
+def load_graph_with_report(
+    client: Client,
+    graph_id: str,
+    *,
+    identity: Optional[IdentityRegistry] = None,
+    schema: Any = None,
+    include_deprecated: bool = False,
+    unknown_edge_type_policy: Optional[str] = None,
+) -> Tuple[Graph, LoadReport]:
+    """Phase 11 sibling of :func:`load_graph` returning a :class:`LoadReport`.
+
+    Same load semantics as :func:`load_graph` but additionally tracks
+    edge/hyperedge type drops per Phase 11 ADR-0134 §amendment-2. The
+    policy is a no-op when ``schema is None`` (PB-11 lock).
+
+    Args:
+        client: Connected :class:`Client`.
+        graph_id: The Cypher ``:Graph.id`` to load.
+        identity: Optional shared :class:`IdentityRegistry`.
+        schema: Optional :class:`Schema` to attach. When provided AND
+            ``unknown_edge_type_policy != "ignore"``, edges /
+            hyperedges whose ``type_name`` is absent from the schema
+            are filtered per policy.
+        include_deprecated: Phase 10 ADR-0133 — when ``False``
+            (default), soft-deleted elements are excluded.
+        unknown_edge_type_policy: ``"warn"`` (default; per-distinct
+            WARN with counts), ``"error"`` (raise
+            :class:`UnknownEdgeTypeError` on first unknown type), or
+            ``"ignore"`` (silent drop). When ``None``, resolves from
+            ``MINDSOS_UNKNOWN_EDGE_POLICY`` env var, then to
+            ``"warn"`` per ADR-0134's "default flips" lock.
+
+    Returns:
+        ``(graph, report)``. The ``graph`` is identical to what
+        :func:`load_graph` would return (modulo any rows filtered by
+        policy under ``warn``/``error``). The ``report`` carries
+        per-distinct-type drop counts.
+
+    Raises:
+        PersistenceError: anchor missing or driver fails.
+        UnknownEdgeTypeError: ``unknown_edge_type_policy="error"`` and
+            a persisted edge / hyperedge type is absent from
+            ``schema``.
+        ValueError: invalid ``unknown_edge_type_policy`` value.
+    """
+    report = LoadReport(graph_id=graph_id)
+    iterator = iter_load_graph(
+        client,
+        graph_id,
+        identity=identity,
+        schema=schema,
+        batch_size=_FULL_LOAD_SENTINEL,  # type: ignore[arg-type]
+        include_deprecated=include_deprecated,
+        report=report,
+        unknown_edge_type_policy=unknown_edge_type_policy,
+    )
+    g: Optional[Graph] = None
+    for partial in iterator:
+        g = partial
+    if g is None:
+        raise PersistenceError(
+            f"load_graph_with_report: iter_load_graph yielded no batches "
+            f"for graph_id={graph_id!r}"
+        )
+    return g, report
+
+
 # ── private steps ───────────────────────────────────────────────────────────
 
 
@@ -373,7 +506,12 @@ def _add_node_from_row(g: Graph, row: Dict[str, Any]) -> None:
 
 
 def _load_edges(
-    client: Client, g: Graph, *, include_deprecated: bool = False
+    client: Client,
+    g: Graph,
+    *,
+    include_deprecated: bool = False,
+    report: Optional[LoadReport] = None,
+    unknown_edge_type_policy: str = _DEFAULT_UNKNOWN_EDGE_POLICY,
 ) -> None:
     """Load edges where both endpoints live in this graph.
 
@@ -384,6 +522,21 @@ def _load_edges(
     appends ``AND e.deprecated_at IS NULL`` to the WHERE clause.
     Soft-delete fields round-tripped from row props onto the dataclass
     post-construction.
+
+    Phase 11 ADR-0134 — when ``report`` is provided AND ``g.schema``
+    is non-None, edges whose ``type_name`` is absent from
+    :attr:`Schema.edge_types` are filtered per
+    ``unknown_edge_type_policy``:
+
+    * ``warn`` — drop + record in ``report``; one WARN per distinct
+      type with running counts (PB-10 A per-distinct-type granularity).
+    * ``error`` — record in ``report`` and raise
+      :class:`UnknownEdgeTypeError` on first hit.
+    * ``ignore`` — silent drop (still records in ``report`` for
+      observability symmetry with ``warn``).
+
+    Policy is a no-op when ``g.schema is None`` (PB-11 lock) OR when
+    ``report is None`` (preserves existing :func:`load_graph` behavior).
     """
     # Phase 10 — conditional WHERE clause.
     where_extra = "" if include_deprecated else " AND e.deprecated_at IS NULL"
@@ -395,7 +548,25 @@ def _load_edges(
         "       s.id AS source_id, t.id AS target_id, properties(e) AS props"
     )
     res = client.run_query(q, {"gid": g.graph_id})
+    # Phase 11 — track per-distinct-type WARN emission so each type
+    # surfaces exactly once (PB-10 A).
+    warned_types: set = set()
+    schema_active = report is not None and g.schema is not None
+    known_edge_types = (
+        set(g.schema.edge_types.keys()) if schema_active else None
+    )
     for row in res.rows:
+        # Phase 11 — schema-aware filter BEFORE node lookup.
+        if schema_active and row["type_name"] not in known_edge_types:
+            _apply_unknown_edge_policy(
+                graph_id=g.graph_id,
+                type_name=row["type_name"],
+                element_kind="Edge",
+                report=report,
+                policy=unknown_edge_type_policy,
+                warned_types=warned_types,
+            )
+            continue
         src = g.nodes.get(row["source_id"])
         tgt = g.nodes.get(row["target_id"])
         if src is None or tgt is None:
@@ -426,16 +597,35 @@ def _load_edges(
         # Phase 10 — restore soft-delete fields onto the dataclass.
         edge.deprecated_at = dep_at
         edge.disputed_at = dis_at
+    # Phase 11 — emit final per-distinct-type WARN with totals (PB-10 A).
+    if report is not None and warned_types:
+        for type_name in sorted(warned_types):
+            count = report.dropped_by_type.get(type_name, 0)
+            _log.warning(
+                "dropped %d edge(s) of unknown type %r in graph %r "
+                "(policy=warn; schema does not list this edge type)",
+                count, type_name, g.graph_id,
+            )
 
 
 def _load_hyperedges(
-    client: Client, g: Graph, *, include_deprecated: bool = False
+    client: Client,
+    g: Graph,
+    *,
+    include_deprecated: bool = False,
+    report: Optional[LoadReport] = None,
+    unknown_edge_type_policy: str = _DEFAULT_UNKNOWN_EDGE_POLICY,
 ) -> None:
     """Load hyperedges with their :MEMBER edges in a single round-trip.
 
     Phase 10 ADR-0133 — when ``include_deprecated=False`` (default),
     WHERE clause filters ``h.deprecated_at IS NULL``. Soft-delete fields
     round-tripped from props onto the dataclass post-construction.
+
+    Phase 11 ADR-0134 — same policy semantics as :func:`_load_edges`,
+    against :attr:`Schema.hyperedge_types`. ``element_kind="HyperEdge"``
+    in any raised :class:`UnknownEdgeTypeError` and dropped-by-type
+    keys are HyperEdge type names.
     """
     # Phase 10 — conditional WHERE clause.
     where_extra = "" if include_deprecated else " WHERE h.deprecated_at IS NULL"
@@ -448,7 +638,25 @@ def _load_hyperedges(
         "       h._version AS version, properties(h) AS props, member_ids"
     )
     res = client.run_query(q, {"gid": g.graph_id})
+    # Phase 11 — per-distinct-type WARN bookkeeping.
+    warned_types: set = set()
+    schema_active = report is not None and g.schema is not None
+    known_hyperedge_types = (
+        set(g.schema.hyperedge_types.keys()) if schema_active else None
+    )
     for row in res.rows:
+        # Phase 11 — schema-aware filter.
+        row_type = row.get("type_name") or "UNSPECIFIED"
+        if schema_active and row_type not in known_hyperedge_types:
+            _apply_unknown_edge_policy(
+                graph_id=g.graph_id,
+                type_name=row_type,
+                element_kind="HyperEdge",
+                report=report,
+                policy=unknown_edge_type_policy,
+                warned_types=warned_types,
+            )
+            continue
         if row["id"] in g.hyperedges:
             continue
         member_ids = [mid for mid in (row.get("member_ids") or []) if mid]
@@ -487,6 +695,46 @@ def _load_hyperedges(
         # Phase 10 — restore soft-delete fields.
         h.deprecated_at = dep_at
         h.disputed_at = dis_at
+    # Phase 11 — emit final per-distinct-type WARN with totals (PB-10 A).
+    if report is not None and warned_types:
+        for type_name in sorted(warned_types):
+            count = report.dropped_by_type.get(type_name, 0)
+            _log.warning(
+                "dropped %d hyperedge(s) of unknown type %r in graph %r "
+                "(policy=warn; schema does not list this hyperedge type)",
+                count, type_name, g.graph_id,
+            )
+
+
+def _apply_unknown_edge_policy(
+    *,
+    graph_id: str,
+    type_name: str,
+    element_kind: str,
+    report: LoadReport,
+    policy: str,
+    warned_types: set,
+) -> None:
+    """Apply ``unknown_edge_type_policy`` to a single drop (Phase 11).
+
+    Always records the drop in ``report`` (so ``ignore`` callers can
+    still inspect counts if they passed a report). Then:
+
+    * ``error`` — raise :class:`UnknownEdgeTypeError` immediately.
+    * ``warn`` — mark the type in ``warned_types`` for a per-distinct
+      summary WARN at end-of-load (PB-10 A granularity).
+    * ``ignore`` — no log emission.
+    """
+    report.add_drop(type_name)
+    if policy == "error":
+        raise UnknownEdgeTypeError(
+            graph_id=graph_id,
+            type_name=type_name,
+            element_kind=element_kind,
+        )
+    if policy == "warn":
+        warned_types.add(type_name)
+    # ``ignore`` — silent.
 
 
 def _detect_cross_graph_leaks(client: Client, g: Graph) -> None:
@@ -516,4 +764,8 @@ def _strip_core_keys(props: Dict[str, Any]) -> Dict[str, Any]:
     return {k: v for k, v in props.items() if k not in _CORE_KEYS}
 
 
-__all__ = ["load_graph", "iter_load_graph"]
+__all__ = [
+    "load_graph",
+    "iter_load_graph",
+    "load_graph_with_report",
+]

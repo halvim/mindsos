@@ -366,6 +366,18 @@ def load_cmd(
     force: bool = typer.Option(
         False, "--force", help="Overwrite an existing .fromdb.json sibling file.",
     ),
+    unknown_edges: Optional[str] = typer.Option(
+        None, "--unknown-edges",
+        help=(
+            "Phase 11 ADR-0134 — loader policy for edges whose "
+            "type_name is absent from the attached schema. "
+            "Values: warn|error|ignore. When passed, routes through "
+            "load_graph_with_report (or load_metagraph_with_report) "
+            "and surfaces a drop count. When omitted, runs the Phase "
+            "08 load path unchanged. Env override: "
+            "MINDSOS_UNKNOWN_EDGE_POLICY."
+        ),
+    ),
 ) -> None:
     """Reconstruct a Graph or Metagraph from FalkorDB (Phase 07 + Phase 08).
 
@@ -373,7 +385,22 @@ def load_cmd(
     exclusive (exit 1 on combo). The metagraph variant emits the
     9-line flat summary per R4-5 A; ``--to-json`` writes a sibling
     ``metagraph-<name>.fromdb.json`` per RR-7 A.
+
+    Phase 11 — ``--unknown-edges`` opt-in surfaces a per-distinct-type
+    drop count in both summary and JSON output. Off by default to
+    preserve Phase 08 behavior exactly (PB-12 B additive sibling
+    discipline).
     """
+    # Phase 11 — validate before reaching the loader so a typo doesn't
+    # surface inside a driver round-trip.
+    if unknown_edges is not None and unknown_edges not in (
+        "warn", "error", "ignore",
+    ):
+        _refuse_with(
+            "--unknown-edges must be one of warn|error|ignore; got "
+            f"{unknown_edges!r}",
+            exit_code=1,
+        )
     # R4-6 A mutex.
     if (graph is None) == (metagraph is None):
         if graph is None and metagraph is None:
@@ -388,11 +415,12 @@ def load_cmd(
 
     if metagraph is not None:
         _load_metagraph_cmd(
-            metagraph, to_json=to_json, out_json=out_json, force=force
+            metagraph, to_json=to_json, out_json=out_json, force=force,
+            unknown_edges=unknown_edges,
         )
         return
 
-    # Phase 07 single-graph path (unchanged behavior).
+    # Phase 07 single-graph path (unchanged behavior unless --unknown-edges).
     client = _build_client()
     try:
         res = client.run_query(
@@ -405,9 +433,17 @@ def load_cmd(
             )
         graph_id = res.rows[0]["gid"]
 
-        from mindsos_core.reconstruction import load_graph
-
-        g = load_graph(client, graph_id)
+        # Phase 11 — route through report-returning sibling when policy
+        # opt-in. Plain ``load_graph`` preserves Phase 08 behavior.
+        report = None
+        if unknown_edges is not None:
+            from mindsos_core.reconstruction import load_graph_with_report
+            g, report = load_graph_with_report(
+                client, graph_id, unknown_edge_type_policy=unknown_edges,
+            )
+        else:
+            from mindsos_core.reconstruction import load_graph
+            g = load_graph(client, graph_id)
 
         if not to_json:
             _console.print(f"name: {g.name}")
@@ -417,6 +453,16 @@ def load_cmd(
             _console.print(f"nodes: {len(g.nodes)}")
             _console.print(f"edges: {len(g.edges)}")
             _console.print(f"hyperedges: {len(g.hyperedges)}")
+            if report is not None:
+                _console.print(f"dropped_edges: {report.dropped_edge_count}")
+                if report.dropped_by_type:
+                    _console.print(
+                        "dropped_by_type: "
+                        + ", ".join(
+                            f"{t}={c}"
+                            for t, c in sorted(report.dropped_by_type.items())
+                        )
+                    )
             return
 
         target = state_mod.state_dir() / f"graph-{graph}.fromdb.json"
@@ -459,6 +505,7 @@ def _load_metagraph_cmd(
     to_json: bool,
     out_json: bool,
     force: bool,
+    unknown_edges: Optional[str] = None,
 ) -> None:
     """Phase 08 PB-9 A — metagraph load CLI handler.
 
@@ -508,7 +555,18 @@ def _load_metagraph_cmd(
         # fresh; we attach_registry AFTER to wire the observer for any
         # future loads. The current load's instance counts come from
         # a direct sibling-side population call.
-        mg = load_metagraph(client, metagraph_id)
+        # Phase 11 — route through report-returning sibling when
+        # --unknown-edges is opt-in. Plain ``load_metagraph`` preserves
+        # Phase 08 behavior exactly.
+        mg_report = None
+        if unknown_edges is not None:
+            from mindsos_core.reconstruction import load_metagraph_with_report
+            mg, mg_report = load_metagraph_with_report(
+                client, metagraph_id,
+                unknown_edge_type_policy=unknown_edges,
+            )
+        else:
+            mg = load_metagraph(client, metagraph_id)
         attach_registry(mg)
         # B-09-T1 — wire the XRef loader BEFORE the after-load dispatch
         # so xrefs[] populates alongside instances. Without this call,
@@ -560,6 +618,12 @@ def _load_metagraph_cmd(
             "ElementInstances": ei_count,
             "CompositeInstances": ci_count,
         }
+        # Phase 11 — append drop counts when --unknown-edges is opt-in.
+        if mg_report is not None:
+            summary["DroppedEdges"] = mg_report.total_dropped_edge_count
+            summary["DroppedByType"] = dict(
+                sorted(mg_report.total_dropped_by_type.items())
+            )
 
         if to_json:
             # RR-7 A — write sibling .fromdb.json file (canonical never
@@ -604,6 +668,19 @@ def _load_metagraph_cmd(
             )
         )
         _console.print(f"Dependent state: {deps}")
+        # Phase 11 — append drop summary when --unknown-edges is opt-in.
+        if mg_report is not None:
+            _console.print(
+                f"Dropped edges: {summary['DroppedEdges']}"
+            )
+            if summary["DroppedByType"]:
+                _console.print(
+                    "Dropped by type: "
+                    + ", ".join(
+                        f"{t}={c}"
+                        for t, c in summary["DroppedByType"].items()
+                    )
+                )
     finally:
         client.close()
 

@@ -68,7 +68,8 @@ from ..models.metagraph import Metagraph
 from ..persistence.client import Client
 from ..persistence.soft_delete import SoftDeleteKind
 from ..persistence.wal import recover as _wal_recover
-from .graph_loader import iter_load_graph, load_graph
+from .graph_loader import iter_load_graph, load_graph, load_graph_with_report
+from .load_report import LoadReport, MetagraphLoadReport
 
 _log = logging.getLogger(__name__)
 
@@ -217,10 +218,17 @@ class MetagraphLoader:
             mg.schema_name = schema_name
 
         # Step 3 — contained graphs.
+        # Phase 11 — transient `_active_report`/`_active_policy` set by
+        # :meth:`load_with_report` opt-in path. ``None`` on the plain
+        # :meth:`load` path (preserves Phase 08 behavior exactly).
+        _report = getattr(self, "_active_report", None)
+        _policy = getattr(self, "_active_policy", None)
         for gid in self._list_graph_ids(metagraph_id):
             self._attach_graph(
                 mg, gid, batch_size=batch_size, schema=schema,
                 include_deprecated=include_deprecated,
+                report=_report,
+                unknown_edge_type_policy=_policy,
             )
 
         # Step 4 — meta-edges.
@@ -258,6 +266,62 @@ class MetagraphLoader:
         _clear_soft_delete_dirty(mg)
 
         return mg
+
+    def load_with_report(
+        self,
+        metagraph_id: str,
+        *,
+        batch_size: Optional[int] = None,
+        identity: Optional[IdentityRegistry] = None,
+        schema: Any = None,
+        include_deprecated: bool = False,
+        unknown_edge_type_policy: Optional[str] = None,
+    ) -> Tuple[Metagraph, MetagraphLoadReport]:
+        """Phase 11 sibling of :meth:`load` returning :class:`MetagraphLoadReport`.
+
+        Same load semantics + sequence as :meth:`load`. Each contained
+        :class:`Graph` is loaded via
+        :func:`load_graph_with_report` (or :func:`iter_load_graph` with
+        a per-:class:`Graph` :class:`LoadReport` for the streamed path)
+        and the per-graph report is folded into the
+        :class:`MetagraphLoadReport`.
+
+        Per PB-7 lock — only :attr:`Schema.edge_types` /
+        :attr:`Schema.hyperedge_types` participate in the policy.
+        ``MetagraphSchema`` is **not** consulted; MetaEdge /
+        IntergraphEdge type drops are out of scope for Phase 11 and
+        carry forward to Phase 12+.
+
+        Args + Raises: see :meth:`load`, plus
+        ``unknown_edge_type_policy`` (``"warn"`` default;
+        ``MINDSOS_UNKNOWN_EDGE_POLICY`` env override).
+
+        Returns:
+            ``(mg, report)``. The ``mg`` is identical to what
+            :meth:`load` would return (modulo policy-filtered rows).
+            The ``report`` has one :class:`LoadReport` per contained
+            :class:`Graph` (including clean ones) plus aggregate totals.
+        """
+        report = MetagraphLoadReport(metagraph_id=metagraph_id)
+        # Reuse the existing :meth:`load` sequence via a closure-attached
+        # report — simpler than copy-pasting the 8-step body. The only
+        # mutation is in :meth:`_attach_graph` which checks ``report``.
+        # We do this by setting an instance-level transient field, then
+        # calling :meth:`load`.
+        self._active_report = report  # type: ignore[attr-defined]
+        self._active_policy = unknown_edge_type_policy  # type: ignore[attr-defined]
+        try:
+            mg = self.load(
+                metagraph_id,
+                batch_size=batch_size,
+                identity=identity,
+                schema=schema,
+                include_deprecated=include_deprecated,
+            )
+        finally:
+            self._active_report = None  # type: ignore[attr-defined]
+            self._active_policy = None  # type: ignore[attr-defined]
+        return mg, report
 
     def refresh(
         self,
@@ -372,20 +436,44 @@ class MetagraphLoader:
         batch_size: Optional[int],
         schema: Any,
         include_deprecated: bool = False,
+        report: Optional["MetagraphLoadReport"] = None,
+        unknown_edge_type_policy: Optional[str] = None,
     ) -> None:
-        """Load one contained Graph (full or streamed) + attach to ``mg``."""
+        """Load one contained Graph (full or streamed) + attach to ``mg``.
+
+        Phase 11 — when ``report`` is provided (the
+        :meth:`load_with_report` path), routes through
+        :func:`load_graph_with_report` per-graph and folds the
+        per-:class:`Graph` :class:`LoadReport` into the
+        :class:`MetagraphLoadReport`. ``report=None`` preserves the
+        Phase 08 behavior exactly (PB-12 B + PB-13 A — additive
+        sibling discipline; existing :meth:`load` path unaffected).
+        """
+        per_graph_report: Optional[LoadReport] = None
         if batch_size is None:
-            g = load_graph(
-                self._client,
-                graph_id,
-                identity=mg.identity,
-                schema=schema,
-                include_deprecated=include_deprecated,
-            )
+            if report is not None:
+                g, per_graph_report = load_graph_with_report(
+                    self._client,
+                    graph_id,
+                    identity=mg.identity,
+                    schema=schema,
+                    include_deprecated=include_deprecated,
+                    unknown_edge_type_policy=unknown_edge_type_policy,
+                )
+            else:
+                g = load_graph(
+                    self._client,
+                    graph_id,
+                    identity=mg.identity,
+                    schema=schema,
+                    include_deprecated=include_deprecated,
+                )
         else:
             # Drain the iterator; the assembled Graph is the final
             # yield (which trails edges + hyperedges per RPB-1 A).
             g = None  # type: ignore[assignment]
+            if report is not None:
+                per_graph_report = LoadReport(graph_id=graph_id)
             for partial in iter_load_graph(
                 self._client,
                 graph_id,
@@ -393,6 +481,8 @@ class MetagraphLoader:
                 schema=schema,
                 batch_size=batch_size,
                 include_deprecated=include_deprecated,
+                report=per_graph_report,
+                unknown_edge_type_policy=unknown_edge_type_policy,
             ):
                 g = partial
             if g is None:
@@ -401,6 +491,8 @@ class MetagraphLoader:
                     f"batches for graph_id={graph_id!r}"
                 )
         mg.add_graph(g)
+        if report is not None and per_graph_report is not None:
+            report.attach(per_graph_report)
 
     def _load_metagraph_anchor(self, metagraph_id: str) -> Dict[str, Any]:
         """Read the :Metagraph anchor row + property bag + schema_name."""
@@ -750,6 +842,31 @@ def load_metagraph(
         identity=identity,
         schema=schema,
         include_deprecated=include_deprecated,
+    )
+
+
+def load_metagraph_with_report(
+    client: Client,
+    metagraph_id: str,
+    *,
+    batch_size: Optional[int] = None,
+    identity: Optional[IdentityRegistry] = None,
+    schema: Any = None,
+    include_deprecated: bool = False,
+    unknown_edge_type_policy: Optional[str] = None,
+) -> Tuple[Metagraph, MetagraphLoadReport]:
+    """Phase 11 sibling of :func:`load_metagraph` returning aggregate report.
+
+    Thin wrapper of :meth:`MetagraphLoader.load_with_report`. Symmetric
+    with :func:`load_graph_with_report` at the Graph layer.
+    """
+    return MetagraphLoader(client).load_with_report(
+        metagraph_id,
+        batch_size=batch_size,
+        identity=identity,
+        schema=schema,
+        include_deprecated=include_deprecated,
+        unknown_edge_type_policy=unknown_edge_type_policy,
     )
 
 

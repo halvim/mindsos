@@ -43,12 +43,12 @@ new version bump appends one migration step to the relevant module —
 never edits a prior step. This keeps ``_state_to_graph`` etc. focused on
 the current-version shape.
 
-Per-kind version constants (Phase 05c):
+Per-kind version constants (Phase 10):
 
-    GRAPH_STATE_VERSION            = 4   (P03→1; P04→2; P04-v2→3; P05a→4)
+    GRAPH_STATE_VERSION            = 5   (P03→1; P04→2; P04-v2→3; P05a→4; P10→5)
     SCHEMA_STATE_VERSION           = 2   (P04→1; P04-v2→2)
-    METAGRAPH_STATE_VERSION        = 3   (P05a→1; P05b→2; P05c→3)
-    METAGRAPH_SCHEMA_STATE_VERSION = 2   (P05b→1; P05c→2)
+    METAGRAPH_STATE_VERSION        = 5   (P05a→1; P05b→2; P05c→3; P09→4; P10→5)
+    METAGRAPH_SCHEMA_STATE_VERSION = 3   (P05b→1; P05c→2; P05d→3)
 
 The legacy ``STATE_VERSION`` alias is kept for any external caller; it
 equals ``GRAPH_STATE_VERSION``.
@@ -158,7 +158,7 @@ _NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 #: Graph state-file version. P03→1, P04→2, P04-v2→3, P05a→4. Loaders
 #: accept v=1..4 (via migration chain); writers emit v=4.
-GRAPH_STATE_VERSION = _graph_migrations.CURRENT_VERSION  # = 4
+GRAPH_STATE_VERSION = _graph_migrations.CURRENT_VERSION  # = 5
 
 #: Schema state-file version. P04→1, P04-v2→2. Loaders accept v=1..2;
 #: writers emit v=2.
@@ -166,11 +166,11 @@ SCHEMA_STATE_VERSION = _schema_migrations.CURRENT_VERSION  # = 2
 
 #: Metagraph state-file version. P05a→1, P05b→2, P05c→3. Loaders accept
 #: v=1..3 (via migration chain); writers emit v=3.
-METAGRAPH_STATE_VERSION = _metagraph_migrations.CURRENT_VERSION  # = 3
+METAGRAPH_STATE_VERSION = _metagraph_migrations.CURRENT_VERSION  # = 5
 
 #: MetagraphSchema state-file version. P05b→1, P05c→2. Loaders accept
 #: v=1..2 (via migration chain); writers emit v=2.
-METAGRAPH_SCHEMA_STATE_VERSION = _metagraph_schema_migrations.CURRENT_VERSION  # = 2
+METAGRAPH_SCHEMA_STATE_VERSION = _metagraph_schema_migrations.CURRENT_VERSION  # = 3
 
 #: Backward-compat alias for any external caller.
 STATE_VERSION = GRAPH_STATE_VERSION
