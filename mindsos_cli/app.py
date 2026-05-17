@@ -7,6 +7,7 @@ from mindsos_cli.commands.doctor import doctor
 from mindsos_cli.commands.graph import register_graph_app
 from mindsos_cli.commands.identity import register_identity_app
 from mindsos_cli.commands.instances import register_instances_app
+from mindsos_cli.commands.knowledge import register_knowledge_app
 from mindsos_cli.commands.metagraph import register_metagraph_app
 from mindsos_cli.commands.metagraph_schema import register_metagraph_schema_app
 from mindsos_cli.commands.persistence import register_persistence_app
@@ -48,4 +49,5 @@ register_schema_app(app)
 register_metagraph_app(app)
 register_metagraph_schema_app(app)
 register_instances_app(app)
+register_knowledge_app(app)
 register_persistence_app(app)

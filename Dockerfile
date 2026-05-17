@@ -114,6 +114,13 @@ COPY mindsos_core ./mindsos_core
 # (InstanceLoader; observer subscriber for Metagraph.register_after_load_observer).
 # Wildcard COPY picks up the new subdir automatically.
 COPY mindsos_instances ./mindsos_instances
+# Phase 12: NEW top-level package — `mindsos_knowledge/` ships the
+# L2 IRI vocabulary (14 builders per ADR-0045 + alignment_role +
+# table-driven parser + REF_TYPES + ref-key helpers + role
+# constants). PB-1 5-site checklist requires the COPY directive in
+# BOTH prod + test stages; the new package is consumed at CLI
+# runtime by `mindsos_cli/commands/knowledge.py`.
+COPY mindsos_knowledge ./mindsos_knowledge
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -167,6 +174,9 @@ COPY pyproject.toml README.md ./
 COPY mindsos_cli ./mindsos_cli
 COPY mindsos_core ./mindsos_core
 COPY mindsos_instances ./mindsos_instances
+# Phase 12: mirror of prod-stage COPY (PB-1 5-site checklist + 6th
+# site per `feedback_dockerfile_test_stage_file_reads.md`).
+COPY mindsos_knowledge ./mindsos_knowledge
 COPY tests ./tests
 # Phase 01: tests/phase_01/test_workflows_present.py and
 # test_doctor_workflow_check.py read these from the host repo at /app/.

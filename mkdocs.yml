@@ -16,6 +16,7 @@ nav:
       - Your first metagraph: getting-started/first-metagraph.md
   - Concepts:
       - Identity and IRIs: concepts/identity.md
+      - L2 identifiers (Phase 12): concepts/identifiers.md
       - Graphs and metagraphs: concepts/graphs-and-metagraphs.md
       - Intergraph edges: concepts/intergraph-edges.md
       - References (hybrid model): concepts/references.md
@@ -27,6 +28,8 @@ nav:
           - Metagraphs: usage/core/metagraphs.md
           - Metagraph schema: usage/core/metagraph-schema.md
           - Persistence (mindsos persistence): usage/core/persistence.md
+      - Knowledge:
+          - IRI CLI (Phase 12): usage/knowledge/iri-cli.md
   - API:
       - Core IdentityRegistry: api/core/identity-registry.md
       - Core Graph: api/core/graph.md
@@ -48,6 +51,8 @@ nav:
       - Core XRef (Phase 09): api/core/xref.md
       - Core Soft-delete (Phase 10): api/core/soft-delete.md
       - Core MetagraphSnapshot (Phase 10): api/core/metagraph-snapshot.md
+      - Knowledge identifiers (Phase 12): api/knowledge/identifiers.md
+      - Knowledge REF_TYPES (Phase 12): api/knowledge/ref-types.md
   - Developer guide:
       - Contributing: dev/contributing.md
       - Repo layout: dev/repo-layout.md

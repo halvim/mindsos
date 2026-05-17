@@ -86,7 +86,8 @@ def _read_package_init_version(
 
     Phase 06 round-7 P62 A — generalised so the doctor self-test can
     check version-string parity across every Mindsos top-level package
-    (``mindsos_cli``, ``mindsos_core``, ``mindsos_instances``).
+    (``mindsos_cli``, ``mindsos_core``, ``mindsos_instances``,
+    ``mindsos_knowledge``).
     """
     path = repo_root / package / "__init__.py"
     if not path.exists():
@@ -434,7 +435,9 @@ def doctor(
             )
         # Phase 06 round-7 P62 A — version-string parity extended to
         # ``mindsos_core`` and the new ``mindsos_instances`` sibling
-        # package. Forgetting any of the four bump sites surfaces here.
+        # package. Phase 12 PB-1 + design-log §3 probe 6 extended it
+        # again to the new ``mindsos_knowledge`` L2 package — 4-pkg
+        # parity. Forgetting any of the five bump sites surfaces here.
         core_version, core_err = _read_package_init_version(
             repo_root, "mindsos_core"
         )
@@ -461,11 +464,26 @@ def doctor(
                 f"instances={instances_version!r} "
                 f"manifest={expected_version!r}"
             )
+        knowledge_version, knowledge_err = _read_package_init_version(
+            repo_root, "mindsos_knowledge"
+        )
+        if knowledge_err:
+            failures.append(
+                f"mindsos_knowledge/__init__.py version unreadable: "
+                f"{knowledge_err}"
+            )
+        elif knowledge_version != expected_version:
+            failures.append(
+                f"mindsos_knowledge/__init__.py __version__ drift: "
+                f"knowledge={knowledge_version!r} "
+                f"manifest={expected_version!r}"
+            )
         report["manifest"]["expected_version"] = expected_version
         report["runtime"]["pyproject_version"] = pyproject_version
         report["runtime"]["init_version"] = init_version
         report["runtime"]["core_version"] = core_version
         report["runtime"]["instances_version"] = instances_version
+        report["runtime"]["knowledge_version"] = knowledge_version
 
     result = {"ok": not failures, "failures": failures, **report}
 

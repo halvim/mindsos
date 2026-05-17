@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase11"
-description = "MindsOS command-line interface — Phase 10 L1 Snapshot + soft-delete substrate + RemovalImpact + XRef setters (MetagraphSnapshot.of/restore_into per ADR-0027/0028/0129 + 20 setter methods on Graph/Metagraph quartet + 4 XRef quartet PX2 + RemovalImpact dataclass with raise-on-block contract + iterator/loader filter pass + state-file v=5 + 10 WAL replayer kinds + xref-list 10-field surface)."
+version = "0.0.0+phase12"
+description = "MindsOS command-line interface — Phase 12 L2 Identifiers + role IRIs + REF_TYPES (new mindsos_knowledge package: 14 IRI builders per ADR-0045 + alignment_role graph-name helper + table-driven parse_iri + is_version_qualified_iri + REF_TYPES open vocabulary per ADR-0047 + ref-key helpers + 8 role constants + 3 frozensets; mindsos knowledge {iri build|parse|validate, ref-types --list, roles --list} CLI; doctor 4-pkg version-string parity)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
@@ -25,7 +25,7 @@ dependencies = [
 mindsos = "mindsos_cli.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*"]
+include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*"]
 
 [tool.setuptools.package-data]
 mindsos_cli = ["manifest.toml"]
