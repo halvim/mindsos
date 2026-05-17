@@ -135,4 +135,14 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # per feedback_sentinel_paths_runtime_only.md.
     "mindsos_core/schema/migration.py",
     "mindsos_core/reconstruction/load_report.py",
+    # Phase 12 — NEW top-level package `mindsos_knowledge/`. 3 runtime
+    # Python modules consumed by `mindsos_cli/commands/knowledge.py`
+    # at CLI runtime. Docs (`docs/api/knowledge/*`,
+    # `docs/concepts/identifiers.md`, `docs/usage/knowledge/iri-cli.md`)
+    # intentionally NOT sentinelled per
+    # `feedback_sentinel_paths_runtime_only.md`.
+    "mindsos_knowledge/__init__.py",
+    "mindsos_knowledge/identifiers.py",
+    "mindsos_knowledge/exceptions.py",
+    "mindsos_cli/commands/knowledge.py",
 )

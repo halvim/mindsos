@@ -3249,11 +3249,21 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 12 — L2 Identifiers + role IRIs + REF_TYPES
 
-  **Deps:** 02. **Layer:** L2. **Net-new?** No.
-  **Features:** L2-aware IRI parse (extends Phase 02); IRI build by role; REF_TYPES list.
-  **Tests:** dolce / oewn / framenet / alignment IRI builders round-trip; REF_TYPES parity test against L3 (ADR-0067).
-  **Risks:** REF_TYPES extension recipe (ADR-0047) must not be loosened.
-  **Docs:** `docs/api/knowledge/identifiers.md`, `ref-types.md`, ADRs 0045/0047/0067.
+  **Deps:** 02. **Layer:** L2. **Net-new?** **Yes** — NEW top-level package `mindsos_knowledge/` (first L2 phase; PB-1 5-site checklist per `feedback_new_top_level_package.md` + 6th-site Dockerfile-test-stage entry per `feedback_dockerfile_test_stage_file_reads.md`; doctor `--self-test` flips from 3-pkg to 4-pkg version-string parity).
+  **Features:** 14 IRI builders per ADR-0045 (7 v3 seed-role: `dolce_iri`, `oewn_synset_iri`, `oewn_sense_iri`, `oewn_lemma_iri`, `framenet_frame_iri`, `framenet_lu_iri`, `framenet_fe_iri`; 7 upper-layer net-new: `pipeline_iri`, `pipeline_step_iri`, `task_pattern_iri`, `subgoal_template_iri`, `memory_iri`, `problem_trace_iri`, `capacity_snapshot_iri`); `alignment_role(role_a, role_b)` graph-name helper (NOT a version-qualified IRI per PB-4); table-driven `parse_iri` + `is_version_qualified_iri` + `ParsedIri` dataclass keyed on `_PREFIXES` + `_KINDS_PER_ROLE` (PB-9); `REF_TYPES` frozenset per ADR-0047 (starter vocabulary + PROMOTED amendment); ref-key helpers (`global_ref_key`, `local_ref_key`, `REF_TYPE_KEY`); 8 role constants (3 seed + 5 upper-layer per PB-9) + 3 frozensets (`SEED_ROLES` / `UPPER_LAYER_ROLES` / `ALL_ROLES`); `user_id` charset enforcement `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` per PB-11 + ADR-0044 §Revisions amendment-1 (added in this phase); `KnowledgeError` (base) + `RefFormatError` exception hierarchy (independent root from `CoreError` per PB-21); `mindsos knowledge iri {build|parse|validate}` + `ref-types --list` + `roles --list` CLI sub-subgroup (PB-16 + PB-22 + PB-6).
+  **Tests (`tests/phase_12/` — ~90 isolated; ~1870 cumulative):** 14 builder happy-path + 14 builder string-round-trip (`parse_iri(build(*args)).full == build(*args)` per PB-10); `alignment_role` round-trip + parser-rejection sentinel (PB-4); `parse_iri` edge cases (bad prefix, missing version, NFC normalisation, kind-table coverage across 7 roles); `is_version_qualified_iri` matrix; REF_TYPES self-consistency (PROMOTED present); ref-key helpers; role constants + frozensets; `user_id` charset enforcement (bad inputs to both `memory_iri` + `capacity_snapshot_iri`); `capacity_snapshot_iri` embedded-colon round-trip (full-string equality per PB-8 — field-level inverse deferred); CLI verbs across 5 commands; doctor 4-pkg version-string parity (new `mindsos_knowledge.__version__` slot); image-completeness sentinel-paths extension (3 new modules); adversarial regex; ADR-0067 L3-parity-test-deferred sentinel (L3 ships Phase 27); ADR-0045 14-builder closure sentinel; ADR-0044 §amendment-1 sentinel; import isolation per PB-18 (`mindsos_knowledge ⇏ mindsos_cli / mindsos_server`).
+  **Risks:**
+    - REF_TYPES extension recipe (ADR-0047) must not be loosened.
+    - `capacity_snapshot_iri` body embeds a colon-bearing inner `capacity_iri` (ADR-0066); parser leaves body opaque post-`snapshot:` (PB-8). Field-level inverse helper deferred to Phase 28+ (first capacity-snapshot consumer).
+    - `user_id` charset locked here (PB-11 + ADR-0044 §amendment-1); Phase 18 server user-store MUST inherit the same regex to preserve the IRI-parseability invariant.
+    - L3 parity test (ADR-0067) does NOT ship in Phase 12 — L3 (Phase 27) duplicates `REF_TYPES` verbatim and provides the parity test.
+    - First L2 phase. Subsequent L2 phases consume Phase 12 exports: Phase 13 (Schemas) uses role constants; Phase 14 (KL bootstrap) uses `alignment_role` + ref-key helpers + REF_TYPES; Phase 15 (Importers) uses seed-role builders + drives ADR-0134 Proposed → Accepted flip.
+  **Carry-forward repeated** (Phase 11 → Phase 12 did NOT close per PB-5):
+    - MetagraphSchema scanner → Phase 13 (Schemas) or Phase 14 (KL bootstrap) — whichever first bumps a MetagraphSchema.
+    - ADR-0134 Proposed → Accepted flip → Phase 15 (Importers) — first KL consumer of `migrate_from` output.
+    - `docs/dev/migration-playbook.md` full content → Phase 15 — same trigger.
+    - ADR-0134 §amendment-3 → reserved for first KL consumer's structural feedback (Phase 15).
+  **Docs:** `docs/api/knowledge/identifiers.md` (new); `docs/api/knowledge/ref-types.md` (new); `docs/concepts/identifiers.md` (new L2 concept page per PB-14); `docs/concepts/identity.md` (amend forward-ref per PB-14); `docs/usage/knowledge/iri-cli.md` (new CLI reference); `docs/changelog/CHANGELOG.md` (append Phase 12 + backfill Phase 11); `docs/dev/repo-layout.md` (mention `mindsos_knowledge/`); ADRs 0044 §amendment-1 (PB-17) / 0045 (closes — 14 builders ship) / 0047 (untouched) / 0067 (untouched; parity test Phase 27). See `confirmation_docs/PHASE_12_DESIGN_LOG.md` for the full PB-1..22 + Step-0 audit probe table + carry-forward.
 
 ### Phase 13 — L2 Schemas
 

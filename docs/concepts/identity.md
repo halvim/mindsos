@@ -18,11 +18,14 @@ on where the node comes from and what stability guarantee you need.
     - **Identity scope:** scoped to one Metagraph, not global
     - **Default IDs:** UUIDs (non-deterministic, per ADR-0035)
     - **Imported nodes:** version-qualified IRIs (deterministic, stable
-      across re-import — Knowledge Layer convention, Phase 12+)
+      across re-import — Knowledge Layer convention; shipped in
+      Phase 12, see [L2 identifiers](identifiers.md))
     - **Re-import:** same IRI = same node, even years later
     - **Core treats `node_id` as opaque.** It does not parse IRIs. IRI
       parsing (role / source / version / kind) lives in
-      `mindsos_knowledge` (L2) and ships in Phase 12.
+      `mindsos_knowledge` (L2) and shipped in Phase 12 — see
+      [L2 concept: identifiers](identifiers.md) and
+      [API: `mindsos_knowledge.identifiers`](../api/knowledge/identifiers.md).
 
 ## The IdentityRegistry
 
@@ -122,10 +125,12 @@ Knowledge Layer metagraph. Old references that point at
     verbatim and exits non-zero if the supplied value is empty or
     non-string, but performs no structural decomposition.
 
-## Importer-specific IRI builders (Phase 12, L2)
+## Importer-specific IRI builders (Phase 12, L2 — shipped)
 
 Each Knowledge Layer importer uses a source-specific builder to mint
-IRIs. These builders ship in Phase 12 with the L2 identifiers package:
+IRIs. Phase 12 shipped 14 such builders in
+[`mindsos_knowledge.identifiers`](../api/knowledge/identifiers.md);
+the four most-cited are reproduced here for context:
 
 - **`dolce_iri(version, fragment)`** → `"dolce-dul-4.0:PhysicalObject"`
 - **`oewn_synset_iri(version, synset_id, pos)`** → `"oewn-2024:synset:02086723-n"`

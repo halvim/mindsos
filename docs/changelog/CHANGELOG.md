@@ -1,11 +1,76 @@
 ---
-last_confirmed_phase: 10
+last_confirmed_phase: 12
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 12 — L2 Identifiers + role IRIs + REF_TYPES (2026-05-16)
+
+**Ships the first L2 package (`mindsos_knowledge`) — 14 IRI builders
+per ADR-0045 (7 v3 seed-role + 7 upper-layer net-new), `alignment_role`
+graph-name helper, table-driven `parse_iri` + `is_version_qualified_iri`,
+`REF_TYPES` open vocabulary (ADR-0047) + extension recipe, ref-key
+helpers (`global_ref_key` / `local_ref_key` / `REF_TYPE_KEY`), 8 role
+constants + 3 frozensets (`SEED_ROLES` / `UPPER_LAYER_ROLES` /
+`ALL_ROLES`).** NEW `mindsos_knowledge/__init__.py` +
+`identifiers.py` (~340 LoC) + `exceptions.py`. NEW `mindsos knowledge
+{iri build|parse|validate, ref-types --list, roles --list}` CLI surface
+(sub-subgroup shape per PB-16). Doctor `--self-test` flipped from
+3-pkg to 4-pkg version-string parity. ADR-0044 §Revisions amendment-1
+documents `user_id` charset (`^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`)
+per PB-11 + PB-17. ADR-0045 closure sentinel test confirms all 14
+builders are exported. ADR-0067 L3 parity test deferred to Phase 27
+(L3 doesn't exist yet). PB-18 import-isolation test asserts
+`mindsos_knowledge ⇏ {mindsos_cli, mindsos_server}` from day one.
+PB-8 lock: `capacity_snapshot_iri` body is opaque after `snapshot:`
+(embeds colon-bearing `capacity_iri` per ADR-0066); full-string
+round-trip holds. ~90 isolated tests across 7 tiers. Cumulative:
+~1870. Cross-package version-string parity bumped to `0.0.0+phase12`
+(4 packages). Phase 11 carry-forward (MetagraphSchema scanner,
+ADR-0134 Proposed → Accepted flip, `docs/dev/migration-playbook.md`
+content) re-carried-forward to Phase 13/15 per design-log §4.
+
+## Phase 11 — L1 Loader policy + schema migration scanner (2026-05-16)
+
+**Ships ADR-0134 — `migrate_from(old, target, *, new, detail,
+old_schema_name)` detection-only scanner + `LoadReport` /
+`MetagraphLoadReport` siblings + per-call `unknown_edge_type_policy`
+kwarg on `load_graph_with_report` / `load_metagraph_with_report` /
+`MetagraphLoader.load_with_report` + env-var fallback
+`MINDSOS_UNKNOWN_EDGE_POLICY`.** NEW `mindsos_core/schema/migration.py`
+(~310 LoC) — 5 violation kinds (`removed_node_type` /
+`removed_edge_type` / `removed_hyperedge_type` / `tightened_property`
+/ `missing_required_property`); summary / each detail modes per
+PB-8 A; per-Graph + per-Metagraph dispatch per PB-17 C; Schema-level
+coverage only (NodeType + EdgeType + HyperEdgeType per PB-7 C —
+MetagraphSchema scanner deferred to Phase 12+). NEW
+`mindsos_core/reconstruction/load_report.py` (~140 LoC) — drop count
+on report not Graph per PB-9 B (no state-file bump). Loader policy
+plumbing additive-sibling per PB-12 B + PB-13 A — existing
+`load_graph` / `load_metagraph` / `MetagraphLoader.load` signatures
+UNCHANGED. Per-distinct-type WARN with counts per PB-10 A (ADR-0134
+§amendment-1). No-op when no schema attached per PB-11. Policy on
+loader call surface NOT FalkorConfig per PB-14 A (ADR-0134
+§amendment-2 corrects original ADR mis-placement). NEW
+`UnknownEdgeTypeError` + `SchemaMigrationError`. CLI: `mindsos
+schema migrate-check` (--graph G | --metagraph M mutex; --old <name>
+| --old-file <path> mutex; --new <name>; --detail summary|each;
+--json; --exit-zero; exit 1 on violations default per PB-15);
+`mindsos persistence load --unknown-edges=warn|error|ignore` surfaces
+drop count in Rich + JSON outputs. ADR-0134 stays Proposed; flips
+Accepted Phase 12+ when KL consumer lands per PB-5 A. ADRs
+0021/0022/0023/0123 untouched (already Accepted). 118 isolated
+tests / 4 skipped (`test_adr_0134_amendments.py` — ADR file lives
+in parent dir, not COPYd into runtime image). Cumulative: ~1780.
+Step-0 audit predicted 0 prior-phase cascade; impl confirmed 0.
+B-11-T1 (`tomllib` stdlib + `tomli` fallback per
+`feedback_tomllib_stdlib_fallback.md`); B-11-T2 (state-file key
+canonicalization: `edge_id`/`node_id` not `e["id"]`/`n["id"]`; new
+audit class `feedback_state_file_key_canonicalization.md`).
+3-package version-string parity bumped to `0.0.0+phase11`.
 
 ## Phase 10 — L1 Snapshot + soft-delete substrate + RemovalImpact + XRef setters (2026-05-16)
 
