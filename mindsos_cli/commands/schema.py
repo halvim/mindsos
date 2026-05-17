@@ -1018,7 +1018,7 @@ def _load_migrate_check_target(
                 value=n.get("value"),
                 type_name=n["type_name"],
                 properties=dict(n.get("properties", {})),
-                node_id=n.get("id"),
+                node_id=n["node_id"],
                 _validate=False,
             )
         nodes_by_id = {n.node_id: n for n in g.nodes.values()}
@@ -1032,7 +1032,7 @@ def _load_migrate_check_target(
                 type_name=e["type_name"],
                 label=e.get("label"),
                 properties=dict(e.get("properties", {})),
-                edge_id=e.get("id"),
+                edge_id=e["edge_id"],
                 _validate=False,
             )
         for h in state.get("hyperedges", []):
@@ -1047,7 +1047,7 @@ def _load_migrate_check_target(
                 type_name=h.get("type_name", "UNSPECIFIED"),
                 label=h.get("label"),
                 properties=dict(h.get("properties", {})),
-                edge_id=h.get("id"),
+                edge_id=h.get("edge_id"),
                 _validate=False,
             )
         return g

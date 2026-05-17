@@ -33,7 +33,13 @@ def _write_minimal_schema_state(path: Path, *, name: str, node_types=None,
 
 def _write_minimal_graph_state(path: Path, *, name: str,
                                nodes=None, edges=None) -> None:
-    """Write a Phase 10 graph state-file (v=5) at ``path``."""
+    """Write a Phase 10 graph state-file (v=5) at ``path``.
+
+    State-file edge key names mirror ``mindsos_cli/commands/graph.py``
+    serialiser: ``node_id`` (not ``id``) on nodes; ``edge_id`` (not
+    ``id``) on edges. B-11-T2 added this regression after the original
+    fixture used the wrong keys and masked a CLI helper defect.
+    """
     path.write_text(json.dumps({
         "_state_version": 5,
         "graph_id": f"gid-{name}",
@@ -131,7 +137,7 @@ def test_graph_mode_clean_scan_exits_0(state_dir, tmp_path) -> None:
     _write_minimal_graph_state(
         state_dir / "graph-g1.json", name="g1",
         nodes=[
-            {"id": "alice", "type_name": "Person", "value": None,
+            {"node_id": "alice", "type_name": "Person", "value": None,
              "properties": {}, "_version": 1},
         ],
     )
@@ -161,7 +167,7 @@ def test_graph_mode_violations_default_exit_1(state_dir, tmp_path) -> None:
     _write_minimal_graph_state(
         state_dir / "graph-g1.json", name="g1",
         nodes=[
-            {"id": "alice", "type_name": "Person", "value": None,
+            {"node_id": "alice", "type_name": "Person", "value": None,
              "properties": {}, "_version": 1},
         ],
     )
@@ -192,7 +198,7 @@ def test_graph_mode_violations_with_exit_zero_exits_0(state_dir, tmp_path) -> No
     _write_minimal_graph_state(
         state_dir / "graph-g1.json", name="g1",
         nodes=[
-            {"id": "alice", "type_name": "Person", "value": None,
+            {"node_id": "alice", "type_name": "Person", "value": None,
              "properties": {}, "_version": 1},
         ],
     )
@@ -205,6 +211,61 @@ def test_graph_mode_violations_with_exit_zero_exits_0(state_dir, tmp_path) -> No
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     assert payload["violation_count"] >= 1
+
+
+def test_graph_mode_edge_level_violation_surfaces_b_11_t2(state_dir, tmp_path) -> None:
+    """B-11-T2 regression — edge-level violation must surface end-to-end.
+
+    The original CLI helper read ``e["id"]`` / ``n["id"]`` but the state
+    file serializer writes ``edge_id`` / ``node_id``. The earlier test
+    fixture used the same wrong keys, masking the defect. This test
+    uses the CORRECT state-file shape and asserts the
+    ``removed_edge_type`` violation surfaces in the CLI's JSON payload.
+    """
+    _write_minimal_schema_state(
+        state_dir / "schema-v1.json", name="v1",
+        node_types=[{"name": "Person", "property_types": {}, "description": None}],
+        edge_types=[{
+            "name": "WORKS_AT",
+            "allowed_sources": ["Person"],
+            "allowed_targets": ["Person"],
+            "property_types": {},
+            "description": None,
+        }],
+    )
+    _write_minimal_schema_state(
+        state_dir / "schema-v2.json", name="v2",
+        node_types=[{"name": "Person", "property_types": {}, "description": None}],
+        edge_types=[],  # WORKS_AT removed.
+    )
+    _write_minimal_graph_state(
+        state_dir / "graph-g1.json", name="g1",
+        nodes=[
+            {"node_id": "alice", "type_name": "Person", "value": None,
+             "properties": {}, "_version": 1},
+            {"node_id": "bob", "type_name": "Person", "value": None,
+             "properties": {}, "_version": 1},
+        ],
+        edges=[
+            {"edge_id": "e1", "type_name": "WORKS_AT",
+             "source_id": "alice", "target_id": "bob",
+             "label": None, "properties": {}, "_version": 1},
+        ],
+    )
+    result = _runner.invoke(schema_app, [
+        "migrate-check",
+        "--old", "v1", "--new", "v2",
+        "--graph", "g1",
+        "--detail", "summary", "--json",
+    ])
+    assert result.exit_code == 1, (
+        f"expected exit 1 on violations; got {result.exit_code}\n"
+        f"stdout={result.stdout}\nstderr={result.stderr}"
+    )
+    payload = json.loads(result.stdout)
+    assert payload["violation_count"] == 1
+    kinds = {v["kind"] for v in payload["violations"]}
+    assert "removed_edge_type" in kinds
 
 
 def test_json_output_payload_carries_schema_and_scope(state_dir, tmp_path) -> None:
