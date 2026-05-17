@@ -11,7 +11,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import tomli
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # pragma: no cover - Python 3.10 fallback
+    import tomli as tomllib  # type: ignore[no-redef]
 
 
 _MANIFEST_PATH = Path(__file__).resolve().parents[2] / "mindsos_cli" / "manifest.toml"
@@ -19,7 +22,7 @@ _MANIFEST_PATH = Path(__file__).resolve().parents[2] / "mindsos_cli" / "manifest
 
 def _read_manifest() -> dict:
     with _MANIFEST_PATH.open("rb") as f:
-        return tomli.load(f)
+        return tomllib.load(f)
 
 
 def test_manifest_phase_matches_version_string() -> None:
@@ -49,7 +52,7 @@ def test_pyproject_version_parity_with_manifest() -> None:
     """``pyproject.toml`` version matches manifest version."""
     pyproject = Path(__file__).resolve().parents[2] / "pyproject.toml"
     with pyproject.open("rb") as f:
-        py = tomli.load(f)
+        py = tomllib.load(f)
     m = _read_manifest()
     assert py["project"]["version"] == m["mindsos"]["version"]
 
