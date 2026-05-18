@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase12"
-description = "MindsOS command-line interface — Phase 12 L2 Identifiers + role IRIs + REF_TYPES (new mindsos_knowledge package: 14 IRI builders per ADR-0045 + alignment_role graph-name helper + table-driven parse_iri + is_version_qualified_iri + REF_TYPES open vocabulary per ADR-0047 + ref-key helpers + 8 role constants + 3 frozensets; mindsos knowledge {iri build|parse|validate, ref-types --list, roles --list} CLI; doctor 4-pkg version-string parity)."
+version = "0.0.0+phase13"
+description = "MindsOS command-line interface — Phase 13 L2 Schemas (9 role-graph schema builders under mindsos_knowledge/schemas/: 4 seed v3 ports + 5 NET-NEW upper-layer at strict=False per ADR-0149; ontology HyperEdgeType lift per PB-4; schema_for_role dispatch with alignment-prefix branch; UnknownRoleError; mindsos knowledge schema {show, validate} CLI verbs; ADR-0017 §amendment-1 + ADR-0149 Accepted + ADR-0150 Reserved-for-Phase-14a; PHASE_MAP §1 design-only-phases exception clause + §14a row insertion)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

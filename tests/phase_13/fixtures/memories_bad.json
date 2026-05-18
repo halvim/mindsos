@@ -1,0 +1,35 @@
+{
+  "_state_version": 5,
+  "graph_id": "01999999-0000-0000-0000-000000002000",
+  "name": "phase13_memories_bad_fixture",
+  "role": "memories",
+  "schema_name": null,
+  "metagraph_name": null,
+  "nodes": [
+    {
+      "node_id": "01999999-0000-0000-0000-000000002001",
+      "value": "mem-1",
+      "type_name": "Memory",
+      "properties": {}
+    },
+    {
+      "node_id": "01999999-0000-0000-0000-000000002002",
+      "value": "not-a-memory-node",
+      "type_name": "ThisTypeIsNotInTheSchema",
+      "properties": {}
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "01999999-0000-0000-0000-000000002101",
+      "source_id": "01999999-0000-0000-0000-000000002001",
+      "target_id": "01999999-0000-0000-0000-000000002002",
+      "type_name": "EDGE_TYPE_NOT_IN_SCHEMA",
+      "label": null,
+      "properties": {},
+      "deprecated_at": null,
+      "disputed_at": null
+    }
+  ],
+  "hyperedges": []
+}

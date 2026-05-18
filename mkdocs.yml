@@ -30,6 +30,16 @@ nav:
           - Persistence (mindsos persistence): usage/core/persistence.md
       - Knowledge:
           - IRI CLI (Phase 12): usage/knowledge/iri-cli.md
+          - Schemas — overview (Phase 13): usage/knowledge/overview.md
+          - Ontology schema (Phase 13): usage/knowledge/ontology.md
+          - Lexicon schema (Phase 13): usage/knowledge/lexicon.md
+          - Concepts schema (Phase 13): usage/knowledge/concepts.md
+          - Alignment schema (Phase 13): usage/knowledge/alignment.md
+          - Promoted pipelines schema (Phase 13): usage/knowledge/promoted-pipelines.md
+          - Task patterns schema (Phase 13): usage/knowledge/task-patterns.md
+          - Memories schema (Phase 13): usage/knowledge/memories.md
+          - Problem trace schema (Phase 13): usage/knowledge/problem-trace.md
+          - Capacity state schema (Phase 13): usage/knowledge/capacity-state.md
   - API:
       - Core IdentityRegistry: api/core/identity-registry.md
       - Core Graph: api/core/graph.md

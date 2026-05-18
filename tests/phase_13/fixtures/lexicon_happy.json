@@ -1,0 +1,51 @@
+{
+  "_state_version": 5,
+  "graph_id": "01999999-0000-0000-0000-000000001000",
+  "name": "phase13_lexicon_happy_fixture",
+  "role": "lexicon",
+  "schema_name": null,
+  "metagraph_name": null,
+  "nodes": [
+    {
+      "node_id": "01999999-0000-0000-0000-000000000001",
+      "value": "run",
+      "type_name": "Lemma",
+      "properties": {}
+    },
+    {
+      "node_id": "01999999-0000-0000-0000-000000000002",
+      "value": "sense-run-1",
+      "type_name": "Sense",
+      "properties": {}
+    },
+    {
+      "node_id": "01999999-0000-0000-0000-000000000003",
+      "value": "synset-run-1",
+      "type_name": "Synset",
+      "properties": {}
+    }
+  ],
+  "edges": [
+    {
+      "edge_id": "01999999-0000-0000-0000-000000000101",
+      "source_id": "01999999-0000-0000-0000-000000000001",
+      "target_id": "01999999-0000-0000-0000-000000000002",
+      "type_name": "HAS_SENSE",
+      "label": null,
+      "properties": {},
+      "deprecated_at": null,
+      "disputed_at": null
+    },
+    {
+      "edge_id": "01999999-0000-0000-0000-000000000102",
+      "source_id": "01999999-0000-0000-0000-000000000002",
+      "target_id": "01999999-0000-0000-0000-000000000003",
+      "type_name": "IN_SYNSET",
+      "label": null,
+      "properties": {},
+      "deprecated_at": null,
+      "disputed_at": null
+    }
+  ],
+  "hyperedges": []
+}

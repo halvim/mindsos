@@ -1,36 +1,48 @@
-"""`mindsos knowledge` — Phase 12 L2 Knowledge CLI surface.
+"""`mindsos knowledge` — Phase 12 + Phase 13 L2 Knowledge CLI surface.
 
-Sub-subgroup shape (locked in PB-16):
+Sub-subgroup shape (Phase 12 PB-16; Phase 13 PB-6 extension):
 
   mindsos knowledge iri build --role R --version V [...] [--json]
-      Build an IRI for the given role + kwargs. Per-role kwarg surface
-      mirrors the underlying builder signatures (PB-9 / PB-2 lock).
-
   mindsos knowledge iri parse <iri> [--json]
-      Decompose an IRI into role / source / version / kind / body.
-
   mindsos knowledge iri validate <iri> [--json]
-      Yes/no probe for `is_version_qualified_iri`.
-
   mindsos knowledge ref-types --list [--json]
-      Enumerate REF_TYPES (ADR-0047 open vocabulary).
-
   mindsos knowledge roles --list [--json] [--seed-only|--upper-only]
-      Enumerate role constants split by SEED_ROLES vs UPPER_LAYER_ROLES.
+
+Phase 13 additions:
+
+  mindsos knowledge schema show --role <role> [--json]
+      Print the role schema's NodeTypes / EdgeTypes / HyperEdgeTypes
+      / strict flag. Handles ``alignment:<a>:<b>`` prefix.
+
+  mindsos knowledge schema validate --role <role> --graph-file <path>
+                                    [--json] [--exit-zero]
+      Load a graph state-file, build the role schema, run L1 structural
+      validation (NodeType registration + EdgeType endpoint type check
+      + HyperEdgeType member type check). Phase 13 ships the structural
+      pass only; semantic validation (cross-role refs etc.) ships in
+      Phase 36 (ADR-0139). Exit 1 on violation; ``--exit-zero``
+      surfaces violations in JSON without failing exit code.
+
+Phase 13 CLI uses canonical state-file keys ``node_id`` / ``edge_id``
+per `feedback_state_file_key_canonicalization.md` (B-11-T2 lock).
 
 Exit-code policy (parity with prior phases):
 * exit 0 — success
-* exit 1 — domain error (`RefFormatError`, unknown role, etc.)
-* exit 2 — usage error (missing required arg, bad role, bad --kind etc.)
+* exit 1 — domain error (`RefFormatError`, `UnknownRoleError`,
+           schema-validation violation, missing state-file, ...)
+* exit 2 — usage error (missing required arg, bad role, ...)
 """
 
 from __future__ import annotations
 
 import json
 import sys
+from pathlib import Path
 from typing import Optional
 
 import typer
+
+from mindsos_core import UnknownTypeError
 
 from mindsos_knowledge import (
     ALL_ROLES,
@@ -46,6 +58,7 @@ from mindsos_knowledge import (
     RefFormatError,
     SEED_ROLES,
     UPPER_LAYER_ROLES,
+    UnknownRoleError,
     capacity_snapshot_iri,
     dolce_iri,
     framenet_fe_iri,
@@ -60,6 +73,7 @@ from mindsos_knowledge import (
     pipeline_iri,
     pipeline_step_iri,
     problem_trace_iri,
+    schema_for_role,
     subgoal_template_iri,
     task_pattern_iri,
 )
@@ -82,6 +96,15 @@ iri_app = typer.Typer(
     add_completion=False,
 )
 knowledge_app.add_typer(iri_app, name="iri")
+
+# Phase 13 — schema sub-subgroup per PB-6.
+schema_app = typer.Typer(
+    name="schema",
+    help="Show or validate a role-graph schema (Phase 13).",
+    no_args_is_help=True,
+    add_completion=False,
+)
+knowledge_app.add_typer(schema_app, name="schema")
 
 
 # ── builder dispatch table ─────────────────────────────────────────────
@@ -331,6 +354,219 @@ def roles_cmd(
         for r in sorted(roles_set):
             tier = "seed" if r in SEED_ROLES else "upper"
             typer.echo(f"{r:<22} {tier}")
+
+
+# ── schema show ────────────────────────────────────────────────────────
+
+
+@schema_app.command(
+    name="show", help="Print the role-graph schema (NodeTypes / EdgeTypes / HyperEdgeTypes)."
+)
+def schema_show_cmd(
+    role: str = typer.Option(
+        ..., "--role", help="Role name; or 'alignment:<a>:<b>' for an alignment graph."
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    try:
+        schema = schema_for_role(role)
+    except UnknownRoleError as exc:
+        typer.echo(f"UnknownRoleError: {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    payload = {
+        "role": role,
+        "strict": schema.strict,
+        "node_types": sorted(schema.node_types),
+        "edge_types": sorted(schema.edge_types),
+        "hyperedge_types": sorted(schema.hyperedge_types),
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2))
+        return
+
+    typer.echo(f"role            {role}")
+    typer.echo(f"strict          {schema.strict}")
+    typer.echo(f"node_types      ({len(payload['node_types'])}) " + ", ".join(payload["node_types"]))
+    typer.echo(f"edge_types      ({len(payload['edge_types'])}) " + ", ".join(payload["edge_types"]))
+    typer.echo(
+        f"hyperedge_types ({len(payload['hyperedge_types'])}) "
+        + ", ".join(payload["hyperedge_types"])
+    )
+
+
+# ── schema validate ────────────────────────────────────────────────────
+
+
+def _load_graph_state(path: Path) -> dict:
+    """Load a graph state-file. Phase 13 — structural validation only."""
+    if not path.exists():
+        typer.echo(f"State file not found: {path}", err=True)
+        raise typer.Exit(code=1)
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        typer.echo(f"State file is not valid JSON: {exc}", err=True)
+        raise typer.Exit(code=1)
+
+
+def _structural_validate(schema, state: dict) -> list[dict]:
+    """Run the L1 structural pass over a state-file dict.
+
+    Canonical state-file keys per ``feedback_state_file_key_canonicalization.md``:
+    ``node_id``, ``edge_id``, ``source_id``, ``target_id``, ``type_name``,
+    ``member_ids``. Phase 13 ships structural-only; Phase 36 adds semantic.
+
+    Returns a list of violation dicts.
+    """
+    violations: list[dict] = []
+
+    # Build node-id → type_name lookup for edge endpoint checks. Use
+    # canonical ``node_id`` key per B-11-T2 lock.
+    node_type_by_id: dict[str, str] = {}
+    for n in state.get("nodes") or []:
+        nid = n["node_id"]
+        tname = n["type_name"]
+        node_type_by_id[nid] = tname
+        if tname not in schema.node_types:
+            violations.append(
+                {
+                    "kind": "unknown_node_type",
+                    "node_id": nid,
+                    "type_name": tname,
+                }
+            )
+
+    for e in state.get("edges") or []:
+        eid = e["edge_id"]
+        et = e["type_name"]
+        if et not in schema.edge_types:
+            violations.append(
+                {"kind": "unknown_edge_type", "edge_id": eid, "type_name": et}
+            )
+            continue
+        src_tn = node_type_by_id.get(e["source_id"])
+        tgt_tn = node_type_by_id.get(e["target_id"])
+        if src_tn is None or tgt_tn is None:
+            violations.append(
+                {
+                    "kind": "dangling_endpoint",
+                    "edge_id": eid,
+                    "source_id": e["source_id"],
+                    "target_id": e["target_id"],
+                }
+            )
+            continue
+        try:
+            schema.validate_edge(et, src_tn, tgt_tn)
+        except UnknownTypeError as exc:
+            violations.append(
+                {
+                    "kind": "edge_endpoint_mismatch",
+                    "edge_id": eid,
+                    "type_name": et,
+                    "source_type": src_tn,
+                    "target_type": tgt_tn,
+                    "detail": str(exc),
+                }
+            )
+
+    for h in state.get("hyperedges") or []:
+        heid = h["edge_id"]
+        het = h.get("type_name") or "UNSPECIFIED"
+        if het not in schema.hyperedge_types:
+            violations.append(
+                {
+                    "kind": "unknown_hyperedge_type",
+                    "edge_id": heid,
+                    "type_name": het,
+                }
+            )
+            continue
+        member_types: list[str] = []
+        dangling = False
+        for mid in h.get("member_ids") or []:
+            mtn = node_type_by_id.get(mid)
+            if mtn is None:
+                dangling = True
+                break
+            member_types.append(mtn)
+        if dangling:
+            violations.append(
+                {
+                    "kind": "hyperedge_dangling_member",
+                    "edge_id": heid,
+                    "members": h.get("member_ids") or [],
+                }
+            )
+            continue
+        try:
+            schema.validate_hyperedge(het, member_types)
+        except UnknownTypeError as exc:
+            violations.append(
+                {
+                    "kind": "hyperedge_member_mismatch",
+                    "edge_id": heid,
+                    "type_name": het,
+                    "member_types": member_types,
+                    "detail": str(exc),
+                }
+            )
+
+    return violations
+
+
+@schema_app.command(
+    name="validate",
+    help=(
+        "Validate a graph state-file against the role schema. "
+        "Phase 13 ships L1 structural validation only — semantic checks "
+        "(cross-role refs etc.) ship in Phase 36 per ADR-0139."
+    ),
+)
+def schema_validate_cmd(
+    role: str = typer.Option(
+        ..., "--role", help="Role name; or 'alignment:<a>:<b>' for an alignment graph."
+    ),
+    graph_file: Path = typer.Option(
+        ..., "--graph-file", help="Path to a graph state-file (JSON)."
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+    exit_zero: bool = typer.Option(
+        False, "--exit-zero", help="Surface violations in output but exit 0."
+    ),
+) -> None:
+    try:
+        schema = schema_for_role(role)
+    except UnknownRoleError as exc:
+        typer.echo(f"UnknownRoleError: {exc}", err=True)
+        raise typer.Exit(code=1)
+
+    state = _load_graph_state(graph_file)
+    violations = _structural_validate(schema, state)
+
+    payload = {
+        "role": role,
+        "graph_file": str(graph_file),
+        "ok": not violations,
+        "violation_count": len(violations),
+        "violations": violations,
+    }
+    if json_out:
+        typer.echo(json.dumps(payload, indent=2))
+    else:
+        if not violations:
+            typer.echo(f"OK — {role} schema validates {graph_file}")
+        else:
+            typer.echo(
+                f"VIOLATIONS — {role} schema rejects {graph_file} "
+                f"({len(violations)} violations)"
+            )
+            for v in violations:
+                typer.echo(f"  - {v['kind']}: {v}")
+
+    if violations and not exit_zero:
+        raise typer.Exit(code=1)
 
 
 # ── registration ──────────────────────────────────────────────────────

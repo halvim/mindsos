@@ -1,10 +1,12 @@
-"""MindsOS Knowledge Layer — slim Phase 12 surface.
+"""MindsOS Knowledge Layer — Phase 13 surface.
 
-L2 IRI vocabulary + REF_TYPES + role constants + ref-key helpers. Pure
-library; no L1 mutation, no metagraph, no persistence. KL writes are
-relocated to L3 capacities per ADR M1 / L2 redesign locks 2026-04-27.
+L2 IRI vocabulary + REF_TYPES + role constants + ref-key helpers
+(Phase 12) + the 8 role-graph schemas + the alignment parametric
+schema + ``schema_for_role`` dispatch (Phase 13). Pure library; no
+L1 mutation, no metagraph, no persistence. KL writes are relocated to
+L3 capacities per ADR M1 / L2 redesign locks 2026-04-27.
 
-Phase 12 deliberately ships:
+Phase 12 shipped:
 
 * 14 IRI builders covering ADR-0045: 7 seed-role builders ported from
   the v3 `mindsos_knowledge/identifiers.py` (DOLCE / OEWN / FrameNet)
@@ -17,32 +19,40 @@ Phase 12 deliberately ships:
   decomposition keyed on `_PREFIXES` + `_KINDS_PER_ROLE`.
 * `REF_TYPES` frozenset + extension-recipe per ADR-0047.
 * Ref-key helpers: `global_ref_key`, `local_ref_key`, `REF_TYPE_KEY`.
-* Role constants: 3 seed (`ROLE_ONTOLOGY` / `ROLE_LEXICON` /
-  `ROLE_CONCEPTS`) + 5 upper-layer (`ROLE_PROMOTED_PIPELINES` /
-  `ROLE_TASK_PATTERNS` / `ROLE_MEMORIES` / `ROLE_PROBLEM_TRACE` /
-  `ROLE_CAPACITY_STATE`) + 3 frozensets (`SEED_ROLES` /
-  `UPPER_LAYER_ROLES` / `ALL_ROLES`).
+* Role constants: 3 seed + 5 upper-layer + 3 frozensets.
 * Exceptions: `KnowledgeError` (base) + `RefFormatError`.
+
+Phase 13 adds:
+
+* 9 schema builders under `mindsos_knowledge.schemas`:
+  4 seed (`ontology` / `lexicon` / `concepts` / `alignment` —
+  v3 ports with ontology HyperEdgeType lift) + 5 upper-layer
+  (`promoted_pipelines` / `task_patterns` / `memories` /
+  `problem_trace` / `capacity_state` — NET-NEW at strict=False).
+* `schema_for_role(role)` dispatch function — handles the
+  alignment-prefix branch and raises `UnknownRoleError` on miss.
+* `UnknownRoleError` exception class.
 
 Deferred to later phases:
 
-* Schemas (alignment / lexicon / ontology / concepts) → Phase 13.
 * `KnowledgeLayer` + `MetagraphView` + Global / Local bootstrap →
   Phase 14.
+* L2 knowledge-addition lifecycle design (ADR-0150 + 3 lifecycle
+  docs) → Phase 14a.
 * Importers (DOLCE / OEWN / FrameNet / Alignments) → Phase 15.
 * Promotion machinery → Phase 16.
 * Versioning + breadcrumbs → Phase 17.
 * REF_TYPES parity test against L3 → Phase 27 (ADR-0067).
-* Per-builder inverse field helpers (capacity_snapshot, pipeline,
-  task_pattern, memory, problem_trace) → per-consumer phase
-  (Phase 16 / 28 / 30 etc.).
+* Per-builder inverse field helpers → per-consumer phase.
+* Schema strict-tightening (per-role) → first-consumer phase after
+  the 2-week-no-edit observation period per ADR-0149.
 """
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase12"
+__version__ = "0.0.0+phase13"
 
-from .exceptions import KnowledgeError, RefFormatError
+from .exceptions import KnowledgeError, RefFormatError, UnknownRoleError
 from .identifiers import (
     ALL_ROLES,
     REF_TYPE_KEY,
@@ -79,12 +89,27 @@ from .identifiers import (
     task_pattern_iri,
 )
 
+from .schemas import (
+    _ROLE_SCHEMA_BUILDERS,
+    build_alignment_schema,
+    build_capacity_state_schema,
+    build_concepts_schema,
+    build_lexicon_schema,
+    build_memories_schema,
+    build_ontology_schema,
+    build_problem_trace_schema,
+    build_promoted_pipelines_schema,
+    build_task_patterns_schema,
+    schema_for_role,
+)
+
 __all__ = [
     # ── version ────────────────────────────────────────────────────
     "__version__",
     # ── exceptions ─────────────────────────────────────────────────
     "KnowledgeError",
     "RefFormatError",
+    "UnknownRoleError",
     # ── role constants ─────────────────────────────────────────────
     "ROLE_ONTOLOGY",
     "ROLE_LEXICON",
@@ -124,4 +149,16 @@ __all__ = [
     "local_ref_key",
     "REF_TYPE_KEY",
     "REF_TYPES",
+    # ── schemas (Phase 13) ─────────────────────────────────────────
+    "build_ontology_schema",
+    "build_lexicon_schema",
+    "build_concepts_schema",
+    "build_alignment_schema",
+    "build_promoted_pipelines_schema",
+    "build_task_patterns_schema",
+    "build_memories_schema",
+    "build_problem_trace_schema",
+    "build_capacity_state_schema",
+    "schema_for_role",
+    "_ROLE_SCHEMA_BUILDERS",
 ]

@@ -24,9 +24,19 @@ After Phase 02, the repository contains:
 ├── mindsos_core/         # Domain Layer 1 — slim Phase 02 surface (identity only).
 │   ├── exceptions.py     # CoreError, IdentityError (more land per phase).
 │   └── models/identity.py    # generate_uuid, IdStrategy, IdentityRegistry.
-├── mindsos_knowledge/    # Domain Layer 2 — slim Phase 12 surface (IRIs + REF_TYPES).
-│   ├── exceptions.py     # KnowledgeError, RefFormatError.
-│   └── identifiers.py    # 14 IRI builders + parser + role constants + ref-key helpers.
+├── mindsos_knowledge/    # Domain Layer 2 — Phase 13 surface (IRIs + REF_TYPES + 9 schema builders).
+│   ├── exceptions.py     # KnowledgeError, RefFormatError, UnknownRoleError (Phase 13).
+│   ├── identifiers.py    # 14 IRI builders + parser + role constants + ref-key helpers.
+│   └── schemas/         # 9 role-graph schema builders + schema_for_role dispatch (Phase 13).
+│       ├── ontology.py        # 10 N / 13 E / 7 HE (HyperEdgeType lift per PB-4).
+│       ├── lexicon.py         # 4 N / 21 E.
+│       ├── concepts.py        # 4 N / 11 E.
+│       ├── alignment.py       # 1 N / 8 E (open via extra_edge_types kwarg).
+│       ├── promoted_pipelines.py
+│       ├── task_patterns.py
+│       ├── memories.py
+│       ├── problem_trace.py
+│       └── capacity_state.py
 ├── tests/phase_00/       # Phase 00 automated test suite.
 ├── tests/phase_01/       # Phase 01 automated test suite.
 ├── tests/phase_02/       # Phase 02 automated test suite.

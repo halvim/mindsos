@@ -145,4 +145,23 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_knowledge/identifiers.py",
     "mindsos_knowledge/exceptions.py",
     "mindsos_cli/commands/knowledge.py",
+    # Phase 13 — NEW sub-package `mindsos_knowledge/schemas/` ships
+    # 9 schema builders + dispatch __init__. Subpackage of an
+    # existing top-level (mindsos_knowledge) — no new Dockerfile
+    # COPY directive needed; existing `COPY mindsos_knowledge`
+    # picks up the new tree automatically. Docs
+    # (`docs/usage/knowledge/{overview,ontology,lexicon,concepts,
+    # alignment,promoted-pipelines,task-patterns,memories,
+    # problem-trace,capacity-state}.md`) intentionally NOT
+    # sentinelled per `feedback_sentinel_paths_runtime_only.md`.
+    "mindsos_knowledge/schemas/__init__.py",
+    "mindsos_knowledge/schemas/ontology.py",
+    "mindsos_knowledge/schemas/lexicon.py",
+    "mindsos_knowledge/schemas/concepts.py",
+    "mindsos_knowledge/schemas/alignment.py",
+    "mindsos_knowledge/schemas/promoted_pipelines.py",
+    "mindsos_knowledge/schemas/task_patterns.py",
+    "mindsos_knowledge/schemas/memories.py",
+    "mindsos_knowledge/schemas/problem_trace.py",
+    "mindsos_knowledge/schemas/capacity_state.py",
 )

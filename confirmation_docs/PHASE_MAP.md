@@ -46,6 +46,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | Conflict resolution in source docs | Most recent date wins by default. Surface to **Open Questions** only when a newer doc silently contradicts an explicit earlier lock/invariant. |
 | Foundations-first grouping | Independents share a phase; dependents go in the next phase. |
 | **Integration phases are an exception to the foundations-first rule** | Phases 26 and 32 are convergence points that depend on **all prior shipped phases**. They add no new feature; they catch cross-phase regressions via one scripted scenario. |
+| **Design-only phases are an exception to the per-phase workflow** | Some phases (e.g., Phase 14a) ship only ADRs + docs, no code. These are exempt: no `phase-NN-confirmed` tag, no `mindsos confirm-phase`, no version bump (the 4-pkg `__version__` parity stays at whatever the immediately-prior code phase set). Downstream code phases branch off **main-tip** after the design PR squash-merges, not off a tag. The design phase's row in this map names its scope; PR review is the confirmation; release.yml is not invoked. Status: established Phase 13 PB-20 / PB-24. |
 | Mkdocs page evolution | A doc page may be touched by multiple phases. Each phase only **amends** the slice it owns; final-pass review is at Phase 38. Pages carry a `last_confirmed_phase: NN` front-matter field (stored, not rendered) so a future audit can identify pages whose evolution stalled. |
 | Out of scope | L4 + L5 + FOL + 7 L4 critique pushes + 5 L1 design-critique pushes (latter mostly addressed by L1 redesign locks). |
 
@@ -104,8 +105,9 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 10 | L1 Snapshot + soft-delete + RemovalImpact | L1 | 07, 08 |
 | 11 | L1 Cypher builders + integrity scanner + schema migration | L1 | 07 |
 | 12 | L2 Identifiers + role IRIs + REF_TYPES | L2 | 02 |
-| 13 | L2 Schemas — alignment, lexicon, ontology, concepts | L2 | 04, 12 |
-| 14 | L2 KnowledgeLayer + role-graph bootstrap (Global + Local) + MetagraphView (read-only) | L2 | 05, 07, 08, 12, 13 |
+| 13 | L2 Schemas — 8 role-graph schemas + alignment parametric (4 seed + 5 upper-layer NET-NEW; ontology HyperEdgeType lift) | L2 | 04, 12 |
+| **14a** | **L2 knowledge lifecycle design pass** (docs/ADR only; no code; no tag; PR-to-main per §1 design-only exception clause) | L2 (design) | 13 |
+| 14 | L2 KnowledgeLayer + role-graph bootstrap (Global + Local) + MetagraphView (read-only) | L2 | 05, 07, 08, 12, 13, 14a |
 | 15 | L2 Importers — DOLCE, OEWN, FrameNet, Alignments | L2 | 13, 14 |
 | 16 | L2 Promotion machinery | L2 | 14 |
 | 17 | L2 Versioning + breadcrumbs | L2 | 14 |
@@ -131,7 +133,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 37 | Server-owns-importers (ADR-0144). **NEW CODE.** | L0 + L2 | 15, 36 |
 | 38 | End-to-end vertical slice — text-realm + code-slice cookbook | cross | all |
 
-**Total: 43 phases.** Two integration phases (26, 32). Nine phases carry **NEW CODE** beyond repackaging (05b, 05c, 05d, 24, 33, 34, 35, 36, 37). Phase 04 is Superseded by 04-v2 (slot collapsed); Phase 05 is split into 05a / 05b / 05c / 05d (four sub-phase slots, CASC-1 strict-sequential per the supersession-policy letter-sub-phases rule in §1).
+**Total: 44 phases.** Two integration phases (26, 32). One design-only phase (14a — exempt from per-phase workflow per §1 design-only exception clause; Phase 13 PB-20 lock). Nine phases carry **NEW CODE** beyond repackaging (05b, 05c, 05d, 24, 33, 34, 35, 36, 37) — plus Phase 13 carries 5 net-new schema builders for upper-layer roles (closure of L2 dispatch table per Phase 13 PB-1). Phase 04 is Superseded by 04-v2 (slot collapsed); Phase 05 is split into 05a / 05b / 05c / 05d (four sub-phase slots, CASC-1 strict-sequential per the supersession-policy letter-sub-phases rule in §1).
 
 ---
 
@@ -3265,21 +3267,54 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
     - ADR-0134 §amendment-3 → reserved for first KL consumer's structural feedback (Phase 15).
   **Docs:** `docs/api/knowledge/identifiers.md` (new); `docs/api/knowledge/ref-types.md` (new); `docs/concepts/identifiers.md` (new L2 concept page per PB-14); `docs/concepts/identity.md` (amend forward-ref per PB-14); `docs/usage/knowledge/iri-cli.md` (new CLI reference); `docs/changelog/CHANGELOG.md` (append Phase 12 + backfill Phase 11); `docs/dev/repo-layout.md` (mention `mindsos_knowledge/`); ADRs 0044 §amendment-1 (PB-17) / 0045 (closes — 14 builders ship) / 0047 (untouched) / 0067 (untouched; parity test Phase 27). See `confirmation_docs/PHASE_12_DESIGN_LOG.md` for the full PB-1..22 + Step-0 audit probe table + carry-forward.
 
-### Phase 13 — L2 Schemas
+### Phase 13 — L2 Schemas (8 role-graph schemas + alignment parametric)
 
-  **Deps:** 04, 12. **Layer:** L2. **Net-new?** No.
-  **Features:** show role schema; validate role-graph against schema.
-  **Tests:** alignment / lexicon / ontology / concepts schemas validate respective fixtures.
-  **Risks:** schema changes are breaking; anchor each role-schema's contract in a confirmation fixture.
-  **Docs:** `docs/usage/knowledge/overview.md`, role-specific pages.
+  **Deps:** 04, 12. **Layer:** L2. **Net-new?** **Partial — 5 net-new schema builders for upper-layer roles** (`promoted_pipelines`, `task_patterns`, `memories`, `problem_trace`, `capacity_state`) per Phase 13 PB-1 closure of the L2 dispatch table. Plus the ontology HyperEdgeType lift (PB-4) is additive code closing v3 / Phase 04-v2 drift.
+  **Features:**
+    - 9 schema builders under `mindsos_knowledge/schemas/`: 4 seed ports (ontology / lexicon / concepts / alignment-parametric) + 5 NET-NEW upper-layer at `strict=False` per ADR-0149.
+    - Ontology HyperEdgeType lift — 7 v3 label-constants registered as `HyperEdgeType` instances (PB-4).
+    - `schema_for_role(role: str, strict: bool = False) -> Schema` dispatch with alignment-prefix branch; raises `UnknownRoleError` on miss (PB-11).
+    - `UnknownRoleError(KnowledgeError)` exception class.
+    - `mindsos knowledge schema show --role <role> [--json]` (PB-6).
+    - `mindsos knowledge schema validate --role <role> --graph-file <path> [--json] [--exit-zero]` (PB-6) — L1 structural pass only; semantic ships in Phase 36 per ADR-0139.
+    - Advisory module-level property constants per upper-layer schema (PB-8) — NOT in NodeType.property_types until strict-tighten.
+    - Alignment `extra_edge_types` kwarg retained per PB-14.
+  **Tests:** ~76 isolated (2 skipped in container — ADR amendment sentinels live in parent project tree per Model C). 11 test modules: `test_seed_schemas`, `test_upper_layer_schemas`, `test_ontology_hyperedges`, `test_alignment_extra_edge_types`, `test_dispatch`, `test_dimensional_snapshot` (parametric across the 9 schemas — PHASE_MAP §13 "confirmation fixture" anchor), `test_strict_false_sentinel`, `test_advisory_property_constants`, `test_knowledge_schema_cli`, `test_image_completeness_phase13`, `test_import_isolation_phase13`, `test_adr_amendment_sentinels`. CLI fixtures use canonical `node_id`/`edge_id` keys per B-11-T2 lock.
+  **Risks:** schema changes are breaking — dimensional-snapshot sentinel (PB-17) anchors each schema's exact (nodes/edges/hyperedges) dimensions; any future edit forces an explicit table bump. The `strict_support.py` inventory helper for tightening is **deferred** to first-consumer phase per ADR-0149 (not Phase 13's deliverable).
+  **Docs:** `docs/usage/knowledge/overview.md` + 9 stub role-specific pages (`ontology`, `lexicon`, `concepts`, `alignment`, `promoted-pipelines`, `task-patterns`, `memories`, `problem-trace`, `capacity-state`); ADR-0017 §amendment-1; ADR-0149 (NEW); ADR-0150 (RESERVED — content owed by Phase 14a).
+  **Carry-forward this phase re-carries:** MetagraphSchema scanner (Phase 11 PB-7 C) → Phase 14 (KL bootstrap is the first MetagraphSchema-bump candidate). Per-edge alignment anchor IRI builder (Phase 12 PB-4) → Phase 14. ADR-0134 Proposed → Accepted flip + migration-playbook content → Phase 15.
+
+### Phase 14a — L2 knowledge lifecycle design pass
+
+  **Status:** Pending. **Branch:** `phase-14a` (regular PR to main; **no `phase-14a-confirmed` tag** per §1 design-only exception clause).
+  **Tag on confirm:** none — exempt per Phase 13 PB-20.
+  **Deps:** 13. **Layer:** L2 (design only). **Net-new code?** No (ADRs + docs only).
+  **Features in scope:**
+    - **ADR-0150** "L2 knowledge lifecycle" — closes Flavor B per Phase 13 PB-19 (closed-8-roles principle); names entry points per Flavor A (content addition).
+    - `docs/concepts/knowledge-lifecycle.md` (synthesis page).
+    - `docs/concepts/user-local-authoring.md` (user-Local content path: Phase 24 + Phase 33-35).
+    - `docs/concepts/admin-global-shipping.md` (admin-Global release path: Phase 15 + Phase 37).
+    - PHASE_MAP amendments to §Phase 14 / 15 / 16 / 17 / 24 / 37 rows naming each phase's "Lifecycle role" sub-field (a new optional §2 row-schema field Phase 14a introduces).
+  **Modules touched:** docs/, decisions/adr/, confirmation_docs/PHASE_MAP.md. No `mindsos_*` package edits.
+  **Automated tests:** none.
+  **Confirmation command:** none — squash-merge to main is the confirmation.
+  **Pass criterion:**
+    - ADR-0150 written; Status=Accepted; reviewed by user.
+    - 3 lifecycle docs exist; mkdocs build clean.
+    - 6 downstream PHASE_MAP rows amended with "Lifecycle role" sub-field.
+  **Risks:**
+    - Design-only phases drift into bikeshedding — cap chat at 3 PB rounds.
+    - Phase 14 chat may discover the lifecycle lock is wrong; ADR-0150 amendment via §Revisions is the fix, not phase supersession.
+  **Doc sections this phase confirms:** the 3 lifecycle docs above.
+  **Breaking changes from prior phase:** none.
 
 ### Phase 14 — L2 KnowledgeLayer + role-graph bootstrap + MetagraphView
 
-  **Deps:** 05, 07, 08, 12, 13. **Layer:** L2. **Net-new?** Partial — `MetagraphView` read-only enforcement per ADR-0141; if any write methods leaked, removing them is NEW CODE.
-  **Features:** Global + Local bootstrap; ensure-role-graph idempotent; read-only view.
+  **Deps:** 05, 07, 08, 12, 13, 14a. **Layer:** L2. **Net-new?** Partial — `MetagraphView` read-only enforcement per ADR-0141; if any write methods leaked, removing them is NEW CODE.
+  **Features:** Global + Local bootstrap; ensure-role-graph idempotent; read-only view. **Inherits Phase 14a's ADR-0150 lifecycle locks** + the per-edge alignment anchor IRI decision (Phase 12 PB-4 carry-forward; Phase 13 PB-5 re-carry).
   **Tests:** memories live in Local (ADR-0044); MetagraphView has no public write methods.
-  **Risks:** ADR-0044 must be honoured by bootstrap.
-  **Docs:** `docs/usage/knowledge/overview.md`, `global-local.md`, ADRs 0042/0043/0044/0141.
+  **Risks:** ADR-0044 must be honoured by bootstrap. **MetagraphSchema scanner** (Phase 11 PB-7 C / Phase 12 PB-5 / Phase 13 PB-2 re-carry) fires HERE if Phase 14 bumps a MetagraphSchema for the first time.
+  **Docs:** `docs/usage/knowledge/overview.md`, `global-local.md`, ADRs 0042/0043/0044/0141/0150.
 
 ### Phase 15 — L2 Importers (DOLCE, OEWN, FrameNet, Alignments)
 
