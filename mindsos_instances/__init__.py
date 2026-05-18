@@ -58,7 +58,8 @@ from .utils.canonicalize import canonicalize
 #: Phase 10 bumps to phase10 (Phase 06 P62 A 3-package parity carry).
 #: Phase 11 bumps to phase11 (loader policy + schema migration scanner).
 #: Phase 12 bumps to phase12 (L2 Identifiers + role IRIs + REF_TYPES).
-__version__ = "0.0.0+phase12"
+#: Phase 13 bumps to phase13 (L2 Schemas — 8 role-graph builders + dispatch).
+__version__ = "0.0.0+phase13"
 
 __all__ = [
     # exceptions

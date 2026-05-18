@@ -1,11 +1,47 @@
 ---
-last_confirmed_phase: 12
+last_confirmed_phase: 13
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 13 — L2 Schemas (alignment / lexicon / ontology / concepts + 5 upper-layer) (2026-05-18)
+
+**Closes the L2 schema dispatch table — 8 named-role schema builders
++ a parametric `alignment` builder + `schema_for_role(role)` dispatch
+function with alignment-prefix branch.** NEW `mindsos_knowledge/schemas/`
+sub-package: ports the 4 v3 seed-role schemas (ontology / lexicon /
+concepts / alignment) verbatim, lifts the 7 v3 ontology hyperedge
+"label" constants to `HyperEdgeType` registrations per PB-4, and adds
+5 NET-NEW upper-layer schemas (`promoted_pipelines`, `task_patterns`,
+`memories`, `problem_trace`, `capacity_state`) at `strict=False` per
+ADR-0149. Advisory NodeType properties live as module-level
+`frozenset` constants per PB-8 (strict-tighten PR converts to typed
+declarations). NEW `mindsos knowledge schema {show,validate}` CLI
+sub-subgroup per PB-6 — `validate` runs L1 structural pass only;
+semantic validation ships in Phase 36 per ADR-0139. NEW
+`UnknownRoleError(KnowledgeError)` per PB-11 — raised by
+`schema_for_role` on miss. ADR-0017 §Revisions amendment documents
+the L2-role-schema strictness policy (Phase 13 PB-3); NEW ADR-0149
+"L2 role-graph schemas at strict=False with 2-week tightening rule"
+per PB-7; NEW ADR-0150 reserved (number only) — content drafted in
+Phase 14a per PB-23. PHASE_MAP §1 amended with "design-only phases
+are an exception" clause per PB-24; §14a row inserted; §14 deps
+amended `12, 13` → `12, 13, 14a`; §3 table + §1 phase count adjusted
+(43 → 44 phases). `tests/_shared/sentinel_paths.py` extended with
+10 new module paths. PHASE_14a_NEXT_CHAT_PROMPT.md handoff written.
+~76 isolated tests across 11 modules (2 skipped in container — ADR
+amendment sentinels live in parent project tree per Model C).
+Cumulative ~1966. Cross-package version-string parity bumped to
+`0.0.0+phase13` (still 4 packages — sub-package add does not flip
+parity count). Step-0 audit: 0 prior-phase patches across 10 probes
+(streak of 3 — Phase 11 + 12 + 13). MetagraphSchema scanner (Phase 11
+PB-7 C) re-carried-forward to Phase 14 (KL bootstrap); per-edge
+alignment anchor IRI (Phase 12 PB-4) re-carried-forward to Phase 14;
+ADR-0134 Proposed → Accepted flip + migration-playbook content
+re-carried-forward to Phase 15.
 
 ## Phase 12 — L2 Identifiers + role IRIs + REF_TYPES (2026-05-16)
 
