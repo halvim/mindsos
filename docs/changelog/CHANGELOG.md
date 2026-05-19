@@ -1,11 +1,60 @@
 ---
-last_confirmed_phase: 13
+last_confirmed_phase: 14
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 14 — L2 KnowledgeLayer + role-graph bootstrap + MetagraphView (2026-05-19)
+
+**Ships the L2 entry point.** NEW `mindsos_knowledge/knowledge_layer.py`
+(`KnowledgeLayer` class with constructor parameter for Global per
+ADR-0042 §amendment-1; `bootstrap()` classmethod that auto-ensures
+the 6 Global named role-graphs; lazy `local_metagraph(user_id)` that
+auto-ensures the 2 Local named role-graphs per ADR-0044; install/
+extract hooks per ADR-0042 §Decision with `AlreadyInstalledError` /
+`NotInstalledError`). NEW `mindsos_knowledge/metagraph_view.py`
+(whitelist read-only wrapper per PB-3 lock — methods: `roles`,
+`graphs_by_role`, `get_node`, `iter_nodes`, `get_edges`, `step`,
+`alignment_graph`, `metagraph_id`; no `follow_ref` overlay per
+PB-10; no `version=` kwarg on `step()` per PB-15). NEW
+`mindsos_knowledge/bootstrap.py` (two-method `ensure_global_role_graph`
++ `ensure_local_role_graph` with ADR-0044 scope enforcement; alignment
+is Global-only at v1 per ADR-0150 §amendment-1 + Phase 14 PB-8;
+`extra_edge_types` kwarg plumbs to `build_alignment_schema` for
+forward-compatibility with Phase 15 importers). NEW
+`AlreadyInstalledError(KnowledgeError)` + `NotInstalledError(KnowledgeError)`.
+NEW `docs/concepts/global-local.md` (Bootstrap-stage owner per
+Phase 14a's knowledge-lifecycle synthesis). ADR-0042 §amendment-1
+documents the Global lifecycle via constructor parameter (PB-7);
+ADR-0150 §amendment-1 documents alignment is Global-only (PB-8).
+KL ships **no write API** per ADR-0138 Proposed (honoured by absence
+per PB-6; ADR not flipped Accepted); **no validators** per
+ADR-0139 Proposed (Phase 36 home per PB-14); **no CLI verbs** per
+PB-13 (KL is in-memory-only per ADR-0043; state-file CLI deferred
+to Phase 26 per Phase 14a round-3 lock); **no `request_promotion`**
+(Phase 16+ owns; ADR-0137/0141 vs ADR-0140 attribution conflict
+deferred). Per Phase 14 round-1 PB-1: carry-forwards (per-edge
+alignment-anchor IRI builder + MetagraphSchema scanner) deferred
+to Phase 15 (first concrete consumer is the Alignments importer).
+Per Phase 14 round-2 PB-12 re-classification: Phase 14 is **mostly
+NET-NEW** (no v3 `KnowledgeLayer` Python source existed to
+repackage; the v3 design lives only in
+`_source_backup/root/knowledge_layer_design.md` as a markdown doc).
+Tests: 12 modules in `tests/phase_14/` covering KL init / bootstrap /
+ensure_*_role_graph (parametric × 8 + scope-rejection × 8) /
+lazy `local_metagraph` / install-extract / `MetagraphView` read
+surface / `step()` without overlay / dimensional snapshot /
+import-isolation / image-completeness / ADR-amendment sentinels.
+~95-115 isolated; cumulative ~2120-2145. Cross-package version
+parity bumped to `0.0.0+phase14` across 4 packages. Image tags
+`mindsos:phase14-{prod,test}`. `manifest.toml [mindsos] phase =
+"14"`. 3 new sentinel paths added to
+`tests/_shared/sentinel_paths.py`. PHASE_15_NEXT_CHAT_PROMPT.md
+written; Phase 15 inherits both deferred carry-forwards + bootstrap +
+`KL.global_metagraph()` for importer targets.
 
 ## Phase 13 — L2 Schemas (alignment / lexicon / ontology / concepts + 5 upper-layer) (2026-05-18)
 

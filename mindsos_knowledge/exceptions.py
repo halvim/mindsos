@@ -18,8 +18,18 @@ Phase 13 adds:
   supplied role isn't recognised (not in ``ALL_ROLES`` and not an
   ``alignment:<a>:<b>`` prefix form). PB-11 lock.
 
-Phase 14+ append: ``BootstrapError`` (Phase 14), ``PromotionError``
-(Phase 16), etc.
+Phase 14 adds:
+
+* ``AlreadyInstalledError`` — raised by
+  ``KnowledgeLayer.install_local_metagraph(user_id, ...)`` when a
+  Local for ``user_id`` is already installed (ADR-0042 §Decision —
+  "refuses with AlreadyInstalledError if a Local is already present").
+* ``NotInstalledError`` — raised by
+  ``KnowledgeLayer.extract_local_metagraph(user_id)`` when no Local
+  is installed for ``user_id`` (ADR-0042 §Decision — "raises
+  NotInstalledError" on miss).
+
+Phase 16+ append: ``PromotionError``, etc.
 """
 
 from __future__ import annotations
@@ -42,4 +52,23 @@ class UnknownRoleError(KnowledgeError):
     discipline for L1. Message includes the sorted ``ALL_ROLES`` list
     plus a hint that ``alignment:<role_a>:<role_b>`` is accepted via
     prefix-match.
+    """
+
+
+class AlreadyInstalledError(KnowledgeError):
+    """Raised by ``KnowledgeLayer.install_local_metagraph(user_id, mg)``
+    when a Local metagraph is already installed for ``user_id``.
+
+    ADR-0042 §Decision: ``install_local_metagraph`` refuses with this
+    error if a Local is already present. The server is expected to
+    ``extract_local_metagraph`` before installing a replacement.
+    """
+
+
+class NotInstalledError(KnowledgeError):
+    """Raised by ``KnowledgeLayer.extract_local_metagraph(user_id)``
+    when no Local is installed for ``user_id``.
+
+    ADR-0042 §Decision: ``extract_local_metagraph`` raises this error
+    on miss rather than silently returning ``None``.
     """

@@ -3286,7 +3286,7 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 14a — L2 knowledge lifecycle design pass
 
-  **Status:** Pending. **Branch:** `phase-14a` (regular PR to main; **no `phase-14a-confirmed` tag** per §1 design-only exception clause).
+  **Status:** Shipped (design-only; no tag; squash-merge `d166c38` via PR #21 on 2026-05-18). **Branch:** `phase-14a` (squash-merged + deleted; regular PR to main; no `phase-14a-confirmed` tag per §1 design-only exception clause).
   **Tag on confirm:** none — exempt per Phase 13 PB-20.
   **Deps:** 13. **Layer:** L2 (design only). **Net-new code?** No (ADRs + docs only).
   **Features in scope (revised in-phase from Phase 13's initial scope — see "In-phase scope changes" below):**
@@ -3330,11 +3330,15 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 14 — L2 KnowledgeLayer + role-graph bootstrap + MetagraphView
 
-  **Deps:** 05, 07, 08, 12, 13, 14a. **Layer:** L2. **Net-new?** Partial — `MetagraphView` read-only enforcement per ADR-0141; if any write methods leaked, removing them is NEW CODE.
-  **Features:** Global + Local bootstrap; ensure-role-graph idempotent; read-only view. **Inherits Phase 14a's ADR-0150 lifecycle locks** + the per-edge alignment anchor IRI decision (Phase 12 PB-4 carry-forward; Phase 13 PB-5 re-carry).
-  **Tests:** memories live in Local (ADR-0044); MetagraphView has no public write methods.
-  **Risks:** ADR-0044 must be honoured by bootstrap. **MetagraphSchema scanner** (Phase 11 PB-7 C / Phase 12 PB-5 / Phase 13 PB-2 re-carry) fires HERE if Phase 14 bumps a MetagraphSchema for the first time.
-  **Docs:** `docs/usage/knowledge/overview.md`, `global-local.md`, ADRs 0042/0043/0044/0141/0150.
+  **Status:** Shipped 2026-05-19 (squash-merge SHA filled by Phase 14 chat at PR squash time). Tag `phase-14-confirmed` per `feedback_release_tag_after_squash_merge_only.md`.
+  **Deps:** 05, 07, 08, 12, 13, 14a. **Layer:** L2. **Net-new?** **Mostly yes** (re-classified by Phase 14 PB-12) — no v3 `KnowledgeLayer` Python source existed in `halvim_mindsos` or `_source_backup/root/`; the class is NET-NEW from design + post-pivot ADRs. Only schema dispatch + role constants + IRI builders are Phase 12/13 imports.
+  **Features (as shipped):** `KnowledgeLayer` class with constructor parameter for Global (ADR-0042 §amendment-1 — Phase 14 PB-7) + `bootstrap()` classmethod that ensures the 6 Global named role-graphs; lazy `local_metagraph(user_id)` that auto-ensures the 2 Local named role-graphs (PB-9); install/extract hooks per ADR-0042 (PB-5); `AlreadyInstalledError` + `NotInstalledError`. Two-method `ensure_global_role_graph` + `ensure_local_role_graph` with ADR-0044 scope enforcement (PB-4); alignment is Global-only at v1 per ADR-0150 §amendment-1 (PB-8). `MetagraphView` whitelist read-only wrapper (PB-3) — methods: `roles`, `graphs_by_role`, `get_node`, `iter_nodes`, `get_edges`, `step` (no Local-overlay per PB-10), `alignment_graph`, `metagraph_id`. No write API on KL (ADR-0138 Proposed honoured by absence per PB-6; ADR not flipped Accepted). No validators (PB-14; Phase 36 owns per ADR-0139 Proposed). No CLI verbs (PB-13). No `version=` kwarg on `step` (PB-15; Phase 17 amends). No `follow_ref` overlay helper (PB-10; Phase 25 or first L3 capacity phase).
+  **Tests:** 12 modules in `tests/phase_14/` (~95-115 isolated). Coverage: KL init / bootstrap auto-ensure of 6 Global roles / ensure_global_role_graph parametric × 6 named + alignment-prefix + scope rejection × 2 Local + UnknownRoleError / ensure_local_role_graph parametric × 2 + alignment rejection + scope rejection × 6 Global + UnknownRoleError / lazy local_metagraph per-user isolation / install-extract round-trip + AlreadyInstalled + NotInstalled + auto-ensure on install / MetagraphView read methods + no-isinstance-Metagraph + no-write-method assertions / step within-view + edge_type filter + ADR-0133 deprecated filter + no WalkResult overlay + no version kwarg / dimensional snapshot / import-isolation extended to Phase 14 modules / image-completeness Phase 14 sentinels / ADR-0042 amendment-1 + ADR-0150 amendment-1 file sentinels (skip in container per Model C).
+  **Risks:** (closed by Phase 14 PB-1) MetagraphSchema scanner + per-edge alignment-anchor IRI builder DEFERRED to Phase 15 (first concrete consumer is the Alignments importer); no Phase 14 caller. ADR-0044 honoured at dispatch site by two-method API (PB-4). Read-only contract on `MetagraphView` is structural (whitelist class; not subclass; no write methods present) per PB-3 — returned Node/Edge references are L1 mutables; convention not to mutate per PB-16.
+  **Docs:** `docs/concepts/global-local.md` (NEW; Bootstrap-stage owner per Phase 14a synthesis); `docs/usage/knowledge/overview.md` (amended); `docs/concepts/knowledge-lifecycle.md` (Phase 14 row Status `planned → shipped`; front-matter `last_confirmed_phase: 14a → 14`); ADR-0042 §amendment-1 (Phase 14 PB-7); ADR-0150 §amendment-1 (Phase 14 PB-8); `CHANGELOG.md` Phase 14 entry; `mkdocs.yml` (Concepts > Knowledge lifecycle > Global + Local metagraphs (Phase 14)).
+  **Breaking changes from prior phase:** none. Phase 13's `schema_for_role` + dispatch table unmutated; consumed unchanged by `ensure_*_role_graph`.
+  **In-flight pushbacks:** PB-1..16 across 3 rounds, all user-agreed. See `confirmation_docs/PHASE_14_DESIGN_LOG.md` §1 for full ledger.
+  **Carry-forward (Phase 14 → Phase 15):** per-edge alignment-anchor IRI builder (Phase 12 PB-4 / Phase 13 PB-5 / Phase 14 PB-1 — 3rd hop; Phase 15's Alignments importer is the first concrete consumer); MetagraphSchema scanner (Phase 11 PB-7 C / Phase 12 PB-5 / Phase 13 PB-2 / Phase 14 PB-1 — 4th hop; Phase 15 Importers are the first phase that writes content).
 
 ### Phase 15 — L2 Importers (DOLCE, OEWN, FrameNet, Alignments)
 

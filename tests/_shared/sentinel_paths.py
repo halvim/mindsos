@@ -164,4 +164,14 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_knowledge/schemas/memories.py",
     "mindsos_knowledge/schemas/problem_trace.py",
     "mindsos_knowledge/schemas/capacity_state.py",
+    # Phase 14 — KnowledgeLayer class + MetagraphView + bootstrap module.
+    # 3 NEW Python modules in the existing `mindsos_knowledge/` package;
+    # no new Dockerfile COPY directive needed (existing
+    # `COPY mindsos_knowledge` picks up the new files). Per
+    # `feedback_sentinel_paths_runtime_only.md`, the 1 NEW concept doc
+    # (`docs/concepts/global-local.md`) is intentionally NOT sentinelled
+    # — it's an mkdocs source, not a CLI runtime input.
+    "mindsos_knowledge/knowledge_layer.py",
+    "mindsos_knowledge/metagraph_view.py",
+    "mindsos_knowledge/bootstrap.py",
 )
