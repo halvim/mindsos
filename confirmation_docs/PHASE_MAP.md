@@ -130,7 +130,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 34 | L3 symmetric write contract (ADR-0146). **NEW CODE.** | L3 | 33 |
 | 35 | L3 per-flow build pattern (ADR-0147). **NEW CODE.** | L3 | 34 |
 | 36 | L2 hybrid validators home (ADR-0139). **NEW CODE.** | L2 | 35 |
-| 37 | Server-owns-importers (ADR-0144). **NEW CODE.** | L0 + L2 | 15, 36 |
+| 37 | Server-owns-importers (ADR-0140). **NEW CODE.** | L0 + L2 | 15, 36 |
 | 38 | End-to-end vertical slice — text-realm + code-slice cookbook | cross | all |
 
 **Total: 44 phases.** Two integration phases (26, 32). One design-only phase (14a — exempt from per-phase workflow per §1 design-only exception clause; Phase 13 PB-20 lock). Nine phases carry **NEW CODE** beyond repackaging (05b, 05c, 05d, 24, 33, 34, 35, 36, 37) — plus Phase 13 carries 5 net-new schema builders for upper-layer roles (closure of L2 dispatch table per Phase 13 PB-1). Phase 04 is Superseded by 04-v2 (slot collapsed); Phase 05 is split into 05a / 05b / 05c / 05d (four sub-phase slots, CASC-1 strict-sequential per the supersession-policy letter-sub-phases rule in §1).
@@ -3289,24 +3289,44 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Status:** Pending. **Branch:** `phase-14a` (regular PR to main; **no `phase-14a-confirmed` tag** per §1 design-only exception clause).
   **Tag on confirm:** none — exempt per Phase 13 PB-20.
   **Deps:** 13. **Layer:** L2 (design only). **Net-new code?** No (ADRs + docs only).
-  **Features in scope:**
-    - **ADR-0150** "L2 knowledge lifecycle" — closes Flavor B per Phase 13 PB-19 (closed-8-roles principle); names entry points per Flavor A (content addition).
-    - `docs/concepts/knowledge-lifecycle.md` (synthesis page).
-    - `docs/concepts/user-local-authoring.md` (user-Local content path: Phase 24 + Phase 33-35).
-    - `docs/concepts/admin-global-shipping.md` (admin-Global release path: Phase 15 + Phase 37).
-    - PHASE_MAP amendments to §Phase 14 / 15 / 16 / 17 / 24 / 37 rows naming each phase's "Lifecycle role" sub-field (a new optional §2 row-schema field Phase 14a introduces).
-  **Modules touched:** docs/, decisions/adr/, confirmation_docs/PHASE_MAP.md. No `mindsos_*` package edits.
-  **Automated tests:** none.
-  **Confirmation command:** none — squash-merge to main is the confirmation.
+  **Features in scope (revised in-phase from Phase 13's initial scope — see "In-phase scope changes" below):**
+    - **ADR-0150** rewritten — Status `Reserved → Accepted`. **Renamed** from "L2 knowledge lifecycle" to **"L2 role-set closure (Flavor B rejection)"** per Phase 14a round-2 PB-E. **Narrowed** from synthesis-ADR to structural-lock ADR per round-1 PB-A. Decision: v1 role-set is closed at {8 named + 1 parametric `alignment` template with open `<role-a>↔<role-b>` vocabulary}; expansion requires ADR amendment; runtime addition is rejected. The originally-promised lifecycle synthesis is doc-tracked (not ADR-tracked) per round-1 PB-A — rationale: ADR-0150 cites 7+ still-Proposed ADRs (0118, 0138, 0140, 0143, 0144, 0145, 0146, 0147), and an Accepted synthesis ADR over still-Proposed underliers would rot.
+    - `docs/concepts/knowledge-lifecycle.md` — synthesis index page; 5-stage taxonomy (bootstrap / authoring / shipping / promotion / versioning); (phase, stage, role, status) mapping table pre-populated for Phase 14/15/16/17/23/24/25/33/34/35/36/37 with Status column (`planned | shipped`); each consumer phase flips its own Status in a one-cell edit during its own PR per round-3 PB-K3.
+    - `docs/concepts/user-local-authoring.md` — user-Local content path (Phase 25 SessionProtocol seam + Phase 33-35 L3 write capacities + Phase 24 propose-for-promotion entry); cites ADRs 0138/0143/0145/0146/0147 (Proposed).
+    - `docs/concepts/admin-global-shipping.md` — admin-Global content origin path (Phase 15 importers + Phase 37 server-owns-importers relocation per ADR-0140); does NOT cover release-ship mechanics (those live in promotion-bridge.md + Phase 24's release-model.md per round-3 PB-M1 ownership boundary).
+    - `docs/concepts/promotion-bridge.md` — Local↔Global promotion mechanics (ADR-0118 per-user transactional propose + ADR-0144 release-ship audit gate + Phase 16 promotion machinery + Phase 23 promotion lock + Phase 24 full impl). Carries an explicit "ADRs still Proposed" maturity banner per round-1 PB-G2.
+    - `mkdocs.yml` — new `Concepts > Knowledge lifecycle` group with 4 children (synthesis + 3 paths) per round-2 PB-H2.
+    - PHASE_MAP §Phase 37 row — fix the ADR-0144 → ADR-0140 mis-cite (PB-D); server-owns-admin-operations is ADR-0140, NOT ADR-0144 (which is similarity-at-release-ship-audit-gate).
+    - PHASE_MAP §3 phase-index table — same one-line ADR fix for Phase 37 row.
+  **Modules touched:** `docs/concepts/`, `docs/decisions/adr/0150-l2-knowledge-lifecycle.md`, `mkdocs.yml`, `confirmation_docs/PHASE_MAP.md`, `confirmation_docs/PHASE_14_NEXT_CHAT_PROMPT.md`. No `mindsos_*` package edits. No test edits.
+  **Automated tests:** none (design-only phase).
+  **Confirmation command:** none — squash-merge to main is the confirmation. No `mindsos confirm-phase` invocation. No version bump (4-pkg parity stays at `+phase13` through the PR window).
   **Pass criterion:**
-    - ADR-0150 written; Status=Accepted; reviewed by user.
-    - 3 lifecycle docs exist; mkdocs build clean.
-    - 6 downstream PHASE_MAP rows amended with "Lifecycle role" sub-field.
+    - ADR-0150 rewritten with Status=Accepted + renamed title + Decision section closing Flavor B + Consequences enumerating Flavor A entry points (cites the 4 concept docs) + Alternatives documenting Flavor-B-rejected + the synthesis-ADR alternative (PB-A) + the title-split alternative (PB-E3).
+    - 4 concept docs exist under `docs/concepts/` with `last_confirmed_phase: 14a` front-matter.
+    - `knowledge-lifecycle.md` mapping table pre-populated for the 12 consumer phases above with Status column.
+    - mkdocs build clean with nav grouped under `Concepts > Knowledge lifecycle`.
+    - PHASE_MAP §Phase 37 row + §3 phase-index table both reflect ADR-0140 (not 0144) for server-owns-importers.
+    - Phase 14 handoff written at `confirmation_docs/PHASE_14_NEXT_CHAT_PROMPT.md`.
   **Risks:**
-    - Design-only phases drift into bikeshedding — cap chat at 3 PB rounds.
-    - Phase 14 chat may discover the lifecycle lock is wrong; ADR-0150 amendment via §Revisions is the fix, not phase supersession.
-  **Doc sections this phase confirms:** the 3 lifecycle docs above.
-  **Breaking changes from prior phase:** none.
+    - Design-only phases drift into bikeshedding — cap chat at 3 PB rounds (held; closed at round 3 per round-3 final-confirmation step).
+    - 7+ load-bearing ADRs cited by the synthesis are still Proposed (0118, 0138, 0140, 0143, 0144, 0145, 0146, 0147). Mitigation per round-1 PB-A: ADR-0150 narrowed to closed-roles lock (rot-resistant); lifecycle synthesis lives in docs (amendable per phase via `last_confirmed_phase` discipline). Promotion-bridge doc carries explicit maturity banner.
+    - Phase 14 chat may discover the lifecycle docs are wrong; per-doc `last_confirmed_phase` flip is the fix, not phase supersession.
+  **Doc sections this phase confirms:** the 4 concept docs above + the renamed ADR-0150.
+  **Breaking changes from prior phase:** none. ADR-0150 was Reserved at Phase 13; Phase 14a writes its content. The ADR file path `0150-l2-knowledge-lifecycle.md` is retained (filename slug deliberately not changed — number is the anchor; rename in Phase 38 if desired).
+  **In-phase scope changes (recorded for audit per the round-3 J2 lock):**
+    - Phase 14a was initially scoped (Phase 13 PB-19/20/21/23/24) for: 3 docs (synthesis + 2 paths) + ADR-0150 as synthesis ADR + a new §2 "Lifecycle role" sub-field + 6 downstream row amendments to §Phase 14/15/16/17/24/37.
+    - Round-1 narrowed ADR-0150 to structural-lock-only (PB-A → A2); synthesis moved to docs.
+    - Round-1 dropped the §2 sub-field + 6 row amendments (PB-B → B3); the (phase, stage, role, status) mapping table in `knowledge-lifecycle.md` is the single source of truth.
+    - Round-1 expanded to 4 docs by adding `promotion-bridge.md` (PB-C → C2); the 3-doc shape conflated promotion across both authoring and shipping.
+    - Round-2 renamed ADR-0150 (PB-E → E2); old title misleads after the narrowing.
+    - Round-2 locked §Phase 14a row update as Phase 14a's first edit (PB-J → J2) so the contract reflects the new scope.
+    - Round-2 locked mapping-table pre-population for the 12 consumer phases with Status column (PB-K → K3).
+    - Round-3 locked content-boundary discipline: bootstrap is owned by Phase 14's forthcoming `docs/concepts/global-local.md`; versioning is owned by Phase 17's forthcoming `docs/usage/knowledge/versioning.md`; the synthesis page links out rather than restating (PB-L → L2).
+    - Round-3 locked `admin-global-shipping.md` vs `release-model.md` ownership (PB-M → M1): the former owns importer-side Global content; the latter (Phase 24's deliverable) owns release-ship mechanics. `promotion-bridge.md` owns the user-Local→canonical-Global crossing.
+    - Round-3 locked ADR-0150 Decision wording with **option (a)**: closure-with-amendment-escape rather than permanent closure. Reason: every other ADR in the corpus carries an amendment pathway; (b) is over-strong and forecloses options costlessly avoidable.
+    - Round-3 deferred real-user state-file access for `schema validate` (Phase 13 carry-forward) to **Phase 26 (Integration A)** rather than Phase 14; Phase 14 is loaded already with bootstrap + MetagraphSchema scanner + alignment-IRI builder.
+    - This row replaces the Phase 13 PB-22 6-site contract on its own scope.
 
 ### Phase 14 — L2 KnowledgeLayer + role-graph bootstrap + MetagraphView
 
@@ -3501,13 +3521,14 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Tests:** semantic catches a seeded violation that structural misses; both run via Phase 35's `write_and_validate`.
   **Docs:** ADR-0139.
 
-### Phase 37 — Server-owns-importers (ADR-0144)
+### Phase 37 — Server-owns-importers (ADR-0140)
 
   **Deps:** 15, 36. **Layer:** L0 + L2. **Net-new?** **Yes — relocation.** Importers move from `mindsos_knowledge/importers/` to `mindsos_server/importers/` (or sibling).
   **Features:** server-side import each source; deprecated L2 path emits warning then is removed.
   **Tests:** golden-output diff vs Phase 15; audit records emitted under server's gate.
   **Risks:** import paths in third-party callers (none expected).
-  **Docs:** `docs/knowledge-sources/*.md` (location update), ADR-0144.
+  **Docs:** `docs/knowledge-sources/*.md` (location update), `docs/concepts/admin-global-shipping.md` (Phase 14a) flips its mapping-table row to `shipped`, ADR-0140.
+  **ADR cross-cite correction (Phase 14a PB-D):** This row previously cited ADR-0144 for server-owns-importers. ADR-0144 is `similarity-at-release-ship-audit-gate`; the actual server-owns-admin-operations ADR (which subsumes importer relocation) is **ADR-0140**. Phase 14a fixed both this row heading + Docs line + the §3 phase-index table entry.
 
 ### Phase 38 — End-to-end vertical slice
 
