@@ -149,9 +149,15 @@ def save_corpus_to_state_dir(state_dir: Path, *, name: str = CORPUS_NAME) -> Non
     os.environ["MINDSOS_STATE_DIR"] = str(state_dir)
     state_dir.mkdir(parents=True, exist_ok=True)
     mg = build_corpus()
-    # Save each contained graph by name.
+    # Save each contained graph by name. Phase 05a B2 — pass the
+    # `metagraph_name` back-pointer + `schema_name=None` per
+    # `_graph_to_state` keyword-only signature (Phase 04+ schema
+    # attachment not used by Phase 16 corpus).
     for graph in mg.graphs.values():
-        state_mod.save_graph_state(graph.name, _graph_to_state(graph))
+        state_mod.save_graph_state(
+            graph.name,
+            _graph_to_state(graph, schema_name=None, metagraph_name=mg.name),
+        )
     # Save the metagraph anchor.
     state_mod.save_metagraph_state(name, _metagraph_to_state(mg))
 

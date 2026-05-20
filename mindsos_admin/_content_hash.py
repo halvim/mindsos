@@ -89,12 +89,19 @@ def _canonical_role_payload(mg: Metagraph, role: str) -> dict[str, Any]:
     """Build the canonical-JSON payload for one role within a metagraph.
 
     Returns a dict with ``role`` + ``graphs`` keys. ``graphs`` is a list
-    sorted by ``graph_id``, each containing canonicalized ``nodes`` /
-    ``edges`` / ``hyperedges``.
+    sorted by a content-derived key (first node-id ascending, falling
+    back to empty-string for empty graphs), each entry containing
+    canonicalized ``nodes`` / ``edges`` / ``hyperedges``.
+
+    Per Phase 16 B-16-T2 fix: ``graph_id`` (auto-generated UUID) and
+    graph ``name`` are EXCLUDED from the payload. Two metagraphs with
+    identically-content'd role-graphs hash equal regardless of graph
+    identity. Sort key shifted from ``graph_id`` to a content
+    fingerprint so multi-graph roles (alignment) stay deterministic.
     """
     matching = sorted(
         (g for g in mg.graphs.values() if g.role == role),
-        key=lambda g: g.graph_id,
+        key=_graph_content_sort_key,
     )
     return {
         "role": role,
@@ -102,11 +109,24 @@ def _canonical_role_payload(mg: Metagraph, role: str) -> dict[str, Any]:
     }
 
 
+def _graph_content_sort_key(graph: Any) -> tuple:
+    """Content-derived sort key for graphs sharing a role.
+
+    Uses the sorted-tuple of node-ids; empty graphs sort first via the
+    empty tuple. Stable across re-builds because node-ids in this
+    codebase are caller-pinned IRIs (Phase 12+).
+    """
+    return tuple(sorted(graph.nodes.keys()))
+
+
 def _canonical_graph(graph: Any) -> dict[str, Any]:
-    """Canonicalize one :class:`~mindsos_core.Graph`."""
+    """Canonicalize one :class:`~mindsos_core.Graph` (content only).
+
+    Per Phase 16 B-16-T2 fix: ``graph_id`` and ``name`` are EXCLUDED
+    from the payload. The hash is over CONTENT (role + nodes + edges +
+    hyperedges), not graph identity.
+    """
     return {
-        "graph_id": graph.graph_id,
-        "name": graph.name,
         "role": graph.role,
         "nodes": [
             _canonical_node(n)

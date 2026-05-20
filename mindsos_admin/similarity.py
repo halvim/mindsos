@@ -252,8 +252,9 @@ def compute_similarity(
 
     # Index target-side nodes by NodeType for O(N) per-NodeType lookup.
     target_index = _build_node_index(comparison_mg, role)
-    # Index source-side nodes (for candidate self-lookup) — same mg.
-    source_index = _build_node_index(mg, role)
+    # Source-side: flat node-id lookup for the candidate's own node
+    # (per B-16-T3 fix — earlier 2-level index made every lookup miss).
+    source_index = _build_flat_node_index(mg, role)
 
     candidate_ids = {c.node_id for c in candidates}
     findings: list[Finding] = []
@@ -681,7 +682,11 @@ def _jaccard(a: frozenset[str], b: frozenset[str]) -> float:
 def _build_node_index(
     mg: Metagraph, role: str
 ) -> dict[str, dict[str, Node]]:
-    """Return ``{node_type: {node_id: Node}}`` for all nodes in ``role``."""
+    """Return ``{node_type: {node_id: Node}}`` for all nodes in ``role``.
+
+    Used target-side: ``compute_similarity`` partitions matching by
+    NodeType (PB-J3 — same-type pairing only).
+    """
     index: dict[str, dict[str, Node]] = {}
     for graph in mg.graphs.values():
         if graph.role != role:
@@ -689,6 +694,22 @@ def _build_node_index(
         for node in graph.nodes.values():
             index.setdefault(node.type_name, {})[node.node_id] = node
     return index
+
+
+def _build_flat_node_index(mg: Metagraph, role: str) -> dict[str, Node]:
+    """Return ``{node_id: Node}`` for all nodes in ``role`` (B-16-T3 fix).
+
+    Used source-side: ``compute_similarity`` resolves each
+    ``CandidateRef.node_id`` to its underlying :class:`Node` regardless
+    of NodeType (the NodeType lives on the CandidateRef itself; the
+    source-side lookup is by id alone).
+    """
+    return {
+        node.node_id: node
+        for graph in mg.graphs.values()
+        if graph.role == role
+        for node in graph.nodes.values()
+    }
 
 
 def _find_role_graph(mg: Metagraph, role: str) -> Optional[Graph]:
