@@ -60,7 +60,9 @@ from .utils.canonicalize import canonicalize
 #: Phase 12 bumps to phase12 (L2 Identifiers + role IRIs + REF_TYPES).
 #: Phase 13 bumps to phase13 (L2 Schemas — 8 role-graph builders + dispatch).
 #: Phase 14 bumps to phase14 (L2 KnowledgeLayer + role-graph bootstrap + MetagraphView).
-__version__ = "0.0.0+phase14"
+#: Phase 15a bumps to phase15a (L2 admin importers — NEW mindsos_admin/ package per
+#: ADR-0140 §amendment-1 permanent-home decision; bootstrap_global + 3 importers).
+__version__ = "0.0.0+phase15a"
 
 __all__ = [
     # exceptions

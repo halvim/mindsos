@@ -7,3 +7,9 @@
 
 typer>=0.12,<1.0
 falkordb>=1.6.1,<2.0
+
+# Phase 15a — admin importers parse external knowledge sources:
+# * rdflib parses DOLCE OWL (RDF/XML, Turtle).
+# * lxml accelerates OEWN-LMF + FrameNet XML; stdlib xml.etree fallback supported.
+rdflib>=7.0,<8.0
+lxml>=5.0,<6.0

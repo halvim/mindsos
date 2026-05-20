@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic DOLCE-shape OWL fixture for Phase 15a tests.
+
+  Content is fabricated (not from DOLCE-DUL); structure matches
+  DolceImporter's expected RDF/XML input:
+    - owl:Class declarations
+    - owl:NamedIndividual declarations
+    - owl:ObjectProperty + owl:DatatypeProperty + owl:AnnotationProperty
+    - rdfs:Datatype
+    - owl:Restriction blank nodes
+    - rdfs:subClassOf / rdfs:subPropertyOf / rdfs:domain / rdfs:range
+    - owl:disjointWith / owl:equivalentClass / owl:equivalentProperty
+    - owl:intersectionOf (RDF list)
+    - owl:propertyChainAxiom (RDF list)
+    - owl:AllDisjointClasses with owl:members (RDF list)
+
+  Expected stats (parser-derived; verify via dimension-table cross-check
+  per `feedback_dimension_table_cross_check.md`):
+    classes=6, individuals=2, object_properties=3, data_properties=2,
+    annotation_properties=1, restrictions=2, datatypes=1,
+    subclass_of_edges=5, subproperty_of_edges=1, domain_edges=2,
+    range_edges=2, disjoint_edges=1, equivalent_edges=1,
+    intersection_hyperedges=1, property_chain_hyperedges=1,
+    all_disjoint_classes_hyperedges=1
+-->
+<rdf:RDF
+    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+    xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+    xmlns:owl="http://www.w3.org/2002/07/owl#"
+    xmlns="http://example.org/synth-dolce#"
+    xml:base="http://example.org/synth-dolce">
+
+  <owl:Ontology rdf:about="http://example.org/synth-dolce"/>
+
+  <!-- Classes -->
+  <owl:Class rdf:about="#Entity"/>
+  <owl:Class rdf:about="#PhysicalObject">
+    <rdfs:subClassOf rdf:resource="#Entity"/>
+  </owl:Class>
+  <owl:Class rdf:about="#AbstractObject">
+    <rdfs:subClassOf rdf:resource="#Entity"/>
+    <owl:disjointWith rdf:resource="#PhysicalObject"/>
+  </owl:Class>
+  <owl:Class rdf:about="#Event">
+    <rdfs:subClassOf rdf:resource="#Entity"/>
+  </owl:Class>
+  <owl:Class rdf:about="#Process">
+    <rdfs:subClassOf rdf:resource="#Event"/>
+    <owl:equivalentClass rdf:resource="#Action"/>
+  </owl:Class>
+  <owl:Class rdf:about="#Action"/>
+
+  <!-- Intersection-of: PhysicalAction ≡ PhysicalObject ⊓ Process -->
+  <owl:Class rdf:about="#PhysicalAction">
+    <owl:intersectionOf rdf:parseType="Collection">
+      <rdf:Description rdf:about="#PhysicalObject"/>
+      <rdf:Description rdf:about="#Process"/>
+    </owl:intersectionOf>
+  </owl:Class>
+
+  <!-- Individuals -->
+  <owl:NamedIndividual rdf:about="#alice"/>
+  <owl:NamedIndividual rdf:about="#bob"/>
+
+  <!-- Object properties -->
+  <owl:ObjectProperty rdf:about="#participatesIn">
+    <rdfs:domain rdf:resource="#PhysicalObject"/>
+    <rdfs:range rdf:resource="#Event"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="#hasPart">
+    <rdfs:domain rdf:resource="#Entity"/>
+    <rdfs:range rdf:resource="#Entity"/>
+  </owl:ObjectProperty>
+  <owl:ObjectProperty rdf:about="#properPart">
+    <rdfs:subPropertyOf rdf:resource="#hasPart"/>
+  </owl:ObjectProperty>
+
+  <!-- Data properties -->
+  <owl:DatatypeProperty rdf:about="#hasMass"/>
+  <owl:DatatypeProperty rdf:about="#hasName"/>
+
+  <!-- Annotation property -->
+  <owl:AnnotationProperty rdf:about="#authorNote"/>
+
+  <!-- Datatype -->
+  <rdfs:Datatype rdf:about="#PositiveInt"/>
+
+  <!-- Restrictions on PhysicalObject -->
+  <owl:Class rdf:about="#PhysicalObject">
+    <rdfs:subClassOf>
+      <owl:Restriction>
+        <owl:onProperty rdf:resource="#hasMass"/>
+        <owl:someValuesFrom rdf:resource="#PositiveInt"/>
+      </owl:Restriction>
+    </rdfs:subClassOf>
+    <rdfs:subClassOf>
+      <owl:Restriction>
+        <owl:onProperty rdf:resource="#hasName"/>
+        <owl:cardinality rdf:datatype="http://www.w3.org/2001/XMLSchema#nonNegativeInteger">1</owl:cardinality>
+      </owl:Restriction>
+    </rdfs:subClassOf>
+  </owl:Class>
+
+  <!-- Property chain: hasPart ∘ hasPart ⊑ hasPart (transitivity expressed as chain) -->
+  <owl:ObjectProperty rdf:about="#hasPart">
+    <owl:propertyChainAxiom rdf:parseType="Collection">
+      <rdf:Description rdf:about="#hasPart"/>
+      <rdf:Description rdf:about="#hasPart"/>
+    </owl:propertyChainAxiom>
+  </owl:ObjectProperty>
+
+  <!-- AllDisjointClasses: {Event, AbstractObject, PhysicalObject} pairwise disjoint -->
+  <owl:AllDisjointClasses>
+    <owl:members rdf:parseType="Collection">
+      <rdf:Description rdf:about="#Event"/>
+      <rdf:Description rdf:about="#AbstractObject"/>
+      <rdf:Description rdf:about="#PhysicalObject"/>
+    </owl:members>
+  </owl:AllDisjointClasses>
+
+  <!-- Equivalent property -->
+  <owl:ObjectProperty rdf:about="#participatesIn">
+    <owl:equivalentProperty rdf:resource="#hasPart"/>
+  </owl:ObjectProperty>
+
+</rdf:RDF>

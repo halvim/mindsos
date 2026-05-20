@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 14
+last_confirmed_phase: 15a
 ---
 
 # Knowledge addition lifecycle (L2)
@@ -34,8 +34,9 @@ in its own PR per Phase 14a round-3 PB-K3.
 | Phase | Layer | Stage(s)                | Role contribution                                                                                                  | Status   |
 |-------|-------|-------------------------|--------------------------------------------------------------------------------------------------------------------|----------|
 | 14    | L2    | Bootstrap               | `KnowledgeLayer` class; Global + Local metagraph bootstrap; two-method `ensure_global_role_graph` + `ensure_local_role_graph` idempotent (PB-4 lock); `MetagraphView` whitelist read-only (PB-3); install/extract hooks per ADR-0042 (PB-5); ADR-0042 §amendment-1 + ADR-0150 §amendment-1. Carry-forwards (alignment-anchor IRI + MetagraphSchema scanner) deferred to Phase 15 per PB-1. | shipped  |
-| 15    | L2    | Shipping                | 4 importers (DOLCE → `ontology`, OEWN → `lexicon`, FrameNet → `concepts`, Alignments → `alignment:<a>:<b>`); seed Global content | planned  |
-| 16    | L2    | Promotion               | Pre-pivot promotion machinery: list candidates, baseline similarity, atomic per-candidate rollback                | planned  |
+| 15a   | L2 (admin) | Shipping           | 3 importers (DOLCE → `ontology`, OEWN → `lexicon`, FrameNet → `concepts`); NEW `mindsos_admin/` package per ADR-0140 §amendment-1 permanent-home decision; `bootstrap_global` helper per ADR-0042 §amendment-2; `mindsos admin import ...` CLI verbs | shipped  |
+| 15b   | L2+L1+CLI | Shipping            | Alignments importer (3 ordered pairs); `mindsos_core/schema/migration.py` scanner module; `mindsos admin scan-schema` CLI verb; `docs/dev/migration-playbook.md` | planned  |
+| 16    | L2 (admin) | Promotion          | Pre-pivot promotion machinery at `mindsos_admin/promotion.py` per ADR-0140 §amendment-1 (forward-cited from Phase 15a PB-3-i Round 4): list candidates, baseline similarity, atomic per-candidate rollback | planned  |
 | 17    | L2    | Versioning              | Active-version queries; PROMOTED breadcrumb routing in views                                                       | planned  |
 | 23    | L0    | Promotion               | Promotion lock + MetagraphSnapshot rollback (pre-pivot orchestration; ADR-0006/0007/0027 narrow scope)             | planned  |
 | 24    | L0    | Promotion               | Full ADR-0118: per-user transactional `propose_for_promotion` + `RELEASE_SHIP_LOCK` + release manifest in `version_db/` + lazy migration | planned  |
@@ -44,7 +45,7 @@ in its own PR per Phase 14a round-3 PB-K3.
 | 34    | L3    | Authoring               | Symmetric write contract per ADR-0146 (`WriteResult \| ProblemTraceRecord` return)                                  | planned  |
 | 35    | L3    | Authoring               | Per-flow build pattern per ADR-0147 (`KLWriteHandle.graph()` + per-flow validators)                                | planned  |
 | 36    | L2    | Authoring (precondition) | Hybrid validators home per ADR-0139 (semantic-side; structural-side already at L1)                                | planned  |
-| 37    | L0+L2 | Shipping                | Server-owns-importers per ADR-0140 (importer relocation from `mindsos_knowledge/` to `mindsos_server/`)            | planned  |
+| ~~37~~ | ~~L0+L2~~ | ~~Shipping~~       | ~~Server-owns-importers per ADR-0140 (importer relocation from `mindsos_knowledge/` to `mindsos_server/`)~~ — **RETIRED** by ADR-0140 §amendment-1 (Phase 15a). Admin permanent home is `mindsos_admin/`; no relocation needed. | retired  |
 
 Phase 14a flips no rows to `shipped` — it's design-only.
 

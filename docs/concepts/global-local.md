@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 14
+last_confirmed_phase: 15a
 ---
 
 # Global + Local Metagraphs (Bootstrap stage)
@@ -74,13 +74,24 @@ Local has **2 role-graphs** when minted (lazy or installed):
 ### Global lifecycle
 
 Per [ADR-0042 §amendment-1](../decisions/adr/0042-kl-install-extract-hooks.md)
-(Phase 14): Global is **constructor-supplied**, not install-hook-
-supplied. Two paths:
+(Phase 14) + [ADR-0042 §amendment-2](../decisions/adr/0042-kl-install-extract-hooks.md)
+(Phase 15a): Global is **constructor-supplied**, not install-hook-
+supplied. Three paths:
 
-* **First install (admin).**
+* **Empty first install (admin convenience).**
   ```python
-  kl = KnowledgeLayer.bootstrap()  # fresh Global with 6 named roles
-  # server then persists Global to FalkorDB
+  kl = KnowledgeLayer.bootstrap()  # fresh Global with 6 named roles, empty
+  ```
+* **Populated first install (importer flow — Phase 15a).**
+  ```python
+  from mindsos_admin import bootstrap_global, DolceImporter, OewnImporter, FrameNetImporter
+  mg = bootstrap_global(importers=[
+      DolceImporter("data/datasets/dolce-dul-4.1.owl"),
+      OewnImporter("data/datasets/oewn-2024.xml"),
+      FrameNetImporter("data/datasets/framenet-1.7/"),
+  ])
+  kl = KnowledgeLayer(global_metagraph=mg)
+  # mg has all 6 named roles ensured; 3 populated by importers.
   ```
 * **Server startup (warm restart).**
   ```python
@@ -89,7 +100,9 @@ supplied. Two paths:
   ```
 
 No `install_global_metagraph` hook exists; Global is lifetime-
-coterminous with the KL instance.
+coterminous with the KL instance. Both bootstrap paths produce
+end-state-identical Metagraph shape (Phase 15a PB-21 parity); the
+difference is content.
 
 ### Local lifecycle
 

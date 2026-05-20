@@ -12,8 +12,8 @@
 # that would defeat the drift-detection purpose.
 
 [mindsos]
-phase = "14"
-version = "0.0.0+phase14"
+phase = "15a"
+version = "0.0.0+phase15a"
 
 [runtime.falkordb]
 image = "falkordb/falkordb"
@@ -41,7 +41,7 @@ version = "3.12.3"
 # so `mindsos doctor --self-test` reports a clear diagnostic instead of a hex
 # mismatch. Phase 01 does NOT change requirements.in (only requirements-test.in
 # adds pytest-json-report), so this hash is unchanged from Phase 00.
-requirements_txt_sha256 = "2951a4f353699e78fc70d848027be55d45585acde9ce9f0c9cd2ed8e6374ee2d"
+requirements_txt_sha256 = "7fd16966d88d4f97a9f292e2bd856eb7bbe4a8d46a8f10f67cf025b90fc3bdc6"
 
 [ci]
 # Workflow files that `doctor --self-test` verifies exist + non-empty + parse-shaped.

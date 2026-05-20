@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase14"
-description = "MindsOS command-line interface — Phase 14 L2 KnowledgeLayer + role-graph bootstrap (KnowledgeLayer class with Global constructor + bootstrap classmethod per ADR-0042 §amendment-1; ensure_global_role_graph + ensure_local_role_graph module helpers with ADR-0044 scope enforcement; alignment Global-only at v1 per ADR-0150 §amendment-1; MetagraphView whitelist read-only wrapper; install_local_metagraph / extract_local_metagraph hooks per ADR-0042; lazy local_metagraph auto-ensure; no write API per ADR-0138 Proposed; no validators surface per ADR-0139 Proposed; carry-forwards alignment-anchor IRI + MetagraphSchema scanner deferred to Phase 15)."
+version = "0.0.0+phase15a"
+description = "MindsOS command-line interface — Phase 15a L2 admin importers (NEW top-level mindsos_admin/ package per ADR-0140 §amendment-1 permanent-home decision; bootstrap_global helper per ADR-0042 §amendment-2 third first-install sequence; DolceImporter / OewnImporter / FrameNetImporter with target_roles self-describe protocol per PB-22; pinned datasets DOLCE-DUL 4.1 / OEWN 2024 / FrameNet 1.7; synthetic fixtures + downloader; mindsos admin import {dolce,oewn,framenet} CLI verbs; AlignmentsImporter + MetagraphSchema scanner CLI deferred to Phase 15b)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
@@ -19,13 +19,23 @@ classifiers = [
 dependencies = [
     "typer",
     "falkordb",
+    # Phase 15a — admin importers parse external knowledge sources:
+    # * rdflib parses DOLCE OWL (RDF/XML, Turtle).
+    # * lxml accelerates OEWN-LMF + FrameNet XML; stdlib xml.etree
+    #   fallback is supported but slow on real (~30 MB) OEWN.
+    "rdflib",
+    "lxml",
 ]
 
 [project.scripts]
 mindsos = "mindsos_cli.__main__:main"
 
 [tool.setuptools.packages.find]
-include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*"]
+# Phase 15a — added "mindsos_admin*" per the 7-site new-top-level-
+# package checklist (`feedback_new_top_level_package.md`). Admin
+# permanent home per ADR-0140 §amendment-1; supersedes ADR-0140
+# §Decision §1+§2 relocation-to-server.
+include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*"]
 
 [tool.setuptools.package-data]
 mindsos_cli = ["manifest.toml"]

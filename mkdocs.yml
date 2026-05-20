@@ -46,6 +46,12 @@ nav:
           - Memories schema (Phase 13): usage/knowledge/memories.md
           - Problem trace schema (Phase 13): usage/knowledge/problem-trace.md
           - Capacity state schema (Phase 13): usage/knowledge/capacity-state.md
+      - Admin (Phase 15a):
+          - Admin overview: concepts/admin-global-shipping.md
+  - Knowledge sources (Phase 15a):
+      - DOLCE-DUL ontology: knowledge-sources/dolce.md
+      - Open English WordNet lexicon: knowledge-sources/oewn.md
+      - FrameNet concepts: knowledge-sources/framenet.md
   - API:
       - Core IdentityRegistry: api/core/identity-registry.md
       - Core Graph: api/core/graph.md

@@ -2,6 +2,7 @@
 
 import typer
 
+from mindsos_cli.commands.admin import register_admin_app
 from mindsos_cli.commands.confirm_phase import confirm_phase
 from mindsos_cli.commands.doctor import doctor
 from mindsos_cli.commands.graph import register_graph_app
@@ -51,3 +52,5 @@ register_metagraph_schema_app(app)
 register_instances_app(app)
 register_knowledge_app(app)
 register_persistence_app(app)
+# Phase 15a — NEW `mindsos admin` group (importers + future scanner/promotion).
+register_admin_app(app)

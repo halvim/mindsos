@@ -28,12 +28,22 @@ def _read_manifest() -> dict:
 
 
 def test_manifest_phase_field_present_and_well_formed() -> None:
-    """Phase field is a 2-digit string."""
+    """Phase field is ``NN`` (2 digits) or ``NN<letter>`` (letter sub-phase).
+
+    Phase 15a — relaxed regex per `feedback_tag_regex_audit.md`.
+    ``_retention.py`` + ``release.yml`` already accommodate letter
+    sub-phases (per `phase-NNa-confirmed` tag grammar); this assertion
+    aligns with that grammar. Phase 14a was design-only so didn't
+    surface this; Phase 15a is the first letter-suffix code phase to
+    hit Phase 08's manifest validator.
+    """
+    import re
     m = _read_manifest()
     phase = m["mindsos"]["phase"]
     assert isinstance(phase, str)
-    assert phase.isdigit()
-    assert len(phase) == 2
+    assert re.fullmatch(r"\d{2}[a-z]?", phase), (
+        f"phase={phase!r} doesn't match 'NN' or 'NN<letter>' grammar"
+    )
 
 
 def test_manifest_version_field_matches_phase() -> None:

@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 14a
+last_confirmed_phase: 15a
 ---
 
 # Admin-Global shipping (L2)
@@ -32,55 +32,116 @@ from Local promotion, not importers — see
 
 ## The import path
 
-### Phase 15 (interim)
+### Phase 15a (shipped 2026-05-19) — DOLCE / OEWN / FrameNet importers in `mindsos_admin/`
 
 Importers live at
-`mindsos_knowledge/importers/{dolce,oewn,framenet,alignments}.py`. Each
-importer:
+`mindsos_admin/importers/{dolce,oewn,framenet}.py` (Phase 15a).
+Phase 15b adds `alignments.py`. Per ADR-0140 §amendment-1 (Phase
+15a): `mindsos_admin/` is the **permanent** home for admin
+operations; §Decision §1+§2 routing to `mindsos_server/` is
+superseded. No relocation phase is needed; Phase 37 row in PHASE_MAP
+retired.
 
-1. Parses its source (external file or pinned dataset version).
-2. Mints IRIs per
-   [ADR-0045](../decisions/adr/0045-per-role-iri-builders.md) (per-role
-   builders).
-3. Writes via the KL bootstrap path (`register_version_graph`).
+Each importer:
 
-The Phase 15 importers ship pinned to specific dataset versions; reruns
-against newer source versions register additional version-graphs
-side-by-side (no in-place overwrite of `ontology-1`; v2 lands as
-`ontology-2` per the versioning model — Phase 17 owns the dispatch).
+1. Self-describes its target role-graph via the
+   `target_roles: tuple[str, ...]` class attribute (Phase 15a PB-22).
+2. Parses its source (external file or pinned dataset version) — DOLCE
+   via `rdflib`, OEWN-LMF + FrameNet XML via `lxml` (stdlib fallback).
+3. Mints IRIs per
+   [ADR-0045](../decisions/adr/0045-per-role-iri-builders.md) using
+   Phase 12's `mindsos_knowledge.identifiers` 14-builder surface.
+4. Auto-ensures its target role-graph (Phase 15a PB-14) via
+   `mindsos_knowledge.bootstrap.ensure_global_role_graph` and writes
+   nodes/edges/hyperedges via L1 mutation primitives directly.
+5. Returns an `ImportResult` summary (role / version / source /
+   imported_at / per-importer stats dict).
 
-### Phase 37 (relocation per ADR-0140)
+The Phase 15a importers ship pinned to specific dataset versions (PB-6
+Round 1):
 
-Importers relocate to `mindsos_server/importers/` per
-[ADR-0140](../decisions/adr/0140-server-owns-admin-operations.md)
-(Proposed). New capability gates:
+| Source | Version | License | Repo-shippable? |
+|---|---|---|---|
+| DOLCE | DOLCE-DUL 4.1 | Creative Commons | yes |
+| OEWN | 2024 | CC-BY-SA 4.0 | yes |
+| FrameNet | 1.7 | Berkeley click-through | NO — synthetic fixture only; downloader refuses |
 
-- `CAN_BOOTSTRAP_GLOBAL` — first-install Global metagraph creation.
-- `CAN_RUN_IMPORTER` — running any of the 4 importers.
+Real-dataset acquisition: `scripts/fetch_datasets.{sh,py}` downloads
+DOLCE-DUL 4.1 + OEWN 2024 into `data/datasets/` (gitignored).
+FrameNet 1.7 requires manual download per Berkeley license; see
+[framenet.md](../knowledge-sources/framenet.md).
 
-Post-relocation, importers use L1 mutation primitives directly + KL
-validators (per ADR-0139 Proposed). The pre-relocation L2 path emits
-`DeprecationWarning` for one release window before being removed.
+Reruns against newer source versions register additional
+version-graphs side-by-side (no in-place overwrite of `ontology-1`;
+v2 lands as `ontology-2` per the versioning model — Phase 17 owns
+the dispatch).
 
-## Why admin owns this (not L3)
+### Caller pattern — `bootstrap_global` (Phase 15a)
 
-Importers run at install / upgrade / pinned-release-bump time, **not at
-cognitive-orchestration time**. L4's planner never plans against "import
-DOLCE." That makes importers admin operations, not L3 capacities.
+Per ADR-0042 §amendment-2 (Phase 15a) — third first-install sequence:
 
-Per [ADR-0140](../decisions/adr/0140-server-owns-admin-operations.md):
-admin operations belong in `mindsos_server` alongside other admin paths
-(`bootstrap`, `propose_for_promotion`, `release_update`). Co-location
-keeps capability gating coherent (one module per capability category).
+```python
+from mindsos_admin import bootstrap_global, DolceImporter, OewnImporter, FrameNetImporter
+from mindsos_knowledge import KnowledgeLayer
+
+mg = bootstrap_global(importers=[
+    DolceImporter("data/datasets/dolce-dul-4.1.owl"),
+    OewnImporter("data/datasets/oewn-2024.xml"),
+    FrameNetImporter("data/datasets/framenet-1.7/"),
+])
+# mg has all 6 named Global role-graphs ensured (Phase 15a PB-21
+# parity with KL.bootstrap() output).
+kl = KnowledgeLayer(global_metagraph=mg)
+# Caller persists mg to FalkorDB out-of-band per ADR-0043.
+```
+
+Phase 15b adds the parametric `AlignmentsImporter(pairs=[(...),...])`
+to the same pattern.
+
+### CLI verbs (Phase 15a)
+
+```
+mindsos admin import dolce    --source PATH [--version V] [--json]
+mindsos admin import oewn     --source PATH [--version V] [--json]
+mindsos admin import framenet --source PATH [--version V] [--json]
+```
+
+Each verb is a dry-run that returns an `ImportResult` to stdout. State-
+file persistence is deferred to Phase 26; server-driven persistence
+ships at Phase 18+.
+
+## Why admin owns this (not L3, not server)
+
+Importers run at install / upgrade / pinned-release-bump time, **not
+at cognitive-orchestration time**. L4's planner never plans against
+"import DOLCE." That makes importers admin operations, not L3
+capacities.
+
+Per [ADR-0140](../decisions/adr/0140-server-owns-admin-operations.md)
+§amendment-1 (Phase 15a): admin operations belong in
+`mindsos_admin/`, **not** `mindsos_server/`. Server is the runtime
+envelope (sessions, auth, HTTP, capability gates); admin is the
+operations. Server (when built at Phase 18+) imports admin for HTTP
+endpoint handlers; admin code is not server code.
+
+ADR-0043 (Accepted) forbids file-I/O in `mindsos_knowledge/`. The
+original ADR-0140 §Decision routed file-I/O importers to
+`mindsos_server/`; Phase 15a's design pass surfaced that this routes
+file-I/O code to a layer hosting session/HTTP machinery — a category
+mismatch. The `mindsos_admin/` permanent-home decision (ADR-0140
+§amendment-1) closes both problems: file-I/O OK in admin (no
+ADR-0043 equivalent); no session/HTTP machinery required (admin-CLI
+boundary).
 
 ## Capabilities required
 
-Post-Phase 37:
+Phase 18+ (when server's capability framework lands):
 
 - `CAN_BOOTSTRAP_GLOBAL` — first-install Global metagraph creation.
 - `CAN_RUN_IMPORTER` — running any of the 4 importers.
 
-Both admin-scoped per ADR-0140 (Proposed).
+Both admin-scoped per ADR-0140 (Proposed). Phase 15a-15b operate at
+the admin-CLI boundary only (no capability framework yet).
 
 ## Release-ship vs admin-import (ownership boundary)
 
@@ -123,9 +184,14 @@ Accepted:
 
 Proposed (this page amends as they ship):
 
+- [ADR-0042](../decisions/adr/0042-kl-install-extract-hooks.md)
+  §amendment-2 (Phase 15a, **Accepted parent**) — third first-install
+  sequence: importer-built Global → KL constructor.
 - [ADR-0134](../decisions/adr/0134-schema-migration-scanner.md) —
-  schema migration scanner (Phase 15 flips Accepted).
+  schema migration scanner (still Proposed; Phase 15a PB-2 declined
+  the flip — no real schema bump consumer yet).
 - [ADR-0139](../decisions/adr/0139-hybrid-invariant-home.md) — hybrid
   validators (importers use KL validators post-Phase 36).
-- [ADR-0140](../decisions/adr/0140-server-owns-admin-operations.md) —
-  server owns admin operations + importers.
+- [ADR-0140](../decisions/adr/0140-server-owns-admin-operations.md)
+  §amendment-1 (Phase 15a) — admin permanent home is
+  `mindsos_admin/`; §Decision §1+§2 superseded.
