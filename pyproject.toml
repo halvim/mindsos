@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase15a"
-description = "MindsOS command-line interface — Phase 15a L2 admin importers (NEW top-level mindsos_admin/ package per ADR-0140 §amendment-1 permanent-home decision; bootstrap_global helper per ADR-0042 §amendment-2 third first-install sequence; DolceImporter / OewnImporter / FrameNetImporter with target_roles self-describe protocol per PB-22; pinned datasets DOLCE-DUL 4.1 / OEWN 2024 / FrameNet 1.7; synthetic fixtures + downloader; mindsos admin import {dolce,oewn,framenet} CLI verbs; AlignmentsImporter + MetagraphSchema scanner CLI deferred to Phase 15b)."
+version = "0.0.0+phase16"
+description = "MindsOS command-line interface — Phase 16 L2 admin similarity surface (NEW mindsos_admin/similarity.py + _content_hash.py + exceptions.py; ADR-0144 §Heuristic Accepted per §amendment-1; three weighted scorers Levenshtein on IRI tail + structural Jaccard on per-role (frame_elements, synonyms, parents) extractors + reference Jaccard on ref:<role> ∪ XRef; thresholds 0.85 blocking / 0.5 review; role-scoped content-hash report_id per ADR-0052 §amendment-1; EmptyComparisonError contract per ADR-0144 §amendment-2; mindsos admin promote {list, similarity} CLI verbs; mutating propose entry-point deferred to Phase 24 per PB-1c reframe)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

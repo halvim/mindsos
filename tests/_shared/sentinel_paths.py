@@ -189,4 +189,14 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_admin/importers/dolce.py",
     "mindsos_admin/importers/oewn.py",
     "mindsos_admin/importers/framenet.py",
+    # Phase 16 — 3 NEW modules in the existing `mindsos_admin/` package
+    # (read-only similarity surface per ADR-0144 §amendment-1 partial
+    # §Heuristic Accept). No new top-level; existing
+    # `COPY mindsos_admin` in Dockerfile picks up the new files. Per
+    # `feedback_sentinel_paths_runtime_only.md`, the design log
+    # (`confirmation_docs/PHASE_16_DESIGN_LOG.md`) is NOT sentinelled —
+    # it's a confirmation artifact, not a CLI runtime input.
+    "mindsos_admin/similarity.py",
+    "mindsos_admin/_content_hash.py",
+    "mindsos_admin/exceptions.py",
 )

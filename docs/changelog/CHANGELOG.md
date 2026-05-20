@@ -1,11 +1,50 @@
 ---
-last_confirmed_phase: 15b
+last_confirmed_phase: 16
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 16 — L2 admin similarity surface, read-only (2026-05-20)
+
+NEW `mindsos_admin/similarity.py` + `_content_hash.py` + `exceptions.py`
+ship the ADR-0144 §Heuristic read-only similarity surface (Levenshtein
+on IRI tail + structural Jaccard on per-role `(frame_elements,
+synonyms, parents)` extractors for ontology/lexicon/concepts +
+reference Jaccard on `ref:<role>` ∪ XRef; weights 0.4/0.4/0.2;
+thresholds 0.85 blocking / 0.5 review). `SimilarityReport.report_id`
+is a content-hash per ADR-0052 §amendment-1 (role-scoped; 6-decimal FP
+canonicalization; cross-mg input set extension for Phase 24 audit-gate
+reuse). `EmptyComparisonError` raised when all three weighted
+components undefined per ADR-0144 §amendment-2 (empty-pair exclusion
+at inner Jaccard AND outer weighted-mean; renormalize remaining
+weights). NEW CLI verbs `mindsos admin promote {list, similarity}`
+read a metagraph state-file by name (`--metagraph NAME` mirroring
+Phase 03+ convention). NO `propose` verb — the mutating entry-point
+`propose_for_promotion` + the `mindsos_admin/promotion.py` module
+itself defer to Phase 24 per Phase 16 PB-1c reframe (the original
+PHASE_MAP §16 row's mutating-mechanics scope is split: read surface
+ships at 16; mutating surface ships at 24 alongside ADR-0118 + ADR-0141
+together). 7 ADR amendments at Phase 16's ship: 0049 / 0053 / 0056
+§amendment-1 (documentary — these ADRs describe code that doesn't
+ship at 16 and Phase 24 deletes; Status untouched, pointers added);
+0055 §amendment-1 (heuristic superseded by ADR-0144 §Heuristic; this
+ADR's crude exact+prefix heuristic does not ship); 0052 §amendment-1
+(role-scoped hash + 6-decimal canonicalization); 0144 §amendment-1
+(§Heuristic Accepted; §Placement stays Proposed — Phase 24 ships the
+release-ship audit gate placement) + §amendment-2 (empty-pair
+exclusion contract + `EmptyComparisonError` raise). PHASE_MAP §16
+row rewritten to read-only narrow; §23 narrows to MetagraphSnapshot
+infrastructure only (lock moves to §24); §24 absorbs lock +
+`propose_for_promotion` entry-point. 5-package version bump
+`0.0.0+phase15a → 0.0.0+phase16`; image tags `mindsos:phase16-{prod,
+test}`; `requirements_txt_sha256` unchanged (no new runtime deps;
+Phase 16 is stdlib-only). Mirror of Phase 15b's reframe pattern
+(pre-impl probe → narrow scope → defer wrong-contract surface). 5
+rounds of pushbacks, all user-agreed; multi-round design log at
+`confirmation_docs/PHASE_16_DESIGN_LOG.md`.
 
 ## Phase 15b — Design-only: ADR-0134 ratification + migration-playbook content (2026-05-20)
 
