@@ -1,0 +1,114 @@
+# Phase 16 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+L2 admin similarity surface (read-only)
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Phase 16 ships the L2 admin similarity surface as a READ-ONLY
+narrow per Phase 16 PB-1c reframe (mirror of Phase 15b's scope-narrow
+discipline). The original PHASE_MAP §16 mutating-mechanics scope
+(`propose_for_promotion` + `force` gate + per-candidate undo) defers
+to Phase 24 where ADR-0118 + ADR-0141 + ADR-0144 §Placement land
+together under the pivot contract. ADR cross-reading surfaced an
+architectural contradiction in the handoff (pre-pivot 0049/0053/0055
+mechanics under post-pivot `propose_for_promotion` name + admin
+permanent home); the 5-round design pass closed on the reframe and
+locked 7 ADR amendments at this ship.
+
+NEW CODE at `mindsos_admin/similarity.py` (~560 LOC) +
+`mindsos_admin/_content_hash.py` (~190 LOC) +
+`mindsos_admin/exceptions.py` (~60 LOC). Implements ADR-0144
+§Heuristic (Accepted at 16 per §amendment-1; §Placement stays
+Proposed): three weighted scorers (Levenshtein on IRI tail +
+structural Jaccard on per-role `(frame_elements, synonyms, parents)`
+extractors for ontology/lexicon/concepts + reference Jaccard on
+`ref:<role>` ∪ XRef; weights 0.4/0.4/0.2; thresholds 0.85 blocking /
+0.5 review). In-house Levenshtein DP (~30 LOC); zero new runtime dep.
+`metagraph_content_hash(mg, *, role)` is role-scoped (ADR-0052
+§amendment-1) with 6-decimal FP canonicalization (PB-T2) for cross-
+machine determinism. `EmptyComparisonError` raised when all three
+weighted components undefined per ADR-0144 §amendment-2 (empty-pair
+exclusion + renormalize at inner AND outer means).
+
+CLI: `mindsos admin promote {list, similarity}` reading metagraph
+state-files by name (`--metagraph NAME` mirroring Phase 03+
+convention; reader is Phase 09 state-file). NO `propose` verb at
+Phase 16 (deferred to Phase 24). `--threshold-blocking` /
+`--threshold-review` exposed for admin tuning.
+
+PHASE_MAP edits: §16 rewrite to read-only narrow; §23 narrows to
+MetagraphSnapshot rollback infrastructure only (per PB-4c; lock moves
+to Phase 24); §24 absorbs the lock + `propose_for_promotion`
+entry-point + audit-gate consumer of `compute_similarity`.
+
+7 ADR amendments (parent project tree per Model C):
+- 0049 §amendment-1 — documentary; gate-on-promote() does NOT ship at 16
+- 0052 §amendment-1 — role-scoped hash + 6-decimal canonicalization
+- 0053 §amendment-1 — documentary; undo-stack does NOT ship at 16
+- 0055 §amendment-1 — heuristic superseded by ADR-0144 §Heuristic
+- 0056 §amendment-1 — documentary; PromotionResult does NOT ship at 16
+- 0144 §amendment-1 — partial Accept (§Heuristic Accepted; §Placement Proposed)
+- 0144 §amendment-2 — empty-pair exclusion + EmptyComparisonError contract
+
+Hotfix ledger (B-16-T*):
+- B-16-T1: `_graph_to_state` keyword-only signature requires
+  `schema_name=` + `metagraph_name=` — corpus state-file builder
+  initially called positionally → 7 ERROR in test_cli_promote.py.
+  Fixed in `tests/phase_16/fixtures/build_corpus.py`.
+- B-16-T2: `metagraph_content_hash` included auto-generated UUID
+  `graph_id` in the canonical payload → two builds of the same
+  Metagraph hashed differently → test_content_hash determinism
+  failure. Fixed in `mindsos_admin/_content_hash.py` —
+  `_canonical_graph` drops `graph_id` + `name`; matching graphs
+  sort by sorted-node-ids tuple (content-derived).
+- B-16-T3: `_build_node_index` returns 2-level
+  `{node_type: {node_id: Node}}` but source-side consumer in
+  `compute_similarity` called `source_index.get(candidate.node_id)`
+  which always returned None → every candidate skipped → no findings
+  → test_close_ontology_pair_flagged_as_inter_candidate failure.
+  Fixed in `mindsos_admin/similarity.py` — added
+  `_build_flat_node_index` returning `{node_id: Node}` for the
+  source-side lookup; target-side index unchanged (still
+  NodeType-keyed for PB-J3 partition).
+
+Stale-image trap surfaced during hotfix loop: identical failure
+output after git pull because Docker test image bakes source via
+COPY (no bind-mount); rebuild required after every source change.
+New memory entry `feedback_test_image_rebuild_after_source_change.md`
+documents the pitfall.
+
+Host venv pip refresh trap: previously-installed venv missed
+`mindsos_admin` package metadata (pre-Phase-15a install); fixed via
+`pip install -e .` (venv-local — NOT `--user` which goes to
+user-site and breaks venv isolation).
+
+Test surface: 82 isolated passed / 7 skipped (1.84s); 2324
+cumulative passed / 26 skipped / 109 warnings (19:00). Phase 15a
+baseline was 2236/16/18:44 → +88 passes, +10 skips (7 ADR
+sentinels + 3 misc; all skip-in-container per Model C), no
+regressions or duration drift.
+
+5-package version bump 0.0.0+phase15a → 0.0.0+phase16 (core / cli /
+instances / knowledge / admin). Image tags `mindsos:phase16-{prod,
+test}`. `requirements_txt_sha256` unchanged — Phase 16 is
+stdlib-only (no new runtime deps).
+
+Smoke test confirmed `mindsos admin promote list / similarity`
+against a handcrafted 4-class ontology Metagraph (Vehicle / Vehicles
+/ Car / Object); Vehicle vs Vehicles flagged at score ~0.97
+(blocking classification); custom-threshold call produced a different
+`report_id` per ADR-0052 §amendment-1 threshold canonicalization.
