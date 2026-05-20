@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 15a
+last_confirmed_phase: 15b
 ---
 
 # Admin-Global shipping (L2)
@@ -35,12 +35,14 @@ from Local promotion, not importers — see
 ### Phase 15a (shipped 2026-05-19) — DOLCE / OEWN / FrameNet importers in `mindsos_admin/`
 
 Importers live at
-`mindsos_admin/importers/{dolce,oewn,framenet}.py` (Phase 15a).
-Phase 15b adds `alignments.py`. Per ADR-0140 §amendment-1 (Phase
-15a): `mindsos_admin/` is the **permanent** home for admin
-operations; §Decision §1+§2 routing to `mindsos_server/` is
-superseded. No relocation phase is needed; Phase 37 row in PHASE_MAP
-retired.
+`mindsos_admin/importers/{dolce,oewn,framenet}.py` (Phase 15a). The
+`AlignmentsImporter` (`mindsos_admin/importers/alignments.py`) was
+originally scheduled for Phase 15b but **re-deferred to a closure
+phase TBD per PHASE_MAP §Phase 28 design review** (the alignment-lookup
+read consumer's natural home). Per ADR-0140 §amendment-1 (Phase 15a):
+`mindsos_admin/` is the **permanent** home for admin operations;
+§Decision §1+§2 routing to `mindsos_server/` is superseded. No
+relocation phase is needed; Phase 37 row in PHASE_MAP retired.
 
 Each importer:
 
@@ -95,8 +97,16 @@ kl = KnowledgeLayer(global_metagraph=mg)
 # Caller persists mg to FalkorDB out-of-band per ADR-0043.
 ```
 
-Phase 15b adds the parametric `AlignmentsImporter(pairs=[(...),...])`
-to the same pattern.
+`AlignmentsImporter(pairs=[(...),...])` will follow the same pattern
+when it ships at the TBD closure phase (per PHASE_MAP §Phase 28
+review). Per Phase 15b Round 1 PB-1 lock, the importer writes XRefs
+(not intra-graph alignment edges) — alignments structurally connect
+nodes across role-graphs and Phase 09's XRef machinery is the
+architectural fit per ADR-0128. Per Phase 15b Round 2 PB-9, the
+importer carries a `pairs` attribute (not `target_roles`) since it
+doesn't write into role-graphs at all; pair-graph existence remains
+the namespace marker via `bootstrap_global`'s pair-aware ensure
+loop.
 
 ### CLI verbs (Phase 15a)
 
