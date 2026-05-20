@@ -174,4 +174,19 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_knowledge/knowledge_layer.py",
     "mindsos_knowledge/metagraph_view.py",
     "mindsos_knowledge/bootstrap.py",
+    # Phase 15a — NEW top-level package `mindsos_admin/`. Per the
+    # 7-site new-top-level-package checklist
+    # (`feedback_new_top_level_package.md` +
+    # `feedback_host_pip_refresh_on_new_package.md` 7th site), the
+    # package + bootstrap helper + 3 importer modules sentinelled.
+    # Synthetic fixtures (tests/phase_15a/fixtures/*) are NOT
+    # sentinelled — they're tests-only inputs, not CLI runtime.
+    # Doc pages (docs/knowledge-sources/*.md) are NOT sentinelled per
+    # `feedback_sentinel_paths_runtime_only.md` (mkdocs source only).
+    "mindsos_admin/__init__.py",
+    "mindsos_admin/bootstrap.py",
+    "mindsos_admin/importers/__init__.py",
+    "mindsos_admin/importers/dolce.py",
+    "mindsos_admin/importers/oewn.py",
+    "mindsos_admin/importers/framenet.py",
 )

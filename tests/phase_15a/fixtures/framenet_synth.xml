@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic FrameNet-shape fixture for Phase 15a tests.
+
+  Content is fabricated (NOT from Berkeley FrameNet 1.7 — per Phase
+  15a PB-3-i, FrameNet's click-through license blocks repo-checked-in
+  fixtures). Structure matches FrameNetImporter's single-file
+  synthetic layout (see framenet.py:_parse_framenet_single_file):
+    <framenet>
+      <frame ID="..." name="...">
+        <FE ID="..." name="..."/>
+        <lexUnit ID="..." name="..."/>
+      </frame>
+      <frameRelation type="..." superFrame="..." subFrame="...">
+        <FERelation superID="..." subID="..."/>
+      </frameRelation>
+    </framenet>
+
+  Expected stats (parser-derived):
+    frames=3, frame_elements=6, lexical_units=5,
+    has_fe_edges=6, evokes_edges=5,
+    frame_relations=2, fe_mappings_edges=2
+-->
+<framenet>
+
+  <!-- Frame: Motion (parent in 2 child relations below). -->
+  <frame ID="100" name="Motion">
+    <FE ID="201" name="Theme"/>
+    <FE ID="202" name="Path"/>
+    <FE ID="203" name="Goal"/>
+    <lexUnit ID="301" name="move.v"/>
+    <lexUnit ID="302" name="travel.v"/>
+  </frame>
+
+  <!-- Frame: Self_motion (Inheritance child of Motion). -->
+  <frame ID="101" name="Self_motion">
+    <FE ID="211" name="Self_mover"/>
+    <FE ID="212" name="Path"/>
+    <lexUnit ID="311" name="walk.v"/>
+    <lexUnit ID="312" name="run.v"/>
+  </frame>
+
+  <!-- Frame: Cause_motion (Causative_of Motion). -->
+  <frame ID="102" name="Cause_motion">
+    <FE ID="221" name="Agent"/>
+    <lexUnit ID="321" name="push.v"/>
+  </frame>
+
+  <!-- Frame relations + FE mappings. -->
+  <frameRelation type="Inheritance" superFrame="100" subFrame="101">
+    <FERelation superID="201" subID="211"/>
+    <FERelation superID="202" subID="212"/>
+  </frameRelation>
+
+  <frameRelation type="Causative_of" superFrame="100" subFrame="102"/>
+
+</framenet>

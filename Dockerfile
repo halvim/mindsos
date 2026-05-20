@@ -121,6 +121,15 @@ COPY mindsos_instances ./mindsos_instances
 # BOTH prod + test stages; the new package is consumed at CLI
 # runtime by `mindsos_cli/commands/knowledge.py`.
 COPY mindsos_knowledge ./mindsos_knowledge
+# Phase 15a: NEW top-level package — `mindsos_admin/` ships the
+# admin operations surface (DOLCE / OEWN / FrameNet importers +
+# bootstrap_global helper) per ADR-0140 §amendment-1 permanent-home
+# decision (supersedes ADR-0140 §Decision §1+§2 server-relocation).
+# 7-site new-top-level-package checklist (feedback_new_top_level_package.md
+# + feedback_host_pip_refresh_on_new_package.md) requires COPY in both
+# prod + test stages; consumed at CLI runtime by
+# `mindsos_cli/commands/admin.py` (Phase 15a `mindsos admin import ...`).
+COPY mindsos_admin ./mindsos_admin
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -177,6 +186,9 @@ COPY mindsos_instances ./mindsos_instances
 # Phase 12: mirror of prod-stage COPY (PB-1 5-site checklist + 6th
 # site per `feedback_dockerfile_test_stage_file_reads.md`).
 COPY mindsos_knowledge ./mindsos_knowledge
+# Phase 15a: mirror of prod-stage COPY for `mindsos_admin/` per the
+# 7-site new-top-level-package checklist.
+COPY mindsos_admin ./mindsos_admin
 COPY tests ./tests
 # Phase 01: tests/phase_01/test_workflows_present.py and
 # test_doctor_workflow_check.py read these from the host repo at /app/.

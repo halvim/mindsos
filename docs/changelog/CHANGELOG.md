@@ -1,11 +1,38 @@
 ---
-last_confirmed_phase: 14
+last_confirmed_phase: 15a
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 15a — L2 admin importers (DOLCE / OEWN / FrameNet) (2026-05-19)
+
+**Ships the admin layer.** NEW top-level package `mindsos_admin/` per
+ADR-0140 §amendment-1 permanent-home decision (supersedes ADR-0140
+§Decision §1+§2 server-relocation; Phase 37 row in PHASE_MAP retired).
+NEW `mindsos_admin/bootstrap.py` with `bootstrap_global(importers=[...])
+-> Metagraph` helper per Phase 15a PB-13 — ensures all 6 Global named
+role-graphs (PB-21 parity with `KnowledgeLayer.bootstrap()` output) +
+each importer's `target_roles` + runs importers. NEW
+`ImporterProtocol` (PB-22 — `target_roles: tuple[str, ...]` class/
+instance attribute + `run(mg) -> ImportResult`). NEW `ImportResult`
+frozen dataclass. NEW `mindsos_admin/importers/dolce.py` (DOLCE-DUL
+4.1, rdflib). NEW `mindsos_admin/importers/oewn.py` (OEWN 2024,
+lxml + stdlib fallback). NEW `mindsos_admin/importers/framenet.py`
+(FrameNet 1.7, single-file + Berkeley dir layouts). Each importer
+auto-ensures its target role-graph per PB-14. ADR-0042 §amendment-2
+documents the third first-install sequence. ADR-0140 §amendment-1
+documents the permanent-home supersession + Phase 37 retirement. NEW
+`mindsos admin import {dolce,oewn,framenet}` CLI verbs. NEW
+synthetic-shape fixtures + real-dataset downloader
+(`scripts/fetch_datasets.{sh,py}`). 3 NEW per-source doc pages under
+`docs/knowledge-sources/`. 7-site new-top-level-package checklist
+complete. Cross-package version `+phase15a` across 5 packages. Scope-
+split (15a/15b) per PB-D1 — Alignments + scanner deferred to 15b.
+ADR-0134 NOT flipped (PB-B1). Per-edge alignment-anchor IRI 4th-hop
+deferred to Phase 33-35 per PB-C1.
 
 ## Phase 14 — L2 KnowledgeLayer + role-graph bootstrap + MetagraphView (2026-05-19)
 

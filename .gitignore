@@ -1,6 +1,11 @@
 # Host-mounted Compose volumes
 .mindsos/
 
+# Phase 15a — real-dataset downloads from scripts/fetch_datasets.{sh,py}.
+# Synthetic fixtures (tests/phase_15a/fixtures/*) ARE tracked; real
+# datasets (DOLCE/OEWN/FrameNet) are large and per-source licensed.
+data/datasets/
+
 # Python build artefacts
 __pycache__/
 *.py[cod]

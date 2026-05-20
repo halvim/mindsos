@@ -478,12 +478,30 @@ def doctor(
                 f"knowledge={knowledge_version!r} "
                 f"manifest={expected_version!r}"
             )
+        # Phase 15a — version-string parity extended to mindsos_admin
+        # (NEW top-level package per ADR-0140 §amendment-1 permanent-
+        # home decision). 7-site new-top-level-package checklist site #4.
+        admin_version, admin_err = _read_package_init_version(
+            repo_root, "mindsos_admin"
+        )
+        if admin_err:
+            failures.append(
+                f"mindsos_admin/__init__.py version unreadable: "
+                f"{admin_err}"
+            )
+        elif admin_version != expected_version:
+            failures.append(
+                f"mindsos_admin/__init__.py __version__ drift: "
+                f"admin={admin_version!r} "
+                f"manifest={expected_version!r}"
+            )
         report["manifest"]["expected_version"] = expected_version
         report["runtime"]["pyproject_version"] = pyproject_version
         report["runtime"]["init_version"] = init_version
         report["runtime"]["core_version"] = core_version
         report["runtime"]["instances_version"] = instances_version
         report["runtime"]["knowledge_version"] = knowledge_version
+        report["runtime"]["admin_version"] = admin_version
 
     result = {"ok": not failures, "failures": failures, **report}
 

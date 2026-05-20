@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Synthetic OEWN-LMF fixture for Phase 15a tests.
+
+  Content is fabricated (not from Open English WordNet); structure
+  matches OewnImporter's expected LMF schema:
+    <LexicalResource>
+      <Lexicon>
+        <LexicalEntry id="...">
+          <Lemma writtenForm="..." partOfSpeech="..."/>
+          <Sense id="..." synset="...">
+            <SenseRelation relType="..." target="..."/>
+          </Sense>
+        </LexicalEntry>
+        <Synset id="..." partOfSpeech="...">
+          <Definition>...</Definition>
+          <SynsetRelation relType="..." target="..."/>
+        </Synset>
+      </Lexicon>
+    </LexicalResource>
+
+  Expected stats (parser-derived):
+    synsets=4, lemmas=3, senses=4, has_sense_edges=4,
+    in_synset_edges=4, synset_relations=4, sense_relations=1
+-->
+<LexicalResource>
+  <Lexicon id="oewn-synth" label="Synthetic OEWN" language="en" version="0.1">
+
+    <!-- LexicalEntry: "dog" (noun) → senses pointing at 2 synsets. -->
+    <LexicalEntry id="w-dog-n">
+      <Lemma writtenForm="dog" partOfSpeech="n"/>
+      <Sense id="s-dog-1" synset="syn-dog-mammal">
+        <SenseRelation relType="antonym" target="s-cat-1"/>
+      </Sense>
+      <Sense id="s-dog-2" synset="syn-dog-person"/>
+    </LexicalEntry>
+
+    <!-- LexicalEntry: "cat" (noun) -->
+    <LexicalEntry id="w-cat-n">
+      <Lemma writtenForm="cat" partOfSpeech="n"/>
+      <Sense id="s-cat-1" synset="syn-cat-mammal"/>
+    </LexicalEntry>
+
+    <!-- LexicalEntry: "mammal" (noun) -->
+    <LexicalEntry id="w-mammal-n">
+      <Lemma writtenForm="mammal" partOfSpeech="n"/>
+      <Sense id="s-mammal-1" synset="syn-mammal"/>
+    </LexicalEntry>
+
+    <!-- Synsets with definitions + cross-synset relations. -->
+    <Synset id="syn-dog-mammal" partOfSpeech="n">
+      <Definition>A domesticated carnivorous mammal of the genus Canis.</Definition>
+      <SynsetRelation relType="hypernym" target="syn-mammal"/>
+    </Synset>
+
+    <Synset id="syn-cat-mammal" partOfSpeech="n">
+      <Definition>A small domesticated carnivorous mammal of the genus Felis.</Definition>
+      <SynsetRelation relType="hypernym" target="syn-mammal"/>
+    </Synset>
+
+    <Synset id="syn-mammal" partOfSpeech="n">
+      <Definition>A warm-blooded vertebrate of the class Mammalia.</Definition>
+      <SynsetRelation relType="hyponym" target="syn-dog-mammal"/>
+      <SynsetRelation relType="hyponym" target="syn-cat-mammal"/>
+    </Synset>
+
+    <Synset id="syn-dog-person" partOfSpeech="n">
+      <Definition>An informal pejorative term for a contemptible person.</Definition>
+    </Synset>
+
+  </Lexicon>
+</LexicalResource>

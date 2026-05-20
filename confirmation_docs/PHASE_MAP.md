@@ -3340,20 +3340,31 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **In-flight pushbacks:** PB-1..16 across 3 rounds, all user-agreed. See `confirmation_docs/PHASE_14_DESIGN_LOG.md` §1 for full ledger.
   **Carry-forward (Phase 14 → Phase 15):** per-edge alignment-anchor IRI builder (Phase 12 PB-4 / Phase 13 PB-5 / Phase 14 PB-1 — 3rd hop; Phase 15's Alignments importer is the first concrete consumer); MetagraphSchema scanner (Phase 11 PB-7 C / Phase 12 PB-5 / Phase 13 PB-2 / Phase 14 PB-1 — 4th hop; Phase 15 Importers are the first phase that writes content).
 
-### Phase 15 — L2 Importers (DOLCE, OEWN, FrameNet, Alignments)
+### Phase 15a — L2 admin importers (DOLCE / OEWN / FrameNet)
 
-  **Deps:** 13, 14. **Layer:** L2. **Net-new?** No (locations may move in Phase 37 but stay in L2 for this phase).
-  **Features:** import each source; report counts.
-  **Tests:** small fixture per importer; counts match; identifiers match ADR-0045 builders.
-  **Risks:** importer dataset versions must be pinned per phase.
-  **Docs:** `docs/knowledge-sources/*.md`.
+  **Status:** Shipped 2026-05-19. Tag `phase-15a-confirmed` per `feedback_release_tag_after_squash_merge_only.md` (tag pushed AFTER squash-merge from main commit containing `confirmation_docs/PHASE_15a_CONFIRMED.md`).
+  **Deps:** 13, 14. **Layer:** L2 (admin). **Net-new?** **Yes — NEW top-level package `mindsos_admin/`** per ADR-0140 §amendment-1 (Phase 15a) permanent-home decision (supersedes ADR-0140 §Decision §1+§2 server-relocation). 7-site new-top-level-package checklist exercised (pyproject + Dockerfile prod+test + sentinel_paths + doctor 4→5-pkg parity + Linux host pip refresh + literal audit + image-completeness test).
+  **Features (as shipped):** NEW `mindsos_admin/` top-level package with `bootstrap_global(importers=[...]) -> Metagraph` helper (PB-13 / PB-21 — ensures all 6 Global named role-graphs in parity with `KnowledgeLayer.bootstrap()` output) + `ImporterProtocol` (PB-22 — `target_roles` self-describe attribute + `run(mg) -> ImportResult`) + `ImportResult` frozen dataclass. 3 importer modules — `mindsos_admin/importers/dolce.py` (DOLCE-DUL 4.1 via rdflib; `target_roles=("ontology",)`), `oewn.py` (OEWN 2024 via lxml + stdlib fallback; `("lexicon",)`), `framenet.py` (FrameNet 1.7 single-file + Berkeley dir layouts; `("concepts",)`). Each importer auto-ensures its target role-graph per PB-14. 3 CLI verbs `mindsos admin import {dolce,oewn,framenet}` in `mindsos_cli/commands/admin.py` (PB-4a/PB-10). ADR-0042 §amendment-2 + ADR-0140 §amendment-1 land in parent project tree per Model C.
+  **Tests:** ~12 modules in `tests/phase_15a/` covering: parser unit per source (synthetic fixture → parsed dict shape); builder unit per source (parsed dict → L1 node/edge/hyperedge counts); IRI round-trip per Phase 12 PB-10 contract; `bootstrap_global` parity with `KL.bootstrap()` output (PB-21); `ImporterProtocol` `target_roles` attribute checks (PB-22); admin CLI `--help` + `--json` exit-code policy; dimensional snapshot per `feedback_dimension_table_cross_check.md` (EXPECTED counts derived from `len(parser(fixture))` output during Step-0 probe); import-isolation AST walk over `mindsos_admin/` (no `mindsos_server` imports per ADR-0010); image-completeness for 6 NEW sentinel paths; ADR-0042 §amendment-2 + ADR-0140 §amendment-1 file sentinels (skip in container per Model C).
+  **Risks:** importer dataset versions pinned per PB-6 (DOLCE-DUL 4.1 CC, OEWN 2024 CC-BY-SA, FrameNet 1.7 Berkeley click-through — synthetic-only fixture for FrameNet per PB-3-i). `lxml` native dep on libxml2; pre-built wheel on slim-bookworm amd64; document fallback in `notes-phase-15a.md`. `rdflib` pulls `pyparsing`; `requirements.txt` grows.
+  **Docs:** `docs/knowledge-sources/{dolce,oewn,framenet}.md` NEW; `docs/concepts/admin-global-shipping.md` full rewrite (importer permanent home + capability gates Phase 18+); `docs/concepts/knowledge-lifecycle.md` Phase 15 row split into 15a (shipped) + 15b (planned), Phase 37 row retired; `docs/concepts/global-local.md` body amend (third install path); `CHANGELOG.md` Phase 15a entry; `mkdocs.yml` (Knowledge sources nav group + Admin overview cross-link). ADR-0042 §amendment-2 + ADR-0140 §amendment-1 in parent project tree.
+  **Carry-forward (Phase 15a → Phase 15b):** AlignmentsImporter (`mindsos_admin/importers/alignments.py`; 3 ordered pairs per PB-23 Round 5 with fallback to single pair if sourcing fails); `mindsos_core/schema/migration.py` (L1 scanner module per ADR-0134 §Implementation references; layer-mixing acknowledged per PB-3a); `mindsos admin scan-schema [--role R]` CLI verb (PB-F1 + PB-5); `docs/dev/migration-playbook.md` full content; ADR-0134 §amendment-3; per-edge alignment-anchor IRI builder (4th-hop carry per PB-C1 — first consumer is Phase 33-35).
+  **In-flight pushbacks:** PB-1..23 across 5 rounds, all user-agreed. See `confirmation_docs/PHASE_15a_DESIGN_LOG.md` §1 for full ledger.
 
-### Phase 16 — L2 Promotion machinery
+### Phase 15b — L2 admin Alignments + MetagraphSchema scanner + scanner CLI
 
-  **Deps:** 14. **Layer:** L2. **Net-new?** No (verify which of `promotion.py` / `promotion_v2.py` is canonical — see §7 open question).
-  **Features:** list candidates; emit similarity report (content-hash report_id, ADR-0052); execute promote with optional force.
+  **Deps:** 15a. **Layer:** L1 + L2 (admin) + CLI (layer-mixing acknowledged per Phase 15a PB-3a Round 2 — single small L1 module ships with its CLI verb to avoid sub-phasing for one module). **Net-new?** Partial — `AlignmentsImporter` is NET-NEW; `mindsos_core/schema/migration.py` is NET-NEW per ADR-0134 §Implementation references.
+  **Features:** `mindsos_admin/importers/alignments.py` (parametric `target_roles` via `__init__(pairs=[(role_a, role_b), ...])` per Phase 15a PB-22; writes alignment edges via L1 with whatever ID L1 mints — no per-edge anchor IRI per PB-C1; 3 ordered pairs `(ontology, lexicon)`, `(lexicon, concepts)`, `(ontology, concepts)` per PB-23 with fallback to single pair if sourcing fails). `mindsos_core/schema/migration.py` (`Schema.migrate_from(old_schema, on_violation="report") -> list[SchemaViolation]`; `SchemaViolation` dataclass) + `mindsos_core/exceptions.py` additions (`SchemaMigrationError`, `UnknownEdgeTypeError`). `mindsos admin scan-schema [--role R] [--json]` CLI verb (backend at `mindsos_admin/scan.py` or `mindsos_cli/commands/admin.py` — 15b decision). `docs/dev/migration-playbook.md` full content + `docs/knowledge-sources/alignments.md` NEW.
+  **Tests:** AlignmentsImporter per-pair smoke (synthetic alignment CSV → expected edge counts); scanner unit per ADR-0134 §Implementation references (`tests/phase_15b/test_scanner.py`); scan-schema CLI verb; cumulative literal audit `+phase15a` → `+phase15b`.
+  **Risks:** alignment pair sourcing per PB-23 fallback contingency. ADR-0134 still NOT flipped Accepted (PB-2 prior round — wait for first real schema bump).
+  **Docs:** ADR-0134 §amendment-3 (importer-flow interaction); `knowledge-lifecycle.md` Phase 15b row flip `planned → shipped`.
+
+### Phase 16 — L2 admin promotion machinery
+
+  **Deps:** 14, 15a. **Layer:** L2 (admin). **Net-new?** No (locations forward-cited from Phase 15a PB-3-i Round 4 — promotion machinery ships at `mindsos_admin/promotion.py` per ADR-0140 §amendment-1 Decision §2 supersession). The original ADR-0140 §Decision §2 routing to `mindsos_server/promotion.py` is superseded.
+  **Features:** `mindsos_admin/promotion.py` with `propose_for_promotion()` + list candidates; emit similarity report (content-hash report_id, ADR-0052); execute promote with optional force.
   **Tests:** baseline similarity heuristic deterministic (ADR-0055); promote refuses without report unless `--force` (ADR-0049); per-candidate atomic rollback (ADR-0053).
-  **Risks:** keep this phase pure-KL (no auth gate); the Server gate goes in Phase 23.
+  **Risks:** keep this phase pure-admin (no auth gate); the Server gate goes in Phase 23.
   **Docs:** ADRs 0049–0056.
 
 ### Phase 17 — L2 Versioning + breadcrumbs
@@ -3525,14 +3536,16 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Tests:** semantic catches a seeded violation that structural misses; both run via Phase 35's `write_and_validate`.
   **Docs:** ADR-0139.
 
-### Phase 37 — Server-owns-importers (ADR-0140)
+### ~~Phase 37 — Server-owns-importers (ADR-0140)~~ — RETIRED 2026-05-19 by Phase 15a PB-17 / ADR-0140 §amendment-1
 
-  **Deps:** 15, 36. **Layer:** L0 + L2. **Net-new?** **Yes — relocation.** Importers move from `mindsos_knowledge/importers/` to `mindsos_server/importers/` (or sibling).
-  **Features:** server-side import each source; deprecated L2 path emits warning then is removed.
-  **Tests:** golden-output diff vs Phase 15; audit records emitted under server's gate.
-  **Risks:** import paths in third-party callers (none expected).
-  **Docs:** `docs/knowledge-sources/*.md` (location update), `docs/concepts/admin-global-shipping.md` (Phase 14a) flips its mapping-table row to `shipped`, ADR-0140.
-  **ADR cross-cite correction (Phase 14a PB-D):** This row previously cited ADR-0144 for server-owns-importers. ADR-0144 is `similarity-at-release-ship-audit-gate`; the actual server-owns-admin-operations ADR (which subsumes importer relocation) is **ADR-0140**. Phase 14a fixed both this row heading + Docs line + the §3 phase-index table entry.
+  **Status:** RETIRED 2026-05-19. Superseded by Phase 15a's permanent-admin decision (PB-17 Round 4 / ADR-0140 §amendment-1 full supersession of §Decision §1+§2). Admin permanent home is `mindsos_admin/`; no relocation phase is needed. Server (when built at Phase 18+) imports admin for HTTP endpoint handlers; admin code is not server code.
+  **Original (now superseded) text below for historical reference:**
+  ~~**Deps:** 15, 36. **Layer:** L0 + L2. **Net-new?** **Yes — relocation.** Importers move from `mindsos_knowledge/importers/` to `mindsos_server/importers/` (or sibling).~~
+  ~~**Features:** server-side import each source; deprecated L2 path emits warning then is removed.~~
+  ~~**Tests:** golden-output diff vs Phase 15; audit records emitted under server's gate.~~
+  ~~**Risks:** import paths in third-party callers (none expected).~~
+  ~~**Docs:** `docs/knowledge-sources/*.md` (location update), `docs/concepts/admin-global-shipping.md` (Phase 14a) flips its mapping-table row to `shipped`, ADR-0140.~~
+  ~~**ADR cross-cite correction (Phase 14a PB-D):** This row previously cited ADR-0144 for server-owns-importers. ADR-0144 is `similarity-at-release-ship-audit-gate`; the actual server-owns-admin-operations ADR (which subsumes importer relocation) is **ADR-0140**. Phase 14a fixed both this row heading + Docs line + the §3 phase-index table entry.~~
 
 ### Phase 38 — End-to-end vertical slice
 
