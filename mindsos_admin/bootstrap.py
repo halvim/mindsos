@@ -108,10 +108,17 @@ class ImporterProtocol(Protocol):
     level (parametric importers like Phase 15b's
     AlignmentsImporter).
 
-    ``run(mg)`` does the actual write. It MUST be idempotent at the
-    Metagraph level — re-running against a partially-populated
-    role-graph is permitted (importer skips already-present nodes
-    by IRI uniqueness).
+    ``run(mg)`` does the actual write. **Single-shot contract**
+    (Phase 15a B-15a-T3 calibration): ``run(mg)`` MUST be invoked
+    against a Metagraph whose target role-graph(s) are empty.
+    Re-running an importer against an already-populated role-graph
+    raises :class:`IdentityError` on node IRI collision; for
+    re-import use the **process-restart** pattern per ADR-0042
+    §amendment-1 §Out-of-scope ("no Global-swap method; no
+    consumer") — kill process, run ``bootstrap_global`` again, start
+    new KL. Full mid-process idempotency (skip-existing-nodes +
+    skip-existing-edges) is a carry-forward to Phase 15b or later;
+    no admin-flow consumer requires it today.
     """
 
     target_roles: tuple[str, ...]

@@ -88,14 +88,35 @@ ADR AMENDMENTS (parent tree per Model C):
   retired.
 
 DESIGN LOG: see `confirmation_docs/PHASE_15a_DESIGN_LOG.md` §1 for
-the full PB-1..23 ledger across 5 rounds, all user-agreed. Mid-flight
-calibration: DOLCE fixture parser surfaced that bnode-restriction
-subClassOf edges drop through `_frag()`'s URIRef-only filter (synthetic
-fragments aren't resolved by `_add_binary_edge`). EXPECTED_STATS table
-in `tests/phase_15a/test_dolce_importer.py` reflects parser behavior
-(subclass_of_edges=4 for named-class pairs only). Acceptable scope
-limitation — restriction nodes ARE minted, just not linked via
-subclass_of.
+the full PB-1..23 ledger across 5 rounds, all user-agreed.
+
+HOTFIX LEDGER:
+- B-15a-T1: Phase 08 manifest-phase regex relaxed from `\d{2}` to
+  `\d{2}[a-z]?` per `feedback_tag_regex_audit.md` — letter-sub-phase
+  grammar already in `_retention.py` + `release.yml`; Phase 08's
+  test was tightened beyond the actual contract.
+- B-15a-T2: `scripts/fetch_datasets.sh` mode 100644 → 100755 — was
+  not chmod+x at creation.
+- B-15a-T3: `ImporterProtocol` docstring originally claimed
+  "idempotent at the Metagraph level — re-running against a
+  partially-populated role-graph is permitted." Smoke surfaced that
+  re-running an importer raises `IdentityError` on node IRI
+  collision (and even after node-level dedup, edges would duplicate
+  because `add_edge` mints fresh UUIDs each call). Decision: relax
+  the protocol docstring to single-shot semantics matching the
+  admin install/release-restart pattern per ADR-0042 §amendment-1
+  §Out-of-scope. Full mid-process idempotency (skip-existing-nodes
+  + skip-existing-edges) carries forward to Phase 15b or later; no
+  consumer requires it today.
+
+MID-FLIGHT CALIBRATIONS:
+- DOLCE fixture parser surfaced that bnode-restriction subClassOf
+  edges drop through `_frag()`'s URIRef-only filter (synthetic
+  fragments aren't resolved by `_add_binary_edge`). EXPECTED_STATS
+  table in `tests/phase_15a/test_dolce_importer.py` reflects parser
+  behavior (subclass_of_edges=4 for named-class pairs only).
+  Acceptable scope limitation — restriction nodes ARE minted, just
+  not linked via subclass_of.
 
 CARRY-FORWARD TO PHASE 15b: AlignmentsImporter + `mindsos_core/schema/
 migration.py` scanner module + `mindsos admin scan-schema` CLI verb +
