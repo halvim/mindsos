@@ -1,10 +1,15 @@
-"""MindsOS Knowledge Layer — Phase 13 surface.
+"""MindsOS Knowledge Layer — Phase 14 surface.
 
 L2 IRI vocabulary + REF_TYPES + role constants + ref-key helpers
 (Phase 12) + the 8 role-graph schemas + the alignment parametric
-schema + ``schema_for_role`` dispatch (Phase 13). Pure library; no
-L1 mutation, no metagraph, no persistence. KL writes are relocated to
-L3 capacities per ADR M1 / L2 redesign locks 2026-04-27.
+schema + ``schema_for_role`` dispatch (Phase 13) + ``KnowledgeLayer``
+class + ``MetagraphView`` read-only wrapper + ``ensure_*_role_graph``
+bootstrap helpers + ``install_local_metagraph`` / ``extract_local_
+metagraph`` hooks per ADR-0042 + §amendment-1 (Phase 14). Pure
+library; no L1 mutation in KL methods, no metagraph persistence, no
+file-I/O — ADR-0043 honoured. KL writes are relocated to L3
+capacities per ADR-0138 Proposed (honoured by absence in Phase 14
+per PB-6; ADR not flipped Accepted).
 
 Phase 12 shipped:
 
@@ -22,7 +27,7 @@ Phase 12 shipped:
 * Role constants: 3 seed + 5 upper-layer + 3 frozensets.
 * Exceptions: `KnowledgeError` (base) + `RefFormatError`.
 
-Phase 13 adds:
+Phase 13 added:
 
 * 9 schema builders under `mindsos_knowledge.schemas`:
   4 seed (`ontology` / `lexicon` / `concepts` / `alignment` —
@@ -33,12 +38,32 @@ Phase 13 adds:
   alignment-prefix branch and raises `UnknownRoleError` on miss.
 * `UnknownRoleError` exception class.
 
+Phase 14 adds:
+
+* `KnowledgeLayer` class — entry point with Global + per-user Local
+  lifecycle. Constructor parameter for Global per ADR-0042
+  §amendment-1 (Phase 14 PB-7); `bootstrap()` classmethod for fresh
+  install. No write API (ADR-0138 Proposed honoured per PB-6).
+* `MetagraphView` — whitelist read-only wrapper (PB-3); no
+  `follow_ref` overlay (PB-10).
+* `ensure_global_role_graph` / `ensure_local_role_graph` — module-
+  level bootstrap helpers (PB-4 two-method split + ADR-0044
+  enforcement). Alignment is Global-only at v1 per ADR-0150
+  §amendment-1 (PB-8).
+* `install_local_metagraph` / `extract_local_metagraph` hooks per
+  ADR-0042 (PB-5). Lazy `local_metagraph(user_id)` auto-creates
+  with `memories` + `capacity-state` ensured (PB-9).
+* `AlreadyInstalledError` + `NotInstalledError` exception classes.
+
 Deferred to later phases:
 
-* `KnowledgeLayer` + `MetagraphView` + Global / Local bootstrap →
-  Phase 14.
-* L2 knowledge-addition lifecycle design (ADR-0150 + 3 lifecycle
-  docs) → Phase 14a.
+* Per-edge alignment-anchor IRI builder → Phase 15 (Phase 14 PB-1).
+* MetagraphSchema scanner → Phase 15 (Phase 14 PB-1).
+* `validators.py` semantic-invariant module → Phase 36 per ADR-0139
+  (Phase 14 PB-14).
+* `follow_ref` cross-metagraph helper → Phase 25 / first L3 capacity.
+* `step()` `version=` kwarg → Phase 17 (Phase 14 PB-15).
+* CLI verbs over KL → Phase 17 (Phase 14 PB-13).
 * Importers (DOLCE / OEWN / FrameNet / Alignments) → Phase 15.
 * Promotion machinery → Phase 16.
 * Versioning + breadcrumbs → Phase 17.
@@ -46,13 +71,26 @@ Deferred to later phases:
 * Per-builder inverse field helpers → per-consumer phase.
 * Schema strict-tightening (per-role) → first-consumer phase after
   the 2-week-no-edit observation period per ADR-0149.
+* `KL.bootstrap` relocation to `mindsos_server` per ADR-0140 → Phase 37.
 """
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase13"
+__version__ = "0.0.0+phase14"
 
-from .exceptions import KnowledgeError, RefFormatError, UnknownRoleError
+from .bootstrap import (
+    ensure_global_role_graph,
+    ensure_local_role_graph,
+)
+from .exceptions import (
+    AlreadyInstalledError,
+    KnowledgeError,
+    NotInstalledError,
+    RefFormatError,
+    UnknownRoleError,
+)
+from .knowledge_layer import KnowledgeLayer
+from .metagraph_view import MetagraphView
 from .identifiers import (
     ALL_ROLES,
     REF_TYPE_KEY,
@@ -110,6 +148,8 @@ __all__ = [
     "KnowledgeError",
     "RefFormatError",
     "UnknownRoleError",
+    "AlreadyInstalledError",
+    "NotInstalledError",
     # ── role constants ─────────────────────────────────────────────
     "ROLE_ONTOLOGY",
     "ROLE_LEXICON",
@@ -161,4 +201,9 @@ __all__ = [
     "build_capacity_state_schema",
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",
+    # ── KL (Phase 14) ──────────────────────────────────────────────
+    "KnowledgeLayer",
+    "MetagraphView",
+    "ensure_global_role_graph",
+    "ensure_local_role_graph",
 ]

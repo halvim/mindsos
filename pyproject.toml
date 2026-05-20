@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase13"
-description = "MindsOS command-line interface — Phase 13 L2 Schemas (9 role-graph schema builders under mindsos_knowledge/schemas/: 4 seed v3 ports + 5 NET-NEW upper-layer at strict=False per ADR-0149; ontology HyperEdgeType lift per PB-4; schema_for_role dispatch with alignment-prefix branch; UnknownRoleError; mindsos knowledge schema {show, validate} CLI verbs; ADR-0017 §amendment-1 + ADR-0149 Accepted + ADR-0150 Reserved-for-Phase-14a; PHASE_MAP §1 design-only-phases exception clause + §14a row insertion)."
+version = "0.0.0+phase14"
+description = "MindsOS command-line interface — Phase 14 L2 KnowledgeLayer + role-graph bootstrap (KnowledgeLayer class with Global constructor + bootstrap classmethod per ADR-0042 §amendment-1; ensure_global_role_graph + ensure_local_role_graph module helpers with ADR-0044 scope enforcement; alignment Global-only at v1 per ADR-0150 §amendment-1; MetagraphView whitelist read-only wrapper; install_local_metagraph / extract_local_metagraph hooks per ADR-0042; lazy local_metagraph auto-ensure; no write API per ADR-0138 Proposed; no validators surface per ADR-0139 Proposed; carry-forwards alignment-anchor IRI + MetagraphSchema scanner deferred to Phase 15)."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

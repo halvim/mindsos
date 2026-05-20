@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 14a
+last_confirmed_phase: 14
 ---
 
 # Knowledge addition lifecycle (L2)
@@ -15,7 +15,7 @@ mechanics.
 
 | Stage      | What happens                                                          | Owned by                                                                                |
 |------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| Bootstrap  | Create Global + Local metagraphs; ensure role-graphs via `ensure_role_graph` | Phase 14 — `docs/concepts/global-local.md` (forthcoming)                                |
+| Bootstrap  | Create Global + Local metagraphs; ensure role-graphs via `ensure_global_role_graph` / `ensure_local_role_graph` | Phase 14 — [global-local.md](global-local.md)                                           |
 | Authoring  | User-Local writes via L3 capacities                                    | [user-local-authoring.md](user-local-authoring.md)                                      |
 | Shipping   | Admin-Global writes via importers (install / upgrade / pinned release) | [admin-global-shipping.md](admin-global-shipping.md)                                    |
 | Promotion  | Local draft → pending_global → canonical Global (release-ship)        | [promotion-bridge.md](promotion-bridge.md)                                              |
@@ -33,7 +33,7 @@ in its own PR per Phase 14a round-3 PB-K3.
 
 | Phase | Layer | Stage(s)                | Role contribution                                                                                                  | Status   |
 |-------|-------|-------------------------|--------------------------------------------------------------------------------------------------------------------|----------|
-| 14    | L2    | Bootstrap, Versioning   | `KnowledgeLayer` class; Global + Local metagraph bootstrap; `ensure_role_graph` idempotent; `MetagraphView` read-only; per-edge alignment-anchor IRI builder (Phase 12 PB-4 carry); MetagraphSchema scanner (Phase 11 PB-7 C carry) | planned  |
+| 14    | L2    | Bootstrap               | `KnowledgeLayer` class; Global + Local metagraph bootstrap; two-method `ensure_global_role_graph` + `ensure_local_role_graph` idempotent (PB-4 lock); `MetagraphView` whitelist read-only (PB-3); install/extract hooks per ADR-0042 (PB-5); ADR-0042 §amendment-1 + ADR-0150 §amendment-1. Carry-forwards (alignment-anchor IRI + MetagraphSchema scanner) deferred to Phase 15 per PB-1. | shipped  |
 | 15    | L2    | Shipping                | 4 importers (DOLCE → `ontology`, OEWN → `lexicon`, FrameNet → `concepts`, Alignments → `alignment:<a>:<b>`); seed Global content | planned  |
 | 16    | L2    | Promotion               | Pre-pivot promotion machinery: list candidates, baseline similarity, atomic per-candidate rollback                | planned  |
 | 17    | L2    | Versioning              | Active-version queries; PROMOTED breadcrumb routing in views                                                       | planned  |

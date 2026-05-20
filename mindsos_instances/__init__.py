@@ -59,7 +59,8 @@ from .utils.canonicalize import canonicalize
 #: Phase 11 bumps to phase11 (loader policy + schema migration scanner).
 #: Phase 12 bumps to phase12 (L2 Identifiers + role IRIs + REF_TYPES).
 #: Phase 13 bumps to phase13 (L2 Schemas — 8 role-graph builders + dispatch).
-__version__ = "0.0.0+phase13"
+#: Phase 14 bumps to phase14 (L2 KnowledgeLayer + role-graph bootstrap + MetagraphView).
+__version__ = "0.0.0+phase14"
 
 __all__ = [
     # exceptions
