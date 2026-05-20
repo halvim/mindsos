@@ -1,5 +1,5 @@
 ---
-last_confirmed_phase: 15a
+last_confirmed_phase: 15b
 ---
 
 # Knowledge addition lifecycle (L2)
@@ -35,7 +35,8 @@ in its own PR per Phase 14a round-3 PB-K3.
 |-------|-------|-------------------------|--------------------------------------------------------------------------------------------------------------------|----------|
 | 14    | L2    | Bootstrap               | `KnowledgeLayer` class; Global + Local metagraph bootstrap; two-method `ensure_global_role_graph` + `ensure_local_role_graph` idempotent (PB-4 lock); `MetagraphView` whitelist read-only (PB-3); install/extract hooks per ADR-0042 (PB-5); ADR-0042 §amendment-1 + ADR-0150 §amendment-1. Carry-forwards (alignment-anchor IRI + MetagraphSchema scanner) deferred to Phase 15 per PB-1. | shipped  |
 | 15a   | L2 (admin) | Shipping           | 3 importers (DOLCE → `ontology`, OEWN → `lexicon`, FrameNet → `concepts`); NEW `mindsos_admin/` package per ADR-0140 §amendment-1 permanent-home decision; `bootstrap_global` helper per ADR-0042 §amendment-2; `mindsos admin import ...` CLI verbs | shipped  |
-| 15b   | L2+L1+CLI | Shipping            | Alignments importer (3 ordered pairs); `mindsos_core/schema/migration.py` scanner module; `mindsos admin scan-schema` CLI verb; `docs/dev/migration-playbook.md` | planned  |
+| 15b   | design | Ratification + docs    | **Design-only phase** (no production code). ADR-0134 §amendment-3 + Status flip `Proposed → Accepted` (documents Phase 11's already-shipped scanner surface + relaxes §closing criterion). ADR-0150 §amendment-2 (corrects §amendment-1's stale "Phase 15 importers write Global alignments" sentence). `docs/dev/migration-playbook.md` full content (API + Phase 11 example + recipes-pending placeholder). Alignments importer + per-edge alignment-anchor IRI builder + real FN-WN extraction script + importer idempotency tightening **re-deferred** — closure phase TBD per §Phase 28 review. | shipped  |
+| TBD   | L2+L1 (admin) | Shipping (alignment) | AlignmentsImporter (XRef-based per Phase 15b PB-1; `target_roles=()` + `pairs` attribute per Phase 15b PB-9); per-edge alignment-anchor IRI builder; real FN-WN extraction script; scan-schema CLI verb (Phase 26). Closure phase TBD per §Phase 28 design review (does alignment-lookup land as one of the 12 L3 categories?). | planned  |
 | 16    | L2 (admin) | Promotion          | Pre-pivot promotion machinery at `mindsos_admin/promotion.py` per ADR-0140 §amendment-1 (forward-cited from Phase 15a PB-3-i Round 4): list candidates, baseline similarity, atomic per-candidate rollback | planned  |
 | 17    | L2    | Versioning              | Active-version queries; PROMOTED breadcrumb routing in views                                                       | planned  |
 | 23    | L0    | Promotion               | Promotion lock + MetagraphSnapshot rollback (pre-pivot orchestration; ADR-0006/0007/0027 narrow scope)             | planned  |

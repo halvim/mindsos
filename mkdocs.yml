@@ -83,4 +83,5 @@ nav:
       - CLI conventions: dev/conventions.md
       - Testing: dev/testing.md
       - Release flow: dev/release.md
+      - Schema migration playbook (Phase 15b): dev/migration-playbook.md
   - Changelog: changelog/CHANGELOG.md

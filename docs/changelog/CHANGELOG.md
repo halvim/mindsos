@@ -1,11 +1,54 @@
 ---
-last_confirmed_phase: 15a
+last_confirmed_phase: 15b
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 15b — Design-only: ADR-0134 ratification + migration-playbook content (2026-05-20)
+
+**Design-only phase per PHASE_MAP §1 exception** (no production
+Python, no version bump, no `phase-15b-confirmed` tag, no
+`mindsos confirm-phase`). Followed Phase 14a precedent. ADR-0134
+(schema migration scanner) **Status flips `Proposed → Accepted`** via
+§amendment-3 — subsection 3a documents Phase 11's
+already-shipped API surface (module-level `migrate_from(old, target,
+*, new, detail, old_schema_name)`; five `ViolationKind` values
+including `removed_hyperedge_type`; `summary` / `each` `DetailMode`;
+`old_schema_name` policy warning) which the original §1 spec never
+reflected; 3b relaxes §closing criterion (drops the "KL importers
+use scanner output" clause that ADR-0140 §amendment-1's admin-package
+relocation made unreachable; replaces with Phase 11 test-coverage
+demonstrating contract). ADR-0150 §amendment-2 corrects
+§amendment-1's stale "Phase 15's importers all write Global
+alignments" sentence (Phase 15a shipped 3 source importers; no
+alignment writers); architectural decision (alignment Global-only at
+v1) unchanged. NEW `docs/dev/migration-playbook.md` full content
+(API surface + Phase 11-test-derived example + recipes-pending
+placeholder). PHASE_MAP §15b row rewrites to design-only scope;
+§Phase 28 row gains alignment-lookup capacity review note (does
+alignment-lookup land as one of the 12 categories?). **Re-frame
+trigger:** pre-impl probe surfaced that
+`mindsos_core/schema/migration.py` (promised as 15b net-new per
+ADR-0134 §Implementation references) ALREADY EXISTS from Phase 11
+with richer surface than ADR-0134 §1; the 15b carry-forward was
+based on a misread of Phase 11's scope.
+**Carry-forwards re-deferred to TBD closure phase per §Phase 28
+review:** AlignmentsImporter (`mindsos_admin/importers/alignments.py`;
+XRef-based per Round 1 PB-1; `target_roles=()` + `pairs` attribute
+per Round 2 PB-9; per-pair `ref_type` per Round 2 PB-11; CSV via
+extraction script per Round 2 PB-8); per-edge alignment-anchor IRI
+builder (5th-hop carry from Phase 12/13/14/15a); real FN-WN
+extraction script; importer idempotency tightening.
+**Carry-forward unchanged:** `mindsos admin scan-schema` CLI verb —
+still Phase 26 alongside CLI state-file access. **Tests:**
+`tests/phase_15b/test_adr_amendment_sentinels.py` only
+(skip-in-container per Model C). 23 pre-impl pushbacks across 6
+rounds, all user-agreed. No version bump (5 packages stay at
+`0.0.0+phase15a`); no image rebuild (Docker tags stay at
+`mindsos:phase15a-{prod,test}`); no `release.yml` invocation.
 
 ## Phase 15a — L2 admin importers (DOLCE / OEWN / FrameNet) (2026-05-19)
 
