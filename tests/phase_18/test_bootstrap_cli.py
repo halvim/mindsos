@@ -16,7 +16,8 @@ from mindsos_server._db import open_db
 
 @pytest.fixture()
 def runner() -> CliRunner:
-    return CliRunner(mix_stderr=False)
+    # B-18-T2 — click 8.2 removed `mix_stderr` kwarg. See test_cli_server_user.py.
+    return CliRunner()
 
 
 @pytest.fixture()
@@ -35,7 +36,7 @@ class TestBootstrapHappyPath:
         result = runner.invoke(
             app, ["server", "bootstrap", "admin"], input="rootpw\n"
         )
-        assert result.exit_code == 0, result.stderr
+        assert result.exit_code == 0, result.output
         assert "admin bootstrapped" in result.stdout
 
     def test_bootstrap_writes_evt_bootstrap_audit(

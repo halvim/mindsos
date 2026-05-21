@@ -20,7 +20,12 @@ from mindsos_cli.app import app
 
 @pytest.fixture()
 def runner() -> CliRunner:
-    return CliRunner(mix_stderr=False)
+    # B-18-T2 — click 8.2 removed `mix_stderr` kwarg; CliRunner now mixes
+    # stderr into the combined `result.output` by default. Security
+    # assertion semantics preserved by checking `result.output` instead of
+    # `result.output` (combined output is strictly broader — if the cause
+    # leaks anywhere, the test fails).
+    return CliRunner()
 
 
 @pytest.fixture()
@@ -81,7 +86,7 @@ class TestUserCreateListRoundtrip:
             ["server", "user", "create", "alice"],
             input="hunter2\n",
         )
-        assert result.exit_code == 0, result.stderr
+        assert result.exit_code == 0, result.output
         assert "alice" in result.stdout
 
         # List
@@ -129,10 +134,10 @@ class TestUserVerifyDiagnostic:
             app, ["server", "user", "verify", "alice"], input="wrong\n"
         )
         assert result.exit_code == 1
-        assert "auth failed" in result.stderr
+        assert "auth failed" in result.output
         # PB-23 — cause MUST NOT leak in stderr.
-        assert "BAD_PASSWORD" not in result.stderr
-        assert "UNKNOWN_USER" not in result.stderr
+        assert "BAD_PASSWORD" not in result.output
+        assert "UNKNOWN_USER" not in result.output
 
     def test_verify_unknown_user_opaque(
         self, runner: CliRunner, tmp_db_env: Path
@@ -141,5 +146,5 @@ class TestUserVerifyDiagnostic:
             app, ["server", "user", "verify", "nobody"], input="any\n"
         )
         assert result.exit_code == 1
-        assert "auth failed" in result.stderr
-        assert "UNKNOWN_USER" not in result.stderr
+        assert "auth failed" in result.output
+        assert "UNKNOWN_USER" not in result.output
