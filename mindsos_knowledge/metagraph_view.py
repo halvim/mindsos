@@ -30,9 +30,18 @@ Deferred surfaces:
   to Phase 25 (SessionProtocol seam) or first L3 capacity phase per
   Phase 14 PB-10 (v3 ``step`` overlay was a §1.2 contradiction;
   Phase 14 doesn't re-introduce it).
-* ``version=`` kwarg on :meth:`step` — defers to Phase 17 per
-  Phase 14 PB-15 (single version per role at Phase 14).
-* ``iter_xrefs`` — defers; Phase 17 or Phase 25 amends if needed.
+* ``version=`` kwarg on :meth:`step` — VACATED at Phase 17
+  retirement (2026-05-20) per ADR-0150 §amendment-3. The shipped
+  invariant is one graph per role per metagraph; there is no
+  ``(role, version)`` discriminator to dispatch on. Phase 14 PB-15
+  closure recorded in `confirmation_docs/PHASE_14_DESIGN_LOG.md`.
+* ``iter_xrefs`` — defers; Phase 25 amends if needed.
+
+Shipped at Phase 17 retirement (2026-05-20):
+
+* :meth:`versions_in_role` — IRI-scan enumerator returning distinct
+  ``parse_iri(node_id).version`` values observed in the role-graph.
+  Per ADR-0150 §amendment-3.
 
 Per Phase 14 PB-16, returned Node / Edge references are mutable L1
 objects; the read-only contract is documented, not structurally
@@ -105,8 +114,10 @@ class MetagraphView:
     def graphs_by_role(self, role: str) -> List[Graph]:
         """Return contained graphs whose ``role`` matches.
 
-        Phase 14 has one graph per role (no version routing); Phase 17
-        amends with active-version selection.
+        One graph per role per metagraph (locked by ADR-0150
+        §amendment-3 at Phase 17 retirement, 2026-05-20). The list
+        return shape is preserved for API stability; in practice it
+        is always length-0 or length-1.
 
         Args:
             role: The role string to filter on.
@@ -151,8 +162,8 @@ class MetagraphView:
     def get_node(self, role: str, node_id: str) -> Optional[Node]:
         """Return the first Node with ``node_id`` in any role-matching graph.
 
-        Phase 14 has one graph per role; Phase 17's multi-version model
-        will need an active-version selector here.
+        One graph per role per metagraph (ADR-0150 §amendment-3);
+        "first" is "the only one" in practice.
 
         Per PB-16 calibration: returned Node is the L1 reference, not a
         defensive copy. Caller MUST treat the result as read-only.
@@ -246,12 +257,14 @@ class MetagraphView:
         narrowing reaffirms separation. Cross-metagraph composition
         belongs at Phase 25 / first L3 capacity / Mental Model layer.
 
-        Per Phase 14 PB-15: NO ``version=`` kwarg. Phase 17 adds it
-        when multi-version routing ships.
+        Per ADR-0150 §amendment-3 (Phase 17 retirement, 2026-05-20):
+        NO ``version=`` kwarg. The shipped invariant is one graph per
+        role per metagraph; "active version" has no graph-layer
+        dispatch. Version enumeration ships via :meth:`versions_in_role`
+        (IRI-scan); active-version routing is vacated and locked.
 
-        Effectively an alias for :meth:`get_edges` at Phase 14. Kept
-        as a named entry point so Phase 17 has a stable method to
-        amend without callers needing to switch APIs.
+        Effectively an alias for :meth:`get_edges`. Kept as a named
+        entry point for API surface stability.
 
         Args:
             role: The role-graph to step in.
@@ -268,6 +281,46 @@ class MetagraphView:
             edge_type=edge_type,
             include_deprecated=include_deprecated,
         )
+
+    # ── version enumeration (Phase 17 retirement) ─────────────────────
+
+    def versions_in_role(self, role: str) -> Set[str]:
+        """Return the distinct IRI-string versions observed in ``role``.
+
+        IRI-scan enumerator. For each node in the role-graph, attempts
+        to parse the ``node_id`` as a version-qualified IRI via
+        :func:`mindsos_knowledge.identifiers.parse_iri` and collects
+        the ``.version`` field. Nodes whose ``node_id`` is not a
+        version-qualified IRI (e.g., bare fragments, alignment-graph
+        node ids) are silently skipped.
+
+        Per ADR-0150 §amendment-3 (Phase 17 retirement, 2026-05-20):
+        this is the canonical "what versions are in this role-graph"
+        surface. There is no notion of "active version" — the
+        amendment locks one-graph-per-role with version-as-IRI-string.
+
+        Args:
+            role: The role-graph to scan.
+
+        Returns:
+            Set of distinct version strings (e.g., ``{"4.1", "4.2"}``);
+            empty set if the role-graph is empty or holds no
+            version-qualified IRIs.
+        """
+        # Lazy import to avoid circular dependency at module load.
+        from .identifiers import parse_iri
+        from .exceptions import RefFormatError
+
+        versions: Set[str] = set()
+        for g in self.graphs_by_role(role):
+            for node_id in g.nodes:
+                try:
+                    versions.add(parse_iri(node_id).version)
+                except RefFormatError:
+                    # Bare fragments / non-version-qualified ids are
+                    # legitimate (e.g., alignment-graph member ids).
+                    continue
+        return versions
 
     # ── repr ──────────────────────────────────────────────────────────
 

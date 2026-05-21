@@ -103,9 +103,14 @@ def test_step_returns_list_of_edges_not_walkresult() -> None:
 
 
 def test_step_no_version_kwarg() -> None:
-    """Phase 14 PB-15 — `version=` kwarg is NOT accepted at Phase 14.
+    """Phase 14 PB-15 + ADR-0150 §amendment-3 — `version=` kwarg is permanently absent.
 
-    Phase 17 amends with multi-version routing.
+    Phase 17 retirement (2026-05-20) vacated PB-15: the shipped
+    one-graph-per-role invariant leaves "active version" undefined,
+    so the kwarg was never added. ADR-0150 §amendment-3 locks the
+    model. The retirement sentinel in
+    `tests/phase_17/test_retirement_sentinels.py` is the canonical
+    enforcer; this test is the Phase 14-vintage call site.
     """
     import inspect
 
@@ -113,8 +118,9 @@ def test_step_no_version_kwarg() -> None:
 
     sig = inspect.signature(MetagraphView.step)
     assert "version" not in sig.parameters, (
-        "Phase 14 PB-15 lock — MetagraphView.step ships without "
-        "`version=` kwarg; Phase 17 amends."
+        "ADR-0150 §amendment-3 lock — MetagraphView.step ships "
+        "without `version=` kwarg. Phase 14 PB-15 carry-forward "
+        "was vacated at Phase 17 retirement, not amended."
     )
 
 

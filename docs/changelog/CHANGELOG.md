@@ -1,11 +1,67 @@
 ---
 last_confirmed_phase: 16
+last_design_only_phase: 17
 ---
 
 # Changelog
 
 Append-only, one line per shipped phase. Phase 38 consolidates into a
 release-style summary.
+
+## Phase 17 — RETIRED (2026-05-20)
+
+RETIRED at design-only-with-code retirement chat (no tag, no
+release.yml run). Pre-impl probe established that the shipped
+one-graph-per-role invariant (`_find_role_graph` keys on
+`g.role == role`; importers write version-qualified IRIs into the
+same role-graph regardless of version arg; `parse_iri` extracts
+version from IRI body) leaves "active-version routing" with nothing
+to dispatch on. The Phase 17 row's promise of "active-version query
++ map of versions per role + PROMOTED breadcrumb in views" was
+vacuous against the shipped model — Phase 14 PB-15 deferred a
+question that has no Phase 14 model to amend. Three honest options
+were on the table at the retirement chat (cosmetic-only IRI-scan;
+multi-graph-per-role re-architecture; `Graph.version` property +
+active-version map); the cosmetic option matches what shipped
+invariants already support and was picked.
+
+SHIPPED at retirement (5-file code surface + docs + ADR + design log
++ memory): `MetagraphView.versions_in_role(role) -> set[str]`
+(~5-LOC IRI-scan returning distinct `parse_iri(node_id).version`
+values); `mindsos knowledge versions [--role R]` CLI verb extending
+the existing 577-LOC knowledge sub-app (Phase 14 PB-13 partial
+closure — `versions` shipped; `active-version` verb dropped per
+PB-15 vacuum, no graph-layer active-version state to surface);
+ADR-0150 §amendment-3 (parent tree) locking the version-dispatch
+model (one graph per role; version is IRI-string only; no
+`(role, version)` discriminator; explicit escape clause for future
+multi-version pressure per Phase 14a §Q amendment-escape pattern);
+`docs/usage/knowledge/versioning.md` minimal user-facing doc;
+Phase 14 design log retroactive PB-13 + PB-15 closure amendments;
+8-file Phase-17 cross-reference cleanup (`metagraph_view.py`,
+`mindsos_knowledge/__init__.py`, `tests/phase_14/
+test_metagraph_view_step.py`, `docs/concepts/{global-local,
+knowledge-lifecycle,admin-global-shipping}.md`,
+`PHASE_16_NEXT_CHAT_PROMPT.md` trailer, this PHASE_MAP).
+
+ABSORBED: PROMOTED breadcrumb reader → not absorbed at L2; only L2
+consumer (`mindsos_admin/similarity.py::list_candidates`) already
+excludes PROMOTED defensively at Phase 16; production reader ships
+symmetric with the L3 promote write capacity at Phase 33 per
+ADR-0146.
+
+VACATED: `step(version=)` kwarg on `MetagraphView.step` (PB-15
+carry-forward declared vacuous); `mindsos knowledge active-version
+--role R` CLI verb (PB-13 second half — no graph-layer state to
+surface).
+
+5-package version bump `0.0.0+phase16 → 0.0.0+phase17`; image tags
+`mindsos:phase17-{prod,test}`; manifest `phase = "17"`. Tag-free
+ship (Phase 15b design-only precedent extended to "design-only-
+with-code"). 4 design rounds (P1-P3 structural → R1-R7 retirement
+mechanics → N1-N7 mechanics-of-mechanics → M1-M6 stopping
+criterion); 26 picks total, all user-agreed; full ledger in
+`confirmation_docs/PHASE_17_RETIREMENT_DESIGN_LOG.md`.
 
 ## Phase 16 — L2 admin similarity surface, read-only (2026-05-20)
 

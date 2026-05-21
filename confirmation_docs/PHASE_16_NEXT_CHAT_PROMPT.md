@@ -225,4 +225,12 @@ When complete, Phase 16 squash-merges to main; `phase-16-confirmed`
 tag pushed AFTER merge. Downstream Phase 17 (L2 active-version
 queries; PROMOTED breadcrumb routing) opens from
 `confirmation_docs/PHASE_17_NEXT_CHAT_PROMPT.md` (Phase 16 writes it).
+
+**Superseded by Phase 17 retirement (2026-05-20):** Phase 17
+retired without tag; "active-version queries" and "PROMOTED
+breadcrumb routing" vacated per ADR-0150 §amendment-3 (one graph
+per role; version is IRI-string). See `PHASE_MAP.md` §17 RETIRED
+block + `PHASE_17_RETIREMENT_DESIGN_LOG.md` + memory entry
+`project_mindsos_phase_17_retired.md`. Downstream is now Phase 18
+(Server: user store + auth) per `PHASE_18_NEXT_CHAT_PROMPT.md`.
 ══════════════════════════════════════════════════════════════════════

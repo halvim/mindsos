@@ -19,7 +19,7 @@ mechanics.
 | Authoring  | User-Local writes via L3 capacities                                    | [user-local-authoring.md](user-local-authoring.md)                                      |
 | Shipping   | Admin-Global writes via importers (install / upgrade / pinned release) | [admin-global-shipping.md](admin-global-shipping.md)                                    |
 | Promotion  | Local draft → pending_global → canonical Global (release-ship)        | [promotion-bridge.md](promotion-bridge.md)                                              |
-| Versioning | Side-by-side role-graphs + active-version routing + PROMOTED breadcrumbs | Phase 17 — `docs/usage/knowledge/versioning.md` (forthcoming)                           |
+| Versioning | One graph per role; version is IRI-string only (`parse_iri(node_id).version`); enumerated via `MetagraphView.versions_in_role`. PROMOTED breadcrumbs ship symmetric with the L3 promote write capacity at Phase 33. | Phase 17 RETIRED — [../usage/knowledge/versioning.md](../usage/knowledge/versioning.md); ADR-0150 §amendment-3 |
 
 Bootstrap and versioning are described in their owning phase's docs
 (forward-cited above; Phase 14a does not write them). Phase 14a tracks

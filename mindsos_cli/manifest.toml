@@ -12,8 +12,8 @@
 # that would defeat the drift-detection purpose.
 
 [mindsos]
-phase = "16"
-version = "0.0.0+phase16"
+phase = "17"
+version = "0.0.0+phase17"
 
 [runtime.falkordb]
 image = "falkordb/falkordb"

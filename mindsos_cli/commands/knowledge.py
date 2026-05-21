@@ -569,6 +569,83 @@ def schema_validate_cmd(
         raise typer.Exit(code=1)
 
 
+# ── Phase 17 retirement — versions enumerator ──────────────────────────
+#
+# `mindsos knowledge versions [--role R]` — per ADR-0150 §amendment-3.
+# IRI-scan: walks the named role-graph (or all role-graphs when
+# `--role` omitted) of a metagraph state-file and reports the distinct
+# `parse_iri(node_id).version` values observed.
+#
+# Phase 14 PB-13 commitment partially closed: `versions` shipped;
+# `active-version` verb dropped per PB-15 vacuum (no graph-level
+# active-version state to surface).
+
+
+def _load_metagraph_or_die(name: str):
+    """Load + rehydrate a metagraph state-file by NAME.
+
+    Mirrors :func:`mindsos_cli.commands.admin._load_metagraph_or_die`.
+    Lazy import to keep CLI startup cheap when `versions` isn't called.
+    """
+    from mindsos_cli.commands.metagraph import _load_or_die
+
+    return _load_or_die(name)
+
+
+@knowledge_app.command(
+    name="versions",
+    help=(
+        "Enumerate distinct IRI-string versions present in a "
+        "metagraph's role-graph(s). Per ADR-0150 §amendment-3 — "
+        "version lives in IRI strings, not in graph-layer state."
+    ),
+)
+def knowledge_versions(
+    metagraph: str = typer.Option(
+        ...,
+        "--metagraph",
+        "-m",
+        help=(
+            "Metagraph state-file NAME (loaded from "
+            "${MINDSOS_STATE_DIR or ~/.mindsos}/metagraph-<name>.json)."
+        ),
+    ),
+    role: Optional[str] = typer.Option(
+        None,
+        "--role",
+        "-r",
+        help=(
+            "Optional role filter (e.g. 'ontology'). Omit to enumerate "
+            "every role-graph in the metagraph."
+        ),
+    ),
+    as_json: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit `{role: [versions]}` as JSON to stdout.",
+    ),
+) -> None:
+    from mindsos_knowledge.metagraph_view import MetagraphView
+
+    mg = _load_metagraph_or_die(metagraph)
+    view = MetagraphView(mg)
+    roles_to_scan = sorted(view.roles()) if role is None else [role]
+
+    out: dict[str, list[str]] = {}
+    for r in roles_to_scan:
+        out[r] = sorted(view.versions_in_role(r))
+
+    if as_json:
+        typer.echo(json.dumps(out, indent=2, sort_keys=True))
+    else:
+        for r in roles_to_scan:
+            versions = out[r]
+            if versions:
+                typer.echo(f"{r}: {', '.join(versions)}")
+            else:
+                typer.echo(f"{r}: (no version-qualified IRIs)")
+
+
 # ── registration ──────────────────────────────────────────────────────
 
 

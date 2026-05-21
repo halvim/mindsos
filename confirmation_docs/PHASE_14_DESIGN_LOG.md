@@ -213,6 +213,25 @@ reports `mindsos_knowledge.KnowledgeLayer` is importable as smoke
 proxy. View verbs defer to Phase 17 (versioning ships natural
 multi-version view verbs).
 
+> **Closure amendment (Phase 17 retirement, 2026-05-20):** PB-13
+> partially closed.
+>
+> * `mindsos knowledge versions [--role R]` — **SHIPPED** at Phase
+>   17 retirement (extends existing `mindsos knowledge` sub-app via
+>   `mindsos_cli/commands/knowledge.py`; reads a metagraph
+>   state-file via the Phase 16 `--metagraph NAME` pattern; uses
+>   the new `MetagraphView.versions_in_role` IRI-scan enumerator).
+> * `mindsos knowledge active-version --role R` — **DROPPED** as
+>   vacuous per PB-15 closure (see below). No graph-layer
+>   active-version state exists to surface; the verb has nothing
+>   to query.
+>
+> Other KL CLI verbs deferred by PB-13 (e.g., `view --global` /
+> `view --local`) remain deferred to Phase 26 (state-file access
+> per Phase 14a round-3 lock); they are unaffected by this closure.
+> See `confirmation_docs/PHASE_17_RETIREMENT_DESIGN_LOG.md` §R1
+> (CLI-verb scope decision) + §N2 (explicit closure mechanics).
+
 ### Round 3 — final design touches (PB-14..16)
 
 #### PB-14 — Zero validators in Phase 14
@@ -237,6 +256,32 @@ version selection when multi-version ships.
 
 Justification: smallest Phase 14 surface; matches "ship what has
 consumers"; Phase 17 has the consumer.
+
+> **Closure amendment (Phase 17 retirement, 2026-05-20):** PB-15
+> **VACATED**. Pre-impl probe at the Phase 17 retirement chat
+> established that the shipped one-graph-per-role invariant
+> (`_find_role_graph` in `mindsos_knowledge/bootstrap.py` keys on
+> `g.role == role`; importers write version-qualified IRIs into the
+> same role-graph regardless of version arg; `parse_iri` extracts
+> version from IRI body) leaves "active version" undefined. The
+> deferred `version=` kwarg has nothing to dispatch on.
+>
+> The carry-forward is **vacated** (not amended): `MetagraphView.step`
+> ships permanently without a `version=` kwarg. Version enumeration
+> takes the IRI-scan shape via `MetagraphView.versions_in_role`
+> (shipped at the same retirement chat); active-version dispatch
+> does not exist in the L2 model.
+>
+> ADR-0150 §amendment-3 (parent tree) locks the version-dispatch
+> model architecturally — one graph per role; version is IRI-string
+> only; no `(role, version)` discriminator. Future-Claude amending
+> the lock requires an §amendment-N citing concrete multi-version
+> coexistence pressure (escape clause per Phase 14a §Q
+> amendment-escape pattern).
+>
+> See `confirmation_docs/PHASE_17_RETIREMENT_DESIGN_LOG.md` §P1
+> (structural pushback that surfaced the vacuum) + §R6 +
+> §N5 (ADR-0150 §amendment-3 wording).
 
 #### PB-16 — `MetagraphView.get_node()` returns reference + convention
 
