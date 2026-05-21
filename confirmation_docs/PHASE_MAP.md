@@ -109,15 +109,15 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | **14a** | **L2 knowledge lifecycle design pass** (docs/ADR only; no code; no tag; PR-to-main per §1 design-only exception clause) | L2 (design) | 13 |
 | 14 | L2 KnowledgeLayer + role-graph bootstrap (Global + Local) + MetagraphView (read-only) | L2 | 05, 07, 08, 12, 13, 14a |
 | 15 | L2 Importers — DOLCE, OEWN, FrameNet, Alignments | L2 | 13, 14 |
-| 16 | L2 Promotion machinery | L2 | 14 |
+| 16 | L2 admin similarity surface (read-only) — `mindsos_admin/similarity.py` per ADR-0144 §amendment-1 partial §Heuristic Accept. **NEW CODE.** Mutating `propose_for_promotion` deferred to Phase 24 per Phase 16 PB-1c reframe. | L2 | 14, 15a |
 | 17 | L2 Versioning + breadcrumbs | L2 | 14 |
 | 18 | Server: user store + auth | L0 | 07 |
 | 19 | Server: sessions | L0 | 18 |
 | 20 | Server: bootstrap CLI + admin reset + last-admin protection | L0 | 19 |
 | 21 | Server: audit log | L0 | 19 |
 | 22 | Server: admin ops | L0 | 19, 21 |
-| 23 | Server: promotion lock + MetagraphSnapshot rollback | L0 | 10, 16, 19 |
-| 24 | Server: per-user transactional promotion (ADR-0118 full impl). **NEW CODE.** | L0 | 23 |
+| 23 | Server: MetagraphSnapshot rollback infra (narrowed per Phase 16 PB-4c — lock moved to Phase 24). | L0 | 10, 19 |
+| 24 | Server + admin: per-user transactional promotion + RELEASE_SHIP_LOCK + audit gate (ADR-0118 + ADR-0141 + ADR-0144 §Placement). Absorbs `mindsos_admin/promotion.py` from Phase 16 PB-1c. **NEW CODE.** | L0/L2 | 16, 23 |
 | 25 | Server: SessionProtocol seam in L2 + hydrate/extract hooks | cross | 14, 19 |
 | **26** | **Integration A — L0+L1+L2 end-to-end scripted scenario** | cross | 02–25 |
 | 27 | L3 DataStates + capacity primitives | L3 | 02, 05, 06 |
@@ -3364,13 +3364,14 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Carry-forward UNCHANGED:** `mindsos admin scan-schema [--role R]` CLI verb — still Phase 26 alongside CLI state-file access (Phase 14a round-3 lock; Phase 15a PB-3 + 15b Round 1 PB-3 reaffirmed).
   **In-flight pushbacks:** PB-1..23 across 6 rounds, all user-agreed. See `confirmation_docs/PHASE_15b_DESIGN_LOG.md` §1 for the full ledger including round-by-round supersessions.
 
-### Phase 16 — L2 admin promotion machinery
+### Phase 16 — L2 admin similarity surface (read-only)
 
-  **Deps:** 14, 15a. **Layer:** L2 (admin). **Net-new?** No (locations forward-cited from Phase 15a PB-3-i Round 4 — promotion machinery ships at `mindsos_admin/promotion.py` per ADR-0140 §amendment-1 Decision §2 supersession). The original ADR-0140 §Decision §2 routing to `mindsos_server/promotion.py` is superseded.
-  **Features:** `mindsos_admin/promotion.py` with `propose_for_promotion()` + list candidates; emit similarity report (content-hash report_id, ADR-0052); execute promote with optional force.
-  **Tests:** baseline similarity heuristic deterministic (ADR-0055); promote refuses without report unless `--force` (ADR-0049); per-candidate atomic rollback (ADR-0053).
-  **Risks:** keep this phase pure-admin (no auth gate); the Server gate goes in Phase 23.
-  **Docs:** ADRs 0049–0056.
+  **Deps:** 14, 15a. **Layer:** L2 (admin). **Net-new?** **Yes** (3 NEW modules in existing `mindsos_admin/`: `similarity.py`, `_content_hash.py`, `exceptions.py`).
+  **Reframe note:** Phase 16 chat reframed scope from the original "mutating `propose_for_promotion` entry-point" to "read-only similarity surface only" per Phase 16 PB-1c. Mirror of Phase 15b's reframe shape. The mutating entry-point (`mindsos_admin/promotion.py` per ADR-0140 §amendment-1) defers to Phase 24 where ADR-0118 + ADR-0141 + ADR-0144 §Placement land together under the pivot contract. The Phase 15a PB-19 forward-cite ("Phase 16 lands `promotion.py`") amends in Phase 16 design log to "Phase 24 lands `promotion.py`" — same supersession pattern Phase 15b used for the scanner forward-cite.
+  **Features:** `compute_similarity(mg, candidates, *, role, target_mg=None, threshold_blocking=0.85, threshold_review=0.5) -> SimilarityReport` per ADR-0144 §Heuristic (Accepted at 16 per §amendment-1; three weighted scorers — Levenshtein on IRI tail + structural Jaccard on per-role `(frame_elements, synonyms, parents)` + reference Jaccard on `ref:<role>` ∪ XRef; weights 0.4/0.4/0.2). `list_candidates(mg, *, role, node_type=None, where=None)` excludes ADR-0051 PROMOTED breadcrumbs by default. `SimilarityReport.report_id` content-hash per ADR-0052 §amendment-1 (role-scoped + 6-decimal canonicalization + cross-mg input extension). `EmptyComparisonError` per ADR-0144 §amendment-2. CLI: `mindsos admin promote {list, similarity}` reading metagraph state-files by name (`--metagraph NAME` per Phase 03+ CLI convention; Phase 09 state-file reader).
+  **Tests:** Levenshtein DP correctness; per-role extractor outputs; reference Jaccard union; deterministic `report_id`; role-scope content-hash invariance under unrelated-role mutation; NodeType partition; inter-candidate findings flag; empty-pair exclusion + outer-mean renormalization; `EmptyComparisonError` raised when all components undefined; CLI text + `--json`; 7 ADR amendment sentinels.
+  **Risks:** keep this phase pure-admin (no auth gate); Phase 23 narrows to MetagraphSnapshot infra only (per Phase 16 PB-4c) with the lock + entry-point absorbed by Phase 24. Refactor of Levenshtein summation order MUST preserve 6-decimal output bits (Phase 16 PB-T2 / ADR-0052 §amendment-1).
+  **Docs:** ADRs 0049 / 0052 / 0053 / 0055 / 0056 §amendment-1 (Phase 16 documentary or supersession); ADR-0144 §amendment-1 + §amendment-2 (partial Accept + empty-pair exclusion); `confirmation_docs/PHASE_16_DESIGN_LOG.md` (5-round design ledger); `docs/changelog/CHANGELOG.md` Phase 16 entry. **Out of scope per PB-1c:** `mindsos_admin/promotion.py`, `PromotionResult`/`PromotionRequestResult`, `force=True`/`reviewed_similarity_report_id` gate, per-candidate atomic rollback (ADR-0053), release-ship audit gate placement (ADR-0144 §Placement), bloom/blocking-key pre-filter, FalkorDB-direct CLI source, capability gating.
 
 ### Phase 17 — L2 Versioning + breadcrumbs
 
@@ -3418,21 +3419,23 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Risks:** admin actions cross the privacy boundary; audit must be exhaustive.
   **Docs:** `docs/usage/server/sessions.md`, ADR-0008.
 
-### Phase 23 — Server: promotion lock + MetagraphSnapshot rollback
+### Phase 23 — Server: MetagraphSnapshot rollback infrastructure (narrowed)
 
-  **Deps:** 10, 16, 19. **Layer:** L0. **Net-new?** No.
-  **Features:** promotion orchestration under GLOBAL_PROMOTE_LOCK with snapshot-rollback on failure.
-  **Tests:** concurrent promotes serialise; failure mid-promote restores from snapshot; non-CAN_PROMOTE caller rejected.
-  **Risks:** snapshot scope narrowed to release-ship per ADR-0129 — Phase 23 must respect, not widen.
-  **Docs:** `docs/usage/server/promotion.md`, ADRs 0006/0007/0129.
+  **Deps:** 10, 19. **Layer:** L0. **Net-new?** No (snapshot infrastructure only — the actual snapshot module ships at Phase 10).
+  **Phase 16 PB-4c narrowing:** Original scope ("promotion lock + MetagraphSnapshot rollback") narrowed to MetagraphSnapshot rollback infrastructure ONLY. The promotion lock (RELEASE_SHIP_LOCK per ADR-0118) + the `propose_for_promotion` entry-point both move to Phase 24 where they land under the same consumer (`release_update`). Phase 23's deps drop from "10, 16, 19" to "10, 19" — Phase 16 is no longer a precondition (Phase 16's read-only surface has no mutating callee for Phase 23 to wrap).
+  **Features:** server-side context-manager API wrapping `MetagraphSnapshot.of()` + `.restore_into()` (ADR-0027 narrowed-to-release-ship per ADR-0129); the wrapper has no real consumer until Phase 24's `release_update` calls into it. Phase 23 may instead defer entirely to Phase 24 — phase chat decides at design time.
+  **Tests:** snapshot context-manager round-trip; restore-into semantics on partial failure (mock consumer).
+  **Risks:** snapshot scope MUST stay narrowed to release-ship per ADR-0129 — Phase 23 does NOT widen. If Phase 24's design wants the snapshot infrastructure inline (single-phase land), Phase 23 may be retired during Phase 23's own chat (mirroring Phase 37's retirement by Phase 15a).
+  **Docs:** `docs/usage/server/promotion.md`, ADRs 0027/0129; PHASE_MAP §23 narrowing rationale in Phase 16 design log §1 Round 1 PB-4.
 
-### Phase 24 — Server: per-user transactional promotion (full ADR-0118 implementation)
+### Phase 24 — Server: per-user transactional promotion (full ADR-0118 + ADR-0141 + ADR-0144 §Placement)
 
-  **Deps:** 23. **Layer:** L0. **Net-new?** **Yes.** Full ADR-0118 model beyond the vertical slice: STRUCTURE/SUBGRAPH/PIPELINE proposers (currently NotImplementedError); RELEASE_SHIP_LOCK; release manifest in `version_db/`; per-user transactional model.
-  **Features:** propose-for-promotion (ATOM + STRUCTURE + SUBGRAPH + PIPELINE); release create from manifest; release ship under RELEASE_SHIP_LOCK.
-  **Tests:** all four kinds proposable; release-ship atomicity across multiple atoms; rollback on partial failure; pending_global buffer survives restart.
-  **Risks:** ADRs 0113–0117 / 0119 / 0120 are reserved but not drafted (§7); phase chat must draft them as part of this phase.
-  **Docs:** `docs/usage/server/promotion.md`, ADRs 0113–0120 (drafted in this phase), ADR-0118 confirmed.
+  **Deps:** 16, 23. **Layer:** L0 / L2 (admin). **Net-new?** **Yes** (absorbs `mindsos_admin/promotion.py` from Phase 16 PB-1c deferral + RELEASE_SHIP_LOCK from Phase 23 PB-4c absorption + STRUCTURE/SUBGRAPH/PIPELINE proposers + release manifest + lazy migration).
+  **Phase 16 PB-1c absorption:** Lands `mindsos_admin/promotion.py` with `propose_for_promotion()` per ADR-0118 §1 (single-user transactional model writing into `pending_global` buffer) + per ADR-0141 (replaces `KL.promote()`; canonical promotion entry-point). Consumes Phase 16's `compute_similarity` for the release-ship audit gate per ADR-0144 §Placement (the §amendment-1 partial-flip retires here as ADR-0144 flips to full Accept). Consumes Phase 16's `metagraph_content_hash` for audit-row invariants (cross-mg form: pending Global vs canonical Global).
+  **Features:** propose-for-promotion (ATOM + STRUCTURE + SUBGRAPH + PIPELINE); release create from manifest; release ship under RELEASE_SHIP_LOCK; release-ship audit gate calling Phase 16's `compute_similarity(target_mg=canonical_global)` per ADR-0144 §Placement; ADR Status flips: 0118 + 0141 → Accepted; 0049 + 0053 + 0056 → Superseded (per their Phase 16 §amendment-1 documentation); 0144 → fully Accepted (§Placement lands; §amendment-1 retires).
+  **Tests:** all four kinds proposable; release-ship atomicity across multiple atoms; rollback on partial failure; pending_global buffer survives restart; audit-gate `SimilarityFinding` emission per `compute_similarity` cross-mg call.
+  **Risks:** ADRs 0113–0117 / 0119 / 0120 are reserved but not drafted (§7); phase chat must draft them as part of this phase. Phase 23 may have already been retired during its own chat — Phase 24 design chat reconciles.
+  **Docs:** `docs/usage/server/promotion.md`, ADRs 0113–0120 (drafted in this phase), ADR-0118 confirmed; ADR-0141 confirmed; ADR-0144 confirmed (full Accept retires §amendment-1); ADRs 0049 / 0053 / 0056 Status → Superseded.
 
 ### Phase 25 — Server: SessionProtocol seam in L2 + hydrate/extract hooks
 
