@@ -62,11 +62,20 @@ Deferred to later phases:
 * `validators.py` semantic-invariant module → Phase 36 per ADR-0139
   (Phase 14 PB-14).
 * `follow_ref` cross-metagraph helper → Phase 25 / first L3 capacity.
-* `step()` `version=` kwarg → Phase 17 (Phase 14 PB-15).
-* CLI verbs over KL → Phase 17 (Phase 14 PB-13).
+* `step()` `version=` kwarg → VACATED at Phase 17 retirement
+  (2026-05-20) per ADR-0150 §amendment-3 (one graph per role; no
+  active-version dispatch). Phase 14 PB-15 closure recorded in
+  `confirmation_docs/PHASE_14_DESIGN_LOG.md`.
+* CLI verbs over KL → Phase 14 PB-13 partially closed at Phase 17
+  retirement (`mindsos knowledge versions` shipped;
+  `active-version` dropped per PB-15 vacuum).
 * Importers (DOLCE / OEWN / FrameNet / Alignments) → Phase 15.
-* Promotion machinery → Phase 16.
-* Versioning + breadcrumbs → Phase 17.
+* Promotion machinery → Phase 24 (Phase 16 PB-1c reframe).
+* Versioning enumerator → SHIPPED at Phase 17 retirement
+  (`MetagraphView.versions_in_role` + `mindsos knowledge versions`
+  CLI verb). PROMOTED-breadcrumb reader → Phase 33 per ADR-0146
+  symmetric write contract (Phase 16's `list_candidates` exclude
+  is the only L2 reader needed before then).
 * REF_TYPES parity test against L3 → Phase 27 (ADR-0067).
 * Per-builder inverse field helpers → per-consumer phase.
 * Schema strict-tightening (per-role) → first-consumer phase after
@@ -76,7 +85,7 @@ Deferred to later phases:
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase16"
+__version__ = "0.0.0+phase17"
 
 from .bootstrap import (
     ensure_global_role_graph,

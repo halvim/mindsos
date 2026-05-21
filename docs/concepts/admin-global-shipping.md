@@ -73,10 +73,16 @@ DOLCE-DUL 4.1 + OEWN 2024 into `data/datasets/` (gitignored).
 FrameNet 1.7 requires manual download per Berkeley license; see
 [framenet.md](../knowledge-sources/framenet.md).
 
-Reruns against newer source versions register additional
-version-graphs side-by-side (no in-place overwrite of `ontology-1`;
-v2 lands as `ontology-2` per the versioning model — Phase 17 owns
-the dispatch).
+Reruns against newer source versions write into the SAME role-graph
+alongside the prior version's IRIs (per ADR-0150 §amendment-3,
+version lives in the IRI string body, not in a per-version graph —
+e.g., `dolce-dul-4.1:PhysicalObject` and `dolce-dul-4.2:PhysicalObject`
+coexist as distinct nodes in the single `ontology` role-graph).
+`MetagraphView.versions_in_role("ontology")` enumerates the distinct
+versions observed; there is no "active version" dispatch (Phase 17
+retired 2026-05-20 — original "side-by-side role-graph + active-
+version routing" framing vacated against the one-graph-per-role
+invariant shipped at Phase 14).
 
 ### Caller pattern — `bootstrap_global` (Phase 15a)
 

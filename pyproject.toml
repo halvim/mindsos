@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase16"
-description = "MindsOS command-line interface — Phase 16 L2 admin similarity surface (NEW mindsos_admin/similarity.py + _content_hash.py + exceptions.py; ADR-0144 §Heuristic Accepted per §amendment-1; three weighted scorers Levenshtein on IRI tail + structural Jaccard on per-role (frame_elements, synonyms, parents) extractors + reference Jaccard on ref:<role> ∪ XRef; thresholds 0.85 blocking / 0.5 review; role-scoped content-hash report_id per ADR-0052 §amendment-1; EmptyComparisonError contract per ADR-0144 §amendment-2; mindsos admin promote {list, similarity} CLI verbs; mutating propose entry-point deferred to Phase 24 per PB-1c reframe)."
+version = "0.0.0+phase17"
+description = "MindsOS command-line interface — Phase 17 RETIRED 2026-05-20: version-dispatch model locked to IRI-string-only per ADR-0150 §amendment-3; MetagraphView.versions_in_role IRI-scan enumerator + mindsos knowledge versions CLI verb shipped (Phase 14 PB-13 partial closure); step(version=) carry-forward vacated (Phase 14 PB-15 closure); active-version verb dropped as vacuous."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [

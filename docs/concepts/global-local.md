@@ -18,7 +18,7 @@ Phase 14 owns this page. Subsequent phases amend specific sections:
 | Authoring (Local)  | no          | [user-local-authoring.md](user-local-authoring.md) |
 | Shipping (Global)  | no          | [admin-global-shipping.md](admin-global-shipping.md) |
 | Promotion          | no          | [promotion-bridge.md](promotion-bridge.md)        |
-| Versioning         | no          | `docs/usage/knowledge/versioning.md` (Phase 17)   |
+| Versioning         | yes         | [../usage/knowledge/versioning.md](../usage/knowledge/versioning.md) (Phase 17 retired; one graph per role, version is IRI-string per ADR-0150 §amendment-3) |
 
 ## The two metagraphs
 
@@ -166,20 +166,24 @@ not through a mutation method on the view).
   first L3 capacity phase per Phase 14 PB-10 (v3 `step()` overlay
   contradicted its own §1.2 out-of-scope clause; the post-pivot
   model puts cross-metagraph composition at L3 / Mental Model).
-- **`version=`** kwarg on `step()` — defers to Phase 17 per
-  Phase 14 PB-15 (one version per role at Phase 14; multi-version
-  routing ships at Phase 17).
+- **`version=`** kwarg on `step()` — VACATED at Phase 17 retirement
+  (2026-05-20) per
+  [ADR-0150 §amendment-3](../decisions/adr/0150-l2-knowledge-lifecycle.md#amendment-3-phase-17-retirement--2026-05-20--version-dispatch-model-lock).
+  The shipped one-graph-per-role invariant leaves "active version"
+  undefined; version lives in IRI strings, enumerable via
+  `MetagraphView.versions_in_role(role)` (Phase 17 retirement
+  delivery).
 - **Validators** — defer to Phase 36 per
   [ADR-0139 Proposed](../decisions/adr/0139-hybrid-invariant-home.md).
 - **Write methods on KL** — `add_local_node` / `add_local_edge` /
   `add_local_alignment` / `promote` / `similarity_report` are deleted
   per [ADR-0138 Proposed](../decisions/adr/0138-kl-drops-write-api.md);
   writes land via L3 capacities in Phase 33-35.
-- **CLI verbs over KL** — defer to Phase 17 per Phase 14 PB-13
-  (KL is in-memory only per
-  [ADR-0043](../decisions/adr/0043-kl-in-memory-only-server-owns-io.md);
-  state-file access deferred to Phase 26 per Phase 14a round-3
-  lock).
+- **CLI verbs over KL** — Phase 14 PB-13 partially closed at Phase 17
+  retirement: `mindsos knowledge versions` shipped;
+  `active-version` verb dropped per PB-15 vacuum (no graph-layer
+  active-version state to surface). Other CLI verbs still deferred
+  (state-file access at Phase 26 per Phase 14a round-3 lock).
 
 ## Source
 

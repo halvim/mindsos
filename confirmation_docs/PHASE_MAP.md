@@ -110,7 +110,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | 14 | L2 KnowledgeLayer + role-graph bootstrap (Global + Local) + MetagraphView (read-only) | L2 | 05, 07, 08, 12, 13, 14a |
 | 15 | L2 Importers — DOLCE, OEWN, FrameNet, Alignments | L2 | 13, 14 |
 | 16 | L2 admin similarity surface (read-only) — `mindsos_admin/similarity.py` per ADR-0144 §amendment-1 partial §Heuristic Accept. **NEW CODE.** Mutating `propose_for_promotion` deferred to Phase 24 per Phase 16 PB-1c reframe. | L2 | 14, 15a |
-| 17 | L2 Versioning + breadcrumbs | L2 | 14 |
+| ~~17~~ | ~~L2 Versioning + breadcrumbs~~ — **RETIRED 2026-05-20** (ADR-0150 §amendment-3; one-graph-per-role lock). Shipped: `versions_in_role` enumerator + `mindsos knowledge versions` CLI verb. PB-15 vacated; PB-13 partially closed (`active-version` dropped). | — | — |
 | 18 | Server: user store + auth | L0 | 07 |
 | 19 | Server: sessions | L0 | 18 |
 | 20 | Server: bootstrap CLI + admin reset + last-admin protection | L0 | 19 |
@@ -3373,13 +3373,28 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Risks:** keep this phase pure-admin (no auth gate); Phase 23 narrows to MetagraphSnapshot infra only (per Phase 16 PB-4c) with the lock + entry-point absorbed by Phase 24. Refactor of Levenshtein summation order MUST preserve 6-decimal output bits (Phase 16 PB-T2 / ADR-0052 §amendment-1).
   **Docs:** ADRs 0049 / 0052 / 0053 / 0055 / 0056 §amendment-1 (Phase 16 documentary or supersession); ADR-0144 §amendment-1 + §amendment-2 (partial Accept + empty-pair exclusion); `confirmation_docs/PHASE_16_DESIGN_LOG.md` (5-round design ledger); `docs/changelog/CHANGELOG.md` Phase 16 entry. **Out of scope per PB-1c:** `mindsos_admin/promotion.py`, `PromotionResult`/`PromotionRequestResult`, `force=True`/`reviewed_similarity_report_id` gate, per-candidate atomic rollback (ADR-0053), release-ship audit gate placement (ADR-0144 §Placement), bloom/blocking-key pre-filter, FalkorDB-direct CLI source, capability gating.
 
-### Phase 17 — L2 Versioning + breadcrumbs
+### ~~Phase 17 — L2 Versioning + breadcrumbs~~ — RETIRED 2026-05-20 by Phase 17 retirement chat / ADR-0150 §amendment-3
 
-  **Deps:** 14. **Layer:** L2. **Net-new?** No.
-  **Features:** active-version query; map of versions per role; PROMOTED breadcrumb in views.
-  **Tests:** version-qualified IRI parsing; PROMOTED ref preserved through promotion (ADR-0051).
-  **Risks:** ADR-0142 (XRef cutover, Phase 09) interacts with breadcrumbs.
-  **Docs:** `docs/usage/knowledge/versioning.md`, ADR-0051.
+  **Status:** RETIRED 2026-05-20. Pre-impl probe at the Phase 17 retirement chat established that the shipped one-graph-per-role invariant (`_find_role_graph` keys on `g.role == role`; importers write version-qualified IRIs into the same role-graph regardless of version arg; `parse_iri` extracts version from IRI body) leaves "active-version routing" with nothing to dispatch on. Phase 14 PB-15's promise that "Phase 17 amends with active-version selection" is vacuous against the shipped model.
+
+  **Shipped at retirement (not deferred):**
+  * `MetagraphView.versions_in_role(role) -> set[str]` — IRI-scan enumerator (~5 LOC) returning distinct `parse_iri(node_id).version` values observed in the role-graph.
+  * `mindsos knowledge versions [--role R]` CLI verb (Phase 14 PB-13 partial closure; `active-version` verb dropped per PB-15 vacuum).
+  * ADR-0150 §amendment-3 — version-dispatch model lock (one graph per role; version is IRI-string only; explicit escape clause for future multi-version pressure).
+  * `docs/usage/knowledge/versioning.md` — minimal user-facing doc.
+  * Phase 14 design log retroactive amendments (PB-13 + PB-15 closure).
+  * 8-file cross-reference cleanup (Phase-17 forward-cites in `metagraph_view.py`, `mindsos_knowledge/__init__.py`, `tests/phase_14/test_metagraph_view_step.py`, `docs/concepts/global-local.md`, `docs/concepts/knowledge-lifecycle.md`, `docs/concepts/admin-global-shipping.md`, `PHASE_16_NEXT_CHAT_PROMPT.md`, this PHASE_MAP).
+
+  **Absorbed elsewhere:**
+  * **PROMOTED breadcrumb reader** — not absorbed at L2; the only L2 consumer (`mindsos_admin/similarity.py::list_candidates`) already excludes PROMOTED defensively at Phase 16. Production-grade reader ships symmetric with the L3 promote write capacity at **Phase 33** per ADR-0146.
+
+  **Vacated:**
+  * `step(version=)` kwarg on `MetagraphView.step` — PB-15 carry-forward declared vacuous. The method ships without the kwarg; one graph per role makes active-version dispatch undefined.
+  * `mindsos knowledge active-version --role R` CLI verb (PB-13 second half) — dropped; no graph-layer active-version state to surface.
+
+  **Retirement design ledger:** 4 rounds (P1-P3 structural pushbacks → R1-R7 retirement mechanics → N1-N7 mechanics-of-mechanics → M1-M6 stopping criterion). See `confirmation_docs/PHASE_17_RETIREMENT_DESIGN_LOG.md`.
+
+  **No tag, no release.yml run** (design-only-with-code precedent per Phase 15b). Squash-merge ships docs + 1 method + 1 CLI verb + amendments under one PR.
 
 ### Phase 18 — Server: user store + auth
 
