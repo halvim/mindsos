@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase17"
-description = "MindsOS command-line interface — Phase 17 RETIRED 2026-05-20: version-dispatch model locked to IRI-string-only per ADR-0150 §amendment-3; MetagraphView.versions_in_role IRI-scan enumerator + mindsos knowledge versions CLI verb shipped (Phase 14 PB-13 partial closure); step(version=) carry-forward vacated (Phase 14 PB-15 closure); active-version verb dropped as vacuous."
+version = "0.0.0+phase18"
+description = "MindsOS command-line interface — Phase 18: Server: user store + auth. First L0 (Server Layer) package per ADR-0001; mindsos_server/ ships argon2id user store (SQLite server.db) + canonical 7-capability roster (UPPER per PB-4; USER_CAPS empty per PB-12) + Session dataclass + Session.for_testing shim + universal audit substrate (full ADR-0013 enum upfront per PB-34) + forward-only DDL migration framework (v1: users + audit; v2 sessions reserved for Phase 19) + bootstrap CLI verb lifted from Phase 20 per PB-27. 38 picks across 4 design rounds; see confirmation_docs/PHASE_18_DESIGN_LOG.md."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
@@ -25,6 +25,11 @@ dependencies = [
     #   fallback is supported but slow on real (~30 MB) OEWN.
     "rdflib",
     "lxml",
+    # Phase 18 — argon2id password hashing per ADR-0003 + Phase 18
+    # PB-14 / PB-22 / PB-31. mindsos_server/_argon2.py wraps
+    # argon2.PasswordHasher with explicit Argon2Params injection
+    # (PRODUCTION_PARAMS for production; _TEST_FAST_PARAMS for tests).
+    "argon2-cffi",
 ]
 
 [project.scripts]
@@ -35,7 +40,11 @@ mindsos = "mindsos_cli.__main__:main"
 # package checklist (`feedback_new_top_level_package.md`). Admin
 # permanent home per ADR-0140 §amendment-1; supersedes ADR-0140
 # §Decision §1+§2 relocation-to-server.
-include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*"]
+# Phase 18 — added "mindsos_server*" per same 7-site checklist. First
+# L0 (Server Layer) package per ADR-0001 + Phase 18 PB-1 (row Net-new
+# amendment) + PB-25 (server depends on mindsos_knowledge for the
+# _USER_ID_RE regex import; ADR-0010 permits the server→KL direction).
+include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*"]
 
 [tool.setuptools.package-data]
 mindsos_cli = ["manifest.toml"]

@@ -130,6 +130,14 @@ COPY mindsos_knowledge ./mindsos_knowledge
 # prod + test stages; consumed at CLI runtime by
 # `mindsos_cli/commands/admin.py` (Phase 15a `mindsos admin import ...`).
 COPY mindsos_admin ./mindsos_admin
+# Phase 18: NEW top-level package — `mindsos_server/` ships the first
+# L0 (Server Layer) surface per ADR-0001 + Phase 18 PB-1 (Net-new row
+# amendment). 7-site new-top-level-package checklist
+# (feedback_new_top_level_package.md) requires COPY in both prod +
+# test stages; consumed at CLI runtime by
+# `mindsos_cli/commands/server.py` (`mindsos server bootstrap` +
+# `mindsos server user {create,list,verify}`).
+COPY mindsos_server ./mindsos_server
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -189,7 +197,18 @@ COPY mindsos_knowledge ./mindsos_knowledge
 # Phase 15a: mirror of prod-stage COPY for `mindsos_admin/` per the
 # 7-site new-top-level-package checklist.
 COPY mindsos_admin ./mindsos_admin
+# Phase 18: mirror of prod-stage COPY for `mindsos_server/` per the
+# 7-site new-top-level-package checklist (PB-1 + PB-25 + PB-26 ship
+# the layer-isolation test at tests_server/integration/, which also
+# needs the test-stage COPY of tests_server/ below).
+COPY mindsos_server ./mindsos_server
 COPY tests ./tests
+# Phase 18: tests_server/ is a SEPARATE top-level test tree per the
+# legacy layout (PHASE_MAP §1 "Test layout: Existing `tests/`,
+# `tests_l3/`, `tests_server/` preserved"). The Phase 18 layer-
+# isolation test at tests_server/integration/test_layer_isolation.py
+# (PB-26 / ADR-0010) requires this COPY in the test stage.
+COPY tests_server ./tests_server
 # Phase 01: tests/phase_01/test_workflows_present.py and
 # test_doctor_workflow_check.py read these from the host repo at /app/.
 # tests/phase_01/test_init_notes.py invokes confirm-phase --init-notes which

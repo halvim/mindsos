@@ -3398,11 +3398,15 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 18 — Server: user store + auth
 
-  **Deps:** 07. **Layer:** L0. **Net-new?** No.
-  **Features:** user create / list / verify; capability assignment per role.
-  **Tests:** password verification; argon2id hashing; unknown user fails with structured error.
-  **Risks:** prohibited-action policy: CLI must NEVER read passwords from arguments — `--password-stdin` only.
-  **Docs:** `docs/usage/server/auth.md`, ADR-0003.
+  **Deps:** 07. **Layer:** L0. **Net-new?** **Yes** (amended at Phase 18 ship per PB-1 — original "No" was stale; ADR-0001 lock + no prior `mindsos_server/` package = this IS the first L0 surface). 6th top-level package per the new-top-level-package 7-site checklist (`feedback_new_top_level_package.md`).
+  **Reframe note:** Phase 18 ship 38 picks across 4 design rounds (see `confirmation_docs/PHASE_18_DESIGN_LOG.md`). PB-1 row Net-new amendment; PB-11 audit table lifted to v1 (was: Phase 21); PB-12 USER_CAPS strictly empty per ADR-0002 (Proposed-status caps from 0118/0137 defer); PB-27 bootstrap CLI verb lifted from Phase 20 to Phase 18 (Phase 20 row narrows below).
+  **Features:** user create / list / verify (CLI `mindsos server user {create,list,verify}` per PB-10/PB-36 + `--password-stdin` only per PB-8 — `--password` flag NOT declared); idempotent first-admin bootstrap (CLI `mindsos server bootstrap` per PB-27, lifted from Phase 20 / ADR-0012 §amendment-1); capability roster (7 UPPER constants per PB-4 + ADR-0002 + USER_CAPS empty per PB-12 + ADMIN_CAPS all-7); Session frozen dataclass matching SessionProtocol exactly per PB-33 + Session.for_testing shim per ADR-0013; audit substrate (audit table + full ADR-0013 event enum upfront per PB-34 + write_audit + ISO-8601 UTC ms timestamps per PB-35); forward-only SQLite DDL migration framework v1 = users + audit per PB-2/PB-11 (sessions v2 reserved for P19).
+  **Modules touched:** NEW `mindsos_server/` package (`__init__`, `capabilities`, `errors`, `session`, `users`, `audit`, `_argon2`, `_db`, `_schema`); NEW `mindsos_cli/commands/server.py`; modified `mindsos_cli/app.py` (add_typer server group); 7-site checklist edits (`pyproject.toml`, `requirements.in`, `Dockerfile` prod+test stages, `tests/_shared/sentinel_paths.py`, `mindsos_cli/commands/doctor.py` 5→6 pkg parity, `mindsos_cli/manifest.toml` (+[server] db_path), `docker-compose.yml` tag bump).
+  **Tests:** `tests/phase_18/` ~9 files (argon2 + db_schema + users + session + audit + capabilities_parity + cli_server_user + bootstrap_cli + doctor_6pkg_parity); NEW `tests_server/integration/test_layer_isolation.py` per PB-26 (ADR-0010 I-S1 enforcement from package creation).
+  **Pass criterion:** isolated `pytest tests/phase_18/` green in-container; cumulative `pytest tests/` green; layer-isolation test green (no `from mindsos_server` in any domain pkg); `mindsos doctor --self-test` green on phase-18 branch (6-pkg parity).
+  **Risks:** CLI must NEVER read passwords from arguments — `--password-stdin` only per PB-8; argon2 test cost mitigated via `_TEST_FAST_PARAMS` per PB-14; timing-leak on UNKNOWN_USER path closed via `_SENTINEL_HASH` per PB-22/PB-31; `mindsos_cli` now hard-deps `mindsos_server` (pyproject) and `mindsos_server` hard-deps `mindsos_knowledge` (for `_USER_ID_RE` per PB-7 + PB-25).
+  **Docs:** `docs/usage/server/auth.md` (last_confirmed_phase: 18); ADRs 0002 §am1 + 0012 §am1 + 0041 §am1 + 0044 §am2 + 0046 §am1 (5 documentary amendments at this ship). Design log: `confirmation_docs/PHASE_18_DESIGN_LOG.md`.
+  **Breaking changes from prior phase:** none — Phase 17 retirement + Phase 18 NEW package are additive. Existing CLI verbs unchanged.
 
 ### Phase 19 — Server: sessions
 
@@ -3412,12 +3416,13 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Risks:** token storage on the host filesystem — phase chat picks (in-memory only with `--token` argument, or restricted-perms volume).
   **Docs:** `docs/usage/server/sessions.md`, ADRs 0002/0005.
 
-### Phase 20 — Server: bootstrap CLI + admin reset + last-admin protection
+### Phase 20 — Server: admin reset + last-admin protection (narrowed)
 
   **Deps:** 19. **Layer:** L0. **Net-new?** No.
-  **Features:** first-admin bootstrap; reset-admin recovery; last-admin removal blocked.
-  **Tests:** bootstrap idempotent; reset-admin rotates credentials; last-admin removal refuses.
-  **Docs:** `docs/usage/server/bootstrap.md`, ADR-0012.
+  **Phase 18 PB-27 narrowing:** Original scope ("first-admin bootstrap; reset-admin recovery; last-admin removal blocked") had three Features; **bootstrap CLI verb lifted to Phase 18** per Phase 18 PB-27 / ADR-0012 §amendment-1 (the verb was unusable end-to-end at Phase 18 ship without bootstrap; helper `_insert_first_admin` was already at Phase 18 per PB-9; wrapping it in a CLI verb at Phase 18 was 10 LOC). Phase 20 row narrows to two Features.
+  **Features:** reset-admin recovery (`mindsos server reset-admin`); last-admin removal blocked (`_assert_not_sole_admin` helper enforced in `admin_demote_user` / `admin_disable_user` / `hard_delete_user` per ADR-0012 §Decision).
+  **Tests:** reset-admin rotates credentials + kills sessions for that user + writes `EVT_RESET_ADMIN` audit with OS-user actor; last-admin removal refuses with `LastAdminError` (HTTP 409); reset-admin requires filesystem access to `server.db` (acceptable authority floor per ADR-0012 §Rationale).
+  **Docs:** `docs/usage/server/bootstrap.md` (amends with reset-admin section), ADR-0012 (§amendment-1 already shipped at Phase 18).
 
 ### Phase 21 — Server: audit log
 

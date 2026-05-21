@@ -2,15 +2,22 @@
 NEW CHAT — MindsOS Phase 18 (Server: user store + auth)
 ══════════════════════════════════════════════════════════════════════
 Project: MindsOS — folder `halvim_mindsos/` under
-`/Layered Intelligence/`. Branch off `origin/main` tip. Phase 17
-RETIRED (design-only-with-code; tag-free) — squash-merge SHA TBD
-should be at `origin/main` HEAD when this chat opens; Phase 16's
-`58e76a5` immediately under it. Verify:
-    git fetch origin && git log --oneline origin/main | head -3
-Line 1 must read "Phase 17 — RETIRED ..." (or the actual PR title
-landed during retirement). If line 1 is `58e76a5 Phase 16 ...`, the
-Phase 17 retirement PR did not land yet — STOP and resolve before
-branching.
+`/Layered Intelligence/`. Branch off `origin/main` tip.
+
+Phase 17 RETIRED 2026-05-20 (design-only-with-code; tag-free).
+Expected `origin/main` shape:
+    git fetch origin && git log --oneline origin/main | head -4
+* Line 1 = `06ec866 Phase 17 retirement: backfill squash-merge SHA in design log`
+* Line 2 = `6d6f8bc Phase 17 — RETIRED: vacuous against ADR-0150 §closure; versions_in_role + CLI verb + ADR-0150 §amendment-3 (#26)`
+* Line 3 = `58e76a5 Phase 16 — L2 admin similarity surface (read-only) (#25)`
+* Line 4 = `ec94565 Phase 15b — design-only ...`
+
+If line 1/2 don't show the Phase 17 retirement commits, STOP — the
+retirement PR didn't land yet; resolve before branching.
+
+**No `phase-17-confirmed` tag exists or should be created** (per
+ADR-0150 §amendment-3 + Phase 15b design-only-with-code precedent).
+Phase 18 RESUMES the tagged-ship cadence with `phase-18-confirmed`.
 ROLE: Critical design reviewer + implementer. Follow project-level
 CLAUDE.md skeptical-default + terse + pros/cons + alternatives +
 **picks-per-pushback** behavior (per `feedback_pushback_format_with_picks.md`).

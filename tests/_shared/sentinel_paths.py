@@ -199,4 +199,24 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_admin/similarity.py",
     "mindsos_admin/_content_hash.py",
     "mindsos_admin/exceptions.py",
+    # Phase 18 — NEW top-level package `mindsos_server/`. Per the 7-site
+    # new-top-level-package checklist (`feedback_new_top_level_package.md`
+    # + `feedback_host_pip_refresh_on_new_package.md`), all runtime Python
+    # modules are sentinelled. Per `feedback_sentinel_paths_runtime_only.md`,
+    # docs (`docs/usage/server/auth.md`) + design log
+    # (`confirmation_docs/PHASE_18_DESIGN_LOG.md`) are NOT sentinelled
+    # (mkdocs source / confirmation artifact, not CLI runtime inputs).
+    # Underscore-prefixed modules are runtime-consumed but private to the
+    # package; they ship in the wheel and the test image alongside the
+    # public ones, so they sentinel here.
+    "mindsos_server/__init__.py",
+    "mindsos_server/capabilities.py",
+    "mindsos_server/errors.py",
+    "mindsos_server/session.py",
+    "mindsos_server/users.py",
+    "mindsos_server/audit.py",
+    "mindsos_server/_argon2.py",
+    "mindsos_server/_db.py",
+    "mindsos_server/_schema.py",
+    "mindsos_cli/commands/server.py",
 )

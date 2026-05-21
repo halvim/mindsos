@@ -12,8 +12,8 @@
 # that would defeat the drift-detection purpose.
 
 [mindsos]
-phase = "17"
-version = "0.0.0+phase17"
+phase = "18"
+version = "0.0.0+phase18"
 
 [runtime.falkordb]
 image = "falkordb/falkordb"
@@ -28,6 +28,14 @@ version = "4.18.3"
 host = "localhost"
 port = 6379
 graph = "mindsos"
+
+# Phase 18 — `server.db` location per PB-17 manifest-fallback chain
+# (env MINDSOS_SERVER_DB > this field > hard-coded ~/.mindsos/server.db).
+# Empty string means "no manifest override; fall back to default".
+# Phase 18 ships with empty string — local installs use the default;
+# operators set this in deploy configs.
+[server]
+db_path = ""
 
 [runtime.python]
 image = "python"
