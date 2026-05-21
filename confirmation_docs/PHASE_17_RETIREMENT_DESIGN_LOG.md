@@ -2,7 +2,7 @@
 
 **Date:** 2026-05-20
 **Decision class:** RETIRED (design-only-with-code; tag-free)
-**Squash-merge SHA:** (filled at merge)
+**Squash-merge SHA:** 6d6f8bc
 **ADR amendment:** ADR-0150 §amendment-3 (parent tree; lands first
 per M3-B)
 
