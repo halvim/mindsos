@@ -12,8 +12,8 @@
 # that would defeat the drift-detection purpose.
 
 [mindsos]
-phase = "17"
-version = "0.0.0+phase17"
+phase = "18"
+version = "0.0.0+phase18"
 
 [runtime.falkordb]
 image = "falkordb/falkordb"
@@ -29,6 +29,14 @@ host = "localhost"
 port = 6379
 graph = "mindsos"
 
+# Phase 18 — `server.db` location per PB-17 manifest-fallback chain
+# (env MINDSOS_SERVER_DB > this field > hard-coded ~/.mindsos/server.db).
+# Empty string means "no manifest override; fall back to default".
+# Phase 18 ships with empty string — local installs use the default;
+# operators set this in deploy configs.
+[server]
+db_path = ""
+
 [runtime.python]
 image = "python"
 tag = "3.12.3-slim-bookworm"
@@ -41,7 +49,7 @@ version = "3.12.3"
 # so `mindsos doctor --self-test` reports a clear diagnostic instead of a hex
 # mismatch. Phase 01 does NOT change requirements.in (only requirements-test.in
 # adds pytest-json-report), so this hash is unchanged from Phase 00.
-requirements_txt_sha256 = "7fd16966d88d4f97a9f292e2bd856eb7bbe4a8d46a8f10f67cf025b90fc3bdc6"
+requirements_txt_sha256 = "aa00945fc9f67868393be85843e17fb3947e28c0ed4445900c51a1244bc445d7"
 
 [ci]
 # Workflow files that `doctor --self-test` verifies exist + non-empty + parse-shaped.

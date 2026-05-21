@@ -13,6 +13,7 @@ from mindsos_cli.commands.metagraph import register_metagraph_app
 from mindsos_cli.commands.metagraph_schema import register_metagraph_schema_app
 from mindsos_cli.commands.persistence import register_persistence_app
 from mindsos_cli.commands.schema import register_schema_app
+from mindsos_cli.commands.server import register_server_app
 from mindsos_cli.commands.version import show_version
 
 app = typer.Typer(
@@ -54,3 +55,5 @@ register_knowledge_app(app)
 register_persistence_app(app)
 # Phase 15a — NEW `mindsos admin` group (importers + future scanner/promotion).
 register_admin_app(app)
+# Phase 18 — NEW `mindsos server` group (user store + bootstrap; first L0 surface).
+register_server_app(app)

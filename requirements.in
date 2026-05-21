@@ -13,3 +13,10 @@ falkordb>=1.6.1,<2.0
 # * lxml accelerates OEWN-LMF + FrameNet XML; stdlib xml.etree fallback supported.
 rdflib>=7.0,<8.0
 lxml>=5.0,<6.0
+
+# Phase 18 — argon2id password hashing for mindsos_server per ADR-0003
+# + Phase 18 PB-14. tools/lock.sh reads requirements.in (NOT pyproject.toml)
+# per `feedback_lock_sh_reads_requirements_in.md`; the dep MUST land in
+# BOTH this file AND pyproject.toml to produce a Docker install that ships
+# argon2-cffi.
+argon2-cffi>=23.0,<24.0

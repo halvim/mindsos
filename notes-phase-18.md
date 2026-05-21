@@ -1,0 +1,153 @@
+# Phase 18 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+Server: user store + auth
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Phase 18 introduces `mindsos_server/`, the first L0 (Server Layer)
+top-level package per ADR-0001. **NEW CODE** despite PHASE_MAP §18
+row originally saying "Net-new: No" — row text was stale (written
+before retirement-era ADR audit). PB-1 amends the row to "Net-new:
+Yes (first L0 pkg per ADR-0001)" at this ship.
+
+4-round design pass (38 picks; see
+`confirmation_docs/PHASE_18_DESIGN_LOG.md`). Mirrors Phase 16's
+5-round shape; round 5 was self-flagged as saturating on impl
+detail and skipped at user confirmation.
+
+Surface shipped:
+- `mindsos_server/` package: `__init__`, `capabilities` (7 UPPER
+  constants per PB-4 + ADR-0002 + USER_CAPS empty + ADMIN_CAPS
+  all-7 per PB-12), `errors` (`AuthFailedError` opaque-cause +
+  `UserAlreadyExistsError` per PB-23 + PB-30), `session` (frozen
+  Session matching SessionProtocol exactly per PB-33), `users`
+  (User frozen dataclass + insert_user + list_users + verify +
+  _insert_first_admin per PB-13/24/29; imports `_USER_ID_RE` from
+  KL per PB-7), `audit` (full ADR-0013 event enum upfront per
+  PB-34 + write_audit + _now_utc_iso per PB-35), `_argon2`
+  (PRODUCTION + _TEST_FAST params per PB-14 + _SENTINEL_HASH
+  precomputed constant per PB-22/PB-31), `_db` (WAL +
+  foreign_keys + busy_timeout pragmas per PB-19), `_schema`
+  (_SCHEMA_VERSION=1 + v1 DDL with users + audit +
+  schema_version per PB-2/PB-11/PB-28).
+- `mindsos_cli/commands/server.py` (per PB-32 — convention with
+  `admin.py`/`graph.py`/etc.): `server user {create,list,verify}`
+  + `server bootstrap` (lifted from Phase 20 per PB-27). No
+  `--password` flag declared per PB-8 — `--password-stdin` only.
+
+NEW top-level pkg `mindsos_server/` — 7-site checklist applied:
+- pyproject.toml: `mindsos_server` pkg + `argon2-cffi` dep
+- requirements.in: `argon2-cffi` line
+- Dockerfile prod stage: `COPY mindsos_server/`
+- Dockerfile test stage: `COPY mindsos_server/ tests_server/`
+- SENTINEL_PATHS: 10 new runtime-only entries
+- doctor self-test: 5→6 pkg parity per PB-21
+- [Linux] host pip refresh: `pip install -e . --user --break-system-packages`
+
+Version bump `+phase17 → +phase18` across 9 sites: 6 `__init__.py`
++ pyproject.toml + docker-compose.yml + manifest.toml.
+
+ADR amendments at this ship (5):
+- ADR-0002 §amendment-1 (documentary) — USER_CAPS strictly empty
+  in v1; Proposed-status caps from 0118/0137 wait for Accept-flip
+  phase per PB-12.
+- ADR-0012 §amendment-1 — bootstrap CLI verb lifted from Phase 20
+  to Phase 18 per PB-27; Phase 20 narrows to reset-admin +
+  last-admin.
+- ADR-0041 §amendment-1 (documentary) — UPPER casing for
+  capability constants per PB-4. Parity test stops auto-skipping
+  at P18.
+- ADR-0044 §amendment-2 — server inherits `_USER_ID_RE` via
+  import per PB-7 (rather than duplication-with-parity-test).
+- ADR-0046 §amendment-1 (documentary) — UPPER casing alignment
+  per PB-4.
+
+PHASE_MAP §18 row amended per PB-1: "Net-new: Yes (first L0 pkg
+per ADR-0001)" + bootstrap CLI added to Features. §20 row
+narrowed per PB-27: bootstrap dropped from Features; row keeps
+"reset-admin recovery; last-admin removal blocked" only. §1
+"Two-machine workflow" row tightened with explicit Mac/Linux
+constraints (no docker on Mac; Mac Python 3.9 too old; gh CLI
+on Mac; round-trip recipe).
+
+Tests/phase_18: 101 passed / 1 skipped / 0 failed (KL-side
+parity comparison skips on ImportError until Phase 25 ships
+mindsos_knowledge/capabilities.py). Cumulative tests/ +
+tests_server/: 2458 passed / 28 skipped / 0 failed / 109
+warnings (21:02 runtime — slow due to argon2 PRODUCTION_PARAMS
+sentinel hash at module import for the prod-image path).
+tests_server/integration/test_layer_isolation.py ships per
+PB-26 (ADR-0010 I-S1 enforcement from package creation onward
+— not deferred to Phase 25).
+
+Hotfix ledger (B-18-T*):
+- B-18-T1: requirements.txt didn't include argon2-cffi after
+  Phase 18 added it to requirements.in + pyproject.toml. Docker
+  build succeeded (pip install --require-hashes with old
+  lockfile), but runtime import failed:
+  `ModuleNotFoundError: No module named 'argon2'`. Fix per
+  `feedback_lock_sh_reads_requirements_in.md`: `tools/lock.sh`
+  regenerated requirements.txt + requirements-test.txt; new
+  sha256 (aa00945fc9f67868393be85843e17fb3947e28c0ed4445900c51a1244bc445d7)
+  pasted into `mindsos_cli/manifest.toml [lockfile]
+  requirements_txt_sha256`. Required `docker compose build
+  --no-cache` for both prod + test images.
+- B-18-T2: click 8.2 removed the `mix_stderr` kwarg from
+  `CliRunner.__init__`. 15 CLI tests across test_cli_server_user.py
+  + test_bootstrap_cli.py raised `TypeError` at fixture
+  construction. Fix: drop kwarg + change `result.stderr`
+  assertions to `result.output` (combined output is strictly
+  broader for the security check "cause must not leak"; the
+  user-facing "auth failed" message check still passes since
+  typer.echo(err=True) writes to the same combined buffer in
+  CliRunner's default mode).
+
+Manual CLI smoke (via `docker compose run --rm mindsos
+--entrypoint /bin/bash`):
+1. `mindsos server bootstrap admin` → "admin bootstrapped:
+   user_id='admin'".
+2. `mindsos server user list --json` → 1 admin row; NO
+   password_hash field (PB-24 honored).
+3. `echo wrongpw | mindsos server user verify admin` → exit 1
+   + stderr "error: auth failed"; cause stays internal
+   (PB-23 opaque message honored).
+4. `echo smokepw123 | mindsos server user verify admin` →
+   exit 0 + "ok: user_id='admin' role=admin".
+5. `mindsos server bootstrap secondadmin` → idempotent skip:
+   "admin already exists (count=1); bootstrap is a no-op..."
+   (PB-29 CLI-level idempotency check honored).
+
+Note re: confirm-phase WARNING. Initial `docker compose run
+--rm mindsos confirm-phase ...` invocation printed
+"WARNING: tests reported failures" but still wrote the doc.
+Cumulative tests (Step 7) passed independently with 0 failures.
+The WARNING appears to be stale state from confirm-phase's
+internal test-result detection mechanism; the actual test
+suite is clean. Doc regenerated cleanly from host venv after
+`pip install -e .` per PHASE_MAP §1 canonical path. PHASE_MAP
+§1 was also amended at this ship to clarify that
+`docker compose run mindsos confirm-phase` requires a bind-mount
+for the output to escape the ephemeral container — Phase 10
+B-10-T5 only baked notes-phase-NN.md INTO the image, not out.
+
+Deferred / out-of-scope (see DESIGN_LOG §6 for full list):
+sessions table + tokens (P19), LocalPersister + MetagraphDump
+(P19 first consumer per PB-18), reset-admin (P20 narrowed),
+last-admin protection (P20), audit query reader (P21),
+disable/enable verbs (P22), password change (P22 admin reset
+only), promotion (P24), SessionProtocol seam in KL + KL
+capabilities mirror (P25).

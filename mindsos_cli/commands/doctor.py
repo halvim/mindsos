@@ -495,6 +495,25 @@ def doctor(
                 f"admin={admin_version!r} "
                 f"manifest={expected_version!r}"
             )
+        # Phase 18 — version-string parity extended to mindsos_server
+        # (NEW top-level package per ADR-0001 + Phase 18 PB-1 amending
+        # PHASE_MAP §18 row Net-new: No → Yes). 7-site new-top-level-
+        # package checklist site #5 (doctor parity); 6-pkg parity per
+        # Phase 18 PB-21.
+        server_version, server_err = _read_package_init_version(
+            repo_root, "mindsos_server"
+        )
+        if server_err:
+            failures.append(
+                f"mindsos_server/__init__.py version unreadable: "
+                f"{server_err}"
+            )
+        elif server_version != expected_version:
+            failures.append(
+                f"mindsos_server/__init__.py __version__ drift: "
+                f"server={server_version!r} "
+                f"manifest={expected_version!r}"
+            )
         report["manifest"]["expected_version"] = expected_version
         report["runtime"]["pyproject_version"] = pyproject_version
         report["runtime"]["init_version"] = init_version
@@ -502,6 +521,7 @@ def doctor(
         report["runtime"]["instances_version"] = instances_version
         report["runtime"]["knowledge_version"] = knowledge_version
         report["runtime"]["admin_version"] = admin_version
+        report["runtime"]["server_version"] = server_version
 
     result = {"ok": not failures, "failures": failures, **report}
 
