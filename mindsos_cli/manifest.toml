@@ -49,7 +49,7 @@ version = "3.12.3"
 # so `mindsos doctor --self-test` reports a clear diagnostic instead of a hex
 # mismatch. Phase 01 does NOT change requirements.in (only requirements-test.in
 # adds pytest-json-report), so this hash is unchanged from Phase 00.
-requirements_txt_sha256 = "7fd16966d88d4f97a9f292e2bd856eb7bbe4a8d46a8f10f67cf025b90fc3bdc6"
+requirements_txt_sha256 = "aa00945fc9f67868393be85843e17fb3947e28c0ed4445900c51a1244bc445d7"
 
 [ci]
 # Workflow files that `doctor --self-test` verifies exist + non-empty + parse-shaped.
