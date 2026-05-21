@@ -15,10 +15,16 @@ from mindsos_server._schema import _SCHEMA_VERSION, init_or_migrate
 
 
 class TestSchemaVersion:
-    """_SCHEMA_VERSION = 1 per PB-2 / PB-11."""
+    """``_SCHEMA_VERSION`` current baseline — Phase 18 shipped v1
+    (PB-2 / PB-11); Phase 19 bumped to v2 (PB-10 sessions). Bumps are
+    expected at most-phases; per ``feedback_phase_baseline_literal_audit.md``
+    this assertion mirrors the current literal in
+    :mod:`mindsos_server._schema`. Each new schema phase updates this
+    test alongside the bump."""
 
-    def test_schema_version_is_one(self) -> None:
-        assert _SCHEMA_VERSION == 1
+    def test_schema_version_baseline(self) -> None:
+        # Phase 19: bumped 1 → 2 (sessions table addition).
+        assert _SCHEMA_VERSION == 2
 
 
 class TestWalPragma:
@@ -44,24 +50,28 @@ class TestWalPragma:
 
 
 class TestInitOrMigrateIdempotent:
-    """PB-2 — init_or_migrate is idempotent."""
+    """PB-2 — init_or_migrate is idempotent. Returns the current
+    ``_SCHEMA_VERSION`` literal which bumps at most-phases (see
+    :class:`TestSchemaVersion`)."""
 
-    def test_first_call_ships_v1(self, tmp_path: Path) -> None:
+    def test_first_call_ships_current(self, tmp_path: Path) -> None:
         db_path = tmp_path / "server.db"
         with open_db(db_path) as conn:
             version = init_or_migrate(conn)
-            assert version == 1
+            assert version == _SCHEMA_VERSION
 
     def test_second_call_no_op(self, tmp_path: Path) -> None:
         db_path = tmp_path / "server.db"
         with open_db(db_path) as conn:
             init_or_migrate(conn)
             version = init_or_migrate(conn)
-            assert version == 1
+            assert version == _SCHEMA_VERSION
 
 
 class TestSchemaTables:
-    """PB-11 — v1 ships users + audit + schema_version. No sessions yet (P19)."""
+    """PB-11 — Phase 18 shipped users + audit + schema_version (v1);
+    Phase 19 bumped to v2 with sessions (PB-10). Each phase's table set
+    is asserted against the current schema baseline."""
 
     def test_users_table_exists(self, tmp_server_db) -> None:
         rows = tmp_server_db.execute(
@@ -81,19 +91,20 @@ class TestSchemaTables:
         ).fetchall()
         assert len(rows) == 1
 
-    def test_no_sessions_table_at_v1(self, tmp_server_db) -> None:
-        """Sessions ships at Phase 19 (v2) per PB-11. Must NOT exist in v1."""
+    def test_sessions_table_exists_at_v2(self, tmp_server_db) -> None:
+        """Sessions ships at Phase 19 (v2) per PB-10 / ADR-0004 §am1.
+        Phase 18 originally asserted absence; Phase 19 flipped to presence."""
         rows = tmp_server_db.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'"
         ).fetchall()
-        assert len(rows) == 0
+        assert len(rows) == 1
 
     def test_schema_version_row(self, tmp_server_db) -> None:
         row = tmp_server_db.execute(
             "SELECT version FROM schema_version WHERE key='schema_version'"
         ).fetchone()
         assert row is not None
-        assert row[0] == 1
+        assert row[0] == _SCHEMA_VERSION
 
 
 class TestActorRoleCheckConstraint:

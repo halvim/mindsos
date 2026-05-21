@@ -219,4 +219,11 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_server/_db.py",
     "mindsos_server/_schema.py",
     "mindsos_cli/commands/server.py",
+    # Phase 19 — additions to the Phase 18 package (no new top-level
+    # pkg; no 7-site checklist). `sessions.py` is the new free-function
+    # surface per PB-13; `_token_storage.py` is the file+env resolution
+    # helper for the CLI per PB-5. Underscore-prefixed modules are
+    # private-but-shipped per the Phase 18 sentinel convention.
+    "mindsos_server/sessions.py",
+    "mindsos_server/_token_storage.py",
 )
