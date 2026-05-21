@@ -1,119 +1,106 @@
 ══════════════════════════════════════════════════════════════════════
 NEW CHAT — MindsOS Phase 19 (Server: sessions)
 ══════════════════════════════════════════════════════════════════════
+
+This prompt is intentionally lean. The phase chat reads files for
+context; this prompt only points at them + locks process expectations.
+
 Project: MindsOS — folder `halvim_mindsos/` under
 `/Layered Intelligence/`. Branch off `origin/main` tip.
 
-Phase 18 SHIPPED + TAGGED 2026-05-2N (TBD post-confirm).
-Expected `origin/main` shape AFTER Phase 18 squash-merge + tag:
-    git fetch origin && git log --oneline origin/main | head -4
-* Line 1 = `<SQUASH_SHA> Phase 18 — L0 user store + auth (#NN)`
-* Line 2 = `06ec866 Phase 17 retirement: backfill squash-merge SHA in design log`
-* Line 3 = `6d6f8bc Phase 17 — RETIRED: vacuous against ADR-0150 ...`
-* Line 4 = `58e76a5 Phase 16 — L2 admin similarity surface (read-only) (#25)`
+ROLE: Critical design reviewer + implementer. Read the project-level
+CLAUDE.md at `/Layered Intelligence/CLAUDE.md` AND the MindsOS
+sub-project CLAUDE.md if present. Follow strict picks-per-pushback
+discipline (each pushback ends with a pick; final picks summary at
+the end of every multi-pushback round; see
+`feedback_pushback_format_with_picks.md`).
 
-If line 1 does NOT show the Phase 18 squash-merge SHA, STOP — Phase 18
-hasn't merged yet; resolve before branching.
-
-`phase-18-confirmed` tag MUST point at line 1's SHA (verify via
-`git rev-parse phase-18-confirmed`).
-
-ROLE: Critical design reviewer + implementer. Follow project-level
-CLAUDE.md skeptical-default + terse + pros/cons + alternatives +
-picks-per-pushback (per `feedback_pushback_format_with_picks.md`).
-Phase 19 scope is locked at PHASE_MAP §Phase 19 row — read that row,
-do not re-derive scope from training. Mirror Phase 18's 4-round
-design pushback ledger discipline (5 rounds preferred if pushbacks
-keep surfacing load-bearing concerns).
+Phase 19 scope is locked at PHASE_MAP §Phase 19 row. Read it; do not
+re-derive scope from training.
 
 ══════════════════════════════════════════════════════════════════════
-REQUIRED READING — in this order; READ THE FILES, do not guess
+REQUIRED READING (in this order)
 ══════════════════════════════════════════════════════════════════════
 
-1. `MEMORY.md` (auto-loaded at chat start). Every `feedback_*` entry
-   is a hard rule. Pay special attention to:
+1. **`MEMORY.md`** — auto-loaded at chat start. Every `feedback_*`
+   entry is a hard rule. Pay special attention to:
    * `feedback_pushback_format_with_picks.md`
-   * `feedback_pre_impl_probe_check_existing_modules.md` — Phase 19
-     extends `mindsos_server/`; pre-impl probe must verify nothing
-     unexpected (no `sessions.py` already shipped, no `LocalPersister`
-     module, no `session_from_token` function).
-   * `feedback_l1_api_signature_probe_before_writing_tests.md` —
-     Phase 19 consumes Phase 18 APIs (Session, User, AuthFailedError,
-     verify(), open_db(), init_or_migrate). Grep before assuming
-     signatures.
-   * `feedback_phase_baseline_literal_audit.md` — Phase 19 is the
-     first version bump after Phase 18 (`+phase18 → +phase19`).
-   * `feedback_test_image_rebuild_after_source_change.md` /
-     `feedback_stale_local_tag_silent_overwrite_failure.md` /
-     `feedback_release_tag_after_squash_merge_only.md` — Phase 19 is
-     a tagged shipped-phase.
-   * `feedback_state_file_serializer_deserializer_symmetry.md` —
-     v1 → v2 SQLite migration (Phase 19 adds `sessions` table); both
-     `init_or_migrate` upgrade step AND any rollback path must pair.
+   * `feedback_pre_impl_probe_check_existing_modules.md`
+   * `feedback_l1_api_signature_probe_before_writing_tests.md`
+   * `feedback_phase_baseline_literal_audit.md`
+   * `feedback_lock_sh_reads_requirements_in.md`
+   * `feedback_test_image_rebuild_after_source_change.md`
+   * `feedback_stale_local_tag_silent_overwrite_failure.md`
+   * `feedback_batch_fix_dont_iterate.md`
+   * `feedback_sandbox_vs_mac_git_separation.md`
+   * `user_two_machine_setup.md` (Mac/Linux split + commands)
 
-2. Phase-recap memory entries:
-   * `project_mindsos_phase_18_implemented.md` (write this at Phase
-     18 ship — captures actual shipped state + carry-forwards).
-   * `project_mindsos_auth_and_concerns.md`
-   * `project_mindsos_l0_server_pivot.md`
+2. **`halvim_mindsos/confirmation_docs/PHASE_MAP.md`** §0 (load-bearing
+   read rule) + §1 (settled cross-cutting decisions — read in full;
+   Phase 18 amended the Two-machine workflow row) + §Phase 17
+   (RETIRED tombstone) + §Phase 18 (most recent shipped) + §Phase 19
+   (own row — primary scope source) + §Phase 20 (narrowed scope per
+   Phase 18 PB-27 — confirm Phase 19 doesn't cross into P20).
 
-3. `halvim_mindsos/confirmation_docs/PHASE_MAP.md`:
-   * §0 (load-bearing read rule) + §1 (settled cross-cutting decisions).
-   * §Phase 19 row — primary scope source-of-truth.
-   * §Phase 17 (RETIRED) + §Phase 18 rows — two prior phases per §0.
-   * §Phase 20 row (NARROWED at Phase 18 ship per PB-27) — confirm
-     Phase 19 doesn't need to know about Phase 20's narrowing.
+3. **`halvim_mindsos/confirmation_docs/PHASE_18_DESIGN_LOG.md`** —
+   most recent design log. Read §0 scope summary + §2 final locks
+   table + §3 cross-chat dependencies (Forward subsection — Phase
+   18 → Phase 19 deltas) + §4 ADR delta + §6 out-of-scope. This is
+   the durable contract for what Phase 19 inherits.
 
-4. `halvim_mindsos/confirmation_docs/PHASE_18_DESIGN_LOG.md` —
-   most recent design log (per §0 chain-read rule). Read in full:
-   §0 scope summary + §2 final locks table + §3 cross-chat
-   dependencies (Forward subsection — Phase 18 → Phase 19 deltas).
+4. **`halvim_mindsos/confirmation_docs/PHASE_18_CONFIRMED.md`** —
+   ground truth for the actually-shipped state at Phase 18 tag.
+   Tester notes section captures B-18-T1 / B-18-T2 hotfixes +
+   test counts + manual smoke. If the design log and the
+   confirmation doc disagree, the confirmation doc wins (it's
+   post-impl evidence).
 
-5. ADRs (in `/Layered Intelligence/docs/decisions/adr/`):
-   * **ADR-0003** (password + token scheme) — Phase 18 shipped the
+5. **ADRs** at `/Layered Intelligence/docs/decisions/adr/`. Read in
+   full at first probe — Phase 19 consumes many:
+   * **ADR-0003** (password + token scheme). Phase 18 shipped the
      argon2id half; Phase 19 ships the token half (256-bit opaque +
      SHA-256-on-store + 8h sliding + 24h absolute TTL).
-   * **ADR-0005** (refuse concurrent login) — Phase 19 enforces.
+   * **ADR-0005** (refuse concurrent login). Phase 19 enforces.
      `AlreadyLoggedInError` payload shape locked here.
-   * **ADR-0002** (capability model) — Phase 19 may need to add
-     `Session` construction with token. §amendment-1 from Phase 18
-     ship: USER_CAPS strictly empty.
-   * **ADR-0004** (split persistence) — `sessions` table schema.
    * **ADR-0011** (LocalPersister Protocol + hydrate/flush) —
-     **Phase 19 IS the first consumer** per Phase 18 PB-18 deferral.
-     Phase 18 did NOT ship `mindsos_server/persistence.py`; Phase 19
-     decides whether to ship the protocol + `InMemoryLocalPersister`
-     stub + `FalkorDBLocalPersister` thin wrapper now or defer
-     individual implementations.
-   * **ADR-0040** (SessionProtocol duck-typing) — Phase 18 shipped
-     concrete `Session` matching exactly per PB-33. Phase 19 may
-     expand the dataclass OR keep it slim + hold timestamps on the
-     sessions row only.
-   * **ADR-0013** (audit + Session.for_testing) — Phase 19 adds
-     `EVT_LOGIN` + `EVT_LOGIN_REJECTED_CONCURRENT` + `EVT_LOGOUT`
-     consumers; constants already shipped at Phase 18 per PB-34.
-   * **ADR-0118** (per-user transactional promotion) — Proposed;
-     not consumed at Phase 19 but the `CAN_PROPOSE_MUTATION` cap
-     should NOT ship at Phase 19 either (per Phase 18 PB-12 strict
-     ADR-0002 stance; wait for ADR-0118 Accept-flip at Phase 24).
+     **Phase 19 IS the first consumer** per Phase 18 PB-18
+     deferral. Phase 18 did NOT ship `mindsos_server/persistence.py`;
+     Phase 19 decides shipment scope.
+   * **ADR-0002 §amendment-1** (Phase 18 ship) — USER_CAPS strictly
+     empty; Proposed-status caps from 0118/0137 wait for their
+     Accept-flip phase.
+   * **ADR-0040** — Session matches SessionProtocol exactly (Phase
+     18 PB-33). Phase 19 may expand fields OR keep slim + hold
+     timestamps on the sessions row only.
+   * **ADR-0013** — audit constants `EVT_LOGIN`,
+     `EVT_LOGIN_REJECTED_CONCURRENT`, `EVT_LOGOUT` already shipped
+     at Phase 18 per PB-34; Phase 19 wires consumers.
+   * **ADR-0004** (split persistence) + **ADR-0012** (bootstrap §am1
+     at Phase 18: bootstrap CLI lifted to P18; P20 narrowed).
+   * **ADR-0118 + ADR-0137** are Proposed — do NOT ship their caps
+     yet (Phase 18 PB-12 lock; wait for Accept-flip at P24/P25).
 
 ══════════════════════════════════════════════════════════════════════
 PRE-IMPL PROBE (run BEFORE any design pushbacks)
 ══════════════════════════════════════════════════════════════════════
-    cd halvim_mindsos
-    # Verify Phase 18 surfaces intact at main tip.
-    git fetch origin && git log --oneline origin/main | head -4
-    ls mindsos_server/
-    grep -n "_SCHEMA_VERSION" mindsos_server/_schema.py
-    grep -n "^EVT_LOGIN\|^EVT_LOGOUT\|^EVT_LOGIN_REJECTED" mindsos_server/audit.py
-    grep -n "class Session" mindsos_server/session.py
-    # Verify nothing Phase 19-shaped already shipped.
-    ls mindsos_server/persistence.py mindsos_server/sessions.py 2>&1 | head -2
-    grep -rn "session_from_token\|login\b" mindsos_server/ 2>/dev/null | head -10
-    # Verify version baseline post-Phase 18.
-    grep -rn '__version__ = "0\.0\.0+phase' --include="*.py" mindsos_*/ | head -10
-    # Confirm Phase 18 audit event constants shipped + ready for consumption.
-    grep -n "ALL_AUDIT_EVENTS\|EVT_LOGIN" mindsos_server/audit.py | head -5
+
+  cd halvim_mindsos
+  # Verify Phase 18 squashed + tagged at main tip.
+  git fetch origin && git log --oneline origin/main | head -5
+  git rev-parse phase-18-confirmed 2>&1 | head -1
+
+  # Verify Phase 18 surfaces intact.
+  ls mindsos_server/
+  grep -n "_SCHEMA_VERSION" mindsos_server/_schema.py
+  grep -n "^EVT_LOGIN\|^EVT_LOGOUT\|^EVT_LOGIN_REJECTED" mindsos_server/audit.py
+  grep -n "class Session" mindsos_server/session.py
+
+  # Verify nothing Phase 19-shaped already shipped.
+  ls mindsos_server/persistence.py mindsos_server/sessions.py 2>&1 | head -2
+  grep -rn "session_from_token\|def login\b" mindsos_server/ 2>/dev/null | head -10
+
+  # Version baseline.
+  grep -rn '__version__ = "0\.0\.0+phase' --include="*.py" mindsos_*/__init__.py
 
 If `mindsos_server/sessions.py` OR `mindsos_server/persistence.py`
 already exists, surface as a reframe pushback (Phase 15b / Phase 17
@@ -123,94 +110,100 @@ retirement precedents).
 LIKELY PUSHBACK SURFACES (probe before locking scope)
 ══════════════════════════════════════════════════════════════════════
 
-1. **`sessions` table schema v2 migration.** Phase 18 PB-2/PB-11
-   locked forward-only DDL + `_SCHEMA_VERSION` row + `init_or_migrate`
-   idempotent. Phase 19 bumps `_SCHEMA_VERSION = 2` + adds the v1→v2
-   DDL step. Columns per ADR-0004 sketch: `session_id PK`, `user_id`
-   (FK to users), `token_hash` (SHA-256 hex), `created_at`,
-   `last_seen_at`, `expires_at`, `source` (CLI / future HTTP).
+Each pushback ends with a pick. Final round closes with a Picks
+summary.
 
-2. **Token storage on host filesystem.** PHASE_MAP §19 Risks names
-   "in-memory only with `--token` argument, or restricted-perms
-   volume". Phase 19 picks. Trade-offs: --token arg every call is
-   high-friction; ~/.mindsos/token (mode 0600) is convenient but a
-   shell-history risk if mishandled.
+1. **`sessions` table schema v2 migration** — Phase 18 locked
+   `_SCHEMA_VERSION=1` (users + audit); Phase 19 bumps to 2. Append
+   migration step in `init_or_migrate()` per the forward-only DDL
+   pattern Phase 18 established.
 
-3. **Session field expansion (PB-33 deferral resolution).**
-   Phase 18 shipped minimal Session matching SessionProtocol exactly
-   (4 fields). Phase 19 needs `created_at` / `last_seen_at` /
-   `expires_at` SOMEWHERE — on Session object? On the sessions
-   table only? PB-33 punted; Phase 19 decides.
+2. **Token storage on host filesystem** — PHASE_MAP §19 Risks
+   names the trade-off (in-memory `--token` vs `~/.mindsos/token`
+   mode 0600). Pick.
 
-4. **`LocalPersister` shipment scope (PB-18 deferral resolution).**
-   Phase 18 deferred entire persister surface. Phase 19 picks:
-   (a) full Protocol + InMemoryLocalPersister + FalkorDBLocalPersister;
-   (b) Protocol + InMemoryLocalPersister only (FalkorDB wrapper later);
-   (c) defer further (Phase 22+ when admin cross-user reads need it).
-   `login()` per ADR-0011 calls `persister.load(user_id)` — so login
-   needs at least an `InMemoryLocalPersister` for tests.
+3. **Session field expansion (PB-33 deferral resolution)** —
+   Phase 18 shipped minimal `Session` matching SessionProtocol
+   exactly. Phase 19 picks where `created_at` / `last_seen_at` /
+   `expires_at` live (Session object OR sessions row only).
 
-5. **`AlreadyLoggedInError` payload shape per ADR-0005.** Three
-   fields: existing session_id, created_at, source. Lock these now.
+4. **`LocalPersister` shipment scope (PB-18 deferral resolution)**
+   — Phase 18 deferred entire persister surface. Phase 19 picks
+   (a) full Protocol + Memory + FalkorDB impl; (b) Protocol +
+   InMemory only; (c) defer further.
 
-6. **Sliding + absolute TTL implementation.** Lazy check at lookup
-   per ADR-0003 §Decision. Decision: where does the check live —
-   `session_from_token()` only, or also a background sweeper thread?
-   Phase 19 is local-first CLI; sweeper may be overkill.
+5. **`AlreadyLoggedInError` payload shape per ADR-0005** — three
+   fields: existing session_id, created_at, source. Lock.
 
-7. **`mindsos server login / logout / whoami` CLI verbs.** Same
-   verb-group as Phase 18 (`mindsos server`). Token output: stdout
-   plaintext (pipe-friendly) or shielded prompt? `--json` form.
+6. **Sliding + absolute TTL implementation** — lazy at lookup
+   only, or also background sweeper? Phase 19 is local-first CLI;
+   sweeper likely overkill.
 
-8. **Server restart wipes sessions.** ADR-0004 + ADR-0005 invariant.
-   How: `DELETE FROM sessions` at server start, or rely on absolute
-   TTL? Phase 19 has no daemon; "server start" is ambiguous in the
-   CLI-only context. Probably: every fresh `mindsos server ...`
-   invocation does NOT count as a server start (would wipe sessions
-   on every command); instead, document that sessions die when the
-   tester deletes `server.db` or when the absolute TTL expires.
+7. **`mindsos server login / logout / whoami` CLI verbs** —
+   verb-group `server` (Phase 18 convention). Token output:
+   stdout plaintext (pipe-friendly) or shielded prompt? `--json`
+   form.
+
+8. **Server-restart wipes sessions semantics** — ADR-0004 +
+   ADR-0005 invariant says "sessions die on server restart". In
+   the CLI-only context "server start" is ambiguous (no daemon).
+   Pick: explicit `mindsos server reset-sessions` verb, OR rely
+   on absolute TTL, OR document that sessions persist across CLI
+   invocations and die only on tester-deletes-server.db.
 
 ══════════════════════════════════════════════════════════════════════
-PROCESS DISCIPLINE — see MEMORY.md feedback entries
+PROCESS DISCIPLINE
 ══════════════════════════════════════════════════════════════════════
-Branch: `phase-19` off `origin/main` tip (verify Phase 18 squash-SHA
-+ `phase-18-confirmed` tag first via `git log`).
-Notes file: `notes-phase-19.md` at repo root.
-`mindsos confirm-phase --init-notes 19` runs ONCE (overwrites).
-Pre-build test image (`docker compose --profile test build
-mindsos-test`) BEFORE confirm-phase AND after every hotfix.
-Version bump `+phase18 → +phase19` across all version-bearing sites
-(now 9 sites: 6 pkg `__init__.py` + pyproject + docker-compose tags
-+ manifest.toml — count established at Phase 18 ship).
-**No new top-level package expected at Phase 19** — extends
-`mindsos_server/` only (sessions.py + possibly persistence.py +
-sessions.py-related modules). 7-site checklist does NOT apply
-again unless Phase 19 adds a 7th top-level pkg (not expected).
+
+Per `user_two_machine_setup.md` + PHASE_MAP §1 amended at Phase 18:
+
+* **Mac**: code editing (Claude session), `git add/commit/push`,
+  `gh pr create`, `gh pr merge --squash`, final `git tag` + push.
+  Mac has NO docker. Mac Python 3.9.6 — do NOT `pip install -e .`
+  on Mac.
+* **Linux**: `git pull`, `docker compose --profile test build
+  mindsos-test` (pre-build to avoid timeout), all `docker compose
+  run --rm mindsos-test pytest ...` runs, all `docker compose run
+  --rm mindsos <verb>` CLI exploration.
+* **confirm-phase**: either host venv (canonical) OR docker with
+  bind-mount `-v "$(pwd)/confirmation_docs:/app/confirmation_docs"`
+  (Phase 18 B-18-T3-bindmount lesson — without the `-v`, the doc
+  is written inside the container and lost on `--rm`). PHASE_MAP
+  §1 row reflects this.
+
+Branch: `phase-19` off `origin/main` tip. Notes: `notes-phase-19.md`
+at repo root. Version bump `+phase18 → +phase19` across 9 sites
+(6 pkg `__init__.py` + pyproject + docker-compose + manifest.toml).
 Tag `phase-19-confirmed` AFTER squash-merge only; verify
 `git rev-parse phase-19-confirmed` returns "unknown" BEFORE creating.
 
+Known dep version pin from Phase 18: argon2-cffi>=23.0,<24.0 (in
+requirements.in + pyproject.toml + locked requirements.txt). Click
+version is 8.2+ (B-18-T2 removed `mix_stderr` kwarg from CliRunner;
+use `result.output` not `result.stderr` in CLI tests).
+
 ══════════════════════════════════════════════════════════════════════
-FIRST RESPONSE IN THE NEW CHAT SHOULD
+FIRST RESPONSE EXPECTATIONS
 ══════════════════════════════════════════════════════════════════════
+
 1. Confirm cited files read; report any missing.
-2. Verify `git log --oneline origin/main | head -4` shows Phase 18
-   squash at tip AND `git rev-parse phase-18-confirmed` resolves.
-3. Run the pre-impl probe above; report findings.
-4. Surface 1-3 pre-design pushbacks from §Likely pushback surfaces.
-   **Each pushback ends with a pick per
-   `feedback_pushback_format_with_picks.md`.**
-5. Ask the single highest-value missing-constraint question.
+2. Run the pre-impl probe; report findings.
+3. Surface 1-3 pre-design pushbacks (with picks) from §Likely
+   pushback surfaces OR from the probe.
+4. Ask the single highest-value missing-constraint question.
 
 DO NOT write code in the first response. Phase 16's 5-round +
-Phase 18's 4-round design pushback ledger pattern is the shape this
-project favors — sign off the architecture first, then implement.
+Phase 18's 4-round design pushback ledger pattern is the shape
+this project favors — sign off the architecture first, then
+implement.
 
 ══════════════════════════════════════════════════════════════════════
-HANDOFF EXIT CRITERIA
+EXIT CRITERIA
 ══════════════════════════════════════════════════════════════════════
+
 Phase 19 squash-merges to main; `phase-19-confirmed` tag pushed
-AFTER merge; `release.yml` runs green; GitHub Release created.
-Phase 19 writes `confirmation_docs/PHASE_20_NEXT_CHAT_PROMPT.md`
-as exit artifact (Phase 20 = "Server: reset-admin + last-admin
+AFTER merge; `release.yml` green; GitHub Release created. Phase
+19 writes `confirmation_docs/PHASE_20_NEXT_CHAT_PROMPT.md` as
+exit artifact (Phase 20 = "Server: reset-admin + last-admin
 protection" per Phase 18 PB-27 narrowing; deps Phase 19 only).
 ══════════════════════════════════════════════════════════════════════
