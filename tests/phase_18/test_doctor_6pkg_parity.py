@@ -68,12 +68,27 @@ class TestServerVersionMatchesManifest:
         )
 
 
-class TestAll6PkgsAtPhase18:
-    """All 6 packages (5 pre-existing + mindsos_server) bumped together."""
+class TestAll6PkgsAtCurrentPhase:
+    """All 6 packages (5 pre-existing + mindsos_server) must agree with
+    ``manifest.toml [mindsos] version`` — that file is the canonical
+    drift target per Phase 18 PB-21. Generalized at Phase 19 B-19-T1
+    (was: hard-coded ``"0.0.0+phase18"`` literal; decayed on every
+    version bump). Per ``feedback_phase_baseline_literal_audit.md`` —
+    the parity is what we care about, not the absolute version."""
 
-    def test_all_six_packages_at_phase18(self) -> None:
+    def test_all_six_packages_match_manifest(self) -> None:
         root = _repo_root()
-        expected = "0.0.0+phase18"
+
+        # Source-of-truth: manifest.toml [mindsos] version.
+        manifest = (root / "mindsos_cli" / "manifest.toml").read_text()
+        manifest_match = re.search(
+            r'\[mindsos\][\s\S]*?version\s*=\s*"([^"]+)"', manifest
+        )
+        assert manifest_match is not None, (
+            "manifest.toml [mindsos] version not found"
+        )
+        expected = manifest_match.group(1)
+
         for pkg in (
             "mindsos_core",
             "mindsos_knowledge",
@@ -87,5 +102,5 @@ class TestAll6PkgsAtPhase18:
             assert match is not None, f"{pkg}/__init__.py has no __version__"
             assert match.group(1) == expected, (
                 f"{pkg}/__init__.py version drift: "
-                f"got {match.group(1)!r}, expected {expected!r}"
+                f"got {match.group(1)!r}, expected {expected!r} (from manifest)"
             )

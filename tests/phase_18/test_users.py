@@ -160,20 +160,22 @@ class TestVerifyAuthFailureCauses:
         assert exc_info.value.cause == AuthFailureCause.DISABLED
         assert str(exc_info.value) == "auth failed"
 
-    def test_audit_row_written_on_failure(
+    def test_verify_writes_no_audit_row(
         self, tmp_server_db, fast_params: Argon2Params
     ) -> None:
-        """EVT_LOGIN_FAILED audit row per ADR-0013."""
+        """Phase 19 PB-9 / ADR-0013 §amendment-1: verify() is a pure
+        predicate; the audit emission moved to callers (login() +
+        kill_my_own_sessions()). Regression guard — Phase 18 originally
+        asserted verify() DID write EVT_LOGIN_FAILED; the inverse is
+        now the contract. The audit-row-on-login-failure assertion lives
+        in ``tests/phase_19/test_audit_events_login_logout.py``."""
         with pytest.raises(AuthFailedError):
             verify(tmp_server_db, "nobody", "any", params=fast_params)
         rows = tmp_server_db.execute(
-            "SELECT event, actor_user, target_user, extra_json FROM audit "
-            "WHERE event=?",
+            "SELECT event FROM audit WHERE event=?",
             ("EVT_LOGIN_FAILED",),
         ).fetchall()
-        assert len(rows) == 1
-        # Private cause leaks into audit per PB-23 design (server-internal only).
-        assert "UNKNOWN_USER" in rows[0][3]
+        assert len(rows) == 0, "verify() must not emit audit per PB-9 / §am1"
 
 
 class TestInsertFirstAdmin:

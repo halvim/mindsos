@@ -1,7 +1,11 @@
 """
 User store CRUD + verify for the Server Layer.
 
-Phase 18 surface (per row Features + design log §5):
+Phase 18 surface (per row Features + design log §5); Phase 19 amends
+:func:`verify` per PB-9 / ADR-0013 §amendment-1 to drop the internal
+audit write (callers — :func:`mindsos_server.sessions.login` +
+:func:`mindsos_server.sessions.kill_my_own_sessions` — own the
+``EVT_LOGIN_FAILED`` audit emission):
 
 * :class:`User` — frozen dataclass view of a ``users`` row (no
   ``password_hash`` field per Phase 18 PB-24; never returned to callers).
@@ -14,7 +18,8 @@ Phase 18 surface (per row Features + design log §5):
 * :func:`verify` — argon2id verify + ``disabled`` honoring per PB-15;
   raises :class:`AuthFailedError` (single class, private cause) per
   PB-23 on any failure; closes timing leak per PB-22 by running argon2
-  against :data:`_SENTINEL_HASH` on user-not-found.
+  against :data:`_SENTINEL_HASH` on user-not-found. **Phase 19 PB-9
+  revision: pure predicate; no audit write.**
 * :func:`_insert_first_admin` — bootstrap helper per PB-9; pure insert
   with ``actor_role='admin'``; idempotency at CLI caller per PB-29.
 
@@ -22,8 +27,9 @@ Cross-references:
 
 * ADR-0044 §amendment-1 — ``user_id`` charset regex (imported from KL).
 * ADR-0003 — argon2id; Phase 18 PB-14 explicit params at every call.
-* ADR-0013 — audit writer + ``EVT_ADMIN_CREATE_USER`` /
-  ``EVT_LOGIN_FAILED`` consumed here.
+* ADR-0013 — audit writer + ``EVT_ADMIN_CREATE_USER`` consumed here;
+  ``EVT_LOGIN_FAILED`` is NOT emitted by this module at Phase 19+ per
+  §amendment-1 (callers own it).
 * Phase 18 PB-7 — ``_USER_ID_RE`` imported from
   ``mindsos_knowledge.identifiers`` (ADR-0010 permits server→KL
   direction; only KL→server is forbidden).
@@ -49,7 +55,6 @@ from mindsos_server._argon2 import (
 )
 from mindsos_server.audit import (
     EVT_ADMIN_CREATE_USER,
-    EVT_LOGIN_FAILED,
     _now_utc_iso,
     write_audit,
 )
@@ -216,8 +221,17 @@ def verify(
     Verify credentials. Returns :class:`User` on success; raises
     :class:`AuthFailedError` on any failure.
 
+    **Phase 19 PB-9 / ADR-0013 §amendment-1 revision:** pure predicate.
+    Does NOT write any audit row. The Phase 18 shape baked
+    ``EVT_LOGIN_FAILED`` into this function, which produced a
+    semantically wrong event when ``kill_my_own_sessions`` (Phase 19
+    ADR-0005 escape valve) called verify() to gate a recovery action.
+    Callers (:func:`mindsos_server.sessions.login` +
+    :func:`mindsos_server.sessions.kill_my_own_sessions`) now own the
+    audit emission and write the correct event for their context.
+
     Failure causes (all surface as :class:`AuthFailedError` with private
-    ``.cause``):
+    ``.cause`` per Phase 18 PB-23):
 
     * :attr:`AuthFailureCause.UNKNOWN_USER` — no row for ``user_id``.
       Closes the timing leak by running argon2id against
@@ -227,14 +241,11 @@ def verify(
     * :attr:`AuthFailureCause.DISABLED` — row exists, password correct,
       but ``disabled = 1`` per Phase 18 PB-15.
 
-    Writes an ``EVT_LOGIN_FAILED`` audit row with the private cause in
-    ``extra_json`` on any failure. Does NOT write an audit row on
-    success — Phase 19's ``login()`` is the success-path auditor
-    (``EVT_LOGIN`` writes there). Phase 18 verify is a primitive used
-    BY login, not a substitute for it.
-
     Per PB-23, the exception's public message is uniform; callers
-    cannot distinguish causes without inspecting ``.cause``.
+    cannot distinguish causes without inspecting ``.cause``. Callers
+    that want to audit MUST inspect ``.cause`` and write the audit row
+    themselves in the same transaction (per ADR-0013 §Decision "same
+    SQLite transaction as the state change where feasible").
     """
     _validate_user_id(user_id)
 
@@ -248,20 +259,17 @@ def verify(
         # Phase 18 PB-22: close timing leak by running argon2 against
         # sentinel hash. Same wall-clock cost as a real verify-fail.
         verify_against_sentinel(password, params=params)
-        _audit_login_failure(conn, user_id, AuthFailureCause.UNKNOWN_USER)
         raise AuthFailedError(AuthFailureCause.UNKNOWN_USER)
 
     password_hash, actor_role, disabled, created_at_iso = row
 
     if not verify_password(password_hash, password, params=params):
-        _audit_login_failure(conn, user_id, AuthFailureCause.BAD_PASSWORD)
         raise AuthFailedError(AuthFailureCause.BAD_PASSWORD)
 
     if bool(disabled):
         # Phase 18 PB-15: verify honors disabled. Password was correct but
         # the account is disabled; surface as auth failure (single
-        # exception per PB-23) with private cause for audit.
-        _audit_login_failure(conn, user_id, AuthFailureCause.DISABLED)
+        # exception per PB-23) with private cause for caller audit.
         raise AuthFailedError(AuthFailureCause.DISABLED)
 
     return User(
@@ -270,29 +278,6 @@ def verify(
         disabled=False,
         created_at=datetime.fromisoformat(created_at_iso.replace("Z", "+00:00")),
     )
-
-
-def _audit_login_failure(
-    conn: sqlite3.Connection,
-    user_id: str,
-    cause: AuthFailureCause,
-) -> None:
-    """
-    Write the audit row for a failed :func:`verify` call.
-
-    Helper extracted to keep :func:`verify` readable. Per ADR-0013 the
-    audit row carries the private cause in ``extra_json`` for ops
-    visibility (cause is internal but visible to ops staff who can
-    query the audit log per Phase 21).
-    """
-    write_audit(
-        conn,
-        actor=user_id,  # The user_id presented, even if unknown.
-        event=EVT_LOGIN_FAILED,
-        target=user_id,
-        extra={"cause": cause.value},
-    )
-    conn.commit()
 
 
 # ---------------------------------------------------------------------------

@@ -3410,11 +3410,15 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 19 — Server: sessions
 
-  **Deps:** 18. **Layer:** L0. **Net-new?** No.
-  **Features:** login (returns opaque token); whoami; logout; refuse-concurrent-login (ADR-0005).
-  **Tests:** sliding TTL refresh on use; absolute TTL hard-stop; concurrent login rejected; self-evict via repeated credentials.
-  **Risks:** token storage on the host filesystem — phase chat picks (in-memory only with `--token` argument, or restricted-perms volume).
-  **Docs:** `docs/usage/server/sessions.md`, ADRs 0002/0005.
+  **Deps:** 18. **Layer:** L0. **Net-new?** No (extends Phase 18 `mindsos_server/` pkg in-place; no new top-level pkg = no 7-site checklist).
+  **Reframe note:** Phase 19 ship 15 picks across 3 design rounds (see `confirmation_docs/PHASE_19_DESIGN_LOG.md`). PB-2 deferred entire LocalPersister surface to Phase 25 (revises Phase 18 PB-18 which said "P19 first consumer"); PB-13 deferred `MindsOSServer` orchestrator class to Phase 25; PB-9 revised Phase 18 PB-13 contract (verify() no longer audits); 5 ADR §am1 amendments at ship (0003/0004/0005/0011/0013).
+  **Features:** `login(conn, user_id, password, *, ttl, params)` returns `LoginResult(session, token, created_at, expires_at)`; `logout(token)` (self-logout by-token per PB-11); `session_from_token(token)` with sliding-refresh + lazy-expire (PB-8 ordering: expire→check→mint); `kill_my_own_sessions(credentials)` (ADR-0005 escape valve); refuse-concurrent-login → `AlreadyLoggedInError({existing_session_id, created_at})` 2-field payload (PB-3); CLI verbs `mindsos server {login,whoami,logout}` (PB-5 token storage: file `~/.mindsos/token` mode 0600 default + `MINDSOS_TOKEN` env override; no `--token` flag); SQLite v1→v2 migration adding `sessions` table (5 columns per PB-10: `session_id, user_id, token_hash, created_at, last_seen_at` — `expires_at` computed at lookup, not stored).
+  **Modules touched:** MODIFIED `mindsos_server/_schema.py` (`_SCHEMA_VERSION` 1→2 + `_DDL_SESSIONS` + v1→v2 migration branch); MODIFIED `mindsos_server/errors.py` (+`InvalidSessionError` + `InvalidSessionCause` enum per PB-14 + `AlreadyLoggedInError`); MODIFIED `mindsos_server/users.py` (verify() drops audit write per PB-9); NEW `mindsos_server/sessions.py` (free-function surface per PB-13 + `SessionTTL` + `PRODUCTION_TTL` + `_TEST_FAST_TTL` + `LoginResult`); NEW `mindsos_server/_token_storage.py` (file+env resolution per PB-5); MODIFIED `mindsos_server/__init__.py` (exports update); MODIFIED `mindsos_cli/commands/server.py` (+login/whoami/logout verbs); MODIFIED `mindsos_cli/_sentinel_paths.py` (+sessions.py runtime sentinel); version bump `+phase18→+phase19` across 9 sites.
+  **Tests:** `tests/phase_19/` 11 files (test_db_schema_v2 + test_sessions_table_ddl + test_login + test_logout + test_session_from_token + test_kill_my_own_sessions + test_ttl_injection + test_cli_server_login_whoami_logout + test_audit_events_login_logout + test_verify_no_longer_audits + test_token_storage).
+  **Pass criterion:** isolated `pytest tests/phase_19/` green in-container; cumulative `pytest tests/` + `pytest tests_server/` green; `mindsos doctor --self-test` green on phase-19 branch (6-pkg parity unchanged; schema_version check at 2).
+  **Risks:** `feedback_phase_baseline_literal_audit.md` — bumping `_SCHEMA_VERSION` 1→2 requires grep of `tests/` for `schema_version=1` assertions; Phase 18 `test_users.py` audit assertions for verify()-internal writes must move to Phase 19 per PB-9; `feedback_test_image_rebuild_after_source_change.md` — rebuild test image after sessions.py lands.
+  **Docs:** `docs/usage/server/sessions.md` (NEW; last_confirmed_phase: 19); ADRs 0003 §am1 (PB-4 + PB-7 + PB-14 batch — drop constant-time, scope sweeper, unify InvalidSessionError), 0004 §am1 (PB-1 + PB-10 — scope wipe-on-restart, expires_at computed), 0005 §am1 (PB-1 + PB-3 — scope wipe-on-restart, drop source field; PB-8 ordering lock in §Consequences), 0011 §am1 (PB-2 + PB-13 — LocalPersister + MindsOSServer class shift to Phase 25), 0013 §am1 (PB-9 — verify() no longer audits).
+  **Breaking changes from prior phase:** `users.verify()` no longer writes audit (Phase 18 PB-13 revision per PB-9). Test-side: Phase 18 audit assertions on verify() failure paths must move to Phase 19 login() / kill_my_own_sessions() assertions.
 
 ### Phase 20 — Server: admin reset + last-admin protection (narrowed)
 
@@ -3457,13 +3461,14 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Risks:** ADRs 0113–0117 / 0119 / 0120 are reserved but not drafted (§7); phase chat must draft them as part of this phase. Phase 23 may have already been retired during its own chat — Phase 24 design chat reconciles.
   **Docs:** `docs/usage/server/promotion.md`, ADRs 0113–0120 (drafted in this phase), ADR-0118 confirmed; ADR-0141 confirmed; ADR-0144 confirmed (full Accept retires §amendment-1); ADRs 0049 / 0053 / 0056 Status → Superseded.
 
-### Phase 25 — Server: SessionProtocol seam in L2 + hydrate/extract hooks
+### Phase 25 — Server: SessionProtocol seam in L2 + hydrate/extract hooks + `LocalPersister` + `MindsOSServer` orchestrator
 
-  **Deps:** 14, 19. **Layer:** cross. **Net-new?** No.
-  **Features:** L2 accepts session via SessionProtocol duck-typing; install/extract hooks driven by login/logout.
-  **Tests:** capability parity (ADR-0041); hydration on login; extraction on logout; ADR-0042 hooks fire in correct order.
-  **Risks:** L2 must not import `mindsos_server` (ADR-0010) — parity test enforces.
-  **Docs:** `docs/usage/server/auth.md`, ADRs 0010/0038/0040/0041/0042.
+  **Deps:** 14, 19. **Layer:** cross. **Net-new?** **Yes** (Phase 19 PB-2 + PB-13 absorption — see Reframe note).
+  **Phase 19 PB-2 + PB-13 absorption (2026-05-21):** Original Phase 25 scope was the KL SessionProtocol seam + install/extract hooks. Phase 19 design review found (a) the `LocalPersister` Protocol + `MetagraphDump` first-consumer is here, not Phase 19 (PB-2 — login at Phase 19 doesn't need to hydrate a Local; KL hydration consumer materializes only at Phase 25 when SessionProtocol seam lands); and (b) the `MindsOSServer` orchestrator class first-construction is here, since the class consolidates Phase 19's free-function auth/sessions surface with the persister + ADR-0042 hooks under one lifecycle (PB-13). ADR-0011 §am1 + ADR-0042 §am1 record the shifts.
+  **Features:** L2 accepts session via SessionProtocol duck-typing; `mindsos_knowledge/types.py` Protocol + `mindsos_knowledge/capabilities.py` constants (ADR-0041 §am1 KL-side counterpart); install/extract hooks driven by login/logout; **`mindsos_server.persistence.LocalPersister` Protocol + `MetagraphDump` + `InMemoryLocalPersister` + `FalkorDBLocalPersister` (NEW CODE, absorbed from Phase 19 PB-2)**; **`MindsOSServer` orchestrator class holding `(conn_factory, persister, kl, ttl, params)` and wrapping Phase 19's free-function auth surface (NEW CODE, absorbed from Phase 19 PB-13)**.
+  **Tests:** capability parity (ADR-0041); hydration on login; extraction on logout; ADR-0042 hooks fire in correct order; LocalPersister fault-injection rollback (ADR-0011 §Decision); `MindsOSServer` lifecycle (construction + per-call kwarg threading equivalence with Phase 19 free functions).
+  **Risks:** L2 must not import `mindsos_server` (ADR-0010) — parity test enforces. Phase 19 free-function signatures must be forward-compatible (PB-13 amendment promise) — Phase 25 adds persister + kl as kwargs with defaults so Phase 19 callers continue to work.
+  **Docs:** `docs/usage/server/auth.md`, `docs/usage/server/persistence.md` (NEW per PB-2 absorption); ADRs 0010/0011/0038/0040/0041/0042. ADR-0011 Status stays Accepted (the Protocol shape was already locked at 2026-04-22; only the first-consumer phase shifted at Phase 19 §am1).
 
 ### Phase 26 — Integration A: L0+L1+L2 end-to-end scripted scenario
 
