@@ -23,14 +23,25 @@ class TestHappyPath:
         assert isinstance(result, list)
         assert all(isinstance(r, AuditRow) for r in result)
 
-    def test_returns_all_seeded_rows_plus_self_audit(
+    def test_returns_all_seeded_rows(
         self, tmp_server_db, admin_session, seeded_audit_rows
     ) -> None:
-        # 8 seeded + 1 self-emitted EVT_AUDIT_QUERY = 9 rows.
+        # 8 seeded rows; the EVT_AUDIT_QUERY this call emits is written
+        # AFTER the SELECT so it's NOT in this call's result (read-then-
+        # write transaction order). A subsequent call would see it.
         result = admin_query_audit(tmp_server_db, admin_session)
+        assert len(result) == 8
+
+    def test_subsequent_call_sees_prior_evt_audit_query(
+        self, tmp_server_db, admin_session, seeded_audit_rows
+    ) -> None:
+        # PB-16i: EVT_AUDIT_QUERY rows are included in default reader
+        # output → the SECOND call sees the FIRST call's emission.
+        admin_query_audit(tmp_server_db, admin_session)  # emits 1 EVT_AUDIT_QUERY
+        result = admin_query_audit(tmp_server_db, admin_session)
+        # 8 seeded + 1 from prior call's emission = 9 rows.
         assert len(result) == 9
-        # The 9th row (last in ASC order) is the EVT_AUDIT_QUERY this
-        # call emitted (PB-16i — included by default).
+        # The last row (ASC id order) is the prior call's EVT_AUDIT_QUERY.
         assert result[-1].event == EVT_AUDIT_QUERY
 
     def test_id_asc_order(
@@ -43,11 +54,15 @@ class TestHappyPath:
     def test_default_limit_is_100(
         self, tmp_server_db, admin_session
     ) -> None:
-        # Empty DB except for the self-emitted EVT_AUDIT_QUERY row.
+        # Empty DB; first call returns 0 rows (its own EVT_AUDIT_QUERY
+        # emission is written AFTER the SELECT). A subsequent call
+        # would return 1.
         result = admin_query_audit(tmp_server_db, admin_session)
-        # Limit is 100 by default; only 1 row exists.
-        assert len(result) == 1
-        assert result[0].event == EVT_AUDIT_QUERY
+        assert len(result) == 0
+        # Now the prior emission is visible to the next call.
+        result2 = admin_query_audit(tmp_server_db, admin_session)
+        assert len(result2) == 1
+        assert result2[0].event == EVT_AUDIT_QUERY
 
     def test_audit_row_fields_populated(
         self, tmp_server_db, admin_session, seeded_audit_rows

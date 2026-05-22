@@ -44,8 +44,9 @@ class TestActorFilter:
         result = admin_query_audit(
             tmp_server_db, admin_session, actor=None
         )
-        # All 8 seeded + 1 EVT_AUDIT_QUERY = 9.
-        assert len(result) == 9
+        # 8 seeded rows; self-emitted EVT_AUDIT_QUERY is written AFTER
+        # the SELECT so it's NOT in this call's result.
+        assert len(result) == 8
 
 
 class TestEventFilter:
@@ -64,11 +65,14 @@ class TestEventFilter:
     def test_filter_by_evt_audit_query(
         self, tmp_server_db, admin_session, seeded_audit_rows
     ) -> None:
-        # Self-emitted EVT_AUDIT_QUERY is in default output.
+        # First call's EVT_AUDIT_QUERY is written AFTER the SELECT, so
+        # the SECOND call sees it. PB-16i transparency: future queries
+        # CAN filter on EVT_AUDIT_QUERY.
+        admin_query_audit(tmp_server_db, admin_session)  # emits one EVT_AUDIT_QUERY
         result = admin_query_audit(
             tmp_server_db, admin_session, event=EVT_AUDIT_QUERY
         )
-        # This call writes one EVT_AUDIT_QUERY row.
+        # Sees the prior call's emission (this call's emission lands after).
         assert len(result) == 1
         assert result[0].event == EVT_AUDIT_QUERY
 

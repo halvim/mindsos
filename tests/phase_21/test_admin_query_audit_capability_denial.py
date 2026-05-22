@@ -83,8 +83,9 @@ class TestAuditorOnlyRoleSucceeds:
     ) -> None:
         # Should not raise.
         result = admin_query_audit(tmp_server_db, auditor_only_session)
-        # 8 seeded + 1 EVT_AUDIT_QUERY emitted by this call = 9 rows.
-        assert len(result) == 9
+        # 8 seeded rows; self-emitted EVT_AUDIT_QUERY is written AFTER
+        # the SELECT so it's NOT in this call's result.
+        assert len(result) == 8
 
     def test_auditor_emits_evt_audit_query_with_own_user_id(
         self, tmp_server_db, auditor_only_session, seeded_audit_rows

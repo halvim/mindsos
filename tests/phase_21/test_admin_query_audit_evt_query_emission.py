@@ -47,12 +47,21 @@ class TestPerCallEmission:
     def test_emission_after_returning_rows(
         self, tmp_server_db, admin_session, seeded_audit_rows
     ) -> None:
-        # The EVT_AUDIT_QUERY row has the highest id (emitted last).
-        # First call returns 8 seeded + 1 EVT_AUDIT_QUERY = 9 rows.
-        result = admin_query_audit(tmp_server_db, admin_session)
-        assert len(result) == 9
-        assert result[-1].event == EVT_AUDIT_QUERY
-        assert result[-1].id == max(r.id for r in result)
+        # Read-then-write order: first call's EVT_AUDIT_QUERY is
+        # written AFTER the SELECT, so its row id is HIGHER than any
+        # row in this call's result. Verify via a second call.
+        first = admin_query_audit(tmp_server_db, admin_session)
+        # First call returns 8 seeded rows (the EVT_AUDIT_QUERY row
+        # is committed AFTER the SELECT — not in the returned list).
+        assert len(first) == 8
+
+        second = admin_query_audit(tmp_server_db, admin_session)
+        # Second call sees 8 seeded + 1 prior EVT_AUDIT_QUERY = 9.
+        assert len(second) == 9
+        # The EVT_AUDIT_QUERY row from the first call is the highest-id
+        # row in the second call's result (was emitted last).
+        assert second[-1].event == EVT_AUDIT_QUERY
+        assert second[-1].id == max(r.id for r in second)
 
 
 class TestFiltersSnapshot:
@@ -121,12 +130,21 @@ class TestFiltersSnapshot:
 
 
 class TestIncludedInDefaultOutput:
-    """PB-16i — EVT_AUDIT_QUERY rows visible in default reader output."""
+    """PB-16i — EVT_AUDIT_QUERY rows visible to FUTURE queries.
 
-    def test_evt_audit_query_visible(
+    Read-then-write semantic: a call's own EVT_AUDIT_QUERY emission
+    is not in that call's result; subsequent calls see it. Transparency
+    is delivered across calls, not within a single call.
+    """
+
+    def test_evt_audit_query_visible_to_next_call(
         self, tmp_server_db, admin_session
     ) -> None:
-        # Empty DB except for this call's emission.
-        result = admin_query_audit(tmp_server_db, admin_session)
-        events = [r.event for r in result]
+        # Empty DB.
+        first = admin_query_audit(tmp_server_db, admin_session)
+        # First call returns 0 rows (its own emission lands after SELECT).
+        assert first == []
+        # Second call sees the first's EVT_AUDIT_QUERY.
+        second = admin_query_audit(tmp_server_db, admin_session)
+        events = [r.event for r in second]
         assert EVT_AUDIT_QUERY in events
