@@ -226,4 +226,15 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # private-but-shipped per the Phase 18 sentinel convention.
     "mindsos_server/sessions.py",
     "mindsos_server/_token_storage.py",
+    # Phase 20 — addition to the Phase 18 package (no new top-level
+    # pkg; no 7-site checklist). `admin.py` is the new module per
+    # PB-Z; ships `reset_admin` + `ResetAdminResult` and pre-positions
+    # the home for Phase 22's admin verbs + `_assert_not_sole_admin`
+    # helper + `LastAdminError` class (deferred from Phase 20 per
+    # PB-B). No Dockerfile change needed (existing
+    # `COPY mindsos_server/` picks it up as a directory copy). The
+    # amended `docs/usage/server/bootstrap.md` is NOT sentinelled
+    # per `feedback_sentinel_paths_runtime_only.md` (mkdocs source,
+    # not CLI runtime input).
+    "mindsos_server/admin.py",
 )

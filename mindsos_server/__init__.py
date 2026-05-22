@@ -4,6 +4,10 @@ mindsos_server — Server Layer (L0).
 Phase 18 — Server: user store + auth.
 Phase 19 — Server: sessions (login / logout / session_from_token /
 kill_my_own_sessions; sessions table + v2 migration).
+Phase 20 — Server: admin reset (reset_admin lock-out recovery in
+new mindsos_server/admin.py module; UserNotFoundError +
+NotAnAdminError target-validation gate; first-fires EVT_KILL_SESSION
++ EVT_ADMIN_ENABLE_USER from the Phase 18 audit roster).
 
 Introduces the first L0 package per ADR-0001 at Phase 18. Sits ABOVE
 every domain layer (Core → Knowledge → Capacity → Intelligence →
@@ -80,12 +84,15 @@ from mindsos_server.capabilities import (
     CAN_WRITE_GLOBAL,
     USER_CAPS,
 )
+from mindsos_server.admin import ResetAdminResult, reset_admin
 from mindsos_server.errors import (
     AlreadyLoggedInError,
     AuthFailedError,
     InvalidSessionCause,
     InvalidSessionError,
+    NotAnAdminError,
     UserAlreadyExistsError,
+    UserNotFoundError,
 )
 from mindsos_server.session import Session
 from mindsos_server.sessions import (
@@ -114,12 +121,15 @@ __all__ = [
     "CAN_MANAGE_USERS",
     "USER_CAPS",
     "ADMIN_CAPS",
-    # Exceptions (Phase 18 PB-23 + PB-30; Phase 19 PB-3 + PB-14).
+    # Exceptions (Phase 18 PB-23 + PB-30; Phase 19 PB-3 + PB-14;
+    # Phase 20 PB-N + PB-O).
     "AuthFailedError",
     "UserAlreadyExistsError",
     "InvalidSessionError",
     "InvalidSessionCause",
     "AlreadyLoggedInError",
+    "UserNotFoundError",
+    "NotAnAdminError",
     # Phase 19 sessions surface (PB-6 + PB-11 + PB-12 + PB-13 + PB-15).
     "login",
     "logout",
@@ -128,6 +138,9 @@ __all__ = [
     "LoginResult",
     "SessionTTL",
     "PRODUCTION_TTL",
+    # Phase 20 admin surface (PB-Z module + PB-A/D/E/G/R/U semantics).
+    "reset_admin",
+    "ResetAdminResult",
 ]
 
-__version__ = "0.0.0+phase19"
+__version__ = "0.0.0+phase20"

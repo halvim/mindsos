@@ -1,5 +1,5 @@
 """
-CLI verbs for the Server Layer (Phase 18 + Phase 19).
+CLI verbs for the Server Layer (Phase 18 + Phase 19 + Phase 20).
 
 Per Phase 18 PB-32 — verbs live here at ``mindsos_cli/commands/server.py``
 following the existing convention (admin.py, graph.py, etc.). Adds
@@ -31,6 +31,16 @@ Verb additions (Phase 19):
 * ``mindsos server logout [--json]`` — call logout(token) + delete the
   on-disk token file. Silent no-op on invalid / missing token per
   Phase 19 minor lock.
+
+Verb additions (Phase 20):
+
+* ``mindsos server reset-admin <user_id> [--json]`` — lock-out recovery
+  per ADR-0012 §amendment-2. Positional user_id REQUIRED (no prompt
+  fallback per PB-G — destructive ops are deliberate). Reads password
+  from stdin (PB-G — no ``--password`` flag, mirroring PB-8). Existing
+  admin only (UserNotFoundError on missing per PB-A; NotAnAdminError
+  on non-admin target per PB-E). Rotates password + re-enables + kills
+  all sessions in a single transaction per PB-R.
 
 Per PB-29 — bootstrap idempotency lives at THIS CLI verb (not in the
 helper). The helper :func:`mindsos_server.users._insert_first_admin`
@@ -67,11 +77,14 @@ from mindsos_server._token_storage import (
     token_source_description,
     write_token,
 )
+from mindsos_server.admin import reset_admin
 from mindsos_server.errors import (
     AlreadyLoggedInError,
     AuthFailedError,
     InvalidSessionError,
+    NotAnAdminError,
     UserAlreadyExistsError,
+    UserNotFoundError,
 )
 from mindsos_server.sessions import (
     PRODUCTION_TTL,
@@ -641,6 +654,106 @@ def logout_cmd(
             f"note: {TOKEN_ENV_VAR} is still set in your shell; "
             f"run `unset {TOKEN_ENV_VAR}` to clear it.",
             err=True,
+        )
+
+
+# ---------------------------------------------------------------------------
+# `mindsos server reset-admin` (Phase 20 PB-Z verb)
+# ---------------------------------------------------------------------------
+
+
+@server_app.command(name="reset-admin")
+def reset_admin_cmd(
+    user_id: str = typer.Argument(
+        ...,
+        help=(
+            "Existing admin user_id to reset. REQUIRED — reset-admin "
+            "is destructive; no interactive prompt fallback per PB-G."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit JSON output to stdout."
+    ),
+) -> None:
+    """
+    Lock-out recovery for an existing admin per ADR-0012 §amendment-2.
+
+    Rotates the target admin's password (fresh argon2id salt),
+    re-enables the row if disabled, and kills every active session
+    for that user in a single SQLite transaction (DELETE → UPDATE →
+    audit → commit per PB-R).
+
+    Pre-conditions:
+
+    * Target user_id MUST exist (UserNotFoundError on missing per
+      PB-A). To mint a new admin, use ``bootstrap`` (first admin) or
+      ``admin promote-user`` (Phase 22, for subsequent admins).
+    * Target MUST already be ``actor_role='admin'`` (NotAnAdminError
+      otherwise per PB-E). Reset-admin will NEVER escalate a
+      non-admin to admin — use ``admin promote-user`` (Phase 22).
+
+    Authority model: reset-admin runs without a Session by definition
+    (the operator is recovering from lock-out). Per ADR-0012
+    §Rationale, filesystem access to ``server.db`` IS the authority
+    floor — the operator's proof-of-authority is being able to run
+    this CLI against the production DB file. The OS user (from
+    ``pwd.getpwuid(os.getuid()).pw_name``) is recorded as the audit
+    actor on the EVT_RESET_ADMIN row + every EVT_KILL_SESSION row.
+
+    Password reading: stdin only (PB-G — no ``--password`` flag, same
+    rule as Phase 18 PB-8). TTY: ``getpass`` prompt. Pipe: one line.
+
+    Audit emitted (per PB-D + PB-U + PB-AA + PB-BB):
+
+    * 1× ``EVT_RESET_ADMIN`` with
+      ``extra = {"was_disabled": bool, "sessions_killed": N}``.
+    * N× ``EVT_KILL_SESSION`` (one per killed session) with
+      ``extra = {"session_id": sid, "context": "reset_admin"}``.
+    * 1× ``EVT_ADMIN_ENABLE_USER`` IFF target was disabled, with
+      ``extra = {"context": "reset_admin"}``.
+
+    Exit codes:
+
+    * 0 — reset succeeded.
+    * 2 — UserNotFoundError / NotAnAdminError / ValueError on bad
+      user_id; stderr carries the error message.
+    """
+    password = _read_password_stdin()
+
+    # OS user as actor per ADR-0012 §Rationale (no Session in this path).
+    os_user = pwd.getpwuid(os.getuid()).pw_name
+
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+
+        try:
+            result = reset_admin(
+                conn,
+                user_id,
+                password,
+                os_user=os_user,
+                params=PRODUCTION_PARAMS,
+            )
+        except (UserNotFoundError, NotAnAdminError, ValueError) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=2) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "status": "reset",
+                    "user_id": result.user_id,
+                    "sessions_killed": result.sessions_killed,
+                    "was_disabled": result.was_disabled,
+                }
+            )
+        )
+    else:
+        suffix = "; re-enabled=true" if result.was_disabled else ""
+        typer.echo(
+            f"admin reset: user_id={result.user_id!r}; "
+            f"sessions_killed={result.sessions_killed}{suffix}"
         )
 
 

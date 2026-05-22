@@ -397,7 +397,11 @@ tests/phase_20/                        # ~7-8 test files
 ├── test_reset_admin_cli.py            # CLI verb: positional required (no prompt — PB-G); stdin password; --json shape (PB-BB)
 └── test_reset_admin_audit_actor.py    # actor=os_user verbatim; pwd.getpwuid mock; mirrors P18 bootstrap shape
 
-docs/usage/server/bootstrap.md         # AMENDED: +reset-admin section (per master prompt); last_confirmed_phase: 20
+docs/usage/server/bootstrap.md         # DEFERRED to Phase 38 doc-review per project pattern
+                                       # (Phase 18 + Phase 19 also deferred docs/usage/server/*
+                                       # — neither auth.md nor sessions.md exists on origin/main
+                                       # despite design-log mentions; PHASE_MAP §1 "Mkdocs page
+                                       # evolution" clause makes Phase 38 the consolidation home).
 
 # Modified outside mindsos_server/ + tests/:
 mindsos_cli/_sentinel_paths.py         # +mindsos_server/admin.py runtime sentinel

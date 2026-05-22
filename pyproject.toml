@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase19"
-description = "MindsOS command-line interface — Phase 19: Server: sessions. Extends Phase 18's mindsos_server/ in-place; schema v2 adds sessions table (5 columns per PB-10; expires_at computed at lookup); free-function login/logout/session_from_token/kill_my_own_sessions surface per PB-13 (MindsOSServer class deferred to Phase 25 per ADR-0011 §am1); SessionTTL injection per PB-15; unified InvalidSessionError per PB-14; 2-field AlreadyLoggedInError per PB-3; CLI verbs mindsos server {login,whoami,logout} with hybrid file+env token storage per PB-5; users.verify() refactored to pure predicate per PB-9 (callers own audit). 15 picks across 3 design rounds; 5 ADR §am1 amendments (0003/0004/0005/0011/0013); see confirmation_docs/PHASE_19_DESIGN_LOG.md."
+version = "0.0.0+phase20"
+description = "MindsOS command-line interface — Phase 20: Server: admin reset (narrowed twice). Extends Phase 18's mindsos_server/ in-place with NEW mindsos_server/admin.py module (PB-Z) shipping the reset_admin lock-out recovery verb per ADR-0012 §am2. Scope narrowed at Phase 18 PB-27 (bootstrap lifted to P18) AND Phase 20 PB-B (_assert_not_sole_admin helper + LastAdminError deferred to P22 — no P20 consumer). Reset-admin requires existing admin target (UserNotFoundError per PB-A + PB-O; NotAnAdminError per PB-E + PB-N — strict admin-only, no silent promotion); rotates password + re-enables + kills sessions in single tx DELETE-then-UPDATE order per PB-R; emits 1× EVT_RESET_ADMIN + N× EVT_KILL_SESSION + conditional 1× EVT_ADMIN_ENABLE_USER per PB-D + PB-U (first-fires of EVT_KILL_SESSION + EVT_ADMIN_ENABLE_USER shift P22→P20); CLI mindsos server reset-admin <user_id> positional REQUIRED no-prompt-fallback per PB-G. 13 picks across 4 design rounds; 1 ADR §am2 (0012 batches 6 changes); see confirmation_docs/PHASE_20_DESIGN_LOG.md."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
