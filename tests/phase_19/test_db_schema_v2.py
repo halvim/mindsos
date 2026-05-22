@@ -1,14 +1,22 @@
 """
 Phase 19 v1 → v2 migration tests per PB-2 + PB-10.
 
+Phase 21 update: assertions generalized against ``_SCHEMA_VERSION``
+to end the literal-decay class (B-19-T1 lesson — same dynamic-baseline
+pattern as ``TestAll6PkgsAtCurrentPhase``). The file's intent stays
+focused on the v1→v2 forward path (the v2 sessions-table addition
+is the only thing this phase shipped); the assertions verify the
+migrator advances correctly and that v2-and-later state is present.
+
 Verifies:
-* ``_SCHEMA_VERSION == 2``.
-* ``init_or_migrate`` on a fresh DB returns 2 and creates the
-  ``sessions`` table.
-* ``init_or_migrate`` on an already-migrated v1 DB advances to v2
-  without touching existing rows.
+* ``_SCHEMA_VERSION >= 2`` (sessions table contract holds at v2+).
+* ``init_or_migrate`` on a fresh DB returns the current
+  ``_SCHEMA_VERSION`` and creates the ``sessions`` table.
+* ``init_or_migrate`` on an artificially-rolled-back v1 DB advances
+  forward to the current ``_SCHEMA_VERSION`` without touching
+  existing rows.
 * Idempotency: a second call is a no-op.
-* schema_version row reflects 2.
+* schema_version row reflects ``_SCHEMA_VERSION``.
 """
 
 from __future__ import annotations
@@ -23,16 +31,20 @@ from mindsos_server._schema import _SCHEMA_VERSION, init_or_migrate
 
 
 class TestSchemaVersionConstant:
-    def test_schema_version_is_two(self) -> None:
-        assert _SCHEMA_VERSION == 2
+    def test_schema_version_at_least_v2(self) -> None:
+        # Phase 19 contract: sessions table exists at v2+; schema can
+        # grow forward without invalidating this test.
+        assert _SCHEMA_VERSION >= 2
 
 
 class TestFreshMigration:
-    def test_fresh_db_arrives_at_v2(self, tmp_path: Path) -> None:
+    def test_fresh_db_arrives_at_current_version(
+        self, tmp_path: Path
+    ) -> None:
         db_path = tmp_path / "server.db"
         with open_db(db_path) as conn:
             version = init_or_migrate(conn)
-            assert version == 2
+            assert version == _SCHEMA_VERSION
 
     def test_fresh_db_has_sessions_table(self, tmp_path: Path) -> None:
         db_path = tmp_path / "server.db"
@@ -79,16 +91,18 @@ class TestStepwiseMigration:
             )
             conn.commit()
 
-        # Re-open and migrate — should advance to v2 + add sessions table
-        # + preserve the preexisting users row.
+        # Re-open and migrate — should advance forward (skipping past
+        # v2 to current _SCHEMA_VERSION) + add sessions table + preserve
+        # the preexisting users row.
         with open_db(db_path) as conn:
             version = init_or_migrate(conn)
-            assert version == 2
+            assert version == _SCHEMA_VERSION
             row = conn.execute(
                 "SELECT user_id FROM users WHERE user_id='preexisting'"
             ).fetchone()
             assert row == ("preexisting",)
-            # sessions table now exists
+            # sessions table now exists (v2 step added it; later steps
+            # don't drop it).
             rows = conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'"
             ).fetchall()
@@ -101,13 +115,13 @@ class TestIdempotent:
         with open_db(db_path) as conn:
             init_or_migrate(conn)
             version = init_or_migrate(conn)
-            assert version == 2
+            assert version == _SCHEMA_VERSION
 
-    def test_schema_version_row_is_two(self, tmp_path: Path) -> None:
+    def test_schema_version_row_matches_constant(self, tmp_path: Path) -> None:
         db_path = tmp_path / "server.db"
         with open_db(db_path) as conn:
             init_or_migrate(conn)
             row = conn.execute(
                 "SELECT version FROM schema_version WHERE key='schema_version'"
             ).fetchone()
-            assert row == (2,)
+            assert row == (_SCHEMA_VERSION,)

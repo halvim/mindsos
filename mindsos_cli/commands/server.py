@@ -42,6 +42,21 @@ Verb additions (Phase 20):
   on non-admin target per PB-E). Rotates password + re-enables + kills
   all sessions in a single transaction per PB-R.
 
+Verb additions (Phase 21):
+
+* ``mindsos server query-audit [--actor X] [--event Y] [--target Z]
+  [--since ISO] [--until ISO] [--after-id N] [--limit N]
+  [--count-only] [--json]`` — read rows from the audit log per
+  ADR-0013 §amendment-2. Gated on ``CAN_VIEW_AUDIT_LOG`` via
+  ``_require_or_audit`` (PB-6); session-backed verb (reads token via
+  ``read_token()`` then ``session_from_token``). Inclusive
+  ``since``/``until`` bounds (PB-11); ``id`` ASC default order (PB-12);
+  cursor pagination via ``--after-id`` (PB-10). ``--count-only`` flips
+  to ``SELECT COUNT(*)`` form (PB-4 reframe of "audit stats"). Emits
+  ``EVT_AUDIT_QUERY`` happy-path audit row per call (PB-16); ``EVT_PERMISSION_DENIED``
+  + raise on non-admin caller (PB-13). Exit 3 on PermissionDeniedError;
+  exit 2 on ValueError (bad ISO-8601 / invalid arg).
+
 Per PB-29 — bootstrap idempotency lives at THIS CLI verb (not in the
 helper). The helper :func:`mindsos_server.users._insert_first_admin`
 is a pure insert; this CLI does the ``count_admins() ≥ 1`` skip check.
@@ -77,12 +92,13 @@ from mindsos_server._token_storage import (
     token_source_description,
     write_token,
 )
-from mindsos_server.admin import reset_admin
+from mindsos_server.admin import AuditRow, admin_query_audit, reset_admin
 from mindsos_server.errors import (
     AlreadyLoggedInError,
     AuthFailedError,
     InvalidSessionError,
     NotAnAdminError,
+    PermissionDeniedError,
     UserAlreadyExistsError,
     UserNotFoundError,
 )
@@ -755,6 +771,193 @@ def reset_admin_cmd(
             f"admin reset: user_id={result.user_id!r}; "
             f"sessions_killed={result.sessions_killed}{suffix}"
         )
+
+
+# ---------------------------------------------------------------------------
+# `mindsos server query-audit`  (Phase 21 PB-23 verb)
+# ---------------------------------------------------------------------------
+
+
+def _format_audit_row_tsv(r: AuditRow) -> str:
+    """
+    PB-25 plain output: one row per line, tab-separated.
+
+    Columns: ``id<TAB>ts<TAB>actor<TAB>event<TAB>target<TAB>extra_json_oneline``.
+    Null ``actor`` / ``target`` rendered as ``-`` (single dash).
+    ``extra`` is re-serialized to compact JSON via ``separators=(',', ':')``.
+    """
+    actor_str = r.actor if r.actor is not None else "-"
+    target_str = r.target if r.target is not None else "-"
+    extra_oneline = json.dumps(dict(r.extra), separators=(",", ":"))
+    return f"{r.id}\t{r.ts}\t{actor_str}\t{r.event}\t{target_str}\t{extra_oneline}"
+
+
+@server_app.command(name="query-audit")
+def query_audit_cmd(
+    actor: Optional[str] = typer.Option(
+        None, "--actor", help="Filter audit_row.actor_user = X."
+    ),
+    event: Optional[str] = typer.Option(
+        None,
+        "--event",
+        help=(
+            "Filter audit_row.event = X (e.g. EVT_LOGIN, "
+            "EVT_PERMISSION_DENIED, EVT_AUDIT_QUERY)."
+        ),
+    ),
+    target: Optional[str] = typer.Option(
+        None, "--target", help="Filter audit_row.target_user = X."
+    ),
+    since: Optional[str] = typer.Option(
+        None,
+        "--since",
+        help=(
+            "Inclusive lower bound (ts >= since); ISO-8601 with or "
+            "without ms / Z (e.g. 2026-05-21T00:00:00Z)."
+        ),
+    ),
+    until: Optional[str] = typer.Option(
+        None,
+        "--until",
+        help=(
+            "Inclusive upper bound (ts <= until); ISO-8601 same format "
+            "as --since."
+        ),
+    ),
+    after_id: Optional[int] = typer.Option(
+        None,
+        "--after-id",
+        help=(
+            "Cursor for stable pagination (id > after_id). Pair with "
+            "--since / --until / --limit; combine AND-together (PB-20)."
+        ),
+    ),
+    limit: int = typer.Option(
+        100,
+        "--limit",
+        min=1,
+        help=(
+            "Max rows returned. Default 100; silently clamped to 10000."
+        ),
+    ),
+    count_only: bool = typer.Option(
+        False,
+        "--count-only",
+        help=(
+            "Emit only the matching-row count (SELECT COUNT(*) form). "
+            "Reframed 'audit stats' feature per PB-4."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False, "--json", help="Emit JSON output to stdout."
+    ),
+) -> None:
+    """
+    Read rows from the audit log per ADR-0013 §amendment-2.
+
+    Gated on ``CAN_VIEW_AUDIT_LOG`` (in ``ADMIN_CAPS`` only). Token is
+    resolved from env > file via :func:`mindsos_server._token_storage.read_token`;
+    session via :func:`mindsos_server.sessions.session_from_token`.
+    Non-admin caller emits ``EVT_PERMISSION_DENIED`` audit row + exits
+    3 (per PB-13). Bad ISO-8601 / invalid arg exits 2.
+
+    Happy path always writes one ``EVT_AUDIT_QUERY`` audit row before
+    returning (PB-16) — including ``--count-only`` invocations (PB-18).
+    The ``EVT_AUDIT_QUERY.extra_json`` carries the sparse filters
+    snapshot + result count + count_only flag per PB-17, letting
+    operator-side audit-review reconstruct exactly what was queried.
+
+    Output (default mode — list mode):
+
+    * Plain: TSV one row per line; null actor/target → ``-``.
+    * ``--json``: ``{"rows": [...], "count": N, "next_after_id": int | null}``
+      where ``next_after_id`` is the last row's id IFF ``len(rows) >= limit``
+      (page-end sentinel), else ``null``.
+
+    Output (``--count-only`` mode):
+
+    * Plain: ``count=N``.
+    * ``--json``: ``{"count": N}``.
+
+    Exit codes:
+
+    * 0 — success.
+    * 1 — not logged in (no token / invalid token).
+    * 2 — ValueError on ISO-8601 parse / invalid arg.
+    * 3 — PermissionDeniedError (caller lacks CAN_VIEW_AUDIT_LOG).
+    """
+    token = read_token()
+    if token is None:
+        typer.echo("not logged in", err=True)
+        raise typer.Exit(code=1)
+
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        try:
+            session = session_from_token(conn, token, ttl=PRODUCTION_TTL)
+        except InvalidSessionError as exc:
+            typer.echo("not logged in", err=True)
+            raise typer.Exit(code=1) from exc
+
+        try:
+            result = admin_query_audit(
+                conn,
+                session,
+                actor=actor,
+                event=event,
+                target=target,
+                since=since,
+                until=until,
+                after_id=after_id,
+                limit=limit,
+                count_only=count_only,
+            )
+        except PermissionDeniedError as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=3) from exc
+        except ValueError as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=2) from exc
+
+    # --count-only mode → int result.
+    if count_only:
+        assert isinstance(result, int)
+        if json_out:
+            typer.echo(json.dumps({"count": result}))
+        else:
+            typer.echo(f"count={result}")
+        return
+
+    # Default mode → list[AuditRow].
+    assert isinstance(result, list)
+    if json_out:
+        # next_after_id sentinel per PB-24: null when fewer rows than limit
+        # (last page); else the last row's id (cursor for the next page).
+        next_after_id = result[-1].id if len(result) >= limit and result else None
+        typer.echo(
+            json.dumps(
+                {
+                    "rows": [
+                        {
+                            "id": r.id,
+                            "ts": r.ts,
+                            "actor": r.actor,
+                            "event": r.event,
+                            "target": r.target,
+                            "extra": dict(r.extra),
+                        }
+                        for r in result
+                    ],
+                    "count": len(result),
+                    "next_after_id": next_after_id,
+                }
+            )
+        )
+        return
+
+    # Plain TSV per PB-25.
+    for r in result:
+        typer.echo(_format_audit_row_tsv(r))
 
 
 # ---------------------------------------------------------------------------

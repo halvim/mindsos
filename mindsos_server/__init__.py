@@ -8,6 +8,10 @@ Phase 20 — Server: admin reset (reset_admin lock-out recovery in
 new mindsos_server/admin.py module; UserNotFoundError +
 NotAnAdminError target-validation gate; first-fires EVT_KILL_SESSION
 + EVT_ADMIN_ENABLE_USER from the Phase 18 audit roster).
+Phase 21 — Server: audit log reader (admin_query_audit + AuditRow in
+admin.py; new mindsos_server/authz.py module with _require_or_audit
+wrapper + PermissionDeniedError; EVT_AUDIT_QUERY happy-path audit
+emission; schema v2→v3 with idx_audit_target).
 
 Introduces the first L0 package per ADR-0001 at Phase 18. Sits ABOVE
 every domain layer (Core → Knowledge → Capacity → Intelligence →
@@ -84,13 +88,21 @@ from mindsos_server.capabilities import (
     CAN_WRITE_GLOBAL,
     USER_CAPS,
 )
-from mindsos_server.admin import ResetAdminResult, reset_admin
+from mindsos_server.admin import (
+    AuditRow,
+    ResetAdminResult,
+    admin_query_audit,
+    reset_admin,
+)
+from mindsos_server.audit import EVT_AUDIT_QUERY
+from mindsos_server.authz import _require_or_audit
 from mindsos_server.errors import (
     AlreadyLoggedInError,
     AuthFailedError,
     InvalidSessionCause,
     InvalidSessionError,
     NotAnAdminError,
+    PermissionDeniedError,
     UserAlreadyExistsError,
     UserNotFoundError,
 )
@@ -122,7 +134,7 @@ __all__ = [
     "USER_CAPS",
     "ADMIN_CAPS",
     # Exceptions (Phase 18 PB-23 + PB-30; Phase 19 PB-3 + PB-14;
-    # Phase 20 PB-N + PB-O).
+    # Phase 20 PB-N + PB-O; Phase 21 PB-14).
     "AuthFailedError",
     "UserAlreadyExistsError",
     "InvalidSessionError",
@@ -130,6 +142,7 @@ __all__ = [
     "AlreadyLoggedInError",
     "UserNotFoundError",
     "NotAnAdminError",
+    "PermissionDeniedError",
     # Phase 19 sessions surface (PB-6 + PB-11 + PB-12 + PB-13 + PB-15).
     "login",
     "logout",
@@ -141,6 +154,11 @@ __all__ = [
     # Phase 20 admin surface (PB-Z module + PB-A/D/E/G/R/U semantics).
     "reset_admin",
     "ResetAdminResult",
+    # Phase 21 audit-reader surface (PB-6 + PB-8 + PB-9 + PB-16).
+    "admin_query_audit",
+    "AuditRow",
+    "_require_or_audit",
+    "EVT_AUDIT_QUERY",
 ]
 
-__version__ = "0.0.0+phase20"
+__version__ = "0.0.0+phase21"

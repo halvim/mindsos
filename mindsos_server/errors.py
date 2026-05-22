@@ -285,3 +285,48 @@ class NotAnAdminError(Exception):
         )
         self.target_user_id = target_user_id
         self.actual_role = actual_role
+
+
+# ---------------------------------------------------------------------------
+# Phase 21 additions — capability-denial exception (PB-14)
+# ---------------------------------------------------------------------------
+
+
+class PermissionDeniedError(Exception):
+    """
+    Raised by :func:`mindsos_server.authz._require_or_audit` when a
+    :class:`mindsos_server.session.Session` lacks the required
+    capability.
+
+    Phase 21 PB-14 lock. ADR-0013 §Decision: "Capability checks go
+    through ``_require_or_audit(session, CAP)`` which writes
+    ``PERMISSION_DENIED`` before raising ``PermissionDeniedError``."
+    The audit row INSERT + commit is the state change on the denial
+    path; the exception is raised AFTER the audit write.
+
+    Phase 21 first-fires from :func:`mindsos_server.admin.admin_query_audit`
+    (capability ``CAN_VIEW_AUDIT_LOG``). Phase 22 admin verbs are
+    second+ consumers (``admin_promote_user``, ``admin_demote_user``,
+    ``admin_disable_user``, ``admin_enable_user`` gated by
+    ``CAN_MANAGE_USERS``; ``admin_kill_session`` gated by
+    ``CAN_KILL_SESSION``; ``hard_delete_user`` gated by
+    ``CAN_HARD_DELETE_ARCHIVED``).
+
+    Constructor shape mirrors :class:`NotAnAdminError` density per
+    Phase 20 PB-N. The target_user_id is the session's user_id (the
+    user who tried to perform the action and was denied — not a
+    different "target" of the action). No enumeration concern: caller
+    has either filesystem access to ``server.db`` or holds a session
+    whose capabilities are documented in :mod:`mindsos_server.capabilities`.
+
+    Future HTTP transport (no roadmap; CLI-only per PHASE_MAP §1)
+    would map this to HTTP 403; ADR-0002 §Decision documents the
+    intended mapping. CLI verbs wrap this exception to exit code 3.
+    """
+
+    def __init__(self, target_user_id: str, capability: str) -> None:
+        super().__init__(
+            f"user {target_user_id!r} lacks capability {capability!r}"
+        )
+        self.target_user_id = target_user_id
+        self.capability = capability
