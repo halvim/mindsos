@@ -41,21 +41,40 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Mapping
 
+from contextlib import contextmanager
+from typing import Iterator, Literal
+
 from mindsos_server._argon2 import (
     PRODUCTION_PARAMS,
     Argon2Params,
     hash_password,
 )
 from mindsos_server.audit import (
+    EVT_ADMIN_DEMOTE_USER,
+    EVT_ADMIN_DISABLE_USER,
     EVT_ADMIN_ENABLE_USER,
+    EVT_ADMIN_PROMOTE_USER,
     EVT_AUDIT_QUERY,
+    EVT_HARD_DELETE_USER,
     EVT_KILL_SESSION,
     EVT_RESET_ADMIN,
+    _now_utc_iso,
     write_audit,
 )
 from mindsos_server.authz import _require_or_audit
-from mindsos_server.capabilities import CAN_VIEW_AUDIT_LOG
-from mindsos_server.errors import NotAnAdminError, UserNotFoundError
+from mindsos_server.capabilities import (
+    CAN_HARD_DELETE_ARCHIVED,
+    CAN_KILL_SESSION,
+    CAN_MANAGE_USERS,
+    CAN_VIEW_AUDIT_LOG,
+)
+from mindsos_server.errors import (
+    AlreadyAnAdminError,
+    LastAdminError,
+    NotAnAdminError,
+    SessionNotFoundError,
+    UserNotFoundError,
+)
 from mindsos_server.session import Session
 
 
@@ -512,3 +531,845 @@ def admin_query_audit(
     conn.commit()
 
     return rows_returned
+
+
+# =============================================================================
+# Phase 22 — Admin user-management ops (R1–R5; 27 locked picks)
+# =============================================================================
+#
+# Six verbs (R1 PB-2 admin subgroup): admin_promote_user, admin_demote_user,
+# admin_disable_user, admin_enable_user, admin_kill_session, hard_delete_user.
+# Plus shared helpers: _assert_not_sole_admin (PB-7) + admin_tx (PB-24
+# BEGIN IMMEDIATE wrapper closing the WAL concurrent-admin race).
+#
+# All six verbs gate via _require_or_audit (Phase 21 PB-6 wrapper) before
+# entering the tx; happy-path audit emission is verb-specific per R2 PB-16
+# (each verb writes its own EVT_ADMIN_*_USER / EVT_KILL_SESSION / EVT_HARD_DELETE_USER
+# audit rows inside the tx). Per-row EVT_KILL_SESSION precedes the summary
+# audit row in ASC id order so audit-log readers see "what happened, then
+# the conclusion" (R3 non-pushback lock).
+#
+# Capability gating (ADR-0002):
+# * CAN_MANAGE_USERS → promote / demote / disable / enable.
+# * CAN_KILL_SESSION → admin_kill_session.
+# * CAN_HARD_DELETE_ARCHIVED → hard_delete_user (cap name is documentary
+#   debt per R2 PB-17 — no archive-first precondition).
+#
+# Cross-user read (ADR-0008): DEFERRED to Phase 25 per R1 PB-1 +
+# ADR-0008 §amendment-1; lands alongside MindsOSServer + LocalPersister
+# (ADR-0011 §amendment-1). Not in Phase 22 scope.
+#
+# See ``confirmation_docs/PHASE_22_DESIGN_LOG.md`` for the 27-pick ledger
+# across 5 design rounds + ADR-0012 §amendment-3 + ADR-0008 §amendment-1.
+# =============================================================================
+
+
+# ---------------------------------------------------------------------------
+# admin_tx — BEGIN IMMEDIATE wrapper (R4 PB-24)
+# ---------------------------------------------------------------------------
+
+
+@contextmanager
+def admin_tx(conn: sqlite3.Connection) -> Iterator[None]:
+    """
+    Wrap an admin-verb body in a BEGIN IMMEDIATE transaction.
+
+    Phase 22 R4 PB-24 lock. SQLite WAL mode (Phase 18 PB-19) gives each
+    DEFERRED transaction a snapshot-at-tx-start view. Two concurrent
+    admin verbs in separate connections can both read the pre-state,
+    both pass :func:`_assert_not_sole_admin`, then both commit — leaving
+    the system with zero active admins. ``BEGIN IMMEDIATE`` acquires
+    the RESERVED write-lock at tx start; the second concurrent verb
+    blocks (up to ``busy_timeout = 5000`` ms set in
+    :func:`mindsos_server._db.open_db`), and when it resumes its
+    snapshot reflects the first verb's commit.
+
+    Pattern:
+
+    .. code-block:: python
+
+        def admin_demote_user(conn, session, *, target_user_id):
+            _require_or_audit(conn, session, CAN_MANAGE_USERS,
+                              verb="admin_demote_user")
+            with admin_tx(conn):
+                # all reads + checks + mutations + audit writes
+                ...
+
+    Note: ``_require_or_audit`` on the DENIAL path writes
+    EVT_PERMISSION_DENIED + commits + raises BEFORE the verb enters
+    ``admin_tx``. On the HAPPY path it returns silently with no DB
+    activity, so ``BEGIN IMMEDIATE`` succeeds (no auto-BEGIN has fired
+    yet under Python sqlite3's DEFERRED isolation level).
+
+    Reset-admin (Phase 20) does NOT use this wrapper — flagged as a
+    known minor inconsistency for future cleanup (reset-admin has no
+    ``_assert_not_sole_admin`` consumer; the cross-process race wasn't
+    surfaced at Phase 20).
+
+    Args:
+        conn: SQLite connection from
+            :func:`mindsos_server._db.open_db` (DEFERRED isolation +
+            WAL + busy_timeout=5000 per Phase 18 PB-19).
+
+    Yields:
+        ``None``. The caller does NOT manually ``commit()`` /
+        ``rollback()`` — this context manager owns those boundaries.
+
+    Raises:
+        Any exception raised inside the ``with`` block triggers
+        ``conn.rollback()`` then re-raises.
+    """
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        yield
+    except BaseException:
+        conn.rollback()
+        raise
+    else:
+        conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# _assert_not_sole_admin — sole-admin invariant helper (R1 PB-7)
+# ---------------------------------------------------------------------------
+
+
+def _assert_not_sole_admin(
+    conn: sqlite3.Connection, target_user_id: str
+) -> None:
+    """
+    Raise :class:`LastAdminError` if removing/demoting ``target_user_id``
+    would leave the system with zero active admins.
+
+    Phase 22 R1 PB-7 lock. ADR-0012 §Decision: "The following admin
+    endpoints refuse to leave the system with zero admins... Enforcement
+    is a single helper ``_assert_not_sole_admin(target_user_id)`` that
+    counts ``role='admin' AND disabled=0`` rows."
+
+    Implementation: single SELECT returns the list of active-admin
+    user_ids; the invariant fires iff the list is exactly
+    ``[target_user_id]`` (R3 non-pushback lock — atomic-in-tx, one
+    query, most readable).
+
+    Called by :func:`admin_demote_user`, :func:`admin_disable_user`,
+    and :func:`hard_delete_user` — the three callers ADR-0012
+    §Decision enumerates. Promote / enable / kill-session do NOT call
+    this helper (they cannot shrink the active-admin count).
+
+    Args:
+        conn: SQLite connection inside an :func:`admin_tx` transaction.
+        target_user_id: The user the caller is about to
+            demote/disable/delete. The check is "is THIS user the only
+            active admin?" — not "are there ANY active admins?"
+
+    Raises:
+        LastAdminError: If the active-admin set is exactly
+            ``{target_user_id}``.
+    """
+    rows = conn.execute(
+        "SELECT user_id FROM users WHERE actor_role = 'admin' AND disabled = 0"
+    ).fetchall()
+    active_admins = [r[0] for r in rows]
+    if active_admins == [target_user_id]:
+        raise LastAdminError(target_user_id)
+
+
+# ---------------------------------------------------------------------------
+# Result dataclasses (R3 PB-19) — one per verb, frozen, per-verb fields
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PromoteUserResult:
+    """
+    Return type of :func:`admin_promote_user`.
+
+    Phase 22 R3 PB-19 lock. ``prior_role`` is always ``"user"`` (the
+    verb refuses already-admin targets via :class:`AlreadyAnAdminError`
+    per R1 PB-3); recorded for symmetry with :class:`DemoteUserResult`
+    and audit-row :data:`EVT_ADMIN_PROMOTE_USER` extra_json shape.
+    """
+
+    target_user_id: str
+    prior_role: Literal["user"]
+    ts: str
+
+
+@dataclass(frozen=True)
+class DemoteUserResult:
+    """
+    Return type of :func:`admin_demote_user`.
+
+    Phase 22 R3 PB-19 lock. ``sessions_killed`` denormalized per R2 PB-16
+    (also appears in :data:`EVT_ADMIN_DEMOTE_USER` extra_json — saves
+    a future audit-reader from joining EVT_KILL_SESSION rows).
+    """
+
+    target_user_id: str
+    prior_role: Literal["admin"]
+    sessions_killed: int
+    ts: str
+
+
+@dataclass(frozen=True)
+class DisableUserResult:
+    """
+    Return type of :func:`admin_disable_user`.
+
+    Phase 22 R3 PB-19 lock. ``was_already_disabled`` records the no-op
+    marker for idempotent invocations (R2 PB-15 audit-always semantic);
+    ``sessions_killed`` denormalized per R2 PB-16.
+    """
+
+    target_user_id: str
+    was_already_disabled: bool
+    sessions_killed: int
+    ts: str
+
+
+@dataclass(frozen=True)
+class EnableUserResult:
+    """
+    Return type of :func:`admin_enable_user`.
+
+    Phase 22 R3 PB-19 lock. ``was_already_enabled`` records the no-op
+    marker; the verb emits EVT_ADMIN_ENABLE_USER on every invocation
+    per R1 PB-10 (audit-always-on-privileged-endpoint-call per ADR-0013
+    §Decision).
+    """
+
+    target_user_id: str
+    was_already_enabled: bool
+    ts: str
+
+
+@dataclass(frozen=True)
+class KillSessionResult:
+    """
+    Return type of :func:`admin_kill_session`.
+
+    Phase 22 R3 PB-19 lock. ``target_user_id`` is the session's owner
+    (looked up from the sessions table before delete); useful for CLI
+    confirmation output + future audit-reader correlation.
+    """
+
+    target_session_id: str
+    target_user_id: str
+    ts: str
+
+
+@dataclass(frozen=True)
+class HardDeleteUserResult:
+    """
+    Return type of :func:`hard_delete_user`.
+
+    Phase 22 R3 PB-19 lock. ``prior_role`` + ``was_disabled`` +
+    ``sessions_killed`` denormalized per R2 PB-16 so the audit reader
+    can reconstruct the deleted user's state at delete time without
+    needing the user row (which is gone — CASCADE deleted on user
+    DELETE per Phase 18 schema FK).
+    """
+
+    target_user_id: str
+    prior_role: Literal["user", "admin"]
+    was_disabled: bool
+    sessions_killed: int
+    ts: str
+
+
+# ---------------------------------------------------------------------------
+# admin_promote_user (R1 PB-3 + R1 PB-5 + R2 PB-12)
+# ---------------------------------------------------------------------------
+
+
+def admin_promote_user(
+    conn: sqlite3.Connection,
+    session: Session,
+    *,
+    target_user_id: str,
+) -> PromoteUserResult:
+    """
+    Promote a non-admin user to ``actor_role='admin'``.
+
+    Phase 22 R1 PB-3 + R1 PB-5 + R2 PB-12 locks. Gated on
+    :data:`CAN_MANAGE_USERS` via :func:`_require_or_audit` (Phase 21
+    PB-6 wrapper); session-immutable per ADR-0002 — live sessions of
+    the promoted user keep their old capabilities until lazy expiry /
+    re-login (per R1 PB-5: silent promote, no session-kill side
+    effect).
+
+    Pre-conditions (R1 PB-8 check-first ordering):
+
+    1. Caller has ``CAN_MANAGE_USERS`` (else :class:`PermissionDeniedError`
+       per Phase 21 PB-6 + PB-13).
+    2. Target ``user_id`` exists in ``users`` (else
+       :class:`UserNotFoundError` per Phase 20 PB-O reuse).
+    3. Target ``actor_role != 'admin'`` (else
+       :class:`AlreadyAnAdminError` per R1 PB-3 — re-promote is NOT
+       idempotent; explicit rejection prevents masking accidental
+       double-promotes).
+
+    Per R2 PB-12: target's ``disabled`` flag is LEFT UNCHANGED.
+    Promoting a disabled user gives a "disabled admin"; the caller
+    can chain ``admin enable-user X && admin promote-user X`` if both
+    are intended. No auto-enable side effect (diverges from
+    reset-admin's recovery-verb auto-enable for explicit reasons:
+    promote is a management verb, not a recovery verb).
+
+    Audit emitted: 1× :data:`EVT_ADMIN_PROMOTE_USER` with
+    ``extra = {"prior_role": "user"}`` per R2 PB-16.
+
+    No session-kill: per R1 PB-5, promotion expands caps; existing
+    sessions with USER_CAPS are safe to keep until they expire or
+    re-login. ADR-0002 §Rationale "Session is immutable after issue;
+    permissions can't drift mid-request" governs.
+
+    Args:
+        conn: SQLite connection (DEFERRED isolation; see :func:`admin_tx`).
+        session: Caller's session; ``session.user_id`` becomes audit
+            ``actor_user``.
+        target_user_id: User to promote.
+
+    Returns:
+        :class:`PromoteUserResult` with ``target_user_id``, ``prior_role``
+        (always ``"user"``), and ``ts``.
+
+    Raises:
+        PermissionDeniedError: Caller lacks ``CAN_MANAGE_USERS``.
+        UserNotFoundError: Target does not exist.
+        AlreadyAnAdminError: Target is already an admin.
+    """
+    _require_or_audit(
+        conn, session, CAN_MANAGE_USERS, verb="admin_promote_user",
+    )
+    with admin_tx(conn):
+        row = conn.execute(
+            "SELECT actor_role FROM users WHERE user_id = ?",
+            (target_user_id,),
+        ).fetchone()
+        if row is None:
+            raise UserNotFoundError(target_user_id)
+        actor_role = row[0]
+        if actor_role == "admin":
+            raise AlreadyAnAdminError(target_user_id)
+
+        conn.execute(
+            "UPDATE users SET actor_role = 'admin' WHERE user_id = ?",
+            (target_user_id,),
+        )
+        write_audit(
+            conn,
+            actor=session.user_id,
+            event=EVT_ADMIN_PROMOTE_USER,
+            target=target_user_id,
+            extra={"prior_role": "user"},
+        )
+
+    return PromoteUserResult(
+        target_user_id=target_user_id,
+        prior_role="user",
+        ts=_now_utc_iso(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# admin_demote_user (R1 PB-4 + PB-7 + PB-8 + R2 PB-14 + R4 PB-25)
+# ---------------------------------------------------------------------------
+
+
+def admin_demote_user(
+    conn: sqlite3.Connection,
+    session: Session,
+    *,
+    target_user_id: str,
+) -> DemoteUserResult:
+    """
+    Demote an admin to ``actor_role='user'``; kill all their sessions.
+
+    Phase 22 R1 PB-4 + PB-7 + PB-8 locks. Per R1 PB-4 + ADR-0002
+    §Rationale: session-immutable caps mean a live admin session
+    keeps ``ADMIN_CAPS`` until expiry — so demote MUST kill all of
+    target's sessions atomically to make the demote observable.
+
+    Pre-conditions (R1 PB-8 check-first ordering, inside :func:`admin_tx`
+    per R4 PB-24 concurrent-admin race protection):
+
+    1. Caller has ``CAN_MANAGE_USERS`` (PermissionDeniedError on
+       denial).
+    2. Target exists (UserNotFoundError on missing).
+    3. Target is an admin (NotAnAdminError on non-admin; per R4 PB-25
+       the verb-agnostic message is just ``"user X has actor_role=Y;
+       admin role required"`` — CLI handlers inject "cannot demote
+       non-admin" framing on stderr).
+    4. Target is NOT the sole active admin (LastAdminError via
+       :func:`_assert_not_sole_admin`).
+
+    State mutations (single tx, state-then-audit per Phase 20 PB-R
+    precedent):
+
+    * Capture session_ids (SELECT BEFORE delete).
+    * ``DELETE FROM sessions WHERE user_id=?``.
+    * ``UPDATE users SET actor_role='user' WHERE user_id=?``.
+    * N× :data:`EVT_KILL_SESSION` per killed session with
+      ``extra = {"session_id": sid, "context": "admin_demote_user"}``
+      (R2 PB-14 vocab).
+    * 1× :data:`EVT_ADMIN_DEMOTE_USER` summary with ``extra =
+      {"prior_role": "admin", "sessions_killed": N}`` (R2 PB-16).
+
+    Self-demote allowed per R2 PB-18 — if calling admin demotes
+    themselves, ``_assert_not_sole_admin`` enforces "another admin
+    exists"; on success their own session is killed and they're
+    locked out until re-login as a regular user (or `reset-admin`
+    via filesystem if they were the sole admin and crashed past the
+    helper, which can't happen by construction).
+
+    Raises:
+        PermissionDeniedError, UserNotFoundError, NotAnAdminError,
+        LastAdminError.
+    """
+    _require_or_audit(
+        conn, session, CAN_MANAGE_USERS, verb="admin_demote_user",
+    )
+    with admin_tx(conn):
+        row = conn.execute(
+            "SELECT actor_role FROM users WHERE user_id = ?",
+            (target_user_id,),
+        ).fetchone()
+        if row is None:
+            raise UserNotFoundError(target_user_id)
+        actor_role = row[0]
+        if actor_role != "admin":
+            raise NotAnAdminError(target_user_id, actor_role)
+
+        _assert_not_sole_admin(conn, target_user_id)
+
+        session_ids = [
+            r[0]
+            for r in conn.execute(
+                "SELECT session_id FROM sessions WHERE user_id = ?",
+                (target_user_id,),
+            ).fetchall()
+        ]
+
+        conn.execute(
+            "DELETE FROM sessions WHERE user_id = ?",
+            (target_user_id,),
+        )
+        conn.execute(
+            "UPDATE users SET actor_role = 'user' WHERE user_id = ?",
+            (target_user_id,),
+        )
+
+        for sid in session_ids:
+            write_audit(
+                conn,
+                actor=session.user_id,
+                event=EVT_KILL_SESSION,
+                target=target_user_id,
+                extra={"session_id": sid, "context": "admin_demote_user"},
+            )
+        write_audit(
+            conn,
+            actor=session.user_id,
+            event=EVT_ADMIN_DEMOTE_USER,
+            target=target_user_id,
+            extra={
+                "prior_role": "admin",
+                "sessions_killed": len(session_ids),
+            },
+        )
+
+    return DemoteUserResult(
+        target_user_id=target_user_id,
+        prior_role="admin",
+        sessions_killed=len(session_ids),
+        ts=_now_utc_iso(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# admin_disable_user (R1 PB-6 + PB-7 + R2 PB-14 + PB-15 + R2 PB-18)
+# ---------------------------------------------------------------------------
+
+
+def admin_disable_user(
+    conn: sqlite3.Connection,
+    session: Session,
+    *,
+    target_user_id: str,
+) -> DisableUserResult:
+    """
+    Set ``users.disabled=1`` on a user; kill all their sessions.
+
+    Phase 22 R1 PB-6 + PB-7 + R2 PB-15 + PB-18 locks. Same
+    session-immutability argument as :func:`admin_demote_user`:
+    disabling a user must kill their sessions atomically so the
+    disable is observable, not just queued for next-login.
+
+    Pre-conditions (check-first; R4 PB-24 admin_tx):
+
+    1. Caller has ``CAN_MANAGE_USERS``.
+    2. Target exists.
+    3. If target is an ACTIVE admin (``actor_role='admin' AND
+       disabled=0``), check sole-admin invariant. Disabling an
+       already-disabled admin doesn't shrink the active-admin count
+       — skip the check (idempotency per R2 PB-15).
+
+    Per R2 PB-15: idempotent on already-disabled — emit
+    :data:`EVT_ADMIN_DISABLE_USER` with ``extra.was_already_disabled
+    = True`` and ``sessions_killed = N`` (still kills any extant
+    sessions, though typically zero for an already-disabled user).
+    The audit row records the verb invocation; ``extra`` records the
+    no-op marker.
+
+    Audit emitted (state-then-audit):
+
+    * N× :data:`EVT_KILL_SESSION` (``context = "admin_disable_user"``
+      per R2 PB-14).
+    * 1× :data:`EVT_ADMIN_DISABLE_USER` with ``extra =
+      {"was_already_disabled": bool, "sessions_killed": N}`` per R2 PB-16.
+
+    Raises:
+        PermissionDeniedError, UserNotFoundError, LastAdminError.
+    """
+    _require_or_audit(
+        conn, session, CAN_MANAGE_USERS, verb="admin_disable_user",
+    )
+    with admin_tx(conn):
+        row = conn.execute(
+            "SELECT actor_role, disabled FROM users WHERE user_id = ?",
+            (target_user_id,),
+        ).fetchone()
+        if row is None:
+            raise UserNotFoundError(target_user_id)
+        actor_role, disabled_int = row[0], int(row[1])
+        was_already_disabled = bool(disabled_int)
+
+        # Only check sole-admin invariant if disabling will actually shrink
+        # the active-admin count (target is currently an ACTIVE admin).
+        if actor_role == "admin" and not was_already_disabled:
+            _assert_not_sole_admin(conn, target_user_id)
+
+        session_ids = [
+            r[0]
+            for r in conn.execute(
+                "SELECT session_id FROM sessions WHERE user_id = ?",
+                (target_user_id,),
+            ).fetchall()
+        ]
+
+        conn.execute(
+            "DELETE FROM sessions WHERE user_id = ?",
+            (target_user_id,),
+        )
+        conn.execute(
+            "UPDATE users SET disabled = 1 WHERE user_id = ?",
+            (target_user_id,),
+        )
+
+        for sid in session_ids:
+            write_audit(
+                conn,
+                actor=session.user_id,
+                event=EVT_KILL_SESSION,
+                target=target_user_id,
+                extra={
+                    "session_id": sid,
+                    "context": "admin_disable_user",
+                },
+            )
+        write_audit(
+            conn,
+            actor=session.user_id,
+            event=EVT_ADMIN_DISABLE_USER,
+            target=target_user_id,
+            extra={
+                "was_already_disabled": was_already_disabled,
+                "sessions_killed": len(session_ids),
+            },
+        )
+
+    return DisableUserResult(
+        target_user_id=target_user_id,
+        was_already_disabled=was_already_disabled,
+        sessions_killed=len(session_ids),
+        ts=_now_utc_iso(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# admin_enable_user (R1 PB-10 + R2 PB-15 + R2 PB-18)
+# ---------------------------------------------------------------------------
+
+
+def admin_enable_user(
+    conn: sqlite3.Connection,
+    session: Session,
+    *,
+    target_user_id: str,
+) -> EnableUserResult:
+    """
+    Set ``users.disabled=0`` on a user.
+
+    Phase 22 R1 PB-10 + R2 PB-15 locks. Thin verb: UPDATE + audit
+    always; idempotent on already-enabled (``was_already_enabled =
+    True`` recorded in result + audit extra). Diverges from Phase 20
+    reset-admin's PB-U conditional emission pattern: P20's
+    conditional was inside reset-admin (a recovery verb); P22's
+    enable-user is a standalone management verb, and ADR-0013
+    §Decision "every privileged endpoint audits both happy + denial"
+    targets standalone verb invocations.
+
+    Pre-conditions:
+
+    1. Caller has ``CAN_MANAGE_USERS``.
+    2. Target exists (UserNotFoundError).
+
+    No sole-admin check (enabling cannot shrink the active-admin count).
+    No session-kill (enabling is the safer direction; symmetric inverse
+    of disable but no destructive side effects).
+
+    Audit emitted: 1× :data:`EVT_ADMIN_ENABLE_USER` with ``extra =
+    {"was_already_enabled": bool}`` per R2 PB-16. The Phase 20
+    EVT_ADMIN_ENABLE_USER extra was ``{"context": "reset_admin"}`` —
+    the two extra shapes coexist by event-source discriminator
+    (P20 rows have ``context``, P22 rows have ``was_already_enabled``;
+    future audit readers can branch on key presence).
+
+    Raises:
+        PermissionDeniedError, UserNotFoundError.
+    """
+    _require_or_audit(
+        conn, session, CAN_MANAGE_USERS, verb="admin_enable_user",
+    )
+    with admin_tx(conn):
+        row = conn.execute(
+            "SELECT disabled FROM users WHERE user_id = ?",
+            (target_user_id,),
+        ).fetchone()
+        if row is None:
+            raise UserNotFoundError(target_user_id)
+        was_already_enabled = not bool(int(row[0]))
+
+        conn.execute(
+            "UPDATE users SET disabled = 0 WHERE user_id = ?",
+            (target_user_id,),
+        )
+        write_audit(
+            conn,
+            actor=session.user_id,
+            event=EVT_ADMIN_ENABLE_USER,
+            target=target_user_id,
+            extra={"was_already_enabled": was_already_enabled},
+        )
+
+    return EnableUserResult(
+        target_user_id=target_user_id,
+        was_already_enabled=was_already_enabled,
+        ts=_now_utc_iso(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# admin_kill_session (R1 PB-9 + R2 PB-13 + PB-14)
+# ---------------------------------------------------------------------------
+
+
+def admin_kill_session(
+    conn: sqlite3.Connection,
+    session: Session,
+    *,
+    target_session_id: str,
+) -> KillSessionResult:
+    """
+    Delete a specific session row by ``session_id``.
+
+    Phase 22 R1 PB-9 + R2 PB-13 + PB-14 locks. Deliberate-target verb:
+    arg shape is ``target_session_id`` (NOT user_id) per R1 PB-9. The
+    "kill all sessions for user X" semantic is already covered by
+    Phase 19 ``kill_my_own_sessions`` + Phase 20 reset-admin +
+    Phase 22 ``admin_disable_user`` / ``admin_demote_user``.
+
+    Pre-conditions (check-first; admin_tx):
+
+    1. Caller has ``CAN_KILL_SESSION``.
+    2. Target session_id exists (else :class:`SessionNotFoundError`
+       per R2 PB-13 — idempotency would hide operator typos on
+       session_ids).
+
+    Order (state-then-audit per Phase 20 PB-R precedent):
+
+    1. SELECT ``user_id`` from the sessions row (needed for
+       audit ``target_user``).
+    2. DELETE the session row.
+    3. Write 1× :data:`EVT_KILL_SESSION` with ``extra = {"session_id":
+       sid, "context": "admin_kill_session"}`` per R2 PB-14.
+
+    Self-target allowed per R2 PB-18 — admin killing their own
+    session is permitted (they re-login afterward). No special-case
+    guard (filesystem authority is the recovery floor per ADR-0012
+    §Rationale).
+
+    Args:
+        target_session_id: The ``sessions.session_id`` to delete.
+
+    Returns:
+        :class:`KillSessionResult` with ``target_session_id``,
+        ``target_user_id`` (session owner), and ``ts``.
+
+    Raises:
+        PermissionDeniedError, SessionNotFoundError.
+    """
+    _require_or_audit(
+        conn, session, CAN_KILL_SESSION, verb="admin_kill_session",
+    )
+    with admin_tx(conn):
+        row = conn.execute(
+            "SELECT user_id FROM sessions WHERE session_id = ?",
+            (target_session_id,),
+        ).fetchone()
+        if row is None:
+            raise SessionNotFoundError(target_session_id)
+        target_user_id = row[0]
+
+        conn.execute(
+            "DELETE FROM sessions WHERE session_id = ?",
+            (target_session_id,),
+        )
+        write_audit(
+            conn,
+            actor=session.user_id,
+            event=EVT_KILL_SESSION,
+            target=target_user_id,
+            extra={
+                "session_id": target_session_id,
+                "context": "admin_kill_session",
+            },
+        )
+
+    return KillSessionResult(
+        target_session_id=target_session_id,
+        target_user_id=target_user_id,
+        ts=_now_utc_iso(),
+    )
+
+
+# ---------------------------------------------------------------------------
+# hard_delete_user (R1 PB-11 + R2 PB-14 + PB-17 + PB-18)
+# ---------------------------------------------------------------------------
+
+
+def hard_delete_user(
+    conn: sqlite3.Connection,
+    session: Session,
+    *,
+    target_user_id: str,
+) -> HardDeleteUserResult:
+    """
+    Permanently delete a user row; FK CASCADE removes their sessions.
+
+    Phase 22 R1 PB-11 + R2 PB-17 + PB-18 locks. The audit table has
+    NO foreign key to ``users`` (per Phase 18 ``_schema.py`` lock) —
+    audit rows about a hard-deleted user OUTLIVE the user row, per
+    ADR-0013 §Consequences "audit MUST outlive subjects."
+
+    The cap name :data:`CAN_HARD_DELETE_ARCHIVED` is documentary debt
+    per R2 PB-17 — there's no archive step (no ``users.archived``
+    column); rename deferred per ADR-0002 §Consequences ("Capability
+    strings are now part of the stable API surface; renaming them is
+    a breaking change.").
+
+    Pre-conditions (check-first; admin_tx):
+
+    1. Caller has ``CAN_HARD_DELETE_ARCHIVED``.
+    2. Target exists (UserNotFoundError).
+    3. If target is an ACTIVE admin, check sole-admin invariant. A
+       disabled admin doesn't count toward "active admins" — deleting
+       them never triggers LastAdminError. Self-delete of the last
+       active admin IS allowed if there's another admin (the helper
+       gates on count, not on self/other identity).
+
+    Order (audit-then-state per R1 PB-11 — capture session_ids before
+    CASCADE wipes them):
+
+    1. SELECT actor_role + disabled (for audit extra + sole-admin check).
+    2. _assert_not_sole_admin (conditional on active-admin target).
+    3. SELECT session_ids (for per-session audit emission).
+    4. Emit N× :data:`EVT_KILL_SESSION` (``context = "hard_delete_user"``
+       per R2 PB-14) — written BEFORE the DELETE because CASCADE
+       would otherwise clear sessions before we know their ids.
+    5. Emit 1× :data:`EVT_HARD_DELETE_USER` summary with ``extra =
+       {"prior_role": str, "was_disabled": bool, "sessions_killed": N}``
+       per R2 PB-16.
+    6. ``DELETE FROM users WHERE user_id=?`` — CASCADE auto-deletes
+       sessions rows.
+
+    All audit rows have ``target_user = target_user_id`` (string, no
+    FK); they persist after the DELETE.
+
+    Raises:
+        PermissionDeniedError, UserNotFoundError, LastAdminError.
+    """
+    _require_or_audit(
+        conn, session, CAN_HARD_DELETE_ARCHIVED, verb="hard_delete_user",
+    )
+    with admin_tx(conn):
+        row = conn.execute(
+            "SELECT actor_role, disabled FROM users WHERE user_id = ?",
+            (target_user_id,),
+        ).fetchone()
+        if row is None:
+            raise UserNotFoundError(target_user_id)
+        actor_role, disabled_int = row[0], int(row[1])
+        was_disabled = bool(disabled_int)
+
+        # Only check sole-admin if target is an ACTIVE admin (deleting a
+        # disabled admin doesn't shrink the active-admin count).
+        if actor_role == "admin" and not was_disabled:
+            _assert_not_sole_admin(conn, target_user_id)
+
+        session_ids = [
+            r[0]
+            for r in conn.execute(
+                "SELECT session_id FROM sessions WHERE user_id = ?",
+                (target_user_id,),
+            ).fetchall()
+        ]
+
+        # Audit BEFORE DELETE — CASCADE clears sessions; audit table has
+        # no FK so target_user_id string survives the user-row delete.
+        for sid in session_ids:
+            write_audit(
+                conn,
+                actor=session.user_id,
+                event=EVT_KILL_SESSION,
+                target=target_user_id,
+                extra={
+                    "session_id": sid,
+                    "context": "hard_delete_user",
+                },
+            )
+        write_audit(
+            conn,
+            actor=session.user_id,
+            event=EVT_HARD_DELETE_USER,
+            target=target_user_id,
+            extra={
+                "prior_role": actor_role,
+                "was_disabled": was_disabled,
+                "sessions_killed": len(session_ids),
+            },
+        )
+
+        conn.execute(
+            "DELETE FROM users WHERE user_id = ?",
+            (target_user_id,),
+        )
+
+    return HardDeleteUserResult(
+        target_user_id=target_user_id,
+        prior_role=actor_role,
+        was_disabled=was_disabled,
+        sessions_killed=len(session_ids),
+        ts=_now_utc_iso(),
+    )
