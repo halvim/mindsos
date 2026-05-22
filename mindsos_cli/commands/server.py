@@ -92,13 +92,26 @@ from mindsos_server._token_storage import (
     token_source_description,
     write_token,
 )
-from mindsos_server.admin import AuditRow, admin_query_audit, reset_admin
+from mindsos_server.admin import (
+    AuditRow,
+    admin_demote_user,
+    admin_disable_user,
+    admin_enable_user,
+    admin_kill_session,
+    admin_promote_user,
+    admin_query_audit,
+    hard_delete_user,
+    reset_admin,
+)
 from mindsos_server.errors import (
+    AlreadyAnAdminError,
     AlreadyLoggedInError,
     AuthFailedError,
     InvalidSessionError,
+    LastAdminError,
     NotAnAdminError,
     PermissionDeniedError,
+    SessionNotFoundError,
     UserAlreadyExistsError,
     UserNotFoundError,
 )
@@ -131,6 +144,22 @@ server_app = typer.Typer(
 user_app = typer.Typer(
     name="user",
     help="User store CRUD.",
+    no_args_is_help=True,
+    add_completion=False,
+)
+
+# Phase 22 R1 PB-2 — admin subgroup for the six management verbs
+# (promote-user, demote-user, disable-user, enable-user, kill-session,
+# hard-delete-user). Phase 20 reset-admin + Phase 21 query-audit stay
+# flat under `mindsos server` for backward compat; only the Phase 22
+# six-verb cluster lands under the subgroup.
+admin_app = typer.Typer(
+    name="admin",
+    help=(
+        "Admin user-management verbs (Phase 22). Six destructive ops "
+        "gated on CAN_MANAGE_USERS / CAN_KILL_SESSION / "
+        "CAN_HARD_DELETE_ARCHIVED via _require_or_audit."
+    ),
     no_args_is_help=True,
     add_completion=False,
 )
@@ -961,10 +990,394 @@ def query_audit_cmd(
 
 
 # ---------------------------------------------------------------------------
-# Wire user_app onto server_app + register_server_app for app.py
+# Phase 22 — `mindsos server admin <verb>` subgroup (R1 PB-2 + R4 PB-26)
+# ---------------------------------------------------------------------------
+#
+# Six verbs: promote-user / demote-user / disable-user / enable-user /
+# kill-session / hard-delete-user. All REQUIRED positional target,
+# no prompt fallback, no --force / --dry-run (R4 PB-26). All support
+# --json (R3 PB-20). Exit codes per R3 PB-21 + R5 PB-27:
+#
+#   0 — success
+#   1 — generic / not-logged-in
+#   2 — ValueError + UserNotFoundError + NotAnAdminError (P20 baseline,
+#       preserved per R5 PB-27 backward compat)
+#   3 — PermissionDeniedError (P21)
+#   4 — LastAdminError (NEW @ P22)
+#   5 — AlreadyAnAdminError (NEW @ P22)
+#   6 — SessionNotFoundError (NEW @ P22)
+# ---------------------------------------------------------------------------
+
+
+def _resolve_session(conn) -> object:
+    """
+    Resolve the caller's :class:`Session` from the on-disk token.
+
+    Phase 22 CLI helper — reads token via env > file chain per Phase 19
+    PB-5, calls :func:`session_from_token`. On any failure (no token,
+    invalid token, expired), prints "not logged in" + exits 1.
+    """
+    token = read_token()
+    if token is None:
+        typer.echo("not logged in", err=True)
+        raise typer.Exit(code=1)
+    try:
+        return session_from_token(conn, token, ttl=PRODUCTION_TTL)
+    except InvalidSessionError as exc:
+        typer.echo("not logged in", err=True)
+        raise typer.Exit(code=1) from exc
+
+
+def _admin_exit_for(exc: Exception) -> int:
+    """
+    Map a P22-shipped exception to its CLI exit code per R5 PB-27.
+
+    Preserves P20 baseline (UserNotFoundError, NotAnAdminError, ValueError
+    → 2); P21 baseline (PermissionDeniedError → 3); adds 4/5/6 for the
+    three P22-new exception classes.
+    """
+    if isinstance(exc, PermissionDeniedError):
+        return 3
+    if isinstance(exc, LastAdminError):
+        return 4
+    if isinstance(exc, AlreadyAnAdminError):
+        return 5
+    if isinstance(exc, SessionNotFoundError):
+        return 6
+    if isinstance(exc, (UserNotFoundError, NotAnAdminError, ValueError)):
+        return 2
+    return 1  # pragma: no cover — defensive
+
+
+@admin_app.command(name="promote-user")
+def admin_promote_user_cmd(
+    target_user_id: str = typer.Argument(
+        ...,
+        help=(
+            "User to promote to admin. REQUIRED — destructive admin "
+            "verb; no prompt fallback per R4 PB-26."
+        ),
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """
+    Promote a non-admin user to ``actor_role='admin'``.
+
+    Gated on ``CAN_MANAGE_USERS`` via ``_require_or_audit``. Target
+    must exist (exit 2 on UserNotFoundError) and must NOT already be
+    an admin (exit 5 on AlreadyAnAdminError per R1 PB-3 — explicit
+    rejection over idempotency). ``disabled`` flag left unchanged
+    (R2 PB-12 — orthogonal verb).
+    """
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        try:
+            result = admin_promote_user(
+                conn, session, target_user_id=target_user_id,
+            )
+        except (
+            PermissionDeniedError,
+            UserNotFoundError,
+            AlreadyAnAdminError,
+        ) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_admin_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "verb": "admin_promote_user",
+                    "target": result.target_user_id,
+                    "prior_role": result.prior_role,
+                    "ts": result.ts,
+                }
+            )
+        )
+    else:
+        typer.echo(
+            f"verb=admin_promote_user target={result.target_user_id!r} "
+            f"prior_role={result.prior_role!r}"
+        )
+
+
+@admin_app.command(name="demote-user")
+def admin_demote_user_cmd(
+    target_user_id: str = typer.Argument(
+        ...,
+        help=(
+            "Admin to demote to user. REQUIRED — destructive admin "
+            "verb; no prompt fallback per R4 PB-26. Will kill all of "
+            "target's sessions atomically (R1 PB-4)."
+        ),
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """
+    Demote an admin to ``actor_role='user'``; kill all their sessions.
+
+    Gated on ``CAN_MANAGE_USERS``. Target must exist (exit 2), must be
+    an admin (exit 2 on NotAnAdminError — CLI does not inject a
+    "cannot demote non-admin" hint beyond the verb-agnostic message
+    per R4 PB-25), and must NOT be the sole active admin (exit 4 on
+    LastAdminError per R1 PB-7 + ADR-0012).
+    """
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        try:
+            result = admin_demote_user(
+                conn, session, target_user_id=target_user_id,
+            )
+        except (
+            PermissionDeniedError,
+            UserNotFoundError,
+            NotAnAdminError,
+            LastAdminError,
+        ) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_admin_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "verb": "admin_demote_user",
+                    "target": result.target_user_id,
+                    "prior_role": result.prior_role,
+                    "sessions_killed": result.sessions_killed,
+                    "ts": result.ts,
+                }
+            )
+        )
+    else:
+        typer.echo(
+            f"verb=admin_demote_user target={result.target_user_id!r} "
+            f"prior_role={result.prior_role!r} "
+            f"sessions_killed={result.sessions_killed}"
+        )
+
+
+@admin_app.command(name="disable-user")
+def admin_disable_user_cmd(
+    target_user_id: str = typer.Argument(
+        ...,
+        help=(
+            "User to disable (sets disabled=1; kills all sessions). "
+            "REQUIRED — destructive; no prompt fallback."
+        ),
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """
+    Set ``users.disabled=1`` + kill all of target's sessions atomically.
+
+    Gated on ``CAN_MANAGE_USERS``. Sole-admin invariant enforced if
+    target is an active admin (LastAdminError → exit 4). Idempotent
+    on already-disabled targets (R2 PB-15) — verb always emits
+    EVT_ADMIN_DISABLE_USER with ``extra.was_already_disabled``.
+    """
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        try:
+            result = admin_disable_user(
+                conn, session, target_user_id=target_user_id,
+            )
+        except (
+            PermissionDeniedError,
+            UserNotFoundError,
+            LastAdminError,
+        ) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_admin_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "verb": "admin_disable_user",
+                    "target": result.target_user_id,
+                    "was_already_disabled": result.was_already_disabled,
+                    "sessions_killed": result.sessions_killed,
+                    "ts": result.ts,
+                }
+            )
+        )
+    else:
+        marker = " [already_disabled]" if result.was_already_disabled else ""
+        typer.echo(
+            f"verb=admin_disable_user target={result.target_user_id!r} "
+            f"sessions_killed={result.sessions_killed}{marker}"
+        )
+
+
+@admin_app.command(name="enable-user")
+def admin_enable_user_cmd(
+    target_user_id: str = typer.Argument(
+        ...,
+        help=(
+            "User to enable (sets disabled=0). REQUIRED — no prompt "
+            "fallback (consistency with destructive verbs per R4 PB-26)."
+        ),
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """
+    Set ``users.disabled=0``.
+
+    Gated on ``CAN_MANAGE_USERS``. No sole-admin check (enabling cannot
+    shrink the active-admin count). No session-kill (safer direction).
+    Idempotent on already-enabled (R1 PB-10) — verb always emits
+    EVT_ADMIN_ENABLE_USER with ``extra.was_already_enabled``.
+    """
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        try:
+            result = admin_enable_user(
+                conn, session, target_user_id=target_user_id,
+            )
+        except (PermissionDeniedError, UserNotFoundError) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_admin_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "verb": "admin_enable_user",
+                    "target": result.target_user_id,
+                    "was_already_enabled": result.was_already_enabled,
+                    "ts": result.ts,
+                }
+            )
+        )
+    else:
+        marker = " [already_enabled]" if result.was_already_enabled else ""
+        typer.echo(
+            f"verb=admin_enable_user target={result.target_user_id!r}"
+            f"{marker}"
+        )
+
+
+@admin_app.command(name="kill-session")
+def admin_kill_session_cmd(
+    target_session_id: str = typer.Argument(
+        ...,
+        help=(
+            "Session id to delete. REQUIRED — destructive; no prompt "
+            "fallback. Mass-kill by user is handled by other verbs "
+            "(disable-user / demote-user / reset-admin)."
+        ),
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """
+    Delete a specific session row by ``session_id``.
+
+    Gated on ``CAN_KILL_SESSION``. Missing target_session_id → exit 6
+    (SessionNotFoundError per R2 PB-13). Self-target allowed per
+    R2 PB-18 — admin killing their own session simply locks themselves
+    out of the current shell.
+    """
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        try:
+            result = admin_kill_session(
+                conn, session, target_session_id=target_session_id,
+            )
+        except (PermissionDeniedError, SessionNotFoundError) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_admin_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "verb": "admin_kill_session",
+                    "target_session_id": result.target_session_id,
+                    "target_user_id": result.target_user_id,
+                    "ts": result.ts,
+                }
+            )
+        )
+    else:
+        typer.echo(
+            f"verb=admin_kill_session "
+            f"target_session_id={result.target_session_id!r} "
+            f"target_user_id={result.target_user_id!r}"
+        )
+
+
+@admin_app.command(name="hard-delete-user")
+def admin_hard_delete_user_cmd(
+    target_user_id: str = typer.Argument(
+        ...,
+        help=(
+            "User to hard-delete. REQUIRED — permanent; no prompt "
+            "fallback per R4 PB-26. FK CASCADE removes sessions; "
+            "audit rows about the user OUTLIVE the user row "
+            "(ADR-0013 §Consequences)."
+        ),
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """
+    Permanently delete a user row.
+
+    Gated on ``CAN_HARD_DELETE_ARCHIVED`` (cap name is documentary
+    debt per R2 PB-17 — no archive-first precondition). Sole-admin
+    invariant enforced if target is an active admin. FK CASCADE
+    auto-deletes the user's sessions; per-session EVT_KILL_SESSION
+    rows are written BEFORE the user DELETE (otherwise CASCADE wipes
+    the session_ids before audit can capture them).
+    """
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        try:
+            result = hard_delete_user(
+                conn, session, target_user_id=target_user_id,
+            )
+        except (
+            PermissionDeniedError,
+            UserNotFoundError,
+            LastAdminError,
+        ) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_admin_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "verb": "hard_delete_user",
+                    "target": result.target_user_id,
+                    "prior_role": result.prior_role,
+                    "was_disabled": result.was_disabled,
+                    "sessions_killed": result.sessions_killed,
+                    "ts": result.ts,
+                }
+            )
+        )
+    else:
+        typer.echo(
+            f"verb=hard_delete_user target={result.target_user_id!r} "
+            f"prior_role={result.prior_role!r} "
+            f"was_disabled={result.was_disabled} "
+            f"sessions_killed={result.sessions_killed}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Wire user_app + admin_app onto server_app + register_server_app for app.py
 # ---------------------------------------------------------------------------
 
 server_app.add_typer(user_app, name="user")
+server_app.add_typer(admin_app, name="admin")
 
 
 def register_server_app(parent: typer.Typer) -> None:

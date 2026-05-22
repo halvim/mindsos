@@ -255,33 +255,31 @@ class UserNotFoundError(Exception):
 
 class NotAnAdminError(Exception):
     """
-    Raised by :func:`mindsos_server.admin.reset_admin` when the target
-    ``user_id`` exists but has ``actor_role != 'admin'``.
+    Raised by admin verbs when the target ``user_id`` exists but has
+    ``actor_role != 'admin'`` and the verb requires an admin target.
 
-    Phase 20 PB-E locks reset-admin's contract to admin-only targets.
-    Reset-admin will NEVER escalate a non-admin user to admin —
-    that path is :func:`admin_promote_user` (Phase 22), gated by
-    ``CAN_MANAGE_USERS``. This separation prevents reset-admin from
-    becoming a "promote arbitrary user to admin" backdoor for any
-    operator with filesystem access to ``server.db``.
+    Phase 20 first-fires from :func:`mindsos_server.admin.reset_admin`
+    (PB-E): reset-admin will NEVER escalate a non-admin user to admin.
+    Phase 22 second consumer: :func:`admin_demote_user` (cannot demote
+    a non-admin target).
 
     Per Phase 20 PB-N, the target's actual ``actor_role`` is included
     in the public message. Filesystem-access threat model has no
     enumeration concern: the operator already has read access to
-    ``users.actor_role`` for every row. Including the actual role
-    makes the error actionable ("you tried to reset 'foo', who is
-    role='user'; use admin_promote_user to escalate") rather than
-    forcing the operator to grep ``server.db`` to figure out what
-    went wrong.
+    ``users.actor_role`` for every row.
+
+    **Phase 22 PB-25 message rework — verb-agnostic.** Original Phase 20
+    wording embedded the reset-admin-specific suggestion ("Use
+    `admin promote-user` to escalate"); that hint is wrong for demote
+    callers (where target-is-non-admin is the "already where you want
+    them" failure). Message text is now verb-agnostic; CLI handlers
+    inject verb-specific hints on stderr separately.
     """
 
     def __init__(self, target_user_id: str, actual_role: str) -> None:
         super().__init__(
-            f"target user {target_user_id!r} is not an admin "
-            f"(actor_role={actual_role!r}); reset-admin only rotates "
-            f"credentials for existing admins. Use "
-            f"`mindsos server admin promote-user` (Phase 22) to "
-            f"escalate a non-admin to admin."
+            f"user {target_user_id!r} has actor_role={actual_role!r}; "
+            f"admin role required"
         )
         self.target_user_id = target_user_id
         self.actual_role = actual_role
@@ -330,3 +328,102 @@ class PermissionDeniedError(Exception):
         )
         self.target_user_id = target_user_id
         self.capability = capability
+
+
+# ---------------------------------------------------------------------------
+# Phase 22 additions — admin-ops policy / not-found exceptions
+# (R1 PB-3 + R2 PB-13 + R3 PB-23 + R4 PB-25).
+# ---------------------------------------------------------------------------
+
+
+class LastAdminError(Exception):
+    """
+    Raised when a destructive admin verb would leave the system with
+    zero active admins (the ADR-0012 "never zero admins" invariant).
+
+    Phase 22 first-fires from :func:`mindsos_server.admin.admin_demote_user`,
+    :func:`mindsos_server.admin.admin_disable_user`, and
+    :func:`mindsos_server.admin.hard_delete_user` — the three callers
+    ADR-0012 §Decision enumerates. The shared helper
+    :func:`mindsos_server.admin._assert_not_sole_admin` checks the
+    invariant before any destructive mutation.
+
+    Constructor shape mirrors Phase 20 :class:`NotAnAdminError` density
+    per R3 PB-23(a) — single attribute (``target_user_id``). The
+    override-hint text (per ADR-0012 §Consequences "names `reset-admin`
+    as the official override") lives in the message string, not a
+    separate attribute. Filesystem-access threat model has no
+    enumeration concern.
+
+    Phase 22 R3 PB-23 lock; R4 PB-24 race protection (admin_tx
+    BEGIN IMMEDIATE) ensures the check is correct under concurrent
+    admin-verb invocations.
+
+    Future HTTP transport (no roadmap; CLI-only per PHASE_MAP §1) would
+    map this to HTTP 409 per ADR-0012 §Consequences; CLI exit code 4
+    per R3 PB-21 + R5 PB-27 ("admin-policy violation" bucket /
+    distinct-per-class extension).
+    """
+
+    def __init__(self, target_user_id: str) -> None:
+        super().__init__(
+            f"cannot perform action: {target_user_id!r} is the sole "
+            f"active admin; promote a second admin via "
+            f"`mindsos server admin promote-user`, or use "
+            f"`mindsos server reset-admin` to recover."
+        )
+        self.target_user_id = target_user_id
+
+
+class AlreadyAnAdminError(Exception):
+    """
+    Raised by :func:`mindsos_server.admin.admin_promote_user` when the
+    target ``user_id`` exists and ``actor_role == 'admin'`` already.
+
+    Phase 22 R1 PB-3 lock — symmetric with :class:`NotAnAdminError`.
+    Re-promoting an already-admin is rejected rather than silently
+    no-op'd: idempotent promote would mask accidental double-promotes
+    (operator typo on user_id, etc.), inconsistent with reset-admin's
+    strict-existing-admin gate (PB-A precedent at P20).
+
+    Constructor shape mirrors :class:`LastAdminError` /
+    :class:`NotAnAdminError` density per R3 PB-23(a) — single
+    attribute. No enumeration concern (caller holds
+    ``CAN_MANAGE_USERS`` capability per the verb's gate).
+
+    CLI exit code 5 per R3 PB-21 + R5 PB-27 ("distinct-per-class"
+    extension scheme).
+    """
+
+    def __init__(self, target_user_id: str) -> None:
+        super().__init__(
+            f"target user {target_user_id!r} is already an admin; "
+            f"admin_promote_user is a no-op"
+        )
+        self.target_user_id = target_user_id
+
+
+class SessionNotFoundError(Exception):
+    """
+    Raised by :func:`mindsos_server.admin.admin_kill_session` when the
+    target ``session_id`` does not exist in the ``sessions`` table.
+
+    Phase 22 R2 PB-13 lock — mirrors :class:`UserNotFoundError` density.
+    Idempotent no-op on missing session_id is rejected because
+    admin_kill_session is a deliberate-target destructive verb;
+    silent no-op would hide operator errors (typo on session_id,
+    session already expired and reaped, etc.).
+
+    The audit-row write order for admin_kill_session is:
+    ``SELECT user_id FROM sessions WHERE session_id=?`` → raise
+    SessionNotFoundError if missing → emit ``EVT_KILL_SESSION``
+    (target=session's user_id) → DELETE → commit. The audit row is
+    NOT written when this exception fires (no state change).
+
+    CLI exit code 6 per R3 PB-21 + R5 PB-27 ("distinct-per-class"
+    extension scheme — not-found family).
+    """
+
+    def __init__(self, target_session_id: str) -> None:
+        super().__init__(f"session not found: {target_session_id!r}")
+        self.target_session_id = target_session_id

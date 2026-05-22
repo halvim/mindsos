@@ -90,19 +90,43 @@ from mindsos_server.capabilities import (
 )
 from mindsos_server.admin import (
     AuditRow,
+    DemoteUserResult,
+    DisableUserResult,
+    EnableUserResult,
+    HardDeleteUserResult,
+    KillSessionResult,
+    PromoteUserResult,
     ResetAdminResult,
+    _assert_not_sole_admin,
+    admin_demote_user,
+    admin_disable_user,
+    admin_enable_user,
+    admin_kill_session,
+    admin_promote_user,
     admin_query_audit,
+    admin_tx,
+    hard_delete_user,
     reset_admin,
 )
-from mindsos_server.audit import EVT_AUDIT_QUERY
+from mindsos_server.audit import (
+    EVT_ADMIN_DEMOTE_USER,
+    EVT_ADMIN_DISABLE_USER,
+    EVT_ADMIN_ENABLE_USER,
+    EVT_ADMIN_PROMOTE_USER,
+    EVT_AUDIT_QUERY,
+    EVT_HARD_DELETE_USER,
+)
 from mindsos_server.authz import _require_or_audit
 from mindsos_server.errors import (
+    AlreadyAnAdminError,
     AlreadyLoggedInError,
     AuthFailedError,
     InvalidSessionCause,
     InvalidSessionError,
+    LastAdminError,
     NotAnAdminError,
     PermissionDeniedError,
+    SessionNotFoundError,
     UserAlreadyExistsError,
     UserNotFoundError,
 )
@@ -134,7 +158,8 @@ __all__ = [
     "USER_CAPS",
     "ADMIN_CAPS",
     # Exceptions (Phase 18 PB-23 + PB-30; Phase 19 PB-3 + PB-14;
-    # Phase 20 PB-N + PB-O; Phase 21 PB-14).
+    # Phase 20 PB-N + PB-O; Phase 21 PB-14; Phase 22 R1 PB-3 + R2 PB-13 +
+    # R3 PB-23).
     "AuthFailedError",
     "UserAlreadyExistsError",
     "InvalidSessionError",
@@ -143,6 +168,9 @@ __all__ = [
     "UserNotFoundError",
     "NotAnAdminError",
     "PermissionDeniedError",
+    "LastAdminError",
+    "AlreadyAnAdminError",
+    "SessionNotFoundError",
     # Phase 19 sessions surface (PB-6 + PB-11 + PB-12 + PB-13 + PB-15).
     "login",
     "logout",
@@ -159,6 +187,27 @@ __all__ = [
     "AuditRow",
     "_require_or_audit",
     "EVT_AUDIT_QUERY",
+    # Phase 22 admin-ops surface (R1 PB-2 admin subgroup + 6 verbs;
+    # R1 PB-7 _assert_not_sole_admin helper; R4 PB-24 admin_tx wrapper).
+    "admin_promote_user",
+    "admin_demote_user",
+    "admin_disable_user",
+    "admin_enable_user",
+    "admin_kill_session",
+    "hard_delete_user",
+    "PromoteUserResult",
+    "DemoteUserResult",
+    "DisableUserResult",
+    "EnableUserResult",
+    "KillSessionResult",
+    "HardDeleteUserResult",
+    "_assert_not_sole_admin",
+    "admin_tx",
+    "EVT_ADMIN_PROMOTE_USER",
+    "EVT_ADMIN_DEMOTE_USER",
+    "EVT_ADMIN_DISABLE_USER",
+    "EVT_ADMIN_ENABLE_USER",
+    "EVT_HARD_DELETE_USER",
 ]
 
-__version__ = "0.0.0+phase21"
+__version__ = "0.0.0+phase22"
