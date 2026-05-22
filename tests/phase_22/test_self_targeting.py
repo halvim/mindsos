@@ -70,7 +70,7 @@ class TestSelfTargeting:
         assert result.target_user_id == "admin"
         # Session row is gone
         rows = conn.execute(
-            "SELECT id FROM sessions WHERE session_id = ?",
+            "SELECT session_id FROM sessions WHERE session_id = ?",
             (caller_sid,),
         ).fetchall()
         assert rows == []

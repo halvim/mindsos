@@ -50,7 +50,7 @@ class TestCascadeOnSessions:
         conn, session_ids = seeded_user_with_sessions
         hard_delete_user(conn, admin_session, target_user_id="alice")
         rows = conn.execute(
-            "SELECT id FROM sessions WHERE user_id = 'alice'"
+            "SELECT session_id FROM sessions WHERE user_id = 'alice'"
         ).fetchall()
         assert rows == []
 

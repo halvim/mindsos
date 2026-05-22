@@ -39,7 +39,7 @@ class TestHappyPath:
             conn, admin_session, target_session_id=session_ids[0]
         )
         rows = conn.execute(
-            "SELECT id FROM sessions WHERE session_id = ?",
+            "SELECT session_id FROM sessions WHERE session_id = ?",
             (session_ids[0],),
         ).fetchall()
         assert rows == []
@@ -90,6 +90,7 @@ class TestSessionNotFound:
             admin_kill_session(
                 seeded_admin, admin_session, target_session_id="nope"
             )
+        # audit.id IS a real column (PK); sessions has no `id` — distinct schemas.
         rows = seeded_admin.execute(
             "SELECT id FROM audit WHERE event = ?",
             (EVT_KILL_SESSION,),

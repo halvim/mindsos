@@ -57,7 +57,7 @@ class TestHappyPath:
         assert result.sessions_killed == len(session_ids)
         # sessions table empty for admin2
         rows = conn.execute(
-            "SELECT id FROM sessions WHERE user_id = 'admin2'"
+            "SELECT session_id FROM sessions WHERE user_id = 'admin2'"
         ).fetchall()
         assert rows == []
 
