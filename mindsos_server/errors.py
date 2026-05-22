@@ -4,7 +4,9 @@ Exception types for the Server Layer.
 Phase 18 ships :class:`AuthFailedError` + :class:`UserAlreadyExistsError`.
 Phase 19 adds :class:`InvalidSessionError` (PB-14 — unified
 expired/missing per ADR-0003 §amendment-1) + :class:`AlreadyLoggedInError`
-(PB-3 — 2-field payload per ADR-0005 §amendment-1).
+(PB-3 — 2-field payload per ADR-0005 §amendment-1). Phase 20 adds
+:class:`UserNotFoundError` (PB-O) + :class:`NotAnAdminError` (PB-N) for
+reset-admin's target-validation gate per ADR-0012 §amendment-2.
 
 * :class:`AuthFailedError` — single opaque error covering all three
   authentication failure causes (unknown_user / bad_password / disabled)
@@ -35,8 +37,9 @@ expired/missing per ADR-0003 §amendment-1) + :class:`AlreadyLoggedInError`
   phase).
 
 See ``confirmation_docs/PHASE_18_DESIGN_LOG.md`` §1 round 3 (PB-22 /
-PB-23 / PB-30) and ``confirmation_docs/PHASE_19_DESIGN_LOG.md`` §1
-round 1 PB-3 + round 3 PB-14 for the rationale chain.
+PB-23 / PB-30), ``confirmation_docs/PHASE_19_DESIGN_LOG.md`` §1 round 1
+PB-3 + round 3 PB-14, and ``confirmation_docs/PHASE_20_DESIGN_LOG.md``
+§1 round 3 PB-N + PB-O for the rationale chain.
 """
 
 from __future__ import annotations
@@ -214,3 +217,71 @@ class AlreadyLoggedInError(Exception):
         )
         self.existing_session_id = existing_session_id
         self.created_at = created_at
+
+
+# ---------------------------------------------------------------------------
+# Phase 20 additions — admin-verb target-validation exceptions (PB-N + PB-O)
+# ---------------------------------------------------------------------------
+
+
+class UserNotFoundError(Exception):
+    """
+    Raised when an admin verb targets a ``user_id`` that does not exist
+    in the ``users`` table.
+
+    Phase 20 first-fires from :func:`mindsos_server.admin.reset_admin`
+    (PB-O + PB-A). Phase 22 admin verbs (``admin_demote_user``,
+    ``admin_disable_user``, ``admin_promote_user``, ``hard_delete_user``)
+    will reuse this class for the parallel target-validation gate.
+
+    Distinct from :class:`AuthFailedError(cause=UNKNOWN_USER)` per
+    Phase 20 PB-O: reset-admin's "user not found" is not an auth
+    failure (no password is being checked). Reusing AuthFailedError
+    would ship the misleading public message ``"auth failed"`` for an
+    operator who attempted no authentication.
+
+    Caller threat-model: admin verbs require either proof-of-authority
+    (filesystem access to ``server.db`` for session-less reset-admin)
+    or ``CAN_MANAGE_USERS`` capability (for session-backed Phase 22
+    verbs) — in both cases the caller is privileged enough that
+    revealing whether a user_id exists is not a secrecy concern.
+    Public message includes the target user_id verbatim.
+    """
+
+    def __init__(self, target_user_id: str) -> None:
+        super().__init__(f"user not found: {target_user_id!r}")
+        self.target_user_id = target_user_id
+
+
+class NotAnAdminError(Exception):
+    """
+    Raised by :func:`mindsos_server.admin.reset_admin` when the target
+    ``user_id`` exists but has ``actor_role != 'admin'``.
+
+    Phase 20 PB-E locks reset-admin's contract to admin-only targets.
+    Reset-admin will NEVER escalate a non-admin user to admin —
+    that path is :func:`admin_promote_user` (Phase 22), gated by
+    ``CAN_MANAGE_USERS``. This separation prevents reset-admin from
+    becoming a "promote arbitrary user to admin" backdoor for any
+    operator with filesystem access to ``server.db``.
+
+    Per Phase 20 PB-N, the target's actual ``actor_role`` is included
+    in the public message. Filesystem-access threat model has no
+    enumeration concern: the operator already has read access to
+    ``users.actor_role`` for every row. Including the actual role
+    makes the error actionable ("you tried to reset 'foo', who is
+    role='user'; use admin_promote_user to escalate") rather than
+    forcing the operator to grep ``server.db`` to figure out what
+    went wrong.
+    """
+
+    def __init__(self, target_user_id: str, actual_role: str) -> None:
+        super().__init__(
+            f"target user {target_user_id!r} is not an admin "
+            f"(actor_role={actual_role!r}); reset-admin only rotates "
+            f"credentials for existing admins. Use "
+            f"`mindsos server admin promote-user` (Phase 22) to "
+            f"escalate a non-admin to admin."
+        )
+        self.target_user_id = target_user_id
+        self.actual_role = actual_role
