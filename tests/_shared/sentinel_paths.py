@@ -237,4 +237,13 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # per `feedback_sentinel_paths_runtime_only.md` (mkdocs source,
     # not CLI runtime input).
     "mindsos_server/admin.py",
+    # Phase 21 — additional new module per PB-6. `authz.py` ships
+    # `_require_or_audit` per ADR-0013 §Decision (capability-check
+    # wrapper that writes EVT_PERMISSION_DENIED + raises
+    # PermissionDeniedError on denial). Phase 21 first consumer is
+    # admin_query_audit (in admin.py); Phase 22's 5+ admin verbs are
+    # second+ consumers. No new top-level pkg = no 7-site checklist;
+    # existing `COPY mindsos_server/` picks it up. The amended
+    # `docs/usage/server/audit.md` deferred to Phase 38 doc-review.
+    "mindsos_server/authz.py",
 )

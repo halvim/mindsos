@@ -16,15 +16,16 @@ from mindsos_server._schema import _SCHEMA_VERSION, init_or_migrate
 
 class TestSchemaVersion:
     """``_SCHEMA_VERSION`` current baseline — Phase 18 shipped v1
-    (PB-2 / PB-11); Phase 19 bumped to v2 (PB-10 sessions). Bumps are
-    expected at most-phases; per ``feedback_phase_baseline_literal_audit.md``
+    (PB-2 / PB-11); Phase 19 bumped to v2 (PB-10 sessions); Phase 21
+    bumped to v3 (PB-7 idx_audit_target). Bumps are expected at
+    most-phases; per ``feedback_phase_baseline_literal_audit.md``
     this assertion mirrors the current literal in
     :mod:`mindsos_server._schema`. Each new schema phase updates this
     test alongside the bump."""
 
     def test_schema_version_baseline(self) -> None:
-        # Phase 19: bumped 1 → 2 (sessions table addition).
-        assert _SCHEMA_VERSION == 2
+        # Phase 21: bumped 2 → 3 (idx_audit_target addition).
+        assert _SCHEMA_VERSION == 3
 
 
 class TestWalPragma:

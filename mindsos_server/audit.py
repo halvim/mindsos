@@ -99,6 +99,14 @@ EVT_PROMOTION_REJECTED_STALE_REPORT = "EVT_PROMOTION_REJECTED_STALE_REPORT"
 #: Promotion flush failed; rollback executed (Phase 24).
 EVT_PROMOTION_FAILED = "EVT_PROMOTION_FAILED"
 
+# Audit-query events (Phase 21, ADR-0013 §am2 PB-16).
+#: Happy-path audit emission for :func:`mindsos_server.admin.admin_query_audit`.
+#: ADR-0013 §Decision: "Every privileged endpoint audits both its happy path
+#: and its denial path." Phase 21 first-fires; included in default reader
+#: output per PB-16i (transparency — an attacker running admin_query_audit
+#: shows up in the log).
+EVT_AUDIT_QUERY = "EVT_AUDIT_QUERY"
+
 
 #: All audit event constants in stable declaration order. Convenience
 #: tuple for tests + future enumeration. Renaming any constant is a
@@ -124,6 +132,7 @@ ALL_AUDIT_EVENTS: tuple[str, ...] = (
     EVT_PROMOTION_COMMITTED,
     EVT_PROMOTION_REJECTED_STALE_REPORT,
     EVT_PROMOTION_FAILED,
+    EVT_AUDIT_QUERY,
 )
 
 

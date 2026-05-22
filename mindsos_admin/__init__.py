@@ -83,7 +83,7 @@ ADRs honoured at Phase 16:
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase20"
+__version__ = "0.0.0+phase21"
 
 from ._content_hash import metagraph_content_hash
 from .bootstrap import (

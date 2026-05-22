@@ -34,8 +34,11 @@ import sqlite3
 
 #: Current schema version. Bump in lockstep with adding a new migration
 #: step in :func:`init_or_migrate`. Phase 18 = 1 (users + audit); Phase
-#: 19 = 2 (adds sessions per PB-10).
-_SCHEMA_VERSION: int = 2
+#: 19 = 2 (adds sessions per PB-10); Phase 21 = 3 (adds idx_audit_target
+#: per PB-7 — separate ``target=`` filter kwarg in
+#: :func:`mindsos_server.admin.admin_query_audit` made ``WHERE
+#: target_user = ?`` a first-class query shape per ADR-0013 §am2).
+_SCHEMA_VERSION: int = 3
 
 
 # ---------------------------------------------------------------------------
@@ -114,12 +117,22 @@ CREATE TABLE IF NOT EXISTS audit (
 """
 
 #: Indexes on audit table for the Phase 21 reader query shapes.
-#: Phase 21 will likely add more indexes as query patterns crystallize;
-#: Phase 18 ships the obvious ones (by time, by event, by actor).
+#: Phase 18 shipped ts/event/actor; Phase 21 PB-7 + PB-19 adds target.
+#:
+#: PB-19 intentional duplication: ``idx_audit_target`` is ALSO added
+#: via the v2→v3 migration block in :func:`init_or_migrate` to reach
+#: existing-v2 installs. The duplication is drift-free because
+#: ``CREATE INDEX IF NOT EXISTS`` is idempotent — a fresh-install
+#: hitting the v0→v1 path creates all four indexes from this list,
+#: and an existing-v2 install hitting the v2→v3 path creates only
+#: ``idx_audit_target`` (the other three are already present from
+#: the earlier v0→v1 run). Mirrors Phase 19's sessions-DDL-in-both-
+#: paths pattern.
 _DDL_AUDIT_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit(ts)",
     "CREATE INDEX IF NOT EXISTS idx_audit_event ON audit(event)",
     "CREATE INDEX IF NOT EXISTS idx_audit_actor ON audit(actor_user)",
+    "CREATE INDEX IF NOT EXISTS idx_audit_target ON audit(target_user)",
 ]
 
 
@@ -238,6 +251,25 @@ def init_or_migrate(conn: sqlite3.Connection) -> int:
         _write_version(conn, 2)
         conn.commit()
         current = 2
+
+    # v2 → v3: ship the Phase 21 idx_audit_target index per PB-7.
+    # Separate ``target=`` kwarg in
+    # :func:`mindsos_server.admin.admin_query_audit` (ADR-0013 §am2)
+    # made ``WHERE target_user = ?`` a first-class query shape; no
+    # index existed at v2.
+    #
+    # PB-19 intentional duplication: this same index is also in
+    # ``_DDL_AUDIT_INDEXES`` for fresh-install v0→v1 path. Drift-free
+    # because ``CREATE INDEX IF NOT EXISTS`` is idempotent (the
+    # cross-path conjunction always produces the same final state).
+    # No data migration needed — audit rows are unaffected.
+    if current < 3:
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_audit_target ON audit(target_user)"
+        )
+        _write_version(conn, 3)
+        conn.commit()
+        current = 3
 
     return current
 
