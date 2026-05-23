@@ -124,7 +124,15 @@ from mindsos_server.audit import (
     EVT_RELEASE_SHIPPED,
 )
 from mindsos_server.locks import RELEASE_SHIP_LOCK, UserMutexRegistry
-from mindsos_server.release import ReleaseResult, ReleaseStatus, release_update
+
+# Phase 24 — ``release`` module is NOT re-exported eagerly here to
+# avoid the circular import:
+#   mindsos_server/__init__.py
+#     → mindsos_server.release
+#     → mindsos_admin.audit_gate
+#     → mindsos_server.session  (re-enters mindsos_server/__init__.py)
+# Callers do ``from mindsos_server.release import release_update``
+# directly. The CLI + tests already follow this pattern.
 from mindsos_server.authz import _require_or_audit
 from mindsos_server.errors import (
     AlreadyAnAdminError,
@@ -224,9 +232,9 @@ __all__ = [
     "ALL_CAPABILITIES",
     "RELEASE_SHIP_LOCK",
     "UserMutexRegistry",
-    "release_update",
-    "ReleaseResult",
-    "ReleaseStatus",
+    # release_update / ReleaseResult / ReleaseStatus NOT re-exported
+    # here (circular-import avoidance — see comment above the locks
+    # import). Use ``from mindsos_server.release import ...`` directly.
     "EVT_PROMOTION_PROPOSED",
     "EVT_PROMOTION_REJECTED",
     "EVT_RELEASE_SHIPPED",
