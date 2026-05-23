@@ -89,15 +89,62 @@ EVT_KILL_SESSION = "EVT_KILL_SESSION"
 #: user's Local (Phase 22).
 EVT_CROSS_USER_READ_INSTALL = "EVT_CROSS_USER_READ_INSTALL"
 
-# Promotion events (Phase 24+, ADR-0118).
-#: Promotion proposed by admin (Phase 24).
+# Promotion + release events (Phase 24 — ADR-0118 + ADR-0114 + ADR-0115).
+#
+# Phase 24 design log PB-11(a) shrank PIVOT §7.6's 8-event slate to 4
+# v1 events: 4 deferred to Phase 25 alongside source-user-Local path +
+# lazy migration (EVT_DRAFT_FROZEN, EVT_DRAFT_UNFROZEN,
+# EVT_MIGRATION_APPLIED, EVT_MIGRATION_FAILED — declared at P25).
+#
+# Phase 24 design log PB-27(a) locked the ``extra_json`` payload
+# shapes (documented under each constant below). Schema-level
+# enforcement is in code (write callsites), not at the audit table
+# (per ADR-0013 §Rationale "JSON extras, not columns").
+#
+# Phase 18 PB-34 ship had placeholder constants (``EVT_PROMOTION_
+# COMMITTED``, ``EVT_PROMOTION_REJECTED_STALE_REPORT``, ``EVT_
+# PROMOTION_FAILED``) reflecting the pre-pivot ADR-0007 / ADR-0049
+# semantic. At Phase 24, those constants are replaced with the
+# release-model slate per Phase 24 design log §"Audit event naming"
+# (Round 1 PB-6 + PB-11). The placeholders were declared-but-never-
+# fired through Phase 18-22, so no shipped consumer breaks.
+
+#: Promotion proposed by admin via
+#: :func:`mindsos_admin.propose_for_promotion` (Phase 24 first-fire).
+#:
+#: ``extra_json`` shape (PB-27(a)):
+#: ``{ proposer_admin_user_id: str, mutation_ids: list[int],
+#:     items_count: int, kinds: list[str], roles_affected: list[str] }``
 EVT_PROMOTION_PROPOSED = "EVT_PROMOTION_PROPOSED"
-#: Promotion committed (release-ship; Phase 24).
-EVT_PROMOTION_COMMITTED = "EVT_PROMOTION_COMMITTED"
-#: Promotion rejected due to stale similarity report (Phase 24).
-EVT_PROMOTION_REJECTED_STALE_REPORT = "EVT_PROMOTION_REJECTED_STALE_REPORT"
-#: Promotion flush failed; rollback executed (Phase 24).
-EVT_PROMOTION_FAILED = "EVT_PROMOTION_FAILED"
+
+#: Promotion rejected by admin (Phase 24 first-declared; reserved
+#: for v2 reject verb — v1 has no separate reject step per Phase 24
+#: design log PB-10(a) SHIPPED+FAILED-only release lifecycle).
+#:
+#: ``extra_json`` shape (PB-27(a)):
+#: ``{ proposer_admin_user_id: str, mutation_ids: list[int],
+#:     reason: str }``
+EVT_PROMOTION_REJECTED = "EVT_PROMOTION_REJECTED"
+
+#: Release shipped successfully via
+#: :func:`mindsos_server.release.release_update` (Phase 24 first-fire).
+#:
+#: ``extra_json`` shape (PB-27(a)):
+#: ``{ release_id: int, mutations_shipped_count: int,
+#:     roles_affected: list[str], parent_release_id: int | None }``
+EVT_RELEASE_SHIPPED = "EVT_RELEASE_SHIPPED"
+
+#: Release failed (audit gate blocked or FalkorDB write raised) via
+#: :func:`mindsos_server.release.release_update` (Phase 24 first-fire).
+#:
+#: ``extra_json`` shape (PB-27(a)):
+#: ``{ release_id: int | None, failed_at_role: str | None,
+#:     error_class: str, mutations_attempted_count: int,
+#:     roles_shipped_before_failure: list[str] }``
+#:
+#: ``error_class`` is one of ``"blocking_similarity_findings"`` |
+#: ``"empty_comparison"`` (ADR-0114 §am3 + PB-Z16) | ``"FalkorDBWriteError"``.
+EVT_RELEASE_FAILED = "EVT_RELEASE_FAILED"
 
 # Audit-query events (Phase 21, ADR-0013 §am2 PB-16).
 #: Happy-path audit emission for :func:`mindsos_server.admin.admin_query_audit`.
