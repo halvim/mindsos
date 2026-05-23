@@ -93,7 +93,7 @@ def test_releases_v1_v2_columns_null_at_default(seeded_admin):
         "'2026-05-22T00:00:01.000Z', '{}', 1, 'SHIPPED')"
     )
     seeded_admin.commit()
-    cur = tmp_server_db.execute(
+    cur = seeded_admin.execute(
         "SELECT approver_admin_user_ids_json, parent_release_id, failed_at "
         "FROM releases"
     )
