@@ -72,6 +72,9 @@ class TestCascadeOnSessions:
     def test_summary_audit_row_payload(
         self, seeded_user_with_sessions, admin_session
     ):
+        # Phase 25 PB-39 + ADR-0013 §am3 — extra_json gains additive
+        # ``local_dump_existed: bool`` key. Phase 22 callers (no
+        # persister kwarg) get False.
         conn, session_ids = seeded_user_with_sessions
         hard_delete_user(conn, admin_session, target_user_id="alice")
         rows = conn.execute(
@@ -84,6 +87,7 @@ class TestCascadeOnSessions:
             "prior_role": "user",
             "was_disabled": False,
             "sessions_killed": len(session_ids),
+            "local_dump_existed": False,
         }
 
 

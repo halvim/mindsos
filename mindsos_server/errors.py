@@ -427,3 +427,104 @@ class SessionNotFoundError(Exception):
     def __init__(self, target_session_id: str) -> None:
         super().__init__(f"session not found: {target_session_id!r}")
         self.target_session_id = target_session_id
+
+
+# ---------------------------------------------------------------------------
+# Phase 25 additions — cross-user-read substrate + Phase 24 FK gap closure.
+# ---------------------------------------------------------------------------
+
+
+class FlushFailedError(Exception):
+    """
+    Raised when :meth:`LocalPersister.save` fails during a release-path
+    flush.
+
+    Per ADR-0011 §"On logout" + §"On promote": when a persister's
+    ``save`` raises, the session stays alive, the Local is re-installed
+    into KL via :meth:`install_local_metagraph`, and this exception
+    bubbles to the caller. The 2-step rollback (re-install + raise)
+    preserves the in-memory state so the caller can retry.
+
+    Phase 25 ships this exception class with no live consumer in
+    production at v1 (PB-37 collapsed login/logout's caller-Local flush
+    path). The first live caller lands at the future user-Local-write
+    phase (source-user-Local propose + logout-flush + lazy-migration
+    persister-side error path). The Phase 25
+    :class:`InMemoryLocalPersister` raises this from its
+    ``fail_save_for`` test-fault-injection hook, exercising the
+    plumbing in CI without a production consumer.
+
+    The CLI exit-code slot 9 is reserved for this exception per
+    ``confirmation_docs/PHASE_25_DESIGN_LOG.md`` §5 CLI exit-code
+    roster (deferred per PB-37 — no v1 CLI surface raises it). Future
+    user-Local-write phase wires the exit-code mapping when the verb
+    that triggers it ships.
+
+    See ADR-0011 §amendment-2 + ``PHASE_25_DESIGN_LOG.md`` §2 + §4 for
+    the rationale chain.
+    """
+
+    def __init__(self, user_id: str) -> None:
+        self.user_id = user_id
+        super().__init__(
+            f"Local persistence flush failed for user_id={user_id!r}; "
+            f"session intact; retry recommended."
+        )
+
+
+class UserHasPromotionHistoryError(Exception):
+    """
+    Raised by :func:`mindsos_server.admin.hard_delete_user` when the
+    target user has rows in :data:`pending_mutations` and/or
+    :data:`releases` keyed on ``proposer_admin_user_id``.
+
+    Phase 25 PB-30 + Phase 24 latent FK gap closure (ADR-0114 §am4).
+    The Phase 24 schema declared both ``pending_mutations.proposer_
+    admin_user_id`` and ``releases.proposer_admin_user_id`` as FK
+    REFERENCES users(user_id) with no ``ON DELETE`` clause → SQLite
+    default ``NO ACTION`` (effectively RESTRICT). A hard_delete of an
+    admin with promotion history without this pre-check would bubble
+    a raw ``sqlite3.IntegrityError`` — uncatchable by the
+    ``_admin_exit_for`` mapper, surfaced to the operator as an
+    unhandled traceback.
+
+    Phase 25's :func:`hard_delete_user` runs a UNION ALL pre-check
+    inside ``admin_tx`` and raises this exception before any DELETE
+    is attempted. The admin's recourse for retiring a user with
+    promotion history is the soft-retire pair: ``admin-demote-user``
+    + ``admin-disable-user``. Hard delete remains forbidden as long
+    as audit-bearing promotion rows reference the user_id.
+
+    Attributes:
+        user_id: The ``user_id`` whose deletion was blocked.
+        pending_ids: List of ``pending_mutations.mutation_id`` rows
+            referencing ``user_id`` (integer PKs).
+        release_ids: List of ``releases.release_id`` rows referencing
+            ``user_id`` (integer PKs).
+
+    CLI exit code 10 — the only new exit code at Phase 25 ship per
+    ``PHASE_25_DESIGN_LOG.md`` §5 CLI exit-code roster.
+
+    See ADR-0114 §amendment-4 for the schema-level rationale (why we
+    can't simply ALTER the FK to CASCADE — audit-bearing rows must
+    not silently disappear when a user is removed; the user_id string
+    is the only handle the audit reader has to those rows).
+    """
+
+    def __init__(
+        self,
+        user_id: str,
+        pending_ids: object,
+        release_ids: object,
+    ) -> None:
+        self.user_id = user_id
+        self.pending_ids = list(pending_ids)
+        self.release_ids = list(release_ids)
+        super().__init__(
+            f"user_id={user_id!r} has promotion history: "
+            f"{len(self.pending_ids)} pending mutation(s), "
+            f"{len(self.release_ids)} release(s). "
+            f"Use admin-demote + admin-disable to retire; hard_delete "
+            f"is forbidden while promotion history exists (ADR-0114 "
+            f"§amendment-4)."
+        )

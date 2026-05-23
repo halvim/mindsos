@@ -99,7 +99,9 @@ from mindsos_server.admin import (
     HardDeleteUserResult,
     KillSessionResult,
     PromoteUserResult,
+    ReadOtherLocalSummary,
     ResetAdminResult,
+    RoleGraphSummary,
     _assert_not_sole_admin,
     admin_demote_user,
     admin_disable_user,
@@ -109,6 +111,7 @@ from mindsos_server.admin import (
     admin_query_audit,
     admin_tx,
     hard_delete_user,
+    read_other_local_summary,
     reset_admin,
 )
 from mindsos_server.audit import (
@@ -124,6 +127,11 @@ from mindsos_server.audit import (
     EVT_RELEASE_SHIPPED,
 )
 from mindsos_server.locks import RELEASE_SHIP_LOCK, UserMutexRegistry
+from mindsos_server.orchestrator import (
+    InstallRecord,
+    read_other_local,
+    reset_state_for_tests,
+)
 
 # Phase 24 — ``release`` module is NOT re-exported eagerly here to
 # avoid the circular import:
@@ -138,6 +146,7 @@ from mindsos_server.errors import (
     AlreadyAnAdminError,
     AlreadyLoggedInError,
     AuthFailedError,
+    FlushFailedError,
     InvalidSessionCause,
     InvalidSessionError,
     LastAdminError,
@@ -145,7 +154,12 @@ from mindsos_server.errors import (
     PermissionDeniedError,
     SessionNotFoundError,
     UserAlreadyExistsError,
+    UserHasPromotionHistoryError,
     UserNotFoundError,
+)
+from mindsos_server.persistence import (
+    InMemoryLocalPersister,
+    LocalPersister,
 )
 from mindsos_server.session import Session
 from mindsos_server.sessions import (
@@ -239,6 +253,19 @@ __all__ = [
     "EVT_PROMOTION_REJECTED",
     "EVT_RELEASE_SHIPPED",
     "EVT_RELEASE_FAILED",
+    # Phase 25 cross-user-read substrate (ADR-0008 first consumer +
+    # ADR-0011 §amendment-2 LocalPersister + ADR-0040 first ship +
+    # ADR-0006 §amendment-2 + ADR-0114 §amendment-4 FK gap closure).
+    "LocalPersister",
+    "InMemoryLocalPersister",
+    "InstallRecord",
+    "read_other_local",
+    "reset_state_for_tests",
+    "read_other_local_summary",
+    "ReadOtherLocalSummary",
+    "RoleGraphSummary",
+    "FlushFailedError",
+    "UserHasPromotionHistoryError",
 ]
 
-__version__ = "0.0.0+phase24"
+__version__ = "0.0.0+phase25"
