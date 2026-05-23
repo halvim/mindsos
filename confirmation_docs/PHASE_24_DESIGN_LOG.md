@@ -9,7 +9,7 @@ branch: phase-24
 tag_on_confirm: phase-24-confirmed
 net_new: true   # new modules: mindsos_admin/promotion.py, mindsos_admin/audit_gate.py, mindsos_server/release.py, mindsos_server/locks.py; new SQLite tables (pending_mutations + releases); schema bump v3 → v4
 design_rounds: 6   # 5 original + 1 pre-impl re-analysis (Round 0)
-total_picks: 40    # 28 original + 12 Round 0 picks
+total_picks: 44    # 28 original + 12 Round 0 picks + 3 Z21 trio + 1 Z22 correction
 prior_phase: 22
 phase_23_status: retired-design-only-2026-05-22
 next_phase: 25
@@ -695,9 +695,10 @@ Options: (a) Accept; test is contract / **(b) ADR-0010 §am1 at this
 ship** / (c) New ADR.
 
 **Pick: (b).** Pure documentary; extends §4 ADR delta 11 → 12;
-enumerates: admin → server forbidden; server → admin allowed (this
-ship's new edge); admin → knowledge allowed (existing); knowledge →
-admin forbidden.
+enumerates the DAG. **Initial pick (Z5(b)) wrote `admin → server:
+FORBIDDEN` — revised to ALLOWED at PB-Z22 after impl surfaced
+admin's need for server infrastructure (admin_tx + authz + audit +
+Session).**
 
 #### PB-Z6 — Inconsistent Status-flip treatment
 
@@ -856,6 +857,107 @@ No re-opening of Round 4 picks.
 `mindsos server release list-failed` + `show` deferred. Existing
 `query-audit --event-type EVT_RELEASE_FAILED` suffices at v1.
 
+#### PB-Z21 — FalkorDB Client wiring at Phase 24 vs deferred to Phase 26
+
+Pre-impl surface gap: design log §5 lists no CLI wiring that
+constructs a FalkorDB ``Client`` for propose/ship. ADR-0114
+§"Coordinated changes" enumerates only SQLite-side changes. Existing
+``FalkorClient`` wiring lives only in ``mindsos_cli/commands/
+persistence.py`` (Phase 7/8 persistence CLI), not reachable from
+``mindsos server``. PB-Z9(a) + PB-Z13(a) Cypher MERGE templates are
+meaningful only with a ``Client`` to call them on.
+
+ADR-0043 + Phase 15a precedent: "Phase 15a does NOT persist the
+resulting Metagraph — server-driven persistence ships at Phase 18+
+[carried to Phase 26]." Phase 24 inherits the carry-forward.
+
+Options:
+
+- (a) Ship FalkorDB Cypher writes at Phase 24 (~50-100 LOC CLI
+  wiring + test fixtures + env-config ADR clauses).
+- **(b) Phase 24 v1 = SQLite + in-memory Metagraph only.** propose /
+  release / audit_gate accept ``pending_global_mg: Metagraph``
+  (caller-supplied in-memory). Cypher MERGE templates from Z9(a) +
+  Z13(a) stay as *Phase 26 contracts in ADR-0118 §am2*, not active
+  code at Phase 24.
+- (c) Hybrid optional ``client: Client | None = None`` parameter.
+
+**Pick: (b).** Matches Phase 15a + ADR-0043 precedent. Phase 24
+ships the SQLite ledger + in-memory Metagraph + audit gate + release
+lifecycle without the FalkorDB wiring distraction. Cypher templates
+documented in ADR-0118 §am2 as Phase 26 contracts.
+
+#### PB-Z21.1 — Pending content reconstruction on restart
+
+PB-Z21(b) made the in-memory pending Metagraph the propose/release
+write target. Server restart loses in-memory state. Authoritative
+pending content must come from somewhere.
+
+**Pick:** ``pending_mutations.payload_json`` is the authoritative
+serialization of each candidate. On server restart, the in-memory
+pending Metagraph is rebuilt from rows where ``shipped_in_release IS
+NULL`` (rehydration helper in ``mindsos_admin/promotion.py``). ADR-
+0114 §am3 documentary clause records this. v1 ``mindsos server
+release`` CLI verb rehydrates at start of each invocation; no long-
+lived server process at Phase 24 means restart-survival is
+naturally tested by the CLI re-invocation pattern.
+
+#### PB-Z21.2 — release_update copies in-memory at Phase 24
+
+PB-Z9(a) Cypher MERGE-on-id template is documented contract for
+Phase 26 (per Z21(b)). At Phase 24, the per-role copy is implemented
+by ``canonical_global_mg.graphs_by_role[role].add_node(...)`` for
+each pending node — idempotent at the in-memory Metagraph level
+(``add_node`` raises ``IdentityError`` on collision; rerun-suppression
+via prior FAILED's ``failed_release_canonical_node_ids`` per Z7(a)
+catches the collision before ``add_node`` is called).
+
+**Pick:** Phase 24 copy is in-memory ``add_node`` per role; Cypher
+MERGE deferred to Phase 26. Suppression set from Z7(a) prevents
+duplicate ``add_node`` calls on rerun.
+
+#### PB-Z22 — Z5(b) DAG rule `admin → server FORBIDDEN` is wrong
+
+Pre-impl surface gap discovered while writing
+``mindsos_admin/promotion.py``: the function needs ``admin_tx``
+(server.admin) + ``_require_or_audit`` (server.authz) + ``write_
+audit`` + ``EVT_*`` (server.audit) + ``Session`` (server.session)
++ ``CAN_PROPOSE_MUTATION`` (server.capabilities). All from
+``mindsos_server``. Z5(b)'s "admin → server FORBIDDEN" rule blocks
+exactly these imports.
+
+The architectural misread: admin was treated as a domain layer
+parallel to KL, but admin is a *server-side curation toolkit* per
+ADR-0140 §am1 — it USES server infrastructure (admin_tx + audit +
+authz + Session), it doesn't compete with it.
+
+Cycle safety: foundational server modules (audit / authz / session /
+capabilities / admin.py / users.py) do NOT import admin. Only
+``mindsos_server.release`` (NEW Phase 24) imports admin. Bi-
+directional ``admin ↔ server`` is cycle-safe at module-load.
+
+Options:
+
+- **(a) Re-amend ADR-0010 §am1 + Z5(b) with `admin → server`
+  ALLOWED.** Keep promotion.py imports as-is. ~5 LOC ADR change.
+- (b) Duplicate ``admin_tx`` / ``write_audit`` / ``_require_or_
+  audit`` shims in mindsos_admin. ~100 LOC + ongoing drift risk.
+- (c) Move ``propose_for_promotion`` to mindsos_server.
+  Contradicts ADR-0118 §am1 + ADR-0141 §am1 PB-8 admin-location
+  lock; rejected.
+
+**Pick: (a).** Z5(b)'s table was wrong on the direction. Trivial
+documentary fix. The revised DAG table (ADR-0010 §am1):
+
+| From → To | Status |
+|---|---|
+| `knowledge` → `server` | **FORBIDDEN** (ADR-0010 §I-S1 original) |
+| `knowledge` → `admin` | **FORBIDDEN** (KL stays self-contained) |
+| `admin` → `knowledge` | **ALLOWED** (existing) |
+| `admin` → `server` | **ALLOWED** ⚠️ revised |
+| `server` → `admin` | **ALLOWED** (Phase 24 release.py) |
+| `server` → `knowledge` | **ALLOWED** (existing pattern) |
+
 #### PB-Z20 — Pending-clear DELETE template must be node-id-scoped
 
 PB-Z8(a) accepted but Cypher shape unspecified. Naive `MATCH (n)
@@ -891,6 +993,10 @@ new node has a different node_id and survives. ADR-0114 §am3 absorbs.
 | Z15 | (a) suppression set = FAILED rows since last SHIPPED | Natural watermark; SHIP advances |
 | Z16 | (a) EmptyComparisonError → FAILED with error_class="empty_comparison" | Locks ADR-0144 §am2 default |
 | Z20 | (a) DELETE scoped to snapshot node-ids via payload_json | Preserves PB-26(b) lock-free propose |
+| Z21 | (b) Phase 24 v1 SQLite + in-memory only; FalkorDB Cypher → Phase 26 | Matches ADR-0043 + Phase 15a precedent |
+| Z21.1 | payload_json is restart-rehydration source | In-memory pending rebuilt from `shipped_in_release IS NULL` rows |
+| Z21.2 | release_update copy is in-memory `add_node` per role | Cypher MERGE deferred to Phase 26 |
+| Z22 | (a) re-amend ADR-0010 §am1: `admin → server` ALLOWED | Z5(b)'s initial FORBIDDEN was a misread |
 
 ## §2. Final locks consolidated (28-pick reference)
 
@@ -938,6 +1044,10 @@ new node has a different node_id and survives. ADR-0114 §am3 absorbs.
 | Z15 | (a) FAILED rows since last SHIPPED watermark | Round 0 — rerun detection |
 | Z16 | (a) EmptyComparisonError → FAILED error_class="empty_comparison" | Round 0 — error_class enum closure |
 | Z20 | (a) node-id-scoped DELETE template | Round 0 — concurrency-safe clear |
+| Z21 | (b) SQLite + in-memory only at Phase 24 | Round 0 — FalkorDB Cypher deferred to Phase 26 |
+| Z21.1 | payload_json is restart-rehydration source | Round 0 — pending content reconstruction |
+| Z21.2 | in-memory `add_node` copy at release | Round 0 — Cypher MERGE → Phase 26 |
+| Z22 | (a) ADR-0010 §am1 revised: `admin → server` ALLOWED | Round 0 — DAG correction (Z5(b) misread) |
 
 ## §3. Cross-chat dependencies
 

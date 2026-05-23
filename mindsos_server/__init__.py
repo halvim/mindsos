@@ -79,10 +79,13 @@ the Phase 19 15-pick ledger.
 
 from mindsos_server.capabilities import (
     ADMIN_CAPS,
+    ALL_CAPABILITIES,
+    CAN_APPROVE_RELEASE,
     CAN_HARD_DELETE_ARCHIVED,
     CAN_KILL_SESSION,
     CAN_MANAGE_USERS,
     CAN_PROMOTE,
+    CAN_PROPOSE_MUTATION,
     CAN_READ_OTHER_LOCALS,
     CAN_VIEW_AUDIT_LOG,
     CAN_WRITE_GLOBAL,
@@ -115,7 +118,13 @@ from mindsos_server.audit import (
     EVT_ADMIN_PROMOTE_USER,
     EVT_AUDIT_QUERY,
     EVT_HARD_DELETE_USER,
+    EVT_PROMOTION_PROPOSED,
+    EVT_PROMOTION_REJECTED,
+    EVT_RELEASE_FAILED,
+    EVT_RELEASE_SHIPPED,
 )
+from mindsos_server.locks import RELEASE_SHIP_LOCK, UserMutexRegistry
+from mindsos_server.release import ReleaseResult, ReleaseStatus, release_update
 from mindsos_server.authz import _require_or_audit
 from mindsos_server.errors import (
     AlreadyAnAdminError,
@@ -208,6 +217,20 @@ __all__ = [
     "EVT_ADMIN_DISABLE_USER",
     "EVT_ADMIN_ENABLE_USER",
     "EVT_HARD_DELETE_USER",
+    # Phase 24 release-ship surface (ADR-0118 + ADR-0114 + ADR-0115
+    # + ADR-0006 §am1 + ADR-0002 §am2).
+    "CAN_PROPOSE_MUTATION",
+    "CAN_APPROVE_RELEASE",
+    "ALL_CAPABILITIES",
+    "RELEASE_SHIP_LOCK",
+    "UserMutexRegistry",
+    "release_update",
+    "ReleaseResult",
+    "ReleaseStatus",
+    "EVT_PROMOTION_PROPOSED",
+    "EVT_PROMOTION_REJECTED",
+    "EVT_RELEASE_SHIPPED",
+    "EVT_RELEASE_FAILED",
 ]
 
-__version__ = "0.0.0+phase22"
+__version__ = "0.0.0+phase24"
