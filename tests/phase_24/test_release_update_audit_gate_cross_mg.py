@@ -1,44 +1,42 @@
 """Audit gate cross-mg finding — pending vs canonical collision.
 
 Per Phase 16 PB-K2 + ADR-0144 §am2 + PB-24(b) two-pass.
+
+Phase 16 ``_score_levenshtein`` operates on ``node_id`` strings; this
+test pre-seeds canonical with a node having a near-identical node_id
+as the pending candidate so cross-mg Lev fires blocking.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from mindsos_admin import propose_for_promotion
 from mindsos_admin.exceptions import BlockingFindingError
 from mindsos_server.release import release_update
 
 
 def test_cross_mg_blocking_against_canonical(
     seeded_admin, admin_session_both,
-    canonical_global_mg, pending_global_mg, atom_proposal_factory,
+    canonical_global_mg, pending_global_mg,
+    inject_pending_node, inject_canonical_node,
 ):
-    """Propose+ship; propose-near-duplicate; ship → cross-mg blocking."""
-    # Ship first: "Apple" lands in canonical.
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Apple", target_role="ontology"),
-        pending_global_mg=pending_global_mg,
-    )
-    r1 = release_update(
-        seeded_admin, session=admin_session_both,
+    """Pending node near-identical to a node already in canonical → blocking."""
+    # Pre-seed canonical with a node carrying a known controlled id.
+    inject_canonical_node(
         canonical_global_mg=canonical_global_mg,
-        pending_global_mg=pending_global_mg,
+        node_id="apple-shipped-aaaaa-0001",
+        value="Apple",
+        target_role="ontology",
     )
-    assert r1.status == "SHIPPED"
-
-    # Propose another "Apple" — different node_id, identical IRI tail content.
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Apple", target_role="ontology"),
+    # Now propose a new pending node with a near-identical node_id.
+    inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="apple-shipped-aaaaa-0002",
+        value="Apple",
+        target_role="ontology",
     )
 
-    # Second ship: cross-mg pass finds Apple-in-canonical ~ Apple-in-pending.
-    # Per Phase 16 cross-mg form, no self-exclusion → blocking finding.
+    # Cross-mg pass: Lev("...-0001", "...-0002") ~ 0.96 → blocking.
     with pytest.raises(BlockingFindingError):
         release_update(
             seeded_admin, session=admin_session_both,

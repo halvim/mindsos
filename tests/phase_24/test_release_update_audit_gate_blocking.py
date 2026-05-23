@@ -1,6 +1,10 @@
 """Audit gate blocking finding → FAILED row + EVT_RELEASE_FAILED.
 
 Per PB-20(c) + PB-Z16(a) + ADR-0114 §am3 §4 error_class enum.
+
+Phase 16 ``_score_levenshtein`` operates on ``node_id`` strings; tests
+use controlled node_ids via ``inject_pending_node`` so Lev fires
+reliably above the 0.85 blocking threshold.
 """
 
 from __future__ import annotations
@@ -9,7 +13,6 @@ import json
 
 import pytest
 
-from mindsos_admin import propose_for_promotion
 from mindsos_admin.exceptions import BlockingFindingError
 from mindsos_server.audit import EVT_RELEASE_FAILED
 from mindsos_server.release import release_update
@@ -17,22 +20,21 @@ from mindsos_server.release import release_update
 
 def test_audit_gate_blocking_writes_failed_row(
     seeded_admin, admin_session_both,
-    canonical_global_mg, pending_global_mg, atom_proposal_factory,
+    canonical_global_mg, pending_global_mg, inject_pending_node,
 ):
-    """Two identical-content proposals → intra-pending blocking finding."""
-    # Propose A.
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Duplicate", target_role="ontology"),
+    """Two near-identical-id pending nodes → intra-pending blocking."""
+    # Use near-identical node_ids — Lev ~ 0.93 → blocking (≥ 0.85).
+    inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="dup-test-aaaaaaaa-0001",
+        target_role="ontology",
     )
-    # Propose B = identical IRI tail content as A (same value+type).
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Duplicate", target_role="ontology"),
+    inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="dup-test-aaaaaaaa-0002",
+        target_role="ontology",
     )
-    # release_update fires intra-pending blocking finding (A vs B).
+
     with pytest.raises(BlockingFindingError):
         release_update(
             seeded_admin,
@@ -53,7 +55,7 @@ def test_audit_gate_blocking_writes_failed_row(
 
     manifest = json.loads(manifest_str)
     assert manifest["error_class"] == "blocking_similarity_findings"
-    assert manifest["included_mutation_ids"] == []  # FAILED leaves pending
+    assert manifest["included_mutation_ids"] == []
     assert manifest["mutations_attempted_count"] == 2
 
     # EVT_RELEASE_FAILED audit row with PB-27(a) shape.
@@ -71,24 +73,21 @@ def test_audit_gate_blocking_writes_failed_row(
 
 def test_audit_gate_blocking_leaves_pending_intact(
     seeded_admin, admin_session_both,
-    canonical_global_mg, pending_global_mg, atom_proposal_factory,
+    canonical_global_mg, pending_global_mg, inject_pending_node,
 ):
     """FAILED leaves pending intact per Z2(a) for rerun-recovery."""
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="X"),
+    inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="leak-test-aaaaaa-0001",
     )
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="X"),  # duplicate
+    inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="leak-test-aaaaaa-0002",
     )
     pending_ontology = next(
         g for g in pending_global_mg.graphs.values() if g.role == "ontology"
     )
-    pending_count_before = len(pending_ontology.nodes)
-    assert pending_count_before == 2
+    assert len(pending_ontology.nodes) == 2
 
     with pytest.raises(BlockingFindingError):
         release_update(

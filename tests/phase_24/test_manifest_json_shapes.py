@@ -42,20 +42,23 @@ def test_shipped_manifest_json_shape(
 
 def test_failed_manifest_json_shape(
     seeded_admin, admin_session_both,
-    canonical_global_mg, pending_global_mg, atom_proposal_factory,
+    canonical_global_mg, pending_global_mg, inject_pending_node,
 ):
     """FAILED shape per ADR-0114 §3 + §am3 §1 — includes
     failed_release_canonical_node_ids.
     """
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Dup"),
+    # Controlled near-identical node_ids → cross-mg Lev fires blocking.
+    inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="dup-test-aaaaa-0001",
+        value="Dup",
+        target_role="ontology",
     )
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Dup"),
+    inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="dup-test-aaaaa-0002",
+        value="Dup",
+        target_role="ontology",
     )
     with pytest.raises(BlockingFindingError):
         release_update(

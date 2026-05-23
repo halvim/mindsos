@@ -114,6 +114,115 @@ def pending_global_mg(canonical_global_mg):
 
 
 @pytest.fixture()
+def inject_pending_node(seeded_admin):
+    """Helper to directly inject a pending node with a CONTROLLED node_id.
+
+    Bypasses :func:`propose_for_promotion`'s UUID minter. Needed for tests
+    that rely on similarity scores firing reliably — Phase 16
+    ``_score_levenshtein`` compares ``node_id`` strings, so random UUIDs
+    score near zero and never trip blocking thresholds. Controlled IDs
+    (e.g. ``"dup-001"`` + ``"dup-002"``) produce Lev ~ 0.875 → blocking.
+
+    Performs both:
+    1. SQL INSERT into ``pending_mutations`` with payload_json carrying
+       the controlled node_id.
+    2. ``add_node(node_id=...)`` on the supplied pending Metagraph's
+       role-graph.
+
+    Returns ``(mutation_id, node_id)``.
+    """
+    import json
+
+    from mindsos_server.audit import EVT_PROMOTION_PROPOSED, write_audit
+
+    def _inject(
+        *,
+        pending_global_mg,
+        node_id: str,
+        value: str = "TestNode",
+        node_type: str = "Class",
+        properties: dict | None = None,
+        target_role: str = "ontology",
+        proposer: str = "admin",
+    ) -> tuple[int, str]:
+        # 1. Emit audit row for FK.
+        write_audit(
+            seeded_admin,
+            actor=proposer,
+            event=EVT_PROMOTION_PROPOSED,
+            target=None,
+            extra={"injected_for_test": True},
+        )
+        cur = seeded_admin.execute("SELECT last_insert_rowid()")
+        audit_event_id = int(cur.fetchone()[0])
+
+        # 2. Insert pending_mutations row.
+        payload = {
+            "kind": "ATOM",
+            "node_id": node_id,
+            "node": {
+                "node_type": node_type,
+                "value": value,
+                "properties": dict(properties or {}),
+                "target_role": target_role,
+            },
+            "source_user_id": None,
+        }
+        cur = seeded_admin.execute(
+            "INSERT INTO pending_mutations "
+            "(proposer_admin_user_id, source_user_id, proposed_at, "
+            "mutation_type, payload_json, audit_event_id) "
+            "VALUES (?, NULL, '2026-05-22T00:00:00.000Z', 'PROMOTION', ?, ?)",
+            (proposer, json.dumps(payload), audit_event_id),
+        )
+        mutation_id = int(cur.lastrowid)
+        seeded_admin.commit()
+
+        # 3. Add to in-memory pending Metagraph.
+        graph = next(
+            g for g in pending_global_mg.graphs.values() if g.role == target_role
+        )
+        graph.add_node(
+            value, node_type, properties=dict(properties or {}),
+            node_id=node_id,
+        )
+        return mutation_id, node_id
+
+    return _inject
+
+
+@pytest.fixture()
+def inject_canonical_node():
+    """Helper to directly inject a node into the canonical Metagraph.
+
+    Phase 24 v1 has no canonical persistence (Z21(b) deferred to P26),
+    so canonical content arrives via either release_update OR direct
+    add_node in tests. This helper provides the latter for tests that
+    set up cross-mg blocking scenarios.
+    """
+
+    def _inject(
+        *,
+        canonical_global_mg,
+        node_id: str,
+        value: str = "TestNode",
+        node_type: str = "Class",
+        properties: dict | None = None,
+        target_role: str = "ontology",
+    ) -> str:
+        graph = next(
+            g for g in canonical_global_mg.graphs.values() if g.role == target_role
+        )
+        graph.add_node(
+            value, node_type, properties=dict(properties or {}),
+            node_id=node_id,
+        )
+        return node_id
+
+    return _inject
+
+
+@pytest.fixture()
 def atom_proposal_factory():
     """Factory to construct a one-item ATOM PromotionProposal.
 

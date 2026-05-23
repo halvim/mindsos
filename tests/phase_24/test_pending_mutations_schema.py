@@ -36,28 +36,28 @@ def test_pending_mutations_pk_is_autoincrement(tmp_server_db):
     assert "PRIMARY KEY" in ddl.upper()
 
 
-def test_pending_mutations_mutation_type_check_constraint(tmp_server_db):
+def test_pending_mutations_mutation_type_check_constraint(seeded_admin):
     """mutation_type CHECK constraint enforces v1 narrow scope."""
     import sqlite3
     # PROMOTION is allowed.
-    tmp_server_db.execute(
+    seeded_admin.execute(
         "INSERT INTO pending_mutations "
         "(proposer_admin_user_id, proposed_at, mutation_type, "
         "payload_json, audit_event_id) "
         "VALUES ('admin', '2026-05-22T00:00:00.000Z', 'PROMOTION', "
         "'{}', 1)"
     )
-    tmp_server_db.commit()
+    seeded_admin.commit()
     # EDGE_ADD is NOT allowed at v1.
     try:
-        tmp_server_db.execute(
+        seeded_admin.execute(
             "INSERT INTO pending_mutations "
             "(proposer_admin_user_id, proposed_at, mutation_type, "
             "payload_json, audit_event_id) "
             "VALUES ('admin', '2026-05-22T00:00:00.000Z', 'EDGE_ADD', "
             "'{}', 1)"
         )
-        tmp_server_db.commit()
+        seeded_admin.commit()
         raised = False
     except sqlite3.IntegrityError:
         raised = True
@@ -85,21 +85,22 @@ def test_pending_mutations_by_release_index_exists(tmp_server_db):
     assert cur.fetchone() is not None
 
 
-def test_pending_mutations_v1_source_user_id_is_null_default(tmp_server_db):
+def test_pending_mutations_v1_source_user_id_is_null_default(seeded_admin):
     """source_user_id + frozen_user_local_node_id default NULL per ADR-0114 §1.
 
     Both columns ship at v4 for the Phase 25 source-user path; at v1
     they're always NULL (admin-direct ATOM only per PB-11(a)).
     """
-    tmp_server_db.execute(
+    # Audit row id=1 was inserted by _insert_first_admin (EVT_BOOTSTRAP).
+    seeded_admin.execute(
         "INSERT INTO pending_mutations "
         "(proposer_admin_user_id, proposed_at, mutation_type, "
         "payload_json, audit_event_id) "
         "VALUES ('admin', '2026-05-22T00:00:00.000Z', 'PROMOTION', "
         "'{}', 1)"
     )
-    tmp_server_db.commit()
-    cur = tmp_server_db.execute(
+    seeded_admin.commit()
+    cur = seeded_admin.execute(
         "SELECT source_user_id, frozen_user_local_node_id, shipped_in_release "
         "FROM pending_mutations"
     )

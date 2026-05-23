@@ -24,28 +24,28 @@ def test_releases_columns(tmp_server_db):
     )
 
 
-def test_releases_status_check_constraint(tmp_server_db):
+def test_releases_status_check_constraint(seeded_admin):
     """status CHECK constraint = ('SHIPPED', 'FAILED') only at v1 per PB-10(a)."""
     import sqlite3
     # SHIPPED is allowed.
-    tmp_server_db.execute(
+    seeded_admin.execute(
         "INSERT INTO releases "
         "(proposer_admin_user_id, proposed_at, shipped_at, manifest_json, "
         "audit_event_id, status) "
         "VALUES ('admin', '2026-05-22T00:00:00.000Z', "
         "'2026-05-22T00:00:01.000Z', '{}', 1, 'SHIPPED')"
     )
-    tmp_server_db.commit()
+    seeded_admin.commit()
     # PROPOSED is NOT allowed at v1.
     try:
-        tmp_server_db.execute(
+        seeded_admin.execute(
             "INSERT INTO releases "
             "(proposer_admin_user_id, proposed_at, manifest_json, "
             "audit_event_id, status) "
             "VALUES ('admin', '2026-05-22T00:00:00.000Z', '{}', 1, "
             "'PROPOSED')"
         )
-        tmp_server_db.commit()
+        seeded_admin.commit()
         raised = False
     except sqlite3.IntegrityError:
         raised = True
@@ -83,16 +83,16 @@ def test_schema_version_is_4(tmp_server_db):
     assert row[0] == 4
 
 
-def test_releases_v1_v2_columns_null_at_default(tmp_server_db):
+def test_releases_v1_v2_columns_null_at_default(seeded_admin):
     """approver_admin_user_ids_json NULL at v1 per ADR-0114 §2."""
-    tmp_server_db.execute(
+    seeded_admin.execute(
         "INSERT INTO releases "
         "(proposer_admin_user_id, proposed_at, shipped_at, manifest_json, "
         "audit_event_id, status) "
         "VALUES ('admin', '2026-05-22T00:00:00.000Z', "
         "'2026-05-22T00:00:01.000Z', '{}', 1, 'SHIPPED')"
     )
-    tmp_server_db.commit()
+    seeded_admin.commit()
     cur = tmp_server_db.execute(
         "SELECT approver_admin_user_ids_json, parent_release_id, failed_at "
         "FROM releases"

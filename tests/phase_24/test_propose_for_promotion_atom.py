@@ -19,7 +19,7 @@ def test_propose_writes_pending_mutations_row(
     proposal = atom_proposal_factory(
         node_type="Class",
         value="Animal",
-        properties={"label": "Animal"},
+        properties={"definition": "Animal"},
         target_role="ontology",
     )
 

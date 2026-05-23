@@ -8,51 +8,48 @@ suppression set together prevent IdentityError on rerun.
 Phase 26 will replace the in-memory add_node with FalkorDB Cypher
 MERGE-on-node_id; the test contract is the same: rerun is no-op
 at the FalkorDB-graph level if the node already landed.
+
+Uses controlled node_ids via ``inject_pending_node`` /
+``inject_canonical_node`` so similarity scores fire reliably.
 """
 
 from __future__ import annotations
 
-import json
+import pytest
 
-from mindsos_admin import propose_for_promotion
+from mindsos_admin.exceptions import BlockingFindingError
 from mindsos_server.release import release_update
 
 
 def test_rerun_does_not_duplicate_canonical(
     seeded_admin, admin_session_both,
-    canonical_global_mg, pending_global_mg, atom_proposal_factory,
+    canonical_global_mg, pending_global_mg,
+    inject_pending_node, inject_canonical_node,
 ):
-    """SHIPPED then re-propose same content (different node_id) → cross-mg
-    blocking finding (no duplicate added per Z9(a)).
+    """Pre-shipped node in canonical + near-identical-id pending →
+    cross-mg blocking; canonical does NOT gain a duplicate.
     """
-    # First ship: A lands in canonical.
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Original"),
-        pending_global_mg=pending_global_mg,
-    )
-    r1 = release_update(
-        seeded_admin, session=admin_session_both,
+    # Pre-seed canonical (as if a prior release shipped this).
+    inject_canonical_node(
         canonical_global_mg=canonical_global_mg,
-        pending_global_mg=pending_global_mg,
+        node_id="orig-test-aaaaa-0001",
+        value="Original",
+        target_role="ontology",
     )
-    assert r1.status == "SHIPPED"
-
     canonical_ontology = next(
         g for g in canonical_global_mg.graphs.values() if g.role == "ontology"
     )
     assert len(canonical_ontology.nodes) == 1
 
-    # Re-propose "Original" — new node_id, identical content.
-    propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Original"),
+    # Now stage a near-identical-id pending mutation.
+    inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="orig-test-aaaaa-0002",
+        value="Original",
+        target_role="ontology",
     )
 
-    # Second ship: cross-mg blocking; canonical does NOT gain a duplicate.
-    from mindsos_admin.exceptions import BlockingFindingError
-    import pytest
+    # Cross-mg blocking — canonical does NOT gain a second node.
     with pytest.raises(BlockingFindingError):
         release_update(
             seeded_admin, session=admin_session_both,
@@ -69,7 +66,15 @@ def test_pending_node_id_preserved_in_canonical(
     seeded_admin, admin_session_both,
     canonical_global_mg, pending_global_mg, atom_proposal_factory,
 ):
-    """Per Z9(a) — pending node_id IS canonical node_id."""
+    """Per Z9(a) — pending node_id IS canonical node_id.
+
+    Single-propose happy path (no duplicates) — Lev score on the
+    UUID against any other content is near 0, so no blocking finding;
+    ship succeeds; canonical gains the SAME node_id that pending had.
+    """
+    import json
+    from mindsos_admin import propose_for_promotion
+
     propose_for_promotion(
         seeded_admin, session=admin_session_both,
         proposal=atom_proposal_factory(value="Unique"),

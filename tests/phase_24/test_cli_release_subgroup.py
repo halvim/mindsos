@@ -24,7 +24,10 @@ from mindsos_server.users import _insert_first_admin
 
 @pytest.fixture()
 def cli_runner():
-    return CliRunner(mix_stderr=False)
+    # Click 8.2 dropped the mix_stderr kwarg (Phase 18 B-18-T2).
+    # All output goes through result.output (combined stream); Phase 22
+    # pattern.
+    return CliRunner()
 
 
 @pytest.fixture()
@@ -49,15 +52,15 @@ def _login_admin(cli_runner, monkeypatch, tmp_path) -> None:
     result = cli_runner.invoke(
         app, ["server", "login", "admin"], input="adminpw\n",
     )
-    assert result.exit_code == 0, result.stdout + result.stderr
+    assert result.exit_code == 0, result.output
 
 
 def test_release_subgroup_shows_help(cli_runner, cli_db_path):
     """`mindsos server release --help` lists the two verbs."""
     result = cli_runner.invoke(app, ["server", "release", "--help"])
     assert result.exit_code == 0
-    assert "propose-for-promotion" in result.stdout
-    assert "ship" in result.stdout
+    assert "propose-for-promotion" in result.output
+    assert "ship" in result.output
 
 
 def test_release_ship_empty_exits_7(
@@ -67,7 +70,7 @@ def test_release_ship_empty_exits_7(
     _login_admin(cli_runner, monkeypatch, tmp_path)
     result = cli_runner.invoke(app, ["server", "release", "ship"])
     assert result.exit_code == 7
-    assert "No unshipped pending mutations" in result.stderr
+    assert "No unshipped pending mutations" in result.output
 
 
 def test_release_propose_and_ship_happy_path(
@@ -94,18 +97,16 @@ def test_release_propose_and_ship_happy_path(
               "--input-json", "-", "--json"],
         input=json.dumps(proposal),
     )
-    assert propose_result.exit_code == 0, (
-        propose_result.stdout + propose_result.stderr
-    )
-    out = json.loads(propose_result.stdout)
+    assert propose_result.exit_code == 0, propose_result.output
+    out = json.loads(propose_result.output.splitlines()[-1])
     assert out["verb"] == "release_propose_for_promotion"
     assert len(out["mutation_ids"]) == 1
 
     ship_result = cli_runner.invoke(
         app, ["server", "release", "ship", "--json"],
     )
-    assert ship_result.exit_code == 0, ship_result.stdout + ship_result.stderr
-    ship_out = json.loads(ship_result.stdout)
+    assert ship_result.exit_code == 0, ship_result.output
+    ship_out = json.loads(ship_result.output.splitlines()[-1])
     assert ship_out["status"] == "SHIPPED"
     assert ship_out["mutations_shipped_count"] == 1
     assert ship_out["roles_affected"] == ["ontology"]

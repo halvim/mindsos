@@ -9,36 +9,42 @@ manifest_json filters them out.
 Phase 24 v1 in-memory scope: copy loop uses add_node, which raises
 on collision. Suppression set prevents the re-add by skipping
 already-shipped node_ids per Z21.2.
+
+Uses controlled node_ids via ``inject_pending_node`` so Lev fires
+reliably above the blocking threshold.
 """
 
 from __future__ import annotations
 
 import json
 
-from mindsos_admin import propose_for_promotion
+import pytest
+
+from mindsos_admin.exceptions import BlockingFindingError
 from mindsos_server.release import release_update
 
 
 def test_release_after_failed_rerun_ships(
     seeded_admin, admin_session_both,
-    canonical_global_mg, pending_global_mg, atom_proposal_factory,
+    canonical_global_mg, pending_global_mg, inject_pending_node,
 ):
-    """Two duplicate proposals → FAILED; admin deletes one → rerun ships."""
-    # Two duplicate-content proposals.
-    r1 = propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Cat", target_role="ontology"),
+    """Two near-identical-id proposals → FAILED; admin deletes one →
+    rerun ships.
+    """
+    m1, n1 = inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="cat-test-aaaaa-0001",
+        value="Cat",
+        target_role="ontology",
     )
-    r2 = propose_for_promotion(
-        seeded_admin, session=admin_session_both,
-        proposal=atom_proposal_factory(value="Cat", target_role="ontology"),
+    m2, n2 = inject_pending_node(
         pending_global_mg=pending_global_mg,
+        node_id="cat-test-aaaaa-0002",
+        value="Cat",
+        target_role="ontology",
     )
 
     # First ship: blocking from intra_pending pass.
-    from mindsos_admin.exceptions import BlockingFindingError
-    import pytest
     with pytest.raises(BlockingFindingError):
         release_update(
             seeded_admin, session=admin_session_both,
@@ -46,34 +52,18 @@ def test_release_after_failed_rerun_ships(
             pending_global_mg=pending_global_mg,
         )
 
-    # Admin amends: delete one of the duplicates from pending. Simulate by
-    # DELETE on pending_mutations + remove_node from in-memory pending.
+    # Admin amends: delete one duplicate. Simulate by DELETE on
+    # pending_mutations + remove_node from in-memory pending.
     seeded_admin.execute(
-        "DELETE FROM pending_mutations WHERE mutation_id = ?",
-        (r2.mutation_ids[0],),
+        "DELETE FROM pending_mutations WHERE mutation_id = ?", (m2,)
     )
     seeded_admin.commit()
     pending_ontology = next(
         g for g in pending_global_mg.graphs.values() if g.role == "ontology"
     )
-    cur = seeded_admin.execute(
-        "SELECT payload_json FROM pending_mutations WHERE mutation_id = ?",
-        (r2.mutation_ids[0],),
-    )
-    # r2 row already deleted; remove its node from in-memory pending too.
-    # We need to look up its node_id via the original propose result.
-    # Simpler: find any node in pending that's NOT r1's.
-    r1_payload = json.loads(seeded_admin.execute(
-        "SELECT payload_json FROM pending_mutations WHERE mutation_id = ?",
-        (r1.mutation_ids[0],),
-    ).fetchone()[0])
-    r1_node_id = r1_payload["node_id"]
-    # Remove the duplicate (not r1's).
-    to_remove = [nid for nid in pending_ontology.nodes if nid != r1_node_id]
-    for nid in to_remove:
-        pending_ontology.remove_node(nid)
+    pending_ontology.remove_node(n2)
 
-    # Rerun: one pending, no duplicates → SHIPPED.
+    # Rerun: only m1 pending; no duplicate → SHIPPED.
     result = release_update(
         seeded_admin, session=admin_session_both,
         canonical_global_mg=canonical_global_mg,
@@ -85,7 +75,7 @@ def test_release_after_failed_rerun_ships(
 
 def test_suppression_set_built_from_failed_manifest(
     seeded_admin, admin_session_both,
-    canonical_global_mg, pending_global_mg, atom_proposal_factory,
+    canonical_global_mg, pending_global_mg,
 ):
     """Suppression-set query reads FAILED manifest_json (PB-Z15(a))."""
     from mindsos_server.release import _build_suppression_set
@@ -131,12 +121,11 @@ def test_suppression_set_built_from_failed_manifest(
 
 def test_suppression_set_watermark_excludes_pre_shipped_failed(
     seeded_admin, admin_session_both,
-    canonical_global_mg, pending_global_mg, atom_proposal_factory,
+    canonical_global_mg, pending_global_mg,
 ):
     """PB-Z15(a) — SHIPPED advances watermark; older FAILEDs retire."""
     from mindsos_server.release import _build_suppression_set
 
-    # Sequence: FAILED then SHIPPED.
     # 1. Insert a SHIPPED row.
     seeded_admin.execute(
         "INSERT INTO audit (ts, actor_user, event, target_user, extra_json) "
@@ -155,15 +144,8 @@ def test_suppression_set_watermark_excludes_pre_shipped_failed(
         (shipped_audit_id,),
     )
     seeded_admin.commit()
-    shipped_release_id = seeded_admin.execute(
-        "SELECT MAX(release_id) FROM releases WHERE status='SHIPPED'"
-    ).fetchone()[0]
 
-    # 2. Insert a FAILED row at release_id < shipped (older).
-    # (In practice the IDs are AUTOINCREMENT monotonic; for this test we
-    # rely on AUTOINCREMENT having advanced past shipped's id when the
-    # subsequent FAILED is inserted. So insert a FAILED AFTER the
-    # SHIPPED, then query — the watermark should INCLUDE it.)
+    # 2. Insert a FAILED row AFTER the SHIPPED (release_id > shipped_id).
     seeded_admin.execute(
         "INSERT INTO audit (ts, actor_user, event, target_user, extra_json) "
         "VALUES ('2026-05-22T00:02:00.000Z', 'admin', "
@@ -185,7 +167,7 @@ def test_suppression_set_watermark_excludes_pre_shipped_failed(
     )
     seeded_admin.commit()
 
-    # Suppression set includes the FAILED that's NEWER than last SHIPPED.
+    # Suppression set includes FAILED rows newer than last SHIPPED.
     suppression = _build_suppression_set(seeded_admin)
     assert "ontology" in suppression
     assert "newer-failed" in suppression["ontology"]
