@@ -14,10 +14,12 @@ import pytest
 from mindsos_server.capabilities import (
     ADMIN_CAPS,
     ALL_CAPABILITIES,
+    CAN_APPROVE_RELEASE,
     CAN_HARD_DELETE_ARCHIVED,
     CAN_KILL_SESSION,
     CAN_MANAGE_USERS,
     CAN_PROMOTE,
+    CAN_PROPOSE_MUTATION,
     CAN_READ_OTHER_LOCALS,
     CAN_VIEW_AUDIT_LOG,
     CAN_WRITE_GLOBAL,
@@ -26,10 +28,13 @@ from mindsos_server.capabilities import (
 
 
 class TestRosterPerADR0002:
-    """PB-12 — strict ADR-0002 seven-capability roster."""
+    """PB-12 — ADR-0002 roster (7 at Phase 18; +2 at Phase 24 per ADR-0002 §am2)."""
 
-    def test_seven_capabilities(self) -> None:
-        assert len(ALL_CAPABILITIES) == 7
+    def test_nine_capabilities(self) -> None:
+        # Phase 24 ADR-0002 §am2 added CAN_PROPOSE_MUTATION +
+        # CAN_APPROVE_RELEASE; roster 7 → 9. Earlier "seven" assertion
+        # decayed at Phase 24 ship.
+        assert len(ALL_CAPABILITIES) == 9
 
     def test_all_capabilities_listed(self) -> None:
         assert set(ALL_CAPABILITIES) == {
@@ -40,6 +45,8 @@ class TestRosterPerADR0002:
             CAN_KILL_SESSION,
             CAN_VIEW_AUDIT_LOG,
             CAN_MANAGE_USERS,
+            CAN_PROPOSE_MUTATION,    # Phase 24 +ADR-0002 §am2
+            CAN_APPROVE_RELEASE,     # Phase 24 +ADR-0002 §am2
         }
 
 
@@ -61,12 +68,12 @@ class TestUpperCasingPerPB4:
 
 
 class TestBundlesPerPB12:
-    """PB-12 — USER_CAPS strictly empty; ADMIN_CAPS = all seven."""
+    """PB-12 — USER_CAPS strictly empty; ADMIN_CAPS = all (9 at Phase 24)."""
 
     def test_user_caps_empty(self) -> None:
         assert USER_CAPS == frozenset()
 
-    def test_admin_caps_all_seven(self) -> None:
+    def test_admin_caps_all(self) -> None:
         assert ADMIN_CAPS == frozenset(ALL_CAPABILITIES)
 
     def test_bundles_are_frozensets(self) -> None:

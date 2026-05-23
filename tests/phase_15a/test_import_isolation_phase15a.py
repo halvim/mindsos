@@ -1,13 +1,22 @@
-"""Phase 15a — extends Phase 12 PB-18 / Phase 14 import-isolation invariant.
+"""Phase 15a — import-isolation invariant for mindsos_admin.
 
-``mindsos_admin`` (NEW top-level Phase 15a package) imports nothing
-from ``mindsos_cli`` or ``mindsos_server`` (latter doesn't exist yet
-— parametrised over a forbidden-roots list per ADR-0010).
+ORIGINAL Phase 15a lock: ``mindsos_admin`` imports nothing from
+``mindsos_cli`` or ``mindsos_server`` (latter didn't exist at
+Phase 15a — parametrised over a forbidden-roots list per
+ADR-0010-pre-Phase-24).
 
-``mindsos_core`` and ``mindsos_knowledge`` are NOT forbidden —
-downward imports from admin → L2 → L1 are permitted per ADR-0010 and
-expected per Phase 15a PB-14 (importers auto-ensure their target
-role-graph via `mindsos_knowledge.bootstrap.ensure_global_role_graph`).
+**Revised at Phase 24 (Round 0 PB-Z22 / ADR-0010 §amendment-1):**
+admin is a server-side curation toolkit, not a domain layer. It USES
+server infrastructure (admin_tx + authz + audit + Session +
+capabilities). The Phase 24 ``mindsos_admin/promotion.py`` +
+``mindsos_admin/audit_gate.py`` legitimately import from
+``mindsos_server.*`` per the revised DAG rule. Phase 24's
+``tests/phase_24/test_import_isolation_phase24.py`` is the canonical
+enforcer of the post-Z22 contract.
+
+This Phase 15a test is RELAXED at Phase 24 ship: ``mindsos_cli`` is
+still forbidden (admin must not reach into CLI presentation); but
+``mindsos_server`` is no longer forbidden (post-Z22).
 """
 
 from __future__ import annotations
@@ -20,7 +29,9 @@ import pytest
 import mindsos_admin
 
 
-_FORBIDDEN_ROOTS = ("mindsos_cli", "mindsos_server")
+# Post-Z22 — mindsos_server removed from the forbidden-roots list
+# (admin → server is ALLOWED per ADR-0010 §am1 revised).
+_FORBIDDEN_ROOTS = ("mindsos_cli",)
 
 
 def _iter_admin_py_files() -> list[str]:
