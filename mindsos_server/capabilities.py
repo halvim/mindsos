@@ -61,14 +61,32 @@ CAN_VIEW_AUDIT_LOG = "CAN_VIEW_AUDIT_LOG"
 #: by design — see ADR-0012.
 CAN_MANAGE_USERS = "CAN_MANAGE_USERS"
 
+#: Invoke ``mindsos_admin.propose_for_promotion()`` per ADR-0118 +
+#: ADR-0141 §am1. Phase 24 first consumer (declared + first consumer
+#: same phase per ADR-0002 §am2). Required to write a row to
+#: ``pending_mutations`` + the parallel FalkorDB ``mindsos_pending_
+#: global_<role>`` graph.
+CAN_PROPOSE_MUTATION = "CAN_PROPOSE_MUTATION"
+
+#: Invoke ``mindsos_server.release_update()`` per ADR-0118 + ADR-0115.
+#: Phase 24 first consumer (declared + first consumer same phase per
+#: ADR-0002 §am2). At v1 semantic = "can ship a release" (no separate
+#: approve step; ADR-0118 §Tradeoffs override-path-is-v2). v2 quorum-
+#: approve extends semantic to actual approve-vs-ship distinction; cap
+#: name forward-compatible without rename.
+CAN_APPROVE_RELEASE = "CAN_APPROVE_RELEASE"
+
 
 #: User default capability bundle — strictly empty in v1 per ADR-0002 +
 #: Phase 18 PB-12. Reserved for future per-user grants; Proposed-status
-#: caps from ADR-0118 / ADR-0137 add to this set at their Accept-flip
-#: phase, not before.
+#: caps from ADR-0137 add to this set at their Accept-flip phase, not
+#: before.
 USER_CAPS: frozenset[str] = frozenset()
 
-#: Admin default capability bundle — all seven per ADR-0002 §Decision.
+#: Admin default capability bundle — all nine per ADR-0002 §Decision +
+#: §am2 (Phase 24 ship; +CAN_PROPOSE_MUTATION + CAN_APPROVE_RELEASE
+#: per PB-23(a)). ``CAN_READ_PENDING_GLOBAL`` deferred to first direct-
+#: read consumer phase per PB-23(a).
 ADMIN_CAPS: frozenset[str] = frozenset(
     {
         CAN_READ_OTHER_LOCALS,
@@ -78,6 +96,8 @@ ADMIN_CAPS: frozenset[str] = frozenset(
         CAN_KILL_SESSION,
         CAN_VIEW_AUDIT_LOG,
         CAN_MANAGE_USERS,
+        CAN_PROPOSE_MUTATION,
+        CAN_APPROVE_RELEASE,
     }
 )
 
@@ -94,4 +114,6 @@ ALL_CAPABILITIES: tuple[str, ...] = (
     CAN_KILL_SESSION,
     CAN_VIEW_AUDIT_LOG,
     CAN_MANAGE_USERS,
+    CAN_PROPOSE_MUTATION,
+    CAN_APPROVE_RELEASE,
 )

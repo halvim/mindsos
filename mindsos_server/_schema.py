@@ -37,8 +37,13 @@ import sqlite3
 #: 19 = 2 (adds sessions per PB-10); Phase 21 = 3 (adds idx_audit_target
 #: per PB-7 — separate ``target=`` filter kwarg in
 #: :func:`mindsos_server.admin.admin_query_audit` made ``WHERE
-#: target_user = ?`` a first-class query shape per ADR-0013 §am2).
-_SCHEMA_VERSION: int = 3
+#: target_user = ?`` a first-class query shape per ADR-0013 §am2);
+#: Phase 24 = 4 (adds ``releases`` + ``pending_mutations`` tables per
+#: ADR-0114 §1+§2+§am3 for admin-direct ATOM promotion + release
+#: lifecycle; CHECK constraints enforce v1 narrow scope —
+#: ``mutation_type IN ('PROMOTION')`` + ``status IN ('SHIPPED',
+#: 'FAILED')``).
+_SCHEMA_VERSION: int = 4
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +207,137 @@ _DDL_SESSIONS_INDEXES = [
 
 
 # ---------------------------------------------------------------------------
+# DDL — schema v4 (Phase 24) — ADR-0114 + §am3
+# ---------------------------------------------------------------------------
+
+#: ``releases`` table per ADR-0114 §2 + §am3.
+#:
+#: Single SQLite table recording release-ship lifecycle records.
+#: ``status`` CHECK constraint enforces v1 narrow scope (``SHIPPED`` +
+#: ``FAILED`` only per Phase 24 design log PB-10(a); v2 quorum-approve
+#: lifecycle states extend via forward-only migration).
+#:
+#: Columns:
+#:
+#: * ``release_id`` — INTEGER PK AUTOINCREMENT. Monotonic non-reused
+#:   per ADR-0114 §Rationale. Referenced by
+#:   ``pending_mutations.shipped_in_release`` +
+#:   ``releases.parent_release_id`` + ``manifest_json.parent_release_
+#:   id`` cross-references.
+#: * ``parent_release_id`` — INTEGER NULL FK to releases. Populated at
+#:   SHIPPED by ``SELECT MAX(release_id) FROM releases WHERE status =
+#:   'SHIPPED'`` immediately before INSERT (Phase 24 design log PB-
+#:   17(a) — full table shape at introducing phase). FAILED rows do
+#:   NOT become parents (no canonical state was committed).
+#: * ``proposer_admin_user_id`` — TEXT NOT NULL FK to users. Who
+#:   invoked release_update. v1 semantic differs from v2 quorum-
+#:   approve; ADR-0114 §Consequences documents.
+#: * ``approver_admin_user_ids_json`` — TEXT NULL. Reserved for v2
+#:   quorum-approve. Always NULL at v1; column ships at v4 to avoid
+#:   later ALTER (ADR-0114 §Consequences).
+#: * ``proposed_at`` — TEXT ISO-8601 UTC ms.
+#: * ``shipped_at`` — TEXT NULL ISO-8601 UTC ms; populated when
+#:   ``status = 'SHIPPED'``.
+#: * ``failed_at`` — TEXT NULL ISO-8601 UTC ms; populated when
+#:   ``status = 'FAILED'``.
+#: * ``manifest_json`` — TEXT NOT NULL. Two shapes (SHIPPED + FAILED)
+#:   per ADR-0114 §3 + §am3 (PB-Z7(a) FAILED extension adds
+#:   ``failed_release_canonical_node_ids``).
+#: * ``audit_event_id`` — INTEGER NOT NULL FK to audit. The
+#:   ``EVT_RELEASE_SHIPPED`` or ``EVT_RELEASE_FAILED`` row.
+#: * ``status`` — TEXT NOT NULL CHECK (``'SHIPPED'`` | ``'FAILED'``).
+#:
+#: ``shipped_at`` XOR ``failed_at`` is enforced in code (release_update
+#: write logic) + test (``tests/phase_24/test_releases_schema.py``),
+#: not at schema level (SQLite multi-column CHECK is messy).
+_DDL_RELEASES = """
+CREATE TABLE IF NOT EXISTS releases (
+    release_id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_release_id             INTEGER NULL,
+    proposer_admin_user_id        TEXT NOT NULL,
+    approver_admin_user_ids_json  TEXT NULL,
+    proposed_at                   TEXT NOT NULL,
+    shipped_at                    TEXT NULL,
+    failed_at                     TEXT NULL,
+    manifest_json                 TEXT NOT NULL,
+    audit_event_id                INTEGER NOT NULL,
+    status                        TEXT NOT NULL CHECK (status IN ('SHIPPED', 'FAILED')),
+    FOREIGN KEY (parent_release_id)      REFERENCES releases (release_id),
+    FOREIGN KEY (proposer_admin_user_id) REFERENCES users (user_id),
+    FOREIGN KEY (audit_event_id)         REFERENCES audit (id)
+)
+"""
+
+#: Indexes on releases table per ADR-0114 §2.
+_DDL_RELEASES_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_releases_status_shipped_at "
+    "ON releases (status, shipped_at)",
+    "CREATE INDEX IF NOT EXISTS idx_releases_parent "
+    "ON releases (parent_release_id)",
+]
+
+#: ``pending_mutations`` table per ADR-0114 §1.
+#:
+#: Tracks per-propose mutations awaiting release ship.
+#:
+#: Columns:
+#:
+#: * ``mutation_id`` — INTEGER PK AUTOINCREMENT. Append-order from
+#:   AUTOINCREMENT IS the snapshot order per
+#:   ``manifest_json.included_mutation_ids`` (ADR-0056 supersession at
+#:   Phase 24 ship per PB-Z6(c) + ADR-0114 §am3 clause 5).
+#: * ``proposer_admin_user_id`` — TEXT NOT NULL FK to users.
+#: * ``source_user_id`` — TEXT NULL. NULL at v1 (admin-direct only;
+#:   source-user-Local path defers to P25). Phase 25 populates.
+#: * ``proposed_at`` — TEXT ISO-8601 UTC ms.
+#: * ``mutation_type`` — TEXT NOT NULL CHECK (``'PROMOTION'`` only at
+#:   v1). PIVOT §7.5's ``'EDGE_ADD'`` / ``'EDGE_DEPRECATE'`` extend at
+#:   their consumer phase via forward-only ALTER CHECK (Phase 18 PB-28
+#:   ``actor_role`` CHECK pattern).
+#: * ``payload_json`` — TEXT NOT NULL. Serialized PromotionItem
+#:   (NodeSpec + target_role + kind). Source of node_id extraction
+#:   for the after-all-roles-clear DELETE template (PB-Z20(a) +
+#:   ADR-0114 §am3 clause 3).
+#: * ``audit_event_id`` — INTEGER NOT NULL FK to audit. The
+#:   ``EVT_PROMOTION_PROPOSED`` row.
+#: * ``frozen_user_local_node_id`` — TEXT NULL. v1 always NULL
+#:   (no source-user path). Phase 25 populates.
+#: * ``shipped_in_release`` — INTEGER NULL FK to releases. NULL while
+#:   pending; set at SHIP. The natural pending predicate per PB-26(b)
+#:   audit-gate-snapshot pattern.
+_DDL_PENDING_MUTATIONS = """
+CREATE TABLE IF NOT EXISTS pending_mutations (
+    mutation_id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    proposer_admin_user_id     TEXT NOT NULL,
+    source_user_id             TEXT NULL,
+    proposed_at                TEXT NOT NULL,
+    mutation_type              TEXT NOT NULL CHECK (mutation_type IN ('PROMOTION')),
+    payload_json               TEXT NOT NULL,
+    audit_event_id             INTEGER NOT NULL,
+    frozen_user_local_node_id  TEXT NULL,
+    shipped_in_release         INTEGER NULL,
+    FOREIGN KEY (proposer_admin_user_id) REFERENCES users (user_id),
+    FOREIGN KEY (audit_event_id)         REFERENCES audit (id),
+    FOREIGN KEY (shipped_in_release)     REFERENCES releases (release_id)
+)
+"""
+
+#: Partial indexes on pending_mutations per ADR-0114 §1.
+#:
+#: ``idx_pending_mutations_unshipped`` is the hot-path index — supports
+#: the PB-26(b) ``WHERE shipped_in_release IS NULL`` audit-gate-
+#: snapshot SELECT in O(pending) not O(history).
+_DDL_PENDING_MUTATIONS_INDEXES = [
+    "CREATE INDEX IF NOT EXISTS idx_pending_mutations_unshipped "
+    "ON pending_mutations (shipped_in_release) "
+    "WHERE shipped_in_release IS NULL",
+    "CREATE INDEX IF NOT EXISTS idx_pending_mutations_by_release "
+    "ON pending_mutations (shipped_in_release) "
+    "WHERE shipped_in_release IS NOT NULL",
+]
+
+
+# ---------------------------------------------------------------------------
 # Migration framework
 # ---------------------------------------------------------------------------
 
@@ -270,6 +406,31 @@ def init_or_migrate(conn: sqlite3.Connection) -> int:
         _write_version(conn, 3)
         conn.commit()
         current = 3
+
+    # v3 → v4: ship the Phase 24 ``releases`` + ``pending_mutations``
+    # tables per ADR-0114 §1+§2+§am3.
+    #
+    # DDL ordering matters: ``releases`` ships FIRST because
+    # ``pending_mutations.shipped_in_release`` FKs to
+    # ``releases.release_id`` (ADR-0114 §4). PRAGMA foreign_keys=ON
+    # (set in :func:`mindsos_server._db.open_db`) enforces this on
+    # subsequent INSERTs but the CREATE TABLE itself parses the FK
+    # syntactically — order matters for cleanliness.
+    #
+    # No data migration needed — both tables start empty; existing
+    # users + audit + sessions rows are untouched.
+    if current < 4:
+        # Step 1: releases (PK + FK target for pending_mutations).
+        conn.execute(_DDL_RELEASES)
+        for index_ddl in _DDL_RELEASES_INDEXES:
+            conn.execute(index_ddl)
+        # Step 2: pending_mutations (FKs releases).
+        conn.execute(_DDL_PENDING_MUTATIONS)
+        for index_ddl in _DDL_PENDING_MUTATIONS_INDEXES:
+            conn.execute(index_ddl)
+        _write_version(conn, 4)
+        conn.commit()
+        current = 4
 
     return current
 

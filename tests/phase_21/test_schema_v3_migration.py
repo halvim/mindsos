@@ -25,17 +25,20 @@ from mindsos_server._schema import (
 
 
 class TestSchemaVersion:
-    def test_schema_version_constant_is_3(self) -> None:
-        assert _SCHEMA_VERSION == 3
+    def test_schema_version_constant_is_current(self) -> None:
+        # Phase 21 shipped v3; Phase 24 bumped to v4 (pending_mutations +
+        # releases). init_or_migrate always migrates to the current
+        # ``_SCHEMA_VERSION`` constant.
+        assert _SCHEMA_VERSION == 4
 
-    def test_fresh_install_lands_at_v3(self, tmp_server_db_path) -> None:
+    def test_fresh_install_lands_at_current(self, tmp_server_db_path) -> None:
         with open_db(tmp_server_db_path) as conn:
             init_or_migrate(conn)
             row = conn.execute(
                 "SELECT version FROM schema_version WHERE key = ?",
                 ("schema_version",),
             ).fetchone()
-            assert int(row[0]) == 3
+            assert int(row[0]) == 4
 
 
 class TestIdxAuditTarget:
@@ -87,7 +90,7 @@ class TestIdempotency:
                 "SELECT version FROM schema_version WHERE key = ?",
                 ("schema_version",),
             ).fetchone()
-            assert int(row[0]) == 3
+            assert int(row[0]) == 4
 
     def test_index_creation_idempotent(
         self, tmp_server_db
@@ -123,14 +126,15 @@ class TestMigrationFromV2:
             )
             conn.commit()
 
-        # Now reopen + migrate. Should go v2→v3, recreate the index.
+        # Now reopen + migrate. Should go v2→v3→v4 (recreates the
+        # idx_audit_target AND ships the Phase 24 tables).
         with open_db(tmp_server_db_path) as conn:
             init_or_migrate(conn)
             row = conn.execute(
                 "SELECT version FROM schema_version WHERE key = ?",
                 ("schema_version",),
             ).fetchone()
-            assert int(row[0]) == 3
+            assert int(row[0]) == 4
 
             idx_rows = conn.execute(
                 "SELECT name FROM sqlite_master "

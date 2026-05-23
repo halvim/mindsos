@@ -92,6 +92,22 @@ from mindsos_server._token_storage import (
     token_source_description,
     write_token,
 )
+from mindsos_admin import (
+    NodeSpec,
+    PromotionItem,
+    PromotionItemKind,
+    PromotionProposal,
+    bootstrap_global,
+    bootstrap_pending_global,
+    propose_for_promotion,
+    rehydrate_global_metagraphs,
+)
+from mindsos_admin.exceptions import (
+    AdminError,
+    BlockingFindingError,
+    EmptyComparisonError,
+    EmptyReleaseError,
+)
 from mindsos_server.admin import (
     AuditRow,
     admin_demote_user,
@@ -103,6 +119,7 @@ from mindsos_server.admin import (
     hard_delete_user,
     reset_admin,
 )
+from mindsos_server.release import release_update
 from mindsos_server.errors import (
     AlreadyAnAdminError,
     AlreadyLoggedInError,
@@ -159,6 +176,24 @@ admin_app = typer.Typer(
         "Admin user-management verbs (Phase 22). Six destructive ops "
         "gated on CAN_MANAGE_USERS / CAN_KILL_SESSION / "
         "CAN_HARD_DELETE_ARCHIVED via _require_or_audit."
+    ),
+    no_args_is_help=True,
+    add_completion=False,
+)
+
+# Phase 24 PB-14(b) — release subgroup for the two release-lifecycle
+# verbs (propose-for-promotion + ship). Semantic separation from the
+# user-management ``admin`` subgroup (Phase 22) — these are admin-only
+# but release-lifecycle, not user-lifecycle. Future v2 verbs (approve /
+# withdraw / reject) cluster here without namespace refactor.
+release_app = typer.Typer(
+    name="release",
+    help=(
+        "Admin release-lifecycle verbs (Phase 24). Two ops at v1: "
+        "propose-for-promotion (write to pending_global) + ship "
+        "(audit gate + canonical promotion). Gated on "
+        "CAN_PROPOSE_MUTATION + CAN_APPROVE_RELEASE via "
+        "_require_or_audit."
     ),
     no_args_is_help=True,
     add_completion=False,
@@ -1373,11 +1408,232 @@ def admin_hard_delete_user_cmd(
 
 
 # ---------------------------------------------------------------------------
-# Wire user_app + admin_app onto server_app + register_server_app for app.py
+# Phase 24 — release subgroup verbs (PB-14(b) + Z21(b) + Z22)
+# ---------------------------------------------------------------------------
+
+
+def _release_exit_for(exc: Exception) -> int:
+    """Map a Phase 24-shipped exception to its CLI exit code per PB-14(b).
+
+    Extends the Phase 22 ``_admin_exit_for`` codes 1-6 with 7-8 for
+    Phase 24's two new error classes:
+
+    * 7 — :class:`EmptyReleaseError` (PB-21(a))
+    * 8 — :class:`BlockingFindingError` (PB-20(c); also catches
+      EmptyComparisonError-promoted-to-BlockingFindingError per
+      Z16(a) chained-cause)
+
+    Preserves Phase 21+22 baselines (PermissionDeniedError → 3 etc.).
+    """
+    if isinstance(exc, PermissionDeniedError):
+        return 3
+    if isinstance(exc, EmptyReleaseError):
+        return 7
+    if isinstance(exc, BlockingFindingError):
+        return 8
+    if isinstance(exc, (EmptyComparisonError, AdminError, ValueError)):
+        return 2
+    return 1  # pragma: no cover — defensive
+
+
+def _build_global_metagraphs(conn):
+    """Build + rehydrate canonical + pending Metagraphs for a CLI invocation.
+
+    Per Z21(b) — Phase 24 v1 is SQLite + in-memory; the
+    pending_mutations.payload_json ledger is rehydrated into in-memory
+    Metagraphs at each CLI invocation per Z21.1. Both canonical (rows
+    where shipped_in_release IS NOT NULL) and pending (rows where
+    shipped_in_release IS NULL) are repopulated.
+
+    Returns ``(canonical_global_mg, pending_global_mg)``.
+    """
+    canonical_mg = bootstrap_global(importers=())
+    pending_mg = bootstrap_pending_global(canonical_mg)
+    rehydrate_global_metagraphs(conn, canonical_mg, pending_mg)
+    return canonical_mg, pending_mg
+
+
+@release_app.command(name="propose-for-promotion")
+def release_propose_for_promotion_cmd(
+    input_json: Optional[str] = typer.Option(
+        None,
+        "--input-json",
+        help=(
+            "Path to a JSON file containing a serialized "
+            "PromotionProposal. Schema: "
+            '{"reason": "str", "items": [{"kind": "ATOM", '
+            '"node": {"node_type": "...", "value": ..., '
+            '"properties": {...}, "target_role": "..."}}]}. '
+            "Pass ``-`` to read from stdin."
+        ),
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Add a batch of pending mutations (admin-direct ATOM only at v1).
+
+    Per ADR-0118 + ADR-0141 §am1 + Phase 24 design log PB-3(a) +
+    PB-11(a) + PB-23(a). Gated on ``CAN_PROPOSE_MUTATION`` via
+    ``_require_or_audit``. Source-user path raises
+    NotImplementedError (Phase 25). STRUCTURE/SUBGRAPH/PIPELINE
+    raise NotImplementedError (post-substrate phases).
+
+    Exit codes per Z14:
+
+    * 0 — propose succeeded.
+    * 1 — generic error.
+    * 2 — ValueError (empty proposal / malformed payload).
+    * 3 — PermissionDeniedError (missing CAN_PROPOSE_MUTATION).
+    """
+    if input_json is None:
+        typer.echo(
+            "error: --input-json is required (use ``-`` for stdin).",
+            err=True,
+        )
+        raise typer.Exit(code=2)
+
+    # Read proposal JSON (stdin OR file).
+    if input_json == "-":
+        raw = sys.stdin.read()
+    else:
+        try:
+            with open(input_json, "r", encoding="utf-8") as fh:
+                raw = fh.read()
+        except OSError as exc:
+            typer.echo(f"error: cannot read --input-json: {exc}", err=True)
+            raise typer.Exit(code=2) from exc
+
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        typer.echo(f"error: --input-json is not valid JSON: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    # Construct PromotionProposal from JSON.
+    try:
+        items = []
+        for raw_item in payload.get("items", []):
+            kind_str = raw_item.get("kind", "ATOM")
+            kind = PromotionItemKind(kind_str)
+            node_payload = raw_item.get("node")
+            node = NodeSpec.from_payload_dict(node_payload) if node_payload else None
+            items.append(
+                PromotionItem(
+                    kind=kind,
+                    node=node,
+                    source_user_id=raw_item.get("source_user_id"),
+                )
+            )
+        proposal = PromotionProposal(
+            items=items,
+            reason=payload.get("reason", ""),
+        )
+    except (KeyError, ValueError) as exc:
+        typer.echo(f"error: malformed proposal JSON: {exc}", err=True)
+        raise typer.Exit(code=2) from exc
+
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        _, pending_mg = _build_global_metagraphs(conn)
+        try:
+            result = propose_for_promotion(
+                conn,
+                session=session,  # type: ignore[arg-type]
+                proposal=proposal,
+                pending_global_mg=pending_mg,
+            )
+        except (PermissionDeniedError, NotImplementedError, ValueError) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_release_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "verb": "release_propose_for_promotion",
+                    "mutation_ids": list(result.mutation_ids),
+                    "audit_event_id": result.audit_event_id,
+                    "proposed_at": result.proposed_at,
+                }
+            )
+        )
+    else:
+        typer.echo(
+            f"proposed mutation_ids={list(result.mutation_ids)} "
+            f"audit_event_id={result.audit_event_id} "
+            f"proposed_at={result.proposed_at}"
+        )
+
+
+@release_app.command(name="ship")
+def release_ship_cmd(
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """Ship all unshipped pending mutations into canonical (release_update).
+
+    Per ADR-0118 §"Decision" §2 + ADR-0114 + ADR-0115 + Phase 24
+    design log §1 + Round 0. Gated on ``CAN_APPROVE_RELEASE`` via
+    ``_require_or_audit``.
+
+    Exit codes per Z14:
+
+    * 0 — release SHIPPED.
+    * 3 — PermissionDeniedError.
+    * 7 — EmptyReleaseError (PB-21(a) — no unshipped pending).
+    * 8 — BlockingFindingError (PB-20(c) — audit gate found ≥1
+      blocking finding; FAILED row written; admin amends pending
+      content + reruns).
+    """
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        canonical_mg, pending_mg = _build_global_metagraphs(conn)
+        try:
+            result = release_update(
+                conn,
+                session=session,  # type: ignore[arg-type]
+                canonical_global_mg=canonical_mg,
+                pending_global_mg=pending_mg,
+            )
+        except (
+            PermissionDeniedError,
+            EmptyReleaseError,
+            BlockingFindingError,
+            EmptyComparisonError,
+        ) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_release_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "verb": "release_ship",
+                    "release_id": result.release_id,
+                    "status": result.status,
+                    "mutations_shipped_count": result.mutations_shipped_count,
+                    "roles_affected": list(result.roles_affected),
+                    "audit_event_id": result.audit_event_id,
+                    "parent_release_id": result.parent_release_id,
+                    "error_class": result.error_class,
+                }
+            )
+        )
+    else:
+        typer.echo(
+            f"release_id={result.release_id} status={result.status} "
+            f"mutations_shipped_count={result.mutations_shipped_count} "
+            f"roles_affected={list(result.roles_affected)}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Wire user_app + admin_app + release_app onto server_app
 # ---------------------------------------------------------------------------
 
 server_app.add_typer(user_app, name="user")
 server_app.add_typer(admin_app, name="admin")
+server_app.add_typer(release_app, name="release")
 
 
 def register_server_app(parent: typer.Typer) -> None:

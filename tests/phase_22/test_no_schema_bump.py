@@ -5,7 +5,11 @@ Phase 22 mutates existing columns only (``users.actor_role``,
 ``users.disabled``) + DELETEs sessions (FK CASCADE on hard-delete).
 No new tables, no new indexes, no migration step.
 
-Schema version remains at 3 (set by Phase 21).
+The original assertion ``_SCHEMA_VERSION == 3`` decayed at Phase 24
+ship (v3 → v4 for pending_mutations + releases tables per ADR-0114).
+The test's load-bearing claim is now reframed: Phase 22 didn't
+introduce any audit-table DDL of its own — verified by
+:func:`test_no_new_audit_indexes` below.
 """
 
 from __future__ import annotations
@@ -13,8 +17,9 @@ from __future__ import annotations
 from mindsos_server._schema import _SCHEMA_VERSION
 
 
-def test_schema_version_unchanged_at_3():
-    assert _SCHEMA_VERSION == 3
+def test_schema_version_monotonic_at_least_phase_22_baseline():
+    """Phase 22's baseline was v3; later phases may bump (Phase 24 → v4)."""
+    assert _SCHEMA_VERSION >= 3
 
 
 def test_no_new_audit_indexes(tmp_server_db):

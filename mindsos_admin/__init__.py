@@ -83,19 +83,46 @@ ADRs honoured at Phase 16:
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase22"
+__version__ = "0.0.0+phase24"
 
+from . import audit_gate
 from ._content_hash import metagraph_content_hash
+from .audit_gate import (
+    AuditGateResult,
+    PendingMutationRow,
+    ReleaseSummary,
+    SimilarityWarning,
+)
 from .bootstrap import (
+    PENDING_GLOBAL_METAGRAPH_NAME,
     ImporterProtocol,
     ImportResult,
     bootstrap_global,
+    bootstrap_pending_global,
 )
-from .exceptions import AdminError, EmptyComparisonError
+from .exceptions import (
+    AdminError,
+    BlockingFindingError,
+    DuplicateProposalError,
+    EmptyComparisonError,
+    EmptyReleaseError,
+    PendingMutationNotFoundError,
+)
 from .importers import (
     DolceImporter,
     FrameNetImporter,
     OewnImporter,
+)
+from .promotion import (
+    NodeSpec,
+    PromotionItem,
+    PromotionItemKind,
+    PromotionProposal,
+    PromotionResult,
+    propose_for_promotion,
+    rehydrate_canonical_global,
+    rehydrate_global_metagraphs,
+    rehydrate_pending_global,
 )
 from .similarity import (
     CandidateRef,
@@ -121,7 +148,28 @@ __all__ = [
     "Finding",
     "SimilarityReport",
     "metagraph_content_hash",
+    # Phase 24 — pending-Global topology + audit gate + promotion.
+    "PENDING_GLOBAL_METAGRAPH_NAME",
+    "bootstrap_pending_global",
+    "audit_gate",
+    "AuditGateResult",
+    "PendingMutationRow",
+    "ReleaseSummary",
+    "SimilarityWarning",
+    "NodeSpec",
+    "PromotionItem",
+    "PromotionItemKind",
+    "PromotionProposal",
+    "PromotionResult",
+    "propose_for_promotion",
+    "rehydrate_pending_global",
+    "rehydrate_canonical_global",
+    "rehydrate_global_metagraphs",
     # Exceptions.
     "AdminError",
     "EmptyComparisonError",
+    "BlockingFindingError",
+    "EmptyReleaseError",
+    "PendingMutationNotFoundError",
+    "DuplicateProposalError",
 ]

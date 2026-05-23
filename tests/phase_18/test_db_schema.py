@@ -24,8 +24,10 @@ class TestSchemaVersion:
     test alongside the bump."""
 
     def test_schema_version_baseline(self) -> None:
-        # Phase 21: bumped 2 → 3 (idx_audit_target addition).
-        assert _SCHEMA_VERSION == 3
+        # Phase 21: bumped 2 → 3 (idx_audit_target).
+        # Phase 24: bumped 3 → 4 (pending_mutations + releases tables
+        # per ADR-0114 §1+§2).
+        assert _SCHEMA_VERSION == 4
 
 
 class TestWalPragma:

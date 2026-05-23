@@ -51,7 +51,17 @@ __all__ = [
     "ImportResult",
     "ImporterProtocol",
     "bootstrap_global",
+    "bootstrap_pending_global",
+    "PENDING_GLOBAL_METAGRAPH_NAME",
 ]
+
+
+#: Canonical name of the pending-Global Metagraph (Phase 24, ADR-0118
+#: + PB-15(a) + Z11(a)). Parallel to ``bootstrap_global``'s default
+#: ``"global_knowledge"``; the ``"pending_"`` prefix distinguishes the
+#: pending buffer from the shipped canonical at FalkorDB metagraph-id
+#: scope.
+PENDING_GLOBAL_METAGRAPH_NAME: str = "pending_global_knowledge"
 
 
 # ── §1 ImportResult ────────────────────────────────────────────────────
@@ -247,3 +257,72 @@ def _resolve_source(source: Union[str, Path, None], *, required: bool = True) ->
 def _utcnow() -> datetime:
     """Convenience: timezone-aware UTC now."""
     return datetime.now(timezone.utc)
+
+
+# ── §5 bootstrap_pending_global (Phase 24, ADR-0118 + PB-15(a) + Z11(a))
+
+
+def bootstrap_pending_global(
+    canonical_mg: Metagraph,
+    *,
+    id_strategy: Optional[IdStrategy] = None,
+) -> Metagraph:
+    """Build the parallel pending-Global :class:`Metagraph`.
+
+    Per Phase 24 design log PB-15(a) (eager pending-Global bootstrap)
+    + PB-Z11(a) (single pending_global Metagraph parallel to
+    canonical) + PB-Z12(b) (reuse ``ensure_global_role_graph`` with
+    pending Metagraph arg).
+
+    The pending Metagraph mirrors the canonical's role-graph topology
+    (same role-set; same schemas via Phase 13 ``schema_for_role``).
+    Per ADR-0118 §"Decision" §1 + ADR-0114 §1, pending serves as the
+    admin-curation buffer that ``propose_for_promotion`` writes into
+    and ``release_update`` copies into canonical (per-role MERGE-on-
+    node_id per Z9(a)).
+
+    Per Z12(b), the existing :func:`mindsos_knowledge.bootstrap.
+    ensure_global_role_graph` helper is reused with the pending
+    Metagraph as the ``metagraph`` arg — no new helper needed,
+    schemas + role-validation logic shared with canonical.
+
+    Per PB-15(a), this function is called **eagerly at install time**
+    alongside ``bootstrap_global`` (admin workflow:
+    ``canonical_mg = bootstrap_global(...); pending_mg =
+    bootstrap_pending_global(canonical_mg)``); deferring to first-
+    propose creates a first-write race + adds test coverage burden.
+
+    The pending Metagraph mirrors canonical's role-set but starts
+    EMPTY (no propose has fired yet); per PB-15(a) "10 empty graphs
+    is negligible."
+
+    Args:
+        canonical_mg: The canonical Global Metagraph built by
+            :func:`bootstrap_global`. Used to determine the role-set
+            to mirror — pending's roles = canonical's roles.
+        id_strategy: Optional :class:`IdStrategy`. Default
+            :class:`UUID4Strategy`. Independent from canonical's id
+            strategy (pending node_ids are minted fresh per propose;
+            preserved through MERGE-on-id into canonical per Z9(a)).
+
+    Returns:
+        A :class:`Metagraph` named :data:`PENDING_GLOBAL_METAGRAPH_NAME`
+        with the same role-graphs as ``canonical_mg``, all empty.
+
+    Raises:
+        KnowledgeError: A canonical role isn't supported by
+            ``ensure_global_role_graph`` (impossible if canonical was
+            built via :func:`bootstrap_global`).
+    """
+    pending_mg = Metagraph(
+        name=PENDING_GLOBAL_METAGRAPH_NAME,
+        id_strategy=id_strategy or UUID4Strategy(),
+    )
+
+    # Mirror canonical's role-graphs. Phase 14 `ensure_global_role_
+    # graph` is idempotent + schema-validating; we re-use the helper
+    # per Z12(b).
+    for graph in canonical_mg.graphs.values():
+        ensure_global_role_graph(pending_mg, graph.role)
+
+    return pending_mg
