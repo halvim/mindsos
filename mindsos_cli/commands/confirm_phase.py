@@ -55,7 +55,13 @@ from mindsos_cli.commands.doctor import _load_manifest, _repo_root
 #: cumulative budget — Phase 11+ may revisit. Tooling guard: if any
 #: future phase nears the 30m wall, evaluate splitting into
 #: ``--skip-tests`` + standalone pytest runs vs another bump.
-_CONFIRM_PHASE_TIMEOUT_SECONDS: int = 1800
+#:
+#: Phase 25 B-25-T4 — cap raised to 2700s (45m). Phase 25 cumulative
+#: docker run measured 30:31 standalone (2903 passed / 28 skipped /
+#: 0 failed). The previous 1800s cap timed out at the boundary
+#: ("TimeoutExpired after 1800 seconds" recorded in PHASE_25_CONFIRMED.md
+#: at first attempt). 45m gives ~50% margin for the trend.
+_CONFIRM_PHASE_TIMEOUT_SECONDS: int = 2700
 
 
 # ---------------------------------------------------------------------------
