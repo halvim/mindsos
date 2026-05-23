@@ -66,6 +66,7 @@ from mindsos_server.capabilities import (
     CAN_HARD_DELETE_ARCHIVED,
     CAN_KILL_SESSION,
     CAN_MANAGE_USERS,
+    CAN_READ_OTHER_LOCALS,
     CAN_VIEW_AUDIT_LOG,
 )
 from mindsos_server.errors import (
@@ -73,8 +74,10 @@ from mindsos_server.errors import (
     LastAdminError,
     NotAnAdminError,
     SessionNotFoundError,
+    UserHasPromotionHistoryError,
     UserNotFoundError,
 )
+from mindsos_server.persistence import LocalPersister
 from mindsos_server.session import Session
 
 
@@ -768,6 +771,17 @@ class HardDeleteUserResult:
     can reconstruct the deleted user's state at delete time without
     needing the user row (which is gone — CASCADE deleted on user
     DELETE per Phase 18 schema FK).
+
+    Phase 25 PB-39 adds ``local_dump_existed`` as the 6th field (PB-R7-01
+    correction — design log §5 omitted the ``ts`` field; the impl
+    appends after ``ts`` to preserve the Phase 22 positional shape for
+    any kwargs-less call sites). The bool denormalizes
+    ``persister.delete``'s return value so the audit reader can tell
+    "user had a Local dump on disk at hard-delete time" from "user
+    had nothing." Always ``False`` at v1 production (the CLI's
+    :class:`InMemoryLocalPersister` is fresh-per-invocation), but
+    forward-shape for the first user-Local-write phase whose
+    SQLitePersister persists across invocations.
     """
 
     target_user_id: str
@@ -775,6 +789,7 @@ class HardDeleteUserResult:
     was_disabled: bool
     sessions_killed: int
     ts: str
+    local_dump_existed: bool
 
 
 # ---------------------------------------------------------------------------
@@ -1264,6 +1279,7 @@ def hard_delete_user(
     session: Session,
     *,
     target_user_id: str,
+    persister: "LocalPersister | None" = None,
 ) -> HardDeleteUserResult:
     """
     Permanently delete a user row; FK CASCADE removes their sessions.
@@ -1279,6 +1295,23 @@ def hard_delete_user(
     strings are now part of the stable API surface; renaming them is
     a breaking change.").
 
+    Phase 25 PB-30 + Phase 24 latent FK gap closure (ADR-0114 §am4):
+    the ``pending_mutations.proposer_admin_user_id`` +
+    ``releases.proposer_admin_user_id`` FKs were declared with no
+    ``ON DELETE`` clause → SQLite default ``NO ACTION``. A delete of
+    an admin with promotion history would bubble a raw IntegrityError;
+    this verb now runs a UNION ALL pre-check and raises
+    :class:`UserHasPromotionHistoryError` first. Recourse is the
+    soft-retire pair (admin-demote + admin-disable).
+
+    Phase 25 PB-39: the ``persister`` kwarg (Optional) lets the CLI
+    pass a :class:`LocalPersister` to wipe the user's Local dump on
+    delete. ``persister.delete(user_id)`` returns ``True`` iff a dump
+    was present; the bool is denormalized into both
+    ``EVT_HARD_DELETE_USER.extra_json[local_dump_existed]`` AND the
+    return-value field. ``None`` is accepted (backward-compat for
+    pre-P25 callers) — in that case ``local_dump_existed=False``.
+
     Pre-conditions (check-first; admin_tx):
 
     1. Caller has ``CAN_HARD_DELETE_ARCHIVED``.
@@ -1288,27 +1321,28 @@ def hard_delete_user(
        them never triggers LastAdminError. Self-delete of the last
        active admin IS allowed if there's another admin (the helper
        gates on count, not on self/other identity).
+    4. **(NEW Phase 25)** UNION ALL across ``pending_mutations`` +
+       ``releases`` keyed on ``proposer_admin_user_id`` → raise
+       :class:`UserHasPromotionHistoryError` if any row references
+       the target.
 
     Order (audit-then-state per R1 PB-11 — capture session_ids before
     CASCADE wipes them):
 
-    1. SELECT actor_role + disabled (for audit extra + sole-admin check).
-    2. _assert_not_sole_admin (conditional on active-admin target).
-    3. SELECT session_ids (for per-session audit emission).
-    4. Emit N× :data:`EVT_KILL_SESSION` (``context = "hard_delete_user"``
-       per R2 PB-14) — written BEFORE the DELETE because CASCADE
-       would otherwise clear sessions before we know their ids.
-    5. Emit 1× :data:`EVT_HARD_DELETE_USER` summary with ``extra =
-       {"prior_role": str, "was_disabled": bool, "sessions_killed": N}``
-       per R2 PB-16.
-    6. ``DELETE FROM users WHERE user_id=?`` — CASCADE auto-deletes
-       sessions rows.
-
-    All audit rows have ``target_user = target_user_id`` (string, no
-    FK); they persist after the DELETE.
+    1. SELECT actor_role + disabled.
+    2. _assert_not_sole_admin (conditional).
+    3. **(NEW)** UNION ALL pre-check.
+    4. SELECT session_ids.
+    5. Emit N× :data:`EVT_KILL_SESSION`.
+    6. **(NEW)** ``persister.delete(target_user_id)`` if persister is
+       not None.
+    7. Emit 1× :data:`EVT_HARD_DELETE_USER` with extra including
+       ``local_dump_existed`` per PB-39.
+    8. ``DELETE FROM users WHERE user_id=?``.
 
     Raises:
-        PermissionDeniedError, UserNotFoundError, LastAdminError.
+        PermissionDeniedError, UserNotFoundError, LastAdminError,
+        UserHasPromotionHistoryError.
     """
     _require_or_audit(
         conn, session, CAN_HARD_DELETE_ARCHIVED, verb="hard_delete_user",
@@ -1327,6 +1361,29 @@ def hard_delete_user(
         # disabled admin doesn't shrink the active-admin count).
         if actor_role == "admin" and not was_disabled:
             _assert_not_sole_admin(conn, target_user_id)
+
+        # Phase 25 PB-30 — UNION ALL pre-check against
+        # pending_mutations + releases. PK column probe confirmed
+        # mutation_id (INTEGER PK) + release_id (INTEGER PK) per
+        # mindsos_server/_schema.py lines 255 + 310.
+        history_rows = conn.execute(
+            """
+            SELECT 'pending' AS kind, mutation_id AS id
+              FROM pending_mutations
+             WHERE proposer_admin_user_id = ?
+            UNION ALL
+            SELECT 'release' AS kind, release_id AS id
+              FROM releases
+             WHERE proposer_admin_user_id = ?
+            """,
+            (target_user_id, target_user_id),
+        ).fetchall()
+        pending_ids = [r[1] for r in history_rows if r[0] == "pending"]
+        release_ids = [r[1] for r in history_rows if r[0] == "release"]
+        if pending_ids or release_ids:
+            raise UserHasPromotionHistoryError(
+                target_user_id, pending_ids, release_ids,
+            )
 
         session_ids = [
             r[0]
@@ -1349,6 +1406,14 @@ def hard_delete_user(
                     "context": "hard_delete_user",
                 },
             )
+
+        # Phase 25 PB-39 — wipe the Local dump (if any) before the
+        # user row goes. InMemoryLocalPersister.delete is atomic;
+        # future SQLitePersister.delete is best-effort.
+        local_dump_existed = False
+        if persister is not None:
+            local_dump_existed = persister.delete(target_user_id)
+
         write_audit(
             conn,
             actor=session.user_id,
@@ -1358,6 +1423,7 @@ def hard_delete_user(
                 "prior_role": actor_role,
                 "was_disabled": was_disabled,
                 "sessions_killed": len(session_ids),
+                "local_dump_existed": local_dump_existed,
             },
         )
 
@@ -1372,4 +1438,132 @@ def hard_delete_user(
         was_disabled=was_disabled,
         sessions_killed=len(session_ids),
         ts=_now_utc_iso(),
+        local_dump_existed=local_dump_existed,
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 25 additions — read_other_local_summary admin diagnostic verb
+# (PB-26 summary-only output + PB-R6-05 cap-check ordering).
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class RoleGraphSummary:
+    """
+    Per-role counts inside a target user's Local Metagraph.
+
+    Phase 25 PB-26 lock — summary-only output, no full content dump.
+    The future SQLite/Falkor persistence phase ships a
+    ``MetagraphDump`` shape that supports detail dumps; the v1
+    admin-diagnostic verb intentionally surfaces counts only.
+    """
+
+    role: str
+    node_count: int
+    edge_count: int
+    hyperedge_count: int
+
+
+@dataclass(frozen=True)
+class ReadOtherLocalSummary:
+    """
+    Return type of :func:`read_other_local_summary`.
+
+    Phase 25 PB-26 lock — per-role counts + xref + intergraph-edge
+    counts. CLI ``read-local`` verb pretty-prints the summary; the
+    ``--json`` flag dumps it via :func:`dataclasses.asdict`.
+    """
+
+    target_user_id: str
+    role_graphs: list[RoleGraphSummary]
+    xref_count: int
+    intergraph_edge_count: int
+
+
+def read_other_local_summary(
+    conn: sqlite3.Connection,
+    session: Session,
+    *,
+    target_user_id: str,
+    persister: "LocalPersister",
+    kl,
+) -> ReadOtherLocalSummary:
+    """
+    Admin diagnostic: summary of ``target_user_id``'s Local Metagraph.
+
+    Phase 25 PB-26 lock — summary-only output (per-role node/edge/
+    hyperedge counts + xref count + intergraph-edge count). Full
+    detail dump defers to the first phase shipping ``MetagraphDump``.
+
+    PB-R6-05 — :func:`_require_or_audit` runs at the TOP, before any
+    state lookup, to prevent target-user-existence leak to non-admin
+    callers (Phase 21 admin_query_audit precedent). The inner
+    :func:`mindsos_server.orchestrator.read_other_local` ctx mgr ALSO
+    performs the cap check — that duplicate at v1 is symmetric with
+    Phase 21 and keeps the ctx mgr safe for future direct callers
+    (promotion orchestrator).
+
+    Args:
+        conn: SQLite connection.
+        session: Caller's session. MUST hold ``CAN_READ_OTHER_LOCALS``.
+        target_user_id: ``user_id`` whose Local summary to compute.
+        persister: :class:`LocalPersister` for dump load.
+        kl: :class:`mindsos_knowledge.KnowledgeLayer` instance.
+
+    Returns:
+        :class:`ReadOtherLocalSummary` with per-role counts.
+
+    Raises:
+        PermissionDeniedError: ``session`` lacks the capability.
+        UserNotFoundError: ``target_user_id`` not in ``users``.
+    """
+    # PB-R6-05 — outer cap check before any state-leaking lookup.
+    _require_or_audit(
+        conn,
+        session,
+        CAN_READ_OTHER_LOCALS,
+        verb="read_other_local_summary",
+    )
+
+    row = conn.execute(
+        "SELECT 1 FROM users WHERE user_id = ?",
+        (target_user_id,),
+    ).fetchone()
+    if row is None:
+        raise UserNotFoundError(target_user_id)
+
+    # Local import to avoid a module-load cycle: orchestrator imports
+    # mindsos_knowledge which imports mindsos_core which is fine, but
+    # importing orchestrator at admin.py module load would cycle if
+    # orchestrator ever needs to import admin-side helpers.
+    from mindsos_server.orchestrator import read_other_local
+
+    with read_other_local(
+        conn,
+        session,
+        target_user_id,
+        persister=persister,
+        kl=kl,
+    ) as mg:
+        # PB-R6-02 — Metagraph has no graphs_by_role attribute;
+        # iterate mg.graphs.values() and read .role per Graph.
+        role_graphs = sorted(
+            (
+                RoleGraphSummary(
+                    role=g.role,
+                    node_count=len(g.nodes),
+                    edge_count=len(g.edges),
+                    hyperedge_count=len(g.hyperedges),
+                )
+                for g in mg.graphs.values()
+                if g.role is not None
+            ),
+            key=lambda rg: rg.role,
+        )
+        return ReadOtherLocalSummary(
+            target_user_id=target_user_id,
+            role_graphs=list(role_graphs),
+            xref_count=len(mg.xrefs),
+            intergraph_edge_count=len(mg.intergraph_edges),
+        )

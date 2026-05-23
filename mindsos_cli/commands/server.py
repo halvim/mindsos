@@ -117,8 +117,10 @@ from mindsos_server.admin import (
     admin_promote_user,
     admin_query_audit,
     hard_delete_user,
+    read_other_local_summary,
     reset_admin,
 )
+from mindsos_server.persistence import InMemoryLocalPersister
 from mindsos_server.release import release_update
 from mindsos_server.errors import (
     AlreadyAnAdminError,
@@ -130,8 +132,10 @@ from mindsos_server.errors import (
     PermissionDeniedError,
     SessionNotFoundError,
     UserAlreadyExistsError,
+    UserHasPromotionHistoryError,
     UserNotFoundError,
 )
+from mindsos_knowledge import KnowledgeLayer
 from mindsos_server.sessions import (
     PRODUCTION_TTL,
     login,
@@ -1070,6 +1074,10 @@ def _admin_exit_for(exc: Exception) -> int:
     Preserves P20 baseline (UserNotFoundError, NotAnAdminError, ValueError
     → 2); P21 baseline (PermissionDeniedError → 3); adds 4/5/6 for the
     three P22-new exception classes.
+
+    Phase 25 PB-30 extension: adds 10 for
+    :class:`UserHasPromotionHistoryError` (the only new exit code at
+    P25 ship per ``PHASE_25_DESIGN_LOG.md`` §5 CLI exit-code roster).
     """
     if isinstance(exc, PermissionDeniedError):
         return 3
@@ -1079,9 +1087,44 @@ def _admin_exit_for(exc: Exception) -> int:
         return 5
     if isinstance(exc, SessionNotFoundError):
         return 6
+    if isinstance(exc, UserHasPromotionHistoryError):
+        return 10
     if isinstance(exc, (UserNotFoundError, NotAnAdminError, ValueError)):
         return 2
     return 1  # pragma: no cover — defensive
+
+
+def _resolve_persister() -> InMemoryLocalPersister:
+    """
+    Construct the v1 :class:`LocalPersister` instance for a CLI
+    invocation.
+
+    Phase 25 v1 ships ``InMemoryLocalPersister`` only — SQLite +
+    Falkor impls defer to the first user-Local-write phase per
+    ADR-0011 §amendment-2. The persister is fresh per CLI invocation
+    (the CLI per-command-process model means no state survives across
+    invocations); this is documented in
+    ``PHASE_25_DESIGN_LOG.md`` §7 (admin diagnostic verb observes
+    always-empty Locals at v1).
+    """
+    return InMemoryLocalPersister()
+
+
+def _resolve_kl() -> KnowledgeLayer:
+    """
+    Construct the v1 :class:`KnowledgeLayer` instance for a CLI
+    invocation.
+
+    Phase 25 v1 ships a fresh :meth:`KnowledgeLayer.bootstrap` per
+    CLI invocation. The bootstrap call auto-ensures the 6 Global
+    named role-graphs (ADR-0042 §amendment-1). Locals are lazy-
+    created on first install via the orchestrator's :func:`_install_for`.
+
+    Future phase (first user-Local-write) will replace this with a
+    persisted-Global-load + persisted-Local-population path; the v1
+    fresh-bootstrap pattern matches the persister's stateless behavior.
+    """
+    return KnowledgeLayer.bootstrap()
 
 
 @admin_app.command(name="promote-user")
@@ -1373,14 +1416,21 @@ def admin_hard_delete_user_cmd(
     with _resolve_and_open() as conn:
         _ensure_migrated(conn)
         session = _resolve_session(conn)
+        # Phase 25 PB-30 + PB-39 — pass persister to wipe the user's
+        # Local dump (if any) on hard-delete.
+        persister = _resolve_persister()
         try:
             result = hard_delete_user(
-                conn, session, target_user_id=target_user_id,
+                conn,
+                session,
+                target_user_id=target_user_id,
+                persister=persister,
             )
         except (
             PermissionDeniedError,
             UserNotFoundError,
             LastAdminError,
+            UserHasPromotionHistoryError,
         ) as exc:
             typer.echo(f"error: {exc}", err=True)
             raise typer.Exit(code=_admin_exit_for(exc)) from exc
@@ -1395,6 +1445,7 @@ def admin_hard_delete_user_cmd(
                     "was_disabled": result.was_disabled,
                     "sessions_killed": result.sessions_killed,
                     "ts": result.ts,
+                    "local_dump_existed": result.local_dump_existed,
                 }
             )
         )
@@ -1403,7 +1454,8 @@ def admin_hard_delete_user_cmd(
             f"verb=hard_delete_user target={result.target_user_id!r} "
             f"prior_role={result.prior_role!r} "
             f"was_disabled={result.was_disabled} "
-            f"sessions_killed={result.sessions_killed}"
+            f"sessions_killed={result.sessions_killed} "
+            f"local_dump_existed={result.local_dump_existed}"
         )
 
 
@@ -1434,6 +1486,91 @@ def _release_exit_for(exc: Exception) -> int:
     if isinstance(exc, (EmptyComparisonError, AdminError, ValueError)):
         return 2
     return 1  # pragma: no cover — defensive
+
+
+# ---------------------------------------------------------------------------
+# Phase 25 — read-local admin diagnostic verb (PB-26 + PB-46 + PB-R6-05)
+# ---------------------------------------------------------------------------
+
+
+@admin_app.command(name="read-local")
+def admin_read_local_cmd(
+    target_user_id: str = typer.Argument(
+        ...,
+        help=(
+            "User whose Local Metagraph to summarize. Admin "
+            "diagnostic per ADR-0008 — refcount-install + transient + "
+            "never-flush-on-teardown (I-S3)."
+        ),
+    ),
+    json_out: bool = typer.Option(False, "--json"),
+) -> None:
+    """
+    Admin diagnostic: summary of target user's Local Metagraph.
+
+    Phase 25 PB-26 lock — summary-only output (per-role node/edge/
+    hyperedge counts + xref + intergraph-edge counts). Full detail
+    dump defers to the first phase shipping ``MetagraphDump``.
+
+    Gated on ``CAN_READ_OTHER_LOCALS`` via
+    :func:`mindsos_server.admin.read_other_local_summary` (which calls
+    :func:`_require_or_audit` at the top per PB-R6-05 — denial path
+    surfaces exit 3 before any target-existence lookup, plugging the
+    Phase 21 user-enumeration leak).
+
+    Exit codes:
+        0 — success
+        1 — generic / not logged in
+        2 — UserNotFoundError (target doesn't exist)
+        3 — PermissionDeniedError (caller lacks CAN_READ_OTHER_LOCALS)
+    """
+    with _resolve_and_open() as conn:
+        _ensure_migrated(conn)
+        session = _resolve_session(conn)
+        persister = _resolve_persister()
+        kl = _resolve_kl()
+        try:
+            summary = read_other_local_summary(
+                conn,
+                session,
+                target_user_id=target_user_id,
+                persister=persister,
+                kl=kl,
+            )
+        except (PermissionDeniedError, UserNotFoundError) as exc:
+            typer.echo(f"error: {exc}", err=True)
+            raise typer.Exit(code=_admin_exit_for(exc)) from exc
+
+    if json_out:
+        typer.echo(
+            json.dumps(
+                {
+                    "target_user_id": summary.target_user_id,
+                    "role_graphs": [
+                        {
+                            "role": rg.role,
+                            "node_count": rg.node_count,
+                            "edge_count": rg.edge_count,
+                            "hyperedge_count": rg.hyperedge_count,
+                        }
+                        for rg in summary.role_graphs
+                    ],
+                    "xref_count": summary.xref_count,
+                    "intergraph_edge_count": summary.intergraph_edge_count,
+                },
+                indent=2,
+            )
+        )
+    else:
+        typer.echo(f"Local for user_id={summary.target_user_id}:")
+        for rg in summary.role_graphs:
+            typer.echo(
+                f"  role={rg.role}: {rg.node_count} nodes, "
+                f"{rg.edge_count} edges, "
+                f"{rg.hyperedge_count} hyperedges"
+            )
+        typer.echo(f"  xrefs: {summary.xref_count}")
+        typer.echo(f"  intergraph_edges: {summary.intergraph_edge_count}")
 
 
 def _build_global_metagraphs(conn):

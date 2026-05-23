@@ -84,9 +84,34 @@ EVT_RESET_ADMIN = "EVT_RESET_ADMIN"
 #: Admin killed a user's session (Phase 22).
 EVT_KILL_SESSION = "EVT_KILL_SESSION"
 
-# Cross-user read events (Phase 22, ADR-0008).
+# Cross-user read events (Phase 18 PB-34 declaration; Phase 25 first
+# consumer per ADR-0008 §amendment-1).
 #: Admin opened an admin-cross-user-read transient install of another
-#: user's Local (Phase 22).
+#: user's Local.
+#:
+#: Declared at Phase 18 PB-34; first fires at Phase 25's
+#: :func:`mindsos_server.orchestrator.read_other_local` ctx mgr.
+#:
+#: ``extra_json`` payload shape (Phase 25 PB-31 lock):
+#:
+#: .. code-block:: python
+#:
+#:     {
+#:         "admin_user_id":                str,             # caller (== actor_user)
+#:         "target_user_id":               str,             # whose Local was installed
+#:         "transient":                    bool,            # always True at v1
+#:         "install_was_existing":         bool,            # always False at v1 production
+#:                                                          # (true only in nested in-process
+#:                                                          # test exercises of bump branch)
+#:         "refcount_after_acquire":       int,             # always 1 at v1 production
+#:         "target_role_graph_node_counts": dict[str, int], # role → node count
+#:     }
+#:
+#: Per ADR-0008 §Consequences "audit MUST outlive subjects" — the row
+#: persists after the install record itself is torn down on
+#: refcount→0. No EVT_CROSS_USER_READ_RELEASE counterpart at v1
+#: (release symmetry is bookkeeping, not audit-worthy; the install
+#: row carries enough state for forensic reconstruction).
 EVT_CROSS_USER_READ_INSTALL = "EVT_CROSS_USER_READ_INSTALL"
 
 # Promotion + release events (Phase 24 — ADR-0118 + ADR-0114 + ADR-0115).
