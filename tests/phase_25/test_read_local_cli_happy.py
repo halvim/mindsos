@@ -40,7 +40,7 @@ def _bootstrap_and_login(runner: CliRunner) -> None:
 
 
 def test_read_local_happy_path_text_output(cli_env) -> None:
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     _bootstrap_and_login(runner)
     # Create the target user via admin verb.
     runner.invoke(
@@ -72,7 +72,7 @@ def test_read_local_happy_path_text_output(cli_env) -> None:
 
 
 def test_read_local_happy_path_json_output(cli_env) -> None:
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     _bootstrap_and_login(runner)
     from mindsos_cli.commands.server import (
         _ensure_migrated,

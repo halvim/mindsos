@@ -23,7 +23,7 @@ def cli_env(tmp_path: Path, monkeypatch) -> Path:
 
 
 def test_admin_targeting_nonexistent_user_exits_2(cli_env) -> None:
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     runner.invoke(
         server_app, ["bootstrap", "admin-caller"], input="adminpw\n",
     )

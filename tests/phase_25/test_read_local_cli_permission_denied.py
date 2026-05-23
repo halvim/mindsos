@@ -50,7 +50,7 @@ def _bootstrap_admin_then_non_admin_login(runner: CliRunner) -> None:
 
 
 def test_non_admin_caller_exits_3(cli_env) -> None:
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     _bootstrap_admin_then_non_admin_login(runner)
     result = runner.invoke(
         server_app, ["admin", "read-local", "alice"],
@@ -63,7 +63,7 @@ def test_non_admin_probing_nonexistent_target_still_exits_3(cli_env) -> None:
     PB-R6-05 — outer cap check runs FIRST, so target-not-found is
     not observable to a non-admin caller. Exit 3, not exit 2.
     """
-    runner = CliRunner(mix_stderr=False)
+    runner = CliRunner()
     _bootstrap_admin_then_non_admin_login(runner)
     result = runner.invoke(
         server_app, ["admin", "read-local", "ghost-user-id"],
