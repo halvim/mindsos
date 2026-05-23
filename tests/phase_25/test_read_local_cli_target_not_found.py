@@ -10,26 +10,37 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from mindsos_cli.commands.server import server_app
+from mindsos_cli.app import app
 
 
 @pytest.fixture()
-def cli_env(tmp_path: Path, monkeypatch) -> Path:
-    home = tmp_path / "home"
-    home.mkdir()
-    monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("MINDSOS_STATE_DIR", str(tmp_path / "state"))
-    return tmp_path
+def runner() -> CliRunner:
+    return CliRunner()
 
 
-def test_admin_targeting_nonexistent_user_exits_2(cli_env) -> None:
-    runner = CliRunner()
-    runner.invoke(
-        server_app, ["bootstrap", "admin-caller"], input="adminpw\n",
+@pytest.fixture()
+def env_setup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, Path]:
+    db_path = tmp_path / "server.db"
+    monkeypatch.setenv("MINDSOS_SERVER_DB", str(db_path))
+    monkeypatch.delenv("MINDSOS_TOKEN", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    return {"db": db_path, "home": tmp_path}
+
+
+def test_admin_targeting_nonexistent_user_exits_2(runner, env_setup) -> None:
+    r = runner.invoke(
+        app, ["server", "bootstrap", "admin"], input="adminpw\n",
     )
-    runner.invoke(server_app, ["login", "admin-caller"], input="adminpw\n")
-    result = runner.invoke(
-        server_app, ["admin", "read-local", "ghost-user-id"],
+    assert r.exit_code == 0, r.output
+    r = runner.invoke(
+        app, ["server", "login", "admin"], input="adminpw\n",
     )
-    assert result.exit_code == 2, (result.stdout, result.stderr)
-    assert "ghost-user-id" in result.stderr
+    assert r.exit_code == 0, r.output
+
+    r = runner.invoke(
+        app, ["server", "admin", "read-local", "ghost-user-id"],
+    )
+    assert r.exit_code == 2, r.output
+    assert "ghost-user-id" in r.output

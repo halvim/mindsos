@@ -1,99 +1,86 @@
 """
 CLI ``mindsos server admin read-local`` happy path.
 
-Uses the CliRunner pattern (Phase 22 precedent). Login → run verb →
-exit 0 + expected summary output.
+Follows the Phase 22 ``test_cli_admin_subgroup.py`` canonical pattern:
+``from mindsos_cli.app import app`` (not ``server_app``); env setup
+via ``MINDSOS_SERVER_DB`` + ``HOME`` + delenv ``MINDSOS_TOKEN``;
+invocation paths use the full subcommand chain.
 """
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 from typer.testing import CliRunner
 
-from mindsos_cli.commands.server import server_app
+from mindsos_cli.app import app
 
 
 @pytest.fixture()
-def cli_env(tmp_path: Path, monkeypatch) -> Path:
-    """Isolate ~/.mindsos to tmp_path so CLI state doesn't bleed."""
-    home = tmp_path / "home"
-    home.mkdir()
-    monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("MINDSOS_STATE_DIR", str(tmp_path / "state"))
-    return tmp_path
+def runner() -> CliRunner:
+    return CliRunner()
 
 
-def _bootstrap_and_login(runner: CliRunner) -> None:
-    """Bootstrap admin + login; idempotent across reruns."""
-    runner.invoke(
-        server_app,
-        ["bootstrap", "admin-caller"],
-        input="adminpw\n",
+@pytest.fixture()
+def env_setup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, Path]:
+    db_path = tmp_path / "server.db"
+    monkeypatch.setenv("MINDSOS_SERVER_DB", str(db_path))
+    monkeypatch.delenv("MINDSOS_TOKEN", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    return {"db": db_path, "home": tmp_path}
+
+
+def _bootstrap_and_login(
+    runner: CliRunner, user_id: str = "admin", password: str = "adminpw",
+) -> None:
+    r = runner.invoke(
+        app, ["server", "bootstrap", user_id], input=f"{password}\n",
     )
-    runner.invoke(
-        server_app,
-        ["login", "admin-caller"],
-        input="adminpw\n",
+    assert r.exit_code == 0, r.output
+    r = runner.invoke(
+        app, ["server", "login", user_id], input=f"{password}\n",
     )
+    assert r.exit_code == 0, r.output
 
 
-def test_read_local_happy_path_text_output(cli_env) -> None:
-    runner = CliRunner()
+def _create_user(
+    runner: CliRunner, user_id: str = "alice", password: str = "alicepw",
+    role: str = "user",
+) -> None:
+    r = runner.invoke(
+        app, ["server", "user", "create", user_id, "--role", role],
+        input=f"{password}\n",
+    )
+    assert r.exit_code == 0, r.output
+
+
+def test_read_local_happy_path_text_output(runner, env_setup) -> None:
     _bootstrap_and_login(runner)
-    # Create the target user via admin verb.
-    runner.invoke(
-        server_app,
-        ["admin", "promote-user", "admin-caller"],  # no-op admin already
-    )
-    # Seed a regular target user.
-    from mindsos_cli.commands.server import (
-        _ensure_migrated,
-        _resolve_and_open,
-    )
-    from mindsos_server._argon2 import _TEST_FAST_PARAMS
-    from mindsos_server.users import insert_user
-    with _resolve_and_open() as conn:
-        _ensure_migrated(conn)
-        insert_user(
-            conn, "alice", "alicepw",
-            actor_role="user", params=_TEST_FAST_PARAMS,
-        )
-        conn.commit()
+    _create_user(runner, "alice", "alicepw", role="user")
 
-    result = runner.invoke(server_app, ["admin", "read-local", "alice"])
-    assert result.exit_code == 0, result.stderr
-    assert "Local for user_id=alice" in result.stdout
-    assert "memories" in result.stdout
-    assert "capacity-state" in result.stdout
-    assert "xrefs: 0" in result.stdout
-    assert "intergraph_edges: 0" in result.stdout
+    r = runner.invoke(app, ["server", "admin", "read-local", "alice"])
+    assert r.exit_code == 0, r.output
+    assert "Local for user_id=alice" in r.output
+    assert "memories" in r.output
+    assert "capacity-state" in r.output
+    assert "xrefs: 0" in r.output
+    assert "intergraph_edges: 0" in r.output
 
 
-def test_read_local_happy_path_json_output(cli_env) -> None:
-    runner = CliRunner()
+def test_read_local_happy_path_json_output(runner, env_setup) -> None:
     _bootstrap_and_login(runner)
-    from mindsos_cli.commands.server import (
-        _ensure_migrated,
-        _resolve_and_open,
-    )
-    from mindsos_server._argon2 import _TEST_FAST_PARAMS
-    from mindsos_server.users import insert_user
-    with _resolve_and_open() as conn:
-        _ensure_migrated(conn)
-        insert_user(
-            conn, "alice", "alicepw",
-            actor_role="user", params=_TEST_FAST_PARAMS,
-        )
-        conn.commit()
+    _create_user(runner, "alice", "alicepw", role="user")
 
-    result = runner.invoke(
-        server_app, ["admin", "read-local", "--json", "alice"],
+    r = runner.invoke(
+        app, ["server", "admin", "read-local", "--json", "alice"],
     )
-    assert result.exit_code == 0, result.stderr
-    import json
-    payload = json.loads(result.stdout)
+    assert r.exit_code == 0, r.output
+    # The JSON payload is the entire stdout (no extra prologue).
+    payload = json.loads(r.output)
     assert payload["target_user_id"] == "alice"
     assert payload["xref_count"] == 0
     assert payload["intergraph_edge_count"] == 0

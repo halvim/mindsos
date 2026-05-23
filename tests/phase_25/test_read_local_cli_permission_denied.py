@@ -13,59 +13,80 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from mindsos_cli.commands.server import server_app
+from mindsos_cli.app import app
 
 
 @pytest.fixture()
-def cli_env(tmp_path: Path, monkeypatch) -> Path:
-    home = tmp_path / "home"
-    home.mkdir()
-    monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("MINDSOS_STATE_DIR", str(tmp_path / "state"))
-    return tmp_path
+def runner() -> CliRunner:
+    return CliRunner()
 
 
-def _bootstrap_admin_then_non_admin_login(runner: CliRunner) -> None:
-    """Bootstrap admin, create regular user 'alice', login as alice."""
-    runner.invoke(
-        server_app, ["bootstrap", "admin-caller"], input="adminpw\n",
+@pytest.fixture()
+def env_setup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, Path]:
+    db_path = tmp_path / "server.db"
+    monkeypatch.setenv("MINDSOS_SERVER_DB", str(db_path))
+    monkeypatch.delenv("MINDSOS_TOKEN", raising=False)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    return {"db": db_path, "home": tmp_path}
+
+
+def _bootstrap_admin(runner: CliRunner) -> None:
+    r = runner.invoke(
+        app, ["server", "bootstrap", "admin"], input="adminpw\n",
     )
-    # First login as admin to create alice; then logout + login alice.
-    runner.invoke(server_app, ["login", "admin-caller"], input="adminpw\n")
-    from mindsos_cli.commands.server import (
-        _ensure_migrated,
-        _resolve_and_open,
+    assert r.exit_code == 0, r.output
+
+
+def _login_as(runner: CliRunner, user_id: str, password: str) -> None:
+    r = runner.invoke(
+        app, ["server", "login", user_id], input=f"{password}\n",
     )
-    from mindsos_server._argon2 import _TEST_FAST_PARAMS
-    from mindsos_server.users import insert_user
-    with _resolve_and_open() as conn:
-        _ensure_migrated(conn)
-        insert_user(
-            conn, "alice", "alicepw",
-            actor_role="user", params=_TEST_FAST_PARAMS,
-        )
-        conn.commit()
-    runner.invoke(server_app, ["logout"])
-    runner.invoke(server_app, ["login", "alice"], input="alicepw\n")
+    assert r.exit_code == 0, r.output
 
 
-def test_non_admin_caller_exits_3(cli_env) -> None:
-    runner = CliRunner()
-    _bootstrap_admin_then_non_admin_login(runner)
-    result = runner.invoke(
-        server_app, ["admin", "read-local", "alice"],
+def _logout(runner: CliRunner) -> None:
+    r = runner.invoke(app, ["server", "logout"])
+    # logout is idempotent — exit 0 on success or already-logged-out.
+    assert r.exit_code in (0, 1), r.output
+
+
+def _create_user_via_admin(
+    runner: CliRunner, user_id: str, password: str,
+) -> None:
+    r = runner.invoke(
+        app, ["server", "user", "create", user_id, "--role", "user"],
+        input=f"{password}\n",
     )
-    assert result.exit_code == 3, (result.stdout, result.stderr)
+    assert r.exit_code == 0, r.output
 
 
-def test_non_admin_probing_nonexistent_target_still_exits_3(cli_env) -> None:
+def test_non_admin_caller_exits_3(runner, env_setup) -> None:
+    _bootstrap_admin(runner)
+    _login_as(runner, "admin", "adminpw")
+    _create_user_via_admin(runner, "alice", "alicepw")
+    _logout(runner)
+    _login_as(runner, "alice", "alicepw")
+
+    r = runner.invoke(app, ["server", "admin", "read-local", "alice"])
+    assert r.exit_code == 3, r.output
+
+
+def test_non_admin_probing_nonexistent_target_still_exits_3(
+    runner, env_setup,
+) -> None:
     """
     PB-R6-05 — outer cap check runs FIRST, so target-not-found is
     not observable to a non-admin caller. Exit 3, not exit 2.
     """
-    runner = CliRunner()
-    _bootstrap_admin_then_non_admin_login(runner)
-    result = runner.invoke(
-        server_app, ["admin", "read-local", "ghost-user-id"],
+    _bootstrap_admin(runner)
+    _login_as(runner, "admin", "adminpw")
+    _create_user_via_admin(runner, "alice", "alicepw")
+    _logout(runner)
+    _login_as(runner, "alice", "alicepw")
+
+    r = runner.invoke(
+        app, ["server", "admin", "read-local", "ghost-user-id"],
     )
-    assert result.exit_code == 3, (result.stdout, result.stderr)
+    assert r.exit_code == 3, r.output
