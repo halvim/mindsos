@@ -12,9 +12,13 @@
 
    Callers outside ``mindsos_server`` should plan to migrate. The class
    itself stays in Core because the deep-copy / mutate-in-place
-   primitive is generic; the *use* is narrowed. Phase 10 design Q lock
-   defers the CI lint rule (``grep MetagraphSnapshot.of outside
-   mindsos_server/``) to Phase 18+.
+   primitive is generic; the *use* is narrowed. CI lint rule (``grep
+   MetagraphSnapshot.of outside mindsos_server/``) rescheduled to
+   Phase 24 alongside ``release_update`` per ADR-0129 §amendment-1
+   (the original Phase 10 design Q "Phase 18+" deferral was silently
+   missed across Phases 18-22; Phase 23 retirement absorbed the
+   reschedule). Runtime DeprecationWarning was retired in the same
+   amendment as vestigial (KL never adopted snapshot in halvim).
 
 Used by the Server Layer to roll an in-memory Metagraph back to a
 pre-release-ship state when a FalkorDB batch write fails mid-commit.
