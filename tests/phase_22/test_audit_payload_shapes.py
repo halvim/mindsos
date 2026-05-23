@@ -87,6 +87,9 @@ class TestEnableUserExtra:
 
 
 class TestHardDeleteUserExtra:
+    # Phase 25 PB-39 + ADR-0013 §am3 — extra_json gains additive
+    # ``local_dump_existed: bool`` key. The default when persister=None
+    # (the Phase 22 call sites which never pass persister) is False.
     def test_active_user(self, seeded_user_with_sessions, admin_session):
         conn, session_ids = seeded_user_with_sessions
         hard_delete_user(conn, admin_session, target_user_id="alice")
@@ -95,6 +98,7 @@ class TestHardDeleteUserExtra:
             "prior_role": "user",
             "was_disabled": False,
             "sessions_killed": len(session_ids),
+            "local_dump_existed": False,
         }
 
     def test_disabled_admin(self, seeded_disabled_admin_extra, admin_session):
@@ -110,4 +114,5 @@ class TestHardDeleteUserExtra:
             "prior_role": "admin",
             "was_disabled": True,
             "sessions_killed": 0,
+            "local_dump_existed": False,
         }
