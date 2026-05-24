@@ -146,7 +146,7 @@ class ReleaseResult:
 
 def release_update(
     conn: sqlite3.Connection,
-    client: Client,
+    client: Optional[Client] = None,
     *,
     session: Session,
     canonical_global_mg: Metagraph,
@@ -215,7 +215,7 @@ def release_update(
 
 def _release_update_locked(
     conn: sqlite3.Connection,
-    client: Client,
+    client: Optional[Client],
     *,
     session: Session,
     canonical_global_mg: Metagraph,
@@ -581,7 +581,7 @@ existing dst with identical props produces no write.
 
 def _copy_role_pending_to_canonical(
     *,
-    client: Client,
+    client: Optional[Client],
     role: str,
     role_rows: list[PendingMutationRow],
     canonical_global_mg: Metagraph,
@@ -656,21 +656,25 @@ def _copy_role_pending_to_canonical(
         # Phase 26a §am3 — release-time FalkorDB MERGE. Per-role
         # independence preserved: MERGE-on-(canonical_mg_id,
         # canonical_graph_id, node_id) is idempotent on rerun.
-        falkor_props: dict[str, Any] = {
-            "value": pending_node.value,
-            "node_type": pending_node.type_name,
-        }
-        for pk, pv in pending_node.properties.items():
-            falkor_props[f"prop_{pk}"] = pv
-        client.run_query(
-            _RELEASE_MERGE_CYPHER,
-            {
-                "node_id": node_id,
-                "canonical_mg_id": canonical_global_mg.metagraph_id,
-                "canonical_graph_id": canonical_graph.graph_id,
-                "props": falkor_props,
-            },
-        )
+        # Per Phase 25 hard_delete_user persister=None precedent,
+        # `client is None` means caller wants in-memory only (Phase
+        # 24 contract); Cypher write opt-in via passing live Client.
+        if client is not None:
+            falkor_props: dict[str, Any] = {
+                "value": pending_node.value,
+                "node_type": pending_node.type_name,
+            }
+            for pk, pv in pending_node.properties.items():
+                falkor_props[f"prop_{pk}"] = pv
+            client.run_query(
+                _RELEASE_MERGE_CYPHER,
+                {
+                    "node_id": node_id,
+                    "canonical_mg_id": canonical_global_mg.metagraph_id,
+                    "canonical_graph_id": canonical_graph.graph_id,
+                    "props": falkor_props,
+                },
+            )
 
         landed.append(node_id)
     return landed

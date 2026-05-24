@@ -211,7 +211,7 @@ class AuditGateResult:
 
 def run(
     admin_session: Session,
-    client: "Client",
+    client: "Client | None" = None,
     *,
     pending_mutations: Sequence[PendingMutationRow],
     canonical_global_mg: Metagraph,

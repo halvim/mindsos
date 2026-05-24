@@ -286,7 +286,7 @@ class PromotionResult:
 
 def propose_for_promotion(
     conn: sqlite3.Connection,
-    client: Client,
+    client: Optional[Client] = None,
     *,
     session: Session,
     proposal: PromotionProposal,
@@ -497,26 +497,26 @@ def propose_for_promotion(
                 # 3c-Falkor (Phase 26a — ADR-0118 §am3). Incremental
                 # MERGE into the single FalkorDB graph; idempotent on
                 # rerun via (metagraph_id, graph_id, node_id) key.
-                # Props include `value` + `node_type` + `properties`;
-                # serialized as a flat dict for Cypher SET.
-                falkor_props: dict[str, Any] = {
-                    "value": item.node.value,
-                    "node_type": item.node.node_type,
-                }
-                # Flatten user-defined properties under prop_ prefix
-                # to avoid collision with key fields. Phase 26a v1
-                # keeps a single namespace; future phases may revisit.
-                for pk, pv in item.node.properties.items():
-                    falkor_props[f"prop_{pk}"] = pv
-                client.run_query(
-                    _PROPOSE_MERGE_CYPHER,
-                    {
-                        "node_id": node_id,
-                        "metagraph_id": pending_global_mg.metagraph_id,
-                        "graph_id": target_graph.graph_id,
-                        "props": falkor_props,
-                    },
-                )
+                # Per Phase 25 hard_delete_user persister=None
+                # precedent, `client is None` means caller wants
+                # SQLite + in-memory only (Phase 24 contract); the
+                # Cypher write is opt-in via passing a live Client.
+                if client is not None:
+                    falkor_props: dict[str, Any] = {
+                        "value": item.node.value,
+                        "node_type": item.node.node_type,
+                    }
+                    for pk, pv in item.node.properties.items():
+                        falkor_props[f"prop_{pk}"] = pv
+                    client.run_query(
+                        _PROPOSE_MERGE_CYPHER,
+                        {
+                            "node_id": node_id,
+                            "metagraph_id": pending_global_mg.metagraph_id,
+                            "graph_id": target_graph.graph_id,
+                            "props": falkor_props,
+                        },
+                    )
 
             # 3d. UPDATE audit row's extra_json with the assigned
             # mutation_ids (couldn't be known at 3a since INSERT order

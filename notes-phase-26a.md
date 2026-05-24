@@ -35,6 +35,7 @@ R7 pre-impl probe surfaced 4 literal-level findings (no structural reversals; R6
 | R7-F2 | exception handling inconsistent in persist() | `_safe_run` wraps anchor only; lines 153/174/195/228 raw `_client.run_query` | wrapper catches `PersistenceError` only at v1; raw driver exceptions surface unchanged; documented as known gap |
 | R7-F3 | ImporterProtocol has `target_roles` not `target_metagraph_id` | importers/__init__.py:13 | CLI envelope (`_run_single_importer`) owns Metagraph; importer mutates; CLI persists |
 | R7-F4 | Importers don't emit audit | grep admin.py + importers/ → only docstring `audit` mentions | step 4 audit-table expectation pinned to "no audit row" per R1-PB-6 (a) |
+| B-26a-T3 §am-impl | Client kwarg optional-with-default | Phase 24 tests fail with `missing positional argument` if `client` is strict-required | Relax to `Optional[Client] = None`; guard Cypher writes on `if client is not None`. Matches Phase 25 `hard_delete_user(persister: LocalPersister \| None = None)` precedent. Phase 26a CLI verbs still pass live Client explicitly; Phase 24 tests omit it and exercise SQLite + in-memory path only. R5-PB-3 (a) "per-CLI fresh client" still holds for the live-client case. |
 
 Plus one no-op:
 
@@ -74,11 +75,10 @@ mindsos server release ship
 
 ## §4 Hotfix ledger
 
-(Populated during ship as needed.)
-
 | ID | Symptom | Fix | Files | Notes |
 |---|---|---|---|---|
-| (none yet) | | | | |
+| B-26a-T2 | `docker compose run --rm mindsos-test pytest tests/` failed 6 doctor/compose tests with `assert 'mindsos:phase26a-prod' in '... mindsos:phase25-prod ...'`. The 9-site version-bump checklist had a 10th site I missed: `docker-compose.yml` has 2 image-tag literals (`prod` + `test`). | `docker-compose.yml` lines 39, 69: `mindsos:phase25-{prod,test}` → `mindsos:phase26a-{prod,test}`. | `docker-compose.yml` | Memory `feedback_phase_baseline_literal_audit.md` extension — add `docker-compose.yml` to the version-bump checklist as 10th site for future phases. |
+| B-26a-T3 | 32 Phase 24 tests failed `TypeError: propose_for_promotion() / release_update() missing 1 required positional argument: 'client'`. Phase 24 tests use SQLite + in-memory only; they don't care about FalkorDB; adding `InMemoryClient()` to satisfy a strict-required signature is mechanical noise. | Make `client` parameter optional with `Optional[Client] = None` default + guard Cypher writes on `if client is not None`. Matches Phase 25 `hard_delete_user(persister: LocalPersister \| None = None)` precedent — backward-compatible additive change; new behavior opt-in via passing live Client. Phase 26a tests still exercise wiring (smoke tests construct + pass `FalkorClient` explicitly). | `mindsos_admin/promotion.py`, `mindsos_server/release.py` (release_update + _release_update_locked + _copy_role_pending_to_canonical), `mindsos_admin/audit_gate.py` | Design log §1 R5-PB-3 (a) said "positional client second-arg"; B-26a-T3 relaxed to "positional client second-arg with None default + opt-in Cypher write." Documentary §am-impl below in §2. ADR-0118 §am3 text uses "positional" wording; reads correctly under both interpretations (positional ≠ required). |
 
 ## §5 Ship checklist progress
 
