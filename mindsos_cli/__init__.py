@@ -39,4 +39,4 @@ Out of scope (Phase 05d):
   → 05d row stub).
 """
 
-__version__ = "0.0.0+phase26a"
+__version__ = "0.0.0+phase26b"

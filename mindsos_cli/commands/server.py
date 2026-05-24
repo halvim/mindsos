@@ -97,10 +97,8 @@ from mindsos_admin import (
     PromotionItem,
     PromotionItemKind,
     PromotionProposal,
-    bootstrap_global,
-    bootstrap_pending_global,
     propose_for_promotion,
-    rehydrate_global_metagraphs,
+    rehydrate_pending_global,
 )
 from mindsos_admin.exceptions import (
     AdminError,
@@ -124,6 +122,7 @@ from mindsos_core.config import FalkorConfig
 from mindsos_core.persistence.client import Client, FalkorClient
 from mindsos_server.persistence import (
     InMemoryLocalPersister,
+    bootstrap_global_pair_from_falkordb,
     bootstrap_kl_from_falkordb,
 )
 from mindsos_server.release import release_update
@@ -1610,20 +1609,37 @@ def admin_read_local_cmd(
         typer.echo(f"  intergraph_edges: {summary.intergraph_edge_count}")
 
 
-def _build_global_metagraphs(conn):
-    """Build + rehydrate canonical + pending Metagraphs for a CLI invocation.
+def _build_global_metagraphs(conn, client):
+    """Build canonical (FalkorDB-loaded) + pending (FalkorDB-loaded
+    anchor + SQLite-rehydrated content) Metagraphs for a CLI invocation.
 
-    Per Z21(b) — Phase 24 v1 is SQLite + in-memory; the
-    pending_mutations.payload_json ledger is rehydrated into in-memory
-    Metagraphs at each CLI invocation per Z21.1. Both canonical (rows
-    where shipped_in_release IS NOT NULL) and pending (rows where
-    shipped_in_release IS NULL) are repopulated.
+    Phase 26b ship per Phase 26b design log R4-PB-2 (a) + R1-PB-1 (b)
+    + R1-PB-4 (a) + ADR-0118 §amendment-4.
 
-    Returns ``(canonical_global_mg, pending_global_mg)``.
+    Closes B-26a-T4 (Phase 26a smoke "Out of scope at 26a" candidate).
+    Canonical Metagraph + pending Metagraph **anchor** load from
+    FalkorDB on every invocation — stable ``metagraph_id`` across
+    CLI invocations. Canonical contained content is FalkorDB-loaded
+    (full reconstruction). Pending contained nodes are SQLite-
+    rehydrated via :func:`rehydrate_pending_global` per Z21.1 (pending
+    content authority stays SQLite per §am4 clause 2; FalkorDB-pending
+    Cypher write from §am3 is forensic-only at Phase 26b).
+
+    Args:
+        conn: SQLite connection on ``server.db``.
+        client: Live :class:`Client` (FalkorClient at production CLI;
+            opened by ``_resolve_client()`` and closed by caller in
+            try/finally per Phase 07 P4 A invariant).
+
+    Returns:
+        ``(canonical_global_mg, pending_global_mg)`` — both
+        :class:`Metagraph` instances; canonical pre-populated with
+        prior-release content; pending pre-populated with prior-
+        unshipped propose content rehydrated from SQLite ledger.
     """
-    canonical_mg = bootstrap_global(importers=())
-    pending_mg = bootstrap_pending_global(canonical_mg)
-    rehydrate_global_metagraphs(conn, canonical_mg, pending_mg)
+    canonical_kl, pending_mg = bootstrap_global_pair_from_falkordb(client)
+    canonical_mg = canonical_kl.global_metagraph()
+    rehydrate_pending_global(conn, pending_mg)
     return canonical_mg, pending_mg
 
 
@@ -1708,9 +1724,12 @@ def release_propose_for_promotion_cmd(
     with _resolve_and_open() as conn:
         _ensure_migrated(conn)
         session = _resolve_session(conn)
-        _, pending_mg = _build_global_metagraphs(conn)
+        # Phase 26b: client opened BEFORE _build_global_metagraphs
+        # so the pair helper can load from FalkorDB. Closed in
+        # try/finally enveloping both helper call + library call.
         client = _resolve_client()
         try:
+            _, pending_mg = _build_global_metagraphs(conn, client)
             result = propose_for_promotion(
                 conn,
                 client,
@@ -1765,9 +1784,12 @@ def release_ship_cmd(
     with _resolve_and_open() as conn:
         _ensure_migrated(conn)
         session = _resolve_session(conn)
-        canonical_mg, pending_mg = _build_global_metagraphs(conn)
+        # Phase 26b: client opened BEFORE _build_global_metagraphs
+        # so the pair helper can load from FalkorDB. Closed in
+        # try/finally enveloping both helper call + library call.
         client = _resolve_client()
         try:
+            canonical_mg, pending_mg = _build_global_metagraphs(conn, client)
             result = release_update(
                 conn,
                 client,

@@ -3512,23 +3512,28 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **ADR delta:** ADR-0118 §am3 (NEW — wiring + corrected Cypher + concurrency caveats); ADR-0010 §am2 (NEW — admin → core ALLOWED); ADR-0123 §am1 (NEW — Metagraph.name index). ADR-0043, 0121, 0114, 0011, 0125 — UNCHANGED.
   **Docs:** none new; admin importer docstring + design log entries.
 
-### Phase 26b — Integration A: L0+L1+L2 end-to-end scripted scenario (over wired substrate)
+### Phase 26b — Integration A: L0+L1+L2 end-to-end scripted scenario (over wired substrate) + B-26a-T4 closure
 
-  **Deps:** 02–26a. **Layer:** cross. **Net-new?** No (composes Phase 26a-wired substrate; pytest harness only).
-  **Scope (Phase 26a design log R1-PB-3 + R0 META-PB-5 + R0 META-PB-2 (a)):**
-    1. Bootstrap server (Phase 20).
-    2. Create user1 + user2 (Phase 18); login user1 and capture token.
-    3. Bootstrap KL Global (Phase 14 + Phase 26a-wired `bootstrap_kl_from_falkordb`).
-    4. Import via custom test-importer fixture (`tests/phase_26a/fixtures/_test_importer.py` per Phase 26a R3-PB-2 (c) — 10-row TSV; exercises the full importer-wiring path).
-    5. Walk role-graph via `MetagraphView`; assert expected counts (Python-side; no CLI verb required).
-    6. `mindsos server admin read-local user2` exercises Phase 25 cross-user-read substrate (R0 META-PB-5 (b)).
-    7. Propose ATOM + release ship sub-scenario per Phase 26a R1-PB-3 (b) — exercises Phase 24's propose/release surface with Phase 26a wiring.
-    8. Logout user1.
-    9. `mindsos server query-audit` — per-step audit expectations table per R0 META-PB-3 (a)+(c); importer step pinned to "no audit" per R1-PB-6 (a) probe-and-pin.
-  **Tests:** `tests/phase_26b/test_integration_a.py` — Python pytest harness; CLI subprocesses where verbs exist (bootstrap, login, user create, admin read-local, propose, release ship, logout, query-audit); Python free-function calls where they don't (KL bootstrap implicit via _resolve_kl, MetagraphView walk). Golden-output diff via raw `assert ==` + normalizer helper (R1-PB-4 (b); no syrupy/snapshot lib).
-  **Pass criterion:** scenario runs deterministically in cumulative `tests/` suite; cumulative wall-clock under 2700s confirm-phase ceiling per Phase 25 B-25-T4 (R0 META-PB-4 (b) — N-second per-test criterion dropped).
-  **Risks:** scope creep — 26b is regression-catching over the 26a-wired substrate; if a scenario step needs a new CLI flag (e.g. `mindsos kl bootstrap`, `mindsos knowledge walk`, `mindsos kl seed-fixture`), it's a deferred CLI verb tracked in PHASE_MAP §38 (Phase 26a R1-PB-5 (b)), NOT a Phase 26b addition.
-  **Docs:** none new; design log + handoff prompt for Phase 27.
+  **Deps:** 02–26a. **Layer:** cross. **Net-new?** Yes — NEW `bootstrap_global_pair_from_falkordb` symmetric pair helper closes B-26a-T4 (ephemeral-metagraph_id gap); MODIFIED `_build_global_metagraphs(conn) → _build_global_metagraphs(conn, client)` body + 2 callsite reorders (client opens BEFORE pair helper). Plus the integration-test harness (new test infrastructure).
+  **Scope (Phase 26b design log R0-R6 picks consolidated; 13 substeps):**
+    1. Bootstrap server admin-caller (Phase 20).
+    1.5. Login admin (R3-PB-2 (a) — admin token captured).
+    2. Create user1 + user2 as admin (Phase 18; 2× EVT_ADMIN_CREATE_USER per R5-F1).
+    3. Login user1; capture user1 token.
+    4. Python-API in-process: import 10-row TSV via test-importer fixture into `concepts` role (R3-PB-1 (a) + R3-PB-6 (c); `tests/phase_26b/fixtures/_test_importer.py` + sibling `_test_importer_data.tsv`).
+    5. Python-API in-process: walk role-graph via `MetagraphView`; assert expected counts.
+    5.5. Python-API in-process: `_seed_user2_local` — install 1-node Local Metagraph for user2 in role `concepts` (R2-PB-3 (a) + R5-F4).
+    6. Python-API in-process: `read_other_local_summary(conn, admin_session, target_user_id=user2, persister, kl)` (R1-PB-2 (a); not a CLI subprocess — Phase 25 InMemoryLocalPersister doesn't survive subprocess boundaries; emits `EVT_CROSS_USER_READ_INSTALL` per R5-F2).
+    7. CLI subprocess: `mindsos server release propose-for-promotion` ATOM Lemma into `lexicon` (R5-F3 payload).
+    7b. CLI subprocess: `mindsos server release ship`.
+    8. CLI subprocess: `mindsos server logout` (user1).
+    9. CLI subprocess: `mindsos server query-audit` — per-step audit-expectations table (R4-PB-4 + R5-F1/F2 corrections; `emits_audit_in_same_call` column per R0-PB-7 (a); `EVT_AUDIT_QUERY` self-emit filtered from result per R0-PB-7 (c)).
+    10. Direct Cypher via `tests/phase_26b/_falkordb_assert.py` helper — fresh-subprocess re-bootstrap; assert canonical `metagraph_id` stable across CLI invocations + node counts match (R0-PB-4 (c) + R1-PB-6 (a)).
+  **Tests:** `tests/phase_26b/test_integration_a.py` — single `test_integration_a` function + 13 substep helpers + `ScenarioState` thread (R3-PB-7 (a)); plus `test_bootstrap_global_pair.py` (~5 unit tests of pair helper); `test_signature_build_global_metagraphs.py` (signature smoke). Golden-output diff via raw `assert ==` + `_normalize.py` 3-regex normalizer (R0-PB-11 (b) + R4-PB-3 (a) — UUID + ISO TS + INT TS field). Scenario-scope conftest cleanup per R2-PB-1 (a) (function-scope FalkorDB cleanup; explicit override of any inherited Phase 26a auto-fixtures).
+  **Pass criterion:** scenario runs deterministically in cumulative `tests/` suite; cumulative wall-clock under 2700s confirm-phase ceiling.
+  **Risks:** scope creep — Phase 26b is regression-catching over 26a-wired substrate + the B-26a-T4 closure; if a scenario step needs a new CLI flag (e.g. `mindsos admin import test-importer`, `mindsos kl status`, `mindsos knowledge walk`, `mindsos kl seed-fixture`), it's a deferred CLI verb tracked in PHASE_MAP §38 per R1-PB-8 (b) + R3-PB-1 (a), NOT a Phase 26b addition.
+  **ADR delta:** ADR-0118 §amendment-4 (NEW — two-store decomposition; canonical Global content authority flips to FalkorDB via `bootstrap_global_pair_from_falkordb`; pending stays SQLite-rehydrated per Z21.1; SQLite remains ship-manifest authority; closes B-26a-T4). ADR-0010, ADR-0123, ADR-0114, ADR-0043, ADR-0121, ADR-0011, ADR-0125 — UNCHANGED (`server → admin` + `admin → core` edges from §am1+§am2 already cover pair-helper imports; no new layer-isolation amendment).
+  **Docs:** none new; design log + notes-phase-26b.md + handoff prompt for Phase 27.
 
 ### Phase 27 — L3 DataStates + capacity primitives
 
