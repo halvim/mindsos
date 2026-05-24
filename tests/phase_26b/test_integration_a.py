@@ -220,8 +220,12 @@ def _step_07_seed_user2_local(state: ScenarioState) -> tuple[
         "test_concept_user2", "Frame", properties={},
     )
 
+    # Per B-26b-T7: `read_other_local_summary` (step 8) internally
+    # installs via the orchestrator's ctx mgr (`_install_for` →
+    # `kl.install_local_metagraph`). Pre-installing here would collide
+    # with `AlreadyInstalledError` at step 8. Persister.save is the
+    # only seed needed — the orchestrator loads from persister + installs.
     persister.save("user2", local_mg)
-    kl.install_local_metagraph("user2", local_mg)
     return state, persister, kl
 
 
