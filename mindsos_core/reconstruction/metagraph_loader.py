@@ -96,6 +96,36 @@ class MetagraphLoader:
 
     # ── public API ─────────────────────────────────────────────────────────
 
+    def find_by_name(self, name: str) -> Optional[str]:
+        """Resolve a Metagraph's ``metagraph_id`` from its ``name`` (Phase 26a).
+
+        Phase 26a (R5-PB-4 (a) + R6-PB-1 (a)). Cheap O(1) lookup
+        backed by the ``Metagraph(name)`` index added at Phase 26a
+        per ADR-0123 §amendment-1.
+
+        Returns ``None`` when no Metagraph with that name exists
+        (first-ever bootstrap path in
+        :func:`mindsos_server.persistence.bootstrap.bootstrap_kl_from_falkordb`).
+
+        Args:
+            name: The Metagraph name to look up (e.g.,
+                ``_GLOBAL_METAGRAPH_NAME`` for the canonical Global).
+
+        Returns:
+            The matched ``metagraph_id`` string, or ``None`` if no
+            Metagraph anchor with that name is present in FalkorDB.
+
+        Raises:
+            PersistenceError: If the lookup query itself fails (driver
+                error). Missing-row is NOT an error; returns ``None``.
+        """
+        query = "MATCH (m:Metagraph {name: $name}) RETURN m.id AS metagraph_id LIMIT 1"
+        result = self._client.run_query(query, {"name": name})
+        first = result.first()
+        if first is None:
+            return None
+        return first["metagraph_id"]
+
     def load(
         self,
         metagraph_id: str,

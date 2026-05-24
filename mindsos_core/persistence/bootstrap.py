@@ -58,9 +58,10 @@ IndexKind = Literal["node", "rel"]
 IndexProp = Union[str, Tuple[str, ...]]
 
 
-#: 18 indexes total: 14 from Phase 07 + 4 :XRef from Phase 09 (M15).
+#: 19 indexes total: 14 from Phase 07 + 4 :XRef from Phase 09 (M15)
+#: + 1 hot-path :Metagraph.name from Phase 26a (ADR-0123 §am1).
 #: Ordering: anchors first, then elements, then instance kinds, then
-#: relationship types, then the hot-path index, then the Phase 09
+#: relationship types, then the hot-path indexes, then the Phase 09
 #: :XRef block.
 DEFAULT_INDEXES: List[Tuple[IndexKind, str, IndexProp]] = [
     # ── 10 node-label id indexes ───────────────────────────────────
@@ -81,8 +82,14 @@ DEFAULT_INDEXES: List[Tuple[IndexKind, str, IndexProp]] = [
     ("rel", "Edge", "id"),
     ("rel", "MetaEdge", "id"),
     ("rel", "IntergraphEdge", "id"),
-    # ── 1 hot-path index per ADR-0123 §2 ──────────────────────────
+    # ── 2 hot-path indexes per ADR-0123 §2 + §am1 ─────────────────
     ("node", "Node", "graph_id"),
+    # Phase 26a (ADR-0123 §am1): `MetagraphLoader.find_by_name(name)`
+    # invoked on every CLI invocation that needs KL via
+    # `bootstrap_kl_from_falkordb`. Index keeps lookup O(1) vs scan
+    # of all Metagraph anchors (Global + pending + canonical + every
+    # user Local).
+    ("node", "Metagraph", "name"),
     # ── 4 :XRef indexes (Phase 09 M15) ─────────────────────────────
     ("node", "XRef", "id"),
     ("node", "XRef", "source_metagraph_id"),

@@ -62,6 +62,7 @@ from enum import Enum
 from typing import Any, Mapping, Optional, Sequence
 
 from mindsos_core import Metagraph
+from mindsos_core.persistence.client import Client
 
 from mindsos_admin.exceptions import AdminError
 from mindsos_server.admin import admin_tx
@@ -69,6 +70,21 @@ from mindsos_server.audit import EVT_PROMOTION_PROPOSED, write_audit
 from mindsos_server.authz import _require_or_audit
 from mindsos_server.capabilities import CAN_PROPOSE_MUTATION
 from mindsos_server.session import Session
+
+
+# ─── §0 §am3 Cypher template (Phase 26a) ────────────────────────────────
+#
+# Per ADR-0118 §amendment-3 §"Decision §1" — incremental MERGE keyed on
+# (metagraph_id, graph_id, node_id) into the SINGLE FalkorDB graph
+# configured by FalkorConfig.graph. Supersedes §am2's per-FalkorDB-
+# graph-per-role naming (substrate-incompatible per Phase 26a R5-PB-1).
+_PROPOSE_MERGE_CYPHER = (
+    "MERGE (n:Node {node_id: $node_id, "
+    "               metagraph_id: $metagraph_id, "
+    "               graph_id: $graph_id}) "
+    "ON CREATE SET n += $props "
+    "ON MATCH SET n += $props"
+)
 
 
 __all__ = [
@@ -270,6 +286,7 @@ class PromotionResult:
 
 def propose_for_promotion(
     conn: sqlite3.Connection,
+    client: Client,
     *,
     session: Session,
     proposal: PromotionProposal,
@@ -476,6 +493,30 @@ def propose_for_promotion(
                     node_id=node_id,
                 )
                 added_to_pending.append((item.node.target_role, node_id))
+
+                # 3c-Falkor (Phase 26a — ADR-0118 §am3). Incremental
+                # MERGE into the single FalkorDB graph; idempotent on
+                # rerun via (metagraph_id, graph_id, node_id) key.
+                # Props include `value` + `node_type` + `properties`;
+                # serialized as a flat dict for Cypher SET.
+                falkor_props: dict[str, Any] = {
+                    "value": item.node.value,
+                    "node_type": item.node.node_type,
+                }
+                # Flatten user-defined properties under prop_ prefix
+                # to avoid collision with key fields. Phase 26a v1
+                # keeps a single namespace; future phases may revisit.
+                for pk, pv in item.node.properties.items():
+                    falkor_props[f"prop_{pk}"] = pv
+                client.run_query(
+                    _PROPOSE_MERGE_CYPHER,
+                    {
+                        "node_id": node_id,
+                        "metagraph_id": pending_global_mg.metagraph_id,
+                        "graph_id": target_graph.graph_id,
+                        "props": falkor_props,
+                    },
+                )
 
             # 3d. UPDATE audit row's extra_json with the assigned
             # mutation_ids (couldn't be known at 3a since INSERT order

@@ -7,24 +7,27 @@ from mindsos_core.persistence.bootstrap import _ddl_for
 
 
 def test_default_indexes_count_phase07_baseline_plus_phase09_xref() -> None:
-    """P95 B locked Phase 07 baseline at 14; Phase 09 M15 grows to 18.
+    """P95 B locked Phase 07 baseline at 14; Phase 09 M15 grows to 18;
+    Phase 26a (ADR-0123 §am1) grows to 19.
 
     Replaces ``test_default_indexes_count_equals_14``. Counts hard-coded
     so future bumps remain visible (audit cost analogous to state-file
     version literals per ``feedback_state_version_audit_scope.md``).
     """
-    # 14 from Phase 07 + 4 :XRef from Phase 09 (M15) = 18.
-    assert len(DEFAULT_INDEXES) == 18
+    # 14 from Phase 07 + 4 :XRef from Phase 09 (M15) + 1 :Metagraph.name
+    # from Phase 26a = 19.
+    assert len(DEFAULT_INDEXES) == 19
     xref_entries = [(k, l, p) for (k, l, p) in DEFAULT_INDEXES if l == "XRef"]
     assert len(xref_entries) == 4
 
 
 def test_default_indexes_split_node_rel_phase09() -> None:
     """Phase 09 split: 11 Phase 07 node-form + 4 XRef node-form = 15 node;
-    3 relationship-form unchanged.
+    3 relationship-form unchanged. Phase 26a (ADR-0123 §am1) adds 1 node
+    (:Metagraph.name) → 16 node total; rel unchanged at 3.
     """
     kinds = [k for k, _, _ in DEFAULT_INDEXES]
-    assert kinds.count("node") == 15
+    assert kinds.count("node") == 16
     assert kinds.count("rel") == 3
 
 

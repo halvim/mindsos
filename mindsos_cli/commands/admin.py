@@ -17,11 +17,17 @@ Import verbs (Phase 15a) instantiate a fresh
 run the requested importer, and print the
 :class:`~mindsos_admin.ImportResult` (text by default; JSON on ``--json``).
 
-Phase 15a does NOT persist the resulting Metagraph — per ADR-0043
-(Accepted), I/O is the server's responsibility. The CLI verbs are
-admin-side dry-runs producing an ImportResult summary. State-file
-persistence of the imported Global is deferred to Phase 26 per Phase
-14a round-3 lock; server-driven persistence ships at Phase 18+.
+Phase 26a (ADR-0118 §am3 + Phase 14a round-3 lock CLOSED): the
+import verbs now persist the resulting Metagraph to FalkorDB via
+:class:`MetagraphRepository` per ADR-0121. The CLI's responsibility
+expanded from "admin-side dry-run producing an ImportResult summary"
+to "import + persist + summary" — though import + persist are still
+the server's I/O surface per ADR-0043 (KL stays in-memory; the
+admin CLI envelope calls Repository.persist via FalkorClient opened
+per-invocation per Phase 07 P4 A).
+
+The prior Phase 15a-era "deferred to Phase 26" comment in this
+docstring closed at Phase 26a ship.
 
 Promote verbs (Phase 16 — read-only) consume an EXISTING metagraph
 state-file (loaded via :func:`mindsos_cli.state.load_metagraph_state` —
@@ -106,22 +112,42 @@ def _emit(result: ImportResult, *, as_json: bool) -> None:
 
 
 def _run_single_importer(importer: object, source: Path) -> ImportResult:
-    """Build a fresh Global with 6 named role-graphs ensured (PB-21
-    parity with ``KnowledgeLayer.bootstrap()``); run the importer
-    against it; return the :class:`ImportResult`.
+    """Build a fresh Global with 6 named role-graphs ensured; run the
+    importer against it; persist to FalkorDB; return the
+    :class:`ImportResult`.
 
-    The Metagraph is discarded after the call (Phase 15a is dry-run;
-    server persistence ships at Phase 18+ per ADR-0043).
+    Phase 26a (ADR-0118 §am3 + Phase 14a round-3 lock closure): the
+    importer output is now persisted to FalkorDB via
+    :class:`MetagraphRepository`. The Cypher writes are MERGE-
+    idempotent at every step (builders.py lines 62/83/100/155/267/343)
+    so a re-import over an existing Global is safe (no duplicate-
+    create; properties SET on existing nodes).
 
-    Phase 15a calibration: ``bootstrap_global([importer])`` returns
-    only the populated Metagraph (no per-importer ImportResult). CLI
-    callers want the result, so we use ``bootstrap_global(importers=())``
-    for the 6-role Metagraph and call ``importer.run(mg, source)``
-    explicitly. Phase 15b may add a ``bootstrap_global`` overload
-    returning per-importer results.
+    Phase 15a calibration retained: ``bootstrap_global(importers=())``
+    builds an empty 6-role Metagraph that the importer mutates;
+    :meth:`MetagraphRepository.persist` then flushes the whole
+    mutated Metagraph to FalkorDB.
+
+    Per Phase 07 P4 A: this helper opens a fresh ``Client`` for the
+    persist + closes it before returning (no long-lived process-scope
+    clients).
     """
+    from mindsos_core.config import FalkorConfig
+    from mindsos_core.persistence.client import FalkorClient
+    from mindsos_core.persistence.metagraph_repository import (
+        MetagraphRepository,
+    )
+
     mg = bootstrap_global(importers=())  # empty mg with 6 named roles ensured
-    return importer.run(mg, source)  # type: ignore[attr-defined,no-any-return]
+    result = importer.run(mg, source)  # type: ignore[attr-defined]
+    # Phase 26a — persist importer output to FalkorDB.
+    client = FalkorClient(FalkorConfig.from_env())
+    try:
+        repo = MetagraphRepository(client)
+        repo.persist(mg)
+    finally:
+        client.close()
+    return result  # type: ignore[no-any-return]
 
 
 @import_app.command(
