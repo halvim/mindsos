@@ -1,15 +1,25 @@
 """
-Tests for doctor 5→6 pkg parity loop — Phase 18 PB-21.
+Tests for doctor pkg-parity loop — Phase 18 PB-21 origin; Phase 27
+PB-25/33 generalized to a manifest-driven N-pkg parity.
 
-Verifies that ``mindsos doctor --self-test`` checks
-``mindsos_server/__init__.py:__version__`` matches
-``manifest.toml [mindsos] version``.
+Verifies that ``mindsos doctor --self-test`` checks every package
+listed in ``manifest.toml [mindsos] packages`` has a matching
+``__init__.py:__version__``. File kept at ``tests/phase_18/`` for
+cumulative-artifact location; semantic ownership now spans Phase 18
+(introduction) + Phase 27 (manifest-driven generalization that closed
+the 6-pkg literal-decay class).
 """
 
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover — runtime image is 3.11+
+    import tomli as tomllib  # type: ignore[no-redef]
 
 
 def _repo_root() -> Path:
@@ -21,25 +31,49 @@ def _repo_root() -> Path:
     raise RuntimeError("Could not find repo root")
 
 
-class TestDoctorChecksMindosServer:
-    """PB-21 — doctor.py reads + asserts mindsos_server version."""
+def _load_manifest_packages() -> list[str]:
+    """Return the manifest's authoritative [mindsos] packages list."""
+    manifest_path = _repo_root() / "mindsos_cli" / "manifest.toml"
+    with manifest_path.open("rb") as f:
+        manifest = tomllib.load(f)
+    pkgs = manifest["mindsos"].get("packages")
+    assert isinstance(pkgs, list) and pkgs, (
+        "manifest.toml [mindsos] packages must be a non-empty list "
+        "(Phase 27 PB-25 generalization)"
+    )
+    return list(pkgs)
 
-    def test_doctor_module_references_mindsos_server(self) -> None:
+
+def _manifest_version() -> str:
+    manifest_path = _repo_root() / "mindsos_cli" / "manifest.toml"
+    with manifest_path.open("rb") as f:
+        manifest = tomllib.load(f)
+    version = manifest["mindsos"]["version"]
+    assert isinstance(version, str)
+    return version
+
+
+class TestDoctorChecksMindosServer:
+    """PB-21 — doctor.py references the manifest-driven parity loop
+    (Phase 27 retains the substantive assertion: doctor reads + asserts
+    every manifest-listed package matches the manifest version)."""
+
+    def test_doctor_module_references_manifest_packages(self) -> None:
         doctor_path = _repo_root() / "mindsos_cli" / "commands" / "doctor.py"
         text = doctor_path.read_text()
-        # The 6-pkg parity loop must include mindsos_server.
-        assert "mindsos_server" in text, (
-            "doctor.py must reference mindsos_server in the version-parity loop "
-            "per Phase 18 PB-21"
+        # Phase 27 — the manifest-driven loop reads `[mindsos] packages`.
+        assert 'manifest["mindsos"].get("packages"' in text, (
+            "doctor.py must iterate manifest [mindsos] packages "
+            "per Phase 27 PB-25 generalization"
         )
 
-    def test_doctor_includes_server_version_check_block(self) -> None:
+    def test_doctor_includes_version_drift_block(self) -> None:
         doctor_path = _repo_root() / "mindsos_cli" / "commands" / "doctor.py"
         text = doctor_path.read_text()
-        # Pattern matches the parity-check block (drift message format).
+        # Pattern matches the generalized parity drift message.
         assert re.search(
-            r"mindsos_server/__init__\.py __version__ drift", text
-        ), "doctor.py must check mindsos_server version drift per PB-21"
+            r"__version__ drift", text
+        ), "doctor.py must emit version drift failure per parity loop"
 
 
 class TestServerVersionMatchesManifest:
@@ -54,49 +88,30 @@ class TestServerVersionMatchesManifest:
         assert match is not None, "mindsos_server/__init__.py must declare __version__"
         server_version = match.group(1)
 
-        # Read manifest.toml [mindsos] version.
-        manifest = (root / "mindsos_cli" / "manifest.toml").read_text()
-        match = re.search(
-            r'\[mindsos\][\s\S]*?version\s*=\s*"([^"]+)"', manifest
-        )
-        assert match is not None
-        manifest_version = match.group(1)
-
-        assert server_version == manifest_version, (
+        assert server_version == _manifest_version(), (
             f"version drift: mindsos_server={server_version!r} "
-            f"manifest={manifest_version!r}"
+            f"manifest={_manifest_version()!r}"
         )
 
 
-class TestAll6PkgsAtCurrentPhase:
-    """All 6 packages (5 pre-existing + mindsos_server) must agree with
-    ``manifest.toml [mindsos] version`` — that file is the canonical
-    drift target per Phase 18 PB-21. Generalized at Phase 19 B-19-T1
-    (was: hard-coded ``"0.0.0+phase18"`` literal; decayed on every
-    version bump). Per ``feedback_phase_baseline_literal_audit.md`` —
-    the parity is what we care about, not the absolute version."""
+class TestAllPackagesMatchManifest:
+    """Phase 27 PB-25/33: All packages listed in
+    ``manifest.toml [mindsos] packages`` must have ``__init__.py``
+    ``__version__`` equal to ``manifest [mindsos] version``. Replaces
+    the hard-coded 6-pkg tuple (was: ``TestAll6PkgsAtCurrentPhase``)
+    so future new-pkg phases only add a single manifest line — no
+    test or doctor edits.
+    """
 
-    def test_all_six_packages_match_manifest(self) -> None:
+    def test_all_manifest_packages_match_manifest_version(self) -> None:
         root = _repo_root()
-
-        # Source-of-truth: manifest.toml [mindsos] version.
-        manifest = (root / "mindsos_cli" / "manifest.toml").read_text()
-        manifest_match = re.search(
-            r'\[mindsos\][\s\S]*?version\s*=\s*"([^"]+)"', manifest
+        expected = _manifest_version()
+        packages = _load_manifest_packages()
+        assert len(packages) >= 6, (
+            "Phase 18+ baseline expects ≥6 packages; got "
+            f"{packages!r}"
         )
-        assert manifest_match is not None, (
-            "manifest.toml [mindsos] version not found"
-        )
-        expected = manifest_match.group(1)
-
-        for pkg in (
-            "mindsos_core",
-            "mindsos_knowledge",
-            "mindsos_admin",
-            "mindsos_instances",
-            "mindsos_cli",
-            "mindsos_server",
-        ):
+        for pkg in packages:
             init_text = (root / pkg / "__init__.py").read_text()
             match = re.search(r'__version__\s*=\s*"([^"]+)"', init_text)
             assert match is not None, f"{pkg}/__init__.py has no __version__"

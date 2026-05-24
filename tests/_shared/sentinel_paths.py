@@ -246,4 +246,21 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # existing `COPY mindsos_server/` picks it up. The amended
     # `docs/usage/server/audit.md` deferred to Phase 38 doc-review.
     "mindsos_server/authz.py",
+    # Phase 27 — NEW top-level package `mindsos_capacity/` (first L3 ship)
+    # per PHASE_MAP §27 + ADRs 0062/0063/0066/0067. 9-site new-top-level-
+    # package checklist (extends `feedback_new_top_level_package.md`
+    # from 7→9 sites at Phase 27 with the manifest [mindsos] packages
+    # generalization closing the 6-pkg literal-decay class + mkdocs
+    # nav entry as the 9th site). Slim port: 5 source files (4 kept
+    # modules + __init__.py); types.py + capacity_layer.py + bootstrap
+    # + discovery + runtime + schemas + views + capabilities +
+    # builtins/ all DEFERRED to Phases 28-33 per PHASE_MAP rows.
+    # `InvocationResult` + `call_capacity` live in capacity.py for
+    # parent-layout parity but are NOT exported from __init__.py
+    # until Phase 30 (ADR-0066 §Implementation footer staging).
+    "mindsos_capacity/__init__.py",
+    "mindsos_capacity/datastate.py",
+    "mindsos_capacity/capacity.py",
+    "mindsos_capacity/identifiers.py",
+    "mindsos_capacity/exceptions.py",
 )

@@ -138,6 +138,17 @@ COPY mindsos_admin ./mindsos_admin
 # `mindsos_cli/commands/server.py` (`mindsos server bootstrap` +
 # `mindsos server user {create,list,verify}`).
 COPY mindsos_server ./mindsos_server
+# Phase 27: NEW top-level package — `mindsos_capacity/` ships the first
+# L3 (Intellectual Capacity Layer) slim surface per PHASE_MAP §27
+# + ADRs 0062 (3 node types) / 0063 (purely-structural DataStates) /
+# 0066 (capacity IRI form) / 0067 (REF_TYPES shared with KL —
+# §amendment-1 carve-out for PROMOTED). 9-site new-top-level-package
+# checklist (extends feedback_new_top_level_package.md from 7→9 at
+# this phase with the manifest [mindsos] packages generalization
+# closing the 6-pkg literal-decay class + mkdocs nav site). Consumed
+# at runtime by tests/phase_27/ only at Phase 27 ship; CLI verbs
+# defer to Phase 28+ (PHASE_MAP §27 explicitly ships no CLI).
+COPY mindsos_capacity ./mindsos_capacity
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -202,6 +213,9 @@ COPY mindsos_admin ./mindsos_admin
 # the layer-isolation test at tests_server/integration/, which also
 # needs the test-stage COPY of tests_server/ below).
 COPY mindsos_server ./mindsos_server
+# Phase 27: mirror of prod-stage COPY for `mindsos_capacity/` per the
+# 9-site new-top-level-package checklist.
+COPY mindsos_capacity ./mindsos_capacity
 COPY tests ./tests
 # Phase 18: tests_server/ is a SEPARATE top-level test tree per the
 # legacy layout (PHASE_MAP §1 "Test layout: Existing `tests/`,

@@ -1,0 +1,193 @@
+"""DataState definitions and structural-shape matching.
+
+A ``DataState`` is a named representation shape (§4.1). Its declaration
+carries:
+
+- a **name** (the user-visible identifier, also used to build the IRI),
+- a **structural shape** (the Python/graph shape used for matching),
+- optional **provenance hints** (which functional category typically
+  produces it; which L2 roles are typically consulted when moving into
+  or out of it).
+
+The design plan is explicit that **semantic richness is not typed** —
+DataState descriptors stay purely structural. See §4.2.
+
+Shape matching in this module is deliberately cheap: we compare a
+shape's normalised JSON-like description. "Strict match" means the
+descriptors are equal; "near match" means they differ only in
+adapter-reachable dimensions (handled at the :mod:`.discovery` level).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Mapping, Optional, Tuple
+
+from .exceptions import DataStateError
+from .identifiers import datastate_iri
+
+
+# ── Shape descriptor ───────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class ShapeDescriptor:
+    """Structural description of a DataState's Python-level shape.
+
+    The descriptor is a tiny JSON-like structure so that equality and
+    hashing are straightforward.
+
+    Attributes:
+        kind: One of ``"scalar"``, ``"list"``, ``"dict"``, ``"record"``,
+            ``"graph"``. ``"scalar"`` + ``elem`` is enough for most
+            vertical-slice use cases (e.g. ``scalar:str`` for raw text).
+        elem: For ``"scalar"`` — the primitive type name
+            (``"str"``, ``"int"``, ``"float"``, ``"bool"``).
+            For ``"list"`` — the elem descriptor as a frozen dict
+            tuple (see :meth:`ShapeDescriptor.normalised`).
+        fields: For ``"record"`` — a mapping of field name → elem
+            descriptor tuple. Sorted by field name for determinism.
+        opaque_tag: Free-form tag that lets two shapes with identical
+            kind/elem/fields still be distinguished when semantics
+            demand (e.g. ``"text.tokens"`` vs ``"text.pos_tagged_tokens"``
+            both list[str] but shouldn't auto-match). Optional.
+    """
+
+    kind: str
+    elem: Optional[str] = None
+    fields: Tuple[Tuple[str, str], ...] = ()  # ((name, elem_kind), ...)
+    opaque_tag: Optional[str] = None
+
+    @classmethod
+    def scalar(cls, elem: str, *, opaque_tag: Optional[str] = None) -> "ShapeDescriptor":
+        return cls(kind="scalar", elem=elem, opaque_tag=opaque_tag)
+
+    @classmethod
+    def list_of(cls, elem: str, *, opaque_tag: Optional[str] = None) -> "ShapeDescriptor":
+        return cls(kind="list", elem=elem, opaque_tag=opaque_tag)
+
+    @classmethod
+    def record(
+        cls,
+        fields: Mapping[str, str],
+        *,
+        opaque_tag: Optional[str] = None,
+    ) -> "ShapeDescriptor":
+        sorted_fields = tuple(sorted(fields.items()))
+        return cls(kind="record", fields=sorted_fields, opaque_tag=opaque_tag)
+
+    @classmethod
+    def opaque(cls, tag: str) -> "ShapeDescriptor":
+        """Anonymous shape identified only by an opaque tag."""
+        return cls(kind="opaque", opaque_tag=tag)
+
+    def to_dict(self) -> Dict[str, Any]:
+        out: Dict[str, Any] = {"kind": self.kind}
+        if self.elem is not None:
+            out["elem"] = self.elem
+        if self.fields:
+            out["fields"] = list(self.fields)
+        if self.opaque_tag is not None:
+            out["opaque_tag"] = self.opaque_tag
+        return out
+
+    def signature(self) -> str:
+        """Stable textual signature used by auto-discovery for equality."""
+        parts = [self.kind]
+        if self.elem is not None:
+            parts.append(f"elem={self.elem}")
+        if self.fields:
+            fs = ",".join(f"{k}:{v}" for k, v in self.fields)
+            parts.append(f"fields=({fs})")
+        if self.opaque_tag is not None:
+            parts.append(f"tag={self.opaque_tag}")
+        return "|".join(parts)
+
+
+# ── DataState declaration ──────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class DataState:
+    """User-facing declaration of a DataState node.
+
+    When a DataState is registered with a :class:`CapacityLayer`, one
+    Core ``Node`` is created in the ``capacity:datastates`` graph of
+    the target metagraph. The IRI of that node equals :attr:`iri`.
+    """
+
+    name: str
+    shape: ShapeDescriptor
+    description: str = ""
+    provenance_category: Optional[str] = None
+    l2_roles: Tuple[str, ...] = ()
+
+    @property
+    def iri(self) -> str:
+        return datastate_iri(self.name)
+
+    def to_properties(self) -> Dict[str, Any]:
+        """Build the property dict used when creating the Core node."""
+        props: Dict[str, Any] = {
+            "name": self.name,
+            "shape_kind": self.shape.kind,
+        }
+        if self.description:
+            props["description"] = self.description
+        if self.provenance_category is not None:
+            props["provenance_category"] = self.provenance_category
+        if self.l2_roles:
+            props["l2_roles"] = list(self.l2_roles)
+        # Encode shape sub-fields onto the node as auxiliary keys so the
+        # Core node is inspectable without rehydrating a descriptor.
+        if self.shape.elem is not None:
+            props["shape_elem"] = self.shape.elem
+        if self.shape.opaque_tag is not None:
+            props["shape_opaque_tag"] = self.shape.opaque_tag
+        if self.shape.fields:
+            props["shape_fields"] = [f"{k}:{v}" for k, v in self.shape.fields]
+        return props
+
+
+def validate_datastate(ds: DataState) -> None:
+    """Check vertical-slice invariants on a DataState declaration."""
+    if not isinstance(ds, DataState):
+        raise DataStateError(f"Expected DataState, got {type(ds).__name__}")
+    if not ds.name:
+        raise DataStateError("DataState must have a non-empty name")
+    if not isinstance(ds.shape, ShapeDescriptor):
+        raise DataStateError("DataState.shape must be a ShapeDescriptor")
+    if ds.shape.kind not in {"scalar", "list", "record", "opaque", "graph", "dict"}:
+        raise DataStateError(
+            f"DataState {ds.name!r}: unknown shape kind {ds.shape.kind!r}"
+        )
+
+
+# ── Compatibility primitives ───────────────────────────────────────────
+
+def strict_compatible(a: ShapeDescriptor, b: ShapeDescriptor) -> bool:
+    """Return ``True`` iff ``a`` and ``b`` are identical shapes."""
+    return a.signature() == b.signature()
+
+
+def list_of_compat(a: ShapeDescriptor, b: ShapeDescriptor) -> bool:
+    """Return ``True`` iff ``a`` is ``list[T]`` and ``b`` is ``scalar:T``.
+
+    Used as a simple near-compatibility heuristic: a pipeline stage
+    producing ``list[str]`` can feed a stage expecting ``str`` if an
+    adapter flattens or iterates. The heuristic is cheap enough to
+    always run during discovery.
+    """
+    return (
+        a.kind == "list"
+        and b.kind == "scalar"
+        and a.elem == b.elem
+        and a.opaque_tag == b.opaque_tag
+    )
+
+
+__all__ = [
+    "ShapeDescriptor",
+    "DataState",
+    "validate_datastate",
+    "strict_compatible",
+    "list_of_compat",
+]

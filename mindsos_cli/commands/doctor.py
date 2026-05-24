@@ -433,95 +433,44 @@ def doctor(
                 f"mindsos_cli/__init__.py __version__ drift: "
                 f"init={init_version!r} manifest={expected_version!r}"
             )
-        # Phase 06 round-7 P62 A — version-string parity extended to
-        # ``mindsos_core`` and the new ``mindsos_instances`` sibling
-        # package. Phase 12 PB-1 + design-log §3 probe 6 extended it
-        # again to the new ``mindsos_knowledge`` L2 package — 4-pkg
-        # parity. Forgetting any of the five bump sites surfaces here.
-        core_version, core_err = _read_package_init_version(
-            repo_root, "mindsos_core"
-        )
-        if core_err:
-            failures.append(
-                f"mindsos_core/__init__.py version unreadable: {core_err}"
+        # Phase 27 (PB-25/33/34) — manifest-driven parity loop.
+        # Replaces the hand-coded per-package version-check blocks
+        # (Phase 06/12/15a/18 stacked them up to 6 packages). The
+        # manifest's [mindsos] packages list is the authoritative
+        # source; doctor + tests/phase_18/test_doctor_6pkg_parity.py
+        # both iterate it. Closes the literal-decay class.
+        #
+        # Special case: `mindsos_cli` continues to report under the
+        # historic `init_version` key (read above) — the manifest list
+        # still includes it for parity validation, but its report
+        # field name is grandfathered. All other packages report
+        # under `runtime.versions[<pkg>]`.
+        package_list = manifest["mindsos"].get("packages", [])
+        versions_report: dict[str, str | None] = {}
+        for pkg in package_list:
+            if pkg == "mindsos_cli":
+                # Already checked above via _read_init_version; the
+                # report field stays as `init_version` per back-compat.
+                versions_report[pkg] = init_version
+                continue
+            pkg_version, pkg_err = _read_package_init_version(
+                repo_root, pkg
             )
-        elif core_version != expected_version:
-            failures.append(
-                f"mindsos_core/__init__.py __version__ drift: "
-                f"core={core_version!r} manifest={expected_version!r}"
-            )
-        instances_version, instances_err = _read_package_init_version(
-            repo_root, "mindsos_instances"
-        )
-        if instances_err:
-            failures.append(
-                f"mindsos_instances/__init__.py version unreadable: "
-                f"{instances_err}"
-            )
-        elif instances_version != expected_version:
-            failures.append(
-                f"mindsos_instances/__init__.py __version__ drift: "
-                f"instances={instances_version!r} "
-                f"manifest={expected_version!r}"
-            )
-        knowledge_version, knowledge_err = _read_package_init_version(
-            repo_root, "mindsos_knowledge"
-        )
-        if knowledge_err:
-            failures.append(
-                f"mindsos_knowledge/__init__.py version unreadable: "
-                f"{knowledge_err}"
-            )
-        elif knowledge_version != expected_version:
-            failures.append(
-                f"mindsos_knowledge/__init__.py __version__ drift: "
-                f"knowledge={knowledge_version!r} "
-                f"manifest={expected_version!r}"
-            )
-        # Phase 15a — version-string parity extended to mindsos_admin
-        # (NEW top-level package per ADR-0140 §amendment-1 permanent-
-        # home decision). 7-site new-top-level-package checklist site #4.
-        admin_version, admin_err = _read_package_init_version(
-            repo_root, "mindsos_admin"
-        )
-        if admin_err:
-            failures.append(
-                f"mindsos_admin/__init__.py version unreadable: "
-                f"{admin_err}"
-            )
-        elif admin_version != expected_version:
-            failures.append(
-                f"mindsos_admin/__init__.py __version__ drift: "
-                f"admin={admin_version!r} "
-                f"manifest={expected_version!r}"
-            )
-        # Phase 18 — version-string parity extended to mindsos_server
-        # (NEW top-level package per ADR-0001 + Phase 18 PB-1 amending
-        # PHASE_MAP §18 row Net-new: No → Yes). 7-site new-top-level-
-        # package checklist site #5 (doctor parity); 6-pkg parity per
-        # Phase 18 PB-21.
-        server_version, server_err = _read_package_init_version(
-            repo_root, "mindsos_server"
-        )
-        if server_err:
-            failures.append(
-                f"mindsos_server/__init__.py version unreadable: "
-                f"{server_err}"
-            )
-        elif server_version != expected_version:
-            failures.append(
-                f"mindsos_server/__init__.py __version__ drift: "
-                f"server={server_version!r} "
-                f"manifest={expected_version!r}"
-            )
+            versions_report[pkg] = pkg_version
+            if pkg_err:
+                failures.append(
+                    f"{pkg}/__init__.py version unreadable: {pkg_err}"
+                )
+            elif pkg_version != expected_version:
+                failures.append(
+                    f"{pkg}/__init__.py __version__ drift: "
+                    f"{pkg}={pkg_version!r} "
+                    f"manifest={expected_version!r}"
+                )
         report["manifest"]["expected_version"] = expected_version
         report["runtime"]["pyproject_version"] = pyproject_version
         report["runtime"]["init_version"] = init_version
-        report["runtime"]["core_version"] = core_version
-        report["runtime"]["instances_version"] = instances_version
-        report["runtime"]["knowledge_version"] = knowledge_version
-        report["runtime"]["admin_version"] = admin_version
-        report["runtime"]["server_version"] = server_version
+        report["runtime"]["versions"] = versions_report
 
     result = {"ok": not failures, "failures": failures, **report}
 
