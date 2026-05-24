@@ -66,7 +66,7 @@ from tests.phase_26b._falkordb_assert import (
     resolve_pending_metagraph_id,
 )
 from tests.phase_26b._normalize import normalize
-from tests.phase_26b.fixtures._test_importer import TestImporter
+from tests.phase_26b.fixtures._test_importer import FixtureImporter
 
 
 # ── ScenarioState ──────────────────────────────────────────────────────
@@ -164,7 +164,7 @@ def _step_05_import_via_test_importer(state: ScenarioState) -> ScenarioState:
     client = FalkorClient(FalkorConfig.from_env())
     try:
         canonical_kl, _ = bootstrap_global_pair_from_falkordb(client)
-        importer = TestImporter()
+        importer = FixtureImporter()
         importer.run(canonical_kl.global_metagraph())
         repo = MetagraphRepository(client)
         repo.persist(canonical_kl.global_metagraph())
@@ -214,7 +214,7 @@ def _step_07_seed_user2_local(state: ScenarioState) -> tuple[
         g for g in local_mg.graphs.values() if g.role == ROLE_CONCEPTS
     )
     graph.add_node(
-        "test_concept_user2", "ConceptNode", properties={},
+        "test_concept_user2", "Frame", properties={},
     )
 
     persister.save("user2", local_mg)

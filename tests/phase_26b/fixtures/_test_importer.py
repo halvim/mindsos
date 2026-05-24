@@ -21,8 +21,12 @@ from mindsos_knowledge.bootstrap import ensure_global_role_graph
 from mindsos_knowledge.identifiers import ROLE_CONCEPTS
 
 
-class TestImporter:
-    """Phase 26b scenario test importer — 10 rows into `concepts`."""
+class FixtureImporter:
+    """Phase 26b scenario fixture importer — 10 rows into `concepts`.
+
+    Class renamed from ``TestImporter`` per B-26b-T3 — pytest auto-
+    collects any ``Test*`` class as a test class (warning noise).
+    """
 
     target_roles: tuple[str, ...] = (ROLE_CONCEPTS,)
 
@@ -35,7 +39,7 @@ class TestImporter:
         )
 
     def run(self, metagraph: Metagraph) -> None:
-        """Read the TSV + add 10 ConceptNode rows into `concepts` role."""
+        """Read the TSV + add 10 Frame rows into `concepts` role."""
         ensure_global_role_graph(metagraph, ROLE_CONCEPTS)
         graph = next(
             g for g in metagraph.graphs.values() if g.role == ROLE_CONCEPTS
@@ -54,7 +58,7 @@ class TestImporter:
             properties = json.loads(props_json) if props_json.strip() else {}
             graph.add_node(
                 value,
-                "ConceptNode",
+                "Frame",
                 properties=properties,
                 node_id=node_id,
             )
