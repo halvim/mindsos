@@ -34,7 +34,7 @@ constant directly via re-import, not a duplicated string literal.
 
 from __future__ import annotations
 
-from mindsos_admin import (
+from mindsos_admin.bootstrap import (
     PENDING_GLOBAL_METAGRAPH_NAME,
     bootstrap_pending_global,
 )
