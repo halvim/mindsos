@@ -50,8 +50,42 @@ def resolve_pending_metagraph_id() -> Optional[str]:
         return None if first is None else first["id"]
 
 
-def count_canonical_nodes() -> int:
-    """Return the total Node-row count under the canonical Global metagraph_id."""
+def count_canonical_nodes_via_graph_traversal() -> int:
+    """Count Node rows reachable via `Graph<-[:IN_GRAPH]-Node` from canonical.
+
+    Per B-26b-T4 probe: `MetagraphRepository.persist()` (the importer
+    persist path) stores Node rows with `id` + `graph_id` + an explicit
+    `[:IN_GRAPH]` relationship to a Graph anchor. The Graph anchor in
+    turn carries `metagraph_id` + `[:IN_METAGRAPH]` to the Metagraph
+    anchor.
+
+    Used to count importer-persisted content (step 5 in the scenario).
+    """
+    canonical_id = resolve_canonical_metagraph_id()
+    if canonical_id is None:
+        return 0
+    with open_client() as client:
+        result = client.run_query(
+            "MATCH (g:Graph {metagraph_id: $mg_id})<-[:IN_GRAPH]-(n:Node) "
+            "RETURN count(n) AS n",
+            {"mg_id": canonical_id},
+        )
+        first = result.first()
+        return 0 if first is None else int(first["n"])
+
+
+def count_canonical_nodes_via_metagraph_id_property() -> int:
+    """Count Node rows with direct `metagraph_id` property == canonical id.
+
+    Per B-26b-T5 probe: §am3 `_RELEASE_MERGE_CYPHER` writes Node rows
+    keyed on `(node_id, metagraph_id, graph_id)` WITHOUT creating an
+    `:IN_GRAPH` relationship (the §am3 amendment template lacks that
+    clause; an honest gap documented as Phase 26b carry-forward in
+    notes-phase-26b.md). These rows are orphan from the Graph
+    traversal path; counted independently here.
+
+    Used to count release-shipped content (step 7b in the scenario).
+    """
     canonical_id = resolve_canonical_metagraph_id()
     if canonical_id is None:
         return 0
@@ -62,3 +96,8 @@ def count_canonical_nodes() -> int:
         )
         first = result.first()
         return 0 if first is None else int(first["n"])
+
+
+# Backward-compat alias for the scenario; defaults to graph-traversal
+# (importer-persisted shape).
+count_canonical_nodes = count_canonical_nodes_via_graph_traversal

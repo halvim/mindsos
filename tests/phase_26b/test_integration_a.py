@@ -61,7 +61,8 @@ from mindsos_server.persistence import (
 from mindsos_server.sessions import session_from_token
 
 from tests.phase_26b._falkordb_assert import (
-    count_canonical_nodes,
+    count_canonical_nodes_via_graph_traversal,
+    count_canonical_nodes_via_metagraph_id_property,
     resolve_canonical_metagraph_id,
     resolve_pending_metagraph_id,
 )
@@ -171,9 +172,12 @@ def _step_05_import_via_test_importer(state: ScenarioState) -> ScenarioState:
     finally:
         client.close()
 
-    state.canonical_node_count_post_import = count_canonical_nodes()
+    state.canonical_node_count_post_import = (
+        count_canonical_nodes_via_graph_traversal()
+    )
     assert state.canonical_node_count_post_import >= 10, (
-        f"expected ≥10 nodes post-import, got {state.canonical_node_count_post_import}"
+        f"expected ≥10 nodes post-import (graph-traversal shape), "
+        f"got {state.canonical_node_count_post_import}"
     )
     return state
 
@@ -322,7 +326,12 @@ def _step_10_release_ship(state: ScenarioState) -> ScenarioState:
     payload = json.loads(r.output)
     assert payload["status"] == "SHIPPED"
     assert payload["mutations_shipped_count"] == 1
-    state.canonical_node_count_post_ship = count_canonical_nodes()
+    # Post-ship: importer-shape count unchanged (release writes orphan
+    # nodes via §am3 path); release-shape count grew by exactly 1
+    # (the propose'd ATOM Lemma).
+    state.canonical_node_count_post_ship = (
+        count_canonical_nodes_via_metagraph_id_property()
+    )
     state.canonical_metagraph_id_post_ship = resolve_canonical_metagraph_id()
     return state
 
@@ -394,12 +403,13 @@ def _step_13_fresh_stable_id_assert(state: ScenarioState) -> ScenarioState:
     assert pending_id_now is not None
     assert pending_id_now == state.pending_metagraph_id
 
-    # Node count grew by exactly 1 (the propose's ATOM Lemma).
-    assert state.canonical_node_count_post_ship == (
-        state.canonical_node_count_post_import + 1
-    ), (
-        f"canonical node count delta: import={state.canonical_node_count_post_import} "
-        f"post-ship={state.canonical_node_count_post_ship} (expected +1)"
+    # Release-shape canonical node count (§am3 _RELEASE_MERGE_CYPHER path)
+    # grew by exactly 1 — the propose'd ATOM Lemma. Importer-shape count
+    # (graph-traversal) is unaffected because §am3 writes don't link via
+    # :IN_GRAPH (B-26b-T5 finding; documented carry-forward).
+    assert state.canonical_node_count_post_ship == 1, (
+        f"release-shape canonical node count: expected 1 (post-ship);"
+        f" got {state.canonical_node_count_post_ship}"
     )
     return state
 
