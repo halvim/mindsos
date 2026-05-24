@@ -13,8 +13,9 @@ pytestmark_unit = []
 
 
 def test_default_indexes_grew_from_14_to_18():
-    """M15 — Phase 09 adds 4 :XRef indexes."""
-    assert len(DEFAULT_INDEXES) == 18
+    """M15 — Phase 09 adds 4 :XRef indexes (Phase 09 baseline);
+    Phase 26a (ADR-0123 §am1) adds 1 :Metagraph.name → 19 cumulative."""
+    assert len(DEFAULT_INDEXES) == 19
 
 
 def test_xref_indexes_present_in_default():

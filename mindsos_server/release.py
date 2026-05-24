@@ -73,6 +73,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterable, Literal, Optional
 
 from mindsos_core import Metagraph
+from mindsos_core.persistence.client import Client
 
 from mindsos_admin import audit_gate
 from mindsos_admin.audit_gate import PendingMutationRow
@@ -145,6 +146,7 @@ class ReleaseResult:
 
 def release_update(
     conn: sqlite3.Connection,
+    client: Optional[Client] = None,
     *,
     session: Session,
     canonical_global_mg: Metagraph,
@@ -204,6 +206,7 @@ def release_update(
     with RELEASE_SHIP_LOCK:
         return _release_update_locked(
             conn,
+            client,
             session=session,
             canonical_global_mg=canonical_global_mg,
             pending_global_mg=pending_global_mg,
@@ -212,6 +215,7 @@ def release_update(
 
 def _release_update_locked(
     conn: sqlite3.Connection,
+    client: Optional[Client],
     *,
     session: Session,
     canonical_global_mg: Metagraph,
@@ -264,6 +268,7 @@ def _release_update_locked(
             try:
                 gate_result = audit_gate.run(
                     session,
+                    client,
                     pending_mutations=snapshot_rows,
                     canonical_global_mg=canonical_global_mg,
                     pending_global_mg=pending_global_mg,
@@ -300,6 +305,7 @@ def _release_update_locked(
                 for role, role_rows in rows_by_role.items():
                     failed_at_role = role  # update on each iteration
                     role_node_ids = _copy_role_pending_to_canonical(
+                        client=client,
                         role=role,
                         role_rows=role_rows,
                         canonical_global_mg=canonical_global_mg,
@@ -556,8 +562,26 @@ def _select_snapshot(conn: sqlite3.Connection) -> list[PendingMutationRow]:
     return rows
 
 
+_RELEASE_MERGE_CYPHER = (
+    "MERGE (dst:Node {node_id: $node_id, "
+    "                  metagraph_id: $canonical_mg_id, "
+    "                  graph_id: $canonical_graph_id}) "
+    "ON CREATE SET dst += $props "
+    "ON MATCH SET dst += $props"
+)
+"""Phase 26a §am3 release-time MERGE template.
+
+Per ADR-0118 §amendment-3 §"Decision §2" — supersedes §am2's per-
+FalkorDB-graph form (substrate-incompatible per Phase 26a R5-PB-1).
+Idempotent on rerun: MERGE-on-(canonical_mg_id, canonical_graph_id,
+node_id) is no-op when dst exists with unchanged properties; SET on
+existing dst with identical props produces no write.
+"""
+
+
 def _copy_role_pending_to_canonical(
     *,
+    client: Optional[Client],
     role: str,
     role_rows: list[PendingMutationRow],
     canonical_global_mg: Metagraph,
@@ -628,6 +652,30 @@ def _copy_role_pending_to_canonical(
             properties=dict(pending_node.properties),
             node_id=node_id,
         )
+
+        # Phase 26a §am3 — release-time FalkorDB MERGE. Per-role
+        # independence preserved: MERGE-on-(canonical_mg_id,
+        # canonical_graph_id, node_id) is idempotent on rerun.
+        # Per Phase 25 hard_delete_user persister=None precedent,
+        # `client is None` means caller wants in-memory only (Phase
+        # 24 contract); Cypher write opt-in via passing live Client.
+        if client is not None:
+            falkor_props: dict[str, Any] = {
+                "value": pending_node.value,
+                "node_type": pending_node.type_name,
+            }
+            for pk, pv in pending_node.properties.items():
+                falkor_props[f"prop_{pk}"] = pv
+            client.run_query(
+                _RELEASE_MERGE_CYPHER,
+                {
+                    "node_id": node_id,
+                    "canonical_mg_id": canonical_global_mg.metagraph_id,
+                    "canonical_graph_id": canonical_graph.graph_id,
+                    "props": falkor_props,
+                },
+            )
+
         landed.append(node_id)
     return landed
 

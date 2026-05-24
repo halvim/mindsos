@@ -3490,21 +3490,45 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Risks:** L2 must not import `mindsos_server` (ADR-0010) — parity test enforces. Phase 19 free-function signatures must be forward-compatible (PB-13 amendment promise) — Phase 25 adds persister + kl as kwargs with defaults so Phase 19 callers continue to work.
   **Docs:** `docs/usage/server/auth.md`, `docs/usage/server/persistence.md` (NEW per PB-2 absorption); ADRs 0010/0011/0038/0040/0041/0042. ADR-0011 Status stays Accepted (the Protocol shape was already locked at 2026-04-22; only the first-consumer phase shifted at Phase 19 §am1).
 
-### Phase 26 — Integration A: L0+L1+L2 end-to-end scripted scenario
+### Phase 26 — RETIRED (split into 26a + 26b at Phase 26a design)
 
-  **Deps:** 02–25 (every prior shipped phase). **Layer:** cross. **Net-new?** No (composes shipped pieces).
-  **Scope (deliberately narrow — one scripted scenario, no feature additions):**
+  Phase 26 monolithic row retired per Phase 26a design log R1-PB-1 (c). The original "Integration A: L0+L1+L2 end-to-end scripted scenario" scope was structurally broken as written: PHASE_MAP §26 said "no feature additions" but three independent documentary commitments named Phase 26 as the persistence-wiring phase (ADR-0118 §am2 propose/release Cypher; `mindsos_cli/commands/admin.py` Phase 15a importer docstring; Phase 14a round-3 lock). The 7-step scenario step 4 ("Import a 10-row fixture into Global") was unimplementable cross-subprocess without importer persistence. Phase 26a wires persistence first; Phase 26b runs the integration scenario over the wired substrate. Suffix scheme matches Phase 04 / 04-v2 / 05a-d precedent.
+
+### Phase 26a — FalkorDB persistence wiring (Integration A substrate)
+
+  **Deps:** 02–25 (every prior shipped phase). **Layer:** cross (Core + admin + server). **Net-new?** Yes (NEW: server-side bootstrap wrapper + Loader.find_by_name + 19th DEFAULT_INDEXES entry; MODIFIED: `client: Client` kwarg through `propose_for_promotion`, `release_update`, `audit_gate.run`, admin importer CLI).
+  **Scope (Phase 26a design log R1-PB-1 (c) + R2-PB-1 (a) + R5 reversals):**
+    1. **NEW** `mindsos_server/persistence/bootstrap.py::bootstrap_kl_from_falkordb(client)` — load-or-mint seam via `MetagraphLoader.find_by_name(name)` (mint + persist on miss; load on hit). Per R6-PB-2 (b) home choice.
+    2. **NEW** `MetagraphLoader.find_by_name(name: str) -> str | None` — O(1) lookup backed by ADR-0123 §am1 index.
+    3. **NEW** 19th `DEFAULT_INDEXES` entry `("node", "Metagraph", "name")` per ADR-0123 §am1.
+    4. **MODIFIED** `mindsos_admin/promotion.py::propose_for_promotion(conn, client, *, ...)` — adds positional `client` second-arg; in-memory add_node + incremental Cypher MERGE per ADR-0118 §am3 corrected template (metagraph_id+graph_id+node_id keys; supersedes §am2 per-FalkorDB-graph naming).
+    5. **MODIFIED** `mindsos_server/release.py::release_update(conn, client, *, ...)` — adds positional `client`; per-role pending→canonical MERGE per §am3 corrected template; per-role independence preserved.
+    6. **MODIFIED** `mindsos_admin/audit_gate.py::run(admin_session, client, *, ...)` — adds positional `client` for forward symmetry (reads pending in-memory; no Cypher read at v1).
+    7. **MODIFIED** `mindsos_cli/commands/admin.py` importer verbs — `_run_single_importer` flushes via `MetagraphRepository.persist(mg)` per Phase 07 P4 A per-CLI Client lifecycle.
+    8. **NEW** `mindsos_cli/commands/server.py::_resolve_client()` helper — opens fresh `FalkorClient` per CLI invocation; caller closes per Phase 07 P4 A.
+  **Tests:** `tests/phase_26a/` — 7 test files: index sentinel (19 entries) + Loader.find_by_name happy+missing + bootstrap_kl mint+load + import isolation (admin → core edge per ADR-0010 §am2) + signature smoke (client positional 2nd) + 3-test FalkorDB E2E smoke (round-trip mint+load, persist MERGE-idempotency, find_by_name empty-DB). Phase-baseline literal-decay updates: 8 version-bump sites `+phase25 → +phase26a`; tests/phase_07/test_bootstrap.py + tests/phase_09/test_indexes_phase09.py index count `18 → 19`.
+  **Pass criterion:** all Phase 26a tests + cumulative suite GREEN; smoke test mint+load round-trip preserves metagraph_id; admin import dolce persists to FalkorDB and find_by_name resolves the canonical Global id.
+  **Risks:** FalkorDB-side concurrent admin writes — no cross-graph transaction primitive per ADR-0030; documented in ADR-0118 §am3 §"Concurrency caveats" subsection per Phase 26a R2-PB-5 (c). Resolution deferred to Phase 32 or dedicated concurrency-discipline phase.
+  **ADR delta:** ADR-0118 §am3 (NEW — wiring + corrected Cypher + concurrency caveats); ADR-0010 §am2 (NEW — admin → core ALLOWED); ADR-0123 §am1 (NEW — Metagraph.name index). ADR-0043, 0121, 0114, 0011, 0125 — UNCHANGED.
+  **Docs:** none new; admin importer docstring + design log entries.
+
+### Phase 26b — Integration A: L0+L1+L2 end-to-end scripted scenario (over wired substrate)
+
+  **Deps:** 02–26a. **Layer:** cross. **Net-new?** No (composes Phase 26a-wired substrate; pytest harness only).
+  **Scope (Phase 26a design log R1-PB-3 + R0 META-PB-5 + R0 META-PB-2 (a)):**
     1. Bootstrap server (Phase 20).
-    2. Create one user (Phase 18); login (Phase 19) and capture token.
-    3. Bootstrap KL Global + Local for that user (Phase 14, 25).
-    4. Import a 10-row fixture into Global (Phase 15).
-    5. Walk the role-graph via MetagraphView; assert expected counts.
-    6. Logout.
-    7. Audit query confirms each step emitted a record (Phase 21).
-  **Tests:** one end-to-end test that runs the script in a clean container; golden-output diff on every assertion; same script via the CLI is the tester's manual confirmation.
-  **Pass criterion:** scenario runs in under N seconds (set in phase chat); golden outputs stable across re-runs.
-  **Risks:** scope creep — Phase 26 is regression-catching, not feature-adding. If a scenario step needs a new CLI flag, it's a regression in an earlier phase, not a new phase-26 feature.
-  **Docs:** none new; this phase amends `docs/usage/cookbook/` only as a scaffolding placeholder for Phase 38.
+    2. Create user1 + user2 (Phase 18); login user1 and capture token.
+    3. Bootstrap KL Global (Phase 14 + Phase 26a-wired `bootstrap_kl_from_falkordb`).
+    4. Import via custom test-importer fixture (`tests/phase_26a/fixtures/_test_importer.py` per Phase 26a R3-PB-2 (c) — 10-row TSV; exercises the full importer-wiring path).
+    5. Walk role-graph via `MetagraphView`; assert expected counts (Python-side; no CLI verb required).
+    6. `mindsos server admin read-local user2` exercises Phase 25 cross-user-read substrate (R0 META-PB-5 (b)).
+    7. Propose ATOM + release ship sub-scenario per Phase 26a R1-PB-3 (b) — exercises Phase 24's propose/release surface with Phase 26a wiring.
+    8. Logout user1.
+    9. `mindsos server query-audit` — per-step audit expectations table per R0 META-PB-3 (a)+(c); importer step pinned to "no audit" per R1-PB-6 (a) probe-and-pin.
+  **Tests:** `tests/phase_26b/test_integration_a.py` — Python pytest harness; CLI subprocesses where verbs exist (bootstrap, login, user create, admin read-local, propose, release ship, logout, query-audit); Python free-function calls where they don't (KL bootstrap implicit via _resolve_kl, MetagraphView walk). Golden-output diff via raw `assert ==` + normalizer helper (R1-PB-4 (b); no syrupy/snapshot lib).
+  **Pass criterion:** scenario runs deterministically in cumulative `tests/` suite; cumulative wall-clock under 2700s confirm-phase ceiling per Phase 25 B-25-T4 (R0 META-PB-4 (b) — N-second per-test criterion dropped).
+  **Risks:** scope creep — 26b is regression-catching over the 26a-wired substrate; if a scenario step needs a new CLI flag (e.g. `mindsos kl bootstrap`, `mindsos knowledge walk`, `mindsos kl seed-fixture`), it's a deferred CLI verb tracked in PHASE_MAP §38 (Phase 26a R1-PB-5 (b)), NOT a Phase 26b addition.
+  **Docs:** none new; design log + handoff prompt for Phase 27.
 
 ### Phase 27 — L3 DataStates + capacity primitives
 

@@ -120,7 +120,12 @@ from mindsos_server.admin import (
     read_other_local_summary,
     reset_admin,
 )
-from mindsos_server.persistence import InMemoryLocalPersister
+from mindsos_core.config import FalkorConfig
+from mindsos_core.persistence.client import Client, FalkorClient
+from mindsos_server.persistence import (
+    InMemoryLocalPersister,
+    bootstrap_kl_from_falkordb,
+)
 from mindsos_server.release import release_update
 from mindsos_server.errors import (
     AlreadyAnAdminError,
@@ -1110,21 +1115,53 @@ def _resolve_persister() -> InMemoryLocalPersister:
     return InMemoryLocalPersister()
 
 
-def _resolve_kl() -> KnowledgeLayer:
-    """
-    Construct the v1 :class:`KnowledgeLayer` instance for a CLI
-    invocation.
+def _resolve_client() -> Client:
+    """Open a fresh :class:`FalkorClient` for a CLI invocation (Phase 26a).
 
-    Phase 25 v1 ships a fresh :meth:`KnowledgeLayer.bootstrap` per
-    CLI invocation. The bootstrap call auto-ensures the 6 Global
-    named role-graphs (ADR-0042 §amendment-1). Locals are lazy-
-    created on first install via the orchestrator's :func:`_install_for`.
+    Per Phase 26a design log R3-PB-1 (d) + R5-PB-3 (a) + Phase 07 P4 A
+    invariant ("CLI verbs open a client, run the verb, close. No long-
+    lived process-scope clients"). Lazy-construct from environment via
+    :class:`FalkorConfig`; caller is responsible for ``client.close()``
+    in a try/finally block.
 
-    Future phase (first user-Local-write) will replace this with a
-    persisted-Global-load + persisted-Local-population path; the v1
-    fresh-bootstrap pattern matches the persister's stateless behavior.
+    Env vars consulted (per :class:`FalkorConfig.from_env`):
+    * ``FALKORDB_HOST`` (default ``localhost``)
+    * ``FALKORDB_PORT`` (default ``6379``)
+    * ``FALKORDB_PASSWORD`` (default empty)
+    * ``graph`` always defaults to ``mindsos`` per ADR-0030 + Phase 07
+      P86 B (graph is a per-call parameter, not connection-time env).
+
+    Returns:
+        A live :class:`FalkorClient` connected to the configured
+        FalkorDB graph; lazy-bootstrap (Phase 07 P2 A) has already
+        created the 19 :data:`DEFAULT_INDEXES` per ADR-0123 §am1.
     """
-    return KnowledgeLayer.bootstrap()
+    config = FalkorConfig.from_env()
+    return FalkorClient(config)
+
+
+def _resolve_kl(client: Optional[Client] = None) -> KnowledgeLayer:
+    """Construct the :class:`KnowledgeLayer` instance for a CLI invocation.
+
+    Phase 26a (R4-PB-1 (b) + R5-PB-4 (a) + R6-PB-2 (b)): calls
+    :func:`mindsos_server.persistence.bootstrap.bootstrap_kl_from_falkordb`
+    when ``client`` is provided. The wrapper tries
+    :meth:`MetagraphLoader.find_by_name` for the canonical Global; on
+    miss, mints fresh KL + persists; on hit, loads + installs.
+
+    For backward compatibility with Phase 25 callers that pass no
+    client (legacy in-memory pattern), this function still supports
+    the bare :meth:`KnowledgeLayer.bootstrap` path. Phase 26b will
+    audit callers and either remove the fallback or migrate them.
+
+    Args:
+        client: Optional :class:`Client`. When provided, KL is
+            FalkorDB-backed via the wrapper. When ``None``, fresh
+            in-memory bootstrap (Phase 25 compat).
+    """
+    if client is None:
+        return KnowledgeLayer.bootstrap()
+    return bootstrap_kl_from_falkordb(client)
 
 
 @admin_app.command(name="promote-user")
@@ -1672,9 +1709,11 @@ def release_propose_for_promotion_cmd(
         _ensure_migrated(conn)
         session = _resolve_session(conn)
         _, pending_mg = _build_global_metagraphs(conn)
+        client = _resolve_client()
         try:
             result = propose_for_promotion(
                 conn,
+                client,
                 session=session,  # type: ignore[arg-type]
                 proposal=proposal,
                 pending_global_mg=pending_mg,
@@ -1682,6 +1721,8 @@ def release_propose_for_promotion_cmd(
         except (PermissionDeniedError, NotImplementedError, ValueError) as exc:
             typer.echo(f"error: {exc}", err=True)
             raise typer.Exit(code=_release_exit_for(exc)) from exc
+        finally:
+            client.close()
 
     if json_out:
         typer.echo(
@@ -1725,9 +1766,11 @@ def release_ship_cmd(
         _ensure_migrated(conn)
         session = _resolve_session(conn)
         canonical_mg, pending_mg = _build_global_metagraphs(conn)
+        client = _resolve_client()
         try:
             result = release_update(
                 conn,
+                client,
                 session=session,  # type: ignore[arg-type]
                 canonical_global_mg=canonical_mg,
                 pending_global_mg=pending_mg,
@@ -1740,6 +1783,8 @@ def release_ship_cmd(
         ) as exc:
             typer.echo(f"error: {exc}", err=True)
             raise typer.Exit(code=_release_exit_for(exc)) from exc
+        finally:
+            client.close()
 
     if json_out:
         typer.echo(

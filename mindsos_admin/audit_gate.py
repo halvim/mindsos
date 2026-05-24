@@ -61,7 +61,7 @@ gate callsite); Phase 24 design log §1 PB-9 + PB-24 + PB-Z7 + PB-Z11
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Iterable, Literal, Mapping, Sequence
+from typing import TYPE_CHECKING, Iterable, Literal, Mapping, Sequence
 
 from mindsos_core import Metagraph
 
@@ -72,6 +72,9 @@ from mindsos_admin.similarity import (
     compute_similarity,
 )
 from mindsos_server.session import Session
+
+if TYPE_CHECKING:
+    from mindsos_core.persistence.client import Client
 
 
 __all__ = [
@@ -208,6 +211,7 @@ class AuditGateResult:
 
 def run(
     admin_session: Session,
+    client: "Client | None" = None,
     *,
     pending_mutations: Sequence[PendingMutationRow],
     canonical_global_mg: Metagraph,
