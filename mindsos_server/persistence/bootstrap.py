@@ -1,7 +1,12 @@
-"""KL bootstrap wrapper — load Global from FalkorDB or mint + persist.
+"""KL bootstrap wrapper(s) — load Global from FalkorDB or mint + persist.
 
 Phase 26a ship per Phase 26a design log R4-PB-1 (b) + R5-PB-4 (a) +
 R6-PB-2 (b) + ADR-0118 §amendment-3.
+
+Phase 26b extends with :func:`bootstrap_global_pair_from_falkordb` —
+symmetric load-or-mint for the canonical + pending Global pair, used
+by the CLI release-flow helper to close B-26a-T4 (ephemeral
+metagraph_id gap). See ADR-0118 §amendment-4 §"Decision §1+§2".
 
 Per Phase 25's ADR-0043 verbatim contract ("KL stays in-memory; server
 owns I/O"), KL itself stays untouched at Phase 26a. The server-side
@@ -29,6 +34,11 @@ constant directly via re-import, not a duplicated string literal.
 
 from __future__ import annotations
 
+from mindsos_admin.bootstrap import (
+    PENDING_GLOBAL_METAGRAPH_NAME,
+    bootstrap_pending_global,
+)
+from mindsos_core import Metagraph
 from mindsos_core.persistence.client import Client
 from mindsos_core.persistence.metagraph_repository import MetagraphRepository
 from mindsos_core.reconstruction.metagraph_loader import MetagraphLoader
@@ -84,4 +94,83 @@ def bootstrap_kl_from_falkordb(client: Client) -> KnowledgeLayer:
     return KnowledgeLayer(global_metagraph=global_mg)
 
 
-__all__ = ["bootstrap_kl_from_falkordb"]
+def bootstrap_global_pair_from_falkordb(
+    client: Client,
+) -> tuple[KnowledgeLayer, Metagraph]:
+    """Load-or-mint canonical Global + pending Global from FalkorDB.
+
+    Phase 26b ship per Phase 26b design log R4-PB-1 (a) + R1-PB-1 (b)
+    + R6-PB-1 (a) + ADR-0118 §amendment-4 §"Decision §1+§2".
+
+    Closes B-26a-T4 (the ephemeral-metagraph_id gap surfaced at Phase
+    26a host smoke). Canonical + pending Metagraph anchors persist on
+    first-ever bootstrap so subsequent CLI invocations resolve stable
+    ``metagraph_id`` values via :meth:`MetagraphLoader.find_by_name`.
+
+    Two-store semantics per §amendment-4:
+
+    * **Canonical content authority = FalkorDB.** ``loader.load(...)``
+      reconstructs the full Metagraph (nodes + edges + cross-graph
+      edges) — the §am3 ``_RELEASE_MERGE_CYPHER`` writes from prior
+      release-ship invocations land back here.
+    * **Pending content authority = SQLite.** ``loader.load(...)`` on
+      the pending side returns the persisted anchor + role-graph
+      topology; contained pending NODES are NOT loaded here (caller
+      runs :func:`mindsos_admin.promotion.rehydrate_pending_global`
+      against the SQLite ledger per Z21.1). The §am3
+      ``_PROPOSE_MERGE_CYPHER`` writes to FalkorDB are forensic-only
+      at Phase 26b — retained in code but unread by the production
+      path. Future L4/L5 readers may consume.
+
+    Per R6-PB-1 (a) — pending-mint path persists the empty pending
+    Metagraph so subsequent invocations resolve a stable
+    ``metagraph_id``; symmetric with canonical.
+
+    The wrapper does NOT close the ``client`` — caller's
+    responsibility per Phase 07 P4 A invariant.
+
+    Args:
+        client: A live :class:`Client` (typically a
+            :class:`FalkorClient` opened by ``_resolve_client()`` at
+            the CLI envelope).
+
+    Returns:
+        ``(canonical_kl, pending_mg)`` — canonical wrapped in
+        :class:`KnowledgeLayer`; pending returned as a bare
+        :class:`Metagraph` (the propose / release callers pass it
+        directly to :func:`propose_for_promotion` /
+        :func:`release_update`).
+
+    Raises:
+        PersistenceError: FalkorDB lookup / load / persist driver
+            failure. Missing-row at lookup is NOT an error — it
+            triggers the mint path.
+    """
+    loader = MetagraphLoader(client)
+    repo = MetagraphRepository(client)
+
+    # Canonical — identical to bootstrap_kl_from_falkordb.
+    canonical_id = loader.find_by_name(_GLOBAL_METAGRAPH_NAME)
+    if canonical_id is None:
+        canonical_kl = KnowledgeLayer.bootstrap()
+        repo.persist(canonical_kl.global_metagraph())
+    else:
+        canonical_kl = KnowledgeLayer(
+            global_metagraph=loader.load(canonical_id)
+        )
+
+    # Pending — symmetric load-or-mint + persist-on-mint per R6-PB-1 (a).
+    pending_id = loader.find_by_name(PENDING_GLOBAL_METAGRAPH_NAME)
+    if pending_id is None:
+        pending_mg = bootstrap_pending_global(canonical_kl.global_metagraph())
+        repo.persist(pending_mg)
+    else:
+        pending_mg = loader.load(pending_id)
+
+    return canonical_kl, pending_mg
+
+
+__all__ = [
+    "bootstrap_kl_from_falkordb",
+    "bootstrap_global_pair_from_falkordb",
+]
