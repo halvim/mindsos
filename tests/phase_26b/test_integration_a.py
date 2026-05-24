@@ -192,11 +192,10 @@ def _step_06_metagraph_view_walk(state: ScenarioState) -> ScenarioState:
     view = canonical_kl.global_view()
     concepts_count = 0
     for role in view.roles():
-        graph = view.role_graph(role)
-        if graph is None:
+        if role != ROLE_CONCEPTS:
             continue
-        if role == ROLE_CONCEPTS:
-            concepts_count = len(graph.nodes)
+        for graph in view.graphs_by_role(role):
+            concepts_count += len(graph.nodes)
     assert concepts_count >= 10, f"concepts walk count {concepts_count}"
     return state
 
