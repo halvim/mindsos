@@ -363,10 +363,13 @@ def _step_12_query_audit(state: ScenarioState) -> ScenarioState:
         app, ["server", "query-audit", "--json"],
     )
     assert r.exit_code == 0, r.output
-    rows = json.loads(r.output)
+    payload = json.loads(r.output)
+    # Per B-26b-T8 probe: CLI shape is {"rows": [...], "count": N,
+    # "next_after_id": null|int}; row field name is "event" (not "kind").
+    rows = payload["rows"]
 
     # Per R4-PB-4 + R5-F1/F2 — assert presence of expected events.
-    event_kinds = [row["kind"] for row in rows]
+    event_kinds = [row["event"] for row in rows]
     expected_events = {
         "EVT_BOOTSTRAP",
         "EVT_LOGIN",
