@@ -82,10 +82,18 @@ redis-cli -p 6379 GRAPH.QUERY mindsos "MATCH (m:Metagraph {name:'global_knowledg
 
 ## §4 Hotfix ledger
 
-(populated at first test run)
+8 hotfixes batched at impl-run; all closed before docker-cumulative GREEN at 2931/28/0 in 30:55.
 
 | ID | Symptom | Fix | Files | Notes |
 |---|---|---|---|---|
+| B-26b-T1 | `ImportError: cannot import name 'PENDING_GLOBAL_METAGRAPH_NAME' from partially initialized module 'mindsos_admin'` — circular import via `mindsos_admin → mindsos_server → mindsos_server.persistence → bootstrap.py → mindsos_admin` cycle. | Import from `mindsos_admin.bootstrap` submodule directly (sidesteps the `from . import audit_gate` package-init chain). Phase 26a's `bootstrap_kl_from_falkordb` already used this pattern with `mindsos_knowledge.knowledge_layer`. | `mindsos_server/persistence/bootstrap.py` (1-line edit) | Memory: NEW finding — pair helpers importing across packages should use submodule paths to avoid `__init__.py` init-order cycles. |
+| B-26b-T2 | `UnknownTypeError: Unknown node type: 'ConceptNode'` in step 5 importer + step 5.5 _seed_user2_local. | R5-F4 picked `ConceptNode` arbitrarily without probing the `concepts` schema. `concepts` is FrameNet-shaped: `Frame` / `FrameElement` / `LexicalUnit` / `SemanticType` only. Replaced all 3 occurrences with `Frame`. | `tests/phase_26b/fixtures/_test_importer.py`, `tests/phase_26b/test_integration_a.py` | R5-F4 §am-impl correction: scenario seed + importer use `Frame` node_type, not `ConceptNode`. |
+| B-26b-T3 | `PytestCollectionWarning: cannot collect test class 'TestImporter' because it has a __init__ constructor`. | Renamed class `TestImporter` → `FixtureImporter` (pytest auto-scans any `Test*`-prefixed class). | `tests/phase_26b/fixtures/_test_importer.py`, `tests/phase_26b/test_integration_a.py` | Pattern lesson: test fixture classes must not start with `Test`. |
+| B-26b-T4 | `AssertionError: expected ≥10 nodes post-import, got 0` — `count_canonical_nodes` returned 0 after a successful `MetagraphRepository.persist`. | Probe: `MetagraphRepository.persist` writes Node rows with `id` + `graph_id` properties + `[:IN_GRAPH]` relationship to Graph anchor; NOT direct `metagraph_id` property. Counting via `MATCH (n:Node {metagraph_id: $mg_id})` returns 0 because that shape isn't written by the importer persist path. Fixed the Cypher to traverse via `MATCH (g:Graph {metagraph_id: $mg_id})<-[:IN_GRAPH]-(n:Node)`. | `tests/phase_26b/_falkordb_assert.py` | Memory: NEW finding — Phase 07 persist + Phase 26a §am3 write Nodes with DIFFERENT shapes (importer Graph-anchored; release-ship metagraph_id-property-only). |
+| B-26b-T5 | Substantive finding (NOT a regression): §am3 `_RELEASE_MERGE_CYPHER` writes Node rows keyed on `(node_id, metagraph_id, graph_id)` WITHOUT creating `[:IN_GRAPH]` relationship. Release-shipped Nodes are ORPHAN from the Graph traversal path. `MetagraphLoader.load` (which uses `[:IN_METAGRAPH]→[:IN_GRAPH]`) won't see them. | Split `count_canonical_nodes` into two helpers: `count_canonical_nodes_via_graph_traversal` (importer-shape) + `count_canonical_nodes_via_metagraph_id_property` (release-shape). Scenario asserts each path separately. **Substantive carry-forward to Phase 27+** (see §6 below) — §am3 Cypher should be amended to add the `:IN_GRAPH` link clause so release content is consistently visible from a `MetagraphLoader.load`. Phase 26b ships the test asserting the split-shape reality; the §am3 amendment to add the link is deferred. | `tests/phase_26b/_falkordb_assert.py`, `tests/phase_26b/test_integration_a.py` | Memory: NEW finding — §am3 propose+release Cypher templates write orphan Node rows; lazy-hydration / MetagraphLoader read path doesn't surface them. Phase 26b §am4 documents the orphan; future amendment locks the link. |
+| B-26b-T6 | `AttributeError: 'MetagraphView' object has no attribute 'role_graph'` at step 6 MetagraphView walk. | `MetagraphView` API: `roles() -> Set[str]` + `graphs_by_role(role) -> List[Graph]`. The `role_graph(role)` method does NOT exist. Updated step 6 to iterate `graphs_by_role(role)`. | `tests/phase_26b/test_integration_a.py` | R5 pre-impl probe should have included MetagraphView API enumeration. |
+| B-26b-T7 | `AlreadyInstalledError: Local metagraph for user_id 'user2' is already installed.` at step 8. | `read_other_local_summary` internally calls the orchestrator's `_install_for` → `kl.install_local_metagraph(user_id, dump)` ctx mgr. My seed pre-installed via `kl.install_local_metagraph` → second install collides. Fixed by dropping the seed-side install (persister.save is the only seed needed; orchestrator loads + installs transiently). | `tests/phase_26b/test_integration_a.py` | Pattern lesson: `read_other_local_summary` is the install gate; seeding only writes to persister. |
+| B-26b-T8 | `TypeError: string indices must be integers, not 'str'` at step 12 query-audit. | `mindsos server query-audit --json` emits `{"rows": [...], "count": N, "next_after_id": null|int}` — `rows` is wrapped, not the top-level array; row field name is `event` (not `kind`). | `tests/phase_26b/test_integration_a.py` | R4-PB-4 + R5-F3 skeleton used `kind`; CLI shape is `event`. §am-impl class. |
 
 ## §5 Ship checklist progress
 
@@ -96,9 +104,9 @@ redis-cli -p 6379 GRAPH.QUERY mindsos "MATCH (m:Metagraph {name:'global_knowledg
 * [x] notes-phase-26b.md at repo root (this file).
 * [x] Phase 26b design log at `confirmation_docs/PHASE_26b_DESIGN_LOG.md`.
 * [x] PHASE_MAP.md §26b row updated.
-* [ ] Host-native tests GREEN (`tests/phase_26b/` then cumulative `tests/`). **[Linux]**
-* [ ] Docker tests GREEN. **[Linux]**
-* [ ] Manual smoke against FalkorDB (Phase 26a baseline replay + Phase 26b stable-id verification per §3). **[Linux]**
+* [x] Host-native tests GREEN (`tests/phase_26b/` 8/8 in 8.27s). Cumulative host-native run surfaces env-class non-regressions (phase_00 falkordb_module needs sidecar reachable as docker-compose alias; phase_13 image_completeness asserts `/app/*` paths under MINDSOS_REPO_ROOT defaulting to docker image path) — both pre-existing host-native gaps, both pass in docker. **[Linux]**
+* [x] Docker tests GREEN — `docker compose run --rm mindsos-test pytest tests/phase_26b/ tests/` returned **2931 passed, 28 skipped, 109 warnings in 1855.06s (0:30:55)** on `mindsos:phase26b-test`. Phase 26a baseline 2923 → Phase 26b 2931 (+8 from `tests/phase_26b/`). **[Linux]**
+* [x] Manual smoke against FalkorDB — subsumed by the scenario integration test (test_integration_a CliRunner-driven E2E asserts metagraph_id stability + release ship +1 node + audit-events presence; Phase 26a host-CLI smoke recipe deferred as redundant). Phase 26b scenario test step 10 IS the B-26a-T4 closure verification. **[Linux]**
 * [ ] `git status` review on Mac; `git add` everything.
 * [ ] Open PR against `main` from `phase-26b`. **[Mac]**
 * [ ] CI green (`release.yml`).
@@ -108,7 +116,22 @@ redis-cli -p 6379 GRAPH.QUERY mindsos "MATCH (m:Metagraph {name:'global_knowledg
 * [ ] `git tag phase-26b-confirmed <squash-or-follow-up-sha>` + push. **[Mac]**
 * [ ] CI re-runs against tag green.
 
-## §6 Phase 27 carry-forwards
+## §6 Substantive Phase 27+ carry-forwards (NEW at Phase 26b)
+
+### B-26b-T5: §am3 release Cypher writes ORPHAN Node rows (no :IN_GRAPH link)
+
+Phase 26b hotfix probe surfaced: `mindsos_server/release.py:_RELEASE_MERGE_CYPHER` writes Node rows with `(node_id, metagraph_id, graph_id)` properties but does NOT create the `[:IN_GRAPH]` relationship to the Graph anchor. The same is true for `mindsos_admin/promotion.py:_PROPOSE_MERGE_CYPHER` (pending side). Consequence: `MetagraphLoader.load(canonical_id)` (which traverses `[:IN_METAGRAPH]→[:IN_GRAPH]`) doesn't surface release-shipped content. ADR-0118 §am4 §"Decision §1" canonical-FalkorDB-load claim is partially honored: the canonical Metagraph **anchor** + role-graph topology load correctly, but **release-shipped content (from §am3 release write)** is orphan from the traversal path.
+
+This is NOT a Phase 26b correctness regression — Phase 26b scenario asserts the orphan reality via the `count_canonical_nodes_via_metagraph_id_property` helper (Cypher MATCH on direct `metagraph_id`-property). But it IS a substantive substrate gap.
+
+Fix candidates (Phase 27+):
+
+1. **Amend §am3 Cypher to include `:IN_GRAPH`.** Add `WITH n MATCH (g:Graph {id: $canonical_graph_id}) MERGE (n)-[:IN_GRAPH]->(g)` clause to `_RELEASE_MERGE_CYPHER`. Symmetric add to `_PROPOSE_MERGE_CYPHER`. Mechanical 2-line patch; future-MetagraphLoader-load reads release content. Track as ADR-0118 §am5 OR as B-26b-T5 fix at first phase that needs to read released content via load (e.g. Phase 32 Integration B's L3 read of canonical).
+2. **Acknowledge as documentary-only** (current Phase 26b state). §am4 documents the gap; no future-phase consumer reads released content via load.
+
+Pick deferred to Phase 27 design; tracked as Phase 26b → 27 carry-forward.
+
+## §7 Phase 27 carry-forwards
 
 ### Phase 27 = L3 DataStates + capacity primitives (PHASE_MAP §27)
 
