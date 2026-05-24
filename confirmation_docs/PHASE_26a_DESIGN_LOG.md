@@ -163,3 +163,31 @@ R6 picks: R6-PB-1 (a) add 19th `("node", "Metagraph", "name")` index per ADR-012
 * **`apply_rewrite_map` impl in KL** — Phase 25 deferral holds; no consumer at 26a/b given admin-direct-ATOM-only scope.
 * **Audit emission for importers** — pinned to "no audit" at Phase 26b step 4 per R1-PB-6 (a) + R7-F4; future audit-coverage phase may revisit (would cascade through ADR-0013 §am4 + Phase 15a baseline literals).
 * **Importer-side incremental persist (vs full Metagraph persist)** — Phase 26a flushes whole Metagraph via `MetagraphRepository.persist()` after importer mutates; if importer scale grows beyond O(small), incremental write pattern from propose-time (§am3 §"Decision §1") may be retrofitted.
+
+## §8. B-26a-T4 candidate carried to Phase 26b — `_build_global_metagraphs` ephemeral-Metagraphs gap
+
+**Surfaced during Phase 26a host smoke (post-ship; NOT a Phase 26a hotfix).** The CLI helper `mindsos_cli/commands/server.py:1613::_build_global_metagraphs(conn)` — called by `release propose-for-promotion` (line 1711) + `release ship` (line 1768) — builds **fresh in-memory Metagraphs** each CLI invocation via `bootstrap_global(importers=()) → bootstrap_pending_global(canonical_mg) → rehydrate_global_metagraphs(conn, ...)`. It does NOT call `bootstrap_kl_from_falkordb`. Each invocation mints brand-new random `metagraph_id` values for canonical + pending.
+
+**Why this is a Phase 26b scope item, not a Phase 26a hotfix:**
+
+* Phase 26a design log §0 explicit scope: "wires importer + propose + release + audit_gate to FalkorDB" at the substrate level — `bootstrap_kl_from_falkordb` + `find_by_name` + `MetagraphRepository.persist` MERGE-idempotency + §am3 Cypher templates.
+* PHASE_MAP §26b step 7 explicit scope: "Propose ATOM + release ship sub-scenario per Phase 26a R1-PB-3 (b) — exercises Phase 24's propose/release surface with Phase 26a wiring." The CLI-orchestration-of-propose+release IS Phase 26b's job.
+* Phase 26a ships the LOW-LEVEL bootstrap_kl_from_falkordb wrapper; Phase 26b will rewire `_build_global_metagraphs(conn) → _build_global_metagraphs(conn, client)` to use it for stable metagraph_ids across invocations.
+
+**Phase 26a smoke confirms the substrate works correctly:** mint+load round-trip preserves metagraph_id (host smoke step 4+6 both returned `401ff013-...`); MetagraphRepository.persist() MERGE-idempotency confirmed via pytest E2E; ADR-0123 §am1 index operational via `CALL db.indexes()`. The Phase 26b rewire of `_build_global_metagraphs` will use this proven substrate.
+
+**Expected Phase 26b rewire shape:**
+
+```python
+def _build_global_metagraphs(conn, client):
+    canonical_kl = bootstrap_kl_from_falkordb(client)
+    canonical_mg = canonical_kl.global_metagraph()
+    # NEW Phase 26b: pending-side load-or-mint wrapper symmetric with bootstrap_kl_from_falkordb
+    pending_mg = bootstrap_pending_global_from_falkordb(client, canonical_mg)
+    rehydrate_global_metagraphs(conn, canonical_mg, pending_mg)
+    return canonical_mg, pending_mg
+```
+
+Plus updates to the two callsites at server.py:1711 + 1768 to thread `client` through.
+
+**Implication for Phase 26a release:** Phase 26a CAN ship as-is. The propose+release CLI verbs work at the SQLite+in-memory layer (Phase 24 contract preserved); the FalkorDB writes from §am3 templates land but are orphaned without the Phase 26b orchestration rewire. This is the intended split per the Phase 26a design.

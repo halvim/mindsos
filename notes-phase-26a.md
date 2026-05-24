@@ -103,7 +103,74 @@ mindsos server release ship
 
 **Regex-tolerance verification needed at first test run** per Phase 26a R2-PB-4 (c): `tools/release.yml`, `mindsos confirm-phase --init-notes` parser, `_retention._TAG_RE`, doctor self-test, `printf '%0Nd'` consumers (per memory `feedback_tag_regex_audit.md` 6-site checklist + `feedback_workflow_bash_octal_trap.md`). The `26a` suffix scheme matches Phase 04-v2 + 05a-d precedent so existing patches probably suffice; verify and patch any literal `^[0-9]{2}$` regex.
 
-## §6 Implementation references
+## §6 Phase 26b carry-forwards (substrate-ready; CLI orchestration deferred)
+
+### `_build_global_metagraphs(conn)` ephemeral-Metagraph gap (B-26a-T4 candidate; Phase 26b scope)
+
+**Surfaced during Phase 26a host smoke.** The CLI helper
+`mindsos_cli/commands/server.py:1613::_build_global_metagraphs(conn)` —
+called by `release propose-for-promotion` (line 1711) + `release ship`
+(line 1768) — builds **fresh in-memory Metagraphs** each CLI
+invocation via `bootstrap_global(importers=()) → bootstrap_pending_
+global(canonical_mg) → rehydrate_global_metagraphs(conn, ...)`. It
+does NOT call `bootstrap_kl_from_falkordb`. Each invocation mints
+brand-new random `metagraph_id` values for canonical + pending.
+
+**Consequence at Phase 26a:** `release propose-for-promotion` CLI verb
+calls succeed at the SQLite + in-memory layer; the §am3 Cypher MERGE
+writes (lines 467-487 in `mindsos_admin/promotion.py`) land in
+FalkorDB but keyed on ephemeral metagraph_ids that no subsequent
+invocation references — effectively orphaned writes. Same gap for
+`release ship`.
+
+**Phase 26a release scope per design log R1-PB-1 (c):** "26a wires
+persistence first; Phase 26b runs the integration scenario over the
+wired substrate." The propose+release CLI orchestration is exactly
+the Phase 26b sub-scenario per PHASE_MAP §26b step 7: "Propose ATOM
++ release ship sub-scenario — exercises Phase 24's propose/release
+surface with Phase 26a wiring." Phase 26a ships the LOW-LEVEL
+substrate; Phase 26b rewires `_build_global_metagraphs` to:
+
+1. Replace `bootstrap_global(importers=())` with
+   `bootstrap_kl_from_falkordb(client).global_metagraph()` so
+   canonical has a STABLE metagraph_id across CLI invocations.
+2. Add a parallel `bootstrap_pending_global_from_falkordb(client)`
+   wrapper that find_by_name's a `pending_knowledge` Metagraph (or
+   similar canonical name) and mints+persists on miss, symmetric
+   with the Global path.
+3. Plumb `client` through `_build_global_metagraphs(conn, client)`
+   so the helper itself becomes Phase 26a-Client-aware.
+
+**Smoke evidence for Phase 26a release-state:**
+
+* `bootstrap_kl_from_falkordb` mint+load round-trip preserves
+  `metagraph_id` (host smoke step 4 + step 6 returned same id
+  `401ff013-...`).
+* `MetagraphRepository.persist()` MERGE-idempotency confirmed via
+  pytest E2E `test_repository_persist_is_idempotent_across_calls`.
+* `MetagraphLoader.find_by_name` resolves correctly (both inline
+  `{name: $name}` and WHERE-clause forms confirmed against live
+  FalkorDB; step 5 diagnostic A+B both returned the matching row).
+* ADR-0123 §am1 `Metagraph.name` index confirmed operational via
+  `CALL db.indexes()` showing `Metagraph [id, name]`.
+
+**Phase 26b should NOT treat this as a regression of Phase 26a.** It
+is the integration-half of the split. Phase 26a substrate is healthy;
+Phase 26b orchestration is the next phase's work.
+
+### Other Phase 26b carry-forwards (from design log §6)
+
+* Scripted scenario 8 steps locked at R1-PB-3 + R0 META-PB-5 +
+  R1-PB-6 + R3-PB-2.
+* Golden-output normalizer helper at `tests/phase_26b/_normalize.py`
+  per R1-PB-4 (b).
+* Per-step audit expectations table per R0 META-PB-3 (a) + R7-F4.
+* Test-importer fixture at `tests/phase_26a/fixtures/_test_importer.py`
+  (NEW per R3-PB-2 (c) — 10-row TSV; Phase 26a defers actual file
+  creation to Phase 26b's scenario-build).
+* PHASE_MAP §38 deferred-CLI-verb TODOs accumulate from 26b findings.
+
+## §7 Implementation references
 
 See `confirmation_docs/PHASE_26a_DESIGN_LOG.md` §5 for the canonical scope per R0-R7 picks; the §am-impl addendum above (§2) documents R7 probe-vs-pick reconciliations.
 
