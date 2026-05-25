@@ -1,124 +1,67 @@
-# Phase 28 — L3 CapacityLayer + bootstrap + capability gate + B-26b-T5 closure
+# Phase 28 — Notes
 
-## §1 Scope (PHASE_MAP §28)
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
 
-**Second L3 ship.** Adds 6 new source files to existing `mindsos_capacity/`
-package (no new top-level pkg; 9-site checklist N/A). Closes the
-B-26b-T5 §am3 orphan-Node Cypher gap as a carry-forward L0 fix
-(compound layer label per R2 PB-26).
+## phase_title
 
-**Source files NEW (6):** `bootstrap.py`, `capabilities.py`,
-`capacity_layer.py`, `types.py`, `schemas.py`, `views.py`.
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
 
-**Source files EDITED:** `exceptions.py` (3→4 classes adds
-`ConstraintViolationError`); `__init__.py` (docstring rewrite + 15 new
-exports → 79 total + version bump).
+L3 CapacityLayer + bootstrap + capability gate + B-26b-T5 closure (carry-forward L0 fix)
 
-**Carry-forward edits:** `mindsos_server/release.py` `_RELEASE_MERGE_CYPHER`
-+ `mindsos_admin/promotion.py` `_PROPOSE_MERGE_CYPHER` (both add
-`:IN_GRAPH` MERGE per ADR-0118 §am5); `tests/phase_26b/test_integration_a.py`
-+ `_falkordb_assert.py` stale-comment cleanup per R5 PB-46.
+## tester_notes
 
-**Test files NEW (14 + 1 helper + 1 `__init__.py`):**
-`test_capacity_bootstrap.py`, `test_capacity_layer_init.py`,
-`test_capacity_layer_register_datastate.py`,
-`test_capacity_layer_register_capacity.py`,
-`test_capacity_layer_local_wins.py`, `test_capability_gate.py`,
-`test_capabilities_parity.py`, `test_session_protocol_satisfied.py`,
-`test_views_accessors.py`, `test_constraints.py`, `test_schemas.py`,
-`test_invocation_not_exported.py`, `test_import_isolation_phase_28.py`,
-`test_adr_amendment_sentinels.py`, `test_release_cypher_in_graph_link.py`,
-`_fixtures.py`, `__init__.py`. **Total: ~107 cases** (parametrize
-expansion: 9-key reserved + 12-case import-isolation matrix).
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
 
-**Cumulative target:** Phase 27 baseline 2968 + ~107 ≈ **3075 passed,
-28 skipped**. Reconcile from `PHASE_27_CONFIRMED.md` at impl Step 0.
+### Background
 
-**Docs (3):** `docs/usage/capacity/overview.md` (NEW); `categories.md`
-(NEW stub); `mkdocs.yml` Capacity nav `(Phase 27, 28)`. `building.md`
-deferred to Phase 29 per R2 PB-21 (b).
+Second L3 ship per PHASE_MAP §28. Adds 6 new source files to existing `mindsos_capacity/` package (no new top-level pkg; 9-site checklist N/A). Closes the B-26b-T5 §am3 orphan-Node Cypher carry-forward from Phase 26b as a compound-layer-label "L3 + L0 fix" per Round 2 PB-26.
 
-## §2 Design rounds summary
+### Design saturation
 
-Six rounds (R0 + R1 + R2 + R3 + R4 + R5 pre-impl probe). See
-`confirmation_docs/PHASE_28_DESIGN_LOG.md` for the full pick ledger.
+Six design rounds (R0 + R1 + R2 + R3 + R4 + R5 pre-impl probe). Total 47 picks. One R0 → R1 flip: PB-6 (defer B-26b-T5 Cypher fix) flipped to PB-19 (ship at Phase 28). All other rounds were refinements + collateral closures with no flips. R5 probe confirmed zero `pytest.raises(ImportError|ModuleNotFoundError)` referencing Phase 28 surface (no B-27-T1 class flips), Metagraph supports `.user_id` attribute assignment, and §am5 has zero blast radius outside Phase 26b. Full pick ledger at `confirmation_docs/PHASE_28_DESIGN_LOG.md`.
 
-**Locked picks shaping ship (47 picks across R0..R5):**
+### Ship surface
 
-* R0 PB-1 + ADR-0078 §am1 — halvim UPPERCASE wins.
-* R0 PB-3 — slim CapacityLayer.
-* R1 PB-14 — `session: Optional[SessionProtocol] = None` only.
-* R1 PB-19 (flipped R0 PB-6) — B-26b-T5 fix ships at Phase 28.
-* R3 PB-37 — `test_capabilities_parity.py` drops `importorskip`.
-* R5 PB-49 — Step-0 grep confirmed zero §am5 blast radius outside Phase 26b.
+Source: `mindsos_capacity/{bootstrap,capabilities,capacity_layer,schemas,types,views}.py` (6 NEW); `exceptions.py` 3 → 4 classes (adds `ConstraintViolationError`); `__init__.py` docstring rewrite + 15 new exports = 79 total + version bump. Carry-forward L0 edits: `mindsos_server/release.py` `_RELEASE_MERGE_CYPHER` + `mindsos_admin/promotion.py` `_PROPOSE_MERGE_CYPHER` (both add `MATCH (g:Graph {id: $graph_id}) MERGE (n)-[:IN_GRAPH]->(g)` clause per ADR-0118 §am5). Collateral cleanup: stale §am3 comments + docstring in `tests/phase_26b/test_integration_a.py` + `_falkordb_assert.py`.
 
-## §3 ADR amendments (parent — no .git per Model C)
+15 test files in `tests/phase_28/` totaling ~107 cases (parametrize expansion: 9-key RESERVED_PROPERTY_KEYS + 12-case import-isolation matrix lifts raw count above the R1 PB-15 estimate of ~55).
 
-9 ADR touches: 0040 §am2, 0061 §Impl, 0064 §Impl, 0065 §Impl (+ Phase
-15b PB-23 closure), 0066 §Impl edit (ships→shipped), 0078 §am1, 0080
-§Impl, 0085 §Impl, 0118 §am5.
+Halvim divergences from parent layout: (i) `session: Optional[SessionProtocol] = None` only — no legacy `user_id=` kw; no `_resolve_session_arg` deprecation shim (halvim has zero callers; R1 PB-14 lock). (ii) Slim `types.py` ships `SessionProtocol` + `SessionArg` only — no `_LocalTestSession` / `_make_test_session` machinery (R1 PB-13 lock). (iii) Slim `views.py` ships accessors only — `successors_of` / `producers_of` / `consumers_of` + `SuccessorHop` dataclass defer atomically to Phase 29 (R4 PB-45 lock). (iv) `test_capabilities_parity.py` drops `importorskip` — halvim is a monorepo so server import is always available (R3 PB-37 lock; ADR-0078 §am1 footnotes this).
 
-## §4 Sentinel-paths additions (6 entries)
+### ADR amendments (parent tree per Model C; no .git)
 
-`mindsos_capacity/{bootstrap,capabilities,capacity_layer,schemas,types,views}.py`.
+9 touches: ADR-0040 §amendment-2 (L3 slim SessionProtocol copy); ADR-0061 §Implementation (CapacityLayer + Local-wins lookup); ADR-0064 §Implementation (shared DataStates graph); ADR-0065 §Implementation (12 categories + Phase 15b PB-23 closure); ADR-0066 §Implementation footer flip (ships → shipped at Phase 28); ADR-0078 §amendment-1 (halvim UPPERCASE reconcile + drop importorskip); ADR-0080 §Implementation (`_enforce_global_write` carve-out); ADR-0085 §Implementation (home-graph only; additional memberships deferred); ADR-0118 §amendment-5 (Cypher MERGE :IN_GRAPH closure; B-26b-T5).
 
-## §5 12-site version bump `+phase27 → +phase28`
+### Phase 15b PB-23 RESOLVED
 
-| # | Site | Status |
-|---|------|--------|
-| 1 | `pyproject.toml` `[project] version` + `description` rewrite | ✅ |
-| 2 | `mindsos_cli/manifest.toml` `[mindsos] phase` | ✅ |
-| 3 | `mindsos_cli/manifest.toml` `[mindsos] version` | ✅ |
-| 4 | `docker-compose.yml` `mindsos:phase28-prod` | ✅ |
-| 5 | `docker-compose.yml` `mindsos:phase28-test` | ✅ |
-| 6 | `mindsos_cli/__init__.py` `__version__` | ✅ |
-| 7 | `mindsos_core/__init__.py` `__version__` | ✅ |
-| 8 | `mindsos_instances/__init__.py` `__version__` | ✅ |
-| 9 | `mindsos_knowledge/__init__.py` `__version__` | ✅ |
-| 10 | `mindsos_admin/__init__.py` `__version__` | ✅ |
-| 11 | `mindsos_server/__init__.py` `__version__` | ✅ |
-| 12 | `mindsos_capacity/__init__.py` `__version__` | ✅ |
+Alignment-lookup is a RETRIEVAL capacity (reads alignment edges from KL's `alignments` role-graph), NOT a 13th L3 category. The 12-category contract per ADR-0065 is unchanged. AlignmentsImporter + per-edge alignment-anchor IRI builder + real FN-WN extraction + importer idempotency tightening ship-slot REMAINS "build for first consumer" per PHASE_15b PB-23 lock E4 — no schedule change. See ADR-0065 §Implementation (Phase 28) for the closure rationale.
 
-## §6 Memory edits at ship
+### Test counts
 
-1. NEW `project_mindsos_phase_28.md`.
-2. UPDATE `feedback_release_cypher_orphan_node.md` → RESOLVED Phase 28 §am5.
-3. UPDATE `project_mindsos_phase_27.md` carry-forwards (close #1+#2+#3).
+* **Docker (Linux, prod image):** 3073 passed, 37 skipped, 109 warnings in 1875s (31m 15s). Expected ~3075 (R5 PB-47 reconciled range 3070-3080); landed within rounding.
+* **Skip delta:** Phase 27 baseline 28 → Phase 28 37 = +9 skips. All 9 are the `test_adr_amendment_sentinels.py` tests, which skip in container per Model C (parent ADR dir at `/Layered Intelligence/docs/decisions/adr/` is not COPYd into the runtime image). Sandbox-side those 9 run green.
+* **Sandbox (Python 3.10):** 69/69 sandbox-runnable tests pass; 7 server-importing test files (~38 cases) collect-fail in sandbox due to `datetime.UTC` requiring Python 3.11+ — they run green in docker.
 
-## §7 Ship checklist (13-step ordering per R2 PB-28)
+### Smoke tests on prod image
 
-* [x] **[Sandbox]** Edit 9 parent ADRs (no git; Model C).
-* [ ] **[Mac]** Verify parent ADR diffs visually.
-* [ ] **[Mac]** `git checkout -b phase-28 origin/main` — **GATED ON
-      Phase 27 squash-merge to main** (R5 PB-48 (a) gate 1).
-* [x] **[Sandbox]** Halvim source + tests + sentinel-paths + version
-      bump + docs + PHASE_MAP + notes-phase-28.md.
-* [x] **[Sandbox]** Local `pytest tests/phase_28/` → **69/69
-      sandbox-runnable pass**; 7 server-importing test files (~38 cases)
-      skip-to-collect on Python 3.10 due to `datetime.UTC` (needs 3.11+);
-      will run green in docker.
-* [ ] **[Linux]** Host pip refresh NOT needed (no new top-level pkg).
-* [ ] **[Linux]** `docker compose --profile test build mindsos-test`.
-* [ ] **[Linux]** `docker compose run --rm mindsos-test pytest
-      tests/phase_28/ tests/`. **Expected: ~3075 passed, 28 skipped.**
-* [ ] **[Mac]** Commit + push + open PR + CI green (release.yml).
-* [ ] **[Mac]** Squash-merge.
-* [ ] **[Linux]** `mindsos confirm-phase --phase 28 --notes-file
-      notes-phase-28.md` — **GATED ON `phase-27-confirmed` tag pushed
-      + tag-CI green** (R5 PB-48 (a) gate 2).
-* [ ] **[Mac]** Commit + push `PHASE_28_CONFIRMED.md`.
-* [ ] **[Mac]** `git tag phase-28-confirmed <follow-up-sha>` + push.
-* [ ] **[Mac]** CI re-runs against tag green.
+1. `doctor --self-test --json` confirms all 7 packages at `0.0.0+phase28`; `expected_compose_image_phase: "28"`; `pyproject_version` + `init_version` aligned.
+2. `:IN_GRAPH` Cypher closure present in `release.py` (4 hits — template + docstring references) and `promotion.py` (3 hits) — §am5 ship verified live in the prod image.
+3. CapacityLayer end-to-end REPL smoke deferred to docker pytest (3073 passed covers it).
 
-## §8 Carry-forwards to Phase 29+
+### Carry-forwards to Phase 29+
 
-* TYPE_COMPAT auto-discovery + 5-kind CONSTRAINT enforcement — Phase 29.
-* `SuccessorHop` dataclass + walks — Phase 29 atomic per R4 PB-45.
-* Pipeline finder + invocation + InvocationResult/call_capacity
-  exports + problem_trace — Phase 30 (flips sentinel tests).
-* Residents + text builtins + pathfinding — Phase 31.
-* `docs/usage/capacity/building.md` substantive content — Phase 29.
-* Write capacities + symmetric contract + per-flow validators — Phases 33-35.
-* `mindsos capacity` CLI Typer group — Phase 30 (invoke anchor).
-* Additional-graph membership API per ADR-0085 — first consumer.
-* B-26b-T5 — RESOLVED at Phase 28 via §am5. No further carry-forward.
+Phase 29: TYPE_COMPAT auto-discovery + 5-kind CONSTRAINT enforcement; `SuccessorHop` dataclass + `successors_of` / `producers_of` / `consumers_of` walks (atomic with discovery substrate per R4 PB-45). Phase 30: pipeline finder + invocation runtime + `InvocationResult` / `call_capacity` exports + `problem_trace` attribute (flips Phase 28's `test_invocation_not_exported.py` + `test_capacity_layer_init.py::test_problem_trace_attribute_not_present_at_phase_28` sentinels); first `mindsos capacity` CLI Typer group. Phase 31: residents + text builtins. Phases 33-35: write capacities + symmetric write contract + per-flow validators; `types.py` deprecation shim expansion if needed. ADR-0085 additional-graph membership API: defer to first consumer (Phase 31 / Phase 33). **B-26b-T5 — RESOLVED at Phase 28 via §am5; no further carry-forward.**
+
+### Observed quirks / process notes
+
+* Phase 27 paperwork (squash-merge to main, confirm-phase, tag push) closed in parallel with Phase 28 design per R0 PB-0. No regressions.
+* Mid-implementation: working tree was lost after `git branch -D phase-28 && git checkout -b phase-28` cleared the stale prior-session phase-28 branch. All Phase 28 file edits had to be re-created from chat memory — confirms the `git checkout main` + force-branch-recreate workflow needs the `--force-with-lease` discipline more visibly documented for two-machine setups.
+* `mindsos doctor --json` (without `--self-test`) doesn't show the `runtime.versions` block — that's behind `--self-test` per doctor.py line 473. Use `--self-test --json` for the full verification payload.
+* `docker compose run --rm mindsos python3 ...` fails because the entrypoint is `mindsos` (Click rejects `python3` as a subcommand). Override with `--entrypoint python3` or `--entrypoint sh`.
+* Pre-existing circular import: `from mindsos_server.release import _RELEASE_MERGE_CYPHER` triggers `mindsos_server/__init__.py` → `admin.py` → `persistence/__init__.py` → `mindsos_admin/__init__.py` → `promotion.py` → `from mindsos_server.admin import admin_tx` (still mid-init). Pytest avoids this via conftest pre-warming; direct `python3 -c "..."` smoke fails. Not a Phase 28 regression — Phase 26b shipped the same import graph — but worth noting if a future phase wants to do direct-from-`-c` smokes.
