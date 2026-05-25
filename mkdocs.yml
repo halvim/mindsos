@@ -49,6 +49,8 @@ nav:
           - Versioning (Phase 17 retired): usage/knowledge/versioning.md
       - Admin (Phase 15a):
           - Admin overview: concepts/admin-global-shipping.md
+      - Capacity (Phase 27):
+          - Data states: usage/capacity/data-states.md
   - Knowledge sources (Phase 15a):
       - DOLCE-DUL ontology: knowledge-sources/dolce.md
       - Open English WordNet lexicon: knowledge-sources/oewn.md

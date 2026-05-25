@@ -268,4 +268,4 @@ __all__ = [
     "UserHasPromotionHistoryError",
 ]
 
-__version__ = "0.0.0+phase26b"
+__version__ = "0.0.0+phase27"

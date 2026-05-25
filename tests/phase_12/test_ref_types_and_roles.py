@@ -165,14 +165,24 @@ def test_adr_0044_amendment_1_user_id_charset() -> None:
 # ── ADR-0067 L3 parity test deferred sentinel (PB-3) ──────────────────
 
 
-def test_adr_0067_parity_test_deferred_to_phase_27() -> None:
-    """PB-3 lock: REF_TYPES parity test against L3 ships Phase 27,
-    not Phase 12. L3 module doesn't exist yet; importing it would
-    fail. Phase 12 ships REF_TYPES + self-consistency only.
+def test_adr_0067_parity_test_landed_at_phase_27() -> None:
+    """PB-3 origin: REF_TYPES parity test against L3 was deferred from
+    Phase 12 to Phase 27 (the first L3 ship). At Phase 27 the parity
+    test landed at ``tests/phase_27/test_capacity_dataclass.py::
+    test_ref_types_subset_of_kl_ref_types``.
+
+    Sentinel flipped at Phase 27 ship: ``mindsos_capacity`` now
+    exists, and the ADR-0067 §amendment-1 contract holds:
+    ``L3.REF_TYPES ⊆ L2.REF_TYPES`` with
+    ``L2 - L3 == {"PROMOTED"}``.
     """
-    # Sentinel: the L3 package doesn't exist; the parity test cannot
-    # land in Phase 12. Phase 27 owes the test per design-log §4.
     import importlib
 
-    with pytest.raises(ModuleNotFoundError):
-        importlib.import_module("mindsos_capacity")
+    capacity = importlib.import_module("mindsos_capacity")
+    kl_ids = importlib.import_module("mindsos_knowledge.identifiers")
+    assert capacity.REF_TYPES <= kl_ids.REF_TYPES, (
+        "L3.REF_TYPES must be a subset of L2.REF_TYPES"
+    )
+    assert kl_ids.REF_TYPES - capacity.REF_TYPES == {"PROMOTED"}, (
+        "L2 - L3 expected to be exactly {'PROMOTED'} per ADR-0067 §am1"
+    )

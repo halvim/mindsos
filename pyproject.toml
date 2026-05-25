@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase26b"
-description = "MindsOS command-line interface — Phase 26b: Integration A end-to-end scripted scenario + B-26a-T4 closure. Adds `bootstrap_global_pair_from_falkordb(client) -> (KnowledgeLayer, Metagraph)` symmetric load-or-mint pair helper at `mindsos_server/persistence/bootstrap.py` (canonical + pending Global anchors persist on first-ever bootstrap for stable metagraph_id across CLI invocations). Rewires `_build_global_metagraphs(conn) → _build_global_metagraphs(conn, client)` to call the pair helper (canonical FalkorDB-loaded) + `rehydrate_pending_global(conn, pending_mg)` (pending SQLite-rehydrated per Z21.1). Propose + ship CLI verb callsites reorder `client = _resolve_client()` open BEFORE pair helper. Closes B-26a-T4 ephemeral-metagraph_id gap from Phase 26a host smoke. ADR delta: ADR-0118 §am4 (NEW — two-store decomposition; canonical content authority = FalkorDB; pending content authority = SQLite; ship manifest authority = SQLite). 6 design rounds (R0-R6) + R5 pre-impl probe. See confirmation_docs/PHASE_26b_DESIGN_LOG.md."
+version = "0.0.0+phase27"
+description = "MindsOS command-line interface — Phase 27: First L3 ship — DataStates + capacity primitives slim port. Adds NEW top-level `mindsos_capacity/` package (7th) with 5 source files: ShapeDescriptor + DataState (purely structural per ADR-0063), Capacity / Monitor / Adapter dataclasses with stable IRI `capacity:<category>:<name>` (ADR-0066) + `_CapacityBase.validate_for_registration`, REF_TYPES (6-member subset of L2 per ADR-0067 §amendment-1 with PROMOTED carve-out), 12 functional categories + node/edge/constraint/ref vocabularies + 3 exceptions (base + DataStateError + CapacityRegistrationError). EXCLUDED (defer): types.py (Phase 33), capacity_layer.py (Phase 28), bootstrap.py (Phase 28), discovery.py (Phase 29), runtime.py (Phase 30), schemas.py (Phase 28+), views.py (Phase 28+), capabilities.py (Phase 28), builtins/ (Phase 31). InvocationResult + call_capacity live in capacity.py but NOT exported from __init__.py until Phase 30. Manifest [mindsos] packages list generalization closes the 6-pkg literal-decay class: doctor.py + tests/phase_18/test_doctor_6pkg_parity.py iterate the manifest list. New `docs/usage/capacity/data-states.md` mkdocs nav entry. 5 design rounds (R0-R5; R4 saturation) + parent ADR edits (0066 §Implementation footer + 0067 §amendment-1). See confirmation_docs/PHASE_27_DESIGN_LOG.md."
 readme = "README.md"
 requires-python = ">=3.12"
 authors = [
@@ -44,7 +44,11 @@ mindsos = "mindsos_cli.__main__:main"
 # L0 (Server Layer) package per ADR-0001 + Phase 18 PB-1 (row Net-new
 # amendment) + PB-25 (server depends on mindsos_knowledge for the
 # _USER_ID_RE regex import; ADR-0010 permits the server→KL direction).
-include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*"]
+# Phase 27 — added "mindsos_capacity*" per same checklist (now 9-site
+# at Phase 27 with the manifest [mindsos] packages generalization
+# closing the 6-pkg literal-decay class). First L3 (Intellectual
+# Capacity) package per PHASE_MAP §27 + ADRs 0062/0063/0066/0067.
+include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*", "mindsos_capacity*"]
 
 [tool.setuptools.package-data]
 mindsos_cli = ["manifest.toml"]
