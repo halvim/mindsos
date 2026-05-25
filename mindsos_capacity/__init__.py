@@ -1,35 +1,70 @@
-"""MindsOS Intellectual Capacity Layer — L3 public API (Phase 27 slim).
+"""MindsOS Intellectual Capacity Layer — L3 public API (through Phase 28).
 
-Phase 27 ships the L3 read-side definitions only:
+Phase 27 shipped the L3 read-side definitions; Phase 28 ships the
+registry + bootstrap + Local-wins lookup + capability gate. Cumulative
+surface as of Phase 28:
 
 - DataStates (``DataState`` + ``ShapeDescriptor`` + structural-shape
-  helpers ``strict_compatible`` / ``list_of_compat`` / ``validate_
-  datastate``).
+  helpers ``strict_compatible`` / ``list_of_compat`` /
+  ``validate_datastate``) — Phase 27.
 - Capacity / Monitor / Adapter dataclasses with stable IRI form
   ``capacity:<category>:<name>`` (ADR-0066) and
-  ``_CapacityBase.validate_for_registration``.
+  ``_CapacityBase.validate_for_registration`` — Phase 27.
 - Vocabulary: 12 functional categories, 4 node types, 4 node kinds,
   4 edge types, 5 constraint kinds, 5 ref keys, REF_TYPES (6-member
-  subset of L2 per ADR-0067 §amendment-1).
+  subset of L2 per ADR-0067 §amendment-1) — Phase 27.
+- ``CapacityLayer`` registry — register Capacity/Monitor/Adapter into
+  Global or per-user Local metagraphs; Local-wins lookup
+  (``_resolve_declaration``) per ADR-0061; collision detection per
+  ADR-0066 §Implementation (Phase 28) — Phase 28.
+- Bootstrap helpers — ``create_global`` (12 categories + DataStates per
+  ADR-0064 + ADR-0065), ``create_local``, ``ensure_role_graph``,
+  ``ensure_category_graph``, ``ensure_datastate_graph`` — Phase 28.
+- Capability gate — ``CAN_WRITE_GLOBAL`` constant + parity test against
+  ``mindsos_server.capabilities`` per ADR-0078 §amendment-1; ADR-0080
+  bootstrap carve-out (``session=None`` permits Global writes) — Phase 28.
+- ``SessionProtocol`` + ``SessionArg`` slim typing surface per
+  ADR-0040 §amendment-2 — Phase 28.
+- Schemas — ``schema_for_role`` + ``build_datastates_schema`` +
+  ``build_category_schema`` per ADR-0064 + ADR-0065 — Phase 28.
+- ``CapacityLayerView`` — read-only accessors over an L3 metagraph
+  (Phase 28 slim: accessors only; successors/producers/consumers
+  defer to Phase 29).
+- ``ConstraintViolationError`` — admin CONSTRAINT edge enforcement —
+  Phase 28.
 
-Excluded from Phase 27 (defer per PHASE_MAP):
+Excluded from Phase 28 (defer):
 
-- ``CapacityLayer`` registry + bootstrap (Phase 28).
-- Discovery / TYPE_COMPAT (Phase 29).
-- Pipeline finder + invocation runtime + ``InvocationResult`` /
-  ``call_capacity`` exports (Phase 30). NOTE: the dataclass +
-  function live in ``capacity.py`` already, but are NOT exported
-  via this ``__init__.py`` until Phase 30.
-- Residents + builtins (Phase 31).
-- Write capacities + ``SessionProtocol`` / ``SessionArg`` typing
-  surface (Phases 33–35).
+- Discovery / TYPE_COMPAT auto-discovery + ``rediscover`` — Phase 29.
+- Pipeline finder + invocation runtime + ``invoke`` + ``start_resident``
+  + ``problem_trace`` + ``InvocationResult`` / ``call_capacity``
+  exports — Phase 30. ``InvocationResult`` / ``call_capacity`` live in
+  ``capacity.py`` already but are NOT exported from this ``__init__.py``
+  until Phase 30 (sentinel test at
+  ``tests/phase_28/test_invocation_not_exported.py`` enforces).
+- ``SuccessorHop`` dataclass + ``CapacityLayerView.successors_of`` /
+  ``producers_of`` / ``consumers_of`` walks — Phase 29 (lands atomically
+  with the discovery substrate per Phase 28 R4 PB-45).
+- Residents + text builtins — Phase 31.
+- Write capacities + per-flow validators — Phases 33-35 (full
+  ``types.py`` deprecation shim may also land here if needed).
+- L4 problem-trace persistence — out of scope (L4 in design per
+  PHASE_MAP §1).
 
-See ``confirmation_docs/PHASE_27_DESIGN_LOG.md`` for the full design
+See ``confirmation_docs/PHASE_28_DESIGN_LOG.md`` for the full design
 rounds + picks.
 """
 
 from __future__ import annotations
 
+from .bootstrap import (
+    create_global,
+    create_local,
+    ensure_category_graph,
+    ensure_datastate_graph,
+    ensure_role_graph,
+)
+from .capabilities import CAN_WRITE_GLOBAL
 from .capacity import (
     Adapter,
     Capacity,
@@ -37,6 +72,7 @@ from .capacity import (
     Monitor,
     _CapacityBase,
 )
+from .capacity_layer import CapacityLayer
 from .datastate import (
     DataState,
     ShapeDescriptor,
@@ -47,8 +83,16 @@ from .datastate import (
 from .exceptions import (
     CapacityLayerError,
     CapacityRegistrationError,
+    ConstraintViolationError,
     DataStateError,
 )
+from .schemas import (
+    build_category_schema,
+    build_datastates_schema,
+    schema_for_role,
+)
+from .types import SessionArg, SessionProtocol
+from .views import CapacityLayerView
 from .identifiers import (
     CATEGORY_COMBINATION,
     CATEGORY_COMPREHENSION,
@@ -118,10 +162,28 @@ __all__ = [
     "strict_compatible",
     "list_of_compat",
     "validate_datastate",
-    # Exceptions (base + 2 raisers; remaining 4 ship Phase 28-31)
+    # Exceptions (base + 3 raisers as of Phase 28; remaining 3 ship Phase 30-31)
     "CapacityLayerError",
     "CapacityRegistrationError",
+    "ConstraintViolationError",
     "DataStateError",
+    # Phase 28 — CapacityLayer registry + views
+    "CapacityLayer",
+    "CapacityLayerView",
+    # Phase 28 — bootstrap helpers
+    "create_global",
+    "create_local",
+    "ensure_role_graph",
+    "ensure_category_graph",
+    "ensure_datastate_graph",
+    # Phase 28 — capability gate + session typing
+    "CAN_WRITE_GLOBAL",
+    "SessionProtocol",
+    "SessionArg",
+    # Phase 28 — schema builders
+    "schema_for_role",
+    "build_datastates_schema",
+    "build_category_schema",
     # Identifiers — names + builders
     "GLOBAL_METAGRAPH_NAME",
     "LOCAL_METAGRAPH_NAME_FMT",
@@ -178,4 +240,4 @@ __all__ = [
     "RESERVED_PROPERTY_KEYS",
 ]
 
-__version__ = "0.0.0+phase27"
+__version__ = "0.0.0+phase28"

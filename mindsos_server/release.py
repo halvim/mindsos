@@ -567,15 +567,28 @@ _RELEASE_MERGE_CYPHER = (
     "                  metagraph_id: $canonical_mg_id, "
     "                  graph_id: $canonical_graph_id}) "
     "ON CREATE SET dst += $props "
-    "ON MATCH SET dst += $props"
+    "ON MATCH SET dst += $props "
+    "WITH dst "
+    "MATCH (g:Graph {id: $canonical_graph_id}) "
+    "MERGE (dst)-[:IN_GRAPH]->(g)"
 )
-"""Phase 26a §am3 release-time MERGE template.
+"""Phase 26a §am3 release-time MERGE template (§am5 :IN_GRAPH closure at Phase 28).
 
 Per ADR-0118 §amendment-3 §"Decision §2" — supersedes §am2's per-
 FalkorDB-graph form (substrate-incompatible per Phase 26a R5-PB-1).
 Idempotent on rerun: MERGE-on-(canonical_mg_id, canonical_graph_id,
 node_id) is no-op when dst exists with unchanged properties; SET on
 existing dst with identical props produces no write.
+
+Per ADR-0118 §amendment-5 (Phase 28, B-26b-T5 closure): the trailing
+``MATCH (g:Graph {id: $canonical_graph_id}) MERGE (dst)-[:IN_GRAPH]->(g)``
+clause links the released Node to its canonical Graph anchor so that
+``MetagraphLoader.load(canonical_id)`` (which traverses
+``[:IN_METAGRAPH]→[:IN_GRAPH]``) surfaces release-shipped content.
+The MERGE is idempotent — re-running release on the same node MERGEs
+the same relationship without duplication. The MATCH requires the
+Graph anchor row to already exist (guaranteed by the pair-helper's
+bootstrap-on-load).
 """
 
 
