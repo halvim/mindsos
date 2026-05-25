@@ -1,4 +1,4 @@
-"""The ``CapacityLayer`` facade — top-level L3 API (Phase 28 slim ship).
+"""The ``CapacityLayer`` facade — top-level L3 API.
 
 Owns:
 
@@ -11,20 +11,32 @@ This class is **in-memory first**, mirroring
 :class:`mindsos_knowledge.KnowledgeLayer`. Persistence adapters
 (FalkorDB) live separately.
 
-**Phase 28 slim scope (R0 PB-3 lock).** Ships the registration,
-look-up, constraint, and capability-gate surface. Deferred to later
-phases:
+**Phase 28 substrate (R0 PB-3 lock).** Ships the registration,
+look-up, constraint, and capability-gate surface.
+
+**Phase 29 additions.** Auto-discovery hooks wire
+:func:`discover_for_capacity` at the end of :meth:`register_capacity`
+and :func:`discover_for_datastate` at the end of
+:meth:`register_datastate`. Adds :meth:`rediscover` (drop auto edges
++ recompute from scratch). Raises :class:`DiscoveryFailedError` (sub
+of :class:`CapacityRegistrationError`) when an auto-discovery write
+fails mid-registration; partial-write state is observable by callers
+(R2 PB-27 pick (b)).
+
+Deferred to later phases:
 
 - ``invoke`` / ``start_resident`` / ``stop_resident`` / ``problem_trace``
-  — Phase 30 (lifts ``runtime.py`` + ``InvocationResult`` / ``call_capacity``
-  exports).
-- ``successors_of`` / ``producers_of`` / ``consumers_of`` — Phase 29
-  (with TYPE_COMPAT auto-discovery substrate).
-- ``rediscover`` — Phase 29 (with discovery hooks).
+  — Phase 30 (lifts ``runtime.py`` + ``InvocationResult`` /
+  ``call_capacity`` exports).
 - Cross-graph constraints — Phase 30+ (only same-category in v1; see
   :class:`ConstraintViolationError`).
 - Additional-graph memberships per ADR-0085 — deferred to first
   consumer (Phase 31 / Phase 33).
+- Admin-authored TYPE_COMPAT API (``add_type_compat``) — Phase 30+
+  (Phase 29 admins author via direct ``Graph.add_edge`` per
+  ADR-0086 §Implementation).
+- Bulk rediscover across all metagraphs — Phase 30+ (first admin
+  caller).
 
 The class always takes ``session: Optional[SessionProtocol]`` per
 ADR-0080 bootstrap carve-out: ``None`` is the pre-server admin path; a
@@ -49,9 +61,15 @@ from .bootstrap import (
 from .capabilities import CAN_WRITE_GLOBAL
 from .capacity import _CapacityBase
 from .datastate import DataState, validate_datastate
+from .discovery import (
+    discover_for_capacity,
+    discover_for_datastate,
+    rediscover_all,
+)
 from .exceptions import (
     CapacityRegistrationError,
     ConstraintViolationError,
+    DiscoveryFailedError,
 )
 from .identifiers import (
     CONSTRAINT_KINDS,
@@ -172,6 +190,23 @@ class CapacityLayer:
             properties=props,
             node_id=datastate.iri,
         )
+
+        # Phase 29 — discovery hook. Under the current Phase 28-29
+        # forward-ref restriction (_CapacityBase.validate_for_registration
+        # forbids unregistered DataStates in inputs/outputs), this
+        # trigger emits zero edges at v1. Shipped for parent parity +
+        # future-scope per R1 PB-15 lock.
+        try:
+            discover_for_datastate(
+                mg,
+                datastate.iri,
+                capacity_index=self._capacity_index[mg.metagraph_id],
+            )
+        except Exception as exc:
+            raise DiscoveryFailedError(
+                f"discover_for_datastate raised after register_datastate "
+                f"for {datastate.iri!r}: {exc}"
+            ) from exc
         return node
 
     def register_capacity(
@@ -252,6 +287,23 @@ class CapacityLayer:
         )
         index[declaration.iri] = (node, category_graph)
         self._declarations[declaration.iri] = declaration
+
+        # Phase 29 — auto-discover TYPE_COMPAT edges (ADR-0069 + ADR-0086).
+        # Invocation ordering per R2 PB-24: index[] + _declarations[]
+        # are set BEFORE discovery, so discover_for_capacity walks the
+        # full index and excludes self via node_id comparison.
+        try:
+            discover_for_capacity(
+                mg,
+                node,
+                category_graph,
+                capacity_index=index,
+            )
+        except Exception as exc:
+            raise DiscoveryFailedError(
+                f"discover_for_capacity raised after register_capacity "
+                f"for {declaration.iri!r}: {exc}"
+            ) from exc
         return node
 
     def add_constraint(
@@ -334,6 +386,49 @@ class CapacityLayer:
     def iter_declarations(self) -> List[_CapacityBase]:
         """Return every registered declaration (Local + Global)."""
         return list(self._declarations.values())
+
+    def rediscover(
+        self,
+        *,
+        session: SessionArg = None,
+    ) -> List[object]:
+        """Drop auto-discovered TYPE_COMPAT edges + recompute from scratch.
+
+        Manual edges (no ``discovered_automatically=True`` flag) are
+        preserved per ADR-0086.
+
+        Target scope:
+
+        * ``session is not None`` → Local metagraph of ``session.user_id``;
+          no capability gate (the user owns their Local).
+        * ``session is None`` → Global metagraph; gated on
+          ``CAN_WRITE_GLOBAL`` per ADR-0078 + ADR-0080.
+
+        **Open gap (deferred):** if an admin DELETES an auto edge,
+        the next ``rediscover`` re-adds it. See ADR-0086 §Implementation
+        (Phase 29). Resolution deferred to first reported foot-gun.
+
+        Raises:
+            PermissionError: ``session`` lacks ``CAN_WRITE_GLOBAL`` when
+                rediscover targets Global.
+            DiscoveryFailedError: a write inside ``rediscover_all``
+                raised mid-emit.
+
+        Returns:
+            The list of ``Edge`` / ``MetaEdge`` objects re-created.
+        """
+        target_uid = session.user_id if session is not None else None
+        if target_uid is None:
+            self._enforce_global_write(session, op="rediscover")
+        mg = self._metagraph_for(target_uid)
+        try:
+            return rediscover_all(
+                mg, capacity_index=self._capacity_index[mg.metagraph_id]
+            )
+        except Exception as exc:
+            raise DiscoveryFailedError(
+                f"rediscover_all raised for metagraph {mg.name!r}: {exc}"
+            ) from exc
 
     def _metagraph_for(self, user_id: Optional[str]) -> Metagraph:
         if user_id is None:

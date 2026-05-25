@@ -1,10 +1,11 @@
 """Exception hierarchy for the Intellectual Capacity Layer (L3).
 
-Phase 27 ships 3 classes — the base + 2 actually-raised at the
+Phase 27 shipped 3 classes — the base + 2 actually-raised at the
 definition surface. Subsequent L3 phases append their own as they
 ship the raisers:
 
-- Phase 28 — ``ConstraintViolationError`` (via ``CapacityLayer.register``).
+- Phase 28 — ``ConstraintViolationError`` (via ``CapacityLayer.add_constraint``).
+- Phase 29 — ``DiscoveryFailedError`` (via auto-discovery write paths).
 - Phase 30 — ``PipelineNotFoundError`` + ``ProblemTraceError``.
 - Phase 31 — ``ResidentError``.
 
@@ -67,9 +68,39 @@ class ConstraintViolationError(CapacityLayerError):
     """
 
 
+class DiscoveryFailedError(CapacityRegistrationError):
+    """Auto-discovery raised during a register_* call.
+
+    Subclass of :class:`CapacityRegistrationError` so callers catching
+    the base also catch discovery failures (R0 PB-5 + R2 PB-27 locks).
+
+    Phase 29 raisers (transitive, via discovery hooks):
+
+    - ``CapacityLayer.register_capacity`` — discovery's ``_add_edge``
+      raised (e.g. underlying ``Graph.add_edge`` /
+      ``Metagraph.add_metaedge`` schema-validation failure on the
+      TYPE_COMPAT property bag).
+    - ``CapacityLayer.register_datastate`` — same shape, transitive
+      via ``discover_for_datastate`` (note: Phase 29 v1 emits zero
+      edges from that trigger due to the forward-ref restriction, so
+      this raiser path is dead at v1).
+    - ``CapacityLayer.rediscover`` — full re-run failed mid-emit.
+
+    **Partial-write semantics (R2 PB-27 pick (b)):** when raised
+    mid-``register_capacity``, the capacity node + ``_capacity_index``
+    entry already exist; some discovery edges may have been written
+    before the failure point. v1 does not surface which edges; callers
+    treat the layer state as partially mutated and should generally
+    discard the metagraph or re-bootstrap if recovery matters. A
+    future phase may add a ``partial_edges`` attribute on this
+    exception if a concrete caller need surfaces.
+    """
+
+
 __all__ = [
     "CapacityLayerError",
     "DataStateError",
     "CapacityRegistrationError",
     "ConstraintViolationError",
+    "DiscoveryFailedError",
 ]

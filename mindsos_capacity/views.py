@@ -1,28 +1,33 @@
-"""Read-only views over an L3 Metagraph (Phase 28 slim ship).
+"""Read-only views over an L3 Metagraph.
 
 :class:`CapacityLayerView` is the analogue of
 :class:`mindsos_knowledge.views.MetagraphView` — a thin facade exposing
 the capacity- and DataState-level lookups L4's pipeline-finder needs,
 without any write surface.
 
-**Phase 28 slim scope.** Ships accessors only:
-``category_graph`` / ``datastates_graph`` / ``iter_categories`` /
-``get_capacity`` / ``get_datastate`` / ``iter_capacities`` /
-``iter_datastates``. Successors / producers / consumers walks are
-deferred to Phase 29 (where TYPE_COMPAT auto-discovery substrate ships;
-without that substrate the walks would return empty deterministically,
-which is misleading). The :class:`SuccessorHop` dataclass + the three
-walk methods will land atomically at Phase 29 alongside the discovery
-substrate per Phase 28 R4 PB-45 lock.
+Phase 28 shipped the accessor surface (``category_graph`` /
+``datastates_graph`` / ``iter_categories`` / ``get_capacity`` /
+``get_datastate`` / ``iter_capacities`` / ``iter_datastates``). Phase 29
+adds the :class:`SuccessorHop` dataclass + the successor / producer /
+consumer walks atomically with the TYPE_COMPAT auto-discovery
+substrate per Phase 28 R4 PB-45.
+
+**Parent-verbatim semantics (R5 PB-37):** the walks do NOT filter
+soft-deleted edges or nodes at Phase 29 — Phase 28's
+:meth:`iter_capacities` doesn't filter either; consistency wins.
+``include_deprecated`` parameter discipline across L3 walks is a
+Phase 30+ carry-forward (R5 PB-37 new item).
 """
 
 from __future__ import annotations
 
-from typing import Iterator, Optional
+from dataclasses import dataclass
+from typing import Iterator, List, Optional
 
-from mindsos_core import Graph, Metagraph, Node
+from mindsos_core import Edge, Graph, Metagraph, Node
 
 from .identifiers import (
+    EDGE_TYPE_COMPAT,
     NODE_TYPE_ADAPTER,
     NODE_TYPE_CAPACITY,
     NODE_TYPE_DATASTATE,
@@ -32,20 +37,48 @@ from .identifiers import (
 )
 
 
+# ── SuccessorHop ───────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class SuccessorHop:
+    """One step in a pipeline.
+
+    Attributes:
+        source_capacity: The capacity IRI that produces the DataState.
+        target_capacity: The capacity IRI that consumes the DataState.
+        via_datastate: The DataState IRI connecting them.
+        same_category: ``True`` iff both capacities sit in the same
+            functional-category graph (the edge is intra-graph).
+        strictness: ``"strict"`` or ``"adapter"`` — Phase 29 vertical
+            slice only emits ``"strict"``. The ``"adapter"`` variant
+            requires adapter-bridge synthesis which a future phase
+            ships.
+        adapter_capacity: The adapter IRI inserted, if any. Always
+            ``None`` at Phase 29 (no adapter-bridge synthesis yet).
+    """
+
+    source_capacity: str
+    target_capacity: str
+    via_datastate: str
+    same_category: bool
+    strictness: str = "strict"
+    adapter_capacity: Optional[str] = None
+
+
+# ── CapacityLayerView ──────────────────────────────────────────────────
+
 class CapacityLayerView:
     """Read-only view over an L3 Metagraph.
 
-    Exposes capacity / DataState lookup + category iteration.
-    Modifications must go through
+    Exposes capacity / DataState lookup, category iteration, and
+    type-compatibility successor lookup. Modifications must go through
     :class:`mindsos_capacity.capacity_layer.CapacityLayer`.
-
-    Successor / producer / consumer walks are deferred to Phase 29; this
-    Phase 28 ship gives L4 just enough to discover *what exists* in the
-    Global / Local metagraphs.
     """
 
     def __init__(self, metagraph: Metagraph) -> None:
         self._mg = metagraph
+
+    # ── basic accessors ────────────────────────────────────────────────
 
     @property
     def metagraph(self) -> Metagraph:
@@ -81,6 +114,8 @@ class CapacityLayerView:
         for g in self._mg.graphs.values():
             if g.role and g.role.startswith(prefix) and g.role != ROLE_DATASTATES:
                 yield g.role[len(prefix):]
+
+    # ── capacity / datastate lookup ────────────────────────────────────
 
     def get_capacity(self, iri: str) -> Optional[Node]:
         """Return the capacity node with IRI ``iri``, searching every category."""
@@ -124,8 +159,80 @@ class CapacityLayerView:
             return iter(())
         return (n for n in g.nodes.values() if n.type_name == NODE_TYPE_DATASTATE)
 
+    # ── successor enumeration (used by pipeline-finder) ───────────────
+
+    def successors_of(self, capacity_iri: str) -> List[SuccessorHop]:
+        """Return every TYPE_COMPAT successor of ``capacity_iri``.
+
+        Walks both intra-graph Edges and cross-graph MetaEdges. Parent-
+        verbatim — no soft-delete filter at Phase 29 (R5 PB-37).
+        Returns hops in dict-iteration order; tests should use set
+        comparison or explicit sort.
+        """
+        hops: List[SuccessorHop] = []
+        source = self.get_capacity(capacity_iri)
+        if source is None:
+            return hops
+        # Intra-graph.
+        for g in self._mg.graphs.values():
+            if g.role == ROLE_DATASTATES:
+                continue
+            for e in g.edges.values():
+                if (
+                    e.type_name == EDGE_TYPE_COMPAT
+                    and e.source.node_id == source.node_id
+                ):
+                    hops.append(_hop_from_edge(e, same_category=True))
+        # Cross-graph.
+        for me in self._mg.metaedges.values():
+            if (
+                me.type_name == EDGE_TYPE_COMPAT
+                and me.properties.get("source_capacity") == source.node_id
+            ):
+                hops.append(
+                    SuccessorHop(
+                        source_capacity=me.properties["source_capacity"],
+                        target_capacity=me.properties["target_capacity"],
+                        via_datastate=me.properties.get("via_datastate", ""),
+                        same_category=False,
+                        strictness=me.properties.get("strictness", "strict"),
+                        adapter_capacity=me.properties.get("adapter_id"),
+                    )
+                )
+        return hops
+
+    def producers_of(self, datastate_iri: str) -> List[Node]:
+        """Return every capacity whose ``outputs`` list contains ``datastate_iri``."""
+        hits: List[Node] = []
+        for node in self.iter_capacities():
+            outs = node.properties.get("outputs") or []
+            if datastate_iri in outs:
+                hits.append(node)
+        return hits
+
+    def consumers_of(self, datastate_iri: str) -> List[Node]:
+        """Return every capacity whose ``inputs`` list contains ``datastate_iri``."""
+        hits: List[Node] = []
+        for node in self.iter_capacities():
+            ins = node.properties.get("inputs") or []
+            if datastate_iri in ins:
+                hits.append(node)
+        return hits
+
     def __repr__(self) -> str:
         return f"CapacityLayerView({self._mg.name!r}, graphs={len(self._mg.graphs)})"
 
 
-__all__ = ["CapacityLayerView"]
+def _hop_from_edge(edge: Edge, *, same_category: bool) -> SuccessorHop:
+    """Internal helper: build a SuccessorHop from an intra-graph Edge."""
+    return SuccessorHop(
+        source_capacity=edge.source.node_id,
+        target_capacity=edge.target.node_id,
+        via_datastate=edge.properties.get("via_datastate", ""),
+        same_category=same_category,
+        strictness=edge.properties.get("strictness", "strict"),
+        adapter_capacity=edge.properties.get("adapter_id"),
+    )
+
+
+__all__ = ["CapacityLayerView", "SuccessorHop"]
