@@ -226,13 +226,26 @@ Six rounds (R0–R5, with R4 = pre-impl probe execution). See
       push.
 * [ ] **[Mac]** CI re-runs against tag green.
 
-## §8 Hotfix ledger preamble (R2 PB-32(a) → R5 PB-56 confirm)
+## §8 Hotfix ledger (R2 PB-32(a) → R5 PB-56 confirm; 1 fired)
 
 R4 probes obsoleted ZERO design picks (4 sub-cases tightened R3
-picks); R0-R5 covered ~56 picks. 1 contingency hotfix slot retained
-for unforeseen impl-phase surprises:
+picks); R0-R5 covered ~56 picks. 1 contingency slot fired:
 
-* **B-30-T1** (reserved) — generic contingency.
+* **B-30-T1** (FIRED, closed) — Phase 29 sentinel-flip class. Two
+  tests in `tests/phase_29/test_phase_29_export_slate.py` (Phase 29's
+  R1 PB-20 + R5 PB-41 sentinels) asserted Phase 30 surface NOT
+  exported + count in 82-86 range. Flipped at Phase 30 per
+  `[[feedback-parity-test-sentinel-flip-at-target-phase]]`:
+  ``test_phase_29_does_not_export_phase_30_surface`` →
+  ``test_phase_30_surface_exported_at_phase_30`` (11 expected
+  exports); ``test_phase_29_export_count_around_84`` →
+  ``test_phase_30_export_count_is_95``. Discovered at first docker
+  cumulative pytest run; pass count was 3171/45 (test 3170 + 1 of
+  these flipped sentinels). PB-29 picked the same sentinel pattern at
+  Phase 29 — should have been audited pre-impl as a Phase 29 sibling
+  to PB-9. Pre-impl probe class extension: future phases must
+  step-0-grep `tests/phase_(N-1)/test_phase_*_export_slate.py` for
+  forbidden-Phase-N sentinels.
 
 ## §9 Carry-forwards to Phase 31+
 

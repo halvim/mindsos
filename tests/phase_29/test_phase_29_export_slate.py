@@ -1,9 +1,18 @@
-"""Phase 29 — __init__.py export slate + non-touch list.
+"""Phase 29 — __init__.py export slate.
 
-Per R5 PB-41 lock: Phase 28 baseline 79 exports + Phase 29 adds 5 →
-84 exports. R1 PB-20 + R4 probe 6: Phase 29 does NOT introduce any
-Phase 30 surface (invoke / InvocationResult / call_capacity /
-problem_trace).
+Two sentinels in this file FLIPPED at Phase 30 (B-30-T1 hotfix):
+``test_phase_29_does_not_export_phase_30_surface`` and
+``test_phase_29_export_count_around_84``. Phase 30 lifts the
+InvocationResult / call_capacity / invoke / ProblemTrace surface per
+ADR-0066 §Implementation + ADR-0072 §amendment-1 + ADR-0074
+§Implementation footers; the Phase 29 "forbidden surface" set inverts
+to a "present-at-Phase-30" assertion, and the count check widens to
+the Phase 30 baseline (95). Discipline per
+``[[feedback-parity-test-sentinel-flip-at-target-phase]]``.
+
+Original Phase 29 invariants on its own export additions remain
+unchanged (``test_phase_29_exports_5_new_names`` +
+``test_phase_29_export_importable``).
 """
 
 from __future__ import annotations
@@ -22,13 +31,18 @@ PHASE_29_NEW_EXPORTS = {
 }
 
 
-PHASE_30_FORBIDDEN_EXPORTS = {
+PHASE_30_LIFTED_EXPORTS = {
     "invoke",
     "InvocationResult",
     "call_capacity",
-    "problem_trace",
-    "start_resident",
-    "stop_resident",
+    "Pipeline",
+    "PipelineStep",
+    "find_pipeline",
+    "ProblemTraceRecord",
+    "ProblemTraceSink",
+    "emit_problem_trace",
+    "PipelineNotFoundError",
+    "ProblemTraceError",
 }
 
 
@@ -39,23 +53,34 @@ def test_phase_29_exports_5_new_names():
     assert not missing, f"Phase 29 new exports missing from __all__: {missing}"
 
 
-def test_phase_29_does_not_export_phase_30_surface():
+def test_phase_30_surface_exported_at_phase_30():
+    """Sentinel flipped from Phase 29 R1 PB-20 / R4 probe 6.
+
+    Originally asserted absence; Phase 30's ADR-0066 §Implementation
+    + ADR-0072 §amendment-1 + ADR-0074 §Implementation footers lifted
+    the invoke + Pipeline + ProblemTrace surface.
+    """
     import mindsos_capacity
     all_set = set(mindsos_capacity.__all__)
-    leaked = PHASE_30_FORBIDDEN_EXPORTS & all_set
-    assert not leaked, (
-        f"Phase 30 surface leaked into Phase 29 __all__: {leaked}"
+    missing = PHASE_30_LIFTED_EXPORTS - all_set
+    assert not missing, (
+        f"Phase 30 lifted surface missing from __all__: {missing}"
     )
 
 
-def test_phase_29_export_count_around_84():
+def test_phase_30_export_count_is_95():
+    """Sentinel flipped from Phase 29 R5 PB-41 estimate.
+
+    Originally asserted 82-86 range (Phase 29 baseline 84 ±2). Phase 30
+    adds +11 exports → 95 total per `mindsos_capacity/__init__.py`
+    Phase 30 §Excluded (defer) docstring + R2 PB-31(a) + R4 PB-50(a)
+    locks.
+    """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    # Allow ±2 slack for any incidental adds (R5 PB-41 estimate; final
-    # value driven by what was actually appended in __init__.py).
-    assert 82 <= n <= 86, (
-        f"Phase 29 __all__ count {n} outside expected 82-86 range "
-        f"(Phase 28 baseline 79 + 5 new ≈ 84)"
+    assert n == 95, (
+        f"Phase 30 __all__ count {n} != expected 95 "
+        f"(Phase 29 baseline 84 + 11 new)"
     )
 
 
