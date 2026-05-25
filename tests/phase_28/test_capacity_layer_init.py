@@ -68,12 +68,23 @@ def test_capacity_index_initialized_atomically_with_local_metagraph():
     assert cl._capacity_index[lmg.metagraph_id] == {}
 
 
-def test_problem_trace_attribute_not_present_at_phase_28():
+def test_problem_trace_attribute_present_at_phase_30():
+    """Phase 28 sentinel FLIPPED at Phase 30 (R0 PB-9(a) + R3 PB-37(a)).
+
+    Original Phase 28 sentinel asserted ``problem_trace`` attribute was
+    NOT present on ``CapacityLayer``. Phase 30 lifts it per ADR-0074
+    §Implementation (Phase 30 footer). Function rename only (file
+    contains other unrelated init tests).
+    """
+    from mindsos_capacity import ProblemTraceSink
+
     cl = CapacityLayer(categories=(CATEGORY_PERCEPTION,))
-    assert not hasattr(cl, "problem_trace"), (
-        "problem_trace should not ship until Phase 30; flip this test "
-        "when Phase 30 lifts ProblemTraceSink."
+    assert hasattr(cl, "problem_trace"), (
+        "problem_trace must be present on CapacityLayer at Phase 30 "
+        "per ADR-0074 §Implementation (Phase 30) ship footer."
     )
+    assert isinstance(cl.problem_trace, ProblemTraceSink)
+    assert len(cl.problem_trace) == 0
 
 
 def test_repr_shape():

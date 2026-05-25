@@ -3562,11 +3562,11 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 30 — L3 Pipeline finder + invoke runtime + ProblemTraceRecord
 
-  **Deps:** 27, 28, 29. **Layer:** L3. **Net-new?** No.
-  **Features:** BFS pipeline find (ADR-0071); invoke returns InvocationResult; failures emit ProblemTraceRecord (ADR-0072); problem-trace tail.
-  **Tests:** shortest path; invoke returns failed=True without raising; ProblemTraceSink captures.
-  **Risks:** ADR-0071 deliberately ignores constraints in finder — L4-style filtering not in scope here.
-  **Docs:** `docs/usage/capacity/retrieval.md`, ADRs 0071/0072/0074.
+  **Status:** In progress (2026-05-25). **Deps:** 27, 28, 29. **Layer:** L3. **Net-new?** No.
+  **Features:** BFS pipeline find (ADR-0071; datastate-keyed; halvim divergence: `session` kwarg not `user_id`); `CapacityLayer.invoke` returns `InvocationResult` envelope (ADR-0072 §amendment-1 — fields are `success: bool` + `error` + `outputs` + `duration_ms` + `trace`; supersedes §Decision's `failed`/`exception`); failures emit `ProblemTraceRecord` (ADR-0074; single in-memory sink per layer); `mindsos capacity find` + `mindsos capacity problem-trace tail` CLI verbs (no `invoke` verb at Phase 30 — deferred to Phase 31 alongside text builtins per R3 PB-36). Flips two Phase 28 sentinels: `tests/phase_28/test_invocation_not_exported.py` → `test_invocation_exported_phase_30.py` (file rename); `tests/phase_28/test_capacity_layer_init.py::test_problem_trace_attribute_not_present_at_phase_28` → `::test_problem_trace_attribute_present_at_phase_30` (function rename).
+  **Tests:** shortest path; start==target empty-pipeline; PipelineNotFoundError raise; max_depth bound; session-scoped Local dispatch; shortest-by-capacity-count invariant (branching-capacity fixture; R2 PB-34 sentinel); invoke success/exception envelopes; unknown-IRI raises CapacityRegistrationError (not enveloped per §Decision carve-out); Local-wins resolution; session_user_id context injection; ProblemTraceSink + Record + emit_problem_trace validation; Pipeline + PipelineStep frozen dataclass shape; CLI find + problem-trace tail; export slate; ADR amendment sentinels. **~21 test files / ~50-60 cases.**
+  **Risks:** ADR-0071 deliberately ignores constraints in finder — L4-style filtering not in scope here. `task_id=None` foot-gun on invoke (R1 PB-16 lock; documented).
+  **Docs:** `docs/usage/capacity/building.md` (NEW; register + invoke walkthrough), `docs/usage/capacity/retrieval.md` (NEW; BFS + CLI walkthrough). ADRs 0066 §Impl (export-lift closure) + 0071 §Impl + 0072 §amendment-1 + §Impl + 0074 §Impl.
 
 ### Phase 31 — L3 Residents + built-in text capacities + pathfinding
 

@@ -3,6 +3,7 @@
 import typer
 
 from mindsos_cli.commands.admin import register_admin_app
+from mindsos_cli.commands.capacity import register_capacity_app
 from mindsos_cli.commands.confirm_phase import confirm_phase
 from mindsos_cli.commands.doctor import doctor
 from mindsos_cli.commands.graph import register_graph_app
@@ -57,3 +58,6 @@ register_persistence_app(app)
 register_admin_app(app)
 # Phase 18 — NEW `mindsos server` group (user store + bootstrap; first L0 surface).
 register_server_app(app)
+# Phase 30 — NEW `mindsos capacity` group (BFS finder + problem-trace tail;
+# read-only against a fresh in-memory layer; `invoke` ships at Phase 31).
+register_capacity_app(app)

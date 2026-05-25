@@ -97,10 +97,42 @@ class DiscoveryFailedError(CapacityRegistrationError):
     """
 
 
+class PipelineNotFoundError(CapacityLayerError):
+    """BFS pipeline-finder exhausted without reaching the target.
+
+    Phase 30 raisers:
+
+    - ``mindsos_capacity.pipeline.find_pipeline`` — BFS over the
+      auto-discovered TYPE_COMPAT graph (ADR-0071) exhausted without
+      finding a chain from ``start_datastate`` to ``target_datastate``
+      within ``max_depth`` steps.
+
+    Raised (not enveloped) because "no path exists" is an L3 invariant
+    of the requested query, not an implementation error in a bound
+    capacity callable. ADR-0072 §Decision's "L3 raises for its own
+    invariants" carve-out applies.
+    """
+
+
+class ProblemTraceError(CapacityLayerError):
+    """Problem-trace emission is malformed.
+
+    Phase 30 raisers:
+
+    - ``mindsos_capacity.runtime.emit_problem_trace`` — empty
+      ``task_id`` or empty ``error_kind`` argument.
+
+    Kept thin — problem-trace records themselves are free-form, but
+    the required keys must be present per ADR-0074.
+    """
+
+
 __all__ = [
     "CapacityLayerError",
     "DataStateError",
     "CapacityRegistrationError",
     "ConstraintViolationError",
     "DiscoveryFailedError",
+    "PipelineNotFoundError",
+    "ProblemTraceError",
 ]
