@@ -77,14 +77,20 @@ def count_canonical_nodes_via_graph_traversal() -> int:
 def count_canonical_nodes_via_metagraph_id_property() -> int:
     """Count Node rows with direct `metagraph_id` property == canonical id.
 
-    Per B-26b-T5 probe: §am3 `_RELEASE_MERGE_CYPHER` writes Node rows
-    keyed on `(node_id, metagraph_id, graph_id)` WITHOUT creating an
-    `:IN_GRAPH` relationship (the §am3 amendment template lacks that
-    clause; an honest gap documented as Phase 26b carry-forward in
-    notes-phase-26b.md). These rows are orphan from the Graph
-    traversal path; counted independently here.
+    Property-based counter — counts every Node whose `metagraph_id`
+    property matches the canonical id, regardless of relationship
+    structure. Used to count release-shipped content (step 7b in the
+    scenario) in a form that is stable across the §am3 → §am5
+    transition.
 
-    Used to count release-shipped content (step 7b in the scenario).
+    History: at Phase 26b ship, the §am3 `_RELEASE_MERGE_CYPHER`
+    template lacked a closing `[:IN_GRAPH]` MERGE clause — released
+    Node rows were orphan from the Graph traversal path. This counter
+    sidestepped the gap by counting via property rather than via
+    relationship. ADR-0118 §amendment-5 (Phase 28) closed that gap;
+    the counter is kept (i) for forward-compat across the transition
+    and (ii) as a forensic property-aware counter complementing the
+    graph-traversal counter above.
     """
     canonical_id = resolve_canonical_metagraph_id()
     if canonical_id is None:

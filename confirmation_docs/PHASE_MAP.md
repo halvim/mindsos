@@ -3542,14 +3542,16 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Tests:** strict_compatible / list_of_compat / opaque_tag round-trip; stable IRIs (ADR-0066); REF_TYPES shared with L2 (ADR-0067).
   **Docs:** `docs/usage/capacity/data-states.md`, ADRs 0062/0063/0066/0067.
 
-### Phase 28 — L3 12 categories + dual metagraph + role-graph bootstrap + capability gate
+### Phase 28 — L3 CapacityLayer + bootstrap + capability gate + B-26b-T5 closure (carry-forward L0 fix)
 
-  **Deps:** 14, 25, 27. **Layer:** L3. **Net-new?** No.
-  **Features:** L3 Global + Local bootstrap; ensure-category-graph; CAN_WRITE_GLOBAL gate (ADR-0078).
-  **Tests:** Local-wins lookup (ADR-0061); 12 categories registered; capability-string parity with server (ADR-0078).
+  **Deps:** 14, 25, 27. **Layer:** L3 + carry-forward L0 fix (per R2 PB-26). **Net-new?** No.
+  **Features:** L3 Global + Local bootstrap; ensure-category-graph; CAN_WRITE_GLOBAL gate (ADR-0078); CapacityLayer registry with Local-wins lookup (ADR-0061); admin-authored CONSTRAINT edge API (ADR-0085 home-graph only). **Carry-forward:** ADR-0118 §amendment-5 Cypher MERGE :IN_GRAPH closure in `mindsos_server/release.py` + `mindsos_admin/promotion.py` (B-26b-T5 from Phase 26b; flipped from "defer to Phase 32" to "fix at this ship" per R1 PB-19).
+  **Tests:** Local-wins lookup (ADR-0061); 12 categories registered; capability-string parity with server (ADR-0078); 9-ADR amendment sentinels; import-isolation (no L3→server / no L3→knowledge per ADR-0040 §am2 + ADR-0010); InvocationResult/call_capacity un-export sentinel; B-26b-T5 Cypher :IN_GRAPH string-assertion.
   **Risks:** bootstrap carve-out (ADR-0080) must not regress.
-  **Docs:** `docs/usage/capacity/overview.md`, `categories.md`, ADRs 0061/0064/0065/0078/0080/0085.
-  **Phase 15b carry-forward review (added 2026-05-20 per Phase 15b Round 6 PB-23 / ADR-0150 §amendment-2):** Review at design pass — does alignment-lookup land as one of the 12 categories? If yes, schedule admin alignment data shipment (AlignmentsImporter + per-edge alignment-anchor IRI builder + real FN-WN extraction script + importer idempotency tightening) ship-slot accordingly. The carry-forwards were re-opened at Phase 15b under the assumption that Phase 28's 12-category enumeration is the natural decision point for whether alignment-lookup is a categorised L3 capacity or lives elsewhere. See `confirmation_docs/PHASE_15b_DESIGN_LOG.md` §1 Round 5 PB-18 for the closure-target rationale.
+  **Docs:** `docs/usage/capacity/overview.md` (amend), `categories.md` (NEW stub — Phase 29 amends), `building.md` deferred to Phase 29 ship. ADRs 0061/0064/0065/0078/0080/0085 + 0040 §am2 + 0066 §Impl edit + 0118 §am5.
+  **Phase 15b carry-forward review — RESOLVED Phase 28:** alignment-lookup is a RETRIEVAL capacity (a capacity that reads alignment edges from KL's `alignments` role-graph), NOT a 13th L3 category. The 12-category contract per ADR-0065 is unchanged. AlignmentsImporter + per-edge alignment-anchor IRI builder + real FN-WN extraction + importer idempotency tightening ship-slot REMAINS "build for first consumer" per PHASE_15b PB-23 lock E4 — no schedule change. See ADR-0065 §Implementation (Phase 28) for the closure rationale; original Phase 15b clause text below for audit trail.
+
+  *Original Phase 15b carry-forward clause (RESOLVED above — kept for audit):* Review at design pass — does alignment-lookup land as one of the 12 categories? If yes, schedule admin alignment data shipment (AlignmentsImporter + per-edge alignment-anchor IRI builder + real FN-WN extraction script + importer idempotency tightening) ship-slot accordingly. The carry-forwards were re-opened at Phase 15b under the assumption that Phase 28's 12-category enumeration is the natural decision point for whether alignment-lookup is a categorised L3 capacity or lives elsewhere. See `confirmation_docs/PHASE_15b_DESIGN_LOG.md` §1 Round 5 PB-18 for the closure-target rationale.
 
 ### Phase 29 — L3 Discovery + Constraints
 

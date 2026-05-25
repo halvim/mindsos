@@ -263,4 +263,19 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_capacity/capacity.py",
     "mindsos_capacity/identifiers.py",
     "mindsos_capacity/exceptions.py",
+    # Phase 28 — CapacityLayer + bootstrap + capability gate per
+    # PHASE_MAP §28 + ADRs 0061/0064/0065/0066/0078/0080/0085 +
+    # 0040 §am2 + 0118 §am5. 6 new source files in the existing
+    # mindsos_capacity/ pkg; no new top-level pkg (9-site checklist
+    # N/A). Slim ports: capacity_layer.py drops invoke/resident/
+    # rediscover (Phase 30); views.py drops successors_of /
+    # producers_of / consumers_of (Phase 29); types.py ships only
+    # SessionProtocol + SessionArg (no _resolve_session_arg shim;
+    # Phase 33 expansion site). schemas.py full port per R1 PB-16 (a).
+    "mindsos_capacity/bootstrap.py",
+    "mindsos_capacity/capabilities.py",
+    "mindsos_capacity/capacity_layer.py",
+    "mindsos_capacity/schemas.py",
+    "mindsos_capacity/types.py",
+    "mindsos_capacity/views.py",
 )

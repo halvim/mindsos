@@ -329,9 +329,15 @@ def _step_10_release_ship(state: ScenarioState) -> ScenarioState:
     payload = json.loads(r.output)
     assert payload["status"] == "SHIPPED"
     assert payload["mutations_shipped_count"] == 1
-    # Post-ship: importer-shape count unchanged (release writes orphan
-    # nodes via §am3 path); release-shape count grew by exactly 1
-    # (the propose'd ATOM Lemma).
+    # Post-ship: count released Nodes via property-counter (counts every
+    # Node with metagraph_id == canonical_id; release-shape grew by
+    # exactly 1 — the propose'd ATOM Lemma).
+    #
+    # ADR-0118 §am5 at Phase 28 closed B-26b-T5: the §am3 release Cypher
+    # now also MERGEs ``[:IN_GRAPH]`` from the released Node to its
+    # Graph anchor, so a graph-traversal counter would now also include
+    # this released Node. This scenario uses the property-counter form
+    # for forward-compat across the §am3 → §am5 transition.
     state.canonical_node_count_post_ship = (
         count_canonical_nodes_via_metagraph_id_property()
     )
@@ -409,10 +415,12 @@ def _step_13_fresh_stable_id_assert(state: ScenarioState) -> ScenarioState:
     assert pending_id_now is not None
     assert pending_id_now == state.pending_metagraph_id
 
-    # Release-shape canonical node count (§am3 _RELEASE_MERGE_CYPHER path)
-    # grew by exactly 1 — the propose'd ATOM Lemma. Importer-shape count
-    # (graph-traversal) is unaffected because §am3 writes don't link via
-    # :IN_GRAPH (B-26b-T5 finding; documented carry-forward).
+    # Release-shape canonical node count (§am3 _RELEASE_MERGE_CYPHER path
+    # extended at Phase 28 §am5 to also MERGE :IN_GRAPH per ADR-0118
+    # §amendment-5; closes B-26b-T5) grew by exactly 1 — the propose'd
+    # ATOM Lemma. The property-counter form is used here for forward
+    # compatibility; a graph-traversal counter would now ALSO include
+    # the released Node (post-§am5).
     assert state.canonical_node_count_post_ship == 1, (
         f"release-shape canonical node count: expected 1 (post-ship);"
         f" got {state.canonical_node_count_post_ship}"

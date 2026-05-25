@@ -83,8 +83,21 @@ _PROPOSE_MERGE_CYPHER = (
     "               metagraph_id: $metagraph_id, "
     "               graph_id: $graph_id}) "
     "ON CREATE SET n += $props "
-    "ON MATCH SET n += $props"
+    "ON MATCH SET n += $props "
+    "WITH n "
+    "MATCH (g:Graph {id: $graph_id}) "
+    "MERGE (n)-[:IN_GRAPH]->(g)"
 )
+"""Phase 24/26a §am3 propose-time MERGE template (§am5 :IN_GRAPH closure at Phase 28).
+
+Symmetric to ``mindsos_server.release._RELEASE_MERGE_CYPHER``. Per
+ADR-0118 §amendment-5 (Phase 28, B-26b-T5 closure): the trailing
+``MATCH (g:Graph {id: $graph_id}) MERGE (n)-[:IN_GRAPH]->(g)`` clause
+links the proposed Node to its Graph anchor so the pending state is
+graph-traversal-reachable on the forensic-only side too. Idempotent on
+re-propose; MATCH requires the Graph anchor row (bootstrap-on-load
+guarantee).
+"""
 
 
 __all__ = [
