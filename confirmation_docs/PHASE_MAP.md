@@ -3553,12 +3553,12 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
   *Original Phase 15b carry-forward clause (RESOLVED above — kept for audit):* Review at design pass — does alignment-lookup land as one of the 12 categories? If yes, schedule admin alignment data shipment (AlignmentsImporter + per-edge alignment-anchor IRI builder + real FN-WN extraction script + importer idempotency tightening) ship-slot accordingly. The carry-forwards were re-opened at Phase 15b under the assumption that Phase 28's 12-category enumeration is the natural decision point for whether alignment-lookup is a categorised L3 capacity or lives elsewhere. See `confirmation_docs/PHASE_15b_DESIGN_LOG.md` §1 Round 5 PB-18 for the closure-target rationale.
 
-### Phase 29 — L3 Discovery + Constraints
+### Phase 29 — L3 Discovery + Walks
 
   **Deps:** 28. **Layer:** L3. **Net-new?** No.
-  **Features:** auto-discover TYPE_COMPAT (ADRs 0069/0086); constraint add for the 5 admin-authored kinds (ADRs 0070/0092).
-  **Tests:** auto-discovered marked `discovered_automatically=True`; rediscover-all preserves manual edges; CONSTRAINT typed correctly (constraint_kind property, ADR-0068).
-  **Docs:** ADRs 0068/0069/0070/0086/0092.
+  **Features:** auto-discover TYPE_COMPAT (ADRs 0069/0086) — `discover_for_capacity` + `discover_for_datastate` hooks wired at end of `register_capacity` / `register_datastate`; `CapacityLayer.rediscover` (drop auto edges + recompute); `SuccessorHop` dataclass + `successors_of` / `producers_of` / `consumers_of` walks on `CapacityLayerView` (atomic with discovery substrate per Phase 28 R4 PB-45); cross-graph MetaEdge variant ships at v1. **No constraint behaviour change vs Phase 28** — Phase 28 R0 PB-11 ("API at 28; enforcement at 29") superseded by Phase 29 R0 PB-1 (constraint runtime enforcement deferred to L4 per ADR-0092; see Phase 29 design log).
+  **Tests:** auto-discovered edges marked `discovered_automatically=True`; rediscover preserves manual edges per ADR-0086; cross-graph MetaEdge round-trip; sentinel re-asserts `constraint_kind` round-trip (substantive ship Phase 28). 15 NEW test files / ~36 cases.
+  **Docs:** ADRs 0069 §Impl + 0086 §Impl + 0070 closure footer (ADR-0068 + ADR-0092 unchanged from Phase 28). Substantive `docs/usage/capacity/building.md` deferred to Phase 30 alongside CLI + invoke (Phase 28 R2 PB-21 amended by Phase 29 R0 PB-7).
 
 ### Phase 30 — L3 Pipeline finder + invoke runtime + ProblemTraceRecord
 
