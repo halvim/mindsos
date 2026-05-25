@@ -285,4 +285,11 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # CapacityLayer.register_capacity / register_datastate / rediscover
     # but exported as free functions for direct admin/test callers.
     "mindsos_capacity/discovery.py",
+    # Phase 30 — Invocation runtime + BFS pipeline finder per PHASE_MAP
+    # §30 + ADRs 0066 §Impl (export lift) + 0071 §Impl (BFS) + 0072 §am1
+    # + §Impl (envelope; field rename) + 0074 §Impl (in-memory anomaly
+    # sink). 2 new runtime modules in the existing mindsos_capacity/
+    # pkg; no new top-level pkg. Residents defer to Phase 31.
+    "mindsos_capacity/runtime.py",
+    "mindsos_capacity/pipeline.py",
 )

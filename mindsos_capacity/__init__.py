@@ -1,10 +1,12 @@
-"""MindsOS Intellectual Capacity Layer — L3 public API (through Phase 29).
+"""MindsOS Intellectual Capacity Layer — L3 public API (through Phase 30).
 
-Phase 27 shipped the L3 read-side definitions; Phase 28 ships the
+Phase 27 shipped the L3 read-side definitions; Phase 28 shipped the
 registry + bootstrap + Local-wins lookup + capability gate; Phase 29
-ships TYPE_COMPAT auto-discovery + ``SuccessorHop`` + the
-successors/producers/consumers walks + ``rediscover``. Cumulative
-surface as of Phase 29:
+shipped TYPE_COMPAT auto-discovery + ``SuccessorHop`` + the
+successors/producers/consumers walks + ``rediscover``; Phase 30 ships
+the invocation runtime + BFS pipeline finder + problem-trace primitives
++ first ``mindsos capacity`` CLI verbs. Cumulative surface as of
+Phase 30:
 
 - DataStates (``DataState`` + ``ShapeDescriptor`` + structural-shape
   helpers ``strict_compatible`` / ``list_of_compat`` /
@@ -39,36 +41,61 @@ surface as of Phase 29:
   adapter_capacity) — Phase 29.
 - ``discover_for_capacity`` / ``discover_for_datastate`` /
   ``rediscover_all`` — auto-discovery substrate per ADR-0069 +
-  ADR-0086 — Phase 29. Wired internally by
-  ``CapacityLayer.register_capacity`` / ``register_datastate`` /
-  ``rediscover`` — exported as free functions for direct callers
-  (admin tooling, tests).
-- ``CapacityLayer.rediscover`` — drop auto edges + recompute (manual
-  edges preserved per ADR-0086) — Phase 29.
-- ``DiscoveryFailedError`` — sub of ``CapacityRegistrationError``;
-  raised when auto-discovery writes fail mid-register or
-  mid-rediscover (partial-write state observable to callers) —
+  ADR-0086 — Phase 29.
+- ``CapacityLayer.rediscover`` — drop auto edges + recompute
+  (manual edges preserved per ADR-0086) — Phase 29.
+- ``DiscoveryFailedError`` — auto-discovery write failure wrapper —
   Phase 29.
+- ``InvocationResult`` + ``call_capacity`` — invocation envelope +
+  callable dispatch (shipped to ``capacity.py`` since Phase 27 for
+  layout parity; public re-export lifted at Phase 30 per ADR-0066
+  §Implementation Phase-30 footer) — Phase 30.
+- ``invoke`` (free function) + ``CapacityLayer.invoke`` (method) —
+  reactive invocation with ADR-0072 envelope semantics (never raises
+  for implementation errors; raises only for L3 invariants like unknown
+  IRI). ADR-0072 §amendment-1 records the field rename
+  (``success: bool`` + ``error`` vs original §Decision's ``failed``
+  + ``exception``) — Phase 30.
+- ``ProblemTraceRecord`` + ``ProblemTraceSink`` + ``emit_problem_trace``
+  — in-memory anomaly sink per ADR-0074. One sink per ``CapacityLayer``
+  instance (``self.problem_trace``); multi-tenant provenance via the
+  payload dict; L4 drains and persists to L2 ``problem-trace``
+  role-graph — Phase 30.
+- ``Pipeline`` + ``PipelineStep`` + ``find_pipeline`` — datastate-keyed
+  BFS over the TYPE_COMPAT graph (auto-discovered at Phase 29) per
+  ADR-0071. Shortest-by-capacity-count; raises ``PipelineNotFoundError``
+  on exhaustion; ignores constraints (L4 filters post-hoc) — Phase 30.
+- ``PipelineNotFoundError`` + ``ProblemTraceError`` — new raisers —
+  Phase 30.
 
 Excluded (defer):
 
-- Pipeline finder + invocation runtime + ``invoke`` + ``start_resident``
-  + ``problem_trace`` + ``InvocationResult`` / ``call_capacity``
-  exports — Phase 30. ``InvocationResult`` / ``call_capacity`` live in
-  ``capacity.py`` already but are NOT exported from this ``__init__.py``
-  until Phase 30 (sentinel test at
-  ``tests/phase_28/test_invocation_not_exported.py`` enforces).
-- ``mindsos capacity`` CLI Typer group + ``add_type_compat`` admin
-  API + ``docs/usage/capacity/building.md`` substantive content —
-  Phase 30.
-- Residents + text builtins — Phase 31.
-- Write capacities + per-flow validators — Phases 33-35 (full
-  ``types.py`` deprecation shim may also land here if needed).
-- L4 problem-trace persistence — out of scope (L4 in design per
-  PHASE_MAP §1).
+- ``start_resident`` / ``stop_resident`` / ``ResidentSubscription`` /
+  ``ResidentError`` — Phase 31 per PHASE_MAP §31 + ADR-0073. Halvim
+  ``runtime.py`` is invoke + ProblemTrace only at Phase 30; Phase 31
+  appends the resident surface.
+- ``mindsos capacity invoke`` CLI verb — Phase 31 (alongside text
+  builtins that auto-register on layer construction, making invoke
+  CLI usable for real users). Phase 30 ships only ``find`` +
+  ``problem-trace tail``.
+- ``add_type_compat`` admin API + bulk rediscover verb — Phase 30+
+  (first concrete consumer).
+- Text builtins + pathfinding-as-registered-builtin — Phase 31.
+- Write capacities + per-flow validators + KLWriteHandle — Phases 33-35.
+- L4 problem-trace drain + persistence to L2 ``problem-trace``
+  role-graph — out of scope (L4 in design per PHASE_MAP §1).
+- ``include_deprecated`` parameter discipline across L3 walks — Phase
+  30+ when soft-delete becomes a real L4 concern (R0 PB-12(a)
+  carry-forward).
+- Per-user (Local-scoped) ProblemTraceSink dict — deferred to L4 per
+  R2 PB-29(a) lock.
+- Falkor-backed L3 bootstrap + state-file serialization — Phase 31+
+  per R2 PB-27(a) lock.
+- ``--session-token`` CLI flag — Phase 31+ per R2 PB-30(a) lock.
 
 See ``confirmation_docs/PHASE_28_DESIGN_LOG.md`` +
-``PHASE_29_DESIGN_LOG.md`` for the full design rounds + picks.
+``PHASE_29_DESIGN_LOG.md`` + ``PHASE_30_DESIGN_LOG.md`` for the full
+design rounds + picks.
 """
 
 from __future__ import annotations
@@ -85,8 +112,10 @@ from .capacity import (
     Adapter,
     Capacity,
     CapacityCallable,
+    InvocationResult,
     Monitor,
     _CapacityBase,
+    call_capacity,
 )
 from .capacity_layer import CapacityLayer
 from .datastate import (
@@ -107,6 +136,15 @@ from .exceptions import (
     ConstraintViolationError,
     DataStateError,
     DiscoveryFailedError,
+    PipelineNotFoundError,
+    ProblemTraceError,
+)
+from .pipeline import Pipeline, PipelineStep, find_pipeline
+from .runtime import (
+    ProblemTraceRecord,
+    ProblemTraceSink,
+    emit_problem_trace,
+    invoke,
 )
 from .schemas import (
     build_category_schema,
@@ -184,12 +222,14 @@ __all__ = [
     "strict_compatible",
     "list_of_compat",
     "validate_datastate",
-    # Exceptions (base + 4 raisers as of Phase 29; remaining 3 ship Phase 30-31)
+    # Exceptions (base + 6 raisers as of Phase 30; 1 more ships Phase 31)
     "CapacityLayerError",
     "CapacityRegistrationError",
     "ConstraintViolationError",
     "DataStateError",
     "DiscoveryFailedError",
+    "PipelineNotFoundError",
+    "ProblemTraceError",
     # Phase 28 — CapacityLayer registry + views
     "CapacityLayer",
     "CapacityLayerView",
@@ -198,6 +238,17 @@ __all__ = [
     "discover_for_capacity",
     "discover_for_datastate",
     "rediscover_all",
+    # Phase 30 — invocation runtime (ADR-0072) + problem-trace (ADR-0074)
+    "InvocationResult",
+    "call_capacity",
+    "invoke",
+    "ProblemTraceRecord",
+    "ProblemTraceSink",
+    "emit_problem_trace",
+    # Phase 30 — pipeline finder (ADR-0071)
+    "Pipeline",
+    "PipelineStep",
+    "find_pipeline",
     # Phase 28 — bootstrap helpers
     "create_global",
     "create_local",
@@ -268,4 +319,4 @@ __all__ = [
     "RESERVED_PROPERTY_KEYS",
 ]
 
-__version__ = "0.0.0+phase29"
+__version__ = "0.0.0+phase30"

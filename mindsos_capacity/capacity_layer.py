@@ -23,11 +23,16 @@ of :class:`CapacityRegistrationError`) when an auto-discovery write
 fails mid-registration; partial-write state is observable by callers
 (R2 PB-27 pick (b)).
 
+**Phase 30 additions.** Ships :meth:`invoke` (reactive invocation;
+ADR-0072 envelope) + ``self.problem_trace`` (per-layer
+:class:`ProblemTraceSink`; ADR-0074). Lifts
+:class:`InvocationResult` + :func:`call_capacity` exports via package
+``__init__.py``.
+
 Deferred to later phases:
 
-- ``invoke`` / ``start_resident`` / ``stop_resident`` / ``problem_trace``
-  — Phase 30 (lifts ``runtime.py`` + ``InvocationResult`` /
-  ``call_capacity`` exports).
+- ``start_resident`` / ``stop_resident`` / ``ResidentSubscription`` —
+  Phase 31 (residents per ADR-0073 + PHASE_MAP §31).
 - Cross-graph constraints — Phase 30+ (only same-category in v1; see
   :class:`ConstraintViolationError`).
 - Additional-graph memberships per ADR-0085 — deferred to first
@@ -59,7 +64,7 @@ from .bootstrap import (
     ensure_datastate_graph,
 )
 from .capabilities import CAN_WRITE_GLOBAL
-from .capacity import _CapacityBase
+from .capacity import InvocationResult, _CapacityBase
 from .datastate import DataState, validate_datastate
 from .discovery import (
     discover_for_capacity,
@@ -71,6 +76,7 @@ from .exceptions import (
     ConstraintViolationError,
     DiscoveryFailedError,
 )
+from .runtime import ProblemTraceSink, invoke as _runtime_invoke
 from .identifiers import (
     CONSTRAINT_KINDS,
     EDGE_CONSTRAINT,
@@ -121,6 +127,11 @@ class CapacityLayer:
             self._global.metagraph_id: {},
         }
         self._declarations: Dict[str, _CapacityBase] = {}
+
+        # Phase 30 — single in-memory ProblemTraceSink per layer instance
+        # (ADR-0074 §Implementation). Multi-tenant scoping is L4's
+        # concern (R2 PB-29(a) lock; payload-side ``user_id`` provenance).
+        self.problem_trace: ProblemTraceSink = ProblemTraceSink()
 
     def global_metagraph(self) -> Metagraph:
         return self._global
@@ -429,6 +440,76 @@ class CapacityLayer:
             raise DiscoveryFailedError(
                 f"rediscover_all raised for metagraph {mg.name!r}: {exc}"
             ) from exc
+
+    # ── Phase 30 — invocation surface (ADR-0072) ──────────────────────
+
+    def invoke(
+        self,
+        capacity_iri: str,
+        inputs: Mapping[str, Any],
+        *,
+        session: SessionArg = None,
+        context: Optional[Mapping[str, Any]] = None,
+        task_id: Optional[str] = None,
+        step_id: Optional[str] = None,
+    ) -> InvocationResult:
+        """Run the Python implementation bound to ``capacity_iri``.
+
+        Looks the declaration up by IRI; Local metagraph (when a
+        session is supplied) wins over Global on a collision (mirrors
+        :func:`KL`'s specialisation rule per ADR-0061). On exception
+        from the bound implementation, a problem-trace record is
+        emitted to ``self.problem_trace`` (when ``task_id`` is also
+        supplied) and ``InvocationResult(success=False, error=exc)``
+        is returned. ADR-0072 §amendment-1 fixes the field rename.
+
+        When a session is supplied, the session's ``user_id`` is
+        injected into ``context['session_user_id']`` and
+        ``context['session_id']`` for provenance-stamping capacities.
+        Caller-set keys are never overwritten.
+
+        Args:
+            capacity_iri: The IRI to resolve.
+            inputs: Mapping of input-DataState IRI → concrete value.
+            session: Optional bearer of capability + user identity.
+                ``None`` resolves against Global only (no Local lookup).
+            context: Optional auxiliary mapping passed through to the
+                callable.
+            task_id: Optional L4 task identifier — required for problem-
+                trace emission. ``None`` silently skips trace on
+                exception (the envelope is still returned).
+            step_id: Optional L4 step identifier — propagated into
+                the trace record when emission occurs.
+
+        Raises:
+            CapacityRegistrationError: ``capacity_iri`` is not
+                registered. Raised (not enveloped) per ADR-0072
+                §Decision's "L3 raises for its own invariants" carve-out.
+
+        Returns:
+            :class:`InvocationResult` envelope; ``success=True`` on
+            success, ``success=False`` with ``error`` set on
+            implementation exception.
+        """
+        target_uid = session.user_id if session is not None else None
+        declaration = self._resolve_declaration(
+            capacity_iri, user_id=target_uid
+        )
+        ctx: Optional[Dict[str, Any]] = None
+        if session is not None:
+            ctx = dict(context) if context else {}
+            ctx.setdefault("session_user_id", session.user_id)
+            ctx.setdefault("session_id", session.session_id)
+        else:
+            ctx = dict(context) if context else None
+        return _runtime_invoke(
+            declaration,
+            inputs,
+            context=ctx,
+            task_id=task_id,
+            step_id=step_id,
+            problem_trace_sink=self.problem_trace,
+        )
 
     def _metagraph_for(self, user_id: Optional[str]) -> Metagraph:
         if user_id is None:
