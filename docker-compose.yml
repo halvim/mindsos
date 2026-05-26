@@ -36,7 +36,7 @@ services:
       args:
         MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
         MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
-    image: mindsos:phase31-prod
+    image: mindsos:phase32-prod
     profiles: ["cli"]
     # Phase 02 — entrypoint forces the `mindsos` binary so
     # `docker compose run --rm mindsos <subcommand>` works without the
@@ -66,7 +66,7 @@ services:
       args:
         MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
         MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
-    image: mindsos:phase31-test
+    image: mindsos:phase32-test
     profiles: ["test"]
     # The test service keeps the bare entrypoint so `pytest tests/` works
     # without a `mindsos` prefix.
