@@ -1,37 +1,45 @@
-"""`mindsos capacity` — Phase 30 L3 Capacity CLI surface.
+"""`mindsos capacity` — L3 Capacity CLI surface (Phase 30-31).
 
-Sub-subgroup shape (Phase 30 R0 PB-6 + R3 PB-36 lock):
+Sub-subgroup shape:
 
   mindsos capacity find --start <ds_iri> --target <ds_iri>
                         [--max-depth N] [--json]
-      Run datastate-keyed BFS over the auto-discovered TYPE_COMPAT
-      graph (ADR-0071); print the shortest pipeline by capacity count.
-      Default human-readable arrow chain; ``--json`` emits the verbose
-      Pipeline + PipelineStep dataclass shape.
+      [Phase 30] Run datastate-keyed BFS over the auto-discovered
+      TYPE_COMPAT graph (ADR-0071); print the shortest pipeline by
+      capacity count. Default human-readable arrow chain; ``--json``
+      emits the verbose Pipeline + PipelineStep dataclass shape.
 
   mindsos capacity problem-trace tail [--limit N] [--json]
-      Peek at the most-recent N ProblemTraceRecords on the current
-      CapacityLayer's sink (default N=10). Peek-only — does NOT drain
-      (L4 lifecycle owns drain per ADR-0074).
+      [Phase 30] Peek at the most-recent N ProblemTraceRecords on the
+      current CapacityLayer's sink (default N=10). Peek-only — does
+      NOT drain (L4 lifecycle owns drain per ADR-0074).
 
-**Phase 30 scope cut.** The ``invoke`` verb is OMITTED at Phase 30
-(R3 PB-36(b) lock) because the CLI constructs a fresh in-memory
-``CapacityLayer`` per invocation (R2 PB-27(a)) and Phase 28's
-registration verbs are NOT shipped, so any registered-IRI lookup
-fails 100%. ``invoke`` ships at Phase 31 alongside text builtins that
-auto-register on layer construction.
+  mindsos capacity invoke <iri>
+                          (--input-json '<json>' | --input-file <path>)
+                          [--json] [--task-id <id>]
+      [Phase 31] Invoke a registered Capacity by IRI. The CLI builds
+      a fresh in-memory layer, auto-installs text builtins (R0 PB-ε
+      opt-in but CLI's fresh-layer init calls it — only family at
+      Phase 31; future families flagged via ``--install-builtins``
+      per R3 PB-29 deferral), parses inputs from ``--input-json`` XOR
+      ``--input-file``, and prints the InvocationResult envelope.
 
-**Phase 30 CLI is Global-only.** No ``--session-token`` flag at this
-phase (R2 PB-30(a) lock). All BFS walks the Global view. Local-scoped
-walks land when Phase 31+ wires session resolution.
+      Default --human; ``--json`` emits the full InvocationResult
+      envelope as JSON (R1 PB-15 lock).
 
-**Exit code policy (parity with prior phases):**
-* exit 0 — success
-* exit 1 — domain error (``PipelineNotFoundError``)
-* exit 2 — usage error (missing required arg)
+**Phase 30-31 CLI is Global-only.** No ``--session-token`` flag yet
+(R2 PB-30(a) lock; carry-forward). All operations target Global.
 
-Exit code 3 (``InvocationResult.success=False`` envelope; R2 PB-26(b)
-lock) is deferred to Phase 31 alongside the ``invoke`` verb (R5 PB-61).
+**Exit code policy:**
+
+* exit 0 — success (and ALWAYS when ``--json`` is supplied — R0 PB-7
+  hybrid lock; the envelope's ``success`` bool carries failure)
+* exit 1 — L3 invariant raise (``PipelineNotFoundError`` from ``find``;
+  ``CapacityRegistrationError`` from ``invoke`` for unknown IRI)
+* exit 2 — Typer usage error (missing arg, mutex flag conflict)
+* exit 3 — invoke envelope failure on --human (``InvocationResult.success
+  == False``; the bound implementation raised). R5 PB-61 → Phase 31
+  R3 PB-32 lock.
 """
 
 from __future__ import annotations
@@ -39,17 +47,20 @@ from __future__ import annotations
 import dataclasses
 import json
 import sys
-from typing import Optional
+from typing import Any, Mapping, Optional
 
 import typer
 
 from mindsos_capacity import (
     CapacityLayer,
+    CapacityRegistrationError,
+    InvocationResult,
     Pipeline,
     PipelineNotFoundError,
     ProblemTraceRecord,
     find_pipeline,
 )
+from mindsos_capacity.builtins import install_text_capacities
 
 
 capacity_app = typer.Typer(
@@ -221,6 +232,160 @@ def problem_trace_tail_cmd(
                     f"[{r.timestamp:.3f}] {r.error_kind}  task={r.task_id} "
                     f"step={r.step_id or '-'}  cap={r.capacity_iri or '-'}"
                 )
+
+
+# ── Phase 31 — invoke verb (ADR-0072 envelope; hybrid exit codes) ─────
+
+
+def _construct_invoke_layer() -> CapacityLayer:
+    """Build a fresh in-memory Global ``CapacityLayer`` with text builtins installed.
+
+    Phase 31 R3 PB-29 lock — always-install at this phase (only one
+    builtins family ships). When a second family lands (Phase 32+),
+    introduce ``--install-builtins=text,...`` then.
+    """
+    layer = CapacityLayer()
+    install_text_capacities(layer)
+    return layer
+
+
+def _exception_to_dict(exc: BaseException) -> dict:
+    """Serialise an Exception for --json envelope output (R1 PB-15 + R3 PB-28)."""
+    return {"type": exc.__class__.__name__, "message": str(exc)}
+
+
+def _invocation_result_to_dict(result: InvocationResult) -> dict:
+    """Render InvocationResult as a --json-ready dict (full envelope; R1 PB-15)."""
+    return {
+        "success": result.success,
+        "outputs": dict(result.outputs),
+        "duration_ms": result.duration_ms,
+        "trace": dict(result.trace),
+        "error": _exception_to_dict(result.error) if result.error is not None else None,
+        "signals": list(result.signals),
+    }
+
+
+def _invocation_result_to_human(result: InvocationResult) -> str:
+    """Render InvocationResult as a brief human summary."""
+    if result.success:
+        out_keys = list(result.outputs.keys())
+        return (
+            f"success  duration_ms={result.duration_ms:.3f}  "
+            f"outputs={out_keys}"
+        )
+    return (
+        f"FAILED  duration_ms={result.duration_ms:.3f}  "
+        f"error={result.error.__class__.__name__}: {result.error}"
+    )
+
+
+@capacity_app.command("invoke")
+def invoke_cmd(
+    iri: str = typer.Argument(
+        ...,
+        help="Capacity IRI to invoke (e.g. capacity:perception:text.space_split).",
+    ),
+    input_json: Optional[str] = typer.Option(
+        None,
+        "--input-json",
+        help=(
+            "JSON string mapping input DataState IRI → value. "
+            "Mutually exclusive with --input-file."
+        ),
+    ),
+    input_file: Optional[str] = typer.Option(
+        None,
+        "--input-file",
+        help=(
+            "Path to JSON file mapping input DataState IRI → value. "
+            "Mutually exclusive with --input-json."
+        ),
+    ),
+    task_id: Optional[str] = typer.Option(
+        None,
+        "--task-id",
+        help="Optional task id (enables problem-trace emission on failure).",
+    ),
+    json_out: bool = typer.Option(
+        False,
+        "--json",
+        help="Emit full InvocationResult envelope as JSON (exit 0 always).",
+    ),
+) -> None:
+    """Invoke a registered Capacity by IRI with concrete inputs.
+
+    Builds a fresh in-memory layer with text builtins installed (Phase
+    31 ships text family only; future families via
+    ``--install-builtins`` per R3 PB-29 deferral).
+
+    Exit semantics (R0 PB-7 hybrid lock):
+
+    * ``--json`` always exits 0; the envelope's ``success`` field
+      carries failure semantics.
+    * ``--human`` (default): exit 0 on success; exit 1 on L3 invariant
+      raise (unknown IRI); exit 2 on Typer usage error; exit 3 on
+      envelope failure (the bound implementation raised).
+    """
+    # Mutex check (R1 PB-14 lock).
+    if input_json is not None and input_file is not None:
+        msg = "--input-json and --input-file are mutually exclusive"
+        if json_out:
+            print(json.dumps({"error": "UsageError", "message": msg}))
+            raise typer.Exit(code=0)
+        print(f"UsageError: {msg}", file=sys.stderr)
+        raise typer.Exit(code=2)
+    if input_json is None and input_file is None:
+        msg = "exactly one of --input-json or --input-file is required"
+        if json_out:
+            print(json.dumps({"error": "UsageError", "message": msg}))
+            raise typer.Exit(code=0)
+        print(f"UsageError: {msg}", file=sys.stderr)
+        raise typer.Exit(code=2)
+
+    # Parse inputs.
+    try:
+        if input_json is not None:
+            raw = input_json
+        else:
+            with open(input_file, "r", encoding="utf-8") as fh:
+                raw = fh.read()
+        inputs: Mapping[str, Any] = json.loads(raw)
+        if not isinstance(inputs, dict):
+            raise ValueError("inputs JSON must be an object")
+    except (ValueError, OSError) as exc:
+        msg = f"failed to parse inputs: {exc}"
+        if json_out:
+            print(json.dumps({"error": exc.__class__.__name__, "message": msg}))
+            raise typer.Exit(code=0)
+        print(f"UsageError: {msg}", file=sys.stderr)
+        raise typer.Exit(code=2)
+
+    # Build layer + invoke.
+    layer = _construct_invoke_layer()
+    try:
+        result = layer.invoke(iri, inputs, task_id=task_id)
+    except CapacityRegistrationError as exc:
+        if json_out:
+            print(
+                json.dumps(
+                    {
+                        "error": exc.__class__.__name__,
+                        "message": str(exc),
+                    }
+                )
+            )
+            raise typer.Exit(code=0)
+        print(f"{exc.__class__.__name__}: {exc}", file=sys.stderr)
+        raise typer.Exit(code=1)
+
+    # Output.
+    if json_out:
+        print(json.dumps(_invocation_result_to_dict(result)))
+        raise typer.Exit(code=0)
+    print(_invocation_result_to_human(result))
+    if not result.success:
+        raise typer.Exit(code=3)
 
 
 def register_capacity_app(parent: typer.Typer) -> None:

@@ -3571,9 +3571,10 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 ### Phase 31 — L3 Residents + built-in text capacities + pathfinding
 
   **Deps:** 30. **Layer:** L3. **Net-new?** No.
-  **Features:** resident start / list (descriptive only, no thread spawn — ADR-0073); install text builtins (raw text / tokens / sentences + space/sentence split); install pathfinding.
-  **Tests:** resident registration is descriptive; text capacities round-trip; pathfinding shortest paths.
+  **Features:** resident start / stop / list (descriptive only, no thread spawn — ADR-0073); install text builtins (raw text / tokens / sentences + space/sentence split); pathfinding remains the function-form `find_pipeline` shipped Phase 30 (no registered-builtin form); `mindsos capacity invoke` CLI verb (closes Phase 30 carry-forward #1+#6).
+  **Tests:** resident registration is descriptive; text capacities round-trip; `mindsos capacity invoke` exit-code matrix (0/1/2/3 + --json always 0).
   **Docs:** `docs/usage/capacity/reactive-resident.md`, ADRs 0073/0088/0099/0100.
+  **Inline amendment (2026-05-25, Phase 31 ship):** Prior wording read "install pathfinding" — narrowed to "expose for use" per ADR-0071 §Implementation (Phase 31) footer. Parent's `build_bfs_capacity_declaration` scaffolding retires; `find_pipeline` function-form (Phase 30) is canonical. See `halvim_mindsos/notes-phase-31.md` §1 for rationale.
 
 ### Phase 32 — Integration B: L0+L1+L2+L3 read-side end-to-end scripted scenario
 

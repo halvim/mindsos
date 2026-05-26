@@ -292,4 +292,12 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # pkg; no new top-level pkg. Residents defer to Phase 31.
     "mindsos_capacity/runtime.py",
     "mindsos_capacity/pipeline.py",
+    # Phase 31 — Residents (per-layer registry) + text builtins +
+    # `mindsos capacity invoke` CLI verb per PHASE_MAP §31 + ADR-0073
+    # §am-1 (4-clause) + §Impl + ADR-0088 §Impl + ADR-0071 §Impl
+    # (Phase 31 — pathfinding-registered retires). First subpackage
+    # under mindsos_capacity/ (`builtins/`); no new top-level pkg.
+    # Sentinel-paths +2 per R0 PB-8 / R2 PB-21 lock.
+    "mindsos_capacity/builtins/__init__.py",
+    "mindsos_capacity/builtins/text.py",
 )

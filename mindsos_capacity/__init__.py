@@ -1,12 +1,14 @@
-"""MindsOS Intellectual Capacity Layer — L3 public API (through Phase 30).
+"""MindsOS Intellectual Capacity Layer — L3 public API (through Phase 31).
 
 Phase 27 shipped the L3 read-side definitions; Phase 28 shipped the
 registry + bootstrap + Local-wins lookup + capability gate; Phase 29
 shipped TYPE_COMPAT auto-discovery + ``SuccessorHop`` + the
-successors/producers/consumers walks + ``rediscover``; Phase 30 ships
+successors/producers/consumers walks + ``rediscover``; Phase 30 shipped
 the invocation runtime + BFS pipeline finder + problem-trace primitives
-+ first ``mindsos capacity`` CLI verbs. Cumulative surface as of
-Phase 30:
++ first ``mindsos capacity`` CLI verbs. Phase 31 ships residents
+(descriptive; per-layer registry) + text builtins (opt-in
+``install_text_capacities``) + the ``mindsos capacity invoke`` CLI verb
+(hybrid exit codes). Cumulative surface as of Phase 31:
 
 - DataStates (``DataState`` + ``ShapeDescriptor`` + structural-shape
   helpers ``strict_compatible`` / ``list_of_compat`` /
@@ -65,37 +67,62 @@ Phase 30:
   BFS over the TYPE_COMPAT graph (auto-discovered at Phase 29) per
   ADR-0071. Shortest-by-capacity-count; raises ``PipelineNotFoundError``
   on exhaustion; ignores constraints (L4 filters post-hoc) — Phase 30.
-- ``PipelineNotFoundError`` + ``ProblemTraceError`` — new raisers —
-  Phase 30.
+  Pathfinding-as-registered-builtin retires at Phase 31 per ADR-0071
+  §Implementation (Phase 31) footer; ``find_pipeline`` (function-form)
+  is canonical.
+- ``PipelineNotFoundError`` + ``ProblemTraceError`` — Phase 30 raisers.
+- ``ResidentSubscription`` (handle; ``@dataclass(eq=False)`` per
+  ADR-0073 §amendment-1 clause 3) — descriptive contract between L3
+  and L4; ``on_signal`` + ``emit`` are synchronous; no threads or
+  queues at L3. ``state`` field is ADR-0099's Q6 process-memory slot
+  (L4-managed; L3 never writes) — Phase 31.
+- ``CapacityLayer.start_resident`` / ``.stop_resident`` /
+  ``.active_subscriptions`` — per-layer ``_subscriptions`` registry
+  (ADR-0073 §amendment-1 clause 1; closes the ADR-0073 §Cost row).
+  ``subscribes_to`` taken from declaration unconditionally (clause 2);
+  wrong-type raises ``ResidentError`` (clause 4) — Phase 31.
+- ``ResidentError`` — lifecycle failures from start_resident /
+  stop_resident / on_signal / emit; subclass of ``CapacityLayerError``
+  (not ``CapacityRegistrationError`` — residents are lifecycle, not
+  registration) — Phase 31.
+- ``mindsos_capacity.builtins`` (subpackage) — first builtins family:
+  text DataStates (``text.raw`` / ``text.tokens`` / ``text.sentences``)
+  + capacities (``text.space_split`` / ``text.sentence_split``) +
+  ``install_text_capacities`` (idempotent with partial-state detection
+  per R1 PB-12). NOT re-exported at this top level per R0 PB-5; users
+  import from ``mindsos_capacity.builtins`` directly — Phase 31.
+- ``mindsos capacity invoke`` CLI verb (hybrid exit codes per R0 PB-7:
+  ``--json`` always exits 0; ``--human`` exits 0/1/3 by envelope state)
+  — Phase 31.
 
 Excluded (defer):
 
-- ``start_resident`` / ``stop_resident`` / ``ResidentSubscription`` /
-  ``ResidentError`` — Phase 31 per PHASE_MAP §31 + ADR-0073. Halvim
-  ``runtime.py`` is invoke + ProblemTrace only at Phase 30; Phase 31
-  appends the resident surface.
-- ``mindsos capacity invoke`` CLI verb — Phase 31 (alongside text
-  builtins that auto-register on layer construction, making invoke
-  CLI usable for real users). Phase 30 ships only ``find`` +
-  ``problem-trace tail``.
-- ``add_type_compat`` admin API + bulk rediscover verb — Phase 30+
+- ``add_type_compat`` admin API + bulk rediscover verb — Phase 32+
   (first concrete consumer).
-- Text builtins + pathfinding-as-registered-builtin — Phase 31.
+- Pathfinding-as-registered-builtin Capacity (parent's
+  ``build_bfs_capacity_declaration`` stub) — RETIRED at Phase 31
+  per ADR-0071 §Implementation (Phase 31) + PHASE_MAP §31 inline
+  amendment. ``find_pipeline`` function-form is canonical.
 - Write capacities + per-flow validators + KLWriteHandle — Phases 33-35.
 - L4 problem-trace drain + persistence to L2 ``problem-trace``
   role-graph — out of scope (L4 in design per PHASE_MAP §1).
+- L4 resident scheduling / state-snapshot lifecycle per ADR-0099 —
+  L4-owned; L3 ships only the descriptive contract.
 - ``include_deprecated`` parameter discipline across L3 walks — Phase
-  30+ when soft-delete becomes a real L4 concern (R0 PB-12(a)
-  carry-forward).
+  30+ when soft-delete becomes a real L4 concern.
 - Per-user (Local-scoped) ProblemTraceSink dict — deferred to L4 per
   R2 PB-29(a) lock.
-- Falkor-backed L3 bootstrap + state-file serialization — Phase 31+
-  per R2 PB-27(a) lock.
-- ``--session-token`` CLI flag — Phase 31+ per R2 PB-30(a) lock.
+- Falkor-backed L3 bootstrap + state-file serialization — Phase 32+
+  per Phase 30 R2 PB-27(a) carry-forward.
+- ``--session-token`` CLI flag — Phase 32+ per Phase 30 R2 PB-30(a)
+  carry-forward.
+- ``--install-builtins=<family,...>`` CLI flag on ``invoke`` — Phase 32+
+  when a second builtins family ships per R3 PB-29 lock.
 
 See ``confirmation_docs/PHASE_28_DESIGN_LOG.md`` +
 ``PHASE_29_DESIGN_LOG.md`` + ``PHASE_30_DESIGN_LOG.md`` for the full
-design rounds + picks.
+design rounds + picks (Phase 31 design pre-R0 through R5 documented in
+``confirmation_docs/PHASE_31_CONFIRMED.md`` tester_notes).
 """
 
 from __future__ import annotations
@@ -138,11 +165,13 @@ from .exceptions import (
     DiscoveryFailedError,
     PipelineNotFoundError,
     ProblemTraceError,
+    ResidentError,
 )
 from .pipeline import Pipeline, PipelineStep, find_pipeline
 from .runtime import (
     ProblemTraceRecord,
     ProblemTraceSink,
+    ResidentSubscription,
     emit_problem_trace,
     invoke,
 )
@@ -222,7 +251,7 @@ __all__ = [
     "strict_compatible",
     "list_of_compat",
     "validate_datastate",
-    # Exceptions (base + 6 raisers as of Phase 30; 1 more ships Phase 31)
+    # Exceptions (base + 7 raisers as of Phase 31)
     "CapacityLayerError",
     "CapacityRegistrationError",
     "ConstraintViolationError",
@@ -230,6 +259,7 @@ __all__ = [
     "DiscoveryFailedError",
     "PipelineNotFoundError",
     "ProblemTraceError",
+    "ResidentError",
     # Phase 28 — CapacityLayer registry + views
     "CapacityLayer",
     "CapacityLayerView",
@@ -249,6 +279,8 @@ __all__ = [
     "Pipeline",
     "PipelineStep",
     "find_pipeline",
+    # Phase 31 — resident handle (ADR-0073 §amendment-1)
+    "ResidentSubscription",
     # Phase 28 — bootstrap helpers
     "create_global",
     "create_local",
@@ -319,4 +351,4 @@ __all__ = [
     "RESERVED_PROPERTY_KEYS",
 ]
 
-__version__ = "0.0.0+phase30"
+__version__ = "0.0.0+phase31"

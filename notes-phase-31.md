@@ -1,0 +1,103 @@
+# Phase 31 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+L3 Residents + Text Builtins + Invoke CLI
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+### Background
+
+Fifth L3 ship per PHASE_MAP §31. Adds 2 EDITED + 2 NEW `mindsos_capacity/` modules + 1 EDITED CLI command + 25 test files + 1 sentinel-flip in `tests/phase_30/` + 1 sentinel-flip in `tests/phase_29/` (B-31-T2). No new top-level package; no new admin/server surface. First subpackage under `mindsos_capacity/` (`builtins/`). 4 ADR touches across 3 ADRs in parent tree (Model C).
+
+Residents are descriptive (ADR-0073) — no event loop, no thread spawn. Per-layer `self._subscriptions` registry closes ADR-0073 §Cost row's "module-level dict's sharing across layer instances" hazard. Halvim divergences from parent across 4 clauses in ADR-0073 §amendment-1: (1) per-layer registry; (2) `subscribes_to` kwarg dropped (declaration source of truth); (3) `ResidentSubscription` is `@dataclass(eq=False)` handle; (4) wrong-type raises `ResidentError` (not `CapacityRegistrationError`).
+
+Text builtins ship the vertical-slice family (3 DataStates + 2 capacities) + idempotent installer with partial-state detection (R1 PB-12 lock). NOT auto-installed on `create_global()` (R0 PB-ε opt-in); CLI's fresh-layer init calls `install_text_capacities()` explicitly.
+
+`mindsos capacity invoke` CLI verb closes Phase 30 carry-forwards #1 + #6. Hybrid exit codes (R0 PB-7): `--human` exits 0/1/3 by envelope state; `--json` always exits 0 with `success` in payload. Inputs: `--input-json '<json>'` XOR `--input-file <path>` (R1 PB-14 mutex).
+
+Pathfinding-as-registered-builtin formally retires (PHASE_MAP §31 inline amendment + ADR-0071 §Implementation Phase-31). Parent's `build_bfs_capacity_declaration` stub never ports to halvim.
+
+### Design saturation
+
+Six design rounds (pre-R0 + R0-R5). ~38 picks. R4 ran the locked 10 probes (PB-24) with zero reverse-pivots; 1 doc-defect surfaced (Phase 30 `__init__.py` "Excluded (defer)" had a stale "auto-register on layer construction" claim — resolved by Phase 31's docstring rewrite). R5 surfaced one mechanical sentinel-flip (B-31-T0 pre-emptive) + hotfix budget + baseline gate.
+
+### Ship surface
+
+Source NEW (2): `mindsos_capacity/builtins/__init__.py` + `mindsos_capacity/builtins/text.py`.
+
+Source EDITED (4): `mindsos_capacity/exceptions.py` (+ResidentError = 8 classes); `mindsos_capacity/runtime.py` (+ResidentSubscription dataclass + on_signal/emit/is_active methods); `mindsos_capacity/capacity_layer.py` (+`_subscriptions` field init + 3 resident methods); `mindsos_capacity/__init__.py` (+2 exports = 97 total + docstring rewrite + version bump).
+
+CLI EDITED (1): `mindsos_cli/commands/capacity.py` (+invoke verb).
+
+Tests NEW (25 files + `__init__.py` + `_fixtures.py`): 8 resident-lifecycle + 7 text-builtins + 7 CLI invoke + 3 sentinels.
+
+Pre-emptive sentinel-flip (B-31-T0): `tests/phase_30/test_phase_30_export_slate.py::test_version_bumped_to_phase_30` → `test_version_bumped_to_phase_31`; literal bumped in place.
+
+### ADR amendments (parent tree per Model C; no .git at parent root)
+
+4 touches across 3 ADRs in `/Layered Intelligence/docs/decisions/adr/`:
+
+- ADR-0073 §amendment-1 (4-clause batch per Phase 22 ADR-0012 §am3 precedent): per-layer registry / drop `subscribes_to` kwarg / `ResidentSubscription` eq=False / wrong-type raises `ResidentError`.
+- ADR-0073 §Implementation (Phase 31): names the 3 halvim source files touched + locks `start_resident` signature.
+- ADR-0088 §Implementation (Phase 31): granularity validated via `Monitor.subscribes_to` source-of-truth.
+- ADR-0071 §Implementation (Phase 31, separate footer from Phase 30's): `build_bfs_capacity_declaration` retires.
+
+ADRs 0099 + 0100 referenced but no §Implementation footers (L4-contracts; Phase 31 ships only the descriptive substrate).
+
+### Hotfix ledger
+
+3 hotfixes fired (within budget per R5 PB-35).
+
+- **B-31-T0** (pre-emptive at ship): version sentinel `test_version_bumped_to_phase_30` flipped in place to `test_version_bumped_to_phase_31`.
+- **B-31-T1**: `install_text_capacities` probe checked `_capacity_index` for all 5 IRIs, but DataStates live in `ds_graph.nodes` (not `_capacity_index`). 3 install tests failed (registers_all_5 / idempotent / partial_state_raises). Fix: split probe per IRI type — DataStates via `ensure_datastate_graph(mg).nodes`, Capacities via `_capacity_index[mg_id]`. Tests updated to assert correct indexes.
+- **B-31-T2**: `tests/phase_29/test_phase_29_export_slate.py::test_phase_30_export_count_is_95` failed (count moved 95 → 97). Same sentinel-flip class as B-31-T0 + B-30-T1 — R4 Probe 8 (`[[feedback-export-slate-sentinel-audit]]`) was too narrow; only grepped `tests/phase_30/test_phase_30_export_slate.py`, missed Phase 29's forward-anchor count sentinel. Function-rename + literal bump in place. New lesson: sentinel audit must walk `tests/phase_(N-2..N-1)/` for count-equals + does-not-export forward sentinels, not just N-1.
+
+### Test counts
+
+- **Docker (Linux, prod image):** **3234 passed, 49 skipped, 109 warnings** in 1928.04s (32:08). Phase 31 isolated: 59 passed, 4 skipped. Skip delta: Phase 30 baseline 45 → Phase 31 49 = +4 — the 4 new `test_adr_amendment_sentinels.py` parametrize cases skipping per Model C (parent ADR dir not COPYed into runtime image).
+- **Sandbox (Python 3.10):** N/A — ran in docker (Linux) directly.
+
+### Smoke tests on prod image
+
+1. `doctor --self-test --json` confirms all 7 packages at `0.0.0+phase31`; `expected_compose_image_phase: "31"`; clean (`ok: true`, `failures: []`).
+2. `mindsos capacity invoke` exit-code matrix verified (10 paths): `0,0,0,0,3,0,1,0,2,2` — happy human + json (space_split + sentence_split), envelope failure on TypeError (exit 3 human / exit 0 json with serialized error), unknown IRI (exit 1 human / exit 0 json with serialized error), Typer usage missing-input (exit 2), --input-json / --input-file mutex (exit 2). `--json` always exit 0 — confirmed for success + envelope-failure + unknown-IRI + mutex paths.
+3. `--input-file` round-trip via volume-mounted JSON: outputs match in-line `--input-json` form.
+4. Python REPL residents: `start_resident('capacity:perception:smoke.m1')` returns ResidentSubscription; `on_signal` + `emit('hello')` dispatches synchronously to handler; `active_subscriptions` reports 1; `stop_resident` removes from registry; `is_active() == False` post-stop; `sub == sub` (eq=False default identity).
+5. Python REPL invoke + problem_trace cross-cut: `invoke(..., {DS_RAW_TEXT: 42}, task_id='smoke-T1')` returns `success=False, error=TypeError`; `layer.problem_trace.records()` reports 1 record with `task_id='smoke-T1'`, `error_kind='exception:TypeError'`, `capacity_iri='capacity:perception:text.space_split'`. Confirms Phase 30 ADR-0072 envelope + ADR-0074 sink wired through Phase 31 layer.
+
+### Carry-forwards to Phase 32+
+
+Phase 30 carry-forwards still open (deferred per pre-R0 PB-α scope-narrow):
+
+- `--session-token` CLI flag (Phase 30 #2).
+- Falkor-backed L3 bootstrap (Phase 30 #3).
+- L3 state-file serialization (Phase 30 #4).
+- Per-user (Local-scoped) ProblemTraceSink (Phase 30 #5).
+
+Phase 31 new carry-forwards (4 items):
+
+1. `--install-builtins=<family,...>` CLI flag on `mindsos capacity invoke` — Phase 32+ when a second builtins family ships (R3 PB-29).
+2. Additional text-family capacities (`text.lowercase` / `text.normalize_nfc` / etc.) — Phase 32+ when use cases surface; `text.X` naming convention (R0 PB-4) scales.
+3. Pathfinding registered-builtin form — Phase 32+ if Integration B surfaces a real consumer; otherwise permanent per ADR-0071 §Implementation (Phase 31).
+4. L4 resident scheduler / state-snapshot lifecycle per ADR-0099 — L4 ship; L3 holds the descriptive contract only.
+
+### Observed quirks / process notes
+
+- **B-31-T1** (install probe wrong index): caught my Phase 30 readback misreading — `register_datastate` adds nodes to `ds_graph.nodes` only, NOT to `_capacity_index`. Tests revealed it immediately. Class lesson: when writing presence-probes against `CapacityLayer`, audit which collection each IRI type actually lives in — DataStates and Capacities have DIFFERENT homes.
+- **B-31-T2** extends the **`[[feedback-export-slate-sentinel-audit]]`** class lesson: forward-anchor sentinels live in `tests/phase_(N-2..N-1)/`, not just `tests/phase_(N-1)/`. R4 Probe 8 grep scope must widen by 1 phase.
+- **Container entrypoint quirk**: `docker compose run --rm mindsos python3 -c '...'` fails ("No such command 'python3'") because `mindsos` container has CLI entrypoint. Use `--entrypoint python3 mindsos -c '...'` to override for ad-hoc REPL smokes.
+- **Sandbox FS** left `.bak` artifacts from sed-based 12-site version bump (sandbox `rm` denied). `.gitignore` extended to cover `*.bak`; physical cleanup done on Mac at pre-push.
+- **`build_bfs_capacity_declaration` never lands at halvim** — parent's NotImplementedError stub stays unported. ADR-0071 §Implementation (Phase 31) records the retirement; future phases must not reintroduce without a concrete L4 consumer.
