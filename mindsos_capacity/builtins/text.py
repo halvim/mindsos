@@ -27,6 +27,7 @@ from __future__ import annotations
 import re
 from typing import Any, List
 
+from ..bootstrap import ensure_datastate_graph
 from ..capacity import Capacity
 from ..datastate import DataState, ShapeDescriptor
 from ..exceptions import CapacityRegistrationError
@@ -156,13 +157,9 @@ def _sentence_split_callable(**kwargs: Any) -> dict:
 # tests + the partial-state probe rely on these literal strings).
 _SPACE_SPLIT_IRI = capacity_iri(CATEGORY_PERCEPTION, "text.space_split")
 _SENTENCE_SPLIT_IRI = capacity_iri(CATEGORY_PERCEPTION, "text.sentence_split")
-_TEXT_FAMILY_IRIS = (
-    DS_RAW_TEXT,
-    DS_TOKENS,
-    DS_SENTENCES,
-    _SPACE_SPLIT_IRI,
-    _SENTENCE_SPLIT_IRI,
-)
+_DS_IRIS = (DS_RAW_TEXT, DS_TOKENS, DS_SENTENCES)
+_CAP_IRIS = (_SPACE_SPLIT_IRI, _SENTENCE_SPLIT_IRI)
+_TEXT_FAMILY_IRIS = _DS_IRIS + _CAP_IRIS
 
 
 def install_text_capacities(capacity_layer) -> None:
@@ -176,27 +173,34 @@ def install_text_capacities(capacity_layer) -> None:
       (or someone manually inserted some-but-not-all of the family).
     - None present → install all 5 (3 DataStates + 2 capacities).
 
-    Always targets Global (the layer's ``_capacity_index`` for its
-    global metagraph). No ``session`` argument — install is an admin/
-    bootstrap concern; CLI's fresh-layer init calls it sessionless.
+    Always targets Global. No ``session`` argument — install is an
+    admin/bootstrap concern; CLI's fresh-layer init calls it sessionless.
+
+    Note (B-31-T1 hotfix): DataStates and Capacities live in different
+    indexes — DataStates in the ``capacity:datastates`` role-graph's
+    ``nodes`` dict; Capacities in ``CapacityLayer._capacity_index``
+    keyed by metagraph id. Probe both per type.
 
     Raises:
         CapacityRegistrationError: Partial install state detected.
     """
-    # Probe presence against the Global capacity-index. Importing
-    # CapacityLayer at call-time avoids the type-hint dep + module-load
-    # cycle when this file is imported in isolation.
-    global_index = capacity_layer._capacity_index[
-        capacity_layer.global_metagraph().metagraph_id
-    ]
-    present = {iri for iri in _TEXT_FAMILY_IRIS if iri in global_index}
-    if len(present) == len(_TEXT_FAMILY_IRIS):
+    mg = capacity_layer.global_metagraph()
+    cap_index = capacity_layer._capacity_index[mg.metagraph_id]
+    ds_graph = ensure_datastate_graph(mg, strict=capacity_layer._strict)
+
+    ds_present = {iri for iri in _DS_IRIS if iri in ds_graph.nodes}
+    cap_present = {iri for iri in _CAP_IRIS if iri in cap_index}
+    present_total = len(ds_present) + len(cap_present)
+
+    if present_total == len(_TEXT_FAMILY_IRIS):
         return  # all present — no-op
-    if present:
+    if present_total > 0:
         raise CapacityRegistrationError(
             "install_text_capacities: partial install state detected — "
-            f"present={sorted(present)}, "
-            f"missing={sorted(set(_TEXT_FAMILY_IRIS) - present)}"
+            f"datastates_present={sorted(ds_present)}, "
+            f"capacities_present={sorted(cap_present)}, "
+            f"missing="
+            f"{sorted(set(_TEXT_FAMILY_IRIS) - ds_present - cap_present)}"
         )
     # None present — install all 5 (DataStates first per
     # _CapacityBase.validate_for_registration's forward-ref restriction).
