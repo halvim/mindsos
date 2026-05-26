@@ -1,14 +1,12 @@
 """Phase 29 — __init__.py export slate.
 
-Two sentinels in this file FLIPPED at Phase 30 (B-30-T1 hotfix):
-``test_phase_29_does_not_export_phase_30_surface`` and
-``test_phase_29_export_count_around_84``. Phase 30 lifts the
-InvocationResult / call_capacity / invoke / ProblemTrace surface per
-ADR-0066 §Implementation + ADR-0072 §amendment-1 + ADR-0074
-§Implementation footers; the Phase 29 "forbidden surface" set inverts
-to a "present-at-Phase-30" assertion, and the count check widens to
-the Phase 30 baseline (95). Discipline per
-``[[feedback-parity-test-sentinel-flip-at-target-phase]]``.
+Sentinel-flip ledger (per ``[[feedback-parity-test-sentinel-flip-at-target-phase]]``):
+
+- Phase 30 (B-30-T1): ``test_phase_29_does_not_export_phase_30_surface``
+  inverted to "present-at-Phase-30"; ``test_phase_29_export_count_around_84``
+  widened to count == 95.
+- Phase 31 (B-31-T2): count sentinel re-flipped to 97
+  (ResidentSubscription + ResidentError lift).
 
 Original Phase 29 invariants on its own export additions remain
 unchanged (``test_phase_29_exports_5_new_names`` +
@@ -68,19 +66,19 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_30_export_count_is_95():
-    """Sentinel flipped from Phase 29 R5 PB-41 estimate.
+def test_phase_31_export_count_is_97():
+    """B-31-T2 sentinel-flip in place — Phase 31 lifts +2 over Phase 30.
 
-    Originally asserted 82-86 range (Phase 29 baseline 84 ±2). Phase 30
-    adds +11 exports → 95 total per `mindsos_capacity/__init__.py`
-    Phase 30 §Excluded (defer) docstring + R2 PB-31(a) + R4 PB-50(a)
-    locks.
+    Originally asserted 95 at Phase 30 (Phase 29 baseline 84 + 11 new).
+    Phase 31 adds ResidentSubscription + ResidentError → 97. Same class
+    as B-31-T0 + B-30-T1 — `tests/phase_(N-1)/test_phase_*_export_slate.py`
+    is a sentinel-flip target at each subsequent phase ship.
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 95, (
-        f"Phase 30 __all__ count {n} != expected 95 "
-        f"(Phase 29 baseline 84 + 11 new)"
+    assert n == 97, (
+        f"Phase 31 __all__ count {n} != expected 97 "
+        f"(Phase 30 baseline 95 + 2 new at Phase 31)"
     )
 
 
