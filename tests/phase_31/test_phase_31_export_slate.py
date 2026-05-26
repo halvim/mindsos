@@ -31,10 +31,18 @@ def test_each_phase_31_export_resolves_to_real_object():
         assert getattr(mindsos_capacity, name) is not None
 
 
-def test_phase_31_export_count_is_97():
-    """Count-equals sentinel — Phase 32+ lifts trip this."""
-    assert len(mindsos_capacity.__all__) == 97, (
-        f"Expected 97 exports at Phase 31; found {len(mindsos_capacity.__all__)}"
+def test_phase_31_export_count_is_110():
+    """Count-equals sentinel — Phase 32 unchanged at 97; Phase 33 lifts
+    to 110 per ADR-0146 §Implementation (Phase 33): +13 new exports
+    (WriteResult, WriteOutcome, WriteHandleNotWiredError,
+    CapabilityDeniedError, CATEGORY_CONSOLIDATE,
+    DS_MM_COMPOSITE_INSTANCE, DS_PROBLEM_TRACE_RECORD,
+    mm_composite_datastates, problem_trace_datastates,
+    build_consolidate_mm, build_trace_problem,
+    install_consolidate_capacities, install_trace_capacities).
+    """
+    assert len(mindsos_capacity.__all__) == 110, (
+        f"Expected 110 exports at Phase 33; found {len(mindsos_capacity.__all__)}"
     )
 
 
@@ -57,5 +65,5 @@ def test_phase_30_exports_remain_intact():
     assert not missing, f"Phase 30 exports dropped at Phase 31: {sorted(missing)}"
 
 
-def test_version_bumped_to_phase_32():
-    assert mindsos_capacity.__version__ == "0.0.0+phase32"
+def test_version_bumped_to_phase_33():
+    assert mindsos_capacity.__version__ == "0.0.0+phase33"

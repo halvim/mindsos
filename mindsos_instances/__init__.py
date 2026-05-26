@@ -64,7 +64,7 @@ from .utils.canonicalize import canonicalize
 #: mindsos_admin/similarity.py + _content_hash.py + exceptions.py per
 #: ADR-0144 §amendment-1 partial §Heuristic Accept; read-only at 16;
 #: mutating entry-point defers to Phase 24).
-__version__ = "0.0.0+phase32"
+__version__ = "0.0.0+phase33"
 
 __all__ = [
     # exceptions

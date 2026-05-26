@@ -158,6 +158,7 @@ from .discovery import (
     rediscover_all,
 )
 from .exceptions import (
+    CapabilityDeniedError,
     CapacityLayerError,
     CapacityRegistrationError,
     ConstraintViolationError,
@@ -166,6 +167,7 @@ from .exceptions import (
     PipelineNotFoundError,
     ProblemTraceError,
     ResidentError,
+    WriteHandleNotWiredError,
 )
 from .pipeline import Pipeline, PipelineStep, find_pipeline
 from .runtime import (
@@ -182,9 +184,23 @@ from .schemas import (
 )
 from .types import SessionArg, SessionProtocol
 from .views import CapacityLayerView, SuccessorHop
+from .write_outcome import WriteOutcome, WriteResult
+from .builtins.consolidate import (
+    DS_MM_COMPOSITE_INSTANCE,
+    build_consolidate_mm,
+    install_consolidate_capacities,
+    mm_composite_datastates,
+)
+from .builtins.trace import (
+    DS_PROBLEM_TRACE_RECORD,
+    build_trace_problem,
+    install_trace_capacities,
+    problem_trace_datastates,
+)
 from .identifiers import (
     CATEGORY_COMBINATION,
     CATEGORY_COMPREHENSION,
+    CATEGORY_CONSOLIDATE,
     CATEGORY_DECOMPOSITION,
     CATEGORY_DERIVATION,
     CATEGORY_INTERACTION,
@@ -251,7 +267,7 @@ __all__ = [
     "strict_compatible",
     "list_of_compat",
     "validate_datastate",
-    # Exceptions (base + 7 raisers as of Phase 31)
+    # Exceptions (base + 9 raisers as of Phase 33)
     "CapacityLayerError",
     "CapacityRegistrationError",
     "ConstraintViolationError",
@@ -260,6 +276,8 @@ __all__ = [
     "PipelineNotFoundError",
     "ProblemTraceError",
     "ResidentError",
+    "WriteHandleNotWiredError",
+    "CapabilityDeniedError",
     # Phase 28 — CapacityLayer registry + views
     "CapacityLayer",
     "CapacityLayerView",
@@ -281,6 +299,21 @@ __all__ = [
     "find_pipeline",
     # Phase 31 — resident handle (ADR-0073 §amendment-1)
     "ResidentSubscription",
+    # Phase 33 — write-outcome substrate (ADR-0146 §amendment-1)
+    "WriteResult",
+    "WriteOutcome",
+    # Phase 33 — consolidate-family builtins (ADR-0145 §Impl; consolidate
+    # category lit; promote/author/state deferred per ADR-0147)
+    "DS_MM_COMPOSITE_INSTANCE",
+    "mm_composite_datastates",
+    "build_consolidate_mm",
+    "install_consolidate_capacities",
+    # Phase 33 — trace-family write builtins (existing CATEGORY_TRACE,
+    # first write occupant)
+    "DS_PROBLEM_TRACE_RECORD",
+    "problem_trace_datastates",
+    "build_trace_problem",
+    "install_trace_capacities",
     # Phase 28 — bootstrap helpers
     "create_global",
     "create_local",
@@ -321,6 +354,7 @@ __all__ = [
     "CATEGORY_SIGNALLING",
     "CATEGORY_INTERACTION",
     "CATEGORY_LEARNING_METHODS",
+    "CATEGORY_CONSOLIDATE",
     "FUNCTIONAL_CATEGORIES",
     "NODE_TYPE_CAPACITY",
     "NODE_TYPE_MONITOR",
@@ -351,4 +385,4 @@ __all__ = [
     "RESERVED_PROPERTY_KEYS",
 ]
 
-__version__ = "0.0.0+phase32"
+__version__ = "0.0.0+phase33"
