@@ -75,6 +75,6 @@ def test_slugify_sanitises_special_chars():
         slugify_user_id("")
 
 
-def test_functional_categories_contains_all_twelve():
+def test_functional_categories_contains_all_thirteen():
     assert CATEGORY_PERCEPTION in FUNCTIONAL_CATEGORIES
-    assert len(FUNCTIONAL_CATEGORIES) == 12
+    assert len(FUNCTIONAL_CATEGORIES) == 13
