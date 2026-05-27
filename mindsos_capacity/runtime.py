@@ -39,7 +39,15 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from .capacity import InvocationResult, Monitor, _CapacityBase, call_capacity
-from .exceptions import ProblemTraceError, ResidentError
+from .exceptions import (
+    CapacityRegistrationError,
+    ProblemTraceError,
+    ResidentError,
+)
+# NOTE: ``WriteResult`` (from .write_outcome) is intentionally NOT imported
+# at module level — ``write_outcome.py`` imports ``ProblemTraceRecord``
+# from this module, so a top-level import here would form a cycle.
+# Phase 34 bypass branch imports inside the function (one site).
 
 
 # ── ProblemTraceRecord (in-memory; per ADR-0074) ──────────────────────
@@ -185,6 +193,41 @@ def invoke(
     """
     start = time.perf_counter()
     try:
+        # Phase 34 (ADR-0146 §am-1 clause 4 closed; R1 PB-A) — write-
+        # capacity terminator bypass. When the declaration has zero
+        # output DataStates, the capacity is a write (pipeline terminator
+        # per R2 PB-K). ``call_capacity``'s output-validation contract
+        # (mapping-of-declared-DS-or-sole-value) is incompatible with
+        # returning a typed ``WriteResult`` / ``ProblemTraceRecord``.
+        # Bypass ``call_capacity`` for writes; validate return type
+        # explicitly (R5 PB-G); stash in ``InvocationResult.write_outcome``.
+        if not declaration.outputs:
+            # Lazy import to avoid the write_outcome ↔ runtime cycle.
+            from .write_outcome import WriteResult
+
+            kwargs = dict(inputs)
+            if context is not None:
+                kwargs.setdefault("context", context)
+            raw = declaration.implementation(**kwargs)
+            if not isinstance(raw, (WriteResult, ProblemTraceRecord)):
+                raise CapacityRegistrationError(
+                    f"Write capacity {declaration.iri!r} returned "
+                    f"{type(raw).__name__!r}; expected WriteResult or "
+                    f"ProblemTraceRecord per ADR-0146 §Decision."
+                )
+            duration_ms = (time.perf_counter() - start) * 1000.0
+            return InvocationResult(
+                outputs={},
+                duration_ms=duration_ms,
+                success=True,
+                trace={
+                    "capacity": declaration.iri,
+                    "inputs_keys": list(inputs.keys()),
+                    "write_outcome_kind": type(raw).__name__,
+                },
+                write_outcome=raw,
+            )
+
         outputs = call_capacity(declaration, inputs, context=context)
         duration_ms = (time.perf_counter() - start) * 1000.0
         return InvocationResult(

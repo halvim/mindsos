@@ -1,41 +1,56 @@
-"""``KLWriteHandle`` — KL-side write-routing handle (Phase 33 stub; ADR-0143).
+"""``KLWriteHandle`` — KL-side write-routing handle (Phase 34; ADR-0143 Accepted).
 
 L2's entry-point surface for L3 write capacities. The handle is a
 *non-mutating accessor* (ADR-0143 §Constraint "never mutates"): it
-encapsulates the routing + IRI-builder + validator composition an L3
-write capacity needs, but does not call L1 mutation primitives itself.
-L3 capacities reach mutation through ``handle.graph()`` and call L1
-directly.
+encapsulates the routing + IRI-builder + ``write_and_validate`` composite
+an L3 write capacity needs, but does not call L1 mutation primitives
+directly. L3 capacities reach mutation through ``handle.graph()`` (raw
+L1 access) or through ``handle.write_and_validate(...)`` (the composite
+that mints an IRI, calls ``add_node`` on the role-graph, and constructs
+a :class:`WriteResult`).
 
-**Phase 33 stub-phase shape (ADR-0146 §amendment-1 clause 5).** Phase
-33 ships the surface so L3 write capacities can register + invoke; the
-handle bodies are partially stubbed:
+**Phase 34 wiring (ADR-0146 §amendment-1 clauses 4 + 5 closed).**
 
-- ``metagraph()`` — returns the real :class:`Metagraph` (read-only state
-  inspection; safe at stub phase).
-- ``graph()`` — raises :class:`WriteHandleNotWiredError`.
-- ``mint_iri(**content)`` — raises :class:`WriteHandleNotWiredError`
-  (version handling deferred post-Phase 17 retirement per ADR-0150
-  §amendment-3).
-- ``validate_node(...)`` — raises :class:`WriteHandleNotWiredError`
-  (KL semantic validators land at Phase 36; ADR-0139).
-- ``validate_xref(...)`` — raises :class:`WriteHandleNotWiredError`.
-
-Phase 34 (ADR-0146) wires the working bodies + deletes the raise sites
-in ``graph()`` and ``mint_iri()``. Phase 36 (ADR-0139) wires the two
-validator methods.
+- ``metagraph()`` — returns the real :class:`Metagraph` (unchanged from
+  Phase 33).
+- ``graph()`` — iterates ``_metagraph.graphs.values()`` and returns the
+  L1 :class:`Graph` whose ``role`` matches ``self.role``. Raises
+  :class:`KeyError` if no role-graph is present (programmer error per
+  ADR-0146 §Decision — capacity asked for a role the metagraph wasn't
+  bootstrapped with).
+- ``mint_iri(**content)`` — dispatches via ``_IRI_BUILDERS`` registry
+  (per Phase 34 R1 PB-B; minimal 2-entry). The handle's ``_version``
+  literal threads in; ``content`` kwargs flow to the role-specific
+  builder. Missing kwargs surface as ``KeyError`` per ADR-0146 §Decision
+  ("programmer error → propagate").
+- ``write_and_validate(*, value, type_, **mint_content)`` — composite
+  that mints an IRI, calls ``self.graph().add_node(...)``, returns
+  :class:`WriteResult` on success. L1 raises (``UnknownTypeError``,
+  ``IdentityError``, ``PropertyShapeError``) propagate; the
+  ``runtime.invoke`` envelope catches per ADR-0072. **Phase 34 scope:**
+  structural validation via L1 schema only; KL semantic validators
+  (ADR-0139) integrate at Phase 36 via the ``validate_node`` /
+  ``validate_xref`` methods which still raise
+  :class:`WriteHandleNotWiredError`.
+- ``validate_node(...)`` / ``validate_xref(...)`` — unchanged from Phase
+  33; raise :class:`WriteHandleNotWiredError`. Phase 36 (ADR-0139)
+  wires.
 
 The handle never accretes mutation methods (``add_node`` / ``add_xref``
 / ``set_property`` etc.). Code review enforces this discipline per
-ADR-0143 §Constraint.
+ADR-0143 §Constraint + ``docs/dev/review-checklist.md`` (Phase 34).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from mindsos_capacity.exceptions import WriteHandleNotWiredError
+from mindsos_capacity.write_outcome import WriteResult
+
+from .identifiers import _IRI_BUILDERS
 
 if TYPE_CHECKING:
     from mindsos_core import Graph, Metagraph
@@ -48,15 +63,11 @@ if TYPE_CHECKING:
 class KLWriteHandle:
     """Lightweight typed handle returned by :meth:`KnowledgeLayer.writeable`.
 
-    The handle binds a (session, role, scope) triple to its target
-    L1 Metagraph + role-graph routing. Capacity code calls
-    ``handle.graph().add_node(...)`` etc. for mutation; the handle
-    itself never mutates.
-
-    **Phase 33 status:** ``metagraph()`` returns real;
-    ``graph`` / ``mint_iri`` / ``validate_node`` / ``validate_xref``
-    raise :class:`WriteHandleNotWiredError`. Phase 34 (ADR-0146 +
-    ADR-0143) wires the working bodies.
+    Binds a ``(session, role, scope, version)`` tuple to its target L1
+    Metagraph + role-graph routing. Capacity code calls
+    ``handle.write_and_validate(...)`` (the composite) or
+    ``handle.graph().add_node(...)`` (raw L1 access) for mutation; the
+    handle itself never mutates.
 
     Attributes:
         role: The role-graph role this handle writes to (e.g.,
@@ -74,6 +85,10 @@ class KLWriteHandle:
         _metagraph: The L1 :class:`Metagraph` the handle routes into
             (Local of ``session.user_id`` for ``scope='local'``;
             Global for ``scope='global'``).
+        _version: Role-version literal embedded into minted IRIs.
+            Phase 34 lock — Phase 17 retirement (ADR-0150 §am-3) left
+            no active-version dispatch mechanism; the handle holds a
+            single version literal bound at construction.
     """
 
     role: str
@@ -81,45 +96,138 @@ class KLWriteHandle:
     session: Optional["SessionProtocol"]
     _kl: "KnowledgeLayer"
     _metagraph: "Metagraph"
+    _version: str
 
     def metagraph(self) -> "Metagraph":
         """Return the L1 Metagraph this handle writes into (real; not stubbed).
 
         Read-only state inspection. Used by capacity bodies to derive
         XRef target identifiers and inspect existing nodes before
-        mutation. Phase 34's ``graph()`` wiring builds on this.
+        mutation.
         """
         return self._metagraph
 
     def graph(self) -> "Graph":
-        """Return the L1 :class:`Graph` for ``role``'s active version.
+        """Return the L1 :class:`Graph` for ``self.role`` in ``_metagraph``.
 
-        **Phase 33 stub:** raises :class:`WriteHandleNotWiredError`.
-        Phase 34 (ADR-0146 §Implementation) wires the active-version
-        lookup + returns the real :class:`Graph`. L3 capacity bodies
-        call ``handle.graph().add_node(...)`` etc. once wired.
+        Phase 34 body (ADR-0146 §Implementation): iterates the parent
+        metagraph's graphs and returns the one whose ``.role`` matches
+        ``self.role``. Raises :class:`KeyError` if no matching role-graph
+        exists — that is a programmer error (capacity asked for a role
+        the metagraph wasn't bootstrapped with) per ADR-0146 §Decision
+        "programmer error → propagate".
+
+        Phase 17 retirement (ADR-0150 §am-3) locks the one-graph-per-role
+        invariant in the metagraph; ``next(...)`` returns the first
+        matching graph deterministically.
+
+        Raises:
+            KeyError: No graph with ``role == self.role`` exists in
+                ``self._metagraph``.
         """
-        raise WriteHandleNotWiredError(
-            f"KLWriteHandle.graph(role={self.role!r}, scope={self.scope!r}) "
-            "is not wired at Phase 33 — Phase 34 (ADR-0146) implements "
-            "the working body."
+        for g in self._metagraph.graphs.values():
+            if g.role == self.role:
+                return g
+        raise KeyError(
+            f"KLWriteHandle.graph(role={self.role!r}): no graph with that "
+            f"role in metagraph {self._metagraph.metagraph_id!r}. "
+            f"Bootstrap the role-graph before constructing the handle."
         )
 
     def mint_iri(self, **content: Any) -> str:
         """Mint a stable IRI per the role's IRI builder.
 
-        **Phase 33 stub:** raises :class:`WriteHandleNotWiredError`.
-        Version handling is the load-bearing decision Phase 34 must
-        make — Phase 17 retirement (ADR-0150 §amendment-3) locked the
-        version-dispatch model as IRI-string-only with no active-version
-        lookup mechanism. Phase 34 picks how the handle obtains the
-        version literal (constructor-bound? from session context?
-        per-role default constant?) and unstubs.
+        Phase 34 body (ADR-0146 §Implementation + R1 PB-B): dispatches
+        via the ``_IRI_BUILDERS`` registry in
+        ``mindsos_knowledge/identifiers.py``. Threads the handle's
+        ``_version`` literal as the first positional arg; ``content``
+        kwargs flow to the role-specific builder wrapper.
+
+        Required ``content`` keys per role:
+
+        * ``memories`` — ``user_id`` + ``memory_id``
+        * ``problem-trace`` — ``trace_id``
+
+        Missing keys raise :class:`KeyError` per ADR-0146 §Decision
+        (programmer error). Unsupported roles raise :class:`KeyError`
+        from the registry lookup.
+
+        Raises:
+            KeyError: ``self.role`` not in ``_IRI_BUILDERS`` OR required
+                content kwargs missing.
+            RefFormatError: content values fail the IRI charset/format
+                validation (raised by the underlying builder).
         """
-        raise WriteHandleNotWiredError(
-            f"KLWriteHandle.mint_iri(role={self.role!r}, content={content!r}) "
-            "is not wired at Phase 33 — Phase 34 (ADR-0146) resolves the "
-            "version-source decision and implements the body."
+        try:
+            builder = _IRI_BUILDERS[self.role]
+        except KeyError as exc:
+            raise KeyError(
+                f"KLWriteHandle.mint_iri(role={self.role!r}): no IRI builder "
+                f"registered for role. Phase 34 supports "
+                f"{sorted(_IRI_BUILDERS.keys())!r}; per-flow add the role's "
+                f"builder when the capacity lands (ADR-0147)."
+            ) from exc
+        return builder(self._version, **content)  # type: ignore[operator]
+
+    def write_and_validate(
+        self,
+        *,
+        value: Any,
+        type_: str,
+        **mint_content: Any,
+    ) -> WriteResult:
+        """Composite write: mint IRI → add_node → return :class:`WriteResult`.
+
+        Phase 34 ship (PHASE_MAP §34 feature line; ADR-0146 §Implementation
+        criterion (b)). Encapsulates the 3-line ``mint_iri → add_node →
+        WriteResult`` sequence so capacity bodies don't repeat it.
+
+        **Phase 34 scope:** structural validation via L1 schema only
+        (``Graph.add_node`` fires ``UnknownTypeError`` /
+        ``PropertyShapeError`` / ``IdentityError`` as configured).
+        Semantic validators (KL ``validate_node`` per ADR-0139) integrate
+        at Phase 36; this method does NOT call them today (they still
+        raise :class:`WriteHandleNotWiredError`). The "validate" half of
+        the name refers to L1's structural validators that fire on
+        ``add_node``.
+
+        L1 raises propagate to ``runtime.invoke`` which envelopes as
+        ``InvocationResult(success=False, error=...)`` per ADR-0072 —
+        Phase 34 does NOT wrap L1 errors as ``ProblemTraceRecord``
+        (ADR-0146 §amendment-1 clause 1 remains open; L4 consumer drives
+        the eventual flip in a later phase).
+
+        Args:
+            value: Primary node value passed to ``add_node`` as ``value=``.
+            type_: NodeType name (L2 convention); translated to L1's
+                ``type_name`` kwarg at the call site. Phase 13 schema
+                whitelists: ``"Memory"`` (memories role) or
+                ``"ProblemTraceEntry"`` (problem-trace role).
+            **mint_content: Per-role kwargs forwarded to :meth:`mint_iri`
+                (e.g., ``user_id`` + ``memory_id`` for memories).
+
+        Returns:
+            :class:`WriteResult` with ``iri`` (minted), ``role`` /
+            ``scope`` (from handle), ``written_at`` (UTC now), and
+            empty ``extras``.
+
+        Raises:
+            KeyError: As :meth:`mint_iri`.
+            UnknownTypeError / PropertyShapeError / IdentityError /
+            RefFormatError: L1 add_node validation errors; propagate
+                per ADR-0146 §Decision.
+        """
+        iri = self.mint_iri(**mint_content)
+        # L1 ``add_node`` signature: (value, type_name, *, properties=None,
+        # node_id=None, _validate=True). L2 convention exposes ``type_``;
+        # translate at the boundary per Phase 34 R4 §am-impl-1.
+        self.graph().add_node(value=value, type_name=type_, node_id=iri)
+        return WriteResult(
+            iri=iri,
+            role=self.role,
+            scope=self.scope,
+            written_at=datetime.now(timezone.utc),
+            extras={},
         )
 
     def validate_node(
@@ -131,11 +239,12 @@ class KLWriteHandle:
     ) -> Any:
         """Compose role-appropriate KL semantic validators.
 
-        **Phase 33 stub:** raises :class:`WriteHandleNotWiredError`.
-        KL semantic validators land at Phase 36 (ADR-0139 hybrid
-        invariant home — structural at L1, semantic at L2). The handle
-        method exposes the surface; the validator functions get wired
-        when Phase 36 ships ``mindsos_knowledge/validators.py``.
+        **Phase 34 status:** STILL raises :class:`WriteHandleNotWiredError`
+        per Phase 33 stub. KL semantic validators land at Phase 36
+        (ADR-0139 hybrid invariant home — structural at L1, semantic at
+        L2). Phase 34's :meth:`write_and_validate` does NOT call this
+        method — it relies on L1's structural validators only. Phase 36
+        wires the body + extends ``write_and_validate`` to call it.
         """
         raise WriteHandleNotWiredError(
             f"KLWriteHandle.validate_node(role={self.role!r}, "
@@ -153,8 +262,8 @@ class KLWriteHandle:
     ) -> Any:
         """Validate cross-metagraph XRef target existence + ref_type membership.
 
-        **Phase 33 stub:** raises :class:`WriteHandleNotWiredError`.
-        Phase 36 wires the body together with :meth:`validate_node`.
+        **Phase 34 status:** STILL raises :class:`WriteHandleNotWiredError`.
+        Phase 36 wires together with :meth:`validate_node`.
         """
         raise WriteHandleNotWiredError(
             f"KLWriteHandle.validate_xref(role={self.role!r}, "

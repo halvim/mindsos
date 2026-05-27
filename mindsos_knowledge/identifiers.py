@@ -242,6 +242,49 @@ def capacity_snapshot_iri(
     return f"capacity-state-{v}:snapshot:{uid}:{ci}:{ta}"
 
 
+# ── §4b Per-role IRI-builder registry (Phase 34; ADR-0146 + ADR-0143) ─
+
+# Minimal 2-entry registry per Phase 34 R1 PB-B (per-flow build discipline):
+# only roles with shipped write capacities have entries. Phase 35+ adds
+# entries alongside their capacities (capacity:promote:pipeline etc.).
+#
+# Each value is a wrapper that adapts a role-specific positional builder
+# (e.g., ``memory_iri(version, user_id, memory_id)``) to a uniform
+# ``(version, /, **content) -> str`` signature so ``KLWriteHandle.mint_iri``
+# can dispatch by role uniformly. Missing kwargs surface as ``KeyError``
+# per Phase 34 R1 PB-I (ADR-0146 §Decision "programmer error → propagate").
+
+
+def _mint_memory(version: str, /, **content: object) -> str:
+    """Adapter: ``memory_iri(version, user_id, memory_id)`` ← ``mint_iri`` kwargs.
+
+    Requires ``user_id`` + ``memory_id`` keys in ``content``. ``KeyError``
+    on missing per ADR-0146 §Decision (programmer error).
+    """
+    return memory_iri(
+        version,
+        user_id=str(content["user_id"]),
+        memory_id=str(content["memory_id"]),
+    )
+
+
+def _mint_problem_trace(version: str, /, **content: object) -> str:
+    """Adapter: ``problem_trace_iri(version, trace_id)`` ← ``mint_iri`` kwargs.
+
+    Requires ``trace_id`` key. ``KeyError`` on missing.
+    """
+    return problem_trace_iri(version, trace_id=str(content["trace_id"]))
+
+
+#: Per-role IRI-builder dispatch table for :meth:`KLWriteHandle.mint_iri`.
+#: Phase 34 ships 2 entries (the 2 shipped write capacities); per-flow
+#: build adds entries as new write capacities land.
+_IRI_BUILDERS: dict[str, object] = {
+    ROLE_MEMORIES: _mint_memory,
+    ROLE_PROBLEM_TRACE: _mint_problem_trace,
+}
+
+
 # ── §5 alignment_role graph-name helper (NOT an IRI builder) ──────────
 
 

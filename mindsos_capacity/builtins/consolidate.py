@@ -1,36 +1,39 @@
-"""``capacity:consolidate:mm`` — Local memory write capacity (Phase 33; stub).
+"""``capacity:consolidate:mm`` — Local memory write capacity (Phase 34; wired).
 
 Ships the first ``CATEGORY_CONSOLIDATE`` occupant per ADR-0145 §Decision
-+ §Implementation (Phase 33). The capacity targets the user's Local
-``memories`` role-graph (ADR-0044): an MM ``CompositeInstance`` becomes
-a ``ConsolidatedMemory`` record under ``memories-<v>:memory:<user_id>:
-<memory_id>``.
++ §Implementation. The capacity targets the user's Local ``memories``
+role-graph (ADR-0044): a record bearing ``memory_id`` + ``value`` becomes
+a ``Memory`` node under ``memories-v1:memory:<user_id>:<memory_id>``.
 
-**Phase 33 stub-phase status (ADR-0146 §amendment-1 clauses 1-5).** The
-capacity registers + invokes through the regular ``CapacityLayer.invoke``
-envelope (ADR-0072). The body calls ``kl.writeable(session, role=
-ROLE_MEMORIES, scope='local')`` — which:
+**Phase 34 ship (ADR-0146 §amendment-1 clauses 4 + 5 closed).** The
+capacity body now wires through to L1 via
+:meth:`KLWriteHandle.write_and_validate` and returns a typed
+:class:`WriteResult`. Failure modes:
 
-1. Raises ``ValueError`` when ``session is None`` (Local writes require
-   a session for user_id routing; ADR-0080 carve-out doesn't extend
-   to Local).
-2. Otherwise returns a partially-stubbed :class:`KLWriteHandle` whose
-   ``graph()`` raises :class:`WriteHandleNotWiredError`.
+1. **Cap-denial** — body does NOT check capabilities for consolidate
+   (Local writes are scoped to the session's own user; no cross-user
+   risk). The ADR-0080 carve-out applies to scope='local' only via
+   :meth:`KnowledgeLayer.writeable` raising ``ValueError`` when
+   ``session is None``.
+2. **Missing-KL** — ``context.get("kl")`` returns ``None`` →
+   :class:`RuntimeError` (CapacityLayer constructed without ``kl=``;
+   programmer error per R3 PB-F).
+3. **L1 schema reject** — ``add_node`` raises ``UnknownTypeError`` /
+   ``PropertyShapeError`` etc.; envelope catches as
+   ``InvocationResult(success=False, error=...)``.
+4. **Session-None for scope='local'** — ``KnowledgeLayer.writeable``
+   raises ``ValueError`` (no user_id to route on).
 
-Either path surfaces through ``runtime.invoke``'s envelope as
-``InvocationResult(success=False, error=<...>)``. Phase 34 (ADR-0146)
-wires the working body + the handle's L1 access path.
-
-**Placeholder DataState (R1 PB-B lock).** ``datastate:mm.composite_instance``
-is shipped as an opaque-tag DataState. Phase 33 capacity body never
-touches the input value (the handle raises before any field access).
-Phase 34 / first L4 flow tightens the shape (likely to a record-form
-DataState binding ``CompositeInstance`` attributes).
+**Input shape (Phase 34 R2 PB-A + R4 §am-impl-2).** Tightened from Phase
+33's opaque to record-form ``{"memory_id": "str", "value": "Any"}``.
+``opaque_tag`` preserved for backward-compat. L4 consolidation flow
+tightens further with consumer-specific fields (e.g., binding to
+``CompositeInstance`` attributes).
 
 **Outputs (R2 PB-K).** ``outputs=()`` — write capacities are pipeline
-terminators. They consume but emit no DataState into the flow graph
-(Phase 30's BFS pipeline finder treats them as dead-ends; correct,
-since L4 invokes writes directly).
+terminators. Phase 30's BFS pipeline finder treats them as dead-ends.
+``runtime.invoke``'s Phase 34 bypass branch surfaces the
+:class:`WriteResult` via ``InvocationResult.write_outcome``.
 """
 
 from __future__ import annotations
@@ -48,26 +51,31 @@ from ..identifiers import (
 )
 
 
-# ── DataState IRIs (placeholder per R1 PB-B; tightened Phase 34) ──────
+# ── DataState IRIs (record-shape per Phase 34 R2 PB-A) ────────────────
 
 DS_MM_COMPOSITE_INSTANCE = datastate_iri("mm.composite_instance")
 
 
 def mm_composite_datastates() -> List[DataState]:
-    """Return the placeholder DataState(s) used by ``capacity:consolidate:mm``.
+    """Return the DataState(s) used by ``capacity:consolidate:mm``.
 
-    Single-member list at Phase 33; opaque-tag shape per R1 PB-B
-    (defer-input-lock pattern — capacity body never touches the value
-    because the handle raises first).
+    Phase 34 ship: ``ShapeDescriptor.record`` with ``memory_id`` + ``value``
+    fields (the minimum surface :meth:`KLWriteHandle.write_and_validate`
+    needs). ``opaque_tag`` preserved for Phase 33 sentinel backward-compat
+    and downstream consumer disambiguation.
     """
     return [
         DataState(
             name="mm.composite_instance",
-            shape=ShapeDescriptor.opaque(tag="mm.composite_instance"),
+            shape=ShapeDescriptor.record(
+                {"memory_id": "str", "value": "Any"},
+                opaque_tag="mm.composite_instance",
+            ),
             description=(
-                "Placeholder for an MM CompositeInstance bundle. Phase 33 "
-                "stub shape; tightened at Phase 34 / first L4 consolidation "
-                "flow."
+                "Record bearing the minimum keys ``capacity:consolidate:mm`` "
+                "extracts: ``memory_id`` (IRI key per ADR-0044) and "
+                "``value`` (node value). Phase 34 R2 PB-A tighten; L4 "
+                "consolidation flow extends the field set."
             ),
             provenance_category=CATEGORY_CONSOLIDATE,
         ),
@@ -78,34 +86,35 @@ def mm_composite_datastates() -> List[DataState]:
 
 
 def _consolidate_mm_impl(**kwargs: Any) -> Any:
-    """Body of ``capacity:consolidate:mm`` — Phase 33 stub path.
+    """Body of ``capacity:consolidate:mm`` — Phase 34 wired path.
 
-    Reaches ``kl.writeable(session, role='memories', scope='local')``
-    and calls ``handle.graph()``; both surface a contract-typed error
-    that ``runtime.invoke`` envelopes. Phase 34 fills the success
-    path + returns :class:`WriteResult`.
+    Extracts session + KL from context; mints + writes through the
+    handle's :meth:`write_and_validate`; returns :class:`WriteResult`.
     """
-    # Import here (not at module top) to avoid an import cycle —
-    # mindsos_capacity/__init__.py imports from this module via the
-    # builtins package, and mindsos_knowledge importing back during
-    # module init would loop.
-    from mindsos_knowledge import KnowledgeLayer
     from mindsos_knowledge.identifiers import ROLE_MEMORIES
 
     context = kwargs.get("context") or {}
     session = context.get("session")
+    kl = context.get("kl")
+    if kl is None:
+        raise RuntimeError(
+            "capacity:consolidate:mm requires CapacityLayer to be "
+            "constructed with kl=<KnowledgeLayer> (Phase 34 R0 PB-5). "
+            "Programmer error: no KL in context."
+        )
 
-    # ``kl`` is constructed fresh per invocation at Phase 33 — there is
-    # no Phase 33-shipped KL instance on CapacityLayer / context.
-    # Phase 34 wires the real KL routing (likely through the server
-    # orchestrator); for Phase 33 the only path is "construct a fresh
-    # KL; call writeable(); the handle raises". The fresh-KL path is
-    # NOT a forward-anchor — Phase 34 deletes it.
-    kl = KnowledgeLayer.bootstrap()
-    handle = kl.writeable(session, role=ROLE_MEMORIES, scope="local")
-    handle.graph()  # raises WriteHandleNotWiredError at Phase 33.
-    # Unreachable at Phase 33; Phase 34 returns WriteResult here.
-    raise AssertionError("unreachable at Phase 33")
+    record = kwargs[DS_MM_COMPOSITE_INSTANCE]
+    # ``writeable(scope='local')`` raises ValueError when session is None
+    # (no user_id to route on; ADR-0080 carve-out doesn't extend to Local).
+    handle = kl.writeable(
+        session, role=ROLE_MEMORIES, scope="local", version="v1"
+    )
+    return handle.write_and_validate(
+        value=record["value"],
+        type_="Memory",
+        user_id=session.user_id,
+        memory_id=record["memory_id"],
+    )
 
 
 # ── Capacity factory ──────────────────────────────────────────────────
@@ -114,10 +123,9 @@ def _consolidate_mm_impl(**kwargs: Any) -> Any:
 def build_consolidate_mm() -> Capacity:
     """Build the ``capacity:consolidate:mm`` declaration.
 
-    IRI: ``capacity:consolidate:mm`` (ADR-0145 §Impl line 75 verbatim;
-    no ``.write`` or other suffix).
+    IRI: ``capacity:consolidate:mm`` (ADR-0145 §Impl line 75 verbatim).
 
-    Inputs: ``(DS_MM_COMPOSITE_INSTANCE,)`` (placeholder).
+    Inputs: ``(DS_MM_COMPOSITE_INSTANCE,)`` (record shape).
     Outputs: ``()`` — write-capacity terminator semantic (R2 PB-K).
     """
     return Capacity(
@@ -127,9 +135,9 @@ def build_consolidate_mm() -> Capacity:
         outputs=(),
         implementation=_consolidate_mm_impl,
         description=(
-            "Consolidate an MM CompositeInstance into the user's Local "
-            "memories role-graph. Phase 33 stub — handle raises "
-            "WriteHandleNotWiredError. Phase 34 (ADR-0146) wires the body."
+            "Consolidate an MM record into the user's Local memories "
+            "role-graph. Phase 34 wired — returns WriteResult on success; "
+            "L1 raises propagate per ADR-0146 §am-1 clause 1."
         ),
         cost_prior=2.0,
         latency_ms_prior=5.0,
@@ -148,13 +156,7 @@ def install_consolidate_capacities(capacity_layer) -> None:
     """Register every ``consolidate`` family DataState + capacity on ``capacity_layer``.
 
     Idempotent with partial-state detection per Phase 31's
-    ``install_text_capacities`` precedent:
-
-    - All present → no-op (silent return).
-    - Some present, some missing → :class:`CapacityRegistrationError`
-      ("partial install state detected").
-    - None present → install all members (1 DataState + 1 capacity at
-      Phase 33).
+    ``install_text_capacities`` precedent.
 
     Targets Global. No ``session`` argument (admin/bootstrap concern).
 

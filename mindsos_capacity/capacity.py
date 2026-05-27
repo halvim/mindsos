@@ -168,12 +168,19 @@ class InvocationResult:
 
     Attributes:
         outputs: Mapping of output-DataState IRI → produced value.
+            EMPTY for write capacities (``outputs=()`` terminators);
+            see :attr:`write_outcome`.
         duration_ms: Observed execution time.
         success: ``True`` if the callable returned without raising.
         error: ``None`` on success; an exception instance on failure.
         signals: Signals emitted during execution (reserved for
             future resident/reactive integration).
         trace: Auxiliary trace-record fields (free-form).
+        write_outcome: Phase 34 (ADR-0146) — populated by write
+            capacities (``outputs=()``); ``None`` for read capacities.
+            Holds the typed ``WriteResult | ProblemTraceRecord`` the
+            write body returned. ``runtime.invoke``'s bypass branch
+            stashes it here; read paths leave ``None``.
     """
 
     outputs: Mapping[str, Any]
@@ -182,6 +189,7 @@ class InvocationResult:
     error: Optional[BaseException] = None
     signals: Tuple[Any, ...] = ()
     trace: Mapping[str, Any] = field(default_factory=dict)
+    write_outcome: Optional[Any] = None  # WriteResult | ProblemTraceRecord
 
 
 def call_capacity(

@@ -238,14 +238,30 @@ def problem_trace_tail_cmd(
 
 
 def _construct_invoke_layer() -> CapacityLayer:
-    """Build a fresh in-memory Global ``CapacityLayer`` with text builtins installed.
+    """Build a fresh in-memory Global ``CapacityLayer`` with text + write builtins.
 
-    Phase 31 R3 PB-29 lock — always-install at this phase (only one
-    builtins family ships). When a second family lands (Phase 32+),
-    introduce ``--install-builtins=text,...`` then.
+    Phase 34 (R4 §am-impl-4 + carry-forward #6): the CLI helper now
+    constructs a fresh :class:`KnowledgeLayer` and passes it to
+    :class:`CapacityLayer` so the Phase 33 write capacities
+    (``consolidate`` + ``trace``) can read ``context["kl"]`` at
+    invocation time. Without the KL, write-capacity bodies raise
+    ``RuntimeError`` per R3 PB-F.
+
+    **Limitation (R2 PB-E):** KL is fresh-per-CLI-process; writes do
+    NOT persist across CLI invocations. Production callers (server
+    orchestrator) construct ``CapacityLayer`` with a persistent KL.
     """
-    layer = CapacityLayer()
+    from mindsos_capacity.builtins.consolidate import (
+        install_consolidate_capacities,
+    )
+    from mindsos_capacity.builtins.trace import install_trace_capacities
+    from mindsos_knowledge import KnowledgeLayer
+
+    kl = KnowledgeLayer.bootstrap()
+    layer = CapacityLayer(kl=kl)
     install_text_capacities(layer)
+    install_consolidate_capacities(layer)
+    install_trace_capacities(layer)
     return layer
 
 
@@ -254,9 +270,30 @@ def _exception_to_dict(exc: BaseException) -> dict:
     return {"type": exc.__class__.__name__, "message": str(exc)}
 
 
+def _write_outcome_to_dict(outcome) -> dict:
+    """Serialise a WriteResult or ProblemTraceRecord for --json envelope (Phase 34).
+
+    Phase 34 R1 PB-E + R4 §am-impl-9: ``InvocationResult.write_outcome``
+    holds either a :class:`WriteResult` (success path) or
+    :class:`ProblemTraceRecord` (future Phase 36+ clause-1 flip). Both
+    are dataclasses; render via ``dataclasses.asdict`` with datetime
+    iso-format coercion.
+    """
+    from dataclasses import asdict
+    from datetime import datetime
+
+    d = asdict(outcome)
+    d["__type__"] = type(outcome).__name__
+    # Coerce any datetime field (e.g., WriteResult.written_at) to ISO.
+    for k, v in list(d.items()):
+        if isinstance(v, datetime):
+            d[k] = v.isoformat()
+    return d
+
+
 def _invocation_result_to_dict(result: InvocationResult) -> dict:
     """Render InvocationResult as a --json-ready dict (full envelope; R1 PB-15)."""
-    return {
+    out = {
         "success": result.success,
         "outputs": dict(result.outputs),
         "duration_ms": result.duration_ms,
@@ -264,11 +301,21 @@ def _invocation_result_to_dict(result: InvocationResult) -> dict:
         "error": _exception_to_dict(result.error) if result.error is not None else None,
         "signals": list(result.signals),
     }
+    if result.write_outcome is not None:
+        out["write_outcome"] = _write_outcome_to_dict(result.write_outcome)
+    return out
 
 
 def _invocation_result_to_human(result: InvocationResult) -> str:
     """Render InvocationResult as a brief human summary."""
     if result.success:
+        if result.write_outcome is not None:
+            # Phase 34 — write capacity success path.
+            iri = getattr(result.write_outcome, "iri", "<no-iri>")
+            return (
+                f"success  duration_ms={result.duration_ms:.3f}  "
+                f"write_outcome.iri={iri!r}"
+            )
         out_keys = list(result.outputs.keys())
         return (
             f"success  duration_ms={result.duration_ms:.3f}  "

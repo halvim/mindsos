@@ -65,5 +65,5 @@ def test_phase_30_exports_remain_intact():
     assert not missing, f"Phase 30 exports dropped at Phase 31: {sorted(missing)}"
 
 
-def test_version_bumped_to_phase_33():
-    assert mindsos_capacity.__version__ == "0.0.0+phase33"
+def test_version_bumped_to_phase_34():
+    assert mindsos_capacity.__version__ == "0.0.0+phase34"

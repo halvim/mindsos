@@ -1,6 +1,6 @@
 ---
 title: Capacity Layer — internals (halvim)
-last_confirmed_phase: 33
+last_confirmed_phase: 34
 ---
 
 # Capacity Layer — internals (halvim)
@@ -93,6 +93,56 @@ handle bodies + capacity success paths. Deletion targets:
 ADR-0146 §Decision target; that decision is left to the Phase 34
 chat.
 
+## Phase 34 — wired bodies + runtime.invoke bypass + KL injection
+
+ADR-0146 §amendment-1 clauses 4 + 5 close at Phase 34. Summary of what
+changed in this package:
+
+### `runtime.invoke` write-capacity bypass (R1 PB-A)
+
+When `declaration.outputs == ()` (write-capacity terminator semantic
+locked at Phase 33 R2 PB-K), `runtime.invoke` BYPASSES `call_capacity`'s
+output-validation contract and calls the bound implementation directly.
+The return value must be `WriteResult` or `ProblemTraceRecord`
+(R5 PB-G; any other shape raises `CapacityRegistrationError` which the
+envelope catches as `InvocationResult(success=False, error=...)`).
+
+The typed outcome lives in a NEW `InvocationResult.write_outcome` field
+(additive, default `None`). Read paths leave it `None`; only the bypass
+populates it. This preserves the `InvocationResult.outputs: Mapping`
+invariant for the read-call paths shipped at Phase 30+31.
+
+### `CapacityLayer.__init__(kl=...)` + conditional context injection
+
+Write capacity bodies extract `kl` from `context["kl"]`. The
+`CapacityLayer` constructor accepts an optional `kl: KnowledgeLayer`
+kwarg; `invoke()` + `start_resident()` inject it conditionally
+(only when `self._kl is not None`; symmetric with Phase 33's `session`
+routing). Bodies missing `kl` raise `RuntimeError` (R3 PB-F; programmer
+error per ADR-0146 §Decision).
+
+### CLI rendering — `InvocationResult.write_outcome` (R1 PB-E)
+
+`mindsos capacity invoke --json` adds a `write_outcome` field to the
+envelope dict when populated; `_to_human` mentions `write_outcome.iri`
+in the success line. `_construct_invoke_layer` now bootstraps a fresh
+`KnowledgeLayer`, passes it to `CapacityLayer(kl=...)`, and installs the
+Phase 33 write capacity families. **CLI limitation:** the KL is
+fresh-per-CLI-process; writes do not persist across CLI invocations
+(per R2 PB-E; production callers wire a persistent KL via the server
+orchestrator). `--session-token` for CLI Local writes stays a Phase 30
+carry-forward.
+
+### NodeType lock at the L2/L1 boundary
+
+`KLWriteHandle.write_and_validate(*, value, type_, **mint_content)`
+keeps L2-convention `type_` on the handle method and translates to L1's
+`type_name` kwarg at the `Graph.add_node` call site (R4 §am-impl-1).
+NodeTypes registered in Phase 13's `build_memories_schema` /
+`build_problem_trace_schema` are `"Memory"` and `"ProblemTraceEntry"`
+respectively — these are the only values the write capacity bodies
+pass.
+
 ## See also
 
 - ADR-0145: L3 per-target write capacity categories.
@@ -101,5 +151,8 @@ chat.
 - ADR-0147: Per-flow build pattern for L3 write capacities.
 - `docs/dev/coordinated-changes/L3-capacity-write-flows.md` — per-flow
   tracker (which capacity is built, deferred, or in-progress).
+- `docs/dev/review-checklist.md` — Phase 34 code-review checklist
+  enforcing the ADR-0143 §Constraint ("never mutates") + 2 recurring
+  rules.
 - Parent tree `docs/dev/internals/capacity.md` — canonical
   cross-layer contract.

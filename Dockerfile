@@ -248,6 +248,11 @@ COPY confirmation_docs ./confirmation_docs
 # Phase 10 B-10-T5 — same COPY in the test stage so tests/ that read
 # notes-phase-NN.md (if any) can find them. Symmetric with prod.
 COPY notes-phase-*.md ./
+# Phase 34 B-34-T2 — tests/phase_34/test_review_checklist_file.py reads
+# docs/dev/review-checklist.md (ADR-0143 §Accept criterion (c)) at
+# /app/docs/. Phase 34 is the first phase whose tests depend on a docs/
+# artefact at runtime, so this COPY didn't exist before.
+COPY docs ./docs
 
 RUN pip install --no-cache-dir --no-deps .
 
