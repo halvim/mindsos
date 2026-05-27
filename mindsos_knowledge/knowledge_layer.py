@@ -40,7 +40,7 @@ as a markdown doc.
 
 from __future__ import annotations
 
-from typing import Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional
 
 from mindsos_core import Graph
 from mindsos_core.models.identity import IdStrategy, UUID4Strategy
@@ -52,6 +52,10 @@ from .bootstrap import (
     ensure_global_role_graph,
     ensure_local_role_graph,
 )
+
+if TYPE_CHECKING:
+    from .types import SessionProtocol
+    from .write_handle import KLWriteHandle
 from .exceptions import AlreadyInstalledError, NotInstalledError
 
 
@@ -273,6 +277,78 @@ class KnowledgeLayer:
         from .metagraph_view import MetagraphView  # local: avoid cycle.
 
         return MetagraphView(self.local_metagraph(user_id))
+
+    # ── Phase 33 — write-handle entry point (ADR-0143) ───────────────
+
+    def writeable(
+        self,
+        session: "Optional[SessionProtocol]",
+        role: str,
+        scope: str,
+    ) -> "KLWriteHandle":
+        """Return a :class:`KLWriteHandle` for ``(session, role, scope)``.
+
+        Phase 33 ships the entry-point surface so L3 write capacities
+        can be registered + invoked through the working invocation
+        envelope (ADR-0146); the handle bodies are partially stubbed
+        per ADR-0146 §amendment-1 clause 1.
+
+        Routing:
+
+        * ``scope='local'`` — routes to ``session.user_id``'s Local
+          :class:`Metagraph`. ``session`` is REQUIRED; ``session=None``
+          raises :class:`ValueError` (no user_id to route on; ADR-0080
+          bootstrap carve-out does NOT extend to Local).
+        * ``scope='global'`` — routes to the shared Global Metagraph.
+          ``session=None`` is permitted per ADR-0080 (bootstrap path).
+
+        The handle is *non-mutating* per ADR-0143 §Constraint. Capacity
+        code calls ``handle.graph().add_node(...)`` etc. for mutation;
+        the handle exposes accessors + validators only.
+
+        Args:
+            session: Bearer of capability + user identity, or ``None``
+                for the bootstrap path (Global only).
+            role: KL role name (e.g., ``"memories"``, ``"problem-trace"``).
+                No membership check is enforced here; ``graph()`` will
+                fail naturally if the role-graph is absent from the
+                target Metagraph.
+            scope: ``'local'`` or ``'global'``.
+
+        Returns:
+            A fresh :class:`KLWriteHandle` instance.
+
+        Raises:
+            ValueError: ``scope`` not in ``{'local', 'global'}``, or
+                ``scope='local'`` with ``session is None``.
+        """
+        from .write_handle import KLWriteHandle  # local: avoid cycle
+
+        if scope == "local":
+            if session is None:
+                raise ValueError(
+                    "KnowledgeLayer.writeable(scope='local') requires a "
+                    "session for user_id routing — None permitted only "
+                    "for scope='global' per ADR-0080 bootstrap carve-out."
+                )
+            mg = self.local_metagraph(session.user_id)
+        elif scope == "global":
+            mg = self.global_metagraph()
+        else:
+            raise ValueError(
+                f"KnowledgeLayer.writeable: scope must be 'local' or "
+                f"'global', got {scope!r}"
+            )
+
+        # Use ``object.__setattr__`` not needed — KLWriteHandle is a
+        # frozen dataclass; pass everything via constructor kwargs.
+        return KLWriteHandle(
+            role=role,
+            scope=scope,  # type: ignore[arg-type]
+            session=session,
+            _kl=self,
+            _metagraph=mg,
+        )
 
     # ── install/extract hooks (ADR-0042) ─────────────────────────────
 

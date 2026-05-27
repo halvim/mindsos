@@ -87,7 +87,20 @@ CATEGORY_SIGNALLING = "signalling"
 CATEGORY_INTERACTION = "interaction"
 CATEGORY_LEARNING_METHODS = "learning-methods"
 
+#: Phase 33 (ADR-0145) — first per-target write category lit. ``consolidate``
+#: capacities write to the Local ``memories`` role-graph (MM →
+#: ConsolidatedMemory). Promote / author / state categories from ADR-0145
+#: §Decision are deferred to their L4-flow phases per ADR-0147 per-flow
+#: build discipline; Phase 33 ships ``consolidate`` only (R0 PB-6 narrow
+#: lock).
+CATEGORY_CONSOLIDATE = "consolidate"
+
 #: Functional categories recognised by the default Global L3 bootstrap.
+#:
+#: Phase 33 extends to 13 (was 12 through Phase 32) per R0 PB-6 +
+#: ADR-0145 §Implementation (Phase 33). Adding a new category is a
+#: bootstrap-default change: ``create_global()`` now produces 14
+#: contained graphs (13 categories + ``capacity:datastates``).
 FUNCTIONAL_CATEGORIES: FrozenSet[str] = frozenset({
     CATEGORY_PERCEPTION,
     CATEGORY_COMPREHENSION,
@@ -101,6 +114,7 @@ FUNCTIONAL_CATEGORIES: FrozenSet[str] = frozenset({
     CATEGORY_SIGNALLING,
     CATEGORY_INTERACTION,
     CATEGORY_LEARNING_METHODS,
+    CATEGORY_CONSOLIDATE,
 })
 
 
@@ -283,6 +297,7 @@ __all__ = [
     "CATEGORY_SIGNALLING",
     "CATEGORY_INTERACTION",
     "CATEGORY_LEARNING_METHODS",
+    "CATEGORY_CONSOLIDATE",
     "FUNCTIONAL_CATEGORIES",
     # Node-type vocabulary
     "NODE_TYPE_CAPACITY",

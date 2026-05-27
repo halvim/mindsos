@@ -87,6 +87,8 @@ nav:
       - Repo layout: dev/repo-layout.md
       - Internals — Core: dev/internals/core.md
       - Internals — Snapshot (Phase 10): dev/internals/snapshots.md
+      - Internals — Capacity (Phase 33): dev/internals/capacity.md
+      - L3 write-capacity per-flow tracker: dev/coordinated-changes/L3-capacity-write-flows.md
       - CLI conventions: dev/conventions.md
       - Testing: dev/testing.md
       - Release flow: dev/release.md

@@ -35,16 +35,16 @@ def test_each_phase_30_export_resolves_to_real_object():
         assert getattr(mindsos_capacity, name) is not None
 
 
-def test_version_bumped_to_phase_32():
-    # Phase 32 sentinel-flip: Phase 31 shipped this as
-    # ``test_version_bumped_to_phase_31`` asserting ``0.0.0+phase31``.
-    # Phase 32 bumps the literal; sentinel flips in place per
+def test_version_bumped_to_phase_33():
+    # Phase 33 sentinel-flip: Phase 32 shipped this as
+    # ``test_version_bumped_to_phase_32`` asserting ``0.0.0+phase32``.
+    # Phase 33 bumps the literal; sentinel flips in place per
     # [[feedback-parity-test-sentinel-flip-at-target-phase]] + the
     # export-slate sentinel-flip class (B-30-T1 / B-31-T2 lessons).
     # File stays under tests/phase_30/ because it's a Phase 30
     # export-stability check that the version moves forward correctly
     # at each subsequent phase.
-    assert mindsos_capacity.__version__ == "0.0.0+phase32"
+    assert mindsos_capacity.__version__ == "0.0.0+phase33"
 
 
 def test_phase_29_exports_remain_intact():

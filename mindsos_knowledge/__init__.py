@@ -85,7 +85,7 @@ Deferred to later phases:
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase32"
+__version__ = "0.0.0+phase33"
 
 from .bootstrap import (
     ensure_global_role_graph,
@@ -100,6 +100,7 @@ from .exceptions import (
 )
 from .knowledge_layer import KnowledgeLayer
 from .metagraph_view import MetagraphView
+from .write_handle import KLWriteHandle
 from .identifiers import (
     ALL_ROLES,
     REF_TYPE_KEY,
@@ -215,4 +216,6 @@ __all__ = [
     "MetagraphView",
     "ensure_global_role_graph",
     "ensure_local_role_graph",
+    # ── KLWriteHandle (Phase 33; ADR-0143 stub-only — ADR-0146 §am1) ─
+    "KLWriteHandle",
 ]

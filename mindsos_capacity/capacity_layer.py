@@ -523,6 +523,12 @@ class CapacityLayer:
             ctx = dict(context) if context else {}
             ctx.setdefault("session_user_id", session.user_id)
             ctx.setdefault("session_id", session.session_id)
+            # Phase 33 (ADR-0146 §amendment-1 clause 2): inject Session
+            # object so write-capacity bodies can call ``session.has(cap)``
+            # for capability gating. Read capacities ignore the key;
+            # backward-compatible with Phase 30 + 31 ctx assertions
+            # (which use ``in`` / ``not in`` membership, not exclusivity).
+            ctx.setdefault("session", session)
         else:
             ctx = dict(context) if context else None
         return _runtime_invoke(
@@ -598,6 +604,10 @@ class CapacityLayer:
             ctx = dict(context) if context else {}
             ctx.setdefault("session_user_id", session.user_id)
             ctx.setdefault("session_id", session.session_id)
+            # Phase 33 (ADR-0146 §amendment-1 clause 2): symmetric with
+            # invoke() — Session object injected so resident bodies
+            # can call ``session.has(cap)`` for cap-gating.
+            ctx.setdefault("session", session)
         else:
             ctx = dict(context) if context else None
         # Build the subscription handle (ADR-0073 — eq=False; ADR-0088 —

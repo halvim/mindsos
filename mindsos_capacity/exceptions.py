@@ -157,6 +157,66 @@ class ResidentError(CapacityLayerError):
     """
 
 
+class WriteHandleNotWiredError(CapacityLayerError):
+    """Stub-phase failure when an L3 write capacity reaches a
+    :class:`KLWriteHandle` method whose body is not yet wired.
+
+    Phase 33 ships :class:`KLWriteHandle` (``mindsos_knowledge.write_handle``)
+    as a partial stub: ``metagraph()`` returns the real L1 Metagraph;
+    every other method (``graph``, ``mint_iri``, ``validate_node``,
+    ``validate_xref``) raises this exception. Phase 34 (ADR-0146) wires
+    the working bodies + deletes the raise sites.
+
+    Direct subclass of :class:`CapacityLayerError` — wire-state is a
+    lifecycle concern distinct from registration.
+
+    Phase 33 raisers:
+
+    - ``KLWriteHandle.graph()`` — L1 mutation surface (Phase 34).
+    - ``KLWriteHandle.mint_iri(**content)`` — version handling
+      deferred post-Phase 17 retirement (ADR-0150 §amendment-3 lock).
+    - ``KLWriteHandle.validate_node(...)`` — KL semantic validators
+      (Phase 36; ADR-0139).
+    - ``KLWriteHandle.validate_xref(...)`` — KL cross-metagraph ref
+      validators (Phase 36).
+
+    Surfaces via :func:`mindsos_capacity.runtime.invoke`'s envelope as
+    ``InvocationResult(success=False, error=WriteHandleNotWiredError)``
+    per ADR-0146 §amendment-1 clause 1 (Phase 33 stub-phase raise-then-
+    envelope carve-out; Phase 34+ shifts to return ``ProblemTraceRecord``).
+    """
+
+
+class CapabilityDeniedError(CapacityLayerError):
+    """Session lacks the capability an L3 write capacity requires.
+
+    Raised by write-capacity bodies that target Global writes when the
+    invoking session does not hold the required server capability
+    (e.g., ``CAN_WRITE_GLOBAL`` for ``capacity:trace:problem``).
+
+    Direct subclass of :class:`CapacityLayerError` — capability denial
+    is a runtime authorisation fact, not a registration or lifecycle
+    failure.
+
+    Phase 33 raisers:
+
+    - ``capacity:trace:problem`` body — when ``session is not None and
+      not session.has(CAN_WRITE_GLOBAL)``. ``session is None`` skips
+      the gate per ADR-0080 bootstrap carve-out.
+    - (Local-targeting write capacities such as ``capacity:consolidate:mm``
+      do NOT raise this — Local writes are ungated per ADR-0080. A
+      missing session on a ``scope='local'`` write surfaces as
+      ``ValueError`` from ``KnowledgeLayer.writeable`` instead.)
+
+    Surfaces via :func:`mindsos_capacity.runtime.invoke`'s envelope as
+    ``InvocationResult(success=False, error=CapabilityDeniedError)``.
+    Phase 33 stub-phase carve-out per ADR-0146 §amendment-1 clause 1
+    — Phase 34+ may shift to return ``ProblemTraceRecord(kind=
+    "CAPABILITY_DENIED")`` per ADR-0146 §Decision once the failure-mode
+    surface stabilises.
+    """
+
+
 __all__ = [
     "CapacityLayerError",
     "DataStateError",
@@ -166,4 +226,6 @@ __all__ = [
     "PipelineNotFoundError",
     "ProblemTraceError",
     "ResidentError",
+    "WriteHandleNotWiredError",
+    "CapabilityDeniedError",
 ]
