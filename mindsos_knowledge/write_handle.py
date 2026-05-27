@@ -27,14 +27,27 @@ a :class:`WriteResult`).
   that mints an IRI, calls ``self.graph().add_node(...)``, returns
   :class:`WriteResult` on success. L1 raises (``UnknownTypeError``,
   ``IdentityError``, ``PropertyShapeError``) propagate; the
-  ``runtime.invoke`` envelope catches per ADR-0072. **Phase 34 scope:**
-  structural validation via L1 schema only; KL semantic validators
-  (ADR-0139) integrate at Phase 36 via the ``validate_node`` /
-  ``validate_xref`` methods which still raise
-  :class:`WriteHandleNotWiredError`.
-- ``validate_node(...)`` / ``validate_xref(...)`` — unchanged from Phase
-  33; raise :class:`WriteHandleNotWiredError`. Phase 36 (ADR-0139)
-  wires.
+  ``runtime.invoke`` envelope catches per ADR-0072. **Phase 36 scope:**
+  ``write_and_validate`` itself remains unchanged from Phase 34 —
+  structural validation via L1 schema only. Semantic validators are
+  composed in the *capacity body precondition* immediately preceding
+  the call (ADR-0139 §Decision §Capacity-contract); capacities call
+  ``handle.validate_node(...)`` (Phase 36 wired) or compose individual
+  validators directly per the §Capacity-contract fallback.
+
+**Phase 36 wiring (ADR-0139 §amendment-1; ADR-0143 §Impl Phase 36 footer).**
+
+- ``validate_node(*, value, type_, **refs)`` — wired. Dispatches via
+  :data:`mindsos_knowledge.validators._VALIDATORS_BY_ROLE` (per-role
+  adapter registry, mirroring ``_IRI_BUILDERS`` shape per R3-PB-A).
+  Returns :class:`ValidationResult`. Phase 36 ships 2 adapter entries
+  (``memories`` + ``problem-trace``); roles without an adapter raise
+  :class:`WriteHandleNotWiredError` per the per-flow extension
+  pattern (ADR-0139 §amendment-1 clause 3 carry-forward).
+- ``validate_xref(...)`` — STAYS raising
+  :class:`WriteHandleNotWiredError`. Defers per-flow alongside the
+  first XRef-writing L3 capacity (Phase 36 ships no XRef writers; the
+  2 shipped capacities perform node writes only).
 
 The handle never accretes mutation methods (``add_node`` / ``add_xref``
 / ``set_property`` etc.). Code review enforces this discipline per
@@ -51,6 +64,7 @@ from mindsos_capacity.exceptions import WriteHandleNotWiredError
 from mindsos_capacity.write_outcome import WriteResult
 
 from .identifiers import _IRI_BUILDERS
+from .validators import ValidationResult, _VALIDATORS_BY_ROLE
 
 if TYPE_CHECKING:
     from mindsos_core import Graph, Metagraph
@@ -236,21 +250,61 @@ class KLWriteHandle:
         value: Any,
         type_: str,
         **refs: Any,
-    ) -> Any:
-        """Compose role-appropriate KL semantic validators.
+    ) -> ValidationResult:
+        """Compose role-appropriate KL semantic validators (Phase 36; ADR-0139).
 
-        **Phase 34 status:** STILL raises :class:`WriteHandleNotWiredError`
-        per Phase 33 stub. KL semantic validators land at Phase 36
-        (ADR-0139 hybrid invariant home — structural at L1, semantic at
-        L2). Phase 34's :meth:`write_and_validate` does NOT call this
-        method — it relies on L1's structural validators only. Phase 36
-        wires the body + extends ``write_and_validate`` to call it.
+        Phase 36 body (ADR-0139 §amendment-1; ADR-0143 §Impl Phase 36
+        footer). Dispatches via
+        :data:`mindsos_knowledge.validators._VALIDATORS_BY_ROLE` —
+        per-role adapter registry mirroring ``_IRI_BUILDERS`` shape
+        (R3-PB-A). The adapter for ``self.role`` returns a
+        :class:`ValidationResult` reflecting the composed chain (first-
+        failure-wins per R3-PB-I; Phase 36 chains are single-validator
+        so the semantic reduces to "the one validator's result").
+
+        Phase 36 ships 2 adapter entries — ``memories`` +
+        ``problem-trace`` (the 2 shipped write capacities' roles).
+        Roles without a registered adapter raise
+        :class:`WriteHandleNotWiredError` per the per-flow extension
+        discipline (ADR-0139 §amendment-1 clause 3 carry-forward; new
+        adapters land alongside the consuming write capacity).
+
+        ``write_and_validate`` itself does NOT call this method —
+        composition lives in the *capacity body precondition* per
+        ADR-0139 §Decision §Capacity-contract (PB-1 = B). Capacity
+        authors invoke ``handle.validate_node(value=..., type_=...)``
+        explicitly before ``handle.write_and_validate(...)`` and raise
+        :class:`SemanticValidationError` on ``not result.ok`` (per
+        R2-PB-J wiring shape).
+
+        Args:
+            value: The proposed node value (forwarded to the
+                adapter; reserved for future validators that inspect
+                value-shape).
+            type_: The proposed node type (forwarded; reserved).
+            **refs: Per-role ref content (forwarded; reserved for
+                future ``validate_local_to_global_ref`` adapter
+                compositions).
+
+        Returns:
+            :class:`ValidationResult` — the composed adapter result.
+
+        Raises:
+            WriteHandleNotWiredError: ``self.role`` not in
+                ``_VALIDATORS_BY_ROLE`` (no adapter registered yet
+                for this role's writes).
         """
-        raise WriteHandleNotWiredError(
-            f"KLWriteHandle.validate_node(role={self.role!r}, "
-            f"type_={type_!r}) is not wired — Phase 36 (ADR-0139) "
-            "ships KL semantic validators."
-        )
+        try:
+            adapter = _VALIDATORS_BY_ROLE[self.role]
+        except KeyError as exc:
+            raise WriteHandleNotWiredError(
+                f"KLWriteHandle.validate_node(role={self.role!r}): no "
+                f"validator adapter registered for role. Phase 36 supports "
+                f"{sorted(_VALIDATORS_BY_ROLE.keys())!r}; per-flow add the "
+                f"role's adapter when the capacity lands (ADR-0139 "
+                "§amendment-1 clause 3 carry-forward)."
+            ) from exc
+        return adapter(self, value, type_, **refs)  # type: ignore[operator]
 
     def validate_xref(
         self,
@@ -262,13 +316,26 @@ class KLWriteHandle:
     ) -> Any:
         """Validate cross-metagraph XRef target existence + ref_type membership.
 
-        **Phase 34 status:** STILL raises :class:`WriteHandleNotWiredError`.
-        Phase 36 wires together with :meth:`validate_node`.
+        **Phase 36 status:** STILL raises :class:`WriteHandleNotWiredError`.
+        Per-flow deferred (R1-PB-B): Phase 36 ships no XRef-writing
+        capacity, so the composite has no consumer; the body wires
+        alongside the first XRef writer per ADR-0139 §amendment-1
+        clause 3 carry-forward.
+
+        The underlying validators
+        (:func:`mindsos_knowledge.validators.validate_local_to_global_ref`,
+        :func:`mindsos_knowledge.validators.validate_ref_type`) ship at
+        Phase 36 as pure functions — direct calls from a capacity body
+        are valid per ADR-0139 §Capacity-contract fallback. The
+        composite is what defers.
         """
         raise WriteHandleNotWiredError(
             f"KLWriteHandle.validate_xref(role={self.role!r}, "
             f"target_role={target_role!r}, ref_type={ref_type!r}) "
-            "is not wired — Phase 36 (ADR-0139) ships KL validators."
+            "is not wired — defers per-flow alongside first XRef-writing "
+            "capacity (ADR-0139 §amendment-1 clause 3 carry-forward; "
+            "underlying validators available via "
+            "mindsos_knowledge.validators)."
         )
 
 

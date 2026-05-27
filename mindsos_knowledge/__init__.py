@@ -55,12 +55,24 @@ Phase 14 adds:
   with `memories` + `capacity-state` ensured (PB-9).
 * `AlreadyInstalledError` + `NotInstalledError` exception classes.
 
+Phase 36 adds:
+
+* `validators.py` semantic-invariant module — 5 pure-function
+  validators + `ValidationResult` dataclass + `_VALIDATORS_BY_ROLE`
+  per-role adapter registry (2 entries: memories + problem-trace).
+  ADR-0139 flipped Proposed → Accepted via §amendment-1.
+* `SemanticValidationError` — raised by L3 write capacities on
+  validator failure; carries `.result: ValidationResult`.
+* `KLWriteHandle.validate_node(...)` body wired via the per-role
+  adapter; `validate_xref(...)` STAYS raising
+  `WriteHandleNotWiredError` (deferred per-flow alongside the first
+  XRef-writing capacity per ADR-0139 §amendment-1 clause 3 carry-
+  forward).
+
 Deferred to later phases:
 
 * Per-edge alignment-anchor IRI builder → Phase 15 (Phase 14 PB-1).
 * MetagraphSchema scanner → Phase 15 (Phase 14 PB-1).
-* `validators.py` semantic-invariant module → Phase 36 per ADR-0139
-  (Phase 14 PB-14).
 * `follow_ref` cross-metagraph helper → Phase 25 / first L3 capacity.
 * `step()` `version=` kwarg → VACATED at Phase 17 retirement
   (2026-05-20) per ADR-0150 §amendment-3 (one graph per role; no
@@ -85,7 +97,7 @@ Deferred to later phases:
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase34"
+__version__ = "0.0.0+phase36"
 
 from .bootstrap import (
     ensure_global_role_graph,
@@ -96,10 +108,12 @@ from .exceptions import (
     KnowledgeError,
     NotInstalledError,
     RefFormatError,
+    SemanticValidationError,
     UnknownRoleError,
 )
 from .knowledge_layer import KnowledgeLayer
 from .metagraph_view import MetagraphView
+from .validators import ValidationResult
 from .write_handle import KLWriteHandle
 from .identifiers import (
     ALL_ROLES,
@@ -160,6 +174,7 @@ __all__ = [
     "UnknownRoleError",
     "AlreadyInstalledError",
     "NotInstalledError",
+    "SemanticValidationError",
     # ── role constants ─────────────────────────────────────────────
     "ROLE_ONTOLOGY",
     "ROLE_LEXICON",
@@ -218,4 +233,6 @@ __all__ = [
     "ensure_local_role_graph",
     # ── KLWriteHandle (Phase 33; ADR-0143 stub-only — ADR-0146 §am1) ─
     "KLWriteHandle",
+    # ── Validators (Phase 36; ADR-0139 Accepted) ───────────────────
+    "ValidationResult",
 ]

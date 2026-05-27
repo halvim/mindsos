@@ -13,8 +13,11 @@ The handle exposes accessors + validators only:
 * `graph()` — returns the L1 `Graph` reference; mutation happens via
   `graph().add_node(...)` on the L1 surface, not on the handle.
 * `mint_iri(...)` — pure IRI construction.
-* `validate_node(...)` / `validate_xref(...)` — Phase 36 wires; pure
-  validators.
+* `validate_node(...)` — wires at Phase 36 via `_VALIDATORS_BY_ROLE`
+  adapter; returns `ValidationResult` composite. Pure (no mutation).
+* `validate_xref(...)` — defers; wires alongside first XRef-writing
+  capacity per per-flow discipline (ADR-0139 §amendment-1 clause 3
+  carry-forward).
 * `write_and_validate(...)` — composite that calls `graph().add_node`
   through L1; the handle still does not own a mutation method.
 
@@ -58,3 +61,47 @@ The CapacityLayer constructor (`CapacityLayer(kl=...)`) is the
 single-source-of-truth wiring; `invoke()` injects into context
 conditionally; bodies extract via `context.get("kl")` and raise
 `RuntimeError` if missing (programmer error per ADR-0146 §Decision).
+
+## 4. Capacity preconditions call semantic validators (ADR-0139)
+
+Per ADR-0139 §Decision §Capacity-contract. L3 write capacities call
+the semantic validators required by the capacity's role as
+preconditions, before invoking `handle.write_and_validate(...)`.
+
+**Prefer** `handle.validate_node(value=..., type_=...)` composite when
+the role has a registered adapter in `_VALIDATORS_BY_ROLE` (Phase 36:
+`memories` + `problem-trace`). The composite owns metagraph routing
+internally and keeps the role→chain mapping in one place.
+
+**Fallback** — direct `validate_*` calls from
+`mindsos_knowledge.validators` remain valid (ADR-0139
+§Capacity-contract) for one-off checks or roles without a
+registered composite.
+
+Body shape (R2-PB-J):
+
+```python
+vr = handle.validate_node(value=..., type_="Memory")
+if not vr.ok:
+    raise SemanticValidationError(vr)
+return handle.write_and_validate(...)
+```
+
+**Reject** any write-capacity PR that:
+
+* Calls `handle.write_and_validate(...)` (or
+  `handle.graph().add_node(...)`) without a preceding semantic-
+  validator check for the role's required invariants.
+* Catches `SemanticValidationError` inside the capacity body to
+  swallow it — failure must surface to the runtime envelope per
+  ADR-0072 + ADR-0146 §amendment-1 clause 1 (raise-not-PTR posture
+  preserved at Phase 36; L4 consumer drives eventual clause-1
+  flip).
+* Adds a new write capacity targeting a role that lacks an
+  adapter entry in `_VALIDATORS_BY_ROLE` without simultaneously
+  adding the adapter (per-flow extension per ADR-0139
+  §amendment-1 clause 3).
+
+The bypass discipline is social; this checklist is the
+enforcement (ADR-0139 §Decision: "L3 capacities that skip
+validators are a code-review failure, not a runtime error").
