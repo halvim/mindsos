@@ -3634,7 +3634,7 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Tests:** per-flow validator runs before commit; mismatched flow-vs-category rejected.
   **Docs:** ADR-0147.
 
-  **§inline-amendment (halvim, 2026-MM-DD Phase 35 ship; R0 PB-1 scope-shape resolution).**
+  **§inline-amendment (halvim, 2026-05-27 Phase 35 ship; R0 PB-1 scope-shape resolution).**
   The features line above is stale post-Phase 33+34 reality:
 
   - "`KLWriteHandle.graph()` applies per-flow validators" — defers to

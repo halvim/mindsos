@@ -1,6 +1,6 @@
 # Phase 35 — Design Log
 
-> Captured 2026-MM-DD. Records the design pushbacks across 4 rounds
+> Captured 2026-05-27. Records the design pushbacks across 4 rounds
 > (R0+R1+R2+R3+R4) that resolved Phase 35's load-bearing open question
 > (scope shape A/B/C/D) and locked the design-only ship surface for
 > ADR-0147 §amendment-1. Future amendments to ADR-0147 (or ADR-0145 /
@@ -132,7 +132,7 @@ rounds supersede via the round numbers below.
 | PB-meta | **Design saturation reached.** R4 produces only content-drafting clarifications; recommend proceed after these locks. |
 | PB-A4 | §amendment-1 clause 1 **cross-references §Implementation Phase 33 footer's existing "anticipatory" framing** — the framing is PROMOTED from descriptive footer caveat to binding §Accept-satisfying evidence. |
 | PB-B4 | ADR-0147 §Implementation Phase 35 footer locked (text in §3 below). |
-| PB-C4 | Date placeholder `2026-MM-DD`; tester fills at squash-merge. |
+| PB-C4 | Date placeholder `2026-05-27`; tester fills at squash-merge. |
 | PB-D4 | NEXT_CHAT_PROMPT.md surfaces validator-composition question with 3 unresolved options A/B/C for Phase 36 R0. |
 | PB-E4 | Test assertion anchors locked (6 anchor strings; see `tests/phase_35/test_adr_amendment_sentinels.py`). |
 | PB-F4 | DESIGN_LOG target ~400 lines; picks-summary-per-round (not full PB enumeration). |
@@ -186,7 +186,7 @@ rounds supersede via the round numbers below.
 
 (Shipped form; cross-referenced from R2 PB-ε, R3 PB-A3, R4 PB-A4.)
 
-> ## §amendment-1 (Phase 35 ship; halvim, 2026-MM-DD — flip Proposed → Accepted)
+> ## §amendment-1 (Phase 35 ship; halvim, 2026-05-27 — flip Proposed → Accepted)
 >
 > ADR-0147 Status flipped Proposed → Accepted at Phase 35. Three
 > clauses close the §Acceptance gate and lock the per-flow rule going
@@ -221,7 +221,7 @@ rounds supersede via the round numbers below.
 
 ## 5. ADR-0147 §Implementation (Phase 35) footer (R4 PB-B4)
 
-> ## §Implementation (Phase 35 — Accepted; halvim, 2026-MM-DD)
+> ## §Implementation (Phase 35 — Accepted; halvim, 2026-05-27)
 >
 > ADR-0147 Status flipped Proposed → Accepted at Phase 35.
 > §amendment-1 clauses 1-3 close §Acceptance criterion (a) via the
@@ -267,14 +267,14 @@ The chain comment header extends `14a → 15a → 15b → 35` per R3 PB-B3.
 
 ## 7. Ship metadata (R3 PB-C3 — placeholders; tester fills at squash-merge)
 
-* **git_sha (post-squash-merge):** TBD-FILL-AT-SHIP
-* **PR number:** TBD-FILL-AT-SHIP (open against `main`).
-* **Squash-merge date:** 2026-MM-DD (replaces all `2026-MM-DD`
+* **git_sha (post-squash-merge):** 36d9125
+* **PR number:** #45 (open against `main`).
+* **Squash-merge date:** 2026-05-27 (replaces all `2026-05-27`
   placeholders in ADR-0147 §amendment-1 + §Implementation footer +
   PHASE_MAP §35 inline-amendment + this DESIGN_LOG).
 * **Branch:** `phase-35` (branch off `main` at HEAD = `180460d`
   Phase 34 squash per R3 PB-I3).
-* **Test summary (sandbox pre-PR):** TBD-FILL-AT-SHIP — expected
+* **Test summary (sandbox pre-PR):** N/A — expected
   `tests/phase_35/` → 2 passed / 3 skipped (no docker run needed for
   design-only ship; cumulative confirmed at next code-shipping phase).
 * **Image build hash:** N/A (no image rebuild; Phase 34 image
