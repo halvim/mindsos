@@ -64,16 +64,17 @@ callers).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from mindsos_core import Edge, Graph, Metagraph, Node
-
-if TYPE_CHECKING:
-    # Phase 34 (R1 PB-C): TYPE_CHECKING guard avoids any circular-import
-    # risk for the CapacityLayer.kl= constructor param. Runtime accepts
-    # any object; missing-KL at write-capacity invoke surfaces as
-    # ``RuntimeError`` from the body per R3 PB-F.
-    from mindsos_knowledge import KnowledgeLayer
+# Phase 34 B-34-T3: ``kl`` constructor param annotated as ``Optional[Any]``
+# (not ``Optional["KnowledgeLayer"]``). The Phase 28 import-isolation
+# test (``tests/phase_28/test_import_isolation_phase_28.py``) AST-walks
+# every ``mindsos_capacity/*.py`` and forbids ANY top-level import of
+# ``mindsos_knowledge`` — including ``if TYPE_CHECKING: from
+# mindsos_knowledge import KnowledgeLayer``. Layer-discipline wins over
+# static-type signal here. Capacity body validates the duck-type at
+# invocation per R3 PB-F (raises RuntimeError on missing/wrong-type kl).
 
 from .bootstrap import (
     create_global,
@@ -121,7 +122,7 @@ class CapacityLayer:
         global_metagraph: Optional[Metagraph] = None,
         strict: bool = False,
         categories: Optional[Iterable[str]] = None,
-        kl: Optional["KnowledgeLayer"] = None,
+        kl: Optional[Any] = None,
     ) -> None:
         """Construct a Capacity Layer.
 
@@ -153,7 +154,7 @@ class CapacityLayer:
             self._global = global_metagraph
         self._locals: Dict[str, Metagraph] = {}
         self._strict = strict
-        self._kl: Optional["KnowledgeLayer"] = kl
+        self._kl: Optional[Any] = kl
 
         self._capacity_index: Dict[str, Dict[str, Tuple[Node, Graph]]] = {
             self._global.metagraph_id: {},
