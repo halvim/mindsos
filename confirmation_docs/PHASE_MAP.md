@@ -3671,10 +3671,10 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
   - **Features-line.** "Validators run with scope structural /
     semantic / both" describes **runtime behavior**, not a
-    `write_and_validate` kwarg. Composition lives in **capacity
-    bodies** per ADR-0139 §Capacity-contract; `handle.validate_node`
-    ships as a typed convenience composite for roles with a
-    registered `_VALIDATORS_BY_ROLE` adapter (Phase 36: `memories` +
+    `write_and_validate` kwarg. Composition lives in **capacity bodies**
+    per ADR-0139 §Capacity-contract; `handle.validate_node` ships as a
+    typed convenience composite for roles with a registered
+    `_VALIDATORS_BY_ROLE` adapter (Phase 36: `memories` +
     `problem-trace`). Mapping:
     - "scope=structural" — L1 schema fires on `add_node` (Phase 04+13).
     - "scope=semantic" — capacity body composes from
