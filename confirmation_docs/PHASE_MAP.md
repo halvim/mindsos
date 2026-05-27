@@ -3608,6 +3608,25 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Risks:** idempotency / retry semantics of `KLWriteHandle` (ADR-0143) need pinning here.
   **Docs:** ADRs 0143/0146.
 
+  **§inline-amendment (halvim, 2026-05-26 Phase 34 ship; R1 PB-H).**
+  The "symmetric invocation contract" line above is SUCCESS-PATH-ONLY
+  at Phase 34 ship — write capacities return `WriteResult` on success
+  per ADR-0146 §Decision; failure modes (capability denial, L1 reject)
+  keep raising (caught by `runtime.invoke` envelope as
+  `InvocationResult(success=False, error=...)`) — they do NOT yet
+  return `ProblemTraceRecord` per the §Decision target. ADR-0146
+  §amendment-1 clause 1 documents this deferral; L4 consumer drives
+  the eventual flip in a later phase. Phase 34 closes ADR-0146
+  §amendment-1 clauses 4 + 5 (outputs=() navigation + L2 handle bodies);
+  clauses 1, 2, 3 stay open per §amendment-1 + §amendment-2. The
+  "failure path emits ProblemTraceRecord" Tests line above is similarly
+  forward-looking — Phase 34 tests assert envelope-error semantics, not
+  return-PTR. **Risks line answer:** OCC retry pinned to "not Phase
+  34's job" per ADR-0146 §amendment-2 clause 1 (defer until L1 grows
+  OCC contract). ADR-0143 flips Proposed → Accepted at Phase 34 (all
+  three §Accept criteria satisfied; review-checklist file shipped at
+  `halvim_mindsos/docs/dev/review-checklist.md`).
+
 ### Phase 35 — L3 per-flow build pattern (ADR-0147)
 
   **Deps:** 34. **Layer:** L3. **Net-new?** **Yes.**

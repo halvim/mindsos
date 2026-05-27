@@ -64,9 +64,16 @@ callers).
 
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from mindsos_core import Edge, Graph, Metagraph, Node
+
+if TYPE_CHECKING:
+    # Phase 34 (R1 PB-C): TYPE_CHECKING guard avoids any circular-import
+    # risk for the CapacityLayer.kl= constructor param. Runtime accepts
+    # any object; missing-KL at write-capacity invoke surfaces as
+    # ``RuntimeError`` from the body per R3 PB-F.
+    from mindsos_knowledge import KnowledgeLayer
 
 from .bootstrap import (
     create_global,
@@ -114,6 +121,7 @@ class CapacityLayer:
         global_metagraph: Optional[Metagraph] = None,
         strict: bool = False,
         categories: Optional[Iterable[str]] = None,
+        kl: Optional["KnowledgeLayer"] = None,
     ) -> None:
         """Construct a Capacity Layer.
 
@@ -128,6 +136,13 @@ class CapacityLayer:
             categories: Functional categories to bootstrap when
                 constructing a fresh Global. Ignored when
                 ``global_metagraph`` is supplied.
+            kl: Phase 34 (R0 PB-5 + R1 PB-C) — :class:`KnowledgeLayer`
+                reference for write-capacity bodies. When provided,
+                :meth:`invoke` + :meth:`start_resident` inject the KL
+                into capacity context under key ``"kl"``. ``None``
+                (legacy default) — write-capacity invocations will
+                raise :class:`RuntimeError` from the body when they
+                try ``context["kl"]``. Read capacities ignore.
         """
         if global_metagraph is None:
             kwargs: Dict[str, Any] = {"strict": strict}
@@ -138,6 +153,7 @@ class CapacityLayer:
             self._global = global_metagraph
         self._locals: Dict[str, Metagraph] = {}
         self._strict = strict
+        self._kl: Optional["KnowledgeLayer"] = kl
 
         self._capacity_index: Dict[str, Dict[str, Tuple[Node, Graph]]] = {
             self._global.metagraph_id: {},
@@ -531,6 +547,15 @@ class CapacityLayer:
             ctx.setdefault("session", session)
         else:
             ctx = dict(context) if context else None
+        # Phase 34 (R0 PB-5 + R5 PB-B): conditional KL injection. Only
+        # write capacities consume ``context["kl"]``; reads ignore. When
+        # ``self._kl is None`` (legacy CapacityLayer construction), the
+        # key is NOT injected — capacity bodies see ``None`` from
+        # ``context.get("kl")`` and raise ``RuntimeError`` per R3 PB-F.
+        if self._kl is not None:
+            if ctx is None:
+                ctx = {}
+            ctx.setdefault("kl", self._kl)
         return _runtime_invoke(
             declaration,
             inputs,
@@ -610,6 +635,12 @@ class CapacityLayer:
             ctx.setdefault("session", session)
         else:
             ctx = dict(context) if context else None
+        # Phase 34 (R0 PB-5 + R5 PB-B): symmetric conditional KL
+        # injection with :meth:`invoke`.
+        if self._kl is not None:
+            if ctx is None:
+                ctx = {}
+            ctx.setdefault("kl", self._kl)
         # Build the subscription handle (ADR-0073 — eq=False; ADR-0088 —
         # declaration.subscribes_to is the source of truth).
         import uuid as _uuid  # local — module already imports uuid via runtime

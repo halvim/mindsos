@@ -69,16 +69,24 @@ def test_handle_metagraph_returns_real_metagraph_local():
     assert ROLE_MEMORIES in {g.role for g in mg.graphs.values()}
 
 
-def test_handle_graph_raises_writehandle_not_wired():
+def test_handle_graph_returns_real_graph_at_phase_34():
+    """Phase 34 REPURPOSE (R4 §am-impl-5): graph() now returns the L1
+    Graph; Phase 33's WriteHandleNotWiredError raise was the stub-phase
+    behavior, wired at Phase 34 per ADR-0146 §Implementation."""
+    from mindsos_core import Graph
+
     h = _kl().writeable(None, ROLE_PROBLEM_TRACE, "global")
-    with pytest.raises(WriteHandleNotWiredError, match="not wired at Phase 33"):
-        h.graph()
+    g = h.graph()
+    assert isinstance(g, Graph)
+    assert g.role == ROLE_PROBLEM_TRACE
 
 
-def test_handle_mint_iri_raises_writehandle_not_wired():
+def test_handle_mint_iri_returns_iri_at_phase_34():
+    """Phase 34 REPURPOSE: mint_iri now dispatches via _IRI_BUILDERS
+    registry and returns a real IRI string."""
     h = _kl().writeable(None, ROLE_PROBLEM_TRACE, "global")
-    with pytest.raises(WriteHandleNotWiredError, match="not wired at Phase 33"):
-        h.mint_iri(trace_id="t1")
+    iri = h.mint_iri(trace_id="t1")
+    assert iri == "problem-trace-v1:entry:t1"
 
 
 def test_handle_validate_node_raises_writehandle_not_wired():

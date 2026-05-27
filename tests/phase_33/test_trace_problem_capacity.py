@@ -1,4 +1,10 @@
-"""Phase 33 — ``capacity:trace:problem`` registration + cap-denial + stub-path."""
+"""Phase 33 — ``capacity:trace:problem`` registration + cap-denial + invocation.
+
+3 of 4 invocation tests REPURPOSED at Phase 34 (R4 §am-impl-5):
+handle-not-wired sentinels flip to success-path. Cap-denial STAYS
+(R0 PB-6 — cap-denial keeps raising; clause 1 open). Shape sentinel
+flipped opaque → record per R4 §am-impl-2.
+"""
 
 from __future__ import annotations
 
@@ -10,12 +16,13 @@ from mindsos_capacity import (
     CapabilityDeniedError,
     CapacityLayer,
     DS_PROBLEM_TRACE_RECORD,
-    WriteHandleNotWiredError,
+    WriteResult,
     build_trace_problem,
     install_trace_capacities,
     problem_trace_datastates,
 )
 from mindsos_capacity.identifiers import capacity_iri, datastate_iri
+from mindsos_knowledge import KnowledgeLayer
 from tests.phase_33._fixtures import build_session_with_caps
 
 
@@ -34,17 +41,22 @@ def test_trace_problem_outputs_empty_terminator():
     assert cap.outputs == ()
 
 
-def test_trace_problem_inputs_placeholder():
+def test_trace_problem_inputs_record():
     cap = build_trace_problem()
     assert cap.inputs == (DS_PROBLEM_TRACE_RECORD,)
     assert DS_PROBLEM_TRACE_RECORD == datastate_iri("problem_trace.record")
 
 
-def test_problem_trace_datastates_single_member_opaque():
+def test_problem_trace_datastates_single_member_record():
+    """Phase 34 R4 §am-impl-2: shape.kind flipped opaque → record."""
     states = problem_trace_datastates()
     assert len(states) == 1
-    assert states[0].shape.kind == "opaque"
+    assert states[0].shape.kind == "record"
     assert states[0].shape.opaque_tag == "problem_trace.record"
+    assert dict(states[0].shape.fields) == {
+        "trace_id": "str",
+        "value": "Any",
+    }
     assert states[0].provenance_category == CATEGORY_TRACE
 
 
@@ -76,17 +88,23 @@ def test_install_trace_capacities_partial_state_raises():
         install_trace_capacities(layer)
 
 
-# ── Cap-denial path ───────────────────────────────────────────────────
+# ── Cap-denial path (STAYS per R0 PB-6 — clause 1 open) ──────────────
 
 
 def test_trace_problem_cap_denied_when_session_lacks_can_write_global():
-    """Session present without CAN_WRITE_GLOBAL → CapabilityDeniedError."""
+    """STAYS — session present without CAN_WRITE_GLOBAL → CapabilityDeniedError.
+
+    Phase 34 keeps the asymmetric contract: success returns WriteResult;
+    cap-denial raises. ADR-0146 §am-1 clause 1 open until L4 consumer
+    drives the eventual return-PTR flip.
+    """
     sess = build_session_with_caps("non_admin", frozenset())  # empty caps
-    layer = CapacityLayer()
+    kl = KnowledgeLayer.bootstrap()
+    layer = CapacityLayer(kl=kl)
     install_trace_capacities(layer)
     result = layer.invoke(
         "capacity:trace:problem",
-        {DS_PROBLEM_TRACE_RECORD: "placeholder"},
+        {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "err"}},
         session=sess,
         task_id="T1",
     )
@@ -94,46 +112,58 @@ def test_trace_problem_cap_denied_when_session_lacks_can_write_global():
     assert isinstance(result.error, CapabilityDeniedError)
 
 
-def test_trace_problem_session_with_cap_reaches_handle_then_writehandle_not_wired():
-    """Cap-granted session passes the gate → handle's graph() raises."""
+# ── Success paths (REPURPOSED at Phase 34) ────────────────────────────
+
+
+def test_trace_problem_session_with_cap_succeeds():
+    """REPURPOSED — Phase 34 wired; cap-granted session → success path."""
     sess = build_session_with_caps("admin", frozenset({CAN_WRITE_GLOBAL}))
-    layer = CapacityLayer()
+    kl = KnowledgeLayer.bootstrap()
+    layer = CapacityLayer(kl=kl)
     install_trace_capacities(layer)
     result = layer.invoke(
         "capacity:trace:problem",
-        {DS_PROBLEM_TRACE_RECORD: "placeholder"},
+        {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "boom"}},
         session=sess,
         task_id="T2",
     )
-    assert result.success is False
-    assert isinstance(result.error, WriteHandleNotWiredError)
+    assert result.success is True
+    assert result.error is None
+    assert isinstance(result.write_outcome, WriteResult)
+    assert result.write_outcome.iri == "problem-trace-v1:entry:t1"
+    assert result.write_outcome.role == "problem-trace"
+    assert result.write_outcome.scope == "global"
 
 
-def test_trace_problem_session_none_skips_gate_per_adr_0080():
-    """ADR-0080: session=None permits Global writes (bootstrap carve-out)."""
-    layer = CapacityLayer()
+def test_trace_problem_session_none_skips_gate_per_adr_0080_and_succeeds():
+    """REPURPOSED — ADR-0080: session=None permits Global writes
+    (bootstrap carve-out). Phase 34 makes the write actually succeed."""
+    kl = KnowledgeLayer.bootstrap()
+    layer = CapacityLayer(kl=kl)
     install_trace_capacities(layer)
     result = layer.invoke(
         "capacity:trace:problem",
-        {DS_PROBLEM_TRACE_RECORD: "placeholder"},
+        {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t-boot", "value": "init"}},
         session=None,
         task_id="T3",
     )
-    # No cap-denied; reaches handle.graph() and raises WriteHandleNotWiredError.
-    assert result.success is False
-    assert isinstance(result.error, WriteHandleNotWiredError)
+    assert result.success is True
+    assert isinstance(result.write_outcome, WriteResult)
+    assert result.write_outcome.iri == "problem-trace-v1:entry:t-boot"
 
 
-def test_trace_problem_emits_problem_trace_on_failure():
+def test_trace_problem_success_emits_no_problem_trace():
+    """REPURPOSED — Phase 33 asserted trace fired on raise; Phase 34
+    asserts NO trace fires on successful write (R4 §am-impl-5)."""
     sess = build_session_with_caps("admin", frozenset({CAN_WRITE_GLOBAL}))
-    layer = CapacityLayer()
+    kl = KnowledgeLayer.bootstrap()
+    layer = CapacityLayer(kl=kl)
     install_trace_capacities(layer)
     layer.invoke(
         "capacity:trace:problem",
-        {DS_PROBLEM_TRACE_RECORD: "placeholder"},
+        {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "ok"}},
         session=sess,
         task_id="T4",
     )
     recs = layer.problem_trace.records()
-    assert len(recs) == 1
-    assert recs[0].error_kind == "exception:WriteHandleNotWiredError"
+    assert len(recs) == 0

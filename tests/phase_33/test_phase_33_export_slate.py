@@ -33,7 +33,7 @@ def test_each_phase_33_export_resolves_to_real_object():
         assert getattr(mindsos_capacity, name) is not None
 
 
-def test_phase_33_export_count_is_110():
+def test_phase_34_export_count_is_110():
     """Count sentinel — Phase 34+ lifts trip this."""
     assert len(mindsos_capacity.__all__) == 110, (
         f"Expected 110 exports at Phase 33; found {len(mindsos_capacity.__all__)}"

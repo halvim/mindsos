@@ -1,6 +1,6 @@
 ---
 title: L3 Capacity — write-capacity per-flow tracker
-last_confirmed_phase: 33
+last_confirmed_phase: 34
 ---
 
 # L3 Capacity — write-capacity per-flow tracker
@@ -13,8 +13,8 @@ each ships in. Updated each phase that lights up a new capacity.
 
 | Category | Capacity IRI | Target role | Scope | Serves L4 flow | Status | Phase |
 |---|---|---|---|---|---|---|
-| `consolidate` | `capacity:consolidate:mm` | `memories` | Local | Consolidation flow (TBD) | **stub-shipped** | 33 |
-| `trace` | `capacity:trace:problem` | `problem-trace` | Global | Trace flow (TBD) | **stub-shipped** | 33 |
+| `consolidate` | `capacity:consolidate:mm` | `memories` | Local | Consolidation flow (TBD) | **wired** | 33→34 |
+| `trace` | `capacity:trace:problem` | `problem-trace` | Global | Trace flow (TBD) | **wired** | 33→34 |
 | `promote` | `capacity:promote:pipeline` | promotion path | per server | Pipeline-finder flow (TBD) | deferred | TBD |
 | `promote` | `capacity:promote:pattern` | promotion path | per server | Pipeline-finder flow (TBD) | deferred | TBD |
 | `author` | `capacity:author:concept` | `concepts` | Local | Author flow (TBD) | deferred | TBD |

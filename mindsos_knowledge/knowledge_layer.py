@@ -285,13 +285,15 @@ class KnowledgeLayer:
         session: "Optional[SessionProtocol]",
         role: str,
         scope: str,
+        *,
+        version: str = "v1",
     ) -> "KLWriteHandle":
-        """Return a :class:`KLWriteHandle` for ``(session, role, scope)``.
+        """Return a :class:`KLWriteHandle` for ``(session, role, scope, version)``.
 
-        Phase 33 ships the entry-point surface so L3 write capacities
-        can be registered + invoked through the working invocation
-        envelope (ADR-0146); the handle bodies are partially stubbed
-        per ADR-0146 §amendment-1 clause 1.
+        Phase 33 shipped the entry-point as stub; Phase 34 wires the
+        handle bodies per ADR-0146 §Implementation. The handle now
+        binds a ``(role, scope, version)`` triple at construction so
+        per-call capacity bodies don't repeat version literals.
 
         Routing:
 
@@ -314,6 +316,11 @@ class KnowledgeLayer:
                 fail naturally if the role-graph is absent from the
                 target Metagraph.
             scope: ``'local'`` or ``'global'``.
+            version: Role-version literal embedded into minted IRIs.
+                Default ``"v1"`` per Phase 34 R2 PB-D — sole version
+                under current role schemas. Bump-to-v2 will edit this
+                default (and the IRI builder wrappers if version-
+                routing semantics change).
 
         Returns:
             A fresh :class:`KLWriteHandle` instance.
@@ -340,14 +347,13 @@ class KnowledgeLayer:
                 f"'global', got {scope!r}"
             )
 
-        # Use ``object.__setattr__`` not needed — KLWriteHandle is a
-        # frozen dataclass; pass everything via constructor kwargs.
         return KLWriteHandle(
             role=role,
             scope=scope,  # type: ignore[arg-type]
             session=session,
             _kl=self,
             _metagraph=mg,
+            _version=version,
         )
 
     # ── install/extract hooks (ADR-0042) ─────────────────────────────

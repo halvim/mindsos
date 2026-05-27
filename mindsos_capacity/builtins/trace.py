@@ -1,30 +1,32 @@
-"""``capacity:trace:problem`` — Global problem-trace write capacity (Phase 33; stub).
+"""``capacity:trace:problem`` — Global problem-trace write capacity (Phase 34; wired).
 
-Ships the first occupant of the existing ``CATEGORY_TRACE`` category to
-have a *write* role (Phase 30 shipped the in-memory
-:class:`ProblemTraceSink` + ``emit_problem_trace`` writing to a
-per-:class:`CapacityLayer` in-memory sink; Phase 33 introduces the
-capacity that writes a single :class:`ProblemTraceRecord` into KL's
-Global ``problem-trace`` role-graph — distinct mechanism, distinct
-consumer).
+Ships the first WRITE occupant of ``CATEGORY_TRACE`` per ADR-0145
+§Decision + §Implementation. The capacity targets the shared Global
+``problem-trace`` role-graph (ADR-0044 inverse — Global, not per-user):
+a record bearing ``trace_id`` + ``value`` becomes a
+``ProblemTraceEntry`` node under ``problem-trace-v1:entry:<trace_id>``.
+
+(Phase 30 shipped the in-memory :class:`ProblemTraceSink` +
+``emit_problem_trace`` writing to a per-:class:`CapacityLayer` in-memory
+sink. This capacity is a DIFFERENT mechanism — writes a single record
+into KL's Global ``problem-trace`` role-graph — distinct consumer.)
 
 IRI: ``capacity:trace:problem`` (ADR-0145 §Impl line 75 verbatim).
 
-**Phase 33 stub-phase status (ADR-0146 §amendment-1 clauses 1-5).** Two
-failure modes surface through ``runtime.invoke``'s envelope at Phase 33:
+**Phase 34 ship (ADR-0146 §amendment-1 clauses 4 + 5 closed).** Two
+failure modes surface through ``runtime.invoke``'s envelope:
 
 1. **Capability denial** — when ``session is not None`` and the session
    lacks ``CAN_WRITE_GLOBAL``, body raises
    :class:`CapabilityDeniedError`. ``session is None`` skips the gate
    per ADR-0080 bootstrap carve-out.
-2. **Handle not wired** — body reaches
-   ``kl.writeable(session, role=ROLE_PROBLEM_TRACE, scope='global')``
-   and calls ``handle.graph()`` which raises
-   :class:`WriteHandleNotWiredError`.
+2. **Missing-KL** — ``context.get("kl")`` returns ``None`` →
+   :class:`RuntimeError` (programmer error per R3 PB-F).
+3. **L1 schema reject** — ``add_node`` raises; envelope catches.
 
-Phase 34 (ADR-0146) wires the working body + the handle's L1 access
-path; Phase 34+ may shift the capability-denial path to return
-``ProblemTraceRecord(kind="CAPABILITY_DENIED")`` per ADR-0146 §Decision.
+Cap-denial keeps RAISING (not return-PTR) per Phase 34 R0 PB-6 +
+ADR-0146 §amendment-1 clause 1 (open). L4 consumer drives the eventual
+flip in a later phase.
 
 **Outputs (R2 PB-K).** ``outputs=()`` — pipeline terminator.
 """
@@ -45,26 +47,29 @@ from ..identifiers import (
 )
 
 
-# ── DataState IRIs (placeholder per R1 PB-B; tightened Phase 34) ──────
+# ── DataState IRIs (record-shape per Phase 34 R2 PB-A) ────────────────
 
 DS_PROBLEM_TRACE_RECORD = datastate_iri("problem_trace.record")
 
 
 def problem_trace_datastates() -> List[DataState]:
-    """Return the placeholder DataState(s) used by ``capacity:trace:problem``.
+    """Return the DataState(s) used by ``capacity:trace:problem``.
 
-    Single-member list at Phase 33; opaque-tag shape. Phase 34 / first
-    L4 flow tightens to a record-form DataState binding
-    :class:`ProblemTraceRecord` fields.
+    Phase 34 ship: ``ShapeDescriptor.record`` with ``trace_id`` + ``value``
+    fields. ``opaque_tag`` preserved for backward-compat.
     """
     return [
         DataState(
             name="problem_trace.record",
-            shape=ShapeDescriptor.opaque(tag="problem_trace.record"),
+            shape=ShapeDescriptor.record(
+                {"trace_id": "str", "value": "Any"},
+                opaque_tag="problem_trace.record",
+            ),
             description=(
-                "Placeholder for a single ProblemTraceRecord destined for "
-                "the Global problem-trace role-graph. Phase 33 stub shape; "
-                "tightened at Phase 34 / first L4 trace flow."
+                "Record bearing the minimum keys ``capacity:trace:problem`` "
+                "extracts: ``trace_id`` (IRI key) and ``value`` (node "
+                "value, typically a ProblemTraceRecord). Phase 34 R2 PB-A "
+                "tighten; L4 trace flow extends the field set."
             ),
             provenance_category=CATEGORY_TRACE,
         ),
@@ -75,21 +80,18 @@ def problem_trace_datastates() -> List[DataState]:
 
 
 def _trace_problem_impl(**kwargs: Any) -> Any:
-    """Body of ``capacity:trace:problem`` — Phase 33 stub path.
+    """Body of ``capacity:trace:problem`` — Phase 34 wired path.
 
-    Cap-denied (session-bearer lacks ``CAN_WRITE_GLOBAL``) → raises
-    :class:`CapabilityDeniedError`. Otherwise reaches the handle's
-    ``graph()`` which raises :class:`WriteHandleNotWiredError`. Both
-    surface through ``runtime.invoke``'s envelope as ``success=False``.
+    Cap-gates (when session present), extracts KL, calls
+    :meth:`KLWriteHandle.write_and_validate`. Returns :class:`WriteResult`.
     """
-    from mindsos_knowledge import KnowledgeLayer
     from mindsos_knowledge.identifiers import ROLE_PROBLEM_TRACE
 
     context = kwargs.get("context") or {}
     session = context.get("session")
 
     # ADR-0080 carve-out: session is None is the bootstrap path; no
-    # cap gate. Production callers carry a session; admin lacks
+    # cap gate. Production callers carry a session; non-admin lacks
     # CAN_WRITE_GLOBAL → cap-denied.
     if session is not None and not session.has(CAN_WRITE_GLOBAL):
         raise CapabilityDeniedError(
@@ -97,10 +99,23 @@ def _trace_problem_impl(**kwargs: Any) -> Any:
             f"{session.session_id!r} (user={session.user_id!r}) lacks it."
         )
 
-    kl = KnowledgeLayer.bootstrap()
-    handle = kl.writeable(session, role=ROLE_PROBLEM_TRACE, scope="global")
-    handle.graph()  # raises WriteHandleNotWiredError at Phase 33.
-    raise AssertionError("unreachable at Phase 33")
+    kl = context.get("kl")
+    if kl is None:
+        raise RuntimeError(
+            "capacity:trace:problem requires CapacityLayer to be "
+            "constructed with kl=<KnowledgeLayer> (Phase 34 R0 PB-5). "
+            "Programmer error: no KL in context."
+        )
+
+    record = kwargs[DS_PROBLEM_TRACE_RECORD]
+    handle = kl.writeable(
+        session, role=ROLE_PROBLEM_TRACE, scope="global", version="v1"
+    )
+    return handle.write_and_validate(
+        value=record["value"],
+        type_="ProblemTraceEntry",
+        trace_id=record["trace_id"],
+    )
 
 
 # ── Capacity factory ──────────────────────────────────────────────────
@@ -111,7 +126,7 @@ def build_trace_problem() -> Capacity:
 
     IRI: ``capacity:trace:problem`` (ADR-0145 §Impl line 75 verbatim).
 
-    Inputs: ``(DS_PROBLEM_TRACE_RECORD,)`` (placeholder).
+    Inputs: ``(DS_PROBLEM_TRACE_RECORD,)`` (record shape).
     Outputs: ``()`` — write-capacity terminator semantic (R2 PB-K).
     """
     return Capacity(
@@ -121,9 +136,10 @@ def build_trace_problem() -> Capacity:
         outputs=(),
         implementation=_trace_problem_impl,
         description=(
-            "Write a single ProblemTraceRecord into the Global problem-"
-            "trace role-graph. Phase 33 stub — handle raises "
-            "WriteHandleNotWiredError. Phase 34 (ADR-0146) wires the body."
+            "Write a single ProblemTraceEntry into the Global problem-"
+            "trace role-graph. Phase 34 wired — returns WriteResult on "
+            "success; cap-denial raises CapabilityDeniedError per "
+            "ADR-0146 §am-1 clause 1 (asymmetric — open)."
         ),
         cost_prior=1.0,
         latency_ms_prior=2.0,

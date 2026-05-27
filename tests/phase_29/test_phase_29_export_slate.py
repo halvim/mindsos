@@ -66,7 +66,7 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_33_export_count_is_110():
+def test_phase_34_export_count_is_110():
     """B-33-T1 sentinel-flip in place — Phase 33 lifts +13 over Phase 31.
 
     Originally asserted 95 at Phase 30; flipped to 97 at Phase 31 (+2:
