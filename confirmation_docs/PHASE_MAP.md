@@ -3634,6 +3634,29 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Tests:** per-flow validator runs before commit; mismatched flow-vs-category rejected.
   **Docs:** ADR-0147.
 
+  **§inline-amendment (halvim, 2026-MM-DD Phase 35 ship; R0 PB-1 scope-shape resolution).**
+  The features line above is stale post-Phase 33+34 reality:
+
+  - "`KLWriteHandle.graph()` applies per-flow validators" — defers to
+    Phase 36 (ADR-0139). KL semantic validators live in
+    `mindsos_knowledge/validators.py` (Phase 36 net-new); Phase 35
+    does NOT introduce validator-running on the write path.
+  - "concrete builder per write category" — defers to per-flow build
+    per ADR-0147 §amendment-1 clause 3. No new write capacities ship
+    at Phase 35; the 4 deferred capacities
+    (`capacity:promote:pipeline`, `capacity:promote:pattern`,
+    `capacity:author:concept`, `capacity:state:capture`) wait for their
+    L4 flows to close design.
+
+  Phase 35's actual deliverable: **ADR-0147 Status flipped Proposed →
+  Accepted via §amendment-1**; per-flow discipline locks strict going
+  forward; tracker page (`docs/dev/coordinated-changes/L3-capacity-
+  write-flows.md`) becomes canonical full-list source. Design-only
+  phase per PHASE_MAP §1 exception — no tag, no version bump, zero
+  source changes (Phase 14a + Phase 15b precedent). Test surface is
+  one sentinel file (`tests/phase_35/test_adr_amendment_sentinels.py`,
+  extending the 14a→15a→15b→35 sentinel chain).
+
 ### Phase 36 — L2 hybrid validators home (ADR-0139)
 
   **Deps:** 35. **Layer:** L2. **Net-new?** **Yes — `mindsos_knowledge/validators.py` does not yet exist.** Splits validation into structural (L1, exists) + semantic (L2, new).

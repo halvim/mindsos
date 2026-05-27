@@ -1,6 +1,6 @@
 ---
 title: L3 Capacity — write-capacity per-flow tracker
-last_confirmed_phase: 34
+last_confirmed_phase: 35
 ---
 
 # L3 Capacity — write-capacity per-flow tracker
@@ -32,6 +32,18 @@ each ships in. Updated each phase that lights up a new capacity.
   L4 flow that will consume it to close design (ADR-0147 per-flow
   build discipline). When the L4 flow closes, the capacity ships in
   the same PR or immediately preceding it.
+
+## Provenance note — anticipatory rows (Phase 35 ship; ADR-0147 §amendment-1)
+
+The two `wired` rows above — `capacity:consolidate:mm` and
+`capacity:trace:problem` — shipped **anticipatorily** at Phase 33+34:
+their consuming L4 flows (consolidation flow + trace flow) had not
+closed design at ship time. ADR-0147 §amendment-1 clause 2
+explicitly carves these out as a one-time exception, and clause 3
+locks strict per-flow discipline for all future write capacities:
+the 4 `deferred` rows above each wait for their L4 flow to close
+before shipping. See ADR-0147 §amendment-1 (Phase 35) for the
+canonical wording.
 
 ## How to use this tracker
 
