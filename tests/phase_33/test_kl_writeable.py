@@ -89,10 +89,21 @@ def test_handle_mint_iri_returns_iri_at_phase_34():
     assert iri == "problem-trace-v1:entry:t1"
 
 
-def test_handle_validate_node_raises_writehandle_not_wired():
+def test_handle_validate_node_returns_validation_result():
+    """Phase 36 FLIP (R4-PB-B): ``validate_node`` body now dispatches via
+    ``_VALIDATORS_BY_ROLE`` adapter and returns
+    :class:`ValidationResult`. Phase 33 sentinel pattern flipped per
+    ``[[feedback-parity-test-sentinel-flip-at-target-phase]]``; B-27-T1
+    precedent for rename-on-flip. The fixture metagraph has
+    ``problem-trace`` role-graph bootstrapped, so role-routing succeeds.
+    """
+    from mindsos_knowledge import ValidationResult
+
     h = _kl().writeable(None, ROLE_PROBLEM_TRACE, "global")
-    with pytest.raises(WriteHandleNotWiredError, match="not wired"):
-        h.validate_node(value="x", type_="Memory")
+    result = h.validate_node(value="x", type_="ProblemTraceEntry")
+    assert isinstance(result, ValidationResult)
+    assert result.ok is True
+    assert result.violation is None
 
 
 def test_handle_validate_xref_raises_writehandle_not_wired():

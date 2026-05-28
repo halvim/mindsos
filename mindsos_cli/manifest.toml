@@ -12,8 +12,8 @@
 # that would defeat the drift-detection purpose.
 
 [mindsos]
-phase = "34"
-version = "0.0.0+phase34"
+phase = "36"
+version = "0.0.0+phase36"
 # Phase 27 generalization (PB-25/33): authoritative top-level package
 # list for the doctor parity loop. Each new-top-level-pkg phase appends
 # here; doctor.py + tests/phase_18/test_doctor_6pkg_parity.py iterate

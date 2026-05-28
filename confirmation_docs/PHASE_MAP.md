@@ -3664,6 +3664,49 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
   **Tests:** semantic catches a seeded violation that structural misses; both run via Phase 35's `write_and_validate`.
   **Docs:** ADR-0139.
 
+  **§inline-amendment (halvim, 2026-05-27 Phase 36 ship; R0 PB-1 scope-shape resolution).**
+  The features-line and Tests-line wording above is stale post-Phase
+  33+34+35 reality; both are reframed under the locked Option B
+  (capacity-body composition per ADR-0139 §Capacity-contract).
+
+  - **Features-line.** "Validators run with scope structural /
+    semantic / both" describes **runtime behavior**, not a
+    `write_and_validate` kwarg. Composition lives in **capacity bodies**
+    per ADR-0139 §Capacity-contract; `handle.validate_node` ships as a
+    typed convenience composite for roles with a registered
+    `_VALIDATORS_BY_ROLE` adapter (Phase 36: `memories` +
+    `problem-trace`). Mapping:
+    - "scope=structural" — L1 schema fires on `add_node` (Phase 04+13).
+    - "scope=semantic" — capacity body composes from
+      `mindsos_knowledge.validators` (canonical: `handle.validate_node`).
+    - "scope=both" — the union path that actually runs at Phase 36
+      for the 2 shipped capacities: semantic validators in the
+      precondition immediately preceding the call; structural
+      inside `add_node` invoked from `write_and_validate`.
+    The "semantic validator per role" half is honoured via
+    `_VALIDATORS_BY_ROLE` adapter chains (R3-PB-A; mirrors
+    `_IRI_BUILDERS` pattern); per-flow extension governs adapter
+    population (ADR-0139 §amendment-1 clause 3).
+
+  - **Tests-line.** "Both run via Phase 35's `write_and_validate`"
+    describes the wired runtime path under Option B — NOT a kwarg
+    on the method. Semantic validators run in the capacity body
+    precondition immediately preceding `write_and_validate`;
+    structural validators run inside `add_node` invoked from
+    `write_and_validate`. The "seeded violation that structural
+    misses" check at Phase 36 targets the timing benefit
+    (pre-mint semantic catch) rather than a violation-class-only
+    semantic case — Phase 36's wired chain is single-validator
+    (`validate_role_routing`), which structurally overlaps with
+    `handle.graph()` `KeyError` but fires earlier per R3-PB-H.
+
+  Phase 36 ships ADR-0139 Status flipped Proposed → Accepted via
+  §amendment-1 (3 clauses: literal §Accept(a) closure, §Accept(b)
+  via wired capacities, per-flow adapter extension carry-forward).
+  All 5 validators + `ValidationResult` + 2 adapter entries +
+  `SemanticValidationError` ship; `KLWriteHandle.validate_node`
+  body wired; `validate_xref` body defers per-flow.
+
 ### ~~Phase 37 — Server-owns-importers (ADR-0140)~~ — RETIRED 2026-05-19 by Phase 15a PB-17 / ADR-0140 §amendment-1
 
   **Status:** RETIRED 2026-05-19. Superseded by Phase 15a's permanent-admin decision (PB-17 Round 4 / ADR-0140 §amendment-1 full supersession of §Decision §1+§2). Admin permanent home is `mindsos_admin/`; no relocation phase is needed. Server (when built at Phase 18+) imports admin for HTTP endpoint handlers; admin code is not server code.

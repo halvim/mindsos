@@ -13,8 +13,17 @@ into KL's Global ``problem-trace`` role-graph — distinct consumer.)
 
 IRI: ``capacity:trace:problem`` (ADR-0145 §Impl line 75 verbatim).
 
-**Phase 34 ship (ADR-0146 §amendment-1 clauses 4 + 5 closed).** Two
-failure modes surface through ``runtime.invoke``'s envelope:
+**Phase 34 ship (ADR-0146 §amendment-1 clauses 4 + 5 closed).**
+
+**Phase 36 addition (ADR-0139 §Capacity-contract).** A semantic-
+validator precondition runs via ``handle.validate_node(...)`` after
+the capability gate, before ``write_and_validate``. On
+``not result.ok``, the body raises :class:`SemanticValidationError`
+carrying the failed :class:`ValidationResult`; the runtime envelope
+catches per ADR-0072. Phase 36 chain for ``problem-trace`` role is
+single-validator (``validate_role_routing``).
+
+Failure modes surface through ``runtime.invoke``'s envelope:
 
 1. **Capability denial** — when ``session is not None`` and the session
    lacks ``CAN_WRITE_GLOBAL``, body raises
@@ -22,11 +31,14 @@ failure modes surface through ``runtime.invoke``'s envelope:
    per ADR-0080 bootstrap carve-out.
 2. **Missing-KL** — ``context.get("kl")`` returns ``None`` →
    :class:`RuntimeError` (programmer error per R3 PB-F).
-3. **L1 schema reject** — ``add_node`` raises; envelope catches.
+3. **Semantic-validation reject** (Phase 36 NEW) — ``validate_node``
+   returns ``ok=False``; body raises
+   :class:`SemanticValidationError`.
+4. **L1 schema reject** — ``add_node`` raises; envelope catches.
 
-Cap-denial keeps RAISING (not return-PTR) per Phase 34 R0 PB-6 +
-ADR-0146 §amendment-1 clause 1 (open). L4 consumer drives the eventual
-flip in a later phase.
+Cap-denial + semantic-validation reject keep RAISING (not return-PTR)
+per Phase 34 R0 PB-6 + ADR-0146 §amendment-1 clause 1 (open). L4
+consumer drives the eventual flip in a later phase.
 
 **Outputs (R2 PB-K).** ``outputs=()`` — pipeline terminator.
 """
@@ -80,11 +92,16 @@ def problem_trace_datastates() -> List[DataState]:
 
 
 def _trace_problem_impl(**kwargs: Any) -> Any:
-    """Body of ``capacity:trace:problem`` — Phase 34 wired path.
+    """Body of ``capacity:trace:problem`` — Phase 36 wired path.
 
-    Cap-gates (when session present), extracts KL, calls
-    :meth:`KLWriteHandle.write_and_validate`. Returns :class:`WriteResult`.
+    Cap-gates (when session present), extracts KL, runs semantic-
+    validator precondition via ``handle.validate_node`` (ADR-0139
+    §Capacity-contract), then calls
+    :meth:`KLWriteHandle.write_and_validate`. Returns
+    :class:`WriteResult`. Raises :class:`SemanticValidationError` on
+    validator failure.
     """
+    from mindsos_knowledge.exceptions import SemanticValidationError
     from mindsos_knowledge.identifiers import ROLE_PROBLEM_TRACE
 
     context = kwargs.get("context") or {}
@@ -111,6 +128,9 @@ def _trace_problem_impl(**kwargs: Any) -> Any:
     handle = kl.writeable(
         session, role=ROLE_PROBLEM_TRACE, scope="global", version="v1"
     )
+    vr = handle.validate_node(value=record["value"], type_="ProblemTraceEntry")
+    if not vr.ok:
+        raise SemanticValidationError(vr)
     return handle.write_and_validate(
         value=record["value"],
         type_="ProblemTraceEntry",
@@ -137,9 +157,11 @@ def build_trace_problem() -> Capacity:
         implementation=_trace_problem_impl,
         description=(
             "Write a single ProblemTraceEntry into the Global problem-"
-            "trace role-graph. Phase 34 wired — returns WriteResult on "
-            "success; cap-denial raises CapabilityDeniedError per "
-            "ADR-0146 §am-1 clause 1 (asymmetric — open)."
+            "trace role-graph. Phase 36 wired — semantic-validator "
+            "precondition via handle.validate_node (ADR-0139); returns "
+            "WriteResult on success; raises CapabilityDeniedError on "
+            "cap-denial or SemanticValidationError on validator failure; "
+            "L1 raises propagate per ADR-0146 §am-1 clause 1 (open)."
         ),
         cost_prior=1.0,
         latency_ms_prior=2.0,

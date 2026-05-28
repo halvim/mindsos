@@ -22,8 +22,8 @@ def test_phase_34_export_count_stable_at_110():
 
 
 def test_phase_34_version_bumped():
-    assert mindsos_capacity.__version__ == "0.0.0+phase34"
-    assert mindsos_knowledge.__version__ == "0.0.0+phase34"
+    assert mindsos_capacity.__version__ == "0.0.0+phase36"
+    assert mindsos_knowledge.__version__ == "0.0.0+phase36"
 
 
 def test_phase_33_exports_remain_intact():
