@@ -46,7 +46,7 @@ Phase chats do **not** re-read older confirmation docs unless explicitly debuggi
 | Conflict resolution in source docs | Most recent date wins by default. Surface to **Open Questions** only when a newer doc silently contradicts an explicit earlier lock/invariant. |
 | Foundations-first grouping | Independents share a phase; dependents go in the next phase. |
 | **Integration phases are an exception to the foundations-first rule** | Phases 26 and 32 are convergence points that depend on **all prior shipped phases**. They add no new feature; they catch cross-phase regressions via one scripted scenario. |
-| **Design-only phases are an exception to the per-phase workflow** | Some phases (e.g., Phase 14a) ship only ADRs + docs, no code. These are exempt: no `phase-NN-confirmed` tag, no `mindsos confirm-phase`, no version bump (the 4-pkg `__version__` parity stays at whatever the immediately-prior code phase set). Downstream code phases branch off **main-tip** after the design PR squash-merges, not off a tag. The design phase's row in this map names its scope; PR review is the confirmation; release.yml is not invoked. Status: established Phase 13 PB-20 / PB-24. |
+| **Design-only phases are an exception to the per-phase workflow** | Some phases (e.g., Phase 14a) ship only ADRs + docs, no code. These are exempt: no `phase-NN-confirmed` tag, no `mindsos confirm-phase`, no version bump (the 4-pkg `__version__` parity stays at whatever the immediately-prior code phase set). Downstream code phases branch off **main-tip** after the design PR squash-merges, not off a tag. The design phase's row in this map names its scope; PR review is the confirmation; release.yml is not invoked. Status: established Phase 13 PB-20 / PB-24. **§inline-amendment (Phase 38 ship per R5-PB-B; superseded by Phase 38 R6-PB-A for Phase 38 itself):** Phase 38 establishes a sub-shape — **docs-only phase** — that ships docs + content authoring + filesystem-comment edits but zero ADR amendments and zero src changes beyond inline-comment updates. Same exemptions apply (no tag, no version bump, no `mindsos confirm-phase`). The PHASE_38 row names the scope; sentinel test (`tests/phase_38/test_phase_38_doc_sentinels.py`) anchors the §inline-amendment text + the comment edits against silent regression. Sentinel chain `14a → 15a → 15b → 35 → 36 → 38`. **R6-PB-A (post-design, mid-ship 2026-05-28):** Phase 38 itself opts out of this sub-shape at execution — tester preferred running `mindsos confirm-phase` per the code-shipping convention; the wrapper's doctor preflight enforces manifest parity which required a 12-site version bump. The docs-only sub-shape definition above stays valid as a future precedent for closing-phase or pure-docs ships; Phase 38 ships as code-shipping in practice (version bumped, image retagged, tag eligible, release.yml runs). |
 | Mkdocs page evolution | A doc page may be touched by multiple phases. Each phase only **amends** the slice it owns; final-pass review is at Phase 38. Pages carry a `last_confirmed_phase: NN` front-matter field (stored, not rendered) so a future audit can identify pages whose evolution stalled. |
 | Out of scope | L4 + L5 + FOL + 7 L4 critique pushes + 5 L1 design-critique pushes (latter mostly addressed by L1 redesign locks). |
 
@@ -3720,11 +3720,25 @@ Each row is intentionally terse. The phase chat reads it, refines its scope, and
 
 ### Phase 38 — End-to-end vertical slice
 
-  **Deps:** all prior. **Layer:** cross. **Net-new?** No (composes shipped pieces).
+  **Status:** Shipped 2026-05-27/28. Design-time picked docs-only per PHASE_MAP §1 design-only-phase sub-shape extension (R5-PB-B); execution-time reverted to code-shipping per Phase 38 R6-PB-A — tester preferred the canonical `mindsos confirm-phase` wrapper. 12-site version bump `+phase36 → +phase38`; image retag `mindsos:phase38-{prod,test}`; tag `phase-38-confirmed` after PR squash-merge; release.yml runs. The R5-PB-B docs-only sub-shape definition stays valid as a future precedent; Phase 38 itself opts out at execution. **Deps:** all prior. **Layer:** cross. **Net-new?** No (composes shipped pieces).
   **Features:** cookbook text-realm + code-slice end-to-end via CLI through L0 → L1 → L2 → L3.
   **Tests:** golden-output for both cookbook flows; runs in under N seconds against the test fixture.
   **Pass criterion:** the vertical slice that lives today across `tests/` produces the same artefacts via the CLI — no surprises. Final mkdocs pass: lift `strict: true` if all broken links are gone, and a final review of every page's `last_confirmed_phase` front-matter for orphans.
   **Docs:** `docs/usage/cookbook/text-realm.md`, `nlu-slice.md`, `code-slice.md` — full.
+
+  **§inline-amendment (Phase 38 ship; 4 clauses per R5-PB-A):**
+
+  1. **Features-line reframe.** The handoff "cookbook text-realm + code-slice end-to-end via CLI through L0 → L1 → L2 → L3" supersedes-to: **"text-realm cookbook (read-side; transcribes Phase 32 Integration B)."** Local-write cookbook flow + `--session-token` CLI flag + Falkor-backed L3 bootstrap all deferred to L4/L5 follow-up plan per Phase 38 R3-PB-A + R3-PB-B: `FalkorDBLocalPersister` is unshipped at Phase 36 (`mindsos_server/persistence/local_persister.py:57-58`), so cookbook Local-write demo is structurally impossible at Phase 38 — `consolidate:mm` writes target an in-memory `local_metagraph` that evaporates on CLI exit. Closing those carry-forwards requires the L4 session orchestrator + Falkor-backed Local persister landing as a coherent unit.
+
+  2. **Pass-criterion revision.** "Final mkdocs pass: lift `strict: true` if all broken links are gone, and a final review of every page's `last_confirmed_phase` front-matter for orphans" supersedes-to: **"Final review of every page's `last_confirmed_phase` front-matter recorded via `confirmation_docs/PHASE_38_PAGE_INVENTORY.md`."** Strict-lift deferred to L4/L5 follow-up plan per Phase 38 R4-PB-A: halvim docs contain hundreds of broken `decisions/adr/NNNN-*.md` cross-links across `concepts/*.md` + `api/*.md` because ADRs live in parent project tree per Model C (`[[feedback-docs-source-of-truth]]`). Lifting `strict: true` requires Model C remediation (strip links, redirect via `mkdocs-redirects` plugin, or ship halvim-side ADR shims) — parent-tree architectural work, not a Phase 38 scope.
+
+  3. **§6 cookbook sub-table revision.** `docs/usage/cookbook/nlu-slice.md` + `docs/usage/cookbook/code-slice.md` rows revised from "38" to **`out of scope (deferred to L4/L5 follow-up plan; Phase 38 R0-PB-2)`** — neither cookbook has shipped capacities backing it (`mindsos_capacity/builtins/text.py` exists; no `nlu.py` or `code.py`); the PHASE_MAP §38 pass criterion "vertical slice that lives today across `tests/`" is read-side only via Phase 32 Integration B; nlu + code flows would be net-new at Phase 38, which the row's `Net-new? No` flag prohibits.
+
+  4. **§6 Get Started + Concepts sub-table revisions.** `docs/getting-started/facts-and-figures.md` + `docs/concepts/layers.md` + `docs/concepts/society-of-mind.md` rows revised from "38" to **`out of scope (deferred to L4/L5 follow-up plan; Phase 38 R1-PB-E)`** — `layers.md` + `society-of-mind.md` cover L4/L5 conceptual territory (society-of-mind = L4 by name); authoring them at Phase 38 would pre-empt L4/L5 design. `facts-and-figures.md` is reference-table material that belongs after L4/L5 ships. `docs/index.md` + `docs/getting-started/whats-new-v4.md` + `docs/concepts/glossary.md` stay at "38" (authored at Phase 38 ship per R1-PB-E).
+
+  **Design saturation note (R5-PB-I):** 6 design rounds (R0+R1+R2+R3+R4+R5). 4 reversals across the saturation pass — each round probed reality R0 had not probed: R1-PB-A reframed the CLI surface (`mindsos server login` already existed; no new verb needed); R2-PB-A locked an option (b) Falkor wire-up that R3-PB-A overturned (Local persistence wasn't shipped); R3-PB-A reverted Local-write cookbook to read-side; R4-PB-A overturned strict-lift (Model C structural blocker). R5 produced impl-locks only (literal texts + sentinel function inventory), zero reversals — saturation pattern matches Phase 36 R5.
+
+  Design log: `confirmation_docs/PHASE_38_DESIGN_LOG.md`. Page inventory: `confirmation_docs/PHASE_38_PAGE_INVENTORY.md`. Sentinel test: `tests/phase_38/test_phase_38_doc_sentinels.py` (chain `14a → 15a → 15b → 35 → 36 → 38`).
 
 ---
 
@@ -3743,13 +3757,13 @@ For every existing doc-tree entry, the phase that confirms it. A page touched by
 | `docs/getting-started/first-metagraph.md` | 05a |
 | `docs/getting-started/first-mental-model.md` | **out of scope** (L5) |
 | `docs/getting-started/whats-new-v4.md` | 38 |
-| `docs/getting-started/facts-and-figures.md` | 38 |
+| `docs/getting-started/facts-and-figures.md` | **out of scope** (deferred to L4/L5 follow-up plan; Phase 38 R1-PB-E) |
 
 ### Concepts
 
 | Page | Confirms in phase |
 |---|---|
-| `docs/concepts/layers.md` | 38 |
+| `docs/concepts/layers.md` | **out of scope** (deferred to L4/L5 follow-up plan; Phase 38 R1-PB-E) |
 | `docs/concepts/graphs-and-metagraphs.md` | 03 + 05a (+ 05b / 05c amend for intergraph edges) |
 | `docs/concepts/identity.md` | 02 |
 | `docs/concepts/instancing.md` | 06 |
@@ -3758,7 +3772,7 @@ For every existing doc-tree entry, the phase that confirms it. A page touched by
 | `docs/concepts/capacity-vs-intelligence.md` | 27 + 30 |
 | `docs/concepts/global-local.md` | 14 |
 | `docs/concepts/release-model.md` | 24 |
-| `docs/concepts/society-of-mind.md` | 38 |
+| `docs/concepts/society-of-mind.md` | **out of scope** (deferred to L4/L5 follow-up plan; Phase 38 R1-PB-E) |
 | `docs/concepts/glossary.md` | 38 |
 
 ### Usage / Core (L1)
@@ -3817,8 +3831,8 @@ For every existing doc-tree entry, the phase that confirms it. A page touched by
 | Page | Confirms in phase |
 |---|---|
 | `docs/usage/cookbook/text-realm.md` | 38 |
-| `docs/usage/cookbook/nlu-slice.md` | 38 |
-| `docs/usage/cookbook/code-slice.md` | 38 |
+| `docs/usage/cookbook/nlu-slice.md` | **out of scope** (deferred to L4/L5 follow-up plan; Phase 38 R0-PB-2) |
+| `docs/usage/cookbook/code-slice.md` | **out of scope** (deferred to L4/L5 follow-up plan; Phase 38 R0-PB-2) |
 
 ### API Reference
 
@@ -3875,7 +3889,7 @@ These require user adjudication before the affected phase chat can proceed.
 
 4. **Property-bag on Metagraph / Graph (ADR-0130).** Memory says locked; code inventory does not directly confirm a `properties` dict on Metagraph/Graph. **Affects Phase 05 or 10.** Question: implementation extent? *(2026-05-04 — Phase 03 chat narrowed: Phase 03 row explicitly defers the Graph-level `properties` bag — slim `Graph.__init__` Phase 03 signature drops the `properties` parameter. Question now narrows to Phase 05 or 10; no Phase 03 interaction.)*
 
-5. **Mkdocs `strict: false` policy.** 55 broken cross-links per `docs/_inbox/LINK_TODO.md`. The plan repairs links per page touched. Question: lift to `strict: true` at end of Phase 38 (default), or earlier?
+5. **Mkdocs `strict: false` policy.** 55 broken cross-links per `docs/_inbox/LINK_TODO.md`. The plan repairs links per page touched. Question: lift to `strict: true` at end of Phase 38 (default), or earlier? *(**RESOLVED at Phase 38 R4-PB-A — strict-lift deferred to L4/L5 follow-up plan.** halvim docs tree contains hundreds of broken `decisions/adr/NNNN-*.md` cross-links across `concepts/*.md` + `api/*.md` because ADRs live in parent project tree per Model C (`[[feedback-docs-source-of-truth]]`). Lifting `strict: true` requires Model C remediation — strip the ADR links, redirect via `mkdocs-redirects` plugin, or ship halvim-side ADR shims — which is parent-tree architectural work, not Phase 38 scope. PHASE_38_DESIGN_LOG.md §4 captures the L4/L5 carry-forward.)*
 
 6. **L3 ADRs 0082 / 0083 (Proposed but unbuilt).** Out of scope per L4 boundary, but Phase 33's `KLWriteHandle.promote()` cannot fully wire transitive promotion without 0083. Recommend: leave Phase 33 with atomic-per-capacity promotion and defer transitive to L4/L5 plan. Confirm.
 
@@ -3883,9 +3897,9 @@ These require user adjudication before the affected phase chat can proceed.
 
 8. **FOL layer placement, definitively.** Default = clean defer. Question: any portion in this plan's tail (e.g. as a Phase 39 capacity-design preview)? Recommend no.
 
-9. **`_source_backup/` retention.** Currently kept as read-only reference. Question: keep, or delete during Phase 38?
+9. **`_source_backup/` retention.** Currently kept as read-only reference. Question: keep, or delete during Phase 38? *(**RESOLVED at Phase 38 R0-PB-7 — out of scope.** `_source_backup/` lives in the parent `Layered Intelligence/` tree, not in halvim. Resolution is a parent-tree concern; halvim Phase 38 does not touch it. Per Model C the halvim ship event has no authority over parent-tree artifacts.)*
 
-10. **`docs/_inbox/LINK_TODO.md` and the 55 broken cross-links.** Many broken links may belong to L4/L5 design pages (out of scope). Question at Phase 38: remove `LINK_TODO.md` and accept residual broken links on out-of-scope pages, or block on fixing them?
+10. **`docs/_inbox/LINK_TODO.md` and the 55 broken cross-links.** Many broken links may belong to L4/L5 design pages (out of scope). Question at Phase 38: remove `LINK_TODO.md` and accept residual broken links on out-of-scope pages, or block on fixing them? *(**RESOLVED at Phase 38 R0-PB-3 + R4-PB-A — moot.** `docs/_inbox/LINK_TODO.md` does not exist in halvim's docs tree (the file is a parent-tree artifact). The actual halvim broken-link inventory is recorded by `mkdocs build` against the halvim tree — Model C ADR cross-links are the structural cause; see q5 RESOLVED above.)*
 
 11. **`docs/concepts/capacity:retrieval` (ADR-0097) scope.** Marked partial in code inventory. Question: Phase 30 confirms 0097 only at the level the BFS finder satisfies, deferring richer retrieval to L4/L5 plan?
 

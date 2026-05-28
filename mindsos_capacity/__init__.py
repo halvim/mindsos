@@ -97,8 +97,9 @@ the invocation runtime + BFS pipeline finder + problem-trace primitives
 
 Excluded (defer):
 
-- ``add_type_compat`` admin API + bulk rediscover verb — Phase 32+
-  (first concrete consumer).
+- ``add_type_compat`` admin API + bulk rediscover verb — deferred to
+  L4 follow-up plan per Phase 38 R4-PB-D (was: "Phase 32+ (first
+  concrete consumer)").
 - Pathfinding-as-registered-builtin Capacity (parent's
   ``build_bfs_capacity_declaration`` stub) — RETIRED at Phase 31
   per ADR-0071 §Implementation (Phase 31) + PHASE_MAP §31 inline
@@ -108,16 +109,21 @@ Excluded (defer):
   role-graph — out of scope (L4 in design per PHASE_MAP §1).
 - L4 resident scheduling / state-snapshot lifecycle per ADR-0099 —
   L4-owned; L3 ships only the descriptive contract.
-- ``include_deprecated`` parameter discipline across L3 walks — Phase
-  30+ when soft-delete becomes a real L4 concern.
+- ``include_deprecated`` parameter discipline across L3 walks —
+  deferred to L4 follow-up plan per Phase 38 R4-PB-D (was: "Phase
+  30+ when soft-delete becomes a real L4 concern").
 - Per-user (Local-scoped) ProblemTraceSink dict — deferred to L4 per
   R2 PB-29(a) lock.
-- Falkor-backed L3 bootstrap + state-file serialization — Phase 32+
-  per Phase 30 R2 PB-27(a) carry-forward.
-- ``--session-token`` CLI flag — Phase 32+ per Phase 30 R2 PB-30(a)
-  carry-forward.
-- ``--install-builtins=<family,...>`` CLI flag on ``invoke`` — Phase 32+
-  when a second builtins family ships per R3 PB-29 lock.
+- Falkor-backed L3 bootstrap + state-file serialization — deferred
+  to L4 follow-up plan per Phase 38 R4-PB-D + R3-PB-A (was: "Phase
+  32+ per Phase 30 R2 PB-27(a) carry-forward"; depends on
+  ``FalkorDBLocalPersister``, unshipped at Phase 36).
+- ``--session-token`` CLI flag — deferred to L4 follow-up plan per
+  Phase 38 R4-PB-D + R3-PB-B (was: "Phase 32+ per Phase 30 R2
+  PB-30(a) carry-forward").
+- ``--install-builtins=<family,...>`` CLI flag on ``invoke`` —
+  deferred to L4 follow-up plan per Phase 38 R4-PB-D (was: "Phase
+  32+ when a second builtins family ships per R3 PB-29 lock").
 
 See ``confirmation_docs/PHASE_28_DESIGN_LOG.md`` +
 ``PHASE_29_DESIGN_LOG.md`` + ``PHASE_30_DESIGN_LOG.md`` for the full
@@ -385,4 +391,4 @@ __all__ = [
     "RESERVED_PROPERTY_KEYS",
 ]
 
-__version__ = "0.0.0+phase36"
+__version__ = "0.0.0+phase38"

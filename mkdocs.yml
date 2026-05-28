@@ -14,7 +14,9 @@ nav:
   - Get started:
       - Install: getting-started/install.md
       - Your first metagraph: getting-started/first-metagraph.md
+      - What's new (v4): getting-started/whats-new-v4.md
   - Concepts:
+      - Glossary: concepts/glossary.md
       - Identity and IRIs: concepts/identity.md
       - L2 identifiers (Phase 12): concepts/identifiers.md
       - Graphs and metagraphs: concepts/graphs-and-metagraphs.md
@@ -55,6 +57,8 @@ nav:
           - Data states: usage/capacity/data-states.md
           - Building: usage/capacity/building.md
           - Retrieval: usage/capacity/retrieval.md
+      - Cookbook (Phase 38):
+          - Text realm — vertical slice: usage/cookbook/text-realm.md
   - Knowledge sources (Phase 15a):
       - DOLCE-DUL ontology: knowledge-sources/dolce.md
       - Open English WordNet lexicon: knowledge-sources/oewn.md

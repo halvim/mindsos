@@ -1,3 +1,7 @@
+---
+last_confirmed_phase: 17
+---
+
 # Versioning in MindsOS Knowledge
 
 > *Phase 17 RETIRED 2026-05-20. The "side-by-side role-graphs +
