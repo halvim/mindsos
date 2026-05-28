@@ -97,7 +97,7 @@ Deferred to later phases:
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase36"
+__version__ = "0.0.0+phase38"
 
 from .bootstrap import (
     ensure_global_role_graph,

@@ -1,6 +1,5 @@
 ---
-last_confirmed_phase: 36
-last_design_only_phase: 38
+last_confirmed_phase: 38
 ---
 
 # Changelog
@@ -8,13 +7,18 @@ last_design_only_phase: 38
 Append-only, one line per shipped phase. Phase 38 closing the L0-L3
 numbered-phase sequence (Phase 37 RETIRED 2026-05-19).
 
-## Phase 38 — Docs-only ship: text-realm cookbook + closing-phase audit (2026-05-27)
+## Phase 38 — Closing-phase ship: text-realm cookbook + page-inventory audit + PHASE_MAP §1 docs-only-phase sub-shape definition (2026-05-27/28)
 
-**Docs-only phase per PHASE_MAP §1 design-only-exception extension
-(R5-PB-B; sub-shape "docs-only" added).** No version bump, no
-`phase-38-confirmed` tag, no `mindsos confirm-phase`. Sentinel chain
-extends `14a → 15a → 15b → 35 → 36 → 38`. PR-to-main via `phase-38`
-branch.
+**Design-time picked docs-only-shape (R3-PB-D + R5-PB-B); execution-time
+converted to code-shipping at tester preference (R6-PB-A).** 12-site
+version bump `+phase36 → +phase38`; `mindsos confirm-phase --phase 38`
+wrapper run from Linux test image; tag `phase-38-confirmed` after PR
+squash-merge to main; release.yml runs on tag push. Sentinel chain
+extends `14a → 15a → 15b → 35 → 36 → 38`. PHASE_MAP §1 §inline-amendment
+(R5-PB-B) defines a **docs-only phase** sub-shape as a future
+precedent — Phase 38 itself opts out at execution but the sub-shape
+definition stays valid for closing-phase or pure-docs ships that
+follow.
 
 SHIPPED: `docs/usage/cookbook/text-realm.md` (read-side; transcribes
 Phase 32 Integration B per R3-PB-F); `docs/index.md` rewritten from
@@ -53,13 +57,17 @@ edits deferred to "Phase 38" across PHASE_MAP §5 (~15 ADR amendment
 texts that Model C makes parent-tree-only — left in parent tree, not
 backfilled at Phase 38 per R0 PB-6 out-of-scope).
 
-DESIGN SATURATION: 6 design rounds (R0+R1+R2+R3+R4+R5). 4 reversals
-across saturation — R1-PB-A reframed PB-5 (login already exists →
-flag, not new verb); R2-PB-A picked Falkor wire-up reverted by
-R3-PB-A (Local persistence unshipped at Phase 36); R3-PB-A reverted
-Local-write demo entirely to read-side; R4-PB-A overturned
-strict-lift (Model C structural blocker). R5 produced impl-locks only,
-zero reversals — matches Phase 36 R5 saturation signature.
+DESIGN SATURATION: 6 design rounds (R0+R1+R2+R3+R4+R5) + 1 post-design
+reversal round (R6). 5 reversals across saturation — R1-PB-A reframed
+PB-5 (login already exists → flag, not new verb); R2-PB-A picked
+Falkor wire-up reverted by R3-PB-A (Local persistence unshipped at
+Phase 36); R3-PB-A reverted Local-write demo entirely to read-side;
+R4-PB-A overturned strict-lift (Model C structural blocker); R6-PB-A
+reverted R3-PB-D + R5-PB-B's application-to-Phase-38 (docs-only ship
+→ code-shipping at tester preference for running `mindsos
+confirm-phase` wrapper). R5 produced impl-locks only with zero
+reversals — matches Phase 36 R5 saturation signature at design time.
+R6 is a post-design reversal captured mid-ship.
 
 ## Phase 36 — L2 hybrid validators home (2026-05-27)
 

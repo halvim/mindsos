@@ -15,8 +15,10 @@
 - **Pages with `last_confirmed_phase` front-matter:** 74 / 74 (100%).
   Phase 38 backfilled the 2 pre-existing gaps (dev/review-checklist.md
   + usage/knowledge/versioning.md).
-- **Pages with `last_design_only_phase` front-matter:** 1
-  (CHANGELOG.md only — convention adopted per CHANGELOG.md precedent;
+- **Pages with `last_design_only_phase` front-matter:** 0 after R6-PB-A
+  (CHANGELOG.md dropped the field when Phase 38 converted from
+  docs-only ship to code-shipping per R6-PB-A; prior to R6 it was 1
+  page). Convention adopted per CHANGELOG.md precedent;
   R4-PB-H "2-field when applicable" lock).
 - **Drift severity at closing phase:** see "Drift class" column below
   + the §"Drift discussion" section at the bottom.
@@ -69,7 +71,7 @@ For each `.md` under `docs/`:
 | `api/core/xref.md` | ✓ | 09 | — | per-phase API ref (09) | no | — |
 | `api/knowledge/identifiers.md` | ✓ | 12 | — | per-phase API ref (12) | no | — |
 | `api/knowledge/ref-types.md` | ✓ | 12 | — | per-phase API ref (12) | no | — |
-| `changelog/CHANGELOG.md` | ✓ | 36 | 38 | final pass at 38 | no | Phase 38 ship bumped both fields per R5-PB-G |
+| `changelog/CHANGELOG.md` | ✓ | 38 | (none) | final pass at 38 | no | Phase 38 ship bumped to single-field shape per R6-PB-A (was 36 + 38 design-only pre-R6) |
 | `concepts/admin-global-shipping.md` | ✓ | 15b | — | 15b (Phase 14a + 15b concept work) | no | — |
 | `concepts/global-local.md` | ✓ | 15a | — | 14 (+ amend 15a) | minor | amendment-history-lost |
 | `concepts/glossary.md` | ✓ | 38 | — | 38 (NEW at Phase 38) | no | — |

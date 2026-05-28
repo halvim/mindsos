@@ -1,10 +1,13 @@
-"""Phase 38 — docs-only ship sentinels.
+"""Phase 38 — closing-phase sentinels (design-time docs-only;
+execution-time converted to code-shipping at R6-PB-A).
 
 Extends the sentinel chain ``14a → 15a → 15b → 35 → 36 → 38``. ADRs +
 the parent-tree-only artifacts live in the parent project tree
 (``/Layered Intelligence/``) per Model C (``[[feedback-docs-source-
-of-truth]]``); Phase 38 ships zero ADR amendments (docs-only sub-
-shape per PHASE_MAP §1 §inline-amendment), so this sentinel file
+of-truth]]``); Phase 38 ships zero ADR amendments at design-time
+(R5-PB-B docs-only sub-shape definition still applies to Phase 38's
+*content*; the post-design R6-PB-A reversal applies only to *ship
+mechanics* — version bump + tag + release.yml). This sentinel file
 anchors the **halvim-tree** changes:
 
   1. PHASE_MAP §38 4-clause §inline-amendment present.
@@ -74,9 +77,10 @@ def test_phase_map_section_1_design_only_phase_extension() -> None:
     phase_map = _REPO_ROOT / "confirmation_docs" / "PHASE_MAP.md"
     content = phase_map.read_text(encoding="utf-8")
 
-    assert "§inline-amendment (Phase 38 ship per R5-PB-B)" in content, (
+    assert "§inline-amendment (Phase 38 ship per R5-PB-B" in content, (
         "PHASE_MAP §1 docs-only-phase extension missing — see Phase 38 "
-        "R5-PB-B + design log §3."
+        "R5-PB-B + design log §3. (Header may be followed by an R6-PB-A "
+        "supersession clause; substring match is loose.)"
     )
     # Anchor: the new sub-shape name (single-line, no wrap).
     assert "docs-only phase" in content

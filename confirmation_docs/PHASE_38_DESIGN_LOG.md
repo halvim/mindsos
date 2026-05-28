@@ -186,9 +186,26 @@ rounds supersede via the round numbers below.
 | PB-H | **NEW: §7 q5/q9/q10 RESOLVED-at-Phase-38 annotations** inline in §7. |
 | PB-I | **Declare R5 saturated; await `proceed`** — pattern matches Phase 36 R5 (impl-locks only, zero reversals). |
 
+### Round 6 — post-design reversal (tester preference)
+
+Captured 2026-05-28 post-impl, mid-ship. Tester preferred running the
+canonical `mindsos confirm-phase --phase 38 --notes-file
+notes-phase-38.md` wrapper to produce `PHASE_38_CONFIRMED.md` as a
+template-parity artifact with code-shipping phases. The wrapper's
+doctor preflight enforces `--phase NN` against
+`manifest.toml [mindsos] phase` and `docker-compose.yml` image tags
+(both at "36" / "phase36-*" after R3-PB-D's no-version-bump pick).
+Doctor refused: `--phase 38 mismatches manifest [mindsos] phase = '36'`.
+
+| PB | Pick |
+|---|---|
+| PB-A (**REVERSAL #5**) | **Convert Phase 38 from docs-only ship to code-shipping at execution.** Reverses R3-PB-D + R5-PB-B (sub-shape-application-to-Phase-38). 12-site version bump `+phase36 → +phase38` executed mid-ship: `pyproject.toml` + `mindsos_cli/manifest.toml` (version + phase fields) + `docker-compose.yml` (prod + test image tags) + 7 package `__init__.py` `__version__` literals. The PHASE_MAP §1 docs-only-phase sub-shape definition (R5-PB-B) stays valid as a future-precedent extension; Phase 38 itself opts out of it at execution. PR-to-main + tag `phase-38-confirmed` after squash-merge + release.yml runs on tag push. |
+| PB-B | **Artifact reconciliation:** PHASE_38_DESIGN_LOG (this §2 round), PHASE_MAP §38 Status line, PHASE_MAP §1 §inline-amendment (preserved-as-precedent + Phase-38-opted-out note), CHANGELOG.md Phase 38 entry, sentinel test module docstring, and the notes-phase-38.md input file all updated to reflect the execution-time conversion. The `mindsos_capacity/__init__.py` 5 deferral anchors stay as-is (R4-PB-D's L4-deferral picks are unaffected by ship shape). |
+| PB-C | **Docs-only-vs-code-shipping reconciliation rule of thumb (for L4/L5 follow-up plan):** design-time picks the convention; execution-time may revert if the tester finds the convention impractical. Record post-design reversals in DESIGN_LOG §2 as a separate round (this Round 6), not as inline `§inline-amendment` to the original round. Saturation count therefore becomes "6 design rounds + 1 post-design reversal round." |
+
 ### Saturation observation
 
-6 design rounds (R0+R1+R2+R3+R4+R5). 4 reversals across saturation:
+6 design rounds (R0+R1+R2+R3+R4+R5) + 1 post-design reversal round (R6). 5 reversals across saturation:
 
   1. **R1-PB-A** reversed R0-PB-5 (no new "session create" verb;
      `mindsos server login` already exists).
@@ -198,13 +215,22 @@ rounds supersede via the round numbers below.
      `--session-token` flag; revert to docs-only ship).
   4. **R4-PB-A** reversed R0-PB-3 + R2-PB-E (strict-lift structurally
      impossible; Model C remediation is L4/L5 scope).
+  5. **R6-PB-A** (post-design, mid-ship) reversed R3-PB-D + R5-PB-B's
+     application-to-Phase-38 (docs-only ship → code-shipping at
+     tester preference for running `mindsos confirm-phase` wrapper).
+     R5-PB-B's docs-only sub-shape definition stays as a future
+     precedent; Phase 38 itself opts out at execution.
 
-R5 produced impl-locks only, zero reversals — saturation matches the
-Phase 36 R5 signature. Each reversal was caused by probing reality
-that an earlier round had not probed. Lesson for future closing-
-phase work: probe deeply on the layer-state assumptions (persistence
-shipping status, Model C link state, in-memory-vs-Falkor) before
-locking the cookbook narrative.
+R5 produced impl-locks only, zero reversals — saturation matched the
+Phase 36 R5 signature at design time. R6 is a post-design reversal
+captured separately. Each design-time reversal (R1-R4) was caused by
+probing reality that an earlier round had not probed. R6 was caused
+by tester preference at execution overriding a design-time pick.
+Lesson for future closing-phase work: probe deeply on the layer-state
+assumptions (persistence shipping status, Model C link state,
+in-memory-vs-Falkor) before locking the cookbook narrative AND
+acknowledge that design-time picks about ship-shape may be reversed
+at execution if the tester prefers the canonical workflow.
 
 ## 3. Ship surface
 
@@ -252,6 +278,21 @@ locking the cookbook narrative.
   sentinel functions per R5-PB-D + R4-PB-C rename. Sentinel chain
   extends `14a → 15a → 15b → 35 → 36 → 38`.
 - **NEW** `confirmation_docs/PHASE_38_DESIGN_LOG.md` (this file).
+- **POST-DESIGN (R6-PB-A):** 12-site version bump
+  `+phase36 → +phase38` across `pyproject.toml`,
+  `mindsos_cli/manifest.toml` (version + phase fields),
+  `docker-compose.yml` (prod + test image tags), and 7 package
+  `__init__.py` `__version__` literals (`mindsos_admin`,
+  `mindsos_capacity`, `mindsos_cli`, `mindsos_core`,
+  `mindsos_instances`, `mindsos_knowledge`, `mindsos_server`).
+- **POST-DESIGN (R6-PB-A):** `notes-phase-38.md` hand-authored at
+  Mac as wrapper input (matches code-shipping per-phase convention
+  for Phase 02+).
+- **POST-DESIGN (R6-PB-A):** `confirmation_docs/PHASE_38_CONFIRMED.md`
+  generated by `mindsos confirm-phase --phase 38 --notes-file
+  notes-phase-38.md` from Linux test image (wrapper run replaces the
+  initially hand-authored draft that was created before R6-PB-A's
+  conversion decision; that draft was deleted from Mac).
 
 ### Parent tree (filesystem-only, Model C; no commit)
 
@@ -357,16 +398,24 @@ follow-up plan should treat these as the inherited backlog.
     proposing new verbs. R1-PB-A would have been caught at R0
     with `grep "@server_app.command"`.
 
-- **No version bump, no tag, no confirm-phase** per Phase 14a/15b/35
-  precedent extended to docs-only via PHASE_MAP §1 §inline-amendment
-  at Phase 38 R5-PB-B. The release.yml workflow is NOT invoked. The
-  PR-to-main is the confirmation; PR review is the ship gate.
+- **Design-time picked docs-only (R3-PB-D + R5-PB-B); execution-time
+  reverted to code-shipping (R6-PB-A).** Design-time rationale stood:
+  Phase 38 has zero net-new runtime code, so the design picked
+  docs-only-shape (Phase 14a/15b/35 precedent). At ship execution the
+  tester preferred running `mindsos confirm-phase` per the
+  code-shipping convention; the wrapper's doctor preflight enforces
+  manifest parity, so the conversion required the 12-site version bump
+  + image retag. R5-PB-B's docs-only sub-shape definition stays
+  precedent-valid for future phases. release.yml runs on the
+  `phase-38-confirmed` tag after PR squash-merge.
 
 - **Two-machine workflow** (`[[user-two-machine-setup]]`): Mac for
-  file edits + git + PR; Linux not strictly needed for this phase
-  (no docker test runs; no `mindsos confirm-phase`). The Phase 38
-  ship is Mac-only-runnable — first phase since 14a where Linux
-  participation is optional.
+  file edits + git + PR; Linux required for the docker test image
+  rebuild + sentinel run + cumulative regression + `mindsos
+  confirm-phase` wrapper invocation. (Design-time R3-PB-D had made
+  Linux optional for this phase; R6-PB-A's docs-only → code-shipping
+  conversion at execution restored the standard two-machine
+  pattern.)
 
 - **Branch off `main`** at HEAD = Phase 36 squash sha `72ca8fc`
   per PHASE_MAP §1 "branch off `origin/main`, never off prior
