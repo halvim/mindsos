@@ -1,3 +1,23 @@
+# Phase 38 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+Closing-phase ship — text-realm cookbook (read-side; transcribes Phase 32 Integration B) + page-inventory audit + PHASE_MAP §1 docs-only-phase sub-shape definition (design-time docs-only; execution-time code-shipping per R6-PB-A)
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
 ### Background
 
 Phase 38 closes the L0-L3 numbered-phase rollout. Design-time picked
@@ -297,8 +317,8 @@ generalization.
 - **Branch off main** at HEAD = Phase 36 squash sha `72ca8fc` per
   PHASE_MAP §1 "branch off `origin/main`, never off prior phase's
   branch." Branch name `phase-38`. Commit shas: `1e44152` (initial
-  14-file ship) + R6 conversion commits (version bump + artifact
-  reconciliation + notes-phase-38.md hand-author) + wrapper-generated
+  14-file ship) + `6e08b92` (R6 conversion: 16-file version bump +
+  artifact reconciliation + notes-phase-38.md) + wrapper-generated
   `PHASE_38_CONFIRMED.md` commit from Linux.
 - **Sentinel chain** extends `14a → 15a → 15b → 35 → 36 → 38`. Chain
   member filenames follow the pattern of the closest ancestor that
