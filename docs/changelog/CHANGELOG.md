@@ -1,12 +1,245 @@
 ---
-last_confirmed_phase: 16
-last_design_only_phase: 17
+last_confirmed_phase: 36
+last_design_only_phase: 38
 ---
 
 # Changelog
 
-Append-only, one line per shipped phase. Phase 38 consolidates into a
-release-style summary.
+Append-only, one line per shipped phase. Phase 38 closing the L0-L3
+numbered-phase sequence (Phase 37 RETIRED 2026-05-19).
+
+## Phase 38 — Docs-only ship: text-realm cookbook + closing-phase audit (2026-05-27)
+
+**Docs-only phase per PHASE_MAP §1 design-only-exception extension
+(R5-PB-B; sub-shape "docs-only" added).** No version bump, no
+`phase-38-confirmed` tag, no `mindsos confirm-phase`. Sentinel chain
+extends `14a → 15a → 15b → 35 → 36 → 38`. PR-to-main via `phase-38`
+branch.
+
+SHIPPED: `docs/usage/cookbook/text-realm.md` (read-side; transcribes
+Phase 32 Integration B per R3-PB-F); `docs/index.md` rewritten from
+Phase 00 stub to v4 homepage; NEW `docs/getting-started/whats-new-v4.md`
+(v4 release headlines + L4/L5 carry-forward list); NEW
+`docs/concepts/glossary.md` (terms-of-art reference). Front-matter
+backfill on 2 pages (`dev/review-checklist.md` + `usage/knowledge/
+versioning.md`). CHANGELOG.md backfilled with the missing per-phase
+entries (Phases 18-36 + 14a + 35; R5-PB-G). `mkdocs.yml` nav extended
+for the 3 authored pages + new "Cookbook" subsection under "Usage".
+`mindsos_capacity/__init__.py` 5 deferral anchors updated from
+"Phase 30+/32+" to "deferred to L4 follow-up plan per Phase 38
+R4-PB-D" (R5-PB-C). PHASE_MAP §38 4-clause §inline-amendment
+(R5-PB-A); PHASE_MAP §1 1-clause docs-only-phase extension (R5-PB-B);
+PHASE_MAP §6 sub-table edits — 5 rows marked **out of scope**
+(`nlu-slice.md`, `code-slice.md`, `facts-and-figures.md`, `layers.md`,
+`society-of-mind.md`); PHASE_MAP §7 q5/q9/q10 inline RESOLVED
+annotations. NEW `confirmation_docs/PHASE_38_PAGE_INVENTORY.md`
+(7-column audit per R5-PB-E). NEW `tests/phase_38/
+test_phase_38_doc_sentinels.py` (6 sentinel functions per R5-PB-D).
+
+DEFERRED TO L4/L5 follow-up plan (consolidated carry-forward list):
+`mindsos capacity invoke --session-token` CLI flag (Phase 30 PB-30(a);
+R3-PB-B); Falkor-backed L3 bootstrap (Phase 30 CF #3; R3-PB-A);
+`FalkorDBLocalPersister` + Local-write end-to-end CLI demo (R3-PB-A);
+`add_type_compat` admin API + bulk rediscover; `include_deprecated`
+parameter discipline across L3 walks; `--install-builtins=<family>`
+CLI flag on `invoke`; `mkdocs build --strict` lift (Model C ADR-link
+structural blocker; R4-PB-A); 4 unconsumed L2 validators
+(`validate_local_to_global_ref`, `validate_alignment_role_naming`,
+`validate_ref_type`, `validate_promotion_candidate`); `handle.
+validate_xref` body; `docs/usage/cookbook/nlu-slice.md` +
+`code-slice.md`; `docs/getting-started/facts-and-figures.md`;
+`docs/concepts/layers.md` + `society-of-mind.md`; per-phase ADR file
+edits deferred to "Phase 38" across PHASE_MAP §5 (~15 ADR amendment
+texts that Model C makes parent-tree-only — left in parent tree, not
+backfilled at Phase 38 per R0 PB-6 out-of-scope).
+
+DESIGN SATURATION: 6 design rounds (R0+R1+R2+R3+R4+R5). 4 reversals
+across saturation — R1-PB-A reframed PB-5 (login already exists →
+flag, not new verb); R2-PB-A picked Falkor wire-up reverted by
+R3-PB-A (Local persistence unshipped at Phase 36); R3-PB-A reverted
+Local-write demo entirely to read-side; R4-PB-A overturned
+strict-lift (Model C structural blocker). R5 produced impl-locks only,
+zero reversals — matches Phase 36 R5 saturation signature.
+
+## Phase 36 — L2 hybrid validators home (2026-05-27)
+
+NEW `mindsos_knowledge/validators.py` — 5 pure-function semantic
+validators (`validate_role_routing`, `validate_local_to_global_ref`,
+`validate_alignment_role_naming`, `validate_ref_type`,
+`validate_promotion_candidate`) + `ValidationResult` + adapter
+registry `_VALIDATORS_BY_ROLE` (2 entries: memories + problem-trace).
+NEW `SemanticValidationError(KnowledgeError)` carrying `.result`.
+`KLWriteHandle.validate_node` body wired via adapter dispatch mirror
+of `_IRI_BUILDERS` (R3-PB-A); `validate_xref` body stays raising
+(per-flow deferred per ADR-0139 §am-1 clause 3). `consolidate.py` +
+`trace.py` capacity bodies add `handle.validate_node` precondition
+before `write_and_validate`. ADR-0139 Proposed → Accepted via
+§amendment-1 (3 clauses). ADR-0143 §Impl Phase 36 footer.
+`docs/dev/internals/knowledge.md` §Validator surface NEW.
+`docs/dev/review-checklist.md` §4 NEW. 11-site version bump
+`+phase34 → +phase36`. 3 hotfixes (B-36-T1 manifest `phase` field,
+B-36-T2 export-slate literal-decay, B-36-T3 PHASE_MAP sentinel
+line-wrap). 3373/57 cumulative.
+
+## Phase 35 — Design-only: ADR-0147 §amendment-1 ratification (2026-05-27)
+
+**Design-only phase per PHASE_MAP §1 exception.** No version bump,
+no tag, no `confirm-phase`. ADR-0147 (L3 per-flow write capacity
+build pattern) Proposed → Accepted via §amendment-1 (3 clauses:
+criterion-(a) reframe under two-step ramp; anticipatory carve-out
+for Phase 33+34 shipped capacities; per-flow strict forward).
+PHASE_MAP §35 §inline-amendment clarifies features-line.
+`tests/phase_35/test_adr_amendment_sentinels.py` only test surface.
+Sentinel chain extends `14a → 15a → 15b → 35`.
+
+## Phase 34 — L3 symmetric write contract (ADR-0146) (2026-05-26)
+
+NEW write-capacity body envelope contract per ADR-0146; conditional
+KL injection on `CapacityLayer.invoke` (`context["kl"]` only set when
+`self._kl is not None`). 2 wired write capacities: `consolidate:mm`
+(Local memory write) + `trace:problem` (Global problem-trace write).
+`KnowledgeLayer.writeable(session, role, scope, version) ->
+KLWriteHandle` shipped (Phase 33-34 two-step ramp;
+`write_and_validate` body wired at 34). FUNCTIONAL_CATEGORIES grows
+13 + `CATEGORY_CONSOLIDATE`. ADR-0146 Proposed → Accepted via
+§amendment-1.
+
+## Phase 33 — L3 first write-capacity surface (ADR-0145) (2026-05-26)
+
+First L3 write capacity declarations + `KLWriteHandle` stub at L2.
+2 capacities (`consolidate:mm` + `trace:problem`) per ADR-0147 narrow
+scope. ADR-0146 flipped Proposed → Accepted via §amendment-1.
+ADR-0143/0145/0147 §Impl footers. FUNCTIONAL_CATEGORIES 12 → 13.
+__all__ 97 → 110.
+
+## Phase 32 — Integration B: L0+L1+L2+L3 read-side end-to-end (2026-05-26)
+
+Single `test_integration_b` scenario + 11 step helpers + ScenarioState.
+Server bootstrap → admin login → KL bootstrap+import (TextFixtureImporter)
+→ L3 Global+Local bootstrap → install_text_capacities → find pipeline
+→ CLI invoke → problem-trace tail → logout → re-login → query-audit.
+Co-resident execution NOT co-resident persistence — L1/L2 in FalkorDB
+via `bootstrap_global_pair_from_falkordb`; L3 in-memory Python rebuilt
+per CLI invoke. Zero src + zero ADR + zero hotfixes (first integration
+phase to ship hotfix-free). 3235/49 cumulative.
+
+## Phase 31 — L3 residents + built-in text capacities (2026-05-25)
+
+NEW `mindsos_capacity/builtins/` subpackage (text builtins:
+`capacity:perception:text.space_split` + `text.sentence_split` +
+`install_text_capacities` with partial-state idempotency). NEW
+`ResidentSubscription` + `ResidentError` + per-layer `_subscriptions`
+dict + 3 `CapacityLayer` resident methods. NEW `mindsos capacity invoke`
+CLI verb (hybrid exit codes: 0/1/2/3; `--json` always exits 0).
+`__all__` 95 → 97. ADR-0073 §amendment-1. 3 hotfixes
+(B-31-T0/T1/T2: pre-emptive version sentinel, install probe wrong
+index, Phase 29 forward-anchor count sentinel).
+
+## Phase 30 — L3 Pipeline finder + invoke runtime + ProblemTraceRecord (2026-05-25)
+
+NEW `runtime.py` + `pipeline.py` + `invoke()` method on `CapacityLayer`
++ `problem_trace` attribute + `InvocationResult`/`call_capacity` exports
++ `Pipeline`/`Step` + `ProblemTraceRecord`/Sink. NEW `mindsos capacity
+find` + `problem-trace tail` CLI verbs (NO `invoke` — Phase 31). __all__
+84 → 95. Residents deferred to Phase 31. ADR-0066/0071/0072/0074
+touched.
+
+## Phase 29 — L3 Discovery + Constraints (2026-05-25)
+
+TYPE_COMPAT auto-discovery via category type-table + `SuccessorHop`
++ `find_walks` + rediscover + `DiscoveryFailedError`. NEW `discovery.py`.
+3115/40 cumulative.
+
+## Phase 28 — L3 12 categories + dual metagraph + role-graph bootstrap (2026-05-25)
+
+`CapacityLayer` class + `bootstrap()` + Local-wins resolution +
+`CAN_WRITE_GLOBAL` cap gate (ADR-0078 UPPERCASE). 6 NEW src files +
+~107 test cases. ADR-0078 + ADR-0080 + ADR-0118 §am5 (`:IN_GRAPH`
+Cypher patch closing B-26b-T5). Phase 15b PB-23 RESOLVED. 3073/37
+cumulative.
+
+## Phase 27 — L3 DataStates + capacity primitives (2026-05-25)
+
+First L3 ship. NEW `mindsos_capacity/` package (7th top-level). 5-file
+slim port. ADR-0066 §Implementation + ADR-0067 §am1.
+
+## Phase 26b — Integration A scenario + B-26a-T4 closure (2026-05-24)
+
+NEW `bootstrap_global_pair_from_falkordb` symmetric pair helper. 13-substep
+CliRunner scenario. ADR-0118 §am4 two-store decomposition. 2931/28
+cumulative. 8 hotfixes B-26b-T1..T8 (most across Phase 26).
+
+## Phase 26a — FalkorDB persistence wiring substrate (2026-05-23)
+
+`bootstrap_kl_from_falkordb` + `MetagraphLoader.find_by_name` + 19th
+DEFAULT_INDEX. ADR-0118 §am3 + ADR-0010 §am2 + ADR-0123 §am1.
+2923/28 cumulative.
+
+## Phase 25 — Server cross-user-read substrate (2026-05-23)
+
+`read_other_local` ctx mgr + `_installed_locals` refcount per ADR-0008
++ I-S3 invariant + `UserMutexRegistry` first consumer. NEW
+`mindsos_knowledge/types.py` + `mindsos_server/orchestrator.py` +
+`mindsos_server/persistence/`. `SessionProtocol` first ship (ADR-0040).
+`LocalPersister` Protocol + `InMemoryLocalPersister` (ADR-0011 §am2 —
+Metagraph at v1; SQLite/Falkor defer). Latent Phase 24 FK bug closed
+via `UserHasPromotionHistoryError` + exit code 10. ADR-0114 §am4.
+
+## Phase 24 — Server per-user transactional promotion (2026-05-23)
+
+`mindsos server release {propose-for-promotion, ship}` CLI subgroup +
+`mindsos_admin/{promotion,audit_gate}.py` NEW +
+`mindsos_server/{release,locks}.py` NEW. Schema v3 → v4. ADMIN_CAPS
+7 → 9 (`CAN_PROPOSE_MUTATION` + `CAN_APPROVE_RELEASE`). 4 EVT_* NEW.
+Phase 24 v1 = SQLite + in-memory only; FalkorDB Cypher contracts
+documented in ADR-0118 §am2 as Phase 26 contracts. ADRs 0114/0115
+drafted + Accepted; ADR-0120 Proposed; ADR-0007 Superseded. 5
+hotfixes B-24-T1..T5. 2866/28 cumulative.
+
+## Phase 22 — Server admin ops (2026-05-22)
+
+6 admin verbs under `mindsos server admin` Typer subgroup
+(`promote-user`/`demote-user`/`disable-user`/`enable-user`/`kill-session`/
+`hard-delete-user`) + `_assert_not_sole_admin` helper + `LastAdminError`/
+`AlreadyAnAdminError`/`SessionNotFoundError` + `admin_tx` BEGIN
+IMMEDIATE wrapper. ADR-0012 §am3 (6 clauses) + ADR-0008 §am1.
+Exit codes 4/5/6 NEW. 2802/28 cumulative.
+
+## Phase 21 — Server audit log (2026-05-22)
+
+`mindsos server query-audit --json` CLI verb. Audit log SELECT/INSERT
+ordering rule (B-21-T1 lesson: SELECT returns its own results MINUS
+the EVT_AUDIT_QUERY row written after the SELECT runs).
+
+## Phase 20 — Server admin reset (2026-05-22)
+
+`mindsos server reset-admin <user_id>` + NEW `mindsos_server/admin.py`.
+`UserNotFoundError` + `NotAnAdminError`. ADR-0012 §am2 6-change batch.
+`EVT_KILL_SESSION` + `EVT_ADMIN_ENABLE_USER` first-fires. 2611/28
+cumulative.
+
+## Phase 19 — Server sessions (2026-05-21)
+
+`login`/`logout`/`session_from_token`/`kill_my_own_sessions` +
+`SessionTTL` injection + `InvalidSessionError` unified cause enum.
+`LocalPersister` + `MindsOSServer` class deferred to P25 (PB-2 + PB-13).
+`verify()` refactored to pure predicate (PB-9). 5 ADR §am1
+(0003/0004/0005/0011/0013). 2563/28 cumulative.
+
+## Phase 18 — Server user store + auth (2026-05-21)
+
+First server layer ship. Argon2id user store + 7-cap roster + Session +
+audit substrate. NEW pkg `mindsos_server/` (6th top-level via 7-site
+checklist). 5 ADR §am1 (0002/0012/0041/0044/0046). 2457/28 cumulative.
+2 hotfixes (lockfile regen, Click 8.2 `mix_stderr` drop).
+
+## Phase 14a — Design-only: L2 knowledge lifecycle (2026-05-18)
+
+**Design-only phase per PHASE_MAP §1 exception (FIRST design-only
+phase under §1).** No version bump, no tag, no `confirm-phase`.
+ADR-0150 Accepted (renamed "L2 role-set closure (Flavor B rejection)";
+option-(a) amendment escape). 4 concept docs + 12-phase mapping table.
+mkdocs Concepts > Knowledge lifecycle group.
 
 ## Phase 17 — RETIRED (2026-05-20)
 
