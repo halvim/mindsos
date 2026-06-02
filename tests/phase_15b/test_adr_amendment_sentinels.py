@@ -23,7 +23,7 @@ import pytest
 # Parent-project ADR dir: halvim_mindsos/tests/phase_15b/ →
 # halvim_mindsos/tests/ → halvim_mindsos/ → /Layered Intelligence/.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_ADR_DIR = _REPO_ROOT.parent / "docs" / "decisions" / "adr"
+_ADR_DIR = _REPO_ROOT / "docs" / "decisions" / "adr"
 
 
 def _skip_if_adr_dir_missing() -> None:

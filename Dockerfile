@@ -168,12 +168,10 @@ COPY mindsos_capacity ./mindsos_capacity
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
-# Phase 10 B-10-T5 — bake notes-phase-NN.md into the prod image so
-# `docker compose run --rm mindsos confirm-phase --notes-file notes-phase-NN.md`
-# can find them at /app/notes-phase-NN.md. Phase 02-09 worked because
-# the tester ran `mindsos confirm-phase` host-native (pip install -e .);
-# the docker invocation path needs the explicit COPY.
-COPY notes-phase-*.md ./
+# A0-1 — notes-phase-NN.md files relocated to confirmation_docs/notes/
+# and are now baked via the `COPY confirmation_docs` above. The host-side
+# `mindsos confirm-phase --notes-file ...` invocation now passes a
+# `confirmation_docs/notes/notes-phase-NN.md` path (or runs from that dir).
 
 RUN pip install --no-cache-dir --no-deps .
 
@@ -245,9 +243,8 @@ COPY tests_server ./tests_server
 COPY .github ./.github
 COPY docker-compose.yml ./
 COPY confirmation_docs ./confirmation_docs
-# Phase 10 B-10-T5 — same COPY in the test stage so tests/ that read
-# notes-phase-NN.md (if any) can find them. Symmetric with prod.
-COPY notes-phase-*.md ./
+# A0-1 — notes relocated to confirmation_docs/notes/; covered by the
+# `COPY confirmation_docs` above. Symmetric removal in prod stage.
 # Phase 34 B-34-T2 — tests/phase_34/test_review_checklist_file.py reads
 # docs/dev/review-checklist.md (ADR-0143 §Accept criterion (c)) at
 # /app/docs/. Phase 34 is the first phase whose tests depend on a docs/

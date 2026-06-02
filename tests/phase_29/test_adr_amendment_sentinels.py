@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 
-_PARENT_ADR_DIR = Path("/Layered Intelligence/docs/decisions/adr")
+_PARENT_ADR_DIR = Path(__file__).resolve().parents[2] / "docs" / "decisions" / "adr"
 
 
 _AMENDMENTS = [

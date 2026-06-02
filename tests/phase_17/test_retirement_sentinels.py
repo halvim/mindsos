@@ -121,7 +121,7 @@ def test_knowledge_active_version_verb_NOT_registered() -> None:
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_ADR_DIR = _REPO_ROOT.parent / "docs" / "decisions" / "adr"
+_ADR_DIR = _REPO_ROOT / "docs" / "decisions" / "adr"
 
 
 def _skip_if_adr_dir_missing() -> None:

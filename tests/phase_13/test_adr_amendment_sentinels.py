@@ -25,7 +25,7 @@ import pytest
 # so the parent is two levels up: halvim_mindsos/tests/phase_13/ →
 # halvim_mindsos/tests/ → halvim_mindsos/ → /Layered Intelligence/.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_ADR_DIR = _REPO_ROOT.parent / "docs" / "decisions" / "adr"
+_ADR_DIR = _REPO_ROOT / "docs" / "decisions" / "adr"
 
 
 def _adr_dir_reachable() -> bool:

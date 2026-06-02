@@ -31,7 +31,7 @@ import pytest
 # directory (per Model C; halvim_mindsos has no .git of its own at the
 # parent level — `..` is the /Layered Intelligence/ workspace root).
 _PARENT_ADR_DIR = (
-    pathlib.Path(__file__).resolve().parents[3]
+    pathlib.Path(__file__).resolve().parents[2]
     / "docs" / "decisions" / "adr"
 )
 

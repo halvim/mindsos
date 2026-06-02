@@ -1,0 +1,203 @@
+# Phase 05b — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+L1 IntergraphEdge (binary 1-1, ADR-0148 first draft) + IntergraphEdgeType + MetagraphSchema container; new `mindsos metagraph-schema` top-level subapp + 5 new `mindsos metagraph` subcommands (add/remove/list-intergraph-edges + attach/detach-schema) + 4-way set-prop mutex (Pushback 27-A); metagraph state-file v=1→v=2 cumulative one-way migration (intergraph_edges + schema_name); new metagraph-schema-<n>.json v=1 state-file kind; CompositionalImmutableError re-shipped; Metagraph.mint_id (ADR-0131) landed; ADR-0117 already Withdrawn in 05a (05b skips that flip)
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Tester recipe (Linux box, host venv with Python 3.12):
+
+Tester run on 2026-05-06 from Linux box. Final cumulative result:
+**740 passed, 2 skipped** in-container
+(`docker compose run --rm mindsos-test pytest tests/`). The 2 skips
+are the existing `test_mkdocs_buildable.py` (mkdocs not in test image)
+and `test_restore_node_registers_provided_id` (Phase 08 deferral).
+Sandbox-projected 660-700; actual +40 over projection — within tolerance
+(symmetric to 05a's "+18 over projection" pattern).
+
+Row was locked across 6 reanalysis rounds in design chat; 34 numbered
+pushbacks accepted; 4 future-work entries filed at
+`_source_backup/root/mindsos_future_plans.md` (Pushbacks 25-B, 31-B,
+33-B, 34-B). Round 1-6 implementation-chat amendments folded per
+PHASE_MAP §5 row Final amendments (1-C / 2-A / 3-A / 4-A / 5-A / 6-A /
+7-A / 8-A / 9-A / 10-A / 11-A / 12-A / 13-A / 14-A / 15-B / 16-A /
+17-A / 18-A / 19-B / 20-A / 22-A / 23-A / 24-hybrid / 25-A / 26-A /
+27-A / 28-A+DMS-A / 29-A / 30-A / 31-A / 32-A+D / 33-A / 34-A + test
+budget unlimited per `feedback_test_budget_unlimited.md`).
+
+### Hotfix ledger (issues surfaced during tester run; fixed in same chat)
+
+- **B-05b-T1** — initial in-container pytest failed 17 of 740 with
+  `IdentityError: IntergraphEdge source node 'n_cat' not in graph 'lex'`.
+  Root cause: 3 CLI test fixtures (`test_cli_intergraph_edge.py` +
+  `test_cli_metagraph_schema.py` + `test_dms_a.py`) used `--value cat`
+  for `mindsos graph add-node` but Phase 03's add-node takes value as
+  POSITIONAL. Fix: `add-node "cat" --name lex --node-id n_cat --type Word`
+  (positional first). Also corrected the manual-exploration recipe in
+  the implementation log §9 / `notes-phase-05b.md`.
+- **B-05b-T2** — after T1 fix, in-container pytest still failed 17/740
+  with the same error message. Root cause: stale `mindsos:phase05b-test`
+  Docker image (built before T1 fix landed). Fix: `docker compose build
+  mindsos-test` rebuilds the test stage with the corrected fixtures.
+  3 of the 17 still failed after rebuild (logic bugs in tests, not the
+  fixture issue).
+- **B-05b-T3** — `test_replace_works_on_intergraph_edge` asserted
+  `{"b": "2"}` but `_parse_props` tries JSON first, so `"2"` parses
+  to int 2. Fix: assertion changed to `{"b": 2}`.
+- **B-05b-T4** — `test_validated_count` had confused logic ("ms1 already
+  attached from above" comment was wrong; nothing was attached). Fix:
+  rewrote test to add an edge before attach, verify
+  `validated_intergraph_edges == 1` in JSON.
+- **B-05b-T5** — `test_eager_validation_failure` had two contained
+  graphs both using node id `"n"` which collides via the unified
+  IdentityRegistry (Q5-A) and silently aborts the second add-graph,
+  leaving 0 edges to validate at attach time. Fix: per-graph unique
+  node ids (`n_lex`, `n_cpt`).
+- **B-05b-T6** — manual Step 11.7 (`metagraph remove-graph` on a graph
+  with a compositional incident) leaked a Python traceback because the
+  CLI handler caught only `IdentityError`, not `CompositionalImmutableError`.
+  The atomic precheck (Pushback 17-A) raised correctly at the model
+  layer; only CLI presentation was broken. Fix: add `except
+  CompositionalImmutableError as e: typer.echo(...); raise typer.Exit(1)`
+  in `remove-graph` CLI handler. Tester reinstalled venv (`pip install
+  -e .`) to pick up the CLI change for manual exploration.
+
+After all 6 hotfixes shipped on `phase-05b` branch and a fresh
+in-container rebuild + pytest: 740 passed, 2 skipped (canonical
+baseline for 05b).
+
+### Manual exploration outcomes (Phase 05b surface)
+
+- **Steps 5-7 build fixture** — `graph create lex --role lexicon` +
+  `graph add-node cat --name lex --node-id n_cat --type Word`
+  (positional value, NOT `--value`); same for cpt + Concept node;
+  `metagraph create mg`; `metagraph add-graph` for both. All exit 0;
+  graph state files carry `metagraph_name: "mg"` back-pointer (B2);
+  metagraph state file v=2 with `intergraph_edges: []` and
+  `schema_name: null` defaults populated by the v=1→v=2 migration step.
+- **Step 6 metagraph-schema create + add-intergraph-edge-type** —
+  strict ms1 with EVOKES (Word → Concept, lexicon → concepts,
+  weight=float). Exit 0; no stderr warning (schema not yet attached).
+- **Step 7 attach-schema --json** — Pushback 30-A shape locked:
+  `{"metagraph": "mg", "previous_schema": null, "new_schema": "ms1",
+  "validated_intergraph_edges": 0}`. No role-mismatch stderr (schema
+  roles satisfied).
+- **Step 8 add-intergraph-edge** — happy path with weight=0.5
+  property; JSON output includes `"compositional": false`,
+  `"source_graph": "lex"`, `"target_graph": "cpt"`.
+- **Step 9 inspect + list-intergraph-edges --json** — Pushback 18-A
+  v=2 shape extension confirmed: `counts.intergraph_edges == 1`,
+  `schema_name: "ms1"`, `_state_version: 2`. List entry shape locked.
+- **Step 10 schema rejection paths** —
+  - **DEVIATION**: Step 10.1 expected `CypherError` for
+    `--type lowercase_invalid` but got `UnknownTypeError` because the
+    14-step validation order has step 8 (schema-required-type lookup)
+    before step 12 (IntergraphEdge construction triggering
+    `__post_init__` cypher regex). With schema attached, schema
+    rejection fires first regardless of cypher shape. Recipe corrected
+    for future tester. Step 10.2 (UNKNOWN_TYPE) and 10.3
+    (PropertyShapeError on `weight=not_a_float`) match expected.
+- **Step 11 compositional + atomic precheck** —
+  - `metagraph-schema add-intergraph-edge-type --schema ms1 --type-name
+    COMPOSED_OF` emitted Pushback 23-A stderr warning listing attached
+    metagraphs ('mg').
+  - detach + re-attach surfaces the new vocab; Pushback 32-D fresh
+    validation; `validated_intergraph_edges: 1` after re-attach.
+  - `add-intergraph-edge --type COMPOSED_OF --compositional
+    --intergraph-edge-id comp1` exit 0 with "compositional" marker.
+  - `remove-intergraph-edge --intergraph-edge-id comp1` →
+    `CompositionalImmutableError` exit 1 with recovery hint (Pushback
+    6-A).
+  - `set-prop --intergraph-edge-id comp1 --prop k=v` →
+    `CompositionalImmutableError` exit 1 (design §4.3).
+  - `metagraph remove-graph --name mg --graph lex` →
+    `CompositionalImmutableError` exit 1, atomic precheck refusal
+    naming `comp1` and the recovery hint (Pushback 17-A). State
+    unchanged: `counts.graphs == 2`, `counts.intergraph_edges == 2`.
+- **Step 12 4-way set-prop mutex (Pushback 27-A)** —
+  - **DEVIATION**: original recipe used `--prop tag=primary` which
+    strict-mode EVOKES (declared `property_types={weight: float}`)
+    refused via `PropertyShapeError`. Substituted `--prop weight=0.7`
+    to test the mutex path; merge worked; JSON output `"kind":
+    "intergraph_edge"`, `"properties": {"weight": 0.7}`. Strict-mode
+    rejection working correctly as a side-finding.
+  - Mutex violation `--on-metagraph --intergraph-edge-id <id>` →
+    exit 2 with `Specify exactly one of --on-metagraph,
+    --metaedge-id, --metahyperedge-id, or --intergraph-edge-id
+    (Pushback 27-A 4-way mutex).`
+- **Step 13 DMS-A recovery (Pushback 28-A)** — manual delete of
+  `metagraph-schema-ms1.json`; `metagraph detach-schema --name mg
+  --json` exit 0 with `"previous_schema": "ms1", "detached": true,
+  "used_raw_fallback": false`. File-missing handled silently in
+  rehydrator (no raw-JSON fallback needed for this case; raw-fallback
+  fires only on file-malformed).
+- **Step 14 metagraph-schema reset orphan check (Pushback 20-A)** —
+  re-create + re-attach ms1 → mg; `reset --name ms1` (no force)
+  refused exit 1 listing referencing metagraphs; `reset --name ms1
+  --force --yes --json` exit 0, `"deleted": ["ms1"]`,
+  `"stripped_back_pointers": ["mg"]`; verified `mg.schema_name ==
+  None` post-strip via `metagraph inspect`.
+- **Step 15 cleanup + confirm-phase** —
+  - **DEVIATION**: `mindsos graph reset --name lex --force` rejected
+    with `No such option: --force`. Phase 03 `graph reset` only takes
+    `--name | --all` (no `--force` flag). Plain `mindsos graph reset
+    --name lex` worked since Step 15.1 (`metagraph reset --name mg
+    --force --yes`) already stripped the metagraph_name back-pointers.
+    Recipe corrected for future tester.
+
+### Optional smoke checks (post-cleanup; Pushback 18-A reservation runtime + new subapp wired)
+
+- `metagraph create --name x --prop _compositional=true` →
+  `PropertyShapeError: ... '_compositional' is reserved ...` exit 1.
+- `metagraph create --name x --prop intergraph_edges=foo` → reserved.
+- `metagraph create --name x --prop schema_name=foo` → reserved.
+- `metagraph-schema list --json` → exit 0, empty array (subapp wired).
+- `metagraph list --json` → exit 0, empty array.
+- Empty MetagraphSchema attach + role-mismatch → Pushback 19-B stderr
+  warning fires correctly (`schema 'X' references roles {...} not
+  satisfied by any contained graph`).
+
+### Doctor self-test
+
+- `FALKORDB_HOST=localhost mindsos doctor --self-test --static-only`
+  passed cleanly. Manifest + pyproject + `mindsos_cli/__init__.py`
+  version strings all read `0.0.0+phase05b`; compose image-tag drift
+  check covers `phase05b-prod` / `phase05b-test`. No new regex sites
+  needed (05a's `phase\d{2}([a-z]|-v\d+)?-(prod|test)` extension still
+  covers).
+
+### Phase 05c chat — load-bearing reminder (CASC-1 lock)
+
+Phase 05c row refinement does NOT begin until phase-05b-confirmed is
+tagged + pushed (CASC-1 strict sequential cascade). Phase 05c
+inherits 05b's locked decisions plus its own scope: IntergraphHyperEdge
+(n-ary, NOT 1-1, asymmetric anchors+members) + IntergraphHyperEdgeType
++ MetaEdgeType + MetaHyperEdgeType (the latter two deferred from 05b
+per Pushback 1-C scope split). Metagraph state-file v=2 → v=3 (adds
+intergraph_hyperedges); metagraph-schema state-file v=1 → v=2 (adds 3
+new vocab maps). ADR-0148 amended to include n-ary primitive.
+
+### Host venv
+
+Python 3.12.x on Linux box. `pip install -e .` re-run after `git pull`
+to phase-05b — picked up new `mindsos_cli.commands.metagraph_schema`
+subapp + the 4 new files (`mindsos_core.models.intergraph_edge`,
+`mindsos_core.schema.metagraph_schema`,
+`mindsos_cli.commands.metagraph_schema`,
+`mindsos_cli.migrations.metagraph_schema`); existing wildcard
+`[tool.setuptools.packages.find].include = ["mindsos_cli*",
+"mindsos_core*"]` covers them. `which mindsos` resolves to the venv's
+bin directory. After Hotfix-7 (`remove-graph` traceback fix), tester
+re-ran `pip install -e .` to pick up the CLI change for manual
+exploration. `confirm-phase` preflight (`doctor --self-test
+--static-only`) ran cleanly before this doc was written.

@@ -1,0 +1,72 @@
+# Phase 22 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+Server: admin ops
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Phase 22 — Server: admin ops. SHIPPED + TESTED 2026-05-22.
+
+Automated tests (Linux Docker, mindsos:phase22-test):
+- tests/phase_22/ — 107 passed, 0 failed in ~104s (16 test files).
+- tests/ cumulative — 2802 passed, 28 skipped, 0 failed in ~27m (Phase 21 baseline 2695 + 107 new P22 = 2802 exactly).
+- tests_server/integration/test_layer_isolation.py — 1 passed (L0 isolation enforced; no domain pkg imports mindsos_server).
+- 1 hotfix B-22-T1 during ship: 5 test verification queries used `SELECT id FROM sessions` which raises "no such column: id" (P19 schema's PK is `session_id`, no `id` column). DELETE operations themselves were correct; only the verification SQL was wrong. Fixed across 4 test files (5 line edits) in one commit.
+
+Doctor self-test: green on phase-22 branch. 6-package version parity at 0.0.0+phase22. Schema_version unchanged at 3 (no schema bump at P22).
+
+Manual smoke (host-native via mindsos binary per feedback_smoke_harness_host_native.md):
+- bootstrap admin + login + whoami PASS.
+- admin_promote_user happy path PASS; AlreadyAnAdminError exit 5 PASS (R1 PB-3 — no idempotent re-promote).
+- admin_demote_user happy (sessions_killed=0) PASS; LastAdminError exit 4 on sole-admin demote PASS; message embeds the override hint naming `reset-admin` (R3 PB-23 + ADR-0012 §Consequences).
+- admin_disable_user / admin_enable_user idempotent on already-disabled/-enabled targets PASS (was_already_* markers correct per R2 PB-15 + R1 PB-10).
+- SessionNotFoundError exit 6 on missing session_id PASS (R2 PB-13).
+- hard_delete_user happy path PASS; --json payload shape (prior_role/was_disabled/sessions_killed/ts) PASS; audit row OUTLIVED the deleted user PASS (ADR-0013 §Consequences invariant verified — target_user='bob' string survived user-row DELETE because audit table has no FK to users); LastAdminError exit 4 on sole-admin hard-delete PASS.
+- PermissionDeniedError exit 3 on non-admin caller PASS; verb-agnostic CAN_MANAGE_USERS message PASS.
+
+Bonus smoke (CLI surfaces not covered by primary smoke):
+- admin_kill_session happy path PASS — JSON payload includes target_session_id + target_user_id correctly resolved from sessions row.
+- admin_demote_user on non-admin (alice) → NotAnAdminError exit 2 PASS; verb-agnostic message "admin role required" verified — no "promote-user to escalate" hint per R4 PB-25 message rework.
+- admin_disable_user --json with sessions_killed > 0 PASS — payload shape confirmed (was_already_disabled=false, sessions_killed=1); R4 PB-24 admin_tx atomic DELETE-sessions + UPDATE-disabled in single tx verified.
+- mindsos server admin --help shows all six verbs PASS (R1 PB-2 Typer subgroup wiring).
+- EVT_KILL_SESSION.extra.context discriminator (R2 PB-14 vocab grep-ability) — three distinct contexts seen in audit log during smoke: admin_disable_user / admin_kill_session / reset_admin. admin_demote_user and hard_delete_user contexts not exercised in this smoke session (targets had no sessions at the time); vocab discriminator confirmed across exercised callers.
+
+Cross-phase observations from smoke session (worth documenting):
+- Phase 19 AlreadyLoggedInError (concurrent-login refusal per ADR-0005) fired during bonus-smoke ordering when admin had a stale active session and `login admin` was re-attempted. Recovered via Phase 20 `mindsos server reset-admin` which atomically killed admin's stale sessions + rotated password + cleared disabled flag in one tx (P20 PB-R atomicity). Both load-bearing surfaces (P19 refuse-concurrent + P20 reset-admin recovery floor) exercised in the wild, end-to-end, via the host-native CLI.
+
+Architecture:
+- Six admin verbs land under `mindsos server admin <verb>` Typer subgroup (R1 PB-2) — promote-user, demote-user, disable-user, enable-user, kill-session, hard-delete-user. Reset-admin (P20) + query-audit (P21) stay flat under `mindsos server` (no migration).
+- All six verbs route through `_require_or_audit` (P21 PB-6) for the cap gate, then wrap their body in `with admin_tx(conn):` per R4 PB-24 — BEGIN IMMEDIATE acquires the SQLite WAL RESERVED write-lock at tx-start, closing the concurrent-admin race where two parallel verbs could each pass `_assert_not_sole_admin` against stale snapshots and both commit (leaving zero active admins).
+- `_assert_not_sole_admin(conn, target_user_id)` single-SELECT helper (R1 PB-7) called by demote/disable/hard-delete; reuses count_admins semantic from P18 (active = role='admin' AND disabled=0).
+- Six new frozen result dataclasses (R3 PB-19) — one per verb — mirror P20 ResetAdminResult precedent; export from mindsos_server.
+- Three new exception classes — LastAdminError (R3 PB-23 single-attr; override hint in message), AlreadyAnAdminError (R1 PB-3 symmetric with NotAnAdminError), SessionNotFoundError (R2 PB-13 mirrors UserNotFoundError density).
+- NotAnAdminError message reworked verb-agnostic per R4 PB-25 ("user X has actor_role='Y'; admin role required") — CLI handlers inject verb-specific framing on stderr. Phase 20 substring assertions on "alice" + "user" still pass.
+- Exit-code namespace EXTENDED per R5 PB-27 (extend-don't-retrofit): 0=success / 1=generic / 2=ValueError+UserNotFound+NotAnAdmin (P20 baseline preserved) / 3=PermissionDenied (P21) / 4=LastAdmin (NEW) / 5=AlreadyAnAdmin (NEW) / 6=SessionNotFound (NEW). No P20 breaking change.
+
+Scope deferred to Phase 25 (ADR-0008 §amendment-1):
+- Cross-user read (read_other_local + InstallRecord refcount-install model + EVT_CROSS_USER_READ_INSTALL first-fire). §Decision substrates (MindsOSServer + LocalPersister + KL.install_local_metagraph) all ship at P25; P22 has no working substrate. Phase 19 PB-2/PB-13 precedent for "dependency available at later slot" reasoning.
+
+ADR amendments at this ship:
+- ADR-0012 §amendment-3 — 6-clause batch: closes PB-B deferral from §am2 + ships _assert_not_sole_admin + LastAdminError + 6-verb roster + admin_tx WAL race protection + NotAnAdminError message rework + exit-code namespace extension 4/5/6.
+- ADR-0008 §amendment-1 — cross-user read first-consumer phase shift P22→P25.
+
+ADR-0002 NOT amended (CAN_HARD_DELETE_ARCHIVED cap-name mismatch is documentary debt per R2 PB-17; rename is breaking per §Consequences; deferred to a dedicated rename ADR if/when operator demand surfaces).
+
+Reset-admin (Phase 20) does NOT use admin_tx — flagged as a known minor inconsistency for future cleanup (P20 has no _assert_not_sole_admin consumer; the cross-process race wasn't surfaced then).
+
+Design log: confirmation_docs/PHASE_22_DESIGN_LOG.md (27 picks across 5 design rounds; R4 catch was load-bearing concurrent-admin WAL race PB-24; R5 revised exit-code namespace after probe revealed P20 reset-admin lumped UserNotFoundError + NotAnAdminError + ValueError at exit 2 → extend-don't-retrofit per PB-27).
+
+Phase 18 high-water 38 picks remains untouched; Phase 22 sits between P21 (20 picks / 4 rounds) and P18 (38 picks / 4 rounds) at 27 picks / 5 rounds reflecting wider P22 scope (6 verbs + helper + class + subgroup + race protection + ADR amendments + exit-code namespace) vs narrower P19-P21 scopes (each adding 1-2 verbs).

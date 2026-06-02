@@ -442,3 +442,19 @@ follow-up plan should treat these as the inherited backlog.
   lesson: design saturation against shipped reality must probe
   persistence layer state explicitly when the phase narrative
   depends on persistence semantics.
+
+- **R6 ship-shape lesson — DROPPED from active discipline at Chat C
+  closure (2026-06-02 IL-8).** Phase 38 R6's reversal (design-time
+  picked docs-only; execution-time reverted to code-shipping) was the
+  basis for the L4/L5 plan R0-PB-11 "per-phase explicit ship-shape PB
+  at R0 of any zero-src-LOC phase." Chat C IL-8 audited the actual
+  Phase 39-49 map and found **zero phases with zero net-new src LOC**
+  — every phase ships code (rename + script Phase 39; new modules
+  Phases 40/42/43; persister code Phase 44; capacity bodies Phase 45;
+  substrate Phases 46-48; test fixtures Phase 49). PB-11 trigger never
+  fires on the Phase 39-49 map. Chat C dropped the discipline rather
+  than carry a zero-trigger formalism. The R6 lesson is preserved
+  HERE in `PHASE_38_DESIGN_LOG.md §5` as inherited-lesson home
+  (per IL-8). Future plan-authoring chats whose phase mix may include
+  zero-src-LOC candidates should re-derive the discipline from this
+  origin record.

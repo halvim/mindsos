@@ -7,6 +7,26 @@ last_confirmed_phase: 38
 Append-only, one line per shipped phase. Phase 38 closing the L0-L3
 numbered-phase sequence (Phase 37 RETIRED 2026-05-19).
 
+## Post-Phase-38 housekeeping (2026-05-28) — non-phase event
+
+**Folder rename** `halvim_mindsos/` → `MindsOS/` (Cowork project root);
+`Layered Intelligence/` parent tree archived as
+`_archive_Layered_Intelligence/`. **Model C collapsed** — 144
+parent-tree ADRs + L4/L5 design notes + `use_cases_text_realm.md`
+extracted INTO `MindsOS/docs/`. **Handoffs consolidated** — 5 archive
+handoff docs + 2 already-extracted handoffs absorbed into a single
+`MindsOS/HANDOFF.md` at the root. **3 sister projects** intake — DWF
+(knowledge acquisition), WSD + FOL (skill acquisition) at `projects/`
+with per-project ANALYSIS.md + FUTURE_CHAT_PROMPT.md + source/.
+**14 test files fixed** for post-rename Model-C-collapsed ADR path
+resolution. **Build artifact cleanup** at root + **39 notes-phase-NN.md
+moved** to `confirmation_docs/notes/`. **mkdocs warnings 50 → 14** via
+summary-page ADR slug normalization (36 mismatches fixed; 14 residual
+warnings = 7 unauthored concept/usage pages + ADR-internal pivot-handoff
+links). **R0 captured for L4/L5 plan** at
+`confirmation_docs/L4_L5_PLAN_NEXT_CHAT_PROMPT.md` (11 PB candidates).
+No code-shipping; no version bump; no tag.
+
 ## Phase 38 — Closing-phase ship: text-realm cookbook + page-inventory audit + PHASE_MAP §1 docs-only-phase sub-shape definition (2026-05-27/28)
 
 **Design-time picked docs-only-shape (R3-PB-D + R5-PB-B); execution-time

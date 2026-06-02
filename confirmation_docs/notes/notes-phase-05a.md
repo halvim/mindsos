@@ -1,0 +1,161 @@
+# Phase 05a — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+L1 Metagraph port (Metagraph + MetaEdge + MetaHyperEdge — slim, no IntergraphEdge / no MetagraphSchema / no CompositionalMetaEdge)
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Tester run on 2026-05-05 from Linux box. Final cumulative result:
+**528 passed, 2 skipped** in-container
+(`docker compose run --rm mindsos-test pytest tests/`). The 2 skips
+are the existing `test_mkdocs_buildable.py` (mkdocs not in test image)
+and `test_restore_node_registers_provided_id` (Phase 08 deferral).
+Sandbox-projected ~510+2; actual +18 over projection — within tolerance
+(symmetric to Phase 04-v2's "+3 over projection" pattern).
+
+Round 1-4 implementation-chat amendments (P1-P19) all folded in per
+PHASE_MAP §5 amendments 31-48. Per-file migration chain (P12/P14) at
+`mindsos_cli/migrations/` replaces inline switch statements.
+ADR-0117 Withdrawn in 05a (P3; one phase earlier than original CASC-1
+placement). ADR-0130 Accepted (Metagraph property bag).
+
+### Manual exploration outcomes (Phase 05a surface)
+
+- `mindsos metagraph create --name mg1 --prop kl:active=foo` — happy
+  path; namespaced property bag accepted at create time (CR-A).
+- `mindsos metagraph create --name mg --prop metaedges=lol` — P13
+  reserved-key rejected (PropertyShapeError).
+- `mindsos metagraph add-graph --name mg1 --graph people` — happy path.
+  Graph state file `_state_version: 4`, `metagraph_name: "mg1"`
+  back-pointer set (B2). Metagraph state file `contained_graphs`
+  sorted by name (Q3-A pattern).
+- N7-A — second `add-graph` for already-owned `people` to `mg2`
+  refused with structured `IdentityError` + DM-A recovery hint.
+- Q5-A — id-collision check on `add-graph`: two graphs sharing node
+  id `SHARED` rejected at second `add-graph`; first add succeeded
+  cleanly, no partial state.
+- `mindsos metagraph add-metaedge --type EMPLOYS --label ... --prop k=v` —
+  happy path; cypher rel-type regex accepted.
+- `mindsos metagraph add-metaedge --type lowercase_invalid` — rejected
+  with `CypherError` (ADR-0021 regex enforced).
+- P15 — `add-metaedge --source-graph g1 --target-graph g1 --type SELF`
+  rejected with `SchemaError: MetaEdge self-loop refused (P15 lock)`.
+- P15 — `add-metahyperedge --member g1` (single member) rejected with
+  `SchemaError: MetaHyperEdge requires at least 2 member graphs`.
+- `add-metahyperedge --member orgs --member people` — Q3-A
+  byte-stable sort by graph name confirmed (`member_graphs: ["orgs",
+  "people"]` regardless of insertion order).
+- `mindsos metagraph inspect --name mg1 --json` — P10 JSON shape
+  locked; keys exactly `name, metagraph_id, properties,
+  contained_graphs, counts{graphs,metaedges,metahyperedges},
+  _state_version, state_file`.
+- `mindsos metagraph list --json` — P10 list shape locked; entries
+  include `name, metagraph_id, contained_graphs_count, *_count,
+  _state_version, path`.
+- `mindsos metagraph set-prop --on-metagraph --prop server:user_id=u1`
+  — P17 marker flag operates on the metagraph's ADR-0130 property bag
+  (merge with existing `kl:active=foo`).
+- `mindsos metagraph set-prop --metaedge-id $ID --prop reviewed=true`
+  — P17 mutex (`--metaedge-id` path); merge default; reviewed
+  property added to existing bag.
+- `mindsos metagraph set-prop --on-metagraph --metaedge-id ID --prop k=v`
+  — P17 mutex violation: exit 2 with `Specify exactly one of
+  --on-metagraph, --metaedge-id, or --metahyperedge-id (P17 3-way
+  mutex).`
+- `set-prop --replace` — Pick D + N5 ref:* preservation: existing
+  `ref:anchor=anchor-id` survived `--replace --prop b=2`; non-ref `a`
+  dropped.
+
+### Q4-B verification (read warn-and-show; mutation refused)
+
+- `mindsos graph add-node charlie --name people` — refused exit 1;
+  stderr `Graph 'people' is owned by metagraph 'mg1'; add-node via
+  'mindsos graph' is refused (Q4-B).` + P2 stderr suggestion of
+  `mindsos metagraph` invocation + DM-A hint.
+- `mindsos graph inspect --name people --json` — exit 0; stderr
+  `warning: graph 'people' is owned by metagraph 'mg1'; inspect shows
+  in-graph contents only.`; stdout valid JSON with `metagraph_name:
+  "mg1"`.
+- Symmetric refusals on add-edge / add-hyperedge / set-prop /
+  attach-schema / reset NOT manually re-tested (covered by automated
+  tests; same `_refuse_if_metagraph_owned` helper guards all five).
+
+### Cascade + back-pointer round-trip (P19 always-cascade)
+
+- `metagraph remove-graph --name mg1 --graph people` cascaded 1
+  metaedge + 1 metahyperedge; `graph-people.json` back-pointer
+  cleared to `None`. Re-add to `mg2` then succeeded (no orphan
+  detection refused the round-trip).
+
+### Q6-A reset orphan check + P5 --yes guard
+
+- `metagraph reset --name mg2` (no force) refused exit 1 with
+  `referenced by 1 graph(s): ['people']`.
+- `metagraph reset --name mg2 --force` (no yes) refused exit 2
+  with `refusing reset --force: this operation is destructive.
+  Re-run with --yes to confirm.` (P5).
+- `metagraph reset --name mg2 --force --yes` succeeded; stderr
+  warning `--force stripping back-pointers from 1 graph(s)`;
+  stripped_back_pointers includes `people`; metagraph file deleted.
+
+### DM-A recovery (dangling back-pointer)
+
+- Manually deleted `metagraph-mg1.json` after `add-graph people`;
+  `mindsos graph detach-metagraph --name people` succeeded exit 0
+  with `previous_metagraph: "mg1"`. Raw-JSON path bypassed
+  metagraph rehydration as designed.
+- Idempotent re-run (no back-pointer set) refused exit 1 with
+  `nothing to detach`.
+
+### Migration v=3 → v=4 cumulative chain (P12/P14)
+
+- Hand-wrote a Phase 04-v2 v=3 graph file. `mindsos graph inspect`
+  read it cleanly; loader populated `metagraph_name=null` default.
+  On-disk file unchanged after read (load is read-only).
+- First mutation (`add-node`) upgraded the file directly to v=4.
+- Forward-version v=5 file refused with `this CLI supports v4`
+  message (strict-version contract).
+
+### Doctor self-test
+
+- `FALKORDB_HOST=localhost mindsos doctor --self-test --static-only`
+  passed cleanly before in-container run. Manifest + pyproject +
+  `mindsos_cli/__init__.py` version strings all read
+  `0.0.0+phase05a`; compose image-tag drift check covers the
+  `phase\d{2}([a-z]|-v\d+)?-(prod|test)` regex extension.
+
+### Phase 05b chat — load-bearing reminder (CASC-1 lock)
+
+Phase 05b row refinement does NOT begin until phase-05a-confirmed
+is tagged + pushed (CASC-1 strict sequential cascade). Phase 05b
+inherits 05a's locked decisions plus its own scope: `IntergraphEdge`
+(binary 1-1) + `MetagraphSchema` + `MetaEdgeType` +
+`MetaHyperEdgeType` + `IntergraphEdgeType` + `compositional` flag
+(NEW CODE; ADR-0148 first draft; ADR-0117 was already Withdrawn in
+05a per P3, so 05b skips that flip). Per P6 (round-1 amendment),
+`_compositional` reserved-key addition lands in 05b alongside the
+flag implementation (NOT pre-paid in 05a).
+
+### Host venv
+
+Python 3.12.x on Linux box. `pip install -e .` re-run after `git pull`
+to phase-05a (Phase 05a added `mindsos_cli.migrations` sub-package +
+`mindsos_cli.commands.metagraph` + `mindsos_core.models.metagraph`;
+the wildcard `[tool.setuptools.packages.find].include = ["mindsos_cli*",
+"mindsos_core*"]` already covers the additions). `which mindsos`
+resolves to the venv's bin directory. `confirm-phase` preflight
+(`doctor --self-test --static-only`) ran cleanly before this doc
+was written.

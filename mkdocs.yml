@@ -98,4 +98,19 @@ nav:
       - Testing: dev/testing.md
       - Release flow: dev/release.md
       - Schema migration playbook (Phase 15b): dev/migration-playbook.md
+      - L4 design notes (in design): dev/l4_intelligence_design_notes.md
+      - L5 design notes (in design): dev/l5_mental_model_design_notes.md
+      - Handoffs:
+          - System overview (2026-04-26): dev/handoffs/system_overview_2026-04-26.md
+          - L4 session handoff (2026-04-25): dev/handoffs/l4_session_handoff_2026-04-25.md
+  - Decisions (ADRs):
+      - About: decisions/about.md
+      - Proposed: decisions/proposed.md
+      - Superseded: decisions/superseded.md
+      - Summary — Core (L1): decisions/summary/core.md
+      - Summary — Knowledge (L2): decisions/summary/knowledge.md
+      - Summary — Capacity (L3): decisions/summary/capacity.md
+      - Summary — Intelligence (L4 / design): decisions/summary/intelligence.md
+      - Summary — Server (L0): decisions/summary/server.md
+      - Summary — Cross-layer: decisions/summary/cross-layer.md
   - Changelog: changelog/CHANGELOG.md

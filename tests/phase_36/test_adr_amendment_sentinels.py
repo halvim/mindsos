@@ -21,8 +21,8 @@ import pytest
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_ADR_DIR = _REPO_ROOT.parent / "docs" / "decisions" / "adr"
-_INTERNALS_DIR = _REPO_ROOT.parent / "docs" / "dev" / "internals"
+_ADR_DIR = _REPO_ROOT / "docs" / "decisions" / "adr"
+_INTERNALS_DIR = _REPO_ROOT / "docs" / "dev" / "internals"
 
 
 def _skip_if_parent_dir_missing(p: Path) -> None:
