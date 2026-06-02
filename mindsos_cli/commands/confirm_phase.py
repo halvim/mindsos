@@ -636,6 +636,12 @@ def confirm_phase(
         typer.echo(json.dumps(summary, indent=2))
     else:
         typer.echo(f"Wrote {target}")
+        typer.echo(
+            "note: release.yml retention keeps the top-5 confirmed phases "
+            "ranked by `[mindsos] phase` integer (parsed from tag name), "
+            "NOT by tag creation time. Older tarballs become 1-line "
+            "placeholders; release records are preserved. (Stream A A1.)"
+        )
         if tests_failed:
             typer.echo(
                 "WARNING: tests reported failures — review the doc and the "

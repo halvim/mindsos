@@ -8,10 +8,20 @@
 #   5. Compute SHA256 of the tarball + Dockerfile + lockfiles → checksums.txt.
 #   6. Create a GitHub Release with body = confirmation_docs/PHASE_NN_CONFIRMED.md
 #      and upload the tarball + Dockerfile snapshot + requirements*.txt + checksums.
-#   7. Retention prune: list all phase-*-confirmed releases; for any whose phase
-#      number is outside the top-5 window, replace the tarball asset (via
-#      `gh release upload --clobber`) with a 1-line placeholder. Never deletes
-#      a Release. Idempotent.
+#   7. Retention prune: list all phase-*-confirmed releases; rank install
+#      targets by the `[mindsos] phase` integer parsed from the tag name
+#      (NN in `phase-NN[a-z]?(-vM)?-confirmed`) — NOT by tag/release
+#      creation time. For any whose phase integer is outside the top-5
+#      window, replace the tarball asset (via `gh release upload --clobber`)
+#      with a 1-line placeholder. Never deletes a Release. Idempotent.
+#
+#      Stream A item A1 (PB-R amendment, 2026-06-02) made this rule explicit.
+#      Matters under DAG execution where higher-phase tags may land in
+#      tag-time order behind lower-phase ones (e.g. Phase 43 confirmed
+#      before Phase 39 if Rail A slot 2 converges first). Tag-time-based
+#      eviction would prune the higher-phase tarball in that scenario.
+#      The selection logic in `mindsos_cli._retention.select_retention`
+#      has always parsed by phase integer; A1 surfaces this in workflow docs.
 #
 # Per PHASE_MAP §1:
 #   - GITHUB_TOKEN needs `contents: write` to create/upload Release assets.
@@ -170,8 +180,13 @@ jobs:
           # Tag grammar honoured: phase-NN[a-z]?(-vM)?-confirmed (per
           # SUPER-§1-EXT letter-sub-phase lock). Within a slot (same NN +
           # same letter, if any), older versions evict immediately. Across
-          # slots, the 5 highest-numbered install targets keep their tarball.
-          # Slot ordering: 05 < 05a < 05b < 06.
+          # slots, the 5 highest-numbered install targets — ranked by the
+          # `[mindsos] phase` integer parsed from the tag name, NOT by
+          # tag/release creation time — keep their tarball. Slot ordering:
+          # 05 < 05a < 05b < 06. The `gh release list` output below is the
+          # candidate set; phase-integer ordering happens inside
+          # `select_retention`. Stream A item A1 (PB-R) made this rule
+          # explicit; selection logic was already phase-integer-based.
           set -euo pipefail
 
           # `export` so the Python heredoc below (a child process) inherits
