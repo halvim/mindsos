@@ -1,0 +1,101 @@
+synset_type	oewn_id	pos	primary_lemma	all_lemmas	proposed_class	rule	rationale	gloss	attribute	similar	domain_topic	user_decision
+adjective_head	oewn-02482508-a	a	nonsubmersible	nonsubmersible|nonsubmergible	dul:Quality	A5_adj_head_default	adj.all head default	not submersible or submergible				
+adjective_head	oewn-01166627-a	a	harmonious	harmonious	dul:Quality	A5_adj_head_default	adj.all head default	musically pleasing		01166864-s,01167133-s,01167303-s		
+adjective_head	oewn-00316943-a	a	carpellate	carpellate|pistillate	dul:Quality	A5_adj_head_default	adj.all head default	bearing or consisting of carpels			06076105-n	
+adjective_head	oewn-00072600-a	a	unaffected	unaffected	dul:Quality	A5_adj_head_default	adj.all head default	undergoing no change when acted upon		00072889-s,00073044-s,00073281-s		
+adjective_head	oewn-01709128-a	a	lipless	lipless|unlipped	dul:Quality	A5_adj_head_default	adj.all head default	without a lip or lips				
+adjective_head	oewn-01090234-a	a	empty	empty	dul:Quality	A5_adj_head_default	adj.all head default	holding or containing nothing	14475377-n	01090604-s,01090782-s,01090989-s		
+adjective_head	oewn-01043525-a	a	undomestic	undomestic	dul:Quality	A5_adj_head_default	adj.all head default	not domestic or related to home	05216381-n	01043769-s		
+adjective_head	oewn-00876911-a	a	energetic	energetic	dul:Quality	A5_adj_head_default	adj.all head default	possessing or exerting or displaying energy		00877400-s,00877534-s,00877855-s		
+adjective_head	oewn-00747889-a	a	differentiated	differentiated	dul:Quality	A5_adj_head_default	adj.all head default	made different (especially in the course of development) or shown to be different				
+adjective_head	oewn-00487240-a	a	nonresidential	nonresidential	dul:Quality	A5_adj_head_default	adj.all head default	not residential				
+adjective_head	oewn-01447511-a	a	short	short	dul:Quality	A5_adj_head_default	adj.all head default	not holding securities or commodities that one sells in expectation of a fall in prices			06160103-n	
+adjective_head	oewn-01400390-a	a	leaky	leaky	dul:Quality	A5_adj_head_default	adj.all head default	permitting the unwanted passage of fluids or gases		01400678-s,01400790-s,01400896-s		
+adjective_head	oewn-00061347-a	a	anticholinergic	anticholinergic	dul:Quality	A5_adj_head_default	adj.all head default	inhibiting or blocking the action of acetylcholine at a receptor site				
+adjective_head	oewn-02346397-a	a	sugarless	sugarless|nonsweet	dul:Quality	A5_adj_head_default	adj.all head default	not containing sugar		02346538-s,02346613-s		
+adjective_head	oewn-01329869-a	a	segregated	segregated|unintegrated	dul:Quality	A5_adj_head_default	adj.all head default	separated or isolated from others or a main group		01330157-s,01330323-s,01330526-s		
+adjective_head	oewn-00394569-a	a	saturated	saturated|pure	dul:PhysicalAttribute	A4_physical_attr_keyword	gloss has physical-attribute marker	(of color) being chromatically pure; not diluted with white or grey or black		00394744-s		
+adjective_head	oewn-00367435-a	a	monochromatic	monochromatic|homochromatic	dul:PhysicalAttribute	A4_physical_attr_keyword	gloss has physical-attribute marker	(of light or other electromagnetic radiation) having only one wavelength				
+adjective_head	oewn-01582381-a	a	sharp	sharp	dul:Quality	A5_adj_head_default	adj.all head default	(of a musical note) raised in pitch by one chromatic semitone			07034009-n	
+adjective_head	oewn-02150398-a	a	breastless	breastless	dul:Quality	A5_adj_head_default	adj.all head default	without a breast				
+adjective_head	oewn-01879374-a	a	superficial	superficial	dul:Quality	A5_adj_head_default	adj.all head default	concerned with or comprehending only what is apparent or obvious; not deep or penetrating emotionally or intellectually		01879953-s,01880299-s,01880529-s		
+adjective_head	oewn-01350931-a	a	ultra vires	ultra vires	dul:Quality	A5_adj_head_default	adj.all head default	beyond the legal power or authority of a person or official or body etc			08458195-n	
+adjective_head	oewn-00287444-a	a	broad-minded	broad-minded	dul:Quality	A5_adj_head_default	adj.all head default	inclined to respect views and beliefs that differ from your own		00287703-s,00287994-s,00288141-s		
+adjective_head	oewn-00069669-a	a	anaerobic	anaerobic|anaerobiotic	dul:Quality	A5_adj_head_default	adj.all head default	living or active in the absence of free oxygen				
+adjective_head	oewn-00302053-a	a	calculable	calculable	dul:Quality	A5_adj_head_default	adj.all head default	able to be calculated or estimated		00302292-s,00302449-s		
+adjective_head	oewn-01424552-a	a	illiterate	illiterate	dul:Quality	A5_adj_head_default	adj.all head default	not able to read or write	05646331-n	01424760-s,01424971-s,01425116-s		
+adjective_satellite	oewn-00573688-s	s	sentient	sentient	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-00572854-a	consciously perceiving		00572854-a		
+adjective_satellite	oewn-00733526-s	s	unconditional	unconditional	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-00731008-a	not contingent; not determined or influenced by someone or something else		00731008-a		
+adjective_satellite	oewn-01387980-s	s	deep	deep	dul:PhysicalAttribute	A1_satellite_inherits_head	inherited from head oewn-01385012-a	large in quantity or size		01385012-a		
+adjective_satellite	oewn-00488978-s	s	frequent	frequent	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-00487699-a	frequently encountered		00487699-a		
+adjective_satellite	oewn-00695843-s	s	superficial	superficial	dul:PhysicalAttribute	A1_satellite_inherits_head	inherited from head oewn-00694973-a	occurring on or near the surface of the skin		00694973-a		
+adjective_satellite	oewn-00982888-s	s	rapid	rapid	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-00979699-a	done or occurring in a brief period of time		00979699-a		
+adjective_satellite	oewn-02284931-s	s	noncarbonated	noncarbonated|uncarbonated	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-02284713-a	not having carbonation		02284713-a		
+adjective_satellite	oewn-02516312-s	s	hard-and-fast	hard-and-fast|strict	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-02515761-a	(of rules) stringently enforced		02515761-a		
+adjective_satellite	oewn-00967047-s	s	recreant	recreant|renegade	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-00965823-a	having deserted a cause or principle		00965823-a		
+adjective_satellite	oewn-01824324-s	s	perverse	perverse	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-01823738-a	marked by a disposition to oppose and contradict		01823738-a		
+adjective_satellite	oewn-00261839-s	s	lower-middle-class	lower-middle-class	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-00261296-a	occupying the lower part of the middle socioeconomic range in a society		00261296-a		
+adjective_satellite	oewn-01125269-s	s	divine	divine|elysian|inspired	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-01124687-a	being of such surpassing excellence as to suggest inspiration by the gods		01124687-a		
+adjective_satellite	oewn-01386791-s	s	biggish	biggish|largish	dul:PhysicalAttribute	A1_satellite_inherits_head	inherited from head oewn-01385012-a	somewhat large		01385012-a		
+adjective_satellite	oewn-00021147-s	s	complaisant	complaisant|obliging	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-00020824-a	showing a cheerful willingness to do favors for others		00020824-a		
+adjective_satellite	oewn-01311849-s	s	ignorant	ignorant|unknowledgeable|unknowing|unwitting	dul:Quality	A1_satellite_inherits_head	inherited from head oewn-01311380-a	unaware because of a lack of relevant information or knowledge		01311380-a		
+adjective_pertainym	oewn-03157290-a	a	Yuman	Yuman	dul:Quality	A2_pertainym_relational	gloss opens 'of or relating to' — relational adjective	of or relating to the language or culture of the Yuma people				
+adjective_pertainym	oewn-02708518-a	a	cleistogamous	cleistogamous|cleistogamic	dul:Quality	A2_pertainym_default	adj.pert default	exhibiting or relating to cleistogamy				
+adjective_pertainym	oewn-02918643-a	a	paleoanthropological	paleoanthropological	dul:Quality	A2_pertainym_default	adj.pert default	of or concerned with the scientific study of human fossils				
+adjective_pertainym	oewn-02804947-a	a	secretarial	secretarial	dul:Quality	A2_pertainym_relational	gloss opens 'of or relating to' — relational adjective	of or relating to a secretary or to a secretary's work				
+adjective_pertainym	oewn-03018862-a	a	congestive	congestive	dul:Quality	A2_pertainym_default	adj.pert default	relating to or affected by an abnormal collection of blood or other fluid				
+adjective_pertainym	oewn-02815862-a	a	Sufi	Sufi	dul:Quality	A2_pertainym_relational	gloss opens 'of or relating to' — relational adjective	of or relating to the Sufis or to Sufism				
+adjective_pertainym	oewn-02978201-a	a	Venezuelan	Venezuelan	dul:Quality	A2_pertainym_relational	gloss opens 'of or relating to' — relational adjective	of or relating to or characteristic of Venezuela or its people				
+adjective_pertainym	oewn-02841230-a	a	longitudinal	longitudinal	dul:Quality	A2_pertainym_relational	gloss opens 'of or relating to' — relational adjective	of or relating to lines of longitude				
+adjective_participial	oewn-03162908-a	a	mounded over	mounded over	dul:Quality	A3_participial_default	participial adjective (adj.ppl) — deverbal quality	having a mound formed over it				
+adjective_participial	oewn-03162135-a	a	hypophysectomized	hypophysectomized|hypophysectomised	dul:Quality	A3_participial_default	participial adjective (adj.ppl) — deverbal quality	having the pituitary gland removed by surgery				
+adverb	oewn-00445539-r	r	reversely	reversely	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in an opposite way; so as to b…'	in an opposite way; so as to be reversed				
+adverb	oewn-00188740-r	r	correspondingly	correspondingly	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a corresponding manner…'	in a corresponding manner				
+adverb	oewn-00471219-r	r	strictly	strictly|stringently	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a stringent manner…'	in a stringent manner				
+adverb	oewn-00113022-r	r	internationally	internationally|globally	dul:Region	R7_adv_default	adverb default (quality region)	worldwide				
+adverb	oewn-00210099-r	r	helplessly	helplessly|impotently	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a helpless manner…'	in a helpless manner				
+adverb	oewn-00363362-r	r	idiotically	idiotically	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in an idiotic manner…'	in an idiotic manner				
+adverb	oewn-00339405-r	r	fastidiously	fastidiously	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a fastidious manner…'	in a fastidious manner				
+adverb	oewn-00290403-r	r	brotherly	brotherly	dul:Region	R7_adv_default	adverb default (quality region)	(archaic as adverb) in a manner characteristic of a brother				
+adverb	oewn-00166891-r	r	in line	in line	dul:Region	R7_adv_default	adverb default (quality region)	one behind another in a line or queue				
+adverb	oewn-00264204-r	r	at a loss	at a loss	dul:SpaceRegion	R3_adv_spatial	spatial marker in gloss	below cost				
+adverb	oewn-00058164-r	r	through	through|through and through	dul:Region	R5_adv_degree	degree/intensity marker in gloss	throughout the entire extent				
+adverb	oewn-00484504-r	r	twofold	twofold|two times	dul:Region	R7_adv_default	adverb default (quality region)	by a factor of two				
+adverb	oewn-00519523-r	r	rabidly	rabidly	dul:Region	R7_adv_default	adverb default (quality region)	in the manner of an animal with rabies				
+adverb	oewn-00437439-r	r	pungently	pungently	dul:Region	R7_adv_default	adverb default (quality region)	with a pungent taste or smell				
+adverb	oewn-00502645-r	r	profligately	profligately|dissolutely	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a dissolute way…'	in a dissolute way				
+adverb	oewn-00286085-r	r	churlishly	churlishly|surlily	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a churlish manner…'	in a churlish manner				
+adverb	oewn-00160135-r	r	at stake	at stake	dul:Region	R7_adv_default	adverb default (quality region)	in question or at issue				
+adverb	oewn-00112501-r	r	least	least|to the lowest degree	dul:Region	R5_adv_degree	degree/intensity marker in gloss	used to form the superlative, smallest in size or degree				
+adverb	oewn-00370083-r	r	precisely	precisely|incisively|exactly	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a precise manner…'	in a precise manner				
+adverb	oewn-00111881-r	r	macroscopically	macroscopically	dul:Region	R7_adv_default	adverb default (quality region)	without using a microscope				
+adverb	oewn-00174307-r	r	aborad	aborad	dul:Region	R7_adv_default	adverb default (quality region)	away from the mouth or oral region				
+adverb	oewn-00287580-r	r	coaxingly	coaxingly|cajolingly	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a cajoling manner…'	in a cajoling manner				
+adverb	oewn-00172276-r	r	on the spot	on the spot	dul:SpaceRegion	R3_adv_spatial	spatial marker in gloss	at the place in question; there				
+adverb	oewn-00061741-r	r	subsequently	subsequently|later|afterwards|afterward|after|later on	dul:Region	R7_adv_default	adverb default (quality region)	happening at a time subsequent to a reference time				
+adverb	oewn-00073433-r	r	about	about|almost|most|nearly|near|nigh|virtually|well-nigh	dul:Region	R5_adv_degree	degree/intensity marker in gloss	(of actions or states) slightly short of or not quite accomplished; all but				
+adverb	oewn-00439689-r	r	questionably	questionably|dubiously	dul:Region	R7_adv_default	adverb default (quality region)	in a questionable and dubious manner				
+adverb	oewn-00230871-r	r	noisily	noisily	dul:Region	R7_adv_default	adverb default (quality region)	with much noise or loud and unpleasant sound				
+adverb	oewn-00494018-r	r	vacuously	vacuously	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a vacuous manner…'	in a vacuous manner				
+adverb	oewn-00259491-r	r	a la carte	a la carte	dul:Region	R7_adv_default	adverb default (quality region)	by ordering items listed individually on a menu				
+adverb	oewn-00404188-r	r	mincingly	mincingly	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a mincing manner…'	in a mincing manner				
+adverb	oewn-00278759-r	r	balefully	balefully	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a baleful manner…'	in a baleful manner				
+adverb	oewn-00282023-r	r	bumptiously	bumptiously	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a bumptious manner…'	in a bumptious manner				
+adverb	oewn-00144584-r	r	rurally	rurally	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a rural manner…'	in a rural manner				
+adverb	oewn-00296016-r	r	consequentially	consequentially	dul:Region	R7_adv_default	adverb default (quality region)	having the result that				
+adverb	oewn-00142519-r	r	feverishly	feverishly	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a feverish manner…'	in a feverish manner				
+adverb	oewn-00075922-r	r	aback	aback	dul:Region	R7_adv_default	adverb default (quality region)	by surprise				
+adverb	oewn-00376847-r	r	ingratiatingly	ingratiatingly	dul:Region	R7_adv_default	adverb default (quality region)	in a flattering and ingratiating manner				
+adverb	oewn-00268077-r	r	unassertively	unassertively	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in an unassertive manner…'	in an unassertive manner				
+adverb	oewn-00252039-r	r	per annum	per annum|p.a.|per year|each year|annually	dul:TimeInterval	R2_adv_temporal	temporal marker in gloss	by the year; every year (usually with reference to a sum of money paid or received)				
+adverb	oewn-00329149-r	r	inelegantly	inelegantly	dul:Region	R7_adv_default	adverb default (quality region)	without elegance				
+adverb	oewn-00513738-r	r	residentially	residentially	dul:Region	R7_adv_default	adverb default (quality region)	used as a residence				
+adverb	oewn-00255193-r	r	cloyingly	cloyingly	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in an overly sweet manner…'	in an overly sweet manner				
+adverb	oewn-00141202-r	r	onshore	onshore	dul:Region	R7_adv_default	adverb default (quality region)	on or toward the land				
+adverb	oewn-00516033-r	r	eccentrically	eccentrically	dul:Region	R7_adv_default	adverb default (quality region)	in an eccentric or bizarre manner				
+adverb	oewn-00155346-r	r	safely	safely	dul:Region	R7_adv_default	adverb default (quality region)	with safety; in a safe manner				
+adverb	oewn-00223275-r	r	broadly	broadly	dul:Region	R1_adv_manner	manner adverb; gloss opens 'in a wide fashion…'	in a wide fashion				
+adverb	oewn-00431998-r	r	prematurely	prematurely	dul:TimeInterval	R2_adv_temporal	temporal marker in gloss	(of childbirth) before the end of the normal period of gestation				
+adverb	oewn-00137821-r	r	materially	materially	dul:Region	R5_adv_degree	degree/intensity marker in gloss	to a significant degree				
+adverb	oewn-00319894-r	r	disproportionately	disproportionately	dul:Region	R7_adv_default	adverb default (quality region)	in a manner which is out of proportion				
+adverb	oewn-00233788-r	r	unerringly	unerringly	dul:Region	R7_adv_default	adverb default (quality region)	without making errors				

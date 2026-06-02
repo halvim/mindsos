@@ -1,0 +1,501 @@
+child	child_class	parent	parent_class	child_lemma	parent_lemma	child_gloss
+oewn-00003553-n	dul:System	oewn-00002684-n	dul:PhysicalObject	whole	object	an assemblage of parts that is regarded as a single entity
+oewn-00019308-n	dul:PhysicalObject	oewn-00003553-n	dul:System	natural object	whole	an object occurring naturally; not made by man
+oewn-00019793-n	dul:Substance	oewn-13831419-n	dul:Relation	substance	part	the real physical matter of which a person or thing consists
+oewn-00021007-n	dul:Substance	oewn-00001930-n	dul:PhysicalObject	matter	physical entity	that which has mass and occupies space
+oewn-00022119-n	dul:PhysicalObject	oewn-00003553-n	dul:System	artifact	whole	a man-made object taken as a whole
+oewn-00027365-n	dul:SpaceRegion	oewn-00002684-n	dul:PhysicalObject	location	object	a point or extent in space; a point or extent in space
+oewn-00029976-n	dul:Process	oewn-00001930-n	dul:PhysicalObject	process	physical entity	a sustained phenomenon or one marked by gradual changes through a series of states
+oewn-00031563-n	dul:Collection	oewn-00002137-n	dul:Description	group	abstraction	any number of entities (members) considered as a unit
+oewn-00101073-n	ontopic:Topic	oewn-00551808-n	dul:Action	musical performance	performance	the act of performing music
+oewn-00108220-n	dul:BiologicalObject	oewn-00107092-n	dul:Action	ball	pitch	a pitch that is not in the strike zone
+oewn-00113494-n	dul:Relation	oewn-00113132-n	dul:Action	depression	push	pushing down
+oewn-00113648-n	dul:Action	oewn-00113494-n	dul:Relation	click	depression	depression of a button on a computer mouse
+oewn-00190106-n	dul:Amount	oewn-00189955-n	dul:Action	point after	conversion	in American football a point awarded for a successful place kick following a touchdown
+oewn-00429255-n	ontopic:Topic	oewn-00427931-n	dul:Action	dancing	diversion	taking a series of rhythmical steps (and movements) in time to music
+oewn-00446514-n	dul:FunctionalSubstance	oewn-00446336-n	dul:Action	crab	rowing	a stroke of the oar that either misses the water or digs too deeply
+oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	oewn-00434601-n	dul:Action	hunt	outdoor sport	the pursuit and killing or capture of wild animals regarded as a sport
+oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	oewn-00452852-n	dul:Action	hunt	blood sport	the pursuit and killing or capture of wild animals regarded as a sport
+oewn-00453758-n	dul:Action	oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	battue	hunt	a hunt in which beaters force the game to flee in the direction of the hunter
+oewn-00453888-n	dul:Action	oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	beagling	hunt	hunting rabbits with beagles
+oewn-00453971-n	dul:Action	oewn-00623824-n	dul:Organization	canned hunt	hunt	a hunt for animals that have been raised on game ranches until they are mature enough to be killed for trophy collections
+oewn-00454150-n	dul:Action	oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	coursing	hunt	hunting with dogs (usually greyhounds) that are trained to chase game (such as hares) by sight instead of by scent
+oewn-00454337-n	dul:Action	oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	deer hunting	hunt	hunting deer
+oewn-00454420-n	dul:Action	oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	ducking	hunt	hunting ducks
+oewn-00454502-n	dul:Action	oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	fox hunting	hunt	mounted hunters follow hounds in pursuit of a fox
+oewn-00454655-n	dul:Action	oewn-00453279-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	pigsticking	hunt	the sport of hunting wild boar with spears
+oewn-00476798-n	dul:DesignedArtifact	oewn-00472688-n	dul:Event	softball	baseball	a game closely resembling baseball that is played on a smaller diamond and with a ball that is larger
+oewn-00537396-n	dul:Place	oewn-00535886-n	ontopic:Topic	Charleston	ballroom dancing	an American ballroom dance in syncopated rhythm; popular early in the 20th century
+oewn-00546538-n	ontopic:Topic	oewn-00546381-n	dul:Action	singing	vocal music	the act of singing vocal music
+oewn-00549363-n	ontopic:Topic	oewn-00408356-n	dul:Action	acting	activity	the performance of a part or role in a drama
+oewn-00579442-n	dul:InformationRealization	oewn-00579191-n	dul:Action	financial audit	attestation service	an attestation that the client's financial statement is accurate
+oewn-00623824-n	dul:Organization	oewn-00621992-n	dul:Action	hunt	labor	the work of finding and killing or capturing animals for food or pelts
+oewn-00712776-n	dul:Action	oewn-00623824-n	dul:Organization	stalk	hunt	a hunt for game carried on by following it stealthily or waiting in ambush
+oewn-00713052-n	dul:Action	oewn-00623824-n	dul:Organization	birdnesting	hunt	hunting for birds' nests to get the eggs
+oewn-00713150-n	dul:Action	oewn-00623824-n	dul:Organization	predation	hunt	the act of preying by a predator who kills and eats the prey
+oewn-00723312-n	dul:Role	oewn-00408356-n	dul:Action	role	activity	normal or customary activity of a person in a particular social setting
+oewn-00808282-n	dul:Pattern	oewn-00808145-n	dul:Action	acceptance sampling	quality control	a statistical procedure for accepting or rejecting a batch of merchandise or documents; involves determining the maximum number of defects discovered 
+oewn-00813716-n	dul:PhysicalAttribute	oewn-00813322-n	dul:Action	tankage	storage	the act of storing in tanks
+oewn-00843942-n	dul:Quality	oewn-00840477-n	dul:Process	nip	bite	a small sharp bite or snip
+oewn-00925258-n	dul:System	oewn-01096649-n	dul:Action	industry	commercial enterprise	the organized action of making of goods and services for sale
+oewn-00938436-n	ontopic:Topic	oewn-00935235-n	dul:Action	painting	art	creating a picture with paints
+oewn-00939472-n	ontopic:Topic	oewn-00935235-n	dul:Action	sculpture	art	creating figures or designs in three dimensions
+oewn-01011813-n	dul:Quality	oewn-01010320-n	dul:Action	order	organization	the act of putting things in a sequential arrangement
+oewn-01012187-n	dul:Action	oewn-01011813-n	dul:Quality	rank order	order	an arrangement according to rank
+oewn-01012276-n	dul:Action	oewn-01011813-n	dul:Quality	scaling	order	the act of arranging in a graduated series
+oewn-01012400-n	dul:Action	oewn-01011813-n	dul:Quality	succession	order	the action of following in order
+oewn-01012843-n	dul:Action	oewn-01011813-n	dul:Quality	layout	order	the act of laying out (as by making plans for something)
+oewn-01012970-n	dul:Action	oewn-01011813-n	dul:Quality	alphabetization	order	the act of putting in alphabetical order
+oewn-01017631-n	ontopic:Topic	oewn-01016008-n	dul:Action	conchology	collection	the collection and study of mollusc shells
+oewn-01023061-n	dul:Quality	oewn-01022878-n	dul:EventType	echo	imitation	an imitation or repetition
+oewn-01057417-n	dul:InformationRealization	oewn-01235249-n	dul:Action	call	visit	a visit in an official or professional capacity
+oewn-01057612-n	dul:Action	oewn-01057417-n	dul:InformationRealization	round	call	(often plural) a series of professional calls (usually in a set order)
+oewn-01074160-n	dul:InformationRealization	oewn-00408356-n	dul:Action	lamentation	activity	the passionate and demonstrative activity of expressing grief
+oewn-01104341-n	dul:Action	oewn-00033319-n	dul:InformationObject	publication	communication	the communication of something to the public; making information generally known
+oewn-01231712-n	dul:DesignedArtifact	oewn-01231366-n	dul:Action	court	deference	respectful deference
+oewn-02402300-n	dul:System	oewn-05403033-n	dul:BiologicalObject	reticulum	stomach	the second compartment of the stomach of a ruminant
+oewn-02407225-n	dul:Personification	oewn-02404662-n	dul:Organism	Brahman	bovine	any of several breeds of Indian cattle; especially a large American heat and tick resistant greyish humped breed evolved in the Gulf States by interbr
+oewn-02407558-n	dul:Organism	oewn-02407225-n	dul:Personification	zebu	Brahman	domesticated ox having a humped back and long horns and a large dewlap; used chiefly as a draft animal in India and east Asia
+oewn-89570581-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-14779983-n	dul:FunctionalSubstance	feather	animal material	branching, hair-like structure that grows on the bodies of birds
+oewn-02678511-n	dul:InformationRealization	oewn-03704730-n	dul:FunctionalSubstance	acid	lysergic acid diethylamide	street name for lysergic acid diethylamide
+oewn-02693574-n	dul:DesignedArtifact	oewn-03716067-n	ontopic:Topic	airmailer	mailer	a mailer for airmail
+oewn-02717446-n	dul:DesignedArtifact	oewn-04420286-n	dul:SpaceRegion	anode	terminal	the negatively charged terminal of a voltaic cell or storage battery that supplies current
+oewn-02735077-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-04395830-n	dul:DesignedArtifact	aquarium	tank	a tank or pool or bowl filled with water for keeping live fish and underwater animals
+oewn-02748096-n	dul:PhysicalObject	oewn-01093829-n	dul:Action	article of commerce	trade	an article that is offered for sale
+oewn-02779636-n	dul:Place	oewn-04209460-n	dul:DesignedArtifact	bakery	shop	a workplace where baked goods (breads and cakes and pastries) are produced or sold
+oewn-02788388-n	dul:Quality	oewn-04346369-n	dul:PhysicalObject	band	strip	a thin flat strip or loop of flexible material that goes around or over something else, typically to hold it together or as a decoration
+oewn-02792793-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-04054513-n	dul:DesignedArtifact	bar	railing	(law) a railing that encloses the part of the courtroom where the judges and lawyers sit and the case is tried
+oewn-02793035-n	dul:DesignedArtifact	oewn-03513772-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	bar	heating element	a heating element in an electric fire
+oewn-02801276-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-03279707-n	dul:DesignedArtifact	base	electrode	(electronics) the part of a transistor that separates the emitter from the collector
+oewn-02811464-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-02810445-n	dul:DesignedArtifact	bath towel	bath linen	a large towel; to dry yourself after a bath
+oewn-02819085-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-04348492-n	dul:DesignedArtifact	beam	structural member	long thick piece of wood or metal or concrete, etc., used in construction
+oewn-02862524-n	dul:Place	oewn-03502782-n	dul:PhysicalObject	boater	hat	a stiff hat made of straw with a flat crown
+oewn-02901103-n	dul:FunctionalSubstance	oewn-03000998-n	dul:DesignedArtifact	brick	ceramic	rectangular block of clay baked by the sun or in a kiln; used as a building or paving material
+oewn-02907289-n	dul:Quality	oewn-04055187-n	dul:PhysicalObject	broad gauge	railroad track	a railroad track (or its width) broader than the standard 56.5 inches
+oewn-02922692-n	dul:DesignedArtifact	oewn-03594138-n	dul:FunctionalSubstance	bumper jack	jack	a jack for lifting a motor vehicle by the bumper
+oewn-02925268-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-03459977-n	dul:Place	burial chamber	grave	a chamber that is used as a grave
+oewn-02927938-n	dul:InformationRealization	oewn-02961779-n	dul:DesignedArtifact	bus	car	a car that is old and unreliable
+oewn-02986527-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-04068016-n	dul:DesignedArtifact	catchall	receptacle	an enclosure or receptacle for odds and ends
+oewn-02992134-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-03083234-n	dul:DesignedArtifact	CD-ROM	compact disk	a compact disk that is used with a computer (rather than with an audio system); a large amount of digital information can be stored and accessed but i
+oewn-02998952-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-03283159-n	dul:DesignedArtifact	central processing unit	electronic equipment	(computer science) the part of a computer (a microprocessor chip) that does most of the data processing
+oewn-03019285-n	dul:DesignedArtifact	oewn-03176022-n	dul:Organization	cheval-de-frise	defensive structure	defensive structure consisting of a movable obstacle composed of barbed wire or spikes attached to a wooden frame; used to obstruct cavalry
+oewn-03035407-n	dul:DesignedArtifact	oewn-03671917-n	dul:InformationRealization	cigar lighter	lighter	a lighter for cigars or cigarettes
+oewn-03039495-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-04085686-n	dul:DesignedArtifact	cistern	reservoir	an artificial reservoir for storing liquids; especially an underground tank for storing rainwater
+oewn-03040229-n	dul:Organization	oewn-04518297-n	dul:DesignedArtifact	city university	university	an urban university in a large city
+oewn-03044214-n	dul:FunctionalSubstance	oewn-03043932-n	dul:DesignedArtifact	cleaning pad	cleaning implement	a pad used as a cleaning implement
+oewn-03070747-n	dul:InformationRealization	oewn-03064297-n	dul:FunctionalSubstance	coke	cocaine	street names for cocaine
+oewn-03112367-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-02791712-n	dul:DesignedArtifact	core	bar	a bar of magnetic material (as soft iron) that passes through a coil and serves to increase the inductance of the coil
+oewn-03112555-n	dul:SpaceRegion	oewn-03007334-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	core	chamber	the chamber of a nuclear reactor containing the fissile material where the reaction takes place
+oewn-03133774-n	dul:InformationRealization	oewn-00022119-n	dul:PhysicalObject	creation	artifact	an artifact that has been brought into existence by someone
+oewn-03143185-n	dul:PhysicalObject	oewn-08695539-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	crown	vertex	the part of a hat (the vertex) that covers the crown of the head
+oewn-03143525-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-04613372-n	dul:DesignedArtifact	crown	wreath	a wreath or garland worn on the head to signify victory
+oewn-03143632-n	dul:DesignedArtifact	oewn-08681092-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	crown	top	the center of a cambered road
+oewn-03172130-n	dul:FunctionalSubstance	oewn-03183448-n	dul:DesignedArtifact	decal	design	either a design that is fixed to some surface or a paper bearing the design which is to be transferred to the surface
+oewn-03176022-n	dul:Organization	oewn-04348764-n	dul:DesignedArtifact	defensive structure	structure	a structure used to defend against attack
+oewn-03242119-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-03502782-n	dul:PhysicalObject	dress hat	hat	a man's hat with a tall crown; usually covered with silk or with beaver fur
+oewn-03285724-n	dul:DesignedArtifact	oewn-04055680-n	dul:Organization	elevated railway	railway	a railway that is powered by electricity and that runs on a track that is raised above the street level
+oewn-03290823-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-02738693-n	dul:DesignedArtifact	enclosure	area	a structure consisting of an area that has been enclosed for some purpose
+oewn-03307066-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-00022119-n	dul:PhysicalObject	excavation	artifact	a hole in the ground made by excavating
+oewn-03308910-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-00174132-n	dul:Action	exit	escape	an opening that permits escape or release
+oewn-03319725-n	dul:FunctionalSubstance	oewn-03719774-n	dul:DesignedArtifact	face powder	makeup	cosmetic powder for the face
+oewn-03343593-n	dul:FunctionalSubstance	oewn-00002684-n	dul:PhysicalObject	film	object	a thin coating or layer
+oewn-03347602-n	dul:PhysicalObject	oewn-15016854-n	dul:FunctionalSubstance	finish coat	plaster	the final coating of (e.g., paint, plaster, varnish, etc.)
+oewn-03354857-n	dul:Quality	oewn-03436153-n	dul:DesignedArtifact	first gear	gear	the lowest forward gear ratio in the gear box of a motor vehicle; used to start a car moving
+oewn-03355050-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-02884435-n	dul:DesignedArtifact	fishbowl	bowl	a transparent bowl in which small fish are kept
+oewn-03390403-n	dul:DesignedArtifact	oewn-03176022-n	dul:Organization	fortification	defensive structure	defensive structure consisting of walls or mounds built around a stronghold to strengthen it
+oewn-03390857-n	dul:DesignedArtifact	oewn-03176022-n	dul:Organization	fortress	defensive structure	a fortified defensive structure
+oewn-03395829-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-03396616-n	dul:DesignedArtifact	frame	framework	a framework that supports and protects a picture or a mirror
+oewn-03412032-n	dul:DesignedArtifact	oewn-03671917-n	dul:InformationRealization	fuse	lighter	any igniter that is used to initiate the burning of a propellant
+oewn-03439459-n	dul:FunctionalSubstance	oewn-03439338-n	dul:DesignedArtifact	generic drug	generic	when the patent protection for a brand-name drug expires generic versions of the drug can be offered for sale if the FDA agrees
+oewn-03453197-n	dul:FunctionalSubstance	oewn-03938946-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	gore	piece of cloth	a piece of cloth that is generally triangular or tapering; used in making garments or umbrellas or sails
+oewn-03460432-n	dul:FunctionalSubstance	oewn-03749393-n	dul:DesignedArtifact	gravestone	memorial	a stone that is used to mark a grave
+oewn-03465229-n	dul:FunctionalSubstance	oewn-04192114-n	dul:DesignedArtifact	grindstone	sharpener	a revolving stone shaped like a disk; used to grind or sharpen or polish edge tools
+oewn-03515388-n	dul:Process	oewn-03093163-n	dul:DesignedArtifact	heat sink	conductor	a metal conductor specially designed to conduct (and radiate) heat
+oewn-03516131-n	dul:InformationRealization	oewn-03262289-n	dul:DesignedArtifact	hectograph	duplicator	duplicator consisting of a gelatin plate from which ink can be taken to make a copy
+oewn-03531985-n	dul:Action	oewn-15281726-n	dul:Amount	hole	playing period	one playing period (from tee to green) on a golf course
+oewn-03565341-n	dul:Personification	oewn-03270785-n	dul:InformationRealization	idol	effigy	a material effigy that is worshipped
+oewn-03594138-n	dul:FunctionalSubstance	oewn-04459089-n	dul:DesignedArtifact	jack	tool	tool for exerting pressure or lifting
+oewn-03594280-n	dul:DesignedArtifact	oewn-03318973-n	dul:FunctionalSubstance	jack	face card	one of four face cards in a deck bearing a picture of a young prince
+oewn-03596215-n	dul:DesignedArtifact	oewn-03594138-n	dul:FunctionalSubstance	jackscrew	jack	screw-operated jack
+oewn-03610935-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08682181-n	dul:Place	junction	topographic point	the place where two or more things come together
+oewn-03623548-n	rol:Status	oewn-03015009-n	dul:DesignedArtifact	king	checker	a checker that has been moved to the opponent's first row where it is promoted to a piece that is free to move either forward or backward
+oewn-03634391-n	dul:Place	oewn-04125115-n	dul:DesignedArtifact	Kurdistan	rug	an oriental rug woven by Kurds that is noted for fine colors and durability
+oewn-03671917-n	dul:InformationRealization	oewn-03187746-n	dul:DesignedArtifact	lighter	device	a device for lighting or igniting fuel or charges or fires
+oewn-03677964-n	dul:DesignedArtifact	oewn-03176022-n	dul:Organization	line of defense	defensive structure	defensive structure consisting of a barrier that can be employed for defense against attack
+oewn-03685312-n	dul:PhysicalAttribute	oewn-04578374-n	dul:PhysicalObject	load	weight	weight to be borne or conveyed
+oewn-03685574-n	dul:PhysicalAttribute	oewn-03274312-n	dul:DesignedArtifact	load	electrical device	electrical device to which electrical power is delivered
+oewn-03704472-n	dul:FunctionalSubstance	oewn-04529716-n	dul:PhysicalObject	lypressin	vasoconstrictor	an antidiuretic and vasoconstrictor used to treat diabetes insipidus
+oewn-03716067-n	ontopic:Topic	oewn-03099154-n	dul:DesignedArtifact	mailer	container	a container for something to be mailed
+oewn-03724882-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-04197095-n	dul:DesignedArtifact	mantel	shelf	shelf that projects from wall above fireplace
+oewn-03733928-n	dul:DesignedArtifact	oewn-03671917-n	dul:InformationRealization	match	lighter	lighter consisting of a thin piece of wood or cardboard tipped with combustible chemical; ignites with friction
+oewn-03734473-n	dul:DesignedArtifact	oewn-03671917-n	dul:InformationRealization	match	lighter	a burning piece of wood or cardboard
+oewn-03749767-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-03750331-n	dul:DesignedArtifact	memory	memory device	an electronic memory device
+oewn-03793437-n	dul:DesignedArtifact	oewn-03931348-n	dul:InformationRealization	mosaic	photograph	arrangement of aerial photographs forming a composite picture
+oewn-03793580-n	dul:Pattern	oewn-04478188-n	dul:DesignedArtifact	mosaic	transducer	transducer formed by the light-sensitive surface on a television camera tube
+oewn-03812592-n	dul:FunctionalSubstance	oewn-04529716-n	dul:PhysicalObject	naphazoline	vasoconstrictor	vasoconstrictor (trade names Privine and Sudafed) used in nasal sprays to treat symptoms of nasal congestion and in eyedrops to treat eye irritation
+oewn-03814996-n	dul:Quality	oewn-04055187-n	dul:PhysicalObject	narrow gauge	railroad track	a railroad track (or its width) narrower than the standard 56.5 inches
+oewn-03822871-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-03983318-n	dul:DesignedArtifact	negative magnetic pole	pole	the pole of a magnet that points toward the south when the magnet is suspended freely
+oewn-03823062-n	dul:DesignedArtifact	oewn-04420286-n	dul:SpaceRegion	negative pole	terminal	the terminal of a battery that is connected to the negative plate
+oewn-03854249-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-00022119-n	dul:PhysicalObject	opening	artifact	a vacant or unobstructed space that is man-made
+oewn-03867899-n	dul:DesignedArtifact	oewn-03176022-n	dul:Organization	outwork	defensive structure	subsidiary defensive structure lying outside the main fortified area
+oewn-03873722-n	dul:Organization	oewn-04518297-n	dul:DesignedArtifact	Oxbridge	university	general term for an ancient and prestigious and privileged university (especially Oxford University or Cambridge University)
+oewn-03878742-n	dul:FunctionalSubstance	oewn-00022119-n	dul:PhysicalObject	padding	artifact	artifact consisting of soft or resilient material used to fill or give shape or protect or add comfort
+oewn-03880896-n	dul:PhysicalObject	oewn-15009532-n	dul:FunctionalSubstance	paint	coloring material	a substance used as a coating to protect or decorate a surface (especially a mixture of pigment suspended in a liquid); dries to form a hard coating
+oewn-03898588-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-00002684-n	dul:PhysicalObject	part	object	something less than the whole of a human artifact
+oewn-03938946-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-03314753-n	dul:DesignedArtifact	piece of cloth	fabric	a separate part consisting of fabric
+oewn-03939459-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-14783901-n	dul:FunctionalSubstance	piece of leather	leather	a separate part consisting of leather
+oewn-03948673-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-02803056-n	dul:DesignedArtifact	pine-tar rag	baseball equipment	baseball equipment consisting of a rag soaked with pine tar; used on the handle of a baseball bat to give a batter a firm grip
+oewn-03959162-n	dul:FunctionalSubstance	oewn-04387704-n	dul:DesignedArtifact	place mat	table linen	a mat serving as table linen for an individual place setting
+oewn-03983318-n	dul:DesignedArtifact	oewn-08583557-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	pole	end	one of the two ends of a magnet where the magnetism seems to be concentrated
+oewn-03990070-n	dul:FunctionalSubstance	oewn-03105807-n	dul:DesignedArtifact	popper	cooker	a container for cooking popcorn
+oewn-03994032-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-03983318-n	dul:DesignedArtifact	positive pole	pole	the pole of a magnet that points toward the north when the magnet is suspended freely
+oewn-03994223-n	dul:DesignedArtifact	oewn-04420286-n	dul:SpaceRegion	positive pole	terminal	the terminal of a battery that is connected to the positive plate
+oewn-04000061-n	dul:InformationRealization	oewn-03290823-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	pound	enclosure	a public enclosure for stray or unlicensed dogs
+oewn-04000366-n	dul:FunctionalSubstance	oewn-04454577-n	dul:DesignedArtifact	powder	toiletry	any of various cosmetic or medical preparations dispensed in the form of a pulverized powder
+oewn-04039763-n	dul:FunctionalSubstance	oewn-03018094-n	dul:DesignedArtifact	queen	chessman	(chess) the most powerful piece
+oewn-04070101-n	dul:PhysicalObject	oewn-03782816-n	dul:InformationRealization	restoration	model	a model that represents the landscape of a former geological age or that represents and extinct animal etc.
+oewn-04073135-n	dul:Organization	oewn-04518297-n	dul:DesignedArtifact	redbrick university	university	(British informal) a provincial British university of relatively recent founding; distinguished from Oxford University and Cambridge University
+oewn-04115231-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-04336084-n	dul:DesignedArtifact	root cellar	storage space	an excavation where root vegetables are stored
+oewn-04119846-n	dul:Process	oewn-03719774-n	dul:DesignedArtifact	rouge	makeup	makeup consisting of a pink or red powder applied to the cheeks
+oewn-04193094-n	dul:SpaceRegion	oewn-04454577-n	dul:DesignedArtifact	shaving cream	toiletry	toiletry consisting of a preparation of soap and fatty acids that forms a rich lather for softening the beard before shaving
+oewn-04193311-n	dul:SpaceRegion	oewn-04454577-n	dul:DesignedArtifact	shaving foam	toiletry	toiletry consisting of a liquid preparation containing many small bubbles that soften the beard before shaving
+oewn-04231457-n	dul:InformationRealization	oewn-02679115-n	dul:DesignedArtifact	siren	acoustic device	an acoustic device producing a loud often wailing sound as a signal or warning
+oewn-04231457-n	dul:InformationRealization	oewn-02697285-n	dul:DesignedArtifact	siren	alarm	an acoustic device producing a loud often wailing sound as a signal or warning
+oewn-04289802-n	dul:FunctionalSubstance	oewn-03389963-n	dul:Relation	split	formation	(tenpin bowling) a divided formation of pins left standing after the first bowl
+oewn-04293713-n	dul:InformationRealization	oewn-03641539-n	dul:DesignedArtifact	spotlight	lamp	a lamp that produces a strong beam of light to illuminate a restricted area; used to focus attention of a stage performer
+oewn-04308764-n	dul:Quality	oewn-04055187-n	dul:PhysicalObject	standard gauge	railroad track	railroad track having the standard width of 56.5 inches
+oewn-04320766-n	dul:FunctionalSubstance	oewn-02726951-n	dul:PhysicalObject	stele	antiquity	an ancient upright stone slab bearing markings
+oewn-04329164-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-04366676-n	dul:DesignedArtifact	stock	support	the handle of a handgun or the butt end of a rifle or shotgun or part of the support of a machine gun or artillery gun
+oewn-04348013-n	dul:DesignedArtifact	oewn-03176022-n	dul:Organization	stronghold	defensive structure	a strongly fortified defensive structure
+oewn-04369112-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-00022119-n	dul:PhysicalObject	surface	artifact	the outer boundary of an artifact or a material layer constituting or resembling such a boundary
+oewn-04378312-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-02755316-n	dul:PhysicalObject	swimming pool	athletic facility	pool that provides a facility for swimming
+oewn-04385738-n	dul:DesignedArtifact	oewn-04140731-n	dul:SpaceRegion	Tabernacle	sanctuary	(Judaism) a portable sanctuary in which the Jews carried the Ark of the Covenant on their exodus
+oewn-04420286-n	dul:SpaceRegion	oewn-03098248-n	dul:DesignedArtifact	terminal	contact	a contact on an electrical device (such as a battery) at which electric current enters or leaves
+oewn-04424602-n	dul:FunctionalSubstance	oewn-09479128-n	dul:PhysicalObject	thalidomide	teratogen	a sedative and hypnotic drug; withdrawn from sale after discovered to cause severe birth defects because it inhibits angiogenesis
+oewn-04460661-n	dul:FunctionalSubstance	oewn-03935681-n	dul:DesignedArtifact	toothpick	pick	pick consisting of a small strip of wood or plastic; used to pick food from between the teeth
+oewn-04463969-n	dul:InformationRealization	oewn-03310467-n	dul:DesignedArtifact	torpedo	explosive device	a small explosive device that is placed on a railroad track and fires when a train runs over it; the sound of the explosion warns the engineer of dang
+oewn-04498840-n	dul:SpaceRegion	oewn-04582285-n	dul:DesignedArtifact	trundle	wheel	small wheel or roller
+oewn-04515186-n	ontopic:Topic	oewn-03837945-n	dul:SpaceRegion	undercut	notch	a notch cut in the trunk of tree in order to determine the direction of its fall
+oewn-04517110-n	dul:Event	oewn-03190246-n	dul:DesignedArtifact	union	device	a device on a national flag emblematic of the union of two or more sovereignties (typically in the upper inner corner)
+oewn-04525938-n	dul:Place	oewn-03944798-n	dul:DesignedArtifact	Valenciennes	pillow lace	a type of bobbin lace with floral patterns
+oewn-04535785-n	dul:Pattern	oewn-03287312-n	dul:DesignedArtifact	vermiculation	embellishment	a decoration consisting of wormlike carvings
+oewn-04564102-n	dul:DesignedArtifact	oewn-04593867-n	dul:InformationRealization	watch key	winder	winder consisting of a key with a square hole; used for winding some watches
+oewn-04568168-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-03845315-n	dul:DesignedArtifact	water jump	obstacle	a pool or stream in a steeplechase or similar contest
+oewn-04593266-n	dul:Place	oewn-04097375-n	dul:DesignedArtifact	Winchester	rifle	a shoulder rifle
+oewn-04593867-n	dul:InformationRealization	oewn-03742461-n	dul:DesignedArtifact	winder	mechanical device	mechanical device used to wind another device that is driven by a spring (as a clock)
+oewn-86432478-n	dul:Action	oewn-02781674-n	dul:DesignedArtifact	softball	ball	ball used in playing softball
+oewn-04624798-n	dul:Amount	oewn-00024444-n	dul:Region	common denominator	attribute	an attribute that is common to all members of a category
+oewn-04706004-n	dul:Action	oewn-04936599-n	dul:Quality	order	artistic style	(architecture) one of original three styles of Greek architecture distinguished by the type of column and entablature used or a style developed from t
+oewn-04706346-n	dul:Quality	oewn-04706004-n	dul:Action	Doric order	order	the oldest and simplest of the Greek orders and the only one that normally has no base
+oewn-04706505-n	dul:Quality	oewn-04706004-n	dul:Action	Ionic order	order	the second Greek order; the capital is decorated with spiral scrolls
+oewn-04706646-n	dul:Quality	oewn-04706004-n	dul:Action	Corinthian order	order	the last Greek order; similar to the Ionic order except the capital is decorated with carvings of acanthus leaves
+oewn-04706822-n	dul:Quality	oewn-04706004-n	dul:Action	Composite order	order	a Roman order that combines the Corinthian acanthus leaves with the spiral scrolls of the Ionic order
+oewn-04706985-n	dul:Quality	oewn-04706004-n	dul:Action	Tuscan order	order	a Roman order that resembles the Doric order but without a fluted shaft
+oewn-04740444-n	dul:Quality	oewn-04941723-n	dul:Substance	gaseousness	consistency	having the consistency of a gas
+oewn-04784873-n	ontopic:Topic	oewn-04784337-n	dul:Quality	lodgment	fastness	the state or quality of being lodged or fixed even temporarily
+oewn-04941723-n	dul:Substance	oewn-04923519-n	dul:Quality	consistency	property	the property of holding together and retaining its shape
+oewn-04942180-n	dul:Quality	oewn-04941723-n	dul:Substance	viscosity	consistency	resistance of a liquid to shear forces (and hence to flow)
+oewn-04943580-n	dul:Quality	oewn-04941723-n	dul:Substance	thickness	consistency	resistance to flow
+oewn-04944023-n	dul:Quality	oewn-04941723-n	dul:Substance	thinness	consistency	a consistency of low viscosity
+oewn-04945025-n	dul:Quality	oewn-04941723-n	dul:Substance	hardness	consistency	the property of being rigid and resistant to pressure; not easily scratched; measured on Mohs scale
+oewn-04945405-n	dul:Quality	oewn-04941723-n	dul:Substance	softness	consistency	the property of giving little resistance to pressure and being easily cut or molded
+oewn-04946501-n	dul:Quality	oewn-04941723-n	dul:Substance	breakableness	consistency	the consistency of something that breaks under pressure
+oewn-04947164-n	dul:Quality	oewn-04941723-n	dul:Substance	unbreakableness	consistency	a consistency of something that does not break under pressure
+oewn-04947323-n	dul:Quality	oewn-04941723-n	dul:Substance	porosity	consistency	the property of being porous; being able to absorb fluids
+oewn-04948301-n	dul:Quality	oewn-04941723-n	dul:Substance	solidity	consistency	the consistency of a solid
+oewn-04972548-n	dul:FunctionalSubstance	oewn-04966849-n	dul:Quality	salmon	chromatic color	a pale pinkish orange color
+oewn-05001591-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	oewn-04999341-n	dul:Quality	sweetness	taste property	the property of tasting as if it contains sugar
+oewn-05001792-n	dul:Quality	oewn-05001591-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	saccharinity	sweetness	the excessive sweetness of saccharin
+oewn-05001905-n	dul:Quality	oewn-05001591-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	sugariness	sweetness	the sweetness of sugar
+oewn-05018346-n	dul:Action	oewn-05017811-n	dul:Quality	echo	reflection	a reflected television or radio or radar beam
+oewn-05018974-n	dul:Quality	oewn-13597072-n	dul:Amount	temperature	fundamental quantity	the degree of hotness or coldness of a body or environment (corresponding to its molecular activity)
+oewn-05022301-n	dul:Quality	oewn-04529716-n	dul:PhysicalObject	coldness	vasoconstrictor	the absence of heat
+oewn-05031420-n	dul:Quality	oewn-13597072-n	dul:Amount	mass	fundamental quantity	the property of a body that causes it to have weight in a gravitational field
+oewn-05128135-n	dul:Quality	oewn-13873264-n	dul:Amount	margin of safety	index	the margin required in order to insure safety
+oewn-05136466-n	dul:Quality	oewn-13597072-n	dul:Amount	length	fundamental quantity	the linear extent in space from one end to the other; the longest dimension of something that is fixed in place
+oewn-05176417-n	dul:Amount	oewn-05175788-n	dul:Quality	magnitude	importance	relative importance
+oewn-05182180-n	dul:Right	oewn-05862715-n	coll:InformationCollection	right	abstraction	an abstract idea of that which is due to a person or governmental body by law or tradition or nature
+oewn-05221867-n	dul:Quality	oewn-07033652-n	dul:InformationRealization	extension	dance	the ability to raise the working leg high in the air
+oewn-05227735-n	dul:BiologicalObject	oewn-09408804-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	body part	part	any part of an organism such as an organ or extremity
+oewn-05245612-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-05294035-n	dul:BiologicalObject	skin	connective tissue	a natural protective body covering and site of the sense of touch
+oewn-05271231-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-05522061-n	dul:BiologicalObject	minge	female genitalia	vulgar term for a woman's pubic hair or genitals
+oewn-05327912-n	dul:Action	oewn-05305022-n	dul:BiologicalObject	lens	organ	biconvex transparent body situated behind the iris in the eye; its role (along with the cornea) is to focus light on the retina
+oewn-05408321-n	dul:InformationRealization	oewn-05407944-n	dul:FunctionalSubstance	B	blood group	the blood group whose red cells carry the B antigen
+oewn-05409434-n	dul:FunctionalSubstance	oewn-07977630-n	dul:DesignedArtifact	clot	ball	a lump of material formed from the content of a liquid
+oewn-05415233-n	dul:FunctionalSubstance	oewn-04529716-n	dul:PhysicalObject	noradrenaline	vasoconstrictor	a catecholamine precursor of epinephrine that is secreted by the adrenal medulla and also released at synapses
+oewn-05415731-n	dul:FunctionalSubstance	oewn-04529716-n	dul:PhysicalObject	epinephrine	vasoconstrictor	a catecholamine secreted by the adrenal medulla in response to stress (trade name Adrenalin); stimulates autonomic nerve action
+oewn-05421216-n	dul:InformationRealization	oewn-05420584-n	dul:FunctionalSubstance	triiodothyronine	thyroid hormone	thyroid hormone similar to thyroxine but with one less iodine atom per molecule and produced in smaller quantity; exerts the same biological effects a
+oewn-05421490-n	dul:FunctionalSubstance	oewn-04529716-n	dul:PhysicalObject	vasopressin	vasoconstrictor	hormone secreted by the posterior pituitary gland (trade name Pitressin) and also by nerve endings in the hypothalamus; affects blood pressure by stim
+oewn-05463658-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08637636-n	dul:SpaceRegion	blind spot	point	the point where the optic nerve enters the retina; not sensitive to light
+oewn-05471756-n	dul:FunctionalSubstance	oewn-05236952-n	dul:BiologicalObject	nerve fiber	fiber	a threadlike extension of a nerve cell
+oewn-05564228-n	dul:BiologicalObject	oewn-08637636-n	dul:SpaceRegion	navel	point	a scar where the umbilical cord was attached
+oewn-05583825-n	dul:FunctionalSubstance	oewn-05232895-n	dul:BiologicalObject	ball	structure	a more or less rounded anatomical body or mass
+oewn-05594409-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-05593033-n	dul:BiologicalObject	exoskeleton	skeletal system	the exterior protective or supporting structure or shell of many animals (especially invertebrates) including bony or horny parts such as nails or sca
+oewn-05596396-n	dul:InformationRealization	oewn-05596201-n	dul:BiologicalObject	atlas	cervical vertebra	the 1st cervical vertebra
+oewn-05614881-n	dul:FunctionalSubstance	oewn-05232895-n	dul:BiologicalObject	corona	structure	(anatomy) any structure that resembles a crown in shape
+oewn-05619605-n	dul:Place	oewn-00023451-n	conc:InternalRepresentation	place	cognition	an abstract mental location
+oewn-05621745-n	rol:Status	oewn-05624890-n	dul:Quality	astuteness	wisdom	the intellectual ability to penetrate deeply into ideas
+oewn-05624029-n	dul:Quality	oewn-00023451-n	conc:InternalRepresentation	ability	cognition	possession of the qualities (especially mental qualities) required to do something or get something done
+oewn-05709685-n	dul:Process	oewn-00023451-n	conc:InternalRepresentation	process	cognition	a mental process that you are not directly aware of
+oewn-05724524-n	dul:FunctionalSubstance	oewn-05723230-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	sweet	taste	the taste experience when sugar dissolves in the mouth
+oewn-05739724-n	dul:Situation	oewn-05736623-n	dul:Pattern	configuration	design	an arrangement of parts or elements
+oewn-05757039-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-05756783-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	Rubicon	line	a line that when crossed permits of no return and typically results in irrevocable commitment
+oewn-05830135-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-05828980-n	dul:InformationObject	sample	example	a small part of something intended as representative of the whole
+oewn-05854581-n	dul:Norm	oewn-05844071-n	coll:InformationCollection	rule	concept	a principle or condition that customarily governs behavior
+oewn-05879538-n	dul:Norm	oewn-05844071-n	coll:InformationCollection	law	concept	a rule or body of rules of conduct inherent in human nature and essential to or binding upon human society
+oewn-05881589-n	dul:Theory	oewn-05844071-n	coll:InformationCollection	law	concept	a generalization that describes recurring facts or events in nature
+oewn-05897536-n	dul:Theory	oewn-05844071-n	coll:InformationCollection	hypothesis	concept	a tentative insight into the natural world; a concept that is not yet verified but that if true would explain certain facts or phenomena
+oewn-05907175-n	dul:Plan	oewn-05842164-n	coll:InformationCollection	plan	idea	a series of steps to be carried out or goals to be accomplished
+oewn-05921146-n	ontopic:Topic	oewn-05907175-n	dul:Plan	road map	plan	a detailed plan or explanation to guide you in setting standards or determining a course of action
+oewn-05922828-n	ontopic:Topic	oewn-05922588-n	coll:InformationCollection	shahadah	pillar of Islam	the first pillar of Islam is an affirmation of faith
+oewn-05928866-n	ontopic:Topic	oewn-05842164-n	coll:InformationCollection	theme	idea	a unifying idea that is a recurrent element in literary or artistic work
+oewn-05930500-n	dul:Personification	oewn-05929717-n	dul:Relation	hypostasis	kernel	(metaphysics) essential nature or underlying reality
+oewn-06005806-n	ontopic:Topic	oewn-06008444-n	coll:InformationCollection	discipline	knowledge domain	a branch of knowledge
+oewn-06006992-n	ontopic:Topic	oewn-06008444-n	coll:InformationCollection	region	knowledge domain	a knowledge domain that you are interested in or are communicating about
+oewn-06008718-n	ontopic:Topic	oewn-06008444-n	coll:InformationCollection	scientific knowledge	knowledge domain	knowledge accumulated by systematic study and organized by general principles
+oewn-06163988-n	ontopic:Topic	oewn-04936599-n	dul:Quality	neoclassicism	artistic style	revival of a classical style (in art or literature or architecture or music) but from a new perspective or with a new motivation
+oewn-06164248-n	ontopic:Topic	oewn-04936599-n	dul:Quality	classicism	artistic style	a movement in literature and art during the 17th and 18th centuries in Europe that favored rationality and restraint and strict forms
+oewn-06293036-n	dul:Process	oewn-00033319-n	dul:InformationObject	contagion	communication	the communication of an attitude or emotional state among a number of people
+oewn-06360400-n	dul:SpaceRegion	oewn-07025650-n	dul:InformationRealization	dateline	line	a line at the beginning of a news article giving the date and place of origin of the news dispatch
+oewn-06367706-n	dul:InformationRealization	oewn-05864972-n	dul:Amount	argument	value	(computer science) a reference or value that is passed to a function, procedure, subroutine, command, or program
+oewn-06485960-n	dul:InformationRealization	oewn-01009405-n	dul:Action	personality inventory	personality test	a questionnaire that is supposed to yield a description of a person's personality traits
+oewn-06495143-n	dul:Place	oewn-06494090-n	dul:Relation	place	item	an item on a list or in a sequence
+oewn-06504429-n	dul:Place	oewn-06492991-n	ontopic:Topic	key	list	a list of answers to a test
+oewn-06594937-n	dul:Action	oewn-06597067-n	dul:InformationRealization	call	instruction	an instruction that interrupts the program being executed
+oewn-06595162-n	dul:InformationRealization	oewn-06594937-n	dul:Action	function call	call	a call that passes control to a subroutine; after the subroutine is executed control returns to the next instruction in main program
+oewn-06599393-n	dul:InformationRealization	oewn-06594937-n	dul:Action	system call	call	an instruction that interrupts the program being executed and passes control to the supervisor
+oewn-06604544-n	dul:DesignedArtifact	oewn-07039821-n	dul:InformationRealization	rock opera	opera	an opera with rock music
+oewn-06607555-n	dul:InformationRealization	oewn-06274022-n	dul:DesignedArtifact	magazine	press	a periodic publication containing pictures and stories and articles of interest to those who purchase it or subscribe to it
+oewn-06719080-n	dul:Quality	oewn-06709228-n	dul:InformationRealization	distinction	award	an honor awarded to someone in recognition of achievement or superiority
+oewn-06733349-n	ontopic:Topic	oewn-07175534-n	dul:Action	slander	speech act	words falsely spoken that damage the reputation of another
+oewn-06808147-n	dul:InformationRealization	oewn-03859254-n	dul:DesignedArtifact	bar sinister	ordinary	a mark of bastardy; lines from top right to bottom left
+oewn-06895059-n	dul:InformationRealization	oewn-03359749-n	dul:DesignedArtifact	national flag	flag	an emblem flown as a symbol of nationality
+oewn-06896775-n	dul:InformationRealization	oewn-04424036-n	dul:DesignedArtifact	swastika	tetraskelion	the official emblem of the Nazi Party and the Third Reich; a cross with the arms bent at right angles in a clockwise direction
+oewn-06913829-n	dul:PhysicalPlace	oewn-06913460-n	dul:InformationObject	Java	object-oriented programming language	a platform-independent object-oriented programming language
+oewn-06921177-n	dul:Place	oewn-06932906-n	dul:InformationObject	Biloxi	Siouan	the Siouan language spoken by the Biloxi
+oewn-06921476-n	dul:Place	oewn-06919747-n	dul:InformationObject	Cheyenne	Algonquian	the Algonquian language spoken by the Cheyenne
+oewn-06921744-n	dul:Place	oewn-06921577-n	dul:InformationObject	Iowa	Chiwere	a dialect of the Chiwere language spoken by the Iowa
+oewn-06921855-n	dul:PhysicalPlace	oewn-06921577-n	dul:InformationObject	Missouri	Chiwere	a dialect of the Chiwere language spoken by the Missouri
+oewn-06922254-n	dul:Place	oewn-06932906-n	dul:InformationObject	Dakota	Siouan	the Siouan language spoken by the Dakota
+oewn-06924260-n	dul:Place	oewn-06922448-n	dul:InformationObject	Omaha	Dhegiha	the Dhegiha dialect spoken by the Omaha
+oewn-06924351-n	dul:PhysicalPlace	oewn-06922448-n	dul:InformationObject	Osage	Dhegiha	the Dhegiha dialect spoken by the Osage
+oewn-06925513-n	dul:Place	oewn-06926089-n	dul:InformationObject	Muskogee	Muskhogean	the Muskhogean language spoken by the Muskogee
+oewn-06928797-n	dul:Place	oewn-06928377-n	dul:InformationObject	Wichita	Caddo	the Caddoan language spoken by the Wichita
+oewn-06934728-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-06934370-n	dul:InformationObject	Shasta	Shastan	the Shastan language spoken by the Shasta
+oewn-06935959-n	dul:Place	oewn-06934822-n	dul:InformationObject	Mohave	Yuman	the Yuman language spoken by the Mohave
+oewn-06936269-n	dul:Place	oewn-06934822-n	dul:InformationObject	Yuma	Yuman	the Yuman language spoken by the Yuma
+oewn-06958441-n	dul:PhysicalPlace	oewn-06956320-n	dul:InformationObject	Baltic	Balto-Slavic	a branch of the Indo-European family of languages related to the Slavonic languages; Baltic languages have preserved many archaic features that are be
+oewn-06958779-n	dul:InformationObject	oewn-06958441-n	dul:PhysicalPlace	Old Prussian	Baltic	a dead language of the (non-German) Prussians (extinct after 1700); thought to belong to the Baltic branch of Indo-European
+oewn-06958961-n	dul:InformationObject	oewn-06958441-n	dul:PhysicalPlace	Lithuanian	Baltic	the official language of Lithuania; belongs to the Baltic branch of Indo-European
+oewn-06959117-n	dul:InformationObject	oewn-06958441-n	dul:PhysicalPlace	Latvian	Baltic	the official language of Latvia; belongs to the Baltic branch of Indo-European
+oewn-06972672-n	dul:PhysicalPlace	oewn-06972324-n	dul:InformationObject	Enets	Samoyedic	the Uralic language spoken by the Yeniseian
+oewn-07008689-n	dul:Place	oewn-07004640-n	dul:InformationObject	Tonga	Bantu	the language of the Tongan people of south central Africa (Zambia and Zimbabwe)
+oewn-07032286-n	dul:InformationRealization	oewn-07032045-n	dul:Action	musical	play	a play or film whose action and dialogue is interspersed with singing and dancing
+oewn-07059027-n	dul:Quality	oewn-07058663-n	dul:InformationRealization	forte	passage	a musical composition or musical passage to be performed loudly
+oewn-07125323-n	dul:Action	oewn-00033319-n	dul:InformationObject	voice	communication	the sound made by the vibration of vocal folds modified by the resonance of the vocal tract
+oewn-07140494-n	dul:Personification	oewn-07140231-n	dul:InformationRealization	devil	exclamation	a word used in exclamations of confusion
+oewn-07188789-n	dul:Situation	oewn-07185404-n	ontopic:Topic	reconstruction	interpretation	an interpretation formed by piecing together bits of evidence
+oewn-07200808-n	dul:InformationRealization	oewn-07199985-n	dul:Action	invitation	request	a request (spoken or written) to participate or be present or take part in something
+oewn-07205353-n	ontopic:Topic	oewn-07199985-n	dul:Action	call	request	a request
+oewn-07205500-n	dul:Action	oewn-07205353-n	ontopic:Topic	recall	call	a call to return
+oewn-07241205-n	ontopic:Topic	oewn-07175534-n	dul:Action	promise	speech act	a verbal commitment by one person to another agreeing to do (or not to do) something in the future
+oewn-07254088-n	dul:InformationRealization	oewn-07253354-n	dul:Action	dithyramb	address	a wildly enthusiastic speech or piece of writing
+oewn-07278413-n	dul:InformationRealization	oewn-07444811-n	dul:EventType	clutter	noise	unwanted echoes that interfere with the observation of signals on a radar screen
+oewn-07282166-n	dul:FunctionalSubstance	oewn-07281865-n	dul:InformationRealization	mace	staff	a ceremonial staff carried as a symbol of office or authority
+oewn-07286647-n	dul:Amount	oewn-07284884-n	dul:InformationRealization	spot	marker	a mark on a die or on a playing card (shape depending on the suit)
+oewn-07289595-n	dul:InformationRealization	oewn-01230591-n	dul:Action	curtsy	reverence	bending the knees; a gesture of respect made by women
+oewn-92440700-n	dul:FunctionalSubstance	oewn-07284884-n	dul:InformationRealization	franking	marker	device or marking such as postage stamp, printed or stamped impressions, codings, labels, manuscript writings, or any other authorized form of marking
+oewn-07342905-n	dul:Parameter	oewn-07342405-n	dul:Situation	parameter	factor	any factor that defines a system and determines (or limits) its performance
+oewn-07350181-n	dul:FunctionalSubstance	oewn-07349090-n	dul:EventType	wrack	destruction	the destruction or collapse of something
+oewn-07379793-n	dul:FunctionalSubstance	oewn-07379624-n	dul:EventType	turkey	flop	an event that fails badly or is totally ineffectual
+oewn-07435916-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	oewn-07332364-n	dul:EventType	breakdown	failure	a cessation of normal operation
+oewn-07436180-n	dul:EventType	oewn-07435916-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	brake failure	breakdown	brakes fail to stop a vehicle
+oewn-07436269-n	dul:EventType	oewn-07435916-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	engine failure	breakdown	engine does not run
+oewn-07436349-n	dul:EventType	oewn-07435916-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	misfire	breakdown	an explosion that fails to occur
+oewn-07436459-n	dul:EventType	oewn-07435916-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	outage	breakdown	a temporary suspension of operation (as of computers)
+oewn-07436636-n	dul:EventType	oewn-07435916-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	power outage	breakdown	equipment failure resulting when the supply of power fails
+oewn-07436844-n	dul:EventType	oewn-07435916-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	fault	breakdown	(electronics) equipment failure attributable to some defect in a circuit (loose connection or insulation failure or short circuit etc.)
+oewn-07499249-n	dul:Quality	oewn-07498762-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	languor	apathy	a feeling of lack of interest or energy
+oewn-07683818-n	dul:DesignedArtifact	oewn-07669003-n	dul:FunctionalSubstance	rack	cut	rib section of a forequarter of veal or pork or especially lamb or mutton
+oewn-07684101-n	dul:FunctionalSubstance	oewn-07683818-n	dul:DesignedArtifact	rack of lamb	rack	a roast of the rib section of lamb
+oewn-07713570-n	dul:Personification	oewn-07711710-n	dul:FunctionalSubstance	bomber	sandwich	a large sandwich made of a long crusty roll split lengthwise and filled with meats and cheese (and tomato and onion and lettuce and condiments); diffe
+oewn-07721676-n	dul:FunctionalSubstance	oewn-13155706-n	dul:BiologicalObject	edible fruit	fruit	edible reproductive body of a seed plant especially one having sweet flesh
+oewn-07755101-n	dul:FunctionalSubstance	oewn-13159619-n	dul:BiologicalObject	apple	pome	fruit with red or yellow or green skin and sweet to tart crisp whitish flesh
+oewn-07760787-n	dul:FunctionalSubstance	oewn-13159435-n	dul:BiologicalObject	blackberry	drupelet	large sweet black or very dark purple edible aggregate fruit of any of various bushes of the genus Rubus
+oewn-07761442-n	dul:FunctionalSubstance	oewn-13159435-n	dul:BiologicalObject	raspberry	drupelet	red or black edible aggregate berries usually smaller than the related blackberries
+oewn-07766980-n	dul:FunctionalSubstance	oewn-13159085-n	dul:BiologicalObject	peach	drupe	downy juicy fruit with sweet yellowish or whitish flesh
+oewn-07767427-n	dul:FunctionalSubstance	oewn-13159085-n	dul:BiologicalObject	plum	drupe	any of numerous varieties of small to medium-sized round or oval fruit having a smooth skin and a single pit
+oewn-07773108-n	dul:FunctionalSubstance	oewn-13159085-n	dul:BiologicalObject	cherry	drupe	a red fruit with a single hard stone
+oewn-07781184-n	dul:FunctionalSubstance	oewn-13159085-n	dul:BiologicalObject	elderberry	drupe	berrylike fruit of an elder used for e.g. wines and jellies
+oewn-07781975-n	dul:FunctionalSubstance	oewn-13159085-n	dul:BiologicalObject	jujube	drupe	dark red plumlike fruit of Old World buckthorn trees
+oewn-07783320-n	dul:FunctionalSubstance	oewn-13159085-n	dul:BiologicalObject	olive	drupe	one-seeded fruit of the European olive tree usually pickled and used as a relish
+oewn-07783823-n	dul:FunctionalSubstance	oewn-13159619-n	dul:BiologicalObject	pear	pome	sweet juicy gritty-textured fruit available in many varieties
+oewn-07785560-n	dul:FunctionalSubstance	oewn-13159619-n	dul:BiologicalObject	quince	pome	aromatic acid-tasting pear-shaped fruit used in preserves
+oewn-07820876-n	dul:Place	oewn-07820299-n	dul:FunctionalSubstance	paddy	rice	rice in the husk either gathered or still in the field
+oewn-07842067-n	dul:Place	oewn-07846569-n	dul:FunctionalSubstance	Tabasco	hot sauce	very spicy sauce (trade name Tabasco) made from fully-aged red peppers
+oewn-07857013-n	dul:Quality	oewn-07825072-n	dul:FunctionalSubstance	egg white	ingredient	the white part of an egg; the nutritive and protective gelatinous substance surrounding the yolk consisting mainly of albumin dissolved in water
+oewn-07910273-n	dul:Substance	oewn-07911212-n	dul:Place	Medoc	Bordeaux	red Bordeaux wine from the Medoc district of southwestern France
+oewn-07910526-n	dul:Place	oewn-07908788-n	dul:Substance	Chablis	white wine	dry white table wine of Chablis, France or a wine resembling it
+oewn-07911212-n	dul:Place	oewn-07907701-n	dul:Substance	Bordeaux	wine	any of several red or white wines produced around Bordeaux, France or wines resembling them
+oewn-07911410-n	dul:Substance	oewn-07911212-n	dul:Place	claret	Bordeaux	dry red Bordeaux or Bordeaux-like wine
+oewn-07916856-n	dul:PhysicalPlace	oewn-07916646-n	dul:Substance	Madeira	fortified wine	an amber dessert wine from the Madeira Islands
+oewn-07916974-n	dul:Substance	oewn-07916856-n	dul:PhysicalPlace	malmsey	Madeira	sweet Madeira wine
+oewn-07954389-n	dul:PhysicalObject	oewn-07578060-n	dul:FunctionalSubstance	vitamin pill	dietary supplement	a pill containing one or more vitamins; taken as a dietary supplement
+oewn-07961512-n	dul:Right	oewn-07958392-n	coll:AgentCollection	community	people	a group of people having a religion, ethnic, profession, or other particular characteristic in common
+oewn-07971643-n	ontopic:Topic	oewn-07968050-n	dul:Collection	content	collection	(usually plural) everything that is included in a collection and that is held or included in something
+oewn-07977630-n	dul:DesignedArtifact	oewn-07975883-n	dul:FunctionalSubstance	ball	agglomeration	a compact mass
+oewn-07977884-n	dul:FunctionalSubstance	oewn-07977630-n	dul:DesignedArtifact	gob	ball	a lump of slimy stuff
+oewn-07977993-n	dul:FunctionalSubstance	oewn-07977630-n	dul:DesignedArtifact	clew	ball	a ball of yarn or cord or thread
+oewn-08069082-n	dul:PhysicalPlace	oewn-08067430-n	dul:Organization	Downing Street	government	the British government
+oewn-08090304-n	dul:PhysicalPlace	oewn-08089673-n	dul:Organization	Wall Street	market	used to allude to the securities industry of the United States
+oewn-08164026-n	dul:Action	oewn-08163789-n	dul:Organization	communion	denomination	(Christianity) a group of Christians with a common religious faith who practice the same rites
+oewn-08190414-n	dul:PhysicalPlace	oewn-08311617-n	dul:Organization	European Union	world organization	an international organization of European countries formed after World War II to reduce trade barriers and increase cooperation among its members
+oewn-08289273-n	dul:DesignedArtifact	oewn-08215338-n	dul:Organization	echelon	military unit	a body of troops arranged in a line
+oewn-08296219-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	academy	secondary school	a secondary school (usually private)
+oewn-08301402-n	dul:PhysicalObject	oewn-08293641-n	dul:Organization	secondary school	school	a school for students intermediate between elementary school and college; usually grades 9 to 12
+oewn-08302515-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	trade school	secondary school	a secondary school teaching the skilled trades
+oewn-08320205-n	dul:Organization	oewn-08321825-n	dul:Process	confederation	union	a union of political organizations
+oewn-08321674-n	dul:Organization	oewn-08321825-n	dul:Process	enosis	union	the union of Greece and Cyprus (which is the goal of a group of Greek Cypriots)
+oewn-08321825-n	dul:Process	oewn-08376876-n	dul:Organization	union	political unit	a political unit formed from previously independent people or organizations
+oewn-08322044-n	dul:Organization	oewn-08321825-n	dul:Process	league	union	an association of states or organizations or individuals for common action
+oewn-08322498-n	dul:Organization	oewn-08321825-n	dul:Process	customs union	union	an association of nations to promote free trade within the union and set common tariffs for nations that are not members
+oewn-08372718-n	dul:Place	oewn-08069301-n	dul:Organization	United States government	federal government	the executive and legislative and judicial branches of the federal government of the United States
+oewn-08426574-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	senior high school	secondary school	a public secondary school usually including grades 9 through 12
+oewn-08426792-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	junior high school	secondary school	a secondary school usually including 7th and 8th grades
+oewn-08426926-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	preparatory school	secondary school	a private secondary school
+oewn-08427645-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	public school	secondary school	private independent secondary school in Great Britain supported by endowment and tuition
+oewn-08429915-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	grammar school	secondary school	a secondary school emphasizing Latin and Greek in preparation for college
+oewn-08430049-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	secondary modern school	secondary school	a former British secondary school emphasizing practical rather than academic education
+oewn-08430205-n	dul:Organization	oewn-08301402-n	dul:PhysicalObject	comprehensive school	secondary school	a large British or Canadian secondary school for children of all abilities
+oewn-08514304-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	area	region	a particular geographical region of indefinite boundary (usually serving some special purpose or distinguished by its people or culture or geography)
+oewn-08516085-n	dul:Substance	oewn-08647614-n	dul:PhysicalPlace	atmosphere	region	the mass of air surrounding the Earth
+oewn-08518586-n	dul:Substance	oewn-08647614-n	dul:PhysicalPlace	heliosphere	region	the region inside the heliopause containing the sun and solar system
+oewn-08519072-n	dul:SpaceRegion	oewn-08647614-n	dul:PhysicalPlace	deep space	region	any region in space outside the solar system
+oewn-08519528-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	backwater	region	a place or condition in which no development or progress is occurring
+oewn-08526463-n	dul:Place	oewn-08647614-n	dul:PhysicalPlace	zone	region	an area or region distinguished from adjacent parts by a distinctive feature or characteristic
+oewn-08526807-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-08647614-n	dul:PhysicalPlace	belt	region	an elongated region where a specific condition or characteristic is found
+oewn-08529042-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08647614-n	dul:PhysicalPlace	bottom	region	the lowest part of anything
+oewn-08538999-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08637636-n	dul:SpaceRegion	center	point	a point equidistant from the ends of a line or the extremities of a figure
+oewn-08540751-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08637636-n	dul:SpaceRegion	trichion	point	point where the hairline meets the midpoint of the forehead
+oewn-08560197-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08596234-n	dul:SpaceRegion	confluence	geographic point	a place where things merge or flow together (especially rivers)
+oewn-08561850-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08637636-n	dul:SpaceRegion	corner	point	the point where two lines meet or intersect
+oewn-08565513-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08637636-n	dul:SpaceRegion	crossing	point	a point where two lines (paths or arcs etc.) intersect
+oewn-08569203-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	field	region	a region in which active military operations are in progress
+oewn-08569713-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	district	region	a region marked off for administrative or other purposes
+oewn-08573923-n	dul:Place	oewn-08647614-n	dul:PhysicalPlace	distance	region	a distant region
+oewn-08574028-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	domain	region	territory over which rule or control is exercised
+oewn-08578767-n	dul:Relation	oewn-00027365-n	dul:SpaceRegion	northeast	location	a location in the northeastern part of a country, region, or city
+oewn-08578999-n	dul:Relation	oewn-00027365-n	dul:SpaceRegion	southeast	location	a location in the southeastern part of a country, region, or city
+oewn-08579251-n	dul:Relation	oewn-00027365-n	dul:SpaceRegion	southwest	location	a location in the southwestern part of a country, region, or city
+oewn-08579483-n	dul:Relation	oewn-00027365-n	dul:SpaceRegion	northwest	location	a location in the northwestern part of a country, region, or city
+oewn-08579604-n	dul:PhysicalBody	oewn-00027365-n	dul:SpaceRegion	earth	location	the abode of mortals (as contrasted with Heaven or Hell)
+oewn-08580527-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	northland	region	any region lying in or toward the north
+oewn-08580622-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	southland	region	any region lying in or toward the south
+oewn-08585406-n	dul:EventType	oewn-08583557-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	finish	end	the place designated as the end (as of a race or journey)
+oewn-08586507-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08647614-n	dul:PhysicalPlace	extremity	region	the outermost or farthest region or point
+oewn-08587306-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	field	region	somewhere (away from a studio or office or library or laboratory) where practical work is done or data is collected
+oewn-08589006-n	dul:InformationRealization	oewn-08585406-n	dul:EventType	finishing line	finish	a line indicating the location of the finish of a race
+oewn-08591861-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	geographical area	region	a demarcated area of the Earth
+oewn-08595892-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	biogeographical region	region	an area of the Earth determined by distribution of flora and fauna
+oewn-08600365-n	dul:Place	oewn-08647614-n	dul:PhysicalPlace	hell	region	any place of pain and turmoil
+oewn-08605849-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08647614-n	dul:PhysicalPlace	inside	region	the region that is inside of something
+oewn-08606472-n	dul:Substance	oewn-08647614-n	dul:PhysicalPlace	ionosphere	region	the outer region of the Earth's atmosphere; contains a high concentration of free electrons
+oewn-08606696-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	irredenta	region	a region that is related ethnically or historically to one country but is controlled politically by another
+oewn-08609236-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08647614-n	dul:PhysicalPlace	layer	region	a relatively thin sheetlike expanse or region lying over or under another
+oewn-08610686-n	dul:Amount	oewn-08586507-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	limit	extremity	as far as something can go
+oewn-08631168-n	dul:Place	oewn-08647614-n	dul:PhysicalPlace	outside	region	the region that is outside of something
+oewn-08635538-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08682181-n	dul:Place	peak	topographic point	the top or extreme point of something (usually a mountain or hill)
+oewn-08638338-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08637636-n	dul:SpaceRegion	abutment	point	point of contact between two objects or parts
+oewn-08642648-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08639173-n	dul:SpaceRegion	right	position	location near or direction toward the right side; i.e. the side to the south when a person or object faces east
+oewn-08643037-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08639173-n	dul:SpaceRegion	left	position	location near or direction toward the left side; i.e. the side to the north when a person or object faces east
+oewn-08643421-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08639173-n	dul:SpaceRegion	back	position	the part of something that is furthest from the normal viewer
+oewn-08643655-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08639173-n	dul:SpaceRegion	front	position	the part of something that is nearest to the normal viewer
+oewn-08646153-n	dul:SpaceRegion	oewn-08647614-n	dul:PhysicalPlace	radius	region	a circular region whose area is indicated by the length of its radius
+oewn-08647614-n	dul:PhysicalPlace	oewn-00027365-n	dul:SpaceRegion	region	location	the extended spatial location of something
+oewn-08648560-n	dul:PhysicalPlace	oewn-00027365-n	dul:SpaceRegion	region	location	a large indefinite location on the surface of the Earth
+oewn-08649325-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08648560-n	dul:PhysicalPlace	antipodes	region	any two places or regions on diametrically opposite sides of the Earth
+oewn-08649671-n	dul:Place	oewn-08648560-n	dul:PhysicalPlace	unknown	region	an unknown and unexplored region
+oewn-08665032-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-08682181-n	dul:Place	scour	topographic point	a place that is scoured (especially by running water)
+oewn-08666920-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08647614-n	dul:PhysicalPlace	side	region	a place within a region identified relative to a center or reference location
+oewn-08670889-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08647614-n	dul:PhysicalPlace	air	region	the region above the ground
+oewn-08671049-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08647614-n	dul:PhysicalPlace	vacuum	region	a region that is devoid of matter
+oewn-08677624-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08637636-n	dul:SpaceRegion	corner	point	the point where three areas or surfaces meet or intersect
+oewn-08681598-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08647614-n	dul:PhysicalPlace	top	region	the upper part of anything
+oewn-08703415-n	dul:Place	oewn-08647614-n	dul:PhysicalPlace	sign of the zodiac	region	(astrology) one of 12 equal areas into which the zodiac is divided
+oewn-09203864-n	dul:Personification	oewn-09203328-n	dul:Event	death instinct	urge	(psychoanalysis) an unconscious urge to die
+oewn-09280855-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-00019308-n	dul:PhysicalObject	covering	natural object	a natural object that covers or envelops
+oewn-09285277-n	dul:FunctionalSubstance	oewn-09408804-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	cutting	part	a piece cut off from the main part of something
+oewn-09300444-n	dul:Place	oewn-13933399-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	expanse	space	a wide and open space or area as of surface or land or sky
+oewn-09324937-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-00002684-n	dul:PhysicalObject	head	object	a rounded compact mass
+oewn-09330206-n	dul:FunctionalSubstance	oewn-09408804-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	hunk	part	a large piece of something without definite shape
+oewn-09331304-n	dul:Substance	oewn-00002684-n	dul:PhysicalObject	ice	object	the frozen part of a body of water
+oewn-09358146-n	dul:Substance	oewn-00002684-n	dul:PhysicalObject	land	object	material in the top layer of the surface of the earth in which plants can grow (especially with reference to its quality or use)
+oewn-09392066-n	dul:Place	oewn-00019308-n	dul:PhysicalObject	nest	natural object	a structure in which animals lay eggs or give birth to their young
+oewn-09409735-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-00027365-n	dul:SpaceRegion	pass	location	the location in a range of mountains of a geological formation that is lower than the surrounding peaks
+oewn-09455894-n	dul:FunctionalSubstance	oewn-00002684-n	dul:PhysicalObject	shiner	object	something that shines (with emitted or reflected light)
+oewn-09506868-n	dul:Personification	oewn-05633248-n	dul:Quality	imaginary being	imagination	a creature of the imagination; a person that exists only in legends or myths or fiction
+oewn-09513887-n	dul:Personification	oewn-10807146-n	dul:Person	giantess	woman	a female giant
+oewn-09556053-n	dul:Personification	oewn-10566407-n	dul:Person	Buddha	saint	one who has achieved a state of perfect enlightenment
+oewn-09562751-n	dul:Person	oewn-09562294-n	dul:Personification	Raphael	archangel	an archangel of the Hebrew tradition
+oewn-10045986-n	dul:Personification	oewn-10216584-n	dul:Person	Don Quixote	idealist	any impractical idealist (after Cervantes' hero)
+oewn-10428297-n	dul:Personification	oewn-09637714-n	dul:Person	patron saint	defender	a saint who is considered to be a defender of some group or nation
+oewn-10734785-n	dul:Personification	oewn-10633021-n	dul:Person	Tom Thumb	small person	a very small person
+oewn-11460787-n	dul:BiologicalObject	oewn-11494354-n	dul:Event	corona	light	one or more circles of light seen around a luminous object
+oewn-11476112-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-08637636-n	dul:SpaceRegion	focus	point	a point of convergence of light (or other radiation) or a point from which it diverges
+oewn-11505375-n	dul:PhysicalBody	oewn-11494354-n	dul:Event	moonlight	light	the light of the Moon
+oewn-11505664-n	dul:Event	oewn-11505767-n	dul:PhysicalBody	sunburst	sunlight	a sudden emergence of the sun from behind clouds
+oewn-11505767-n	dul:PhysicalBody	oewn-11494354-n	dul:Event	sunlight	light	the rays of the sun
+oewn-11508132-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-04689819-n	dul:DesignedArtifact	parhelion	spot	a bright spot on the parhelic circle; caused by diffraction by ice crystals
+oewn-11698944-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-08637636-n	dul:SpaceRegion	hilum	point	the scar on certain seeds marking its point of attachment to the funicle
+oewn-11712734-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-13108385-n	dul:BiologicalObject	perianth	plant organ	collective term for the outer parts of a flower consisting of the calyx and corolla and enclosing the stamens and pistils
+oewn-13148762-n	dul:Amount	oewn-08681598-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	crown	top	the upper branches and leaves of a tree or other plant
+oewn-13148915-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-13148762-n	dul:Amount	capitulum	crown	an arrangement of leafy branches forming the top or head of a tree
+oewn-13411037-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-13409418-n	dul:Amount	crown	coin	an English coin worth 5 shillings
+oewn-13601136-n	dul:PhysicalAttribute	oewn-00033914-n	dul:Amount	octane number	measure	a measure of the antiknock properties of gasoline
+oewn-13620973-n	dul:PhysicalAttribute	oewn-13620790-n	dul:Amount	magnetic flux	magnetization	a measure of the strength of a magnetic field over a given area
+oewn-13669996-n	dul:PhysicalObject	oewn-13624308-n	dul:Amount	pounder	force unit	(used only in combination) something weighing a given number of pounds
+oewn-13734697-n	dul:PhysicalObject	oewn-13624548-n	dul:Amount	en	linear unit	half the width of an em
+oewn-13801244-n	dul:PhysicalAttribute	oewn-00033914-n	dul:Amount	volume	measure	the amount of 3-dimensional space occupied by an object
+oewn-13801456-n	dul:PhysicalAttribute	oewn-00033914-n	dul:Amount	volume	measure	a relative amount
+oewn-13801782-n	dul:Task	oewn-13801586-n	dul:PhysicalAttribute	vital capacity	capacity	the maximum amount of air that can be exhaled after a maximum inhalation (usually tested with a spirometer); used to determine the condition of lung t
+oewn-13832132-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-13831419-n	dul:Relation	detail	part	a small part that can be considered separately from the whole
+oewn-13837554-n	dul:PhysicalAttribute	oewn-13837364-n	dul:Relation	scale	magnitude relation	relative magnitude
+oewn-13853640-n	dul:SpaceRegion	oewn-13849639-n	dul:Relation	north	direction	the direction in which a compass needle points
+oewn-13858914-n	dul:SpaceRegion	oewn-13858570-n	dul:Relation	depression	angular position	angular distance below the horizon (especially of a celestial object)
+oewn-13866409-n	dul:EventType	oewn-00032220-n	dul:Relation	interrelation	relation	mutual or reciprocal relation or relatedness
+oewn-13885247-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-00028005-n	dul:Region	flare	shape	a shape that spreads outward
+oewn-13885383-n	dul:Pattern	oewn-00028005-n	dul:Region	figure	shape	a combination of points and lines and planes that form a visible palpable shape
+oewn-13893053-n	dul:PhysicalPlace	oewn-13886392-n	dul:Region	geodesic	line	(mathematics) the shortest line between two points on a mathematically defined surface (as a straight line on a plane or an arc of a great circle on a
+oewn-13893444-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-00028005-n	dul:Region	connection	shape	a connecting shape
+oewn-13894091-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-13886392-n	dul:Region	perimeter	line	a line enclosing a plane areas
+oewn-13894606-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-13886392-n	dul:Region	centerline	line	a line that bisects a plane figure
+oewn-13894850-n	dul:SpaceRegion	oewn-05310901-n	dul:BiologicalObject	pit	cavity	a concavity in a surface (especially an anatomical depression)
+oewn-13896556-n	dul:Pattern	oewn-00028005-n	dul:Region	circle	shape	something approximating the shape of a circle
+oewn-13923115-n	dul:Pattern	oewn-00028005-n	dul:Region	column	shape	anything that approximates the shape of a column or tower
+oewn-13925029-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-13888104-n	dul:SpaceRegion	rim	round shape	the shape of a raised edge of a more or less circular object
+oewn-13925916-n	dul:DesignedArtifact	oewn-13885789-n	dul:Pattern	figure eight	plane figure	a two-dimensional figure having the shape of the number eight
+oewn-13926085-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#SpatialFeature	oewn-13886392-n	dul:Region	boundary	line	a line determining the limits of an area
+oewn-13933399-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-13890113-n	dul:Region	space	amorphous shape	an empty area (usually bounded in some way between things)
+oewn-13933399-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-00027365-n	dul:SpaceRegion	space	location	an empty area (usually bounded in some way between things)
+oewn-13962925-n	dul:Parameter	oewn-00024900-n	dul:Situation	degree	state	a specific identifiable position in a continuum or series or especially in a process
+oewn-13964502-n	dul:Method	oewn-13962925-n	dul:Parameter	standard of living	degree	a level of material comfort in terms of goods and services available to someone or some group
+oewn-13968971-n	rol:Status	oewn-00024900-n	dul:Situation	status	state	the relative position or standing of things or especially persons in a society
+oewn-13990954-n	rol:Status	oewn-13943868-n	dul:Situation	celibacy	condition	an unmarried status
+oewn-14464549-n	dul:Place	oewn-14464089-n	rol:Status	depth	abasement	(usually plural) a low moral state
+oewn-81261025-n	dul:Action	oewn-00026390-n	conc:InternalRepresentation	anchorage	feeling	the provision of a sense of security or steadfastness
+oewn-14604577-n	dul:Substance	oewn-00001930-n	dul:PhysicalObject	substance	physical entity	material of a particular kind or constitution
+oewn-14606023-n	dul:Task	oewn-14604877-n	dul:FunctionalSubstance	recycling	material	used or abandoned materials for use in creating new products
+oewn-14609572-n	dul:FunctionalSubstance	oewn-11695988-n	dul:BiologicalObject	ragweed pollen	pollen	pollen of the ragweed plant is a common allergen
+oewn-14706294-n	dul:ChemicalObject	oewn-09488589-n	dul:PhysicalObject	molecule	unit	(physics and chemistry) the simplest structural unit of an element or compound
+oewn-14738806-n	dul:FunctionalSubstance	oewn-02845541-n	dul:DesignedArtifact	aflatoxin	bioweapon	a potent carcinogen from the fungus Aspergillus; can be produced and stored for use as a bioweapon
+oewn-14738978-n	dul:FunctionalSubstance	oewn-04529716-n	dul:PhysicalObject	nicotine	vasoconstrictor	an alkaloid poison that occurs in tobacco; used in medicine and as an insecticide
+oewn-14810638-n	dul:FunctionalSubstance	oewn-00022119-n	dul:PhysicalObject	building material	artifact	material used for constructing buildings
+oewn-14846022-n	dul:FunctionalSubstance	oewn-03344588-n	dul:DesignedArtifact	glass wool	filter	glass fibers spun and massed into bundles resembling wool
+oewn-14847397-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-15016279-n	dul:FunctionalSubstance	cork	plant material	outer bark of the cork oak; used for stoppers for bottles etc.
+oewn-14867465-n	dul:FunctionalSubstance	oewn-03344588-n	dul:DesignedArtifact	diatomaceous earth	filter	a light soil consisting of siliceous diatom remains and often used as a filtering material
+oewn-14877397-n	dul:FunctionalSubstance	oewn-04573249-n	dul:DesignedArtifact	high explosive	weapon of mass destruction	a powerful chemical explosive that produces gas at a very high rate
+oewn-14915406-n	dul:FunctionalSubstance	oewn-04572661-n	dul:DesignedArtifact	Greek fire	weapon	a mixture used by Byzantine Greeks that was often shot at adversaries; catches fire when wetted
+oewn-15002063-n	dul:FunctionalSubstance	oewn-00022119-n	dul:PhysicalObject	paving	artifact	material used to pave an area
+oewn-15017945-n	dul:Substance	oewn-03016816-n	dul:DesignedArtifact	poison gas	chemical weapon	a gas that is poisonous to breath or contact; used in chemical warfare
+oewn-15059690-n	dul:FunctionalSubstance	oewn-02845541-n	dul:DesignedArtifact	botulin	bioweapon	potent bacterial toxin produced by the bacterium Clostridium botulinum that causes botulism; can be used as a bioweapon
+oewn-15075262-n	dul:FunctionalSubstance	oewn-02845541-n	dul:DesignedArtifact	staphylococcal enterotoxin B	bioweapon	a form of staphylococcal enterotoxin that has been used as an incapacitating agent in biological warfare

@@ -1,0 +1,201 @@
+oewn_id	pos	primary_lemma	gloss	assigned_class	method	manual_agreement
+oewn-00002573-v	v	respire	breathe easily again, as after exertion or anxiety	dul:State	phase3_propagated_from_hypernym	
+oewn-00016685-s	s	verdant	characterized by abundance of verdure	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00021214-r	r	never	not at all; certainly not; not in any circumstances; not ever; at no time in the past or future	dul:TimeInterval	phase4_R2_adv_temporal	
+oewn-00034695-r	r	shortly	at a short distance	dul:Region	phase4_R7_adv_default	
+oewn-00064168-r	r	altogether	with everything included or counted	dul:Region	phase4_R7_adv_default	
+oewn-00071399-v	v	martyr	torture and torment like a martyr	dul:Action	phase3_propagated_from_hypernym	
+oewn-00114348-r	r	inorganically	not involving carbon compounds	dul:Region	phase4_R7_adv_default	
+oewn-00120124-v	v	make	give certain properties to something	dul:Action	phase3_propagated_from_hypernym	
+oewn-00130906-r	r	racially	with respect to race	dul:Region	phase4_R7_adv_default	
+oewn-00142257-s	s	columnar	characterized by columns	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00144182-r	r	institutionally	by an institution	dul:Region	phase4_R7_adv_default	
+oewn-00145844-n	n	tag	(sports) the act of touching a player in a game (which changes their status in the game)	dul:Action	phase1_propagated	
+oewn-00147263-a	a	unarmed	(used of plants or animals) lacking barbs or stings or thorns	dul:Quality	phase4_A5_adj_head_default	
+oewn-00157652-v	v	enlarge	become larger or bigger	dul:Action	phase3_propagated_from_hypernym	
+oewn-00177724-v	v	clean	remove unwanted substances from, such as feathers or pits	dul:Action	phase3_propagated_from_hypernym	
+oewn-00180819-r	r	in other words	otherwise stated	dul:Region	phase4_R7_adv_default	
+oewn-00211212-a	a	grassy	abounding in grass	dul:Quality	phase4_A5_adj_head_default	
+oewn-00219120-r	r	inauspiciously	in an inauspicious manner	dul:Region	phase4_R1_adv_manner	
+oewn-00219659-r	r	head-on	with the front foremost	dul:Region	phase4_R7_adv_default	
+oewn-00225174-s	s	beltlike	resembling a belt around something	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00234918-v	v	tie	limit or restrict to	dul:Action	phase3_propagated_from_hypernym	
+oewn-00239791-r	r	scienter	(law) deliberately or knowingly	dul:Region	phase4_R7_adv_default	
+oewn-00244343-s	s	Caucasian	of or relating to Caucasian people	dul:PhysicalAttribute	phase4_A1_satellite_inherits_head	
+oewn-00264860-s	s	game	willing to face danger	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00268567-r	r	avidly	in an avid manner	dul:Region	phase4_R1_adv_manner	
+oewn-00281861-v	v	discolor	change color, often in an undesired manner	dul:Action	phase3_tier1_derivation	
+oewn-00282667-r	r	cagily	in a cagey manner	dul:Region	phase4_R1_adv_manner	
+oewn-00285302-r	r	chastely	in a chaste and virtuous manner	dul:Region	phase4_R7_adv_default	
+oewn-00287002-r	r	clearly	in an easily perceptible manner	dul:Region	phase4_R1_adv_manner	
+oewn-00311025-r	r	detestably	in an offensive and hateful manner	dul:Region	phase4_R7_adv_default	
+oewn-00318955-r	r	disparagingly	in a disparaging manner	dul:Region	phase4_R1_adv_manner	
+oewn-00330464-v	v	twig	branch out in a twiglike manner	dul:Action	phase3_propagated_from_hypernym	
+oewn-00331928-n	n	transplant	the act of removing something from one location and introducing it in another location	dul:Situation	phase1_propagated	
+oewn-00337732-v	v	fissure	break into fissures or fine cracks	dul:Action	phase3_propagated_from_hypernym	
+oewn-00342537-r	r	flabbily	in a flabby manner	dul:Region	phase4_R1_adv_manner	
+oewn-00387364-s	s	yellow-tinged	of a color tinged with yellow	dul:PhysicalAttribute	phase4_A1_satellite_inherits_head	
+oewn-00398893-v	v	digest	soften or disintegrate, as by undergoing exposure to heat or moisture	dul:Action	phase3_propagated_from_hypernym	
+oewn-00406926-r	r	murderously	as if bent on murder	dul:Region	phase4_R7_adv_default	
+oewn-00414088-r	r	subjectively	in a subjective way	dul:Region	phase4_R1_adv_manner	
+oewn-00415612-n	n	hijab	the custom in some Islamic societies of women dressing modestly outside the home	dul:Method	phase1_propagated	
+oewn-00415748-v	v	dislocate	put out of its usual place, position, or relationship	dul:Action	phase3_tier1_derivation	
+oewn-00418463-r	r	painstakingly	in a fastidious and painstaking manner	dul:Region	phase4_R7_adv_default	
+oewn-00420328-v	v	loosen	make loose or looser	dul:Action	phase3_tier1_derivation	
+oewn-00437981-r	r	purposefully	in a purposeful manner	dul:Region	phase4_R1_adv_manner	
+oewn-00442738-r	r	remotely	in a remote manner	dul:Region	phase4_R1_adv_manner	
+oewn-00450958-s	s	close-set	set close together	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00452640-a	a	distant	far apart in relevance or relationship or kinship	dul:Quality	phase4_A5_adj_head_default	
+oewn-00476618-r	r	tauntingly	in a playfully teasing manner	dul:Region	phase4_R1_adv_manner	
+oewn-00478809-a	a	comfortable	providing or experiencing physical well-being or relief (‘comfy’ is informal)	dul:Quality	phase4_A5_adj_head_default	
+oewn-00494248-r	r	validly	with validity; in a valid manner	dul:Region	phase4_R7_adv_default	
+oewn-00495346-r	r	vilely	in a vile manner	dul:Region	phase4_R1_adv_manner	
+oewn-00500491-r	r	between decks	in the space between decks, on a ship	dul:Region	phase4_R7_adv_default	
+oewn-00517962-r	r	stably	in a stable solid fixed manner	dul:Region	phase4_R7_adv_default	
+oewn-00580133-s	s	unchanging	conforming to the same principles or course of action over time	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00597611-n	n	prefecture	the office of prefect	dul:Action	phase1_propagated	
+oewn-00631829-s	s	smooth-bodied	having a smooth body	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00644365-s	s	mannerly	socially correct in behavior	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00659885-a	a	crystallized	having become fixed and definite in form	dul:Quality	phase4_A5_adj_head_default	
+oewn-00702806-v	v	determine	shape or influence; give direction to	dul:Action	phase3_tier1_derivation	
+oewn-00703342-v	v	miscreate	shape or form or make badly	dul:Action	phase3_propagated_from_hypernym	
+oewn-00729535-v	v	personify	attribute human qualities to something	dul:Action	phase3_tier1_derivation	
+oewn-00740164-v	v	take one's lumps	suffer the results or consequences of one's behavior or actions	dul:Action	phase3_propagated_from_hypernym	
+oewn-00786670-v	v	question	pose a question	dul:Action	phase3_propagated_from_hypernym	
+oewn-00870135-v	v	brazen	face with defiance or impudence	dul:Action	phase3_propagated_from_hypernym	
+oewn-00964856-s	s	allegiant	steadfast in devotion (especially to your lawful monarch or government)	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00978099-s	s	out	no longer fashionable	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-00988488-s	s	old-maidish	primly fastidious	dul:PhysicalAttribute	phase4_A1_satellite_inherits_head	
+oewn-01004785-v	v	film	make a film or photograph of something	dul:Action	phase3_tier1_derivation	
+oewn-01005571-s	s	fertilizable	capable of being fertilized	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01039540-s	s	tramontane	being or coming from another country	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01062848-n	n	purveyance	the act of supplying something	dul:Action	phase1_propagated	
+oewn-01063821-v	v	hem	utter ‘hem’ or ‘ahem’	dul:Action	phase3_propagated_from_hypernym	
+oewn-01078523-v	v	backstop	act as a backstop	dul:Action	phase3_propagated_from_hypernym	
+oewn-01083666-s	s	liquescent	becoming liquid	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01137797-v	v	trigger	release or pull the trigger on	dul:Action	phase3_propagated_from_hypernym	
+oewn-01156228-v	v	get even	take revenge or even out a score	dul:Action	phase3_propagated_from_hypernym	
+oewn-01166445-s	s	stabbing	causing physical or especially psychological injury	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01217353-n	n	auspices	kindly endorsement and guidance	dul:Action	phase1_propagated	
+oewn-01329757-s	s	mainstreamed	(of the handicapped) placed in regular school classes	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01346455-v	v	velcro	fasten with Velcro	dul:Action	phase3_propagated_from_hypernym	
+oewn-01373517-a	a	unjust	violating principles of justice	dul:Quality	phase4_A5_adj_head_default	
+oewn-01390310-v	v	plait	weave into plaits	dul:State	phase3_propagated_from_hypernym	
+oewn-01392261-v	v	decompress	restore to its uncompressed form	dul:Action	phase3_tier2_indirect	
+oewn-01399936-s	s	antiknock	suppressing or eliminating engine knock in combustion engines	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01416571-v	v	cut	hit (a ball) with a spin so that it turns in the opposite direction	dul:Action	phase3_propagated_from_hypernym	
+oewn-01421862-s	s	denotative	in accordance with fact or the primary meaning of a term	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01466248-s	s	alienated	caused to be unloved	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01493085-a	a	immature	not yet mature	dul:Quality	phase4_A5_adj_head_default	
+oewn-01535299-a	a	nonmetamorphic	not metamorphic	dul:Quality	phase4_A5_adj_head_default	
+oewn-01551500-v	v	erase	remove by or as if by rubbing or erasing	dul:Action	phase3_propagated_from_hypernym	
+oewn-01556651-v	v	chatter	cut unevenly with a chattering tool	dul:Action	phase3_propagated_from_hypernym	
+oewn-01568966-v	v	bust up	smash or break forcefully	dul:State	phase3_propagated_from_hypernym	
+oewn-01593444-v	v	core	remove the core or center from	dul:Action	phase3_propagated_from_hypernym	
+oewn-01669060-a	a	pessimistic	expecting the worst possible outcome	dul:Quality	phase4_A5_adj_head_default	
+oewn-01701301-v	v	model	construct a model in the likeness of	dul:Action	phase3_tier1_derivation	
+oewn-01731745-v	v	slur	play smoothly or legato	dul:Action	phase3_propagated_from_hypernym	
+oewn-01754981-v	v	overact	exaggerate one's acting	dul:Action	phase3_propagated_from_hypernym	
+oewn-01773011-v	v	jar	affect in a disagreeable way	dul:Action	phase3_propagated_from_hypernym	
+oewn-01792945-n	n	Plymouth Rock	an American breed of domestic fowl	dul:PhysicalBody	phase1_inferred	
+oewn-01801245-s	s	puff	gathered for protruding fullness	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01843480-v	v	ride	move like a floating object	dul:Action	phase3_propagated_from_hypernym	
+oewn-01861082-n	n	swan	stately heavy-bodied aquatic bird with very long neck and usually white plumage as adult	dul:Organism	phase1_propagated	
+oewn-01896449-s	s	bigheaded	(used colloquially) overly conceited or arrogant	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01914259-s	s	virginal	untouched or undefiled	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-01914366-v	v	startle	move or jump suddenly, as if in surprise or alarm	dul:State	phase3_propagated_from_hypernym	
+oewn-01938650-a	a	unready	not prepared or in a state of readiness; slow to understand or respond	dul:PhysicalAttribute	phase4_A4_physical_attr_keyword	
+oewn-01956423-v	v	route	divert in a specified direction	dul:Action	phase3_propagated_from_hypernym	
+oewn-01979135-s	s	allied	related by common characteristics or ancestry	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-02016825-v	v	shuffle	move about, move back and forth	dul:Action	phase3_propagated_from_hypernym	
+oewn-02039365-n	n	avocet	long-legged web-footed black-and-white shorebird with slender upward-curving bill	dul:Organism	phase1_propagated	
+oewn-02055194-v	v	cycle	pass through a cycle	dul:Action	phase3_propagated_from_hypernym	
+oewn-02073546-s	s	contrasting	strikingly different; tending to contrast	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-02168498-v	v	ogle	look at with amorous intentions	dul:Action	phase3_propagated_from_hypernym	
+oewn-02173212-a	a	significant	too closely correlated to be attributed to chance and therefore indicating a systematic relation	dul:Quality	phase4_A5_adj_head_default	
+oewn-02180022-v	v	tick	make a sound like a clock or a timer	dul:Event	phase3_tier3_default_event	
+oewn-02182928-v	v	whish	make a sibilant sound	dul:Event	phase3_tier3_default_event	
+oewn-02190638-v	v	pop	cause to make a sharp explosive sound	dul:Action	phase3_propagated_from_hypernym	
+oewn-02223706-v	v	fund	convert (short-term floating debt) into long-term debt that bears fixed interest and is represented by bonds	dul:Action	phase3_propagated_from_hypernym	
+oewn-02259643-s	s	unattended	lacking accompaniment or a guard or escort	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-02262825-a	a	seedy	full of seeds	dul:Quality	phase4_A5_adj_head_default	
+oewn-02263073-s	s	black-seeded	having black seeds	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-02280845-v	v	requisition	demand and take for use or service, especially by military or public authority for public service	dul:Action	phase3_tier1_derivation	
+oewn-02408849-s	s	unsalted	without salt or seasoning	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-02416399-a	a	relaxed	without strain or anxiety	dul:Quality	phase4_A5_adj_head_default	
+oewn-02430842-a	a	wasteful	tending to squander and waste	dul:Quality	phase4_A5_adj_head_default	
+oewn-02443747-s	s	untired	with unreduced energy	dul:Quality	phase4_A1_satellite_inherits_head	
+oewn-02479111-v	v	kill	thwart the passage of	dul:Action	phase3_propagated_from_hypernym	
+oewn-02531924-n	n	beaked salmon	fish of sandy areas of western Pacific and Indian oceans having an angular snout for burrowing into sand	dul:Organism	phase1_propagated	
+oewn-02558526-v	v	rehabilitate	restore to a state of good condition or operation	dul:State	phase3_propagated_from_hypernym	
+oewn-02559813-n	n	yellow perch	North American perch	dul:Organism	phase1_propagated	
+oewn-02608526-a	a	pederastic	of homosexuality between a man and a boy	dul:Quality	phase4_A5_adj_head_default	
+oewn-02649505-v	v	call	stop or postpone because of adverse conditions, such as bad weather	dul:State	phase3_propagated_from_hypernym	
+oewn-02679290-a	a	Botswanan	of or pertaining to Botswana or the people of Botswana	dul:Quality	phase4_A2_pertainym_default	
+oewn-02687703-a	a	camphoric	relating to or derived from or containing camphor	dul:Quality	phase4_A2_pertainym_default	
+oewn-02710203-n	n	anaglyph	moving or still pictures in contrasting colors that appear three-dimensional when superimposed	dul:InformationRealization	phase1_propagated	
+oewn-02719070-a	a	cytoarchitectural	of or relating to cytoarchitecture	dul:Quality	phase4_A2_pertainym_default	
+oewn-02720416-v	v	protuberate	form a rounded prominence	dul:Action	phase3_propagated_from_hypernym	
+oewn-02732613-a	a	ergonomic	of or relating to ergonomics	dul:Quality	phase4_A2_pertainym_default	
+oewn-02750721-a	a	hemodynamic	or of relating to or involved in hemodynamics	dul:Quality	phase4_A2_pertainym_default	
+oewn-02760342-n	n	audiometer	an instrument used to measure the sensitivity of hearing	dul:DesignedArtifact	phase1_propagated	
+oewn-02783873-a	a	palmar	relating to the palm of the hand or the sole of the foot	dul:Quality	phase4_A2_pertainym_default	
+oewn-02821491-a	a	temperamental	relating to or caused by temperament	dul:Quality	phase4_A2_pertainym_default	
+oewn-02878524-a	a	messianic	of or relating to a messiah promising deliverance	dul:Quality	phase4_A2_pertainym_default	
+oewn-02887905-a	a	endermic	acting by absorption through the skin	dul:Quality	phase4_A2_pertainym_default	
+oewn-02911448-n	n	brunch coat	a woman's short housecoat or wrapper	dul:PhysicalObject	phase1_propagated	
+oewn-02999091-a	a	incident	falling or striking of light rays on something	dul:Quality	phase4_A2_pertainym_default	
+oewn-03005725-a	a	lacustrine	of or relating to or living near lakes	dul:Quality	phase4_A2_pertainym_default	
+oewn-03010906-a	a	tricentenary	of or relating to or completing a period of 300 years	dul:Quality	phase4_A2_pertainym_default	
+oewn-03032973-a	a	hyoid	of or relating to the hyoid bone	dul:Quality	phase4_A2_pertainym_default	
+oewn-03122135-a	a	inspiratory	pertaining to the drawing in phase of respiration	dul:Quality	phase4_A2_pertainym_default	
+oewn-03130003-n	n	cracker	a party favor consisting of a paper roll (usually containing candy or a small favor) that pops when pulled at both ends	dul:PhysicalObject	phase1_propagated	
+oewn-03151353-n	n	cullis	a gutter in a roof	dul:PhysicalPlace	phase1_propagated	
+oewn-03159196-a	a	asphaltic	containing asphalt	dul:Quality	phase4_A2_pertainym_default	
+oewn-03162312-a	a	malted	of grain that has been converted into malt	dul:Quality	phase4_A3_participial_default	
+oewn-03169271-n	n	davenport	a large sofa usually convertible into a bed	dul:DesignedArtifact	phase1_propagated	
+oewn-03229941-n	n	dose	a measured portion of medicine taken at any one time	dul:FunctionalSubstance	phase1_propagated	
+oewn-03537367-n	n	hood ornament	an ornament on the front of the hood of a car emblematic of the manufacturer	dul:DesignedArtifact	phase1_propagated	
+oewn-03573092-n	n	Indian club	a bottle-shaped club used in exercises	dul:DesignedArtifact	phase1_propagated	
+oewn-04565764-n	n	water closet	a toilet in Britain	dul:DesignedArtifact	phase1_propagated	
+oewn-04901639-n	n	lightheadedness	a frivolous lack of prudence	dul:Quality	phase1_propagated	
+oewn-04998860-n	n	meter	rhythm as given by division into parts of equal duration	dul:Quality	phase1_propagated	
+oewn-05159765-n	n	impracticality	concerned with theoretical possibilities rather than actual use	dul:Quality	phase1_propagated	
+oewn-05219877-n	n	relativity	the quality of being relative and having significance only in relation to something else	dul:Quality	phase1_propagated	
+oewn-05991605-n	n	intention	(usually plural) the goal with respect to a marriage proposal	dul:Goal	phase1_propagated	
+oewn-06065060-n	n	pharmacokinetics	the study of the action of drugs in the body: method and rate of excretion, duration of effect, etc.	ontopic:Topic	phase1_propagated	
+oewn-06232435-n	n	agnosticism	a religious orientation of doubt; a denial of ultimate knowledge of the existence of God	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	phase1_propagated	
+oewn-06234201-n	n	tritheism	(Christianity) the heretical belief that the Father and the Son and the Holy Spirit are three separate gods	coll:InformationCollection	phase1_propagated	
+oewn-06331794-n	n	modifier	a content word that qualifies the meaning of a noun or verb	dul:Relation	phase1_propagated	
+oewn-06355208-n	n	place name	the name by which a geographical place is known	dul:Relation	phase1_propagated	
+oewn-06373667-n	n	hieratic	a cursive form of Egyptian hieroglyphics; used especially by the priests	dul:InformationRealization	phase1_propagated	
+oewn-06969880-n	n	Volgaic	a historical grouping of the Finnic languages including Mordvinian and Mari	dul:InformationObject	phase1_propagated	
+oewn-07180429-n	n	preliminary prospectus	a first draft of a prospectus; must be clearly marked to indicate that parts may be changed in the final prospectus	dul:InformationRealization	phase1_propagated	
+oewn-07219061-n	n	denial	the act of refusing to comply (as with a request)	dul:Action	phase1_propagated	
+oewn-07262593-n	n	public relations	a promotion intended to create goodwill for a person or institution	ontopic:Topic	phase1_propagated	
+oewn-07562685-n	n	misology	hatred of reasoning	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	phase1_propagated	
+oewn-07637670-n	n	baked goods	foods (like breads and cakes and pastries) that are cooked in an oven	dul:FunctionalSubstance	phase1_propagated	
+oewn-07854417-n	n	marinara	sauce for pasta; contains tomatoes and garlic and herbs	dul:FunctionalSubstance	phase1_propagated	
+oewn-07959756-n	n	age group	a group of people having approximately the same age	coll:AgentCollection	phase1_propagated	
+oewn-08507412-n	n	base	the place where you are stationed and from which missions start and end	dul:Place	phase1_topmapping	
+oewn-08535652-n	n	campus	a field on which the buildings of a university are situated	dul:Place	phase1_propagated	
+oewn-09923389-n	n	censor	someone who censures or condemns	dul:Person	phase1_propagated	
+oewn-10147553-n	n	geometer	a mathematician specializing in geometry	dul:Person	phase1_propagated	
+oewn-10300642-n	n	magistrate	a lay judge or civil authority who administers the law (especially one who conducts a court dealing with minor offenses)	dul:Person	phase1_propagated	
+oewn-10571914-n	n	Satanist	an adherent of Satan or Satanism	dul:Person	phase1_propagated	
+oewn-10746823-n	n	trawler	a fisherman who use a trawl net	dul:Person	phase1_propagated	
+oewn-10810755-n	n	working girl	a young woman who is employed	dul:Person	phase1_propagated	
+oewn-11961384-n	n	swampy beggar-ticks	bur marigold of eastern and northern United States and Canada common in wet pastures and meadows	dul:Organism	phase1_propagated	
+oewn-12370228-n	n	Medinilla magnifica	a beautiful tropical evergreen epiphytic shrub grown for its lush foliage and huge panicles of pink flowers; Philippines	dul:Organism	phase1_propagated	
+oewn-13186450-n	n	mixed bud	a bud yielding both leaves and flowers	dul:BiologicalObject	phase1_propagated	
+oewn-13392203-n	n	valuable	something of value	dul:Right	phase1_propagated	
+oewn-13405514-n	n	old-age pension	a monthly payment made to someone who is retired from work	dul:Right	phase1_propagated	
+oewn-13496741-n	n	erosion	(geology) the mechanical process of wearing or grinding something down (as by particles washing over it), also figuratively	dul:Process	phase1_propagated	
+oewn-13610884-n	n	equilibrium constant	(chemistry) the ratio of concentrations when equilibrium is reached in a reversible reaction (when the rate of the forward reaction equals the rate of the reverse reaction)	dul:Amount	phase1_propagated	
+oewn-13672065-n	n	yard	a unit of length equal to 3 feet; defined as 91.44 centimeters; originally taken to be the average length of a stride	dul:Amount	phase1_propagated	
+oewn-14315063-n	n	dislocation	a displacement of a part (especially a bone) from its normal position (as in the shoulder or the vertebral column)	dul:Situation	phase1_propagated	
+oewn-14411380-n	n	maladjustment	the condition of being unable to adapt properly to your environment with resulting emotional instability	dul:Situation	phase1_propagated	
+oewn-14868156-n	n	ocher	any of various earths containing silica and alumina and ferric oxide; used as a pigment	dul:FunctionalSubstance	phase1_propagated	
+oewn-15127793-n	n	wolframite	a mineral consisting of iron and manganese tungstate in crystalline form; the principal ore of tungsten; found in quartz veins associated with granitic rocks	dul:FunctionalSubstance	phase1_propagated	
+oewn-86191087-n	n	Mongolian race	an Asian race	dul:Collection	phase1_propagated	
+oewn-90009391-v	v	screenshot	to capture an image from a computer's display	dul:Action	phase3_propagated_from_hypernym	

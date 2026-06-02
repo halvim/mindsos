@@ -1,0 +1,31 @@
+{
+  "pilot_rows_total": 100,
+  "pilot_breakdown": {
+    "adjective_head": 25,
+    "adjective_satellite": 15,
+    "adjective_pertainym": 8,
+    "adjective_participial": 2,
+    "adverb": 50
+  },
+  "projected_full_coverage": {
+    "adj.all_heads": {
+      "A5_adj_head_default": 3563,
+      "A4_physical_attr_keyword": 216
+    },
+    "adj.all_satellites": {
+      "A1_satellite_inherits_head": 10717
+    },
+    "adj.pert_total": 3663,
+    "adj.ppl_total": 60,
+    "adv.all": {
+      "R7_adv_default": 1825,
+      "R2_adv_temporal": 109,
+      "R1_adv_manner": 1263,
+      "R5_adv_degree": 179,
+      "R6_adv_modal": 9,
+      "R4_adv_frequency": 39,
+      "R3_adv_spatial": 190
+    },
+    "grand_total_synsets": 21833
+  }
+}

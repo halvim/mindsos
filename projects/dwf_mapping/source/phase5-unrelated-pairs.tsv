@@ -1,0 +1,501 @@
+child	child_class	parent	parent_class	child_lemma	parent_lemma	child_gloss
+oewn-00002137-n	dul:Description	oewn-00001740-n	dul:PhysicalObject	abstraction	entity	a general concept formed by extracting common features from specific examples
+oewn-00004258-n	dul:PhysicalAgent	oewn-00003553-n	dul:System	living thing	whole	a living (or once living) entity
+oewn-00006484-n	dul:BiologicalObject	oewn-00004258-n	dul:PhysicalAgent	cell	living thing	(biology) the basic structural and functional unit of all organisms; they may exist as independent units of life (as in monads) or may form colonies o
+oewn-00023451-n	conc:InternalRepresentation	oewn-00023280-n	dul:Description	cognition	psychological feature	the psychological result of perception and learning and reasoning
+oewn-00023953-n	dul:Event	oewn-00023280-n	dul:Description	motivation	psychological feature	the psychological feature that arouses an organism to action toward a desired goal; the reason for the action; that which gives purpose and direction 
+oewn-00024444-n	dul:Region	oewn-00002137-n	dul:Description	attribute	abstraction	an abstraction belonging to or characteristic of an entity
+oewn-00024900-n	dul:Situation	oewn-00024444-n	dul:Region	state	attribute	the way something is with respect to its main attributes
+oewn-00026390-n	conc:InternalRepresentation	oewn-00024900-n	dul:Situation	feeling	state	the experiencing of affective and emotional states
+oewn-00029677-n	dul:Event	oewn-00002137-n	dul:Description	event	abstraction	something that happens at a given place and time
+oewn-00032220-n	dul:Relation	oewn-00002137-n	dul:Description	relation	abstraction	an abstraction belonging to or characteristic of two entities or parts together
+oewn-00032912-n	dul:Right	oewn-00032220-n	dul:Relation	possession	relation	anything owned or possessed
+oewn-00033319-n	dul:InformationObject	oewn-00002137-n	dul:Description	communication	abstraction	something that is communicated by or to or between people or groups
+oewn-00033914-n	dul:Amount	oewn-00002137-n	dul:Description	measure	abstraction	how much there is or how many there are of something that you can quantify
+oewn-00067036-n	dul:Situation	oewn-00030657-n	dul:Action	nonaccomplishment	act	an act that does not achieve its intended goal
+oewn-00068217-n	dul:Situation	oewn-01236910-n	dul:Action	default	absence	loss due to not showing up
+oewn-00090171-n	dul:Situation	oewn-00078239-n	dul:Action	restitution	acquisition	getting something back again
+oewn-00090477-n	dul:Action	oewn-00090171-n	dul:Situation	clawback	restitution	finding a way to take money back from people that they were given in another way
+oewn-00149266-n	dul:Situation	oewn-00855117-n	dul:Action	tubal ligation	surgical contraception	a sterilization procedure with women; both Fallopian tubes are tied in two places and the tubes removed in between the ligations
+oewn-00153050-n	dul:Method	oewn-01025762-n	dul:Action	Bertillon system	procedure	a system or procedure for identifying persons
+oewn-00191991-n	dul:Situation	oewn-00038116-n	dul:Action	change	action	the action of changing something
+oewn-00195818-n	dul:Situation	oewn-00408356-n	dul:Action	variation	activity	an activity that varies from a norm or standard
+oewn-00203133-n	dul:Situation	oewn-00038116-n	dul:Action	resistance	action	the action of opposing something that you disapprove or disagree with
+oewn-00222045-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-00221389-n	dul:Situation	bloodshed	murder	the shedding of blood resulting in murder
+oewn-00240350-n	dul:Situation	oewn-01029321-n	dul:Action	groundbreaking	ceremony	the ceremonial breaking of the ground to formally begin a construction project
+oewn-00256081-n	dul:Situation	oewn-00256577-n	dul:Action	washup	wash	the act of washing yourself (or another person)
+oewn-00256317-n	dul:Method	oewn-00256577-n	dul:Action	ablution	wash	the ritual washing of a priest's hands or of sacred vessels
+oewn-00285985-n	dul:Situation	oewn-00859826-n	dul:Process	sleepwalking	sleeping	walking by a person who is asleep
+oewn-00288120-n	dul:Method	oewn-00287801-n	dul:Situation	rack	gait	a rapid gait of a horse in which each foot strikes the ground separately
+oewn-00297411-n	dul:Collective	oewn-01082290-n	dul:Action	procession	group action	the group action of a collection of people or animals or vehicles moving ahead in more or less regular formation
+oewn-00297411-n	dul:Collective	oewn-07968050-n	dul:Collection	procession	collection	the group action of a collection of people or animals or vehicles moving ahead in more or less regular formation
+oewn-00299323-n	dul:Situation	oewn-00816981-n	dul:Action	driving	steering	the act of controlling and steering the movement of a vehicle or animal
+oewn-00319012-n	dul:InformationRealization	oewn-00318033-n	dul:Situation	post	delivery	the delivery and collection of letters and packages
+oewn-00326920-n	dul:Situation	oewn-00524569-n	dul:Action	rock climbing	sport	the sport or pastime of scaling rock masses on mountain sides (especially with the help of ropes and special equipment)
+oewn-00382488-n	dul:DesignedArtifact	oewn-00379793-n	dul:Situation	union	combination	the act of making or becoming a single unit
+oewn-00382917-n	dul:Situation	oewn-00382488-n	dul:DesignedArtifact	coalescence	union	the union of diverse things into one body or form or group; the growing together of parts
+oewn-00383282-n	dul:Situation	oewn-00382488-n	dul:DesignedArtifact	reunion	union	the act of coming together again
+oewn-00383547-n	dul:Situation	oewn-00382488-n	dul:DesignedArtifact	tribalization	union	the act of making tribal; unification on a tribal basis
+oewn-00383879-n	dul:Situation	oewn-00382488-n	dul:DesignedArtifact	umbrella	union	having the function of uniting a group of similar things
+oewn-00396462-n	dul:Action	oewn-00393517-n	dul:Situation	circumcision	abscission	the act of circumcising; surgical removal of the foreskin of males
+oewn-00404732-n	dul:Quality	oewn-00403900-n	dul:Situation	burn	damage	damage inflicted by fire
+oewn-00404879-n	dul:Situation	oewn-00404732-n	dul:Quality	scald	burn	the act of burning with steam or hot water
+oewn-00411260-n	dul:Method	oewn-00408356-n	dul:Action	practice	activity	a customary way of operation or behavior
+oewn-00414252-n	dul:Method	oewn-01024120-n	dul:EventType	custom	survival	accepted or habitual practice
+oewn-00422316-n	dul:Method	oewn-00214192-n	dul:Action	rendition	surrender	handing over prisoners to the country in which a crime was committed
+oewn-00424919-n	dul:DesignedArtifact	oewn-00422440-n	dul:Method	rack	torture	a form of torture in which pain is inflicted by stretching the body
+oewn-00430698-n	dul:Situation	oewn-00427931-n	dul:Action	eurythmy	diversion	the interpretation in harmonious bodily movements of the rhythm of musical compositions; used to teach musical understanding
+oewn-00431125-n	dul:Situation	oewn-00427931-n	dul:Action	gambling	diversion	the act of playing for stakes in the hope of winning (including the payment of a price for a chance to win a prize)
+oewn-00439983-n	dul:Relation	oewn-00364086-n	dul:Situation	split	increase	an increase in the number of outstanding shares of a corporation without changing the shareholders' equity
+oewn-00494319-n	dul:Place	oewn-00489236-n	dul:Action	Michigan	card game	a gambling card game in which chips are placed on the ace and king and queen and jack of separate suits (taken from a separate deck); a player plays t
+oewn-00494753-n	dul:Person	oewn-00489236-n	dul:Action	Napoleon	card game	a card game similar to whist; usually played for stakes
+oewn-00508684-n	dul:Situation	oewn-00456623-n	dul:Action	game of chance	game	a game that involves gambling
+oewn-00523201-n	dul:Action	oewn-08425224-n	dul:Collection	exhibition	fair	the act of exhibiting
+oewn-00523201-n	dul:Action	oewn-08425514-n	coll:AgentCollection	exhibition	fair	the act of exhibiting
+oewn-00536358-n	dul:InformationRealization	oewn-00535886-n	ontopic:Topic	beguine	ballroom dancing	a ballroom dance that originated in the French West Indies; similar to the rumba
+oewn-00536492-n	dul:InformationRealization	oewn-00535886-n	ontopic:Topic	carioca	ballroom dancing	a lively ballroom dance that resembles the samba
+oewn-00561330-n	dul:EventType	oewn-00559920-n	dul:Plan	rush	run	(American football) an attempt to advance the ball by running into the line
+oewn-00574701-n	dul:Action	oewn-00574305-n	dul:Situation	pitch	approach	a high approach shot in golf
+oewn-00590728-n	dul:Place	oewn-00587299-n	dul:Action	caliphate	position	the office of a caliph
+oewn-00598380-n	dul:Person	oewn-00597922-n	dul:Action	President of the United States	presidency	the office of the United States head of state
+oewn-00662026-n	dul:Situation	oewn-00656128-n	dul:Action	manicure	care	professional care for the hands and fingernails
+oewn-00662200-n	dul:Situation	oewn-00656128-n	dul:Action	pedicure	care	professional care for the feet and toenails
+oewn-00667024-n	dul:Situation	oewn-00666922-n	dul:Action	facial	skin care	care for the face that usually involves cleansing and massage and the application of cosmetic creams
+oewn-00670930-n	dul:Situation	oewn-00670724-n	dul:Action	suction curettage	curettage	a method of induced abortion; prior to the 14th week of gestation the embryo and placenta are removed by applying suction to the dilated cervix
+oewn-00699862-n	dul:Situation	oewn-00699257-n	dul:Action	venesection	bloodletting	surgical incision into a vein; used to treat hemochromatosis
+oewn-00723730-n	dul:Person	oewn-00723312-n	dul:Role	position	role	(in team sports) the role assigned to an individual player
+oewn-00734044-n	dul:Situation	oewn-00408356-n	dul:Action	wrongdoing	activity	activity that transgresses moral or civil law
+oewn-00758836-n	dul:Situation	oewn-06802268-n	dul:InformationRealization	original sin	religious doctrine	a sin said to be inherited by all descendants of Adam
+oewn-00774039-n	dul:Situation	oewn-00976530-n	dul:Action	resisting arrest	assault	physical efforts to oppose a lawful arrest; the resistance is classified as assault and battery upon the person of the police officer attempting to ma
+oewn-00798428-n	dul:Organism	oewn-00797381-n	dul:Action	baby	undertaking	a project of personal concern to someone
+oewn-00843942-n	dul:Quality	oewn-00360440-n	dul:Situation	nip	clip	a small sharp bite or snip
+oewn-00844658-n	dul:Organism	oewn-01059683-n	dul:Action	suckling	feeding	feeding an infant by giving suck at the breast
+oewn-00867757-n	dul:Situation	oewn-00865191-n	dul:Process	mydriasis	reflex	reflex pupillary dilation as a muscle pulls the iris outward; occurs in response to a decrease in light or certain drugs
+oewn-00935074-n	dul:TimeInterval	oewn-00934815-n	dul:Action	personification	embodiment	the act of attributing human characteristics to abstract ideas etc.
+oewn-01016932-n	coll:AgentCollection	oewn-01016008-n	dul:Action	gather	collection	the act of gathering something
+oewn-01045365-n	dul:Collection	oewn-01044796-n	dul:Action	Stations	devotion	(Roman Catholic Church) a devotion consisting of fourteen prayers said before a series of fourteen pictures or carvings representing successive incide
+oewn-01049727-n	dul:TimeInterval	oewn-01049262-n	dul:EventType	rebirth	revival	the revival of learning and culture
+oewn-01064507-n	dul:Situation	oewn-00030657-n	dul:Action	inactivity	act	being inactive; being less active
+oewn-01075919-n	dul:Situation	oewn-00030657-n	dul:Action	hindrance	act	the act of hindering or obstructing or impeding
+oewn-01078787-n	dul:Situation	oewn-05952149-n	coll:InformationCollection	nuclear deterrence	doctrine	the military doctrine that an enemy will be deterred from using nuclear weapons as long as they can be destroyed as a consequence
+oewn-01099197-n	dul:Situation	oewn-00408356-n	dul:Action	market	activity	the world of commercial activity where goods and services are bought and sold
+oewn-01166076-n	dul:Method	oewn-01163648-n	dul:Action	electric shock	corporal punishment	the use of electricity to administer punishment or torture
+oewn-01177478-n	dul:BiologicalObject	oewn-01175528-n	dul:Situation	stinger	blow	a sharp stinging blow
+oewn-01177806-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	oewn-01175528-n	dul:Situation	hammer	blow	the act of pounding (delivering repeated heavy blows)
+oewn-01218392-n	dul:Situation	oewn-00408356-n	dul:Action	support	activity	the activity of providing for or maintaining by supplying with money or necessities
+oewn-01249853-n	dul:Situation	oewn-01249473-n	dul:Action	dry-gulching	ambush	the act of killing from ambush
+oewn-01316379-n	dul:Organism	oewn-00006484-n	dul:BiologicalObject	recombinant	cell	a cell or organism in which genetic recombination has occurred
+oewn-01329963-n	dul:Situation	oewn-00004475-n	dul:Organism	hybrid	organism	(genetics) an organism that is the offspring of genetically dissimilar parents or stock; especially offspring produced by breeding plants or animals o
+oewn-01330406-n	dul:Organism	oewn-01329963-n	dul:Situation	dihybrid	hybrid	a hybrid produced by parents that differ only at two gene loci that have two alleles each
+oewn-01330550-n	dul:Organism	oewn-01329963-n	dul:Situation	monohybrid	hybrid	a hybrid produced by crossing parents that are homozygous except for a single gene locus that has two alleles (as in Mendel's experiments with garden 
+oewn-01331343-n	dul:Organism	oewn-09335749-n	dul:PhysicalObject	virus	infectious agent	(virology) ultramicroscopic infectious agent that replicates itself only within cells of living hosts; many are pathogenic; a piece of nucleic acid (D
+oewn-01345170-n	coll:Taxon	oewn-08123900-n	dul:Organization	animal order	order	the order of animals
+oewn-01349840-n	coll:Taxon	oewn-08123900-n	dul:Organization	protoctist order	order	the order of protoctists
+oewn-01352867-n	dul:Organism	oewn-02845541-n	dul:DesignedArtifact	Bacillus anthracis	bioweapon	a species of bacillus that causes anthrax in humans and in animals (cattle and swine and sheep and rabbits and mice and guinea pigs); can be used a bi
+oewn-01360148-n	dul:Organism	oewn-02845541-n	dul:DesignedArtifact	clostridium perfringens	bioweapon	anaerobic Gram-positive rod bacterium that produces epsilon toxin; can be used as a bioweapon
+oewn-01388648-n	dul:Organism	oewn-09335749-n	dul:PhysicalObject	pathogen	infectious agent	any disease-producing agent (especially a virus or bacterium or other microorganism)
+oewn-01523217-n	dul:FunctionalSubstance	oewn-01520206-n	dul:Organism	kiwi	ratite	nocturnal flightless bird of New Zealand having a long neck and stout legs; only surviving representative of the order Apterygiformes
+oewn-01641828-n	dul:DesignedArtifact	oewn-01631917-n	dul:Organism	siren	salamander	eellike aquatic North American salamander with small forelimbs and no hind limbs; have permanent external gills
+oewn-01697350-n	dul:DesignedArtifact	oewn-01677105-n	dul:Organism	monitor	lizard	any of various large tropical carnivorous lizards of Africa and Asia and Australia; fabled to warn of crocodiles
+oewn-01697596-n	dul:Organism	oewn-01697350-n	dul:DesignedArtifact	African monitor	monitor	destroys crocodile eggs
+oewn-01697701-n	dul:Organism	oewn-01697350-n	dul:DesignedArtifact	Komodo dragon	monitor	the largest lizard in the world (10 feet); found on Indonesian islands
+oewn-01792945-n	dul:PhysicalBody	oewn-01792381-n	dul:Organism	Plymouth Rock	domestic fowl	an American breed of domestic fowl
+oewn-01913639-n	dul:PhysicalPlace	oewn-01913388-n	dul:Organism	Aegina	jellyfish	small medusa
+oewn-02078848-n	dul:DesignedArtifact	oewn-02078579-n	dul:Organism	seal	pinniped mammal	any of numerous marine mammals that come on shore to breed; chiefly of cold regions
+oewn-02079054-n	dul:Organism	oewn-02078848-n	dul:DesignedArtifact	crabeater seal	seal	silvery grey Antarctic seal subsisting on crustaceans
+oewn-02079431-n	dul:Organism	oewn-02078848-n	dul:DesignedArtifact	eared seal	seal	pinniped mammal having external ear flaps and hind limbs used for locomotion on land; valued for its soft underfur
+oewn-02082041-n	dul:Organism	oewn-02078848-n	dul:DesignedArtifact	earless seal	seal	any of several seals lacking external ear flaps and having a stiff hairlike coat with hind limbs reduced to swimming flippers
+oewn-02088272-n	dul:Place	oewn-02088026-n	dul:Organism	Chihuahua	toy dog	an old breed of tiny short-haired dog with protruding eyes from Mexico held to antedate Aztec civilization
+oewn-02098541-n	dul:Place	oewn-02098379-n	dul:Organism	Sealyham terrier	Welsh terrier	a wire-haired terrier with short legs that was first bred in Sealyham
+oewn-02101065-n	dul:Place	oewn-02095120-n	dul:Organism	Lhasa	terrier	a breed of terrier having a long heavy coat raised in Tibet as watchdogs
+oewn-02108507-n	dul:PhysicalPlace	oewn-02107175-n	dul:Organism	Shetland sheepdog	shepherd dog	a small sheepdog resembling a collie that was developed in the Shetland Islands
+oewn-02114789-n	dul:FunctionalSubstance	oewn-02114278-n	dul:Organism	chow	spitz	breed of medium-sized dogs with a thick coat and fluffy curled tails and distinctive blue-black tongues; believed to have originated in northern China
+oewn-02129704-n	dul:InformationRealization	oewn-02127275-n	dul:Organism	lynx	wildcat	short-tailed wildcats with usually tufted ears; valued for their fur
+oewn-02129944-n	dul:Organism	oewn-02129704-n	dul:InformationRealization	common lynx	lynx	of northern Eurasia
+oewn-02130033-n	dul:Organism	oewn-02129704-n	dul:InformationRealization	Canada lynx	lynx	of northern North America
+oewn-02130134-n	dul:Organism	oewn-02129704-n	dul:InformationRealization	bobcat	lynx	small lynx of North America
+oewn-02130238-n	dul:Organism	oewn-02129704-n	dul:InformationRealization	spotted lynx	lynx	of southern Europe
+oewn-02130330-n	dul:Organism	oewn-02129704-n	dul:InformationRealization	caracal	lynx	of deserts of northern Africa and southern Asia
+oewn-02135440-n	dul:PhysicalPlace	oewn-02134788-n	dul:Organism	Alaskan brown bear	brown bear	brown bear of coastal Alaska and British Columbia
+oewn-02365657-n	dul:PhysicalObject	oewn-02332053-n	dul:Organism	beaver	rodent	large semiaquatic rodent with webbed hind feet and a broad flat tail; construct complex dams and underwater lodges
+oewn-02365897-n	dul:Organism	oewn-02365657-n	dul:PhysicalObject	Old World beaver	beaver	a European variety of beaver
+oewn-02366003-n	dul:Organism	oewn-02365657-n	dul:PhysicalObject	New World beaver	beaver	a variety of beaver found in almost all areas of North America except Florida
+oewn-02372587-n	dul:DesignedArtifact	oewn-02372332-n	dul:Organism	queen	naked mole rat	an especially large mole rat and the only member of a colony of naked mole rats to bear offspring which are sired by only a few males
+oewn-02384016-n	dul:Organization	oewn-02380355-n	dul:Organism	grey	saddle horse	horse of a light gray or whitish color
+oewn-02409511-n	dul:PhysicalPlace	oewn-02405077-n	dul:Organism	Devon	cattle	red dual-purpose cattle of English origin
+oewn-02409723-n	dul:Place	oewn-02406838-n	dul:Organism	Durham	beef	English breed of short-horned cattle
+oewn-02409928-n	dul:Place	oewn-02406838-n	dul:Organism	Galloway	beef	breed of hardy black chiefly beef cattle native to Scotland
+oewn-02410173-n	dul:PhysicalPlace	oewn-02408826-n	dul:Organism	Guernsey	dairy cattle	breed of dairy cattle from the island of Guernsey
+oewn-02416239-n	dul:PhysicalPlace	oewn-02415777-n	dul:Organism	Hampshire	domestic sheep	British breed of hornless dark-faced domestic sheep
+oewn-02514455-n	dul:Person	oewn-08238269-n	coll:Taxon	Pisces	division	a group of vertebrates comprising both cartilaginous and bony fishes and sometimes including the jawless vertebrates; not used technically
+oewn-02526833-n	dul:FunctionalSubstance	oewn-02524277-n	dul:Organism	pollack	gadoid	important food and game fish of northern seas (especially the northern Atlantic); related to cod
+oewn-02579206-n	dul:DesignedArtifact	oewn-02578854-n	dul:Organism	jack	carangid fish	any of several fast-swimming predacious fishes of tropical to warm temperate seas
+oewn-02579537-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	crevalle jack	jack	fish of western Atlantic and Gulf of Mexico, also known as the common jack, black-tailed trevally, couvalli jack, black cavalli and yellow cavalli (Ca
+oewn-02579672-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	yellow jack	jack	fish of western Atlantic and Gulf of Mexico, also known as the coolihoo (Caranx bartholomaei)
+oewn-02579795-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	runner	jack	fish of western Atlantic: Cape Cod to Brazil
+oewn-02580034-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	rainbow runner	jack	streamlined cigar-shaped jack; good game fish
+oewn-02580293-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	leatherjacket	jack	any of several New World tropical fishes having tiny embedded scales
+oewn-02580583-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	threadfish	jack	fish having greatly elongated front rays on dorsal and anal fins
+oewn-02581402-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	amberjack	jack	any of several amber to coppery fork-tailed warm-water carangid fishes
+oewn-02581559-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	yellowtail	jack	game fish of southern California and Mexico having a yellow tail fin
+oewn-02581722-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	rudderfish	jack	fish having the habit of following ships; found in North American and South American coastal waters
+oewn-02581934-n	dul:Organism	oewn-02579206-n	dul:DesignedArtifact	kingfish	jack	large game fish of Australia and New Zealand
+oewn-02681592-n	dul:Person	oewn-03761713-n	dul:FunctionalSubstance	Adam	methylenedioxymethamphetamine	street names for methylenedioxymethamphetamine
+oewn-02703754-n	dul:Person	oewn-04544161-n	dul:DesignedArtifact	Amati	violin	a violin made by Nicolo Amati or a member of his family
+oewn-02757661-n	dul:DesignedArtifact	oewn-03124849-n	coll:AgentCollection	atrium	court	the central area in a building; open to the sky
+oewn-02764397-n	dul:PhysicalAgent	oewn-03743963-n	dul:DesignedArtifact	automaton	mechanism	a mechanism that can move automatically
+oewn-02765174-n	dul:PhysicalAgent	oewn-03187746-n	dul:DesignedArtifact	autopilot	device	a navigational device that automatically keeps ships or planes or spacecraft on a steady course
+oewn-02832300-n	dul:Collective	oewn-04169042-n	dul:DesignedArtifact	bench	seat	(law) the seat for judges in a courtroom
+oewn-03000998-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	ceramic	instrumentality	an artifact made of hard brittle material produced from nonmetallic minerals by firing at high temperatures
+oewn-03015009-n	dul:DesignedArtifact	oewn-03721866-n	dul:Person	checker	man	one of the flat round pieces used in playing the game of checkers
+oewn-03018094-n	dul:DesignedArtifact	oewn-03721866-n	dul:Person	chessman	man	any of 16 white and 16 black pieces used in playing the game of chess
+oewn-03050906-n	dul:DesignedArtifact	oewn-04050813-n	dul:Person	clock radio	radio receiver	a radio that includes a clock that can be set to turn it on automatically
+oewn-03051926-n	dul:DesignedArtifact	oewn-03124849-n	coll:AgentCollection	cloister	court	a courtyard with covered walks (as in religious institutions)
+oewn-03095830-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	connection	instrumentality	an instrumentality that connects
+oewn-03099154-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	container	instrumentality	any object that can be used to hold things (especially a large metal boxlike object of standardized dimensions that can be loaded from one form of tra
+oewn-03105141-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	conveyance	instrumentality	something that serves as a means of transportation
+oewn-03124849-n	coll:AgentCollection	oewn-02738693-n	dul:DesignedArtifact	court	area	an area wholly or partly surrounded by walls or buildings
+oewn-03148822-n	dul:DesignedArtifact	oewn-04050813-n	dul:Person	crystal set	radio receiver	an early radio receiver using a crystal detector
+oewn-03187746-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	device	instrumentality	an instrumentality invented for a particular purpose
+oewn-03238126-n	dul:Collection	oewn-00002684-n	dul:PhysicalObject	draw	object	anything (straws or pebbles etc.) taken or chosen at random
+oewn-03298959-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	equipment	instrumentality	an instrumentality needed for an undertaking or to perform a service
+oewn-03311152-n	dul:Collection	oewn-03080712-n	dul:DesignedArtifact	export	commodity	commodities (goods or services) sold to a foreign country
+oewn-03340791-n	dul:Situation	oewn-03632523-n	dul:DesignedArtifact	figure eight	knot	a knot having the shape of the numeral 8; tied in a rope that has been passed through a hole or pulley and that prevents the rope from coming loose
+oewn-03372987-n	dul:DesignedArtifact	oewn-07955013-n	dul:Collection	flower arrangement	arrangement	a decorative arrangement of flowers
+oewn-03382851-n	dul:DesignedArtifact	oewn-03124849-n	coll:AgentCollection	food court	court	an area (as in a shopping mall) where food is sold, usually around a common eating area, with multiple contiguous stalls
+oewn-03387138-n	dul:DesignedArtifact	oewn-03124849-n	coll:AgentCollection	forecourt	court	the outer or front court of a building or of a group of buildings
+oewn-03410175-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	furnishing	instrumentality	(usually plural) the instrumentalities (furniture and appliances and other movable accessories including curtains and rugs) that make a home (or other
+oewn-03498893-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	hardware	instrumentality	instrumentalities (tools or implements) made of metal
+oewn-03522159-n	dul:DesignedArtifact	oewn-04050813-n	dul:Person	heterodyne receiver	radio receiver	a radio receiver that combines a locally generated frequency with the carrier frequency to produce a supersonic signal that is demodulated and amplifi
+oewn-03539956-n	dul:Person	oewn-04525118-n	dul:PhysicalObject	Hoover	vacuum	a kind of vacuum cleaner
+oewn-03569147-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	implement	instrumentality	instrumentation (a piece of equipment or tool) used to effect an end
+oewn-03569847-n	dul:Collection	oewn-03080712-n	dul:DesignedArtifact	import	commodity	commodities (goods or services) bought from a foreign country
+oewn-03580409-n	dul:Right	oewn-00022119-n	dul:PhysicalObject	instrumentality	artifact	an artifact (that is instrumental in accomplishing some end) for accomplishing some end
+oewn-03683092-n	dul:Person	oewn-03785580-n	dul:DesignedArtifact	lister	moldboard plow	moldboard plow with a double moldboard designed to move dirt to either side of a central furrow
+oewn-03705309-n	dul:PhysicalAgent	oewn-03187746-n	dul:DesignedArtifact	machine	device	any mechanical or electrical device that transmits or modifies energy to perform or assist in the performance of human tasks
+oewn-03721866-n	dul:Person	oewn-03419072-n	dul:DesignedArtifact	man	game equipment	game equipment consisting of an object used in playing certain board games
+oewn-03737511-n	dul:Person	oewn-04083396-n	dul:DesignedArtifact	Mauser	repeating firearm	trademark for a repeating rifle or pistol
+oewn-03871242-n	dul:PhysicalAgent	oewn-04009955-n	dul:InformationRealization	monotype	print	the sole print made by pressing paper against a painted or inked glass or metal plate
+oewn-03900867-n	dul:DesignedArtifact	oewn-03124849-n	coll:AgentCollection	parvis	court	a courtyard or portico in front of a building (especially a cathedral)
+oewn-03957729-n	dul:Person	oewn-03739416-n	dul:DesignedArtifact	Pitot tube	measuring instrument	measuring instrument consisting of a right-angled tube with an open end that is directed in opposition to the flow of a fluid and used to measure the 
+oewn-03993307-n	dul:Person	oewn-02776843-n	dul:DesignedArtifact	portmanteau	bag	a large travelling bag made of stiff leather
+oewn-04003842-n	dul:DesignedArtifact	oewn-03705309-n	dul:PhysicalAgent	power tool	machine	a tool driven by a motor
+oewn-04011143-n	dul:PhysicalAgent	oewn-03922839-n	dul:DesignedArtifact	printer	peripheral	(computer science) an output device that prints the results of data processing
+oewn-04033843-n	dul:DesignedArtifact	oewn-04050813-n	dul:Person	push-button radio	radio receiver	a radio receiver that can be tuned by pressing buttons
+oewn-04050813-n	dul:Person	oewn-04067759-n	dul:DesignedArtifact	radio receiver	receiver	an electronic receiver that detects and demodulates and amplifies transmitted signals
+oewn-04067759-n	dul:DesignedArtifact	oewn-04183589-n	dul:Situation	receiver	set	set that receives radio or tv signals
+oewn-04102203-n	dul:Person	oewn-03547513-n	dul:DesignedArtifact	Ritz	hotel	a hotel that is part of the chain of hotels founded by Cesar Ritz
+oewn-04183589-n	dul:Situation	oewn-03283159-n	dul:DesignedArtifact	set	electronic equipment	any electronic equipment that receives or transmits radio or tv signals
+oewn-04186974-n	dul:PhysicalObject	oewn-04424315-n	dul:PhysicalAgent	sewing machine	textile machine	a textile machine used as a home appliance for sewing
+oewn-04290130-n	dul:Person	oewn-03990592-n	dul:DesignedArtifact	Spode	porcelain	a brand of fine English porcelain
+oewn-04332730-n	dul:Person	oewn-03742461-n	dul:DesignedArtifact	stoker	mechanical device	a mechanical device for stoking a furnace
+oewn-04345281-n	dul:Collection	oewn-03110761-n	dul:PhysicalObject	string	cord	a tightly stretched cord of wire or gut, as a part of an instrument or a tennis racket
+oewn-04384144-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	system	instrumentality	instrumentality that combines interrelated interacting artifacts designed to work as a coherent entity
+oewn-04416006-n	dul:DesignedArtifact	oewn-03649562-n	dul:Collection	temporary hookup	lash-up	a connection intended to be used for a limited time
+oewn-04442512-n	dul:DesignedArtifact	oewn-03721866-n	dul:Person	tile	man	game equipment consisting of a flat thin piece marked with characters and used in board games like Mah-Jong, Scrabble, etc.
+oewn-04454577-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	toiletry	instrumentality	artifacts used in making your toilet (washing and taking care of your body)
+oewn-04479961-n	dul:DesignedArtifact	oewn-04183589-n	dul:Situation	transmitter	set	set used to broadcast radio or tv signals
+oewn-04573543-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	weaponry	instrumentality	weapons considered collectively
+oewn-04577500-n	dul:Person	oewn-03999061-n	dul:DesignedArtifact	Wedgwood	pottery	a type of pottery made by Josiah Wedgwood and his successors; typically has a classical decoration in white on a blue background
+oewn-04609402-n	dul:Place	oewn-08596234-n	dul:SpaceRegion	workplace	geographic point	a place where work is done
+oewn-88128998-n	dul:Organism	oewn-02985366-n	dul:DesignedArtifact	onager	catapult	small catapult used by the Romans
+oewn-04623416-n	dul:Quality	oewn-00024444-n	dul:Region	trait	attribute	a distinguishing feature of your personal nature
+oewn-04624273-n	dul:Quality	oewn-00024444-n	dul:Region	character	attribute	(genetics) an attribute (structural or functional) that is determined by a gene or group of genes
+oewn-04624646-n	dul:Quality	oewn-00024444-n	dul:Region	thing	attribute	any attribute or quality considered as having its own existence
+oewn-04624919-n	dul:Quality	oewn-00024444-n	dul:Region	personality	attribute	the complex of all the attributes — behavioral, temperamental, emotional and mental — that characterize a unique individual
+oewn-04638046-n	dul:Quality	oewn-00024444-n	dul:Region	cheerfulness	attribute	the quality of being cheerful and dispelling gloom
+oewn-04638655-n	dul:Quality	oewn-00024444-n	dul:Region	uncheerfulness	attribute	not conducive to cheer or good spirits
+oewn-04682325-n	coll:InformationCollection	oewn-04681322-n	dul:Quality	color	appearance	the appearance of objects (or light sources) described in terms of a person's perception of their hue and lightness (or brightness) and saturation
+oewn-04701438-n	dul:Situation	oewn-04699505-n	dul:Quality	burn	blemish	a place or area that has been burned (especially on a person's body)
+oewn-04701641-n	dul:Quality	oewn-04701438-n	dul:Situation	cigarette burn	burn	a burn mark left by a smoldering cigarette
+oewn-04703780-n	dul:Situation	oewn-04699505-n	dul:Quality	wart	blemish	(pathology) a firm abnormal elevated blemish on the skin; caused by a virus
+oewn-04716529-n	dul:Situation	oewn-04731092-n	dul:Quality	difficulty	quality	the quality of being almost beyond one's ability to deal with and requiring a great effort to achieve a positive result
+oewn-04716861-n	dul:Quality	oewn-04716529-n	dul:Situation	effortfulness	difficulty	the quality of requiring deliberate effort
+oewn-04717403-n	dul:Quality	oewn-04716529-n	dul:Situation	asperity	difficulty	something hard to endure
+oewn-04717864-n	dul:Quality	oewn-04716529-n	dul:Situation	hardness	difficulty	the quality of being difficult to do
+oewn-04718142-n	dul:Quality	oewn-04716529-n	dul:Situation	formidability	difficulty	impressive difficulty
+oewn-04718307-n	dul:Quality	oewn-04716529-n	dul:Situation	burdensomeness	difficulty	unwelcome burdensome difficulty
+oewn-04718532-n	dul:Quality	oewn-04716529-n	dul:Situation	subtlety	difficulty	the quality of being difficult to detect or analyze
+oewn-04718711-n	dul:Quality	oewn-04716529-n	dul:Situation	troublesomeness	difficulty	a difficulty that causes anxiety
+oewn-04730562-n	dul:Theory	oewn-00024444-n	dul:Region	ethos	attribute	(anthropology) the distinctive spirit of a culture or an era
+oewn-04731092-n	dul:Quality	oewn-00024444-n	dul:Region	quality	attribute	an essential and distinguishing attribute of something or someone
+oewn-04900165-n	dul:Situation	oewn-04899989-n	dul:Quality	providence	prudence	the prudence and care exercised by someone in the management of resources
+oewn-04900367-n	dul:Quality	oewn-04900165-n	dul:Situation	foresight	providence	providence by virtue of planning prudently for the future
+oewn-04923519-n	dul:Quality	oewn-00024444-n	dul:Region	property	attribute	a basic or essential property shared by all members of a class
+oewn-04928044-n	dul:Collection	oewn-04923519-n	dul:Quality	heredity	property	the total of inherited attributes
+oewn-04928188-n	dul:Collection	oewn-00024444-n	dul:Region	inheritance	attribute	any attribute or immaterial possession that is inherited from ancestors
+oewn-04973194-n	dul:Person	oewn-04966849-n	dul:Quality	blond	chromatic color	a light grayish yellow to near white
+oewn-05020826-n	dul:Situation	oewn-05018974-n	dul:Quality	dew point	temperature	the temperature at which the water vapor in the air becomes saturated and condensation begins
+oewn-05022063-n	dul:Situation	oewn-05018974-n	dul:Quality	body temperature	temperature	temperature of the body; normally 98.6 F or 37 C in humans; usually measured to obtain a quick evaluation of a person's health
+oewn-05124030-n	dul:Place	oewn-05123104-n	dul:Quality	wilderness	profusion	a bewildering profusion
+oewn-05223633-n	dul:Organism	oewn-00019308-n	dul:PhysicalObject	body	natural object	the entire physical structure of an organism (an animal, plant, or human being)
+oewn-05428930-n	dul:Situation	oewn-05426061-n	dul:BiologicalObject	varicose vein	vein	a vein that is permanently dilated; most common in the legs
+oewn-05569467-n	dul:Situation	oewn-05568420-n	dul:BiologicalObject	bowleg	leg	a leg bowed outward at the knee (or below the knee)
+oewn-05611405-n	dul:Situation	oewn-05477841-n	dul:BiologicalObject	excrescence	process	(pathology) an abnormal outgrowth or enlargement of some part of the body
+oewn-05611777-n	dul:Norm	oewn-05227735-n	dul:BiologicalObject	rudiment	body part	the remains of a body part that was functional at an earlier stage of life
+oewn-05619850-n	coll:InformationCollection	oewn-00023451-n	conc:InternalRepresentation	public knowledge	cognition	knowledge that is available to anyone
+oewn-05633662-n	dul:Place	oewn-05633248-n	dul:Quality	imaginary place	imagination	a place that exists only in imagination; a place said to exist in fictional or religious writings
+oewn-05652767-n	dul:Situation	oewn-00023451-n	conc:InternalRepresentation	inability	cognition	lack of ability (especially mental ability) to do something
+oewn-05658913-n	coll:InformationCollection	oewn-00023451-n	conc:InternalRepresentation	lexis	cognition	all of the words in a language; all word forms having meaning or grammatical function
+oewn-05659087-n	coll:InformationCollection	oewn-00023451-n	conc:InternalRepresentation	vocabulary	cognition	a language user's knowledge of words
+oewn-05674544-n	dul:Theory	oewn-05672990-n	dul:Quality	simulation	technique	(computer science) the technique of representing the real world by a computer program
+oewn-05675040-n	dul:Method	oewn-00023451-n	conc:InternalRepresentation	practice	cognition	knowledge of how something is usually done
+oewn-05678816-n	dul:System	oewn-05678554-n	dul:Situation	worldly concern	concern	the concerns of this life as distinguished from heaven and the afterlife
+oewn-05682428-n	dul:Event	oewn-05677778-n	dul:Situation	set	cognitive state	(psychology) being temporarily ready to respond in a particular way
+oewn-05694286-n	dul:Situation	oewn-00023451-n	conc:InternalRepresentation	cognitive factor	cognition	something immaterial (as a circumstance or influence) that contributes to producing a result
+oewn-05818169-n	dul:Place	oewn-00002137-n	dul:Description	otherworld	abstraction	an abstract spiritual world beyond earthly reality
+oewn-05819406-n	coll:InformationCollection	oewn-05819240-n	dul:FunctionalSubstance	pabulum	food	insipid intellectual nourishment
+oewn-05825522-n	dul:Situation	oewn-05824413-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	fact	information	a piece of information about circumstances that exist or events that have occurred
+oewn-05829462-n	dul:Situation	oewn-05828980-n	dul:InformationObject	apology	example	a poor example
+oewn-05829606-n	dul:Situation	oewn-05828980-n	dul:InformationObject	exception	example	an instance that does not conform to a rule or generalization
+oewn-05829846-n	dul:Situation	oewn-05828980-n	dul:InformationObject	precedent	example	an example that is used to justify similar occurrences at a later time
+oewn-05830006-n	dul:Situation	oewn-05828980-n	dul:InformationObject	quintessence	example	the most typical example or representative of a type
+oewn-05831841-n	dul:Situation	oewn-05824413-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	background	information	information that is essential to understanding a situation or problem
+oewn-05832256-n	dul:Situation	oewn-05824413-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	evidence	information	your basis for belief or disbelief; knowledge on which to base belief
+oewn-05836008-n	dul:Situation	oewn-05824413-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	stimulation	information	any stimulating information or event; acts to arouse action
+oewn-05857811-n	dul:Quality	oewn-05857567-n	coll:InformationCollection	quality	property	a characteristic property that defines the apparent individual nature of something
+oewn-05858316-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-05857567-n	coll:InformationCollection	feature	property	a prominent attribute or aspect of something
+oewn-05863039-n	dul:Abstract	oewn-05862715-n	coll:InformationCollection	absolute	abstraction	something that is conceived or that exists independently and not in relation to other things; something that does not depend on anything else and is b
+oewn-05863377-n	dul:Personification	oewn-05862715-n	coll:InformationCollection	teacher	abstraction	a personified abstraction that teaches
+oewn-05863569-n	conc:InternalRepresentation	oewn-05862715-n	coll:InformationCollection	thing	abstraction	a special abstraction
+oewn-05863690-n	dul:Amount	oewn-05844071-n	coll:InformationCollection	quantity	concept	the concept that something has a magnitude and can be represented in mathematical expressions by a constant or a variable
+oewn-05876035-n	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	oewn-05844071-n	coll:InformationCollection	part	concept	one of the portions into which something is regarded as divided and which together constitute a whole
+oewn-05878206-n	dul:System	oewn-05844071-n	coll:InformationCollection	whole	concept	all of something including all its component elements or parts
+oewn-05898503-n	dul:Situation	oewn-05844071-n	coll:InformationCollection	fact	concept	a concept whose truth can be proved
+oewn-05922953-n	dul:Action	oewn-05922588-n	coll:InformationCollection	salat	pillar of Islam	the second pillar of Islam is prayer; a prescribed liturgy performed five times a day (preferably in a mosque) and oriented toward Mecca
+oewn-05923185-n	dul:Action	oewn-05922588-n	coll:InformationCollection	sawm	pillar of Islam	the third pillar of Islam is fasting (primarily during the month of Ramadan); Muslims abstain from food and drink and gambling and all sensuous pleasu
+oewn-05923445-n	dul:Action	oewn-05922588-n	coll:InformationCollection	zakat	pillar of Islam	the fourth pillar of Islam is almsgiving as an act of worship
+oewn-05923628-n	dul:Situation	oewn-05922588-n	coll:InformationCollection	hajj	pillar of Islam	the fifth pillar of Islam is a pilgrimage to Mecca during the month of Dhu al-Hijja; at least once in a lifetime a Muslim is expected to make a religi
+oewn-05926861-n	dul:InformationObject	oewn-05842164-n	coll:InformationCollection	theorem	idea	an idea accepted as a demonstrable truth
+oewn-05945830-n	dul:Situation	oewn-05935308-n	coll:InformationCollection	model	representation	a representative form or pattern
+oewn-05955536-n	coll:InformationCollection	oewn-04855222-n	dul:Quality	religion	theological virtue	a strong belief in a supernatural power or powers that control human destiny
+oewn-05989123-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	oewn-05988776-n	coll:InformationCollection	atheism	unbelief	a lack of belief in the existence of God or gods
+oewn-05998364-n	dul:Theory	oewn-05801008-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	theory	explanation	a well-substantiated explanation of some aspect of the natural world; an organized system of accepted knowledge that applies in a variety of circumsta
+oewn-06006837-n	dul:Person	oewn-06005806-n	ontopic:Topic	major	discipline	the principal field of study of a student at a university
+oewn-06166450-n	coll:InformationCollection	oewn-00023451-n	conc:InternalRepresentation	history	cognition	all that is remembered of the past as preserved in writing; a body of knowledge
+oewn-06226571-n	dul:Situation	oewn-06225913-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	reaction	conservatism	extreme conservatism in political or social matters
+oewn-06249497-n	coll:InformationCollection	oewn-00895516-n	dul:Action	yoga	discipline	discipline aimed at training the consciousness for a state of perfect spiritual insight and tranquility that is achieved through the three paths of ac
+oewn-89312075-n	dul:Personification	oewn-05881099-n	dul:Norm	Dharma	principle	basic principles of the cosmos in Hinduism, Buddhism, Sikhism, Jainism and other religions
+oewn-06264799-n	dul:DesignedArtifact	oewn-03580409-n	dul:Right	medium	instrumentality	a means or instrumentality for storing or communicating information
+oewn-06337519-n	dul:DesignedArtifact	oewn-06320373-n	coll:Taxon	number	grammatical category	the grammatical category for the forms of nouns and pronouns and verbs that are used depending on the number of entities involved (singular or dual or
+oewn-06352347-n	dul:Relation	oewn-10565759-n	dul:Person	Hakham	sage	a Hebrew title of respect for a wise and highly educated man
+oewn-06381801-n	dul:Theory	oewn-06378552-n	dul:InformationRealization	utopia	fiction	a work of fiction describing a utopia
+oewn-06484080-n	coll:InformationCollection	oewn-06802268-n	dul:InformationRealization	confession	religious doctrine	the document that spells out the belief system of a given church (especially the Reformation churches of the 16th century)
+oewn-06484839-n	dul:Right	oewn-06481744-n	dul:InformationRealization	copyright	document	a document granting exclusive right to publish and sell literary or musical or artistic work
+oewn-06609408-n	coll:Taxon	oewn-03593583-n	dul:Relation	number	item	a numbered item in a series
+oewn-06802268-n	dul:InformationRealization	oewn-05952149-n	coll:InformationCollection	religious doctrine	doctrine	the written body of teachings of a religious group that are generally accepted by that group
+oewn-06802658-n	coll:InformationCollection	oewn-06802268-n	dul:InformationRealization	ahimsa	religious doctrine	a Buddhist and Hindu and especially Jainist doctrine holding that all forms of life are sacred and urging the avoidance of violence
+oewn-06802899-n	coll:InformationCollection	oewn-06802268-n	dul:InformationRealization	dogma	religious doctrine	a religious doctrine that is proclaimed as true without proof
+oewn-06803092-n	coll:InformationCollection	oewn-06802268-n	dul:InformationRealization	ecumenism	religious doctrine	(Christianity) the doctrine of the ecumenical movement that promotes cooperation and better understanding among different religious denominations: aim
+oewn-06803414-n	coll:InformationCollection	oewn-06802268-n	dul:InformationRealization	Immaculate Conception	religious doctrine	(Christianity) the Roman Catholic dogma that God preserved the Virgin Mary from any stain of original sin from the moment she was conceived
+oewn-06803874-n	coll:InformationCollection	oewn-06802268-n	dul:InformationRealization	Nicene Creed	religious doctrine	(Christianity) a formal creed summarizing Christian beliefs; first adopted in 325 and later expanded
+oewn-06804052-n	coll:InformationCollection	oewn-06802268-n	dul:InformationRealization	real presence	religious doctrine	(Christianity) the Christian doctrine that the body of Christ is actually present in the Eucharist
+oewn-06809800-n	dul:InformationRealization	oewn-06809500-n	ontopic:Topic	bell-like call	birdcall	a birdcall that resembles the tone of a bell
+oewn-06809905-n	dul:InformationRealization	oewn-06809500-n	ontopic:Topic	two-note call	birdcall	a birdcall having two notes
+oewn-06839776-n	dul:Person	oewn-06839264-n	dul:InformationRealization	modern	proportional font	a typeface (based on an 18th century design by Gianbattista Bodoni) distinguished by regular shape and hairline serifs and heavy downstrokes
+oewn-06882179-n	dul:Organism	oewn-06881093-n	dul:Relation	ti	solfa syllable	the syllable naming the seventh (subtonic) note of any musical scale in solmization
+oewn-06919215-n	dul:Person	oewn-06916947-n	dul:InformationObject	Amerind	natural language	any of the languages spoken by Amerindians
+oewn-06919747-n	dul:InformationObject	oewn-06919215-n	dul:Person	Algonquian	Amerind	family of North American Indian languages spoken from Labrador to South Carolina and west to the Great Plains
+oewn-06920343-n	dul:InformationObject	oewn-06919215-n	dul:Person	Atakapa	Amerind	a language spoken by the Atakapa of the Gulf Coast of Louisiana and Texas
+oewn-06920504-n	dul:InformationObject	oewn-06919215-n	dul:Person	Athapaskan	Amerind	a group of Amerindian languages (the name coined by an American anthropologist, Edward Sapir)
+oewn-06922347-n	dul:Person	oewn-06919747-n	dul:InformationObject	Delaware	Algonquian	the Algonquian language spoken by the Delaware
+oewn-06922910-n	dul:Person	oewn-06919747-n	dul:InformationObject	Illinois	Algonquian	the Algonquian language of the Illinois and Miami
+oewn-06924738-n	dul:Person	oewn-06919747-n	dul:InformationObject	Powhatan	Algonquian	the Algonquian language of the Powhatan
+oewn-06925024-n	dul:Person	oewn-06926089-n	dul:InformationObject	Alabama	Muskhogean	the Muskhogean language of the Alabama
+oewn-06926089-n	dul:InformationObject	oewn-06919215-n	dul:Person	Muskhogean	Amerind	a family of North American Indian languages spoken in the southeastern United States
+oewn-06926411-n	dul:InformationObject	oewn-06919215-n	dul:Person	Na-Dene	Amerind	a family of North American Indian languages
+oewn-06926544-n	dul:InformationObject	oewn-06919215-n	dul:Person	Mosan	Amerind	a family of Amerindian languages spoken in Washington and British Columbia
+oewn-06928377-n	dul:InformationObject	oewn-06919215-n	dul:Person	Caddo	Amerind	a family of North American Indian languages spoken widely in the Midwest by the Caddo
+oewn-06929185-n	dul:Person	oewn-06929579-n	dul:InformationObject	Seneca	Iroquoian	the Iroquoian language spoken by the Seneca
+oewn-06929579-n	dul:InformationObject	oewn-06919215-n	dul:Person	Iroquoian	Amerind	a family of North American Indian languages spoken by the Iroquois
+oewn-06929859-n	coll:AgentCollection	oewn-06919215-n	dul:Person	Quechua	Amerind	the language of the Quechua which was spoken by the Incas
+oewn-06930056-n	dul:Person	oewn-06930378-n	dul:InformationObject	Guarani	Tupi-Guarani	the language spoken by the Guarani of Paraguay and Bolivia
+oewn-06930378-n	dul:InformationObject	oewn-06919215-n	dul:Person	Tupi-Guarani	Amerind	a family of South American Indian languages
+oewn-06930540-n	dul:InformationObject	oewn-06919215-n	dul:Person	Arawak	Amerind	a family of South American Indian languages spoken in northeastern South America
+oewn-06930702-n	dul:InformationObject	oewn-06919215-n	dul:Person	Carib	Amerind	the family of languages spoken by the Carib
+oewn-06931172-n	dul:InformationObject	oewn-06919215-n	dul:Person	Uto-Aztecan	Amerind	a family of American Indian languages
+oewn-06932906-n	dul:InformationObject	oewn-06919215-n	dul:Person	Siouan	Amerind	a family of North American Indian languages spoken by the Sioux
+oewn-06933274-n	dul:InformationObject	oewn-06919215-n	dul:Person	Tanoan	Amerind	a family of North American Indian language spoken in southwestern United States
+oewn-06933533-n	dul:InformationObject	oewn-06919215-n	dul:Person	Hokan	Amerind	a family of Amerindian languages spoken in California
+oewn-06934532-n	coll:AgentCollection	oewn-06934370-n	dul:InformationObject	Achomawi	Shastan	the Shastan language spoken by the Achomawi
+oewn-06936657-n	dul:InformationObject	oewn-06919215-n	dul:Person	Penutian	Amerind	a family of Amerindian language spoken in the great interior valley of California
+oewn-06937773-n	dul:Person	oewn-06936657-n	dul:InformationObject	Chinookan	Penutian	a Penutian language spoken by the Chinook
+oewn-06957772-n	dul:Person	oewn-06956533-n	dul:InformationObject	Slovenian	Slavic	The South Slavic language that is the official language of Slovenia and spoken by the majority of its population
+oewn-06982496-n	dul:Person	oewn-06981803-n	dul:InformationObject	Romany	Sanskrit	the Indic language of the Romani
+oewn-06987506-n	dul:Person	oewn-06986270-n	dul:InformationObject	Pahlavi	Iranian	the Iranian language of the Zoroastrian literature of the 3rd to 10th centuries
+oewn-06987667-n	dul:InformationObject	oewn-06987506-n	dul:Person	Parthian	Pahlavi	the Iranian language spoken in the Parthian kingdom (250 BC to AD 226)
+oewn-06987792-n	dul:Person	oewn-06986270-n	dul:InformationObject	Pashto	Iranian	an Iranian language spoken in Afghanistan and Pakistan; the official language of Afghanistan
+oewn-07007360-n	coll:AgentCollection	oewn-07006989-n	dul:InformationObject	Xhosa	Nguni	a Bantu language closely related to Zulu, it is the second most common home language in South Africa
+oewn-07007452-n	coll:AgentCollection	oewn-07006989-n	dul:InformationObject	Zulu	Nguni	a Bantu language of considerable literary importance in southeastern Africa
+oewn-07013729-n	dul:PhysicalAttribute	oewn-13886392-n	dul:Region	curve	line	a line on a graph representing data
+oewn-07026665-n	dul:InformationObject	oewn-08476263-n	dul:Collection	string	sequence	a linear sequence (as of characters, words, proteins, etc.)
+oewn-07075717-n	dul:InformationRealization	oewn-07075374-n	ontopic:Topic	doo-wop	gospel	a genre (usually a cappella) of Black vocal-harmony music of the 1950s that evolved in New York City from gospel singing; characterized by close four-
+oewn-07076008-n	dul:InformationRealization	oewn-07075374-n	ontopic:Topic	soul	gospel	a secular form of gospel that was a major Black musical genre in the 1960s and 1970s
+oewn-07085982-n	dul:InformationRealization	oewn-05853859-n	coll:InformationCollection	music genre	genre	an expressive style of music
+oewn-07100515-n	dul:Situation	oewn-07097924-n	dul:InformationObject	rhythm	prosody	the arrangement of spoken words alternating stressed and unstressed elements
+oewn-07215473-n	dul:Collective	oewn-07215187-n	dul:Action	refutation	answer	the speech act of answering an attack on your assertions
+oewn-07215765-n	dul:Action	oewn-07215473-n	dul:Collective	confutation	refutation	the speech act of refuting conclusively
+oewn-07215880-n	dul:Action	oewn-07215473-n	dul:Collective	rebuttal	refutation	the speech act of refuting by offering a contrary contention or argument
+oewn-07264004-n	dul:Person	oewn-07263469-n	ontopic:Topic	mailer	ad	an advertisement that is sent by mail
+oewn-07292620-n	dul:Person	oewn-07034009-n	dul:InformationRealization	Bach	music	the music of Bach
+oewn-07292719-n	dul:Person	oewn-07034009-n	dul:InformationRealization	Beethoven	music	the music of Beethoven
+oewn-07292851-n	dul:Person	oewn-07034009-n	dul:InformationRealization	Brahms	music	the music of Brahms
+oewn-07293215-n	dul:Person	oewn-07034009-n	dul:InformationRealization	Handel	music	the music of Handel
+oewn-07293287-n	dul:Person	oewn-07034009-n	dul:InformationRealization	Haydn	music	the music of Haydn
+oewn-07293357-n	dul:Person	oewn-07034009-n	dul:InformationRealization	Mozart	music	the music of Mozart
+oewn-07293480-n	dul:Person	oewn-07034009-n	dul:InformationRealization	Stravinsky	music	the music of Stravinsky
+oewn-07293630-n	dul:Person	oewn-07034009-n	dul:InformationRealization	Wagner	music	the music of Wagner
+oewn-07294392-n	coll:Taxon	oewn-07199985-n	dul:Action	order	request	a request for something to be made, supplied, or served
+oewn-07294673-n	dul:Action	oewn-07294392-n	coll:Taxon	short order	order	an order for food that can be prepared quickly
+oewn-07298313-n	dul:Situation	oewn-00029677-n	dul:Event	happening	event	an event that happens
+oewn-07299259-n	dul:EventType	oewn-07298313-n	dul:Situation	accompaniment	happening	an event or situation that happens at the same time as or in connection with another
+oewn-07299741-n	dul:EventType	oewn-07298313-n	dul:Situation	avalanche	happening	a sudden appearance of an overwhelming number of things
+oewn-07300108-n	dul:EventType	oewn-07298313-n	dul:Situation	experience	happening	an event as apprehended
+oewn-07303737-n	dul:EventType	oewn-07298313-n	dul:Situation	trouble	happening	an event causing distress or pain
+oewn-07304204-n	dul:EventType	oewn-07298313-n	dul:Situation	miracle	happening	any amazing or wonderful occurrence
+oewn-07304311-n	dul:EventType	oewn-07298313-n	dul:Situation	wonder	happening	something that causes feelings of wonder
+oewn-07304554-n	dul:Event	oewn-07298313-n	dul:Situation	thing	happening	an event
+oewn-07304679-n	dul:EventType	oewn-07298313-n	dul:Situation	episode	happening	a happening that is distinctive in a series of related events
+oewn-07305484-n	dul:EventType	oewn-07298313-n	dul:Situation	eventuality	happening	a possible event or occurrence or result
+oewn-07305938-n	dul:Task	oewn-07305628-n	dul:Situation	casus belli	beginning	an event used to justify starting a war
+oewn-07306035-n	dul:EventType	oewn-07298313-n	dul:Situation	ending	happening	event whose occurrence ends something
+oewn-07310808-n	dul:EventType	oewn-07298313-n	dul:Situation	periodic event	happening	an event that recurs at intervals
+oewn-07311046-n	dul:EventType	oewn-07298313-n	dul:Situation	change	happening	an event that occurs when something passes from one state or phase to another
+oewn-07315578-n	dul:EventType	oewn-07298313-n	dul:Situation	accident	happening	anything that happens suddenly or by chance without an apparent cause
+oewn-07317454-n	dul:Event	oewn-07298313-n	dul:Situation	fire	happening	the event of something burning (often destructive)
+oewn-07322095-n	dul:EventType	oewn-07298313-n	dul:Situation	incident	happening	a single distinct event
+oewn-07322372-n	dul:Event	oewn-07298313-n	dul:Situation	discharge	happening	the sudden giving off of energy
+oewn-07324399-n	dul:Event	oewn-07298313-n	dul:Situation	movement	happening	a natural event that involves a change in the position or location of something
+oewn-07332364-n	dul:EventType	oewn-07298313-n	dul:Situation	failure	happening	an event that does not accomplish its intended purpose
+oewn-07333703-n	dul:EventType	oewn-07298313-n	dul:Situation	success	happening	an event that accomplishes its intended purpose
+oewn-07334509-n	dul:Event	oewn-07305628-n	dul:Situation	emergence	beginning	the becoming visible
+oewn-07336372-n	dul:EventType	oewn-07298313-n	dul:Situation	appearance	happening	the event of coming into sight
+oewn-07339273-n	dul:Event	oewn-07305628-n	dul:Situation	emergence	beginning	the gradual beginning or coming forth
+oewn-07339790-n	dul:EventType	oewn-07305628-n	dul:Situation	start	beginning	the beginning of anything
+oewn-07341613-n	dul:EventType	oewn-07338522-n	dul:Situation	preliminary	origin	something that serves as a preceding event or introduces what follows
+oewn-07342208-n	dul:Relation	oewn-07341157-n	dul:Situation	etiology	cause	the cause of a disease
+oewn-07343036-n	dul:Amount	oewn-07342405-n	dul:Situation	unknown quantity	factor	a factor in a given situation whose bearing and importance is not apparent
+oewn-07343356-n	dul:System	oewn-07341157-n	dul:Situation	producer	cause	something that produces
+oewn-07343542-n	dul:Event	oewn-07305628-n	dul:Situation	creation	beginning	the event that occurred at the beginning of something
+oewn-07344607-n	dul:Personification	oewn-07298313-n	dul:Situation	destiny	happening	an event (or a course of events) that will inevitably happen in the future
+oewn-07350316-n	dul:EventType	oewn-07298313-n	dul:Situation	disappearance	happening	the event of passing out of sight
+oewn-07353929-n	dul:Event	oewn-07298313-n	dul:Situation	contact	happening	the physical coming together of two or more things
+oewn-07382412-n	dul:EventType	oewn-07298313-n	dul:Situation	interruption	happening	some abrupt occurrence that interrupts an ongoing activity
+oewn-07385893-n	dul:Event	oewn-07298313-n	dul:Situation	sound	happening	the sudden occurrence of an audible event
+oewn-07387877-n	dul:Collection	oewn-07298313-n	dul:Situation	union	happening	the occurrence of a uniting of separate parts
+oewn-07388081-n	dul:Event	oewn-07387877-n	dul:Collection	amphimixis	union	union of sperm and egg in sexual reproduction
+oewn-07388202-n	dul:Event	oewn-07387877-n	dul:Collection	fusion	union	an occurrence that involves the production of a union
+oewn-07388403-n	dul:Event	oewn-07387877-n	dul:Collection	combining	union	an occurrence that results in things being united
+oewn-07396644-n	dul:Situation	oewn-07405840-n	dul:Event	crepitation rale	rattle	the crackling sound heard on auscultation when patients with respiratory diseases inhale; associated with tuberculosis and pneumonia and congestive he
+oewn-07415431-n	dul:EventType	oewn-07298313-n	dul:Situation	news event	happening	a newsworthy event
+oewn-07426692-n	dul:Event	oewn-07298313-n	dul:Situation	flash	happening	a sudden intense burst of radiant energy
+oewn-07429340-n	dul:EventType	oewn-07298313-n	dul:Situation	convergence	happening	the occurrence of two or more things coming together
+oewn-07431314-n	dul:EventType	oewn-07298313-n	dul:Situation	juncture	happening	an event that occurs at a critical time
+oewn-07442328-n	dul:Situation	oewn-07441937-n	dul:EventType	fall	weakening	a sudden decline in strength or number or importance
+oewn-07442551-n	dul:EventType	oewn-07442328-n	dul:Situation	anticlimax	fall	a disappointing decline after a previous rise
+oewn-07448110-n	dul:Method	oewn-07448262-n	dul:EventType	dismemberment	mutilation	the removal of limbs; being cut to pieces
+oewn-07449542-n	dul:EventType	oewn-07298313-n	dul:Situation	outburst	happening	a sudden intense happening
+oewn-07449873-n	dul:EventType	oewn-07298313-n	dul:Situation	outbreak	happening	a sudden violent spontaneous occurrence (usually of some undesirable condition)
+oewn-07461861-n	dul:Event	oewn-07991473-n	coll:AgentCollection	affair	gathering	a formal or official social gathering or ceremony of people
+oewn-07463757-n	dul:Event	oewn-08270371-n	coll:AgentCollection	masked ball	masquerade	a ball at which guests wear costumes and masks
+oewn-07473244-n	coll:GeneticCollection	oewn-07470961-n	dul:Event	race	contest	a contest of speed
+oewn-07491010-n	dul:EventType	oewn-07298313-n	dul:Situation	reverse	happening	an unfortunate happening that hinders or impedes; something that is thwarting or frustrating
+oewn-07492727-n	dul:EventType	oewn-07298313-n	dul:Situation	boom	happening	a sudden happening that brings good fortune (as a sudden opportunity to make money)
+oewn-07493085-n	dul:Event	oewn-07298313-n	dul:Situation	crash	happening	a sudden large decline of business or the prices of stocks (especially one that causes additional failures)
+oewn-07526619-n	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	oewn-14060493-n	dul:Situation	fever	excitement	a state of nervous excitement
+oewn-07624692-n	dul:Person	oewn-07612936-n	dul:FunctionalSubstance	rock candy	candy	hard bright-colored stick candy (typically flavored with peppermint)
+oewn-07676106-n	dul:Person	oewn-07675810-n	dul:FunctionalSubstance	Chateaubriand	fillet	a very thick center cut of beef tenderloin
+oewn-07682896-n	dul:Person	oewn-07665463-n	dul:FunctionalSubstance	lamb	meat	the flesh of a young domestic sheep eaten as food
+oewn-07714288-n	dul:Person	oewn-07711710-n	dul:FunctionalSubstance	Reuben	sandwich	a hot sandwich with corned beef (or pastrami), Swiss cheese and sauerkraut on rye bread
+oewn-07755899-n	dul:Person	oewn-07755482-n	dul:FunctionalSubstance	Baldwin	eating apple	an American eating apple with red or yellow and red skin
+oewn-07905965-n	dul:Person	oewn-07905485-n	dul:Substance	Burton	ale	a strong dark English ale
+oewn-07906515-n	dul:Person	oewn-07906327-n	dul:Substance	Guinness	stout	a kind of bitter stout
+oewn-07949081-n	coll:AgentCollection	oewn-07827392-n	dul:FunctionalSubstance	tea	herb	dried leaves of the tea shrub; used to make tea
+oewn-07949394-n	dul:FunctionalSubstance	oewn-07949081-n	coll:AgentCollection	tea bag	tea	a measured amount of tea in a bag for an individual serving of tea
+oewn-07950770-n	dul:FunctionalSubstance	oewn-07949081-n	coll:AgentCollection	black tea	tea	fermented tea leaves
+oewn-07951392-n	dul:FunctionalSubstance	oewn-07949081-n	coll:AgentCollection	green tea	tea	tea leaves that have been steamed and dried without fermenting
+oewn-07951619-n	dul:FunctionalSubstance	oewn-07949081-n	coll:AgentCollection	oolong	tea	Chinese tea leaves that have been partially fermented before being dried
+oewn-07967506-n	dul:Collective	oewn-00031563-n	dul:Collection	social group	group	people sharing some social relation
+oewn-07972340-n	dul:Collective	oewn-07968050-n	dul:Collection	tenantry	collection	tenants of an estate considered as a group
+oewn-07975883-n	dul:FunctionalSubstance	oewn-07968050-n	dul:Collection	agglomeration	collection	a jumbled collection or mass
+oewn-07983184-n	dul:Collection	oewn-07967506-n	dul:Collective	minority	social group	a group of people who differ racially or politically from a larger group of which it is a part
+oewn-07983996-n	dul:Collective	oewn-00031563-n	dul:Collection	ethnic group	group	people of the same race or nationality who share a distinctive culture
+oewn-07985266-n	dul:Organization	oewn-07984994-n	dul:Collective	special interest	interest	an interest group that tries to influence legislators or bureaucrats to act in their favor, typically through lobbying
+oewn-07986142-n	coll:GeneticCollection	oewn-07967506-n	dul:Collective	kin	social group	group of people related by blood or marriage
+oewn-07991473-n	coll:AgentCollection	oewn-07967506-n	dul:Collective	gathering	social group	a group of persons together in one place
+oewn-07992356-n	coll:AgentCollection	oewn-07461861-n	dul:Event	bee	affair	a social gathering to carry out some communal task or to hold competitions
+oewn-07992628-n	dul:Collective	oewn-07968050-n	dul:Collection	congregation	collection	an assemblage of people or animals or things collected together
+oewn-07993172-n	coll:AgentCollection	oewn-07461861-n	dul:Event	love feast	affair	a social gathering intended to create goodwill among the participants
+oewn-08012452-n	dul:Place	oewn-08010371-n	coll:AgentCollection	colony	animal group	(microbiology) a group of organisms grown from a single parent cell
+oewn-08015154-n	dul:Organization	oewn-08013131-n	dul:Collection	union	set	a set containing all and only the members of two or more given sets
+oewn-08015346-n	dul:Collection	oewn-08015154-n	dul:Organization	direct sum	union	a union of two disjoint sets in which every element is the sum of an element from each of the disjoint sets
+oewn-08016141-n	dul:Set	oewn-00002137-n	dul:Description	set	abstraction	(mathematics) an abstract collection of numbers or symbols
+oewn-08017525-n	dul:Collective	oewn-00031563-n	dul:Collection	subgroup	group	a distinct and often subordinate group within a group
+oewn-08024893-n	dul:Organization	oewn-07967506-n	dul:Collective	organization	social group	a group of people who work together
+oewn-08081578-n	dul:Collective	oewn-07968050-n	dul:Collection	prosecution	collection	the lawyers acting for the state to put the case against the defendant
+oewn-08093291-n	dul:Person	oewn-08092911-n	dul:Organization	sleeping beauty	target company	a potential takeover target that has not yet been put in play
+oewn-08102450-n	dul:Place	oewn-08398167-n	dul:Collective	Rome	leadership	the leadership of the Roman Catholic Church
+oewn-08120601-n	coll:InformationCollection	oewn-07967506-n	dul:Collective	phylum	social group	(linguistics) a large group of languages that are historically related
+oewn-08123900-n	dul:Organization	oewn-08008892-n	coll:Taxon	order	taxonomic group	(biology) taxonomic group containing one or more families
+oewn-08125750-n	dul:Collective	oewn-08008892-n	coll:Taxon	tribe	taxonomic group	(biology) a taxonomic category between a genus and a subfamily
+oewn-08158951-n	dul:System	oewn-08365742-n	dul:Organization	Federal Judiciary	law enforcement agency	the judiciary of the United States which is responsible for interpreting and enforcing federal laws
+oewn-08170001-n	coll:AgentCollection	oewn-08197108-n	dul:Substance	laity	multitude	in Christianity, members of a religious community that do not have the priestly responsibilities of ordained clergy
+oewn-08170911-n	dul:Person	oewn-07988029-n	coll:GeneticCollection	Bourbon	dynasty	a European royal line that ruled in France (from 1589-1793) and Spain and Naples and Sicily
+oewn-08172664-n	dul:Place	oewn-07988029-n	coll:GeneticCollection	Lancaster	dynasty	the English royal house that reigned from 1399 to 1461; its emblem was a red rose
+oewn-08172664-n	dul:Place	oewn-08170336-n	coll:GeneticCollection	Lancaster	royalty	the English royal house that reigned from 1399 to 1461; its emblem was a red rose
+oewn-08173847-n	dul:Person	oewn-07988029-n	coll:GeneticCollection	Ptolemy	dynasty	an ancient dynasty of Macedonian kings who ruled Egypt from 323 BC to 30 BC; founded by Ptolemy I and ended with Cleopatra
+oewn-08175359-n	dul:Person	oewn-07988029-n	coll:GeneticCollection	Stuart	dynasty	the royal family that ruled Scotland from 1371-1714 and ruled England from 1603 to 1649 and again from 1660 to 1714
+oewn-08175359-n	dul:Person	oewn-08170336-n	coll:GeneticCollection	Stuart	royalty	the royal family that ruled Scotland from 1371-1714 and ruled England from 1603 to 1649 and again from 1660 to 1714
+oewn-08176639-n	dul:Place	oewn-07988029-n	coll:GeneticCollection	Windsor	dynasty	the British royal family since 1917
+oewn-08177175-n	dul:Collective	oewn-00031563-n	dul:Collection	citizenry	group	the body of citizens of a state or country
+oewn-08189776-n	dul:PhysicalPlace	oewn-07968050-n	dul:Collection	Asia	collection	the nations of the Asian continent collectively
+oewn-08189929-n	dul:PhysicalPlace	oewn-07968050-n	dul:Collection	North America	collection	the nations of the North American continent collectively
+oewn-08190064-n	dul:PhysicalPlace	oewn-07968050-n	dul:Collection	Central America	collection	the nations of Central America collectively
+oewn-08190188-n	dul:PhysicalPlace	oewn-07968050-n	dul:Collection	South America	collection	the nations of the South American continent collectively
+oewn-08197108-n	dul:Substance	oewn-00031563-n	dul:Collection	multitude	group	the common people generally
+oewn-08224016-n	dul:DesignedArtifact	oewn-08473738-n	dul:Collective	Pentagon	bureaucracy	the United States military establishment
+oewn-08231965-n	dul:Collection	oewn-07967506-n	dul:Collective	platoon	social group	a group of persons who are engaged in a common activity
+oewn-08239214-n	coll:AgentCollection	oewn-08197108-n	dul:Substance	audience	multitude	the part of the general public interested in a source of information, entertainment, or a product/service
+oewn-08240184-n	coll:AgentCollection	oewn-08197108-n	dul:Substance	following	multitude	a group of followers or enthusiasts
+oewn-08241195-n	dul:Method	oewn-08311617-n	dul:Organization	community	world organization	a group of nations having common interests
+oewn-08262093-n	dul:Organization	oewn-07967506-n	dul:Collective	organized crime	social group	underworld organizations
+oewn-08269388-n	coll:AgentCollection	oewn-07461861-n	dul:Event	function	affair	a formal or official social gathering or ceremony
+oewn-08269523-n	coll:AgentCollection	oewn-07461861-n	dul:Event	party	affair	a gathering of people for pleasure
+oewn-08269966-n	coll:AgentCollection	oewn-07462241-n	dul:Event	shindig	party	a large and noisy party of people
+oewn-08270371-n	coll:AgentCollection	oewn-07462241-n	dul:Event	masquerade	party	a party of guests wearing costumes and masks
+oewn-08271252-n	coll:AgentCollection	oewn-07462241-n	dul:Event	reception	party	a formal party of people; as after a wedding
+oewn-08273150-n	coll:AgentCollection	oewn-07462241-n	dul:Event	slumber party	party	an overnight party of girls who dress in nightclothes and pass the night talking
+oewn-08273290-n	coll:AgentCollection	oewn-07462241-n	dul:Event	sociable	party	a party of people assembled to promote sociability and communal activity
+oewn-08273488-n	coll:AgentCollection	oewn-07461861-n	dul:Event	supper	affair	a social gathering where a light evening meal is served
+oewn-08306010-n	dul:Collective	oewn-08386333-n	coll:AgentCollection	youth culture	coevals	young adults (a generational unit) considered as a cultural class or subculture
+oewn-08309339-n	dul:Organization	oewn-08306370-n	dul:Collective	Rastafari	youth subculture	(Jamaica) a Black youth subculture and religious movement that arose in the ghettos of Kingston, Jamaica, in the 1950s; males grow hair in long dreadl
+oewn-08324519-n	coll:AgentCollection	oewn-01232427-n	dul:Action	meeting	assembly	a formally arranged gathering
+oewn-08327319-n	coll:AgentCollection	oewn-07461861-n	dul:Event	meeting	affair	a small informal social gathering
+oewn-08330913-n	dul:Place	oewn-08329918-n	coll:AgentCollection	Ephesus	ecumenical council	the third ecumenical council in 431 which declared Mary as mother of God and condemned Pelagius
+oewn-08331083-n	dul:Place	oewn-08329918-n	coll:AgentCollection	Chalcedon	ecumenical council	the fourth ecumenical council in 451 which defined the two natures (human and divine) of Christ
+oewn-08331645-n	dul:Place	oewn-08329918-n	coll:AgentCollection	Nicaea	ecumenical council	the seventh ecumenical council in 787 which refuted iconoclasm and regulated the veneration of holy images
+oewn-08333678-n	dul:Place	oewn-08329489-n	coll:AgentCollection	Vienne	council	the council in 1311-1313 that dealt with alleged crimes of the Knights Templar, planned a new crusade, and took on the reformation of the clergy
+oewn-08333895-n	dul:PhysicalPlace	oewn-08329489-n	coll:AgentCollection	Constance	council	the council in 1414-1418 that succeeded in ending the Great Schism in the Roman Catholic Church
+oewn-08345627-n	dul:DesignedArtifact	oewn-08180691-n	coll:AgentCollection	bench	assembly	the magistrate or judge or judges sitting in court in judicial capacity to compose the court collectively
+oewn-08374375-n	dul:PhysicalPlace	oewn-08374185-n	dul:Collective	Whitehall	civil service	the British civil service
+oewn-08375259-n	coll:AgentCollection	oewn-01232427-n	dul:Action	rally	assembly	a large gathering of people intended to arouse enthusiasm
+oewn-08384807-n	dul:System	oewn-07967506-n	dul:Collective	political system	social group	the members of a social organization who are in power
+oewn-08402720-n	dul:FunctionalSubstance	oewn-08327319-n	coll:AgentCollection	power breakfast	meeting	a meeting of influential people to conduct business while eating breakfast
+oewn-08425514-n	coll:AgentCollection	oewn-01232427-n	dul:Action	fair	assembly	gathering of producers to promote business
+oewn-08444976-n	dul:Situation	oewn-00297411-n	dul:Collective	march	procession	a procession of people walking together
+oewn-08445209-n	dul:Collective	oewn-08444976-n	dul:Situation	hunger march	march	a march of protest or demonstration by the unemployed
+oewn-08452398-n	dul:System	oewn-00031563-n	dul:Collection	system	group	a group of independent but interrelated elements comprising a unified whole
+oewn-08490184-n	dul:Organization	oewn-08489901-n	dul:Collective	Industrial Workers of the World	labor movement	a former international labor union and radical labor movement in the United States; founded in Chicago in 1905 and dedicated to the overthrow of capit
+oewn-08492343-n	dul:Place	oewn-08490798-n	dul:Collective	Lubavitch	religious movement	a large missionary Hasidic movement known for their hospitality, technological expertise, optimism and emphasis on religious study
+oewn-08500946-n	dul:Collective	oewn-08500147-n	coll:AgentCollection	Hebrews	chosen people	the ethnic group claiming descent from Abraham and Isaac (especially from Isaac's son Jacob); the nation whom God chose to receive his revelation and 
+oewn-08501397-n	dul:InformationObject	oewn-07984350-n	dul:Collective	Maya	ethnic minority	an ethnic minority speaking Mayan languages and living in Yucatan and adjacent areas
+oewn-08503199-n	coll:AgentCollection	oewn-01232427-n	dul:Action	wine tasting	assembly	a gathering of people to taste and compare different wines
+oewn-08506507-n	dul:Place	oewn-00027365-n	dul:SpaceRegion	here	location	the present location; this place; location, proximal pronoun; demonstrative pronoun, location; quantifier: demonstrative determiner, singular, proxima
+oewn-08506637-n	dul:Place	oewn-00027365-n	dul:SpaceRegion	there	location	a location other than here; that place; location, medial pronoun; demonstrative pronoun, location; quantifier: demonstrative determiner, distal; demon
+oewn-08507209-n	dul:Place	oewn-00027365-n	dul:SpaceRegion	home	location	the country or state or city where you live
+oewn-08507412-n	dul:Place	oewn-00027365-n	dul:SpaceRegion	base	location	the place where you are stationed and from which missions start and end
+oewn-08508037-n	dul:Place	oewn-08596234-n	dul:SpaceRegion	address	geographic point	the place where a person or organization can be found or communicated with
+oewn-08524579-n	dul:Place	oewn-08637636-n	dul:SpaceRegion	beginning	point	the place where something begins, where it springs into being
+oewn-08533915-n	dul:Situation	oewn-08588287-n	dul:Place	pitch	playing field	a sports field with predetermined dimensions for playing soccer
+oewn-08595522-n	dul:Place	oewn-08596234-n	dul:SpaceRegion	epicenter	geographic point	the point on the Earth's surface directly above the focus of an earthquake
+oewn-08597854-n	dul:Place	oewn-08637636-n	dul:SpaceRegion	ground zero	point	the point of detonation (or above or below) of a nuclear weapon

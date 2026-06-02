@@ -1,0 +1,41 @@
+{
+  "mapped_total": 21833,
+  "by_pos": {
+    "a": 7502,
+    "s": 10717,
+    "r": 3614
+  },
+  "oewn_universe_by_pos": {
+    "a": 7502,
+    "s": 10717,
+    "r": 3614
+  },
+  "coverage_pct_by_pos": {
+    "a": 100.0,
+    "s": 100.0,
+    "r": 100.0
+  },
+  "by_rule": {
+    "A1_satellite_inherits_head": 10717,
+    "A2_pertainym_default": 3663,
+    "A5_adj_head_default": 3562,
+    "R7_adv_default": 1764,
+    "R1_adv_manner": 1336,
+    "A4_physical_attr_keyword": 217,
+    "R3_adv_spatial": 185,
+    "R5_adv_degree": 174,
+    "R2_adv_temporal": 108,
+    "A3_participial_default": 60,
+    "R4_adv_frequency": 39,
+    "R6_adv_modal": 8
+  },
+  "by_class": {
+    "dul:Quality": 16818,
+    "dul:Region": 3313,
+    "dul:PhysicalAttribute": 1401,
+    "dul:SpaceRegion": 185,
+    "dul:TimeInterval": 108,
+    "dul:Abstract": 8
+  },
+  "pertainym_annotations": 5601
+}

@@ -1,0 +1,12 @@
+{
+  "topmapping_rows_reviewed": 840,
+  "flag_distribution": {
+    "ok": 758,
+    "metalevel": 4,
+    "perdurant_gloss": 6,
+    "full_iri_class": 61,
+    "role_lemma": 9,
+    "class_singleton": 2
+  },
+  "ok_rate_percent": 90.24
+}

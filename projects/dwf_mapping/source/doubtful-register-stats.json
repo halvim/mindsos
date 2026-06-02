@@ -1,0 +1,22 @@
+{
+  "total_doubts": 10650,
+  "by_category": {
+    "C1_rule_conflict": 1228,
+    "C2_hypernym_vs_gloss": 4230,
+    "C3_multiclass_framester": 1752,
+    "C4_satellite_vs_gloss": 205,
+    "C5_pertainym_vs_referent": 2978,
+    "C6_gapfill_vs_gloss": 257
+  },
+  "by_class_distance": {
+    "1": 2340,
+    "3": 7851,
+    "2": 459
+  },
+  "priority_tiers": {
+    "very_high(top 1%)": 57,
+    "high(1-10%)": 71,
+    "medium(10-50%)": 8156,
+    "low": 2366
+  }
+}

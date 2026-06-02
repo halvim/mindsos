@@ -1,0 +1,501 @@
+oewn_id	primary_lemma	gloss	assigned_class	judgement	proposed_alternative	rationale	batch
+oewn-03463060-n	greenroom	a backstage room in a theater where performers rest or have visitors	dul:DesignedArtifact	agree		A greenroom is a designed physical structure/place in a theater. dul:DesignedArtifact is appropriate for a built room.	01
+oewn-02776737-a	monotypic	consisting of only one type	dul:Quality	agree		"Pertainym adjective meaning ""of or relating to one type."" dul:Quality is correct; the relational nature is captured by dct:relation."	01
+oewn-00122465-n	forwarding	the act of sending on to another destination	dul:Action	agree		"""The act of"" explicitly signals intentional agentive behavior. dul:Action is correct."	01
+oewn-06940140-n	Uzbek	the Turkic language spoken by the Uzbek	dul:InformationObject	agree		A language is an abstract information object. dul:InformationObject is correct.	01
+oewn-09296036-n	ember	a hot fragment of wood or coal that is left from a fire and is glowing or smoldering	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	debatable	dul:PhysicalObject or dul:Amount	Ember is a material piece of burning wood/coal. DependentPart fits if it cannot exist without the fire context, but it could also be dul:PhysicalObject.	01
+oewn-06232886-n	Gnosticism	a religious orientation advocating gnosis as the way to release a person's spiritual element; considered heresy by Christian churches	coll:InformationCollection	agree		A religion is a collection of ideas, beliefs, and texts. coll:InformationCollection is appropriate.	01
+oewn-00602203-n	secretary of energy	the position of the head of the Department of Energy	dul:Action	disagree	dul:Role or ontopic:Topic	"A ""position"" is a role or status, not an agentive action. dul:Action is incorrect; should be dul:Role or rol:Status."	01
+oewn-04270367-n	soup bowl	a bowl for serving soup	dul:DesignedArtifact	agree		A bowl is a human-made object with a specific function. dul:DesignedArtifact is correct.	01
+oewn-12317627-n	Gentianopsid procera	small blue-flowered fringed gentian of east central North America	dul:Organism	agree		A plant species is a living entity. dul:Organism is correct.	01
+oewn-00854162-s	soigne	polished and well-groomed; showing sophisticated elegance	dul:Quality	agree		Describes an aesthetic/stylistic quality of appearance. dul:Quality is appropriate.	01
+oewn-06903738-n	paraph	a flourish added after or under your signature (originally to protect against forgery)	dul:DesignedArtifact	agree		A paraph is a physical/graphical element made intentionally. dul:DesignedArtifact is appropriate.	01
+oewn-09466545-n	spume	foam or froth on the sea	dul:SpaceRegion	debatable	dul:Amount or dul:PhysicalObject	Spume is foam, a physical substance. dul:SpaceRegion (purely spatial) seems too abstract; dul:Amount (quantity of matter) or dul:PhysicalObject may be better.	01
+oewn-00502129-v	demulsify	break down into components	dul:Action	debatable	dul:Process	Breaking down is a gradual chemical process, not necessarily agentive. dul:Process may be more accurate than dul:Action.	01
+oewn-00767258-v	propitiate	make peace with	dul:Action	agree		Making peace involves intentional agentive behavior. dul:Action is correct.	01
+oewn-09879536-n	blind person	a person with a severe visual impairment	dul:Person	agree		A person is a person, regardless of visual status. dul:Person is correct.	01
+oewn-03102541-n	controlled substance	a drug or chemical substance whose possession and use are controlled by law	dul:FunctionalSubstance	agree		A drug is matter with a specific functional/regulatory purpose. dul:FunctionalSubstance is appropriate.	01
+oewn-01753964-v	scrape	make by scraping	dul:Action	agree		Making by scraping is an intentional agentive action. dul:Action is correct.	01
+oewn-01087779-s	brimful	filled up	dul:Quality	agree		A state of being full is a quality. dul:Quality is correct.	01
+oewn-13699442-n	Central African Republic franc	the basic unit of money in the Central African Republic	dul:Amount	agree		Currency is a quantified unit. dul:Amount is appropriate.	01
+oewn-11702161-n	free central placentation	where ovules develop on a central column in a compound ovary lacking septa or with septa at base only	dul:BiologicalObject	agree		A placentation type is a biological structural part. dul:BiologicalObject is correct.	01
+oewn-00212278-v	freeze-dry	preserve by rapid freezing and subsequently drying in a vacuum	dul:Process	agree		Freeze-drying involves gradual physical/chemical change. dul:Process is correct.	01
+oewn-08083022-n	aluminum business	manufacturers of aluminum considered as a group	dul:Organization	agree		An organized group of manufacturers is an organization. dul:Organization is correct.	01
+oewn-02894514-a	neuroglial	relating to or consisting of neuroglia	dul:Quality	agree		"Pertainym meaning ""of or relating to."" dul:Quality with dct:relation is the design pattern."	01
+oewn-00253599-s	intimidated	made timid or fearful as by threats	dul:Quality	agree		Being intimidated is a psychological state/quality. dul:Quality is correct.	01
+oewn-04832208-n	implicitness	inexplicitness as a consequence of being implied or indirect	dul:Quality	agree		Implicitness is an abstract quality of communication. dul:Quality is appropriate.	01
+oewn-00099205-n	mechanism	the technical aspects of doing something	dul:Action	debatable	dul:Method or dul:Description	"""Technical aspects"" is not itself an action. dul:Method or dul:Description would be more appropriate."	01
+oewn-90017941-s	slim thick	of a female with a large bottom and a slim waist	dul:Quality	debatable	dul:PhysicalAttribute	This describes physical body proportions/shape. dul:PhysicalAttribute may be more precise than generic dul:Quality.	01
+oewn-00450751-r	sensationally	in a sensational manner	dul:Region	agree		A manner adverb describes a value in manner/quality space. dul:Region is correct.	01
+oewn-00029677-n	event	something that happens at a given place and time	dul:Event	agree		The gloss directly defines an occurrence. dul:Event is correct.	01
+oewn-01519166-v	force	force into or from an action or state, either physically or metaphorically	dul:Action	agree		Forcing involves agentive causation. dul:Action is correct.	01
+oewn-02301324-s	tottering	(of structures or institutions) having lost stability; failing or on the point of collapse	dul:Quality	agree		Describes a state of instability. dul:Quality is correct.	01
+oewn-01748360-a	perceptive	having the ability to perceive or understand; keen in discernment	dul:Quality	agree		A cognitive ability/capacity is a quality. dul:Quality is correct.	01
+oewn-11535484-n	tension	(physics) a stress that produces an elongation of an elastic physical body	dul:Event	debatable	dul:Process or dul:State	Physical tension is a state (static) or process (changing). dul:Event is more general but less precise than alternatives.	01
+oewn-11678036-n	nagi	medium-sized tree having glossy lanceolate leaves; southern China to Taiwan and southern Japan	dul:Organism	agree		A tree is a living entity. dul:Organism is correct.	01
+oewn-02007041-s	refractory	temporarily unresponsive or not fully responsive to a process or stimulus	dul:Quality	agree		Describes a temporary state/quality of unresponsiveness. dul:Quality is correct.	01
+oewn-00544043-s	low-density	having low concentration	dul:Quality	agree		Density is a measurable physical property. dul:PhysicalAttribute is correct.	01
+oewn-02486512-v	outlaw	declare illegal; outlaw	dul:Action	agree		Declaring/outlawing is an agentive action. dul:Action is correct.	01
+oewn-13291061-n	contribution	a voluntary gift (as of money or service or ideas) made to some worthwhile cause	dul:Action	debatable	dul:Action or dul:Amount	"A contribution can be the act (dul:Action) or the thing given (dul:Amount/dul:PhysicalObject). Gloss emphasizes ""voluntary gift"" which is dul:Action, but ambiguous."	01
+oewn-03527797-n	hitch	a knot that can be undone by pulling against the strain that holds it; a temporary knot	dul:DesignedArtifact	agree		A knot is a constructed artifact with specific function. dul:DesignedArtifact is correct.	01
+oewn-04884725-n	loyalty	the quality of being loyal	dul:Quality	agree		Loyalty is explicitly a quality. dul:Quality is correct.	01
+oewn-09946909-n	reverend	a member of the clergy and a spiritual leader of the Christian Church	dul:Person	agree		A reverend is a person. dul:Person is correct.	01
+oewn-02018416-s	anechoic	not having or producing echoes; sound-absorbent	dul:PhysicalAttribute	agree		Sound-absorbency is a measurable physical property. dul:PhysicalAttribute is correct.	01
+oewn-04481422-n	transport ship	a ship for carrying soldiers or military equipment	dul:DesignedArtifact	agree		A ship is a human-made object with specific purpose. dul:DesignedArtifact is correct.	01
+oewn-01915022-s	alloyed	(used of metals) debased by mixture with an inferior element	dul:Quality	agree		Being alloyed is a chemical property/state. dul:Quality is correct.	01
+oewn-06025949-n	open interval	an interval that does not include its endpoints	dul:Set	agree		A mathematical interval is an abstract set. dul:Set is correct.	01
+oewn-04793718-n	simplicity	absence of affectation or pretense	dul:Quality	agree		Simplicity is explicitly an abstract quality. dul:Quality is correct.	01
+oewn-01139748-s	crabbed	annoyed and irritable	dul:Quality	agree		Being crabbed/irritable is a psychological quality. dul:Quality is correct.	01
+oewn-02588984-s	anchoritic	characterized by ascetic solitude	dul:Quality	agree		Characterizes a spiritual/lifestyle quality. dul:Quality is correct.	01
+oewn-09793689-n	adviser	an expert who gives advice	dul:Person	agree		An adviser is a person. dul:Person is correct.	01
+oewn-01851084-a	unprepared	without preparation; not prepared for	dul:Quality	agree		Being unprepared is a state/quality. dul:Quality is correct.	01
+oewn-01258938-v	swage	form metals with a swage	dul:Action	agree		Intentional crafting action clearly fits dul:Action.	02
+oewn-02668725-v	co-vary	vary in the same time period (of two random variables)	dul:Process	agree		Homogeneous variation over time fits dul:Process.	02
+oewn-10339888-n	minimalist	a practitioner or advocate of artistic minimalism	dul:Person	agree		A person engaging in artistic practice.	02
+oewn-00532114-n	cancan	a high-kicking dance of French origin performed by a female chorus line	dul:Action	disagree	dul:EventType	Gloss describes a type/kind of dance, not the agentive action of performing.	02
+oewn-00136124-r	locally	by a particular locality	dul:Region	agree		Manner adverb correctly mapped to Region (quality space value).	02
+oewn-00840824-n	coprophagy	eating feces; in human a symptom of some kinds of insanity	dul:Process	disagree	dul:Action	Eating feces is an agentive action, not a homogeneous process.	02
+oewn-00395719-v	blend	mix together different elements	dul:Action	agree		Intentional mixing is clearly an agentive action.	02
+oewn-02009910-a	unrestricted	not subject to or subjected to restriction	dul:Quality	agree		Property/attribute of an entity.	02
+oewn-12726458-n	flowering wintergreen	common trailing perennial milkwort of eastern North America having leaves like wintergreen and usually rosy-purple flowers with winged sepals	dul:Organism	agree		A living plant entity.	02
+oewn-02693438-v	rim	run around the rim of	dul:Event	agree		Motion around an edge; non-stative, non-agentive occurrence fits dul:Event.	02
+oewn-03304466-n	etching	an impression made from an etched plate	dul:InformationRealization	agree		Physical artifact/print of artistic information.	02
+oewn-02520662-a	inviolable	incapable of being transgressed or dishonored	dul:Quality	agree		Property/attribute.	02
+oewn-00681291-a	annual	completing its life cycle within a year	dul:Quality	agree		Temporal trait/property of organisms; standard in ontologies.	02
+oewn-01884969-s	becoming	according with custom or propriety	dul:Quality	agree		Property of being fitting/suitable.	02
+oewn-05847533-n	kind	a category of things distinguished by some common characteristic or quality	coll:InformationCollection	debatable	dul:Concept	Tension between collection of instances vs. categorical type; context-dependent.	02
+oewn-00921876-n	ranching	farming for the raising of livestock (particularly cattle)	dul:System	debatable	dul:Process	Farming/animal husbandry is an ongoing activity better modeled as dul:Process than abstract system.	02
+oewn-01366529-a	joyful	full of or producing joy	dul:Quality	agree		Emotional property/attribute.	02
+oewn-00406038-s	bleached	having lost freshness or brilliance of color	dul:PhysicalAttribute	agree		Color-related physical attribute loss.	02
+oewn-13454076-n	antisepsis	the process of inhibiting the growth and multiplication of microorganisms	dul:Process	agree		"Gloss explicitly names ""process""; inhibition over time."	02
+oewn-03626258-n	kitchen utensil	a utensil used in preparing food	dul:DesignedArtifact	agree		Tool designed and made for a specific purpose.	02
+oewn-02758989-n	attic fan	a fan that blows heated air out of the attic of a building	dul:DesignedArtifact	agree		Human-made device for a specific function.	02
+oewn-08151789-n	Department of Homeland Security	the federal department that administers all matters relating to homeland security	dul:Organization	agree		Government department; structured group of agents.	02
+oewn-04723767-n	aptness	appropriateness for the occasion	dul:Quality	agree		Quality/property of suitability.	02
+oewn-04149040-n	scale	a measuring instrument for weighing; shows amount of mass	dul:DesignedArtifact	agree		Tool designed for measurement.	02
+oewn-03096622-n	conservatory	a greenhouse in which plants are arranged in a pleasing manner	dul:DesignedArtifact	debatable	dul:Place	Building/physical location might be better classified as dul:Place or dul:PhysicalPlace than DesignedArtifact.	02
+oewn-10249553-n	keyboardist	a musician who plays a keyboard instrument	dul:Person	agree		A person with a professional/artistic role.	02
+oewn-05235350-n	mamillary body	one of two small round structures on the undersurface of the brain that form the terminals of the anterior arches of the fornix	dul:BiologicalObject	agree		Brain structure/anatomical part.	02
+oewn-09763123-n	Minnesotan	a native or resident of Minnesota	dul:Person	agree		A person from a geographic location.	02
+oewn-00367501-n	tension	the action of stretching something tight	dul:Situation	disagree	dul:Action	"Gloss explicitly states ""the action""; stretching is agentive and should be dul:Action."	02
+oewn-01630743-s	hideous	grossly offensive to decency or morality; causing horror	dul:Quality	agree		Aesthetic/moral property.	02
+oewn-10285588-n	lister	assessor who makes out the tax lists	dul:Person	agree		A person in an assessment role.	02
+oewn-15081316-n	sea spray	spray from ocean waves	dul:FunctionalSubstance	disagree	dul:Amount	Water particles/matter without functional purpose; better as dul:Amount or dul:Substance.	02
+oewn-00379694-r	sensitively	in a sensitive manner	dul:Region	agree		Manner adverb correctly mapped to Region.	02
+oewn-00648076-n	chemical analysis	the act of decomposing a substance into its constituent elements	dul:Action	agree		Intentional analytical action.	02
+oewn-14391054-n	elephantiasis scroti	swelling of the scrotum resulting from chronic lymphatic obstruction	dul:Situation	debatable	dul:State	Medical condition is a state of swelling; dul:State more precise than dul:Situation.	02
+oewn-01919470-s	undisciplined	not subjected to discipline	dul:Quality	agree		Property/behavioral trait.	02
+oewn-08123764-n	superclass	(biology) a taxonomic class below a phylum and above a class	coll:Taxon	agree		Taxonomic rank/classification.	02
+oewn-90000231-v	follow	to be subscribed to updates from another user on social media	dul:Action	agree		Intentional subscription action.	02
+oewn-06342274-n	transitive verb	a verb (or verb construction) that requires an object in order to be grammatical	coll:Taxon	disagree	dul:Concept	Linguistic/grammatical category is not a biological taxon; should be dul:Concept.	02
+oewn-06605195-n	archives	collection of records especially about an institution	dul:InformationRealization	disagree	coll:InformationCollection	"Gloss emphasizes ""collection of records""; better as coll:InformationCollection."	02
+oewn-02997336-a	yogistic	of or relating to yoga	dul:Quality	agree		Relational adjective correctly mapped to dul:Quality per pertainym guidelines.	02
+oewn-01602904-v	coal	take in coal	dul:Process	disagree	dul:Action	Taking in is agentive consumption; dul:Action fits better than dul:Process.	02
+oewn-00560964-s	close	crowded	dul:Quality	agree		Property of spatial arrangement.	02
+oewn-12864730-n	wild basil	aromatic herb having heads of small pink or whitish flowers; widely distributed in United States, Europe and Asia	dul:Organism	agree		Living plant entity.	02
+oewn-02503378-a	upstage	of the back half of a stage	dul:Quality	debatable	dul:SpaceRegion	Spatial location description suggests dul:SpaceRegion or dul:Place better than dul:Quality.	02
+oewn-06413845-n	web log	a shared on-line journal where people can post diary entries about their personal experiences and hobbies	dul:InformationRealization	agree		Digital/written information artifact.	02
+oewn-09318959-n	gulf	a deep wide chasm	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPlace	agree		Spatial location; assigned class maps to dul:Place intent.	02
+oewn-14526956-n	arrested development	an abnormal state in which development has stopped prematurely	dul:Situation	agree		Complex medical/developmental state involving multiple factors.	02
+oewn-06415036-n	handwriting	something written by hand	dul:InformationRealization	agree		Physical manifestation of written information.	02
+oewn-05801008-n	explanation	thought that makes something comprehensible	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	agree		Cognitive/mental content; assigned class maps to dul:CognitiveState/CognitiveEvent intent.	02
+oewn-02036260-v	diverge	move or draw apart	dul:Action	agree		Gloss describes physical movement action, fits agentive dul:Action.	03
+oewn-04637315-n	stone	a lack of feeling or expression or movement	dul:Quality	agree		Describes an attribute (lack of feeling/expression), fits dul:Quality well.	03
+oewn-02233313-v	assign	transfer one's right to	dul:Action	agree		Transfer is agentive intentional action, correct dul:Action.	03
+oewn-03081620-n	common room	a sitting room (usually at school or university)	dul:DesignedArtifact	disagree	dul:Place	Gloss describes a physical location/room, not an artifact with a specific design purpose.	03
+oewn-00059339-n	exit	the act of going out	dul:Action	agree		Gloss explicitly states 'the act of', marks dul:Action correctly.	03
+oewn-01222557-v	brace	support or hold steady and make steadfast, with or as if with a brace	dul:Action	agree		Describes intentional supportive action, correct dul:Action.	03
+oewn-07733459-n	hubbard squash	large football-shaped winter squash with a warty grey-green rind	dul:FunctionalSubstance	disagree	dul:Organism or dul:BiologicalObject	Squash is a plant product/organism matter, not inherently a FunctionalSubstance unless functional role emphasized.	03
+oewn-00490485-r	unimaginably	to an unimaginable extent	dul:Region	agree		Degree/intensity adverbs map to dul:Region correctly.	03
+oewn-06273220-n	film	a medium that disseminates moving pictures	dul:DesignedArtifact	debatable	dul:InformationObject	Film can be viewed as designed medium (artifact) or info-bearing object; both defensible.	03
+oewn-15297557-n	halftime	an intermission between the first and second half of a game	dul:TimeInterval	agree		Explicitly describes a time period, dul:TimeInterval correct.	03
+oewn-10565349-n	sadist	someone who obtains pleasure from inflicting pain on others	dul:Person	agree		Describes a person, dul:Person is correct.	03
+oewn-05433158-n	vestibular vein	veins that drain the saccule and utricle	dul:BiologicalObject	agree		Veins are anatomical structures, dul:BiologicalObject correct.	03
+oewn-00112323-n	jumper	(basketball) a player releases the basketball at the high point of a jump	dul:Task	debatable	dul:Action	Describes a specific basketball action/shot, could be dul:Action; Task is defensive.	03
+oewn-14295643-n	rinderpest	an acute infectious viral disease of cattle (usually fatal); characterized by fever and diarrhea and inflammation of mucous membranes	dul:Situation	agree		Disease as complex pathological state fits dul:Situation well.	03
+oewn-10077835-n	engraver	a printmaker who prints from an engraved printing plate	dul:Person	agree		Describes a person by profession, dul:Person correct.	03
+oewn-03096509-n	conning tower	an armored pilothouse on a warship	dul:DesignedArtifact	agree		Military structure designed for purpose, dul:DesignedArtifact correct.	03
+oewn-02583461-n	horse mackerel	large elongated compressed food fish of the Atlantic waters of Europe	dul:Organism	agree		Fish is a living organism, dul:Organism correct.	03
+oewn-07682896-n	lamb	the flesh of a young domestic sheep eaten as food	dul:Person	disagree	dul:Substance or dul:Amount	Lamb flesh is food substance, not a person; assigned class is incorrect.	03
+oewn-05050245-n	defenselessness	the property of being helpless in the face of attack	dul:Quality	agree		Describes an abstract property, dul:Quality correct.	03
+oewn-10230249-n	interior designer	a person who specializes in interior design	dul:Person	agree		Describes a person, dul:Person correct.	03
+oewn-13483883-n	eponymy	the derivation of a general name from that of a famous person	dul:Process	disagree	dul:Process or dul:Event	Derivation is a linguistic process/event, not necessarily the gradual change meaning of Process.	03
+oewn-00336814-n	jerk	an abrupt spasmodic movement	dul:Situation	agree		Describes an abrupt single occurrence, dul:Situation reasonable for complex movement.	03
+oewn-05667105-n	kinanesthesia	inability to sense movement	dul:Quality	debatable	dul:State or dul:Condition	Medical inability is a state/condition; Quality is defensible for attribute angle.	03
+oewn-03104534-a	Olympic	of or relating to the Olympic Games	dul:Quality	agree		Pertainym defaults to dul:Quality per guidelines; relation captured elsewhere.	03
+oewn-04569548-n	water ski	broad ski for skimming over water towed by a speedboat	dul:DesignedArtifact	agree		Purpose-built equipment, dul:DesignedArtifact correct.	03
+oewn-00481773-s	comforted	made comfortable or more comfortable in a time of distress	dul:Quality	debatable	dul:State	Being comforted is a state; Quality is defensible for the comfort attribute.	03
+oewn-02960231-n	cap opener	a bottle opener to pry off caps	dul:DesignedArtifact	agree		Purpose-built tool, dul:DesignedArtifact correct.	03
+oewn-12318912-n	marsh pink	any of several pink-flowered marsh plant of the eastern United States resembling a true centaury	dul:Organism	agree		Plant organism, dul:Organism correct.	03
+oewn-01996016-s	unbooked	not reserved in advance	dul:Quality	debatable	dul:State	Being unbooked is a state; Quality is defensible for the attribute.	03
+oewn-01638276-v	mythologize	construct a myth	dul:Action	agree		Constructing is agentive intentional action, dul:Action correct.	03
+oewn-14950432-n	ketone	any of a class of organic compounds having a carbonyl group linked to a carbon atom in each of two hydrocarbon radicals	dul:ChemicalObject	agree		Chemical compound class, dul:ChemicalObject correct.	03
+oewn-06156211-n	paleoethnography	the ethnography of paleolithic humans	ontopic:Topic	agree		Field of study/topic, ontopic:Topic correct.	03
+oewn-10573055-n	saver	someone who saves (especially money)	dul:Person	agree		Describes a person by action, dul:Person correct.	03
+oewn-10106590-n	field marshal	an officer holding the highest rank in the army	dul:Person	agree		Military person of rank, dul:Person correct.	03
+oewn-13178969-n	elliptic leaf	a simple leaf shaped like an ellipse	dul:BiologicalObject	agree		Leaf is a plant organ/part, dul:BiologicalObject correct.	03
+oewn-13147443-n	root hair	thin hairlike outgrowth of an epidermal cell just behind the tip; absorbs nutrients from the soil	dul:BiologicalObject	agree		Plant cell structure, dul:BiologicalObject correct.	03
+oewn-01018282-s	grey	intermediate in character or position	dul:Quality	agree		Describes a quality/attribute of position/character, dul:Quality correct.	03
+oewn-15144014-n	bout	a period of illness	dul:TimeInterval	debatable	dul:State or dul:Process	Period of illness is temporal; TimeInterval emphasizes duration, State emphasizes the condition.	03
+oewn-01751547-n	hamadryad	large cobra of southeastern Asia and the East Indies; the largest venomous snake; sometimes placed in genus Naja	dul:Organism	agree		Snake is a living organism, dul:Organism correct.	03
+oewn-01383395-n	pneumococcus	bacterium causing pneumonia in mice and humans	dul:Organism	agree		Bacterium is a living organism, dul:Organism correct.	03
+oewn-03503925-n	hatchback	a car having a hatchback door	dul:DesignedArtifact	agree		Purpose-built vehicle, dul:DesignedArtifact correct.	03
+oewn-05832637-n	predictor	information that supports a probabilistic estimate of future events	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	agree		Information-bearing entity, InternalRepresentation fitting.	03
+oewn-10590879-n	secretary of education	the person who holds the secretaryship of the Department of Education	dul:Person	debatable	dul:Role	Could be Person or Role; gloss emphasizes office/title suggesting Role.	03
+oewn-02542621-a	cool	inducing the impression of coolness; used especially of greens and blues and violets when referring to color	dul:PhysicalAttribute	agree		Color/temperature property explicitly marked, dul:PhysicalAttribute correct.	03
+oewn-14585431-n	rancidity	the state of being rancid; having a rancid scent or flavor (as of old cooking oil)	dul:State	agree		Gloss explicitly opens with 'the state of', dul:State correct.	03
+oewn-07421074-n	regurgitation	backflow of blood through a defective heart valve	dul:Event	debatable	dul:Process	Backflow is a process of gradual change; Event is reasonable for occurrence.	03
+oewn-02244187-v	get in	secure a place in a college, university, etc.	dul:Action	agree		Agentive intentional action, dul:Action correct.	03
+oewn-84605489-n	madman	a male insane person	dul:Person	agree		Describes a person, dul:Person correct.	03
+oewn-05499911-n	fold	a folded part (as in skin or muscle)	dul:BiologicalObject	agree		Body tissue structure, dul:BiologicalObject correct.	03
+oewn-02231341-v	dado	provide with a dado	dul:Action	agree		Intentional action to furnish/provide, dul:Action correct.	03
+oewn-00248716-v	proliferate	cause to grow or increase rapidly	dul:Action	agree		Causing growth/increase requires agentive intent, fitting Action definition.	04
+oewn-14936538-n	hydrochloric acid	an aqueous solution of hydrogen chloride; a strongly corrosive acid	dul:ChemicalObject	agree		A chemical compound is properly classified as ChemicalObject.	04
+oewn-06820829-n	crossbones	two crossed bones (or a representation of two crossed bones) used as a symbol danger or death	dul:InformationRealization	agree		A visual representation of bones that conveys symbolic meaning is an information realization.	04
+oewn-04256525-n	snare drum	a small drum with two heads and a snare stretched across the lower head	dul:DesignedArtifact	agree		A drum is a human-made instrument designed for a purpose.	04
+oewn-02728082-v	figure	be or play a part of or in	dul:State	debatable	dul:Process	Figure can mean perform/play an active role (Action) or merely be present (State); gloss is ambiguous.	04
+oewn-05408930-n	Rh-negative blood type	the blood group whose red cells lack the Rh factor (Rh antigen)	dul:FunctionalSubstance	disagree	dul:Substance	Blood type is a classification property, not functional substance. Should be Substance or Quality.	04
+oewn-90000031-n	post	A message on a social media website	dul:InformationRealization	agree		A message is a physical/digital realization of information.	04
+oewn-00412730-n	formalism	the practice of scrupulous adherence to prescribed or external forms	dul:Method	agree		Adherence to forms is a methodological practice.	04
+oewn-14674315-n	plutonium 239	a highly fissionable isotope of plutonium that is used in atomic weapons and as a reactor fuel; produced by irradiating uranium 238 with slow electrons	dul:ChemicalObject	agree		A specific isotope is a chemical object.	04
+oewn-00075202-s	lifelike	free from artificiality	dul:Quality	agree		An aesthetic/semantic quality attribute.	04
+oewn-03067692-n	coffeepot	tall pot in which coffee is brewed	dul:DesignedArtifact	agree		A designed vessel for a specific purpose.	04
+oewn-07505182-n	satyriasis	abnormally intense sexual desire in men	dul:InternalRepresentation	disagree	dul:CognitiveState	Sexual desire is a mental/emotional state, not information representation. Should be CognitiveState.	04
+oewn-04603089-n	wirework	mesh netting made of wires	dul:DesignedArtifact	agree		An artifact manufactured from wire for a specific purpose.	04
+oewn-07261731-n	promotion	a message issued in behalf of some product or cause or idea or person or institution	dul:InformationRealization	agree		A message is an information realization.	04
+oewn-14132058-n	atherogenesis	the formation of atheromas on the walls of the arteries as in atherosclerosis	dul:Situation	disagree	dul:Process	Formation of plaques involves gradual change over time, fitting Process better than complex state-of-affairs.	04
+oewn-06599772-n	shareware	software that is available free of charge; may be distributed for evaluation with a fee requested for additional features or a manual etc.	dul:InformationRealization	agree		Software/programs are informational realizations.	04
+oewn-00226974-n	spasm	(pathology) sudden constriction of a hollow organ (as a blood vessel)	dul:Action	disagree	dul:Event	A sudden constriction is involuntary physiological event, not agentive Action.	04
+oewn-03139103-a	tutorial	of or relating to tutors or tutoring	dul:Quality	agree		Pertainym adjectives default to Quality per guidelines, relying on dct:relation annotation.	04
+oewn-07389653-n	concoction	an occurrence of an unusual mixture	dul:Event	agree		An unusual mixture occurrence is an event.	04
+oewn-02178411-v	twang	cause to sound with a twang	dul:Action	agree		Causing a sound requires agentive intent.	04
+oewn-01443405-n	tench	freshwater dace-like game fish of Europe and western Asia noted for ability to survive outside water	dul:Organism	agree		A fish is a living organism.	04
+oewn-01710347-v	score	write a musical score for	dul:Action	agree		Writing requires intentional, agentive action.	04
+oewn-92459559-n	royal yard	the yard of the royalmast, on which the royal is set, next above the topgallant	dul:DesignedArtifact	agree		A yard of a mast is a designed component of a ship.	04
+oewn-01000813-s	discriminatory	containing or implying a slight or showing prejudice	dul:Quality	agree		A quality attribute of behavior or speech.	04
+oewn-02938249-a	automotive	of or relating to motor vehicles	dul:Quality	agree		Pertainym adjective; defaults to Quality per guidelines.	04
+oewn-00554693-v	syncretize	become fused	dul:Achievement	agree		Become indicates a telic endpoint (fusion achieved).	04
+oewn-08421692-n	general staff	military officers assigned to assist a senior officer in planning military policy	dul:Organization	agree		A group of officers organized for a function.	04
+oewn-11458071-n	coordinate bond	a covalent bond in which both electrons are provided by one of the atoms	dul:Event	disagree	dul:Abstract	A bond is a persistent chemical relationship, not an event.	04
+oewn-13536352-n	metaphase	the second stage of mitosis	dul:EventType	agree		A stage of a process is a type of event.	04
+oewn-08302960-n	training school	a school providing practical vocational and technical training	dul:Organization	agree		A school is an organized institution.	04
+oewn-06652665-n	body mass index	a measure of someone's weight in relation to height; to calculate one's BMI, multiply one's weight in pounds and divide that by the square of one's height in inches; overweight is a BMI greater than 2	ontopic:Topic	debatable	dul:Region	BMI is a calculated metric—could be Region (position in quality space) or Topic (discourse topic).	04
+oewn-85444389-n	albino	an animal with congenital albinism	dul:Person	disagree	dul:Organism	An albino can be any animal, not limited to humans. Should be Organism.	04
+oewn-12972595-n	filmy fern	any fern of the genus Hymenophyllum growing in tropical humid regions and having translucent leaves	dul:Organism	agree		A plant species is an organism.	04
+oewn-03057257-n	clozapine	an antipsychotic drug (trade name Clozaril) used as a sedative and for treatment-resistant schizophrenia; known to have few side effects	dul:FunctionalSubstance	agree		A pharmaceutical drug is a functional substance with medicinal purpose.	04
+oewn-00609913-n	lighting	the craft of providing artificial light	dul:Action	disagree	dul:Task	Lighting is a craft/task description, not an agentive action instance.	04
+oewn-00546451-s	afraid	feeling worry or concern or insecurity	dul:Quality	debatable	dul:CognitiveState	Emotional states can be Qualities (attributes) or CognitiveStates (mental conditions); both defensible.	04
+oewn-09357302-n	land	the solid part of the earth's surface	dul:PhysicalPlace	agree		Land is a physical location.	04
+oewn-92423612-n	Australianness	The state or quality of being Australian	dul:Quality	agree		A quality/property of something or someone being Australian.	04
+oewn-02889840-n	brace	a structural member used to stiffen a framework	dul:DesignedArtifact	agree		A structural component designed for purpose.	04
+oewn-09874114-n	bimbo	a young woman indulged by rich and powerful older men	dul:Person	agree		A human individual is a Person.	04
+oewn-15121997-n	whale oil	a white to brown oil obtained from whale blubber; formerly used as an illuminant	dul:ChemicalObject	debatable	dul:Substance	Whale oil is natural substance/matter type. ChemicalObject (composition) or Substance (material) both defensible.	04
+oewn-00686982-v	count	include as if by counting	dul:CognitiveEvent	agree		Counting is a cognitive operation/event.	04
+oewn-07669591-n	chop	a small cut of meat including part of a rib	dul:FunctionalSubstance	debatable	dul:PhysicalObject	Meat is edible sustenance (functional) but more centrally physical object; both defensible.	04
+oewn-06226571-n	reaction	extreme conservatism in political or social matters	dul:Situation	disagree	dul:Quality	Political conservatism is an ideological stance/Quality, not complex multi-entity situation.	04
+oewn-04859981-n	nefariousness	the quality of being wicked	dul:Quality	agree		A moral/evaluative quality.	04
+oewn-03053005-a	anaesthetic	relating to or producing insensibility	dul:Quality	agree		Pertainym adjective; defaults to Quality per guidelines.	04
+oewn-04143416-n	sarong	a loose skirt consisting of brightly colored fabric wrapped around the body; worn by both women and men in the South Pacific	dul:PhysicalObject	agree		A garment is a physical object.	04
+oewn-10753007-n	turner	one of two persons who swing ropes for jumpers to skip over in the game of jump rope	dul:Person	agree		A human individual is a Person.	04
+oewn-14355744-n	stitch	a sharp spasm of pain in the side resulting from running	dul:Situation	disagree	dul:State	A spasm of pain is a bodily state/condition, not complex multi-entity situation.	04
+oewn-00960855-v	perseverate	repeat a response after the cessation of the original stimulus	dul:Action	agree		Repeating a response is an agentive mental action.	04
+oewn-01875925-s	lay	not of or from a profession	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-02714741-a	coreferential	relating to coreference	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-07244001-n	bow	an appearance by actors or performers at the end of the concert or play in order to acknowledge the applause of the audience	ontopic:Topic	agree		Gloss supports the assigned class.	05
+oewn-92447444-n	belittlement	the act of making a person or a thing seem little or unimportant.	dul:Action	agree		Gloss supports the assigned class.	05
+oewn-00660578-s	blockish	resembling a block in shape	dul:PhysicalAttribute	agree		Gloss supports the assigned class.	05
+oewn-02174748-v	listen in	listen quietly, without contributing to the conversation	dul:Action	agree		Gloss supports the assigned class.	05
+oewn-02681081-v	emulate	imitate the function of (another system), as by modifying the hardware or the software	dul:State	debatable	dul:Action	Emulating/imitating is an intentional agentive action, not a stative condition.	05
+oewn-00403446-v	complicate	make more complicated	dul:Action	agree		Gloss supports the assigned class.	05
+oewn-04932754-n	obsoleteness	the property of being out of date and not current	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-02267560-v	present	hand over formally	dul:Action	agree		Gloss supports the assigned class.	05
+oewn-81787827-n	first basewoman	(baseball) a woman who plays first base	dul:Person	agree		Gloss supports the assigned class.	05
+oewn-01643372-s	antediluvian	so extremely old as seeming to belong to an earlier period	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-00911705-a	euphemistic	of or the nature of euphemism	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-10254839-n	kingpin	the most important person in a group or undertaking	dul:Person	agree		Gloss supports the assigned class.	05
+oewn-12664449-n	amarelle	any of several cultivated sour cherry trees bearing pale red fruit with colorless juice	dul:Organism	agree		Gloss supports the assigned class.	05
+oewn-14115007-n	Friedreich's ataxia	sclerosis of the posterior and lateral columns of the spinal cord; characterized by muscular weakness and abnormal gait; occurs in children	dul:Situation	disagree	dul:State	A medical condition is a state of an entity, not a complex situation of multiple entities.	05
+oewn-00509856-r	measuredly	in a deliberate unhurried manner	dul:Region	agree		Gloss supports the assigned class.	05
+oewn-07773108-n	cherry	a red fruit with a single hard stone	dul:BiologicalObject	debatable	dul:Substance	Fruit is biological matter; BiologicalObject emphasizes the biological entity, Substance the edible matter. Both defensible.	05
+oewn-01510340-s	thawed	no longer frozen solid	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-02179812-s	cleft	having one or more indentations reaching nearly to the midrib	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-01606806-v	lance	open by piercing with a lancet	dul:Action	agree		Gloss supports the assigned class.	05
+oewn-07384725-n	entrance	a movement into or inward	dul:Event	agree		Gloss supports the assigned class.	05
+oewn-13730246-n	Western Samoan monetary unit	monetary unit in Western Samoa	dul:Amount	agree		Gloss supports the assigned class.	05
+oewn-02094323-s	open	not sealed or having been unsealed	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-06544086-n	act	a legal document codifying the result of deliberations of a committee or society or legislative body	dul:InformationRealization	agree		Gloss supports the assigned class.	05
+oewn-03507653-n	headdress	clothing for the head	dul:PhysicalObject	debatable	dul:DesignedArtifact	Human-made object for a purpose fits DesignedArtifact better than generic PhysicalObject.	05
+oewn-00694299-s	deep-water	of or carried on in waters of great depth	dul:PhysicalAttribute	agree		Gloss supports the assigned class.	05
+oewn-11965220-n	welted thistle	European biennial introduced in North America having flower heads in crowded clusters at ends of branches	dul:Organism	agree		Gloss supports the assigned class.	05
+oewn-04510146-n	twenty-two	a .22 caliber firearm (pistol or rifle)	dul:DesignedArtifact	agree		Gloss supports the assigned class.	05
+oewn-00501486-s	Oscan-speaking	able to communicate in Oscan	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-02736753-a	femoral	of or relating to or near the femur or thigh	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-02855054-n	blind curve	a curve or bend in the road that you cannot see around as you are driving	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	debatable	dul:Place	A curve is a spatial location; Place or SpaceRegion more appropriate than DependentPart.	05
+oewn-01182121-s	windburned	suffering from windburn	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-02670109-a	basidiomycetous	pertaining to or characteristic of fungi of the class Basidiomycetes	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-11533612-n	Doppler effect	change in the apparent frequency of a wave as observer and source move toward or away from each other	dul:Event	agree		Gloss supports the assigned class.	05
+oewn-01170419-s	organic	simple and healthful and close to nature	dul:Quality	agree		Gloss supports the assigned class.	05
+oewn-10052249-n	drawer	the person who writes a check or draft instructing the drawee to pay someone else	dul:Person	agree		Gloss supports the assigned class.	05
+oewn-10308999-n	management consultant	adviser to business about efficient management practices	dul:Person	agree		Gloss supports the assigned class.	05
+oewn-00282463-v	blackwash	color with blackwash	dul:Action	agree		Gloss supports the assigned class.	05
+oewn-03326364-n	fanjet	an airplane propelled by a fanjet engine	dul:DesignedArtifact	agree		Gloss supports the assigned class.	05
+oewn-02750182-n	ashcan	a bin that holds rubbish until it is collected	dul:DesignedArtifact	agree		Gloss supports the assigned class.	05
+oewn-00102859-n	double stopping	stopping two strings and producing two notes at the same time	dul:Action	debatable	dul:Event	Double stopping is a musical technique/method; could be Action (intentional) or Event (occurrence).	05
+oewn-07662187-n	duck	flesh of a duck (domestic or wild)	dul:FunctionalSubstance	agree		Gloss supports the assigned class.	05
+oewn-13559517-n	plastination	a process involving fixation and dehydration and forced impregnation and hardening of biological tissues; water and lipids are replaced by curable polymers (silicone or epoxy or polyester) that are su	dul:Process	agree		Gloss supports the assigned class.	05
+oewn-12047691-n	salsify	Mediterranean biennial herb with long-stemmed heads of purple ray flowers and milky sap and long edible root; naturalized throughout United States	dul:Organism	agree		Gloss supports the assigned class.	05
+oewn-13830617-n	antonymy	the semantic relation that holds between two words that can (in a given context) express opposite meanings	dul:Relation	agree		Gloss supports the assigned class.	05
+oewn-02004789-v	marshal	lead ceremoniously, as in a procession	dul:Action	agree		Gloss supports the assigned class.	05
+oewn-11936936-n	achillea	any of several plants of the genus Achillea native to Europe and having small white flowers in flat-topped flower heads	dul:Organism	agree		Gloss supports the assigned class.	05
+oewn-82008392-n	alderwoman	a female member of a municipal legislative body (as a city council)	dul:Person	agree		Gloss supports the assigned class.	05
+oewn-11676425-n	westland pine	timber tree of New Zealand having shiny white wood	dul:Organism	agree		Gloss supports the assigned class.	05
+oewn-09775968-n	abolitionist	a reformer who favors abolishing slavery	dul:Person	agree		A person with a role/characteristic. dul:Person is correct.	06
+oewn-02534026-s	compromising	vulnerable to danger especially of discredit or suspicion	dul:Quality	agree		Describes an attribute/quality of being vulnerable.	06
+oewn-00428752-a	nonradioactive	not radioactive	dul:Quality	agree		Negation of radioactivity, a physical quality.	06
+oewn-00111759-r	militarily	with respect to the military	dul:Region	agree		Adverb of manner/respect fits dul:Region as degree/manner position.	06
+oewn-00595853-n	magistracy	the position of magistrate	dul:Action	disagree	dul:Role	Describes a position/office held, not an intentional action. Should be dul:Role.	06
+oewn-02692820-n	air-intake	a duct that admits air to be mixed with fuel	dul:PhysicalPlace	disagree	dul:DesignedArtifact	A physical engineered conduit/component, not an abstract place. dul:DesignedArtifact is more precise.	06
+oewn-03258101-n	duct	an enclosed conduit for a fluid	dul:PhysicalPlace	disagree	dul:DesignedArtifact	A physical pipe/tube (designed artifact), not the conceptual place itself.	06
+oewn-10534022-n	referee	(sports) the chief official (as in boxing or American football) who is expected to ensure fair play	dul:Person	agree		A person performing a role. dul:Person is correct.	06
+oewn-06838913-n	bicameral script	a script having two distinct cases	dul:InformationRealization	agree		A writing system (physical manifestation of information). Correct as InformationRealization.	06
+oewn-07717342-n	couscous	a pasta made in northern Africa of crushed and steamed semolina	dul:FunctionalSubstance	agree		A food substance made for consumption. FunctionalSubstance is appropriate.	06
+oewn-00417927-n	unwritten law	law based on customary behavior	dul:Method	agree		Describes a customary system/procedure. dul:Method (procedure/way) is appropriate.	06
+oewn-09279178-n	coprolite	fossil excrement; petrified dung	dul:FunctionalSubstance	disagree	dul:PhysicalObject	A fossilized specimen, not a substance with functional purpose. Should be dul:PhysicalObject.	06
+oewn-02279401-n	white admiral	Eurasian butterfly with brown wings and white markings	dul:Organism	agree		A living creature (insect species). dul:Organism is correct.	06
+oewn-07331203-n	plague	any large scale calamity (especially when thought to be sent by God)	dul:EventType	agree		Describes a type/kind of disaster event. dul:EventType is correct.	06
+oewn-14989310-n	cellulose acetate	an ester of acetic acid; used in fibers and fabrics; photographic films and varnishes	dul:ChemicalObject	agree		A chemical compound/ester. dul:ChemicalObject is correct.	06
+oewn-00779033-v	hex	cast a spell over someone or something; put a hex on someone or something	dul:Action	agree		An intentional act performed by an agent. dul:Action is correct.	06
+oewn-09915013-n	caregiver	a person who is responsible for attending to the needs of a child or dependent adult	dul:Person	agree		A human in a caregiving role. dul:Person is correct.	06
+oewn-09246394-n	bladder stone	a calculus formed in the bladder	dul:PhysicalBody	disagree	dul:PhysicalObject	A stone/calculus is a physical object, not a body. Bodies are living organized systems.	06
+oewn-13894356-n	diameter	a straight line connecting the center of a circle with two points on its perimeter (or the center of a sphere with two points on its surface)	dul:SpaceRegion	agree		A geometric/spatial region/measurement. dul:SpaceRegion is correct.	06
+oewn-00931247-n	object-oriented programming	creating a program that can use and support objects	dul:Action	agree		Programming is an intentional human activity. dul:Action fits as the activity itself.	06
+oewn-07325733-n	change of location	a movement through space that changes the location of something	dul:Event	agree		A dynamic change/movement. dul:Event is correct.	06
+oewn-07320525-n	hell	a cause of difficulty and suffering	dul:EventType	debatable	dul:Situation	Could be EventType (type of negative event) or Situation (complex state of affairs). Both defensible.	06
+oewn-04979195-n	brown	an orange of low brightness and saturation	dul:Quality	agree		A color/quality. dul:Quality is correct.	06
+oewn-15092849-n	telomerase	an enzyme in eukaryotic cells that can add telomeres to the ends of chromosomes after they divide	dul:ChemicalObject	agree		An enzyme (protein molecule). dul:ChemicalObject is correct.	06
+oewn-09918344-n	case	a person requiring professional services	dul:Person	agree		A person in a specific context. dul:Person is correct.	06
+oewn-01258711-n	yodeling	singing by changing back and forth between the chest voice and a falsetto	dul:Action	agree		A vocal performance/activity. dul:Action is correct.	06
+oewn-02902184-a	mechanical	relating to or governed by or in accordance with mechanics	dul:Quality	agree		A pertainym adjective; stays dul:Quality per design decision for relational adjectives.	06
+oewn-06567838-n	writ of election	a writ ordering the holding of an election	dul:InformationRealization	agree		A legal document (physical realization of information/command). dul:InformationRealization is correct.	06
+oewn-02618797-a	agranulocytic	relating to the blood disorder of agranulocytosis	dul:Quality	agree		A pertainym adjective. dul:Quality per design decision for relational adjectives.	06
+oewn-13880801-n	reverse	a relation of direct opposition	dul:Relation	agree		Explicitly a relation. dul:Relation is correct.	06
+oewn-06526084-n	history	a record or narrative description of past events	dul:InformationRealization	debatable	dul:InformationObject	Could be InformationRealization (written record) or InformationObject (narrative content). Gloss emphasizes the written/recorded form, so current choice is defensible.	06
+oewn-10812496-n	wrecker	someone who demolishes or dismantles buildings as a job	dul:Person	agree		A person with an occupation/role. dul:Person is correct.	06
+oewn-13763838-n	decimal digit	a digit from 0 to 9 in decimal notation	dul:Amount	agree		A unit in a numbering system. dul:Amount (quantity) is appropriate.	06
+oewn-13707070-n	lempira	the basic unit of money in Honduras; equal to 100 centavos	dul:Amount	agree		A monetary unit/quantity. dul:Amount is correct.	06
+oewn-12373361-n	Japanese banana	Asiatic banana plant cultivated especially as a foliage plant in Japan	dul:Organism	agree		A living plant species. dul:Organism is correct.	06
+oewn-07941074-n	orange juice	bottled or freshly squeezed juice of oranges	dul:FunctionalSubstance	agree		A consumable substance. FunctionalSubstance is appropriate.	06
+oewn-02995666-n	cello	a large stringed instrument; seated player holds it upright while playing	dul:DesignedArtifact	agree		A musical instrument designed for a purpose. dul:DesignedArtifact is correct.	06
+oewn-11855123-n	saltwort	bushy plant of Old World salt marshes and sea beaches having prickly leaves; burned to produce a crude soda ash	dul:Organism	agree		A plant species (living organism). dul:Organism is correct.	06
+oewn-08494175-n	unconfessed	people who have not confessed	coll:AgentCollection	agree		A group of people. coll:AgentCollection is correct.	06
+oewn-14524403-n	rummage	a jumble of things to be given away	dul:Situation	agree		A complex assemblage of items. dul:Situation fits well.	06
+oewn-13946252-n	conditions	the prevailing context that influences the performance or the outcome of a process	dul:Situation	agree		A complex contextual state of affairs. dul:Situation is correct.	06
+oewn-00894463-s	even	equal in degree or extent or amount; or equally matched or balanced	dul:Quality	agree		A quality/property of being equal/balanced. dul:Quality is correct.	06
+oewn-02480870-n	rudapithecus	fossil hominoids from northern central Hungary; late Miocene	dul:Organism	debatable	dul:BiologicalObject	Could be Organism (living species conceptually) or BiologicalObject (since it's extinct/fossil). Organism is acceptable.	06
+oewn-08138092-n	fire department	the department of local government responsible for preventing and extinguishing fires	dul:Organization	agree		An institutional/organizational entity. dul:Organization is correct.	06
+oewn-02744251-a	gastroesophageal	of or relating to or involving the stomach and esophagus	dul:Quality	agree		A pertainym adjective. dul:Quality per design decision.	06
+oewn-14061298-n	cybersex	sexual arousal involving communication on the internet	dul:Situation	agree		A complex interactive situation. dul:Situation is appropriate.	06
+oewn-02650706-v	override	prevail over	dul:Action	agree		An intentional action/performance. dul:Action is correct.	06
+oewn-09742978-n	Moroccan	a native or inhabitant of Morocco	dul:Person	agree		A person (national demonym). dul:Person is correct.	06
+oewn-13632230-n	circular measure	measurement of angles in radians	dul:Amount	agree		A measurement unit/system. dul:Amount is appropriate.	06
+oewn-03135689-n	crest	(heraldry) in medieval times, an emblem used to decorate a helmet	dul:DesignedArtifact	agree		A designed decorative object/emblem. dul:DesignedArtifact is correct.	06
+oewn-02191314-v	splash	make a splashing sound	dul:Action	agree		Making a splashing sound is an agentive action performed by an agent.	07
+oewn-02540759-v	chase	pursue someone sexually or romantically	dul:Action	agree		Pursuing someone is an intentional agentive action.	07
+oewn-13343780-n	mintage	fee paid to a mint by the government for minting a coin	dul:Right	disagree	dul:Amount	A fee is a quantity of money, not a Right (which denotes privilege/entitlement).	07
+oewn-13794160-n	dollop	a small measure (usually of food)	dul:Amount	agree		Explicitly a measure/quantity.	07
+oewn-01048429-s	free-and-easy	natural and unstudied	dul:Quality	agree		Adjective describing manner/character; Quality is appropriate.	07
+oewn-04803974-n	unexpectedness	extraordinariness by virtue of being unexpected	dul:Quality	agree		Unexpectedness is a quality/property of entities or events.	07
+oewn-10109548-n	finalist	a contestant who reaches the final stages of a competition	dul:Person	agree		A finalist is a person/competitor in a competition.	07
+oewn-01146273-n	redeployment	the withdrawal and redistribution of forces in an attempt to use them more effectively	dul:Action	debatable	dul:Event	Could be Action (agentive intentional redistribution) or Event (military occurrence).	07
+oewn-00535381-n	glissade	(ballet) a gliding or sliding step in ballet	dul:Situation	debatable	dul:Action or dul:Event	Could be Action (agentive performance), Event (step occurrence), or Situation (body state).	07
+oewn-07977993-n	clew	a ball of yarn or cord or thread	dul:FunctionalSubstance	agree		A functional material substance for crafting/use.	07
+oewn-03160737-n	cyclotron	an accelerator that imparts energies of several million electron-volts to rapidly moving particles	dul:DesignedArtifact	agree		A designed physics/laboratory instrument built with purpose.	07
+oewn-10792794-n	weeper	a person who weeps	dul:Person	agree		A weeper is a person; classification is correct.	07
+oewn-02932421-a	Anglo-catholic	supporting the Anglican Church	dul:Quality	agree		Pertainym adjectives are conventionally kept as Quality; relational semantics in dct:relation.	07
+oewn-11697936-n	stylopodium	an enlargement at the base of the style in some Umbelliferae	dul:BiologicalObject	agree		A botanical structure/part of a plant.	07
+oewn-01325188-s	conscience-smitten	affected by conscience	dul:Quality	agree		Being conscience-smitten is a quality/state describing an entity.	07
+oewn-05895546-n	Pauli exclusion principle	no two electrons or protons or neutrons in a given system can be in states characterized by the same set of quantum numbers	dul:Theory	agree		The Pauli exclusion principle is a scientific theory/law.	07
+oewn-07549496-n	forlornness	sadness resulting from being forsaken or abandoned	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	disagree	dul:CognitiveState	Forlornness is a mental/emotional state, not an internal representation concept.	07
+oewn-02070859-n	beaked whale	any of several whales inhabiting all oceans and having beaklike jaws with vestigial teeth in the upper jaw	dul:Organism	agree		A whale is a whole living organism.	07
+oewn-06604625-n	tribute album	concept album compiling a performer's work or work supporting some worthy cause	dul:DesignedArtifact	agree		A tribute album is a designed musical artifact created to honor a performer.	07
+oewn-02660104-a	autoimmune	of or relating to the immune response of the body against substance normally present in the body	dul:Quality	agree		Pertainym adjective; Quality classification with relational dct:relation to immune response.	07
+oewn-00069492-s	oxidative	taking place in the presence of oxygen	dul:Quality	agree		Oxidative describes a quality/condition of a process or reaction.	07
+oewn-05607524-n	double chin	a fold of fatty tissue under the chin	dul:BiologicalObject	agree		A fold of fatty tissue is a biological body part.	07
+oewn-03882030-n	painter	a line that is attached to the bow of a boat and used for tying up (as when docking or towing)	dul:PhysicalObject	agree		A painter (rope) is a tangible physical object used for mooring.	07
+oewn-01037919-v	whore	compromise oneself for money or other gains	dul:Event	debatable	dul:Action	Could be Action (agentive moral choice) or Event (occurrence of compromising behavior).	07
+oewn-02651091-v	total	add up in number or quantity	dul:Event	disagree	dul:Action	Adding up is an intentional cognitive/arithmetic action, not a neutral event.	07
+oewn-02958501-n	cap	something serving as a cover or protection	dul:PhysicalObject	debatable	dul:DesignedArtifact	Could be generic PhysicalObject or DesignedArtifact (made to serve specific function).	07
+oewn-07893387-n	steak and kidney pie	steak with sauteed kidneys and onions cooked in wine and stock then covered with pastry and baked	dul:FunctionalSubstance	agree		A prepared food is a functional substance/artifact.	07
+oewn-02769408-v	shimmer	shine with a weak or fitful light	dul:Action	debatable	dul:Event	Could be Action (agentive light-emission), Event (light occurrence), or Process (gradual fluctuation).	07
+oewn-00119074-v	speciate	evolve so as to lead to a new species or develop in a way most suited to the environment	dul:Process	agree		Speciation is a gradual evolutionary change over time; Process is correct.	07
+oewn-15026454-n	vat dye	a water-insoluble dye that is applied by reducing the dye to an alkaline form, applying the dye, then regenerating the insoluble dye by oxidation in the material; used for dyeing cotton	dul:FunctionalSubstance	agree		Vat dye is a substance defined by its functional role in textile dyeing.	07
+oewn-02678923-v	balance	bring into balance or equilibrium	dul:Action	agree		Achieving/bringing into balance is an intentional agentive action.	07
+oewn-10284978-n	lion-hunter	someone who tries to attract social lions as guests	dul:Person	agree		A lion-hunter is a person who pursues social contacts.	07
+oewn-02720606-v	protuberate	cause to bulge out or project	dul:Action	agree		Causing something to bulge is agentive.	07
+oewn-00005436-r	plainly	in a simple manner; without extravagance or embellishment	dul:Region	agree		Manner adverbs describe positions/values in quality space; Region is appropriate.	07
+oewn-05684320-n	incognizance	a lack of knowledge or recognition	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	disagree	dul:CognitiveState	Incognizance (lack of knowledge) is a mental/cognitive state, not an internal representation.	07
+oewn-01645896-n	robber frog	small terrestrial frog of tropical America	dul:Organism	agree		A frog is a whole living organism.	07
+oewn-00956640-v	publicize	make public	dul:Action	agree		Publicizing is an intentional communicative action.	07
+oewn-06667722-n	standing order	a rule of order permanently in force	ontopic:Topic	debatable	dul:Norm	Could be Topic (subject of discourse) or Norm (a standing rule/norm).	07
+oewn-02573098-s	narrowed	reduced in size as by squeezing together	dul:PhysicalAttribute	agree		Size reduction is a physical dimension/attribute change.	07
+oewn-00301770-v	habilitate	qualify for teaching at a university in Europe	dul:Action	agree		Professional qualification/habilitation is an intentional action.	07
+oewn-00288497-v	imbue	suffuse with color	dul:Action	agree		Suffusing with color is an agentive action.	07
+oewn-04197419-n	shelf bracket	a bracket to support a shelf	dul:DesignedArtifact	agree		A shelf bracket is a designed hardware artifact.	07
+oewn-14682725-n	thulium	a soft silvery metallic element of the rare earth group; isotope 170 emits X-rays and is used in small portable X-ray machines; it occurs in monazite and apatite and xenotime	dul:ChemicalObject	agree		Thulium is a chemical element.	07
+oewn-00931801-v	imply	express or state indirectly	dul:Action	agree		Implying is an intentional communicative action.	07
+oewn-05953535-n	philosophy	any personal belief about how to live or how to deal with a situation	coll:InformationCollection	debatable	dul:CognitiveState or dul:Concept	Could be InformationCollection (set of beliefs), CognitiveState (mental construct), or Concept.	07
+oewn-14015679-n	academic freedom	the freedom of teachers and students to express their ideas in school without religious or political or institutional restrictions	dul:Situation	debatable	dul:Right	Could be Situation (complex state of affairs) or Right (entitlement/privilege).	07
+oewn-14408201-n	zoophobia	a morbid fear of animals	dul:Situation	debatable	dul:CognitiveState	Fear is a mental/emotional state; might better be classified as CognitiveState.	07
+oewn-13421971-n	charge	financial liabilities (such as a tax)	dul:Right	debatable	dul:Obligation or dul:Amount	A financial liability is an obligation or amount owed, not strictly a Right.	07
+oewn-02539213-s	unclaimed	not claimed or called for by an owner or assignee	dul:Quality	agree		Unclaimed is a quality/property of an entity.	07
+oewn-13347997-n	linage	a rate of payment for written material that is measured according to the number of lines submitted	dul:Right	disagree	dul:Amount	A rate of payment is a monetary amount/quantity, not a Right (privilege/entitlement).	07
+oewn-08174304-n	Qing	the last imperial dynasty of China (from 1644 to 1912) which was overthrown by revolutionaries; during the Qing dynasty China was ruled by the Manchu	coll:GeneticCollection	disagree	coll:Collective or dul:Organization	A dynasty is an organized political entity and temporal sequence, not a genetic collection.	08
+oewn-00021547-v	etherize	anesthetize with ether	dul:Action	agree		Anesthetizing is an agentive action performed by a medical professional.	08
+oewn-07464655-n	luau	an elaborate Hawaiian feast or party (especially one accompanied by traditional foods and entertainment)	dul:Event	debatable	dul:Action	A party is an organized social event; could be Event (general) or Action (agentive hosting).	08
+oewn-06321703-n	indirect object	the object that is the recipient or beneficiary of the action of the verb	dul:InformationObject	agree		An indirect object is an abstract grammatical concept.	08
+oewn-02610312-v	kick around	be around; be alive or active	dul:State	agree		"The gloss explicitly uses ""be,"" indicating a stative holding condition."	08
+oewn-03727081-n	marina	a fancy dock for small yachts and cabin cruisers	dul:DesignedArtifact	debatable	dul:PhysicalPlace	Marina is both a designed artifact and a place; could be either depending on focus.	08
+oewn-14504664-n	gas	the state of matter distinguished from the solid and liquid states by: relatively low density and viscosity; relatively great expansion and contraction with changes in pressure and temperature; the ab	dul:FunctionalSubstance	disagree	dul:Substance	Gas is a state of matter classified by physical properties, not a functional substance.	08
+oewn-03716684-n	main	a principal pipe in a system that distributes water or gas or electricity or that collects sewage	dul:PhysicalPlace	disagree	dul:DesignedArtifact	A main pipe is engineered infrastructure, not a location/place.	08
+oewn-01196589-a	light	of the military or industry; using (or being) relatively small or light arms or equipment	dul:PhysicalAttribute	agree		Light arms and equipment refers to physical weight/size attributes.	08
+oewn-08212263-n	League of Nations	an international organization formed in 1920 to promote cooperation and peace among nations; although suggested by Woodrow Wilson, the United States never joined and it remained powerless; it was diss	dul:Organization	agree		League of Nations is explicitly an international organization.	08
+oewn-01485535-a	unmarried	not married or related to the unmarried state	dul:Quality	debatable	rol:Status	Unmarried is a social status or role, not strictly a quality.	08
+oewn-12884920-n	rosemary	widely cultivated for its fragrant grey-green leaves used in cooking and in perfumery	dul:Organism	agree		Rosemary is a living plant organism.	08
+oewn-15066360-n	silicon bronze	a bronze with 2-3% silicon that is resistant to corrosion	dul:FunctionalSubstance	agree		Silicon bronze is a material with specific functional properties (corrosion resistance).	08
+oewn-02472545-n	primate	any placental mammal of the order Primates; has good eyesight and flexible hands and feet	dul:Organism	debatable	coll:Taxon	Primate is a taxonomic class; both Organism and Taxon are defensible.	08
+oewn-00505079-r	haggardly	in a haggard manner	dul:Region	agree		Manner adverbs map to Region (position in quality space).	08
+oewn-92430061-n	Polishness	The quality or state of being Polish.	dul:Collection	disagree	dul:Quality	Polishness is an abstract quality, not a collection of things.	08
+oewn-14394131-n	hyphema	bleeding into the interior chamber of the eye	dul:Situation	debatable	dul:State	Hyphema is a pathological condition; State (stative) is also defensible.	08
+oewn-04510888-n	twist bit	a bit or drill having deep helical grooves	dul:DesignedArtifact	agree		A twist bit is a tool, a designed artifact for drilling.	08
+oewn-00371917-v	heat	make hot or hotter	dul:Process	agree		Heating involves gradual temperature change, fitting Process definition.	08
+oewn-14088725-n	nicotine addiction	an addiction to nicotine	dul:Situation	debatable	dul:State or dul:CognitiveState	Addiction is a condition; could be physiological State or cognitive/behavioral.	08
+oewn-00394569-a	saturated	(of color) being chromatically pure; not diluted with white or grey or black	dul:PhysicalAttribute	agree		Color saturation is a measurable physical attribute.	08
+oewn-08486468-n	naturalism	an artistic movement in 19th century France; artists and writers strove for detailed realistic and factual description	dul:Collective	agree		An artistic movement is a collective of artists and their works.	08
+oewn-92463023-n	self-mockery	gentle humour at one's own expense.	ontopic:Topic	disagree	dul:Action or dul:Event	Self-mockery is a behavior/action, not a topic of discourse.	08
+oewn-07705764-n	frankfurter bun	a long bun shaped to hold a frankfurter	dul:FunctionalSubstance	disagree	dul:Substance or dul:DesignedArtifact	A frankfurter bun is food (substance) or a designed form, not a functional substance.	08
+oewn-01244328-s	slack	flowing with little speed as e.g. at the turning of the tide	dul:PhysicalAttribute	agree		Speed of flow is a measurable physical attribute.	08
+oewn-00218901-v	dry	remove the moisture from and make dry	dul:Action	agree		Drying is an agentive action performed to remove moisture.	08
+oewn-13577712-n	slump	a noticeable deterioration in performance or quality	dul:Process	agree		A slump is a gradual decline in performance/quality.	08
+oewn-03135412-n	crepe de Chine	a very thin crepe of silk or silklike fabric	dul:DesignedArtifact	debatable	dul:Substance	Crepe de Chine is a fabric material; Substance is also defensible.	08
+oewn-00427107-s	foul-mouthed	using foul or obscene language	dul:Quality	agree		Foul-mouthedness is a behavioral quality.	08
+oewn-01355509-v	screw	tighten or fasten by means of screwing motions	dul:Action	agree		Screwing is an intentional action to fasten objects.	08
+oewn-14744399-n	alpha-beta brass	a brass that has more zinc and is stronger than alpha brass; used in making castings and hot-worked products	dul:FunctionalSubstance	agree		Alpha-beta brass is an alloy with functional properties for casting.	08
+oewn-01305377-v	closet	confine to a small space, as for intensive work	dul:Action	agree		Closeting is an intentional action to confine someone.	08
+oewn-01638768-n	lungless salamander	mostly terrestrial salamanders that breathe through their thin moist skin; lay eggs in moist places on land; rarely enter water	dul:Organism	agree		A lungless salamander is a living organism.	08
+oewn-14512697-n	depression	a long-term economic state characterized by unemployment and low prices and low levels of trade and investment	dul:Situation	debatable	dul:State	Economic depression is a state of affairs; State is also defensible.	08
+oewn-09755345-n	Karakalpak	a member of a Turkic people living near Lake Aral in central Asia	dul:Person	agree		A Karakalpak is a person of a specific ethnic group.	08
+oewn-00440307-a	inclement	(of weather or climate) severe	dul:Quality	agree		Inclemency is a quality of weather conditions.	08
+oewn-00362917-s	easy	casual and unrestrained in sexual behavior	dul:Quality	agree		Being easy is a behavioral quality.	08
+oewn-05121671-n	deficit	the property of being an amount by which something is less than expected or required	dul:Quality	disagree	dul:Amount	A deficit is a quantity/amount, not an abstract quality.	08
+oewn-05253118-n	blackhead	a black-tipped plug clogging a pore of the skin	dul:Quality	disagree	dul:BiologicalObject or dul:PhysicalObject	A blackhead is a physical comedone in the skin, not a quality.	08
+oewn-15317965-n	day shift	the work shift during the day (as 8 a.m. to 4 p.m.)	dul:TimeInterval	agree		A day shift is a defined time interval.	08
+oewn-02662486-v	shelter	provide shelter for	dul:Action	agree		Sheltering is an intentional action to provide refuge.	08
+oewn-06754423-n	extenuation	a partial excuse to mitigate censure; an attempt to represent an offense as less serious than it appears by showing mitigating circumstances	ontopic:Topic	disagree	dul:Action or dul:Plan	Extenuation is a rhetorical strategy or argument, not a topic of discourse.	08
+oewn-06993745-n	Pengo	a Dravidian language spoken in south central India, particularly in Odisha	dul:InformationObject	agree		A language is an abstract information system.	08
+oewn-08186969-n	Weimar Republic	the German republic founded at Weimar in 1919	dul:System	debatable	dul:Organization	Weimar Republic is a political organization; System and Organization overlap.	08
+oewn-11686099-n	angiocarp	tree bearing fruit enclosed in a shell or involucre or husk	dul:Organism	agree		An angiocarp is a tree, a living organism.	08
+oewn-05733214-n	twinge	a sharp stab of pain	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	disagree	dul:State or dul:CognitiveEvent	A twinge is a brief pain sensation/state, not an internal representation.	08
+oewn-02019253-s	awed	inspired by a feeling of fearful wonderment or reverence	dul:Quality	agree		Awe is an emotional quality.	08
+oewn-13459261-n	bed-wetting	enuresis during sleep; especially common in children (who usually outgrow it)	dul:Process	debatable	dul:State or dul:Event	Bed-wetting is an involuntary physiological event/state.	08
+oewn-02477113-v	register	record in writing; enter into a book of names or events or transactions	dul:Action	agree		Registering is an intentional recording action.	08
+oewn-14735358-n	acetamide	a colorless solid amide of acetic acid used as a solvent and in the synthesis of organic compounds	dul:ChemicalObject	agree		Acetamide is a chemical compound.	08
+oewn-10514520-n	pursuer	a person who is pursuing and trying to overtake or capture	dul:Person	agree		"Gloss explicitly identifies as ""a person""; dul:Person is appropriate for agentive roles."	09
+oewn-14942174-n	printer's ink	a semisolid quick drying ink made especially for use in printing	dul:Substance	disagree	dul:FunctionalSubstance	"Ink is made ""for use in printing"" — it is a substance with inherent functional purpose, fitting FunctionalSubstance better than generic Substance."	09
+oewn-07316885-n	derailment	an accident in which a train runs off its track	dul:EventType	agree		EventType correctly abstracts a category of accidents; the gloss describes the type, not a particular instance.	09
+oewn-00535174-v	laicize	reduce to lay status	dul:Action	agree		Verb denoting an intentional agentive act (reducing someone to lay status); dul:Action is appropriate.	09
+oewn-01079274-n	prevention	the act of preventing	dul:Action	debatable	dul:State or dul:Process	"While gloss says ""act of preventing,"" prevention itself is more commonly a resulting state (absence of harm). Both agentive action and resulting state are defensible."	09
+oewn-02618645-v	collocate	have a strong tendency to occur side by side	dul:Event	debatable	dul:State or dul:Role	Gloss describes a relational tendency or property, not an event itself. dul:State (habitual) or dul:Role might better capture the relation.	09
+oewn-14072329-n	placenta previa	pregnancy in which the placenta is implanted in the lower part of the uterus (instead of the upper part); can cause bleeding late in pregnancy; delivery by cesarean section may be necessary	dul:Situation	agree		Describes a complex medical situation involving multiple entities (placenta, uterus) and conditions; dul:Situation is appropriate.	09
+oewn-04405823-n	teaspoon	a small spoon used for stirring tea or coffee; holds about one fluid dram	dul:DesignedArtifact	agree		Artifact designed for a specific purpose (stirring tea/coffee); dul:DesignedArtifact is correct.	09
+oewn-00484941-r	unalterably	in an unalterable and unchangeable manner	dul:Region	agree		Manner adverb appropriately mapped to dul:Region (quality space value); follows phase4 adverb default.	09
+oewn-09774572-n	absconder	a fugitive who runs away and hides to avoid arrest or prosecution	dul:Person	agree		Explicitly describes a person (fugitive); dul:Person is correct.	09
+oewn-00602976-v	welter	be immersed in	dul:CognitiveState	debatable	dul:State	"""Be immersed in"" suggests a physical or metaphorical state rather than a cognitive event; dul:State might be more appropriate."	09
+oewn-14924493-n	blood agar	a culture medium containing whole blood as the nutrient	dul:FunctionalSubstance	agree		Substance designed with a specific function (culture medium); dul:FunctionalSubstance is correct.	09
+oewn-05679520-n	personal business	matters of personal concern	dul:Situation	debatable	dul:Collection or dul:Abstract	"""Matters of personal concern"" is more a collection of abstract concerns than a complex situation; dul:Collection might fit better."	09
+oewn-00989957-s	chubby	sufficiently fat so as to have a pleasing fullness of figure	dul:Quality	debatable	dul:PhysicalAttribute	Describes a measurable physical property (body shape/fatness); dul:PhysicalAttribute is more precise than generic Quality.	09
+oewn-85171086-n	signalwoman	a female railroad employee in charge of signals and point in a railroad yard	dul:Person	agree		Clearly identifies a person by role (railroad employee); dul:Person is correct.	09
+oewn-03031188-n	chuck wagon	a wagon equipped with a cookstove and provisions (for cowboys)	dul:DesignedArtifact	agree		Designed artifact (wagon) made for a specific purpose (cooking); dul:DesignedArtifact is correct.	09
+oewn-14555744-n	food allergy	allergic reaction to a substance ingested in food	dul:Situation	debatable	dul:State or dul:Process	Describes a physiological state/reaction; could fit dul:State (static allergic condition) or dul:Process (allergic reaction over time).	09
+oewn-01948326-n	slug	any of various terrestrial gastropods having an elongated slimy body and no external shell	dul:Organism	agree		Biological organism (gastropod); dul:Organism is correct.	09
+oewn-01354915-a	intrusive	tending to intrude (especially upon privacy)	dul:Quality	agree		Describes a property/tendency of behavior; dul:Quality is appropriate.	09
+oewn-01727840-v	parody	make a spoof of or make fun of	dul:Action	agree		Intentional agentive action (creating a parody); dul:Action is correct.	09
+oewn-04196859-n	Sheetrock	a kind of plasterboard	dul:DesignedArtifact	agree		Manufactured artifact (branded plasterboard); dul:DesignedArtifact is correct.	09
+oewn-07225461-n	grievance	a complaint about a (real or imaginary) wrong that causes resentment and is grounds for action	dul:Action	disagree	dul:Situation or dul:InformationObject	A grievance is a formal complaint (document/statement), not an action itself; should be Situation or InformationObject.	09
+oewn-02965850-n	car carrier	a trailer that can be loaded with new cars for delivery to sales agencies	dul:DesignedArtifact	agree		Vehicle designed for transport; dul:DesignedArtifact is correct.	09
+oewn-00269243-r	andante	at a moderately slow tempo	dul:Region	agree		Musical tempo marking; appropriately maps to dul:Region as a position in a tempo quality space.	09
+oewn-03052845-a	anemic	relating to anemia or suffering from anemia	dul:Quality	agree		Pertainym correctly stays as dul:Quality; relational meaning is captured by dct:relation annotation.	09
+oewn-00409329-r	nattily	in a natty manner; with smartness	dul:Region	agree		Manner adverb appropriately mapped to dul:Region; describes a position in a style/manner quality space.	09
+oewn-01494998-n	smooth dogfish	small bottom-dwelling shark found along both Atlantic coasts	dul:Organism	agree		Biological species; dul:Organism is correct.	09
+oewn-04300588-n	squib	firework consisting of a tube filled with powder (as a broken firecracker) that burns with a fizzing noise	dul:FunctionalSubstance	debatable	dul:DesignedArtifact	While primarily a substance (powder in tube), its design and manufacture suggest dul:DesignedArtifact; both are defensible.	09
+oewn-03144115-n	crown jewels	regalia (jewelry and other paraphernalia) worn by a sovereign on state occasions	dul:DesignedArtifact	debatable	dul:Collection	Plural form describing multiple items (jewelry, paraphernalia); dul:Collection might be more accurate than singular DesignedArtifact.	09
+oewn-13142108-n	mesophyte	land plant growing in surroundings having an average supply of water; compare xerophyte and hydrophyte	dul:Organism	agree		Biological organism (plant); dul:Organism is correct.	09
+oewn-02476741-n	Homo soloensis	extinct primitive hominid of late Pleistocene; Java; formerly Javanthropus	dul:Organism	agree		Biological species classification; dul:Organism is appropriate even for extinct hominids.	09
+oewn-02764357-v	sluice	pour as if from a sluice	dul:Action	agree		Verb describing an agentive action (pouring); dul:Action is correct.	09
+oewn-10545453-n	returning officer	the official in each electorate who holds the election and returns the results	dul:Person	agree		Denotes a person in an official role; dul:Person is correct.	09
+oewn-10585500-n	sculptor	an artist who creates sculptures	dul:Person	agree		Person identified by profession; dul:Person is correct.	09
+oewn-00501228-s	nonverbal	lacking verbal skill	dul:Quality	agree		Describes a communicative property; dul:Quality is appropriate.	09
+oewn-04582147-n	wheat future	wheat bought or sold at an agreed price for delivery at a specified future date	dul:DesignedArtifact	disagree	dul:InformationObject or dul:Abstract	A futures contract is an abstract financial instrument, not a tangible designed artifact; should be InformationObject or Abstract.	09
+oewn-92423554-n	casualness	The state of coming without regularity; of being occasional or incidental.	dul:State	agree		"Gloss explicitly states ""the state of""; dul:State is correct."	09
+oewn-14909114-n	glyceric acid	a syrupy acid obtained by oxidation of glycerol or glyceraldehyde	dul:ChemicalObject	agree		Chemical compound; dul:ChemicalObject is correct.	09
+oewn-11646083-n	white spruce	medium-sized spruce of northeastern North America having short blue-green leaves and slender cones	dul:Organism	agree		Biological organism (plant species); dul:Organism is correct.	09
+oewn-01517273-s	shitless	(used as complement) to the utmost degree	dul:Quality	agree		Degree-intensity quality; dul:Quality is appropriate.	09
+oewn-01457247-v	tug	tow (a vessel) with a tug	dul:Action	agree		Verb describing an agentive action (towing); dul:Action is correct.	09
+oewn-00262990-a	brachycephalic	having a short broad head with a cephalic index of over 80	dul:Quality	debatable	dul:PhysicalAttribute	Describes measurable physical feature (head shape/index); dul:PhysicalAttribute is more precise than generic Quality.	09
+oewn-04169660-n	seat	a part of a machine that supports or guides another part	http://www.ontologydesignpatterns.org/ont/dul/Supplements.owl#DependentPart	agree		"Gloss explicitly ""a part of a machine""; DependentPart is appropriate for machine components."	09
+oewn-01584261-s	immediate	immediately before or after as in a chain of cause and effect	dul:Quality	agree		Describes a relational property in sequences; dul:Quality is appropriate.	09
+oewn-02720416-v	protuberate	form a rounded prominence	dul:Action	debatable	dul:Event or dul:Achievement	"""Form a prominence"" is telic (reaching a goal state); dul:Achievement might be more appropriate than generic Action."	09
+oewn-13690013-n	real	the basic unit of money in Brazil; equal to 100 centavos	dul:Amount	agree		Currency unit as a quantifiable abstract entity; dul:Amount is appropriate.	09
+oewn-02062786-n	fulmar	heavy short-tailed oceanic bird of polar regions	dul:Organism	agree		Biological organism (bird species); dul:Organism is correct.	09
+oewn-13033733-n	Chlorophyllum molybdites	a poisonous agaric with a fibrillose cap and brown scales on a white ground color; cap can reach a diameter of 30 cm; often forms ‘fairy rings’	dul:Organism	agree		Biological organism (fungal species); dul:Organism is correct.	09
+oewn-10695315-n	superior	the head of a religious community	dul:Person	agree		Person identified by role (religious leader); dul:Person is correct.	09
+oewn-05803342-n	prearrangement	something arranged in advance	http://www.ontologydesignpatterns.org/ont/dul/Conceptualization.owl#InternalRepresentation	debatable	dul:Plan or dul:Description	"""Something arranged in advance"" is better captured by dul:Plan than InternalRepresentation."	09
+oewn-07820633-n	white rice	having husk or outer brown layers removed	dul:FunctionalSubstance	agree		White rice is a substance prepared for consumption; FunctionalSubstance correctly emphasizes its function as food.	10
+oewn-00364395-v	bog down	get stuck while doing something	dul:Action	debatable	dul:Event	The gloss describes becoming stuck, which may be more of a non-agentive Event than an intentional Action.	10
+oewn-07513694-n	acquired taste	a preference that is only acquired after considerable experience	InternalRepresentation	disagree	dul:CognitiveState	A preference is a cognitive state (believing/liking something), not an information representation. Should use dul:CognitiveState.	10
+oewn-02033222-n	Polynesian tattler	tattler of Pacific coastal regions	dul:Organism	agree		A bird species is a living organism; the assignment is correct.	10
+oewn-02694245-v	sweep	cover the entire range of	dul:State	agree		The gloss describes a homogeneous stative condition (covering/extending across a range).	10
+oewn-02685792-a	calico	made of calico or resembling calico in being patterned	dul:Quality	agree		The adjective describes a visual/textural quality (patterned like calico). dul:Quality is appropriate.	10
+oewn-05932615-n	value	an ideal accepted by some individual or group	coll:InformationCollection	disagree	dul:Concept	An ideal or principle is a Concept accepted by a group, not a collection of information items.	10
+oewn-02131037-n	leopard	large feline of African and Asian forests usually having a tawny coat with black spots	dul:Organism	agree		A leopard is a wild animal and a living organism; the assignment is correct.	10
+oewn-04546173-n	visor	a piece of armor plate (with eye slits) fixed or hinged to a medieval helmet to protect the face	dul:PhysicalObject	disagree	dul:DesignedArtifact	A visor is a designed piece of armor made with a specific protective purpose, not just any physical object.	10
+oewn-14608838-n	pyrogen	any substance characterized by its great flammability	dul:Substance	agree		Pyrogen is defined as a type of substance with a characteristic property; dul:Substance is appropriate.	10
+oewn-00117555-s	acrimonious	marked by strong resentment or cynicism	dul:Quality	agree		Acrimony is a quality/attribute expressing emotional state (resentment, cynicism).	10
+oewn-02390635-n	pacer	a horse trained to a special gait in which both feet on one side leave the ground together	dul:Organism	agree		A pacer is a trained horse, which is a living organism.	10
+oewn-05305022-n	organ	a fully differentiated structural and functional unit in an animal that is specialized for some particular function	dul:BiologicalObject	agree		An organ is a biological part/unit within an organism, not the organism itself.	10
+oewn-01797944-v	fuss	worry unnecessarily or excessively	dul:CognitiveState	disagree	dul:Action	Worrying excessively is an active behavior/event, not a static cognitive state like believing something.	10
+oewn-00088030-r	everlastingly	for a limitless time	dul:Region	debatable	dul:TimeInterval	The gloss describes temporal extent; dul:TimeInterval is more specific than generic dul:Region.	10
+oewn-12769008-n	bittersweet	twining shrub of North America having yellow capsules enclosing scarlet seeds	dul:Organism	agree		A shrub is a living plant organism; the assignment is correct.	10
+oewn-09920596-n	catcher	(baseball) the person who plays the position of catcher	dul:Person	agree		The gloss explicitly identifies a catcher as a person. dul:Person is correct.	10
+oewn-00298907-a	socialistic	advocating or following the socialist principles	dul:Quality	agree		Socialistic is a quality describing a viewpoint or characteristic; dul:Quality is appropriate.	10
+oewn-01249745-v	hone	sharpen with a hone	dul:Action	agree		Sharpening is an intentional action performed with a tool (hone).	10
+oewn-09203513-n	abience	(psychology) an urge to withdraw or avoid a situation or an object	dul:Event	debatable	dul:CognitiveEvent	Abience is explicitly a psychological phenomenon; dul:CognitiveEvent may be more specific than generic dul:Event.	10
+oewn-00322668-s	spiny-stemmed	having a spiny stem	dul:Quality	agree		Spiny-stemmed describes a physical characteristic; dul:Quality is correct.	10
+oewn-04325522-n	stick figure	drawing of a human or animal that represents the head by a circle and the rest of the body by straight lines	dul:InformationRealization	agree		A stick figure is a physical drawing that realizes/expresses a representation of a person.	10
+oewn-00611928-v	recognize	perceive to be the same	dul:CognitiveEvent	agree		Recognition is a cognitive event involving perception and identification.	10
+oewn-08510835-n	wing	(in flight formation) a position to the side and just to the rear of another aircraft	dul:SpaceRegion	agree		A wing position is a spatial region/location in a flight formation.	10
+oewn-02888100-n	box beam	a beam built up from boards; has a hollow rectangular cross section	dul:DesignedArtifact	agree		A box beam is a manufactured structural component designed for specific purposes.	10
+oewn-00637185-v	answer	understand the meaning of	dul:CognitiveState	disagree	dul:CognitiveEvent	Understanding/comprehension is an event of grasping meaning, not a stable state like knowing.	10
+oewn-03723997-n	manor	the mansion of a lord or wealthy person	dul:DesignedArtifact	agree		A manor is a building designed and constructed for residence by nobility.	10
+oewn-04690957-n	hirsuteness	excessive hairiness	dul:Quality	agree		Hirsuteness is a quality/property describing excessive hair.	10
+oewn-00212962-s	depilous	completely hairless	dul:Quality	agree		Depilous describes a quality/characteristic (being hairless).	10
+oewn-07889783-n	pizza	Italian open pie made of thin bread dough spread with a spiced mixture of e.g. tomato sauce and cheese	dul:FunctionalSubstance	agree		Pizza is a food substance with a functional purpose (consumable).	10
+oewn-01140255-v	fuse	equip with a fuse; provide with a fuse	dul:Action	agree		Equipping something with a fuse is an intentional action performed by an agent.	10
+oewn-00411507-r	nevermore	at no time hereafter	dul:Region	debatable	dul:TimeInterval	The gloss describes a temporal extent; dul:TimeInterval would be more specific than generic dul:Region.	10
+oewn-08439204-n	hawala	an underground banking system based on trust whereby money can be made available internationally without actually moving it or leaving a record of the transaction	dul:Organization	disagree	dul:Plan	Hawala is a system/protocol for transferring value, not a structured group of agents. dul:Plan or dul:Method better captures a procedure.	10
+oewn-07634910-n	creme anglais	custard sauce flavored with vanilla or a liqueur	dul:FunctionalSubstance	agree		Creme anglais is a culinary substance (sauce) with a functional purpose.	10
+oewn-09861084-n	base runner	a baseball player on the team at bat who is on base (or attempting to reach a base)	dul:Person	agree		A base runner is explicitly a person (baseball player) in a specific role.	10
+oewn-00639231-s	traveled	familiar with many parts of the world	dul:Quality	agree		Traveled describes a quality characteristic (having traveled/experienced).	10
+oewn-01004206-v	trademark	register the trademark of	dul:Action	agree		Registering a trademark is an intentional action performed by an agent.	10
+oewn-00130539-a	postnatal	occurring immediately after birth	dul:Quality	agree		Postnatal describes a temporal quality (occurring after birth).	10
+oewn-14661166-n	erbium	a trivalent metallic element of the rare earth group; occurs with yttrium	dul:ChemicalObject	agree		Erbium is a chemical element and compound; dul:ChemicalObject is appropriate.	10
+oewn-00180425-n	tooth	a means of enforcement	dul:Action	disagree	dul:Method	A means of enforcement is a method/mechanism, not an action itself.	10
+oewn-02023879-v	foray into	enter or take spoils from someone else territory	dul:Action	agree		A foray is an intentional action involving entering and taking.	10
+oewn-04409477-n	telephone plug	a plug for connecting a telephone	dul:DesignedArtifact	agree		A telephone plug is a manufactured connector designed for a specific purpose.	10
+oewn-13790888-n	pitcher	the quantity contained in a pitcher	dul:Amount	agree		This sense refers to a quantity/measure, not the object; dul:Amount is correct.	10
+oewn-00105032-r	at least	not less than	dul:Region	agree		At least marks a region in a quantity/value space (boundary of quantification).	10
+oewn-14108362-n	nervous disorder	a disorder of the nervous system	dul:Situation	agree		A nervous disorder is a complex state of affairs involving the nervous system.	10
+oewn-07922812-n	blended whiskey	mixture of two or more whiskeys or of a whiskey and neutral spirits	dul:FunctionalSubstance	agree		Blended whiskey is a beverage substance with a functional purpose.	10
+oewn-00488892-r	under	through a range downward	dul:SpaceRegion	agree		Under marks a spatial region/direction (downward/below).	10
+oewn-04800786-n	inadequacy	unsatisfactoriness by virtue of being inadequate	dul:Quality	agree		Inadequacy is a quality/property describing insufficiency.	10
+oewn-00094766-v	regrow	grow anew or continue growth after an injury or interruption	dul:State	disagree	dul:Process	Regrowth involves gradual change over time; dul:Process better captures this than the homogeneous dul:State.	10
+oewn-09301201-n	fallow	cultivated land that is not seeded for one or more growing seasons	dul:Substance	disagree	dul:Place	Fallow describes land in a particular condition, not a substance; dul:Place captures the location/land better.	10

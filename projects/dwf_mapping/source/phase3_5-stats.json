@@ -1,0 +1,30 @@
+{
+  "phase3_verbs_total": 13821,
+  "weak_tier_scope": 11412,
+  "flagged_verbs": 1228,
+  "flagged_pct_of_weak_scope": 10.76,
+  "rule_hits": {
+    "R2": 730,
+    "R1": 463,
+    "R3": 58,
+    "R6": 3,
+    "R7": 10
+  },
+  "confidence_buckets": {
+    "very_high (>=4)": 3,
+    "high (2-3.99)": 516,
+    "low (<2)": 709
+  },
+  "top_flip_patterns": {
+    "dul:Action \u2192 dul:State": 289,
+    "dul:State \u2192 dul:Action": 181,
+    "dul:Action \u2192 dul:Event": 152,
+    "dul:State \u2192 dul:Achievement": 120,
+    "dul:Event \u2192 dul:Action": 85,
+    "dul:Action \u2192 dul:Achievement": 82,
+    "dul:Action \u2192 dul:Process": 75,
+    "dul:State \u2192 dul:Process": 61,
+    "dul:State \u2192 dul:Event": 58,
+    "dul:Event \u2192 dul:State": 46
+  }
+}
