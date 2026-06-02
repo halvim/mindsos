@@ -13,6 +13,7 @@
 | # | Item | Origin | Owner | Status |
 |---|---|---|---|---|
 | A1 | **`release.yml` retention amendment** — change rule from "5 most-recent confirmed phases by tag-time" to "5 most-recent by `[mindsos] phase` integer" (PB-R). One-line `release.yml` edit + acknowledgment line in `mindsos confirm-phase` wrapper. | Chat C plan-authoring PB-R | Maintenance | pending |
+| A9 | **`tests_server/integration/test_layer_isolation.py` alignment with ADR-0010 §am-1** — remove `mindsos_admin` from `_DOMAIN_PACKAGES` (reclassified Phase 24 ship 2026-05-22 as server-side curation toolkit per Round 0 PB-Z22); add `mindsos_capacity` per Phase 27 forward-reference catch-up. Docstring + tuple + comment updates. Sibling test `tests/phase_15a/test_import_isolation_phase15a.py` already aligned at Phase 24; this one was missed. Surfaced at A0 §4 cumulative gate 2026-06-02. | A0 §4 cumulative gate (post-A0-4) | Maintenance | pending |
 
 ---
 
