@@ -31,10 +31,10 @@ The companion documents that future chats should also read are named in §10.
 
 **Current operating mode (2026-06-02 end-of-day):**
 - **PHASE-NUMBERED CODE-SHIPPING ACTIVE.** 11 phase slots reserved Phases 39-49 per `confirmation_docs/POST_PHASE_38_PHASE_MAP.md`.
-- **S9 BLOCKER ACTIVE.** The entire post-Phase-38 corpus (this HANDOFF.md, 4 chat closure decisions, ADRs 0150 §am-4 + 0151-0159, the `docs/decisions/` ADR tree itself, the `docs/_workbench/` tree, Phase 39 design log, Phase 43 prompt + seed + derivations, sister projects, `_archive_Layered_Intelligence/`, L4+L5 dev notes) is **untracked or modified on `main` but uncommitted.** Last commit on `main` is `5236857` (Phase 38 next-chat prompt). Branching off `main` right now yields Phase 38 baseline with none of the post-housekeeping content. **The A0 housekeeping commit checklist at `confirmation_docs/A0_HOUSEKEEPING_COMMIT_CHECKLIST.md` MUST land** as 4 commits on `main` before Phase 39 branches. See §3.1.9.
-- **Phase 39 design pass CLOSED 2026-06-02.** Settlement at `confirmation_docs/PHASE_39_DESIGN_LOG.md`. R0→R3 saturation met. Picks lock rename + L2-35 reconciliation + ADR-0146 §am-N (`_IRI_BUILDERS` tuple-key) + ADR-0150 §am-4 verbatim narrow-to-rename-only + ADR-0044 §am-3 verify + legacy EdgeType + property frozenset drops + Episode/Memory NodeType skeletons + `tools/check_rename_state.py` detector. **Impl + tester loop pending.** `phase-39` branches off `main` AFTER A0 lands AND Stream A item A1 (`release.yml` retention amendment per PB-R) lands.
+- **S9 BLOCKER RESOLVED 2026-06-02.** A0 housekeeping (4 commits A0-1…A0-4) + Stream A items A9 + A1 all landed on `main`. `main`-tip = `f33db02`; tagged `a0-corpus-landed`. Pre-A0 baseline retained at tag `pre-a0-backup` (`5236857`). Cumulative gate result: 3429 passed / 8 skipped / 0 failed (Linux docker pytest); `mkdocs build` clean (~15 broken-link warnings, no errors). See §3.1.10 for the landing chat's incidental surface findings (Dockerfile drift, missing `docs/dev/internals/knowledge.md` vendor, stale `tests_server/` layer-isolation roster — all resolved). **Phase 39 hard prereqs from `PHASE_39_NEXT_CHAT_PROMPT.md` are now satisfied; `phase-39` can branch off `main`-tip.**
+- **Phase 39 design pass CLOSED 2026-06-02.** Settlement at `confirmation_docs/PHASE_39_DESIGN_LOG.md`. R0→R3 saturation met. Picks lock rename + L2-35 reconciliation + ADR-0146 §am-N (`_IRI_BUILDERS` tuple-key) + ADR-0150 §am-4 verbatim narrow-to-rename-only + ADR-0044 §am-3 verify + legacy EdgeType + property frozenset drops + Episode/Memory NodeType skeletons + `tools/check_rename_state.py` detector. **Impl + tester loop pending — next chat.**
 - **Phase 43 pre-R0 design pass CLOSED 2026-06-02 end-of-day.** Settlement at `confirmation_docs/PHASE_43_R0_PICKS_SEED.md` (locked picks; drops C-γ, P1, P-meta, A6 from Phase 43 scope; N4 L2Schema subclass safe per probe; task_patterns.confidence kept) + `confirmation_docs/PHASE_43_R0B_DERIVATIONS.md` (R0b artifacts: `applies_after` edges from D-L2-19, ADR-0150 §am-5 draft text, L2Schema(Schema) sketch with discipline+storage_mode transcription table). Future Phase 43 chat opens post `phase-39-confirmed`; loads seed + derivations as primary R0 input; runs R1 impl-locks → tester loop. See §3.1.9.
-- **Next chat is the Phase 39 impl chat.** Hand it `confirmation_docs/PHASE_39_NEXT_CHAT_PROMPT.md` + `confirmation_docs/PHASE_39_DESIGN_LOG.md`. **MUST verify A0 landed first** via `confirmation_docs/A0_HOUSEKEEPING_COMMIT_CHECKLIST.md §4` post-A0 verification.
+- **Next chat is the Phase 39 impl chat.** Hand it `confirmation_docs/PHASE_39_NEXT_CHAT_PROMPT.md` + `confirmation_docs/PHASE_39_DESIGN_LOG.md`. A0 + A9 + A1 prereqs already landed; no preflight verification needed beyond `git log --oneline -8` showing `f33db02` on top of the 6-commit housekeeping stack.
 - **Chat A (L4 design-resolution) CLOSED 2026-05-28.** Settlement at `confirmation_docs/CHAT_A_DECISIONS.md` (migrated from `_workbench/`).
 - **Chat B (L5 design-resolution + note-fork decision) CLOSED 2026-05-31.** Settlement at `confirmation_docs/CHAT_B_DECISIONS.md`. Revised L5 design notes at `docs/dev/l5_mental_model_design_notes.md`.
 - **L2 chat (L2 schema-v2 + role-graph expansion + `episodic_memories` rename) CLOSED 2026-06-01.** Settlement at `confirmation_docs/L2_CHAT_DECISIONS.md`. New ADRs 0151-0154; amendments to ADR-0044 §3, ADR-0094 §1, ADR-0150 §4 (split to §am-4 + §am-5 per Chat C IL-3).
@@ -274,6 +274,40 @@ The Phase 43 pre-R0 design pass opened end-of-day 2026-06-02 immediately after P
 - Phase 39 impl owns the ADR-0150 §am-4 verbatim narrow-to-rename-only surgery + exclusion list deletion (per `§3.1.8`). Phase 43 then authors §am-5 (4 new role-graphs + exclusion list migrated) per the draft in `PHASE_43_R0B_DERIVATIONS.md §2`.
 - Stream A item A8 added (`mindsos_instances` missing from `mindsos_cli/manifest.toml [mindsos] packages` list per R0a-8 probe).
 - `PHASE_43_NEXT_CHAT_PROMPT.md` carries a banner pointing to seed + derivations as primary R0 input (added at this closure).
+
+### 3.1.10 A0 + A9 + A1 landing chat closure (2026-06-02 post-design-passes) — S9 resolved
+
+The A0 housekeeping commit checklist (`confirmation_docs/A0_HOUSEKEEPING_COMMIT_CHECKLIST.md`) was executed as 4 commits on `main` + 2 Stream A items (A9, A1) added to the same `wip/a0` branch before fast-forwarding `origin/main`. All 6 commits landed atomically at `f33db02`.
+
+**Final commit stack** (`5236857` predecessor, all on `main` + tag `a0-corpus-landed`):
+- `f33db02` — A1: clarify release.yml retention rule (PB-R) — documentation-only.
+- `fe1c0d8` — A9: align `tests_server/integration/test_layer_isolation.py` with ADR-0010 §am-1.
+- `c3a25fa` — A0-4: Phase 39 design close + Phase 43 seed + this checklist.
+- `c66f3d4` — A0-3: chat closures + Chat C plan + workbench index.
+- `7f8e932` — A0-2: HANDOFF + sister projects.
+- `40fd643` — A0-1: notes relocation + ADR tree vendor + Dockerfile fix + `knowledge.md` vendor.
+
+**Workflow** (documented for future Stream A + phase chats — see §9 "Tester two-machine sync"):
+
+Mac stayed on `main` locally; each commit advanced `main` then pushed to a shared remote `wip/a0` branch for incremental Linux gating. Linux ran `docker compose build mindsos-test` + targeted pytest per commit. After A0-1 + A9 + A1 all verified, `origin/main` was fast-forwarded from `wip/a0`; `wip/a0` deleted from origin; annotated tag `a0-corpus-landed` pushed.
+
+**Cumulative gate result** (post-A0+A9):
+- Linux: `docker compose run --rm mindsos-test pytest -q --tb=no` → **3429 passed / 8 skipped / 0 failed** in ~31 min.
+- Mac: `mkdocs build` → clean (`Documentation built in 2.68 seconds`); ~15 broken-link warnings + 4 broken-anchor INFOs, no ERRORs. Warnings are pre-existing carry-forwards (Phase 42 §1 filename-normalization scope).
+
+**A1 targeted gate** (post-A1): `pytest tests/phase_01/` → 64 passed / 1 skipped / 0 failed in 29s.
+
+**Three incidental surface findings** during A0 landing (all resolved in the same A0-1 amend + A9 commit; future chats may want to know these existed before):
+
+1. **Dockerfile drift.** `COPY notes-phase-*.md ./` appeared in both prod (line 176) and test (line 250) stages, referring to root-level notes-phase files that A0-1 relocated to `confirmation_docs/notes/`. Rebuild would fail with `no such file or directory`. **Fix bundled into A0-1 amend:** both COPY lines removed (redundant — `COPY confirmation_docs ./confirmation_docs` already covers the new location). Comments updated to reference A0-1 reasoning.
+
+2. **Missing `docs/dev/internals/knowledge.md` vendor.** A0 housekeeping vendored the parent-tree `docs/dev/internals/` dir, but `knowledge.md` was never tracked in repo history (`git log --all --diff-filter=D` returned zero hits). It lived only in `/Layered Intelligence/docs/dev/internals/knowledge.md` per Model C. Phase 36 sentinel `test_knowledge_md_validator_surface_section_present` failed when A0-1's path fix unmuted the parent-tree-skip pattern. **Fix bundled into A0-1 amend:** Henrique vendored the file from his Mac. Future housekeeping passes that retire parent-tree content must explicitly check for files referenced by halvim-tree sentinels but absent from halvim-tree git history.
+
+3. **Stale `tests_server/integration/test_layer_isolation.py` `_DOMAIN_PACKAGES`.** Authored at Phase 18 with `mindsos_admin` + `mindsos_core` + `mindsos_knowledge` + `mindsos_instances` as the strict-§I-S1 roster. ADR-0010 §amendment-1 (Phase 24 ship 2026-05-22, Round 0 PB-Z22) reclassified `mindsos_admin` as a "server-side curation toolkit" that legitimately imports `mindsos_server` primitives. Sibling test `tests/phase_15a/test_import_isolation_phase15a.py` was updated at Phase 24 to honor the reclassification; this test was missed and has been latently failing since. Surfaced when A0-1's path fix unmuted the full pytest collection. **Fix shipped as Stream A item A9** (separate commit `fe1c0d8`): remove `mindsos_admin`, add `mindsos_capacity` (Phase 27 forward-reference catch-up). Roster post-A9: `mindsos_core / mindsos_knowledge / mindsos_capacity / mindsos_instances`. Probed all four for `mindsos_server` imports — zero violations.
+
+**A1 audit finding** — `_retention.select_retention` (`mindsos_cli/_retention.py:134`) already sorts install_targets by the `(phase, letter)` slot tuple, i.e. by phase integer parsed from the tag name. `gh release list`'s tag-time ordering is the *input* but is discarded. A1 is therefore documentation-only: `release.yml` header + retention-step comments made the rule explicit, and `confirm_phase.py` text-mode output gained an acknowledgment line citing the rule. No code logic change.
+
+**Process learnings** (newly written to §9 "Tester two-machine sync"): the Mac↔Linux split + WIP-branch incremental gate pattern is now documented for future Stream A + phase work.
 
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 
