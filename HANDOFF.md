@@ -1,6 +1,6 @@
 # MindsOS — HANDOFF
 
-> **Last updated:** 2026-06-02 end-of-day (Phase 43 pre-R0 design pass closed; locked picks at `confirmation_docs/PHASE_43_R0_PICKS_SEED.md`; R0b derivations at `confirmation_docs/PHASE_43_R0B_DERIVATIONS.md`; **S9 blocker surfaced** — post-Phase-38 corpus is uncommitted on `main`; A0 housekeeping commit checklist at `confirmation_docs/A0_HOUSEKEEPING_COMMIT_CHECKLIST.md` must land before Phase 39 impl branches. Earlier same day: Phase 39 design pass closed; Chat C plan-authoring closed. See §3.1.9.)
+> **Last updated:** 2026-06-03 (Phase 43 **full design pass closed**; 18 saturation rounds; R1 impl-locks + R2 amendment texts + R3 cross-check all locked at `confirmation_docs/PHASE_43_DESIGN_LOG.md`; ship pending. Next chat is the Phase 43 **ship execution chat** — design log is the spec. See §3.1.12.)
 > **Audience:** Any chat, contributor, or reviewer entering MindsOS. This is the canonical entry point — read it first.
 > **Self-contained:** This document does not require loading external memory entries to make sense. Inline content is authoritative. Memory entries referenced as `[[name]]` are speed-ups for chats that have memory access; the canonical text lives here.
 
@@ -33,8 +33,9 @@ The companion documents that future chats should also read are named in §10.
 - **PHASE-NUMBERED CODE-SHIPPING ACTIVE.** 11 phase slots reserved Phases 39-49 per `confirmation_docs/POST_PHASE_38_PHASE_MAP.md`.
 - **S9 BLOCKER RESOLVED 2026-06-02.** A0 housekeeping (4 commits A0-1…A0-4) + Stream A items A9 + A1 all landed on `main`. `main`-tip = `f33db02`; tagged `a0-corpus-landed`. Pre-A0 baseline retained at tag `pre-a0-backup` (`5236857`). Cumulative gate result: 3429 passed / 8 skipped / 0 failed (Linux docker pytest); `mkdocs build` clean (~15 broken-link warnings, no errors). See §3.1.10 for the landing chat's incidental surface findings (Dockerfile drift, missing `docs/dev/internals/knowledge.md` vendor, stale `tests_server/` layer-isolation roster — all resolved). **Phase 39 hard prereqs from `PHASE_39_NEXT_CHAT_PROMPT.md` are now satisfied; `phase-39` can branch off `main`-tip.**
 - **Phase 39 SHIPPED 2026-06-02.** Rail A slot 1. ADR-0044 §amendment-3 + ADR-0150 §amendment-4 (narrowed rename-only) + ADR-0146 §amendment-3 (multi-NodeType dispatch + `_IRI_BUILDERS` tuple-key + `mint_iri(type_, **content)` signature) shipped on disk. L2 `memories` → `episodic_memories` atomic rename across 38 source + test + docs files. L2-35 alignment reconciliation (`<->` → `:`). `tools/check_rename_state.py` Falkor detector. `tests/phase_39/` 7-file suite (sentinel chain root, no SKIP). Cumulative gate: 3501 passed / 8 skipped / 0 failed. See `confirmation_docs/PHASE_39_DESIGN_LOG.md` for the design closure and `confirmation_docs/PHASE_39_CONFIRMED.md` for ship metadata.
-- **Phase 43 pre-R0 design pass CLOSED 2026-06-02 end-of-day.** Settlement at `confirmation_docs/PHASE_43_R0_PICKS_SEED.md` (locked picks; drops C-γ, P1, P-meta, A6 from Phase 43 scope; N4 L2Schema subclass safe per probe; task_patterns.confidence kept) + `confirmation_docs/PHASE_43_R0B_DERIVATIONS.md` (R0b artifacts: `applies_after` edges from D-L2-19, ADR-0150 §am-5 draft text, L2Schema(Schema) sketch with discipline+storage_mode transcription table). Future Phase 43 chat opens post `phase-39-confirmed`; loads seed + derivations as primary R0 input; runs R1 impl-locks → tester loop. See §3.1.9.
-- **Next chat is the Phase 43 impl chat** (Rail A slot 2, schema-v2). Hand it `confirmation_docs/PHASE_43_NEXT_CHAT_PROMPT.md` + `confirmation_docs/PHASE_43_R0_PICKS_SEED.md` + `confirmation_docs/PHASE_43_R0B_DERIVATIONS.md`. Phase 43 branches off `phase-39-confirmed` tag (post Phase 39 ship).
+- **Phase 43 pre-R0 design pass CLOSED 2026-06-02 end-of-day.** Settlement at `confirmation_docs/PHASE_43_R0_PICKS_SEED.md` (locked picks; drops C-γ, P1, P-meta, A6 from Phase 43 scope; N4 L2Schema subclass safe per probe; task_patterns.confidence kept) + `confirmation_docs/PHASE_43_R0B_DERIVATIONS.md` (R0b artifacts: `applies_after` edges from D-L2-19, ADR-0150 §am-5 draft text, L2Schema(Schema) sketch with discipline+storage_mode transcription table). See §3.1.9.
+- **Phase 43 FULL design pass CLOSED 2026-06-03.** R1 impl-locks + R2 amendment texts + R3 cross-check completed across 18 saturation rounds. Reconciles R0 picks seed + R0b derivations + PHASE_MAP §4 row drift against Accepted ADRs on disk. Critical reversals: storage_mode is per-NodeType (not per-role-graph); L2Schema(Schema) subclass placement (not L1 Schema amendment); bootstrap.py field-only at Phase 43 (Kahn scheduler defers to Phase 44 per L2-37 split); consolidate.py retargets at Phase 43 per R0 PB-43-9 (not Phase 48); detector form not migrator; PHASE_44 seed (not PHASE_46). 5 amendment text drafts ratified ready-to-paste. Full record at `confirmation_docs/PHASE_43_DESIGN_LOG.md`. See §3.1.12.
+- **Next chat is the Phase 43 SHIP execution chat** (Rail A slot 2, schema-v2). Hand it `confirmation_docs/PHASE_43_SHIP_CHAT_PROMPT.md` — the prompt points to `PHASE_43_DESIGN_LOG.md` as the spec. Phase 43 branches off `phase-39-confirmed` tag (post Phase 39 ship).
 - **Chat A (L4 design-resolution) CLOSED 2026-05-28.** Settlement at `confirmation_docs/CHAT_A_DECISIONS.md` (migrated from `_workbench/`).
 - **Chat B (L5 design-resolution + note-fork decision) CLOSED 2026-05-31.** Settlement at `confirmation_docs/CHAT_B_DECISIONS.md`. Revised L5 design notes at `docs/dev/l5_mental_model_design_notes.md`.
 - **L2 chat (L2 schema-v2 + role-graph expansion + `episodic_memories` rename) CLOSED 2026-06-01.** Settlement at `confirmation_docs/L2_CHAT_DECISIONS.md`. New ADRs 0151-0154; amendments to ADR-0044 §3, ADR-0094 §1, ADR-0150 §4 (split to §am-4 + §am-5 per Chat C IL-3).
@@ -308,6 +309,56 @@ Mac stayed on `main` locally; each commit advanced `main` then pushed to a share
 **A1 audit finding** — `_retention.select_retention` (`mindsos_cli/_retention.py:134`) already sorts install_targets by the `(phase, letter)` slot tuple, i.e. by phase integer parsed from the tag name. `gh release list`'s tag-time ordering is the *input* but is discarded. A1 is therefore documentation-only: `release.yml` header + retention-step comments made the rule explicit, and `confirm_phase.py` text-mode output gained an acknowledgment line citing the rule. No code logic change.
 
 **Process learnings** (newly written to §9 "Tester two-machine sync"): the Mac↔Linux split + WIP-branch incremental gate pattern is now documented for future Stream A + phase work.
+
+### 3.1.11 Phase 39 ship closure (2026-06-02 end-of-day) — Rail A slot 1 SHIPPED
+
+Phase 39 (`memories` → `episodic_memories` atomic rename + L2-35 alignment reconciliation + ADR-0146 §am-3 multi-NodeType dispatch) shipped as squash-merge commit `7a8bf10` on `main`; tag `phase-39-confirmed` cut from that SHA. The ship metadata + tester notes commit `6c73108` sits immediately before the squash-merge on main (semantically backwards but functionally correct — recovery anomaly recorded at `PHASE_39_DESIGN_LOG.md §9.5`).
+
+**Final main commit order** (top → bottom):
+- `7a8bf10` (tag: `phase-39-confirmed`) — Phase 39 squash-merge (the actual ship: 87 files, 1585 ins / 569 del).
+- `6c73108` — `PHASE_39_CONFIRMED.md` + `notes-phase-39.md` via `mindsos confirm-phase`.
+- `ec16443` (tag: `a0-corpus-landed`) — A0-5 doc closure.
+- `f33db02` — A1 retention rule.
+
+**Cumulative gate:** 3501 passed / 8 skipped / 0 failed. **mkdocs build clean** (only pre-existing carry-forward broken-link warnings; zero new from Phase 39 docs renames).
+
+**Impl-chat artifacts on disk:**
+- `confirmation_docs/PHASE_39_DESIGN_LOG.md §9` — impl-time amendments (R1/R2 picks beyond design pass, gate-driven follow-up commits 5b/5c, ship closure anomaly, Phase 43 carry-forwards).
+- `confirmation_docs/PHASE_39_CONFIRMED.md` — `mindsos confirm-phase` auto-generated ship metadata.
+- `confirmation_docs/notes/notes-phase-39.md` — tester notes (load-bearing per `PHASE_MAP §0`).
+
+**Carry-forwards to Phase 43:**
+- Stale `ROLE_MEMORIES` / `memory_iri` example code cleanup in non-amend-target ADRs (ADR-0045 / 0139 / 0143 / 0146 main body / 0147 / 0154 example IRI) — design log §9.6.
+- Per-phase manifest-bump 9-surface checklist as cross-cutting decision (now in `POST_PHASE_38_PHASE_MAP.md §1`); doctor self-test gates this.
+- Pre-confirm-phase squash-merge discipline (now in `POST_PHASE_38_PHASE_MAP.md §1`).
+
+L2-34 + L2-35 backlog items closed at `docs/_workbench/L2_FUTURE_WORK.md` + `docs/_workbench/STREAM_A_BACKLOG.md`. Phase 43 chat opens against `phase-39-confirmed`.
+
+### 3.1.12 Phase 43 full design pass closure (2026-06-03) — Rail A slot 2 design locked; ship pending
+
+Phase 43 full design pass closed 2026-06-03 across **18 saturation rounds** (R1 rounds 1-16 reaching 3/3; R2 rounds 17-18 reaching 3/3; R3 cross-check round closing). Settlement at `confirmation_docs/PHASE_43_DESIGN_LOG.md` — ~600-line record covering R0/R0b drift reconciliation, ADR transcription parity findings, PR1/PR2 module-touch + test surface + commit boundaries, process locks, 5 R2 amendment-text drafts ready-to-paste, lessons for future phases, risk notes for tester ship pass.
+
+**Picks locked beyond pre-R0 design pass (overrides `PHASE_43_R0_PICKS_SEED.md` / `PHASE_43_R0B_DERIVATIONS.md` / `POST_PHASE_38_PHASE_MAP.md §4 Phase 43 row` where drift surfaced):**
+
+- **L2Schema(Schema) subclass placement at L2** (not L1 amendment to `mindsos_core.Schema`). ADR-0153 §amendment-1 supersedes §6's "mindsos_core.Schema gains" language. Required-at-construction (no backward-compat default). R0 N4 probe rationale + ADR-0010 import-direction symmetry.
+- **storage_mode is per-NodeType property** (not per-role-graph L2Schema class field). Per ADR-0151 §Decision + ADR-0152 §6 explicit model. Only `LearnedParameter.value` carries large-payload in Phase 43 scope. R0b §3.3 sketch dropped storage_mode from L2Schema entirely.
+- **Storage tier string `"falkor_blob"`** per ADR-0151 line 58 (not `"falkor_large_property"` from R0b §3.2). R0b draft transcription error.
+- **bootstrap.py field-only at Phase 43** per L2-37 split routing. Kahn topological-sort consumer/scheduler defers to Phase 44 (L0 substrate). Phase 43 ships `applies_after: frozenset[str]` declarations on 13 `ensure_*_role_graph` functions; no scheduler.
+- **consolidate.py retargets at Phase 43** per R0 PB-43-9 (`type_="Memory"` → `type_="Episode"`; `memory_composite_iri` → `episode_iri`). Chat opener's "OUT OF SCOPE: Phase 48 owns retarget" was a stale read of pre-R0 default; R0 picks seed reversed and chat opener didn't absorb the reversal.
+- **Detector form not migrator** per R0 PB-43-10: `tools/check_phase_43_confidence_state.py` (v1 production empty per probe; Phase 39 PB-8 precedent). ADR-0094 §am-1 line 77-80 in-place edit: "maintenance migrator" → "detector form."
+- **3 new ADRs already Accepted on disk** per R0a-3; Phase 43 IMPLEMENTS contracts, doesn't ratify. ADR-0094 §am-1 already on disk per R0b §4 (only detector ships). Phase 43 authors **2 amendments + 4 in-place edits + 6 ADR stale-example cleanups + 3 decisions-doc cleanups**.
+- **Two-PR + single-squash + single-tag** per R0 PB-43-1: both PRs target `phase-43` branch; PR1 = framework + 9-surface manifest bump + amendments; PR2 = 4 new schemas + episodic_memories body + consumers + tests + docs. Branch squashes to main at confirm-phase.
+- **9-surface manifest bump lands in PR1** (not PR2 per R0 §4 module-touch). Phase 39 §9.4 atomic-9-surface discipline forbids splitting; PR1 ownership keeps cumulative gates green across both PRs.
+- **PHASE_44_NEXT_CHAT_PROMPT seed at PR2 commit 6** per chat opener literal; Phase 44 inherits L2-37 consumer + L2-39 + L2-41 deferrals. NOT Phase 46 seed (Phase 46 gated on all 4 rails per DAG; multi-rail consolidation isn't Phase 43's job).
+
+**Drift-accumulation lesson (NPB11-META, PHASE_43_DESIGN_LOG §10.1):** rounds 6-12 surfaced incremental drift between design-pass drafts (R0 picks seed, R0b derivations, chat opener, PHASE_MAP §4 row) and Accepted ADRs on disk. Future-phase chats should run **ADR transcription parity check as R1 step 0** — grep each draft's transcription tables against source ADR-on-disk; surface drift; correct draft, not ADR.
+
+**Phase 43 ship is the next chat.** PR1 contents, PR2 contents, commit boundaries, test surface, R2 amendment text drafts, tester runbook, and risk notes are all in `PHASE_43_DESIGN_LOG.md`. The ship chat's input prompt is `confirmation_docs/PHASE_43_SHIP_CHAT_PROMPT.md`.
+
+**Cascade to other phases (PB-Z reading-list updates):**
+- **Phase 44 R0** reads Phase 43 `bootstrap.py` diff (L2-37 split — Phase 44 implements the Kahn scheduler that consumes `applies_after` declarations Phase 43 ships) + `episodic_memories.py` diff (Phase 44's `kl.read_at_version` + `kl.retire_version` touch episode storage) + `mindsos_server/audit.py` (Phase 44 adds `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` constant).
+- **Phase 46 R0** reads Phase 43 `_base.py` (L2Schema subclass) + `knowledge_layer.py` (bootstrap dispatch table) + `write_handle.py` (discipline enforcement body) — Phase 46 L4 substrate consumes the L2 invariant.
+- **Phase 48 R0** reads Phase 43 `consolidate.py` retarget + `episodic_memories.py` body (Episode + Memory + memory_contains_episode) — Phase 48 L5 v1 builds on the retargeted MM consolidation path.
 
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 

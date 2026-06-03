@@ -407,7 +407,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 43 — L2 schema-v2: 4 new role-graphs + mutation_discipline runtime invariant + storage_mode + bootstrap order + 3 new ADRs + ADR-0150 §am-5
 
-  **Status:** Pending
+  **Status:** **Design pass closed 2026-06-03; ship pending.** Full design log at `confirmation_docs/PHASE_43_DESIGN_LOG.md`. Multiple items in this row body are STALE per design log §3 reconciliation: (a) L1 vs L2 `Schema.mutation_discipline` placement — design log picks L2Schema(Schema) subclass + ADR-0153 §amendment-1; (b) 5 vs 6 disciplines (append_only added per ADR-0153 §1); (c) "maintenance migrator" → detector form per R0 PB-43-10; (d) per-role-graph vs per-NodeType `storage_mode` — design log picks per-NodeType per ADR-0151 §Decision + ADR-0152 §6 (only LearnedParameter in scope); (e) bootstrap "14-step topological order" → field-declarations-only at Phase 43 per L2-37 split (Phase 44 ships Kahn scheduler); (f) consolidate.py retarget at Phase 43 per R0 PB-43-9 (not deferred to Phase 48); (g) ADRs 0151/0152/0153 already Accepted on disk per R0a-3 — Phase 43 IMPLEMENTS, doesn't ratify. **PR2 commit 6 of the ship chat rewrites this row** per design log §6.1 module-touch. Until then: treat design log §5+§6 + §8 as authoritative spec; this row body as historical pre-R0 framing.
   **Branch:** phase-43
   **Tag on confirm:** phase-43-confirmed
   **Rail:** A
@@ -459,6 +459,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
   - `docs/decisions/adr/0153-l2-mutation-discipline.md` (NEW; ratified).
   - `docs/decisions/adr/0094-confidence-pipeline-level.md` (§amendment-1).
   - `docs/decisions/adr/0150-l2-knowledge-lifecycle.md` (§amendment-5 per IL-3).
+  - **Stale ROLE_MEMORIES / memory_iri example cleanup in non-amend-target ADRs (Phase 39 §9.6 carry-forward):** ADR-0045 §Decision body, ADR-0139 example code-block, ADR-0143 Usage skeleton + Constraint, ADR-0146 main body (outside §am-3), ADR-0147 per-flow example, ADR-0154 example IRI (`memories-<v>:memory:<u>:<m>`). Each rewritten to use post-Phase-39 form (ROLE_EPISODIC_MEMORIES + episode_iri / memory_composite_iri + `episodic-memories-<v>:...` prefix). Phase 39 design log PB-R1-A deferred these for natural alignment with Phase 43's adjacent ADR work; cleanup ships in this PR.
 
   **Automated tests:**
   - `tests/phase_43/test_4_role_graphs.py` — schema registration + bootstrap + IRI builders.
