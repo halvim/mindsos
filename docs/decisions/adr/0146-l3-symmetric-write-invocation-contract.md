@@ -43,18 +43,18 @@ def capacity_consolidate_mm(
     session: SessionProtocol,
     mm: CompositeInstance,
 ) -> WriteResult | ProblemTraceRecord:
-    if not session.has_capability(CAN_WRITE_LOCAL_MEMORIES):
+    if not session.has_capability(CAN_WRITE_LOCAL_EPISODIC_MEMORIES):
         return ProblemTraceRecord(kind="CAPABILITY_DENIED", ...)
-    handle = kl.writeable(session, role=ROLE_MEMORIES, scope='local')
-    iri = handle.mint_iri(user_id=session.user_id, memory_id=mm.root_id)
-    if not (vr := handle.validate_node(value=mm.summary, type_="ConsolidatedMemory")).ok:
+    handle = kl.writeable(session, role=ROLE_EPISODIC_MEMORIES, scope='local')
+    iri = handle.mint_iri(type_="Episode", user_id=session.user_id, episode_id=mm.root_id)
+    if not (vr := handle.validate_node(value=mm.summary, type_="Episode")).ok:
         return ProblemTraceRecord(kind="VALIDATION_FAILED", violation=vr, ...)
     try:
-        handle.graph().add_node(node_id=iri, value=mm.summary, type_="ConsolidatedMemory")
+        handle.graph().add_node(node_id=iri, value=mm.summary, type_="Episode")
         # ... XRefs, properties ...
     except (XRefIntegrityError, SchemaViolationError) as exc:
         return ProblemTraceRecord(kind="L1_REJECTED", exc=exc, ...)
-    return WriteResult(iri=iri, role=ROLE_MEMORIES, scope='local', written_at=now())
+    return WriteResult(iri=iri, role=ROLE_EPISODIC_MEMORIES, scope='local', written_at=now())
 ```
 
 ### Failure-mode table

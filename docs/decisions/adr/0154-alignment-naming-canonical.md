@@ -95,7 +95,9 @@ The two role names are sorted alphabetically before composition so
 
 2. **Parser separator already established.** Every other IRI in the
    codebase uses `:` as the structural separator (`dolce-dul-<v>:
-   <body>`, `oewn-<v>:synset:<id>`, `memories-<v>:memory:<u>:<m>`).
+   <body>`, `oewn-<v>:synset:<id>`,
+   `episodic-memories-<v>:episode:<u>:<id>` per ADR-0044 §amendment-3
+   Phase 39 rename).
    Reusing the established separator is cheaper than introducing a
    new one for one role family.
 

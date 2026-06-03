@@ -54,8 +54,8 @@ Validators are idempotent and side-effect-free. Capacity authors compose them; f
 Every L3 write capacity follows this skeleton:
 
 ```python
-def capacity_consolidate_memory(session, mm: CompositeInstance) -> WriteResult:
-    handle = kl.writeable(session, role=ROLE_MEMORIES, scope='local')
+def capacity_consolidate_episode(session, mm: CompositeInstance) -> WriteResult:
+    handle = kl.writeable(session, role=ROLE_EPISODIC_MEMORIES, scope='local')
     # 1. Validate (KL semantic invariants)
     for validator in [validate_role_routing, ...]:
         result = validator(...)

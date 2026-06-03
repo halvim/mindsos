@@ -14,11 +14,11 @@ aliases: [kl-ADR-008]
 
 ## Context
 
-The seed roles (ontology, lexicon, concepts) had hand-written IRI helpers. Upper-layer roles — pipelines, task-patterns, subgoal-templates, memories, problem-traces, capacity-snapshots — were landing with ad-hoc IRI construction at call sites, risking drift.
+The seed roles (ontology, lexicon, concepts) had hand-written IRI helpers. Upper-layer roles — pipelines, task-patterns, subgoal-templates, episodic-memories (Phase 39 rename of `memories` per ADR-0044 §amendment-3), problem-traces, capacity-snapshots — were landing with ad-hoc IRI construction at call sites, risking drift.
 
 ## Decision
 
-`identifiers.py` grows seven new builders: `pipeline_iri`, `pipeline_step_iri`, `task_pattern_iri`, `subgoal_template_iri`, `memory_iri` (includes `user_id` per ADR-0044), `problem_trace_iri`, `capacity_snapshot_iri`. Each has a matching entry in `_PREFIXES` so `parse_iri` / `is_version_qualified_iri` stay in sync.
+`identifiers.py` grows seven new builders: `pipeline_iri`, `pipeline_step_iri`, `task_pattern_iri`, `subgoal_template_iri`, `episode_iri` + `memory_composite_iri` (both include `user_id` per ADR-0044 §amendment-3; Phase 39 rename of the original single `memory_iri` to two builders per Chat B Episode/Memory split + ADR-0146 §amendment-3 multi-NodeType dispatch), `problem_trace_iri`, `capacity_snapshot_iri`. Each has a matching entry in `_PREFIXES` so `parse_iri` / `is_version_qualified_iri` stay in sync.
 
 ## Consequences
 

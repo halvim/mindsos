@@ -35,7 +35,7 @@ The handle is a non-mutating accessor. It encapsulates the routing and validator
 
 ```python
 class KLWriteHandle:
-    role: RoleName               # e.g. "memories", "concepts"
+    role: RoleName               # e.g. "episodic_memories", "concepts"
     scope: Literal['local', 'global']
     session: SessionProtocol     # for capability re-checks at handle methods
 
@@ -65,12 +65,12 @@ class KLWriteHandle:
 ### Usage skeleton
 
 ```python
-def capacity_consolidate_memory(session, mm: CompositeInstance) -> WriteResult:
-    handle = kl.writeable(session, role=ROLE_MEMORIES, scope='local')
-    iri = handle.mint_iri(user_id=session.user_id, memory_id=mm.root_id)
-    if not (r := handle.validate_node(value=mm.summary, type_="ConsolidatedMemory")).ok:
+def capacity_consolidate_episode(session, mm: CompositeInstance) -> WriteResult:
+    handle = kl.writeable(session, role=ROLE_EPISODIC_MEMORIES, scope='local')
+    iri = handle.mint_iri(type_="Episode", user_id=session.user_id, episode_id=mm.root_id)
+    if not (r := handle.validate_node(value=mm.summary, type_="Episode")).ok:
         return ProblemTraceRecord(violation=r)
-    handle.graph().add_node(node_id=iri, value=mm.summary, type_="ConsolidatedMemory")
+    handle.graph().add_node(node_id=iri, value=mm.summary, type_="Episode")
     handle.graph().add_xref(source_id=iri,
                             target_metagraph_id=handle.metagraph().metagraph_id,
                             target_role="task-patterns",
@@ -126,6 +126,7 @@ The risk in B is accretion: methods get added that do half the mutation. The han
 - `docs/dev/internals/knowledge.md` documents the "never mutates" rule.
 - ADR moves to Accepted when (a) `KLWriteHandle` ships, (b) at least two L3 write capacities use it, (c) the "never mutates" rule is in the code review checklist (`docs/dev/review-checklist.md`).
 - ADR-0146 §amendment-3 (Phase 39 ship — 2026-06-XX) — `KLWriteHandle.mint_iri` signature evolved to `mint_iri(self, type_: str, **content) -> str` and `_IRI_BUILDERS` registry shape evolved to `(role, NodeType_name) → minter` tuple-key. Handle pattern + Surface + Constraint defined in this ADR are unchanged; signature evolution is a registry-dispatch change, not a handle-pattern change.
+- ADR-0153 §2 (Phase 43 PR2 ship — 2026-06-03) — `KLWriteHandle` write-path body fills with mutation-discipline enforcement consuming `KnowledgeLayer.bootstrap()`'s dispatch table per ADR-0153 §2. Handle pattern + Surface + Constraint defined in this ADR are unchanged.
 
 ## §Implementation (Phase 33 — stub-only; halvim, 2026-05-26)
 

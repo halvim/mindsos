@@ -13,9 +13,8 @@ layer: L2
 
 **Related (Accepted):** [ADR-0121](0121-falkordb-persistence.md),
 [ADR-0150](0150-l2-knowledge-lifecycle.md),
-[ADR-0044](0044-memories-move-to-local-per-user.md) §amendment-3.
-
-**Related (Proposed):** [ADR-0152](0152-l2-role-graph-schema-v2.md),
+[ADR-0044](0044-memories-move-to-local-per-user.md) §amendment-3,
+[ADR-0152](0152-l2-role-graph-schema-v2.md),
 [ADR-0153](0153-l2-mutation-discipline.md).
 
 **Companion docs:** `_workbench/L2_CHAT_DECISIONS.md` D-L2-22;

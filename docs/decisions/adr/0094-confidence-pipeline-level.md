@@ -74,10 +74,14 @@ ADR; see `_workbench/L2_CHAT_DECISIONS.md` D-L2-24.
   responsibility per L2_CHAT_DECISIONS D-L2-8 (L2 stays dumb-store);
   default `status="active"` excludes quarantined.
 
-**Migration of shipped state:** Any Local-Pipeline records carrying
-the old `confidence` property get the field stripped by a one-shot
-maintenance migrator at v2 schema deploy (Chat C plan-authoring
-sequences the migration phase).
+**Migration of shipped state:** Per Phase 43 R0 pick PB-43-10
+(`confirmation_docs/PHASE_43_R0_PICKS_SEED.md`), v1 production has no
+`confidence`-carrying Local-Pipeline records; a real migrator is dead
+code. Phase 43 ships **a detector form**
+(`tools/check_phase_43_confidence_state.py`) per the Phase 39 PB-8
+precedent (`tools/check_rename_state.py`) — queries FalkorDB for any
+Pipeline record carrying the `confidence` property; exits non-zero if
+any found.
 
 **Out-of-scope for amendment-1:**
 

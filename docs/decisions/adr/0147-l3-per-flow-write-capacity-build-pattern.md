@@ -134,7 +134,7 @@ consumer surfaces. ADR-0147 flips Accepted at the later of those.
 Phase 34 R0 PB-9 + R1 PB-B: per-flow discipline is honoured at the
 IRI-builder registry level. `_IRI_BUILDERS` in `mindsos_knowledge/
 identifiers.py` ships with EXACTLY 2 entries (the 2 shipped write
-capacities' roles — `ROLE_MEMORIES` + `ROLE_PROBLEM_TRACE`). Phase 35+
+capacities' roles — `ROLE_EPISODIC_MEMORIES` + `ROLE_PROBLEM_TRACE`; renamed from `ROLE_MEMORIES` per Phase 39 ADR-0044 §amendment-3). Phase 35+
 adds entries alongside `capacity:promote:pipeline` etc. as flows close.
 The registry is the right pattern but the population is deliberately
 minimal — the alternative (pre-populating all 7 upper-layer role
