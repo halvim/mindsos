@@ -164,6 +164,9 @@ from .identifiers import (
 
 from .schemas import (
     _ROLE_SCHEMA_BUILDERS,
+    Discipline,
+    L2Schema,
+    StorageMode,
     build_alignment_schema,
     build_capacity_state_schema,
     build_concepts_schema,
@@ -239,6 +242,10 @@ __all__ = [
     "build_capacity_state_schema",
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",
+    # ── L2-private vocabulary (Phase 43 — ADR-0153 §am-1 + ADR-0151) ─
+    "Discipline",
+    "L2Schema",
+    "StorageMode",
     # ── KL (Phase 14) ──────────────────────────────────────────────
     "KnowledgeLayer",
     "MetagraphView",
