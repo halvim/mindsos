@@ -56,7 +56,7 @@ def test_mm_composite_datastates_single_member_record():
     assert states[0].shape.kind == "record"
     assert states[0].shape.opaque_tag == "mm.composite_instance"
     assert dict(states[0].shape.fields) == {
-        "memory_id": "str",
+        "episode_id": "str",
         "value": "Any",
     }
     assert states[0].provenance_category == CATEGORY_CONSOLIDATE
@@ -107,7 +107,7 @@ def test_consolidate_mm_session_none_yields_value_error_via_envelope():
     install_consolidate_capacities(layer)
     result = layer.invoke(
         "capacity:consolidate:mm",
-        {DS_MM_COMPOSITE_INSTANCE: {"memory_id": "m1", "value": "test"}},
+        {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "test"}},
         session=None,
         task_id="T1",
     )
@@ -127,14 +127,14 @@ def test_consolidate_mm_with_session_succeeds_with_write_outcome():
     install_consolidate_capacities(layer)
     result = layer.invoke(
         "capacity:consolidate:mm",
-        {DS_MM_COMPOSITE_INSTANCE: {"memory_id": "m1", "value": "remember this"}},
+        {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "remember this"}},
         session=sess,
         task_id="T2",
     )
     assert result.success is True
     assert result.error is None
     assert isinstance(result.write_outcome, WriteResult)
-    assert result.write_outcome.iri == "episodic-memories-v1:memory:alice:m1"
+    assert result.write_outcome.iri == "episodic-memories-v1:episode:alice:e1"
     assert result.write_outcome.role == "episodic_memories"
     assert result.write_outcome.scope == "local"
 
@@ -148,7 +148,7 @@ def test_consolidate_mm_success_emits_no_problem_trace():
     install_consolidate_capacities(layer)
     layer.invoke(
         "capacity:consolidate:mm",
-        {DS_MM_COMPOSITE_INSTANCE: {"memory_id": "m1", "value": "ok"}},
+        {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "ok"}},
         session=sess,
         task_id="T3",
     )

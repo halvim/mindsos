@@ -1,17 +1,20 @@
-"""``capacity:consolidate:mm`` — Local memory write capacity (Phase 34; wired).
+"""``capacity:consolidate:mm`` — Local episode write capacity (Phase 34; retargeted Phase 43).
 
 Ships the first ``CATEGORY_CONSOLIDATE`` occupant per ADR-0145 §Decision
 + §Implementation. The capacity targets the user's Local
 ``episodic_memories`` role-graph (ADR-0044 §am-3 rename): a record
-bearing ``memory_id`` + ``value`` becomes a ``Memory`` node under
-``episodic-memories-v1:memory:<user_id>:<memory_id>``.
+bearing ``episode_id`` + ``value`` becomes an ``Episode`` node under
+``episodic-memories-v1:episode:<user_id>:<episode_id>``.
 
-NOTE(phase-48-retarget): Phase 39 keeps ``type_="Memory"`` writing
-per-task entries through the Memory-composite NodeType. Per
-L2_CHAT_DECISIONS D-L2-17 + Chat B D-B47, ``Episode`` is the per-task
-entry; ``Memory`` is a clustering composite over Episodes. This is
-semantically wrong (interim tech debt for two phases); Phase 48
-retargets ``consolidate:mm`` to write ``Episode`` per D-B47.
+**Phase 43 PR2 commit 3 retarget per R0 PB-43-9.** Phase 39 shipped this
+capacity writing ``type_="Memory"`` + ``memory_id``-keyed IRIs as
+interim tech debt; D-L2-17 + Chat B D-B47 lock Episode as the per-task
+entry NodeType (Memory is a clustering composite over Episodes,
+materialized by a separate consolidation flow). Phase 43 retargets to
+``type_="Episode"`` + ``episode_id`` per the canonical Chat B D-B47
+shape, closing the two-phase tech-debt window. The ``Memory`` NodeType
+remains in the schema for the future composite-consolidation flow
+(Phase 48+); ``consolidate:mm`` now writes Episodes only.
 
 **Phase 34 ship (ADR-0146 §amendment-1 clauses 4 + 5 closed).** The
 capacity body wires through to L1 via
@@ -50,8 +53,10 @@ Failure modes:
 5. **Session-None for scope='local'** — ``KnowledgeLayer.writeable``
    raises ``ValueError`` (no user_id to route on).
 
-**Input shape (Phase 34 R2 PB-A + R4 §am-impl-2).** Tightened from Phase
-33's opaque to record-form ``{"memory_id": "str", "value": "Any"}``.
+**Input shape (Phase 34 R2 PB-A + R4 §am-impl-2; Phase 43 retarget).**
+Tightened from Phase 33's opaque to record-form
+``{"episode_id": "str", "value": "Any"}`` (Phase 43 rename of the
+Phase 34 ``memory_id`` key per R0 PB-43-9 + Chat B D-B47).
 ``opaque_tag`` preserved for backward-compat. L4 consolidation flow
 tightens further with consumer-specific fields (e.g., binding to
 ``CompositeInstance`` attributes).
@@ -85,23 +90,26 @@ DS_MM_COMPOSITE_INSTANCE = datastate_iri("mm.composite_instance")
 def mm_composite_datastates() -> List[DataState]:
     """Return the DataState(s) used by ``capacity:consolidate:mm``.
 
-    Phase 34 ship: ``ShapeDescriptor.record`` with ``memory_id`` + ``value``
-    fields (the minimum surface :meth:`KLWriteHandle.write_and_validate`
-    needs). ``opaque_tag`` preserved for Phase 33 sentinel backward-compat
-    and downstream consumer disambiguation.
+    Phase 34 ship: ``ShapeDescriptor.record`` with ``memory_id`` +
+    ``value`` fields (the minimum surface
+    :meth:`KLWriteHandle.write_and_validate` needs). Phase 43 retarget
+    renames ``memory_id`` to ``episode_id`` per R0 PB-43-9 + Chat B
+    D-B47. ``opaque_tag`` preserved for Phase 33 sentinel
+    backward-compat and downstream consumer disambiguation.
     """
     return [
         DataState(
             name="mm.composite_instance",
             shape=ShapeDescriptor.record(
-                {"memory_id": "str", "value": "Any"},
+                {"episode_id": "str", "value": "Any"},
                 opaque_tag="mm.composite_instance",
             ),
             description=(
                 "Record bearing the minimum keys ``capacity:consolidate:mm`` "
-                "extracts: ``memory_id`` (IRI key per ADR-0044) and "
-                "``value`` (node value). Phase 34 R2 PB-A tighten; L4 "
-                "consolidation flow extends the field set."
+                "extracts: ``episode_id`` (IRI key per ADR-0044 §am-3 +"
+                " Chat B D-B47) and ``value`` (node value). Phase 34 R2"
+                " PB-A tighten; Phase 43 retarget (R0 PB-43-9);"
+                " L4 consolidation flow extends the field set."
             ),
             provenance_category=CATEGORY_CONSOLIDATE,
         ),
@@ -137,19 +145,19 @@ def _consolidate_mm_impl(**kwargs: Any) -> Any:
     handle = kl.writeable(
         session, role=ROLE_EPISODIC_MEMORIES, scope="local", version="v1"
     )
-    # NOTE(phase-48-retarget): type_="Memory" writes per-task entry
-    # through Memory-composite NodeType — semantically wrong per
-    # D-L2-17 (Episode is per-task; Memory is composite). Phase 48
-    # retargets to type_="Memory" → type_="Episode" + episode_id
-    # plumbing per Chat B D-B47.
-    vr = handle.validate_node(value=record["value"], type_="Memory")
+    # Phase 43 PR2 commit 3 retarget per R0 PB-43-9: type_="Episode"
+    # writes the per-task entry NodeType per Chat B D-B47 + D-L2-17.
+    # The Memory NodeType (clustering composite over Episodes) is
+    # written by a separate future consolidation flow (Phase 48+) and
+    # is not in scope here.
+    vr = handle.validate_node(value=record["value"], type_="Episode")
     if not vr.ok:
         raise SemanticValidationError(vr)
     return handle.write_and_validate(
         value=record["value"],
-        type_="Memory",
+        type_="Episode",
         user_id=session.user_id,
-        memory_id=record["memory_id"],
+        episode_id=record["episode_id"],
     )
 
 
