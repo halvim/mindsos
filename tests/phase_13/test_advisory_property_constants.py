@@ -11,6 +11,14 @@ former ``MEMORY_PROPS`` constant was dropped from the Phase 39
 ``episodic_memories`` schema. Properties for Episode + Memory composite
 NodeTypes land at Phase 43 alongside CONTENT_FIELDS / METADATA_FIELDS /
 mutation_discipline apparatus per ADR-0153 / ADR-0152 (Rail A schema-v2).
+
+**Phase 43 schema-v2 update (ADR-0152 §1 + §2):** Pipeline + TaskPattern
+PROPS sets expanded from Phase 13 advisory shape to full v2 field set
+(union of ``*_CONTENT_FIELDS`` + ``*_METADATA_FIELDS``). ``task_type``
+dropped from both (Pipeline never had a real ``task_type``; TaskPattern
+``task_type`` renamed to ``pattern_name`` per ADR-0152 §2).
+``confidence`` dropped from Pipeline per ADR-0094 §am-1 (migrates to
+ALS subsystems); kept on TaskPattern as metadata.
 """
 
 from __future__ import annotations
@@ -28,9 +36,15 @@ from mindsos_knowledge.schemas.task_patterns import (
 
 
 def test_pipeline_props_declare_design_properties() -> None:
-    # Per DESIGN_UPPER_LAYER_ROLES.md §2.1.
+    # Per DESIGN_UPPER_LAYER_ROLES.md §2.1 + Phase 43 schema-v2
+    # expansion (ADR-0152 §1). ``task_type`` never had a real
+    # consumer (Phase 13 advisory only); ``confidence`` dropped per
+    # ADR-0094 §am-1 (migrates to ALS subsystems on
+    # ``learned-parameters``).
     assert isinstance(PIPELINE_PROPS, frozenset)
-    assert {"pipeline_name", "task_type", "confidence", "n_runs"} <= PIPELINE_PROPS
+    assert {"pipeline_name", "edge_sequence", "status", "n_runs"} <= PIPELINE_PROPS
+    assert "task_type" not in PIPELINE_PROPS
+    assert "confidence" not in PIPELINE_PROPS
 
 
 def test_pipeline_step_props_declare_design_properties() -> None:
@@ -39,7 +53,11 @@ def test_pipeline_step_props_declare_design_properties() -> None:
 
 
 def test_task_pattern_props_declare_design_properties() -> None:
-    assert {"task_type", "n_observations", "confidence"} <= TASK_PATTERN_PROPS
+    # Phase 13 advisory ``task_type`` renamed to ``pattern_name`` per
+    # ADR-0152 §2 schema-v2 expansion; ``n_observations`` +
+    # ``confidence`` (metadata) preserved per ADR-0152 §2.
+    assert {"pattern_name", "n_observations", "confidence"} <= TASK_PATTERN_PROPS
+    assert "task_type" not in TASK_PATTERN_PROPS
 
 
 def test_subgoal_template_props_is_frozenset() -> None:

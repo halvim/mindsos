@@ -64,7 +64,10 @@ def test_adr_0153_amendment_1_present_with_l2schema_placement() -> None:
     assert "### amendment-1 (Phase 43 ship" in body
     assert "L2Schema(Schema) subclass placement" in body
     assert "mindsos_knowledge.schemas._base.L2Schema(Schema)" in body
-    assert "mindsos_core.Schema is unchanged" in body
+    # `mindsos_core.Schema` appears backtick-wrapped in the §am-1 body
+    # — assertion uses the backtick-wrapped form to match the markdown
+    # source literally.
+    assert "`mindsos_core.Schema` is unchanged" in body
 
 
 def test_adrs_151_152_153_status_accepted() -> None:
