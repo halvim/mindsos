@@ -68,6 +68,13 @@ ROLE_EPISODIC_MEMORIES = "episodic_memories"
 ROLE_PROBLEM_TRACE = "problem-trace"
 ROLE_CAPACITY_STATE = "capacity-state"
 
+# Phase 43 (Rail A slot 2) — 4 new role-graphs per ADR-0150 §amendment-5
+# + ADR-0152 §3-§6.
+ROLE_PARAMETER_STAGING = "parameter-staging"
+ROLE_PENDING_PROMOTIONS = "pending-promotions"
+ROLE_CAPACITY_GAPS = "capacity-gaps"
+ROLE_LEARNED_PARAMETERS = "learned-parameters"
+
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
@@ -75,6 +82,11 @@ UPPER_LAYER_ROLES = frozenset({
     ROLE_EPISODIC_MEMORIES,
     ROLE_PROBLEM_TRACE,
     ROLE_CAPACITY_STATE,
+    # Phase 43 additions per ADR-0150 §am-5.
+    ROLE_PARAMETER_STAGING,
+    ROLE_PENDING_PROMOTIONS,
+    ROLE_CAPACITY_GAPS,
+    ROLE_LEARNED_PARAMETERS,
 })
 ALL_ROLES = SEED_ROLES | UPPER_LAYER_ROLES
 
@@ -264,6 +276,63 @@ def capacity_snapshot_iri(
     return f"capacity-state-{v}:snapshot:{uid}:{ci}:{ta}"
 
 
+# Phase 43 (Rail A slot 2) — 4 new upper-layer IRI builders per
+# ADR-0150 §amendment-5 + ADR-0152 §3-§6. Scope routing (Local vs
+# Global) is metagraph-level; IRI shapes here are scope-neutral so the
+# same builder serves both scopes where the role-graph is dual-scope
+# (pending-promotions, learned-parameters).
+
+
+def staged_evidence_iri(version: str, user_id: str, evidence_id: str) -> str:
+    """User staged-evidence (Local-per-user; ADR-0152 §3):
+    ``parameter-staging-<v>:evidence:<user_id>:<evidence_id>``.
+
+    ALS subsystem evidence buffer (D-L2-11). ``user_id`` in IRI per
+    ADR-0044 Local-per-user discipline; charset enforced by
+    ``_ensure_user_id``.
+    """
+    v = _ensure_version(version)
+    uid = _ensure_user_id(user_id)
+    eid = _normalise_fragment(evidence_id)
+    return f"parameter-staging-{v}:evidence:{uid}:{eid}"
+
+
+def pending_promotion_iri(version: str, promotion_id: str) -> str:
+    """Pending-promotion (Local + Global; ADR-0152 §4):
+    ``pending-promotions-<v>:promotion:<promotion_id>``.
+
+    Scope (Local vs Global) is metagraph-level routing, not in the IRI
+    shape. Local-scope writes target the user's Local; Global-scope
+    writes target the Global metagraph.
+    """
+    v = _ensure_version(version)
+    pid = _normalise_fragment(promotion_id)
+    return f"pending-promotions-{v}:promotion:{pid}"
+
+
+def capacity_gap_iri(version: str, gap_id: str) -> str:
+    """Capacity-gap (Global-only; ADR-0152 §5):
+    ``capacity-gaps-<v>:gap:<gap_id>``.
+    """
+    v = _ensure_version(version)
+    gid = _normalise_fragment(gap_id)
+    return f"capacity-gaps-{v}:gap:{gid}"
+
+
+def learned_parameter_iri(version: str, parameter_id: str) -> str:
+    """Learned-parameter (Local + Global; ADR-0152 §6):
+    ``learned-parameters-<v>:parameter:<parameter_id>``.
+
+    Scope (Local with ``mutable_with_retention`` vs Global with
+    ``admin_authored``) is metagraph-level routing, not in the IRI
+    shape. ``LearnedParameter.value`` carries an explicit
+    ``storage_mode`` per ADR-0151 + ADR-0152 §6.
+    """
+    v = _ensure_version(version)
+    pid = _normalise_fragment(parameter_id)
+    return f"learned-parameters-{v}:parameter:{pid}"
+
+
 # ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
 # Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
@@ -314,16 +383,51 @@ def _mint_problem_trace(version: str, /, **content: object) -> str:
     return problem_trace_iri(version, trace_id=str(content["trace_id"]))
 
 
+def _mint_staged_evidence(version: str, /, **content: object) -> str:
+    """Adapter: ``staged_evidence_iri`` ← ``mint_iri`` kwargs (Phase 43)."""
+    return staged_evidence_iri(
+        version,
+        user_id=str(content["user_id"]),
+        evidence_id=str(content["evidence_id"]),
+    )
+
+
+def _mint_pending_promotion(version: str, /, **content: object) -> str:
+    """Adapter: ``pending_promotion_iri`` ← ``mint_iri`` kwargs (Phase 43)."""
+    return pending_promotion_iri(
+        version, promotion_id=str(content["promotion_id"])
+    )
+
+
+def _mint_capacity_gap(version: str, /, **content: object) -> str:
+    """Adapter: ``capacity_gap_iri`` ← ``mint_iri`` kwargs (Phase 43)."""
+    return capacity_gap_iri(version, gap_id=str(content["gap_id"]))
+
+
+def _mint_learned_parameter(version: str, /, **content: object) -> str:
+    """Adapter: ``learned_parameter_iri`` ← ``mint_iri`` kwargs (Phase 43)."""
+    return learned_parameter_iri(
+        version, parameter_id=str(content["parameter_id"])
+    )
+
+
 #: Per-(role, NodeType_name) IRI-builder dispatch table for
 #: :meth:`KLWriteHandle.mint_iri`. Phase 39 ships 3 entries per
 #: ADR-0146 §amendment-3 (Episode + Memory composite under
 #: ``ROLE_EPISODIC_MEMORIES``; ProblemTraceEntry under
-#: ``ROLE_PROBLEM_TRACE``); per-flow build adds entries as new write
-#: capacities land.
+#: ``ROLE_PROBLEM_TRACE``); Phase 43 adds 4 entries for the 4 new
+#: role-graphs per ADR-0150 §amendment-5 (StagedEvidence,
+#: PendingPromotion, CapacityGap, LearnedParameter); per-flow build
+#: adds entries as new write capacities land.
 _IRI_BUILDERS: dict[tuple[str, str], object] = {
     (ROLE_EPISODIC_MEMORIES, "Episode"): _mint_episode,
     (ROLE_EPISODIC_MEMORIES, "Memory"): _mint_memory_composite,
     (ROLE_PROBLEM_TRACE, "ProblemTraceEntry"): _mint_problem_trace,
+    # Phase 43 additions per ADR-0150 §am-5.
+    (ROLE_PARAMETER_STAGING, "StagedEvidence"): _mint_staged_evidence,
+    (ROLE_PENDING_PROMOTIONS, "PendingPromotion"): _mint_pending_promotion,
+    (ROLE_CAPACITY_GAPS, "CapacityGap"): _mint_capacity_gap,
+    (ROLE_LEARNED_PARAMETERS, "LearnedParameter"): _mint_learned_parameter,
 }
 
 
@@ -360,6 +464,11 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("episodic-memories-", ROLE_EPISODIC_MEMORIES),
     ("problem-trace-", ROLE_PROBLEM_TRACE),
     ("capacity-state-", ROLE_CAPACITY_STATE),
+    # Phase 43 additions per ADR-0150 §am-5.
+    ("parameter-staging-", ROLE_PARAMETER_STAGING),
+    ("pending-promotions-", ROLE_PENDING_PROMOTIONS),
+    ("capacity-gaps-", ROLE_CAPACITY_GAPS),
+    ("learned-parameters-", ROLE_LEARNED_PARAMETERS),
 )
 
 # Per-role kind-extraction whitelist. The parser strips the kind
@@ -374,6 +483,11 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_EPISODIC_MEMORIES: frozenset({"episode", "memory"}),
     ROLE_PROBLEM_TRACE: frozenset({"entry"}),
     ROLE_CAPACITY_STATE: frozenset({"snapshot"}),
+    # Phase 43 additions per ADR-0150 §am-5.
+    ROLE_PARAMETER_STAGING: frozenset({"evidence"}),
+    ROLE_PENDING_PROMOTIONS: frozenset({"promotion"}),
+    ROLE_CAPACITY_GAPS: frozenset({"gap"}),
+    ROLE_LEARNED_PARAMETERS: frozenset({"parameter"}),
 }
 
 

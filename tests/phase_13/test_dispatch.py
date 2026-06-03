@@ -11,11 +11,15 @@ import pytest
 from mindsos_core import Schema
 
 from mindsos_knowledge import (
+    ROLE_CAPACITY_GAPS,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_EPISODIC_MEMORIES,
+    ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
+    ROLE_PARAMETER_STAGING,
+    ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
@@ -34,6 +38,11 @@ _ALL_NAMED_ROLES = (
     ROLE_EPISODIC_MEMORIES,
     ROLE_PROBLEM_TRACE,
     ROLE_CAPACITY_STATE,
+    # Phase 43 additions per ADR-0150 §am-5.
+    ROLE_PARAMETER_STAGING,
+    ROLE_PENDING_PROMOTIONS,
+    ROLE_CAPACITY_GAPS,
+    ROLE_LEARNED_PARAMETERS,
 )
 
 
@@ -71,7 +80,10 @@ def test_unknown_role_raises_unknown_role_error() -> None:
 def test_dispatch_table_size_equals_named_role_count() -> None:
     # Closure sentinel — Phase 14+ adding a role must extend the table.
     # Alignment is NOT in the dispatch dict (prefix-keyed, not name-keyed).
-    assert len(_ROLE_SCHEMA_BUILDERS) == 8
+    # Phase 43 PR2 commit 1 expanded the closed role-set from 8 to 12 per
+    # ADR-0150 §amendment-5 (parameter-staging, pending-promotions,
+    # capacity-gaps, learned-parameters).
+    assert len(_ROLE_SCHEMA_BUILDERS) == 12
 
 
 def test_dispatch_table_keys_equal_named_roles() -> None:

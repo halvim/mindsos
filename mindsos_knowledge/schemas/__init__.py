@@ -35,21 +35,29 @@ from ._base import Discipline, L2Schema, StorageMode
 from ..exceptions import UnknownRoleError
 from ..identifiers import (
     ALL_ROLES,
+    ROLE_CAPACITY_GAPS,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_EPISODIC_MEMORIES,
+    ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
+    ROLE_PARAMETER_STAGING,
+    ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
 )
 from .alignment import build_alignment_schema
+from .capacity_gaps import build_capacity_gaps_schema
 from .capacity_state import build_capacity_state_schema
 from .concepts import build_concepts_schema
 from .lexicon import build_lexicon_schema
 from .episodic_memories import build_episodic_memories_schema
+from .learned_parameters import build_learned_parameters_schema
 from .ontology import build_ontology_schema
+from .parameter_staging import build_parameter_staging_schema
+from .pending_promotions import build_pending_promotions_schema
 from .problem_trace import build_problem_trace_schema
 from .promoted_pipelines import build_promoted_pipelines_schema
 from .task_patterns import build_task_patterns_schema
@@ -69,6 +77,11 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     ROLE_EPISODIC_MEMORIES: build_episodic_memories_schema,
     ROLE_PROBLEM_TRACE: build_problem_trace_schema,
     ROLE_CAPACITY_STATE: build_capacity_state_schema,
+    # Phase 43 additions per ADR-0150 §am-5.
+    ROLE_PARAMETER_STAGING: build_parameter_staging_schema,
+    ROLE_PENDING_PROMOTIONS: build_pending_promotions_schema,
+    ROLE_CAPACITY_GAPS: build_capacity_gaps_schema,
+    ROLE_LEARNED_PARAMETERS: build_learned_parameters_schema,
 }
 
 
@@ -116,6 +129,11 @@ __all__ = [
     "build_episodic_memories_schema",
     "build_problem_trace_schema",
     "build_capacity_state_schema",
+    # Phase 43 builders (ADR-0150 §am-5).
+    "build_parameter_staging_schema",
+    "build_pending_promotions_schema",
+    "build_capacity_gaps_schema",
+    "build_learned_parameters_schema",
     # Dispatch surface.
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",
