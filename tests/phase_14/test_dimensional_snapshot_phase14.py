@@ -8,9 +8,9 @@ Bootstrapped KL shape:
 
 * Global: 6 role-graphs (ontology, lexicon, concepts,
   promoted-pipelines, task-patterns, problem-trace). No alignment.
-  No memories, no capacity-state.
-* Per Local (lazy or installed): 2 role-graphs (memories,
-  capacity-state).
+  No episodic_memories, no capacity-state.
+* Per Local (lazy or installed): 2 role-graphs (episodic_memories,
+  capacity-state; Phase 39 rename per ADR-0044 §am-3).
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from mindsos_knowledge import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -40,7 +40,7 @@ _EXPECTED_BOOTSTRAP_GLOBAL_ROLES = {
 }
 
 _EXPECTED_LAZY_LOCAL_ROLES = {
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_CAPACITY_STATE,
 }
 

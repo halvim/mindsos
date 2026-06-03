@@ -6,7 +6,7 @@ import pytest
 
 from mindsos_core import Graph
 from mindsos_knowledge import KLWriteHandle, KnowledgeLayer
-from mindsos_knowledge.identifiers import ROLE_MEMORIES, ROLE_PROBLEM_TRACE
+from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES, ROLE_PROBLEM_TRACE
 
 from tests.phase_34._fixtures import build_admin_session
 
@@ -20,13 +20,13 @@ def test_graph_returns_real_l1_graph_for_problem_trace_role():
     assert g.role == ROLE_PROBLEM_TRACE
 
 
-def test_graph_returns_real_l1_graph_for_memories_role():
+def test_graph_returns_real_l1_graph_for_episodic_memories_role():
     kl = KnowledgeLayer.bootstrap()
     sess = build_admin_session("alice")
-    handle = kl.writeable(sess, role=ROLE_MEMORIES, scope="local")
+    handle = kl.writeable(sess, role=ROLE_EPISODIC_MEMORIES, scope="local")
     g = handle.graph()
     assert isinstance(g, Graph)
-    assert g.role == ROLE_MEMORIES
+    assert g.role == ROLE_EPISODIC_MEMORIES
 
 
 def test_graph_raises_keyerror_when_role_absent_from_metagraph():

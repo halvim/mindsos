@@ -27,12 +27,14 @@ source can coexist in one Global Metagraph. Examples:
 | `oewn_synset_iri("2024", "01234567", "n")` | `oewn-2024:synset:01234567-n` |
 | `framenet_frame_iri("1.7", "139")` | `framenet-1.7:frame:139` |
 | `pipeline_iri("1", "abc")` | `promoted-pipelines-1:pipeline:abc` |
-| `memory_iri("1", "alice", "m-001")` | `memories-1:memory:alice:m-001` |
+| `episode_iri("1", "alice", "e-001")` | `episodic-memories-1:episode:alice:e-001` |
+| `memory_composite_iri("1", "alice", "m-001")` | `episodic-memories-1:memory:alice:m-001` |
 | `capacity_snapshot_iri("1", "u", "capacity:cat:n", "2026-05-16")` | `capacity-state-1:snapshot:u:capacity:cat:n:2026-05-16` |
 
 `alignment_role(role_a, role_b)` is the only non-IRI helper — it
-returns a **graph name** like `alignment:lexicon<->concepts`. The
-parser rejects it.
+returns a **graph name** like `alignment:concepts:lexicon` (sorted
+role atoms separated by `:` per ADR-0154 + L2_CHAT_DECISIONS D-L2-1;
+Phase 39 L2-35 reconciliation). The parser rejects it.
 
 ## Roles
 
@@ -43,7 +45,7 @@ parser rejects it.
 | `concepts` | `ROLE_CONCEPTS` | seed | `framenet-` |
 | `promoted-pipelines` | `ROLE_PROMOTED_PIPELINES` | upper | `promoted-pipelines-` |
 | `task-patterns` | `ROLE_TASK_PATTERNS` | upper | `task-patterns-` |
-| `memories` | `ROLE_MEMORIES` | upper | `memories-` |
+| `episodic_memories` | `ROLE_EPISODIC_MEMORIES` | upper | `episodic-memories-` |
 | `problem-trace` | `ROLE_PROBLEM_TRACE` | upper | `problem-trace-` |
 | `capacity-state` | `ROLE_CAPACITY_STATE` | upper | `capacity-state-` |
 
@@ -52,7 +54,7 @@ Three frozensets group the roles:
 ```python
 SEED_ROLES        = {ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS}
 UPPER_LAYER_ROLES = {ROLE_PROMOTED_PIPELINES, ROLE_TASK_PATTERNS,
-                     ROLE_MEMORIES, ROLE_PROBLEM_TRACE,
+                     ROLE_EPISODIC_MEMORIES, ROLE_PROBLEM_TRACE,
                      ROLE_CAPACITY_STATE}
 ALL_ROLES         = SEED_ROLES | UPPER_LAYER_ROLES
 ```

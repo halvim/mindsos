@@ -111,11 +111,11 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 39 — L2 `memories` → `episodic_memories` atomic rename
 
-  **Status:** Pending
-  **Branch:** phase-39
+  **Status:** SHIPPED 2026-06-02
+  **Branch:** phase-39 (squash-merged to main)
   **Tag on confirm:** phase-39-confirmed
   **Rail:** A
-  **Depends on:** 38 (Phase 38 confirmed); pre-Phase-39 Stream A prereqs (`release.yml` retention amendment per PB-R landed).
+  **Depends on:** 38 (Phase 38 confirmed); pre-Phase-39 Stream A prereqs (`release.yml` retention amendment per PB-R landed). All satisfied at A0+A9+A1 closure 2026-06-02.
   **Layer(s):** L2 (rename touches L0/L1/L3 via consumers).
   **Net-new code?:** Yes — `tools/rename_memories_to_episodic_memories.py` migration script (~30 LOC; no-op on empty v1 state; ships per PB-X for dev-env safety).
 

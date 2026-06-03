@@ -1,10 +1,14 @@
 """Stable-IRI identifiers for L2 Knowledge content.
 
 Port of the v3 ``mindsos_knowledge/identifiers.py`` (seed roles
-DOLCE / OEWN / FrameNet) **extended** with the 7 upper-layer builders
-declared by ADR-0045 (pipelines, task-patterns, memories,
-problem-trace, capacity-state). Together this module ships the full
-14-builder surface ADR-0045 names.
+DOLCE / OEWN / FrameNet) **extended** with upper-layer builders
+declared by ADR-0045 (pipelines, task-patterns, episodic-memories,
+problem-trace, capacity-state). Together this module ships the
+upper-layer builder surface ADR-0045 names. Per ADR-0044
+§amendment-3 + ADR-0150 §amendment-4 + ADR-0146 §amendment-3
+(Phase 39), the pre-rename single upper-layer memory builder was
+split into two minters (``episode_iri`` + ``memory_composite_iri``)
+under multi-NodeType dispatch.
 
 Layout:
 
@@ -32,8 +36,9 @@ is deferred to the consumer phase (see ``__init__.py`` docstring).
 holds.
 
 ``user_id`` charset per PB-11 + ADR-0044 §amendment-1 is
-``^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$``. Enforced in ``memory_iri`` and
-``capacity_snapshot_iri``; raises ``RefFormatError`` on violation.
+``^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$``. Enforced in ``episode_iri``,
+``memory_composite_iri``, and ``capacity_snapshot_iri``; raises
+``RefFormatError`` on violation.
 """
 
 from __future__ import annotations
@@ -53,11 +58,13 @@ ROLE_ONTOLOGY = "ontology"
 ROLE_LEXICON = "lexicon"
 ROLE_CONCEPTS = "concepts"
 
-# Upper-layer roles — ADR-0045 + ADR-0044 (memories) + ADR-0066/0072
-# (capacity-state / problem-trace) + Phase 12 PB-9 lock.
+# Upper-layer roles — ADR-0045 + ADR-0044 (episodic-memories) +
+# ADR-0066/0072 (capacity-state / problem-trace) + Phase 12 PB-9 lock.
+# Phase 39 rename: ``memories`` → ``episodic_memories`` per ADR-0044
+# §amendment-3 + ADR-0150 §amendment-4.
 ROLE_PROMOTED_PIPELINES = "promoted-pipelines"
 ROLE_TASK_PATTERNS = "task-patterns"
-ROLE_MEMORIES = "memories"
+ROLE_EPISODIC_MEMORIES = "episodic_memories"
 ROLE_PROBLEM_TRACE = "problem-trace"
 ROLE_CAPACITY_STATE = "capacity-state"
 
@@ -65,7 +72,7 @@ SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_PROBLEM_TRACE,
     ROLE_CAPACITY_STATE,
 })
@@ -201,17 +208,32 @@ def subgoal_template_iri(version: str, pattern_id: str, subgoal_id: str) -> str:
     return f"task-patterns-{v}:subgoal:{pid}:{sid}"
 
 
-def memory_iri(version: str, user_id: str, memory_id: str) -> str:
-    """User memory (Local-per-user, ADR-0044):
-    ``memories-<v>:memory:<user_id>:<memory_id>``.
+def episode_iri(version: str, user_id: str, episode_id: str) -> str:
+    """User episode (Local-per-user, ADR-0044 §am-3):
+    ``episodic-memories-<v>:episode:<user_id>:<episode_id>``.
 
-    ``user_id`` is part of the IRI per ADR-0044; charset enforced by
-    `_ensure_user_id` per ADR-0044 §amendment-1.
+    Per-task entry per Chat B D-B47 + L5 design notes §4.3. ``user_id``
+    is part of the IRI per ADR-0044; charset enforced by
+    `_ensure_user_id` per ADR-0044 §amendment-1 (unchanged at §am-3).
+    """
+    v = _ensure_version(version)
+    uid = _ensure_user_id(user_id)
+    eid = _normalise_fragment(episode_id)
+    return f"episodic-memories-{v}:episode:{uid}:{eid}"
+
+
+def memory_composite_iri(version: str, user_id: str, memory_id: str) -> str:
+    """User memory-as-clustering-composite (Local-per-user, ADR-0044 §am-3):
+    ``episodic-memories-<v>:memory:<user_id>:<memory_id>``.
+
+    Clustering composite over Episodes, keyed by ``task_pattern_iri``
+    per Chat B D-B47 + L5 design notes §4.6. ``user_id`` charset
+    enforced by `_ensure_user_id` per ADR-0044 §amendment-1.
     """
     v = _ensure_version(version)
     uid = _ensure_user_id(user_id)
     mid = _normalise_fragment(memory_id)
-    return f"memories-{v}:memory:{uid}:{mid}"
+    return f"episodic-memories-{v}:memory:{uid}:{mid}"
 
 
 def problem_trace_iri(version: str, trace_id: str) -> str:
@@ -242,26 +264,42 @@ def capacity_snapshot_iri(
     return f"capacity-state-{v}:snapshot:{uid}:{ci}:{ta}"
 
 
-# ── §4b Per-role IRI-builder registry (Phase 34; ADR-0146 + ADR-0143) ─
+# ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
-# Minimal 2-entry registry per Phase 34 R1 PB-B (per-flow build discipline):
-# only roles with shipped write capacities have entries. Phase 35+ adds
-# entries alongside their capacities (capacity:promote:pipeline etc.).
+# Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
+# by ``(role, NodeType_name)`` so a role hosting multiple NodeTypes
+# (e.g., ``episodic_memories`` → Episode + Memory) can dispatch a
+# distinct minter per NodeType. Phase 33/34 single-minter shape
+# (``Dict[role, minter]``) retired by the rename event.
 #
 # Each value is a wrapper that adapts a role-specific positional builder
-# (e.g., ``memory_iri(version, user_id, memory_id)``) to a uniform
+# (e.g., ``episode_iri(version, user_id, episode_id)``) to a uniform
 # ``(version, /, **content) -> str`` signature so ``KLWriteHandle.mint_iri``
-# can dispatch by role uniformly. Missing kwargs surface as ``KeyError``
-# per Phase 34 R1 PB-I (ADR-0146 §Decision "programmer error → propagate").
+# can dispatch by ``(role, type_)`` uniformly. Missing kwargs surface as
+# ``KeyError`` per Phase 34 R1 PB-I (ADR-0146 §Decision "programmer
+# error → propagate").
 
 
-def _mint_memory(version: str, /, **content: object) -> str:
-    """Adapter: ``memory_iri(version, user_id, memory_id)`` ← ``mint_iri`` kwargs.
+def _mint_episode(version: str, /, **content: object) -> str:
+    """Adapter: ``episode_iri(version, user_id, episode_id)`` ← ``mint_iri`` kwargs.
 
-    Requires ``user_id`` + ``memory_id`` keys in ``content``. ``KeyError``
-    on missing per ADR-0146 §Decision (programmer error).
+    Requires ``user_id`` + ``episode_id`` keys in ``content``.
+    ``KeyError`` on missing per ADR-0146 §Decision (programmer error).
     """
-    return memory_iri(
+    return episode_iri(
+        version,
+        user_id=str(content["user_id"]),
+        episode_id=str(content["episode_id"]),
+    )
+
+
+def _mint_memory_composite(version: str, /, **content: object) -> str:
+    """Adapter: ``memory_composite_iri(version, user_id, memory_id)`` ← ``mint_iri`` kwargs.
+
+    Requires ``user_id`` + ``memory_id`` keys in ``content``.
+    ``KeyError`` on missing per ADR-0146 §Decision (programmer error).
+    """
+    return memory_composite_iri(
         version,
         user_id=str(content["user_id"]),
         memory_id=str(content["memory_id"]),
@@ -276,12 +314,16 @@ def _mint_problem_trace(version: str, /, **content: object) -> str:
     return problem_trace_iri(version, trace_id=str(content["trace_id"]))
 
 
-#: Per-role IRI-builder dispatch table for :meth:`KLWriteHandle.mint_iri`.
-#: Phase 34 ships 2 entries (the 2 shipped write capacities); per-flow
-#: build adds entries as new write capacities land.
-_IRI_BUILDERS: dict[str, object] = {
-    ROLE_MEMORIES: _mint_memory,
-    ROLE_PROBLEM_TRACE: _mint_problem_trace,
+#: Per-(role, NodeType_name) IRI-builder dispatch table for
+#: :meth:`KLWriteHandle.mint_iri`. Phase 39 ships 3 entries per
+#: ADR-0146 §amendment-3 (Episode + Memory composite under
+#: ``ROLE_EPISODIC_MEMORIES``; ProblemTraceEntry under
+#: ``ROLE_PROBLEM_TRACE``); per-flow build adds entries as new write
+#: capacities land.
+_IRI_BUILDERS: dict[tuple[str, str], object] = {
+    (ROLE_EPISODIC_MEMORIES, "Episode"): _mint_episode,
+    (ROLE_EPISODIC_MEMORIES, "Memory"): _mint_memory_composite,
+    (ROLE_PROBLEM_TRACE, "ProblemTraceEntry"): _mint_problem_trace,
 }
 
 
@@ -294,13 +336,15 @@ def alignment_role(role_a: str, role_b: str) -> str:
     The two roles are sorted so ``alignment_role("lexicon", "concepts")``
     and ``alignment_role("concepts", "lexicon")`` return the same string.
 
-    Returns: ``"alignment:<a>-<b>"`` where ``<a>`` and ``<b>`` are the
-    sorted role names. NOT a version-qualified IRI per PB-4 lock —
-    this is a **graph name** used for metagraph routing, not a
-    node IRI; ``parse_iri()`` will reject it.
+    Returns: ``"alignment:<a>:<b>"`` where ``<a>`` and ``<b>`` are the
+    sorted role names (canonical form per ADR-0154 + L2_CHAT_DECISIONS
+    D-L2-1; Phase 39 L2-35 reconciliation locks ``:`` as the
+    separator between sorted role atoms). NOT a version-qualified
+    IRI per PB-4 lock — this is a **graph name** used for metagraph
+    routing, not a node IRI; ``parse_iri()`` will reject it.
     """
     a, b = sorted((role_a, role_b))
-    return f"alignment:{a}<->{b}"
+    return f"alignment:{a}:{b}"
 
 
 # ── §6 Source prefix table + parser ────────────────────────────────────
@@ -313,7 +357,7 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("framenet-", ROLE_CONCEPTS),
     ("promoted-pipelines-", ROLE_PROMOTED_PIPELINES),
     ("task-patterns-", ROLE_TASK_PATTERNS),
-    ("memories-", ROLE_MEMORIES),
+    ("episodic-memories-", ROLE_EPISODIC_MEMORIES),
     ("problem-trace-", ROLE_PROBLEM_TRACE),
     ("capacity-state-", ROLE_CAPACITY_STATE),
 )
@@ -327,7 +371,7 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_CONCEPTS: frozenset({"frame", "lu", "fe"}),
     ROLE_PROMOTED_PIPELINES: frozenset({"pipeline", "step"}),
     ROLE_TASK_PATTERNS: frozenset({"pattern", "subgoal"}),
-    ROLE_MEMORIES: frozenset({"memory"}),
+    ROLE_EPISODIC_MEMORIES: frozenset({"episode", "memory"}),
     ROLE_PROBLEM_TRACE: frozenset({"entry"}),
     ROLE_CAPACITY_STATE: frozenset({"snapshot"}),
 }
@@ -350,7 +394,7 @@ def parse_iri(iri: object) -> ParsedIri:
 
     Raises :class:`RefFormatError` on any shape that doesn't match the
     version-qualified convention. A bare fragment (e.g. ``PhysicalObject``
-    with no prefix), an alignment graph-name (``alignment:lex<->con``),
+    with no prefix), an alignment graph-name (``alignment:lex:con``),
     or a non-string input is invalid.
     """
     if not isinstance(iri, str) or ":" not in iri:

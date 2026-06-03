@@ -125,6 +125,7 @@ The risk in B is accretion: methods get added that do half the mutation. The han
 - Validator composition: handle methods compose `mindsos_knowledge/validators.py` functions per role.
 - `docs/dev/internals/knowledge.md` documents the "never mutates" rule.
 - ADR moves to Accepted when (a) `KLWriteHandle` ships, (b) at least two L3 write capacities use it, (c) the "never mutates" rule is in the code review checklist (`docs/dev/review-checklist.md`).
+- ADR-0146 §amendment-3 (Phase 39 ship — 2026-06-XX) — `KLWriteHandle.mint_iri` signature evolved to `mint_iri(self, type_: str, **content) -> str` and `_IRI_BUILDERS` registry shape evolved to `(role, NodeType_name) → minter` tuple-key. Handle pattern + Surface + Constraint defined in this ADR are unchanged; signature evolution is a registry-dispatch change, not a handle-pattern change.
 
 ## §Implementation (Phase 33 — stub-only; halvim, 2026-05-26)
 

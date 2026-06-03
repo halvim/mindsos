@@ -37,7 +37,7 @@ The following items appeared in early Stream A drafts but moved out per Chat C R
 
 - **PHASE_38 §4 #2 (Falkor-backed L3 bootstrap + state-file serialization)** — moved to Phase 44 (L0 substrate ~80-120 LOC; not bug-fix-shape). Per R3 PB-U.
 - **PHASE_38 §4 #3 (FalkorDBLocalPersister)** — moved to Phase 44 (L0 substrate ~200-400 LOC + Cypher contracts + ADR). Per R3 PB-U.
-- **L2-35 alignment shipped-code reconciliation** (`identifiers.py:303` body + docstring + Phase 36 test) — moved to Phase 39 scope (bundled with rename PR; saves one merge + one tester pass). Per R6 IL-7.
+- **L2-35 alignment shipped-code reconciliation** — **CLOSED — shipped Phase 39 (2026-06-02)** (bundled with the rename PR per R6 IL-7). `identifiers.py:303` body + lines 297/353 docstrings + `tests/phase_36/test_validators.py` body all advanced to `:` separator per ADR-0154 + L2_CHAT_DECISIONS D-L2-1.
 
 ## Items that were RETIRED from any backlog
 

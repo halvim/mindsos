@@ -18,11 +18,13 @@ a :class:`WriteResult`).
   :class:`KeyError` if no role-graph is present (programmer error per
   ADR-0146 §Decision — capacity asked for a role the metagraph wasn't
   bootstrapped with).
-- ``mint_iri(**content)`` — dispatches via ``_IRI_BUILDERS`` registry
-  (per Phase 34 R1 PB-B; minimal 2-entry). The handle's ``_version``
-  literal threads in; ``content`` kwargs flow to the role-specific
-  builder. Missing kwargs surface as ``KeyError`` per ADR-0146 §Decision
-  ("programmer error → propagate").
+- ``mint_iri(type_, **content)`` — dispatches via ``_IRI_BUILDERS``
+  registry keyed by ``(role, NodeType_name)`` per ADR-0146
+  §amendment-3 (Phase 39 multi-NodeType dispatch). The handle's
+  ``_version`` literal threads in; ``content`` kwargs flow to the
+  role+NodeType-specific builder. Missing kwargs surface as
+  ``KeyError`` per ADR-0146 §Decision ("programmer error →
+  propagate").
 - ``write_and_validate(*, value, type_, **mint_content)`` — composite
   that mints an IRI, calls ``self.graph().add_node(...)``, returns
   :class:`WriteResult` on success. L1 raises (``UnknownTypeError``,
@@ -39,9 +41,12 @@ a :class:`WriteResult`).
 
 - ``validate_node(*, value, type_, **refs)`` — wired. Dispatches via
   :data:`mindsos_knowledge.validators._VALIDATORS_BY_ROLE` (per-role
-  adapter registry, mirroring ``_IRI_BUILDERS`` shape per R3-PB-A).
-  Returns :class:`ValidationResult`. Phase 36 ships 2 adapter entries
-  (``memories`` + ``problem-trace``); roles without an adapter raise
+  adapter registry; per-role-only dispatch — distinct from Phase 39
+  ``_IRI_BUILDERS`` tuple-key shape since validator dispatch is
+  per-role-only per ADR-0139 §amendment-1 unchanged).
+  Returns :class:`ValidationResult`. Phase 39 ships 2 adapter entries
+  (``episodic_memories`` + ``problem-trace``); roles without an
+  adapter raise
   :class:`WriteHandleNotWiredError` per the per-flow extension
   pattern (ADR-0139 §amendment-1 clause 3 carry-forward).
 - ``validate_xref(...)`` — STAYS raising
@@ -85,7 +90,7 @@ class KLWriteHandle:
 
     Attributes:
         role: The role-graph role this handle writes to (e.g.,
-            ``"memories"`` for ``capacity:consolidate:mm``;
+            ``"episodic_memories"`` for ``capacity:consolidate:mm``;
             ``"problem-trace"`` for ``capacity:trace:problem``).
         scope: ``'local'`` (per-user) or ``'global'`` (shared).
         session: Bearer of capability + user identity. ``None`` is
@@ -148,38 +153,48 @@ class KLWriteHandle:
             f"Bootstrap the role-graph before constructing the handle."
         )
 
-    def mint_iri(self, **content: Any) -> str:
-        """Mint a stable IRI per the role's IRI builder.
+    def mint_iri(self, type_: str, **content: Any) -> str:
+        """Mint a stable IRI per the (role, NodeType) IRI builder.
 
-        Phase 34 body (ADR-0146 §Implementation + R1 PB-B): dispatches
-        via the ``_IRI_BUILDERS`` registry in
-        ``mindsos_knowledge/identifiers.py``. Threads the handle's
-        ``_version`` literal as the first positional arg; ``content``
-        kwargs flow to the role-specific builder wrapper.
+        Phase 39 body (ADR-0146 §amendment-3): dispatches via the
+        ``_IRI_BUILDERS`` registry in
+        ``mindsos_knowledge/identifiers.py``, keyed by
+        ``(self.role, type_)``. Threads the handle's ``_version``
+        literal as the first positional arg; ``content`` kwargs flow
+        to the role+NodeType-specific builder wrapper.
 
-        Required ``content`` keys per role:
+        Required ``content`` keys per (role, NodeType):
 
-        * ``memories`` — ``user_id`` + ``memory_id``
-        * ``problem-trace`` — ``trace_id``
+        * ``(episodic_memories, Episode)`` — ``user_id`` + ``episode_id``
+        * ``(episodic_memories, Memory)`` — ``user_id`` + ``memory_id``
+        * ``(problem-trace, ProblemTraceEntry)`` — ``trace_id``
 
         Missing keys raise :class:`KeyError` per ADR-0146 §Decision
-        (programmer error). Unsupported roles raise :class:`KeyError`
-        from the registry lookup.
+        (programmer error). Unsupported ``(role, type_)`` pairs raise
+        :class:`KeyError` from the registry lookup.
+
+        Args:
+            type_: NodeType name (L2 convention; e.g., ``"Episode"`` or
+                ``"Memory"`` or ``"ProblemTraceEntry"``). Forwarded to
+                the registry lookup as the second key component.
+            **content: Per-(role, NodeType) kwargs forwarded to the
+                role+NodeType-specific builder wrapper.
 
         Raises:
-            KeyError: ``self.role`` not in ``_IRI_BUILDERS`` OR required
-                content kwargs missing.
+            KeyError: ``(self.role, type_)`` not in ``_IRI_BUILDERS``
+                OR required content kwargs missing.
             RefFormatError: content values fail the IRI charset/format
                 validation (raised by the underlying builder).
         """
         try:
-            builder = _IRI_BUILDERS[self.role]
+            builder = _IRI_BUILDERS[(self.role, type_)]
         except KeyError as exc:
             raise KeyError(
-                f"KLWriteHandle.mint_iri(role={self.role!r}): no IRI builder "
-                f"registered for role. Phase 34 supports "
-                f"{sorted(_IRI_BUILDERS.keys())!r}; per-flow add the role's "
-                f"builder when the capacity lands (ADR-0147)."
+                f"KLWriteHandle.mint_iri(role={self.role!r}, type_={type_!r}): "
+                f"no IRI builder registered for (role, NodeType). Phase 39 "
+                f"supports {sorted(_IRI_BUILDERS.keys())!r}; per-flow add "
+                f"the (role, NodeType) pair's builder when the capacity "
+                f"lands (ADR-0146 §amendment-3 + ADR-0147)."
             ) from exc
         return builder(self._version, **content)  # type: ignore[operator]
 
@@ -214,11 +229,14 @@ class KLWriteHandle:
         Args:
             value: Primary node value passed to ``add_node`` as ``value=``.
             type_: NodeType name (L2 convention); translated to L1's
-                ``type_name`` kwarg at the call site. Phase 13 schema
-                whitelists: ``"Memory"`` (memories role) or
-                ``"ProblemTraceEntry"`` (problem-trace role).
-            **mint_content: Per-role kwargs forwarded to :meth:`mint_iri`
-                (e.g., ``user_id`` + ``memory_id`` for memories).
+                ``type_name`` kwarg at the call site, and forwarded to
+                :meth:`mint_iri` as the registry-dispatch key per
+                ADR-0146 §amendment-3. Phase 39 schema whitelists:
+                ``"Episode"`` or ``"Memory"`` (episodic_memories role)
+                or ``"ProblemTraceEntry"`` (problem-trace role).
+            **mint_content: Per-(role, NodeType) kwargs forwarded to
+                :meth:`mint_iri` (e.g., ``user_id`` + ``episode_id``
+                for Episode; ``user_id`` + ``memory_id`` for Memory).
 
         Returns:
             :class:`WriteResult` with ``iri`` (minted), ``role`` /
@@ -231,7 +249,7 @@ class KLWriteHandle:
             RefFormatError: L1 add_node validation errors; propagate
                 per ADR-0146 §Decision.
         """
-        iri = self.mint_iri(**mint_content)
+        iri = self.mint_iri(type_, **mint_content)
         # L1 ``add_node`` signature: (value, type_name, *, properties=None,
         # node_id=None, _validate=True). L2 convention exposes ``type_``;
         # translate at the boundary per Phase 34 R4 §am-impl-1.
@@ -262,8 +280,9 @@ class KLWriteHandle:
         failure-wins per R3-PB-I; Phase 36 chains are single-validator
         so the semantic reduces to "the one validator's result").
 
-        Phase 36 ships 2 adapter entries — ``memories`` +
-        ``problem-trace`` (the 2 shipped write capacities' roles).
+        Phase 39 ships 2 adapter entries — ``episodic_memories`` +
+        ``problem-trace`` (the 2 shipped write capacities' roles; per
+        ADR-0044 §amendment-3 rename).
         Roles without a registered adapter raise
         :class:`WriteHandleNotWiredError` per the per-flow extension
         discipline (ADR-0139 §amendment-1 clause 3 carry-forward; new

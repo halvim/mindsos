@@ -32,16 +32,16 @@ list on usage error. Exit codes:
 Decompose a version-qualified IRI:
 
 ```bash
-mindsos knowledge iri parse memories-1:memory:alice:m-001 --json
+mindsos knowledge iri parse episodic-memories-1:memory:alice:m-001 --json
 ```
 
 Output (JSON):
 
 ```json
 {
-  "full":    "memories-1:memory:alice:m-001",
-  "role":    "memories",
-  "source":  "memories",
+  "full":    "episodic-memories-1:memory:alice:m-001",
+  "role":    "episodic_memories",
+  "source":  "episodic-memories",
   "version": "1",
   "kind":    "memory",
   "body":    "alice:m-001"

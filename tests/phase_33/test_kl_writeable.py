@@ -6,7 +6,7 @@ import pytest
 
 from mindsos_capacity import WriteHandleNotWiredError
 from mindsos_knowledge import KLWriteHandle, KnowledgeLayer
-from mindsos_knowledge.identifiers import ROLE_MEMORIES, ROLE_PROBLEM_TRACE
+from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES, ROLE_PROBLEM_TRACE
 from tests.phase_33._fixtures import build_session_with_caps
 
 
@@ -28,21 +28,21 @@ def test_writeable_global_session_none_returns_handle():
 
 def test_writeable_local_with_session_returns_handle():
     sess = build_session_with_caps("alice", frozenset({"CAN_WRITE_GLOBAL"}))
-    h = _kl().writeable(sess, ROLE_MEMORIES, "local")
+    h = _kl().writeable(sess, ROLE_EPISODIC_MEMORIES, "local")
     assert isinstance(h, KLWriteHandle)
-    assert h.role == ROLE_MEMORIES
+    assert h.role == ROLE_EPISODIC_MEMORIES
     assert h.scope == "local"
     assert h.session is sess
 
 
 def test_writeable_local_session_none_raises_value_error():
     with pytest.raises(ValueError, match="requires a session"):
-        _kl().writeable(None, ROLE_MEMORIES, "local")
+        _kl().writeable(None, ROLE_EPISODIC_MEMORIES, "local")
 
 
 def test_writeable_bad_scope_raises_value_error():
     with pytest.raises(ValueError, match="scope must be"):
-        _kl().writeable(None, ROLE_MEMORIES, "cloud")
+        _kl().writeable(None, ROLE_EPISODIC_MEMORIES, "cloud")
 
 
 # ── KLWriteHandle method stub behavior ────────────────────────────────
@@ -63,10 +63,10 @@ def test_handle_metagraph_returns_real_metagraph_local():
     from mindsos_core import Metagraph
 
     sess = build_session_with_caps("bob", frozenset())
-    h = _kl().writeable(sess, ROLE_MEMORIES, "local")
+    h = _kl().writeable(sess, ROLE_EPISODIC_MEMORIES, "local")
     mg = h.metagraph()
     assert isinstance(mg, Metagraph)
-    assert ROLE_MEMORIES in {g.role for g in mg.graphs.values()}
+    assert ROLE_EPISODIC_MEMORIES in {g.role for g in mg.graphs.values()}
 
 
 def test_handle_graph_returns_real_graph_at_phase_34():
@@ -83,9 +83,10 @@ def test_handle_graph_returns_real_graph_at_phase_34():
 
 def test_handle_mint_iri_returns_iri_at_phase_34():
     """Phase 34 REPURPOSE: mint_iri now dispatches via _IRI_BUILDERS
-    registry and returns a real IRI string."""
+    registry and returns a real IRI string. Phase 39 update: signature
+    is ``mint_iri(type_, **content)`` per ADR-0146 §amendment-3."""
     h = _kl().writeable(None, ROLE_PROBLEM_TRACE, "global")
-    iri = h.mint_iri(trace_id="t1")
+    iri = h.mint_iri("ProblemTraceEntry", trace_id="t1")
     assert iri == "problem-trace-v1:entry:t1"
 
 

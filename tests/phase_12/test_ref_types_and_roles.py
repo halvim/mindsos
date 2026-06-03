@@ -20,8 +20,8 @@ from mindsos_knowledge import (
     REF_TYPES,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -89,7 +89,7 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
     assert UPPER_LAYER_ROLES == frozenset({
         ROLE_PROMOTED_PIPELINES,
         ROLE_TASK_PATTERNS,
-        ROLE_MEMORIES,
+        ROLE_EPISODIC_MEMORIES,
         ROLE_PROBLEM_TRACE,
         ROLE_CAPACITY_STATE,
     })
@@ -112,20 +112,28 @@ _ADR_0045_BUILDERS = (
     "framenet_frame_iri",
     "framenet_lu_iri",
     "framenet_fe_iri",
-    # Upper-layer (ADR-0045)
+    # Upper-layer (ADR-0045 + ADR-0044 §amendment-3 split memory builder
+    # into episode_iri + memory_composite_iri per Phase 39 ship; ADR-0045
+    # itself is currently stale on this surface — Phase 43 may amend it
+    # alongside the schema-v2 ship per design log §3 phasing).
     "pipeline_iri",
     "pipeline_step_iri",
     "task_pattern_iri",
     "subgoal_template_iri",
-    "memory_iri",
+    "episode_iri",
+    "memory_composite_iri",
     "problem_trace_iri",
     "capacity_snapshot_iri",
 )
 
 
 def test_adr_0045_all_builders_present_and_exported() -> None:
-    """ADR-0045 closure: all 14 builders ship + are in __all__ (PB-2 + PB-20)."""
-    assert len(_ADR_0045_BUILDERS) == 14
+    """ADR-0045 closure: all builders ship + are in __all__ (PB-2 + PB-20).
+
+    Post-Phase-39 ship: 8 upper-layer builders (memory_iri split per
+    ADR-0044 §amendment-3 + ADR-0146 §amendment-3); 7 seed-role; total 15.
+    """
+    assert len(_ADR_0045_BUILDERS) == 15
     for name in _ADR_0045_BUILDERS:
         assert hasattr(mindsos_knowledge, name), f"{name} not exported"
         assert name in mindsos_knowledge.__all__, f"{name} missing from __all__"

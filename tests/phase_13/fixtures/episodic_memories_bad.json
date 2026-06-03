@@ -1,8 +1,8 @@
 {
   "_state_version": 5,
   "graph_id": "01999999-0000-0000-0000-000000002000",
-  "name": "phase13_memories_bad_fixture",
-  "role": "memories",
+  "name": "phase13_episodic_memories_bad_fixture",
+  "role": "episodic_memories",
   "schema_name": null,
   "metagraph_name": null,
   "nodes": [

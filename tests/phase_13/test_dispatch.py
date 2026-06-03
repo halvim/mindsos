@@ -13,8 +13,8 @@ from mindsos_core import Schema
 from mindsos_knowledge import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -31,7 +31,7 @@ _ALL_NAMED_ROLES = (
     ROLE_CONCEPTS,
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_PROBLEM_TRACE,
     ROLE_CAPACITY_STATE,
 )
@@ -47,7 +47,7 @@ def test_schema_for_role_returns_schema_for_each_named_role(role: str) -> None:
 def test_alignment_prefix_returns_alignment_schema() -> None:
     from mindsos_knowledge.schemas.alignment import NODE_ALIGNMENT_ANCHOR
 
-    s = schema_for_role("alignment:lexicon<->concepts")
+    s = schema_for_role("alignment:concepts:lexicon")
     assert NODE_ALIGNMENT_ANCHOR in s.node_types
 
 
@@ -55,7 +55,7 @@ def test_alignment_prefix_arbitrary_pair_returns_alignment_schema() -> None:
     from mindsos_knowledge.schemas.alignment import NODE_ALIGNMENT_ANCHOR
 
     # PB-5 — parametric; any role-pair under the alignment prefix works.
-    s = schema_for_role("alignment:foo<->bar")
+    s = schema_for_role("alignment:bar:foo")
     assert NODE_ALIGNMENT_ANCHOR in s.node_types
 
 

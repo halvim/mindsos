@@ -18,7 +18,9 @@ Phase 36 ships ADR-0139's 5 listed validators as pure functions per
 * :func:`validate_local_to_global_ref` — Local→Global ref target exists
   in the active version-graph of the target role.
 * :func:`validate_alignment_role_naming` — canonical sorted
-  ``alignment:<a><->b>`` naming.
+  ``alignment:<a>:<b>`` naming (Phase 39 L2-35 reconciliation per
+  ADR-0154 + D-L2-1; separator canonical form is ``:`` between sorted
+  role atoms).
 * :func:`validate_ref_type` — ``ref_type`` is in :data:`REF_TYPES`.
 * :func:`validate_promotion_candidate` — Local draft, not already
   promoted (no ``ref_type=PROMOTED`` stamp), not deprecated.
@@ -29,9 +31,10 @@ R2-PB-D; future amendments add structured detail fields when a
 consumer needs them.
 
 :data:`_VALIDATORS_BY_ROLE` is the per-role adapter registry consumed
-by :meth:`KLWriteHandle.validate_node`. Phase 36 ships 2 adapters
-(``memories`` + ``problem-trace``) per the 2 shipped L3 write
-capacities; per-flow discipline (ADR-0147 §am-1 clause 3) governs
+by :meth:`KLWriteHandle.validate_node`. Phase 39 ships 2 adapters
+(``episodic_memories`` + ``problem-trace``) per the 2 shipped L3
+write capacities (memories renamed per ADR-0044 §am-3);
+per-flow discipline (ADR-0147 §am-1 clause 3) governs
 *adapter* extension as new write capacities land. The underlying
 validators are L2 substrate, not L3 capacity declarations — per-flow
 does not gate them at the function level.
@@ -55,7 +58,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional
 from .identifiers import (
     REF_TYPES,
     REF_TYPE_KEY,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_PROBLEM_TRACE,
     alignment_role,
 )
@@ -173,11 +176,13 @@ def validate_local_to_global_ref(
 
 
 def validate_alignment_role_naming(*, role: str) -> ValidationResult:
-    """``role`` matches canonical ``alignment:<a><->b>`` sorted form.
+    """``role`` matches canonical ``alignment:<a>:<b>`` sorted form.
 
     Uses :func:`alignment_role` for canonical construction; checks
-    structural shape (``alignment:`` prefix + ``<->`` separator) then
-    sort-order canonicalisation.
+    structural shape (``alignment:`` prefix + ``:`` separator between
+    sorted role atoms) then sort-order canonicalisation. Phase 39
+    L2-35 reconciliation per ADR-0154 + L2_CHAT_DECISIONS D-L2-1
+    locks the canonical separator as ``:``.
 
     Args:
         role: The alignment role name to validate.
@@ -191,11 +196,12 @@ def validate_alignment_role_naming(*, role: str) -> ValidationResult:
             f"role {role!r} is not alignment-prefixed"
         )
     body = role[len("alignment:") :]
-    if "<->" not in body:
+    if ":" not in body:
         return ValidationResult.violated(
-            f"alignment role {role!r} missing '<->' separator"
+            f"alignment role {role!r} missing ':' separator between "
+            f"sorted role atoms"
         )
-    a, b = body.split("<->", 1)
+    a, b = body.split(":", 1)
     canonical = alignment_role(a, b)
     if role != canonical:
         return ValidationResult.violated(
@@ -274,17 +280,18 @@ def validate_promotion_candidate(
     )
 
 
-def _validate_node_memories(
+def _validate_node_episodic_memories(
     handle: "KLWriteHandle",
     value: Any,
     type_: str,
     **refs: Any,
 ) -> ValidationResult:
-    """Adapter for ``ROLE_MEMORIES`` consumed by ``handle.validate_node``.
+    """Adapter for ``ROLE_EPISODIC_MEMORIES`` consumed by ``handle.validate_node``.
 
-    Phase 36 chain: ``(validate_role_routing,)``. Future per-flow
-    phases extend this chain as additional invariants land for
-    memory writes.
+    Phase 39 chain: ``(validate_role_routing,)`` — unchanged from
+    Phase 36 chain shape; role-name only renamed per ADR-0044 §am-3.
+    Future per-flow phases extend this chain as additional invariants
+    land for episodic-memory writes.
     """
     return validate_role_routing(
         role=handle.role, scope=handle.scope, mg=handle._metagraph
@@ -297,14 +304,14 @@ def _validate_node_problem_trace(
     type_: str,
     **refs: Any,
 ) -> ValidationResult:
-    """Adapter for ``ROLE_PROBLEM_TRACE`` — same chain as memories at Phase 36."""
+    """Adapter for ``ROLE_PROBLEM_TRACE`` — same chain as episodic_memories at Phase 39."""
     return validate_role_routing(
         role=handle.role, scope=handle.scope, mg=handle._metagraph
     )
 
 
 _VALIDATORS_BY_ROLE: dict[str, object] = {
-    ROLE_MEMORIES: _validate_node_memories,
+    ROLE_EPISODIC_MEMORIES: _validate_node_episodic_memories,
     ROLE_PROBLEM_TRACE: _validate_node_problem_trace,
 }
 

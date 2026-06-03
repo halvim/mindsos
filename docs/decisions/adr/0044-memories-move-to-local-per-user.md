@@ -144,7 +144,8 @@ D-L2-16 + D-L2-17 + D-L2-25.
 * Schema file: `schemas/memories.py` → `schemas/episodic_memories.py`;
   exports updated in `schemas/__init__.py`.
 * `_IRI_BUILDERS` dispatch table entry renamed and split (one entry
-  per new IRI builder).
+  per new IRI builder; multi-NodeType dispatch shape ratified at
+  ADR-0146 §amendment-3).
 * Shipped Phase 33 `consolidate:mm` L3 capacity
   (`mindsos_capacity/builtins/consolidate.py`) retargets new
   Episode entry shape; symmetric write contract per ADR-0146 /

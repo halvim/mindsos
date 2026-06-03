@@ -104,13 +104,15 @@ list:
 | `alignment:<a>:<b>` | `build_alignment_schema` | seed (parametric) | [alignment.md](alignment.md) |
 | `promoted-pipelines` | `build_promoted_pipelines_schema` | upper | [promoted-pipelines.md](promoted-pipelines.md) |
 | `task-patterns` | `build_task_patterns_schema` | upper | [task-patterns.md](task-patterns.md) |
-| `memories` | `build_memories_schema` | upper (Local) | [memories.md](memories.md) |
+| `episodic_memories` | `build_episodic_memories_schema` | upper (Local) | [episodic-memories.md](episodic-memories.md) |
 | `problem-trace` | `build_problem_trace_schema` | upper | [problem-trace.md](problem-trace.md) |
 | `capacity-state` | `build_capacity_state_schema` | upper (Local) | [capacity-state.md](capacity-state.md) |
 
 `alignment` is parametric — one builder serves all role-pair alignment
-graphs (`alignment:lexicon<->concepts`, `alignment:ontology<->lexicon`,
-etc.). The graph *name* differs per pair; the *schema* is identical.
+graphs (`alignment:concepts:lexicon`, `alignment:lexicon:ontology`,
+etc.; sorted role atoms separated by `:` per ADR-0154 + D-L2-1,
+Phase 39 L2-35 reconciliation). The graph *name* differs per pair;
+the *schema* is identical.
 
 ## Dispatch
 

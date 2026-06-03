@@ -13,8 +13,10 @@ Per PB-14: the alignment vocabulary is intentionally OPEN —
 types at build time without forking the module.
 
 Per PB-5: the schema is **parametric** — one builder serves all
-alignment-pair graphs (`alignment:lexicon<->concepts`,
-`alignment:ontology<->lexicon`, etc.). Anchor IRI minting is deferred
+alignment-pair graphs (`alignment:concepts:lexicon`,
+`alignment:lexicon:ontology`, etc.; sorted role atoms separated by
+`:` per ADR-0154 + L2_CHAT_DECISIONS D-L2-1, Phase 39 L2-35
+reconciliation). Anchor IRI minting is deferred
 to Phase 14 (KL bootstrap) — Phase 13 only declares the
 ``AlignmentAnchor`` NodeType and the edge vocabulary; how anchors
 identify themselves to the system is a Phase 14 decision.

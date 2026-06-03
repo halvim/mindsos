@@ -1,9 +1,17 @@
 """``capacity:consolidate:mm`` — Local memory write capacity (Phase 34; wired).
 
 Ships the first ``CATEGORY_CONSOLIDATE`` occupant per ADR-0145 §Decision
-+ §Implementation. The capacity targets the user's Local ``memories``
-role-graph (ADR-0044): a record bearing ``memory_id`` + ``value`` becomes
-a ``Memory`` node under ``memories-v1:memory:<user_id>:<memory_id>``.
++ §Implementation. The capacity targets the user's Local
+``episodic_memories`` role-graph (ADR-0044 §am-3 rename): a record
+bearing ``memory_id`` + ``value`` becomes a ``Memory`` node under
+``episodic-memories-v1:memory:<user_id>:<memory_id>``.
+
+NOTE(phase-48-retarget): Phase 39 keeps ``type_="Memory"`` writing
+per-task entries through the Memory-composite NodeType. Per
+L2_CHAT_DECISIONS D-L2-17 + Chat B D-B47, ``Episode`` is the per-task
+entry; ``Memory`` is a clustering composite over Episodes. This is
+semantically wrong (interim tech debt for two phases); Phase 48
+retargets ``consolidate:mm`` to write ``Episode`` per D-B47.
 
 **Phase 34 ship (ADR-0146 §amendment-1 clauses 4 + 5 closed).** The
 capacity body wires through to L1 via
@@ -15,8 +23,9 @@ validator precondition runs via ``handle.validate_node(...)`` before
 ``write_and_validate``. On ``not result.ok``, the body raises
 :class:`SemanticValidationError` carrying the failed
 :class:`ValidationResult`; the runtime envelope catches per
-ADR-0072. Phase 36 chain for ``memories`` role is single-validator
-(``validate_role_routing``); future per-flow validators extend the
+ADR-0072. Phase 39 chain for ``episodic_memories`` role is
+single-validator (``validate_role_routing``); future per-flow
+validators extend the
 adapter chain in ``mindsos_knowledge.validators._VALIDATORS_BY_ROLE``
 without capacity-body edits.
 
@@ -112,7 +121,7 @@ def _consolidate_mm_impl(**kwargs: Any) -> Any:
     :class:`SemanticValidationError` on validator failure.
     """
     from mindsos_knowledge.exceptions import SemanticValidationError
-    from mindsos_knowledge.identifiers import ROLE_MEMORIES
+    from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
 
     context = kwargs.get("context") or {}
     session = context.get("session")
@@ -126,8 +135,13 @@ def _consolidate_mm_impl(**kwargs: Any) -> Any:
 
     record = kwargs[DS_MM_COMPOSITE_INSTANCE]
     handle = kl.writeable(
-        session, role=ROLE_MEMORIES, scope="local", version="v1"
+        session, role=ROLE_EPISODIC_MEMORIES, scope="local", version="v1"
     )
+    # NOTE(phase-48-retarget): type_="Memory" writes per-task entry
+    # through Memory-composite NodeType — semantically wrong per
+    # D-L2-17 (Episode is per-task; Memory is composite). Phase 48
+    # retargets to type_="Memory" → type_="Episode" + episode_id
+    # plumbing per Chat B D-B47.
     vr = handle.validate_node(value=record["value"], type_="Memory")
     if not vr.ok:
         raise SemanticValidationError(vr)
@@ -157,9 +171,10 @@ def build_consolidate_mm() -> Capacity:
         outputs=(),
         implementation=_consolidate_mm_impl,
         description=(
-            "Consolidate an MM record into the user's Local memories "
-            "role-graph. Phase 36 wired — semantic-validator precondition "
-            "via handle.validate_node (ADR-0139); returns WriteResult on "
+            "Consolidate an MM record into the user's Local "
+            "episodic_memories role-graph (Phase 39 rename per ADR-0044 "
+            "§am-3). Phase 36 wired — semantic-validator precondition via "
+            "handle.validate_node (ADR-0139); returns WriteResult on "
             "success; raises SemanticValidationError on validator failure; "
             "L1 raises propagate per ADR-0146 §am-1 clause 1 (open)."
         ),

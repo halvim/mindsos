@@ -25,5 +25,5 @@ def test_writeable_version_threads_into_mint_iri():
     handle = kl.writeable(
         None, role=ROLE_PROBLEM_TRACE, scope="global", version="vexp"
     )
-    iri = handle.mint_iri(trace_id="t1")
+    iri = handle.mint_iri("ProblemTraceEntry", trace_id="t1")
     assert iri == "problem-trace-vexp:entry:t1"

@@ -1,7 +1,8 @@
 """Phase 14 — lazy ``local_metagraph(user_id)`` auto-ensures 2 Local roles.
 
 Per Phase 14 PB-9 lock: lazy access creates a fresh Local Metagraph
-with ``memories`` + ``capacity-state`` ensured before return.
+with ``episodic_memories`` + ``capacity-state`` ensured before return
+(Phase 39 rename per ADR-0044 §am-3).
 Symmetric with Global bootstrap auto-ensuring 6 Global named roles.
 """
 
@@ -10,7 +11,7 @@ from __future__ import annotations
 from mindsos_knowledge import (
     KnowledgeLayer,
     ROLE_CAPACITY_STATE,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
 )
 
 
@@ -19,7 +20,7 @@ def test_lazy_local_creates_on_first_access() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
     observed_roles = {g.role for g in local.graphs.values()}
-    assert observed_roles == {ROLE_MEMORIES, ROLE_CAPACITY_STATE}
+    assert observed_roles == {ROLE_EPISODIC_MEMORIES, ROLE_CAPACITY_STATE}
 
 
 def test_lazy_local_canonical_name() -> None:

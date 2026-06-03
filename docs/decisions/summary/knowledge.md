@@ -7,7 +7,7 @@ next: decisions/summary/capacity.md
 
 # L2 Knowledge decisions
 
-Knowledge is MindsOS's long-term memory: a Global metagraph of versioned, role-tagged graphs (ontology, lexicon, concepts, memories, problem traces) plus per-user Local graphs with private knowledge. These decisions define the versioning contract, the multi-tenant split, and the handoff to the Server Layer.
+Knowledge is MindsOS's long-term memory: a Global metagraph of versioned, role-tagged graphs (ontology, lexicon, concepts, problem traces) plus per-user Local graphs with private knowledge (episodic_memories, capacity-state; Phase 39 rename per ADR-0044 §am-3). These decisions define the versioning contract, the multi-tenant split, and the handoff to the Server Layer.
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|

@@ -20,8 +20,8 @@ def test_write_outcome_accepts_write_result():
     from datetime import datetime, timezone
 
     wr = WriteResult(
-        iri="memories-v1:memory:a:b",
-        role="memories",
+        iri="episodic-memories-v1:memory:a:b",
+        role="episodic_memories",
         scope="local",
         written_at=datetime.now(timezone.utc),
     )

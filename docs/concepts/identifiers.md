@@ -39,7 +39,7 @@ ADR-0045, every L2 source has a dedicated prefix on `_PREFIXES`:
 | `framenet-` | concepts |
 | `promoted-pipelines-` | promoted-pipelines (upper-layer) |
 | `task-patterns-` | task-patterns (upper-layer) |
-| `memories-` | memories (upper-layer; Local-per-user per ADR-0044) |
+| `episodic-memories-` | episodic_memories (upper-layer; Local-per-user per ADR-0044 §amendment-3 — Phase 39 rename) |
 | `problem-trace-` | problem-trace (upper-layer) |
 | `capacity-state-` | capacity-state (upper-layer; Local-per-user) |
 
@@ -57,11 +57,11 @@ because the body embeds a colon-bearing `capacity_iri` (ADR-0066).
 
 ## user_id in the IRI
 
-Per ADR-0044, `memories` and `capacity-state` are Local-per-user roles.
-Their IRIs bake in the `user_id`, so two users' memories never collide
-even when memory_ids are minted independently. The `user_id` charset
-is restricted to `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$` (ADR-0044
-§amendment-1) to keep the IRI parseable.
+Per ADR-0044 (§am-3 rename), `episodic_memories` and `capacity-state`
+are Local-per-user roles. Their IRIs bake in the `user_id`, so two
+users' data never collide even when ids are minted independently. The
+`user_id` charset is restricted to `^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$`
+(ADR-0044 §amendment-1, unchanged at §am-3) to keep the IRI parseable.
 
 ## L1 doesn't import L2
 

@@ -65,7 +65,7 @@ def test_read_local_happy_path_text_output(runner, env_setup) -> None:
     r = runner.invoke(app, ["server", "admin", "read-local", "alice"])
     assert r.exit_code == 0, r.output
     assert "Local for user_id=alice" in r.output
-    assert "memories" in r.output
+    assert "episodic_memories" in r.output
     assert "capacity-state" in r.output
     assert "xrefs: 0" in r.output
     assert "intergraph_edges: 0" in r.output
@@ -85,4 +85,4 @@ def test_read_local_happy_path_json_output(runner, env_setup) -> None:
     assert payload["xref_count"] == 0
     assert payload["intergraph_edge_count"] == 0
     roles = {rg["role"] for rg in payload["role_graphs"]}
-    assert roles == {"memories", "capacity-state"}
+    assert roles == {"episodic_memories", "capacity-state"}

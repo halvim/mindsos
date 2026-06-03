@@ -45,7 +45,7 @@ nav:
           - Alignment schema (Phase 13): usage/knowledge/alignment.md
           - Promoted pipelines schema (Phase 13): usage/knowledge/promoted-pipelines.md
           - Task patterns schema (Phase 13): usage/knowledge/task-patterns.md
-          - Memories schema (Phase 13): usage/knowledge/memories.md
+          - Episodic-memories schema (Phase 39): usage/knowledge/episodic-memories.md
           - Problem trace schema (Phase 13): usage/knowledge/problem-trace.md
           - Capacity state schema (Phase 13): usage/knowledge/capacity-state.md
           - Versioning (Phase 17 retired): usage/knowledge/versioning.md

@@ -4,9 +4,10 @@ ADR-0139 §Decision §Semantic-invariants. 5 pure-function validators
 ship in ``mindsos_knowledge/validators.py``; per-role adapter registry
 ``_VALIDATORS_BY_ROLE`` consumed by :meth:`KLWriteHandle.validate_node`.
 
-Phase 36 wires 2 adapters (memories + problem-trace) with the
-single-validator chain ``(validate_role_routing,)``; future per-flow
-phases extend the chain (ADR-0139 §amendment-1 clause 3 carry-forward).
+Phase 36 wires 2 adapters (episodic_memories + problem-trace at
+Phase 39 per ADR-0044 §am-3 rename) with the single-validator chain
+``(validate_role_routing,)``; future per-flow phases extend the chain
+(ADR-0139 §amendment-1 clause 3 carry-forward).
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from mindsos_knowledge.identifiers import (
     REF_TYPES,
     ROLE_CONCEPTS,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     alignment_role,
@@ -144,21 +145,24 @@ def test_validate_alignment_role_naming_ok_sorted():
 
 
 def test_validate_alignment_role_naming_missing_prefix():
-    result = validate_alignment_role_naming(role="lexicon<->concepts")
+    result = validate_alignment_role_naming(role="lexicon:concepts")
     assert result.ok is False
     assert "alignment-prefixed" in result.violation
 
 
 def test_validate_alignment_role_naming_missing_separator():
-    result = validate_alignment_role_naming(role="alignment:lexicon-concepts")
+    """Phase 39 L2-35 reconciliation per ADR-0154 + D-L2-1: separator
+    between sorted role atoms is ``:``. A role string with no separator
+    between atoms (e.g., a single token after the prefix) fails."""
+    result = validate_alignment_role_naming(role="alignment:lexiconconcepts")
     assert result.ok is False
-    assert "<->" in result.violation
+    assert "separator" in result.violation
 
 
 def test_validate_alignment_role_naming_wrong_order():
     """Sort-order canonicalisation — supplied unsorted pair must fail."""
     a, b = sorted((ROLE_LEXICON, ROLE_CONCEPTS))
-    swapped = f"alignment:{b}<->{a}"
+    swapped = f"alignment:{b}:{a}"
     result = validate_alignment_role_naming(role=swapped)
     assert result.ok is False
     assert "not canonical" in result.violation
@@ -189,7 +193,7 @@ def test_validate_promotion_candidate_not_found():
     kl = _kl()
     local = kl.local_metagraph("alice")
     result = validate_promotion_candidate(
-        local_iri="memories-v1:memory:alice:nonexistent", mg=local
+        local_iri="episodic-memories-v1:memory:alice:nonexistent", mg=local
     )
     assert result.ok is False
     assert "not found" in result.violation
@@ -199,9 +203,9 @@ def test_validate_promotion_candidate_ok():
     """Seed a Local memory node; validate the IRI is a promotion candidate."""
     kl = _kl()
     local = kl.local_metagraph("alice")
-    iri = "memories-v1:memory:alice:m-test-1"
+    iri = "episodic-memories-v1:memory:alice:m-test-1"
     for g in local.graphs.values():
-        if g.role == ROLE_MEMORIES:
+        if g.role == ROLE_EPISODIC_MEMORIES:
             g.add_node(value="seed", type_name="Memory", node_id=iri)
             break
     result = validate_promotion_candidate(local_iri=iri, mg=local)
@@ -211,19 +215,20 @@ def test_validate_promotion_candidate_ok():
 # ── KLWriteHandle.validate_node composite ─────────────────────────────
 
 
-def test_validators_by_role_registry_has_two_entries_at_phase_36():
-    """Phase 36 ships 2 adapters (memories + problem-trace) per per-flow
-    discipline (ADR-0147 §am-1 clause 3 applied to adapter population)."""
-    assert ROLE_MEMORIES in _VALIDATORS_BY_ROLE
+def test_validators_by_role_registry_has_two_entries_at_phase_39():
+    """Phase 39 ships 2 adapters (episodic_memories + problem-trace per
+    ADR-0044 §am-3 rename) per per-flow discipline (ADR-0147 §am-1
+    clause 3 applied to adapter population)."""
+    assert ROLE_EPISODIC_MEMORIES in _VALIDATORS_BY_ROLE
     assert ROLE_PROBLEM_TRACE in _VALIDATORS_BY_ROLE
     assert len(_VALIDATORS_BY_ROLE) == 2
 
 
-def test_handle_validate_node_returns_validation_result_for_memories():
+def test_handle_validate_node_returns_validation_result_for_episodic_memories():
     from tests.phase_33._fixtures import build_session_with_caps
 
     sess = build_session_with_caps("alice", frozenset())
-    h = _kl().writeable(sess, ROLE_MEMORIES, "local")
+    h = _kl().writeable(sess, ROLE_EPISODIC_MEMORIES, "local")
     result = h.validate_node(value="x", type_="Memory")
     assert isinstance(result, ValidationResult)
     assert result.ok is True

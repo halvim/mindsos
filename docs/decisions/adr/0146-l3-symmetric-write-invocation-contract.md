@@ -242,3 +242,47 @@ fields capacity bodies need to read for `mint_iri`. L4-flow tightening
 of the rest of the record shape (e.g., `CompositeInstance` field
 binding for consolidate) stays deferred per §amendment-1 clause 3 + ADR-0147
 per-flow build discipline.
+
+## §amendment-3 — Phase 39 multi-NodeType dispatch — tuple-key registry + mint_iri signature (halvim, 2026-06-XX)
+
+Phase 39's `memories` → `episodic_memories` rename (ADR-0044
+§amendment-3 + ADR-0150 §amendment-4) hosts two NodeTypes (`Episode` +
+`Memory`) under a single role. The Phase 33/34 single-minter
+`_IRI_BUILDERS` registry shape (`Dict[role, minter]`) cannot dispatch
+two minters under one role.
+
+**Amended surface:**
+
+* `_IRI_BUILDERS: dict[tuple[str, str], Callable]` keyed
+  `(role, NodeType_name)`. Three entries post-rename:
+  - `(ROLE_EPISODIC_MEMORIES, "Episode") → _mint_episode`
+  - `(ROLE_EPISODIC_MEMORIES, "Memory") → _mint_memory_composite`
+  - `(ROLE_PROBLEM_TRACE, "ProblemTraceEntry") → _mint_problem_trace`
+* `KLWriteHandle.mint_iri(self, type_: str, **content: Any) -> str` —
+  signature change from Phase 33/34's `mint_iri(self, **content)`.
+  Lookup body: `_IRI_BUILDERS[(self.role, type_)]`. Caller flow
+  unchanged via `write_and_validate(type_=..., **content)` forwarding.
+* `KeyError` message updated to surface both role and NodeType when no
+  minter registered for the `(role, type_)` pair.
+
+**Out-of-scope for amendment-3:**
+
+* Per-flow build discipline (§amendment-1 clauses 4 + 5; ADR-0147) —
+  unchanged. Registry-shape change is orthogonal to per-flow build.
+* `KLWriteHandle.write_and_validate` signature — unchanged; passes
+  `type_` through.
+* ADR-0143 `KLWriteHandle` Surface + Constraint — unchanged;
+  cross-reference added at ADR-0143 `## Implementation references`
+  for traceability only (no §amendment on ADR-0143).
+
+**Rationale:** Single-minter-per-role was a Phase 33 simplification
+that held while every shipped role mapped to a single NodeType. D-L2-17
++ Chat B D-B48 break the 1:1; tuple-key future-proofs further
+multi-NodeType roles (Phase 43 schema-v2 will register Memory
+composite contents + the `memory_contains_episode` IntergraphEdge).
+Single-dispatcher-with-kind-kwarg (option (b) at design pass) rejected:
+less explicit dispatch failure mode + harder to validate per-NodeType
+minter signatures.
+
+See `confirmation_docs/PHASE_39_DESIGN_LOG.md` R1 PB-N1 / PB-N3 / PB-N4
+for design pass closure and dispatch-shape alternatives considered.

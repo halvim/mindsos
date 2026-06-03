@@ -134,8 +134,8 @@ def test_consolidate_mm_with_session_succeeds_with_write_outcome():
     assert result.success is True
     assert result.error is None
     assert isinstance(result.write_outcome, WriteResult)
-    assert result.write_outcome.iri == "memories-v1:memory:alice:m1"
-    assert result.write_outcome.role == "memories"
+    assert result.write_outcome.iri == "episodic-memories-v1:memory:alice:m1"
+    assert result.write_outcome.role == "episodic_memories"
     assert result.write_outcome.scope == "local"
 
 

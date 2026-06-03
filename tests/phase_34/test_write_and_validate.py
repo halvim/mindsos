@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 from mindsos_capacity import WriteResult
 from mindsos_knowledge import KnowledgeLayer
-from mindsos_knowledge.identifiers import ROLE_MEMORIES, ROLE_PROBLEM_TRACE
+from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES, ROLE_PROBLEM_TRACE
 
 from tests.phase_34._fixtures import build_admin_session
 
@@ -14,7 +14,7 @@ from tests.phase_34._fixtures import build_admin_session
 def test_write_and_validate_returns_write_result_on_success():
     kl = KnowledgeLayer.bootstrap()
     sess = build_admin_session("alice")
-    handle = kl.writeable(sess, role=ROLE_MEMORIES, scope="local")
+    handle = kl.writeable(sess, role=ROLE_EPISODIC_MEMORIES, scope="local")
     out = handle.write_and_validate(
         value="hello",
         type_="Memory",
@@ -22,8 +22,8 @@ def test_write_and_validate_returns_write_result_on_success():
         memory_id="m1",
     )
     assert isinstance(out, WriteResult)
-    assert out.iri == "memories-v1:memory:alice:m1"
-    assert out.role == ROLE_MEMORIES
+    assert out.iri == "episodic-memories-v1:memory:alice:m1"
+    assert out.role == ROLE_EPISODIC_MEMORIES
     assert out.scope == "local"
     assert isinstance(out.written_at, datetime)
     # ISO-format timezone-aware (UTC).
@@ -34,7 +34,7 @@ def test_write_and_validate_persists_node_to_l1_graph():
     """KL state actually mutates (handle shares ref with KL._locals)."""
     kl = KnowledgeLayer.bootstrap()
     sess = build_admin_session("alice")
-    handle = kl.writeable(sess, role=ROLE_MEMORIES, scope="local")
+    handle = kl.writeable(sess, role=ROLE_EPISODIC_MEMORIES, scope="local")
     handle.write_and_validate(
         value="persisted",
         type_="Memory",
@@ -43,8 +43,8 @@ def test_write_and_validate_persists_node_to_l1_graph():
     )
     # Read back via the same metagraph the handle wrote into.
     g = handle.graph()
-    assert "memories-v1:memory:alice:m1" in g.nodes
-    node = g.nodes["memories-v1:memory:alice:m1"]
+    assert "episodic-memories-v1:memory:alice:m1" in g.nodes
+    node = g.nodes["episodic-memories-v1:memory:alice:m1"]
     assert node.value == "persisted"
     assert node.type_name == "Memory"
 

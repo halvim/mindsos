@@ -100,8 +100,8 @@
 | **L2-31** | **`validate_mutation_discipline` validator implementation** + new `MutationDisciplineError` exception. | ADR-0153 §3 + §5 | Chat C plan-authoring (Phase 38 carry-forward #9 absorbs) |
 | **L2-32** | **Per-field `CONTENT_FIELDS` / `METADATA_FIELDS` frozenset declarations on shipped Phase 13 schemas** — `promoted_pipelines.py` + `task_patterns.py` + post-rename `episodic_memories.py`. | ADR-0152 §1 + §2 + §7; ADR-0153 §3 | Chat C plan-authoring |
 | **L2-33** | **`storage_mode` field declarations on schemas with large-payload fields** — `episodic_memories.Episode.task_input_ref`, `learned-parameters.LearnedParameter.value`. | ADR-0151 | Chat C plan-authoring |
-| **L2-34** | **`memories` → `episodic_memories` atomic rename PR scope** — Constants, IRI builders, prefix table, kinds table, schemas, exports, bootstrap, write_handle, validators, knowledge_layer, consolidate:mm capacity, tests (Phase 12/14/25/33/34/36). **Phase 39 design pass closed 2026-06-02** — locked picks at `confirmation_docs/PHASE_39_DESIGN_LOG.md`; impl pending. Migration script reframed as `tools/check_rename_state.py` detector per Phase 39 PB-8. | ADR-0044 §amendment-3 + L2_CHAT_DECISIONS D-L2-16 | **Phase 39** — design closed; impl pending |
-| **L2-35** | **`alignment:<a>:<b>` shipped-code reconciliation** — `identifiers.py:303` body + lines 297/353 docstrings + `tests/phase_36/test_validators.py` assertions. **Bundled into Phase 39 PR per Chat C IL-7; design closed 2026-06-02.** | ADR-0154 + L2_CHAT_DECISIONS D-L2-1 | **Phase 39** (bundled) — design closed; impl pending |
+| **L2-34** | **`memories` → `episodic_memories` atomic rename PR scope** — **CLOSED — shipped Phase 39 (2026-06-02).** All identifier surface advanced; legacy EdgeType + property frozenset drops landed per PB-R1-A/B (Phase 43 re-adds on Episode atomically with the full D-L2-17 ship). `tools/check_rename_state.py` detector ships. Cumulative gate clean at 3501 passed. | ADR-0044 §amendment-3 + L2_CHAT_DECISIONS D-L2-16 | **CLOSED — shipped Phase 39** |
+| **L2-35** | **`alignment:<a>:<b>` shipped-code reconciliation** — **CLOSED — shipped Phase 39 (2026-06-02).** Separator switched from `<->` to `:` across `identifiers.py:303` body + lines 297/353 docstrings + `tests/phase_36/test_validators.py` body. | ADR-0154 + L2_CHAT_DECISIONS D-L2-1 | **CLOSED — shipped Phase 39** |
 | **L2-36** | **L3 pipeline-finder task-pattern index** — runtime cache rebuilds `serves_task_types` lookup from `task-patterns.paired_pipelines`; status filter (`default status="active"`). | L2_CHAT_DECISIONS D-L2-7 + D-L2-8 | L1/L3 reframe chat or WSD installation |
 | **L2-37** | **Bootstrap importer `applies_after: frozenset[IRI]` field on registration contract**. | L2_CHAT_DECISIONS D-L2-19 | Chat C plan-authoring |
 | **L2-38** | **ADR-0152 §amendment-1 to lock `HAS_STEP` shape** post-L1/L3-reframe close. | L2_CHAT_DECISIONS D-L2-6; D38 | L1/L3 reframe chat closure trigger |
@@ -148,8 +148,8 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 | L2-31 (`validate_mutation_discipline` validator) | **Phase 43** | Rail A; absorbs PHASE_38 §4 #9 partial. |
 | L2-32 (`CONTENT_FIELDS`/`METADATA_FIELDS` frozensets) | **Phase 43** | Rail A schema-v2 ship. |
 | L2-33 (`storage_mode` field declarations) | **Phase 43** | Rail A schema-v2 ship; per ADR-0151. |
-| L2-34 (`memories`→`episodic_memories` atomic rename PR) | **Phase 39** | Rail A first ship; rename + migration script. |
-| L2-35 (`alignment:<a>:<b>` shipped-code reconciliation) | **Phase 39** (bundled per IL-7) | Was Stream A; bundled into rename PR to save merge. |
+| L2-34 (`memories`→`episodic_memories` atomic rename PR) | **CLOSED — shipped Phase 39 (2026-06-02)** | Rail A first ship; rename atomic; detector tool replaces migration script per PB-8. |
+| L2-35 (`alignment:<a>:<b>` shipped-code reconciliation) | **CLOSED — shipped Phase 39 (2026-06-02)** | Bundled into Phase 39 PR per IL-7. Separator `:` shipped. |
 | L2-36 (L3 pipeline-finder task-pattern index) | **WSD_INSTALLATION_CHAT** | Per D-L2-7 D-L2-8 cache lives in L3. |
 | L2-37 (`applies_after` bootstrap field) | **Phase 43** (field) + **Phase 44** (consumer/scheduler) | — |
 | L2-38 (ADR-0152 §am-1 for `HAS_STEP` shape) | **Closed via Phase 42 X3** — bipartite picked; `HAS_STEP` stays Phase 13 form. No §am-1 needed. | — |

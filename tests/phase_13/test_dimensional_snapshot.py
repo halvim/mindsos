@@ -16,8 +16,8 @@ from mindsos_knowledge.schemas import (
     build_alignment_schema,
     build_capacity_state_schema,
     build_concepts_schema,
+    build_episodic_memories_schema,
     build_lexicon_schema,
-    build_memories_schema,
     build_ontology_schema,
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
@@ -25,6 +25,10 @@ from mindsos_knowledge.schemas import (
 )
 
 
+# Phase 39 rename per ADR-0044 §am-3 + design log §2 PB-R1-A/B:
+# ``episodic_memories`` ships 2 NodeTypes (Episode + Memory composite)
+# and 0 EdgeTypes (Phase 13 vestigial USED_CAPACITY + PART_OF_PIPELINE
+# dropped; Phase 43 may re-add on Episode).
 EXPECTED_DIMENSIONS: dict[str, dict[str, int]] = {
     "ontology":            {"nodes": 10, "edges": 13, "hyperedges": 7},
     "lexicon":             {"nodes": 4,  "edges": 22, "hyperedges": 0},
@@ -32,7 +36,7 @@ EXPECTED_DIMENSIONS: dict[str, dict[str, int]] = {
     "alignment":           {"nodes": 1,  "edges": 8,  "hyperedges": 0},
     "promoted_pipelines":  {"nodes": 2,  "edges": 2,  "hyperedges": 0},
     "task_patterns":       {"nodes": 2,  "edges": 2,  "hyperedges": 0},
-    "memories":            {"nodes": 1,  "edges": 2,  "hyperedges": 0},
+    "episodic_memories":   {"nodes": 2,  "edges": 0,  "hyperedges": 0},
     "problem_trace":       {"nodes": 1,  "edges": 0,  "hyperedges": 0},
     "capacity_state":      {"nodes": 1,  "edges": 0,  "hyperedges": 0},
 }
@@ -45,7 +49,7 @@ _BUILDERS = {
     "alignment": build_alignment_schema,
     "promoted_pipelines": build_promoted_pipelines_schema,
     "task_patterns": build_task_patterns_schema,
-    "memories": build_memories_schema,
+    "episodic_memories": build_episodic_memories_schema,
     "problem_trace": build_problem_trace_schema,
     "capacity_state": build_capacity_state_schema,
 }

@@ -47,10 +47,11 @@ def test_audit_row_has_full_payload_shape(
     assert extra["transient"] is True
     assert extra["install_was_existing"] is False
     assert extra["refcount_after_acquire"] == 1
-    # On cold install, KL auto-ensures memories + capacity-state with 0 nodes.
+    # On cold install, KL auto-ensures episodic_memories + capacity-state
+    # with 0 nodes (Phase 39 rename per ADR-0044 §am-3).
     counts = extra["target_role_graph_node_counts"]
     assert isinstance(counts, dict)
-    assert counts.get("memories") == 0
+    assert counts.get("episodic_memories") == 0
     assert counts.get("capacity-state") == 0
 
 

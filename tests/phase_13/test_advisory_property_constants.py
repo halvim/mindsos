@@ -1,16 +1,21 @@
 """Phase 13 PB-8 — advisory module-level property constants.
 
-The 5 upper-layer schemas declare their per-NodeType properties as
+The upper-layer schemas declare their per-NodeType properties as
 module-level ``frozenset`` constants, NOT inside ``NodeType.property_types``
 (which would require committing to ``PropertyType`` enum values
 without a real consumer). Strict-tighten phase converts to typed
 declarations.
+
+**Phase 39 rename (ADR-0044 §am-3 + design log PB-R1-B):** the
+former ``MEMORY_PROPS`` constant was dropped from the Phase 39
+``episodic_memories`` schema. Properties for Episode + Memory composite
+NodeTypes land at Phase 43 alongside CONTENT_FIELDS / METADATA_FIELDS /
+mutation_discipline apparatus per ADR-0153 / ADR-0152 (Rail A schema-v2).
 """
 
 from __future__ import annotations
 
 from mindsos_knowledge.schemas.capacity_state import CAPACITY_SNAPSHOT_PROPS
-from mindsos_knowledge.schemas.memories import MEMORY_PROPS
 from mindsos_knowledge.schemas.problem_trace import PROBLEM_TRACE_ENTRY_PROPS
 from mindsos_knowledge.schemas.promoted_pipelines import (
     PIPELINE_PROPS,
@@ -39,10 +44,6 @@ def test_task_pattern_props_declare_design_properties() -> None:
 
 def test_subgoal_template_props_is_frozenset() -> None:
     assert isinstance(SUBGOAL_TEMPLATE_PROPS, frozenset)
-
-
-def test_memory_props_declare_design_properties() -> None:
-    assert {"task_id", "task_type", "user_id", "completed_at", "result"} <= MEMORY_PROPS
 
 
 def test_problem_trace_entry_props_declare_design_properties() -> None:

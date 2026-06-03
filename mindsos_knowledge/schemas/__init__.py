@@ -11,9 +11,10 @@ Public surface:
   parametric; one builder per alignment-pair graph
   (`alignment:<a>:<b>`).
 * ``build_promoted_pipelines_schema``, ``build_task_patterns_schema``,
-  ``build_memories_schema``, ``build_problem_trace_schema``,
+  ``build_episodic_memories_schema``, ``build_problem_trace_schema``,
   ``build_capacity_state_schema`` — 5 upper-layer roles
-  (Phase 13 NET-NEW; strict=False per ADR-0149).
+  (Phase 13 NET-NEW; strict=False per ADR-0149; ``episodic_memories``
+  renamed from ``memories`` at Phase 39 per ADR-0044 §am-3).
 * ``schema_for_role(role: str) -> Schema`` — dispatch with
   alignment-prefix branch; raises ``UnknownRoleError`` on miss
   (Phase 13 PB-11).
@@ -35,8 +36,8 @@ from ..identifiers import (
     ALL_ROLES,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -46,7 +47,7 @@ from .alignment import build_alignment_schema
 from .capacity_state import build_capacity_state_schema
 from .concepts import build_concepts_schema
 from .lexicon import build_lexicon_schema
-from .memories import build_memories_schema
+from .episodic_memories import build_episodic_memories_schema
 from .ontology import build_ontology_schema
 from .problem_trace import build_problem_trace_schema
 from .promoted_pipelines import build_promoted_pipelines_schema
@@ -64,7 +65,7 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     ROLE_CONCEPTS: build_concepts_schema,
     ROLE_PROMOTED_PIPELINES: build_promoted_pipelines_schema,
     ROLE_TASK_PATTERNS: build_task_patterns_schema,
-    ROLE_MEMORIES: build_memories_schema,
+    ROLE_EPISODIC_MEMORIES: build_episodic_memories_schema,
     ROLE_PROBLEM_TRACE: build_problem_trace_schema,
     ROLE_CAPACITY_STATE: build_capacity_state_schema,
 }
@@ -111,7 +112,7 @@ __all__ = [
     "build_alignment_schema",
     "build_promoted_pipelines_schema",
     "build_task_patterns_schema",
-    "build_memories_schema",
+    "build_episodic_memories_schema",
     "build_problem_trace_schema",
     "build_capacity_state_schema",
     # Dispatch surface.

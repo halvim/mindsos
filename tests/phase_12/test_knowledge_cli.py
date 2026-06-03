@@ -45,7 +45,7 @@ def test_iri_build_memory_happy_json() -> None:
         app,
         [
             "knowledge", "iri", "build",
-            "--role", "memories",
+            "--role", "episodic_memories",
             "--kind", "memory",
             "--version", "1",
             "--user-id", "alice",
@@ -55,8 +55,8 @@ def test_iri_build_memory_happy_json() -> None:
     )
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
-    assert payload["iri"] == "memories-1:memory:alice:m1"
-    assert payload["role"] == "memories"
+    assert payload["iri"] == "episodic-memories-1:memory:alice:m1"
+    assert payload["role"] == "episodic_memories"
     assert payload["kind"] == "memory"
 
 
@@ -74,7 +74,7 @@ def test_iri_build_missing_kind_for_multi_kind_role_exit_2() -> None:
         app,
         [
             "knowledge", "iri", "build",
-            "--role", "memories",
+            "--role", "episodic_memories",
             "--version", "1",
             "--user-id", "alice",
             "--memory-id", "m1",
@@ -88,7 +88,7 @@ def test_iri_build_bad_user_id_exit_1() -> None:
         app,
         [
             "knowledge", "iri", "build",
-            "--role", "memories",
+            "--role", "episodic_memories",
             "--kind", "memory",
             "--version", "1",
             "--user-id", "bad:colon",
@@ -155,7 +155,7 @@ def test_iri_validate_alignment_role_is_invalid() -> None:
     # PB-4: alignment_role output is NOT a version-qualified IRI.
     result = runner.invoke(
         app,
-        ["knowledge", "iri", "validate", "alignment:lexicon<->concepts"],
+        ["knowledge", "iri", "validate", "alignment:concepts:lexicon"],
     )
     assert result.exit_code == 1
 
@@ -193,7 +193,7 @@ def test_roles_list_all_json() -> None:
     names = {r["name"] for r in payload["roles"]}
     assert names == {
         "ontology", "lexicon", "concepts",
-        "promoted-pipelines", "task-patterns", "memories",
+        "promoted-pipelines", "task-patterns", "episodic_memories",
         "problem-trace", "capacity-state",
     }
 
@@ -216,7 +216,7 @@ def test_roles_list_upper_only() -> None:
     payload = json.loads(result.stdout)
     names = {r["name"] for r in payload["roles"]}
     assert names == {
-        "promoted-pipelines", "task-patterns", "memories",
+        "promoted-pipelines", "task-patterns", "episodic_memories",
         "problem-trace", "capacity-state",
     }
 

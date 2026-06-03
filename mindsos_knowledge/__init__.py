@@ -13,11 +13,16 @@ per PB-6; ADR not flipped Accepted).
 
 Phase 12 shipped:
 
-* 14 IRI builders covering ADR-0045: 7 seed-role builders ported from
+* IRI builders covering ADR-0045: 7 seed-role builders ported from
   the v3 `mindsos_knowledge/identifiers.py` (DOLCE / OEWN / FrameNet)
   plus 7 upper-layer builders (`pipeline_iri`, `pipeline_step_iri`,
-  `task_pattern_iri`, `subgoal_template_iri`, `memory_iri`,
-  `problem_trace_iri`, `capacity_snapshot_iri`).
+  `task_pattern_iri`, `subgoal_template_iri`, `episode_iri`,
+  `memory_composite_iri`, `problem_trace_iri`, `capacity_snapshot_iri`).
+  Per ADR-0044 §amendment-3 + ADR-0146 §amendment-3 (Phase 39), the
+  pre-rename upper-layer memory builder was split into two minters
+  under multi-NodeType dispatch (`ROLE_EPISODIC_MEMORIES` × {Episode,
+  Memory}); pre-rename identifier-surface details are recorded in the
+  ADR amendments + Phase 39 design log.
 * `alignment_role(role_a, role_b)` — graph-name helper for alignment
   metagraphs. NOT a version-qualified IRI (PB-4 lock).
 * `parse_iri` + `is_version_qualified_iri` + `ParsedIri` — table-driven
@@ -32,8 +37,10 @@ Phase 13 added:
 * 9 schema builders under `mindsos_knowledge.schemas`:
   4 seed (`ontology` / `lexicon` / `concepts` / `alignment` —
   v3 ports with ontology HyperEdgeType lift) + 5 upper-layer
-  (`promoted_pipelines` / `task_patterns` / `memories` /
-  `problem_trace` / `capacity_state` — NET-NEW at strict=False).
+  (`promoted_pipelines` / `task_patterns` / `episodic_memories` /
+  `problem_trace` / `capacity_state` — NET-NEW at strict=False;
+  `episodic_memories` renamed from `memories` at Phase 39 per
+  ADR-0044 §am-3 + ADR-0150 §am-4).
 * `schema_for_role(role)` dispatch function — handles the
   alignment-prefix branch and raises `UnknownRoleError` on miss.
 * `UnknownRoleError` exception class.
@@ -52,14 +59,16 @@ Phase 14 adds:
   §amendment-1 (PB-8).
 * `install_local_metagraph` / `extract_local_metagraph` hooks per
   ADR-0042 (PB-5). Lazy `local_metagraph(user_id)` auto-creates
-  with `memories` + `capacity-state` ensured (PB-9).
+  with `episodic_memories` + `capacity-state` ensured (PB-9;
+  Phase 39 rename per ADR-0044 §am-3).
 * `AlreadyInstalledError` + `NotInstalledError` exception classes.
 
 Phase 36 adds:
 
 * `validators.py` semantic-invariant module — 5 pure-function
   validators + `ValidationResult` dataclass + `_VALIDATORS_BY_ROLE`
-  per-role adapter registry (2 entries: memories + problem-trace).
+  per-role adapter registry (2 entries: episodic_memories +
+  problem-trace; Phase 39 rename per ADR-0044 §am-3).
   ADR-0139 flipped Proposed → Accepted via §amendment-1.
 * `SemanticValidationError` — raised by L3 write capacities on
   validator failure; carries `.result: ValidationResult`.
@@ -97,7 +106,7 @@ Deferred to later phases:
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase38"
+__version__ = "0.0.0+phase39"
 
 from .bootstrap import (
     ensure_global_role_graph,
@@ -121,8 +130,8 @@ from .identifiers import (
     REF_TYPES,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -137,9 +146,10 @@ from .identifiers import (
     framenet_frame_iri,
     framenet_lu_iri,
     global_ref_key,
+    episode_iri,
     is_version_qualified_iri,
     local_ref_key,
-    memory_iri,
+    memory_composite_iri,
     oewn_lemma_iri,
     oewn_sense_iri,
     oewn_synset_iri,
@@ -156,8 +166,8 @@ from .schemas import (
     build_alignment_schema,
     build_capacity_state_schema,
     build_concepts_schema,
+    build_episodic_memories_schema,
     build_lexicon_schema,
-    build_memories_schema,
     build_ontology_schema,
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
@@ -181,7 +191,7 @@ __all__ = [
     "ROLE_CONCEPTS",
     "ROLE_PROMOTED_PIPELINES",
     "ROLE_TASK_PATTERNS",
-    "ROLE_MEMORIES",
+    "ROLE_EPISODIC_MEMORIES",
     "ROLE_PROBLEM_TRACE",
     "ROLE_CAPACITY_STATE",
     "SEED_ROLES",
@@ -202,7 +212,8 @@ __all__ = [
     "pipeline_step_iri",
     "task_pattern_iri",
     "subgoal_template_iri",
-    "memory_iri",
+    "episode_iri",
+    "memory_composite_iri",
     "problem_trace_iri",
     "capacity_snapshot_iri",
     # ── parser ─────────────────────────────────────────────────────
@@ -221,7 +232,7 @@ __all__ = [
     "build_alignment_schema",
     "build_promoted_pipelines_schema",
     "build_task_patterns_schema",
-    "build_memories_schema",
+    "build_episodic_memories_schema",
     "build_problem_trace_schema",
     "build_capacity_state_schema",
     "schema_for_role",

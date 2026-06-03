@@ -6,8 +6,8 @@ roles (``ontology``, ``lexicon``, ``concepts``, ``promoted-pipelines``,
 **not** created at bootstrap — Phase 15's Alignments importer mints
 those on demand.
 
-Per ADR-0044: ``memories`` + ``capacity-state`` are Local; bootstrap
-does NOT add them to Global.
+Per ADR-0044 (§am-3 rename): ``episodic_memories`` + ``capacity-state``
+are Local; bootstrap does NOT add them to Global.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from mindsos_knowledge import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -44,11 +44,11 @@ def test_bootstrap_global_has_6_named_role_graphs() -> None:
 
 
 def test_bootstrap_no_local_roles_in_global() -> None:
-    """ADR-0044 — ``memories`` + ``capacity-state`` are Local-only."""
+    """ADR-0044 (§am-3) — ``episodic_memories`` + ``capacity-state`` are Local-only."""
     kl = KnowledgeLayer.bootstrap()
     g = kl.global_metagraph()
     observed_roles = {gr.role for gr in g.graphs.values()}
-    assert ROLE_MEMORIES not in observed_roles
+    assert ROLE_EPISODIC_MEMORIES not in observed_roles
     assert ROLE_CAPACITY_STATE not in observed_roles
 
 

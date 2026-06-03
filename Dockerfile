@@ -215,6 +215,10 @@ COPY mindsos_server ./mindsos_server
 # 9-site new-top-level-package checklist.
 COPY mindsos_capacity ./mindsos_capacity
 COPY tests ./tests
+# Phase 39: tools/ contains check_rename_state.py — Phase 39 data-state
+# detector tested by tests/phase_39/test_check_rename_state_script.py
+# which reads the script from /app/tools/. ADR-0044 §am-3 ship.
+COPY tools ./tools
 # Phase 18: tests_server/ is a SEPARATE top-level test tree per the
 # legacy layout (PHASE_MAP §1 "Test layout: Existing `tests/`,
 # `tests_l3/`, `tests_server/` preserved"). The Phase 18 layer-

@@ -431,23 +431,18 @@ retirement mechanics, N1-N7 mechanics-of-mechanics, M1-M6 stopping
 criterion). See `halvim_mindsos/confirmation_docs/PHASE_14_DESIGN_LOG.md`
 §PB-13 + §PB-15 for the retroactive closure amendments.
 
-### amendment-4 (L2 chat — 2026-06-01) — v1 L4-driven role-graph expansion + `episodic_memories` rename
+### amendment-4 (L2 chat — 2026-06-01) — `episodic_memories` rename + Episode/Memory entry-type split
 
-**Trigger:** Chat A (L4 design-resolution, 2026-05-28) + Chat B (L5
-design-resolution + note-fork decision, 2026-05-31) together authored
-a substantial L2 role-graph expansion required by the v1 L4 substrate.
-The L2 chat (2026-06-01) closes this expansion under a single
-amendment per the amendment-escape pattern (round-3 PB-Q option (a))
-established by this ADR. See `_workbench/L2_CHAT_DECISIONS.md` D-L2-26
-for the per-decision rationale.
+**Trigger:** Chat B (L5 design-resolution, 2026-05-31) D-B48 renamed
+the `memories` role-graph to `episodic_memories` and split its single
+Memory entry type into two (Episode per-task entry +
+Memory-as-clustering-composite) per D-B47 + L5 design notes §4.3 +
+§4.6. The L2 chat (2026-06-01) closes the rename event under this
+amendment. See `_workbench/L2_CHAT_DECISIONS.md` D-L2-16 + D-L2-17.
 
-**Amended behavior.**
-
-The §Decision closed role-set is expanded from 9 entries (8 named +
-alignment-prefix) to 13 entries (12 named + alignment-prefix). The
-`memories` row is renamed and restructured. Sense-correlations is
-explicitly NOT added (lexicon empirical-layer instead — see
-`_workbench/L2_CHAT_DECISIONS.md` D-L2-2).
+**Amended behavior.** The §Decision closed role-set row for `memories`
+is renamed and restructured. The role count is unchanged by this
+amendment (rename, not addition).
 
 **Renamed row:**
 
@@ -455,76 +450,40 @@ explicitly NOT added (lexicon empirical-layer instead — see
 |---|---|---|
 | Local | ~~`memories`~~ → `episodic_memories` | ~~`build_memories_schema`~~ → `build_episodic_memories_schema(strict)` |
 
-New role hosts two entry types (Episode, Memory-as-clustering-composite)
-per Chat B D-B47 + D-B48. Storage discipline:
-`append_only_with_lazy_inline` per L2_CHAT_DECISIONS D-L2-3.
+The renamed role hosts two entry types (Episode per-task entry,
+Memory-as-clustering-composite) per Chat B D-B47 + D-B48. Storage
+discipline `append_only_with_lazy_inline` per L2_CHAT_DECISIONS D-L2-3.
 `memory_iri` IRI builder retired; replaced by `episode_iri` +
-`memory_composite_iri`. See ADR-0044 §amendment-3 for the rename
-trigger + Local-per-user invariant preservation.
+`memory_composite_iri`. See ADR-0044 §amendment-3 for the
+Local-per-user invariant preservation; ADR-0146 §amendment-3 for the
+multi-NodeType dispatch shape change forced by the entry-type split.
 
-**New rows added:**
-
-| Scope | Role | Schema builder |
-|---|---|---|
-| Local | `parameter-staging` | `build_parameter_staging_schema(strict)` |
-| Local + Global | `pending-promotions` | `build_pending_promotions_schema(strict)` |
-| Global | `capacity-gaps` | `build_capacity_gaps_schema(strict)` |
-| Local + Global | `learned-parameters` | `build_learned_parameters_schema(strict)` |
-
-Post-amendment closed role-set: 12 named entries + alignment-prefix.
-`UnknownRoleError` (Phase 13 PB-11) continues to gate any role outside
-this list at runtime; `register_role(...)` continues to not exist.
-
-**Per-role-graph mutation discipline** is now a Schema-level
-declaration per L2_CHAT_DECISIONS D-L2-3 (v1 disciplines:
-`immutable_successor`, `append_only_with_lazy_inline`,
-`mutable_with_retention`, `audit_only_after_settled`, `admin_authored`).
-Discipline assignment for each role-graph is recorded in
-L2_CHAT_DECISIONS D-L2-3 and enforced at `KnowledgeLayer.bootstrap()`.
-
-**Explicitly NOT added in this amendment:**
-
-- `sense-correlations` — withdrawn; data lives in lexicon empirical
-  layer per L2_CHAT_DECISIONS D-L2-2. ALS subsystem #8 retains the
-  name as a parameter-set label pointing at lexicon-empirical
-  parameter key.
-- `world-axioms` — WSD installation chat owns; future
-  ADR-0150 amendment row when WSD ships.
-- `training-runs` — FOL chat owns per Chat A R5 D29; future amendment
-  if FOL accepts.
-- `fol-rules`, `fol-ledger` — FOL chat owns.
-
-**Rationale:** Chat A + Chat B authored these together; L2 chat
-closes. v1 L4-driven role-graph expansion is a single architectural
-event. Bulk amendment matches this ADR's per-amendment pattern
-(§am-1 = single decision; §am-2 = single correction; §am-3 = single
-retirement). Per-role mini-amendments would fragment a coherent event
-into 5+ amendments citing each other. See L2_CHAT_DECISIONS D-L2-26
-for the rejected alternative (per-role mini-ADRs) and reasoning.
+**Rationale:** Hard rename (no alias, no deprecation window) per
+D-L2-16 — old `Memory` and new `Memory` are semantically different
+objects (per-task entry vs clustering composite); soft alias is
+incoherent because `memory_iri()` cannot map to a single new entry
+kind. Codebase is internal; alias window has no users to protect. See
+`_workbench/L2_CHAT_DECISIONS.md` D-L2-16 for the rename-vs-alias
+rationale chain.
 
 **Out-of-scope for amendment-4:**
 
-* Schema field contents for each new role-graph (locked in ADR-0152
-  L2 role-graph schema v2 bundle).
-* Promoted-pipelines `confidence` field removal (ADR-0094 §amendment-1
-  separately tracks).
-* HAS_STEP / PipelineStep shape under L1/L3 reframe (D38 routing);
-  L2-25 schema-v2 partial lock per L2_CHAT_DECISIONS D-L2-6
-  accommodates either reframe outcome.
 * Cross-user `read_other_local` capability for `episodic_memories` —
-  routed to L0 chat per L2_CHAT_DECISIONS D-L2-23.
+  routed to L0 chat per L2_CHAT_DECISIONS D-L2-23 (new
+  `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` audit constant + new
+  capability distinct from generic `READ_OTHER_LOCAL`).
 
-**Escape clause** (per round-3 PB-Q option (a) — preserved):
-
-Future role additions (e.g., `world-axioms` when WSD installation
-ships, `training-runs` if FOL accepts) require new §Revisions entries
-on this ADR naming the new role, citing the consumer requirement, and
-listing the new schema builder + mutation discipline. The Phase 13
-sentinel `tests/phase_13/test_dispatch.py` is the enforcement
-surface; bypassing it bypasses this ADR.
-
-See `MindsOS/docs/_workbench/L2_CHAT_DECISIONS.md` D-L2-26 for the
-amendment rationale chain and routed-out items inventory.
+**Split to §amendment-5.** The 4 new role-graphs added under v1
+L4-driven expansion (`parameter-staging`, `pending-promotions`,
+`capacity-gaps`, `learned-parameters`) + the per-role-graph mutation
+discipline framework + the "Explicitly NOT added" exclusion list + the
+escape clause for future role additions ship as §amendment-5 at
+Phase 43 (Rail A second slot per `POST_PHASE_38_PHASE_MAP.md` + Chat C
+IL-3 split decision). The rename event (this amendment) and the
+role-graph expansion event are separate architectural events with
+separate phases; bundling them in a single amendment as drafted at the
+L2 chat closure was the closure's correctness gap, repaired in place
+per IL-3 + Phase 39 design pass R0 PB-5.
 
 ## Source
 

@@ -39,9 +39,10 @@ Local-originated content that becomes shared system-wide:
 
 **Does NOT cross:**
 
-- `memories` per
+- `episodic_memories` per
   [ADR-0044](../decisions/adr/0044-memories-move-to-local-per-user.md)
-  (Accepted). Autobiographical records stay in the originating user's
+  (Accepted; §amendment-3 renamed from `memories` at Phase 39).
+  Autobiographical records stay in the originating user's
   Local until account deletion. Cross-user pattern learning happens by
   L4 distilling many users' memories into a Pipeline / Pattern proposal
   — the memory itself never moves.

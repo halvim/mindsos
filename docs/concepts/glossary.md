@@ -145,9 +145,12 @@ multi-word expressions). Seeded via OEWN 2024 at Phase 15a.
 state (memories, capacity-state, problem-trace) until promotion to
 Global. Lazy-created on first access. Contrast with **Global**.
 
-**Memory.** A `Memory` node in the user's Local `memories`
-role-graph, written via `capacity:consolidate:mm`. IRI:
-`memories-v1:memory:<user_id>:<memory_id>`.
+**Memory.** A `Memory` clustering-composite node in the user's Local
+`episodic_memories` role-graph (Phase 39 rename per ADR-0044 §am-3),
+written via `capacity:consolidate:mm`. IRI:
+`episodic-memories-v1:memory:<user_id>:<memory_id>`. The role-graph
+also hosts `Episode` per-task entries with IRI form
+`episodic-memories-v1:episode:<user_id>:<episode_id>`.
 
 **Metagraph.** A graph whose Nodes are themselves Graphs. Carries
 MetaEdges + MetaHyperEdges (connecting graphs) and IntergraphEdges

@@ -14,10 +14,11 @@ from mindsos_knowledge import (
     alignment_role,
     capacity_snapshot_iri,
     dolce_iri,
+    episode_iri,
     framenet_fe_iri,
     framenet_frame_iri,
     framenet_lu_iri,
-    memory_iri,
+    memory_composite_iri,
     oewn_lemma_iri,
     oewn_sense_iri,
     oewn_synset_iri,
@@ -85,8 +86,18 @@ def test_subgoal_template_iri_happy() -> None:
     )
 
 
-def test_memory_iri_happy() -> None:
-    assert memory_iri("1", "alice", "m-001") == "memories-1:memory:alice:m-001"
+def test_episode_iri_happy() -> None:
+    assert (
+        episode_iri("1", "alice", "e-001")
+        == "episodic-memories-1:episode:alice:e-001"
+    )
+
+
+def test_memory_composite_iri_happy() -> None:
+    assert (
+        memory_composite_iri("1", "alice", "m-001")
+        == "episodic-memories-1:memory:alice:m-001"
+    )
 
 
 def test_problem_trace_iri_happy() -> None:
@@ -115,7 +126,7 @@ def test_alignment_role_canonical_order() -> None:
 
 
 def test_alignment_role_string_shape() -> None:
-    assert alignment_role("concepts", "lexicon") == "alignment:concepts<->lexicon"
+    assert alignment_role("concepts", "lexicon") == "alignment:concepts:lexicon"
 
 
 # ── user_id charset enforcement (PB-11 + ADR-0044 §amendment-1) ───────
@@ -132,9 +143,25 @@ def test_alignment_role_string_shape() -> None:
         "a" * 65,  # too long
     ],
 )
-def test_memory_iri_rejects_bad_user_id(bad: str) -> None:
+def test_episode_iri_rejects_bad_user_id(bad: str) -> None:
     with pytest.raises(RefFormatError, match="user_id"):
-        memory_iri("1", bad, "m1")
+        episode_iri("1", bad, "e1")
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "",
+        "-leading-dash",
+        "a:b",
+        "user@example",
+        "user with space",
+        "a" * 65,
+    ],
+)
+def test_memory_composite_iri_rejects_bad_user_id(bad: str) -> None:
+    with pytest.raises(RefFormatError, match="user_id"):
+        memory_composite_iri("1", bad, "m1")
 
 
 @pytest.mark.parametrize(
@@ -149,10 +176,15 @@ def test_capacity_snapshot_rejects_bad_user_id(bad: str) -> None:
         capacity_snapshot_iri("1", bad, "capacity:cat:foo", "2026-05-16")
 
 
-def test_memory_iri_accepts_typical_uuid_user_id() -> None:
+def test_memory_composite_iri_accepts_typical_uuid_user_id() -> None:
     # UUID with dashes is fine.
-    iri = memory_iri("1", "user-abc-123", "m1")
-    assert iri == "memories-1:memory:user-abc-123:m1"
+    iri = memory_composite_iri("1", "user-abc-123", "m1")
+    assert iri == "episodic-memories-1:memory:user-abc-123:m1"
+
+
+def test_episode_iri_accepts_typical_uuid_user_id() -> None:
+    iri = episode_iri("1", "user-abc-123", "e1")
+    assert iri == "episodic-memories-1:episode:user-abc-123:e1"
 
 
 # ── capacity_snapshot embedded-colon round-trip (PB-8) ────────────────

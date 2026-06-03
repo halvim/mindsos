@@ -138,10 +138,11 @@ carry-forward.
 `KLWriteHandle.write_and_validate(*, value, type_, **mint_content)`
 keeps L2-convention `type_` on the handle method and translates to L1's
 `type_name` kwarg at the `Graph.add_node` call site (R4 §am-impl-1).
-NodeTypes registered in Phase 13's `build_memories_schema` /
-`build_problem_trace_schema` are `"Memory"` and `"ProblemTraceEntry"`
-respectively — these are the only values the write capacity bodies
-pass.
+NodeTypes registered in Phase 39's `build_episodic_memories_schema` /
+Phase 13's `build_problem_trace_schema` are `"Memory"` / `"Episode"`
+and `"ProblemTraceEntry"` respectively. Phase 39 `consolidate:mm`
+keeps `type_="Memory"` per design log PB-3 (semantic retarget to
+`"Episode"` deferred to Phase 48 per D-L2-17).
 
 ## See also
 

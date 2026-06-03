@@ -14,8 +14,8 @@ from mindsos_knowledge import (
     ALL_ROLES,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -24,11 +24,12 @@ from mindsos_knowledge import (
     alignment_role,
     capacity_snapshot_iri,
     dolce_iri,
+    episode_iri,
     framenet_fe_iri,
     framenet_frame_iri,
     framenet_lu_iri,
     is_version_qualified_iri,
-    memory_iri,
+    memory_composite_iri,
     oewn_lemma_iri,
     oewn_sense_iri,
     oewn_synset_iri,
@@ -108,10 +109,16 @@ _BUILDER_ROUND_TRIPS = [
         "subgoal_template",
     ),
     (
-        lambda: memory_iri("1", "alice", "m1"),
-        ROLE_MEMORIES,
+        lambda: episode_iri("1", "alice", "e1"),
+        ROLE_EPISODIC_MEMORIES,
+        "episode",
+        "episode",
+    ),
+    (
+        lambda: memory_composite_iri("1", "alice", "m1"),
+        ROLE_EPISODIC_MEMORIES,
         "memory",
-        "memory",
+        "memory_composite",
     ),
     (
         lambda: problem_trace_iri("1", "trc"),
@@ -151,7 +158,7 @@ def test_builder_round_trip(build, expected_role, expected_kind, name) -> None:
         "PhysicalObject",  # no prefix
         "unknown-prefix-1.0:body",
         "dolce-dul-:bare-version",  # empty version segment
-        "alignment:lexicon<->concepts",  # graph name (PB-4 — not an IRI)
+        "alignment:concepts:lexicon",  # graph name (PB-4 — not an IRI)
         "no-colon-here",
         None,
         42,
@@ -227,9 +234,10 @@ def test_parse_iri_full_field_preserved() -> None:
     [
         ("dolce-dul-4.0:PhysicalObject", True),
         ("oewn-2024:synset:01-n", True),
-        ("memories-1:memory:alice:m1", True),
+        ("episodic-memories-1:memory:alice:m1", True),
+        ("episodic-memories-1:episode:alice:e1", True),
         ("not-an-iri", False),
-        ("alignment:lexicon<->concepts", False),  # PB-4
+        ("alignment:concepts:lexicon", False),  # PB-4
         ("", False),
         (None, False),
         (42, False),

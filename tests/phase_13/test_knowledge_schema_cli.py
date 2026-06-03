@@ -1,6 +1,6 @@
 """Phase 13 PB-6 — ``mindsos knowledge schema {show,validate}`` CLI.
 
-Two representative roles (lexicon = seed; memories = upper-layer)
+Two representative roles (lexicon = seed; episodic_memories = upper-layer)
 exercise the verbs end-to-end. Each verb covers happy / JSON / error.
 
 State-file fixtures use canonical ``node_id`` / ``edge_id`` keys per
@@ -49,12 +49,13 @@ def test_schema_show_lexicon_json() -> None:
     assert "HAS_SENSE" in payload["edge_types"]
 
 
-def test_schema_show_memories_json() -> None:
-    res = _run(["knowledge", "schema", "show", "--role", "memories", "--json"])
+def test_schema_show_episodic_memories_json() -> None:
+    res = _run(["knowledge", "schema", "show", "--role", "episodic_memories", "--json"])
     assert res.returncode == 0, res.stderr
     payload = json.loads(res.stdout)
-    assert payload["role"] == "memories"
+    assert payload["role"] == "episodic_memories"
     assert "Memory" in payload["node_types"]
+    assert "Episode" in payload["node_types"]
 
 
 def test_schema_show_alignment_prefix() -> None:
@@ -64,13 +65,13 @@ def test_schema_show_alignment_prefix() -> None:
             "schema",
             "show",
             "--role",
-            "alignment:lexicon<->concepts",
+            "alignment:concepts:lexicon",
             "--json",
         ]
     )
     assert res.returncode == 0, res.stderr
     payload = json.loads(res.stdout)
-    assert payload["role"] == "alignment:lexicon<->concepts"
+    assert payload["role"] == "alignment:concepts:lexicon"
     assert "AlignmentAnchor" in payload["node_types"]
     assert "EXACT_MATCH" in payload["edge_types"]
 
@@ -119,32 +120,32 @@ def test_schema_validate_lexicon_happy_json() -> None:
     assert payload["violation_count"] == 0
 
 
-def test_schema_validate_memories_bad_fixture_exits_one() -> None:
+def test_schema_validate_episodic_memories_bad_fixture_exits_one() -> None:
     res = _run(
         [
             "knowledge",
             "schema",
             "validate",
             "--role",
-            "memories",
+            "episodic_memories",
             "--graph-file",
-            str(_FIXTURES / "memories_bad.json"),
+            str(_FIXTURES / "episodic_memories_bad.json"),
         ]
     )
     assert res.returncode == 1
     assert "VIOLATIONS" in res.stdout
 
 
-def test_schema_validate_memories_bad_fixture_json() -> None:
+def test_schema_validate_episodic_memories_bad_fixture_json() -> None:
     res = _run(
         [
             "knowledge",
             "schema",
             "validate",
             "--role",
-            "memories",
+            "episodic_memories",
             "--graph-file",
-            str(_FIXTURES / "memories_bad.json"),
+            str(_FIXTURES / "episodic_memories_bad.json"),
             "--json",
         ]
     )
@@ -161,9 +162,9 @@ def test_schema_validate_exit_zero_surfaces_violation_but_returns_zero() -> None
             "schema",
             "validate",
             "--role",
-            "memories",
+            "episodic_memories",
             "--graph-file",
-            str(_FIXTURES / "memories_bad.json"),
+            str(_FIXTURES / "episodic_memories_bad.json"),
             "--json",
             "--exit-zero",
         ]

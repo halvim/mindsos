@@ -8,8 +8,8 @@ they dispatch on:
   ``alignment:<a>:<b>`` prefix (per ADR-0150 §amendment-1, alignment
   is Global-only at v1).
 * ``ensure_local_role_graph(metagraph, role)`` — idempotent; accepts
-  the 2 Local-named roles (``memories`` + ``capacity-state``) per
-  ADR-0044.
+  the 2 Local-named roles (``episodic_memories`` + ``capacity-state``)
+  per ADR-0044 (§am-3 renamed ``memories`` → ``episodic_memories``).
 
 Both functions:
 
@@ -52,8 +52,8 @@ from .identifiers import (
     ALL_ROLES,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -62,8 +62,8 @@ from .identifiers import (
 from .schemas import build_alignment_schema, schema_for_role
 
 
-#: Roles that live in Global metagraph per ADR-0044 (memories +
-#: capacity-state are Local) + ADR-0150 §amendment-1 (alignment is
+#: Roles that live in Global metagraph per ADR-0044 (episodic_memories
+#: + capacity-state are Local) + ADR-0150 §amendment-1 (alignment is
 #: Global-only at v1).
 _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_ONTOLOGY,
@@ -74,9 +74,10 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_PROBLEM_TRACE,
 })
 
-#: Roles that live in Local-per-user metagraph per ADR-0044.
+#: Roles that live in Local-per-user metagraph per ADR-0044
+#: (§am-3 renamed ``memories`` → ``episodic_memories``).
 _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_CAPACITY_STATE,
 })
 
@@ -130,8 +131,8 @@ def ensure_global_role_graph(
 
     Rejects:
 
-    * Local-scoped roles (``memories``, ``capacity-state``) per
-      ADR-0044 — raises :class:`KnowledgeError`.
+    * Local-scoped roles (``episodic_memories``, ``capacity-state``) per
+      ADR-0044 (§am-3 rename) — raises :class:`KnowledgeError`.
     * Unrecognised roles — raises :class:`UnknownRoleError` (mirrors
       Phase 13's ``schema_for_role`` UnknownRoleError shape; see
       Phase 13 PB-11).
@@ -208,8 +209,8 @@ def ensure_local_role_graph(
 
     Accepts:
 
-    * The 2 Local-named roles per ADR-0044: ``memories``,
-      ``capacity-state``.
+    * The 2 Local-named roles per ADR-0044 (§am-3 rename):
+      ``episodic_memories``, ``capacity-state``.
 
     Rejects:
 
@@ -221,7 +222,7 @@ def ensure_local_role_graph(
     Args:
         metagraph: The Local :class:`Metagraph` (per-user) to ensure
             into.
-        role: ``memories`` or ``capacity-state``.
+        role: ``episodic_memories`` or ``capacity-state``.
 
     Returns:
         The existing or newly-added :class:`Graph` whose

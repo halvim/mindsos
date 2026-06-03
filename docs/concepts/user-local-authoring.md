@@ -21,7 +21,7 @@ Two role-graphs are **Local-only** per
 `_source_backup/docs_legacy_full/DESIGN_UPPER_LAYER_ROLES.md` §4.2,
 outside the published docs tree):
 
-- `memories` — autobiographical; this user's record of completed tasks.
+- `episodic_memories` — autobiographical; this user's record of completed tasks (Episode per-task entries + Memory clustering composites; Phase 39 rename per ADR-0044 §am-3).
 - `capacity-state` — per-user snapshots of L3 resident state.
 
 Three more role-graphs admit **Local drafts** (with the canonical
@@ -41,9 +41,9 @@ release-shipped.
 ```
 L4 orchestrator decides "consolidate this Mental Model into a memory"
   └→ invokes L3 capacity capacity:consolidate:mm (ADR-0145)
-       └→ capacity acquires kl.writeable(session, role='memories', scope='local')
+       └→ capacity acquires kl.writeable(session, role='episodic_memories', scope='local')
             └→ returns KLWriteHandle (ADR-0143; never mutates)
-            └→ handle.mint_iri(...) → memories-1:memory:<user_id>:<memory_id>
+            └→ handle.mint_iri('Memory', ...) → episodic-memories-1:memory:<user_id>:<memory_id>
             └→ handle.validate_node(...) — KL semantic validators (ADR-0139)
             └→ handle.graph().add_node(...) — L1 mutation primitive
             └→ returns WriteResult | ProblemTraceRecord (ADR-0146)

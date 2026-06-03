@@ -22,7 +22,7 @@ from mindsos_knowledge import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -88,7 +88,7 @@ def test_ensure_global_alignment_idempotent() -> None:
     assert g1 is g2
 
 
-@pytest.mark.parametrize("role", [ROLE_MEMORIES, ROLE_CAPACITY_STATE])
+@pytest.mark.parametrize("role", [ROLE_EPISODIC_MEMORIES, ROLE_CAPACITY_STATE])
 def test_ensure_global_rejects_local_role(role: str) -> None:
     """ADR-0044 enforced at the dispatch site (PB-4)."""
     mg = Metagraph(name="t")

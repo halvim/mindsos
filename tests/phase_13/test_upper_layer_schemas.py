@@ -11,7 +11,7 @@ from mindsos_core import Schema
 
 from mindsos_knowledge.schemas import (
     build_capacity_state_schema,
-    build_memories_schema,
+    build_episodic_memories_schema,
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
     build_task_patterns_schema,
@@ -21,11 +21,9 @@ from mindsos_knowledge.schemas.capacity_state import (
     CAPACITY_STATE_NODE_TYPES,
     NODE_CAPACITY_SNAPSHOT,
 )
-from mindsos_knowledge.schemas.memories import (
-    EDGE_PART_OF_PIPELINE,
-    EDGE_USED_CAPACITY,
-    MEMORIES_EDGE_TYPES,
-    MEMORIES_NODE_TYPES,
+from mindsos_knowledge.schemas.episodic_memories import (
+    EPISODIC_MEMORIES_NODE_TYPES,
+    NODE_EPISODE,
     NODE_MEMORY,
 )
 from mindsos_knowledge.schemas.problem_trace import (
@@ -95,20 +93,23 @@ def test_task_patterns_edges_match() -> None:
     assert EDGE_PREREQUISITE_OF in s.edge_types
 
 
-# ── memories ───────────────────────────────────────────────────────────
+# ── episodic_memories (Phase 39 rename per ADR-0044 §am-3) ─────────────
 
 
-def test_memories_nodes_match() -> None:
-    s = build_memories_schema()
-    assert set(s.node_types) == set(MEMORIES_NODE_TYPES)
+def test_episodic_memories_nodes_match() -> None:
+    s = build_episodic_memories_schema()
+    assert set(s.node_types) == set(EPISODIC_MEMORIES_NODE_TYPES)
+    assert NODE_EPISODE in s.node_types
     assert NODE_MEMORY in s.node_types
 
 
-def test_memories_edges_match() -> None:
-    s = build_memories_schema()
-    assert set(s.edge_types) == set(MEMORIES_EDGE_TYPES)
-    assert EDGE_USED_CAPACITY in s.edge_types
-    assert EDGE_PART_OF_PIPELINE in s.edge_types
+def test_episodic_memories_has_no_edges_at_phase_39() -> None:
+    """Phase 39 design log PB-R1-A: Phase 13 vestigial USED_CAPACITY +
+    PART_OF_PIPELINE EdgeTypes dropped. Phase 43 may re-add on Episode
+    atomically with full D-L2-17 ship.
+    """
+    s = build_episodic_memories_schema()
+    assert s.edge_types == {}
 
 
 # ── problem_trace ──────────────────────────────────────────────────────
@@ -149,7 +150,7 @@ def test_capacity_state_has_no_edges_in_v1() -> None:
     [
         build_promoted_pipelines_schema,
         build_task_patterns_schema,
-        build_memories_schema,
+        build_episodic_memories_schema,
         build_problem_trace_schema,
         build_capacity_state_schema,
     ],
@@ -165,7 +166,7 @@ def test_upper_layer_schema_strict_true_round_trip(builder) -> None:
     [
         build_promoted_pipelines_schema,
         build_task_patterns_schema,
-        build_memories_schema,
+        build_episodic_memories_schema,
         build_problem_trace_schema,
         build_capacity_state_schema,
     ],

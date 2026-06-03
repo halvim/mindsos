@@ -67,9 +67,9 @@ def test_consolidate_mm_happy_path_returns_write_result():
         }
     )
     assert isinstance(result, WriteResult)
-    assert result.role == "memories"
+    assert result.role == "episodic_memories"
     assert result.scope == "local"
-    assert "memories-v1:memory:alice:m-happy" == result.iri
+    assert "episodic-memories-v1:memory:alice:m-happy" == result.iri
 
 
 def test_trace_problem_happy_path_returns_write_result():

@@ -31,8 +31,8 @@ Metagraphs**.
 - Holds system-wide knowledge: ontologies, lexicons, concept frames,
   promoted pipelines, task patterns, and problem-trace records.
 - Per [ADR-0044](../decisions/adr/0044-memories-move-to-local-per-user.md),
-  ``memories`` and ``capacity-state`` are **not** in Global — they're
-  per-user Local.
+  ``episodic_memories`` and ``capacity-state`` are **not** in Global —
+  they're per-user Local (Phase 39 rename per §am-3).
 - Per [ADR-0150 §amendment-1](../decisions/adr/0150-l2-knowledge-lifecycle.md)
   (Phase 14), alignment pair-graphs (``alignment:<a>:<b>``) live in
   Global only.
@@ -66,7 +66,7 @@ Local has **2 role-graphs** when minted (lazy or installed):
 
 | Role             | What it holds                                          |
 |------------------|--------------------------------------------------------|
-| `memories`       | Per-user task history; not Global per ADR-0044.        |
+| `episodic_memories` | Per-user task history (Episode + Memory composite); not Global per ADR-0044 §am-3. |
 | `capacity-state` | Per-user L3 capacity state snapshots.                  |
 
 ## Lifecycle

@@ -12,8 +12,8 @@ from mindsos_capacity import ProblemTraceRecord, WriteOutcome, WriteResult
 
 def test_write_result_is_frozen_dataclass():
     wr = WriteResult(
-        iri="memories-v1:memory:alice:m1",
-        role="memories",
+        iri="episodic-memories-v1:memory:alice:m1",
+        role="episodic_memories",
         scope="local",
         written_at=datetime.now(timezone.utc),
     )
@@ -24,13 +24,13 @@ def test_write_result_is_frozen_dataclass():
 def test_write_result_fields():
     now = datetime.now(timezone.utc)
     wr = WriteResult(
-        iri="memories-v1:memory:alice:m1",
-        role="memories",
+        iri="episodic-memories-v1:memory:alice:m1",
+        role="episodic_memories",
         scope="local",
         written_at=now,
     )
-    assert wr.iri == "memories-v1:memory:alice:m1"
-    assert wr.role == "memories"
+    assert wr.iri == "episodic-memories-v1:memory:alice:m1"
+    assert wr.role == "episodic_memories"
     assert wr.scope == "local"
     assert wr.written_at == now
     assert wr.extras == {}
@@ -38,12 +38,12 @@ def test_write_result_fields():
 
 def test_write_result_extras_defaults_to_empty_dict():
     wr = WriteResult(
-        iri="x", role="memories", scope="local", written_at=datetime.now(timezone.utc)
+        iri="x", role="episodic_memories", scope="local", written_at=datetime.now(timezone.utc)
     )
     assert wr.extras == {}
     # Ensure each instance gets its own dict (field(default_factory=dict))
     wr2 = WriteResult(
-        iri="y", role="memories", scope="local", written_at=datetime.now(timezone.utc)
+        iri="y", role="episodic_memories", scope="local", written_at=datetime.now(timezone.utc)
     )
     assert wr.extras is not wr2.extras
 
@@ -51,7 +51,7 @@ def test_write_result_extras_defaults_to_empty_dict():
 def test_write_outcome_is_union_of_writeresult_and_problemtracerecord():
     # WriteOutcome is a typing.Union — instances of either member match.
     wr = WriteResult(
-        iri="x", role="memories", scope="local", written_at=datetime.now(timezone.utc)
+        iri="x", role="episodic_memories", scope="local", written_at=datetime.now(timezone.utc)
     )
     ptr = ProblemTraceRecord(
         task_id="t1",
@@ -73,7 +73,7 @@ def test_write_result_scope_literal():
     for scope in ("local", "global"):
         wr = WriteResult(
             iri="x",
-            role="memories" if scope == "local" else "problem-trace",
+            role="episodic_memories" if scope == "local" else "problem-trace",
             scope=scope,  # type: ignore[arg-type]
             written_at=datetime.now(timezone.utc),
         )

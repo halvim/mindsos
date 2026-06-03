@@ -57,9 +57,9 @@ These do not appear above by design:
 - **Per-tenant custom roles.** The role-set is closed
   ([ADR-0150](../decisions/adr/0150-l2-knowledge-lifecycle.md)).
   Per-tenant variation lives inside existing roles (namespaced under
-  `concepts` or scoped per-user under `memories`), not as new top-level
-  roles.
-- **Memory → Global migration.** `memories` is Local-per-user per
+  `concepts` or scoped per-user under `episodic_memories`), not as new
+  top-level roles.
+- **Memory → Global migration.** `episodic_memories` is Local-per-user per
   [ADR-0044](../decisions/adr/0044-memories-move-to-local-per-user.md).
   Cross-user pattern learning happens by L4 distilling many users'
   memories into a Pipeline / Pattern proposal — the memory itself never

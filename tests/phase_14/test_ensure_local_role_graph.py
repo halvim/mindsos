@@ -20,7 +20,7 @@ from mindsos_knowledge import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_LEXICON,
-    ROLE_MEMORIES,
+    ROLE_EPISODIC_MEMORIES,
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
@@ -30,7 +30,7 @@ from mindsos_knowledge import (
 )
 
 
-_LOCAL_NAMED = (ROLE_MEMORIES, ROLE_CAPACITY_STATE)
+_LOCAL_NAMED = (ROLE_EPISODIC_MEMORIES, ROLE_CAPACITY_STATE)
 _GLOBAL_NAMED = (
     ROLE_ONTOLOGY,
     ROLE_LEXICON,
@@ -86,6 +86,6 @@ def test_ensure_local_rejects_unknown_role() -> None:
 def test_local_schema_strict_false_per_adr_0149() -> None:
     """Per ADR-0149 — schemas ship strict=False by default."""
     mg = Metagraph(name="local_t")
-    g = ensure_local_role_graph(mg, ROLE_MEMORIES)
+    g = ensure_local_role_graph(mg, ROLE_EPISODIC_MEMORIES)
     assert g.schema is not None
     assert g.schema.strict is False
