@@ -425,5 +425,188 @@ ship-ready.
 
 ---
 
-*End of PHASE_39_DESIGN_LOG.md. Captures design pass closure
-2026-06-02. Impl + tester loop ship from here.*
+*Original closure 2026-06-02 — design pass. Impl-time amendments
+appended at §9 below per Phase 38 R6 precedent.*
+
+---
+
+## 9. Impl-time amendments (impl chat — 2026-06-02 ship)
+
+The impl + tester chat ran R1/R2 rounds beyond the design log's
+saturation. Eight non-architectural impl-shape picks landed; eight
+gate-driven follow-up commits + a CONFIRMED.md ordering anomaly are
+recorded here for future-chat reference.
+
+### 9.1 R1 impl-shape picks
+
+- **PB-R1-A (docs scope phasing).** Active docs (`docs/concepts/` +
+  `docs/api/` + `docs/usage/` + `docs/dev/internals/` +
+  `docs/decisions/summary/`) advanced atomically with code.
+  Non-amend-target ADRs containing stale `ROLE_MEMORIES` / `memory_iri`
+  example code (ADR-0045, ADR-0139, ADR-0143, ADR-0146 main body
+  outside §am-3, ADR-0147, ADR-0154 example IRI form) **deferred to
+  Phase 43** — Phase 43 ships adjacent ADR-0152/0153 amendments and
+  naturally absorbs the stale-example cleanup. ADR-0044 filename
+  cross-refs unchanged.
+- **PB-R1-B (ADR-0044 filename frozen).** Filename
+  `0044-memories-move-to-local-per-user.md` stays — ADR slugs are
+  audit anchors; the §am-3 retitle carries the rename in content.
+  14+ cross-ref filename pins across `docs/decisions/adr/*.md` and
+  `docs/concepts/*.md` preserved.
+- **PB-R1-C (sentinel_paths.py).** Test-file rename count corrected
+  from design-log §3's "~24" to ~25 (`tests/_shared/sentinel_paths.py`
+  was missed; landed in commit 5).
+- **PB-R1-D (phase-48-retarget NOTE comment).** Inline
+  `NOTE(phase-48-retarget)` comment added at
+  `mindsos_capacity/builtins/consolidate.py` validate_node +
+  write_and_validate call site flagging the two-phase semantic tech
+  debt (Phase 39 keeps `type_="Memory"` writing per-task entries;
+  Phase 48 retargets to `Episode` per D-L2-17 + Chat B D-B47). Module
+  docstring also flags the interim state.
+- **PB-R1-E (6-commit grouping).** `phase-39` branch ship grouped as:
+  (1) ADR amendments; (2) identifier core; (3) schema rename +
+  re-exports; (4) downstream callsites + first Linux gate;
+  (5) tests + tool + manifest + full Linux gate; (6) active docs +
+  project status. Mid-granularity matches the two failure modes that
+  needed bisecting; finer splits would have created non-buildable
+  intermediate commits which defeat per-commit gating. Squash-merged
+  on ship.
+- **PB-R1-F (POST_PHASE_38_PHASE_MAP + HANDOFF dual SHIPPED flip).**
+  Both `confirmation_docs/POST_PHASE_38_PHASE_MAP.md` Phase 39 row
+  Status and `HANDOFF.md` §1 line + §3.1.7/8 status block flipped
+  to SHIPPED at commit 6. Drift between phase-map (rail-progress
+  board) and HANDOFF (human-readable status) is a known anti-pattern.
+
+### 9.2 R2 ADR text-shape picks
+
+- **PB-R2-1/2/3 (ADR-0146 §am-3 header + title + placement).**
+  Header style `## §amendment-N — <title> (halvim, <date>)` matches
+  ADR-0146 local convention (not the level-3 `### amendment-N
+  (<tag>)` of ADR-0044/0150). Title `Phase 39 multi-NodeType dispatch
+  — tuple-key registry + mint_iri signature` names change driver +
+  shipped surfaces. Appended at end of file after §am-2.
+- **PB-R2-4 (ADR-0150 §am-4 surgery).** 8-block surgery (trigger
+  paragraph rescoped, amended-behavior trimmed, renamed-row table +
+  row-meaning + scoped rationale + scoped out-of-scope kept;
+  new-rows table + per-role-graph mutation discipline + "Explicitly
+  NOT added" exclusion list + escape clause all deleted to migrate to
+  §am-5 at Phase 43). Net: ~93 lines → ~32 lines.
+- **PB-R2-5 (ADR-0150 §am-4 retitle).**
+  `v1 L4-driven role-graph expansion + episodic_memories rename` →
+  `episodic_memories rename + Episode/Memory entry-type split`.
+- **PB-R2-6 (ADR-0044 §am-3 cross-ref).** Inline parenthetical on
+  the `_IRI_BUILDERS` migration-plan bullet (lines 146-147) pointing
+  at ADR-0146 §am-3 (single-line edit).
+- **PB-R2-7 (ADR-0143 cross-ref).** Added as a line under
+  `## Implementation references` (line 121+) pointing at ADR-0146
+  §am-3. No §amendment on ADR-0143 (handle pattern unchanged;
+  signature evolution = registry-dispatch, not handle-pattern).
+- **PB-R2-8 (`check_rename_state.py` Falkor enumeration).**
+  `FalkorDB.list_graphs()` + per-graph filter by IRI-prefix Cypher
+  match. Tools are explicitly cross-layer (not subject to layer
+  isolation) — direct FalkorDB connection via env-var config,
+  separate from FalkorClient layer.
+- **PB-R2-9/10 (HANDOFF status text + date placeholders).** SHIPPED
+  marker on §3.1.8 anchor block; date placeholder `2026-06-XX` in
+  pre-ship ADR drafts; ADR-0150 §am-4 authorship date
+  `(L2 chat — 2026-06-01)` preserved (surgery is text-shape narrow,
+  not a new amendment event).
+
+### 9.3 Gate-driven follow-up commits (5b, 5c)
+
+Linux full gate at end of commit 5 surfaced 30 failures across 6
+categories. Two follow-up commits fixed them:
+
+- **Commit 5b** (`ddc2c14`) — 17 files. Per-package `__version__`
+  bumps (`mindsos_core` + `mindsos_cli` + `mindsos_capacity` +
+  `mindsos_server` + `mindsos_instances` + `mindsos_admin` all
+  advanced `0.0.0+phase38` → `0.0.0+phase39`) + `pyproject.toml`
+  version + `docker-compose.yml` image tags
+  (`mindsos:phase38-prod/test` → `mindsos:phase39-prod/test`) +
+  `Dockerfile` test-stage `COPY tools ./tools` (Phase 39 ships the
+  first runtime `tools/` script; test-stage previously didn't copy
+  the dir; new convention for any future tools shipping). Plus
+  `tests/phase_13/test_knowledge_schema_cli.py` (CLI role-string
+  surface + fixture rename `memories_bad.json` →
+  `episodic_memories_bad.json`); `tests/phase_25/` (2 files; role
+  assertion text); `tests/phase_33/` (mint_iri signature + role
+  assertion); `tests/phase_34/test_phase_34_export_slate.py` +
+  `test_writeable_version_kwarg.py` (version + signature).
+- **Commit 5c** (`<sha>`) — 2 files.
+  `tests/phase_30/test_phase_30_export_slate.py` +
+  `tests/phase_31/test_phase_31_export_slate.py` —
+  `test_version_bumped_to_phase_34` literal-version assertions
+  advanced. The "phase_34" test name is from the phase-34 sentinel
+  flip; the literal value bumps at each subsequent phase per the
+  sentinel-flip-at-target-phase convention.
+
+### 9.4 Generic per-phase manifest-bump checklist (carry-forward)
+
+Surfaced at Phase 39 commit 5; documented here for every subsequent
+phase. **9 surfaces must advance in lockstep with a manifest phase
+bump** (see HANDOFF §9 process notes + POST_PHASE_38_PHASE_MAP §1):
+
+1. `mindsos_cli/manifest.toml` `[mindsos] phase` + `version`.
+2-7. `mindsos_core/__init__.py` + `mindsos_cli/__init__.py` +
+   `mindsos_capacity/__init__.py` + `mindsos_server/__init__.py` +
+   `mindsos_instances/__init__.py` + `mindsos_admin/__init__.py`
+   `__version__`.
+8. `mindsos_knowledge/__init__.py` `__version__`.
+9. `pyproject.toml` `[project] version`.
+10. `docker-compose.yml` `image: mindsos:phase{N}-prod` +
+   `mindsos:phase{N}-test`.
+11. `tests/phase_30/test_phase_30_export_slate.py` +
+   `tests/phase_31/test_phase_31_export_slate.py` +
+   `tests/phase_34/test_phase_34_export_slate.py`
+   `test_version_bumped_to_phase_34` literal assertions (per the
+   sentinel-flip-at-target-phase pattern — file name stays at
+   `phase_34`; literal value bumps).
+
+Doctor self-test + version-parity tests gate this. Doctor failure at
+the cumulative gate is the cleanest detection signal.
+
+### 9.5 Ship closure anomaly (recorded for replay-prevention)
+
+The squash-merge step on Mac was skipped in the first ship attempt;
+`mindsos confirm-phase` ran on Linux against a stale `main` that did
+not yet contain the Phase 39 squash-merge. Result: origin/main reached
+`6c73108` (CONFIRMED.md + tester notes) BEFORE the actual squash-merge
+landed. Recovery: restored `phase-39` branch from Mac reflog (tip
+`cfe1503`), squash-merged on top of `6c73108`, re-cut
+`phase-39-confirmed` tag at the new SHA, force-pushed the tag.
+
+**Final main ordering (semantically backwards but functionally
+correct):**
+
+| Commit | Content |
+|---|---|
+| `7a8bf10` (tag: phase-39-confirmed) | Phase 39 squash-merge — the actual ship |
+| `6c73108` | PHASE_39_CONFIRMED.md + notes-phase-39.md |
+| `ec16443` (tag: a0-corpus-landed) | A0-5 doc closure |
+| `f33db02` | A1 retention rule |
+
+**Future-chat advisory:** ensure the squash-merge to `main` lands +
+pushes BEFORE `mindsos confirm-phase` runs. Or run confirm-phase on
+Mac with a clean `main` post-squash-merge. The two-machine workflow
+makes the temporal coupling subtle.
+
+### 9.6 Phase 43 carry-forwards
+
+Items deferred from Phase 39 that Phase 43's chat must absorb:
+
+- **Stale `ROLE_MEMORIES` / `memory_iri` example code cleanup** in
+  ADR-0045 (§Decision body), ADR-0139 (example code block),
+  ADR-0143 (Usage skeleton + Constraint), ADR-0146 (main body
+  outside §am-3), ADR-0147 (per-flow example), ADR-0154 (example IRI
+  `memories-<v>:memory:<u>:<m>` form). Phase 43 ships adjacent
+  ADR-0152/0153 amendments and ADR-0150 §am-5 — natural alignment
+  for the cleanup pass.
+- **Phase 9 manifest-bump checklist** (§9.4 above) inherited by
+  every numbered-phase ship.
+- **Pre-confirm-phase squash-merge discipline** (§9.5 above).
+
+---
+
+*End of PHASE_39_DESIGN_LOG.md. §1-8 capture the design pass closure
+2026-06-02 morning; §9 captures the impl + tester ship pass closure
+2026-06-02 end-of-day.*
