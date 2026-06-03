@@ -55,9 +55,12 @@
 |---|---|---|
 | `immutable_successor` | Content is write-once; updates mint successor IRIs. Status/lifecycle fields excluded (per D-L2-4). | `promoted-pipelines`, `task-patterns`, `world-axioms` (when WSD chat ships it) |
 | `append_only_with_lazy_inline` | External writes append-only; internal mutation only via lazy inline-on-retire (Chat B D-B17 + D'1). | `episodic_memories` |
-| `mutable_with_retention` | Rows mutable; TTL-pruned per admin policy. | `parameter-staging`, `capacity-state` |
+| `mutable_with_retention` | Rows mutable; TTL-pruned per admin policy. | `parameter-staging`, `capacity-state`, `capacity-gaps`, `learned-parameters` (Local) |
 | `audit_only_after_settled` | Mutable until `status ∈ {applied, rejected}`, then frozen. | `pending-promotions` |
-| `admin_authored` | Mutable only via admin importer or admin tooling; no L4/L3 write path. | `ontology`, `lexicon`, `concepts`, `alignment:*`, `learned-parameters` (Global), `capacity-gaps` |
+| `admin_authored` | Mutable only via admin importer or admin tooling; no L4/L3 write path. | `ontology`, `lexicon`, `concepts`, `alignment:*`, `learned-parameters` (Global) |
+| `append_only` | All fields append-only; no retention; no successor; no lazy inline. | `problem-trace` |
+
+**Phase 43 cleanup note (PR1 commit 7 — ADR-0153 §1 6-value reconciliation):** Original L2-chat closure rendered 5 disciplines; `append_only` was added at ADR-0153 §1 ratification per R0a-4 / S3 (the row for `problem-trace`). Also: `capacity-gaps` was originally tabled under `admin_authored` here; ADR-0152 §5 + ADR-0153 §1 lock it as `mutable_with_retention` (admin actions mutate status; retention policy per admin tuning).
 
 **L4 startup invariant.** `KnowledgeLayer.bootstrap()` walks installed role-graphs; each Schema reports its `mutation_discipline`; L4 builds a runtime dispatch table that enforces the discipline at write time (write attempt against `immutable_successor` content field → `MutationDisciplineError`).
 
@@ -68,10 +71,10 @@
 - **A3 — docstring discipline only**: unenforceable; D47's whole point was preventing drift.
 
 **Cascade.**
-- `mindsos_core.Schema` gains `mutation_discipline: Literal[...]` field (defaults to `mutable_with_retention` for backward-compat with shipped schemas pending amendment).
+- **Phase 43 ship reversed L1 placement to L2Schema(Schema) subclass per ADR-0153 §amendment-1.** `mindsos_knowledge.schemas._base.L2Schema(Schema)` gains `mutation_discipline: Discipline` — required at construction (no backward-compat default; L2 schemas declare explicitly). `mindsos_core.Schema` stays primitive; no L2 vocabulary on L1. R0 N4 probe found zero L1 consumers of the discipline field; ADR-0010 import-direction symmetry preserved. (Original closure framing in this cascade said "mindsos_core.Schema gains" — that L1 placement was the closure's correctness gap, reversed in place per Phase 43 R0 PB-43-6 + R0a-10 / N4.)
 - New L2 validator `validate_mutation_discipline` added to `mindsos_knowledge/validators.py` (post-Phase-36 carry-forward).
-- New exception `MutationDisciplineError` in `mindsos_knowledge.exceptions`.
-- Each Phase 13 shipped schema gets a one-line amendment in its `build_*_schema(strict)` body to declare its discipline (`promoted-pipelines` → `immutable_successor`, `task-patterns` → `immutable_successor`, `memories` → `append_only_with_lazy_inline` post-rename, `capacity-state` → `mutable_with_retention`, `problem-trace` → `append_only` (new variant — see D-L2-5 carve-out), `ontology`/`lexicon`/`concepts`/`alignment:*` → `admin_authored`).
+- New exception `MutationDisciplineError` in `mindsos_knowledge.exceptions` (multi-inherits `KnowledgeError` + `ValueError` per ADR-0153 §5).
+- Each Phase 13 shipped schema gets a one-line amendment in its `build_*_schema(strict)` body to declare its discipline (`promoted-pipelines` → `immutable_successor`, `task-patterns` → `immutable_successor`, `episodic_memories` (post-Phase-39 rename of `memories`) → `append_only_with_lazy_inline`, `capacity-state` → `mutable_with_retention`, `problem-trace` → `append_only`, `ontology`/`lexicon`/`concepts`/`alignment:*` → `admin_authored`).
 - L2-27 / D47 closed under this framing (immutable-with-successor-IDs holds for the role-graphs Chat A had in scope; per-role-graph discipline generalizes).
 
 ### D-L2-4 — Per-field `content` vs `metadata` declaration
@@ -79,8 +82,10 @@
 **Pick.** For role-graphs with discipline `immutable_successor` or `append_only_with_lazy_inline`, every node/edge type declares per-field membership in `content_fields: frozenset[str]` or `metadata_fields: frozenset[str]`. Validator enforces.
 
 **Promoted-pipelines fields:**
-- **Content (immutable; successor required for change):** `edge_sequence`, `start_ds`, `end_ds`, `expression_metadata`.
-- **Metadata (mutable in place):** `status`, `n_runs`, `outcome_history`, `paired_pipelines` (reverse-cached references — see D-L2-6), `provenance` (append-only sub-record), `created_at`, `tested_at`, `activated_at`, `quarantined_at`, `quarantined_by`, `retired_at`.
+- **Content (immutable; successor required for change):** `pipeline_name`, `edge_sequence`, `start_ds`, `end_ds`, `expression_metadata`.
+- **Metadata (mutable in place):** `status`, `n_runs`, `outcome_history`, `provenance` (append-only sub-record), `quarantine_threshold`, `created_at`, `tested_at`, `activated_at`, `quarantined_at`, `quarantined_by`, `retired_at`.
+
+**Phase 43 cleanup note (PR1 commit 7 — D-L2-7 paired_pipelines staleness reconciliation):** Original closure listed `paired_pipelines` under Pipeline metadata as "reverse-cached references". D-L2-7 (below in this doc) subsequently eliminated the pipeline-side cache entirely — `paired_pipelines` lives only on `task-patterns` (source-of-truth per PB-R3-21). Phase-2 pipeline lookup walks task-patterns via L3 pipeline-finder, which maintains its own runtime index. Per ADR-0152 §1, `pipeline_name` is in content (originally missing) + `quarantine_threshold` is in metadata (originally missing); `confidence` dropped per ADR-0094 §am-1.
 
 **Task-patterns fields:**
 - **Content:** `pattern_name`, `task_shape_recognizer`, `sufficient_predicate_iri`, `domain`, `paired_pipelines` (this IS source-of-truth per PB-R3-21).
@@ -176,7 +181,9 @@ Status field mutates in place under D-L2-3 `immutable_successor` discipline beca
 
 ## R4 — Task-patterns schema v2 (L2-26)
 
-### D-L2-10 — Flat 9-field schema; no config split
+### D-L2-10 — Flat 13-field schema; no config split (chat closure framed as "9-field"; canonical count per ADR-0152 §2 is 13 = 11 listed below + 2 timestamps)
+
+**Phase 43 cleanup note (PR1 commit 7 — D-L2-10 naming nit reconciliation):** Original closure named this decision "9-field" but the table below lists 11 fields; ADR-0152 §2 ratified the canonical 13-field count by adding `created_at` + `last_updated_at` timestamps (metadata partition). Header retained "13-field" label for forward-reading clarity; original "9-field" framing preserved as historical record. See ADR-0152 §2 + design log §3 NPB12-3 (R0 picks seed audit-count drift).
 
 **Pick.** `TaskPattern` node type carries all R3+R5 additions inline (flat):
 
