@@ -50,21 +50,31 @@ from mindsos_core.models.metagraph import Metagraph
 from .exceptions import KnowledgeError, UnknownRoleError
 from .identifiers import (
     ALL_ROLES,
+    ROLE_CAPACITY_GAPS,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_EPISODIC_MEMORIES,
+    ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
+    ROLE_PARAMETER_STAGING,
+    ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
 )
-from .schemas import build_alignment_schema, schema_for_role
+from .schemas import (
+    build_alignment_schema,
+    build_learned_parameters_schema,
+    schema_for_role,
+)
 
 
 #: Roles that live in Global metagraph per ADR-0044 (episodic_memories
 #: + capacity-state are Local) + ADR-0150 §amendment-1 (alignment is
-#: Global-only at v1).
+#: Global-only at v1) + ADR-0150 §amendment-5 (Phase 43 — 3 of the 4
+#: new role-graphs have a Global form: pending-promotions, capacity-gaps,
+#: learned-parameters; parameter-staging is Local-only).
 _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_ONTOLOGY,
     ROLE_LEXICON,
@@ -72,18 +82,57 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
     ROLE_PROBLEM_TRACE,
+    # Phase 43 (ADR-0150 §am-5) — Global-form role-graphs.
+    ROLE_PENDING_PROMOTIONS,
+    ROLE_CAPACITY_GAPS,
+    ROLE_LEARNED_PARAMETERS,
 })
 
 #: Roles that live in Local-per-user metagraph per ADR-0044
-#: (§am-3 renamed ``memories`` → ``episodic_memories``).
+#: (§am-3 renamed ``memories`` → ``episodic_memories``) + ADR-0150
+#: §amendment-5 (Phase 43 — 3 of the 4 new role-graphs have a Local
+#: form: parameter-staging, pending-promotions, learned-parameters;
+#: capacity-gaps is Global-only).
 _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_EPISODIC_MEMORIES,
     ROLE_CAPACITY_STATE,
+    # Phase 43 (ADR-0150 §am-5) — Local-form role-graphs.
+    ROLE_PARAMETER_STAGING,
+    ROLE_PENDING_PROMOTIONS,
+    ROLE_LEARNED_PARAMETERS,
 })
 
 #: Alignment role-prefix per ADR-0150. Per §amendment-1 (Phase 14
 #: PB-8), alignment is Global-only at v1.
 _ALIGNMENT_PREFIX: str = "alignment:"
+
+
+#: Per-role ``applies_after`` declarations per Phase 43 R0b §1.2 +
+#: NPB6-6 + L2-37 split (NPB11-1 field-only at Phase 43; Phase 44 ships
+#: the Kahn topological-sort scheduler that consumes these declarations).
+#:
+#: Soft edge: ``episodic_memories ← {task-patterns}`` per Chat B D-B47
+#: (Episodes carry ``task_pattern_iri`` so task-patterns must exist
+#: before episodes can reference). Other role-graphs are independent
+#: at Phase 43 scope.
+#:
+#: Phase 43 declares the field shape only; consumers raise no errors
+#: when ordering is violated. Phase 44 ships the scheduler that turns
+#: violations into bootstrap-time errors.
+_APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
+    ROLE_ONTOLOGY: frozenset(),
+    ROLE_LEXICON: frozenset(),
+    ROLE_CONCEPTS: frozenset(),
+    ROLE_PROMOTED_PIPELINES: frozenset(),
+    ROLE_TASK_PATTERNS: frozenset(),
+    ROLE_EPISODIC_MEMORIES: frozenset({ROLE_TASK_PATTERNS}),
+    ROLE_PROBLEM_TRACE: frozenset(),
+    ROLE_CAPACITY_STATE: frozenset(),
+    ROLE_PARAMETER_STAGING: frozenset(),
+    ROLE_PENDING_PROMOTIONS: frozenset(),
+    ROLE_CAPACITY_GAPS: frozenset(),
+    ROLE_LEARNED_PARAMETERS: frozenset(),
+}
 
 
 __all__ = [
@@ -92,6 +141,7 @@ __all__ = [
     "_GLOBAL_NAMED_ROLES",
     "_LOCAL_NAMED_ROLES",
     "_ALIGNMENT_PREFIX",
+    "_APPLIES_AFTER_BY_ROLE",
 ]
 
 
@@ -112,6 +162,7 @@ def ensure_global_role_graph(
     role: str,
     *,
     extra_edge_types: Tuple[str, ...] = (),
+    applies_after: frozenset[str] = frozenset(),
 ) -> Graph:
     """Ensure a Global-scoped role-graph exists in ``metagraph``.
 
@@ -172,6 +223,12 @@ def ensure_global_role_graph(
         schema = build_alignment_schema(
             strict=False, extra_edge_types=extra_edge_types
         )
+    elif role == ROLE_LEARNED_PARAMETERS:
+        # Phase 43 (ADR-0150 §am-5) per-scope discipline split per
+        # ADR-0153 §1: Global uses ``admin_authored``; the default
+        # schema_for_role dispatch returns the Local form
+        # (``mutable_with_retention``). Special-case here.
+        schema = build_learned_parameters_schema(strict=False, scope="global")
     elif role in _GLOBAL_NAMED_ROLES:
         # Step 3 — non-alignment Global-named: dispatch via schema_for_role.
         # extra_edge_types is alignment-only; silently ignore for these.
@@ -199,6 +256,8 @@ def ensure_global_role_graph(
 def ensure_local_role_graph(
     metagraph: Metagraph,
     role: str,
+    *,
+    applies_after: frozenset[str] = frozenset(),
 ) -> Graph:
     """Ensure a Local-scoped role-graph exists in ``metagraph``.
 
@@ -251,7 +310,14 @@ def ensure_local_role_graph(
         )
 
     # Step 3 — Local-named branch.
-    if role in _LOCAL_NAMED_ROLES:
+    if role == ROLE_LEARNED_PARAMETERS:
+        # Phase 43 (ADR-0150 §am-5) per-scope discipline split per
+        # ADR-0153 §1: Local uses ``mutable_with_retention``. The default
+        # ``schema_for_role`` dispatch matches but we route explicitly
+        # here for symmetry with the Global form in
+        # ``ensure_global_role_graph``.
+        schema = build_learned_parameters_schema(strict=False, scope="local")
+    elif role in _LOCAL_NAMED_ROLES:
         schema = schema_for_role(role, strict=False)
     else:
         # Step 4 — unknown role.

@@ -68,6 +68,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional
 from mindsos_capacity.exceptions import WriteHandleNotWiredError
 from mindsos_capacity.write_outcome import WriteResult
 
+from .exceptions import MutationDisciplineError
 from .identifiers import _IRI_BUILDERS
 from .validators import ValidationResult, _VALIDATORS_BY_ROLE
 
@@ -203,22 +204,45 @@ class KLWriteHandle:
         *,
         value: Any,
         type_: str,
+        _is_admin: bool = False,
         **mint_content: Any,
     ) -> WriteResult:
-        """Composite write: mint IRI → add_node → return :class:`WriteResult`.
+        """Composite write: discipline check → mint IRI → add_node → :class:`WriteResult`.
 
         Phase 34 ship (PHASE_MAP §34 feature line; ADR-0146 §Implementation
-        criterion (b)). Encapsulates the 3-line ``mint_iri → add_node →
+        criterion (b)). Encapsulates the ``mint_iri → add_node →
         WriteResult`` sequence so capacity bodies don't repeat it.
+
+        **Phase 43 wiring (ADR-0153 §2 startup invariant).** The handle
+        consults
+        :meth:`KnowledgeLayer.discipline_for(self._metagraph, self.role)`
+        to look up the role's declared ``mutation_discipline`` and
+        enforce admin-gating at node-creation time:
+
+        * ``admin_authored`` discipline ⇒ writes without ``_is_admin=True``
+          raise :class:`MutationDisciplineError`. Admin tooling bypasses
+          by passing ``_is_admin=True``.
+        * Other disciplines (``immutable_successor`` /
+          ``append_only_with_lazy_inline`` / ``append_only`` /
+          ``audit_only_after_settled`` / ``mutable_with_retention``) do
+          NOT block node creation — their enforcement applies to
+          subsequent **edits** of content fields / settled rows, not
+          to creation. Edit-time enforcement composes
+          :func:`mindsos_knowledge.validators.validate_mutation_discipline`
+          per ADR-0153 §3 at the per-field write boundary (deferred
+          alongside the first L3 capacity that edits an existing node).
+
+        Schemas without an L2Schema-declared discipline (legacy raw
+        :class:`Schema` instances) get no discipline check —
+        ``discipline_for`` returns ``None``.
 
         **Phase 34 scope:** structural validation via L1 schema only
         (``Graph.add_node`` fires ``UnknownTypeError`` /
         ``PropertyShapeError`` / ``IdentityError`` as configured).
         Semantic validators (KL ``validate_node`` per ADR-0139) integrate
-        at Phase 36; this method does NOT call them today (they still
-        raise :class:`WriteHandleNotWiredError`). The "validate" half of
-        the name refers to L1's structural validators that fire on
-        ``add_node``.
+        at Phase 36; this method does NOT call them today. The "validate"
+        half of the name refers to L1's structural validators that fire
+        on ``add_node`` plus the Phase 43 discipline check above.
 
         L1 raises propagate to ``runtime.invoke`` which envelopes as
         ``InvocationResult(success=False, error=...)`` per ADR-0072 —
@@ -231,12 +255,14 @@ class KLWriteHandle:
             type_: NodeType name (L2 convention); translated to L1's
                 ``type_name`` kwarg at the call site, and forwarded to
                 :meth:`mint_iri` as the registry-dispatch key per
-                ADR-0146 §amendment-3. Phase 39 schema whitelists:
-                ``"Episode"`` or ``"Memory"`` (episodic_memories role)
-                or ``"ProblemTraceEntry"`` (problem-trace role).
+                ADR-0146 §amendment-3.
+            _is_admin: Admin-bypass flag for ``admin_authored`` discipline
+                per ADR-0153 §2. Default ``False``; admin importers pass
+                ``True``. Underscore-prefixed to signal "internals;
+                capacity code passes through only when wiring an admin
+                surface".
             **mint_content: Per-(role, NodeType) kwargs forwarded to
-                :meth:`mint_iri` (e.g., ``user_id`` + ``episode_id``
-                for Episode; ``user_id`` + ``memory_id`` for Memory).
+                :meth:`mint_iri`.
 
         Returns:
             :class:`WriteResult` with ``iri`` (minted), ``role`` /
@@ -244,11 +270,29 @@ class KLWriteHandle:
             empty ``extras``.
 
         Raises:
+            MutationDisciplineError: Discipline is ``admin_authored``
+                and ``_is_admin`` is ``False``.
             KeyError: As :meth:`mint_iri`.
             UnknownTypeError / PropertyShapeError / IdentityError /
             RefFormatError: L1 add_node validation errors; propagate
                 per ADR-0146 §Decision.
         """
+        # Phase 43 (ADR-0153 §2) — discipline check before mint.
+        discipline = self._kl.discipline_for(self._metagraph, self.role)
+        if discipline == "admin_authored" and not _is_admin:
+            raise MutationDisciplineError(
+                iri="(pending mint)",
+                role=self.role,
+                discipline="admin_authored",
+                field="(node creation)",
+                attempted_op="admin_only",
+                hint=(
+                    "Set _is_admin=True via the admin-importer path; "
+                    "L4/L3 write capacities cannot create nodes in "
+                    "admin_authored role-graphs per ADR-0153 §2."
+                ),
+            )
+
         iri = self.mint_iri(type_, **mint_content)
         # L1 ``add_node`` signature: (value, type_name, *, properties=None,
         # node_id=None, _validate=True). L2 convention exposes ``type_``;

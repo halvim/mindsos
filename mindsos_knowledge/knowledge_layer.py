@@ -54,6 +54,8 @@ from .bootstrap import (
 )
 
 if TYPE_CHECKING:
+    from .metagraph_view import MetagraphView
+    from .schemas._base import Discipline
     from .types import SessionProtocol
     from .write_handle import KLWriteHandle
 from .exceptions import AlreadyInstalledError, NotInstalledError
@@ -151,6 +153,13 @@ class KnowledgeLayer:
         # Phase 14 PB-11 — UUID4Strategy default; lazy local_metagraph
         # uses this for the Local Metagraph's own id_strategy.
         self._id_strategy: IdStrategy = id_strategy or UUID4Strategy()
+        # Phase 43 (ADR-0153 §2 startup invariant) — per-Metagraph
+        # discipline dispatch cache keyed by ``id(metagraph)`` mapping
+        # ``role -> Discipline``. Built lazily on first lookup via
+        # :meth:`discipline_for`. Cache invalidates when a new
+        # role-graph is added to a metagraph (callers can call
+        # :meth:`_rebuild_discipline_dispatch` after ensure_* calls).
+        self._discipline_cache: Dict[int, Dict[str, "Discipline"]] = {}
 
     # ── construction helpers ─────────────────────────────────────────
 
@@ -277,6 +286,58 @@ class KnowledgeLayer:
         from .metagraph_view import MetagraphView  # local: avoid cycle.
 
         return MetagraphView(self.local_metagraph(user_id))
+
+    # ── Phase 43 — discipline dispatch (ADR-0153 §2 startup invariant) ─
+
+    def _rebuild_discipline_dispatch(self, metagraph: Metagraph) -> None:
+        """Rebuild the discipline dispatch cache for ``metagraph``.
+
+        Per ADR-0153 §2 startup invariant. Walks the metagraph's
+        installed role-graphs; each schema reports its
+        ``mutation_discipline`` (if it is an :class:`L2Schema`); the
+        resulting ``role -> Discipline`` map is cached by
+        ``id(metagraph)``.
+
+        Schemas without ``mutation_discipline`` (e.g., raw
+        :class:`Schema` instances installed by tests or by code that
+        predates Phase 43) are silently skipped — they get no
+        discipline enforcement.
+        """
+        dispatch: Dict[str, "Discipline"] = {}
+        for graph in metagraph.graphs.values():
+            schema = graph.schema
+            discipline = getattr(schema, "mutation_discipline", None)
+            if discipline is not None:
+                dispatch[graph.role] = discipline
+        self._discipline_cache[id(metagraph)] = dispatch
+
+    def discipline_for(
+        self,
+        metagraph: Metagraph,
+        role: str,
+    ) -> Optional["Discipline"]:
+        """Return the declared discipline of ``role`` in ``metagraph``, or None.
+
+        Per ADR-0153 §2: ``KLWriteHandle`` consults this on every write
+        to enforce the per-role discipline at the write boundary. Lazy
+        cache build on first lookup; subsequent calls hit the cache
+        keyed by ``id(metagraph)``.
+
+        Returns ``None`` if:
+
+        * ``role`` is not installed in ``metagraph``, OR
+        * The installed role-graph's schema is not an
+          :class:`L2Schema` (no ``mutation_discipline`` attribute).
+
+        ``None`` means "no discipline enforcement" rather than "free
+        mutation" — callers (KLWriteHandle) should treat it as
+        "discipline check skipped" per the L2Schema migration window.
+        """
+        dispatch = self._discipline_cache.get(id(metagraph))
+        if dispatch is None:
+            self._rebuild_discipline_dispatch(metagraph)
+            dispatch = self._discipline_cache[id(metagraph)]
+        return dispatch.get(role)
 
     # ── Phase 33 — write-handle entry point (ADR-0143) ───────────────
 
