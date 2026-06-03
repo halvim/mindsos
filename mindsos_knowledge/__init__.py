@@ -115,6 +115,7 @@ from .bootstrap import (
 from .exceptions import (
     AlreadyInstalledError,
     KnowledgeError,
+    MutationDisciplineError,
     NotInstalledError,
     RefFormatError,
     SemanticValidationError,
@@ -185,6 +186,7 @@ __all__ = [
     "AlreadyInstalledError",
     "NotInstalledError",
     "SemanticValidationError",
+    "MutationDisciplineError",
     # ── role constants ─────────────────────────────────────────────
     "ROLE_ONTOLOGY",
     "ROLE_LEXICON",

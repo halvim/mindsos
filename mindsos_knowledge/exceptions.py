@@ -39,12 +39,21 @@ Phase 36 adds:
   with Phase 34's raise-not-PTR posture). ADR-0139 §Capacity-contract
   + ``docs/dev/review-checklist.md`` §4.
 
+Phase 43 adds:
+
+* ``MutationDisciplineError`` — raised by ``KLWriteHandle`` and the L2
+  validator ``validate_mutation_discipline`` when a write violates the
+  per-role-graph mutation discipline (ADR-0153 §5). Multi-inherits from
+  ``KnowledgeError`` (L2 hierarchy per PB-21 lock) and ``ValueError``
+  (per ADR-0153 §5 literal text — preserves ``except ValueError:``
+  catching surface).
+
 Phase 16+ append: ``PromotionError``, etc.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 if TYPE_CHECKING:
     from .validators import ValidationResult
@@ -112,3 +121,44 @@ class SemanticValidationError(KnowledgeError):
     def __init__(self, result: "ValidationResult") -> None:
         super().__init__(result.violation or "semantic validation failed")
         self.result = result
+
+
+class MutationDisciplineError(KnowledgeError, ValueError):
+    """Raised when an L2 write violates the declared mutation discipline.
+
+    Phase 43 (Rail A slot 2) per ADR-0153 §5. Carries the target IRI,
+    the role-graph, the declared discipline, the violating field, the
+    attempted operation kind, and a remediation hint. Distinct from
+    generic :class:`ValueError` so callers can take discipline-aware
+    remediation (mint successor IRI, use lazy-inline mechanism, promote
+    via admin importer) per ADR-0153 §Rationale.
+
+    Multi-inherits from :class:`KnowledgeError` (L2 hierarchy per PB-21
+    lock — preserves ``except (CoreError, KnowledgeError):`` catching)
+    and :class:`ValueError` (per ADR-0153 §5 literal text — preserves
+    ``except ValueError:`` catching surface). MRO resolves to
+    ``KnowledgeError`` first.
+    """
+
+    def __init__(
+        self,
+        *,
+        iri: str,
+        role: str,
+        discipline: str,
+        field: str,
+        attempted_op: Literal[
+            "write_content", "mutate_settled", "admin_only"
+        ],
+        hint: str,
+    ) -> None:
+        super().__init__(
+            f"{role}/{iri}: discipline={discipline!r} forbids "
+            f"{attempted_op} on field {field!r}; hint: {hint}"
+        )
+        self.iri = iri
+        self.role = role
+        self.discipline = discipline
+        self.field = field
+        self.attempted_op = attempted_op
+        self.hint = hint

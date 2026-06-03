@@ -31,6 +31,7 @@ from typing import Callable
 
 from mindsos_core import Schema
 
+from ._base import Discipline, L2Schema, StorageMode
 from ..exceptions import UnknownRoleError
 from ..identifiers import (
     ALL_ROLES,
@@ -118,4 +119,8 @@ __all__ = [
     # Dispatch surface.
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",
+    # L2-private vocabulary (Phase 43 — ADR-0153 §am-1 + ADR-0151).
+    "Discipline",
+    "L2Schema",
+    "StorageMode",
 ]
