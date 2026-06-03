@@ -7,7 +7,9 @@ Per DESIGN_UPPER_LAYER_ROLES.md §2.1.
 
 from __future__ import annotations
 
-from mindsos_core import EdgeType, NodeType, Schema
+from mindsos_core import EdgeType, NodeType
+
+from ._base import Discipline, L2Schema
 
 
 # ── Node types ─────────────────────────────────────────────────────────
@@ -32,23 +34,50 @@ TASK_PATTERNS_EDGE_TYPES: tuple[str, ...] = (
 )
 
 
-# ── Advisory property constants (PB-8) ─────────────────────────────────
+# ── TaskPattern content / metadata partition (Phase 43 — ADR-0152 §2 + ADR-0153 §3) ──
+#
+# 13-field TaskPattern schema v2 per ADR-0152 §2. ``confidence`` KEPT
+# (metadata; per-pattern confidence remains useful for L4 prioritisation
+# distinct from per-pipeline confidence dropped on Pipeline). Discipline
+# is ``immutable_successor`` (ADR-0153 §1).
 
-TASK_PATTERN_PROPS: frozenset[str] = frozenset({
-    "task_type",
-    "n_observations",
-    "confidence",
+TASK_PATTERN_CONTENT_FIELDS: frozenset[str] = frozenset({
+    "pattern_name",
+    "task_shape_recognizer",
+    "sufficient_predicate_iri",
+    "domain",
+    "paired_pipelines",
 })
 
+TASK_PATTERN_METADATA_FIELDS: frozenset[str] = frozenset({
+    "relevant_hints",
+    "mapping_confidence_threshold",
+    "n_observations",
+    "confidence",
+    "provenance",
+    "routing_override",
+    "created_at",
+    "last_updated_at",
+})
+
+TASK_PATTERN_PROPS: frozenset[str] = (
+    TASK_PATTERN_CONTENT_FIELDS | TASK_PATTERN_METADATA_FIELDS
+)
+
+# SubgoalTemplate partition deferred per ADR-0152 §2 (edge types
+# unchanged; SubgoalTemplate carries flat advisory set under Phase 13
+# shape). Phase 43 keeps Phase 13's advisory set.
 SUBGOAL_TEMPLATE_PROPS: frozenset[str] = frozenset({
     "subgoal_kind",
     "ordering_hint",
 })
 
 
-def build_task_patterns_schema(strict: bool = False) -> Schema:
+def build_task_patterns_schema(strict: bool = False) -> L2Schema:
     """Construct the task-patterns role Schema."""
-    s = Schema(strict=strict)
+    s = L2Schema(
+        mutation_discipline=Discipline.IMMUTABLE_SUCCESSOR, strict=strict
+    )
 
     for nt in TASK_PATTERNS_NODE_TYPES:
         s.add_node_type(NodeType(nt))

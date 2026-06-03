@@ -23,7 +23,9 @@ discipline (Phase 15).
 
 from __future__ import annotations
 
-from mindsos_core import EdgeType, HyperEdgeType, NodeType, Schema
+from mindsos_core import EdgeType, HyperEdgeType, NodeType
+
+from ._base import Discipline, L2Schema
 
 
 # ── Node types ─────────────────────────────────────────────────────────
@@ -107,7 +109,7 @@ ONTOLOGY_HYPEREDGE_TYPES: tuple[str, ...] = (
 )
 
 
-def build_ontology_schema(strict: bool = False) -> Schema:
+def build_ontology_schema(strict: bool = False) -> L2Schema:
     """Construct the DOLCE/OWL ontology Schema (Phase 13 PB-1 + PB-4).
 
     Args:
@@ -115,7 +117,9 @@ def build_ontology_schema(strict: bool = False) -> Schema:
             is open — strict tightening is a follow-up PR with the
             inventory helper (deferred to first-consumer phase).
     """
-    s = Schema(strict=strict)
+    s = L2Schema(
+        mutation_discipline=Discipline.ADMIN_AUTHORED, strict=strict
+    )
 
     for nt in ONTOLOGY_NODE_TYPES:
         s.add_node_type(NodeType(nt))

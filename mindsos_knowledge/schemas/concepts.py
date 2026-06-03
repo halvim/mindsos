@@ -5,7 +5,9 @@
 
 from __future__ import annotations
 
-from mindsos_core import EdgeType, NodeType, Schema
+from mindsos_core import EdgeType, NodeType
+
+from ._base import Discipline, L2Schema
 
 
 # ── Node types ─────────────────────────────────────────────────────────
@@ -56,9 +58,11 @@ CONCEPTS_EDGE_TYPES: tuple[str, ...] = (
 )
 
 
-def build_concepts_schema(strict: bool = False) -> Schema:
+def build_concepts_schema(strict: bool = False) -> L2Schema:
     """Construct the FrameNet concepts Schema (Phase 13)."""
-    s = Schema(strict=strict)
+    s = L2Schema(
+        mutation_discipline=Discipline.ADMIN_AUTHORED, strict=strict
+    )
 
     for nt in CONCEPTS_NODE_TYPES:
         s.add_node_type(NodeType(nt))

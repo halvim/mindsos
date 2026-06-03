@@ -17,7 +17,9 @@ writes).
 
 from __future__ import annotations
 
-from mindsos_core import EdgeType, NodeType, Schema
+from mindsos_core import EdgeType, NodeType
+
+from ._base import Discipline, L2Schema
 
 
 # ── Node types ─────────────────────────────────────────────────────────
@@ -42,15 +44,43 @@ PROMOTED_PIPELINES_EDGE_TYPES: tuple[str, ...] = (
 )
 
 
-# ── Advisory property constants (PB-8) ─────────────────────────────────
+# ── Pipeline content / metadata partition (Phase 43 — ADR-0152 §1 + ADR-0153 §3) ──
+#
+# 16-field Pipeline schema v2 per ADR-0152 §1. ``confidence`` DROPPED per
+# ADR-0094 §amendment-1; per-pipeline confidence migrates to ALS
+# subsystems on ``learned-parameters``. Discipline is
+# ``immutable_successor`` (ADR-0153 §1) — content fields require
+# successor IRIs on change; metadata fields mutate in place under the
+# per-field partition.
 
-PIPELINE_PROPS: frozenset[str] = frozenset({
+PIPELINE_CONTENT_FIELDS: frozenset[str] = frozenset({
     "pipeline_name",
-    "task_type",
-    "confidence",
-    "n_runs",
+    "edge_sequence",
+    "start_ds",
+    "end_ds",
+    "expression_metadata",
 })
 
+PIPELINE_METADATA_FIELDS: frozenset[str] = frozenset({
+    "status",
+    "n_runs",
+    "outcome_history",
+    "provenance",
+    "quarantine_threshold",
+    "created_at",
+    "tested_at",
+    "activated_at",
+    "quarantined_at",
+    "quarantined_by",
+    "retired_at",
+})
+
+PIPELINE_PROPS: frozenset[str] = (
+    PIPELINE_CONTENT_FIELDS | PIPELINE_METADATA_FIELDS
+)
+
+# PipelineStep partition deferred to ADR-0152 §amendment-1 (post-reframe
+# HAS_STEP shape resolution). Phase 43 keeps Phase 13's advisory set.
 PIPELINE_STEP_PROPS: frozenset[str] = frozenset({
     "capacity_iri",
     "input_datastate",
@@ -61,9 +91,11 @@ PIPELINE_STEP_PROPS: frozenset[str] = frozenset({
 HAS_STEP_POSITION_PROPERTY = "position"
 
 
-def build_promoted_pipelines_schema(strict: bool = False) -> Schema:
+def build_promoted_pipelines_schema(strict: bool = False) -> L2Schema:
     """Construct the promoted-pipelines role Schema."""
-    s = Schema(strict=strict)
+    s = L2Schema(
+        mutation_discipline=Discipline.IMMUTABLE_SUCCESSOR, strict=strict
+    )
 
     for nt in PROMOTED_PIPELINES_NODE_TYPES:
         s.add_node_type(NodeType(nt))

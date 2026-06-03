@@ -26,7 +26,9 @@ identify themselves to the system is a Phase 14 decision.
 
 from __future__ import annotations
 
-from mindsos_core import EdgeType, NodeType, Schema
+from mindsos_core import EdgeType, NodeType
+
+from ._base import Discipline, L2Schema
 
 
 # ── Node types ─────────────────────────────────────────────────────────
@@ -61,7 +63,7 @@ ALIGNMENT_EDGE_TYPES: tuple[str, ...] = (
 
 def build_alignment_schema(
     strict: bool = False, extra_edge_types: tuple[str, ...] = ()
-) -> Schema:
+) -> L2Schema:
     """Construct an alignment-graph Schema.
 
     Args:
@@ -72,7 +74,9 @@ def build_alignment_schema(
             rel-type regex ``^[A-Z][A-Z0-9_]{0,63}$`` (validated by
             ``Schema.add_edge_type``).
     """
-    s = Schema(strict=strict)
+    s = L2Schema(
+        mutation_discipline=Discipline.ADMIN_AUTHORED, strict=strict
+    )
     s.add_node_type(NodeType(NODE_ALIGNMENT_ANCHOR))
 
     any_node = frozenset(ALIGNMENT_NODE_TYPES)

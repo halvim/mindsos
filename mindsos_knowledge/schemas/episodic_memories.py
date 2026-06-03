@@ -37,7 +37,9 @@ NodeTypes per Chat B D-B47 + D-B48 + L5 design notes §4.3 + §4.6:
 
 from __future__ import annotations
 
-from mindsos_core import NodeType, Schema
+from mindsos_core import NodeType
+
+from ._base import Discipline, L2Schema
 
 
 # ── Node types ─────────────────────────────────────────────────────────
@@ -48,14 +50,19 @@ NODE_MEMORY = "Memory"
 EPISODIC_MEMORIES_NODE_TYPES: tuple[str, ...] = (NODE_EPISODE, NODE_MEMORY)
 
 
-def build_episodic_memories_schema(strict: bool = False) -> Schema:
+def build_episodic_memories_schema(strict: bool = False) -> L2Schema:
     """Construct the episodic_memories role Schema (per-user Local; ADR-0044 §am-3).
 
-    Phase 39 ships NodeType skeletons only (Episode + Memory). EdgeTypes
-    and advisory property frozensets land at Phase 43 (schema-v2; D-L2-17
-    full ship).
+    Phase 39 shipped NodeType skeletons only (Episode + Memory). Phase 43
+    PR1 commit 4 transcribes discipline (``append_only_with_lazy_inline``
+    per ADR-0153 §1); Phase 43 PR2 commit 1 fills the body (per-NodeType
+    properties + content/metadata partition + ``memory_contains_episode``
+    IntergraphEdge per ADR-0152 §7 + D-L2-17).
     """
-    s = Schema(strict=strict)
+    s = L2Schema(
+        mutation_discipline=Discipline.APPEND_ONLY_WITH_LAZY_INLINE,
+        strict=strict,
+    )
 
     for nt in EPISODIC_MEMORIES_NODE_TYPES:
         s.add_node_type(NodeType(nt))

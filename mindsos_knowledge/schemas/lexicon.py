@@ -9,7 +9,9 @@ metadata vary per release; tightening waits for the inventory helper
 
 from __future__ import annotations
 
-from mindsos_core import EdgeType, NodeType, Schema
+from mindsos_core import EdgeType, NodeType
+
+from ._base import Discipline, L2Schema
 
 
 # ── Node types ─────────────────────────────────────────────────────────
@@ -91,9 +93,11 @@ LEXICON_EDGE_TYPES: tuple[str, ...] = (
 )
 
 
-def build_lexicon_schema(strict: bool = False) -> Schema:
+def build_lexicon_schema(strict: bool = False) -> L2Schema:
     """Construct the OEWN three-level lexicon Schema (Phase 13)."""
-    s = Schema(strict=strict)
+    s = L2Schema(
+        mutation_discipline=Discipline.ADMIN_AUTHORED, strict=strict
+    )
 
     for nt in LEXICON_NODE_TYPES:
         s.add_node_type(NodeType(nt))

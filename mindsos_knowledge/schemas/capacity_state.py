@@ -14,7 +14,9 @@ Phase 28+).
 
 from __future__ import annotations
 
-from mindsos_core import NodeType, Schema
+from mindsos_core import NodeType
+
+from ._base import Discipline, L2Schema
 
 
 # ── Node type ──────────────────────────────────────────────────────────
@@ -39,9 +41,11 @@ CAPACITY_SNAPSHOT_PROPS: frozenset[str] = frozenset({
 })
 
 
-def build_capacity_state_schema(strict: bool = False) -> Schema:
+def build_capacity_state_schema(strict: bool = False) -> L2Schema:
     """Construct the capacity-state role Schema (per-user Local; ADR-0044)."""
-    s = Schema(strict=strict)
+    s = L2Schema(
+        mutation_discipline=Discipline.MUTABLE_WITH_RETENTION, strict=strict
+    )
 
     for nt in CAPACITY_STATE_NODE_TYPES:
         s.add_node_type(NodeType(nt))
