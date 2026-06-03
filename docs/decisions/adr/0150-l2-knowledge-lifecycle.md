@@ -485,6 +485,59 @@ separate phases; bundling them in a single amendment as drafted at the
 L2 chat closure was the closure's correctness gap, repaired in place
 per IL-3 + Phase 39 design pass R0 PB-5.
 
+### amendment-5 (Phase 43 ship — 2026-06-03) — 4 new role-graph rows + exclusion list
+
+**Trigger:** Phase 39 PB-R2-B + Chat C IL-3 (`POST_PHASE_38_PHASE_MAP.md §1` IL-3 row) split the original L2-chat single-bulk §am-4 into two surgical amendments — §am-4 holds the `memories` → `episodic_memories` rename row only (Phase 39 ship); §am-5 holds the 4-new-role-graph expansion + the exclusion list (Phase 43 ship). This split matches the §am-1 / §am-2 / §am-3 precedent of one event per amendment. See `_workbench/L2_CHAT_DECISIONS.md` D-L2-26 + `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §1` IL-3 + `confirmation_docs/PHASE_39_DESIGN_LOG.md` PB-R2-B.
+
+**Amended behavior.**
+
+The §Decision closed role-set expands by 4 named entries. Combined with §am-4's rename row, the post-§am-5 closed role-set is 12 named entries + alignment-prefix.
+
+**New rows added:**
+
+| Scope | Role | Schema builder |
+|---|---|---|
+| Local | `parameter-staging` | `build_parameter_staging_schema(strict)` |
+| Local + Global | `pending-promotions` | `build_pending_promotions_schema(strict)` |
+| Global | `capacity-gaps` | `build_capacity_gaps_schema(strict)` |
+| Local + Global | `learned-parameters` | `build_learned_parameters_schema(strict)` |
+
+Concrete schema contents per ADR-0152 §3-§6.
+
+**Per-role-graph mutation discipline** for the 4 new roles per ADR-0153 §1:
+
+| Role | Discipline |
+|---|---|
+| `parameter-staging` | `mutable_with_retention` |
+| `pending-promotions` | `audit_only_after_settled` |
+| `capacity-gaps` | `mutable_with_retention` |
+| `learned-parameters` (Local) | `mutable_with_retention` |
+| `learned-parameters` (Global) | `admin_authored` |
+
+**Storage tier.** Among the 4 new role-graphs, only `learned-parameters.LearnedParameter.value` carries a large-payload field warranting an explicit `storage_mode = "falkor_blob"` declaration per ADR-0151 + ADR-0152 §6. `StagedEvidence`, `PendingPromotion`, and `CapacityGap` carry no large-payload fields; no `storage_mode` declaration needed.
+
+**Explicitly NOT added in this amendment (migrated from §am-4):**
+
+- `sense-correlations` — withdrawn; data lives in lexicon empirical layer per `_workbench/L2_CHAT_DECISIONS.md` D-L2-2. ALS subsystem #8 retains the name as a parameter-set label pointing at lexicon-empirical parameter key.
+- `world-axioms` — WSD installation chat owns; future amendment row when WSD ships.
+- `training-runs` — FOL installation chat owns per Chat A R5 D29; future amendment if FOL accepts.
+- `fol-rules`, `fol-ledger` — FOL installation chat owns.
+
+These items were originally listed in §am-4's "Explicitly NOT added" section; they migrate here per Phase 39 PB-R2-B to keep §am-4 narrowed to the rename-only surgical scope.
+
+**Rationale.** The 4 new role-graphs are a single architectural event authored by Chat A + Chat B and closed by the L2 chat. Bulk amendment matches the per-amendment pattern. Splitting from §am-4 (rather than authoring 4 separate §am-5/6/7/8 rows) preserves the event coherence; the §am-4 / §am-5 split is between **rename** (one mechanical change touching identifiers + KL surface) and **expansion** (four schema-shape additions touching the closed role-set bound).
+
+**Out-of-scope for amendment-5:**
+
+* Schema field contents for each new role-graph (locked in ADR-0152 §3-§6).
+* Bootstrap topological order field (`applies_after`) ships at Phase 43 per L2-37; the **consumer/scheduler** ships at Phase 44 per L2-37 split.
+* `mutation_discipline` placement on the Schema surface — locked in ADR-0153 + §amendment-1 (L2Schema(Schema) subclass placement supersedes §6 L1-Schema text).
+* `storage_mode` placement on NodeTypes — per ADR-0151 §Decision + ADR-0152 §6 (per-NodeType-property; not on L2Schema class).
+
+**Escape clause** (preserved from §am-4): Future role additions require new §Revisions entries citing the consumer requirement + schema builder + mutation discipline. Phase 13 sentinel test enforces.
+
+See `confirmation_docs/PHASE_43_R0_PICKS_SEED.md` for the Phase 43 R0 pick chain + cross-references to ADR-0151, ADR-0152, ADR-0153, ADR-0094 §am-1.
+
 ## Source
 
 Phase 13 design log §1 PB-19 (Flavor A vs Flavor B closure question);

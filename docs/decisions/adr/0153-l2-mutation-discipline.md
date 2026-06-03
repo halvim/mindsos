@@ -278,6 +278,33 @@ against a guarantee that doesn't hold.
    — lazy inline-on-retire is content mutation; reference-stability
    is the correct frame.
 
+### amendment-1 (Phase 43 ship — 2026-06-03) — L2Schema(Schema) subclass placement
+
+**Trigger.** ADR-0153 §6 as-authored said: "`mindsos_core.Schema` gains: `mutation_discipline: Literal[...] = "mutable_with_retention"  # backward-compat default`." That is an L1 amendment placement.
+
+Phase 43 R0 design pass (`confirmation_docs/PHASE_43_R0_PICKS_SEED.md` PB-43-6 + R0a-10 / N4 probe) reversed via probe: an `L2Schema(Schema)` subclass in `mindsos_knowledge/schemas/_base.py` is consumer-cascade-safe (zero `isinstance(.., Schema)` / `_SCHEMA_REGISTRY` / `Schema.__name__` hits across all packages) and respects ADR-0010 import direction (L1 Schema does not gain L2-specific vocabulary).
+
+**Amended behavior.**
+
+§6 placement language supersedes as follows:
+
+- **`mindsos_knowledge.schemas._base.L2Schema(Schema)` gains `mutation_discipline: Discipline`** — required at construction (no backward-compat default; L2 schemas declare explicitly).
+- **`mindsos_core.Schema` is unchanged** — L1 stays primitive; no `mutation_discipline` field; no `Discipline` enum import.
+- The `Discipline` enum is defined in `mindsos_knowledge.schemas._base` (L2-private vocabulary) with the six values enumerated in §1.
+- Existing schemas (Phase 13's 9 builders) migrate from `Schema(...)` to `L2Schema(mutation_discipline=Discipline.<value>, ...)` in Phase 43 PR1 audit.
+- The L4 startup invariant (§2) and field partition discipline (§3) read `L2Schema.mutation_discipline` (via the inherited Schema attribute access pattern); `MutationDisciplineError` (§5) is raised against L2Schema-owned writes.
+
+**Rationale for L2 placement.** N4 probe found zero L1 Schema consumers depending on the discipline field; backward-compat default loses its load-bearing role. L2-private vocabulary (Discipline enum's six values are L2 concepts) belongs at L2. ADR-0010 import-direction symmetry preserved (no L1 imports of L2 enums). Required-at-construction is stricter than L1's loose backward-compat default; L2 schemas can't accidentally inherit `mutable_with_retention` without intent.
+
+**Out-of-scope for amendment-1.**
+
+* Discipline enum value semantics (locked in §1; six values unchanged).
+* L4 startup invariant (§2) unchanged in mechanism.
+* Per-field partition discipline (§3) unchanged.
+* MutationDisciplineError signature (§5) unchanged.
+
+**Cross-reference.** See `confirmation_docs/PHASE_43_R0_PICKS_SEED.md` PB-43-6 + R0a-10/N4/P-D/P-E; `confirmation_docs/PHASE_43_R0B_DERIVATIONS.md` §3 L2Schema sketch; ADR-0152 §6 for per-NodeType-property `storage_mode` placement (analogous L2 vocabulary localization).
+
 ## Source
 
 `_workbench/L2_CHAT_DECISIONS.md` D-L2-3, D-L2-4, D-L2-5;
