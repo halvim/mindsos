@@ -25,6 +25,20 @@ Phase 36 ships ADR-0139's 5 listed validators as pure functions per
 * :func:`validate_promotion_candidate` — Local draft, not already
   promoted (no ``ref_type=PROMOTED`` stamp), not deprecated.
 
+Phase 43 adds two L2-substrate validators per ADR-0153:
+
+* :func:`validate_mutation_discipline` — per-write enforcement of the
+  declared discipline (ADR-0153 §2 + §3). Used by the L4 startup
+  invariant dispatch table (built once at
+  :meth:`KnowledgeLayer.bootstrap`) and by L3 write capacities as a
+  pre-mint check. Pure function; raises nothing — discipline violations
+  surface as :class:`ValidationResult.violated`; ``KLWriteHandle``
+  composes this into :class:`MutationDisciplineError` at the write
+  site.
+* :func:`validate_partition_invariant` — schema-build-time check that
+  ``*_CONTENT_FIELDS`` and ``*_METADATA_FIELDS`` form a clean partition
+  over the schema's declared field list (ADR-0153 §3).
+
 Each returns :class:`ValidationResult` (frozen; ``ok`` + optional
 ``violation``). The v1 result-type carries only those two fields per
 R2-PB-D; future amendments add structured detail fields when a
@@ -66,6 +80,7 @@ from .identifiers import (
 if TYPE_CHECKING:
     from mindsos_core import Metagraph
 
+    from .schemas._base import Discipline
     from .write_handle import KLWriteHandle
 
 
@@ -280,6 +295,153 @@ def validate_promotion_candidate(
     )
 
 
+def validate_mutation_discipline(
+    *,
+    discipline: "Discipline",
+    field: str,
+    role: str,
+    iri: str,
+    content_fields: frozenset[str] = frozenset(),
+    is_settled: bool = False,
+    is_admin: bool = False,
+    via_lazy_inline: bool = False,
+) -> ValidationResult:
+    """Reject writes that violate the declared mutation discipline.
+
+    ADR-0153 §3 (per-field content/metadata partition) + §2 (L4 startup
+    invariant dispatch). Phase 43 (Rail A slot 2). Used both by the L4
+    startup invariant (eager check at
+    :meth:`KnowledgeLayer.bootstrap`) and by L3 write capacities as a
+    pre-mint check composed via ADR-0139 §Capacity-contract.
+
+    Discipline-by-discipline behaviour:
+
+    * ``immutable_successor`` — writes to fields in ``content_fields``
+      are rejected; caller must mint a successor IRI. Metadata fields
+      are always mutable.
+    * ``append_only_with_lazy_inline`` — writes to ``content_fields``
+      are rejected unless ``via_lazy_inline=True`` (the only permitted
+      content mutation per ADR-0153 §1).
+    * ``append_only`` — writes to ``content_fields`` are rejected
+      unconditionally.
+    * ``mutable_with_retention`` — no field-level check; admin-tunable
+      retention TTL handles freshness (out of scope for this validator).
+    * ``audit_only_after_settled`` — writes to a settled row are
+      rejected (``is_settled=True``); pre-settled rows mutate freely.
+    * ``admin_authored`` — writes without ``is_admin=True`` are
+      rejected; admin tooling bypasses.
+
+    The validator is pure: discipline violations surface as
+    :class:`ValidationResult.violated`. ``KLWriteHandle`` composes the
+    violation into :class:`MutationDisciplineError` at the write site.
+
+    Args:
+        discipline: The declared discipline of the target role-graph
+            (per ``L2Schema.mutation_discipline``).
+        field: The property name being written.
+        role: The role-graph name (for diagnostics).
+        iri: The target node IRI (for diagnostics).
+        content_fields: The schema's ``*_CONTENT_FIELDS`` partition.
+            Empty frozenset for disciplines without partition.
+        is_settled: True iff the target row is in a terminal status
+            (``audit_only_after_settled`` only).
+        is_admin: True iff the write is via an admin importer or admin
+            tooling (``admin_authored`` only).
+        via_lazy_inline: True iff the write is the lazy-inline-on-retire
+            mechanism (``append_only_with_lazy_inline`` only).
+
+    Returns:
+        :class:`ValidationResult` — success iff the write is permitted
+        under the discipline.
+    """
+    if discipline == "admin_authored" and not is_admin:
+        return ValidationResult.violated(
+            f"role={role!r} iri={iri!r}: discipline=admin_authored "
+            f"requires admin flag for any write (field={field!r})"
+        )
+    if discipline == "audit_only_after_settled" and is_settled:
+        return ValidationResult.violated(
+            f"role={role!r} iri={iri!r}: discipline="
+            f"audit_only_after_settled forbids writes to settled row "
+            f"(field={field!r})"
+        )
+    if discipline == "immutable_successor" and field in content_fields:
+        return ValidationResult.violated(
+            f"role={role!r} iri={iri!r}: discipline=immutable_successor "
+            f"forbids in-place write to content field {field!r}; "
+            f"mint a successor IRI"
+        )
+    if (
+        discipline == "append_only_with_lazy_inline"
+        and field in content_fields
+        and not via_lazy_inline
+    ):
+        return ValidationResult.violated(
+            f"role={role!r} iri={iri!r}: discipline="
+            f"append_only_with_lazy_inline forbids in-place write to "
+            f"content field {field!r} outside the lazy-inline-on-retire "
+            f"mechanism"
+        )
+    if discipline == "append_only" and field in content_fields:
+        return ValidationResult.violated(
+            f"role={role!r} iri={iri!r}: discipline=append_only forbids "
+            f"in-place write to content field {field!r}"
+        )
+    return ValidationResult.success()
+
+
+def validate_partition_invariant(
+    *,
+    content_fields: frozenset[str],
+    metadata_fields: frozenset[str],
+    all_fields: frozenset[str],
+) -> ValidationResult:
+    """``content_fields`` + ``metadata_fields`` partition ``all_fields``.
+
+    ADR-0153 §3 partition discipline. Phase 43 (Rail A slot 2). Used at
+    schema-build time (or PR1 commit 5 sentinel test) to verify a
+    Phase 43 schema's ``*_CONTENT_FIELDS`` + ``*_METADATA_FIELDS`` are
+    coherent with the schema's declared field list.
+
+    Checks (in this order):
+
+    * **No overlap** — ``content_fields ∩ metadata_fields == ∅``.
+    * **Complete coverage** — every field in ``all_fields`` belongs to
+      exactly one partition.
+    * **No phantom fields** — neither partition references a field not
+      in ``all_fields``.
+
+    Args:
+        content_fields: The ``*_CONTENT_FIELDS`` frozenset.
+        metadata_fields: The ``*_METADATA_FIELDS`` frozenset.
+        all_fields: The full declared field set for the NodeType.
+
+    Returns:
+        :class:`ValidationResult` — success iff the two frozensets form
+        a clean partition over ``all_fields``.
+    """
+    intersection = content_fields & metadata_fields
+    if intersection:
+        return ValidationResult.violated(
+            f"content/metadata partition overlap: "
+            f"{sorted(intersection)!r} appear in both partitions"
+        )
+    union = content_fields | metadata_fields
+    missing = all_fields - union
+    if missing:
+        return ValidationResult.violated(
+            f"content/metadata partition incomplete: "
+            f"{sorted(missing)!r} unclassified"
+        )
+    extra = union - all_fields
+    if extra:
+        return ValidationResult.violated(
+            f"content/metadata partition references unknown fields: "
+            f"{sorted(extra)!r}"
+        )
+    return ValidationResult.success()
+
+
 def _validate_node_episodic_memories(
     handle: "KLWriteHandle",
     value: Any,
@@ -323,4 +485,6 @@ __all__ = [
     "validate_alignment_role_naming",
     "validate_ref_type",
     "validate_promotion_candidate",
+    "validate_mutation_discipline",
+    "validate_partition_invariant",
 ]
