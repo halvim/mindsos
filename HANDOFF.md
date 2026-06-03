@@ -1,6 +1,6 @@
 # MindsOS — HANDOFF
 
-> **Last updated:** 2026-06-03 (Phase 43 **full design pass closed**; 18 saturation rounds; R1 impl-locks + R2 amendment texts + R3 cross-check all locked at `confirmation_docs/PHASE_43_DESIGN_LOG.md`; ship pending. Next chat is the Phase 43 **ship execution chat** — design log is the spec. See §3.1.12.)
+> **Last updated:** 2026-06-03 (Phase 43 **SHIPPED**; Rail A slot 2 complete — L2 schema-v2 + 4 new role-graphs + mutation_discipline runtime invariant + per-NodeType storage_mode + bootstrap applies_after + consolidate Episode retarget. PR1 + PR2 cumulative gates green; design log §9 captures ~12 impl-time amendments + pair-execution pattern + 6-step confirm-phase workflow. See §3.1.13 for ship closure.)
 > **Audience:** Any chat, contributor, or reviewer entering MindsOS. This is the canonical entry point — read it first.
 > **Self-contained:** This document does not require loading external memory entries to make sense. Inline content is authoritative. Memory entries referenced as `[[name]]` are speed-ups for chats that have memory access; the canonical text lives here.
 
@@ -359,6 +359,43 @@ Phase 43 full design pass closed 2026-06-03 across **18 saturation rounds** (R1 
 - **Phase 44 R0** reads Phase 43 `bootstrap.py` diff (L2-37 split — Phase 44 implements the Kahn scheduler that consumes `applies_after` declarations Phase 43 ships) + `episodic_memories.py` diff (Phase 44's `kl.read_at_version` + `kl.retire_version` touch episode storage) + `mindsos_server/audit.py` (Phase 44 adds `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` constant).
 - **Phase 46 R0** reads Phase 43 `_base.py` (L2Schema subclass) + `knowledge_layer.py` (bootstrap dispatch table) + `write_handle.py` (discipline enforcement body) — Phase 46 L4 substrate consumes the L2 invariant.
 - **Phase 48 R0** reads Phase 43 `consolidate.py` retarget + `episodic_memories.py` body (Episode + Memory + memory_contains_episode) — Phase 48 L5 v1 builds on the retargeted MM consolidation path.
+
+### 3.1.13 Phase 43 ship closure (2026-06-03) — Rail A slot 2 SHIPPED
+
+Phase 43 (L2 schema-v2; 4 new role-graphs; mutation_discipline runtime invariant; per-NodeType storage_mode; bootstrap `applies_after` field; ADR-0094 §am-1 detector; consolidate retarget Memory → Episode; episodic_memories body finalize) shipped as squash-merge commit on `main`; tag `phase-43-confirmed` cut from that SHA.
+
+**Ship contents.**
+
+- **8 commits PR1** + **2 follow-ups (5b + 5c)** — design closure landing + ADR amendments + `_base.py` (Discipline / StorageMode / L2Schema) + `MutationDisciplineError` + `validate_mutation_discipline` + `validate_partition_invariant` + 9 schema audits (`Schema(...)` → `L2Schema(mutation_discipline=...)`; Pipeline + TaskPattern + ProblemTraceEntry partition frozensets) + 9-surface manifest bump + 4 sentinel test files + ADR cleanup (6 stale-example ADRs + ADR-0151 frontmatter + ADR-0094 §am-1 + ADR-0143 cross-ref) + L2_CHAT_DECISIONS D-L2-3/4/10 cleanup.
+- **6 commits PR2** — 4 new schema files (parameter_staging + pending_promotions + capacity_gaps + learned_parameters) + episodic_memories body finalize (Episode + Memory partitions + `MEMORY_CONTAINS_EPISODE` EdgeType per R6 nomenclature reconciliation) + identifiers.py (4 new ROLE_* + 4 IRI builders + 4 prefix entries + 4 `_KINDS_PER_ROLE` + 4 `_IRI_BUILDERS` tuple-key registrations) + bootstrap.py (`_GLOBAL_NAMED_ROLES` 6→9, `_LOCAL_NAMED_ROLES` 2→5, `_APPLIES_AFTER_BY_ROLE` 12 declarations with soft edge `episodic_memories ← {task-patterns}`, `applies_after` kwarg field-only) + KnowledgeLayer.discipline_for + KLWriteHandle admin_authored enforcement + consolidate Episode retarget + detector + 9 tests/phase_43 files + tests/phase_13 + tests/phase_33 updates.
+
+**Cumulative gate:**
+
+- PR1: **3544 passed / 0 failed / 8 skipped** (31:43).
+- PR2: (filled at confirm-phase post-squash).
+- **mkdocs build clean** (17 WARN pre-existing carry-forward; 0 ERROR + 0 new).
+
+**Impl-chat artifacts on disk:**
+
+- `confirmation_docs/PHASE_43_DESIGN_LOG.md §9` — impl-time amendments (P1-P5 pre-impl, Q1-Q5 + R1-R5 round 2-3, R6 architectural memory_contains_episode, R7-R10 in-flight discoveries, R11-R12 pair-execution + confirm-phase workflows, 5b + 5c gate-driven follow-up records).
+- `confirmation_docs/PHASE_43_CONFIRMED.md` — `mindsos confirm-phase` auto-generated ship metadata.
+- `confirmation_docs/notes/notes-phase-43.md` — tester notes (load-bearing per `PHASE_MAP §0`).
+
+**Carry-forwards to Phase 44:**
+
+- **L2-37 consumer/scheduler.** Phase 43 ships `applies_after` field declarations; Phase 44 implements the Kahn topological-sort scheduler that consumes them (per L2_FUTURE_WORK §11 + L2-37 split + NPB11-1).
+- **L2-39 audit constant.** `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` + capability per D-L2-23; routed to L0_SUBSTRATE_CHAT scope.
+- **L2-41 KL retention surface.** `kl.read_at_version` + `kl.retire_version` per D-L2-18; routed to L0_SUBSTRATE_CHAT scope.
+- **Pair-execution discipline.** Cowork (sandbox) prepares file content via Edit/Write tools; user runs git on Mac; Linux runs cumulative gates via docker. Established as default for all future Phase ship chats (R11; reasoning: Cowork sandbox `.git/` is read-only). See §9.
+- **6-step confirm-phase workflow.** Cowork drafts notes-phase-N.md content + layer title + tester_notes copy-blocks; tester edits notes file + runs `mindsos confirm-phase` + pushes (R12). See §9.
+
+**Process discipline learnings (carry to Phase 44+ design closures):**
+
+- ADR transcription parity check as R1 step 0 default (per design log §10.1).
+- PHASE_MAP §4 row scope-rewrite at PR2 last commit, not just SHIPPED status flip (per design log §10.2).
+- Design-pass closures must commit closure artifacts before ending (P1 surfaced; carry-forward established).
+- Buildability-scan over locked commit boundaries before ratification (P2 + Q1 surfaced; carry-forward established).
+- Docker test image is NOT bind-mounted source; must rebuild after each push (R10).
 
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 

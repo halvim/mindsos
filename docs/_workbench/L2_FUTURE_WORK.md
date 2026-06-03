@@ -143,22 +143,23 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 | L2-16 (cross-system mappings as IntergraphEdges) | **WSD_INSTALLATION_CHAT** | L1 naming closed (IntergraphEdge shipped form). |
 | L2-17 (parallel foundational ontologies) | **FOL_INSTALLATION_CHAT** | — |
 | L2-21 (module glossary + code knowledge) | **CODE_SKILL_INSTALLATION_CHAT** | — |
-| L2-29 (`Schema.mutation_discipline` field) | **Phase 43** | Rail A schema-v2 ship; L1 amendment. |
-| L2-30 (`KL.bootstrap` discipline dispatch) | **Phase 43** | Rail A schema-v2 ship. |
-| L2-31 (`validate_mutation_discipline` validator) | **Phase 43** | Rail A; absorbs PHASE_38 §4 #9 partial. |
-| L2-32 (`CONTENT_FIELDS`/`METADATA_FIELDS` frozensets) | **Phase 43** | Rail A schema-v2 ship. |
-| L2-33 (`storage_mode` field declarations) | **Phase 43** | Rail A schema-v2 ship; per ADR-0151. |
+| L2-29 (mutation_discipline field on schemas) | **CLOSED — shipped Phase 43 (2026-06-03)** | Reversed from L1 Schema amendment framing to L2Schema(Schema) subclass at `mindsos_knowledge.schemas._base.L2Schema` per ADR-0153 §amendment-1 (R0 N4 probe + PB-43-6). L1 `mindsos_core.Schema` unchanged. |
+| L2-30 (`KL.bootstrap` discipline dispatch) | **CLOSED — shipped Phase 43 (2026-06-03)** | `KnowledgeLayer.discipline_for(metagraph, role)` + lazy per-Metagraph dispatch cache per ADR-0153 §2 startup invariant. |
+| L2-31 (`validate_mutation_discipline` validator) | **CLOSED — shipped Phase 43 (2026-06-03)** | Pure function in `mindsos_knowledge/validators.py` per ADR-0153 §3 + §5 (`MutationDisciplineError`). Plus `validate_partition_invariant` companion. |
+| L2-32 (`CONTENT_FIELDS`/`METADATA_FIELDS` frozensets) | **CLOSED — shipped Phase 43 (2026-06-03)** | Pipeline (5/11) + TaskPattern (5/8) + ProblemTraceEntry (7/0) + Episode (6/0) + Memory (1/3) partitions per ADR-0152 §1/§2/§7 + ADR-0153 §3. |
+| L2-33 (`storage_mode` field declarations) | **CLOSED — shipped Phase 43 (2026-06-03)** | Per-NodeType placement (not per-role-graph; NPB8-1). `STORAGE_MODE_FIELDS = {"LearnedParameter": {"value"}}` in `learned_parameters.py` per ADR-0151 + ADR-0152 §6. `INLINE` / `FALKOR_BLOB` / `BLOB_REF` enum in `_base.py`. |
 | L2-34 (`memories`→`episodic_memories` atomic rename PR) | **CLOSED — shipped Phase 39 (2026-06-02)** | Rail A first ship; rename atomic; detector tool replaces migration script per PB-8. |
 | L2-35 (`alignment:<a>:<b>` shipped-code reconciliation) | **CLOSED — shipped Phase 39 (2026-06-02)** | Bundled into Phase 39 PR per IL-7. Separator `:` shipped. |
 | L2-36 (L3 pipeline-finder task-pattern index) | **WSD_INSTALLATION_CHAT** | Per D-L2-7 D-L2-8 cache lives in L3. |
-| L2-37 (`applies_after` bootstrap field) | **Phase 43** (field) + **Phase 44** (consumer/scheduler) | — |
+| L2-37(field) (`applies_after` bootstrap field) | **CLOSED — shipped Phase 43 (2026-06-03)** | Field-only at Phase 43 per NPB11-1; `_APPLIES_AFTER_BY_ROLE` 12 declarations + `applies_after` kwarg on both `ensure_*_role_graph` functions. Soft edge `episodic_memories ← {task-patterns}` per NPB6-6. |
+| L2-37(consumer) (Kahn topological-sort scheduler) | **Phase 44** | Per L2-37 split. Phase 44 L0 substrate chat scope. |
 | L2-38 (ADR-0152 §am-1 for `HAS_STEP` shape) | **Closed via Phase 42 X3** — bipartite picked; `HAS_STEP` stays Phase 13 form. No §am-1 needed. | — |
 | L2-39 (`EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` constant + capability) | **Phase 44** | Per L0_SUBSTRATE_CHAT scope. |
-| L2-40 (`promoted-pipelines.confidence` migrator) | **Phase 43** | Rail A schema-v2 ship; absorbs into v2 schema deploy phase. |
+| L2-40 (`promoted-pipelines.confidence` migrator) | **CLOSED — shipped Phase 43 (2026-06-03)** | Form changed from migrator to detector per R0 PB-43-10 + ADR-0094 §am-1 in-place edit. `tools/check_phase_43_confidence_state.py` ships; v1 production state empty (Chat C migration-script discipline = wipe-and-rebootstrap, not in-place strip). |
 | L2-41 (KL `read_at_version` + `retire_version`) | **Phase 44** | Per L0_SUBSTRATE_CHAT scope. |
 | L2-Q1 (FOL #4 parameter_set_iri encoding) | RESOLVED at D-L2-12 opaque v1; FOL chat may re-litigate. | — |
 | L2-Q2 (ADR-0150 §am-N bulk-vs-many) | RESOLVED at D-L2-26 + refined by Chat C IL-3 split (§am-4 Phase 39; §am-5 Phase 43). | — |
 
 ---
 
-*End of L2_FUTURE_WORK.md. Last updated 2026-06-02 post Chat C plan-authoring closure.*
+*End of L2_FUTURE_WORK.md. Last updated 2026-06-03 post Phase 43 ship — L2-29/30/31/32/33/37(field)/40 closed; L2-37(consumer) + L2-39 + L2-41 routed to Phase 44.*

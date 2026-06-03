@@ -41,6 +41,9 @@ Phase chats also read `HANDOFF.md` first (canonical entry point) and the workben
 | **Per-phase manifest-bump 9-surface checklist (Phase 39 §9.4 carry-forward)** | Every numbered-phase ship must advance, in lockstep with `mindsos_cli/manifest.toml` `[mindsos] phase` + `version`: (a) 7 package `__version__` strings (`mindsos_core` / `mindsos_cli` / `mindsos_capacity` / `mindsos_server` / `mindsos_instances` / `mindsos_admin` / `mindsos_knowledge`); (b) `pyproject.toml` `[project] version`; (c) `docker-compose.yml` `mindsos:phase{N}-prod` + `mindsos:phase{N}-test` image tags; (d) Phase 30/31/34 export-slate sentinel-flip files (`tests/phase_30/test_phase_30_export_slate.py` + `tests/phase_31/test_phase_31_export_slate.py` + `tests/phase_34/test_phase_34_export_slate.py` `test_version_bumped_to_phase_34` literal value bumps per the sentinel-flip-at-target-phase convention; file name stays `phase_34`). Doctor self-test + version-parity tests gate this. See `confirmation_docs/PHASE_39_DESIGN_LOG.md §9.4`. |
 | **Pre-confirm-phase squash-merge discipline (Phase 39 §9.5 carry-forward)** | `mindsos confirm-phase --phase N` MUST run on a `main` that already contains the squash-merge of `phase-N` — confirm-phase writes `confirmation_docs/PHASE_N_CONFIRMED.md` against the local main state. Skipping the squash-merge step on Mac before running confirm-phase on Linux yields a CONFIRMED.md committed BEFORE the squash-merge it describes (Phase 39 ship anomaly; recovered via reflog restore + force-retag — see `PHASE_39_DESIGN_LOG.md §9.5`). |
 | **Dockerfile `tools/` test-stage COPY (Phase 39 §9.3 carry-forward)** | Phase 39 added `COPY tools ./tools` to the test stage when shipping the first runtime script under `tools/`. Future phases shipping tools must verify this COPY exists; updating its trailing comment to name the new consumer is conventional. |
+| **Pair-execution discipline (Phase 43 R11 carry-forward — Cowork ↔ Mac ↔ Linux)** | Cowork (sandbox) prepares file content via Edit/Write tools; the user runs git commands on Mac; Linux runs cumulative gates via docker. Cowork sandbox `.git/` is read-only — sandbox CANNOT run `git add` / `git commit` / `git push` / `git checkout -b`. Cowork CAN: read repo state (`git status`/`git log`/`git diff`), edit working-tree files via Edit/Write. Per ship chat: Cowork issues one command-group at a time with expected output; the user pastes back the actual output if it differs ("if my output differs I'll paste; otherwise tell you to proceed"). Group simple obvious sequences in one box; tag Mac vs Linux explicitly. Established as default for all future numbered-phase ship chats. See `PHASE_43_DESIGN_LOG.md §9.1` R11. |
+| **6-step confirm-phase workflow (Phase 43 R12 carry-forward)** | Established pattern for the `mindsos confirm-phase` cycle: (1) Cowork gives Mac command to generate `notes-phase-N.md` from the template (or `touch` if no template exists); (2) Cowork provides the layer title in a copy-block (e.g., "L2 schema-v2 ship"); (3) Cowork provides the complete `tester_notes` body in a copy-block (drawn from cumulative gate output + design log §9 content); (4) tester edits the notes file on Linux; (5) tester runs `mindsos confirm-phase --phase N --notes-file confirmation_docs/notes/notes-phase-N.md` on Linux from post-squash main; (6) tester commits `PHASE_N_CONFIRMED.md` + notes-phase-N.md + pushes. See `PHASE_43_DESIGN_LOG.md §9.1` R12. |
+| **Docker test image rebuild discipline (Phase 43 R10 carry-forward)** | `docker-compose.yml` `mindsos-test` service has no source bind-mount; image bakes source at build time. Each Linux cumulative gate run after a Mac push MUST `docker compose build mindsos-test` before `docker compose run --rm mindsos-test pytest tests/`. Skipping the rebuild runs tests against stale source — surfaces as "fix not applied" puzzlement at the gate. See `PHASE_43_DESIGN_LOG.md §9.1` R10. |
 | **Cookbook authoring scope (PB-7 + PB-W)** | nlu-slice + code-slice stay out of scope; routed to WSD installation + code-skill installation chats per `_workbench/cookbook_routing.md`. Phase 49 (Integration C) ships `usage/cookbook/end-to-end.md` as accompanying cookbook page (Phase 32→text-realm precedent). |
 | **Model C remediation (PB-8)** | Strict-lift + 8-12 TYPE_COMPAT terminology docs + ~50-warning filename normalization bundled into Phase 42 (X3). Drop `mkdocs-redirects` plugin work entirely (housekeeping copied parent-tree ADRs into MindsOS; cross-link warnings collapse to filename drift). |
 | **Workbench migration (PB-F + IL-9)** | Closed-class decision logs migrate to `confirmation_docs/` at Chat C closure: CHAT_A_DECISIONS, CHAT_B_DECISIONS, L1_L3_REFRAME_DECISIONS, L2_CHAT_DECISIONS, CHAT_A_L4_BASELINE, CHAT_PLAN_L4_L5. `NEXT_CHAT_PROMPTS.md` → `_archive_Layered_Intelligence/` (forensic-only; superseded). All `L*_FUTURE_WORK.md` stay in `_workbench/` while their open items remain. |
@@ -405,97 +408,78 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ---
 
-### Phase 43 — L2 schema-v2: 4 new role-graphs + mutation_discipline runtime invariant + storage_mode + bootstrap order + 3 new ADRs + ADR-0150 §am-5
+### Phase 43 — L2 schema-v2: 4 new role-graphs + mutation_discipline runtime invariant + per-NodeType storage_mode + bootstrap applies_after field + ADR-0094 §am-1 detector + consolidate Episode retarget + episodic_memories body finalize
 
-  **Status:** **Design pass closed 2026-06-03; ship pending.** Full design log at `confirmation_docs/PHASE_43_DESIGN_LOG.md`. Multiple items in this row body are STALE per design log §3 reconciliation: (a) L1 vs L2 `Schema.mutation_discipline` placement — design log picks L2Schema(Schema) subclass + ADR-0153 §amendment-1; (b) 5 vs 6 disciplines (append_only added per ADR-0153 §1); (c) "maintenance migrator" → detector form per R0 PB-43-10; (d) per-role-graph vs per-NodeType `storage_mode` — design log picks per-NodeType per ADR-0151 §Decision + ADR-0152 §6 (only LearnedParameter in scope); (e) bootstrap "14-step topological order" → field-declarations-only at Phase 43 per L2-37 split (Phase 44 ships Kahn scheduler); (f) consolidate.py retarget at Phase 43 per R0 PB-43-9 (not deferred to Phase 48); (g) ADRs 0151/0152/0153 already Accepted on disk per R0a-3 — Phase 43 IMPLEMENTS, doesn't ratify. **PR2 commit 6 of the ship chat rewrites this row** per design log §6.1 module-touch. Until then: treat design log §5+§6 + §8 as authoritative spec; this row body as historical pre-R0 framing.
-  **Branch:** phase-43
+  **Status:** **SHIPPED 2026-06-03.** Rail A slot 2 complete. Full design log at `confirmation_docs/PHASE_43_DESIGN_LOG.md`; ship-time impl-amendments at §9. See HANDOFF.md §3.1.13 for full ship closure detail.
+  **Branch:** phase-43 (squash-merged to main)
   **Tag on confirm:** phase-43-confirmed
   **Rail:** A
   **Depends on:** 39 (Phase 39 confirmed). **Parallel to Rail B** (no dependency on X1/X2/X3); reading-list discipline for `identifiers.py` overlap with Phase 40.
-  **Layer(s):** L1 + L2 (L1 `Schema` field amendment).
-  **Net-new code?:** Yes — `Schema.mutation_discipline` field (L1 amendment ~5 LOC + field default); 4 new schema files (`parameter_staging.py`, `pending_promotions.py`, `capacity_gaps.py`, `learned_parameters.py`); `validate_mutation_discipline` validator; `MutationDisciplineError` exception; `storage_mode` field on large-payload-carrying schemas; `applies_after` bootstrap field on importer registration contract; bootstrap importer suite for 4 role-graphs + 14-step topological order.
+  **Layer(s):** L2 only (`L2Schema(Schema)` subclass placement per ADR-0153 §amendment-1 — L1 `mindsos_core.Schema` stays primitive; L1 amendment from pre-R0 framing was reversed).
+  **Net-new code?:** Yes. 4 new schema files (`parameter_staging.py`, `pending_promotions.py`, `capacity_gaps.py`, `learned_parameters.py`); `_base.py` NEW (Discipline + StorageMode + L2Schema subclass); `validate_mutation_discipline` + `validate_partition_invariant`; `MutationDisciplineError`; 4 new IRI builders + ROLE_* constants; bootstrap `applies_after` field declarations; `KnowledgeLayer.discipline_for` + dispatch cache; `KLWriteHandle.write_and_validate` admin_authored enforcement; episodic_memories body finalize (Episode + Memory + `MEMORY_CONTAINS_EPISODE` EdgeType); `tools/check_phase_43_confidence_state.py` detector.
 
-  **Locked decisions:**
-  - **ADR-0151 ships (NEW)** — L2 storage tiers: ≤4KB inline / ≤1MB Falkor BLOB / >1MB blob_ref (v2 reserved). Per L2_CHAT_DECISIONS D-L2-22.
-  - **ADR-0152 ships (NEW)** — L2 role-graph schema v2: 4 new role-graphs (`parameter-staging` Local; `pending-promotions` Local+Global; `capacity-gaps` Global; `learned-parameters` Local+Global). Per L2_CHAT_DECISIONS D-L2-11/13/14/15.
-  - **ADR-0153 ships (NEW)** — Per-role-graph `mutation_discipline` field on Schema; per-field `content_fields` / `metadata_fields` declarations; reference-stability framing supersedes "immutability" wording. Per L2_CHAT_DECISIONS D-L2-3/4/5.
-  - **ADR-0094 §amendment-1 ships** — drops `confidence` from promoted-pipelines; per-pipeline confidence migrates to ALS subsystems #3 + #4. Per L2_CHAT_DECISIONS D-L2-24.
-  - **ADR-0150 §amendment-5 ships (IL-3 split)** — 4-new-role-graph expansion. Closed role-set: 8 → 12 named + alignment-prefix.
-  - **Bootstrap importer order locked** (14 steps; per L2_CHAT_DECISIONS D-L2-19) via `applies_after: frozenset[IRI]` on registration contract.
-  - **`promoted-pipelines.confidence` maintenance migrator** strips field from any shipped Local-Pipeline records (v1 production has none; safety net per PB-X precedent).
-  - **`task-patterns` flat 9-field schema ships** per L2_CHAT_DECISIONS D-L2-10; `mapping_confidence_threshold` lives in metadata per discipline.
-  - **`promoted-pipelines` schema v2 partial-lock ships** per L2_CHAT_DECISIONS D-L2-6 (status field + lifecycle metadata + paired_pipelines source-of-truth; `serves_task_types` cache eliminated; `HAS_STEP` shape inherits Phase 13 form since L1/L3 reframe picked bipartite at X3, not hyperedges; L2-38 carry-forward closed).
+  **Locked decisions (as shipped):**
+  - **ADR-0151 / 0152 / 0153 IMPLEMENTED (Accepted on disk pre-Phase-43 per R0a-3).** Phase 43 implements the contracts; does NOT re-ratify (NPB6-3).
+  - **ADR-0153 §amendment-1 (NEW).** L2Schema(Schema) subclass placement at `mindsos_knowledge.schemas._base` supersedes §6 L1 `mindsos_core.Schema` framing (R0 N4 probe + PB-43-6 + R0a-10).
+  - **ADR-0150 §amendment-5 (NEW).** 4 new role-graphs (parameter-staging Local; pending-promotions Local+Global; capacity-gaps Global; learned-parameters Local+Global) + 5-item exclusion list. Closed role-set: 8 → 12 named + alignment-prefix.
+  - **ADR-0094 §amendment-1 in-place edit** — Migration of shipped state text: "maintenance migrator" → "detector form" (`tools/check_phase_43_confidence_state.py`) per R0 PB-43-10. V1 production has no confidence-carrying Pipeline records; detector form per Phase 39 PB-8 precedent.
+  - **ADR-0151 frontmatter Related block** — promotes ADR-0152 + ADR-0153 from Proposed to Accepted (both already Accepted on disk per R0a-3).
+  - **ADR-0143 §Implementation references** — appends ADR-0153 §2 cross-ref noting KLWriteHandle write-path body fills with mutation-discipline enforcement.
+  - **6 disciplines per ADR-0153 §1** (not 5 — `append_only` added per R0a-4/S3 for problem-trace).
+  - **`storage_mode` is per-NodeType property** (not per-role-graph). Only `LearnedParameter.value` carries large-payload declaration in Phase 43 scope per ADR-0152 §6 + NPB8-1.
+  - **`bootstrap.py` field-only at Phase 43.** `applies_after: frozenset[str] = frozenset()` kwarg added on both `ensure_*_role_graph` functions; `_APPLIES_AFTER_BY_ROLE` dict declares 12 role dependencies (soft edge `episodic_memories ← {task-patterns}` per NPB6-6); Kahn topological-sort scheduler defers to Phase 44 per L2-37 split (NPB11-1).
+  - **`consolidate.py` retarget at Phase 43** (R0 PB-43-9). `type_="Memory"` → `type_="Episode"`; `memory_id` → `episode_id`; NOTE(phase-48-retarget) comments removed. Memory NodeType remains in schema for future composite-consolidation flow (Phase 48+); `consolidate:mm` now writes Episodes per Chat B D-B47.
+  - **`promoted-pipelines.confidence` DROPPED** from schema v2 per ADR-0094 §am-1; v1 production state is empty per PB-43-10. Migrates to ALS subsystems on `learned-parameters` (subsystem #3 selection + #4 mapping).
+  - **`task-patterns` flat 13-field schema** (originally framed as "flat 9-field" at L2-chat closure; 13 = 11 listed + 2 timestamps per ADR-0152 §2). Phase 43 PR1 commit 7 reconciles D-L2-10 title.
+  - **`episodic_memories` body finalized.** Episode (6 content + 0 metadata) + Memory (1 content + 3 metadata) + `MEMORY_CONTAINS_EPISODE` EdgeType (R6: shipped as regular EdgeType not IntergraphEdgeType — both NodeTypes in same role-graph per Chat B D-B47; ADR-0152 §7 IntergraphEdge nomenclature reconciled in design log §9.1).
+  - **`memory_contains_episode` edge form** is regular EdgeType (Memory → Episode within `episodic_memories` Schema). MetagraphSchema-level IntergraphEdgeType reconsideration deferred to Phase 48+ if cross-role-graph use case surfaces.
 
-  **Features in scope:**
-  - 4 new role-graph schemas + ROLE_* constants + IRI builders + parser entries.
-  - `Schema.mutation_discipline: Literal[...]` field on L1 `mindsos_core.Schema`.
-  - 5 v1 disciplines: `immutable_successor`, `append_only_with_lazy_inline`, `mutable_with_retention`, `audit_only_after_settled`, `admin_authored`.
-  - L4 startup invariant: `KnowledgeLayer.bootstrap()` builds discipline dispatch table.
-  - `validate_mutation_discipline` validator + `MutationDisciplineError` exception.
-  - Per-field `content_fields` + `metadata_fields` frozensets on schemas under immutable disciplines.
-  - `storage_mode` field on `episodic_memories.Episode.task_input_ref` + `learned-parameters.LearnedParameter.value`.
-  - `applies_after: frozenset[IRI]` on bootstrap importer registration contract.
-  - 14-step bootstrap topological order locked.
-  - `promoted-pipelines.confidence` maintenance migrator (no-op on empty state).
-  - `episodic_memories` schema completion (Episode + Memory entry types + `memory_contains_episode` edge type per D-L2-17; schema-only bootstrap importer).
-
-  **Modules touched:**
-  - `mindsos_core/schema.py` (mutation_discipline field).
-  - `mindsos_knowledge/identifiers.py` (4 new ROLE_*; 4 new IRI builders; 4 new prefix entries; 4 new `_KINDS_PER_ROLE` rows).
-  - `mindsos_knowledge/schemas/parameter_staging.py` (NEW).
-  - `mindsos_knowledge/schemas/pending_promotions.py` (NEW).
-  - `mindsos_knowledge/schemas/capacity_gaps.py` (NEW).
-  - `mindsos_knowledge/schemas/learned_parameters.py` (NEW).
-  - `mindsos_knowledge/schemas/episodic_memories.py` (Phase 39-renamed; finalize Episode + Memory + `memory_contains_episode` IntergraphEdge per D-L2-17).
-  - `mindsos_knowledge/schemas/promoted_pipelines.py` (drop `confidence`; add status enum + lifecycle metadata + `paired_pipelines` removal; CONTENT_FIELDS + METADATA_FIELDS frozensets).
-  - `mindsos_knowledge/schemas/task_patterns.py` (flat 9-field; CONTENT_FIELDS + METADATA_FIELDS).
-  - `mindsos_knowledge/validators.py` (`validate_mutation_discipline`).
-  - `mindsos_knowledge/exceptions.py` (`MutationDisciplineError`).
-  - `mindsos_knowledge/bootstrap.py` (14-step order + `applies_after` field + 4 new role-graph bootstraps + episodic_memories schema-only).
-  - `mindsos_knowledge/knowledge_layer.py` (`bootstrap()` discipline dispatch table; runtime invariant).
-  - `tools/migrate_phase_43_confidence_strip.py` (maintenance migrator).
-  - `docs/decisions/adr/0151-l2-storage-tiers.md` (NEW; ratified).
-  - `docs/decisions/adr/0152-l2-role-graph-schema-v2.md` (NEW; ratified).
-  - `docs/decisions/adr/0153-l2-mutation-discipline.md` (NEW; ratified).
-  - `docs/decisions/adr/0094-confidence-pipeline-level.md` (§amendment-1).
-  - `docs/decisions/adr/0150-l2-knowledge-lifecycle.md` (§amendment-5 per IL-3).
-  - **Stale ROLE_MEMORIES / memory_iri example cleanup in non-amend-target ADRs (Phase 39 §9.6 carry-forward):** ADR-0045 §Decision body, ADR-0139 example code-block, ADR-0143 Usage skeleton + Constraint, ADR-0146 main body (outside §am-3), ADR-0147 per-flow example, ADR-0154 example IRI (`memories-<v>:memory:<u>:<m>`). Each rewritten to use post-Phase-39 form (ROLE_EPISODIC_MEMORIES + episode_iri / memory_composite_iri + `episodic-memories-<v>:...` prefix). Phase 39 design log PB-R1-A deferred these for natural alignment with Phase 43's adjacent ADR work; cleanup ships in this PR.
-
-  **Automated tests:**
-  - `tests/phase_43/test_4_role_graphs.py` — schema registration + bootstrap + IRI builders.
-  - `tests/phase_43/test_mutation_discipline_field.py` — 5 disciplines enumerated + Schema field present.
-  - `tests/phase_43/test_mutation_discipline_runtime_invariant.py` — bootstrap dispatch table built; write attempts against `immutable_successor` content field raise `MutationDisciplineError`.
-  - `tests/phase_43/test_content_metadata_frozensets.py` — promoted-pipelines + task-patterns + episodic_memories declare CONTENT_FIELDS + METADATA_FIELDS.
-  - `tests/phase_43/test_storage_mode_field.py` — Episode + LearnedParameter declare `storage_mode`.
-  - `tests/phase_43/test_bootstrap_applies_after.py` — 14-step topological order respected.
-  - `tests/phase_43/test_confidence_migrator.py` — strips confidence from shipped Pipeline records; idempotent.
-  - `tests/phase_43/test_episodic_memories_completion.py` — Episode + Memory + memory_contains_episode edge type registered.
-  - `tests/phase_43/test_promoted_pipelines_v2.py` — status enum + lifecycle metadata + paired_pipelines removed.
-  - `tests/phase_43/test_task_patterns_v2.py` — flat 9-field; all properties present.
-  - `tests/phase_43/test_adr_amendment_sentinels.py` — anchors ADR-0151/0152/0153/0094-am-1/0150-am-5; chain link from Phase 39 (Rail A chain).
+  **Modules touched (as shipped):**
+  - `mindsos_knowledge/schemas/_base.py` (NEW; Discipline + StorageMode + L2Schema(Schema) subclass).
+  - `mindsos_knowledge/schemas/parameter_staging.py` (NEW; StagedEvidence; MUTABLE_WITH_RETENTION).
+  - `mindsos_knowledge/schemas/pending_promotions.py` (NEW; PendingPromotion; AUDIT_ONLY_AFTER_SETTLED).
+  - `mindsos_knowledge/schemas/capacity_gaps.py` (NEW; CapacityGap; MUTABLE_WITH_RETENTION).
+  - `mindsos_knowledge/schemas/learned_parameters.py` (NEW; LearnedParameter; per-scope discipline split via `scope` kwarg; STORAGE_MODE_FIELDS map).
+  - `mindsos_knowledge/schemas/{ontology,lexicon,concepts,alignment,capacity_state,problem_trace,promoted_pipelines,task_patterns,episodic_memories}.py` (9 schema audits; each `Schema(...)` → `L2Schema(mutation_discipline=Discipline.X, ...)`; promoted_pipelines + task_patterns + problem_trace get CONTENT_FIELDS + METADATA_FIELDS partition frozensets; promoted_pipelines drops `task_type` + `confidence`; task_patterns renames `task_type` → `pattern_name`; episodic_memories body finalized).
+  - `mindsos_knowledge/schemas/__init__.py` (dispatch table grows 8→12; L2-private vocabulary re-exports).
+  - `mindsos_knowledge/identifiers.py` (4 new ROLE_*; 4 new IRI builders; 4 new prefix entries; 4 new `_KINDS_PER_ROLE` rows; 4 new `_IRI_BUILDERS` tuple-key registrations).
+  - `mindsos_knowledge/validators.py` (`validate_mutation_discipline` + `validate_partition_invariant` per ADR-0153 §3).
+  - `mindsos_knowledge/exceptions.py` (`MutationDisciplineError` per ADR-0153 §5; multi-inherits KnowledgeError + ValueError).
+  - `mindsos_knowledge/bootstrap.py` (`_GLOBAL_NAMED_ROLES` 6→9, `_LOCAL_NAMED_ROLES` 2→5, `_APPLIES_AFTER_BY_ROLE` 12 declarations, `applies_after` kwarg field-only).
+  - `mindsos_knowledge/knowledge_layer.py` (`discipline_for` + lazy per-Metagraph dispatch cache per ADR-0153 §2).
+  - `mindsos_knowledge/write_handle.py` (`write_and_validate` admin_authored discipline check + `_is_admin` bypass; raises `MutationDisciplineError` on admin_authored writes without flag).
+  - `mindsos_knowledge/__init__.py` (re-exports 4 new ROLE_* + 4 new IRI builders + 4 new schema builders + Discipline + L2Schema + StorageMode + MutationDisciplineError).
+  - `mindsos_capacity/builtins/consolidate.py` (retarget: type_="Memory" → "Episode"; memory_id → episode_id; NOTE(phase-48-retarget) comments removed; module docstring + DataState description updated).
+  - `tools/check_phase_43_confidence_state.py` (NEW detector per R0 PB-43-10 + ADR-0094 §am-1).
+  - `docs/decisions/adr/0150-l2-knowledge-lifecycle.md` (§amendment-5 NEW per IL-3 split).
+  - `docs/decisions/adr/0153-l2-mutation-discipline.md` (§amendment-1 NEW; L2Schema(Schema) placement).
+  - `docs/decisions/adr/0094-confidence-pipeline-level.md` (§am-1 in-place: migrator → detector).
+  - `docs/decisions/adr/0151-l2-storage-tiers.md` (frontmatter Related block: 0152/0153 promoted Proposed → Accepted).
+  - `docs/decisions/adr/0143-kl-write-handle-pattern.md` (§Implementation references appends ADR-0153 §2 cross-ref + stale ROLE_MEMORIES example cleanup).
+  - `docs/decisions/adr/{0045,0139,0146,0147,0154}.md` (stale ROLE_MEMORIES / memory_iri / `memories-` example cleanup per Phase 39 PB-R1-A carry-forward).
+  - `confirmation_docs/L2_CHAT_DECISIONS.md` (D-L2-3 cascade L1→L2 placement note + 6th discipline append_only row + capacity-gaps reassigned admin_authored→mutable_with_retention; D-L2-4 Pipeline partition paired_pipelines removed + pipeline_name + quarantine_threshold added; D-L2-10 title 9-field→13-field + canonical count note).
+  - `tests/phase_13/test_dispatch.py` (`_ALL_NAMED_ROLES` 8→12; sentinel `len == 8` → `== 12`).
+  - `tests/phase_13/test_advisory_property_constants.py` (Pipeline + TaskPattern v2 expected fields + negative regression guards).
+  - `tests/phase_33/test_consolidate_mm_capacity.py` (5 line changes: `memory_id` → `episode_id` fixture keys + IRI literal `:memory:` → `:episode:`).
+  - `tests/phase_43/` 9 NEW test files (test_4_role_graphs + test_mutation_discipline_runtime_invariant + test_storage_mode_field + test_bootstrap_applies_after + test_confidence_detector_script + test_episodic_memories_completion + test_promoted_pipelines_v2 + test_task_patterns_v2 + test_consolidate_retarget) + PR1 sentinel suite (test_l2schema_subclass + test_validate_mutation_discipline + test_partition_invariant + test_adr_amendment_sentinels + `__init__.py`).
+  - `mindsos_cli/manifest.toml` + `pyproject.toml` + `docker-compose.yml` + 7 package `__init__.py` `__version__` + 3 export_slate test files (9-surface manifest bump per Phase 39 §9.4).
 
   **Confirmation command:**
-  `mindsos confirm-phase --phase 43 --notes-file notes-phase-43.md`
+  `mindsos confirm-phase --phase 43 --notes-file confirmation_docs/notes/notes-phase-43.md`
 
-  **Pass criterion:**
-  - All Phase 43 tests green + cumulative.
-  - 3 new ADRs ratified; 2 amendments landed.
-  - `KnowledgeLayer.bootstrap()` builds discipline dispatch table from all installed schemas.
-  - `validate_mutation_discipline` rejects content-field writes against `immutable_successor` schemas.
-  - Confidence migrator runs idempotently.
-  - 14-step bootstrap order executes without dependency violation.
+  **Pass criterion (achieved):**
+  - All Phase 43 tests green + cumulative gate green (PR1: 3544 / 0 / 8; PR2: filled at confirm).
+  - 2 ADR amendments shipped + 4 ADR in-place edits + 6 stale-example ADR cleanups + 3 L2_CHAT_DECISIONS sub-decision cleanups.
+  - `KnowledgeLayer.discipline_for(metagraph, role)` returns expected discipline for 9 Global + 5 Local roles.
+  - `KLWriteHandle.write_and_validate` raises `MutationDisciplineError` on `admin_authored` without `_is_admin=True`.
+  - `tools/check_phase_43_confidence_state.py` runs idempotently (exit 0 on clean; exit 1 on findings; mocked detector tests pass).
+  - `bootstrap.py` declarations cover all 12 named role-graphs; soft edge `episodic_memories ← {task-patterns}` per NPB6-6.
 
-  **Risks / known issues to watch:**
-  - **Parallel-rail collision with Phase 40 on `identifiers.py`** (both add identifiers). Reading-list discipline anticipates; small surfaces, low conflict probability.
-  - **`mindsos_core.Schema` field addition** is L1 amendment; backward-compat defaults to `mutable_with_retention`. Existing shipped schemas (Phase 13) get one-line amendments to declare their discipline.
-  - Bootstrap order strict; admin extension paths require new `applies_after` declarations.
-  - `promoted-pipelines.confidence` migrator + `task-patterns` field-shape changes propagate to KL clients.
-
-  **Doc sections this phase confirms:**
-  - 3 new ADRs + 2 amendments.
-  - `docs/concepts/role-graphs.md` (4 new role-graph descriptions).
-  - `docs/concepts/mutation-discipline.md` (NEW).
-  - `docs/concepts/storage-tiers.md` (NEW).
+  **Doc sections this phase confirmed:**
+  - 2 NEW ADR amendments + 4 ADR in-place edits + 6 stale-example ADR cleanups.
+  - `docs/concepts/role-graphs.md` (4 new role-graph descriptions + cross-ref to mutation-discipline + storage-tiers).
+  - `docs/concepts/mutation-discipline.md` (NEW; 6-discipline framework + L2Schema subclass + dispatch table).
+  - `docs/concepts/storage-tiers.md` (NEW; 3 tiers + per-NodeType storage_mode + v1 consumers).
 
   **Breaking changes from prior phase:**
   - **`promoted-pipelines` schema:** `confidence` field removed; consumers reading it break.

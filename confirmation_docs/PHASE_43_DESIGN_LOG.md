@@ -329,17 +329,59 @@ Append after existing ADR-0146 §am-3 cross-ref line:
 
 Per Phase 39 §9 precedent, this section captures impl-shape picks + gate-driven follow-up commits + ship-closure anomalies + carry-forwards. Reserved for tester to fill during impl execution.
 
-### §9.1 R1 impl-shape picks (impl + tester chat will append)
+### §9.1 R1 impl-shape picks (Cowork-driven pair execution ship pass)
 
-(reserved)
+The Phase 43 ship execution chat ran R1 + R2 impl-time picks beyond design pass saturation. 11 of the impl picks were forecast at design closure (P1-P5, Q1-Q5, R1) and resolved pre-PR1; 6 emerged in-flight during impl (R2-R10); 1 was an impl-time architectural reconciliation (R6).
 
-### §9.2 R2 ADR text-shape picks (impl + tester chat will append)
+**Pre-impl pushback round 1 (P1-P5):** raised before branching.
 
-(reserved)
+- **P1 — BLOCKER: design-chat dirty-tree resolution.** Design chat (2026-06-03) closed without committing the 4 modified + 2 untracked files (CLAUDE.md, HANDOFF.md, PHASE_39_DESIGN_LOG.md §9 backfill, POST_PHASE_38_PHASE_MAP.md, PHASE_43_DESIGN_LOG.md NEW, PHASE_43_SHIP_CHAT_PROMPT.md NEW). Resolution: **split-land** — Commit A on main contains the Phase 39 §9 backfill + POST_PHASE_38 §1 IL-3 carry-forwards (Phase 39 history; belongs on main); the 4 Phase-43-design-closure files (CLAUDE.md status + HANDOFF §3.1.12 + design log + ship prompt + POST_PHASE_38 §4 stale-notice) ship as PR1 commit 0 design-closure landing on `phase-43` branch. Forensic correctness: Phase 39 history attributed to a main commit, not a Phase 43 squash SHA.
+- **P2 — REAL: consolidate.py retarget non-buildable intermediate.** Design log §6.3 PR2 commit 3 ships consolidate.py retarget (`type_="Memory"` → `Episode`) while §6.3 PR2 commit 5 ships the corresponding `tests/phase_33/test_consolidate_mm_capacity.py` fixture updates — commits 3 + 4 would fail the phase_33 test until commit 5 lands. Resolution: **co-locate test updates with retarget at PR2 commit 3** per the design log §117 "each commit must be independently buildable" rule.
+- **P3 — MINOR: PR1 commits 6+7 land AFTER cumulative-gate trigger.** Acknowledged; gate per design log §11.1 runbook fires after the full PR1 push (post-commit-7), not after commit 5 individually. Commit 5 is the "test surface trigger" rather than the gate execution moment.
+- **P4 — HISTORY HYGIENE.** Resolved by P1 split-land (Phase 39 §9 backfill on main, not in phase-43 squash).
+- **P5 — CARRY-FORWARD: design-chat-close process gap.** Recorded in §9.2 + POST_PHASE_38 §1 + HANDOFF §9 as a Phase 44+ discipline carry-forward: design-pass chats must commit closure artifacts before ending.
+
+**Pre-impl pushback round 2 (Q1-Q5):**
+
+- **Q1 — REAL: tests/phase_13/test_dispatch.py non-buildable intermediates.** Probe at line 74 (`assert len(_ROLE_SCHEMA_BUILDERS) == 8`) + line 78 (set-equality `_ALL_NAMED_ROLES`) revealed exactly-8 sentinel that breaks at the moment PR2 commit 1 adds 4 new schemas. Resolution: **move tests/phase_13/test_dispatch.py extension to PR2 commit 1** (import 4 new ROLE_*, extend `_ALL_NAMED_ROLES` 8→12, bump `len == 12`). Same buildability rule violation class as P2; design log §6.3 violated its own §117 rule in two places.
+- **Q2 — REAL: CLAUDE.md needs a second status-line flip at PR2 commit 6.** PR1 commit 0 landed the "design pass closed" status; PR2 commit 6 must flip to "SHIPPED". Design log §6.1 deliverables list HANDOFF.md but omits CLAUDE.md.
+- **Q3 — MINOR: squash-to-main may not be fast-forward.** Resolution applied: branched `phase-43` off `main` (`bbf4838`, post-Commit-A) instead of the literal `phase-39-confirmed` tag (`7a8bf10`) — squash is now a fast-forward + no cross-hunk merge on POST_PHASE_38_PHASE_MAP.md.
+- **Q4 — MINOR: `git add -p` partial-file commit on POST_PHASE_38_PHASE_MAP.md for Commit A.** Successfully executed; staged only the §1 hunk; left §4 hunks for PR1 commit 0.
+- **Q5 — RECORDED: design log violated own buildability process lock in two places.** P2 + Q1. Carry-forward: design-pass closure should run a buildability scan over the locked commit boundary before ratification.
+
+**Pre-impl pushback round 3 (R1-R5):**
+
+- **R1 — MINOR: design log §5.1 mistransposes export-slate edit count.** Says "tests/phase_{30,31,34}/test_phase_*_export_slate.py (×3)" but the actual `__version__` literal bumps are 4 lines across 3 files (`phase_34` has 2 literals — capacity + knowledge). Resolution: PR1 commit 5 bumped 4 literals; design log §9.4 wording could be tightened in a future-phase update.
+- **R2 — TRACK: gate coverage on 5 non-tested packages is zero.** Only `mindsos_capacity` + `mindsos_knowledge` have `__version__` test coverage. Phase 44+ test surface should cover all 7 packages.
+- **R3 — TRACK: notes-phase-43.md author step missing from design log §6.3.** Added to pair-execution plan post-PR2-gate per §9 below.
+- **R4 — TRACK: §6.1 omits `mindsos_knowledge/schemas/__init__.py` + `mindsos_knowledge/__init__.py` from PR2 commit 1 file list.** The new schemas + IRI builders + ROLE constants MUST be re-exported. Resolution: PR2 commit 1 included plumbing edits (and additional re-export plumbing was filed as PR1 commit 5b for L2Schema / Discipline / StorageMode top-level exports — see R8).
+- **R5 — TRACK: Commit A mkdocs check.** Done; 17 WARN baseline match HANDOFF §3.1.10 + 0 ERROR + 0 new from Commit A content.
+
+**Impl-time picks (R6-R10):**
+
+- **R6 — ARCHITECTURAL: `memory_contains_episode` nomenclature reconciled.** ADR-0152 §7 names this edge an "IntergraphEdge" but `IntergraphEdgeType` lives on :class:`MetagraphSchema` (per ADR-0148 + Phase 05b), not on per-graph :class:`Schema`. Both `Episode` + `Memory` NodeTypes live in the same `episodic_memories` Schema (Chat B D-B47 "inside the same role-graph"). Phase 43 ships as a regular `EdgeType` (`MEMORY_CONTAINS_EPISODE`: Memory → Episode); within-role-graph routing matches actual data shape. MetagraphSchema-level `IntergraphEdgeType` registration may be reconsidered if a cross-role-graph use case surfaces (Phase 48+ Memory composite consolidation flow may revisit).
+- **R7 — PATH DRIFT: design log §5.1 referenced `docs/_workbench/L2_CHAT_DECISIONS.md`** but the file lives at `confirmation_docs/L2_CHAT_DECISIONS.md` per Chat C IL-9 migration. PR1 commit 7 edits the file at its actual location. Future-phase doc-touch enumerations should reference current paths.
+- **R8 — DISCOVERED: top-level `mindsos_knowledge` re-exports missing for L2Schema / Discipline / StorageMode.** PR1 commit 2 added these to `mindsos_knowledge.schemas` only; PR1 commit 5 sentinel tests import from `mindsos_knowledge` top-level per Phase 13 schema-builder re-export convention. Linux collection ImportError surfaced post-PR1-push; fixed in **PR1 commit 5b** gate-driven follow-up.
+- **R9 — DISCOVERED: 3 phase_13 + phase_43 test failures at first PR1 gate run.**
+  - `tests/phase_13/test_advisory_property_constants.py::test_pipeline_props_declare_design_properties`: asserted `{"pipeline_name", "task_type", "confidence", "n_runs"} <= PIPELINE_PROPS` but Phase 43 schema-v2 drops `task_type` (never had real consumer) + `confidence` (ADR-0094 §am-1).
+  - `tests/phase_13/test_advisory_property_constants.py::test_task_pattern_props_declare_design_properties`: same class; `task_type` renamed to `pattern_name` per ADR-0152 §2.
+  - `tests/phase_43/test_adr_amendment_sentinels.py::test_adr_0153_amendment_1_present_with_l2schema_placement`: asserted `"mindsos_core.Schema is unchanged"` substring; the ADR body has backtick-wrapped form `` `mindsos_core.Schema` is unchanged ``; substring without backticks broke at closing backtick. Fixed in **PR1 commit 5c** by switching to backtick-wrapped substring.
+- **R10 — DISCOVERED: docker test image rebuild required after each push.** `docker-compose.yml` mindsos-test service has no source bind-mount; image bakes source at build time. Each Linux gate run requires `docker compose build mindsos-test` before `docker compose run`. Documented in HANDOFF §9 for future-phase tester runbooks.
+
+### §9.2 R2 ADR text-shape picks
+
+R2 amendment-text drafts §8.1-§8.5 shipped verbatim with one adjustment: the placeholder ship-date `2026-06-XX` was bound to `2026-06-03` per the L2-chat-closure-date precedent (ADR-0044 §am-3 used the L2 chat closure date 2026-06-01, not the Phase 39 ship date 2026-06-02). All 5 amendment texts landed at PR1 commit 1 (ADR-0150 §am-5 + ADR-0153 §am-1) and PR1 commit 6 (ADR-0094 §am-1 + ADR-0151 frontmatter + ADR-0143 §Implementation cross-ref).
 
 ### §9.3 Gate-driven follow-up commits
 
-(reserved — budget 1-3 follow-up commits per Phase 39 §9.3 precedent for PR1 + PR2)
+- **PR1 commit 5b (`3cd7a0b`)** — top-level `mindsos_knowledge` re-exports for `Discipline` / `L2Schema` / `StorageMode` per R8. Fixed sentinel-test collection ImportError.
+- **PR1 commit 5c (`610ed60`)** — 3 test fixes per R9 (`tests/phase_13/test_advisory_property_constants.py` v2 expected-fields + `tests/phase_43/test_adr_amendment_sentinels.py` backtick-wrapping).
+
+Both surfaced at PR1 cumulative gate; resolved cleanly per Phase 39 §9.3 pattern. PR1 gate result: **3544 passed / 0 failed / 8 skipped (31:43)**. PR2 gate result: (filled at confirm-phase).
+
+**Pair-execution discipline (R11 NEW — Cowork ↔ Mac ↔ Linux).** This phase ran under a 3-actor pair-execution pattern: Cowork (sandbox) prepares file content via Edit/Write tools; user (Henrique) runs git on Mac; Linux runs cumulative gates via docker. Sandbox `.git/` is read-only, so Cowork cannot commit/branch/push directly. Pattern established as default for all future Phase ship chats. See POST_PHASE_38 §1 row + HANDOFF §9.
+
+**6-step confirm-phase workflow (R12 NEW).** Per established discipline: (1) Cowork generates the notes-phase-N.md command + content via Mac terminal; (2) Cowork provides layer title in copy-block; (3) Cowork provides complete tester_notes body in copy-block; (4) tester edits the notes file on Linux; (5) tester runs `mindsos confirm-phase` on Linux from post-squash main; (6) tester pushes new CONFIRMED.md + notes file to git. Documented in HANDOFF §9 + POST_PHASE_38 §1.
 
 ### §9.4 Per-phase manifest-bump checklist (carry-forward from Phase 39 §9.4)
 
