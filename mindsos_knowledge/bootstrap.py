@@ -106,6 +106,19 @@ _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
 #: PB-8), alignment is Global-only at v1.
 _ALIGNMENT_PREFIX: str = "alignment:"
 
+#: Phase 43 (ADR-0150 §am-5) introduces dual-scope role-graphs that
+#: appear in BOTH ``_GLOBAL_NAMED_ROLES`` and ``_LOCAL_NAMED_ROLES``
+#: (``pending-promotions`` + ``learned-parameters``). The pre-Phase-43
+#: binary scope-rejection ("if role in _LOCAL_NAMED_ROLES: reject from
+#: global ensure") breaks for these. Use the set-difference helpers
+#: below to reject only the *exclusively-scoped* roles per direction.
+_GLOBAL_ONLY_ROLES: frozenset[str] = (
+    _GLOBAL_NAMED_ROLES - _LOCAL_NAMED_ROLES
+)
+_LOCAL_ONLY_ROLES: frozenset[str] = (
+    _LOCAL_NAMED_ROLES - _GLOBAL_NAMED_ROLES
+)
+
 
 #: Per-role ``applies_after`` declarations per Phase 43 R0b §1.2 +
 #: NPB6-6 + L2-37 split (NPB11-1 field-only at Phase 43; Phase 44 ships
@@ -210,9 +223,12 @@ def ensure_global_role_graph(
             not start with ``"alignment:"``.
     """
     # Step 1 — scope rejection: Local-only roles are not creatable here.
-    if role in _LOCAL_NAMED_ROLES:
+    # Phase 43 (ADR-0150 §am-5): dual-scope roles (in both
+    # ``_GLOBAL_NAMED_ROLES`` and ``_LOCAL_NAMED_ROLES``) pass through;
+    # only exclusively-Local roles are rejected.
+    if role in _LOCAL_ONLY_ROLES:
         raise KnowledgeError(
-            f"Role {role!r} is Local-scoped per ADR-0044; cannot create "
+            f"Role {role!r} is Local-only per ADR-0044; cannot create "
             f"in a Global metagraph via ensure_global_role_graph. Use "
             f"ensure_local_role_graph instead."
         )
@@ -302,9 +318,11 @@ def ensure_local_role_graph(
         )
 
     # Step 2 — scope rejection: Global-only roles are not creatable here.
-    if role in _GLOBAL_NAMED_ROLES:
+    # Phase 43 (ADR-0150 §am-5): dual-scope roles pass through; only
+    # exclusively-Global roles are rejected.
+    if role in _GLOBAL_ONLY_ROLES:
         raise KnowledgeError(
-            f"Role {role!r} is Global-scoped; cannot create in a Local "
+            f"Role {role!r} is Global-only; cannot create in a Local "
             f"metagraph via ensure_local_role_graph. Use "
             f"ensure_global_role_graph instead."
         )
