@@ -427,6 +427,45 @@ Rounds 6-12 surfaced incremental drift between design-pass drafts (R0 picks seed
 
 R0 picks seed §4 said "8 existing schemas transcribed" but listed 9. R0 picks seed is historical; design log captures the correction. Future-phase chats: count audit before drafting "N existing schemas" claims.
 
+### §10.4 Pre-impl pushback saturation discipline (this ship chat lesson)
+
+Phase 43 ship chat opened with the user requesting multiple rounds of "reanalyze the plan and list your pushbacks with options.... show me your choice" before authorising any execution. Pattern observed:
+
+- **Round 1 (P1-P5):** raised before reading the design log fully — broad concerns about workflow shape (dirty-tree blocker, PR2 size, history hygiene, follow-up budget).
+- **Round 2 (Q1-Q5):** raised after reading the design log — concrete buildability violations (Q1: tests/phase_13 exactly-N sentinel; Q2: CLAUDE.md double-flip; Q3-Q5: minor/squash/process).
+- **Round 3 (R1-R5):** raised after probing specific code paths — transcription details (R1 export-slate count, R4 file-list omission, R5 mkdocs gate timing, etc.).
+
+By round 3 the pushback signal was clearly diminishing — minor corrections only, no architectural or process reversals. Saturation declared: "Further reanalysis is diminishing returns; impl-time will surface anything else and §9.1 absorbs it per process." User accepted this as the closure point and authorised execution.
+
+**Pattern for future ship chats.** Budget 2-3 pre-impl pushback rounds:
+- Round 1: workflow-level concerns (commit ordering, branching, sync points).
+- Round 2: design-log-level concerns (buildability, transcription drift, file-list completeness).
+- Round 3: probe-level concerns (sentinel test exact-N gates, regex matches against changed strings).
+
+Declare saturation when round-N surfaces only minor/track items with no architectural or process reversals. The pushback budget catches the load-bearing P2 + Q1 buildability violations *before* commit boundaries lock, which is precisely the carry-forward §10.5 names below.
+
+### §10.5 Buildability scan over locked commit boundaries pre-impl (P2 + Q1 lesson)
+
+Design log §6.3 violated its own §117 "each commit must be independently buildable" rule in two places: P2 (consolidate.py retarget vs tests/phase_33 fixture updates at different commits) + Q1 (tests/phase_13 exactly-N dispatch sentinel vs new schema additions at different commits). Both caught at round 2 pushback (Q1) and round 1 pushback (P2) — fixed pre-impl by co-locating test updates with the schema/code changes at the same commit.
+
+**Pattern for future design-pass closures.** Before ratifying PR1/PR2 commit ordering:
+
+1. Identify every "exactly-N" sentinel in the test corpus that the changed schemas/role-set/IRI registry touches (`grep -rn "== <integer>" tests/`).
+2. Identify every test that uses fixtures that the changed code-path keys on (`grep -rn "<fixture-name>" tests/`).
+3. Check that each such sentinel/fixture is updated at the SAME commit as the code change that breaks it.
+4. If not: split-restage the boundary so test updates land with the code change.
+
+A 10-minute grep-pass catches violations that would otherwise surface as cumulative-gate cascade errors (Phase 43: 79 errors + 185 failures from violations that survived the design-log §117 rule check).
+
+### §10.6 Cascade-error root-cause diagnosis pattern (Phase 43 PR2 gate lessons)
+
+Phase 43 ran two PR2 gates with large failure counts that traced to single-line bugs:
+
+- **PR2 gate 1: 79 collection errors.** All shared the message "Phase 15a bootstrap_global _GLOBAL_ROLE_ORDER drifted". Single root cause: module-level `assert frozenset(_GLOBAL_ROLE_ORDER) == _GLOBAL_NAMED_ROLES` in `mindsos_admin/bootstrap.py` fired on every import because the admin-side tuple wasn't bumped to match the knowledge-side frozenset 6→9 expansion. One-line fix landed all 79 errors green.
+- **PR2 gate 2: 185 failed + 44 errors.** All shared the message "Role 'learned-parameters' is Local-scoped per ADR-0044". Single root cause: binary scope-rejection in `ensure_global_role_graph` didn't account for dual-scope roles (`pending-promotions` + `learned-parameters` in BOTH `_GLOBAL_NAMED_ROLES` AND `_LOCAL_NAMED_ROLES`). Introduced `_GLOBAL_ONLY_ROLES` + `_LOCAL_ONLY_ROLES` set-difference helpers; one-commit fix resolved the cascade.
+
+**Pattern for future ship-chat gates.** When a gate surfaces a large failure count, look at the **error/failure message text** before the test names. Identical or near-identical messages across many tests almost always trace to a single root cause — typically a module-level invariant, sentinel test, or fixture pattern that the cumulative change broke once. Diagnose root cause first; fix is often single-line. Distinguish from genuine multi-cause failures (different messages per test) which require per-test investigation.
+
 ---
 
 ## §11. Risk notes for tester ship pass
