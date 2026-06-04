@@ -35,9 +35,11 @@ Ships now. It round-trips the Local natively through existing core machinery —
 
 * `save(user_id, metagraph)` → `MetagraphRepository.persist(metagraph)` (idempotent `MERGE`-on-id writes per ADR-0122; `local_<slug(user_id)>_<role>` graph layout per ADR-0004).
 * `load(user_id)` → reconstruct via `MetagraphLoader.load` (the same reconstruction the Falkor-backed L3 bootstrap uses).
-* `delete(user_id) -> bool` → best-effort `delete_graph` with a `MATCH (n) DETACH DELETE n` fallback; idempotent (missing → `False`) per ADR-0011 §amendment-2 clause 2.
+* `delete(user_id) -> bool` → **scoped teardown keyed on the Local's `metagraph_id`**, idempotent (no such Metagraph → `False`) per ADR-0011 §amendment-2 clause 2.
 
-Because Falkor delete-then-recreate is non-atomic under the single-process multi-threaded model (ADR-0009 / D32), `save` and `delete` hold the per-user `UserMutexRegistry` mutex (ADR-0006) for the write.
+**Substrate contract (settled here, was L0_SUBSTRATE_CHAT scope):** all Metagraphs — Global, pending, canonical, and *every* user Local — coexist in the one shared FalkorDB graph (`config.graph`), scoped by `metagraph_id`/name (`mindsos_server/persistence/bootstrap.py`). A user's Local is the Metagraph `local_knowledge:<user_id>`. Therefore `delete` MUST NOT drop the FalkorDB graph or run a blanket `MATCH (n) DETACH DELETE n` — that would destroy the co-resident Global and other users' Locals. Instead it resolves the Local's `metagraph_id` (via `MetagraphLoader.find_by_name`) and runs a scoped multi-statement `DETACH DELETE`: graph elements (`(:Graph)<-[:IN_GRAPH]-`), tombstones (by `graph_id`), source-side XRefs, anchor-attached satellites (metaedges / metahyperedges, `(m)--(sat) WHERE NOT sat:Graph`), the contained `:Graph` nodes, and finally the `:Metagraph` anchor.
+
+Because Falkor delete-then-recreate is non-atomic under the single-process multi-threaded model (ADR-0009 / D32), `save` and `delete` hold the per-user `UserMutexRegistry` mutex (ADR-0006) for the write. The scoped-delete statement set is **gate-verified** against a live FalkorDB (the sandbox has no FalkorDB); metaedge/XRef coverage completeness is a known follow-up surface (design log §6).
 
 ### 2. Protocol keeps the `Metagraph` shape
 

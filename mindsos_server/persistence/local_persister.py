@@ -35,6 +35,7 @@ from mindsos_server.errors import FlushFailedError
 __all__ = [
     "LocalPersister",
     "InMemoryLocalPersister",
+    "FalkorDBLocalPersister",
 ]
 
 
@@ -119,3 +120,98 @@ class InMemoryLocalPersister:
         "had nothing."
         """
         return self._store.pop(user_id, None) is not None
+
+
+class FalkorDBLocalPersister:
+    """FalkorDB-backed :class:`LocalPersister` (ADR-0160, Phase 44).
+
+    Native round-trip — no serialization. A user's Local is the
+    Metagraph named ``local_knowledge:<user_id>`` living in the shared
+    FalkorDB graph alongside the Global; ``save`` / ``load`` reuse
+    :class:`MetagraphRepository` / :class:`MetagraphLoader`. ``delete``
+    is a scoped teardown keyed on the Local's ``metagraph_id`` (a
+    blanket ``DETACH DELETE`` would destroy the co-resident Global and
+    other users' Locals). ``save`` / ``delete`` hold the per-user mutex
+    (ADR-0006) because Falkor lacks multi-statement atomicity.
+    """
+
+    def __init__(self, client, *, mutex_registry=None) -> None:
+        from mindsos_server.locks import UserMutexRegistry
+
+        self._client = client
+        self._mutex = (
+            mutex_registry if mutex_registry is not None else UserMutexRegistry()
+        )
+
+    def _metagraph_name(self, user_id: str) -> str:
+        from mindsos_knowledge.knowledge_layer import _local_metagraph_name
+
+        return _local_metagraph_name(user_id)
+
+    def load(self, user_id: str) -> Optional[Metagraph]:
+        from mindsos_core.reconstruction import MetagraphLoader
+
+        loader = MetagraphLoader(self._client)
+        metagraph_id = loader.find_by_name(self._metagraph_name(user_id))
+        if metagraph_id is None:
+            return None
+        return loader.load(metagraph_id)
+
+    def save(self, user_id: str, metagraph: Metagraph) -> None:
+        from mindsos_core.exceptions import PersistenceError
+        from mindsos_core.persistence import MetagraphRepository
+
+        try:
+            with self._mutex.user_mutexes([user_id]):
+                MetagraphRepository(self._client).persist(metagraph)
+        except PersistenceError as exc:
+            raise FlushFailedError(user_id) from exc
+
+    def delete(self, user_id: str) -> bool:
+        from mindsos_core.reconstruction import MetagraphLoader
+
+        with self._mutex.user_mutexes([user_id]):
+            loader = MetagraphLoader(self._client)
+            metagraph_id = loader.find_by_name(self._metagraph_name(user_id))
+            if metagraph_id is None:
+                return False
+            gid_rows = self._client.run_query(
+                "MATCH (m:Metagraph {id: $mid})<-[:IN_METAGRAPH]-(g:Graph) "
+                "RETURN g.id AS gid",
+                {"mid": metagraph_id},
+            ).rows
+            graph_ids = [row["gid"] for row in gid_rows]
+            self._client.run_batch(
+                [
+                    (
+                        "MATCH (g:Graph)<-[:IN_GRAPH]-(el) "
+                        "WHERE g.id IN $gids DETACH DELETE el",
+                        {"gids": graph_ids},
+                    ),
+                    (
+                        "MATCH (t:Tombstone) WHERE t.graph_id IN $gids "
+                        "DETACH DELETE t",
+                        {"gids": graph_ids},
+                    ),
+                    (
+                        "MATCH (x:XRef {source_metagraph_id: $mid}) "
+                        "DETACH DELETE x",
+                        {"mid": metagraph_id},
+                    ),
+                    (
+                        "MATCH (m:Metagraph {id: $mid})--(sat) "
+                        "WHERE NOT sat:Graph DETACH DELETE sat",
+                        {"mid": metagraph_id},
+                    ),
+                    (
+                        "MATCH (m:Metagraph {id: $mid})<-[:IN_METAGRAPH]-(g:Graph) "
+                        "DETACH DELETE g",
+                        {"mid": metagraph_id},
+                    ),
+                    (
+                        "MATCH (m:Metagraph {id: $mid}) DETACH DELETE m",
+                        {"mid": metagraph_id},
+                    ),
+                ]
+            )
+            return True

@@ -162,3 +162,18 @@ Combined with the fact that `SQLiteLocalPersister` has **no named v1 consumer**,
 - **ADR impact:** ADR-0160 rewritten to Falkor-only + deferral; ADR-0011 §am-3 cl.2 → Falkor ships / SQLite defers; ADR-0004 §am-2 removed (no SQLite-blob store ships, so no amendment needed). ADR-0161 unaffected.
 
 **Revised §4 PR ordering:** PR1.2 shrinks to the Falkor-native persister + tests (no serializer promotion, no SQLite, no `locals.db`). PR2 (MindsOSServer class + hooks, CR-3) and PR3 (KL surface + scheduler + audit/cap) unchanged.
+
+---
+
+## §7 — PR1.2 implementation notes (FalkorDBLocalPersister)
+
+**Substrate contract settled (was L0_SUBSTRATE_CHAT scope).** `mindsos_server/persistence/bootstrap.py` + `mindsos_core/persistence/bootstrap.py` confirm all Metagraphs — Global + pending + canonical + **every user Local** — coexist in the *one shared* FalkorDB graph (`config.graph`), scoped by `metagraph_id`/name. A user's Local is the Metagraph `local_knowledge:<user_id>` (`knowledge_layer._local_metagraph_name`). This invalidates ADR-0011's "drop the per-Local graph / `MATCH (n) DETACH DELETE n`" delete framing — there is no per-Local FalkorDB graph, and a blanket delete would destroy the co-resident Global + other Locals.
+
+**Impl (`mindsos_server/persistence/local_persister.py`):**
+
+- `save` → `MetagraphRepository(client).persist(metagraph)` under the per-user mutex; `PersistenceError` → `FlushFailedError`.
+- `load` → `MetagraphLoader.find_by_name(local_knowledge:<user_id>)` → `load(metagraph_id)`; missing → `None`.
+- `delete` → scoped multi-statement `DETACH DELETE` keyed on `metagraph_id` (elements via `IN_GRAPH`, tombstones by `graph_id`, source XRefs, anchor-attached satellites `(m)--(sat) WHERE NOT sat:Graph`, contained graphs via `IN_METAGRAPH`, then the anchor); missing → `False`; under the per-user mutex.
+- Mutex injected (shared `UserMutexRegistry` passed by the orchestrator at PR2; defaults to a fresh one).
+
+**Verification gap (known):** the Cowork sandbox has Python 3.10 and no FalkorDB; the project needs 3.12. Unit tests (`test_falkor_persister.py`, `InMemoryClient`) cover Protocol satisfaction + missing-key semantics + persist delegation + `FlushFailedError`; they do **not** exercise a real round-trip or the scoped-delete Cypher. **The save→load round-trip + delete statement set are validated only on the Linux docker gate.** Expected follow-up surface: metaedge / metahyperedge / XRef delete-coverage completeness (the anchor-satellite sweep is a best-effort first cut) — budget 1-2 gate-driven follow-ups within the 4-5 allowance.
