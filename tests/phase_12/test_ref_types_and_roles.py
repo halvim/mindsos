@@ -86,12 +86,25 @@ def test_seed_roles_matches_v3() -> None:
 
 
 def test_upper_layer_roles_matches_adr_0045() -> None:
+    """Phase 43 (ADR-0150 §am-5) added 4 upper-layer role-graphs."""
+    from mindsos_knowledge import (
+        ROLE_CAPACITY_GAPS,
+        ROLE_LEARNED_PARAMETERS,
+        ROLE_PARAMETER_STAGING,
+        ROLE_PENDING_PROMOTIONS,
+    )
+
     assert UPPER_LAYER_ROLES == frozenset({
         ROLE_PROMOTED_PIPELINES,
         ROLE_TASK_PATTERNS,
         ROLE_EPISODIC_MEMORIES,
         ROLE_PROBLEM_TRACE,
         ROLE_CAPACITY_STATE,
+        # Phase 43 (ADR-0150 §am-5) upper-layer additions.
+        ROLE_PARAMETER_STAGING,
+        ROLE_PENDING_PROMOTIONS,
+        ROLE_CAPACITY_GAPS,
+        ROLE_LEARNED_PARAMETERS,
     })
 
 
