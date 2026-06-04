@@ -110,3 +110,23 @@ See `halvim_mindsos/confirmation_docs/PHASE_19_DESIGN_LOG.md` §1 round 1 PB-2 +
 **Out-of-scope:** All four deferral clauses above. Phase 19 `login()` / `logout()` free-function signatures unchanged at Phase 25.
 
 **Phase 25 design log:** `halvim_mindsos/confirmation_docs/PHASE_25_DESIGN_LOG.md` §1 Round 2 PB-25 (Metagraph at v1) + PB-37 (caller-Local collapse) + PB-38 (free functions) + PB-39 (delete bool) + PB-33 (fail_save hook) + §4 ADR delta + §5 implementation references.
+
+### amendment-3 (Phase 44 ship — 2026-06-04) — `MetagraphDump` + both backing-store persisters + `MindsOSServer` class lifecycle land
+
+**Trigger:** Phase 44 (Rail C, L0 substrate) is the first user-Local-write phase that §amendment-2 clauses 1/3/4/5 named as the defer-target. The deferred surfaces now have live consumers and ship here. Governance rulings (2026-06-04): CR-2 ship both persisters; CR-3 do the `MindsOSServer` class refactor now (clean cut).
+
+**Amended decisions (4 clauses):**
+
+1. **`MetagraphDump` serialization ships (was: deferred per §am-2 clause 1).** The Protocol method signatures revise from `load -> Optional[Metagraph]` / `save(metagraph: Metagraph)` to `load -> Optional[MetagraphDump]` / `save(dump: MetagraphDump)`. The dump is a backend-neutral versioned-envelope dataclass per ADR-0160; it carries an `(iri, version_int)` version pin per node for D'1 round-trip fidelity.
+
+2. **`FalkorDBLocalPersister` + `SQLiteLocalPersister` ship (was: deferred per §am-2 clause 3).** Both backing stores land per ADR-0160. The Falkor store keeps the `local_<slug(user_id)>_<role>` graph layout (ADR-0004); the SQLite store holds the serialized dump as an opaque blob in a dedicated `locals.db` (ADR-0004 §amendment-2). `InMemoryLocalPersister` stays the test/diagnostic impl.
+
+3. **`MindsOSServer` class first-construction ships (was: deferred per §am-2 clause 4) — clean cut.** The free-function orchestrator in `mindsos_server/orchestrator.py` (`_installed_locals` + `_install_lock` + `_mutex_registry`) is refactored into a `MindsOSServer` class holding those as instance attributes, with `on_login` (hydrate) / `on_logout` (flush) / `on_promotion` (flush) / `on_delete` lifecycle hooks. Clean cut — no free-function shims; all `tests_server/` callers migrate in the same PR. `reset_state_for_tests()` is replaced by per-test re-instantiation via fixture.
+
+4. **§"On login" + §"On logout" install/extract sequences re-activate (was: collapsed per §am-2 clause 5).** With both persisters present, the on-login `persister.load` → `KL.install_local_metagraph` and on-logout `KL.extract_local_metagraph` → `persister.save` sequences from the original §Decision wire up as the `MindsOSServer` hooks.
+
+**Rationale:** Ship only what has a live consumer — the consumer now exists. §amendment-2 was an honest defer; Phase 44 is the named arrival phase.
+
+**Out-of-scope:** `delete -> bool` (stays per §am-2 clause 2). The episode-read consumer of the retire marker (ADR-0161) is Phase 48, not here.
+
+**Phase 44 design log:** `confirmation_docs/PHASE_44_DESIGN_LOG.md` §1 S1-S4 + S6 + §4 PR ordering.
