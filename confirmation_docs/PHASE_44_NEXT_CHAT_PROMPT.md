@@ -6,11 +6,36 @@
 SCOPE
 ═══════════════════════════════════════════════════════════════════
 
-Phase 44 ships the L0 substrate consumer + scheduler that Phase 43 declared but did not consume:
+Phase 44 is a **combined design + ship chat (option C, ratified 2026-06-04).** It absorbs `L0_SUBSTRATE_CHAT` closure into R0 rather than waiting on a separate chat — PHASE_MAP lines 528 + 981 grant R0 the ADR-ratification authority. **Prereq #6 below is superseded:** R0 step 1 *is* the L0 substrate design saturation, not a gate on an external chat.
 
-1. **Kahn topological-sort scheduler (L2-37 consumer split).** Phase 43 ships `_APPLIES_AFTER_BY_ROLE` declarations + `applies_after: frozenset[str] = frozenset()` kwarg on `ensure_*_role_graph` per NPB11-1. Phase 44 implements the scheduler that consumes the declarations: bootstrap iteration order respects the soft edge (`episodic_memories ← {task-patterns}`); cycles raise; missing declarations default to `frozenset()` (no constraint).
-2. **`EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` audit constant (L2-39).** Per L2_CHAT_DECISIONS D-L2-23. Distinct from generic `READ_OTHER_LOCAL` capability. Audit-log surface in `mindsos_server/audit.py`; capability registration in the per-flow capability registry.
-3. **KL retention surface (L2-41).** `kl.read_at_version(metagraph, role, version)` + `kl.retire_version(metagraph, role, version)` per D-L2-18. Lazy inline-on-retire mechanism per ADR-0153 §4 reference-stability framing.
+This SCOPE is reconciled against `POST_PHASE_38_PHASE_MAP.md` Phase 44 detail block (lines 492-561), which is the authoritative fuller scope; the prompt's prior 3-item list was a subset that dropped the persisters, the orchestrator refactor, the Falkor-backed bootstrap, and the `ProblemTraceSink`. Governance rulings taken 2026-06-04: **CR-2 = ship both persisters**; **CR-3 = do the `MindsOSServer` class refactor now** (ADR-0011 note 4 satisfied, not deferred).
+
+**A. Design (R0 — absorbs L0_SUBSTRATE_CHAT):**
+
+- **ADR-0160** (NEW) — `FalkorDBLocalPersister` + `SQLiteLocalPersister` impls + **backend-neutral `MetagraphDump` serialization contract** (deferred to this phase by ADR-0011 note 1; must round-trip through both backends).
+- **ADR-0161** (NEW) — `kl.read_at_version` + `kl.retire_version` KL version surface.
+- **ADR-0011 §amendment-N** — Protocol-shape revision (`Metagraph` → `MetagraphDump` at load/save) + `MindsOSServer` class lifecycle (on-login hydrate / on-logout flush / promotion-flush / delete hooks).
+- **ADR-0004/0121 one-line clarification** — `SQLiteLocalPersister` stores an opaque serialized `MetagraphDump` blob (not graph-relational); does not violate the FalkorDB-for-graphs substrate split.
+- **CR-4 retire-marker forward-contract** — freeze the lazy-inline marker's storage location + format now so the Phase 48 episode-read consumer can consult it (ADR-0153 §am-2 or ADR-0161, as saturation surfaces).
+
+**B. Ship (PR1 / PR2):**
+
+1. **`FalkorDBLocalPersister`** — full impl; reuses ADR-0122 WAL + MERGE-on-id idempotency; best-effort `delete`.
+2. **`SQLiteLocalPersister`** — `MetagraphDump`-blob impl.
+3. **`MetagraphDump`** dataclass + backend-neutral serialize/reconstruct; round-trip property tests vs both backends.
+4. **`MindsOSServer` class refactor** — free-functions → class; migrate `_installed_locals` / `_install_lock` / `_mutex_registry`; preserve `reset_state_for_tests()`; rewire the `read_other_local` ctx-mgr mutex (ADR-0006). Adds `mindsos_server/orchestrator.py` to Modules-touched.
+5. **Falkor-backed L3 bootstrap + state-file serialization** — `bootstrap_kl_from_falkordb` into `_construct_invoke_layer`; reachability probe + in-memory fallback (PHASE_38 §4 #2).
+6. **Kahn topological-sort scheduler (L2-37 consumer).** Consumes `_APPLIES_AFTER_BY_ROLE`; respects soft edge `episodic_memories ← {task-patterns}`; cycles raise; missing → `frozenset()`.
+7. **`EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` audit constant + `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` capability (L2-39).** Audit constant in `mindsos_server/audit.py`; capability in `mindsos_server/capabilities.py` (NOT `auth.py`) — new constant + `ADMIN_CAPS` (9 → 10) + `ALL_CAPABILITIES` tuple; Phase 18 `test_capabilities_parity` sentinel flips. Default-deny + admin opt-in. Distinct from existing `CAN_READ_OTHER_LOCALS`.
+8. **KL retention surface (L2-41).** `kl.read_at_version(metagraph, role, version)` + `kl.retire_version(metagraph, role, version)`. retire fires the lazy-inline marker. **Consumer (episode-read consultation) is Phase 48** — Phase 44 ships hook + marker-write + marker-state unit test only (corrects PHASE_MAP "Features in scope" + `test_kl_retire_version.py` framing, which over-claim consumer-side consultation here).
+9. **Per-user Local-scoped `ProblemTraceSink` dict** (PHASE_38 §4 #6).
+
+**C. Pending minor absorption decisions (confirm at R0; changeable):**
+
+- `validate_local_to_global_ref` (L2-10) — **IN** (Phase 44 is the first per-flow consumer, via the cross-user read path).
+- `--session-token` CLI flag (L0-3) — **OUT** (defer to Stream A; keeps the CLI surface stable).
+
+**Follow-up budget:** 4-5 (revised up from 2-4 — class refactor + dual-backend dump are Phase-43-class scope-rewrite surface).
 
 ═══════════════════════════════════════════════════════════════════
 PREREQ CHECK (run BEFORE anything else)
@@ -21,7 +46,7 @@ PREREQ CHECK (run BEFORE anything else)
 3. `cat mindsos_cli/manifest.toml | grep "^phase"` — should read `phase = "43"`.
 4. `git log --oneline -3` — top SHA is the Phase 43 squash-merge commit (descendant of `phase-43-confirmed`).
 5. Confirm `confirmation_docs/PHASE_43_CONFIRMED.md` exists.
-6. **L0_SUBSTRATE_CHAT closure required.** Phase 44 R0 depends on L0_SUBSTRATE_CHAT design closure for the runtime envelope (per `POST_PHASE_38_PHASE_MAP.md §6` sequencing). If L0_SUBSTRATE_CHAT has not closed, Phase 44 R0 is blocked.
+6. **L0_SUBSTRATE_CHAT absorbed into R0 (option C, 2026-06-04).** Phase 44 does NOT wait on a separate L0_SUBSTRATE_CHAT — its closure work (persister Cypher contracts + KL surface + audit roster) is **R0 step 1** here, per the line 528 / 981 R0-ratification grant in `POST_PHASE_38_PHASE_MAP.md`. No external-chat gate; do not pause on it. (Supersedes the prior "blocked if not closed" framing.)
 
 If any check fails, surface immediately. Do not branch.
 
@@ -67,9 +92,12 @@ Per Phase 43 design log §10 carry-forwards:
 
 - **R1 step 0: ADR transcription parity probe.** Grep each design-pass draft's transcription tables against the source ADR-on-disk; surface drift; correct draft, not ADR.
 - **R1 step 1: PHASE_MAP §4 row parity scan.** Compare with current state; flag stale items.
-- **R1 step 2: Buildability scan over locked commit boundaries.** Before ratifying PR1/PR2 commit ordering, scan for tests that would fail at mid-PR intermediate states.
+- **R1 step 2: Buildability scan over locked commit boundaries.** Before ratifying PR1/PR2 commit ordering, scan for exactly-N sentinels + fixture-keyed tests that would fail at mid-PR intermediate states. 10-minute grep-pass catches violations that would otherwise surface as cumulative-gate cascade errors.
 - **Saturation: three consecutive reversal-free rounds.** Reversals reset the clock per Chat C discipline.
 - **Closure discipline: commit closure artifacts BEFORE ending the chat.** Phase 43 P1 surfaced the design-chat-close gap.
+- **Pre-impl pushback saturation (3 rounds typical) per §10.4.** Ship-chat user may request "reanalyze the plan and list your pushbacks with options.... show me your choice" multiple times. Budget 2-3 rounds: workflow-level → design-log-level → probe-level. Declare saturation explicitly when round-N surfaces only minor/track items.
+- **Cascade-error root-cause diagnosis per §10.6.** When a gate surfaces a large failure count, look at the failure message text BEFORE the test names. Identical messages across many tests almost always trace to a single root cause — often a module-level invariant, sentinel, or fixture pattern. Diagnose root cause first; fix often single-line.
+- **Gate-driven follow-up budget per §10.5.** Phase 39 needed 2 follow-up commits; Phase 43 needed 6. Budget follow-ups proportional to scope-rewrite surface. Phase 44's L0 substrate scope (Kahn scheduler + audit constant + retention surface) is narrower than Phase 43; expect 2-4 follow-ups.
 
 ═══════════════════════════════════════════════════════════════════
 OUT OF SCOPE
@@ -83,4 +111,4 @@ OUT OF SCOPE
 FIRST ACTION
 ═══════════════════════════════════════════════════════════════════
 
-Run the prereq check above. Confirm `phase-43-confirmed` tag + L0_SUBSTRATE_CHAT closure state. If L0_SUBSTRATE_CHAT has not closed: surface the dependency to the user and pause. Otherwise: ack required reading completion + begin R0.
+Run the prereq check above. Confirm `phase-43-confirmed` tag + clean working tree. **L0_SUBSTRATE_CHAT is absorbed into R0 (option C)** — do not pause on it; R0 step 1 is the L0 substrate design saturation (see `PHASE_44_DESIGN_LOG.md §1`). Ack required reading completion + begin R0 saturation.

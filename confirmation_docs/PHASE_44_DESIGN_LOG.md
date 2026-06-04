@@ -1,0 +1,125 @@
+# Phase 44 — Design Log (Rail C: L0 substrate)
+
+**Status:** R0 design saturation — IN PROGRESS (round 1 draft).
+**Branch:** `phase-44` (not yet cut; clean-tree prereq pending).
+**Combined design + ship** under option C (2026-06-04): `L0_SUBSTRATE_CHAT` absorbed into R0.
+**ADRs authored here:** ADR-0160 (persister impls + `MetagraphDump`), ADR-0161 (KL version surface), ADR-0011 §am-N, ADR-0004/0121 §clarification.
+
+---
+
+## §0 — Process discipline (inherited)
+
+Per `HANDOFF.md §9` + `PHASE_43_DESIGN_LOG.md §10`: pair-execution (Cowork ↔ Mac ↔ Linux); 6-step confirm-phase; docker rebuild after each Mac push; R1 step-0 ADR transcription parity probe (N/A for the two NEW ADRs — authored, not transcribed); R1 step-2 buildability scan (see §2); saturation = three consecutive reversal-free rounds; follow-up budget 4-5.
+
+**Governance rulings already locked (2026-06-04):** CR-2 ship both persisters; CR-3 `MindsOSServer` class refactor ships here; CR-4 retire-marker write here / episode-read consumer Phase 48.
+
+---
+
+## §1 — R0 saturation agenda
+
+Each surface: **Q** (open question) · options · **Pick** · **Status** (`open` / `locked`).
+
+### S1 — `MetagraphDump` serialization format (CR-1, ADR-0160)
+
+**Q:** What backend-neutral dump shape round-trips through *both* Falkor-reconstruct and SQLite-blob?
+
+- **A — JSON over the existing reconstruction schema.** Reuse whatever `MetagraphLoader` / Phase-11 reconstruction consumes; serialize to a versioned JSON envelope.
+  Pros: one reconstruction path already tested. Cons: couples dump format to loader internals.
+- **B — Dedicated `MetagraphDump` dataclass** mirroring structure (graphs/roles/nodes/edges/hyperedges/metaedges + identity + schema), serialized JSON v1 / msgpack v2, envelope `{dump_schema_version, payload}`.
+  Pros: explicit boundary; forward-versionable; testable in isolation. Cons: net-new mapping to maintain alongside loader.
+- **C — Falkor-native Cypher `CREATE` script** replayed for both backends.
+  Pros: trivial for Falkor. Cons: couples SQLite path to Cypher; rejected.
+
+**Pick:** **B**, JSON v1 in a versioned envelope. **Sub-Q resolved:** dump carries `(iri, version_int)` per node — *forced*, not a free choice: D'1 retention + `read_at_version` require version-pinned restore, so a HEAD-only dump would silently break side-by-side reads after a restore. **Status: locked.**
+
+### S2 — Persister write semantics (ADR-0160, reuse ADR-0122)
+
+**Q:** WAL graph or idempotent replace for `save()`?
+
+**Pick:** Idempotent replace — Falkor = `delete_graph` + recreate; SQLite = `UPSERT` row. No WAL (single-Metagraph blob replace isn't a multi-graph op). `delete` best-effort, idempotent (ADR-0011). **Falkor delete-then-recreate is non-atomic** under single-process multi-threaded → guard `save`/`delete` with per-user `UserMutexRegistry` mutex (ADR-0006 precedent). **Status: locked** (pending round-2 confirm of mutex placement vs orchestrator hooks).
+
+### S3 — SQLite-blob store shape (CR-2, ADR-0160 + ADR-0004/0121 clarification)
+
+**Q:** Table shape + which DB file?
+
+**Pick:** `local_dumps(user_id TEXT PRIMARY KEY, dump BLOB, dump_schema_version INT, updated_at TIMESTAMP)`. **DB file: separate `locals.db`**, not `server.db` — forced by ADR-0004's separation logic (`server.db` = auth/sessions/audit; mixing user-data blobs in breaks the concern split and the audit-backup story). ADR-0004/0121 §clarification: blob is opaque (not graph-relational) → no substrate-split violation. **Status: locked.**
+
+### S4 — `MindsOSServer` class lifecycle (CR-3, ADR-0011 §am-N)
+
+**Q:** Hook set + how module-level state migrates.
+
+**Pick:** Class holds `_installed_locals` / `_install_lock` / `_mutex_registry` as instance attrs. Hooks: `on_login` (hydrate from persister), `on_logout` (flush), `on_promotion` (flush), `on_delete`. **Clean cut** (no free-function shims) — single-process, tests re-instantiate via fixture replacing `reset_state_for_tests()`. **Status: locked** — user ruling 2026-06-04: clean cut, **isolated in its own PR** (refactor + all `tests_server/` caller migration in one commit; no shims; no mid-PR broken states). Contains the §2 cascade risk to one reviewable PR.
+
+### S5 — Retire-marker forward-contract (CR-4, ADR-0161/ADR-0153 §am-2)
+
+**Q:** Where/how is the lazy-inline marker stored so the Phase 48 episode-read consumer can consult it?
+
+- **A — node property on the retired version node** (`_retired_inline_pending: bool`).
+- **B — separate marker graph** in the Metagraph.
+- **C — row in `version_db`.**
+
+**Pick:** **A** — co-located with versioned content, minimal, consulted at episode-read. **Lock the property name now** (Phase 48 depends on it). **Status: locked** (name `_retired_inline_pending`). **Round-2 finding:** single-underscore keys are NOT auto-reserved — only the `ov__` prefix is (`RESERVED_PROPERTY_PREFIXES`). ADR-0161 must register `_retired_inline_pending` in `RESERVED_PROPERTY_KEYS` (`mindsos_core/schema/validation.py`, currently `{_version, _state_version, _compositional}`) or schema validation rejects the marker write.
+
+### S6 — KL version surface (ADR-0161, L2-41)
+
+**Q:** Signatures + read target.
+
+**Pick:** `kl.read_at_version(metagraph, role, version) -> Graph` reads Phase-11 side-by-side version graphs. `kl.retire_version(metagraph, role, version)` flips S5 marker + lazily releases HEAD-held content. Distinct from `kl.deprecate_version()` (deprecated stays readable; only retire releases). **Status: locked.**
+
+### S7 — Kahn topological-sort scheduler (L2-37 consumer)
+
+**Q:** Tie-break + error shape.
+
+**Pick:** Consume `_APPLIES_AFTER_BY_ROLE`; **stable tie-break by role-name** for reproducible bootstrap order; soft edge `episodic_memories ← {task-patterns}`; cycle → `BootstrapCycleError` naming the cycle; missing decl → `frozenset()`. **Status: locked.**
+
+### S8 — Audit constant + capability (L2-39)
+
+**Pick:** Additive. `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` in `mindsos_server/audit.py`. **Round-2 correction:** capability roster lives in `mindsos_server/capabilities.py` (NOT `auth.py`); existing symbol is `CAN_READ_OTHER_LOCALS`, so the new constant is **`CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY`** (follow the `CAN_` convention), distinct from `CAN_READ_OTHER_LOCALS`. Add to `ADMIN_CAPS` (9 → 10 — confirmed against the frozenset; the line-27 "seven" docstring is stale) **and** the `ALL_CAPABILITIES` tuple (append at declaration-order end). Default-deny + admin opt-in. **Status: locked.**
+
+---
+
+## §2 — Buildability scan (R1 step 2 — pre-PR-ordering)
+
+Exactly-N sentinels + fixture-keyed tests at risk across PR boundaries:
+
+- **Role-count sentinel (12 roles)** — Kahn scheduler must not change role *count*, only order. Verify no test asserts iteration order pre-scheduler.
+- **Capability roster 9 → 10** — the Phase 18 `test_capabilities_parity` sentinel + any `len(ADMIN_CAPS)` / `len(ALL_CAPABILITIES)` assertion must flip in the *same* PR as the `capabilities.py` add (new constant + `ADMIN_CAPS` + `ALL_CAPABILITIES` tuple — all three together).
+- **`test_adr_amendment_sentinels.py`** anchors ADR-0160 + ADR-0161 — both ADR files must land *before or with* the sentinel test (Rail C chain root from Phase 38).
+- **`MindsOSServer` clean cut (S4)** — every `tests_server/` caller of the free functions flips in the refactor PR; mid-PR intermediate state breaks the layer-isolation + orchestrator tests. **Highest cascade risk** → isolate in its own PR or its own commit with the test migration.
+
+---
+
+## §3 — Saturation status
+
+**Round 1 + round-2 review: design saturated; corrections applied.** All surfaces S1–S8 locked. The round-2 reversal pass changed no pick but corrected three module/name facts against the code: capability roster module (`capabilities.py`, not `auth.py`) + cap name (`CAN_` convention) in S8; S5 reserved-key registration requirement; ADMIN_CAPS count confirmed 9 → 10. Reversal-free-round counter: 1/3 (no reversals this round).
+
+**Next:** §4 PR ordering → R1 buildability re-scan → impl. No design-level item remains open.
+
+---
+
+## §4 — PR ordering (R1 draft)
+
+§2-driven: isolate the highest-cascade change (S4 orchestrator cut); land each ADR with its sentinel; never split a sentinel from its code. Tester serializes; cumulative gate after each PR.
+
+**PR1 — substrate + ADRs:**
+- ADR-0160 + ADR-0161 + ADR-0011 §am-N + ADR-0004/0121 §clarification (on disk).
+- `MetagraphDump` dataclass + backend-neutral serialize/reconstruct, version-pinned `(iri, version_int)` (S1).
+- `FalkorDBLocalPersister` + `SQLiteLocalPersister` + `locals.db` (S2, S3); per-user mutex guard.
+- `_retired_inline_pending` registered in `RESERVED_PROPERTY_KEYS` (S5).
+- `tests/phase_44/test_adr_amendment_sentinels.py` (anchors both ADRs — same PR) + persister/dump round-trip tests.
+
+**PR2 — orchestrator clean cut (ISOLATED, S4):**
+- `mindsos_server/orchestrator.py` free-functions → `MindsOSServer` class + 4 hooks.
+- All `tests_server/` caller migration in this PR (one commit, no shims).
+- Wires PR1 persisters into `on_login` / `on_logout` / `on_promotion` / `on_delete`.
+
+**PR3 — KL surface + bootstrap + scheduler + audit/cap:**
+- `kl.read_at_version` + `kl.retire_version` (S6) + marker write.
+- Falkor-backed L3 bootstrap + state-file serialization (PHASE_38 §4 #2).
+- Kahn scheduler (S7).
+- `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `ALL_CAPABILITIES` (S8) — Phase 18 parity sentinel flips here.
+- Per-user `ProblemTraceSink` dict (PHASE_38 §4 #6) + `validate_local_to_global_ref` consumer (L2-10).
+
+**PR-1 pre-flight checklist:** clean working tree (commit the 4 modified docs first); `phase-44` branches off the `phase-43-confirmed` descendant; docker baseline rebuild green.
+
+**Open R1 task (not design-level):** locate the exact `test_capabilities_parity` assertion + any `len(view.roles())`/role-count sentinels the scheduler PR touches, confirm none assert *iteration order* pre-scheduler.

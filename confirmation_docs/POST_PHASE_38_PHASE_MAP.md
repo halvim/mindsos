@@ -499,6 +499,14 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
   **Layer(s):** L0 + L2 (KL surface).
   **Net-new code?:** Yes — `FalkorDBLocalPersister` + `SQLiteLocalPersister` (~200-400 LOC + Cypher contracts + ADR); Falkor-backed L3 bootstrap (~80-120 LOC); `kl.read_at_version` + `kl.retire_version` (per L0_SUBSTRATE_CHAT scope); audit constant + capability; PHASE_38 §4 #2 + #3 absorbed here per R3 PB-U.
 
+  **R0 reconciliation (2026-06-04, Phase 44 chat):**
+  - **Option C adopted** — Phase 44 absorbs `L0_SUBSTRATE_CHAT` into R0 (no separate chat); R0 step 1 = L0 substrate design saturation, per the line 528 / 981 R0-ratification grant. The "Depends on L0_SUBSTRATE_CHAT closure" above is satisfied *internally* by R0, not by an external chat.
+  - **CR-2 ruling: ship both persisters** (Falkor + SQLite-blob); `MetagraphDump` serialization is backend-neutral and round-trips through both. SQLite-blob clarified non-violating of ADR-0121/0004 (opaque dump, not graph-relational).
+  - **CR-3 ruling: `MindsOSServer` class refactor ships here** (ADR-0011 note 4 satisfied, not deferred). Add `mindsos_server/orchestrator.py` to Modules-touched; preserve `reset_state_for_tests()` + `read_other_local` mutex wiring (ADR-0006).
+  - **CR-4 correction: retire-version episode-read consultation is Phase 48, not here.** "Features in scope" line ("Lazy-inline-on-retire marker consultation on episode read") + `test_kl_retire_version.py` ("consumer-side consultation on read") over-claim — Phase 44 ships the hook + marker-write + marker-state unit test only; the episode-read consumer lands Phase 48 under D'1.
+  - **Absorptions:** `validate_local_to_global_ref` (L2-10) **IN** (first per-flow consumer); `--session-token` (L0-3) **OUT** (defer to Stream A).
+  - **Follow-up budget revised 2-4 → 4-5** (class refactor + dual-backend dump = Phase-43-class scope-rewrite surface).
+
   **Locked decisions (this map):**
   - **`FalkorDBLocalPersister` + `SQLiteLocalPersister` ship** — completes Phase 25 partial ship (`InMemoryLocalPersister` only). Per L0_SUBSTRATE_CHAT design.
   - **Falkor-backed L3 bootstrap + state-file serialization** wires `bootstrap_kl_from_falkordb` (Phase 26a) into `_construct_invoke_layer` with reachability probe + in-memory fallback (PHASE_38 §4 #2; L3_FUTURE_WORK L3-17).
@@ -513,17 +521,18 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
   - `FalkorDBLocalPersister` + `SQLiteLocalPersister` impls per `LocalPersister` Protocol (Phase 25 ship).
   - Falkor-backed L3 bootstrap (state-file serialization + reachability probe + fallback).
   - KL surface extension: `kl.read_at_version` + `kl.retire_version`.
-  - Audit constant + new capability roster (ADMIN_CAPS 9 → 10; default-user-role gets `READ_OTHER_LOCAL_EPISODIC_MEMORY` opt-in per admin policy).
+  - Audit constant + new capability roster in `capabilities.py` (`CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY`; `ADMIN_CAPS` 9 → 10 + `ALL_CAPABILITIES` tuple; Phase 18 `test_capabilities_parity` flips). Default-deny; admin opt-in per policy. (CR-corrected 2026-06-04: roster is `capabilities.py`, not `auth.py`; `CAN_` prefix.)
   - Per-user `ProblemTraceSink` dict.
-  - Lazy-inline-on-retire marker consultation on episode read.
+  - Lazy-inline-on-retire marker **write** on retire (the marker-consultation-on-episode-read consumer is Phase 48 under D'1 — not here; CR-4 correction 2026-06-04).
 
   **Modules touched:**
   - `mindsos_server/persistence/local_persister.py` (FalkorDBLocalPersister + SQLiteLocalPersister classes).
+  - `mindsos_server/orchestrator.py` (free-functions → `MindsOSServer` class; lifecycle hooks; CR-3 2026-06-04).
   - `mindsos_server/persistence/bootstrap.py` (Falkor-backed L3 bootstrap wire-up).
   - `mindsos_cli/commands/capacity.py` (`_construct_invoke_layer` wires Falkor-backed bootstrap).
   - `mindsos_knowledge/knowledge_layer.py` (`read_at_version` + `retire_version` methods).
   - `mindsos_server/audit.py` (`EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` constant).
-  - `mindsos_server/auth.py` (`READ_OTHER_LOCAL_EPISODIC_MEMORY` capability roster; ADMIN_CAPS bump).
+  - `mindsos_server/capabilities.py` (`CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` constant + `ADMIN_CAPS` + `ALL_CAPABILITIES` bump; not `auth.py`).
   - `mindsos_capacity/problem_trace.py` (per-user Local-scoped sink dict).
   - `docs/decisions/adr/0160-l0-persister-impls.md` (NEW; ratified at L0_SUBSTRATE_CHAT closure or Phase 44 R0).
   - `docs/decisions/adr/0161-kl-version-read-and-retire.md` (NEW; ratified).
@@ -534,7 +543,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
   - `tests/phase_44/test_sqlite_persister.py` — SQLite-backed Local read/write/migration cycle.
   - `tests/phase_44/test_falkor_bootstrap.py` — reachability probe + in-memory fallback.
   - `tests/phase_44/test_kl_read_at_version.py` — Phase 11 side-by-side graphs surface; version-pinned reads.
-  - `tests/phase_44/test_kl_retire_version.py` — lazy-inline marker fires on retire; consumer-side consultation on read.
+  - `tests/phase_44/test_kl_retire_version.py` — lazy-inline marker fires on retire (marker-write + marker-state assertion); episode-read consultation deferred to Phase 48 (CR-4).
   - `tests/phase_44/test_episodic_audit_constant.py` — `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` emitted; distinct from `EVT_READ_OTHER_LOCAL`.
   - `tests/phase_44/test_capability_roster.py` — `READ_OTHER_LOCAL_EPISODIC_MEMORY` cap present; admin grant + default-deny.
   - `tests/phase_44/test_problem_trace_sink.py` — per-user Local-scoped dict; isolation across users.
