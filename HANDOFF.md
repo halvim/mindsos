@@ -387,7 +387,7 @@ Phase 43 (L2 schema-v2; 4 new role-graphs; mutation_discipline runtime invariant
 - **L2-39 audit constant.** `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` + capability per D-L2-23; routed to L0_SUBSTRATE_CHAT scope.
 - **L2-41 KL retention surface.** `kl.read_at_version` + `kl.retire_version` per D-L2-18; routed to L0_SUBSTRATE_CHAT scope.
 - **Pair-execution discipline.** Cowork (sandbox) prepares file content via Edit/Write tools; user runs git on Mac; Linux runs cumulative gates via docker. Established as default for all future Phase ship chats (R11; reasoning: Cowork sandbox `.git/` is read-only). See §9.
-- **6-step confirm-phase workflow.** Cowork drafts notes-phase-N.md content + layer title + tester_notes copy-blocks; tester edits notes file + runs `mindsos confirm-phase` + pushes (R12). See §9.
+- **6-step confirm-phase workflow.** Cowork drafts notes-phase-N.md content + layer title + tester_notes copy-blocks; tester runs `mindsos confirm-phase --init-notes N` (Mac) to mint the notes file from template; tester edits notes file on Linux; tester runs `mindsos confirm-phase --phase N --notes-file notes-phase-N.md` on Linux from post-squash main; tester commits PHASE_N_CONFIRMED.md + notes-phase-N.md + pushes (R12). See §9.
 
 **Process discipline learnings (carry to Phase 44+ design closures):**
 

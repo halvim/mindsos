@@ -52,12 +52,12 @@ Per Phase 43 R11 + HANDOFF §9: Cowork sandbox cannot run git commands. Cowork p
 
 After PR2 cumulative gate green + squash-merge to main:
 
-1. Cowork gives Mac command to generate `confirmation_docs/notes/notes-phase-44.md` (from template if exists; `touch` + Edit if not).
+1. Cowork instructs `mindsos confirm-phase --init-notes 44` (Mac) to create `confirmation_docs/notes/notes-phase-44.md` from template.
 2. Cowork provides the layer title in a copy-block (e.g., "L0 substrate ship — Kahn scheduler + audit constant + retention surface").
 3. Cowork provides the complete `tester_notes` body in a copy-block (drawn from cumulative gate output + design log §9 content).
 4. Tester edits the notes file on Linux.
-5. Tester runs `mindsos confirm-phase --phase 44 --notes-file confirmation_docs/notes/notes-phase-44.md` on Linux from post-squash main.
-6. Tester commits `PHASE_44_CONFIRMED.md` + notes file + pushes; Mac tags `phase-44-confirmed` at squash-merge commit + pushes tag.
+5. Tester runs `mindsos confirm-phase --phase 44 --notes-file notes-phase-44.md` on Linux from post-squash main.
+6. Tester commits `PHASE_44_CONFIRMED.md` + notes-phase-44.md + pushes; Mac tags `phase-44-confirmed` at squash-merge commit + pushes tag.
 
 ═══════════════════════════════════════════════════════════════════
 DESIGN PASS PROCESS DISCIPLINE
