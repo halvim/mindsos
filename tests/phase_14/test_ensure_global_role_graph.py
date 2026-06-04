@@ -92,7 +92,7 @@ def test_ensure_global_alignment_idempotent() -> None:
 def test_ensure_global_rejects_local_role(role: str) -> None:
     """ADR-0044 enforced at the dispatch site (PB-4)."""
     mg = Metagraph(name="t")
-    with pytest.raises(KnowledgeError, match="Local-scoped"):
+    with pytest.raises(KnowledgeError, match="Local-only"):
         ensure_global_role_graph(mg, role)
 
 

@@ -19,11 +19,15 @@ import pytest
 
 from mindsos_knowledge import (
     KnowledgeLayer,
+    ROLE_CAPACITY_GAPS,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_EPISODIC_MEMORIES,
     ROLE_ONTOLOGY,
+    ROLE_PARAMETER_STAGING,
+    ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
@@ -37,18 +41,26 @@ _EXPECTED_BOOTSTRAP_GLOBAL_ROLES = {
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
     ROLE_PROBLEM_TRACE,
+    # Phase 43 (ADR-0150 §am-5) Global-form additions.
+    ROLE_PENDING_PROMOTIONS,
+    ROLE_CAPACITY_GAPS,
+    ROLE_LEARNED_PARAMETERS,
 }
 
 _EXPECTED_LAZY_LOCAL_ROLES = {
     ROLE_EPISODIC_MEMORIES,
     ROLE_CAPACITY_STATE,
+    # Phase 43 (ADR-0150 §am-5) Local-form additions.
+    ROLE_PARAMETER_STAGING,
+    ROLE_PENDING_PROMOTIONS,
+    ROLE_LEARNED_PARAMETERS,
 }
 
 
 def test_bootstrap_global_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     g = kl.global_metagraph()
-    assert len(g.graphs) == 6
+    assert len(g.graphs) == 9
     observed = {gr.role for gr in g.graphs.values()}
     assert observed == _EXPECTED_BOOTSTRAP_GLOBAL_ROLES
 
@@ -56,7 +68,7 @@ def test_bootstrap_global_dimensional_snapshot() -> None:
 def test_lazy_local_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
-    assert len(local.graphs) == 2
+    assert len(local.graphs) == 5
     observed = {gr.role for gr in local.graphs.values()}
     assert observed == _EXPECTED_LAZY_LOCAL_ROLES
 

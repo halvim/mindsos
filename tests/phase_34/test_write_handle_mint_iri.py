@@ -88,11 +88,25 @@ def test_mint_iri_unsupported_role_type_pair_raises_keyerror():
 
 
 def test_iri_builders_registry_phase_39_three_entries():
-    """ADR-0146 §amendment-3: tuple-key registry; 3 entries post-rename
-    (Episode + Memory composite under ROLE_EPISODIC_MEMORIES;
-    ProblemTraceEntry under ROLE_PROBLEM_TRACE)."""
+    """ADR-0146 §amendment-3 tuple-key registry. Phase 39 shipped 3
+    entries (Episode + Memory under ROLE_EPISODIC_MEMORIES;
+    ProblemTraceEntry under ROLE_PROBLEM_TRACE). Phase 43 PR2 commit 1
+    grew to 7 by adding the 4 new role-graphs' minters per
+    ADR-0150 §am-5.
+    """
+    from mindsos_knowledge.identifiers import (
+        ROLE_CAPACITY_GAPS,
+        ROLE_LEARNED_PARAMETERS,
+        ROLE_PARAMETER_STAGING,
+        ROLE_PENDING_PROMOTIONS,
+    )
     assert set(_IRI_BUILDERS.keys()) == {
         (ROLE_EPISODIC_MEMORIES, "Episode"),
         (ROLE_EPISODIC_MEMORIES, "Memory"),
         (ROLE_PROBLEM_TRACE, "ProblemTraceEntry"),
+        # Phase 43 PR2 commit 1 additions per ADR-0150 §am-5.
+        (ROLE_PARAMETER_STAGING, "StagedEvidence"),
+        (ROLE_PENDING_PROMOTIONS, "PendingPromotion"),
+        (ROLE_CAPACITY_GAPS, "CapacityGap"),
+        (ROLE_LEARNED_PARAMETERS, "LearnedParameter"),
     }

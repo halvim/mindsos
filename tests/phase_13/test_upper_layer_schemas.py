@@ -103,13 +103,15 @@ def test_episodic_memories_nodes_match() -> None:
     assert NODE_MEMORY in s.node_types
 
 
-def test_episodic_memories_has_no_edges_at_phase_39() -> None:
+def test_episodic_memories_has_memory_contains_episode_edge_at_phase_43() -> None:
     """Phase 39 design log PB-R1-A: Phase 13 vestigial USED_CAPACITY +
-    PART_OF_PIPELINE EdgeTypes dropped. Phase 43 may re-add on Episode
-    atomically with full D-L2-17 ship.
+    PART_OF_PIPELINE EdgeTypes dropped. Phase 43 PR2 commit 1 ships
+    MEMORY_CONTAINS_EPISODE EdgeType per ADR-0152 §7 + Chat B D-B47
+    (impl-time R6 reconciliation: regular EdgeType not IntergraphEdgeType
+    — both NodeTypes in same role-graph).
     """
     s = build_episodic_memories_schema()
-    assert s.edge_types == {}
+    assert set(s.edge_types) == {"MEMORY_CONTAINS_EPISODE"}
 
 
 # ── problem_trace ──────────────────────────────────────────────────────

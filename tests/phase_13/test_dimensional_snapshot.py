@@ -36,7 +36,7 @@ EXPECTED_DIMENSIONS: dict[str, dict[str, int]] = {
     "alignment":           {"nodes": 1,  "edges": 8,  "hyperedges": 0},
     "promoted_pipelines":  {"nodes": 2,  "edges": 2,  "hyperedges": 0},
     "task_patterns":       {"nodes": 2,  "edges": 2,  "hyperedges": 0},
-    "episodic_memories":   {"nodes": 2,  "edges": 0,  "hyperedges": 0},
+    "episodic_memories":   {"nodes": 2,  "edges": 1,  "hyperedges": 0},
     "problem_trace":       {"nodes": 1,  "edges": 0,  "hyperedges": 0},
     "capacity_state":      {"nodes": 1,  "edges": 0,  "hyperedges": 0},
 }

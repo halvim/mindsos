@@ -65,7 +65,7 @@ def test_ensure_local_named_role_idempotent(role: str) -> None:
 def test_ensure_local_rejects_global_role(role: str) -> None:
     """ADR-0044 enforced — 6 Global-named roles reject in Local scope."""
     mg = Metagraph(name="local_t")
-    with pytest.raises(KnowledgeError, match="Global-scoped"):
+    with pytest.raises(KnowledgeError, match="Global-only"):
         ensure_local_role_graph(mg, role)
 
 

@@ -16,11 +16,22 @@ from mindsos_knowledge import (
 
 
 def test_lazy_local_creates_on_first_access() -> None:
-    """First call mints a Local with the 2 Local-named role-graphs."""
+    """First call mints a Local with the 5 Local-named role-graphs (Phase 43 §am-5: 2 base + 3 dual-scope)."""
+    from mindsos_knowledge import (
+        ROLE_LEARNED_PARAMETERS,
+        ROLE_PARAMETER_STAGING,
+        ROLE_PENDING_PROMOTIONS,
+    )
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
     observed_roles = {g.role for g in local.graphs.values()}
-    assert observed_roles == {ROLE_EPISODIC_MEMORIES, ROLE_CAPACITY_STATE}
+    assert observed_roles == {
+        ROLE_EPISODIC_MEMORIES,
+        ROLE_CAPACITY_STATE,
+        ROLE_PARAMETER_STAGING,
+        ROLE_PENDING_PROMOTIONS,
+        ROLE_LEARNED_PARAMETERS,
+    }
 
 
 def test_lazy_local_canonical_name() -> None:

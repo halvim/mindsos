@@ -101,7 +101,7 @@ def test_framenet_builder_dimensions() -> None:
 def test_bootstrap_global_six_role_graphs() -> None:
     """PB-21: bootstrap_global([]) ensures exactly 6 Global named role-graphs."""
     mg = bootstrap_global(importers=())
-    assert len(mg.graphs) == 6
+    assert len(mg.graphs) == 9
 
 
 def test_bootstrap_global_three_importer_combined_shape() -> None:
@@ -111,7 +111,7 @@ def test_bootstrap_global_three_importer_combined_shape() -> None:
         OewnImporter(source=OEWN_FIXTURE),
         FrameNetImporter(source=FRAMENET_FIXTURE),
     ])
-    assert len(mg.graphs) == 6
+    assert len(mg.graphs) == 9
     populated_roles = {
         g.role for g in mg.graphs.values() if len(g.nodes) > 0
     }

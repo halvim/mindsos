@@ -85,4 +85,13 @@ def test_read_local_happy_path_json_output(runner, env_setup) -> None:
     assert payload["xref_count"] == 0
     assert payload["intergraph_edge_count"] == 0
     roles = {rg["role"] for rg in payload["role_graphs"]}
-    assert roles == {"episodic_memories", "capacity-state"}
+    # Phase 43 (ADR-0150 §am-5): Local-named role-graphs grew from 2 to
+    # 5 (parameter-staging + pending-promotions + learned-parameters
+    # dual-scope additions).
+    assert roles == {
+        "episodic_memories",
+        "capacity-state",
+        "parameter-staging",
+        "pending-promotions",
+        "learned-parameters",
+    }

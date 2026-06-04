@@ -41,9 +41,9 @@ def test_metagraph_view_identity_accessors() -> None:
 
 
 def test_metagraph_view_roles_returns_distinct_roles() -> None:
-    """``roles()`` reflects the bootstrapped 6 Global named roles."""
+    """``roles()`` reflects the bootstrapped 9 Global named roles (Phase 43 §am-5)."""
     view = _bootstrapped_view()
-    assert len(view.roles()) == 6
+    assert len(view.roles()) == 9
     assert ROLE_ONTOLOGY in view.roles()
     assert ROLE_LEXICON in view.roles()
 
@@ -167,4 +167,4 @@ def test_metagraph_view_over_local() -> None:
     kl = KnowledgeLayer.bootstrap()
     view = kl.local_view("alice")
     assert "alice" in view.metagraph_name
-    assert len(view.roles()) == 2  # memories + capacity-state
+    assert len(view.roles()) == 5  # episodic_memories + capacity-state + 3 Phase 43 dual-scope

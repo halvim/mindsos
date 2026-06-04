@@ -51,26 +51,37 @@ def test_extract_uninstalled_raises_not_installed() -> None:
 
 
 def test_install_auto_ensures_missing_local_roles() -> None:
-    """Phase 14 PB-9 — install auto-ensures episodic_memories + capacity-state (Phase 39 rename per ADR-0044 §am-3)."""
+    """Phase 14 PB-9 — install auto-ensures all 5 Local-named role-graphs (Phase 43 §am-5: episodic_memories + capacity-state + 3 dual-scope additions)."""
+    from mindsos_knowledge import (
+        ROLE_LEARNED_PARAMETERS,
+        ROLE_PARAMETER_STAGING,
+        ROLE_PENDING_PROMOTIONS,
+    )
     kl = KnowledgeLayer.bootstrap()
     bare = Metagraph(name="bare")
     assert len(bare.graphs) == 0
     kl.install_local_metagraph("alice", bare)
-    # Both Local-named role-graphs are now present.
+    # All 5 Local-named role-graphs now present per Phase 43 §am-5.
     observed = {g.role for g in bare.graphs.values()}
-    assert observed == {ROLE_EPISODIC_MEMORIES, ROLE_CAPACITY_STATE}
+    assert observed == {
+        ROLE_EPISODIC_MEMORIES,
+        ROLE_CAPACITY_STATE,
+        ROLE_PARAMETER_STAGING,
+        ROLE_PENDING_PROMOTIONS,
+        ROLE_LEARNED_PARAMETERS,
+    }
 
 
 def test_install_idempotent_on_already_ensured_local() -> None:
-    """Pre-ensured Local install doesn't duplicate role-graphs."""
+    """Pre-ensured Local install doesn't duplicate role-graphs; auto-ensures the rest (Phase 43 §am-5: 2 pre-ensured + 3 dual-scope auto)."""
     kl = KnowledgeLayer.bootstrap()
     pre = Metagraph(name="pre")
     ensure_local_role_graph(pre, ROLE_EPISODIC_MEMORIES)
     ensure_local_role_graph(pre, ROLE_CAPACITY_STATE)
     assert len(pre.graphs) == 2
     kl.install_local_metagraph("alice", pre)
-    # Same 2 role-graphs; no duplicates.
-    assert len(pre.graphs) == 2
+    # 5 Local-named role-graphs after install; 2 pre-ensured + 3 auto.
+    assert len(pre.graphs) == 5
 
 
 def test_extract_pops_user_id() -> None:

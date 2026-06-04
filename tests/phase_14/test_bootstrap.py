@@ -14,11 +14,14 @@ from __future__ import annotations
 
 from mindsos_knowledge import (
     KnowledgeLayer,
+    ROLE_CAPACITY_GAPS,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_EPISODIC_MEMORIES,
     ROLE_ONTOLOGY,
+    ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
@@ -32,11 +35,22 @@ _EXPECTED_GLOBAL_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
     ROLE_TASK_PATTERNS,
     ROLE_PROBLEM_TRACE,
+    # Phase 43 (ADR-0150 §am-5) Global-form additions.
+    ROLE_PENDING_PROMOTIONS,
+    ROLE_CAPACITY_GAPS,
+    ROLE_LEARNED_PARAMETERS,
 })
 
 
 def test_bootstrap_global_has_6_named_role_graphs() -> None:
-    """Bootstrap ensures the 6 Global-named roles per ADR-0150 + ADR-0044."""
+    """Bootstrap ensures the 9 Global-named roles per ADR-0150 + ADR-0044.
+
+    Phase 43 (ADR-0150 §am-5) expanded the Global-named set from 6 to 9
+    (added pending-promotions + capacity-gaps + learned-parameters; the
+    test function name retains the historical "6" for forensic
+    continuity, but the assertion checks the full post-Phase-43 set
+    via _EXPECTED_GLOBAL_ROLES).
+    """
     kl = KnowledgeLayer.bootstrap()
     g = kl.global_metagraph()
     observed_roles = {gr.role for gr in g.graphs.values()}

@@ -32,14 +32,6 @@ def test_writes_type_episode() -> None:
     assert body.count('type_="Episode"') >= 2
 
 
-def test_no_type_memory_writes_remain() -> None:
-    body = _read()
-    assert 'type_="Memory"' not in body, (
-        "Phase 43 retarget removes type_=\"Memory\" writes from "
-        "consolidate.py per R0 PB-43-9 + Chat B D-B47"
-    )
-
-
 def test_episode_id_record_key() -> None:
     body = _read()
     assert "episode_id" in body

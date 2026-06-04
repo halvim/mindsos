@@ -62,14 +62,14 @@ def test_consolidate_mm_happy_path_returns_write_result():
     ctx = {"kl": kl, "session": sess}
     result = _consolidate_mm_impl(
         **{
-            DS_MM_COMPOSITE_INSTANCE: {"memory_id": "m-happy", "value": "v"},
+            DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e-happy", "value": "v"},
             "context": ctx,
         }
     )
     assert isinstance(result, WriteResult)
     assert result.role == "episodic_memories"
     assert result.scope == "local"
-    assert "episodic-memories-v1:memory:alice:m-happy" == result.iri
+    assert "episodic-memories-v1:episode:alice:e-happy" == result.iri
 
 
 def test_trace_problem_happy_path_returns_write_result():
@@ -113,7 +113,7 @@ def test_consolidate_mm_raises_on_semantic_validation_fail(monkeypatch):
         _consolidate_mm_impl(
             **{
                 DS_MM_COMPOSITE_INSTANCE: {
-                    "memory_id": "m-violated",
+                    "episode_id": "e-violated",
                     "value": "v",
                 },
                 "context": ctx,
@@ -182,7 +182,7 @@ def test_consolidate_mm_precondition_fires_before_mint(monkeypatch):
         _consolidate_mm_impl(
             **{
                 DS_MM_COMPOSITE_INSTANCE: {
-                    "memory_id": "m-timing",
+                    "episode_id": "e-timing",
                     "value": "v",
                 },
                 "context": ctx,
