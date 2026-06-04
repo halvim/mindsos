@@ -24,19 +24,19 @@ Designing the dump format before a real persistence boundary existed was judged 
 
 ## Decision
 
-### 1. `MetagraphDump` — backend-neutral serialization
+### 1. `MetagraphDump` — `SQLiteLocalPersister`-internal serialization (reuses the promoted core state-file serializer)
 
-`MetagraphDump` is a dedicated serialization dataclass that mirrors Metagraph structure (graphs, roles, nodes, edges, hyperedges, metaedges, metahyperedges, identity, schema) rather than reusing the live `MetagraphLoader` reconstruction path. It serializes to a **versioned envelope** `{"dump_schema_version": <int>, "payload": {...}}`; v1 payload is JSON, with msgpack reserved for a v2 envelope bump.
+`MetagraphDump` is NOT a Protocol-level type and is NOT backend-neutral. It is the **internal serialization of `SQLiteLocalPersister` only** (the Falkor persister round-trips natively — §2). The dump wraps the project's existing authoritative state-file JSON in a versioned envelope `{"dump_schema_version": <int>, "payload": {...}}`, where `payload` is the per-graph (state-file v=5) + metagraph (v=1) JSON produced by the state-file serializer **promoted from `mindsos_cli` into `mindsos_core` at this phase** (`graph_to_state` / `state_to_graph` / `metagraph_to_state` / `state_to_metagraph`; `mindsos_cli` keeps thin re-exports so layering holds and there is one authoritative serializer). v1 payload is JSON; msgpack is reserved for a v2 envelope bump.
 
-The dump is **backend-neutral**: the identical serialized form round-trips through both the FalkorDB-graph store and the SQLite-blob store. Every node carries its version pin as an `(iri, version_int)` pair — this is forced, not optional: under the D'1 retention model (ADR-0161, Chat B §4.4) a HEAD-only dump would silently break version-pinned side-by-side reads after a restore.
+Reusing the authoritative serializer rather than a net-new dataclass means the SQLite path cannot silently drift from the format the rest of the system reads, and it rides the existing migration chains. Each element preserves its `_version` OCC counter (already carried by the state-file format). Phase-11 side-by-side historical versions are a KL concern surfaced via `kl.read_at_version` (ADR-0161), not materialized in a Local dump.
 
-### 2. `FalkorDBLocalPersister`
+### 2. `FalkorDBLocalPersister` — native, no dump
 
-Thin wrapper over the existing FalkorDB adapter. `save` reconstructs the user's role graphs (`local_<slug(user_id)>_<role>` per ADR-0004) from the dump using idempotent `MERGE`-on-id writes (ADR-0122) — no WAL graph, because a single-Metagraph replace is not a multi-graph operation. `delete` is best-effort (`delete_graph` with a `MATCH (n) DETACH DELETE n` fallback) and idempotent, returning `bool` per ADR-0011 §amendment-2 clause 2. Because Falkor delete-then-recreate is non-atomic under the single-process multi-threaded model (ADR-0009 / D32), `save` and `delete` acquire the per-user mutex from the `UserMutexRegistry` (ADR-0006) for the duration of the write.
+The Falkor persister does NOT serialize to `MetagraphDump`. It round-trips the Local natively through existing core machinery: `save` calls `MetagraphRepository.persist(metagraph)` (idempotent `MERGE`-on-id writes per ADR-0122; the `local_<slug(user_id)>_<role>` graph layout per ADR-0004); `load` reconstructs via `MetagraphLoader.load` (the same reconstruction the Falkor-backed L3 bootstrap uses). `delete` is best-effort (`delete_graph` with a `MATCH (n) DETACH DELETE n` fallback), idempotent, returning `bool` per ADR-0011 §amendment-2 clause 2. Because Falkor delete-then-recreate is non-atomic under the single-process multi-threaded model (ADR-0009 / D32), `save` and `delete` hold the per-user `UserMutexRegistry` mutex (ADR-0006) for the write.
 
 ### 3. `SQLiteLocalPersister`
 
-Stores the serialized `MetagraphDump` as an **opaque blob** in a dedicated `locals.db` SQLite file — NOT in `server.db` (which ADR-0004 reserves for auth/sessions/audit). Table: `local_dumps(user_id TEXT PRIMARY KEY, dump BLOB NOT NULL, dump_schema_version INTEGER NOT NULL, updated_at TEXT NOT NULL)`. `save` is an `UPSERT`; `delete` is `DELETE` returning whether a row existed. This is the local-first / portable backing store; it stores a serialized dump, not graph-relational data, so it does not reintroduce the "graph gymnastics in SQLite" that ADR-0004 §Alternatives rejected (see ADR-0004 §amendment-2).
+Stores the serialized `MetagraphDump` (produced via the promoted core state-file serializer, §1) as an **opaque blob** in a dedicated `locals.db` SQLite file — NOT in `server.db` (which ADR-0004 reserves for auth/sessions/audit). Table: `local_dumps(user_id TEXT PRIMARY KEY, dump BLOB NOT NULL, dump_schema_version INTEGER NOT NULL, updated_at TEXT NOT NULL)`. `save` is an `UPSERT`; `delete` is `DELETE` returning whether a row existed. This is the local-first / portable backing store; it stores a serialized dump, not graph-relational data, so it does not reintroduce the "graph gymnastics in SQLite" that ADR-0004 §Alternatives rejected (see ADR-0004 §amendment-2).
 
 ## Rationale
 
@@ -49,11 +49,13 @@ Stores the serialized `MetagraphDump` as an **opaque blob** in a dedicated `loca
 
 - A second SQLite file (`locals.db`) joins `server.db` and `version_db/`; the developer guide's backup story gains one cadence.
 - `MetagraphDump` becomes a stable serialization contract; changing the payload shape requires a `dump_schema_version` bump and a read-path that tolerates the prior version.
+- The `LocalPersister` Protocol trafficks in live `Metagraph` (ADR-0011 §amendment-2 shape, retained — see ADR-0011 §amendment-3 clause 1); `MetagraphDump` is internal to `SQLiteLocalPersister`, not a Protocol type. The Falkor persister has no dump at all.
+- The state-file serializer is promoted from `mindsos_cli` to `mindsos_core`; `mindsos_cli` re-imports it. One authoritative serializer now serves the CLI verbs and the SQLite persister.
 - The persister is still configured once at `MindsOSServer` construction (ADR-0011 §amendment-3) and held for the process lifetime.
 
 ## Alternatives considered
 
-1. **JSON over the live `MetagraphLoader` reconstruction schema.** Rejected — couples the on-disk format to loader internals.
-2. **Falkor-native Cypher `CREATE` script replayed for both backends.** Rejected — forces the SQLite path to carry a Cypher interpreter; not backend-neutral.
-3. **Single backing store (Falkor only) for v1.** Rejected at CR-2 — the SQLite-blob store is the local-first deployment path and costs little once the dump format is backend-neutral.
+1. **Net-new dedicated `MetagraphDump` dataclass** (the original Phase 44 S1 pick). Rejected on PR1.2 investigation — duplicates the authoritative `mindsos_cli` state-file serializer, risking silent format drift on the SQLite path. Promoting that serializer to core and reusing it (this ADR) avoids the duplication.
+2. **Backend-neutral Protocol-level dump that both stores round-trip.** Rejected — the Falkor store round-trips natively via `MetagraphRepository.persist` / `MetagraphLoader.load`, so a Protocol-level dump only burdens the Falkor path; `MetagraphDump` is SQLite-internal instead.
+3. **Single backing store (Falkor only) for v1.** Considered at CR-2; rejected — the SQLite store is the local-first deployment path and is cheap once the serializer is core-resident.
 4. **Store the dump blob in `server.db`.** Rejected — violates the ADR-0004 concern split and entangles the user-data backup cadence with the auth/audit one.

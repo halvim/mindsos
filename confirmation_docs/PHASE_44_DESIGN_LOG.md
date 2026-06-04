@@ -123,3 +123,22 @@ Exactly-N sentinels + fixture-keyed tests at risk across PR boundaries:
 **PR-1 pre-flight checklist:** clean working tree (commit the 4 modified docs first); `phase-44` branches off the `phase-43-confirmed` descendant; docker baseline rebuild green.
 
 **Open R1 task (not design-level):** locate the exact `test_capabilities_parity` assertion + any `len(view.roles())`/role-count sentinels the scheduler PR touches, confirm none assert *iteration order* pre-scheduler.
+
+---
+
+## §5 — PR1.2 investigation reversal (2026-06-04): S1 → Opt-3a
+
+R0 locked S1 as "dedicated `MetagraphDump` dataclass, not loader reuse." PR1.2 grounding reversed it. Findings:
+
+- The project's **authoritative** Metagraph↔JSON serializer already exists and lives in `mindsos_cli` (`_graph_to_state`/`_state_to_graph` in `commands/graph.py`; `_metagraph_to_state`/`_state_to_metagraph` in `commands/metagraph.py`; migrations in `mindsos_cli/migrations/`, graph at v=5). FalkorDB is a *projection* of these JSON state files (`mindsos_core/persistence/__init__`: "JSON state files … remain authoritative"). No core-resident element serializers exist.
+- `mindsos_server` imports nothing from `mindsos_cli` (ADR-0010 layering). So reuse requires promoting the serializer down to `mindsos_core`.
+- The **Falkor persister needs no JSON at all** — it round-trips natively via core `MetagraphRepository.persist` + `MetagraphLoader.load` (server-safe). Only the SQLite persister serializes.
+
+**Ruling (user, 2026-06-04): Opt-3a.**
+
+- **S1 reversed:** no net-new dataclass. The SQLite persister reuses the state-file serializer **promoted from `mindsos_cli` → `mindsos_core`** (CLI keeps thin re-exports). `MetagraphDump` = `{dump_schema_version, payload}` envelope over the authoritative state-file JSON; SQLite-internal only.
+- **S2/S3 refined:** Falkor persister = native `persist`/`load` (no dump); SQLite persister = serialize-via-promoted-core → blob in `locals.db`.
+- **Protocol unchanged:** `LocalPersister` keeps the `Metagraph` shape (ADR-0011 §am-2). **Reverts ADR-0011 §am-3 clause 1** (which had switched the Protocol to `MetagraphDump`).
+- **ADR-0160 reframed:** Falkor native; `MetagraphDump` SQLite-internal, not backend-neutral; net-new-dataclass moved to §Alternatives as rejected.
+
+**PR1.2 scope delta:** adds the serializer promotion (move 4 functions `mindsos_cli` → `mindsos_core` + CLI re-exports + CLI test-import updates). Follow-up budget unchanged (4-5) — the promote replaces, not adds to, the net-new serializer that S1 would have required.

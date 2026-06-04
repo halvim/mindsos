@@ -117,7 +117,7 @@ See `halvim_mindsos/confirmation_docs/PHASE_19_DESIGN_LOG.md` §1 round 1 PB-2 +
 
 **Amended decisions (4 clauses):**
 
-1. **`MetagraphDump` serialization ships (was: deferred per §am-2 clause 1).** The Protocol method signatures revise from `load -> Optional[Metagraph]` / `save(metagraph: Metagraph)` to `load -> Optional[MetagraphDump]` / `save(dump: MetagraphDump)`. The dump is a backend-neutral versioned-envelope dataclass per ADR-0160; it carries an `(iri, version_int)` version pin per node for D'1 round-trip fidelity.
+1. **Protocol retains the `Metagraph` shape (§amendment-2 clause 1 stands); `MetagraphDump` ships as a `SQLiteLocalPersister`-internal serialization.** On PR1.2 investigation, the project's authoritative state-file serializer lives in `mindsos_cli`; promoting it to `mindsos_core` and reusing it for the SQLite path is cleaner than a net-new Protocol-level dump. The Falkor persister round-trips natively (`MetagraphRepository.persist` / `MetagraphLoader.load`), so the Protocol keeps `load -> Optional[Metagraph]` / `save(metagraph: Metagraph)`. `MetagraphDump` (ADR-0160) is internal to `SQLiteLocalPersister`, not a Protocol type.
 
 2. **`FalkorDBLocalPersister` + `SQLiteLocalPersister` ship (was: deferred per §am-2 clause 3).** Both backing stores land per ADR-0160. The Falkor store keeps the `local_<slug(user_id)>_<role>` graph layout (ADR-0004); the SQLite store holds the serialized dump as an opaque blob in a dedicated `locals.db` (ADR-0004 §amendment-2). `InMemoryLocalPersister` stays the test/diagnostic impl.
 

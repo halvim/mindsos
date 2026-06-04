@@ -33,9 +33,9 @@ def test_adr_0160_names_dump_and_both_persisters() -> None:
         "MetagraphDump",
         "FalkorDBLocalPersister",
         "SQLiteLocalPersister",
-        "backend-neutral",
+        "promoted",
+        "native",
         "dump_schema_version",
-        "(iri, version_int)",
         "locals.db",
     ):
         assert token in body, f"{token!r} missing from ADR-0160 body"
