@@ -1,5 +1,5 @@
 ---
-title: L0 Local persister implementations + MetagraphDump serialization
+title: L0 FalkorDBLocalPersister (native); SQLite + MetagraphDump deferred
 status: Accepted
 date: 2026-06-04
 accepted_date: 2026-06-04
@@ -8,54 +8,60 @@ amends: [0011]
 related: [0011, 0004, 0121, 0122, 0006, 0161]
 ---
 
-# ADR-0160: L0 Local persister implementations + `MetagraphDump` serialization
+# ADR-0160: L0 `FalkorDBLocalPersister` (native round-trip); SQLite + `MetagraphDump` deferred
 
 **Status:** Accepted
 
 **Date:** 2026-06-04
 
-**Related:** ADR-0011 (LocalPersister protocol — this ADR ships the deferred impls), ADR-0004 (split persistence — see §amendment-2 SQLite-blob clarification), ADR-0121 (substrate commitment), ADR-0122 (WAL + idempotent writes), ADR-0006 (UserMutexRegistry), ADR-0161 (KL version surface — co-shipped).
+**Related:** ADR-0011 (LocalPersister protocol — this ADR ships the deferred Falkor impl), ADR-0004 (split persistence), ADR-0121 (substrate), ADR-0122 (WAL + idempotent writes), ADR-0006 (UserMutexRegistry), ADR-0161 (KL version surface — co-shipped).
 
 ## Context
 
-ADR-0011 §amendment-2 clause 1 shipped the `LocalPersister` Protocol with an in-memory implementation only, and explicitly deferred `MetagraphDump` serialization plus the `FalkorDBLocalPersister` and `SQLiteLocalPersister` backing-store implementations to "the first phase that ships a backing-store persister." Phase 44 (Rail C, L0 substrate) is that phase. The Phase 44 governance ruling (CR-2, 2026-06-04) is to ship **both** backing stores, not one.
+ADR-0011 §amendment-2 clause 3 shipped the `LocalPersister` Protocol with an in-memory implementation only, deferring the `FalkorDBLocalPersister` and `SQLiteLocalPersister` backing stores to "the first phase that ships a user-Local-write surface." Phase 44 (Rail C, L0 substrate) is that phase.
 
-Designing the dump format before a real persistence boundary existed was judged speculative at Phase 25; that boundary now exists, so the serialization shape is settled here against two concrete consumers (a FalkorDB-graph store and a SQLite-blob store).
+CR-2 (2026-06-04) initially ruled "ship both backing stores." PR1.2 grounding reversed that ruling. Two findings drove the reversal:
+
+1. **The project's authoritative Metagraph↔JSON serializer is multi-file, disk-coupled.** It lives in `mindsos_cli` and reconstructs a Metagraph by reading each contained graph and schema from its *own* on-disk state file (`_state_to_metagraph` → `state_mod.load_graph_state(gname)` per graph; `_state_to_graph` → `_load_schema_or_die` per schema, with `typer.Exit`). A single self-contained SQLite blob would require dependency-injecting those disk resolvers and composing an inline envelope — a real refactor that also touches the CLI's working reconstruct path (regression surface).
+2. **`SQLiteLocalPersister` has no named v1 consumer.** It is the local-first / portable-export backing store; nothing in the v1 product writes or reads it.
+
+Shipping a risk-bearing serializer refactor for a store with no consumer violates the project's "ship only what has a live consumer" discipline. The Falkor store, by contrast, has a real consumer (login hydrate / logout flush) and needs **no serialization at all**.
 
 ## Decision
 
-### 1. `MetagraphDump` — `SQLiteLocalPersister`-internal serialization (reuses the promoted core state-file serializer)
+### 1. `FalkorDBLocalPersister` — native, no dump
 
-`MetagraphDump` is NOT a Protocol-level type and is NOT backend-neutral. It is the **internal serialization of `SQLiteLocalPersister` only** (the Falkor persister round-trips natively — §2). The dump wraps the project's existing authoritative state-file JSON in a versioned envelope `{"dump_schema_version": <int>, "payload": {...}}`, where `payload` is the per-graph (state-file v=5) + metagraph (v=1) JSON produced by the state-file serializer **promoted from `mindsos_cli` into `mindsos_core` at this phase** (`graph_to_state` / `state_to_graph` / `metagraph_to_state` / `state_to_metagraph`; `mindsos_cli` keeps thin re-exports so layering holds and there is one authoritative serializer). v1 payload is JSON; msgpack is reserved for a v2 envelope bump.
+Ships now. It round-trips the Local natively through existing core machinery — no JSON serialization:
 
-Reusing the authoritative serializer rather than a net-new dataclass means the SQLite path cannot silently drift from the format the rest of the system reads, and it rides the existing migration chains. Each element preserves its `_version` OCC counter (already carried by the state-file format). Phase-11 side-by-side historical versions are a KL concern surfaced via `kl.read_at_version` (ADR-0161), not materialized in a Local dump.
+* `save(user_id, metagraph)` → `MetagraphRepository.persist(metagraph)` (idempotent `MERGE`-on-id writes per ADR-0122; `local_<slug(user_id)>_<role>` graph layout per ADR-0004).
+* `load(user_id)` → reconstruct via `MetagraphLoader.load` (the same reconstruction the Falkor-backed L3 bootstrap uses).
+* `delete(user_id) -> bool` → best-effort `delete_graph` with a `MATCH (n) DETACH DELETE n` fallback; idempotent (missing → `False`) per ADR-0011 §amendment-2 clause 2.
 
-### 2. `FalkorDBLocalPersister` — native, no dump
+Because Falkor delete-then-recreate is non-atomic under the single-process multi-threaded model (ADR-0009 / D32), `save` and `delete` hold the per-user `UserMutexRegistry` mutex (ADR-0006) for the write.
 
-The Falkor persister does NOT serialize to `MetagraphDump`. It round-trips the Local natively through existing core machinery: `save` calls `MetagraphRepository.persist(metagraph)` (idempotent `MERGE`-on-id writes per ADR-0122; the `local_<slug(user_id)>_<role>` graph layout per ADR-0004); `load` reconstructs via `MetagraphLoader.load` (the same reconstruction the Falkor-backed L3 bootstrap uses). `delete` is best-effort (`delete_graph` with a `MATCH (n) DETACH DELETE n` fallback), idempotent, returning `bool` per ADR-0011 §amendment-2 clause 2. Because Falkor delete-then-recreate is non-atomic under the single-process multi-threaded model (ADR-0009 / D32), `save` and `delete` hold the per-user `UserMutexRegistry` mutex (ADR-0006) for the write.
+### 2. Protocol keeps the `Metagraph` shape
 
-### 3. `SQLiteLocalPersister`
+The `LocalPersister` Protocol trafficks in live `Metagraph` (ADR-0011 §amendment-2 clause 1, retained). No `MetagraphDump` enters the Protocol.
 
-Stores the serialized `MetagraphDump` (produced via the promoted core state-file serializer, §1) as an **opaque blob** in a dedicated `locals.db` SQLite file — NOT in `server.db` (which ADR-0004 reserves for auth/sessions/audit). Table: `local_dumps(user_id TEXT PRIMARY KEY, dump BLOB NOT NULL, dump_schema_version INTEGER NOT NULL, updated_at TEXT NOT NULL)`. `save` is an `UPSERT`; `delete` is `DELETE` returning whether a row existed. This is the local-first / portable backing store; it stores a serialized dump, not graph-relational data, so it does not reintroduce the "graph gymnastics in SQLite" that ADR-0004 §Alternatives rejected (see ADR-0004 §amendment-2).
+### 3. `SQLiteLocalPersister` + `MetagraphDump` + serializer promotion — **deferred**
+
+All three defer to the first phase with a local-first / portable-export consumer. At that phase: promote the `mindsos_cli` state-file serializer (`graph_to_state` / `state_to_graph` / `metagraph_to_state` / `state_to_metagraph`) into `mindsos_core` with dependency-injected graph/schema resolvers, compose a self-contained `MetagraphDump` envelope, and store it as an opaque blob in a dedicated `locals.db` (never `server.db`). ADR-0004 stays unamended until then.
 
 ## Rationale
 
-- **Dedicated dump dataclass over loader reuse.** An explicit serialization boundary is forward-versionable and unit-testable without standing up FalkorDB; coupling the on-disk format to loader internals would make every loader refactor a persistence-format migration.
-- **Version pin in the dump is load-bearing, not belt-and-suspenders.** D'1 retention reads historical versions; a restore that dropped version pins would corrupt side-by-side history invisibly.
-- **Two stores, one format.** A backend-neutral dump is the only way both persisters can share a single round-trip test surface and stay interchangeable behind the Protocol.
-- **Mutex on write.** The single-process multi-threaded concurrency model still races on a non-atomic delete-then-recreate; the existing per-user mutex closes the window without a new locking primitive.
+- **Falkor is the consumer-backed path and needs zero new serialization.** Native `persist` / `load` already exist and are core-resident (server-safe).
+- **Defer the speculative store.** The SQLite path's only justification was a future local-first deployment; building its serializer now — at real refactor cost and CLI-regression risk — is premature.
+- **Mutex on write.** The single-process multi-threaded model still races on a non-atomic delete-then-recreate; the existing per-user mutex closes the window without a new primitive.
 
 ## Consequences
 
-- A second SQLite file (`locals.db`) joins `server.db` and `version_db/`; the developer guide's backup story gains one cadence.
-- `MetagraphDump` becomes a stable serialization contract; changing the payload shape requires a `dump_schema_version` bump and a read-path that tolerates the prior version.
-- The `LocalPersister` Protocol trafficks in live `Metagraph` (ADR-0011 §amendment-2 shape, retained — see ADR-0011 §amendment-3 clause 1); `MetagraphDump` is internal to `SQLiteLocalPersister`, not a Protocol type. The Falkor persister has no dump at all.
-- The state-file serializer is promoted from `mindsos_cli` to `mindsos_core`; `mindsos_cli` re-imports it. One authoritative serializer now serves the CLI verbs and the SQLite persister.
-- The persister is still configured once at `MindsOSServer` construction (ADR-0011 §amendment-3) and held for the process lifetime.
+- v1 Local persistence is FalkorDB-only; `InMemoryLocalPersister` remains the test/diagnostic impl.
+- `MetagraphDump`, `SQLiteLocalPersister`, `locals.db`, and the serializer promotion are tracked as a deferred bundle (see Phase 44 design log §5 + §6).
+- The persister is configured once at `MindsOSServer` construction (ADR-0011 §amendment-3) and held for the process lifetime.
+- ADR-0004 needs no amendment at v1 (no SQLite-blob Local store ships).
 
 ## Alternatives considered
 
-1. **Net-new dedicated `MetagraphDump` dataclass** (the original Phase 44 S1 pick). Rejected on PR1.2 investigation — duplicates the authoritative `mindsos_cli` state-file serializer, risking silent format drift on the SQLite path. Promoting that serializer to core and reusing it (this ADR) avoids the duplication.
-2. **Backend-neutral Protocol-level dump that both stores round-trip.** Rejected — the Falkor store round-trips natively via `MetagraphRepository.persist` / `MetagraphLoader.load`, so a Protocol-level dump only burdens the Falkor path; `MetagraphDump` is SQLite-internal instead.
-3. **Single backing store (Falkor only) for v1.** Considered at CR-2; rejected — the SQLite store is the local-first deployment path and is cheap once the serializer is core-resident.
-4. **Store the dump blob in `server.db`.** Rejected — violates the ADR-0004 concern split and entangles the user-data backup cadence with the auth/audit one.
+1. **Ship both stores now (CR-2 original).** Rejected on investigation — the SQLite serializer is a disk-coupled refactor with CLI-regression risk for a consumer-less store.
+2. **Net-new self-contained serializer for the SQLite path (Opt-3b).** Rejected for v1 — still builds a serializer (and a duplicate format) for a store with no consumer.
+3. **Promote + dependency-inject the CLI serializer now (Opt-3a).** Rejected for v1 — correct eventual design, but premature; it lands with the first SQLite consumer.

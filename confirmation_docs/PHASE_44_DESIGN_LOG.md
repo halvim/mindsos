@@ -142,3 +142,23 @@ R0 locked S1 as "dedicated `MetagraphDump` dataclass, not loader reuse." PR1.2 g
 - **ADR-0160 reframed:** Falkor native; `MetagraphDump` SQLite-internal, not backend-neutral; net-new-dataclass moved to §Alternatives as rejected.
 
 **PR1.2 scope delta:** adds the serializer promotion (move 4 functions `mindsos_cli` → `mindsos_core` + CLI re-exports + CLI test-import updates). Follow-up budget unchanged (4-5) — the promote replaces, not adds to, the net-new serializer that S1 would have required.
+
+> **Superseded same day by §6 — see below.** The Opt-3a ruling above held only until the serializer's disk-coupling surfaced; CR-2 was then reversed to Falkor-only v1.
+
+---
+
+## §6 — CR-2 reversal (2026-06-04): Falkor-only v1; SQLite + MetagraphDump deferred
+
+Opt-3a (§5) assumed the serializer promotion was a clean "move 4 functions." Reading `_state_to_metagraph` / `_state_to_graph` showed it is **disk-coupled and multi-file**: a Metagraph reconstructs by loading each contained graph (`state_mod.load_graph_state(gname)`) and schema (`_load_schema_or_die`, with `typer.Exit`) from its own on-disk state file. Reusing it for a single self-contained SQLite blob requires dependency-injecting those disk resolvers + a composite inline envelope — a real refactor that also touches the CLI's working reconstruct path.
+
+Combined with the fact that `SQLiteLocalPersister` has **no named v1 consumer**, this fails "ship only what has a live consumer."
+
+**Ruling (user, 2026-06-04): Falkor-only v1.**
+
+- **Ships:** `FalkorDBLocalPersister` — native round-trip via `MetagraphRepository.persist` + `MetagraphLoader.load`; per-user mutex on write; best-effort `delete -> bool`. No serialization.
+- **Protocol:** keeps `Metagraph` (ADR-0011 §am-2, §am-3 cl.1).
+- **Deferred bundle** (to the first local-first / portable-export consumer phase): `SQLiteLocalPersister`, `MetagraphDump`, `locals.db`, and the `mindsos_cli`→`mindsos_core` serializer promotion (with DI'd graph/schema resolvers). Tracked here.
+- **Reverses CR-2** (was "ship both") and supersedes §5 Opt-3a. **S1 + S3 → deferred** (no dump format / no SQLite store ships now). **S2 → Falkor-native** (no dump on the Falkor path either).
+- **ADR impact:** ADR-0160 rewritten to Falkor-only + deferral; ADR-0011 §am-3 cl.2 → Falkor ships / SQLite defers; ADR-0004 §am-2 removed (no SQLite-blob store ships, so no amendment needed). ADR-0161 unaffected.
+
+**Revised §4 PR ordering:** PR1.2 shrinks to the Falkor-native persister + tests (no serializer promotion, no SQLite, no `locals.db`). PR2 (MindsOSServer class + hooks, CR-3) and PR3 (KL surface + scheduler + audit/cap) unchanged.

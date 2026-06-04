@@ -8,7 +8,7 @@ SCOPE
 
 Phase 44 is a **combined design + ship chat (option C, ratified 2026-06-04).** It absorbs `L0_SUBSTRATE_CHAT` closure into R0 rather than waiting on a separate chat — PHASE_MAP lines 528 + 981 grant R0 the ADR-ratification authority. **Prereq #6 below is superseded:** R0 step 1 *is* the L0 substrate design saturation, not a gate on an external chat.
 
-This SCOPE is reconciled against `POST_PHASE_38_PHASE_MAP.md` Phase 44 detail block (lines 492-561), which is the authoritative fuller scope; the prompt's prior 3-item list was a subset that dropped the persisters, the orchestrator refactor, the Falkor-backed bootstrap, and the `ProblemTraceSink`. Governance rulings taken 2026-06-04: **CR-2 = ship both persisters**; **CR-3 = do the `MindsOSServer` class refactor now** (ADR-0011 note 4 satisfied, not deferred).
+This SCOPE is reconciled against `POST_PHASE_38_PHASE_MAP.md` Phase 44 detail block (lines 492-561), which is the authoritative fuller scope; the prompt's prior 3-item list was a subset that dropped the persisters, the orchestrator refactor, the Falkor-backed bootstrap, and the `ProblemTraceSink`. Governance rulings taken 2026-06-04: **CR-2 = Falkor-only v1** (reversed from "ship both" on PR1.2 investigation — the `mindsos_cli` state-file serializer is disk-coupled + SQLite has no v1 consumer; `SQLiteLocalPersister` + `MetagraphDump` + serializer promotion deferred — see design log §6); **CR-3 = do the `MindsOSServer` class refactor now** (ADR-0011 note 4 satisfied, not deferred).
 
 **A. Design (R0 — absorbs L0_SUBSTRATE_CHAT):**
 
@@ -20,9 +20,9 @@ This SCOPE is reconciled against `POST_PHASE_38_PHASE_MAP.md` Phase 44 detail bl
 
 **B. Ship (PR1 / PR2):**
 
-1. **`FalkorDBLocalPersister`** — full impl; reuses ADR-0122 WAL + MERGE-on-id idempotency; best-effort `delete`.
-2. **`SQLiteLocalPersister`** — `MetagraphDump`-blob impl.
-3. **`MetagraphDump`** dataclass + backend-neutral serialize/reconstruct; round-trip property tests vs both backends.
+1. **`FalkorDBLocalPersister`** — native round-trip via `MetagraphRepository.persist` + `MetagraphLoader.load` (no serialization); MERGE-on-id idempotency (ADR-0122); best-effort `delete -> bool`; per-user mutex on write.
+2. ~~`SQLiteLocalPersister`~~ — **deferred** (CR-2 Falkor-only v1; ships with the first local-first/portable-export consumer).
+3. ~~`MetagraphDump` + serializer promotion~~ — **deferred** with item 2.
 4. **`MindsOSServer` class refactor** — free-functions → class; migrate `_installed_locals` / `_install_lock` / `_mutex_registry`; preserve `reset_state_for_tests()`; rewire the `read_other_local` ctx-mgr mutex (ADR-0006). Adds `mindsos_server/orchestrator.py` to Modules-touched.
 5. **Falkor-backed L3 bootstrap + state-file serialization** — `bootstrap_kl_from_falkordb` into `_construct_invoke_layer`; reachability probe + in-memory fallback (PHASE_38 §4 #2).
 6. **Kahn topological-sort scheduler (L2-37 consumer).** Consumes `_APPLIES_AFTER_BY_ROLE`; respects soft edge `episodic_memories ← {task-patterns}`; cycles raise; missing → `frozenset()`.

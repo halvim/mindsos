@@ -27,16 +27,14 @@ def test_adr_0160_present_and_accepted() -> None:
     assert "**Status:** Accepted" in body
 
 
-def test_adr_0160_names_dump_and_both_persisters() -> None:
+def test_adr_0160_falkor_native_sqlite_deferred() -> None:
     body = _read("0160-l0-persister-impls.md")
     for token in (
-        "MetagraphDump",
         "FalkorDBLocalPersister",
-        "SQLiteLocalPersister",
-        "promoted",
+        "MetagraphRepository.persist",
+        "MetagraphLoader",
         "native",
-        "dump_schema_version",
-        "locals.db",
+        "deferred",
     ):
         assert token in body, f"{token!r} missing from ADR-0160 body"
 
@@ -64,21 +62,15 @@ def test_adr_0011_amendment_3_present() -> None:
     assert "### amendment-3 (Phase 44 ship" in body
     after_am3 = body.split("### amendment-3", 1)[1]
     for token in (
-        "MetagraphDump",
-        "FalkorDBLocalPersister` + `SQLiteLocalPersister` ship",
+        "FalkorDBLocalPersister` ships native",
+        "stay deferred",
         "clean cut",
     ):
         assert token in after_am3, f"{token!r} missing from ADR-0011 amendment-3"
 
 
-def test_adr_0004_amendment_2_present() -> None:
+def test_adr_0004_has_no_phase_44_amendment() -> None:
+    # CR-2 reversed to Falkor-only v1; ADR-0004 stays unamended until a
+    # SQLite-blob Local store actually ships.
     body = _read("0004-split-persistence.md")
-    assert "### amendment-2 (Phase 44 ship" in body
-    after_am2 = body.split("### amendment-2 (Phase 44 ship", 1)[1]
-    for token in (
-        "SQLiteLocalPersister",
-        "opaque `MetagraphDump` blob",
-        "locals.db",
-        "local-first",
-    ):
-        assert token in after_am2, f"{token!r} missing from ADR-0004 amendment-2"
+    assert "### amendment-2 (Phase 44 ship" not in body

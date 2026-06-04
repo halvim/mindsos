@@ -69,19 +69,3 @@ Server code reads/writes `server.db` directly; KL never sees SQLite. KL reads/wr
 **Out-of-scope:** Wipe-on-restart re-activates when HTTP daemon ships (re-amend at that point). `expires_at` storage stays dropped permanently — even under daemon there's no reason to denormalize.
 
 See `halvim_mindsos/confirmation_docs/PHASE_19_DESIGN_LOG.md` §1 round 1 PB-1 + round 2 PB-10 for the rationale chain.
-
-### amendment-2 (Phase 44 ship — 2026-06-04) — SQLite-blob Local backing store is permitted; §Alternatives #2 rejection narrowed
-
-**Trigger:** Phase 44 (CR-2, 2026-06-04) ships a `SQLiteLocalPersister` alongside the FalkorDB one (ADR-0160). §Context ("using SQLite for the Locals would throw away all the metagraph machinery") and §Alternatives #2 ("All-SQLite (serialize graphs). Rejected") read as a blanket prohibition on SQLite-backed Locals. They are narrowed here.
-
-**Clarified behavior:**
-
-* The blanket rejection applies only to using SQLite as a **graph-relational** store for Locals — modelling nodes/edges as SQLite rows and running graph queries in SQL. That stays rejected.
-* Storing a serialized, **opaque `MetagraphDump` blob** in SQLite is permitted as an alternative Local backing store (local-first / portable deployments). The blob is never queried graph-relationally; FalkorDB remains the reference store and the only place graph queries run. The `LocalPersister` Protocol (ADR-0011) is the seam that makes the backing store pluggable.
-* The SQLite-blob Local dumps live in a dedicated **`locals.db`** file, NOT in `server.db`. `server.db` stays reserved for auth/sessions/audit per §Decision; `locals.db` carries user graph-dump data on its own backup cadence.
-
-**Rationale:** ADR-0011 always anticipated alternative back-ends ("file-backed for local-first workflows"). A dump-blob store does not "throw away the metagraph machinery" — the machinery runs in KL at load time; SQLite only holds the bytes. The original text predates the `MetagraphDump` boundary (ADR-0160) and conflated "SQLite as graph engine" with "SQLite as blob store."
-
-**Out-of-scope:** FalkorDB stays the reference/default Local store and the sole graph-query surface. `server.db` schema unchanged.
-
-**Phase 44 design log:** `confirmation_docs/PHASE_44_DESIGN_LOG.md` §1 S3 + ADR-0160 §3.
