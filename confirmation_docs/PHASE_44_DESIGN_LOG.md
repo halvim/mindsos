@@ -223,3 +223,30 @@ PR2 grounding over `mindsos_server/orchestrator.py` + its caller set reversed CR
 **S7 — Kahn scheduler (consume the Phase-43 field; zero behavioral change).** `kahn_sort(roles, applies_after)` in `mindsos_knowledge/bootstrap.py` + `BootstrapCycleError` (`exceptions.py`). Wired into `KnowledgeLayer.bootstrap()`'s three walk sites (1 Global + 2 Local), replacing `sorted(...)`. **Key finding:** `_LOCAL_NAMED_ROLES = {episodic_memories, capacity-state}` and `task-patterns` is Global — so the one edge (`episodic_memories ← task-patterns`) is **cross-scope** and is filtered out by `kahn_sort`'s in-scope intersection. Every single-scope sort therefore reduces to alphabetical = the exact pre-Phase-44 `sorted()` order → **no behavioral change, no order-sensitive test risk**. The scheduler's value is consuming the dead field + cycle-detection for future within-scope edges. `tests/phase_44/test_kahn_scheduler.py` covers edge-respect, alphabetical tie-break, cross-scope filtering, missing-decl, cycle-raise, and real-declaration-reduces-to-alphabetical. Logic verified standalone (sandbox is Py3.10).
 
 **Deferred to consumer phases:** S6 (KL retention API → Phase 48 / L3-L4; marker name already frozen in ADR-0161) + L2-10 (`validate_local_to_global_ref` wiring → first v1 Local→Global ref-write flow).
+
+---
+
+## §11 — Implementation complete; ship ceremony pending (checkpoint 2026-06-04)
+
+**Phase 44 implementation done + twice-gated-green.** `origin/phase-44` carries R0 → PR1.1/1.1b/1.1c → PR1.2/1.2a (Falkor persister) → §8 ship note → CR-3-reversal → PR3 (S7+S8). Two cumulative gates: PR1 = 3619/8/0; PR3 = **3630/8/0** (3619 + 11 phase_44 tests). Zero failures both times.
+
+**What actually shipped (vs original Phase 44 plan):**
+
+| Item | Status |
+|---|---|
+| `FalkorDBLocalPersister` (native; scoped delete) | **shipped** (PR1) |
+| Kahn scheduler (`kahn_sort` + `BootstrapCycleError`; consumes Phase-43 field) | **shipped** (PR3 / S7) |
+| `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` | **shipped** (PR3 / S8) |
+| ADRs 0160 (Falkor-only) + 0161 (KL surface) + 0011 §am-3 | **shipped** (PR1) |
+| SQLite persister + `MetagraphDump` + serializer promotion | **deferred** (CR-2 → first local-first consumer) |
+| `MindsOSServer` class + lifecycle hooks | **deferred** (CR-3 → L4/L5 Local-write phase) |
+| `read_at_version` / `retire_version` impl (S6) | **deferred** (→ Phase 48 / L3-L4; ADR-0161 froze the marker name) |
+| `validate_local_to_global_ref` wiring (L2-10) | **deferred** (→ first Local→Global ref-write flow) |
+
+**Remaining = ship ceremony only (no code):**
+
+1. **Land `phase-44` → `main`** (FF, per Phase 43 precedent; `main` is at `eb328c2`).
+2. **6-step confirm-phase** (HANDOFF §9): `mindsos confirm-phase --init-notes 44` (Mac) → tester notes body → tester edits on Linux → `mindsos confirm-phase --phase 44 --notes-file notes-phase-44.md` from post-FF `main` (Linux) → commit `PHASE_44_CONFIRMED.md` + notes + push → Mac tags `phase-44-confirmed`.
+3. **Closure docs** (mirror Phase 43's docs-landing): HANDOFF §3.1 Phase 44 ship block + §1 timestamp; CLAUDE.md status flip to "Phase 44 SHIPPED"; POST_PHASE_38_PHASE_MAP §4 Phase 44 row → SHIPPED with as-shipped scope (note the CR-2/CR-3/S6/L2-10 deferrals); L2_FUTURE_WORK / L0_FUTURE_WORK status updates for the deferred items' new owner phases.
+
+**Resume pointer:** start at ceremony step 1 (FF landing). The tester-notes body should state the as-shipped scope (PR1 persister + PR3 scheduler + cap/audit) and enumerate the four deferrals with their consumer-phase rationale (this §11 table is the source). Carry-forward follow-ups for whoever owns the deferred items: the live-FalkorDB persister round-trip + scoped-delete integration test (§7), and metaedge/XRef delete coverage.
