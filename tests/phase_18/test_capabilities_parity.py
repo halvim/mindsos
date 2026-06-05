@@ -20,6 +20,7 @@ from mindsos_server.capabilities import (
     CAN_MANAGE_USERS,
     CAN_PROMOTE,
     CAN_PROPOSE_MUTATION,
+    CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
     CAN_READ_OTHER_LOCALS,
     CAN_VIEW_AUDIT_LOG,
     CAN_WRITE_GLOBAL,
@@ -30,11 +31,11 @@ from mindsos_server.capabilities import (
 class TestRosterPerADR0002:
     """PB-12 — ADR-0002 roster (7 at Phase 18; +2 at Phase 24 per ADR-0002 §am2)."""
 
-    def test_nine_capabilities(self) -> None:
+    def test_ten_capabilities(self) -> None:
         # Phase 24 ADR-0002 §am2 added CAN_PROPOSE_MUTATION +
-        # CAN_APPROVE_RELEASE; roster 7 → 9. Earlier "seven" assertion
-        # decayed at Phase 24 ship.
-        assert len(ALL_CAPABILITIES) == 9
+        # CAN_APPROVE_RELEASE; roster 7 → 9. Phase 44 L2-39 added
+        # CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY; roster 9 → 10.
+        assert len(ALL_CAPABILITIES) == 10
 
     def test_all_capabilities_listed(self) -> None:
         assert set(ALL_CAPABILITIES) == {
@@ -47,6 +48,7 @@ class TestRosterPerADR0002:
             CAN_MANAGE_USERS,
             CAN_PROPOSE_MUTATION,    # Phase 24 +ADR-0002 §am2
             CAN_APPROVE_RELEASE,     # Phase 24 +ADR-0002 §am2
+            CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,  # Phase 44 +L2-39
         }
 
 

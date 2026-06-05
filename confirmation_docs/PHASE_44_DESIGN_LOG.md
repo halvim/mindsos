@@ -211,3 +211,15 @@ PR2 grounding over `mindsos_server/orchestrator.py` + its caller set reversed CR
 **ADR impact:** ADR-0011 §am-3 header + clauses 3/4 reverted to "class + hooks defer" (cl.1 Protocol-Metagraph + cl.2 Falkor-ships unchanged). No `orchestrator.py` change. No `tests_server/` migration.
 
 **Revised phase shape:** PR1 (shipped, gated green) → ~~PR2~~ (dropped) → **PR3** (KL `read_at_version`/`retire_version` + `_retired_inline_pending` marker + Kahn scheduler + `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `validate_local_to_global_ref`). PR3 is now the remaining implementation work for the phase.
+
+---
+
+## §10 — PR3 scope + ship (2026-06-04)
+
+**PR3 scope ruling (user):** ship **S7 + S8**; defer **S6 + L2-10**. Grounding (consumer scan): S7 resolves a shipped-but-unconsumed Phase-43 field (real); S8 is a mandated additive roster add (L2-39); S6 (`read_at_version`/`retire_version`) has zero consumers (Phase 48 / D'1) and ADR-0161 already froze the only load-bearing artifact (the marker name); L2-10's validator exists but no v1 flow writes Local→Global refs. Same consumer-discipline as CR-2/CR-3.
+
+**S8 — audit constant + capability (additive, no v1 emit-site).** `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` added to `capabilities.py` (`ADMIN_CAPS` + `ALL_CAPABILITIES`, 9→10) + `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` in `audit.py`. Phase 18 `test_capabilities_parity` flipped 9→10 (`test_ten_capabilities` + set) in the same change. No KL-side capability mirror exists. `tests/phase_44/test_episodic_capability_audit.py` asserts roster shape + distinctness + default-deny.
+
+**S7 — Kahn scheduler (consume the Phase-43 field; zero behavioral change).** `kahn_sort(roles, applies_after)` in `mindsos_knowledge/bootstrap.py` + `BootstrapCycleError` (`exceptions.py`). Wired into `KnowledgeLayer.bootstrap()`'s three walk sites (1 Global + 2 Local), replacing `sorted(...)`. **Key finding:** `_LOCAL_NAMED_ROLES = {episodic_memories, capacity-state}` and `task-patterns` is Global — so the one edge (`episodic_memories ← task-patterns`) is **cross-scope** and is filtered out by `kahn_sort`'s in-scope intersection. Every single-scope sort therefore reduces to alphabetical = the exact pre-Phase-44 `sorted()` order → **no behavioral change, no order-sensitive test risk**. The scheduler's value is consuming the dead field + cycle-detection for future within-scope edges. `tests/phase_44/test_kahn_scheduler.py` covers edge-respect, alphabetical tie-break, cross-scope filtering, missing-decl, cycle-raise, and real-declaration-reduces-to-alphabetical. Logic verified standalone (sandbox is Py3.10).
+
+**Deferred to consumer phases:** S6 (KL retention API → Phase 48 / L3-L4; marker name already frozen in ADR-0161) + L2-10 (`validate_local_to_global_ref` wiring → first v1 Local→Global ref-write flow).

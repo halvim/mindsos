@@ -47,10 +47,12 @@ from mindsos_core.models.identity import IdStrategy, UUID4Strategy
 from mindsos_core.models.metagraph import Metagraph
 
 from .bootstrap import (
+    _APPLIES_AFTER_BY_ROLE,
     _GLOBAL_NAMED_ROLES,
     _LOCAL_NAMED_ROLES,
     ensure_global_role_graph,
     ensure_local_role_graph,
+    kahn_sort,
 )
 
 if TYPE_CHECKING:
@@ -196,7 +198,7 @@ class KnowledgeLayer:
         )
         # Auto-ensure 6 Global named roles. Alignment pair-graphs are
         # importer-driven (Phase 15); bootstrap does not enumerate them.
-        for role in sorted(_GLOBAL_NAMED_ROLES):
+        for role in kahn_sort(_GLOBAL_NAMED_ROLES, _APPLIES_AFTER_BY_ROLE):
             ensure_global_role_graph(global_mg, role)
         return cls(global_metagraph=global_mg, id_strategy=strategy)
 
@@ -273,7 +275,7 @@ class KnowledgeLayer:
             name=_local_metagraph_name(user_id),
             id_strategy=self._id_strategy,
         )
-        for role in sorted(_LOCAL_NAMED_ROLES):
+        for role in kahn_sort(_LOCAL_NAMED_ROLES, _APPLIES_AFTER_BY_ROLE):
             ensure_local_role_graph(local_mg, role)
         self._locals[user_id] = local_mg
         return local_mg
@@ -459,7 +461,7 @@ class KnowledgeLayer:
         # the passed metagraph is missing them. Idempotent: if they
         # already exist (from a server reading them out of FalkorDB),
         # ensure_local_role_graph returns the existing references.
-        for role in sorted(_LOCAL_NAMED_ROLES):
+        for role in kahn_sort(_LOCAL_NAMED_ROLES, _APPLIES_AFTER_BY_ROLE):
             ensure_local_role_graph(metagraph, role)
         self._locals[user_id] = metagraph
 

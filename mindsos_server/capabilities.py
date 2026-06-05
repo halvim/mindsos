@@ -76,6 +76,12 @@ CAN_PROPOSE_MUTATION = "CAN_PROPOSE_MUTATION"
 #: name forward-compatible without rename.
 CAN_APPROVE_RELEASE = "CAN_APPROVE_RELEASE"
 
+#: Admin read of ANOTHER user's Local ``episodic_memories`` role-graph,
+#: distinct from the generic ``CAN_READ_OTHER_LOCALS`` (L2-39 / D-L2-23,
+#: Phase 44). No v1 emit-site — registered ahead of the first capacity
+#: that reads cross-user episodic memory (default-deny; admin opt-in).
+CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY = "CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY"
+
 
 #: User default capability bundle — strictly empty in v1 per ADR-0002 +
 #: Phase 18 PB-12. Reserved for future per-user grants; Proposed-status
@@ -83,10 +89,11 @@ CAN_APPROVE_RELEASE = "CAN_APPROVE_RELEASE"
 #: before.
 USER_CAPS: frozenset[str] = frozenset()
 
-#: Admin default capability bundle — all nine per ADR-0002 §Decision +
-#: §am2 (Phase 24 ship; +CAN_PROPOSE_MUTATION + CAN_APPROVE_RELEASE
-#: per PB-23(a)). ``CAN_READ_PENDING_GLOBAL`` deferred to first direct-
-#: read consumer phase per PB-23(a).
+#: Admin default capability bundle — all ten per ADR-0002 §Decision +
+#: §am2 (Phase 24 ship; +CAN_PROPOSE_MUTATION + CAN_APPROVE_RELEASE per
+#: PB-23(a)) + Phase 44 (+CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY per
+#: L2-39). ``CAN_READ_PENDING_GLOBAL`` deferred to first direct-read
+#: consumer phase per PB-23(a).
 ADMIN_CAPS: frozenset[str] = frozenset(
     {
         CAN_READ_OTHER_LOCALS,
@@ -98,6 +105,7 @@ ADMIN_CAPS: frozenset[str] = frozenset(
         CAN_MANAGE_USERS,
         CAN_PROPOSE_MUTATION,
         CAN_APPROVE_RELEASE,
+        CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
     }
 )
 
@@ -116,4 +124,5 @@ ALL_CAPABILITIES: tuple[str, ...] = (
     CAN_MANAGE_USERS,
     CAN_PROPOSE_MUTATION,
     CAN_APPROVE_RELEASE,
+    CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
 )

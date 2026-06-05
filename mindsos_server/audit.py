@@ -114,6 +114,13 @@ EVT_KILL_SESSION = "EVT_KILL_SESSION"
 #: row carries enough state for forensic reconstruction).
 EVT_CROSS_USER_READ_INSTALL = "EVT_CROSS_USER_READ_INSTALL"
 
+#: Admin read of another user's Local ``episodic_memories`` role-graph
+#: (L2-39 / D-L2-23, Phase 44). Distinct from
+#: :data:`EVT_CROSS_USER_READ_INSTALL` (generic Local install) — gated
+#: by ``CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY``. No v1 emit-site;
+#: registered ahead of the first cross-user episodic-memory read flow.
+EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY = "EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY"
+
 # Promotion + release events (Phase 24 — ADR-0118 + ADR-0114 + ADR-0115).
 #
 # Phase 24 design log PB-11(a) shrank PIVOT §7.6's 8-event slate to 4

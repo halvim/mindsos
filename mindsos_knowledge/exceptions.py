@@ -79,6 +79,15 @@ class UnknownRoleError(KnowledgeError):
     """
 
 
+class BootstrapCycleError(KnowledgeError):
+    """Raised by ``kahn_sort`` when the ``applies_after`` declarations
+    over a role set contain a cycle (Phase 44 — L2-37 consumer split).
+
+    The bootstrap walk cannot produce a valid order; the message lists
+    the roles still unresolved when no dependency-free role remained.
+    """
+
+
 class AlreadyInstalledError(KnowledgeError):
     """Raised by ``KnowledgeLayer.install_local_metagraph(user_id, mg)``
     when a Local metagraph is already installed for ``user_id``.

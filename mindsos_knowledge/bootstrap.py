@@ -42,12 +42,12 @@ Per Phase 14 PB-8 + ADR-0150 §amendment-1: alignment is Global-only.
 
 from __future__ import annotations
 
-from typing import Optional, Tuple
+from typing import Iterable, Mapping, Optional, Tuple
 
 from mindsos_core import Graph
 from mindsos_core.models.metagraph import Metagraph
 
-from .exceptions import KnowledgeError, UnknownRoleError
+from .exceptions import BootstrapCycleError, KnowledgeError, UnknownRoleError
 from .identifiers import (
     ALL_ROLES,
     ROLE_CAPACITY_GAPS,
@@ -151,11 +151,59 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
 __all__ = [
     "ensure_global_role_graph",
     "ensure_local_role_graph",
+    "kahn_sort",
     "_GLOBAL_NAMED_ROLES",
     "_LOCAL_NAMED_ROLES",
     "_ALIGNMENT_PREFIX",
     "_APPLIES_AFTER_BY_ROLE",
 ]
+
+
+def kahn_sort(
+    roles: Iterable[str],
+    applies_after: Mapping[str, "frozenset[str]"],
+) -> Tuple[str, ...]:
+    """Deterministic topological bootstrap order over ``roles``.
+
+    Each role is emitted only after every role named in its
+    ``applies_after`` set that is also present in ``roles``. Cross-scope
+    dependencies (a target outside ``roles``) are ignored — they are
+    satisfied by Global-before-Local bootstrap sequencing, not by this
+    within-scope sort. Among roles with no remaining dependency the
+    alphabetically-smallest is emitted next, so independent roles keep
+    the ``sorted(...)`` order the pre-Phase-44 bootstrap walk used.
+    Missing ``applies_after`` entries default to no constraint
+    (Phase 43 NPB11-1).
+
+    Consumes the Phase-43 ``_APPLIES_AFTER_BY_ROLE`` declarations
+    (L2-37 consumer split). With the v1 declarations the only edge
+    (``episodic_memories ← task-patterns``) is cross-scope, so every
+    single-scope sort reduces to alphabetical; the scheduler exists to
+    enforce ordering for future within-scope edges and to reject cycles.
+
+    Raises:
+        BootstrapCycleError: the in-scope ``applies_after`` edges
+            contain a cycle.
+    """
+    role_set = set(roles)
+    remaining: dict[str, set[str]] = {
+        role: set(applies_after.get(role, frozenset())) & role_set
+        for role in role_set
+    }
+    ordered: list[str] = []
+    while remaining:
+        ready = sorted(role for role, deps in remaining.items() if not deps)
+        if not ready:
+            raise BootstrapCycleError(
+                "applies_after cycle among roles: "
+                + ", ".join(sorted(remaining))
+            )
+        nxt = ready[0]
+        ordered.append(nxt)
+        del remaining[nxt]
+        for deps in remaining.values():
+            deps.discard(nxt)
+    return tuple(ordered)
 
 
 def _find_role_graph(metagraph: Metagraph, role: str) -> Optional[Graph]:
