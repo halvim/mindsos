@@ -179,3 +179,17 @@ Combined with the fact that `SQLiteLocalPersister` has **no named v1 consumer**,
 **Verification gap (known):** the Cowork sandbox has Python 3.10 and no FalkorDB; the project needs 3.12. Unit tests (`test_falkor_persister.py`, `InMemoryClient`) cover Protocol satisfaction + missing-key semantics + persist delegation + `FlushFailedError`; they do **not** exercise a real round-trip or the scoped-delete Cypher. **The save→load round-trip + delete statement set are validated only on the Linux docker gate.** Expected follow-up surface: metaedge / metahyperedge / XRef delete-coverage completeness (the anchor-satellite sweep is a best-effort first cut) — budget 1-2 gate-driven follow-ups within the 4-5 allowance.
 
 **Gate-driven follow-up (PR1.2a — import-cycle warm-up).** First gate of `tests/phase_44/` in isolation surfaced a **pre-existing** circular import: `mindsos_server/__init__` → `admin` → `persistence` → `mindsos_admin` → `promotion` → `mindsos_server.admin.admin_tx` (`admin_tx` defined after `admin.py:80`'s persistence import). `git diff main` over all cycle modules is empty — identical to Phase 43; the cumulative suite masks it because the server-phase conftests (phase_24 does `from mindsos_admin import …`) warm `mindsos_admin` first. `tests/phase_44/` had no conftest, so cold isolated collection bit. Fix: `tests/phase_44/conftest.py` does `importlib.import_module("mindsos_admin")` before the test modules import `mindsos_server` (mirrors the server-phase warm-up; lets `admin.py` complete `admin_tx` before `promotion` needs it). Not a Phase 44 product change — a test-isolation warm-up only.
+
+---
+
+## §8 — PR1 ship state (2026-06-04)
+
+**PR1 complete + validated.** `origin/phase-44` carries: R0 (`985ca72`) → PR1.1 ADRs (`c9a7960`) → PR1.1b Opt-3a reframe (`cf51cac`) → PR1.1c CR-2 Falkor-only (`db92bdd`) → PR1.2 `FalkorDBLocalPersister` (`54747ab`) → PR1.2a conftest warm-up.
+
+**Cumulative gate (Linux docker, full `pytest tests/`):** **3619 passed, 8 skipped (integration — no live FalkorDB sidecar), 0 failed**, ~32 min. Baseline + 11 new `phase_44` tests (6 ADR sentinels + 5 persister units).
+
+**Shipped:** ADR-0160 (Falkor-only persister + shared-graph substrate/delete contract) + ADR-0161 (KL version surface, not yet consumed — Phase 48) + ADR-0011 §am-3 + `FalkorDBLocalPersister` (native persist/load + scoped `metagraph_id` delete + per-user mutex).
+
+**Known follow-ups carried forward (within 4-5 budget):** (1) live FalkorDB save→load round-trip + scoped-delete integration test (unit tests use `InMemoryClient` only); (2) metaedge/metahyperedge/XRef delete-coverage completeness.
+
+**Next: PR2 — `MindsOSServer` class refactor (CR-3).** Highest-cascade-risk unit (§2). Resume by grounding `mindsos_server/orchestrator.py`'s free-function surface (`_installed_locals` / `_install_lock` / `_mutex_registry`) + the full `tests_server/` caller list before touching code; clean cut, all callers migrate in one commit, wire the Falkor persister into the 4 lifecycle hooks. Then PR3 (KL surface + Kahn scheduler + audit constant/capability).
