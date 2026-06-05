@@ -1,6 +1,4 @@
-"""Invocation runtime + problem-trace primitives + resident handle (Phase 30-31).
-
-The vertical slice ships two distinct subjects in this module:
+"""Invocation runtime + problem-trace primitives (Phase 30).
 
 **Invocation + problem-trace (Phase 30)** — :func:`invoke` runs reactive
 capacities end-to-end with the ADR-0072 envelope contract;
@@ -8,15 +6,10 @@ capacities end-to-end with the ADR-0072 envelope contract;
 :func:`emit_problem_trace` plumb anomaly records to a single per-layer
 sink (ADR-0074 anomaly-only).
 
-**Resident handle (Phase 31)** — :class:`ResidentSubscription` is the
-descriptive contract between L3 and L4 per ADR-0073: L3 holds the
-declaration and the callable that emits signals; L4 owns the event
-loop and decides when to dispatch. The subscription is a HANDLE
-(``eq=False`` per ADR-0073 §amendment-1 clause 3), not a behavioural
-record. Lifecycle methods (``start_resident`` / ``stop_resident`` /
-``active_subscriptions``) live on :class:`CapacityLayer` per ADR-0073
-§amendment-1 clause 1 — no module-level ``_subscriptions`` dict
-(halvim divergence from parent — closes ADR-0073 §Cost row).
+(Phase 31 also shipped a descriptive monitor-subscription handle in this
+module; it was retired in Phase 41 when monitor lifecycle relocated to
+the L4 substrate per ADR-0155. L3 now ships only the monitor declaration
+plus the ``CapacityLayer.iter_monitors()`` enumeration producer.)
 
 ADR cross-references:
 - ADR-0072 §amendment-1 (Phase 30) — InvocationResult field rename
@@ -24,11 +17,6 @@ ADR cross-references:
 - ADR-0074 §Implementation (Phase 30) — in-memory anomaly-only sink.
 - ADR-0066 §Implementation (Phase 30) — InvocationResult + call_capacity
   exports lifted from ``capacity.py`` (Phase 27 layout-parity ship).
-- ADR-0073 §amendment-1 (Phase 31) — per-layer registry + drop
-  ``subscribes_to`` kwarg + ``eq=False`` handle + ``ResidentError``
-  for wrong-type.
-- ADR-0088 §Implementation (Phase 31) — fine-grained granularity
-  validated by ``Monitor.subscribes_to`` being the source of truth.
 """
 
 from __future__ import annotations
@@ -36,13 +24,12 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from typing import Any, List, Mapping, Optional
 
-from .capacity import InvocationResult, Monitor, _CapacityBase, call_capacity
+from .capacity import InvocationResult, _CapacityBase, call_capacity
 from .exceptions import (
     CapacityRegistrationError,
     ProblemTraceError,
-    ResidentError,
 )
 # NOTE: ``WriteResult`` (from .write_outcome) is intentionally NOT imported
 # at module level — ``write_outcome.py`` imports ``ProblemTraceRecord``
@@ -260,92 +247,9 @@ def invoke(
         )
 
 
-# ── Resident handle (ADR-0073; Phase 31) ──────────────────────────────
-
-
-@dataclass(eq=False)
-class ResidentSubscription:
-    """Descriptive handle returned by :meth:`CapacityLayer.start_resident`.
-
-    L3 holds the contract between itself and L4 (ADR-0073): L3 owns the
-    declaration and the callable that emits signals; L4 owns the event
-    loop and decides when to dispatch. The vertical slice does not
-    spawn threads, timers, or queues — callers drive the resident
-    via :meth:`emit`, which calls registered handlers synchronously.
-
-    Identity is by-object (``@dataclass(eq=False)`` per ADR-0073
-    §amendment-1 clause 3): two subscriptions are equal iff they are
-    the same Python object. The mutable :attr:`state` + :attr:`handlers`
-    fields would make field-by-field equality fragile and useless.
-
-    Attributes:
-        subscription_id: Unique id for this subscription instance
-            (UUID4 string; assigned at construction).
-        declaration: The :class:`Monitor` declaration behind this
-            subscription. Looked up from the registry by IRI when the
-            subscription is started.
-        subscribes_to: Frozen tuple of DataState IRIs this resident
-            watches. Always equal to ``tuple(declaration.subscribes_to)``
-            — the declaration is the source of truth per ADR-0073
-            §amendment-1 clause 2 (kwarg dropped).
-        handlers: Callbacks registered via :meth:`on_signal`. Empty by
-            default; populated by L4 (or test code) to receive emitted
-            signals.
-        state: Mutable process-memory slot (ADR-0099 Q6 tri-tier
-            reference). Opaque to L3 — L4's lifecycle process triages
-            observations into L2 / L5 / process-memory at its
-            discretion. **L3 never writes here**; Phase 31 ships the
-            field empty for L4 to manage.
-        _active: True until :meth:`CapacityLayer.stop_resident` is
-            called. Used by :meth:`on_signal` + :meth:`emit` as a guard.
-    """
-
-    subscription_id: str
-    declaration: Monitor
-    subscribes_to: tuple
-    handlers: List[Callable[[Any], None]] = field(default_factory=list)
-    state: Dict[str, Any] = field(default_factory=dict)
-    _active: bool = True
-
-    def on_signal(self, handler: Callable[[Any], None]) -> None:
-        """Register a handler to be called on every :meth:`emit`.
-
-        Raises:
-            ResidentError: If the subscription has been stopped.
-        """
-        if not self._active:
-            raise ResidentError(
-                f"Subscription {self.subscription_id!r} is stopped"
-            )
-        self.handlers.append(handler)
-
-    def emit(self, signal: Any) -> None:
-        """Dispatch ``signal`` to every registered handler synchronously.
-
-        L4 calls this when its event loop observes the watched
-        DataState. Handlers run in registration order; an exception
-        in one handler aborts dispatch (no try/except wrapping per
-        ADR-0073 — L3 is purely descriptive; error policy is L4).
-
-        Raises:
-            ResidentError: If the subscription has been stopped.
-        """
-        if not self._active:
-            raise ResidentError(
-                f"Subscription {self.subscription_id!r} is stopped"
-            )
-        for h in list(self.handlers):
-            h(signal)
-
-    def is_active(self) -> bool:
-        """True iff :meth:`CapacityLayer.stop_resident` has NOT been called."""
-        return self._active
-
-
 __all__ = [
     "ProblemTraceRecord",
     "ProblemTraceSink",
     "emit_problem_trace",
     "invoke",
-    "ResidentSubscription",
 ]

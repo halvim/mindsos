@@ -134,13 +134,17 @@ NODE_TYPES: FrozenSet[str] = frozenset({
 })
 
 #: ``node_kind`` property value — used by L4 to decide runtime handling.
+#: ``KIND_MONITOR`` (value ``"monitor"``) replaces the Phase 31 monitor
+#: node_kind constant (value ``"resident"``) per ADR-0155 (Phase 41) —
+#: monitor lifecycle relocated to the L4 substrate; the node_kind triad
+#: is now REACTIVE / MONITOR / ADAPTER.
 KIND_REACTIVE = "reactive"
-KIND_RESIDENT = "resident"
+KIND_MONITOR = "monitor"
 KIND_ADAPTER = "adapter"
 KIND_DATASTATE = "datastate"
 
 NODE_KINDS: FrozenSet[str] = frozenset({
-    KIND_REACTIVE, KIND_RESIDENT, KIND_ADAPTER, KIND_DATASTATE,
+    KIND_REACTIVE, KIND_MONITOR, KIND_ADAPTER, KIND_DATASTATE,
 })
 
 
@@ -329,7 +333,7 @@ __all__ = [
     "NODE_TYPE_DATASTATE",
     "NODE_TYPES",
     "KIND_REACTIVE",
-    "KIND_RESIDENT",
+    "KIND_MONITOR",
     "KIND_ADAPTER",
     "KIND_DATASTATE",
     "NODE_KINDS",

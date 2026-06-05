@@ -1,48 +1,17 @@
 """Shared fixtures for tests/phase_31/.
 
 One shared file per R2 PB-18 (Phase 30 precedent).
+
+The resident-lifecycle fixtures (``make_test_monitor`` /
+``make_layer_with_test_monitor``) were removed in Phase 41 along with the
+resident test suite when monitor lifecycle relocated to the L4 substrate
+(ADR-0155). The text-builtins fixtures below survive.
 """
 
 from __future__ import annotations
 
-from typing import Tuple
-
-from mindsos_capacity import (
-    CapacityLayer,
-    DataState,
-    Monitor,
-    ShapeDescriptor,
-)
-from mindsos_capacity.builtins import (
-    DS_RAW_TEXT,
-    install_text_capacities,
-)
-from mindsos_capacity.identifiers import (
-    CATEGORY_PERCEPTION,
-    capacity_iri,
-)
-
-
-def make_test_monitor(
-    name: str = "resident.test",
-    subscribes: Tuple[str, ...] = (DS_RAW_TEXT,),
-) -> Monitor:
-    """Build a Monitor declaration suitable for resident tests.
-
-    Registers a thin Monitor in CATEGORY_PERCEPTION with the supplied
-    name and ``subscribes_to`` set. The implementation is a no-op (L3
-    is descriptive at Phase 31).
-    """
-    return Monitor(
-        name=name,
-        category=CATEGORY_PERCEPTION,
-        inputs=(),
-        outputs=(),
-        subscribes_to=subscribes,
-        emits=(),
-        implementation=lambda **kw: None,
-        description=f"Test Monitor {name!r} for resident-lifecycle tests.",
-    )
+from mindsos_capacity import CapacityLayer
+from mindsos_capacity.builtins import install_text_capacities
 
 
 def make_fresh_layer() -> CapacityLayer:
@@ -55,24 +24,3 @@ def make_layer_with_text() -> CapacityLayer:
     layer = CapacityLayer()
     install_text_capacities(layer)
     return layer
-
-
-def make_layer_with_test_monitor(
-    name: str = "resident.test",
-    subscribes: Tuple[str, ...] = (DS_RAW_TEXT,),
-):
-    """Return (layer, monitor_iri) — fresh layer + registered test Monitor.
-
-    Registers a fresh DataState ``test_input`` for the Monitor to
-    subscribe to, then registers the Monitor itself. Returns the layer
-    + the Monitor's IRI for ``start_resident`` calls.
-    """
-    layer = CapacityLayer()
-    # Register the DataState the Monitor will reference (if not in
-    # the supplied subscribes tuple — most callers pass DS_RAW_TEXT,
-    # which would require the text-builtins family to be installed).
-    if subscribes == (DS_RAW_TEXT,):
-        install_text_capacities(layer)
-    monitor = make_test_monitor(name=name, subscribes=subscribes)
-    layer.register_capacity(monitor)
-    return layer, capacity_iri(CATEGORY_PERCEPTION, name)

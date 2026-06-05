@@ -186,9 +186,12 @@ proposes for promotion, releases via `mindsos server release ship`.
 Carries pending mutations + audit gate + release-ship lock per
 ADR-0118.
 
-**Resident.** A long-running L3 Capacity (e.g., a Monitor) modeled
-descriptively at L3 + scheduled at L4. L3 ships only the contract.
-Shipped Phase 31.
+**Resident.** *(Term retired Phase 41 — ADR-0155.)* Shipped Phase 31 as
+a long-running L3 Capacity modeled descriptively at L3 + scheduled at L4.
+In Phase 41 the L3 lifecycle plumbing was retired and "resident"
+collapsed into **Monitor**: L3 ships the `Monitor` declaration +
+`cl.iter_monitors()`; the lifecycle (subscription registry, scheduling)
+is owned by the L4 substrate.
 
 **Role-graph.** A Graph inside the L2 metagraph holding state for
 one knowledge role (e.g., `lexicon`, `ontology`, `concepts`,

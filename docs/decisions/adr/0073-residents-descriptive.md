@@ -1,6 +1,7 @@
 ---
 title: Residents are descriptive; L3 contains no event loop
-status: Accepted
+status: Superseded
+superseded_by: [ADR-0155]
 date: 2026-04-21
 layer: L3
 aliases: [capacity-ADR-014]
@@ -8,7 +9,15 @@ aliases: [capacity-ADR-014]
 
 # ADR-0073: Residents are descriptive; L3 contains no event loop
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0155](0155-monitor-lifecycle-relocated-from-l3-to-l4.md) (Phase 41, 2026-06-05)
+
+> **Superseded.** The resident lifecycle plumbing this ADR + its
+> §amendment-1 describe (`start_resident` / `stop_resident` /
+> `active_subscriptions` / `ResidentSubscription` / `ResidentError` /
+> the per-layer `_subscriptions` registry) was retired from L3 in
+> Phase 41. Monitor lifecycle relocated to the L4 substrate per
+> ADR-0155. The §amendment-1 / §Implementation markers below are
+> retained as history.
 
 **Date:** 2026-04-21
 

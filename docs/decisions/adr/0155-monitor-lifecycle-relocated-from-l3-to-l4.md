@@ -83,3 +83,27 @@ Ship phase **X2** — between ADR-0157+ADR-0158 (X1) and ADR-0156+ADR-0159 (X3).
 ## Rationale
 
 Per-decision rationale, alternatives explored, and 3-round saturation history at `docs/_workbench/L1_L3_REFRAME_DECISIONS.md` §D36.
+
+## §Implementation (2026-06-05, Phase 41)
+
+Shipped as Rail B slot 2 (L3 X2). Production retirement was **surgical**
+(not a whole-module delete): `ResidentSubscription` removed from
+`runtime.py`, `ResidentError` from `exceptions.py`, and the
+`start_resident` / `stop_resident` / `active_subscriptions` methods +
+`_subscriptions` field from `capacity_layer.py` (the modules also host
+Phase-30 `invoke`/`ProblemTraceSink` + 7 other exceptions, retained).
+`KIND_RESIDENT` (`"resident"`) renamed to `KIND_MONITOR` (`"monitor"`)
+in `identifiers.py` + `NODE_KINDS`; `Monitor.node_kind` follows.
+`CapacityLayer.iter_monitors() -> List[Monitor]` added (filters the
+shared IRI-keyed `_declarations`; Local-wins inherited; no v1 consumer —
+the L4 `MonitorSubscriptionRegistry` lands Phase 46).
+
+Public `__all__` net **114 → 112** (−`ResidentSubscription`,
+−`ResidentError`, −`KIND_RESIDENT`, +`KIND_MONITOR`); export-slate
+sentinels flipped across `tests/phase_29/31/33/34`. The Phase 31 resident
+test suite retired (9 files deleted whole; `_fixtures.py` pruned to its
+text-builtin helpers). Retirement guarded by
+`tests/phase_41/test_resident_infrastructure_retired.py` (importability +
+package-scoped grep). ADR-0073 (+ §amendment-1) flipped to Superseded.
+No version bump (high-water-mark: slot 41 ≤ manifest 44). Full record:
+`confirmation_docs/PHASE_41_DESIGN_LOG.md`.

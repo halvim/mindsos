@@ -29,18 +29,12 @@ ADR-0072 envelope) + ``self.problem_trace`` (per-layer
 :class:`InvocationResult` + :func:`call_capacity` exports via package
 ``__init__.py``.
 
-**Phase 31 additions.** Ships the resident lifecycle methods
-(:meth:`start_resident` / :meth:`stop_resident` /
-:meth:`active_subscriptions`) backed by a per-layer
-``self._subscriptions`` dict. Residents are descriptive per ADR-0073
-— L3 builds the :class:`ResidentSubscription` handle and exposes
-:meth:`on_signal` / :meth:`emit`; L4's event loop dispatches. ADR-0073
-§amendment-1 records halvim divergences: (1) per-layer registry (not
-module-level dict — closes the ADR-0073 §Cost row); (2) ``subscribes_to``
-kwarg dropped (declaration is source of truth); (3)
-``ResidentSubscription`` is ``eq=False`` (handle semantics);
-(4) wrong-type raises ``ResidentError`` (not
-``CapacityRegistrationError``).
+**Monitor enumeration (Phase 41).** :meth:`iter_monitors` enumerates
+registered :class:`Monitor` declarations for the L4 substrate to build
+its session-scope subscription registry. Monitor *lifecycle* (start /
+stop / dispatch) relocated to the L4 substrate per ADR-0155 — the
+Phase 31 resident lifecycle methods + per-layer subscription registry
+were retired in Phase 41.
 
 Deferred to later phases:
 
@@ -95,11 +89,9 @@ from .exceptions import (
     CapacityRegistrationError,
     ConstraintViolationError,
     DiscoveryFailedError,
-    ResidentError,
 )
 from .runtime import (
     ProblemTraceSink,
-    ResidentSubscription,
     invoke as _runtime_invoke,
 )
 from .identifiers import (
@@ -143,7 +135,7 @@ class CapacityLayer:
                 ``global_metagraph`` is supplied.
             kl: Phase 34 (R0 PB-5 + R1 PB-C) — :class:`KnowledgeLayer`
                 reference for write-capacity bodies. When provided,
-                :meth:`invoke` + :meth:`start_resident` inject the KL
+                :meth:`invoke` injects the KL
                 into capacity context under key ``"kl"``. ``None``
                 (legacy default) — write-capacity invocations will
                 raise :class:`RuntimeError` from the body when they
@@ -169,13 +161,6 @@ class CapacityLayer:
         # (ADR-0074 §Implementation). Multi-tenant scoping is L4's
         # concern (R2 PB-29(a) lock; payload-side ``user_id`` provenance).
         self.problem_trace: ProblemTraceSink = ProblemTraceSink()
-
-        # Phase 31 — per-layer resident subscription registry (ADR-0073
-        # §amendment-1 clause 1; closes the ADR-0073 §Cost row "module-
-        # level dict's sharing across layer instances flagged ... as a
-        # test-hygiene hazard"). Accessed via :meth:`start_resident` /
-        # :meth:`stop_resident` / :meth:`active_subscriptions` ONLY.
-        self._subscriptions: Dict[str, ResidentSubscription] = {}
 
     def global_metagraph(self) -> Metagraph:
         return self._global
@@ -594,131 +579,29 @@ class CapacityLayer:
             problem_trace_sink=self.problem_trace,
         )
 
-    # ── Phase 31 — resident lifecycle (ADR-0073 §amendment-1) ─────────
+    # ── Phase 41 — monitor enumeration (ADR-0155) ─────────────────────
 
-    def start_resident(
-        self,
-        capacity_iri: str,
-        *,
-        session: SessionArg = None,
-        context: Optional[Mapping[str, Any]] = None,
-    ) -> ResidentSubscription:
-        """Bring a :class:`Monitor` up as a per-layer resident handle.
+    def iter_monitors(self) -> List[Monitor]:
+        """Return every registered :class:`Monitor` declaration.
 
-        Descriptive only — no thread, timer, or queue is spawned
-        (ADR-0073). L4's event loop iterates
-        :meth:`active_subscriptions` and calls
-        :meth:`ResidentSubscription.emit` when its watched DataStates
-        arrive.
+        The L4 substrate consumes this at session start to build its
+        session-scope ``MonitorSubscriptionRegistry``
+        (``Dict[DataState IRI, List[Monitor IRI]]``) per ADR-0155;
+        Monitor *lifecycle* (start / stop / dispatch) is owned by L4,
+        not L3.
 
-        Looks the declaration up by IRI via the Local-wins rule
-        (Local metagraph of ``session.user_id`` wins over Global on
-        collision; mirrors :meth:`invoke`). ``subscribes_to`` is taken
-        from the declaration unconditionally per ADR-0073 §amendment-1
-        clause 2 (kwarg dropped — declaration is source of truth).
-
-        When ``session`` is supplied, ``context['session_user_id']``
-        and ``context['session_id']`` are injected for provenance-
-        stamping of emitted signals. Caller-set keys are never
-        overwritten.
-
-        Args:
-            capacity_iri: The Monitor's IRI to start.
-            session: Optional bearer of capability + user identity.
-                ``None`` resolves against Global only.
-            context: Optional context mapping for the resident's
-                callable; copied so the registered ``ResidentSubscription``
-                does not alias caller state.
-
-        Raises:
-            CapacityRegistrationError: ``capacity_iri`` is not
-                registered. Pass-through from
-                :meth:`_resolve_declaration` per R3 PB-27.
-            ResidentError: Declaration resolved by IRI is not a
-                :class:`Monitor` (ADR-0073 §amendment-1 clause 4
-                halvim divergence — parent raises
-                ``CapacityRegistrationError``).
-
-        Returns:
-            A fresh :class:`ResidentSubscription` registered in this
-            layer's ``_subscriptions`` dict.
+        Enumeration is merged + Local-wins by construction: declarations
+        live in the single IRI-keyed ``self._declarations`` map (one
+        object per IRI, last-write-wins on a Local/Global IRI collision —
+        the same single-object-per-IRI model :meth:`_resolve_declaration`
+        relies on). Multi-tenant scoping (restricting to one user's
+        Locals + Global) is an L4 concern, consistent with the
+        single-sink ``problem_trace`` discipline (R2 PB-29). Returns an
+        empty list when no Monitors are registered.
         """
-        target_uid = session.user_id if session is not None else None
-        declaration = self._resolve_declaration(
-            capacity_iri, user_id=target_uid
-        )
-        if not isinstance(declaration, Monitor):
-            raise ResidentError(
-                f"Capacity {capacity_iri!r} is not a Monitor and cannot "
-                "be made resident"
-            )
-        # Provenance-stamp the resident context when a session is supplied
-        # (parent Phase 30 capacity_layer.py:444-449 precedent for invoke).
-        if session is not None:
-            ctx = dict(context) if context else {}
-            ctx.setdefault("session_user_id", session.user_id)
-            ctx.setdefault("session_id", session.session_id)
-            # Phase 33 (ADR-0146 §amendment-1 clause 2): symmetric with
-            # invoke() — Session object injected so resident bodies
-            # can call ``session.has(cap)`` for cap-gating.
-            ctx.setdefault("session", session)
-        else:
-            ctx = dict(context) if context else None
-        # Phase 34 (R0 PB-5 + R5 PB-B): symmetric conditional KL
-        # injection with :meth:`invoke`.
-        if self._kl is not None:
-            if ctx is None:
-                ctx = {}
-            ctx.setdefault("kl", self._kl)
-        # Build the subscription handle (ADR-0073 — eq=False; ADR-0088 —
-        # declaration.subscribes_to is the source of truth).
-        import uuid as _uuid  # local — module already imports uuid via runtime
-        sub = ResidentSubscription(
-            subscription_id=str(_uuid.uuid4()),
-            declaration=declaration,
-            subscribes_to=tuple(declaration.subscribes_to),
-        )
-        # Optionally seed the resident's state slot with the provenance
-        # context (L4 reads + extends).
-        if ctx is not None:
-            sub.state["context"] = ctx
-        self._subscriptions[sub.subscription_id] = sub
-        return sub
-
-    def stop_resident(self, subscription: ResidentSubscription) -> None:
-        """Stop a resident, detaching all handlers and removing from registry.
-
-        Strict: raises on already-stopped / never-registered handles
-        per R1 PB-10 lock (halvim discipline — cleanup patterns wrap in
-        try/except).
-
-        Raises:
-            ResidentError: ``subscription`` is not a
-                :class:`ResidentSubscription`, OR its id is absent
-                from this layer's ``_subscriptions`` registry
-                (already stopped OR registered against a different layer).
-        """
-        if not isinstance(subscription, ResidentSubscription):
-            raise ResidentError(
-                "stop_resident expects a ResidentSubscription, got "
-                f"{type(subscription).__name__}"
-            )
-        if subscription.subscription_id not in self._subscriptions:
-            raise ResidentError(
-                f"Unknown subscription id {subscription.subscription_id!r} "
-                "(already stopped, or registered against a different layer)"
-            )
-        subscription._active = False
-        subscription.handlers.clear()
-        del self._subscriptions[subscription.subscription_id]
-
-    def active_subscriptions(self) -> List[ResidentSubscription]:
-        """Return a list copy of every currently-running resident handle.
-
-        Returns a snapshot list (not a live view) so callers may iterate
-        without holding the registry stable.
-        """
-        return list(self._subscriptions.values())
+        return [
+            d for d in self._declarations.values() if isinstance(d, Monitor)
+        ]
 
     def _metagraph_for(self, user_id: Optional[str]) -> Metagraph:
         if user_id is None:

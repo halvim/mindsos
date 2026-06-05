@@ -66,19 +66,19 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_40_export_count_is_114():
-    """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40).
+def test_phase_41_export_count_is_112():
+    """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40)
+    -> 112 (P41).
 
-    Phase 40 X1 lifts +4 over Phase 33 (FamilyDontKnowShape, FAMILY_RULES,
-    family_rule_for, DS_UNHANDLED_INPUT per ADR-0157). REALM_* + RESERVED_REALMS
-    are imported directly from mindsos_capacity.identifiers by consumers and
-    are not surfaced in the package __all__.
+    Phase 41 X2 retires 3 monitor-lifecycle exports (ResidentSubscription,
+    ResidentError, KIND_RESIDENT) and adds 1 (KIND_MONITOR) per ADR-0155:
+    net -2 over Phase 40.
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 114, (
-        f"Phase 40 __all__ count {n} != expected 114 "
-        f"(Phase 33 baseline 110 + 4 new at Phase 40)"
+    assert n == 112, (
+        f"Phase 41 __all__ count {n} != expected 112 "
+        f"(Phase 40 baseline 114 - 3 retired + 1 KIND_MONITOR at Phase 41)"
     )
 
 

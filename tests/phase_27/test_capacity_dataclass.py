@@ -36,8 +36,8 @@ from mindsos_capacity import (
     Capacity,
     CapacityRegistrationError,
     KIND_ADAPTER,
+    KIND_MONITOR,
     KIND_REACTIVE,
-    KIND_RESIDENT,
     Monitor,
     NODE_TYPE_ADAPTER,
     NODE_TYPE_CAPACITY,
@@ -128,7 +128,7 @@ def test_monitor_to_properties_includes_subscribes_to_emits():
     props = m.to_properties()
     assert props["subscribes_to"] == [_DS_TOKENS]
     assert props["emits"] == [_DS_TOKENS]
-    assert props["node_kind"] == KIND_RESIDENT
+    assert props["node_kind"] == KIND_MONITOR
 
 
 def test_adapter_to_properties_includes_is_adapter_true():
@@ -182,7 +182,7 @@ def test_capacity_node_type_defaults_to_capacity():
 def test_monitor_node_type_is_monitor():
     m = _make_monitor()
     assert m.node_type == NODE_TYPE_MONITOR
-    assert m.node_kind == KIND_RESIDENT
+    assert m.node_kind == KIND_MONITOR
 
 
 def test_adapter_node_type_is_adapter_and_kind_is_adapter():

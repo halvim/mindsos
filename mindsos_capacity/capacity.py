@@ -30,8 +30,8 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 from .exceptions import CapacityRegistrationError
 from .identifiers import (
     KIND_ADAPTER,
+    KIND_MONITOR,
     KIND_REACTIVE,
-    KIND_RESIDENT,
     NODE_TYPE_ADAPTER,
     NODE_TYPE_CAPACITY,
     NODE_TYPE_MONITOR,
@@ -116,12 +116,16 @@ class Capacity(_CapacityBase):
 
 @dataclass
 class Monitor(_CapacityBase):
-    """A resident capacity (monitor) — always-running, emits signals.
+    """A monitor capacity — watches DataStates and emits signals.
 
     ``subscribes_to`` and ``emits`` complement ``inputs``/``outputs``
     by naming the signal-level DataStates; the reactive-style lists
     are retained so that a monitor can be treated uniformly by the
     pipeline-finder when it acts in a reactive role.
+
+    Monitor lifecycle (start/stop/dispatch) is owned by the L4 substrate
+    per ADR-0155 (Phase 41); L3 ships only the declaration + the
+    ``CapacityLayer.iter_monitors()`` enumeration producer.
     """
 
     subscribes_to: Tuple[str, ...] = ()
@@ -129,7 +133,7 @@ class Monitor(_CapacityBase):
 
     def __post_init__(self) -> None:
         self.node_type = NODE_TYPE_MONITOR
-        self.node_kind = KIND_RESIDENT
+        self.node_kind = KIND_MONITOR
         self.is_adapter = False
 
     def to_properties(self) -> Dict[str, Any]:

@@ -71,20 +71,12 @@ the invocation runtime + BFS pipeline finder + problem-trace primitives
   §Implementation (Phase 31) footer; ``find_pipeline`` (function-form)
   is canonical.
 - ``PipelineNotFoundError`` + ``ProblemTraceError`` — Phase 30 raisers.
-- ``ResidentSubscription`` (handle; ``@dataclass(eq=False)`` per
-  ADR-0073 §amendment-1 clause 3) — descriptive contract between L3
-  and L4; ``on_signal`` + ``emit`` are synchronous; no threads or
-  queues at L3. ``state`` field is ADR-0099's Q6 process-memory slot
-  (L4-managed; L3 never writes) — Phase 31.
-- ``CapacityLayer.start_resident`` / ``.stop_resident`` /
-  ``.active_subscriptions`` — per-layer ``_subscriptions`` registry
-  (ADR-0073 §amendment-1 clause 1; closes the ADR-0073 §Cost row).
-  ``subscribes_to`` taken from declaration unconditionally (clause 2);
-  wrong-type raises ``ResidentError`` (clause 4) — Phase 31.
-- ``ResidentError`` — lifecycle failures from start_resident /
-  stop_resident / on_signal / emit; subclass of ``CapacityLayerError``
-  (not ``CapacityRegistrationError`` — residents are lifecycle, not
-  registration) — Phase 31.
+- Monitor lifecycle (the Phase 31 descriptive subscription handle +
+  per-layer registry + lifecycle methods) **relocated to the L4
+  substrate in Phase 41** per ADR-0155. L3 now ships only the
+  ``Monitor`` declaration + ``CapacityLayer.iter_monitors()``
+  enumeration producer (consumed by the L4 ``MonitorSubscriptionRegistry``
+  at Phase 46) — Phase 41.
 - ``mindsos_capacity.builtins`` (subpackage) — first builtins family:
   text DataStates (``text.raw`` / ``text.tokens`` / ``text.sentences``)
   + capacities (``text.space_split`` / ``text.sentence_split``) +
@@ -172,7 +164,6 @@ from .exceptions import (
     DiscoveryFailedError,
     PipelineNotFoundError,
     ProblemTraceError,
-    ResidentError,
     WriteHandleNotWiredError,
 )
 from .family_rules import (
@@ -185,7 +176,6 @@ from .pipeline import Pipeline, PipelineStep, find_pipeline
 from .runtime import (
     ProblemTraceRecord,
     ProblemTraceSink,
-    ResidentSubscription,
     emit_problem_trace,
     invoke,
 )
@@ -238,8 +228,8 @@ from .identifiers import (
     GLOBAL_METAGRAPH_NAME,
     KIND_ADAPTER,
     KIND_DATASTATE,
+    KIND_MONITOR,
     KIND_REACTIVE,
-    KIND_RESIDENT,
     LOCAL_FALKOR_GRAPH_FMT,
     LOCAL_METAGRAPH_NAME_FMT,
     NODE_KINDS,
@@ -279,7 +269,8 @@ __all__ = [
     "strict_compatible",
     "list_of_compat",
     "validate_datastate",
-    # Exceptions (base + 9 raisers as of Phase 33)
+    # Exceptions (base + 8 raisers; monitor-lifecycle exception retired
+    # Phase 41 per ADR-0155)
     "CapacityLayerError",
     "CapacityRegistrationError",
     "ConstraintViolationError",
@@ -287,7 +278,6 @@ __all__ = [
     "DiscoveryFailedError",
     "PipelineNotFoundError",
     "ProblemTraceError",
-    "ResidentError",
     "WriteHandleNotWiredError",
     "CapabilityDeniedError",
     # Phase 28 — CapacityLayer registry + views
@@ -309,8 +299,6 @@ __all__ = [
     "Pipeline",
     "PipelineStep",
     "find_pipeline",
-    # Phase 31 — resident handle (ADR-0073 §amendment-1)
-    "ResidentSubscription",
     # Phase 33 — write-outcome substrate (ADR-0146 §amendment-1)
     "WriteResult",
     "WriteOutcome",
@@ -374,7 +362,7 @@ __all__ = [
     "NODE_TYPE_DATASTATE",
     "NODE_TYPES",
     "KIND_REACTIVE",
-    "KIND_RESIDENT",
+    "KIND_MONITOR",
     "KIND_ADAPTER",
     "KIND_DATASTATE",
     "NODE_KINDS",

@@ -46,9 +46,11 @@ ADR-0146 §amendment-1 enumerates 5 clauses. Summary:
    `CapabilityDeniedError` from in-body cap-checks).
    `runtime.invoke` envelopes as `success=False, error=<type>`.
 2. **Session routing via `context["session"]`.** `CapacityLayer.invoke`
-   + `.start_resident` inject the session object into the context dict
-   alongside `session_user_id` + `session_id`. Capacity bodies extract
-   via `(context or {}).get("session")`.
+   injects the session object into the context dict alongside
+   `session_user_id` + `session_id`. Capacity bodies extract via
+   `(context or {}).get("session")`. (The resident lifecycle methods
+   that also did this were retired in Phase 41 — monitor lifecycle is L4
+   substrate per ADR-0155.)
 3. **Input shapes deferred via opaque placeholder DataStates.**
    `datastate:mm.composite_instance` + `datastate:problem_trace.record`
    are opaque-tag placeholders. Phase 34 / first L4 flow tightens.
@@ -116,7 +118,7 @@ invariant for the read-call paths shipped at Phase 30+31.
 
 Write capacity bodies extract `kl` from `context["kl"]`. The
 `CapacityLayer` constructor accepts an optional `kl: KnowledgeLayer`
-kwarg; `invoke()` + `start_resident()` inject it conditionally
+kwarg; `invoke()` injects it conditionally
 (only when `self._kl is not None`; symmetric with Phase 33's `session`
 routing). Bodies missing `kl` raise `RuntimeError` (R3 PB-F; programmer
 error per ADR-0146 §Decision).

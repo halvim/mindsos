@@ -33,21 +33,22 @@ def test_each_phase_33_export_resolves_to_real_object():
         assert getattr(mindsos_capacity, name) is not None
 
 
-def test_phase_40_export_count_is_114():
-    """Count sentinel — Phase 40 X1 lifts +4 (ADR-0157 family_rules surface)."""
-    assert len(mindsos_capacity.__all__) == 114, (
-        f"Expected 114 exports at Phase 40; found {len(mindsos_capacity.__all__)}"
+def test_phase_41_export_count_is_112():
+    """Count sentinel — Phase 41 X2 retires 3 + adds 1 (ADR-0155): 114 -> 112."""
+    assert len(mindsos_capacity.__all__) == 112, (
+        f"Expected 112 exports at Phase 41; found {len(mindsos_capacity.__all__)}"
     )
 
 
-def test_phase_31_exports_remain_intact():
-    """No earlier-phase export was dropped at Phase 33."""
-    phase_31_set = {
+def test_phase_31_resident_exports_retired_at_phase_41():
+    """Phase 31's ResidentSubscription / ResidentError were retired in
+    Phase 41 (ADR-0155 — monitor lifecycle relocated to L4 substrate)."""
+    phase_31_resident_set = {
         "ResidentSubscription",
         "ResidentError",
     }
-    missing = phase_31_set - set(mindsos_capacity.__all__)
-    assert not missing, f"Phase 31 exports dropped at Phase 33: {sorted(missing)}"
+    present = phase_31_resident_set & set(mindsos_capacity.__all__)
+    assert not present, f"Phase 41 should have retired: {sorted(present)}"
 
 
 def test_kl_write_handle_exported_from_mindsos_knowledge():

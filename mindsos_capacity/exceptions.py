@@ -7,8 +7,9 @@ ship the raisers:
 - Phase 28 — ``ConstraintViolationError`` (via ``CapacityLayer.add_constraint``).
 - Phase 29 — ``DiscoveryFailedError`` (via auto-discovery write paths).
 - Phase 30 — ``PipelineNotFoundError`` + ``ProblemTraceError``.
-- Phase 31 — ``ResidentError`` (lifecycle failures from ``CapacityLayer.start_resident``
-  / ``stop_resident`` / ``ResidentSubscription.on_signal`` / ``emit``).
+
+(Phase 31's monitor-lifecycle exception was retired in Phase 41 when the
+monitor lifecycle relocated to the L4 substrate per ADR-0155.)
 
 Per memory ``feedback_phase_baseline_literal_audit.md``: future phases
 extend this module by appending; they do not rewrite shipped classes.
@@ -46,8 +47,6 @@ class CapacityRegistrationError(CapacityLayerError):
       not in ``REF_TYPES``, ``ref_to_global`` does not resolve to a Global
       capacity, declaration is not ``_CapacityBase``-derived.
     - ``get_declaration`` — no declaration registered for the given IRI.
-    - ``start_resident`` (Phase 30 lifts the surface) — capacity is not
-      a ``Monitor``.
     """
 
 
@@ -128,35 +127,6 @@ class ProblemTraceError(CapacityLayerError):
     """
 
 
-class ResidentError(CapacityLayerError):
-    """Resident-lifecycle failure (Phase 31; ADR-0073 + ADR-0088).
-
-    Direct subclass of :class:`CapacityLayerError` (NOT
-    :class:`CapacityRegistrationError`): residents are a lifecycle
-    concern distinct from registration. Phase 28's ``DiscoveryFailedError``
-    subclasses ``CapacityRegistrationError`` because auto-discovery IS
-    registration; residents are not.
-
-    Phase 31 raisers:
-
-    - ``CapacityLayer.start_resident`` — declaration resolved by IRI is
-      not a :class:`Monitor` (halvim divergence from parent's
-      ``CapacityRegistrationError`` per ADR-0073 §amendment-1 clause 4).
-    - ``CapacityLayer.stop_resident`` — argument is not a
-      :class:`ResidentSubscription`, OR the subscription's id is not
-      present in the per-layer ``_subscriptions`` registry (already
-      stopped / never registered with this layer).
-    - ``ResidentSubscription.on_signal`` — attempted on a stopped
-      subscription (``_active is False``).
-    - ``ResidentSubscription.emit`` — attempted on a stopped
-      subscription.
-
-    NOT raised for unknown IRIs at ``start_resident`` time — that path
-    propagates ``CapacityRegistrationError`` from ``_resolve_declaration``
-    unchanged (R3 PB-27 pass-through lock).
-    """
-
-
 class WriteHandleNotWiredError(CapacityLayerError):
     """Stub-phase failure when an L3 write capacity reaches a
     :class:`KLWriteHandle` method whose body is not yet wired.
@@ -225,7 +195,6 @@ __all__ = [
     "DiscoveryFailedError",
     "PipelineNotFoundError",
     "ProblemTraceError",
-    "ResidentError",
     "WriteHandleNotWiredError",
     "CapabilityDeniedError",
 ]
