@@ -1,0 +1,68 @@
+# Phase 44 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+L0 substrate ship — FalkorDBLocalPersister (native) + Kahn scheduler + episodic cross-user cap/audit
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Phase 44 — Rail C (L0 substrate). Combined design+ship under option C
+(L0_SUBSTRATE_CHAT absorbed into R0).
+
+SHIPPED
+- FalkorDBLocalPersister — native round-trip (MetagraphRepository.persist /
+  MetagraphLoader.load); scoped metagraph_id-keyed delete (Locals co-reside
+  with Global in one FalkorDB graph); per-user mutex on save/delete.
+- Kahn scheduler — kahn_sort() + BootstrapCycleError; consumes the Phase-43
+  _APPLIES_AFTER_BY_ROLE field (L2-37 consumer); wired into KL.bootstrap()'s
+  3 walk sites. Zero behavioral change: the one edge (episodic_memories <-
+  task-patterns) is cross-scope, so single-scope sorts stay alphabetical.
+- CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY (ADMIN_CAPS + ALL_CAPABILITIES, 9->10)
+  + EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY (L2-39). Additive roster; no v1
+  emit-site.
+- ADR-0160 (Falkor-only persister + shared-graph/scoped-delete contract),
+  ADR-0161 (KL version surface — unconsumed, Phase 48), ADR-0011 §am-3.
+
+CUMULATIVE GATE: 3630 passed / 8 skipped / 0 failed (PR3 final; +22 phase_44
+tests over the 3608 pre-phase baseline). PR1 gate was 3619/8/0.
+
+GROUNDING-DRIVEN REVERSALS (consumer discipline — ship only what has a v1
+consumer):
+- CR-2: "ship both persisters" -> Falkor-only (the mindsos_cli state-file
+  serializer is disk-coupled/multi-file; SQLite had no v1 consumer).
+- CR-3: "MindsOSServer class refactor now" -> deferred (login/logout don't
+  write Locals at v1; hooks had no consumer; orchestrator stays free-function
+  per PB-38).
+- S6 (read_at_version/retire_version) + L2-10 (validate_local_to_global_ref
+  wiring): deferred (no v1 consumers).
+
+DEFERRED -> OWNER PHASE
+- SQLite persister + MetagraphDump + mindsos_cli->mindsos_core serializer
+  promotion -> first local-first/portable-export consumer.
+- MindsOSServer class + lifecycle hooks -> L4/L5 phase that writes Locals.
+- read_at_version / retire_version impl -> Phase 48 / L3-L4 (ADR-0161 already
+  froze the _retired_inline_pending marker name).
+- validate_local_to_global_ref wiring -> first v1 Local->Global ref-write flow.
+
+CARRY-FORWARD FOLLOW-UPS
+- Live-FalkorDB FalkorDBLocalPersister round-trip + scoped-delete integration
+  test (unit tests use InMemoryClient only).
+- Scoped-delete metaedge/metahyperedge/XRef coverage completeness (anchor-
+  satellite sweep is a best-effort first cut).
+
+PROCESS NOTE
+- tests/phase_44/conftest.py warms mindsos_admin to resolve a PRE-EXISTING
+  admin<->persistence<->mindsos_admin import cycle under isolated collection
+  (identical to main; masked in the full suite by server-phase conftests).
