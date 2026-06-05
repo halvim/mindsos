@@ -101,4 +101,15 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 
 ---
 
+---
+
+## 7. Maintenance carry-forwards (surfaced Phase 44)
+
+| # | Item | Source | Owner chat |
+|---|---|---|---|
+| L0-24 | **Pre-existing import cycle `admin ↔ persistence ↔ mindsos_admin`.** `mindsos_admin/promotion.py:68` top-level `from mindsos_server.admin import admin_tx` is reached while `admin.py` is mid-init on a cold `mindsos_server` import → `ImportError: cannot import name 'admin_tx'`. Masked in the full suite by server-phase conftest import-order warming; bites isolated subsets (`pytest tests/phase_44/`, `pytest tests/phase_18`). **Fix:** lazy-import `admin_tx` inside the consuming function(s) in `promotion.py` (codebase pattern — `mindsos_core/persistence/client.py:140`); then remove the `tests/phase_44/conftest.py` warm-up band-aid; re-run full cumulative gate. ~1-3 lines, behavior-preserving. Full diagnosis: `PHASE_44_DESIGN_LOG.md §12`. | Phase 44 (surfaced, not introduced — pre-existing) | **MAINTENANCE_CHAT** |
+| L0-25 | **FalkorDBLocalPersister live-FalkorDB integration test + scoped-delete coverage.** Phase 44 unit tests use `InMemoryClient` (no real round-trip); the save→load round-trip + the scoped `metagraph_id`-keyed delete Cypher are unvalidated against a live FalkorDB. Also: the delete's metaedge/metahyperedge/XRef sweep is a best-effort first cut needing completeness verification. Per `PHASE_44_DESIGN_LOG.md §7`. | Phase 44 (PR1.2) | **MAINTENANCE_CHAT** or WSD installation |
+
+---
+
 *End of L0_FUTURE_WORK.md.*

@@ -250,3 +250,19 @@ PR2 grounding over `mindsos_server/orchestrator.py` + its caller set reversed CR
 3. **Closure docs** (mirror Phase 43's docs-landing): HANDOFF §3.1 Phase 44 ship block + §1 timestamp; CLAUDE.md status flip to "Phase 44 SHIPPED"; POST_PHASE_38_PHASE_MAP §4 Phase 44 row → SHIPPED with as-shipped scope (note the CR-2/CR-3/S6/L2-10 deferrals); L2_FUTURE_WORK / L0_FUTURE_WORK status updates for the deferred items' new owner phases.
 
 **Resume pointer:** start at ceremony step 1 (FF landing). The tester-notes body should state the as-shipped scope (PR1 persister + PR3 scheduler + cap/audit) and enumerate the four deferrals with their consumer-phase rationale (this §11 table is the source). Carry-forward follow-ups for whoever owns the deferred items: the live-FalkorDB persister round-trip + scoped-delete integration test (§7), and metaedge/XRef delete coverage.
+
+---
+
+## §12 — Carry-forward: pre-existing import cycle (maintenance fix)
+
+**Not a Phase 44 bug — pre-existing and identical on `main` before Phase 44** (`git diff main` over every cycle module is empty). Surfaced twice during Phase 44 isolated test runs.
+
+**Cycle:** `mindsos_server/__init__.py` → `from mindsos_server.admin import …` → `admin.py:80 from mindsos_server.persistence import LocalPersister` → `persistence/__init__.py:19 from .bootstrap import …` → `persistence/bootstrap.py:37 from mindsos_admin.bootstrap import …` → `mindsos_admin/__init__.py:116 from .promotion import …` → `promotion.py:68 from mindsos_server.admin import admin_tx`. At that point `mindsos_server.admin` is partially initialized (paused at line 80, before `admin_tx` is defined ~line 576) → `ImportError: cannot import name 'admin_tx'`.
+
+**Why masked:** the full cumulative suite collects earlier server-phase conftests (e.g. phase_24 `from mindsos_admin import …`) that warm `mindsos_admin` first, so by the time any cold `mindsos_server` import runs, `admin_tx` is already cached. It bites only on isolated subsets that import `mindsos_server` cold first (`pytest tests/phase_44/`, `pytest tests/phase_18 …`).
+
+**Band-aid in place:** `tests/phase_44/conftest.py` does `importlib.import_module("mindsos_admin")` to warm the order for isolated `phase_44` collection.
+
+**Proper fix (maintenance, post-Phase-44):** apply the codebase's own lazy-import-to-break-cycle pattern (precedent: `mindsos_core/persistence/client.py:140` — "Late import to break the persistence.bootstrap ↔ persistence.client cycle"). Make `mindsos_admin/promotion.py:68 from mindsos_server.admin import admin_tx` a **lazy import inside the function(s) that call `admin_tx`** (first verify `admin_tx` is used only in function bodies, not at module top-level). That breaks the back-edge: when `mindsos_admin` imports `promotion`, `promotion` no longer needs `admin_tx` immediately, so `admin.py` finishes initializing and defines `admin_tx` before any call site runs. Then **remove `tests/phase_44/conftest.py`** (band-aid no longer needed) and re-run the full cumulative gate. ~1-3 line change; behavior-preserving.
+
+**Owner:** MAINTENANCE_CHAT (or next maintenance window). Tracked as L0-24 in `docs/_workbench/L0_FUTURE_WORK.md`.

@@ -1,6 +1,6 @@
 # MindsOS — HANDOFF
 
-> **Last updated:** 2026-06-03 (Phase 43 **SHIPPED**; Rail A slot 2 complete — L2 schema-v2 + 4 new role-graphs + mutation_discipline runtime invariant + per-NodeType storage_mode + bootstrap applies_after + consolidate Episode retarget. PR1 + PR2 cumulative gates green; design log §9 captures ~12 impl-time amendments + pair-execution pattern + 6-step confirm-phase workflow. See §3.1.13 for ship closure.)
+> **Last updated:** 2026-06-04 (Phase 44 **SHIPPED**; Rail C — L0 substrate. `FalkorDBLocalPersister` native + scoped delete; Kahn scheduler (`kahn_sort` + `BootstrapCycleError`) consuming the Phase-43 `applies_after` field; `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY`/`EVT_` roster; ADRs 0160/0161 + ADR-0011 §am-3. 3630 passed cumulative gate; tag `phase-44-confirmed`. Three grounding-driven scope reversals — CR-2 Falkor-only, CR-3 class-refactor deferred, S6/L2-10 deferred — all for absent v1 consumers. See §3.1.14 for ship closure; pre-existing import-cycle maintenance item at L0_FUTURE_WORK L0-24. Prior: Phase 43 SHIPPED 2026-06-03, §3.1.13.)
 > **Audience:** Any chat, contributor, or reviewer entering MindsOS. This is the canonical entry point — read it first.
 > **Self-contained:** This document does not require loading external memory entries to make sense. Inline content is authoritative. Memory entries referenced as `[[name]]` are speed-ups for chats that have memory access; the canonical text lives here.
 
@@ -396,6 +396,28 @@ Phase 43 (L2 schema-v2; 4 new role-graphs; mutation_discipline runtime invariant
 - Design-pass closures must commit closure artifacts before ending (P1 surfaced; carry-forward established).
 - Buildability-scan over locked commit boundaries before ratification (P2 + Q1 surfaced; carry-forward established).
 - Docker test image is NOT bind-mounted source; must rebuild after each push (R10).
+
+### 3.1.14 Phase 44 ship closure (2026-06-04) — Rail C L0 substrate SHIPPED
+
+Phase 44 (combined design+ship under option C — `L0_SUBSTRATE_CHAT` absorbed into R0) shipped on `main` via FF; tag `phase-44-confirmed` at the ship commit.
+
+**Ship contents (as-shipped — narrower than the original plan; see below):**
+
+- **PR1** — `FalkorDBLocalPersister` (native round-trip via `MetagraphRepository.persist` / `MetagraphLoader.load`; scoped `metagraph_id`-keyed delete since Locals co-reside with Global in one FalkorDB graph; per-user mutex). ADR-0160 (Falkor-only persister + shared-graph/scoped-delete substrate contract), ADR-0161 (KL version surface — unconsumed, Phase 48), ADR-0011 §am-3. `tests/phase_44/` (sentinels + persister units, `InMemoryClient`).
+- **PR3** — `kahn_sort` + `BootstrapCycleError` (L2-37 consumer; consumes the Phase-43 `_APPLIES_AFTER_BY_ROLE` field; wired into `KnowledgeLayer.bootstrap()` × 3 sites — zero behavioral change since the one edge is cross-scope). `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` (L2-39; `ADMIN_CAPS`/`ALL_CAPABILITIES` 9→10; parity sentinel). + 14-surface version bump 43→44.
+- **PR2 dropped** (CR-3 deferred).
+
+**Cumulative gates:** PR1 = **3619 / 8 skipped / 0 failed**; PR3 = **3630 / 8 skipped / 0 failed**.
+
+**Grounding-driven scope reversals (consumer discipline — ship only what has a v1 consumer):**
+
+- **CR-2:** "ship both persisters" → **Falkor-only**. The `mindsos_cli` state-file serializer is disk-coupled/multi-file; `SQLiteLocalPersister` had no v1 consumer. SQLite + `MetagraphDump` + the `mindsos_cli`→`mindsos_core` serializer promotion deferred → first local-first/portable-export consumer.
+- **CR-3:** "MindsOSServer class refactor now" → **deferred**. `login`/`logout` don't write Locals at v1 (PB-37); the hooks had no consumer. Orchestrator stays free-function per PB-38. Class + hooks → L4/L5 Local-write phase.
+- **S6** (`read_at_version`/`retire_version`) → Phase 48 / L3-L4 (ADR-0161 froze the `_retired_inline_pending` marker name). **L2-10** (`validate_local_to_global_ref` wiring) → first Local→Global ref-write flow.
+
+**Maintenance carry-forwards (L0_FUTURE_WORK §7):** L0-24 pre-existing `admin↔persistence↔mindsos_admin` import cycle (lazy-import fix in `promotion.py`; remove `tests/phase_44/conftest.py` band-aid — full diagnosis `PHASE_44_DESIGN_LOG.md §12`); L0-25 live-FalkorDB persister round-trip + scoped-delete coverage test.
+
+**Full record:** `confirmation_docs/PHASE_44_DESIGN_LOG.md` (§1 R0 saturation S1-S8, §5-§10 the four reversals, §11 ship state, §12 import-cycle) + `PHASE_44_CONFIRMED.md` + `notes/notes-phase-44.md`.
 
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 

@@ -491,7 +491,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 44 — L0 substrate: persisters + KL surface + bootstrap completion + audit
 
-  **Status:** Pending
+  **Status:** SHIPPED 2026-06-04 (tag `phase-44-confirmed`; cumulative gate 3630/8/0). **As-shipped is narrower than this row's original scope** — see the R0-reconciliation + CR-2/CR-3 notes above and design log §6/§9/§10/§11: shipped = `FalkorDBLocalPersister` (native; Falkor-only) + `kahn_sort` scheduler + `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY`/`EVT_` roster + ADRs 0160/0161. Deferred = SQLite/`MetagraphDump`/serializer-promotion (CR-2), `MindsOSServer` class + hooks (CR-3), `read_at_version`/`retire_version` (S6 → Phase 48), `validate_local_to_global_ref` wiring (L2-10). Import-cycle maintenance item → L0_FUTURE_WORK L0-24.
   **Branch:** phase-44
   **Tag on confirm:** phase-44-confirmed
   **Rail:** C
