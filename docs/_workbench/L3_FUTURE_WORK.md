@@ -149,7 +149,9 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 | L3-53 (`signal.plan_decomposition_outcome` signal source) | **WSD_INSTALLATION_CHAT** (in L3-37 ALS family scope) | Chat B D-B51 cascade. |
 | L3-54 (`process.*`/`text.*` legacy coexistence) | **Future L3 chat** | Cleanup v1.5+. |
 | L3-55 (`planning.*` + `dream.*` families) | **Phase 45** (dream ratification) + **Phase 47** (planning v0; full catalog at WSD installation) | — |
+| L3-56 (`DontKnowReason.UNHANDLED_INPUT` enum value) | **L4 (Phase 46/47)** | Deferred at Phase 40 (PB-1): the enum doesn't exist; its 4 siblings are L4 MappingResult semantics; no v1 consumer. `DS_UNHANDLED_INPUT` (the L3 marker) shipped Phase 40. |
+| L3-57 (`FAMILY_RULES` key-vocabulary reconciliation) | **Phase 42 (X3) Phase-27 audit** (+ WSD/FOL installation for the unkeyed families) | Phase 40 shipped `FAMILY_RULES` verbatim (PB-8); ADR-0157 keys (`derive`/`signal`) ≠ shipped categories (`derivation`/`signalling`) + 7 unkeyed → resolve via permissive `DATASTATE_MARKER` default. Latent at v1. See PHASE_40_DESIGN_LOG §8 + HANDOFF §3.1.15. |
 
 ---
 
-*End of L3_FUTURE_WORK.md. Last updated 2026-06-02 post Chat C plan-authoring closure.*
+*End of L3_FUTURE_WORK.md. Last updated 2026-06-05 post Phase 40 (X1) ship.*
