@@ -194,7 +194,8 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 40 — L3 X1: family-specific dont-know contracts + DataState realm naming
 
-  **Status:** Pending
+  **Status:** Confirmed — SHIPPED 2026-06-05 (tag `phase-40-confirmed`; cumulative gate 3670 / 8 skipped / 0 failed).
+  **As-shipped deltas (full record `PHASE_40_DESIGN_LOG.md`):** REALM_* + RESERVED_REALMS live in `mindsos_capacity/identifiers.py`, NOT `mindsos_knowledge` as this row originally stated (D1 — ADR-0158 + layer-correct; dissolved the `identifiers.py` collision concern). `DontKnowReason.UNHANDLED_INPUT` **deferred to L4** (PB-1; no v1 enum/consumer). `DS_UNHANDLED_INPUT` ships **constant-only**, no bootstrap node (PB-6). FAMILY_RULES transcribed **verbatim**; its key-vocabulary mismatch vs shipped `FUNCTIONAL_CATEGORIES` (`derive`/`signal` vs `derivation`/`signalling` + 7 unkeyed) is latent and **routed to the X3 Phase 27 audit** (PB-8). PB-2: confirm-phase **high-water-mark** (`_phase_exceeds_manifest`); slot 40 ≤ high-water 44 → **no version bump** (§1 manifest row amended). Gate-driven follow-up: strict realm validation broke 38 pre-existing fixtures → phase_29 `analysis`→`nlu` rename + phase_30 `allow_new_realm=True` at 12 sites.
   **Branch:** phase-40
   **Tag on confirm:** phase-40-confirmed
   **Rail:** B

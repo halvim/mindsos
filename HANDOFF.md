@@ -1,6 +1,6 @@
 # MindsOS — HANDOFF
 
-> **Last updated:** 2026-06-04 (Phase 44 **SHIPPED**; Rail C — L0 substrate. `FalkorDBLocalPersister` native + scoped delete; Kahn scheduler (`kahn_sort` + `BootstrapCycleError`) consuming the Phase-43 `applies_after` field; `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY`/`EVT_` roster; ADRs 0160/0161 + ADR-0011 §am-3. 3630 passed cumulative gate; tag `phase-44-confirmed`. Three grounding-driven scope reversals — CR-2 Falkor-only, CR-3 class-refactor deferred, S6/L2-10 deferred — all for absent v1 consumers. See §3.1.14 for ship closure; pre-existing import-cycle maintenance item at L0_FUTURE_WORK L0-24. Prior: Phase 43 SHIPPED 2026-06-03, §3.1.13.)
+> **Last updated:** 2026-06-05 (Phase 40 **SHIPPED**; Rail B — L3 X1. ADR-0157 family-specific dont-know contracts + ADR-0158 DataState realm naming: `mindsos_capacity/family_rules.py` (FamilyDontKnowShape + FAMILY_RULES + `family_rule_for`) + 9 `REALM_*`/`RESERVED_REALMS` in `mindsos_capacity/identifiers.py` + `register_datastate` strict realm validation + `allow_new_realm`. 3670 passed cumulative gate; tag `phase-40-confirmed`. Grounding-driven scope decisions: REALM_* home → `mindsos_capacity` (NOT `mindsos_knowledge` — dissolved the `identifiers.py` collision); `DontKnowReason.UNHANDLED_INPUT` deferred to L4; `DS_UNHANDLED_INPUT` constant-only; FAMILY_RULES verbatim with a latent vocab mismatch routed to the X3 audit; PB-2 confirm-phase high-water-mark (no version bump). See §3.1.15 for ship closure. Prior: Phase 44 SHIPPED 2026-06-04, §3.1.14.)
 > **Audience:** Any chat, contributor, or reviewer entering MindsOS. This is the canonical entry point — read it first.
 > **Self-contained:** This document does not require loading external memory entries to make sense. Inline content is authoritative. Memory entries referenced as `[[name]]` are speed-ups for chats that have memory access; the canonical text lives here.
 
@@ -418,6 +418,33 @@ Phase 44 (combined design+ship under option C — `L0_SUBSTRATE_CHAT` absorbed i
 **Maintenance carry-forwards (L0_FUTURE_WORK §7):** L0-24 pre-existing `admin↔persistence↔mindsos_admin` import cycle (lazy-import fix in `promotion.py`; remove `tests/phase_44/conftest.py` band-aid — full diagnosis `PHASE_44_DESIGN_LOG.md §12`); L0-25 live-FalkorDB persister round-trip + scoped-delete coverage test.
 
 **Full record:** `confirmation_docs/PHASE_44_DESIGN_LOG.md` (§1 R0 saturation S1-S8, §5-§10 the four reversals, §11 ship state, §12 import-cycle) + `PHASE_44_CONFIRMED.md` + `notes/notes-phase-44.md`.
+
+### 3.1.15 Phase 40 ship closure (2026-06-05) — Rail B X1 SHIPPED
+
+Phase 40 (L3 X1: ADR-0157 family-specific dont-know contracts + ADR-0158 DataState realm naming) shipped as squash-merge `5aee00f` on `main`; confirm artifacts cherry-picked at `cf3faeb`; tag `phase-40-confirmed` at `cf3faeb`. First Rail B slot; opens Phase 41 (X2).
+
+**Ship contents:**
+
+- **`mindsos_capacity/family_rules.py`** (new) — `FamilyDontKnowShape` (5-shape catalog: DATASTATE_MARKER / OPTIONAL_RETURN / VERDICT / VALIDATION_RESULT / NO_DONT_KNOW) + `FAMILY_RULES` dict (verbatim ADR-0157) + `family_rule_for(capacity_iri)` two-level prefix lookup (via `parse_capacity_iri`; malformed → `ValueError`) + `DS_UNHANDLED_INPUT = "datastate:marker.unhandled_input"`.
+- **`mindsos_capacity/identifiers.py`** — 9 `REALM_*` constants + `RESERVED_REALMS` frozenset (ADR-0158). **Home corrected from the PHASE_MAP row's `mindsos_knowledge`** (D1; layer-correct + dissolved the Phase-39/43/44 `identifiers.py` collision concern — that file is L2; the L3 one was untouched since Phase 33).
+- **`mindsos_capacity/capacity_layer.py`** — `register_datastate` strict realm validation (single-dot + reserved-realm) + `allow_new_realm` opt-in.
+- **`mindsos_cli/commands/confirm_phase.py`** — PB-2 `_phase_exceeds_manifest` (high-water-mark: accepts a slot ≤ manifest, rejects only ahead) + `image_tag` derived from the manifest phase.
+- `docs/concepts/capacity-families.md` + mkdocs nav; `tests/phase_40/` (5 files); export-slate sentinels 110→114 (phase_29/31/33/34).
+
+**Cumulative gate:** 3670 passed / 8 skipped / 0 failed.
+
+**Grounding-driven scope decisions (Phase 44 consumer discipline applied):**
+
+- **PB-1:** `DontKnowReason.UNHANDLED_INPUT` **deferred to L4** (Phase 46/47) — the enum does not exist; its siblings are L4 MappingResult semantics; no v1 consumer. `test_dont_know_reason_enum.py` dropped.
+- **PB-6:** `DS_UNHANDLED_INPUT` **constant-only** — no bootstrap node; no builtin DataState (text.*/mm.*/problem_trace.*) is product-bootstrap-registered, so a single-marker bootstrap with no v1 reader = consumer-less forward-shape.
+- **PB-8 (latent, routed):** ADR-0157 `FAMILY_RULES` keys (`derive`, `signal`) don't match shipped `FUNCTIONAL_CATEGORIES` (`derivation`, `signalling`) and omit 7 shipped categories → they resolve via the permissive `DATASTATE_MARKER` default. Latent at v1 (all 3 shipped capacities classify correctly). Transcribed verbatim per NPB11-META; reconciliation routed to **Phase 42 (X3) Phase-27 audit** + WSD/FOL installation chats.
+- **PB-2:** confirm-phase **high-water-mark** under the rail DAG — slot 40 ≤ high-water 44 ships with **no version bump**; PHASE_MAP §1 manifest row amended. Patches the PB-S assumption that missed out-of-order confirms.
+
+**Gate-driven follow-up (1 cycle):** strict realm validation broke 38 pre-existing fixtures using non-reserved test realms (phase_29 `analysis`, phase_30 `test`). Fixed: phase_29 `analysis.sentiment`→`nlu.sentiment` (builder-local rename); phase_30 `allow_new_realm=True` at all 12 register sites (preserves the deliberate `test.` isolation namespace + IRI-literal assertions). **Lesson:** the S2 shipped-DataState sweep must include all test-fixture register sites, not just production + one probe file.
+
+**Ceremony anomalies (non-blocking):** confirm-phase ran on `phase-40`-tip `d0d8201` (content-identical to the squash; CONFIRMED.md `git_sha` ≠ tag SHA — Phase 39-class); the cherry-picked confirm-artifacts commit carries the Linux box's placeholder author identity (stale Linux `git config`).
+
+**Full record:** `confirmation_docs/PHASE_40_DESIGN_LOG.md` + `PHASE_40_CONFIRMED.md` + `notes/notes-phase-40.md`.
 
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 
