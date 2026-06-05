@@ -23,6 +23,7 @@ nav:
       - Intergraph edges: concepts/intergraph-edges.md
       - References (hybrid model): concepts/references.md
       - Soft-delete (Phase 10): concepts/soft-delete.md
+      - Capacity families (Phase 40): concepts/capacity-families.md
       - Knowledge lifecycle:
           - Synthesis: concepts/knowledge-lifecycle.md
           - Global + Local metagraphs (Phase 14): concepts/global-local.md

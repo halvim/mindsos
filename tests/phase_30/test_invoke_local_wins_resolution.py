@@ -42,6 +42,7 @@ def _register_input_output_in_local(cl, user_id: str) -> None:
             shape=ShapeDescriptor.scalar("str", opaque_tag="test.input"),
         ),
         session=sess,
+        allow_new_realm=True,
     )
     cl.register_datastate(
         DataState(
@@ -49,6 +50,7 @@ def _register_input_output_in_local(cl, user_id: str) -> None:
             shape=ShapeDescriptor.scalar("str", opaque_tag="test.output"),
         ),
         session=sess,
+        allow_new_realm=True,
     )
 
 

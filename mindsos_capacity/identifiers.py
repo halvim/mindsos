@@ -231,6 +231,29 @@ def parse_datastate_iri(iri: str) -> str:
     return iri[len("datastate:") :]
 
 
+REALM_CORE = "core"
+REALM_MARKER = "marker"
+REALM_BRIDGE = "bridge"
+REALM_TEXT = "text"
+REALM_MM = "mm"
+REALM_PROBLEM_TRACE = "problem_trace"
+REALM_NLU = "nlu"
+REALM_CODE = "code"
+REALM_DREAM = "dream"
+
+RESERVED_REALMS: FrozenSet[str] = frozenset({
+    REALM_CORE,
+    REALM_MARKER,
+    REALM_BRIDGE,
+    REALM_TEXT,
+    REALM_MM,
+    REALM_PROBLEM_TRACE,
+    REALM_NLU,
+    REALM_CODE,
+    REALM_DREAM,
+})
+
+
 # ── Ref-property keys (mirrors KL conventions) ─────────────────────────
 
 #: Property key on a Local capacity node referencing its Global counterpart.

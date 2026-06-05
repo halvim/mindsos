@@ -41,8 +41,8 @@ def test_phase_31_export_count_is_110():
     build_consolidate_mm, build_trace_problem,
     install_consolidate_capacities, install_trace_capacities).
     """
-    assert len(mindsos_capacity.__all__) == 110, (
-        f"Expected 110 exports at Phase 33; found {len(mindsos_capacity.__all__)}"
+    assert len(mindsos_capacity.__all__) == 114, (
+        f"Expected 114 exports at Phase 40; found {len(mindsos_capacity.__all__)}"
     )
 
 

@@ -193,6 +193,23 @@ def _falkordb_pin(manifest: dict[str, Any]) -> str:
     return f"{fd['image']}:{fd['tag']}@{fd['digest']}"
 
 
+def _phase_exceeds_manifest(nn: str, manifest_phase: str) -> bool:
+    """True when phase ``nn`` is numerically ahead of the manifest phase.
+
+    Under the parallel-rail DAG (POST_PHASE_38_PHASE_MAP §1), phases ship
+    out of numeric order and the manifest ``[mindsos] phase`` tracks the
+    highest confirmed phase (high-water mark). Confirming a slot at or
+    below that mark is valid; only a phase strictly ahead is rejected.
+    Falls back to strict inequality for non-numeric sub-phase tokens
+    (e.g. ``05a``, ``04-v2``).
+    """
+    m_nn = re.match(r"\d+", nn)
+    m_exp = re.match(r"\d+", str(manifest_phase))
+    if not m_nn or not m_exp:
+        return nn != manifest_phase
+    return int(m_nn.group()) > int(m_exp.group())
+
+
 def _suite_hash(phase: str) -> str:
     """sha256 of the sorted concatenation of every tests/phase_NN/**/*.py file."""
     root = _repo_root() / "tests"
@@ -539,10 +556,12 @@ def confirm_phase(
     nn = phase.zfill(2)
     manifest = _load_manifest()
     expected = manifest["mindsos"]["phase"]
-    if nn != expected:
+    if _phase_exceeds_manifest(nn, expected):
         typer.echo(
-            f"--phase {nn} mismatches manifest [mindsos] phase = {expected!r}. "
-            "Bump the manifest first, or run from the correct branch.",
+            f"--phase {nn} is ahead of manifest [mindsos] phase = {expected!r}. "
+            "Under the parallel-rail DAG the manifest tracks the highest "
+            "confirmed phase; bump the manifest first, or run from the "
+            "correct branch.",
             err=True,
         )
         raise typer.Exit(code=2)
@@ -554,7 +573,7 @@ def confirm_phase(
     notes = _parse_notes(notes_file)
     git_sha = _git_sha()
     falkordb_pin = _falkordb_pin(manifest)
-    image_tag = f"mindsos:phase{nn}-prod"
+    image_tag = f"mindsos:phase{expected}-prod"
     image_build_hash = _docker_image_id(image_tag)
     suite_hash = _suite_hash(nn)
     pages = _git_changed_docs()

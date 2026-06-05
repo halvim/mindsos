@@ -43,6 +43,7 @@ def test_find_pipeline_with_unpopulated_session_local_raises():
             shape=ShapeDescriptor.scalar("str", opaque_tag="test.input"),
         ),
         session=sess,
+        allow_new_realm=True,
     )
     cl.register_datastate(
         DataState(
@@ -50,6 +51,7 @@ def test_find_pipeline_with_unpopulated_session_local_raises():
             shape=ShapeDescriptor.scalar("str", opaque_tag="test.output"),
         ),
         session=sess,
+        allow_new_realm=True,
     )
 
     with pytest.raises(PipelineNotFoundError):
@@ -72,6 +74,7 @@ def test_find_pipeline_with_local_capacity_succeeds():
             shape=ShapeDescriptor.scalar("str", opaque_tag="test.input"),
         ),
         session=sess,
+        allow_new_realm=True,
     )
     cl.register_datastate(
         DataState(
@@ -79,6 +82,7 @@ def test_find_pipeline_with_local_capacity_succeeds():
             shape=ShapeDescriptor.scalar("str", opaque_tag="test.output"),
         ),
         session=sess,
+        allow_new_realm=True,
     )
     direct = Capacity(
         name="local.direct",

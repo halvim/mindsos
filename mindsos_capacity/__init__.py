@@ -175,6 +175,12 @@ from .exceptions import (
     ResidentError,
     WriteHandleNotWiredError,
 )
+from .family_rules import (
+    DS_UNHANDLED_INPUT,
+    FAMILY_RULES,
+    FamilyDontKnowShape,
+    family_rule_for,
+)
 from .pipeline import Pipeline, PipelineStep, find_pipeline
 from .runtime import (
     ProblemTraceRecord,
@@ -389,6 +395,10 @@ __all__ = [
     "REF_TYPE_KEY",
     "REF_TYPES",
     "RESERVED_PROPERTY_KEYS",
+    "FamilyDontKnowShape",
+    "FAMILY_RULES",
+    "family_rule_for",
+    "DS_UNHANDLED_INPUT",
 ]
 
 __version__ = "0.0.0+phase44"

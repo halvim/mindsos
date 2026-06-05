@@ -162,9 +162,9 @@ def build_z_to_output_capacity() -> Capacity:
 def build_min_layer() -> CapacityLayer:
     """CapacityLayer with PERCEPTION + the 3 test DataStates; zero capacities."""
     cl = CapacityLayer(categories=(CATEGORY_PERCEPTION,))
-    cl.register_datastate(_ds("input"))
-    cl.register_datastate(_ds("mid"))
-    cl.register_datastate(_ds("output"))
+    cl.register_datastate(_ds("input"), allow_new_realm=True)
+    cl.register_datastate(_ds("mid"), allow_new_realm=True)
+    cl.register_datastate(_ds("output"), allow_new_realm=True)
     return cl
 
 
@@ -187,7 +187,7 @@ def build_branching_capacity_layer() -> CapacityLayer:
     """
     cl = CapacityLayer(categories=(CATEGORY_PERCEPTION,))
     for ds_name in ("input", "mid", "output", "fork", "x", "y", "z"):
-        cl.register_datastate(_ds(ds_name))
+        cl.register_datastate(_ds(ds_name), allow_new_realm=True)
     cl.register_capacity(build_multi_output_capacity())
     cl.register_capacity(build_fork_to_output_capacity())
     cl.register_capacity(build_x_to_y_capacity())

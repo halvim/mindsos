@@ -21,8 +21,8 @@ from mindsos_capacity.identifiers import datastate_iri
 from tests.phase_33._fixtures import build_session_with_caps
 
 
-DS_PROBE = datastate_iri("phase33.probe.input")
-DS_PROBE_OUT = datastate_iri("phase33.probe.output")
+DS_PROBE = datastate_iri("mm.probe_input")
+DS_PROBE_OUT = datastate_iri("mm.probe_output")
 
 
 def _build_context_capturing_layer():
@@ -41,10 +41,10 @@ def _build_context_capturing_layer():
     )
     layer = CapacityLayer(categories=(CATEGORY_PERCEPTION,))
     layer.register_datastate(
-        DataState(name="phase33.probe.input", shape=ShapeDescriptor.scalar("str"))
+        DataState(name="mm.probe_input", shape=ShapeDescriptor.scalar("str"))
     )
     layer.register_datastate(
-        DataState(name="phase33.probe.output", shape=ShapeDescriptor.scalar("str"))
+        DataState(name="mm.probe_output", shape=ShapeDescriptor.scalar("str"))
     )
     layer.register_capacity(cap)
     return layer, cap, captured

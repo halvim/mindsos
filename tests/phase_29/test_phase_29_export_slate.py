@@ -66,28 +66,42 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_34_export_count_is_110():
-    """B-33-T1 sentinel-flip in place — Phase 33 lifts +13 over Phase 31.
+def test_phase_40_export_count_is_114():
+    """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40).
 
-    Originally asserted 95 at Phase 30; flipped to 97 at Phase 31 (+2:
-    ResidentSubscription + ResidentError); flipped to 110 at Phase 33
-    (+13: WriteResult, WriteOutcome, WriteHandleNotWiredError,
-    CapabilityDeniedError, CATEGORY_CONSOLIDATE,
-    DS_MM_COMPOSITE_INSTANCE, DS_PROBLEM_TRACE_RECORD,
-    mm_composite_datastates, problem_trace_datastates,
-    build_consolidate_mm, build_trace_problem,
-    install_consolidate_capacities, install_trace_capacities).
-    Same class as B-31-T2 — phase_(N-2..N-1)/test_phase_*_export_slate.py
-    is a sentinel-flip target at each subsequent phase ship. B-33-T1
-    extends scope to ALSO walk tests beyond export_slate filename
-    (this one lives in phase_29 but is forward-anchored to Phase 31's
-    export count).
+    Phase 40 X1 lifts +4 over Phase 33 (FamilyDontKnowShape, FAMILY_RULES,
+    family_rule_for, DS_UNHANDLED_INPUT per ADR-0157). REALM_* + RESERVED_REALMS
+    are imported directly from mindsos_capacity.identifiers by consumers and
+    are not surfaced in the package __all__.
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 110, (
-        f"Phase 33 __all__ count {n} != expected 110 "
-        f"(Phase 31 baseline 97 + 13 new at Phase 33)"
+    assert n == 114, (
+        f"Phase 40 __all__ count {n} != expected 114 "
+        f"(Phase 33 baseline 110 + 4 new at Phase 40)"
+    )
+
+
+PHASE_40_NEW_EXPORTS = {
+    "FamilyDontKnowShape",
+    "FAMILY_RULES",
+    "family_rule_for",
+    "DS_UNHANDLED_INPUT",
+}
+
+
+def test_phase_40_new_exports_present():
+    import mindsos_capacity
+    all_set = set(mindsos_capacity.__all__)
+    missing = PHASE_40_NEW_EXPORTS - all_set
+    assert not missing, f"Phase 40 new exports missing from __all__: {missing}"
+
+
+@pytest.mark.parametrize("name", sorted(PHASE_40_NEW_EXPORTS))
+def test_phase_40_export_importable(name: str):
+    import mindsos_capacity
+    assert hasattr(mindsos_capacity, name), (
+        f"Phase 40 export {name!r} listed in __all__ but missing at runtime"
     )
 
 

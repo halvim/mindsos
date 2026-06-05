@@ -64,6 +64,7 @@ callers).
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
 
 from mindsos_core import Edge, Graph, Metagraph, Node
@@ -108,9 +109,12 @@ from .identifiers import (
     REF_TYPE_KEY,
     REF_TYPES,
     RESERVED_PROPERTY_KEYS,
+    RESERVED_REALMS,
 )
 from .types import SessionArg, SessionProtocol
 from .views import CapacityLayerView
+
+log = logging.getLogger(__name__)
 
 
 class CapacityLayer:
@@ -201,6 +205,7 @@ class CapacityLayer:
         datastate: DataState,
         *,
         session: SessionArg = None,
+        allow_new_realm: bool = False,
     ) -> Node:
         """Create the Core DataState node for ``datastate``.
 
@@ -224,6 +229,29 @@ class CapacityLayer:
             self._enforce_global_write(session, op="register_datastate")
 
         validate_datastate(datastate)
+        name = datastate.name
+        if "." not in name:
+            raise CapacityRegistrationError(
+                f"DataState name {name!r} missing realm prefix; "
+                "expected '<realm>.<name>'"
+            )
+        realm, suffix = name.split(".", 1)
+        if "." in suffix:
+            raise CapacityRegistrationError(
+                f"DataState name {name!r} has multi-dot; "
+                "v1 allows single-dot only"
+            )
+        if realm not in RESERVED_REALMS and not allow_new_realm:
+            raise CapacityRegistrationError(
+                f"Realm {realm!r} not in reserved set "
+                f"{sorted(RESERVED_REALMS)}; pass allow_new_realm=True "
+                "for admin extension"
+            )
+        if realm not in RESERVED_REALMS and allow_new_realm:
+            log.info(
+                "admin extension: registering DataState in new realm %r",
+                realm,
+            )
         mg = self._metagraph_for(target_uid)
         ds_graph = ensure_datastate_graph(mg, strict=self._strict)
         if datastate.iri in ds_graph.nodes:

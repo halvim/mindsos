@@ -43,12 +43,14 @@ def _build_context_capturing_layer():
             name="test.input",
             shape=ShapeDescriptor.scalar("str", opaque_tag="test.input"),
         ),
+        allow_new_realm=True,
     )
     cl.register_datastate(
         DataState(
             name="test.output",
             shape=ShapeDescriptor.scalar("str", opaque_tag="test.output"),
         ),
+        allow_new_realm=True,
     )
     cl.register_capacity(cap)
     return cl, cap, captured

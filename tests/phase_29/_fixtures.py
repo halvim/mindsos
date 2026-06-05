@@ -2,7 +2,7 @@
 
 Builds on Phase 28's `tests/phase_28/_fixtures.py` text-realm. Adds:
 
-- A second DataState (``analysis.sentiment``) for cross-category producer/
+- A second DataState (``nlu.sentiment``) for cross-category producer/
   consumer discovery scenarios.
 - A capacity in a different category (``CATEGORY_COMPREHENSION``) that
   consumes ``text.tokens`` — drives the cross-graph MetaEdge code path.
@@ -39,8 +39,8 @@ def text_tokens_datastate() -> DataState:
 
 def analysis_sentiment_datastate() -> DataState:
     return DataState(
-        name="analysis.sentiment",
-        shape=ShapeDescriptor.scalar("float", opaque_tag="analysis.sentiment"),
+        name="nlu.sentiment",
+        shape=ShapeDescriptor.scalar("float", opaque_tag="nlu.sentiment"),
     )
 
 
@@ -76,7 +76,7 @@ def text_join_capacity() -> Capacity:
 def sentiment_capacity() -> Capacity:
     """Cross-category consumer in COMPREHENSION — drives MetaEdge path.
 
-    Consumes text.tokens → analysis.sentiment.
+    Consumes text.tokens → nlu.sentiment.
     """
     tokens = text_tokens_datastate()
     sentiment = analysis_sentiment_datastate()

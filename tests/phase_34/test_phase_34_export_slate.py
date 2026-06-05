@@ -12,12 +12,11 @@ import mindsos_capacity
 import mindsos_knowledge
 
 
-def test_phase_34_export_count_stable_at_110():
-    """Forward-anchor sentinel: Phase 34 adds no new exports."""
+def test_phase_34_export_count_stable_at_114():
+    """Forward-anchor sentinel: bumped to 114 at Phase 40 X1 (+4 ADR-0157)."""
     n = len(mindsos_capacity.__all__)
-    assert n == 110, (
-        f"Phase 34 __all__ count {n} != 110 (no new exports expected; "
-        "if you added one, bump this and add to R4 §am-impl-7 audit)."
+    assert n == 114, (
+        f"Phase 40 __all__ count {n} != 114 (Phase 33 baseline 110 + 4 at Phase 40)."
     )
 
 
