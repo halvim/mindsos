@@ -66,4 +66,4 @@ def test_phase_30_exports_remain_intact():
 
 
 def test_version_bumped_to_phase_34():
-    assert mindsos_capacity.__version__ == "0.0.0+phase43"
+    assert mindsos_capacity.__version__ == "0.0.0+phase44"
