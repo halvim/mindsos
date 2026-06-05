@@ -152,14 +152,14 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 | L2-35 (`alignment:<a>:<b>` shipped-code reconciliation) | **CLOSED — shipped Phase 39 (2026-06-02)** | Bundled into Phase 39 PR per IL-7. Separator `:` shipped. |
 | L2-36 (L3 pipeline-finder task-pattern index) | **WSD_INSTALLATION_CHAT** | Per D-L2-7 D-L2-8 cache lives in L3. |
 | L2-37(field) (`applies_after` bootstrap field) | **CLOSED — shipped Phase 43 (2026-06-03)** | Field-only at Phase 43 per NPB11-1; `_APPLIES_AFTER_BY_ROLE` 12 declarations + `applies_after` kwarg on both `ensure_*_role_graph` functions. Soft edge `episodic_memories ← {task-patterns}` per NPB6-6. |
-| L2-37(consumer) (Kahn topological-sort scheduler) | **Phase 44** | Per L2-37 split. Phase 44 L0 substrate chat scope. |
+| L2-37(consumer) (Kahn topological-sort scheduler) | **CLOSED — shipped Phase 44 (2026-06-04)** | `kahn_sort` + `BootstrapCycleError` consume `_APPLIES_AFTER_BY_ROLE`; wired into `KnowledgeLayer.bootstrap()` ×3 sites. The one edge is cross-scope (`episodic_memories` Local, `task-patterns` Global) → filtered by in-scope intersection → zero behavioral change. `PHASE_44_DESIGN_LOG.md` §10 / S7. |
 | L2-38 (ADR-0152 §am-1 for `HAS_STEP` shape) | **Closed via Phase 42 X3** — bipartite picked; `HAS_STEP` stays Phase 13 form. No §am-1 needed. | — |
-| L2-39 (`EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` constant + capability) | **Phase 44** | Per L0_SUBSTRATE_CHAT scope. |
+| L2-39 (`EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` constant + capability) | **CLOSED — shipped Phase 44 (2026-06-04)** | `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY`; `ADMIN_CAPS`/`ALL_CAPABILITIES` 9→10; Phase 18 parity sentinel flipped. Additive roster — no v1 emit-site. `PHASE_44_DESIGN_LOG.md` §10 / S8. |
 | L2-40 (`promoted-pipelines.confidence` migrator) | **CLOSED — shipped Phase 43 (2026-06-03)** | Form changed from migrator to detector per R0 PB-43-10 + ADR-0094 §am-1 in-place edit. `tools/check_phase_43_confidence_state.py` ships; v1 production state empty (Chat C migration-script discipline = wipe-and-rebootstrap, not in-place strip). |
-| L2-41 (KL `read_at_version` + `retire_version`) | **Phase 44** | Per L0_SUBSTRATE_CHAT scope. |
+| L2-41 (KL `read_at_version` + `retire_version`) | **DEFERRED at Phase 44 (2026-06-04) → Phase 48 / L3-L4** | Phase 44 (S6) found zero v1 consumers — `retire_version`'s consumer is Phase 48 episode-read under D'1; `read_at_version`'s is L3/L4 fallback reads. ADR-0161 ships (KL version-surface design + froze the `_retired_inline_pending` marker name) but the methods themselves defer to their consumer phase. `PHASE_44_DESIGN_LOG.md` §10 / §11 / ADR-0161. |
 | L2-Q1 (FOL #4 parameter_set_iri encoding) | RESOLVED at D-L2-12 opaque v1; FOL chat may re-litigate. | — |
 | L2-Q2 (ADR-0150 §am-N bulk-vs-many) | RESOLVED at D-L2-26 + refined by Chat C IL-3 split (§am-4 Phase 39; §am-5 Phase 43). | — |
 
 ---
 
-*End of L2_FUTURE_WORK.md. Last updated 2026-06-03 post Phase 43 ship — L2-29/30/31/32/33/37(field)/40 closed; L2-37(consumer) + L2-39 + L2-41 routed to Phase 44.*
+*End of L2_FUTURE_WORK.md. Last updated 2026-06-04 post Phase 44 ship — L2-37(consumer) + L2-39 CLOSED-shipped Phase 44; L2-41 DEFERRED at Phase 44 → Phase 48 / L3-L4 (no v1 consumer; ADR-0161 design + marker name shipped). Prior (2026-06-03 post Phase 43): L2-29/30/31/32/33/37(field)/40 closed.*
