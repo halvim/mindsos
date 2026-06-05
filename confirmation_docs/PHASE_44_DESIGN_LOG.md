@@ -193,3 +193,21 @@ Combined with the fact that `SQLiteLocalPersister` has **no named v1 consumer**,
 **Known follow-ups carried forward (within 4-5 budget):** (1) live FalkorDB save→load round-trip + scoped-delete integration test (unit tests use `InMemoryClient` only); (2) metaedge/metahyperedge/XRef delete-coverage completeness.
 
 **Next: PR2 — `MindsOSServer` class refactor (CR-3).** Highest-cascade-risk unit (§2). Resume by grounding `mindsos_server/orchestrator.py`'s free-function surface (`_installed_locals` / `_install_lock` / `_mutex_registry`) + the full `tests_server/` caller list before touching code; clean cut, all callers migrate in one commit, wire the Falkor persister into the 4 lifecycle hooks. Then PR3 (KL surface + Kahn scheduler + audit constant/capability).
+
+> **Superseded by §9 — CR-3 deferred.** PR2 grounding reversed CR-3; PR2 is dropped. Next is PR3.
+
+---
+
+## §9 — CR-3 reversal (2026-06-04): defer the MindsOSServer class refactor
+
+PR2 grounding over `mindsos_server/orchestrator.py` + its caller set reversed CR-3 ("do the class refactor now"). Findings:
+
+- **The live surface is tiny.** The orchestrator's install machinery has one production consumer: `read_other_local` (ctx mgr), called only by `admin.read_other_local_summary` (→ CLI `server.py`) + 5 tests (phase_25 ×4, phase_26b ×1). Module state: `_installed_locals` / `_install_lock` / `_mutex_registry`.
+- **The class's four justifications eroded.** ADR-0011 §am-2 cl.4 named the class as landing "alongside SQLite + Falkor persisters + on-login hydration + on-logout flush." Post-grounding: (1) SQLite deferred (CR-2); (2) Falkor shipped but consumed fine by the free-function `read_other_local`; (3)+(4) login/logout don't touch Locals at v1 — `sessions.py` `login`/`logout` carry `persister`/`kl` kwargs but never call them (PB-37 collapse), and nothing writes a user's Local until L4/L5, so the hooks have **no live consumer** (flush would persist empty Locals).
+- Building the class + hooks now is exactly the consumer-less forward-shape the **CR-2 reversal** rejected.
+
+**Ruling (user, 2026-06-04): defer CR-3.** The orchestrator stays free-function per PB-38. The `MindsOSServer` class + lifecycle hooks land at the L4/L5 phase that first writes user Locals (Phase 46+). **Reverses CR-3**; PR2 is dropped.
+
+**ADR impact:** ADR-0011 §am-3 header + clauses 3/4 reverted to "class + hooks defer" (cl.1 Protocol-Metagraph + cl.2 Falkor-ships unchanged). No `orchestrator.py` change. No `tests_server/` migration.
+
+**Revised phase shape:** PR1 (shipped, gated green) → ~~PR2~~ (dropped) → **PR3** (KL `read_at_version`/`retire_version` + `_retired_inline_pending` marker + Kahn scheduler + `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY` + `validate_local_to_global_ref`). PR3 is now the remaining implementation work for the phase.

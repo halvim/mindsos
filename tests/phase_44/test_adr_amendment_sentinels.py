@@ -64,7 +64,7 @@ def test_adr_0011_amendment_3_present() -> None:
     for token in (
         "FalkorDBLocalPersister` ships native",
         "stay deferred",
-        "clean cut",
+        "class first-construction stays deferred",
     ):
         assert token in after_am3, f"{token!r} missing from ADR-0011 amendment-3"
 

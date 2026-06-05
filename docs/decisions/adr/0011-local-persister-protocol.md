@@ -111,7 +111,7 @@ See `halvim_mindsos/confirmation_docs/PHASE_19_DESIGN_LOG.md` §1 round 1 PB-2 +
 
 **Phase 25 design log:** `halvim_mindsos/confirmation_docs/PHASE_25_DESIGN_LOG.md` §1 Round 2 PB-25 (Metagraph at v1) + PB-37 (caller-Local collapse) + PB-38 (free functions) + PB-39 (delete bool) + PB-33 (fail_save hook) + §4 ADR delta + §5 implementation references.
 
-### amendment-3 (Phase 44 ship — 2026-06-04) — `MetagraphDump` + both backing-store persisters + `MindsOSServer` class lifecycle land
+### amendment-3 (Phase 44 ship — 2026-06-04) — `FalkorDBLocalPersister` ships native; `MetagraphDump` + SQLite + `MindsOSServer` class lifecycle defer
 
 **Trigger:** Phase 44 (Rail C, L0 substrate) is the first user-Local-write phase that §amendment-2 clauses 1/3/4/5 named as the defer-target. The deferred surfaces now have live consumers and ship here. Governance rulings (2026-06-04): CR-2 ship both persisters; CR-3 do the `MindsOSServer` class refactor now (clean cut).
 
@@ -121,9 +121,9 @@ See `halvim_mindsos/confirmation_docs/PHASE_19_DESIGN_LOG.md` §1 round 1 PB-2 +
 
 2. **`FalkorDBLocalPersister` ships native (was: deferred per §am-2 clause 3); `SQLiteLocalPersister` + `MetagraphDump` stay deferred.** Per ADR-0160 — CR-2 reversed to Falkor-only v1 on PR1.2 investigation (the `mindsos_cli` state-file serializer is disk-coupled and the SQLite store has no v1 consumer). The Falkor store round-trips natively via `MetagraphRepository.persist` / `MetagraphLoader.load` (the `local_<slug(user_id)>_<role>` layout per ADR-0004) — no serialization. `SQLiteLocalPersister` + `MetagraphDump` + the serializer promotion defer to the first local-first / portable-export consumer phase. `InMemoryLocalPersister` stays the test/diagnostic impl.
 
-3. **`MindsOSServer` class first-construction ships (was: deferred per §am-2 clause 4) — clean cut.** The free-function orchestrator in `mindsos_server/orchestrator.py` (`_installed_locals` + `_install_lock` + `_mutex_registry`) is refactored into a `MindsOSServer` class holding those as instance attributes, with `on_login` (hydrate) / `on_logout` (flush) / `on_promotion` (flush) / `on_delete` lifecycle hooks. Clean cut — no free-function shims; all `tests_server/` callers migrate in the same PR. `reset_state_for_tests()` is replaced by per-test re-instantiation via fixture.
+3. **`MindsOSServer` class first-construction stays deferred (PB-38 free-functions retained).** On PR2 grounding the class's justifications eroded: SQLite was deferred (clause 2) and the on-login/on-logout hydrate/flush hooks have **no v1 consumer** — no command writes a user's Local until L4/L5, so wiring flush-on-logout would persist empty Locals (the same consumer-less forward-shape the CR-2 reversal rejected). The orchestrator stays free-function per PB-38 (`_installed_locals` + `_install_lock` + `_mutex_registry` module-level; `read_other_local` ctx mgr; `reset_state_for_tests()`). The `MindsOSServer` class first-construction stays deferred and lands at the L4/L5 phase that first writes user Locals.
 
-4. **§"On login" + §"On logout" install/extract sequences re-activate (was: collapsed per §am-2 clause 5).** With both persisters present, the on-login `persister.load` → `KL.install_local_metagraph` and on-logout `KL.extract_local_metagraph` → `persister.save` sequences from the original §Decision wire up as the `MindsOSServer` hooks.
+4. **§"On login" + §"On logout" install/extract sequences stay collapsed (per §am-2 clause 5).** No v1 command writes a caller's Local, so login-hydrate / logout-flush have no consumer; they re-activate with the L4/L5 Local-write phase alongside the class hooks (clause 3).
 
 **Rationale:** Ship only what has a live consumer — the consumer now exists. §amendment-2 was an honest defer; Phase 44 is the named arrival phase.
 
