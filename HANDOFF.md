@@ -1,6 +1,6 @@
 # MindsOS — HANDOFF
 
-> **Last updated:** 2026-06-05 (Phase 40 **SHIPPED**; Rail B — L3 X1. ADR-0157 family-specific dont-know contracts + ADR-0158 DataState realm naming: `mindsos_capacity/family_rules.py` (FamilyDontKnowShape + FAMILY_RULES + `family_rule_for`) + 9 `REALM_*`/`RESERVED_REALMS` in `mindsos_capacity/identifiers.py` + `register_datastate` strict realm validation + `allow_new_realm`. 3670 passed cumulative gate; tag `phase-40-confirmed`. Grounding-driven scope decisions: REALM_* home → `mindsos_capacity` (NOT `mindsos_knowledge` — dissolved the `identifiers.py` collision); `DontKnowReason.UNHANDLED_INPUT` deferred to L4; `DS_UNHANDLED_INPUT` constant-only; FAMILY_RULES verbatim with a latent vocab mismatch routed to the X3 audit; PB-2 confirm-phase high-water-mark (no version bump). See §3.1.15 for ship closure. Prior: Phase 44 SHIPPED 2026-06-04, §3.1.14.)
+> **Last updated:** 2026-06-05 (Phase 41 **SHIPPED**; Rail B — L3 X2. ADR-0155 Monitor-lifecycle retirement from L3: surgically removed `start_resident`/`stop_resident`/`active_subscriptions` + `_subscriptions` + `ResidentSubscription` + `ResidentError`; `KIND_RESIDENT`→`KIND_MONITOR` (value `"resident"`→`"monitor"`); added `cl.iter_monitors()` producer (no v1 consumer — L4 `MonitorSubscriptionRegistry` Phase 46); `__all__` 114→112; 9 phase_31 resident tests deleted + `tests/phase_41` (4); ADR-0073 → Superseded. 3660 passed cumulative gate; tag `phase-41-confirmed` at `ba7c469`; no version bump (slot 41 ≤ 44). Grounding corrections: production retirement was surgical not whole-module; `docs/concepts/monitors.md` is a PHASE_MAP phantom; grep-zero criterion scoped to the shipped package. See §3.1.16 for ship closure. Prior: Phase 40 SHIPPED 2026-06-05, §3.1.15; Phase 44 SHIPPED 2026-06-04, §3.1.14.)
 > **Audience:** Any chat, contributor, or reviewer entering MindsOS. This is the canonical entry point — read it first.
 > **Self-contained:** This document does not require loading external memory entries to make sense. Inline content is authoritative. Memory entries referenced as `[[name]]` are speed-ups for chats that have memory access; the canonical text lives here.
 
@@ -445,6 +445,36 @@ Phase 40 (L3 X1: ADR-0157 family-specific dont-know contracts + ADR-0158 DataSta
 **Ceremony anomalies (non-blocking):** confirm-phase ran on `phase-40`-tip `d0d8201` (content-identical to the squash; CONFIRMED.md `git_sha` ≠ tag SHA — Phase 39-class); the cherry-picked confirm-artifacts commit carries the Linux box's placeholder author identity (stale Linux `git config`).
 
 **Full record:** `confirmation_docs/PHASE_40_DESIGN_LOG.md` + `PHASE_40_CONFIRMED.md` + `notes/notes-phase-40.md`.
+
+### 3.1.16 Phase 41 ship closure (2026-06-05) — Rail B X2 SHIPPED
+
+Phase 41 (L3 X2: ADR-0155 Monitor-lifecycle retirement from L3) shipped as squash-merge `9330550` on `main`; confirm artifacts at `ba7c469`; tag `phase-41-confirmed` at `ba7c469`. Second Rail B slot; opens Phase 42 (X3). Impl of a settled design (L1_L3_REFRAME §D36, saturated R3; ADR-0155 Accepted on disk — no status flip).
+
+**Ship contents:**
+
+- **`mindsos_capacity/capacity_layer.py`** — removed `start_resident` / `stop_resident` / `active_subscriptions` methods + the `_subscriptions` field; added `iter_monitors() -> List[Monitor]` (filters the shared IRI-keyed `_declarations`; Local-wins inherited; no v1 consumer — the L4 `MonitorSubscriptionRegistry` lands Phase 46, acceptable per DAG).
+- **`mindsos_capacity/runtime.py`** — removed `ResidentSubscription` dataclass (kept Phase-30 `invoke`/`ProblemTraceSink`/`ProblemTraceRecord`); trimmed now-unused imports.
+- **`mindsos_capacity/exceptions.py`** — removed `ResidentError` (kept the other 7 classes).
+- **`mindsos_capacity/identifiers.py`** + `capacity.py` — `KIND_RESIDENT` (`"resident"`) → `KIND_MONITOR` (`"monitor"`) + `NODE_KINDS`; `Monitor.node_kind` follows. node_kind triad now REACTIVE/MONITOR/ADAPTER.
+- **`mindsos_capacity/__init__.py`** — `__all__` 114→112 (−`ResidentSubscription`, −`ResidentError`, −`KIND_RESIDENT`, +`KIND_MONITOR`).
+- Tests: 9 phase_31 resident test files deleted whole; `tests/phase_31/_fixtures.py` pruned to its text-builtin helpers (shared by surviving text tests — NOT deleted); `tests/phase_27` node_kind rename; export-slate flipped 114→112 across phase_29/31/33/34 + membership flipped present→absent in phase_31/phase_33; `tests/phase_41/` (4 files: resident_infrastructure_retired, iter_monitors, kind_monitor_rename, adr_amendment_sentinels).
+- Docs: ADR-0073 (+§amendment-1) → Superseded by ADR-0155; ADR-0155 §Implementation (Phase 41) marker; glossary "Resident" entry + summary/capacity.md ADR-0073 row + dev/internals/capacity.md annotated. **§3.1 (this file) was already amended by Chat C** — no further edit.
+
+**Cumulative gate:** 3660 passed / 8 skipped / 0 failed.
+
+**Grounding-driven corrections (Phase 44 consumer discipline applied):**
+
+- **"Phase 31 module deletes whole" is test-only.** Production was **surgical** (the three modules host Phase-30 occupants); only the 9 resident *test* files delete whole. PHASE_MAP/ADR estimated "~6-8 files".
+- **`_fixtures.py` is shared** by 5 surviving text tests → pruned, not deleted (the S2 test-fixture sweep, caught at R0; no gate-1 cascade).
+- **`docs/concepts/monitors.md` is a phantom** — PHASE_MAP "Modules touched"/"confirms" lists a file that does not exist; doc amendments redirected to glossary/summary/internals.
+- **grep-zero pass criterion is unsatisfiable repo-wide** (ADR-0155 + superseded ADR-0073 + the sentinel test legitimately contain the strings) → the retirement sentinel `tests/phase_41/test_resident_infrastructure_retired.py` is **scoped to the shipped package**: importability assertion + grep over `mindsos_capacity/**/*.py`.
+- **`KIND_RESIDENT`→`KIND_MONITOR` is a VALUE change** (`"resident"`→`"monitor"`), not just a symbol rename — node_kind migration empty at v1 (no persisted Monitor instances).
+- **No version bump** (slot 41 ≤ high-water 44; PB-2 convention from Phase 40).
+- CHANGELOG left untouched (stops at Phase 38; 39/40/43/44 added no entry — consistency).
+
+**Carry-forward to Phase 46 (L4 substrate):** implement `MonitorSubscriptionRegistry` (session-scope `Dict[DataState IRI, List[Monitor IRI]]`) consuming `cl.iter_monitors()` + per-task lazy Monitor `CapacityInstance` instantiation + orchestrator-thread-only register/unregister. PB-8 `FAMILY_RULES` vocabulary reconciliation (routed from Phase 40) is owned by **Phase 42 (X3)** Phase-27 audit (L3-57).
+
+**Full record:** `confirmation_docs/PHASE_41_DESIGN_LOG.md` + `PHASE_41_CONFIRMED.md` + `notes/notes-phase-41.md`.
 
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 

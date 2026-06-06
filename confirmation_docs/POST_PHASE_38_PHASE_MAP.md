@@ -258,7 +258,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 41 — L3 X2: Monitor lifecycle retirement from L3
 
-  **Status:** Pending
+  **Status:** Confirmed — SHIPPED 2026-06-05 (tag `phase-41-confirmed` at `ba7c469`; squash-merge `9330550`; cumulative gate 3660 / 8 skipped / 0 failed; no version bump, slot 41 ≤ high-water 44). Grounding corrections (HANDOFF §3.1.16 + PHASE_41_DESIGN_LOG): production retirement was **surgical** not whole-module (the 3 modules host Phase-30 occupants); "deletes whole" applied only to the 9 phase_31 *test* files; `_fixtures.py` pruned (shared by text tests); `docs/concepts/monitors.md` is a **phantom** (this row's "Modules touched" references a non-existent file → doc edits redirected to glossary/summary/internals); grep-zero criterion scoped to `mindsos_capacity/**` (repo-wide is unsatisfiable — ADR self-documents); §3.1 was already pre-amended by Chat C. iter_monitors has no v1 consumer → Phase 46. Full record: `PHASE_41_DESIGN_LOG.md`.
   **Branch:** phase-41
   **Tag on confirm:** phase-41-confirmed
   **Rail:** B
