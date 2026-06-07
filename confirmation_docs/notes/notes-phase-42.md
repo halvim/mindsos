@@ -1,0 +1,41 @@
+# Phase 42 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+L3 X3 — bipartite topology + capacity registration contract v2 + Phase 27 dont-know audit + Model C remediation
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Phase 42 (Rail B slot 3, L3 reframe X3) ships ADR-0156 (L3 bipartite topology) + ADR-0159 (capacity registration contract v2) + the Phase 27 dont-know audit (L3-57) + Model C documentation remediation. Both ADRs were Accepted on disk; this phase implements them.
+
+Bipartite topology (ADR-0156): register_capacity now emits explicit PRODUCES (capacity->DataState) + CONSUMES (DataState->capacity) IntergraphEdges from the declaration's outputs/inputs, with idempotent if_exists="upsert". Edge-type values are uppercase ("PRODUCES"/"CONSUMES") per the ADR-0021 rel-type regex (PB-22; the lowercase forms in ADR-0156's body are the Chat B D-B46 instance-layer label convention). The Phase 29 TYPE_COMPAT auto-discovery substrate is retired whole: discovery.py deleted (~330 LOC), SuccessorHop + DiscoveryFailedError + CapacityLayer.rediscover + EDGE_TYPE_COMPAT removed. views.successors_of/producers_of/consumers_of + new inputs_of/outputs_of are edge-sourced; find_pipeline BFS walks the bipartite edge set. Semantic preservation confirmed against the Phase 30 find_pipeline cases + Integration B (Phase 32). The grep-zero sentinel is scoped to mindsos_capacity/** (repo-wide unsatisfiable; historical ADRs 0069/0086/0156 + changelog retain the term) per the Phase 41 precedent.
+
+Registration contract v2 (ADR-0159): 6 new _CapacityBase fields (concurrent, inline, max_latency_ms, precondition_iri, effect_iri, reads_mm; "5 new fields" groups inline+max_latency_ms). NEW mindsos_capacity/context.py ships a frozen 10-field CapacityContext (version_snapshot + learned_parameters_snapshot read-only via MappingProxyType), 4 @runtime_checkable Protocols (MMHandle, KLHandle, CapacityLayerHandle, CancelToken), CancelTokenView, and 5 verdict dataclasses (inline; no separate verdicts.py). The module is import-isolated (no mindsos_knowledge/mindsos_instances imports). register_capacity validates inline=>max_latency_ms and structural precondition/effect IRIs (predicate-family resolution is soft/deferred — no predicate.* ships v1). CapacityContext ships as a forward contract: the invoke plumbing + capacity-body context["kl"]->context.kl migration are DEFERRED to Phase 46 (PB-23), because ADR-0159's CapacityContext carries no session-object field for ADR-0146 write-body capability gating and resolving that ADR-0146/0159 boundary is L4-substrate territory.
+
+Instances (ADR-0132 Phase 06 amendment): mindsos_instances gains IntergraphEdgeInstance + IntergraphHyperEdgeInstance (catalog 8->10; reconstruction _KIND_TO_CLASS + repository dispatch wired). materialise for both is deferred to Phase 46 (capacity-MM instantiation is its first consumer; PB-24); instantiation + persistence/reconstruction ship now.
+
+Migration (PB-7): a one-pass migrator would be dead code — the v1 CapacityLayer is in-memory-first with no persisted Global capacity state (constructed fresh per process; capacities re-registered via install_* which now emit edges). Shipped a detector instead: tools/check_phase_42_bipartite_state.py (scans Falkor for capacity nodes still carrying inputs/outputs props; exit 0 clean / exit 1 + wipe-and-rebootstrap). Mirrors the Phase 39/43 migrator->detector reversal.
+
+Phase 27 dont-know audit / L3-57 (PB-8 Option 3): confirmation_docs/PHASE_27_DONT_KNOW_AUDIT.md reconciles FAMILY_RULES against the shipped FUNCTIONAL_CATEGORIES. Renamed derive->derivation and signal->signalling (typo-class mismatches); added consolidate + trace (DATASTATE_MARKER, grounded by the shipped consolidate:mm/trace:problem write capacities); deferred comprehension/decomposition/path-finding/interaction/learning-methods via family_rules.DEFERRED_DEFAULT_CATEGORIES (test-pinned). ADR-0157 gained amendment-1.
+
+Model C (PB-16 Option B): live capacity docs scrubbed to bipartite PRODUCES/CONSUMES (usage/capacity/*, whats-new-v4, summary/capacity ADR-0069/0086 superseded-by-0156 notes). mkdocs --strict fails on 17 PRE-EXISTING server-pivot-era broken-link warnings (zero TYPE_COMPAT/Phase-42-related; Phase 42 introduces none) -> the strict-lift was re-scoped to "non-strict build succeeds + no Phase-42-introduced strict warnings"; the 17 pre-existing warnings are tracked as a docs-maintenance item, not Phase 42.
+
+ADRs: ADR-0069 + ADR-0086 flipped to Superseded by ADR-0156; ADR-0156 + ADR-0159 carry Phase-42 §Implementation footers; 8 amendment paragraphs (0070/0071/0132 per 0156; 0072/0078/0143/0146/0147 per 0159). tests/phase_42/test_adr_amendment_sentinels.py chains from the Phase 41 sentinel.
+
+Exports: mindsos_capacity.__all__ 112 -> 117 (-6 retired discovery exports, +11 ADR-0159 contract exports); export-slate sentinels flipped across phase_29/30/31/33/34. tests/phase_29 discovery suite retired (13 files; export_slate kept + flipped to retirement checks). New tests/phase_42/ suite (8 files).
+
+Version: NO version bump — slot 42 <= high-water mark 44 (PB-2 manifest convention).
+
+Gate: cumulative 3669 passed / 9 skipped / 0 failed (Linux docker pytest). One gate-driven follow-up commit (test-only): phase_27/phase_28 to_properties no longer carry inputs/outputs node properties (assert absent + verify PRODUCES/CONSUMES edges), and the phase_29 slate flipped its retired-export present-checks to retirement checks.
