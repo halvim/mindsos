@@ -7,27 +7,29 @@ without any write surface.
 
 Phase 28 shipped the accessor surface (``category_graph`` /
 ``datastates_graph`` / ``iter_categories`` / ``get_capacity`` /
-``get_datastate`` / ``iter_capacities`` / ``iter_datastates``). Phase 29
-adds the :class:`SuccessorHop` dataclass + the successor / producer /
-consumer walks atomically with the TYPE_COMPAT auto-discovery
-substrate per Phase 28 R4 PB-45.
+``get_datastate`` / ``iter_capacities`` / ``iter_datastates``).
+
+**Bipartite topology (ADR-0156, Phase 42).** The successor / producer /
+consumer walks read the explicit ``PRODUCES`` / ``CONSUMES``
+IntergraphEdges (the single query-time source of truth per PB-9) rather
+than the retired ``inputs``/``outputs`` node properties or the retired
+type-compatibility edges. ``inputs_of`` / ``outputs_of`` co-ship per
+ADR-0156.
 
 **Parent-verbatim semantics (R5 PB-37):** the walks do NOT filter
-soft-deleted edges or nodes at Phase 29 — Phase 28's
-:meth:`iter_capacities` doesn't filter either; consistency wins.
-``include_deprecated`` parameter discipline across L3 walks is a
-Phase 30+ carry-forward (R5 PB-37 new item).
+soft-deleted edges or nodes — :meth:`iter_capacities` doesn't filter
+either; consistency wins.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Iterator, List, Optional
 
-from mindsos_core import Edge, Graph, Metagraph, Node
+from mindsos_core import Graph, IntergraphEdge, Metagraph, Node
 
 from .identifiers import (
-    EDGE_TYPE_COMPAT,
+    EDGE_CONSUMES,
+    EDGE_PRODUCES,
     NODE_TYPE_ADAPTER,
     NODE_TYPE_CAPACITY,
     NODE_TYPE_DATASTATE,
@@ -37,42 +39,14 @@ from .identifiers import (
 )
 
 
-# ── SuccessorHop ───────────────────────────────────────────────────────
-
-@dataclass(frozen=True)
-class SuccessorHop:
-    """One step in a pipeline.
-
-    Attributes:
-        source_capacity: The capacity IRI that produces the DataState.
-        target_capacity: The capacity IRI that consumes the DataState.
-        via_datastate: The DataState IRI connecting them.
-        same_category: ``True`` iff both capacities sit in the same
-            functional-category graph (the edge is intra-graph).
-        strictness: ``"strict"`` or ``"adapter"`` — Phase 29 vertical
-            slice only emits ``"strict"``. The ``"adapter"`` variant
-            requires adapter-bridge synthesis which a future phase
-            ships.
-        adapter_capacity: The adapter IRI inserted, if any. Always
-            ``None`` at Phase 29 (no adapter-bridge synthesis yet).
-    """
-
-    source_capacity: str
-    target_capacity: str
-    via_datastate: str
-    same_category: bool
-    strictness: str = "strict"
-    adapter_capacity: Optional[str] = None
-
-
 # ── CapacityLayerView ──────────────────────────────────────────────────
 
 class CapacityLayerView:
     """Read-only view over an L3 Metagraph.
 
-    Exposes capacity / DataState lookup, category iteration, and
-    type-compatibility successor lookup. Modifications must go through
-    :class:`mindsos_capacity.capacity_layer.CapacityLayer`.
+    Exposes capacity / DataState lookup, category iteration, and the
+    bipartite successor / producer / consumer walks. Modifications must
+    go through :class:`mindsos_capacity.capacity_layer.CapacityLayer`.
     """
 
     def __init__(self, metagraph: Metagraph) -> None:
@@ -159,80 +133,79 @@ class CapacityLayerView:
             return iter(())
         return (n for n in g.nodes.values() if n.type_name == NODE_TYPE_DATASTATE)
 
-    # ── successor enumeration (used by pipeline-finder) ───────────────
+    # ── bipartite walk primitive (ADR-0156) ──────────────────────────
 
-    def successors_of(self, capacity_iri: str) -> List[SuccessorHop]:
-        """Return every TYPE_COMPAT successor of ``capacity_iri``.
+    def _iter_edges(self, type_name: str) -> Iterator[IntergraphEdge]:
+        """Yield this metagraph's IntergraphEdges of one ``type_name``.
 
-        Walks both intra-graph Edges and cross-graph MetaEdges. Parent-
-        verbatim — no soft-delete filter at Phase 29 (R5 PB-37).
-        Returns hops in dict-iteration order; tests should use set
-        comparison or explicit sort.
+        The metagraph's in-memory ``iter_intergraph_edges`` is the walk
+        substrate; Pattern B anchor-node persistence is invisible here.
         """
-        hops: List[SuccessorHop] = []
-        source = self.get_capacity(capacity_iri)
-        if source is None:
-            return hops
-        # Intra-graph.
-        for g in self._mg.graphs.values():
-            if g.role == ROLE_DATASTATES:
-                continue
-            for e in g.edges.values():
-                if (
-                    e.type_name == EDGE_TYPE_COMPAT
-                    and e.source.node_id == source.node_id
-                ):
-                    hops.append(_hop_from_edge(e, same_category=True))
-        # Cross-graph.
-        for me in self._mg.metaedges.values():
-            if (
-                me.type_name == EDGE_TYPE_COMPAT
-                and me.properties.get("source_capacity") == source.node_id
-            ):
-                hops.append(
-                    SuccessorHop(
-                        source_capacity=me.properties["source_capacity"],
-                        target_capacity=me.properties["target_capacity"],
-                        via_datastate=me.properties.get("via_datastate", ""),
-                        same_category=False,
-                        strictness=me.properties.get("strictness", "strict"),
-                        adapter_capacity=me.properties.get("adapter_id"),
-                    )
-                )
-        return hops
+        for ie in self._mg.iter_intergraph_edges():
+            if ie.type_name == type_name:
+                yield ie
+
+    # ── producer / consumer / input / output walks ───────────────────
+
+    def outputs_of(self, capacity_iri: str) -> List[str]:
+        """DataState IRIs this capacity PRODUCES (edge-sourced; PB-9)."""
+        return [
+            ie.target_node_id
+            for ie in self._iter_edges(EDGE_PRODUCES)
+            if ie.source_node_id == capacity_iri
+        ]
+
+    def inputs_of(self, capacity_iri: str) -> List[str]:
+        """DataState IRIs this capacity CONSUMES (edge-sourced; PB-9)."""
+        return [
+            ie.source_node_id
+            for ie in self._iter_edges(EDGE_CONSUMES)
+            if ie.target_node_id == capacity_iri
+        ]
 
     def producers_of(self, datastate_iri: str) -> List[Node]:
-        """Return every capacity whose ``outputs`` list contains ``datastate_iri``."""
+        """Return every capacity that PRODUCES ``datastate_iri``."""
         hits: List[Node] = []
-        for node in self.iter_capacities():
-            outs = node.properties.get("outputs") or []
-            if datastate_iri in outs:
-                hits.append(node)
+        for ie in self._iter_edges(EDGE_PRODUCES):
+            if ie.target_node_id == datastate_iri:
+                node = self.get_capacity(ie.source_node_id)
+                if node is not None:
+                    hits.append(node)
         return hits
 
     def consumers_of(self, datastate_iri: str) -> List[Node]:
-        """Return every capacity whose ``inputs`` list contains ``datastate_iri``."""
+        """Return every capacity that CONSUMES ``datastate_iri``."""
         hits: List[Node] = []
-        for node in self.iter_capacities():
-            ins = node.properties.get("inputs") or []
-            if datastate_iri in ins:
-                hits.append(node)
+        for ie in self._iter_edges(EDGE_CONSUMES):
+            if ie.source_node_id == datastate_iri:
+                node = self.get_capacity(ie.target_node_id)
+                if node is not None:
+                    hits.append(node)
         return hits
+
+    # ── successor enumeration (used by pipeline-finder) ───────────────
+
+    def successors_of(self, capacity_iri: str) -> List[str]:
+        """Return successor capacity IRIs via the two-hop bipartite walk.
+
+        ``capacity → PRODUCES → DataState → CONSUMES → successor``
+        (ADR-0156). Semantic-preserving replacement for the retired
+        one-hop type-compatibility walk; self is excluded. Order is walk
+        order; callers needing determinism should sort or set-compare.
+        """
+        if self.get_capacity(capacity_iri) is None:
+            return []
+        seen: List[str] = []
+        for ds_iri in self.outputs_of(capacity_iri):
+            for ie in self._iter_edges(EDGE_CONSUMES):
+                if ie.source_node_id == ds_iri:
+                    succ = ie.target_node_id
+                    if succ != capacity_iri and succ not in seen:
+                        seen.append(succ)
+        return seen
 
     def __repr__(self) -> str:
         return f"CapacityLayerView({self._mg.name!r}, graphs={len(self._mg.graphs)})"
 
 
-def _hop_from_edge(edge: Edge, *, same_category: bool) -> SuccessorHop:
-    """Internal helper: build a SuccessorHop from an intra-graph Edge."""
-    return SuccessorHop(
-        source_capacity=edge.source.node_id,
-        target_capacity=edge.target.node_id,
-        via_datastate=edge.properties.get("via_datastate", ""),
-        same_category=same_category,
-        strictness=edge.properties.get("strictness", "strict"),
-        adapter_capacity=edge.properties.get("adapter_id"),
-    )
-
-
-__all__ = ["CapacityLayerView", "SuccessorHop"]
+__all__ = ["CapacityLayerView"]

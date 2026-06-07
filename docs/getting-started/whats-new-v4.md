@@ -91,7 +91,6 @@ with the L4 session orchestrator:
   in-memory `KnowledgeLayer.bootstrap()` (Phase 30 CF #3).
 - `FalkorDBLocalPersister` + Local-write end-to-end CLI demo
   (Phase 25 + Phase 38 R3-PB-A).
-- `add_type_compat` admin API + bulk rediscover verb.
 - `include_deprecated` parameter discipline across L3 walks.
 - `--install-builtins=<family>` CLI flag on `invoke` (waits for a
   second builtins family).

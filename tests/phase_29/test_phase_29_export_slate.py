@@ -20,7 +20,11 @@ import importlib
 import pytest
 
 
-PHASE_29_NEW_EXPORTS = {
+# Phase 42 (ADR-0156): the Phase 29 TYPE_COMPAT/discovery exports were
+# RETIRED. This file (the surviving Phase 29 slate sentinel) flips its
+# original "present" checks to retirement checks, mirroring the Phase 41
+# phase_31 resident-retirement pattern.
+PHASE_29_RETIRED_EXPORTS = {
     "SuccessorHop",
     "discover_for_capacity",
     "discover_for_datastate",
@@ -44,11 +48,11 @@ PHASE_30_LIFTED_EXPORTS = {
 }
 
 
-def test_phase_29_exports_5_new_names():
+def test_phase_29_discovery_exports_retired():
+    # ADR-0156 (Phase 42): TYPE_COMPAT/discovery surface retired.
     import mindsos_capacity
-    all_set = set(mindsos_capacity.__all__)
-    missing = PHASE_29_NEW_EXPORTS - all_set
-    assert not missing, f"Phase 29 new exports missing from __all__: {missing}"
+    present = PHASE_29_RETIRED_EXPORTS & set(mindsos_capacity.__all__)
+    assert not present, f"Phase 29 exports should be retired but still in __all__: {present}"
 
 
 def test_phase_30_surface_exported_at_phase_30():
@@ -66,19 +70,23 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_41_export_count_is_112():
+def test_phase_42_export_count_is_117():
     """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40)
-    -> 112 (P41).
+    -> 112 (P41) -> 117 (P42).
 
-    Phase 41 X2 retires 3 monitor-lifecycle exports (ResidentSubscription,
-    ResidentError, KIND_RESIDENT) and adds 1 (KIND_MONITOR) per ADR-0155:
-    net -2 over Phase 40.
+    Phase 42 X3 retires 6 type-compat/discovery exports (SuccessorHop,
+    EDGE_TYPE_COMPAT, discover_for_capacity, discover_for_datastate,
+    rediscover_all, DiscoveryFailedError) per ADR-0156 and adds 11 ADR-0159
+    contract exports (CapacityContext, MMHandle, KLHandle,
+    CapacityLayerHandle, CancelToken, CancelTokenView, TierVerdict,
+    GoalVerdict, PipelineFindVerdict, PromotionRuleVerdict, ReplanVerdict):
+    net +5 over Phase 41.
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 112, (
-        f"Phase 41 __all__ count {n} != expected 112 "
-        f"(Phase 40 baseline 114 - 3 retired + 1 KIND_MONITOR at Phase 41)"
+    assert n == 117, (
+        f"Phase 42 __all__ count {n} != expected 117 "
+        f"(Phase 41 baseline 112 - 6 retired + 11 ADR-0159 contract exports)"
     )
 
 
@@ -105,10 +113,13 @@ def test_phase_40_export_importable(name: str):
     )
 
 
-@pytest.mark.parametrize("name", sorted(PHASE_29_NEW_EXPORTS))
-def test_phase_29_export_importable(name: str):
-    """Each new export resolves to an actual symbol at runtime."""
+@pytest.mark.parametrize("name", sorted(PHASE_29_RETIRED_EXPORTS))
+def test_phase_29_export_retired_and_unresolvable(name: str):
+    """Each retired export is absent from __all__ AND unresolvable (ADR-0156)."""
     import mindsos_capacity
-    assert hasattr(mindsos_capacity, name), (
-        f"Phase 29 export {name!r} listed in __all__ but missing at runtime"
+    assert name not in mindsos_capacity.__all__, (
+        f"Retired Phase 29 export {name!r} still listed in __all__"
+    )
+    assert not hasattr(mindsos_capacity, name), (
+        f"Retired Phase 29 export {name!r} still resolvable at runtime"
     )

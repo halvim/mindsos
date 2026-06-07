@@ -278,13 +278,12 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_capacity/schemas.py",
     "mindsos_capacity/types.py",
     "mindsos_capacity/views.py",
-    # Phase 29 — TYPE_COMPAT auto-discovery substrate per PHASE_MAP §29
-    # + ADRs 0069/0086 + 0070 §closure. 1 new runtime Python module in
-    # the existing mindsos_capacity/ pkg; no new top-level pkg
-    # (9-site checklist N/A). Discovery is invoked internally by
-    # CapacityLayer.register_capacity / register_datastate / rediscover
-    # but exported as free functions for direct admin/test callers.
-    "mindsos_capacity/discovery.py",
+    # Phase 42 — ADR-0159 typed CapacityContext + handle Protocols +
+    # decision verdicts. NEW module replacing the retired Phase 29
+    # discovery.py (TYPE_COMPAT auto-discovery deleted whole per ADR-0156
+    # bipartite reframe; produces/consumes edges emitted at
+    # register_capacity time).
+    "mindsos_capacity/context.py",
     # Phase 30 — Invocation runtime + BFS pipeline finder per PHASE_MAP
     # §30 + ADRs 0066 §Impl (export lift) + 0071 §Impl (BFS) + 0072 §am1
     # + §Impl (envelope; field rename) + 0074 §Impl (in-memory anomaly

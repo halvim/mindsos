@@ -129,3 +129,27 @@ Ship phase **X1** — bundled with ADR-0158 (DataState naming convention). Share
 ## Rationale
 
 Per-decision rationale, 3-round saturation, the 5-shape catalog refinement from 6→5, and the family rule corrections (`signal_source` → `signal`, `phase6` added, `hint`/`planning`/`dream` corrected to OPTIONAL_RETURN) at `docs/_workbench/L1_L3_REFRAME_DECISIONS.md` §D46 + §L3-36-to-L3-51-family-batch.
+
+## Amendment 1 (Phase 42 / L3-57) — FAMILY_RULES key reconciliation
+
+Phase 40 transcribed the `FAMILY_RULES` dict verbatim, leaving a latent
+key-vocabulary mismatch against the shipped `FUNCTIONAL_CATEGORIES`
+(ADR-0065): the keys `derive`/`signal` did not match the shipped category
+names `derivation`/`signalling`, and seven categories had no key — so 9 of
+the 13 categories resolved via the permissive `DATASTATE_MARKER` default
+rather than by intent (Phase 40 ship pushback PB-8; tracked L3-57). The
+Phase 27 dont-know audit (`confirmation_docs/PHASE_27_DONT_KNOW_AUDIT.md`)
+decided **Option 3** — fix the groundable, defer the genuinely unknown:
+
+- **Rename** `derive` → `derivation`, `signal` → `signalling` (typo-class
+  mismatches; intended shape unchanged: DATASTATE_MARKER / OPTIONAL_RETURN).
+- **Add** `consolidate` → DATASTATE_MARKER and `trace` → DATASTATE_MARKER
+  (shapes grounded by the shipped `consolidate:mm` / `trace:problem`).
+- **Defer** `comprehension`, `decomposition`, `path-finding`,
+  `interaction`, `learning-methods` to their owning installation chats;
+  recorded as `family_rules.DEFERRED_DEFAULT_CATEGORIES` and pinned by
+  `tests/phase_42/test_phase_27_audit_doc.py` so the deferred set cannot
+  grow silently. Each owning chat adds the explicit key when it ships the
+  first capacity in that category.
+
+The two-level lookup and the 5-shape catalog are unchanged.

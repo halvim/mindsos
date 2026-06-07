@@ -104,10 +104,12 @@ def test_capacity_deferral_anchors_updated() -> None:
     assert init_py.exists()
     content = init_py.read_text(encoding="utf-8")
 
-    # The 5 updated anchors — each new line carries the
-    # "deferred to L4 follow-up plan per Phase 38 R4-PB-D" suffix.
+    # The 5 anchors. Anchor #1 (``add_type_compat``) was re-pointed at
+    # Phase 42: the admin API retired entirely with the Phase 29 type-
+    # compatibility substrate per ADR-0156 (supersedes the Phase 38
+    # "deferred to L4" framing). The other 4 keep the R4-PB-D suffix.
     expected = [
-        "``add_type_compat`` admin API + bulk rediscover verb — deferred to\n  L4 follow-up plan per Phase 38 R4-PB-D",
+        "``add_type_compat`` admin API — retired entirely with the Phase 29\n  type-compatibility substrate per ADR-0156 (Phase 42).",
         "``include_deprecated`` parameter discipline across L3 walks —\n  deferred to L4 follow-up plan per Phase 38 R4-PB-D",
         "Falkor-backed L3 bootstrap + state-file serialization — deferred\n  to L4 follow-up plan per Phase 38 R4-PB-D + R3-PB-A",
         "``--session-token`` CLI flag — deferred to L4 follow-up plan per\n  Phase 38 R4-PB-D + R3-PB-B",

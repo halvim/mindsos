@@ -53,12 +53,35 @@ def test_explicit_perception_datastate_marker():
 
 
 def test_permissive_default_for_unkeyed_category():
+    # Phase 42 / L3-57 (PB-21): consolidate + trace now resolve via
+    # explicit FAMILY_RULES keys, so this default-path check moved to the
+    # categories that intentionally stay unkeyed (DEFERRED_DEFAULT_CATEGORIES).
+    assert family_rule_for("capacity:comprehension:foo") == (
+        FamilyDontKnowShape.DATASTATE_MARKER
+    )
+    assert family_rule_for("capacity:decomposition:foo") == (
+        FamilyDontKnowShape.DATASTATE_MARKER
+    )
+
+
+def test_renamed_and_added_category_keys_phase42():
+    # ADR-0157 §am-1: derive->derivation, signal->signalling (typo-class
+    # renames vs shipped FUNCTIONAL_CATEGORIES); consolidate + trace added.
+    assert family_rule_for("capacity:derivation:foo") == (
+        FamilyDontKnowShape.DATASTATE_MARKER
+    )
+    assert family_rule_for("capacity:signalling:foo") == (
+        FamilyDontKnowShape.OPTIONAL_RETURN
+    )
     assert family_rule_for("capacity:consolidate:mm") == (
         FamilyDontKnowShape.DATASTATE_MARKER
     )
     assert family_rule_for("capacity:trace:problem") == (
         FamilyDontKnowShape.DATASTATE_MARKER
     )
+    # The old misspelled keys no longer exist.
+    assert "derive" not in FAMILY_RULES
+    assert "signal" not in FAMILY_RULES
 
 
 def test_malformed_iri_raises():

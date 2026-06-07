@@ -247,3 +247,7 @@ call semantic validators (ADR-0139)" enforcing that capacity
 bodies call the composite (or compose validators directly) before
 `write_and_validate`. Bypass = code-review failure per ADR-0139
 §Decision.
+
+## §Amendment (Phase 42 — ADR-0159)
+
+KL injection into write-capacity bodies becomes typed via `context.kl` (`KLHandle` Protocol) rather than the `context["kl"]` dict key. The write-handle contract is unchanged; the typed access path lands when the body migration ships at Phase 46 (PB-23).

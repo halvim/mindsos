@@ -11,21 +11,21 @@ and invocation.
 ## What `find_pipeline` does
 
 Given a `start_datastate` IRI and a `target_datastate` IRI,
-`find_pipeline` performs a **breadth-first search** over the TYPE_COMPAT
-graph (auto-discovered by Phase 29's registration hooks) and returns
-the **shortest pipeline by capacity count** as a `Pipeline` dataclass.
-It deliberately ignores `:CONSTRAINT` edges — constraint filtering is
-L4's responsibility per ADR-0071.
+`find_pipeline` performs a **breadth-first search** over the bipartite
+`PRODUCES`/`CONSUMES` edge set (ADR-0156) and returns the **shortest
+pipeline by capacity count** as a `Pipeline` dataclass. It deliberately
+ignores `:CONSTRAINT` edges — constraint filtering is L4's
+responsibility per ADR-0071.
 
 ## Algorithm shape
 
 BFS is **datastate-keyed**, not capacity-keyed. The frontier consists
-of DataState IRIs; `view.consumers_of(datastate)` (Phase 29 walks API)
-returns candidate next-capacities; each capacity's outputs push the
-next frontier. The "auto-discovered TYPE_COMPAT graph" wording in
-ADR-0071 §Decision refers to the structural substrate; the algorithm
-walks via consumers, not via the capacity-keyed `successors_of`
-primitive (which exists for a different use case).
+of DataState IRIs; `view.consumers_of(datastate)` (via `CONSUMES` edges)
+returns candidate next-capacities; `view.outputs_of(capacity)` (via
+`PRODUCES` edges) pushes the next frontier. The bipartite edge set is the
+explicit structural substrate (ADR-0156); the algorithm walks via
+consumers, not via the capacity-keyed `successors_of` primitive (which
+exists for a different use case).
 
 ## Basic usage
 

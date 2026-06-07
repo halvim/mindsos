@@ -48,7 +48,13 @@ def test_version_bumped_to_phase_34():
 
 
 def test_phase_29_exports_remain_intact():
-    """No Phase 29 export was dropped at Phase 30."""
+    """No durable Phase 29 export was dropped at Phase 30.
+
+    The TYPE_COMPAT/discovery exports (SuccessorHop, discover_for_capacity,
+    discover_for_datastate, rediscover_all, DiscoveryFailedError) were
+    intentionally retired at Phase 42 (ADR-0156 bipartite reframe) and are
+    therefore excluded from this durable-export set.
+    """
     phase_29_set = {
         "Capacity",
         "Monitor",
@@ -58,16 +64,11 @@ def test_phase_29_exports_remain_intact():
         "ShapeDescriptor",
         "CapacityLayer",
         "CapacityLayerView",
-        "SuccessorHop",
-        "discover_for_capacity",
-        "discover_for_datastate",
-        "rediscover_all",
         "create_global",
         "create_local",
         "CAN_WRITE_GLOBAL",
         "SessionProtocol",
         "schema_for_role",
-        "DiscoveryFailedError",
         "ConstraintViolationError",
     }
     missing = phase_29_set - set(mindsos_capacity.__all__)

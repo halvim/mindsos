@@ -68,3 +68,7 @@ The parent reference (`mindsos_capacity/builtins/pathfinding.py`) shipped a `bui
 - `build_bfs_capacity_declaration` is **never to be reintroduced** at any L3 phase without a concrete L4 consumer.
 
 Status remains Accepted.
+
+## §Amendment (Phase 42 — ADR-0156)
+
+The BFS now walks the bipartite `PRODUCES`/`CONSUMES` edges (`consumers_of` via CONSUMES, `outputs_of` via PRODUCES) instead of the retired TYPE_COMPAT graph. Reachability is identical; the per-frontier hop count doubles (datastate→capacity→datastate). `find_pipeline` signature + `Pipeline` shape unchanged.

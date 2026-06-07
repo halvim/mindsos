@@ -286,3 +286,7 @@ minter signatures.
 
 See `confirmation_docs/PHASE_39_DESIGN_LOG.md` R1 PB-N1 / PB-N3 / PB-N4
 for design pass closure and dispatch-shape alternatives considered.
+
+## §Amendment (Phase 42 — ADR-0159)
+
+The symmetric write invocation contract is unchanged; only the access path becomes typed (`context.kl` via `KLHandle`). Body migration deferred to Phase 46 (PB-23).

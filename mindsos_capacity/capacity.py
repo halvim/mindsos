@@ -60,6 +60,12 @@ class _CapacityBase:
     node_type: str = NODE_TYPE_CAPACITY
     node_kind: str = KIND_REACTIVE
     is_adapter: bool = False
+    concurrent: bool = True
+    inline: bool = False
+    max_latency_ms: Optional[int] = None
+    precondition_iri: Optional[str] = None
+    effect_iri: Optional[str] = None
+    reads_mm: bool = False
 
     @property
     def iri(self) -> str:
@@ -72,8 +78,6 @@ class _CapacityBase:
             "category": self.category,
             "node_kind": self.node_kind,
             "is_adapter": self.is_adapter,
-            "inputs": list(self.inputs),
-            "outputs": list(self.outputs),
             "cost_prior": float(self.cost_prior),
             "latency_ms_prior": float(self.latency_ms_prior),
         }

@@ -22,7 +22,7 @@ Layer 3 is the repertoire of *fixed*, deterministic abilities the system has. It
 | [0066](../adr/0066-capacity-iri-form.md) | IRI form: `capacity:<category>:<name>` and `datastate:<name>` | Stable, human-readable, parseable; set at declaration time, never rewritten |
 | [0067](../adr/0067-ref-types-shared-with-kl.md) | `REF_TYPES` vocabulary is shared verbatim with KL | One mental model across layers; extension is high-friction (intentional) |
 | [0068](../adr/0068-constraint-kind-property-key.md) | `constraint_kind` is the property key, not `kind` | Avoids collision with Core's reserved `kind` key |
-| [0069](../adr/0069-type-compat-auto-discovery.md) | TYPE_COMPAT edges are auto-discovered and stamped | `discovered_automatically=True` flag allows `rediscover_all` to leave admin overrides alone |
+| [0069](../adr/0069-type-compat-auto-discovery.md) | TYPE_COMPAT edges are auto-discovered and stamped | **Superseded by ADR-0156** (Phase 42): replaced by explicit bipartite `PRODUCES`/`CONSUMES` IntergraphEdges emitted at `register_capacity` time |
 | [0070](../adr/0070-five-constraint-kinds.md) | Five admin-authored CONSTRAINT kinds; intra-category in the slice | `MUTUALLY_EXCLUSIVE`, `MANDATORY_BEFORE`, `RATE_LIMIT`, `REQUIRES_APPROVAL`, `REQUIRES_L2_VERSION` |
 | [0071](../adr/0071-pipeline-finder-bfs.md) | Pipeline-finder is BFS over TYPE_COMPAT; ignores constraints | Deterministic default; L4 applies constraints post-hoc (policy belongs above) |
 | [0072](../adr/0072-invoke-never-raises.md) | `invoke()` never raises for implementation errors | Returns `InvocationResult(failed=True, exception=...)`; raises only for invariant bugs |
@@ -37,7 +37,7 @@ Layer 3 is the repertoire of *fixed*, deterministic abilities the system has. It
 | [0081](../adr/0081-l3-session-context-threading.md) | `invoke`/`start_resident` thread `session_user_id` into `context` | Capacity impls get consistent provenance source without parsing sessions |
 | [0084](../adr/0084-l3-capacities-fixed-not-learned.md) | Functional-category as primary axis for graphs | Fast, readable partition aligns with L4's task decomposition strategy |
 | [0085](../adr/0085-multi-graph-membership.md) | Capacities can belong to multiple graphs; one home, additional memberships | Flexible organisation; one registration path, multiple membership options |
-| [0086](../adr/0086-auto-discovery-with-admin-override.md) | Auto-discovery of type-compat edges with admin manual override | Default automated; admin overrides preserved through rediscovery |
+| [0086](../adr/0086-auto-discovery-with-admin-override.md) | Auto-discovery of type-compat edges with admin manual override | **Superseded by ADR-0156** (Phase 42): `add_type_compat` + bulk rediscover retired with the TYPE_COMPAT substrate |
 | [0087](../adr/0087-richness-annotation-implicit.md) | Richness annotation in DataState type system is implicit | Auto-discovery stays deterministic; semantic depth encoded in operator choice |
 | [0088](../adr/0088-fine-grained-residents.md) | Resident capacity granularity is fine-grained, matching reactive capacities | Residents compose naturally; L4 retains full control over signal handling |
 | [0089](../adr/0089-three-tier-memory.md) | Session persistence for residents via three-tier memory model | L4 process memory / L5 working memory / L2 long-term; triage is an L4 intelligence |

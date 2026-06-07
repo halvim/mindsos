@@ -39,21 +39,44 @@ FAMILY_RULES: Dict[str, FamilyDontKnowShape] = {
     "predicate": FamilyDontKnowShape.NO_DONT_KNOW,
     "validate": FamilyDontKnowShape.VALIDATION_RESULT,
     "transform": FamilyDontKnowShape.DATASTATE_MARKER,
-    "derive": FamilyDontKnowShape.DATASTATE_MARKER,
+    # ADR-0157 §amendment-1 (Phase 42 / L3-57): keys reconciled against
+    # the shipped FUNCTIONAL_CATEGORIES. ``derive``->``derivation`` and
+    # ``signal``->``signalling`` were typo-class mismatches vs the
+    # shipped category names; ``consolidate`` + ``trace`` added (shapes
+    # grounded by the shipped consolidate:mm / trace:problem write
+    # capacities). See confirmation_docs/PHASE_27_DONT_KNOW_AUDIT.md.
+    "derivation": FamilyDontKnowShape.DATASTATE_MARKER,
     "perception": FamilyDontKnowShape.DATASTATE_MARKER,
     "process": FamilyDontKnowShape.DATASTATE_MARKER,
+    "consolidate": FamilyDontKnowShape.DATASTATE_MARKER,
+    "trace": FamilyDontKnowShape.DATASTATE_MARKER,
     "hint": FamilyDontKnowShape.OPTIONAL_RETURN,
     "planning": FamilyDontKnowShape.OPTIONAL_RETURN,
     "dream": FamilyDontKnowShape.OPTIONAL_RETURN,
     "code": FamilyDontKnowShape.DATASTATE_MARKER,
     "retrieval": FamilyDontKnowShape.OPTIONAL_RETURN,
     "promotion_rule": FamilyDontKnowShape.OPTIONAL_RETURN,
-    "signal": FamilyDontKnowShape.OPTIONAL_RETURN,
+    "signalling": FamilyDontKnowShape.OPTIONAL_RETURN,
     "adapter": FamilyDontKnowShape.DATASTATE_MARKER,
     "pattern": FamilyDontKnowShape.OPTIONAL_RETURN,
     "als": FamilyDontKnowShape.OPTIONAL_RETURN,
     "phase6": FamilyDontKnowShape.OPTIONAL_RETURN,
 }
+
+
+#: FUNCTIONAL_CATEGORIES (ADR-0065) that intentionally resolve via the
+#: permissive ``DATASTATE_MARKER`` default rather than an explicit
+#: FAMILY_RULES key — their shape is ratified at the owning installation
+#: chat (WSD / FOL / code-skill / adapter), not guessed here. Pinned by
+#: tests/phase_42/test_phase_27_audit_doc.py so the list cannot grow
+#: silently. See confirmation_docs/PHASE_27_DONT_KNOW_AUDIT.md (L3-57).
+DEFERRED_DEFAULT_CATEGORIES = frozenset({
+    "comprehension",
+    "decomposition",
+    "path-finding",
+    "interaction",
+    "learning-methods",
+})
 
 
 def family_rule_for(capacity_iri: str) -> FamilyDontKnowShape:

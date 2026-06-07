@@ -33,10 +33,10 @@ def test_each_phase_33_export_resolves_to_real_object():
         assert getattr(mindsos_capacity, name) is not None
 
 
-def test_phase_41_export_count_is_112():
-    """Count sentinel — Phase 41 X2 retires 3 + adds 1 (ADR-0155): 114 -> 112."""
-    assert len(mindsos_capacity.__all__) == 112, (
-        f"Expected 112 exports at Phase 41; found {len(mindsos_capacity.__all__)}"
+def test_phase_42_export_count_is_117():
+    """Count sentinel — Phase 42 X3 retires 6 + adds 11 (ADR-0156/0159): 112 -> 117."""
+    assert len(mindsos_capacity.__all__) == 117, (
+        f"Expected 117 exports at Phase 42; found {len(mindsos_capacity.__all__)}"
     )
 
 

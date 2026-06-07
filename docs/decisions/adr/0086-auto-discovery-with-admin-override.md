@@ -1,6 +1,7 @@
 ---
 title: Auto-discovery of type-compat edges with admin manual override
-status: Accepted
+status: Superseded
+superseded_by: ADR-0156
 date: 2026-04-21
 layer: L3
 aliases: [L3-Q3]
@@ -8,7 +9,7 @@ aliases: [L3-Q3]
 
 # ADR-0086: Auto-discovery of type-compat edges with admin override
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0156](0156-l3-bipartite-topology-reframe.md) (Phase 42 — the TYPE_COMPAT substrate + `add_type_compat` admin API + `rediscover_all` retired in favour of explicit bipartite PRODUCES/CONSUMES edges).
 
 **Date:** 2026-04-21
 

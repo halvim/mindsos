@@ -218,3 +218,7 @@ Cross-phase note: Phase 36 (ADR-0139, validator home) does NOT
 re-open ADR-0147; semantic validators integrate into the existing
 shipped capacities' bodies + `write_and_validate` per ADR-0139 §Decision,
 under the per-flow discipline locked here.
+
+## §Amendment (Phase 42 — ADR-0159)
+
+The per-flow build pattern is unchanged; only the context access path becomes typed. Body migration deferred to Phase 46 (PB-23).

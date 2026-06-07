@@ -116,8 +116,13 @@ def test_capacity_to_properties_shape():
     assert props["category"] == "perception"
     assert props["node_kind"] == KIND_REACTIVE
     assert props["is_adapter"] is False
-    assert props["inputs"] == [_DS_RAW]
-    assert props["outputs"] == [_DS_TOKENS]
+    # ADR-0156 (Phase 42): inputs/outputs no longer serialised as node
+    # properties — they become PRODUCES/CONSUMES IntergraphEdges at
+    # register_capacity time. The declaration fields stay for authoring.
+    assert "inputs" not in props
+    assert "outputs" not in props
+    assert c.inputs == (_DS_RAW,)
+    assert c.outputs == (_DS_TOKENS,)
     assert props["cost_prior"] == 1.5
     assert props["latency_ms_prior"] == 2.0
     assert props["description"] == "Whitespace split."

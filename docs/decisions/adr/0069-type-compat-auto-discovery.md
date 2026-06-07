@@ -1,6 +1,7 @@
 ---
 title: TYPE_COMPAT edges are auto-discovered and stamped with discovered_automatically flag
-status: Accepted
+status: Superseded
+superseded_by: ADR-0156
 date: 2026-04-21
 layer: L3
 aliases: [capacity-ADR-010]
@@ -8,7 +9,7 @@ aliases: [capacity-ADR-010]
 
 # ADR-0069: TYPE_COMPAT edges are auto-discovered and stamped
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0156](0156-l3-bipartite-topology-reframe.md) (Phase 42 — bipartite PRODUCES/CONSUMES topology; TYPE_COMPAT auto-discovery + `discovery.py` retired).
 
 **Date:** 2026-04-21
 

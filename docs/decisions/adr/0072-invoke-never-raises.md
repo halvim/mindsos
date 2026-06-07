@@ -63,3 +63,7 @@ Shipped 2026-05-25 in `mindsos_capacity/runtime.py` (NEW module) — `invoke` fr
 **Foot-gun documented in `invoke` docstring:** `task_id=None` short-circuits problem-trace emission — exceptions are still enveloped in `InvocationResult(success=False)` but no trace record is created. L4's lifecycle process is the canonical caller and will always pass `task_id`.
 
 Status remains Accepted as amended (§amendment-1).
+
+## §Amendment (Phase 42 — ADR-0159)
+
+The invoke envelope context transitions toward the typed `CapacityContext` (ADR-0159). v1 invoke plumbing keeps the dict shape; the typed-context conversion + capacity-body `context["kl"]`→`context.kl` migration are deferred to Phase 46 (PB-23). Envelope semantics (never raises for impl errors) unchanged.

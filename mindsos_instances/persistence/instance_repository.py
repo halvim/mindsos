@@ -146,6 +146,10 @@ def _kind_for(inst: ElementInstance) -> str:
         return "metaedge"
     if name == "MetaHyperEdgeInstance":
         return "metahyperedge"
+    if name == "IntergraphEdgeInstance":
+        return "intergraph_edge"
+    if name == "IntergraphHyperEdgeInstance":
+        return "intergraph_hyperedge"
     raise TypeError(
         f"Unknown ElementInstance subclass: {type(inst).__name__}"
     )

@@ -154,3 +154,7 @@ Doing this after L4/L5 design starts means three rewrites: Core, L4, L5. Doing i
 - Documentation: `docs/api/instances/` (new section), `docs/concepts/instancing.md` updated.
 
 ADR moves from Proposed to Accepted when the corresponding code lands and at least one user-facing document (`docs/concepts/instancing.md` or the new `docs/api/instances/`) reflects the decision.
+
+## §Amendment (Phase 42 — ADR-0156)
+
+The `mindsos_instances` Phase 06 instance catalog expands 8→10 with `IntergraphEdgeInstance` + `IntergraphHyperEdgeInstance` (the latter driven by Chat B D-B41 Pipeline composition). `materialise` support for both is deferred to Phase 46 (capacity-MM instantiation; PB-24); instantiation + persistence/reconstruction dispatch ship now.

@@ -59,6 +59,8 @@ from ..models.element_instance import (
     ElementInstance,
     GraphInstance,
     HyperEdgeInstance,
+    IntergraphEdgeInstance,
+    IntergraphHyperEdgeInstance,
     MetaEdgeInstance,
     MetaHyperEdgeInstance,
     NodeInstance,
@@ -84,6 +86,8 @@ _KIND_TO_CLASS: Dict[str, type] = {
     "graph": GraphInstance,
     "metaedge": MetaEdgeInstance,
     "metahyperedge": MetaHyperEdgeInstance,
+    "intergraph_edge": IntergraphEdgeInstance,
+    "intergraph_hyperedge": IntergraphHyperEdgeInstance,
 }
 
 

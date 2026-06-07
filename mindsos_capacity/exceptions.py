@@ -5,7 +5,6 @@ definition surface. Subsequent L3 phases append their own as they
 ship the raisers:
 
 - Phase 28 — ``ConstraintViolationError`` (via ``CapacityLayer.add_constraint``).
-- Phase 29 — ``DiscoveryFailedError`` (via auto-discovery write paths).
 - Phase 30 — ``PipelineNotFoundError`` + ``ProblemTraceError``.
 
 (Phase 31's monitor-lifecycle exception was retired in Phase 41 when the
@@ -63,37 +62,8 @@ class ConstraintViolationError(CapacityLayerError):
       Phase 28 v1 requires same-category).
 
     Future phases may add raisers when constraint enforcement runtime
-    arrives (Phase 29 ships TYPE_COMPAT auto-discovery; constraint
-    enforcement at invoke-time is a Phase 30+ concern).
-    """
-
-
-class DiscoveryFailedError(CapacityRegistrationError):
-    """Auto-discovery raised during a register_* call.
-
-    Subclass of :class:`CapacityRegistrationError` so callers catching
-    the base also catch discovery failures (R0 PB-5 + R2 PB-27 locks).
-
-    Phase 29 raisers (transitive, via discovery hooks):
-
-    - ``CapacityLayer.register_capacity`` — discovery's ``_add_edge``
-      raised (e.g. underlying ``Graph.add_edge`` /
-      ``Metagraph.add_metaedge`` schema-validation failure on the
-      TYPE_COMPAT property bag).
-    - ``CapacityLayer.register_datastate`` — same shape, transitive
-      via ``discover_for_datastate`` (note: Phase 29 v1 emits zero
-      edges from that trigger due to the forward-ref restriction, so
-      this raiser path is dead at v1).
-    - ``CapacityLayer.rediscover`` — full re-run failed mid-emit.
-
-    **Partial-write semantics (R2 PB-27 pick (b)):** when raised
-    mid-``register_capacity``, the capacity node + ``_capacity_index``
-    entry already exist; some discovery edges may have been written
-    before the failure point. v1 does not surface which edges; callers
-    treat the layer state as partially mutated and should generally
-    discard the metagraph or re-bootstrap if recovery matters. A
-    future phase may add a ``partial_edges`` attribute on this
-    exception if a concrete caller need surfaces.
+    arrives (constraint enforcement at invoke-time is a Phase 30+
+    concern; L4 filters constraints post-hoc).
     """
 
 
@@ -103,9 +73,9 @@ class PipelineNotFoundError(CapacityLayerError):
     Phase 30 raisers:
 
     - ``mindsos_capacity.pipeline.find_pipeline`` — BFS over the
-      auto-discovered TYPE_COMPAT graph (ADR-0071) exhausted without
-      finding a chain from ``start_datastate`` to ``target_datastate``
-      within ``max_depth`` steps.
+      bipartite PRODUCES/CONSUMES edge set (ADR-0071 + ADR-0156)
+      exhausted without finding a chain from ``start_datastate`` to
+      ``target_datastate`` within ``max_depth`` steps.
 
     Raised (not enveloped) because "no path exists" is an L3 invariant
     of the requested query, not an implementation error in a bound
@@ -192,7 +162,6 @@ __all__ = [
     "DataStateError",
     "CapacityRegistrationError",
     "ConstraintViolationError",
-    "DiscoveryFailedError",
     "PipelineNotFoundError",
     "ProblemTraceError",
     "WriteHandleNotWiredError",

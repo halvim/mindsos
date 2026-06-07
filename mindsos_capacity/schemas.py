@@ -28,7 +28,6 @@ from .identifiers import (
     EDGE_CONSTRAINT,
     EDGE_CONSUMES,
     EDGE_PRODUCES,
-    EDGE_TYPE_COMPAT,
     NODE_TYPE_ADAPTER,
     NODE_TYPE_CAPACITY,
     NODE_TYPE_DATASTATE,
@@ -60,11 +59,10 @@ def build_datastates_schema(*, strict: bool = False) -> Schema:
 def build_category_schema(*, strict: bool = False) -> Schema:
     """Schema for any ``capacity:<category>`` graph (ADR-0065).
 
-    Holds Capacity, Monitor, and Adapter nodes, plus the TYPE_COMPAT /
-    CONSTRAINT edge types. PRODUCES / CONSUMES edges are reserved for
-    the flow-graph representation per ADR-0064 §Implementation; they
-    are declared here so future phases can materialise them without
-    another schema migration.
+    Holds Capacity, Monitor, and Adapter nodes plus the CONSTRAINT edge
+    type. PRODUCES / CONSUMES register the bipartite rel-type vocabulary
+    (ADR-0156); the edges themselves are metagraph-owned IntergraphEdges
+    emitted at register_capacity time.
     """
     schema = Schema(strict=strict)
 
@@ -107,24 +105,6 @@ def build_category_schema(*, strict: bool = False) -> Schema:
 
     schema.add_edge_type(
         EdgeType(
-            name=EDGE_TYPE_COMPAT,
-            allowed_sources=nodes,
-            allowed_targets=nodes,
-            description=(
-                "Type-compatibility: source's output DataState matches a "
-                "target input DataState. Auto-discovered (Phase 29 ships "
-                "discovery)."
-            ),
-            property_types={
-                "via_datastate": PropertyType.STRING,
-                "strictness": PropertyType.STRING,
-                "adapter_id": PropertyType.STRING,
-                "discovered_automatically": PropertyType.BOOL,
-            },
-        )
-    )
-    schema.add_edge_type(
-        EdgeType(
             name=EDGE_CONSTRAINT,
             allowed_sources=nodes,
             allowed_targets=nodes,
@@ -142,9 +122,10 @@ def build_category_schema(*, strict: bool = False) -> Schema:
             allowed_sources=nodes,
             allowed_targets=nodes,
             description=(
-                "Reserved: capacity→datastate-proxy reification. "
-                "Not populated in the Phase 28 vertical slice — "
-                "inputs/outputs are stored as capacity-node property lists."
+                "Bipartite topology (ADR-0156): capacity→DataState. "
+                "Populated as metagraph-owned IntergraphEdges at "
+                "register_capacity time; this graph-schema entry registers "
+                "the rel-type vocabulary."
             ),
         )
     )
@@ -154,8 +135,10 @@ def build_category_schema(*, strict: bool = False) -> Schema:
             allowed_sources=nodes,
             allowed_targets=nodes,
             description=(
-                "Reserved: datastate-proxy→capacity reification. "
-                "Not populated in the Phase 28 vertical slice."
+                "Bipartite topology (ADR-0156): DataState→capacity. "
+                "Populated as metagraph-owned IntergraphEdges at "
+                "register_capacity time; this graph-schema entry registers "
+                "the rel-type vocabulary."
             ),
         )
     )

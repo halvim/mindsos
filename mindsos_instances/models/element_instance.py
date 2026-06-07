@@ -398,7 +398,46 @@ class MetaHyperEdgeInstance(ElementInstance):
     FORBIDS_TYPE_NAME: ClassVar[bool] = True
 
 
-# ── composite (the 8th subclass — bundling-only construct) ──────────────────
+class IntergraphEdgeInstance(ElementInstance):
+    """Instance of an IntergraphEdge template (Phase 06 amendment, ADR-0156).
+
+    Mirrors :class:`MetaEdgeInstance` for the binary node↔node-across-graphs
+    primitive. Allowed structural overrides: ``source_graph_id``,
+    ``source_node_id``, ``target_graph_id``, ``target_node_id``, ``label``.
+    ``type_name`` rejected per P33 B. Driven by the D38 = A type/instance
+    symmetry (capacity-MM produces/consumes). ``materialise`` support is
+    deferred to Phase 46 (capacity-MM instantiation is its first consumer).
+    """
+
+    KIND: ClassVar[str] = "intergraph_edge"
+    STRUCTURAL_KEYS: ClassVar[FrozenSet[str]] = frozenset(
+        {"source_graph_id", "source_node_id", "target_graph_id",
+         "target_node_id", "label"}
+    )
+    SET_TYPED_KEYS: ClassVar[FrozenSet[str]] = frozenset()
+    FORBIDS_TYPE_NAME: ClassVar[bool] = True
+
+
+class IntergraphHyperEdgeInstance(ElementInstance):
+    """Instance of an IntergraphHyperEdge template (Phase 06 amendment,
+    ADR-0156; Chat B D-B41 Pipeline-composition cascade).
+
+    Mirrors :class:`MetaHyperEdgeInstance` for the n-ary anchors↔members-
+    across-graphs primitive. Allowed structural overrides: ``anchors``,
+    ``members`` (each a collection of ``(graph_id, node_id)`` pairs),
+    ``label``. ``type_name`` rejected per P33 B. ``materialise`` support is
+    deferred to Phase 46.
+    """
+
+    KIND: ClassVar[str] = "intergraph_hyperedge"
+    STRUCTURAL_KEYS: ClassVar[FrozenSet[str]] = frozenset(
+        {"anchors", "members", "label"}
+    )
+    SET_TYPED_KEYS: ClassVar[FrozenSet[str]] = frozenset({"anchors", "members"})
+    FORBIDS_TYPE_NAME: ClassVar[bool] = True
+
+
+# ── composite (the bundling-only construct) ──────────────────────────────────
 
 
 CompositeMember = Union[ElementInstance, "CompositeInstance"]

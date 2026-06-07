@@ -10,6 +10,8 @@ from mindsos_capacity import (
     CapacityLayer,
     CATEGORY_PERCEPTION,
     CapacityRegistrationError,
+    EDGE_CONSUMES,
+    EDGE_PRODUCES,
     Monitor,
     NODE_TYPE_ADAPTER,
     NODE_TYPE_CAPACITY,
@@ -41,9 +43,23 @@ def test_register_capacity_happy_path_global():
     node = cl.register_capacity(cap)
     assert node.node_id == cap.iri
     assert node.type_name == NODE_TYPE_CAPACITY
-    assert node.properties["inputs"] == [text_raw_datastate().iri]
-    assert node.properties["outputs"] == [text_tokens_datastate().iri]
+    # ADR-0156 (Phase 42): inputs/outputs are no longer node properties;
+    # they become PRODUCES/CONSUMES IntergraphEdges emitted at register time.
+    assert "inputs" not in node.properties
+    assert "outputs" not in node.properties
     gmg = cl.global_metagraph()
+    produces = {
+        (ie.source_node_id, ie.target_node_id)
+        for ie in gmg.iter_intergraph_edges()
+        if ie.type_name == EDGE_PRODUCES
+    }
+    consumes = {
+        (ie.source_node_id, ie.target_node_id)
+        for ie in gmg.iter_intergraph_edges()
+        if ie.type_name == EDGE_CONSUMES
+    }
+    assert (cap.iri, text_tokens_datastate().iri) in produces
+    assert (text_raw_datastate().iri, cap.iri) in consumes
     assert cap.iri in cl._capacity_index[gmg.metagraph_id]
     assert cl.get_declaration(cap.iri) is cap
 

@@ -408,6 +408,15 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
   - **`CapacityContext` shape:** Phase 33-35 bodies migrate `context["kl"]` → `context.kl`; any external capacity body in dev environments needs the same.
   - **`mindsos_instances` catalog:** 8 subclasses → 10 (additive).
 
+  **As-shipped deltas (full record `PHASE_42_DESIGN_LOG.md` §5–§8):**
+  - **PB-7 — migrator → DETECTOR.** No persisted Global capacity state (CapacityLayer is in-memory-first; `register_capacity` re-emits edges at boot) → a one-pass migrator is dead code. Shipped `tools/check_phase_42_bipartite_state.py` (detector) instead of `tools/migrate_phase_42_bipartite.py`; `test_migrator_idempotent.py` → `test_bipartite_detector.py`. Phase 39/43 migrator→detector reversal repeats.
+  - **PB-23 — body migration + invoke→CapacityContext DEFERRED to Phase 46.** ADR-0159's 10-field `CapacityContext` carries no `session`-object field for ADR-0146 write-body capability gating; resolving the ADR-0146/0159 boundary is L4-substrate (Phase 46) territory. `CapacityContext` ships as a forward contract (exported, isolated-tested); `invoke` keeps dict plumbing; the 3 bodies are unchanged. The "`CapacityContext` shape" breaking-change row above + the "body migration (mechanical)" feature row re-scope to **Phase 46**.
+  - **PB-22 — edge-type values are UPPERCASE** (`EDGE_PRODUCES="PRODUCES"`, `EDGE_CONSUMES="CONSUMES"`; already shipped uppercase in `identifiers.py`) per the ADR-0021 rel-type regex; ADR-0156's lowercase body text is the Chat B D-B46 instance-layer label convention (ADR-0156 §amendment note).
+  - **PB-24 — instance-subclass `materialise` DEFERRED to Phase 46** (capacity-MM instantiation is its first consumer); instantiation + persistence/reconstruction dispatch ship now.
+  - **PB-16 — `mkdocs --strict` clean criterion RE-SCOPED (Option B).** Strict build fails on 17 pre-existing server-pivot-era broken-link warnings (zero TYPE_COMPAT/Phase-42-related; Phase 42 adds none). Criterion re-scoped to **non-strict build succeeds + no Phase-42-introduced strict warnings**; the 17 pre-existing warnings tracked as a **docs-maintenance-chat** item.
+  - **`_CapacityBase` field count is 6, not 5** ("5 new fields" groups inline+max_latency_ms); `CapacityContext` is **10 fields, not 9** (ADR transcription parity, design log §2). `__all__` 112→117 (−6 retired +11 ADR-0159 exports). Verdicts ship inline in `context.py` (no `verdicts.py`; PB-5).
+  - **grep-zero sentinel scoped to `mindsos_capacity/**`** (PB-3; repo-wide unsatisfiable — historical ADRs 0069/0086/0156 + changelog retain the term). **L3-57 (PB-8)** decided Option 3: `FAMILY_RULES` rename `derive`→`derivation`/`signal`→`signalling` + add `consolidate`/`trace`; 5 categories deferred via `DEFERRED_DEFAULT_CATEGORIES` (audit doc `PHASE_27_DONT_KNOW_AUDIT.md`; ADR-0157 §am-1).
+
 ---
 
 ### Phase 43 — L2 schema-v2: 4 new role-graphs + mutation_discipline runtime invariant + per-NodeType storage_mode + bootstrap applies_after field + ADR-0094 §am-1 detector + consolidate Episode retarget + episodic_memories body finalize

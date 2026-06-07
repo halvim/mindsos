@@ -56,3 +56,7 @@ Invariant I13 ("no upward imports from `mindsos_server`"). Mirrors KL's analogou
 **Out-of-scope:** the canonical (non-halvim) reference implementation in the parent tree may keep the lowercase convention; this amendment only locks halvim's port direction. Future re-convergence (if both repos merge) requires whichever side's string is older to migrate.
 
 **Phase 28 design log:** `halvim_mindsos/confirmation_docs/PHASE_28_DESIGN_LOG.md` §"Round 0 PB-1" + §"Round 3 PB-37".
+
+## §Amendment (Phase 42 — ADR-0159)
+
+Capability check still lives on the session; ADR-0159 adds a typed `context.cl` (`CapacityLayerHandle` Protocol) for `decision.should_replan`-style registry reads. CAN_WRITE_GLOBAL parity unchanged.

@@ -12,13 +12,13 @@ import mindsos_capacity
 import mindsos_knowledge
 
 
-def test_phase_34_export_count_stable_at_112():
-    """Forward-anchor sentinel: 114 at Phase 40 X1 -> 112 at Phase 41 X2
-    (ADR-0155 retires ResidentSubscription/ResidentError/KIND_RESIDENT,
-    adds KIND_MONITOR; net -2)."""
+def test_phase_34_export_count_stable_at_117():
+    """Forward-anchor sentinel: 114 (P40 X1) -> 112 (P41 X2) -> 117 (P42 X3).
+    Phase 42 retires 6 type-compat/discovery exports (ADR-0156) and adds 11
+    ADR-0159 contract exports; net +5."""
     n = len(mindsos_capacity.__all__)
-    assert n == 112, (
-        f"Phase 41 __all__ count {n} != 112 (Phase 40 baseline 114 - 2 net at Phase 41)."
+    assert n == 117, (
+        f"Phase 42 __all__ count {n} != 117 (Phase 41 baseline 112 - 6 + 11 at Phase 42)."
     )
 
 

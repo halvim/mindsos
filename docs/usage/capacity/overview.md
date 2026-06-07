@@ -23,9 +23,9 @@ A Capacity Layer instance owns:
 | Capacity registry | Maps every IRI to its Python declaration (Local-wins over Global) | 28 |
 | Capability gate | Enforces `CAN_WRITE_GLOBAL` on Global-scoped writes; carve-out for pre-server bootstrap | 28 |
 | DataState registry | Shared per metagraph; one `DataState` node per shape | 28 |
-| TYPE_COMPAT auto-discovery | Wires producer→consumer edges from inputs/outputs lists | 29 |
+| Bipartite topology (ADR-0156) | `register_capacity` emits `PRODUCES` (capacity→DataState) + `CONSUMES` (DataState→capacity) IntergraphEdges from the declaration's inputs/outputs | 42 |
 | Constraint edges | Admin-authored CONSTRAINT edges between capacities | 28 (API); 29 (enforcement) |
-| Pipeline finder | BFS through TYPE_COMPAT for a target DataState | 30 |
+| Pipeline finder | BFS over the bipartite PRODUCES/CONSUMES edge set for a target DataState | 30 |
 | Invocation runtime | `invoke` returns `InvocationResult`; emits ProblemTraceRecord on failure | 30 |
 | Residents | Long-running monitor capacities | 31 |
 | Built-in text capacities | `text.space_split`, `text.sentence_split`, etc. | 31 |
@@ -126,7 +126,7 @@ User sessions (`Session.for_testing(uid, is_admin=False)`) lack the capability; 
 |---|---|---|
 | Register / lookup / Local-wins / capability gate | **28** | This page |
 | 12 functional categories — see `categories.md` | 28 (+ 29 amend) | |
-| TYPE_COMPAT auto-discovery + constraint enforcement | 29 | |
+| Bipartite PRODUCES/CONSUMES topology (ADR-0156) + constraint enforcement | 42 (topology); 29 (constraints) | |
 | Pipeline finder + invocation runtime + ProblemTraceRecord | 30 | |
 | Residents + text builtins + pathfinding | 31 | |
 | Write capacities + symmetric write contract + per-flow validators | 33-35 | |

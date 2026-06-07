@@ -150,11 +150,12 @@ NODE_KINDS: FrozenSet[str] = frozenset({
 
 # ── Core edge-type vocabulary ──────────────────────────────────────────
 
-#: Type-compatibility edge — capacity→capacity flow edge.
-EDGE_TYPE_COMPAT = "TYPE_COMPAT"
 #: Constraint edge — admin-authored restriction on pipelines.
 EDGE_CONSTRAINT = "CONSTRAINT"
-#: Reifies "capacity produces/consumes this DataState" inside the flow graph.
+#: Bipartite topology edges (ADR-0156). ``PRODUCES`` (capacity→DataState),
+#: ``CONSUMES`` (DataState→capacity). Uppercase per the ADR-0021 rel-type
+#: regex enforced on IntergraphEdge.type_name; the lowercase form in
+#: ADR-0156's body is the Chat B D-B46 instance-layer label convention.
 EDGE_PRODUCES = "PRODUCES"
 EDGE_CONSUMES = "CONSUMES"
 
@@ -338,7 +339,6 @@ __all__ = [
     "KIND_DATASTATE",
     "NODE_KINDS",
     # Edge-type vocabulary
-    "EDGE_TYPE_COMPAT",
     "EDGE_CONSTRAINT",
     "EDGE_PRODUCES",
     "EDGE_CONSUMES",

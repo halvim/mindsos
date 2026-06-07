@@ -81,10 +81,11 @@ space_split = Capacity(
 cl.register_capacity(space_split)
 ```
 
-Phase 29's auto-discovery hooks run at the end of `register_capacity`
-and write TYPE_COMPAT edges (intra-graph `Edge` + cross-graph
-`MetaEdge`) connecting the new capacity to existing capacities whose
-inputs/outputs make them type-compatible neighbours.
+`register_capacity` emits the bipartite topology edges (ADR-0156):
+one `PRODUCES` IntergraphEdge per declared output (capacity→DataState)
+and one `CONSUMES` IntergraphEdge per declared input (DataState→
+capacity). The pipeline-finder walks these edges; the `inputs`/`outputs`
+lists are no longer stored as node properties.
 
 ## 4. Invoke (Phase 30)
 

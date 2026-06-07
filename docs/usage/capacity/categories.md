@@ -52,15 +52,20 @@ The enumeration is canonical; `FUNCTIONAL_CATEGORIES` is the frozenset of all 13
 * Read from KL → **Retrieval**.
 * Side-effect on the world → **Interaction** or **Signalling**.
 
-When two categories seem to fit, pick the one your capacity's **output** belongs to (the consumer's perspective is what L4's pipeline-finder uses for TYPE_COMPAT discovery in Phase 29).
+When two categories seem to fit, pick the one your capacity's **output** belongs to (the consumer's perspective is what L4's pipeline-finder follows across the bipartite PRODUCES/CONSUMES edges per ADR-0156).
 
 ## Multi-graph membership (ADR-0085)
 
 A capacity has exactly one **home** category (its IRI determines this), but may eventually appear as a member of additional category graphs. Phase 28 ships home-graph registration only; additional-membership API ships with first consumer (per ADR-0085 §Implementation).
 
-## What Phase 29 amends
+## Topology + constraints
 
-Phase 29 wires **TYPE_COMPAT auto-discovery** + the 5-kind **CONSTRAINT** enforcement layer per ADRs 0068/0069/0070/0086/0092. This page will gain a per-category capability-discovery walkthrough at Phase 29's ship; the 12-category enumeration itself is stable.
+Capacity flow topology is the explicit **bipartite** `PRODUCES` /
+`CONSUMES` IntergraphEdge set emitted at `register_capacity` time
+(ADR-0156, Phase 42; supersedes the Phase 29 type-compatibility
+auto-discovery substrate).
+The 5-kind **CONSTRAINT** enforcement layer ships per ADRs
+0068/0070/0092. The 12-category enumeration itself is stable.
 
 ## See also
 

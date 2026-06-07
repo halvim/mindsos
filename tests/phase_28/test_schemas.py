@@ -8,7 +8,6 @@ from mindsos_capacity import (
     EDGE_CONSTRAINT,
     EDGE_CONSUMES,
     EDGE_PRODUCES,
-    EDGE_TYPE_COMPAT,
     NODE_TYPE_ADAPTER,
     NODE_TYPE_CAPACITY,
     NODE_TYPE_DATASTATE,
@@ -27,10 +26,12 @@ def test_build_datastates_schema_has_one_node_type():
     assert len(s.edge_types) == 0
 
 
-def test_build_category_schema_has_three_node_types_and_four_edge_types():
+def test_build_category_schema_has_three_node_types_and_three_edge_types():
+    # ADR-0156 (Phase 42): EDGE_TYPE_COMPAT retired; category schema now
+    # registers CONSTRAINT + PRODUCES + CONSUMES rel-type vocabulary.
     s = build_category_schema()
     assert {NODE_TYPE_CAPACITY, NODE_TYPE_MONITOR, NODE_TYPE_ADAPTER}.issubset(s.node_types)
-    assert {EDGE_TYPE_COMPAT, EDGE_CONSTRAINT, EDGE_PRODUCES, EDGE_CONSUMES}.issubset(
+    assert {EDGE_CONSTRAINT, EDGE_PRODUCES, EDGE_CONSUMES}.issubset(
         s.edge_types
     )
 

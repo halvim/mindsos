@@ -1,9 +1,10 @@
 """MindsOS Intellectual Capacity Layer — L3 public API (through Phase 31).
 
 Phase 27 shipped the L3 read-side definitions; Phase 28 shipped the
-registry + bootstrap + Local-wins lookup + capability gate; Phase 29
-shipped TYPE_COMPAT auto-discovery + ``SuccessorHop`` + the
-successors/producers/consumers walks + ``rediscover``; Phase 30 shipped
+registry + bootstrap + Local-wins lookup + capability gate; Phase 29's
+type-compatibility auto-discovery was superseded by the ADR-0156
+bipartite topology (Phase 42 — explicit PRODUCES/CONSUMES edges +
+edge-sourced successor/producer/consumer walks); Phase 30 shipped
 the invocation runtime + BFS pipeline finder + problem-trace primitives
 + first ``mindsos capacity`` CLI verbs. Phase 31 ships residents
 (descriptive; per-layer registry) + text builtins (opt-in
@@ -33,21 +34,16 @@ the invocation runtime + BFS pipeline finder + problem-trace primitives
   ADR-0040 §amendment-2 — Phase 28.
 - Schemas — ``schema_for_role`` + ``build_datastates_schema`` +
   ``build_category_schema`` per ADR-0064 + ADR-0065 — Phase 28.
-- ``CapacityLayerView`` — read-only accessors + successor /
-  producer / consumer walks over an L3 metagraph (Phase 28 accessors +
-  Phase 29 walks).
+- ``CapacityLayerView`` — read-only accessors + edge-sourced
+  successor / producer / consumer walks (``successors_of`` /
+  ``producers_of`` / ``consumers_of`` / ``inputs_of`` / ``outputs_of``)
+  over an L3 metagraph (Phase 28 accessors + ADR-0156 bipartite walks).
 - ``ConstraintViolationError`` — admin CONSTRAINT edge enforcement —
   Phase 28.
-- ``SuccessorHop`` dataclass — one TYPE_COMPAT step (source +
-  target + via_datastate + same_category + strictness +
-  adapter_capacity) — Phase 29.
-- ``discover_for_capacity`` / ``discover_for_datastate`` /
-  ``rediscover_all`` — auto-discovery substrate per ADR-0069 +
-  ADR-0086 — Phase 29.
-- ``CapacityLayer.rediscover`` — drop auto edges + recompute
-  (manual edges preserved per ADR-0086) — Phase 29.
-- ``DiscoveryFailedError`` — auto-discovery write failure wrapper —
-  Phase 29.
+- Bipartite topology (ADR-0156, Phase 42): ``register_capacity`` emits
+  explicit ``PRODUCES`` / ``CONSUMES`` IntergraphEdges; the Phase 29
+  type-compatibility auto-discovery module + ``SuccessorHop`` +
+  ``rediscover`` + the discovery write-failure exception were retired.
 - ``InvocationResult`` + ``call_capacity`` — invocation envelope +
   callable dispatch (shipped to ``capacity.py`` since Phase 27 for
   layout parity; public re-export lifted at Phase 30 per ADR-0066
@@ -64,8 +60,8 @@ the invocation runtime + BFS pipeline finder + problem-trace primitives
   payload dict; L4 drains and persists to L2 ``problem-trace``
   role-graph — Phase 30.
 - ``Pipeline`` + ``PipelineStep`` + ``find_pipeline`` — datastate-keyed
-  BFS over the TYPE_COMPAT graph (auto-discovered at Phase 29) per
-  ADR-0071. Shortest-by-capacity-count; raises ``PipelineNotFoundError``
+  BFS over the bipartite PRODUCES/CONSUMES edge set (ADR-0071 +
+  ADR-0156). Shortest-by-capacity-count; raises ``PipelineNotFoundError``
   on exhaustion; ignores constraints (L4 filters post-hoc) — Phase 30.
   Pathfinding-as-registered-builtin retires at Phase 31 per ADR-0071
   §Implementation (Phase 31) footer; ``find_pipeline`` (function-form)
@@ -89,9 +85,8 @@ the invocation runtime + BFS pipeline finder + problem-trace primitives
 
 Excluded (defer):
 
-- ``add_type_compat`` admin API + bulk rediscover verb — deferred to
-  L4 follow-up plan per Phase 38 R4-PB-D (was: "Phase 32+ (first
-  concrete consumer)").
+- ``add_type_compat`` admin API — retired entirely with the Phase 29
+  type-compatibility substrate per ADR-0156 (Phase 42).
 - Pathfinding-as-registered-builtin Capacity (parent's
   ``build_bfs_capacity_declaration`` stub) — RETIRED at Phase 31
   per ADR-0071 §Implementation (Phase 31) + PHASE_MAP §31 inline
@@ -150,18 +145,12 @@ from .datastate import (
     strict_compatible,
     validate_datastate,
 )
-from .discovery import (
-    discover_for_capacity,
-    discover_for_datastate,
-    rediscover_all,
-)
 from .exceptions import (
     CapabilityDeniedError,
     CapacityLayerError,
     CapacityRegistrationError,
     ConstraintViolationError,
     DataStateError,
-    DiscoveryFailedError,
     PipelineNotFoundError,
     ProblemTraceError,
     WriteHandleNotWiredError,
@@ -184,8 +173,21 @@ from .schemas import (
     build_datastates_schema,
     schema_for_role,
 )
+from .context import (
+    CancelToken,
+    CancelTokenView,
+    CapacityContext,
+    CapacityLayerHandle,
+    GoalVerdict,
+    KLHandle,
+    MMHandle,
+    PipelineFindVerdict,
+    PromotionRuleVerdict,
+    ReplanVerdict,
+    TierVerdict,
+)
 from .types import SessionArg, SessionProtocol
-from .views import CapacityLayerView, SuccessorHop
+from .views import CapacityLayerView
 from .write_outcome import WriteOutcome, WriteResult
 from .builtins.consolidate import (
     DS_MM_COMPOSITE_INSTANCE,
@@ -222,7 +224,6 @@ from .identifiers import (
     EDGE_CONSTRAINT,
     EDGE_CONSUMES,
     EDGE_PRODUCES,
-    EDGE_TYPE_COMPAT,
     FUNCTIONAL_CATEGORIES,
     GLOBAL_FALKOR_GRAPH,
     GLOBAL_METAGRAPH_NAME,
@@ -275,7 +276,6 @@ __all__ = [
     "CapacityRegistrationError",
     "ConstraintViolationError",
     "DataStateError",
-    "DiscoveryFailedError",
     "PipelineNotFoundError",
     "ProblemTraceError",
     "WriteHandleNotWiredError",
@@ -283,11 +283,18 @@ __all__ = [
     # Phase 28 — CapacityLayer registry + views
     "CapacityLayer",
     "CapacityLayerView",
-    # Phase 29 — TYPE_COMPAT auto-discovery + successor walks
-    "SuccessorHop",
-    "discover_for_capacity",
-    "discover_for_datastate",
-    "rediscover_all",
+    # Phase 42 — typed CapacityContext + handle Protocols + verdicts (ADR-0159)
+    "CapacityContext",
+    "MMHandle",
+    "KLHandle",
+    "CapacityLayerHandle",
+    "CancelToken",
+    "CancelTokenView",
+    "TierVerdict",
+    "GoalVerdict",
+    "PipelineFindVerdict",
+    "PromotionRuleVerdict",
+    "ReplanVerdict",
     # Phase 30 — invocation runtime (ADR-0072) + problem-trace (ADR-0074)
     "InvocationResult",
     "call_capacity",
@@ -366,7 +373,6 @@ __all__ = [
     "KIND_ADAPTER",
     "KIND_DATASTATE",
     "NODE_KINDS",
-    "EDGE_TYPE_COMPAT",
     "EDGE_CONSTRAINT",
     "EDGE_PRODUCES",
     "EDGE_CONSUMES",

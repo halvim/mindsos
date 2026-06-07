@@ -6,19 +6,19 @@ The vertical slice ships a single datastate-keyed BFS walker:
                                     ──[capacity_B]──▶ target_datastate
 
 Given a ``start_datastate`` IRI and a ``target_datastate`` IRI, BFS
-steps forward through the L3 metagraph's TYPE_COMPAT graph and returns
-the first pipeline it discovers (= shortest by capacity count, since
-BFS expands frontiers by hop). That's enough to prove the vertical
-slice — L4's real pipeline-finder will extend this with cost, learned
-confidence, and promoted-path lookup.
+steps forward through the L3 metagraph's bipartite PRODUCES/CONSUMES
+edge set and returns the first pipeline it discovers (= shortest by
+capacity count, since BFS expands frontiers by hop). That's enough to
+prove the vertical slice — L4's real pipeline-finder will extend this
+with cost, learned confidence, and promoted-path lookup.
 
 **Algorithm shape.** Frontier is keyed on **DataState IRIs**, NOT on
-Capacity IRIs. ``view.consumers_of(datastate)`` (Phase 29 walks API)
-returns candidate capacities that consume the current datastate;
-their outputs push the next frontier. The "auto-discovered TYPE_COMPAT
-graph" wording in ADR-0071 §Decision is the structural substrate that
-discovery (Phase 29) wires; the BFS does not call ``successors_of``
-(capacity-to-capacity walk).
+Capacity IRIs. ``view.consumers_of(datastate)`` returns candidate
+capacities that consume the current datastate (via CONSUMES edges);
+``view.outputs_of(capacity)`` (via PRODUCES edges) pushes the next
+frontier. Under ADR-0156 the bipartite edge set is the explicit
+structural substrate emitted at ``register_capacity`` time; the BFS
+does not call ``successors_of`` (capacity-to-capacity walk).
 
 **Constraints are deliberately ignored** here per ADR-0071. L4 does
 the post-hoc filtering pass via ``iter_constraints``.
@@ -156,10 +156,10 @@ def find_pipeline(
 
         consumers = view.consumers_of(current_ds)
         for cap in consumers:
-            outputs = tuple(cap.properties.get("outputs") or ())
+            outputs = tuple(view.outputs_of(cap.node_id))
             step = PipelineStep(
                 capacity_iri=cap.node_id,
-                input_datastates=tuple(cap.properties.get("inputs") or ()),
+                input_datastates=tuple(view.inputs_of(cap.node_id)),
                 output_datastates=outputs,
                 via_datastate=current_ds,
             )

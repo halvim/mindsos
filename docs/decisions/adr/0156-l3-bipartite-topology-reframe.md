@@ -102,3 +102,7 @@ Ship phase **X3** — atomic bundle with ADR-0159 (capacity registration contrac
 ## Rationale
 
 Per-decision rationale, 3-round saturation history (2 reversals R1, 1 reversal R2, 0 reversals R3), and the alternative-fork (Hyperedge vs Bipartite) analysis at `docs/_workbench/L1_L3_REFRAME_DECISIONS.md` §D38.
+
+## §Implementation (Phase 42 — 2026-06-05)
+
+Shipped (ADR-0156). `register_capacity` emits `PRODUCES` (capacity→DataState) + `CONSUMES` (DataState→capacity) IntergraphEdges from the declaration outputs/inputs (uppercase rel-type values per the ADR-0021 regex; the lowercase forms in the body above are the Chat B D-B46 instance-layer label convention). `discovery.py` deleted whole; TYPE_COMPAT / SuccessorHop / DiscoveryFailedError / rediscover retired; `views.successors_of` + `pipeline.find_pipeline` rewritten over the bipartite walk; `inputs_of`/`outputs_of` co-shipped; `if_exists="upsert"` idempotency. `mindsos_instances` catalog 8→10. Migration: a one-pass migrator would be dead code (CapacityLayer is in-memory-first, no persisted Global capacity state) → shipped a detector `tools/check_phase_42_bipartite_state.py` instead (PB-7).

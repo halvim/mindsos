@@ -14,14 +14,12 @@ This class is **in-memory first**, mirroring
 **Phase 28 substrate (R0 PB-3 lock).** Ships the registration,
 look-up, constraint, and capability-gate surface.
 
-**Phase 29 additions.** Auto-discovery hooks wire
-:func:`discover_for_capacity` at the end of :meth:`register_capacity`
-and :func:`discover_for_datastate` at the end of
-:meth:`register_datastate`. Adds :meth:`rediscover` (drop auto edges
-+ recompute from scratch). Raises :class:`DiscoveryFailedError` (sub
-of :class:`CapacityRegistrationError`) when an auto-discovery write
-fails mid-registration; partial-write state is observable by callers
-(R2 PB-27 pick (b)).
+**Bipartite topology (ADR-0156, Phase 42).** :meth:`register_capacity`
+emits ``PRODUCES`` (capacity→DataState) + ``CONSUMES`` (DataState→
+capacity) IntergraphEdges from the declaration's ``outputs``/``inputs``;
+``if_exists="upsert"`` makes re-registration idempotent. The Phase 29
+type-compatibility auto-discovery (module, hooks, ``rediscover``) was
+retired here — pipeline topology is now the explicit bipartite edge set.
 
 **Phase 30 additions.** Ships :meth:`invoke` (reactive invocation;
 ADR-0072 envelope) + ``self.problem_trace`` (per-layer
@@ -42,11 +40,6 @@ Deferred to later phases:
   :class:`ConstraintViolationError`).
 - Additional-graph memberships per ADR-0085 — deferred to first
   consumer (Phase 33).
-- Admin-authored TYPE_COMPAT API (``add_type_compat``) — Phase 30+
-  (Phase 29 admins author via direct ``Graph.add_edge`` per
-  ADR-0086 §Implementation).
-- Bulk rediscover across all metagraphs — Phase 30+ (first admin
-  caller).
 
 The class always takes ``session: Optional[SessionProtocol]`` per
 ADR-0080 bootstrap carve-out: ``None`` is the pre-server admin path; a
@@ -59,7 +52,7 @@ callers).
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Literal, Mapping, Optional, Tuple
 
 from mindsos_core import Edge, Graph, Metagraph, Node
 # Phase 34 B-34-T3: ``kl`` constructor param annotated as ``Optional[Any]``
@@ -80,15 +73,9 @@ from .bootstrap import (
 from .capabilities import CAN_WRITE_GLOBAL
 from .capacity import InvocationResult, Monitor, _CapacityBase
 from .datastate import DataState, validate_datastate
-from .discovery import (
-    discover_for_capacity,
-    discover_for_datastate,
-    rediscover_all,
-)
 from .exceptions import (
     CapacityRegistrationError,
     ConstraintViolationError,
-    DiscoveryFailedError,
 )
 from .runtime import (
     ProblemTraceSink,
@@ -97,12 +84,40 @@ from .runtime import (
 from .identifiers import (
     CONSTRAINT_KINDS,
     EDGE_CONSTRAINT,
+    EDGE_CONSUMES,
+    EDGE_PRODUCES,
     REF_GLOBAL_CAPACITY,
     REF_TYPE_KEY,
     REF_TYPES,
     RESERVED_PROPERTY_KEYS,
     RESERVED_REALMS,
 )
+
+
+def _has_intergraph_edge(
+    mg: Metagraph,
+    source_graph_id: str,
+    source_node_id: str,
+    target_graph_id: str,
+    target_node_id: str,
+    type_name: str,
+) -> bool:
+    """True if a matching IntergraphEdge already exists (upsert idempotency).
+
+    Replaces the retired ``discovery._edge_already_exists``; scans the
+    metagraph's in-memory ``iter_intergraph_edges`` (ADR-0156 bipartite
+    walk primitive — Pattern B persistence is invisible at this layer).
+    """
+    for ie in mg.iter_intergraph_edges():
+        if (
+            ie.source_graph_id == source_graph_id
+            and ie.source_node_id == source_node_id
+            and ie.target_graph_id == target_graph_id
+            and ie.target_node_id == target_node_id
+            and ie.type_name == type_name
+        ):
+            return True
+    return False
 from .types import SessionArg, SessionProtocol
 from .views import CapacityLayerView
 
@@ -254,23 +269,6 @@ class CapacityLayer:
             properties=props,
             node_id=datastate.iri,
         )
-
-        # Phase 29 — discovery hook. Under the current Phase 28-29
-        # forward-ref restriction (_CapacityBase.validate_for_registration
-        # forbids unregistered DataStates in inputs/outputs), this
-        # trigger emits zero edges at v1. Shipped for parent parity +
-        # future-scope per R1 PB-15 lock.
-        try:
-            discover_for_datastate(
-                mg,
-                datastate.iri,
-                capacity_index=self._capacity_index[mg.metagraph_id],
-            )
-        except Exception as exc:
-            raise DiscoveryFailedError(
-                f"discover_for_datastate raised after register_datastate "
-                f"for {datastate.iri!r}: {exc}"
-            ) from exc
         return node
 
     def register_capacity(
@@ -281,15 +279,29 @@ class CapacityLayer:
         ref_to_global: Optional[str] = None,
         ref_type: Optional[str] = None,
         extra_properties: Optional[Mapping[str, Any]] = None,
+        if_exists: Literal["raise", "upsert"] = "raise",
     ) -> Node:
         """Register a Capacity / Monitor / Adapter.
 
+        ADR-0156 bipartite topology: emits ``PRODUCES`` (capacity→DataState)
+        + ``CONSUMES`` (DataState→capacity) IntergraphEdges from the
+        declaration's ``outputs``/``inputs`` at registration time. With
+        ``if_exists="upsert"`` an already-registered IRI re-emits any
+        missing edges idempotently (migrator + partial-state recovery
+        path) instead of raising.
+
+        ADR-0159 registration contract v2: validates the new contract
+        fields (``inline`` requires ``max_latency_ms``; ``precondition_iri``
+        / ``effect_iri`` must be well-formed capacity IRIs and, when they
+        resolve, belong to the ``predicate`` family).
+
         Raises:
             CapacityRegistrationError: declaration is not
-                ``_CapacityBase``-derived, IRI duplicate, IRI collides
-                with existing node id, unknown DataState in inputs/outputs,
-                reserved property key in extras, ref-type invariants
-                violated.
+                ``_CapacityBase``-derived, IRI duplicate (``if_exists=
+                "raise"``), IRI collides with existing node id, unknown
+                DataState in inputs/outputs, reserved property key in
+                extras, ref-type invariants violated, or a contract-field
+                invariant is violated.
             PermissionError: ``session`` lacks ``CAN_WRITE_GLOBAL`` when
                 writing to Global.
         """
@@ -298,6 +310,7 @@ class CapacityLayer:
                 f"Expected a Capacity/Monitor/Adapter, got "
                 f"{type(declaration).__name__}"
             )
+        self._validate_contract_fields(declaration)
         target_uid = session.user_id if session is not None else None
         if target_uid is None:
             self._enforce_global_write(session, op="register_capacity")
@@ -333,42 +346,84 @@ class CapacityLayer:
         category_graph = ensure_category_graph(
             mg, declaration.category, strict=self._strict
         )
-        if declaration.iri in index:
-            raise CapacityRegistrationError(
-                f"Capacity {declaration.iri!r} already registered"
+        existing = index.get(declaration.iri)
+        if existing is not None:
+            if if_exists == "raise":
+                raise CapacityRegistrationError(
+                    f"Capacity {declaration.iri!r} already registered"
+                )
+            # if_exists="upsert": reuse the node; re-emit missing edges below.
+            node, category_graph = existing
+        else:
+            if declaration.iri in category_graph.nodes:
+                raise CapacityRegistrationError(
+                    f"Capacity IRI collides with existing node id in graph "
+                    f"{category_graph.role!r}"
+                )
+            node = category_graph.add_node(
+                value=declaration.name,
+                type_name=declaration.node_type,
+                properties=props,
+                node_id=declaration.iri,
             )
-        if declaration.iri in category_graph.nodes:
-            raise CapacityRegistrationError(
-                f"Capacity IRI collides with existing node id in graph "
-                f"{category_graph.role!r}"
-            )
-        node_type = declaration.node_type
-        node = category_graph.add_node(
-            value=declaration.name,
-            type_name=node_type,
-            properties=props,
-            node_id=declaration.iri,
-        )
-        index[declaration.iri] = (node, category_graph)
-        self._declarations[declaration.iri] = declaration
+            index[declaration.iri] = (node, category_graph)
+            self._declarations[declaration.iri] = declaration
 
-        # Phase 29 — auto-discover TYPE_COMPAT edges (ADR-0069 + ADR-0086).
-        # Invocation ordering per R2 PB-24: index[] + _declarations[]
-        # are set BEFORE discovery, so discover_for_capacity walks the
-        # full index and excludes self via node_id comparison.
-        try:
-            discover_for_capacity(
-                mg,
-                node,
-                category_graph,
-                capacity_index=index,
-            )
-        except Exception as exc:
-            raise DiscoveryFailedError(
-                f"discover_for_capacity raised after register_capacity "
-                f"for {declaration.iri!r}: {exc}"
-            ) from exc
+        # ADR-0156 — bipartite topology. The declaration's inputs/outputs
+        # are the single authoring-time source; persistence is the
+        # PRODUCES (capacity→DataState) + CONSUMES (DataState→capacity)
+        # IntergraphEdges emitted here. Idempotent — skips edges that
+        # already exist so the upsert/migrator path is safe to re-run.
+        cap_gid = category_graph.graph_id
+        ds_gid = ds_graph.graph_id
+        for out_iri in declaration.outputs:
+            if not _has_intergraph_edge(
+                mg, cap_gid, node.node_id, ds_gid, out_iri, EDGE_PRODUCES
+            ):
+                mg.add_intergraph_edge(
+                    cap_gid, node.node_id, ds_gid, out_iri, EDGE_PRODUCES
+                )
+        for in_iri in declaration.inputs:
+            if not _has_intergraph_edge(
+                mg, ds_gid, in_iri, cap_gid, node.node_id, EDGE_CONSUMES
+            ):
+                mg.add_intergraph_edge(
+                    ds_gid, in_iri, cap_gid, node.node_id, EDGE_CONSUMES
+                )
         return node
+
+    def _validate_contract_fields(self, declaration: _CapacityBase) -> None:
+        """ADR-0159 register-time contract-field validation.
+
+        ``inline=True`` requires ``max_latency_ms``. ``precondition_iri``
+        and ``effect_iri``, when set, must be well-formed capacity IRIs;
+        the predicate-family resolution check is soft (enforced only when
+        the IRI resolves to an already-registered declaration — the
+        ``predicate.*`` family ships downstream of v1 per ADR-0157).
+        """
+        if declaration.inline and declaration.max_latency_ms is None:
+            raise CapacityRegistrationError(
+                f"Capacity {declaration.iri!r}: inline=True requires "
+                "max_latency_ms to be declared"
+            )
+        for field_name, iri_val in (
+            ("precondition_iri", declaration.precondition_iri),
+            ("effect_iri", declaration.effect_iri),
+        ):
+            if iri_val is None:
+                continue
+            if not iri_val.startswith("capacity:"):
+                raise CapacityRegistrationError(
+                    f"Capacity {declaration.iri!r}: {field_name}={iri_val!r} "
+                    "is not a well-formed capacity IRI"
+                )
+            resolved = self._declarations.get(iri_val)
+            if resolved is not None and resolved.category != "predicate":
+                raise CapacityRegistrationError(
+                    f"Capacity {declaration.iri!r}: {field_name}={iri_val!r} "
+                    f"resolves to a non-predicate capacity "
+                    f"(category={resolved.category!r})"
+                )
 
     def add_constraint(
         self,
@@ -450,49 +505,6 @@ class CapacityLayer:
     def iter_declarations(self) -> List[_CapacityBase]:
         """Return every registered declaration (Local + Global)."""
         return list(self._declarations.values())
-
-    def rediscover(
-        self,
-        *,
-        session: SessionArg = None,
-    ) -> List[object]:
-        """Drop auto-discovered TYPE_COMPAT edges + recompute from scratch.
-
-        Manual edges (no ``discovered_automatically=True`` flag) are
-        preserved per ADR-0086.
-
-        Target scope:
-
-        * ``session is not None`` → Local metagraph of ``session.user_id``;
-          no capability gate (the user owns their Local).
-        * ``session is None`` → Global metagraph; gated on
-          ``CAN_WRITE_GLOBAL`` per ADR-0078 + ADR-0080.
-
-        **Open gap (deferred):** if an admin DELETES an auto edge,
-        the next ``rediscover`` re-adds it. See ADR-0086 §Implementation
-        (Phase 29). Resolution deferred to first reported foot-gun.
-
-        Raises:
-            PermissionError: ``session`` lacks ``CAN_WRITE_GLOBAL`` when
-                rediscover targets Global.
-            DiscoveryFailedError: a write inside ``rediscover_all``
-                raised mid-emit.
-
-        Returns:
-            The list of ``Edge`` / ``MetaEdge`` objects re-created.
-        """
-        target_uid = session.user_id if session is not None else None
-        if target_uid is None:
-            self._enforce_global_write(session, op="rediscover")
-        mg = self._metagraph_for(target_uid)
-        try:
-            return rediscover_all(
-                mg, capacity_index=self._capacity_index[mg.metagraph_id]
-            )
-        except Exception as exc:
-            raise DiscoveryFailedError(
-                f"rediscover_all raised for metagraph {mg.name!r}: {exc}"
-            ) from exc
 
     # ── Phase 30 — invocation surface (ADR-0072) ──────────────────────
 

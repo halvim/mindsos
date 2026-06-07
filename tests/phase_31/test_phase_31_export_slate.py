@@ -32,13 +32,13 @@ def test_each_retired_resident_export_unresolvable():
         )
 
 
-def test_phase_41_export_count_is_112():
+def test_phase_42_export_count_is_117():
     """Count-equals sentinel — 95 (P30) -> 97 (P31) -> 110 (P33) ->
-    114 (P40) -> 112 (P41). Phase 41 retires 3 (ResidentSubscription,
-    ResidentError, KIND_RESIDENT) and adds 1 (KIND_MONITOR) per ADR-0155.
+    114 (P40) -> 112 (P41) -> 117 (P42). Phase 42 retires 6 type-compat/
+    discovery exports per ADR-0156 and adds 11 ADR-0159 contract exports.
     """
-    assert len(mindsos_capacity.__all__) == 112, (
-        f"Expected 112 exports at Phase 41; found {len(mindsos_capacity.__all__)}"
+    assert len(mindsos_capacity.__all__) == 117, (
+        f"Expected 117 exports at Phase 42; found {len(mindsos_capacity.__all__)}"
     )
 
 

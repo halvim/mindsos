@@ -190,3 +190,7 @@ Ship phase **X3** — atomic bundle with ADR-0156 (D38 bipartite reframe) + Phas
 ## Rationale
 
 Per-decision rationale, 3-round saturation (1 reversal R2 on Fork 5 three-valued → two-valued, 0 reversals R3), and the typed CapacityContext + MMHandle Protocol refinement at `docs/_workbench/L1_L3_REFRAME_DECISIONS.md` §registration-contract-v2.
+
+## §Implementation (Phase 42 — 2026-06-05)
+
+Shipped (ADR-0159). 6 new `_CapacityBase` fields (`concurrent`, `inline`, `max_latency_ms`, `precondition_iri`, `effect_iri`, `reads_mm`; the "5 new fields" framing groups inline+max_latency_ms). NEW `mindsos_capacity/context.py`: frozen `CapacityContext` (10 fields; `version_snapshot`/`learned_parameters_snapshot` read-only via `MappingProxyType`) + 4 `@runtime_checkable` Protocols (`MMHandle`, `KLHandle`, `CapacityLayerHandle`, `CancelToken`) + `CancelTokenView` + 5 verdict dataclasses (verdicts inline, not a separate `verdicts.py`). Import-isolated (no mindsos_knowledge/mindsos_instances imports; Any/forward-refs). `register_capacity` validates `inline⇒max_latency_ms` + structural precondition/effect IRIs (predicate-family resolution soft, deferred — no `predicate.*` ships v1). `KLHandle.read_at_version` declared but unimplemented (KL impl Phase 48). **Body migration `context["kl"]`→`context.kl` + invoke→CapacityContext plumbing DEFERRED to Phase 46** (PB-23): ADR-0159's CapacityContext has no `session`-object field for ADR-0146 write-body capability gating; the L4 substrate (Phase 46) owns that boundary.
