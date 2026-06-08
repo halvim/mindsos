@@ -588,7 +588,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 45 — L3 dream family ratification: 3 v1 capacities
 
-  **Status:** Pending
+  **Status:** SHIPPED 2026-06-07 (squash `ab32e3d`; confirm artifacts `e76a1a3`; tag `phase-45-confirmed` at `e76a1a3`; cumulative 3694 passed / 9 skipped / 0 failed; ADR-0162; `DreamCapacity` + `builtins/dream.py`; `__all__` 117→118; 9-surface bump 44→45 — first slot > high-water 44. Directive-emitter contract per S1; L4 hookup deferred to Phase 46/47/48. **Closes Rail D — all four rails A/B/C/D now closed; Phase 46 convergence can open.** See HANDOFF §3.1.18 + `PHASE_45_DESIGN_LOG.md`.)
   **Branch:** phase-45
   **Tag on confirm:** phase-45-confirmed
   **Rail:** D

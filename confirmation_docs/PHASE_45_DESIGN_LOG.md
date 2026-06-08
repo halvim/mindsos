@@ -481,12 +481,13 @@ docker 3.11):**
   (no L0 roster change this phase). The Linux docker gate (3.11) runs the
   full cumulative suite.
 
-**Remaining ceremony (pair-execution; pending):** branch `phase-45` off
-main-tip `4e79ff0`; selectively stage (the working tree carries uncommitted
-`HANDOFF.md` Robot Demo `M` + untracked Robot Demo files — `git add -p`,
-never `-A`); single PR; Linux `docker compose build mindsos-test` + cumulative
-`pytest`; squash to main; `confirm-phase --init-notes 45` → notes →
-`confirm-phase --phase 45`; tag `phase-45-confirmed` **at the confirm-
-artifacts commit** (not the squash — Phase 42 release-gate lesson); fix Linux
-`git config` identity before the confirm commit; then write HANDOFF §3.1.18
-ship-closure + flip the Phase 45 PHASE_MAP row to SHIPPED.
+**Ceremony (COMPLETE 2026-06-07).** Branched `phase-45` off main-tip
+`4e79ff0`; staged the 30 Phase-45 paths explicitly (HANDOFF + L3_FUTURE_WORK
++ Robot Demo left untouched); commit `a901212`; Linux gate **3694 passed / 9
+skipped / 0 failed** (31:56); squash to `main` `ab32e3d`; confirm-phase
+generated `PHASE_45_CONFIRMED.md` + notes. **Anomaly (Phase 40/42-class):**
+confirm ran on the branch tip (`1e0fbf1`), so the confirm artifacts were
+cherry-picked onto `main` (`e76a1a3`); tag `phase-45-confirmed` placed at the
+confirm-artifacts commit `e76a1a3` (not the squash) per the Phase 42
+release-gate lesson. HANDOFF §3.1.18 + header, PHASE_MAP Phase 45 row →
+SHIPPED, CLAUDE.md status, this log all updated in the doc-closure commit.
