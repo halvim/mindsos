@@ -320,7 +320,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 42 — L3 X3: bipartite topology + capacity registration contract v2 + Phase 27 audit + Model C remediation
 
-  **Status:** Pending
+  **Status:** **SHIPPED 2026-06-07.** Rail B slot 3 complete — **Rail B (X1→X2→X3) done.** Squash `39a312c` on `main`; confirm artifacts `e0a1453`; tag `phase-42-confirmed` at confirm-artifacts `e0a1453` (release.yml requires the confirmation doc at the tagged commit); cumulative gate 3669/9/0; no version bump (slot 42 ≤ high-water 44). Full design log `confirmation_docs/PHASE_42_DESIGN_LOG.md`; ship closure HANDOFF §3.1.17. See "As-shipped deltas" below for the PB-7/PB-16/PB-22/PB-23/PB-24 decisions + the body-migration/invoke/materialise deferrals to Phase 46.
   **Branch:** phase-42
   **Tag on confirm:** phase-42-confirmed
   **Rail:** B
