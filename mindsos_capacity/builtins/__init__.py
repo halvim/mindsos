@@ -25,6 +25,18 @@ Halvim divergences from parent:
 
 from __future__ import annotations
 
+from .dream import (
+    DS_DREAM_DIRECTIVE,
+    DS_DREAM_TASK_REF,
+    DreamDirective,
+    DreamExecutionPolicy,
+    ReplanInjectionDirective,
+    build_dream_exploration,
+    build_dream_maintenance,
+    build_dream_retry,
+    dream_datastates,
+    install_dream_capacities,
+)
 from .text import (
     DS_RAW_TEXT,
     DS_SENTENCES,
@@ -43,4 +55,15 @@ __all__ = [
     "build_space_split",
     "build_sentence_split",
     "install_text_capacities",
+    # dream family (Phase 45)
+    "DS_DREAM_TASK_REF",
+    "DS_DREAM_DIRECTIVE",
+    "DreamExecutionPolicy",
+    "ReplanInjectionDirective",
+    "DreamDirective",
+    "dream_datastates",
+    "build_dream_maintenance",
+    "build_dream_exploration",
+    "build_dream_retry",
+    "install_dream_capacities",
 ]

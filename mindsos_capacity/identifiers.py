@@ -95,6 +95,14 @@ CATEGORY_LEARNING_METHODS = "learning-methods"
 #: lock).
 CATEGORY_CONSOLIDATE = "consolidate"
 
+#: Phase 45 (ADR-0162) — the ``dream.*`` family category. Deliberately
+#: NOT a member of ``FUNCTIONAL_CATEGORIES``: like ``text.*``, the dream
+#: family is an opt-in installable builtin whose category graph is
+#: created lazily by ``ensure_category_graph`` at first register, not
+#: pre-bootstrapped by ``create_global``. The constant exists for symbol
+#: hygiene + ``builtins/dream.py`` consumption.
+CATEGORY_DREAM = "dream"
+
 #: Functional categories recognised by the default Global L3 bootstrap.
 #:
 #: Phase 33 extends to 13 (was 12 through Phase 32) per R0 PB-6 +
@@ -326,6 +334,7 @@ __all__ = [
     "CATEGORY_INTERACTION",
     "CATEGORY_LEARNING_METHODS",
     "CATEGORY_CONSOLIDATE",
+    "CATEGORY_DREAM",
     "FUNCTIONAL_CATEGORIES",
     # Node-type vocabulary
     "NODE_TYPE_CAPACITY",

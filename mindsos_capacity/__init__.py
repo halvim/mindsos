@@ -132,6 +132,7 @@ from .capacity import (
     Adapter,
     Capacity,
     CapacityCallable,
+    DreamCapacity,
     InvocationResult,
     Monitor,
     _CapacityBase,
@@ -262,6 +263,7 @@ __all__ = [
     "Capacity",
     "Monitor",
     "Adapter",
+    "DreamCapacity",
     "_CapacityBase",
     "CapacityCallable",
     "DataState",
@@ -395,4 +397,4 @@ __all__ = [
     "DS_UNHANDLED_INPUT",
 ]
 
-__version__ = "0.0.0+phase44"
+__version__ = "0.0.0+phase45"

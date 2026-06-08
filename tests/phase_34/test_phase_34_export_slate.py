@@ -12,21 +12,20 @@ import mindsos_capacity
 import mindsos_knowledge
 
 
-def test_phase_34_export_count_stable_at_117():
-    """Forward-anchor sentinel: 114 (P40 X1) -> 112 (P41 X2) -> 117 (P42 X3).
-    Phase 42 retires 6 type-compat/discovery exports (ADR-0156) and adds 11
-    ADR-0159 contract exports; net +5."""
+def test_phase_34_export_count_stable_at_118():
+    """Forward-anchor sentinel: 114 (P40 X1) -> 112 (P41 X2) -> 117 (P42 X3)
+    -> 118 (P45 Rail D). Phase 45 adds 1 export (``DreamCapacity``)."""
     n = len(mindsos_capacity.__all__)
-    assert n == 117, (
-        f"Phase 42 __all__ count {n} != 117 (Phase 41 baseline 112 - 6 + 11 at Phase 42)."
+    assert n == 118, (
+        f"Phase 45 __all__ count {n} != 118 (Phase 42 baseline 117 + 1 DreamCapacity)."
     )
 
 
 def test_phase_34_version_bumped():
     """Phase 39 ship: subsequent phases advance this assertion to the
     current phase per the manifest-bump pattern."""
-    assert mindsos_capacity.__version__ == "0.0.0+phase44"
-    assert mindsos_knowledge.__version__ == "0.0.0+phase44"
+    assert mindsos_capacity.__version__ == "0.0.0+phase45"
+    assert mindsos_knowledge.__version__ == "0.0.0+phase45"
 
 
 def test_phase_33_exports_remain_intact():

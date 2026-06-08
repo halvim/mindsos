@@ -70,23 +70,20 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_42_export_count_is_117():
+def test_phase_45_export_count_is_118():
     """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40)
-    -> 112 (P41) -> 117 (P42).
+    -> 112 (P41) -> 117 (P42) -> 118 (P45).
 
-    Phase 42 X3 retires 6 type-compat/discovery exports (SuccessorHop,
-    EDGE_TYPE_COMPAT, discover_for_capacity, discover_for_datastate,
-    rediscover_all, DiscoveryFailedError) per ADR-0156 and adds 11 ADR-0159
-    contract exports (CapacityContext, MMHandle, KLHandle,
-    CapacityLayerHandle, CancelToken, CancelTokenView, TierVerdict,
-    GoalVerdict, PipelineFindVerdict, PromotionRuleVerdict, ReplanVerdict):
-    net +5 over Phase 41.
+    Phase 45 (Rail D, ADR-0162) adds 1 export: ``DreamCapacity`` (the
+    ``dream.*`` capacity-kind dataclass, alongside Monitor/Adapter in
+    ``capacity.py``). The builtins ``dream.py`` surface is NOT re-exported
+    at this top level (R0 PB-5 lock; same as text.*).
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 117, (
-        f"Phase 42 __all__ count {n} != expected 117 "
-        f"(Phase 41 baseline 112 - 6 retired + 11 ADR-0159 contract exports)"
+    assert n == 118, (
+        f"Phase 45 __all__ count {n} != expected 118 "
+        f"(Phase 42 baseline 117 + 1 DreamCapacity)"
     )
 
 

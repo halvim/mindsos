@@ -161,6 +161,50 @@ class Adapter(_CapacityBase):
         self.is_adapter = True
 
 
+# ── Dream capacity (Phase 45 — Rail D, ADR-0162) ───────────────────────
+
+@dataclass
+class DreamCapacity(_CapacityBase):
+    """A reactive capacity in the ``dream.*`` family (ADR-0162).
+
+    Dream capacities are ordinary on-demand reactive capacities
+    (``node_kind = KIND_REACTIVE``) that additionally declare two
+    contract fields the L4 dream-cycle loop reads off the registered
+    Core node (Phase 46+):
+
+    - ``execution_policy`` — ``replay_recorded`` (replay recorded chain
+      artifacts; no generative re-invocation) or ``re_execute_capacities``
+      (re-invoke generative capacities against current L2/L3). Per Chat B
+      D-B8. The ``hybrid`` policy is a v2 reservation (no v1 assignee).
+    - ``entry_point`` — the chain entry the dream re-executes from. v1 is
+      ``latest_active_taskrun`` for all three capacities (Chat B D-B7);
+      specific PipelineRun / Milestone / replan-point entries are v2.
+
+    The body itself is a **directive-emitter** (Phase 45 R0 S1): it
+    validates its input and returns a ``DreamDirective`` describing the
+    dream action. The actual MM deep-copy + live re-execution + ALS
+    signal firing are owned by the L4 substrate (Phase 46) and the L5
+    dream-pipeline hookup (Phase 48); this declaration ships the L3
+    contract ahead of that consumer. Dont-know contract is
+    OPTIONAL_RETURN (L3-51 / ``family_rules.FAMILY_RULES['dream']``):
+    the body returns ``None`` when it cannot produce a directive.
+    """
+
+    execution_policy: str = ""
+    entry_point: str = ""
+
+    def __post_init__(self) -> None:
+        self.node_type = NODE_TYPE_CAPACITY
+        self.node_kind = KIND_REACTIVE
+        self.is_adapter = False
+
+    def to_properties(self) -> Dict[str, Any]:
+        props = super().to_properties()
+        props["execution_policy"] = self.execution_policy
+        props["entry_point"] = self.entry_point
+        return props
+
+
 # ── Executor: one source of truth for calling a declaration ────────────
 #
 # Phase 27 ships these for parent-layout parity but does NOT export
@@ -246,6 +290,7 @@ __all__ = [
     "Capacity",
     "Monitor",
     "Adapter",
+    "DreamCapacity",
     "InvocationResult",
     "call_capacity",
     "_CapacityBase",

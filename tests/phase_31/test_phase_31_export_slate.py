@@ -32,13 +32,13 @@ def test_each_retired_resident_export_unresolvable():
         )
 
 
-def test_phase_42_export_count_is_117():
+def test_phase_45_export_count_is_118():
     """Count-equals sentinel — 95 (P30) -> 97 (P31) -> 110 (P33) ->
-    114 (P40) -> 112 (P41) -> 117 (P42). Phase 42 retires 6 type-compat/
-    discovery exports per ADR-0156 and adds 11 ADR-0159 contract exports.
+    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45). Phase 45 (Rail D,
+    ADR-0162) adds 1 export (``DreamCapacity``).
     """
-    assert len(mindsos_capacity.__all__) == 117, (
-        f"Expected 117 exports at Phase 42; found {len(mindsos_capacity.__all__)}"
+    assert len(mindsos_capacity.__all__) == 118, (
+        f"Expected 118 exports at Phase 45; found {len(mindsos_capacity.__all__)}"
     )
 
 
@@ -62,4 +62,4 @@ def test_phase_30_exports_remain_intact():
 
 
 def test_version_bumped_to_phase_34():
-    assert mindsos_capacity.__version__ == "0.0.0+phase44"
+    assert mindsos_capacity.__version__ == "0.0.0+phase45"
