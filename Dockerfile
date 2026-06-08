@@ -149,6 +149,9 @@ COPY mindsos_server ./mindsos_server
 # at runtime by tests/phase_27/ only at Phase 27 ship; CLI verbs
 # defer to Phase 28+ (PHASE_MAP §27 explicitly ships no CLI).
 COPY mindsos_capacity ./mindsos_capacity
+# Phase 46: NEW top-level package — `mindsos_intelligence/` ships the
+# first L4 (Intelligence) substrate per PHASE_MAP §46 + ADRs 0163-0170.
+COPY mindsos_intelligence ./mindsos_intelligence
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -214,6 +217,8 @@ COPY mindsos_server ./mindsos_server
 # Phase 27: mirror of prod-stage COPY for `mindsos_capacity/` per the
 # 9-site new-top-level-package checklist.
 COPY mindsos_capacity ./mindsos_capacity
+# Phase 46: mirror of prod-stage COPY for `mindsos_intelligence/`.
+COPY mindsos_intelligence ./mindsos_intelligence
 COPY tests ./tests
 # Phase 39: tools/ contains check_rename_state.py — Phase 39 data-state
 # detector tested by tests/phase_39/test_check_rename_state_script.py

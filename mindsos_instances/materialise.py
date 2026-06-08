@@ -29,6 +29,8 @@ from mindsos_core import (
 )
 from mindsos_core.exceptions import IdentityError
 from mindsos_core.models.metagraph import MetaEdge, MetaHyperEdge
+from mindsos_core.models.intergraph_edge import IntergraphEdge
+from mindsos_core.models.intergraph_hyperedge import IntergraphHyperEdge
 
 from ._resolve import resolve_graph, resolve_node, resolve_nodes
 from .exceptions import DanglingTemplateError
@@ -38,6 +40,8 @@ from .models.element_instance import (
     ElementInstance,
     GraphInstance,
     HyperEdgeInstance,
+    IntergraphEdgeInstance,
+    IntergraphHyperEdgeInstance,
     MetaEdgeInstance,
     MetaHyperEdgeInstance,
     NodeInstance,
@@ -66,6 +70,10 @@ def materialise(instance: Any, metagraph: Metagraph) -> Any:
         return _materialise_metaedge(instance, metagraph)
     if isinstance(instance, MetaHyperEdgeInstance):
         return _materialise_metahyperedge(instance, metagraph)
+    if isinstance(instance, IntergraphEdgeInstance):
+        return _materialise_intergraph_edge(instance, metagraph)
+    if isinstance(instance, IntergraphHyperEdgeInstance):
+        return _materialise_intergraph_hyperedge(instance, metagraph)
     if isinstance(instance, CompositeInstance):
         return _materialise_composite(instance, metagraph)
     raise TypeError(
@@ -332,6 +340,59 @@ def _materialise_metahyperedge(
     )
 
 
+# ── IntergraphEdgeInstance / IntergraphHyperEdgeInstance (ADR-0166) ─────────
+
+
+def _materialise_intergraph_edge(
+    instance: IntergraphEdgeInstance, metagraph: Metagraph
+) -> IntergraphEdge:
+    template = _find_intergraph_edge_template(instance.template_id, metagraph)
+    overrides = instance.overrides
+
+    source_gid = overrides.get("source_graph_id", template.source_graph_id)
+    source_nid = overrides.get("source_node_id", template.source_node_id)
+    target_gid = overrides.get("target_graph_id", template.target_graph_id)
+    target_nid = overrides.get("target_node_id", template.target_node_id)
+    _check_intergraph_endpoint(metagraph, source_gid, source_nid, "source")
+    _check_intergraph_endpoint(metagraph, target_gid, target_nid, "target")
+
+    label = overrides.get("label", template.label)
+    user_props = _user_property_subset(overrides, instance.STRUCTURAL_KEYS)
+    merged_props = {**template.properties, **user_props}
+    return IntergraphEdge(
+        source_graph_id=source_gid,
+        source_node_id=source_nid,
+        target_graph_id=target_gid,
+        target_node_id=target_nid,
+        type_name=template.type_name,
+        label=label,
+        properties=merged_props,
+    )
+
+
+def _materialise_intergraph_hyperedge(
+    instance: IntergraphHyperEdgeInstance, metagraph: Metagraph
+) -> IntergraphHyperEdge:
+    template = _find_intergraph_hyperedge_template(instance.template_id, metagraph)
+    overrides = instance.overrides
+
+    anchors = tuple(tuple(p) for p in overrides.get("anchors", template.anchors))
+    members = tuple(tuple(p) for p in overrides.get("members", template.members))
+    for graph_id, node_id in (*anchors, *members):
+        _check_intergraph_endpoint(metagraph, graph_id, node_id, "member")
+
+    label = overrides.get("label", template.label)
+    user_props = _user_property_subset(overrides, instance.STRUCTURAL_KEYS)
+    merged_props = {**template.properties, **user_props}
+    return IntergraphHyperEdge(
+        anchors=anchors,
+        members=members,
+        type_name=template.type_name,
+        label=label,
+        properties=merged_props,
+    )
+
+
 # ── CompositeInstance (round-7 P63 A — canonicalize-wrapped asdict) ─────────
 
 
@@ -428,3 +489,38 @@ def _find_metahyperedge_template(
             f"MetaHyperEdge template {template_id!r} not in metagraph."
         )
     return metagraph.metahyperedges[template_id]
+
+
+def _find_intergraph_edge_template(
+    template_id: str, metagraph: Metagraph
+) -> IntergraphEdge:
+    if template_id not in metagraph.intergraph_edges:
+        raise DanglingTemplateError(
+            f"IntergraphEdge template {template_id!r} not in metagraph."
+        )
+    return metagraph.intergraph_edges[template_id]
+
+
+def _find_intergraph_hyperedge_template(
+    template_id: str, metagraph: Metagraph
+) -> IntergraphHyperEdge:
+    if template_id not in metagraph.intergraph_hyperedges:
+        raise DanglingTemplateError(
+            f"IntergraphHyperEdge template {template_id!r} not in metagraph."
+        )
+    return metagraph.intergraph_hyperedges[template_id]
+
+
+def _check_intergraph_endpoint(
+    metagraph: Metagraph, graph_id: str, node_id: str, role: str
+) -> None:
+    if graph_id not in metagraph.graphs:
+        raise IdentityError(
+            f"_materialise intergraph: {role} graph_id {graph_id!r} "
+            f"not in metagraph."
+        )
+    if node_id not in metagraph.graphs[graph_id].nodes:
+        raise IdentityError(
+            f"_materialise intergraph: {role} node_id {node_id!r} "
+            f"not in graph {graph_id!r}."
+        )

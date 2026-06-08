@@ -25,6 +25,8 @@ nav:
       - Soft-delete (Phase 10): concepts/soft-delete.md
       - Capacity families (Phase 40): concepts/capacity-families.md
       - Dreaming (Phase 45): concepts/dream.md
+      - Intelligence Layer (Phase 46): concepts/intelligence-layer.md
+      - Mental Model substrate (Phase 46): concepts/mm-substrate.md
       - Knowledge lifecycle:
           - Synthesis: concepts/knowledge-lifecycle.md
           - Global + Local metagraphs (Phase 14): concepts/global-local.md

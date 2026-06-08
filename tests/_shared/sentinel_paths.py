@@ -299,4 +299,19 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # Sentinel-paths +2 per R0 PB-8 / R2 PB-21 lock.
     "mindsos_capacity/builtins/__init__.py",
     "mindsos_capacity/builtins/text.py",
+    # Phase 46 — NEW top-level package `mindsos_intelligence/` (first L4
+    # ship) per PHASE_MAP §46 + ADRs 0163-0170. New-top-level-package
+    # checklist: COPY in both Dockerfile stages + pyproject include +
+    # manifest [mindsos] packages + mkdocs nav + these sentinel paths.
+    "mindsos_intelligence/__init__.py",
+    "mindsos_intelligence/cancellation.py",
+    "mindsos_intelligence/executor.py",
+    "mindsos_intelligence/rwlock.py",
+    "mindsos_intelligence/mm.py",
+    "mindsos_intelligence/mm_resolver.py",
+    "mindsos_intelligence/monitor_subscription.py",
+    "mindsos_intelligence/als_registry.py",
+    "mindsos_intelligence/signal_triage.py",
+    "mindsos_intelligence/intelligence_layer.py",
+    "mindsos_capacity/tiers.py",
 )

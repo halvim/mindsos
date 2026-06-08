@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mindsos-cli"
-version = "0.0.0+phase45"
+version = "0.0.0+phase46"
 description = "MindsOS command-line interface — Phase 28: Second L3 ship — CapacityLayer registry + dual-metagraph bootstrap + Local-wins lookup + CAN_WRITE_GLOBAL capability gate. Adds 6 new source files to existing mindsos_capacity/ pkg: bootstrap.py (create_global+create_local+ensure_*_graph; ADR-0061+0064+0065), capabilities.py (CAN_WRITE_GLOBAL UPPERCASE per ADR-0078 §am1), capacity_layer.py (CapacityLayer slim — register_datastate/register_capacity/add_constraint/_resolve_declaration Local-wins/_enforce_global_write per ADR-0080 carve-out; drops invoke/resident/rediscover to Phase 30, drops successors/producers/consumers to Phase 29), types.py (SessionProtocol slim copy per ADR-0040 §am2; no deprecation shim), schemas.py (full port — build_datastates_schema + build_category_schema + schema_for_role), views.py (slim — accessors only, drops SuccessorHop to Phase 29). Adds ConstraintViolationError (4th exception class). Closes B-26b-T5 via ADR-0118 §am5: Cypher templates in mindsos_server/release.py + mindsos_admin/promotion.py now MERGE :IN_GRAPH so released Nodes are graph-traversal-reachable. Closes PHASE_MAP §28 + Phase 15b PB-23 alignment-lookup carry-forward (RETRIEVAL capacity, not 13th category). 15 test files / ~107 cases incl. parametrized RESERVED_PROPERTY_KEYS coverage + 9-ADR amendment sentinels + import-isolation (no L3→server, no L3→knowledge) + InvocationResult/call_capacity un-export sentinel. 6 design rounds (R0-R5; R5 = pre-impl probe). See confirmation_docs/PHASE_28_DESIGN_LOG.md."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -48,7 +48,9 @@ mindsos = "mindsos_cli.__main__:main"
 # at Phase 27 with the manifest [mindsos] packages generalization
 # closing the 6-pkg literal-decay class). First L3 (Intellectual
 # Capacity) package per PHASE_MAP §27 + ADRs 0062/0063/0066/0067.
-include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*", "mindsos_capacity*"]
+# Phase 46 — added "mindsos_intelligence*" per same checklist. First L4
+# (Intelligence) package per PHASE_MAP §46 + ADRs 0163-0170.
+include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*", "mindsos_capacity*", "mindsos_intelligence*"]
 
 [tool.setuptools.package-data]
 mindsos_cli = ["manifest.toml"]

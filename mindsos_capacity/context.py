@@ -37,6 +37,7 @@ from typing import (
 
 if TYPE_CHECKING:  # pragma: no cover — typing-only; import isolation at runtime
     from .capacity import _CapacityBase
+    from .tiers import TierEnum
 
 
 # ── Handle Protocols (ADR-0159) ────────────────────────────────────────
@@ -149,10 +150,10 @@ class CapacityContext:
 
 @dataclass(frozen=True)
 class TierVerdict:
-    """``decision.*`` tier verdict. ``tier`` is the downstream TierEnum
-    (typed ``Any`` here pending its owning family)."""
+    """``decision.*`` tier verdict. ``tier`` is the :class:`~mindsos_capacity.tiers.TierEnum`
+    (its owning family, ADR-0169)."""
 
-    tier: Optional[Any]
+    tier: Optional["TierEnum"]
     rationale: str
 
 
