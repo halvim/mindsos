@@ -550,3 +550,44 @@ TierEnum/defaults + `TierVerdict.tier` narrow + isolation-sentinel add) +
 `tests/phase_46/`. Version bump (S16) at confirm. PR-B (signal-triage live
 wiring) folds into 47 per the S12/S9 defers — **re-evaluate whether PB-0 still
 needs two PRs** now that the consumer-gated surfaces moved to 47.
+
+## §9. Ship closure (2026-06-08)
+
+**SHIPPED 2026-06-08.** Squash-merge `47c3568` on `main`; confirm artifacts
+`18ba793`; tag `phase-46-confirmed` at the confirm-artifacts commit `18ba793`
+(per the Phase 42 release-gate lesson — `release.yml` requires
+`PHASE_46_CONFIRMED.md` at the tagged commit). Cumulative gate **3793 passed /
+9 skipped / 0 failed** (Linux docker, 31:55) at phase46. `doctor --self-test`
+green (8-package parity). Manual host smokes (`python3`): lifecycle
+start/enqueue/stop("abort")=42; pause→NotImplementedError; deep-copy
+independence; tier order `['c','b','d']`.
+
+**Shipped as a SINGLE PR.** PB-0 Opt B (two PRs) collapsed once S12 + the S9 L3
+classifier deferred to Phase 47 — no PR-B content remained (the signal-triage
+thread w/ passthrough stub + dream timer landed in the primitives PR). Ship
+sequence: R0 record `53245de` → PR-A.1 L3 prereqs `9540f32` → PR-A.2 materialise
+`a19c018` → PR-A.3a–e package → PR-A.4 docs+roster → PR-A.5 version bump →
+squash `47c3568` → confirm `18ba793`.
+
+**Grounding-driven decisions (probe-first, R1):** PB-8 TierEnum home = L3 (layer
+isolation test-enforced; shipped `TierVerdict.tier` placeholder confirmed
+intent); only `consolidate.py`/`trace.py` use `context.get("kl")` (no `text.*`
+migration); `CancelToken` mutator is `request_cancel()`; `CapacityContext` has
+`session_id`/`user_id` but no capability handle (gate → L4 dispatch);
+`MMResolver` IS the concrete `MMHandle`. **S12 deferred wholesale to Phase 47**
+(user-ratified) — `invoke`→CapacityContext flips a shipped public signature
+consumed corpus-wide with no Phase-46 caller; PB-23 closes at 47.
+
+**New-top-level-package checklist completed:** Dockerfile COPY (both stages),
+pyproject `packages.find` include, manifest `[mindsos] packages` (8th package),
+`sentinel_paths.py`, mkdocs nav, `tests_server` domain-layer isolation roster,
+host pip refresh. No CLI verb (orchestrator CLI is Phase 47).
+
+**Carry-forward to Phase 47 (L4 orchestrator):** consume the substrate —
+six-phase task lifecycle + `planning.*` v0 + the deferred surfaces:
+`invoke`→CapacityContext + body migration + write-gate enforcement
+(PB-23/ADR-0170); L3 `decision.signal_to_tier` (replaces the passthrough stub);
+L3 `scoring.attention_score` + `update_priority` wrapper; the dream driver.
+**Phase 48:** dream live re-execution + ALS firing + replan-injection
+consumption; MM `attention_score` write-through to TaskRun; MM inline-on-retire
+(D'1).

@@ -647,7 +647,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 46 — L4 substrate: convergence point
 
-  **Status:** Pending
+  **Status:** **SHIPPED 2026-06-08** — squash `47c3568`; confirm artifacts `18ba793`; tag `phase-46-confirmed` at `18ba793`; cumulative 3793 passed / 9 skipped / 0 failed at phase46; new package `mindsos_intelligence` (8th); ADRs 0163-0170; 9-surface bump 45→46; single PR (PB-0 collapsed); S12 + dream-driver + signal-classifier deferred to Phase 47/48 (PB-23 closes at 47). Full record HANDOFF §3.1.19 + `PHASE_46_DESIGN_LOG.md §9`. **All four rails + convergence closed → Phase 47 (L4 orchestrator) next.**
   **Branch:** phase-46
   **Tag on confirm:** phase-46-confirmed
   **Rail:** convergence
