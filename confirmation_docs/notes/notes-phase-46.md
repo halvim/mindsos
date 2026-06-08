@@ -1,0 +1,63 @@
+# Phase 46 — Notes
+
+> Tester fills two fields: `phase_title` and `tester_notes`. Everything else
+> in `confirmation_docs/PHASE_NN_CONFIRMED.md` is auto-derived by
+> `mindsos confirm-phase`. Read PHASE_MAP §1 (Confirmation doc as artifact)
+> for the rationale.
+
+## phase_title
+
+The phase title as it appears in `confirmation_docs/PHASE_MAP.md` §3 / §4 / §5.
+Example: `Tooling infrastructure`
+
+L4 substrate: convergence point
+
+## tester_notes
+
+Free-form. What you observed, anything surprising, deviations from PHASE_MAP's
+pass criterion, open questions for the next phase chat. This is the
+load-bearing field — read by future phase chats per PHASE_MAP §0.
+
+Phase 46 ships the first L4 code: the mindsos_intelligence package (IntelligenceLayer
+lifecycle, priority-tier Executor + worker pool, writer-preferred MM RWLock,
+three-sub-MM container + deep-copy, MM resolution/instantiation as the concrete
+MMHandle, cooperative cancellation, always-on signal-triage thread, ALS subsystem
+registry, MonitorSubscriptionRegistry, dream-cycle timer) + L3 prerequisites
+(mindsos_capacity/tiers.py TierEnum/defaults, TierVerdict.tier narrowed) +
+mindsos_instances materialise for the two intergraph instance subclasses + ADRs
+0163-0170.
+
+Gate: full cumulative 3793 passed / 9 skipped / 0 failed (Linux docker, 31:55) at
+phase46. doctor --self-test green (8-package version parity, compose tags
+phase46-prod/test, manifest phase 46). Manual host smokes (python3): lifecycle
+start/enqueue/stop("abort") roundtrip = 42; stop("pause") -> NotImplementedError;
+fork_dream_mm deep-copy independence True; priority order ['c','b','d'].
+
+Shipped as a SINGLE PR. The R0 two-PR plan (PB-0 Opt B) collapsed once S12
+(invoke->CapacityContext) and the S9 L3 classifier deferred to Phase 47 — no PR-B
+content remained; the signal-triage thread (passthrough stub) and dream timer both
+landed in the primitives PR.
+
+Consumer-discipline deferrals to Phase 47/48 (substrate shipped ahead of consumer):
+- Phase 47: invoke->CapacityContext + consolidate/trace body migration to context.kl +
+  write-body capability gate enforcement (ADR-0170 contract only at 46); L3
+  decision.signal_to_tier replacing the passthrough stub; L3 scoring.attention_score +
+  update_priority wrapper; dream driver (invoke dream bodies through the phase-loop).
+- Phase 48: dream live re-execution + ALS signal firing + ReplanInjectionDirective
+  consumption; MM attention_score write-through to TaskRun (no TaskRun composite exists
+  until L5 v1); MM inline-on-retire (D'1) via kl.read_at_version / kl.retire_version.
+
+Grounding corrections made at R1 (probe-first): TierEnum home is L3 not L4 (layer
+isolation is test-enforced; an L4 home would fail the gate — the shipped TierVerdict.tier
+placeholder confirmed the intent); only consolidate.py + trace.py use context.get("kl")
+(text.* does not — no text migration); the concrete CancelToken mutator is
+request_cancel() per the shipped Protocol; CapacityContext carries session_id/user_id
+but no capability handle, so the write gate lives in L4 dispatch.
+
+New-top-level-package checklist completed: Dockerfile COPY (both prod+test stages),
+pyproject packages.find include, manifest [mindsos] packages (8th package), sentinel_paths,
+mkdocs nav, tests_server domain-layer isolation roster, host pip refresh. No CLI verb
+this phase (orchestrator CLI is Phase 47).
+
+Open for Phase 47 (L4 orchestrator): consume this substrate — six-phase task lifecycle +
+planning.* v0 + the deferred surfaces above.
