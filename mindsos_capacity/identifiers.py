@@ -103,6 +103,20 @@ CATEGORY_CONSOLIDATE = "consolidate"
 #: hygiene + ``builtins/dream.py`` consumption.
 CATEGORY_DREAM = "dream"
 
+#: Phase 47 (ADR-0171/0172) — L4-orchestrator support families. Like
+#: ``dream.*``/``text.*`` these are opt-in installable builtins whose
+#: category graphs are created lazily by ``ensure_category_graph`` at
+#: first register, NOT pre-bootstrapped by ``create_global`` and NOT
+#: members of ``FUNCTIONAL_CATEGORIES`` (the count invariant stays 13).
+#: Phase 47 ships them as placeholder v0 catalogs (``placeholder=True``);
+#: WSD installation atomically replaces them with real catalogs.
+CATEGORY_PLANNING = "planning"
+CATEGORY_PROCESS = "process"
+CATEGORY_HINT = "hint"
+CATEGORY_DECISION = "decision"
+CATEGORY_PREDICATE = "predicate"
+CATEGORY_PHASE6 = "phase6"
+
 #: Functional categories recognised by the default Global L3 bootstrap.
 #:
 #: Phase 33 extends to 13 (was 12 through Phase 32) per R0 PB-6 +
@@ -335,6 +349,12 @@ __all__ = [
     "CATEGORY_LEARNING_METHODS",
     "CATEGORY_CONSOLIDATE",
     "CATEGORY_DREAM",
+    "CATEGORY_PLANNING",
+    "CATEGORY_PROCESS",
+    "CATEGORY_HINT",
+    "CATEGORY_DECISION",
+    "CATEGORY_PREDICATE",
+    "CATEGORY_PHASE6",
     "FUNCTIONAL_CATEGORIES",
     # Node-type vocabulary
     "NODE_TYPE_CAPACITY",

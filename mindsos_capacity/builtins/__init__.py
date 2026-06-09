@@ -46,6 +46,15 @@ from .text import (
     install_text_capacities,
     text_datastates,
 )
+from .planning_v0 import install_planning_v0
+from .phase1_v0 import install_phase1_v0
+from .orchestration_v0 import (
+    classify_signal_to_tier,
+    install_orchestration_v0,
+    reset_v0_verdicts,
+    set_should_replan_decision,
+    set_sufficient_result,
+)
 
 __all__ = [
     "DS_RAW_TEXT",
@@ -66,4 +75,12 @@ __all__ = [
     "build_dream_exploration",
     "build_dream_retry",
     "install_dream_capacities",
+    # Phase 47 placeholder v0 catalogs (ADR-0172)
+    "install_planning_v0",
+    "install_phase1_v0",
+    "install_orchestration_v0",
+    "classify_signal_to_tier",
+    "set_should_replan_decision",
+    "set_sufficient_result",
+    "reset_v0_verdicts",
 ]

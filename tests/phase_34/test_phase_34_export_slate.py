@@ -24,8 +24,8 @@ def test_phase_34_export_count_stable_at_118():
 def test_phase_34_version_bumped():
     """Phase 39 ship: subsequent phases advance this assertion to the
     current phase per the manifest-bump pattern."""
-    assert mindsos_capacity.__version__ == "0.0.0+phase46"
-    assert mindsos_knowledge.__version__ == "0.0.0+phase46"
+    assert mindsos_capacity.__version__ == "0.0.0+phase47"
+    assert mindsos_knowledge.__version__ == "0.0.0+phase47"
 
 
 def test_phase_33_exports_remain_intact():

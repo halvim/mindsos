@@ -314,4 +314,22 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_intelligence/signal_triage.py",
     "mindsos_intelligence/intelligence_layer.py",
     "mindsos_capacity/tiers.py",
+    # Phase 47 — L4 orchestrator (no new top-level package; new modules
+    # within mindsos_intelligence/ + mindsos_capacity/builtins/). The
+    # whole-package Dockerfile COPY already ships them; these entries
+    # guard the orchestrator-critical runtime modules against drift.
+    "mindsos_intelligence/dispatch.py",
+    "mindsos_intelligence/orchestrator.py",
+    "mindsos_intelligence/phase_1.py",
+    "mindsos_intelligence/plan_construction.py",
+    "mindsos_intelligence/execution.py",
+    "mindsos_intelligence/phase_6.py",
+    "mindsos_intelligence/replan_check.py",
+    "mindsos_intelligence/sufficient_predicate.py",
+    "mindsos_intelligence/chain_artifacts.py",
+    "mindsos_intelligence/signal_sources.py",
+    "mindsos_intelligence/als_subsystems.py",
+    "mindsos_capacity/builtins/planning_v0.py",
+    "mindsos_capacity/builtins/phase1_v0.py",
+    "mindsos_capacity/builtins/orchestration_v0.py",
 )

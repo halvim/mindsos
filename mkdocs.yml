@@ -27,6 +27,9 @@ nav:
       - Dreaming (Phase 45): concepts/dream.md
       - Intelligence Layer (Phase 46): concepts/intelligence-layer.md
       - Mental Model substrate (Phase 46): concepts/mm-substrate.md
+      - Task lifecycle (Phase 47): concepts/task-lifecycle.md
+      - Replan (Phase 47): concepts/replan.md
+      - Planning (Phase 47): concepts/planning.md
       - Knowledge lifecycle:
           - Synthesis: concepts/knowledge-lifecycle.md
           - Global + Local metagraphs (Phase 14): concepts/global-local.md

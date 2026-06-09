@@ -24,7 +24,10 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import Any, List, Mapping, Optional
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
+
+if TYPE_CHECKING:
+    from .context import CapacityContext
 
 from .capacity import InvocationResult, _CapacityBase, call_capacity
 from .exceptions import (
@@ -155,7 +158,7 @@ def invoke(
     declaration: _CapacityBase,
     inputs: Mapping[str, Any],
     *,
-    context: Optional[Mapping[str, Any]] = None,
+    context: "Optional[Union[Mapping[str, Any], CapacityContext]]" = None,
     task_id: Optional[str] = None,
     step_id: Optional[str] = None,
     problem_trace_sink: Optional[ProblemTraceSink] = None,

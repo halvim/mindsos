@@ -11,7 +11,7 @@ line). Built additively atop L1-L3 (imports downward only).
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase46"
+__version__ = "0.0.0+phase47"
 
 from .cancellation import CancelToken, CancelTokenView
 from .executor import PriorityTierExecutor, default_worker_count
@@ -28,8 +28,21 @@ from .mm_resolver import (
 from .monitor_subscription import MonitorSubscriptionRegistry
 from .rwlock import RWLock
 from .signal_triage import SignalTriageWorker, passthrough_classifier
+from .dispatch import L4Dispatcher, required_capability_for
+from .chain_artifacts import ChainArtifactWriter
+from .orchestrator import LifecyclePhase, Orchestrator, TaskOutcome
+from .signal_sources import register_signal_sources
+from .als_subsystems import register_als_subsystems
 
 __all__ = [
+    "L4Dispatcher",
+    "required_capability_for",
+    "Orchestrator",
+    "TaskOutcome",
+    "LifecyclePhase",
+    "ChainArtifactWriter",
+    "register_signal_sources",
+    "register_als_subsystems",
     "CancelToken",
     "CancelTokenView",
     "PriorityTierExecutor",

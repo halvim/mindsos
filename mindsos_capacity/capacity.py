@@ -25,7 +25,20 @@ ADR-0066 §Implementation footer staging + Phase 30 PHASE_MAP row).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+)
+
+if TYPE_CHECKING:
+    from .context import CapacityContext
 
 from .exceptions import CapacityRegistrationError
 from .identifiers import (
@@ -66,6 +79,7 @@ class _CapacityBase:
     precondition_iri: Optional[str] = None
     effect_iri: Optional[str] = None
     reads_mm: bool = False
+    placeholder: bool = False
 
     @property
     def iri(self) -> str:
@@ -83,6 +97,8 @@ class _CapacityBase:
         }
         if self.description:
             props["description"] = self.description
+        if self.placeholder:
+            props["placeholder"] = True
         return props
 
     def validate_for_registration(self, datastate_iris) -> None:
@@ -247,9 +263,17 @@ class InvocationResult:
 def call_capacity(
     declaration: _CapacityBase,
     inputs: Mapping[str, Any],
-    context: Optional[Mapping[str, Any]] = None,
+    context: "Optional[Union[Mapping[str, Any], CapacityContext]]" = None,
 ) -> Mapping[str, Any]:
     """Invoke the Python callable bound to ``declaration``.
+
+    ``context`` is threaded opaquely to the body. Phase 47 (ADR-0175)
+    widens the type to accept either the legacy dict (the unmigrated
+    ``capacity_layer.invoke`` write path) or a typed ``CapacityContext``
+    (the new L4 ``dispatch`` read path). The read-path bodies migrated at
+    Phase 47 access fields by attribute (``context.kl``); the write-path
+    bodies (``consolidate``/``trace``) stay on dict access until Phase 48
+    when consolidation is wired (their real consumer).
 
     The callable is called with ``**inputs, context=context``. The
     return value may be:
