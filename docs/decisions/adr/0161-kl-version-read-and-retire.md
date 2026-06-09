@@ -54,3 +54,9 @@ The marker is a node property named **`_retired_inline_pending`** (boolean) on t
 1. **Separate marker graph in the Metagraph.** Rejected — adds a graph and a cross-graph read for a one-bit flag.
 2. **Marker row in `version_db`.** Rejected — splits the marker from the content it describes across the graph/SQLite boundary.
 3. **Ship the read-time consumer here too.** Rejected — episode read under D'1 is Phase 48 (L5) scope; pulling it forward couples Rail C to L5.
+
+## §amendment-1 (Phase 48 — the §Decision text was aspirational; the full stack lands at Phase 48)
+
+The §Context/§Decision text above reads "Phase 44 ships both" and the §Consequences claim "`RESERVED_PROPERTY_KEYS` gains one entry" + "the marker is written and asserted by unit test." **None of this shipped at Phase 44.** Phase-44 CR-4 narrowed the rail (design log §6/§9): `read_at_version`/`retire_version` were deferred to Phase 48 and the marker write / reserved-key registration were never landed. Phase-48 R0 grounding confirmed: no `read_at_version`/`retire_version` in `mindsos_knowledge`; `_retired_inline_pending` appears nowhere in `mindsos_knowledge`/`mindsos_core`.
+
+**Correction:** this ADR was a **frozen forward-contract only** (the marker name + location + the retire≠deprecate distinction). **Phase 48 lands the entire stack** — `kl.read_at_version`, `kl.retire_version`, the `_retired_inline_pending` marker write, the `RESERVED_PROPERTY_KEYS` entry, and the L4 read-time consumer — under **ADR-0177** (D'1 retention). The marker name/location frozen here are honored verbatim. See ADR-0177.

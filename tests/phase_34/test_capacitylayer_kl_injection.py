@@ -52,5 +52,9 @@ def test_invoke_without_kl_yields_runtime_error_via_envelope():
     )
     assert result.success is False
     assert isinstance(result.error, RuntimeError)
-    assert "context['session']" not in str(result.error)  # different error
-    assert "kl=<KnowledgeLayer>" in str(result.error)
+    # ADR-0180 (Phase 48): with no KL bound, capacity_layer.invoke builds a
+    # CapacityContext whose ``writeable`` capability is None; the body raises
+    # requiring the pre-authorized write capability (different from the
+    # session error).
+    assert "writeable" in str(result.error)
+    assert "ADR-0180" in str(result.error)

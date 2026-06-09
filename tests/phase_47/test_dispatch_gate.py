@@ -1,16 +1,18 @@
-"""Phase 47 — L4 dispatch: CapacityContext builder + write-body gate.
+"""Phase 47/48 — L4 dispatch: CapacityContext builder + scope-aware write gate.
 
-Covers ADR-0175/0170: ``L4Dispatcher`` builds a typed CapacityContext for
-the read path, and refuses to invoke a write-body (zero-output capacity)
-when the session lacks ``CAN_WRITE_GLOBAL``. The write-body is synthetic
-(PB-D) — Phase 47 has no production write-body-under-session traffic.
+Covers ADR-0175/0170/0180: ``L4Dispatcher`` builds a typed CapacityContext
+for the read path and injects a **pre-authorized ``writeable`` capability**
+for write-bodies. Phase 48 (ADR-0180) replaced the Phase-47 blanket
+pre-gate (which demanded ``CAN_WRITE_GLOBAL`` for any write-body and so
+over-restricted Local writes) with a **call-time, scope-aware** gate inside
+``context.writeable``: Global writes require ``CAN_WRITE_GLOBAL``; Local
+writes require nothing. The exception surfaces enveloped in the
+``InvocationResult`` (the body calls the gated capability; runtime envelopes).
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
-
-import pytest
 
 from mindsos_capacity import CapacityLayer
 from mindsos_capacity.capabilities import CAN_WRITE_GLOBAL
@@ -20,8 +22,9 @@ from mindsos_capacity.exceptions import CapabilityDeniedError
 from mindsos_capacity.identifiers import CATEGORY_CONSOLIDATE, CATEGORY_PLANNING, capacity_iri
 from mindsos_capacity.write_outcome import WriteResult
 from mindsos_capacity.builtins.planning_v0 import DS_MAPPING_RESULT, DS_PLAN, install_planning_v0
+from mindsos_knowledge import KnowledgeLayer
 
-from mindsos_intelligence.dispatch import L4Dispatcher, required_capability_for
+from mindsos_intelligence.dispatch import L4Dispatcher
 
 
 class _FakeSession:
@@ -35,7 +38,9 @@ class _FakeSession:
         return capability in self.capabilities
 
 
-def _write_body(**kwargs):
+def _global_write_body(**kwargs):
+    ctx = kwargs["context"]
+    ctx.writeable(role="problem-trace", scope="global", version="v1")
     return WriteResult(
         iri="node:x",
         role="problem_trace",
@@ -44,41 +49,53 @@ def _write_body(**kwargs):
     )
 
 
-def _layer_with_synthetic_write():
+def _local_write_body(**kwargs):
+    ctx = kwargs["context"]
+    ctx.writeable(role="episodic_memories", scope="local", version="v1")
+    return WriteResult(
+        iri="node:y",
+        role="episodic_memories",
+        scope="local",
+        written_at=datetime.now(timezone.utc),
+    )
+
+
+def _layer_with_write(body, name):
     layer = CapacityLayer()
     layer.register_capacity(
         Capacity(
-            name="synthetic_write",
+            name=name,
             category=CATEGORY_CONSOLIDATE,
             inputs=(),
             outputs=(),
-            implementation=_write_body,
+            implementation=body,
         )
     )
-    return layer, capacity_iri(CATEGORY_CONSOLIDATE, "synthetic_write")
+    return layer, capacity_iri(CATEGORY_CONSOLIDATE, name)
 
 
-def test_required_capability_for_write_vs_read():
-    layer, write_iri = _layer_with_synthetic_write()
-    install_planning_v0(layer)
-    write_decl = layer.get_declaration(write_iri)
-    read_decl = layer.get_declaration(
-        capacity_iri(CATEGORY_PLANNING, "derive_initial_plan")
+def test_global_write_denied_without_capability():
+    layer, write_iri = _layer_with_write(_global_write_body, "synthetic_global_write")
+    dispatcher = L4Dispatcher(layer, session=_FakeSession([]), kl=KnowledgeLayer.bootstrap())
+    result = dispatcher.dispatch(write_iri, {})
+    assert result.success is False
+    assert isinstance(result.error, CapabilityDeniedError)
+
+
+def test_global_write_permitted_with_capability():
+    layer, write_iri = _layer_with_write(_global_write_body, "synthetic_global_write")
+    dispatcher = L4Dispatcher(
+        layer, session=_FakeSession([CAN_WRITE_GLOBAL]), kl=KnowledgeLayer.bootstrap()
     )
-    assert required_capability_for(write_decl) == CAN_WRITE_GLOBAL
-    assert required_capability_for(read_decl) is None
+    result = dispatcher.dispatch(write_iri, {})
+    assert result.success
+    assert isinstance(result.write_outcome, WriteResult)
 
 
-def test_write_body_denied_without_capability():
-    layer, write_iri = _layer_with_synthetic_write()
-    dispatcher = L4Dispatcher(layer, session=_FakeSession([]))
-    with pytest.raises(CapabilityDeniedError):
-        dispatcher.dispatch(write_iri, {})
-
-
-def test_write_body_permitted_with_capability():
-    layer, write_iri = _layer_with_synthetic_write()
-    dispatcher = L4Dispatcher(layer, session=_FakeSession([CAN_WRITE_GLOBAL]))
+def test_local_write_permitted_without_global_cap():
+    # ADR-0180 / PB-10: Local writes need no CAN_WRITE_GLOBAL.
+    layer, write_iri = _layer_with_write(_local_write_body, "synthetic_local_write")
+    dispatcher = L4Dispatcher(layer, session=_FakeSession([]), kl=KnowledgeLayer.bootstrap())
     result = dispatcher.dispatch(write_iri, {})
     assert result.success
     assert isinstance(result.write_outcome, WriteResult)

@@ -48,10 +48,9 @@ from __future__ import annotations
 from typing import Any, List
 
 from ..bootstrap import ensure_datastate_graph
-from ..capabilities import CAN_WRITE_GLOBAL
 from ..capacity import Capacity
 from ..datastate import DataState, ShapeDescriptor
-from ..exceptions import CapabilityDeniedError, CapacityRegistrationError
+from ..exceptions import CapacityRegistrationError
 from ..identifiers import (
     CATEGORY_TRACE,
     capacity_iri,
@@ -92,42 +91,32 @@ def problem_trace_datastates() -> List[DataState]:
 
 
 def _trace_problem_impl(**kwargs: Any) -> Any:
-    """Body of ``capacity:trace:problem`` — Phase 36 wired path.
+    """Body of ``capacity:trace:problem`` — Phase 48 write-half (ADR-0180).
 
-    Cap-gates (when session present), extracts KL, runs semantic-
-    validator precondition via ``handle.validate_node`` (ADR-0139
-    §Capacity-contract), then calls
-    :meth:`KLWriteHandle.write_and_validate`. Returns
-    :class:`WriteResult`. Raises :class:`SemanticValidationError` on
-    validator failure.
+    Obtains its :class:`KLWriteHandle` from the **pre-authorized
+    ``context.writeable`` capability** (L4-injected). The global-scope
+    capability gate (``CAN_WRITE_GLOBAL``; ``session is None`` is the
+    ADR-0080 bootstrap carve-out) now fires **at call-time inside the
+    capability**, not in this body — the body holds no session and makes
+    no authorization decision (ADR-0170 §am-1). Runs the semantic-validator
+    precondition via ``handle.validate_node`` (ADR-0139 §Capacity-contract),
+    then writes; raises :class:`SemanticValidationError` on validator
+    failure (``CapabilityDeniedError`` propagates from the gate).
     """
     from mindsos_knowledge.exceptions import SemanticValidationError
     from mindsos_knowledge.identifiers import ROLE_PROBLEM_TRACE
 
-    context = kwargs.get("context") or {}
-    session = context.get("session")
-
-    # ADR-0080 carve-out: session is None is the bootstrap path; no
-    # cap gate. Production callers carry a session; non-admin lacks
-    # CAN_WRITE_GLOBAL → cap-denied.
-    if session is not None and not session.has(CAN_WRITE_GLOBAL):
-        raise CapabilityDeniedError(
-            f"capacity:trace:problem requires CAN_WRITE_GLOBAL; session "
-            f"{session.session_id!r} (user={session.user_id!r}) lacks it."
-        )
-
-    kl = context.get("kl")
-    if kl is None:
+    context = kwargs.get("context")
+    writeable = getattr(context, "writeable", None)
+    if writeable is None:
         raise RuntimeError(
-            "capacity:trace:problem requires CapacityLayer to be "
-            "constructed with kl=<KnowledgeLayer> (Phase 34 R0 PB-5). "
-            "Programmer error: no KL in context."
+            "capacity:trace:problem requires L4 dispatch: the CapacityContext "
+            "must carry a pre-authorized `writeable` capability (ADR-0180). "
+            "Write capacities are not invocable via the L3-internal dict path."
         )
 
     record = kwargs[DS_PROBLEM_TRACE_RECORD]
-    handle = kl.writeable(
-        session, role=ROLE_PROBLEM_TRACE, scope="global", version="v1"
-    )
+    handle = writeable(role=ROLE_PROBLEM_TRACE, scope="global", version="v1")
     vr = handle.validate_node(value=record["value"], type_="ProblemTraceEntry")
     if not vr.ok:
         raise SemanticValidationError(vr)

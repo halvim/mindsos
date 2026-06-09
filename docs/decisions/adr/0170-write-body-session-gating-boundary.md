@@ -61,3 +61,9 @@ Phase 46 ratifies this **boundary contract** (gate lives in L4 dispatch, reads t
 ## §Implementation (Phase 46 — convergence; pending ship)
 
 Phase 46 ships **this ADR only** (the boundary contract) + the ADR-0146/0159 amendment footers. The `invoke`→`CapacityContext` signature change, the `consolidate`/`trace` body migration, and the dispatch-boundary gate enforcement all land at **Phase 47** (grounding-driven defer; their caller is the Phase 47 orchestrator). PB-23 closes at Phase 47, not 46.
+
+## §amendment-1 (Phase 48 — gate timing refined for scope-dependent writes; ADR-0180)
+
+§Decision located the gate "at L4 dispatch, before invocation," reading `effect_iri` against the session capability set. Phase-48 grounding found the required capability is **scope-dependent** (`local` write → none, `kl.writeable` enforces own-user; `global` write → `CAN_WRITE_GLOBAL`), and scope is a `context.writeable(role, scope, version)` **call argument** unknown at pre-invocation. The Phase-47 `check_write_permitted` pre-gate therefore over-restricted Local writes (it demanded `CAN_WRITE_GLOBAL` for any write-body — `consolidate:mm` is Local).
+
+**Refinement (ADR-0180):** the gate fires **at write-time, inside the L4-built `writeable` callable** that `dispatch.py` injects onto `CapacityContext` — scope-aware, still entirely L4-owned. The "authorization-free context" of §Decision-1 is **preserved and clarified**: the context carries a **narrowed, pre-authorized capability** (the `writeable` callable), not a principal — so L3 still holds no Session and makes no authorization decision. Alternative 1 here (a `session`/capability *field* on the context) remains rejected; ADR-0180 hands a *capability*, not a principal. See ADR-0180.

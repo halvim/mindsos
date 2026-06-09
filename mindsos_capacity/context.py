@@ -28,12 +28,16 @@ from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     List,
     Mapping,
     Optional,
     Protocol,
     runtime_checkable,
 )
+
+from .capabilities import CAN_WRITE_GLOBAL
+from .exceptions import CapabilityDeniedError
 
 if TYPE_CHECKING:  # pragma: no cover — typing-only; import isolation at runtime
     from .capacity import _CapacityBase
@@ -107,7 +111,7 @@ class CancelTokenView:
         return self._token.is_set()
 
 
-# ── CapacityContext (ADR-0159 — 10 fields, frozen) ─────────────────────
+# ── CapacityContext (ADR-0159 + ADR-0180 — 11 fields, frozen) ──────────
 
 
 @dataclass(frozen=True)
@@ -117,6 +121,15 @@ class CapacityContext:
     ``version_snapshot`` is exposed read-only via ``MappingProxyType``
     (wrapped in ``__post_init__``); it is mutable L4-side but immutable
     to the body (Chat B D-B14 lazy-instantiation reality).
+
+    ``writeable`` (ADR-0180) is a **pre-authorized, session-bound write
+    capability** injected by L4 ``dispatch.py`` for write-bodies: a
+    callable ``(role, scope, version) -> KLWriteHandle`` that gates
+    scope-dependent capabilities at call-time (local → none; global →
+    ``CAN_WRITE_GLOBAL``). It is a narrowed capability, **not a principal**
+    — the context still carries no ``Session`` and L3 makes no
+    authorization decision (ADR-0170). ``None`` for read-bodies and for
+    L3-internal (non-L4) invocation.
     """
 
     session_id: str
@@ -129,6 +142,7 @@ class CapacityContext:
     version_snapshot: Mapping[str, int] = MappingProxyType({})
     kl: Optional[KLHandle] = None
     cl: Optional[CapacityLayerHandle] = None
+    writeable: Optional[Callable[..., Any]] = None
 
     def __post_init__(self) -> None:
         # Defense-in-depth read-only views (frozen dataclass → bypass via
@@ -143,6 +157,42 @@ class CapacityContext:
                 "learned_parameters_snapshot",
                 MappingProxyType(dict(self.learned_parameters_snapshot)),
             )
+
+
+# ── Pre-authorized write capability factory (ADR-0180) ─────────────────
+
+
+def make_writeable(kl: Any, session: Any):
+    """Build the pre-authorized, session-bound write capability (ADR-0180).
+
+    Returns a callable ``(role, scope, version) -> KLWriteHandle`` with a
+    scope-aware capability gate (Local → none, ``kl.writeable`` enforces
+    own-user scope; Global → ``CAN_WRITE_GLOBAL``; ``session is None`` is the
+    ADR-0080 bootstrap carve-out), or ``None`` when no KL is bound.
+
+    The gate is the **only** authorization decision and it travels *with the
+    capability*, built by whoever holds the session — L4 ``dispatch`` for task
+    lifecycles, ``CapacityLayer.invoke`` for the CLI / direct L3-invoke path.
+    Capacity bodies receive only the callable on ``context.writeable`` — never
+    a principal — so L3 stays authorization-free (ADR-0170 §amendment-1).
+    """
+    if kl is None:
+        return None
+
+    def writeable(*, role: str, scope: str, version: str = "v1"):
+        if (
+            scope == "global"
+            and session is not None
+            and not session.has(CAN_WRITE_GLOBAL)
+        ):
+            who = getattr(session, "session_id", None)
+            raise CapabilityDeniedError(
+                f"write gate: global write to role {role!r} requires "
+                f"{CAN_WRITE_GLOBAL!r}; session {who!r} lacks it (ADR-0180)."
+            )
+        return kl.writeable(session, role, scope, version=version)
+
+    return writeable
 
 
 # ── Canonical decision verdict types (ADR-0159 + ADR-0157 VERDICT) ─────

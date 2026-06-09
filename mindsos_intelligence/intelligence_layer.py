@@ -72,10 +72,12 @@ class IntelligenceLayer:
         max_workers: Optional[int] = None,
         dream_interval_s: Optional[float] = None,
         dream_driver: Optional[Callable[[], None]] = None,
+        checkpoint_store: Any = None,
     ) -> None:
         self._session = session
         self._kl = knowledge
         self._cl = capacity
+        self._checkpoint_store = checkpoint_store
         self._session_id = getattr(session, "session_id", "session")
         self._user_id = getattr(session, "user_id", "user")
         self._executor = PriorityTierExecutor(max_workers=max_workers)
@@ -129,6 +131,19 @@ class IntelligenceLayer:
             self._monitors.load_from(self._cl)
             self._executor.start()
             self._triage.start()
+            # Crash recovery (ADR-0179 / D-B50): scan for unconsolidated
+            # checkpoint markers left by a prior crashed session and write a
+            # ``crash_marker`` Episode for each. No-op when no store is wired.
+            if self._checkpoint_store is not None:
+                from . import crash_recovery
+                from .dispatch import L4Dispatcher
+
+                recovery_dispatcher = L4Dispatcher(
+                    self._cl, session=self._session, kl=self._kl
+                )
+                crash_recovery.recover_unconsolidated(
+                    self._checkpoint_store, recovery_dispatcher
+                )
             if self._dream_driver is not None and self._dream_interval_s is not None:
                 self._dream_timer = DreamCycleTimer(
                     self._dream_interval_s, self._dream_driver

@@ -22,6 +22,7 @@ from mindsos_capacity import (
     mm_composite_datastates,
 )
 from mindsos_capacity.identifiers import capacity_iri, datastate_iri
+from mindsos_intelligence.dispatch import L4Dispatcher
 from mindsos_knowledge import KnowledgeLayer
 from tests.phase_33._fixtures import build_session_with_caps
 
@@ -97,18 +98,20 @@ def test_install_consolidate_capacities_partial_state_raises():
 
 
 def test_consolidate_mm_session_none_yields_value_error_via_envelope():
-    """STAYS — scope='local' + session=None → KL.writeable raises ValueError.
+    """scope='local' + session=None → KL.writeable raises ValueError.
 
-    Phase 34 unchanged: writeable() pre-emptively rejects None session
-    on Local writes (ADR-0080 carve-out is Global-only).
+    Phase 48 (ADR-0180): dispatched via L4Dispatcher; the gated
+    ``context.writeable`` calls ``kl.writeable(None, …, 'local')`` which
+    rejects a None session for Local writes (ADR-0080 carve-out is
+    Global-only). The ValueError surfaces enveloped in the result.
     """
     kl = KnowledgeLayer.bootstrap()
     layer = CapacityLayer(kl=kl)
     install_consolidate_capacities(layer)
-    result = layer.invoke(
+    dispatcher = L4Dispatcher(layer, session=None, kl=kl)
+    result = dispatcher.dispatch(
         "capacity:consolidate:mm",
         {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "test"}},
-        session=None,
         task_id="T1",
     )
     assert result.success is False
@@ -116,19 +119,17 @@ def test_consolidate_mm_session_none_yields_value_error_via_envelope():
 
 
 def test_consolidate_mm_with_session_succeeds_with_write_outcome():
-    """REPURPOSED — Phase 34 wired graph()+mint_iri()+write_and_validate.
-
-    Phase 33 asserted ``WriteHandleNotWiredError``; Phase 34 asserts
-    success + populated ``write_outcome``.
-    """
-    sess = build_session_with_caps("alice", frozenset({"CAN_WRITE_GLOBAL"}))
+    """Phase 48 (ADR-0180): dispatched via L4Dispatcher; the body writes
+    the Episode through the pre-authorized ``context.writeable`` capability
+    (Local scope — no CAN_WRITE_GLOBAL required, PB-10)."""
+    sess = build_session_with_caps("alice", frozenset())
     kl = KnowledgeLayer.bootstrap()
     layer = CapacityLayer(kl=kl)
     install_consolidate_capacities(layer)
-    result = layer.invoke(
+    dispatcher = L4Dispatcher(layer, session=sess, kl=kl)
+    result = dispatcher.dispatch(
         "capacity:consolidate:mm",
         {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "remember this"}},
-        session=sess,
         task_id="T2",
     )
     assert result.success is True
@@ -140,16 +141,16 @@ def test_consolidate_mm_with_session_succeeds_with_write_outcome():
 
 
 def test_consolidate_mm_success_emits_no_problem_trace():
-    """REPURPOSED — Phase 33 asserted trace fired on raise; Phase 34
-    asserts NO trace fires on successful write (R4 §am-impl-5)."""
-    sess = build_session_with_caps("alice", frozenset({"CAN_WRITE_GLOBAL"}))
+    """No problem-trace fires on a successful write (Phase 48 L4Dispatcher
+    path; sink = layer.problem_trace)."""
+    sess = build_session_with_caps("alice", frozenset())
     kl = KnowledgeLayer.bootstrap()
     layer = CapacityLayer(kl=kl)
     install_consolidate_capacities(layer)
-    layer.invoke(
+    dispatcher = L4Dispatcher(layer, session=sess, kl=kl)
+    dispatcher.dispatch(
         "capacity:consolidate:mm",
         {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "ok"}},
-        session=sess,
         task_id="T3",
     )
     recs = layer.problem_trace.records()

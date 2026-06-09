@@ -102,6 +102,12 @@ RESERVED_PROPERTY_KEYS = frozenset({
     "intergraph_hyperedge_types",
     "anchors",
     "members",
+    # Phase 48 — ADR-0161 / ADR-0177. D'1 lazy-inline-on-retire marker.
+    # System-written single-underscore key (same family as ``_version`` /
+    # ``_compositional``): KL writes it directly on the retired node via
+    # ``retire_version``; reserving it here forbids a user property bag from
+    # forging or colliding with the marker.
+    "_retired_inline_pending",
 })
 
 #: Prefix for cross-graph reference properties. Properties whose key

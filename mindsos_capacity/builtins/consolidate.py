@@ -120,44 +120,92 @@ def mm_composite_datastates() -> List[DataState]:
 
 
 def _consolidate_mm_impl(**kwargs: Any) -> Any:
-    """Body of ``capacity:consolidate:mm`` — Phase 36 wired path.
+    """Body of ``capacity:consolidate:mm`` — Phase 48 write-half (ADR-0180).
 
-    Extracts session + KL from context; runs semantic-validator
-    precondition via ``handle.validate_node`` (ADR-0139
-    §Capacity-contract); mints + writes through
+    Obtains its :class:`KLWriteHandle` from the **pre-authorized
+    ``context.writeable`` capability** (L4-injected; scope-aware gate at
+    call-time) rather than ``kl.writeable(session, …)`` — the body holds
+    no session and makes no authorization decision (ADR-0170 §am-1).
+    Runs the semantic-validator precondition via ``handle.validate_node``
+    (ADR-0139 §Capacity-contract), then mints + writes through
     :meth:`write_and_validate`; returns :class:`WriteResult`. Raises
     :class:`SemanticValidationError` on validator failure.
     """
     from mindsos_knowledge.exceptions import SemanticValidationError
     from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
 
-    context = kwargs.get("context") or {}
-    session = context.get("session")
-    kl = context.get("kl")
-    if kl is None:
+    context = kwargs.get("context")
+    writeable = getattr(context, "writeable", None)
+    if writeable is None:
         raise RuntimeError(
-            "capacity:consolidate:mm requires CapacityLayer to be "
-            "constructed with kl=<KnowledgeLayer> (Phase 34 R0 PB-5). "
-            "Programmer error: no KL in context."
+            "capacity:consolidate:mm requires L4 dispatch: the CapacityContext "
+            "must carry a pre-authorized `writeable` capability (ADR-0180). "
+            "Write capacities are not invocable via the L3-internal dict path."
         )
 
     record = kwargs[DS_MM_COMPOSITE_INSTANCE]
-    handle = kl.writeable(
-        session, role=ROLE_EPISODIC_MEMORIES, scope="local", version="v1"
-    )
-    # Phase 43 PR2 commit 3 retarget per R0 PB-43-9: type_="Episode"
-    # writes the per-task entry NodeType per Chat B D-B47 + D-L2-17.
-    # The Memory NodeType (clustering composite over Episodes) is
-    # written by a separate future consolidation flow (Phase 48+) and
-    # is not in scope here.
-    vr = handle.validate_node(value=record["value"], type_="Episode")
+    handle = writeable(role=ROLE_EPISODIC_MEMORIES, scope="local", version="v1")
+    value = record["value"]
+    # ``value`` carries the frozen-MM Episode record assembled by L4
+    # consolidation (ADR-0176 §1): the 6 D-B47 content fields incl.
+    # ``task_pattern_iri``. (A bare value is tolerated — Memory materialises
+    # only when ``task_pattern_iri`` is present.)
+    vr = handle.validate_node(value=value, type_="Episode")
     if not vr.ok:
         raise SemanticValidationError(vr)
-    return handle.write_and_validate(
-        value=record["value"],
+    episode_result = handle.write_and_validate(
+        value=value,
         type_="Episode",
-        user_id=session.user_id,
+        user_id=context.user_id,
         episode_id=record["episode_id"],
+    )
+
+    # Memory materialise-on-first-episode + MEMORY_CONTAINS_EPISODE edge
+    # (Chat B D-B47 §4.6; ADR-0176 §3). Cluster key = the Episode's
+    # ``task_pattern_iri``; Memory materialises once per pattern (idempotent
+    # on its derived IRI) and each episode attaches via the within-role-graph
+    # edge.
+    task_pattern_iri = value.get("task_pattern_iri") if isinstance(value, dict) else None
+    if task_pattern_iri:
+        _materialise_memory(
+            handle, context.user_id, task_pattern_iri, episode_result.iri
+        )
+    return episode_result
+
+
+def _memory_id_for(task_pattern_iri: str) -> str:
+    """Deterministic, fragment-safe ``memory_id`` for a task-pattern cluster
+    key (ADR-0176 §3). The raw ``task_pattern_iri`` is the cluster key but is
+    not a stable IRI fragment, so the Memory IRI uses a content hash —
+    idempotent (same pattern → same Memory)."""
+    import hashlib
+
+    digest = hashlib.sha1(task_pattern_iri.encode("utf-8")).hexdigest()[:16]
+    return f"tp-{digest}"
+
+
+def _materialise_memory(handle, user_id, task_pattern_iri, episode_iri) -> None:
+    """Materialise the Memory composite for ``task_pattern_iri`` on first
+    episode (idempotent) and add the ``MEMORY_CONTAINS_EPISODE`` edge
+    (Memory → Episode) for ``episode_iri`` (ADR-0176 §3)."""
+    from mindsos_knowledge.schemas.episodic_memories import (
+        EDGE_MEMORY_CONTAINS_EPISODE,
+    )
+
+    memory_id = _memory_id_for(task_pattern_iri)
+    mem_iri = handle.mint_iri("Memory", user_id=user_id, memory_id=memory_id)
+    g = handle.graph()
+    if mem_iri not in g.nodes:
+        handle.write_and_validate(
+            value={"task_pattern_iri": task_pattern_iri},
+            type_="Memory",
+            user_id=user_id,
+            memory_id=memory_id,
+        )
+    g.add_edge(
+        g.nodes[mem_iri],
+        g.nodes[episode_iri],
+        type_name=EDGE_MEMORY_CONTAINS_EPISODE,
     )
 
 

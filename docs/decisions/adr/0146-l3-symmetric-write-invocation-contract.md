@@ -290,3 +290,7 @@ for design pass closure and dispatch-shape alternatives considered.
 ## §Amendment (Phase 42 — ADR-0159)
 
 The symmetric write invocation contract is unchanged; only the access path becomes typed (`context.kl` via `KLHandle`). Body migration deferred to Phase 46 (PB-23).
+
+## §Amendment (Phase 48 — write handle from `context.writeable`; ADR-0180)
+
+The symmetric validate-then-write contract remains **unchanged** — the L3 body still validates then writes through a `KLWriteHandle`. What changes is **how the body obtains the handle**: instead of `kl.writeable(session, role, scope, version)` (which required a Session object on the body), the body calls **`context.writeable(role, scope, version)`** — a pre-authorized, session-bound capability that L4 `dispatch.py` injects onto `CapacityContext` and gates at call-time (scope-aware) per ADR-0180. L3 is still the write surface; it no longer holds a principal. `consolidate`/`trace` migrate at Phase 48; PB-23 closes. See ADR-0180.

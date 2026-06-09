@@ -560,6 +560,32 @@ class CapacityLayer:
         declaration = self._resolve_declaration(
             capacity_iri, user_id=target_uid
         )
+        # ADR-0180 (Phase 48): write-bodies (zero declared outputs) receive a
+        # typed CapacityContext carrying the pre-authorized, session-bound
+        # ``writeable`` capability (the gate travels with the capability,
+        # built here by the session-holder for the CLI / direct-invoke path —
+        # the L4 task path builds it in ``mindsos_intelligence.dispatch``).
+        # Read-bodies keep the legacy dict context (A1 scope boundary — no
+        # read-corpus churn; the transitional union annotation is retained).
+        if not declaration.outputs:
+            from .context import CapacityContext, make_writeable
+
+            write_ctx = CapacityContext(
+                session_id=getattr(session, "session_id", "session"),
+                user_id=getattr(session, "user_id", "user"),
+                learned_parameters_snapshot={},
+                kl=self._kl,
+                cl=self,
+                writeable=make_writeable(self._kl, session),
+            )
+            return _runtime_invoke(
+                declaration,
+                inputs,
+                context=write_ctx,
+                task_id=task_id,
+                step_id=step_id,
+                problem_trace_sink=self.problem_trace,
+            )
         ctx: Optional[Dict[str, Any]] = None
         if session is not None:
             ctx = dict(context) if context else {}

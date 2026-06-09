@@ -22,6 +22,7 @@ from mindsos_capacity import (
     problem_trace_datastates,
 )
 from mindsos_capacity.identifiers import capacity_iri, datastate_iri
+from mindsos_intelligence.dispatch import L4Dispatcher
 from mindsos_knowledge import KnowledgeLayer
 from tests.phase_33._fixtures import build_session_with_caps
 
@@ -92,39 +93,39 @@ def test_install_trace_capacities_partial_state_raises():
 
 
 def test_trace_problem_cap_denied_when_session_lacks_can_write_global():
-    """STAYS — session present without CAN_WRITE_GLOBAL → CapabilityDeniedError.
+    """session present without CAN_WRITE_GLOBAL → CapabilityDeniedError.
 
-    Phase 34 keeps the asymmetric contract: success returns WriteResult;
-    cap-denial raises. ADR-0146 §am-1 clause 1 open until L4 consumer
-    drives the eventual return-PTR flip.
+    Phase 48 (ADR-0180): the global-scope gate now fires at call-time
+    inside ``context.writeable`` (built by L4Dispatcher), not in the body.
+    The denial surfaces enveloped in the result.
     """
     sess = build_session_with_caps("non_admin", frozenset())  # empty caps
     kl = KnowledgeLayer.bootstrap()
     layer = CapacityLayer(kl=kl)
     install_trace_capacities(layer)
-    result = layer.invoke(
+    dispatcher = L4Dispatcher(layer, session=sess, kl=kl)
+    result = dispatcher.dispatch(
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "err"}},
-        session=sess,
         task_id="T1",
     )
     assert result.success is False
     assert isinstance(result.error, CapabilityDeniedError)
 
 
-# ── Success paths (REPURPOSED at Phase 34) ────────────────────────────
+# ── Success paths (Phase 48 L4Dispatcher path) ────────────────────────
 
 
 def test_trace_problem_session_with_cap_succeeds():
-    """REPURPOSED — Phase 34 wired; cap-granted session → success path."""
+    """Cap-granted session → global write succeeds through context.writeable."""
     sess = build_session_with_caps("admin", frozenset({CAN_WRITE_GLOBAL}))
     kl = KnowledgeLayer.bootstrap()
     layer = CapacityLayer(kl=kl)
     install_trace_capacities(layer)
-    result = layer.invoke(
+    dispatcher = L4Dispatcher(layer, session=sess, kl=kl)
+    result = dispatcher.dispatch(
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "boom"}},
-        session=sess,
         task_id="T2",
     )
     assert result.success is True
@@ -136,15 +137,15 @@ def test_trace_problem_session_with_cap_succeeds():
 
 
 def test_trace_problem_session_none_skips_gate_per_adr_0080_and_succeeds():
-    """REPURPOSED — ADR-0080: session=None permits Global writes
-    (bootstrap carve-out). Phase 34 makes the write actually succeed."""
+    """ADR-0080: session=None permits Global writes (bootstrap carve-out).
+    The call-time gate skips when session is None; the write succeeds."""
     kl = KnowledgeLayer.bootstrap()
     layer = CapacityLayer(kl=kl)
     install_trace_capacities(layer)
-    result = layer.invoke(
+    dispatcher = L4Dispatcher(layer, session=None, kl=kl)
+    result = dispatcher.dispatch(
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t-boot", "value": "init"}},
-        session=None,
         task_id="T3",
     )
     assert result.success is True
@@ -153,16 +154,15 @@ def test_trace_problem_session_none_skips_gate_per_adr_0080_and_succeeds():
 
 
 def test_trace_problem_success_emits_no_problem_trace():
-    """REPURPOSED — Phase 33 asserted trace fired on raise; Phase 34
-    asserts NO trace fires on successful write (R4 §am-impl-5)."""
+    """No problem-trace fires on a successful write (Phase 48 L4Dispatcher)."""
     sess = build_session_with_caps("admin", frozenset({CAN_WRITE_GLOBAL}))
     kl = KnowledgeLayer.bootstrap()
     layer = CapacityLayer(kl=kl)
     install_trace_capacities(layer)
-    layer.invoke(
+    dispatcher = L4Dispatcher(layer, session=sess, kl=kl)
+    dispatcher.dispatch(
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "ok"}},
-        session=sess,
         task_id="T4",
     )
     recs = layer.problem_trace.records()

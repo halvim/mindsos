@@ -48,6 +48,18 @@ If a capacity cannot produce a directive — a missing source episode, or
 `dream.retry` over an episode that did not fail — it returns nothing
 (the OPTIONAL_RETURN dont-know contract, L3-51).
 
+## The dream-cycle driver (Phase 48)
+
+Phase 48 wires the L4 **dream-cycle driver** (`mindsos_intelligence/dream_cycle.py`,
+ADR-0178): each timer tick pulls episode descriptors from the corpus, invokes
+the three capacities to collect `DreamDirective`s, and re-executes each one
+through the orchestrator under the owning session, tagging the run with
+`dream_source_episode_iri`. v1 re-runs from the episode's `task_input`; the
+faithful episode→MM reconstruction (and the `replay_recorded` vs
+`re_execute_capacities` behavioural difference, plus real ALS signal firing)
+land with WSD installation, when the learning mechanisms that consume the
+signals exist.
+
 ## Provenance and privacy
 
 Every directive carries `source_episode_iri`. When the L4 loop re-executes

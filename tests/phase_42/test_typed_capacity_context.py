@@ -22,7 +22,9 @@ from mindsos_capacity import (
 )
 
 
-def test_capacity_context_has_ten_fields():
+def test_capacity_context_has_eleven_fields():
+    # ADR-0180 (Phase 48) adds the 11th field ``writeable`` — the
+    # pre-authorized, session-bound write capability injected by L4 dispatch.
     names = {f.name for f in dataclasses.fields(CapacityContext)}
     assert names == {
         "session_id",
@@ -35,6 +37,7 @@ def test_capacity_context_has_ten_fields():
         "version_snapshot",
         "kl",
         "cl",
+        "writeable",
     }
 
 

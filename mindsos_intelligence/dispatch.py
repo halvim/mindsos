@@ -12,40 +12,31 @@ capacities (ADR-0175 / ADR-0170). Two jobs:
    invocation. The L3 body stays authorization-free (ADR-0170): the gate
    lives here, in L4 dispatch, which holds the live session.
 
-Phase-47 scope (ADR-0175 §amendment-1, read/write split): the gate
-mechanism + its synthetic test ship now. The v0 catalog the orchestrator
-dispatches is all reads, so there is no production write-body traffic at
-Phase 47; the ``effect_iri``-driven capability resolution + the
-``consolidate``/``trace`` write-body migration land at Phase 48 with their
-real consumer (wired consolidation). The v0 gate requires
-``CAN_WRITE_GLOBAL`` for any write-body — the same capability the shipped
-``trace`` body self-checks today.
+Phase-48 scope (ADR-0180, write-half close): the blanket Phase-47
+pre-gate (``required_capability_for``/``check_write_permitted``, which
+demanded ``CAN_WRITE_GLOBAL`` for *any* write-body and so over-restricted
+Local writes) is **superseded** by a scope-aware, **call-time** gate
+living inside a pre-authorized ``writeable`` capability that ``build_
+context`` injects onto the ``CapacityContext``. A write-body obtains its
+``KLWriteHandle`` via ``context.writeable(role, scope, version)``; the
+gate fires there — Local writes need no capability (``kl.writeable``
+enforces own-user scope), Global writes require ``CAN_WRITE_GLOBAL``
+(``session is None`` is the ADR-0080 bootstrap carve-out). The context
+carries a narrowed capability, not a principal — L3 stays
+authorization-free (ADR-0170 §amendment-1).
 """
 
 from __future__ import annotations
 
 from typing import Any, Mapping, Optional
 
-from mindsos_capacity.capabilities import CAN_WRITE_GLOBAL
-from mindsos_capacity.context import CancelTokenView, CapacityContext
-from mindsos_capacity.exceptions import CapabilityDeniedError
+from mindsos_capacity.context import CancelTokenView, CapacityContext, make_writeable
 from mindsos_capacity.runtime import invoke as _runtime_invoke
 
 
-def required_capability_for(declaration) -> Optional[str]:
-    """Capability a session must hold to dispatch ``declaration``.
-
-    v0 (Phase 47): any write-body (zero output DataStates) requires
-    ``CAN_WRITE_GLOBAL``; reads require nothing. The ``effect_iri``-driven
-    resolution (ADR-0159) lands with the write-path migration at Phase 48.
-    """
-    if not declaration.outputs:
-        return CAN_WRITE_GLOBAL
-    return None
-
-
 class L4Dispatcher:
-    """Builds CapacityContexts and gates write-bodies for one session."""
+    """Builds CapacityContexts (incl. the gated ``writeable`` capability)
+    and dispatches L3 capacities for one session (ADR-0180)."""
 
     def __init__(
         self,
@@ -85,20 +76,8 @@ class L4Dispatcher:
             version_snapshot=dict(self._version_snapshot),
             kl=self._kl,
             cl=self._cl,
+            writeable=make_writeable(self._kl, self._session),
         )
-
-    def check_write_permitted(self, declaration) -> None:
-        """Raise :class:`CapabilityDeniedError` if ``declaration`` writes
-        and the session lacks the required capability (ADR-0170 gate)."""
-        required = required_capability_for(declaration)
-        if required is None:
-            return
-        if self._session is None or not self._session.has(required):
-            who = getattr(self._session, "session_id", None)
-            raise CapabilityDeniedError(
-                f"L4 dispatch: capacity {declaration.iri!r} writes and "
-                f"requires {required!r}; session {who!r} lacks it (ADR-0170)."
-            )
 
     def dispatch(
         self,
@@ -112,7 +91,6 @@ class L4Dispatcher:
         step_id: Optional[str] = None,
     ):
         declaration = self._cl.get_declaration(capacity_iri)
-        self.check_write_permitted(declaration)
         ctx = self.build_context(
             cancel_token=cancel_token, task_iri=task_iri, pattern_iri=pattern_iri
         )
@@ -126,4 +104,4 @@ class L4Dispatcher:
         )
 
 
-__all__ = ["L4Dispatcher", "required_capability_for"]
+__all__ = ["L4Dispatcher"]

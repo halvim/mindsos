@@ -419,6 +419,56 @@ class KnowledgeLayer:
             _version=version,
         )
 
+    # ── D'1 version-pinned read + retire hook (ADR-0177 / ADR-0161) ───
+
+    def _locate_node(self, iri: str):
+        """Find the :class:`Node` for ``iri`` across Global + all Locals.
+
+        v1 IRI-scan locator (Opt C, Phase 48 R1): one role-graph per role
+        per metagraph and small v1 corpora make a scan acceptable; a
+        Phase-11 side-by-side version index is the later optimization.
+        Returns the first node whose ``node_id`` matches, or ``None``.
+        """
+        for mg in (self.global_metagraph(), *self._locals.values()):
+            for g in mg.graphs.values():
+                node = g.nodes.get(iri)
+                if node is not None:
+                    return node
+        return None
+
+    def read_at_version(self, iri: str, version: int):
+        """Version-pinned read of the node at ``(iri, version)`` (D'1).
+
+        Honors the shipped ``CapacityContext.KLHandle.read_at_version``
+        Protocol signature (ADR-0159). Per ADR-0177 §note (Opt C): the D'1
+        pin ``version`` is recorded by callers as the
+        ``(node_iri, version_int)`` tuple; under the current
+        one-version-per-role store the version-qualified ``iri`` already
+        identifies the version, so the lookup resolves on ``iri``.
+        Multi-version-per-node resolution is latent (Phase-11 side-by-side
+        graphs), exercised on synthetic data until real >1-version content
+        exists. Returns the :class:`Node`, or ``None``.
+        """
+        return self._locate_node(iri)
+
+    def retire_version(self, iri: str, version: int) -> None:
+        """Retire ``(iri, version)`` — flip the lazy-inline marker (D'1).
+
+        Writes ``_retired_inline_pending=True`` directly on the retired
+        node's property bag (a system write, bypassing the user-property
+        validator that reserves the key) and releases the KL-held content
+        for lazy inlining on next episode read (the ADR-0177 read
+        consumer). Distinct from ``deprecate_version`` (content stays
+        readable side-by-side). Raises :class:`KeyError` on unknown ``iri``.
+        """
+        node = self._locate_node(iri)
+        if node is None:
+            raise KeyError(
+                f"retire_version: no node found for iri {iri!r} "
+                f"(version {version})."
+            )
+        node.properties["_retired_inline_pending"] = True
+
     # ── install/extract hooks (ADR-0042) ─────────────────────────────
 
     def install_local_metagraph(

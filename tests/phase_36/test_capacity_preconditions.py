@@ -36,6 +36,7 @@ from mindsos_capacity.builtins.trace import (
     DS_PROBLEM_TRACE_RECORD,
     _trace_problem_impl,
 )
+from mindsos_capacity.context import CapacityContext
 from mindsos_capacity.write_outcome import WriteResult
 from mindsos_knowledge import (
     KLWriteHandle,
@@ -50,6 +51,21 @@ def _kl() -> KnowledgeLayer:
     return KnowledgeLayer.bootstrap()
 
 
+def _ctx(kl, sess) -> CapacityContext:
+    """Build a CapacityContext exposing an (ungated) ``writeable`` capability
+    bound to ``sess`` (ADR-0180). These tests exercise the validator
+    precondition, not the L4 write gate, so the capability is ungated."""
+    return CapacityContext(
+        session_id=sess.session_id,
+        user_id=sess.user_id,
+        learned_parameters_snapshot={},
+        kl=kl,
+        writeable=lambda *, role, scope, version="v1": kl.writeable(
+            sess, role, scope, version=version
+        ),
+    )
+
+
 # ── Happy path: bootstrap KL → validator ok → body returns WriteResult ─
 
 
@@ -59,7 +75,7 @@ def test_consolidate_mm_happy_path_returns_write_result():
     WriteResult."""
     kl = _kl()
     sess = build_session_with_caps("alice", frozenset())
-    ctx = {"kl": kl, "session": sess}
+    ctx = _ctx(kl, sess)
     result = _consolidate_mm_impl(
         **{
             DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e-happy", "value": "v"},
@@ -77,7 +93,7 @@ def test_trace_problem_happy_path_returns_write_result():
     sess = build_session_with_caps(
         "admin", frozenset({"CAN_WRITE_GLOBAL"})
     )
-    ctx = {"kl": kl, "session": sess}
+    ctx = _ctx(kl, sess)
     result = _trace_problem_impl(
         **{
             DS_PROBLEM_TRACE_RECORD: {"trace_id": "t-happy", "value": "v"},
@@ -108,7 +124,7 @@ def test_consolidate_mm_raises_on_semantic_validation_fail(monkeypatch):
 
     kl = _kl()
     sess = build_session_with_caps("alice", frozenset())
-    ctx = {"kl": kl, "session": sess}
+    ctx = _ctx(kl, sess)
     with pytest.raises(SemanticValidationError) as exc_info:
         _consolidate_mm_impl(
             **{
@@ -138,7 +154,7 @@ def test_trace_problem_raises_on_semantic_validation_fail(monkeypatch):
     sess = build_session_with_caps(
         "admin", frozenset({"CAN_WRITE_GLOBAL"})
     )
-    ctx = {"kl": kl, "session": sess}
+    ctx = _ctx(kl, sess)
     with pytest.raises(SemanticValidationError) as exc_info:
         _trace_problem_impl(
             **{
@@ -177,7 +193,7 @@ def test_consolidate_mm_precondition_fires_before_mint(monkeypatch):
 
     kl = _kl()
     sess = build_session_with_caps("alice", frozenset())
-    ctx = {"kl": kl, "session": sess}
+    ctx = _ctx(kl, sess)
     with pytest.raises(SemanticValidationError):
         _consolidate_mm_impl(
             **{

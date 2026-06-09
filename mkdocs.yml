@@ -15,6 +15,7 @@ nav:
       - Install: getting-started/install.md
       - Your first metagraph: getting-started/first-metagraph.md
       - What's new (v4): getting-started/whats-new-v4.md
+      - Facts and figures (Phase 48): getting-started/facts-and-figures.md
   - Concepts:
       - Glossary: concepts/glossary.md
       - Identity and IRIs: concepts/identity.md
@@ -30,6 +31,8 @@ nav:
       - Task lifecycle (Phase 47): concepts/task-lifecycle.md
       - Replan (Phase 47): concepts/replan.md
       - Planning (Phase 47): concepts/planning.md
+      - The five layers (Phase 48): concepts/layers.md
+      - Society of Mind (Phase 48): concepts/society-of-mind.md
       - Knowledge lifecycle:
           - Synthesis: concepts/knowledge-lifecycle.md
           - Global + Local metagraphs (Phase 14): concepts/global-local.md

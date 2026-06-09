@@ -332,4 +332,12 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_capacity/builtins/planning_v0.py",
     "mindsos_capacity/builtins/phase1_v0.py",
     "mindsos_capacity/builtins/orchestration_v0.py",
+    # Phase 48 — L5 v1 (no new top-level package; new L4 modules). Guards the
+    # consolidation / dream / retention / crash-recovery / monitoring runtime
+    # modules against drift.
+    "mindsos_intelligence/consolidation.py",
+    "mindsos_intelligence/dream_cycle.py",
+    "mindsos_intelligence/retention.py",
+    "mindsos_intelligence/crash_recovery.py",
+    "mindsos_intelligence/monitoring.py",
 )

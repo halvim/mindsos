@@ -44,7 +44,7 @@ def test_version_bumped_to_phase_34():
     # File stays under tests/phase_30/ because it's a Phase 30
     # export-stability check that the version moves forward correctly
     # at each subsequent phase.
-    assert mindsos_capacity.__version__ == "0.0.0+phase47"
+    assert mindsos_capacity.__version__ == "0.0.0+phase48"
 
 
 def test_phase_29_exports_remain_intact():
