@@ -1,3 +1,5 @@
+> **CLOSED 2026-06-09 — this chat ran and closed.** Outputs: `SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md` (contract, S1–S13 + R2) + `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md` (SA-1 = Phase 50) + `SA_1_NEXT_CHAT_PROMPT.md`; closure commit `cf6db21`, tag `skill-acquisition-2026-06-09`. R0-SA-1…5 all resolved at the §AMENDMENT defaults (SA-5 ratified the already-closed L1-6). This file is now historical — do NOT re-run it; the next chat is the SA-1 ship chat.
+
 You are the **SKILL_ACQUISITION_PROCESS_CHAT** for the MindsOS project.
 
 > **AMENDMENT 2026-06-09 (reanalysis; Cowork session with Henrique) — read §AMENDMENT at the bottom of this file before acting on anything else. It changes your prerequisites and pre-loads four R0 items.**

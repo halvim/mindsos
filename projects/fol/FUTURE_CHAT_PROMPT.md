@@ -1,5 +1,7 @@
 # FOL — Future Chat Seed (skill acquisition design + FOL skill definition)
 
+> ⚠️ **UPDATE 2026-06-09 — the skill-acquisition process is DESIGNED AND CLOSED** (`confirmation_docs/SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md` + `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`; FOL inherits the same install contract WSD does — phase-map §5). §2's "two coupled design problems" is now ONE: only the FOL skill specification remains here. Note for pushback #8: ADR-0182 rejected the blob store for *node values* only — the large-model-artefact case (B19) is a different question and survives. Read `projects/ANALYSIS_DELTA_2026-06.md` BEFORE `ANALYSIS.md`.
+
 > **Read `MindsOS/HANDOFF.md` FIRST.** It is the canonical entry point and contains the post-housekeeping system state, including HANDOFF §3 (L4 design state + 7 critique pushes) and §5 (sister projects ordering — FOL is third in the queue after WSD).
 >
 > **Purpose.** Seed the future chat that designs (a) the skill-acquisition process for MindsOS and (b) the FOL skill installation as the second concrete instance of that process (WSD is the first per ordering).

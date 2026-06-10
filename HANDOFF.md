@@ -762,8 +762,8 @@ Strict dependency order:
 
 1. ~~**L4/L5 plan chat**~~ — **DONE.** Chat A (2026-05-28) closed L4 architecture; Chat B (2026-05-31) closed L5 architecture. Settlement at `_workbench/CHAT_A_DECISIONS.md` + `_workbench/CHAT_B_DECISIONS.md`.
 2. **L1/L3 reframe chat** + **L2 chat** + **Chat C plan-authoring** — parallelizable next; reframe + L2 amendments must complete before Chat C finalizes the L4/L5 phase-map.
-3. **Skill-acquisition process chat** (shared umbrella; owned by WSD initially).
-4. **WSD installation chat.**
+3. ~~**Skill-acquisition process chat**~~ — **CLOSED 2026-06-09** (tag `skill-acquisition-2026-06-09`). Contract: `confirmation_docs/SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md`; sequencing: `confirmation_docs/SKILL_ACQUISITION_PROCESS_PHASE_MAP.md` (single ship slot **SA-1 = Phase 50**; seed `confirmation_docs/SA_1_NEXT_CHAT_PROMPT.md`).
+4. **WSD installation chat** (opens after SA-1 = Phase 50 confirms; inherits `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md` §5).
 5. **FOL installation chat** (inherits WSD's resolutions on shared propositions).
 6. **Knowledge-acquisition process chat + DWF installation** (independent; can run in parallel with 2–5 because DWF is L2-only).
 
@@ -959,8 +959,9 @@ These conventions hold for any future code-shipping phase or chat:
 | Phase 49 chat (Integration C) | `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §1 + §4 Phase 49 row`; `confirmation_docs/PHASE_38_DESIGN_LOG.md` (text-realm cookbook precedent); `_workbench/cookbook_routing.md`; this §2.5 + §3.1.7 |
 | L0_SUBSTRATE_CHAT (Phase 44 gate) | `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §1 + §6`; `_workbench/L0_FUTURE_WORK.md`; `_workbench/L2_CHAT_DECISIONS.md` (D-L2-23); Chat B D-B2 + D-B14 + D-B16; this §2.3 + §3.1.7 |
 | DREAM_FAMILY_CHAT (Phase 45 gate) | `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §1 + §6`; `confirmation_docs/CHAT_B_DECISIONS.md` D-B5/D-B6/D-B7/D-B8/D-B9; `docs/dev/l5_mental_model_design_notes.md` §5.2-§5.3; this §3.1.7 + §4.1 |
-| SKILL_ACQUISITION_PROCESS_CHAT | `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §6`; `projects/README.md`; `projects/wsd/FUTURE_CHAT_PROMPT.md`; `projects/fol/FUTURE_CHAT_PROMPT.md`; this §5 |
-| WSD installation chat | **Inherits SKILL_ACQUISITION_PROCESS_CHAT.** Then `projects/wsd/ANALYSIS.md`; `projects/wsd/FUTURE_CHAT_PROMPT.md`; `_workbench/cookbook_routing.md` (owns `nlu-slice.md`); FOL chat coordinates (cross-ref `projects/fol/`); this §3 + §5 |
+| SKILL_ACQUISITION_PROCESS_CHAT | **CLOSED 2026-06-09** (tag `skill-acquisition-2026-06-09`). Settlement: `confirmation_docs/SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md` + `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`. |
+| SA-1 ship chat (Phase 50) | `confirmation_docs/SA_1_NEXT_CHAT_PROMPT.md` (seed); `confirmation_docs/SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md` (contract); `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §2-§3`; ADR-0182; this §9 (ship discipline) |
+| WSD installation chat | **Inherits SKILL_ACQUISITION_PROCESS_CHAT (closed): read `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5` (inheritance contract) + design log S9/S10.** Opens after `phase-50-confirmed`. Then `projects/ANALYSIS_DELTA_2026-06.md` FIRST, then `projects/wsd/ANALYSIS.md` (stale-bannered); `projects/wsd/FUTURE_CHAT_PROMPT.md`; `_workbench/cookbook_routing.md` (owns `nlu-slice.md`); FOL chat coordinates (cross-ref `projects/fol/`); this §3 + §5 |
 | FOL installation chat | **Inherits WSD installation.** `projects/fol/ANALYSIS.md`; `projects/fol/FUTURE_CHAT_PROMPT.md`; this §3 + §5; WSD-resolutions inherited |
 | DWF / knowledge-acquisition chat | `projects/dwf_mapping/ANALYSIS.md`; `projects/dwf_mapping/FUTURE_CHAT_PROMPT.md`; ADR-0150 + ADR-0154 (canonical `alignment:<a>:<b>` form, ratified Chat C Phase 39 cascade); this §5.1 |
 | Code-skill installation chat | `_workbench/cookbook_routing.md` (owns `code-slice.md`); `_workbench/L3_FUTURE_WORK.md` (L3-28/L3-30/L3-31); inherits WSD installation |

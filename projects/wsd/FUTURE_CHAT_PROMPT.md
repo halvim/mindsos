@@ -1,5 +1,7 @@
 # WSD — Future Chat Seed (skill acquisition design + WSD skill definition)
 
+> ⚠️ **UPDATE 2026-06-09 — the skill-acquisition process is DESIGNED AND CLOSED.** Section A below (and §4-A's "design the install lifecycle") is DONE — do not redesign it. Read `confirmation_docs/SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md` (the contract) + `confirmation_docs/SKILL_ACQUISITION_PROCESS_PHASE_MAP.md` **§5 (WSD inheritance contract — binding on this chat)**. This chat opens after `phase-50-confirmed` (SA-1 ships the install driver). Also read `projects/ANALYSIS_DELTA_2026-06.md` BEFORE `ANALYSIS.md` — several claims below (resident lifecycle, 8-role roster, L4 "nothing shipped", `sense-correlations`) are falsified by Phases 39–49; the delta is authoritative.
+
 > **Read `MindsOS/HANDOFF.md` FIRST.** It is the canonical entry point and contains the post-housekeeping system state, including HANDOFF §3 (L4 design state + 7 critique pushes WSD has ACCEPT picks for) and §5 (sister projects ordering).
 >
 > **Purpose.** Seed the future chat that designs (a) the skill-acquisition process for MindsOS and (b) the WSD skill installation as the first concrete instance of that process.
