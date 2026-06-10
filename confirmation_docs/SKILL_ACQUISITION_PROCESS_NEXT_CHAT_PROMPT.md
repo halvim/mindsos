@@ -54,3 +54,15 @@ A reanalysis pass (2026-06-09, post-Phase-49) revised the downstream ordering an
 - **R0-SA-4 — Bundle L3 bodies are CapacityContext-native from day one.** The shipped read path is still dict-based (union annotation; PB-23 read-half open, recorded by MAINTENANCE M4). Your contract mandates: capacity bodies arriving in bundles are authored against typed `CapacityContext`, never the dict form — so they are never migrated. The mechanical corpus migration of EXISTING bodies is WSD slot 1, not yours.
 
 - **R0-SA-5 (small) —** Close the `IntergraphEdge` vs `InterGraphEdge` naming reconciliation (HANDOFF §2.1 routes it here). Shipped code is uniformly `IntergraphEdge`; default = WSD docs adopt shipped spelling.
+
+---
+
+## §AMENDMENT-2 2026-06-09 — MAINTENANCE_CHAT closed; prerequisites SATISFIED
+
+MAINTENANCE_CHAT closed 2026-06-09 (tag `maintenance-2026-06-09`; cumulative gate **3874/11/1 xpassed/0 failed**; full record `confirmation_docs/MAINTENANCE_CHAT_LOG.md`). Where this section conflicts with anything above, this section wins.
+
+- **Prereq check correction (FIRST ACTIONS item 1):** `main`-tip is now the MAINTENANCE closure range, NOT the Phase-49 confirm commit. Check instead: `git tag --list | grep -E "phase-49-confirmed|maintenance-2026-06-09"` (both present) + `git log --oneline -1` showing the MAINTENANCE gate-record commit (`8256299` or later).
+- **The L0-26 contract ADR is ADR-0182** (`docs/decisions/adr/0182-node-value-serialization-contract.md`): node-level `_value_json` (ADR-0130 pattern); primitives unchanged; writer lifts queryable fields flat (keeps ADR-0181 indexes). Your slot 1 implements it (sentinel `tests/maintenance/test_adr_0182_sentinel.py` pins "no implementation shipped" — replace it with round-trip coverage when slot 1 lands). DESIGN GROUND TRUTH's "L0-26 (open)" bullet: the *contract* is no longer open; only the implementation is, and it is yours.
+- **`projects/ANALYSIS_DELTA_2026-06.md` is on disk** — read before the WSD/FOL ANALYSIS docs (both carry stale-banners now).
+- **The CapacityContext read-path routing record is `docs/_workbench/L3_FUTURE_WORK.md` L3-59** (R0-SA-4's "recorded by MAINTENANCE M4").
+- **New since this prompt was written:** `tests/maintenance/` exists (live FalkorDBLocalPersister round-trip + scoped-delete coverage; orphan-scan xfail probe — sweep audit routed to WSD); **M2-F1** fixed a pre-existing L0 bug (hyperedge `type_name` was never persisted — `28d149f`); L0-24 import cycle fixed (the phase_44/phase_49 conftest warm-ups are GONE — don't reintroduce that pattern).
