@@ -57,7 +57,7 @@ The L0-L3 numbered-phase rollout shipped Phase 00 → Phase 38 from 2026-05-03 t
 - **Identity** (Phase 02): IRI primitives, IdentityRegistry, IdStrategy.
 - **Graph elements** (Phase 03): Graph, Node, Edge, HyperEdge.
 - **Schema** (Phase 04-v2): NodeType, EdgeType, HyperEdgeType; opt-in strict mode.
-- **Metagraph** (Phase 05a-d): Metagraph, MetaEdge, MetaHyperEdge, IntergraphEdge (binary; Phase 05b), IntergraphHyperEdge (n-ary; Phase 05c), MetaEdgeType + MetaHyperEdgeType + MetagraphSchema. **Note on naming:** the primitive is `IntergraphEdge` (lowercase `g` in "graph"); the WSD project proposes `InterGraphEdge` (capital G). These are the same concept; reconciliation pending in skill-acquisition chat.
+- **Metagraph** (Phase 05a-d): Metagraph, MetaEdge, MetaHyperEdge, IntergraphEdge (binary; Phase 05b), IntergraphHyperEdge (n-ary; Phase 05c), MetaEdgeType + MetaHyperEdgeType + MetagraphSchema. **Note on naming:** the primitive is `IntergraphEdge` (lowercase `g` in "graph"); the WSD project proposes `InterGraphEdge` (capital G). These are the same concept; **reconciliation CLOSED** — L1-6 (2026-06-01) kept the shipped `IntergraphEdge`; ratified at SKILL_ACQUISITION R0 (S13, 2026-06-09); WSD docs adopt the shipped spelling at authoring time.
 - **Instancing** (Phase 06): sibling `mindsos_instances` package; 8 instance subclasses + ElementRegistry.
 - **Persistence** (Phase 07): Client / FalkorClient / InMemoryClient / AsyncClient + Repositories + WAL + indexes + OCC.
 - **Reconstruction** (Phase 08): MetagraphLoader + streaming + recover-on-load.
@@ -775,7 +775,7 @@ Strict dependency order:
 | Coherence Loop fate | — | yes | yes | **RESOLVED — Chat A R2 Push 3 (cut from v1; ALS substitutes)** |
 | `sense-correlations` + `learned-parameters` unshipped | — | yes | yes | **RESOLVED — Chat A R3 (ship both v1)** |
 | L5 retention model + note-fork | — | yes | yes | **RESOLVED — Chat B D-B1 (D'1 + lazy inline-on-retire; note-fork retired)** |
-| L1 InterGraph naming reconciliation | yes (3 conventions in MindsOS code+docs+tests) | yes (proposes `InterGraphEdge`) | — | **Open** — MindsOS internal; resolve before any consumer ships (DWF chat PB-7) |
+| L1 InterGraph naming reconciliation | yes (3 conventions in MindsOS code+docs+tests) | yes (proposes `InterGraphEdge`) | — | **RESOLVED — L1-6 (2026-06-01) kept shipped `IntergraphEdge`; ratified SKILL_ACQUISITION R0 S13 (2026-06-09)** |
 | `AlignmentsImporter` body unshipped | yes (PRIORITY) | — | — | Knowledge acquisition |
 
 ═══════════════════════════════════════════════════════════════════════
