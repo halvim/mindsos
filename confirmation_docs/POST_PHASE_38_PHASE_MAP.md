@@ -734,7 +734,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 47 — L4 orchestrator: six-phase task lifecycle + planning.* v0 + skeletons
 
-  **Status:** Pending
+  **Status:** **SHIPPED 2026-06-08.** Squash `cd8abb0` / Linux-canonical `6f49524`; confirm artifacts `db1a562`; tag `phase-47-confirmed`; cumulative 3832/9/0; ADRs 0171-0175; 9-surface bump 46→47. S12 split read/write (ADR-0175 §am-1): read-half shipped at 47, write-half → Phase 48. Dream driver deferred wholesale → 48. Worker-per-task lifecycle (ADR-0171). Ship-closure completed at the start of the Phase-48 chat. Full record: HANDOFF §3.1.20 + `PHASE_47_DESIGN_LOG.md` + `PHASE_47_CONFIRMED.md`.
   **Branch:** phase-47
   **Tag on confirm:** phase-47-confirmed
   **Rail:** convergence
@@ -825,7 +825,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 48 — L5 v1: consolidation + dream hookup + retention monitoring + concepts docs
 
-  **Status:** Pending
+  **Status:** **SHIPPED 2026-06-09.** Squash `af331e8`; confirm artifacts `1952260`; tag `phase-48-confirmed` at `1952260`; cumulative **3863/10/0**; ADRs 0176-0180 + amendments 0146/0161/0170/0175; 10-surface bump 47→48 (no new package). Shipped = MM consolidation write path (ADR-0176) + S12 write-half close via the pre-authorized `writeable` capability (ADR-0180; PB-23 authorization half done) + Episode/Memory authoring + dream-cycle driver (ADR-0178) + full D'1 KL stack (ADR-0177 + ADR-0161 §am-1) + crash recovery (ADR-0179) + retention monitoring + 3 concept docs. **As-shipped deferrals (consumer discipline):** union-annotation drop + `capacity_layer.invoke` read-path migration (A1′); faithful episode→MM reconstruction + `replay_recorded` differentiation + real ALS firing (WSD); partial-MM crash-content recovery + retention policy + durable Falkor checkpoint store (v1.5); S7 retention consumer is unit-test-only at v1 (PB-9). Full record: HANDOFF §3.1.21 + `PHASE_48_DESIGN_LOG.md` + `PHASE_48_CONFIRMED.md`.
   **Branch:** phase-48
   **Tag on confirm:** phase-48-confirmed
   **Rail:** convergence
@@ -916,7 +916,7 @@ The `Rail` field is informational only — it does not change tooling. `phase-NN
 
 ### Phase 49 — Integration C: end-to-end L0→L5 trivial-task scenario + cookbook
 
-  **Status:** Pending
+  **Status:** ✅ SHIPPED 2026-06-09 — squash `149fb26`, confirm `cc8a7f8`, tag `phase-49-confirmed`; gate 3868/11/0. **LAST numbered phase — Phases 39–49 all SHIPPED; the post-Phase-38 plan is COMPLETE.** As-shipped deltas (see `PHASE_49_DESIGN_LOG.md` + `PHASE_49_CONFIRMED.md` + HANDOFF §3.1.22): scenario uses `text.space_split` (not the drift `text.tokenize`); two-slice composition (PB-1a) since the v0 lifecycle dispatches no real L3 capacity; PB-HHH closed as **ADR-0181 decide-and-document — zero index code** → WSD retrieval; `test_falkor_index_present.py` not authored (folded into the ADR-sentinel test); **PB-RT** episode-flush-to-Falkor descoped (node `value` primitive vs Episode dict value) → `L0_FUTURE_WORK.md` L0-26.
   **Branch:** phase-49
   **Tag on confirm:** phase-49-confirmed
   **Rail:** integration

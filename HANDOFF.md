@@ -1,6 +1,6 @@
 # MindsOS — HANDOFF
 
-> **Last updated:** 2026-06-08 (Phase 46 **SHIPPED** — L4 substrate `mindsos_intelligence` (first L4 code) + ADRs 0163-0170; squash `47c3568`, confirm `18ba793`, tag `phase-46-confirmed`; cumulative 3793/9/0; 9-surface bump 45→46; single PR (PB-0 collapsed); S12 + dream-driver + signal-classifier deferred to Phase 47/48; **next chat = Phase 47 L4 orchestrator**; see §3.1.19. Prior: Phase 45 **SHIPPED**; Rail D — L3 dream family ratification — **closes the last pre-convergence rail.** Combined design+ship (option-C) under DREAM_FAMILY_CHAT. ADR-0162: 3 directive-emitter dream capacities (`dream.maintenance`=`replay_recorded`, `dream.exploration`=`re_execute_capacities`, `dream.retry`=`re_execute_capacities`+replan-injection) + new `DreamCapacity(_CapacityBase)` declaration kind (`execution_policy`+`entry_point`); `CATEGORY_DREAM` lazy-installed (NOT in `FUNCTIONAL_CATEGORIES`, text.* precedent); `builtins/dream.py` (`DreamExecutionPolicy` 2-value + `DreamDirective` + `ReplanInjectionDirective` + 2 DataStates + idempotent installer); `__all__` 117→118. **Consumer discipline:** dream bodies have no v1 L3 consumer — L4 dream-cycle timer + MM deep-copy + live re-execution + ALS firing deferred to Phase 46/47/48. Pre-provisioned `FAMILY_RULES['dream']`/`REALM_DREAM` needed zero edits. **First slot > high-water 44 → real 9-surface version bump 44→45.** 3694 passed cumulative gate; tag `phase-45-confirmed` at confirm-artifacts `e76a1a3` (ship squash `ab32e3d`). See §3.1.18 for ship closure. **All four rails (A/B/C/D) now closed — Phase 46 (L4 substrate convergence) can open R0.** Prior: Phase 42 SHIPPED 2026-06-07, §3.1.17; Phase 41 §3.1.16; Phase 40 §3.1.15; Phase 44 §3.1.14.)
+> **Last updated:** 2026-06-09 (**Phase 49 SHIPPED — Integration C, the LAST numbered phase; ALL Phases 39–49 SHIPPED, the post-Phase-38 plan is COMPLETE.** Composes L0–L5 into one end-to-end trivial-task scenario (`tests/phase_49/`) + `usage/cookbook/end-to-end.md` + ADR-0181 Falkor index strategy (PB-HHH; **zero index code** → routed to WSD retrieval) + 10-surface bump 48→49; no new feature surface. Probe: `text.tokenize`→`text.space_split`; v0 lifecycle dispatches no real L3 capacity → **two stitched slices** (PB-1a). **PB-RT**: node `value` is stored primitive but the L5 Episode `value` is a dict → episode-flush-to-Falkor would error; **descoped** (Phase-44 machinery exercised via the Global-pair round-trip; Episode asserted in-memory) → durable-episode gap to **L0-26**. Live integration ran+passed; 3868/11/0; squash `149fb26`, confirm `cc8a7f8`, tag `phase-49-confirmed`; see §3.1.22. **Next chats = the downstream sequence (SKILL_ACQUISITION_PROCESS → WSD / FOL / code-skill / adapter; L4-v2; MAINTENANCE; DWF parallel) per `POST_PHASE_38_PHASE_MAP.md §6`.** Prior: **Phase 48 SHIPPED** — L5 v1: MM consolidation → Episode + Memory + `MEMORY_CONTAINS_EPISODE` edge (retain-by-default on all terminal paths); S12 write-half **closed** (ADR-0180 pre-authorized scope-aware `writeable` capability — PB-23 authorization half done); dream-cycle driver (`dream_cycle.py`); D'1 retention + inline-on-retire (`kl.read_at_version`/`retire_version` + `retention.py`); crash recovery (`crash_recovery.py` tombstone markers + startup scan); retention monitoring (`monitoring.py`); 3 concept docs; ADRs 0176-0180 + amendments 0146/0161/0170/0175. Squash `af331e8`, confirm `1952260`, tag `phase-48-confirmed`; cumulative **3863/10/0**; 10-surface bump 47→48; see §3.1.21. **Phase 47 SHIPPED** (L4 orchestrator over v0 catalogs; six-phase lifecycle + chain-artifact emit + L4 dispatch + S12 read-half; squash `cd8abb0`/Linux-canonical `6f49524`, confirm `db1a562`, tag `phase-47-confirmed`; 3832/9/0; ADRs 0171-0175; §3.1.20). Prior: Phase 46 **SHIPPED** — L4 substrate `mindsos_intelligence` (first L4 code) + ADRs 0163-0170; squash `47c3568`, confirm `18ba793`, tag `phase-46-confirmed`; cumulative 3793/9/0; 9-surface bump 45→46; single PR (PB-0 collapsed); S12 + dream-driver + signal-classifier deferred to Phase 47/48; **next chat = Phase 47 L4 orchestrator**; see §3.1.19. Prior: Phase 45 **SHIPPED**; Rail D — L3 dream family ratification — **closes the last pre-convergence rail.** Combined design+ship (option-C) under DREAM_FAMILY_CHAT. ADR-0162: 3 directive-emitter dream capacities (`dream.maintenance`=`replay_recorded`, `dream.exploration`=`re_execute_capacities`, `dream.retry`=`re_execute_capacities`+replan-injection) + new `DreamCapacity(_CapacityBase)` declaration kind (`execution_policy`+`entry_point`); `CATEGORY_DREAM` lazy-installed (NOT in `FUNCTIONAL_CATEGORIES`, text.* precedent); `builtins/dream.py` (`DreamExecutionPolicy` 2-value + `DreamDirective` + `ReplanInjectionDirective` + 2 DataStates + idempotent installer); `__all__` 117→118. **Consumer discipline:** dream bodies have no v1 L3 consumer — L4 dream-cycle timer + MM deep-copy + live re-execution + ALS firing deferred to Phase 46/47/48. Pre-provisioned `FAMILY_RULES['dream']`/`REALM_DREAM` needed zero edits. **First slot > high-water 44 → real 9-surface version bump 44→45.** 3694 passed cumulative gate; tag `phase-45-confirmed` at confirm-artifacts `e76a1a3` (ship squash `ab32e3d`). See §3.1.18 for ship closure. **All four rails (A/B/C/D) now closed — Phase 46 (L4 substrate convergence) can open R0.** Prior: Phase 42 SHIPPED 2026-06-07, §3.1.17; Phase 41 §3.1.16; Phase 40 §3.1.15; Phase 44 §3.1.14.)
 > **Audience:** Any chat, contributor, or reviewer entering MindsOS. This is the canonical entry point — read it first.
 > **Self-contained:** This document does not require loading external memory entries to make sense. Inline content is authoritative. Memory entries referenced as `[[name]]` are speed-ups for chats that have memory access; the canonical text lives here.
 
@@ -571,6 +571,125 @@ Phase 46 (the L4-substrate convergence) shipped as squash-merge `47c3568` on `ma
 
 **Full record:** `confirmation_docs/PHASE_46_DESIGN_LOG.md` + `PHASE_46_CONFIRMED.md` + `notes/notes-phase-46.md`.
 
+### 3.1.20 Phase 47 ship closure (2026-06-08) — L4 orchestrator SHIPPED
+
+Phase 47 (the six-phase task-lifecycle orchestrator over the placeholder v0
+catalogs) shipped on `main`. **Note on the squash:** the ship squash exists as
+two equivalent commits — Mac `cd8abb0` and the canonical Linux squash `6f49524`
+that `origin/main` carries; the confirm commit `db1a562` (`PHASE_47_CONFIRMED.md`)
+holds the tag `phase-47-confirmed`. Phase 47's ship-closure was completed at the
+start of the Phase-48 chat (the tag + confirm doc had not been committed when
+Phase 47 ended).
+
+**What shipped:** `orchestrator.py` (LifecyclePhase 1–6 + bounded-replan loop +
+`update_priority` with `attention_score` write-through) + `phase_1.py` /
+`plan_construction.py` / `execution.py` / `phase_6.py` / `replan_check.py` /
+`sufficient_predicate.py` / `dispatch.py` (L4Dispatcher) / `chain_artifacts.py`
+(8 chain types) / `signal_sources.py` (10 skeletons) / `als_subsystems.py` (11
+skeletons); v0 L3 catalogs `builtins/{planning_v0,phase1_v0,orchestration_v0}.py`
+(`placeholder=True`); ADRs 0171-0175; 9-surface bump 46→47; cumulative
+**3832/9/0**. **S12 split read/write (ADR-0175 §am-1):** the read-half (typed
+`CapacityContext` dispatch for v0 reads + the L4 write-gate scaffold) shipped at
+47; the write-half (consolidate/trace migration + the authorization
+reconciliation) was deferred to 48. Dream driver deferred wholesale to 48
+(no episode corpus existed). Worker-per-task lifecycle (ADR-0171, no separate
+orchestrator thread). **Full record:** `confirmation_docs/PHASE_47_DESIGN_LOG.md`
++ `PHASE_47_CONFIRMED.md`.
+
+### 3.1.21 Phase 48 ship closure (2026-06-09) — L5 v1 SHIPPED (final convergence)
+
+Phase 48 makes the Phase-47 chain artifacts **persist as Episodes** and wires
+dream as live re-execution — the final convergence phase. Squash `af331e8` on
+`main`; confirm artifacts `1952260` (`PHASE_48_CONFIRMED.md`); tag
+`phase-48-confirmed` at `1952260` (release.yml requires the doc at the tagged
+commit); cumulative **3863 passed / 10 skipped / 0 failed**; 10-surface version
+bump 47→48 (no new package). Shipped as an R0 design pass (3 rounds + grounding;
+`PHASE_48_DESIGN_LOG.md`) + 5 commit groups + 2 gate-fix commits.
+
+**What shipped (surface → ADR):**
+- **MM consolidation write path** (S1, ADR-0176) — `mindsos_intelligence/
+  consolidation.py` freezes the MM + assembles the 6-field D-B47 Episode record
+  + dispatches `consolidate:mm`; wired into all three orchestrator terminal
+  paths (success/dont-know/abort = retain-by-default); guarded (skips in
+  simplified mode / when no consolidate capacity + KL). `mm_root_ref` is a v1
+  reference (heavy full-MM snapshot deferred).
+- **Episode + Memory authoring** (S2/S3, ADR-0176) — `consolidate:mm` writes the
+  6-field Episode `value` + materialises Memory on first episode per task-pattern
+  (content-hash `memory_id`) + the `MEMORY_CONTAINS_EPISODE` edge.
+- **S12 write-half closed** (S4, ADR-0180) — a pre-authorized, session-bound
+  `writeable` capability injected onto `CapacityContext` (11th field) by a shared
+  `make_writeable(kl, session)`; scope-aware gate **at write-time inside the
+  capability** (Local → none, Global → `CAN_WRITE_GLOBAL`); built by the
+  session-holder (L4 dispatch for tasks, `CapacityLayer.invoke` write-branch for
+  the CLI). ADR-0146 + ADR-0170 both preserved (L3 holds no principal). **PB-23
+  authorization half closes.** **A1′ deferral:** the read-path dict + the
+  transitional union annotation are kept one more phase (no read-corpus churn);
+  the cosmetic union-drop is deferred.
+- **D'1 KL stack** (S6, ADR-0177 + ADR-0161 §am-1) — `kl.read_at_version` +
+  `kl.retire_version` + `_retired_inline_pending` marker + `RESERVED_PROPERTY_KEYS`
+  entry. ADR-0161's forward-contract shipped **none** of this at Phase 44; Phase
+  48 lands the full stack. Opt-C signature keeps the shipped `(iri, version)`
+  Protocol; multi-version-per-node latent.
+- **D'1 inline-on-retire read consumer** (S7, ADR-0177) — `retention.py`
+  `resolve_ref`/`resolve_refs`. **Unit-test-only at v1 (PB-9)** — no live consumer
+  (dream re-runs from `task_input`, not full reconstruction); real consumers =
+  WSD reconstruction/retrieval.
+- **Dream-cycle driver** (S5, ADR-0178) — `dream_cycle.py` wires the Phase-46
+  `DreamCycleTimer` callback → the 3 Phase-45 `dream.*` capacities → directives
+  (with `source_episode_iri` provenance; `dream.retry` carries the
+  ReplanInjectionDirective) → re-exec hook. **v1 re-runs from the episode
+  `task_input` (PB-9);** faithful episode→MM reconstruction +
+  `replay_recorded`-vs-`re_execute_capacities` differentiation + real ALS firing
+  are **WSD-gated**.
+- **Crash recovery** (S8, ADR-0179) — `crash_recovery.py` tombstone checkpoint
+  markers at the D-B50 triggers + `IntelligenceLayer.start` startup scan →
+  `crash_marker` Episode (idempotent on task id). Partial-MM content recovery →
+  v1.5.
+- **Retention monitoring** (S9) — `monitoring.py` `export_retention_metrics`
+  (episode/Memory count + size histogram + Falkor-row count). Instrumentation
+  only; retention **policy** → v1.5 (PB-QQ).
+- **Docs** (S12) — `concepts/layers.md` + `concepts/society-of-mind.md` +
+  `getting-started/facts-and-figures.md` (new) + `concepts/dream.md` Phase-48
+  hookup section + nav.
+
+**Grounding-driven decisions** (full record `PHASE_48_DESIGN_LOG.md §5` +
+`PHASE_48_CONFIRMED.md` tester_notes): D'1 hooks absent at Phase 44 → land full
+stack; the CLI is a write path → shared gate factory + `capacity_layer.invoke`
+write-branch (A1′); PB-10 Local-write fix (the Phase-47 blanket pre-gate would
+have denied a normal user's Local consolidate); 2 gate-fix commits (the
+`consolidate.py` local `memory_iri` tripped the Phase-39 retired-name sentinel →
+`mem_iri`; the docs-nav test skips when `mkdocs.yml` is absent from the test
+image).
+
+**Deferred to Phase 49 / WSD / v1.5:** union-annotation drop +
+`capacity_layer.invoke` read-path → CapacityContext; faithful episode→MM
+reconstruction + `replay_recorded` differentiation + real ALS firing (WSD);
+partial-MM crash-content recovery (v1.5); retention policy (v1.5); durable
+Falkor-backed checkpoint store.
+
+**Full record:** `confirmation_docs/PHASE_48_DESIGN_LOG.md` + `PHASE_48_CONFIRMED.md`.
+
+### 3.1.22 Phase 49 ship closure (2026-06-09) — Integration C SHIPPED (LAST numbered phase; plan complete)
+
+Integration C is the **closing integration phase** of the post-Phase-38 plan. **No new feature surface** — it composes the shipped L0–L5 pieces into one end-to-end trivial-task scenario, ships the cookbook, and closes PB-HHH. Single squash `149fb26` on `main` off `phase-48-confirmed`; confirm `cc8a7f8`; tag `phase-49-confirmed`. Gate **3868 passed / 11 skipped / 0 failed** (the +1 skip vs Phase-48 is the cookbook **nav-wiring** test, which skips by design because `mkdocs.yml` isn't copied into the test image).
+
+**Shipped (by surface):**
+- **S1 — scenario harness + tests** (`tests/phase_49/`): `integration_c.py` (step helpers over one KL with all v0 + text + consolidate + dream catalogs); `test_integration_c_scenario.py` = deterministic in-memory companion (`test_chain_inmemory`) + `@pytest.mark.integration` live-Falkor headline (CLI login + Phase-44 native round-trip via `bootstrap_global_pair_from_falkordb` + `MetagraphRepository.persist` + the chain); cookbook-renders + ADR-sentinel tests. **Composition only — no production code changed** beyond the version bump.
+- **S2 — cookbook** `docs/usage/cookbook/end-to-end.md` (+ mkdocs nav); `text-realm.md` format + honest "Does NOT" (v0 placeholders; the two-slice seam; dream synchronous; no physical indexes; the episode-flush gap).
+- **S3 — PB-HHH / ADR-0181** Falkor index strategy **decide-and-document, zero index code**; named indexes (`Episode.task_pattern_iri`, `Memory.memory_id`, `IntergraphHyperEdge` membership) routed to **WSD retrieval** (first query consumer); `L5_FUTURE_WORK.md` L5-NEW-13 updated.
+- **S5 — version bump 48→49** (10 surfaces): 8 package `__version__` + `pyproject` + `manifest.toml` `version`+`phase` + 2 docker-compose tags + export-slate (phase_30/31/34).
+
+**Grounding-driven findings (probe-first):**
+- `text.tokenize` is drift → the shipped capacity is `text.space_split` (applied throughout).
+- The v0 lifecycle dispatches **no real L3 capacity** (`execution.py` emits a notional StepExecutionRecord), so the scenario is **two stitched slices** sharing one session+KL (PB-1a), not a single tokenize→consolidate chain.
+- **PB-RT (R2 reanalysis; scope-changing):** the L0 node persister stores node `value` as a **primitive** (`cypher/builders.py::build_unwind_create_nodes` → `n.value = row.value`; ADR-0130 `_props_json` is metagraph-level only), but the L5 Episode `value` is a structured dict → flushing a consolidated Episode to FalkorDB would error. **Descoped** the live episode flush (the integration test exercises the Phase-44 machinery via the Integration-A/B-proven Global-pair round-trip; the Episode is asserted in-memory). **Durable episode persistence routed to `L0_FUTURE_WORK.md` L0-26** (couples with the Phase-48-deferred durable Falkor checkpoint store). Integration C did its job — the first end-to-end exercise surfaced a real L0↔L5 seam; **routed, not fixed here.**
+
+**Gate-host forensic note (process):** the Linux gate box is a **separate checkout** from the Mac authoring tree; the first cumulative run executed against a **stale `phase-48` checkout** lacking `tests/phase_49` and returned the unchanged baseline. Always confirm the gate box's HEAD sha + `ls tests/phase_NN` before trusting a cumulative count.
+
+**Plan status:** **ALL Phases 39–49 SHIPPED — the post-Phase-38 plan is COMPLETE.** Next chats = the downstream sequence per `POST_PHASE_38_PHASE_MAP.md §6` (SKILL_ACQUISITION_PROCESS → WSD / FOL / code-skill / adapter; L4-v2 follow-up; MAINTENANCE; DWF parallelizable). New MAINTENANCE/v1.5 carry-forwards from this phase: **L0-26** (node-value serialization for durable episodes) + **L0-25** (live FalkorDBLocalPersister round-trip coverage).
+
+**Full record:** `confirmation_docs/PHASE_49_DESIGN_LOG.md` + `PHASE_49_CONFIRMED.md`.
+
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 
 Each is in active review. **Resolution gates the L4/L5 plan** (see §4).
@@ -885,4 +1004,4 @@ This handoff is the snapshot of where things stand entering Phase 39+. Per Phase
 *L4 architecture resolved at Chat A (2026-05-28). L5 architecture + retention model resolved at Chat B (2026-05-31). L1/L3 reframe ratified 2026-06-01. L2 schema-v2 ratified 2026-06-01. Phase map for Phases 39-49 authored at Chat C (2026-06-02).*
 
 ═══════════════════════════════════════════════════════════════════════
-*End of HANDOFF.md. Last reviewed 2026-06-07 (Phase 45 ship closure; all four rails A/B/C/D closed). Update when any Phase 46-49 confirms, or when any §6 carry-forward closes. Next chat: Phase 46 (L4 substrate convergence) — `confirmation_docs/PHASE_45_NEXT_CHAT_PROMPT.md`.*
+*End of HANDOFF.md. Last reviewed 2026-06-09 (Phase 48 ship closure — L5 v1; Phase 47 also closed retroactively). Phases 39-48 all SHIPPED + confirmed. Update when Phase 49 confirms, or when any §6 carry-forward closes. **Next chat: Phase 49 (Integration C — end-to-end L0→L5 trivial-task scenario + cookbook)** — see `confirmation_docs/PHASE_49_NEXT_CHAT_PROMPT.md`.*

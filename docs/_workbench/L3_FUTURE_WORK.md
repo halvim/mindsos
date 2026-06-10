@@ -150,7 +150,8 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 | L3-54 (`process.*`/`text.*` legacy coexistence) | **Future L3 chat** | Cleanup v1.5+. |
 | L3-55 (`planning.*` + `dream.*` families) | **Phase 45** (dream ratification) + **Phase 47** (planning v0; full catalog at WSD installation) | — |
 | L3-56 (`DontKnowReason.UNHANDLED_INPUT` enum value) | **L4 (Phase 46/47)** | Deferred at Phase 40 (PB-1): the enum doesn't exist; its 4 siblings are L4 MappingResult semantics; no v1 consumer. `DS_UNHANDLED_INPUT` (the L3 marker) shipped Phase 40. |
-| L3-57 (`FAMILY_RULES` key-vocabulary reconciliation) | **Phase 42 (X3) Phase-27 audit** (+ WSD/FOL installation for the unkeyed families) | Phase 40 shipped `FAMILY_RULES` verbatim (PB-8); ADR-0157 keys (`derive`/`signal`) ≠ shipped categories (`derivation`/`signalling`) + 7 unkeyed → resolve via permissive `DATASTATE_MARKER` default. Latent at v1. See PHASE_40_DESIGN_LOG §8 + HANDOFF §3.1.15. |
+| L3-57 (`FAMILY_RULES` key-vocabulary reconciliation) | **RESOLVED Phase 42 (PB-8 Opt 3)** — residual deferred to install chats (below) | Phase 42 renamed `derive`→`derivation`/`signal`→`signalling` + added `consolidate`/`trace`; the 5 genuinely-unknown categories defer via `family_rules.DEFERRED_DEFAULT_CATEGORIES` (test-pinned). Decision + 13-category table: `confirmation_docs/PHASE_27_DONT_KNOW_AUDIT.md`; ADR-0157 §amendment-1; HANDOFF §3.1.17. |
+| L3-58 (5 deferred `FAMILY_RULES` categories) | **WSD / FOL / code-skill / adapter installation chats** | `comprehension`, `decomposition`, `path-finding`, `interaction`, `learning-methods` resolve via the permissive `DATASTATE_MARKER` default (`family_rules.DEFERRED_DEFAULT_CATEGORIES`, pinned by `tests/phase_42/test_phase_27_audit_doc.py`). Each owning chat adds the explicit key + shape when it ships the first capacity in that category, and removes it from the deferred set. |
 
 ---
 
