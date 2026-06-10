@@ -18,7 +18,25 @@ Prereqs verified at open: tag `phase-49-confirmed` present; `main` HEAD = `cc8a7
 
 ## Decisions
 
-(recorded per item as they close)
+- **M1 scope note:** the L0-24 item text predates Phase 49; `tests/phase_49/conftest.py`
+  carried a *mirror* of the phase_44 warm-up band-aid. Both removed (same fix,
+  same rationale). The lazy import lands inside `propose_for_promotion` (the
+  only `admin_tx` call site — AST-verified zero remaining top-level
+  `mindsos_server.admin` imports in `mindsos_admin/`).
+- **M2 in-vs-out (R0):** SHIP HERE. Probe result: authoring needs only the
+  existing `tests/_shared` substrate (`falkor_client` per-test fresh-graph
+  fixture + `assert_metagraphs_equal`); no new harness. Tests live in NEW
+  `tests/maintenance/` (phase dirs are frozen gate snapshots; maintenance
+  items get their own home). **Sweep-audit split per the chat prompt:** the
+  round-trip + scoped-delete + idempotency tests are gate-blocking; the
+  orphan-scan sweep-completeness probe ships `xfail(strict=False)` — a pass is
+  evidence, a failure is the known best-effort-sweep gap, and the full
+  metaedge/metahyperedge/XRef sweep audit is **routed to WSD installation**
+  (L0-25 closure marker reflects the split).
+- **Environment note:** the Cowork sandbox is py3.10 (repo requires ≥3.12) with
+  no FalkorDB sidecar — all M1/M2 verification here is static (AST + grep);
+  the isolated subsets + cumulative gate + live integration run on the gate
+  host at closure (pair-execution pattern, Phase 43 precedent).
 
 ## Commits
 
