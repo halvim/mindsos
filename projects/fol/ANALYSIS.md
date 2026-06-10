@@ -1,5 +1,15 @@
 # FOL — Analysis vs Shipped MindsOS
 
+> ⚠️ **STALE AS OF 2026-06-09 — read `projects/ANALYSIS_DELTA_2026-06.md` alongside this document.**
+> This analysis is dated 2026-05-28, before Phases 43–49 shipped. Known-stale rows
+> (grep-verified): B10/D1/B15 (`learned-parameters` shipped single Phase 43;
+> `sense-correlations` withdrawn + regression-guarded; FOL #4 split deferred —
+> NOT aligned at v1), B6/B11/D2/D3 (L4 settled + shipped Phases 46–48), B20
+> (typed `CapacityContext` shipped Phase 42; residual = L3-59), C1/C5
+> (re-ground against shipped L5 + the Phase-46/47 concurrency model). The delta
+> addendum is the authoritative correction; this file is intentionally left
+> unrewritten.
+
 > **Project:** First-Order Logic capacity family for MindsOS (a "skill" per the user's rename — multi-layer intelligent system to be installed via the skill-acquisition process).
 > **Project status:** Mid-design. **No shippable artefact exists.** HANDOFF_latest §0 explicit: "no shippable artefact exists yet. The whole project is in design." 13 open pushbacks raised but not resolved. 2 open-decision sections (§2 analytic-rule contradictions, §3 authoritative/evaluative role rename) deferred by user. The whole project is forward-looking design propositions.
 > **Analysis date:** 2026-05-28.

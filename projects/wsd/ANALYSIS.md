@@ -1,5 +1,14 @@
 # WSD — Analysis vs Shipped MindsOS
 
+> ⚠️ **STALE AS OF 2026-06-09 — read `projects/ANALYSIS_DELTA_2026-06.md` alongside this document.**
+> This analysis is dated 2026-05-28, before Phases 43–49 shipped. Known-stale rows
+> (grep-verified): the L4/L5 "Nothing shipped" bins, the 3 L2 role-graph B-rows
+> (shipped Phase 43), the `sense-correlations`/`learned-parameters` D-bin
+> (split disposition), C-L3-2 + Analysis-PB-A5 (resident lifecycle removed
+> Phase 41 — resolved in WSD's favor), the `add_type_compat` absorption row
+> (TYPE_COMPAT retired Phase 42), and the §3 chat ordering. The delta addendum
+> is the authoritative correction; this file is intentionally left unrewritten.
+
 > **Project:** Word Sense Disambiguation skill for MindsOS — a multi-layer intelligent system to be installed via the skill-acquisition process.
 > **Project status:** Goal-finalized; pre-code. Per WSD_DESIGN_HANDOFF.md §1, the project ran under "extreme critique" instructions and §6 names 4 MindsOS-internal blockers (coherence loop fate, FOL phantom dependency, multi-domain ontology scope, ontology learning scope). The 5 `coordinated_change_*` documents (one per L0-L4) propose major cross-cutting changes. The 5 `pending_adrs/L0-L4.md` files contain ~50 PROPOSED ADRs awaiting per-layer ratification.
 > **Analysis date:** 2026-05-28.
