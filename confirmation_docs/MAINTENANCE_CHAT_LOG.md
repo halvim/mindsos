@@ -87,20 +87,44 @@ Prereqs verified at open: tag `phase-49-confirmed` present; `main` HEAD = `cc8a7
 | `29164f8` | M4 — L3-59 routing record |
 | `d2ca23b` | M5 — ANALYSIS delta addendum + banners |
 | `969d981` | Closure — L0_FUTURE_WORK markers + this log + orphaned prompt files |
-| (M2-F1) | Hyperedge `type_name` persistence fix (builders.py + graph_repository.py) — surfaced by the M2 live gate run |
+| `28d149f` | M2-F1 — hyperedge `type_name` persistence fix (builders.py + graph_repository.py) — surfaced by the M2 live gate run |
 
-## Gate (to run on the gate host — sandbox is py3.10, no sidecar; repo requires ≥3.12)
+## Gate — RUN 2026-06-09 on the Linux gate host (pair-execution; Cowork sandbox is py3.10/no-sidecar)
 
-Per HANDOFF §9 ship-env invariants (confirm the gate checkout's HEAD sha FIRST —
-Phase 49 forensic note; `python3`; no `gh`/`mindsos` CLI):
+Sequence as executed (gate checkout detached at `origin/maintenance-gate`;
+HEAD sha confirmed before every run per the Phase 49 forensic note):
 
-1. `git rev-parse HEAD` on the gate checkout == the closure commit.
-2. Isolated subsets (the L0-24 acceptance criterion — these bit cold):
-   `python3 -m pytest tests/phase_44/ -q` and `tests/phase_18` and
-   `tests/phase_49 -m 'not integration'` and `tests/maintenance -m 'not integration'`.
-3. With the FalkorDB sidecar up: `python3 -m pytest tests/maintenance/ -q`
-   (M2 live tests; orphan-scan may xfail — that is the documented L0-25 residual).
-4. Full cumulative gate: expected ~3868+5 passed (4 new maintenance tests pass
-   or skip-without-sidecar + 1 xfail/xpass tolerated) / 0 failed.
-5. `mkdocs build` (ADR-0182 is nav-absent like 0181 — INFO-level only; PB-16
-   re-scoped `--strict` to docs-maintenance).
+1. **Isolated subsets @ `969d981`** — the L0-24 acceptance criterion; these
+   used to die cold with `ImportError: cannot import name 'admin_tx'`:
+   `tests/phase_44/` → **22 passed**; `tests/phase_18` → **101 passed, 1
+   skipped**; `tests/phase_49 -m 'not integration'` → **6 passed, 1
+   deselected**; `tests/maintenance -m 'not integration'` → **3 passed, 4
+   deselected**. No collection errors — **M1 verified.**
+2. **Live maintenance suite @ `969d981` (sidecar up)** — **2 FAILED**
+   (round-trip + scoped-delete), 4 passed, **1 xpassed**. Diagnosis → **M2-F1**
+   (hyperedge `type_name` never persisted; loader rehydrates `"UNSPECIFIED"`;
+   identical to the Phase 08 B-08-T3 metahyperedge hotfix, sibling builder
+   missed). Fixed at `28d149f`; re-run → **6 passed, 1 xpassed.** The xpass:
+   the orphan-scan sweep probe found **zero orphans** — first live evidence
+   for the WSD sweep audit (probe stays `xfail(strict=False)`; evidence, not
+   yet contract).
+3. **Full cumulative @ `28d149f`** (`docker compose run --rm mindsos-test
+   pytest tests/ -q`) — **3874 passed, 11 skipped, 1 xpassed, 0 failed**
+   (baseline 3868/11/0 + 6 maintenance tests + the xpass). **Incident:** the
+   first cumulative ran on a **stale pre-rebuild test image** and returned the
+   unchanged 3868 baseline — the docker-image variant of the Phase 49
+   stale-checkout trap. Detection: in-container `ls tests/maintenance` +
+   `grep` for the M2-F1 line. **Lesson for future gates: confirm the IMAGE
+   content (not just the checkout sha) before trusting a cumulative count.**
+
+Ceremony: `main` fast-forwarded `cc8a7f8..28d149f`; tag
+`maintenance-2026-06-09` (A0 `a0-corpus-landed` precedent); `maintenance-gate`
+branch deleted; phase-ci watched via web (no `gh` on the gate host).
+
+## Post-gate amendments
+
+- This gate record replaced the pre-run runbook (this commit).
+- M2-F1 evidence note: the xpassed orphan scan covered nodes/edges/hyperedge/
+  metaedge/metahyperedge on a 2-graph Local — the WSD audit should extend to
+  XRef variants + tombstones + cross-metagraph satellites before promoting the
+  probe to a strict assertion.
