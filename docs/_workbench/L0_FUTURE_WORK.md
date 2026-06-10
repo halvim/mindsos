@@ -105,12 +105,29 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 
 ## 7. Maintenance carry-forwards (surfaced Phase 44)
 
+**MAINTENANCE_CHAT closure (2026-06-09)** — full record `confirmation_docs/MAINTENANCE_CHAT_LOG.md`:
+
+- **L0-24 — CLOSED** (M1). Lazy `admin_tx` import inside `propose_for_promotion`;
+  `tests/phase_44/conftest.py` band-aid deleted + the Phase-49 mirror warm-up
+  removed from `tests/phase_49/conftest.py`.
+- **L0-25 — CLOSED with routed residual** (M2). Live round-trip + scoped-delete
+  + idempotency tests shipped in
+  `tests/maintenance/test_l0_25_falkor_local_persister_live.py`
+  (`@pytest.mark.integration`). Residual: the metaedge/metahyperedge/XRef
+  **delete-sweep completeness audit** routed to **WSD installation**; the
+  `xfail(strict=False)` orphan-scan probe in the same file documents the seam.
+- **L0-26 — ADR on disk; impl routed to skill-acquisition slot 1** (M3).
+  Contract fixed at **ADR-0182** (node-level `_value_json`, ADR-0130 pattern;
+  primitives unchanged; writer lifts queryable fields flat). Durable-Episode
+  persistence rides the contract via the v1.5 durable-retention work.
+  Sentinel: `tests/maintenance/test_adr_0182_sentinel.py`.
+
 | # | Item | Source | Owner chat |
 |---|---|---|---|
-| L0-24 | **Pre-existing import cycle `admin ↔ persistence ↔ mindsos_admin`.** `mindsos_admin/promotion.py:68` top-level `from mindsos_server.admin import admin_tx` is reached while `admin.py` is mid-init on a cold `mindsos_server` import → `ImportError: cannot import name 'admin_tx'`. Masked in the full suite by server-phase conftest import-order warming; bites isolated subsets (`pytest tests/phase_44/`, `pytest tests/phase_18`). **Fix:** lazy-import `admin_tx` inside the consuming function(s) in `promotion.py` (codebase pattern — `mindsos_core/persistence/client.py:140`); then remove the `tests/phase_44/conftest.py` warm-up band-aid; re-run full cumulative gate. ~1-3 lines, behavior-preserving. Full diagnosis: `PHASE_44_DESIGN_LOG.md §12`. | Phase 44 (surfaced, not introduced — pre-existing) | **MAINTENANCE_CHAT** |
-| L0-25 | **FalkorDBLocalPersister live-FalkorDB integration test + scoped-delete coverage.** Phase 44 unit tests use `InMemoryClient` (no real round-trip); the save→load round-trip + the scoped `metagraph_id`-keyed delete Cypher are unvalidated against a live FalkorDB. Also: the delete's metaedge/metahyperedge/XRef sweep is a best-effort first cut needing completeness verification. Per `PHASE_44_DESIGN_LOG.md §7`. | Phase 44 (PR1.2) | **MAINTENANCE_CHAT** or WSD installation |
-| L0-26 | **Node-value serialization for structured node values (episode-flush gap, PB-RT).** The L0 node persister stores node `value` as a **primitive** (`cypher/builders.py::build_unwind_create_nodes` → `n.value = row.value`); ADR-0130's `_props_json` JSON-encodes *metagraph* `.properties` only, not node values/props. The L5 **Episode** node carries a structured 6-field dict `value` (Chat B D-B47), so `FalkorDBLocalPersister.save` of an episode-bearing Local would error against FalkorDB (properties must be primitives/arrays). Consequence: **v1 Episodes are not durably persisted to Falkor** — they live in the in-memory Local. **Fix options:** JSON-encode node `value`/props into a node-level `_props_json` (extend ADR-0130 to nodes) at persist + decode at load; OR consolidate the Episode as decomposed primitive-valued nodes; OR a dedicated episode blob store. Couples with the Phase-48-deferred durable Falkor checkpoint store. Surfaced by Phase 49 Integration C (`PHASE_49_DESIGN_LOG.md` PB-RT). | Phase 49 (surfaced) | **MAINTENANCE_CHAT** / v1.5 (durable retention) |
+| L0-24 | **Pre-existing import cycle `admin ↔ persistence ↔ mindsos_admin`.** `mindsos_admin/promotion.py:68` top-level `from mindsos_server.admin import admin_tx` is reached while `admin.py` is mid-init on a cold `mindsos_server` import → `ImportError: cannot import name 'admin_tx'`. Masked in the full suite by server-phase conftest import-order warming; bites isolated subsets (`pytest tests/phase_44/`, `pytest tests/phase_18`). **Fix:** lazy-import `admin_tx` inside the consuming function(s) in `promotion.py` (codebase pattern — `mindsos_core/persistence/client.py:140`); then remove the `tests/phase_44/conftest.py` warm-up band-aid; re-run full cumulative gate. ~1-3 lines, behavior-preserving. Full diagnosis: `PHASE_44_DESIGN_LOG.md §12`. | Phase 44 (surfaced, not introduced — pre-existing) | ~~MAINTENANCE_CHAT~~ **CLOSED 2026-06-09 (M1)** |
+| L0-25 | **FalkorDBLocalPersister live-FalkorDB integration test + scoped-delete coverage.** Phase 44 unit tests use `InMemoryClient` (no real round-trip); the save→load round-trip + the scoped `metagraph_id`-keyed delete Cypher are unvalidated against a live FalkorDB. Also: the delete's metaedge/metahyperedge/XRef sweep is a best-effort first cut needing completeness verification. Per `PHASE_44_DESIGN_LOG.md §7`. | Phase 44 (PR1.2) | ~~MAINTENANCE_CHAT~~ **CLOSED 2026-06-09 (M2); sweep audit → WSD installation** |
+| L0-26 | **Node-value serialization for structured node values (episode-flush gap, PB-RT).** The L0 node persister stores node `value` as a **primitive** (`cypher/builders.py::build_unwind_create_nodes` → `n.value = row.value`); ADR-0130's `_props_json` JSON-encodes *metagraph* `.properties` only, not node values/props. The L5 **Episode** node carries a structured 6-field dict `value` (Chat B D-B47), so `FalkorDBLocalPersister.save` of an episode-bearing Local would error against FalkorDB (properties must be primitives/arrays). Consequence: **v1 Episodes are not durably persisted to Falkor** — they live in the in-memory Local. **Fix options:** JSON-encode node `value`/props into a node-level `_props_json` (extend ADR-0130 to nodes) at persist + decode at load; OR consolidate the Episode as decomposed primitive-valued nodes; OR a dedicated episode blob store. Couples with the Phase-48-deferred durable Falkor checkpoint store. Surfaced by Phase 49 Integration C (`PHASE_49_DESIGN_LOG.md` PB-RT). | Phase 49 (surfaced) | ~~MAINTENANCE_CHAT~~ **ADR-0182 on disk 2026-06-09 (M3); impl → SKILL_ACQUISITION slot 1; durable-Episode flush → v1.5 durable retention** |
 
 ---
 
-*End of L0_FUTURE_WORK.md.*
+*End of L0_FUTURE_WORK.md. §7 closure markers added 2026-06-09 by MAINTENANCE_CHAT.*
