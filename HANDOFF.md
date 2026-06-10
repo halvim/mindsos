@@ -706,6 +706,8 @@ First slot (and only slot) of `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`; design s
 
 **Next chat = WSD_INSTALLATION_CHAT** (`projects/wsd/FUTURE_CHAT_PROMPT.md`, banner updated; inheritance contract `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5`). DWF parallelizable (L2-only).
 
+> **UPDATE 2026-06-10 — WSD_INSTALLATION design CLOSED; slots reserved.** `WSD_INSTALLATION_DESIGN_LOG.md` (R0–R3) + `WSD_INSTALLATION_PHASE_MAP.md` on disk. **Phases 51–56 reserved for WSD** (51 riders+empirical-layer → 52 corpus bootstrap → 53 capacity+`wsd-core` bundle → 54 lifecycle+v0-flip → 55 learning loop → 56 DWF-gated enrichment). DWF_INSTALLATION_CHAT opened in parallel 2026-06-10 — it takes Phase 57+ and owes WSD the alignment-density number (gates slot 56; coordination contract: `WSD_INSTALLATION_DESIGN_LOG.md §3`). Notable plan deltas vs the POST_PHASE_38 §6 WSD row (scope amendments in phase-map §4): importers 6→2 (SemCor+GlossTag); ALS = consumed subsystems only; `world-axioms` deferred (no ADR-0150 amendment anywhere in the plan); PB-T trimmed. Next ship chat seed: `WSD_PHASE_51_NEXT_CHAT_PROMPT.md`.
+
 **Full record:** `confirmation_docs/PHASE_50_DESIGN_LOG.md` + `PHASE_50_CONFIRMED.md`.
 
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
