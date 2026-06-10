@@ -1,0 +1,638 @@
+<mujoco model="open_order_cell">
+  <compiler angle="radian" meshdir="assets/"/>
+
+  <option integrator="implicitfast"/>
+
+  <size nkey="3"/>
+
+  <default>
+    <default class="a1_main">
+      <default class="a1_panda">
+        <material shininess="0.25"/>
+        <joint range="-2.8973 2.8973" armature="0.1" damping="1"/>
+        <site size="0.001 0.005 0.005" group="4" rgba="0.5 0.5 0.5 0.3"/>
+        <general ctrlrange="-2.8973 2.8973" forcerange="-87 87" biastype="affine"/>
+        <default class="a1_finger">
+          <joint type="slide" range="0 0.04"/>
+        </default>
+        <default class="a1_panda/visual">
+          <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+        </default>
+        <default class="a1_panda/collision">
+          <geom type="mesh" group="3"/>
+        </default>
+      </default>
+    </default>
+    <default class="a2_main">
+      <default class="a2_panda">
+        <material shininess="0.25"/>
+        <joint range="-2.8973 2.8973" armature="0.1" damping="1"/>
+        <site size="0.001 0.005 0.005" group="4" rgba="0.5 0.5 0.5 0.3"/>
+        <general ctrlrange="-2.8973 2.8973" forcerange="-87 87" biastype="affine"/>
+        <default class="a2_finger">
+          <joint type="slide" range="0 0.04"/>
+        </default>
+        <default class="a2_panda/visual">
+          <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+        </default>
+        <default class="a2_panda/collision">
+          <geom type="mesh" group="3"/>
+        </default>
+      </default>
+    </default>
+    <default class="a2g_main">
+      <default class="a2g_2f85">
+        <mesh scale="0.001 0.001 0.001"/>
+        <general biastype="affine"/>
+        <default class="a2g_driver">
+          <joint solreflimit="0.005" solimplimit="0.95 0.99" range="0 0.8" armature="0.005" damping="0.1"/>
+        </default>
+        <default class="a2g_follower">
+          <joint solreflimit="0.005" solimplimit="0.95 0.99" range="-0.872664 0.872664" armature="0.001"/>
+        </default>
+        <default class="a2g_spring_link">
+          <joint springref="2.62" stiffness="0.05" range="-0.296706 0.8" armature="0.001" damping="0.00125"/>
+        </default>
+        <default class="a2g_coupler">
+          <joint solreflimit="0.005" solimplimit="0.95 0.99" range="-1.57 0" armature="0.001"/>
+        </default>
+        <default class="a2g_visual">
+          <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+        </default>
+        <default class="a2g_collision">
+          <geom type="mesh" group="3"/>
+          <default class="a2g_pad_box1">
+            <geom size="0.011 0.004 0.009375" type="box" priority="1" friction="0.7" solref="0.004" solimp="0.95 0.99" rgba="0.55 0.55 0.55 1"/>
+          </default>
+          <default class="a2g_pad_box2">
+            <geom size="0.011 0.004 0.009375" type="box" priority="1" friction="0.6" solref="0.004" solimp="0.95 0.99" rgba="0.45 0.45 0.45 1"/>
+          </default>
+        </default>
+      </default>
+    </default>
+  </default>
+
+  <asset>
+    <texture type="2d" colorspace="auto" name="grid" builtin="checker" rgb1="0.85 0.85 0.85" rgb2="0.7 0.7 0.7" width="300" height="300"/>
+    <material name="grid" texture="grid" texrepeat="8 8" reflectance="0.1"/>
+    <material name="belt" rgba="0.05 0.05 0.06 1"/>
+    <material name="steel" rgba="0.3 0.3 0.32 1"/>
+    <material name="a1_white" class="a1_panda"/>
+    <material name="a1_off_white" class="a1_panda" rgba="0.901961 0.921569 0.929412 1"/>
+    <material name="a1_dark_grey" class="a1_panda" rgba="0.25 0.25 0.25 1"/>
+    <material name="a1_green" class="a1_panda" rgba="0 1 0 1"/>
+    <material name="a1_light_blue" class="a1_panda" rgba="0.039216 0.541176 0.780392 1"/>
+    <material name="a2_white" class="a2_panda"/>
+    <material name="a2_off_white" class="a2_panda" rgba="0.901961 0.921569 0.929412 1"/>
+    <material name="a2_dark_grey" class="a2_panda" rgba="0.25 0.25 0.25 1"/>
+    <material name="a2_green" class="a2_panda" rgba="0 1 0 1"/>
+    <material name="a2_light_blue" class="a2_panda" rgba="0.039216 0.541176 0.780392 1"/>
+    <material name="a2g_metal" rgba="0.58 0.58 0.58 1"/>
+    <material name="a2g_silicone" rgba="0.1882 0.1882 0.1882 1"/>
+    <material name="a2g_gray" rgba="0.4627 0.4627 0.4627 1"/>
+    <material name="a2g_black" rgba="0.149 0.149 0.149 1"/>
+    <mesh name="a1_link0_c" file="link0.stl"/>
+    <mesh name="a1_link1_c" file="link1.stl"/>
+    <mesh name="a1_link2_c" file="link2.stl"/>
+    <mesh name="a1_link3_c" file="link3.stl"/>
+    <mesh name="a1_link4_c" file="link4.stl"/>
+    <mesh name="a1_link5_c0" file="link5_collision_0.obj"/>
+    <mesh name="a1_link5_c1" file="link5_collision_1.obj"/>
+    <mesh name="a1_link5_c2" file="link5_collision_2.obj"/>
+    <mesh name="a1_link6_c" file="link6.stl"/>
+    <mesh name="a1_link7_c" file="link7.stl"/>
+    <mesh name="a1_link0_0" file="link0_0.obj"/>
+    <mesh name="a1_link0_1" file="link0_1.obj"/>
+    <mesh name="a1_link0_2" file="link0_2.obj"/>
+    <mesh name="a1_link0_3" file="link0_3.obj"/>
+    <mesh name="a1_link0_4" file="link0_4.obj"/>
+    <mesh name="a1_link0_5" file="link0_5.obj"/>
+    <mesh name="a1_link0_7" file="link0_7.obj"/>
+    <mesh name="a1_link0_8" file="link0_8.obj"/>
+    <mesh name="a1_link0_9" file="link0_9.obj"/>
+    <mesh name="a1_link0_10" file="link0_10.obj"/>
+    <mesh name="a1_link0_11" file="link0_11.obj"/>
+    <mesh name="a1_link1" file="link1.obj"/>
+    <mesh name="a1_link2" file="link2.obj"/>
+    <mesh name="a1_link3_0" file="link3_0.obj"/>
+    <mesh name="a1_link3_1" file="link3_1.obj"/>
+    <mesh name="a1_link3_2" file="link3_2.obj"/>
+    <mesh name="a1_link3_3" file="link3_3.obj"/>
+    <mesh name="a1_link4_0" file="link4_0.obj"/>
+    <mesh name="a1_link4_1" file="link4_1.obj"/>
+    <mesh name="a1_link4_2" file="link4_2.obj"/>
+    <mesh name="a1_link4_3" file="link4_3.obj"/>
+    <mesh name="a1_link5_0" file="link5_0.obj"/>
+    <mesh name="a1_link5_1" file="link5_1.obj"/>
+    <mesh name="a1_link5_2" file="link5_2.obj"/>
+    <mesh name="a1_link6_0" file="link6_0.obj"/>
+    <mesh name="a1_link6_1" file="link6_1.obj"/>
+    <mesh name="a1_link6_2" file="link6_2.obj"/>
+    <mesh name="a1_link6_3" file="link6_3.obj"/>
+    <mesh name="a1_link6_4" file="link6_4.obj"/>
+    <mesh name="a1_link6_5" file="link6_5.obj"/>
+    <mesh name="a1_link6_6" file="link6_6.obj"/>
+    <mesh name="a1_link6_7" file="link6_7.obj"/>
+    <mesh name="a1_link6_8" file="link6_8.obj"/>
+    <mesh name="a1_link6_9" file="link6_9.obj"/>
+    <mesh name="a1_link6_10" file="link6_10.obj"/>
+    <mesh name="a1_link6_11" file="link6_11.obj"/>
+    <mesh name="a1_link6_12" file="link6_12.obj"/>
+    <mesh name="a1_link6_13" file="link6_13.obj"/>
+    <mesh name="a1_link6_14" file="link6_14.obj"/>
+    <mesh name="a1_link6_15" file="link6_15.obj"/>
+    <mesh name="a1_link6_16" file="link6_16.obj"/>
+    <mesh name="a1_link7_0" file="link7_0.obj"/>
+    <mesh name="a1_link7_1" file="link7_1.obj"/>
+    <mesh name="a1_link7_2" file="link7_2.obj"/>
+    <mesh name="a1_link7_3" file="link7_3.obj"/>
+    <mesh name="a1_link7_4" file="link7_4.obj"/>
+    <mesh name="a1_link7_5" file="link7_5.obj"/>
+    <mesh name="a1_link7_6" file="link7_6.obj"/>
+    <mesh name="a1_link7_7" file="link7_7.obj"/>
+    <mesh name="a2_link0_c" file="link0.stl"/>
+    <mesh name="a2_link1_c" file="link1.stl"/>
+    <mesh name="a2_link2_c" file="link2.stl"/>
+    <mesh name="a2_link3_c" file="link3.stl"/>
+    <mesh name="a2_link4_c" file="link4.stl"/>
+    <mesh name="a2_link5_c0" file="link5_collision_0.obj"/>
+    <mesh name="a2_link5_c1" file="link5_collision_1.obj"/>
+    <mesh name="a2_link5_c2" file="link5_collision_2.obj"/>
+    <mesh name="a2_link6_c" file="link6.stl"/>
+    <mesh name="a2_link7_c" file="link7.stl"/>
+    <mesh name="a2_link0_0" file="link0_0.obj"/>
+    <mesh name="a2_link0_1" file="link0_1.obj"/>
+    <mesh name="a2_link0_2" file="link0_2.obj"/>
+    <mesh name="a2_link0_3" file="link0_3.obj"/>
+    <mesh name="a2_link0_4" file="link0_4.obj"/>
+    <mesh name="a2_link0_5" file="link0_5.obj"/>
+    <mesh name="a2_link0_7" file="link0_7.obj"/>
+    <mesh name="a2_link0_8" file="link0_8.obj"/>
+    <mesh name="a2_link0_9" file="link0_9.obj"/>
+    <mesh name="a2_link0_10" file="link0_10.obj"/>
+    <mesh name="a2_link0_11" file="link0_11.obj"/>
+    <mesh name="a2_link1" file="link1.obj"/>
+    <mesh name="a2_link2" file="link2.obj"/>
+    <mesh name="a2_link3_0" file="link3_0.obj"/>
+    <mesh name="a2_link3_1" file="link3_1.obj"/>
+    <mesh name="a2_link3_2" file="link3_2.obj"/>
+    <mesh name="a2_link3_3" file="link3_3.obj"/>
+    <mesh name="a2_link4_0" file="link4_0.obj"/>
+    <mesh name="a2_link4_1" file="link4_1.obj"/>
+    <mesh name="a2_link4_2" file="link4_2.obj"/>
+    <mesh name="a2_link4_3" file="link4_3.obj"/>
+    <mesh name="a2_link5_0" file="link5_0.obj"/>
+    <mesh name="a2_link5_1" file="link5_1.obj"/>
+    <mesh name="a2_link5_2" file="link5_2.obj"/>
+    <mesh name="a2_link6_0" file="link6_0.obj"/>
+    <mesh name="a2_link6_1" file="link6_1.obj"/>
+    <mesh name="a2_link6_2" file="link6_2.obj"/>
+    <mesh name="a2_link6_3" file="link6_3.obj"/>
+    <mesh name="a2_link6_4" file="link6_4.obj"/>
+    <mesh name="a2_link6_5" file="link6_5.obj"/>
+    <mesh name="a2_link6_6" file="link6_6.obj"/>
+    <mesh name="a2_link6_7" file="link6_7.obj"/>
+    <mesh name="a2_link6_8" file="link6_8.obj"/>
+    <mesh name="a2_link6_9" file="link6_9.obj"/>
+    <mesh name="a2_link6_10" file="link6_10.obj"/>
+    <mesh name="a2_link6_11" file="link6_11.obj"/>
+    <mesh name="a2_link6_12" file="link6_12.obj"/>
+    <mesh name="a2_link6_13" file="link6_13.obj"/>
+    <mesh name="a2_link6_14" file="link6_14.obj"/>
+    <mesh name="a2_link6_15" file="link6_15.obj"/>
+    <mesh name="a2_link6_16" file="link6_16.obj"/>
+    <mesh name="a2_link7_0" file="link7_0.obj"/>
+    <mesh name="a2_link7_1" file="link7_1.obj"/>
+    <mesh name="a2_link7_2" file="link7_2.obj"/>
+    <mesh name="a2_link7_3" file="link7_3.obj"/>
+    <mesh name="a2_link7_4" file="link7_4.obj"/>
+    <mesh name="a2_link7_5" file="link7_5.obj"/>
+    <mesh name="a2_link7_6" file="link7_6.obj"/>
+    <mesh name="a2_link7_7" file="link7_7.obj"/>
+    <mesh name="a2g_base_mount" class="a2g_2f85" file="base_mount.stl"/>
+    <mesh name="a2g_base" class="a2g_2f85" file="base.stl"/>
+    <mesh name="a2g_driver" class="a2g_2f85" file="driver.stl"/>
+    <mesh name="a2g_coupler" class="a2g_2f85" file="coupler.stl"/>
+    <mesh name="a2g_follower" class="a2g_2f85" file="follower.stl"/>
+    <mesh name="a2g_pad" class="a2g_2f85" file="pad.stl"/>
+    <mesh name="a2g_silicone_pad" class="a2g_2f85" file="silicone_pad.stl"/>
+    <mesh name="a2g_spring_link" class="a2g_2f85" file="spring_link.stl"/>
+  </asset>
+
+  <worldbody>
+    <geom name="floor" size="4 4 0.1" pos="0 0 0.4" type="plane" material="grid"/>
+    <geom name="base1" size="0.12 0.12 0.008" pos="-1.2 -0.45 0.408" type="box" material="steel"/>
+    <geom name="base2" size="0.12 0.12 0.008" pos="1.2 -0.45 0.408" type="box" material="steel"/>
+    <geom name="belt_base" size="2.11 0.1 0.23" pos="0 0.1 0.63" type="box" contype="0" conaffinity="0" material="steel"/>
+    <geom name="belt" size="2.11 0.1 0.02" pos="0 0.1 0.88" type="box" material="belt"/>
+    <geom name="belt_gap_band" size="0.28 0.1 0.001" pos="0 0.1 0.901" type="box" contype="0" conaffinity="0" rgba="0.8 0.15 0.15 0.5"/>
+    <geom name="feeder" size="0.18 0.1 0.13" pos="-1.93 0.1 1" type="box" contype="0" conaffinity="0" material="steel"/>
+    <geom name="collector" size="0.18 0.1 0.13" pos="1.93 0.1 1" type="box" contype="0" conaffinity="0" material="steel"/>
+    <light name="key" pos="0 -1 2.5" dir="0 0.371391 -0.928477"/>
+    <light name="a1_top" pos="-1.2 -0.45 2.4" dir="0 0 -1" mode="trackcom"/>
+    <body name="a1_link0" childclass="a1_panda" pos="-1.2 -0.45 0.4" quat="0.707107 0 0 -0.707107">
+      <inertial pos="-0.041018 -0.00014 0.049974" quat="0.00630474 0.751245 0.00741774 0.659952" mass="0.629769" diaginertia="0.00430465 0.00387984 0.00313051"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_0"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_1"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_2"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_3"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_4"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_5"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_7"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_8"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_9"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_10"/>
+      <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link0_11"/>
+      <geom class="a1_panda/collision" mesh="a1_link0_c"/>
+      <geom name="a1_stk_link0_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+      <geom name="a1_stk_link0_link1" size="0.034 0.1665" pos="0 0 0.1665" quat="0 1 0 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+      <body name="a1_link1" pos="0 0 0.333">
+        <inertial pos="0.003875 0.002081 -0.04762" quat="0.711549 0.00634377 -0.0131124 0.702485" mass="4.97068" diaginertia="0.707137 0.703435 0.00852456"/>
+        <joint name="a1_joint1" pos="0 0 0" axis="0 0 1"/>
+        <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link1"/>
+        <geom class="a1_panda/collision" mesh="a1_link1_c"/>
+        <geom name="a1_stk_link1_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+        <body name="a1_link2" quat="0.707107 -0.707107 0 0">
+          <inertial pos="-0.003141 -0.02872 0.003495" quat="-0.168175 0.828366 -0.122878 0.520027" mass="0.646926" diaginertia="0.0310326 0.0283001 0.00273425"/>
+          <joint name="a1_joint2" pos="0 0 0" axis="0 0 1" range="-1.7628 1.7628"/>
+          <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link2"/>
+          <geom class="a1_panda/collision" mesh="a1_link2_c"/>
+          <geom name="a1_stk_link2_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+          <geom name="a1_stk_link2_link3" size="0.034 0.158" pos="0 -0.158 0" quat="0.707107 -0.707107 0 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+          <body name="a1_link3" pos="0 -0.316 0" quat="0.707107 0.707107 0 0">
+            <inertial pos="0.027518 0.039252 -0.066502" quat="0.662769 -0.00678331 0.252053 0.705096" mass="3.2286" diaginertia="0.0415014 0.0414793 0.00124635"/>
+            <joint name="a1_joint3" pos="0 0 0" axis="0 0 1"/>
+            <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link3_0"/>
+            <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link3_1"/>
+            <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link3_2"/>
+            <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link3_3"/>
+            <geom class="a1_panda/collision" mesh="a1_link3_c"/>
+            <geom name="a1_stk_link3_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+            <geom name="a1_stk_link3_link4" size="0.034 0.04125" pos="0.04125 0 0" quat="0.707107 0 -0.707107 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+            <body name="a1_link4" pos="0.0825 0 0" quat="0.707107 0.707107 0 0">
+              <inertial pos="-0.05317 0.104419 0.027454" quat="0.65058 0.529822 -0.0962034 0.535518" mass="3.5879" diaginertia="0.0349596 0.0281483 0.0106201"/>
+              <joint name="a1_joint4" pos="0 0 0" axis="0 0 1" range="-3.0718 -0.0698"/>
+              <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link4_0"/>
+              <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link4_1"/>
+              <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link4_2"/>
+              <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link4_3"/>
+              <geom class="a1_panda/collision" mesh="a1_link4_c"/>
+              <geom name="a1_stk_link4_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+              <geom name="a1_stk_link4_link5" size="0.034 0.196381" pos="-0.04125 0.192 0" quat="0.707107 0.691332 0.148528 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+              <body name="a1_link5" pos="-0.0825 0.384 0" quat="0.707107 -0.707107 0 0">
+                <inertial pos="-0.011953 0.041065 -0.038437" quat="0.987313 -0.0121954 0.0719187 -0.141037" mass="1.22595" diaginertia="0.0367625 0.0288531 0.00803437"/>
+                <joint name="a1_joint5" pos="0 0 0" axis="0 0 1"/>
+                <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link5_0"/>
+                <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link5_1"/>
+                <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link5_2"/>
+                <geom class="a1_panda/collision" mesh="a1_link5_c0"/>
+                <geom class="a1_panda/collision" mesh="a1_link5_c1"/>
+                <geom class="a1_panda/collision" mesh="a1_link5_c2"/>
+                <geom name="a1_stk_link5_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+                <body name="a1_link6" quat="0.707107 0.707107 0 0">
+                  <inertial pos="0.060149 -0.014117 -0.010517" quat="0.101075 0.59332 0.0287227 0.798079" mass="1.66656" diaginertia="0.00584276 0.00431037 0.00159787"/>
+                  <joint name="a1_joint6" pos="0 0 0" axis="0 0 1" range="-0.0175 3.7525"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_0"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_1"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_2"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_3"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_4"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_5"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_6"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_7"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_8"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_9"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_10"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_11"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_12"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_13"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_14"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_15"/>
+                  <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link6_16"/>
+                  <geom class="a1_panda/collision" mesh="a1_link6_c"/>
+                  <geom name="a1_stk_link6_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+                  <geom name="a1_stk_link6_link7" size="0.034 0.044" pos="0.044 0 0" quat="0.707107 0 -0.707107 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+                  <body name="a1_link7" pos="0.088 0 0" quat="0.707107 0.707107 0 0">
+                    <inertial pos="0.010517 -0.004252 0.061597" quat="0.992939 -0.0762041 0.0733595 -0.0537067" mass="0.735522" diaginertia="0.0127345 0.0101055 0.00451803"/>
+                    <joint name="a1_joint7" pos="0 0 0" axis="0 0 1"/>
+                    <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link7_0"/>
+                    <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link7_1"/>
+                    <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link7_2"/>
+                    <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link7_3"/>
+                    <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link7_4"/>
+                    <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link7_5"/>
+                    <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link7_6"/>
+                    <geom class="a1_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a1_link7_7"/>
+                    <geom class="a1_panda/collision" mesh="a1_link7_c"/>
+                    <geom name="a1_stk_link7_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+                    <geom name="a1_stk_link7_attachment" size="0.034 0.0535" pos="0 0 0.0535" quat="0 1 0 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+                    <body name="a1_attachment" pos="0 0 0.107" quat="0.382683 0 0 0.92388">
+                      <geom name="a1_stk_attachment_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.3 0.55 0.85 1"/>
+                      <site name="a1_attachment_site" pos="0 0 0"/>
+                      <body name="a1_suction">
+                        <geom name="a1_cup" size="0.025 0.03" pos="0 0 0.03" type="cylinder" mass="0.05" rgba="0.2 0.5 0.85 1"/>
+                        <geom name="a1_cup_vis" size="0.025 0.0525" pos="0 0 0.0525" type="cylinder" contype="0" conaffinity="0" mass="0" rgba="0.2 0.5 0.85 1"/>
+                        <site name="a1_tcp" pos="0 0 0.06" size="0.008" rgba="1 1 0 1"/>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <light name="a2_top" pos="1.2 -0.45 2.4" dir="0 0 -1" mode="trackcom"/>
+    <body name="a2_link0" childclass="a2_panda" pos="1.2 -0.45 0.4" quat="0.707107 0 0 -0.707107">
+      <inertial pos="-0.041018 -0.00014 0.049974" quat="0.00630474 0.751245 0.00741774 0.659952" mass="0.629769" diaginertia="0.00430465 0.00387984 0.00313051"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_0"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_1"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_2"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_3"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_4"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_5"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_7"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_8"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_9"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_10"/>
+      <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link0_11"/>
+      <geom class="a2_panda/collision" mesh="a2_link0_c"/>
+      <geom name="a2_stk_link0_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+      <geom name="a2_stk_link0_link1" size="0.034 0.1665" pos="0 0 0.1665" quat="0 1 0 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+      <body name="a2_link1" pos="0 0 0.333">
+        <inertial pos="0.003875 0.002081 -0.04762" quat="0.711549 0.00634377 -0.0131124 0.702485" mass="4.97068" diaginertia="0.707137 0.703435 0.00852456"/>
+        <joint name="a2_joint1" pos="0 0 0" axis="0 0 1"/>
+        <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link1"/>
+        <geom class="a2_panda/collision" mesh="a2_link1_c"/>
+        <geom name="a2_stk_link1_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+        <body name="a2_link2" quat="0.707107 -0.707107 0 0">
+          <inertial pos="-0.003141 -0.02872 0.003495" quat="-0.168175 0.828366 -0.122878 0.520027" mass="0.646926" diaginertia="0.0310326 0.0283001 0.00273425"/>
+          <joint name="a2_joint2" pos="0 0 0" axis="0 0 1" range="-1.7628 1.7628"/>
+          <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link2"/>
+          <geom class="a2_panda/collision" mesh="a2_link2_c"/>
+          <geom name="a2_stk_link2_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+          <geom name="a2_stk_link2_link3" size="0.034 0.158" pos="0 -0.158 0" quat="0.707107 -0.707107 0 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+          <body name="a2_link3" pos="0 -0.316 0" quat="0.707107 0.707107 0 0">
+            <inertial pos="0.027518 0.039252 -0.066502" quat="0.662769 -0.00678331 0.252053 0.705096" mass="3.2286" diaginertia="0.0415014 0.0414793 0.00124635"/>
+            <joint name="a2_joint3" pos="0 0 0" axis="0 0 1"/>
+            <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link3_0"/>
+            <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link3_1"/>
+            <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link3_2"/>
+            <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link3_3"/>
+            <geom class="a2_panda/collision" mesh="a2_link3_c"/>
+            <geom name="a2_stk_link3_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+            <geom name="a2_stk_link3_link4" size="0.034 0.04125" pos="0.04125 0 0" quat="0.707107 0 -0.707107 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+            <body name="a2_link4" pos="0.0825 0 0" quat="0.707107 0.707107 0 0">
+              <inertial pos="-0.05317 0.104419 0.027454" quat="0.65058 0.529822 -0.0962034 0.535518" mass="3.5879" diaginertia="0.0349596 0.0281483 0.0106201"/>
+              <joint name="a2_joint4" pos="0 0 0" axis="0 0 1" range="-3.0718 -0.0698"/>
+              <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link4_0"/>
+              <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link4_1"/>
+              <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link4_2"/>
+              <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link4_3"/>
+              <geom class="a2_panda/collision" mesh="a2_link4_c"/>
+              <geom name="a2_stk_link4_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+              <geom name="a2_stk_link4_link5" size="0.034 0.196381" pos="-0.04125 0.192 0" quat="0.707107 0.691332 0.148528 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+              <body name="a2_link5" pos="-0.0825 0.384 0" quat="0.707107 -0.707107 0 0">
+                <inertial pos="-0.011953 0.041065 -0.038437" quat="0.987313 -0.0121954 0.0719187 -0.141037" mass="1.22595" diaginertia="0.0367625 0.0288531 0.00803437"/>
+                <joint name="a2_joint5" pos="0 0 0" axis="0 0 1"/>
+                <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link5_0"/>
+                <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link5_1"/>
+                <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link5_2"/>
+                <geom class="a2_panda/collision" mesh="a2_link5_c0"/>
+                <geom class="a2_panda/collision" mesh="a2_link5_c1"/>
+                <geom class="a2_panda/collision" mesh="a2_link5_c2"/>
+                <geom name="a2_stk_link5_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                <body name="a2_link6" quat="0.707107 0.707107 0 0">
+                  <inertial pos="0.060149 -0.014117 -0.010517" quat="0.101075 0.59332 0.0287227 0.798079" mass="1.66656" diaginertia="0.00584276 0.00431037 0.00159787"/>
+                  <joint name="a2_joint6" pos="0 0 0" axis="0 0 1" range="-0.0175 3.7525"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_0"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_1"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_2"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_3"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_4"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_5"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_6"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_7"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_8"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_9"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_10"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_11"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_12"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_13"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_14"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_15"/>
+                  <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link6_16"/>
+                  <geom class="a2_panda/collision" mesh="a2_link6_c"/>
+                  <geom name="a2_stk_link6_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                  <geom name="a2_stk_link6_link7" size="0.034 0.044" pos="0.044 0 0" quat="0.707107 0 -0.707107 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                  <body name="a2_link7" pos="0.088 0 0" quat="0.707107 0.707107 0 0">
+                    <inertial pos="0.010517 -0.004252 0.061597" quat="0.992939 -0.0762041 0.0733595 -0.0537067" mass="0.735522" diaginertia="0.0127345 0.0101055 0.00451803"/>
+                    <joint name="a2_joint7" pos="0 0 0" axis="0 0 1"/>
+                    <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link7_0"/>
+                    <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link7_1"/>
+                    <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link7_2"/>
+                    <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link7_3"/>
+                    <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link7_4"/>
+                    <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link7_5"/>
+                    <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link7_6"/>
+                    <geom class="a2_panda/visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2_link7_7"/>
+                    <geom class="a2_panda/collision" mesh="a2_link7_c"/>
+                    <geom name="a2_stk_link7_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                    <geom name="a2_stk_link7_attachment" size="0.034 0.0535" pos="0 0 0.0535" quat="0 1 0 0" type="capsule" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                    <body name="a2_attachment" pos="0 0 0.107" quat="0.382683 0 0 0.92388">
+                      <geom name="a2_stk_attachment_j" size="0.046" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                      <site name="a2_attachment_site" pos="0 0 0"/>
+                      <body name="a2g_base_mount" childclass="a2g_2f85" pos="0 0 0.007">
+                        <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_base_mount"/>
+                        <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_base_mount"/>
+                        <body name="a2g_base" pos="0 0 0.0038" quat="0.707107 0 0 -0.707107">
+                          <inertial pos="0 -2.70394e-05 0.0354675" quat="0.999999 -0.00152849 0 0" mass="0.777441" diaginertia="0.000260285 0.000225381 0.000152708"/>
+                          <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_base"/>
+                          <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_base"/>
+                          <geom name="stk_a2g_base" size="0.04 0.018 0.04" pos="0 0 0.04" type="box" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                          <site name="a2g_pinch" pos="0 0 0.145" group="5" rgba="0.9 0.9 0.9 1"/>
+                          <site name="a2_tcp" pos="0 0 0.145" size="0.008" rgba="1 1 0 1"/>
+                          <body name="a2g_right_driver" pos="0 0.0306011 0.054904">
+                            <inertial pos="2.96931e-12 0.0177547 0.00107314" quat="0.681301 0.732003 0 0" mass="0.00899563" diaginertia="1.72352e-06 1.60906e-06 3.22006e-07"/>
+                            <joint name="a2g_right_driver_joint" class="a2g_driver" pos="0 0 0" axis="1 0 0"/>
+                            <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_driver"/>
+                            <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_driver"/>
+                            <body name="a2g_right_coupler" pos="0 0.0315 -0.0041">
+                              <inertial pos="0 0.00301209 0.0232175" quat="0.705636 -0.0455904 0.0455904 0.705636" mass="0.0140974" diaginertia="4.16206e-06 3.52216e-06 8.88131e-07"/>
+                              <joint name="a2g_right_coupler_joint" class="a2g_coupler" pos="0 0 0" axis="1 0 0"/>
+                              <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_coupler"/>
+                              <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_coupler"/>
+                            </body>
+                          </body>
+                          <body name="a2g_right_spring_link" pos="0 0.0132 0.0609">
+                            <inertial pos="-8.65005e-09 0.0181624 0.0212658" quat="0.663403 -0.244737 0.244737 0.663403" mass="0.0221642" diaginertia="8.96853e-06 6.71733e-06 2.63931e-06"/>
+                            <joint name="a2g_right_spring_link_joint" class="a2g_spring_link" pos="0 0 0" axis="1 0 0" springref="2.62"/>
+                            <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_spring_link"/>
+                            <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_spring_link"/>
+                            <body name="a2g_right_follower" pos="0 0.055 0.0375">
+                              <inertial pos="0 -0.011046 0.0124786" quat="0.986437 0.164143 0 0" mass="0.0125222" diaginertia="2.67415e-06 2.4559e-06 6.02031e-07"/>
+                              <joint name="a2g_right_follower_joint" class="a2g_follower" pos="0 -0.018 0.0065" axis="1 0 0"/>
+                              <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_follower"/>
+                              <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_follower"/>
+                              <body name="a2g_right_pad" pos="0 -0.0189 0.01352">
+                                <inertial pos="0 -0.0025 0.0185" quat="0.707107 0 0 0.707107" mass="0.0035" diaginertia="4.73958e-07 3.64583e-07 1.23958e-07"/>
+                                <geom name="a2g_right_pad1" class="a2g_pad_box1" pos="0 -0.0026 0.028125" mass="0"/>
+                                <geom name="a2g_right_pad2" class="a2g_pad_box2" pos="0 -0.0026 0.009375" mass="0"/>
+                                <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_pad"/>
+                                <body name="a2g_right_silicone_pad">
+                                  <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_silicone_pad"/>
+                                  <geom name="stk_a2g_right_silicone_pad" size="0.012 0.006 0.022" pos="0 -0.004 0.02" type="box" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                                </body>
+                              </body>
+                            </body>
+                          </body>
+                          <body name="a2g_left_driver" pos="0 -0.0306011 0.054904" quat="0 0 0 1">
+                            <inertial pos="0 0.0177547 0.00107314" quat="0.681301 0.732003 0 0" mass="0.00899563" diaginertia="1.72352e-06 1.60906e-06 3.22006e-07"/>
+                            <joint name="a2g_left_driver_joint" class="a2g_driver" pos="0 0 0" axis="1 0 0"/>
+                            <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_driver"/>
+                            <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_driver"/>
+                            <body name="a2g_left_coupler" pos="0 0.0315 -0.0041">
+                              <inertial pos="0 0.00301209 0.0232175" quat="0.705636 -0.0455904 0.0455904 0.705636" mass="0.0140974" diaginertia="4.16206e-06 3.52216e-06 8.88131e-07"/>
+                              <joint name="a2g_left_coupler_joint" class="a2g_coupler" pos="0 0 0" axis="1 0 0"/>
+                              <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_coupler"/>
+                              <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_coupler"/>
+                            </body>
+                          </body>
+                          <body name="a2g_left_spring_link" pos="0 -0.0132 0.0609" quat="0 0 0 1">
+                            <inertial pos="-8.65005e-09 0.0181624 0.0212658" quat="0.663403 -0.244737 0.244737 0.663403" mass="0.0221642" diaginertia="8.96853e-06 6.71733e-06 2.63931e-06"/>
+                            <joint name="a2g_left_spring_link_joint" class="a2g_spring_link" pos="0 0 0" axis="1 0 0" springref="2.62"/>
+                            <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_spring_link"/>
+                            <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_spring_link"/>
+                            <body name="a2g_left_follower" pos="0 0.055 0.0375">
+                              <inertial pos="0 -0.011046 0.0124786" quat="0.986437 0.164143 0 0" mass="0.0125222" diaginertia="2.67415e-06 2.4559e-06 6.02031e-07"/>
+                              <joint name="a2g_left_follower_joint" class="a2g_follower" pos="0 -0.018 0.0065" axis="1 0 0"/>
+                              <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_follower"/>
+                              <geom class="a2g_collision" rgba="0.5 0.5 0.5 0" mesh="a2g_follower"/>
+                              <body name="a2g_left_pad" pos="0 -0.0189 0.01352">
+                                <inertial pos="0 -0.0025 0.0185" quat="0.707107 0 0 0.707107" mass="0.0035" diaginertia="4.73958e-07 3.64583e-07 1.23958e-07"/>
+                                <geom name="a2g_left_pad1" class="a2g_pad_box1" pos="0 -0.0026 0.028125" mass="0"/>
+                                <geom name="a2g_left_pad2" class="a2g_pad_box2" pos="0 -0.0026 0.009375" mass="0"/>
+                                <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_pad"/>
+                                <body name="a2g_left_silicone_pad">
+                                  <geom class="a2g_visual" group="3" rgba="0.5 0.5 0.5 0" mesh="a2g_silicone_pad"/>
+                                  <geom name="stk_a2g_left_silicone_pad" size="0.012 0.006 0.022" pos="0 -0.004 0.02" type="box" contype="0" conaffinity="0" group="2" rgba="0.85 0.5 0.25 1"/>
+                                </body>
+                              </body>
+                            </body>
+                          </body>
+                        </body>
+                      </body>
+                    </body>
+                  </body>
+                </body>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <body name="shelf_L">
+      <geom name="shelf_L_back" size="0.27 0.008 0.24" pos="-1.2 -0.92 1.14" type="box" rgba="0.18 0.33 0.51 1"/>
+      <geom name="shelf_L_h0" size="0.27 0.06 0.008" pos="-1.2 -0.86 0.9" type="box" rgba="0.3 0.55 0.85 1"/>
+      <geom name="shelf_L_h1" size="0.27 0.06 0.008" pos="-1.2 -0.86 1.06" type="box" rgba="0.3 0.55 0.85 1"/>
+      <geom name="shelf_L_h2" size="0.27 0.06 0.008" pos="-1.2 -0.86 1.22" type="box" rgba="0.3 0.55 0.85 1"/>
+      <geom name="shelf_L_h3" size="0.27 0.06 0.008" pos="-1.2 -0.86 1.38" type="box" rgba="0.3 0.55 0.85 1"/>
+      <geom name="shelf_L_v0" size="0.008 0.06 0.24" pos="-1.47 -0.86 1.14" type="box" rgba="0.3 0.55 0.85 1"/>
+      <geom name="shelf_L_v1" size="0.008 0.06 0.24" pos="-1.29 -0.86 1.14" type="box" rgba="0.3 0.55 0.85 1"/>
+      <geom name="shelf_L_v2" size="0.008 0.06 0.24" pos="-1.11 -0.86 1.14" type="box" rgba="0.3 0.55 0.85 1"/>
+      <geom name="shelf_L_v3" size="0.008 0.06 0.24" pos="-0.93 -0.86 1.14" type="box" rgba="0.3 0.55 0.85 1"/>
+      <geom name="shelf_L_post0" size="0.02 0.02 0.25" pos="-1.45 -0.9 0.65" type="box" rgba="0.18 0.33 0.51 1"/>
+      <geom name="shelf_L_post1" size="0.02 0.02 0.25" pos="-0.95 -0.9 0.65" type="box" rgba="0.18 0.33 0.51 1"/>
+    </body>
+    <body name="shelf_R">
+      <geom name="shelf_R_back" size="0.27 0.008 0.24" pos="1.2 -1 1.14" type="box" rgba="0.51 0.3 0.15 1"/>
+      <geom name="shelf_R_h0" size="0.27 0.06 0.008" pos="1.2 -0.94 0.9" type="box" rgba="0.85 0.5 0.25 1"/>
+      <geom name="shelf_R_h1" size="0.27 0.06 0.008" pos="1.2 -0.94 1.06" type="box" rgba="0.85 0.5 0.25 1"/>
+      <geom name="shelf_R_h2" size="0.27 0.06 0.008" pos="1.2 -0.94 1.22" type="box" rgba="0.85 0.5 0.25 1"/>
+      <geom name="shelf_R_h3" size="0.27 0.06 0.008" pos="1.2 -0.94 1.38" type="box" rgba="0.85 0.5 0.25 1"/>
+      <geom name="shelf_R_v0" size="0.008 0.06 0.24" pos="0.93 -0.94 1.14" type="box" rgba="0.85 0.5 0.25 1"/>
+      <geom name="shelf_R_v1" size="0.008 0.06 0.24" pos="1.11 -0.94 1.14" type="box" rgba="0.85 0.5 0.25 1"/>
+      <geom name="shelf_R_v2" size="0.008 0.06 0.24" pos="1.29 -0.94 1.14" type="box" rgba="0.85 0.5 0.25 1"/>
+      <geom name="shelf_R_v3" size="0.008 0.06 0.24" pos="1.47 -0.94 1.14" type="box" rgba="0.85 0.5 0.25 1"/>
+      <geom name="shelf_R_post0" size="0.02 0.02 0.25" pos="0.95 -0.98 0.65" type="box" rgba="0.51 0.3 0.15 1"/>
+      <geom name="shelf_R_post1" size="0.02 0.02 0.25" pos="1.45 -0.98 0.65" type="box" rgba="0.51 0.3 0.15 1"/>
+    </body>
+    <body name="box1" pos="-1.45 0.1 0.95">
+      <joint type="free"/>
+      <geom name="box1_floor" size="0.06 0.05 0.006" pos="0 0 -0.044" type="box" mass="0.06" rgba="0.82 0.66 0.28 1"/>
+      <geom name="box1_wpy" size="0.06 0.006 0.05" pos="0 0.044 0" type="box" mass="0.03" rgba="0.82 0.66 0.28 1"/>
+      <geom name="box1_wmy" size="0.06 0.006 0.05" pos="0 -0.044 0" type="box" mass="0.03" rgba="0.82 0.66 0.28 1"/>
+      <geom name="box1_wpx" size="0.006 0.044 0.05" pos="0.054 0 0" type="box" mass="0.03" rgba="0.82 0.66 0.28 1"/>
+      <geom name="box1_wmx" size="0.006 0.044 0.05" pos="-0.054 0 0" type="box" mass="0.03" rgba="0.82 0.66 0.28 1"/>
+    </body>
+    <body name="sheet1" pos="-1.1 0.1 0.91">
+      <joint type="free"/>
+      <geom size="0.046 0.044 0.01" type="box" mass="0.08" rgba="0.4 0.75 0.45 1"/>
+    </body>
+    <body name="box2" pos="0.95 0.1 0.95">
+      <joint type="free"/>
+      <geom name="box2_floor" size="0.06 0.05 0.006" pos="0 0 -0.044" type="box" mass="0.06" rgba="0.82 0.66 0.28 1"/>
+      <geom name="box2_wpy" size="0.06 0.006 0.05" pos="0 0.044 0" type="box" mass="0.03" rgba="0.82 0.66 0.28 1"/>
+      <geom name="box2_wmy" size="0.06 0.006 0.05" pos="0 -0.044 0" type="box" mass="0.03" rgba="0.82 0.66 0.28 1"/>
+      <geom name="box2_wpx" size="0.006 0.044 0.05" pos="0.054 0 0" type="box" mass="0.03" rgba="0.82 0.66 0.28 1"/>
+      <geom name="box2_wmx" size="0.006 0.044 0.05" pos="-0.054 0 0" type="box" mass="0.03" rgba="0.82 0.66 0.28 1"/>
+    </body>
+    <body name="tube1" pos="1.1 0.1 0.935">
+      <joint type="free"/>
+      <geom size="0.035 0.035" type="cylinder" mass="0.09" rgba="0.7 0.35 0.55 1"/>
+    </body>
+  </worldbody>
+
+  <contact>
+    <exclude body1="a1_link0" body2="a1_link1"/>
+    <exclude body1="a2_link0" body2="a2_link1"/>
+    <exclude body1="a2g_base" body2="a2g_right_driver"/>
+    <exclude body1="a2g_base" body2="a2g_right_spring_link"/>
+    <exclude body1="a2g_base" body2="a2g_left_driver"/>
+    <exclude body1="a2g_base" body2="a2g_left_spring_link"/>
+    <exclude body1="a2g_right_coupler" body2="a2g_right_follower"/>
+    <exclude body1="a2g_left_coupler" body2="a2g_left_follower"/>
+  </contact>
+
+  <equality>
+    <connect body1="a2g_right_follower" body2="a2g_right_coupler" anchor="0 0 0" solref="0.005" solimp="0.95 0.99"/>
+    <connect body1="a2g_left_follower" body2="a2g_left_coupler" anchor="0 0 0" solref="0.005" solimp="0.95 0.99"/>
+    <joint joint1="a2g_right_driver_joint" joint2="a2g_left_driver_joint" polycoef="0 1 0 0 0" solref="0.005" solimp="0.95 0.99"/>
+    <weld name="grasp_a1_suction_sheet1" body1="a1_suction" body2="sheet1" anchor="0 1 0" relpose="0 0 0 0 0 0 0" torquescale="1" active="false"/>
+    <weld name="grasp_a1_suction_box1" body1="a1_suction" body2="box1" anchor="0 1 0" relpose="0 0 0 0 0 0 0" torquescale="1" active="false"/>
+    <weld name="grasp_a2g_base_tube1" body1="a2g_base" body2="tube1" anchor="0 1 0" relpose="0 0 0 0 0 0 0" torquescale="1" active="false"/>
+    <weld name="grasp_a2g_base_box1" body1="a2g_base" body2="box1" anchor="0 1 0" relpose="0 0 0 0 0 0 0" torquescale="1" active="false"/>
+  </equality>
+
+  <tendon>
+    <fixed name="a2g_split">
+      <joint joint="a2g_right_driver_joint" coef="0.5"/>
+      <joint joint="a2g_left_driver_joint" coef="0.5"/>
+    </fixed>
+  </tendon>
+
+  <actuator>
+    <general name="a1_actuator1" class="a1_panda" joint="a1_joint1" gainprm="4500" biasprm="0 -4500 -450"/>
+    <general name="a1_actuator2" class="a1_panda" joint="a1_joint2" ctrlrange="-1.7628 1.7628" gainprm="4500" biasprm="0 -4500 -450"/>
+    <general name="a1_actuator3" class="a1_panda" joint="a1_joint3" gainprm="3500" biasprm="0 -3500 -350"/>
+    <general name="a1_actuator4" class="a1_panda" joint="a1_joint4" ctrlrange="-3.0718 -0.0698" gainprm="3500" biasprm="0 -3500 -350"/>
+    <general name="a1_actuator5" class="a1_panda" joint="a1_joint5" forcerange="-12 12" gainprm="2000" biasprm="0 -2000 -200"/>
+    <general name="a1_actuator6" class="a1_panda" joint="a1_joint6" ctrlrange="-0.0175 3.7525" forcerange="-12 12" gainprm="2000" biasprm="0 -2000 -200"/>
+    <general name="a1_actuator7" class="a1_panda" joint="a1_joint7" forcerange="-12 12" gainprm="2000" biasprm="0 -2000 -200"/>
+    <general name="a2_actuator1" class="a2_panda" joint="a2_joint1" gainprm="4500" biasprm="0 -4500 -450"/>
+    <general name="a2_actuator2" class="a2_panda" joint="a2_joint2" ctrlrange="-1.7628 1.7628" gainprm="4500" biasprm="0 -4500 -450"/>
+    <general name="a2_actuator3" class="a2_panda" joint="a2_joint3" gainprm="3500" biasprm="0 -3500 -350"/>
+    <general name="a2_actuator4" class="a2_panda" joint="a2_joint4" ctrlrange="-3.0718 -0.0698" gainprm="3500" biasprm="0 -3500 -350"/>
+    <general name="a2_actuator5" class="a2_panda" joint="a2_joint5" forcerange="-12 12" gainprm="2000" biasprm="0 -2000 -200"/>
+    <general name="a2_actuator6" class="a2_panda" joint="a2_joint6" ctrlrange="-0.0175 3.7525" forcerange="-12 12" gainprm="2000" biasprm="0 -2000 -200"/>
+    <general name="a2_actuator7" class="a2_panda" joint="a2_joint7" forcerange="-12 12" gainprm="2000" biasprm="0 -2000 -200"/>
+    <general name="a2g_fingers_actuator" class="a2g_2f85" tendon="a2g_split" ctrlrange="0 255" forcerange="-5 5" gainprm="0.313725" biasprm="0 -100 -10"/>
+  </actuator>
+
+  <keyframe>
+    <key name="a1_home" qpos="0 0 0 -1.57079 0 1.57079 -0.7853 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1.45 0.1 0.95 1 0 0 0 -1.1 0.1 0.91 1 0 0 0 0.95 0.1 0.95 1 0 0 0 1.1 0.1 0.935 1 0 0 0" ctrl="0 0 0 -1.57079 0 1.57079 -0.7853 0 0 0 0 0 0 0 0"/>
+    <key name="a2_home" qpos="0 0 0 0 0 0 0 0 0 0 -1.57079 0 1.57079 -0.7853 0 0 0 0 0 0 0 0 -1.45 0.1 0.95 1 0 0 0 -1.1 0.1 0.91 1 0 0 0 0.95 0.1 0.95 1 0 0 0 1.1 0.1 0.935 1 0 0 0" ctrl="0 0 0 0 0 0 0 0 0 0 -1.57079 0 1.57079 -0.7853 0"/>
+    <key name="home" qpos="0 0 0 -1.57079 0 1.57079 -0.7853 0 0 0 -1.57079 0 1.57079 -0.7853 0 0 0 0 0 0 0 0 -1.45 0.1 0.95 1 0 0 0 -1.1 0.1 0.91 1 0 0 0 0.95 0.1 0.95 1 0 0 0 1.1 0.1 0.935 1 0 0 0" ctrl="0 0 0 -1.57079 0 1.57079 -0.7853 0 0 0 -1.57079 0 1.57079 -0.7853 0"/>
+  </keyframe>
+</mujoco>
