@@ -33,6 +33,22 @@ Prereqs verified at open: tag `phase-49-confirmed` present; `main` HEAD = `cc8a7
   evidence, a failure is the known best-effort-sweep gap, and the full
   metaedge/metahyperedge/XRef sweep audit is **routed to WSD installation**
   (L0-25 closure marker reflects the split).
+- **M2-F1 (gate finding, 2026-06-09): hyperedge `type_name` not persisted —
+  REAL pre-existing L0 fidelity bug, found by the M2 live round-trip on its
+  first run.** `build_unwind_create_hyperedges` SET only `graph_id`/`label`/
+  props (no `type_name`); the repository row omitted it; the loader already
+  reads `h.type_name` and falls back to `"UNSPECIFIED"` — so every live
+  round-trip retypes in-graph hyperedges, and a schema-aware load drops them
+  as unknown-type. The sibling **metahyperedge** builder had the identical bug
+  hotfixed at Phase 08 (B-08-T3); the graph-level builder was missed. Fix
+  (2 lines, mirrors B-08-T3): `type_name` added to the builder SET + the
+  repository row. Loader unchanged (already read it; `type_name` already in
+  `_CORE_KEYS`). InMemoryClient records-only → no unit-test churn; phase_07
+  builder tests assert substrings only. Both M2 live failures
+  (`test_live_save_load_round_trip`, `test_live_scoped_delete_spares_coresidents`)
+  trace to this one bug. The orphan-scan probe **xpassed** on the same run —
+  the Phase-44 delete sweep left zero orphans on this shape (evidence for the
+  WSD audit, not yet contract).
 - **Environment note:** the Cowork sandbox is py3.10 (repo requires ≥3.12) with
   no FalkorDB sidecar — all M1/M2 verification here is static (AST + grep);
   the isolated subsets + cumulative gate + live integration run on the gate
@@ -70,7 +86,8 @@ Prereqs verified at open: tag `phase-49-confirmed` present; `main` HEAD = `cc8a7
 | `a3f6e18` | M3 — ADR-0182 + sentinel test |
 | `29164f8` | M4 — L3-59 routing record |
 | `d2ca23b` | M5 — ANALYSIS delta addendum + banners |
-| (closure) | L0_FUTURE_WORK markers + this log + orphaned prompt files |
+| `969d981` | Closure — L0_FUTURE_WORK markers + this log + orphaned prompt files |
+| (M2-F1) | Hyperedge `type_name` persistence fix (builders.py + graph_repository.py) — surfaced by the M2 live gate run |
 
 ## Gate (to run on the gate host — sandbox is py3.10, no sidecar; repo requires ≥3.12)
 

@@ -109,6 +109,7 @@ class GraphRepository:
             rows = [
                 {
                     "id": h.edge_id,
+                    "type_name": h.type_name,
                     "label": h.label,
                     "props": _filter_user_props(h.properties),
                     "member_ids": [n.node_id for n in h.nodes],

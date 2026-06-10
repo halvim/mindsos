@@ -194,15 +194,20 @@ def build_unwind_create_hyperedges(
 ) -> Tuple[str, Dict[str, Any]]:
     """Batched hyperedge create.
 
-    Each row: ``id``, ``label``, ``props``, ``member_ids`` (Sequence[str]),
-    ``_version``.
+    Each row: ``id``, ``type_name`` (MAINTENANCE M2-F1 — mirrors the
+    Phase 08 B-08-T3 metahyperedge hotfix; without it the loader
+    rehydrates ``h.type_name`` as ``UNSPECIFIED`` and schema-aware
+    loads drop the hyperedge as unknown-type), ``label``, ``props``,
+    ``member_ids`` (Sequence[str]), ``_version``.
     """
     query = (
         "MATCH (g:Graph {id: $gid}) "
         "UNWIND $rows AS row "
         "MERGE (h:HyperEdge {id: row.id}) "
         "ON CREATE SET h._version = coalesce(row._version, 1) "
-        "SET h.graph_id = $gid, h.label = row.label, h += row.props "
+        "SET h.graph_id = $gid, "
+        "    h.type_name = row.type_name, "
+        "    h.label = row.label, h += row.props "
         "MERGE (h)-[:IN_GRAPH]->(g) "
         "WITH h, row "
         "UNWIND row.member_ids AS nid "
