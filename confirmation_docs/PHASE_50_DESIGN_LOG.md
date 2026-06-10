@@ -122,6 +122,18 @@ survives; R2-1's visibility claim doesn't. Reflected in ADR-0183 §8.
   server-importing corpus cannot be smoked in-sandbox; smokes ran under
   a test-runner-side `datetime.UTC` shim; the docker gate (py3.12) is
   canonical. Recurs every phase — noted for future ship chats.
+- **I10 (post-confirm manual smoke, 2026-06-10).** Installer entry
+  points must be importable in the **consumer's process** — the
+  `mindsos` console script does not put `/app` on `sys.path`, so the
+  reference bundle's `tests.fixtures...` entry point needs
+  `PYTHONPATH=/app` when driven via the in-container CLI (real bundles
+  reference release-shipped `mindsos_*` modules, always importable —
+  R2-3 unaffected). The failed first attempt also confirmed atomicity:
+  the exception aborted before `--persist`, leaving the live Global
+  untouched. The full live CLI lifecycle then ran green across five
+  separate processes (install/persist seq-1 → fresh-process list →
+  activate → uninstall/persist seq-2 → fresh-process list) — the
+  durable ADR-0182 provenance round-trip, manually confirmed.
 
 ## §5 — Scope discipline
 
