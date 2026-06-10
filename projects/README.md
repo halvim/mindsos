@@ -42,13 +42,13 @@ Both processes are designed in future chats, not in the 2026-05-28 intake chat.
 
 Based on dependency analysis (see each FUTURE_CHAT_PROMPT.md):
 
-1. **L4/L5 plan chat (already seeded)** — `confirmation_docs/L4_L5_PLAN_NEXT_CHAT_PROMPT.md`. Resolves the 7 L4 critique pushes that WSD has explicit ACCEPT picks for.
-2. **Skill-acquisition process chat (shared umbrella)** — owned by WSD initially. Designs the per-layer install lifecycle that WSD + FOL will use.
-3. **WSD installation chat** — applies skill acquisition to WSD. Inherits L4/L5 plan resolutions.
+1. ~~**L4/L5 plan chat**~~ — **DONE** (Chats A/B 2026-05; shipped Phases 46-48).
+2. ~~**Skill-acquisition process chat**~~ — **CLOSED 2026-06-09** (`confirmation_docs/SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md` + `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`); **install lifecycle SHIPPED at Phase 50 (2026-06-10)** — driver at `mindsos_server/skills/`, tag `phase-50-confirmed`.
+3. **WSD installation chat** — **NEXT.** Inherits L4/L5 plan resolutions + the Phase-50 install driver (`SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5` + `PHASE_50_DESIGN_LOG.md` bundle-author rules).
 4. **FOL installation chat** — applies skill acquisition to FOL. Inherits WSD resolutions on shared propositions (sense-correlations, learned-parameters, Coherence Loop fate, 7 L4 pushes).
-5. **Knowledge-acquisition process chat + DWF installation** — independent of skill acquisition (DWF is L2-only). Can run in parallel with chats 2-4.
+5. **Knowledge-acquisition process chat + DWF installation** — independent of skill acquisition (DWF is L2-only). Can run in parallel with chats 3-4.
 
-The L4/L5 plan chat is the most upstream blocker. Until its 7 critique pushes resolve, the skill-acquisition + WSD + FOL chats are downstream.
+Original upstream-blocker note retained for forensics: the L4/L5 plan chat resolved all 7 critique pushes at Chat A (2026-05-28).
 
 ## Cross-project shared blockers
 
