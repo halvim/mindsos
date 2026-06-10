@@ -41,9 +41,10 @@ def test_metagraph_view_identity_accessors() -> None:
 
 
 def test_metagraph_view_roles_returns_distinct_roles() -> None:
-    """``roles()`` reflects the bootstrapped 9 Global named roles (Phase 43 §am-5)."""
+    """``roles()`` reflects the bootstrapped 10 Global named roles
+    (Phase 43 §am-5 + Phase 50 §am-6)."""
     view = _bootstrapped_view()
-    assert len(view.roles()) == 9
+    assert len(view.roles()) == 10
     assert ROLE_ONTOLOGY in view.roles()
     assert ROLE_LEXICON in view.roles()
 

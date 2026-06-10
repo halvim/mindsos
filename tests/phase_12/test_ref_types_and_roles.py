@@ -86,9 +86,11 @@ def test_seed_roles_matches_v3() -> None:
 
 
 def test_upper_layer_roles_matches_adr_0045() -> None:
-    """Phase 43 (ADR-0150 §am-5) added 4 upper-layer role-graphs."""
+    """Phase 43 (ADR-0150 §am-5) added 4 upper-layer role-graphs;
+    Phase 50 (ADR-0150 §am-6) added installed-skills."""
     from mindsos_knowledge import (
         ROLE_CAPACITY_GAPS,
+        ROLE_INSTALLED_SKILLS,
         ROLE_LEARNED_PARAMETERS,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
@@ -105,6 +107,8 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
         ROLE_PENDING_PROMOTIONS,
         ROLE_CAPACITY_GAPS,
         ROLE_LEARNED_PARAMETERS,
+        # Phase 50 (ADR-0150 §am-6) addition.
+        ROLE_INSTALLED_SKILLS,
     })
 
 

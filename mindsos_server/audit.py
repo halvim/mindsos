@@ -121,6 +121,33 @@ EVT_CROSS_USER_READ_INSTALL = "EVT_CROSS_USER_READ_INSTALL"
 #: registered ahead of the first cross-user episodic-memory read flow.
 EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY = "EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY"
 
+# Skill-install lifecycle events (Phase 50 — ADR-0183; Phase 44 S8
+# additive pattern). Provenance split per design log S6 (L0-23
+# admin-verdict precedent): the audit row carries who/when; the
+# ``installed-skills`` record carries what/state.
+
+#: Skill bundle installed via the ADR-0183 install driver (Phase 50
+#: first-fire).
+#:
+#: ``extra_json`` shape:
+#: ``{ bundle_name: str, bundle_version: str, bundle_digest: str }``
+EVT_SKILL_INSTALLED = "EVT_SKILL_INSTALLED"
+
+#: Skill bundle de-installed via the ADR-0183 de-install driver
+#: (Phase 50 first-fire).
+#:
+#: ``extra_json`` shape:
+#: ``{ bundle_name: str, bundle_version: str, bundle_digest: str }``
+EVT_SKILL_UNINSTALLED = "EVT_SKILL_UNINSTALLED"
+
+#: Skill bundle install rejected at preflight, or refused at
+#: de-install reverse-dependency check (Phase 50 first-fire).
+#:
+#: ``extra_json`` shape:
+#: ``{ bundle_name: str, bundle_version: str, bundle_digest: str | None,
+#:     reasons: list[str] }``
+EVT_SKILL_INSTALL_REJECTED = "EVT_SKILL_INSTALL_REJECTED"
+
 # Promotion + release events (Phase 24 — ADR-0118 + ADR-0114 + ADR-0115).
 #
 # Phase 24 design log PB-11(a) shrank PIVOT §7.6's 8-event slate to 4
@@ -212,6 +239,14 @@ ALL_AUDIT_EVENTS: tuple[str, ...] = (
     EVT_RELEASE_SHIPPED,
     EVT_RELEASE_FAILED,
     EVT_AUDIT_QUERY,
+    # Phase 44 (L2-39) — declared at Phase 44 but omitted from this
+    # tuple at ship time; appended at Phase 50 (latent-drift fix per
+    # the "new events append" contract above).
+    EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY,
+    # Phase 50 (ADR-0183) — skill-install lifecycle.
+    EVT_SKILL_INSTALLED,
+    EVT_SKILL_UNINSTALLED,
+    EVT_SKILL_INSTALL_REJECTED,
 )
 
 

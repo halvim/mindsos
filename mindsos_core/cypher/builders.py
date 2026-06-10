@@ -146,8 +146,17 @@ def build_unwind_create_nodes(
 ) -> Tuple[str, Dict[str, Any]]:
     """Batched node create.
 
-    Each row must contain: ``id``, ``type_name``, ``value`` (any
-    primitive), ``props`` (dict), ``_version`` (int, default 1).
+    Each row must contain: ``id``, ``type_name``, ``value`` (JSON
+    primitive, or NULL when the value is structured), ``_value_json``
+    (canonical JSON string for dict/list values per ADR-0182 rule 2,
+    else NULL), ``props`` (dict), ``_version`` (int, default 1). The
+    ``(value, _value_json)`` pair is assembled by
+    :func:`mindsos_core.persistence.value_codec.encode_node_value`.
+    Cypher ``SET n.x = NULL`` removes the property, so a re-persist
+    that flips a value between primitive and structured cannot leave a
+    stale column behind; rows from legacy callers that omit the
+    ``_value_json`` key read as NULL in the UNWIND map (rule 1
+    backward-compat).
     """
     query = (
         "MATCH (g:Graph {id: $gid}) "
@@ -156,6 +165,7 @@ def build_unwind_create_nodes(
         "ON CREATE SET n._version = coalesce(row._version, 1) "
         "SET n.type_name = row.type_name, "
         "    n.value = row.value, "
+        "    n._value_json = row._value_json, "
         "    n.graph_id = $gid, "
         "    n += row.props "
         "MERGE (n)-[:IN_GRAPH]->(g) "

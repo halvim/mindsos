@@ -16,12 +16,14 @@ from mindsos_server.capabilities import (
     ALL_CAPABILITIES,
     CAN_APPROVE_RELEASE,
     CAN_HARD_DELETE_ARCHIVED,
+    CAN_INSTALL_SKILL,
     CAN_KILL_SESSION,
     CAN_MANAGE_USERS,
     CAN_PROMOTE,
     CAN_PROPOSE_MUTATION,
     CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
     CAN_READ_OTHER_LOCALS,
+    CAN_UNINSTALL_SKILL,
     CAN_VIEW_AUDIT_LOG,
     CAN_WRITE_GLOBAL,
     USER_CAPS,
@@ -35,7 +37,9 @@ class TestRosterPerADR0002:
         # Phase 24 ADR-0002 §am2 added CAN_PROPOSE_MUTATION +
         # CAN_APPROVE_RELEASE; roster 7 → 9. Phase 44 L2-39 added
         # CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY; roster 9 → 10.
-        assert len(ALL_CAPABILITIES) == 10
+        # Phase 50 ADR-0183 added CAN_INSTALL_SKILL +
+        # CAN_UNINSTALL_SKILL; roster 10 → 12.
+        assert len(ALL_CAPABILITIES) == 12
 
     def test_all_capabilities_listed(self) -> None:
         assert set(ALL_CAPABILITIES) == {
@@ -49,6 +53,8 @@ class TestRosterPerADR0002:
             CAN_PROPOSE_MUTATION,    # Phase 24 +ADR-0002 §am2
             CAN_APPROVE_RELEASE,     # Phase 24 +ADR-0002 §am2
             CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,  # Phase 44 +L2-39
+            CAN_INSTALL_SKILL,       # Phase 50 +ADR-0183
+            CAN_UNINSTALL_SKILL,     # Phase 50 +ADR-0183
         }
 
 
@@ -70,7 +76,7 @@ class TestUpperCasingPerPB4:
 
 
 class TestBundlesPerPB12:
-    """PB-12 — USER_CAPS strictly empty; ADMIN_CAPS = all (9 at Phase 24)."""
+    """PB-12 — USER_CAPS strictly empty; ADMIN_CAPS = all (12 at Phase 50)."""
 
     def test_user_caps_empty(self) -> None:
         assert USER_CAPS == frozenset()

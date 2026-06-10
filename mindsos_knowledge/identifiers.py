@@ -75,6 +75,10 @@ ROLE_PENDING_PROMOTIONS = "pending-promotions"
 ROLE_CAPACITY_GAPS = "capacity-gaps"
 ROLE_LEARNED_PARAMETERS = "learned-parameters"
 
+# Phase 50 (SA-1) — skill-install state per ADR-0150 §amendment-6 +
+# ADR-0183 (closed set 12 → 13; Global-only, append-only action records).
+ROLE_INSTALLED_SKILLS = "installed-skills"
+
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
@@ -87,6 +91,8 @@ UPPER_LAYER_ROLES = frozenset({
     ROLE_PENDING_PROMOTIONS,
     ROLE_CAPACITY_GAPS,
     ROLE_LEARNED_PARAMETERS,
+    # Phase 50 addition per ADR-0150 §am-6.
+    ROLE_INSTALLED_SKILLS,
 })
 ALL_ROLES = SEED_ROLES | UPPER_LAYER_ROLES
 
@@ -333,6 +339,25 @@ def learned_parameter_iri(version: str, parameter_id: str) -> str:
     return f"learned-parameters-{v}:parameter:{pid}"
 
 
+def skill_install_record_iri(
+    version: str, bundle_name: str, record_id: str
+) -> str:
+    """Skill-install action record (Global-only; ADR-0183 + ADR-0150 §am-6):
+    ``installed-skills-<v>:record:<bundle_name>:<record_id>``.
+
+    One append-only record per install / uninstall / failure action
+    (design log R2-2); current state = latest record per
+    ``bundle_name``. ``record_id`` is writer-minted (the install driver
+    uses ``<bundle_version>:<seq>``) and, like ``capacity_snapshot_iri``
+    (PB-8 precedent), may carry colons — the parser leaves the body
+    opaque after the ``record:`` kind and full-string round-trip holds.
+    """
+    v = _ensure_version(version)
+    bn = _normalise_fragment(bundle_name)
+    rid = _normalise_fragment(record_id)
+    return f"installed-skills-{v}:record:{bn}:{rid}"
+
+
 # ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
 # Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
@@ -411,6 +436,19 @@ def _mint_learned_parameter(version: str, /, **content: object) -> str:
     )
 
 
+def _mint_skill_install_record(version: str, /, **content: object) -> str:
+    """Adapter: ``skill_install_record_iri`` ← ``mint_iri`` kwargs (Phase 50).
+
+    Requires ``bundle_name`` + ``record_id`` keys. ``KeyError`` on
+    missing per ADR-0146 §Decision (programmer error).
+    """
+    return skill_install_record_iri(
+        version,
+        bundle_name=str(content["bundle_name"]),
+        record_id=str(content["record_id"]),
+    )
+
+
 #: Per-(role, NodeType_name) IRI-builder dispatch table for
 #: :meth:`KLWriteHandle.mint_iri`. Phase 39 ships 3 entries per
 #: ADR-0146 §amendment-3 (Episode + Memory composite under
@@ -428,6 +466,8 @@ _IRI_BUILDERS: dict[tuple[str, str], object] = {
     (ROLE_PENDING_PROMOTIONS, "PendingPromotion"): _mint_pending_promotion,
     (ROLE_CAPACITY_GAPS, "CapacityGap"): _mint_capacity_gap,
     (ROLE_LEARNED_PARAMETERS, "LearnedParameter"): _mint_learned_parameter,
+    # Phase 50 addition per ADR-0150 §am-6.
+    (ROLE_INSTALLED_SKILLS, "SkillInstallRecord"): _mint_skill_install_record,
 }
 
 
@@ -469,6 +509,8 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("pending-promotions-", ROLE_PENDING_PROMOTIONS),
     ("capacity-gaps-", ROLE_CAPACITY_GAPS),
     ("learned-parameters-", ROLE_LEARNED_PARAMETERS),
+    # Phase 50 addition per ADR-0150 §am-6.
+    ("installed-skills-", ROLE_INSTALLED_SKILLS),
 )
 
 # Per-role kind-extraction whitelist. The parser strips the kind
@@ -488,6 +530,8 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_PENDING_PROMOTIONS: frozenset({"promotion"}),
     ROLE_CAPACITY_GAPS: frozenset({"gap"}),
     ROLE_LEARNED_PARAMETERS: frozenset({"parameter"}),
+    # Phase 50 addition per ADR-0150 §am-6.
+    ROLE_INSTALLED_SKILLS: frozenset({"record"}),
 }
 
 

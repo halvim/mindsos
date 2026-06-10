@@ -40,6 +40,7 @@ from ..cypher.builders import (
 from ..exceptions import IntegrityCheckError, OptimisticConcurrencyConflict
 from ..models.graph import Graph
 from .client import Client
+from .value_codec import encode_node_value
 
 
 class GraphRepository:
@@ -67,18 +68,21 @@ class GraphRepository:
         )
         self._client.run_query(q, p)
 
-        # 2. nodes (UNWIND batched).
+        # 2. nodes (UNWIND batched). Structured values split into the
+        # (value, _value_json) pair per ADR-0182 (Phase 50); primitives
+        # pass through with a NULL _value_json (rule 1).
         if graph.nodes:
-            rows: List[Dict[str, Any]] = [
-                {
+            rows: List[Dict[str, Any]] = []
+            for n in graph.nodes.values():
+                value, value_json = encode_node_value(n.value)
+                rows.append({
                     "id": n.node_id,
                     "type_name": n.type_name,
-                    "value": n.value,
+                    "value": value,
+                    "_value_json": value_json,
                     "props": _filter_user_props(n.properties),
                     "_version": getattr(n, "_version", 1),
-                }
-                for n in graph.nodes.values()
-            ]
+                })
             q, p = build_unwind_create_nodes(graph.graph_id, rows)
             self._client.run_query(q, p)
             self._verify_unique_ids(
@@ -266,7 +270,7 @@ def _filter_user_props(properties: Mapping[str, Any]) -> Dict[str, Any]:
     runtime (Phase 04 ``validate_user_properties`` blocks them), but
     the persist path should not trust the caller blindly.
     """
-    reserved = {"id", "graph_id", "metagraph_id", "type_name", "_version", "_props_json"}
+    reserved = {"id", "graph_id", "metagraph_id", "type_name", "_version", "_props_json", "_value_json"}
     return {k: v for k, v in properties.items() if k not in reserved}
 
 

@@ -39,6 +39,7 @@ from ..identifiers import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_EPISODIC_MEMORIES,
+    ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
@@ -52,6 +53,7 @@ from .alignment import build_alignment_schema
 from .capacity_gaps import build_capacity_gaps_schema
 from .capacity_state import build_capacity_state_schema
 from .concepts import build_concepts_schema
+from .installed_skills import build_installed_skills_schema
 from .lexicon import build_lexicon_schema
 from .episodic_memories import build_episodic_memories_schema
 from .learned_parameters import build_learned_parameters_schema
@@ -82,6 +84,8 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     ROLE_PENDING_PROMOTIONS: build_pending_promotions_schema,
     ROLE_CAPACITY_GAPS: build_capacity_gaps_schema,
     ROLE_LEARNED_PARAMETERS: build_learned_parameters_schema,
+    # Phase 50 addition per ADR-0150 §am-6.
+    ROLE_INSTALLED_SKILLS: build_installed_skills_schema,
 }
 
 
@@ -134,6 +138,8 @@ __all__ = [
     "build_pending_promotions_schema",
     "build_capacity_gaps_schema",
     "build_learned_parameters_schema",
+    # Phase 50 builder (ADR-0150 §am-6).
+    "build_installed_skills_schema",
     # Dispatch surface.
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",

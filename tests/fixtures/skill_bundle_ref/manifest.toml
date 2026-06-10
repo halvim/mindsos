@@ -1,0 +1,44 @@
+[bundle]
+name = "ref-skill"
+version = "0.1.0"
+requires_mindsos_phase = 50
+requires_bundles = []
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "ref-skill-0.1.0:concept:shouting"
+value = "shouting"
+
+[l2.content.properties]
+description = "The reference-bundle demo concept of shouting."
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "ref-skill-0.1.0:concept:whisper"
+value = "whisper"
+
+[l2.content.properties]
+description = "A second demo concept."
+
+[[l2.content]]
+role = "task-patterns"
+tier = "global"
+node_type = "TaskPattern"
+iri = "ref-skill-0.1.0:pattern:shout-the-input"
+value = "shout-the-input"
+
+[l2.content.properties]
+description = "Demo task pattern referencing the ref_shout capacity."
+
+[l3]
+installers = ["tests.fixtures.skill_bundle_ref.installer:install_ref_skill"]
+capacities = ["capacity:perception:text.ref_shout"]
+datastates = ["datastate:text.ref_shouted"]
+allow_new_realm = []
+
+[l4.slots]
+demo_slot = "ref-skill-opaque-l4-fill"

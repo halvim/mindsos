@@ -82,6 +82,18 @@ CAN_APPROVE_RELEASE = "CAN_APPROVE_RELEASE"
 #: that reads cross-user episodic memory (default-deny; admin opt-in).
 CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY = "CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY"
 
+#: Run the skill-bundle install driver (ADR-0183, Phase 50). Install
+#: sessions additionally hold ``CAN_WRITE_GLOBAL`` — all graph writes
+#: travel through the ADR-0180 ``make_writeable`` gate; this capability
+#: gates the install *lifecycle* (preflight + installer entry points +
+#: record write), not a new write path.
+CAN_INSTALL_SKILL = "CAN_INSTALL_SKILL"
+
+#: Run the skill-bundle de-install driver (ADR-0183 §De-install, Phase
+#: 50): reverse-dependency refuse + deprecate bundle-tagged content +
+#: record flip. Same ``CAN_WRITE_GLOBAL`` co-requirement as install.
+CAN_UNINSTALL_SKILL = "CAN_UNINSTALL_SKILL"
+
 
 #: User default capability bundle — strictly empty in v1 per ADR-0002 +
 #: Phase 18 PB-12. Reserved for future per-user grants; Proposed-status
@@ -89,10 +101,11 @@ CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY = "CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY"
 #: before.
 USER_CAPS: frozenset[str] = frozenset()
 
-#: Admin default capability bundle — all ten per ADR-0002 §Decision +
+#: Admin default capability bundle — all twelve per ADR-0002 §Decision +
 #: §am2 (Phase 24 ship; +CAN_PROPOSE_MUTATION + CAN_APPROVE_RELEASE per
 #: PB-23(a)) + Phase 44 (+CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY per
-#: L2-39). ``CAN_READ_PENDING_GLOBAL`` deferred to first direct-read
+#: L2-39) + Phase 50 (+CAN_INSTALL_SKILL + CAN_UNINSTALL_SKILL per
+#: ADR-0183). ``CAN_READ_PENDING_GLOBAL`` deferred to first direct-read
 #: consumer phase per PB-23(a).
 ADMIN_CAPS: frozenset[str] = frozenset(
     {
@@ -106,6 +119,8 @@ ADMIN_CAPS: frozenset[str] = frozenset(
         CAN_PROPOSE_MUTATION,
         CAN_APPROVE_RELEASE,
         CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
+        CAN_INSTALL_SKILL,
+        CAN_UNINSTALL_SKILL,
     }
 )
 
@@ -125,4 +140,6 @@ ALL_CAPABILITIES: tuple[str, ...] = (
     CAN_PROPOSE_MUTATION,
     CAN_APPROVE_RELEASE,
     CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
+    CAN_INSTALL_SKILL,
+    CAN_UNINSTALL_SKILL,
 )

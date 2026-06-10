@@ -48,10 +48,10 @@ def test_bootstrap_creates_fresh_global() -> None:
     kl = KnowledgeLayer.bootstrap()
     g = kl.global_metagraph()
     assert g.name == "global_knowledge"
-    # Bootstrap minted 9 named Global role-graphs (Phase 43 §am-5: 6 base
-    # + 3 dual-scope additions); no alignment-pair graphs (Phase 15
-    # importers do those).
-    assert len(g.graphs) == 9
+    # Bootstrap minted 10 named Global role-graphs (Phase 43 §am-5: 6
+    # base + 3 dual-scope additions; Phase 50 §am-6: + installed-skills);
+    # no alignment-pair graphs (Phase 15 importers do those).
+    assert len(g.graphs) == 10
 
 
 def test_bootstrap_with_id_strategy_override() -> None:

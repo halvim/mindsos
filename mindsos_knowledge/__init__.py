@@ -106,7 +106,7 @@ Deferred to later phases:
 
 from __future__ import annotations
 
-__version__ = "0.0.0+phase49"
+__version__ = "0.0.0+phase50"
 
 from .bootstrap import (
     ensure_global_role_graph,
@@ -133,6 +133,7 @@ from .identifiers import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_EPISODIC_MEMORIES,
+    ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
@@ -165,6 +166,7 @@ from .identifiers import (
     pipeline_iri,
     pipeline_step_iri,
     problem_trace_iri,
+    skill_install_record_iri,
     staged_evidence_iri,
     subgoal_template_iri,
     task_pattern_iri,
@@ -180,6 +182,7 @@ from .schemas import (
     build_capacity_state_schema,
     build_concepts_schema,
     build_episodic_memories_schema,
+    build_installed_skills_schema,
     build_learned_parameters_schema,
     build_lexicon_schema,
     build_ontology_schema,
@@ -216,6 +219,8 @@ __all__ = [
     "ROLE_PENDING_PROMOTIONS",
     "ROLE_CAPACITY_GAPS",
     "ROLE_LEARNED_PARAMETERS",
+    # Phase 50 role-graph (ADR-0150 §am-6).
+    "ROLE_INSTALLED_SKILLS",
     "SEED_ROLES",
     "UPPER_LAYER_ROLES",
     "ALL_ROLES",
@@ -243,6 +248,8 @@ __all__ = [
     "pending_promotion_iri",
     "capacity_gap_iri",
     "learned_parameter_iri",
+    # Phase 50 IRI builder (ADR-0150 §am-6).
+    "skill_install_record_iri",
     # ── parser ─────────────────────────────────────────────────────
     "ParsedIri",
     "parse_iri",
@@ -267,6 +274,8 @@ __all__ = [
     "build_pending_promotions_schema",
     "build_capacity_gaps_schema",
     "build_learned_parameters_schema",
+    # Phase 50 builder (ADR-0150 §am-6).
+    "build_installed_skills_schema",
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",
     # ── L2-private vocabulary (Phase 43 — ADR-0153 §am-1 + ADR-0151) ─

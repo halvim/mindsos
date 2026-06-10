@@ -10,6 +10,8 @@ A **skill bundle** = versioned TOML manifest + data files; code arrives via norm
 
 ## §2 — Slots
 
+> **SA-1 SHIPPED 2026-06-10** (tag `phase-50-confirmed`; cumulative gate 3970/11/0 + 1 standing xpassed). Impl record: `PHASE_50_DESIGN_LOG.md` (G1 marker-only deprecation refinement to R2-1 + I1-I9 impl-time findings, incl. bundle-author rules I4/I5 binding on WSD). The §3 ledger gained the node-level deprecation-filtering row at this closure.
+
 | Slot | Phase | Scope | Pass criteria | Gate |
 |---|---|---|---|---|
 | **SA-1** | **Phase 50** (tag `phase-50-confirmed`; 10-surface bump 49→50 per R2-4) | ADR-0183 + ADR-0150 §am-6; **ADR-0182 implementation** (`build_unwind_create_nodes` structured-value branch + loader decode + reserved-key roster + replace `tests/maintenance/test_adr_0182_sentinel.py` with round-trip coverage); `installed-skills` schema + bootstrap importer (+`applies_after`); `CAN_INSTALL_SKILL`/`CAN_UNINSTALL_SKILL` + `EVT_SKILL_INSTALLED`/`EVT_SKILL_UNINSTALLED`/`EVT_SKILL_INSTALL_REJECTED` (Phase-44 S8 pattern); manifest parser + preflight + install driver + `apply_installed_skills` + de-install; trivial reference bundle (1 DataState + 1 CapacityContext-native `text.*` capacity in a test-fixture package + ~3 L2 content nodes) installed/de-installed/re-installed end-to-end. | **Narrow per R0-SA-2:** validates install / de-install / provenance / idempotency ONLY. Does NOT validate "installed skill runs" (v0 lifecycle dispatches no real capacity — Phase 49 PB-1a); no dispatch work. Cumulative pytest green on the Linux gate (HANDOFF §9 discipline: confirm gate-box HEAD + `ls tests/phase_50`). | Standard pair-execution + 6-step confirm-phase. |
@@ -27,6 +29,7 @@ One ship slot only. Everything else this chat touched is either closure doc-edit
 | Rich (non-opaque) L4 manifest slots | WSD installation forces the real shape | WSD_INSTALLATION_CHAT |
 | Dangling capacity-IRI references in old episodes after de-install | Observed in practice | v1.5 retention work |
 | Promotion-loop mechanism (writers/consumers of `parameter-staging`/`pending-promotions`) | WSD ALS ships | **WSD_INSTALLATION_CHAT** (contract: design log S10) |
+| Node-level `include_deprecated` read-filtering (de-installed content is visible-but-marked at v1 — Phase 50 G1: R2-1's node-deprecation citation was the edge filter; no node read path filters `deprecated_at`) | First consumer that must hide de-installed content | Future chat (L1/L2 read-surface amendment) |
 
 ## §4 — Routing amendments landed at this closure
 

@@ -538,6 +538,51 @@ These items were originally listed in §am-4's "Explicitly NOT added" section; t
 
 See `confirmation_docs/PHASE_43_R0_PICKS_SEED.md` for the Phase 43 R0 pick chain + cross-references to ADR-0151, ADR-0152, ADR-0153, ADR-0094 §am-1.
 
+### amendment-6 (Phase 50 ship — 2026-06-10) — `installed-skills` role-graph
+
+**Trigger:** SKILL_ACQUISITION_PROCESS_CHAT closure 2026-06-09 (design
+log S5, ratified R1 PB-3): skill-bundle install state needs a durable
+Global home; the closed role-set had none (probe §0.1-7). Authored at
+SA-1 (Phase 50) ship R0 per the design log §5 ADR reservation. Consumer
+requirement, schema builder, and mutation discipline cited per the
+§am-5 escape clause.
+
+**Amended behavior.**
+
+The §Decision closed role-set expands by 1 named entry. The
+post-§am-6 closed role-set is **13 named entries + alignment-prefix**.
+
+**New row added:**
+
+| Scope | Role | Schema builder |
+|---|---|---|
+| Global | `installed-skills` | `build_installed_skills_schema(strict)` |
+
+**Per-role-graph mutation discipline** per ADR-0153 §1: `append_only`
+(design log R2-2 — one `SkillInstallRecord` action record per
+install / uninstall / failure event; current state = latest record per
+`bundle_name`; no record is ever mutated). Same discipline row as
+`problem-trace`.
+
+**Storage tier.** `SkillInstallRecord.value` is a structured dict
+(manifest digest + artifact roster + installer outcomes) — the first
+production consumer of the ADR-0182 `_value_json` round-trip;
+`storage_mode = "inline"` per ADR-0151 (trivial v1 bundles; oversize
+fails loud at the ADR-0182 rule-4 persist boundary). Queryable fields
+(`bundle_name`, `bundle_version`, `status`, `action`, `recorded_at`)
+are lifted flat by the writer per ADR-0182 rule 5.
+
+**Consumer:** the ADR-0183 install driver (writer) +
+`apply_installed_skills` activation walk (reader). Concrete lifecycle
+semantics in ADR-0183.
+
+**Explicitly NOT added in this amendment:** the §am-5 exclusion list
+(`world-axioms`, `training-runs`, `fol-rules`, `fol-ledger`) stands
+unchanged — WSD/FOL installation chats own their own future amendment
+rows; bundles cannot expand the role-set at install time (design log
+S2/S4 — role-set expansion is a code-release + ADR-amendment event,
+never bundle content).
+
 ## Source
 
 Phase 13 design log §1 PB-19 (Flavor A vs Flavor B closure question);

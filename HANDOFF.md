@@ -690,6 +690,24 @@ Integration C is the **closing integration phase** of the post-Phase-38 plan. **
 
 **Full record:** `confirmation_docs/PHASE_49_DESIGN_LOG.md` + `PHASE_49_CONFIRMED.md`.
 
+### 3.1.23 Phase 50 ship closure (2026-06-10) — SA-1 skill-install lifecycle SHIPPED (first downstream phase)
+
+First slot (and only slot) of `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`; design settled 2026-06-09, this ship chat ran R0 impl-locks only. Two PRs on `phase-50` off `main` `5177e34`; cumulative gate **3970 passed / 11 skipped / 0 failed / 1 xpassed** (standing L0-25 orphan xfail). Tag `phase-50-confirmed`.
+
+**Shipped (by surface):**
+- **ADR-0182 implementation** (L0): `mindsos_core/persistence/value_codec.py` (`encode_node_value`/`decode_node_value`) + `build_unwind_create_nodes` `_value_json` SET branch + `graph_repository` row split + `graph_loader` decode + `_CORE_KEYS`/`RESERVED_PROPERTY_KEYS` reserved-key adds; M3 sentinel **deleted**, replaced by `tests/phase_50/test_adr_0182_value_codec.py` + a structured-value case in the L0-25 live test. Closes L0-26's impl half (durable Episode persistence still rides v1.5 retention).
+- **`installed-skills` role-graph** (ADR-0150 §am-6; closed set **12 → 13**): schema (`Discipline.APPEND_ONLY`, Global-only, `SkillInstallRecord` with STORAGE_MODE_FIELDS inline) + IRI builder/minter/parser + bootstrap rosters (`_GLOBAL_NAMED_ROLES`, `_APPLIES_AFTER_BY_ROLE`, `_GLOBAL_ROLE_ORDER`) + ~13 corpus roster-pin updates.
+- **Caps/audit** (Phase-44 S8 pattern): `CAN_INSTALL_SKILL`/`CAN_UNINSTALL_SKILL` (ADMIN_CAPS 10→12) + `EVT_SKILL_INSTALLED`/`EVT_SKILL_UNINSTALLED`/`EVT_SKILL_INSTALL_REJECTED`; **latent Phase-44 drift fixed** — `EVT_READ_OTHER_LOCAL_EPISODIC_MEMORY` appended to `ALL_AUDIT_EVENTS`.
+- **Install lifecycle** (ADR-0183; `mindsos_server/skills/`): TOML manifest parser + digest; collect-all preflight (`PreflightReport`); install/uninstall driver (all writes via ADR-0180 `make_writeable`; append-only records; S8 idempotency triple incl. failed-run repair + reject-on-digest-mismatch/upgrade); de-install = reverse-dep refuse + **marker-only deprecation** (G1) + record flip; `apply_installed_skills(cl, kl)` free-function activation; `mindsos skill install/uninstall/list/activate` CLI (session-less Global-only per capacity-CLI precedent).
+- **Reference bundle** `tests/fixtures/skill_bundle_ref/` (1 DataState + 1 CapacityContext-native `text.ref_shout` + 3 L2 nodes) + `tests/phase_50/` lifecycle tests (install → no-op → de-install → re-install → fresh-process activation) + live Falkor record round-trip (the ADR-0182 first-consumer proof).
+- **10-surface bump 49→50.**
+
+**Grounding-driven findings:** **G1** — design-log R2-1's "node-level deprecation already exists" was falsified at file level (the citation is the ADR-0133 *edge* filter; `deprecate_version` is a phantom); v1 de-install is marker-only, node read-filtering added to the v2 ledger. **I4/I5 bundle-author rules (binding on WSD):** content props must avoid `RESERVED_PROPERTY_KEYS`; schema type-membership is enforced even at strict=False — content must use the role's declared NodeTypes. **I6:** S4's same-bundle ownership waiver is load-bearing (no deregistration ⇒ in-process reinstall self-collides without it). Full list (I1-I9): `PHASE_50_DESIGN_LOG.md §4`.
+
+**Next chat = WSD_INSTALLATION_CHAT** (`projects/wsd/FUTURE_CHAT_PROMPT.md`, banner updated; inheritance contract `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5`). DWF parallelizable (L2-only).
+
+**Full record:** `confirmation_docs/PHASE_50_DESIGN_LOG.md` + `PHASE_50_CONFIRMED.md`.
+
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 
 Each is in active review. **Resolution gates the L4/L5 plan** (see §4).
@@ -960,8 +978,8 @@ These conventions hold for any future code-shipping phase or chat:
 | L0_SUBSTRATE_CHAT (Phase 44 gate) | `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §1 + §6`; `_workbench/L0_FUTURE_WORK.md`; `_workbench/L2_CHAT_DECISIONS.md` (D-L2-23); Chat B D-B2 + D-B14 + D-B16; this §2.3 + §3.1.7 |
 | DREAM_FAMILY_CHAT (Phase 45 gate) | `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §1 + §6`; `confirmation_docs/CHAT_B_DECISIONS.md` D-B5/D-B6/D-B7/D-B8/D-B9; `docs/dev/l5_mental_model_design_notes.md` §5.2-§5.3; this §3.1.7 + §4.1 |
 | SKILL_ACQUISITION_PROCESS_CHAT | **CLOSED 2026-06-09** (tag `skill-acquisition-2026-06-09`). Settlement: `confirmation_docs/SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md` + `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`. |
-| SA-1 ship chat (Phase 50) | `confirmation_docs/SA_1_NEXT_CHAT_PROMPT.md` (seed); `confirmation_docs/SKILL_ACQUISITION_PROCESS_DESIGN_LOG.md` (contract); `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §2-§3`; ADR-0182; this §9 (ship discipline) |
-| WSD installation chat | **Inherits SKILL_ACQUISITION_PROCESS_CHAT (closed): read `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5` (inheritance contract) + design log S9/S10.** Opens after `phase-50-confirmed`. Then `projects/ANALYSIS_DELTA_2026-06.md` FIRST, then `projects/wsd/ANALYSIS.md` (stale-bannered); `projects/wsd/FUTURE_CHAT_PROMPT.md`; `_workbench/cookbook_routing.md` (owns `nlu-slice.md`); FOL chat coordinates (cross-ref `projects/fol/`); this §3 + §5 |
+| SA-1 ship chat (Phase 50) | **SHIPPED 2026-06-10** (tag `phase-50-confirmed`). Record: `confirmation_docs/PHASE_50_DESIGN_LOG.md` + `PHASE_50_CONFIRMED.md`; this §3.1.23. |
+| WSD installation chat | **Inherits SKILL_ACQUISITION_PROCESS_CHAT (closed) + Phase 50 (SHIPPED — the install driver exists at `mindsos_server/skills/`): read `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5` (inheritance contract) + design log S9/S10 + `PHASE_50_DESIGN_LOG.md` (G1 + I4/I5 bundle-author rules).** Then `projects/ANALYSIS_DELTA_2026-06.md` FIRST, then `projects/wsd/ANALYSIS.md` (stale-bannered); `projects/wsd/FUTURE_CHAT_PROMPT.md`; `_workbench/cookbook_routing.md` (owns `nlu-slice.md`); FOL chat coordinates (cross-ref `projects/fol/`); this §3 + §5 |
 | FOL installation chat | **Inherits WSD installation.** `projects/fol/ANALYSIS.md`; `projects/fol/FUTURE_CHAT_PROMPT.md`; this §3 + §5; WSD-resolutions inherited |
 | DWF / knowledge-acquisition chat | `projects/dwf_mapping/ANALYSIS.md`; `projects/dwf_mapping/FUTURE_CHAT_PROMPT.md`; ADR-0150 + ADR-0154 (canonical `alignment:<a>:<b>` form, ratified Chat C Phase 39 cascade); this §5.1 |
 | Code-skill installation chat | `_workbench/cookbook_routing.md` (owns `code-slice.md`); `_workbench/L3_FUTURE_WORK.md` (L3-28/L3-30/L3-31); inherits WSD installation |
@@ -1005,4 +1023,4 @@ This handoff is the snapshot of where things stand entering Phase 39+. Per Phase
 *L4 architecture resolved at Chat A (2026-05-28). L5 architecture + retention model resolved at Chat B (2026-05-31). L1/L3 reframe ratified 2026-06-01. L2 schema-v2 ratified 2026-06-01. Phase map for Phases 39-49 authored at Chat C (2026-06-02).*
 
 ═══════════════════════════════════════════════════════════════════════
-*End of HANDOFF.md. Last reviewed 2026-06-09 (Phase 48 ship closure — L5 v1; Phase 47 also closed retroactively). Phases 39-48 all SHIPPED + confirmed. Update when Phase 49 confirms, or when any §6 carry-forward closes. **Next chat: Phase 49 (Integration C — end-to-end L0→L5 trivial-task scenario + cookbook)** — see `confirmation_docs/PHASE_49_NEXT_CHAT_PROMPT.md`.*
+*End of HANDOFF.md. Last reviewed 2026-06-10 (Phase 50 ship closure — SA-1 skill-install lifecycle; first downstream phase after the completed 39-49 plan). Update when WSD installation confirms, or when any §6 carry-forward closes. **Next chat: WSD_INSTALLATION_CHAT** — see `projects/wsd/FUTURE_CHAT_PROMPT.md` + `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5`. DWF parallelizable (L2-only).*

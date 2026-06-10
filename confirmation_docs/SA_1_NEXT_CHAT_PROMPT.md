@@ -1,5 +1,7 @@
 # SA-1 (Phase 50) — Ship-Chat Seed
 
+> **SHIPPED 2026-06-10 — this chat ran and closed.** Tag `phase-50-confirmed`; cumulative gate 3970/11/0 (+1 standing xpassed). Record: `PHASE_50_DESIGN_LOG.md` + `PHASE_50_CONFIRMED.md`. This file is now historical — do NOT re-run it; the next chat is WSD_INSTALLATION_CHAT (`projects/wsd/FUTURE_CHAT_PROMPT.md` + `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5`).
+
 > Authored 2026-06-09 at SKILL_ACQUISITION_PROCESS_CHAT closure. You are the **Phase 50 ship chat** — the first slot of `confirmation_docs/SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`. Design is CLOSED; you start at R0 impl-locks, not design re-litigation (re-open a pick only on a grounding-driven reversal, with evidence — Phases 39–49 precedent).
 
 ## Read first

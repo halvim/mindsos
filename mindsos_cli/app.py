@@ -15,6 +15,7 @@ from mindsos_cli.commands.metagraph_schema import register_metagraph_schema_app
 from mindsos_cli.commands.persistence import register_persistence_app
 from mindsos_cli.commands.schema import register_schema_app
 from mindsos_cli.commands.server import register_server_app
+from mindsos_cli.commands.skill import register_skill_app
 from mindsos_cli.commands.version import show_version
 
 app = typer.Typer(
@@ -61,3 +62,6 @@ register_server_app(app)
 # Phase 30 — NEW `mindsos capacity` group (BFS finder + problem-trace tail;
 # read-only against a fresh in-memory layer; `invoke` ships at Phase 31).
 register_capacity_app(app)
+# Phase 50 — NEW `mindsos skill` group (ADR-0183 bundle install lifecycle;
+# session-less Global-only per the capacity-CLI precedent).
+register_skill_app(app)

@@ -36,10 +36,12 @@ def test_registry_is_tuple_keyed() -> None:
 def test_registry_contains_three_entries_post_rename() -> None:
     """Phase 39 closure shipped 3 entries (2 Episode/Memory + 1
     ProblemTraceEntry). Phase 43 PR2 commit 1 grew to 7 by adding 4
-    new role-graphs' minters per ADR-0150 §am-5.
+    new role-graphs' minters per ADR-0150 §am-5. Phase 50 grew to 8
+    (SkillInstallRecord per ADR-0150 §am-6).
     """
     from mindsos_knowledge.identifiers import (
         ROLE_CAPACITY_GAPS,
+        ROLE_INSTALLED_SKILLS,
         ROLE_LEARNED_PARAMETERS,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
@@ -53,6 +55,8 @@ def test_registry_contains_three_entries_post_rename() -> None:
         (ROLE_PENDING_PROMOTIONS, "PendingPromotion"),
         (ROLE_CAPACITY_GAPS, "CapacityGap"),
         (ROLE_LEARNED_PARAMETERS, "LearnedParameter"),
+        # Phase 50 addition per ADR-0150 §am-6.
+        (ROLE_INSTALLED_SKILLS, "SkillInstallRecord"),
     }
 
 

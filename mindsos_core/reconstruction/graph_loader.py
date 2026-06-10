@@ -53,6 +53,7 @@ from ..exceptions import PersistenceError, UnknownEdgeTypeError
 from ..models.graph import Graph
 from ..models.identity import IdentityRegistry
 from ..persistence.client import Client
+from ..persistence.value_codec import decode_node_value
 from .load_report import LoadReport
 
 _log = logging.getLogger(__name__)
@@ -111,6 +112,10 @@ _CORE_KEYS = frozenset({
     "_version",
     "_props_json",
     "schema_name",
+    # Phase 50 — ADR-0182. Node-level JSON-encoded structured-value
+    # column; decoded into ``value`` by ``_add_node_from_row``, never
+    # surfaced in the user-property bag.
+    "_value_json",
     # Phase 10 — ADR-0133 soft-delete fields are typed dataclass attrs,
     # not user-property bag keys.
     "deprecated_at",
@@ -482,7 +487,8 @@ def _fetch_node_page(
     q = (
         "MATCH (n:Node {graph_id: $gid}) "
         "RETURN n.id AS id, n.type_name AS type_name, "
-        "       n.value AS value, n._version AS version, "
+        "       n.value AS value, n._value_json AS value_json, "
+        "       n._version AS version, "
         "       properties(n) AS props "
         "ORDER BY n.id SKIP $offset LIMIT $limit"
     )
@@ -492,10 +498,15 @@ def _fetch_node_page(
 
 
 def _add_node_from_row(g: Graph, row: Dict[str, Any]) -> None:
-    """Materialise a :class:`Node` from a Cypher row and attach to ``g``."""
+    """Materialise a :class:`Node` from a Cypher row and attach to ``g``.
+
+    Phase 50 ADR-0182 rule 3 — a non-NULL ``value_json`` column is the
+    structured-value discriminator: decode it as ``value``; otherwise
+    the primitive ``value`` column passes through (fast path).
+    """
     props = _strip_core_keys(row.get("props") or {})
     node = g.add_node(
-        value=row.get("value"),
+        value=decode_node_value(row.get("value"), row.get("value_json")),
         type_name=row["type_name"],
         properties=props,
         node_id=row["id"],

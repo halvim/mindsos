@@ -22,6 +22,7 @@ from mindsos_knowledge import (
     ROLE_CAPACITY_GAPS,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
+    ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_EPISODIC_MEMORIES,
@@ -45,6 +46,8 @@ _EXPECTED_BOOTSTRAP_GLOBAL_ROLES = {
     ROLE_PENDING_PROMOTIONS,
     ROLE_CAPACITY_GAPS,
     ROLE_LEARNED_PARAMETERS,
+    # Phase 50 (ADR-0150 §am-6) addition — Global-only.
+    ROLE_INSTALLED_SKILLS,
 }
 
 _EXPECTED_LAZY_LOCAL_ROLES = {
@@ -60,7 +63,7 @@ _EXPECTED_LAZY_LOCAL_ROLES = {
 def test_bootstrap_global_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     g = kl.global_metagraph()
-    assert len(g.graphs) == 9
+    assert len(g.graphs) == 10
     observed = {gr.role for gr in g.graphs.values()}
     assert observed == _EXPECTED_BOOTSTRAP_GLOBAL_ROLES
 

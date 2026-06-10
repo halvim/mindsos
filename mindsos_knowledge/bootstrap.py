@@ -54,6 +54,7 @@ from .identifiers import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_EPISODIC_MEMORIES,
+    ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
@@ -86,6 +87,8 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_PENDING_PROMOTIONS,
     ROLE_CAPACITY_GAPS,
     ROLE_LEARNED_PARAMETERS,
+    # Phase 50 (ADR-0150 §am-6) — skill-install state; Global-only.
+    ROLE_INSTALLED_SKILLS,
 })
 
 #: Roles that live in Local-per-user metagraph per ADR-0044
@@ -145,6 +148,8 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_PENDING_PROMOTIONS: frozenset(),
     ROLE_CAPACITY_GAPS: frozenset(),
     ROLE_LEARNED_PARAMETERS: frozenset(),
+    # Phase 50 (ADR-0150 §am-6) — no bootstrap-order dependencies.
+    ROLE_INSTALLED_SKILLS: frozenset(),
 }
 
 

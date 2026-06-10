@@ -108,6 +108,11 @@ RESERVED_PROPERTY_KEYS = frozenset({
     # ``retire_version``; reserving it here forbids a user property bag from
     # forging or colliding with the marker.
     "_retired_inline_pending",
+    # Phase 50 — ADR-0182. Node-level JSON-encoded structured-value column
+    # (same family as ``_props_json``): the persist path writes it for
+    # dict/list node values; reserving it forbids user property bags from
+    # colliding with the serialization column.
+    "_value_json",
 })
 
 #: Prefix for cross-graph reference properties. Properties whose key

@@ -15,6 +15,7 @@ from mindsos_knowledge import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_EPISODIC_MEMORIES,
+    ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
@@ -43,6 +44,8 @@ _ALL_NAMED_ROLES = (
     ROLE_PENDING_PROMOTIONS,
     ROLE_CAPACITY_GAPS,
     ROLE_LEARNED_PARAMETERS,
+    # Phase 50 addition per ADR-0150 §am-6.
+    ROLE_INSTALLED_SKILLS,
 )
 
 
@@ -82,8 +85,9 @@ def test_dispatch_table_size_equals_named_role_count() -> None:
     # Alignment is NOT in the dispatch dict (prefix-keyed, not name-keyed).
     # Phase 43 PR2 commit 1 expanded the closed role-set from 8 to 12 per
     # ADR-0150 §amendment-5 (parameter-staging, pending-promotions,
-    # capacity-gaps, learned-parameters).
-    assert len(_ROLE_SCHEMA_BUILDERS) == 12
+    # capacity-gaps, learned-parameters). Phase 50 expanded 12 to 13 per
+    # ADR-0150 §amendment-6 (installed-skills).
+    assert len(_ROLE_SCHEMA_BUILDERS) == 13
 
 
 def test_dispatch_table_keys_equal_named_roles() -> None:

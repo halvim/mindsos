@@ -30,9 +30,9 @@ pytestmark = pytest.mark.integration
 def _build_local(user_id: str):
     """A Local with enough shape to make round-trip + delete meaningful:
     two graphs (primitive-valued nodes, an edge, a hyperedge) + one
-    metaedge + one metahyperedge. Node values stay primitive per the
-    L0-26 node-value serialization gap (PB-RT) — structured values are
-    out of contract until the L0-26 ADR's first consumer ships.
+    metaedge + one metahyperedge. Node values here stay primitive;
+    structured values are in contract since Phase 50 shipped ADR-0182
+    and are exercised by ``test_live_structured_value_round_trip``.
     """
     from mindsos_core import Metagraph
     from mindsos_core.models.graph import Graph
@@ -78,6 +78,53 @@ def test_live_save_load_round_trip(falkor_client) -> None:  # noqa: F811
 
 def test_live_load_missing_returns_none(falkor_client) -> None:  # noqa: F811
     assert _persister(falkor_client).load("nobody") is None
+
+
+def test_live_structured_value_round_trip(falkor_client) -> None:  # noqa: F811
+    """ADR-0182 (Phase 50): dict/list node values survive save → load.
+
+    Closes the PB-RT gap that descoped the Phase 49 live episode flush:
+    a structured 6-field-style dict value JSON-encodes into the node's
+    ``_value_json`` column on persist (rule 2), decodes back as
+    ``value`` on load (rule 3), never leaks into the user-property bag,
+    and co-resident primitive values stay on the untouched fast path
+    (rule 1).
+    """
+    from mindsos_core import Metagraph
+    from mindsos_core.models.graph import Graph
+
+    persister = _persister(falkor_client)
+    mg = Metagraph(name="local_knowledge:carol")
+    g = mg.add_graph(Graph(name="carol-notes", role="episodic_memories"))
+    structured = {
+        "task_pattern_iri": "tp:demo",
+        "chain": {"hints": ["h1", "h2"], "plan_depth": 2},
+        "outcome": None,
+        "scores": [0.5, 1.0],
+    }
+    n_dict = g.add_node(structured, "Episode", properties={"user_key": "kept"})
+    n_list = g.add_node([1, "two", {"three": 3}], "Episode")
+    n_prim = g.add_node("plain", "Episode")
+    persister.save("carol", mg)
+
+    loaded = persister.load("carol")
+    assert loaded is not None
+    assert_metagraphs_equal(mg, loaded)
+    (lg,) = loaded.graphs.values()
+    assert lg.nodes[n_dict.node_id].value == structured
+    assert lg.nodes[n_list.node_id].value == [1, "two", {"three": 3}]
+    assert lg.nodes[n_prim.node_id].value == "plain"
+    assert lg.nodes[n_dict.node_id].properties.get("user_key") == "kept"
+    assert "_value_json" not in lg.nodes[n_dict.node_id].properties
+
+    # Idempotent re-save (MERGE-safe) keeps the pair consistent.
+    persister.save("carol", loaded)
+    reloaded = persister.load("carol")
+    assert reloaded is not None
+    assert reloaded.graphs and (
+        next(iter(reloaded.graphs.values())).nodes[n_dict.node_id].value
+        == structured
+    )
 
 
 def test_live_scoped_delete_spares_coresidents(falkor_client) -> None:  # noqa: F811
