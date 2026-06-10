@@ -65,7 +65,6 @@ from mindsos_core import Metagraph
 from mindsos_core.persistence.client import Client
 
 from mindsos_admin.exceptions import AdminError
-from mindsos_server.admin import admin_tx
 from mindsos_server.audit import EVT_PROMOTION_PROPOSED, write_audit
 from mindsos_server.authz import _require_or_audit
 from mindsos_server.capabilities import CAN_PROPOSE_MUTATION
@@ -425,6 +424,16 @@ def propose_for_promotion(
     # ── Step 3: two-store write (admin_tx + in-memory) ──────────────
     # In-memory writes happen INSIDE admin_tx so a SQL exception can
     # be caught + in-memory reverted (rollback symmetry per PB-25(a)).
+    #
+    # Late import to break the pre-existing
+    # ``mindsos_server.admin`` <-> ``mindsos_server.persistence`` <->
+    # ``mindsos_admin`` import cycle (L0-24; PHASE_44_DESIGN_LOG.md §12).
+    # A module-top import here is reached while ``admin.py`` is mid-init
+    # on a cold ``mindsos_server`` import (paused at its persistence
+    # import, before ``admin_tx`` is defined). Pattern precedent:
+    # ``mindsos_core/persistence/client.py`` late bootstrap import.
+    from mindsos_server.admin import admin_tx
+
     inserted_mutation_ids: list[int] = []
     added_to_pending: list[tuple[str, str]] = []  # (target_role, node_id)
     audit_event_id: int = -1

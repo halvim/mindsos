@@ -7,27 +7,20 @@ no cross-phase fixture collision). The reachability probe runs FIRST so
 sidecar-less collection/run (and ``-m 'not integration'``) never reaches
 a ``mindsos_server`` import.
 
-The ``mindsos_admin`` warm-up resolves the pre-existing
-``admin`` ↔ ``persistence`` ↔ ``mindsos_admin`` import cycle under
-isolated collection (``pytest tests/phase_49/``), mirroring
-``tests/phase_44/conftest.py``. It is guarded so trees lacking the
-server stack (e.g. an older interpreter without ``datetime.UTC``) still
-collect the deterministic in-memory companion.
+The ``mindsos_admin`` import-cycle warm-up that used to live here (and in
+``tests/phase_44/conftest.py``) was removed by the MAINTENANCE_CHAT L0-24
+fix — ``mindsos_admin/promotion.py`` now lazy-imports ``admin_tx`` inside
+``propose_for_promotion``, so cold isolated collection no longer needs
+import-order warming. See ``PHASE_44_DESIGN_LOG.md`` §12.
 """
 
 from __future__ import annotations
 
-import importlib
 import os
 from pathlib import Path
 from typing import Iterator
 
 import pytest
-
-try:  # warm the server-side import cycle when the stack is importable
-    importlib.import_module("mindsos_admin")
-except Exception:  # pragma: no cover — companion-only trees skip the integration test
-    pass
 
 
 def _falkordb_reachable() -> bool:
