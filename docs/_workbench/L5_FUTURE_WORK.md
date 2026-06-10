@@ -55,7 +55,7 @@ The following were either resolved by Chat B or rendered moot by other Chat B pi
 | L5-NEW-10 | **Cross-task SCMS context** | Chat A R5 D42 → L4-22 | v2 evaluation |
 | L5-NEW-11 | **Memory cluster secondary indexes** — pre-build "episodes originally mapped to X" index (v1 walks via retrieval capacity) | Chat B D-B54 (PB-OO) | v2 if query volume |
 | L5-NEW-12 | **L0 audit-log cross-link on episode** — optional field on Episode for direct audit-event refs (v1 cross-link via L0 query API) | Chat B reanalysis crack 17 | v2 evaluation |
-| L5-NEW-13 | **Falkor query indexes for cross-sub-MM hyperedges** — performance work for Pipeline-membership queries | Chat B PB-HHH | Chat C plan-authoring → persistence cookbook |
+| L5-NEW-13 | **Falkor query indexes for cross-sub-MM hyperedges** — performance work for Pipeline-membership queries. **Strategy ratified ADR-0181 @ Phase 49 (decide-and-document; no index code); physical creation → WSD retrieval (first query consumer).** Indexes named: `Episode.task_pattern_iri`, `Memory.memory_id`, `IntergraphHyperEdge` membership. | Chat B PB-HHH | **WSD retrieval** (physical creation) |
 | L5-NEW-14 | **Physical-layout optimization** — composite collapse opportunities (e.g., StepExecutionRecord as properties on capacity-MM step NodeInstance if benchmarks favor) | Chat B PB-AAA | Chat C / L4-implementation |
 | L5-NEW-15 | **Admin cross-Local memory search tooling** — when admin wants to curate Global training material manually | Chat B D-B4 | v2 follow-up |
 | L5-NEW-16 | **`dream.exploration` plural-strategy variant catalog** — FOL plural-strategies + alt-pipeline exploration | Chat B D-B6 + Chat A R5 D27 (Q5 deferred) | FOL installation chat |

@@ -69,6 +69,7 @@ nav:
           - Retrieval: usage/capacity/retrieval.md
       - Cookbook (Phase 38):
           - Text realm — vertical slice: usage/cookbook/text-realm.md
+          - End-to-end — L0→L5 trivial-task slice: usage/cookbook/end-to-end.md
   - Knowledge sources (Phase 15a):
       - DOLCE-DUL ontology: knowledge-sources/dolce.md
       - Open English WordNet lexicon: knowledge-sources/oewn.md
