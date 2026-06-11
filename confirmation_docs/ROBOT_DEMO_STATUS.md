@@ -18,5 +18,5 @@
 - `confirmation_docs/ROBOT_DEMO_OPEN_QUESTIONS.md` — all pushbacks/decisions tagged resolved/open (see §7 locks + §8 round-2).
 - `confirmation_docs/ROBOT_DEMO_ARCHITECTURE.md` — client–server architecture (non-developer).
 - `confirmation_docs/DEMO_DERIVED_FEATURES_NEXT_CHAT_PROMPT.md` — **net-new MindsOS features F1–F6 invented by the demo, needing future design** (peer Local↔Local learning, teachable vocabulary, curation governance, body-model affordance graph, Pipeline/Plan split, box-as-resource).
-- `demo_ui/` — frozen **v9** presentation UI (`presentation_mockup.html`) + `CHANGELOG.md` + `versions/`. `prototype_zero/` — validated stick-arm MuJoCo cell + reach proof.
+- `demo_ui/` — frozen **v9** presentation UI (`presentation_mockup.html`) + the active **v10 dashboard** (`presentation_v10.html` + sidecars + reference maps + `maps/` regen scripts). **v10 design record + backlog: `confirmation_docs/ROBOT_DEMO_UI_V10.md`; next-chat prompt: `confirmation_docs/ROBOT_DEMO_UI_NEXT_CHAT_PROMPT.md`.** (demo_ui `CHANGELOG.md` + `versions/` removed 2026-06-11 — history folded into the UI-V10 record.) `prototype_zero/` — validated stick-arm MuJoCo cell + reach proof.
 - To start the build: `confirmation_docs/ROBOT_DEMO_BUILD_NEXT_CHAT_PROMPT.md`.
