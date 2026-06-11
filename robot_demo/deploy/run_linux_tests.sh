@@ -63,10 +63,28 @@ pass "base mindsos:phase51-prod built"
 pass "image mindsos:demo-backend built (FROM mindsos:phase51-prod)"
 
 # ---------------------------------------------------------------------------
+# DM-2: FalkorDB is a long-running service — it must stay UP across both
+# boots so the second boot can load the per-device Globals the first boot
+# persisted (the consumer restarts, not the DB). Bring it up ONCE; run the
+# demo as one-off `compose run` containers that do NOT stop it.
+step "2b. Start the shared FalkorDB (stays up across both boots)"
+"${COMPOSE[@]}" up -d --wait falkordb || fail "falkordb did not become healthy"
+pass "falkordb up + healthy"
+
+# Deterministic gate: drop the demo's own graph + clean its server.db so
+# 'first boot' is a genuine empty-start (mint+install) and 'second boot' is
+# a genuine reload (no-op). The demo's graph is isolated (PB-JJ:
+# DEMO_FALKOR_GRAPH=robot_demo) so this never touches a real Global.
+step "2c. Reset demo state for a deterministic empty-start"
+"${COMPOSE[@]}" exec -T falkordb redis-cli GRAPH.DELETE "${DEMO_FALKOR_GRAPH:-robot_demo}" >/dev/null 2>&1 || true
+rm -rf ./.mindsos-demo/server-db 2>/dev/null || true
+pass "demo graph + server.db cleared"
+
+# ---------------------------------------------------------------------------
 run_smoke() {  # $1 = label, $2 = first|second (DM-2 assertions differ)
   local out rc mode="${2:-first}"
-  out="$(DEMO_BOOTSTRAP_ONLY=1 "${COMPOSE[@]}" up --abort-on-container-exit \
-         --exit-code-from demo-backend demo-backend 2>&1)" && rc=0 || rc=$?
+  out="$("${COMPOSE[@]}" run --rm -e DEMO_BOOTSTRAP_ONLY=1 demo-backend 2>&1)" \
+    && rc=0 || rc=$?
   printf '%s\n' "$out" | sed 's/^/    | /'
   if [[ $rc -ne 0 ]]; then fail "$1: container exited $rc"; fi
   grep -q "DM-1 SMOKE PASS" <<<"$out" || fail "$1: 'DM-1 SMOKE PASS' not in logs"
@@ -85,14 +103,13 @@ run_smoke() {  # $1 = label, $2 = first|second (DM-2 assertions differ)
     grep -q "(no-op)" <<<"$out" \
       || fail "$1: bundles did not no-op on the reloaded Global (idempotency)"
   fi
-  "${COMPOSE[@]}" down >/dev/null 2>&1 || true
   pass "$1: 4 brains, 4/4 Episodes, bundles+seeds present, exit 0"
 }
 
-step "3. Container bootstrap smoke (real server, 4 brains) — DM-1 + DM-2 GATE"
+step "3. First boot (empty-start) — mint + install + seed + G-5 — DM-1+DM-2 GATE"
 run_smoke "first boot" first
 
-step "4. Idempotent re-boot (P6) — second boot reloads persisted Globals"
+step "4. Second boot (reload) — persisted Globals load, bundles no-op (P6)"
 run_smoke "second boot" second
 
 # ---------------------------------------------------------------------------
@@ -100,7 +117,6 @@ step "5. RAM + jitter measurement (PB-N / P7)"
 "${COMPOSE[@]}" run --rm -e DEMO_BOOTSTRAP_ONLY=1 demo-backend \
   python -m robot_demo.backend.measure 2>&1 | sed 's/^/    | /' \
   || fail "measure.py failed"
-"${COMPOSE[@]}" down >/dev/null 2>&1 || true
 pass "RAM + jitter recorded (numbers above; jitter is a provisional proxy — real bar at DM-3)"
 
 # ---------------------------------------------------------------------------
@@ -111,6 +127,10 @@ if [[ "${RUN_PYTEST:-0}" == "1" ]]; then
   PYTHONPATH="$ROOT" "$PYBIN" -m pytest robot_demo/tests/ -m integration -q \
     && pass "real-server integration test" || fail "integration pytest failed"
 fi
+
+step "7. Teardown"
+"${COMPOSE[@]}" down >/dev/null 2>&1 || true
+pass "stack down"
 
 printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 gate green.\033[0m\n'
 printf '  (DM-2: per-device bundles installed idempotently, Local seeds visible,\n'
