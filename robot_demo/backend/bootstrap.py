@@ -88,14 +88,21 @@ def _ensure_users(conn: sqlite3.Connection) -> None:
 
 
 def _login_all(conn: sqlite3.Connection) -> Dict[str, Any]:
-    """Step 3: real login() per brain user → real Session objects."""
-    from mindsos_server.sessions import login
+    """Step 3: real login() per brain user → real Session objects.
+
+    login() enforces one active session per user (AlreadyLoggedInError),
+    and server.db persists across re-boots — so clear any stale session
+    first via the shipped self-recovery valve. This is what makes a
+    re-boot on an existing server.db idempotent (P6).
+    """
+    from mindsos_server.sessions import kill_my_own_sessions, login
 
     sessions: Dict[str, Any] = {}
     for device_id in DEVICE_ORDER:
-        sessions[device_id] = login(
-            conn, device_id, _password_for(device_id)
-        ).session
+        pw = _password_for(device_id)
+        kill_my_own_sessions(conn, device_id, pw)
+        sessions[device_id] = login(conn, device_id, pw).session
+    conn.commit()
     return sessions
 
 

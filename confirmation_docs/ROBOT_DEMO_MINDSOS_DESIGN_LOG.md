@@ -119,6 +119,12 @@ Still **zero `mindsos_*` edits**; commits are Mac-only (standing rule).
 
 ---
 
+### §9. Live-run fixes (Linux, 2026-06-11)
+
+First container bootstrap on the Linux gate host surfaced one real defect (caught by the smoke, as designed):
+
+- **PB-V — `login()` enforces one active session per user; bootstrap wasn't idempotent against a persisted `server.db`.** On a re-boot (or any run against an existing `./.mindsos-demo/server-db` volume) `login()` raised `AlreadyLoggedInError` ("use logout or kill_my_own_sessions"). **Fix:** `_login_all` calls the shipped self-recovery valve `kill_my_own_sessions(conn, user_id, password)` before each `login`, then commits. This clears the prior process's stale session and is exactly what makes the P6 idempotent-re-boot gate meaningful (vs. wiping the volume). No `mindsos_*` edit — consumer-side only.
+
 ## DM-1 build status
 
 - [x] `demo_backend/` skeleton package (profiles, brain, bootstrap, main, reset, measure)
