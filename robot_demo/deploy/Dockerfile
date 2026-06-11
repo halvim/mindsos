@@ -32,6 +32,8 @@ RUN pip install --no-cache-dir --require-hashes -r robot_demo/requirements-demo.
 # Only the importable package — tests/docs/deploy are not needed at runtime.
 COPY robot_demo/__init__.py ./robot_demo/__init__.py
 COPY robot_demo/backend ./robot_demo/backend
+# DM-2 skill-bundle TOML data (read at runtime by install_skill).
+COPY robot_demo/bundles ./robot_demo/bundles
 # DM-3 will add: COPY sim ./sim  +  COPY web ./web  (live motion + render assets)
 
 RUN chown -R mindsos:mindsos /app
