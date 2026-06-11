@@ -36,11 +36,13 @@ def main(argv: list[str] | None = None) -> int:
 
     for device_id, brain in result.brains.items():
         log.info(
-            "  brain=%s type=%s kl=%s episodes=%d",
+            "  brain=%s type=%s kl=%s episodes=%d bundles=%s seeded_local=%s",
             device_id,
             brain.profile.device_type,
             brain.kl.global_metagraph().name,
             result.episodes[device_id],
+            (result.bundles or {}).get(device_id),
+            (result.seeded_local or {}).get(device_id),
         )
     if not result.ok:
         log.error("SMOKE FAILED: %d/4 Episodes", result.total_episodes)
@@ -48,6 +50,18 @@ def main(argv: list[str] | None = None) -> int:
     log.info(
         "DM-1 SMOKE PASS: 4 device-instances up, %d/4 Episodes consolidated.",
         result.total_episodes,
+    )
+    # DM-2 markers (asserted by run_linux_tests.sh).
+    log.info(
+        "DM-2 BUNDLES INSTALLED: %s",
+        {d: result.bundles[d] for d in result.bundles} if result.bundles else {},
+    )
+    if all((result.seeded_local or {}).get(d) is not None for d in result.brains):
+        log.info("DM-2 LOCAL SEEDS: %s", result.seeded_local)
+    log.info(
+        "DM-2 GLOBAL PERSIST: %s | G-5 EPISODE ROUND-TRIP: %s",
+        "falkor" if result.persisted_global else "in-memory(fallback)",
+        result.episode_roundtrip or "skipped(in-memory)",
     )
 
     if os.environ.get("DEMO_BOOTSTRAP_ONLY") == "1":

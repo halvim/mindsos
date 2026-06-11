@@ -1,0 +1,174 @@
+# manager@1.0 — installed ONLY on the manager device (P-8 exclusive).
+# The manager's cognitive L2: order concepts (FrameNet `Frame`), order +
+# position vocabulary (WordNet `Lemma`/`Sense`), and the demo task-patterns.
+# NOT seeded: a handoff/route pattern (PB-A — pre-seeding it falsifies
+# beat 1); the route is assembled at plan time. A disabled
+# `handoff-via-box` fallback ships behind enabled=false for rehearsal only.
+
+[bundle]
+name = "manager"
+version = "1.0"
+requires_mindsos_phase = 50
+requires_bundles = ["core"]
+
+# ── Concepts (Frame nodes) ─────────────────────────────────────────────
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "manager@1.0:concept:order"
+value = "Order"
+[l2.content.properties]
+description = "A customer order = a set of OrderLines."
+demo_role = "Order"
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "manager@1.0:concept:order-line"
+value = { concept = "OrderLine", slots = ["target_cell", "item_kind", "qty"] }
+[l2.content.properties]
+description = "One order line: item_kind into target_cell, qty."
+demo_role = "OrderLine"
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "manager@1.0:concept:carrier"
+value = "Carrier"
+[l2.content.properties]
+description = "A box used to carry cargo across belt sides."
+demo_role = "Carrier"
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "manager@1.0:concept:cargo"
+value = "Cargo"
+[l2.content.properties]
+description = "An item riding inside a Carrier."
+demo_role = "Cargo"
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "manager@1.0:concept:handoff"
+value = "Handoff"
+[l2.content.properties]
+description = "Cross-side transfer of cargo via a carrier on the belt."
+demo_role = "Handoff"
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "manager@1.0:concept:workaround"
+value = "Workaround"
+[l2.content.properties]
+description = "A taught composite that bridges a capability gap."
+demo_role = "Workaround"
+
+# ── Lexicon: order vocabulary (Lemma) ──────────────────────────────────
+[[l2.content]]
+role = "lexicon"
+tier = "global"
+node_type = "Lemma"
+iri = "manager@1.0:lex:order-vocab"
+value = { lemmas = ["box", "sheet", "tube", "place", "into"] }
+[l2.content.properties]
+description = "Order-vocabulary lemmas (Seam-A perception substrate)."
+demo_role = "OrderVocab"
+
+# ── Lexicon: position terms (Sense, grounded in value) — F2 seed set ───
+[[l2.content]]
+role = "lexicon"
+tier = "global"
+node_type = "Sense"
+iri = "manager@1.0:lex:pos:center"
+value = { term = "center", grounding = "cell-set", cells = ["r1c1"] }
+[l2.content.properties]
+description = "Position term 'center' → cell r1c1."
+demo_role = "PositionTerm"
+
+[[l2.content]]
+role = "lexicon"
+tier = "global"
+node_type = "Sense"
+iri = "manager@1.0:lex:pos:top-left"
+value = { term = "top-left", grounding = "cell-set", cells = ["r0c0"] }
+[l2.content.properties]
+description = "Position term 'top-left' → cell r0c0."
+demo_role = "PositionTerm"
+
+[[l2.content]]
+role = "lexicon"
+tier = "global"
+node_type = "Sense"
+iri = "manager@1.0:lex:pos:offsets"
+value = { above = [-1, 0], below = [1, 0], left_of = [0, -1], right_of = [0, 1] }
+[l2.content.properties]
+description = "Relative position terms as grid offsets (row, col)."
+demo_role = "PositionOffsets"
+
+# ── Task-patterns (TaskPattern nodes) — NO handoff pattern (PB-A) ──────
+[[l2.content]]
+role = "task-patterns"
+tier = "global"
+node_type = "TaskPattern"
+iri = "manager@1.0:pattern:fulfill-order"
+value = "fulfill-order"
+[l2.content.properties]
+description = "Top-level: fulfil all lines of an order."
+demo_role = "TaskPattern"
+
+[[l2.content]]
+role = "task-patterns"
+tier = "global"
+node_type = "TaskPattern"
+iri = "manager@1.0:pattern:fulfill-line"
+value = "fulfill-line"
+[l2.content.properties]
+description = "Fulfil one order line."
+demo_role = "TaskPattern"
+
+[[l2.content]]
+role = "task-patterns"
+tier = "global"
+node_type = "TaskPattern"
+iri = "manager@1.0:pattern:teach-pipeline"
+value = "teach-pipeline"
+[l2.content.properties]
+description = "Capture a taught composite (Seam-D modality 1)."
+demo_role = "TaskPattern"
+
+[[l2.content]]
+role = "task-patterns"
+tier = "global"
+node_type = "TaskPattern"
+iri = "manager@1.0:pattern:diagnose-and-replan"
+value = "diagnose-and-replan"
+[l2.content.properties]
+description = "Detect a degradation/gap and re-plan around it."
+demo_role = "TaskPattern"
+
+[[l2.content]]
+role = "task-patterns"
+tier = "global"
+node_type = "TaskPattern"
+iri = "manager@1.0:pattern:handoff-via-box"
+value = { pattern = "handoff-via-box", enabled = false }
+[l2.content.properties]
+description = "DISABLED rehearsal-only fallback (PB-A). Route is assembled at plan time, not pre-seeded."
+demo_role = "DisabledFallback"
+
+[l3]
+installers = []
+capacities = []
+datastates = []
+allow_new_realm = []
+
+[l4.slots]

@@ -1,0 +1,26 @@
+# conveyor@1.0 — installed ONLY on the conveyor device (P-8). Thin at
+# DM-2; real type-exclusivity is the Local embodiment seed + DM-3 caps.
+
+[bundle]
+name = "conveyor"
+version = "1.0"
+requires_mindsos_phase = 50
+requires_bundles = ["core"]
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "conveyor@1.0:concept:device-self"
+value = { device_type = "conveyor", designation = "Belt", moves = ["belt_a1", "belt_mid", "belt_a2"], forcing_invariant = "moves only on command" }
+[l2.content.properties]
+description = "Self-descriptor: the conveyor belt."
+demo_role = "DeviceSelf"
+
+[l3]
+installers = []
+capacities = []
+datastates = []
+allow_new_realm = []
+
+[l4.slots]

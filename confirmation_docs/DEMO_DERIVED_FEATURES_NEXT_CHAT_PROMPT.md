@@ -36,6 +36,7 @@
 - **What:** per-brain Local `embodiment` graph (parts → affordances); objects *require* affordances; capabilities *consume* them; feasibility = graph query; degradation = disable an affordance node. (Full spec: `ROBOT_DEMO_SCENARIO.md` §5.2.)
 - **Needs designing:** exact L2 home (new role-graph vs fields on capacity-state), affordance vocabulary, tie to L3 `produces`/`consumes` IntergraphEdges.
 - **Demo dependency:** beats 4 (gate) and 5 (degradation).
+- **DM-2 grounding (2026-06-11):** the "fields on capacity-state" branch is **forced** — `capacity-state` ships a single `CapacitySnapshot` NodeType and **zero EdgeTypes**, and type registration is enforced even at `strict=False`, so a typed BodyPart/EndEffector subgraph with provides/has-part edges is unbuildable without a schema edit (forbidden). DM-2 property-encodes the whole embodiment in one `CapacitySnapshot` value (read by `validate.feasibility`). A *real* affordance subgraph therefore requires a new role-graph (see **F8**), not capacity-state fields.
 
 ## F5 — Pipeline artifact + Plan/Pipeline level distinction (contract)
 - **Origin:** "learn by demonstration → composite capacity."
@@ -56,6 +57,20 @@
 - **Why new:** introduces resource availability as a planning precondition + a third dont-know category.
 - **Needs designing:** resource modeling (box supply per arm), the resource-gap dont-know contract, Orchestrator resource-acquisition planning.
 - **Demo dependency:** optional "if time" beat.
+
+## F8 — Real `embodiment` Local role-graph (schema addition; grounds F4)
+- **Origin:** robot-demo DM-2 (2026-06-11). The embodiment "subgraph" had to be property-encoded inside a `capacity-state` `CapacitySnapshot` value because that role's schema is single-NodeType / zero-EdgeType and a schema edit is forbidden (PB-W).
+- **What:** a per-user Local `embodiment` role-graph in the closed role-set with typed `BodyPart`/`EndEffector`/`AffordanceProvision` NodeTypes + `has-part`/`provides` EdgeTypes, so feasibility is a real graph walk (not a property read) and degradation disables an affordance *node/edge*.
+- **Why new:** the closed role-set (ADR-0150) forbids a new role without an amendment; `capacity-state`'s schema can't host the types; Local metagraphs only auto-create `episodic_memories` + `capacity-state`.
+- **Needs designing:** ADR-0150 role-set amendment (+1 Local role), the schema (NodeTypes/EdgeTypes), Local storage_mode, and migration of the DM-2 property-bag encoding into the typed graph.
+- **Demo dependency:** none at DM-2 (the property-bag encoding suffices through DM-3+); this is the productized successor.
+
+## F9 — Durable Local persistence + bundle-installer re-activation on reboot
+- **Origin:** robot-demo DM-2 (2026-06-11). DM-2 persists per-device **Globals** only (PB-Z); Locals are in-memory and re-seeded each boot, and `install_skill` no-ops on reboot (digest match) so a bundle's L3 installer does **not** re-run via the install path.
+- **What:** (a) durable per-device **Local** persistence (episodes/learned composites survive a restart) with a clean reset story that still wipes run-state; (b) a reboot re-activation contract so a bundle's L3 **capacities** (not just KL-resident DataStates) are re-registered into the fresh in-memory CapacityLayer — i.e. wiring `apply_installed_skills` into the boot path.
+- **Why new:** Phase-42/50 keep the CapacityLayer in-memory; the install record's no-op short-circuit means installers don't re-run on reboot. DataStates survive only because they live in the persisted Global; capacities would be lost.
+- **Needs designing:** the persisted-Local vs reset boundary (run_id-scoped durable store), and whether boot calls `apply_installed_skills` per device before/after `install_skill`.
+- **Demo dependency:** latent at DM-2 (no bundle registers capacities; §4 embodied caps are registered directly each boot in DM-3). Becomes load-bearing if any demo capacity ever ships *inside* a bundle.
 
 ## Note on F5 — the box-workaround is a composite + a Plan
 The demo's headline learned skill ("I can't grab it → taught → I can → other arm learns") is the **box-workaround**. Under the hood it is **not** a single within-brain capability: it's a per-arm composite (`load-into-box`) **plus** an Orchestrator **Plan** (route cargo via a box across the reach gap). Demo narrative says "the arm learned it"; the design must split it per F5. Peer transfer (F1) moves the per-arm composite; the Plan lives in the Orchestrator.

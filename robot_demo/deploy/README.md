@@ -7,6 +7,18 @@ Self-contained deploy assets for the Robot Demo backend. The demo runs as a
 Everything here runs from the **repo root** on the Mac Mini (Linux), with
 Docker + Python 3.12 present.
 
+## Pair-execution roles (strict — code never runs on the Mac)
+
+| Host | Role |
+|---|---|
+| **Cowork sandbox** (3.10) | Author + validate core logic only (duck sessions, `tomli`; cannot import `mindsos_server`). No git. |
+| **Mac** (3.12) | **git only** — `git add` (scoped paths), `commit`, `push`. **Do not run code/tests here.** |
+| **Linux** (this box) | `git pull`, then **run + test ALL code** — pytest + `run_linux_tests.sh`. The authoritative gate. |
+
+Code reaches Linux via the GitHub remote (`git push` on Mac → `git pull`
+here), not file copy. Tests and the container gate produce non-authoritative
+results anywhere but here.
+
 ## Files
 
 | File | Purpose |

@@ -1,0 +1,31 @@
+# arm-suction@1.0 — installed ONLY on the arm-suction device (P-8).
+# DM-2 payload is deliberately thin: a single Global self-descriptor
+# (device-type-exclusive + queryable). The arm's real type-exclusivity is
+# its Local embodiment seed (§3.3, written by its own session) + its
+# embodied L3 capacities (DM-3, which need a BodyHandle closure and cannot
+# ride a bundle installer). This bundle exercises 4-way selective install
+# on the real gate without theater.
+
+[bundle]
+name = "arm-suction"
+version = "1.0"
+requires_mindsos_phase = 50
+requires_bundles = ["core"]
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "arm-suction@1.0:concept:device-self"
+value = { device_type = "arm-suction", designation = "Lifter", grasp = "grasp:suction", serves = ["shelf_L", "belt_a1"] }
+[l2.content.properties]
+description = "Self-descriptor: the suction lifter arm."
+demo_role = "DeviceSelf"
+
+[l3]
+installers = []
+capacities = []
+datastates = []
+allow_new_realm = []
+
+[l4.slots]

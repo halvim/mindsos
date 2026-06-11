@@ -1,0 +1,126 @@
+# core@1.0 — installed on ALL four device-instances (P-8 / plan §3.4).
+# Carries the shared world model (ontology) + the §4.0 robot DataStates
+# (via the L3 installer + allow_new_realm). Node-types map onto the
+# ontology schema's registered OWL types (PB-X); requirements/affordances
+# are encoded as node `value` data, not edges (PB-DD — bundles seed nodes
+# only, and capacity-state/ontology edges have no bundle vehicle).
+
+[bundle]
+name = "core"
+version = "1.0"
+requires_mindsos_phase = 50
+requires_bundles = []
+
+# ── ItemKinds (Class nodes; requirement encoded in value) ──────────────
+[[l2.content]]
+role = "ontology"
+tier = "global"
+node_type = "Class"
+iri = "core@1.0:ontology:itemkind:box"
+value = { item_kind = "Box", requires_affordance_any = ["grasp:suction", "grasp:jaw"] }
+[l2.content.properties]
+description = "Box: graspable by suction OR jaw."
+demo_role = "ItemKind"
+
+[[l2.content]]
+role = "ontology"
+tier = "global"
+node_type = "Class"
+iri = "core@1.0:ontology:itemkind:sheet"
+value = { item_kind = "Sheet", requires_affordance_all = ["grasp:suction"] }
+[l2.content.properties]
+description = "Sheet: requires suction."
+demo_role = "ItemKind"
+
+[[l2.content]]
+role = "ontology"
+tier = "global"
+node_type = "Class"
+iri = "core@1.0:ontology:itemkind:tube"
+value = { item_kind = "Tube", requires_affordance_all = ["grasp:jaw"] }
+[l2.content.properties]
+description = "Tube: requires jaw."
+demo_role = "ItemKind"
+
+# ── Affordances (Individual nodes) ─────────────────────────────────────
+[[l2.content]]
+role = "ontology"
+tier = "global"
+node_type = "Individual"
+iri = "core@1.0:ontology:affordance:grasp-suction"
+value = { affordance = "grasp:suction" }
+[l2.content.properties]
+description = "Suction grasp affordance."
+demo_role = "Affordance"
+
+[[l2.content]]
+role = "ontology"
+tier = "global"
+node_type = "Individual"
+iri = "core@1.0:ontology:affordance:grasp-jaw"
+value = { affordance = "grasp:jaw" }
+[l2.content.properties]
+description = "Jaw grasp affordance."
+demo_role = "Affordance"
+
+# ── Regions (Individual nodes) ─────────────────────────────────────────
+[[l2.content]]
+role = "ontology"
+tier = "global"
+node_type = "Individual"
+iri = "core@1.0:ontology:regions"
+value = { regions = ["shelf_L", "shelf_R", "belt_a1", "belt_mid", "belt_a2"] }
+[l2.content.properties]
+description = "The five named reach regions."
+demo_role = "RegionSet"
+
+# ── ShelfCell 3x3 grid model ───────────────────────────────────────────
+[[l2.content]]
+role = "ontology"
+tier = "global"
+node_type = "Individual"
+iri = "core@1.0:ontology:shelf-grid"
+value = { grid = "3x3", rows = ["r0", "r1", "r2"], cols = ["c0", "c1", "c2"] }
+[l2.content.properties]
+description = "ShelfCell 3x3 grid (r0-r2 x c0-c2)."
+demo_role = "ShelfGrid"
+
+# ── Belt geometry constants ────────────────────────────────────────────
+[[l2.content]]
+role = "ontology"
+tier = "global"
+node_type = "Individual"
+iri = "core@1.0:ontology:belt-geometry"
+value = { feeder = "belt_a1", collector = "belt_a2", staging_band = "belt_mid" }
+[l2.content.properties]
+description = "Belt feeder/collector/staging positions."
+demo_role = "BeltGeometry"
+
+# ── L3: realm `robot` + §4.0 DataStates (installed into every CL) ──────
+# Full §4.0 roster (PB-HH — manifest is the honest source of truth +
+# gives preflight full collision coverage). The installer registers
+# exactly these 32.
+[l3]
+installers = ["robot_demo.backend.installers:install_core_datastates"]
+capacities = []
+datastates = [
+  "datastate:robot.order", "datastate:robot.order_lines",
+  "datastate:robot.allocation", "datastate:robot.plan",
+  "datastate:robot.dispatch_cmd", "datastate:robot.dispatch_ack",
+  "datastate:robot.task_outcome", "datastate:robot.cap_query",
+  "datastate:robot.cap_report", "datastate:robot.share_artifact",
+  "datastate:robot.share_ack", "datastate:robot.world_fact",
+  "datastate:robot.pose_target", "datastate:robot.motion_done",
+  "datastate:robot.grip_cmd", "datastate:robot.grip_state",
+  "datastate:robot.pick_goal", "datastate:robot.holding",
+  "datastate:robot.place_goal", "datastate:robot.placed",
+  "datastate:robot.on_belt", "datastate:robot.in_box",
+  "datastate:robot.belt_cmd", "datastate:robot.belt_done",
+  "datastate:robot.stage_goal", "datastate:robot.staged",
+  "datastate:robot.diag_request", "datastate:robot.diag_report",
+  "datastate:robot.teach_blocks", "datastate:robot.pipeline_artifact",
+  "datastate:robot.feasibility_verdict", "datastate:robot.demo_event",
+]
+allow_new_realm = ["robot"]
+
+[l4.slots]

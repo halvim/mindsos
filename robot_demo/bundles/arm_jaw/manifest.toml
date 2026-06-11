@@ -1,0 +1,26 @@
+# arm-jaw@1.0 — installed ONLY on the arm-jaw device (P-8). Thin at DM-2;
+# real type-exclusivity is the Local embodiment seed + DM-3 embodied caps.
+
+[bundle]
+name = "arm-jaw"
+version = "1.0"
+requires_mindsos_phase = 50
+requires_bundles = ["core"]
+
+[[l2.content]]
+role = "concepts"
+tier = "global"
+node_type = "Frame"
+iri = "arm-jaw@1.0:concept:device-self"
+value = { device_type = "arm-jaw", designation = "Packer", grasp = "grasp:jaw", serves = ["shelf_R", "belt_a2"] }
+[l2.content.properties]
+description = "Self-descriptor: the jaw packer arm."
+demo_role = "DeviceSelf"
+
+[l3]
+installers = []
+capacities = []
+datastates = []
+allow_new_realm = []
+
+[l4.slots]

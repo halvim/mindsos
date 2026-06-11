@@ -90,13 +90,21 @@ def install_builtin_catalog(cl: Any) -> None:
     reset_v0_verdicts()
 
 
-def build_brain_stack(profile: DeviceProfile, session: Any) -> Brain:
+def build_brain_stack(
+    profile: DeviceProfile, session: Any, *, kl: Any = None
+) -> Brain:
     """Assemble + start one device-instance. Returns a live :class:`Brain`.
 
     Order matters (P5): construct + ``start()`` the IL first so ``il.mm``
     exists, then bind the Orchestrator to it.
+
+    ``kl``: a pre-built KnowledgeLayer (DM-2 supplies a per-device Falkor
+    load-or-minted Global, ``persistence.load_or_mint_global``). When
+    ``None`` (DM-1 / sandbox), a fresh in-memory per-device Global is
+    minted via :func:`build_device_kl`.
     """
-    kl = build_device_kl(profile)
+    if kl is None:
+        kl = build_device_kl(profile)
     cl = CapacityLayer(kl=kl)
     install_builtin_catalog(cl)
 

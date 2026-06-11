@@ -63,23 +63,37 @@ pass "base mindsos:phase51-prod built"
 pass "image mindsos:demo-backend built (FROM mindsos:phase51-prod)"
 
 # ---------------------------------------------------------------------------
-run_smoke() {  # $1 = label
-  local out rc
+run_smoke() {  # $1 = label, $2 = first|second (DM-2 assertions differ)
+  local out rc mode="${2:-first}"
   out="$(DEMO_BOOTSTRAP_ONLY=1 "${COMPOSE[@]}" up --abort-on-container-exit \
          --exit-code-from demo-backend demo-backend 2>&1)" && rc=0 || rc=$?
   printf '%s\n' "$out" | sed 's/^/    | /'
   if [[ $rc -ne 0 ]]; then fail "$1: container exited $rc"; fi
   grep -q "DM-1 SMOKE PASS" <<<"$out" || fail "$1: 'DM-1 SMOKE PASS' not in logs"
   grep -q "4/4 Episodes" <<<"$out" || fail "$1: did not report 4/4 Episodes"
+  # ── DM-2 assertions ──
+  grep -q "DM-2 BUNDLES INSTALLED" <<<"$out" || fail "$1: no DM-2 bundle marker"
+  grep -q "manager@1.0" <<<"$out" || fail "$1: manager bundle not installed on mgr"
+  grep -q "arm-suction@1.0" <<<"$out" || fail "$1: arm-suction bundle not installed"
+  grep -q "DM-2 LOCAL SEEDS" <<<"$out" || fail "$1: no DM-2 local-seed marker"
+  grep -q "DM-2 GLOBAL PERSIST: falkor" <<<"$out" \
+    || fail "$1: Global not persisted to Falkor (expected in-container)"
+  if [[ "$mode" == "first" ]]; then
+    grep -q "round-tripped intact" <<<"$out" \
+      || fail "$1: G-5 episode→Falkor round-trip did not report success"
+  else
+    grep -q "(no-op)" <<<"$out" \
+      || fail "$1: bundles did not no-op on the reloaded Global (idempotency)"
+  fi
   "${COMPOSE[@]}" down >/dev/null 2>&1 || true
-  pass "$1: 4 device-instances up, 4/4 Episodes consolidated, exit 0"
+  pass "$1: 4 brains, 4/4 Episodes, bundles+seeds present, exit 0"
 }
 
-step "3. Container bootstrap smoke (real server, 4 brains) — THE DM-1 GATE"
-run_smoke "first boot"
+step "3. Container bootstrap smoke (real server, 4 brains) — DM-1 + DM-2 GATE"
+run_smoke "first boot" first
 
-step "4. Idempotent re-boot (P6) — second boot on the same server.db"
-run_smoke "second boot"
+step "4. Idempotent re-boot (P6) — second boot reloads persisted Globals"
+run_smoke "second boot" second
 
 # ---------------------------------------------------------------------------
 step "5. RAM + jitter measurement (PB-N / P7)"
@@ -98,4 +112,6 @@ if [[ "${RUN_PYTEST:-0}" == "1" ]]; then
     && pass "real-server integration test" || fail "integration pytest failed"
 fi
 
-printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 deployment gate green.\033[0m\n'
+printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 gate green.\033[0m\n'
+printf '  (DM-2: per-device bundles installed idempotently, Local seeds visible,\n'
+printf '   Globals persisted to Falkor, G-5 episode round-trip verified.)\n'

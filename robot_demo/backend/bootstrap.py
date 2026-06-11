@@ -36,7 +36,14 @@ from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
 from mindsos_knowledge.metagraph_view import MetagraphView
 
 from .brain import Brain, build_brain_stack
+from .bundles import manifest_path
+from .persistence import (
+    load_or_mint_global,
+    persist_global,
+    probe_episode_roundtrip,
+)
 from .profiles import DEVICE_ORDER, DEVICE_PROFILES
+from .seeds import seed_local_embodiment
 
 ADMIN_ID = "admin"
 
@@ -45,8 +52,19 @@ ADMIN_ID = "admin"
 _DEFAULT_PW = "demo-pass"  # noqa: S105 — demo fixture, not a real secret
 
 
+#: The phase the demo runs against (preflight gate: phase >= bundle's
+#: requires_mindsos_phase=50). Overridable for a newer base image.
+_CURRENT_PHASE = int(os.environ.get("DEMO_MINDSOS_PHASE", "50"))
+
+
 def _password_for(user_id: str) -> str:
     return os.environ.get(f"DEMO_PW_{user_id.upper()}", _DEFAULT_PW)
+
+
+def _falkor_enabled() -> bool:
+    """DM-2: persist per-device Globals to Falkor unless explicitly off.
+    Off ⇒ DM-1 in-memory path (sandbox / unit tests have no FalkorDB)."""
+    return os.environ.get("DEMO_FALKOR", "1") != "0"
 
 
 def _user_exists(conn: sqlite3.Connection, user_id: str) -> bool:
@@ -87,29 +105,69 @@ def _ensure_users(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _login_all(conn: sqlite3.Connection) -> Dict[str, Any]:
-    """Step 3: real login() per brain user → real Session objects.
-
-    login() enforces one active session per user (AlreadyLoggedInError),
-    and server.db persists across re-boots — so clear any stale session
-    first via the shipped self-recovery valve. This is what makes a
-    re-boot on an existing server.db idempotent (P6).
-    """
+def _login(conn: sqlite3.Connection, user_id: str) -> Any:
+    """Real login() for one user → real Session. Clears any stale session
+    first (PB-V): login() enforces one active session per user and
+    server.db persists across re-boots."""
     from mindsos_server.sessions import kill_my_own_sessions, login
 
-    sessions: Dict[str, Any] = {}
-    for device_id in DEVICE_ORDER:
-        pw = _password_for(device_id)
-        kill_my_own_sessions(conn, device_id, pw)
-        sessions[device_id] = login(conn, device_id, pw).session
+    pw = _password_for(user_id)
+    kill_my_own_sessions(conn, user_id, pw)
+    return login(conn, user_id, pw).session
+
+
+def _login_all(conn: sqlite3.Connection) -> Dict[str, Any]:
+    """Step 3: real login() per brain user → real Session objects."""
+    sessions: Dict[str, Any] = {
+        device_id: _login(conn, device_id) for device_id in DEVICE_ORDER
+    }
     conn.commit()
     return sessions
+
+
+def _login_admin(conn: sqlite3.Connection) -> Any:
+    """DM-2 (PB-BB): log the admin in so bundle installs ride the REAL
+    ADR-0180 gate. ADMIN_CAPS carries CAN_INSTALL_SKILL + CAN_WRITE_GLOBAL
+    (vs. the ADR-0080 session=None carve-out, which bypasses the gate and
+    wouldn't 'eat the Phase-50 dogfood' per §3.4)."""
+    session = _login(conn, ADMIN_ID)
+    conn.commit()
+    return session
+
+
+def _install_device_bundles(brain: Brain, admin_session: Any) -> Tuple[str, ...]:
+    """DM-2 §3.4 / P-8: admin installs the device-type-selected bundles
+    into this brain's own (kl, cl) through the real ``install_skill`` gate.
+    Idempotent (Phase-50 S8: same name+version+digest → no-op).
+
+    Bundle selection lives here in robot_demo: ``profile.bundle_names``
+    (``core`` everywhere; the type bundle only on its device)."""
+    from mindsos_server.skills.driver import install_skill
+
+    installed: list[str] = []
+    for bundle_name in brain.profile.bundle_names:
+        result = install_skill(
+            manifest_path(bundle_name),
+            kl=brain.kl,
+            cl=brain.cl,
+            session=admin_session,
+            current_phase=_CURRENT_PHASE,
+        )
+        installed.append(
+            f"{result.bundle_name}@{result.bundle_version}"
+            f"{'(no-op)' if result.no_op else ''}"
+        )
+    return tuple(installed)
 
 
 @dataclass
 class BootstrapResult:
     brains: Dict[str, Brain]
     episodes: Dict[str, int]
+    bundles: Dict[str, Tuple[str, ...]] = None  # device → installed bundles
+    seeded_local: Dict[str, bool] = None        # device → embodiment written
+    persisted_global: bool = False              # DM-2 Falkor Global persist
+    episode_roundtrip: Optional[str] = None     # G-5 probe detail (or None)
 
     @property
     def total_episodes(self) -> int:
@@ -160,29 +218,87 @@ def smoke(brains: Dict[str, Brain]) -> Dict[str, int]:
     return episodes
 
 
+def _open_falkor_client():
+    """DM-2: open a FalkorDB client, or return None (fall back to the DM-1
+    in-memory path) if disabled or unreachable. Falling back is documented,
+    not fatal — the gate degrades gracefully (G-5 fallback contract)."""
+    if not _falkor_enabled():
+        return None
+    from .persistence import open_client
+
+    try:
+        return open_client()
+    except Exception as exc:  # PersistenceError / driver missing
+        print(f"[DM-2] FalkorDB unavailable ({exc}); in-memory fallback.")
+        return None
+
+
 def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
-    """Run the full DM-1 bootstrap + smoke. Returns a BootstrapResult.
+    """Run the full DM-1 + DM-2 bootstrap + smoke. Returns a BootstrapResult.
+
+    DM-2 adds, per device (plan §1.3 steps 4–5): per-device named Falkor
+    load-or-mint of the Global (PB-J), admin-gated device-type bundle
+    install (P-8/§3.4), and Local embodiment seeding (§3.3). Globals are
+    persisted; Locals stay in-memory (PB-Z). A single G-5 episode→Falkor
+    round-trip probe runs after the smoke.
 
     Raises on any failure so a container/gate exits non-zero.
     """
     from mindsos_server._db import open_db
 
     with open_db(db_path) as conn:
-        _ensure_users(conn)        # steps 0–2
-        sessions = _login_all(conn)  # step 3
+        _ensure_users(conn)              # steps 0–2
+        sessions = _login_all(conn)      # step 3 (brain users)
+        admin_session = _login_admin(conn)  # DM-2 PB-BB (admin)
 
-    # step 4 — per-device stacks (KL in-memory at DM-1; build + start IL)
+    client = _open_falkor_client()
     brains: Dict[str, Brain] = {}
-    for device_id in DEVICE_ORDER:
-        brains[device_id] = build_brain_stack(
-            DEVICE_PROFILES[device_id], sessions[device_id]
-        )
-        # DM-2: admin installs device-type bundles into brains[device_id].(kl, cl)
-        # DM-2: seed brains[device_id]'s Local via make_writeable(kl, session)
-        # DM-3: register embodied capacities over the brain's BodyHandle
+    bundles: Dict[str, Tuple[str, ...]] = {}
+    seeded_local: Dict[str, bool] = {}
+    try:
+        # step 4 — per-device stacks (Falkor load-or-mint Global, or
+        # in-memory when no client), + bundle install + Local seed.
+        for device_id in DEVICE_ORDER:
+            profile = DEVICE_PROFILES[device_id]
+            kl = None
+            if client is not None:
+                kl = load_or_mint_global(client, profile).kl
+            brain = build_brain_stack(profile, sessions[device_id], kl=kl)
+            brains[device_id] = brain
 
-    episodes = smoke(brains)  # step 5
-    return BootstrapResult(brains=brains, episodes=episodes)
+            bundles[device_id] = _install_device_bundles(brain, admin_session)
+            seeded_local[device_id] = seed_local_embodiment(
+                brain.kl, brain.session, device_id
+            )
+            if client is not None:
+                persist_global(client, brain.kl)  # MERGE-idempotent
+            # DM-3: register embodied capacities over the brain's BodyHandle
+
+        episodes = smoke(brains)  # step 5
+
+        # G-5 — one episode→Falkor round-trip probe (mgr); fallback = in-memory.
+        roundtrip: Optional[str] = None
+        if client is not None:
+            res = probe_episode_roundtrip(client, brains["mgr"].kl, "mgr")
+            roundtrip = res.detail
+            if not res.ok:
+                print(f"[DM-2][G-5] episode round-trip FAILED: {res.detail} "
+                      "— falling back to in-memory episodes (documented).")
+    finally:
+        if client is not None and hasattr(client, "close"):
+            try:
+                client.close()
+            except Exception:
+                pass
+
+    return BootstrapResult(
+        brains=brains,
+        episodes=episodes,
+        bundles=bundles,
+        seeded_local=seeded_local,
+        persisted_global=client is not None,
+        episode_roundtrip=roundtrip,
+    )
 
 
 __all__ = ["bootstrap", "smoke", "BootstrapResult", "ADMIN_ID"]
