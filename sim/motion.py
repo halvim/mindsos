@@ -486,7 +486,7 @@ class Cell:
         return max_jump
 
     def carry_master(self, a, obj, target, N=240, capture=True, reconfig=True, yaw_total=np.pi,
-                     base_dir=0, ride=False, settle=True):
+                     base_dir=0, ride=False, settle=True, ride_lockR=False):
         """OBJECT-master carry to `target`: drive the object along a smooth, strictly
         MONOTONIC path (+ a single monotonic yaw so its gripped face ends facing the mouth).
         The ARM follows by warm IK with joints changing as LITTLE as possible, reconfiguring
@@ -518,7 +518,13 @@ class Cell:
             # Assumes the model is forwarded (tool site current).
             if ride:
                 tcp_a = self.d.site_xpos[sid].copy(); Rt_a = self.d.site_xmat[sid].reshape(3, 3).copy()
-                mujoco.mju_mat2Quat(bqm, (Rt_a @ rel_R).reshape(9))
+                if ride_lockR:
+                    # POSITION glue only: the box stays on the cup, but its orientation
+                    # follows the PLANNED upright yaw schedule (full-pose glue leaked the
+                    # cup's 18deg orbit wobble into box tilt)
+                    mujoco.mju_mat2Quat(bqm, Rb.reshape(9))
+                else:
+                    mujoco.mju_mat2Quat(bqm, (Rt_a @ rel_R).reshape(9))
                 self.d.qpos[adr:adr + 3] = tcp_a + Rt_a @ rel_pos
                 self.d.qpos[adr + 3:adr + 7] = bqm
             else:
@@ -1007,6 +1013,211 @@ class Cell:
         self.move_to(a, np.array([bc[0], bc[1], box_top + 0.10]) - off, TOP_R, label="clear", robust=True)
 
 
+def combo_box_pick(arm, box, cell, name, title):
+    """Arm-1 box pick: the box starts in the cubby (post-place pose, yawed 180); the cup
+    grasps its mouth-facing face (tool -y), extracts, carries back UN-turning -180, and
+    sets it on the belt at its build spot in the original orientation (so the place
+    animations chain). Carry ladder: classic reverse (object-master spin) if its branch
+    tracks <=40mm, else the r0c2-approved position-glue through the turn + an exact
+    re-base translation leg at the belt (no settle)."""
+    c = Cell()
+    c.pin_loose(); c.step(20)
+    sid = c.arm[arm]["sid"]; A = c.arm[arm]
+    yh = c.obj_half(box, 1); hz = c.obj_half(box, 2)
+    belt_tgt = c.d.xpos[c.bid(box)].copy()        # build spot = exact landing target
+    cellv = np.array(cell, float)
+    seat = np.array([cellv[0], cellv[1], cellv[2] - 0.5 * G.ROW_DZ + 0.008 + hz])
+    # REST first (belt-side; rest_candidates keys off the box's CURRENT position)
+    REST = c.rest_pose(arm, box)
+    if REST is None:
+        raise RuntimeError(f"{name}: no clear rest pose found")
+    # stage: box in the cubby, post-place orientation (+180 yaw)
+    adr = c.qadr_of(c.bid(box))
+    c.detach(box)
+    c.d.qpos[adr:adr + 3] = seat
+    c.d.qpos[adr + 3:adr + 7] = [0, 0, 0, 1]      # wxyz for Rz(pi)
+    mujoco.mj_forward(c.m, c.d); c.pin(box); c.step(10)
+    c.frames = []; c.events = []
+    c.event(title)
+    Rg = GRASP_R[arm]                             # tool -y at the cubby mouth face
+    tcp_g = seat + np.array([0.0, yh + 0.02, 0.0])
+    # branch: classic enumeration dry-running the reverse carry (un-turn -pi)
+    # ONE enumeration, CLEARANCE-first key (ride=True): the glue route cures tracking
+    # error, so box-arm clearance is the binding constraint (te-first picked a branch
+    # passing 30mm from the arm at r0c2; two enumerations blow the 45s wall)
+    q_grasp, gmc = c.pick_grasp_branch(arm, box, tcp_g, Rg, belt_tgt, yaw_total=-np.pi,
+                                       ride=True, n_seeds=22)
+    sv = c.d.qpos.copy()
+    c.d.qpos[A["qadr"]] = q_grasp; mujoco.mj_forward(c.m, c.d)
+    mc, mj, te, la = c.carry_master(arm, box, belt_tgt, N=380, capture=False,
+                                    reconfig=False, yaw_total=-np.pi)
+    c.d.qpos[:] = sv; mujoco.mj_forward(c.m, c.d)
+    print(f"   clearance-first dry: te={te*1000:.0f}mm jump={mj:.2f} clear={mc*1000:.0f}mm")
+    glue = te > 0.030    # 0.040 let r1c2 (dry ~35) run plain and drift to float 50
+    # approach: unfold to a pre-mouth pose, then straight-in (sheet_pick pattern)
+    sc2 = mujoco.MjData(c.m); sc2.qpos[:] = c.d.qpos
+    ik(c.m, sc2, A["pfx"], sid, A["dofs"], A["qadr"], A["lo"], A["hi"],
+       tcp_g + np.array([0.0, 0.10, 0.0]), seed=q_grasp, iters=300, R_des=Rg)
+    q_appr = sc2.qpos[A["qadr"]].copy()
+    c.d.qpos[A["qadr"]] = REST
+    mujoco.mj_forward(c.m, c.d); c._apply_attach(); c.capture()
+    c.move_to_q(arm, q_appr, steps=170, label="unfold")
+    c.move_to(arm, tcp_g, Rg, steps=45, label="approach")
+    c.detach(box); c.attach_tcp(box, sid); c.event(f"grasp {box}")
+    if not glue:
+        c.carry_master(arm, box, belt_tgt, N=560, reconfig=False, yaw_total=-np.pi,
+                       ride=False, settle=False)
+    else:
+        # 1) ride-free EXTRACTION (pure translation out of the mouth: monotonic, tight),
+        # 2) glue through the un-turn to above the belt spot (float-free; the cup's
+        #    wander is confined to this shorter leg), 3) re-base: pure translation from
+        #    the box's ACTUAL pose to the exact build spot (no settle teleport)
+        # glue from the GRASP itself (a separate ride-free extraction leg lagged 50mm
+        # at r1c2 and the glue then froze that offset in permanently); exit-path
+        # cleanliness is policed by items 5/6/6b + away
+        # yaw completes at a midpoint well above/short of the seat (the cup's end-of-turn
+        # wander bulge is then tangential to the seat, not radial: r2c1 had 9 away frames
+        # with the turn ending at the seat), then a glued settle-translation, then re-base
+        # split the yaw 88/12 across the two glued legs: ending the full turn at the
+        # midpoint freed the saturated cup all at once (153mm catch-up snap); a decaying
+        # orientation demand keeps it continuous
+        mid = belt_tgt + np.array([0.22 * (1 if belt_tgt[0] < 0 else -1), 0.0, 0.24])
+        c.carry_master(arm, box, mid, N=380, reconfig=False, yaw_total=-0.88 * np.pi,
+                       ride=True, settle=False, ride_lockR=True)
+        c.carry_master(arm, box, belt_tgt + np.array([0.0, 0.0, 0.10]), N=170,
+                       reconfig=False, yaw_total=-0.12 * np.pi, ride=True, settle=False,
+                       ride_lockR=True)
+        c.carry_master(arm, box, belt_tgt, N=160, reconfig=False, yaw_total=0.0,
+                       ride=False, settle=False)
+    c.event(f"{box} placed")
+    Rt_now = c.d.site_xmat[sid].reshape(3, 3).copy()
+    c.move_to(arm, tcp_g * 0 + c.d.site_xpos[sid] + np.array([0.0, -0.12, 0.10]),
+              Rt_now, steps=70, label="retract")
+    c.move_to_q(arm, REST, steps=200, label="to-home")
+    c.capture()
+    c.event("done")
+    final = c.d.xpos[c.bid(box)].copy()
+    print(f"[{name}] box-on-belt err = {np.linalg.norm(final - belt_tgt) * 1000:.1f} mm")
+    _save(c, name, title)
+
+
+def combo_tube_place(arm, tube, cell, name, title):
+    """Arm-2 tube place, MOTION-MATCHED to the a2 box places (user reference): the
+    standard plan-B via carry — lift, transit with the 180 turn ending at the comfort
+    zone, diagonal to the mouth, straight insert — with the same retract/short-home.
+    Only the BRANCH derivation differs from combo_box: the enumeration cannot find a
+    tracking branch for the tube's grasp pose (float 173 when routed through
+    combo_box), but the chain robust-TURNED-hover -> warm-descend-to-grasp does."""
+    c = Cell()
+    c.pin_loose(); c.step(20)
+    sid = c.arm[arm]["sid"]; A = c.arm[arm]
+    tr = c.obj_half(tube, 1); tz = c.obj_half(tube, 2)
+    so = tr + 0.02
+    oc = c.d.xpos[c.bid(tube)].copy()
+    cellv = np.array(cell, float)
+    seat = np.array([cellv[0], cellv[1], cellv[2] - 0.5 * G.ROW_DZ + 0.008 + tz])
+    Rg2 = np.array([[-1.0, 0, 0], [0, -1.0, 0], [0, 0, 1.0]]) @ GRASP_R[arm]   # tool +y
+    tcp_g = oc - np.array([0.0, so, 0.0])
+    lift = tcp_g + np.array([0.0, 0.0, 0.16])
+    c11 = G.shelf_cell(arm, 1, 1)
+    seat11 = np.array([c11[0], c11[1], c11[2] - 0.5 * G.ROW_DZ + 0.008 + tz])
+    via = seat11 + np.array([0.0, so + 0.22, 0.10])
+    HP = np.pi
+    def Rzf(t):
+        ct, st = np.cos(t), np.sin(t)
+        return np.array([[ct, -st, 0], [st, ct, 0], [0, 0, 1.0]])
+    rel = np.array([0.0, 0.0, so])
+    tcp_seat = seat - (Rzf(HP) @ Rg2) @ rel
+    mouth = tcp_seat + np.array([0.0, 0.12, 0.0])
+    OB = np.array([1.15, -0.25, 1.25])
+    def mkplan(n1, n2, n3, n4):
+        return [(n1, lambda u: tcp_g + u * (lift - tcp_g), lambda u: 0.0),
+                (n2, lambda u: lift + u * (via - lift), lambda u: HP * u),
+                (n3, lambda u: via + u * (mouth - via), lambda u: HP),
+                (n4, lambda u: mouth + u * (tcp_seat - mouth), lambda u: HP)]
+    def mkplan_ob(n0, n1, n2, n3, n4):
+        # over-base variant: turn between OB and the via (bottom-center's box-style
+        # transit floats 68-103 there; this shape turns at 3mm and leaves only the
+        # cell's intrinsic ~43mm descent transient, shaved by the end-seed rescue)
+        return [(n0, lambda u: tcp_g + u * (lift - tcp_g), lambda u: 0.0),
+                (n1, lambda u: lift + u * (OB - lift), lambda u: 0.0),
+                (n2, lambda u: OB + u * (via - OB), lambda u: HP * u),
+                (n3, lambda u: via + u * (mouth - via), lambda u: HP),
+                (n4, lambda u: mouth + u * (tcp_seat - mouth), lambda u: HP)]
+    ROT = dict(rot_axis=(0.0, 0.0, 1.0), rot_ang=HP)
+    sv = c.d.qpos.copy()
+    def dry(q, plan):
+        c.d.qpos[A["qadr"]] = q; mujoco.mj_forward(c.m, c.d)
+        mc, mj, te, la = c.carry_pivot(arm, tube, seat, capture=False,
+                                       plan_override=plan, **ROT)
+        c.d.qpos[:] = sv; mujoco.mj_forward(c.m, c.d)
+        return mc, mj, te
+    q_hov = c.solve(arm, lift, Rg2, robust=True)         # un-turned hover over the tube
+    sch = mujoco.MjData(c.m); sch.qpos[:] = c.d.qpos
+    ik(c.m, sch, A["pfx"], sid, A["dofs"], A["qadr"], A["lo"], A["hi"],
+       tcp_g, seed=q_hov, iters=300, R_des=Rg2)
+    q_hc = sch.qpos[A["qadr"]].copy()
+    dry_box = mkplan(18, 62, 40, 16)
+    dry_ob = mkplan_ob(14, 14, 40, 30, 12)
+    cands = [("hover/box", q_hc, "box"), ("robust/box", None, "box"),
+             ("hover/OB", q_hc, "ob")]
+    best = None                                          # (te, q, planname)
+    for lbl, q, pl in cands:
+        if q is None:
+            q = c.solve(arm, tcp_g, Rg2, robust=True)
+        mc, mj, te = dry(q, dry_box if pl == "box" else dry_ob)
+        print(f"   {lbl} dry: te={te*1000:.0f}mm jump={mj:.2f} clear={mc*1000:.0f}mm")
+        if mj < 1.5 and mc > 0.065 and (best is None or te < best[0]):
+            best = (te, q, pl)
+        if best is not None and best[0] <= 0.030:
+            break
+    if best is None or best[0] > 0.030:
+        qe, gmc = c.pick_grasp_branch(arm, tube, tcp_g, Rg2, seat, pivot=True,
+                                      dry_plan_override=dry_box, n_seeds=22, **ROT)
+        mc, mj, te = dry(qe, dry_box)
+        print(f"   enum/box dry: te={te*1000:.0f}mm jump={mj:.2f} clear={mc*1000:.0f}mm")
+        if mj < 1.5 and mc > 0.065 and (best is None or te < best[0]):
+            best = (te, qe, "box")
+    if best is None:
+        raise RuntimeError(f"{name}: no trackable branch found")
+    te0, q_grasp, planname = best
+    # branch-aligned REST near the pickup
+    Rrest = R_from([0, 1, 0])
+    REST = None
+    for off_r in ((0, -0.25, 0), (0, -0.25, 0.04), (0.04, -0.25, 0.04), (0, -0.30, 0.06)):
+        sc = mujoco.MjData(c.m); sc.qpos[:] = c.d.qpos
+        r = ik(c.m, sc, A["pfx"], sid, A["dofs"], A["qadr"], A["lo"], A["hi"],
+               oc + np.array(off_r, float), seed=q_grasp, iters=300, R_des=Rrest)
+        q = sc.qpos[A["qadr"]].copy()
+        sv2 = c.d.qpos.copy()
+        c.d.qpos[A["qadr"]] = q; mujoco.mj_forward(c.m, c.d)
+        ok = r["ok"] and c._links_clear_structures(arm)
+        c.d.qpos[:] = sv2; mujoco.mj_forward(c.m, c.d)
+        if ok:
+            REST = q
+            break
+    if REST is None:
+        raise RuntimeError(f"{name}: no clear branch-aligned rest pose found")
+    c.frames = []; c.events = []
+    c.event(title)
+    c.d.qpos[A["qadr"]] = REST
+    mujoco.mj_forward(c.m, c.d); c._apply_attach(); c.capture()
+    c.move_to_q(arm, q_grasp, steps=150, label="unfold")
+    c.detach(tube); c.attach_tcp(tube, sid); c.event(f"grasp {tube}")
+    full = mkplan(70, 250, 160, 60) if planname == "box" else mkplan_ob(60, 70, 200, 150, 60)
+    # rescue only for genuinely diverging branches: pulling a ~44mm-transient branch
+    # toward the end pose made it WORSE (64), the standing lesson on static pulls
+    c.carry_pivot(arm, tube, seat, plan_override=full, end_seed=(te0 > 0.050), **ROT)
+    c.event(f"{tube} seated")
+    c.move_to(arm, seat + np.array([0, 0.18, 0.05]), GRASP_R[arm], steps=70, label="retract")
+    c.move_to_q(arm, REST, steps=320, label="to-home")
+    c.capture()
+    c.event("done")
+    final = c.d.xpos[c.bid(tube)].copy()
+    print(f"[{name}] tube xy err = {np.linalg.norm((final - cellv)[:2]) * 1000:.0f} mm")
+    _save(c, name, title)
+
+
 def combo_load_convey(arm, cargo, box, name, title):
     """Load the cargo INTO the arm's own box (verified containment, not a rim-drop),
     then the CONVEYOR carries box+cargo across, ending EXACTLY at the other box's
@@ -1197,7 +1408,9 @@ def combo_box(arm, box, cell, name, title, direct=False, shelf_face=False, yaw_t
                                            base_dir=base_dir, ride=ride, pivot=pivot, via_tcp=via_tcp)
         orbit_mouth = None
         if ref_cell is not None:                          # do the ROTATION at the neighbour's
-            orbit_mouth = sel_seat + [0, 0.12, 0]         # mouth (tracks tight), then translate over
+            orbit_mouth = sel_seat + [0, 0.22, 0]         # mouth zone (tracks tight), then slide.
+            # 0.22 not 0.12: at 0.12 the rotating box's corners came within 10mm of the
+            # rack front plane (user saw it as touching); at 0.22 corner clearance ~80mm
         REST = c.rest_pose(arm, box, seed=q_grasp)         # conveyor-facing, clear; grasp branch
         # 0. start AT the rest pose (frame 0)
         c.d.qpos[c.arm[arm]["qadr"]] = REST
@@ -1218,8 +1431,11 @@ def combo_box(arm, box, cell, name, title, direct=False, shelf_face=False, yaw_t
             # then translate it over in front of the rack to THIS cubby and insert — pure
             # translations track tight too. (r0c2 reuses r0c1's clean rotation, then slides +x.)
             shift_pt = np.array([seat[0], orbit_mouth[1], seat[2]])      # this cubby's mouth
-            c.carry_master(arm, box, orbit_mouth, N=440, reconfig=False, yaw_total=yaw_total,
-                           ride=ride, settle=False)                                          # rotate (held)
+            c.carry_master(arm, box, orbit_mouth, N=880, reconfig=False, yaw_total=yaw_total,
+                           ride=True, settle=False, ride_lockR=True)   # rotate GLUED to the cup (a1's wrist
+            # cannot track a 180 cup-orbit anywhere: probed 91-181mm lag across every
+            # scheme). No settle: the following slide/insert legs re-base from the box's
+            # ACTUAL post-orbit pose and ride the planned path exactly to the seat.
             c.carry_master(arm, box, shift_pt, N=120, reconfig=False, yaw_total=0.0,
                            ride=ride, settle=False)                                          # +x (held)
             c.carry_master(arm, box, seat, N=120, reconfig=False, yaw_total=0.0, ride=ride)  # insert+settle

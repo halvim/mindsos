@@ -1,12 +1,13 @@
-"""Render arm-aware side-view GIFs for the cubby animations. argv: start count."""
+"""Render arm-aware side-view GIFs for the cubby animations. argv: start count.
+(Restored 2026-06-10 from the session record after an accidental deletion.)"""
 import sys, os, json, numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import render_solid as RS
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__)); WEB = os.path.join(HERE, "..", "web")
-OUT = os.path.join(WEB, "gifs")      # permanent, repo-relative (reference renders;
-os.makedirs(OUT, exist_ok=True)      # was a session-scratch path that went stale per chat)
+OUT = os.path.join(WEB, "gifs")      # permanent, repo-relative (reference renders)
+os.makedirs(OUT, exist_ok=True)
 
 NAMES = [(1, "a1_box")] + [(1, "a1_r%dc%d" % (r, c)) for r in range(3) for c in range(3) if not (r == 0 and c == 1)]
 NAMES += [(2, "a2_r%dc%d" % (r, c)) for r in range(3) for c in range(3)]
@@ -14,6 +15,10 @@ NAMES += [(1, "a1_sheet_r%dc%d" % (r, c)) for r in range(3) for c in range(3)]  
 NAMES += [(1, "a1_sheet_pick_r%dc%d" % (r, c)) for r in range(3) for c in range(3)]   # idx 27-35
 NAMES += [(2, "a2_tube_pick_r%dc%d" % (r, c)) for r in range(3) for c in range(3)]    # idx 36-44
 NAMES += [(0, "a1_load_convey"), (0, "a2_load_convey")]                               # idx 45-46 (wide)
+NAMES += [(2, "a2_tube_place_r%dc%d" % (r, c)) for r in range(3) for c in range(3)]   # idx 47-55
+NAMES += [(1, "a1_box_pick_r%dc%d" % (r, c)) for r in range(3) for c in range(3)]     # idx 56-64
+# NOTE: idx 0 (a1_box) is a deleted legacy anim — kept in the list so the historical
+# index map in ROBOT_DEMO_STATE.md stays valid; rendering idx 0 will fail by design.
 
 
 GEO_FULL = None
@@ -26,7 +31,7 @@ def render(name, arm):
     anim = json.load(open(os.path.join(WEB, f"anim_{name}.json")))
     if arm == 0:    # wide both-arms view (cross-cell conveyor anims), from the belt side
         keep = lambda b: True
-        foc = np.array([0.0, -0.2, 1.0]); eye = foc + np.array([0.0, 3.4, 0.9])
+        foc = np.array([0.0, -0.2, 1.0]); eye = foc + np.array([0.0, 3.6, 0.9])
     elif arm == 1:
         keep = lambda b: b.startswith("a1_") or b in ("world", "shelf_L", "box1", "sheet1")
         foc = np.array([-1.20, -0.25, 1.02]); eye = foc + np.array([-3.0, 0.0, 0.55])
