@@ -17,7 +17,7 @@ DESIGN GROUND TRUTH (implement; do not re-litigate)
 PREREQ CHECK (run before branching)
 - `git tag --list | grep -E "phase-4[0-8]-confirmed"` — 40–48 all present (48 is the new one; `main` tip is the Phase-48 confirm commit `1952260`, tag `phase-48-confirmed`). Branch `phase-49` off `phase-48-confirmed`.
 - **VERSION BUMP REQUIRED:** slot 49 > high-water 48 → full bump 48→49 across all surfaces — confirm the exact set from `PHASE_48_CONFIRMED.md` tester_notes / the PHASE_MAP §1 checklist (8 package `__version__` + pyproject + manifest `version` AND manifest `phase` + 2 docker-compose tags + the export-slate assertions). No new top-level package expected → no new-package checklist.
-- Working tree has long-standing untracked items (Robot Demo corpus `confirmation_docs/ROBOT_DEMO_*` + `demo_ui/`/`prototype_zero/`/`sim/`/`web/`, and a modified `docs/_workbench/L3_FUTURE_WORK.md`) — **never `git add -A`; stage selectively; leave those alone** (every prior phase did).
+- Working tree has long-standing untracked items (Robot Demo corpus `confirmation_docs/ROBOT_DEMO_*` + `demo_ui/`/`prototype_zero/`/`sim/`/`web/`, and a modified `docs/future_work/L3_FUTURE_WORK.md`) — **never `git add -A`; stage selectively; leave those alone** (every prior phase did).
 - Diff-read the modules the scenario touches before locking picks (the Phase-48 `consolidation.py`/`crash_recovery.py`/`dream_cycle.py`/`monitoring.py`, the orchestrator, the L0 `FalkorDBLocalPersister`, the `episodic_memories` schema).
 
 INHERITED LESSONS (apply, don't re-derive)

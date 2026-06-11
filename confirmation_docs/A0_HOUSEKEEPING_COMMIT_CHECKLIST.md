@@ -168,7 +168,7 @@ Pre-commit verification:
 ls confirmation_docs/CHAT_A_DECISIONS.md confirmation_docs/CHAT_B_DECISIONS.md
 ls confirmation_docs/L1_L3_REFRAME_DECISIONS.md confirmation_docs/L2_CHAT_DECISIONS.md
 ls confirmation_docs/POST_PHASE_38_PHASE_MAP.md
-ls docs/_workbench/STREAM_A_BACKLOG.md docs/_workbench/L2_FUTURE_WORK.md
+ls docs/_workbench/STREAM_A_BACKLOG.md docs/future_work/L2_FUTURE_WORK.md
 grep -l "Phase 43" confirmation_docs/POST_PHASE_38_PHASE_MAP.md  # sanity: phase 43 row present
 ```
 

@@ -39,7 +39,7 @@ contain):
    loop ownership, PB-T L0 admin-surface items, v0 catalog replacement (q4).
    Also routed to you: ADR-0181 physical Falkor index creation (first query
    consumer), the L0-25 delete-sweep completeness audit
-   (`docs/_workbench/L0_FUTURE_WORK.md`), `world-axioms` role-graph via your
+   (`docs/future_work/L0_FUTURE_WORK.md`), `world-axioms` role-graph via your
    own ADR-0150 §am (+ any role-set expansion — bundles cannot do it).
 8. `CLAUDE.md` loads automatically — "Downstream progress" paragraph for
    orientation; `_workbench/cookbook_routing.md` (you own `nlu-slice.md`);

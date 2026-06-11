@@ -265,4 +265,4 @@ PR2 grounding over `mindsos_server/orchestrator.py` + its caller set reversed CR
 
 **Proper fix (maintenance, post-Phase-44):** apply the codebase's own lazy-import-to-break-cycle pattern (precedent: `mindsos_core/persistence/client.py:140` — "Late import to break the persistence.bootstrap ↔ persistence.client cycle"). Make `mindsos_admin/promotion.py:68 from mindsos_server.admin import admin_tx` a **lazy import inside the function(s) that call `admin_tx`** (first verify `admin_tx` is used only in function bodies, not at module top-level). That breaks the back-edge: when `mindsos_admin` imports `promotion`, `promotion` no longer needs `admin_tx` immediately, so `admin.py` finishes initializing and defines `admin_tx` before any call site runs. Then **remove `tests/phase_44/conftest.py`** (band-aid no longer needed) and re-run the full cumulative gate. ~1-3 line change; behavior-preserving.
 
-**Owner:** MAINTENANCE_CHAT (or next maintenance window). Tracked as L0-24 in `docs/_workbench/L0_FUTURE_WORK.md`.
+**Owner:** MAINTENANCE_CHAT (or next maintenance window). Tracked as L0-24 in `docs/future_work/L0_FUTURE_WORK.md`.

@@ -104,7 +104,7 @@ Per `POST_PHASE_38_PHASE_MAP.md §1 + §4 Phase 43 row` (the row body is stale; 
 - Manifest bump 9-surface checklist applied at PR1 commit 5 per design log §9.4 / Phase 39 §9.4.
 - `HANDOFF.md` §1 line bump + §2.2 update reflecting Phase 43 ship + §3.1.X status flip (new section appending after §3.1.12).
 - `confirmation_docs/POST_PHASE_38_PHASE_MAP.md` §4 Phase 43 row **scope-rewrite** per design log NPB11-2 + Status: SHIPPED.
-- `docs/_workbench/L2_FUTURE_WORK.md` §11 routing notes updated (L2-29/30/31/32/33/37(field)/40 marked CLOSED — shipped Phase 43; routing-note text per design log NPB14-2).
+- `docs/future_work/L2_FUTURE_WORK.md` §11 routing notes updated (L2-29/30/31/32/33/37(field)/40 marked CLOSED — shipped Phase 43; routing-note text per design log NPB14-2).
 - `confirmation_docs/PHASE_44_NEXT_CHAT_PROMPT.md` — seed for Phase 44 (L0 substrate; gates on `L0_SUBSTRATE_CHAT` closure independently).
 - `confirmation_docs/PHASE_43_DESIGN_LOG.md` §9 filled with impl-time amendments accumulated during this chat.
 

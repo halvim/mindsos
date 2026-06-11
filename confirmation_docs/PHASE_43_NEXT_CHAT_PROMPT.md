@@ -324,7 +324,7 @@ Per `PHASE_MAP.md §1` per-phase workflow (inherited unchanged):
   completion + §3.1.7 status update.
 - `_workbench/STREAM_A_BACKLOG.md` — close any absorbed items
   (likely A6).
-- `_workbench/L2_FUTURE_WORK.md` §11 — mark closed items per Phase
+- `future_work/L2_FUTURE_WORK.md` §11 — mark closed items per Phase
   43 cascade.
 - `confirmation_docs/PHASE_44_NEXT_CHAT_PROMPT.md` — seed for next
   rail. Note: Phase 44 is Rail C (L0 substrate), gated on

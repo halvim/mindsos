@@ -18,7 +18,7 @@ this phase builds.
 - `git tag --list | grep -E "phase-4[0-5]-confirmed"` → 40/41/42/43/44/45 all
   present. ✔
 - `main`-tip `be832be`; on `main`. Working tree: `M HANDOFF.md`,
-  `M docs/_workbench/L3_FUTURE_WORK.md` + untracked Robot Demo workstream
+  `M docs/future_work/L3_FUTURE_WORK.md` + untracked Robot Demo workstream
   (`confirmation_docs/ROBOT_DEMO_*`, `demo_ui/`, `sim/`, `web/`,
   `prototype_zero/`). `ROBOT_DEMO_STATUS.md` **exists** → the HANDOFF inline
   Robot Demo §0 block was relocated; HANDOFF stages cleanly. **Never

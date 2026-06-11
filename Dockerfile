@@ -264,3 +264,7 @@ RUN pip install --no-cache-dir --no-deps .
 
 RUN chown -R mindsos:mindsos /app
 CMD ["pytest", "tests/", "-v"]
+
+# NOTE: the Robot Demo image is NOT a stage here. It owns its own Dockerfile
+# (robot_demo/deploy/Dockerfile, FROM the built mindsos:<phase>-prod image) so
+# the core build file stays demo-free. See robot_demo/deploy/README.md.

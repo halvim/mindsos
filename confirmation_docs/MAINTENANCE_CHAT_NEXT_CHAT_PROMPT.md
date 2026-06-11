@@ -6,7 +6,7 @@ You are NOT a numbered phase. Ship as Stream-A-style maintenance commits on `mai
 
 SCOPE (5 items — resist expansion; anything bigger gets routed, not absorbed):
 
-- **M1 — L0-24 import-cycle fix.** `mindsos_admin/promotion.py:68` top-level `from mindsos_server.admin import admin_tx` → lazy-import inside the consuming function(s) (codebase pattern `mindsos_core/persistence/client.py:140`); remove the `tests/phase_44/conftest.py` warm-up band-aid; re-run isolated subsets (`pytest tests/phase_44/`, `tests/phase_18`) + full cumulative gate. ~1–3 lines. Full diagnosis `PHASE_44_DESIGN_LOG.md §12`; item text `docs/_workbench/L0_FUTURE_WORK.md` L0-24.
+- **M1 — L0-24 import-cycle fix.** `mindsos_admin/promotion.py:68` top-level `from mindsos_server.admin import admin_tx` → lazy-import inside the consuming function(s) (codebase pattern `mindsos_core/persistence/client.py:140`); remove the `tests/phase_44/conftest.py` warm-up band-aid; re-run isolated subsets (`pytest tests/phase_44/`, `tests/phase_18`) + full cumulative gate. ~1–3 lines. Full diagnosis `PHASE_44_DESIGN_LOG.md §12`; item text `docs/future_work/L0_FUTURE_WORK.md` L0-24.
 
 - **M2 — L0-25 live-Falkor round-trip coverage.** `FalkorDBLocalPersister` save→load + scoped delete against a live FalkorDB (Phase 44 unit tests used `InMemoryClient` only). R0 decision: ship here vs re-route to WSD installation (L0_FUTURE_WORK marks both as acceptable). If the metaedge/metahyperedge/XRef delete-sweep completeness check balloons, ship the round-trip test only and route the sweep audit to WSD.
 
@@ -23,7 +23,7 @@ SCOPE (5 items — resist expansion; anything bigger gets routed, not absorbed):
   - `InterGraphEdge` vs `IntergraphEdge` → still open; routed to SKILL_ACQUISITION R0 per HANDOFF §2.1. Note it; don't resolve it here.
   - Re-grep both ANALYSIS docs for: TYPE_COMPAT/discovery (retired Phase 42), `PlanRun` (renamed `PipelineRun`), `memories` (renamed), resident (renamed monitor). (UNVERIFIED counts — do the grep)
 
-READ FIRST: `HANDOFF.md` §1, §3.1.19–3.1.22, §6, §9 (ship-env invariants: separate gate checkout — confirm HEAD sha; no `gh`/`mindsos` CLI on gate host; `python3`; BSD sed → perl); `docs/_workbench/L0_FUTURE_WORK.md` L0-24/25/26 verbatim; `PHASE_44_DESIGN_LOG.md §12`; `PHASE_49_DESIGN_LOG.md` PB-RT.
+READ FIRST: `HANDOFF.md` §1, §3.1.19–3.1.22, §6, §9 (ship-env invariants: separate gate checkout — confirm HEAD sha; no `gh`/`mindsos` CLI on gate host; `python3`; BSD sed → perl); `docs/future_work/L0_FUTURE_WORK.md` L0-24/25/26 verbatim; `PHASE_44_DESIGN_LOG.md §12`; `PHASE_49_DESIGN_LOG.md` PB-RT.
 
 FIRST ACTIONS: prereq check (`git tag --list | grep phase-49-confirmed`; `main` at the Phase-49 confirm commit; never `git add -A`); open `confirmation_docs/MAINTENANCE_CHAT_LOG.md` with the 5-item slate; probe before locking M2's in-vs-out pick.
 

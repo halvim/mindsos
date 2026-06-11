@@ -112,7 +112,7 @@ Forward references:
 
 ## mkdocs_pages_updated
 
-- docs/_workbench/L2_FUTURE_WORK.md
+- docs/future_work/L2_FUTURE_WORK.md
 - docs/_workbench/STREAM_A_BACKLOG.md
 - docs/api/knowledge/identifiers.md
 - docs/concepts/global-local.md

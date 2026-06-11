@@ -18,7 +18,7 @@ Phase 48 (L5 v1) consumes what 47 emits (chain artifacts → episodes).
 - `git tag --list | grep -E "phase-4[0-6]-confirmed"` → 40/41/42/43/44/45/46
   all present. ✔
 - `main`-tip `3cdfc5a`; on `main`. Working tree dirty: `M
-  docs/_workbench/L3_FUTURE_WORK.md` + untracked `confirmation_docs/ROBOT_DEMO_*`
+  docs/future_work/L3_FUTURE_WORK.md` + untracked `confirmation_docs/ROBOT_DEMO_*`
   / `confirmation_docs/PHASE_4*_NEXT_CHAT_PROMPT.md` / `DEMO_*`. **Never
   `git add -A`; stage selectively; leave Robot Demo + next-chat-prompt files
   alone** (Phase 46 prereq lesson). Branch `phase-47` off `main`-tip `3cdfc5a`. ✔

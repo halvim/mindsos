@@ -28,7 +28,7 @@ Phase 49 (Integration C) exercises what 48 ships end-to-end.
   squash landed on `main` but the confirm-doc + notes were never committed and
   no `phase-47-confirmed` tag was cut. (Distinct from the Phase-39/40/42/45
   tag-placement anomalies — this is an *un-run* closure, not a misplaced tag.)
-- Working tree dirty: `M docs/_workbench/L3_FUTURE_WORK.md` + a large untracked
+- Working tree dirty: `M docs/future_work/L3_FUTURE_WORK.md` + a large untracked
   **Robot Demo** corpus (`confirmation_docs/ROBOT_DEMO_*`, `demo_ui/`,
   `prototype_zero/`, `sim/`, `web/`) + `PHASE_4{1,6}_NEXT_CHAT_PROMPT.md` +
   `DEMO_DERIVED_FEATURES_NEXT_CHAT_PROMPT.md`. **Never `git add -A`; stage

@@ -588,7 +588,7 @@ Cascade: L3-37 (ALS family) gains parameter set for `planning.*` family scoring.
 ### L5 cascades
 
 - L5 design notes substantially rewritten — see `docs/dev/l5_mental_model_design_notes.md`.
-- L5_FUTURE_WORK updated — see `docs/_workbench/L5_FUTURE_WORK.md`.
+- L5_FUTURE_WORK updated — see `docs/future_work/L5_FUTURE_WORK.md`.
 
 ---
 

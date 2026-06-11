@@ -14,7 +14,7 @@ is the only remaining slot before Phase 46 (L4 substrate) convergence.
 - `git tag --list | grep -E "phase-4[0-4]-confirmed"` → 40/41/42/43/44 all
   present. (39 also present.) ✔
 - `main`-tip `4e79ff0`; working tree has `M HANDOFF.md`,
-  `M docs/_workbench/L3_FUTURE_WORK.md` + the untracked Robot Demo
+  `M docs/future_work/L3_FUTURE_WORK.md` + the untracked Robot Demo
   workstream files. **Leave Robot Demo files alone; never `git add -A`;
   stage selectively.** ✔
 - Phase 45 depends on Phase 38 + DREAM_FAMILY_CHAT closure (this chat). ✔

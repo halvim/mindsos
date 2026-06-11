@@ -25,7 +25,7 @@ cognition demo (that is WSD-gated).
 | Tags `phase-4[0-8]-confirmed` present | ✅ 40–48 all present |
 | `main` tip | `1952260` (Phase 48 confirm commit), tag `phase-48-confirmed` at it |
 | Branch point for `phase-49` | `phase-48-confirmed` (= `main` tip) |
-| Working tree | clean of phase work; long-standing untracked Robot-Demo corpus + `demo_ui/ prototype_zero/ sim/ web/` + modified `docs/_workbench/L3_FUTURE_WORK.md` + 4 tracked modified docs (CLAUDE.md, HANDOFF.md, PHASE_MAP, L3_FUTURE_WORK) — **leave alone; stage selectively; never `git add -A`** |
+| Working tree | clean of phase work; long-standing untracked Robot-Demo corpus + `demo_ui/ prototype_zero/ sim/ web/` + modified `docs/future_work/L3_FUTURE_WORK.md` + 4 tracked modified docs (CLAUDE.md, HANDOFF.md, PHASE_MAP, L3_FUTURE_WORK) — **leave alone; stage selectively; never `git add -A`** |
 | `tests/phase_49/` | does not exist yet (new dir) |
 | ADR high-water | `docs/decisions/adr/0180-*`; next free = **0181** |
 
@@ -35,7 +35,7 @@ authorized.
 **Required-reading ack:** HANDOFF §1/§2.5/§3.1.19–21/§4/§9/§10; PHASE_MAP
 §0/§1/§3/Phase-49 row/§6/§7; PHASE_48_CONFIRMED + PHASE_48_DESIGN_LOG;
 PHASE_47/46_CONFIRMED; `text-realm.md`; `_workbench/cookbook_routing.md`;
-`_workbench/L5_FUTURE_WORK.md` (PB-HHH/L5-NEW-13 framing). All read in full.
+`future_work/L5_FUTURE_WORK.md` (PB-HHH/L5-NEW-13 framing). All read in full.
 
 ---
 
@@ -508,7 +508,7 @@ docker gate run on Mac/Linux per pair-execution).
 - `docs/usage/cookbook/end-to-end.md` (new) + `mkdocs.yml` nav entry (edit).
 - `docs/decisions/adr/0181-falkor-index-strategy-cross-sub-mm-queries.md`
   (new).
-- `docs/_workbench/L5_FUTURE_WORK.md` L5-NEW-13 owner update (edit).
+- `docs/future_work/L5_FUTURE_WORK.md` L5-NEW-13 owner update (edit).
 - Version bump 48→49 (13 files: 8 package `__version__` + `pyproject.toml` +
   `mindsos_cli/manifest.toml` [`version` **and** `phase`] + the 3 export-slate
   tests) + `docker-compose.yml` (2 image tags).

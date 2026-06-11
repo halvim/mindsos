@@ -158,7 +158,7 @@ Follow-up commits 5b/5c per Phase 39 §9.3 precedent if cumulative-gate failures
 | `tests/phase_13/test_dispatch.py` | EXTEND per R0b §2.3: 4 new role assertions |
 | `HANDOFF.md` | §1 line bump; §2.2 Phase 43 shipped state (12 named role-graphs + alignment-prefix; Episode/Memory body); §3.1.X status block |
 | `confirmation_docs/POST_PHASE_38_PHASE_MAP.md` | §4 Phase 43 row **scope-rewrite** per NPB11-2 (L1→L2, 6 disciplines, detector, write_handle.py + `_IRI_BUILDERS` adds, Episode no storage_mode, bootstrap field-only, 3 doc files) + Status: SHIPPED |
-| `docs/_workbench/L2_FUTURE_WORK.md` | §11 routing: L2-29/30/31/32/33/37(field)/40 marked CLOSED — shipped Phase 43; routing-note text updated (L2-29 "L1 amendment" → "L2 placement via ADR-0153 §am-1"; L2-40 migrator → detector); L2-37 consumer + L2-39 + L2-41 routed to Phase 44 |
+| `docs/future_work/L2_FUTURE_WORK.md` | §11 routing: L2-29/30/31/32/33/37(field)/40 marked CLOSED — shipped Phase 43; routing-note text updated (L2-29 "L1 amendment" → "L2 placement via ADR-0153 §am-1"; L2-40 migrator → detector); L2-37 consumer + L2-39 + L2-41 routed to Phase 44 |
 | `docs/concepts/role-graphs.md` | UPDATE: 4 new role-graph descriptions |
 | `docs/concepts/mutation-discipline.md` | NEW: framework + 6 disciplines + L2Schema subclass + dispatch table + validator + exception |
 | `docs/concepts/storage-tiers.md` | NEW: 3 tiers + per-NodeType `storage_mode` pattern + v1 consumers |

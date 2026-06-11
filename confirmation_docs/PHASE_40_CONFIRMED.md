@@ -73,6 +73,6 @@ Next: Rail B continues with Phase 41 (X2, ADR-0155 Monitor lifecycle retirement)
 
 ## mkdocs_pages_updated
 
-- docs/_workbench/L0_FUTURE_WORK.md
-- docs/_workbench/L2_FUTURE_WORK.md
+- docs/future_work/L0_FUTURE_WORK.md
+- docs/future_work/L2_FUTURE_WORK.md
 - docs/concepts/capacity-families.md

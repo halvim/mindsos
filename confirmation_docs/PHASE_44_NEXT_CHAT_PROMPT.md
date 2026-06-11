@@ -57,7 +57,7 @@ REQUIRED READING (in order; do NOT skip)
 1. **`HANDOFF.md` §1, §2.2, §3.1.13 (Phase 43 ship closure), §9 (process discipline + pair-execution + 6-step confirm-phase).**
 2. **`confirmation_docs/PHASE_43_DESIGN_LOG.md §9` IN FULL.** Captures all Phase 43 impl-time amendments + carry-forwards. §9.6 names Phase 44 inheritance items explicitly.
 3. **`confirmation_docs/PHASE_43_CONFIRMED.md` + `confirmation_docs/notes/notes-phase-43.md`.** Tester-side ship metadata.
-4. **`docs/_workbench/L2_FUTURE_WORK.md §11`** — L2-37(consumer), L2-39, L2-41 routing notes.
+4. **`docs/future_work/L2_FUTURE_WORK.md §11`** — L2-37(consumer), L2-39, L2-41 routing notes.
 5. **`mindsos_knowledge/bootstrap.py`** — the `_APPLIES_AFTER_BY_ROLE` field declarations Phase 44 consumes.
 6. **`mindsos_knowledge/knowledge_layer.py`** — `discipline_for` cache + lifecycle hooks where retention surface lands.
 7. ADRs on disk Phase 44 may touch:

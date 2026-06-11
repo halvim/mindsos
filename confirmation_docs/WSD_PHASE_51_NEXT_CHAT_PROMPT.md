@@ -20,7 +20,7 @@ READ FIRST, in this order (this prompt repeats nothing they contain):
    EdgeTypes must support), §4 PB-W21 (discipline: ADMIN_AUTHORED unchanged;
    no runtime-writer surface in your slot), §5 R3 favorable findings
    (hypernym edges already shipped; L3-59(b) ripple containment).
-4. `docs/_workbench/L3_FUTURE_WORK.md` L3-59 + `mindsos_capacity/context.py`
+4. `docs/future_work/L3_FUTURE_WORK.md` L3-59 + `mindsos_capacity/context.py`
    + `capacity_layer.py` invoke read path — the surfaces your migration
    flips. Phase 48 A1′ record (`PHASE_48_DESIGN_LOG.md`) explains exactly
    what was left "one more phase" for you.

@@ -1,0 +1,20 @@
+# Demo-backend extra runtime deps (PB-O, Round-4).
+#
+# The shipped `prod` image installs core deps from the hash-pinned
+# `requirements.txt` and then `pip install --no-deps .` — so a pyproject
+# extras group is NEVER installed. The demo's heavy deps therefore ride a
+# SEPARATE hash-pinned lockfile installed only in the new `demo` Docker
+# stage (FROM prod), keeping the core image clean.
+#
+# Compile on the 3.12 host (NOT the 3.10 Cowork sandbox):
+#   pip-compile --generate-hashes --output-file requirements-demo.txt requirements-demo.in
+# then the `demo` stage runs:
+#   pip install --no-cache-dir --require-hashes -r requirements-demo.txt
+#
+# Versions pinned here; pip-compile resolves transitive deps + hashes.
+
+mujoco==3.2.3        # headless CPU physics (sim loop, DM-3) — no GL needed
+fastapi==0.115.6     # WS + static UI backend (Seam A, DM-4+)
+uvicorn==0.34.0      # ASGI server
+websockets==14.1     # state broadcast + commands
+psutil==6.1.1        # RAM measurement (demo_backend/measure.py)

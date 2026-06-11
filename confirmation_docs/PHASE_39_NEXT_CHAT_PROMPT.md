@@ -92,7 +92,7 @@ Per `PHASE_MAP.md §1` per-phase workflow (inherited unchanged):
 - `tests/phase_39/` test suite per POST_PHASE_38 §4 Phase 39 "Automated tests."
 - `HANDOFF.md` §1 line bump + §2.2 reflection of rename completion + §3.1.7 status update.
 - `_workbench/STREAM_A_BACKLOG.md` — close item A1 (if landed); close A6 if absorbed; surface any new Stream A items discovered.
-- `_workbench/L2_FUTURE_WORK.md` §11 — mark L2-34 + L2-35 as **CLOSED — shipped Phase 39**.
+- `future_work/L2_FUTURE_WORK.md` §11 — mark L2-34 + L2-35 as **CLOSED — shipped Phase 39**.
 
 After Phase 39 confirms, the next chat opens **Phase 43** (Rail A, schema-v2) — drafted by you as `confirmation_docs/PHASE_43_NEXT_CHAT_PROMPT.md` per Phase 25→Phase 26 precedent (each phase chat seeds the next).
 

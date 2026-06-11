@@ -571,7 +571,7 @@ L1/L3 reframe chat closure must pick between:
 - `decisions/adr/0152-l2-role-graph-schema-v2.md` (NEW).
 - `decisions/adr/0153-l2-mutation-discipline.md` (NEW).
 - `decisions/adr/0154-alignment-naming-canonical.md` (NEW).
-- `_workbench/L2_FUTURE_WORK.md` — closure markers on L2-1, L2-11, L2-19, L2-22, L2-23, L2-25, L2-26, L2-27, L2-Q1, L2-Q2.
+- `future_work/L2_FUTURE_WORK.md` — closure markers on L2-1, L2-11, L2-19, L2-22, L2-23, L2-25, L2-26, L2-27, L2-Q1, L2-Q2.
 - `HANDOFF.md` updated with L2 closure summary in §2.2 + §6.
 
 ---

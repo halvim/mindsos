@@ -386,7 +386,7 @@ Phase 48 R0 reads Phase 39 + Phase 43 diffs on `consolidate.py`.
   + §3.1.7 status update.
 - `docs/_workbench/STREAM_A_BACKLOG.md` — A1 closed (landed pre-Phase
   39); A6 absorbed if applicable.
-- `docs/_workbench/L2_FUTURE_WORK.md` §11 — L2-34 + L2-35 marked
+- `docs/future_work/L2_FUTURE_WORK.md` §11 — L2-34 + L2-35 marked
   **CLOSED — shipped Phase 39**.
 - `confirmation_docs/PHASE_43_NEXT_CHAT_PROMPT.md` — seed for the
   next Rail A chat (drafted at this design-pass close per Phase 25→26

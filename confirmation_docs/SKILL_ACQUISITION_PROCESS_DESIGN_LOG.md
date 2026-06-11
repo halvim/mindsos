@@ -159,7 +159,7 @@ R1: 4 pushbacks, all accepted. R2: 4 refinements, 0 reversals. Scope is narrow g
 1. `confirmation_docs/SKILL_ACQUISITION_PROCESS_PHASE_MAP.md` — sequencing (SA-1 = Phase 50) + WSD inheritance contract + v2-trigger ledger.
 2. `POST_PHASE_38_PHASE_MAP.md` §6 routing amendment — promotion-loop mechanism owner = WSD_INSTALLATION_CHAT; contract = this log S10 (closes the R0-SA-1 routing gap).
 3. HANDOFF stale-line edits — §2.1 naming note + §5.3 blocker row (`IntergraphEdge` closed as L1-6 2026-06-01; ratified here per S13).
-4. `docs/_workbench/L3_FUTURE_WORK.md` L3-59(a) closure marker — contract fixed at this log's S9.
+4. `docs/future_work/L3_FUTURE_WORK.md` L3-59(a) closure marker — contract fixed at this log's S9.
 5. `confirmation_docs/SA_1_NEXT_CHAT_PROMPT.md` — Phase 50 ship-chat seed.
 
 **ADRs reserved for SA-1 (drafted at ship R0, per numbered-phase precedent):** ADR-0183 (skill-bundle + install-lifecycle contract — manifest schema, preflight, two-stage lifecycle, idempotency triple, de-install semantics), ADR-0150 §am-6 (`installed-skills` role-graph; closed set 12→13). ADR-0182 impl ships in the same slot (its §Consequences surface list governs).
