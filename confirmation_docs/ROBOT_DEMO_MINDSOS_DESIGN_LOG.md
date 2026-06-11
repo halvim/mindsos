@@ -125,6 +125,8 @@ First container bootstrap on the Linux gate host surfaced one real defect (caugh
 
 - **PB-V — `login()` enforces one active session per user; bootstrap wasn't idempotent against a persisted `server.db`.** On a re-boot (or any run against an existing `./.mindsos-demo/server-db` volume) `login()` raised `AlreadyLoggedInError` ("use logout or kill_my_own_sessions"). **Fix:** `_login_all` calls the shipped self-recovery valve `kill_my_own_sessions(conn, user_id, password)` before each `login`, then commits. This clears the prior process's stale session and is exactly what makes the P6 idempotent-re-boot gate meaningful (vs. wiping the volume). No `mindsos_*` edit — consumer-side only.
 
+**DM-1 GATE GREEN ON LINUX (2026-06-11).** Mac Mini, real 3.12 prod image, real `mindsos_server` bootstrap: 4 device-instances boot → 4/4 Episodes consolidate → **idempotent re-boot verified** (two consecutive `DEMO_BOOTSTRAP_ONLY=1` runs, both `exit=0`, the second on the existing `server.db`). Measurements: **RAM 38.3 MB** full 4-brain stack (35.5 MB baseline → +2.8 MB; 4 in-memory Globals are negligible, PB-N). **Jitter** (synthetic 50 Hz proxy under 4-brain load): n=396, p50 20.00 ms, **p99 20.08 ms**, max 20.17 ms vs 20.00 nominal — PASS (provisional bar p99 ≤ 40 ms; real bar at DM-3). One live fix landed (PB-V); zero `mindsos_*` edits. **DM-1 done.**
+
 ## DM-1 build status
 
 - [x] `demo_backend/` skeleton package (profiles, brain, bootstrap, main, reset, measure)
@@ -132,5 +134,5 @@ First container bootstrap on the Linux gate host surfaced one real defect (caugh
 - [x] `bootstrap.py` (schema init → admin → 4 users → login → 4 per-device in-memory KLs → 4 builtin CLs → 4 ILs started → Orchestrator per brain → smoke ×4) — **core sandbox-validated**
 - [x] `reset.py` stub (G-11 restart reset; run-scoped wipe body deferred to DM-2)
 - [x] `tests_demo/` scenario (4 passed / 1 integration-skip in sandbox)
-- [ ] RAM + jitter-proxy measurements — **Mac/3.12 host**
-- [ ] real-server gate + docker build/up + `requirements-demo.txt` compile — **Mac/3.12 host**
+- [x] RAM + jitter-proxy measurements — **Linux, 2026-06-11: RAM 38.3 MB, jitter p99 20.08 ms PASS**
+- [x] real-server gate + docker build/up + `requirements-demo.txt` compile — **Linux, 2026-06-11: green, idempotent re-boot verified (PB-V fix)**
