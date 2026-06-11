@@ -14,10 +14,11 @@
 | L2-3 | `parameter-staging` role-graph (Local) | WSD `coordinated_change_L2` §6.1 | L2 chat | **CLOSED — shipped per L2_CHAT_DECISIONS D-L2-11** (ADR-0152 §3). |
 | L2-4 | `pending-promotions` role-graph (Local + Global) | WSD `coordinated_change_L2` §6.2 | L2 chat | **CLOSED — shipped per L2_CHAT_DECISIONS D-L2-13** (ADR-0152 §4). |
 | L2-5 | `capacity-gaps` role-graph (Global) | WSD `coordinated_change_L2` §6.3 | L2 chat | **CLOSED — shipped per L2_CHAT_DECISIONS D-L2-14** (ADR-0152 §5). |
-| L2-6 | `world-axioms` role-graph | WSD `pending_adrs/L2_knowledge.md` §A.1 | WSD installation chat | **Open** — not added in ADR-0150 §amendment-4; WSD chat owns. |
+| L2-6 | `world-axioms` role-graph | WSD `pending_adrs/L2_knowledge.md` §A.1 | ~~WSD installation chat~~ **FOL / demo-scenario** | **Open** — not in ADR-0150 §amendment-4. **WSD design (closed 2026-06-10) deferred it (PB-W20) with NO ADR-0150 amendment** — ownership re-routed off WSD to FOL/demo-scenario. |
 | L2-7 | `training-runs` role-graph | FOL pushback #5 | FOL chat | **Open** — deferred per Chat A R5 D29; not in ADR-0150 §amendment-4. |
 | L2-8 | `fol-rules` + `fol-ledger` role-graphs | FOL HANDOFF_latest §2.1 + B3 | FOL installation chat | **Open** — not in ADR-0150 §amendment-4. |
 | **L2-28** | **`episodic_memories` role-graph (rename from `memories`; Episode + Memory entry types)** | Chat B D-B48 | L2 chat | **CLOSED — shipped per L2_CHAT_DECISIONS D-L2-16 + D-L2-17** (ADR-0044 §amendment-3 + ADR-0150 §amendment-4 + ADR-0152 §7). |
+| **L2-42** | **`installed-skills` role-graph (skill-install ledger)** | SKILL_ACQUISITION_PROCESS design | SKILL_ACQUISITION_PROCESS chat | **CLOSED — shipped Phase 50** per ADR-0150 §amendment-6 (closed role-set 12 → **13**); schema `mindsos_knowledge/schemas/installed_skills.py`, `ROLE_INSTALLED_SKILLS` in `identifiers.py`. |
 
 ---
 
@@ -162,4 +163,4 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 
 ---
 
-*End of L2_FUTURE_WORK.md. Last updated 2026-06-04 post Phase 44 ship — L2-37(consumer) + L2-39 CLOSED-shipped Phase 44; L2-41 DEFERRED at Phase 44 → Phase 48 / L3-L4 (no v1 consumer; ADR-0161 design + marker name shipped). Prior (2026-06-03 post Phase 43): L2-29/30/31/32/33/37(field)/40 closed.*
+*End of L2_FUTURE_WORK.md. Last updated 2026-06-04 post Phase 44 ship — L2-37(consumer) + L2-39 CLOSED-shipped Phase 44; L2-41 DEFERRED at Phase 44 → Phase 48 / L3-L4 (no v1 consumer; ADR-0161 design + marker name shipped). Prior (2026-06-03 post Phase 43): L2-29/30/31/32/33/37(field)/40 closed. Staleness pass 2026-06-11: added L2-42 `installed-skills` (shipped Phase 50, set 12→13); re-routed L2-6 `world-axioms` off WSD (deferred PB-W20) → FOL/demo-scenario.*

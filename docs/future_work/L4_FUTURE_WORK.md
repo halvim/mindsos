@@ -1,7 +1,7 @@
 # L4 Intelligence — Future Discussions & Work
 
-**Date:** 2026-05-28
-**Status:** Living index. Most L4 substance is in `CHAT_A_L4_BASELINE.md` and Chat A is the resolution venue. This doc tracks **post-Chat-A** L4 v2+ work + items routed away from Chat A.
+**Date:** 2026-05-28 (last verified 2026-06-11)
+**Status:** Living index of **L4 v2+ work**. ⚠️ **Historical framing notice:** §3 and §4 below were written pre-Chat-A and describe Chat A as the live resolution venue. **Chat A closed 2026-05-28** and the L4 substrate has since SHIPPED — `mindsos_intelligence` package landed Phase 46, orchestrator six-phase lifecycle + L4Dispatcher Phase 47, dream-cycle + crash-recovery Phase 48 (all confirmed). The v2+ backlog in §1/§2 remains live; §3/§4 are retained only as a closed-chat record.
 
 ---
 
@@ -43,9 +43,9 @@
 
 ---
 
-## 3. Open questions for Chat A R0
+## 3. Open questions for Chat A R0 — ✅ RESOLVED (Chat A closed 2026-05-28)
 
-These are the meta-decisions Chat A must clear at R0 before R1 substance. Full list in `CHAT_A_L4_BASELINE.md` §11.
+**Historical record.** These were meta-decisions Chat A had to clear at R0; all were resolved when Chat A closed. Full list in `CHAT_A_L4_BASELINE.md` §11.
 
 | # | Question | Status |
 |---|---|---|
@@ -57,9 +57,9 @@ These are the meta-decisions Chat A must clear at R0 before R1 substance. Full l
 
 ---
 
-## 4. Chat A → downstream chat outputs expected
+## 4. Chat A → downstream chat outputs expected — ✅ PRODUCED (Chat A closed 2026-05-28)
 
-This doc lists what Chat A is expected to produce so future chats know what they inherit.
+**Historical record.** All listed outputs were produced and consumed downstream. ⚠️ Note: `sense-correlations` below was subsequently **WITHDRAWN** as a standalone L2 role-graph (L2_CHAT_DECISIONS D-L2-2 — data lives in the lexicon empirical layer).
 
 | Output | Consumer |
 |---|---|
@@ -68,7 +68,7 @@ This doc lists what Chat A is expected to produce so future chats know what they
 | Triage of WSD `pending_adrs/L4_intelligence.md` 9 ADRs (ratify / defer / reject) | WSD installation chat |
 | L4 write-API-to-L5 contract | Chat B (input) |
 | L4 concurrency model decision | All layers (cascades) |
-| List of new L2 role-graphs L4 needs (sense-correlations, learned-parameters, parameter-staging, pending-promotions, capacity-gaps) | L2 chat / Chat C plan |
+| List of new L2 role-graphs L4 needs (~~sense-correlations~~ **withdrawn**, learned-parameters, parameter-staging, pending-promotions, capacity-gaps) | L2 chat / Chat C plan |
 | List of new L3 capacities L4 needs (signal sources, mechanism.*, method libraries) | L3 chat / WSD installation |
 
 ---
@@ -79,7 +79,7 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 
 | Item | Routed to | Notes |
 |---|---|---|
-| L4-1 (cross-layer rewrite handler for L4 multi-tenant) | **L4-v2 follow-up chat** | Opens after Phase 49 confirmed. |
+| L4-1 (cross-layer rewrite handler for L4 multi-tenant) | **L4-v2 follow-up chat** | Phase 49 confirmed 2026-06-09 — gating prereq cleared; chat now openable. |
 | L4-2 (pause-and-resume) | **L4-v2 follow-up chat** | Push 5 deferred per Chat A R2. |
 | L4-3 (predicate distillation) | **DROPPED** unless re-justified | Push 7 cut. |
 | L4-4 (coherence dream intent re-evaluation) | **L4-v2 evaluation** | Push 3 cut from v1. |
@@ -89,10 +89,10 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 | L4-9 (Push 7 distillation reconsider) | **FOL_INSTALLATION_CHAT** | FOL may re-litigate. |
 | L4-10 (pattern-conflict admin alert mechanism) | **WSD_INSTALLATION_CHAT** | ALS dream-aggregate surfaces. |
 | L4-11 (TaskOutcome schema 3-valued decision) | **WSD_INSTALLATION_CHAT** | Authoring + integration. |
-| L4-12 (per-task-pattern mapping-confidence threshold) | **Absorbed into L2-26** (now `mapping_confidence_threshold` field on TaskPattern; Phase 43) + WSD_INSTALLATION_CHAT for ALS subsystem #4 refinement. | — |
+| L4-12 (per-task-pattern mapping-confidence threshold) | **Field SHIPPED Phase 43** (`mapping_confidence_threshold` on TaskPattern, `mindsos_knowledge/schemas/task_patterns.py`); ALS subsystem #4 refinement still **open** → WSD_INSTALLATION_CHAT. | — |
 | L4-13 (multi-pattern conflict policy) | **WSD_INSTALLATION_CHAT** | UNRESOLVED_AMBIGUITY handler. |
 | L4-14 (ALS `applies_after` topological ordering) | **WSD_INSTALLATION_CHAT** | ALS family scope. |
-| L4-15 (Phase 1 5-step control flow spec) | **Phase 47** | L4 orchestrator ships the control flow; concrete capacities (`process.*`, `derive_goal`, etc.) ship in WSD installation. |
+| L4-15 (Phase 1 5-step control flow spec) | **SHIPPED Phase 47** (`mindsos_intelligence/builtins/phase1_v0.py` + orchestrator `phase_1`) | Control flow shipped; concrete capacities (`process.*`, `derive_goal`, etc.) still ship in WSD installation. |
 | L4-16 (ALS subsystem #10 registration) | **WSD_INSTALLATION_CHAT** | Hint extraction calibration. |
 | L4-17 (Phase 6 cross-validation budget) | **WSD_INSTALLATION_CHAT** | Admin-tunable parameter. |
 | L4-18 (dream priority schema config-level) | **WSD_INSTALLATION_CHAT** (admin config) + L0 admin-config absorbed per PB-T | — |
@@ -105,4 +105,4 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 
 ---
 
-*End of L4_FUTURE_WORK.md. Last updated 2026-06-02 post Chat C plan-authoring closure.*
+*End of L4_FUTURE_WORK.md. Last updated 2026-06-02 post Chat C plan-authoring closure; staleness pass 2026-06-11 (header + §3/§4 historical notices; L4-12/L4-15 shipped Phases 43/47).*

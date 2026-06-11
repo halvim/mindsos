@@ -80,8 +80,9 @@ The following were either resolved by Chat B or rendered moot by other Chat B pi
 ### L0 cascades
 - L0-10 (note-fork mechanism) — **retired from L0 v2 scope.**
 - L0-13 amendment — `capacity-gaps` extended with `promotion-candidates` sub-queue for dream-found candidates.
-- New L0-NEW-A: `kl.read_at_version(iri, version)` public API.
-- New L0-NEW-B: `kl.retire_version()` operation hook triggers lazy-inline marker.
+- New L0-NEW-A: `kl.read_at_version(iri, version)` public API. **SHIPPED Phase 48.**
+- New L0-NEW-B: `kl.retire_version()` operation hook triggers lazy-inline marker. **SHIPPED Phase 48.**
+- **L0-26 / PB-RT (surfaced Phase 49 Integration C):** the L5 **Episode** node carries a structured dict `value` (Chat B D-B47), but the L0 node persister stored node `value` as a primitive → an episode-bearing Local could not flush to Falkor. Live episode flush was **descoped** at Phase 49; contract fixed at **ADR-0182** + `value_codec.py` (Phase 50). **Durable Episode persistence still open → v1.5 durable-retention work** (codec is in; the Episode-flush consumer is not). Tracked as L0-26.
 
 ### L1 cascades
 - IntergraphHyperEdge (Phase 05c) gains documented use case ("Pipeline composition over capacity-MM"). Documentation amendment.
@@ -115,7 +116,7 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 
 | Item | Routed to | Notes |
 |---|---|---|
-| L5-NEW-1 (retention policy fine-tuning) | **v1.5 chat if observed growth** | Phase 48 ships monitoring instrumentation per PB-AA / PB-QQ. |
+| L5-NEW-1 (retention policy fine-tuning) | **v1.5 chat if observed growth** | Phase 48 SHIPPED monitoring instrumentation (`mindsos_intelligence/monitoring.py`, instrumentation-only); policy itself still v1.5. |
 | L5-NEW-2 (consolidation frequency) | **v2 follow-up** | — |
 | L5-NEW-3 (teaching: user authors episode) | **v3+** | — |
 | L5-NEW-4 (external blob store for DataStateInstance) | **FOL_INSTALLATION_CHAT** | Chat B D-B44; FOL pushback #8. |
@@ -128,16 +129,16 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 | L5-NEW-11 (Memory cluster secondary indexes) | **v2 if query volume** | — |
 | L5-NEW-12 (L0 audit-log cross-link on episode) | **L4-v2 evaluation** | — |
 | L5-NEW-13 (Falkor query indexes) | **Phase 49 R0** (PB-HHH) | — |
-| L5-NEW-14 (physical-layout optimization) | **Phase 46 R0** (PB-AAA) | Default = Chat B schemas as-written. |
+| L5-NEW-14 (physical-layout optimization) | ~~Phase 46 R0~~ **resolved-default at Phase 46** (PB-AAA deferred) | Default taken = Chat B schemas as-written; optimization remains a v2 watch item. |
 | L5-NEW-15 (admin cross-Local memory search tooling) | **v2 follow-up** | — |
 | L5-NEW-16 (`dream.exploration` plural-strategy catalog) | **FOL_INSTALLATION_CHAT** | FOL plural-strategies. |
 | L5-NEW-17 (episode-level promotion flow) | **v2 follow-up** | — |
 | L5-NEW-18 (cross-replan blame chain reconstruction) | **MAINTENANCE_CHAT or debug tooling chat** | — |
 | L5-NEW-Q1 (KL retention TTL backstop policy) | **L0/KL follow-up chat** | Coordinated with L0_SUBSTRATE_CHAT; v1 picks default; refine post-Phase-48 monitoring. |
-| L5-NEW-Q2 (Falkor checkpoint mechanism) | **Phase 46 R0** (L4-implementation) | Continuous vs phase-boundary periodic. |
-| L5-NEW-Q3 (Episode storage growth thresholds) | **Phase 48 R0** | Sets monitoring exporter thresholds. |
+| L5-NEW-Q2 (Falkor checkpoint mechanism) | ~~Phase 46 R0~~ **durable Falkor checkpoint store deferred → v1.5** | Continuous vs phase-boundary periodic; Phase 48 shipped tombstone/startup-scan crash recovery, not the durable store. |
+| L5-NEW-Q3 (Episode storage growth thresholds) | ~~Phase 48 R0~~ **monitoring shipped Phase 48 (instrumentation); thresholds → v1.5** | `monitoring.py` exposes the instrumentation; exporter thresholds set when v1.5 retention policy lands. |
 | L5-NEW-Q4 (aggregator capacity catalog v1) | **WSD_INSTALLATION_CHAT — scheduled Phase 54** (real `planning.*` catalog incl. aggregation; `WSD_INSTALLATION_PHASE_MAP.md` §2 WSD-4, 2026-06-10) | sum/max/last/concat — first consumer triggers. |
 
 ---
 
-*End of L5_FUTURE_WORK.md. Last updated 2026-06-02 post Chat C plan-authoring closure.*
+*End of L5_FUTURE_WORK.md. Last updated 2026-06-02 post Chat C plan-authoring closure; staleness pass 2026-06-11 (L0-26/PB-RT cascade added; Phase 46/48 future-tense rows flipped).*
