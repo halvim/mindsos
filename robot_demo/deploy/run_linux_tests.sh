@@ -46,7 +46,12 @@ if [[ -f "$REQ_TXT" && "${RECOMPILE:-0}" != "1" ]]; then
   pass "$REQ_TXT present (set RECOMPILE=1 to regenerate)"
 else
   if ! "$PYBIN" -m piptools --version >/dev/null 2>&1; then
-    "$PYBIN" -m pip install --quiet pip-tools || fail "pip-tools install failed (needed for pip-compile)"
+    # Externally-managed hosts (PEP 668, e.g. apt Python 3.12 on the Mac
+    # Mini) refuse a bare `pip install`; retry with --break-system-packages
+    # (dedicated gate box — acceptable).
+    "$PYBIN" -m pip install --quiet pip-tools \
+      || "$PYBIN" -m pip install --quiet --break-system-packages pip-tools \
+      || fail "pip-tools install failed (needed for pip-compile)"
   fi
   "$PYBIN" -m piptools compile --generate-hashes --output-file "$REQ_TXT" "$REQ_IN" \
     || fail "pip-compile failed (needs network for mujoco/fastapi wheels)"
