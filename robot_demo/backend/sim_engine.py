@@ -307,9 +307,11 @@ class SimEngine:
         belt span), the verified kinematic sweep. Returns a slot future."""
         with self._lock:
             items = _free_item_bodies(self._cell)
+            starts = {}
             for b in items:  # detach pins so they can move
                 self._cell.detach(self._cell.bodies[b])
-            starts = {b: self._cell.d.qpos[self._cell.qadr_of(b)].copy() for b in items}
+                adr = self._cell.qadr_of(b)
+                starts[b] = self._cell.d.qpos[adr:adr + 3].copy()
         disp_total = float(direction) * float(distance)
         frames: List = []
         for i in range(steps):
