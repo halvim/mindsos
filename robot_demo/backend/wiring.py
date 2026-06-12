@@ -22,7 +22,10 @@ installers, now emitting ``state``/``message`` frames at each beat.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, Optional, Tuple
+import threading
+import time
+from datetime import datetime, timezone
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from mindsos_capacity.builtins.phase1_v0 import DS_STRUCTURED_INPUT, DS_MAPPING
 from mindsos_capacity.builtins.planning_v0 import DS_PLAN, DS_MAPPING_RESULT
@@ -41,9 +44,15 @@ from .comms import (
     make_dispatch_handler,
     register_comms_capacities,
 )
-from .frames import DemoEvents
+from .frames import BRAIN_ALIAS, DemoEvents, server_status_frame
 from .installers import install_core_datastates
 from .pose_frame import project_pose
+from .serializer import KIND_EPISODE_AUDIT, build_episode_audit_snapshot
+
+#: contract brain-id (UI) → device id (backend) — the inverse of BRAIN_ALIAS,
+#: for resolving an inbound ``export_state {scope:"a1"}`` to the ``arm1`` brain
+#: (design-log PB-10).
+_CONTRACT_TO_DEVICE: Dict[str, str] = {c: d for d, c in BRAIN_ALIAS.items()}
 
 #: run_atomic(brain, target) -> outcome dict. Live = move_to invoke; stub in tests.
 RunAtomic = Callable[[Any, str], dict]
@@ -228,7 +237,40 @@ def wire_demo(
 
     mgr = brains["mgr"]
 
-    def on_command(name: str, args: dict) -> None:
+    def _resolve_brain(scope: Optional[str]) -> Optional[Any]:
+        """Map an inbound export ``scope`` (a UI contract id like ``a1`` — or a
+        device id) to the brain (PB-10)."""
+        if not scope:
+            return None
+        device = scope if scope in brains else _CONTRACT_TO_DEVICE.get(scope)
+        return brains.get(device) if device else None
+
+    def _export_episode_audit(scope: Optional[str], respond) -> None:
+        """Mode-A export: serialize the chosen brain's episode/reasoning audit
+        OFF the WS loop (PB-8) and reply ``state_snapshot`` to the requester
+        only (PB-16). A bad scope replies an honest, sanitized error snapshot
+        rather than silence."""
+        brain = _resolve_brain(scope)
+        if respond is None:
+            return
+        if brain is None:
+            respond(DemoEvents.snapshot_frame(
+                {"snapshot_version": 1, "kind": KIND_EPISODE_AUDIT,
+                 "error": "unknown brain", "brains": {}}))
+            return
+
+        def _work() -> None:
+            try:
+                snap = build_episode_audit_snapshot(brain)
+                respond(DemoEvents.snapshot_frame(snap))
+            except Exception as exc:  # never crash the server on an export
+                respond(DemoEvents.snapshot_frame(
+                    {"snapshot_version": 1, "kind": KIND_EPISODE_AUDIT,
+                     "error": f"{type(exc).__name__}", "brains": {}}))
+
+        threading.Thread(target=_work, name="export-mode-a", daemon=True).start()
+
+    def on_command(name: str, args: dict, respond=None) -> None:
         if name == "place_order":
             # state-then-message (canonical — groups the order with this beat).
             events.state({"mgr": {"intent": "Interpret order",
@@ -237,6 +279,12 @@ def wire_demo(
                          title="Order placed", narr="User submitted an order.")
             events.message("user", "mgr", "placed an order")
             run_task(mgr, {"order": args}, task_id="order")
+        elif name == "export_state":
+            mode = (args or {}).get("mode")
+            if mode == KIND_EPISODE_AUDIT:
+                _export_episode_audit((args or {}).get("scope"), respond)
+            # mode "demo-state" (Mode B) is deferred post-DM-6 (nothing real to
+            # warm-restore yet) — the UI mock covers it; live is not wired.
         elif name == "reset":
             events.reset()
         # play/pause/step are mock-playback concepts; live runs on real orders.
@@ -244,7 +292,35 @@ def wire_demo(
     return on_command
 
 
+# ── Server panel — server_status provider (DM-4) ──────────────────────
+def make_status_provider(result: Any, *, endpoint: Optional[str] = None) -> Callable[[], dict]:
+    """Build the ``() -> server_status frame`` provider from a BootstrapResult.
+
+    Sessions are the real four ``login()`` Sessions (one per brain); ``since``
+    is the boot timestamp (all four log in within the same bootstrap second —
+    accurate to the second without depending on Session internals, PB-4/PB-19),
+    ``uptime_s`` counts from process/server start, ``state_saved`` reflects the
+    real Falkor Global persist. Sanitized (no version, "Storage: connected")."""
+    start = time.time()
+    since_iso = datetime.now(timezone.utc).isoformat()
+    sessions: List[Dict[str, str]] = [
+        {"device_id": did, "since": since_iso} for did in result.brains
+    ]
+    state_saved = bool(getattr(result, "persisted_global", False))
+
+    def provider() -> dict:
+        return server_status_frame(
+            sessions,
+            uptime_s=int(time.time() - start),
+            storage_connected=True,
+            state_saved=state_saved,
+            endpoint=endpoint,
+        )
+
+    return provider
+
+
 __all__ = [
     "wire_demo", "wire_brain_comms", "install_manager_flow", "install_arm_flow",
-    "wire_pose_stream", "make_live_run_atomic", "RunAtomic",
+    "wire_pose_stream", "make_live_run_atomic", "make_status_provider", "RunAtomic",
 ]

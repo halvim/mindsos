@@ -173,5 +173,55 @@ class DemoEvents:
         self._hub.publish(frame)
         return frame
 
+    # ── DM-4 L5 export / Server panel (pure shapers — see note) ────────
+    #
+    # ``state_snapshot`` is a TARGETED reply to the requesting client
+    # (design-log PB-16) and ``server_status`` is sent on connect + by the
+    # heartbeat, so these are *pure shapers* (no ``hub.publish``): the ws
+    # server decides whether to ``respond`` (one client) or broadcast.
+    @staticmethod
+    def snapshot_frame(snapshot: dict) -> dict:
+        """Wrap a serialized L5 snapshot as the ``state_snapshot`` frame the
+        UI downloads (WS contract / L5 export §B)."""
+        return {"type": "state_snapshot", "snapshot": snapshot}
 
-__all__ = ["FrameHub", "DemoEvents", "BRAIN_ALIAS", "DISPLAY_NAME"]
+
+def server_status_frame(
+    sessions: List[Dict[str, str]],
+    *,
+    uptime_s: int,
+    storage_connected: bool = True,
+    state_saved: bool = False,
+    endpoint: Optional[str] = None,
+) -> dict:
+    """Shape the ``server_status`` vitals frame (IP-sanitized — design-log PB-3/4).
+
+    Deviates from the originally-locked §D keys per the IP-sanitization addendum
+    (later, load-bearing): **no ``mindsos_version``**; ``persistence.falkordb``
+    → ``storage`` ("connected", never "Falkor"); ``globals_persisted`` →
+    ``state_saved``; the raw ``user`` is dropped (the device-role display name
+    is the only identity shown).
+
+    ``sessions``: ``[{"device_id": .., "since": <iso8601>}, …]`` (device ids;
+    mapped to display names here)."""
+    shaped = [
+        {"brain": _display(s["device_id"]), "since": s.get("since", "")}
+        for s in sessions
+    ]
+    frame: Dict[str, Any] = {
+        "type": "server_status",
+        "t": _now_ms(),
+        "storage": "connected" if storage_connected else "connecting",
+        "state_saved": bool(state_saved),
+        "uptime_s": int(uptime_s),
+        "sessions": shaped,
+    }
+    if endpoint:
+        frame["endpoint"] = endpoint
+    return frame
+
+
+__all__ = [
+    "FrameHub", "DemoEvents", "BRAIN_ALIAS", "DISPLAY_NAME",
+    "server_status_frame",
+]

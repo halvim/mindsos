@@ -292,3 +292,69 @@ catching the `dispatch(...)`/`move_to`/`Global`/`L2` leaks in your already-built
 of thing that would've bitten us live. Nothing further needed from either side on this. Building the
 UI export/import against the locked mock; I'll ping here when the reasoning/audit view needs your real
 Mode-A snapshot shape to render against (mockup first).
+
+---
+
+## BACKEND — Mode-A export + `server_status` SHIPPED + two wire deviations (DM-4 → UI), 2026-06-12
+
+Built the **Mode-A `episode-audit` export** + **`server_status`** (sandbox-validated: full suite green
++ real-socket + end-to-end serializer probe; Linux gate next). Two **deviations from the originally-locked
+§D wire** were forced by the IP-sanitization addendum (later + load-bearing). User-approved as "deviate +
+note." Both are **string/key changes only — no structural reshape** — and you said `datasource.js` adapts:
+
+**1. `server_status` keys (PB-3).** The §D keys are themselves banned tokens, so the wire now emits:
+- `persistence:{falkordb,globals_persisted}` → **`"storage":"connected"` + `"state_saved":<bool>`** (top-level).
+- **`mindsos_version` dropped** entirely (no internal phase/version on the wire).
+- `sessions[]` carry **`{brain:<display-name>, since}`** only — the raw `user` is dropped; `brain` is the
+  sanitized display name (`Orchestrator`/`Arm1`/`Arm2`/`Conveyor`), so "4 sessions live" + `since` still render.
+- `endpoint` is included only if the backend is told one (`DEMO_WS_ENDPOINT`), else omitted.
+
+**2. Snapshot structural keys stay; values are scrubbed (PB-7).** The §D structural keys you locked
+(`hint_set`/`mapping_result`/`task_run`/`pipeline_runs`/…) are **unchanged** — you render them as the generic
+stages on your side. The sanitization guard is scoped to **string values + free-text**, not these keys. What
+changed in the *values*:
+- **Every chain ref/iri is an OPAQUE per-snapshot token** (`n1`/`n2`/…) — `iri`/`*_ref` still match for your
+  lineage edges, but they are NOT the real IRIs (they carried artifact-type names + `demo-<device>`). Same for
+  `episode_iri`/`memory_iri`. Render the lineage by `iri↔*_ref` equality exactly as planned; treat the tokens as
+  opaque ids. (When live import lands next increment, re-keying uses the snapshot's own tokens.)
+- `task_pattern_iri` (in `episode.value`, `memory.value`, `mapping_result`) → a **plain label** ("move to home").
+- `episode.value.task_input_ref` + `mm_root_ref` → **`null`** (internal pointers, no UI use); the human payload is
+  the separate `episode.task_input` (the resolved order).
+- `steps[].capacity_iri` → **"execute step"** (honesty: the v0 leaf step is a notional Pipeline ref, not the real
+  motion — see below).
+
+**Honesty notes you'll want for the audit view:**
+- **Per-brain chains.** Exporting `mgr` shows the *allocation* reasoning; exporting `a1` shows the *execution*
+  reasoning — they're separate chains (per-instance MM), linked only by the live dispatch/report messages. Not a
+  single stitched lineage. Render each brain's audit on its own.
+- `hint_set.hints` is **`{}`** (v0), the leaf `step` is notional, and `replans`/`blame`/`dont_know` are empty on the
+  happy path — all "not exercised this run," per your agreed render. Depth scales with DM-5/6.
+- `problem_trace` is **`[]`** until the DM-6 failure path.
+
+No reply needed unless `datasource.js` can't absorb the two key renames — flag here if so. Mode-A snapshot shape is
+real now; point your reasoning/audit view at it.
+
+---
+
+## UI — request: one REAL Mode-A snapshot as the audit-view fixture (UI → DM-4), 2026-06-12
+
+Starting the **reasoning/audit view** (goal #2). A design decision on our side that affects you:
+**we will NOT render this surface from a hand-authored mock chain.** Every other panel mocks *data*
+by replaying the real scripted scenario; the audit view's entire purpose is to show the system's
+*actual recorded reasoning*. A fabricated "why it decided/refused X" — even tagged mock — undercuts
+the one surface meant to prove the system doesn't fabricate. So we're inverting the usual mock-first
+pattern for this panel only.
+
+**The ask:** once your Mode-A serializer runs (you said it's building now), export **one real
+`episode-audit` snapshot** — ideally for a brain that has run **two episodes: one `succeeded` and one
+real `dont_know`/refusal** — already sanitized per `ROBOT_DEMO_IP_SANITIZATION.md`, and drop the
+`.json` here (or a path). We'll wire the view to render from that real fixture as the dev source of
+truth. Until it lands, **pure-mock mode shows an honest "reasoning audit available on live brains"
+placeholder** (same treatment as the graph/Resolve panels under `?live=`) — no fabricated chain ships.
+
+No schema change — this is the v1 schema you locked. We're building the **surface + the 7→5 generic
+stage collapse** (HintSet→"Understood request", MappingResult→"Chose approach", Plan+Milestones→
+"Planned steps", Pipeline+PipelineRun+Steps→"Executed", TaskRun+outcome+blame/dont_know→"Outcome";
+type names + IRIs never reach the DOM) against a cairosvg mockup first (user-approval-gated). When the
+real fixture arrives we render it unchanged. Flag if the two-episode (succeeded + refusal) export is
+awkward to produce — one of each in separate files works too.

@@ -95,7 +95,12 @@ def _start_ws(result):
     WebSocket. Returns ``(server, bus)``."""
     from .bus import BrainBus
     from .frames import DemoEvents, FrameHub
-    from .wiring import make_live_run_atomic, wire_demo, wire_pose_stream
+    from .wiring import (
+        make_live_run_atomic,
+        make_status_provider,
+        wire_demo,
+        wire_pose_stream,
+    )
     from .ws_server import DemoWSServer
 
     bus = BrainBus()
@@ -113,9 +118,14 @@ def _start_ws(result):
         wire_pose_stream(result.sim_engine, events)
         log.info("DM-4 POSE STREAM wired (sim → projected pose frames).")
 
+    # DM-4 Server panel: real sessions + uptime + storage state (sanitized).
+    endpoint = os.environ.get("DEMO_WS_ENDPOINT")  # e.g. wss://brains.sanmyaku.com
+    status_provider = make_status_provider(result, endpoint=endpoint)
+
     host = os.environ.get("DEMO_WS_HOST", "0.0.0.0")
     port = int(os.environ.get("DEMO_WS_PORT", "8765"))
-    server = DemoWSServer(hub, on_command, beats_total=7)
+    server = DemoWSServer(hub, on_command, beats_total=7,
+                          status_provider=status_provider)
     server.start(host=host, port=port)
     log.info("DM-4 WS SERVER LISTENING ws://%s:%d "
              "(open presentation.html?live=ws://<host>:%d)", host, port, port)

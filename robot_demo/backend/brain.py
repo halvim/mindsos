@@ -22,8 +22,9 @@ Wiring facts grounded against the shipped code (design log §1, P5):
 from __future__ import annotations
 
 import uuid
+from collections import OrderedDict
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 from mindsos_capacity import CapacityLayer
 from mindsos_capacity.builtins import (
@@ -132,6 +133,31 @@ def build_brain_stack(
     )
 
 
+# ── task_input capture (DM-4 Mode-A export, design-log PB-17) ──────────
+#
+# The consolidated Episode stores only ``task_input_ref`` (a string), NOT the
+# resolved order payload — and the v0 ``hint.global`` produces an empty
+# HintSet, so the order is not recoverable from the chain either. The Mode-A
+# snapshot's ``episode.task_input`` wants the real payload, so ``run_task``
+# records it here keyed by the unique per-task scope (which the serializer also
+# derives from the Episode id). Bounded FIFO — the demo runs a handful of tasks
+# per brain, but cap it so a long-lived process can't grow unboundedly.
+_TASK_INPUTS: "OrderedDict[str, Any]" = OrderedDict()
+_TASK_INPUTS_MAX = 256
+
+
+def _record_task_input(scope: str, task_input: Any) -> None:
+    _TASK_INPUTS[scope] = task_input
+    _TASK_INPUTS.move_to_end(scope)
+    while len(_TASK_INPUTS) > _TASK_INPUTS_MAX:
+        _TASK_INPUTS.popitem(last=False)
+
+
+def task_input_for(scope: str) -> Optional[Any]:
+    """The resolved ``task_input`` captured for a task ``scope`` (or None)."""
+    return _TASK_INPUTS.get(scope)
+
+
 def run_task(brain: Brain, task_input: Any, *, task_id: str = "task") -> Any:
     """Enqueue ONE lifecycle on the brain's IL with a FRESH per-task
     Orchestrator + a unique ``task_scope``. Returns the Future.
@@ -143,13 +169,17 @@ def run_task(brain: Brain, task_input: Any, *, task_id: str = "task") -> Any:
     as a bonus, keeps each task's chain nodes distinguishable in the shared
     intelligence-MM (exactly what the Mode-A per-task export needs).
 
+    PB-17: the resolved ``task_input`` is recorded under the scope so the
+    Mode-A serializer can render ``episode.task_input`` faithfully (the Episode
+    itself only keeps a ref string).
+
     ``brain.orch`` (built in :func:`build_brain_stack`) is retained for its
     dispatcher/back-compat; task execution goes through here.
     """
     tid = f"{task_id}-{uuid.uuid4().hex[:8]}"
-    orch = Orchestrator(
-        brain.dispatcher, brain.il.mm, task_scope=f"demo-{brain.device_id}-{tid}"
-    )
+    scope = f"demo-{brain.device_id}-{tid}"
+    _record_task_input(scope, task_input)
+    orch = Orchestrator(brain.dispatcher, brain.il.mm, task_scope=scope)
     return brain.il.enqueue(lambda: orch.run_lifecycle(task_input, task_id=tid))
 
 
@@ -159,4 +189,5 @@ __all__ = [
     "install_builtin_catalog",
     "build_brain_stack",
     "run_task",
+    "task_input_for",
 ]

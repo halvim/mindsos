@@ -36,6 +36,7 @@ async def _drive(port: int, timeout: float = 45.0) -> List[dict]:
             "type": "command", "name": "place_order",
             "args": {"lines": [{"item": "sheet", "shelf": "a1"}]},
         }))
+        # 1) drive the order to its terminal report message.
         end = time.time() + timeout
         while time.time() < end:
             try:
@@ -48,6 +49,21 @@ async def _drive(port: int, timeout: float = 45.0) -> List[dict]:
             # break on it, not on the state, or we close before it arrives.
             if (msg.get("type") == "message" and msg.get("from") == "Arm1"
                     and "reported" in (msg.get("text") or "")):
+                break
+        # 2) DM-4 L5 export: request the Manager's episode-audit snapshot and
+        # drain until the targeted state_snapshot reply arrives.
+        await ws.send(json.dumps({
+            "type": "command", "name": "export_state",
+            "args": {"mode": "episode-audit", "scope": "mgr"},
+        }))
+        end = time.time() + 15.0
+        while time.time() < end:
+            try:
+                msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
+            except asyncio.TimeoutError:
+                continue
+            frames.append(msg)
+            if msg.get("type") == "state_snapshot":
                 break
     return frames
 
@@ -98,6 +114,28 @@ def main() -> int:
         need("Reported" in titles, "state: Reported")
         if result.sim_engine is not None:
             need(any(f.get("type") == "pose" for f in frames), "pose frames streaming")
+
+        # ── DM-4 L5 export + Server panel ──────────────────────────────
+        from .sanitize import find_leaks
+
+        statuses = [f for f in frames if f.get("type") == "server_status"]
+        need(bool(statuses), "server_status on connect")
+        if statuses:
+            s0 = statuses[0]
+            need(s0.get("storage") == "connected", "server_status: Storage connected")
+            need("mindsos_version" not in s0, "server_status: no internal version")
+            need(len(s0.get("sessions", [])) == 4, "server_status: 4 sessions")
+
+        snaps = [f for f in frames if f.get("type") == "state_snapshot"]
+        need(bool(snaps), "export → state_snapshot reply")
+        if snaps:
+            snap = snaps[0]["snapshot"]
+            need(snap.get("kind") == "episode-audit", "snapshot kind episode-audit")
+            mgr_rec = (snap.get("brains") or {}).get("mgr") or {}
+            eps = mgr_rec.get("episodes") or []
+            need(bool(eps), "snapshot: episodes present")
+            need(bool(eps) and "reasoning" in eps[0], "snapshot: reasoning present")
+            need(find_leaks(snaps[0]) == [], "snapshot: no IP tokens leaked")
 
         print(f"[DM-4] frame summary: {_summary(frames)}")
     finally:

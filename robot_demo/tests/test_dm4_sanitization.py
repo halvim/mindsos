@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import time
 
-from robot_demo.backend.brain import build_brain_stack
+from robot_demo.backend.brain import build_brain_stack, run_task
 from robot_demo.backend.profiles import DEVICE_PROFILES
-from robot_demo.backend.frames import DemoEvents
+from robot_demo.backend.frames import DemoEvents, server_status_frame
 from robot_demo.backend.bus import BrainBus
 from robot_demo.backend.wiring import wire_demo
+from robot_demo.backend.sanitize import find_leaks
+from robot_demo.backend.serializer import build_episode_audit_snapshot
 
 
 class _CaptureHub:
@@ -100,3 +102,24 @@ def test_no_ip_tokens_on_the_wire():
         bus.stop()
         mgr.il.stop()
         arm.il.stop()
+
+
+def test_l5_snapshot_and_server_status_are_clean():
+    """The DM-4-added surfaces (Mode-A ``state_snapshot`` + ``server_status``)
+    must leave the backend already clean. Uses the canonical banned list in
+    ``sanitize`` (the same one the producers enforce) so the test and the wire
+    can't drift."""
+    b = build_brain_stack(DEVICE_PROFILES["mgr"], _DuckSession("mgr"))
+    try:
+        run_task(b, {"text": "scrub"}, task_id="t").result(timeout=30)
+        snapshot = build_episode_audit_snapshot(b)
+        status = server_status_frame(
+            [{"device_id": "mgr", "since": "2026-06-12T00:00:00+00:00"}],
+            uptime_s=1, state_saved=True,
+        )
+        # values-only recursive guard (PB-7): every banned token, every nested
+        # string value, both new frames.
+        assert find_leaks({"type": "state_snapshot", "snapshot": snapshot}) == []
+        assert find_leaks(status) == []
+    finally:
+        b.il.stop()

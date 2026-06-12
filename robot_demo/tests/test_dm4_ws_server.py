@@ -22,7 +22,7 @@ def test_ws_server_handshake_command_and_broadcast():
     hub = FrameHub()
     seen_cmds = []
 
-    def on_command(name, args):
+    def on_command(name, args, respond=None):
         seen_cmds.append((name, args))
 
     server = DemoWSServer(hub, on_command, beats_total=3)
