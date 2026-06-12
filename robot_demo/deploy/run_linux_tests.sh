@@ -155,14 +155,17 @@ grep -q "DM-4 GATE PASS" <<<"$DM4_OUT" \
 pass "DM-4: mgr→dispatch→arm move_to→report visible as live WS frames"
 
 # DM-4 UI-seam verify (HOST node, not the container): the backend's exact
-# frame shapes are consumed by the live demo_ui/datasource.js seam.
-if command -v node >/dev/null 2>&1; then
+# frame shapes are consumed by the live demo_ui/datasource.js seam. demo_ui/
+# is the UI side's folder and may not be present on a pure backend gate host,
+# so this is skip-not-fail when node or demo_ui is absent — run it on the UI
+# host (where it is part of that side's checks).
+if command -v node >/dev/null 2>&1 && [ -f "$ROOT/demo_ui/datasource.js" ]; then
   step "7b. DM-4 UI-seam verify (node, demo_ui/datasource.js)"
   node "$ROOT/robot_demo/tests/ui_seam_verify.js" \
     && pass "UI seam consumes the backend frames" \
     || fail "UI-seam verify failed (frames not consumable by datasource.js)"
 else
-  printf '  (node not found — skipping UI-seam verify; run it on the UI host)\n'
+  printf '  (node or demo_ui/datasource.js not present — skipping UI-seam verify; run it on the UI host)\n'
 fi
 
 # ---------------------------------------------------------------------------
