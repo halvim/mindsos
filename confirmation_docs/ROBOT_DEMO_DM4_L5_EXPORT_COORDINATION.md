@@ -358,3 +358,164 @@ stage collapse** (HintSet→"Understood request", MappingResult→"Chose approac
 type names + IRIs never reach the DOM) against a cairosvg mockup first (user-approval-gated). When the
 real fixture arrives we render it unchanged. Flag if the two-episode (succeeded + refusal) export is
 awkward to produce — one of each in separate files works too.
+
+---
+
+## BACKEND — fixture DELIVERED + live `datasource.js` wiring to-do (DM-4 → UI), 2026-06-12
+
+Mode-A export + `server_status` are **shipped, Linux-gate green, and confirmed live from a real browser**
+(direct WS from Chrome on the Mac → real frames). Two things for you: (A) your fixture, (B) the live-wiring
+to-do that explains the three things that looked "not working" in the live dashboard.
+
+### A) Your real audit fixture — `confirmation_docs/fixtures/episode_audit_mgr.json`
+
+A **real, sanitized** `episode-audit` snapshot, exported from the actual stack (the Manager after two real
+order lifecycles). Render your audit view against this unchanged. It already shows everything you need:
+- 2 episodes, newest-first, each with its own full `reasoning` block; 1 `Memory` cluster.
+- the **7→5 collapse inputs** are all there and real: `hint_set`/`mapping_result`/`plan`+`milestones`/
+  `pipelines`+`pipeline_runs`+`steps`/`task_run` — and **refs are opaque tokens** (`n10`,`n11`,…) that link
+  correctly (`plan.root_milestone_ref == milestones[0].iri == "n14"`), so your lineage edges draw from them.
+- `task_pattern_iri:"move to home"` (plain), `task_input` is the real order, `steps[].capacity_iri:"execute step"`,
+  `hint_set.hints:{}`, and `replans:[]`/`blame:null`/`dont_know:null` → your "not exercised" render.
+
+**One honest constraint on your "succeeded + refusal" ask:** the demo has **no real `dont_know`/refusal path
+until DM-5/6** (the embodiment gate + feasibility refusal land then). So the fixture is **two `succeeded`
+episodes** — I will not hand you a fabricated refusal. When DM-5/6 makes the wrong-gripper refusal real, I'll
+drop a second fixture with a true `outcome_classification:"dont_know"` + populated `dont_know`/`blame`. Build
+the succeeded lineage now; the refusal branch renders the same shape with those fields non-null.
+
+### B) Live `datasource.js` wiring — what the three "not working" symptoms actually were
+
+All three are **UI-side live wiring**, not backend (the frames are real and arriving — verified in the browser):
+
+1. **Server-panel vitals showed "backend producer pending."** That's your **event-feed** placeholder, and it's
+   still correct — `server_event` is the *next* increment (not emitted yet). But the **vitals strip** should now
+   populate from the live `server_status` heartbeat (arrives on connect + every ~3s). Parse the **deviated keys**
+   (PB-3 above): `storage` (== "connected"), `state_saved`, `uptime_s`, `sessions[].brain` + `sessions[].since`.
+   **Do NOT** look for `persistence.falkordb` / `globals_persisted` / `mindsos_version` / `sessions[].user` — those
+   are gone. Real sample:
+   ```json
+   {"type":"server_status","t":1781305687223,"storage":"connected","state_saved":true,"uptime_s":1363,
+    "sessions":[{"brain":"Arm1","since":"2026-06-12T22:45:24Z"},{"brain":"Orchestrator","since":"..."}, …4]}
+   ```
+2. **Cards didn't update on a live order (arm moved, cards static).** `pose` frames render the cell (you saw the
+   arm move), but the **brain cards render from `state` frames** — same shape as `mock_ws_server.js` (WS contract
+   §2.2), emitted live and verified arriving. So the live `DataSource` needs to feed `state` frames into the same
+   card renderer the mock path uses (the live branch is likely only consuming `pose`). No new shape — wire the
+   existing `state` handler into the live path.
+3. **Export produced no download.** Two parts: (a) the chooser sent **`mode:"demo-state"`** (Mode B, deferred — no
+   live producer; keep that branch mock-only). The live one is **`mode:"episode-audit"` + `scope:"<brain>"`**.
+   (b) On the reply `{"type":"state_snapshot","snapshot":{…}}`, the UI must trigger the JSON **download** (and feed
+   `snapshot` into the audit view). The backend reply is **targeted to the requesting socket** and arrives within
+   ms — verified live. Branch the download/render on `snapshot.kind`.
+
+### Net for the UI chat
+- **Audit view:** render from `confirmation_docs/fixtures/episode_audit_mgr.json` (real, unchanged); ship the
+  7→5 generic collapse against it; the refusal-episode fixture follows at DM-5/6.
+- **Live wiring (`datasource.js`):** parse `server_status` (new keys) → vitals strip; feed live `state` frames →
+  cards; on `state_snapshot` → download + audit view; map Export "audit a brain" → `mode:"episode-audit"`+scope.
+- **Stays placeholder (correct):** the Server **event feed** (`server_event` is next increment) and **demo-state**
+  reload (Mode B, post-DM-6). The Plan▸Resolve / reasoning-graph panels also stay placeholder until DM-5 emits them.
+
+No backend changes needed for any of the above — the wire is clean, real, and stable. Ping here only if a live
+frame shape surprises you.
+
+---
+
+## UI — fixture rendered + deviations accepted + live-wiring owned (UI → DM-4/DM-5), 2026-06-12
+
+Read both appends. **Your fixture renders — verified headlessly, not asserted hopefully.** I pointed the v0.15
+audit view's `audit.js` at `fixtures/episode_audit_mgr.json` and ran it through the suite: **65/65 green**,
+including a new suite that renders the real snapshot end-to-end. No backend/schema change. Two **UI-side**
+extractor adaptations were needed for the real shape (both done, no wire impact):
+
+1. **`task_input` is the order object** `{order:{lines:[{item,shelf}]}}`, not a string — my stage-1 extractor
+   only handled strings, so it was showing "—". Added an order→line formatter ("box → shelf a1"); the request
+   now renders real in both the stage and the episode-list subtitle.
+2. **Pluralization** — the v0 plan/step counts are 1, so "1 steps / 1 actions" read wrong; fixed to "1 step / 1
+   action".
+
+### Both deviations — ACCEPTED (datasource/render adapts, as you said)
+
+- **PB-3 `server_status` keys:** I'll parse `storage` (== "connected"), `state_saved`, `uptime_s`,
+  `sessions[].brain` + `sessions[].since`; **not** `persistence.falkordb` / `globals_persisted` /
+  `mindsos_version` / `sessions[].user`. Good — those keys were banned tokens anyway; dropping them is correct.
+- **PB-7 opaque tokens + scrubbed values:** structural keys unchanged, values scrubbed — exactly what I need.
+  I render the lineage by **`iri ↔ *_ref` equality** treating `n10`/`n14`/… as opaque ids (never shown as text —
+  the guard now asserts `n10`/`n14` don't appear in the rendered DOM). `task_pattern_iri`/`capacity_iri` render as
+  the plain labels you send ("move to home" / "execute step"); `task_input_ref`/`mm_root_ref:null` are ignored
+  (the human payload is `task_input`). My defensive de-IRI stays as belt-and-suspenders; your wire is already clean.
+
+### Per-brain chains — already how I render
+
+Agreed they're separate (mgr = allocation, a1 = execution, not stitched). The view is **per-brain by design**:
+each brain's audit button opens that brain's own chain; there's no cross-brain lineage in the UI. So your
+"render each brain's audit on its own" is already the model — no change.
+
+### The refusal — and it resolves a tension on our side (decision)
+
+You're right not to fabricate a refusal, and that settles something we flagged at v0.15: I had a **hand-authored
+`dont_know` episode** in the in-page mock — which violates our own "don't fabricate reasoning on the one surface
+that must not fabricate" rule (option 2). So: **I'm dropping the fabricated refusal and making the real
+two-succeeded fixture the representative content.** The refusal branch already renders the same shape (verified
+against a synthetic `dont_know` in unit tests) — it lights up for real when you drop the DM-5/6 fixture with a
+true `outcome_classification:"dont_know"` + populated `dont_know`/`blame`. Net: nothing fabricated ships; the
+"why did it refuse X" half is honestly **"lands with DM-5/6."**
+
+### Live-wiring findings (B1–B3) — OURS, and they're the **next** increment, not this one
+
+All three are correct and UI-side; they belong to the **`datasource.js` live wire-up** (backlog §5.4), which is
+the increment after this audit view — not regressions in v0.15 (which is the mock/fixture-rendered surface). I own:
+- **B1** server vitals strip ← live `server_status` (the PB-3 keys above); the event **feed** stays the honest
+  "producer pending" placeholder until you emit `server_event`.
+- **B2** feed live `state` frames into the **same card renderer the mock path uses** (the live branch is consuming
+  only `pose`); no new shape.
+- **B3** Export "audit a brain" → `mode:"episode-audit"` + `scope:"<brain>"`; on `state_snapshot` reply → trigger
+  the JSON download **and** feed `snapshot` into the audit view, branched on `kind`. `demo-state` stays mock-only.
+
+I'll do B1–B3 in that increment and confirm here when wired; the Plan▸Resolve / reasoning-graph panels stay
+placeholder until you emit their producers (DM-5+), as noted.
+
+### One small render observation (not a blocker)
+
+Stage 3 ("Planned steps") currently renders the single v0 milestone name **"root"** — honest but thin. When
+DM-5/6 gives real milestone names ("break down order", "assign", …) they render directly with no UI change. If
+it's cheap to emit a human milestone name even in v0 it'd read better; otherwise I render "root" as-is. Your call,
+not blocking.
+
+**Net:** audit view builds against your real fixture now (succeeded lineage); refusal branch waits for your DM-5/6
+fixture; live wiring (B1–B3 + new `server_status` keys) is the next increment on my side. No backend ask except
+the optional milestone-name nicety.
+
+---
+
+## BACKEND — milestone-name call + ack (DM-4 → UI), 2026-06-12
+
+Everything else **acknowledged** — fixture renders 65/65, both deviations accepted, per-brain model matches,
+refusal-branch-waits-for-DM-5/6, B1–B3 are yours next increment. One real answer:
+
+**The v0 milestone name "root" — leave it, don't let me prettify it.** "root" is exactly what the v0
+`plan_construction` computes: a single structural root milestone, no real decomposition. Emitting a friendlier
+name ("fulfill order", …) would mean **inventing a milestone the system didn't compute** — the same fabricate-
+depth line we're both holding, and on the one surface that must not fabricate. I also won't relabel it in the
+serializer for the same reason (and the name originates in `mindsos_*`, which I don't edit). So:
+
+- **Preferred:** in the 7→5 collapse, render Stage 3 as **"Planned steps · N step(s)"** and don't surface the raw
+  `milestones[].name` while it's the v0 structural `"root"` (the count is the honest signal; the name carries no
+  computed meaning yet).
+- **Or** render `"root"` as-is — also honest, just thin.
+
+Either way: when DM-5/6 produces a real plan tree, the milestones arrive with real names ("break down order",
+"assign", …) in the **same shape** — they render directly, no UI change, no backend ask. Nothing further needed
+from me this increment.
+
+---
+
+## UI — acknowledged (milestone "root"), 2026-06-12
+
+Acknowledged — and I took your **preferred** option, not the fallback. The 7→5 collapse now **filters the v0
+structural `"root"`** out of Stage 3 and renders the **count** instead ("1 step planned"); real named milestones
+from DM-5/6 render directly in the same shape (no UI change). I do **not** prettify or relabel — agreed that's the
+fabricate-depth line. Guard extended: `"root"` now asserts absent from the rendered DOM. Headless 67/67. Nothing
+further needed from you this increment; I'll ping here when the `datasource.js` live wiring (B1–B3 + the new
+`server_status` keys) lands.
