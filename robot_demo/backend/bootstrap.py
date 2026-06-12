@@ -313,6 +313,13 @@ def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
             brains[device_id] = brain
 
             bundles[device_id] = _install_device_bundles(brain, admin_session)
+            # Ensure the robot.* DataStates in this boot's CapacityLayer
+            # (idempotent). On a Falkor RELOAD boot install_skill no-ops on
+            # digest match, so the bundle's L3 installer does NOT re-register
+            # them into the fresh CL — but step-6 atomics AND DM-4 comms.*
+            # both need them. F9: re-activating bundle L3 content on reboot.
+            from .installers import install_core_datastates
+            install_core_datastates(brain.cl)
             seeded_local[device_id] = seed_local_embodiment(
                 brain.kl, brain.session, device_id
             )

@@ -211,9 +211,13 @@ def wire_demo(
     run_atomic = run_atomic or _stub_run_atomic
     decide = decide or (lambda order: ("arm1", "home"))
 
+    # Always ensure the robot.* DataStates (idempotent). On a Falkor RELOAD
+    # boot, install_skill no-ops (digest match) so the bundle's L3 installer
+    # does NOT re-register them into the fresh CapacityLayer (F9) — and comms.*
+    # registration needs them. install_datastates is retained for back-compat
+    # but the ensure now runs unconditionally.
     for brain in brains.values():
-        if install_datastates:
-            install_core_datastates(brain.cl)
+        install_core_datastates(brain.cl)
         wire_brain_comms(brain, bus)
 
     for did, brain in brains.items():
