@@ -43,7 +43,11 @@ async def _drive(port: int, timeout: float = 45.0) -> List[dict]:
             except asyncio.TimeoutError:
                 continue
             frames.append(msg)
-            if msg.get("type") == "state" and msg.get("title") == "Reported":
+            # the report message is the terminal frame (emitted AFTER the
+            # Reported state per the canonical state-then-message order) —
+            # break on it, not on the state, or we close before it arrives.
+            if (msg.get("type") == "message" and msg.get("from") == "Arm1"
+                    and "reported" in (msg.get("text") or "")):
                 break
     return frames
 
@@ -99,6 +103,8 @@ def main() -> int:
     finally:
         server.stop()
         bus.stop()
+        if result.sim_engine is not None:
+            result.sim_engine.stop()
         for brain in result.brains.values():
             brain.il.stop()
 
@@ -110,4 +116,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    rc = main()
+    sys.stdout.flush()
+    sys.stderr.flush()
+    # os._exit bypasses interpreter teardown — the MuJoCo/GL destructor
+    # segfaults on exit (body=yes) and would turn a passing gate into 139.
+    os._exit(rc)
