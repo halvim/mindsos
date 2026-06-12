@@ -117,21 +117,40 @@ step "5. RAM + jitter measurement (PB-N / P7)"
 "${COMPOSE[@]}" run --rm -e DEMO_BOOTSTRAP_ONLY=1 demo-backend \
   python -m robot_demo.backend.measure 2>&1 | sed 's/^/    | /' \
   || fail "measure.py failed"
-pass "RAM + jitter recorded (numbers above; jitter is a provisional proxy — real bar at DM-3)"
+pass "RAM + jitter recorded (numbers above; bootstrap proxy — real live bar below)"
+
+# ---------------------------------------------------------------------------
+# DM-3 GATE: each atomic capacity moves the live MuJoCo sim, checklist-
+# verified, on the single shared Cell (PB-KK) — plus fault injection (G-8)
+# and the REAL jitter bar under load (PB-E/RR). Runs IN the container (the
+# image ships sim/ + mujoco; tests/ is not shipped, so the gate is the
+# greppable robot_demo.backend.dm3_check module, not pytest).
+step "6. DM-3 live-motion gate (shared SimEngine + atomic capacities)"
+DM3_OUT="$("${COMPOSE[@]}" run --rm demo-backend \
+  python -m robot_demo.backend.dm3_check 2>&1)" && DM3_RC=0 || DM3_RC=$?
+printf '%s\n' "$DM3_OUT" | sed 's/^/    | /'
+[[ $DM3_RC -eq 0 ]] || fail "DM-3 live-motion check exited $DM3_RC"
+grep -q "DM-3 LIVE MOTION PASS" <<<"$DM3_OUT" \
+  || fail "DM-3: 'DM-3 LIVE MOTION PASS' not in logs (atomic/fault check failed)"
+pass "DM-3: atomics move the live sim (checklist-verified), fault detected, jitter recorded"
 
 # ---------------------------------------------------------------------------
 if [[ "${RUN_PYTEST:-0}" == "1" ]]; then
-  step "6. [optional] Host pytest of robot_demo/tests/"
+  step "7. [optional] Host pytest of robot_demo/tests/"
   PYTHONPATH="$ROOT" "$PYBIN" -m pytest robot_demo/tests/ -q \
     && pass "core scenario tests" || fail "host pytest failed"
+  # Integration tests need mujoco + a real server on the host; the in-
+  # container DM-3 gate (step 6) is authoritative for live motion.
   PYTHONPATH="$ROOT" "$PYBIN" -m pytest robot_demo/tests/ -m integration -q \
-    && pass "real-server integration test" || fail "integration pytest failed"
+    && pass "host integration tests" || fail "integration pytest failed"
 fi
 
-step "7. Teardown"
+step "8. Teardown"
 "${COMPOSE[@]}" down >/dev/null 2>&1 || true
 pass "stack down"
 
-printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 gate green.\033[0m\n'
+printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 + DM-3 gate green.\033[0m\n'
 printf '  (DM-2: per-device bundles installed idempotently, Local seeds visible,\n'
-printf '   Globals persisted to Falkor, G-5 episode round-trip verified.)\n'
+printf '   Globals persisted to Falkor, G-5 episode round-trip verified.\n'
+printf '   DM-3: each ⬡ atomic moves the live shared sim checklist-verified,\n'
+printf '   fault injection detected, real jitter bar measured.)\n'

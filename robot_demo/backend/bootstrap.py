@@ -29,7 +29,7 @@ import getpass
 import os
 import sqlite3
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from mindsos_intelligence.consolidation import consolidation_enabled
 from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
@@ -37,6 +37,7 @@ from mindsos_knowledge.metagraph_view import MetagraphView
 
 from .brain import Brain, build_brain_stack
 from .bundles import manifest_path
+from .capacities import register_embodied_capacities
 from .persistence import (
     load_or_mint_global,
     persist_global,
@@ -168,6 +169,8 @@ class BootstrapResult:
     seeded_local: Dict[str, bool] = None        # device → embodiment written
     persisted_global: bool = False              # DM-2 Falkor Global persist
     episode_roundtrip: Optional[str] = None     # G-5 probe detail (or None)
+    embodied: Dict[str, Tuple[str, ...]] = None  # DM-3 device → atomic IRIs
+    sim_engine: Any = None                       # DM-3 shared SimEngine (or None)
 
     @property
     def total_episodes(self) -> int:
@@ -233,6 +236,44 @@ def _open_falkor_client():
         return None
 
 
+def _maybe_build_bodies():
+    """DM-3: build the single shared SimEngine + per-device BodyHandles, or
+    return None when the body runtime is unavailable.
+
+    The body runtime imports ``sim_engine`` → ``mujoco`` (+ the ``sim/`` cell),
+    which the 3.10 / no-MuJoCo sandbox can't load — so embodied registration
+    is **Linux-gated** and skipped gracefully elsewhere (the DM-1/DM-2 gate
+    stays green; PB-TT). ``DEMO_BODY=0`` also forces the skip."""
+    if os.environ.get("DEMO_BODY", "1") == "0":
+        return None
+    try:
+        from .body_adapter import build_body_runtime
+    except Exception as exc:  # mujoco / GL / sim import missing (sandbox)
+        print(f"[DM-3] body runtime unavailable ({exc}); "
+              "embodied capacities skipped.")
+        return None
+    return build_body_runtime()
+
+
+def _register_embodied(brains: Dict[str, Brain], handles) -> Dict[str, Tuple[str, ...]]:
+    """Register each embodied brain's ⬡ atomic capacities over its BodyHandle
+    (PB-UU: session=None into the brain's own CL Global; the brain's own
+    kl/session ride along only for diagnose's Local gap-write closure)."""
+    out: Dict[str, Tuple[str, ...]] = {}
+    for device_id, handle in handles.items():
+        brain = brains[device_id]
+        iris = register_embodied_capacities(
+            brain.cl,
+            device_type=brain.profile.device_type,
+            body=handle,
+            kl=brain.kl,
+            session=brain.session,
+            device_id=device_id,
+        )
+        out[device_id] = tuple(iris)
+    return out
+
+
 def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
     """Run the full DM-1 + DM-2 bootstrap + smoke. Returns a BootstrapResult.
 
@@ -272,7 +313,17 @@ def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
             )
             if client is not None:
                 persist_global(client, brain.kl)  # MERGE-idempotent
-            # DM-3: register embodied capacities over the brain's BodyHandle
+
+        # step 6 (DM-3) — single shared SimEngine + per-brain embodied atomics.
+        # Guarded: skipped (no-op) where MuJoCo is absent (sandbox); the
+        # DM-1/DM-2 smoke below is unaffected (it dispatches the v0 builtins).
+        bodies = _maybe_build_bodies()
+        embodied: Dict[str, Tuple[str, ...]] = {}
+        if bodies is not None:
+            sim_engine, handles = bodies
+            embodied = _register_embodied(brains, handles)
+        else:
+            sim_engine = None
 
         episodes = smoke(brains)  # step 5
 
@@ -298,6 +349,8 @@ def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
         seeded_local=seeded_local,
         persisted_global=client is not None,
         episode_roundtrip=roundtrip,
+        embodied=embodied,
+        sim_engine=sim_engine,
     )
 
 

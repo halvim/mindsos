@@ -34,7 +34,12 @@ COPY robot_demo/__init__.py ./robot_demo/__init__.py
 COPY robot_demo/backend ./robot_demo/backend
 # DM-2 skill-bundle TOML data (read at runtime by install_skill).
 COPY robot_demo/bundles ./robot_demo/bundles
-# DM-3 will add: COPY sim ./sim  +  COPY web ./web  (live motion + render assets)
+# DM-3 live motion: the shipped MuJoCo cell + motion machinery (wrapped, not
+# edited — PB-QQ) and the render/geometry assets. sim/ is required at runtime
+# (SimEngine imports motion.py + build_cell + the menagerie meshes); web/ is
+# the render-asset source the DM-4 UI will consume.
+COPY sim ./sim
+COPY web ./web
 
 RUN chown -R mindsos:mindsos /app
 
