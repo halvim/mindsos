@@ -178,18 +178,19 @@ def atomic_checklist(
         "5_rack_upper": rack_upper or "none",
         "9_ends_clear": ends_clear,
     }
-    ok = (
-        jerk < JERK_MAX_M
-        and not conv
-        and not rack_upper
-        and ends_clear
-    )
+    # Hard gate for a BARE atomic move: joint smoothness (no IK branch-flip)
+    # + no collision with the conveyor BODY. The rack-AABB + ends-clear
+    # checks are pick-place-phase invariants (placing into / returning from a
+    # cubby): the coarse rack AABB false-positives the folded home keyframe
+    # (the wrist tucks behind the arm — inside the AABB but in no cubby), and
+    # a home/ready park pose legitimately sits there. They are enforced by the
+    # FULL clip checklist at DM-5; here they are informational only (design
+    # log §17 calibration).
+    ok = jerk < JERK_MAX_M and not conv
     reason = "PASS" if ok else "; ".join(
         m for m, bad in (
-            (f"jerk {round(jerk*1000)}mm>=160", jerk >= JERK_MAX_M),
+            (f"jerk {round(jerk * 1000)}mm>=160", jerk >= JERK_MAX_M),
             (f"conveyor intrusion {conv}", bool(conv)),
-            (f"rack upper-link {rack_upper}", bool(rack_upper)),
-            ("ends not clear of structures", not ends_clear),
         ) if bad
     )
     return Verdict(ok, reason, checks)
