@@ -211,18 +211,22 @@ def test_live_motion_hit_miss_dontknow():
 
 # ── core: pose projection (DM-4 interface, §16) ───────────────────────
 def test_pose_frame_projection():
+    # top-down (x,y) → UI box via the fitted demo affine; no `bodies` (UI
+    # consumes items/eff only — WS-contract answer #3/#4).
     from robot_demo.backend.pose_frame import project_pose, Affine2D
     bodies = ["box1", "sheet1", "a1_suction", "a2g_base", "a1_link0", "leg_x"]
     frame = [[0.7, -0.6, 0.5, 1, 0, 0, 0], [-1.1, -0.6, 0.6, 1, 0, 0, 0],
              [-0.7, -0.7, 0.9, 1, 0, 0, 0], [0.7, -0.62, 0.9, 1, 0, 0, 0],
              [0.0, 0.0, 0.2, 1, 0, 0, 0], [9, 9, 9, 1, 0, 0, 0]]
     p = project_pose(frame, bodies)
-    assert p["items"]["box1"] == [0.7, 0.5]          # front elevation (x,z)
-    assert p["eff"]["a1"] == [-0.7, 0.9]
-    assert p["bodies"]["box1"][:3] == [0.7, -0.6, 0.5]
-    assert "leg_x" not in p["bodies"]
-    p2 = project_pose(frame, bodies, affine=Affine2D(ax=100, bx=5, az=-100, bz=2))
-    assert p2["items"]["box1"] == [75.0, -48.0]
+    # box1 sim (0.7,-0.6) → (0.5417*0.7, -0.5818*-0.6-0.7118)
+    assert p["items"]["box1"] == [0.3792, -0.3627]
+    assert p["eff"]["a1"] == [-0.3792, -0.3045]      # a1_suction (-0.7,-0.7)
+    assert "bodies" not in p                          # dropped
+    assert "tube1" not in p["items"]                  # not in this frame
+    assert "leg_x" not in p["items"]                  # non-item body ignored
+    p2 = project_pose(frame, bodies, affine=Affine2D(ax=100, bx=5, ay=-100, by=2))
+    assert p2["items"]["box1"] == [75.0, 62.0]
 
 
 # ── core: bootstrap body-guard skip (PB-TT) ───────────────────────────

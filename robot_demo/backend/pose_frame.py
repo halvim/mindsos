@@ -1,20 +1,28 @@
-"""DM-3 ↔ DM-4 pose-frame projection (WS contract §2.3, design log §16).
+"""DM-3 ↔ DM-4 pose-frame projection (WS contract §2.3 / §8, design-log §16).
 
-The UI consumes a ``pose`` frame:
-  * ``items[name] = [x, y]``  (2D cell view; consumed now)
-  * ``eff[id]     = [x, y] | null``  (effector targets; consumed now)
-  * ``bodies[name] = [x, y, z, qw, qx, qy, qz]``  (reserved 3D robot view)
+The UI consumes a ``pose`` frame with **only**:
+  * ``items[name] = [x, y]``  — top-down cell view, the UI's frozen world box
+  * ``eff[id]     = [x, y] | null``  — effector targets
 
-``Cell.capture()`` already emits ``[x, y, z, qw, qx, qy, qz]`` per body in
-metres (MuJoCo world frame, quat wxyz) — so ``bodies`` is the native output
-and the source of truth. The 2D ``items``/``eff`` are a **front-elevation
-projection** ``screen_x ← world_x``, ``screen_y ← world_z`` (so shelf-row
-motion reads vertically), through an affine ``screen = a·world + b``.
+(The ``bodies`` 3D-transform field was dropped: the UI confirmed it consumes
+only ``items``/``eff`` and builds both its 2D and three.js views from those —
+``bodies`` has no v1 consumer. WS-contract answer #3, 2026-06-12.)
 
-The affine constants are a placeholder (identity = raw metres) until the
-UI side confirms the cell view's coordinate box; baking them is a one-line
-change here, so DM-4 wraps the result in ``{"type":"pose", "t":…, …}`` with
-no reshape. MuJoCo-free (PB-TT).
+**Coordinate mapping (affine, owned by the backend — answer #2).** The UI's
+cell view is a *stylized top-down* schematic, deliberately NOT the sim
+geometry (its arms sit at ±0.65; the sim's at ±1.2). So the backend maps
+sim-world ``(x, y)`` → the UI's frozen box via a per-axis affine
+``screen = a·world + b``, fitted from physical anchors captured from the live
+sim (2026-06-12):
+
+  * x: sim arm bases ±1.2  → UI ARM ±0.65   ⟹  ax = 0.65/1.2,  bx = 0
+  * y: sim arm base −0.45  → UI −0.45,  and
+       sim item-rest 0.10  → UI shelf row −0.77  ⟹  ay = −0.5818, by = −0.7118
+
+Region-accurate is sufficient until ``place_at_cell`` (DM-5); the UI draws
+items at whatever ``[x, y]`` we send (no cell snapping). The frozen UI box is
+``XR=[-1.35,1.35]``, ``YR=[-1.02,0.34]`` — every demo body lands inside it
+after this transform. MuJoCo-free.
 """
 
 from __future__ import annotations
@@ -22,18 +30,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Sequence
 
-#: contract item-id → sim body name. Sim also has ``box2`` (each arm has its
-#: own box in the load/convey flow) — included so the cell view can show it.
+#: contract item-id → sim body name. box2 is intentionally omitted — the UI
+#: does not render it (answer #4); emitting it would be invisible noise.
 ITEM_BODIES: Dict[str, str] = {
     "box1": "box1",
-    "box2": "box2",
     "sheet1": "sheet1",
     "tube1": "tube1",
 }
 
-#: contract effector-id → sim body name (the checklist's grip refs). The TCP
-#: *site* (``a{1,2}_tcp``) is not in the captured frame; switch to it here if
-#: the UI wants the pinch point.
+#: contract effector-id → sim body name (the DM-3 grip refs).
 EFF_BODIES: Dict[str, str] = {
     "a1": "a1_suction",
     "a2": "a2g_base",
@@ -42,22 +47,20 @@ EFF_BODIES: Dict[str, str] = {
 
 @dataclass(frozen=True)
 class Affine2D:
-    """``screen = a·world + b`` per axis. Identity = raw metres (placeholder).
+    """Top-down ``screen = a·world + b`` per axis (sim-world x,y → UI box)."""
 
-    ``sx = ax * world_x + bx`` ; ``sy = az * world_z + bz`` (front elevation).
-    Confirm constants with the UI side, then set them here (design log §16).
-    """
-
-    ax: float = 1.0
+    ax: float = 0.5417
     bx: float = 0.0
-    az: float = 1.0
-    bz: float = 0.0
+    ay: float = -0.5818
+    by: float = -0.7118
 
     def project(self, world: Sequence[float]) -> List[float]:
-        return [self.ax * world[0] + self.bx, self.az * world[2] + self.bz]
+        return [round(self.ax * world[0] + self.bx, 4),
+                round(self.ay * world[1] + self.by, 4)]
 
 
-IDENTITY_AFFINE = Affine2D()
+#: The fitted demo affine (sim → UI frozen box). Default for all projections.
+DEMO_AFFINE = Affine2D()
 
 
 def _index(bodies: Sequence[str]) -> Dict[str, int]:
@@ -68,45 +71,26 @@ def project_pose(
     frame: Sequence[Sequence[float]],
     bodies: Sequence[str],
     *,
-    affine: Affine2D = IDENTITY_AFFINE,
-    body_allowlist: Optional[Sequence[str]] = None,
+    affine: Affine2D = DEMO_AFFINE,
 ) -> Dict[str, object]:
-    """Project one captured ``frame`` into the contract's pose fields.
+    """Project one captured ``frame`` (rows ``[x,y,z,qw,qx,qy,qz]`` per body,
+    indexed by ``bodies``) into the contract's ``items``/``eff`` pose fields.
 
-    Returns ``{"items":…, "eff":…, "bodies":…}`` (no ``type``/``t`` — DM-4
-    adds those). ``items``/``eff`` are 2D (affine over world x,z); ``bodies``
-    is the raw 3D ``[x,y,z,qw,qx,qy,qz]`` for the item/eff/arm bodies (or
-    ``body_allowlist`` when given).
-    """
+    Returns ``{"items":…, "eff":…}`` (no ``type``/``t`` — the caller adds
+    those). Both are 2D top-down ``[x, y]`` via the affine. ``eff`` ids absent
+    from the frame are emitted as ``None`` (contract §2.3 / §3)."""
     idx = _index(bodies)
 
     items: Dict[str, List[float]] = {}
     for cid, bname in ITEM_BODIES.items():
         if bname in idx:
-            items[cid] = affine.project(frame[idx[bname]][:3])
+            items[cid] = affine.project(frame[idx[bname]][:2])
 
     eff: Dict[str, Optional[List[float]]] = {}
     for cid, bname in EFF_BODIES.items():
-        eff[cid] = affine.project(frame[idx[bname]][:3]) if bname in idx else None
+        eff[cid] = affine.project(frame[idx[bname]][:2]) if bname in idx else None
 
-    if body_allowlist is None:
-        want = set(ITEM_BODIES.values()) | set(EFF_BODIES.values())
-        want |= {n for n in bodies if n.startswith(("a1_link", "a2_link"))}
-    else:
-        want = set(body_allowlist)
-    bodies_out: Dict[str, List[float]] = {
-        n: [round(float(x), 4) for x in frame[idx[n]][:7]]
-        for n in bodies
-        if n in want
-    }
-
-    return {"items": items, "eff": eff, "bodies": bodies_out}
+    return {"items": items, "eff": eff}
 
 
-__all__ = [
-    "ITEM_BODIES",
-    "EFF_BODIES",
-    "Affine2D",
-    "IDENTITY_AFFINE",
-    "project_pose",
-]
+__all__ = ["ITEM_BODIES", "EFF_BODIES", "Affine2D", "DEMO_AFFINE", "project_pose"]

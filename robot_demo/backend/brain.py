@@ -21,6 +21,7 @@ Wiring facts grounded against the shipped code (design log §1, P5):
 
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
 from typing import Any
 
@@ -131,9 +132,31 @@ def build_brain_stack(
     )
 
 
+def run_task(brain: Brain, task_input: Any, *, task_id: str = "task") -> Any:
+    """Enqueue ONE lifecycle on the brain's IL with a FRESH per-task
+    Orchestrator + a unique ``task_scope``. Returns the Future.
+
+    PB-HHH: the chain-artifact writer mints IRIs from ``task_scope``; a
+    constant per-brain scope collides those IRIs on the brain's *second*
+    lifecycle (``IdentityError: Duplicate id`` — the first ``place_order``
+    after the bootstrap smoke). A unique scope per task fixes the crash and,
+    as a bonus, keeps each task's chain nodes distinguishable in the shared
+    intelligence-MM (exactly what the Mode-A per-task export needs).
+
+    ``brain.orch`` (built in :func:`build_brain_stack`) is retained for its
+    dispatcher/back-compat; task execution goes through here.
+    """
+    tid = f"{task_id}-{uuid.uuid4().hex[:8]}"
+    orch = Orchestrator(
+        brain.dispatcher, brain.il.mm, task_scope=f"demo-{brain.device_id}-{tid}"
+    )
+    return brain.il.enqueue(lambda: orch.run_lifecycle(task_input, task_id=tid))
+
+
 __all__ = [
     "Brain",
     "build_device_kl",
     "install_builtin_catalog",
     "build_brain_stack",
+    "run_task",
 ]

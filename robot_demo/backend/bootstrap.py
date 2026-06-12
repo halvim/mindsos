@@ -35,7 +35,7 @@ from mindsos_intelligence.consolidation import consolidation_enabled
 from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
 from mindsos_knowledge.metagraph_view import MetagraphView
 
-from .brain import Brain, build_brain_stack
+from .brain import Brain, build_brain_stack, run_task
 from .bundles import manifest_path
 from .capacities import register_embodied_capacities
 from .persistence import (
@@ -203,10 +203,8 @@ def smoke(brains: Dict[str, Brain]) -> Dict[str, int]:
                 "unregistered or KL unbound (PB-Q); smoke would silently "
                 "skip the Episode write."
             )
-        future = brain.il.enqueue(
-            lambda b=brain: b.orch.run_lifecycle(
-                {"text": "dm1-smoke"}, task_id=f"dm1-smoke-{b.device_id}"
-            )
+        future = run_task(
+            brain, {"text": "dm1-smoke"}, task_id=f"dm1-smoke-{brain.device_id}"
         )
         outcome = future.result(timeout=30)
         if outcome.status != "succeeded":

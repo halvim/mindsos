@@ -70,14 +70,56 @@ def main(argv: list[str] | None = None) -> int:
             brain.il.stop()
         return 0
 
-    log.info("Holding (DM-2+ will start sim + bus + WebSocket here). Ctrl-C to exit.")
+    # ── DM-4: BrainBus + comms + WS server (Seam A/B) ──────────────────
+    server = None
+    bus = None
+    if os.environ.get("DEMO_NO_WS") != "1":
+        server, bus = _start_ws(result)
+
+    log.info("Holding (Ctrl-C to exit).")
     try:
         while True:
             time.sleep(3600)
     except KeyboardInterrupt:  # pragma: no cover
+        if server is not None:
+            server.stop()
+        if bus is not None:
+            bus.stop()
         for brain in result.brains.values():
             brain.il.stop()
         return 0
+
+
+def _start_ws(result):
+    """DM-4 — wire the BrainBus + comms + pose stream and serve the brains
+    WebSocket. Returns ``(server, bus)``."""
+    from .bus import BrainBus
+    from .frames import DemoEvents, FrameHub
+    from .wiring import make_live_run_atomic, wire_demo, wire_pose_stream
+    from .ws_server import DemoWSServer
+
+    bus = BrainBus()
+    hub = FrameHub()
+    events = DemoEvents(hub)
+
+    # The live move_to invoke needs the SimEngine (qpos spec); with no body
+    # (DEMO_BODY=0) wire_demo's stub run_atomic keeps the flow completing.
+    run_atomic = (
+        make_live_run_atomic(result.sim_engine)
+        if result.sim_engine is not None else None
+    )
+    on_command = wire_demo(result.brains, bus, events, run_atomic=run_atomic)
+    if result.sim_engine is not None:
+        wire_pose_stream(result.sim_engine, events)
+        log.info("DM-4 POSE STREAM wired (sim → projected pose frames).")
+
+    host = os.environ.get("DEMO_WS_HOST", "0.0.0.0")
+    port = int(os.environ.get("DEMO_WS_PORT", "8765"))
+    server = DemoWSServer(hub, on_command, beats_total=7)
+    server.start(host=host, port=port)
+    log.info("DM-4 WS SERVER LISTENING ws://%s:%d "
+             "(open presentation.html?live=ws://<host>:%d)", host, port, port)
+    return server, bus
 
 
 if __name__ == "__main__":

@@ -140,8 +140,34 @@ grep -q "DM-3 LIVE MOTION PASS" <<<"$DM3_OUT" \
 pass "DM-3: atomics move the live sim (checklist-verified), fault detected, jitter recorded"
 
 # ---------------------------------------------------------------------------
+# DM-4 GATE: the Manager dispatches an embodied arm end-to-end through BOTH
+# lifecycles (mgr → comms.dispatch → arm lifecycle runs move_to → comms.report
+# → mgr), visible as live WS frames. Runs IN the container (real bootstrap +
+# BrainBus + comms + WS server + a WebSocket client driving place_order); the
+# greppable module is robot_demo.backend.dm4_check.
+step "7. DM-4 live gate (BrainBus + comms.* + WS frames over a real socket)"
+DM4_OUT="$("${COMPOSE[@]}" run --rm demo-backend \
+  python -m robot_demo.backend.dm4_check 2>&1)" && DM4_RC=0 || DM4_RC=$?
+printf '%s\n' "$DM4_OUT" | sed 's/^/    | /'
+[[ $DM4_RC -eq 0 ]] || fail "DM-4 gate exited $DM4_RC"
+grep -q "DM-4 GATE PASS" <<<"$DM4_OUT" \
+  || fail "DM-4: 'DM-4 GATE PASS' not in logs (dispatch→report flow failed)"
+pass "DM-4: mgr→dispatch→arm move_to→report visible as live WS frames"
+
+# DM-4 UI-seam verify (HOST node, not the container): the backend's exact
+# frame shapes are consumed by the live demo_ui/datasource.js seam.
+if command -v node >/dev/null 2>&1; then
+  step "7b. DM-4 UI-seam verify (node, demo_ui/datasource.js)"
+  node "$ROOT/robot_demo/tests/ui_seam_verify.js" \
+    && pass "UI seam consumes the backend frames" \
+    || fail "UI-seam verify failed (frames not consumable by datasource.js)"
+else
+  printf '  (node not found — skipping UI-seam verify; run it on the UI host)\n'
+fi
+
+# ---------------------------------------------------------------------------
 if [[ "${RUN_PYTEST:-0}" == "1" ]]; then
-  step "7. [optional] Host pytest of robot_demo/tests/"
+  step "8. [optional] Host pytest of robot_demo/tests/"
   PYTHONPATH="$ROOT" "$PYBIN" -m pytest robot_demo/tests/ -q \
     && pass "core scenario tests" || fail "host pytest failed"
   # Integration tests need mujoco + a real server on the host; the in-
@@ -150,12 +176,14 @@ if [[ "${RUN_PYTEST:-0}" == "1" ]]; then
     && pass "host integration tests" || fail "integration pytest failed"
 fi
 
-step "8. Teardown"
+step "9. Teardown"
 "${COMPOSE[@]}" down >/dev/null 2>&1 || true
 pass "stack down"
 
-printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 + DM-3 gate green.\033[0m\n'
+printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 + DM-3 + DM-4 gate green.\033[0m\n'
 printf '  (DM-2: per-device bundles installed idempotently, Local seeds visible,\n'
 printf '   Globals persisted to Falkor, G-5 episode round-trip verified.\n'
 printf '   DM-3: each ⬡ atomic moves the live shared sim checklist-verified,\n'
-printf '   fault injection detected, real jitter bar measured.)\n'
+printf '   fault injection detected, real jitter bar measured.\n'
+printf '   DM-4: mgr dispatches an arm through both lifecycles (move_to) over\n'
+printf '   the BrainBus, narrated as live WS frames the UI seam consumes.)\n'
