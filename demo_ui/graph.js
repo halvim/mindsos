@@ -30,7 +30,7 @@ const GRAPH = {
       a1:{label:'Arm1 caps',  kind:'robot', x:20, y:42},
       a2:{label:'Arm2 caps',  kind:'robot', x:80, y:42},
       conv:{label:'Conv caps',kind:'robot', x:50, y:66},
-      skill:{label:'handoff-via-belt', kind:'composite', x:50, y:42}
+      skill:{label:'hand-off', kind:'composite', x:50, y:42}
     },
     edges:[['world','a1','link'],['world','a2','link'],['world','conv','link']]
   },
@@ -41,8 +41,8 @@ const GRAPH = {
       place:{label:'place', kind:'prim', x:18, y:54},
       stage:{label:'stage', kind:'prim', x:50, y:54},
       pick:{label:'pick',  kind:'prim', x:82, y:54},
-      handoff:{label:'handoff-via-belt', kind:'composite', x:50, y:20},
-      placecell:{label:'place-at-cell', kind:'composite', x:16, y:24}
+      handoff:{label:'hand-off', kind:'composite', x:50, y:20},
+      placecell:{label:'place-in-cell', kind:'composite', x:16, y:24}
     },
     edges:[['handoff','place','partof'],['handoff','stage','partof'],
            ['handoff','pick','partof'],['placecell','mg','partof']]
@@ -51,9 +51,9 @@ const GRAPH = {
     nodes:{
       mg:{label:'move/grip', kind:'prim', x:30, y:80},
       jaw:{label:'jaw', kind:'affordance', x:75, y:80},
-      handoff:{label:'handoff-via-belt', kind:'composite', x:28, y:30},
-      placecell:{label:'place-at-cell', kind:'composite', x:70, y:48},
-      pickSheet:{label:'pick-Sheet', kind:'composite', x:74, y:22},
+      handoff:{label:'hand-off', kind:'composite', x:28, y:30},
+      placecell:{label:'place-in-cell', kind:'composite', x:70, y:48},
+      pickSheet:{label:'pick-sheet', kind:'composite', x:74, y:22},
       suctionReq:{label:'needs suction', kind:'affordance', x:74, y:4},
       finegrasp:{label:'fine-grasp', kind:'affordance', x:28, y:8}
     },
@@ -62,7 +62,7 @@ const GRAPH = {
   conv:{
     nodes:{
       adv:{label:'advance/reverse', kind:'prim', x:50, y:78},
-      stagepos:{label:'stage-at-position', kind:'composite', x:50, y:30}
+      stagepos:{label:'stage-on-belt', kind:'composite', x:50, y:30}
     },
     edges:[['stagepos','adv','partof']]
   }

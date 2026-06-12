@@ -29,9 +29,9 @@ function seedTerms(){
 }
 function seedComposites(){
   return [
-    {name:'place-at-cell',    scope:'builtin', kind:'composite', steps:['move-to','grip','place'],     dependents:['handoff-via-belt']},
-    {name:'handoff-via-belt', scope:'Local',   kind:'composite', steps:['place','stage','pick'],       dependents:[]},
-    {name:'stage-at-position',scope:'Local',   kind:'composite', steps:['advance/reverse','hold-at-x'], dependents:['handoff-via-belt']}
+    {name:'place-in-cell',    scope:'builtin', kind:'composite', steps:['move-to','grip','place'],     dependents:['hand-off']},
+    {name:'hand-off', scope:'Local',   kind:'composite', steps:['place','stage','pick'],       dependents:[]},
+    {name:'stage-on-belt',scope:'Local',   kind:'composite', steps:['advance/reverse','hold-at-x'], dependents:['hand-off']}
   ];
 }
 
@@ -58,9 +58,9 @@ const SCOPE_BADGE = {builtin:'Built-in', Local:'Local', Global:'Global', 'Local-
 function inspect(item){
   if(item.kind==='composite'){
     return { name:item.name, scopeBadge:SCOPE_BADGE[item.scope]||item.scope,
-      kind:'composite (learned)',
-      definition:'pipeline: '+(item.steps||[]).join(' → '),
-      provenance: item.scope==='Local' ? 'Local — captured on this brain' : 'Built-in primitive composite',
+      kind:'skill (learned)',
+      definition:'steps: '+(item.steps||[]).join(' → '),
+      provenance: item.scope==='Local' ? 'Local — captured on this brain' : 'Built-in primitive skill',
       dependents: item.dependents||[] };
   }
   return { name:item.name, scopeBadge:SCOPE_BADGE[item.scope]||item.scope,

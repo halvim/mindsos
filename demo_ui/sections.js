@@ -10,7 +10,7 @@
 const STAGES = [
   ['task','Task'], ['plan','Plan'], ['pipe','Pipeline'], ['caps','Capabilities']
 ];
-const SECTION_ART = {task:'TaskRun', plan:'Plan', pipe:'Pipeline', caps:'Capabilities'};
+const SECTION_ART = {task:'Task', plan:'Plan', pipe:'Pipeline', caps:'Capabilities'};
 // which section each flag belongs to (mock; real data will carry this)
 const FLAG_SECTION = {fault:'task', gap:'plan', learn:'pipe', promo:'caps', gate:'caps'};
 

@@ -1,6 +1,6 @@
 # MindsOS Robot Demo — how to run & share (v0.10)
 
-The dashboard is one web page, `presentation_v10.html`. It runs in two modes:
+The dashboard is one web page, `presentation.html`. It runs in two modes:
 
 - **Demo mode (default)** — a scripted run that plays a fixed 7-beat story. Works anywhere,
   offline, no setup. This is what you show when there are no live brains.
@@ -14,11 +14,11 @@ The dashboard is one web page, `presentation_v10.html`. It runs in two modes:
 
 ## 1. Run it yourself — Demo mode (no setup)
 
-Double-click **`presentation_v10.html`** (or open it in Chrome/Edge). That's it — it works
+Double-click **`presentation.html`** (or open it in Chrome/Edge). That's it — it works
 offline. Use the top-bar buttons: **▶ Play** runs the story, **‹ ›** step, **↺** reset.
 
 > Keep the whole `demo_ui` folder together — the page needs the files next to it
-> (`graph_v10.js`, `teach_v10.js`, `sections_v10.js`, `resolve_v10.js`, `datasource_v10.js`,
+> (`graph.js`, `teach.js`, `sections.js`, `resolve.js`, `datasource.js`,
 > and `vendor/three.min.js`). Moving the single HTML out on its own will break the 3D view.
 
 ---
@@ -33,7 +33,7 @@ Live mode needs something for the page to connect to. Until the real backend is 
 3. Start it: `node mock_ws_server.js 8765`
    (you'll see `mock brains WS listening on ws://localhost:8765`)
 4. Open the page pointing at it:
-   **`presentation_v10.html?live=ws://localhost:8765`**
+   **`presentation.html?live=ws://localhost:8765`**
 5. The tag turns green (**● live — connected to brains**). Click **▶ Play** or **Submit** an
    order — the beats now arrive as live frames.
 
@@ -42,11 +42,79 @@ real server's address instead of the practice one.
 
 ---
 
+## 2b. Run it Live against the REAL MindsOS backend (DM-4+)
+
+The real backend is the **`demo-backend`** container (the four MindsOS brains + the BrainBus +
+the WebSocket server). It replaces `mock_ws_server.js` with no UI change — the page speaks the
+same protocol. The backend gate (`dm4_check`) is green on Linux as of 2026-06-12; this is how a
+person drives it from the dashboard.
+
+**Where things run.** The backend runs in Docker on the **Linux/Mac-Mini server** (it needs
+Python 3.12 + MuJoCo + FalkorDB — it does **not** run from the `demo_ui` folder or a browser).
+The page (`presentation.html`) runs in any browser and connects to the backend's WebSocket.
+
+### Start the backend (on the server, from the repo root)
+
+```bash
+docker compose -f docker-compose.yml --profile cli build mindsos          # 1 — base image (first time / after a phase bump)
+
+docker compose \
+  -f docker-compose.yml \
+  -f robot_demo/deploy/docker-compose.demo.yml \
+  up -d --build demo-backend                                              # 2 — brings up falkordb + the demo backend
+```
+
+- The container boots all four brains (real `login()` sessions, Falkor persistence), builds the
+  MuJoCo body, then starts the WebSocket server. **First boot takes ~30–90 s** (image build +
+  body build) before the socket is listening — the page will sit on "connecting…" until then.
+- The WS server listens on **port 8765** (already mapped to the host in the overlay).
+- Watch it come up: `docker compose ... logs -f demo-backend` — wait for
+  `DM-4 WS SERVER LISTENING ws://0.0.0.0:8765`.
+- Stop it: `docker compose -f docker-compose.yml -f robot_demo/deploy/docker-compose.demo.yml down`.
+
+### Connect the page to it
+
+Open the dashboard with `?live=` pointing at the backend's address:
+
+- Same machine: **`presentation.html?live=ws://localhost:8765`**
+- Another machine on the LAN: serve the folder (`python3 -m http.server 8000` in `demo_ui`) and
+  open `http://<server-ip>:8000/presentation.html?live=ws://<server-ip>:8765`.
+- Over the internet: the cloudflared tunnel setup in §3C — point the brains hostname at
+  `localhost:8765` (the backend) instead of the mock. The share link is unchanged
+  (`…/presentation.html?live=wss://brains.<domain>`).
+
+### Drive it
+
+1. The top tag turns green (**● live — connected to brains**).
+2. On the **User card**, compose an order and click **Submit** (this sends `place_order` to the
+   Manager — a real `run_lifecycle`).
+3. Watch the beats arrive as live frames: **Order placed → Assign task → (arm executes) →
+   Reported**, with the inter-brain messages (Orchestrator → Arm 1 → Orchestrator) in the
+   Server/Inter-brain panel and the arm moving in the cell view (live pose frames from the sim).
+4. Submit more orders — each runs end-to-end (the multi-order path is gate-tested).
+
+### What's live now vs. pending (be honest when presenting)
+
+- **Live now (DM-4):** the order → dispatch → arm `move_to` → report flow, narrated as real
+  brain activity; the cell view's live pose stream; sanitized wire (behavior only, no MindsOS
+  internals — policy B).
+- **Pending producers** (panels show "feed not yet emitted"): the reasoning **graph** and
+  **Plan ▸ Resolve** (DM-8); the **Server** vitals/event feed and **Export/Import** (Mode-A
+  export + `server_status` land next; import + `server_event` after; see
+  `confirmation_docs/ROBOT_DEMO_DM4_L5_EXPORT_COORDINATION.md`).
+- The reasoning shown is **real but shallow** in DM-4 (fixed allocation); it deepens with DM-5/6
+  (real item-matching, the feasibility gate, replan).
+
+> Backend protocol + frame shapes: `confirmation_docs/ROBOT_DEMO_WS_CONTRACT.md`. Server runbook:
+> `robot_demo/deploy/README.md`. Backend build/status: `confirmation_docs/ROBOT_DEMO_STATUS.md`.
+
+---
+
 ## 3. Share it with someone else
 
 ### A. Share Demo mode (easiest — works offline)
 Zip the **entire `demo_ui` folder** and send it. The other person unzips it and double-clicks
-`presentation_v10.html`. No internet, no server, nothing to install. Best for "have a look at the
+`presentation.html`. No internet, no server, nothing to install. Best for "have a look at the
 interface."
 
 ### B. Share Live mode on the same network (same office / Wi-Fi)
@@ -55,7 +123,7 @@ The other person's browser has to be able to reach your live server.
 1. Start the server (step 2 above). Find your machine's local IP (e.g. `192.168.1.50`).
 2. Serve the folder so others can open the page (in `demo_ui`): `python3 -m http.server 8000`
 3. Send them this one link:
-   `http://192.168.1.50:8000/presentation_v10.html?live=ws://192.168.1.50:8765`
+   `http://192.168.1.50:8000/presentation.html?live=ws://192.168.1.50:8765`
 4. They open it and see the live run. (If it won't connect, it's almost always a **firewall**
    blocking ports 8000/8765 — allow them, or see C.)
 
@@ -67,7 +135,7 @@ no warning page (unlike some alternatives) and full WebSocket support. You expos
 
 > **Reference setup (this project):** page → `https://demo.sanmyaku.com`, brains →
 > `wss://brains.sanmyaku.com`, so the link to share is
-> **`https://demo.sanmyaku.com/presentation_v10.html?live=wss://brains.sanmyaku.com`**.
+> **`https://demo.sanmyaku.com/presentation.html?live=wss://brains.sanmyaku.com`**.
 > Substitute your own hostnames below.
 
 #### C-1. Named tunnel — stable hostnames (recommended; needs a domain on Cloudflare)
@@ -112,7 +180,7 @@ cloudflared tunnel run mindsos-demo # 3 — the tunnel (serves both hostnames)
 ```
 Then share the single stable link:
 ```
-https://demo.sanmyaku.com/presentation_v10.html?live=wss://brains.sanmyaku.com
+https://demo.sanmyaku.com/presentation.html?live=wss://brains.sanmyaku.com
 ```
 Page from `demo.…`, socket from `brains.…` (note **`wss://`**). The viewer's status tag goes green.
 
@@ -125,7 +193,7 @@ cloudflared tunnel --url http://localhost:8765     # → https://AAAA.trycloudfl
 cd demo_ui && python3 -m http.server 8000
 cloudflared tunnel --url http://localhost:8000     # → https://BBBB.trycloudflare.com  (page)
 ```
-Share: `https://BBBB.trycloudflare.com/presentation_v10.html?live=wss://AAAA.trycloudflare.com`
+Share: `https://BBBB.trycloudflare.com/presentation.html?live=wss://AAAA.trycloudflare.com`
 (page = BBBB, socket = AAAA with `wss://`). These hostnames change every restart — re-send the link.
 
 > Always use **`wss://`** (secure) for the `?live=` part on a public link — a hosted https page

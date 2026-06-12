@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>MindsOS — Open Order (presentation UI mockup)</title>
-<script src="vendor/three.min.js"></script><!-- vendored (offline) — was a CDN dep; see ROBOT_DEMO_UI_V10.md v10.5 -->
+<script src="vendor/three.min.js"></script><!-- vendored (offline) — was a CDN dep; see ROBOT_DEMO_UI.md v10.5 -->
 <style>
   :root{
     --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --edge:#2b333d; --ink:#e6edf3; --muted:#8b98a5;
@@ -26,8 +26,7 @@
   .chapter{display:flex;align-items:baseline;gap:8px;margin:2px 0 6px}
   .chip{background:#21262d;border:1px solid var(--edge);border-radius:5px;padding:2px 8px;font-size:10px;color:var(--muted);white-space:nowrap}
   .narr{color:var(--ink);font-size:12px}
-  #io{display:none;width:100%;height:70px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;margin-bottom:6px}
-  .hintbar{font-size:10px;color:var(--muted);margin-bottom:6px}
+  #import:disabled{opacity:.45;cursor:not-allowed}
   /* free canvas */
   #stage{position:relative;min-height:820px}
   #links{position:absolute;inset:0;pointer-events:none;z-index:0}
@@ -46,6 +45,28 @@
   .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
   .log{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;overflow:auto;flex:1}
   .log div{padding:2px 0;border-bottom:1px solid #1a212b;color:var(--muted)}
+  /* Messages card — tabbed Server (Seam A) / Inter-brain (Seam B) */
+  .dcard#card_log{--acc:#6f8092}
+  .commstabs{display:flex;gap:6px;margin:0 0 6px}
+  .ctab{flex:1 1 0;min-width:0;font-size:8.5px;padding:4px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+  .srvfeed{flex:1;overflow:auto}
+  .srvvitals{display:flex;gap:10px;align-items:center;background:#11161d;border:1px solid var(--edge);border-radius:6px;padding:5px 8px;margin-bottom:5px}
+  .srvvitals .sv{color:var(--ink);font-size:9.5px}
+  .srvvitals .sv b{color:#cfe6ff}
+  .srvvitals .sv.ok{color:#9be7bd}
+  .srvvitals .srvmock{margin-left:auto;color:var(--warn);font-size:8px;border:1px solid #5a4a1f;border-radius:8px;padding:0 6px}
+  .srvep{font-family:ui-monospace,Menlo,monospace;font-size:8px;color:var(--muted);margin:-1px 0 7px 2px}
+  .srvrow{display:flex;align-items:baseline;gap:7px;padding:3px 0;border-bottom:1px solid #1a212b}
+  .kbadge{flex:0 0 auto;font-size:7.5px;font-weight:600;border-radius:7px;padding:1px 6px}
+  .k-login,.k-bootstrap{color:#9cd3f5;background:#13283a}
+  .k-skill{color:#d6c0f5;background:#241a33}
+  .k-gate_ok{color:#9be7bd;background:#13311f}
+  .k-gate_no{color:#ffb4ad;background:#36161a}
+  .k-persist{color:#8fe0d2;background:#123230}
+  .k-audit{color:#c2cdd9;background:#222a33}
+  .srvtxt{color:var(--ink);font-size:9px}
+  .srvevt{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:7.5px;color:var(--muted)}
+  .srvpending{color:var(--muted);font-style:italic;font-size:9.5px;padding:8px 2px}
   /* brain cards */
   #card_cell,#card_log{--acc:#6b7785}
   .dcard.user{--acc:var(--user);color:var(--user)}
@@ -80,6 +101,10 @@
   .hdrright{display:inline-flex;align-items:center;gap:7px}
   .state{display:inline-block;vertical-align:middle;margin-left:10px;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--edge);border-radius:9px;padding:1px 7px}
   .help{cursor:help;color:var(--muted);border:1px solid currentColor;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex:0 0 auto}
+  /* per-card hover description tooltip */
+  .dcard>.draghandle{cursor:help}
+  #cardtip{position:fixed;z-index:60;max-width:264px;background:#0b0e13;border:1px solid var(--edge);border-radius:7px;padding:7px 9px;font-size:10.5px;line-height:1.42;color:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none;opacity:0;display:none}
+  #cardtip.on{display:block;opacity:1}
   /* v10.4 maximize-height (Option A: fill screen height, pin to top, overlay) */
   .maxbtn{background:transparent;border:1px solid var(--acc,#46505c);color:var(--acc,#9fb0bd);border-radius:5px;width:20px;height:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:0 0 auto}
   .maxbtn:hover{border-color:currentColor}
@@ -192,13 +217,19 @@
   .secbloc.dim{opacity:.55}
   .secgraph{width:100%}
   .secgraph .gsvg{max-height:190px}
-  /* ===== v10.3a Plan ▸ Resolve subsection (relation narrowing) ===== */
-  .rsub{margin-top:7px;border-top:1px dashed var(--edge);padding-top:6px}
-  .rlabel{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--acc)}
-  .rsub-empty{display:flex;gap:7px;align-items:baseline}
+  /* ===== reusable subsection sub-card: border + per-card accent rail + collapsible header ===== */
+  .subsec{position:relative;border:1px solid var(--edge);border-radius:7px;background:#11151c;margin-top:7px;overflow:hidden}
+  .subsec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--acc,#46505c)}
+  .subhdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;padding:4px 8px 4px 11px;background:color-mix(in srgb,var(--acc) 22%,#0e1116)}
+  .subttl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#e7edf3}
+  .subchev{width:9px;height:9px;flex:0 0 auto;color:var(--muted);transition:transform .15s}
+  .subsec.collapsed .subchev{transform:rotate(-90deg)}
+  .subsec.collapsed .subbody{display:none}
+  .subbody{padding:7px 9px 8px 11px}
+  body.nofx .subhdr{background:#1c2330}
+  /* resolve content (rendered inside a .subsec body) */
   .rnone{font-size:9.5px;color:var(--muted);font-style:italic}
-  .rhead{display:flex;gap:7px;align-items:baseline;margin-bottom:4px}
-  .rclause{font-size:10px;color:var(--ink)}
+  .rclause{font-size:10px;color:var(--ink);margin-bottom:4px}
   .rbody{display:flex;gap:10px;align-items:center}
   .rgrid{width:66px;height:66px;flex:0 0 auto}
   .rgrid rect[stroke="#eafcff"]{animation:rpop .4s ease-out}
@@ -212,7 +243,7 @@
   <header>
     <h1>MindsOS · “Open Order”</h1>
     <span class="tag">presentation</span>
-    <span class="tag">v0.10</span>
+    <span class="tag">v0.14</span>
     <span class="tag" id="honesty" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
     <div class="controls">
       <button id="export"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.7 L7 8.8 L10 5.7" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>Export</button><button id="import"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="9" x2="7" y2="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.3 L7 2.2 L10 5.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>Import</button>
@@ -222,25 +253,29 @@
   </header>
 
   <div class="chapter"><span class="chip" id="chapter">Beat 0 / 6</span><span class="narr" id="narration">—</span></div>
-  <textarea id="io" spellcheck="false"></textarea>
-  <div class="hintbar" id="hintbar" style="display:none">Edit mode: drag a card by its title bar; resize from the bottom-right corner. Then ⤓ Export and paste the JSON back to me.</div>
+  <input type="file" id="t_io_file" accept="application/json,.json" style="display:none">
+  <input type="file" id="l5_io_file" accept="application/json,.json" style="display:none">
+  <div id="l5msg" style="display:none;font-size:10px;color:var(--muted);margin:3px 0 0"></div>
+  <div id="cardtip"></div>
   <div id="capbanner"></div>
 
   <div id="stage">
     <svg id="links"></svg>
 
-    <div class="dcard" id="card_cell">
+    <div class="dcard" id="card_cell" data-desc="Physical cell — the live physics view of the workcell (2 Franka arms + conveyor + per-arm 3×3 shelves). Toggle 2D/3D; drag to orbit, scroll to zoom.">
       <h2 class="draghandle"><span>Physical cell <span class="state" id="st_cell">3D</span></span><span class="hdrright"><button id="dim" class="viewbtn">▦ 2D view</button><span class="help" title="Live physics view of the workcell. Toggle 2D; drag to orbit, scroll to zoom.">?</span></span></h2>
       <div id="viewbox"><div id="view3d"></div><canvas id="cv" width="820" height="262" style="display:none"></canvas></div>
       <div class="legend"><i><span class="sw" style="background:var(--gap);opacity:.6"></span>gap mark — neither arm reaches</i><i id="hint3d">drag to orbit · scroll to zoom</i></div>
     </div>
 
-    <div class="dcard" id="card_log">
-      <h2 class="draghandle"><span>Inter-brain messages (Seam B) <span class="state">live</span></span><span class="hdrright"><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">colored by brain</span><span class="help" title="Messages exchanged between brains (Seam B), colored by sender and receiver.">?</span></span></h2>
+    <div class="dcard" id="card_log" data-desc="Messages — Server (the live runtime: sessions, authorization, audit, storage) and Inter-brain (messages between brains, colored by sender and receiver).">
+      <h2 class="draghandle"><span>Messages <span class="state">live</span></span><span class="hdrright"><span class="help" title="Two feeds: Server (the live runtime — sessions, authorization, audit, storage) and Inter-brain (brain-to-brain messages).">?</span></span></h2>
+      <div class="commstabs"><button class="uitab ctab" data-ct="server">Server · Seam A</button><button class="uitab ctab on" data-ct="ib">Inter-brain · Seam B</button></div>
+      <div class="srvfeed" id="srvfeed" style="display:none"></div>
       <div class="log" id="log"></div>
     </div>
 
-    <div class="dcard user" id="card_user">
+    <div class="dcard user" id="card_user" data-desc="User — where you interact with the system: place orders by shape (Order/Sort), or teach it a new skill or position term (Teach).">
       <div class="nm draghandle"><span>User <span class="state" id="st_user">order</span></span><span class="hdrright"><button id="o_run" class="mini primary">▶ Submit</button><button id="o_clear" class="mini">clear</button><span class="help" title="places orders · teaches skills — where you place orders by shape, or teach the system a new skill.">?</span></span></div>
       <div class="tabs">
         <div class="tgroup"><span class="tglabel">task</span><button id="tab_order" class="uitab on">Order</button><button id="tab_sort" class="uitab">Sort</button></div>
@@ -277,6 +312,7 @@
           <div id="ts_lib">
             <div class="liblist" id="t_lib"></div>
             <div class="inspect" id="t_inspect"><span style="color:var(--muted)">select an item to inspect</span></div>
+            <div class="row" style="margin-top:7px;gap:6px"><span style="font-size:9px;color:var(--muted);align-self:center">vocabulary file:</span><button id="tv_export" class="mini">⤓ Export</button><button id="tv_import" class="mini">⤒ Import</button></div>
           </div>
           <div id="ts_term" style="display:none">
             <div id="ov_banner" class="ovbanner" style="display:none"></div>
@@ -317,11 +353,11 @@
   </div>
 </div>
 
-<script src="graph_v10.js"></script>
-<script src="teach_v10.js"></script>
-<script src="sections_v10.js"></script>
-<script src="resolve_v10.js"></script>
-<script src="datasource_v10.js"></script>
+<script src="graph.js"></script>
+<script src="teach.js"></script>
+<script src="sections.js"></script>
+<script src="resolve.js"></script>
+<script src="datasource.js"></script>
 <script>
 let VW=820,VH=262;
 const ARM1={x:-0.65,y:-0.45}, ARM2={x:0.65,y:-0.45}, REACH=0.62;
@@ -335,7 +371,7 @@ const sx=x=>(x-XR[0])/(XR[1]-XR[0])*VW, sy=y=>(YR[1]-y)/(YR[1]-YR[0])*VH, sr=r=>
 const CH=["HintSet","MappingResult","Plan","Pipeline","PipelineRun","TaskRun"];
 const CH_SHORT=["Hint","Map","Plan","Pipe","P-Run","Task"];
 const BR=[
- ["mgr","Orchestrator","talks to user","The brain you talk to. Decomposes orders, allocates work to the arms and conveyor, replans on failure, and promotes learned skills to the other brains."],
+ ["mgr","Orchestrator","talks to user","The brain you talk to. Breaks down orders, allocates work to the arms and conveyor, re-plans on failure, and shares learned skills with the other brains."],
  ["a1","Arm 1 · Lifter","suction","A full MindsOS brain controlling Arm 1 (suction gripper). Reaches the left shelf; can grasp Box and Sheet."],
  ["a2","Arm 2 · Packer","jaw","A full MindsOS brain controlling Arm 2 (jaw gripper). Reaches the right shelf; can grasp Box and Tube."],
  ["conv","Conveyor","belt","A full MindsOS brain controlling the belt — the only bridge across the reach gap between the two arms."]];
@@ -360,7 +396,7 @@ const LINKS=[
 // ===== mock scenario =====
 const PRIM="primitive";
 const baseBrains={
-  mgr:{intent:"awaiting order",chain:0,decision:"idle",caps:[["decompose",PRIM],["allocate",PRIM],["replan",PRIM],["promote",PRIM]],flags:[],active:false},
+  mgr:{intent:"awaiting order",chain:0,decision:"idle",caps:[["decompose",PRIM],["allocate",PRIM],["replan",PRIM],["share",PRIM]],flags:[],active:false},
   a1:{intent:"idle",chain:0,decision:"idle",caps:[["move/grip",PRIM]],flags:[],active:false},
   a2:{intent:"idle",chain:0,decision:"idle",caps:[["move/grip",PRIM]],flags:[],active:false},
   conv:{intent:"belt idle",chain:0,decision:"holding",caps:[["advance/reverse",PRIM]],flags:[],active:false}
@@ -368,43 +404,43 @@ const baseBrains={
 const base={items:{box1:[-0.80,0],sheet1:[-1.00,0],tube1:[-0.45,0]},eff:{a1:null,a2:null},brains:JSON.parse(JSON.stringify(baseBrains))};
 const frames=[
  {title:"Order placed", narr:"User submits an order with a spatial relation: place the Box above the Tube on Arm 2's shelf, and the Sheet at the center of Arm 1's shelf.",
-  brains:{mgr:{intent:"A2: Box above Tube · A1: Sheet @ center",chain:0,decision:"Decompose → resolve spatial relations to shelf cells",active:true}},
-  msgs:[["User→Orchestrator","place_order(A2: Box above Tube; A1: Sheet @ center)"]]},
- {title:"Ignorant start → don’t-know", narr:"The plan needs a skill no brain has: hand an item across the belt gap. The system knows what it doesn’t know.",
-  brains:{mgr:{intent:"Plan the order",chain:2,decision:"Need handoff-via-belt → NOT FOUND",flags:["gap"],active:true},
-    a1:{intent:"answer capability query",chain:1,decision:"report DONT_KNOW",flags:["gap"]},
-    a2:{intent:"answer capability query",chain:1,decision:"report DONT_KNOW",flags:["gap"]}},
-  msgs:[["Orchestrator→Arm1","query_capabilities()"],["Arm1→Orchestrator","DONT_KNOW(handoff-via-belt)"],
-        ["Orchestrator→Arm2","query_capabilities()"],["Arm2→Orchestrator","DONT_KNOW(handoff-via-belt)"]]},
- {title:"Learn by composition", narr:"User demonstrates the skill once by assembling capability blocks. MindsOS captures it as a Pipeline → new composite capacity.",
-  brains:{mgr:{intent:"Acquire missing capability",chain:3,decision:"Register composite from demonstration",flags:["learn"],active:true},
-    a1:{intent:"Learn handoff-via-belt",chain:3,decision:"captured Pipeline → composite (Local)",flags:["learn"],caps:[["move/grip",PRIM],["handoff-via-belt","learned"]],active:true},
-    conv:{intent:"Learn staging",chain:2,decision:"stage-at-position learned",caps:[["advance/reverse",PRIM],["stage-at-position","learned"]],active:true}},
-  msgs:[["User→Arm1","demonstrate([place, stage, pick])"],["Demonstration→L2","Pipeline → promoted-pipelines"]]},
+  brains:{mgr:{intent:"A2: Box above Tube · A1: Sheet @ center",chain:0,decision:"Break down the order → work out where each item goes",active:true}},
+  msgs:[["User→Orchestrator","Order: Box above Tube; Sheet at center"]]},
+ {title:"Ignorant start → don’t-know", narr:"The plan needs a skill no brain has yet: hand an item across the belt gap. The system knows what it doesn’t know.",
+  brains:{mgr:{intent:"Plan the order",chain:2,decision:"Need a way to hand items across the gap → don’t know how",flags:["gap"],active:true},
+    a1:{intent:"Answer: what can I do?",chain:1,decision:"Report: don’t know",flags:["gap"]},
+    a2:{intent:"Answer: what can I do?",chain:1,decision:"Report: don’t know",flags:["gap"]}},
+  msgs:[["Orchestrator→Arm1","What can you do?"],["Arm1→Orchestrator","Don’t know how to hand across the gap"],
+        ["Orchestrator→Arm2","What can you do?"],["Arm2→Orchestrator","Don’t know how to hand across the gap"]]},
+ {title:"Learn by demonstration", narr:"User demonstrates the skill once by assembling action blocks. The system captures it as a new, reusable skill.",
+  brains:{mgr:{intent:"Learn the missing skill",chain:3,decision:"Save the new skill from the demonstration",flags:["learn"],active:true},
+    a1:{intent:"Learn the hand-off",chain:3,decision:"Captured the demo → new skill",flags:["learn"],caps:[["move/grip",PRIM],["hand-off","learned"]],active:true},
+    conv:{intent:"Learn staging",chain:2,decision:"Learned to stage on the belt",caps:[["advance/reverse",PRIM],["stage-on-belt","learned"]],active:true}},
+  msgs:[["User→Arm1","Demonstrate: place, stage, pick"],["Demonstration→Library","Saved as a new skill"]]},
  {title:"Cooperative execution", narr:"The brains run the new skill: the belt hands the Box and Tube to Arm 2, which places the Box in the cell above the Tube; Arm 1 sets the Sheet at the center of its shelf.",
   items:{box1:[0.70,-0.62], tube1:[0.70,-0.77], sheet1:[-0.70,-0.77]}, eff:{a1:[-0.70,-0.77],a2:[0.70,-0.62]},
-  brains:{mgr:{intent:"Execute placements",chain:5,decision:"resolve 'Box above Tube' → A2 cell (row0,col1); dispatch",active:true},
-    a1:{intent:"Place Sheet on its shelf",chain:5,decision:"place Sheet @ A1 center ✓",caps:[["move/grip",PRIM],["handoff-via-belt","learned"],["place-at-cell","learned"]],active:true},
-    a2:{intent:"Place Box above Tube",chain:5,decision:"place Box @ A2(r0,c1), above Tube ✓",caps:[["move/grip",PRIM],["handoff-via-belt","inherited"],["place-at-cell","inherited"]],active:true},
-    conv:{intent:"Bridge the gap",chain:4,decision:"advance → stage at x=0.2",caps:[["advance/reverse",PRIM],["stage-at-position","learned"]],active:true}},
-  msgs:[["Orchestrator→Arm1","dispatch(place_at_cell, Sheet→A1 c)"],["Orchestrator→Conveyor","dispatch(advance→0.2)"],
-        ["Orchestrator→Arm2","dispatch(place Box @ A2 r0c1, above Tube)"],["Arm2→Orchestrator","SUCCESS(A2: Box above Tube)"]]},
- {title:"Transfer + embodiment gate", narr:"The learned skill is promoted Local→Global; Arm 2 inherits it. But Arm 2’s jaw is refused the suction-only Sheet skill — knowledge transfers, capability is gated by the body.",
-  brains:{mgr:{intent:"Share capability fleet-wide",chain:5,decision:"promote Local→Global; gate pick-Sheet@Arm2",flags:["promo","gate"],active:true},
-    a1:{intent:"Promote skill",chain:5,decision:"promote(handoff-via-belt) → Global",flags:["promo"]},
-    a2:{intent:"Inherit + check feasibility",chain:4,decision:"inherited handoff; pick-Sheet GATED (no suction)",flags:["promo","gate"],caps:[["handoff-via-belt","inherited"],["pick-Sheet","GATED"]],active:true}},
-  msgs:[["Arm1→Global","promote(handoff-via-belt)"],["Global→Arm2","capability available"],["Arm2→Orchestrator","gate: pick-Sheet requires suction"]]},
+  brains:{mgr:{intent:"Execute placements",chain:5,decision:"Work out ‘Box above Tube’ → Arm 2 top-center; go",active:true},
+    a1:{intent:"Place Sheet on its shelf",chain:5,decision:"Placed Sheet in Arm 1 center ✓",caps:[["move/grip",PRIM],["hand-off","learned"],["place-in-cell","learned"]],active:true},
+    a2:{intent:"Place Box above Tube",chain:5,decision:"Placed Box above the Tube ✓",caps:[["move/grip",PRIM],["hand-off","inherited"],["place-in-cell","inherited"]],active:true},
+    conv:{intent:"Bridge the gap",chain:4,decision:"Advance → stage on the belt",caps:[["advance/reverse",PRIM],["stage-on-belt","learned"]],active:true}},
+  msgs:[["Orchestrator→Arm1","Place Sheet in Arm 1 center"],["Orchestrator→Conveyor","Advance the belt"],
+        ["Orchestrator→Arm2","Place Box above the Tube"],["Arm2→Orchestrator","Done: Box above Tube"]]},
+ {title:"Share + body limits", narr:"The learned skill is shared across the fleet; Arm 2 receives it. But Arm 2’s jaw is refused the suction-only Sheet skill — the skill transfers, yet the body limits what each arm can do.",
+  brains:{mgr:{intent:"Share the skill fleet-wide",chain:5,decision:"Share the skill; block Arm 2’s pick-sheet (wrong gripper)",flags:["promo","gate"],active:true},
+    a1:{intent:"Share the skill",chain:5,decision:"Shared the hand-off fleet-wide",flags:["promo"]},
+    a2:{intent:"Receive + check my body",chain:4,decision:"Received the hand-off; pick-sheet blocked (no suction)",flags:["promo","gate"],caps:[["hand-off","inherited"],["pick-sheet","GATED"]],active:true}},
+  msgs:[["Arm1→Fleet","Share the hand-off skill"],["Fleet→Arm2","Skill available"],["Arm2→Orchestrator","Blocked: pick-sheet needs suction"]]},
  {title:"Degradation → replan", narr:"Arm 2’s wrist faults mid-order. It diagnoses itself, the gap reappears, and the Orchestrator replans around the loss.",
   eff:{a1:null,a2:null},
-  brains:{mgr:{intent:"Recover from fault",chain:4,decision:"replan(): reroute via Arm1 + conveyor",flags:["fault","gap"],active:true},
-    a2:{intent:"Self-diagnose",chain:1,decision:"FAULT(wrist) → withdraw fine-grasp",flags:["fault","gap"],caps:[["handoff-via-belt","inherited"],["fine-grasp","FAULT"]],active:false},
-    a1:{intent:"Absorb rerouted work",chain:4,decision:"accept reroute",active:true},
-    conv:{intent:"Re-stage",chain:4,decision:"reverse → re-stage for Arm 1",active:true}},
-  msgs:[["Arm2→Orchestrator","FAULT(wrist) → withdraw fine-grasp"],["Orchestrator→Conveyor","dispatch(reverse→re-stage)"]]},
- {title:"Trace recap", narr:"The run replayed: found a gap, learned the skill, shared it, gated it by body, recovered from a fault — reasoning visible throughout.",
-  brains:{mgr:{intent:"Retain episode",chain:5,decision:"episode retained: gap→learned→promoted→gated→recovered",flags:["learn","promo","gate","fault"],active:false},
-    a2:{intent:"degraded",chain:5,decision:"fine-grasp pending repair",active:false}},
-  msgs:[["Orchestrator→L2","retain episode (episodic_memories)"]]}
+  brains:{mgr:{intent:"Recover from fault",chain:4,decision:"Re-plan: reroute via Arm 1 + conveyor",flags:["fault","gap"],active:true},
+    a2:{intent:"Self-diagnose",chain:1,decision:"Wrist fault → withdraw fine-grasp",flags:["fault","gap"],caps:[["hand-off","inherited"],["fine-grasp","FAULT"]],active:false},
+    a1:{intent:"Absorb rerouted work",chain:4,decision:"Accept the reroute",active:true},
+    conv:{intent:"Re-stage",chain:4,decision:"Reverse → re-stage for Arm 1",active:true}},
+  msgs:[["Arm2→Orchestrator","Wrist fault → withdraw fine-grasp"],["Orchestrator→Conveyor","Reverse + re-stage"]]},
+ {title:"Trace recap", narr:"The run replayed: found a gap, learned the skill, shared it, hit a body limit, recovered from a fault — reasoning visible throughout.",
+  brains:{mgr:{intent:"Remember this run",chain:5,decision:"Run remembered: didn’t-know → learned → shared → blocked → recovered",flags:["learn","promo","gate","fault"],active:false},
+    a2:{intent:"Degraded",chain:5,decision:"Fine-grasp pending repair",active:false}},
+  msgs:[["Orchestrator→Library","Remember this run"]]}
 ];
 function mergeBrain(p,o){const s=JSON.parse(JSON.stringify(p));for(const k in o)s[k]=o[k];return s;}
 function merge(prev,f){const s=JSON.parse(JSON.stringify(prev));
@@ -500,10 +536,65 @@ function restoreCard(){
   maximizedId=null;updateMaxBtns();resizeView();redrawLinks();}
 window.addEventListener("keydown",e=>{if(e.key==="Escape"&&maximizedId)restoreCard();});
 
-// layout editing (Edit layout / Layout) removed; Export/Import retained for future system-state files
-function roundL(){const o={};for(const id in LAYOUT){const L=LAYOUT[id];o[id]={x:Math.round(L.x),y:Math.round(L.y),w:Math.round(L.w),h:Math.round(L.h)};}return o;}
-document.getElementById("export").onclick=()=>{const io=document.getElementById("io");io.style.display="block";io.value=JSON.stringify(roundL());io.focus();io.select();};
-document.getElementById("import").onclick=()=>{const io=document.getElementById("io");if(io.style.display==="none"){io.style.display="block";io.focus();return;}try{const o=JSON.parse(io.value);for(const id in o)if(LAYOUT[id])LAYOUT[id]=o[id];applyLayout();}catch(err){alert("Invalid JSON");}};
+// ===== v10.B1 — Export/Import the teach model as a .json file =====
+// (layout-JSON behavior removed.) The file is a FULL SNAPSHOT of the taught vocabulary +
+// curation: {seedVersion, terms, composites}. Import REPLACES the running model in place.
+// Live mode is backend-owned, so Import is disabled under ?live= (Export still works).
+function teachSnapshot(){return JSON.stringify({seedVersion:SEED_VERSION,terms:TERMS,composites:COMPOSITES},null,2);}
+function applyTeachSnapshot(obj){
+  if(!obj||!Array.isArray(obj.terms)||!Array.isArray(obj.composites))throw new Error("not a teach-model file");
+  TERMS.splice(0,TERMS.length,...obj.terms);              // replace in place (keep the binding)
+  COMPOSITES.splice(0,COMPOSITES.length,...obj.composites);
+  libSel=null;ttCells.clear();ttComp.clear();
+  if(typeof exitOverride==='function')exitOverride();
+  refreshLibrary();rebuildTermSelects();                  // library + every dropdown + compose chips
+}
+document.getElementById("tv_export").onclick=()=>{
+  const blob=new Blob([teachSnapshot()],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="mindsos-teach-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+(function(){const btn=document.getElementById("tv_import");
+  if(LIVE){btn.disabled=true;btn.title="Import disabled in live — taught vocabulary is owned by the backend";return;}
+  const fin=document.getElementById("t_io_file");
+  btn.onclick=()=>fin.click();
+  fin.onchange=()=>{const f=fin.files&&fin.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{try{const obj=JSON.parse(r.result);
+        if(obj.seedVersion!==SEED_VERSION)console.warn("teach file seedVersion "+obj.seedVersion+" != running "+SEED_VERSION+" — importing anyway");
+        applyTeachSnapshot(obj);
+      }catch(err){alert("Invalid teach-model file: "+(err&&err.message||err));}finally{fin.value="";}};
+    r.readAsText(f);};
+})();
+
+// ===== header Export/Import → L5 system-state (demo state / per-brain reasoning audit) =====
+// SCAFFOLD (mock): Export downloads a representative demo-state snapshot; Import parses + confirms.
+// Live uses export_state/import_state (ROBOT_DEMO_L5_EXPORT_IMPORT_PROMPT.md). The per-mode chooser,
+// the reasoning/audit view, and demo-state restore land next (mockup-gated). Schema is LOCKED.
+function l5msg(t){const m=document.getElementById("l5msg");if(m){m.textContent=t||"";m.style.display=t?"block":"none";}}
+function mockSnapshot(){return {snapshot_version:1,kind:"demo-state",created_at:new Date().toISOString(),
+  mindsos_version:"mock",scenario:"open-order",run_id:"mock-run",
+  demo_position:{beat:idx,placed_orders:[],sim_poses:{}},
+  brains:{mgr:{episodes:[]},a1:{episodes:[]},a2:{episodes:[]},conv:{episodes:[]}},_mock:true};}
+document.getElementById("export").onclick=()=>{
+  if(LIVE){DS.sendCommand({type:"command",name:"export_state",args:{mode:"demo-state",scope:"all"}});l5msg("requested demo-state export from the live server…");return;}
+  const blob=new Blob([JSON.stringify(mockSnapshot(),null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="mindsos-demo-state-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  l5msg("exported demo-state snapshot (mock).");};
+document.getElementById("import").onclick=()=>document.getElementById("l5_io_file").click();
+document.getElementById("l5_io_file").onchange=function(){const fin=this,f=fin.files&&fin.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const o=JSON.parse(r.result),kind=o.kind||"(unknown)";
+      const nEp=o.brains?Object.values(o.brains).reduce((s,b)=>s+((b.episodes&&b.episodes.length)||0),0):0;
+      if(LIVE)DS.sendCommand({type:"command",name:"import_state",args:{snapshot:o}});
+      l5msg(kind==="demo-state"?`loaded demo-state snapshot${o.demo_position?` · beat ${o.demo_position.beat}`:""} (${nEp} episode${nEp===1?"":"s"})`
+            :kind==="episode-audit"?`loaded brain-audit snapshot · ${nEp} episode${nEp===1?"":"s"} (reasoning view: next increment)`
+            :`loaded snapshot (kind: ${esc(kind)})`);
+    }catch(err){l5msg("invalid snapshot file: "+(err&&err.message||err));}finally{fin.value="";}};
+  r.readAsText(f);};
 
 // ===== views =====
 let idx=0,mode="3d",animating=false,t0=0,WEBGL_OK=true,COLORMIX_OK=true;
@@ -580,9 +671,9 @@ function draw3D(st){if(!R3)init3D();const {renderer,scene,camera,arms,items}=R3;
   renderer.render(scene,camera);}
 
 function stateOf(d){const f=d.flags||[];if(f.includes("fault"))return"fault";if(f.includes("learn"))return"learning";if(f.includes("promo"))return"promoting";if(f.includes("gate"))return"gating";if(f.includes("gap"))return"gap";return d.active?"working":"idle";}
-const fmap={gap:["f-gap","● gap"],learn:["f-learn","✦ learned"],promo:["f-promo","↑ promoted"],gate:["f-gate","⊘ gated"],fault:["f-fault","⚠ fault"]};
-const badgeMap={learned:"✦learned",inherited:"↑inherited",GATED:"⊘gated",FAULT:"⚠fault"};
-function brainColor(tok){tok=tok.trim();const m={"Orchestrator":"var(--mgr)","Arm1":"var(--a1)","Arm 1":"var(--a1)","Arm2":"var(--a2)","Arm 2":"var(--a2)","Conveyor":"var(--conv)","Global":"var(--glob)","User":"var(--user)","L2":"#7f8c99","Demonstration":"#7f8c99"};return m[tok]||"#9fb0bd";}
+const fmap={gap:["f-gap","● gap"],learn:["f-learn","✦ learned"],promo:["f-promo","↑ shared"],gate:["f-gate","⊘ blocked"],fault:["f-fault","⚠ fault"]};
+const badgeMap={learned:"✦learned",inherited:"↑inherited",GATED:"⊘blocked",FAULT:"⚠fault"};
+function brainColor(tok){tok=tok.trim();const m={"Orchestrator":"var(--mgr)","Arm1":"var(--a1)","Arm 1":"var(--a1)","Arm2":"var(--a2)","Arm 2":"var(--a2)","Conveyor":"var(--conv)","Fleet":"var(--glob)","Global":"var(--glob)","User":"var(--user)","Library":"#7f8c99","L2":"#7f8c99","Demonstration":"#7f8c99"};return m[tok]||"#9fb0bd";}
 function fmtParty(p){return p.split("→").map(x=>`<b style="color:${brainColor(x)}">${x.trim()}</b>`).join('<span style="color:#566270"> → </span>');}
 const PANEL_ICO='<svg viewBox="0 0 14 14"><rect x="2" y="2.5" width="10" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="4" y1="5.3" x2="10" y2="5.3" stroke="currentColor" stroke-width="1"/><line x1="4" y1="7.3" x2="10" y2="7.3" stroke="currentColor" stroke-width="1"/><line x1="4" y1="9.3" x2="8" y2="9.3" stroke="currentColor" stroke-width="1"/></svg>';
 const GRAPH_ICO='<svg viewBox="0 0 14 14"><line x1="3.5" y1="4" x2="10.5" y2="3.5" stroke="currentColor" stroke-width="1"/><line x1="3.5" y1="4" x2="7" y2="10.5" stroke="currentColor" stroke-width="1"/><line x1="10.5" y1="3.5" x2="7" y2="10.5" stroke="currentColor" stroke-width="1"/><circle cx="3.5" cy="4" r="1.7" fill="currentColor"/><circle cx="10.5" cy="3.5" r="1.7" fill="currentColor"/><circle cx="7" cy="10.5" r="1.7" fill="currentColor"/></svg>';
@@ -597,15 +688,28 @@ function sectionBodyHTML(sec,d){
   const fl=p.flags||[];
   if(fl.length) h+=`<div class="flagrow">`+fl.map(f=>`<span class="flag ${fmap[f][0]}">${fmap[f][1]}</span>`).join("")+`</div>`;
   return h;}
-// ===== v10.3a relation-resolution narrowing (Plan ▸ Resolve subsection) =====
+// ===== reusable subsection sub-card (border + accent rail + collapsible header) =====
+// subsections start EXPANDED; collapse state persists across re-renders via collapsedSubs.
+const collapsedSubs=new Set();
+const SUBCHEV='<svg viewBox="0 0 10 10"><path d="M2 3.5 L5 6.5 L8 3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function subsecHTML(key,title,inner){
+  const c=collapsedSubs.has(key);
+  return `<div class="subsec${c?" collapsed":""}" data-sub="${key}"><div class="subhdr"><span class="subttl">${esc(title)}</span><span class="subchev">${SUBCHEV}</span></div><div class="subbody">${inner}</div></div>`;}
+
+// ===== v10.3a relation-resolution narrowing (Plan ▸ Resolve subsection, now in a sub-card) =====
 let resolveAnim={beat:-1,stage:0,timer:null};
 function resolveSubsectionHTML(k){
-  if(LIVE) return `<div class="rsub rsub-empty"><span class="rlabel">Resolve</span><span class="rnone">live resolution feed not yet emitted (backend producer pending)</span></div>`;
-  const res=(typeof buildResolve==="function")?buildResolve(k,idx):null;
-  if(!res) return `<div class="rsub rsub-empty"><span class="rlabel">Resolve</span><span class="rnone">no spatial relation resolved this beat</span></div>`;
-  const si=Math.min(resolveAnim.stage,res.stages.length-1),atWin=(si===res.stages.length-1);
-  return `<div class="rsub"><div class="rhead"><span class="rlabel">Resolve</span><span class="rclause">${esc(res.clause)}</span></div>`+
-    `<div class="rbody">${resolveGridSVG(res,si)}<div class="rcap">${atWin?'<b>':''}${esc(res.stages[si].cap)}${atWin?'</b>':''}</div></div></div>`;}
+  let inner;
+  if(LIVE){ inner=`<span class="rnone">live resolution feed not yet emitted (backend producer pending)</span>`; }
+  else{
+    const res=(typeof buildResolve==="function")?buildResolve(k,idx):null;
+    if(!res){ inner=`<span class="rnone">no spatial relation resolved this beat</span>`; }
+    else{
+      const si=Math.min(resolveAnim.stage,res.stages.length-1),atWin=(si===res.stages.length-1);
+      inner=`<div class="rclause">${esc(res.clause)}</div><div class="rbody">${resolveGridSVG(res,si)}<div class="rcap">${atWin?'<b>':''}${esc(res.stages[si].cap)}${atWin?'</b>':''}</div></div>`;
+    }
+  }
+  return subsecHTML(k+":resolve","Resolve",inner);}
 function rerenderResolvePlans(){for(const [k] of BR){const card=document.getElementById("bc_"+k);
   if(card.dataset.sec==="plan" && (card.dataset.mode||"panel")==="panel") renderCard(card,k,states[idx].brains[k]);}}
 // timed step-through; snap-to-final guard = always clear any in-flight run before (re)starting
@@ -674,7 +778,8 @@ document.getElementById("tab_teach").onclick=()=>setTab("teach");
 
 const shapeSVG={box:'<svg width="14" height="14"><rect x="2" y="2" width="10" height="10" rx="2" fill="#cab43c"/></svg>',sheet:'<svg width="14" height="14"><rect x="0" y="4" width="14" height="6" rx="2" fill="#66bf72"/></svg>',tube:'<svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#b3598c"/></svg>'};
 function mkSel(opts){const s=document.createElement("select");opts.forEach(o=>{const a=o.split("|");const op=document.createElement("option");op.value=a[0];op.textContent=a[1]||a[0];s.appendChild(op);});return s;}
-// ===== v10.2a teach-curation model (mock Local KL; see teach_v10.js) =====
+// ===== v10.2a teach-curation model (mock Local KL; see teach.js) =====
+const SEED_VERSION=1;  // teach-model snapshot schema/seed version (Export/Import; bump if seeds change)
 let TERMS=(typeof seedTerms==='function')?seedTerms():[];
 let COMPOSITES=(typeof seedComposites==='function')?seedComposites():[];
 const CELL_SELECTS=new Set();
@@ -832,6 +937,47 @@ function setupLive(){
   });
   DS.start();
 }
+// per-card hover descriptions: brain cards get theirs from BR (role + desc); static cards carry data-desc inline
+for(const [k,label,role,desc] of BR){const c=document.getElementById("bc_"+k);if(c)c.dataset.desc=label+" — "+desc;}
+(function(){const tip=document.getElementById("cardtip");let cur=null;
+  document.addEventListener("mouseover",e=>{const h=e.target.closest&&e.target.closest(".dcard>.draghandle");if(!h)return;
+    const card=h.closest(".dcard");if(!card||!card.dataset.desc||cur===card)return;cur=card;tip.textContent=card.dataset.desc;
+    const r=h.getBoundingClientRect();tip.style.left=Math.min(Math.max(8,r.left),window.innerWidth-272)+"px";tip.style.top=(r.bottom+6)+"px";tip.classList.add("on");});
+  document.addEventListener("mouseout",e=>{const h=e.target.closest&&e.target.closest(".dcard>.draghandle");if(!h)return;
+    const to=e.relatedTarget;if(to&&h.contains(to))return;cur=null;tip.classList.remove("on");});})();
+// subsection collapse: click a sub-card header → toggle (state persists across re-renders)
+document.addEventListener("click",e=>{const h=e.target.closest&&e.target.closest(".subhdr");if(!h)return;
+  const sub=h.closest(".subsec");if(!sub)return;const key=sub.dataset.sub;
+  if(collapsedSubs.has(key))collapsedSubs.delete(key);else collapsedSubs.add(key);
+  sub.classList.toggle("collapsed");});
+// ===== Messages card — tabbed Server (Seam A) / Inter-brain (Seam B) =====
+// Server feed is live-only: mock shows a REPRESENTATIVE sequence (labeled mock); ?live= shows a
+// pending placeholder until the DM-4 backend emits server_status/server_event frames.
+// Generic, IP-safe vocabulary — see ROBOT_DEMO_IP_SANITIZATION.md (no tech/role/capability names).
+const SRV_KIND={bootstrap:"start",login:"session",skill:"capability",gate_ok:"authorized",gate_no:"blocked",persist:"saved",audit:"audit"};
+const SERVER_MOCK={vitals:{sessions:4,uptime:"14m",endpoint:"wss://brains.sanmyaku.com"},events:[
+  {kind:"bootstrap",text:"System initialized"},
+  {kind:"login",text:"Operator + 4 device sessions authenticated"},
+  {kind:"skill",text:"Capability provisioned · Arm 1"},
+  {kind:"skill",text:"Capability provisioned · Conveyor"},
+  {kind:"persist",text:"State saved"},
+  {kind:"gate_ok",text:"Action authorized · Arm 2"},
+  {kind:"gate_no",text:"Action blocked — permission required · Arm 1"},
+  {kind:"audit",text:"Audit entry recorded"}]};
+function renderServerFeed(){const el=document.getElementById("srvfeed");if(!el)return;
+  if(LIVE){el.innerHTML=`<div class="srvpending">live server feed — backend producer pending (DM-4+)</div>`;return;}
+  const v=SERVER_MOCK.vitals;
+  let h=`<div class="srvvitals"><span class="sv"><b>${v.sessions}</b> sessions active</span><span class="sv ok">Storage: connected</span><span class="sv">up ${esc(v.uptime)}</span><span class="srvmock">mock</span></div>`;
+  h+=`<div class="srvep">${esc(v.endpoint)}</div>`;
+  h+=SERVER_MOCK.events.map(e=>`<div class="srvrow"><span class="kbadge k-${e.kind}">${esc(SRV_KIND[e.kind]||e.kind)}</span><span class="srvtxt">${esc(e.text)}</span></div>`).join("");
+  el.innerHTML=h;}
+function setCommsTab(ct){document.querySelectorAll("#card_log .ctab").forEach(b=>b.classList.toggle("on",b.dataset.ct===ct));
+  document.getElementById("srvfeed").style.display=ct==="server"?"":"none";
+  document.getElementById("log").style.display=ct==="ib"?"":"none";}
+document.querySelectorAll("#card_log .ctab").forEach(b=>b.onclick=()=>setCommsTab(b.dataset.ct));
+renderServerFeed();
+setCommsTab(LIVE?"server":"ib");   // live leads with the real server feed; mock leads with the scripted messages
+
 renderOrder();renderSeq();makeMaxBtns();detectCaps();applyLayout();show(0);requestAnimationFrame(loop);
 if(LIVE)setupLive();
 window.addEventListener("resize",()=>{if(maximizedId){const el=document.getElementById(maximizedId);if(el)el.style.height=(window.innerHeight-2*MAX_M)+"px";}resizeView();redrawLinks();});
