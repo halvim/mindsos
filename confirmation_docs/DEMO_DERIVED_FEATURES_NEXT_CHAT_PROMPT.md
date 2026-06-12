@@ -72,6 +72,18 @@
 - **Needs designing:** the persisted-Local vs reset boundary (run_id-scoped durable store), and whether boot calls `apply_installed_skills` per device before/after `install_skill`.
 - **Demo dependency:** latent at DM-2 (no bundle registers capacities; §4 embodied caps are registered directly each boot in DM-3). Becomes load-bearing if any demo capacity ever ships *inside* a bundle.
 
+## F10 — `register_capacity(if_exists="upsert")` should re-bind the implementation
+- **Origin:** robot-demo DM-4 (2026-06-12, design-log §19 PB-WW). The demo needs to run real logic under the shipped v0 capacity IRIs so the live chain is honest.
+- **What:** `upsert` currently back-fills the PRODUCES/CONSUMES edges but does **not** re-assign `self._declarations[iri]` (that assignment is on the first-registration branch only, `capacity_layer.py:350-371`); the dispatcher resolves the impl via `get_declaration → _declarations`, so `upsert` is a **behavioural no-op** — it cannot swap a capacity's implementation. A consumer-facing `re_bind`/`upsert`-that-replaces-impl would make same-name override a supported operation.
+- **Why new:** today the only working override is a consumer reaching into the private `_declarations` dict (the demo's `comms.install_override`) — fine for the demo, but a private-API dependency MindsOS should make first-class if override is a real use case (it is, for WSD/skill swaps).
+- **Demo dependency:** worked-around in DM-4 (`install_override`); no blocker.
+
+## F11 — `Orchestrator.run_lifecycle` twice on one instance collides chain IRIs
+- **Origin:** robot-demo DM-4 (2026-06-12, design-log §21 PB-HHH). The 2nd `place_order` on a brain crashed (`IdentityError: Duplicate id 'hintset:<scope>:1'`).
+- **What:** `ChainArtifactWriter` mints IRIs as `{prefix}:{task_scope}:{seq}` with `seq` reset per lifecycle, so a single `Orchestrator` (fixed `task_scope`) reused across tasks re-mints identical chain-node IRIs → the MM's chain graph collides. Either `run_lifecycle` should derive a per-run uniquifier (e.g. fold `task_id` into the writer scope) or guard/namespace per run, so one Orchestrator can serve many tasks.
+- **Why new:** the shipped contract implicitly assumes one Orchestrator (or one `task_scope`) per task; nothing enforces or documents it, and the failure is a hard crash on the 2nd run.
+- **Demo dependency:** worked-around in DM-4 (`brain.run_task` = fresh Orchestrator + unique `task_scope` per lifecycle); no blocker.
+
 ## Note on F5 — the box-workaround is a composite + a Plan
 The demo's headline learned skill ("I can't grab it → taught → I can → other arm learns") is the **box-workaround**. Under the hood it is **not** a single within-brain capability: it's a per-arm composite (`load-into-box`) **plus** an Orchestrator **Plan** (route cargo via a box across the reach gap). Demo narrative says "the arm learned it"; the design must split it per F5. Peer transfer (F1) moves the per-arm composite; the Plan lives in the Orchestrator.
 
