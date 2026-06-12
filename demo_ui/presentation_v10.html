@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>MindsOS — Open Order (presentation UI mockup)</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="vendor/three.min.js"></script><!-- vendored (offline) — was a CDN dep; see ROBOT_DEMO_UI_V10.md v10.5 -->
 <style>
   :root{
     --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --edge:#2b333d; --ink:#e6edf3; --muted:#8b98a5;
@@ -80,6 +80,20 @@
   .hdrright{display:inline-flex;align-items:center;gap:7px}
   .state{display:inline-block;vertical-align:middle;margin-left:10px;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--edge);border-radius:9px;padding:1px 7px}
   .help{cursor:help;color:var(--muted);border:1px solid currentColor;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex:0 0 auto}
+  /* v10.4 maximize-height (Option A: fill screen height, pin to top, overlay) */
+  .maxbtn{background:transparent;border:1px solid var(--acc,#46505c);color:var(--acc,#9fb0bd);border-radius:5px;width:20px;height:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:0 0 auto}
+  .maxbtn:hover{border-color:currentColor}
+  .maxbtn svg{width:12px;height:12px;display:block}
+  .maxbtn.on{background:color-mix(in srgb,var(--acc) 25%,#0e1116)}
+  #maxbackdrop{position:fixed;inset:0;background:rgba(6,9,13,.66);z-index:50;display:none}
+  .dcard.maximized{box-shadow:0 0 0 1px var(--acc),0 18px 60px rgba(0,0,0,.6)}
+  /* v10.5 presentation hardening — capability banner + color-mix fallback */
+  #capbanner{display:none;align-items:center;gap:10px;background:#2a2110;border:1px solid #7a5417;color:#ffd9a8;border-radius:6px;padding:5px 10px;font-size:11px;margin-bottom:6px}
+  #capbanner button{margin-left:auto;background:transparent;border:1px solid currentColor;color:inherit;border-radius:5px;padding:1px 8px;cursor:pointer;font-size:10px}
+  body.nofx .uitab.on{background:var(--acc);color:#0e1116}
+  body.nofx .bsec.on{background:var(--acc);color:#0e1116}
+  body.nofx .maxbtn.on{background:#1c232d}
+  body.nofx .dcard>.nm,body.nofx .dcard>h2{background:#1c2330;border-bottom:1px solid var(--acc)}
   /* user interaction */
   .tabs{display:flex;gap:10px;align-items:stretch;margin-bottom:7px}
   .tabs button{flex:1;font-size:10.5px;padding:4px;display:inline-flex;align-items:center;justify-content:center}
@@ -143,6 +157,19 @@
   .inspect h4{margin:0 0 3px;font-size:11px;color:var(--ink)}
   .inspect .il{color:var(--muted);margin:2px 0}
   .inspect .il b{color:var(--ink);font-weight:600}
+  /* v10.2b retire / override / restore */
+  .libitem.retired .nmx{color:var(--muted);text-decoration:line-through}
+  .rowact{flex:0 0 auto;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;
+          border-radius:4px;cursor:pointer;font-size:12px;line-height:1;border:1px solid transparent}
+  .rowact:hover{border-color:currentColor}
+  .rowact.ra-retire{color:var(--gap)} .rowact.ra-override{color:var(--glob)} .rowact.ra-restore{color:var(--user)}
+  .iactions{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+  .iact{font-size:10px;padding:3px 9px;border-radius:6px;cursor:pointer;background:var(--panel2);border:1px solid currentColor}
+  .iact.a-retire{color:#ffb4ad} .iact.a-override{color:#cbd9ff} .iact.a-restore{color:#9fe0ec}
+  .idep{margin-top:6px;font-size:9.5px;color:#ffb4ad;background:#2a1614;border:1px solid #7d2a25;border-radius:5px;padding:4px 6px}
+  .idep .deplist{color:#ffd9d4}
+  .iretired{margin-top:6px;font-size:9.5px;color:var(--muted);font-style:italic}
+  .ovbanner{margin:4px 0;font-size:9.5px;color:#cbd9ff;background:#141b2c;border:1px solid #2c3e72;border-radius:5px;padding:4px 6px}
   /* ===== v10 brain sections (chain stages as tabs) ===== */
   .bsections{display:flex;gap:2px;align-items:center;margin:0 0 6px;flex-wrap:nowrap}
   /* ===== unified tab/toggle button colour contract (per-card accent) ===== */
@@ -165,15 +192,28 @@
   .secbloc.dim{opacity:.55}
   .secgraph{width:100%}
   .secgraph .gsvg{max-height:190px}
+  /* ===== v10.3a Plan ▸ Resolve subsection (relation narrowing) ===== */
+  .rsub{margin-top:7px;border-top:1px dashed var(--edge);padding-top:6px}
+  .rlabel{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--acc)}
+  .rsub-empty{display:flex;gap:7px;align-items:baseline}
+  .rnone{font-size:9.5px;color:var(--muted);font-style:italic}
+  .rhead{display:flex;gap:7px;align-items:baseline;margin-bottom:4px}
+  .rclause{font-size:10px;color:var(--ink)}
+  .rbody{display:flex;gap:10px;align-items:center}
+  .rgrid{width:66px;height:66px;flex:0 0 auto}
+  .rgrid rect[stroke="#eafcff"]{animation:rpop .4s ease-out}
+  .rcap{font-size:9.5px;color:#bff5cf;line-height:1.35}
+  .rcap b{color:#ffe6a8;font-weight:600}
+  @keyframes rpop{0%{opacity:.2}100%{opacity:1}}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
     <h1>MindsOS · “Open Order”</h1>
-    <span class="tag">UI mockup</span>
-    <span class="tag">v10</span>
-    <span class="tag" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
+    <span class="tag">presentation</span>
+    <span class="tag">v0.10</span>
+    <span class="tag" id="honesty" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
     <div class="controls">
       <button id="export"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.7 L7 8.8 L10 5.7" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>Export</button><button id="import"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="9" x2="7" y2="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.3 L7 2.2 L10 5.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>Import</button>
       <span style="width:10px"></span>
@@ -184,6 +224,7 @@
   <div class="chapter"><span class="chip" id="chapter">Beat 0 / 6</span><span class="narr" id="narration">—</span></div>
   <textarea id="io" spellcheck="false"></textarea>
   <div class="hintbar" id="hintbar" style="display:none">Edit mode: drag a card by its title bar; resize from the bottom-right corner. Then ⤓ Export and paste the JSON back to me.</div>
+  <div id="capbanner"></div>
 
   <div id="stage">
     <svg id="links"></svg>
@@ -238,6 +279,7 @@
             <div class="inspect" id="t_inspect"><span style="color:var(--muted)">select an item to inspect</span></div>
           </div>
           <div id="ts_term" style="display:none">
+            <div id="ov_banner" class="ovbanner" style="display:none"></div>
             <input id="tt_name" placeholder="new position term, e.g. mid-shelf" style="width:100%"/>
             <div class="row">
               <button class="ptype uitab on" data-m="example">by example</button>
@@ -278,6 +320,8 @@
 <script src="graph_v10.js"></script>
 <script src="teach_v10.js"></script>
 <script src="sections_v10.js"></script>
+<script src="resolve_v10.js"></script>
+<script src="datasource_v10.js"></script>
 <script>
 let VW=820,VH=262;
 const ARM1={x:-0.65,y:-0.45}, ARM2={x:0.65,y:-0.45}, REACH=0.62;
@@ -369,8 +413,15 @@ function merge(prev,f){const s=JSON.parse(JSON.stringify(prev));
   if(f.brains)for(const b in f.brains)s.brains[b]=mergeBrain(s.brains[b],f.brains[b]);
   for(const b of ["mgr","a1","a2","conv"]){if(!(f.brains&&f.brains[b]&&"active" in f.brains[b]))s.brains[b].active=false;if(!(f.brains&&f.brains[b]&&"flags" in f.brains[b]))s.brains[b].flags=[];}
   s.title=f.title;s.narr=f.narr;s.msgs=f.msgs||[];return s;}
-const states=[];let acc=JSON.parse(JSON.stringify(base));
-for(const f of frames){acc=merge(acc,f);states.push(JSON.parse(JSON.stringify(acc)));}
+// ===== v10.6 data-source seam — mock by default; ?live=<wsurl> connects live brains =====
+// (view layer is unchanged; only WHERE `states` comes from differs. See ROBOT_DEMO_WS_CONTRACT.md)
+const LIVE_URL=(typeof location!=='undefined' && new URLSearchParams(location.search).get('live'))||null;
+const DS = LIVE_URL
+  ? DataSource.makeLiveSource({url:LIVE_URL, base, merge})
+  : DataSource.makeMockSource({base, frames, merge});
+const states = DS.states;          // mock: filled now (identical to before) · live: grows on WS frames
+const LIVE = DS.isLive;
+let FOLLOW = true;                  // live: track the newest frame unless the user scrubs back
 
 function cardHTML(label,role,desc){
   const tabs=STAGES.map(([s,lab])=>`<button class="bsec uitab" data-s="${s}" title="${lab}">${lab}</button>`).join('');
@@ -411,7 +462,7 @@ function redrawLinks(){svg.setAttribute("width",stage.clientWidth);svg.setAttrib
     h+=`<path d="${roundedPath(pts,9)}" stroke="${lk.color}" stroke-width="2.2" fill="none" stroke-linejoin="round" opacity="0.92" marker-end="url(#ah${cols.indexOf(lk.color)})"/>`;}
   svg.innerHTML=h;}
 // resize observer
-const ro=new ResizeObserver(es=>{if(suppress)return;for(const en of es){const el=en.target;if(el.id==="viewbox"){resizeView();continue;}const L=LAYOUT[el.id];if(L){L.w=el.offsetWidth;L.h=el.offsetHeight;}}updateStageH();redrawLinks();});
+const ro=new ResizeObserver(es=>{if(suppress)return;for(const en of es){const el=en.target;if(el.id==="viewbox"){resizeView();continue;}if(maximizedId&&el.id===maximizedId)continue;const L=LAYOUT[el.id];if(L){L.w=el.offsetWidth;L.h=el.offsetHeight;}}updateStageH();redrawLinks();});
 for(const id in LAYOUT)ro.observe(document.getElementById(id));
 ro.observe(document.getElementById("viewbox"));
 // drag
@@ -420,13 +471,42 @@ stage.addEventListener("mousedown",e=>{if(!editing)return;const h=e.target.close
 window.addEventListener("mousemove",e=>{if(!drag)return;const nx=Math.round(drag.ox+(e.clientX-drag.sx)),ny=Math.round(drag.oy+(e.clientY-drag.sy));drag.card.style.left=nx+"px";drag.card.style.top=ny+"px";LAYOUT[drag.card.id].x=nx;LAYOUT[drag.card.id].y=ny;updateStageH();redrawLinks();});
 window.addEventListener("mouseup",()=>{if(drag){updateStageH();redrawLinks();}drag=null;});
 
+// ===== v10.4 maximize-height (Option A) =====
+let maximizedId=null; const MAX_M=10;
+const MAX_ICO='<svg viewBox="0 0 14 14"><rect x="3.2" y="3.2" width="7.6" height="7.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M5,2.4 L7,0.8 L9,2.4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M5,11.6 L7,13.2 L9,11.6" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+const RESTORE_ICO='<svg viewBox="0 0 14 14"><rect x="3.2" y="3.2" width="7.6" height="7.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M5,1 L7,2.6 L9,1" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M5,13 L7,11.4 L9,13" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+function ensureBackdrop(){let b=document.getElementById("maxbackdrop");if(!b){b=document.createElement("div");b.id="maxbackdrop";b.onclick=restoreCard;document.body.appendChild(b);}return b;}
+function makeMaxBtns(){document.querySelectorAll(".dcard").forEach(card=>{const hr=card.querySelector(".hdrright");if(!hr||hr.querySelector(".maxbtn"))return;
+  const b=document.createElement("button");b.className="maxbtn";b.title="maximize height";b.innerHTML=MAX_ICO;
+  b.onclick=(e)=>{e.stopPropagation();maximizeCard(card.id);};
+  const help=hr.querySelector(".help");help?hr.insertBefore(b,help):hr.appendChild(b);});}
+function updateMaxBtns(){document.querySelectorAll(".maxbtn").forEach(b=>{const on=b.closest(".dcard").id===maximizedId;b.innerHTML=on?RESTORE_ICO:MAX_ICO;b.title=on?"restore height":"maximize height";b.classList.toggle("on",on);});}
+function maximizeCard(id){
+  if(maximizedId===id){restoreCard();return;}
+  if(maximizedId)restoreCard();
+  const el=document.getElementById(id);if(!el)return;
+  const r=el.getBoundingClientRect();
+  el.style.position="fixed";el.style.left=Math.round(r.left)+"px";el.style.top=MAX_M+"px";
+  el.style.width=LAYOUT[id].w+"px";                         // width + x unchanged
+  el.style.height=(window.innerHeight-2*MAX_M)+"px";        // height = screen
+  el.style.zIndex="51";el.classList.add("maximized");
+  ensureBackdrop().style.display="block";
+  maximizedId=id;updateMaxBtns();resizeView();redrawLinks();}
+function restoreCard(){
+  if(!maximizedId)return;const el=document.getElementById(maximizedId);
+  if(el){el.style.position="absolute";el.classList.remove("maximized");el.style.zIndex="";
+    const L=LAYOUT[maximizedId];el.style.left=L.x+"px";el.style.top=L.y+"px";el.style.width=L.w+"px";el.style.height=L.h+"px";}
+  const b=document.getElementById("maxbackdrop");if(b)b.style.display="none";
+  maximizedId=null;updateMaxBtns();resizeView();redrawLinks();}
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&maximizedId)restoreCard();});
+
 // layout editing (Edit layout / Layout) removed; Export/Import retained for future system-state files
 function roundL(){const o={};for(const id in LAYOUT){const L=LAYOUT[id];o[id]={x:Math.round(L.x),y:Math.round(L.y),w:Math.round(L.w),h:Math.round(L.h)};}return o;}
 document.getElementById("export").onclick=()=>{const io=document.getElementById("io");io.style.display="block";io.value=JSON.stringify(roundL());io.focus();io.select();};
 document.getElementById("import").onclick=()=>{const io=document.getElementById("io");if(io.style.display==="none"){io.style.display="block";io.focus();return;}try{const o=JSON.parse(io.value);for(const id in o)if(LAYOUT[id])LAYOUT[id]=o[id];applyLayout();}catch(err){alert("Invalid JSON");}};
 
 // ===== views =====
-let idx=0,mode="3d",animating=false,t0=0;
+let idx=0,mode="3d",animating=false,t0=0,WEBGL_OK=true,COLORMIX_OK=true;
 let fromItems=JSON.parse(JSON.stringify(base.items));
 let anim={items:JSON.parse(JSON.stringify(base.items)),eff:{a1:null,a2:null}};
 const lerp=(a,b,t)=>a+(b-a)*t;
@@ -462,8 +542,9 @@ const w3=(x,y,z)=>new THREE.Vector3(x,z,-y);
 // shelf cells are vertical: deep footprint y maps to HEIGHT on a rack at fixed depth
 function pos3d(x,y,restH){const f=Math.max(0,Math.min(1,(-y-0.50)/0.12));const normal=w3(x,y,restH);if(f<=0)return normal;const vert=new THREE.Vector3(x,0.86+(y+0.62)*1.3333,0.95);return normal.lerp(vert,f);}
 function setBeam(mesh,a,b){const mid=a.clone().add(b).multiplyScalar(.5);mesh.position.copy(mid);const dir=b.clone().sub(a);mesh.scale.set(1,Math.max(dir.length(),0.001),1);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());}
-function init3D(){if(R3)return;
-  const cont=document.getElementById("view3d");const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(window.devicePixelRatio||1);renderer.setSize(VW,VH,false);cont.appendChild(renderer.domElement);
+function init3D(){if(R3)return;if(!WEBGL_OK||typeof THREE==="undefined"){webglFallback();return;}
+  let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true});}catch(e){webglFallback();return;}
+  const cont=document.getElementById("view3d");renderer.setPixelRatio(window.devicePixelRatio||1);renderer.setSize(VW,VH,false);cont.appendChild(renderer.domElement);
   const scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0d12);const camera=new THREE.PerspectiveCamera(45,VW/VH,0.05,100);
   scene.add(new THREE.AmbientLight(0xffffff,0.55));const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(2,4,2);scene.add(dl);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(5,4),new THREE.MeshStandardMaterial({color:0x12161d}));floor.rotation.x=-Math.PI/2;scene.add(floor);
@@ -516,13 +597,36 @@ function sectionBodyHTML(sec,d){
   const fl=p.flags||[];
   if(fl.length) h+=`<div class="flagrow">`+fl.map(f=>`<span class="flag ${fmap[f][0]}">${fmap[f][1]}</span>`).join("")+`</div>`;
   return h;}
+// ===== v10.3a relation-resolution narrowing (Plan ▸ Resolve subsection) =====
+let resolveAnim={beat:-1,stage:0,timer:null};
+function resolveSubsectionHTML(k){
+  if(LIVE) return `<div class="rsub rsub-empty"><span class="rlabel">Resolve</span><span class="rnone">live resolution feed not yet emitted (backend producer pending)</span></div>`;
+  const res=(typeof buildResolve==="function")?buildResolve(k,idx):null;
+  if(!res) return `<div class="rsub rsub-empty"><span class="rlabel">Resolve</span><span class="rnone">no spatial relation resolved this beat</span></div>`;
+  const si=Math.min(resolveAnim.stage,res.stages.length-1),atWin=(si===res.stages.length-1);
+  return `<div class="rsub"><div class="rhead"><span class="rlabel">Resolve</span><span class="rclause">${esc(res.clause)}</span></div>`+
+    `<div class="rbody">${resolveGridSVG(res,si)}<div class="rcap">${atWin?'<b>':''}${esc(res.stages[si].cap)}${atWin?'</b>':''}</div></div></div>`;}
+function rerenderResolvePlans(){for(const [k] of BR){const card=document.getElementById("bc_"+k);
+  if(card.dataset.sec==="plan" && (card.dataset.mode||"panel")==="panel") renderCard(card,k,states[idx].brains[k]);}}
+// timed step-through; snap-to-final guard = always clear any in-flight run before (re)starting
+function startResolveAnim(beat){
+  if(resolveAnim.timer){clearInterval(resolveAnim.timer);resolveAnim.timer=null;}
+  resolveAnim.beat=beat;resolveAnim.stage=0;
+  const max=(typeof resolveStageCount==="function")?resolveStageCount(beat):0;
+  if(max<=1)return;
+  resolveAnim.timer=setInterval(()=>{
+    if(resolveAnim.stage>=max-1){clearInterval(resolveAnim.timer);resolveAnim.timer=null;return;}
+    resolveAnim.stage++;rerenderResolvePlans();
+  },650);}
 function renderCard(card,k,d){
   const sec=card.dataset.sec||"task",mode=card.dataset.mode||"panel";
   const ci=card.querySelector(".cintent");if(ci)ci.textContent=d.intent||"";
   card.querySelectorAll(".bsec").forEach(t=>t.classList.toggle("on",t.dataset.s===sec));
   const sb=card.querySelector(".secbody");
   const hdr=`<div class="sechdr"><span class="artname">${sectionArt(sec)}</span><span class="vtog"><button class="vmb uitab${mode==="panel"?" on":""}" data-m="panel" title="panel view">${PANEL_ICO}</button><button class="vmb uitab${mode==="graph"?" on":""}" data-m="graph" title="graph view">${GRAPH_ICO}</button></span></div>`;
-  const body = mode==="graph" ? `<div class="secgraph">${graphSVG(buildSub(k,idx))}</div>` : sectionBodyHTML(sec,d);
+  let body;
+  if(mode==="graph") body=LIVE?`<div class="secgraph" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:9.5px;min-height:90px;text-align:center">live reasoning-graph feed<br>not yet emitted</div>`:`<div class="secgraph">${graphSVG(buildSub(k,idx))}</div>`;
+  else { body=sectionBodyHTML(sec,d); if(sec==="plan") body+=resolveSubsectionHTML(k); }
   sb.innerHTML=hdr+body;}
 function renderPanels(st){
   document.getElementById("chapter").textContent=`Beat ${idx} / ${states.length-1}`;
@@ -532,17 +636,36 @@ function renderPanels(st){
     const ss=card.querySelector(".state");if(ss)ss.textContent=stateOf(data);
     renderCard(card,k,data);}
   const log=document.getElementById("log");log.innerHTML="";
-  for(let i=0;i<=idx;i++)for(const m of states[i].msgs){const d=document.createElement("div");d.innerHTML=`${fmtParty(m[0])} &nbsp; ${m[1]}`;log.appendChild(d);}
-  log.scrollTop=log.scrollHeight;}
+  for(let i=0;i<=idx;i++)for(const m of (states[i].msgs||[])){const d=document.createElement("div");d.innerHTML=`${fmtParty(m[0])} &nbsp; ${m[1]}`;log.appendChild(d);}
+  log.scrollTop=log.scrollHeight;
+  startResolveAnim(idx);}
 
 let playing=false,timer=null;
 function setPlay(p){playing=p;document.getElementById("play").textContent=p?"⏸":"▶ Play";}
 function autoplay(){timer=setInterval(()=>{if(idx>=states.length-1){clearInterval(timer);setPlay(false);return;}show(idx+1);},2600);}
-document.getElementById("next").onclick=()=>show(idx+1);
-document.getElementById("prev").onclick=()=>show(idx-1);
-document.getElementById("reset").onclick=()=>{clearInterval(timer);setPlay(false);show(0);};
-document.getElementById("play").onclick=()=>{setPlay(!playing);if(playing)autoplay();else clearInterval(timer);};
-document.getElementById("dim").onclick=()=>{mode=mode==="2d"?"3d":"2d";cv.style.display=mode==="2d"?"block":"none";document.getElementById("view3d").style.display=mode==="3d"?"block":"none";document.getElementById("hint3d").style.display=mode==="3d"?"inline-flex":"none";document.getElementById("dim").textContent=mode==="2d"?"◳ 3D view":"▦ 2D view";document.getElementById("st_cell").textContent=mode==="2d"?"2D":"3D";if(mode==="3d")init3D();resizeView();};
+document.getElementById("next").onclick=()=>{show(idx+1);if(LIVE&&idx>=states.length-1)FOLLOW=true;};
+document.getElementById("prev").onclick=()=>{if(LIVE)FOLLOW=false;show(idx-1);};
+document.getElementById("reset").onclick=()=>{if(LIVE){DS.sendCommand({type:"command",name:"reset"});FOLLOW=true;return;}clearInterval(timer);setPlay(false);show(0);};
+document.getElementById("play").onclick=()=>{if(LIVE){const want=!playing;DS.sendCommand({type:"command",name:want?"play":"pause"});setPlay(want);FOLLOW=true;return;}setPlay(!playing);if(playing)autoplay();else clearInterval(timer);};
+document.getElementById("dim").onclick=()=>{if(!WEBGL_OK)return;mode=mode==="2d"?"3d":"2d";cv.style.display=mode==="2d"?"block":"none";document.getElementById("view3d").style.display=mode==="3d"?"block":"none";document.getElementById("hint3d").style.display=mode==="3d"?"inline-flex":"none";document.getElementById("dim").textContent=mode==="2d"?"◳ 3D view":"▦ 2D view";document.getElementById("st_cell").textContent=mode==="2d"?"2D":"3D";if(mode==="3d")init3D();resizeView();};
+// ===== v10.5 presentation hardening: capability detection + graceful fallback =====
+function showCapBanner(){const b=document.getElementById("capbanner");if(!b)return;const m=[];
+  if(!WEBGL_OK)m.push("WebGL unavailable — the Physical cell is shown in 2D");
+  if(!COLORMIX_OK)m.push("older browser — button fills use a fallback style");
+  if(!m.length){b.style.display="none";return;}
+  b.style.display="flex";b.innerHTML='<span>⚠ '+m.join(" · ")+'</span><button id="capx">dismiss</button>';
+  document.getElementById("capx").onclick=()=>{b.style.display="none";};}
+function webglFallback(){WEBGL_OK=false;mode="2d";if(cv)cv.style.display="block";
+  const v3=document.getElementById("view3d");if(v3)v3.style.display="none";
+  const dim=document.getElementById("dim");if(dim)dim.style.display="none";
+  const sc=document.getElementById("st_cell");if(sc)sc.textContent="2D";
+  const h3=document.getElementById("hint3d");if(h3)h3.style.display="none";
+  showCapBanner();}
+function detectCaps(){
+  try{const c=document.createElement("canvas");WEBGL_OK=!!(window.WebGLRenderingContext&&(c.getContext("webgl")||c.getContext("experimental-webgl")));}catch(e){WEBGL_OK=false;}
+  try{COLORMIX_OK=!!(window.CSS&&CSS.supports&&CSS.supports("background","color-mix(in srgb, #fff 50%, #000)"));}catch(e){COLORMIX_OK=false;}
+  if(!COLORMIX_OK)document.body.classList.add("nofx");
+  if(!WEBGL_OK)webglFallback(); else showCapBanner();}
 
 function setTab(t){["order","sort","teach"].forEach(x=>{document.getElementById("pane_"+x).style.display=x===t?"block":"none";document.getElementById("tab_"+x).classList.toggle("on",x===t);});document.getElementById("st_user").textContent=t;}
 document.getElementById("tab_order").onclick=()=>setTab("order");
@@ -555,7 +678,12 @@ function mkSel(opts){const s=document.createElement("select");opts.forEach(o=>{c
 let TERMS=(typeof seedTerms==='function')?seedTerms():[];
 let COMPOSITES=(typeof seedComposites==='function')?seedComposites():[];
 const CELL_SELECTS=new Set();
-function termSel(){const s=document.createElement("select");for(const t of TERMS){const o=document.createElement("option");o.value=t.name;o.textContent=t.name+(t.scope!=='builtin'?' ·L':'');s.appendChild(o);}CELL_SELECTS.add(s);return s;}
+// a name is shown with ·L when its winning (non-retired) entry is taught locally
+function isLocalName(nm){const r=resolveTerm(nm,TERMS);return r&&r.scope!=='builtin'&&r.scope!=='Global';}
+function fillTermSel(s){const cur=s.value;s.innerHTML="";for(const nm of activeTermNames(TERMS)){const o=document.createElement("option");o.value=nm;o.textContent=nm+(isLocalName(nm)?' ·L':'');s.appendChild(o);}if([...s.options].some(o=>o.value===cur))s.value=cur;}
+function termSel(){const s=document.createElement("select");CELL_SELECTS.add(s);fillTermSel(s);return s;}
+// rebuild every position dropdown + compose chips after a retire/restore/override
+function rebuildTermSelects(){for(const s of CELL_SELECTS)fillTermSel(s);ttBuildComposeChips();}
 // compositional position builder: a list of clauses (shelf-position OR relational), added with +
 function makePosBuilder(){
   const root=document.createElement("div");
@@ -592,7 +720,7 @@ const sortTo=makePosBuilder();document.getElementById("s_to").appendChild(sortTo
 function renderOrder(){const el=document.getElementById("o_list");el.innerHTML=orderLines.length?orderLines.map(l=>`<span class="pill">${shapeSVG[l.item]} → ${l.shelf.toUpperCase()}: ${posStr(l.pos)}</span>`).join(""):'<span style="color:var(--muted)">no lines yet</span>';}
 document.getElementById("o_add").onclick=()=>{orderLines.push({item:selItem,shelf:document.getElementById("o_shelf").value,pos:orderPos.get()});orderPos.reset();renderOrder();};
 document.getElementById("o_clear").onclick=()=>{orderLines=[];renderOrder();orderPos.reset();sortFrom.reset();sortTo.reset();};
-document.getElementById("o_run").onclick=()=>{clearInterval(timer);setPlay(true);show(0);autoplay();};
+document.getElementById("o_run").onclick=()=>{if(LIVE){DS.sendCommand({type:"command",name:"place_order",args:{lines:orderLines}});FOLLOW=true;return;}clearInterval(timer);setPlay(true);show(0);autoplay();};
 let seq=[];
 function renderSeq(){const el=document.getElementById("t_seq");el.innerHTML=seq.length?seq.map(b=>`<span class="pill">${b}</span>`).join(" → "):'<span style="color:var(--muted)">click blocks to build a demonstration</span>';}
 document.querySelectorAll(".blk").forEach(b=>b.onclick=()=>{seq.push(b.dataset.b);renderSeq();});
@@ -602,45 +730,111 @@ document.getElementById("t_capture").onclick=()=>{clearInterval(timer);setPlay(f
 // ===== v10.2a: Teach sub-tabs · Library + Inspect · Teach-term =====
 function setTSub(t){["lib","term","demo"].forEach(x=>{document.getElementById("ts_"+x).style.display=x===t?"block":"none";});document.querySelectorAll(".tsbtn").forEach(b=>b.classList.toggle("on",b.dataset.t===t));if(t==="lib")refreshLibrary();}
 document.querySelectorAll(".tsbtn").forEach(b=>b.onclick=()=>setTSub(b.dataset.t));
+// each library entry needs a stable key — name alone is ambiguous once a Global
+// term and its Local-override shadow share a name.
+function itemKey(it){return it.scope+'|'+it.kind+'|'+it.name;}
 let libSel=null;
+// v10.2b Hybrid: one contextual primary action per row (icon), full actions in inspect.
+function rowIcon(it){
+  if(it.retired)            return ['ra-restore','↺','restore',()=>doRestore(it)];
+  if(it.scope==='builtin')  return null;                                  // fixed
+  if(it.scope==='Global')   return ['ra-override','⇄','override → Local',()=>enterOverride(it)];
+  return ['ra-retire','⊘','retire',()=>doRetire(it)];                     // Local / Local-override / learned
+}
+function actionsFor(it){
+  if(it.retired)           return [{cls:'a-restore',ico:'↺',label:'Restore',fn:()=>doRestore(it)}];
+  if(it.scope==='builtin') return [];
+  if(it.scope==='Global')  return [{cls:'a-override',ico:'⇄',label:'Override → Local',fn:()=>enterOverride(it)}];
+  return [{cls:'a-retire',ico:'⊘',label:'Retire',fn:()=>doRetire(it)}];
+}
 function refreshLibrary(){const list=document.getElementById("t_lib");if(!list)return;list.innerHTML="";
   const items=[...TERMS,...COMPOSITES];
-  for(const it of items){const sc=it.scope==='Local-override'?'override':it.scope;
-    const div=document.createElement("div");div.className="libitem"+(libSel===it.name?" sel":"");
-    div.innerHTML=`<span class="nmx">${it.name}</span><span class="kx">${it.kind}</span><span class="scopebadge s-${sc}">${(typeof SCOPE_BADGE!=='undefined'&&SCOPE_BADGE[it.scope])||it.scope}</span>`;
-    div.onclick=()=>{libSel=it.name;showInspect(it);refreshLibrary();};list.appendChild(div);}}
+  for(const it of items){const sc=it.scope==='Local-override'?'override':it.scope;const key=itemKey(it);
+    const div=document.createElement("div");div.className="libitem"+(libSel===key?" sel":"")+(it.retired?" retired":"");
+    const badgeTxt=((typeof SCOPE_BADGE!=='undefined'&&SCOPE_BADGE[it.scope])||it.scope)+(it.retired?' · retired':'');
+    div.innerHTML=`<span class="nmx">${it.name}</span><span class="kx">${it.kind}</span><span class="scopebadge s-${sc}">${badgeTxt}</span>`;
+    const ri=rowIcon(it);
+    if(ri){const b=document.createElement("span");b.className="rowact "+ri[0];b.textContent=ri[1];b.title=ri[2];
+      b.onclick=(e)=>{e.stopPropagation();ri[3]();};div.appendChild(b);}
+    div.onclick=()=>{libSel=key;showInspect(it);refreshLibrary();};list.appendChild(div);}}
 function showInspect(it){const box=document.getElementById("t_inspect");const r=inspect(it);
-  box.innerHTML=`<h4>${r.name}</h4>
+  let h=`<h4>${r.name}</h4>
     <div class="il"><b>scope</b> ${r.scopeBadge} · <b>kind</b> ${r.kind}</div>
     <div class="il"><b>def</b> ${r.definition}</div>
     <div class="il"><b>from</b> ${r.provenance}</div>
-    <div class="il"><b>dependents</b> ${r.dependents.length?r.dependents.join(", "):"none"}</div>`;}
+    <div class="il"><b>dependents</b> ${r.dependents.length?r.dependents.join(", "):"none"}</div>`;
+  if(it.retired) h+=`<div class="iretired">retired — version-frozen, kept for provenance · restorable</div>`;
+  else if(r.dependents.length) h+=`<div class="idep">retiring this affects <span class="deplist">${r.dependents.length} dependent${r.dependents.length>1?'s':''}: ${r.dependents.join(", ")}</span> — proceeding is allowed and reversible (integrity policy TBD)</div>`;
+  const acts=actionsFor(it);
+  if(acts.length) h+=`<div class="iactions">`+acts.map((a,i)=>`<button class="iact ${a.cls}" data-ai="${i}">${a.ico} ${a.label}</button>`).join("")+`</div>`;
+  box.innerHTML=h;
+  box.querySelectorAll(".iact").forEach((btn,i)=>btn.onclick=()=>acts[i].fn());}
+// reversible curation — both paths refresh the dropdowns + chips + library + inspect
+function doRetire(it){retire(it);rebuildTermSelects();libSel=itemKey(it);refreshLibrary();showInspect(it);}
+function doRestore(it){restore(it);rebuildTermSelects();libSel=itemKey(it);refreshLibrary();showInspect(it);}
+// override a Global term: jump to Teach-term, prefill its cells, save as a Local shadow
+let overrideTarget=null;
+function showOvBanner(t){const b=document.getElementById("ov_banner");if(!b)return;b.style.display=t?"block":"none";b.textContent=t||"";}
+function exitOverride(){overrideTarget=null;const ni=document.getElementById("tt_name");ni.readOnly=false;ni.value="";document.getElementById("tt_add").textContent="✦ Teach term";showOvBanner("");}
+function enterOverride(it){setTSub("term");overrideTarget=it.name;ttMode="example";
+  document.querySelectorAll('#ts_term .ptype').forEach(x=>x.classList.toggle("on",x.dataset.m==="example"));ttRefreshMode();
+  const ni=document.getElementById("tt_name");ni.value=it.name;ni.readOnly=true;
+  ttCells=new Set((it.cells||[]).map(c=>c[0]*3+c[1]));ttComp.clear();
+  document.querySelectorAll("#tt_grid div").forEach((d,i)=>d.classList.toggle("sel",ttCells.has(i)));
+  document.getElementById("tt_add").textContent="✦ Save Local override";document.getElementById("tt_msg").textContent="";
+  showOvBanner(`Overriding Global “${it.name}” — edit the cells, then save to create a Local shadow (resolves Local-first; the Global stays untouched).`);}
 let ttMode="example",ttCells=new Set(),ttComp=new Set();
 function ttRefreshMode(){document.getElementById("tt_example").style.display=ttMode==="example"?"block":"none";document.getElementById("tt_compose").style.display=ttMode==="compose"?"block":"none";}
 document.querySelectorAll('#ts_term .ptype').forEach(b=>b.onclick=()=>{ttMode=b.dataset.m;document.querySelectorAll('#ts_term .ptype').forEach(x=>x.classList.toggle("on",x===b));ttRefreshMode();});
 (function(){const g=document.getElementById("tt_grid");for(let i=0;i<9;i++){const d=document.createElement("div");d.onclick=()=>{if(ttCells.has(i)){ttCells.delete(i);d.classList.remove("sel");}else{ttCells.add(i);d.classList.add("sel");}};g.appendChild(d);}})();
-function ttBuildComposeChips(){const w=document.getElementById("tt_terms");w.innerHTML="";for(const t of TERMS){const c=document.createElement("span");c.className="pill";c.style.cursor="pointer";c.style.opacity=ttComp.has(t.name)?1:.5;c.textContent=t.name;c.onclick=()=>{if(ttComp.has(t.name)){ttComp.delete(t.name);c.style.opacity=.5;}else{ttComp.add(t.name);c.style.opacity=1;}};w.appendChild(c);}}
-document.getElementById("tt_clear").onclick=()=>{ttCells.clear();ttComp.clear();document.querySelectorAll("#tt_grid .sel").forEach(d=>d.classList.remove("sel"));document.getElementById("tt_name").value="";document.getElementById("tt_msg").textContent="";ttBuildComposeChips();};
+// compose chips list each ACTIVE (non-retired) term name once
+function ttBuildComposeChips(){const w=document.getElementById("tt_terms");if(!w)return;w.innerHTML="";
+  for(const nm of activeTermNames(TERMS)){const c=document.createElement("span");c.className="pill";c.style.cursor="pointer";c.style.opacity=ttComp.has(nm)?1:.5;c.textContent=nm;
+    c.onclick=()=>{if(ttComp.has(nm)){ttComp.delete(nm);c.style.opacity=.5;}else{ttComp.add(nm);c.style.opacity=1;}};w.appendChild(c);}}
+document.getElementById("tt_clear").onclick=()=>{ttCells.clear();ttComp.clear();document.querySelectorAll("#tt_grid .sel").forEach(d=>d.classList.remove("sel"));document.getElementById("tt_msg").textContent="";exitOverride();ttBuildComposeChips();};
 document.getElementById("tt_add").onclick=()=>{const name=document.getElementById("tt_name").value;const msg=document.getElementById("tt_msg");
-  const err=validateTermName(name,TERMS);if(err){msg.style.color="#ffb4ad";msg.textContent=err;return;}
+  const err=validateTermName(name,TERMS,{overrideGlobal:!!overrideTarget});if(err){msg.style.color="#ffb4ad";msg.textContent=err;return;}
   let cells,how;
   if(ttMode==="example"){cells=[...ttCells].map(i=>[Math.floor(i/3),i%3]);how="by example";}
   else{cells=composeCells([...ttComp],TERMS);how="by composition";}
   if(!cells.length){msg.style.color="#ffb4ad";msg.textContent="pick at least one cell / term";return;}
-  const term={name:name.trim(),scope:"Local",kind:"term",cells,how,dependents:[]};
-  TERMS.push(term);
-  for(const s of CELL_SELECTS){const o=document.createElement("option");o.value=term.name;o.textContent=term.name+" ·L";s.appendChild(o);}
-  msg.style.color="#bff5cf";msg.textContent=`taught "${term.name}" → ${cellsLabel(cells)} · now in Order/Sort dropdowns`;
-  libSel=term.name;ttCells.clear();ttComp.clear();document.querySelectorAll("#tt_grid .sel").forEach(d=>d.classList.remove("sel"));document.getElementById("tt_name").value="";
-  ttBuildComposeChips();refreshLibrary();};
+  let term;
+  if(overrideTarget){
+    const g=TERMS.find(t=>t.name===overrideTarget&&t.scope==="Global");
+    term=overrideGlobal(g,cells,how,TERMS);
+    msg.style.color="#cbd9ff";msg.textContent=`override saved → Local shadow of "${term.name}" (${cellsLabel(cells)}); resolves Local-first`;
+  }else{
+    term={name:name.trim(),scope:"Local",kind:"term",cells,how,dependents:[]};TERMS.push(term);
+    msg.style.color="#bff5cf";msg.textContent=`taught "${term.name}" → ${cellsLabel(cells)} · now in Order/Sort dropdowns`;
+  }
+  rebuildTermSelects();
+  libSel=itemKey(term);ttCells.clear();ttComp.clear();document.querySelectorAll("#tt_grid .sel").forEach(d=>d.classList.remove("sel"));
+  exitOverride();refreshLibrary();showInspect(term);};
 // a captured demonstration also lands in the Library as a Local composite
 document.getElementById("t_capture").onclick=()=>{const nm=(document.getElementById("t_name").value||"").trim();
   if(nm&&seq.length){COMPOSITES.push({name:nm,scope:"Local",kind:"composite",steps:seq.slice(),dependents:[]});refreshLibrary();}
+  if(LIVE){DS.sendCommand({type:"command",name:"teach",args:{skill:nm,blocks:seq.slice()}});return;}
   clearInterval(timer);setPlay(false);show(2);};
 ttBuildComposeChips();refreshLibrary();ttRefreshMode();
 
-renderOrder();renderSeq();applyLayout();show(0);requestAnimationFrame(loop);
-window.addEventListener("resize",()=>{resizeView();redrawLinks();});
+// ===== v10.6 live wiring: follow WS frames + reflect connection status =====
+function setLiveTag(txt,col){const t=document.getElementById("honesty");if(!t)return;t.textContent=txt;if(col){t.style.color=col;t.style.borderColor=col;}}
+function setupLive(){
+  setLiveTag("● connecting to live brains…","#d29922");
+  DS.onUpdate((kind)=>{
+    if(kind==="open")        setLiveTag("● live — connected to brains","#48c78e");
+    else if(kind==="close")  setLiveTag("● disconnected from brains","#e5534b");
+    else if(kind==="error")  setLiveTag("● live connection error","#e5534b");
+    else if(kind==="reset"){ FOLLOW=true; show(0); }
+    else if(kind==="frame"){ if(FOLLOW) show(states.length-1); else document.getElementById("chapter").textContent=`Beat ${idx} / ${states.length-1}`; }
+    else if(kind==="message"){ if(idx===states.length-1) renderPanels(states[idx]); }
+    // 'pose' needs no explicit redraw — the rAF loop reads states[idx].items each tick
+  });
+  DS.start();
+}
+renderOrder();renderSeq();makeMaxBtns();detectCaps();applyLayout();show(0);requestAnimationFrame(loop);
+if(LIVE)setupLive();
+window.addEventListener("resize",()=>{if(maximizedId){const el=document.getElementById(maximizedId);if(el)el.style.height=(window.innerHeight-2*MAX_M)+"px";}resizeView();redrawLinks();});
 </script>
 </body>
 </html>

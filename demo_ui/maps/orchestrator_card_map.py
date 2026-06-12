@@ -19,6 +19,11 @@ def graph_icon(cx,cy,col):
             f'<line x1="{ax}" y1="{ay}" x2="{dx}" y2="{dy}" stroke="{col}" stroke-width="1"/>'
             f'<line x1="{bx}" y1="{by}" x2="{dx}" y2="{dy}" stroke="{col}" stroke-width="1"/>'
             f'<circle cx="{ax}" cy="{ay}" r="1.7" fill="{col}"/><circle cx="{bx}" cy="{by}" r="1.7" fill="{col}"/><circle cx="{dx}" cy="{dy}" r="1.7" fill="{col}"/>')
+def max_btn(cx,cy,col):  # maximize-height control: bordered button + vertical-expand glyph
+    return (f'<rect x="{cx-10}" y="{cy-8}" width="20" height="16" rx="4" fill="none" stroke="{col}" stroke-width="1"/>'
+            f'<rect x="{cx-3}" y="{cy-2.5}" width="6" height="5" rx="1" fill="none" stroke="{col}" stroke-width="0.9"/>'
+            f'<path d="M{cx-2},{cy-4} L{cx},{cy-5.8} L{cx+2},{cy-4}" fill="none" stroke="{col}" stroke-width="0.9" stroke-linejoin="round"/>'
+            f'<path d="M{cx-2},{cy+4} L{cx},{cy+5.8} L{cx+2},{cy+4}" fill="none" stroke="{col}" stroke-width="0.9" stroke-linejoin="round"/>')
 S=['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 720" font-family="Segoe UI,Helvetica,Arial,sans-serif">']
 S.append('<rect x="0" y="0" width="1180" height="720" fill="#0e1116"/>')
 S.append(f'<text x="590" y="34" fill="{INK}" font-size="20" font-weight="700" text-anchor="middle">Orchestrator card — part names (use either the name or the .class)</text>')
@@ -32,7 +37,8 @@ S.append(f'<line x1="{X0}" y1="{Y0+tb}" x2="{X0+W}" y2="{Y0+tb}" stroke="{MGR}" 
 S.append(f'<text x="{X0+12}" y="{Y0+22}" fill="{MGR}" font-size="13" font-weight="700">Orchestrator</text>')
 S.append(f'<rect x="{X0+104}" y="{Y0+9}" width="54" height="14" rx="7" fill="{PANEL2}" stroke="{EDGE}"/>')
 S.append(f'<text x="{X0+131}" y="{Y0+19}" fill="{MUT}" font-size="7" font-weight="600" letter-spacing="0.5" text-anchor="middle">WORKING</text>')
-S.append(f'<circle cx="{X0+W-34}" cy="{Y0+17}" r="3.5" fill="{MGR}"/>')
+S.append(f'<circle cx="{X0+W-62}" cy="{Y0+17}" r="3.5" fill="{MGR}"/>')
+S.append(max_btn(X0+W-40, Y0+17, MGR))
 S.append(f'<circle cx="{X0+W-16}" cy="{Y0+17}" r="7" fill="none" stroke="{MUT}"/><text x="{X0+W-16}" y="{Y0+21}" fill="{MUT}" font-size="9" text-anchor="middle">?</text>')
 # pinned intent
 ciy=Y0+tb+16
@@ -74,8 +80,9 @@ def label(x,y,name,cls,anchor="start"):
 # TOP
 label(X0+12,120,"Name label","(brain name)"); leader(X0+40,126,X0+40,Y0+10)
 label(X0+150,120,"Card state",".state  (status chip)"); leader(X0+172,126,X0+131,Y0+8)
-label(905,120,"Status dot",".dot"); leader(903,116,X0+W-34,Y0+15)
-label(905,162,"Help / tooltip",".help"); leader(903,158,X0+W-16,Y0+17)
+label(905,110,"Status dot",".dot"); leader(903,106,X0+W-62,Y0+15)
+label(905,146,"Maximize height",".maxbtn"); leader(903,142,X0+W-40,Y0+9)
+label(905,182,"Help / tooltip",".help"); leader(903,178,X0+W-16,Y0+17)
 
 # LEFT
 label(300,Y0+6,"Card",".dcard.mgr",anchor="end"); leader(305,Y0+2,X0,Y0+2)

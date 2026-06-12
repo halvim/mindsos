@@ -4,6 +4,11 @@ _OUT=os.path.dirname(os.path.abspath(__file__))+"/.."
 BG="#0e1116"; PANEL="#161b22"; PANEL2="#1c232d"; EDGE="#2b333d"; INK="#e6edf3"; MUT="#8b98a5"; WHITE="#eafcff"; LINE="#4a5563"
 U="#53b0be"; UD="#3e808c"
 def esc(s): return s.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+def max_btn(cx,cy,col):  # maximize-height control: bordered button + vertical-expand glyph
+    return (f'<rect x="{cx-10}" y="{cy-8}" width="20" height="16" rx="4" fill="none" stroke="{col}" stroke-width="1"/>'
+            f'<rect x="{cx-3}" y="{cy-2.5}" width="6" height="5" rx="1" fill="none" stroke="{col}" stroke-width="0.9"/>'
+            f'<path d="M{cx-2},{cy-4} L{cx},{cy-5.8} L{cx+2},{cy-4}" fill="none" stroke="{col}" stroke-width="0.9" stroke-linejoin="round"/>'
+            f'<path d="M{cx-2},{cy+4} L{cx},{cy+5.8} L{cx+2},{cy+4}" fill="none" stroke="{col}" stroke-width="0.9" stroke-linejoin="round"/>')
 X0,Y0,W,H=330,150,362,392
 S=['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 740" font-family="Segoe UI,Helvetica,Arial,sans-serif">']
 S.append(f'<rect width="1180" height="740" fill="{BG}"/>')
@@ -16,9 +21,10 @@ S.append(f'<path d="M{X0} {Y0+11} q0 -11 11 -11 h{W-22} q11 0 11 11 v{tb-11} h-{
 S.append(f'<line x1="{X0}" y1="{Y0+tb}" x2="{X0+W}" y2="{Y0+tb}" stroke="{U}" stroke-opacity="0.5"/>')
 S.append(f'<text x="{X0+12}" y="{Y0+22}" fill="{U}" font-size="13" font-weight="700">User</text>')
 S.append(f'<rect x="{X0+50}" y="{Y0+9}" width="44" height="14" rx="7" fill="{PANEL2}" stroke="{EDGE}"/><text x="{X0+72}" y="{Y0+19}" fill="{MUT}" font-size="7" font-weight="600" letter-spacing="0.5" text-anchor="middle">ORDER</text>')
-S.append(f'<rect x="{X0+W-118}" y="{Y0+8}" width="62" height="16" rx="5" fill="#1f6feb"/><text x="{X0+W-87}" y="{Y0+19}" fill="#fff" font-size="9" text-anchor="middle">▶ Submit</text>')
-S.append(f'<rect x="{X0+W-52}" y="{Y0+8}" width="34" height="16" rx="5" fill="{PANEL2}" stroke="{EDGE}"/><text x="{X0+W-35}" y="{Y0+19}" fill="{INK}" font-size="9" text-anchor="middle">clear</text>')
-S.append(f'<circle cx="{X0+W-14}" cy="{Y0+16}" r="6.5" fill="none" stroke="{MUT}"/><text x="{X0+W-14}" y="{Y0+19}" fill="{MUT}" font-size="8" text-anchor="middle">?</text>')
+S.append(f'<rect x="{X0+W-150}" y="{Y0+8}" width="62" height="16" rx="5" fill="#1f6feb"/><text x="{X0+W-119}" y="{Y0+19}" fill="#fff" font-size="9" text-anchor="middle">▶ Submit</text>')
+S.append(f'<rect x="{X0+W-84}" y="{Y0+8}" width="34" height="16" rx="5" fill="{PANEL2}" stroke="{EDGE}"/><text x="{X0+W-67}" y="{Y0+19}" fill="{INK}" font-size="9" text-anchor="middle">clear</text>')
+S.append(max_btn(X0+W-34, Y0+16, U))
+S.append(f'<circle cx="{X0+W-12}" cy="{Y0+16}" r="6.5" fill="none" stroke="{MUT}"/><text x="{X0+W-12}" y="{Y0+19}" fill="{MUT}" font-size="8" text-anchor="middle">?</text>')
 # tabs — boxed task / system groups
 ty=Y0+48
 def tab(x,y,w,sel,label,dashed=False,pencil=False,h=22):
@@ -74,8 +80,9 @@ def label(x,y,name,cls,anchor="start"):
     S.append(f'<text x="{x}" y="{y+15}" fill="{MUT}" font-size="11" font-family="ui-monospace,Menlo,monospace" text-anchor="{anchor}">{esc(cls)}</text>')
 label(X0+8,116,"Name label","(card name)"); leader(X0+30,122,X0+24,Y0+10)
 label(X0+96,110,"Card state",".state"); leader(X0+120,116,X0+72,Y0+9)
-label(X0+W-44,98,"Submit / clear","#o_run · #o_clear",anchor="end"); leader(X0+W-90,104,X0+W-100,Y0+8)
-label(905,150,"Help / tooltip",".help"); leader(903,146,X0+W-14,Y0+12)
+label(X0+W-64,98,"Submit / clear","#o_run · #o_clear",anchor="end"); leader(X0+W-110,104,X0+W-119,Y0+8)
+label(905,116,"Maximize height",".maxbtn"); leader(903,112,X0+W-34,Y0+8)
+label(905,152,"Help / tooltip",".help"); leader(903,148,X0+W-12,Y0+12)
 label(300,Y0+6,"Card",".dcard.user",anchor="end"); leader(305,Y0+2,X0,Y0+2)
 label(300,ty+4,"Task / system groups",".tgroup · .tglabel",anchor="end"); leader(305,ty+2,X0+12,ty+12)
 label(300,by+12,"Body / pane",".scroll → #pane_order",anchor="end"); leader(305,by+8,X0,by)
