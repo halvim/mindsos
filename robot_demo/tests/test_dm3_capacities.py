@@ -230,6 +230,9 @@ def test_bootstrap_body_guard_skips_without_mujoco(monkeypatch):
     from robot_demo.backend import bootstrap as B
     monkeypatch.setenv("DEMO_BODY", "0")
     assert B._maybe_build_bodies() is None  # explicit opt-out
+    monkeypatch.delenv("DEMO_BODY", raising=False)
+    monkeypatch.setenv("DEMO_BOOTSTRAP_ONLY", "1")
+    assert B._maybe_build_bodies() is None  # MuJoCo kept out of the DM-1/DM-2 spine
 
 
 def test_pure_modules_import():

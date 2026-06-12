@@ -246,13 +246,20 @@ def _maybe_build_bodies():
     stays green; PB-TT). ``DEMO_BODY=0`` also forces the skip."""
     if os.environ.get("DEMO_BODY", "1") == "0":
         return None
+    if os.environ.get("DEMO_BOOTSTRAP_ONLY") == "1":
+        # The DM-1/DM-2 idempotency boots assert L2/L3/persistence, not
+        # motion — keep MuJoCo out of that spine (it stays exactly as it
+        # gated green). The DM-3 gate builds the body runtime directly
+        # (robot_demo.backend.dm3_check); the full runtime (main.py, not
+        # bootstrap-only) still builds it.
+        return None
     try:
         from .body_adapter import build_body_runtime
-    except Exception as exc:  # mujoco / GL / sim import missing (sandbox)
+        return build_body_runtime()
+    except Exception as exc:  # mujoco/sim import OR Cell build failed
         print(f"[DM-3] body runtime unavailable ({exc}); "
               "embodied capacities skipped.")
         return None
-    return build_body_runtime()
 
 
 def _register_embodied(brains: Dict[str, Brain], handles) -> Dict[str, Tuple[str, ...]]:
