@@ -41,6 +41,7 @@ file map; it does **not** restate code — read the files it points to.
 - Sidecars (pure, node-testable): `graph.js` (reasoning subgraphs), `teach.js`
   (teach-tab curation model), `sections.js` (brain-section content model),
   `resolve.js` (relation-resolution narrowing — Plan ▸ Resolve subsection),
+  `audit.js` (L5 reasoning/audit — the recorded-chain 7→5 generic-stage collapse, sanitized),
   `datasource.js` (the **mock↔live data-source seam**; live WS client).
 - `mock_ws_server.js` — runnable reference WS emitter (replays the 7 beats as live frames;
   `npm i ws && node mock_ws_server.js`). Dev-only; a worked example of the backend contract.
@@ -50,7 +51,9 @@ file map; it does **not** restate code — read the files it points to.
   `orchestrator_card_map.png` (brain card, Capabilities section), `plan_card_map.png` (brain card,
   **Plan ▸ Resolve subsection** — `.rsub`/`.rlabel`/`.rclause`/`.rgrid`/`.rcap`),
   `comms_card_map.png` (the **Messages** card — tabbed **Server (Seam A) / Inter-brain (Seam B)**,
-  in that order; *shipped v0.13*), `user_card_map.png`, `button_map.png`.
+  in that order; *shipped v0.13*), `user_card_map.png`, `button_map.png`,
+  `header_map.png` (the **header** — title/tags/`#honesty`/`#audit`+`#auditmenu`/`#export`+`#expmenu`/
+  transport/`#l5cal` message callout/`#capbanner`; *v0.19*).
 - `maps/*.py` — the scripts that regenerate the five maps (run `python3 maps/<name>.py`;
   needs `cairosvg`).
 - `presentation_mockup.html` — frozen **v9** baseline (reference only).
@@ -209,6 +212,99 @@ file map; it does **not** restate code — read the files it points to.
   and **demo‑state restore** land next. Verified 64/64 (relocation, header demo‑state download,
   import‑branch confirmation). No new map (no mapped card changed).
 
+- **v0.15 — L5 reasoning/audit view (goal #2: "why did it decide / refuse X").** A **new visual surface**
+  (mockup‑gated, approved): a **modal** (`#l5audit`) over the existing `#maxbackdrop` dimmer — **NOT** a
+  card, so the settled 4‑section set is untouched. Renders one episode's **recorded chain** as **5 generic
+  sanitized stages** (IP policy B): *Understood request → Chose approach → Planned steps → Executed →
+  Outcome* — the 7 chain‑artifact types (HintSet/MappingResult/Plan/Milestone/Pipeline/PipelineRun/
+  TaskRun) and capacity/task‑pattern IRIs **never reach the DOM** (the 7→5 collapse + a defensive de‑IRI
+  live in pure `audit.js`). **Thin‑v0‑faithful:** empty fields render honestly ("no replans this run",
+  "not reached"), never hidden; confidence shown labeled "v0 (uncalibrated)" per the DM‑4 honesty caveat.
+  **Two entry points:** a per‑brain **audit button** (magnifier `.auditbtn`) — primary, "audit this brain"
+  (mode A) — and importing an `episode‑audit` snapshot via header **Import** (secondary); both open the same
+  modal. Left rail = episode list (✓ succeeded / ⊘ blocked, newest‑first, click to select). Close = ×/Esc/
+  backdrop. **Header reorder (this increment):** the brain‑card header is now **UX controls (audit,
+  maximize) │ 20px gap │ card‑UI (status dot, help)** — `makeMaxBtns` inserts maximize before `.dot`; a
+  20px gap (`.dcard .hdrright .dot{margin-left:20px}`) separates the two groups (no divider line).
+  **Representative content = the REAL DM‑4 Mode‑A export** (`confirmation_docs/fixtures/episode_audit_mgr.json`
+  — Manager × two real order lifecycles, **both `succeeded`**) baked in (`SAMPLE_AUDIT_SNAP`) and chipped
+  **"sample export"** — recorded reasoning, **NOT fabricated**. The earlier hand‑authored mock + its
+  fabricated `dont_know` were **dropped** per the no‑fabrication rule (option 2): the audit surface must not
+  invent the reasoning it exists to authenticate. The **refusal branch renders the same shape** (unit‑tested
+  against a synthetic `dont_know`) and lights up when DM‑5/6 ships a **real** refusal fixture — there is no
+  real `dont_know` path until then. `?live=` renders the live snapshot; a brain with no exported chain
+  (a1/a2/conv offline) shows the honest placeholder. `audit.js` carries an **order‑shape `task_input`
+  extractor** + count **pluralization** for the real wire shape; the real wire's **opaque ref tokens**
+  (`n1…`) draw the lineage by `iri↔*_ref` equality and never render as text. Verified headlessly **65/65**
+  (audit.js stage collapse incl. succeeded + refusal + empty‑honest; de‑IRI; **the real fixture renders
+  correctly**; **IP‑sanitization guard** asserting no internal token — and no opaque ref token — in any
+  rendered HTML incl. the live modal DOM; jsdom open/row‑click/Esc/backdrop + header‑order). **Maps
+  regenerated:** `orchestrator_card_map.png` + `plan_card_map.png` show the new header order + `.auditbtn` +
+  the 20px gap. **Pending:** a dedicated `audit_view_map.png` (modal part vocabulary) — deferred until the
+  live modal layout is eyeball‑approved, so it maps the final surface.
+
+- **v0.16 — live connection status is data-driven (false-green bugfix).** **Bug:** the honesty tag went
+  green on socket **open**, so when the tunnel/proxy (`wss://brains.sanmyaku.com`) accepts the WebSocket
+  while the backend is **down**, `onopen` fired → false "● live — connected to brains" with no real data.
+  (Reproduced headlessly: socket-open-no-data → green.) **Fix (in `setupLive`):** (1) `open` → amber
+  "● connected — waiting for brains…" — an open socket is **not** "live"; green only on the **first real
+  frame** (`hello`/`state`/`server_status`/`message`/`pose`). (2) **Heartbeat watchdog** — DM-4 emits
+  `server_status` every ~3s; once the first heartbeat is seen the watchdog arms, and if data stalls
+  >8s while green it flips to red "● connection lost — no data" (recovers to green when heartbeats
+  resume). A backend that never heartbeats (e.g. `mock_ws_server.js`) leaves the watchdog **disarmed** →
+  no false reds; it still goes red on socket close. (3) `close`/`error` → red (unchanged). `datasource.js`
+  now surfaces `server_status`/`server_event` as events (was `unknown`) — also the first step of the B1
+  vitals strip. Verified headlessly **10/10** (refused→red, open-no-data→**amber**, frame→green→drop→red,
+  heartbeat→green→stall→red watchdog, recovery→green, no-heartbeat-idle→stays green) + audit regression
+  **67/67**. **Remaining live wiring (next):** B1 vitals strip from `server_status`; B2 feed live `state`
+  → card renderer; B3 Export `state_snapshot` → download + audit view.
+
+- **v0.17 — live Server vitals strip (B1).** The Server tab (Messages card) now renders its **vitals
+  strip from the live `server_status` heartbeat** under `?live=` (was a "producer pending" placeholder).
+  Parses the **PB-3 deviated keys**: `sessions[].brain` (count + the brain list), `storage` (== "connected"),
+  `state_saved`, `uptime_s` (→ "Xh Ym"/"Xm Ys"), optional `endpoint`. A green **"live"** chip replaces the
+  amber "mock" chip. The **event feed below stays the honest placeholder** ("server_event next") until B2c
+  is consumed — vitals and feed are separate. No tech/role/capability names rendered (IP policy B; guard
+  asserts no `Falkor`/`mindsos_version` leak). `datasource.js` already surfaces the frame (v0.16). Verified
+  headlessly **17/17** (the connectivity suite + a B1 scenario: 4 sessions, storage, uptime 1363s→"22m",
+  brain list, feed-placeholder-intact, no token leak, tag stays green) + audit **67/67**.
+- **B2 — verified ALREADY WIRED (no code change).** DM-4 suspected the live branch "only consumes `pose`";
+  it doesn't. Boot runs `show(0)` + the rAF loop (line ~1116), and every live `state` frame runs
+  `frame`→`show`→`renderPanels`, which re-renders **all four brain cards** via `mergeBrain` (per-key deep
+  merge onto the carried base, so sparse frames don't drop brains). Regression-tested (connectivity
+  Scenario H: a contract `state` frame updates `bc_mgr`/`bc_a1` intent + narration, no crash on a sparse
+  brain). **So a static-cards symptom live is a `state.brains[id]` shape mismatch (or a scrubbed `FOLLOW`),
+  not the UI** — the expected per-brain shape is the WS-contract `{intent, decision, chain, active, flags,
+  caps}`. Now **21/21** with Scenario H. **Remaining:** **B3** Export `state_snapshot` → download + audit
+  view; then the `server_event` live feed.
+- **v0.18 — Export chooser + live snapshot download/open (B3).** The header **Export** is now a chooser
+  (`#expmenu`): **Audit a brain** (Orchestrator/Arm 1/Arm 2/Conveyor) or **Demo state**. Live: sends
+  `export_state {mode:"episode-audit", scope:<brain>}` or `{mode:"demo-state", scope:"all"}`; mock:
+  downloads the matching `.json` from the in-page sample. On a live **`state_snapshot`** reply,
+  `handleSnapshot` downloads the JSON and, for `kind:"episode-audit"`, **opens the audit modal** on it
+  (`demo-state` downloads only — restore deferred). `datasource.js` now surfaces `state_snapshot` +
+  `import_result` (were `unknown`). Menu closes on select / outside-click / Esc. Verified headlessly
+  **27/27** connectivity (+ Scenario I episode-audit snapshot → download+opens 5-stage view, no `root`
+  leak; Scenario J demo-state → download, modal stays closed) and **73/73** audit (+ chooser: opens, 4
+  brain options + demo-state, mock export message). **This completes the DM-4 B1–B3 live wiring** (B2 was
+  already wired). Remaining live-side: the `server_event` event feed (when DM-4 emits it) and demo-state
+  **restore** (post-DM-6).
+- **v0.19 — header redesign (mockup-approved).** (1) **Title** → “Minds**OS** Demo” (`h1` weight 500, `OS` in
+  `h1 .osb` weight 800). (2) **Beat chip (`#chapter`) + narration (`#narration`) row removed** (and their
+  renderPanels/setupLive writes). (3) **New `#audit` button** — filled **magenta `#c2419a`** (distinct from
+  every brain colour + the Play blue) with a magnifier, set apart from Export by a wide gap; its `#auditmenu`
+  lists the four brains and **opens the reasoning/audit modal (VIEW)**. (4) **`#export` is DOWNLOAD-only** —
+  `#expmenu` ("Download a brain snapshot" / "Demo state") just saves `.json`, never opens a window. In live,
+  both Audit and Export send `export_state`; a **`pendingExport` flag (`"view"|"download"`)** tells
+  `handleSnapshot` whether the `state_snapshot` reply opens the modal or downloads. (5) **System message =
+  option-C callout `#l5cal`** (replaces the tiny `#l5msg` line): permanent reserved height, **severity-colored**
+  (`sev-info/-ok/-warn/-error` — rail + icon), `l5msg(text, severity, {persist})`, **auto-clears to idle**
+  after ~5 s, with a dismiss `#l5x`; `#l5msg` is now the inner text span. `#capbanner` kept **separate**
+  (persistent compat warning — folding it into the auto-clearing callout would let an action message wipe it).
+  Verified headlessly **81/81** audit/header (Export=download incl. severity-class set + modal-not-opened;
+  Audit=view opens the modal) + **26/26** connectivity (live Audit→`state_snapshot`→modal; live Export→
+  download-only). **Map regenerated:** `header_map.png` (v0.19 parts incl. `#audit`/`#auditmenu`/`#l5cal`).
+
 ## 4. Design decisions settled this chat (the "why", not in code)
 
 **Brain cards** (see `orchestrator_card_map.png` for part names):
@@ -260,15 +356,26 @@ the as-specced *auto-spotlight the active brain* is dropped because it reverses 
 2. ~~**Export / Import → system-state files**~~ — **SHIPPED as v0.11** (scoped to the teach model;
    see §3).
 3. **L5 export/import (header buttons repurpose)** — contract approved
-   (`ROBOT_DEMO_L5_EXPORT_IMPORT_PROMPT.md`, for DM-4). UI work: (a) relocate teach-model save/load
-   into the **Teach tab**; (b) header **Export** chooser — *audit a brain* (mode A) / *demo state*
-   (mode B); (c) **Import** branches on `kind` → memory-load confirm + recap (goal #1) and a
-   per-episode **reasoning/audit view** (goal #2); demo-state import jumps to `demo_position.beat`.
-   Live-only (mock ships representative snapshots). Lands after the backend emits the frames (DM-4+).
+   (`ROBOT_DEMO_L5_EXPORT_IMPORT_PROMPT.md`, for DM-4). UI work: (a) ~~relocate teach-model save/load
+   into the **Teach tab**~~ — **SHIPPED v0.14**; (c) ~~per-episode **reasoning/audit view** (goal #2)~~ —
+   **SHIPPED v0.15** (modal, 5 generic sanitized stages; see §3). **Remaining:** (b) header **Export**
+   chooser — *audit a brain* (mode A) / *demo state* (mode B); demo-state **restore** (jump to
+   `demo_position.beat`) — deferred‑stub until Mode‑B is real (post‑DM‑6, nothing to warm‑restore yet);
+   and the goal‑#1 memory‑load **recap** read‑back (lands with the DM‑8 beat‑6 recap). Live import write
+   lands after the backend emits the frames (DM‑4+).
 3b. ~~**Server panel (live‑server showcase)**~~ — **SHIPPED v0.13** (Server · Seam A / Inter‑brain ·
    Seam B tabs on the Messages card; see §3). Remaining live‑side work: a `datasource.js` update to
    parse real `server_status`/`server_event` frames once DM‑4 emits them (today live shows the
    pending placeholder).
+3c. **Wire the REAL refusal episode (goal-#2 "why refuse") — UNBLOCKED by DM-5.** DM-5 delivered
+   `confirmation_docs/fixtures/episode_audit_arm1_refusal.json` (real `dont_know`, suction arm vs tube).
+   Fold it into the audit view's representative content (alongside the mgr succeeded fixture) and **fix the
+   refusal-case render bugs found while probing it** (see coordination 2026-06-13): (i) Stage 4 "Executed"
+   must not show green "all completed" on a blocked run; (ii) dedupe Stage 5 "Blocked — blocked — …";
+   (iii) Stage 2 renders an object noun ("tube") as the approach — relabel/behaviorize. Milestone "root"
+   filtering is validated (DM-5 5b) — keep as-is.
+3d. **Live Plan ▸ Resolve — UNBLOCKED by DM-5.** DM-5 emits the WS-§5 `resolve` frame matching `resolve.js`
+   (`buildResolve` shape). Add `resolve` to `datasource.js` and lift Plan▸Resolve off the live placeholder.
 4. **Graph content** — replace the placeholder subgraphs with real per-section graphs once
    wired to live data.
 5. *(Optional)* **Real-clip 3D cell** — on the execution beat, play the baked 46-clip set

@@ -15,7 +15,8 @@
   body{margin:0;background:var(--bg);color:var(--ink);font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
   .wrap{max-width:1300px;margin:0 auto;padding:9px 12px}
   header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px}
-  h1{font-size:14px;margin:0;font-weight:650}
+  h1{font-size:15px;margin:0;font-weight:500}
+  h1 .osb{font-weight:800}
   .tag{font-size:10px;color:var(--muted);border:1px solid var(--edge);border-radius:20px;padding:1px 8px}
   .controls{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
   button{background:var(--panel2);color:var(--ink);border:1px solid var(--edge);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px}
@@ -55,6 +56,8 @@
   .srvvitals .sv b{color:#cfe6ff}
   .srvvitals .sv.ok{color:#9be7bd}
   .srvvitals .srvmock{margin-left:auto;color:var(--warn);font-size:8px;border:1px solid #5a4a1f;border-radius:8px;padding:0 6px}
+  .srvvitals .srvlive{margin-left:auto;color:#9be7bd;font-size:8px;border:1px solid #2c5e44;border-radius:8px;padding:0 6px}
+  .srvsess{font-size:8.5px;color:var(--muted);margin:-2px 0 7px 2px}
   .srvep{font-family:ui-monospace,Menlo,monospace;font-size:8px;color:var(--muted);margin:-1px 0 7px 2px}
   .srvrow{display:flex;align-items:baseline;gap:7px;padding:3px 0;border-bottom:1px solid #1a212b}
   .kbadge{flex:0 0 auto;font-size:7.5px;font-weight:600;border-radius:7px;padding:1px 6px}
@@ -98,6 +101,8 @@
   .f-promo{color:#cbd9ff;border-color:#2c3e72;background:#141b2c}
   .f-gate{color:#ffd9a8;border-color:#7a5417;background:#2a2110}
   .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+  /* gap: UX controls (reasoning, maximize) | card-UI (status dot, help) — brain cards only */
+  .dcard .hdrright .dot{margin-left:20px}
   .hdrright{display:inline-flex;align-items:center;gap:7px}
   .state{display:inline-block;vertical-align:middle;margin-left:10px;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--edge);border-radius:9px;padding:1px 7px}
   .help{cursor:help;color:var(--muted);border:1px solid currentColor;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex:0 0 auto}
@@ -111,6 +116,65 @@
   .maxbtn svg{width:12px;height:12px;display:block}
   .maxbtn.on{background:color-mix(in srgb,var(--acc) 25%,#0e1116)}
   #maxbackdrop{position:fixed;inset:0;background:rgba(6,9,13,.66);z-index:50;display:none}
+  /* L5 reasoning/audit modal (v0.15) — overlay over #maxbackdrop; NOT a card (4-section set intact) */
+  #l5audit{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(940px,94vw);height:min(660px,90vh);background:var(--panel);border:1.7px solid var(--acc,#6f8092);border-radius:12px;z-index:52;display:none;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+  #l5audit .l5head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:color-mix(in srgb,var(--acc) 18%,#161b22);border-bottom:1px solid color-mix(in srgb,var(--acc) 50%,transparent)}
+  body.nofx #l5audit .l5head{background:#1c2330;border-bottom:1px solid var(--acc)}
+  #l5audit .l5dot{width:9px;height:9px;border-radius:50%;background:var(--acc);flex:0 0 auto}
+  #l5audit .l5title{font-size:14px;font-weight:700;color:var(--ink)}
+  #l5audit .l5tags{margin-left:auto;display:inline-flex;gap:6px}
+  #l5audit .l5tag{font-size:9.5px;padding:2px 8px;border-radius:9px;border:1px solid var(--muted);color:var(--muted);background:var(--panel2);white-space:nowrap}
+  #l5audit .l5tag.warn{color:var(--warn);border-color:#5a4a1f}
+  #l5audit .l5tag.live{color:#4bbf7a;border-color:#2c5e44}
+  #l5audit .l5close{cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:0 2px;background:none;border:none}
+  #l5audit .l5body{display:flex;gap:14px;padding:12px 14px;flex:1 1 auto;min-height:0}
+  #l5audit .l5eplist{width:232px;flex:0 0 auto;background:#11151c;border:1px solid var(--edge);border-radius:8px;padding:10px 8px;overflow:auto}
+  #l5audit .l5ephdr,#l5audit .l5shdr{font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--muted);margin:2px 4px 8px}
+  #l5audit .l5ep{display:grid;grid-template-columns:18px 1fr;width:100%;text-align:left;background:var(--panel2);border:1px solid var(--edge);border-radius:7px;padding:7px 9px;margin-bottom:8px;cursor:pointer;color:var(--ink)}
+  #l5audit .l5ep.sel{background:color-mix(in srgb,var(--acc) 28%,#0e1116);border-color:var(--acc)}
+  body.nofx #l5audit .l5ep.sel{background:#23303f}
+  #l5audit .l5epg{grid-row:1;font-weight:700}
+  #l5audit .l5epg.ok{color:#5fd39a}#l5audit .l5epg.stop{color:#e0758c}
+  #l5audit .l5ept{grid-row:1;font-size:11px;font-weight:600}
+  #l5audit .l5eps{grid-column:2;grid-row:2;font-size:9.5px;color:var(--muted);margin-top:2px}
+  #l5audit .l5stages{flex:1 1 auto;overflow:auto;padding-left:4px}
+  #l5audit .l5stage{display:grid;grid-template-columns:26px 1fr;gap:10px;position:relative;padding-bottom:12px}
+  #l5audit .l5stage:not(:last-child)::before{content:"";position:absolute;left:12px;top:24px;bottom:0;width:2px;background:var(--edge)}
+  #l5audit .l5snum{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--acc);background:color-mix(in srgb,var(--acc) 28%,#0e1116);border:1.3px solid var(--acc);z-index:1}
+  body.nofx #l5audit .l5snum{background:#1c2330}
+  #l5audit .l5sbox{background:var(--panel2);border:1px solid var(--edge);border-left:3px solid var(--acc);border-radius:8px;padding:8px 12px}
+  #l5audit .l5stt{font-size:9px;font-weight:700;letter-spacing:.7px;color:var(--muted);text-transform:uppercase}
+  #l5audit .l5sbody{font-size:13px;font-weight:600;color:var(--ink);margin-top:3px}
+  #l5audit .l5sbody.ok{color:#5fd39a}#l5audit .l5sbody.warn{color:var(--warn)}#l5audit .l5sbody.stop{color:#e0758c}
+  #l5audit .l5snote{font-size:10px;color:var(--muted);margin-top:3px}
+  #l5audit .l5empty{margin:auto;color:var(--muted);font-size:12px;text-align:center;max-width:60%}
+  /* Export chooser menu (v0.18 / B3) */
+  #expmenu{position:fixed;display:none;z-index:53;background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:5px;min-width:162px;box-shadow:0 12px 36px rgba(0,0,0,.5)}
+  #expmenu .emlabel{font-size:8.5px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;padding:3px 8px 4px}
+  #expmenu .emitem{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--ink);font-size:11px;padding:5px 8px;border-radius:5px;cursor:pointer}
+  #expmenu .emitem:hover{background:var(--panel2)}
+  #expmenu .emsep{height:1px;background:var(--edge);margin:5px 4px}
+  .auditbtn{background:transparent;border:1px solid var(--acc,#46505c);color:var(--acc,#9fb0bd);border-radius:5px;width:20px;height:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:0 0 auto}
+  .auditbtn:hover{background:color-mix(in srgb,var(--acc) 22%,#0e1116)}
+  /* header Audit button (v0.19) — filled magenta, distinct from every brain colour */
+  #audit{background:#c2419a;border:1px solid #a8327f;color:#fff;border-radius:6px;padding:4px 11px;cursor:pointer;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  #audit:hover{background:#cf52a8;border-color:#c2419a}
+  #audit .hi{width:13px;height:13px;flex:0 0 auto}
+  #auditmenu{position:fixed;display:none;z-index:53;background:var(--panel);border:1px solid #c2419a;border-radius:8px;padding:5px;min-width:150px;box-shadow:0 12px 36px rgba(0,0,0,.5)}
+  #auditmenu .emlabel{font-size:8.5px;font-weight:700;letter-spacing:.5px;color:#d873b5;text-transform:uppercase;padding:3px 8px 4px}
+  #auditmenu .emitem{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--ink);font-size:11px;padding:5px 8px;border-radius:5px;cursor:pointer}
+  #auditmenu .emitem:hover{background:var(--panel2)}
+  /* option-C system message callout (v0.19) — permanent height, severity-colored, auto-clears */
+  #l5cal{display:flex;align-items:center;gap:9px;min-height:34px;margin:6px 0 4px;padding:0 12px;border:1px solid var(--edge);border-left:4px solid var(--edge);border-radius:8px;background:var(--panel2);font-size:13px;color:var(--ink)}
+  #l5cal.idle{opacity:.4}
+  #l5cal .l5ico{font-size:14px;flex:0 0 auto}
+  #l5cal #l5msg{flex:1 1 auto}
+  #l5cal #l5x{background:none;border:0;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:0 2px;display:none}
+  #l5cal.dismissable #l5x{display:inline}
+  #l5cal.sev-info{border-left-color:#5b9bf0}#l5cal.sev-info .l5ico{color:#5b9bf0}
+  #l5cal.sev-ok{border-left-color:#48c78e}#l5cal.sev-ok .l5ico{color:#48c78e}
+  #l5cal.sev-warn{border-left-color:#d29922}#l5cal.sev-warn .l5ico{color:#d29922}
+  #l5cal.sev-error{border-left-color:#e5534b;background:#211012}#l5cal.sev-error .l5ico{color:#e5534b}
   .dcard.maximized{box-shadow:0 0 0 1px var(--acc),0 18px 60px rgba(0,0,0,.6)}
   /* v10.5 presentation hardening — capability banner + color-mix fallback */
   #capbanner{display:none;align-items:center;gap:10px;background:#2a2110;border:1px solid #7a5417;color:#ffd9a8;border-radius:6px;padding:5px 10px;font-size:11px;margin-bottom:6px}
@@ -241,23 +305,49 @@
 <body>
 <div class="wrap">
   <header>
-    <h1>MindsOS · “Open Order”</h1>
+    <h1>Minds<span class="osb">OS</span> Demo</h1>
     <span class="tag">presentation</span>
-    <span class="tag">v0.14</span>
+    <span class="tag">v0.19</span>
     <span class="tag" id="honesty" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
     <div class="controls">
-      <button id="export"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.7 L7 8.8 L10 5.7" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>Export</button><button id="import"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="9" x2="7" y2="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.3 L7 2.2 L10 5.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>Import</button>
+      <button id="audit"><svg class="hi" viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Audit ▾</button>
+      <span style="width:28px"></span>
+      <button id="export"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.7 L7 8.8 L10 5.7" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>▾ Export</button><button id="import"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="9" x2="7" y2="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.3 L7 2.2 L10 5.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>Import</button>
       <span style="width:10px"></span>
       <button id="prev">‹</button><button id="play" class="primary">▶ Play</button><button id="next">›</button><button id="reset">↺</button>
     </div>
   </header>
 
-  <div class="chapter"><span class="chip" id="chapter">Beat 0 / 6</span><span class="narr" id="narration">—</span></div>
   <input type="file" id="t_io_file" accept="application/json,.json" style="display:none">
   <input type="file" id="l5_io_file" accept="application/json,.json" style="display:none">
-  <div id="l5msg" style="display:none;font-size:10px;color:var(--muted);margin:3px 0 0"></div>
+  <!-- option-C system message callout (v0.19) — permanent height, severity-colored, auto-clears -->
+  <div id="l5cal" class="idle"><span class="l5ico">·</span><span id="l5msg"></span><button id="l5x" title="dismiss">×</button></div>
   <div id="cardtip"></div>
   <div id="capbanner"></div>
+  <!-- Audit chooser (v0.19) — popped under the header Audit button; click a brain → audit modal (VIEW) -->
+  <div id="auditmenu">
+    <div class="emlabel">Audit a brain</div>
+    <button class="emitem" data-audit="mgr">Orchestrator</button>
+    <button class="emitem" data-audit="a1">Arm 1</button>
+    <button class="emitem" data-audit="a2">Arm 2</button>
+    <button class="emitem" data-audit="conv">Conveyor</button>
+  </div>
+  <!-- Export chooser (v0.18) — DOWNLOAD only: brain-snapshot / demo-state .json -->
+  <div id="expmenu">
+    <div class="emlabel">Download a brain snapshot</div>
+    <button class="emitem" data-audit="mgr">Orchestrator</button>
+    <button class="emitem" data-audit="a1">Arm 1</button>
+    <button class="emitem" data-audit="a2">Arm 2</button>
+    <button class="emitem" data-audit="conv">Conveyor</button>
+    <div class="emsep"></div>
+    <button class="emitem" data-demo="1">Demo state</button>
+  </div>
+  <!-- L5 reasoning/audit modal (v0.15) — overlay, opened per-brain or from Import; NOT a card -->
+  <div id="l5audit">
+    <div class="l5head"><span class="l5dot"></span><span class="l5title">Reasoning audit</span>
+      <span class="l5tags"></span><button class="l5close" title="close (Esc)">×</button></div>
+    <div class="l5body"></div>
+  </div>
 
   <div id="stage">
     <svg id="links"></svg>
@@ -357,6 +447,7 @@
 <script src="teach.js"></script>
 <script src="sections.js"></script>
 <script src="resolve.js"></script>
+<script src="audit.js"></script>
 <script src="datasource.js"></script>
 <script>
 let VW=820,VH=262;
@@ -459,16 +550,18 @@ const states = DS.states;          // mock: filled now (identical to before) · 
 const LIVE = DS.isLive;
 let FOLLOW = true;                  // live: track the newest frame unless the user scrubs back
 
-function cardHTML(label,role,desc){
+const AUDIT_ICO='<svg viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+function cardHTML(k,label,role,desc){
   const tabs=STAGES.map(([s,lab])=>`<button class="bsec uitab" data-s="${s}" title="${lab}">${lab}</button>`).join('');
-  return `<div class="nm draghandle"><span>${label} <span class="state"></span></span><span class="hdrright"><span class="dot"></span><span class="help" title="${role} — ${desc}">?</span></span></div>
+  return `<div class="nm draghandle"><span>${label} <span class="state"></span></span><span class="hdrright"><button class="auditbtn" data-audit="${k}" title="reasoning audit — why it decided / refused">${AUDIT_ICO}</button><span class="dot"></span><span class="help" title="${role} — ${desc}">?</span></span></div>
   <div class="cintent"></div>
   <div class="bsections">${tabs}</div>
   <div class="scroll"><div class="secbody"></div></div>`;}
-for(const [k,label,role,desc] of BR){const c=document.getElementById("bc_"+k);c.innerHTML=cardHTML(label,role,desc);c.dataset.sec="task";c.dataset.mode="panel";}
+for(const [k,label,role,desc] of BR){const c=document.getElementById("bc_"+k);c.innerHTML=cardHTML(k,label,role,desc);c.dataset.sec="task";c.dataset.mode="panel";}
 // delegated: brain-section tabs + per-section view-mode toggle (Panel / ⌗)
 for(const [k] of BR){const card=document.getElementById("bc_"+k);
   card.addEventListener("click",e=>{
+    const ab=e.target.closest(".auditbtn");if(ab){e.stopPropagation();openAudit(LIVE?null:SAMPLE_AUDIT_SNAP,k);return;}
     const t=e.target.closest(".bsec");if(t){card.dataset.sec=t.dataset.s;renderCard(card,k,states[idx].brains[k]);return;}
     const v=e.target.closest(".vmb");if(v){card.dataset.mode=v.dataset.m;renderCard(card,k,states[idx].brains[k]);return;}
   });}
@@ -515,7 +608,9 @@ function ensureBackdrop(){let b=document.getElementById("maxbackdrop");if(!b){b=
 function makeMaxBtns(){document.querySelectorAll(".dcard").forEach(card=>{const hr=card.querySelector(".hdrright");if(!hr||hr.querySelector(".maxbtn"))return;
   const b=document.createElement("button");b.className="maxbtn";b.title="maximize height";b.innerHTML=MAX_ICO;
   b.onclick=(e)=>{e.stopPropagation();maximizeCard(card.id);};
-  const help=hr.querySelector(".help");help?hr.insertBefore(b,help):hr.appendChild(b);});}
+  // UX controls (reasoning + maximize) sit left of the card-UI group (status dot, help):
+  // insert maximize before the dot on brain cards, else before help on the static cards.
+  const ref=hr.querySelector(".dot")||hr.querySelector(".help");ref?hr.insertBefore(b,ref):hr.appendChild(b);});}
 function updateMaxBtns(){document.querySelectorAll(".maxbtn").forEach(b=>{const on=b.closest(".dcard").id===maximizedId;b.innerHTML=on?RESTORE_ICO:MAX_ICO;b.title=on?"restore height":"maximize height";b.classList.toggle("on",on);});}
 function maximizeCard(id){
   if(maximizedId===id){restoreCard();return;}
@@ -572,29 +667,134 @@ document.getElementById("tv_export").onclick=()=>{
 // SCAFFOLD (mock): Export downloads a representative demo-state snapshot; Import parses + confirms.
 // Live uses export_state/import_state (ROBOT_DEMO_L5_EXPORT_IMPORT_PROMPT.md). The per-mode chooser,
 // the reasoning/audit view, and demo-state restore land next (mockup-gated). Schema is LOCKED.
-function l5msg(t){const m=document.getElementById("l5msg");if(m){m.textContent=t||"";m.style.display=t?"block":"none";}}
+// option-C system message callout: l5msg(text, severity, {persist}). Permanent height; severity color;
+// auto-clears to idle after ~5s unless persist. Severity ∈ info|ok|warn|error.
+let _l5timer=null;
+function l5msg(t,sev,opts){opts=opts||{};const cal=document.getElementById("l5cal");if(!cal)return;
+  const m=cal.querySelector("#l5msg"),ic=cal.querySelector(".l5ico");
+  if(_l5timer){clearTimeout(_l5timer);_l5timer=null;}
+  if(!t){cal.className="idle";if(ic)ic.textContent="·";if(m)m.textContent="";return;}
+  const ICO={info:"ℹ",ok:"✓",success:"✓",warn:"⚠",warning:"⚠",error:"⚠"};
+  const cls=(sev==="ok"||sev==="success")?"sev-ok":(sev==="warn"||sev==="warning")?"sev-warn":sev==="error"?"sev-error":"sev-info";
+  cal.className=cls+(opts.persist?" dismissable":"");if(ic)ic.textContent=ICO[sev]||"ℹ";if(m)m.textContent=t;
+  if(!opts.persist)_l5timer=setTimeout(()=>l5msg(""),5200);}
+(function(){const x=document.getElementById("l5x");if(x)x.onclick=()=>l5msg("");})();
+function dlJSON(obj,fname){const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=fname;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function today(){return new Date().toISOString().slice(0,10);}
 function mockSnapshot(){return {snapshot_version:1,kind:"demo-state",created_at:new Date().toISOString(),
-  mindsos_version:"mock",scenario:"open-order",run_id:"mock-run",
+  scenario:"open-order",run_id:"mock-run",
   demo_position:{beat:idx,placed_orders:[],sim_poses:{}},
   brains:{mgr:{episodes:[]},a1:{episodes:[]},a2:{episodes:[]},conv:{episodes:[]}},_mock:true};}
-document.getElementById("export").onclick=()=>{
-  if(LIVE){DS.sendCommand({type:"command",name:"export_state",args:{mode:"demo-state",scope:"all"}});l5msg("requested demo-state export from the live server…");return;}
-  const blob=new Blob([JSON.stringify(mockSnapshot(),null,2)],{type:"application/json"});
-  const url=URL.createObjectURL(blob),a=document.createElement("a");
-  a.href=url;a.download="mindsos-demo-state-"+new Date().toISOString().slice(0,10)+".json";
-  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  l5msg("exported demo-state snapshot (mock).");};
+function auditSnapFor(brain){const block=SAMPLE_AUDIT_SNAP.brains[brain]||{episodes:[]};
+  return {snapshot_version:1,kind:"episode-audit",created_at:new Date().toISOString(),scenario:"open-order",run_id:"sample:"+brain,brains:{[brain]:block},_sample:true};}
+// v0.19: Audit button = VIEW (open the modal). Export button = DOWNLOAD only. In live both request
+// export_state; pendingExport tells handleSnapshot which the reply is for.
+let pendingExport=null;   // "view" | "download"
+function auditView(brain){ closeAuditMenu();
+  if(LIVE){pendingExport="view";DS.sendCommand({type:"command",name:"export_state",args:{mode:"episode-audit",scope:brain}});l5msg(`requesting ${BRLAB[brain]||brain} reasoning from the live server…`,"info");return;}
+  openAudit(SAMPLE_AUDIT_SNAP,brain);}
+function exportAudit(brain){ closeExportMenu();
+  if(LIVE){pendingExport="download";DS.sendCommand({type:"command",name:"export_state",args:{mode:"episode-audit",scope:brain}});l5msg(`requested ${BRLAB[brain]||brain} snapshot download…`,"info");return;}
+  const snap=auditSnapFor(brain);dlJSON(snap,`mindsos-audit-${brain}-${today()}.json`);
+  const n=(snap.brains[brain].episodes||[]).length; l5msg(`downloaded ${BRLAB[brain]||brain} snapshot · ${n} episode${n===1?"":"s"} (sample)`,"ok");}
+function exportDemoState(){ closeExportMenu();
+  if(LIVE){pendingExport="download";DS.sendCommand({type:"command",name:"export_state",args:{mode:"demo-state",scope:"all"}});l5msg("requested demo-state download…","info");return;}
+  dlJSON(mockSnapshot(),`mindsos-demo-state-${today()}.json`); l5msg("downloaded demo-state snapshot (mock).","ok");}
+// reply to a live export_state: VIEW → open the audit modal; DOWNLOAD → save the JSON.
+function handleSnapshot(snap){ if(!snap){l5msg("server returned an empty snapshot.","error");return;}
+  const kind=snap.kind||"(unknown)";
+  if(pendingExport==="view" && kind==="episode-audit"){const b=firstAuditBrain(snap);openAudit(snap,b);l5msg(`opened ${BRLAB[b]||b} reasoning audit`,"ok");pendingExport=null;return;}
+  dlJSON(snap,(kind==="episode-audit"?"mindsos-audit-":kind==="demo-state"?"mindsos-demo-state-":"mindsos-snapshot-")+today()+".json");
+  l5msg(kind==="episode-audit"?"downloaded audit snapshot":kind==="demo-state"?"downloaded demo-state snapshot":`downloaded ${esc(kind)} snapshot`,"ok");
+  pendingExport=null;}
+// ---- Audit chooser (VIEW) ----
+const auditmenu=document.getElementById("auditmenu");
+function openAuditMenu(){const b=document.getElementById("audit").getBoundingClientRect();auditmenu.style.left=Math.min(b.left,window.innerWidth-170)+"px";auditmenu.style.top=(b.bottom+4)+"px";auditmenu.style.display="block";}
+function closeAuditMenu(){if(auditmenu)auditmenu.style.display="none";}
+document.getElementById("audit").onclick=(e)=>{e.stopPropagation();auditmenu.style.display==="block"?closeAuditMenu():openAuditMenu();};
+auditmenu.addEventListener("click",e=>{const a=e.target.closest(".emitem");if(a&&a.dataset.audit)auditView(a.dataset.audit);});
+// ---- Export chooser (DOWNLOAD only) ----
+const expmenu=document.getElementById("expmenu");
+function openExportMenu(){const b=document.getElementById("export").getBoundingClientRect();expmenu.style.left=Math.min(b.left,window.innerWidth-180)+"px";expmenu.style.top=(b.bottom+4)+"px";expmenu.style.display="block";}
+function closeExportMenu(){if(expmenu)expmenu.style.display="none";}
+document.getElementById("export").onclick=(e)=>{e.stopPropagation();expmenu.style.display==="block"?closeExportMenu():openExportMenu();};
+expmenu.addEventListener("click",e=>{const a=e.target.closest(".emitem");if(!a)return;if(a.dataset.audit)exportAudit(a.dataset.audit);else if(a.dataset.demo)exportDemoState();});
+document.addEventListener("click",e=>{const t=e.target;
+  if(expmenu.style.display==="block"&&!t.closest("#expmenu")&&!t.closest("#export"))closeExportMenu();
+  if(auditmenu.style.display==="block"&&!t.closest("#auditmenu")&&!t.closest("#audit"))closeAuditMenu();});
+window.addEventListener("keydown",e=>{if(e.key==="Escape"){closeExportMenu();closeAuditMenu();}});
 document.getElementById("import").onclick=()=>document.getElementById("l5_io_file").click();
 document.getElementById("l5_io_file").onchange=function(){const fin=this,f=fin.files&&fin.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=()=>{try{const o=JSON.parse(r.result),kind=o.kind||"(unknown)";
       const nEp=o.brains?Object.values(o.brains).reduce((s,b)=>s+((b.episodes&&b.episodes.length)||0),0):0;
       if(LIVE)DS.sendCommand({type:"command",name:"import_state",args:{snapshot:o}});
-      l5msg(kind==="demo-state"?`loaded demo-state snapshot${o.demo_position?` · beat ${o.demo_position.beat}`:""} (${nEp} episode${nEp===1?"":"s"})`
-            :kind==="episode-audit"?`loaded brain-audit snapshot · ${nEp} episode${nEp===1?"":"s"} (reasoning view: next increment)`
-            :`loaded snapshot (kind: ${esc(kind)})`);
-    }catch(err){l5msg("invalid snapshot file: "+(err&&err.message||err));}finally{fin.value="";}};
+      if(kind==="episode-audit"){const b=firstAuditBrain(o);openAudit(o,b);l5msg(`opened reasoning audit · ${nEp} episode${nEp===1?"":"s"}`,"ok");}
+      else l5msg(kind==="demo-state"?`loaded demo-state snapshot${o.demo_position?` · beat ${o.demo_position.beat}`:""} (${nEp} episode${nEp===1?"":"s"})`
+            :`loaded snapshot (kind: ${esc(kind)})`,"ok");
+    }catch(err){l5msg("invalid snapshot file: "+(err&&err.message||err),"error");}finally{fin.value="";}};
   r.readAsText(f);};
+
+// ===== v0.15 — L5 reasoning/audit view (modal over #maxbackdrop) =====
+// Renders a RECORDED chain as 5 generic sanitized stages (audit.js). Per-brain "audit" button or an
+// imported episode-audit snapshot opens it. Offline content = the REAL DM-4 Mode-A export
+// (fixtures/episode_audit_mgr.json) — recorded reasoning from the actual stack, NOT fabricated;
+// chipped "sample export". ?live= renders the live snapshot; a brain with no exported chain shows the
+// honest placeholder. The refusal branch renders the same shape and lights up when DM-5/6 ships a real
+// dont_know fixture (we will NOT hand-author a refusal — see ROBOT_DEMO_DM4_L5_EXPORT_COORDINATION.md).
+const ACC={mgr:'#b98cf0',a1:'#3a8be0',a2:'#d98040',conv:'#48c78e'};
+const BRLAB={mgr:'Orchestrator',a1:'Arm 1',a2:'Arm 2',conv:'Conveyor'};
+// REAL recorded sample — sanitized at the wire by DM-4 (opaque ref tokens n1…; plain labels). Verbatim
+// from fixtures/episode_audit_mgr.json (Manager, two real order lifecycles, both succeeded).
+const SAMPLE_AUDIT_SNAP={ snapshot_version:1, kind:"episode-audit", created_at:"2026-06-12T23:16:28Z", scenario:"open-order", run_id:"robot-demo:mgr",
+  brains:{
+    mgr:{device_type:"manager",episodes:[
+      {episode_iri:"n10", value:{task_input_ref:null,mm_root_ref:null,task_pattern_iri:"move to home",outcome_classification:"succeeded",crash_marker:null},
+       task_input:{order:{lines:[{item:"box",shelf:"a1"}]}},
+       reasoning:{hint_set:{iri:"n11",hints:{}},mapping_result:{iri:"n12",selected_task_pattern_iri:"move to home",mapping_confidence:1.0},
+         plan:{iri:"n13",root_milestone_ref:"n14"},milestones:[{iri:"n14",name:"root",status:"pending",replans_used:0}],
+         pipelines:[{iri:"n15",milestone_ref:"n14"}],pipeline_runs:[{iri:"n16",status:"completed",task_run_ref:"n17"}],
+         task_run:{iri:"n17",status:"completed",replan_history:[],attention_score:500},
+         steps:[{iri:"n18",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n14"}],
+         replans:[],blame:null,dont_know:null}, problem_trace:[]},
+      {episode_iri:"n1", value:{task_input_ref:null,mm_root_ref:null,task_pattern_iri:"move to home",outcome_classification:"succeeded",crash_marker:null},
+       task_input:{order:{lines:[{item:"sheet",shelf:"a1"}]}},
+       reasoning:{hint_set:{iri:"n2",hints:{}},mapping_result:{iri:"n3",selected_task_pattern_iri:"move to home",mapping_confidence:1.0},
+         plan:{iri:"n4",root_milestone_ref:"n5"},milestones:[{iri:"n5",name:"root",status:"pending",replans_used:0}],
+         pipelines:[{iri:"n6",milestone_ref:"n5"}],pipeline_runs:[{iri:"n7",status:"completed",task_run_ref:"n8"}],
+         task_run:{iri:"n8",status:"completed",replan_history:[],attention_score:500},
+         steps:[{iri:"n9",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n5"}],
+         replans:[],blame:null,dont_know:null}, problem_trace:[]}],
+      memories:[{memory_iri:"n19",value:{task_pattern_iri:"move to home"},episode_iris:["n1","n10"]}]},
+    a1:{episodes:[]}, a2:{episodes:[]}, conv:{episodes:[]} },
+  _sample:true };
+
+let auditOpen=false,auditBrain=null,auditSnap=null,auditEp=0;
+function renderAudit(){
+  const modal=document.getElementById("l5audit");if(!modal)return;
+  const acc=ACC[auditBrain]||'#6f8092';modal.style.setProperty("--acc",acc);
+  modal.querySelector(".l5title").textContent=(BRLAB[auditBrain]||auditBrain||"Brain")+" — Reasoning audit";
+  modal.querySelector(".l5tags").innerHTML='<span class="l5tag">recorded · not a live replay</span>'+(LIVE?'<span class="l5tag live">live</span>':'<span class="l5tag warn">sample export</span>');
+  const res=auditModalHTML(auditSnap,auditBrain,auditEp,{emptyMsg:LIVE?"Reasoning audit available on live brains — waiting for this brain’s exported chain.":"No recorded episodes for this brain yet."});
+  modal.querySelector(".l5body").innerHTML=res.html;
+  if(!res.empty)auditEp=res.selected;
+}
+function openAudit(snap,brain){
+  auditSnap=snap||SAMPLE_AUDIT_SNAP;auditBrain=brain||"mgr";auditEp=0;auditOpen=true;
+  ensureBackdrop();const bd=document.getElementById("maxbackdrop");bd.style.display="block";bd.onclick=closeAudit;
+  const modal=document.getElementById("l5audit");modal.style.display="flex";renderAudit();
+}
+function closeAudit(){
+  auditOpen=false;const modal=document.getElementById("l5audit");if(modal)modal.style.display="none";
+  const bd=document.getElementById("maxbackdrop");if(bd){bd.onclick=restoreCard;if(!maximizedId)bd.style.display="none";}
+}
+(function(){const modal=document.getElementById("l5audit");if(!modal)return;
+  modal.addEventListener("click",e=>{
+    if(e.target.closest(".l5close")){closeAudit();return;}
+    const row=e.target.closest(".l5ep");if(row){auditEp=+row.dataset.ep||0;renderAudit();}});})();
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&auditOpen)closeAudit();});
 
 // ===== views =====
 let idx=0,mode="3d",animating=false,t0=0,WEBGL_OK=true,COLORMIX_OK=true;
@@ -733,8 +933,6 @@ function renderCard(card,k,d){
   else { body=sectionBodyHTML(sec,d); if(sec==="plan") body+=resolveSubsectionHTML(k); }
   sb.innerHTML=hdr+body;}
 function renderPanels(st){
-  document.getElementById("chapter").textContent=`Beat ${idx} / ${states.length-1}`;
-  document.getElementById("narration").textContent=st.narr;
   for(const [k] of BR){const data=st.brains[k],card=document.getElementById("bc_"+k);
     card.classList.toggle("active",!!data.active);card.classList.toggle("dim",!data.active);
     const ss=card.querySelector(".state");if(ss)ss.textContent=stateOf(data);
@@ -922,18 +1120,34 @@ document.getElementById("t_capture").onclick=()=>{const nm=(document.getElementB
   clearInterval(timer);setPlay(false);show(2);};
 ttBuildComposeChips();refreshLibrary();ttRefreshMode();
 
-// ===== v10.6 live wiring: follow WS frames + reflect connection status =====
+// ===== v10.6/v0.16 live wiring: follow WS frames + DATA-DRIVEN connection status =====
+// Connection truth = real data, not a bare open socket. A tunnel/proxy can accept the WebSocket while
+// the backend is down (onopen fires) — so green requires a real frame, and a heartbeat watchdog flips
+// green→red when the backend's ~3s `server_status` stops. close/error → red. (Fixes the false-green bug.)
+const CONN_STALE_MS=8000, CONN_WATCH_MS=2000;
+let liveGreen=false, beatArmed=false, lastDataAt=0, connWatch=null, liveServerStatus=null;
 function setLiveTag(txt,col){const t=document.getElementById("honesty");if(!t)return;t.textContent=txt;if(col){t.style.color=col;t.style.borderColor=col;}}
+function connGreen(){ if(!liveGreen){ liveGreen=true; setLiveTag("● live — connected to brains","#48c78e"); } }
+function connData(){ lastDataAt=Date.now(); connGreen(); }                 // any real frame ⇒ alive
+function connArmBeat(){ if(!beatArmed){ beatArmed=true; if(!connWatch) connWatch=setInterval(connCheck,CONN_WATCH_MS); } }
+function connClearWatch(){ beatArmed=false; if(connWatch){ clearInterval(connWatch); connWatch=null; } }
+function connDown(txt){ liveGreen=false; connClearWatch(); setLiveTag(txt,"#e5534b"); }
+function connCheck(){ if(beatArmed && liveGreen && (Date.now()-lastDataAt)>CONN_STALE_MS){ liveGreen=false; setLiveTag("● connection lost — no data","#e5534b"); } }
 function setupLive(){
   setLiveTag("● connecting to live brains…","#d29922");
-  DS.onUpdate((kind)=>{
-    if(kind==="open")        setLiveTag("● live — connected to brains","#48c78e");
-    else if(kind==="close")  setLiveTag("● disconnected from brains","#e5534b");
-    else if(kind==="error")  setLiveTag("● live connection error","#e5534b");
-    else if(kind==="reset"){ FOLLOW=true; show(0); }
-    else if(kind==="frame"){ if(FOLLOW) show(states.length-1); else document.getElementById("chapter").textContent=`Beat ${idx} / ${states.length-1}`; }
-    else if(kind==="message"){ if(idx===states.length-1) renderPanels(states[idx]); }
-    // 'pose' needs no explicit redraw — the rAF loop reads states[idx].items each tick
+  DS.onUpdate((kind,payload)=>{
+    if(kind==="open")             setLiveTag("● connected — waiting for brains…","#d29922");  // socket open ≠ live
+    else if(kind==="close")       connDown("● disconnected from brains");
+    else if(kind==="error")       connDown("● live connection error");
+    else if(kind==="reset"){      connData(); FOLLOW=true; show(0); }
+    else if(kind==="frame"){      connData(); if(FOLLOW) show(states.length-1); }
+    else if(kind==="message"){    connData(); if(idx===states.length-1) renderPanels(states[idx]); }
+    else if(kind==="hello")       connData();
+    else if(kind==="server_status"){ liveServerStatus=payload; connData(); connArmBeat(); renderServerFeed(); }  // B1 vitals
+    else if(kind==="server_event"){  connData(); /* B1 event feed: next */ }
+    else if(kind==="state_snapshot"){ connData(); handleSnapshot(payload&&payload.snapshot); }  // B3 export reply
+    else if(kind==="import_result"){  connData(); l5msg("server import "+(payload&&payload.ok?"ok":"failed")); }
+    else if(kind==="pose")        connData();
   });
   DS.start();
 }
@@ -964,8 +1178,21 @@ const SERVER_MOCK={vitals:{sessions:4,uptime:"14m",endpoint:"wss://brains.sanmya
   {kind:"gate_ok",text:"Action authorized · Arm 2"},
   {kind:"gate_no",text:"Action blocked — permission required · Arm 1"},
   {kind:"audit",text:"Audit entry recorded"}]};
+function fmtUptime(sec){sec=Math.max(0,Math.floor(+sec||0));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return h?`${h}h ${m}m`:m?`${m}m ${s}s`:`${s}s`;}
 function renderServerFeed(){const el=document.getElementById("srvfeed");if(!el)return;
-  if(LIVE){el.innerHTML=`<div class="srvpending">live server feed — backend producer pending (DM-4+)</div>`;return;}
+  if(LIVE){
+    const s=liveServerStatus;
+    if(!s){el.innerHTML=`<div class="srvpending">connecting — waiting for server status…</div>`;return;}
+    const n=(s.sessions&&s.sessions.length)||0, stor=s.storage||"—", storOk=stor==="connected";   // B1: live vitals (PB-3 keys)
+    let h=`<div class="srvvitals"><span class="sv"><b>${n}</b> sessions active</span>`+
+          `<span class="sv ${storOk?"ok":""}">Storage: ${esc(stor)}</span>`+
+          (s.state_saved?`<span class="sv ok">State saved</span>`:``)+
+          `<span class="sv">up ${esc(fmtUptime(s.uptime_s))}</span>`+
+          `<span class="srvlive">live</span></div>`;
+    if(s.endpoint) h+=`<div class="srvep">${esc(s.endpoint)}</div>`;
+    if(s.sessions&&s.sessions.length) h+=`<div class="srvsess">${s.sessions.map(x=>esc(x.brain||"?")).join(" · ")}</div>`;
+    h+=`<div class="srvpending">live event feed — backend producer pending (server_event next)</div>`;
+    el.innerHTML=h;return;}
   const v=SERVER_MOCK.vitals;
   let h=`<div class="srvvitals"><span class="sv"><b>${v.sessions}</b> sessions active</span><span class="sv ok">Storage: connected</span><span class="sv">up ${esc(v.uptime)}</span><span class="srvmock">mock</span></div>`;
   h+=`<div class="srvep">${esc(v.endpoint)}</div>`;

@@ -77,6 +77,10 @@
         case 'state':   applyState(msg);    break;
         case 'pose':    applyPose(msg);     break;
         case 'message': applyMessage(msg);  break;
+        case 'server_status': emit('server_status', msg); break;   // Seam-A vitals + liveness heartbeat (~3s)
+        case 'server_event':  emit('server_event', msg);  break;   // Seam-A lifecycle/authz/audit event
+        case 'state_snapshot': emit('state_snapshot', msg); break; // reply to export_state (browser downloads)
+        case 'import_result':  emit('import_result', msg);  break; // reply to import_state
         case 'reset':   states.length=0; acc=clone(base); if(!acc.msgs) acc.msgs=[]; states.push(clone(acc)); emit('reset'); break;
         default:        emit('unknown', msg);
       }

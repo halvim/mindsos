@@ -27,6 +27,10 @@ def max_btn(cx,cy,col):
             f'<rect x="{cx-3}" y="{cy-2.5}" width="6" height="5" rx="1" fill="none" stroke="{col}" stroke-width="0.9"/>'
             f'<path d="M{cx-2},{cy-4} L{cx},{cy-5.8} L{cx+2},{cy-4}" fill="none" stroke="{col}" stroke-width="0.9" stroke-linejoin="round"/>'
             f'<path d="M{cx-2},{cy+4} L{cx},{cy+5.8} L{cx+2},{cy+4}" fill="none" stroke="{col}" stroke-width="0.9" stroke-linejoin="round"/>')
+def audit_btn(cx,cy,col):  # reasoning-audit control: bordered button + magnifier glyph
+    return (f'<rect x="{cx-10}" y="{cy-8}" width="20" height="16" rx="4" fill="none" stroke="{col}" stroke-width="1"/>'
+            f'<circle cx="{cx-1.5}" cy="{cy-1}" r="3.1" fill="none" stroke="{col}" stroke-width="1"/>'
+            f'<line x1="{cx+0.7}" y1="{cy+1.2}" x2="{cx+3.6}" y2="{cy+4}" stroke="{col}" stroke-width="1.1" stroke-linecap="round"/>')
 S=['<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 740" font-family="Segoe UI,Helvetica,Arial,sans-serif">']
 S.append('<rect x="0" y="0" width="1180" height="740" fill="#0e1116"/>')
 S.append(f'<text x="590" y="34" fill="{INK}" font-size="20" font-weight="700" text-anchor="middle">Orchestrator card — Plan section, Resolve subsection as a SUB-CARD (part names)</text>')
@@ -38,8 +42,10 @@ tb=34
 S.append(f'<path d="M{X0} {Y0+11} q0 -11 11 -11 h{W-22} q11 0 11 11 v{tb-11} h-{W} z" fill="#2a2440"/>')
 S.append(f'<line x1="{X0}" y1="{Y0+tb}" x2="{X0+W}" y2="{Y0+tb}" stroke="{MGR}" stroke-opacity="0.5"/>')
 S.append(f'<text x="{X0+12}" y="{Y0+22}" fill="{MGR}" font-size="13" font-weight="700">Orchestrator</text>')
-S.append(f'<circle cx="{X0+W-62}" cy="{Y0+17}" r="3.5" fill="{MGR}"/>')
-S.append(max_btn(X0+W-40, Y0+17, MGR))
+# header right cluster — UX controls (audit, maximize) | 20px gap | card-UI (status dot, help)
+S.append(audit_btn(X0+W-96, Y0+17, MGR))
+S.append(max_btn(X0+W-72, Y0+17, MGR))
+S.append(f'<circle cx="{X0+W-36}" cy="{Y0+17}" r="3.5" fill="{MGR}"/>')
 S.append(f'<circle cx="{X0+W-16}" cy="{Y0+17}" r="7" fill="none" stroke="{MUT}"/><text x="{X0+W-16}" y="{Y0+21}" fill="{MUT}" font-size="9" text-anchor="middle">?</text>')
 # pinned intent
 ciy=Y0+tb+16
@@ -102,8 +108,9 @@ def label(x,y,name,cls,anchor="start"):
 # TOP
 _planc=X0+10+1*tw+(tw-3)/2
 label(X0+12,108,"Brain sections",".bsec  (Plan selected)"); leader(X0+60,114,_planc,ty-1)
-label(905,96,"Maximize height",".maxbtn"); leader(903,92,X0+W-40,Y0+9)
-label(905,132,"Help / tooltip",".help"); leader(903,128,X0+W-16,Y0+17)
+label(905,90,"Reasoning audit",".auditbtn"); leader(903,86,X0+W-96,Y0+9)
+label(905,122,"Maximize height",".maxbtn"); leader(903,118,X0+W-72,Y0+9)
+label(905,154,"Help / tooltip",".help"); leader(903,150,X0+W-16,Y0+17)
 
 # LEFT
 label(300,Y0+6,"Card",".dcard.mgr",anchor="end"); leader(305,Y0+2,X0,Y0+2)
