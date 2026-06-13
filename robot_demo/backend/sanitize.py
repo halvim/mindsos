@@ -95,15 +95,21 @@ class TokenMap:
 
 # ── plain labels (PB-12 / PB-14) ─────────────────────────────────────────
 def plain_task_pattern(tpi: Optional[str]) -> Optional[str]:
-    """``task-pattern:demo:move:<dst>:<target>`` → "move to <target>".
+    """``task-pattern:demo:move:<dst>:<target>[:<item>]`` → a behavior label.
 
-    Non-demo / unrecognised IRIs collapse to a generic "approach" rather than
-    leak the raw IRI. ``None`` passes through."""
+    DM-5: the 3-field codec adds an optional ``item`` segment, so split (don't
+    ``partition``, which would fold ``<target>:<item>`` into one — the
+    ``"move to r1c1:tube"`` bug). With an item the label is behavior-level
+    ("place <item>"); without one it's the DM-4 "move to <target>". Non-demo /
+    unrecognised IRIs collapse to a generic "approach". ``None`` passes through."""
     if not tpi:
         return tpi
     if tpi.startswith(_TPI_PREFIX):
-        rest = tpi[len(_TPI_PREFIX):]
-        _dst, _, target = rest.partition(":")
+        parts = tpi[len(_TPI_PREFIX):].split(":")
+        target = parts[1] if len(parts) > 1 and parts[1] else ""
+        item = parts[2] if len(parts) > 2 and parts[2] else ""
+        if item:
+            return f"place {item}"
         return f"move to {target}" if target else "move"
     return "approach"
 

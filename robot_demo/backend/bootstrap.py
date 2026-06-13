@@ -37,6 +37,7 @@ from mindsos_knowledge.metagraph_view import MetagraphView
 
 from .brain import Brain, build_brain_stack, run_task
 from .bundles import manifest_path
+from .assembled import register_assembled_capacities
 from .capacities import register_embodied_capacities
 from .persistence import (
     load_or_mint_global,
@@ -279,6 +280,23 @@ def _register_embodied(brains: Dict[str, Brain], handles) -> Dict[str, Tuple[str
     return out
 
 
+def _register_assembled(brains: Dict[str, Brain], handles) -> Dict[str, Tuple[str, ...]]:
+    """Register each embodied brain's ◆ assembled capacities (DM-5) over its
+    BodyHandle — composing the ⬡ atomics (``session=None`` into the brain's own
+    CL Global, like the atomics)."""
+    out: Dict[str, Tuple[str, ...]] = {}
+    for device_id, handle in handles.items():
+        brain = brains[device_id]
+        iris = register_assembled_capacities(
+            brain.cl,
+            device_type=brain.profile.device_type,
+            body=handle,
+            device_id=device_id,
+        )
+        out[device_id] = tuple(iris)
+    return out
+
+
 def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
     """Run the full DM-1 + DM-2 bootstrap + smoke. Returns a BootstrapResult.
 
@@ -334,6 +352,7 @@ def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
         if bodies is not None:
             sim_engine, handles = bodies
             embodied = _register_embodied(brains, handles)
+            _register_assembled(brains, handles)  # DM-5 ◆ pick/place/stage
         else:
             sim_engine = None
 

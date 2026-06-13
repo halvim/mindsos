@@ -54,11 +54,42 @@ class BodyHandle:
     def move_to(self, spec: Any) -> MotionOutcome:
         if self.arm is None:
             raise RuntimeError("conveyor BodyHandle has no move_to")
+        spec = spec or {}
+        # DM-5 ◆: an item/cell spec is a cartesian reach (pick/place); a
+        # qpos/named spec is the DM-3 joint-space move.
+        if "item" in spec or "cell" in spec:
+            return self._reach_cartesian(spec)
         target_qpos, target_name = self._resolve_target(spec)
         key = make_key(self.arm, "move_to", target_name)
 
         def generate() -> Trajectory:
             qpos, body = self.engine.generate_arm_move(self.arm, target_qpos)
+            return Trajectory(qpos, body)
+
+        def checklist(traj: Trajectory):
+            return atomic_checklist(traj.body, self.engine.bodies, self.arm, self.spec)
+
+        def play(traj: Trajectory) -> None:
+            self.engine.submit(self.slot, traj.qpos).result(timeout=_PLAY_TIMEOUT_S)
+
+        return run_motion(self.cache, key, generate, play, checklist)
+
+    def _reach_cartesian(self, spec: dict) -> MotionOutcome:
+        """DM-5 ◆ cartesian reach to an item-grasp or shelf-cell pose (Linux-
+        gated). Reuses the G-7 cache→gen→checklist→play|dont-know policy with a
+        cartesian generate (``SimEngine.generate_arm_reach``)."""
+        phase = spec.get("phase", "approach")
+        if "item" in spec:
+            item = spec["item"]
+            xyz, R = self.engine.item_grasp_target(self.arm, item, phase)
+            key = make_key(self.arm, "pick", f"{item}:{phase}")
+        else:
+            cell = spec["cell"]
+            xyz, R = self.engine.cell_target(self.arm, cell, phase)
+            key = make_key(self.arm, "place", f"{cell}:{phase}")
+
+        def generate() -> Trajectory:
+            qpos, body = self.engine.generate_arm_reach(self.arm, xyz, R)
             return Trajectory(qpos, body)
 
         def checklist(traj: Trajectory):

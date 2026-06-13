@@ -167,6 +167,34 @@ class DemoEvents:
         self._hub.publish(frame)
         return frame
 
+    def resolve(
+        self,
+        *,
+        brain: str,
+        clause: str,
+        stages: List[Dict[str, Any]],
+        winner: Optional[int],
+        item: Optional[str] = None,
+        tube: Optional[int] = None,
+    ) -> dict:
+        """Emit a Plan ▸ Resolve narrowing frame (WS contract §5).
+
+        ``stages`` = ``[{"cap": <label>, "cells": {0..8: "cand"|"win"|"out"}}]``
+        (the 9→…→1 narrowing); ``winner`` = the chosen 3×3 cell index; ``tube``
+        = the reference-object cell for a relational clause (or ``None``). All
+        labels are behavior-level (policy B)."""
+        frame: Dict[str, Any] = {
+            "type": "resolve", "t": _now_ms(),
+            "brain": _alias(brain), "clause": clause,
+            "stages": stages, "winner": winner,
+        }
+        if item is not None:
+            frame["item"] = item
+        if tube is not None:
+            frame["tube"] = tube
+        self._hub.publish(frame)
+        return frame
+
     def reset(self) -> dict:
         self._beat = 0
         frame = {"type": "reset"}

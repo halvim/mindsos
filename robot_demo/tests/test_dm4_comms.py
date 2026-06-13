@@ -98,7 +98,7 @@ def test_dm4_gate_end_to_end():
 
     def arm_derive(context=None, **inputs):
         mr = inputs.get(DS_MAPPING_RESULT) or {}
-        _dst, target = decode_target(mr.get("task_pattern_iri", ""))
+        _dst, target, _item = decode_target(mr.get("task_pattern_iri", ""))
         run_atomic(target)
         return {DS_PLAN: {"executed": target}}
 
@@ -120,7 +120,7 @@ def test_dm4_gate_end_to_end():
     def mgr_derive(context=None, **inputs):
         try:
             mr = inputs.get(DS_MAPPING_RESULT) or {}
-            dst, target = decode_target(mr.get("task_pattern_iri", ""))
+            dst, target, _item = decode_target(mr.get("task_pattern_iri", ""))
             cmd = {"dst": dst, "capacity": "move_to", "target": target,
                    "task_id": "order-1-sub"}
             res = mgr.cl.invoke(DISPATCH_IRI, {DS_DISPATCH_CMD: cmd}, session=None)

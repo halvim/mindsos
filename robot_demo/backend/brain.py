@@ -158,6 +158,52 @@ def task_input_for(scope: str) -> Optional[Any]:
     return _TASK_INPUTS.get(scope)
 
 
+# ── refusal capture (DM-5 embodiment gate, design-log §23) ─────────────
+#
+# The shipped ``run_lifecycle`` returns the dont-know ``blame`` only on the
+# ``TaskOutcome`` (it is NOT written to the chain), so the Mode-A serializer
+# can't recover ``reasoning.dont_know``/``blame`` from ``il.mm``. We capture it
+# here from the TaskOutcome, keyed by the same unique scope the serializer
+# slices on — race-free (the scope + outcome both belong to this task).
+_REFUSALS: "OrderedDict[str, dict]" = OrderedDict()
+_REFUSALS_MAX = 256
+
+
+def _record_refusal(scope: str, record: dict) -> None:
+    _REFUSALS[scope] = record
+    _REFUSALS.move_to_end(scope)
+    while len(_REFUSALS) > _REFUSALS_MAX:
+        _REFUSALS.popitem(last=False)
+
+
+def refusal_for(scope: str) -> Optional[dict]:
+    """The captured refusal record (``{"reason", "blame"}``) for a dont-know
+    task ``scope`` (or ``None`` on the happy path)."""
+    return _REFUSALS.get(scope)
+
+
+def _capture_outcome(scope: str, outcome: Any) -> None:
+    """Record a refusal if the lifecycle produced a dont-know (else no-op)."""
+    if getattr(outcome, "status", None) != "dont_know":
+        return
+    blame = getattr(outcome, "blame", None)
+    reason = (
+        getattr(blame, "rationale", None)
+        or getattr(outcome, "dont_know_reason", None)
+        or "could not complete the task"
+    )
+    blame_d = (
+        {
+            "chain_level": getattr(blame, "chain_level", None),
+            "blame_score": getattr(blame, "blame_score", None),
+            "rationale": getattr(blame, "rationale", None),
+        }
+        if blame is not None
+        else None
+    )
+    _record_refusal(scope, {"reason": reason, "blame": blame_d})
+
+
 def run_task(brain: Brain, task_input: Any, *, task_id: str = "task") -> Any:
     """Enqueue ONE lifecycle on the brain's IL with a FRESH per-task
     Orchestrator + a unique ``task_scope``. Returns the Future.
@@ -180,7 +226,16 @@ def run_task(brain: Brain, task_input: Any, *, task_id: str = "task") -> Any:
     scope = f"demo-{brain.device_id}-{tid}"
     _record_task_input(scope, task_input)
     orch = Orchestrator(brain.dispatcher, brain.il.mm, task_scope=scope)
-    return brain.il.enqueue(lambda: orch.run_lifecycle(task_input, task_id=tid))
+    fut = brain.il.enqueue(lambda: orch.run_lifecycle(task_input, task_id=tid))
+
+    def _on_done(f: Any) -> None:
+        try:
+            _capture_outcome(scope, f.result())
+        except Exception:  # noqa — capture is best-effort, never crash the task
+            pass
+
+    fut.add_done_callback(_on_done)
+    return fut
 
 
 __all__ = [
@@ -190,4 +245,5 @@ __all__ = [
     "build_brain_stack",
     "run_task",
     "task_input_for",
+    "refusal_for",
 ]

@@ -168,6 +168,19 @@ else
   printf '  (node or demo_ui/datasource.js not present — skipping UI-seam verify; run it on the UI host)\n'
 fi
 
+# DM-5 GATE: real allocation (order → arm+cell, Plan ▸ Resolve narrowing) + the
+# ◆ assembled pick→place over the live sim + the embodiment gate (wrong gripper
+# → GATED + a real dont_know exported as a Mode-A snapshot). Runs IN the
+# container; the greppable module is robot_demo.backend.dm5_check.
+step "7c. DM-5 live gate (allocation + Resolve + ◆ pick/place + embodiment gate)"
+DM5_OUT="$("${COMPOSE[@]}" run --rm demo-backend \
+  python -m robot_demo.backend.dm5_check 2>&1)" && DM5_RC=0 || DM5_RC=$?
+printf '%s\n' "$DM5_OUT" | sed 's/^/    | /'
+[[ $DM5_RC -eq 0 ]] || fail "DM-5 gate exited $DM5_RC"
+grep -q "DM-5 GATE PASS" <<<"$DM5_OUT" \
+  || fail "DM-5: 'DM-5 GATE PASS' not in logs (resolve / ◆ motion / gate failed)"
+pass "DM-5: resolve narrowing + ◆ pick/place + real wrong-gripper dont_know"
+
 # ---------------------------------------------------------------------------
 if [[ "${RUN_PYTEST:-0}" == "1" ]]; then
   step "8. [optional] Host pytest of robot_demo/tests/"
@@ -183,10 +196,13 @@ step "9. Teardown"
 "${COMPOSE[@]}" down >/dev/null 2>&1 || true
 pass "stack down"
 
-printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 + DM-3 + DM-4 gate green.\033[0m\n'
+printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 + DM-3 + DM-4 + DM-5 gate green.\033[0m\n'
 printf '  (DM-2: per-device bundles installed idempotently, Local seeds visible,\n'
 printf '   Globals persisted to Falkor, G-5 episode round-trip verified.\n'
 printf '   DM-3: each ⬡ atomic moves the live shared sim checklist-verified,\n'
 printf '   fault injection detected, real jitter bar measured.\n'
 printf '   DM-4: mgr dispatches an arm through both lifecycles (move_to) over\n'
-printf '   the BrainBus, narrated as live WS frames the UI seam consumes.)\n'
+printf '   the BrainBus, narrated as live WS frames the UI seam consumes.\n'
+printf '   DM-5: real allocation (order → arm+cell, Plan ▸ Resolve 9→1) + the ◆\n'
+printf '   assembled pick→place over the live sim + the embodiment gate\n'
+printf '   (wrong gripper → GATED + a real dont_know Mode-A export).)\n'

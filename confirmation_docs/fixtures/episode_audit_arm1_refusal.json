@@ -1,0 +1,105 @@
+{
+  "snapshot_version": 1,
+  "kind": "episode-audit",
+  "created_at": "2026-06-13T13:39:05.414910+00:00",
+  "scenario": "open-order",
+  "run_id": "robot-demo:a1",
+  "brains": {
+    "a1": {
+      "device_type": "arm-suction",
+      "episodes": [
+        {
+          "episode_iri": "n1",
+          "value": {
+            "task_input_ref": null,
+            "mm_root_ref": null,
+            "task_pattern_iri": "place tube",
+            "outcome_classification": "dont_know",
+            "crash_marker": null,
+            "consolidated_at": "2026-06-13T13:39:05.058509+00:00"
+          },
+          "task_input": {
+            "order": {
+              "dst": "arm1",
+              "target": "r1c1",
+              "item": "tube",
+              "task_id": "order-sub"
+            }
+          },
+          "reasoning": {
+            "hint_set": {
+              "iri": "n2",
+              "hints": {}
+            },
+            "mapping_result": {
+              "iri": "n3",
+              "selected_task_pattern_iri": "place tube",
+              "mapping_confidence": 1.0
+            },
+            "plan": {
+              "iri": "n4",
+              "root_milestone_ref": "n5"
+            },
+            "milestones": [
+              {
+                "iri": "n5",
+                "name": "root",
+                "status": "pending",
+                "replans_used": 0
+              }
+            ],
+            "pipelines": [
+              {
+                "iri": "n6",
+                "milestone_ref": "n5"
+              }
+            ],
+            "pipeline_runs": [
+              {
+                "iri": "n7",
+                "status": "completed",
+                "task_run_ref": "n8"
+              }
+            ],
+            "task_run": {
+              "iri": "n8",
+              "status": "failed",
+              "replan_history": [],
+              "attention_score": 500
+            },
+            "steps": [
+              {
+                "iri": "n9",
+                "capacity_iri": "execute step",
+                "confidence": 1.0,
+                "milestone_ref": "n5"
+              }
+            ],
+            "replans": [],
+            "blame": {
+              "chain_level": "pipeline",
+              "blame_score": 1.0,
+              "rationale": "blocked \u2014 this gripper can't grasp a tube (wrong gripper)"
+            },
+            "dont_know": {
+              "reason": "blocked \u2014 this gripper can't grasp a tube (wrong gripper)",
+              "cause": "embodiment_gate"
+            }
+          },
+          "problem_trace": []
+        }
+      ],
+      "memories": [
+        {
+          "memory_iri": "n10",
+          "value": {
+            "task_pattern_iri": "place tube"
+          },
+          "episode_iris": [
+            "n1"
+          ]
+        }
+      ]
+    }
+  }
+}

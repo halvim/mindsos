@@ -51,6 +51,11 @@ import mujoco  # noqa: E402  (only reachable on the MuJoCo host)
 import geom_config as G  # noqa: E402
 import motion as M  # noqa: E402  (the shipped Cell + primitives)
 from build_cell import HOME  # noqa: E402
+from motion import GRASP_R  # noqa: E402  (per-arm grasp orientation)
+
+#: vertical lift after a grasp / approach stand-off along the cubby-mouth axis.
+_LIFT_DZ = 0.16
+_APPROACH_DY = 0.12
 
 from .motion_checklist import StructureSpec
 
@@ -65,6 +70,17 @@ SLOT_BELT = "belt"
 def structure_spec() -> StructureSpec:
     """Build the checklist :class:`StructureSpec` from ``geom_config``."""
     return StructureSpec.from_geom_config(G)
+
+
+def _parse_cell(cell: str) -> Tuple[int, int]:
+    """``"r1c2"`` → ``(row=1, col=2)`` (UI space, row 0 = top)."""
+    s = str(cell).lower()
+    try:
+        r = int(s[s.index("r") + 1])
+        c = int(s[s.index("c") + 1])
+    except (ValueError, IndexError):
+        return 1, 1  # centre fallback
+    return r, c
 
 
 def _free_item_bodies(cell) -> List[int]:
@@ -237,6 +253,53 @@ class SimEngine:
         tgt = np.asarray(target_qpos, float)
         return self._capture_run(
             self._scratch, lambda c: c.move_to_q(arm, tgt, steps=steps), arm
+        )
+
+    # ── DM-5 ◆ cartesian targets (item grasp / shelf cell) ────────────────
+    #
+    # These feed the ◆ assembled pick/place capacities (:mod:`assembled` →
+    # BodyHandle._reach_cartesian). First-cut offsets — CALIBRATED AT THE LINUX
+    # GATE (the DM-3 §18 precedent: the coarse first pass false-positives, the
+    # gate surfaces the real stand-offs). The grasp orientation is the shipped
+    # per-arm ``GRASP_R``; the clip recipe is attach-on-valid-contact (the
+    # proximity gate in :meth:`set_grip`).
+    def item_grasp_target(self, arm: int, item: str, phase: str):
+        """``(xyz, R)`` for an item-grasp phase. ``approach`` stands off the
+        cubby-mouth face; ``lift`` rises after a grasp; ``grasp`` is the face."""
+        with self._lock:
+            oc = self._cell.d.xpos[self._cell.bid(item)].copy()
+        R = GRASP_R[arm]
+        sign = 1.0 if oc[1] < 0 else -1.0  # stand off on the mouth side
+        if phase == "approach":
+            return (oc + np.array([0.0, sign * _APPROACH_DY, 0.0]), R)
+        if phase == "lift":
+            return (oc + np.array([0.0, 0.0, _LIFT_DZ]), R)
+        return (oc.copy(), R)  # grasp = the face itself
+
+    def cell_target(self, arm: int, cell: str, phase: str):
+        """``(xyz, R)`` for a shelf-cell phase. ``cell`` is the UI token
+        ``"rNcM"`` (row 0 = TOP); the sim rack is row 0 = BOTTOM, so flip."""
+        ui_row, col = _parse_cell(cell)
+        sim_row = 2 - ui_row  # UI top-row(0) → sim top-row(2)
+        with self._lock:
+            seat = G.shelf_cell(arm, sim_row, col).copy()
+        R = GRASP_R[arm]
+        if phase in ("approach", "seat"):
+            return (seat + np.array([0.0, _APPROACH_DY, _LIFT_DZ * 0.5]), R)
+        return (seat, R)
+
+    def generate_arm_reach(self, arm: int, target_xyz, R, steps: int = 150):
+        """Cartesian straight-line reach (warm-started IK; the shipped
+        ``Cell.move_to`` recipe) from the live pose to ``target_xyz`` with grasp
+        orientation ``R``. Generated on the scratch cell seeded to the live
+        state (off the live tick)."""
+        with self._lock:
+            seed = self._cell.d.qpos.copy()
+        self._scratch.d.qpos[:] = seed
+        mujoco.mj_forward(self._scratch.m, self._scratch.d)
+        tgt = np.asarray(target_xyz, float)
+        return self._capture_run(
+            self._scratch, lambda c: c.move_to(arm, tgt, R, steps=steps), arm
         )
 
     def named_target(self, arm: int, name: str) -> List[float]:

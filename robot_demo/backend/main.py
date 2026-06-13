@@ -103,6 +103,8 @@ def _start_ws(result):
     )
     from .ws_server import DemoWSServer
 
+    from .allocation import make_allocator
+
     bus = BrainBus()
     hub = FrameHub()
     events = DemoEvents(hub)
@@ -113,7 +115,12 @@ def _start_ws(result):
         make_live_run_atomic(result.sim_engine)
         if result.sim_engine is not None else None
     )
-    on_command = wire_demo(result.brains, bus, events, run_atomic=run_atomic)
+    # DM-5: real allocation (order → arm+cell) + the Plan ▸ Resolve producer,
+    # replacing the DM-4 fixed arm1/home decide.
+    decide = make_allocator(events)
+    on_command = wire_demo(
+        result.brains, bus, events, run_atomic=run_atomic, decide=decide
+    )
     if result.sim_engine is not None:
         wire_pose_stream(result.sim_engine, events)
         log.info("DM-4 POSE STREAM wired (sim → projected pose frames).")

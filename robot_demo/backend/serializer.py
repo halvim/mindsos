@@ -43,7 +43,7 @@ from mindsos_intelligence.chain_artifacts import iter_chain_artifacts
 from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
 from mindsos_knowledge.metagraph_view import MetagraphView
 
-from .brain import task_input_for
+from .brain import refusal_for, task_input_for
 from .frames import BRAIN_ALIAS
 from .sanitize import TokenMap, find_leaks, plain_capacity, plain_task_pattern
 
@@ -100,9 +100,17 @@ def _one(bucket: Dict[str, List[Any]], prefix: str) -> Optional[Any]:
     return items[0] if items else None
 
 
-def _reasoning(slice_: Dict[str, List[Any]], tok: TokenMap) -> Dict[str, Any]:
+def _reasoning(
+    slice_: Dict[str, List[Any]], tok: TokenMap, refusal: Optional[dict] = None
+) -> Dict[str, Any]:
     """Serialize one task's chain slice into the §D ``reasoning`` block, faithful
-    to the ``chain_artifacts`` dataclasses, with refs tokenized + IRIs labelled."""
+    to the ``chain_artifacts`` dataclasses, with refs tokenized + IRIs labelled.
+
+    ``refusal`` (DM-5): the captured embodiment-gate verdict for this task's
+    scope (``{"reason", "blame"}``) on the dont-know path — the shipped
+    ``run_lifecycle`` returns ``blame`` only on the TaskOutcome (never the
+    chain), so ``reasoning.blame``/``dont_know`` come from the capture, not
+    ``il.mm``. Already behavior-level / sanitized."""
     hs = _one(slice_, _P_HINTSET)
     mr = _one(slice_, _P_MAPPINGRESULT)
     plan = _one(slice_, _P_PLAN)
@@ -178,8 +186,20 @@ def _reasoning(slice_: Dict[str, List[Any]], tok: TokenMap) -> Dict[str, Any]:
         }
         for r in slice_.get(_P_REPLANRECORD, [])
     ]
-    out["blame"] = None       # v0 happy path emits no BlameVerdict (DM-6)
-    out["dont_know"] = None   # populated only on a real refusal (DM-6)
+    # DM-5: a real embodiment-gate refusal populates blame + dont_know from the
+    # captured TaskOutcome; the happy path stays null ("not exercised this run").
+    if refusal:
+        reason = refusal.get("reason")
+        blame = refusal.get("blame") or {}
+        out["blame"] = {
+            "chain_level": blame.get("chain_level"),
+            "blame_score": blame.get("blame_score"),
+            "rationale": blame.get("rationale") or reason,
+        }
+        out["dont_know"] = {"reason": reason, "cause": "embodiment_gate"}
+    else:
+        out["blame"] = None       # happy path emits no BlameVerdict
+        out["dont_know"] = None    # populated only on a real refusal
     return out
 
 
@@ -216,7 +236,9 @@ def _episodes_and_memories(
                     "consolidated_at": value.get("consolidated_at"),
                 },
                 "task_input": task_input_for(scope) if scope else None,
-                "reasoning": _reasoning(slice_, tok),
+                "reasoning": _reasoning(
+                    slice_, tok, refusal_for(scope) if scope else None
+                ),
                 "problem_trace": [],  # PB-5 — no live producer until DM-6
             }
         )

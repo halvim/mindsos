@@ -97,18 +97,27 @@ def install_override(cl: Any, iri: str, new_impl: Callable[..., dict]) -> None:
 _TPI_PREFIX = "task-pattern:demo:move:"
 
 
-def encode_target(dst: str, target: str) -> str:
-    """Encode the dispatch (arm, pose) into the task_pattern_iri string —
-    the only task datum that survives into phase 2 (PB-EEE)."""
-    return f"{_TPI_PREFIX}{dst}:{target}"
+def encode_target(dst: str, target: str, item: Optional[str] = None) -> str:
+    """Encode the dispatch (arm, pose[, item]) into the task_pattern_iri string
+    — the only task datum that survives manager phase-1 → phase-2 (PB-EEE).
+
+    DM-5 adds the optional ``item`` segment (the thing being picked) so the
+    embodiment gate downstream knows what grasp the order requires. ``dst`` /
+    ``target`` / ``item`` are colon-free demo tokens, so a plain split is
+    unambiguous."""
+    base = f"{_TPI_PREFIX}{dst}:{target}"
+    return f"{base}:{item}" if item else base
 
 
-def decode_target(tpi: str) -> Tuple[Optional[str], Optional[str]]:
+def decode_target(tpi: str) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """``(dst, target, item)`` — ``item`` is ``None`` when absent (DM-4 moves)."""
     if not tpi.startswith(_TPI_PREFIX):
-        return None, None
-    rest = tpi[len(_TPI_PREFIX):]
-    dst, _, target = rest.partition(":")
-    return dst or None, target or None
+        return None, None, None
+    parts = tpi[len(_TPI_PREFIX):].split(":")
+    dst = parts[0] if len(parts) > 0 and parts[0] else None
+    target = parts[1] if len(parts) > 1 and parts[1] else None
+    item = parts[2] if len(parts) > 2 and parts[2] else None
+    return dst, target, item
 
 
 # ── the four comms.* capacities ───────────────────────────────────────

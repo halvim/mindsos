@@ -45,6 +45,7 @@ from .comms import (
     register_comms_capacities,
 )
 from .frames import BRAIN_ALIAS, DemoEvents, server_status_frame
+from .gate import clear_gate_verdict, gate_item, get_gate_verdict, install_arm_gate
 from .installers import install_core_datastates
 from .pose_frame import project_pose
 from .serializer import KIND_EPISODE_AUDIT, build_episode_audit_snapshot
@@ -63,6 +64,18 @@ RunAtomic = Callable[[Any, str], dict]
 _READY_DELTA = (0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
 
+def _first_item(order: Any) -> Optional[str]:
+    """The item of the order's first line (the thing being picked), or None.
+
+    Defensive: a DM-4-style synthetic order with no ``lines`` → None → ungated.
+    DM-5's real allocator (one line per dispatch) makes this exact."""
+    if isinstance(order, dict):
+        lines = order.get("lines")
+        if isinstance(lines, list) and lines and isinstance(lines[0], dict):
+            return lines[0].get("item")
+    return None
+
+
 def _stub_run_atomic(brain: Any, target: str) -> dict:
     """No-body fallback (sandbox / DEMO_BODY=0): record + succeed so the flow
     still completes and reports."""
@@ -70,26 +83,49 @@ def _stub_run_atomic(brain: Any, target: str) -> dict:
 
 
 def make_live_run_atomic(sim_engine: Any) -> "RunAtomic":
-    """The live atomic: invoke the arm's shipped ``move_to`` capacity with the
-    DM-3-verified ``qpos`` spec (current pose + bounded base-yaw delta), over
-    the brain's own CL. Returns the outcome the report carries."""
+    """The live arm motion (Linux-gated). DM-5: when the dispatch names an item,
+    run the ◆ assembled ``pick`` then ``place_at_cell`` (item→cell) over the
+    brain's own CL; the item is read from the stashed gate verdict so the
+    ``run_atomic(brain, target)`` seam stays back-compat. A no-item dispatch
+    (DM-4-style move) falls back to the DM-3-verified base-yaw ``move_to``.
+
+    An honest motion dont-know from any ◆ stage (unsafe reach / failed grasp)
+    propagates as ``status:"dont_know"`` — the report the Manager renders."""
     from mindsos_capacity.identifiers import capacity_iri
 
     def run_atomic(brain: Any, target: str) -> dict:
         arm = 1 if brain.device_id == "arm1" else 2
-        move_iri = capacity_iri("mechanism", f"a{arm}.move_to")
+        from .capacities import DS_MOTION_DONE, DS_POSE_TARGET
+        v = get_gate_verdict(brain)
+        item = v.item if v is not None else None
         try:
-            from .capacities import DS_MOTION_DONE, DS_POSE_TARGET
-            qpos = [v + d for v, d in zip(sim_engine.arm_qpos(arm), _READY_DELTA)]
+            if item:
+                pick = brain.cl.invoke(
+                    capacity_iri("mechanism", f"a{arm}.pick"),
+                    {DS_POSE_TARGET: {"item": item}}, session=None,
+                )
+                pout = (pick.outputs.get(DS_MOTION_DONE) or {}) if pick.success else {}
+                if not pout.get("ok", pick.success):
+                    return {"status": "dont_know", "stage": "pick", "motion": pout}
+                place = brain.cl.invoke(
+                    capacity_iri("mechanism", f"a{arm}.place_at_cell"),
+                    {DS_POSE_TARGET: {"item": item, "cell": target}}, session=None,
+                )
+                qout = (place.outputs.get(DS_MOTION_DONE) or {}) if place.success else {}
+                ok = qout.get("ok", place.success)
+                return {"status": "succeeded" if ok else "dont_know",
+                        "stage": "place_at_cell", "motion": qout}
+            # no item → DM-3 base-yaw move (parks the arm; DM-4 parity)
+            qpos = [x + d for x, d in zip(sim_engine.arm_qpos(arm), _READY_DELTA)]
             res = brain.cl.invoke(
-                move_iri,
-                {DS_POSE_TARGET: {"qpos": qpos, "key": f"dm4-{target}"}},
+                capacity_iri("mechanism", f"a{arm}.move_to"),
+                {DS_POSE_TARGET: {"qpos": qpos, "key": f"dm5-{target}"}},
                 session=None,
             )
             if res.success:
                 out = res.outputs.get(DS_MOTION_DONE) or {}
-                ok = out.get("ok", True)
-                return {"status": "succeeded" if ok else "dont_know", "motion": out}
+                return {"status": "succeeded" if out.get("ok", True) else "dont_know",
+                        "motion": out}
             return {"status": "dont_know", "reason": repr(res.error)}
         except Exception as exc:  # noqa
             return {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
@@ -117,12 +153,13 @@ def install_manager_flow(
         structured = inputs.get(DS_STRUCTURED_INPUT) or {}
         order = structured.get("order") if isinstance(structured, dict) else structured
         dst, target = decide({"order": order})
-        return {DS_MAPPING: {"task_pattern_iri": encode_target(dst, target),
+        item = _first_item(order)
+        return {DS_MAPPING: {"task_pattern_iri": encode_target(dst, target, item),
                              "mapping_confidence": 1.0}}
 
     def mgr_derive(context=None, **inputs):
         mr = inputs.get(DS_MAPPING_RESULT) or {}
-        dst, target = decode_target(mr.get("task_pattern_iri", ""))
+        dst, target, item = decode_target(mr.get("task_pattern_iri", ""))
         # behavior-level text only (policy B / IP sanitization) — no IRIs,
         # no API/type names. The guard test enforces this.
         events.state({"mgr": {"intent": "Allocate + assign",
@@ -130,8 +167,9 @@ def install_manager_flow(
                               "chain": 3, "active": True}},
                      title="Assign task", narr=f"Manager assigns the move to {dst}.")
         events.message("mgr", dst, f"move to {target}")
-        cmd = {"dst": dst, "capacity": "move_to", "target": target,
-               "task_id": "order-sub"}
+        # NB: no internal capacity/API name on the cmd — it lands in the arm's
+        # task_input, which the Mode-A export serializes (policy B / find_leaks).
+        cmd = {"dst": dst, "target": target, "item": item, "task_id": "order-sub"}
         res = mgr.cl.invoke(DISPATCH_IRI, {DS_DISPATCH_CMD: cmd}, session=None)
         ack = res.outputs.get(DS_DISPATCH_ACK) if res.success else None
         status = (ack or {}).get("status", "dont_know")
@@ -162,12 +200,32 @@ def install_arm_flow(
         structured = inputs.get(DS_STRUCTURED_INPUT) or {}
         cmd = structured.get("order") if isinstance(structured, dict) else {}
         target = (cmd or {}).get("target", "home")
-        return {DS_MAPPING: {"task_pattern_iri": encode_target(arm.device_id, target),
+        item = (cmd or {}).get("item")
+        # DM-5 embodiment gate: if the dispatch names an item, gate it against
+        # this arm's grippers NOW (phase-1 sees the item; the later
+        # predicate.sufficient override reads the stashed verdict — PB-NEW). A
+        # cmd with no item (DM-4 move) clears the gate → ungated.
+        if item:
+            gate_item(arm, item)
+        else:
+            clear_gate_verdict(arm)
+        return {DS_MAPPING: {"task_pattern_iri": encode_target(arm.device_id, target, item),
                              "mapping_confidence": 1.0}}
 
     def arm_derive(context=None, **inputs):
         mr = inputs.get(DS_MAPPING_RESULT) or {}
-        _dst, target = decode_target(mr.get("task_pattern_iri", ""))
+        _dst, target, item = decode_target(mr.get("task_pattern_iri", ""))
+        verdict = get_gate_verdict(arm)
+        if verdict is not None and verdict.gated:
+            # Honest refusal: do NOT attempt the motion. Surface the GATED badge
+            # + a behavior-level decision; the lifecycle's dont-know path (driven
+            # by the predicate.sufficient override) produces the real Episode.
+            events.state({arm.device_id: {
+                "intent": f"Pick {verdict.item_kind or item}",
+                "decision": verdict.reason, "chain": 5, "active": True,
+                "flags": ["gate"],
+                "caps": [["pick", "GATED"]]}})
+            return {DS_PLAN: {"gated": True, "item": item, "reason": verdict.reason}}
         events.state({arm.device_id: {"intent": f"Execute move ({target})",
                                       "decision": "running…", "chain": 4,
                                       "active": True}})
@@ -234,6 +292,7 @@ def wire_demo(
             install_manager_flow(brain, bus, events, decide=decide)
         elif did in ("arm1", "arm2"):
             install_arm_flow(brain, bus, events, run_atomic=run_atomic)
+            install_arm_gate(brain)  # DM-5 embodiment gate (real dont-know)
 
     mgr = brains["mgr"]
 

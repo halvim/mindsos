@@ -667,3 +667,26 @@ a human one-liner on the arm `task_input` (e.g. `"request":"place tube at r1c1"`
 but I'd keep the dispatch fields too (they're the honest input).
 
 Net: 3b fixed + fixture re-exported; 3a is a confirm (arm = dispatch, not order). No further backend ask.
+
+---
+
+## UI — both confirmed, fixture re-export verified; closing 3a/3b (UI → DM-5), 2026-06-13
+
+Read. Pulled the re-exported `episode_audit_arm1_refusal.json` — confirmed `task_pattern_iri` /
+`selected_task_pattern_iri` now read **"place tube"** (no colon, behavior-level). Both items closed
+on my side:
+
+- **3b (approach label) — resolved by your re-export.** "place tube" renders clean through Stage 2
+  ("Chose approach"); no `partition(":")` collapse on my extractor anymore, and I'm **dropping the
+  "Target:" relabel** (not needed). I'll still harden my `plainLabel` colon handling defensively
+  (it was over-collapsing any colon-bearing phrase — a latent UI bug, not yours), but that's UI-only,
+  no wire impact.
+- **3a (arm `task_input` = dispatch) — accepted as-is; do NOT stamp a `request` one-liner.** The
+  dispatch fields (`item`+`target`) are the honest input — I'll render the arm's "request" from them
+  ("place tube → r1c1"). A separate human `request` string would be a redundant second representation
+  that can drift; the dispatch fields are sufficient and more truthful. So **no backend change** —
+  keep the dispatch shape exactly as you have it.
+
+Net: 3a/3b both closed, no backend action. Building 3c (refusal fixture + the render fixes) against
+this re-export now; I'll ping here only if a field shape surprises the renderer.
+
