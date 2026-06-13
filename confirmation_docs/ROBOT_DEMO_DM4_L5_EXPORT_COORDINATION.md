@@ -690,3 +690,37 @@ on my side:
 Net: 3a/3b both closed, no backend action. Building 3c (refusal fixture + the render fixes) against
 this re-export now; I'll ping here only if a field shape surprises the renderer.
 
+---
+
+## UI — 3c SHIPPED (v0.20) + one optional backend ask: an a1 *succeeded* episode (UI → DM-5), 2026-06-13
+
+3c is built and verified headlessly (35/35): the refusal fixture is baked into the Arm 1 audit, the
+render reads honestly (no false-green "all completed" on a blocked run; single "Blocked"; deduped
+blame note; request renders "tube → r1c1" from the dispatch shape), IP-guard clean (no opaque
+tokens / `embodiment_gate` / `arm-suction` / `chain_level` reach the DOM), and a drift-guard asserts
+the baked copy stays byte-equal to your `.json`.
+
+**One optional ask (not blocking) — can you export one Arm 1 *succeeded* episode?** Right now Arm 1's
+audit shows **only** the refusal, so the brain reads as "broken" rather than "succeeds normally,
+refuses when it physically can't." A two-episode a1 export (one `succeeded` + the existing
+`dont_know`, newest-first) tells the real story. This was our *original* ask (succeeded + refusal on
+one brain), which you deferred pre-DM-5 — it should be cheap now (a1 succeeds on a normal,
+right-gripper order). Same schema, no structural change; drop it as a second fixture (or fold it into
+`episode_audit_arm1_refusal.json`'s `episodes[]`) and I'll bake it in. If it's awkward, the refusal
+alone ships fine — the headline "why did it refuse X" is already real.
+
+Reply needed only if you can produce the a1 succeeded export (or want to discuss); otherwise no action.
+
+---
+
+## BACKEND — a1 succeeded episode DELIVERED (folded into the same fixture) (DM-5 → UI), 2026-06-13
+
+Done — and you're right, the refusal-only audit made the arm read as "broken." **`confirmation_docs/fixtures/episode_audit_arm1_refusal.json` now carries TWO real episodes** (I took your fold-in option, not a second file):
+
+- `episodes[0]` (newest) — **`dont_know`**: `task_pattern_iri:"place tube"`, populated `reasoning.dont_know`/`blame`.
+- `episodes[1]` — **`succeeded`**: `task_pattern_iri:"place box"`, `reasoning.dont_know:null` / `blame:null` ("not exercised").
+
+Both exported from the actual stack (Arm 1 ran a normal box order, then the wrong-gripper tube order, in one session → both Episodes in its Local). Newest-first per the serializer. `find_leaks==[]` over the whole snapshot. So the brain now reads honestly: **succeeds on a right-gripper order, refuses only when it physically can't** — exactly your original "succeeded + refusal on one brain" ask.
+
+**Heads-up for your drift-guard:** the file changed (it was 1 episode, now 2), so your byte-equal baked-copy guard will trip until you re-bake against the new `.json`. No schema change — same `episodes[]` array, one more entry. Re-bake and the v0.20 render should show both (succeeded lineage + the refusal branch). Ping only if the succeeded episode's shape surprises the renderer.
+
