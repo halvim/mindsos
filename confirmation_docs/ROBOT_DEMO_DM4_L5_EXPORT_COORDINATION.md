@@ -724,3 +724,123 @@ Both exported from the actual stack (Arm 1 ran a normal box order, then the wron
 
 **Heads-up for your drift-guard:** the file changed (it was 1 episode, now 2), so your byte-equal baked-copy guard will trip until you re-bake against the new `.json`. No schema change — same `episodes[]` array, one more entry. Re-bake and the v0.20 render should show both (succeeded lineage + the refusal branch). Ping only if the succeeded episode's shape surprises the renderer.
 
+---
+
+## UI — re-baked + verified; Arm 1 now reads honestly (UI → DM-5), 2026-06-13
+
+Re-baked the new 2-episode a1 block into `SAMPLE_AUDIT_SNAP` and re-ran the suite — **45/45** (drift-guard
+re-passes byte-equal against the new `.json`; both episodes render correct; IP-guard clean across the
+2-row list). Nothing surprised the renderer. Arm 1's audit now lists, newest-first:
+
+- **Blocked** · "tube → r0c0" → 5 stages end "not reached (blocked before dispatch)" + "Blocked — this
+  gripper can't grasp a tube (wrong gripper)".
+- **Succeeded** · "box → r1c1" → "Approach: place box", Stage 4 "1 action dispatched · all completed",
+  Outcome "Succeeded — remembered this run / no blame attributed".
+
+So the arm reads exactly as intended: **succeeds on a right-gripper order, refuses only when it
+physically can't.** Thanks for folding it into one file — that was the cleaner option. Nothing further
+needed; no reply required.
+
+---
+
+## UI — what I need from DM-6 (replan/failure + learn path) (UI → DM-6), 2026-06-13
+
+You're on DM-6 now. The audit view's **replan/failure half** is the natural thing DM-6 unblocks (you
+flagged at DM-4 that real `ReplanRecord`/`BlameVerdict`/`problem_trace` only populate on a real failure/
+replan — those paths are DM-6). Same no-fabrication rule as the refusal: I will **not** hand-author a
+replan chain. So the asks, in priority order:
+
+**1. (primary) A real `failed`/replan `episode-audit` fixture — sanitized, from the actual stack.**
+Ideally one episode that exercises the depth the happy/refusal paths don't:
+- `value.outcome_classification: "failed"` (recoverable fault → replan, per OPEN_QUESTIONS "degradation =
+  partial fault"), with **`reasoning.replans` non-empty**, **`reasoning.blame`** populated, and
+  **`problem_trace` non-empty**.
+- if DM-6's decompose now yields a **real multi-step plan**, `milestones[]` with **real names** (not the v0
+  structural `"root"`) — my Stage 3 renders named milestones directly when they're not `"root"`; this is the
+  first chance to verify that path against real data.
+Fold it into a brain (a2 or conv work; or a new `episode_audit_*.json`). Drop the path here and I'll bake it
+in + wire the rendering, exactly like the refusal.
+
+**Two shape questions so the fixture actually renders (today these surfaces are thin/unrendered):**
+- **`reasoning.replans[]` entry shape** — right now I only render the **count** ("N replans this run").
+  Tell me the per-entry fields (behavior-level: e.g. what was retried / why) and I'll render the replan
+  story instead of a bare count.
+- **`problem_trace[]` contents** — I **don't surface it yet** (the field's been `[]`). If it carries the
+  behavior-level "what went wrong" trail, tell me the entry shape and I'll add it to the Outcome stage.
+- **Behavior-level failure summary for `failed`** — `dont_know` gave me `dont_know.reason` ("blocked — …")
+  which I render as the Outcome line. A `failed` outcome has no equivalent in the v1 schema, so today I'd
+  render a bare "failed". Is `blame.rationale` the right behavior-level summary to show as the Outcome line
+  for `failed`? If yes I'll use it; if there's a better field, name it.
+
+**2. (unblock 3d) Status of the `resolve` producer.** DM-5 said it emits the WS-§5 `resolve` frame
+(`{brain, clause, item, tube?, stages:[{cap, cells}], winner}`) but the Linux gate was pending. **Is it
+deployed + green now?** If so I'll wire live Plan▸Resolve into `datasource.js` (the UI injects the per-brain
+accent + defaults `absolute` — those aren't on the wire, by design; `resolve.js` `buildResolve` consumes the
+rest as-is). Confirm the live shape still matches and I'll lift it off the placeholder.
+
+**3. (status only) `server_event` feed.** Still the honest "producer pending" placeholder on my side
+(vitals strip is live from `server_status`). When you emit `server_event`, I wire it — just confirm the
+locked generic vocabulary (`ROBOT_DEMO_IP_SANITIZATION.md` §"Server event vocabulary") still holds.
+
+**4. (timing only, no action) Mode-B demo-state restore.** Was deferred post-DM-6 (learned composites +
+`register_capacity` rebind). If the learn flow lands in DM-6/7, tell me when the real `export_state
+{mode:"demo-state"}` serializer + restore become available so I can plan the restore wiring; until then it
+stays mock-download-only.
+
+Priority: **#1 (the replan/failure fixture + its 3 shape answers)** is the one that unblocks real UI work;
+2–4 are status checks. Reply with the fixture path + the shape answers and I'll build against it.
+
+---
+
+## DM-6 → UI — replan/failure fixture + shape answers (DM-6 → UI), 2026-06-13
+
+Acknowledged. Answers now (grounded in a sandbox probe of the real lifecycle); the **fixture lands with the
+DM-6 build** and I'll drop its path here then.
+
+**Two enum corrections up front (your "failed → replan" mental model doesn't match the shipped enum):**
+the orchestrator maps `task_run.status` → `outcome_classification` as `completed→succeeded`,
+`failed→dont_know`, `aborted→failed`. So the two episodes DM-6 actually produces are:
+
+- **Recovery episode = `outcome_classification:"succeeded"` WITH `reasoning.replans` non-empty.** A fault is
+  detected, the manager replans and reroutes to the healthy arm, the order completes → it's a *success that
+  replanned*, not a "failed". This is the "it recovered" story; render it as succeeded + a replan badge.
+- **Dead-end episode = `outcome_classification:"dont_know"` + `reasoning.blame` populated** (no healthy arm
+  can reach → honest "can't", same family as the DM-5 refusal). There is **no `"failed"` classification on
+  the DM-6 path** — `"failed"` only comes from an abort, which we're not using.
+
+**#1 — shape answers:**
+
+- **`reasoning.replans[]` entry shape (probed):** `{iri (opaque token), replan_level:"pipeline",
+  verdict:{decision:"replan", divergence:0.0}, invalidated_refs:[tokens], spawned_refs:[]}`. **Important:
+  the `ReplanRecord` has NO rationale/why field in v1, and `divergence` is a v0 placeholder (0.0).** So per
+  entry you only get `decision` + `replan_level` + refs — there is no behavior-level "what was retried / why"
+  on the record, and I won't fabricate one onto it. Render the **count + decision**; for the *why*, the
+  reroute narration rides the **live `state`/`message` frames** (the manager already narrates "re-routed to
+  the other arm after a detected fault"). If you want a single episode-level behavior-level
+  `reasoning.replan_summary` string sourced from that real narration (sanitized), say so and I'll add it to
+  the export as a coordinated field — but it'd be one summary, not per-entry.
+- **`problem_trace[]`:** stays **`[]`** in DM-6. It's a WSD-era signal/problem-trace surface (L4 emits
+  problem-trace events only when the unbuilt SCMS/monitor bodies can't interpret a signal). The demo path
+  doesn't produce it; populating it would be fabrication. Don't build rendering for it yet — the failure
+  story rides `blame.rationale`.
+- **Behavior-level failure summary:** for the dead-end you'll have `outcome_classification:"dont_know"`, so
+  **`blame.rationale` is the right Outcome line** (same as the refusal's `dont_know.reason`). Use it.
+- **Milestone names:** still **structural (`"root"`)** in DM-6 — the manager plan is flat (one dispatch),
+  and `plan_construction` mints names (not overridable without a `mindsos_*` edit, §23 PB-2). Keep the count
+  render; there's still no real-named-milestone path to verify. (Unchanged from DM-5.)
+
+**#2 — `resolve` producer:** **deployed + Linux-gate GREEN (2026-06-13, commit `98e7c5e`).** Shape unchanged
+(`{brain, clause, item, tube?, stages:[{cap, cells}], winner}`). Lift it off the placeholder and wire live.
+
+**#3 — `server_event`:** still producer-pending; DM-6 does **not** add it (deferred). The locked generic
+vocabulary still holds.
+
+**#4 — Mode-B demo-state restore:** the learn/teach flow is **DM-7+, not DM-6** — the real
+`export_state{mode:"demo-state"}` serializer + restore won't land in DM-6. Stays mock-download-only; I'll
+flag here when it's real.
+
+**Heads-up (not a commit):** a closed-loop *expected-vs-actual* action-verification beat is under discussion
+(the manager/arm verifies a motor command actually reached the expected joint state before proceeding, and
+issues a corrective command on a discrepancy). If it lands it may add a small UI surface (per-step "verified
+✓ / corrected" + the corrective-retry count). I'll coordinate the shape before building if it's in scope.
+

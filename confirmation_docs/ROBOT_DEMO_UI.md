@@ -157,7 +157,8 @@ file map; it does **not** restate code — read the files it points to.
   card changed — Export/Import are `button_map` window-level controls whose behavior, not shape, changed).
   - **v0.11 follow-ups (2026-06-12, no badge bump — fixes, not a new increment):** (1) **per-card hover
     tooltips** — every card (3 static + 4 brain) carries a `data-desc`; hovering its title bar shows a
-    styled `#cardtip` with the description (the prior tiny `?`-only native title was easy to miss). jsdom
+    styled `#cardtip` with the description (the prior tiny `?`-only native title was easy to miss)
+    **[superseded 2026-06-13 → scoped to the `.help` icon only; native title dropped]**. jsdom
     40/40. (2) **`plan_card_map.png`** added (Plan ▸ Resolve subsection part names). (3) Doc fix: Export/
     Import are **header-toolbar** buttons, not user-card. (4) Logged the pending repurpose of the header
     Export/Import to **demo system-state (L5 episode) import/export** (planning note; teach-model save/load
@@ -305,6 +306,49 @@ file map; it does **not** restate code — read the files it points to.
   Audit=view opens the modal) + **26/26** connectivity (live Audit→`state_snapshot`→modal; live Export→
   download-only). **Map regenerated:** `header_map.png` (v0.19 parts incl. `#audit`/`#auditmenu`/`#l5cal`).
 
+- **v0.20 — real refusal episode wired into the audit view (3c; goal-#2 "why refuse").** The DM-5
+  refusal fixture (`confirmation_docs/fixtures/episode_audit_arm1_refusal.json` — suction arm refusing a
+  tube, real `dont_know`/`embodiment_gate`, **not fabricated**) is baked into `SAMPLE_AUDIT_SNAP.brains.a1`
+  so the **Arm 1** audit button opens it (a2/conv stay honestly empty). Five render fixes in `audit.js`:
+  (1) **Stage 4 outcome-driven** — a `dont_know` run renders "not reached · execution did not start
+  (blocked before dispatch)", never the old false-green "all completed" (the v0 chain carries a *notional*
+  leaf step; success styling now gates on `outcome_classification === "succeeded"`, and a feasibility-gate
+  refusal fires before real dispatch). (2) **Stage 5 prefix dedupe** — the sanitized backend `reason`
+  already starts "blocked —", so it's used verbatim (capitalized), not double-prefixed. (3) **Stage 5 note
+  dedupe** — when `blame.rationale` restates the `dont_know.reason` (it does in the fixture), the "blame:"
+  note is dropped (pure repetition); the only non-duplicate note candidates are internal (`chain_level`
+  is IP, `blame_score` uncalibrated). (4) **Stage 1 arm-dispatch parser** — `requestText` now handles the
+  arm's `task_input.order:{item,target}` (a dispatch, not a user order — DM-5 confirmed) → "tube → r1c1";
+  the Manager's `order.lines[]` path is untouched. (5) **`plainLabel` whitespace-gate** — the colon/dot
+  split now only fires on a single-token IRI (no whitespace), so a sanitized multi-word phrase
+  ("move to r1c1:tube", "place tube") survives intact instead of collapsing to its tail — a **latent
+  over-sanitization bug** the IP-guard couldn't catch (it loses content rather than leaking it). Bug-3's
+  *label* ("place tube") was fixed upstream by DM-5's re-export (`partition`→`split`), so no UI relabel
+  was needed. A **build-time drift-guard** test asserts the baked `a1` block stays byte-equal to the
+  `.json` (the inline copy is required because `fetch()` is CORS-blocked under `file://`). **DM-5 then
+  delivered an Arm 1 *succeeded* episode folded into the same fixture** (newest-first: refusal "place
+  tube" `dont_know` + success "place box" `succeeded`), re-baked so a1's list reads [Blocked, Succeeded]
+  — the arm now reads honestly ("succeeds on a right-gripper order, refuses only when it physically
+  can't") instead of refusal-only/"broken". Verified headlessly **45/45** (drift guard byte-equal vs the
+  2-episode `.json`; refusal stages; the a1 succeeded episode renders as success; mgr no-regression;
+  IP-guard on the refusal DOM — no `n1…n20`/`embodiment_gate`/`arm-suction`/`chain_level`, `tube`/
+  `gripper` allowed; plainLabel gate). No map change (no mapped card changed).
+
+- **focus mode — BUILT then REMOVED (v0.21, reverted 2026-06-13; badge stays v0.20).** A manual
+  "solo this brain" toggle (opacity-fade the other brain cards) was built and verified, then **removed**
+  on review: dimming alone added no value over **maximize** (it gave the focused card nothing, and only
+  dimmed 3 of 6 siblings, so the focused card didn't even stand out). Options to rescue it (widen the dim
+  to all cards / collapse-and-reclaim-space) weren't worth it given maximize already covers "see one card."
+  Reverted in full — no `.focusbtn`, no `.faded`, no focus JS. The §7 overlay-precedence question it raised
+  is therefore moot. See §4 "decisions changed."
+- **v0.20 follow-up fix — hover tooltip scoped to the `.help` icon (2026-06-13).** The per-card hover
+  tooltip (`#cardtip`) + `cursor:help` were on the whole `.draghandle` header, so the styled box popped over
+  the card on any header hover (user-reported). Now bound to the **`.help` icon only**; the redundant native
+  `title` on the help icons was dropped to avoid a double tooltip — `#cardtip` shows the card's `data-desc`
+  on `.help` hover. (This supersedes the v0.11 whole-title-bar tooltip.) `orchestrator_card_map.png` +
+  `plan_card_map.png` carry the `.help (hover = description)` note. Verified headlessly **8/8** (focus fully
+  gone; maximize + tooltip-scope intact) + audit/drift **45/45** re-checked.
+
 ## 4. Design decisions settled this chat (the "why", not in code)
 
 **Brain cards** (see `orchestrator_card_map.png` for part names):
@@ -342,17 +386,16 @@ on the UI side — see §5.
 **Decisions changed this chat** (the project invited revisiting): the original backlog "Export/
 Import → system-state files" is scoped to the **teach model** (the browser is a view; the backend
 owns live state); chose **full-snapshot over delta** (seed rows include `Local`/`Global`, so a
-delta would double-seed); and **focus mode is reframed to a manual "solo this card" toggle** —
-the as-specced *auto-spotlight the active brain* is dropped because it reverses the settled
-"all cards render identically" call and is undefined on the cooperation beats (3–4 brains active).
+delta would double-seed); and **focus mode was reframed to a manual "solo this card" toggle, then
+DROPPED ENTIRELY (2026-06-13).** The auto-spotlight version was rejected first (reverses the settled
+"all cards render identically" call, undefined on 3–4-brain beats); the manual opacity-fade version
+was then built (v0.21) and **removed on review** — dimming alone gave the focused card no benefit over
+**maximize**, so it earned no place. No focus code remains; maximize is the single-card affordance.
 
 ## 5. Backlog / next (deferred, in priority order)
 
-1. **v0.15 (focus mode, reframed: manual "solo this card")** — second half of the original
-   v10.3. **NOT** auto-spotlight-the-active-brain (dropped — reverses "all cards equal" + is
-   undefined when several brains are active). Instead a per-card toggle that dims the *other*
-   cards on demand (no reflow/scale); default stays all-equal. Define interaction with maximize
-   (mutually exclusive). `OPEN_QUESTIONS §4`.
+1. ~~**focus mode (manual "solo this card")**~~ — **BUILT then REMOVED 2026-06-13** (see §3 + §4). Opacity-
+   fade-others added no value over maximize; reverted in full. Not a backlog item anymore.
 2. ~~**Export / Import → system-state files**~~ — **SHIPPED as v0.11** (scoped to the teach model;
    see §3).
 3. **L5 export/import (header buttons repurpose)** — contract approved
@@ -367,13 +410,11 @@ the as-specced *auto-spotlight the active brain* is dropped because it reverses 
    Seam B tabs on the Messages card; see §3). Remaining live‑side work: a `datasource.js` update to
    parse real `server_status`/`server_event` frames once DM‑4 emits them (today live shows the
    pending placeholder).
-3c. **Wire the REAL refusal episode (goal-#2 "why refuse") — UNBLOCKED by DM-5.** DM-5 delivered
-   `confirmation_docs/fixtures/episode_audit_arm1_refusal.json` (real `dont_know`, suction arm vs tube).
-   Fold it into the audit view's representative content (alongside the mgr succeeded fixture) and **fix the
-   refusal-case render bugs found while probing it** (see coordination 2026-06-13): (i) Stage 4 "Executed"
-   must not show green "all completed" on a blocked run; (ii) dedupe Stage 5 "Blocked — blocked — …";
-   (iii) Stage 2 renders an object noun ("tube") as the approach — relabel/behaviorize. Milestone "root"
-   filtering is validated (DM-5 5b) — keep as-is.
+3c. ~~**Wire the REAL refusal episode (goal-#2 "why refuse")**~~ — **SHIPPED v0.20** (see §3). Baked
+   `episode_audit_arm1_refusal.json` into Arm 1's audit; fixed Stage 4 false-green, Stage 5 prefix +
+   note dedupe, Stage 1 arm-dispatch parser, and the latent `plainLabel` colon over-collapse. Bug-(iii)
+   (approach label) was resolved upstream by DM-5's re-export ("place tube"). DM-5 also delivered an a1
+   *succeeded* episode (folded into the same fixture) → re-baked so a1 lists [Blocked, Succeeded]. 45/45.
 3d. **Live Plan ▸ Resolve — UNBLOCKED by DM-5.** DM-5 emits the WS-§5 `resolve` frame matching `resolve.js`
    (`buildResolve` shape). Add `resolve` to `datasource.js` and lift Plan▸Resolve off the live placeholder.
 4. **Graph content** — replace the placeholder subgraphs with real per-section graphs once

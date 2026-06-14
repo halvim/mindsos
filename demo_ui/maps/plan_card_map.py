@@ -110,7 +110,7 @@ _planc=X0+10+1*tw+(tw-3)/2
 label(X0+12,108,"Brain sections",".bsec  (Plan selected)"); leader(X0+60,114,_planc,ty-1)
 label(905,90,"Reasoning audit",".auditbtn"); leader(903,86,X0+W-96,Y0+9)
 label(905,122,"Maximize height",".maxbtn"); leader(903,118,X0+W-72,Y0+9)
-label(905,154,"Help / tooltip",".help"); leader(903,150,X0+W-16,Y0+17)
+label(905,154,"Help / tooltip",".help  (hover = description)"); leader(903,150,X0+W-16,Y0+17)
 
 # LEFT
 label(300,Y0+6,"Card",".dcard.mgr",anchor="end"); leader(305,Y0+2,X0,Y0+2)

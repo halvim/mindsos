@@ -23,10 +23,14 @@ const AUDIT_STAGES = ["Understood request", "Chose approach", "Planned steps", "
 function plainLabel(s) {
   if (s == null) return "";
   s = String(s);
-  if (s.indexOf(":") !== -1) s = s.split(":").pop();             // drop ns:/role: prefixes
-  if (/\w\.\w/.test(s) && !/\s/.test(s)) s = s.split(".").pop(); // drop "a1." capacity prefix
+  // Only collapse a colon/dot when the WHOLE string is a single token (a real IRI). A sanitized
+  // multi-word phrase ("move to r1c1:tube", "place tube") has spaces and must survive intact —
+  // splitting it silently corrupts content (and the IP-guard can't catch over-sanitization).
+  if (s.indexOf(":") !== -1 && !/\s/.test(s)) s = s.split(":").pop();   // drop ns:/role: prefixes (IRIs only)
+  if (/\w\.\w/.test(s) && !/\s/.test(s)) s = s.split(".").pop();        // drop "a1." capacity prefix (IRIs only)
   return s.replace(/_+/g, " ").trim();
 }
+function cap1(s) { s = String(s == null ? "" : s); return s.charAt(0).toUpperCase() + s.slice(1); }
 // A field that is already display-ready (a sanitized sentence) is shown as-is; only a raw fallback
 // key is run through plainLabel.
 function disp(obj, dispKey, rawKey) {
@@ -44,13 +48,21 @@ function requestText(ti) {
   if (ti == null) return "";
   if (typeof ti === "string") return ti;
   if (ti.request || ti.summary || ti.text) return String(ti.request || ti.summary || ti.text);
-  const lines = ti.order && ti.order.lines;
-  if (Array.isArray(lines) && lines.length) {
+  const order = ti.order || null;
+  const lines = order && order.lines;
+  if (Array.isArray(lines) && lines.length) {       // user-order shape (Manager episode)
     return lines.map(l => {
       const item = plainLabel(l.item || "item");
       const where = l.shelf ? ("shelf " + plainLabel(l.shelf)) : "";
       return where ? (item + " → " + where) : item;
     }).join("; ");
+  }
+  // arm-dispatch shape {order:{item,target,dst,…}} (no lines) — the per-arm sub-task an arm receives,
+  // not a user order (DM-5 confirmed: arm carries a dispatch by design). Render item → target.
+  if (order && (order.item || order.target)) {
+    const item = plainLabel(order.item || "item");
+    const where = order.target ? plainLabel(order.target) : "";
+    return where ? (item + " → " + where) : item;
   }
   return "";
 }
@@ -126,13 +138,18 @@ function auditStages(ep) {
   }
   stages.push({ num: 3, ttl: AUDIT_STAGES[2], tone: "ink", body: planBody, note: planNote });
 
-  // 4 — Executed
+  // 4 — Executed. Success styling ONLY on a succeeded outcome: a blocked/refused run must never read
+  // "all completed", even though the v0 chain can carry a notional leaf step (DM-4). A dont_know is a
+  // feasibility-gate refusal that fires BEFORE real dispatch, so it renders "not reached".
   let execBody, execNote, execTone = "ink";
-  if (steps.length) {
-    execBody = steps.map(s => s.lab + (s.ok ? " ✓" : " ⊘")).join("   ·   ");
-    const done = steps.filter(s => s.ok).length;
-    execTone = done === steps.length ? "ok" : "warn";
-    execNote = done === steps.length
+  if (oc === "dont_know") {
+    execBody = "not reached"; execTone = "warn";
+    execNote = "execution did not start (blocked before dispatch)";
+  } else if (steps.length) {
+    const done = ok ? steps.filter(s => s.ok).length : 0;   // per-step success only trusted on success
+    execBody = steps.map(s => s.lab + ((ok && s.ok) ? " ✓" : " ⊘")).join("   ·   ");
+    execTone = (ok && done === steps.length) ? "ok" : "warn";
+    execNote = (ok && done === steps.length)
       ? (plural(steps.length, "action", "actions") + " dispatched · all completed")
       : (done + " of " + steps.length + " completed · stopped");
   } else {
@@ -147,9 +164,19 @@ function auditStages(ep) {
     outBody = "Succeeded — remembered this run"; outTone = "ok";
     outNote = "no blame attributed (succeeded)";
   } else if (oc === "dont_know") {
-    outBody = "Blocked — " + (disp(dk, "display", "reason") || "don’t know how to proceed");
+    const reason = disp(dk, "display", "reason");
+    const rationale = blame ? disp(blame, "display", "rationale") : "";
+    // Dedupe the prefix: the sanitized backend `reason` often already starts "blocked —"; don't
+    // prepend a second "Blocked — ". Use it verbatim (capitalized) when it does.
+    outBody = reason
+      ? (/^block/i.test(reason) ? cap1(reason) : ("Blocked — " + reason))
+      : "Blocked — don’t know how to proceed";
     outTone = "stop";
-    outNote = blame ? ("blame: " + disp(blame, "display", "rationale")) : "no fleet-shared skill covers it";
+    // Dedupe the note: when blame restates the same sentence as the reason, the body already carries
+    // it — a "blame: <same sentence>" line is pure repetition. Drop it.
+    outNote = (rationale && rationale.trim() !== reason.trim())
+      ? ("blame: " + rationale)
+      : (blame ? "" : "no fleet-shared skill covers it");
   } else {
     outBody = oc ? plainLabel(oc) : "—"; outTone = "warn";
     outNote = blame ? ("blame: " + disp(blame, "display", "rationale")) : "";

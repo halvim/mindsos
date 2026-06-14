@@ -89,7 +89,7 @@ label(X0+150,120,"Card state",".state  (status chip)"); leader(X0+172,126,X0+131
 label(905,95,"Reasoning audit",".auditbtn  (UX)"); leader(903,91,X0+W-96,Y0+9)
 label(905,128,"Maximize height",".maxbtn  (UX)"); leader(903,124,X0+W-72,Y0+9)
 label(905,161,"Status dot",".dot  (card UI)"); leader(903,157,X0+W-36,Y0+15)
-label(905,194,"Help / tooltip",".help  (card UI)"); leader(903,190,X0+W-16,Y0+17)
+label(905,194,"Help / tooltip",".help  (card UI · hover = description)"); leader(903,190,X0+W-16,Y0+17)
 
 # LEFT
 label(300,Y0+6,"Card",".dcard.mgr",anchor="end"); leader(305,Y0+2,X0,Y0+2)
@@ -106,7 +106,8 @@ label(720,fy+10,"Flags (this section)",".flagrow → .flag"); leader(716,fy+6,X0
 # BOTTOM captions
 cy0=Y0+H+36
 S.append(f'<text x="590" y="{cy0}" fill="{INK}" font-size="12.5" text-anchor="middle">All tabs/buttons share one class (.uitab): accent border + white text; selected = darker accent fill + white text. Accent is per-card.</text>')
-S.append(f'<text x="590" y="{cy0+20}" fill="{MUT}" font-size="11.5" text-anchor="middle">View-mode icons (panel / graph) are white, no text. All four sections are always available. Header right: UX controls (audit, maximize), a 20px gap, then card-UI (status dot, help).</text>')
+S.append(f'<text x="590" y="{cy0+20}" fill="{MUT}" font-size="11.5" text-anchor="middle">View-mode icons (panel / graph) are white, no text. All four sections are always available.</text>')
+S.append(f'<text x="590" y="{cy0+40}" fill="{MUT}" font-size="11.5" text-anchor="middle">Header right: UX controls (audit · maximize) │ 20px gap │ card-UI (status dot · help). Help-icon hover shows the card description.</text>')
 
 S.append("</svg>")
 svg="".join(S)

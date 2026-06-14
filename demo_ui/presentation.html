@@ -106,8 +106,7 @@
   .hdrright{display:inline-flex;align-items:center;gap:7px}
   .state{display:inline-block;vertical-align:middle;margin-left:10px;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--edge);border-radius:9px;padding:1px 7px}
   .help{cursor:help;color:var(--muted);border:1px solid currentColor;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex:0 0 auto}
-  /* per-card hover description tooltip */
-  .dcard>.draghandle{cursor:help}
+  /* per-card hover description tooltip — shown ONLY over the .help icon (cursor:help is on .help) */
   #cardtip{position:fixed;z-index:60;max-width:264px;background:#0b0e13;border:1px solid var(--edge);border-radius:7px;padding:7px 9px;font-size:10.5px;line-height:1.42;color:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none;opacity:0;display:none}
   #cardtip.on{display:block;opacity:1}
   /* v10.4 maximize-height (Option A: fill screen height, pin to top, overlay) */
@@ -307,7 +306,7 @@
   <header>
     <h1>Minds<span class="osb">OS</span> Demo</h1>
     <span class="tag">presentation</span>
-    <span class="tag">v0.19</span>
+    <span class="tag">v0.20</span>
     <span class="tag" id="honesty" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
     <div class="controls">
       <button id="audit"><svg class="hi" viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Audit ▾</button>
@@ -353,20 +352,20 @@
     <svg id="links"></svg>
 
     <div class="dcard" id="card_cell" data-desc="Physical cell — the live physics view of the workcell (2 Franka arms + conveyor + per-arm 3×3 shelves). Toggle 2D/3D; drag to orbit, scroll to zoom.">
-      <h2 class="draghandle"><span>Physical cell <span class="state" id="st_cell">3D</span></span><span class="hdrright"><button id="dim" class="viewbtn">▦ 2D view</button><span class="help" title="Live physics view of the workcell. Toggle 2D; drag to orbit, scroll to zoom.">?</span></span></h2>
+      <h2 class="draghandle"><span>Physical cell <span class="state" id="st_cell">3D</span></span><span class="hdrright"><button id="dim" class="viewbtn">▦ 2D view</button><span class="help">?</span></span></h2>
       <div id="viewbox"><div id="view3d"></div><canvas id="cv" width="820" height="262" style="display:none"></canvas></div>
       <div class="legend"><i><span class="sw" style="background:var(--gap);opacity:.6"></span>gap mark — neither arm reaches</i><i id="hint3d">drag to orbit · scroll to zoom</i></div>
     </div>
 
     <div class="dcard" id="card_log" data-desc="Messages — Server (the live runtime: sessions, authorization, audit, storage) and Inter-brain (messages between brains, colored by sender and receiver).">
-      <h2 class="draghandle"><span>Messages <span class="state">live</span></span><span class="hdrright"><span class="help" title="Two feeds: Server (the live runtime — sessions, authorization, audit, storage) and Inter-brain (brain-to-brain messages).">?</span></span></h2>
+      <h2 class="draghandle"><span>Messages <span class="state">live</span></span><span class="hdrright"><span class="help">?</span></span></h2>
       <div class="commstabs"><button class="uitab ctab" data-ct="server">Server · Seam A</button><button class="uitab ctab on" data-ct="ib">Inter-brain · Seam B</button></div>
       <div class="srvfeed" id="srvfeed" style="display:none"></div>
       <div class="log" id="log"></div>
     </div>
 
     <div class="dcard user" id="card_user" data-desc="User — where you interact with the system: place orders by shape (Order/Sort), or teach it a new skill or position term (Teach).">
-      <div class="nm draghandle"><span>User <span class="state" id="st_user">order</span></span><span class="hdrright"><button id="o_run" class="mini primary">▶ Submit</button><button id="o_clear" class="mini">clear</button><span class="help" title="places orders · teaches skills — where you place orders by shape, or teach the system a new skill.">?</span></span></div>
+      <div class="nm draghandle"><span>User <span class="state" id="st_user">order</span></span><span class="hdrright"><button id="o_run" class="mini primary">▶ Submit</button><button id="o_clear" class="mini">clear</button><span class="help">?</span></span></div>
       <div class="tabs">
         <div class="tgroup"><span class="tglabel">task</span><button id="tab_order" class="uitab on">Order</button><button id="tab_sort" class="uitab">Sort</button></div>
         <div class="tgroup sys"><span class="tglabel">change system</span><button id="tab_teach" class="uitab teachtab"><svg class="ti" viewBox="0 0 14 14"><path d="M2 12 L2.4 9.6 L9 3 L11 5 L4.4 11.6 Z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><line x1="8.3" y1="3.7" x2="10.3" y2="5.7" stroke="currentColor" stroke-width="1.1"/></svg>Teach</button></div>
@@ -553,7 +552,7 @@ let FOLLOW = true;                  // live: track the newest frame unless the u
 const AUDIT_ICO='<svg viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 function cardHTML(k,label,role,desc){
   const tabs=STAGES.map(([s,lab])=>`<button class="bsec uitab" data-s="${s}" title="${lab}">${lab}</button>`).join('');
-  return `<div class="nm draghandle"><span>${label} <span class="state"></span></span><span class="hdrright"><button class="auditbtn" data-audit="${k}" title="reasoning audit — why it decided / refused">${AUDIT_ICO}</button><span class="dot"></span><span class="help" title="${role} — ${desc}">?</span></span></div>
+  return `<div class="nm draghandle"><span>${label} <span class="state"></span></span><span class="hdrright"><button class="auditbtn" data-audit="${k}" title="reasoning audit — why it decided / refused">${AUDIT_ICO}</button><span class="dot"></span><span class="help">?</span></span></div>
   <div class="cintent"></div>
   <div class="bsections">${tabs}</div>
   <div class="scroll"><div class="secbody"></div></div>`;}
@@ -768,7 +767,32 @@ const SAMPLE_AUDIT_SNAP={ snapshot_version:1, kind:"episode-audit", created_at:"
          steps:[{iri:"n9",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n5"}],
          replans:[],blame:null,dont_know:null}, problem_trace:[]}],
       memories:[{memory_iri:"n19",value:{task_pattern_iri:"move to home"},episode_iris:["n1","n10"]}]},
-    a1:{episodes:[]}, a2:{episodes:[]}, conv:{episodes:[]} },
+    // a1 — REAL sample (DM-5), verbatim from fixtures/episode_audit_arm1_refusal.json: TWO episodes
+    // (newest=refusal "place tube" dont_know; oldest=success "place box"). Suction arm succeeds on a
+    // box, refuses a tube (wrong gripper). NOT fabricated; opaque ref tokens n1…n20. Kept byte-faithful
+    // to the .json so the build-time drift-guard test passes.
+    a1:{device_type:"arm-suction",episodes:[
+      {episode_iri:"n10", value:{task_input_ref:null,mm_root_ref:null,task_pattern_iri:"place tube",outcome_classification:"dont_know",crash_marker:null,consolidated_at:"2026-06-13T14:32:27.805184+00:00"},
+       task_input:{order:{dst:"arm1",target:"r0c0",item:"tube",task_id:"order-sub"}},
+       reasoning:{hint_set:{iri:"n11",hints:{}},mapping_result:{iri:"n12",selected_task_pattern_iri:"place tube",mapping_confidence:1.0},
+         plan:{iri:"n13",root_milestone_ref:"n14"},milestones:[{iri:"n14",name:"root",status:"pending",replans_used:0}],
+         pipelines:[{iri:"n15",milestone_ref:"n14"}],pipeline_runs:[{iri:"n16",status:"completed",task_run_ref:"n17"}],
+         task_run:{iri:"n17",status:"failed",replan_history:[],attention_score:500},
+         steps:[{iri:"n18",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n14"}],
+         replans:[],
+         blame:{chain_level:"pipeline",blame_score:1.0,rationale:"blocked — this gripper can't grasp a tube (wrong gripper)"},
+         dont_know:{reason:"blocked — this gripper can't grasp a tube (wrong gripper)",cause:"embodiment_gate"}}, problem_trace:[]},
+      {episode_iri:"n1", value:{task_input_ref:null,mm_root_ref:null,task_pattern_iri:"place box",outcome_classification:"succeeded",crash_marker:null,consolidated_at:"2026-06-13T14:32:27.751942+00:00"},
+       task_input:{order:{dst:"arm1",target:"r1c1",item:"box",task_id:"order-sub"}},
+       reasoning:{hint_set:{iri:"n2",hints:{}},mapping_result:{iri:"n3",selected_task_pattern_iri:"place box",mapping_confidence:1.0},
+         plan:{iri:"n4",root_milestone_ref:"n5"},milestones:[{iri:"n5",name:"root",status:"pending",replans_used:0}],
+         pipelines:[{iri:"n6",milestone_ref:"n5"}],pipeline_runs:[{iri:"n7",status:"completed",task_run_ref:"n8"}],
+         task_run:{iri:"n8",status:"completed",replan_history:[],attention_score:500},
+         steps:[{iri:"n9",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n5"}],
+         replans:[],blame:null,dont_know:null}, problem_trace:[]}],
+      memories:[{memory_iri:"n19",value:{task_pattern_iri:"place box"},episode_iris:["n1"]},
+                {memory_iri:"n20",value:{task_pattern_iri:"place tube"},episode_iris:["n10"]}]},
+    a2:{episodes:[]}, conv:{episodes:[]} },
   _sample:true };
 
 let auditOpen=false,auditBrain=null,auditSnap=null,auditEp=0;
@@ -1154,11 +1178,11 @@ function setupLive(){
 // per-card hover descriptions: brain cards get theirs from BR (role + desc); static cards carry data-desc inline
 for(const [k,label,role,desc] of BR){const c=document.getElementById("bc_"+k);if(c)c.dataset.desc=label+" — "+desc;}
 (function(){const tip=document.getElementById("cardtip");let cur=null;
-  document.addEventListener("mouseover",e=>{const h=e.target.closest&&e.target.closest(".dcard>.draghandle");if(!h)return;
-    const card=h.closest(".dcard");if(!card||!card.dataset.desc||cur===card)return;cur=card;tip.textContent=card.dataset.desc;
-    const r=h.getBoundingClientRect();tip.style.left=Math.min(Math.max(8,r.left),window.innerWidth-272)+"px";tip.style.top=(r.bottom+6)+"px";tip.classList.add("on");});
-  document.addEventListener("mouseout",e=>{const h=e.target.closest&&e.target.closest(".dcard>.draghandle");if(!h)return;
-    const to=e.relatedTarget;if(to&&h.contains(to))return;cur=null;tip.classList.remove("on");});})();
+  document.addEventListener("mouseover",e=>{const hp=e.target.closest&&e.target.closest(".help");if(!hp)return;
+    const card=hp.closest(".dcard");if(!card||!card.dataset.desc||cur===hp)return;cur=hp;tip.textContent=card.dataset.desc;
+    const r=hp.getBoundingClientRect();tip.style.left=Math.min(Math.max(8,r.left-200),window.innerWidth-272)+"px";tip.style.top=(r.bottom+6)+"px";tip.classList.add("on");});
+  document.addEventListener("mouseout",e=>{const hp=e.target.closest&&e.target.closest(".help");if(!hp)return;
+    const to=e.relatedTarget;if(to&&hp.contains(to))return;cur=null;tip.classList.remove("on");});})();
 // subsection collapse: click a sub-card header → toggle (state persists across re-renders)
 document.addEventListener("click",e=>{const h=e.target.closest&&e.target.closest(".subhdr");if(!h)return;
   const sub=h.closest(".subsec");if(!sub)return;const key=sub.dataset.sub;
