@@ -119,7 +119,8 @@ def _start_ws(result):
     # replacing the DM-4 fixed arm1/home decide.
     decide = make_allocator(events)
     on_command = wire_demo(
-        result.brains, bus, events, run_atomic=run_atomic, decide=decide
+        result.brains, bus, events, run_atomic=run_atomic, decide=decide,
+        sim_engine=result.sim_engine,
     )
     if result.sim_engine is not None:
         wire_pose_stream(result.sim_engine, events)

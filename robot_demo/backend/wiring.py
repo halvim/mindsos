@@ -152,6 +152,15 @@ def make_live_run_atomic(sim_engine: Any) -> "RunAtomic":
                     cause="an actuator did not respond as commanded" if reported else "",
                 )
                 if reported:
+                    # self-diagnosis writes the capacity-gap into the arm's Local
+                    # (on-thesis introspective loop) before reporting up (PB-25.13).
+                    try:
+                        from .capacities import DS_DIAG_REQUEST
+                        brain.cl.invoke(
+                            capacity_iri("validate", f"a{arm}.diagnose_actuators"),
+                            {DS_DIAG_REQUEST: {}}, session=None)
+                    except Exception:  # noqa — diagnosis is best-effort
+                        pass
                     return {"status": "dont_know", "stage": "verify",
                             "recalibrations": recal}
                 pick = brain.cl.invoke(
@@ -322,6 +331,7 @@ def wire_demo(
     run_atomic: Optional[RunAtomic] = None,
     decide: Optional[Callable[[dict], Tuple[str, str]]] = None,
     install_datastates: bool = False,
+    sim_engine: Optional[Any] = None,
 ) -> "Callable[[str, dict], None]":
     """Wire the whole demo and return the WS command handler.
 
@@ -398,6 +408,23 @@ def wire_demo(
                 _export_episode_audit((args or {}).get("scope"), respond)
             # mode "demo-state" (Mode B) is deferred post-DM-6 (nothing real to
             # warm-restore yet) — the UI mock covers it; live is not wired.
+        elif name == "inject_fault":
+            # DM-6: inject a recoverable perturbation (minor) or a persistent
+            # freeze (major) on a target arm; "clear" removes the freeze. The
+            # arm's verified-approach (run_atomic) catches the resulting
+            # divergence and recalibrates or reports. No-op without a body.
+            if sim_engine is not None:
+                a = (args or {}).get("scope") or (args or {}).get("arm") or "a1"
+                arm_n = 2 if str(a) in ("arm2", "a2") else 1
+                kind = (args or {}).get("kind", "disturb")
+                joint = int((args or {}).get("joint", 1))
+                if kind == "freeze":
+                    sim_engine.freeze_joint(arm_n, joint)
+                elif kind == "clear":
+                    sim_engine.clear_freezes(arm_n)
+                else:
+                    sim_engine.disturb_joint(
+                        arm_n, joint, float((args or {}).get("delta", 0.03)))
         elif name == "reset":
             events.reset()
         # play/pause/step are mock-playback concepts; live runs on real orders.
