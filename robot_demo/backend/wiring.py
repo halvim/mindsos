@@ -76,6 +76,10 @@ RunAtomic = Callable[[Any, str], dict]
 #: conveyor-clear move that works for both arms (dm3_check ``ready_delta``).
 _READY_DELTA = (0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 
+#: representative magnitude (rad) reported for a probe-detected frozen actuator
+#: that the reach itself didn't exercise — classifies as the major tier.
+_MAJOR_DIVERGENCE = 0.30
+
 
 def _first_item(order: Any) -> Optional[str]:
     """The item of the order's first line (the thing being picked), or None.
@@ -118,6 +122,17 @@ def _verified_approach(sim_engine: Any, arm: int, item: str,
         maxdiv = max(maxdiv, div)
         tier = classify(div)
         if tier == TIER_OK:
+            # The reach matched — but a dead actuator the reach didn't happen to
+            # exercise must still be caught: proactive self-diagnosis (scenario
+            # L-3) probes every joint, so a persistent fault can't hide behind a
+            # motion that didn't need it. The transient disturb never reaches
+            # here (it diverts to recalibrate first, so the probe can't consume
+            # the one-shot offset).
+            try:
+                if sim_engine.probe_actuators(arm).get("frozen_joints"):
+                    return (True, recal, max(maxdiv, _MAJOR_DIVERGENCE))
+            except Exception:  # noqa — probe is best-effort
+                pass
             return (False, recal, maxdiv)
         if tier == TIER_REPORT or recal >= budget:
             return (True, recal, maxdiv)
