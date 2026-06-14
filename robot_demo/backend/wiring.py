@@ -33,6 +33,13 @@ from mindsos_intelligence.phase_1 import MAP_IRI, PROCESS_IRI
 from mindsos_intelligence.plan_construction import DERIVE_PLAN_IRI
 
 from .brain import run_task
+from .closed_loop import (
+    DEFAULT_RECAL_BUDGET,
+    TIER_OK,
+    TIER_REPORT,
+    classify,
+    joint_divergence,
+)
 from .comms import (
     DISPATCH_IRI,
     DS_DISPATCH_ACK,
@@ -45,7 +52,13 @@ from .comms import (
     register_comms_capacities,
 )
 from .frames import BRAIN_ALIAS, DemoEvents, server_status_frame
-from .gate import clear_gate_verdict, gate_item, get_gate_verdict, install_arm_gate
+from .gate import (
+    clear_gate_verdict,
+    gate_item,
+    get_gate_verdict,
+    install_arm_gate,
+    set_fault_state,
+)
 from .installers import install_core_datastates
 from .pose_frame import project_pose
 from .serializer import KIND_EPISODE_AUDIT, build_episode_audit_snapshot
@@ -82,6 +95,35 @@ def _stub_run_atomic(brain: Any, target: str) -> dict:
     return {"status": "succeeded", "note": "stub (no body)", "target": target}
 
 
+def _verified_approach(sim_engine: Any, arm: int, item: str,
+                       budget: int = DEFAULT_RECAL_BUDGET) -> Tuple[bool, int, float]:
+    """DM-6 closed-loop verify→replan-from-current on the approach reach (§25
+    PB-T3.2). Command the item's approach pose, verify the achieved joints match
+    the commanded ones; a MINOR divergence replans-from-current (re-reach — the
+    generator reseeds from the live pose, no backtracking); a MAJOR/persistent
+    one is reported. Returns ``(reported, recalibrations, max_divergence)``.
+
+    Verify is joint-space (commanded final qpos vs achieved) — exact, so a clean
+    reach reads ~0 and never spuriously recalibrates (gate-validated by
+    ``dm6_perturbation_check``)."""
+    from .sim_engine import SLOT_A1, SLOT_A2
+
+    slot = SLOT_A1 if arm == 1 else SLOT_A2
+    xyz, R = sim_engine.item_grasp_target(arm, item, "approach")
+    recal, maxdiv = 0, 0.0
+    while True:
+        qpos, _ = sim_engine.generate_arm_reach(arm, xyz, R)
+        sim_engine.submit(slot, qpos).result(timeout=30)
+        div = joint_divergence(list(qpos[-1]), list(sim_engine.arm_qpos(arm)))
+        maxdiv = max(maxdiv, div)
+        tier = classify(div)
+        if tier == TIER_OK:
+            return (False, recal, maxdiv)
+        if tier == TIER_REPORT or recal >= budget:
+            return (True, recal, maxdiv)
+        recal += 1  # MINOR -> recalibrate: the loop re-reaches from the live pose
+
+
 def make_live_run_atomic(sim_engine: Any) -> "RunAtomic":
     """The live arm motion (Linux-gated). DM-5: when the dispatch names an item,
     run the ◆ assembled ``pick`` then ``place_at_cell`` (item→cell) over the
@@ -100,6 +142,18 @@ def make_live_run_atomic(sim_engine: Any) -> "RunAtomic":
         item = v.item if v is not None else None
         try:
             if item:
+                # DM-6 closed-loop: verify the approach reach + recalibrate-from-
+                # current on a minor divergence; report (dont-know) on a major /
+                # persistent one before committing the grasp (§25 PB-T3.2/T3.3).
+                reported, recal, maxdiv = _verified_approach(sim_engine, arm, item)
+                set_fault_state(
+                    brain, recalibrations=recal, max_divergence=maxdiv,
+                    reported=reported,
+                    cause="an actuator did not respond as commanded" if reported else "",
+                )
+                if reported:
+                    return {"status": "dont_know", "stage": "verify",
+                            "recalibrations": recal}
                 pick = brain.cl.invoke(
                     capacity_iri("mechanism", f"a{arm}.pick"),
                     {DS_POSE_TARGET: {"item": item}}, session=None,
