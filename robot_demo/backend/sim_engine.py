@@ -110,6 +110,9 @@ class SimEngine:
         self._lock = threading.RLock()
         self._slots: Dict[str, Tuple[List, Future]] = {}  # id -> (frames, future)
         self._frozen: Dict[str, Dict[int, float]] = {SLOT_A1: {}, SLOT_A2: {}}
+        #: DM-6 one-shot recoverable perturbation (additive offset, auto-cleared
+        #: on slot drain) — distinct from the persistent freeze clamp.
+        self._disturb: Dict[str, Dict[int, float]] = {SLOT_A1: {}, SLOT_A2: {}}
         self._subs: List = []           # pose-stream callbacks(frame, bodies)
         self._run = False
         self._thread: Optional[threading.Thread] = None
@@ -169,6 +172,8 @@ class SimEngine:
             self._apply_frame(sid, frames.pop(0))
         for sid, fut in done:
             self._slots.pop(sid, None)
+            if sid in self._disturb:
+                self._disturb[sid].clear()  # one-shot: perturbation lasts one motion
             if not fut.done():
                 fut.set_result(True)
 
@@ -180,6 +185,9 @@ class SimEngine:
             for j, fv in self._frozen[sid].items():  # PB-NN clamp
                 if 0 <= j < len(q):
                     q[j] = fv
+            for j, dv in self._disturb[sid].items():  # DM-6 one-shot perturbation
+                if 0 <= j < len(q):
+                    q[j] = q[j] + dv
             self._cell.d.qpos[A["qadr"]] = q
             for j, x in enumerate(A["act"]):
                 self._cell.d.ctrl[x] = q[j]
@@ -209,6 +217,16 @@ class SimEngine:
         with self._lock:
             for sid in ([SLOT_A1 if arm == 1 else SLOT_A2] if arm else [SLOT_A1, SLOT_A2]):
                 self._frozen[sid].clear()
+
+    def disturb_joint(self, arm: int, joint_index: int, delta: float = 0.03) -> None:
+        """DM-6: inject a ONE-SHOT recoverable joint offset (rad) — the small,
+        transient divergence that the closed loop *recalibrates* (replan-from-
+        current), distinct from the persistent :meth:`freeze_joint` clamp that
+        escalates to a report. Applied additively to the current motion's frames
+        and auto-cleared when the slot drains, so the next reach recovers."""
+        sid = SLOT_A1 if arm == 1 else SLOT_A2
+        with self._lock:
+            self._disturb[sid][joint_index] = float(delta)
 
     # ── reads ─────────────────────────────────────────────────────────
     def read_poses(self) -> Dict[str, List[float]]:

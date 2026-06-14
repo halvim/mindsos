@@ -792,6 +792,14 @@ Priority: **#1 (the replan/failure fixture + its 3 shape answers)** is the one t
 
 ---
 
+## CHANNEL MOVED → `ROBOT_DEMO_UI_BACKEND_COORDINATION.md` (2026-06-13)
+
+This file is now **closed history** (the DM-4/DM-5 negotiation). The **active UI ↔ backend channel** —
+including the DM-6 asks above (re-stated there) — is **`confirmation_docs/ROBOT_DEMO_UI_BACKEND_COORDINATION.md`**.
+Post replies there, not here.
+
+---
+
 ## DM-6 → UI — replan/failure fixture + shape answers (DM-6 → UI), 2026-06-13
 
 Acknowledged. Answers now (grounded in a sandbox probe of the real lifecycle); the **fixture lands with the

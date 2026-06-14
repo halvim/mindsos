@@ -34,10 +34,12 @@ import sys
 from typing import List, Optional, Tuple
 
 _PLAY_TIMEOUT_S = 30.0
-#: a reach counts as "degraded" if the frozen TCP error exceeds the healthy
-#: baseline by more than this (m). Generous vs the 30 cm grasp gate — reported
-#: numbers let a human re-judge.
-_DEGRADE_MARGIN_M = 0.05
+#: the demo's OWN success criterion — ``set_grip`` proximity gate (sim_engine
+#: :meth:`set_grip`). A reach "succeeds" iff achieved TCP error <= this. Judging
+#: against the real gate (not a baseline margin) is the honest test: a baseline
+#: that already exceeds the gate means the target isn't healthy-reachable and no
+#: freeze conclusion can be drawn from it.
+_GRASP_GATE_M = 0.30
 
 
 def _classify_items(poses: dict) -> Tuple[Optional[str], Optional[str]]:
@@ -109,13 +111,28 @@ def main() -> int:
     coarse_base = reach_err(coarse_xyz, coarse_R)
     move_home()
     fine_base = reach_err(fine_xyz, fine_R)
-    print(f"  [DM-6] healthy TCP error — coarse(place)={coarse_base * 1000:.0f} mm  "
-          f"fine(grasp)={fine_base * 1000:.0f} mm")
+    gate_mm = _GRASP_GATE_M * 1000
+    print(f"  [DM-6] healthy TCP error vs {gate_mm:.0f} mm gate — "
+          f"coarse(place)={coarse_base * 1000:.0f} mm "
+          f"[{'reachable' if coarse_base <= _GRASP_GATE_M else 'UNREACHABLE'}]  "
+          f"fine(grasp)={fine_base * 1000:.0f} mm "
+          f"[{'reachable' if fine_base <= _GRASP_GATE_M else 'UNREACHABLE'}]")
+
+    # A baseline that already exceeds the gate means the target isn't healthy-
+    # reachable — no freeze conclusion can be drawn. Scenario-as-written requires
+    # a HEALTHY fine grasp that succeeds; if it doesn't, the sim can't support it.
+    if fine_base > _GRASP_GATE_M:
+        print(f"  FORK-2 VERDICT — FLEET-LEVEL PARTIAL (option a, FORCED): the healthy "
+              f"arm2 fine grasp already misses by {fine_base * 1000:.0f} mm > "
+              f"{gate_mm:.0f} mm gate, so the sim cannot substantiate a working "
+              f"fine-grasp baseline to degrade. Scenario-as-written is NOT physically "
+              f"earnable here. DM-6 reroutes on any arm2 fault; the capability-typed "
+              f"gap is identical — zero rework.")
+        return 0
 
     n_joints = len(engine.arm_qpos(2))
-    print(f"  [DM-6] probing {n_joints} arm2 joints "
-          f"(degrade margin = {_DEGRADE_MARGIN_M * 1000:.0f} mm over healthy)")
-    print("        joint | frozen? | coarse err (Δ) | fine err (Δ)")
+    print(f"  [DM-6] probing {n_joints} arm2 joints (success = TCP err <= {gate_mm:.0f} mm)")
+    print("        joint | frozen? | coarse err | fine err")
     earned: List[int] = []
     for j in range(n_joints):
         move_home()
@@ -130,25 +147,25 @@ def main() -> int:
         f_err = reach_err(fine_xyz, fine_R)
         engine.clear_freezes(2)
 
-        c_deg = c_err > coarse_base + _DEGRADE_MARGIN_M
-        f_deg = f_err > fine_base + _DEGRADE_MARGIN_M
-        if f_deg and not c_deg:
+        c_ok = c_err <= _GRASP_GATE_M
+        f_ok = f_err <= _GRASP_GATE_M
+        if c_ok and not f_ok:  # coarse still succeeds, fine now fails
             earned.append(j)
-        flag = "  <-- earns scenario-as-written" if (f_deg and not c_deg) else ""
+        flag = "  <-- earns scenario-as-written" if (c_ok and not f_ok) else ""
         print(f"        a2_joint{j + 1:<2} | {str(frozen_seen):<5}   | "
-              f"{c_err * 1000:6.0f} mm {'DEG' if c_deg else '   '} | "
-              f"{f_err * 1000:6.0f} mm {'DEG' if f_deg else '   '}{flag}")
+              f"{c_err * 1000:6.0f} mm {'OK ' if c_ok else 'FAIL'} | "
+              f"{f_err * 1000:6.0f} mm {'OK ' if f_ok else 'FAIL'}{flag}")
 
     if earned:
         names = ", ".join(f"a2_joint{j + 1}" for j in earned)
         print(f"  FORK-2 VERDICT — SCENARIO-AS-WRITTEN EARNED (option b): freezing "
-              f"{{{names}}} degrades the fine cylinder grasp while coarse carrier "
-              f"placement still reaches. DM-6 may keep 'arm2 still grips carriers' — "
-              f"pin the fault to one of these joints.")
+              f"{{{names}}} fails the fine cylinder grasp (TCP > {gate_mm:.0f} mm) while "
+              f"coarse carrier placement still succeeds. DM-6 may keep 'arm2 still grips "
+              f"carriers' — pin the fault to one of these joints.")
     else:
         print("  FORK-2 VERDICT — FLEET-LEVEL PARTIAL (option a): no single frozen "
-              "joint degrades fine grasp while sparing coarse placement. DM-6 reroutes "
-              "on any arm2 fault (no 'arm2 keeps carriers' claim). Zero rework — the "
+              "joint fails fine grasp while sparing coarse placement. DM-6 reroutes on "
+              "any arm2 fault (no 'arm2 keeps carriers' claim). Zero rework — the "
               "capability-typed gap is identical.")
     return 0
 
