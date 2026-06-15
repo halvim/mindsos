@@ -55,6 +55,29 @@ const BEATS = [
            a2:{intent:"degraded",chain:5,decision:"fine-grasp pending repair",active:false}}}
 ];
 
+// Plan▸Resolve narrowing frames (WS §5), emitted on the cooperative-execution beat (beat 3).
+// Sanitized behavior-level cap labels (policy B). Mirrors demo_ui/resolve.js — `acc` (per-brain
+// accent) + `absolute` are injected UI-side and are NOT on the wire (a1 omits `tube` → UI infers
+// absolute). Cell state per 3×3 index: "cand" | "win" | "out".
+const rcAll = () => { const m={}; for(let i=0;i<9;i++) m[i]="cand"; return m; };
+const rcSet = s => { const m={}; for(let i=0;i<9;i++) m[i]=s.includes(i)?"cand":"out"; return m; };
+const rcWin = w => { const m={}; for(let i=0;i<9;i++) m[i]="out"; m[w]="win"; return m; };
+const RESOLVE_FRAMES = {
+  3: [
+    { brain:"mgr", clause:"Box above Tube → Arm 2", item:"Box", tube:4,
+      stages:[{cap:"all shelf cells (9)",          cells:rcAll()},
+              {cap:"clause “above Tube” → 3",       cells:rcSet([0,1,2])},
+              {cap:"tie-break: directly above → 1", cells:rcWin(1)}], winner:1 },
+    { brain:"a2", clause:"Box above Tube", item:"Box", tube:4,
+      stages:[{cap:"all shelf cells (9)",       cells:rcAll()},
+              {cap:"above Tube → 3 candidates",  cells:rcSet([0,1,2])},
+              {cap:"directly above → place ✓",   cells:rcWin(1)}], winner:1 },
+    { brain:"a1", clause:"Sheet @ center", item:"Sheet",
+      stages:[{cap:"all shelf cells (9)",      cells:rcAll()},
+              {cap:"term “center” → 1 cell ✓", cells:rcWin(4)}], winner:4 }
+  ]
+};
+
 let WebSocketServer;
 try { ({ WebSocketServer } = require("ws")); }
 catch(e){ console.error("This dev server needs the 'ws' package:  npm i ws"); process.exit(1); }
@@ -74,6 +97,8 @@ wss.on("connection", (ws) => {
     const { msgs, ...stateFields } = b;                 // a `state` frame is the beat minus its msgs
     ws.send(JSON.stringify(Object.assign({ type:"state", t:Date.now(), beat:i-1 }, stateFields)));
     for(const m of (b.msgs||[])) ws.send(JSON.stringify({ type:"message", from:m[0], to:m[1], text:m[2] }));
+    const rf = RESOLVE_FRAMES[i-1];                     // per-brain Plan▸Resolve frames for this beat
+    if(rf) for(const f of rf) ws.send(JSON.stringify(Object.assign({ type:"resolve", t:Date.now() }, f)));
   }
   function play(){ if(timer) return; timer = setInterval(emitBeat, 2200); }
   function stop(){ if(timer){ clearInterval(timer); timer=null; } }

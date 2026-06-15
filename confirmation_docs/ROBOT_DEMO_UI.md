@@ -42,7 +42,8 @@ file map; it does **not** restate code — read the files it points to.
   (teach-tab curation model), `sections.js` (brain-section content model),
   `resolve.js` (relation-resolution narrowing — Plan ▸ Resolve subsection),
   `audit.js` (L5 reasoning/audit — the recorded-chain 7→5 generic-stage collapse, sanitized),
-  `datasource.js` (the **mock↔live data-source seam**; live WS client).
+  `datasource.js` (the **mock↔live data-source seam**; live WS client),
+  `timeline.js` (**demo-timeline builder** — `buildTimeline()`, change-only ordered transcript; *v0.24*).
 - `mock_ws_server.js` — runnable reference WS emitter (replays the 7 beats as live frames;
   `npm i ws && node mock_ws_server.js`). Dev-only; a worked example of the backend contract.
 - **`confirmation_docs/ROBOT_DEMO_WS_CONTRACT.md`** — the authoritative server↔browser WS
@@ -53,8 +54,11 @@ file map; it does **not** restate code — read the files it points to.
   `comms_card_map.png` (the **Messages** card — tabbed **Server (Seam A) / Inter-brain (Seam B)**,
   in that order; *shipped v0.13*), `user_card_map.png`, `button_map.png`,
   `header_map.png` (the **header** — title/tags/`#honesty`/`#audit`+`#auditmenu`/`#export`+`#expmenu`/
-  transport/`#l5cal` message callout/`#capbanner`; *v0.19*).
-- `maps/*.py` — the scripts that regenerate the five maps (run `python3 maps/<name>.py`;
+  transport/`#l5cal` message callout/`#capbanner` + the **beat strip** `#beatnum`/`#beatnarr`/`#tlbtn`;
+  *regenerated v0.24*), `timeline_map.png` (the **demo-timeline modal** — `#tlbtn` trigger, `.tlhead`/
+  `.tlclose`, `.tlfilters`/`.tlflab`/`.tlpills`/`.tlpill.on`/`.off`, `#tlbody`, `.tlbeat`, `.tlrow`/`.tlsrc`/
+  `.tltag`/`.tltext`; *v0.24*).
+- `maps/*.py` — the scripts that regenerate the maps (run `python3 maps/<name>.py`;
   needs `cairosvg`).
 - `presentation_mockup.html` — frozen **v9** baseline (reference only).
 
@@ -349,6 +353,56 @@ file map; it does **not** restate code — read the files it points to.
   `plan_card_map.png` carry the `.help (hover = description)` note. Verified headlessly **8/8** (focus fully
   gone; maximize + tooltip-scope intact) + audit/drift **45/45** re-checked.
 
+- **v0.21 — live Plan ▸ Resolve (3d; the SHIPPED v0.21 — distinct from the reverted focus-mode "v0.21").**
+  The live `resolve` frame (WS §5, DM-5 producer green at `98e7c5e`) is wired through `datasource.js`
+  (`case 'resolve' → emit`) and lifts Plan▸Resolve off the live "producer pending" placeholder. The wire
+  frame is per-brain (no beat key), so live keeps a per-brain `liveResolve` store + per-brain animation
+  state (mock stays beat-keyed off `resolveAnim`, untouched). A `liveResolveToRes` adapter injects the
+  per-brain accent (from `ACC`, not on the wire) and infers `absolute = (tube == null)`; `resolveInnerHTML`
+  is factored so mock + live render through one path. On each arriving `resolve` frame the brain's narrowing
+  animates (9→3→1) via `startLiveResolveAnim` (per-brain snap-to-final guard); `clearLiveResolve` on reset.
+  `mock_ws_server.js` now emits sanitized `resolve` frames on beat 3 (mgr/a2/a1) for local testing. Verified
+  headlessly **34/34** (adapter accent/absolute/null-guard, placeholder→grid, per-brain stepping + snap,
+  mock-path regression, string-keyed-cells coercion, datasource resolve surface, e2e vs the spawned mock
+  server) + IP-guard on the rendered resolve DOM. No map change.
+- **v0.22 — header beat strip (Option C1) + narrow accent scrollbar.** Two changes. (1) A full-width slim
+  **beat strip** under the header bar (`#beatstrip`): blue accent rail + an **outlined-blue beat chip**
+  (`#beatnum`) + behavior-level **narration** (`#beatnarr`), written each beat in `renderPanels` from the
+  state's `title`/`narr`. This re-introduces the narration that v0.19 had removed, now in the header zone
+  (chosen layout C1 over inline A/B — full text, no truncation). (2) A **4px per-card-accent scrollbar** on
+  the brain-card `.scroll`/`.secbody` regions (thumb = each card's accent at ~42%, ~80% on hover, transparent
+  track; WebKit + Firefox `scrollbar-width:thin` + a `body.nofx` solid-accent fallback; scoped to `.dcard`).
+  Verified headlessly **17/17** (strip text/idle/narr-only + CSS/HTML presence + IP-clean narration).
+- **v0.23 — wheel-scroll over brain cards.** A non-passive `wheel` listener on each brain card scrolls *that
+  card's* content (`cardScroller` picks whichever of `.scroll`/`.secbody` overflows) from **anywhere over the
+  card** (title bar / tabs / padding included), `preventDefault`-ing so the page doesn't scroll underneath;
+  **scroll-chaining at the edges** releases to the page at top/bottom (or no overflow). Handles `deltaMode`
+  lines/pages → px. Verified headlessly **17/17** (scroller pick, up/down consume + advance, release at both
+  edges, line-mode scaling).
+- **v0.24 — demo-timeline modal + beat-strip rework + the beat-1 fix.** A **chronological, change-only
+  transcript** of every message + brain section/subsection change, opened from the beat strip. (1) New pure
+  sidecar **`timeline.js`** — `buildTimeline()` turns the scripted `frames` (mock) or a live state-diff into
+  ordered beat-grouped entries, classifying message sources (User vs Seam B) and mapping decisions to
+  sections. (2) `#tlmodal` modal (reuses the audit `#maxbackdrop`/Esc/click-out pattern) with **three filter
+  rows** — Sources (Seam A/Seam B/User/the 4 brains), Sections (Task/Plan/Pipeline/Capabilities), Subsections
+  (Plan▸Resolve) — toggle pills (`TL_ON` sets) + the rendered transcript (`#tlbody`). (3) The **beat chip is
+  now a display-only outlined span**; a **far-right filled-blue `#tlbtn`** (Play-blue, list icon + "Timeline"
+  label) opens the modal scrolled to the current beat. (4) **Beat-1 fix:** `datasource.js` + `merge` carry the
+  frame's `beat`; the strip uses it (kills the live off-by-one from the idle seed at `states[0]`) and shows
+  "Ready · Place an order to begin" on the idle seed; `beats_total` captured from `hello`. All rows render
+  existing **behavior-level** strings (IP-guard green); no new wire frames / no new sanitization surface.
+  Verified headlessly **44/44** (builder order/change-only/source+section classification, jsdom render +
+  pill-toggle filtering, beat-strip fix, IP-guard). **Maps:** new `timeline_map.png` (modal part vocabulary);
+  `header_map.png` regenerated (v0.24 — adds the beat strip: `#beatnum` chip + `#beatnarr` + far-right `#tlbtn`).
+  - **Backend coordination (open):** the *live* beat counter + timeline beat-grouping need a true storyline-beat
+    index. DM-6 confirmed `state.beat` is an advisory per-emit **frame** counter that overshoots `beats_total`,
+    so a dedicated **`state.cbeat`** (0-based global beat, advances on true transition) was requested + accepted
+    by DM-6 (final name/shape on delivery). Mock-mode is correct; the live counter wires to `cbeat` when it lands.
+    See `ROBOT_DEMO_UI_BACKEND_COORDINATION.md`.
+  - **`ROBOT_DEMO_TIMELINE_STORY.md`** (full ~55-row timeline content) was drafted for approval but **rejected by
+    the user — to be improved in a future chat**; the richer per-section row model (frame `sections:{…}` +
+    builder change) it implies is **deferred to v0.25**, not built.
+
 ## 4. Design decisions settled this chat (the "why", not in code)
 
 **Brain cards** (see `orchestrator_card_map.png` for part names):
@@ -415,8 +469,17 @@ was then built (v0.21) and **removed on review** — dimming alone gave the focu
    note dedupe, Stage 1 arm-dispatch parser, and the latent `plainLabel` colon over-collapse. Bug-(iii)
    (approach label) was resolved upstream by DM-5's re-export ("place tube"). DM-5 also delivered an a1
    *succeeded* episode (folded into the same fixture) → re-baked so a1 lists [Blocked, Succeeded]. 45/45.
-3d. **Live Plan ▸ Resolve — UNBLOCKED by DM-5.** DM-5 emits the WS-§5 `resolve` frame matching `resolve.js`
-   (`buildResolve` shape). Add `resolve` to `datasource.js` and lift Plan▸Resolve off the live placeholder.
+3d. ~~**Live Plan ▸ Resolve**~~ — **SHIPPED v0.21** (see §3): `resolve` in `datasource.js` + per-brain
+   `liveResolve` store/animation, mock server emits `resolve` on beat 3. 34/34.
+3e. ~~**Header beat strip + narrow accent scrollbar**~~ — **SHIPPED v0.22**; ~~wheel-scroll over brain
+   cards~~ — **SHIPPED v0.23**; ~~demo-timeline modal + beat-1 fix~~ — **SHIPPED v0.24** (see §3).
+3f. **Demo-timeline content (v0.25, deferred).** `ROBOT_DEMO_TIMELINE_STORY.md` (full ~55-row story) was
+   drafted but **rejected by the user — improve in a future chat**. The richer per-section row model it needs
+   (per-brain frame `sections:{task,plan,pipeline}` + `resolve` + `caps`; builder emits one row per *changed*
+   section) is the v0.25 work, gated on an approved story.
+3g. **`state.cbeat` wiring (live, when it lands).** DM-6 will add the global storyline-beat field; on arrival,
+   point the beat-strip counter (`cbeat+1 / beats_total`) + timeline beat-grouping at it (one-line
+   `datasource.js` change). Mock-mode unaffected; the off-by-one fix already uses the advisory `state.beat`.
 4. **Graph content** — replace the placeholder subgraphs with real per-section graphs once
    wired to live data.
 5. *(Optional)* **Real-clip 3D cell** — on the execution beat, play the baked 46-clip set

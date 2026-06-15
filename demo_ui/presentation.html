@@ -27,6 +27,14 @@
   .chapter{display:flex;align-items:baseline;gap:8px;margin:2px 0 6px}
   .chip{background:#21262d;border:1px solid var(--edge);border-radius:5px;padding:2px 8px;font-size:10px;color:var(--muted);white-space:nowrap}
   .narr{color:var(--ink);font-size:12px}
+  /* v0.22 — header beat strip: full-width status line under the bar (blue accent rail + outlined beat chip) */
+  #beatstrip{display:flex;align-items:center;gap:10px;margin:0 0 7px;padding:5px 12px;background:#101a27;border:1px solid var(--edge);border-left:3.5px solid var(--a1);border-radius:7px;min-height:30px}
+  #beatnum{flex:0 0 auto;font-size:10px;color:var(--a1);background:transparent;border:1px solid var(--a1);border-radius:20px;padding:2px 10px;white-space:nowrap}
+  #beatnarr{flex:1;min-width:0;color:#eaf2ff;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* v0.24 — timeline button: far right of the strip, filled Play-blue, list icon + label */
+  #tlbtn{flex:0 0 auto;margin-left:8px;display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:#fff;background:#1f6feb;border:1px solid #1f6feb;border-radius:6px;padding:3px 11px;cursor:pointer;white-space:nowrap}
+  #tlbtn:hover{background:#3d8bfd;border-color:#3d8bfd}
+  #tlbtn .tlico{width:13px;height:13px;flex:0 0 auto}
   #import:disabled{opacity:.45;cursor:not-allowed}
   /* free canvas */
   #stage{position:relative;min-height:820px}
@@ -147,6 +155,25 @@
   #l5audit .l5sbody.ok{color:#5fd39a}#l5audit .l5sbody.warn{color:var(--warn)}#l5audit .l5sbody.stop{color:#e0758c}
   #l5audit .l5snote{font-size:10px;color:var(--muted);margin-top:3px}
   #l5audit .l5empty{margin:auto;color:var(--muted);font-size:12px;text-align:center;max-width:60%}
+  /* v0.24 demo-timeline modal — over #maxbackdrop; chronological transcript, filterable */
+  #tlmodal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,94vw);height:min(640px,90vh);background:var(--panel);border:1.7px solid var(--a1);border-radius:13px;z-index:52;display:none;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+  #tlmodal .tlhead{display:flex;align-items:center;gap:10px;padding:11px 16px;background:color-mix(in srgb,var(--a1) 13%,#161b22);border-bottom:1px solid color-mix(in srgb,var(--a1) 45%,transparent)}
+  body.nofx #tlmodal .tlhead{background:#15233a;border-bottom:1px solid var(--a1)}
+  #tlmodal .tltitle{font-size:14px;font-weight:700;color:var(--ink)}
+  #tlmodal .tlclose{margin-left:auto;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;background:none;border:none}
+  #tlmodal .tlfilters{padding:8px 16px 6px;border-bottom:1px solid var(--edge);display:flex;flex-direction:column;gap:5px}
+  #tlmodal .tlfrow{display:flex;align-items:center;gap:8px}
+  #tlmodal .tlflab{flex:0 0 72px;font-size:10px;font-weight:700;color:var(--muted)}
+  #tlmodal .tlpills{display:flex;gap:7px;flex-wrap:wrap}
+  #tlmodal .tlpill{font-size:9.5px;border-radius:20px;padding:2px 10px;cursor:pointer;border:1px solid;white-space:nowrap;user-select:none}
+  #tlmodal .tlpill.on{} #tlmodal .tlpill.off{border-color:var(--muted)!important;color:var(--muted)!important;background:transparent!important;opacity:.55}
+  #tlmodal .tlbody{flex:1 1 auto;overflow:auto;padding:8px 14px 12px}
+  #tlmodal .tlbeat{font-size:10.5px;font-weight:700;color:var(--ink);background:#11161d;border-radius:5px;padding:5px 9px;margin:8px 0 4px}
+  #tlmodal .tlrow{display:grid;grid-template-columns:90px 132px 1fr;align-items:start;gap:8px;padding:4px 0 4px 10px;border-left:3px solid var(--edge);margin:2px 0}
+  #tlmodal .tlsrc{font-size:8.4px;font-weight:600;border-radius:5px;padding:1px 6px;text-align:center;border:1px solid;align-self:start}
+  #tlmodal .tltag{font-size:9px;color:var(--muted);padding-top:1px}
+  #tlmodal .tltext{font-size:10px;color:var(--ink);padding-top:1px}
+  #tlmodal .tlnone{color:var(--muted);font-style:italic;font-size:11px;padding:16px 4px;text-align:center}
   /* Export chooser menu (v0.18 / B3) */
   #expmenu{position:fixed;display:none;z-index:53;background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:5px;min-width:162px;box-shadow:0 12px 36px rgba(0,0,0,.5)}
   #expmenu .emlabel{font-size:8.5px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;padding:3px 8px 4px}
@@ -193,6 +220,14 @@
   .hi{width:12px;height:12px;vertical-align:-2px;margin-right:4px}
   /* .tabs selected handled by .uitab.on */
   .scroll{overflow:auto;flex:1}
+  /* v0.22 — narrow, discrete per-card-accent scrollbar on brain-card scroll regions (4px; thumb = card accent) */
+  .dcard .scroll::-webkit-scrollbar,.dcard .secbody::-webkit-scrollbar{width:4px;height:4px}
+  .dcard .scroll::-webkit-scrollbar-track,.dcard .secbody::-webkit-scrollbar-track{background:transparent}
+  .dcard .scroll::-webkit-scrollbar-thumb,.dcard .secbody::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--acc) 42%,transparent);border-radius:3px}
+  .dcard .scroll::-webkit-scrollbar-thumb:hover,.dcard .secbody::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--acc) 80%,transparent)}
+  .dcard .scroll,.dcard .secbody{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--acc) 45%,transparent) transparent}
+  body.nofx .dcard .scroll::-webkit-scrollbar-thumb,body.nofx .dcard .secbody::-webkit-scrollbar-thumb{background:var(--acc)}
+  body.nofx .dcard .scroll,body.nofx .dcard .secbody{scrollbar-color:var(--acc) transparent}
   .shapes{display:flex;gap:6px}
   .shape{background:#0e131a;border:1px solid var(--edge);border-radius:7px;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;flex:1}
   .shape.sel{border-color:var(--user);box-shadow:0 0 0 1px var(--user) inset}
@@ -306,7 +341,7 @@
   <header>
     <h1>Minds<span class="osb">OS</span> Demo</h1>
     <span class="tag">presentation</span>
-    <span class="tag">v0.20</span>
+    <span class="tag">v0.24</span>
     <span class="tag" id="honesty" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
     <div class="controls">
       <button id="audit"><svg class="hi" viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Audit ▾</button>
@@ -316,6 +351,10 @@
       <button id="prev">‹</button><button id="play" class="primary">▶ Play</button><button id="next">›</button><button id="reset">↺</button>
     </div>
   </header>
+
+  <!-- v0.22 beat strip — what's happening now (beat counter + narration); blue accent rail (Option C1-outlined) -->
+  <!-- v0.24: beat number = outlined chip (display); the far-right Timeline button (#tlbtn) opens #tlmodal -->
+  <div id="beatstrip"><span id="beatnum">Beat 1 / 1</span><span id="beatnarr"></span><button id="tlbtn" title="open the demo timeline — every message &amp; state, in order"><svg class="tlico" viewBox="0 0 14 14" aria-hidden="true"><circle cx="2.4" cy="3" r="1.1" fill="currentColor"/><line x1="4.8" y1="3" x2="12" y2="3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.4" cy="7" r="1.1" fill="currentColor"/><line x1="4.8" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.4" cy="11" r="1.1" fill="currentColor"/><line x1="4.8" y1="11" x2="12" y2="11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Timeline</button></div>
 
   <input type="file" id="t_io_file" accept="application/json,.json" style="display:none">
   <input type="file" id="l5_io_file" accept="application/json,.json" style="display:none">
@@ -346,6 +385,18 @@
     <div class="l5head"><span class="l5dot"></span><span class="l5title">Reasoning audit</span>
       <span class="l5tags"></span><button class="l5close" title="close (Esc)">×</button></div>
     <div class="l5body"></div>
+  </div>
+  <!-- v0.24 demo-timeline modal — opened from the beat chip; over #maxbackdrop; chronological -->
+  <!-- transcript of every message + brain section/subsection change, filterable by source/section. -->
+  <div id="tlmodal">
+    <div class="tlhead"><span class="tltitle">Demo timeline — every message &amp; state, in order</span>
+      <button class="tlclose" title="close (Esc)">×</button></div>
+    <div class="tlfilters">
+      <div class="tlfrow"><span class="tlflab">Sources</span><span class="tlpills" data-axis="src"></span></div>
+      <div class="tlfrow"><span class="tlflab">Sections</span><span class="tlpills" data-axis="sec"></span></div>
+      <div class="tlfrow"><span class="tlflab">Subsections</span><span class="tlpills" data-axis="sub"></span></div>
+    </div>
+    <div class="tlbody" id="tlbody"></div>
   </div>
 
   <div id="stage">
@@ -448,6 +499,7 @@
 <script src="resolve.js"></script>
 <script src="audit.js"></script>
 <script src="datasource.js"></script>
+<script src="timeline.js"></script>
 <script>
 let VW=820,VH=262;
 const ARM1={x:-0.65,y:-0.45}, ARM2={x:0.65,y:-0.45}, REACH=0.62;
@@ -538,7 +590,7 @@ function merge(prev,f){const s=JSON.parse(JSON.stringify(prev));
   s.eff=f.eff?Object.assign({a1:null,a2:null},f.eff):{a1:null,a2:null};
   if(f.brains)for(const b in f.brains)s.brains[b]=mergeBrain(s.brains[b],f.brains[b]);
   for(const b of ["mgr","a1","a2","conv"]){if(!(f.brains&&f.brains[b]&&"active" in f.brains[b]))s.brains[b].active=false;if(!(f.brains&&f.brains[b]&&"flags" in f.brains[b]))s.brains[b].flags=[];}
-  s.title=f.title;s.narr=f.narr;s.msgs=f.msgs||[];return s;}
+  s.title=f.title;s.narr=f.narr;s.msgs=f.msgs||[];if(f.beat!=null)s.beat=f.beat;return s;}
 // ===== v10.6 data-source seam — mock by default; ?live=<wsurl> connects live brains =====
 // (view layer is unchanged; only WHERE `states` comes from differs. See ROBOT_DEMO_WS_CONTRACT.md)
 const LIVE_URL=(typeof location!=='undefined' && new URLSearchParams(location.search).get('live'))||null;
@@ -548,6 +600,7 @@ const DS = LIVE_URL
 const states = DS.states;          // mock: filled now (identical to before) · live: grows on WS frames
 const LIVE = DS.isLive;
 let FOLLOW = true;                  // live: track the newest frame unless the user scrubs back
+let liveBeatsTotal = null;          // live: total beats from the hello frame (beat-strip denominator)
 
 const AUDIT_ICO='<svg viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 function cardHTML(k,label,role,desc){
@@ -564,6 +617,22 @@ for(const [k] of BR){const card=document.getElementById("bc_"+k);
     const t=e.target.closest(".bsec");if(t){card.dataset.sec=t.dataset.s;renderCard(card,k,states[idx].brains[k]);return;}
     const v=e.target.closest(".vmb");if(v){card.dataset.mode=v.dataset.m;renderCard(card,k,states[idx].brains[k]);return;}
   });}
+// v0.23 — wheel anywhere over a brain card scrolls THAT card's content (release to page at the edges).
+// The real scroller is .scroll or .secbody (whichever overflows); pick the scrollable one.
+function cardScroller(card){
+  for(const el of [card.querySelector(".scroll"),card.querySelector(".secbody")]){
+    if(el && el.scrollHeight-el.clientHeight>1) return el;
+  }
+  return null;
+}
+for(const [k] of BR){const card=document.getElementById("bc_"+k);
+  card.addEventListener("wheel",e=>{
+    const sb=cardScroller(card); if(!sb) return;            // nothing to scroll → let the page scroll
+    let dy=e.deltaY; if(!dy) return;
+    if(e.deltaMode===1) dy*=16; else if(e.deltaMode===2) dy*=sb.clientHeight;  // lines/pages → px
+    const canUp=sb.scrollTop>0, canDown=sb.scrollTop+sb.clientHeight<sb.scrollHeight-1;
+    if((dy<0&&canUp)||(dy>0&&canDown)){ sb.scrollTop+=dy; e.preventDefault(); }  // consume; else chain to page
+  },{passive:false});}
 
 // ===== layout engine =====
 const stage=document.getElementById("stage"),svg=document.getElementById("links");
@@ -820,6 +889,97 @@ function closeAudit(){
     const row=e.target.closest(".l5ep");if(row){auditEp=+row.dataset.ep||0;renderAudit();}});})();
 window.addEventListener("keydown",e=>{if(e.key==="Escape"&&auditOpen)closeAudit();});
 
+// ===== v0.24 — demo-timeline modal (opened from the beat chip; over #maxbackdrop) =====
+// A chronological, change-only transcript of every message + brain section/subsection change,
+// tagged by source + section, filterable by Sources / Sections / Subsections. Built by the pure
+// timeline.js builder from the scripted `frames` (mock) or a state-diff (live). All text is the
+// existing behavior-level scripted/live data (IP policy B) — reorganized, nothing invented.
+const TL_SEAMA="#6f8092", TL_SEAMB="#9aa7b3", TL_USER="#53b0be";
+const TL_SRC_META=[["seamA","Seam A",TL_SEAMA],["seamB","Seam B",TL_SEAMB],["user","User",TL_USER],
+  ["mgr","Orchestrator",ACC.mgr],["a1","Arm 1",ACC.a1],["a2","Arm 2",ACC.a2],["conv","Conveyor",ACC.conv]];
+const TL_SEC_META=[["task","Task"],["plan","Plan"],["pipeline","Pipeline"],["cap","Capabilities"]];
+const TL_SUB_META=[["resolve","Plan ▸ Resolve"]];
+const TL_NEUTRAL="#7f8c99";
+const TL_SRCLAB={}, TL_SRCCOL={}; TL_SRC_META.forEach(([k,l,c])=>{TL_SRCLAB[k]=l;TL_SRCCOL[k]=c;});
+const TL_SECLAB={}; TL_SEC_META.forEach(([k,l])=>TL_SECLAB[k]=l); TL_SUB_META.forEach(([k,l])=>TL_SECLAB[k]=l);
+const TL_BRAINSET={mgr:1,a1:1,a2:1,conv:1};
+// Seam A (server) events per beat — representative + sanitized in mock; empty in live until the
+// backend emits server_event (same honesty as the Server panel).
+const SERVER_BEAT={0:[{text:"Session authenticated"}],2:[{text:"State saved"}],
+  4:[{text:"Action blocked — permission required · Arm 2"}],6:[{text:"Audit entry recorded"}]};
+const TL_ON={src:new Set(TL_SRC_META.map(m=>m[0])),sec:new Set(TL_SEC_META.map(m=>m[0])),sub:new Set(TL_SUB_META.map(m=>m[0]))};
+let tlOpen=false, tlBuilt=false;
+// live: reconstruct change-only frames by diffing consecutive states (skip the idle seed)
+function tlFramesFromStates(){
+  const out=[]; let prev=null;
+  for(let i=0;i<states.length;i++){const s=states[i];
+    if(s.title==null&&!s.narr&&!(s.msgs&&s.msgs.length)){prev=s;continue;}
+    const fr={beat:(s.beat!=null?s.beat:out.length),title:s.title,narr:s.narr,msgs:s.msgs||[],brains:{}};
+    for(const k in TL_BRAINSET){const c=s.brains&&s.brains[k]; if(!c)continue; const p=prev&&prev.brains&&prev.brains[k];
+      const delta={}; if(!p||c.decision!==p.decision)delta.decision=c.decision;
+      const nc=(c.caps||[]).filter(cc=>!(p&&p.caps&&p.caps.some(pc=>pc[0]===cc[0]&&pc[1]===cc[1]))); if(nc.length)delta.caps=nc;
+      delta.flags=c.flags; if(delta.decision||delta.caps)fr.brains[k]=delta;}
+    out.push(fr); prev=s;}
+  return out;
+}
+function tlSourceFor(){return LIVE?tlFramesFromStates():frames;}
+function tlEntryPasses(e){
+  if(!TL_ON.src.has(e.source))return false;
+  if(TL_BRAINSET[e.source]){ if(e.sub)return TL_ON.sub.has(e.sub); if(e.section)return TL_ON.sec.has(e.section); }
+  return true;
+}
+function tlRowHTML(e){
+  const col=TL_SRCCOL[e.source]||TL_NEUTRAL, src=TL_SRCLAB[e.source]||e.source;
+  let tag; if(e.party)tag=esc(e.party.replace("→"," → ")); else if(e.source==="seamA")tag="Server";
+  else tag=esc(TL_SECLAB[e.sub||e.section]||"");
+  return `<div class="tlrow" style="border-left-color:${col}">`+
+    `<span class="tlsrc" style="border-color:${col};color:${col};background:${col}1f">${esc(src)}</span>`+
+    `<span class="tltag">${tag}</span><span class="tltext">${esc(e.text)}</span></div>`;
+}
+function renderTimeline(){
+  const body=document.getElementById("tlbody"); if(!body)return;
+  const groups=Timeline.buildTimeline(tlSourceFor(),{serverByBeat:LIVE?{}:SERVER_BEAT,
+    resolveFor:(k,i)=>(typeof buildResolve==="function"?buildResolve(k,i):null)});
+  let h="", any=false;
+  for(const g of groups){
+    const rows=g.entries.filter(tlEntryPasses);
+    if(!rows.length)continue; any=true;
+    h+=`<div class="tlbeat" data-beat="${g.beat}">Beat ${g.beat+1} · ${esc(g.title)}</div>`;
+    for(const e of rows)h+=tlRowHTML(e);
+  }
+  body.innerHTML=any?h:`<div class="tlnone">No entries match the current filters.</div>`;
+}
+function tlRenderPills(){
+  const map={src:TL_SRC_META.map(m=>[m[0],m[1],m[2]]),
+    sec:TL_SEC_META.map(m=>[m[0],m[1],TL_NEUTRAL]), sub:TL_SUB_META.map(m=>[m[0],m[1],TL_NEUTRAL])};
+  for(const axis in map){const host=document.querySelector(`#tlmodal .tlpills[data-axis="${axis}"]`); if(!host)continue;
+    host.innerHTML=map[axis].map(([k,l,c])=>{const on=TL_ON[axis].has(k);
+      const st=on?`border-color:${c};color:${c};background:${c}1f`:"";
+      return `<span class="tlpill ${on?"on":"off"}" data-axis="${axis}" data-key="${k}" style="${st}">${esc(l)}</span>`;}).join("");}
+}
+function openTimeline(){
+  if(!window.Timeline)return;
+  tlOpen=true; ensureBackdrop();
+  const bd=document.getElementById("maxbackdrop");bd.style.display="block";bd.onclick=closeTimeline;
+  tlRenderPills(); renderTimeline();
+  const modal=document.getElementById("tlmodal");modal.style.display="flex";
+  const cur=modal.querySelector(`.tlbeat[data-beat="${(states[idx]&&states[idx].beat!=null)?states[idx].beat:idx}"]`);
+  if(cur)cur.scrollIntoView({block:"start"});
+  tlBuilt=true;
+}
+function closeTimeline(){
+  tlOpen=false;const modal=document.getElementById("tlmodal");if(modal)modal.style.display="none";
+  const bd=document.getElementById("maxbackdrop");if(bd){bd.onclick=restoreCard;if(!maximizedId&&!auditOpen)bd.style.display="none";}
+}
+(function(){const modal=document.getElementById("tlmodal");if(!modal)return;
+  modal.addEventListener("click",e=>{
+    if(e.target.closest(".tlclose")){closeTimeline();return;}
+    const p=e.target.closest(".tlpill");if(p){const a=p.dataset.axis,k=p.dataset.key;
+      if(TL_ON[a].has(k))TL_ON[a].delete(k);else TL_ON[a].add(k);
+      tlRenderPills();renderTimeline();}});})();
+const _tlBtn=document.getElementById("tlbtn");if(_tlBtn)_tlBtn.onclick=openTimeline;
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&tlOpen)closeTimeline();});
+
 // ===== views =====
 let idx=0,mode="3d",animating=false,t0=0,WEBGL_OK=true,COLORMIX_OK=true;
 let fromItems=JSON.parse(JSON.stringify(base.items));
@@ -922,20 +1082,56 @@ function subsecHTML(key,title,inner){
 
 // ===== v10.3a relation-resolution narrowing (Plan ▸ Resolve subsection, now in a sub-card) =====
 let resolveAnim={beat:-1,stage:0,timer:null};
+// v0.21 — LIVE Plan▸Resolve: the wire `resolve` frame is per-brain (no beat key), so live keeps a
+// per-brain store + per-brain animation state (mock stays beat-keyed off resolveAnim, unchanged).
+const liveResolve={};            // brain -> adapted res object (from a wire resolve frame)
+const liveResolveAnim={};        // brain -> {stage, timer}
+// Adapt a wire `resolve` frame {brain,clause,item,tube?,stages:[{cap,cells}],winner} to the res shape
+// resolveGridSVG expects. acc + absolute are NOT on the wire (by design): inject per-brain accent,
+// infer absolute from the absence of a reference object (tube==null).
+function liveResolveToRes(f){
+  if(!f||!Array.isArray(f.stages)||!f.stages.length) return null;
+  return {acc:(typeof ACC!=="undefined"&&ACC[f.brain])||"#8b98a5",
+          tube:(f.tube==null?null:f.tube), item:f.item||null, clause:f.clause||"",
+          absolute:(f.tube==null), stages:f.stages, winner:f.winner};
+}
+// shared inner render (mock + live feed identical given a res + stage) — factored to avoid drift
+function resolveInnerHTML(res,stage){
+  const si=Math.min(stage,res.stages.length-1),atWin=(si===res.stages.length-1);
+  return `<div class="rclause">${esc(res.clause)}</div><div class="rbody">${resolveGridSVG(res,si)}<div class="rcap">${atWin?'<b>':''}${esc(res.stages[si].cap)}${atWin?'</b>':''}</div></div>`;
+}
 function resolveSubsectionHTML(k){
   let inner;
-  if(LIVE){ inner=`<span class="rnone">live resolution feed not yet emitted (backend producer pending)</span>`; }
+  if(LIVE){
+    const res=liveResolve[k];
+    if(!res){ inner=`<span class="rnone">live resolution feed not yet emitted (backend producer pending)</span>`; }
+    else inner=resolveInnerHTML(res,(liveResolveAnim[k]&&liveResolveAnim[k].stage)||0);
+  }
   else{
     const res=(typeof buildResolve==="function")?buildResolve(k,idx):null;
     if(!res){ inner=`<span class="rnone">no spatial relation resolved this beat</span>`; }
-    else{
-      const si=Math.min(resolveAnim.stage,res.stages.length-1),atWin=(si===res.stages.length-1);
-      inner=`<div class="rclause">${esc(res.clause)}</div><div class="rbody">${resolveGridSVG(res,si)}<div class="rcap">${atWin?'<b>':''}${esc(res.stages[si].cap)}${atWin?'</b>':''}</div></div>`;
-    }
+    else inner=resolveInnerHTML(res,resolveAnim.stage);
   }
   return subsecHTML(k+":resolve","Resolve",inner);}
 function rerenderResolvePlans(){for(const [k] of BR){const card=document.getElementById("bc_"+k);
   if(card.dataset.sec==="plan" && (card.dataset.mode||"panel")==="panel") renderCard(card,k,states[idx].brains[k]);}}
+// re-render ONE brain's card (live, per-brain narrowing step) — guarded so it no-ops off-section/off-brain
+function rerenderResolvePlan(k){const card=document.getElementById("bc_"+k);
+  if(!card||!states[idx]||!states[idx].brains||!states[idx].brains[k])return;
+  if(card.dataset.sec==="plan" && (card.dataset.mode||"panel")==="panel") renderCard(card,k,states[idx].brains[k]);}
+// per-brain timed step-through, started on each arriving resolve frame; snap-to-final guard per brain
+function startLiveResolveAnim(k){
+  const a=liveResolveAnim[k]||(liveResolveAnim[k]={stage:0,timer:null});
+  if(a.timer){clearInterval(a.timer);a.timer=null;}
+  a.stage=0; const res=liveResolve[k]; if(!res)return;
+  rerenderResolvePlan(k);                     // show stage 0 at once
+  if(res.stages.length<=1)return;
+  a.timer=setInterval(()=>{
+    if(a.stage>=res.stages.length-1){clearInterval(a.timer);a.timer=null;return;}
+    a.stage++;rerenderResolvePlan(k);
+  },650);}
+function clearLiveResolve(){for(const k in liveResolveAnim){if(liveResolveAnim[k].timer)clearInterval(liveResolveAnim[k].timer);delete liveResolveAnim[k];}
+  for(const k in liveResolve)delete liveResolve[k];}
 // timed step-through; snap-to-final guard = always clear any in-flight run before (re)starting
 function startResolveAnim(beat){
   if(resolveAnim.timer){clearInterval(resolveAnim.timer);resolveAnim.timer=null;}
@@ -957,6 +1153,14 @@ function renderCard(card,k,d){
   else { body=sectionBodyHTML(sec,d); if(sec==="plan") body+=resolveSubsectionHTML(k); }
   sb.innerHTML=hdr+body;}
 function renderPanels(st){
+  // v0.22 beat strip — beat counter + behavior-level narration (what's happening now)
+  // v0.24 fix: use the frame's own beat index (live seeds an idle state at states[0], so idx
+  // was off by one); show an honest idle line before the first frame.
+  const bn=document.getElementById("beatnum"),bx=document.getElementById("beatnarr");
+  const isIdle=(st.title==null&&!st.narr);
+  const bno=(st.beat!=null?st.beat:idx)+1, btot=(typeof liveBeatsTotal==="number"?liveBeatsTotal:states.length);
+  if(bn) bn.textContent=isIdle?"Ready":("Beat "+bno+" / "+btot);
+  if(bx) bx.textContent=isIdle?"Place an order to begin":((st.title?st.title+" — ":"")+(st.narr||""));
   for(const [k] of BR){const data=st.brains[k],card=document.getElementById("bc_"+k);
     card.classList.toggle("active",!!data.active);card.classList.toggle("dim",!data.active);
     const ss=card.querySelector(".state");if(ss)ss.textContent=stateOf(data);
@@ -1163,10 +1367,11 @@ function setupLive(){
     if(kind==="open")             setLiveTag("● connected — waiting for brains…","#d29922");  // socket open ≠ live
     else if(kind==="close")       connDown("● disconnected from brains");
     else if(kind==="error")       connDown("● live connection error");
-    else if(kind==="reset"){      connData(); FOLLOW=true; show(0); }
+    else if(kind==="reset"){      connData(); clearLiveResolve(); FOLLOW=true; show(0); }
+    else if(kind==="resolve"){    connData(); const f=payload; if(f&&f.brain){const res=liveResolveToRes(f); if(res){liveResolve[f.brain]=res; startLiveResolveAnim(f.brain);}} }  // Plan▸Resolve live
     else if(kind==="frame"){      connData(); if(FOLLOW) show(states.length-1); }
     else if(kind==="message"){    connData(); if(idx===states.length-1) renderPanels(states[idx]); }
-    else if(kind==="hello")       connData();
+    else if(kind==="hello"){      connData(); if(payload&&typeof payload.beats_total==="number")liveBeatsTotal=payload.beats_total; }
     else if(kind==="server_status"){ liveServerStatus=payload; connData(); connArmBeat(); renderServerFeed(); }  // B1 vitals
     else if(kind==="server_event"){  connData(); /* B1 event feed: next */ }
     else if(kind==="state_snapshot"){ connData(); handleSnapshot(payload&&payload.snapshot); }  // B3 export reply

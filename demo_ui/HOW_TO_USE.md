@@ -1,4 +1,4 @@
-# MindsOS Robot Demo — how to run & share (v0.10)
+# MindsOS Robot Demo — how to run & share (v0.24)
 
 The dashboard is one web page, `presentation.html`. It runs in two modes:
 
@@ -18,8 +18,8 @@ Double-click **`presentation.html`** (or open it in Chrome/Edge). That's it — 
 offline. Use the top-bar buttons: **▶ Play** runs the story, **‹ ›** step, **↺** reset.
 
 > Keep the whole `demo_ui` folder together — the page needs the files next to it
-> (`graph.js`, `teach.js`, `sections.js`, `resolve.js`, `datasource.js`,
-> and `vendor/three.min.js`). Moving the single HTML out on its own will break the 3D view.
+> (`graph.js`, `teach.js`, `sections.js`, `resolve.js`, `audit.js`, `datasource.js`,
+> `timeline.js`, and `vendor/three.min.js`). Moving the single HTML out on its own will break it.
 
 ---
 
@@ -95,15 +95,17 @@ Open the dashboard with `?live=` pointing at the backend's address:
 
 ### What's live now vs. pending (be honest when presenting)
 
-- **Live now (DM-4):** the order → dispatch → arm `move_to` → report flow, narrated as real
-  brain activity; the cell view's live pose stream; sanitized wire (behavior only, no MindsOS
-  internals — policy B).
-- **Pending producers** (panels show "feed not yet emitted"): the reasoning **graph** and
-  **Plan ▸ Resolve** (DM-8); the **Server** vitals/event feed and **Export/Import** (Mode-A
-  export + `server_status` land next; import + `server_event` after; see
-  `confirmation_docs/ROBOT_DEMO_DM4_L5_EXPORT_COORDINATION.md`).
-- The reasoning shown is **real but shallow** in DM-4 (fixed allocation); it deepens with DM-5/6
-  (real item-matching, the feasibility gate, replan).
+- **Live now:** the order → dispatch → arm move → report flow narrated as real brain activity + the
+  cell's live pose stream (DM-4); **Plan ▸ Resolve** narrowing (DM-5 `resolve` producer, wired v0.21);
+  the **Server vitals** strip (`server_status`); per-brain reasoning **Audit** (Export/Audit → an
+  `episode-audit` snapshot, incl. the real refusal/dead-end episodes). Sanitized wire throughout
+  (behavior only, no MindsOS internals — policy B).
+- **Still pending producers** (panels show "feed not yet emitted" / placeholder): the reasoning
+  **graph**; the **Server event feed** (`server_event`); **demo-state restore** (Mode-B). The demo
+  **timeline** shows the full run in mock; its live Seam A (server) rows fill in when `server_event`
+  lands. See the active channel `confirmation_docs/ROBOT_DEMO_UI_BACKEND_COORDINATION.md`.
+- The reasoning shown is **real but shallow** early on (fixed allocation); it deepens with DM-5/6
+  (real item-matching, the feasibility gate, replan/recovery).
 
 > Backend protocol + frame shapes: `confirmation_docs/ROBOT_DEMO_WS_CONTRACT.md`. Server runbook:
 > `robot_demo/deploy/README.md`. Backend build/status: `confirmation_docs/ROBOT_DEMO_STATUS.md`.
@@ -207,12 +209,22 @@ Share: `https://BBBB.trycloudflare.com/presentation.html?live=wss://AAAA.tryclou
 | Where | Control | Does |
 |---|---|---|
 | Top bar | ▶ Play / ‹ › / ↺ | run / step / reset the run |
+| Top bar | **Audit ▾** | pick a brain → open its reasoning audit (why it decided / refused) |
+| Top bar | **Export ▾ / Import** | download a brain/demo snapshot; load one back |
+| Beat strip (under the bar) | **Beat N / 7 + narration** | what's happening right now, this beat |
+| Beat strip (far right) | **▤ Timeline** | open the full demo timeline — every message + state, in order, filterable |
 | User card | **Submit** | send the composed order (Live: to the brains) |
 | User card | Order / Sort / **Teach** | place a task, or teach a new term/skill |
 | Any brain card | **Task · Plan · Pipeline · Capabilities** | switch what that brain shows |
 | Any brain card | panel / graph icons | table view vs reasoning-graph view |
+| Any brain card | **scroll** | hover a card and scroll — its content scrolls (narrow accent scrollbar) |
 | Any card | **⌃⌄ maximize** (header) | grow the card to full screen height; Esc restores |
 | Physical cell | **2D / 3D** | top-down schematic vs 3D view |
+
+> **The Timeline button** opens a modal that greys out the dashboard and lists the whole run as one
+> ordered transcript — Seam A (server) / Seam B (inter-brain) / User messages plus every brain's
+> section and subsection changes, grouped by beat. Toggle the **Sources / Sections / Subsections**
+> rows at the top to focus on what you want; close it (×/Esc) to go back to the cards.
 
 ---
 
@@ -233,7 +245,8 @@ Share: `https://BBBB.trycloudflare.com/presentation.html?live=wss://AAAA.tryclou
 ## 6. Honesty note for presenting
 
 In Demo mode, be upfront that it's the **planned interface over a scripted story** — the reasoning
-shown is choreographed, not computed live. In Live mode it's real brain activity, but two panels
-(the reasoning **graph** and **Plan ▸ Resolve**) stay blank with a "feed not yet emitted" note
-until the backend produces that data. See `confirmation_docs/ROBOT_DEMO_WS_CONTRACT.md` for the
-technical details.
+shown is choreographed, not computed live. In Live mode it's real brain activity; the reasoning
+**graph** and the **Server event feed** still stay blank with a "feed not yet emitted" note until the
+backend produces that data (Plan ▸ Resolve, Server vitals, and the reasoning Audit are live). The Audit
+view is held to a strict **no-fabrication** bar — it only renders the system's actual recorded chain,
+never invented reasoning. See `confirmation_docs/ROBOT_DEMO_WS_CONTRACT.md` for the technical details.

@@ -96,11 +96,15 @@ class DemoEvents:
     """Frame shaper — the backend's only writer of UI frames.
 
     ``beat`` is advisory (the UI derives its own index from frame order, WS
-    contract §7); we still send a monotonic ``beat`` for debuggability."""
+    contract §7); we still send a monotonic ``beat`` for debuggability.
+    ``cbeat`` (DM-6, UI coordination) is the 0-based global *storyline* beat —
+    it advances only on a true beat transition (a titled ``state``), so the UI
+    can render "Beat cbeat+1 / beats_total" + group the timeline by beat."""
 
     def __init__(self, hub: FrameHub) -> None:
         self._hub = hub
         self._beat = 0
+        self._cbeat = -1  # first titled beat -> 0
 
     @staticmethod
     def hello_frame(beats_total: int = 7) -> dict:
@@ -128,8 +132,11 @@ class DemoEvents:
             f.setdefault("active", False)   # §3 transient — explicit every frame
             f.setdefault("flags", [])
             bmap[_alias(device_id)] = f
+        if title is not None:
+            self._cbeat += 1  # a titled state is a true beat transition (UI)
         frame: Dict[str, Any] = {
-            "type": "state", "t": _now_ms(), "beat": self._beat, "brains": bmap,
+            "type": "state", "t": _now_ms(), "beat": self._beat,
+            "cbeat": max(self._cbeat, 0), "brains": bmap,
         }
         self._beat += 1
         if title is not None:
@@ -197,6 +204,7 @@ class DemoEvents:
 
     def reset(self) -> dict:
         self._beat = 0
+        self._cbeat = -1
         frame = {"type": "reset"}
         self._hub.publish(frame)
         return frame

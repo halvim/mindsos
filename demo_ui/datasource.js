@@ -26,6 +26,7 @@
   // Server frame (contract): {type:'state', t, beat, items?, eff?, brains?, title?, narr?, msgs?}
   function normalizeFrame(f){
     const out={};
+    if(f.beat!=null)  out.beat=f.beat;   // authoritative beat index (beat-strip counter; v0.24)
     if(f.title!=null) out.title=f.title;
     if(f.narr!=null)  out.narr=f.narr;
     if(f.items)       out.items=f.items;
@@ -79,6 +80,7 @@
         case 'message': applyMessage(msg);  break;
         case 'server_status': emit('server_status', msg); break;   // Seam-A vitals + liveness heartbeat (~3s)
         case 'server_event':  emit('server_event', msg);  break;   // Seam-A lifecycle/authz/audit event
+        case 'resolve':       emit('resolve', msg);       break;   // Plan▸Resolve narrowing (per-brain, WS §5)
         case 'state_snapshot': emit('state_snapshot', msg); break; // reply to export_state (browser downloads)
         case 'import_result':  emit('import_result', msg);  break; // reply to import_state
         case 'reset':   states.length=0; acc=clone(base); if(!acc.msgs) acc.msgs=[]; states.push(clone(acc)); emit('reset'); break;
