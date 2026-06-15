@@ -55,27 +55,40 @@ async def _drive(port: int, timeout: float = 90.0) -> List[dict]:
                 if len(reports) >= want_reports:
                     return
 
-        # 1) MINOR perturbation on the suction arm → recalibrate + recover
+        async def _export(scope):
+            await _cmd("export_state", {"mode": "episode-audit", "scope": scope})
+            end = time.time() + 15.0
+            while time.time() < end:
+                try:
+                    msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
+                except asyncio.TimeoutError:
+                    continue
+                frames.append(msg)
+                if msg.get("type") == "state_snapshot":
+                    return
+
+        # 1) MINOR perturbation on the suction arm → recalibrate + recover (arm-side)
         await _cmd("inject_fault", {"scope": "a1", "kind": "disturb", "joint": 1})
         await _order_until_reports(_BOX, 1)
         await _cmd("inject_fault", {"scope": "a1", "kind": "clear"})
 
-        # 2) MAJOR fault (frozen joint) → report (dont-know) + diagnose gap
+        # 2) MAJOR fault, item has NO alternate grasp (sheet = suction-only) →
+        #    arm reports + Manager dead-ends honestly (no reroute possible).
         await _cmd("inject_fault", {"scope": "a1", "kind": "freeze", "joint": 1})
         await _order_until_reports(_SHEET, 2)
         await _cmd("inject_fault", {"scope": "a1", "kind": "clear"})
 
-        # 3) Mode-A export of the arm — both episodes live in its chain
-        await _cmd("export_state", {"mode": "episode-audit", "scope": "a1"})
-        end = time.time() + 15.0
-        while time.time() < end:
-            try:
-                msg = json.loads(await asyncio.wait_for(ws.recv(), timeout=2.0))
-            except asyncio.TimeoutError:
-                continue
-            frames.append(msg)
-            if msg.get("type") == "state_snapshot":
-                break
+        # 3) MAJOR fault, item HAS an alternate grasp (box → jaw) → Manager
+        #    reroutes (the reroute decision fires = a real manager ReplanRecord;
+        #    the physical recovery needs the conv re-stage = task 7b).
+        await _cmd("inject_fault", {"scope": "a1", "kind": "freeze", "joint": 1})
+        await _order_until_reports(_BOX, 3)
+        await _cmd("inject_fault", {"scope": "a1", "kind": "clear"})
+
+        # Mode-A exports: the arm chain (recalibrate/report) + the manager chain
+        # (reroute decision + dead-end).
+        await _export("a1")
+        await _export("mgr")
     return frames
 
 
@@ -111,25 +124,41 @@ def main() -> int:
         def need(cond, label):
             failures.append(label) if not cond else print(f"  [DM-6] ✓ {label}")
 
-        need(bool(snaps), "export → state_snapshot reply")
-        if snaps:
-            snap = snaps[0]["snapshot"]
-            need(snap.get("kind") == "episode-audit", "snapshot kind episode-audit")
-            eps = ((snap.get("brains") or {}).get("a1") or {}).get("episodes") or []
+        def _snap_for(scope):
+            for s in snaps:
+                if scope in ((s.get("snapshot") or {}).get("brains") or {}):
+                    return s["snapshot"]
+            return None
 
-            # recovery: a succeeded episode carrying a real recalibration replan
+        need(len(snaps) >= 2, "two export snapshots (arm + manager)")
+        a1 = _snap_for("a1")
+        mgr = _snap_for("mgr")
+
+        # ── arm chain: recalibrate (recovery) + report (fault) ───────────────
+        need(a1 is not None, "arm snapshot present")
+        if a1:
+            eps = ((a1.get("brains") or {}).get("a1") or {}).get("episodes") or []
             recov = [e for e in eps
                      if e.get("value", {}).get("outcome_classification") == "succeeded"
                      and e.get("reasoning", {}).get("replans")]
-            need(bool(recov), "recovery episode: succeeded + real replan (recalibrated)")
-
-            # fault: a dont-know episode with populated blame
+            need(bool(recov), "arm recovery episode: succeeded + real replan (recalibrated)")
             fault = [e for e in eps
                      if e.get("value", {}).get("outcome_classification") == "dont_know"
                      and e.get("reasoning", {}).get("blame")]
-            need(bool(fault), "fault episode: dont_know + blame")
+            need(bool(fault), "arm fault episode: dont_know + blame")
 
-            need(find_leaks(snaps[0]) == [], "snapshot: no IP tokens leaked")
+        # ── manager chain: reroute decision + honest dead-end ────────────────
+        need(mgr is not None, "manager snapshot present")
+        if mgr:
+            meps = ((mgr.get("brains") or {}).get("mgr") or {}).get("episodes") or []
+            dead = [e for e in meps
+                    if e.get("value", {}).get("outcome_classification") == "dont_know"
+                    and e.get("reasoning", {}).get("blame")]
+            need(bool(dead), "manager dead-end episode: dont_know + blame")
+            rerouted = [e for e in meps if e.get("reasoning", {}).get("replans")]
+            need(bool(rerouted), "manager reroute decision: a real ReplanRecord")
+
+        need(find_leaks(snaps) == [], "snapshots: no IP tokens leaked")
 
         print(f"[DM-6] frame summary: {_summary(frames)}")
     finally:
