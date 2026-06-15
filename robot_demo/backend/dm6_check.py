@@ -147,16 +147,21 @@ def main() -> int:
                      and e.get("reasoning", {}).get("blame")]
             need(bool(fault), "arm fault episode: dont_know + blame")
 
-        # ── manager chain: reroute decision + honest dead-end ────────────────
+        # ── manager chain: physical recovery (reroute) + honest dead-end ─────
         need(mgr is not None, "manager snapshot present")
         if mgr:
             meps = ((mgr.get("brains") or {}).get("mgr") or {}).get("episodes") or []
+            # recovery: box fault → conv re-stage → healthy arm completes →
+            # succeeded WITH a real reroute ReplanRecord on the manager chain.
+            recov = [e for e in meps
+                     if e.get("value", {}).get("outcome_classification") == "succeeded"
+                     and e.get("reasoning", {}).get("replans")]
+            need(bool(recov), "manager recovery episode: succeeded + reroute ReplanRecord")
+            # dead-end: sheet fault, no alternate grasp → honest dont-know + blame.
             dead = [e for e in meps
                     if e.get("value", {}).get("outcome_classification") == "dont_know"
                     and e.get("reasoning", {}).get("blame")]
             need(bool(dead), "manager dead-end episode: dont_know + blame")
-            rerouted = [e for e in meps if e.get("reasoning", {}).get("replans")]
-            need(bool(rerouted), "manager reroute decision: a real ReplanRecord")
 
         need(find_leaks(snaps) == [], "snapshots: no IP tokens leaked")
 

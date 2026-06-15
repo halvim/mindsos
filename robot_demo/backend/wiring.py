@@ -224,6 +224,10 @@ def wire_brain_comms(brain: Any, bus: Any) -> Tuple[str, ...]:
 #: the demo's two grippers — which grasp each arm provides.
 _ARM_GRASP = {"arm1": "grasp:suction", "arm2": "grasp:jaw"}
 
+#: first-cut belt sweep (m) to re-stage an item from one arm's segment to the
+#: other's (the conveyor bridges the disjoint reach). Gate-calibrated (§18).
+_RESTAGE_DISTANCE = 0.6
+
 
 def _alternate_arm(faulted_dst: str, item: Optional[str]) -> Optional[str]:
     """The other arm that can grasp ``item``, or None (→ dead-end). Reuses the
@@ -241,7 +245,7 @@ def _alternate_arm(faulted_dst: str, item: Optional[str]) -> Optional[str]:
 # ── Manager overrides ─────────────────────────────────────────────────
 def install_manager_flow(
     mgr: Any, bus: Any, events: DemoEvents,
-    *, decide: Callable[[dict], Tuple[str, str]],
+    *, decide: Callable[[dict], Tuple[str, str]], conv: Any = None,
 ) -> None:
     """Override mgr phase-1 map (decide arm+target → task_pattern_iri) and
     phase-2 derive (dispatch over the bus, narrate). DM-6: on a reported FAULT,
@@ -282,6 +286,19 @@ def install_manager_flow(
         if status == "dont_know" and cause == "fault":
             alt = _alternate_arm(dst, item)
             if alt is not None:
+                # DM-6 7b: the conveyor bridges the disjoint reach — re-stage the
+                # item onto the healthy arm's belt segment before re-dispatching
+                # (graph-honest: a real conv.stage_at invoke; sweep is gate-tuned).
+                if conv is not None:
+                    from mindsos_capacity.identifiers import capacity_iri
+                    from .capacities import DS_BELT_CMD
+                    events.message("mgr", "conv", f"re-stage toward {alt}")
+                    conv.cl.invoke(
+                        capacity_iri("mechanism", "conv.stage_at"),
+                        {DS_BELT_CMD: {"direction": 1 if alt == "arm2" else -1,
+                                       "distance": _RESTAGE_DISTANCE}},
+                        session=None,
+                    )
                 events.message("mgr", alt, f"re-route: move to {target}")
                 set_fault_state(mgr, recalibrations=1, reported=False,
                                 cause="re-routed to the other arm after a detected fault")
@@ -415,7 +432,8 @@ def wire_demo(
 
     for did, brain in brains.items():
         if did == "mgr":
-            install_manager_flow(brain, bus, events, decide=decide)
+            install_manager_flow(brain, bus, events, decide=decide,
+                                 conv=brains.get("conv"))
         elif did in ("arm1", "arm2"):
             install_arm_flow(brain, bus, events, run_atomic=run_atomic)
             install_arm_gate(brain)  # DM-5 embodiment gate (real dont-know)
