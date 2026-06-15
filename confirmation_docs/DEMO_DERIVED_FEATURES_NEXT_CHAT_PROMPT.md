@@ -84,6 +84,12 @@
 - **Why new:** the shipped contract implicitly assumes one Orchestrator (or one `task_scope`) per task; nothing enforces or documents it, and the failure is a hard crash on the 2nd run.
 - **Demo dependency:** worked-around in DM-4 (`brain.run_task` = fresh Orchestrator + unique `task_scope` per lifecycle); no blocker.
 
+## F12 — v0 planning passes no milestone identity to `is_leaf`/`decompose`
+- **Origin:** robot-demo DM-7 (2026-06-15, design-log §27, probe A). Building the carrier-box multi-leaf Plan via the per-CL decompose override.
+- **What:** `plan_construction._decompose_recursive` dispatches `planning.is_leaf` and `planning.decompose` with a **hardcoded empty milestone** (`{DS_MILESTONE: {}}`) — neither the milestone identity nor its depth reaches the capacity body. So a per-CL override that needs to branch on *which* milestone (e.g. root-not-leaf, children-leaf; or per-device child specs) must be **stateful** (a call-counter) rather than a pure function, and child device identity (arm1/conv/arm2) cannot ride on the orchestrator's milestone — it must travel out-of-band (the DM-4/5 `task_pattern_iri`/`encode_target` side-channel).
+- **Why new:** the shipped v0 contract decomposes blind; a real `planning.decompose` (WSD) would need the milestone passed in to emit identity-bearing children. Nothing currently threads it.
+- **Demo dependency:** worked-around in DM-7 (stateful override + side-channel, probe-validated); no blocker. Fixing first-class needs a `mindsos_*` change → out of demo scope.
+
 ## Note on F5 — the box-workaround is a composite + a Plan
 The demo's headline learned skill ("I can't grab it → taught → I can → other arm learns") is the **box-workaround**. Under the hood it is **not** a single within-brain capability: it's a per-arm composite (`load-into-box`) **plus** an Orchestrator **Plan** (route cargo via a box across the reach gap). Demo narrative says "the arm learned it"; the design must split it per F5. Peer transfer (F1) moves the per-arm composite; the Plan lives in the Orchestrator.
 

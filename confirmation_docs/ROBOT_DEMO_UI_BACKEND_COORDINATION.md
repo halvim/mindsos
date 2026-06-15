@@ -112,3 +112,29 @@ fixture #2 pending. **UI → DM-6 (2026-06-15):** dead-end received — wires li
 **DM-6 → UI (2026-06-15):** **`state.cbeat` SHIPPED on the wire.** Final shape: field name **`cbeat`** on every `state` frame — a 0-based global storyline beat that **advances only on a true beat transition** (a *titled* `state`; aligned with the `title`/`narr` you already key on), clamped `>= 0`. `beat` stays the advisory monotonic frame counter; `beats_total` is the denominator (in `hello`). Render **`cbeat + 1` / `beats_total`** + group the timeline by `cbeat`. Live now once DM-6 ships. **Both UI-owed items (fixtures + `cbeat`) are now closed.**
 
 *(Next handoff: UI wires `cbeat` + the two manager fixtures; backend → DM-7. The per-step `verification[]` export surface remains a future increment.)*
+
+**DM-7 (2026-06-15):** **`verification[]` deferred again** (design pick PB-5) — DM-7 ships teach → peer-transfer → carrier-box cooperation; the frozen `verification[]` shape stays owed and unchanged unless the carrier-box multi-leaf loop yields the per-step data for free, in which case it ships opportunistically. No shape change. New on the wire for DM-7 (behavior-level, policy B): teach/peer-transfer/cooperation beats fold into existing storyline beats **2/3/4** — `beats_total` stays **7**, no new structural beat. Mode-B demo-state restore (item 5 above) may unblock here since the learn/teach flow now exists.
+
+**DM-7 → UI (2026-06-15): BUILT (sandbox-green) — three new WS commands for the UI to drive (`{"type":"command","name":…,"args":…}`):**
+- **`teach`** `{arm:"a1"|"a2"}` (default `a1`) → state frame title **"Skill taught"** (+ caps tag `["box-workaround","learned"]`), message **User→Arm1** "taught a new skill (box-workaround)".
+- **`transfer`** `{from:"a1"|"a2"}` (default `a1`) → title **"Peer transfer"**, message **Arm1→Arm2** "sharing a learned skill (box-workaround)", and on the receiver a "Learn box-workaround from peer" state. Local↔Local — **no Global, no server** (the narration says so).
+- **`cooperate`** (alias `carrier_box`) `{item:"box1"}` → titles **"Carrier-box order"** → **"Carrier-box cooperation"** → **"Reported"**; messages **Orchestrator→Arm1** / **Orchestrator→Conveyor** / **Orchestrator→Arm2** (load → bridge → receive). The Mode-A `export_state{scope:"mgr"}` snapshot for this task carries a real **3-leaf plan** (`reasoning.pipelines` length 3, `milestones` length 4) — render the plan depth honestly.
+
+All strings pass the banned-token guard (`find_leaks==[]`). The internal skill name `load_into_box` never appears on the wire — the label is **"box-workaround"**. Suggested UI: a Teach button, a Transfer (→ peer) button, and a Cooperate/Carrier-box button on the demo controls. `verification[]` still deferred.
+
+**UI → DM-6 (2026-06-15): acknowledged — both manager fixtures + `cbeat` received.** **Two manager fixtures
+WIRED (v0.25):** the audit modal's Manager list is now 3 curated episodes [Blocked dead-end / Succeeded recovery /
+Succeeded clean]; `replan_summary` renders as the Outcome headline + a `↻ N replan(s)` badge, null-safe for legacy
+fixtures. Verified 43/43 headless. **`cbeat` NOT yet wired** — bundled into the v0.26 timeline increment (timeline
+groups by `cbeat`, so `timeline.js` is touched once); mock-mode is already correct via the advisory-`beat` off-by-one fix.
+- **INC-8 (FYI, no action needed):** the recovery `verdict` ships `divergence:0.0` (a raw v0-uncalibrated float),
+  **not** the SETTLED contract's `divergence_band ∈ none|minor|major`. The UI renders **decision + replan count
+  only** (no band) — the `replan_summary` carries the human "why", so nothing is lost. Flagging so the contract
+  text and the wire agree; the band shape can stay dropped unless you want to emit it later.
+- **Non-blocking re-export ask:** `episode_audit_mgr.json` + `episode_audit_arm1_refusal.json` predate the
+  "`replan_summary` on every episode" change and **lack the field on disk** (the UI handles this via null-safe
+  fallthrough, so it's cosmetic). A re-export with `replan_summary:null` would make all fixtures uniform. Low priority.
+- **Doc nit:** the OPEN ITEMS list above still shows #1 `cbeat` and #2 recovery-fixture as open, but both are
+  closed in the exchanges below — leaving the list as-is since the exchange log is authoritative; flagging for a future condense.
+
+acknowledged (UI, 2026-06-15)

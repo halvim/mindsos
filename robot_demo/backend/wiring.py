@@ -28,9 +28,18 @@ from datetime import datetime, timezone
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from mindsos_capacity.builtins.phase1_v0 import DS_STRUCTURED_INPUT, DS_MAPPING
-from mindsos_capacity.builtins.planning_v0 import DS_PLAN, DS_MAPPING_RESULT
+from mindsos_capacity.builtins.planning_v0 import (
+    DS_IS_LEAF,
+    DS_MAPPING_RESULT,
+    DS_MILESTONE_LIST,
+    DS_PLAN,
+)
 from mindsos_intelligence.phase_1 import MAP_IRI, PROCESS_IRI
-from mindsos_intelligence.plan_construction import DERIVE_PLAN_IRI
+from mindsos_intelligence.plan_construction import (
+    DECOMPOSE_IRI,
+    DERIVE_PLAN_IRI,
+    IS_LEAF_IRI,
+)
 
 from .brain import run_task
 from .closed_loop import (
@@ -62,6 +71,12 @@ from .gate import (
 )
 from .installers import install_core_datastates
 from .pose_frame import project_pose
+from .transfer import (
+    KIND_SHARE,
+    build_share_artifact,
+    make_share_handler,
+    teach_local,
+)
 from .serializer import KIND_EPISODE_AUDIT, build_episode_audit_snapshot
 
 #: contract brain-id (UI) → device id (backend) — the inverse of BRAIN_ALIAS,
@@ -80,6 +95,34 @@ _READY_DELTA = (0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
 #: representative magnitude (rad) reported for a probe-detected frozen actuator
 #: that the reach itself didn't exercise — classifies as the major tier.
 _MAJOR_DIVERGENCE = 0.30
+
+#: DM-7 — behavior-level display label for the taught skill (policy B). The
+#: internal capability name ``load_into_box`` is a BANNED wire token — never put
+#: it on a frame; use this label in all narration/caps tags.
+_SKILL_LABEL = "box-workaround"
+
+#: DM-7 — the canonical taught skill (the box-workaround, Scenario beat 2/4).
+#: A linear Pipeline descriptor (Scenario §5.1); the cross-gap cooperation is the
+#: Orchestrator Plan, not this composite. ``requires grasp:box`` is the gate
+#: metadata the receiver's embodiment is checked against on dispatch.
+_BOX_WORKAROUND_STEPS = [
+    {"op": "move_to", "args": {"phase": "approach"}},
+    {"op": "set_grip", "args": {"engage": True}},
+    {"op": "move_to", "args": {"phase": "into_box"}},
+    {"op": "set_grip", "args": {"engage": False}},
+]
+
+
+def box_workaround_artifact(peer: Optional[str] = None) -> Dict[str, Any]:
+    """The canonical taught box-workaround descriptor (DM-7)."""
+    return build_share_artifact(
+        "load_into_box",
+        steps=_BOX_WORKAROUND_STEPS,
+        requires_affordances=["grasp:box"],
+        peer=peer,
+        cache_key=("box", "load_into_box", "carrier"),
+        confidence=0.95,
+    )
 
 
 def _first_item(order: Any) -> Optional[str]:
@@ -243,6 +286,124 @@ def _alternate_arm(faulted_dst: str, item: Optional[str]) -> Optional[str]:
     return other if _ARM_GRASP.get(other) in acceptable else None
 
 
+# ── DM-7 carrier-box cooperation Plan (F6 — first multi-leaf decompose) ─
+#: Single-flight carrier-box state, keyed per manager brain (mgr max_workers=1,
+#: so no interleave). Set before a cooperation task; read by the planning
+#: overrides AND the derive branch; cleared on task completion — NOT inside
+#: derive, because ``planning.decompose`` runs *after* the derive dispatch and
+#: must still see it active to emit the 3 leaves (probe A ordering).
+_CB_STATE: Dict[int, dict] = {}
+
+
+def _cb_set(mgr: Any, item: str) -> None:
+    _CB_STATE[id(mgr)] = {"item": item, "n": 0}
+
+
+def _cb_get(mgr: Any) -> Optional[dict]:
+    return _CB_STATE.get(id(mgr))
+
+
+def _cb_clear(mgr: Any) -> None:
+    _CB_STATE.pop(id(mgr), None)
+
+
+def install_carrier_box_planning(mgr: Any) -> None:
+    """Per-CL stateful planning overrides that turn a carrier-box task into a
+    real >1-leaf decompose (probe A). Inert for normal orders: with no
+    carrier-box active, is_leaf→True / decompose→[] (shipped v0 behavior), so
+    this is safe to leave installed permanently."""
+
+    def cb_is_leaf(context=None, **inputs):
+        cb = _cb_get(mgr)
+        if cb is None:
+            return {DS_IS_LEAF: True}            # v0: every milestone is a leaf
+        cb["n"] += 1
+        return {DS_IS_LEAF: cb["n"] > 1}         # root not-leaf; 3 children leaf
+
+    def cb_decompose(context=None, **inputs):
+        if _cb_get(mgr) is None:
+            return {DS_MILESTONE_LIST: []}       # v0: no children
+        return {DS_MILESTONE_LIST: [             # 3 cross-device leaves
+            {"dev": "arm1", "step": "load"},
+            {"dev": "conv", "step": "bridge"},
+            {"dev": "arm2", "step": "receive"},
+        ]}
+
+    install_override(mgr.cl, IS_LEAF_IRI, cb_is_leaf)
+    install_override(mgr.cl, DECOMPOSE_IRI, cb_decompose)
+
+
+def _carrier_box_cooperate(mgr: Any, conv: Any, events: DemoEvents, item: str) -> dict:
+    """The real cross-device cooperation (runs in the manager's phase-2 derive):
+    arm1 loads the cargo into the carrier → conveyor bridges the unreachable gap
+    → arm2 receives. Sequential (mgr max_workers=1 → atomic w.r.t. the belt).
+    Behavior-level narration only (policy B)."""
+    from mindsos_capacity.identifiers import capacity_iri
+
+    from .capacities import DS_BELT_CMD
+    from .comms import DS_DISPATCH_ACK
+
+    events.state({"mgr": {"intent": "Decompose cooperation",
+                          "decision": "3 steps: load → bridge → receive",
+                          "chain": 3, "active": True}},
+                 title="Carrier-box cooperation",
+                 narr="Manager decomposes the handoff into per-device steps.")
+
+    def _dispatch(dst: str, target: str, tid: str) -> str:
+        res = mgr.cl.invoke(
+            DISPATCH_IRI,
+            {DS_DISPATCH_CMD: {"dst": dst, "target": target, "item": item,
+                               "task_id": tid}},
+            session=None)
+        ack = res.outputs.get(DS_DISPATCH_ACK) if res.success else None
+        return (ack or {}).get("status", "dont_know")
+
+    steps: List[dict] = []
+    events.message("mgr", "arm1", "load cargo into the carrier")
+    steps.append({"dev": "arm1", "step": "load", "status": _dispatch("arm1", "load_carrier", "cb-load")})
+
+    if conv is not None:
+        events.message("mgr", "conv", "carry the carrier across the gap")
+        try:
+            conv.cl.invoke(
+                capacity_iri("mechanism", "conv.stage_at"),
+                {DS_BELT_CMD: {"direction": 1, "distance": _RESTAGE_DISTANCE}},
+                session=None)
+            s2 = "succeeded"
+        except Exception:
+            s2 = "skipped"   # conv assembled cap absent in sandbox → runs live on the gate
+    else:
+        s2 = "skipped"
+    steps.append({"dev": "conv", "step": "bridge", "status": s2})
+
+    events.message("mgr", "arm2", "receive cargo from the carrier")
+    steps.append({"dev": "arm2", "step": "receive", "status": _dispatch("arm2", "unload_carrier", "cb-recv")})
+
+    ok = all(s["status"] in ("succeeded", "skipped") for s in steps)
+    events.state({"mgr": {"intent": "Cooperation complete",
+                          "decision": "delivered via the carrier" if ok
+                          else "cooperation incomplete",
+                          "chain": 5, "active": False}},
+                 title="Reported",
+                 narr="The two arms and the conveyor completed the carrier handoff.")
+    return {DS_PLAN: {"cooperation": steps}}
+
+
+def run_carrier_box(mgr: Any, events: DemoEvents, *, item: str = "box1"):
+    """Beat: run the carrier-box cooperation Plan. Sets the single-flight state,
+    runs one manager lifecycle (the planning overrides emit a real 3-leaf plan;
+    the derive branch runs the cooperation), and clears the state on completion."""
+    _cb_set(mgr, item)
+    events.state({"mgr": {"intent": "Plan cooperation",
+                          "decision": "a single arm can't reach across the gap",
+                          "chain": 1, "active": True}},
+                 title="Carrier-box order",
+                 narr="Cargo must cross a gap no single arm can bridge.")
+    fut = run_task(mgr, {"order": {"carrier_box": item}}, task_id="carrier-box")
+    fut.add_done_callback(lambda _f: _cb_clear(mgr))
+    return fut
+
+
 # ── Manager overrides ─────────────────────────────────────────────────
 def install_manager_flow(
     mgr: Any, bus: Any, events: DemoEvents,
@@ -262,6 +423,12 @@ def install_manager_flow(
                              "mapping_confidence": 1.0}}
 
     def mgr_derive(context=None, **inputs):
+        # DM-7: a carrier-box cooperation task runs the multi-leaf handoff and
+        # returns early; the planning overrides emit the 3-leaf chain. Normal
+        # orders fall through to the DM-6 single-dispatch + reroute logic.
+        cb = _cb_get(mgr)
+        if cb is not None:
+            return _carrier_box_cooperate(mgr, conv, events, cb["item"])
         mr = inputs.get(DS_MAPPING_RESULT) or {}
         dst, target, item = decode_target(mr.get("task_pattern_iri", ""))
         # behavior-level text only (policy B / IP sanitization) — no IRIs,
@@ -325,6 +492,7 @@ def install_manager_flow(
 
     install_override(mgr.cl, MAP_IRI, mgr_map)
     install_override(mgr.cl, DERIVE_PLAN_IRI, mgr_derive)
+    install_carrier_box_planning(mgr)   # DM-7 multi-leaf decompose (inert until active)
     install_manager_replan(mgr)
 
 
@@ -386,6 +554,21 @@ def install_arm_flow(
     bus.set_handler(
         arm.device_id, KIND_DISPATCH,
         make_dispatch_handler(bus, arm, build_task_input=lambda cmd: {"order": cmd}),
+    )
+
+    # DM-7 (F1, PB-2): receiver-side peer-transfer. A ``share`` message writes
+    # the descriptor into THIS arm's OWN Local + registers the composite on its
+    # OWN CL — never the sender's. Behavior-level narration only (policy B).
+    def _on_receive(src: str, _capability: str, _artifact: dict) -> None:
+        events.message(src, arm.device_id, f"shared a learned skill ({_SKILL_LABEL})")
+        events.state({arm.device_id: {
+            "intent": f"Learn {_SKILL_LABEL} from peer",
+            "decision": "skill received — stored locally",
+            "chain": 3, "active": True, "caps": [[_SKILL_LABEL, "learned"]]}})
+
+    bus.set_handler(
+        arm.device_id, KIND_SHARE,
+        make_share_handler(arm, on_receive=_on_receive),
     )
 
 
@@ -506,6 +689,45 @@ def wire_demo(
                 else:
                     sim_engine.disturb_joint(
                         arm_n, joint, float((args or {}).get("delta", 0.03)))
+        elif name == "teach":
+            # DM-7 beat 2: teach the box-workaround on one arm (its OWN Local +
+            # CL). Default arm1 (suction). Behavior-level narration (policy B).
+            tb = _resolve_brain((args or {}).get("scope")
+                                or (args or {}).get("arm") or "a1") or brains.get("arm1")
+            if tb is not None:
+                teach_local(tb, box_workaround_artifact())
+                events.message("user", tb.device_id, f"taught a new skill ({_SKILL_LABEL})")
+                events.state({tb.device_id: {
+                    "intent": f"Learn {_SKILL_LABEL}",
+                    "decision": "skill acquired — stored locally",
+                    "chain": 3, "active": True,
+                    "caps": [[_SKILL_LABEL, "learned"]]}},
+                    title="Skill taught",
+                    narr="Operator taught the box-workaround on one arm.")
+        elif name == "transfer":
+            # DM-7 beat 4: peer-transfer the taught skill arm→arm (Local↔Local).
+            src = _resolve_brain((args or {}).get("scope")
+                                 or (args or {}).get("from") or "a1") or brains.get("arm1")
+            peer_did = {"arm1": "arm2", "arm2": "arm1"}.get(
+                src.device_id if src else "", "arm2")
+            if src is not None and peer_did in brains:
+                teach_local(src, box_workaround_artifact())  # idempotent ensure
+                artifact = box_workaround_artifact(peer=peer_did)
+                # Fire at the peer; the peer's own share handler writes its Local.
+                bus.send(src.device_id, peer_did, KIND_SHARE, artifact)
+                events.message(src.device_id, peer_did,
+                               f"sharing a learned skill ({_SKILL_LABEL})")
+                events.state({src.device_id: {
+                    "intent": "Share skill to peer",
+                    "decision": f"transferring {_SKILL_LABEL} → {BRAIN_ALIAS.get(peer_did, peer_did)}",
+                    "chain": 4, "active": True}},
+                    title="Peer transfer",
+                    narr="One arm shares its learned skill with the other (no central server).")
+        elif name in ("cooperate", "carrier_box"):
+            # DM-7 beat 3/F6: the carrier-box cooperation Plan — a real multi-leaf
+            # decompose (two arms + the conveyor coordinate on cargo the geometry
+            # forbids a single arm from handling).
+            run_carrier_box(mgr, events, item=(args or {}).get("item", "box1"))
         elif name == "reset":
             events.reset()
         # play/pause/step are mock-playback concepts; live runs on real orders.
@@ -544,4 +766,5 @@ def make_status_provider(result: Any, *, endpoint: Optional[str] = None) -> Call
 __all__ = [
     "wire_demo", "wire_brain_comms", "install_manager_flow", "install_arm_flow",
     "wire_pose_stream", "make_live_run_atomic", "make_status_provider", "RunAtomic",
+    "install_carrier_box_planning", "run_carrier_box", "box_workaround_artifact",
 ]

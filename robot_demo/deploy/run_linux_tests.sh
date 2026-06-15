@@ -182,6 +182,35 @@ grep -q "DM-5 GATE PASS" <<<"$DM5_OUT" \
 pass "DM-5: resolve narrowing + ◆ pick/place + real wrong-gripper dont_know"
 
 # ---------------------------------------------------------------------------
+# DM-6 gated via its check modules (wired here 2026-06-15 — DM-6 shipped before
+# this runner was updated; the greppable modules are dm6_perturbation_check +
+# dm6_check, previously run by hand).
+step "7d. DM-6 live gate (perturbation tiers + closed-loop verify→replan + manager reroute)"
+DM6P_OUT="$("${COMPOSE[@]}" run --rm demo-backend \
+  python -m robot_demo.backend.dm6_perturbation_check 2>&1)" && DM6P_RC=0 || DM6P_RC=$?
+printf '%s\n' "$DM6P_OUT" | sed 's/^/    | /'
+[[ $DM6P_RC -eq 0 ]] || fail "DM-6 perturbation check exited $DM6P_RC"
+grep -q "DM-6 PERTURBATION CHECK PASS" <<<"$DM6P_OUT" \
+  || fail "DM-6: 'DM-6 PERTURBATION CHECK PASS' not in logs (disturb/freeze tiers wrong)"
+DM6_OUT="$("${COMPOSE[@]}" run --rm demo-backend \
+  python -m robot_demo.backend.dm6_check 2>&1)" && DM6_RC=0 || DM6_RC=$?
+printf '%s\n' "$DM6_OUT" | sed 's/^/    | /'
+[[ $DM6_RC -eq 0 ]] || fail "DM-6 gate exited $DM6_RC"
+grep -q "DM-6 GATE PASS" <<<"$DM6_OUT" \
+  || fail "DM-6: 'DM-6 GATE PASS' not in logs (recalibrate/report or manager reroute/dead-end failed)"
+pass "DM-6: closed-loop recalibrate/report + manager reroute (conv re-stage) + honest dead-end"
+
+# ---------------------------------------------------------------------------
+step "7e. DM-7 live gate (teach → peer-transfer Local↔Local → carrier-box cooperation)"
+DM7_OUT="$("${COMPOSE[@]}" run --rm demo-backend \
+  python -m robot_demo.backend.dm7_check 2>&1)" && DM7_RC=0 || DM7_RC=$?
+printf '%s\n' "$DM7_OUT" | sed 's/^/    | /'
+[[ $DM7_RC -eq 0 ]] || fail "DM-7 gate exited $DM7_RC"
+grep -q "DM-7 GATE PASS" <<<"$DM7_OUT" \
+  || fail "DM-7: 'DM-7 GATE PASS' not in logs (teach/transfer/carrier-box cooperation failed)"
+pass "DM-7: teach + Local↔Local transfer + carrier-box 3-leaf cooperation"
+
+# ---------------------------------------------------------------------------
 if [[ "${RUN_PYTEST:-0}" == "1" ]]; then
   step "8. [optional] Host pytest of robot_demo/tests/"
   PYTHONPATH="$ROOT" "$PYBIN" -m pytest robot_demo/tests/ -q \
@@ -196,7 +225,7 @@ step "9. Teardown"
 "${COMPOSE[@]}" down >/dev/null 2>&1 || true
 pass "stack down"
 
-printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 + DM-3 + DM-4 + DM-5 gate green.\033[0m\n'
+printf '\n\033[1;32mALL MANDATORY CHECKS PASSED — DM-1 + DM-2 + DM-3 + DM-4 + DM-5 + DM-6 + DM-7 gate green.\033[0m\n'
 printf '  (DM-2: per-device bundles installed idempotently, Local seeds visible,\n'
 printf '   Globals persisted to Falkor, G-5 episode round-trip verified.\n'
 printf '   DM-3: each ⬡ atomic moves the live shared sim checklist-verified,\n'
@@ -205,4 +234,8 @@ printf '   DM-4: mgr dispatches an arm through both lifecycles (move_to) over\n'
 printf '   the BrainBus, narrated as live WS frames the UI seam consumes.\n'
 printf '   DM-5: real allocation (order → arm+cell, Plan ▸ Resolve 9→1) + the ◆\n'
 printf '   assembled pick→place over the live sim + the embodiment gate\n'
-printf '   (wrong gripper → GATED + a real dont_know Mode-A export).)\n'
+printf '   (wrong gripper → GATED + a real dont_know Mode-A export).\n'
+printf '   DM-6: closed-loop recalibrate/report + manager reroute (conv\n'
+printf '   re-stage to the healthy arm) + honest dead-end (dont_know + blame).\n'
+printf '   DM-7: teach a skill → peer-transfer Local↔Local (no server) →\n'
+printf '   carrier-box cooperation as a real 3-leaf decompose.)\n'

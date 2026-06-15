@@ -160,12 +160,20 @@ def register_comms_capacities(
         return {DS_CAP_REPORT: report}
 
     def share_impl(context=None, **inputs):
-        # F1-min mechanism stub; the beat-4 transfer is DM-7.
+        # DM-7 (F1): fire the descriptor at the peer; the peer's OWN ``share``
+        # handler (transfer.make_share_handler) writes it into the peer's OWN
+        # Local under the peer's OWN session (receiver-side, PB-2 — no cross-Local
+        # write). Fire-and-forget: the transfer IS a Local write on the receiver,
+        # not a round-trip.
         artifact = inputs.get(DS_SHARE_ARTIFACT) or {}
         peer = artifact.get("peer")
         if peer:
             bus.send(brain_id, peer, "share", artifact)
-        return {DS_SHARE_ACK: {"status": "deferred", "note": "DM-7"}}
+            ack = {"status": "sent", "peer": peer,
+                   "capability": artifact.get("capability_name")}
+        else:
+            ack = {"status": "no_peer"}
+        return {DS_SHARE_ACK: ack}
 
     specs = [
         ("dispatch", (DS_DISPATCH_CMD,), (DS_DISPATCH_ACK,), dispatch_impl),
