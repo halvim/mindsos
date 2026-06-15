@@ -210,12 +210,23 @@ def make_dispatch_handler(
         def on_done(fut):
             try:
                 outcome = fut.result()
+                payload = {"status": getattr(outcome, "status", "succeeded"),
+                           "task_pattern": getattr(outcome, "outcome", None)}
+                # DM-6 task5: type the dont-know cause so the Manager can tell a
+                # reroutable FAULT from a terminal wrong-gripper. Read off the
+                # arm's own stashes; function-local import breaks the
+                # gate<->comms import cycle.
+                if payload["status"] == "dont_know":
+                    from .gate import get_fault_state, get_gate_verdict
+                    fs = get_fault_state(brain)
+                    gv = get_gate_verdict(brain)
+                    if fs and fs.get("reported"):
+                        payload["cause"] = "fault"
+                    elif gv is not None and not gv.feasible:
+                        payload["cause"] = "wrong_gripper"
                 # comms.report (capacity) formats the outcome → graph-honest
                 res = brain.cl.invoke(
-                    REPORT_IRI,
-                    {DS_TASK_OUTCOME: {"status": getattr(outcome, "status", "succeeded"),
-                                       "task_pattern": getattr(outcome, "outcome", None)}},
-                    session=None,
+                    REPORT_IRI, {DS_TASK_OUTCOME: payload}, session=None,
                 )
                 report = res.outputs.get(DS_DISPATCH_ACK, {"status": "succeeded"})
             except Exception as exc:  # noqa
