@@ -1,7 +1,7 @@
 {
   "snapshot_version": 1,
   "kind": "episode-audit",
-  "created_at": "2026-06-15T16:06:20.697918+00:00",
+  "created_at": "2026-06-15T16:06:20.750409+00:00",
   "scenario": "open-order",
   "run_id": "robot-demo:mgr",
   "brains": {
@@ -14,15 +14,15 @@
             "task_input_ref": null,
             "mm_root_ref": null,
             "task_pattern_iri": "approach",
-            "outcome_classification": "dont_know",
+            "outcome_classification": "succeeded",
             "crash_marker": null,
-            "consolidated_at": "2026-06-15T16:06:20.696729+00:00"
+            "consolidated_at": "2026-06-15T16:06:20.750159+00:00"
           },
           "task_input": {
             "order": {
               "lines": [
                 {
-                  "item": "sheet",
+                  "item": "box",
                   "shelf": "a1",
                   "pos": [
                     {
@@ -67,40 +67,57 @@
                 "iri": "n7",
                 "status": "completed",
                 "task_run_ref": "n8"
+              },
+              {
+                "iri": "n9",
+                "status": "completed",
+                "task_run_ref": "n8"
               }
             ],
             "task_run": {
               "iri": "n8",
-              "status": "failed",
+              "status": "completed",
               "replan_history": [],
               "attention_score": 500
             },
             "steps": [
               {
-                "iri": "n9",
+                "iri": "n10",
+                "capacity_iri": "execute step",
+                "confidence": 1.0,
+                "milestone_ref": "n5"
+              },
+              {
+                "iri": "n11",
                 "capacity_iri": "execute step",
                 "confidence": 1.0,
                 "milestone_ref": "n5"
               }
             ],
-            "replans": [],
-            "blame": {
-              "chain_level": "pipeline",
-              "blame_score": 1.0,
-              "rationale": "no available arm can handle this item"
-            },
-            "dont_know": {
-              "reason": "no available arm can handle this item",
-              "cause": "embodiment_gate"
-            },
-            "replan_summary": null
+            "replans": [
+              {
+                "iri": "n12",
+                "replan_level": "pipeline",
+                "verdict": {
+                  "decision": "replan",
+                  "divergence": 0.0
+                },
+                "invalidated_refs": [
+                  "n7"
+                ],
+                "spawned_refs": []
+              }
+            ],
+            "blame": null,
+            "dont_know": null,
+            "replan_summary": "re-routed to the other arm after a detected fault"
           },
           "problem_trace": []
         }
       ],
       "memories": [
         {
-          "memory_iri": "n10",
+          "memory_iri": "n13",
           "value": {
             "task_pattern_iri": "approach"
           },

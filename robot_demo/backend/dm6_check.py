@@ -157,6 +157,8 @@ def main() -> int:
                      if e.get("value", {}).get("outcome_classification") == "succeeded"
                      and e.get("reasoning", {}).get("replans")]
             need(bool(recov), "manager recovery episode: succeeded + reroute ReplanRecord")
+            need(bool(recov) and recov[0]["reasoning"].get("replan_summary"),
+                 "manager recovery: behavior-level replan_summary present")
             # dead-end: sheet fault, no alternate grasp → honest dont-know + blame.
             dead = [e for e in meps
                     if e.get("value", {}).get("outcome_classification") == "dont_know"

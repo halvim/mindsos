@@ -43,7 +43,7 @@ from mindsos_intelligence.chain_artifacts import iter_chain_artifacts
 from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
 from mindsos_knowledge.metagraph_view import MetagraphView
 
-from .brain import refusal_for, task_input_for
+from .brain import refusal_for, replan_summary_for, task_input_for
 from .frames import BRAIN_ALIAS
 from .sanitize import TokenMap, find_leaks, plain_capacity, plain_task_pattern
 
@@ -101,7 +101,8 @@ def _one(bucket: Dict[str, List[Any]], prefix: str) -> Optional[Any]:
 
 
 def _reasoning(
-    slice_: Dict[str, List[Any]], tok: TokenMap, refusal: Optional[dict] = None
+    slice_: Dict[str, List[Any]], tok: TokenMap, refusal: Optional[dict] = None,
+    replan_summary: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Serialize one task's chain slice into the §D ``reasoning`` block, faithful
     to the ``chain_artifacts`` dataclasses, with refs tokenized + IRIs labelled.
@@ -200,6 +201,9 @@ def _reasoning(
     else:
         out["blame"] = None       # happy path emits no BlameVerdict
         out["dont_know"] = None    # populated only on a real refusal
+    # DM-6: behavior-level reroute/recalibration headline (None when no replan);
+    # the ReplanRecord carries no free-text, so this is the legible summary.
+    out["replan_summary"] = replan_summary
     return out
 
 
@@ -237,7 +241,8 @@ def _episodes_and_memories(
                 },
                 "task_input": task_input_for(scope) if scope else None,
                 "reasoning": _reasoning(
-                    slice_, tok, refusal_for(scope) if scope else None
+                    slice_, tok, refusal_for(scope) if scope else None,
+                    replan_summary_for(scope) if scope else None,
                 ),
                 "problem_trace": [],  # PB-5 — no live producer until DM-6
             }

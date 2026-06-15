@@ -40,7 +40,8 @@ def _arm():
 def test_recalibrate_recovery_emits_real_replans_and_succeeds():
     b = _arm()
     try:
-        set_fault_state(b, recalibrations=2, max_divergence=0.03, reported=False)
+        set_fault_state(b, recalibrations=2, max_divergence=0.03, reported=False,
+                        cause="re-calibrated from the actual position")
         out = run_task(b, {"text": "recal"}, task_id="t").result(timeout=30)
         assert out.status == "succeeded"
         assert out.replans_used == 2
@@ -49,6 +50,7 @@ def test_recalibrate_recovery_emits_real_replans_and_succeeds():
         r = snap["brains"]["a1"]["episodes"][0]["reasoning"]   # UI contract alias
         assert len(r["replans"]) == 2
         assert all(e["verdict"]["divergence"] == 0.03 for e in r["replans"])
+        assert r["replan_summary"] == "re-calibrated from the actual position"
         assert r["blame"] is None and r["dont_know"] is None   # recovered cleanly
         assert find_leaks(snap) == []
     finally:

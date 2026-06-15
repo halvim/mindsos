@@ -54,6 +54,7 @@ def test_manager_recovery_emits_one_replan_and_succeeds():
         snap = build_episode_audit_snapshot(b)
         r = snap["brains"]["mgr"]["episodes"][0]["reasoning"]
         assert len(r["replans"]) == 1                   # the reroute, on the manager chain
+        assert r["replan_summary"] == "re-routed to the other arm after a detected fault"
         assert r["blame"] is None and r["dont_know"] is None
         assert find_leaks(snap) == []
     finally:

@@ -165,7 +165,8 @@ def make_live_run_atomic(sim_engine: Any) -> "RunAtomic":
                 set_fault_state(
                     brain, recalibrations=recal, max_divergence=maxdiv,
                     reported=reported,
-                    cause="an actuator did not respond as commanded" if reported else "",
+                    cause=("an actuator did not respond as commanded" if reported
+                           else "re-calibrated from the actual position" if recal else ""),
                 )
                 if reported:
                     # self-diagnosis writes the capacity-gap into the arm's Local

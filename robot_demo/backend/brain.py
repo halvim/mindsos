@@ -182,6 +182,26 @@ def refusal_for(scope: str) -> Optional[dict]:
     return _REFUSALS.get(scope)
 
 
+# DM-6: a behavior-level reroute/recalibration summary, keyed by the same unique
+# scope the serializer slices on (the ReplanRecord carries no free-text "why",
+# so the headline lives here — sourced from the brain's real fault-stash cause).
+_REPLAN_SUMMARIES: "OrderedDict[str, str]" = OrderedDict()
+_REPLAN_SUMMARIES_MAX = 256
+
+
+def _record_replan_summary(scope: str, summary: str) -> None:
+    _REPLAN_SUMMARIES[scope] = summary
+    _REPLAN_SUMMARIES.move_to_end(scope)
+    while len(_REPLAN_SUMMARIES) > _REPLAN_SUMMARIES_MAX:
+        _REPLAN_SUMMARIES.popitem(last=False)
+
+
+def replan_summary_for(scope: str) -> Optional[str]:
+    """The sanitized behavior-level replan headline for a task ``scope`` (or
+    ``None`` when the run had no replan)."""
+    return _REPLAN_SUMMARIES.get(scope)
+
+
 def _capture_outcome(scope: str, outcome: Any) -> None:
     """Record a refusal if the lifecycle produced a dont-know (else no-op)."""
     if getattr(outcome, "status", None) != "dont_know":
@@ -230,7 +250,16 @@ def run_task(brain: Brain, task_input: Any, *, task_id: str = "task") -> Any:
 
     def _on_done(f: Any) -> None:
         try:
-            _capture_outcome(scope, f.result())
+            outcome = f.result()
+            _capture_outcome(scope, outcome)
+            # DM-6: on a real replan (recalibration or reroute), capture the
+            # behavior-level summary from this brain's fault-stash cause (single-
+            # flight → the stash belongs to this task). Keyed by this scope.
+            if getattr(outcome, "replans_used", 0) > 0:
+                from .gate import get_fault_state
+                fs = get_fault_state(brain)
+                if fs and fs.get("cause"):
+                    _record_replan_summary(scope, fs["cause"])
         except Exception:  # noqa — capture is best-effort, never crash the task
             pass
 
