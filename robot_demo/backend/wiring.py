@@ -57,6 +57,7 @@ from .gate import (
     gate_item,
     get_gate_verdict,
     install_arm_gate,
+    install_manager_replan,
     set_fault_state,
 )
 from .installers import install_core_datastates
@@ -219,13 +220,33 @@ def wire_brain_comms(brain: Any, bus: Any) -> Tuple[str, ...]:
     return register_comms_capacities(brain.cl, bus, brain.device_id)
 
 
+# ── Manager reroute (DM-6 PB-T56.4) ───────────────────────────────────
+#: the demo's two grippers — which grasp each arm provides.
+_ARM_GRASP = {"arm1": "grasp:suction", "arm2": "grasp:jaw"}
+
+
+def _alternate_arm(faulted_dst: str, item: Optional[str]) -> Optional[str]:
+    """The other arm that can grasp ``item``, or None (→ dead-end). Reuses the
+    DM-5 grasp table: box→either, sheet→suction-only, tube→jaw-only."""
+    from .feasibility import ITEM_ACCEPTABLE_GRASPS, item_kind
+
+    kind = item_kind(item)
+    if kind is None:
+        return None
+    acceptable = ITEM_ACCEPTABLE_GRASPS.get(kind, frozenset())
+    other = "arm2" if faulted_dst == "arm1" else "arm1"
+    return other if _ARM_GRASP.get(other) in acceptable else None
+
+
 # ── Manager overrides ─────────────────────────────────────────────────
 def install_manager_flow(
     mgr: Any, bus: Any, events: DemoEvents,
     *, decide: Callable[[dict], Tuple[str, str]],
 ) -> None:
     """Override mgr phase-1 map (decide arm+target → task_pattern_iri) and
-    phase-2 derive (dispatch over the bus, narrate)."""
+    phase-2 derive (dispatch over the bus, narrate). DM-6: on a reported FAULT,
+    reroute to the healthy arm (one-shot manager ReplanRecord); a true dead-end
+    surfaces an honest dont-know + blame (install_manager_replan)."""
 
     def mgr_map(context=None, **inputs):
         structured = inputs.get(DS_STRUCTURED_INPUT) or {}
@@ -251,16 +272,42 @@ def install_manager_flow(
         res = mgr.cl.invoke(DISPATCH_IRI, {DS_DISPATCH_CMD: cmd}, session=None)
         ack = res.outputs.get(DS_DISPATCH_ACK) if res.success else None
         status = (ack or {}).get("status", "dont_know")
-        # state-then-message (canonical — groups the report with this beat).
+        cause = ((ack or {}).get("detail") or {}).get("cause")
+        last_dst, attempts = dst, [{"dst": dst, "status": status}]
+
+        # DM-6: a reroutable FAULT → re-route to the healthy arm; the manager's
+        # one-shot should_replan mints a real ReplanRecord. A wrong-gripper stays
+        # terminal (cause != "fault"). No alternate / reroute also fails → honest
+        # dead-end (sufficient=False → dont-know + blame).
+        if status == "dont_know" and cause == "fault":
+            alt = _alternate_arm(dst, item)
+            if alt is not None:
+                events.message("mgr", alt, f"re-route: move to {target}")
+                set_fault_state(mgr, recalibrations=1, reported=False,
+                                cause="re-routed to the other arm after a detected fault")
+                cmd2 = {"dst": alt, "target": target, "item": item,
+                        "task_id": "order-sub-2"}
+                res2 = mgr.cl.invoke(DISPATCH_IRI, {DS_DISPATCH_CMD: cmd2}, session=None)
+                ack2 = res2.outputs.get(DS_DISPATCH_ACK) if res2.success else None
+                status, last_dst = (ack2 or {}).get("status", "dont_know"), alt
+                attempts.append({"dst": alt, "status": status})
+                if status != "succeeded":  # reroute also failed → dead-end
+                    set_fault_state(mgr, recalibrations=1, reported=True,
+                                    cause="no available arm could complete the task")
+            else:  # nothing else can grasp this item → honest dead-end
+                set_fault_state(mgr, recalibrations=0, reported=True,
+                                cause="no available arm can handle this item")
+
         events.state({"mgr": {"intent": "Order complete",
-                              "decision": f"{dst} reported {status}",
+                              "decision": f"reported {status}",
                               "chain": 5, "active": False}},
                      title="Reported", narr="Manager received the arm's report.")
-        events.message(dst, "mgr", f"reported: {status}")
-        return {DS_PLAN: {"dispatched": cmd, "ack": ack}}
+        events.message(last_dst, "mgr", f"reported: {status}")
+        return {DS_PLAN: {"attempts": attempts}}
 
     install_override(mgr.cl, MAP_IRI, mgr_map)
     install_override(mgr.cl, DERIVE_PLAN_IRI, mgr_derive)
+    install_manager_replan(mgr)
 
 
 # ── Arm overrides + dispatch handler ──────────────────────────────────

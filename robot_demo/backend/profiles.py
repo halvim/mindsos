@@ -57,7 +57,7 @@ DEVICE_PROFILES: Dict[str, DeviceProfile] = {
         device_id="mgr",
         device_type="manager",
         kl_name="global::mgr",
-        max_workers=2,
+        max_workers=1,  # DM-6 PB-T56.5: single-flight so the reroute fault stash is race-free
         bundle_names=("core", "manager"),
         embodied=(),  # no body
     ),

@@ -184,6 +184,21 @@ def install_arm_gate(brain: Any) -> str:
     return feasibility_iri(brain.device_id)
 
 
+def install_manager_replan(brain: Any) -> None:
+    """DM-6: install the closed-loop overrides on the MANAGER (no embodiment
+    gate — the manager doesn't grasp items). Reuses the same fault-stash-driven
+    ``should_replan`` (one ReplanRecord per reroute) + ``sufficient`` (False on a
+    dead-end) + ``blame`` (the dead-end cause). The manager has no gate verdict,
+    so ``_make_sufficient_impl``/``_make_blame_impl`` key purely off the fault
+    stash. Pin the manager to ``max_workers=1`` (PB-T56.5) for the stash to be
+    race-free."""
+    install_override(brain.cl, SUFFICIENT_IRI, _make_sufficient_impl(brain))
+    install_override(brain.cl, ATTRIBUTE_BLAME_IRI, _make_blame_impl(brain))
+    install_override(brain.cl, SHOULD_REPLAN_IRI, _make_should_replan_impl(brain))
+    clear_gate_verdict(brain)
+    clear_fault_state(brain)
+
+
 __all__ = [
     "set_gate_verdict",
     "get_gate_verdict",
@@ -193,4 +208,5 @@ __all__ = [
     "clear_fault_state",
     "gate_item",
     "install_arm_gate",
+    "install_manager_replan",
 ]
