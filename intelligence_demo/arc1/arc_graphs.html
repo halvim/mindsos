@@ -1,0 +1,173 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>ARC layer graphs</title>
+<style>
+ :root{--bg:#0e1116;--bar:#161b22;--bd:#2b3440;--ink:#e6edf3;--mut:#8b949e;--acc:#58a6ff;}
+ *{box-sizing:border-box} html,body{margin:0;height:100%}
+ body{background:var(--bg);color:var(--ink);font:14px -apple-system,Segoe UI,Roboto,sans-serif;display:flex;flex-direction:column;height:100vh}
+ header{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--bar);border-bottom:1px solid var(--bd);flex-wrap:wrap}
+ header h1{font-size:15px;margin:0;font-weight:650}
+ .tabs{display:inline-flex;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+ .tab{background:#1c232d;color:var(--mut);border:0;padding:6px 13px;cursor:pointer;font-size:13px}
+ .tab.on{background:var(--acc);color:#06121f;font-weight:600}
+ button.act{background:#1c232d;color:var(--ink);border:1px solid var(--bd);border-radius:7px;padding:6px 13px;cursor:pointer;font-size:13px}
+ button.act:hover{border-color:var(--acc)}
+ #editbtn.locked{background:#2ECC40;color:#06121f;border-color:#2ECC40;font-weight:600}
+ .spacer{flex:1}
+ #flash{color:var(--acc);font-size:12px;opacity:0;transition:opacity .3s}
+ .meta{padding:7px 18px 0}
+ .meta .t{font-size:17px;font-weight:700} .meta .s{font-size:12.5px;color:var(--mut)}
+ .wrap{flex:1;min-height:0;overflow:auto;padding:8px 16px 18px}
+ svg{display:block;background:var(--bg);border:1px solid var(--bd);border-radius:10px}
+ body.editing svg{border-color:#2ECC40}
+ .zoom{display:inline-flex;align-items:center;gap:6px}
+ .zoom b{font-size:12px;color:var(--mut);min-width:40px;text-align:center}
+ .zoom button{padding:4px 10px}
+ .nd:hover rect{filter:brightness(1.15)}
+ .hint{color:var(--mut);font-size:12px;padding:2px 18px 0}
+</style></head><body>
+<header>
+ <h1>ARC layer graphs</h1>
+ <div class="tabs">
+   <button class="tab on" data-k="L2">L2 ontology</button>
+   <button class="tab" data-k="L3">L3 capacity</button>
+   <button class="tab" data-k="L5">L5 MM instance</button>
+ </div>
+ <button class="act" id="editbtn">✎ Edit</button>
+ <button class="act" id="resetbtn">↺ Reset</button>
+ <span class="zoom"><button class="act" id="zout">−</button><b id="zlvl">100%</b><button class="act" id="zin">+</button></span>
+ <span id="flash"></span>
+ <div class="spacer"></div>
+</header>
+<div class="meta"><div class="t" id="gtitle"></div><div class="s" id="gsub"></div></div>
+<div class="hint">Press <b>Edit</b> to drag nodes; press <b>Lock</b> to save their positions (per graph).</div>
+<div class="wrap"><svg id="cv" xmlns="http://www.w3.org/2000/svg" role="img"></svg></div>
+<script>const G={"L2": {"title": "L2 \u00b7 ontology graph", "sub": "ARC world-model \u2014 classes + relationships. MindsOS role-graph `ontology`.", "vw": 1180, "vh": 930, "nodes": [{"id": "task", "x": 70, "y": 110, "w": 104, "h": 42, "label": "Task", "kind": "class", "sub": null}, {"id": "pair", "x": 70, "y": 210, "w": 104, "h": 42, "label": "Pair", "kind": "class", "sub": null}, {"id": "grid", "x": 70, "y": 320, "w": 104, "h": 42, "label": "Grid", "kind": "class", "sub": null}, {"id": "cell", "x": 70, "y": 440, "w": 104, "h": 42, "label": "Cell", "kind": "class", "sub": null}, {"id": "pos", "x": 30, "y": 560, "w": 92, "h": 36, "label": "Position", "kind": "param", "sub": null}, {"id": "col", "x": 150, "y": 560, "w": 92, "h": 36, "label": "Color", "kind": "param", "sub": null}, {"id": "dim", "x": 250, "y": 250, "w": 96, "h": 34, "label": "Dimension", "kind": "param", "sub": null}, {"id": "pal", "x": 270, "y": 330, "w": 104, "h": 42, "label": "Palette", "kind": "class", "sub": null}, {"id": "bg", "x": 270, "y": 420, "w": 104, "h": 42, "label": "Background", "kind": "class", "sub": null}, {"id": "fig", "x": 270, "y": 520, "w": 104, "h": 42, "label": "Figure", "kind": "class", "sub": null}, {"id": "region", "x": 560, "y": 150, "w": 104, "h": 42, "label": "Region", "kind": "class", "sub": null}, {"id": "bbox", "x": 740, "y": 110, "w": 104, "h": 42, "label": "BBox", "kind": "class", "sub": null}, {"id": "mask", "x": 900, "y": 110, "w": 104, "h": 42, "label": "Mask", "kind": "class", "sub": null}, {"id": "obj", "x": 560, "y": 300, "w": 104, "h": 42, "label": "Object", "kind": "class", "sub": null}, {"id": "group", "x": 780, "y": 300, "w": 104, "h": 42, "label": "Group", "kind": "class", "sub": null}, {"id": "shape", "x": 560, "y": 470, "w": 104, "h": 42, "label": "Shape", "kind": "class", "sub": null}, {"id": "pset", "x": 560, "y": 610, "w": 104, "h": 42, "label": "PointSet", "kind": "class", "sub": null}, {"id": "point", "x": 760, "y": 620, "w": 92, "h": 36, "label": "Point", "kind": "param", "sub": "atom"}, {"id": "bshapes", "x": 740, "y": 470, "w": 156, "h": 42, "label": "base shapes", "kind": "class", "sub": "vert/horiz/diag/square"}, {"id": "pattern", "x": 950, "y": 300, "w": 120, "h": 42, "label": "Pattern", "kind": "class", "sub": "composite"}, {"id": "lattice", "x": 950, "y": 400, "w": 120, "h": 42, "label": "Lattice(N)", "kind": "class", "sub": "composite"}, {"id": "vec", "x": 950, "y": 620, "w": 104, "h": 40, "label": "Vector", "kind": "param", "sub": "offset Δ"}], "edges": [{"a": "obj", "b": "region", "style": "subclass", "label": "subclass_of", "color": "sub", "curve": 0}, {"a": "bbox", "b": "region", "style": "subclass", "label": "subclass_of", "color": "sub", "curve": 0}, {"a": "shape", "b": "pset", "style": "subclass", "label": "subclass_of", "color": "sub", "curve": 0}, {"a": "obj", "b": "shape", "style": "exempl", "label": "exemplifies", "color": "exe", "curve": 0}, {"a": "fig", "b": "grid", "style": "derived", "label": "derived_from", "color": "der", "curve": 34}, {"a": "bg", "b": "grid", "style": "derived", "label": "derived_from", "color": "der", "curve": 12}, {"a": "pal", "b": "grid", "style": "derived", "label": "derived_from", "color": "der", "curve": 0}, {"a": "mask", "b": "region", "style": "derived", "label": "derived_from", "color": "der", "curve": -20}, {"a": "group", "b": "pset", "style": "derived", "label": "geometry", "color": "der", "curve": 40}, {"a": "grid", "b": "dim", "style": "solid", "label": "has_attribute", "color": "muted", "curve": 0}, {"a": "bg", "b": "col", "style": "solid", "label": "functional:background", "color": "muted", "curve": -24}, {"a": "bshapes", "b": "shape", "style": "exempl", "label": "exemplifies", "color": "exe", "curve": 0}, {"a": "lattice", "b": "pattern", "style": "subclass", "label": "is-a", "color": "sub", "curve": 0}, {"a": "pattern", "b": "pset", "style": "derived", "label": "anchor", "color": "der", "curve": 0}, {"a": "vec", "b": "pattern", "style": "solid", "label": "binds (offset)", "color": "muted", "curve": 0}], "hyper": [{"whole": "task", "members": ["pair"], "label": "compositional", "ordered": false}, {"whole": "pair", "members": ["grid"], "label": "compositional", "ordered": true}, {"whole": "grid", "members": ["cell"], "label": "compositional", "ordered": false}, {"whole": "cell", "members": ["pos", "col"], "label": "has_attribute", "ordered": false}, {"whole": "fig", "members": ["obj"], "label": "compositional", "ordered": false}, {"whole": "obj", "members": ["group"], "label": "part-of", "ordered": false}, {"whole": "pal", "members": ["col"], "label": "compositional", "ordered": false}, {"whole": "shape", "members": ["point"], "label": "compositional:part → atom", "ordered": false}, {"whole": "pattern", "members": ["shape"], "label": "compositional", "ordered": false}, {"whole": "lattice", "members": ["shape"], "label": "compositional ·repeating", "ordered": false}], "notes": [{"x": 690, "y": 770, "text": "sub-shape = Shape in compositional:part (recursive → Point); base shapes are named Shape individuals; Pattern / Lattice are composites, not classes; Divider is a role (invariant full-span line)"}], "legend": [["node", "#1b2c3f", "#58a6ff", "class"], ["node", "#2b2b16", "#FFDC00", "value / param"], ["comp", null, null, "compositional hyperedge"], ["line", "sub", "7 4", "subclass_of (\u2291)"], ["line", "exe", "2 4", "exemplifies \u2192 Shape"], ["line", "der", "", "derived_from"]], "lx": 1010, "ly": 628}, "L3": {"title": "L3 \u00b7 capacity / datastate graph", "sub": "DataStates \u2194 capacities via CONSUMES / PRODUCES. Families tagged.", "vw": 1320, "vh": 880, "nodes": [{"id": "coord", "x": 40, "y": 150, "w": 116, "h": 40, "label": "Coordinate", "kind": "datastate", "sub": null}, {"id": "color", "x": 40, "y": 230, "w": 116, "h": 40, "label": "Color", "kind": "datastate", "sub": null}, {"id": "conn", "x": 36, "y": 420, "w": 96, "h": 32, "label": "Connectivity", "kind": "param", "sub": null}, {"id": "cmode", "x": 36, "y": 470, "w": 96, "h": 32, "label": "ColorMode", "kind": "param", "sub": null}, {"id": "cell", "x": 300, "y": 190, "w": 116, "h": 40, "label": "Cell", "kind": "datastate", "sub": null}, {"id": "grid", "x": 560, "y": 150, "w": 116, "h": 40, "label": "Grid", "kind": "datastate", "sub": null}, {"id": "bgds", "x": 560, "y": 300, "w": 116, "h": 40, "label": "Background", "kind": "datastate", "sub": null}, {"id": "objds", "x": 820, "y": 300, "w": 116, "h": 40, "label": "Object", "kind": "datastate", "sub": null}, {"id": "shapeds", "x": 1090, "y": 200, "w": 116, "h": 40, "label": "Shape", "kind": "datastate", "sub": null}, {"id": "groupds", "x": 1090, "y": 360, "w": 116, "h": 40, "label": "Group", "kind": "datastate", "sub": null}, {"id": "psetds", "x": 1090, "y": 470, "w": 116, "h": 40, "label": "PointSet", "kind": "datastate", "sub": null}, {"id": "transf", "x": 1090, "y": 90, "w": 116, "h": 40, "label": "Transform", "kind": "datastate", "sub": "(or none)"}, {"id": "boolds", "x": 1090, "y": 560, "w": 116, "h": 40, "label": "Bool", "kind": "datastate", "sub": null}, {"id": "scal", "x": 1090, "y": 640, "w": 116, "h": 40, "label": "Scalar", "kind": "datastate", "sub": null}, {"id": "recog", "x": 150, "y": 200, "w": 150, "h": 40, "label": "recognize_cell", "kind": "capacity", "sub": "perception"}, {"id": "build", "x": 420, "y": 160, "w": 150, "h": 40, "label": "build_grid", "kind": "capacity", "sub": "perception"}, {"id": "detbg", "x": 420, "y": 300, "w": 150, "h": 40, "label": "detect_background", "kind": "capacity", "sub": "perception"}, {"id": "extract", "x": 680, "y": 300, "w": 150, "h": 40, "label": "extract_objects", "kind": "capacity", "sub": "decomposition"}, {"id": "norm", "x": 930, "y": 210, "w": 150, "h": 40, "label": "normalize_shape", "kind": "capacity", "sub": "derivation"}, {"id": "rot", "x": 930, "y": 90, "w": 150, "h": 40, "label": "rotate / reflect", "kind": "capacity", "sub": "transform"}, {"id": "add", "x": 930, "y": 370, "w": 150, "h": 40, "label": "add", "kind": "capacity", "sub": "combination"}, {"id": "union", "x": 930, "y": 470, "w": 150, "h": 40, "label": "union", "kind": "capacity", "sub": "combination"}, {"id": "cmp", "x": 930, "y": 560, "w": 150, "h": 40, "label": "is_rotation\u2026", "kind": "capacity", "sub": "comparator"}, {"id": "dist", "x": 930, "y": 640, "w": 150, "h": 40, "label": "distance", "kind": "capacity", "sub": "metric"}, {"id": "rawtask", "x": 40, "y": 40, "w": 116, "h": 40, "label": "RawTask", "kind": "datastate", "sub": "uninterpreted"}, {"id": "rawgrid", "x": 300, "y": 50, "w": 116, "h": 40, "label": "RawGrid", "kind": "datastate", "sub": "uninterpreted"}, {"id": "palds", "x": 560, "y": 420, "w": 116, "h": 40, "label": "Palette", "kind": "datastate", "sub": null}, {"id": "delta", "x": 540, "y": 720, "w": 130, "h": 40, "label": "Delta | None", "kind": "datastate", "sub": "dim / palette"}, {"id": "vecds", "x": 1090, "y": 720, "w": 116, "h": 40, "label": "Vector", "kind": "datastate", "sub": "offset"}, {"id": "comprehend", "x": 150, "y": 40, "w": 150, "h": 40, "label": "comprehend_task", "kind": "capacity", "sub": "comprehension"}, {"id": "extpal", "x": 420, "y": 420, "w": 150, "h": 40, "label": "extract_palette", "kind": "capacity", "sub": "derivation"}, {"id": "cmppal", "x": 740, "y": 540, "w": 150, "h": 40, "label": "compare_palette", "kind": "capacity", "sub": "comparator"}, {"id": "cmpdim", "x": 740, "y": 620, "w": 196, "h": 40, "label": "compare_grid_dimension", "kind": "capacity", "sub": "comparator"}, {"id": "agrees", "x": 980, "y": 720, "w": 168, "h": 40, "label": "agrees_across_demos", "kind": "capacity", "sub": "predicate / fold"}, {"id": "offset", "x": 300, "y": 720, "w": 150, "h": 40, "label": "offset", "kind": "capacity", "sub": "comparator"}, {"id": "iseq", "x": 300, "y": 800, "w": 156, "h": 40, "label": "same_object", "kind": "capacity", "sub": "comparator"}, {"id": "sshape", "x": 520, "y": 800, "w": 150, "h": 40, "label": "same_shape", "kind": "capacity", "sub": "comparator"}, {"id": "extpts", "x": 680, "y": 430, "w": 150, "h": 40, "label": "extract_points", "kind": "capacity", "sub": "decomposition"}, {"id": "pointds", "x": 900, "y": 430, "w": 116, "h": 40, "label": "Point", "kind": "datastate", "sub": "size 1"}, {"id": "spoint", "x": 700, "y": 800, "w": 150, "h": 40, "label": "same_point", "kind": "capacity", "sub": "comparator"}, {"id": "moved", "x": 900, "y": 720, "w": 150, "h": 40, "label": "moved", "kind": "capacity", "sub": "comparator"}, {"id": "movetf", "x": 1090, "y": 800, "w": 116, "h": 40, "label": "Transform", "kind": "datastate", "sub": "move Δ"}], "edges": [{"a": "coord", "b": "recog", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "color", "b": "recog", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "recog", "b": "cell", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "cell", "b": "build", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "build", "b": "grid", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "grid", "b": "detbg", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "detbg", "b": "bgds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "grid", "b": "extract", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "conn", "b": "extract", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "cmode", "b": "extract", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "extract", "b": "objds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "objds", "b": "norm", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "norm", "b": "shapeds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "shapeds", "b": "rot", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "rot", "b": "shapeds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "objds", "b": "add", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "add", "b": "groupds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "psetds", "b": "union", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "union", "b": "psetds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "shapeds", "b": "cmp", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "cmp", "b": "transf", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "shapeds", "b": "dist", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "dist", "b": "scal", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "groupds", "b": "psetds", "style": "derived", "label": "geometry", "color": "der", "curve": -20}, {"a": "rawtask", "b": "comprehend", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "comprehend", "b": "rawgrid", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "rawgrid", "b": "build", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "grid", "b": "extpal", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "extpal", "b": "palds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "grid", "b": "cmpdim", "style": "solid", "label": "consumes ×2", "color": "cons", "curve": 0}, {"a": "cmpdim", "b": "delta", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "palds", "b": "cmppal", "style": "solid", "label": "consumes ×2", "color": "cons", "curve": 0}, {"a": "cmppal", "b": "delta", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "delta", "b": "agrees", "style": "solid", "label": "consumes*", "color": "cons", "curve": 0}, {"a": "agrees", "b": "boolds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "objds", "b": "offset", "style": "solid", "label": "consumes ×2", "color": "cons", "curve": 0}, {"a": "offset", "b": "vecds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "objds", "b": "iseq", "style": "solid", "label": "consumes ×2", "color": "cons", "curve": 0}, {"a": "iseq", "b": "boolds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "shapeds", "b": "sshape", "style": "solid", "label": "consumes ×2", "color": "cons", "curve": 0}, {"a": "sshape", "b": "boolds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "grid", "b": "extpts", "style": "solid", "label": "consumes", "color": "cons", "curve": 0}, {"a": "extpts", "b": "pointds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "pointds", "b": "spoint", "style": "solid", "label": "consumes ×2", "color": "cons", "curve": 0}, {"a": "spoint", "b": "boolds", "style": "solid", "label": "produces", "color": "prod", "curve": 0}, {"a": "objds", "b": "moved", "style": "solid", "label": "consumes ×2", "color": "cons", "curve": 0}, {"a": "moved", "b": "movetf", "style": "solid", "label": "produces", "color": "prod", "curve": 0}], "hyper": [], "notes": [{"x": 420, "y": 372, "text": "detect_background → reasoning (deferred); extract_objects = per-color, all colors, no background; compare_*/agrees = L4 phase_1 profiling sweep"}], "legend": [["node", "#16302b", "#2ECC40", "DataState"], ["node", "#3a2a16", "#FF851B", "capacity (family)"], ["node", "#2b2b16", "#FFDC00", "parameter"], ["line", "cons", "", "CONSUMES (input)"], ["line", "prod", "", "PRODUCES (output)"]], "lx": 40, "ly": 598}, "L5": {"title": "L5 \u00b7 per-task MM (instance / ABox)", "sub": "A concrete rotate-object task instantiated + a discovered congruence fact.", "vw": 1180, "vh": 760, "nodes": [{"id": "cTask", "x": 70, "y": 96, "w": 92, "h": 32, "label": "Task", "kind": "class", "sub": null}, {"id": "cGrid", "x": 330, "y": 96, "w": 92, "h": 32, "label": "Grid", "kind": "class", "sub": null}, {"id": "cObject", "x": 600, "y": 96, "w": 92, "h": 32, "label": "Object", "kind": "class", "sub": null}, {"id": "cShape", "x": 860, "y": 96, "w": 92, "h": 32, "label": "Shape", "kind": "class", "sub": null}, {"id": "task", "x": 70, "y": 180, "w": 120, "h": 42, "label": "task#27a", "kind": "instance", "sub": "rotate-90 family"}, {"id": "pD", "x": 60, "y": 300, "w": 120, "h": 42, "label": "pair#d1", "kind": "instance", "sub": "demonstration"}, {"id": "pT", "x": 210, "y": 300, "w": 120, "h": 42, "label": "pair#t", "kind": "instance", "sub": "test"}, {"id": "gin", "x": 330, "y": 300, "w": 120, "h": 42, "label": "grid#in", "kind": "instance", "sub": "3\u00d73"}, {"id": "gout", "x": 330, "y": 420, "w": 120, "h": 42, "label": "grid#out", "kind": "instance", "sub": "3\u00d73"}, {"id": "oin", "x": 600, "y": 300, "w": 120, "h": 42, "label": "object#a", "kind": "instance", "sub": "blue"}, {"id": "oout", "x": 600, "y": 430, "w": 120, "h": 42, "label": "object#b", "kind": "instance", "sub": "blue"}, {"id": "sin", "x": 860, "y": 300, "w": 120, "h": 42, "label": "shape#J", "kind": "instance", "sub": null}, {"id": "sout", "x": 860, "y": 430, "w": 120, "h": 42, "label": "shape#J\u2032", "kind": "instance", "sub": null}, {"id": "rule", "x": 210, "y": 560, "w": 150, "h": 42, "label": "rule#27a", "kind": "instance", "sub": "Rotate 90\u00b0"}, {"id": "cong", "x": 980, "y": 365, "w": 170, "h": 52, "label": "congruence#1", "kind": "relation", "sub": "rot 90\u00b0  (discovered)"}], "edges": [{"a": "task", "b": "cTask", "style": "subclass", "label": "TYPE_OF", "color": "sub", "curve": 0}, {"a": "gin", "b": "cGrid", "style": "subclass", "label": "TYPE_OF", "color": "sub", "curve": 0}, {"a": "gout", "b": "cGrid", "style": "subclass", "label": "TYPE_OF", "color": "sub", "curve": 0}, {"a": "oin", "b": "cObject", "style": "subclass", "label": "TYPE_OF", "color": "sub", "curve": 0}, {"a": "oout", "b": "cObject", "style": "subclass", "label": "TYPE_OF", "color": "sub", "curve": 0}, {"a": "sin", "b": "cShape", "style": "subclass", "label": "TYPE_OF", "color": "sub", "curve": 0}, {"a": "sout", "b": "cShape", "style": "subclass", "label": "TYPE_OF", "color": "sub", "curve": 0}, {"a": "gin", "b": "oin", "style": "derived", "label": "extract", "color": "der", "curve": 0}, {"a": "gout", "b": "oout", "style": "derived", "label": "extract", "color": "der", "curve": 0}, {"a": "oin", "b": "sin", "style": "exempl", "label": "exemplifies", "color": "exe", "curve": 0}, {"a": "oout", "b": "sout", "style": "exempl", "label": "exemplifies", "color": "exe", "curve": 0}, {"a": "sin", "b": "cong", "style": "solid", "label": "relational:from", "color": "muted", "curve": -26}, {"a": "sout", "b": "cong", "style": "solid", "label": "relational:to", "color": "muted", "curve": 20}, {"a": "gin", "b": "rule", "style": "solid", "label": "CONSUMES", "color": "cons", "curve": 30}, {"a": "rule", "b": "gout", "style": "solid", "label": "PRODUCES", "color": "prod", "curve": 30}], "hyper": [{"whole": "task", "members": ["pD", "pT"], "label": "compositional", "ordered": false}, {"whole": "pD", "members": ["gin", "gout"], "label": "compositional", "ordered": true}], "notes": [{"x": 980, "y": 478, "text": "materialized in knowledge sub-MM"}], "legend": [["node", "#2a1b3a", "#c77dff", "instance (ABox)"], ["node", "#1b2c3f", "#58a6ff", "L2 class"], ["line", "sub", "7 4", "TYPE_OF"], ["line", "exe", "2 4", "exemplifies"], ["comp", null, null, "compositional hyperedge"]], "lx": 70, "ly": 648}};</script>
+<script>
+const KIND={class:['#1b2c3f','#58a6ff'],datastate:['#16302b','#2ECC40'],capacity:['#3a2a16','#FF851B'],
+ instance:['#2a1b3a','#c77dff'],param:['#2b2b16','#FFDC00'],relation:['#3a1622','#f778ba']};
+const EC={muted:'#8b949e',sub:'#f778ba',exe:'#c77dff',der:'#FF851B',prod:'#2ECC40',cons:'#58a6ff',comp:'#7FDBFF'};
+let CUR='L2', EDIT=false, drag=null, ZOOM=1;
+const svg=document.getElementById('cv');
+function applyZoom(){const g=G[CUR]; if(!g._wW)return; svg.style.width=(g._wW*ZOOM)+'px'; svg.style.height=(g._wH*ZOOM)+'px'; const z=document.getElementById('zlvl'); if(z)z.textContent=Math.round(ZOOM*100)+'%';}
+
+function nodes(){return G[CUR]._n;}            // id->node map
+function loadSaved(){
+  try{const s=JSON.parse(localStorage.getItem('arcgraph_'+CUR)||'{}');
+    for(const id in s){if(G[CUR]._n[id]){G[CUR]._n[id].x=s[id].x;G[CUR]._n[id].y=s[id].y;}}}catch(e){}
+}
+function setGraph(k){
+  CUR=k; const g=G[k];
+  if(!g._n){g._n={}; g.nodes.forEach(n=>g._n[n.id]=Object.assign({},n));}
+  loadSaved();
+  const wW=g.vw+580, wH=g.vh+460; g._wW=wW; g._wH=wH;
+  svg.setAttribute('viewBox',`0 0 ${wW} ${wH}`);
+  applyZoom();
+  document.getElementById('gtitle').textContent=g.title;
+  document.getElementById('gsub').textContent=g.sub;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.k===k));
+  render();
+}
+function border(n,tx,ty){
+  const cx=n.x+n.w/2,cy=n.y+n.h/2; let dx=tx-cx,dy=ty-cy;
+  if(!dx&&!dy)return[cx,cy];
+  const sx=dx?(n.w/2)/Math.abs(dx):1e9, sy=dy?(n.h/2)/Math.abs(dy):1e9, k=Math.min(sx,sy);
+  return[cx+dx*k,cy+dy*k];
+}
+function esc(s){return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function markers(){
+  return Object.keys(EC).map(k=>`<marker id="m_${k}" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L7.5,3 L0,6 Z" fill="${EC[k]}"/></marker>`).join('');
+}
+function drawEdge(e){
+  const A=nodes()[e.a],B=nodes()[e.b]; if(!A||!B)return'';
+  const acx=A.x+A.w/2,acy=A.y+A.h/2,bcx=B.x+B.w/2,bcy=B.y+B.h/2;
+  const [x1,y1]=border(A,bcx,bcy), [x2,y2]=border(B,acx,acy);
+  const col=EC[e.color]||EC.muted;
+  const dash=e.style==='subclass'?' stroke-dasharray="7 4"':e.style==='exempl'?' stroke-dasharray="2 4"':'';
+  let o='',lx,ly;
+  if(e.curve){
+    const mx=(x1+x2)/2,my=(y1+y2)/2,dx=x2-x1,dy=y2-y1,ln=Math.hypot(dx,dy)||1,ox=-dy/ln*e.curve,oy=dx/ln*e.curve;
+    o+=`<path d="M${x1},${y1} Q${mx+ox},${my+oy} ${x2},${y2}" fill="none" stroke="${col}" stroke-width="2"${dash} marker-end="url(#m_${e.color})"/>`;
+    lx=mx+ox*0.9;ly=my+oy*0.9;
+  }else{
+    o+=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2"${dash} marker-end="url(#m_${e.color})"/>`;
+    lx=(x1+x2)/2;ly=(y1+y2)/2;
+  }
+  if(e.label){const w=7*e.label.length+8;
+    o+=`<rect x="${lx-w/2}" y="${ly-9}" width="${w}" height="15" rx="3" fill="#0e1116" opacity="0.92"/>`;
+    o+=`<text x="${lx}" y="${ly+2}" font-size="10" text-anchor="middle" fill="${col}" font-style="italic">${esc(e.label)}</text>`;}
+  return o;
+}
+function drawHyper(he){
+  const W=nodes()[he.whole]; const wc=[W.x+W.w/2,W.y+W.h/2];
+  const mcs=he.members.map(m=>{const M=nodes()[m];return[M.x+M.w/2,M.y+M.h/2];});
+  const mc=[mcs.reduce((s,p)=>s+p[0],0)/mcs.length, mcs.reduce((s,p)=>s+p[1],0)/mcs.length];
+  const hx=(wc[0]+mc[0])/2, hy=(wc[1]+mc[1])/2, d=11, c=EC.comp;
+  let o='';
+  const [wbx,wby]=border(W,hx,hy);
+  o+=`<line x1="${wbx}" y1="${wby}" x2="${hx}" y2="${hy}" stroke="${c}" stroke-width="3.5"/>`;
+  if(he.label)o+=`<text x="${(wbx+hx)/2}" y="${(wby+hy)/2-5}" font-size="9.5" text-anchor="middle" fill="${c}" font-style="italic">${esc(he.label)+(he.ordered?' ·ordered':'')}</text>`;
+  he.members.forEach((m,i)=>{const M=nodes()[m]; const [mx,my]=border(M,hx,hy);
+    o+=`<line x1="${hx}" y1="${hy}" x2="${mx}" y2="${my}" stroke="${c}" stroke-width="2" marker-end="url(#m_comp)"/>`;
+    if(he.ordered){o+=`<circle cx="${(hx+mx)/2}" cy="${(hy+my)/2}" r="7" fill="#0e1116"/><text x="${(hx+mx)/2}" y="${(hy+my)/2+3}" font-size="9" text-anchor="middle" fill="${c}" font-family="monospace">${i}</text>`;}
+  });
+  o+=`<path d="M${hx},${hy-d} L${hx+d},${hy} L${hx},${hy+d} L${hx-d},${hy} Z" fill="${c}" stroke="#0e1116" stroke-width="1.5"/>`;
+  o+=`<text x="${hx}" y="${hy+3.5}" font-size="9" font-weight="700" text-anchor="middle" fill="#06121f">C</text>`;
+  return o;
+}
+function drawNode(n){
+  const [f,s]=KIND[n.kind]; const rx=(n.kind==='class'||n.kind==='instance')?12:6;
+  const dash=n.kind==='instance'?' stroke-dasharray="5 3"':'';
+  let o=`<g data-node="${n.id}" class="nd" style="cursor:${EDIT?'move':'default'}">`;
+  o+=`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" rx="${rx}" fill="${f}" stroke="${s}" stroke-width="2"${dash}/>`;
+  const ly=n.cy=n.y+n.h/2+(n.sub?-3:4);
+  o+=`<text x="${n.x+n.w/2}" y="${ly}" font-size="13.5" font-weight="650" text-anchor="middle" fill="${s}" font-family="ui-monospace,monospace" pointer-events="none">${esc(n.label)}</text>`;
+  if(n.sub)o+=`<text x="${n.x+n.w/2}" y="${n.y+n.h/2+13}" font-size="9.5" text-anchor="middle" fill="#8b949e" pointer-events="none">${esc(n.sub)}</text>`;
+  o+='</g>'; return o;
+}
+function drawLegend(g){
+  const items=g.legend; let x=g.lx,y=g.ly;
+  let o=`<rect x="${x-12}" y="${y-18}" width="232" height="${20*items.length+18}" rx="8" fill="#11161d" stroke="#2b3440"/>`;
+  o+=`<text x="${x}" y="${y-1}" font-size="10.5" font-weight="700" fill="#8b949e">LEGEND</text>`;
+  let yy=y+18;
+  items.forEach(it=>{
+    if(it[0]==='node')o+=`<rect x="${x}" y="${yy-10}" width="22" height="13" rx="3" fill="${it[1]}" stroke="${it[2]}" stroke-width="1.5"/>`;
+    else if(it[0]==='comp')o+=`<path d="M${x+11},${yy-9} L${x+19},${yy-3} L${x+11},${yy+3} L${x+3},${yy-3} Z" fill="${EC.comp}"/>`;
+    else{const dd=it[2]?`stroke-dasharray="${it[2]}"`:'';o+=`<line x1="${x}" y1="${yy-3}" x2="${x+22}" y2="${yy-3}" stroke="${EC[it[1]]}" stroke-width="2.5" ${dd}/>`;}
+    o+=`<text x="${x+30}" y="${yy}" font-size="10.5" fill="#e6edf3">${esc(it[3])}</text>`; yy+=20;
+  });
+  return o;
+}
+function render(){
+  const g=G[CUR];
+  let o=`<defs>${markers()}</defs>`;
+  g.edges.forEach(e=>o+=drawEdge(e));
+  g.hyper.forEach(h=>o+=drawHyper(h));
+  Object.values(g._n).forEach(n=>o+=drawNode(n));
+  (g.notes||[]).forEach(nt=>o+=`<text x="${nt.x}" y="${nt.y}" font-size="10.5" fill="#8b949e" font-style="italic">${esc(nt.text)}</text>`);
+  o+=drawLegend(g);
+  svg.innerHTML=o;
+}
+function pt(e){const p=svg.createSVGPoint();p.x=e.clientX;p.y=e.clientY;return p.matrixTransform(svg.getScreenCTM().inverse());}
+svg.addEventListener('mousedown',e=>{ if(!EDIT)return; const g=e.target.closest('[data-node]'); if(!g)return;
+  const n=nodes()[g.dataset.node]; const m=pt(e); drag={n,dx:m.x-n.x,dy:m.y-n.y}; e.preventDefault();});
+window.addEventListener('mousemove',e=>{ if(!drag)return; const m=pt(e); drag.n.x=Math.round(m.x-drag.dx); drag.n.y=Math.round(m.y-drag.dy); render();});
+window.addEventListener('mouseup',()=>{drag=null;});
+document.getElementById('editbtn').addEventListener('click',function(){
+  EDIT=!EDIT; this.textContent=EDIT?'🔒 Lock':'✎ Edit'; this.classList.toggle('locked',EDIT);
+  document.body.classList.toggle('editing',EDIT);
+  if(!EDIT){ // locking -> save
+    const s={}; Object.values(nodes()).forEach(n=>s[n.id]={x:n.x,y:n.y});
+    try{localStorage.setItem('arcgraph_'+CUR,JSON.stringify(s));
+      flash('positions saved');}catch(e){flash('saved (session only)');}
+  } else flash('drag nodes to reorganize');
+  render();
+});
+document.getElementById('resetbtn').addEventListener('click',()=>{
+  localStorage.removeItem('arcgraph_'+CUR); G[CUR]._n=null; setGraph(CUR); flash('layout reset');});
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>setGraph(t.dataset.k)));
+document.getElementById('zin').addEventListener('click',()=>{ZOOM=Math.min(2.5,ZOOM+0.15);applyZoom();});
+document.getElementById('zout').addEventListener('click',()=>{ZOOM=Math.max(0.4,ZOOM-0.15);applyZoom();});
+function flash(msg){const f=document.getElementById('flash');f.textContent=msg;f.style.opacity=1;setTimeout(()=>f.style.opacity=0,1600);}
+setGraph('L2');
+</script>
+</body></html>

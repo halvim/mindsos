@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ARC-1 Spike — Debug Interface (M1)</title>
+<style>
+  :root{
+    --bg:#11131a; --panel:#1a1d27; --panel2:#222634; --line:#2e3344;
+    --ink:#e7e9f0; --dim:#9aa3b8; --accent:#7aa2ff; --ok:#3ddc84; --warn:#ffb454;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,Segoe UI,Roboto,sans-serif;
+    background:var(--bg);color:var(--ink)}
+  header{display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+    padding:12px 18px;background:var(--panel);border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:5}
+  header h1{font-size:15px;margin:0;font-weight:600;letter-spacing:.2px}
+  header .meta{color:var(--dim);font-size:12px}
+  select,button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:6px;padding:6px 9px;font:inherit}
+  button{cursor:pointer}
+  button.on{border-color:var(--accent);color:var(--accent)}
+  .wrap{display:flex;gap:0;align-items:flex-start}
+  main{flex:1;padding:18px;min-width:0}
+  /* profile card */
+  .profile{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;margin-bottom:18px}
+  .profile h2{margin:0 0 10px;font-size:13px;color:var(--dim);text-transform:uppercase;
+    letter-spacing:.6px;font-weight:600}
+  .verdicts{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;
+    align-items:start}
+  .vgroup{display:flex;flex-direction:column;gap:8px}
+  .v{background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:8px 10px}
+  .v .k{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.4px}
+  .v .val{font-weight:600;margin-top:2px}
+  .yes{color:var(--ok)} .no{color:var(--warn)}
+  .note{color:var(--dim);font-size:12px;margin-top:10px;border-top:1px dashed var(--line);
+    padding-top:8px}
+  /* capacities panel */
+  .caps{display:flex;flex-direction:column;gap:6px}
+  .cap{display:flex;align-items:center;gap:10px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:7px;padding:7px 10px}
+  .cap .n{color:var(--dim);font-variant-numeric:tabular-nums;width:20px;text-align:right}
+  .cap .nm{font-weight:600;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .cap .cat{color:var(--dim);font-size:11px;border:1px solid var(--line);border-radius:10px;
+    padding:1px 8px;white-space:nowrap}
+  .cap .io{color:var(--dim);font-size:12px;margin-left:auto;
+    font-family:ui-monospace,Menlo,Consolas,monospace;text-align:right}
+  .ph{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--accent);
+    margin:8px 0 2px}
+  /* pairs */
+  .pair{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;margin-bottom:14px}
+  .pair-h{color:var(--dim);font-size:12px;margin-bottom:10px;font-weight:600}
+  .io{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+  .col{display:flex;flex-direction:column;gap:8px}
+  .col .lab{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+  .gridbox{position:relative;display:inline-block;background:#0c0e14;
+    border:1px solid var(--line);border-radius:4px;padding:3px}
+  .grow{display:flex}
+  .cell{width:var(--cs);height:var(--cs)}
+  .bbox{position:absolute;border:1.5px solid #fff;border-radius:2px;pointer-events:none;
+    box-shadow:0 0 0 1px #000 inset;opacity:.85}
+  .withheld{color:var(--warn);font-style:italic;padding:24px;border:1px dashed var(--line);
+    border-radius:4px}
+  /* objects/shapes */
+  .objs{margin-top:6px;display:flex;flex-direction:column;gap:6px;max-width:320px}
+  .obj{display:flex;align-items:center;gap:8px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:6px;padding:5px 7px}
+  .sw{width:14px;height:14px;border-radius:3px;border:1px solid #0006;flex:none}
+  .obj .txt{font-size:12px;color:var(--dim)}
+  .shape{display:inline-block;background:#0c0e14;border:1px solid var(--line);
+    border-radius:3px;padding:2px}
+  .sp{background:#cfd6ea}
+  .empty{color:var(--dim);padding:40px;text-align:center}
+  /* match tiers (induce): same_object / same_shape / rest */
+  .matchgrid{display:grid;grid-template-columns:1fr 40px 1fr;row-gap:8px;align-items:center;
+    margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+  .tlabel{grid-column:1/-1;font-size:11px;letter-spacing:.5px;text-transform:uppercase;margin-top:6px}
+  .tlabel.eq{color:var(--ok)} .tlabel.sh{color:#5aa2ff} .tlabel.pt{color:#EF9F27} .tlabel.rest{color:var(--dim)}
+  .objbox{display:flex;align-items:center;gap:8px;background:var(--panel2);
+    border:1px solid var(--line);border-radius:6px;padding:6px 9px}
+  .objbox.eq{background:#16302b;border-color:#2ECC40}
+  .objbox.pt{background:#2e2410;border-color:#EF9F27}
+  .objbox .nm,.chip .nm{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent);font-size:12px}
+  .objbox .dim{font-size:11px;color:var(--dim);margin-left:auto}
+  .sym{text-align:center;font-weight:700}
+  .sym.eq{color:#2ECC40;font-size:20px} .sym.sh{color:#5aa2ff;font-size:19px} .sym.pt{color:#EF9F27;font-size:20px}
+  .groupbox{background:#11253a;border:1px solid #378ADD;border-radius:6px;padding:7px 9px;
+    display:flex;flex-direction:column;gap:6px}
+  .ghead{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dim)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{display:inline-flex;align-items:center;gap:5px;background:var(--panel);
+    border:1px solid var(--line);border-radius:6px;padding:3px 7px}
+  .sw.sm{width:11px;height:11px}
+  .reststack{display:flex;flex-direction:column;gap:6px}
+  /* moved accordion (under same_shape groups) */
+  .movedacc{grid-column:1/-1;margin:2px 0 4px 4px}
+  .acch{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--dim);cursor:pointer;user-select:none;padding:2px 0}
+  .acch b{color:var(--ink);font-weight:600}
+  .accbody{display:none;flex-direction:column;gap:4px;margin-top:4px}
+  .accbody.open{display:flex}
+  .mvrow{display:flex;align-items:center;gap:8px;font-size:12px}
+  .mvrow .nm{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent);font-size:11px}
+  .mvrow .arr{color:var(--dim)}
+  .mvrow .vec{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#5aa2ff;
+    background:#11253a;border:1px solid #378ADD;border-radius:999px;padding:1px 8px}
+  /* search panel (C1 accordion + S2 inline expand) */
+  #searchPanel .two{display:grid;grid-template-columns:0.85fr 1.15fr;gap:18px;align-items:start}
+  .facet-ph{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin:10px 0 4px}
+  .frow{display:flex;align-items:center;gap:8px;font-size:12px;padding:3px 0;cursor:pointer;user-select:none}
+  .ck{width:14px;height:14px;border-radius:3px;border:1px solid var(--line);flex:none;display:inline-block}
+  .ck.on{background:var(--accent);border-color:var(--accent)}
+  .fct{font-size:11px;color:var(--dim);margin-left:auto}
+  .caprow{display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 0;cursor:pointer;user-select:none}
+  .chev{color:var(--dim);width:12px;display:inline-block}
+  .subwrap{margin:2px 0 6px 20px;display:none;flex-direction:column;gap:3px}
+  .subwrap.open{display:flex}
+  .selnote{font-size:11px;color:var(--accent);font-family:ui-monospace,Menlo,Consolas,monospace;margin-left:auto}
+  .m-head{font-size:12px;color:var(--dim);margin-bottom:6px}
+  .m-head b{color:var(--ink);font-weight:600}
+  .mrow{border:1px solid var(--line);border-radius:6px;background:var(--panel2);margin-bottom:5px;overflow:hidden}
+  .mrow-h{display:flex;align-items:center;gap:7px;font-size:12px;padding:6px 9px;cursor:pointer}
+  .mrow-h .id{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent)}
+  .bd{font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+  .bd.o{color:var(--ok)} .bd.s{color:#5aa2ff} .bd.p{color:#EF9F27} .bd.d{color:var(--dim)}
+  .openlink{font-size:11px;color:var(--accent);cursor:pointer;margin-left:10px}
+  .mexp{padding:7px 9px;border-top:1px solid var(--line);display:none;flex-direction:column;gap:7px}
+  .mexp.open{display:flex}
+  .mpair .pl{font-size:11px;color:var(--dim);margin-bottom:3px}
+  .mpair .gr{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .minigrid{display:grid;gap:1px;background:#0c0e14;padding:2px;border-radius:3px}
+  .shint{color:var(--dim);font-size:12px;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:6px}
+  .hiddennote{color:var(--dim);font-size:11px;font-style:italic;padding:2px 0}
+  /* hypotheses */
+  .hyplist{display:flex;flex-direction:column;gap:5px}
+  .hyprow{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:7px;padding:6px 10px;font-size:12px}
+  .hyprow.yes{border-color:var(--ok);background:#16302b}
+  .hyprow .nm{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent)}
+  .hyprow .hc{color:var(--dim);font-variant-numeric:tabular-nums}
+  .hyprow .hs{margin-left:auto;font-size:11px;color:var(--dim)}
+  .hyprow.yes .hs{color:var(--ok)}
+  /* search facet sections + row treatment */
+  .frow .mono,.caprow .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .req{font-size:10px;color:var(--dim);margin-left:6px}
+  .cnttoggles{font-size:11px;color:var(--dim);margin:4px 0 8px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .cnttg{border:1px solid var(--line);border-radius:999px;padding:1px 9px;cursor:pointer;
+    font-family:ui-monospace,Menlo,Consolas,monospace;user-select:none}
+  .cnttg.on{border-color:var(--accent);color:var(--accent);background:#1a2233}
+  .hypflag{font-size:11px;font-weight:600;color:var(--ok);border:1px solid var(--ok);
+    background:#16302b;border-radius:999px;padding:1px 9px}
+  /* arc metagraph overlay (Map) */
+  .amwrap{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px}
+  .amg{border:1px solid var(--line);border-radius:8px;background:var(--panel2);padding:8px 10px;min-width:150px}
+  .amh{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--accent);margin-bottom:6px}
+  .amn{display:block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;padding:1px 0}
+  .amreq{margin-top:10px;font-size:12px;color:var(--dim)}
+  .amreq .mono{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent)}
+  /* interface map */
+  .mapwrap{margin:18px 18px 0}
+  .map{width:100%;max-width:780px;height:auto;display:block}
+  .map .b{fill:var(--panel2);stroke:var(--line)}
+  .map .bg{fill:#161a24;stroke:var(--line)}
+  .map .bok{fill:#16302b;stroke:#2ECC4066}
+  .map .t{fill:var(--ink);font:600 13px ui-sans-serif,system-ui,sans-serif}
+  .map .s{fill:var(--dim);font:12px ui-sans-serif,system-ui,sans-serif}
+  .map .num{fill:var(--accent);font-weight:700}
+  .ocard .nm{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent);font-size:12px}
+  /* side menu + sections */
+  .app{display:flex;align-items:flex-start}
+  .sidemenu{width:140px;flex:none;border-right:1px solid var(--line);padding:14px 8px;
+    position:sticky;top:49px;display:flex;flex-direction:column;gap:4px}
+  .mi{padding:8px 12px;border-radius:7px;color:var(--dim);cursor:pointer;font-size:13px;user-select:none}
+  .mi:hover{background:var(--panel2)}
+  .mi.on{background:var(--panel2);color:var(--accent);font-weight:600}
+  .content{flex:1;min-width:0;padding:18px}
+  .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+  .mapwrap{margin:0 0 18px}
+</style>
+</head>
+<body>
+<header>
+  <h1>ARC-1 Spike · Debug Interface</h1>
+  <span class="meta" id="meta"></span>
+</header>
+
+<div class="app">
+<nav class="sidemenu" id="menu">
+  <div class="mi" data-sec="secMain">Main</div>
+  <div class="mi" data-sec="searchPanel">Search</div>
+  <div class="mi" data-sec="secCapacities">Capacities</div>
+  <div class="mi" data-sec="mapPanel">Map</div>
+</nav>
+<div class="content">
+
+<section id="secMain">
+  <div class="toolbar">
+    <select id="picker"></select>
+    <button id="tObjs" class="on">Objects (bbox)</button>
+    <button id="tShapes" class="on">Shapes</button>
+  </div>
+  <div id="mainBody"><div class="empty">Loading…</div></div>
+</section>
+
+<section id="secCapacities" style="display:none"><div id="capBody"></div></section>
+
+<section id="mapPanel" class="profile mapwrap" style="display:none">
+  <h2>Interface map — names for each part</h2>
+  <svg viewBox="0 0 760 528" xmlns="http://www.w3.org/2000/svg" class="map">
+    <!-- 1 header -->
+    <rect class="b" x="8" y="8" width="744" height="34" rx="6"/>
+    <text class="t" x="20" y="29"><tspan class="num">①</tspan> Side menu — Main / Search / Capacities / Map (sections); Main toolbar: picker · Objects · Shapes</text>
+    <!-- 2 profile -->
+    <rect class="b" x="8" y="50" width="744" height="44" rx="6"/>
+    <text class="t" x="20" y="68"><tspan class="num">②</tspan> Profile panel — TaskProfile verdicts</text>
+    <text class="s" x="20" y="85">demos/tests · dims preserved ▸ dimension Δ · colors preserved ▸ palette Δ</text>
+    <!-- 3 capacities -->
+    <rect class="b" x="8" y="102" width="744" height="40" rx="6"/>
+    <text class="t" x="20" y="120"><tspan class="num">③</tspan> Capacities panel — capacities in pipeline order</text>
+    <text class="s" x="20" y="136">phases: perceive · profile-sweep · induce</text>
+    <!-- 4 demonstration card -->
+    <rect class="bg" x="8" y="150" width="744" height="256" rx="8"/>
+    <text class="t" x="20" y="170"><tspan class="num">④</tspan> Demonstration card — one per demo pair (D1, D2 …)</text>
+    <rect class="b" x="22" y="182" width="212" height="150" rx="6"/>
+    <text class="t" x="34" y="202">Input grid <tspan class="s">(In1)</tspan></text>
+    <text class="s" x="34" y="226">▸ grid render</text>
+    <text class="s" x="34" y="246">▸ object list (tiered, below)</text>
+    <rect class="b" x="244" y="182" width="212" height="150" rx="6"/>
+    <text class="t" x="256" y="202">Output grid <tspan class="s">(Out1)</tspan></text>
+    <text class="s" x="256" y="226">grid render</text>
+    <text class="s" x="256" y="246">object list (tiered)</text>
+    <rect class="bok" x="466" y="182" width="276" height="206" rx="6"/>
+    <text class="t" x="478" y="202"><tspan class="num">⑤</tspan> object-list tiers (induce)</text>
+    <text class="t" x="478" y="226" style="fill:var(--ok)">≡ same_object</text>
+    <text class="s" x="478" y="242">invariant object pairs</text>
+    <text class="t" x="478" y="266" style="fill:#5aa2ff">≅ same_shape</text>
+    <text class="s" x="478" y="282">shape groups · moved Δ accordion</text>
+    <text class="t" x="478" y="306" style="fill:#EF9F27">≡ same_point</text>
+    <text class="s" x="478" y="322">invariant single points</text>
+    <text class="s" x="478" y="346">rest — no match</text>
+    <!-- 6 test card -->
+    <rect class="b" x="8" y="414" width="744" height="48" rx="6"/>
+    <text class="t" x="20" y="434"><tspan class="num">⑥</tspan> Test card — one per test pair (T1 …)</text>
+    <text class="s" x="20" y="452">input shown · output withheld (answer gated)</text>
+    <!-- 7 search -->
+    <rect class="b" x="8" y="470" width="744" height="50" rx="6"/>
+    <text class="t" x="20" y="491"><tspan class="num">⑦</tspan> Search panel — filter the task list by capability (header toggle: Search)</text>
+    <text class="s" x="20" y="509">boolean caps toggle · compare_* expand to result categories · click a match to expand its pairs</text>
+  </svg>
+  <div class="note">Names: objects <code>[In|Out]&lt;pair&gt;.O&lt;index&gt;</code> (e.g. <code>In1.O0</code>), points
+    <code>[In|Out]&lt;pair&gt;.P&lt;index&gt;</code> (e.g. <code>Out1.P0</code>); test pairs prefix <code>T</code>
+    (<code>TIn1.O0</code>; output withheld). Below each pair's grids the list is tiered:
+    <span style="color:var(--ok)">≡ same_object</span> (invariant object pairs), <span style="color:#5aa2ff">≅ same_shape</span>
+    (object groups sharing a shape; base shapes named, points excluded), <span style="color:#EF9F27">≡ same_point</span>
+    (invariant single points), then rest. Sections are switched from the left side menu.</div>
+
+  <h2 style="margin-top:20px">Search map — the Search section</h2>
+  <svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" class="map">
+    <rect class="b" x="8" y="8" width="356" height="220" rx="6"/>
+    <text class="t" x="20" y="30">Facets (left pane)</text>
+    <text class="s" x="20" y="52">Profile group (above):</text>
+    <text class="s" x="34" y="70">compare_grid_dimension ▸ results</text>
+    <text class="s" x="34" y="88">compare_palette ▸ results</text>
+    <text class="s" x="20" y="112">Induce group (below):</text>
+    <text class="s" x="34" y="130">same_object / same_shape / same_point</text>
+    <text class="s" x="20" y="158">boolean = checkbox · multi = expand ▸</text>
+    <text class="s" x="20" y="178">AND across caps · OR within a cap</text>
+    <text class="s" x="20" y="198">count shown per facet / result</text>
+    <rect class="b" x="372" y="8" width="380" height="220" rx="6"/>
+    <text class="t" x="384" y="30">Matched tasks (right pane)</text>
+    <text class="s" x="384" y="54">“N matching” · rows with result badges</text>
+    <text class="s" x="384" y="78">click a row → expand inline (S2):</text>
+    <text class="s" x="398" y="96">grids + only the matching tiers</text>
+    <text class="t" x="384" y="126" style="fill:var(--accent)">Main button → open the task in Main ↗</text>
+  </svg>
+
+  <h2 style="margin-top:20px">Arc metagraph (L3 overlay) — section graphs + requires edges</h2>
+  <div id="arcmeta"></div>
+</section>
+
+<section id="searchPanel" class="profile" style="display:none">
+  <h2>Search — filter tasks by capability</h2>
+  <div class="two"><div id="facets"></div><div id="matches"></div></div>
+</section>
+
+</div>
+</div>
+
+<script src="arc_debug_data.js"></script>
+<script>
+const PAL=["#000000","#0074D9","#FF4136","#2ECC40","#FFDC00",
+           "#AAAAAA","#F012BE","#FF851B","#7FDBFF","#870C25"];
+const show={objs:true,shapes:true};
+let DATA=null, CUR=0;
+
+function cellSize(g){const n=Math.max(g.length,g[0].length); return Math.max(6,Math.min(20,Math.floor(360/n)));}
+
+function renderGrid(g, objects){
+  const cs=cellSize(g);
+  const box=document.createElement("div"); box.className="gridbox";
+  box.style.setProperty("--cs",cs+"px");
+  for(const row of g){
+    const r=document.createElement("div"); r.className="grow";
+    for(const v of row){
+      const c=document.createElement("div"); c.className="cell";
+      c.style.background=PAL[v]||"#f0f"; r.appendChild(c);
+    }
+    box.appendChild(r);
+  }
+  if(show.objs && objects){
+    for(const o of objects){
+      const [r0,c0,r1,c1]=o.bbox;
+      const b=document.createElement("div"); b.className="bbox";
+      b.style.left=(3+c0*cs)+"px"; b.style.top=(3+r0*cs)+"px";
+      b.style.width=((c1-c0+1)*cs)+"px"; b.style.height=((r1-r0+1)*cs)+"px";
+      box.appendChild(b);
+    }
+  }
+  return box;
+}
+
+function renderShape(shape){
+  const [h,w]=shape.dims; const cs=Math.max(4,Math.min(12,Math.floor(60/Math.max(h,w))));
+  const set=new Set(shape.points.map(p=>p[0]+","+p[1]));
+  const box=document.createElement("div"); box.className="shape";
+  for(let r=0;r<h;r++){
+    const row=document.createElement("div"); row.className="grow";
+    for(let c=0;c<w;c++){
+      const cell=document.createElement("div"); cell.className="cell";
+      cell.style.width=cs+"px"; cell.style.height=cs+"px";
+      if(set.has(r+","+c)) cell.classList.add("sp");
+      row.appendChild(cell);
+    }
+    box.appendChild(row);
+  }
+  return box;
+}
+
+function gridOnly(label, gs, withheld, tag){
+  const col=document.createElement("div"); col.className="col";
+  const lab=document.createElement("div"); lab.className="lab";
+  if(withheld){
+    lab.textContent=`${label} (${tag})`; col.appendChild(lab);
+    const w=document.createElement("div"); w.className="withheld";
+    w.textContent="output withheld (test answer gated)"; col.appendChild(w);
+    return col;
+  }
+  lab.textContent=`${label} (${tag}) · ${gs.dims[0]}×${gs.dims[1]} · ${gs.n_objects} objs · ${gs.n_points} pts (8-conn) · palette [${gs.palette.join(" ")}]`;
+  col.appendChild(lab);
+  col.appendChild(renderGrid(gs.cells, gs.objects));
+  return col;
+}
+
+function objBox(gs, idx, tag, cls){
+  const o=gs.objects[idx];
+  const row=document.createElement("div"); row.className="objbox"+(cls?" "+cls:"");
+  const sw=document.createElement("div"); sw.className="sw"; sw.style.background=PAL[o.color];
+  const nm=document.createElement("span"); nm.className="nm"; nm.textContent=`${tag}.O${idx}`;
+  row.append(sw,nm);
+  if(show.shapes) row.appendChild(renderShape(gs.shapes[idx]));
+  const d=document.createElement("span"); d.className="dim";
+  d.textContent = o.size===1 ? "point" : `c${o.color} · ${o.size}`;
+  row.appendChild(d);
+  return row;
+}
+
+function pointBox(gs, idx, tag, cls){
+  const o=gs.points[idx];
+  const row=document.createElement("div"); row.className="objbox"+(cls?" "+cls:"");
+  const sw=document.createElement("div"); sw.className="sw"; sw.style.background=PAL[o.color];
+  const nm=document.createElement("span"); nm.className="nm"; nm.textContent=`${tag}.P${idx}`;
+  const d=document.createElement("span"); d.className="dim";
+  d.textContent=`c${o.color} · (${o.cells[0][0]},${o.cells[0][1]})`;
+  row.append(sw,nm,d); return row;
+}
+
+function chip(gs, idx, tag){
+  const o=gs.objects[idx];
+  const c=document.createElement("span"); c.className="chip";
+  const sw=document.createElement("span"); sw.className="sw sm"; sw.style.background=PAL[o.color];
+  const nm=document.createElement("span"); nm.className="nm"; nm.textContent=`${tag}.O${idx}`;
+  c.append(sw,nm); return c;
+}
+
+function groupSideBox(gs, group, side, tag){
+  const box=document.createElement("div"); box.className="groupbox";
+  const head=document.createElement("div"); head.className="ghead";
+  if(show.shapes) head.appendChild(renderShape(gs.shapes[group[side][0]]));
+  const lbl=document.createElement("span");
+  lbl.textContent=(group.name?group.name+" · ":"")+`${group.size} cells`;
+  head.appendChild(lbl); box.appendChild(head);
+  const chips=document.createElement("div"); chips.className="chips";
+  group[side].forEach(idx=>chips.appendChild(chip(gs, idx, tag)));
+  box.appendChild(chips);
+  return box;
+}
+
+function tlabel(text, cls){
+  const d=document.createElement("div"); d.className="tlabel "+cls; d.textContent=text; return d;
+}
+function movedAccordion(grp, inTag, outTag){
+  const wrap=document.createElement("div"); wrap.className="movedacc";
+  const moves=grp.moves||[];
+  if(!moves.length) return wrap;
+  const head=document.createElement("div"); head.className="acch";
+  const chev=document.createElement("span"); chev.className="chev"; chev.textContent="▸";
+  const lab=document.createElement("span"); lab.innerHTML=`moved candidates · <b>${moves.length}</b>`;
+  head.append(chev,lab);
+  const body=document.createElement("div"); body.className="accbody";
+  moves.forEach(mv=>{
+    const r=document.createElement("div"); r.className="mvrow";
+    const a=document.createElement("span"); a.className="nm"; a.textContent=`${inTag}.O${mv.in}`;
+    const ar=document.createElement("span"); ar.className="arr"; ar.textContent="⟶";
+    const b=document.createElement("span"); b.className="nm"; b.textContent=`${outTag}.O${mv.out}`;
+    const vec=mv.transform.vector;
+    const v=document.createElement("span"); v.className="vec"; v.textContent=`moved (${vec[0]}, ${vec[1]})`;
+    r.append(a,ar,b,v); body.appendChild(r);
+  });
+  head.onclick=()=>{ const open=body.classList.toggle("open"); chev.textContent=open?"▾":"▸"; };
+  wrap.append(head, body); return wrap;
+}
+function gap(){ return document.createElement("div"); }
+
+function renderMatch(pr, inTag, outTag, tiers){
+  const inc=k=>!tiers||tiers.has(k);
+  const m=pr.match;
+  const g=document.createElement("div"); g.className="matchgrid";
+  if(inc("same_object") && m.equal.length){
+    g.appendChild(tlabel("same_object — invariant (colour + position), 1:1","eq"));
+    m.equal.forEach(e=>{
+      g.appendChild(objBox(pr.input, e.in, inTag, "eq"));
+      const s=document.createElement("div"); s.className="sym eq"; s.textContent="≡"; g.appendChild(s);
+      g.appendChild(objBox(pr.output, e.out, outTag, "eq"));
+    });
+  }
+  if(inc("same_shape") && m.shape_groups.length){
+    g.appendChild(tlabel("same_shape — grouped by shape (points excluded)","sh"));
+    m.shape_groups.forEach(grp=>{
+      g.appendChild(groupSideBox(pr.input, grp, "in", inTag));
+      const s=document.createElement("div"); s.className="sym sh"; s.textContent="≅"; g.appendChild(s);
+      g.appendChild(groupSideBox(pr.output, grp, "out", outTag));
+      g.appendChild(movedAccordion(grp, inTag, outTag));
+    });
+  }
+  if(inc("same_point") && m.point_equal.length){
+    g.appendChild(tlabel("same_point — invariant point (colour + position), 1:1","pt"));
+    m.point_equal.forEach(e=>{
+      g.appendChild(pointBox(pr.input, e.in, inTag, "pt"));
+      const s=document.createElement("div"); s.className="sym pt"; s.textContent="≡"; g.appendChild(s);
+      g.appendChild(pointBox(pr.output, e.out, outTag, "pt"));
+    });
+  }
+  const anyRest = m.input_rest.length || m.output_rest.length ||
+                  m.input_point_rest.length || m.output_point_rest.length;
+  if(inc("rest") && anyRest){
+    g.appendChild(tlabel("rest — no match (objects + leftover points)","rest"));
+    const inStack=document.createElement("div"); inStack.className="reststack";
+    m.input_rest.forEach(i=>inStack.appendChild(objBox(pr.input,i,inTag)));
+    m.input_point_rest.forEach(i=>inStack.appendChild(pointBox(pr.input,i,inTag)));
+    const outStack=document.createElement("div"); outStack.className="reststack";
+    m.output_rest.forEach(j=>outStack.appendChild(objBox(pr.output,j,outTag)));
+    m.output_point_rest.forEach(j=>outStack.appendChild(pointBox(pr.output,j,outTag)));
+    g.append(inStack, gap(), outStack);
+  }
+  return g;
+}
+
+function verdict(k,v){
+  const d=document.createElement("div"); d.className="v";
+  const kk=document.createElement("div"); kk.className="k"; kk.textContent=k;
+  const vv=document.createElement("div"); vv.className="val";
+  if(v===true){vv.textContent="yes";vv.classList.add("yes");}
+  else if(v===false){vv.textContent="no";vv.classList.add("no");}
+  else vv.textContent=v;
+  d.appendChild(kk); d.appendChild(vv); return d;
+}
+
+function deltaText(dv){
+  if(dv.agrees && dv.common===null) return "agrees: no change";
+  if(dv.agrees && dv.common) return "agrees: "+JSON.stringify(dv.common);
+  return "varies across demos";
+}
+
+function renderPairCard(pr, i, tiers){
+  const card=document.createElement("div"); card.className="pair";
+  const ph=document.createElement("div"); ph.className="pair-h"; ph.textContent="demonstration "+(i+1);
+  card.appendChild(ph);
+  const inTag=`In${i+1}`, outTag=`Out${i+1}`;
+  const io=document.createElement("div"); io.className="io";
+  io.appendChild(gridOnly("input",pr.input,false,inTag));
+  io.appendChild(gridOnly("output",pr.output,false,outTag));
+  card.appendChild(io);
+  card.appendChild(renderMatch(pr,inTag,outTag,tiers));
+  return card;
+}
+
+function renderCapacities(){
+  const host=document.getElementById("capBody"); host.innerHTML="";
+  const caps=document.createElement("div"); caps.className="profile";
+  const ch=document.createElement("h2");
+  ch.textContent="Capacities — pipeline order (live L3 registration)"; caps.appendChild(ch);
+  const list=document.createElement("div"); list.className="caps";
+  let prevPhase=null;
+  (DATA.capacities||[]).forEach((c,i)=>{
+    if(c.phase!==prevPhase){
+      const ph=document.createElement("div"); ph.className="ph"; ph.textContent=c.phase;
+      list.appendChild(ph); prevPhase=c.phase;
+    }
+    const row=document.createElement("div"); row.className="cap";
+    const n=document.createElement("span"); n.className="n"; n.textContent=(i+1)+".";
+    const nm=document.createElement("span"); nm.className="nm"; nm.textContent=c.name;
+    const cat=document.createElement("span"); cat.className="cat"; cat.textContent=c.category;
+    const io=document.createElement("span"); io.className="io";
+    io.textContent=`${c.consumes.join(", ")} → ${c.produces.join(", ")}`;
+    row.append(n,nm,cat,io); list.appendChild(row);
+  });
+  caps.appendChild(list);
+  const cnote=document.createElement("div"); cnote.className="note";
+  cnote.textContent="perceive chain discovered by find_pipeline (no router); "
+    +"profile-sweep comparators run by the L4 phase_1 sweep.";
+  caps.appendChild(cnote);
+  host.appendChild(caps);
+}
+
+function renderMain(){
+  const t=DATA.tasks[CUR]; const p=t.profile;
+  const main=document.getElementById("mainBody"); main.innerHTML="";
+
+  const prof=document.createElement("div"); prof.className="profile";
+  const h=document.createElement("h2");
+  h.textContent=`TaskProfile — ${t.task_id}  (M1: steps 1–3 + demo deltas)`;
+  prof.appendChild(h);
+  const grid=document.createElement("div"); grid.className="verdicts";
+  grid.appendChild(verdict("demos / tests", `${p.n_demos} / ${p.n_tests}`));
+  const gDim=document.createElement("div"); gDim.className="vgroup";
+  gDim.appendChild(verdict("dims preserved (in=out)", p.dims_preserved));
+  gDim.appendChild(verdict("dimension Δ", deltaText(p.dimension_delta)));
+  grid.appendChild(gDim);
+  const gCol=document.createElement("div"); gCol.className="vgroup";
+  gCol.appendChild(verdict("colors preserved", p.colors_preserved));
+  gCol.appendChild(verdict("palette Δ", deltaText(p.palette_delta)));
+  grid.appendChild(gCol);
+  prof.appendChild(grid);
+  const note=document.createElement("div"); note.className="note";
+  note.innerHTML="Per demo pair below, the object list is tiered (induce): "
+    +"<span style='color:var(--ok)'>≡ same_object</span> · "
+    +"<span style='color:#5aa2ff'>≅ same_shape groups</span> · rest. "
+    +"Perceive chain discovered by find_pipeline: "
+    +DATA.discovery["raw_task -> shape"].map(c=>c.split(":").pop()).join(" → ");
+  prof.appendChild(note);
+  main.appendChild(prof);
+
+  if(t.hypotheses){
+    const hyp=document.createElement("div"); hyp.className="profile";
+    const hh=document.createElement("h2");
+    hh.textContent="Hypotheses — induce capabilities persisting across all demos (pair 1 → agrees)";
+    hyp.appendChild(hh);
+    const hl=document.createElement("div"); hl.className="hyplist";
+    t.hypotheses.detail.forEach(d=>{
+      const r=document.createElement("div"); r.className="hyprow"+(d.agrees?" yes":"");
+      const nm=document.createElement("span"); nm.className="nm"; nm.textContent=d.cap;
+      const ct=document.createElement("span"); ct.className="hc"; ct.textContent=`${d.fired}/${d.of} pairs`;
+      const st=document.createElement("span"); st.className="hs";
+      st.textContent=d.agrees?"✓ hypothesis":(d.in_pair1?"✗ not in all pairs":"— not in pair 1");
+      r.append(nm,ct,st); hl.appendChild(r);
+    });
+    hyp.appendChild(hl);
+    const hs=document.createElement("div"); hs.className="note";
+    hs.textContent=t.hypotheses.list.length?"hypotheses: "+t.hypotheses.list.join(", ")
+      :"no induce capability persists across all demos";
+    hyp.appendChild(hs);
+    main.appendChild(hyp);
+  }
+
+  t.train.forEach((pr,i)=>main.appendChild(renderPairCard(pr,i)));
+  t.test.forEach((pr,i)=>{
+    const card=document.createElement("div"); card.className="pair";
+    const ph=document.createElement("div"); ph.className="pair-h"; ph.textContent="test "+(i+1);
+    card.appendChild(ph);
+    const io=document.createElement("div"); io.className="io";
+    io.appendChild(gridOnly("input",pr.input,false,`TIn${i+1}`));
+    io.appendChild(gridOnly("output",null,true,`TOut${i+1}`));
+    card.appendChild(io); main.appendChild(card);
+  });
+}
+
+// ── Search panel (C1 accordion facets + S2 inline expand) ──────────────
+const SS={bool:new Set(), multi:{}};
+const countShow={same_object:false, same_shape:false, same_point:false};
+let AV=null, FACETS=null, COUNTS=null, IDX=null;
+
+function searchInit(){
+  if(!DATA.search) return;
+  AV=DATA.search.availability; FACETS=DATA.search.facets;
+  COUNTS={}; for(const id in AV) for(const tk of AV[id]) COUNTS[tk]=(COUNTS[tk]||0)+1;
+  IDX={}; DATA.tasks.forEach((t,i)=>IDX[t.task_id]=i);
+  FACETS.forEach(f=>{ if(f.kind==="multi") SS.multi[f.name]=new Set(); });
+  buildFacets(); renderMatches();
+}
+function anySel(){ return SS.bool.size>0 || Object.values(SS.multi).some(s=>s.size>0); }
+
+function buildFacets(){
+  const host=document.getElementById("facets"); host.innerHTML=""; let group=null;
+  const GLABEL={profile:"profile (multi-result)",atoms:"atoms",object_comparator:"object comparator"};
+  FACETS.forEach(f=>{
+    if(f.group!==group){ const h=document.createElement("div"); h.className="facet-ph";
+      h.textContent=GLABEL[f.group]||f.group; host.appendChild(h); group=f.group; }
+    if(f.kind==="bool"){
+      const r=document.createElement("div"); r.className="frow";
+      const ck=document.createElement("span"); ck.className="ck"+(SS.bool.has(f.name)?" on":"");
+      const nm=document.createElement("span"); nm.className="mono"; nm.textContent=f.name;
+      r.append(ck,nm);
+      if(f.requires_label){ const rq=document.createElement("span"); rq.className="req"; rq.textContent=f.requires_label; r.appendChild(rq); }
+      const ct=document.createElement("span"); ct.className="fct"; ct.textContent=COUNTS[f.name]||0;
+      r.appendChild(ct);
+      r.onclick=()=>{ SS.bool.has(f.name)?SS.bool.delete(f.name):SS.bool.add(f.name); buildFacets(); renderMatches(); };
+      host.appendChild(r);
+    } else {
+      const sel=SS.multi[f.name];
+      const head=document.createElement("div"); head.className="caprow";
+      const chev=document.createElement("span"); chev.className="chev"; chev.textContent=f._open?"▾":"▸";
+      const nm=document.createElement("span"); nm.textContent=f.name;
+      const note=document.createElement("span"); note.className="selnote"; note.textContent=sel.size?[...sel].join(", "):"";
+      head.append(chev,nm,note);
+      head.onclick=()=>{ f._open=!f._open; buildFacets(); };
+      const sub=document.createElement("div"); sub.className="subwrap"+(f._open?" open":"");
+      f.results.forEach(cat=>{
+        const sr=document.createElement("div"); sr.className="frow";
+        const ck=document.createElement("span"); ck.className="ck"+(sel.has(cat)?" on":"");
+        const lbl=document.createElement("span"); lbl.textContent=cat;
+        const ct=document.createElement("span"); ct.className="fct"; ct.textContent=COUNTS[f.name+":"+cat]||0;
+        sr.append(ck,lbl,ct);
+        sr.onclick=(e)=>{ e.stopPropagation(); sel.has(cat)?sel.delete(cat):sel.add(cat); buildFacets(); renderMatches(); };
+        sub.appendChild(sr);
+      });
+      host.append(head, sub);
+    }
+  });
+}
+
+function matchedIds(){
+  const out=[];
+  for(const t of DATA.tasks){
+    const toks=new Set(AV[t.task_id]||[]); let ok=true;
+    for(const b of SS.bool) if(!toks.has(b)){ ok=false; break; }
+    if(ok) for(const fn in SS.multi){ const set=SS.multi[fn]; if(!set.size) continue;
+      let any=false; for(const c of set) if(toks.has(fn+":"+c)){ any=true; break; }
+      if(!any){ ok=false; break; } }
+    if(ok) out.push(t.task_id);
+  }
+  return out;
+}
+function catOf(id, facet){ const tk=(AV[id]||[]).find(x=>x.startsWith(facet+":")); return tk?tk.split(":")[1]:""; }
+
+function miniGrid(cells){
+  const cols=cells[0].length, n=Math.max(cells.length,cols);
+  const cs=Math.max(3,Math.min(8,Math.floor(96/n)));
+  const g=document.createElement("div"); g.className="minigrid";
+  g.style.gridTemplateColumns=`repeat(${cols},${cs}px)`;
+  for(const row of cells) for(const v of row){ const c=document.createElement("div");
+    c.style.width=cs+"px"; c.style.height=cs+"px"; c.style.background=PAL[v]||"#f0f"; g.appendChild(c); }
+  return g;
+}
+
+function matchRow(id){
+  const t=DATA.tasks[IDX[id]];
+  let eq=0,sg=0,pe=0; t.train.forEach(pr=>{ eq+=pr.match.equal.length; sg+=pr.match.shape_groups.length; pe+=pr.match.point_equal.length; });
+  const wrap=document.createElement("div"); wrap.className="mrow";
+  const head=document.createElement("div"); head.className="mrow-h";
+  const idel=document.createElement("span"); idel.className="id"; idel.textContent=`#${IDX[id]+1} ${id}`;
+  head.appendChild(idel);
+  const mk=(cls,txt)=>{ const b=document.createElement("span"); b.className="bd "+cls; b.textContent=txt; return b; };
+  if(countShow.same_object) head.appendChild(mk("o","≡"+eq));
+  if(countShow.same_shape) head.appendChild(mk("s","≅"+sg));
+  if(countShow.same_point) head.appendChild(mk("p","≡"+pe+"pt"));
+  const spacer=document.createElement("span"); spacer.style.flex="1"; head.appendChild(spacer);
+  const selInduce=[...SS.bool];
+  if(selInduce.length && selInduce.every(c=>(t.hypotheses.list||[]).includes(c))){
+    const fl=document.createElement("span"); fl.className="hypflag"; fl.textContent="hypothesis ✓"; head.appendChild(fl);
+  }
+  const open=document.createElement("span"); open.className="openlink"; open.textContent="Main ↗";
+  open.onclick=(e)=>{ e.stopPropagation(); CUR=IDX[id]; document.getElementById("picker").value=CUR;
+    renderMain(); setSection("secMain"); window.scrollTo(0,0); };
+  head.appendChild(open);
+  const exp=document.createElement("div"); exp.className="mexp";
+  head.onclick=()=>{ if(!exp.dataset.built){ buildExp(exp,t); exp.dataset.built="1"; } exp.classList.toggle("open"); };
+  wrap.append(head, exp);
+  return wrap;
+}
+function pairHasResult(pr, bset){
+  const m=pr.match;
+  if(bset.has("same_object") && m.equal.length) return true;
+  if(bset.has("same_shape") && m.shape_groups.length) return true;
+  if(bset.has("same_point") && m.point_equal.length) return true;
+  if(bset.has("moved") && m.shape_groups.some(g=>(g.moves||[]).length)) return true;
+  return false;
+}
+function buildExp(exp, t){
+  // hypotheses (induce caps persisting across all demos)
+  if(t.hypotheses && t.hypotheses.list.length){
+    const hl=document.createElement("div"); hl.className="m-head";
+    hl.innerHTML="<b>hypotheses</b>: "+t.hypotheses.list.join(", ");
+    exp.appendChild(hl);
+  }
+  // multi-result facets: show the task's (task-level) result line
+  for(const fn in SS.multi){
+    if(!SS.multi[fn].size) continue;
+    const cat=catOf(t.task_id, fn);
+    const v = fn==="compare_grid_dimension" ? t.profile.dimension_delta : t.profile.palette_delta;
+    const line=document.createElement("div"); line.className="m-head";
+    line.innerHTML=`<b>${fn}</b>: ${cat}`+(v.common?" · "+JSON.stringify(v.common):"");
+    exp.appendChild(line);
+  }
+  // object-list tiers to render = selected boolean facets (moved lives inside
+  // the same_shape tier, so it implies same_shape visibility).
+  const tiers=new Set([...SS.bool]);
+  if(tiers.has("moved")) tiers.add("same_shape");
+  // show only result pairs (pairs containing a selected boolean result);
+  // if no boolean facet is selected (compare-only filter), show all pairs.
+  let hidden=0;
+  t.train.forEach((pr,i)=>{
+    if(!SS.bool.size || pairHasResult(pr, SS.bool)) exp.appendChild(renderPairCard(pr,i,tiers));
+    else hidden++;
+  });
+  if(hidden){
+    const n=document.createElement("div"); n.className="hiddennote";
+    n.textContent=`${hidden} pair${hidden>1?"s":""} hidden — no matching result`;
+    exp.appendChild(n);
+  }
+}
+
+function renderMatches(){
+  const host=document.getElementById("matches"); host.innerHTML="";
+  if(!anySel()){
+    host.innerHTML='<div class="m-head">select capabilities to filter</div>'
+      +'<div class="shint">no filter active — '+DATA.tasks.length+' tasks</div>'; return;
+  }
+  const ids=matchedIds();
+  const head=document.createElement("div"); head.className="m-head"; head.innerHTML="<b>"+ids.length+"</b> matching";
+  host.appendChild(head);
+  const tg=document.createElement("div"); tg.className="cnttoggles";
+  tg.appendChild(document.createTextNode("show counts:"));
+  [["same_object","≡ obj"],["same_shape","≅ shape"],["same_point","≡ pt"]].forEach(([k,lab])=>{
+    const b=document.createElement("span"); b.className="cnttg"+(countShow[k]?" on":""); b.textContent=lab;
+    b.onclick=()=>{ countShow[k]=!countShow[k]; renderMatches(); };
+    tg.appendChild(b);
+  });
+  host.appendChild(tg);
+  ids.forEach(id=>host.appendChild(matchRow(id)));
+}
+
+function renderArcMeta(){
+  const host=document.getElementById("arcmeta"); if(!host||!DATA.arc_metagraph) return;
+  host.innerHTML="";
+  const m=DATA.arc_metagraph;
+  const wrap=document.createElement("div"); wrap.className="amwrap";
+  for(const g in m.graphs){
+    const box=document.createElement("div"); box.className="amg";
+    const h=document.createElement("div"); h.className="amh"; h.textContent=g; box.appendChild(h);
+    m.graphs[g].forEach(c=>{ const n=document.createElement("span"); n.className="amn"; n.textContent=c; box.appendChild(n); });
+    wrap.appendChild(box);
+  }
+  host.appendChild(wrap);
+  (m.requires||[]).forEach(e=>{
+    const r=document.createElement("div"); r.className="amreq";
+    r.innerHTML=`<span class="mono">${e.from}</span> —<b>${e.type}</b>→ <span class="mono">${e.to}</span> (intergraph edge)`;
+    host.appendChild(r);
+  });
+}
+
+const SECTIONS=["secMain","searchPanel","secCapacities","mapPanel"];
+function setSection(id){
+  SECTIONS.forEach(s=>{ const el=document.getElementById(s); if(el) el.style.display = s===id?"":"none"; });
+  document.querySelectorAll("#menu .mi").forEach(mi=>mi.classList.toggle("on", mi.dataset.sec===id));
+}
+
+function init(){
+  if(typeof window.ARC_DATA==="undefined"){
+    document.getElementById("mainBody").innerHTML=
+      '<div class="empty">No data. Run <code>python -m intelligence_demo.arc1.spike.run_spike</code> '
+      +'to generate arc_debug_data.js, then reload.</div>';
+    return;
+  }
+  DATA=window.ARC_DATA;
+  document.getElementById("meta").textContent=
+    `${DATA.n_tasks} train tasks · generated ${DATA.generated}`;
+  const pick=document.getElementById("picker");
+  DATA.tasks.forEach((t,i)=>{
+    const o=document.createElement("option"); o.value=i;
+    o.textContent=`#${i+1}  ${t.task_id}`; pick.appendChild(o);
+  });
+  pick.onchange=()=>{CUR=+pick.value;renderMain();};
+  const tO=document.getElementById("tObjs"), tS=document.getElementById("tShapes");
+  const refresh=()=>{ renderMain(); if(anySel()) renderMatches(); };
+  tO.onclick=()=>{show.objs=!show.objs;tO.classList.toggle("on",show.objs);refresh();};
+  tS.onclick=()=>{show.shapes=!show.shapes;tS.classList.toggle("on",show.shapes);refresh();};
+  document.querySelectorAll("#menu .mi").forEach(mi=>mi.onclick=()=>setSection(mi.dataset.sec));
+  renderMain();
+  renderCapacities();
+  searchInit();
+  renderArcMeta();
+  setSection("secMain");
+}
+init();
+</script>
+</body>
+</html>
