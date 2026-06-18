@@ -1,6 +1,6 @@
 # ARC Skill Acquisition — Step 1: Ontology Definition
 
-**Status:** v0.6 · updated 2026-06-15 · living document
+**Status:** v0.7 · updated 2026-06-16 · living document
 **Scope:** the ARC-1 domain world-model (MindsOS L2 `ontology` role-graph).
 **Companions:** `LEXICON.md` (terms), `arc_lexicon_map.svg` (terms visual),
 `arc_graph_L2_ontology.svg`, `arc_graph_L3_capacity.svg`, `arc_graph_L5_mm_instance.svg`.
@@ -125,7 +125,8 @@ family) and materialized into the task MM only when worth keeping — nothing is
 
 - **Vector** `(Δr, Δc)` — `relational:from`/`to`. Distinct from **Distance** (scalar; `parameterized_by` Metric). Produced between two Objects by the **`offset`** capacity (vector between bbox origins) — this is the directional offset; `distance` stays the direction-discarding scalar.
 - **Congruence** — two PointSets equal up to a D4 transform; computed by a comparator; `relational:from`/`to` + the transform.
-- **Touching** (`parameterized_by` Connectivity), **Alignment** (Axis), **Symmetry** (Axis/order) — reified when they carry a parameter.
+- **Alignment** (Axis), **Symmetry** (Axis/order) — reified when they carry a parameter.
+- **Touching** — **parameter-free** (connectivity fixed at 8, §4 #1b) → plain `touches` edge, like Containment/Overlap. Holds **only between different-colour objects** (same-colour 8-adjacent cells are already one component) and any **Point**; operand = Region/PointSet. Computed by the `touching` predicate (§3). The **intra-grid** member of the positional-comparison axis (`moved` = the **inter-grid** member).
 - **Containment**, **Overlap** — parameter-free → plain `contains`/`overlaps` edges; promote later only if needed.
 
 ### 2.4 Operational
@@ -175,7 +176,8 @@ Every derivation/comparison registers as a capacity under an **existing** family
 | same_shape | Shape × Shape → Bool (identical normalized point-set; no rotation) | `comparator` | OPTIONAL_RETURN |
 | same_point | Point × Point → Bool (same colour + position) | `comparator` | OPTIONAL_RETURN |
 | moved | (in Object, out Object) → move Transform `{kind:translate, vector:Δ}` \| None unless same colour + same shape + displaced (self-guards) | `comparator` | OPTIONAL_RETURN |
-| same_color, aligned, touching … | entities → Bool | `predicate` | NO_DONT_KNOW |
+| touching | (Region, Region) → Bool (share an 8-neighbour; **different-colour objects + Points only**; parameter-free) | `predicate` | NO_DONT_KNOW |
+| same_color, aligned … | entities → Bool | `predicate` | NO_DONT_KNOW |
 
 `compare(A, B, fn)` is a **call-site convenience**: `fn` is a first-class comparator-family
 capacity, and selecting it is the bipartite `find_pipeline` choosing among comparator nodes
@@ -208,11 +210,19 @@ between two DataStates — there is no separate higher-order dispatcher node.
 | 13 | Lattice(N) | composite/pattern of repeating dividers; `N` = cell-square side, 1-thick lines; single crossing `(2N+1)²`; detector(≈`getRegular`)/generator pair. |
 | 14 | offset vs distance | `offset` (Object×Object → **Vector**, bbox-origin Δ) keeps direction; `distance` stays the **scalar** metric. |
 | 15 | Point vs Object | A **single-cell** 8-connected component is a **Point**, **not an Object and not a Shape**. Objects are size ≥ 2 (Object cardinality `[2..*]`). Points are extracted by `extract_points`; only `same_point` (colour + position) applies — `same_object`/`same_shape` never touch Points. Points are not grouped. *(v0.6.)* |
+| 16 | Touching | **Positional predicate**, parameter-free (connectivity fixed §1b). `(Region, Region) → Bool`, true iff the two share an 8-neighbour. Holds **only between different-colour objects and Points** (same-colour 8-adjacent cells are one component); operand Region/PointSet. Serves **both** induce-time structure (grouping + correspondence P3 + hypotheses) **and** apply/verify-time rule conditions (selectors); the rule-condition role commits Rules to relational selectors → bears on P1 (leans (c)). The **intra-grid** member of the **positional-comparison** axis (a cross-cutting operand tag, **not** a functional family); `moved` is the **inter-grid** member. *(v0.7.)* |
 
 ---
 
 ## 5. Changelog
 
+- **v0.7** (2026-06-16) — **Touching predicate + positional-comparison categorization (§4 #16).**
+  `touching` `(Region, Region) → Bool` (share an 8-neighbour), parameter-free (connectivity fixed
+  §1b), holds **only between different-colour objects and Points**; serves both induce-time structure
+  and apply/verify-time rule conditions. Capability-organization: a cross-cutting **positional
+  comparison** tag splits into **intra-grid** (`touching`, predicate) and **inter-grid** (`moved`,
+  comparator) — an operand/axis tag, **not** a functional family (PIPELINE.md Build progress). §2.3
+  touching moved from parameterized to plain `touches` edge.
 - **v0.6** (2026-06-15) — **Point vs Object boundary (§4 #15).** A single-cell component is a
   **Point** — neither an Object nor a Shape; Objects are size ≥ 2 (cardinality `[2..*]`). New
   `extract_points` capacity (Grid → Point*) + `same_point` comparator (colour + position). Points

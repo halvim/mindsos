@@ -13,13 +13,28 @@ where N = number of train tasks to dump (default: all 400).
 
 from __future__ import annotations
 
+# Allow running this file directly (``python run_spike.py`` or ``python -m run_spike``
+# from this folder) in addition to the canonical package form
+# (``python -m intelligence_demo.arc1.spike.run_spike`` from the repo root). The
+# relative imports below need a package context; if there is none, re-exec this
+# module inside its package and stop.
+if __package__ in (None, ""):
+    import os as _os
+    import runpy as _runpy
+    import sys as _sys
+    _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", ".."))
+    if _root not in _sys.path:
+        _sys.path.insert(0, _root)
+    _runpy.run_module("intelligence_demo.arc1.spike.run_spike", run_name="__main__")
+    _sys.exit(0)
+
 import datetime as _dt
 import json
 import os
 import sys
 
 from . import arc_capacities as ac
-from . import arc_grids, arc_metagraph, arc_profile, arc_search
+from . import arc_grids, arc_metagraph, arc_profile, arc_search, arc_solver
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _OUT_JS = os.path.join(_HERE, "arc_debug_data.js")
@@ -54,6 +69,15 @@ def main(argv: list) -> int:
         ids = ids[:limit]
     tasks = [arc_profile.build_profile(dataset, "train", tid) for tid in ids]
 
+    # Solver run (read-only, option A) — scoped to task #8 (the use case).
+    solver = None
+    if arc_solver.TASK8 in dataset["train"]:
+        prof8 = next((t for t in tasks if t["task_id"] == arc_solver.TASK8), None)
+        if prof8 is None:
+            prof8 = arc_profile.build_profile(dataset, "train", arc_solver.TASK8)
+        raw8 = arc_grids.get_task(dataset, "train", arc_solver.TASK8)
+        solver = arc_solver.build_solver(prof8, raw_task=raw8)
+
     payload = {
         "generated": _dt.datetime.now().isoformat(timespec="seconds"),
         "n_tasks": len(tasks),
@@ -64,6 +88,7 @@ def main(argv: list) -> int:
             "availability": arc_search.build_availability(tasks),
         },
         "arc_metagraph": arc_metagraph.summary(),
+        "solver": solver,
         "tasks": tasks,
     }
     with open(_OUT_JS, "w") as fh:

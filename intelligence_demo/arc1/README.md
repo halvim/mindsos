@@ -1,16 +1,17 @@
 # ARC track — status & index
 
-**Status:** Step 1 (Ontology) COMPLETE; **Step 2 (Task-Solving Pipeline) — IN DESIGN** (2026-06-15).
-This folder is the ARC foundation for the intelligence demo (see `../DEMO_BUILD_NEXT_CHAT_PROMPT.md`
-for the binding demo contract + build order + gate). The ontology work here is the
-Skill-Acquisition byproduct that the pipeline phase builds on.
+**Status:** Step 1 (Ontology) COMPLETE; **Step 2 (Task-Solving Pipeline) — reason-stage convention
+LOCKED; end-to-end Solver SOLVES the use-case task #8** (updated 2026-06-17). This folder is the ARC
+foundation for the intelligence demo (see `../DEMO_BUILD_NEXT_CHAT_PROMPT.md` for the binding demo
+contract). The ontology work here is the Skill-Acquisition byproduct the pipeline builds on.
 
-**Pipeline progress (2026-06-15):** `ONTOLOGY.md` is at **v0.6** (decisions §4 #1–15). The pipeline
-is now in **active build** via the **M-series spike** (`spike/` — see `spike/README.md`): perceive +
-profile LOCKED & built; **induce partially built** (`same_object`/`same_shape`/`same_point`/`moved`
-+ hypotheses fold + operand **Arc metagraph** overlay) with a human debug interface. The **reason
-stage** (search → verify → apply | abstain) **+ the seed-operation freeze remain open** — the next
-chat's work. Canonical records: `PIPELINE.md` (Build progress + Parked problems) and `ONTOLOGY.md` §4.
+**Pipeline progress (2026-06-17):** `ONTOLOGY.md` is at **v0.7** (decisions §4 #1–16). perceive +
+profile + induce built; the `touching` intra-grid predicate is built. The **reason-stage convention
+is LOCKED** (transition∘state goal-conditioned rules; greedy goal-seeking apply; MDL rule-set) and a
+read-only **Solver** (`spike/arc_solver.py`, stages 1–6) **solves task #8 (`05f2a901`) end-to-end**
+(verify 3/3 demos + produced test output = withheld answer). **Next phase: generalize beyond #8.**
+Canonical records: `PIPELINE.md` ("Reason-stage design — agreed 2026-06-17" + Build progress + Parked
+problems), `ONTOLOGY.md` §4, `spike/SOLVER_UI_MAP.md`. Next-chat prompt: `SOLVER_NEXT_CHAT_PROMPT.md`.
 
 ## What's here
 
@@ -46,4 +47,5 @@ materialized into the task MM; capacities map onto the shipped L3 families.
 
 ## Next phase
 
-Continue the task-solving pipeline design (reason stage) — see `PIPELINE_NEXT_CHAT_PROMPT.md`.
+Generalize the solver beyond task #8 — see `SOLVER_NEXT_CHAT_PROMPT.md`. (The earlier reason-stage
+prompt `PIPELINE_NEXT_CHAT_PROMPT.md` is superseded.)

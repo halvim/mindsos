@@ -8,6 +8,7 @@
   :root{
     --bg:#11131a; --panel:#1a1d27; --panel2:#222634; --line:#2e3344;
     --ink:#e7e9f0; --dim:#9aa3b8; --accent:#7aa2ff; --ok:#3ddc84; --warn:#ffb454;
+    --touch:#A78BFA;
   }
   *{box-sizing:border-box}
   body{margin:0;font:14px/1.4 ui-sans-serif,system-ui,Segoe UI,Roboto,sans-serif;
@@ -53,6 +54,25 @@
   .pair{background:var(--panel);border:1px solid var(--line);border-radius:10px;
     padding:14px 16px;margin-bottom:14px}
   .pair-h{color:var(--dim);font-size:12px;margin-bottom:10px;font-weight:600}
+  /* Main layout: demonstrations side by side; test + hypotheses row beneath */
+  .demorow{display:flex;gap:14px;align-items:flex-start;overflow-x:auto;padding-bottom:8px;margin-bottom:14px}
+  .demorow > .pair{flex:0 0 auto;width:300px;margin-bottom:0}
+  /* compact demo cards: input + output as equal squares side by side */
+  .demorow .pair .io{flex-direction:row;gap:24px;flex-wrap:nowrap;align-items:flex-start}
+  .demorow .pair .col{min-width:0;width:120px}
+  .demorow .pair .col .lab{font-size:9.5px;line-height:1.35;white-space:normal;max-width:120px}
+  /* rest — no match: collapsible accordion (input + output stacks side by side) */
+  .restacc{grid-column:1/-1;margin-top:2px}
+  .restbody{flex-direction:row;gap:14px;flex-wrap:wrap}
+  /* object cards = grid width, relationship sign in the middle (cols align with grids) */
+  .demorow .pair .matchgrid{grid-template-columns:120px 24px 120px;column-gap:0;row-gap:8px;justify-content:start}
+  .demorow .pair .objbox{width:120px;flex-wrap:wrap;font-size:10.5px;padding:5px 6px}
+  .demorow .pair .groupbox{width:120px}
+  .demorow .pair .chip{font-size:10.5px}
+  .demorow .pair .objbox .dim{margin-left:6px}
+  .demorow .pair .sym{font-size:15px}
+  .botrow{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+  .botrow > *{flex:1 1 320px;margin-bottom:0;min-width:0}
   .io{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
   .col{display:flex;flex-direction:column;gap:8px}
   .col .lab{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px}
@@ -106,6 +126,44 @@
   .mvrow .arr{color:var(--dim)}
   .mvrow .vec{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;color:#5aa2ff;
     background:#11253a;border:1px solid #378ADD;border-radius:999px;padding:1px 8px}
+  /* inter-grid / intra-grid divisions (Main + Search; shared title colour) */
+  .division{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--accent);
+    border-bottom:1px solid var(--line);padding-bottom:3px;margin:12px 0 7px}
+  /* touching candidates accordion (intra-grid; dim title like moved) */
+  .touchacc{margin:2px 0 4px}
+  .tbody{display:none;gap:18px;flex-wrap:wrap;border-left:2px solid #3a3358;padding-left:10px;margin-top:7px}
+  .tbody.open{display:flex}
+  .tcol{flex:1;min-width:190px}
+  .tcl{color:var(--dim);font-size:11px;margin-bottom:5px}
+  .trow{display:flex;align-items:center;gap:7px;background:#1e1b2e;border:1px solid #3a3358;
+    border-radius:6px;padding:5px 8px;margin-bottom:5px;width:max-content;max-width:100%}
+  .trow .nm{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--accent);font-size:12px}
+  .tsw{width:11px;height:11px;border-radius:2px;border:1px solid #0006;flex:none}
+  .tbond{color:var(--touch);font-size:14px}
+  .tempty{color:var(--dim);font-size:12px;font-style:italic;border:1px dashed var(--line);
+    border-radius:6px;padding:9px;text-align:center}
+  /* solver stepper (read-only run viewer) */
+  .shdr{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+  .sstep{background:var(--panel);border:1px solid var(--line);border-radius:10px;margin-bottom:14px;overflow:hidden}
+  .sshead{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line)}
+  .sbadge{width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:600;display:grid;place-items:center;flex:none}
+  .sbadge.done{background:var(--ok);color:#06251a}
+  .sbadge.pend{width:20px;height:20px;background:var(--panel2);border:1px solid var(--line);color:var(--dim);font-weight:400}
+  .sbadge.flag{background:var(--warn);color:#2a1c06}
+  .sttl{font-size:13px;font-weight:500}
+  .sstat{margin-left:auto;font-size:11px;border-radius:999px;padding:1px 9px;color:var(--ok);border:1px solid var(--ok)}
+  .sstat.flag{color:var(--warn);border-color:var(--warn)}
+  .sbody{padding:13px 14px;display:flex;flex-direction:column;gap:13px}
+  .sl{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin-bottom:6px}
+  .schip{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;border-radius:6px;padding:3px 9px;border:1px solid var(--line);background:var(--panel2);color:var(--dim)}
+  .sres{background:var(--panel2);border-radius:7px;padding:9px 11px}
+  .smono{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .stbl{width:100%;border-collapse:collapse;font-size:11px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .stbl th{font-weight:400;text-align:left;color:var(--dim);padding:2px 4px}
+  .stbl td{padding:3px 4px}
+  .sflag{display:flex;align-items:center;gap:9px;background:#2a2113;border-top:1px solid var(--warn);padding:9px 14px;font-size:11px}
+  .sflag .fk{color:var(--warn);font-size:14px}
+  .spend{display:flex;align-items:center;gap:11px;border:1px dashed var(--line);border-radius:9px;padding:9px 14px;margin-bottom:7px}
   /* search panel (C1 accordion + S2 inline expand) */
   #searchPanel .two{display:grid;grid-template-columns:0.85fr 1.15fr;gap:18px;align-items:start}
   .facet-ph{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--dim);margin:10px 0 4px}
@@ -161,6 +219,8 @@
   /* interface map */
   .mapwrap{margin:18px 18px 0}
   .map{width:100%;max-width:780px;height:auto;display:block}
+  .mapimg{width:100%;max-width:1180px;height:auto;display:block;border-radius:8px;margin-top:8px;border:1px solid var(--line)}
+  .mapnav{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
   .map .b{fill:var(--panel2);stroke:var(--line)}
   .map .bg{fill:#161a24;stroke:var(--line)}
   .map .bok{fill:#16302b;stroke:#2ECC4066}
@@ -190,6 +250,7 @@
 <nav class="sidemenu" id="menu">
   <div class="mi" data-sec="secMain">Main</div>
   <div class="mi" data-sec="searchPanel">Search</div>
+  <div class="mi" data-sec="secSolver">Solver</div>
   <div class="mi" data-sec="secCapacities">Capacities</div>
   <div class="mi" data-sec="mapPanel">Map</div>
 </nav>
@@ -200,6 +261,7 @@
     <select id="picker"></select>
     <button id="tObjs" class="on">Objects (bbox)</button>
     <button id="tShapes" class="on">Shapes</button>
+    <button id="tInfo">Object info</button>
   </div>
   <div id="mainBody"><div class="empty">Loading…</div></div>
 </section>
@@ -207,83 +269,59 @@
 <section id="secCapacities" style="display:none"><div id="capBody"></div></section>
 
 <section id="mapPanel" class="profile mapwrap" style="display:none">
-  <h2>Interface map — names for each part</h2>
-  <svg viewBox="0 0 760 528" xmlns="http://www.w3.org/2000/svg" class="map">
-    <!-- 1 header -->
-    <rect class="b" x="8" y="8" width="744" height="34" rx="6"/>
-    <text class="t" x="20" y="29"><tspan class="num">①</tspan> Side menu — Main / Search / Capacities / Map (sections); Main toolbar: picker · Objects · Shapes</text>
-    <!-- 2 profile -->
-    <rect class="b" x="8" y="50" width="744" height="44" rx="6"/>
-    <text class="t" x="20" y="68"><tspan class="num">②</tspan> Profile panel — TaskProfile verdicts</text>
-    <text class="s" x="20" y="85">demos/tests · dims preserved ▸ dimension Δ · colors preserved ▸ palette Δ</text>
-    <!-- 3 capacities -->
-    <rect class="b" x="8" y="102" width="744" height="40" rx="6"/>
-    <text class="t" x="20" y="120"><tspan class="num">③</tspan> Capacities panel — capacities in pipeline order</text>
-    <text class="s" x="20" y="136">phases: perceive · profile-sweep · induce</text>
-    <!-- 4 demonstration card -->
-    <rect class="bg" x="8" y="150" width="744" height="256" rx="8"/>
-    <text class="t" x="20" y="170"><tspan class="num">④</tspan> Demonstration card — one per demo pair (D1, D2 …)</text>
-    <rect class="b" x="22" y="182" width="212" height="150" rx="6"/>
-    <text class="t" x="34" y="202">Input grid <tspan class="s">(In1)</tspan></text>
-    <text class="s" x="34" y="226">▸ grid render</text>
-    <text class="s" x="34" y="246">▸ object list (tiered, below)</text>
-    <rect class="b" x="244" y="182" width="212" height="150" rx="6"/>
-    <text class="t" x="256" y="202">Output grid <tspan class="s">(Out1)</tspan></text>
-    <text class="s" x="256" y="226">grid render</text>
-    <text class="s" x="256" y="246">object list (tiered)</text>
-    <rect class="bok" x="466" y="182" width="276" height="206" rx="6"/>
-    <text class="t" x="478" y="202"><tspan class="num">⑤</tspan> object-list tiers (induce)</text>
-    <text class="t" x="478" y="226" style="fill:var(--ok)">≡ same_object</text>
-    <text class="s" x="478" y="242">invariant object pairs</text>
-    <text class="t" x="478" y="266" style="fill:#5aa2ff">≅ same_shape</text>
-    <text class="s" x="478" y="282">shape groups · moved Δ accordion</text>
-    <text class="t" x="478" y="306" style="fill:#EF9F27">≡ same_point</text>
-    <text class="s" x="478" y="322">invariant single points</text>
-    <text class="s" x="478" y="346">rest — no match</text>
-    <!-- 6 test card -->
-    <rect class="b" x="8" y="414" width="744" height="48" rx="6"/>
-    <text class="t" x="20" y="434"><tspan class="num">⑥</tspan> Test card — one per test pair (T1 …)</text>
-    <text class="s" x="20" y="452">input shown · output withheld (answer gated)</text>
-    <!-- 7 search -->
-    <rect class="b" x="8" y="470" width="744" height="50" rx="6"/>
-    <text class="t" x="20" y="491"><tspan class="num">⑦</tspan> Search panel — filter the task list by capability (header toggle: Search)</text>
-    <text class="s" x="20" y="509">boolean caps toggle · compare_* expand to result categories · click a match to expand its pairs</text>
-  </svg>
-  <div class="note">Names: objects <code>[In|Out]&lt;pair&gt;.O&lt;index&gt;</code> (e.g. <code>In1.O0</code>), points
-    <code>[In|Out]&lt;pair&gt;.P&lt;index&gt;</code> (e.g. <code>Out1.P0</code>); test pairs prefix <code>T</code>
-    (<code>TIn1.O0</code>; output withheld). Below each pair's grids the list is tiered:
-    <span style="color:var(--ok)">≡ same_object</span> (invariant object pairs), <span style="color:#5aa2ff">≅ same_shape</span>
-    (object groups sharing a shape; base shapes named, points excluded), <span style="color:#EF9F27">≡ same_point</span>
-    (invariant single points), then rest. Sections are switched from the left side menu.</div>
+  <div class="mapnav" id="mapnav">
+    <button data-map="main" class="on">Main</button>
+    <button data-map="search">Search</button>
+    <button data-map="solver">Solver</button>
+    <button data-map="capacities">Capacities</button>
+    <button data-map="map">Map</button>
+  </div>
 
-  <h2 style="margin-top:20px">Search map — the Search section</h2>
-  <svg viewBox="0 0 760 236" xmlns="http://www.w3.org/2000/svg" class="map">
-    <rect class="b" x="8" y="8" width="356" height="220" rx="6"/>
-    <text class="t" x="20" y="30">Facets (left pane)</text>
-    <text class="s" x="20" y="52">Profile group (above):</text>
-    <text class="s" x="34" y="70">compare_grid_dimension ▸ results</text>
-    <text class="s" x="34" y="88">compare_palette ▸ results</text>
-    <text class="s" x="20" y="112">Induce group (below):</text>
-    <text class="s" x="34" y="130">same_object / same_shape / same_point</text>
-    <text class="s" x="20" y="158">boolean = checkbox · multi = expand ▸</text>
-    <text class="s" x="20" y="178">AND across caps · OR within a cap</text>
-    <text class="s" x="20" y="198">count shown per facet / result</text>
-    <rect class="b" x="372" y="8" width="380" height="220" rx="6"/>
-    <text class="t" x="384" y="30">Matched tasks (right pane)</text>
-    <text class="s" x="384" y="54">“N matching” · rows with result badges</text>
-    <text class="s" x="384" y="78">click a row → expand inline (S2):</text>
-    <text class="s" x="398" y="96">grids + only the matching tiers</text>
-    <text class="t" x="384" y="126" style="fill:var(--accent)">Main button → open the task in Main ↗</text>
-  </svg>
+  <div class="mappanel" data-map="main">
+    <h2>Main — part names</h2>
+    <img class="mapimg" src="main_map.png" alt="Main section part-name callout map"/>
+    <div class="note">Per-pair card (<code>renderPairCard</code>): inter-grid tiers (<code>renderMatch</code>) +
+      intra-grid <code>touchingAccordion</code>. Generated by <code>maps/main_map.py</code>.</div>
+  </div>
 
-  <h2 style="margin-top:20px">Arc metagraph (L3 overlay) — section graphs + requires edges</h2>
-  <div id="arcmeta"></div>
+  <div class="mappanel" data-map="search" style="display:none">
+    <h2>Search — part names</h2>
+    <img class="mapimg" src="search_map.png" alt="Search section part-name callout map"/>
+    <div class="note">Facets in two divisions (inter-grid / intra-grid); AND across capacities, OR within.
+      Generated by <code>maps/search_map.py</code>.</div>
+  </div>
+
+  <div class="mappanel" data-map="solver" style="display:none">
+    <h2>Solver — part names (task #8, read-only run)</h2>
+    <img class="mapimg" src="solver_map.png" alt="Solver section part-name callout map"/>
+    <div class="note">Rendered Solver stepper with each part's bold name + its <code>.class</code> /
+      <code>#id</code> / <code>solverStepN ← stageN</code> binding. Generated by <code>maps/solver_map.py</code>.
+      Full element→code reference: <code>SOLVER_UI_MAP.md</code>.</div>
+  </div>
+
+  <div class="mappanel" data-map="capacities" style="display:none">
+    <h2>Capacities — part names</h2>
+    <img class="mapimg" src="capacities_map.png" alt="Capacities section part-name callout map"/>
+    <div class="note">Capacities in pipeline order (<code>renderCapacities</code> ← <code>DATA.capacities</code>).
+      Generated by <code>maps/capacities_map.py</code>.</div>
+  </div>
+
+  <div class="mappanel" data-map="map" style="display:none">
+    <h2>Map — part names</h2>
+    <img class="mapimg" src="map_map.png" alt="Map section part-name callout map"/>
+    <div class="note">The Map section itself — selector buttons + callout images + the Arc metagraph overlay.
+      Generated by <code>maps/map_map.py</code>.</div>
+    <h2 style="margin-top:18px">Arc metagraph (L3 overlay) — section graphs + requires edges</h2>
+    <div id="arcmeta"></div>
+  </div>
 </section>
 
 <section id="searchPanel" class="profile" style="display:none">
   <h2>Search — filter tasks by capability</h2>
   <div class="two"><div id="facets"></div><div id="matches"></div></div>
 </section>
+
+<section id="secSolver" style="display:none"><div id="solverBody"></div></section>
 
 </div>
 </div>
@@ -292,10 +330,13 @@
 <script>
 const PAL=["#000000","#0074D9","#FF4136","#2ECC40","#FFDC00",
            "#AAAAAA","#F012BE","#FF851B","#7FDBFF","#870C25"];
-const show={objs:true,shapes:true};
+const show={objs:true,shapes:true,info:false};
 let DATA=null, CUR=0;
 
-function cellSize(g){const n=Math.max(g.length,g[0].length); return Math.max(6,Math.min(20,Math.floor(360/n)));}
+let MC=false;  // compact mode: shrinks grids inside the Main demonstration row
+function cellSize(g){const n=Math.max(g.length,g[0].length);
+  if(MC) return Math.max(3, 112/g[0].length);    // fill 120px width; height varies by rows
+  return Math.max(6,Math.min(20,Math.floor(360/n)));}
 
 function renderGrid(g, objects){
   const cs=cellSize(g);
@@ -347,7 +388,9 @@ function gridOnly(label, gs, withheld, tag){
     w.textContent="output withheld (test answer gated)"; col.appendChild(w);
     return col;
   }
-  lab.textContent=`${label} (${tag}) · ${gs.dims[0]}×${gs.dims[1]} · ${gs.n_objects} objs · ${gs.n_points} pts (8-conn) · palette [${gs.palette.join(" ")}]`;
+  if(MC) lab.innerHTML=`${label} (${tag})<br>${gs.dims[0]}×${gs.dims[1]}<br>`
+      +`${gs.n_objects} objs · ${gs.n_points} pts<br>palette [${gs.palette.join(" ")}]`;
+  else lab.textContent=`${label} (${tag}) · ${gs.dims[0]}×${gs.dims[1]} · ${gs.n_objects} objs · ${gs.n_points} pts (8-conn) · palette [${gs.palette.join(" ")}]`;
   col.appendChild(lab);
   col.appendChild(renderGrid(gs.cells, gs.objects));
   return col;
@@ -362,7 +405,7 @@ function objBox(gs, idx, tag, cls){
   if(show.shapes) row.appendChild(renderShape(gs.shapes[idx]));
   const d=document.createElement("span"); d.className="dim";
   d.textContent = o.size===1 ? "point" : `c${o.color} · ${o.size}`;
-  row.appendChild(d);
+  if(show.info) row.appendChild(d);
   return row;
 }
 
@@ -373,7 +416,7 @@ function pointBox(gs, idx, tag, cls){
   const nm=document.createElement("span"); nm.className="nm"; nm.textContent=`${tag}.P${idx}`;
   const d=document.createElement("span"); d.className="dim";
   d.textContent=`c${o.color} · (${o.cells[0][0]},${o.cells[0][1]})`;
-  row.append(sw,nm,d); return row;
+  row.append(sw,nm); if(show.info) row.appendChild(d); return row;
 }
 
 function chip(gs, idx, tag){
@@ -423,6 +466,45 @@ function movedAccordion(grp, inTag, outTag){
 }
 function gap(){ return document.createElement("div"); }
 
+function divisionHeader(text){
+  const d=document.createElement("div"); d.className="division"; d.textContent=text; return d;
+}
+function partRef(gs, p, tag){
+  if(p.kind==="P") return {nm:`${tag}.P${p.idx}`, color:gs.points[p.idx].color};
+  return {nm:`${tag}.O${p.idx}`, color:gs.objects[p.idx].color};
+}
+function touchCol(gs, pairs, tag){
+  const col=document.createElement("div"); col.className="tcol";
+  const lab=document.createElement("div"); lab.className="tcl"; lab.textContent=tag; col.appendChild(lab);
+  if(!pairs.length){ const e=document.createElement("div"); e.className="tempty";
+    e.textContent="no touching pairs"; col.appendChild(e); return col; }
+  const mk=ref=>{ const sw=document.createElement("span"); sw.className="tsw";
+    sw.style.background=PAL[ref.color]||"#f0f";
+    const nm=document.createElement("span"); nm.className="nm"; nm.textContent=ref.nm; return [sw,nm]; };
+  pairs.forEach(p=>{
+    const a=partRef(gs,p.a,tag), b=partRef(gs,p.b,tag);
+    const row=document.createElement("div"); row.className="trow";
+    const bond=document.createElement("span"); bond.className="tbond"; bond.textContent="⟷";
+    row.append(...mk(a), bond, ...mk(b)); col.appendChild(row);
+  });
+  return col;
+}
+function touchingAccordion(pr, inTag, outTag){
+  const tin=pr.input.touching||[], tout=(pr.output&&pr.output.touching)||[];
+  const wrap=document.createElement("div"); wrap.className="touchacc";
+  const head=document.createElement("div"); head.className="acch";
+  const chev=document.createElement("span"); chev.className="chev"; chev.textContent="▸";
+  const lab=document.createElement("span");
+  lab.innerHTML=`touching candidates · <b>${tin.length+tout.length}</b> `
+    +`(${inTag}: ${tin.length} · ${outTag}: ${tout.length})`;
+  head.append(chev,lab);
+  const body=document.createElement("div"); body.className="tbody";
+  body.append(touchCol(pr.input, tin, inTag),
+              touchCol(pr.output||{objects:[],points:[]}, tout, outTag));
+  head.onclick=()=>{ const open=body.classList.toggle("open"); chev.textContent=open?"▾":"▸"; };
+  wrap.append(head, body); return wrap;
+}
+
 function renderMatch(pr, inTag, outTag, tiers){
   const inc=k=>!tiers||tiers.has(k);
   const m=pr.match;
@@ -455,14 +537,22 @@ function renderMatch(pr, inTag, outTag, tiers){
   const anyRest = m.input_rest.length || m.output_rest.length ||
                   m.input_point_rest.length || m.output_point_rest.length;
   if(inc("rest") && anyRest){
-    g.appendChild(tlabel("rest — no match (objects + leftover points)","rest"));
+    const wrap=document.createElement("div"); wrap.className="restacc";
+    const head=document.createElement("div"); head.className="acch";
+    const chev=document.createElement("span"); chev.className="chev"; chev.textContent="▸";
+    const cnt=m.input_rest.length+m.input_point_rest.length+m.output_rest.length+m.output_point_rest.length;
+    const rl=document.createElement("span"); rl.innerHTML=`rest — no match · <b>${cnt}</b>`;
+    head.append(chev,rl);
+    const body=document.createElement("div"); body.className="accbody restbody";
     const inStack=document.createElement("div"); inStack.className="reststack";
     m.input_rest.forEach(i=>inStack.appendChild(objBox(pr.input,i,inTag)));
     m.input_point_rest.forEach(i=>inStack.appendChild(pointBox(pr.input,i,inTag)));
     const outStack=document.createElement("div"); outStack.className="reststack";
     m.output_rest.forEach(j=>outStack.appendChild(objBox(pr.output,j,outTag)));
     m.output_point_rest.forEach(j=>outStack.appendChild(pointBox(pr.output,j,outTag)));
-    g.append(inStack, gap(), outStack);
+    body.append(inStack, outStack);
+    head.onclick=()=>{ const open=body.classList.toggle("open"); chev.textContent=open?"▾":"▸"; };
+    wrap.append(head, body); g.appendChild(wrap);
   }
   return g;
 }
@@ -492,7 +582,13 @@ function renderPairCard(pr, i, tiers){
   io.appendChild(gridOnly("input",pr.input,false,inTag));
   io.appendChild(gridOnly("output",pr.output,false,outTag));
   card.appendChild(io);
-  card.appendChild(renderMatch(pr,inTag,outTag,tiers));
+  const mg=renderMatch(pr,inTag,outTag,tiers);
+  if(mg.children.length){ card.appendChild(divisionHeader("inter-grid")); card.appendChild(mg); }
+  const tin=pr.input.touching||[], tout=(pr.output&&pr.output.touching)||[];
+  if(tin.length||tout.length){
+    card.appendChild(divisionHeader("intra-grid"));
+    card.appendChild(touchingAccordion(pr,inTag,outTag));
+  }
   return card;
 }
 
@@ -544,18 +640,21 @@ function renderMain(){
   grid.appendChild(gCol);
   prof.appendChild(grid);
   const note=document.createElement("div"); note.className="note";
-  note.innerHTML="Per demo pair below, the object list is tiered (induce): "
-    +"<span style='color:var(--ok)'>≡ same_object</span> · "
-    +"<span style='color:#5aa2ff'>≅ same_shape groups</span> · rest. "
+  note.innerHTML="Per demo pair below, analysis is split into two divisions — "
+    +"<b>inter-grid</b> (tiered: <span style='color:var(--ok)'>≡ same_object</span> · "
+    +"<span style='color:#5aa2ff'>≅ same_shape groups</span> · rest) and "
+    +"<b>intra-grid</b> (<span style='color:var(--touch)'>⟷ touching candidates</span>). "
     +"Perceive chain discovered by find_pipeline: "
     +DATA.discovery["raw_task -> shape"].map(c=>c.split(":").pop()).join(" → ");
   prof.appendChild(note);
   main.appendChild(prof);
 
+  // hypotheses card — built here, placed in the bottom row (with the test card)
+  let hypEl=null;
   if(t.hypotheses){
     const hyp=document.createElement("div"); hyp.className="profile";
     const hh=document.createElement("h2");
-    hh.textContent="Hypotheses — induce capabilities persisting across all demos (pair 1 → agrees)";
+    hh.textContent="Hypotheses — persisting across all demos";
     hyp.appendChild(hh);
     const hl=document.createElement("div"); hl.className="hyplist";
     t.hypotheses.detail.forEach(d=>{
@@ -571,10 +670,18 @@ function renderMain(){
     hs.textContent=t.hypotheses.list.length?"hypotheses: "+t.hypotheses.list.join(", ")
       :"no induce capability persists across all demos";
     hyp.appendChild(hs);
-    main.appendChild(hyp);
+    hypEl=hyp;
   }
 
-  t.train.forEach((pr,i)=>main.appendChild(renderPairCard(pr,i)));
+  // demonstrations — side by side (horizontal row, compact cards)
+  const demorow=document.createElement("div"); demorow.className="demorow";
+  MC=true;
+  t.train.forEach((pr,i)=>demorow.appendChild(renderPairCard(pr,i)));
+  MC=false;
+  main.appendChild(demorow);
+
+  // test + hypotheses — side by side, under the demonstrations
+  const botrow=document.createElement("div"); botrow.className="botrow";
   t.test.forEach((pr,i)=>{
     const card=document.createElement("div"); card.className="pair";
     const ph=document.createElement("div"); ph.className="pair-h"; ph.textContent="test "+(i+1);
@@ -582,8 +689,10 @@ function renderMain(){
     const io=document.createElement("div"); io.className="io";
     io.appendChild(gridOnly("input",pr.input,false,`TIn${i+1}`));
     io.appendChild(gridOnly("output",null,true,`TOut${i+1}`));
-    card.appendChild(io); main.appendChild(card);
+    card.appendChild(io); botrow.appendChild(card);
   });
+  if(hypEl) botrow.appendChild(hypEl);
+  main.appendChild(botrow);
 }
 
 // ── Search panel (C1 accordion facets + S2 inline expand) ──────────────
@@ -602,11 +711,18 @@ function searchInit(){
 function anySel(){ return SS.bool.size>0 || Object.values(SS.multi).some(s=>s.size>0); }
 
 function buildFacets(){
-  const host=document.getElementById("facets"); host.innerHTML=""; let group=null;
+  const host=document.getElementById("facets"); host.innerHTML=""; let group=null, division=null;
   const GLABEL={profile:"profile (multi-result)",atoms:"atoms",object_comparator:"object comparator"};
   FACETS.forEach(f=>{
-    if(f.group!==group){ const h=document.createElement("div"); h.className="facet-ph";
-      h.textContent=GLABEL[f.group]||f.group; host.appendChild(h); group=f.group; }
+    if(f.division && f.division!==division){
+      const d=document.createElement("div"); d.className="division"; d.textContent=f.division;
+      host.appendChild(d); division=f.division; group=null;
+    }
+    if(f.group!==group){
+      if(f.group){ const h=document.createElement("div"); h.className="facet-ph";
+        h.textContent=GLABEL[f.group]||f.group; host.appendChild(h); }
+      group=f.group;
+    }
     if(f.kind==="bool"){
       const r=document.createElement("div"); r.className="frow";
       const ck=document.createElement("span"); ck.className="ck"+(SS.bool.has(f.name)?" on":"");
@@ -695,6 +811,8 @@ function pairHasResult(pr, bset){
   if(bset.has("same_shape") && m.shape_groups.length) return true;
   if(bset.has("same_point") && m.point_equal.length) return true;
   if(bset.has("moved") && m.shape_groups.some(g=>(g.moves||[]).length)) return true;
+  if(bset.has("touching") && ((pr.input.touching||[]).length
+      || ((pr.output&&pr.output.touching)||[]).length)) return true;
   return false;
 }
 function buildExp(exp, t){
@@ -770,7 +888,166 @@ function renderArcMeta(){
   });
 }
 
-const SECTIONS=["secMain","searchPanel","secCapacities","mapPanel"];
+// ── Solver section (read-only run viewer, option A) ────────────────────
+const ROLECLR={background:["var(--dim)","var(--line)","var(--panel2)"],
+  mover:["var(--ok)","#2ECC40","#1d2b1f"],
+  target:["#7fb3f0","#378ADD","#11253a"],
+  "—":["var(--dim)","var(--line)","var(--panel2)"]};
+
+let solverBg=false;   // background display toggle (optional; default excluded)
+
+function solverStep1(st){
+  const chips=st.roles_demo1.map(r=>{
+    const [fg,bd,bgc]=ROLECLR[r.role]||ROLECLR["—"];
+    return `<span class="schip" style="color:${fg};border-color:${bd};background:${bgc}">`
+      +`${r.ref} · ${r.role} · c${r.color} · ${r.size}c</span>`;
+  }).join("");
+  const tin = solverBg? st.touching_in_full : st.touching_in_excl;
+  const tout = solverBg? st.touching_out_full : st.touching_out_excl;
+  const gained=new Set(st.gained_demo1);
+  const outp=tout.map(p=> gained.has(p)
+    ? `<span style="color:var(--touch);border:1px solid var(--touch);border-radius:5px;padding:1px 6px">+ ${p}</span>`
+    : p).join(", ");
+  const bg=st.background;
+  return `<div class="sstep">
+    <div class="sshead"><span class="sbadge done">1</span>
+      <span class="sttl">States, transitions &amp; changes</span><span class="sstat">done</span></div>
+    <div class="sbody">
+      <div><div class="sl">objects (demo 1)</div><div style="display:flex;gap:8px;flex-wrap:wrap">${chips}</div></div>
+      <div><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span class="sl" style="margin:0">touching · input → output</span>
+          <span id="sbgtg" style="cursor:pointer;font-size:10px;border:1px solid ${solverBg?'var(--touch)':'var(--line)'};color:${solverBg?'var(--touch)':'var(--dim)'};border-radius:999px;padding:1px 8px;user-select:none">background ${solverBg?'on':'off'}</span></div>
+        <div class="smono" style="font-size:11px;color:var(--dim)">{${tin.join(", ")}} → {${outp}}</div></div>
+      <div class="sres"><div class="sl">result</div>
+        <div style="font-size:12px"><span class="smono" style="color:var(--touch)">touching ${st.change.kind} (${st.gained_demo1.join(", ")})</span>
+          <span style="color:var(--ok)">✓ ${st.change.persists} demos</span></div>
+        <div style="font-size:10px;color:var(--dim);margin-top:5px">background = ${bg.objects.join(", ")||"—"} (c${bg.color}) · ${bg.note}</div></div>
+    </div>
+  </div>`;
+}
+
+function solverStep2(st){
+  const pers=st.persistent.map(([k,v])=>`<span style="color:var(--ok)">${k} ${v}</span>`).join("&nbsp;&nbsp;&nbsp;");
+  const rows=st.combos.map(c=>`<tr><td style="color:var(--touch)">${c.combo}</td>`
+    +`<td style="color:var(--accent)">${c.objects.join("·")}</td>`
+    +`<td style="color:var(--ok)">${c.per_demo.join(" ")}</td>`
+    +`<td style="color:var(--ok)">${c.verdict}</td></tr>`).join("");
+  return `<div class="sstep">
+    <div class="sshead"><span class="sbadge done">2</span>
+      <span class="sttl">Hypothesis formation</span><span class="sstat">done</span></div>
+    <div class="sbody">
+      <div><div class="sl">persistent across all pairs</div><div class="smono" style="font-size:11px">${pers}</div></div>
+      <div><div class="sl">combination test · same object, every pair</div>
+        <table class="stbl"><tr><th>combo</th><th>obj/pair</th><th>d1 d2 d3</th><th>verdict</th></tr>${rows}</table>
+        <div style="font-size:10px;color:var(--dim);margin-top:5px">static states (${st.excluded_static.join(", ")}) excluded — not a change</div></div>
+      <div class="sres"><div class="sl">result</div>
+        <div style="font-size:12px">candidate <span class="smono" style="color:var(--touch)">(move, touching)</span> — mover varies by pair</div></div>
+    </div>
+  </div>`;
+}
+
+function solverStep3(st){
+  const chip=(c,sel,fg,bd,bgc)=>`<span class="schip" style="color:${sel?fg:'var(--dim)'};`
+    +`border-color:${sel?bd:'var(--line)'};background:${sel?bgc:'var(--panel2)'};${sel?'':'opacity:.55'}">`
+    +`${c}${sel?' ✓':''}</span>`;
+  const mc=st.mover.candidates.map(c=>chip(c,c===st.mover_selected,"var(--ok)","#2ECC40","#1d2b1f")).join(" ");
+  const tc=st.target.candidates.map(c=>chip(c,c===st.target_selected,"#7fb3f0","#378ADD","#11253a")).join(" ");
+  const tieTag=st.tie?` <span style="color:var(--dim);text-transform:none;letter-spacing:0">(3-way tie)</span>`:"";
+  return `<div class="sstep">
+    <div class="sshead"><span class="sbadge done">3</span><span class="sttl">Selector synthesis</span>
+      <span class="sstat">resolved · ${st.selected}</span></div>
+    <div class="sbody">
+      <div><div class="sl">mover — equal-minimal selectors${tieTag} · locked highlighted</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${mc}</div></div>
+      <div><div class="sl">target — equal-minimal selectors</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">${tc}</div></div>
+      <div style="font-size:10px;color:var(--dim)">${st.note}</div>
+    </div>
+  </div>`;
+}
+
+function solverStep4(st){
+  return `<div class="sstep">
+    <div class="sshead"><span class="sbadge done">4</span><span class="sttl">Rule assembly</span><span class="sstat">done</span></div>
+    <div class="sbody">
+      <div class="sres"><div class="sl">rule</div>
+        <div class="smono" style="font-size:12px"><span style="color:var(--touch)">${st.rule}</span> · mover = <span style="color:var(--ok)">${st.mover_sel}</span> · target = <span style="color:#7fb3f0">${st.target_sel}</span></div></div>
+      <div><div class="sl">policy</div><div style="font-size:11px;color:var(--dim)">${st.policy}</div></div>
+      <div><div class="sl">dependency</div><div class="smono" style="font-size:11px;color:var(--dim)">${st.dag}</div></div>
+    </div>
+  </div>`;
+}
+function solverStep5(st){
+  const rows=st.per_demo.map(d=>`<tr><td>demo ${d.demo}</td><td>${d.steps==null?"—":d.steps} steps</td>`
+    +`<td style="color:${d.match?'var(--ok)':'var(--warn)'}">${d.match?'✓ match':'✗'}</td></tr>`).join("");
+  return `<div class="sstep">
+    <div class="sshead"><span class="sbadge done">5</span><span class="sttl">Verify on demos</span><span class="sstat">${st.all_match?'done':'fail'}</span></div>
+    <div class="sbody">
+      <div><div class="sl">apply rule → exact-match each demo output</div>
+        <table class="stbl"><tr><th>demo</th><th>slide</th><th>result</th></tr>${rows}</table></div>
+      <div class="sres"><div class="sl">result</div>
+        <div style="font-size:12px;color:${st.all_match?'var(--ok)':'var(--warn)'}">${st.verdict}</div></div>
+    </div>
+  </div>`;
+}
+function solverGridHTML(cells){
+  const cols=cells[0].length, cs=Math.max(4,Math.min(13,Math.floor(150/Math.max(cells.length,cols))));
+  let h=`<div style="display:grid;grid-template-columns:repeat(${cols},${cs}px);gap:1px;background:#0c0e14;padding:2px;border-radius:3px;width:max-content">`;
+  for(const row of cells) for(const v of row) h+=`<div style="width:${cs}px;height:${cs}px;background:${PAL[v]||'#f0f'}"></div>`;
+  return h+"</div>";
+}
+function solverStep6(st){
+  const wh=st.matches_withheld;
+  const badge = wh===true ? `<span style="font-size:11px;color:var(--ok);border:1px solid var(--ok);border-radius:999px;padding:1px 9px">withheld ✓ match</span>`
+    : wh===false ? `<span style="font-size:11px;color:var(--warn);border:1px solid var(--warn);border-radius:999px;padding:1px 9px">withheld ✗</span>` : "";
+  return `<div class="sstep">
+    <div class="sshead"><span class="sbadge done">6</span><span class="sttl">Apply to test</span><span class="sstat">done</span></div>
+    <div class="sbody">
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+        <div><div class="sl">test input</div>${solverGridHTML(st.input)}</div>
+        <div><div class="sl">produced output · ${st.steps} steps</div>${st.output?solverGridHTML(st.output):'<span style="color:var(--warn)">abstained</span>'}</div>
+      </div>
+      <div class="sres" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="sl" style="margin:0">result</span>${badge}
+        <span style="font-size:10px;color:var(--dim)">withheld answer checked for confidence — not used by the solver</span></div>
+    </div>
+  </div>`;
+}
+
+function renderSolver(){
+  const host=document.getElementById("solverBody"); if(!host) return; host.innerHTML="";
+  const s=DATA.solver;
+  if(!s){ host.innerHTML='<div class="empty">No solver data — task #8 not in this run.</div>'; return; }
+  const solved=s.stage6&&s.stage6.matches_withheld===true;
+  let html=`<div class="shdr"><div style="font-size:14px;font-weight:500">Solver</div>`
+    +`<div class="smono" style="color:var(--accent);font-size:12px">#8 · ${s.task_id}</div>`
+    +`<div style="margin-left:auto;font-size:11px;display:flex;gap:8px;align-items:center">`
+    +`<span style="color:var(--dim)">read-only run</span>`
+    +(solved?`<span style="color:var(--ok);border:1px solid var(--ok);border-radius:999px;padding:1px 9px">SOLVED ✓ · test = withheld</span>`:"")
+    +`</div></div>`;
+  html+=solverStep1(s.stage1)+solverStep2(s.stage2);
+  if(s.stage3) html+=solverStep3(s.stage3);
+  if(s.stage4) html+=solverStep4(s.stage4);
+  if(s.stage5) html+=solverStep5(s.stage5);
+  if(s.stage6) html+=solverStep6(s.stage6);
+  if(s.pending&&s.pending.length){
+    html+=`<div class="sl" style="margin-bottom:7px">pending (not built)</div>`;
+    html+=s.pending.map(p=>`<div class="spend"><span class="sbadge pend">${p.n}</span>`
+      +`<span style="font-size:12px;color:var(--dim)">${p.name}</span>`
+      +(p.flag?`<span style="margin-left:auto;font-size:10px;color:var(--warn)">⚑ ${p.flag}</span>`:"")
+      +`</div>`).join("");
+  }
+  host.innerHTML=html;
+  const tg=document.getElementById("sbgtg");
+  if(tg) tg.onclick=()=>{ solverBg=!solverBg; renderSolver(); };
+}
+
+function setMap(which){
+  document.querySelectorAll("#mapPanel .mappanel").forEach(p=>{
+    p.style.display = p.dataset.map===which ? "" : "none"; });
+  document.querySelectorAll("#mapnav button").forEach(b=>b.classList.toggle("on", b.dataset.map===which));
+}
+
+const SECTIONS=["secMain","searchPanel","secSolver","secCapacities","mapPanel"];
 function setSection(id){
   SECTIONS.forEach(s=>{ const el=document.getElementById(s); if(el) el.style.display = s===id?"":"none"; });
   document.querySelectorAll("#menu .mi").forEach(mi=>mi.classList.toggle("on", mi.dataset.sec===id));
@@ -792,14 +1069,17 @@ function init(){
     o.textContent=`#${i+1}  ${t.task_id}`; pick.appendChild(o);
   });
   pick.onchange=()=>{CUR=+pick.value;renderMain();};
-  const tO=document.getElementById("tObjs"), tS=document.getElementById("tShapes");
+  const tO=document.getElementById("tObjs"), tS=document.getElementById("tShapes"), tI=document.getElementById("tInfo");
   const refresh=()=>{ renderMain(); if(anySel()) renderMatches(); };
   tO.onclick=()=>{show.objs=!show.objs;tO.classList.toggle("on",show.objs);refresh();};
   tS.onclick=()=>{show.shapes=!show.shapes;tS.classList.toggle("on",show.shapes);refresh();};
+  tI.onclick=()=>{show.info=!show.info;tI.classList.toggle("on",show.info);refresh();};
   document.querySelectorAll("#menu .mi").forEach(mi=>mi.onclick=()=>setSection(mi.dataset.sec));
+  document.querySelectorAll("#mapnav button").forEach(b=>b.onclick=()=>setMap(b.dataset.map));
   renderMain();
   renderCapacities();
   searchInit();
+  renderSolver();
   renderArcMeta();
   setSection("secMain");
 }

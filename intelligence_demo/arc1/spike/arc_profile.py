@@ -34,6 +34,9 @@ def grid_summary(grid: List[List[int]]) -> dict:
         "shapes": [arc_grids.normalize_shape(o) for o in objects],
         "n_points": len(points),
         "points": points,
+        # intra-grid positional: touching pairs among this grid's components
+        # (different-colour Object/Point pairs sharing an 8-neighbour; §4 #16).
+        "touching": arc_grids.touching_pairs(objects, points),
     }
 
 
@@ -172,10 +175,15 @@ def profile_sweep(task: dict) -> dict:
 #: Induce capabilities tested for cross-pair persistence (NOT the profile-sweep
 #: compare_* caps). Pair 1 is canonical: a capability is hypothesised only if it
 #: fires in pair 1 AND in every other pair (agrees_across_demos = presence).
-INDUCE_CAPS = ["same_object", "same_shape", "same_point", "moved"]
+#: ``touching`` is intra-grid (a candidate constraint per pair = present in
+#: either grid of the pair); the others are inter-grid (read off ``match``).
+INDUCE_CAPS = ["same_object", "same_shape", "same_point", "moved", "touching"]
 
 
 def _present(pr: dict, cap: str) -> bool:
+    if cap == "touching":
+        return bool(pr["input"].get("touching")) or \
+            bool(pr["output"].get("touching"))
     m = pr["match"]
     if cap == "same_object":
         return bool(m["equal"])

@@ -21,21 +21,28 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-#: Filterable facets the Search panel renders, grouped into sections:
-#: profile (multi-result, profile-sweep) · atoms (sameness predicates) ·
-#: object_comparator (transform detectors over objects).
+#: Filterable facets the Search panel renders, split into two **divisions** —
+#: inter-grid (compare input↔output) and intra-grid (relations within one grid)
+#: — then sub-grouped: profile (multi-result) · atoms (sameness predicates) ·
+#: object_comparator (transform detectors) · touching (intra-grid positional).
 FACETS = [
     {"name": "compare_grid_dimension", "kind": "multi", "phase": "profile",
-     "group": "profile",
+     "division": "inter-grid", "group": "profile",
      "results": ["preserved", "grew", "shrank", "mixed", "varies"]},
     {"name": "compare_palette", "kind": "multi", "phase": "profile",
-     "group": "profile",
+     "division": "inter-grid", "group": "profile",
      "results": ["preserved", "added", "removed", "added+removed", "varies"]},
-    {"name": "same_object", "kind": "bool", "phase": "induce", "group": "atoms"},
-    {"name": "same_shape", "kind": "bool", "phase": "induce", "group": "atoms"},
-    {"name": "same_point", "kind": "bool", "phase": "induce", "group": "atoms"},
-    {"name": "moved", "kind": "bool", "phase": "induce", "group": "object_comparator",
+    {"name": "same_object", "kind": "bool", "phase": "induce",
+     "division": "inter-grid", "group": "atoms"},
+    {"name": "same_shape", "kind": "bool", "phase": "induce",
+     "division": "inter-grid", "group": "atoms"},
+    {"name": "same_point", "kind": "bool", "phase": "induce",
+     "division": "inter-grid", "group": "atoms"},
+    {"name": "moved", "kind": "bool", "phase": "induce",
+     "division": "inter-grid", "group": "object_comparator",
      "requires_label": "⊃ shape, colour", "requires": ["same_shape"]},
+    {"name": "touching", "kind": "bool", "phase": "intra-grid",
+     "division": "intra-grid", "group": ""},
 ]
 
 
@@ -80,6 +87,10 @@ def task_tokens(profile: dict) -> List[str]:
         toks.append("same_point")
     if any(any(g.get("moves") for g in d["match"]["shape_groups"]) for d in demos):
         toks.append("moved")
+    # touching = intra-grid; fires when ANY demo has a touching pair in either
+    # grid (input OR output). Demos only (test withheld).
+    if any(d["input"].get("touching") or d["output"].get("touching") for d in demos):
+        toks.append("touching")
     p = profile["profile"]
     toks.append("compare_grid_dimension:" + _dim_category(p["dimension_delta"]))
     toks.append("compare_palette:" + _pal_category(p["palette_delta"]))

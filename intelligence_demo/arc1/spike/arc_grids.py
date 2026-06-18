@@ -159,6 +159,48 @@ def moved(a: dict, b: dict):
     return None
 
 
+def touching(a: dict, b: dict) -> bool:
+    """touching (intra-grid positional predicate; ONTOLOGY §3 / §4 #16): two
+    components touch iff they are **different colour** AND share an 8-neighbour
+    (any cell of ``a`` is 8-adjacent to any cell of ``b``).
+
+    Total (NO_DONT_KNOW). Operand is Region/PointSet — works for Object×Object,
+    Object×Point, Point×Point (each is a ``cells`` set). Same-colour pairs return
+    ``False`` by definition (and never arise from 8-connected extraction anyway).
+    """
+    if a["color"] == b["color"]:
+        return False
+    bcells = {tuple(c) for c in b["cells"]}
+    nbrs = _ORTHOGONAL + _DIAGONAL
+    for (r, c) in a["cells"]:
+        for dr, dc in nbrs:
+            if (r + dr, c + dc) in bcells:
+                return True
+    return False
+
+
+def touching_pairs(objects: List[dict], points: List[dict]) -> List[dict]:
+    """All intra-grid touching pairs among a grid's components (objects + points),
+    deduped + unordered (each pair once). Participants are addressed by kind +
+    index into the per-grid ``objects``/``points`` lists::
+
+        {"a": {"kind": "O"|"P", "idx": int}, "b": {"kind": "O"|"P", "idx": int}}
+
+    Deterministic order (the combined O…P… sequence, i < j).
+    """
+    parts = [("O", i, o) for i, o in enumerate(objects)] + \
+            [("P", i, p) for i, p in enumerate(points)]
+    out: List[dict] = []
+    for x in range(len(parts)):
+        kx, ix, cx = parts[x]
+        for y in range(x + 1, len(parts)):
+            ky, iy, cy = parts[y]
+            if touching(cx, cy):
+                out.append({"a": {"kind": kx, "idx": ix},
+                            "b": {"kind": ky, "idx": iy}})
+    return out
+
+
 def base_shape_name(shape: dict):
     """Recognize a Shape as a named base shape (ONTOLOGY §4 #9), parametric by
     size: ``square`` (filled n×n), ``vertical``/``horizontal`` (1-wide lines),

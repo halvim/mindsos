@@ -29,9 +29,11 @@ from mindsos_capacity.identifiers import (
 
 from . import arc_grids
 
-# comparator is a family in ONTOLOGY §3 but NOT a shipped FUNCTIONAL category;
-# register under a lazily-created category graph (same mechanism as dream.*).
+# comparator/predicate are families in ONTOLOGY §3 but NOT shipped FUNCTIONAL
+# categories; register under lazily-created category graphs (same mechanism as
+# dream.*).
 CATEGORY_COMPARATOR = "comparator"
+CATEGORY_PREDICATE = "predicate"
 
 # ── DataState IRIs (arc realm) ──────────────────────────────────────────
 DS_RAW_TASK = datastate_iri("arc.raw_task")
@@ -49,6 +51,7 @@ DS_SAME_OBJECT = datastate_iri("arc.same_object")
 DS_SAME_SHAPE = datastate_iri("arc.same_shape")
 DS_SAME_POINT = datastate_iri("arc.same_point")
 DS_MOVE_TRANSFORM = datastate_iri("arc.move_transform")
+DS_TOUCHING = datastate_iri("arc.touching")
 
 
 def arc_datastates() -> List[DataState]:
@@ -76,6 +79,7 @@ def arc_datastates() -> List[DataState]:
         ds("arc.same_shape", CATEGORY_COMPARATOR, "same_shape verdict: identical normalized point-set."),
         ds("arc.same_point", CATEGORY_COMPARATOR, "same_point verdict: same colour + position."),
         ds("arc.move_transform", CATEGORY_COMPARATOR, "moved: translation Δ between same-shape objects."),
+        ds("arc.touching", CATEGORY_PREDICATE, "touching verdict: different-colour components share an 8-neighbour (intra-grid)."),
     ]
 
 
@@ -198,6 +202,22 @@ def _induce_capacities() -> List[Capacity]:
     ]
 
 
+def _intra_grid_capacities() -> List[Capacity]:
+    # touching = intra-grid positional predicate. Computed by the per-grid fold
+    # (arc_profile.grid_summary -> touching_pairs), NOT discovered by
+    # find_pipeline. Operand is Region/PointSet (Object|Point); the spike
+    # declares DS_OBJECT as the nominal input (single declared type, as with the
+    # other comparators — the participant pairing is fold-time).
+    return [
+        Capacity(
+            name="touching", category=CATEGORY_PREDICATE,
+            inputs=(DS_OBJECT,), outputs=(DS_TOUCHING,),
+            implementation=lambda **kw: {DS_TOUCHING: None},
+            description="(Region, Region) -> Bool (different-colour components share an 8-neighbour; intra-grid).",
+        ),
+    ]
+
+
 # capacity IRIs (for assertions / introspection)
 CAP_COMPREHEND = capacity_iri(CATEGORY_COMPREHENSION, "comprehend_task")
 CAP_BUILD_GRID = capacity_iri(CATEGORY_PERCEPTION, "build_grid")
@@ -217,7 +237,8 @@ def ordered_catalog() -> List[dict]:
     rows: List[dict] = []
     for phase, caps in (("perceive", _perceive_capacities()),
                         ("profile-sweep", _profile_comparators()),
-                        ("induce", _induce_capacities())):
+                        ("induce", _induce_capacities()),
+                        ("intra-grid", _intra_grid_capacities())):
         for c in caps:
             rows.append({
                 "name": c.name,
@@ -238,6 +259,8 @@ def install_arc(capacity_layer: CapacityLayer) -> None:
     for cap in _profile_comparators():
         capacity_layer.register_capacity(cap)
     for cap in _induce_capacities():
+        capacity_layer.register_capacity(cap)
+    for cap in _intra_grid_capacities():
         capacity_layer.register_capacity(cap)
 
 
