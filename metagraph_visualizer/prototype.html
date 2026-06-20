@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MindsOS Metagraph Visualizer — prototype</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root{
+    --teal:#1D9E75; --teal-d:#0F6E56; --teal-l:#E1F5EE;
+    --purple:#534AB7; --purple-l:#EEEDFE;
+    --coral:#D85A30; --coral-l:#FAECE7;
+    --neutral:#888780; --ink:#2C2C2A; --muted:#5F5E5A;
+    --line:#D3D1C7; --bg:#FBFAF6; --panel:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  #app{display:flex;flex-direction:column;height:100vh}
+  header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 16px;border-bottom:1px solid var(--line);background:var(--panel)}
+  header h1{font-size:15px;font-weight:600;margin:0;letter-spacing:.2px}
+  header .sub{font-size:12px;color:var(--muted)}
+  .spacer{flex:1}
+  .group{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:4px}
+  button{font:inherit;font-size:12.5px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer;color:var(--ink)}
+  button:hover{background:#F1EFE8}
+  button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .seg button{border:none;border-radius:6px}
+  main{flex:1;display:flex;min-height:0}
+  #stage{flex:1;position:relative;min-width:0}
+  svg#scene,canvas#scene-c{position:absolute;inset:0;width:100%;height:100%}
+  canvas#scene-c{display:none}
+  aside{width:280px;border-left:1px solid var(--line);background:var(--panel);padding:14px;overflow:auto;font-size:13px}
+  aside h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 8px}
+  .legend-row{display:flex;align-items:center;gap:8px;margin:7px 0;font-size:12.5px}
+  .swatch{width:26px;height:16px;flex:0 0 auto;border-radius:3px;display:inline-block}
+  .detail dt{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-top:8px}
+  .detail dd{margin:2px 0 0;font-size:13px}
+  .pill{display:inline-block;font-size:11px;padding:1px 8px;border-radius:999px;border:1px solid var(--line)}
+  .hint{font-size:12px;color:var(--muted);line-height:1.5;margin-top:10px}
+  .label{font-size:11.5px;fill:var(--muted)}
+  .glabel{font-size:12.5px;font-weight:600}
+  footer{padding:6px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);background:var(--panel)}
+  code{background:#F1EFE8;padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>MindsOS Metagraph Visualizer</h1>
+    <span class="sub">prototype · headless core → SVG + canvas renderers</span>
+    <div class="spacer"></div>
+    <div class="group seg" id="viewSeg">
+      <button data-view="containment" class="on">Containment</button>
+      <button data-view="bipartite">Bipartite</button>
+      <button data-view="scale">Scale (canvas)</button>
+    </div>
+    <div class="group">
+      <button id="collapseAll">Collapse graphs</button>
+      <button id="expandAll">Expand</button>
+      <button id="relayout">Re-layout</button>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <svg id="scene"></svg>
+      <canvas id="scene-c"></canvas>
+    </div>
+    <aside>
+      <h2>Selection</h2>
+      <div id="detail" class="detail"><div class="hint">Click any node, graph, or set to inspect it. Drag nodes to rearrange. Scroll to zoom.</div></div>
+      <h2 style="margin-top:18px">Element grammar</h2>
+      <div id="legend"></div>
+      <div class="hint">Color encodes <b>level</b>: teal = node-level, purple = graph-level, coral = cross-graph. Shape encodes arity: point, line, or region/hub.</div>
+    </aside>
+  </main>
+  <footer id="status">ready</footer>
+</div>
+
+<script>
+/* ============================================================
+   1. CORE — headless data model (renderer-agnostic)
+   ============================================================ */
+const COLORS = {
+  node:   {fill:'#1D9E75', stroke:'#0F6E56', soft:'#E1F5EE'},
+  graph:  {fill:'#534AB7', stroke:'#3C3489', soft:'#EEEDFE'},
+  cross:  {fill:'#D85A30', stroke:'#993C1D', soft:'#FAECE7'},
+  neutral:{fill:'#888780', stroke:'#5F5E5A', soft:'#F1EFE8'},
+};
+
+class MetagraphModel {
+  constructor(){
+    this.graphs = new Map();          // id -> {id,label,collapsed}
+    this.nodes  = new Map();          // id -> {id,label,graphId}
+    this.edges  = [];                 // {a,b,label}            within a graph
+    this.hyperedges = [];             // {members:[nodeId], label}  within a graph
+    this.metaedges = [];              // {a,b,label}            graph<->graph
+    this.metahyperedges = [];         // {graphs:[gId], label}
+    this.intergraphEdges = [];        // {a,b,label}            node<->node, diff graphs
+    this.hyperIntergraphEdges = [];   // {members:[nodeId], label}  nodes across graphs
+  }
+  addGraph(id,label){ this.graphs.set(id,{id,label,collapsed:false}); return id; }
+  addNode(id,graphId,label){ this.nodes.set(id,{id,label,graphId}); return id; }
+  addEdge(a,b,label=''){ this.edges.push({a,b,label}); }
+  addHyperedge(members,label=''){ this.hyperedges.push({members,label}); }
+  addMetaedge(a,b,label=''){ this.metaedges.push({a,b,label}); }
+  addMetahyperedge(graphs,label=''){ this.metahyperedges.push({graphs,label}); }
+  addIntergraphEdge(a,b,label=''){ this.intergraphEdges.push({a,b,label}); }
+  addHyperIntergraphEdge(members,label=''){ this.hyperIntergraphEdges.push({members,label}); }
+  graphOf(nodeId){ const n=this.nodes.get(nodeId); return n && n.graphId; }
+}
+
+/* buildRenderModel: turns the model into points + links + sets for a renderer.
+   expandSets=false -> hyper* drawn as region hulls (containment view)
+   expandSets=true  -> hyper* expanded to bipartite hub nodes (+links)        */
+function buildRenderModel(m, {expandSets=false} = {}){
+  const points = [];                 // {id,kind:'node'|'hub',graphId,label,setKind}
+  const links  = [];                 // {source,target,kind,label}
+  const sets   = [];                 // region hulls (containment view only)
+
+  for (const n of m.nodes.values())
+    points.push({id:n.id, kind:'node', graphId:n.graphId, label:n.label});
+
+  for (const e of m.edges) links.push({source:e.a, target:e.b, kind:'edge', label:e.label});
+  for (const e of m.intergraphEdges) links.push({source:e.a, target:e.b, kind:'intergraph', label:e.label});
+
+  const hyperLike = [
+    ...m.hyperedges.map((h,i)=>({id:`he${i}`, members:h.members, label:h.label||'hyperedge', kind:'hyperedge'})),
+    ...m.hyperIntergraphEdges.map((h,i)=>({id:`hie${i}`, members:h.members, label:h.label||'hyper-intergraph', kind:'hyperintergraph'})),
+  ];
+  for (const h of hyperLike){
+    if (expandSets){
+      points.push({id:h.id, kind:'hub', graphId:null, label:h.label, setKind:h.kind});
+      for (const mem of h.members) links.push({source:h.id, target:mem, kind:h.kind+'-link'});
+    } else {
+      sets.push({id:h.id, kind:h.kind, members:h.members.slice(), label:h.label, basis:'node'});
+    }
+  }
+  // metahyperedges are sets over GRAPHS (basis:'graph')
+  m.metahyperedges.forEach((mh,i)=>{
+    if (expandSets){
+      const id=`mh${i}`;
+      points.push({id, kind:'hub', graphId:null, label:mh.label||'metahyperedge', setKind:'metahyper', basis:'graph', graphMembers:mh.graphs});
+    } else {
+      sets.push({id:`mh${i}`, kind:'metahyper', members:mh.graphs.slice(), label:mh.label||'metahyperedge', basis:'graph'});
+    }
+  });
+
+  return {points, links, sets, metaedges:m.metaedges, model:m, expandSets};
+}
+
+/* ============================================================
+   2. SAMPLE DATA — a small MindsOS-flavoured metagraph
+   ============================================================ */
+function sampleModel(){
+  const m = new MetagraphModel();
+  const G = {
+    ont: m.addGraph('ontology','ontology'),
+    lex: m.addGraph('lexicon','lexicon'),
+    con: m.addGraph('concepts','concepts'),
+    epi: m.addGraph('episodic_memories','episodic_memories'),
+  };
+  const N = (id,g,l)=>m.addNode(id,g,l);
+  N('o_entity','ontology','Entity'); N('o_event','ontology','Event'); N('o_agent','ontology','Agent'); N('o_obj','ontology','Object');
+  N('l_grasp','lexicon','grasp'); N('l_lift','lexicon','lift'); N('l_block','lexicon','block'); N('l_arm','lexicon','arm');
+  N('c_pick','concepts','pick-up'); N('c_stack','concepts','stack'); N('c_reach','concepts','reach'); N('c_goal','concepts','goal-state');
+  N('e_t1','episodic_memories','task-run #1'); N('e_t2','episodic_memories','task-run #2'); N('e_obs','episodic_memories','observation');
+
+  m.addEdge('o_entity','o_event'); m.addEdge('o_entity','o_agent'); m.addEdge('o_entity','o_obj');
+  m.addEdge('l_grasp','l_arm'); m.addEdge('l_lift','l_block');
+  m.addEdge('c_pick','c_reach'); m.addEdge('c_pick','c_goal'); m.addEdge('c_stack','c_goal');
+  m.addEdge('e_t1','e_obs'); m.addEdge('e_t2','e_obs');
+
+  m.addHyperedge(['o_agent','o_obj','o_event'],'participates-in');
+  m.addHyperedge(['c_pick','c_stack','c_goal'],'task-pattern');
+
+  m.addMetaedge('ontology','lexicon','aligns');
+  m.addMetaedge('lexicon','concepts','grounds');
+  m.addMetaedge('concepts','episodic_memories','instantiated-in');
+
+  m.addMetahyperedge(['ontology','lexicon','concepts'],'knowledge core');
+
+  m.addIntergraphEdge('c_pick','l_grasp','lexicalised-as');
+  m.addIntergraphEdge('c_pick','o_event','isa');
+  m.addIntergraphEdge('e_t1','c_pick','ran-pattern');
+
+  m.addHyperIntergraphEdge(['o_agent','l_arm','c_reach'],'embodiment binding');
+  return m;
+}
+
+/* large generated model for the scale/canvas view */
+function largeModel(nGraphs=14, perGraph=16){
+  const m = new MetagraphModel();
+  const gids=[];
+  for(let g=0; g<nGraphs; g++){ const id='g'+g; m.addGraph(id,'graph '+g); gids.push(id);
+    let prev=null;
+    for(let i=0;i<perGraph;i++){ const nid=id+'_n'+i; m.addNode(nid,id,'n'+i);
+      if(prev && Math.random()<0.7) m.addEdge(prev,nid);
+      if(i>2 && Math.random()<0.25) m.addEdge(id+'_n'+(i%3), nid);
+      prev=nid;
+    }
+  }
+  for(let k=0;k<nGraphs*2;k++){ const a=gids[(Math.random()*nGraphs)|0], b=gids[(Math.random()*nGraphs)|0];
+    if(a!==b) m.addMetaedge(a,b); }
+  for(let k=0;k<nGraphs*3;k++){
+    const ga=(Math.random()*nGraphs)|0, gb=(Math.random()*nGraphs)|0;
+    if(ga!==gb) m.addIntergraphEdge('g'+ga+'_n'+((Math.random()*perGraph)|0),'g'+gb+'_n'+((Math.random()*perGraph)|0));
+  }
+  return m;
+}
+
+/* ============================================================
+   3. SVG RENDERER (authoring / explain views)
+   ============================================================ */
+const svg = d3.select('#scene');
+const stage = document.getElementById('stage');
+let W=stage.clientWidth, H=stage.clientHeight;
+const root = svg.append('g');               // zoom target
+const layers = {
+  region: root.append('g'),
+  meta:   root.append('g'),
+  cross:  root.append('g'),
+  edge:   root.append('g'),
+  glabel: root.append('g'),
+  node:   root.append('g'),
+};
+svg.call(d3.zoom().scaleExtent([0.2,3]).on('zoom', ev => root.attr('transform', ev.transform)));
+
+let sim, current, view='containment';
+const setStatus = t => document.getElementById('status').textContent = t;
+
+function graphCentroid(gid, pts){
+  const mem = pts.filter(p=>p.kind==='node' && p.graphId===gid && p.x!=null);
+  if(!mem.length) return null;
+  return [d3.mean(mem,p=>p.x), d3.mean(mem,p=>p.y)];
+}
+
+function clusterForce(strength, modelRef){
+  let nodes;
+  function force(alpha){
+    const cen={};
+    for(const g of modelRef.graphs.values()){ const c=graphCentroid(g.id,nodes); if(c) cen[g.id]=c; }
+    for(const n of nodes){
+      if(n.kind==='node' && cen[n.graphId]){
+        n.vx += (cen[n.graphId][0]-n.x)*strength*alpha;
+        n.vy += (cen[n.graphId][1]-n.y)*strength*alpha;
+      }
+    }
+  }
+  force.initialize = n => nodes = n;
+  return force;
+}
+
+function buildAndRender(){
+  current = buildRenderModel(sampleModelInstance, {expandSets: view==='bipartite'});
+  const m = current.model;
+  const visible = p => { const g = p.graphId && m.graphs.get(p.graphId); return !(g && g.collapsed && p.kind==='node'); };
+  const pts = current.points;
+  // seed positions clustered per graph
+  const gIndex = [...m.graphs.keys()];
+  pts.forEach(p=>{ if(p.x==null){ const gi=Math.max(0,gIndex.indexOf(p.graphId)); const ang=gi/gIndex.length*2*Math.PI;
+    p.x = W/2 + Math.cos(ang)*180 + (Math.random()-0.5)*60;
+    p.y = H/2 + Math.sin(ang)*150 + (Math.random()-0.5)*60; }});
+
+  const byId = new Map(pts.map(p=>[p.id,p]));
+  const simLinks = current.links.filter(l=>byId.has(l.source.id||l.source) && byId.has(l.target.id||l.target));
+
+  sim && sim.stop();
+  sim = d3.forceSimulation(pts)
+    .force('charge', d3.forceManyBody().strength(-260))
+    .force('link', d3.forceLink(simLinks).id(d=>d.id).distance(l=> l.kind==='intergraph'?150:60).strength(0.5))
+    .force('cluster', clusterForce(0.22, m))
+    .force('collide', d3.forceCollide(26))
+    .force('center', d3.forceCenter(W/2,H/2).strength(0.04))
+    .on('tick', draw);
+
+  function draw(){
+    // ---- graph containers (regions) ----
+    const graphData = [...m.graphs.values()].map(g=>{
+      const mem = pts.filter(p=>p.kind==='node' && p.graphId===g.id);
+      const c = graphCentroid(g.id, pts);
+      return {g, mem, c};
+    }).filter(d=>d.c);
+
+    const gsel = layers.region.selectAll('g.graph').data(graphData, d=>d.g.id);
+    const gent = gsel.enter().append('g').attr('class','graph').style('cursor','pointer')
+      .on('click',(e,d)=>{ select({type:'graph',data:d.g}); });
+    gent.append('path').attr('class','ghull');
+    gent.append('rect').attr('class','gcollapsed');
+    const gall = gent.merge(gsel);
+    gall.select('path.ghull')
+      .attr('d', d=> d.g.collapsed ? null : hullPath(d.mem, 30))
+      .attr('fill', COLORS.graph.soft).attr('fill-opacity',0.5)
+      .attr('stroke', COLORS.graph.fill).attr('stroke-dasharray','6 4').attr('stroke-width',1.2)
+      .style('display', d=>d.g.collapsed?'none':null);
+    gall.select('rect.gcollapsed')
+      .attr('x',d=>d.c[0]-54).attr('y',d=>d.c[1]-20).attr('width',108).attr('height',40).attr('rx',8)
+      .attr('fill',COLORS.graph.soft).attr('stroke',COLORS.graph.fill).attr('stroke-width',1.4)
+      .style('display', d=>d.g.collapsed?null:'none');
+    gsel.exit().remove();
+
+    // graph labels
+    const lsel = layers.glabel.selectAll('text.gl').data(graphData, d=>d.g.id);
+    lsel.enter().append('text').attr('class','gl glabel')
+      .attr('fill',COLORS.graph.stroke).attr('text-anchor','middle')
+      .merge(lsel)
+      .attr('x',d=>d.c[0])
+      .attr('y',d=> d.g.collapsed ? d.c[1]+4 : topY(d.mem)-12)
+      .text(d=>d.g.label + (d.g.collapsed?' ▸':''));
+    lsel.exit().remove();
+
+    // ---- set regions (hyperedge / hyper-intergraph / metahyper) ----
+    const setData = current.sets.map(s=>{
+      let members;
+      if(s.basis==='graph'){ members = s.members.map(gid=>{const c=graphCentroid(gid,pts);return c&&{x:c[0],y:c[1]};}).filter(Boolean); }
+      else { members = s.members.map(id=>byId.get(id)).filter(p=>p && p.x!=null); }
+      return {s, members};
+    }).filter(d=>d.members.length);
+    const rsel = layers.region.selectAll('path.set').data(setData, d=>d.s.id);
+    rsel.enter().append('path').attr('class','set')
+      .merge(rsel)
+      .attr('d',d=>hullPath(d.members, d.s.basis==='graph'?52:34))
+      .attr('fill', d=> setColor(d.s.kind).soft).attr('fill-opacity',0.45)
+      .attr('stroke', d=> setColor(d.s.kind).fill).attr('stroke-dasharray','3 3').attr('stroke-width',1)
+      .style('cursor','pointer')
+      .on('click',(e,d)=>select({type:'set',data:d.s}));
+    rsel.exit().remove();
+
+    // ---- metaedges (graph centroid to graph centroid) ----
+    const meData = current.metaedges.map(me=>{
+      const a=graphCentroid(me.a,pts), b=graphCentroid(me.b,pts);
+      return a&&b&&{me,a,b};
+    }).filter(Boolean);
+    const mesel = layers.meta.selectAll('line.me').data(meData,(d,i)=>i);
+    mesel.enter().append('line').attr('class','me')
+      .attr('stroke',COLORS.graph.fill).attr('stroke-width',3).attr('stroke-opacity',0.8)
+      .style('cursor','pointer').on('click',(e,d)=>select({type:'metaedge',data:d.me}))
+      .merge(mesel)
+      .attr('x1',d=>d.a[0]).attr('y1',d=>d.a[1]).attr('x2',d=>d.b[0]).attr('y2',d=>d.b[1]);
+    mesel.exit().remove();
+
+    // ---- edges & intergraph & hub links ----
+    const linkData = simLinks.filter(l=>{
+      const s=byId.get(l.source.id||l.source.id===0?l.source.id:l.source), t=byId.get(l.target.id||l.target);
+      return visible(l.source) && visible(l.target);
+    });
+    drawLinks(layers.edge, simLinks.filter(l=>l.kind==='edge'), COLORS.node.stroke, 1.4, false);
+    drawLinks(layers.cross, simLinks.filter(l=>l.kind==='intergraph'), COLORS.cross.fill, 1.6, false);
+    drawLinks(layers.cross, simLinks.filter(l=>/-link$/.test(l.kind)),
+      COLORS.cross.fill, 1, true, 'hublink');
+
+    // ---- nodes & hubs ----
+    const nodeData = pts.filter(p=> p.kind==='hub' || visible(p));
+    const nsel = layers.node.selectAll('g.pt').data(nodeData, d=>d.id);
+    const nent = nsel.enter().append('g').attr('class','pt').style('cursor','grab')
+      .on('click',(e,d)=>select({type:d.kind==='hub'?'set':'node', data:d}))
+      .call(d3.drag()
+        .on('start',(e,d)=>{ if(!e.active)sim.alphaTarget(0.25).restart(); d.fx=d.x; d.fy=d.y; })
+        .on('drag',(e,d)=>{ d.fx=e.x; d.fy=e.y; })
+        .on('end',(e,d)=>{ if(!e.active)sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+    nent.each(function(d){
+      const sel=d3.select(this);
+      if(d.kind==='hub'){
+        sel.append('rect').attr('class','sh').attr('width',16).attr('height',16)
+          .attr('x',-8).attr('y',-8).attr('transform','rotate(45)')
+          .attr('fill',setColor(d.setKind).soft).attr('stroke',setColor(d.setKind).fill).attr('stroke-width',1.4);
+      } else {
+        sel.append('circle').attr('r',9).attr('fill',COLORS.node.fill).attr('stroke',COLORS.node.stroke).attr('stroke-width',1.4);
+      }
+      sel.append('text').attr('class','label').attr('x',12).attr('y',4).text(d.label);
+    });
+    nent.merge(nsel).attr('transform',d=>`translate(${d.x},${d.y})`);
+    nsel.exit().remove();
+  }
+}
+
+function drawLinks(layer, data, color, width, dashed, cls='lnk'){
+  const sel = layer.selectAll('line.'+cls).data(data,(d,i)=> (d.source.id||d.source)+'~'+(d.target.id||d.target)+'~'+i);
+  sel.enter().append('line').attr('class',cls)
+    .attr('stroke',color).attr('stroke-width',width)
+    .attr('stroke-dasharray', dashed?'4 3':null)
+    .merge(sel)
+    .attr('x1',d=>d.source.x).attr('y1',d=>d.source.y).attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+  sel.exit().remove();
+}
+
+function setColor(kind){
+  if(kind==='hyperedge') return COLORS.node;
+  if(kind==='metahyper') return COLORS.graph;
+  return COLORS.cross;   // hyperintergraph
+}
+function topY(mem){ return d3.min(mem,p=>p.y); }
+function hullPath(members, pad){
+  const pos = members.map(p=>[p.x,p.y]);
+  if(pos.length===1) return circlePath(pos[0][0],pos[0][1],pad);
+  if(pos.length===2){ const mx=(pos[0][0]+pos[1][0])/2,my=(pos[0][1]+pos[1][1])/2; return circlePath(mx,my,pad+22); }
+  const hull = d3.polygonHull(pos);
+  if(!hull) return circlePath(d3.mean(pos,p=>p[0]),d3.mean(pos,p=>p[1]),pad);
+  // expand hull outward from centroid
+  const cx=d3.mean(hull,p=>p[0]), cy=d3.mean(hull,p=>p[1]);
+  const exp = hull.map(([x,y])=>{ const dx=x-cx,dy=y-cy,L=Math.hypot(dx,dy)||1; return [x+dx/L*pad, y+dy/L*pad]; });
+  return 'M'+exp.map(p=>p.join(',')).join('L')+'Z';
+}
+function circlePath(cx,cy,r){ return `M${cx-r},${cy}a${r},${r} 0 1,0 ${2*r},0a${r},${r} 0 1,0 ${-2*r},0Z`; }
+
+/* selection / detail panel */
+function select(sel){
+  const d=document.getElementById('detail');
+  const row=(k,v)=>`<dt>${k}</dt><dd>${v}</dd>`;
+  if(sel.type==='node') d.innerHTML = row('type','<span class="pill">node</span>')+row('id',`<code>${sel.data.id}</code>`)+row('label',sel.data.label)+row('graph',sel.data.graphId);
+  else if(sel.type==='graph') d.innerHTML = row('type','<span class="pill">graph</span>')+row('id',`<code>${sel.data.id}</code>`)+row('label',sel.data.label)+row('state',sel.data.collapsed?'collapsed':'expanded')+`<div class="hint">Click the graph again or use Collapse/Expand to toggle level-of-detail.</div>`;
+  else if(sel.type==='set') d.innerHTML = row('type',`<span class="pill">${sel.data.kind||sel.data.setKind}</span>`)+row('label',sel.data.label)+row('arity',(sel.data.members||sel.data.graphMembers||[]).length+' members');
+  else if(sel.type==='metaedge') d.innerHTML = row('type','<span class="pill">metaedge</span>')+row('from',sel.data.a)+row('to',sel.data.b)+row('label',sel.data.label||'—');
+  if(sel.type==='graph'){ sel.data.collapsed = !sel.data.collapsed; setStatus(`graph "${sel.data.label}" ${sel.data.collapsed?'collapsed':'expanded'}`); sim&&sim.alpha(0.3).restart(); }
+}
+
+/* ============================================================
+   4. CANVAS RENDERER (scale / debug view)  — WebGL is the upgrade
+   ============================================================ */
+const canvas = document.getElementById('scene-c');
+let cAnim=null;
+function renderScale(){
+  const m = largeModel(16,16);
+  const pts = [...m.nodes.values()].map(n=>({id:n.id,graphId:n.graphId,x:Math.random()*W,y:Math.random()*H}));
+  const byId=new Map(pts.map(p=>[p.id,p]));
+  const links = [...m.edges.map(e=>({s:e.a,t:e.b,k:'edge'})), ...m.intergraphEdges.map(e=>({s:e.a,t:e.b,k:'inter'}))]
+    .filter(l=>byId.has(l.s)&&byId.has(l.t)).map(l=>({source:byId.get(l.s),target:byId.get(l.t),k:l.k}));
+  setStatus(`scale view · ${pts.length} nodes · ${links.length} links · ${m.graphs.size} graphs (canvas; swap to Sigma/WebGL for 10k+)`);
+  const gids=[...m.graphs.keys()];
+  const csim = d3.forceSimulation(pts)
+    .force('charge', d3.forceManyBody().strength(-40))
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(28).strength(0.4))
+    .force('cluster', clusterForce(0.25, m))
+    .force('center', d3.forceCenter(W/2,H/2))
+    .force('collide', d3.forceCollide(7));
+  const ctx = canvas.getContext('2d');
+  function frame(){
+    const dpr=window.devicePixelRatio||1;
+    canvas.width=W*dpr; canvas.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    ctx.globalAlpha=0.5;
+    for(const l of links){ ctx.strokeStyle = l.k==='inter'?COLORS.cross.fill:COLORS.node.stroke; ctx.lineWidth=l.k==='inter'?1.1:0.6;
+      ctx.beginPath(); ctx.moveTo(l.source.x,l.source.y); ctx.lineTo(l.target.x,l.target.y); ctx.stroke(); }
+    ctx.globalAlpha=1;
+    for(const p of pts){ const gi=gids.indexOf(p.graphId); const hue=(gi*360/gids.length)|0;
+      ctx.fillStyle=`hsl(${hue},45%,45%)`; ctx.beginPath(); ctx.arc(p.x,p.y,3.2,0,6.283); ctx.fill(); }
+    cAnim=requestAnimationFrame(frame);
+  }
+  cAnim && cancelAnimationFrame(cAnim);
+  frame();
+}
+
+/* ============================================================
+   5. APP SHELL — wiring
+   ============================================================ */
+let sampleModelInstance = sampleModel();
+
+function setView(v){
+  view=v;
+  document.querySelectorAll('#viewSeg button').forEach(b=>b.classList.toggle('on', b.dataset.view===v));
+  const isScale = v==='scale';
+  document.getElementById('scene').style.display = isScale?'none':null;
+  canvas.style.display = isScale?'block':'none';
+  if(isScale){ renderScale(); }
+  else { cAnim && cancelAnimationFrame(cAnim);
+    sampleModelInstance.nodes.forEach(()=>{}); // keep instance
+    // reset positions when switching between containment/bipartite so hubs lay out
+    sampleModelInstance.__pts=null;
+    buildAndRender(); sim.alpha(0.9).restart();
+    setStatus(v==='containment'?'containment view · sets drawn as region hulls':'bipartite view · hyper* expanded to hub nodes');
+  }
+}
+
+document.querySelectorAll('#viewSeg button').forEach(b=> b.onclick=()=>setView(b.dataset.view));
+document.getElementById('collapseAll').onclick=()=>{ sampleModelInstance.graphs.forEach(g=>g.collapsed=true); sim&&sim.alpha(0.4).restart(); setStatus('all graphs collapsed (stratified / level-of-detail)'); };
+document.getElementById('expandAll').onclick=()=>{ sampleModelInstance.graphs.forEach(g=>g.collapsed=false); sim&&sim.alpha(0.4).restart(); setStatus('all graphs expanded'); };
+document.getElementById('relayout').onclick=()=>{ if(view==='scale'){renderScale();} else { current.points.forEach(p=>{p.x=null;p.y=null;}); buildAndRender(); sim.alpha(1).restart(); } };
+
+/* legend */
+(function(){
+  const items=[
+    ['node','#1D9E75','circle','node'],
+    ['edge','#0F6E56','line','edge'],
+    ['hyperedge','#1D9E75','region','hyperedge'],
+    ['graph','#534AB7','box','graph (container)'],
+    ['metaedge','#534AB7','thick','metaedge'],
+    ['metahyper','#534AB7','region','metahyperedge'],
+    ['intergraph','#D85A30','line','intergraphedge'],
+    ['hyperinter','#D85A30','region','hyperintergraphedge'],
+  ];
+  document.getElementById('legend').innerHTML = items.map(([,c,shape,label])=>{
+    let sw;
+    if(shape==='line') sw=`<span class="swatch" style="height:0;border-top:2px solid ${c}"></span>`;
+    else if(shape==='thick') sw=`<span class="swatch" style="height:0;border-top:4px solid ${c}"></span>`;
+    else if(shape==='region') sw=`<span class="swatch" style="background:${c}22;border:1px dashed ${c}"></span>`;
+    else if(shape==='box') sw=`<span class="swatch" style="background:${c}22;border:1.5px dashed ${c}"></span>`;
+    else sw=`<span class="swatch" style="background:${c};border-radius:50%;width:16px;height:16px"></span>`;
+    return `<div class="legend-row">${sw}<span>${label}</span></div>`;
+  }).join('');
+})();
+
+window.addEventListener('resize',()=>{ W=stage.clientWidth; H=stage.clientHeight; if(view==='scale')renderScale(); });
+
+setView('containment');
+</script>
+</body>
+</html>

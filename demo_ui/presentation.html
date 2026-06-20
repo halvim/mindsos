@@ -341,7 +341,7 @@
   <header>
     <h1>Minds<span class="osb">OS</span> Demo</h1>
     <span class="tag">presentation</span>
-    <span class="tag">v0.24</span>
+    <span class="tag">v0.25</span>
     <span class="tag" id="honesty" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
     <div class="controls">
       <button id="audit"><svg class="hi" viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Audit ▾</button>
@@ -814,28 +814,18 @@ document.getElementById("l5_io_file").onchange=function(){const fin=this,f=fin.f
 // dont_know fixture (we will NOT hand-author a refusal — see ROBOT_DEMO_DM4_L5_EXPORT_COORDINATION.md).
 const ACC={mgr:'#b98cf0',a1:'#3a8be0',a2:'#d98040',conv:'#48c78e'};
 const BRLAB={mgr:'Orchestrator',a1:'Arm 1',a2:'Arm 2',conv:'Conveyor'};
-// REAL recorded sample — sanitized at the wire by DM-4 (opaque ref tokens n1…; plain labels). Verbatim
-// from fixtures/episode_audit_mgr.json (Manager, two real order lifecycles, both succeeded).
+// REAL recorded samples — sanitized at the wire (opaque ref tokens n1…; plain behavior labels). THREE
+// curated Manager episodes (v0.25), each pasted VERBATIM from a delivered fixture (newest-first):
+//   1. dead-end     — episode_audit_mgr_deadend.json   (dont_know; blame.rationale = Outcome line)
+//   2. recovery     — episode_audit_mgr_recovery.json  (succeeded + 1 replan + replan_summary headline)
+//   3. clean success— episode_audit_mgr.json ep[1]     (succeeded; sheet — distinct from the box reroute)
+// NOT fabricated. The build-time drift-guard asserts each baked episode deep-equals its fixture episode.
 const SAMPLE_AUDIT_SNAP={ snapshot_version:1, kind:"episode-audit", created_at:"2026-06-12T23:16:28Z", scenario:"open-order", run_id:"robot-demo:mgr",
   brains:{
     mgr:{device_type:"manager",episodes:[
-      {episode_iri:"n10", value:{task_input_ref:null,mm_root_ref:null,task_pattern_iri:"move to home",outcome_classification:"succeeded",crash_marker:null},
-       task_input:{order:{lines:[{item:"box",shelf:"a1"}]}},
-       reasoning:{hint_set:{iri:"n11",hints:{}},mapping_result:{iri:"n12",selected_task_pattern_iri:"move to home",mapping_confidence:1.0},
-         plan:{iri:"n13",root_milestone_ref:"n14"},milestones:[{iri:"n14",name:"root",status:"pending",replans_used:0}],
-         pipelines:[{iri:"n15",milestone_ref:"n14"}],pipeline_runs:[{iri:"n16",status:"completed",task_run_ref:"n17"}],
-         task_run:{iri:"n17",status:"completed",replan_history:[],attention_score:500},
-         steps:[{iri:"n18",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n14"}],
-         replans:[],blame:null,dont_know:null}, problem_trace:[]},
-      {episode_iri:"n1", value:{task_input_ref:null,mm_root_ref:null,task_pattern_iri:"move to home",outcome_classification:"succeeded",crash_marker:null},
-       task_input:{order:{lines:[{item:"sheet",shelf:"a1"}]}},
-       reasoning:{hint_set:{iri:"n2",hints:{}},mapping_result:{iri:"n3",selected_task_pattern_iri:"move to home",mapping_confidence:1.0},
-         plan:{iri:"n4",root_milestone_ref:"n5"},milestones:[{iri:"n5",name:"root",status:"pending",replans_used:0}],
-         pipelines:[{iri:"n6",milestone_ref:"n5"}],pipeline_runs:[{iri:"n7",status:"completed",task_run_ref:"n8"}],
-         task_run:{iri:"n8",status:"completed",replan_history:[],attention_score:500},
-         steps:[{iri:"n9",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n5"}],
-         replans:[],blame:null,dont_know:null}, problem_trace:[]}],
-      memories:[{memory_iri:"n19",value:{task_pattern_iri:"move to home"},episode_iris:["n1","n10"]}]},
+      {"episode_iri":"n1","value":{"task_input_ref":null,"mm_root_ref":null,"task_pattern_iri":"approach","outcome_classification":"dont_know","crash_marker":null,"consolidated_at":"2026-06-15T16:06:20.696729+00:00"},"task_input":{"order":{"lines":[{"item":"sheet","shelf":"a1","pos":[{"type":"shelf","pos":"center"}]}]}},"reasoning":{"hint_set":{"iri":"n2","hints":{}},"mapping_result":{"iri":"n3","selected_task_pattern_iri":"approach","mapping_confidence":1.0},"plan":{"iri":"n4","root_milestone_ref":"n5"},"milestones":[{"iri":"n5","name":"root","status":"pending","replans_used":0}],"pipelines":[{"iri":"n6","milestone_ref":"n5"}],"pipeline_runs":[{"iri":"n7","status":"completed","task_run_ref":"n8"}],"task_run":{"iri":"n8","status":"failed","replan_history":[],"attention_score":500},"steps":[{"iri":"n9","capacity_iri":"execute step","confidence":1.0,"milestone_ref":"n5"}],"replans":[],"blame":{"chain_level":"pipeline","blame_score":1.0,"rationale":"no available arm can handle this item"},"dont_know":{"reason":"no available arm can handle this item","cause":"embodiment_gate"},"replan_summary":null},"problem_trace":[]},
+      {"episode_iri":"n1","value":{"task_input_ref":null,"mm_root_ref":null,"task_pattern_iri":"approach","outcome_classification":"succeeded","crash_marker":null,"consolidated_at":"2026-06-15T16:06:20.750159+00:00"},"task_input":{"order":{"lines":[{"item":"box","shelf":"a1","pos":[{"type":"shelf","pos":"center"}]}]}},"reasoning":{"hint_set":{"iri":"n2","hints":{}},"mapping_result":{"iri":"n3","selected_task_pattern_iri":"approach","mapping_confidence":1.0},"plan":{"iri":"n4","root_milestone_ref":"n5"},"milestones":[{"iri":"n5","name":"root","status":"pending","replans_used":0}],"pipelines":[{"iri":"n6","milestone_ref":"n5"}],"pipeline_runs":[{"iri":"n7","status":"completed","task_run_ref":"n8"},{"iri":"n9","status":"completed","task_run_ref":"n8"}],"task_run":{"iri":"n8","status":"completed","replan_history":[],"attention_score":500},"steps":[{"iri":"n10","capacity_iri":"execute step","confidence":1.0,"milestone_ref":"n5"},{"iri":"n11","capacity_iri":"execute step","confidence":1.0,"milestone_ref":"n5"}],"replans":[{"iri":"n12","replan_level":"pipeline","verdict":{"decision":"replan","divergence":0.0},"invalidated_refs":["n7"],"spawned_refs":[]}],"blame":null,"dont_know":null,"replan_summary":"re-routed to the other arm after a detected fault"},"problem_trace":[]},
+      {"episode_iri":"n1","value":{"task_input_ref":null,"mm_root_ref":null,"task_pattern_iri":"move to home","outcome_classification":"succeeded","crash_marker":null,"consolidated_at":"2026-06-12T23:16:28.323685+00:00"},"task_input":{"order":{"lines":[{"item":"sheet","shelf":"a1"}]}},"reasoning":{"hint_set":{"iri":"n2","hints":{}},"mapping_result":{"iri":"n3","selected_task_pattern_iri":"move to home","mapping_confidence":1.0},"plan":{"iri":"n4","root_milestone_ref":"n5"},"milestones":[{"iri":"n5","name":"root","status":"pending","replans_used":0}],"pipelines":[{"iri":"n6","milestone_ref":"n5"}],"pipeline_runs":[{"iri":"n7","status":"completed","task_run_ref":"n8"}],"task_run":{"iri":"n8","status":"completed","replan_history":[],"attention_score":500},"steps":[{"iri":"n9","capacity_iri":"execute step","confidence":1.0,"milestone_ref":"n5"}],"replans":[],"blame":null,"dont_know":null},"problem_trace":[]}]},
     // a1 — REAL sample (DM-5), verbatim from fixtures/episode_audit_arm1_refusal.json: TWO episodes
     // (newest=refusal "place tube" dont_know; oldest=success "place box"). Suction arm succeeds on a
     // box, refuses a tube (wrong gripper). NOT fabricated; opaque ref tokens n1…n20. Kept byte-faithful

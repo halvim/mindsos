@@ -1,19 +1,19 @@
 # Robot Demo — WebSocket contract (backend ↔ v10 dashboard)
 
 **Audience: whoever builds the demo backend (the DM-* track in `ROBOT_DEMO_MINDSOS_PLAN.md`).**
-This is the exact wire protocol the live dashboard (`demo_ui/presentation_v10.html`) speaks.
+This is the exact wire protocol the live dashboard (`demo_ui/presentation.html`) speaks.
 Emit these frames and the UI lights up with zero front-end changes — going live is the
 `?live=<wsurl>` switch, nothing else. The brain/thinking payload is deliberately the same
 shape the mock already uses (`ROBOT_DEMO_PROTOTYPE_PLAN.md §4`), so the MindsOS drop-in is
 transparent.
 
-> Implemented by `demo_ui/datasource_v10.js` (the UI seam) and demonstrated by
+> Implemented by `demo_ui/datasource.js` (the UI seam) and demonstrated by
 > `demo_ui/mock_ws_server.js` (a runnable reference emitter). If this doc and the code ever
 > disagree, the code + its tests are authoritative — update this doc.
 
 **Which DM step needs this:**
 - **DM-4 (Seam B — BrainBus + `comms.*` + WS)** is the primary owner: it must emit these frames
-  and accept these commands. Read the whole doc + `datasource_v10.js` + `mock_ws_server.js`.
+  and accept these commands. Read the whole doc + `datasource.js` + `mock_ws_server.js`.
 - **DM-3 (Seam C — body adapter + live-motion)** only needs **§2.3 `pose`**: the body/item
   transforms its motion produces should be shaped so a `pose` frame is a thin wrapper over them
   (`items[name]=[x,y]` now; reserved `bodies[name]=[x,y,z,qw,qx,qy,qz]` for the 3D robot). Aligning
@@ -25,7 +25,7 @@ transparent.
 
 - **One WebSocket.** JSON text frames both directions. (Binary `Float32Array` pose packing is a
   later optimization if bandwidth bites — not in v1.)
-- The browser opens `presentation_v10.html?live=ws://<host>:<port>`. It connects immediately
+- The browser opens `presentation.html?live=ws://<host>:<port>`. It connects immediately
   and shows **"● connecting to live brains…"**, then **"● live — connected to brains"** on open,
   **"● disconnected"** / **"● live connection error"** otherwise.
 - Expected sequence: client connects → **server sends `hello`** → server streams
@@ -153,9 +153,9 @@ frame types and tell the UI side — they're the natural next producers:
 
 - **Plan ▸ Resolve** (relation narrowing 9→3→1). Future frame, e.g.
   `{type:"resolve", brain, clause, tube, stages:[{cap, cells:{i:"cand|win|out"}}], winner}`
-  (mirrors `demo_ui/resolve_v10.js`).
+  (mirrors `demo_ui/resolve.js`).
 - **Reasoning graph** (per-section subgraph). Future frame carrying nodes/edges with states
-  (mirrors `demo_ui/graph_v10.js`).
+  (mirrors `demo_ui/graph.js`).
 
 Until then the live UI shows "live … feed not yet emitted (backend producer pending)" in those
 spots — honest, not broken.
@@ -169,13 +169,13 @@ worked example of the frame shapes, and use it to exercise the UI before the rea
 
 ```
 cd demo_ui && npm i ws && node mock_ws_server.js 8765
-# then open:  presentation_v10.html?live=ws://localhost:8765
+# then open:  presentation.html?live=ws://localhost:8765
 # click ▶ Play (or Submit an order) → beats stream in as live frames
 ```
 
-Verified headlessly (no browser needed): `datasource_v10.js` unit tests (15/15), a jsdom live-mode
+Verified headlessly (no browser needed): `datasource.js` unit tests (15/15), a jsdom live-mode
 test driving a stub socket (15/15), and an end-to-end test against the spawned mock server over a
-real WebSocket (7/7). See `confirmation_docs/ROBOT_DEMO_UI_V10.md` v10.6.
+real WebSocket (7/7). See `confirmation_docs/ROBOT_DEMO_UI.md` v10.6.
 
 ---
 

@@ -119,9 +119,13 @@ function auditStages(ep) {
   stages.push({ num: 1, ttl: AUDIT_STAGES[0], tone: "ink",
     body: req || "—", note: req ? "" : "request not recorded this run" });
 
-  // 2 — Chose approach
+  // 2 — Chose approach. When the wire's task-pattern label is the generic v0 placeholder "approach"
+  // (DM-6 export), don't render the tautological "Approach: approach" — show a neutral line instead.
+  const approachBody = approach
+    ? (approach.toLowerCase() === "approach" ? "Approach selected" : ("Approach: " + approach))
+    : "no approach selected this run";
   stages.push({ num: 2, ttl: AUDIT_STAGES[1], tone: "ink",
-    body: approach ? ("Approach: " + approach) : "no approach selected this run",
+    body: approachBody,
     note: conf != null ? ("match confidence: " + conf + " — v0 (uncalibrated)") : "" });
 
   // 3 — Planned steps
@@ -158,9 +162,18 @@ function auditStages(ep) {
   }
   stages.push({ num: 4, ttl: AUDIT_STAGES[3], tone: execTone, body: execBody, note: execNote });
 
-  // 5 — Outcome
+  // 5 — Outcome. Precedence (v0.25): a non-null `replan_summary` is the sanitized episode-level headline
+  // from the manager's real reroute narration — render it + a "↻ N replan(s)" badge. `divergence` is a
+  // v0-uncalibrated float, NOT a band, so it is NOT rendered (coordination INC-8). Legacy fixtures lack
+  // the field (null) and fall through to the original ok / dont_know logic unchanged.
+  const replanSummary = r.replan_summary || null;
+  const replanCount = (r.replans || []).length;
   let outBody, outNote, outTone;
-  if (ok) {
+  if (replanSummary) {
+    outBody = cap1(replanSummary);
+    outTone = ok ? "ok" : (oc === "dont_know" ? "stop" : "warn");
+    outNote = replanCount ? ("↻ " + plural(replanCount, "replan", "replans")) : "";
+  } else if (ok) {
     outBody = "Succeeded — remembered this run"; outTone = "ok";
     outNote = "no blame attributed (succeeded)";
   } else if (oc === "dont_know") {

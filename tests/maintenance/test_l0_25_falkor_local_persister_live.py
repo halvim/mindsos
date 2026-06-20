@@ -9,12 +9,12 @@ Uses the ``tests/_shared`` ``falkor_client`` fixture (per-test fresh
 ``test_<uuid8>`` graph; skips without a sidecar) + ``assert_metagraphs_equal``
 (Phase 08 reconstruction-fidelity helper).
 
-Scope note (L0-25 split): the delete's metaedge/metahyperedge/XRef sweep is a
-best-effort first cut (``PHASE_44_DESIGN_LOG.md §7``). The orphan-scan test
-below covers the in-Local element kinds it saves (nodes, edges, hyperedge,
-metaedge, metahyperedge); the *full* sweep-completeness audit — XRef variants,
-tombstones, cross-metagraph satellites — is routed to WSD installation per
-the MAINTENANCE_CHAT_LOG M2 decision.
+Scope note (L0-25 — CLOSED at Phase 51): the sweep-completeness audit routed
+here by MAINTENANCE_CHAT M2 ran at Phase 51 (WSD-1) over every builder in
+``cypher/builders.py``; the sweep is complete for owner-scoped rows, the
+orphan-scan below is CONTRACT (xfail removed), and inbound XRefs are pinned
+as by-design survivors (ADR-0135 ``target_stale`` model). Audit record:
+``PHASE_51_DESIGN_LOG.md``.
 """
 
 from __future__ import annotations
@@ -162,21 +162,54 @@ def test_live_scoped_delete_spares_coresidents(falkor_client) -> None:  # noqa: 
     assert_metagraphs_equal(global_mg, loader.load(global_id))
 
 
-@pytest.mark.xfail(
-    strict=False,
-    reason="L0-25: the delete sweep is a best-effort first cut "
-    "(PHASE_44_DESIGN_LOG.md §7); completeness audit routed to WSD "
-    "installation. A pass here is evidence, not yet contract.",
-)
 def test_live_delete_leaves_no_orphans(falkor_client) -> None:  # noqa: F811
-    """After delete('alice'), no row still references alice's metagraph_id
-    or her contained graph_ids (sweep-completeness probe — xfail-tolerant)."""
+    """After delete('alice'), no alice-OWNED row survives (CONTRACT).
+
+    Phase 51 (WSD-1) closes the L0-25 sweep-completeness audit; the
+    xfail marker is removed — a pass is contract, not evidence. Audit
+    record: ``PHASE_51_DESIGN_LOG.md`` §audit. Per-kind grounding
+    (``cypher/builders.py``): nodes/edges/hyperedges die via the
+    ``IN_GRAPH`` sweep (edges with their endpoints); metaedges are
+    Graph→Graph rels and die with the graphs; metahyperedges,
+    intergraph hyperedges, and WALEntries are ``IN_METAGRAPH``
+    satellites of the anchor; tombstones are graph-scoped by
+    construction (P69 A); outbound XRefs are swept by
+    ``source_metagraph_id`` (and are ``XREF_OF`` satellites besides).
+
+    This test seeds every kind the builders can attach to a Local —
+    including a tombstone row and an outbound XRef, which
+    ``_build_local`` alone does not produce — then asserts zero
+    alice-owned leftovers across ALL ownership columns.
+    """
+    from mindsos_core.cypher.builders import build_create_tombstone, build_create_xref
+
     persister = _persister(falkor_client)
     alice = _build_local("alice")
     persister.save("alice", alice)
 
     mid = alice.metagraph_id
     gids = [g.graph_id for g in alice.graphs.values()]
+
+    # Seed the row kinds the round-trip metagraph doesn't carry:
+    # a tombstone (removal event in alice's first graph) ...
+    q, params = build_create_tombstone(
+        graph_id=gids[0], element_id="node:ghost", element_kind="node",
+        removed_by="alice",
+    )
+    falkor_client.run_query(q, params)
+    # ... and an OUTBOUND XRef (alice → elsewhere; swept with alice).
+    q, params = build_create_xref(
+        xref_id="xref:alice-out",
+        source_metagraph_id=mid,
+        source_id="node:src",
+        target_metagraph_id="mg:other",
+        target_role="episodic_memories",
+        target_id="node:tgt",
+        ref_type="REFERS_TO",
+        properties={},
+    )
+    falkor_client.run_query(q, params)
+
     assert persister.delete("alice") is True
 
     leftovers = falkor_client.run_query(
@@ -185,3 +218,44 @@ def test_live_delete_leaves_no_orphans(falkor_client) -> None:  # noqa: F811
         {"mid": mid, "gids": gids},
     ).first()["n"]
     assert leftovers == 0, f"{leftovers} orphaned rows after scoped delete"
+
+
+def test_live_delete_spares_inbound_xrefs_by_design(falkor_client) -> None:  # noqa: F811
+    """An INBOUND XRef (bob's row targeting alice) SURVIVES alice's delete.
+
+    Contract pin, not a gap (Phase 51 L0-25 audit): the row is owned by
+    bob's metagraph — sweeping it from alice's delete would mutate
+    another metagraph outside its mutex and bypass its WAL. Dangling
+    targets are the ADR-0135 ``target_stale`` model's job
+    (``build_set_xref_target_stale``); stamping at referent-delete time
+    is a ledgered enhancement (L0_FUTURE_WORK; trigger: first
+    cross-user XRef consumer), not part of the scoped-delete contract.
+    """
+    from mindsos_core.cypher.builders import build_create_xref
+
+    persister = _persister(falkor_client)
+    alice = _build_local("alice")
+    bob = _build_local("bob")
+    persister.save("alice", alice)
+    persister.save("bob", bob)
+
+    q, params = build_create_xref(
+        xref_id="xref:bob-in",
+        source_metagraph_id=bob.metagraph_id,
+        source_id="node:bobsrc",
+        target_metagraph_id=alice.metagraph_id,
+        target_role="episodic_memories",
+        target_id="node:alicetgt",
+        ref_type="REFERS_TO",
+        properties={},
+    )
+    falkor_client.run_query(q, params)
+
+    assert persister.delete("alice") is True
+
+    survivor = falkor_client.run_query(
+        "MATCH (x:XRef {id: 'xref:bob-in'}) "
+        "RETURN x.target_metagraph_id AS tmid",
+    ).first()
+    assert survivor is not None, "inbound XRef was wrongly swept"
+    assert survivor["tmid"] == alice.metagraph_id  # dangling by design

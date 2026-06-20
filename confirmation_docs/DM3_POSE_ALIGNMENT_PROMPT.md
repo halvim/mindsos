@@ -24,7 +24,7 @@ DM-4). If your natural output differs (different units, frame, body naming, or y
 3D transforms now), say so and propose the mapping — it's cheaper to reconcile the names/frame now
 than at DM-4.
 
-You do **not** need the rest of the UI files (`presentation_v10.html`, `datasource_v10.js`,
+You do **not** need the rest of the UI files (`presentation.html`, `datasource.js`,
 `mock_ws_server.js`) — those are DM-4's. The cognitive `state`/`message` frames and the
 browser→server commands are all DM-4 concerns; ignore them.
 

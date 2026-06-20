@@ -24,7 +24,7 @@ from __future__ import annotations
 import time
 import uuid
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
+from typing import TYPE_CHECKING, Any, List, Mapping, Optional
 
 if TYPE_CHECKING:
     from .context import CapacityContext
@@ -158,7 +158,7 @@ def invoke(
     declaration: _CapacityBase,
     inputs: Mapping[str, Any],
     *,
-    context: "Optional[Union[Mapping[str, Any], CapacityContext]]" = None,
+    context: "Optional[CapacityContext]" = None,
     task_id: Optional[str] = None,
     step_id: Optional[str] = None,
     problem_trace_sink: Optional[ProblemTraceSink] = None,

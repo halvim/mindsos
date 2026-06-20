@@ -401,7 +401,26 @@ file map; it does **not** restate code — read the files it points to.
     See `ROBOT_DEMO_UI_BACKEND_COORDINATION.md`.
   - **`ROBOT_DEMO_TIMELINE_STORY.md`** (full ~55-row timeline content) was drafted for approval but **rejected by
     the user — to be improved in a future chat**; the richer per-section row model (frame `sections:{…}` +
-    builder change) it implies is **deferred to v0.25**, not built.
+    builder change) it implies is **deferred to v0.26** (renumbered from v0.25, which the audit increment took), not built.
+
+- **v0.25 — two manager fixtures wired into the audit view + `replan_summary` Outcome headline (3c follow-on).**
+  The audit modal's Manager (`mgr`) episode list is now **3 curated, distinct episodes** (newest-first), each
+  pasted **verbatim** from a delivered fixture (no fabrication): **Blocked** — dead-end
+  (`episode_audit_mgr_deadend.json`, `dont_know`; Outcome = `blame.rationale` "no available arm can handle this
+  item"); **Succeeded** — recovery (`episode_audit_mgr_recovery.json`, `succeeded` + 1 replan); **Succeeded** —
+  clean (`episode_audit_mgr.json` ep[1], sheet — picked over ep[0]/box so the two Succeeded rows aren't visually
+  identical to the box reroute). `audit.js` Stage-5 gains a **`replan_summary` precedence**: a non-null
+  `replan_summary` becomes the Outcome **headline** (cap-cased) + a **`↻ N replan(s)` badge** (from
+  `replans.length`); legacy fixtures lack the field (`null`) and **fall through** to the original ok/`dont_know`
+  logic unchanged (null-safe). **INC-8 (wire ≠ contract):** the recovery `verdict` ships `divergence:0.0` (a raw
+  v0-uncalibrated float), **not** the contract's `divergence_band ∈ none|minor|major` — so **no band is rendered**
+  (decision/count only). Cosmetic Stage-2 fix: a generic `task_pattern_iri:"approach"` renders "Approach selected"
+  instead of the tautological "Approach: approach"; a real label ("move to home") is unchanged. **Drift-guard
+  upgraded to per-episode deep-equality** (the old whole-block byte guard couldn't survive the 3-file merge): each
+  baked `mgr` episode deep-equals its source fixture episode; `a1` untouched. Verified headlessly **43/43** (drift
+  guard ×4, list rows/distinctness, dead-end + recovery + clean stages, a1 null-safe regression, IP-guard over all
+  5 rendered DOMs — no `embodiment_gate`/`chain_level`/`blame_score`/`divergence`/`n\d+` ref tokens; behavior words
+  survive) + all inline scripts parse + `audit.js` `node --check`. No map change (audit modal map still deferred).
 
 ## 4. Design decisions settled this chat (the "why", not in code)
 
@@ -473,13 +492,18 @@ was then built (v0.21) and **removed on review** — dimming alone gave the focu
    `liveResolve` store/animation, mock server emits `resolve` on beat 3. 34/34.
 3e. ~~**Header beat strip + narrow accent scrollbar**~~ — **SHIPPED v0.22**; ~~wheel-scroll over brain
    cards~~ — **SHIPPED v0.23**; ~~demo-timeline modal + beat-1 fix~~ — **SHIPPED v0.24** (see §3).
-3f. **Demo-timeline content (v0.25, deferred).** `ROBOT_DEMO_TIMELINE_STORY.md` (full ~55-row story) was
-   drafted but **rejected by the user — improve in a future chat**. The richer per-section row model it needs
-   (per-brain frame `sections:{task,plan,pipeline}` + `resolve` + `caps`; builder emits one row per *changed*
-   section) is the v0.25 work, gated on an approved story.
-3g. **`state.cbeat` wiring (live, when it lands).** DM-6 will add the global storyline-beat field; on arrival,
-   point the beat-strip counter (`cbeat+1 / beats_total`) + timeline beat-grouping at it (one-line
-   `datasource.js` change). Mock-mode unaffected; the off-by-one fix already uses the advisory `state.beat`.
+3f. **Demo-timeline content (v0.26, deferred — renumbered from v0.25, now taken by the audit increment).**
+   `ROBOT_DEMO_TIMELINE_STORY.md` (full ~55-row story) was drafted but **rejected by the user — improve in a
+   future chat**. The richer per-section row model it needs (per-brain frame `sections:{task,plan,pipeline}` +
+   `resolve` + `caps`; builder emits one row per *changed* section) is the v0.26 work, gated on an approved
+   story. **Fold the `state.cbeat` live wiring (3g) into this increment** (timeline grouping consumes `cbeat`,
+   so `timeline.js` is touched once).
+3g. **`state.cbeat` wiring (live) — UNBLOCKED 2026-06-15 (DM-6 shipped it on the wire).** Final shape: field
+   **`cbeat`** on every `state` frame — 0-based global storyline beat, advances only on a true (titled) beat
+   transition, clamped `>= 0`; `beat` stays the advisory frame counter; `beats_total` (in `hello`) is the
+   denominator. On wiring: point the beat-strip counter (`cbeat+1 / beats_total`) + timeline beat-grouping at
+   `cbeat`. **NOT a one-liner** (INC-6): also make `mock_ws_server.js` emit `cbeat` so the headless e2e can
+   exercise it. Bundled into v0.26 (3f). Mock beat-strip already correct via the advisory `state.beat` off-by-one fix.
 4. **Graph content** — replace the placeholder subgraphs with real per-section graphs once
    wired to live data.
 5. *(Optional)* **Real-clip 3D cell** — on the execution beat, play the baked 46-clip set

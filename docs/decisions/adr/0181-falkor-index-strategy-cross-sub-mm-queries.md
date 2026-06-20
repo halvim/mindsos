@@ -17,7 +17,7 @@ related: [0160, 0176, 0121]
 
 ## Context
 
-Chat B routed **PB-HHH** ("Falkor query indexes for cross-sub-MM hyperedge queries"; `_workbench/L5_FUTURE_WORK.md` L5-NEW-13; PHASE_MAP §7 q2) to **Phase 49 R0** for decision. The question: which cross-sub-MM queries — Pipeline → member CapacityInstances/DataStateInstances via `IntergraphHyperEdge`, the `MEMORY_CONTAINS_EPISODE` Memory→Episode association, and Episode lookup by task-pattern — need FalkorDB indexes to stay performant at scale?
+Chat B routed **PB-HHH** ("Falkor query indexes for cross-sub-MM hyperedge queries"; `future_work/L5_FUTURE_WORK.md` L5-NEW-13; PHASE_MAP §7 q2) to **Phase 49 R0** for decision. The question: which cross-sub-MM queries — Pipeline → member CapacityInstances/DataStateInstances via `IntergraphHyperEdge`, the `MEMORY_CONTAINS_EPISODE` Memory→Episode association, and Episode lookup by task-pattern — need FalkorDB indexes to stay performant at scale?
 
 Phase-49 grounding (probe-first, `PHASE_49_DESIGN_LOG.md` §2 finding 4): **there is no indexed-query consumer in v1.** The shipped persistence path is whole-metagraph save/load — `FalkorDBLocalPersister.save`/`load` round-trip the entire Local Metagraph natively (ADR-0160); reads walk an in-memory `MetagraphView` (`get_node`/`get_edges`), not a Cypher query against Falkor. The future consumers of an *indexed* query are all deferred:
 
@@ -47,6 +47,6 @@ The strategy — the indexes the future query consumer SHOULD create, recorded s
 
 ## Consequences
 
-- **Routing.** `_workbench/L5_FUTURE_WORK.md` L5-NEW-13 owner updated: *strategy ratified (ADR-0181 @ Phase 49); physical creation → WSD retrieval (first query consumer).*
+- **Routing.** `future_work/L5_FUTURE_WORK.md` L5-NEW-13 owner updated: *strategy ratified (ADR-0181 @ Phase 49); physical creation → WSD retrieval (first query consumer).*
 - **No performance change at v1** — whole-graph save/load is unaffected; trivial-task scope has no query volume.
 - **Reversal trigger.** If a pre-WSD consumer materialises an indexed Cypher query against the cross-sub-MM topology, re-open here and ship `indexes.py` with that query's shape.

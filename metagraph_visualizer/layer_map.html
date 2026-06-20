@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MindsOS — layer map</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root{--ink:#2C2C2A;--muted:#5F5E5A;--line:#D3D1C7;--bg:#FBFAF6;--panel:#FFFFFF;}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100vh}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 16px;border-bottom:1px solid var(--line);background:var(--panel);z-index:3}
+  header h1{font-size:15px;font-weight:600;margin:0}
+  .spacer{flex:1}
+  .group{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:4px}
+  button{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer;color:var(--ink)}
+  button:hover{background:#F1EFE8}
+  button.on{background:#D85A30;color:#fff;border-color:#993C1D}
+  input#search{font:inherit;font-size:12.5px;padding:6px 9px;border:1px solid var(--line);border-radius:7px;width:170px}
+  #stage{flex:1;position:relative;min-width:0}
+  svg#scene{position:absolute;inset:0;width:100%;height:100%;cursor:grab}
+  svg#scene:active{cursor:grabbing}
+  text{paint-order:stroke;stroke:#FBFAF6;stroke-width:1.8px;stroke-linejoin:round}
+  .ns{vector-effect:non-scaling-stroke}
+  .hud{position:absolute;left:14px;bottom:14px;background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12px;z-index:3}
+  #mini{position:absolute;right:14px;bottom:14px;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:10px;padding:6px;z-index:3}
+  #compass{position:absolute;left:14px;top:14px;background:rgba(255,255,255,.93);border:1px solid var(--line);border-radius:10px;padding:8px;z-index:3;display:grid;grid-template-columns:repeat(3,42px);grid-template-rows:repeat(3,26px);gap:2px;font-size:10.5px;text-align:center}
+  #compass span{display:flex;align-items:center;justify-content:center;border-radius:5px;font-weight:600}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>MindsOS layer map</h1>
+    <span style="font-size:12px;color:var(--muted)">geography = dependency topology · semantic zoom</span>
+    <div class="spacer"></div>
+    <input id="search" placeholder="jump to graph…" list="glist"/>
+    <datalist id="glist"></datalist>
+    <div class="group"><button id="fit">Fit</button><button id="zin">+</button><button id="zout">−</button></div>
+    <div class="group"><button id="lock">🔒 Lock layer</button></div>
+  </header>
+  <div id="stage">
+    <svg id="scene"></svg>
+    <div id="compass"></div>
+    <div class="hud"><b id="tierName">T0 · whole map</b><div id="hudMeta" style="color:var(--muted);margin-top:3px">four regions · L5 at the centre</div></div>
+    <div id="mini"></div>
+  </div>
+</div>
+
+<script>
+const C={node:{fill:'#1D9E75',stroke:'#0F6E56',soft:'#E1F5EE'},graph:{fill:'#534AB7',stroke:'#3C3489',soft:'#EEEDFE'},cross:{fill:'#D85A30',stroke:'#993C1D',soft:'#FAECE7'}};
+class MetagraphModel{
+  constructor(){this.graphs=new Map();this.nodes=new Map();this.edges=[];this.hyperedges=[];this.metaedges=[];this.metahyperedges=[];this.intergraphEdges=[];}
+  addGraph(id,l,layer){this.graphs.set(id,{id,label:l,layer});return id;}
+  addNode(id,g,l){this.nodes.set(id,{id,label:l,graphId:g});return id;}
+  addEdge(a,b){this.edges.push({a,b});}
+  addHyperedge(m,l){this.hyperedges.push({members:m,label:l});}
+  addMetaedge(a,b){this.metaedges.push({a,b});}
+  addMetahyperedge(g,l){this.metahyperedges.push({graphs:g,label:l});}
+  addIntergraphEdge(a,b){this.intergraphEdges.push({a,b});}
+  graphOf(id){const n=this.nodes.get(id);return n&&n.graphId;}
+}
+const abbr=s=>s.slice(0,3);
+const REGIONS=[
+  {id:'L5',label:'L5 · Mental Model',accent:'#993556',pos:'center'},
+  {id:'L4',label:'L4 · Intelligence',accent:'#BA7517',pos:'top'},
+  {id:'L3',label:'L3 · Capacity',accent:'#0F6E56',pos:'left'},
+  {id:'L2',label:'L2 · Knowledge',accent:'#534AB7',pos:'right'},
+];
+const RID=new Map(REGIONS.map(r=>[r.id,r]));
+function genModel(){
+  const m=new MetagraphModel();
+  const spec={
+    L5:[['knowledge_MM',5],['capacity_MM',5],['intelligence_MM',5],['chain_artifacts',6]],
+    L4:[['orchestrator',6],['executor',5],['attention_queue',4],['dream_cycle',4]],
+    L3:[['perception',5],['comprehension',5],['derivation',6],['retrieval',5],['scoring',4],['learning',5],['decomposition',4]],
+    L2:[['ontology',9],['lexicon',11],['concepts',10],['episodic_memories',8],['task_patterns',7],['capacity_state',6],['alignment',8],['problem_trace',7],['promoted_pipelines',6]],
+  };
+  for(const layer of Object.keys(spec)) for(const [g,c] of spec[layer]){
+    m.addGraph(g,g,layer); let prev=null;
+    for(let i=0;i<c;i++){const id=g+'#'+i; m.addNode(id,g,abbr(g)+i);
+      if(prev&&Math.random()<0.8)m.addEdge(prev,id);
+      if(i>3&&Math.random()<0.3)m.addEdge(g+'#'+(i%3),id); prev=id;}
+    if(c>=5)m.addHyperedge([g+'#0',g+'#1',g+'#2'],'hyperedge');
+  }
+  const I=(a,ai,b,bi)=>m.addIntergraphEdge(a+'#'+ai,b+'#'+bi);
+  I('concepts',0,'lexicon',1);I('concepts',1,'lexicon',3);I('concepts',2,'lexicon',0);I('concepts',3,'ontology',1);I('alignment',0,'ontology',0);I('alignment',1,'lexicon',2);
+  const ME=(a,b)=>m.addMetaedge(a,b);
+  // L2 internal
+  ME('ontology','lexicon');ME('lexicon','concepts');ME('concepts','episodic_memories');
+  // L3 consumes L2 (left needs right)
+  ME('derivation','concepts');ME('retrieval','episodic_memories');ME('perception','lexicon');ME('comprehension','ontology');ME('scoring','concepts');
+  // L4 needs L3 (top needs left) + L4 internal
+  ME('orchestrator','derivation');ME('orchestrator','retrieval');ME('orchestrator','executor');ME('orchestrator','attention_queue');ME('dream_cycle','retrieval');
+  // L4 needs L2 directly (top needs right)
+  ME('orchestrator','concepts');ME('executor','episodic_memories');
+  // L4 writes L5 (top writes centre)
+  ME('orchestrator','intelligence_MM');ME('orchestrator','chain_artifacts');ME('executor','chain_artifacts');
+  // L5 references L2/L3 (centre reads sides)
+  ME('knowledge_MM','concepts');ME('capacity_MM','derivation');ME('intelligence_MM','orchestrator');
+  m.addMetahyperedge(['ontology','lexicon','concepts'],'knowledge core');
+  return m;
+}
+
+const GAP=44, TPAD=42, PADB=26, GAPH=130, GAPV=96, MAXR=92;
+function packRegion(gs){
+  const maxR=d3.max(gs,g=>g.R)||40, cell=2*maxR+GAP;
+  const cols=Math.max(1,Math.round(Math.sqrt(gs.length*1.4))), rows=Math.max(1,Math.ceil(gs.length/cols));
+  return {cols,rows,cell,W:cols*cell,H:rows*cell};
+}
+function place(gs,pk,ox,oy){gs.forEach((g,i)=>{g.x=ox+(i%pk.cols)*pk.cell+pk.cell/2;g.y=oy+Math.floor(i/pk.cols)*pk.cell+pk.cell/2;});}
+function precompute(m){
+  const all=[...m.graphs.values()].map(g=>({...g,count:[...m.nodes.values()].filter(n=>n.graphId===g.id).length}));
+  all.forEach(g=>g.R=Math.min(42+7*Math.sqrt(g.count),MAXR));
+  const byL={}; REGIONS.forEach(r=>byL[r.id]=[]); all.forEach(g=>byL[g.layer]&&byL[g.layer].push(g));
+  const pk={}; REGIONS.forEach(r=>pk[r.id]=packRegion(byL[r.id]));
+  // place: centre L5 at origin, L4 top, L3 left, L2 right
+  const o5x=-pk.L5.W/2, o5y=-pk.L5.H/2;            place(byL.L5,pk.L5,o5x,o5y);
+  const o4x=-pk.L4.W/2, o4y=o5y-GAPV-pk.L4.H;      place(byL.L4,pk.L4,o4x,o4y);
+  const o3x=o5x-GAPH-pk.L3.W, o3y=-pk.L3.H/2;      place(byL.L3,pk.L3,o3x,o3y);
+  const o2x=o5x+pk.L5.W+GAPH, o2y=-pk.L2.H/2;      place(byL.L2,pk.L2,o2x,o2y);
+  const boxOf=(ox,oy,p)=>({x:ox-PADB,y:oy-TPAD,w:p.W+2*PADB,h:p.H+TPAD+PADB});
+  RID.get('L5')._box=boxOf(o5x,o5y,pk.L5); RID.get('L4')._box=boxOf(o4x,o4y,pk.L4);
+  RID.get('L3')._box=boxOf(o3x,o3y,pk.L3); RID.get('L2')._box=boxOf(o2x,o2y,pk.L2);
+  // interiors
+  const nodeById=new Map(), gById=new Map(all.map(g=>[g.id,g]));
+  all.forEach(g=>{
+    const gn=[...m.nodes.values()].filter(n=>n.graphId===g.id).map(n=>({id:n.id,label:n.label}));
+    const idset=new Set(gn.map(n=>n.id));
+    const ge=m.edges.filter(e=>idset.has(e.a)&&idset.has(e.b)).map(e=>({source:e.a,target:e.b}));
+    const ls=d3.forceSimulation(gn).force('charge',d3.forceManyBody().strength(-90))
+      .force('link',d3.forceLink(ge).id(d=>d.id).distance(24)).force('collide',d3.forceCollide(11))
+      .force('center',d3.forceCenter(0,0)).force('radial',d3.forceRadial(g.R*0.4,0,0).strength(0.04)).stop();
+    for(let i=0;i<240;i++)ls.tick();
+    gn.forEach(n=>{const d=Math.hypot(n.x,n.y)||1,mx=g.R*0.74;if(d>mx){n.x*=mx/d;n.y*=mx/d;}
+      n.gx=g.x+n.x;n.gy=g.y+n.y;n.r=7;n.graphId=g.id;
+      n.attrs=[['type'],['value'],['ver']].map((a,ai)=>{const ang=ai/3*2*Math.PI-Math.PI/2;return{k:a[0],ax:n.gx+Math.cos(ang)*22,ay:n.gy+Math.sin(ang)*22};});
+      nodeById.set(n.id,n);});
+    g.nodes=gn; g.intra=ge.map(e=>[e.source.id,e.target.id]);
+    g.hyper=m.hyperedges.filter(h=>h.members.every(id=>idset.has(id)));
+  });
+  const bmap=new Map();
+  for(const e of m.intergraphEdges){const ga=m.graphOf(e.a),gb=m.graphOf(e.b);if(ga===gb)continue;const k=[ga,gb].sort().join('|');bmap.set(k,(bmap.get(k)||0)+1);}
+  const bundles=[...bmap.entries()].map(([k,w])=>{const[a,b]=k.split('|');return{a,b,w};});
+  const adj=new Map(all.map(g=>[g.id,new Set()]));
+  m.metaedges.forEach(e=>{adj.get(e.a)?.add(e.b);adj.get(e.b)?.add(e.a);});
+  bundles.forEach(b=>{adj.get(b.a)?.add(b.b);adj.get(b.b)?.add(b.a);});
+  const bx=REGIONS.map(r=>r._box);
+  const bounds={minX:d3.min(bx,b=>b.x),minY:d3.min(bx,b=>b.y),maxX:d3.max(bx,b=>b.x+b.w),maxY:d3.max(bx,b=>b.y+b.h)};
+  return {graphs:all,gById,nodeById,bundles,adj,bounds,
+    metaedges:m.metaedges.map(e=>({a:e.a,b:e.b})),inter:m.intergraphEdges.map(e=>({a:e.a,b:e.b})),
+    metahyper:m.metahyperedges.map(mh=>({graphs:mh.graphs}))};
+}
+
+const stage=document.getElementById('stage');
+const W0=()=>stage.clientWidth,H0=()=>stage.clientHeight;
+let W=W0(),H=H0();
+const svg=d3.select('#scene');
+const root=svg.append('g'),overlay=svg.append('g');
+const Lr={reg:root.append('g'),set:root.append('g'),meta:root.append('g'),bundle:root.append('g'),inter:root.append('g'),graph:root.append('g')};
+const world=precompute(genModel());
+const GRAPH_OPEN_PX=150,NODE_DETAIL_PX=46;
+let t=d3.zoomIdentity,locked=false;const lockState=new Map();
+
+const circle=(cx,cy,r)=>`M${cx-r},${cy}a${r},${r} 0 1,0 ${2*r},0a${r},${r} 0 1,0 ${-2*r},0Z`;
+function hullPath(pts,pad){
+  if(pts.length===1)return circle(pts[0][0],pts[0][1],pad);
+  if(pts.length===2){const mx=(pts[0][0]+pts[1][0])/2,my=(pts[0][1]+pts[1][1])/2;return circle(mx,my,pad+28);}
+  const h=d3.polygonHull(pts);if(!h)return circle(d3.mean(pts,p=>p[0]),d3.mean(pts,p=>p[1]),pad);
+  const cx=d3.mean(h,p=>p[0]),cy=d3.mean(h,p=>p[1]);
+  return 'M'+h.map(([x,y])=>{const dx=x-cx,dy=y-cy,l=Math.hypot(dx,dy)||1;return[x+dx/l*pad,y+dy/l*pad].join(',');}).join('L')+'Z';
+}
+
+function build(){
+  Lr.reg.selectAll('rect.regionbox').data(REGIONS).join('rect').attr('class','regionbox ns')
+    .attr('x',d=>d._box.x).attr('y',d=>d._box.y).attr('width',d=>d._box.w).attr('height',d=>d._box.h).attr('rx',14)
+    .attr('fill',d=>d.accent).attr('fill-opacity',.05).attr('stroke',d=>d.accent).attr('stroke-opacity',.55).attr('stroke-width',1.4);
+  Lr.reg.selectAll('text.rlabel').data(REGIONS).join('text').attr('class','rlabel')
+    .attr('x',d=>d._box.x+14).attr('y',d=>d._box.y+24).attr('fill',d=>d.accent).attr('font-weight',600).text(d=>d.label);
+  Lr.set.selectAll('path.mh').data(world.metahyper).join('path').attr('class','mh ns')
+    .attr('d',d=>hullPath(d.graphs.map(gid=>{const g=world.gById.get(gid);return[g.x,g.y];}),world.gById.get(d.graphs[0]).R+30))
+    .attr('fill',C.graph.soft).attr('fill-opacity',.4).attr('stroke',C.graph.fill).attr('stroke-dasharray','4 4').attr('stroke-width',1);
+  Lr.meta.selectAll('line.me').data(world.metaedges).join('line').attr('class','me ns')
+    .attr('x1',d=>world.gById.get(d.a).x).attr('y1',d=>world.gById.get(d.a).y).attr('x2',d=>world.gById.get(d.b).x).attr('y2',d=>world.gById.get(d.b).y)
+    .attr('stroke',C.graph.fill).attr('stroke-width',2).attr('stroke-opacity',.4);
+  Lr.bundle.selectAll('line.bn').data(world.bundles).join('line').attr('class','bn ns')
+    .attr('x1',d=>world.gById.get(d.a).x).attr('y1',d=>world.gById.get(d.a).y).attr('x2',d=>world.gById.get(d.b).x).attr('y2',d=>world.gById.get(d.b).y)
+    .attr('stroke',C.cross.fill).attr('stroke-width',d=>Math.min(1.5+d.w*1.3,8)).attr('stroke-opacity',.85);
+  Lr.inter.selectAll('line.ig').data(world.inter).join('line').attr('class','ig ns').attr('stroke',C.cross.fill).attr('stroke-width',1.6).attr('stroke-opacity',.9);
+  Lr.graph.selectAll('g.graph').data(world.graphs,d=>d.id).join('g').attr('class','graph').each(function(g){
+    const s=d3.select(this);
+    s.append('circle').attr('class','container ns').attr('cx',g.x).attr('cy',g.y).attr('r',g.R).attr('fill',C.graph.soft).attr('fill-opacity',.35).attr('stroke',C.graph.fill).attr('stroke-dasharray','6 4').attr('stroke-width',1.2);
+    s.append('g').attr('class','hyperG').selectAll('path').data(g.hyper).join('path').attr('class','ns')
+      .attr('d',h=>hullPath(h.members.map(id=>{const n=world.nodeById.get(id);return[n.gx,n.gy];}),18)).attr('fill',C.node.soft).attr('fill-opacity',.55).attr('stroke',C.node.fill).attr('stroke-dasharray','3 3').attr('stroke-width',1);
+    s.append('g').attr('class','intraG').selectAll('line').data(g.intra).join('line').attr('class','ns')
+      .attr('x1',d=>world.nodeById.get(d[0]).gx).attr('y1',d=>world.nodeById.get(d[0]).gy).attr('x2',d=>world.nodeById.get(d[1]).gx).attr('y2',d=>world.nodeById.get(d[1]).gy)
+      .attr('stroke',C.node.stroke).attr('stroke-width',1.3).attr('stroke-opacity',.8);
+    const nG=s.append('g').attr('class','nodesG').selectAll('g.node').data(g.nodes,d=>d.id).join('g').attr('class','node');
+    nG.append('circle').attr('cx',d=>d.gx).attr('cy',d=>d.gy).attr('r',d=>d.r).attr('class','ns').attr('fill',C.node.fill).attr('stroke',C.node.stroke).attr('stroke-width',1.4);
+    nG.append('text').attr('class','nlabel').attr('x',d=>d.gx+d.r+2).attr('y',d=>d.gy+3).attr('fill',C.node.stroke).text(d=>d.label);
+    nG.append('g').attr('class','attrs').each(function(d){const a=d3.select(this);d.attrs.forEach(at=>{
+      a.append('text').attr('class','alabel').attr('x',at.ax).attr('y',at.ay+3).attr('text-anchor','middle').attr('fill',C.node.stroke).text(at.k);});});
+    s.append('circle').attr('class','closed').attr('cx',g.x).attr('cy',g.y).attr('r',g.R).attr('fill',C.graph.soft).attr('stroke',C.graph.fill).attr('stroke-width',1.6).style('cursor','pointer').on('click',()=>flyTo(g));
+    s.append('text').attr('class','glabel').attr('x',g.x).attr('y',g.y-g.R-6).attr('text-anchor','middle').attr('fill',C.graph.stroke).text(g.label);
+    g._el=s;
+  });
+}
+
+function onScreen(x,y,r){const sx=x*t.k+t.x,sy=y*t.k+t.y,rr=r*t.k+30;return sx+rr>0&&sx-rr<W&&sy+rr>0&&sy-rr<H;}
+
+function redraw(){
+  root.attr('transform',t);
+  Lr.reg.selectAll('text.rlabel').attr('font-size',Math.min(26,15/t.k)+'px');
+  Lr.graph.selectAll('text.glabel').attr('font-size',(13/t.k)+'px');
+  Lr.graph.selectAll('text.nlabel').attr('font-size',(11/t.k)+'px');
+  Lr.graph.selectAll('text.alabel').attr('font-size',(8.5/t.k)+'px');
+  let anyOpen=false,anyDetail=false,openCount=0;const openGraphs=[];
+  world.graphs.forEach(g=>{
+    const vis=onScreen(g.x,g.y,g.R);
+    let open; if(locked)open=lockState.get(g.id)||false; else {open=vis&&(g.R*t.k>GRAPH_OPEN_PX);lockState.set(g.id,open);}
+    if(open){openCount++;openGraphs.push(g);anyOpen=true;}
+    const s=g._el;
+    s.style('display',vis?null:'none');
+    s.select('.closed').style('display',open?'none':null);
+    s.select('.container').style('display',open?null:'none');
+    s.select('.hyperG').style('display',open?null:'none');
+    s.select('.intraG').style('display',open?null:'none');
+    s.select('.nodesG').style('display',open?null:'none');
+    g._open=open;
+    if(open)s.selectAll('g.node').each(function(n){const det=!locked?(n.r*t.k>NODE_DETAIL_PX):(lockState.get('n:'+n.id)||false);if(!locked)lockState.set('n:'+n.id,det);if(det)anyDetail=true;d3.select(this).select('.attrs').style('display',det?null:'none');});
+  });
+  Lr.bundle.selectAll('line.bn').style('display',d=>{const ga=world.gById.get(d.a),gb=world.gById.get(d.b);return(!ga._open&&!gb._open&&(onScreen(ga.x,ga.y,ga.R)||onScreen(gb.x,gb.y,gb.R)))?null:'none';});
+  Lr.meta.selectAll('line.me').style('display',d=>{const ga=world.gById.get(d.a),gb=world.gById.get(d.b);return(onScreen(ga.x,ga.y,ga.R)||onScreen(gb.x,gb.y,gb.R))?null:'none';});
+  Lr.inter.selectAll('line.ig').each(function(d){const na=world.nodeById.get(d.a),nb=world.nodeById.get(d.b);const ga=world.gById.get(na.graphId),gb=world.gById.get(nb.graphId);
+    const show=!(!ga._open&&!gb._open)&&(onScreen(ga.x,ga.y,ga.R)||onScreen(gb.x,gb.y,gb.R));
+    const ax=ga._open?na.gx:ga.x,ay=ga._open?na.gy:ga.y,bx=gb._open?nb.gx:gb.x,by=gb._open?nb.gy:gb.y;
+    d3.select(this).style('display',show?null:'none').attr('x1',ax).attr('y1',ay).attr('x2',bx).attr('y2',by);});
+  drawOverlay(openGraphs);
+  let name='T0 · whole map',meta='four regions · L5 at the centre';
+  if(anyDetail){name='T2 · node detail';meta='node attributes · version';}
+  else if(anyOpen){name='T1 · graph interiors';meta=openCount+' graph'+(openCount>1?'s':'')+' open';}
+  document.getElementById('tierName').textContent=name;
+  document.getElementById('hudMeta').textContent=(locked?'🔒 locked · ':'')+meta;
+}
+
+function drawOverlay(openGraphs){
+  const targets=new Map();
+  openGraphs.forEach(g=>world.adj.get(g.id).forEach(hid=>{const h=world.gById.get(hid);if(!onScreen(h.x,h.y,h.R))targets.set(hid,h);}));
+  const cx=W/2,cy=H/2,inset=30;
+  const arr=overlay.selectAll('g.arrow').data([...targets.values()],d=>d.id).join(enter=>{const g=enter.append('g').attr('class','arrow');g.append('path');g.append('text');return g;});
+  arr.each(function(h){const sx=h.x*t.k+t.x,sy=h.y*t.k+t.y;let dx=sx-cx,dy=sy-cy;const L=Math.hypot(dx,dy)||1;dx/=L;dy/=L;
+    const tx=dx>0?(W-inset-cx)/dx:(inset-cx)/dx, ty=dy>0?(H-inset-cy)/dy:(inset-cy)/dy;
+    const tt=Math.min(Math.abs(tx),Math.abs(ty)),ex=cx+dx*tt,ey=cy+dy*tt,ang=Math.atan2(dy,dx)*180/Math.PI;
+    const ac=RID.get(h.layer).accent;
+    const s=d3.select(this).attr('transform',`translate(${ex},${ey})`);
+    s.select('path').attr('d','M0,0 L-13,-6 L-13,6 Z').attr('transform',`rotate(${ang})`).attr('fill',ac);
+    s.select('text').attr('x',-dx*16).attr('y',-dy*16+4).attr('text-anchor','middle').attr('font-size','10.5px').attr('fill',ac).text(h.label);});
+  drawMini();
+}
+
+const miniBox=document.getElementById('mini');
+let miniSvg,miniK,miniW=170,miniH;
+function initMini(){
+  const b=world.bounds,w=b.maxX-b.minX,h=b.maxY-b.minY;miniK=Math.min(miniW/w,130/h);miniH=h*miniK;
+  miniSvg=d3.select(miniBox).append('svg').attr('width',miniW).attr('height',miniH);
+  REGIONS.forEach(r=>miniSvg.append('rect').attr('x',(r._box.x-b.minX)*miniK).attr('y',(r._box.y-b.minY)*miniK).attr('width',r._box.w*miniK).attr('height',r._box.h*miniK).attr('rx',3).attr('fill',r.accent).attr('fill-opacity',.07).attr('stroke',r.accent).attr('stroke-opacity',.7).attr('stroke-width',.7));
+  world.graphs.forEach(g=>miniSvg.append('circle').attr('cx',(g.x-b.minX)*miniK).attr('cy',(g.y-b.minY)*miniK).attr('r',Math.max(1,g.R*miniK*0.5)).attr('fill',C.graph.fill).attr('fill-opacity',.5));
+  miniSvg.append('rect').attr('class','vp').attr('fill','none').attr('stroke','#D85A30').attr('stroke-width',1.5);
+}
+function drawMini(){
+  const b=world.bounds,wx0=(0-t.x)/t.k,wy0=(0-t.y)/t.k,wx1=(W-t.x)/t.k,wy1=(H-t.y)/t.k;
+  miniSvg.select('.vp').attr('x',(wx0-b.minX)*miniK).attr('y',(wy0-b.minY)*miniK).attr('width',(wx1-wx0)*miniK).attr('height',(wy1-wy0)*miniK);
+}
+
+const zoom=d3.zoom().scaleExtent([0.03,10]).on('zoom',ev=>{t=ev.transform;redraw();});
+svg.call(zoom);
+function fit(){const b=world.bounds,w=b.maxX-b.minX,h=b.maxY-b.minY,k=Math.min(W/w,H/h)*0.9;
+  svg.transition().duration(450).call(zoom.transform,d3.zoomIdentity.translate(W/2-(b.minX+b.maxX)/2*k,H/2-(b.minY+b.maxY)/2*k).scale(k));}
+function flyTo(g){const k=Math.min(8,(GRAPH_OPEN_PX+60)/g.R);svg.transition().duration(550).call(zoom.transform,d3.zoomIdentity.translate(W/2-g.x*k,H/2-g.y*k).scale(k));}
+document.getElementById('fit').onclick=fit;
+document.getElementById('zin').onclick=()=>svg.transition().duration(250).call(zoom.scaleBy,1.6);
+document.getElementById('zout').onclick=()=>svg.transition().duration(250).call(zoom.scaleBy,1/1.6);
+document.getElementById('lock').onclick=function(){locked=!locked;this.classList.toggle('on',locked);this.textContent=locked?'🔓 Unlock':'🔒 Lock layer';redraw();};
+const search=document.getElementById('search');
+document.getElementById('glist').innerHTML=world.graphs.map(g=>`<option value="${g.label}">`).join('');
+search.addEventListener('change',()=>{const g=world.graphs.find(x=>x.label.toLowerCase()===search.value.toLowerCase());if(g)flyTo(g);});
+// compass legend
+(function(){const cells={'1':null,'2':'L4','3':null,'4':'L3','5':'L5','6':'L2','7':null,'8':null,'9':null};
+  const el=document.getElementById('compass');
+  Object.keys(cells).forEach(k=>{const id=cells[k];const s=document.createElement('span');
+    if(id){const r=RID.get(id);s.textContent=id;s.style.background=r.accent;s.style.color='#fff';s.title=r.label;}else{s.style.background='transparent';}
+    el.appendChild(s);});})();
+window.addEventListener('resize',()=>{W=W0();H=H0();redraw();});
+
+build();initMini();fit();setTimeout(redraw,520);
+</script>
+</body>
+</html>

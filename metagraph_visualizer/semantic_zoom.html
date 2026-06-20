@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MindsOS Metagraph — semantic zoom</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+  :root{
+    --teal:#1D9E75; --teal-d:#0F6E56; --teal-l:#E1F5EE;
+    --purple:#534AB7; --purple-d:#3C3489; --purple-l:#EEEDFE;
+    --coral:#D85A30; --coral-d:#993C1D; --coral-l:#FAECE7;
+    --ink:#2C2C2A; --muted:#5F5E5A; --line:#D3D1C7; --bg:#FBFAF6; --panel:#FFFFFF;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100vh}
+  header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:9px 16px;border-bottom:1px solid var(--line);background:var(--panel);z-index:2}
+  header h1{font-size:15px;font-weight:600;margin:0}
+  .spacer{flex:1}
+  .group{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:4px}
+  button{font:inherit;font-size:12.5px;padding:6px 11px;border:1px solid var(--line);background:var(--panel);border-radius:7px;cursor:pointer;color:var(--ink)}
+  button:hover{background:#F1EFE8}
+  button.on{background:var(--coral);color:#fff;border-color:var(--coral-d)}
+  #stage{flex:1;position:relative;min-width:0}
+  svg#scene{position:absolute;inset:0;width:100%;height:100%;cursor:grab}
+  svg#scene:active{cursor:grabbing}
+  .hud{position:absolute;left:14px;bottom:14px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;min-width:210px;z-index:2}
+  .hud .tier{font-size:13px;font-weight:600;margin-bottom:6px}
+  .hud .bar{display:flex;gap:3px;margin:6px 0}
+  .hud .seg{flex:1;height:5px;border-radius:3px;background:#E6E4DB}
+  .hud .seg.act{background:var(--coral)}
+  .hud .meta{color:var(--muted);font-size:11px;line-height:1.5}
+  .legend{position:absolute;right:14px;top:14px;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:12px;z-index:2}
+  .legend .row{display:flex;align-items:center;gap:8px;margin:5px 0}
+  .sw{width:24px;height:14px;flex:0 0 auto;border-radius:3px}
+  text{paint-order:stroke;stroke:#FBFAF6;stroke-width:3px;stroke-linejoin:round}
+  .ns{vector-effect:non-scaling-stroke}
+  .locked svg#scene{outline:2px solid var(--coral);outline-offset:-2px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>MindsOS Metagraph</h1>
+    <span style="font-size:12px;color:var(--muted)">semantic zoom · focus + context</span>
+    <div class="spacer"></div>
+    <div class="group">
+      <button id="fit">Fit</button>
+      <button id="zin">+</button>
+      <button id="zout">−</button>
+    </div>
+    <div class="group">
+      <button id="lock">🔒 Lock layer</button>
+    </div>
+  </header>
+  <div id="stage">
+    <svg id="scene"></svg>
+    <div class="hud">
+      <div class="tier" id="tierName">T0 · metagraph</div>
+      <div class="bar"><div class="seg" data-t="0"></div><div class="seg" data-t="1"></div><div class="seg" data-t="2"></div></div>
+      <div class="meta" id="hudMeta">graphs as nodes · cross-graph edges bundled</div>
+    </div>
+    <div class="legend" id="legend"></div>
+  </div>
+</div>
+
+<script>
+/* ===== headless core ===== */
+const C = {
+  node:  {fill:'#1D9E75', stroke:'#0F6E56', soft:'#E1F5EE'},
+  graph: {fill:'#534AB7', stroke:'#3C3489', soft:'#EEEDFE'},
+  cross: {fill:'#D85A30', stroke:'#993C1D', soft:'#FAECE7'},
+};
+class MetagraphModel{
+  constructor(){this.graphs=new Map();this.nodes=new Map();this.edges=[];this.hyperedges=[];this.metaedges=[];this.metahyperedges=[];this.intergraphEdges=[];this.hyperIntergraphEdges=[];}
+  addGraph(id,l){this.graphs.set(id,{id,label:l});return id;}
+  addNode(id,g,l){this.nodes.set(id,{id,label:l,graphId:g});return id;}
+  addEdge(a,b){this.edges.push({a,b});}
+  addHyperedge(m,l){this.hyperedges.push({members:m,label:l});}
+  addMetaedge(a,b){this.metaedges.push({a,b});}
+  addMetahyperedge(g,l){this.metahyperedges.push({graphs:g,label:l});}
+  addIntergraphEdge(a,b){this.intergraphEdges.push({a,b});}
+  addHyperIntergraphEdge(m,l){this.hyperIntergraphEdges.push({members:m,label:l});}
+  graphOf(id){const n=this.nodes.get(id);return n&&n.graphId;}
+}
+const abbr=s=>s.slice(0,3);
+function genModel(){
+  const m=new MetagraphModel();
+  const defs=[['ontology',10],['lexicon',12],['concepts',11],['episodic_memories',9],['task_patterns',8],['capacity_state',7],['alignment',9],['problem_trace',8],['promoted_pipelines',7]];
+  defs.forEach(([g,c])=>{ m.addGraph(g,g); let prev=null;
+    for(let i=0;i<c;i++){const id=g+'#'+i; m.addNode(id,g,abbr(g)+i);
+      if(prev&&Math.random()<0.75)m.addEdge(prev,id);
+      if(i>3&&Math.random()<0.3)m.addEdge(g+'#'+(i%3),id); prev=id;}
+    if(c>=5) m.addHyperedge([g+'#0',g+'#1',g+'#2'],'hyperedge');
+  });
+  m.addMetaedge('ontology','lexicon');m.addMetaedge('lexicon','concepts');m.addMetaedge('concepts','episodic_memories');
+  m.addMetaedge('concepts','task_patterns');m.addMetaedge('task_patterns','capacity_state');m.addMetaedge('ontology','alignment');m.addMetaedge('alignment','lexicon');
+  m.addMetahyperedge(['ontology','lexicon','concepts'],'knowledge core');
+  const I=(a,ai,b,bi)=>m.addIntergraphEdge(a+'#'+ai,b+'#'+bi);
+  I('concepts',0,'lexicon',1);I('concepts',1,'lexicon',3);I('concepts',2,'lexicon',0);I('concepts',3,'ontology',1);
+  I('episodic_memories',0,'concepts',0);I('episodic_memories',1,'concepts',1);I('task_patterns',0,'concepts',2);
+  I('alignment',0,'ontology',0);I('alignment',1,'lexicon',2);I('alignment',2,'ontology',2);
+  m.addHyperIntergraphEdge(['ontology#0','lexicon#0','concepts#0'],'binding');
+  return m;
+}
+
+/* ===== precompute frozen nested layout ===== */
+function precompute(m){
+  const graphs=[...m.graphs.values()].map(g=>({...g, count:[...m.nodes.values()].filter(n=>n.graphId===g.id).length}));
+  graphs.forEach(g=>g.R=46+7*Math.sqrt(g.count));
+  const gById=new Map(graphs.map(g=>[g.id,g]));
+  // bundles
+  const bundle=new Map();
+  for(const e of m.intergraphEdges){const ga=m.graphOf(e.a),gb=m.graphOf(e.b); if(ga===gb)continue; const k=[ga,gb].sort().join('|'); bundle.set(k,(bundle.get(k)||0)+1);}
+  const bundles=[...bundle.entries()].map(([k,w])=>{const[a,b]=k.split('|');return{a,b,w};});
+  // T0 force
+  const links=[...m.metaedges.map(e=>({source:e.a,target:e.b})), ...bundles.map(b=>({source:b.a,target:b.b}))];
+  const gsim=d3.forceSimulation(graphs).force('charge',d3.forceManyBody().strength(-1400))
+    .force('link',d3.forceLink(links).id(d=>d.id).distance(d=>gById.get(d.source.id).R+gById.get(d.target.id).R+130))
+    .force('collide',d3.forceCollide(d=>d.R+55)).force('center',d3.forceCenter(0,0)).stop();
+  for(let i=0;i<420;i++)gsim.tick();
+  // interiors
+  const nodeById=new Map();
+  graphs.forEach(g=>{
+    const gn=[...m.nodes.values()].filter(n=>n.graphId===g.id).map(n=>({id:n.id,label:n.label}));
+    const idset=new Set(gn.map(n=>n.id));
+    const ge=m.edges.filter(e=>idset.has(e.a)&&idset.has(e.b)).map(e=>({source:e.a,target:e.b}));
+    const ls=d3.forceSimulation(gn).force('charge',d3.forceManyBody().strength(-95))
+      .force('link',d3.forceLink(ge).id(d=>d.id).distance(26))
+      .force('collide',d3.forceCollide(12)).force('center',d3.forceCenter(0,0))
+      .force('radial',d3.forceRadial(g.R*0.42,0,0).strength(0.04)).stop();
+    for(let i=0;i<260;i++)ls.tick();
+    gn.forEach(n=>{const d=Math.hypot(n.x,n.y)||1,mx=g.R*0.76; if(d>mx){n.x*=mx/d;n.y*=mx/d;}
+      n.gx=g.x+n.x; n.gy=g.y+n.y; n.r=7; n.graphId=g.id;
+      n.attrs=[['type','Entity'],['value','…'],['ver','v1']].map((a,ai)=>{const ang=ai/3*2*Math.PI-Math.PI/2;return{k:a[0],v:a[1],ax:n.gx+Math.cos(ang)*24,ay:n.gy+Math.sin(ang)*24};});
+      nodeById.set(n.id,n);});
+    g.nodes=gn; g.intra=ge.map(e=>[e.source.id,e.target.id]);
+    g.hyper=m.hyperedges.filter(h=>h.members.every(id=>idset.has(id)));
+  });
+  const inter=m.intergraphEdges.map(e=>({a:e.a,b:e.b}));
+  const metaedges=m.metaedges.map(e=>({a:e.a,b:e.b}));
+  const metahyper=m.metahyperedges.map(mh=>({graphs:mh.graphs,label:mh.label}));
+  return {graphs,gById,bundles,inter,metaedges,metahyper,nodeById,m};
+}
+
+/* ===== render ===== */
+const W0=()=>document.getElementById('stage').clientWidth, H0=()=>document.getElementById('stage').clientHeight;
+let W=W0(),H=H0();
+const svg=d3.select('#scene');
+const root=svg.append('g');
+const L={ region:root.append('g'), meta:root.append('g'), bundle:root.append('g'), inter:root.append('g'), graph:root.append('g') };
+const world=precompute(genModel());
+
+const GRAPH_OPEN_PX=150, NODE_DETAIL_PX=46;
+let t=d3.zoomIdentity, locked=false;
+const lockState=new Map();
+
+function hullPath(pts,pad){
+  if(pts.length===1)return circle(pts[0][0],pts[0][1],pad);
+  if(pts.length===2){const mx=(pts[0][0]+pts[1][0])/2,my=(pts[0][1]+pts[1][1])/2;return circle(mx,my,pad+30);}
+  const h=d3.polygonHull(pts); if(!h)return circle(d3.mean(pts,p=>p[0]),d3.mean(pts,p=>p[1]),pad);
+  const cx=d3.mean(h,p=>p[0]),cy=d3.mean(h,p=>p[1]);
+  return 'M'+h.map(([x,y])=>{const dx=x-cx,dy=y-cy,l=Math.hypot(dx,dy)||1;return [x+dx/l*pad,y+dy/l*pad].join(',');}).join('L')+'Z';
+}
+const circle=(cx,cy,r)=>`M${cx-r},${cy}a${r},${r} 0 1,0 ${2*r},0a${r},${r} 0 1,0 ${-2*r},0Z`;
+
+/* build DOM once */
+function build(){
+  // metahyper regions (graph-basis, fixed)
+  L.region.selectAll('path.mh').data(world.metahyper).join('path').attr('class','mh ns')
+    .attr('d',d=>hullPath(d.graphs.map(gid=>{const g=world.gById.get(gid);return[g.x,g.y];}),world.gById.get(d.graphs[0]).R+34))
+    .attr('fill',C.graph.soft).attr('fill-opacity',.4).attr('stroke',C.graph.fill).attr('stroke-dasharray','4 4').attr('stroke-width',1);
+  // metaedges
+  L.meta.selectAll('line.me').data(world.metaedges).join('line').attr('class','me ns')
+    .attr('x1',d=>world.gById.get(d.a).x).attr('y1',d=>world.gById.get(d.a).y)
+    .attr('x2',d=>world.gById.get(d.b).x).attr('y2',d=>world.gById.get(d.b).y)
+    .attr('stroke',C.graph.fill).attr('stroke-width',3).attr('stroke-opacity',.8);
+  // bundles
+  L.bundle.selectAll('line.bn').data(world.bundles).join('line').attr('class','bn ns')
+    .attr('x1',d=>world.gById.get(d.a).x).attr('y1',d=>world.gById.get(d.a).y)
+    .attr('x2',d=>world.gById.get(d.b).x).attr('y2',d=>world.gById.get(d.b).y)
+    .attr('stroke',C.cross.fill).attr('stroke-width',d=>Math.min(1.5+d.w*1.3,8)).attr('stroke-opacity',.85);
+  // intergraph individual
+  L.inter.selectAll('line.ig').data(world.inter).join('line').attr('class','ig ns')
+    .attr('stroke',C.cross.fill).attr('stroke-width',1.6).attr('stroke-opacity',.9);
+  // graphs
+  const gG=L.graph.selectAll('g.graph').data(world.graphs,d=>d.id).join('g').attr('class','graph');
+  gG.each(function(g){
+    const s=d3.select(this);
+    s.append('circle').attr('class','container ns').attr('cx',g.x).attr('cy',g.y).attr('r',g.R)
+      .attr('fill',C.graph.soft).attr('fill-opacity',.35).attr('stroke',C.graph.fill).attr('stroke-dasharray','6 4').attr('stroke-width',1.2);
+    // hyper regions
+    s.append('g').attr('class','hyperG').selectAll('path').data(g.hyper).join('path').attr('class','ns')
+      .attr('d',h=>hullPath(h.members.map(id=>{const n=world.nodeById.get(id);return[n.gx,n.gy];}),20))
+      .attr('fill',C.node.soft).attr('fill-opacity',.55).attr('stroke',C.node.fill).attr('stroke-dasharray','3 3').attr('stroke-width',1);
+    // intra edges
+    s.append('g').attr('class','intraG').selectAll('line').data(g.intra).join('line').attr('class','ns')
+      .attr('x1',d=>world.nodeById.get(d[0]).gx).attr('y1',d=>world.nodeById.get(d[0]).gy)
+      .attr('x2',d=>world.nodeById.get(d[1]).gx).attr('y2',d=>world.nodeById.get(d[1]).gy)
+      .attr('stroke',C.node.stroke).attr('stroke-width',1.3).attr('stroke-opacity',.8);
+    // nodes
+    const nG=s.append('g').attr('class','nodesG').selectAll('g.node').data(g.nodes,d=>d.id).join('g').attr('class','node')
+      .style('cursor','pointer').on('click',(e,d)=>inspect('node',d));
+    nG.append('circle').attr('cx',d=>d.gx).attr('cy',d=>d.gy).attr('r',d=>d.r).attr('class','ns')
+      .attr('fill',C.node.fill).attr('stroke',C.node.stroke).attr('stroke-width',1.4);
+    nG.append('text').attr('class','nlabel').attr('x',d=>d.gx+d.r+2).attr('y',d=>d.gy+3).attr('fill',C.node.stroke).text(d=>d.label);
+    // attribute chips (T2)
+    const aG=nG.append('g').attr('class','attrs');
+    aG.each(function(d){const a=d3.select(this);
+      d.attrs.forEach(at=>{const gg=a.append('g');
+        gg.append('rect').attr('x',at.ax-16).attr('y',at.ay-7).attr('width',32).attr('height',14).attr('rx',4).attr('class','ns')
+          .attr('fill','#fff').attr('stroke',C.node.stroke).attr('stroke-width',.8);
+        gg.append('text').attr('class','alabel').attr('x',at.ax).attr('y',at.ay+3).attr('text-anchor','middle').attr('fill',C.node.stroke).text(at.k);
+      });
+    });
+    // closed glyph
+    s.append('circle').attr('class','closed').attr('cx',g.x).attr('cy',g.y).attr('r',g.R)
+      .attr('fill',C.graph.soft).attr('stroke',C.graph.fill).attr('stroke-width',1.6).style('cursor','pointer')
+      .on('click',(e)=>inspect('graph',g));
+    // label
+    s.append('text').attr('class','glabel').attr('x',g.x).attr('y',g.y-g.R-6).attr('text-anchor','middle').attr('fill',C.graph.stroke).text(g.label);
+    g._el=s;
+  });
+}
+
+function onScreen(x,y,r){const sx=x*t.k+t.x,sy=y*t.k+t.y,rr=r*t.k+30;return sx+rr>0&&sx-rr<W&&sy+rr>0&&sy-rr<H;}
+
+function redraw(){
+  root.attr('transform',t);
+  // text counter-scale -> constant screen size
+  L.graph.selectAll('text.glabel').attr('font-size',(13/t.k)+'px');
+  L.graph.selectAll('text.nlabel').attr('font-size',(11/t.k)+'px');
+  L.graph.selectAll('text.alabel').attr('font-size',(8.5/t.k)+'px');
+
+  let anyOpen=false, anyDetail=false, openCount=0;
+  world.graphs.forEach(g=>{
+    const vis=onScreen(g.x,g.y,g.R);
+    let open;
+    if(locked){ open=lockState.get(g.id)||false; }
+    else { open = vis && (g.R*t.k > GRAPH_OPEN_PX); lockState.set(g.id,open); }
+    if(open)openCount++;
+    const s=g._el;
+    s.style('display', vis?null:'none');
+    s.select('.closed').style('display', open?'none':null);
+    s.select('.container').style('display', open?null:'none');
+    s.select('.hyperG').style('display', open?null:'none');
+    s.select('.intraG').style('display', open?null:'none');
+    s.select('.nodesG').style('display', open?null:'none');
+    s.select('.glabel').style('display', vis?null:'none');
+    g._open=open; if(open)anyOpen=true;
+    // node detail
+    if(open){
+      s.selectAll('g.node').each(function(n){
+        const det = !locked ? (n.r*t.k > NODE_DETAIL_PX) : (lockState.get('n:'+n.id)||false);
+        if(!locked) lockState.set('n:'+n.id,det);
+        if(det)anyDetail=true;
+        d3.select(this).select('.attrs').style('display',det?null:'none');
+      });
+    }
+  });
+  // bundles: only when BOTH graphs closed & at least one onscreen
+  L.bundle.selectAll('line.bn').style('display',d=>{
+    const ga=world.gById.get(d.a),gb=world.gById.get(d.b);
+    const bothClosed=!ga._open&&!gb._open;
+    const vis=onScreen(ga.x,ga.y,ga.R)||onScreen(gb.x,gb.y,gb.R);
+    return (bothClosed&&vis)?null:'none';
+  });
+  // metaedges hide if both graphs offscreen
+  L.meta.selectAll('line.me').style('display',d=>{
+    const ga=world.gById.get(d.a),gb=world.gById.get(d.b);
+    return (onScreen(ga.x,ga.y,ga.R)||onScreen(gb.x,gb.y,gb.R))?null:'none';
+  });
+  // intergraph individual: shown when NOT both closed; endpoint = node if its graph open else graph center
+  L.inter.selectAll('line.ig').each(function(d){
+    const na=world.nodeById.get(d.a), nb=world.nodeById.get(d.b);
+    const ga=world.gById.get(na.graphId), gb=world.gById.get(nb.graphId);
+    const bothClosed=!ga._open&&!gb._open;
+    const vis=onScreen(ga.x,ga.y,ga.R)||onScreen(gb.x,gb.y,gb.R);
+    const show=!bothClosed&&vis;
+    const ax=ga._open?na.gx:ga.x, ay=ga._open?na.gy:ga.y;
+    const bx=gb._open?nb.gx:gb.x, by=gb._open?nb.gy:gb.y;
+    d3.select(this).style('display',show?null:'none').attr('x1',ax).attr('y1',ay).attr('x2',bx).attr('y2',by);
+  });
+  updateHUD(anyOpen,anyDetail,openCount);
+}
+
+function updateHUD(anyOpen,anyDetail,openCount){
+  let tier=0,name='T0 · metagraph',meta='graphs as nodes · cross-graph edges bundled';
+  if(anyDetail){tier=2;name='T2 · node detail';meta='node attributes · version · incidence';}
+  else if(anyOpen){tier=1;name='T1 · graph interiors';meta=openCount+' graph'+(openCount>1?'s':'')+' open · intra + intergraph edges';}
+  document.getElementById('tierName').textContent=name;
+  document.getElementById('hudMeta').textContent=(locked?'🔒 locked · ':'')+meta;
+  document.querySelectorAll('.hud .seg').forEach(s=>s.classList.toggle('act',+s.dataset.t<=tier));
+}
+
+/* zoom */
+const zoom=d3.zoom().scaleExtent([0.04,10]).on('zoom',ev=>{t=ev.transform;redraw();});
+svg.call(zoom);
+function fit(){
+  const xs=world.graphs.flatMap(g=>[g.x-g.R,g.x+g.R]), ys=world.graphs.flatMap(g=>[g.y-g.R,g.y+g.R]);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const k=Math.min(W/(x1-x0),H/(y1-y0))*0.82;
+  const tx=W/2-(x0+x1)/2*k, ty=H/2-(y0+y1)/2*k;
+  svg.transition().duration(450).call(zoom.transform,d3.zoomIdentity.translate(tx,ty).scale(k));
+}
+
+/* controls */
+document.getElementById('fit').onclick=fit;
+document.getElementById('zin').onclick=()=>svg.transition().duration(250).call(zoom.scaleBy,1.6);
+document.getElementById('zout').onclick=()=>svg.transition().duration(250).call(zoom.scaleBy,1/1.6);
+document.getElementById('lock').onclick=function(){
+  locked=!locked; this.classList.toggle('on',locked);
+  this.textContent=locked?'🔓 Unlock':'🔒 Lock layer';
+  document.getElementById('app').classList.toggle('locked',locked);
+  redraw();
+};
+window.addEventListener('resize',()=>{W=W0();H=H0();redraw();});
+
+/* inspect (stub) */
+function inspect(kind,d){ document.getElementById('hudMeta').textContent=kind+': '+(d.label||d.id); }
+
+/* legend */
+document.getElementById('legend').innerHTML=[
+  ['graph (node / container)',C.graph.fill,'box'],
+  ['node',C.node.fill,'dot'],
+  ['metaedge',C.graph.fill,'thick'],
+  ['bundled cross-graph (weighted)',C.cross.fill,'thick'],
+  ['intergraph edge',C.cross.fill,'line'],
+  ['hyperedge / region',C.node.fill,'region'],
+].map(([l,c,s])=>{
+  let sw;
+  if(s==='line')sw=`<span class="sw" style="height:0;border-top:2px solid ${c}"></span>`;
+  else if(s==='thick')sw=`<span class="sw" style="height:0;border-top:4px solid ${c}"></span>`;
+  else if(s==='region')sw=`<span class="sw" style="background:${c}33;border:1px dashed ${c}"></span>`;
+  else if(s==='box')sw=`<span class="sw" style="background:${c}22;border:1.5px solid ${c}"></span>`;
+  else sw=`<span class="sw" style="background:${c};border-radius:50%;width:14px;height:14px"></span>`;
+  return `<div class="row">${sw}<span>${l}</span></div>`;
+}).join('');
+
+build();
+fit();
+setTimeout(redraw,500);
+</script>
+</body>
+</html>

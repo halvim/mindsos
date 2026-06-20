@@ -1,9 +1,9 @@
 # Robot Demo — DM-6 next-chat prompt (degradation + replan; the resilience beat)
 
-We are building the MindsOS Robot Demo. **DM-1…DM-5 are SHIPPED** (DM-1–DM-4 + the DM-4 L5 increment are
-Linux-gate green + browser-confirmed; **DM-5 — ◆ assembled `pick`/`place_at_cell`/`conv.stage_at` + the
-embodiment gate + real allocation — is sandbox-validated, Linux gate pending**, branch `robot-demo-animation`).
-This chat builds **DM-6: the degradation + replan beat (scenario §3 beat 5)** — a partial fault is injected
+We are building the MindsOS Robot Demo. **DM-1…DM-5 are SHIPPED and Linux-gate green** on branch
+`robot-demo-animation` (DM-5 = ◆ assembled `pick`/`place_at_cell`/`conv.stage_at` + the embodiment gate +
+real allocation; gate green 2026-06-13, commits `98e7c5e`/`6ba794f`; the ◆ cartesian motion passed the gate
+**first try**). This chat builds **DM-6: the degradation + replan beat (scenario §3 beat 5)** — a partial fault is injected
 (a frozen joint), the self-diagnosis capability writes a `capacity-gap`, the Manager **sees the gap and
 replans** (reroutes), and the chain carries a **real `ReplanRecord`/`BlameVerdict`** (the first real replan
 content — v0 happy-path leaves them empty). **Do not re-litigate settled design.**
@@ -11,7 +11,8 @@ content — v0 happy-path leaves them empty). **Do not re-litigate settled desig
 ## Read first, in this order (pointer-style — this prompt does NOT repeat the files)
 
 1. `CLAUDE.md` (root) + `HANDOFF.md` (root).
-2. `confirmation_docs/ROBOT_DEMO_STATUS.md` — **start here.** The 2026-06-12 DM-5 update = current end-state.
+2. `confirmation_docs/ROBOT_DEMO_STATUS.md` — **start here.** The 2026-06-13 DM-5 "SHIPPED" update = current
+   end-state (gate green; ◆ motion first-try pass).
 3. `confirmation_docs/ROBOT_DEMO_MINDSOS_DESIGN_LOG.md` §15–§24 — the DM-3/4/5 builds + grounded findings to
    **REUSE, not re-derive.** §23–§24 are DM-5: the override seam (`predicate.sufficient`/`phase6.attribute_blame`
    per-CL, single-flight stash), the dont-know path (`sufficient=False` + `should_replan="continue"` →
@@ -19,10 +20,13 @@ content — v0 happy-path leaves them empty). **Do not re-litigate settled desig
 4. `confirmation_docs/ROBOT_DEMO_SCENARIO.md` §3 beat 5 + §6 L-3 (fault-injection: hybrid visible freeze +
    self-diagnosis; **partial** degradation so a recovery path exists) and §5.2 (degradation disables an
    affordance → the gap reappears → replan).
-5. `confirmation_docs/ROBOT_DEMO_DM4_L5_EXPORT_COORDINATION.md` (tail) — the DM-5 handoff: the **refusal
-   fixture is delivered**; "real milestone names" is **re-stated as depth+labels** (don't re-promise names);
-   the `resolve` frame is a live producer now. DM-6 owes the UI the **real `ReplanRecord`/`BlameVerdict`**
-   content in the Mode-A export (the audit view's replan/blame fields go non-null on a real replan).
+5. `confirmation_docs/ROBOT_DEMO_DM4_L5_EXPORT_COORDINATION.md` (tail) — the DM-5↔UI handoff, all closed:
+   the **a1 fixture now carries TWO real episodes** (succeeded + refusal) in
+   `confirmation_docs/fixtures/episode_audit_arm1_refusal.json`; "real milestone names" is **re-stated as
+   depth+labels** (don't re-promise names — `plan_construction` mints them, not overridable); the `resolve`
+   frame is a live producer; the arm `task_input` is a dispatch, not a user order. DM-6 owes the UI the **real
+   `ReplanRecord`/`BlameVerdict`** content in the Mode-A export (the audit view's replan/blame fields go
+   non-null on a real replan).
 6. Shipped code you extend: `robot_demo/backend/{sim_engine,capacities,gate,wiring,serializer,brain}.py`.
    The fault machinery already exists from DM-3: `SimEngine.freeze_joint`/`clear_freezes`/`probe_actuators`
    + `capacities.make_diagnose_impl` (writes a `capacity_gap` `CapacitySnapshot` to the brain's Local via the
@@ -48,11 +52,20 @@ content — v0 happy-path leaves them empty). **Do not re-litigate settled desig
 
 ## Carry-forward from DM-5 (read §24 — don't re-derive)
 
-* **Linux gate of DM-5 is the immediate prerequisite** — DM-5's ◆ cartesian motion stand-offs are first-cut
-   and **calibrate at the gate** (DM-3 §18 pattern: the gate surfaces the real offsets / checklist tuning).
-   Run `bash robot_demo/deploy/run_linux_tests.sh` (now includes step 7c, `dm5_check`) and iterate the
-   `sim_engine.item_grasp_target`/`cell_target` offsets + the pick-place `motion_checklist` invariant before
-   building DM-6 motion on top.
+* **DM-5 motion is gate-green but the stand-offs are coarse.** `sim_engine.item_grasp_target`/`cell_target`
+   are first-cut offsets that held first try (the proximity-gated attach + warm-started IK absorbed them) —
+   no calibration debt blocks you, but they're approximate. If DM-6's reroute exercises new cells/items and a
+   `motion_checklist` edge shows, that's the place to tune (DM-3 §18 pattern); don't assume they're tight.
+* **OPEN DESIGN QUESTION raised this chat (NOT decided) — "learned movements in L2, chosen by L4."** The
+   user wants the authored clips (`web/anim_*.json`) to become *learned, L2-stored, L4-selectable movements*.
+   Grounded reframe (discussed, not written down yet): **L2 is not a trajectory store** — put the *capability*
+   (Pipeline in `promoted-pipelines`) + a *cache key/reference* (in `learned-parameters`) in L2, keep the
+   trajectory blob in a motion store (the DM-3 `TrajectoryCache` / clips). And it tensions the "learns
+   everything, starts ignorant" thesis. **Two framings to pick:** (a) a pre-baked library shipped with the
+   fleet (knows-some), or (b) the clips as **cache pre-fill for capabilities learned on stage** (the DM-8
+   cache-fill PB-OO already anticipates; preserves the thesis — recommended). **Where to record once picked:**
+   a new `Fn` in `confirmation_docs/DEMO_DERIVED_FEATURES_NEXT_CHAT_PROMPT.md` + one line in the Pipeline
+   artifact contract (`ROBOT_DEMO_SCENARIO.md §5.1`). Surface this to the user early — it may reshape DM-6/DM-8.
 * **Deferred (NOT DM-6 unless you choose):** the cinematic `combo_*` clip-replay (DM-5 PB-1a — needs a
    `SimEngine` event-bearing trajectory channel + cache pre-fill); the teach/peer-transfer flow + the
    carrier-box cooperation Plan (DM-7); Mode-B reload (post-DM-6).

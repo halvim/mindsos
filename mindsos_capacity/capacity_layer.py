@@ -149,12 +149,13 @@ class CapacityLayer:
                 constructing a fresh Global. Ignored when
                 ``global_metagraph`` is supplied.
             kl: Phase 34 (R0 PB-5 + R1 PB-C) — :class:`KnowledgeLayer`
-                reference for write-capacity bodies. When provided,
-                :meth:`invoke` injects the KL
-                into capacity context under key ``"kl"``. ``None``
+                reference for capacity bodies. When provided,
+                :meth:`invoke` binds the KL onto the typed
+                :class:`~mindsos_capacity.context.CapacityContext`
+                (``context.kl``; ADR-0175 §amendment-3). ``None``
                 (legacy default) — write-capacity invocations will
-                raise :class:`RuntimeError` from the body when they
-                try ``context["kl"]``. Read capacities ignore.
+                raise from the body when they need the write
+                capability. Read capacities ignore.
         """
         if global_metagraph is None:
             kwargs: Dict[str, Any] = {"strict": strict}
@@ -514,7 +515,6 @@ class CapacityLayer:
         inputs: Mapping[str, Any],
         *,
         session: SessionArg = None,
-        context: Optional[Mapping[str, Any]] = None,
         task_id: Optional[str] = None,
         step_id: Optional[str] = None,
     ) -> InvocationResult:
@@ -528,18 +528,25 @@ class CapacityLayer:
         supplied) and ``InvocationResult(success=False, error=exc)``
         is returned. ADR-0072 §amendment-1 fixes the field rename.
 
-        When a session is supplied, the session's ``user_id`` is
-        injected into ``context['session_user_id']`` and
-        ``context['session_id']`` for provenance-stamping capacities.
-        Caller-set keys are never overwritten.
+        Every body receives a typed, frozen
+        :class:`~mindsos_capacity.context.CapacityContext` (ADR-0159;
+        read-path migration per ADR-0175 §amendment-3). Identity fields
+        come from ``session`` when supplied (placeholder defaults
+        otherwise); ``kl``/``cl`` handles are bound when available.
+        Write-bodies (zero declared outputs) additionally carry the
+        pre-authorized, session-bound ``writeable`` capability
+        (ADR-0180 — the gate travels with the capability, built here by
+        the session-holder for the CLI / direct-invoke path; the L4
+        task path builds it in ``mindsos_intelligence.dispatch``).
+        ``learned_parameters_snapshot`` is empty on this path — family
+        static defaults apply; L4 dispatch is the populated-snapshot
+        path (ADR-0175 §amendment-3 clause 5).
 
         Args:
             capacity_iri: The IRI to resolve.
             inputs: Mapping of input-DataState IRI → concrete value.
             session: Optional bearer of capability + user identity.
                 ``None`` resolves against Global only (no Local lookup).
-            context: Optional auxiliary mapping passed through to the
-                callable.
             task_id: Optional L4 task identifier — required for problem-
                 trace emission. ``None`` silently skips trace on
                 exception (the envelope is still returned).
@@ -560,54 +567,22 @@ class CapacityLayer:
         declaration = self._resolve_declaration(
             capacity_iri, user_id=target_uid
         )
-        # ADR-0180 (Phase 48): write-bodies (zero declared outputs) receive a
-        # typed CapacityContext carrying the pre-authorized, session-bound
-        # ``writeable`` capability (the gate travels with the capability,
-        # built here by the session-holder for the CLI / direct-invoke path —
-        # the L4 task path builds it in ``mindsos_intelligence.dispatch``).
-        # Read-bodies keep the legacy dict context (A1 scope boundary — no
-        # read-corpus churn; the transitional union annotation is retained).
-        if not declaration.outputs:
-            from .context import CapacityContext, make_writeable
+        from .context import CapacityContext, make_writeable
 
-            write_ctx = CapacityContext(
-                session_id=getattr(session, "session_id", "session"),
-                user_id=getattr(session, "user_id", "user"),
-                learned_parameters_snapshot={},
-                kl=self._kl,
-                cl=self,
-                writeable=make_writeable(self._kl, session),
-            )
-            return _runtime_invoke(
-                declaration,
-                inputs,
-                context=write_ctx,
-                task_id=task_id,
-                step_id=step_id,
-                problem_trace_sink=self.problem_trace,
-            )
-        ctx: Optional[Dict[str, Any]] = None
-        if session is not None:
-            ctx = dict(context) if context else {}
-            ctx.setdefault("session_user_id", session.user_id)
-            ctx.setdefault("session_id", session.session_id)
-            # Phase 33 (ADR-0146 §amendment-1 clause 2): inject Session
-            # object so write-capacity bodies can call ``session.has(cap)``
-            # for capability gating. Read capacities ignore the key;
-            # backward-compatible with Phase 30 + 31 ctx assertions
-            # (which use ``in`` / ``not in`` membership, not exclusivity).
-            ctx.setdefault("session", session)
-        else:
-            ctx = dict(context) if context else None
-        # Phase 34 (R0 PB-5 + R5 PB-B): conditional KL injection. Only
-        # write capacities consume ``context["kl"]``; reads ignore. When
-        # ``self._kl is None`` (legacy CapacityLayer construction), the
-        # key is NOT injected — capacity bodies see ``None`` from
-        # ``context.get("kl")`` and raise ``RuntimeError`` per R3 PB-F.
-        if self._kl is not None:
-            if ctx is None:
-                ctx = {}
-            ctx.setdefault("kl", self._kl)
+        ctx = CapacityContext(
+            session_id=getattr(session, "session_id", "session"),
+            user_id=getattr(session, "user_id", "user"),
+            learned_parameters_snapshot={},
+            kl=self._kl,
+            cl=self,
+            # ADR-0180: the write capability ships to write-bodies only;
+            # ``None`` for read-bodies per the CapacityContext contract.
+            writeable=(
+                make_writeable(self._kl, session)
+                if not declaration.outputs
+                else None
+            ),
+        )
         return _runtime_invoke(
             declaration,
             inputs,

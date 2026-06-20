@@ -20,9 +20,9 @@ Visual reference: `arc_lexicon_map.svg`.
 ## Grid atoms
 
 - **grid** — the full H×W array; **every** cell has a color (including background). Row-major, origin top-left.
-- **cell** — one unit: `(position, color)`.
-- **position / coord** — `(row, col)`, zero-indexed from top-left.
-- **color** — one of 10 fixed symbols `0–9`.
+- **cell** — one unit, **composed of** a coordinate + a color (`compositional:position`, `compositional:color`); built by `recognize_cell`.
+- **coordinate** (canonical; aka position / coord) — `(row, col)`, zero-indexed from top-left. "Position" names the `attribute:position` role whose value is a coordinate.
+- **color** — one of 10 fixed symbols `0–9`. (L3 alias: `ColorSymbol`.)
 - **background** — the most-frequent color; **derived, not hardcoded** to `0`.
 - **palette** — the set of colors present in a grid.
 - **figure** — all non-background cells (what the rule usually acts on).
@@ -37,8 +37,9 @@ Visual reference: `arc_lexicon_map.svg`.
 
 ## Regions & relations
 
-- **region** — any set of cells.
+- **region** (concrete root, located axis) — any absolute cell-set; supertype of grid, object, point, group, bbox, pattern, lattice, selection. The *normalized* counterpart is a **point-set** (a region `exemplifies` one via `normalize`).
 - **bbox** — the tightest rectangle enclosing a region.
+- **area** — a region's cell count (scalar). (Spike alias: `size`.)
 - **vector** — a displacement `(Δr, Δc)`; keeps direction.
 - **distance** — a scalar under a named metric: Manhattan / Chebyshev / Euclidean. Throws direction away.
 - relations to name as needed: **alignment**, **containment**, **overlap/touching**, **symmetry** (mirror axis / rotation order).

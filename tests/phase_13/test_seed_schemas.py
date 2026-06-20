@@ -26,6 +26,7 @@ from mindsos_knowledge.schemas.concepts import (
 )
 from mindsos_knowledge.schemas.lexicon import (
     LEXICON_EDGE_TYPES,
+    LEXICON_EMPIRICAL_EDGE_TYPES,
     LEXICON_NODE_TYPES,
 )
 from mindsos_knowledge.schemas.ontology import (
@@ -64,9 +65,12 @@ def test_lexicon_schema_returns_a_schema() -> None:
 
 
 def test_lexicon_nodes_and_edges_match_module_constants() -> None:
+    # Phase 51 (ADR-0184): edge vocabulary = structural ∪ empirical strata.
     s = build_lexicon_schema()
     assert set(s.node_types) == set(LEXICON_NODE_TYPES)
-    assert set(s.edge_types) == set(LEXICON_EDGE_TYPES)
+    assert set(s.edge_types) == (
+        set(LEXICON_EDGE_TYPES) | set(LEXICON_EMPIRICAL_EDGE_TYPES)
+    )
     assert s.hyperedge_types == {}
 
 

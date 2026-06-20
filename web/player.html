@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MindsOS Robot Demo — Clip Player</title>
+<style>
+  :root{
+    --bg:#0d0f14; --panel:#151821; --panel2:#1b1f2a; --ink:#e8ecf3; --muted:#8a93a6;
+    --line:#2a3040; --accent:#5ec8d8; --a1:#5a96e6; --a2:#e6965a; --flag:#e2c24a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font:14px/1.4 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  #app{display:flex;flex-direction:column;height:100%}
+  header{display:flex;align-items:center;gap:14px;padding:10px 14px;
+    border-bottom:1px solid var(--line);background:var(--panel)}
+  header .brand{font-weight:600;letter-spacing:.2px}
+  header .brand small{color:var(--muted);font-weight:400;margin-left:6px}
+  select{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:7px;padding:6px 9px;font:inherit;max-width:340px}
+  #title{color:var(--muted);margin-left:auto;text-align:right;max-width:46%}
+  #stage{position:relative;flex:1;min-height:0}
+  canvas{display:block;width:100%;height:100%}
+  #loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);background:var(--bg);font-size:13px}
+  #hud{position:absolute;left:12px;top:10px;font-size:12px;color:var(--muted);
+    background:rgba(13,15,20,.6);border:1px solid var(--line);border-radius:7px;padding:5px 9px}
+  #hud b{color:var(--ink);font-weight:600}
+  footer{border-top:1px solid var(--line);background:var(--panel);padding:10px 14px}
+  .transport{display:flex;align-items:center;gap:12px}
+  button{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.primary{min-width:74px}
+  .seek{flex:1;display:flex;flex-direction:column;gap:5px}
+  .track{position:relative;height:20px}
+  input[type=range]{width:100%;margin:0;accent-color:var(--accent)}
+  .events{position:relative;height:16px}
+  .ev{position:absolute;transform:translateX(-50%);top:0;font-size:10px;color:var(--muted);
+    white-space:nowrap;cursor:pointer}
+  .ev::before{content:"";display:block;width:1px;height:6px;background:var(--accent);margin:0 auto 1px}
+  .ev:hover{color:var(--ink)}
+  .meta{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px}
+  .speed{display:flex;gap:4px}
+  .speed button{padding:4px 8px}
+  .speed button.on{border-color:var(--accent);color:var(--accent)}
+  .flagpill{color:var(--flag);border:1px solid var(--flag);border-radius:10px;
+    padding:1px 8px;font-size:11px;display:none}
+  .flagpill.show{display:inline-block}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">MindsOS Robot Demo <small>clip player</small></div>
+    <select id="clipSel" title="Choose a clip"></select>
+    <span id="flag" class="flagpill">float-FLAG</span>
+    <div id="title">—</div>
+  </header>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="hud">frame <b id="fnum">0</b>/<span id="ftot">0</span> · <b id="tsec">0.0</b>s</div>
+    <div id="loading">loading scene…</div>
+  </div>
+  <footer>
+    <div class="transport">
+      <button id="play" class="primary">▶ Play</button>
+      <div class="seek">
+        <div class="track"><input id="scrub" type="range" min="0" max="100" value="0" step="1" /></div>
+        <div class="events" id="events"></div>
+      </div>
+      <div class="meta">
+        <div class="speed" id="speed">
+          <button data-s="0.5">0.5×</button>
+          <button data-s="1" class="on">1×</button>
+          <button data-s="2">2×</button>
+        </div>
+        <label><input type="checkbox" id="loop" checked> loop</label>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three.module.js",
+  "three/addons/": "./vendor/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from './vendor/GLTFLoader.js';
+import { OrbitControls } from './vendor/OrbitControls.js';
+
+// ---- clip catalog (id, set, flagged) ----
+const SETS = {
+  a1box:'A1 · box place', a2box:'A2 · box place',
+  a1sheet:'A1 · sheet place', a1sheetpick:'A1 · sheet pick',
+  a2tubepick:'A2 · tube pick', convey:'Load + convey'
+};
+const FLAGGED = new Set(['a1_r1c1','a1_r1c2','a1_r2c0','a1_r2c1','a1_r2c2','a2_tube_pick_r0c1']);
+function setOf(id){
+  if(id.endsWith('load_convey')) return 'convey';
+  if(id.startsWith('a1_sheet_pick')) return 'a1sheetpick';
+  if(id.startsWith('a1_sheet')) return 'a1sheet';
+  if(id.startsWith('a2_tube_pick')) return 'a2tubepick';
+  if(id.startsWith('a1_')) return 'a1box';
+  if(id.startsWith('a2_')) return 'a2box';
+  return 'a1box';
+}
+const CELLS=['r0c0','r0c1','r0c2','r1c0','r1c1','r1c2','r2c0','r2c1','r2c2'];
+const CLIPS=[];
+for(const c of CELLS) if(c!=='r0c1') CLIPS.push('a1_'+c);   // a1 box: no r0c1
+for(const c of CELLS) CLIPS.push('a2_'+c);
+for(const c of CELLS) CLIPS.push('a1_sheet_'+c);
+for(const c of CELLS) CLIPS.push('a1_sheet_pick_'+c);
+for(const c of CELLS) CLIPS.push('a2_tube_pick_'+c);
+CLIPS.push('a1_load_convey','a2_load_convey');
+
+// ---- per-region camera presets (MuJoCo z-up) ----
+function camFor(id){
+  const s=setOf(id);
+  if(s==='convey')  return {eye:[0.2,4.6,2.2],  tgt:[0,-0.3,0.95]};
+  if(s==='a2box'||s==='a2tubepick') return {eye:[1.2,2.8,1.55], tgt:[1.05,-0.5,1.0]};
+  return {eye:[-1.2,2.8,1.55], tgt:[-1.15,-0.5,1.0]};   // a1 regions
+}
+
+// ---- three.js scene ----
+const canvas=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d0f14);
+const camera=new THREE.PerspectiveCamera(42,2,0.05,100);
+camera.up.set(0,0,1);
+const controls=new OrbitControls(camera,canvas);
+controls.enableDamping=true; controls.dampingFactor=0.08;
+scene.add(new THREE.HemisphereLight(0xbfd2ff,0x20242e,1.05));
+const dir=new THREE.DirectionalLight(0xffffff,1.1); dir.position.set(3,5,6); scene.add(dir);
+const dir2=new THREE.DirectionalLight(0xffffff,0.45); dir2.position.set(-4,-2,4); scene.add(dir2);
+
+function resize(){
+  const r=canvas.getBoundingClientRect();
+  renderer.setSize(r.width,r.height,false);
+  camera.aspect=r.width/r.height; camera.updateProjectionMatrix();
+}
+addEventListener('resize',resize);
+
+// ---- body objects keyed by name ----
+const bodyObj={};
+const gltf=new GLTFLoader();
+function loadGLB(url){return new Promise((res,rej)=>gltf.load(url,g=>res(g.scene),undefined,rej));}
+
+let manifest=null;
+async function buildScene(){
+  manifest=await (await fetch('manifest.json')).json();
+  await Promise.all(manifest.bodies.map(async b=>{
+    const obj=await loadGLB(b.file);
+    obj.name=b.body;
+    scene.add(obj);
+    bodyObj[b.body]=obj;
+  }));
+}
+
+// ---- animation state ----
+let clip=null, frame=0, playing=false, speed=1, last=0;
+const tmpQ=new THREE.Quaternion(), tmpQ2=new THREE.Quaternion();
+function applyFrame(f){
+  if(!clip) return;
+  const N=clip.frames.length;
+  const i0=Math.min(Math.floor(f),N-1), i1=Math.min(i0+1,N-1);
+  const a=f-i0;
+  const A=clip.frames[i0], B=clip.frames[i1];
+  for(let bi=0;bi<clip.bodies.length;bi++){
+    const obj=bodyObj[clip.bodies[bi]]; if(!obj) continue;
+    const pa=A[bi], pb=B[bi];
+    obj.position.set(
+      pa[0]+(pb[0]-pa[0])*a, pa[1]+(pb[1]-pa[1])*a, pa[2]+(pb[2]-pa[2])*a);
+    tmpQ.set(pa[4],pa[5],pa[6],pa[3]);      // wxyz -> three xyzw
+    tmpQ2.set(pb[4],pb[5],pb[6],pb[3]);
+    tmpQ.slerp(tmpQ2,a);
+    obj.quaternion.copy(tmpQ);
+  }
+  // HUD
+  document.getElementById('fnum').textContent=Math.round(f);
+  document.getElementById('tsec').textContent=(f*clip.dt).toFixed(2);
+  document.getElementById('scrub').value=f;
+}
+
+async function loadClip(id){
+  playing=false; setPlayBtn();
+  clip=await (await fetch(`anim_${id}.json`).then(r=>r.json()));
+  document.getElementById('title').textContent=clip.title||id;
+  document.getElementById('ftot').textContent=clip.frames.length-1;
+  document.getElementById('flag').classList.toggle('show',FLAGGED.has(id));
+  const sc=document.getElementById('scrub');
+  sc.max=clip.frames.length-1; sc.value=0;
+  buildEvents();
+  // camera
+  const cp=camFor(id);
+  camera.position.set(...cp.eye);
+  controls.target.set(...cp.tgt); controls.update();
+  frame=0; applyFrame(0);
+}
+
+function buildEvents(){
+  const wrap=document.getElementById('events'); wrap.innerHTML='';
+  const N=clip.frames.length-1;
+  for(const e of clip.events){
+    const lab=e.label.toLowerCase();
+    if(lab===clip.title.toLowerCase()) continue; // skip the title-as-frame0 event
+    const d=document.createElement('div'); d.className='ev';
+    d.style.left=(100*e.frame/N)+'%';
+    d.textContent=e.label;
+    d.title=`frame ${e.frame}`;
+    d.onclick=()=>{frame=e.frame; applyFrame(frame);};
+    wrap.appendChild(d);
+  }
+}
+
+// ---- transport ----
+function setPlayBtn(){document.getElementById('play').textContent=playing?'❚❚ Pause':'▶ Play';}
+document.getElementById('play').onclick=()=>{
+  if(!clip) return;
+  if(!playing && frame>=clip.frames.length-1) frame=0;
+  playing=!playing; last=performance.now(); setPlayBtn();
+};
+document.getElementById('scrub').oninput=e=>{playing=false;setPlayBtn();frame=+e.target.value;applyFrame(frame);};
+document.getElementById('speed').onclick=e=>{
+  const b=e.target.closest('button[data-s]'); if(!b) return;
+  speed=+b.dataset.s;
+  [...document.querySelectorAll('#speed button')].forEach(x=>x.classList.toggle('on',x===b));
+};
+addEventListener('keydown',e=>{
+  if(e.code==='Space'){e.preventDefault();document.getElementById('play').click();}
+  else if(e.code==='ArrowRight'){playing=false;setPlayBtn();frame=Math.min(frame+1,clip.frames.length-1);applyFrame(frame);}
+  else if(e.code==='ArrowLeft'){playing=false;setPlayBtn();frame=Math.max(frame-1,0);applyFrame(frame);}
+});
+
+// ---- clip selector ----
+const sel=document.getElementById('clipSel');
+const groups={};
+for(const id of CLIPS){(groups[setOf(id)] ||= []).push(id);}
+for(const k of Object.keys(SETS)){
+  if(!groups[k]) continue;
+  const og=document.createElement('optgroup'); og.label=SETS[k];
+  for(const id of groups[k]){
+    const o=document.createElement('option'); o.value=id;
+    o.textContent=id+(FLAGGED.has(id)?'  ⚑':'');
+    og.appendChild(o);
+  }
+  sel.appendChild(og);
+}
+sel.onchange=()=>loadClip(sel.value);
+
+// ---- main loop ----
+function tick(now){
+  requestAnimationFrame(tick);
+  if(playing && clip){
+    const dt=(now-last)/1000; last=now;
+    frame+=dt/clip.dt*speed;
+    if(frame>=clip.frames.length-1){
+      if(document.getElementById('loop').checked){frame=0;}
+      else{frame=clip.frames.length-1;playing=false;setPlayBtn();}
+    }
+    applyFrame(frame);
+  }
+  controls.update();
+  renderer.render(scene,camera);
+}
+
+(async function init(){
+  resize();
+  try{
+    await buildScene();
+    document.getElementById('loading').style.display='none';
+    // allow ?clip=<id> deep-link
+    const q=new URLSearchParams(location.search).get('clip');
+    const start=(q&&CLIPS.includes(q))?q:CLIPS[0];
+    sel.value=start;
+    await loadClip(start);
+    requestAnimationFrame(tick);
+  }catch(err){
+    document.getElementById('loading').textContent='load error: '+err.message+
+      '  (serve web/ over http — file:// blocks .glb fetch)';
+  }
+})();
+</script>
+</body>
+</html>

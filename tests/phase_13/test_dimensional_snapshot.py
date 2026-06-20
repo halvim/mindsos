@@ -31,7 +31,8 @@ from mindsos_knowledge.schemas import (
 # dropped; Phase 43 may re-add on Episode).
 EXPECTED_DIMENSIONS: dict[str, dict[str, int]] = {
     "ontology":            {"nodes": 10, "edges": 13, "hyperedges": 7},
-    "lexicon":             {"nodes": 4,  "edges": 22, "hyperedges": 0},
+    # Phase 51 (ADR-0184): 22 structural + 3 empirical (SEL_ASSOC_*).
+    "lexicon":             {"nodes": 4,  "edges": 25, "hyperedges": 0},
     "concepts":            {"nodes": 4,  "edges": 11, "hyperedges": 0},
     "alignment":           {"nodes": 1,  "edges": 8,  "hyperedges": 0},
     "promoted_pipelines":  {"nodes": 2,  "edges": 2,  "hyperedges": 0},
