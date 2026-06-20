@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MindsOS — Open Order (presentation UI mockup)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --edge:#2b333d; --ink:#e6edf3; --muted:#8b98a5;
+    --a1:#3a8be0; --a2:#d98040; --conv:#48c78e; --mgr:#b98cf0; --user:#5ec8d8;
+    --gap:#e5534b; --gold:#cab43c; --green:#66bf72; --purple:#b3598c; --glob:#e0b341; --warn:#d29922; --line:#4a5563;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1300px;margin:0 auto;padding:9px 12px}
+  header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px}
+  h1{font-size:14px;margin:0;font-weight:650}
+  .tag{font-size:10px;color:var(--muted);border:1px solid var(--edge);border-radius:20px;padding:1px 8px}
+  .controls{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
+  button{background:var(--panel2);color:var(--ink);border:1px solid var(--edge);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px}
+  button:hover{border-color:#3d8bfd}
+  button.primary{background:#1f6feb;border-color:#1f6feb}
+  button.toggle.on{background:#136f8a;border-color:#136f8a;color:#eafcff}
+  select,input{background:#0e131a;color:var(--ink);border:1px solid var(--edge);border-radius:5px;padding:3px 6px;font-size:11px}
+  .chapter{display:flex;align-items:baseline;gap:8px;margin:2px 0 6px}
+  .chip{background:#21262d;border:1px solid var(--edge);border-radius:5px;padding:2px 8px;font-size:10px;color:var(--muted);white-space:nowrap}
+  .narr{color:var(--ink);font-size:12px}
+  #io{display:none;width:100%;height:70px;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;margin-bottom:6px}
+  .hintbar{font-size:10px;color:var(--muted);margin-bottom:6px}
+  /* free canvas */
+  #stage{position:relative;min-height:820px}
+  #links{position:absolute;inset:0;pointer-events:none;z-index:0}
+  .dcard{position:absolute;background:var(--panel);border:1.5px solid var(--acc,#2b333d);border-radius:10px;padding:9px;overflow:hidden;z-index:1;display:flex;flex-direction:column}
+  #stage.editing .dcard{outline:1px dashed #3d8bfd55;resize:both}
+  #stage.editing .draghandle{cursor:move}
+  .card h2,.dcard h2{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 6px;display:flex;justify-content:space-between;align-items:center}
+  /* cell */
+  #card_cell{padding-bottom:6px}
+  #viewbox{position:relative;flex:1;min-height:120px;border-radius:7px;overflow:hidden;background:#0a0d12}
+  #viewbox canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
+  #view3d{position:absolute;inset:0}
+  .viewbtn{font-size:10px;padding:2px 8px}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:10px;margin-top:5px}
+  .legend i{font-style:normal;display:inline-flex;align-items:center;gap:4px}
+  .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .log{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;overflow:auto;flex:1}
+  .log div{padding:2px 0;border-bottom:1px solid #1a212b;color:var(--muted)}
+  /* brain cards */
+  #card_cell,#card_log{--acc:#6b7785}
+  .dcard.user{--acc:var(--user);color:var(--user)}
+  .dcard.mgr{--acc:var(--mgr);color:var(--mgr)}
+  .dcard.a1{--acc:var(--a1);color:var(--a1)} .dcard.a2{--acc:var(--a2);color:var(--a2)} .dcard.conv{--acc:var(--conv);color:var(--conv)}
+  /* tab-style card titles (header sits on the card top, accent-tinted) */
+  .dcard>.nm,.dcard>h2{margin:-9px -9px 8px -9px;padding:6px 9px;border-radius:9px 9px 0 0;background:color-mix(in srgb,var(--acc) 18%, #161b22);border-bottom:1px solid color-mix(in srgb,var(--acc) 55%, transparent)}
+  .dcard.dim{opacity:.72}
+  .dcard.active{opacity:1}
+  .nm{font-weight:650;font-size:11.5px;display:flex;justify-content:space-between;align-items:center}
+  .role{font-size:9px;color:var(--muted);font-weight:400}
+  .intent{color:var(--ink);font-size:11px;margin:4px 0 2px;min-height:22px}
+  .minichain{display:flex;gap:3px;margin:4px 0}
+  .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .step .seg{width:100%;height:5px;border-radius:3px;background:#222a34}
+  .step.on .seg{background:currentColor}
+  .step small{font-size:7.5px;color:var(--muted);line-height:1;white-space:nowrap}
+  .step.on small{color:var(--ink)}
+  .lbl{font-size:8.5px;color:var(--muted);margin-bottom:2px}
+  .decision{font-size:10px;color:var(--ink);background:#191f29;border-left:3px solid currentColor;border-radius:0 5px 5px 0;padding:5px 7px;margin:5px 0}
+  .cap{font-size:10px;color:var(--muted);margin:1px 0}
+  .cap b{color:var(--ink)}
+  .cap .badge{font-size:8.5px;margin-left:3px;padding:0 5px;border-radius:9px;border:1px solid currentColor}
+  .flagrow{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+  .flag{font-size:9px;padding:1px 6px;border-radius:20px;border:1px solid}
+  .f-gap,.f-fault{color:#ffb4ad;border-color:#7d2a25;background:#2a1614}
+  .f-learn{color:#bff5cf;border-color:#235e38;background:#142a1c}
+  .f-promo{color:#cbd9ff;border-color:#2c3e72;background:#141b2c}
+  .f-gate{color:#ffd9a8;border-color:#7a5417;background:#2a2110}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+  .hdrright{display:inline-flex;align-items:center;gap:7px}
+  .state{font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0}
+  .help{cursor:help;color:var(--muted);border:1px solid currentColor;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex:0 0 auto}
+  /* user interaction */
+  .tabs{display:flex;gap:5px;margin-bottom:7px}
+  .tabs button{flex:1;font-size:10.5px;padding:4px}
+  .tabs button.on{background:#136f8a;border-color:#136f8a;color:#eafcff}
+  .scroll{overflow:auto;flex:1}
+  .shapes{display:flex;gap:6px}
+  .shape{background:#0e131a;border:1px solid var(--edge);border-radius:7px;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;flex:1}
+  .shape.sel{border-color:var(--user);box-shadow:0 0 0 1px var(--user) inset}
+  .shape small{font-size:9px;color:var(--ink)}
+  .shape .lim{font-size:8px;color:var(--muted);text-align:center}
+  .cellgrid{display:grid;grid-template-columns:repeat(3,22px);gap:3px}
+  .cellgrid div{width:22px;height:22px;background:#0e131a;border:1px solid var(--edge);border-radius:3px;cursor:pointer}
+  .cellgrid div.sel{border-color:var(--user);background:#15323a}
+  .step2{font-size:10.5px;color:var(--user);display:flex;gap:6px;align-items:center;margin-top:8px}
+  .step2 b{color:var(--user)}
+  .chint{color:var(--ink);font-weight:400}
+  .ptype{font-size:10px;padding:3px 8px}
+  .ptype.on{background:#136f8a;border-color:#136f8a;color:#eafcff}
+  .mini{font-size:9.5px;padding:2px 7px}
+  .pchips{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0;min-height:14px}
+  .pchips .pill a{cursor:pointer;color:var(--muted);margin-left:3px;font-weight:700}
+  .pbrow select{font-size:10px;padding:2px 4px}
+  .row{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .pill{display:inline-flex;align-items:center;gap:4px;background:#0e131a;border:1px solid var(--edge);border-radius:13px;padding:1px 8px;margin:2px 3px 0 0;font-size:10px}
+  .blk{background:#10202a;border:1px solid #2a4d5a;color:#bfe7f0;border-radius:5px;padding:3px 7px;font-size:10px}
+  .orderlist,.seq{font-size:10.5px;margin-top:6px;min-height:16px}
+  .limits{font-size:9.5px;color:var(--muted)}
+  .limits div{display:flex;align-items:center;gap:6px;margin-top:3px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MindsOS · “Open Order”</h1>
+    <span class="tag">UI mockup</span>
+    <span class="tag" style="color:var(--warn);border-color:#5a4a1f">thinking = placeholder until Phase 48</span>
+    <div class="controls">
+      <button id="edit" class="toggle">✥ Edit layout</button>
+      <button id="export">⤓ Export</button><button id="import">Import</button><button id="resetL">↺ Layout</button>
+      <span style="width:10px"></span>
+      <button id="prev">‹</button><button id="play" class="primary">▶ Play</button><button id="next">›</button><button id="reset">↺</button>
+    </div>
+  </header>
+
+  <div class="chapter"><span class="chip" id="chapter">Beat 0 / 6</span><span class="narr" id="narration">—</span></div>
+  <textarea id="io" spellcheck="false"></textarea>
+  <div class="hintbar" id="hintbar" style="display:none">Edit mode: drag a card by its title bar; resize from the bottom-right corner. Then ⤓ Export and paste the JSON back to me.</div>
+
+  <div id="stage">
+    <svg id="links"></svg>
+
+    <div class="dcard" id="card_cell">
+      <h2 class="draghandle"><span>Physical cell <span class="state" id="st_cell">· 3D</span></span><span class="hdrright"><button id="dim" class="viewbtn">▦ 2D view</button><span class="help" title="Live physics view of the workcell. Toggle 2D; drag to orbit, scroll to zoom.">?</span></span></h2>
+      <div id="viewbox"><div id="view3d"></div><canvas id="cv" width="820" height="262" style="display:none"></canvas></div>
+      <div class="legend"><i><span class="sw" style="background:var(--gap);opacity:.6"></span>gap mark — neither arm reaches</i><i id="hint3d">drag to orbit · scroll to zoom</i></div>
+    </div>
+
+    <div class="dcard" id="card_log">
+      <h2 class="draghandle"><span>Inter-brain messages (Seam B) <span class="state">· live</span></span><span class="hdrright"><span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">colored by brain</span><span class="help" title="Messages exchanged between brains (Seam B), colored by sender and receiver.">?</span></span></h2>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="dcard user" id="card_user">
+      <div class="nm draghandle"><span>User <span class="state" id="st_user">· order</span></span><span class="hdrright"><button id="o_run" class="mini primary">▶ Submit</button><button id="o_clear" class="mini">clear</button><span class="help" title="places orders · teaches skills — where you place orders by shape, or teach the system a new skill.">?</span></span></div>
+      <div class="tabs"><button id="tab_order" class="on">Order</button><button id="tab_sort">Sort</button><button id="tab_teach">Teach</button></div>
+      <div class="scroll">
+        <div id="pane_order">
+          <div class="step2"><b>1.</b> Object</div>
+          <div class="shapes" id="shapes">
+            <div class="shape sel" data-item="box"><svg width="22" height="22"><rect x="4" y="4" width="14" height="14" rx="2" fill="#cab43c"/></svg><small>Box</small><small class="lim">both grippers</small></div>
+            <div class="shape" data-item="sheet"><svg width="22" height="22"><rect x="1" y="7" width="20" height="8" rx="2" fill="#66bf72"/></svg><small>Sheet</small><small class="lim">suction only</small></div>
+            <div class="shape" data-item="tube"><svg width="22" height="22"><circle cx="11" cy="11" r="8" fill="#b3598c"/></svg><small>Tube</small><small class="lim">jaw only</small></div>
+          </div>
+          <div class="step2"><b>2.</b> Shelf rack
+            <select id="o_shelf"><option value="a1">Arm 1</option><option value="a2">Arm 2</option></select></div>
+          <div class="step2"><b>3.</b> Position <span class="chint">(compose with +)</span></div>
+          <div id="o_posb"></div>
+          <div class="row"><button id="o_add">+ line</button></div>
+          <div class="orderlist" id="o_list"><span style="color:var(--muted)">no lines yet</span></div>
+        </div>
+        <div id="pane_sort" style="display:none">
+          <div class="step2"><b>1.</b> Shelf rack <select id="s_shelf"><option value="a1">Arm 1</option><option value="a2">Arm 2</option></select></div>
+          <div class="step2"><b>2.</b> Object <select id="s_obj"><option value="box">Box</option><option value="sheet">Sheet</option><option value="tube">Tube</option></select> Currently at <span class="chint">(compose with +)</span></div>
+          <div id="s_from"></div>
+          <div class="step2"><b>3.</b> Move to <span class="chint">(compose with +)</span></div>
+          <div id="s_to"></div>
+        </div>
+        <div id="pane_teach" style="display:none">
+          <div style="font-size:9.5px;color:var(--muted);margin-bottom:5px">Teach when a skill is missing or to improve one.</div>
+          <input id="t_name" placeholder="skill name e.g. handoff-via-belt" style="width:100%"/>
+          <div class="row">
+            <button class="blk" data-b="place-at-pose">place</button><button class="blk" data-b="stage">stage</button>
+            <button class="blk" data-b="pick-at-pose">pick</button><button class="blk" data-b="move-to">move</button><button class="blk" data-b="grip">grip</button>
+          </div>
+          <div class="seq" id="t_seq"><span style="color:var(--muted)">click blocks to build a demonstration</span></div>
+          <div class="row"><button id="t_capture" class="primary">✦ Capture demonstration</button><button id="t_clear">clear</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dcard mgr dim" id="bc_mgr"></div>
+    <div class="dcard a1 dim" id="bc_a1"></div>
+    <div class="dcard a2 dim" id="bc_a2"></div>
+    <div class="dcard conv dim" id="bc_conv"></div>
+  </div>
+</div>
+
+<script>
+let VW=820,VH=262;
+const ARM1={x:-0.65,y:-0.45}, ARM2={x:0.65,y:-0.45}, REACH=0.62;
+const BELT_L=[-1.10,-0.20], BELT_R=[0.20,1.10], BELT_Y=[-0.16,0.16], GAP=[-0.20,0.20];
+// per-arm 3x3 shelves (discrete slots; relations resolve within one shelf)
+const SHELF={a1:{cols:[-0.85,-0.70,-0.55],rows:[-0.62,-0.77,-0.92],hex:"#3a8be0"},
+             a2:{cols:[0.55,0.70,0.85],rows:[-0.62,-0.77,-0.92],hex:"#d98040"}};
+function cell(s,r,c){return [SHELF[s].cols[c],SHELF[s].rows[r]];}
+const XR=[-1.35,1.35], YR=[-1.02,0.34];
+const sx=x=>(x-XR[0])/(XR[1]-XR[0])*VW, sy=y=>(YR[1]-y)/(YR[1]-YR[0])*VH, sr=r=>r/(XR[1]-XR[0])*VW;
+const CH=["HintSet","MappingResult","Plan","Pipeline","PipelineRun","TaskRun"];
+const CH_SHORT=["Hint","Map","Plan","Pipe","P-Run","Task"];
+const BR=[
+ ["mgr","Orchestrator","talks to user","The brain you talk to. Decomposes orders, allocates work to the arms and conveyor, replans on failure, and promotes learned skills to the other brains."],
+ ["a1","Arm 1 · Lifter","suction","A full MindsOS brain controlling Arm 1 (suction gripper). Reaches the left shelf; can grasp Box and Sheet."],
+ ["a2","Arm 2 · Packer","jaw","A full MindsOS brain controlling Arm 2 (jaw gripper). Reaches the right shelf; can grasp Box and Tube."],
+ ["conv","Conveyor","belt","A full MindsOS brain controlling the belt — the only bridge across the reach gap between the two arms."]];
+const ITEMS=["box1","sheet1","tube1"];
+const ICOL={box1:"#cab43c",sheet1:"#66bf72",tube1:"#b3598c"};
+
+// ===== default layout (px) =====
+const DEFAULT_LAYOUT={
+  card_cell:{x:322,y:0,w:634,h:465}, card_log:{x:966,y:0,w:312,h:465},
+  card_user:{x:0,y:0,w:312,h:300},
+  bc_mgr:{x:0,y:320,w:312,h:300},
+  bc_a1:{x:322,y:475,w:312,h:145}, bc_a2:{x:644,y:475,w:312,h:145}, bc_conv:{x:966,y:475,w:312,h:145}
+};
+let LAYOUT=JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
+const LINKS=[
+ {from:"card_user",fromEdge:"bottom",to:"bc_mgr",toEdge:"top",color:"#b98cf0"},
+ {from:"bc_mgr",fromEdge:"bottom",fromFrac:0.30,to:"bc_a1",toEdge:"bottom",busOff:14,color:"#3a8be0"},
+ {from:"bc_mgr",fromEdge:"bottom",fromFrac:0.50,to:"bc_a2",toEdge:"bottom",busOff:27,color:"#d98040"},
+ {from:"bc_mgr",fromEdge:"bottom",fromFrac:0.70,to:"bc_conv",toEdge:"bottom",busOff:40,color:"#48c78e"}
+];
+
+// ===== mock scenario =====
+const PRIM="primitive";
+const baseBrains={
+  mgr:{intent:"awaiting order",chain:0,decision:"idle",caps:[["decompose",PRIM],["allocate",PRIM],["replan",PRIM],["promote",PRIM]],flags:[],active:false},
+  a1:{intent:"idle",chain:0,decision:"idle",caps:[["move/grip",PRIM]],flags:[],active:false},
+  a2:{intent:"idle",chain:0,decision:"idle",caps:[["move/grip",PRIM]],flags:[],active:false},
+  conv:{intent:"belt idle",chain:0,decision:"holding",caps:[["advance/reverse",PRIM]],flags:[],active:false}
+};
+const base={items:{box1:[-0.80,0],sheet1:[-1.00,0],tube1:[-0.45,0]},eff:{a1:null,a2:null},brains:JSON.parse(JSON.stringify(baseBrains))};
+const frames=[
+ {title:"Order placed", narr:"User submits an order with a spatial relation: place the Box above the Tube on Arm 2's shelf, and the Sheet at the center of Arm 1's shelf.",
+  brains:{mgr:{intent:"A2: Box above Tube · A1: Sheet @ center",chain:0,decision:"Decompose → resolve spatial relations to shelf cells",active:true}},
+  msgs:[["User→Orchestrator","place_order(A2: Box above Tube; A1: Sheet @ center)"]]},
+ {title:"Ignorant start → don’t-know", narr:"The plan needs a skill no brain has: hand an item across the belt gap. The system knows what it doesn’t know.",
+  brains:{mgr:{intent:"Plan the order",chain:2,decision:"Need handoff-via-belt → NOT FOUND",flags:["gap"],active:true},
+    a1:{intent:"answer capability query",chain:1,decision:"report DONT_KNOW",flags:["gap"]},
+    a2:{intent:"answer capability query",chain:1,decision:"report DONT_KNOW",flags:["gap"]}},
+  msgs:[["Orchestrator→Arm1","query_capabilities()"],["Arm1→Orchestrator","DONT_KNOW(handoff-via-belt)"],
+        ["Orchestrator→Arm2","query_capabilities()"],["Arm2→Orchestrator","DONT_KNOW(handoff-via-belt)"]]},
+ {title:"Learn by composition", narr:"User demonstrates the skill once by assembling capability blocks. MindsOS captures it as a Pipeline → new composite capacity.",
+  brains:{mgr:{intent:"Acquire missing capability",chain:3,decision:"Register composite from demonstration",flags:["learn"],active:true},
+    a1:{intent:"Learn handoff-via-belt",chain:3,decision:"captured Pipeline → composite (Local)",flags:["learn"],caps:[["move/grip",PRIM],["handoff-via-belt","learned"]],active:true},
+    conv:{intent:"Learn staging",chain:2,decision:"stage-at-position learned",caps:[["advance/reverse",PRIM],["stage-at-position","learned"]],active:true}},
+  msgs:[["User→Arm1","demonstrate([place, stage, pick])"],["Demonstration→L2","Pipeline → promoted-pipelines"]]},
+ {title:"Cooperative execution", narr:"The brains run the new skill: the belt hands the Box and Tube to Arm 2, which places the Box in the cell above the Tube; Arm 1 sets the Sheet at the center of its shelf.",
+  items:{box1:[0.70,-0.62], tube1:[0.70,-0.77], sheet1:[-0.70,-0.77]}, eff:{a1:[-0.70,-0.77],a2:[0.70,-0.62]},
+  brains:{mgr:{intent:"Execute placements",chain:5,decision:"resolve 'Box above Tube' → A2 cell (row0,col1); dispatch",active:true},
+    a1:{intent:"Place Sheet on its shelf",chain:5,decision:"place Sheet @ A1 center ✓",caps:[["move/grip",PRIM],["handoff-via-belt","learned"],["place-at-cell","learned"]],active:true},
+    a2:{intent:"Place Box above Tube",chain:5,decision:"place Box @ A2(r0,c1), above Tube ✓",caps:[["move/grip",PRIM],["handoff-via-belt","inherited"],["place-at-cell","inherited"]],active:true},
+    conv:{intent:"Bridge the gap",chain:4,decision:"advance → stage at x=0.2",caps:[["advance/reverse",PRIM],["stage-at-position","learned"]],active:true}},
+  msgs:[["Orchestrator→Arm1","dispatch(place_at_cell, Sheet→A1 c)"],["Orchestrator→Conveyor","dispatch(advance→0.2)"],
+        ["Orchestrator→Arm2","dispatch(place Box @ A2 r0c1, above Tube)"],["Arm2→Orchestrator","SUCCESS(A2: Box above Tube)"]]},
+ {title:"Transfer + embodiment gate", narr:"The learned skill is promoted Local→Global; Arm 2 inherits it. But Arm 2’s jaw is refused the suction-only Sheet skill — knowledge transfers, capability is gated by the body.",
+  brains:{mgr:{intent:"Share capability fleet-wide",chain:5,decision:"promote Local→Global; gate pick-Sheet@Arm2",flags:["promo","gate"],active:true},
+    a1:{intent:"Promote skill",chain:5,decision:"promote(handoff-via-belt) → Global",flags:["promo"]},
+    a2:{intent:"Inherit + check feasibility",chain:4,decision:"inherited handoff; pick-Sheet GATED (no suction)",flags:["promo","gate"],caps:[["handoff-via-belt","inherited"],["pick-Sheet","GATED"]],active:true}},
+  msgs:[["Arm1→Global","promote(handoff-via-belt)"],["Global→Arm2","capability available"],["Arm2→Orchestrator","gate: pick-Sheet requires suction"]]},
+ {title:"Degradation → replan", narr:"Arm 2’s wrist faults mid-order. It diagnoses itself, the gap reappears, and the Orchestrator replans around the loss.",
+  eff:{a1:null,a2:null},
+  brains:{mgr:{intent:"Recover from fault",chain:4,decision:"replan(): reroute via Arm1 + conveyor",flags:["fault","gap"],active:true},
+    a2:{intent:"Self-diagnose",chain:1,decision:"FAULT(wrist) → withdraw fine-grasp",flags:["fault","gap"],caps:[["handoff-via-belt","inherited"],["fine-grasp","FAULT"]],active:false},
+    a1:{intent:"Absorb rerouted work",chain:4,decision:"accept reroute",active:true},
+    conv:{intent:"Re-stage",chain:4,decision:"reverse → re-stage for Arm 1",active:true}},
+  msgs:[["Arm2→Orchestrator","FAULT(wrist) → withdraw fine-grasp"],["Orchestrator→Conveyor","dispatch(reverse→re-stage)"]]},
+ {title:"Trace recap", narr:"The run replayed: found a gap, learned the skill, shared it, gated it by body, recovered from a fault — reasoning visible throughout.",
+  brains:{mgr:{intent:"Retain episode",chain:5,decision:"episode retained: gap→learned→promoted→gated→recovered",flags:["learn","promo","gate","fault"],active:false},
+    a2:{intent:"degraded",chain:5,decision:"fine-grasp pending repair",active:false}},
+  msgs:[["Orchestrator→L2","retain episode (episodic_memories)"]]}
+];
+function mergeBrain(p,o){const s=JSON.parse(JSON.stringify(p));for(const k in o)s[k]=o[k];return s;}
+function merge(prev,f){const s=JSON.parse(JSON.stringify(prev));
+  if(f.items)Object.assign(s.items,f.items);
+  s.eff=f.eff?Object.assign({a1:null,a2:null},f.eff):{a1:null,a2:null};
+  if(f.brains)for(const b in f.brains)s.brains[b]=mergeBrain(s.brains[b],f.brains[b]);
+  for(const b of ["mgr","a1","a2","conv"]){if(!(f.brains&&f.brains[b]&&"active" in f.brains[b]))s.brains[b].active=false;if(!(f.brains&&f.brains[b]&&"flags" in f.brains[b]))s.brains[b].flags=[];}
+  s.title=f.title;s.narr=f.narr;s.msgs=f.msgs||[];return s;}
+const states=[];let acc=JSON.parse(JSON.stringify(base));
+for(const f of frames){acc=merge(acc,f);states.push(JSON.parse(JSON.stringify(acc)));}
+
+function cardHTML(label,role,desc){return `<div class="nm draghandle"><span>${label} <span class="state"></span></span><span class="hdrright"><span class="dot"></span><span class="help" title="${role} — ${desc}">?</span></span></div>
+  <div class="scroll"><div class="intent"></div><div class="minichain"></div>
+  <div class="decision"></div><div class="caps"></div><div class="flagrow"></div></div>`;}
+for(const [k,label,role,desc] of BR){document.getElementById("bc_"+k).innerHTML=cardHTML(label,role,desc);}
+
+// ===== layout engine =====
+const stage=document.getElementById("stage"),svg=document.getElementById("links");
+let suppress=false,editing=false;
+function applyLayout(){suppress=true;for(const id in LAYOUT){const el=document.getElementById(id);if(!el)continue;const L=LAYOUT[id];el.style.left=L.x+"px";el.style.top=L.y+"px";el.style.width=L.w+"px";el.style.height=L.h+"px";}suppress=false;resizeView();updateStageH();redrawLinks();}
+function updateStageH(){let m=400;for(const id in LAYOUT){m=Math.max(m,LAYOUT[id].y+LAYOUT[id].h);}stage.style.minHeight=(m+70)+"px";}
+function anchor(id,e,frac){const L=LAYOUT[id];frac=frac==null?0.5:frac;
+  if(e==="top")return[L.x+L.w*frac,L.y];if(e==="bottom")return[L.x+L.w*frac,L.y+L.h];
+  if(e==="left")return[L.x,L.y+L.h*frac];return[L.x+L.w,L.y+L.h*frac];}
+function roundedPath(pts,r){if(pts.length<2)return"";let d=`M ${pts[0][0]} ${pts[0][1]}`;
+  for(let i=1;i<pts.length-1;i++){const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+    const v1=[p1[0]-p0[0],p1[1]-p0[1]],v2=[p2[0]-p1[0],p2[1]-p1[1]];
+    const l1=Math.hypot(v1[0],v1[1])||1,l2=Math.hypot(v2[0],v2[1])||1,rr=Math.min(r,l1/2,l2/2);
+    d+=` L ${p1[0]-v1[0]/l1*rr} ${p1[1]-v1[1]/l1*rr} Q ${p1[0]} ${p1[1]} ${p1[0]+v2[0]/l2*rr} ${p1[1]+v2[1]/l2*rr}`;}
+  const e=pts[pts.length-1];d+=` L ${e[0]} ${e[1]}`;return d;}
+function redrawLinks(){svg.setAttribute("width",stage.clientWidth);svg.setAttribute("height",stage.clientHeight);
+  const cols=[...new Set(LINKS.map(l=>l.color))];
+  let defs='<defs>';cols.forEach((c,i)=>{defs+=`<marker id="ah${i}" markerWidth="11" markerHeight="11" refX="7" refY="3.4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.4 L0,6.8 Z" fill="${c}"/></marker>`;});defs+='</defs>';
+  let h=defs;
+  for(const lk of LINKS){const p=anchor(lk.from,lk.fromEdge,lk.fromFrac),q=anchor(lk.to,lk.toEdge,lk.toFrac);let pts;
+    if(lk.toEdge==="top"){const my=(p[1]+q[1])/2;pts=[p,[p[0],my],[q[0],my],q];}
+    else if(lk.toEdge==="bottom"){const busY=Math.max(p[1],q[1])+(lk.busOff||26);pts=[p,[p[0],busY],[q[0],busY],q];}
+    else{const mx=(p[0]+q[0])/2;pts=[p,[mx,p[1]],[mx,q[1]],q];}
+    h+=`<path d="${roundedPath(pts,9)}" stroke="${lk.color}" stroke-width="2.2" fill="none" stroke-linejoin="round" opacity="0.92" marker-end="url(#ah${cols.indexOf(lk.color)})"/>`;}
+  svg.innerHTML=h;}
+// resize observer
+const ro=new ResizeObserver(es=>{if(suppress)return;for(const en of es){const el=en.target;if(el.id==="viewbox"){resizeView();continue;}const L=LAYOUT[el.id];if(L){L.w=el.offsetWidth;L.h=el.offsetHeight;}}updateStageH();redrawLinks();});
+for(const id in LAYOUT)ro.observe(document.getElementById(id));
+ro.observe(document.getElementById("viewbox"));
+// drag
+let drag=null;
+stage.addEventListener("mousedown",e=>{if(!editing)return;const h=e.target.closest(".draghandle");if(!h)return;const card=h.closest(".dcard");if(!card)return;e.preventDefault();drag={card,sx:e.clientX,sy:e.clientY,ox:LAYOUT[card.id].x,oy:LAYOUT[card.id].y};});
+window.addEventListener("mousemove",e=>{if(!drag)return;const nx=Math.round(drag.ox+(e.clientX-drag.sx)),ny=Math.round(drag.oy+(e.clientY-drag.sy));drag.card.style.left=nx+"px";drag.card.style.top=ny+"px";LAYOUT[drag.card.id].x=nx;LAYOUT[drag.card.id].y=ny;updateStageH();redrawLinks();});
+window.addEventListener("mouseup",()=>{if(drag){updateStageH();redrawLinks();}drag=null;});
+
+document.getElementById("edit").onclick=e=>{editing=!editing;stage.classList.toggle("editing",editing);e.target.classList.toggle("on",editing);document.getElementById("hintbar").style.display=editing?"block":"none";};
+function roundL(){const o={};for(const id in LAYOUT){const L=LAYOUT[id];o[id]={x:Math.round(L.x),y:Math.round(L.y),w:Math.round(L.w),h:Math.round(L.h)};}return o;}
+document.getElementById("export").onclick=()=>{const io=document.getElementById("io");io.style.display="block";io.value=JSON.stringify(roundL());io.focus();io.select();};
+document.getElementById("import").onclick=()=>{const io=document.getElementById("io");if(io.style.display==="none"){io.style.display="block";io.focus();return;}try{const o=JSON.parse(io.value);for(const id in o)if(LAYOUT[id])LAYOUT[id]=o[id];applyLayout();}catch(err){alert("Invalid JSON");}};
+document.getElementById("resetL").onclick=()=>{LAYOUT=JSON.parse(JSON.stringify(DEFAULT_LAYOUT));applyLayout();};
+
+// ===== views =====
+let idx=0,mode="3d",animating=false,t0=0;
+let fromItems=JSON.parse(JSON.stringify(base.items));
+let anim={items:JSON.parse(JSON.stringify(base.items)),eff:{a1:null,a2:null}};
+const lerp=(a,b,t)=>a+(b-a)*t;
+function show(i){idx=Math.max(0,Math.min(states.length-1,i));fromItems=JSON.parse(JSON.stringify(anim.items));t0=performance.now();animating=true;renderPanels(states[idx]);}
+function loop(now){const st=states[idx];let t=animating?Math.min(1,(now-t0)/900):1;const te=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  for(const nm of ITEMS){const a=fromItems[nm]||st.items[nm],b=st.items[nm];anim.items[nm]=[lerp(a[0],b[0],te),lerp(a[1],b[1],te)];}
+  anim.eff=st.eff;if(t>=1)animating=false;if(mode==="2d")drawCell(st);else draw3D(st);requestAnimationFrame(loop);}
+
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+function resizeView(){const box=document.getElementById("viewbox");if(!box)return;VW=Math.max(160,box.clientWidth);VH=Math.max(100,box.clientHeight);cv.width=VW;cv.height=VH;if(R3){R3.renderer.setSize(VW,VH,false);R3.camera.aspect=VW/VH;R3.camera.updateProjectionMatrix();}}
+function drawCell(st){ctx.clearRect(0,0,VW,VH);
+  ctx.fillStyle="#3a3f4d";ctx.fillRect(sx(BELT_L[0]),sy(BELT_Y[1]),sr(BELT_R[1]-BELT_L[0]),sy(BELT_Y[0])-sy(BELT_Y[1]));
+  ctx.fillStyle="rgba(229,83,75,.20)";ctx.fillRect(sx(GAP[0]),sy(BELT_Y[1]),sr(GAP[1]-GAP[0]),sy(BELT_Y[0])-sy(BELT_Y[1]));
+  ctx.strokeStyle="rgba(229,83,75,.5)";ctx.setLineDash([5,4]);ctx.strokeRect(sx(GAP[0]),sy(BELT_Y[1]),sr(GAP[1]-GAP[0]),sy(BELT_Y[0])-sy(BELT_Y[1]));ctx.setLineDash([]);
+  for(const [arm,col,key] of [[ARM1,"#3a8be0","a1"],[ARM2,"#d98040","a2"]]){const active=st.brains[key].active;
+    ctx.beginPath();ctx.arc(sx(arm.x),sy(arm.y),sr(REACH),0,7);ctx.fillStyle=col+(active?"22":"12");ctx.fill();
+    ctx.strokeStyle=col;ctx.globalAlpha=active?.9:.45;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    const eff=anim.eff&&anim.eff[key];const tgt=eff?eff:[arm.x,arm.y+0.18];
+    ctx.strokeStyle=col;ctx.lineWidth=active?4:3;ctx.beginPath();ctx.moveTo(sx(arm.x),sy(arm.y));ctx.lineTo(sx((arm.x+tgt[0])/2),sy((arm.y+tgt[1])/2-0.12));ctx.lineTo(sx(tgt[0]),sy(tgt[1]));ctx.stroke();ctx.lineWidth=1;
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(sx(arm.x),sy(arm.y),7,0,7);ctx.fill();ctx.beginPath();ctx.arc(sx(tgt[0]),sy(tgt[1]),5,0,7);ctx.fill();}
+  for(const s of ["a1","a2"]){const sh=SHELF[s];const hw=sr(0.066);
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++){const x=sx(sh.cols[c]),y=sy(sh.rows[r]);
+      ctx.fillStyle=sh.hex+"14";ctx.strokeStyle=sh.hex+"99";ctx.fillRect(x-hw,y-hw,hw*2,hw*2);ctx.strokeRect(x-hw,y-hw,hw*2,hw*2);}
+    ctx.fillStyle=sh.hex;ctx.font="9px sans-serif";ctx.textAlign="center";ctx.fillText((s==="a1"?"Arm 1 shelf":"Arm 2 shelf"),sx((sh.cols[0]+sh.cols[2])/2),sy(sh.rows[0])-hw-5);}
+  for(const nm of ITEMS){const p=anim.items[nm];ctx.fillStyle=ICOL[nm];ctx.strokeStyle="#0a0d12";ctx.lineWidth=1.5;
+    if(nm==="tube1"){ctx.beginPath();ctx.arc(sx(p[0]),sy(p[1]),8,0,7);ctx.fill();ctx.stroke();}
+    else if(nm==="sheet1"){ctx.fillRect(sx(p[0])-11,sy(p[1])-5,22,10);ctx.strokeRect(sx(p[0])-11,sy(p[1])-5,22,10);}
+    else{ctx.fillRect(sx(p[0])-8,sy(p[1])-8,16,16);ctx.strokeRect(sx(p[0])-8,sy(p[1])-8,16,16);}}
+  ctx.lineWidth=1;}
+
+let R3=null;let orbit={theta:-Math.PI/2,phi:1.02,r:2.8,cx:0,cy:0.35,cz:0.15,drag:false,px:0,py:0};
+const w3=(x,y,z)=>new THREE.Vector3(x,z,-y);
+// shelf cells are vertical: deep footprint y maps to HEIGHT on a rack at fixed depth
+function pos3d(x,y,restH){const f=Math.max(0,Math.min(1,(-y-0.50)/0.12));const normal=w3(x,y,restH);if(f<=0)return normal;const vert=new THREE.Vector3(x,0.86+(y+0.62)*1.3333,0.95);return normal.lerp(vert,f);}
+function setBeam(mesh,a,b){const mid=a.clone().add(b).multiplyScalar(.5);mesh.position.copy(mid);const dir=b.clone().sub(a);mesh.scale.set(1,Math.max(dir.length(),0.001),1);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());}
+function init3D(){if(R3)return;
+  const cont=document.getElementById("view3d");const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(window.devicePixelRatio||1);renderer.setSize(VW,VH,false);cont.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0d12);const camera=new THREE.PerspectiveCamera(45,VW/VH,0.05,100);
+  scene.add(new THREE.AmbientLight(0xffffff,0.55));const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(2,4,2);scene.add(dl);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(5,4),new THREE.MeshStandardMaterial({color:0x12161d}));floor.rotation.x=-Math.PI/2;scene.add(floor);
+  const beltMat=new THREE.MeshStandardMaterial({color:0x3a3f4d});const beltM=new THREE.Mesh(new THREE.BoxGeometry(2.20,0.05,0.32),beltMat);beltM.position.set(0,0.40,0);scene.add(beltM);
+  // unreachable middle marked as a band ON the belt (no hole)
+  const gmark=new THREE.Mesh(new THREE.PlaneGeometry(0.40,0.32),new THREE.MeshBasicMaterial({color:0xe5534b,transparent:true,opacity:0.40,side:THREE.DoubleSide}));gmark.rotation.x=-Math.PI/2;gmark.position.set(0,0.427,0);scene.add(gmark);
+  const legMat=new THREE.MeshStandardMaterial({color:0x2a2f38});function leg(x){[0.13,-0.13].forEach(z=>{const m=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.375,0.05),legMat);m.position.set(x,0.1875,z);scene.add(m);});}leg(-1.0);leg(-0.3);leg(0.3);leg(1.0);
+  // side rails spanning the full length (incl. over the gap) so it reads as ONE conveyor
+  const railMat=new THREE.MeshStandardMaterial({color:0x596472});[-0.165,0.165].forEach(z=>{const rail=new THREE.Mesh(new THREE.BoxGeometry(2.26,0.035,0.03),railMat);rail.position.set(0,0.435,z);scene.add(rail);});
+  // cross frame under the belt joining the two segments
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(2.26,0.03,0.30),new THREE.MeshStandardMaterial({color:0x20262e}));frame.position.set(0,0.36,0);scene.add(frame);
+  for(const s of ["a1","a2"]){const sh=SHELF[s];const col=s==="a1"?0x3a8be0:0xd98040;
+    const cx=(sh.cols[0]+sh.cols[2])/2; const SD=0.95; // vertical rack at depth 0.95 (arms sit at ~0.45 → clearance to place)
+    const panel=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.92,0.03),new THREE.MeshStandardMaterial({color:0x1a1f27}));panel.position.set(cx,0.46,SD);scene.add(panel);
+    for(let r=0;r<3;r++){const h=0.86-r*0.20;const ledge=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.015,0.15),new THREE.MeshStandardMaterial({color:0x2c333d}));ledge.position.set(cx,h-0.085,SD-0.07);scene.add(ledge);}
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++){const h=0.86-r*0.20;const pad=new THREE.Mesh(new THREE.PlaneGeometry(0.15,0.15),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.30,side:THREE.DoubleSide}));pad.position.set(sh.cols[c],h,SD-0.025);scene.add(pad);}
+    [(sh.cols[0]+sh.cols[1])/2,(sh.cols[1]+sh.cols[2])/2].forEach(mx=>{const dv=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.80,0.16),new THREE.MeshStandardMaterial({color:0x39424d}));dv.position.set(mx,0.50,SD-0.05);scene.add(dv);});}
+  function mkArm(arm,col){const base=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.06,20),new THREE.MeshStandardMaterial({color:0x44505c}));base.position.copy(w3(arm.x,arm.y,0.42));scene.add(base);
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1,16),new THREE.MeshStandardMaterial({color:col}));scene.add(post);
+    const boom=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1,16),new THREE.MeshStandardMaterial({color:col}));scene.add(boom);
+    const tcp=new THREE.Mesh(new THREE.SphereGeometry(0.045,16,16),new THREE.MeshStandardMaterial({color:col,emissive:0x000000}));scene.add(tcp);return {post,boom,tcp,arm};}
+  const arms={a1:mkArm(ARM1,0x3a8be0),a2:mkArm(ARM2,0xd98040)};
+  const items={box1:new THREE.Mesh(new THREE.BoxGeometry(0.09,0.09,0.09),new THREE.MeshStandardMaterial({color:0xcab43c})),sheet1:new THREE.Mesh(new THREE.BoxGeometry(0.12,0.04,0.10),new THREE.MeshStandardMaterial({color:0x66bf72})),tube1:new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.09,18),new THREE.MeshStandardMaterial({color:0xb3598c}))};
+  for(const k in items)scene.add(items[k]);R3={renderer,scene,camera,arms,items};
+  const el=renderer.domElement;el.addEventListener("mousedown",e=>{if(editing)return;orbit.drag=true;orbit.px=e.clientX;orbit.py=e.clientY;});window.addEventListener("mouseup",()=>orbit.drag=false);
+  window.addEventListener("mousemove",e=>{if(!orbit.drag)return;orbit.theta-=(e.clientX-orbit.px)*0.008;orbit.phi=Math.max(0.25,Math.min(1.45,orbit.phi-(e.clientY-orbit.py)*0.006));orbit.px=e.clientX;orbit.py=e.clientY;});
+  el.addEventListener("wheel",e=>{if(editing)return;e.preventDefault();orbit.r=Math.max(1.6,Math.min(5,orbit.r+e.deltaY*0.002));},{passive:false});}
+function draw3D(st){if(!R3)init3D();const {renderer,scene,camera,arms,items}=R3;
+  camera.position.set(orbit.cx+orbit.r*Math.sin(orbit.phi)*Math.cos(orbit.theta),orbit.cy+orbit.r*Math.cos(orbit.phi),orbit.cz+orbit.r*Math.sin(orbit.phi)*Math.sin(orbit.theta));camera.lookAt(orbit.cx,orbit.cy,orbit.cz);
+  const heights={box1:0.47,sheet1:0.44,tube1:0.47};for(const nm in items){const p=anim.items[nm];items[nm].position.copy(pos3d(p[0],p[1],heights[nm]));}
+  for(const key of ["a1","a2"]){const A=arms[key],a=A.arm,active=st.brains[key].active;const shoulder=w3(a.x,a.y,0.62);setBeam(A.post,w3(a.x,a.y,0.40),shoulder);
+    const eff=anim.eff&&anim.eff[key];const tgt=eff?pos3d(eff[0],eff[1],0.5):w3(a.x,a.y+0.22,0.58);setBeam(A.boom,shoulder,tgt);A.tcp.position.copy(tgt);A.tcp.material.emissive.setHex(active?0x333a44:0x000000);}
+  renderer.render(scene,camera);}
+
+function stateOf(d){const f=d.flags||[];if(f.includes("fault"))return"fault";if(f.includes("learn"))return"learning";if(f.includes("promo"))return"promoting";if(f.includes("gate"))return"gating";if(f.includes("gap"))return"gap";return d.active?"working":"idle";}
+const fmap={gap:["f-gap","● gap"],learn:["f-learn","✦ learned"],promo:["f-promo","↑ promoted"],gate:["f-gate","⊘ gated"],fault:["f-fault","⚠ fault"]};
+const badgeMap={learned:"✦learned",inherited:"↑inherited",GATED:"⊘gated",FAULT:"⚠fault"};
+function brainColor(tok){tok=tok.trim();const m={"Orchestrator":"var(--mgr)","Arm1":"var(--a1)","Arm 1":"var(--a1)","Arm2":"var(--a2)","Arm 2":"var(--a2)","Conveyor":"var(--conv)","Global":"var(--glob)","User":"var(--user)","L2":"#7f8c99","Demonstration":"#7f8c99"};return m[tok]||"#9fb0bd";}
+function fmtParty(p){return p.split("→").map(x=>`<b style="color:${brainColor(x)}">${x.trim()}</b>`).join('<span style="color:#566270"> → </span>');}
+function renderPanels(st){
+  document.getElementById("chapter").textContent=`Beat ${idx} / ${states.length-1}`;
+  document.getElementById("narration").textContent=st.narr;
+  for(const [k] of BR){const data=st.brains[k],card=document.getElementById("bc_"+k);
+    card.classList.toggle("active",!!data.active);card.classList.toggle("dim",!data.active);
+    const ss=card.querySelector(".state");if(ss)ss.textContent="· "+stateOf(data);
+    card.querySelector(".intent").textContent=data.intent||"";
+    const mc=card.querySelector(".minichain");mc.innerHTML="";
+    CH.forEach((_,i)=>{const s=document.createElement("div");s.className="step"+(i<=data.chain?" on":"");s.innerHTML=`<div class="seg"></div><small>${CH_SHORT[i]}</small>`;mc.appendChild(s);});
+    card.querySelector(".decision").textContent=data.decision||"";
+    const caps=card.querySelector(".caps");caps.innerHTML="";(data.caps||[]).forEach(c=>{const b=badgeMap[c[1]]||"";caps.innerHTML+=`<div class="cap"><b>${c[0]}</b>${b?`<span class="badge">${b}</span>`:""}</div>`;});
+    const fr=card.querySelector(".flagrow");fr.innerHTML="";(data.flags||[]).forEach(f=>{const s=document.createElement("span");s.className="flag "+fmap[f][0];s.textContent=fmap[f][1];fr.appendChild(s);});}
+  const log=document.getElementById("log");log.innerHTML="";
+  for(let i=0;i<=idx;i++)for(const m of states[i].msgs){const d=document.createElement("div");d.innerHTML=`${fmtParty(m[0])} &nbsp; ${m[1]}`;log.appendChild(d);}
+  log.scrollTop=log.scrollHeight;}
+
+let playing=false,timer=null;
+function setPlay(p){playing=p;document.getElementById("play").textContent=p?"⏸":"▶ Play";}
+function autoplay(){timer=setInterval(()=>{if(idx>=states.length-1){clearInterval(timer);setPlay(false);return;}show(idx+1);},2600);}
+document.getElementById("next").onclick=()=>show(idx+1);
+document.getElementById("prev").onclick=()=>show(idx-1);
+document.getElementById("reset").onclick=()=>{clearInterval(timer);setPlay(false);show(0);};
+document.getElementById("play").onclick=()=>{setPlay(!playing);if(playing)autoplay();else clearInterval(timer);};
+document.getElementById("dim").onclick=()=>{mode=mode==="2d"?"3d":"2d";cv.style.display=mode==="2d"?"block":"none";document.getElementById("view3d").style.display=mode==="3d"?"block":"none";document.getElementById("hint3d").style.display=mode==="3d"?"inline-flex":"none";document.getElementById("dim").textContent=mode==="2d"?"◳ 3D view":"▦ 2D view";document.getElementById("st_cell").textContent=mode==="2d"?"· 2D":"· 3D";if(mode==="3d")init3D();resizeView();};
+
+function setTab(t){["order","sort","teach"].forEach(x=>{document.getElementById("pane_"+x).style.display=x===t?"block":"none";document.getElementById("tab_"+x).classList.toggle("on",x===t);});document.getElementById("st_user").textContent="· "+t;}
+document.getElementById("tab_order").onclick=()=>setTab("order");
+document.getElementById("tab_sort").onclick=()=>setTab("sort");
+document.getElementById("tab_teach").onclick=()=>setTab("teach");
+
+const shapeSVG={box:'<svg width="14" height="14"><rect x="2" y="2" width="10" height="10" rx="2" fill="#cab43c"/></svg>',sheet:'<svg width="14" height="14"><rect x="0" y="4" width="14" height="6" rx="2" fill="#66bf72"/></svg>',tube:'<svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#b3598c"/></svg>'};
+function mkSel(opts){const s=document.createElement("select");opts.forEach(o=>{const a=o.split("|");const op=document.createElement("option");op.value=a[0];op.textContent=a[1]||a[0];s.appendChild(op);});return s;}
+// compositional position builder: a list of clauses (shelf-position OR relational), added with +
+function makePosBuilder(){
+  const root=document.createElement("div");
+  const rows=document.createElement("div");
+  const addBtn=document.createElement("button");addBtn.className="mini";addBtn.textContent="+ position";
+  root.append(rows,addBtn);
+  function update(){const kids=Array.from(rows.children);kids.forEach((r,i)=>{r._rm.style.display=i===0?"none":"";});const last=kids[kids.length-1];addBtn.style.display=(last&&last._type()==="rel")?"":"none";}
+  function addRow(){
+    const row=document.createElement("div");row.className="row pbrow";
+    const tSel=mkSel(["rel|relational","shelf|shelf pos"]);
+    const relSel=mkSel(["above","below","left|left of","right|right of","under"]);
+    const objSel=mkSel(["box|Box","sheet|Sheet","tube|Tube"]);
+    const shelfSel=mkSel(["top-left","top","top-right","left","center","right","bottom-left","bottom","bottom-right"]);
+    const rm=document.createElement("button");rm.className="mini";rm.textContent="×";rm.title="remove this position";
+    row.append(tSel,relSel,objSel,shelfSel,rm);
+    function refresh(){const r=tSel.value==="rel";relSel.style.display=r?"":"none";objSel.style.display=r?"":"none";shelfSel.style.display=r?"none":"";}
+    tSel.onchange=()=>{refresh();update();};refresh();
+    rm.onclick=()=>{if(rows.children.length>1){rows.removeChild(row);update();}};
+    row._rm=rm;row._type=()=>tSel.value;
+    row._read=()=>tSel.value==="rel"?{type:"rel",rel:relSel.value,obj:objSel.options[objSel.selectedIndex].text}:{type:"shelf",pos:shelfSel.value};
+    rows.appendChild(row);update();
+  }
+  addBtn.onclick=addRow;
+  addRow();
+  return {el:root,get:()=>Array.from(rows.children).map(r=>r._read()),reset:()=>{rows.innerHTML="";addRow();}};
+}
+function posStr(cl){return (cl&&cl.length)?cl.map(c=>c.type==="shelf"?c.pos:(c.rel+" "+c.obj)).join(" · "):"(unspecified)";}
+
+let selItem="box",orderLines=[];
+document.querySelectorAll(".shape").forEach(s=>s.onclick=()=>{if(editing)return;selItem=s.dataset.item;document.querySelectorAll(".shape").forEach(x=>x.classList.toggle("sel",x===s));});
+const orderPos=makePosBuilder();document.getElementById("o_posb").appendChild(orderPos.el);
+const sortFrom=makePosBuilder();document.getElementById("s_from").appendChild(sortFrom.el);
+const sortTo=makePosBuilder();document.getElementById("s_to").appendChild(sortTo.el);
+function renderOrder(){const el=document.getElementById("o_list");el.innerHTML=orderLines.length?orderLines.map(l=>`<span class="pill">${shapeSVG[l.item]} → ${l.shelf.toUpperCase()}: ${posStr(l.pos)}</span>`).join(""):'<span style="color:var(--muted)">no lines yet</span>';}
+document.getElementById("o_add").onclick=()=>{orderLines.push({item:selItem,shelf:document.getElementById("o_shelf").value,pos:orderPos.get()});orderPos.reset();renderOrder();};
+document.getElementById("o_clear").onclick=()=>{orderLines=[];renderOrder();orderPos.reset();sortFrom.reset();sortTo.reset();};
+document.getElementById("o_run").onclick=()=>{clearInterval(timer);setPlay(true);show(0);autoplay();};
+let seq=[];
+function renderSeq(){const el=document.getElementById("t_seq");el.innerHTML=seq.length?seq.map(b=>`<span class="pill">${b}</span>`).join(" → "):'<span style="color:var(--muted)">click blocks to build a demonstration</span>';}
+document.querySelectorAll(".blk").forEach(b=>b.onclick=()=>{seq.push(b.dataset.b);renderSeq();});
+document.getElementById("t_clear").onclick=()=>{seq=[];renderSeq();};
+document.getElementById("t_capture").onclick=()=>{clearInterval(timer);setPlay(false);show(2);};
+
+renderOrder();renderSeq();applyLayout();show(0);requestAnimationFrame(loop);
+window.addEventListener("resize",()=>{resizeView();redrawLinks();});
+</script>
+</body>
+</html>

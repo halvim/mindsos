@@ -1,0 +1,1432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>MindsOS — Open Order (presentation UI mockup)</title>
+<script src="vendor/three.min.js"></script><!-- vendored (offline) — was a CDN dep; see ROBOT_DEMO_UI.md v10.5 -->
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --edge:#2b333d; --ink:#e6edf3; --muted:#8b98a5;
+    --a1:#3a8be0; --a2:#d98040; --conv:#48c78e; --mgr:#b98cf0; --user:#53b0be;
+    --gap:#e5534b; --gold:#cab43c; --green:#66bf72; --purple:#b3598c; --glob:#e0b341; --warn:#d29922; --line:#4a5563;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:12px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1300px;margin:0 auto;padding:9px 12px}
+  header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:5px}
+  h1{font-size:15px;margin:0;font-weight:500}
+  h1 .osb{font-weight:800}
+  .tag{font-size:10px;color:var(--muted);border:1px solid var(--edge);border-radius:20px;padding:1px 8px}
+  .controls{margin-left:auto;display:flex;gap:5px;flex-wrap:wrap}
+  button{background:var(--panel2);color:var(--ink);border:1px solid var(--edge);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px}
+  button:hover{border-color:#3d8bfd}
+  button.primary{background:#1f6feb;border-color:#1f6feb}
+  button.toggle.on{background:#136f8a;border-color:#136f8a;color:#eafcff}
+  select,input{background:#0e131a;color:var(--ink);border:1px solid var(--edge);border-radius:5px;padding:3px 6px;font-size:11px}
+  .chapter{display:flex;align-items:baseline;gap:8px;margin:2px 0 6px}
+  .chip{background:#21262d;border:1px solid var(--edge);border-radius:5px;padding:2px 8px;font-size:10px;color:var(--muted);white-space:nowrap}
+  .narr{color:var(--ink);font-size:12px}
+  /* v0.22 — header beat strip: full-width status line under the bar (blue accent rail + outlined beat chip) */
+  #beatstrip{display:flex;align-items:center;gap:10px;margin:0 0 7px;padding:5px 12px;background:#101a27;border:1px solid var(--edge);border-left:3.5px solid var(--a1);border-radius:7px;min-height:30px}
+  #beatnum{flex:0 0 auto;font-size:10px;color:var(--a1);background:transparent;border:1px solid var(--a1);border-radius:20px;padding:2px 10px;white-space:nowrap}
+  #beatnarr{flex:1;min-width:0;color:#eaf2ff;font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* v0.24 — timeline button: far right of the strip, filled Play-blue, list icon + label */
+  #tlbtn{flex:0 0 auto;margin-left:8px;display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:#fff;background:#1f6feb;border:1px solid #1f6feb;border-radius:6px;padding:3px 11px;cursor:pointer;white-space:nowrap}
+  #tlbtn:hover{background:#3d8bfd;border-color:#3d8bfd}
+  #tlbtn .tlico{width:13px;height:13px;flex:0 0 auto}
+  #import:disabled{opacity:.45;cursor:not-allowed}
+  /* free canvas */
+  #stage{position:relative;min-height:820px}
+  #links{position:absolute;inset:0;pointer-events:none;z-index:0}
+  .dcard{position:absolute;background:var(--panel);border:1.5px solid var(--acc,#2b333d);border-radius:10px;padding:9px;overflow:hidden;z-index:1;display:flex;flex-direction:column}
+  #stage.editing .dcard{outline:1px dashed #3d8bfd55;resize:both}
+  #stage.editing .draghandle{cursor:move}
+  .card h2,.dcard h2{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin:0 0 6px;display:flex;justify-content:space-between;align-items:center}
+  /* cell */
+  #card_cell{padding-bottom:6px}
+  #viewbox{position:relative;flex:1;min-height:120px;border-radius:7px;overflow:hidden;background:#0a0d12}
+  #viewbox canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
+  #view3d{position:absolute;inset:0}
+  .viewbtn{font-size:10px;padding:2px 8px}
+  .legend{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:10px;margin-top:5px}
+  .legend i{font-style:normal;display:inline-flex;align-items:center;gap:4px}
+  .sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+  .log{font-family:ui-monospace,Menlo,monospace;font-size:10.5px;overflow:auto;flex:1}
+  .log div{padding:2px 0;border-bottom:1px solid #1a212b;color:var(--muted)}
+  /* Messages card — tabbed Server (Seam A) / Inter-brain (Seam B) */
+  .dcard#card_log{--acc:#6f8092}
+  .commstabs{display:flex;gap:6px;margin:0 0 6px}
+  .ctab{flex:1 1 0;min-width:0;font-size:8.5px;padding:4px 6px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+  .srvfeed{flex:1;overflow:auto}
+  .srvvitals{display:flex;gap:10px;align-items:center;background:#11161d;border:1px solid var(--edge);border-radius:6px;padding:5px 8px;margin-bottom:5px}
+  .srvvitals .sv{color:var(--ink);font-size:9.5px}
+  .srvvitals .sv b{color:#cfe6ff}
+  .srvvitals .sv.ok{color:#9be7bd}
+  .srvvitals .srvmock{margin-left:auto;color:var(--warn);font-size:8px;border:1px solid #5a4a1f;border-radius:8px;padding:0 6px}
+  .srvvitals .srvlive{margin-left:auto;color:#9be7bd;font-size:8px;border:1px solid #2c5e44;border-radius:8px;padding:0 6px}
+  .srvsess{font-size:8.5px;color:var(--muted);margin:-2px 0 7px 2px}
+  .srvep{font-family:ui-monospace,Menlo,monospace;font-size:8px;color:var(--muted);margin:-1px 0 7px 2px}
+  .srvrow{display:flex;align-items:baseline;gap:7px;padding:3px 0;border-bottom:1px solid #1a212b}
+  .kbadge{flex:0 0 auto;font-size:7.5px;font-weight:600;border-radius:7px;padding:1px 6px}
+  .k-login,.k-bootstrap{color:#9cd3f5;background:#13283a}
+  .k-skill{color:#d6c0f5;background:#241a33}
+  .k-gate_ok{color:#9be7bd;background:#13311f}
+  .k-gate_no{color:#ffb4ad;background:#36161a}
+  .k-persist{color:#8fe0d2;background:#123230}
+  .k-audit{color:#c2cdd9;background:#222a33}
+  .srvtxt{color:var(--ink);font-size:9px}
+  .srvevt{margin-left:auto;font-family:ui-monospace,Menlo,monospace;font-size:7.5px;color:var(--muted)}
+  .srvpending{color:var(--muted);font-style:italic;font-size:9.5px;padding:8px 2px}
+  /* brain cards */
+  #card_cell,#card_log{--acc:#6b7785}
+  .dcard.user{--acc:var(--user);color:var(--user)}
+  .dcard.mgr{--acc:var(--mgr);color:var(--mgr)}
+  .dcard.a1{--acc:var(--a1);color:var(--a1)} .dcard.a2{--acc:var(--a2);color:var(--a2)} .dcard.conv{--acc:var(--conv);color:var(--conv)}
+  /* tab-style card titles (header sits on the card top, accent-tinted) */
+  .dcard>.nm,.dcard>h2{margin:-9px -9px 8px -9px;padding:6px 9px;border-radius:9px 9px 0 0;background:color-mix(in srgb,var(--acc) 18%, #161b22);border-bottom:1px solid color-mix(in srgb,var(--acc) 55%, transparent)}
+  /* all brain cards render identically — no inactive dimming, so text + view-mode
+     icons are the same colour on every card (Orchestrator / Arm 1 / Arm 2 / Conveyor) */
+  .dcard.active{opacity:1}
+  .nm{font-weight:650;font-size:11.5px;display:flex;justify-content:space-between;align-items:center}
+  .role{font-size:9px;color:var(--muted);font-weight:400}
+  .intent{color:var(--ink);font-size:11px;margin:4px 0 2px;min-height:22px}
+  .minichain{display:flex;gap:3px;margin:4px 0}
+  .step{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+  .step .seg{width:100%;height:5px;border-radius:3px;background:#222a34}
+  .step.on .seg{background:currentColor}
+  .step small{font-size:7.5px;color:var(--muted);line-height:1;white-space:nowrap}
+  .step.on small{color:var(--ink)}
+  .lbl{font-size:8.5px;color:var(--muted);margin-bottom:2px}
+  .decision{font-size:10px;color:var(--ink);background:#191f29;border-left:3px solid currentColor;border-radius:0 5px 5px 0;padding:5px 7px;margin:5px 0}
+  .cap{font-size:10px;color:var(--muted);margin:1px 0}
+  .cap b{color:var(--ink)}
+  .cap .badge{font-size:8.5px;margin-left:3px;padding:0 5px;border-radius:9px;border:1px solid currentColor}
+  .flagrow{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+  .flag{font-size:9px;padding:1px 6px;border-radius:20px;border:1px solid}
+  .f-gap,.f-fault{color:#ffb4ad;border-color:#7d2a25;background:#2a1614}
+  .f-learn{color:#bff5cf;border-color:#235e38;background:#142a1c}
+  .f-promo{color:#cbd9ff;border-color:#2c3e72;background:#141b2c}
+  .f-gate{color:#ffd9a8;border-color:#7a5417;background:#2a2110}
+  .dot{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+  /* gap: UX controls (reasoning, maximize) | card-UI (status dot, help) — brain cards only */
+  .dcard .hdrright .dot{margin-left:20px}
+  .hdrright{display:inline-flex;align-items:center;gap:7px}
+  .state{display:inline-block;vertical-align:middle;margin-left:10px;font-size:8px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--edge);border-radius:9px;padding:1px 7px}
+  .help{cursor:help;color:var(--muted);border:1px solid currentColor;border-radius:50%;width:14px;height:14px;display:inline-flex;align-items:center;justify-content:center;font-size:9px;flex:0 0 auto}
+  /* per-card hover description tooltip — shown ONLY over the .help icon (cursor:help is on .help) */
+  #cardtip{position:fixed;z-index:60;max-width:264px;background:#0b0e13;border:1px solid var(--edge);border-radius:7px;padding:7px 9px;font-size:10.5px;line-height:1.42;color:var(--ink);box-shadow:0 8px 24px rgba(0,0,0,.5);pointer-events:none;opacity:0;display:none}
+  #cardtip.on{display:block;opacity:1}
+  /* v10.4 maximize-height (Option A: fill screen height, pin to top, overlay) */
+  .maxbtn{background:transparent;border:1px solid var(--acc,#46505c);color:var(--acc,#9fb0bd);border-radius:5px;width:20px;height:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:0 0 auto}
+  .maxbtn:hover{border-color:currentColor}
+  .maxbtn svg{width:12px;height:12px;display:block}
+  .maxbtn.on{background:color-mix(in srgb,var(--acc) 25%,#0e1116)}
+  #maxbackdrop{position:fixed;inset:0;background:rgba(6,9,13,.66);z-index:50;display:none}
+  /* L5 reasoning/audit modal (v0.15) — overlay over #maxbackdrop; NOT a card (4-section set intact) */
+  #l5audit{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(940px,94vw);height:min(660px,90vh);background:var(--panel);border:1.7px solid var(--acc,#6f8092);border-radius:12px;z-index:52;display:none;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+  #l5audit .l5head{display:flex;align-items:center;gap:10px;padding:11px 14px;background:color-mix(in srgb,var(--acc) 18%,#161b22);border-bottom:1px solid color-mix(in srgb,var(--acc) 50%,transparent)}
+  body.nofx #l5audit .l5head{background:#1c2330;border-bottom:1px solid var(--acc)}
+  #l5audit .l5dot{width:9px;height:9px;border-radius:50%;background:var(--acc);flex:0 0 auto}
+  #l5audit .l5title{font-size:14px;font-weight:700;color:var(--ink)}
+  #l5audit .l5tags{margin-left:auto;display:inline-flex;gap:6px}
+  #l5audit .l5tag{font-size:9.5px;padding:2px 8px;border-radius:9px;border:1px solid var(--muted);color:var(--muted);background:var(--panel2);white-space:nowrap}
+  #l5audit .l5tag.warn{color:var(--warn);border-color:#5a4a1f}
+  #l5audit .l5tag.live{color:#4bbf7a;border-color:#2c5e44}
+  #l5audit .l5close{cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:0 2px;background:none;border:none}
+  #l5audit .l5body{display:flex;gap:14px;padding:12px 14px;flex:1 1 auto;min-height:0}
+  #l5audit .l5eplist{width:232px;flex:0 0 auto;background:#11151c;border:1px solid var(--edge);border-radius:8px;padding:10px 8px;overflow:auto}
+  #l5audit .l5ephdr,#l5audit .l5shdr{font-size:9.5px;font-weight:700;letter-spacing:.6px;color:var(--muted);margin:2px 4px 8px}
+  #l5audit .l5ep{display:grid;grid-template-columns:18px 1fr;width:100%;text-align:left;background:var(--panel2);border:1px solid var(--edge);border-radius:7px;padding:7px 9px;margin-bottom:8px;cursor:pointer;color:var(--ink)}
+  #l5audit .l5ep.sel{background:color-mix(in srgb,var(--acc) 28%,#0e1116);border-color:var(--acc)}
+  body.nofx #l5audit .l5ep.sel{background:#23303f}
+  #l5audit .l5epg{grid-row:1;font-weight:700}
+  #l5audit .l5epg.ok{color:#5fd39a}#l5audit .l5epg.stop{color:#e0758c}
+  #l5audit .l5ept{grid-row:1;font-size:11px;font-weight:600}
+  #l5audit .l5eps{grid-column:2;grid-row:2;font-size:9.5px;color:var(--muted);margin-top:2px}
+  #l5audit .l5stages{flex:1 1 auto;overflow:auto;padding-left:4px}
+  #l5audit .l5stage{display:grid;grid-template-columns:26px 1fr;gap:10px;position:relative;padding-bottom:12px}
+  #l5audit .l5stage:not(:last-child)::before{content:"";position:absolute;left:12px;top:24px;bottom:0;width:2px;background:var(--edge)}
+  #l5audit .l5snum{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--acc);background:color-mix(in srgb,var(--acc) 28%,#0e1116);border:1.3px solid var(--acc);z-index:1}
+  body.nofx #l5audit .l5snum{background:#1c2330}
+  #l5audit .l5sbox{background:var(--panel2);border:1px solid var(--edge);border-left:3px solid var(--acc);border-radius:8px;padding:8px 12px}
+  #l5audit .l5stt{font-size:9px;font-weight:700;letter-spacing:.7px;color:var(--muted);text-transform:uppercase}
+  #l5audit .l5sbody{font-size:13px;font-weight:600;color:var(--ink);margin-top:3px}
+  #l5audit .l5sbody.ok{color:#5fd39a}#l5audit .l5sbody.warn{color:var(--warn)}#l5audit .l5sbody.stop{color:#e0758c}
+  #l5audit .l5snote{font-size:10px;color:var(--muted);margin-top:3px}
+  #l5audit .l5empty{margin:auto;color:var(--muted);font-size:12px;text-align:center;max-width:60%}
+  /* v0.24 demo-timeline modal — over #maxbackdrop; chronological transcript, filterable */
+  #tlmodal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(980px,94vw);height:min(640px,90vh);background:var(--panel);border:1.7px solid var(--a1);border-radius:13px;z-index:52;display:none;flex-direction:column;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,.6)}
+  #tlmodal .tlhead{display:flex;align-items:center;gap:10px;padding:11px 16px;background:color-mix(in srgb,var(--a1) 13%,#161b22);border-bottom:1px solid color-mix(in srgb,var(--a1) 45%,transparent)}
+  body.nofx #tlmodal .tlhead{background:#15233a;border-bottom:1px solid var(--a1)}
+  #tlmodal .tltitle{font-size:14px;font-weight:700;color:var(--ink)}
+  #tlmodal .tlclose{margin-left:auto;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;background:none;border:none}
+  #tlmodal .tlfilters{padding:8px 16px 6px;border-bottom:1px solid var(--edge);display:flex;flex-direction:column;gap:5px}
+  #tlmodal .tlfrow{display:flex;align-items:center;gap:8px}
+  #tlmodal .tlflab{flex:0 0 72px;font-size:10px;font-weight:700;color:var(--muted)}
+  #tlmodal .tlpills{display:flex;gap:7px;flex-wrap:wrap}
+  #tlmodal .tlpill{font-size:9.5px;border-radius:20px;padding:2px 10px;cursor:pointer;border:1px solid;white-space:nowrap;user-select:none}
+  #tlmodal .tlpill.on{} #tlmodal .tlpill.off{border-color:var(--muted)!important;color:var(--muted)!important;background:transparent!important;opacity:.55}
+  #tlmodal .tlbody{flex:1 1 auto;overflow:auto;padding:8px 14px 12px}
+  #tlmodal .tlbeat{font-size:10.5px;font-weight:700;color:var(--ink);background:#11161d;border-radius:5px;padding:5px 9px;margin:8px 0 4px}
+  #tlmodal .tlrow{display:grid;grid-template-columns:90px 132px 1fr;align-items:start;gap:8px;padding:4px 0 4px 10px;border-left:3px solid var(--edge);margin:2px 0}
+  #tlmodal .tlsrc{font-size:8.4px;font-weight:600;border-radius:5px;padding:1px 6px;text-align:center;border:1px solid;align-self:start}
+  #tlmodal .tltag{font-size:9px;color:var(--muted);padding-top:1px}
+  #tlmodal .tltext{font-size:10px;color:var(--ink);padding-top:1px}
+  #tlmodal .tlnone{color:var(--muted);font-style:italic;font-size:11px;padding:16px 4px;text-align:center}
+  /* Export chooser menu (v0.18 / B3) */
+  #expmenu{position:fixed;display:none;z-index:53;background:var(--panel);border:1px solid var(--edge);border-radius:8px;padding:5px;min-width:162px;box-shadow:0 12px 36px rgba(0,0,0,.5)}
+  #expmenu .emlabel{font-size:8.5px;font-weight:700;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;padding:3px 8px 4px}
+  #expmenu .emitem{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--ink);font-size:11px;padding:5px 8px;border-radius:5px;cursor:pointer}
+  #expmenu .emitem:hover{background:var(--panel2)}
+  #expmenu .emsep{height:1px;background:var(--edge);margin:5px 4px}
+  .auditbtn{background:transparent;border:1px solid var(--acc,#46505c);color:var(--acc,#9fb0bd);border-radius:5px;width:20px;height:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:0 0 auto}
+  .auditbtn:hover{background:color-mix(in srgb,var(--acc) 22%,#0e1116)}
+  /* header Audit button (v0.19) — filled magenta, distinct from every brain colour */
+  #audit{background:#c2419a;border:1px solid #a8327f;color:#fff;border-radius:6px;padding:4px 11px;cursor:pointer;font-size:11px;font-weight:600;display:inline-flex;align-items:center;gap:6px}
+  #audit:hover{background:#cf52a8;border-color:#c2419a}
+  #audit .hi{width:13px;height:13px;flex:0 0 auto}
+  #auditmenu{position:fixed;display:none;z-index:53;background:var(--panel);border:1px solid #c2419a;border-radius:8px;padding:5px;min-width:150px;box-shadow:0 12px 36px rgba(0,0,0,.5)}
+  #auditmenu .emlabel{font-size:8.5px;font-weight:700;letter-spacing:.5px;color:#d873b5;text-transform:uppercase;padding:3px 8px 4px}
+  #auditmenu .emitem{display:block;width:100%;text-align:left;background:transparent;border:0;color:var(--ink);font-size:11px;padding:5px 8px;border-radius:5px;cursor:pointer}
+  #auditmenu .emitem:hover{background:var(--panel2)}
+  /* option-C system message callout (v0.19) — permanent height, severity-colored, auto-clears */
+  #l5cal{display:flex;align-items:center;gap:9px;min-height:34px;margin:6px 0 4px;padding:0 12px;border:1px solid var(--edge);border-left:4px solid var(--edge);border-radius:8px;background:var(--panel2);font-size:13px;color:var(--ink)}
+  #l5cal.idle{opacity:.4}
+  #l5cal .l5ico{font-size:14px;flex:0 0 auto}
+  #l5cal #l5msg{flex:1 1 auto}
+  #l5cal #l5x{background:none;border:0;color:var(--muted);font-size:15px;line-height:1;cursor:pointer;padding:0 2px;display:none}
+  #l5cal.dismissable #l5x{display:inline}
+  #l5cal.sev-info{border-left-color:#5b9bf0}#l5cal.sev-info .l5ico{color:#5b9bf0}
+  #l5cal.sev-ok{border-left-color:#48c78e}#l5cal.sev-ok .l5ico{color:#48c78e}
+  #l5cal.sev-warn{border-left-color:#d29922}#l5cal.sev-warn .l5ico{color:#d29922}
+  #l5cal.sev-error{border-left-color:#e5534b;background:#211012}#l5cal.sev-error .l5ico{color:#e5534b}
+  .dcard.maximized{box-shadow:0 0 0 1px var(--acc),0 18px 60px rgba(0,0,0,.6)}
+  /* v10.5 presentation hardening — capability banner + color-mix fallback */
+  #capbanner{display:none;align-items:center;gap:10px;background:#2a2110;border:1px solid #7a5417;color:#ffd9a8;border-radius:6px;padding:5px 10px;font-size:11px;margin-bottom:6px}
+  #capbanner button{margin-left:auto;background:transparent;border:1px solid currentColor;color:inherit;border-radius:5px;padding:1px 8px;cursor:pointer;font-size:10px}
+  body.nofx .uitab.on{background:var(--acc);color:#0e1116}
+  body.nofx .bsec.on{background:var(--acc);color:#0e1116}
+  body.nofx .maxbtn.on{background:#1c232d}
+  body.nofx .dcard>.nm,body.nofx .dcard>h2{background:#1c2330;border-bottom:1px solid var(--acc)}
+  /* user interaction */
+  .tabs{display:flex;gap:10px;align-items:stretch;margin-bottom:7px}
+  .tabs button{flex:1;font-size:10.5px;padding:4px;display:inline-flex;align-items:center;justify-content:center}
+  .tgroup{position:relative;flex:2;display:flex;gap:5px;border:1.5px solid var(--line);border-radius:8px;padding:8px 6px 6px}
+  .tgroup.sys{flex:1}
+  .tglabel{position:absolute;top:-7px;left:8px;background:var(--panel);padding:0 5px;font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--acc)}
+  .teachtab{border-style:dashed}
+  .ti{width:11px;height:11px;margin-right:4px}
+  .hi{width:12px;height:12px;vertical-align:-2px;margin-right:4px}
+  /* .tabs selected handled by .uitab.on */
+  .scroll{overflow:auto;flex:1}
+  /* v0.22 — narrow, discrete per-card-accent scrollbar on brain-card scroll regions (4px; thumb = card accent) */
+  .dcard .scroll::-webkit-scrollbar,.dcard .secbody::-webkit-scrollbar{width:4px;height:4px}
+  .dcard .scroll::-webkit-scrollbar-track,.dcard .secbody::-webkit-scrollbar-track{background:transparent}
+  .dcard .scroll::-webkit-scrollbar-thumb,.dcard .secbody::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--acc) 42%,transparent);border-radius:3px}
+  .dcard .scroll::-webkit-scrollbar-thumb:hover,.dcard .secbody::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--acc) 80%,transparent)}
+  .dcard .scroll,.dcard .secbody{scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--acc) 45%,transparent) transparent}
+  body.nofx .dcard .scroll::-webkit-scrollbar-thumb,body.nofx .dcard .secbody::-webkit-scrollbar-thumb{background:var(--acc)}
+  body.nofx .dcard .scroll,body.nofx .dcard .secbody{scrollbar-color:var(--acc) transparent}
+  .shapes{display:flex;gap:6px}
+  .shape{background:#0e131a;border:1px solid var(--edge);border-radius:7px;padding:4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;flex:1}
+  .shape.sel{border-color:var(--user);box-shadow:0 0 0 1px var(--user) inset}
+  .shape small{font-size:9px;color:var(--ink)}
+  .shape .lim{font-size:8px;color:var(--muted);text-align:center}
+  .cellgrid{display:grid;grid-template-columns:repeat(3,22px);gap:3px}
+  .cellgrid div{width:22px;height:22px;background:#0e131a;border:1px solid var(--edge);border-radius:3px;cursor:pointer}
+  .cellgrid div.sel{border-color:var(--user);background:#15323a}
+  .step2{font-size:10.5px;color:var(--user);display:flex;gap:6px;align-items:center;margin-top:8px}
+  .step2 b{color:var(--user)}
+  .chint{color:var(--ink);font-weight:400}
+  .ptype{font-size:10px;padding:3px 8px}
+  /* .ptype selected handled by .uitab.on */
+  .mini{font-size:9.5px;padding:2px 7px}
+  .pchips{display:flex;flex-wrap:wrap;gap:3px;margin:4px 0;min-height:14px}
+  .pchips .pill a{cursor:pointer;color:var(--muted);margin-left:3px;font-weight:700}
+  .pbrow select{font-size:10px;padding:2px 4px}
+  .row{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:6px}
+  .pill{display:inline-flex;align-items:center;gap:4px;background:#0e131a;border:1px solid var(--edge);border-radius:13px;padding:1px 8px;margin:2px 3px 0 0;font-size:10px}
+  .blk{background:#10202a;border:1px solid #2a4d5a;color:#bfe7f0;border-radius:5px;padding:3px 7px;font-size:10px}
+  .orderlist,.seq{font-size:10.5px;margin-top:6px;min-height:16px}
+  .limits{font-size:9.5px;color:var(--muted)}
+  .limits div{display:flex;align-items:center;gap:6px;margin-top:3px}
+  /* ===== v10 reasoning graph ===== */
+  .ctabs{display:flex;gap:4px;margin:0 0 6px}
+  .ctabs button{flex:0 0 auto;font-size:9.5px;padding:2px 9px;border-radius:5px}
+  .ctabs button.on{background:#136f8a;border-color:#136f8a;color:#eafcff}
+  .graphbox{flex:1;min-height:90px;display:flex;align-items:center;justify-content:center;overflow:hidden;padding-top:2px}
+  .gsvg{width:100%;height:100%;max-height:270px}
+  .gsvg g{transform-box:fill-box;transform-origin:center}
+  .gn-new{animation:gpop .5s ease-out}
+  .gn-gated{animation:gflick 1.1s ease-in-out infinite}
+  @keyframes gpop{0%{opacity:0;transform:scale(.4)}100%{opacity:1;transform:scale(1)}}
+  @keyframes gflick{0%,100%{opacity:1}50%{opacity:.5}}
+  /* ===== v10.2 teach curation ===== */
+  .tsub{display:flex;gap:4px;margin-bottom:7px}
+  .tsub button{flex:1;font-size:10px;padding:3px}
+  /* .tsub selected handled by .uitab.on */
+  .liblist{max-height:120px;overflow:auto;border:1px solid var(--edge);border-radius:6px;padding:3px}
+  .libitem{display:flex;align-items:center;gap:6px;padding:3px 5px;border-radius:5px;cursor:pointer;font-size:10.5px}
+  .libitem:hover{background:#1b2530}
+  .libitem.sel{background:#15323a}
+  .libitem .nmx{flex:1;color:var(--ink)}
+  .scopebadge{font-size:8px;padding:0 5px;border-radius:9px;border:1px solid var(--muted);color:var(--muted)}
+  .scopebadge.s-Local{color:#bff5cf;border-color:#235e38}
+  .scopebadge.s-Global{color:#e0b341;border-color:#7a5417}
+  .scopebadge.s-override{color:#cbd9ff;border-color:#2c3e72}
+  .kx{font-size:8.5px;color:var(--muted)}
+  .inspect{margin-top:6px;border:1px solid var(--edge);border-radius:6px;padding:6px 7px;font-size:10px;min-height:46px}
+  .inspect h4{margin:0 0 3px;font-size:11px;color:var(--ink)}
+  .inspect .il{color:var(--muted);margin:2px 0}
+  .inspect .il b{color:var(--ink);font-weight:600}
+  /* v10.2b retire / override / restore */
+  .libitem.retired .nmx{color:var(--muted);text-decoration:line-through}
+  .rowact{flex:0 0 auto;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;
+          border-radius:4px;cursor:pointer;font-size:12px;line-height:1;border:1px solid transparent}
+  .rowact:hover{border-color:currentColor}
+  .rowact.ra-retire{color:var(--gap)} .rowact.ra-override{color:var(--glob)} .rowact.ra-restore{color:var(--user)}
+  .iactions{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}
+  .iact{font-size:10px;padding:3px 9px;border-radius:6px;cursor:pointer;background:var(--panel2);border:1px solid currentColor}
+  .iact.a-retire{color:#ffb4ad} .iact.a-override{color:#cbd9ff} .iact.a-restore{color:#9fe0ec}
+  .idep{margin-top:6px;font-size:9.5px;color:#ffb4ad;background:#2a1614;border:1px solid #7d2a25;border-radius:5px;padding:4px 6px}
+  .idep .deplist{color:#ffd9d4}
+  .iretired{margin-top:6px;font-size:9.5px;color:var(--muted);font-style:italic}
+  .ovbanner{margin:4px 0;font-size:9.5px;color:#cbd9ff;background:#141b2c;border:1px solid #2c3e72;border-radius:5px;padding:4px 6px}
+  /* ===== v10 brain sections (chain stages as tabs) ===== */
+  .bsections{display:flex;gap:2px;align-items:center;margin:0 0 6px;flex-wrap:nowrap}
+  /* ===== unified tab/toggle button colour contract (per-card accent) ===== */
+  .uitab{background:var(--panel2);border:1px solid var(--acc);color:var(--ink);cursor:pointer}
+  .uitab.on{background:color-mix(in srgb,var(--acc) 70%,#0e1116);border-color:var(--acc);color:#eafcff}
+  .bsec{flex:1 1 0;min-width:0;font-size:8.5px;padding:3px 2px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center}
+  .bsec.on{font-weight:600}
+  .secbody{flex:1;min-height:0;overflow:auto}
+  .secart{display:flex;align-items:center;gap:6px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+  .secart.dim{opacity:.5}
+  .secart .artname{font-weight:700;color:var(--ink)}
+  .secart .okdot{color:var(--green);font-size:8px}
+  .secline{font-size:10.5px;color:var(--ink);margin:3px 0;line-height:1.35}
+  .cintent{font-size:10.5px;color:var(--ink);margin:0 0 6px;min-height:14px}
+  .sechdr{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:5px}
+  .sechdr .artname{font-size:9px;font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:.5px}
+  .vtog{display:flex;gap:3px;flex:0 0 auto}
+  .vmb{display:inline-flex;align-items:center;justify-content:center;padding:2px 5px;border-radius:5px}
+  .vmb svg{width:13px;height:13px;display:block}
+  .secbloc.dim{opacity:.55}
+  .secgraph{width:100%}
+  .secgraph .gsvg{max-height:190px}
+  /* ===== reusable subsection sub-card: border + per-card accent rail + collapsible header ===== */
+  .subsec{position:relative;border:1px solid var(--edge);border-radius:7px;background:#11151c;margin-top:7px;overflow:hidden}
+  .subsec::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--acc,#46505c)}
+  .subhdr{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;padding:4px 8px 4px 11px;background:color-mix(in srgb,var(--acc) 22%,#0e1116)}
+  .subttl{font-size:8px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#e7edf3}
+  .subchev{width:9px;height:9px;flex:0 0 auto;color:var(--muted);transition:transform .15s}
+  .subsec.collapsed .subchev{transform:rotate(-90deg)}
+  .subsec.collapsed .subbody{display:none}
+  .subbody{padding:7px 9px 8px 11px}
+  body.nofx .subhdr{background:#1c2330}
+  /* resolve content (rendered inside a .subsec body) */
+  .rnone{font-size:9.5px;color:var(--muted);font-style:italic}
+  .rclause{font-size:10px;color:var(--ink);margin-bottom:4px}
+  .rbody{display:flex;gap:10px;align-items:center}
+  .rgrid{width:66px;height:66px;flex:0 0 auto}
+  .rgrid rect[stroke="#eafcff"]{animation:rpop .4s ease-out}
+  .rcap{font-size:9.5px;color:#bff5cf;line-height:1.35}
+  .rcap b{color:#ffe6a8;font-weight:600}
+  @keyframes rpop{0%{opacity:.2}100%{opacity:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Minds<span class="osb">OS</span> Demo</h1>
+    <span class="tag">presentation</span>
+    <span class="tag">v0.25</span>
+    <span class="tag" id="honesty" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
+    <div class="controls">
+      <button id="audit"><svg class="hi" viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Audit ▾</button>
+      <span style="width:28px"></span>
+      <button id="export"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="2" x2="7" y2="8.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.7 L7 8.8 L10 5.7" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>▾ Export</button><button id="import"><svg class="hi" viewBox="0 0 14 14"><line x1="7" y1="9" x2="7" y2="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.3 L7 2.2 L10 5.3" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><line x1="3" y1="11.5" x2="11" y2="11.5" stroke="currentColor" stroke-width="1.2"/></svg>Import</button>
+      <span style="width:10px"></span>
+      <button id="prev">‹</button><button id="play" class="primary">▶ Play</button><button id="next">›</button><button id="reset">↺</button>
+    </div>
+  </header>
+
+  <!-- v0.22 beat strip — what's happening now (beat counter + narration); blue accent rail (Option C1-outlined) -->
+  <!-- v0.24: beat number = outlined chip (display); the far-right Timeline button (#tlbtn) opens #tlmodal -->
+  <div id="beatstrip"><span id="beatnum">Beat 1 / 1</span><span id="beatnarr"></span><button id="tlbtn" title="open the demo timeline — every message &amp; state, in order"><svg class="tlico" viewBox="0 0 14 14" aria-hidden="true"><circle cx="2.4" cy="3" r="1.1" fill="currentColor"/><line x1="4.8" y1="3" x2="12" y2="3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.4" cy="7" r="1.1" fill="currentColor"/><line x1="4.8" y1="7" x2="12" y2="7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="2.4" cy="11" r="1.1" fill="currentColor"/><line x1="4.8" y1="11" x2="12" y2="11" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Timeline</button></div>
+
+  <input type="file" id="t_io_file" accept="application/json,.json" style="display:none">
+  <input type="file" id="l5_io_file" accept="application/json,.json" style="display:none">
+  <!-- option-C system message callout (v0.19) — permanent height, severity-colored, auto-clears -->
+  <div id="l5cal" class="idle"><span class="l5ico">·</span><span id="l5msg"></span><button id="l5x" title="dismiss">×</button></div>
+  <div id="cardtip"></div>
+  <div id="capbanner"></div>
+  <!-- Audit chooser (v0.19) — popped under the header Audit button; click a brain → audit modal (VIEW) -->
+  <div id="auditmenu">
+    <div class="emlabel">Audit a brain</div>
+    <button class="emitem" data-audit="mgr">Orchestrator</button>
+    <button class="emitem" data-audit="a1">Arm 1</button>
+    <button class="emitem" data-audit="a2">Arm 2</button>
+    <button class="emitem" data-audit="conv">Conveyor</button>
+  </div>
+  <!-- Export chooser (v0.18) — DOWNLOAD only: brain-snapshot / demo-state .json -->
+  <div id="expmenu">
+    <div class="emlabel">Download a brain snapshot</div>
+    <button class="emitem" data-audit="mgr">Orchestrator</button>
+    <button class="emitem" data-audit="a1">Arm 1</button>
+    <button class="emitem" data-audit="a2">Arm 2</button>
+    <button class="emitem" data-audit="conv">Conveyor</button>
+    <div class="emsep"></div>
+    <button class="emitem" data-demo="1">Demo state</button>
+  </div>
+  <!-- L5 reasoning/audit modal (v0.15) — overlay, opened per-brain or from Import; NOT a card -->
+  <div id="l5audit">
+    <div class="l5head"><span class="l5dot"></span><span class="l5title">Reasoning audit</span>
+      <span class="l5tags"></span><button class="l5close" title="close (Esc)">×</button></div>
+    <div class="l5body"></div>
+  </div>
+  <!-- v0.24 demo-timeline modal — opened from the beat chip; over #maxbackdrop; chronological -->
+  <!-- transcript of every message + brain section/subsection change, filterable by source/section. -->
+  <div id="tlmodal">
+    <div class="tlhead"><span class="tltitle">Demo timeline — every message &amp; state, in order</span>
+      <button class="tlclose" title="close (Esc)">×</button></div>
+    <div class="tlfilters">
+      <div class="tlfrow"><span class="tlflab">Sources</span><span class="tlpills" data-axis="src"></span></div>
+      <div class="tlfrow"><span class="tlflab">Sections</span><span class="tlpills" data-axis="sec"></span></div>
+      <div class="tlfrow"><span class="tlflab">Subsections</span><span class="tlpills" data-axis="sub"></span></div>
+    </div>
+    <div class="tlbody" id="tlbody"></div>
+  </div>
+
+  <div id="stage">
+    <svg id="links"></svg>
+
+    <div class="dcard" id="card_cell" data-desc="Physical cell — the live physics view of the workcell (2 Franka arms + conveyor + per-arm 3×3 shelves). Toggle 2D/3D; drag to orbit, scroll to zoom.">
+      <h2 class="draghandle"><span>Physical cell <span class="state" id="st_cell">3D</span></span><span class="hdrright"><button id="dim" class="viewbtn">▦ 2D view</button><span class="help">?</span></span></h2>
+      <div id="viewbox"><div id="view3d"></div><canvas id="cv" width="820" height="262" style="display:none"></canvas></div>
+      <div class="legend"><i><span class="sw" style="background:var(--gap);opacity:.6"></span>gap mark — neither arm reaches</i><i id="hint3d">drag to orbit · scroll to zoom</i></div>
+    </div>
+
+    <div class="dcard" id="card_log" data-desc="Messages — Server (the live runtime: sessions, authorization, audit, storage) and Inter-brain (messages between brains, colored by sender and receiver).">
+      <h2 class="draghandle"><span>Messages <span class="state">live</span></span><span class="hdrright"><span class="help">?</span></span></h2>
+      <div class="commstabs"><button class="uitab ctab" data-ct="server">Server · Seam A</button><button class="uitab ctab on" data-ct="ib">Inter-brain · Seam B</button></div>
+      <div class="srvfeed" id="srvfeed" style="display:none"></div>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="dcard user" id="card_user" data-desc="User — where you interact with the system: place orders by shape (Order/Sort), or teach it a new skill or position term (Teach).">
+      <div class="nm draghandle"><span>User <span class="state" id="st_user">order</span></span><span class="hdrright"><button id="o_run" class="mini primary">▶ Submit</button><button id="o_clear" class="mini">clear</button><span class="help">?</span></span></div>
+      <div class="tabs">
+        <div class="tgroup"><span class="tglabel">task</span><button id="tab_order" class="uitab on">Order</button><button id="tab_sort" class="uitab">Sort</button></div>
+        <div class="tgroup sys"><span class="tglabel">change system</span><button id="tab_teach" class="uitab teachtab"><svg class="ti" viewBox="0 0 14 14"><path d="M2 12 L2.4 9.6 L9 3 L11 5 L4.4 11.6 Z" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><line x1="8.3" y1="3.7" x2="10.3" y2="5.7" stroke="currentColor" stroke-width="1.1"/></svg>Teach</button></div>
+      </div>
+      <div class="scroll">
+        <div id="pane_order">
+          <div class="step2"><b>1.</b> Object</div>
+          <div class="shapes" id="shapes">
+            <div class="shape sel" data-item="box"><svg width="22" height="22"><rect x="4" y="4" width="14" height="14" rx="2" fill="#cab43c"/></svg><small>Box</small><small class="lim">both grippers</small></div>
+            <div class="shape" data-item="sheet"><svg width="22" height="22"><rect x="1" y="7" width="20" height="8" rx="2" fill="#66bf72"/></svg><small>Sheet</small><small class="lim">suction only</small></div>
+            <div class="shape" data-item="tube"><svg width="22" height="22"><circle cx="11" cy="11" r="8" fill="#b3598c"/></svg><small>Tube</small><small class="lim">jaw only</small></div>
+          </div>
+          <div class="step2"><b>2.</b> Shelf rack
+            <select id="o_shelf"><option value="a1">Arm 1</option><option value="a2">Arm 2</option></select></div>
+          <div class="step2"><b>3.</b> Position <span class="chint">(compose with +)</span></div>
+          <div id="o_posb"></div>
+          <div class="row"><button id="o_add">+ line</button></div>
+          <div class="orderlist" id="o_list"><span style="color:var(--muted)">no lines yet</span></div>
+        </div>
+        <div id="pane_sort" style="display:none">
+          <div class="step2"><b>1.</b> Shelf rack <select id="s_shelf"><option value="a1">Arm 1</option><option value="a2">Arm 2</option></select></div>
+          <div class="step2"><b>2.</b> Object <select id="s_obj"><option value="box">Box</option><option value="sheet">Sheet</option><option value="tube">Tube</option></select> Currently at <span class="chint">(compose with +)</span></div>
+          <div id="s_from"></div>
+          <div class="step2"><b>3.</b> Move to <span class="chint">(compose with +)</span></div>
+          <div id="s_to"></div>
+        </div>
+        <div id="pane_teach" style="display:none">
+          <div class="tsub">
+            <button class="tsbtn uitab on" data-t="lib">Library</button>
+            <button class="tsbtn uitab" data-t="term">Teach term</button>
+            <button class="tsbtn uitab" data-t="demo">Demonstrate</button>
+          </div>
+          <div id="ts_lib">
+            <div class="liblist" id="t_lib"></div>
+            <div class="inspect" id="t_inspect"><span style="color:var(--muted)">select an item to inspect</span></div>
+            <div class="row" style="margin-top:7px;gap:6px"><span style="font-size:9px;color:var(--muted);align-self:center">vocabulary file:</span><button id="tv_export" class="mini">⤓ Export</button><button id="tv_import" class="mini">⤒ Import</button></div>
+          </div>
+          <div id="ts_term" style="display:none">
+            <div id="ov_banner" class="ovbanner" style="display:none"></div>
+            <input id="tt_name" placeholder="new position term, e.g. mid-shelf" style="width:100%"/>
+            <div class="row">
+              <button class="ptype uitab on" data-m="example">by example</button>
+              <button class="ptype uitab" data-m="compose">by composition</button>
+            </div>
+            <div id="tt_example">
+              <div class="lbl">click cells to define the term (a cell-set over the 3×3)</div>
+              <div class="cellgrid" id="tt_grid"></div>
+            </div>
+            <div id="tt_compose" style="display:none">
+              <div class="lbl">union of existing terms — click to include</div>
+              <div class="pchips" id="tt_terms"></div>
+            </div>
+            <div class="row"><button id="tt_add" class="primary">✦ Teach term</button><button id="tt_clear">clear</button></div>
+            <div class="cap" id="tt_msg"></div>
+          </div>
+          <div id="ts_demo" style="display:none">
+            <div style="font-size:9.5px;color:var(--muted);margin-bottom:5px">Teach a skill by demonstration.</div>
+            <input id="t_name" placeholder="skill name e.g. handoff-via-belt" style="width:100%"/>
+            <div class="row">
+              <button class="blk" data-b="place-at-pose">place</button><button class="blk" data-b="stage">stage</button>
+              <button class="blk" data-b="pick-at-pose">pick</button><button class="blk" data-b="move-to">move</button><button class="blk" data-b="grip">grip</button>
+            </div>
+            <div class="seq" id="t_seq"><span style="color:var(--muted)">click blocks to build a demonstration</span></div>
+            <div class="row"><button id="t_capture" class="primary">✦ Capture demonstration</button><button id="t_clear">clear</button></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dcard mgr dim" id="bc_mgr"></div>
+    <div class="dcard a1 dim" id="bc_a1"></div>
+    <div class="dcard a2 dim" id="bc_a2"></div>
+    <div class="dcard conv dim" id="bc_conv"></div>
+  </div>
+</div>
+
+<script src="graph.js"></script>
+<script src="teach.js"></script>
+<script src="sections.js"></script>
+<script src="resolve.js"></script>
+<script src="audit.js"></script>
+<script src="datasource.js"></script>
+<script src="timeline.js"></script>
+<script>
+let VW=820,VH=262;
+const ARM1={x:-0.65,y:-0.45}, ARM2={x:0.65,y:-0.45}, REACH=0.62;
+const BELT_L=[-1.10,-0.20], BELT_R=[0.20,1.10], BELT_Y=[-0.16,0.16], GAP=[-0.20,0.20];
+// per-arm 3x3 shelves (discrete slots; relations resolve within one shelf)
+const SHELF={a1:{cols:[-0.85,-0.70,-0.55],rows:[-0.62,-0.77,-0.92],hex:"#3a8be0"},
+             a2:{cols:[0.55,0.70,0.85],rows:[-0.62,-0.77,-0.92],hex:"#d98040"}};
+function cell(s,r,c){return [SHELF[s].cols[c],SHELF[s].rows[r]];}
+const XR=[-1.35,1.35], YR=[-1.02,0.34];
+const sx=x=>(x-XR[0])/(XR[1]-XR[0])*VW, sy=y=>(YR[1]-y)/(YR[1]-YR[0])*VH, sr=r=>r/(XR[1]-XR[0])*VW;
+const CH=["HintSet","MappingResult","Plan","Pipeline","PipelineRun","TaskRun"];
+const CH_SHORT=["Hint","Map","Plan","Pipe","P-Run","Task"];
+const BR=[
+ ["mgr","Orchestrator","talks to user","The brain you talk to. Breaks down orders, allocates work to the arms and conveyor, re-plans on failure, and shares learned skills with the other brains."],
+ ["a1","Arm 1 · Lifter","suction","A full MindsOS brain controlling Arm 1 (suction gripper). Reaches the left shelf; can grasp Box and Sheet."],
+ ["a2","Arm 2 · Packer","jaw","A full MindsOS brain controlling Arm 2 (jaw gripper). Reaches the right shelf; can grasp Box and Tube."],
+ ["conv","Conveyor","belt","A full MindsOS brain controlling the belt — the only bridge across the reach gap between the two arms."]];
+const ITEMS=["box1","sheet1","tube1"];
+const ICOL={box1:"#cab43c",sheet1:"#66bf72",tube1:"#b3598c"};
+
+// ===== default layout (px) =====
+const DEFAULT_LAYOUT={
+  card_cell:{x:322,y:0,w:634,h:465}, card_log:{x:966,y:0,w:312,h:465},
+  card_user:{x:0,y:0,w:312,h:300},
+  bc_mgr:{x:0,y:320,w:312,h:300},
+  bc_a1:{x:322,y:475,w:312,h:145}, bc_a2:{x:644,y:475,w:312,h:145}, bc_conv:{x:966,y:475,w:312,h:145}
+};
+let LAYOUT=JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
+const LINKS=[
+ {from:"card_user",fromEdge:"bottom",to:"bc_mgr",toEdge:"top",color:"#b98cf0"},
+ {from:"bc_mgr",fromEdge:"bottom",fromFrac:0.30,to:"bc_a1",toEdge:"bottom",busOff:14,color:"#3a8be0"},
+ {from:"bc_mgr",fromEdge:"bottom",fromFrac:0.50,to:"bc_a2",toEdge:"bottom",busOff:27,color:"#d98040"},
+ {from:"bc_mgr",fromEdge:"bottom",fromFrac:0.70,to:"bc_conv",toEdge:"bottom",busOff:40,color:"#48c78e"}
+];
+
+// ===== mock scenario =====
+const PRIM="primitive";
+const baseBrains={
+  mgr:{intent:"awaiting order",chain:0,decision:"idle",caps:[["decompose",PRIM],["allocate",PRIM],["replan",PRIM],["share",PRIM]],flags:[],active:false},
+  a1:{intent:"idle",chain:0,decision:"idle",caps:[["move/grip",PRIM]],flags:[],active:false},
+  a2:{intent:"idle",chain:0,decision:"idle",caps:[["move/grip",PRIM]],flags:[],active:false},
+  conv:{intent:"belt idle",chain:0,decision:"holding",caps:[["advance/reverse",PRIM]],flags:[],active:false}
+};
+const base={items:{box1:[-0.80,0],sheet1:[-1.00,0],tube1:[-0.45,0]},eff:{a1:null,a2:null},brains:JSON.parse(JSON.stringify(baseBrains))};
+const frames=[
+ {title:"Order placed", narr:"User submits an order with a spatial relation: place the Box above the Tube on Arm 2's shelf, and the Sheet at the center of Arm 1's shelf.",
+  brains:{mgr:{intent:"A2: Box above Tube · A1: Sheet @ center",chain:0,decision:"Break down the order → work out where each item goes",active:true}},
+  msgs:[["User→Orchestrator","Order: Box above Tube; Sheet at center"]]},
+ {title:"Ignorant start → don’t-know", narr:"The plan needs a skill no brain has yet: hand an item across the belt gap. The system knows what it doesn’t know.",
+  brains:{mgr:{intent:"Plan the order",chain:2,decision:"Need a way to hand items across the gap → don’t know how",flags:["gap"],active:true},
+    a1:{intent:"Answer: what can I do?",chain:1,decision:"Report: don’t know",flags:["gap"]},
+    a2:{intent:"Answer: what can I do?",chain:1,decision:"Report: don’t know",flags:["gap"]}},
+  msgs:[["Orchestrator→Arm1","What can you do?"],["Arm1→Orchestrator","Don’t know how to hand across the gap"],
+        ["Orchestrator→Arm2","What can you do?"],["Arm2→Orchestrator","Don’t know how to hand across the gap"]]},
+ {title:"Learn by demonstration", narr:"User demonstrates the skill once by assembling action blocks. The system captures it as a new, reusable skill.",
+  brains:{mgr:{intent:"Learn the missing skill",chain:3,decision:"Save the new skill from the demonstration",flags:["learn"],active:true},
+    a1:{intent:"Learn the hand-off",chain:3,decision:"Captured the demo → new skill",flags:["learn"],caps:[["move/grip",PRIM],["hand-off","learned"]],active:true},
+    conv:{intent:"Learn staging",chain:2,decision:"Learned to stage on the belt",caps:[["advance/reverse",PRIM],["stage-on-belt","learned"]],active:true}},
+  msgs:[["User→Arm1","Demonstrate: place, stage, pick"],["Demonstration→Library","Saved as a new skill"]]},
+ {title:"Cooperative execution", narr:"The brains run the new skill: the belt hands the Box and Tube to Arm 2, which places the Box in the cell above the Tube; Arm 1 sets the Sheet at the center of its shelf.",
+  items:{box1:[0.70,-0.62], tube1:[0.70,-0.77], sheet1:[-0.70,-0.77]}, eff:{a1:[-0.70,-0.77],a2:[0.70,-0.62]},
+  brains:{mgr:{intent:"Execute placements",chain:5,decision:"Work out ‘Box above Tube’ → Arm 2 top-center; go",active:true},
+    a1:{intent:"Place Sheet on its shelf",chain:5,decision:"Placed Sheet in Arm 1 center ✓",caps:[["move/grip",PRIM],["hand-off","learned"],["place-in-cell","learned"]],active:true},
+    a2:{intent:"Place Box above Tube",chain:5,decision:"Placed Box above the Tube ✓",caps:[["move/grip",PRIM],["hand-off","inherited"],["place-in-cell","inherited"]],active:true},
+    conv:{intent:"Bridge the gap",chain:4,decision:"Advance → stage on the belt",caps:[["advance/reverse",PRIM],["stage-on-belt","learned"]],active:true}},
+  msgs:[["Orchestrator→Arm1","Place Sheet in Arm 1 center"],["Orchestrator→Conveyor","Advance the belt"],
+        ["Orchestrator→Arm2","Place Box above the Tube"],["Arm2→Orchestrator","Done: Box above Tube"]]},
+ {title:"Share + body limits", narr:"The learned skill is shared across the fleet; Arm 2 receives it. But Arm 2’s jaw is refused the suction-only Sheet skill — the skill transfers, yet the body limits what each arm can do.",
+  brains:{mgr:{intent:"Share the skill fleet-wide",chain:5,decision:"Share the skill; block Arm 2’s pick-sheet (wrong gripper)",flags:["promo","gate"],active:true},
+    a1:{intent:"Share the skill",chain:5,decision:"Shared the hand-off fleet-wide",flags:["promo"]},
+    a2:{intent:"Receive + check my body",chain:4,decision:"Received the hand-off; pick-sheet blocked (no suction)",flags:["promo","gate"],caps:[["hand-off","inherited"],["pick-sheet","GATED"]],active:true}},
+  msgs:[["Arm1→Fleet","Share the hand-off skill"],["Fleet→Arm2","Skill available"],["Arm2→Orchestrator","Blocked: pick-sheet needs suction"]]},
+ {title:"Degradation → replan", narr:"Arm 2’s wrist faults mid-order. It diagnoses itself, the gap reappears, and the Orchestrator replans around the loss.",
+  eff:{a1:null,a2:null},
+  brains:{mgr:{intent:"Recover from fault",chain:4,decision:"Re-plan: reroute via Arm 1 + conveyor",flags:["fault","gap"],active:true},
+    a2:{intent:"Self-diagnose",chain:1,decision:"Wrist fault → withdraw fine-grasp",flags:["fault","gap"],caps:[["hand-off","inherited"],["fine-grasp","FAULT"]],active:false},
+    a1:{intent:"Absorb rerouted work",chain:4,decision:"Accept the reroute",active:true},
+    conv:{intent:"Re-stage",chain:4,decision:"Reverse → re-stage for Arm 1",active:true}},
+  msgs:[["Arm2→Orchestrator","Wrist fault → withdraw fine-grasp"],["Orchestrator→Conveyor","Reverse + re-stage"]]},
+ {title:"Trace recap", narr:"The run replayed: found a gap, learned the skill, shared it, hit a body limit, recovered from a fault — reasoning visible throughout.",
+  brains:{mgr:{intent:"Remember this run",chain:5,decision:"Run remembered: didn’t-know → learned → shared → blocked → recovered",flags:["learn","promo","gate","fault"],active:false},
+    a2:{intent:"Degraded",chain:5,decision:"Fine-grasp pending repair",active:false}},
+  msgs:[["Orchestrator→Library","Remember this run"]]}
+];
+function mergeBrain(p,o){const s=JSON.parse(JSON.stringify(p));for(const k in o)s[k]=o[k];return s;}
+function merge(prev,f){const s=JSON.parse(JSON.stringify(prev));
+  if(f.items)Object.assign(s.items,f.items);
+  s.eff=f.eff?Object.assign({a1:null,a2:null},f.eff):{a1:null,a2:null};
+  if(f.brains)for(const b in f.brains)s.brains[b]=mergeBrain(s.brains[b],f.brains[b]);
+  for(const b of ["mgr","a1","a2","conv"]){if(!(f.brains&&f.brains[b]&&"active" in f.brains[b]))s.brains[b].active=false;if(!(f.brains&&f.brains[b]&&"flags" in f.brains[b]))s.brains[b].flags=[];}
+  s.title=f.title;s.narr=f.narr;s.msgs=f.msgs||[];if(f.beat!=null)s.beat=f.beat;return s;}
+// ===== v10.6 data-source seam — mock by default; ?live=<wsurl> connects live brains =====
+// (view layer is unchanged; only WHERE `states` comes from differs. See ROBOT_DEMO_WS_CONTRACT.md)
+const LIVE_URL=(typeof location!=='undefined' && new URLSearchParams(location.search).get('live'))||null;
+const DS = LIVE_URL
+  ? DataSource.makeLiveSource({url:LIVE_URL, base, merge})
+  : DataSource.makeMockSource({base, frames, merge});
+const states = DS.states;          // mock: filled now (identical to before) · live: grows on WS frames
+const LIVE = DS.isLive;
+let FOLLOW = true;                  // live: track the newest frame unless the user scrubs back
+let liveBeatsTotal = null;          // live: total beats from the hello frame (beat-strip denominator)
+
+const AUDIT_ICO='<svg viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
+function cardHTML(k,label,role,desc){
+  const tabs=STAGES.map(([s,lab])=>`<button class="bsec uitab" data-s="${s}" title="${lab}">${lab}</button>`).join('');
+  return `<div class="nm draghandle"><span>${label} <span class="state"></span></span><span class="hdrright"><button class="auditbtn" data-audit="${k}" title="reasoning audit — why it decided / refused">${AUDIT_ICO}</button><span class="dot"></span><span class="help">?</span></span></div>
+  <div class="cintent"></div>
+  <div class="bsections">${tabs}</div>
+  <div class="scroll"><div class="secbody"></div></div>`;}
+for(const [k,label,role,desc] of BR){const c=document.getElementById("bc_"+k);c.innerHTML=cardHTML(k,label,role,desc);c.dataset.sec="task";c.dataset.mode="panel";}
+// delegated: brain-section tabs + per-section view-mode toggle (Panel / ⌗)
+for(const [k] of BR){const card=document.getElementById("bc_"+k);
+  card.addEventListener("click",e=>{
+    const ab=e.target.closest(".auditbtn");if(ab){e.stopPropagation();openAudit(LIVE?null:SAMPLE_AUDIT_SNAP,k);return;}
+    const t=e.target.closest(".bsec");if(t){card.dataset.sec=t.dataset.s;renderCard(card,k,states[idx].brains[k]);return;}
+    const v=e.target.closest(".vmb");if(v){card.dataset.mode=v.dataset.m;renderCard(card,k,states[idx].brains[k]);return;}
+  });}
+// v0.23 — wheel anywhere over a brain card scrolls THAT card's content (release to page at the edges).
+// The real scroller is .scroll or .secbody (whichever overflows); pick the scrollable one.
+function cardScroller(card){
+  for(const el of [card.querySelector(".scroll"),card.querySelector(".secbody")]){
+    if(el && el.scrollHeight-el.clientHeight>1) return el;
+  }
+  return null;
+}
+for(const [k] of BR){const card=document.getElementById("bc_"+k);
+  card.addEventListener("wheel",e=>{
+    const sb=cardScroller(card); if(!sb) return;            // nothing to scroll → let the page scroll
+    let dy=e.deltaY; if(!dy) return;
+    if(e.deltaMode===1) dy*=16; else if(e.deltaMode===2) dy*=sb.clientHeight;  // lines/pages → px
+    const canUp=sb.scrollTop>0, canDown=sb.scrollTop+sb.clientHeight<sb.scrollHeight-1;
+    if((dy<0&&canUp)||(dy>0&&canDown)){ sb.scrollTop+=dy; e.preventDefault(); }  // consume; else chain to page
+  },{passive:false});}
+
+// ===== layout engine =====
+const stage=document.getElementById("stage"),svg=document.getElementById("links");
+let suppress=false,editing=false;
+function applyLayout(){suppress=true;for(const id in LAYOUT){const el=document.getElementById(id);if(!el)continue;const L=LAYOUT[id];el.style.left=L.x+"px";el.style.top=L.y+"px";el.style.width=L.w+"px";el.style.height=L.h+"px";}suppress=false;resizeView();updateStageH();redrawLinks();}
+function updateStageH(){let m=400;for(const id in LAYOUT){m=Math.max(m,LAYOUT[id].y+LAYOUT[id].h);}stage.style.minHeight=(m+70)+"px";}
+function anchor(id,e,frac){const L=LAYOUT[id];frac=frac==null?0.5:frac;
+  if(e==="top")return[L.x+L.w*frac,L.y];if(e==="bottom")return[L.x+L.w*frac,L.y+L.h];
+  if(e==="left")return[L.x,L.y+L.h*frac];return[L.x+L.w,L.y+L.h*frac];}
+function roundedPath(pts,r){if(pts.length<2)return"";let d=`M ${pts[0][0]} ${pts[0][1]}`;
+  for(let i=1;i<pts.length-1;i++){const p0=pts[i-1],p1=pts[i],p2=pts[i+1];
+    const v1=[p1[0]-p0[0],p1[1]-p0[1]],v2=[p2[0]-p1[0],p2[1]-p1[1]];
+    const l1=Math.hypot(v1[0],v1[1])||1,l2=Math.hypot(v2[0],v2[1])||1,rr=Math.min(r,l1/2,l2/2);
+    d+=` L ${p1[0]-v1[0]/l1*rr} ${p1[1]-v1[1]/l1*rr} Q ${p1[0]} ${p1[1]} ${p1[0]+v2[0]/l2*rr} ${p1[1]+v2[1]/l2*rr}`;}
+  const e=pts[pts.length-1];d+=` L ${e[0]} ${e[1]}`;return d;}
+function redrawLinks(){svg.setAttribute("width",stage.clientWidth);svg.setAttribute("height",stage.clientHeight);
+  const cols=[...new Set(LINKS.map(l=>l.color))];
+  let defs='<defs>';cols.forEach((c,i)=>{defs+=`<marker id="ah${i}" markerWidth="11" markerHeight="11" refX="7" refY="3.4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L7,3.4 L0,6.8 Z" fill="${c}"/></marker>`;});defs+='</defs>';
+  let h=defs;
+  for(const lk of LINKS){const p=anchor(lk.from,lk.fromEdge,lk.fromFrac),q=anchor(lk.to,lk.toEdge,lk.toFrac);let pts;
+    if(lk.toEdge==="top"){const my=(p[1]+q[1])/2;pts=[p,[p[0],my],[q[0],my],q];}
+    else if(lk.toEdge==="bottom"){const busY=Math.max(p[1],q[1])+(lk.busOff||26);pts=[p,[p[0],busY],[q[0],busY],q];}
+    else{const mx=(p[0]+q[0])/2;pts=[p,[mx,p[1]],[mx,q[1]],q];}
+    h+=`<path d="${roundedPath(pts,9)}" stroke="${lk.color}" stroke-width="2.2" fill="none" stroke-linejoin="round" opacity="0.92" marker-end="url(#ah${cols.indexOf(lk.color)})"/>`;}
+  svg.innerHTML=h;}
+// resize observer
+const ro=new ResizeObserver(es=>{if(suppress)return;for(const en of es){const el=en.target;if(el.id==="viewbox"){resizeView();continue;}if(maximizedId&&el.id===maximizedId)continue;const L=LAYOUT[el.id];if(L){L.w=el.offsetWidth;L.h=el.offsetHeight;}}updateStageH();redrawLinks();});
+for(const id in LAYOUT)ro.observe(document.getElementById(id));
+ro.observe(document.getElementById("viewbox"));
+// drag
+let drag=null;
+stage.addEventListener("mousedown",e=>{if(!editing)return;const h=e.target.closest(".draghandle");if(!h)return;const card=h.closest(".dcard");if(!card)return;e.preventDefault();drag={card,sx:e.clientX,sy:e.clientY,ox:LAYOUT[card.id].x,oy:LAYOUT[card.id].y};});
+window.addEventListener("mousemove",e=>{if(!drag)return;const nx=Math.round(drag.ox+(e.clientX-drag.sx)),ny=Math.round(drag.oy+(e.clientY-drag.sy));drag.card.style.left=nx+"px";drag.card.style.top=ny+"px";LAYOUT[drag.card.id].x=nx;LAYOUT[drag.card.id].y=ny;updateStageH();redrawLinks();});
+window.addEventListener("mouseup",()=>{if(drag){updateStageH();redrawLinks();}drag=null;});
+
+// ===== v10.4 maximize-height (Option A) =====
+let maximizedId=null; const MAX_M=10;
+const MAX_ICO='<svg viewBox="0 0 14 14"><rect x="3.2" y="3.2" width="7.6" height="7.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M5,2.4 L7,0.8 L9,2.4" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M5,11.6 L7,13.2 L9,11.6" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+const RESTORE_ICO='<svg viewBox="0 0 14 14"><rect x="3.2" y="3.2" width="7.6" height="7.6" rx="1.4" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M5,1 L7,2.6 L9,1" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/><path d="M5,13 L7,11.4 L9,13" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>';
+function ensureBackdrop(){let b=document.getElementById("maxbackdrop");if(!b){b=document.createElement("div");b.id="maxbackdrop";b.onclick=restoreCard;document.body.appendChild(b);}return b;}
+function makeMaxBtns(){document.querySelectorAll(".dcard").forEach(card=>{const hr=card.querySelector(".hdrright");if(!hr||hr.querySelector(".maxbtn"))return;
+  const b=document.createElement("button");b.className="maxbtn";b.title="maximize height";b.innerHTML=MAX_ICO;
+  b.onclick=(e)=>{e.stopPropagation();maximizeCard(card.id);};
+  // UX controls (reasoning + maximize) sit left of the card-UI group (status dot, help):
+  // insert maximize before the dot on brain cards, else before help on the static cards.
+  const ref=hr.querySelector(".dot")||hr.querySelector(".help");ref?hr.insertBefore(b,ref):hr.appendChild(b);});}
+function updateMaxBtns(){document.querySelectorAll(".maxbtn").forEach(b=>{const on=b.closest(".dcard").id===maximizedId;b.innerHTML=on?RESTORE_ICO:MAX_ICO;b.title=on?"restore height":"maximize height";b.classList.toggle("on",on);});}
+function maximizeCard(id){
+  if(maximizedId===id){restoreCard();return;}
+  if(maximizedId)restoreCard();
+  const el=document.getElementById(id);if(!el)return;
+  const r=el.getBoundingClientRect();
+  el.style.position="fixed";el.style.left=Math.round(r.left)+"px";el.style.top=MAX_M+"px";
+  el.style.width=LAYOUT[id].w+"px";                         // width + x unchanged
+  el.style.height=(window.innerHeight-2*MAX_M)+"px";        // height = screen
+  el.style.zIndex="51";el.classList.add("maximized");
+  ensureBackdrop().style.display="block";
+  maximizedId=id;updateMaxBtns();resizeView();redrawLinks();}
+function restoreCard(){
+  if(!maximizedId)return;const el=document.getElementById(maximizedId);
+  if(el){el.style.position="absolute";el.classList.remove("maximized");el.style.zIndex="";
+    const L=LAYOUT[maximizedId];el.style.left=L.x+"px";el.style.top=L.y+"px";el.style.width=L.w+"px";el.style.height=L.h+"px";}
+  const b=document.getElementById("maxbackdrop");if(b)b.style.display="none";
+  maximizedId=null;updateMaxBtns();resizeView();redrawLinks();}
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&maximizedId)restoreCard();});
+
+// ===== v10.B1 — Export/Import the teach model as a .json file =====
+// (layout-JSON behavior removed.) The file is a FULL SNAPSHOT of the taught vocabulary +
+// curation: {seedVersion, terms, composites}. Import REPLACES the running model in place.
+// Live mode is backend-owned, so Import is disabled under ?live= (Export still works).
+function teachSnapshot(){return JSON.stringify({seedVersion:SEED_VERSION,terms:TERMS,composites:COMPOSITES},null,2);}
+function applyTeachSnapshot(obj){
+  if(!obj||!Array.isArray(obj.terms)||!Array.isArray(obj.composites))throw new Error("not a teach-model file");
+  TERMS.splice(0,TERMS.length,...obj.terms);              // replace in place (keep the binding)
+  COMPOSITES.splice(0,COMPOSITES.length,...obj.composites);
+  libSel=null;ttCells.clear();ttComp.clear();
+  if(typeof exitOverride==='function')exitOverride();
+  refreshLibrary();rebuildTermSelects();                  // library + every dropdown + compose chips
+}
+document.getElementById("tv_export").onclick=()=>{
+  const blob=new Blob([teachSnapshot()],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=url;a.download="mindsos-teach-"+new Date().toISOString().slice(0,10)+".json";
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+(function(){const btn=document.getElementById("tv_import");
+  if(LIVE){btn.disabled=true;btn.title="Import disabled in live — taught vocabulary is owned by the backend";return;}
+  const fin=document.getElementById("t_io_file");
+  btn.onclick=()=>fin.click();
+  fin.onchange=()=>{const f=fin.files&&fin.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{try{const obj=JSON.parse(r.result);
+        if(obj.seedVersion!==SEED_VERSION)console.warn("teach file seedVersion "+obj.seedVersion+" != running "+SEED_VERSION+" — importing anyway");
+        applyTeachSnapshot(obj);
+      }catch(err){alert("Invalid teach-model file: "+(err&&err.message||err));}finally{fin.value="";}};
+    r.readAsText(f);};
+})();
+
+// ===== header Export/Import → L5 system-state (demo state / per-brain reasoning audit) =====
+// SCAFFOLD (mock): Export downloads a representative demo-state snapshot; Import parses + confirms.
+// Live uses export_state/import_state (ROBOT_DEMO_L5_EXPORT_IMPORT_PROMPT.md). The per-mode chooser,
+// the reasoning/audit view, and demo-state restore land next (mockup-gated). Schema is LOCKED.
+// option-C system message callout: l5msg(text, severity, {persist}). Permanent height; severity color;
+// auto-clears to idle after ~5s unless persist. Severity ∈ info|ok|warn|error.
+let _l5timer=null;
+function l5msg(t,sev,opts){opts=opts||{};const cal=document.getElementById("l5cal");if(!cal)return;
+  const m=cal.querySelector("#l5msg"),ic=cal.querySelector(".l5ico");
+  if(_l5timer){clearTimeout(_l5timer);_l5timer=null;}
+  if(!t){cal.className="idle";if(ic)ic.textContent="·";if(m)m.textContent="";return;}
+  const ICO={info:"ℹ",ok:"✓",success:"✓",warn:"⚠",warning:"⚠",error:"⚠"};
+  const cls=(sev==="ok"||sev==="success")?"sev-ok":(sev==="warn"||sev==="warning")?"sev-warn":sev==="error"?"sev-error":"sev-info";
+  cal.className=cls+(opts.persist?" dismissable":"");if(ic)ic.textContent=ICO[sev]||"ℹ";if(m)m.textContent=t;
+  if(!opts.persist)_l5timer=setTimeout(()=>l5msg(""),5200);}
+(function(){const x=document.getElementById("l5x");if(x)x.onclick=()=>l5msg("");})();
+function dlJSON(obj,fname){const blob=new Blob([JSON.stringify(obj,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=fname;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function today(){return new Date().toISOString().slice(0,10);}
+function mockSnapshot(){return {snapshot_version:1,kind:"demo-state",created_at:new Date().toISOString(),
+  scenario:"open-order",run_id:"mock-run",
+  demo_position:{beat:idx,placed_orders:[],sim_poses:{}},
+  brains:{mgr:{episodes:[]},a1:{episodes:[]},a2:{episodes:[]},conv:{episodes:[]}},_mock:true};}
+function auditSnapFor(brain){const block=SAMPLE_AUDIT_SNAP.brains[brain]||{episodes:[]};
+  return {snapshot_version:1,kind:"episode-audit",created_at:new Date().toISOString(),scenario:"open-order",run_id:"sample:"+brain,brains:{[brain]:block},_sample:true};}
+// v0.19: Audit button = VIEW (open the modal). Export button = DOWNLOAD only. In live both request
+// export_state; pendingExport tells handleSnapshot which the reply is for.
+let pendingExport=null;   // "view" | "download"
+function auditView(brain){ closeAuditMenu();
+  if(LIVE){pendingExport="view";DS.sendCommand({type:"command",name:"export_state",args:{mode:"episode-audit",scope:brain}});l5msg(`requesting ${BRLAB[brain]||brain} reasoning from the live server…`,"info");return;}
+  openAudit(SAMPLE_AUDIT_SNAP,brain);}
+function exportAudit(brain){ closeExportMenu();
+  if(LIVE){pendingExport="download";DS.sendCommand({type:"command",name:"export_state",args:{mode:"episode-audit",scope:brain}});l5msg(`requested ${BRLAB[brain]||brain} snapshot download…`,"info");return;}
+  const snap=auditSnapFor(brain);dlJSON(snap,`mindsos-audit-${brain}-${today()}.json`);
+  const n=(snap.brains[brain].episodes||[]).length; l5msg(`downloaded ${BRLAB[brain]||brain} snapshot · ${n} episode${n===1?"":"s"} (sample)`,"ok");}
+function exportDemoState(){ closeExportMenu();
+  if(LIVE){pendingExport="download";DS.sendCommand({type:"command",name:"export_state",args:{mode:"demo-state",scope:"all"}});l5msg("requested demo-state download…","info");return;}
+  dlJSON(mockSnapshot(),`mindsos-demo-state-${today()}.json`); l5msg("downloaded demo-state snapshot (mock).","ok");}
+// reply to a live export_state: VIEW → open the audit modal; DOWNLOAD → save the JSON.
+function handleSnapshot(snap){ if(!snap){l5msg("server returned an empty snapshot.","error");return;}
+  const kind=snap.kind||"(unknown)";
+  if(pendingExport==="view" && kind==="episode-audit"){const b=firstAuditBrain(snap);openAudit(snap,b);l5msg(`opened ${BRLAB[b]||b} reasoning audit`,"ok");pendingExport=null;return;}
+  dlJSON(snap,(kind==="episode-audit"?"mindsos-audit-":kind==="demo-state"?"mindsos-demo-state-":"mindsos-snapshot-")+today()+".json");
+  l5msg(kind==="episode-audit"?"downloaded audit snapshot":kind==="demo-state"?"downloaded demo-state snapshot":`downloaded ${esc(kind)} snapshot`,"ok");
+  pendingExport=null;}
+// ---- Audit chooser (VIEW) ----
+const auditmenu=document.getElementById("auditmenu");
+function openAuditMenu(){const b=document.getElementById("audit").getBoundingClientRect();auditmenu.style.left=Math.min(b.left,window.innerWidth-170)+"px";auditmenu.style.top=(b.bottom+4)+"px";auditmenu.style.display="block";}
+function closeAuditMenu(){if(auditmenu)auditmenu.style.display="none";}
+document.getElementById("audit").onclick=(e)=>{e.stopPropagation();auditmenu.style.display==="block"?closeAuditMenu():openAuditMenu();};
+auditmenu.addEventListener("click",e=>{const a=e.target.closest(".emitem");if(a&&a.dataset.audit)auditView(a.dataset.audit);});
+// ---- Export chooser (DOWNLOAD only) ----
+const expmenu=document.getElementById("expmenu");
+function openExportMenu(){const b=document.getElementById("export").getBoundingClientRect();expmenu.style.left=Math.min(b.left,window.innerWidth-180)+"px";expmenu.style.top=(b.bottom+4)+"px";expmenu.style.display="block";}
+function closeExportMenu(){if(expmenu)expmenu.style.display="none";}
+document.getElementById("export").onclick=(e)=>{e.stopPropagation();expmenu.style.display==="block"?closeExportMenu():openExportMenu();};
+expmenu.addEventListener("click",e=>{const a=e.target.closest(".emitem");if(!a)return;if(a.dataset.audit)exportAudit(a.dataset.audit);else if(a.dataset.demo)exportDemoState();});
+document.addEventListener("click",e=>{const t=e.target;
+  if(expmenu.style.display==="block"&&!t.closest("#expmenu")&&!t.closest("#export"))closeExportMenu();
+  if(auditmenu.style.display==="block"&&!t.closest("#auditmenu")&&!t.closest("#audit"))closeAuditMenu();});
+window.addEventListener("keydown",e=>{if(e.key==="Escape"){closeExportMenu();closeAuditMenu();}});
+document.getElementById("import").onclick=()=>document.getElementById("l5_io_file").click();
+document.getElementById("l5_io_file").onchange=function(){const fin=this,f=fin.files&&fin.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const o=JSON.parse(r.result),kind=o.kind||"(unknown)";
+      const nEp=o.brains?Object.values(o.brains).reduce((s,b)=>s+((b.episodes&&b.episodes.length)||0),0):0;
+      if(LIVE)DS.sendCommand({type:"command",name:"import_state",args:{snapshot:o}});
+      if(kind==="episode-audit"){const b=firstAuditBrain(o);openAudit(o,b);l5msg(`opened reasoning audit · ${nEp} episode${nEp===1?"":"s"}`,"ok");}
+      else l5msg(kind==="demo-state"?`loaded demo-state snapshot${o.demo_position?` · beat ${o.demo_position.beat}`:""} (${nEp} episode${nEp===1?"":"s"})`
+            :`loaded snapshot (kind: ${esc(kind)})`,"ok");
+    }catch(err){l5msg("invalid snapshot file: "+(err&&err.message||err),"error");}finally{fin.value="";}};
+  r.readAsText(f);};
+
+// ===== v0.15 — L5 reasoning/audit view (modal over #maxbackdrop) =====
+// Renders a RECORDED chain as 5 generic sanitized stages (audit.js). Per-brain "audit" button or an
+// imported episode-audit snapshot opens it. Offline content = the REAL DM-4 Mode-A export
+// (fixtures/episode_audit_mgr.json) — recorded reasoning from the actual stack, NOT fabricated;
+// chipped "sample export". ?live= renders the live snapshot; a brain with no exported chain shows the
+// honest placeholder. The refusal branch renders the same shape and lights up when DM-5/6 ships a real
+// dont_know fixture (we will NOT hand-author a refusal — see ROBOT_DEMO_DM4_L5_EXPORT_COORDINATION.md).
+const ACC={mgr:'#b98cf0',a1:'#3a8be0',a2:'#d98040',conv:'#48c78e'};
+const BRLAB={mgr:'Orchestrator',a1:'Arm 1',a2:'Arm 2',conv:'Conveyor'};
+// REAL recorded samples — sanitized at the wire (opaque ref tokens n1…; plain behavior labels). THREE
+// curated Manager episodes (v0.25), each pasted VERBATIM from a delivered fixture (newest-first):
+//   1. dead-end     — episode_audit_mgr_deadend.json   (dont_know; blame.rationale = Outcome line)
+//   2. recovery     — episode_audit_mgr_recovery.json  (succeeded + 1 replan + replan_summary headline)
+//   3. clean success— episode_audit_mgr.json ep[1]     (succeeded; sheet — distinct from the box reroute)
+// NOT fabricated. The build-time drift-guard asserts each baked episode deep-equals its fixture episode.
+const SAMPLE_AUDIT_SNAP={ snapshot_version:1, kind:"episode-audit", created_at:"2026-06-12T23:16:28Z", scenario:"open-order", run_id:"robot-demo:mgr",
+  brains:{
+    mgr:{device_type:"manager",episodes:[
+      {"episode_iri":"n1","value":{"task_input_ref":null,"mm_root_ref":null,"task_pattern_iri":"approach","outcome_classification":"dont_know","crash_marker":null,"consolidated_at":"2026-06-15T16:06:20.696729+00:00"},"task_input":{"order":{"lines":[{"item":"sheet","shelf":"a1","pos":[{"type":"shelf","pos":"center"}]}]}},"reasoning":{"hint_set":{"iri":"n2","hints":{}},"mapping_result":{"iri":"n3","selected_task_pattern_iri":"approach","mapping_confidence":1.0},"plan":{"iri":"n4","root_milestone_ref":"n5"},"milestones":[{"iri":"n5","name":"root","status":"pending","replans_used":0}],"pipelines":[{"iri":"n6","milestone_ref":"n5"}],"pipeline_runs":[{"iri":"n7","status":"completed","task_run_ref":"n8"}],"task_run":{"iri":"n8","status":"failed","replan_history":[],"attention_score":500},"steps":[{"iri":"n9","capacity_iri":"execute step","confidence":1.0,"milestone_ref":"n5"}],"replans":[],"blame":{"chain_level":"pipeline","blame_score":1.0,"rationale":"no available arm can handle this item"},"dont_know":{"reason":"no available arm can handle this item","cause":"embodiment_gate"},"replan_summary":null},"problem_trace":[]},
+      {"episode_iri":"n1","value":{"task_input_ref":null,"mm_root_ref":null,"task_pattern_iri":"approach","outcome_classification":"succeeded","crash_marker":null,"consolidated_at":"2026-06-15T16:06:20.750159+00:00"},"task_input":{"order":{"lines":[{"item":"box","shelf":"a1","pos":[{"type":"shelf","pos":"center"}]}]}},"reasoning":{"hint_set":{"iri":"n2","hints":{}},"mapping_result":{"iri":"n3","selected_task_pattern_iri":"approach","mapping_confidence":1.0},"plan":{"iri":"n4","root_milestone_ref":"n5"},"milestones":[{"iri":"n5","name":"root","status":"pending","replans_used":0}],"pipelines":[{"iri":"n6","milestone_ref":"n5"}],"pipeline_runs":[{"iri":"n7","status":"completed","task_run_ref":"n8"},{"iri":"n9","status":"completed","task_run_ref":"n8"}],"task_run":{"iri":"n8","status":"completed","replan_history":[],"attention_score":500},"steps":[{"iri":"n10","capacity_iri":"execute step","confidence":1.0,"milestone_ref":"n5"},{"iri":"n11","capacity_iri":"execute step","confidence":1.0,"milestone_ref":"n5"}],"replans":[{"iri":"n12","replan_level":"pipeline","verdict":{"decision":"replan","divergence":0.0},"invalidated_refs":["n7"],"spawned_refs":[]}],"blame":null,"dont_know":null,"replan_summary":"re-routed to the other arm after a detected fault"},"problem_trace":[]},
+      {"episode_iri":"n1","value":{"task_input_ref":null,"mm_root_ref":null,"task_pattern_iri":"move to home","outcome_classification":"succeeded","crash_marker":null,"consolidated_at":"2026-06-12T23:16:28.323685+00:00"},"task_input":{"order":{"lines":[{"item":"sheet","shelf":"a1"}]}},"reasoning":{"hint_set":{"iri":"n2","hints":{}},"mapping_result":{"iri":"n3","selected_task_pattern_iri":"move to home","mapping_confidence":1.0},"plan":{"iri":"n4","root_milestone_ref":"n5"},"milestones":[{"iri":"n5","name":"root","status":"pending","replans_used":0}],"pipelines":[{"iri":"n6","milestone_ref":"n5"}],"pipeline_runs":[{"iri":"n7","status":"completed","task_run_ref":"n8"}],"task_run":{"iri":"n8","status":"completed","replan_history":[],"attention_score":500},"steps":[{"iri":"n9","capacity_iri":"execute step","confidence":1.0,"milestone_ref":"n5"}],"replans":[],"blame":null,"dont_know":null},"problem_trace":[]}]},
+    // a1 — REAL sample (DM-5), verbatim from fixtures/episode_audit_arm1_refusal.json: TWO episodes
+    // (newest=refusal "place tube" dont_know; oldest=success "place box"). Suction arm succeeds on a
+    // box, refuses a tube (wrong gripper). NOT fabricated; opaque ref tokens n1…n20. Kept byte-faithful
+    // to the .json so the build-time drift-guard test passes.
+    a1:{device_type:"arm-suction",episodes:[
+      {episode_iri:"n10", value:{task_input_ref:null,mm_root_ref:null,task_pattern_iri:"place tube",outcome_classification:"dont_know",crash_marker:null,consolidated_at:"2026-06-13T14:32:27.805184+00:00"},
+       task_input:{order:{dst:"arm1",target:"r0c0",item:"tube",task_id:"order-sub"}},
+       reasoning:{hint_set:{iri:"n11",hints:{}},mapping_result:{iri:"n12",selected_task_pattern_iri:"place tube",mapping_confidence:1.0},
+         plan:{iri:"n13",root_milestone_ref:"n14"},milestones:[{iri:"n14",name:"root",status:"pending",replans_used:0}],
+         pipelines:[{iri:"n15",milestone_ref:"n14"}],pipeline_runs:[{iri:"n16",status:"completed",task_run_ref:"n17"}],
+         task_run:{iri:"n17",status:"failed",replan_history:[],attention_score:500},
+         steps:[{iri:"n18",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n14"}],
+         replans:[],
+         blame:{chain_level:"pipeline",blame_score:1.0,rationale:"blocked — this gripper can't grasp a tube (wrong gripper)"},
+         dont_know:{reason:"blocked — this gripper can't grasp a tube (wrong gripper)",cause:"embodiment_gate"}}, problem_trace:[]},
+      {episode_iri:"n1", value:{task_input_ref:null,mm_root_ref:null,task_pattern_iri:"place box",outcome_classification:"succeeded",crash_marker:null,consolidated_at:"2026-06-13T14:32:27.751942+00:00"},
+       task_input:{order:{dst:"arm1",target:"r1c1",item:"box",task_id:"order-sub"}},
+       reasoning:{hint_set:{iri:"n2",hints:{}},mapping_result:{iri:"n3",selected_task_pattern_iri:"place box",mapping_confidence:1.0},
+         plan:{iri:"n4",root_milestone_ref:"n5"},milestones:[{iri:"n5",name:"root",status:"pending",replans_used:0}],
+         pipelines:[{iri:"n6",milestone_ref:"n5"}],pipeline_runs:[{iri:"n7",status:"completed",task_run_ref:"n8"}],
+         task_run:{iri:"n8",status:"completed",replan_history:[],attention_score:500},
+         steps:[{iri:"n9",capacity_iri:"execute step",confidence:1.0,milestone_ref:"n5"}],
+         replans:[],blame:null,dont_know:null}, problem_trace:[]}],
+      memories:[{memory_iri:"n19",value:{task_pattern_iri:"place box"},episode_iris:["n1"]},
+                {memory_iri:"n20",value:{task_pattern_iri:"place tube"},episode_iris:["n10"]}]},
+    a2:{episodes:[]}, conv:{episodes:[]} },
+  _sample:true };
+
+let auditOpen=false,auditBrain=null,auditSnap=null,auditEp=0;
+function renderAudit(){
+  const modal=document.getElementById("l5audit");if(!modal)return;
+  const acc=ACC[auditBrain]||'#6f8092';modal.style.setProperty("--acc",acc);
+  modal.querySelector(".l5title").textContent=(BRLAB[auditBrain]||auditBrain||"Brain")+" — Reasoning audit";
+  modal.querySelector(".l5tags").innerHTML='<span class="l5tag">recorded · not a live replay</span>'+(LIVE?'<span class="l5tag live">live</span>':'<span class="l5tag warn">sample export</span>');
+  const res=auditModalHTML(auditSnap,auditBrain,auditEp,{emptyMsg:LIVE?"Reasoning audit available on live brains — waiting for this brain’s exported chain.":"No recorded episodes for this brain yet."});
+  modal.querySelector(".l5body").innerHTML=res.html;
+  if(!res.empty)auditEp=res.selected;
+}
+function openAudit(snap,brain){
+  auditSnap=snap||SAMPLE_AUDIT_SNAP;auditBrain=brain||"mgr";auditEp=0;auditOpen=true;
+  ensureBackdrop();const bd=document.getElementById("maxbackdrop");bd.style.display="block";bd.onclick=closeAudit;
+  const modal=document.getElementById("l5audit");modal.style.display="flex";renderAudit();
+}
+function closeAudit(){
+  auditOpen=false;const modal=document.getElementById("l5audit");if(modal)modal.style.display="none";
+  const bd=document.getElementById("maxbackdrop");if(bd){bd.onclick=restoreCard;if(!maximizedId)bd.style.display="none";}
+}
+(function(){const modal=document.getElementById("l5audit");if(!modal)return;
+  modal.addEventListener("click",e=>{
+    if(e.target.closest(".l5close")){closeAudit();return;}
+    const row=e.target.closest(".l5ep");if(row){auditEp=+row.dataset.ep||0;renderAudit();}});})();
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&auditOpen)closeAudit();});
+
+// ===== v0.24 — demo-timeline modal (opened from the beat chip; over #maxbackdrop) =====
+// A chronological, change-only transcript of every message + brain section/subsection change,
+// tagged by source + section, filterable by Sources / Sections / Subsections. Built by the pure
+// timeline.js builder from the scripted `frames` (mock) or a state-diff (live). All text is the
+// existing behavior-level scripted/live data (IP policy B) — reorganized, nothing invented.
+const TL_SEAMA="#6f8092", TL_SEAMB="#9aa7b3", TL_USER="#53b0be";
+const TL_SRC_META=[["seamA","Seam A",TL_SEAMA],["seamB","Seam B",TL_SEAMB],["user","User",TL_USER],
+  ["mgr","Orchestrator",ACC.mgr],["a1","Arm 1",ACC.a1],["a2","Arm 2",ACC.a2],["conv","Conveyor",ACC.conv]];
+const TL_SEC_META=[["task","Task"],["plan","Plan"],["pipeline","Pipeline"],["cap","Capabilities"]];
+const TL_SUB_META=[["resolve","Plan ▸ Resolve"]];
+const TL_NEUTRAL="#7f8c99";
+const TL_SRCLAB={}, TL_SRCCOL={}; TL_SRC_META.forEach(([k,l,c])=>{TL_SRCLAB[k]=l;TL_SRCCOL[k]=c;});
+const TL_SECLAB={}; TL_SEC_META.forEach(([k,l])=>TL_SECLAB[k]=l); TL_SUB_META.forEach(([k,l])=>TL_SECLAB[k]=l);
+const TL_BRAINSET={mgr:1,a1:1,a2:1,conv:1};
+// Seam A (server) events per beat — representative + sanitized in mock; empty in live until the
+// backend emits server_event (same honesty as the Server panel).
+const SERVER_BEAT={0:[{text:"Session authenticated"}],2:[{text:"State saved"}],
+  4:[{text:"Action blocked — permission required · Arm 2"}],6:[{text:"Audit entry recorded"}]};
+const TL_ON={src:new Set(TL_SRC_META.map(m=>m[0])),sec:new Set(TL_SEC_META.map(m=>m[0])),sub:new Set(TL_SUB_META.map(m=>m[0]))};
+let tlOpen=false, tlBuilt=false;
+// live: reconstruct change-only frames by diffing consecutive states (skip the idle seed)
+function tlFramesFromStates(){
+  const out=[]; let prev=null;
+  for(let i=0;i<states.length;i++){const s=states[i];
+    if(s.title==null&&!s.narr&&!(s.msgs&&s.msgs.length)){prev=s;continue;}
+    const fr={beat:(s.beat!=null?s.beat:out.length),title:s.title,narr:s.narr,msgs:s.msgs||[],brains:{}};
+    for(const k in TL_BRAINSET){const c=s.brains&&s.brains[k]; if(!c)continue; const p=prev&&prev.brains&&prev.brains[k];
+      const delta={}; if(!p||c.decision!==p.decision)delta.decision=c.decision;
+      const nc=(c.caps||[]).filter(cc=>!(p&&p.caps&&p.caps.some(pc=>pc[0]===cc[0]&&pc[1]===cc[1]))); if(nc.length)delta.caps=nc;
+      delta.flags=c.flags; if(delta.decision||delta.caps)fr.brains[k]=delta;}
+    out.push(fr); prev=s;}
+  return out;
+}
+function tlSourceFor(){return LIVE?tlFramesFromStates():frames;}
+function tlEntryPasses(e){
+  if(!TL_ON.src.has(e.source))return false;
+  if(TL_BRAINSET[e.source]){ if(e.sub)return TL_ON.sub.has(e.sub); if(e.section)return TL_ON.sec.has(e.section); }
+  return true;
+}
+function tlRowHTML(e){
+  const col=TL_SRCCOL[e.source]||TL_NEUTRAL, src=TL_SRCLAB[e.source]||e.source;
+  let tag; if(e.party)tag=esc(e.party.replace("→"," → ")); else if(e.source==="seamA")tag="Server";
+  else tag=esc(TL_SECLAB[e.sub||e.section]||"");
+  return `<div class="tlrow" style="border-left-color:${col}">`+
+    `<span class="tlsrc" style="border-color:${col};color:${col};background:${col}1f">${esc(src)}</span>`+
+    `<span class="tltag">${tag}</span><span class="tltext">${esc(e.text)}</span></div>`;
+}
+function renderTimeline(){
+  const body=document.getElementById("tlbody"); if(!body)return;
+  const groups=Timeline.buildTimeline(tlSourceFor(),{serverByBeat:LIVE?{}:SERVER_BEAT,
+    resolveFor:(k,i)=>(typeof buildResolve==="function"?buildResolve(k,i):null)});
+  let h="", any=false;
+  for(const g of groups){
+    const rows=g.entries.filter(tlEntryPasses);
+    if(!rows.length)continue; any=true;
+    h+=`<div class="tlbeat" data-beat="${g.beat}">Beat ${g.beat+1} · ${esc(g.title)}</div>`;
+    for(const e of rows)h+=tlRowHTML(e);
+  }
+  body.innerHTML=any?h:`<div class="tlnone">No entries match the current filters.</div>`;
+}
+function tlRenderPills(){
+  const map={src:TL_SRC_META.map(m=>[m[0],m[1],m[2]]),
+    sec:TL_SEC_META.map(m=>[m[0],m[1],TL_NEUTRAL]), sub:TL_SUB_META.map(m=>[m[0],m[1],TL_NEUTRAL])};
+  for(const axis in map){const host=document.querySelector(`#tlmodal .tlpills[data-axis="${axis}"]`); if(!host)continue;
+    host.innerHTML=map[axis].map(([k,l,c])=>{const on=TL_ON[axis].has(k);
+      const st=on?`border-color:${c};color:${c};background:${c}1f`:"";
+      return `<span class="tlpill ${on?"on":"off"}" data-axis="${axis}" data-key="${k}" style="${st}">${esc(l)}</span>`;}).join("");}
+}
+function openTimeline(){
+  if(!window.Timeline)return;
+  tlOpen=true; ensureBackdrop();
+  const bd=document.getElementById("maxbackdrop");bd.style.display="block";bd.onclick=closeTimeline;
+  tlRenderPills(); renderTimeline();
+  const modal=document.getElementById("tlmodal");modal.style.display="flex";
+  const cur=modal.querySelector(`.tlbeat[data-beat="${(states[idx]&&states[idx].beat!=null)?states[idx].beat:idx}"]`);
+  if(cur)cur.scrollIntoView({block:"start"});
+  tlBuilt=true;
+}
+function closeTimeline(){
+  tlOpen=false;const modal=document.getElementById("tlmodal");if(modal)modal.style.display="none";
+  const bd=document.getElementById("maxbackdrop");if(bd){bd.onclick=restoreCard;if(!maximizedId&&!auditOpen)bd.style.display="none";}
+}
+(function(){const modal=document.getElementById("tlmodal");if(!modal)return;
+  modal.addEventListener("click",e=>{
+    if(e.target.closest(".tlclose")){closeTimeline();return;}
+    const p=e.target.closest(".tlpill");if(p){const a=p.dataset.axis,k=p.dataset.key;
+      if(TL_ON[a].has(k))TL_ON[a].delete(k);else TL_ON[a].add(k);
+      tlRenderPills();renderTimeline();}});})();
+const _tlBtn=document.getElementById("tlbtn");if(_tlBtn)_tlBtn.onclick=openTimeline;
+window.addEventListener("keydown",e=>{if(e.key==="Escape"&&tlOpen)closeTimeline();});
+
+// ===== views =====
+let idx=0,mode="3d",animating=false,t0=0,WEBGL_OK=true,COLORMIX_OK=true;
+let fromItems=JSON.parse(JSON.stringify(base.items));
+let anim={items:JSON.parse(JSON.stringify(base.items)),eff:{a1:null,a2:null}};
+const lerp=(a,b,t)=>a+(b-a)*t;
+function show(i){idx=Math.max(0,Math.min(states.length-1,i));fromItems=JSON.parse(JSON.stringify(anim.items));t0=performance.now();animating=true;renderPanels(states[idx]);}
+function loop(now){const st=states[idx];let t=animating?Math.min(1,(now-t0)/900):1;const te=t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+  for(const nm of ITEMS){const a=fromItems[nm]||st.items[nm],b=st.items[nm];anim.items[nm]=[lerp(a[0],b[0],te),lerp(a[1],b[1],te)];}
+  anim.eff=st.eff;if(t>=1)animating=false;if(mode==="2d")drawCell(st);else draw3D(st);requestAnimationFrame(loop);}
+
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+function resizeView(){const box=document.getElementById("viewbox");if(!box)return;VW=Math.max(160,box.clientWidth);VH=Math.max(100,box.clientHeight);cv.width=VW;cv.height=VH;if(R3){R3.renderer.setSize(VW,VH,false);R3.camera.aspect=VW/VH;R3.camera.updateProjectionMatrix();}}
+function drawCell(st){ctx.clearRect(0,0,VW,VH);
+  ctx.fillStyle="#3a3f4d";ctx.fillRect(sx(BELT_L[0]),sy(BELT_Y[1]),sr(BELT_R[1]-BELT_L[0]),sy(BELT_Y[0])-sy(BELT_Y[1]));
+  ctx.fillStyle="rgba(229,83,75,.20)";ctx.fillRect(sx(GAP[0]),sy(BELT_Y[1]),sr(GAP[1]-GAP[0]),sy(BELT_Y[0])-sy(BELT_Y[1]));
+  ctx.strokeStyle="rgba(229,83,75,.5)";ctx.setLineDash([5,4]);ctx.strokeRect(sx(GAP[0]),sy(BELT_Y[1]),sr(GAP[1]-GAP[0]),sy(BELT_Y[0])-sy(BELT_Y[1]));ctx.setLineDash([]);
+  for(const [arm,col,key] of [[ARM1,"#3a8be0","a1"],[ARM2,"#d98040","a2"]]){const active=st.brains[key].active;
+    ctx.beginPath();ctx.arc(sx(arm.x),sy(arm.y),sr(REACH),0,7);ctx.fillStyle=col+(active?"22":"12");ctx.fill();
+    ctx.strokeStyle=col;ctx.globalAlpha=active?.9:.45;ctx.setLineDash([6,5]);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+    const eff=anim.eff&&anim.eff[key];const tgt=eff?eff:[arm.x,arm.y+0.18];
+    ctx.strokeStyle=col;ctx.lineWidth=active?4:3;ctx.beginPath();ctx.moveTo(sx(arm.x),sy(arm.y));ctx.lineTo(sx((arm.x+tgt[0])/2),sy((arm.y+tgt[1])/2-0.12));ctx.lineTo(sx(tgt[0]),sy(tgt[1]));ctx.stroke();ctx.lineWidth=1;
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(sx(arm.x),sy(arm.y),7,0,7);ctx.fill();ctx.beginPath();ctx.arc(sx(tgt[0]),sy(tgt[1]),5,0,7);ctx.fill();}
+  for(const s of ["a1","a2"]){const sh=SHELF[s];const hw=sr(0.066);
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++){const x=sx(sh.cols[c]),y=sy(sh.rows[r]);
+      ctx.fillStyle=sh.hex+"14";ctx.strokeStyle=sh.hex+"99";ctx.fillRect(x-hw,y-hw,hw*2,hw*2);ctx.strokeRect(x-hw,y-hw,hw*2,hw*2);}
+    ctx.fillStyle=sh.hex;ctx.font="9px sans-serif";ctx.textAlign="center";ctx.fillText((s==="a1"?"Arm 1 shelf":"Arm 2 shelf"),sx((sh.cols[0]+sh.cols[2])/2),sy(sh.rows[0])-hw-5);}
+  for(const nm of ITEMS){const p=anim.items[nm];ctx.fillStyle=ICOL[nm];ctx.strokeStyle="#0a0d12";ctx.lineWidth=1.5;
+    if(nm==="tube1"){ctx.beginPath();ctx.arc(sx(p[0]),sy(p[1]),8,0,7);ctx.fill();ctx.stroke();}
+    else if(nm==="sheet1"){ctx.fillRect(sx(p[0])-11,sy(p[1])-5,22,10);ctx.strokeRect(sx(p[0])-11,sy(p[1])-5,22,10);}
+    else{ctx.fillRect(sx(p[0])-8,sy(p[1])-8,16,16);ctx.strokeRect(sx(p[0])-8,sy(p[1])-8,16,16);}}
+  ctx.lineWidth=1;}
+
+let R3=null;let orbit={theta:-Math.PI/2,phi:1.02,r:2.8,cx:0,cy:0.35,cz:0.15,drag:false,px:0,py:0};
+const w3=(x,y,z)=>new THREE.Vector3(x,z,-y);
+// shelf cells are vertical: deep footprint y maps to HEIGHT on a rack at fixed depth
+function pos3d(x,y,restH){const f=Math.max(0,Math.min(1,(-y-0.50)/0.12));const normal=w3(x,y,restH);if(f<=0)return normal;const vert=new THREE.Vector3(x,0.86+(y+0.62)*1.3333,0.95);return normal.lerp(vert,f);}
+function setBeam(mesh,a,b){const mid=a.clone().add(b).multiplyScalar(.5);mesh.position.copy(mid);const dir=b.clone().sub(a);mesh.scale.set(1,Math.max(dir.length(),0.001),1);mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.clone().normalize());}
+function init3D(){if(R3)return;if(!WEBGL_OK||typeof THREE==="undefined"){webglFallback();return;}
+  let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true});}catch(e){webglFallback();return;}
+  const cont=document.getElementById("view3d");renderer.setPixelRatio(window.devicePixelRatio||1);renderer.setSize(VW,VH,false);cont.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0d12);const camera=new THREE.PerspectiveCamera(45,VW/VH,0.05,100);
+  scene.add(new THREE.AmbientLight(0xffffff,0.55));const dl=new THREE.DirectionalLight(0xffffff,0.8);dl.position.set(2,4,2);scene.add(dl);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(5,4),new THREE.MeshStandardMaterial({color:0x12161d}));floor.rotation.x=-Math.PI/2;scene.add(floor);
+  const beltMat=new THREE.MeshStandardMaterial({color:0x3a3f4d});const beltM=new THREE.Mesh(new THREE.BoxGeometry(2.20,0.05,0.32),beltMat);beltM.position.set(0,0.40,0);scene.add(beltM);
+  // unreachable middle marked as a band ON the belt (no hole)
+  const gmark=new THREE.Mesh(new THREE.PlaneGeometry(0.40,0.32),new THREE.MeshBasicMaterial({color:0xe5534b,transparent:true,opacity:0.40,side:THREE.DoubleSide}));gmark.rotation.x=-Math.PI/2;gmark.position.set(0,0.427,0);scene.add(gmark);
+  const legMat=new THREE.MeshStandardMaterial({color:0x2a2f38});function leg(x){[0.13,-0.13].forEach(z=>{const m=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.375,0.05),legMat);m.position.set(x,0.1875,z);scene.add(m);});}leg(-1.0);leg(-0.3);leg(0.3);leg(1.0);
+  // side rails spanning the full length (incl. over the gap) so it reads as ONE conveyor
+  const railMat=new THREE.MeshStandardMaterial({color:0x596472});[-0.165,0.165].forEach(z=>{const rail=new THREE.Mesh(new THREE.BoxGeometry(2.26,0.035,0.03),railMat);rail.position.set(0,0.435,z);scene.add(rail);});
+  // cross frame under the belt joining the two segments
+  const frame=new THREE.Mesh(new THREE.BoxGeometry(2.26,0.03,0.30),new THREE.MeshStandardMaterial({color:0x20262e}));frame.position.set(0,0.36,0);scene.add(frame);
+  for(const s of ["a1","a2"]){const sh=SHELF[s];const col=s==="a1"?0x3a8be0:0xd98040;
+    const cx=(sh.cols[0]+sh.cols[2])/2; const SD=0.95; // vertical rack at depth 0.95 (arms sit at ~0.45 → clearance to place)
+    const panel=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.92,0.03),new THREE.MeshStandardMaterial({color:0x1a1f27}));panel.position.set(cx,0.46,SD);scene.add(panel);
+    for(let r=0;r<3;r++){const h=0.86-r*0.20;const ledge=new THREE.Mesh(new THREE.BoxGeometry(0.46,0.015,0.15),new THREE.MeshStandardMaterial({color:0x2c333d}));ledge.position.set(cx,h-0.085,SD-0.07);scene.add(ledge);}
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++){const h=0.86-r*0.20;const pad=new THREE.Mesh(new THREE.PlaneGeometry(0.15,0.15),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.30,side:THREE.DoubleSide}));pad.position.set(sh.cols[c],h,SD-0.025);scene.add(pad);}
+    [(sh.cols[0]+sh.cols[1])/2,(sh.cols[1]+sh.cols[2])/2].forEach(mx=>{const dv=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.80,0.16),new THREE.MeshStandardMaterial({color:0x39424d}));dv.position.set(mx,0.50,SD-0.05);scene.add(dv);});}
+  function mkArm(arm,col){const base=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.06,20),new THREE.MeshStandardMaterial({color:0x44505c}));base.position.copy(w3(arm.x,arm.y,0.42));scene.add(base);
+    const post=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,1,16),new THREE.MeshStandardMaterial({color:col}));scene.add(post);
+    const boom=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1,16),new THREE.MeshStandardMaterial({color:col}));scene.add(boom);
+    const tcp=new THREE.Mesh(new THREE.SphereGeometry(0.045,16,16),new THREE.MeshStandardMaterial({color:col,emissive:0x000000}));scene.add(tcp);return {post,boom,tcp,arm};}
+  const arms={a1:mkArm(ARM1,0x3a8be0),a2:mkArm(ARM2,0xd98040)};
+  const items={box1:new THREE.Mesh(new THREE.BoxGeometry(0.09,0.09,0.09),new THREE.MeshStandardMaterial({color:0xcab43c})),sheet1:new THREE.Mesh(new THREE.BoxGeometry(0.12,0.04,0.10),new THREE.MeshStandardMaterial({color:0x66bf72})),tube1:new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.09,18),new THREE.MeshStandardMaterial({color:0xb3598c}))};
+  for(const k in items)scene.add(items[k]);R3={renderer,scene,camera,arms,items};
+  const el=renderer.domElement;el.addEventListener("mousedown",e=>{if(editing)return;orbit.drag=true;orbit.px=e.clientX;orbit.py=e.clientY;});window.addEventListener("mouseup",()=>orbit.drag=false);
+  window.addEventListener("mousemove",e=>{if(!orbit.drag)return;orbit.theta-=(e.clientX-orbit.px)*0.008;orbit.phi=Math.max(0.25,Math.min(1.45,orbit.phi-(e.clientY-orbit.py)*0.006));orbit.px=e.clientX;orbit.py=e.clientY;});
+  el.addEventListener("wheel",e=>{if(editing)return;e.preventDefault();orbit.r=Math.max(1.6,Math.min(5,orbit.r+e.deltaY*0.002));},{passive:false});}
+function draw3D(st){if(!R3)init3D();const {renderer,scene,camera,arms,items}=R3;
+  camera.position.set(orbit.cx+orbit.r*Math.sin(orbit.phi)*Math.cos(orbit.theta),orbit.cy+orbit.r*Math.cos(orbit.phi),orbit.cz+orbit.r*Math.sin(orbit.phi)*Math.sin(orbit.theta));camera.lookAt(orbit.cx,orbit.cy,orbit.cz);
+  const heights={box1:0.47,sheet1:0.44,tube1:0.47};for(const nm in items){const p=anim.items[nm];items[nm].position.copy(pos3d(p[0],p[1],heights[nm]));}
+  for(const key of ["a1","a2"]){const A=arms[key],a=A.arm,active=st.brains[key].active;const shoulder=w3(a.x,a.y,0.62);setBeam(A.post,w3(a.x,a.y,0.40),shoulder);
+    const eff=anim.eff&&anim.eff[key];const tgt=eff?pos3d(eff[0],eff[1],0.5):w3(a.x,a.y+0.22,0.58);setBeam(A.boom,shoulder,tgt);A.tcp.position.copy(tgt);A.tcp.material.emissive.setHex(active?0x333a44:0x000000);}
+  renderer.render(scene,camera);}
+
+function stateOf(d){const f=d.flags||[];if(f.includes("fault"))return"fault";if(f.includes("learn"))return"learning";if(f.includes("promo"))return"promoting";if(f.includes("gate"))return"gating";if(f.includes("gap"))return"gap";return d.active?"working":"idle";}
+const fmap={gap:["f-gap","● gap"],learn:["f-learn","✦ learned"],promo:["f-promo","↑ shared"],gate:["f-gate","⊘ blocked"],fault:["f-fault","⚠ fault"]};
+const badgeMap={learned:"✦learned",inherited:"↑inherited",GATED:"⊘blocked",FAULT:"⚠fault"};
+function brainColor(tok){tok=tok.trim();const m={"Orchestrator":"var(--mgr)","Arm1":"var(--a1)","Arm 1":"var(--a1)","Arm2":"var(--a2)","Arm 2":"var(--a2)","Conveyor":"var(--conv)","Fleet":"var(--glob)","Global":"var(--glob)","User":"var(--user)","Library":"#7f8c99","L2":"#7f8c99","Demonstration":"#7f8c99"};return m[tok]||"#9fb0bd";}
+function fmtParty(p){return p.split("→").map(x=>`<b style="color:${brainColor(x)}">${x.trim()}</b>`).join('<span style="color:#566270"> → </span>');}
+const PANEL_ICO='<svg viewBox="0 0 14 14"><rect x="2" y="2.5" width="10" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/><line x1="4" y1="5.3" x2="10" y2="5.3" stroke="currentColor" stroke-width="1"/><line x1="4" y1="7.3" x2="10" y2="7.3" stroke="currentColor" stroke-width="1"/><line x1="4" y1="9.3" x2="8" y2="9.3" stroke="currentColor" stroke-width="1"/></svg>';
+const GRAPH_ICO='<svg viewBox="0 0 14 14"><line x1="3.5" y1="4" x2="10.5" y2="3.5" stroke="currentColor" stroke-width="1"/><line x1="3.5" y1="4" x2="7" y2="10.5" stroke="currentColor" stroke-width="1"/><line x1="10.5" y1="3.5" x2="7" y2="10.5" stroke="currentColor" stroke-width="1"/><circle cx="3.5" cy="4" r="1.7" fill="currentColor"/><circle cx="10.5" cy="3.5" r="1.7" fill="currentColor"/><circle cx="7" cy="10.5" r="1.7" fill="currentColor"/></svg>';
+function sectionArt(sec){return (typeof SECTION_ART!=='undefined'&&SECTION_ART[sec])||sec;}
+function sectionBodyHTML(sec,d){
+  const p=sectionPayload(sec,d); let h="";
+  if(p.isCaps){
+    h+=(p.caps||[]).map(c=>`<div class="cap"><b>${esc(c[0])}</b>${badgeMap[c[1]]?`<span class="badge">${badgeMap[c[1]]}</span>`:""}</div>`).join("")||'<div class="secline">—</div>';
+  }else{
+    h+=`<div class="secbloc">`+p.lines.map(l=>`<div class="secline">${esc(l)}</div>`).join("")+`</div>`;
+  }
+  const fl=p.flags||[];
+  if(fl.length) h+=`<div class="flagrow">`+fl.map(f=>`<span class="flag ${fmap[f][0]}">${fmap[f][1]}</span>`).join("")+`</div>`;
+  return h;}
+// ===== reusable subsection sub-card (border + accent rail + collapsible header) =====
+// subsections start EXPANDED; collapse state persists across re-renders via collapsedSubs.
+const collapsedSubs=new Set();
+const SUBCHEV='<svg viewBox="0 0 10 10"><path d="M2 3.5 L5 6.5 L8 3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function subsecHTML(key,title,inner){
+  const c=collapsedSubs.has(key);
+  return `<div class="subsec${c?" collapsed":""}" data-sub="${key}"><div class="subhdr"><span class="subttl">${esc(title)}</span><span class="subchev">${SUBCHEV}</span></div><div class="subbody">${inner}</div></div>`;}
+
+// ===== v10.3a relation-resolution narrowing (Plan ▸ Resolve subsection, now in a sub-card) =====
+let resolveAnim={beat:-1,stage:0,timer:null};
+// v0.21 — LIVE Plan▸Resolve: the wire `resolve` frame is per-brain (no beat key), so live keeps a
+// per-brain store + per-brain animation state (mock stays beat-keyed off resolveAnim, unchanged).
+const liveResolve={};            // brain -> adapted res object (from a wire resolve frame)
+const liveResolveAnim={};        // brain -> {stage, timer}
+// Adapt a wire `resolve` frame {brain,clause,item,tube?,stages:[{cap,cells}],winner} to the res shape
+// resolveGridSVG expects. acc + absolute are NOT on the wire (by design): inject per-brain accent,
+// infer absolute from the absence of a reference object (tube==null).
+function liveResolveToRes(f){
+  if(!f||!Array.isArray(f.stages)||!f.stages.length) return null;
+  return {acc:(typeof ACC!=="undefined"&&ACC[f.brain])||"#8b98a5",
+          tube:(f.tube==null?null:f.tube), item:f.item||null, clause:f.clause||"",
+          absolute:(f.tube==null), stages:f.stages, winner:f.winner};
+}
+// shared inner render (mock + live feed identical given a res + stage) — factored to avoid drift
+function resolveInnerHTML(res,stage){
+  const si=Math.min(stage,res.stages.length-1),atWin=(si===res.stages.length-1);
+  return `<div class="rclause">${esc(res.clause)}</div><div class="rbody">${resolveGridSVG(res,si)}<div class="rcap">${atWin?'<b>':''}${esc(res.stages[si].cap)}${atWin?'</b>':''}</div></div>`;
+}
+function resolveSubsectionHTML(k){
+  let inner;
+  if(LIVE){
+    const res=liveResolve[k];
+    if(!res){ inner=`<span class="rnone">live resolution feed not yet emitted (backend producer pending)</span>`; }
+    else inner=resolveInnerHTML(res,(liveResolveAnim[k]&&liveResolveAnim[k].stage)||0);
+  }
+  else{
+    const res=(typeof buildResolve==="function")?buildResolve(k,idx):null;
+    if(!res){ inner=`<span class="rnone">no spatial relation resolved this beat</span>`; }
+    else inner=resolveInnerHTML(res,resolveAnim.stage);
+  }
+  return subsecHTML(k+":resolve","Resolve",inner);}
+function rerenderResolvePlans(){for(const [k] of BR){const card=document.getElementById("bc_"+k);
+  if(card.dataset.sec==="plan" && (card.dataset.mode||"panel")==="panel") renderCard(card,k,states[idx].brains[k]);}}
+// re-render ONE brain's card (live, per-brain narrowing step) — guarded so it no-ops off-section/off-brain
+function rerenderResolvePlan(k){const card=document.getElementById("bc_"+k);
+  if(!card||!states[idx]||!states[idx].brains||!states[idx].brains[k])return;
+  if(card.dataset.sec==="plan" && (card.dataset.mode||"panel")==="panel") renderCard(card,k,states[idx].brains[k]);}
+// per-brain timed step-through, started on each arriving resolve frame; snap-to-final guard per brain
+function startLiveResolveAnim(k){
+  const a=liveResolveAnim[k]||(liveResolveAnim[k]={stage:0,timer:null});
+  if(a.timer){clearInterval(a.timer);a.timer=null;}
+  a.stage=0; const res=liveResolve[k]; if(!res)return;
+  rerenderResolvePlan(k);                     // show stage 0 at once
+  if(res.stages.length<=1)return;
+  a.timer=setInterval(()=>{
+    if(a.stage>=res.stages.length-1){clearInterval(a.timer);a.timer=null;return;}
+    a.stage++;rerenderResolvePlan(k);
+  },650);}
+function clearLiveResolve(){for(const k in liveResolveAnim){if(liveResolveAnim[k].timer)clearInterval(liveResolveAnim[k].timer);delete liveResolveAnim[k];}
+  for(const k in liveResolve)delete liveResolve[k];}
+// timed step-through; snap-to-final guard = always clear any in-flight run before (re)starting
+function startResolveAnim(beat){
+  if(resolveAnim.timer){clearInterval(resolveAnim.timer);resolveAnim.timer=null;}
+  resolveAnim.beat=beat;resolveAnim.stage=0;
+  const max=(typeof resolveStageCount==="function")?resolveStageCount(beat):0;
+  if(max<=1)return;
+  resolveAnim.timer=setInterval(()=>{
+    if(resolveAnim.stage>=max-1){clearInterval(resolveAnim.timer);resolveAnim.timer=null;return;}
+    resolveAnim.stage++;rerenderResolvePlans();
+  },650);}
+function renderCard(card,k,d){
+  const sec=card.dataset.sec||"task",mode=card.dataset.mode||"panel";
+  const ci=card.querySelector(".cintent");if(ci)ci.textContent=d.intent||"";
+  card.querySelectorAll(".bsec").forEach(t=>t.classList.toggle("on",t.dataset.s===sec));
+  const sb=card.querySelector(".secbody");
+  const hdr=`<div class="sechdr"><span class="artname">${sectionArt(sec)}</span><span class="vtog"><button class="vmb uitab${mode==="panel"?" on":""}" data-m="panel" title="panel view">${PANEL_ICO}</button><button class="vmb uitab${mode==="graph"?" on":""}" data-m="graph" title="graph view">${GRAPH_ICO}</button></span></div>`;
+  let body;
+  if(mode==="graph") body=LIVE?`<div class="secgraph" style="display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:9.5px;min-height:90px;text-align:center">live reasoning-graph feed<br>not yet emitted</div>`:`<div class="secgraph">${graphSVG(buildSub(k,idx))}</div>`;
+  else { body=sectionBodyHTML(sec,d); if(sec==="plan") body+=resolveSubsectionHTML(k); }
+  sb.innerHTML=hdr+body;}
+function renderPanels(st){
+  // v0.22 beat strip — beat counter + behavior-level narration (what's happening now)
+  // v0.24 fix: use the frame's own beat index (live seeds an idle state at states[0], so idx
+  // was off by one); show an honest idle line before the first frame.
+  const bn=document.getElementById("beatnum"),bx=document.getElementById("beatnarr");
+  const isIdle=(st.title==null&&!st.narr);
+  const bno=(st.beat!=null?st.beat:idx)+1, btot=(typeof liveBeatsTotal==="number"?liveBeatsTotal:states.length);
+  if(bn) bn.textContent=isIdle?"Ready":("Beat "+bno+" / "+btot);
+  if(bx) bx.textContent=isIdle?"Place an order to begin":((st.title?st.title+" — ":"")+(st.narr||""));
+  for(const [k] of BR){const data=st.brains[k],card=document.getElementById("bc_"+k);
+    card.classList.toggle("active",!!data.active);card.classList.toggle("dim",!data.active);
+    const ss=card.querySelector(".state");if(ss)ss.textContent=stateOf(data);
+    renderCard(card,k,data);}
+  const log=document.getElementById("log");log.innerHTML="";
+  for(let i=0;i<=idx;i++)for(const m of (states[i].msgs||[])){const d=document.createElement("div");d.innerHTML=`${fmtParty(m[0])} &nbsp; ${m[1]}`;log.appendChild(d);}
+  log.scrollTop=log.scrollHeight;
+  startResolveAnim(idx);}
+
+let playing=false,timer=null;
+function setPlay(p){playing=p;document.getElementById("play").textContent=p?"⏸":"▶ Play";}
+function autoplay(){timer=setInterval(()=>{if(idx>=states.length-1){clearInterval(timer);setPlay(false);return;}show(idx+1);},2600);}
+document.getElementById("next").onclick=()=>{show(idx+1);if(LIVE&&idx>=states.length-1)FOLLOW=true;};
+document.getElementById("prev").onclick=()=>{if(LIVE)FOLLOW=false;show(idx-1);};
+document.getElementById("reset").onclick=()=>{if(LIVE){DS.sendCommand({type:"command",name:"reset"});FOLLOW=true;return;}clearInterval(timer);setPlay(false);show(0);};
+document.getElementById("play").onclick=()=>{if(LIVE){const want=!playing;DS.sendCommand({type:"command",name:want?"play":"pause"});setPlay(want);FOLLOW=true;return;}setPlay(!playing);if(playing)autoplay();else clearInterval(timer);};
+document.getElementById("dim").onclick=()=>{if(!WEBGL_OK)return;mode=mode==="2d"?"3d":"2d";cv.style.display=mode==="2d"?"block":"none";document.getElementById("view3d").style.display=mode==="3d"?"block":"none";document.getElementById("hint3d").style.display=mode==="3d"?"inline-flex":"none";document.getElementById("dim").textContent=mode==="2d"?"◳ 3D view":"▦ 2D view";document.getElementById("st_cell").textContent=mode==="2d"?"2D":"3D";if(mode==="3d")init3D();resizeView();};
+// ===== v10.5 presentation hardening: capability detection + graceful fallback =====
+function showCapBanner(){const b=document.getElementById("capbanner");if(!b)return;const m=[];
+  if(!WEBGL_OK)m.push("WebGL unavailable — the Physical cell is shown in 2D");
+  if(!COLORMIX_OK)m.push("older browser — button fills use a fallback style");
+  if(!m.length){b.style.display="none";return;}
+  b.style.display="flex";b.innerHTML='<span>⚠ '+m.join(" · ")+'</span><button id="capx">dismiss</button>';
+  document.getElementById("capx").onclick=()=>{b.style.display="none";};}
+function webglFallback(){WEBGL_OK=false;mode="2d";if(cv)cv.style.display="block";
+  const v3=document.getElementById("view3d");if(v3)v3.style.display="none";
+  const dim=document.getElementById("dim");if(dim)dim.style.display="none";
+  const sc=document.getElementById("st_cell");if(sc)sc.textContent="2D";
+  const h3=document.getElementById("hint3d");if(h3)h3.style.display="none";
+  showCapBanner();}
+function detectCaps(){
+  try{const c=document.createElement("canvas");WEBGL_OK=!!(window.WebGLRenderingContext&&(c.getContext("webgl")||c.getContext("experimental-webgl")));}catch(e){WEBGL_OK=false;}
+  try{COLORMIX_OK=!!(window.CSS&&CSS.supports&&CSS.supports("background","color-mix(in srgb, #fff 50%, #000)"));}catch(e){COLORMIX_OK=false;}
+  if(!COLORMIX_OK)document.body.classList.add("nofx");
+  if(!WEBGL_OK)webglFallback(); else showCapBanner();}
+
+function setTab(t){["order","sort","teach"].forEach(x=>{document.getElementById("pane_"+x).style.display=x===t?"block":"none";document.getElementById("tab_"+x).classList.toggle("on",x===t);});document.getElementById("st_user").textContent=t;}
+document.getElementById("tab_order").onclick=()=>setTab("order");
+document.getElementById("tab_sort").onclick=()=>setTab("sort");
+document.getElementById("tab_teach").onclick=()=>setTab("teach");
+
+const shapeSVG={box:'<svg width="14" height="14"><rect x="2" y="2" width="10" height="10" rx="2" fill="#cab43c"/></svg>',sheet:'<svg width="14" height="14"><rect x="0" y="4" width="14" height="6" rx="2" fill="#66bf72"/></svg>',tube:'<svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#b3598c"/></svg>'};
+function mkSel(opts){const s=document.createElement("select");opts.forEach(o=>{const a=o.split("|");const op=document.createElement("option");op.value=a[0];op.textContent=a[1]||a[0];s.appendChild(op);});return s;}
+// ===== v10.2a teach-curation model (mock Local KL; see teach.js) =====
+const SEED_VERSION=1;  // teach-model snapshot schema/seed version (Export/Import; bump if seeds change)
+let TERMS=(typeof seedTerms==='function')?seedTerms():[];
+let COMPOSITES=(typeof seedComposites==='function')?seedComposites():[];
+const CELL_SELECTS=new Set();
+// a name is shown with ·L when its winning (non-retired) entry is taught locally
+function isLocalName(nm){const r=resolveTerm(nm,TERMS);return r&&r.scope!=='builtin'&&r.scope!=='Global';}
+function fillTermSel(s){const cur=s.value;s.innerHTML="";for(const nm of activeTermNames(TERMS)){const o=document.createElement("option");o.value=nm;o.textContent=nm+(isLocalName(nm)?' ·L':'');s.appendChild(o);}if([...s.options].some(o=>o.value===cur))s.value=cur;}
+function termSel(){const s=document.createElement("select");CELL_SELECTS.add(s);fillTermSel(s);return s;}
+// rebuild every position dropdown + compose chips after a retire/restore/override
+function rebuildTermSelects(){for(const s of CELL_SELECTS)fillTermSel(s);ttBuildComposeChips();}
+// compositional position builder: a list of clauses (shelf-position OR relational), added with +
+function makePosBuilder(){
+  const root=document.createElement("div");
+  const rows=document.createElement("div");
+  const addBtn=document.createElement("button");addBtn.className="mini";addBtn.textContent="+ position";
+  root.append(rows,addBtn);
+  function update(){const kids=Array.from(rows.children);kids.forEach((r,i)=>{r._rm.style.display=i===0?"none":"";});const last=kids[kids.length-1];addBtn.style.display=(last&&last._type()==="rel")?"":"none";}
+  function addRow(){
+    const row=document.createElement("div");row.className="row pbrow";
+    const tSel=mkSel(["rel|relational","shelf|shelf pos"]);
+    const relSel=mkSel(["above","below","left|left of","right|right of","under"]);
+    const objSel=mkSel(["box|Box","sheet|Sheet","tube|Tube"]);
+    const shelfSel=termSel();
+    const rm=document.createElement("button");rm.className="mini";rm.textContent="×";rm.title="remove this position";
+    row.append(tSel,relSel,objSel,shelfSel,rm);
+    function refresh(){const r=tSel.value==="rel";relSel.style.display=r?"":"none";objSel.style.display=r?"":"none";shelfSel.style.display=r?"none":"";}
+    tSel.onchange=()=>{refresh();update();};refresh();
+    rm.onclick=()=>{if(rows.children.length>1){CELL_SELECTS.delete(shelfSel);rows.removeChild(row);update();}};
+    row._rm=rm;row._type=()=>tSel.value;
+    row._read=()=>tSel.value==="rel"?{type:"rel",rel:relSel.value,obj:objSel.options[objSel.selectedIndex].text}:{type:"shelf",pos:shelfSel.value};
+    rows.appendChild(row);update();
+  }
+  addBtn.onclick=addRow;
+  addRow();
+  return {el:root,get:()=>Array.from(rows.children).map(r=>r._read()),reset:()=>{rows.innerHTML="";addRow();}};
+}
+function posStr(cl){return (cl&&cl.length)?cl.map(c=>c.type==="shelf"?c.pos:(c.rel+" "+c.obj)).join(" · "):"(unspecified)";}
+
+let selItem="box",orderLines=[];
+document.querySelectorAll(".shape").forEach(s=>s.onclick=()=>{if(editing)return;selItem=s.dataset.item;document.querySelectorAll(".shape").forEach(x=>x.classList.toggle("sel",x===s));});
+const orderPos=makePosBuilder();document.getElementById("o_posb").appendChild(orderPos.el);
+const sortFrom=makePosBuilder();document.getElementById("s_from").appendChild(sortFrom.el);
+const sortTo=makePosBuilder();document.getElementById("s_to").appendChild(sortTo.el);
+function renderOrder(){const el=document.getElementById("o_list");el.innerHTML=orderLines.length?orderLines.map(l=>`<span class="pill">${shapeSVG[l.item]} → ${l.shelf.toUpperCase()}: ${posStr(l.pos)}</span>`).join(""):'<span style="color:var(--muted)">no lines yet</span>';}
+document.getElementById("o_add").onclick=()=>{orderLines.push({item:selItem,shelf:document.getElementById("o_shelf").value,pos:orderPos.get()});orderPos.reset();renderOrder();};
+document.getElementById("o_clear").onclick=()=>{orderLines=[];renderOrder();orderPos.reset();sortFrom.reset();sortTo.reset();};
+document.getElementById("o_run").onclick=()=>{if(LIVE){DS.sendCommand({type:"command",name:"place_order",args:{lines:orderLines}});FOLLOW=true;return;}clearInterval(timer);setPlay(true);show(0);autoplay();};
+let seq=[];
+function renderSeq(){const el=document.getElementById("t_seq");el.innerHTML=seq.length?seq.map(b=>`<span class="pill">${b}</span>`).join(" → "):'<span style="color:var(--muted)">click blocks to build a demonstration</span>';}
+document.querySelectorAll(".blk").forEach(b=>b.onclick=()=>{seq.push(b.dataset.b);renderSeq();});
+document.getElementById("t_clear").onclick=()=>{seq=[];renderSeq();};
+document.getElementById("t_capture").onclick=()=>{clearInterval(timer);setPlay(false);show(2);};
+
+// ===== v10.2a: Teach sub-tabs · Library + Inspect · Teach-term =====
+function setTSub(t){["lib","term","demo"].forEach(x=>{document.getElementById("ts_"+x).style.display=x===t?"block":"none";});document.querySelectorAll(".tsbtn").forEach(b=>b.classList.toggle("on",b.dataset.t===t));if(t==="lib")refreshLibrary();}
+document.querySelectorAll(".tsbtn").forEach(b=>b.onclick=()=>setTSub(b.dataset.t));
+// each library entry needs a stable key — name alone is ambiguous once a Global
+// term and its Local-override shadow share a name.
+function itemKey(it){return it.scope+'|'+it.kind+'|'+it.name;}
+let libSel=null;
+// v10.2b Hybrid: one contextual primary action per row (icon), full actions in inspect.
+function rowIcon(it){
+  if(it.retired)            return ['ra-restore','↺','restore',()=>doRestore(it)];
+  if(it.scope==='builtin')  return null;                                  // fixed
+  if(it.scope==='Global')   return ['ra-override','⇄','override → Local',()=>enterOverride(it)];
+  return ['ra-retire','⊘','retire',()=>doRetire(it)];                     // Local / Local-override / learned
+}
+function actionsFor(it){
+  if(it.retired)           return [{cls:'a-restore',ico:'↺',label:'Restore',fn:()=>doRestore(it)}];
+  if(it.scope==='builtin') return [];
+  if(it.scope==='Global')  return [{cls:'a-override',ico:'⇄',label:'Override → Local',fn:()=>enterOverride(it)}];
+  return [{cls:'a-retire',ico:'⊘',label:'Retire',fn:()=>doRetire(it)}];
+}
+function refreshLibrary(){const list=document.getElementById("t_lib");if(!list)return;list.innerHTML="";
+  const items=[...TERMS,...COMPOSITES];
+  for(const it of items){const sc=it.scope==='Local-override'?'override':it.scope;const key=itemKey(it);
+    const div=document.createElement("div");div.className="libitem"+(libSel===key?" sel":"")+(it.retired?" retired":"");
+    const badgeTxt=((typeof SCOPE_BADGE!=='undefined'&&SCOPE_BADGE[it.scope])||it.scope)+(it.retired?' · retired':'');
+    div.innerHTML=`<span class="nmx">${it.name}</span><span class="kx">${it.kind}</span><span class="scopebadge s-${sc}">${badgeTxt}</span>`;
+    const ri=rowIcon(it);
+    if(ri){const b=document.createElement("span");b.className="rowact "+ri[0];b.textContent=ri[1];b.title=ri[2];
+      b.onclick=(e)=>{e.stopPropagation();ri[3]();};div.appendChild(b);}
+    div.onclick=()=>{libSel=key;showInspect(it);refreshLibrary();};list.appendChild(div);}}
+function showInspect(it){const box=document.getElementById("t_inspect");const r=inspect(it);
+  let h=`<h4>${r.name}</h4>
+    <div class="il"><b>scope</b> ${r.scopeBadge} · <b>kind</b> ${r.kind}</div>
+    <div class="il"><b>def</b> ${r.definition}</div>
+    <div class="il"><b>from</b> ${r.provenance}</div>
+    <div class="il"><b>dependents</b> ${r.dependents.length?r.dependents.join(", "):"none"}</div>`;
+  if(it.retired) h+=`<div class="iretired">retired — version-frozen, kept for provenance · restorable</div>`;
+  else if(r.dependents.length) h+=`<div class="idep">retiring this affects <span class="deplist">${r.dependents.length} dependent${r.dependents.length>1?'s':''}: ${r.dependents.join(", ")}</span> — proceeding is allowed and reversible (integrity policy TBD)</div>`;
+  const acts=actionsFor(it);
+  if(acts.length) h+=`<div class="iactions">`+acts.map((a,i)=>`<button class="iact ${a.cls}" data-ai="${i}">${a.ico} ${a.label}</button>`).join("")+`</div>`;
+  box.innerHTML=h;
+  box.querySelectorAll(".iact").forEach((btn,i)=>btn.onclick=()=>acts[i].fn());}
+// reversible curation — both paths refresh the dropdowns + chips + library + inspect
+function doRetire(it){retire(it);rebuildTermSelects();libSel=itemKey(it);refreshLibrary();showInspect(it);}
+function doRestore(it){restore(it);rebuildTermSelects();libSel=itemKey(it);refreshLibrary();showInspect(it);}
+// override a Global term: jump to Teach-term, prefill its cells, save as a Local shadow
+let overrideTarget=null;
+function showOvBanner(t){const b=document.getElementById("ov_banner");if(!b)return;b.style.display=t?"block":"none";b.textContent=t||"";}
+function exitOverride(){overrideTarget=null;const ni=document.getElementById("tt_name");ni.readOnly=false;ni.value="";document.getElementById("tt_add").textContent="✦ Teach term";showOvBanner("");}
+function enterOverride(it){setTSub("term");overrideTarget=it.name;ttMode="example";
+  document.querySelectorAll('#ts_term .ptype').forEach(x=>x.classList.toggle("on",x.dataset.m==="example"));ttRefreshMode();
+  const ni=document.getElementById("tt_name");ni.value=it.name;ni.readOnly=true;
+  ttCells=new Set((it.cells||[]).map(c=>c[0]*3+c[1]));ttComp.clear();
+  document.querySelectorAll("#tt_grid div").forEach((d,i)=>d.classList.toggle("sel",ttCells.has(i)));
+  document.getElementById("tt_add").textContent="✦ Save Local override";document.getElementById("tt_msg").textContent="";
+  showOvBanner(`Overriding Global “${it.name}” — edit the cells, then save to create a Local shadow (resolves Local-first; the Global stays untouched).`);}
+let ttMode="example",ttCells=new Set(),ttComp=new Set();
+function ttRefreshMode(){document.getElementById("tt_example").style.display=ttMode==="example"?"block":"none";document.getElementById("tt_compose").style.display=ttMode==="compose"?"block":"none";}
+document.querySelectorAll('#ts_term .ptype').forEach(b=>b.onclick=()=>{ttMode=b.dataset.m;document.querySelectorAll('#ts_term .ptype').forEach(x=>x.classList.toggle("on",x===b));ttRefreshMode();});
+(function(){const g=document.getElementById("tt_grid");for(let i=0;i<9;i++){const d=document.createElement("div");d.onclick=()=>{if(ttCells.has(i)){ttCells.delete(i);d.classList.remove("sel");}else{ttCells.add(i);d.classList.add("sel");}};g.appendChild(d);}})();
+// compose chips list each ACTIVE (non-retired) term name once
+function ttBuildComposeChips(){const w=document.getElementById("tt_terms");if(!w)return;w.innerHTML="";
+  for(const nm of activeTermNames(TERMS)){const c=document.createElement("span");c.className="pill";c.style.cursor="pointer";c.style.opacity=ttComp.has(nm)?1:.5;c.textContent=nm;
+    c.onclick=()=>{if(ttComp.has(nm)){ttComp.delete(nm);c.style.opacity=.5;}else{ttComp.add(nm);c.style.opacity=1;}};w.appendChild(c);}}
+document.getElementById("tt_clear").onclick=()=>{ttCells.clear();ttComp.clear();document.querySelectorAll("#tt_grid .sel").forEach(d=>d.classList.remove("sel"));document.getElementById("tt_msg").textContent="";exitOverride();ttBuildComposeChips();};
+document.getElementById("tt_add").onclick=()=>{const name=document.getElementById("tt_name").value;const msg=document.getElementById("tt_msg");
+  const err=validateTermName(name,TERMS,{overrideGlobal:!!overrideTarget});if(err){msg.style.color="#ffb4ad";msg.textContent=err;return;}
+  let cells,how;
+  if(ttMode==="example"){cells=[...ttCells].map(i=>[Math.floor(i/3),i%3]);how="by example";}
+  else{cells=composeCells([...ttComp],TERMS);how="by composition";}
+  if(!cells.length){msg.style.color="#ffb4ad";msg.textContent="pick at least one cell / term";return;}
+  let term;
+  if(overrideTarget){
+    const g=TERMS.find(t=>t.name===overrideTarget&&t.scope==="Global");
+    term=overrideGlobal(g,cells,how,TERMS);
+    msg.style.color="#cbd9ff";msg.textContent=`override saved → Local shadow of "${term.name}" (${cellsLabel(cells)}); resolves Local-first`;
+  }else{
+    term={name:name.trim(),scope:"Local",kind:"term",cells,how,dependents:[]};TERMS.push(term);
+    msg.style.color="#bff5cf";msg.textContent=`taught "${term.name}" → ${cellsLabel(cells)} · now in Order/Sort dropdowns`;
+  }
+  rebuildTermSelects();
+  libSel=itemKey(term);ttCells.clear();ttComp.clear();document.querySelectorAll("#tt_grid .sel").forEach(d=>d.classList.remove("sel"));
+  exitOverride();refreshLibrary();showInspect(term);};
+// a captured demonstration also lands in the Library as a Local composite
+document.getElementById("t_capture").onclick=()=>{const nm=(document.getElementById("t_name").value||"").trim();
+  if(nm&&seq.length){COMPOSITES.push({name:nm,scope:"Local",kind:"composite",steps:seq.slice(),dependents:[]});refreshLibrary();}
+  if(LIVE){DS.sendCommand({type:"command",name:"teach",args:{skill:nm,blocks:seq.slice()}});return;}
+  clearInterval(timer);setPlay(false);show(2);};
+ttBuildComposeChips();refreshLibrary();ttRefreshMode();
+
+// ===== v10.6/v0.16 live wiring: follow WS frames + DATA-DRIVEN connection status =====
+// Connection truth = real data, not a bare open socket. A tunnel/proxy can accept the WebSocket while
+// the backend is down (onopen fires) — so green requires a real frame, and a heartbeat watchdog flips
+// green→red when the backend's ~3s `server_status` stops. close/error → red. (Fixes the false-green bug.)
+const CONN_STALE_MS=8000, CONN_WATCH_MS=2000;
+let liveGreen=false, beatArmed=false, lastDataAt=0, connWatch=null, liveServerStatus=null;
+function setLiveTag(txt,col){const t=document.getElementById("honesty");if(!t)return;t.textContent=txt;if(col){t.style.color=col;t.style.borderColor=col;}}
+function connGreen(){ if(!liveGreen){ liveGreen=true; setLiveTag("● live — connected to brains","#48c78e"); } }
+function connData(){ lastDataAt=Date.now(); connGreen(); }                 // any real frame ⇒ alive
+function connArmBeat(){ if(!beatArmed){ beatArmed=true; if(!connWatch) connWatch=setInterval(connCheck,CONN_WATCH_MS); } }
+function connClearWatch(){ beatArmed=false; if(connWatch){ clearInterval(connWatch); connWatch=null; } }
+function connDown(txt){ liveGreen=false; connClearWatch(); setLiveTag(txt,"#e5534b"); }
+function connCheck(){ if(beatArmed && liveGreen && (Date.now()-lastDataAt)>CONN_STALE_MS){ liveGreen=false; setLiveTag("● connection lost — no data","#e5534b"); } }
+function setupLive(){
+  setLiveTag("● connecting to live brains…","#d29922");
+  DS.onUpdate((kind,payload)=>{
+    if(kind==="open")             setLiveTag("● connected — waiting for brains…","#d29922");  // socket open ≠ live
+    else if(kind==="close")       connDown("● disconnected from brains");
+    else if(kind==="error")       connDown("● live connection error");
+    else if(kind==="reset"){      connData(); clearLiveResolve(); FOLLOW=true; show(0); }
+    else if(kind==="resolve"){    connData(); const f=payload; if(f&&f.brain){const res=liveResolveToRes(f); if(res){liveResolve[f.brain]=res; startLiveResolveAnim(f.brain);}} }  // Plan▸Resolve live
+    else if(kind==="frame"){      connData(); if(FOLLOW) show(states.length-1); }
+    else if(kind==="message"){    connData(); if(idx===states.length-1) renderPanels(states[idx]); }
+    else if(kind==="hello"){      connData(); if(payload&&typeof payload.beats_total==="number")liveBeatsTotal=payload.beats_total; }
+    else if(kind==="server_status"){ liveServerStatus=payload; connData(); connArmBeat(); renderServerFeed(); }  // B1 vitals
+    else if(kind==="server_event"){  connData(); /* B1 event feed: next */ }
+    else if(kind==="state_snapshot"){ connData(); handleSnapshot(payload&&payload.snapshot); }  // B3 export reply
+    else if(kind==="import_result"){  connData(); l5msg("server import "+(payload&&payload.ok?"ok":"failed")); }
+    else if(kind==="pose")        connData();
+  });
+  DS.start();
+}
+// per-card hover descriptions: brain cards get theirs from BR (role + desc); static cards carry data-desc inline
+for(const [k,label,role,desc] of BR){const c=document.getElementById("bc_"+k);if(c)c.dataset.desc=label+" — "+desc;}
+(function(){const tip=document.getElementById("cardtip");let cur=null;
+  document.addEventListener("mouseover",e=>{const hp=e.target.closest&&e.target.closest(".help");if(!hp)return;
+    const card=hp.closest(".dcard");if(!card||!card.dataset.desc||cur===hp)return;cur=hp;tip.textContent=card.dataset.desc;
+    const r=hp.getBoundingClientRect();tip.style.left=Math.min(Math.max(8,r.left-200),window.innerWidth-272)+"px";tip.style.top=(r.bottom+6)+"px";tip.classList.add("on");});
+  document.addEventListener("mouseout",e=>{const hp=e.target.closest&&e.target.closest(".help");if(!hp)return;
+    const to=e.relatedTarget;if(to&&hp.contains(to))return;cur=null;tip.classList.remove("on");});})();
+// subsection collapse: click a sub-card header → toggle (state persists across re-renders)
+document.addEventListener("click",e=>{const h=e.target.closest&&e.target.closest(".subhdr");if(!h)return;
+  const sub=h.closest(".subsec");if(!sub)return;const key=sub.dataset.sub;
+  if(collapsedSubs.has(key))collapsedSubs.delete(key);else collapsedSubs.add(key);
+  sub.classList.toggle("collapsed");});
+// ===== Messages card — tabbed Server (Seam A) / Inter-brain (Seam B) =====
+// Server feed is live-only: mock shows a REPRESENTATIVE sequence (labeled mock); ?live= shows a
+// pending placeholder until the DM-4 backend emits server_status/server_event frames.
+// Generic, IP-safe vocabulary — see ROBOT_DEMO_IP_SANITIZATION.md (no tech/role/capability names).
+const SRV_KIND={bootstrap:"start",login:"session",skill:"capability",gate_ok:"authorized",gate_no:"blocked",persist:"saved",audit:"audit"};
+const SERVER_MOCK={vitals:{sessions:4,uptime:"14m",endpoint:"wss://brains.sanmyaku.com"},events:[
+  {kind:"bootstrap",text:"System initialized"},
+  {kind:"login",text:"Operator + 4 device sessions authenticated"},
+  {kind:"skill",text:"Capability provisioned · Arm 1"},
+  {kind:"skill",text:"Capability provisioned · Conveyor"},
+  {kind:"persist",text:"State saved"},
+  {kind:"gate_ok",text:"Action authorized · Arm 2"},
+  {kind:"gate_no",text:"Action blocked — permission required · Arm 1"},
+  {kind:"audit",text:"Audit entry recorded"}]};
+function fmtUptime(sec){sec=Math.max(0,Math.floor(+sec||0));const h=Math.floor(sec/3600),m=Math.floor(sec%3600/60),s=sec%60;return h?`${h}h ${m}m`:m?`${m}m ${s}s`:`${s}s`;}
+function renderServerFeed(){const el=document.getElementById("srvfeed");if(!el)return;
+  if(LIVE){
+    const s=liveServerStatus;
+    if(!s){el.innerHTML=`<div class="srvpending">connecting — waiting for server status…</div>`;return;}
+    const n=(s.sessions&&s.sessions.length)||0, stor=s.storage||"—", storOk=stor==="connected";   // B1: live vitals (PB-3 keys)
+    let h=`<div class="srvvitals"><span class="sv"><b>${n}</b> sessions active</span>`+
+          `<span class="sv ${storOk?"ok":""}">Storage: ${esc(stor)}</span>`+
+          (s.state_saved?`<span class="sv ok">State saved</span>`:``)+
+          `<span class="sv">up ${esc(fmtUptime(s.uptime_s))}</span>`+
+          `<span class="srvlive">live</span></div>`;
+    if(s.endpoint) h+=`<div class="srvep">${esc(s.endpoint)}</div>`;
+    if(s.sessions&&s.sessions.length) h+=`<div class="srvsess">${s.sessions.map(x=>esc(x.brain||"?")).join(" · ")}</div>`;
+    h+=`<div class="srvpending">live event feed — backend producer pending (server_event next)</div>`;
+    el.innerHTML=h;return;}
+  const v=SERVER_MOCK.vitals;
+  let h=`<div class="srvvitals"><span class="sv"><b>${v.sessions}</b> sessions active</span><span class="sv ok">Storage: connected</span><span class="sv">up ${esc(v.uptime)}</span><span class="srvmock">mock</span></div>`;
+  h+=`<div class="srvep">${esc(v.endpoint)}</div>`;
+  h+=SERVER_MOCK.events.map(e=>`<div class="srvrow"><span class="kbadge k-${e.kind}">${esc(SRV_KIND[e.kind]||e.kind)}</span><span class="srvtxt">${esc(e.text)}</span></div>`).join("");
+  el.innerHTML=h;}
+function setCommsTab(ct){document.querySelectorAll("#card_log .ctab").forEach(b=>b.classList.toggle("on",b.dataset.ct===ct));
+  document.getElementById("srvfeed").style.display=ct==="server"?"":"none";
+  document.getElementById("log").style.display=ct==="ib"?"":"none";}
+document.querySelectorAll("#card_log .ctab").forEach(b=>b.onclick=()=>setCommsTab(b.dataset.ct));
+renderServerFeed();
+setCommsTab(LIVE?"server":"ib");   // live leads with the real server feed; mock leads with the scripted messages
+
+renderOrder();renderSeq();makeMaxBtns();detectCaps();applyLayout();show(0);requestAnimationFrame(loop);
+if(LIVE)setupLive();
+window.addEventListener("resize",()=>{if(maximizedId){const el=document.getElementById(maximizedId);if(el)el.style.height=(window.innerHeight-2*MAX_M)+"px";}resizeView();redrawLinks();});
+</script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+{
+  "bodies": [
+    {
+      "body": "world",
+      "file": "assets/world.glb",
+      "dynamic": false,
+      "home_xpos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "home_xquat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "body": "a1_link0",
+      "file": "assets/a1_link0.glb",
+      "dynamic": false,
+      "home_xpos": [
+        -1.2,
+        -0.45,
+        0.4
+      ],
+      "home_xquat": [
+        0.70711,
+        0.0,
+        0.0,
+        -0.70711
+      ]
+    },
+    {
+      "body": "a1_link1",
+      "file": "assets/a1_link1.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -0.45,
+        0.733
+      ],
+      "home_xquat": [
+        0.70711,
+        0.0,
+        0.0,
+        -0.70711
+      ]
+    },
+    {
+      "body": "a1_link2",
+      "file": "assets/a1_link2.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -0.45,
+        0.733
+      ],
+      "home_xquat": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ]
+    },
+    {
+      "body": "a1_link3",
+      "file": "assets/a1_link3.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -0.45,
+        1.049
+      ],
+      "home_xquat": [
+        0.70711,
+        -0.0,
+        0.0,
+        -0.70711
+      ]
+    },
+    {
+      "body": "a1_link4",
+      "file": "assets/a1_link4.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -0.5325,
+        1.049
+      ],
+      "home_xquat": [
+        0.0,
+        0.70711,
+        -0.0,
+        -0.70711
+      ]
+    },
+    {
+      "body": "a1_link5",
+      "file": "assets/a1_link5.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -0.9165,
+        1.1315
+      ],
+      "home_xquat": [
+        0.5,
+        0.5,
+        0.5,
+        -0.5
+      ]
+    },
+    {
+      "body": "a1_link6",
+      "file": "assets/a1_link6.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -0.9165,
+        1.1315
+      ],
+      "home_xquat": [
+        0.5,
+        0.5,
+        -0.5,
+        -0.5
+      ]
+    },
+    {
+      "body": "a1_link7",
+      "file": "assets/a1_link7.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -1.0045,
+        1.1315
+      ],
+      "home_xquat": [
+        0.0,
+        0.92386,
+        -0.38273,
+        -0.0
+      ]
+    },
+    {
+      "body": "a1_attachment",
+      "file": "assets/a1_attachment.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -1.0045,
+        1.0245
+      ],
+      "home_xquat": [
+        0.0,
+        -5e-05,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "body": "a1_suction",
+      "file": "assets/a1_suction.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.2,
+        -1.0045,
+        1.0245
+      ],
+      "home_xquat": [
+        0.0,
+        -5e-05,
+        -1.0,
+        0.0
+      ]
+    },
+    {
+      "body": "a2_link0",
+      "file": "assets/a2_link0.glb",
+      "dynamic": false,
+      "home_xpos": [
+        1.2,
+        -0.45,
+        0.4
+      ],
+      "home_xquat": [
+        0.70711,
+        0.0,
+        0.0,
+        -0.70711
+      ]
+    },
+    {
+      "body": "a2_link1",
+      "file": "assets/a2_link1.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.45,
+        0.733
+      ],
+      "home_xquat": [
+        0.70711,
+        0.0,
+        0.0,
+        -0.70711
+      ]
+    },
+    {
+      "body": "a2_link2",
+      "file": "assets/a2_link2.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.45,
+        0.733
+      ],
+      "home_xquat": [
+        0.5,
+        -0.5,
+        0.5,
+        -0.5
+      ]
+    },
+    {
+      "body": "a2_link3",
+      "file": "assets/a2_link3.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.45,
+        1.049
+      ],
+      "home_xquat": [
+        0.70711,
+        -0.0,
+        0.0,
+        -0.70711
+      ]
+    },
+    {
+      "body": "a2_link4",
+      "file": "assets/a2_link4.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.5325,
+        1.049
+      ],
+      "home_xquat": [
+        0.5,
+        0.5,
+        -0.5,
+        -0.5
+      ]
+    },
+    {
+      "body": "a2_link5",
+      "file": "assets/a2_link5.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.45,
+        1.433
+      ],
+      "home_xquat": [
+        0.70711,
+        0.0,
+        -0.0,
+        -0.70711
+      ]
+    },
+    {
+      "body": "a2_link6",
+      "file": "assets/a2_link6.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.45,
+        1.433
+      ],
+      "home_xquat": [
+        0.5,
+        0.5,
+        -0.5,
+        -0.5
+      ]
+    },
+    {
+      "body": "a2_link7",
+      "file": "assets/a2_link7.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.538,
+        1.433
+      ],
+      "home_xquat": [
+        -0.0,
+        0.70711,
+        -0.70711,
+        0.0
+      ]
+    },
+    {
+      "body": "a2_attachment",
+      "file": "assets/a2_attachment.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.538,
+        1.326
+      ],
+      "home_xquat": [
+        -0.0,
+        -0.38268,
+        -0.92388,
+        -0.0
+      ]
+    },
+    {
+      "body": "a2g_base",
+      "file": "assets/a2g_base.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.2,
+        -0.538,
+        1.3152
+      ],
+      "home_xquat": [
+        -0.0,
+        0.38268,
+        -0.92388,
+        0.0
+      ]
+    },
+    {
+      "body": "a2g_right_silicone_pad",
+      "file": "assets/a2g_right_silicone_pad.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.16514,
+        -0.50314,
+        1.20328
+      ],
+      "home_xquat": [
+        -0.0,
+        0.38268,
+        -0.92388,
+        0.0
+      ]
+    },
+    {
+      "body": "a2g_left_silicone_pad",
+      "file": "assets/a2g_left_silicone_pad.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.23486,
+        -0.57286,
+        1.20328
+      ],
+      "home_xquat": [
+        -0.0,
+        -0.92388,
+        -0.38268,
+        -0.0
+      ]
+    },
+    {
+      "body": "shelf_L",
+      "file": "assets/shelf_L.glb",
+      "dynamic": false,
+      "home_xpos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "home_xquat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "body": "shelf_R",
+      "file": "assets/shelf_R.glb",
+      "dynamic": false,
+      "home_xpos": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "home_xquat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "body": "box1",
+      "file": "assets/box1.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.45,
+        0.1,
+        0.95
+      ],
+      "home_xquat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "body": "sheet1",
+      "file": "assets/sheet1.glb",
+      "dynamic": true,
+      "home_xpos": [
+        -1.1,
+        0.1,
+        0.91
+      ],
+      "home_xquat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "body": "box2",
+      "file": "assets/box2.glb",
+      "dynamic": true,
+      "home_xpos": [
+        0.95,
+        0.1,
+        0.95
+      ],
+      "home_xquat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "body": "tube1",
+      "file": "assets/tube1.glb",
+      "dynamic": true,
+      "home_xpos": [
+        1.1,
+        0.1,
+        0.935
+      ],
+      "home_xquat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  ],
+  "note": "browser sets each body transform from the WS state stream; geometry is body-local"
+}

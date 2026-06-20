@@ -42,3 +42,7 @@ projects/dwf_mapping/Framenet/
 projects/dwf_mapping/Oewn/
 projects/dwf_mapping/Dolce/
 projects/dwf_mapping/Maps/
+_reorg/
+node_modules/
+.fuse_hidden*
+.DS_Store

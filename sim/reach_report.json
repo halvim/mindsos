@@ -1,0 +1,336 @@
+{
+  "geometry": {
+    "ARM1_X": -1.15,
+    "ARM2_X": 1.15,
+    "SHELF_Y_ARM": {
+      "1": -0.88,
+      "2": -0.99
+    },
+    "ROW_Z0": 0.46,
+    "ROW_DZ": 0.17,
+    "GAP_HALF": 0.28
+  },
+  "arms": {
+    "1": {
+      "coverage_pass": true,
+      "belt_pass": true,
+      "gap_unreachable_pass": true,
+      "detail": {
+        "shelf": {
+          "bot_0": {
+            "ok": true,
+            "perr": 0.010343397757756055,
+            "aerr_deg": 5.423976852239782,
+            "at_limit": true,
+            "collision": false
+          },
+          "bot_1": {
+            "ok": true,
+            "perr": 0.0023810890584170467,
+            "aerr_deg": 0.024305279627677773,
+            "at_limit": false,
+            "collision": false
+          },
+          "bot_2": {
+            "ok": true,
+            "perr": 0.010343397757756428,
+            "aerr_deg": 5.4239768522399165,
+            "at_limit": true,
+            "collision": false
+          },
+          "mid_0": {
+            "ok": true,
+            "perr": 0.011580389791677345,
+            "aerr_deg": 5.36055415792506,
+            "at_limit": true,
+            "collision": false
+          },
+          "mid_1": {
+            "ok": true,
+            "perr": 0.0037917854850204285,
+            "aerr_deg": 0.0315268725038504,
+            "at_limit": false,
+            "collision": false
+          },
+          "mid_2": {
+            "ok": true,
+            "perr": 0.011580389791677265,
+            "aerr_deg": 5.360554157924992,
+            "at_limit": true,
+            "collision": false
+          },
+          "top_0": {
+            "ok": true,
+            "perr": 0.011937687060871616,
+            "aerr_deg": 5.591589995689846,
+            "at_limit": true,
+            "collision": false
+          },
+          "top_1": {
+            "ok": true,
+            "perr": 0.010664221252556068,
+            "aerr_deg": 3.4722743232760354,
+            "at_limit": true,
+            "collision": false
+          },
+          "top_2": {
+            "ok": true,
+            "perr": 0.0119376870608714,
+            "aerr_deg": 5.5915899956900414,
+            "at_limit": true,
+            "collision": false
+          }
+        },
+        "belt": {
+          "x=-1.45": {
+            "ok": true,
+            "perr": 0.005767916482006658,
+            "aerr_deg": 1.3792179562787048,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=-1.40": {
+            "ok": true,
+            "perr": 0.005579437310918547,
+            "aerr_deg": 0.059532723632544984,
+            "at_limit": false,
+            "collision": false
+          },
+          "x=-1.35": {
+            "ok": true,
+            "perr": 0.003334630948135434,
+            "aerr_deg": 0.06633261562004703,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=-0.50": {
+            "ok": true,
+            "perr": 0.004143210609258285,
+            "aerr_deg": 0.039148400177378355,
+            "at_limit": false,
+            "collision": false
+          },
+          "x=-0.45": {
+            "ok": true,
+            "perr": 0.010133014806418185,
+            "aerr_deg": 0.09600192099408307,
+            "at_limit": false,
+            "collision": false
+          }
+        },
+        "gap": {
+          "x=-0.28": {
+            "ok": false,
+            "perr": 0.1482467519335937,
+            "aerr_deg": 1.3452409899719664,
+            "at_limit": false,
+            "collision": false
+          },
+          "x=-0.18": {
+            "ok": false,
+            "perr": 0.23170030335694367,
+            "aerr_deg": 5.911069737502379,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=-0.08": {
+            "ok": false,
+            "perr": 0.335410897765902,
+            "aerr_deg": 10.760193093674683,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.00": {
+            "ok": false,
+            "perr": 0.41963113130796315,
+            "aerr_deg": 20.643990492816865,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.08": {
+            "ok": false,
+            "perr": 0.5317265825225327,
+            "aerr_deg": 21.09177853990389,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.18": {
+            "ok": false,
+            "perr": 0.6492120822724737,
+            "aerr_deg": 21.94247655374002,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.28": {
+            "ok": false,
+            "perr": 0.7394281083300973,
+            "aerr_deg": 19.3696555820756,
+            "at_limit": false,
+            "collision": false
+          }
+        }
+      }
+    },
+    "2": {
+      "coverage_pass": true,
+      "belt_pass": true,
+      "gap_unreachable_pass": true,
+      "detail": {
+        "shelf": {
+          "bot_0": {
+            "ok": true,
+            "perr": 0.0017656862342519753,
+            "aerr_deg": 0.05991835125637728,
+            "at_limit": false,
+            "collision": false
+          },
+          "bot_1": {
+            "ok": true,
+            "perr": 0.0008645542340710778,
+            "aerr_deg": 0.013168797405502454,
+            "at_limit": false,
+            "collision": false
+          },
+          "bot_2": {
+            "ok": true,
+            "perr": 0.006019925444615617,
+            "aerr_deg": 0.25506602455582766,
+            "at_limit": true,
+            "collision": false
+          },
+          "mid_0": {
+            "ok": true,
+            "perr": 0.0014817655880855927,
+            "aerr_deg": 0.031386823032544066,
+            "at_limit": false,
+            "collision": false
+          },
+          "mid_1": {
+            "ok": true,
+            "perr": 0.005133706801777386,
+            "aerr_deg": 0.06398381070445407,
+            "at_limit": false,
+            "collision": false
+          },
+          "mid_2": {
+            "ok": true,
+            "perr": 0.0076002316583521565,
+            "aerr_deg": 1.982184956098001,
+            "at_limit": true,
+            "collision": false
+          },
+          "top_0": {
+            "ok": true,
+            "perr": 0.002513591526678741,
+            "aerr_deg": 0.043120269464683454,
+            "at_limit": false,
+            "collision": false
+          },
+          "top_1": {
+            "ok": true,
+            "perr": 0.006683294272475026,
+            "aerr_deg": 6.228458471842993,
+            "at_limit": true,
+            "collision": false
+          },
+          "top_2": {
+            "ok": true,
+            "perr": 0.004267240778385746,
+            "aerr_deg": 0.5167116523577738,
+            "at_limit": true,
+            "collision": false
+          }
+        },
+        "belt": {
+          "x=+1.45": {
+            "ok": true,
+            "perr": 0.0062713003304718335,
+            "aerr_deg": 1.4553233411590278,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+1.40": {
+            "ok": true,
+            "perr": 0.004915310733833779,
+            "aerr_deg": 1.230963125890254,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+1.35": {
+            "ok": true,
+            "perr": 0.006076153826900413,
+            "aerr_deg": 1.601631456006926,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.50": {
+            "ok": true,
+            "perr": 0.0036213660359431057,
+            "aerr_deg": 0.05504745767216423,
+            "at_limit": false,
+            "collision": false
+          },
+          "x=+0.45": {
+            "ok": true,
+            "perr": 0.009841345949952965,
+            "aerr_deg": 0.15529052809554417,
+            "at_limit": false,
+            "collision": false
+          }
+        },
+        "gap": {
+          "x=-0.28": {
+            "ok": false,
+            "perr": 0.6368010227024841,
+            "aerr_deg": 51.94616084273951,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=-0.18": {
+            "ok": false,
+            "perr": 0.5951472467803877,
+            "aerr_deg": 26.41399754252897,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=-0.08": {
+            "ok": false,
+            "perr": 0.4694204235216414,
+            "aerr_deg": 32.54394007050525,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.00": {
+            "ok": false,
+            "perr": 0.3490571839777618,
+            "aerr_deg": 20.32738999347298,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.08": {
+            "ok": false,
+            "perr": 0.29073549051482867,
+            "aerr_deg": 49.76399902616951,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.18": {
+            "ok": false,
+            "perr": 0.20325371609709852,
+            "aerr_deg": 51.21842155959126,
+            "at_limit": true,
+            "collision": false
+          },
+          "x=+0.28": {
+            "ok": false,
+            "perr": 0.12560150130002706,
+            "aerr_deg": 49.28349098754894,
+            "at_limit": true,
+            "collision": false
+          }
+        }
+      }
+    }
+  },
+  "overall_pass": true
+}

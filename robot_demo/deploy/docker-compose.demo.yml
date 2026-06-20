@@ -1,0 +1,55 @@
+# Robot Demo — compose OVERLAY (DM-1).
+#
+# This file defines ONLY the demo-backend service. It is meant to be MERGED
+# with the repo-root docker-compose.yml so the demo reuses the existing
+# `falkordb` service + volume (decision: reuse, not a separate instance).
+#
+# The demo image OWNS its Dockerfile (robot_demo/deploy/Dockerfile), which is
+# `FROM mindsos:<phase>-prod` — so the base prod image must be built FIRST:
+#
+#   docker compose -f docker-compose.yml --profile cli build mindsos
+#
+# then run from the repo root (the first -f sets the project dir, so
+# `context: .` resolves to the repo root):
+#
+#   docker compose \
+#     -f docker-compose.yml \
+#     -f robot_demo/deploy/docker-compose.demo.yml \
+#     up -d --build demo-backend
+#
+# Gate / CI (run bootstrap + smoke, then exit 0):
+#
+#   DEMO_BOOTSTRAP_ONLY=1 docker compose \
+#     -f docker-compose.yml -f robot_demo/deploy/docker-compose.demo.yml \
+#     up --build --abort-on-container-exit demo-backend
+#
+# Data dirs are demo-scoped (./.mindsos-demo/...) so the demo's server.db
+# stays isolated from any main MindsOS deployment, even though it shares the
+# falkordb service.
+
+services:
+  demo-backend:
+    build:
+      context: .                                  # repo root (project dir = dir of the first -f file)
+      dockerfile: robot_demo/deploy/Dockerfile    # demo-owned; FROM mindsos:<phase>-prod
+      args:
+        MINDSOS_BASE: ${MINDSOS_BASE:-mindsos:phase51-prod}
+    image: mindsos:demo-backend
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]   # gosu drop + chown, then exec command
+    command: ["python", "-m", "robot_demo.backend.main"]
+    depends_on:
+      falkordb:
+        condition: service_healthy   # reuses the root falkordb (DM-2+ uses it)
+    environment:
+      FALKORDB_HOST: falkordb
+      FALKORDB_PORT: "6379"
+      FALKORDB_PASSWORD: "${FALKORDB_PASSWORD:-}"
+      DEMO_WS_PORT: "8765"
+      # DEMO_BOOTSTRAP_ONLY=1 → run bootstrap+smoke and exit 0 (gate mode).
+      DEMO_BOOTSTRAP_ONLY: "${DEMO_BOOTSTRAP_ONLY:-}"
+    ports:
+      - "8765:8765"   # WebSocket (DM-4+)
+      - "8080:8080"   # static UI (DM-8)
+    volumes:
+      - ./.mindsos-demo/logs:/var/log/mindsos
+      - ./.mindsos-demo/server-db:/var/lib/mindsos
