@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Convenience launcher for the ARC-1 spike. Run from anywhere:
+#   ./run_spike        # regenerate all 400 task profiles + solver data
+#   ./run_spike 50     # only the first 50 train tasks
+# Rewrites intelligence_demo/arc1/spike/arc_debug_data.js, then open that
+# folder's arc_debug.html to view.
+set -e
+cd "$(dirname "$0")"
+exec python3 -m intelligence_demo.arc1.spike.run_spike "$@"
