@@ -29,7 +29,7 @@ Failure modes surface through ``runtime.invoke``'s envelope:
    lacks ``CAN_WRITE_GLOBAL``, body raises
    :class:`CapabilityDeniedError`. ``session is None`` skips the gate
    per ADR-0080 bootstrap carve-out.
-2. **Missing-KL** — ``context.get("kl")`` returns ``None`` →
+2. **Missing-KL** — ``context.writeable`` is ``None`` →
    :class:`RuntimeError` (programmer error per R3 PB-F).
 3. **Semantic-validation reject** (Phase 36 NEW) — ``validate_node``
    returns ``ok=False``; body raises

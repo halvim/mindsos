@@ -178,7 +178,7 @@ not node values. The Episode node's `value` is a structured 6-field dict, which
 FalkorDB cannot store as a native property. So `FalkorDBLocalPersister.save` of
 an episode-bearing Local would error. **v1 Episodes live in the in-memory
 Local** (Step 4); durable episode persistence needs node-value serialization,
-routed to `_workbench/L0_FUTURE_WORK.md` (and the durable Falkor checkpoint
+routed to `future_work/L0_FUTURE_WORK.md` (and the durable Falkor checkpoint
 store deferred at Phase 48). Integration C surfaced this seam — that is exactly
 what the first end-to-end exercise is for.
 

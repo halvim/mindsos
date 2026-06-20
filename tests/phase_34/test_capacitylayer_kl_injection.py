@@ -1,4 +1,10 @@
-"""Phase 34 — CapacityLayer kl= constructor + context["kl"] injection."""
+"""Phase 34 — CapacityLayer kl= constructor + KL binding on the context.
+
+Phase 51 (ADR-0175 §amendment-3): the KL now rides the typed
+``CapacityContext`` (``context.kl``); the dict-key injection these tests
+originally pinned is retired. The write-path behaviors pinned here
+(ADR-0180 capability errors) are unchanged.
+"""
 
 from __future__ import annotations
 

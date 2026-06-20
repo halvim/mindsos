@@ -34,7 +34,6 @@ from typing import (
     Mapping,
     Optional,
     Tuple,
-    Union,
 )
 
 if TYPE_CHECKING:
@@ -263,17 +262,16 @@ class InvocationResult:
 def call_capacity(
     declaration: _CapacityBase,
     inputs: Mapping[str, Any],
-    context: "Optional[Union[Mapping[str, Any], CapacityContext]]" = None,
+    context: "Optional[CapacityContext]" = None,
 ) -> Mapping[str, Any]:
     """Invoke the Python callable bound to ``declaration``.
 
-    ``context`` is threaded opaquely to the body. Phase 47 (ADR-0175)
-    widens the type to accept either the legacy dict (the unmigrated
-    ``capacity_layer.invoke`` write path) or a typed ``CapacityContext``
-    (the new L4 ``dispatch`` read path). The read-path bodies migrated at
-    Phase 47 access fields by attribute (``context.kl``); the write-path
-    bodies (``consolidate``/``trace``) stay on dict access until Phase 48
-    when consolidation is wired (their real consumer).
+    ``context`` is threaded opaquely to the body as a typed
+    :class:`~mindsos_capacity.context.CapacityContext` (ADR-0159).
+    Bodies access fields by attribute (``context.kl``). The Phase-47
+    transitional dict-or-CapacityContext union is retired per
+    ADR-0175 §amendment-3 (Phase 51) — dict contexts no longer flow
+    through any invocation path.
 
     The callable is called with ``**inputs, context=context``. The
     return value may be:

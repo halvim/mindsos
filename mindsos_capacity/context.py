@@ -3,7 +3,8 @@
 ADR-0159 (capacity registration contract v2) replaces the legacy
 ``Optional[Mapping[str, Any]]`` invoke context with a typed, frozen
 :class:`CapacityContext`. Capacity bodies read fields by attribute
-(``context.kl``) rather than by dict key (``context["kl"]``).
+(``context.kl``) rather than by dict key — the transitional dict path
+was retired at Phase 51 (ADR-0175 §amendment-3).
 
 **Import isolation (Phase 28 invariant).** This module ships inside
 ``mindsos_capacity`` and therefore may NOT import ``mindsos_knowledge``

@@ -39,7 +39,7 @@ Failure modes:
    risk). The ADR-0080 carve-out applies to scope='local' only via
    :meth:`KnowledgeLayer.writeable` raising ``ValueError`` when
    ``session is None``.
-2. **Missing-KL** — ``context.get("kl")`` returns ``None`` →
+2. **Missing-KL** — ``context.writeable`` is ``None`` →
    :class:`RuntimeError` (CapacityLayer constructed without ``kl=``;
    programmer error per R3 PB-F).
 3. **Semantic-validation reject** (Phase 36 NEW) — ``validate_node``

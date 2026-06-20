@@ -182,7 +182,7 @@ def step_live_persistence_machinery(client: Any) -> Any:
     Episode to FalkorDB needs node-value serialization that has not shipped —
     a known L0↔L5 gap routed downstream. v1 Episodes live in the in-memory
     Local; see the cookbook "Persisting episodes" note and
-    ``_workbench/L0_FUTURE_WORK.md``.
+    ``future_work/L0_FUTURE_WORK.md``.
     """
     from mindsos_core.persistence import MetagraphRepository
     from mindsos_server.persistence import bootstrap_global_pair_from_falkordb
