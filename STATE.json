@@ -1,0 +1,11 @@
+{
+  "_comment": "Machine-readable state. Move to repo root on main. Bump as part of the ship ritual. Chats read THIS, not the 134KB HANDOFF.md.",
+  "core_version": "phase50",
+  "core_git_sha": "<fill: origin/main tip at last ship>",
+  "last_shipped_phase": 50,
+  "in_progress": { "phase": 51, "branch": "wsd-51", "note": "WSD Phase 51 core work, parked from the dirty tree" },
+  "projects": {
+    "robot": { "branch": "demo/robot", "worktree": "MindsOS-robot", "pinned_core": "phase-50-confirmed", "status": "DM-7 shipped" },
+    "arc":   { "branch": "demo/arc",   "worktree": "MindsOS-arc",   "pinned_core": "phase-50-confirmed", "status": "solver stages 1-6, task #8 end-to-end" }
+  }
+}
