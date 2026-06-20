@@ -5,8 +5,15 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 ## 1. Where you work
 - One chat = one worktree = one branch. Never check out another chat's branch in
   your folder. Need their work? `git merge` it.
-- Core work → `MindsOS/` on `main` (or a short branch off it).
-- Demos → their own worktree: `MindsOS-robot` (`demo/robot`), `MindsOS-arc` (`demo/arc`).
+- Every project lives under `projects/<name>/` with its own docs.
+- **Core** → `MindsOS/` on `main` (or a short branch off it): the 8 `mindsos_*`
+  packages + tests + docs.
+- **Core-contributor projects** (edit core, merge phases to `main`) →
+  `projects/{wsd,fol,dwf_mapping,skill_acquisition,maintenance}/`, own worktree
+  + own test instance, branches `wsd-NN`/`fol-NN`/`dwf-NN`/`feat/*`.
+- **Demo projects** (built on top, never edit core) →
+  `projects/{robot_demo,arc_demo,bongard_demo}/` on `demo/*` branches, own
+  worktree (`MindsOS-robot`, `MindsOS-arc`, `MindsOS-bongard`) + own instance.
 
 ## 2. Branches
 - Off `main`, squash-merge back, then delete: `phase-NN`, `wsd-NN`, `dwf-NN`,
@@ -30,6 +37,13 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - Cowork builds; Mac commits + pushes; Linux runs/gates. Never run tests on the Mac.
 - Never mutate git from the Cowork sandbox (stale `index.lock` blocks the Mac).
 - Update `STATE.json` on every ship. Keep `HANDOFF.md` for narrative only.
+- **Never commit chat/next-chat prompts.** `*NEXT_CHAT_PROMPT*.md` and any
+  copy-paste handoff prompt are transient and local-only — they are gitignored
+  and must stay out of git. Hand them off by pasting into the next chat, not by
+  pushing. Same for scratch/planning dirs (`_reorg/`).
+- **Never `git add -A`/`git add .`.** Stage explicit paths only — the shared
+  tree accumulates untracked floaters that a blanket add will sweep onto the
+  wrong branch. Verify with `git diff --cached --name-only` before committing.
 
 ## 6. State lookup
 - Current version, last shipped phase, what each demo pins → `STATE.json`.
