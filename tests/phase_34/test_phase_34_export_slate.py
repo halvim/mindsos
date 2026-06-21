@@ -12,12 +12,12 @@ import mindsos_capacity
 import mindsos_knowledge
 
 
-def test_phase_34_export_count_stable_at_118():
+def test_phase_34_export_count_stable_at_128():
     """Forward-anchor sentinel: 114 (P40 X1) -> 112 (P41 X2) -> 117 (P42 X3)
-    -> 118 (P45 Rail D). Phase 45 adds 1 export (``DreamCapacity``)."""
+    -> 118 (P45 Rail D) -> 128 (F9). F9 adds 10 re-activation exports (ADR-0185)."""
     n = len(mindsos_capacity.__all__)
-    assert n == 118, (
-        f"Phase 45 __all__ count {n} != 118 (Phase 42 baseline 117 + 1 DreamCapacity)."
+    assert n == 128, (
+        f"__all__ count {n} != 128 (Phase 45 baseline 118 + 10 F9 re-activation exports)."
     )
 
 

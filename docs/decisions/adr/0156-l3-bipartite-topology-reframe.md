@@ -120,3 +120,11 @@ Shipped (ADR-0156). `register_capacity` emits `PRODUCES` (capacity→DataState) 
 **Invoke resolution is unchanged.** `_resolve_declaration` still gates on `_capacity_index` presence and reads the implementation from `_declarations`. This amendment only corrects what upsert writes to `_declarations`; repopulating `_capacity_index` from a *reloaded* metagraph (the durable-Local boot path) is out of scope here and owned by the F9 re-activation work, which supersedes this ADR's "Locals are in-memory and re-registered each session" premise (Cost §, line 61).
 
 **Surface.** No public-API or `__all__` change; behavioural broadening of an existing kwarg. Guarded by `tests/phase_42/test_upsert_rebinds_declaration.py`.
+
+## §amendment-2 (feat/f9-durable-local — 2026-06-21): Local capacity registration mirrors Global DataStates; "re-registered each session" premise superseded
+
+**Premise superseded.** The Cost-§ statement "Locals are in-memory and re-registered each session" (line 61) is superseded by ADR-0185 (F9-A): a durable per-device Local (ADR-0186) re-activates its learned capacities from the persisted L2 `learned-parameters` descriptors at boot, without code re-registration. The CL Local capacity node remains per-process and re-minted (Model A); only the descriptor is durable.
+
+**DataState mirroring (§A2′).** Because both `_CapacityBase.validate_for_registration` and the `PRODUCES`/`CONSUMES` `IntergraphEdge` emission introduced by this ADR are Local-scoped (the edge's DataState endpoint must exist in the Local DataState graph, and `add_intergraph_edge` validates endpoint existence), `register_capacity` now mirrors any referenced Global-only DataState into the Local DataState graph when registering on a Local (`_mirror_global_datastates`). This lets a Local capacity reference Global builtin DataStates (the common taught-composite case) and keeps the bipartite edges valid Local-side. Idempotent and additive; Global registration is unaffected. Full rationale in ADR-0185 §A2′.
+
+**Surface.** No `__all__` change in `mindsos_capacity` for this behaviour (a private helper + an additive branch in `register_capacity`); the F9 re-activation registry adds new public surface (see ADR-0185).

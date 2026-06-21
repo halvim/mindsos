@@ -141,3 +141,12 @@ enumeration.
 
 See `halvim_mindsos/confirmation_docs/PHASE_15a_DESIGN_LOG.md` §PB-13 /
 §PB-16 / §PB-21 for the rationale chain.
+
+## §amendment-1 (feat/f9-durable-local — 2026-06-21): durable backing store for the hooks (forward-reference)
+
+F9 (ADR-0186) provides the durable backing store the install/extract
+hooks will use: `load_or_mint_local` calls `install_local_metagraph`
+(install-before-mint), and a future logout-flush will call
+`extract_local_metagraph` + `persister.save`. The hooks' behaviour is
+unchanged; login/logout wiring stays deferred (Phase 44 CR-3). This is a
+forward-reference, not a behaviour change.
