@@ -1,12 +1,12 @@
 {
   "_comment": "Machine-readable state. Chats read THIS first, not the 134KB HANDOFF.md. Bump as part of the ship ritual.",
   "core_version": "phase50",
-  "core_git_sha": "20d4686",
+  "core_git_sha": "1be3a70",
   "last_shipped_phase": 50,
   "in_progress": { "phase": 51, "branch": "wsd-51", "note": "WSD Phase 51 core work, parked from the dirty tree; finish + gate then merge to main" },
   "recent": [
-    { "kind": "feat", "name": "upsert-rebind", "sha": "20d4686", "gate": "green", "what": "register_capacity(if_exists=upsert) re-binds the in-memory declaration (enables reload re-activation)", "adr": "0156 §amendment-1" },
-    { "kind": "design", "name": "F9 durable Local persistence + capacity re-activation", "spec": "confirmation_docs/F9_DESIGN_LOG.md", "status": "designed, NOT implemented", "next_branch": "feat/f9-durable-local off main", "consumer": "robot DM-8 (demo/robot)" }
+    { "kind": "feat", "name": "F9 durable Local persistence + capacity re-activation", "sha": "1be3a70", "gate": "green (3988 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB)", "what": "FalkorDBLocalPersister public export + load_or_mint_local/boot_local (mindsos_server/local_boot.py); descriptor-driven reactivation registry + reactivate_local_capacities; A2' Local-register mirrors Global DataStates; reset_run_state role-scoped wipe", "adr": "0185/0186/0187 + 0156 §am-2 + 0160/0042 §am", "consumer": "robot DM-8 (demo/robot)", "spec": "confirmation_docs/F9_DESIGN_LOG.md", "note": "core_version stays phase50 — non-phase feat, public-surface touch per ADR-0186" },
+    { "kind": "feat", "name": "upsert-rebind", "sha": "20d4686", "gate": "green", "what": "register_capacity(if_exists=upsert) re-binds the in-memory declaration (enables reload re-activation)", "adr": "0156 §amendment-1" }
   ],
   "core_contributors": {
     "wsd":                { "home": "projects/wsd",                "branch": "wsd-51", "worktree": "MindsOS-wsd" },
