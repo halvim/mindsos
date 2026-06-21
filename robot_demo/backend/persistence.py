@@ -84,13 +84,21 @@ def load_or_mint_global(client: Any, profile: Any) -> GlobalLoadResult:
     if mg_id is None:
         kl = KnowledgeLayer.bootstrap()
         kl.global_metagraph().name = profile.kl_name
-        kl.local_metagraph(profile.device_id)  # pre-create Local (PB-T)
         return GlobalLoadResult(kl=kl, minted=True)
 
     global_mg = loader.load(mg_id)
     kl = KnowledgeLayer(global_metagraph=global_mg)
-    kl.local_metagraph(profile.device_id)  # in-memory Local each boot (PB-Z)
     return GlobalLoadResult(kl=kl, minted=False)
+
+
+def build_local_persister(client: Any) -> Any:
+    """DM-8: a durable KL-Local persister bound to the demo's client, or
+    ``None`` when no FalkorDB client is available (in-memory fallback)."""
+    if client is None:
+        return None
+    from mindsos_server.persistence import FalkorDBLocalPersister
+
+    return FalkorDBLocalPersister(client)
 
 
 def persist_global(client: Any, kl: Any) -> None:
@@ -196,6 +204,7 @@ __all__ = [
     "open_client",
     "GlobalLoadResult",
     "load_or_mint_global",
+    "build_local_persister",
     "persist_global",
     "EpisodeRoundTripResult",
     "probe_episode_roundtrip",

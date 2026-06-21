@@ -147,6 +147,11 @@ def teach_local(
                 "requires_affordances": artifact.get("requires_affordances", []),
                 "cache_key": artifact.get("cache_key"),
                 "source": artifact.get("source", brain.device_id),
+                "reactivation_key": "taught",
+                "category": CAT_MECHANISM,
+                "inputs": [DS_POSE_TARGET],
+                "outputs": [DS_MOTION_DONE],
+                "node_kind": "reactive",
             },
             NODE_LEARNED_PARAMETER,
             properties={
@@ -165,7 +170,7 @@ def teach_local(
         implementation=make_taught_impl(artifact["steps"], run_step),
         description=f"DM-7 taught composite {name} ({brain.device_id}).",
     )
-    brain.cl.register_capacity(decl, session=None, if_exists="upsert")
+    brain.cl.register_capacity(decl, session=brain.session, if_exists="upsert")
 
     clip, cache_key = artifact.get("clip"), artifact.get("cache_key")
     if clip is not None and cache is not None and cache_key is not None:

@@ -39,13 +39,18 @@ from .brain import Brain, build_brain_stack, run_task
 from .bundles import manifest_path
 from .assembled import register_assembled_capacities
 from .capacities import register_embodied_capacities
+from mindsos_capacity import Capacity, register_reactivation_factory
+from mindsos_server.local_boot import boot_local
+
 from .persistence import (
+    build_local_persister,
     load_or_mint_global,
     persist_global,
     probe_episode_roundtrip,
 )
 from .profiles import DEVICE_ORDER, DEVICE_PROFILES
 from .seeds import seed_local_embodiment
+from .transfer import make_taught_impl
 
 ADMIN_ID = "admin"
 
@@ -297,6 +302,23 @@ def _register_assembled(brains: Dict[str, Brain], handles) -> Dict[str, Tuple[st
     return out
 
 
+def _register_taught_factory() -> None:
+    """DM-8 (PB-N): register the ``"taught"`` re-activation factory so
+    ``boot_local`` can re-mint taught composites from their persisted
+    descriptors. ``run_step=None`` reproduces the demo's declarative replay
+    (teach is wired declaratively — wiring.py teach/transfer beats)."""
+    register_reactivation_factory(
+        "taught",
+        lambda d: Capacity(
+            name=d["capability"],
+            category=d["category"],
+            inputs=tuple(d["inputs"]),
+            outputs=tuple(d["outputs"]),
+            implementation=make_taught_impl(d["steps"], None),
+        ),
+    )
+
+
 def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
     """Run the full DM-1 + DM-2 bootstrap + smoke. Returns a BootstrapResult.
 
@@ -316,6 +338,9 @@ def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
         admin_session = _login_admin(conn)  # DM-2 PB-BB (admin)
 
     client = _open_falkor_client()
+    persister = build_local_persister(client)
+    if persister is not None:
+        _register_taught_factory()
     brains: Dict[str, Brain] = {}
     bundles: Dict[str, Tuple[str, ...]] = {}
     seeded_local: Dict[str, bool] = {}
@@ -330,6 +355,12 @@ def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
             brain = build_brain_stack(profile, sessions[device_id], kl=kl)
             brains[device_id] = brain
 
+            if persister is not None:
+                boot_local(
+                    brain.cl, brain.kl, persister, device_id,
+                    session=brain.session,
+                )
+
             bundles[device_id] = _install_device_bundles(brain, admin_session)
             # Ensure the robot.* DataStates in this boot's CapacityLayer
             # (idempotent). On a Falkor RELOAD boot install_skill no-ops on
@@ -343,6 +374,8 @@ def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
             )
             if client is not None:
                 persist_global(client, brain.kl)  # MERGE-idempotent
+            if persister is not None:
+                persister.save(device_id, brain.kl.local_metagraph(device_id))
 
         # step 6 (DM-3) — single shared SimEngine + per-brain embodied atomics.
         # Guarded: skipped (no-op) where MuJoCo is absent (sandbox); the
