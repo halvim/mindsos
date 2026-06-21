@@ -89,5 +89,18 @@ phase as this gate, not as hand-coded if/then.
 
 ---
 
+### ⚠ REFUTED 2026-06-21 — the `find_pipeline` framing above is wrong (D7 + D-A LOCKED)
+
+The bolded claims in this section ("*This is correct, and it's `find_pipeline`*"; "*Profile = a
+filter realized as `find_pipeline` path-availability*") **do not hold**. `find_pipeline`
+(`mindsos_capacity/pipeline.py`) is a **type-static, value-blind** single-input BFS: comparators
+always produce their Delta DataState (value `None` when no change), so the Delta type is never
+topologically absent and BFS can never prune `resize`/`recolor` per-task. A live probe further
+showed BFS composes *every* multi-input reason cap **unsoundly** (drops all-but-one input). The
+correct mechanism is an **instance-level L3 eligibility predicate** over swept Delta values (D7),
+with composition handled by a future conjunction/fold finder, **not** BFS path-availability (D-A).
+The *kernel intuition* — profile prunes transform families by which Deltas exist — survives; only
+the `find_pipeline` realization is rejected. See `PIPELINE_DECISIONS.md` D7 / D-A / §5.
+
 <!-- Add further reason-stage hypotheses below as H3, H4, … -->
 

@@ -28,12 +28,21 @@ reason convention), `VOCAB_CONSOLIDATION.md`.
   `touching_delta` + selector) is now **topology-registered** in `spike/arc_capacities.py`
   (`_reason_capacities`, stub bodies, real compute still inline in `arc_solver`) and gated on
   Linux (#8 still solves). The **rest** of 3A–3I remains ▲ inline / off-graph.
-- **Profile phase is a FILTER** realized via `find_pipeline` path-availability (an absent
-  Delta ⇒ that transform family is uncomposable). **Background detection (H1) is the
-  bottleneck** — the 3D selector, `touching_delta`, and 3A bg-exclusion all depend on it
-  (even #8's own shape selector, since the background is also irregular).
-- **Invoke boundary (current).** Capability bodies are computed **inline**, not via
-  `capacity_layer.invoke`; `find_pipeline` only walks edges (see D3).
+- **Profile phase is a FILTER, but NOT via `find_pipeline` path-availability** (D7 LOCKED
+  2026-06-21). Comparators always produce their Delta DataState (value `None` when no change),
+  so the type is never topologically absent — `find_pipeline` (type-static, value-blind) can't
+  prune per-task. The filter is an **instance-level L3 predicate** over swept Delta values.
+  **Background detection (H1) is still the bottleneck** — the 3D selector, `touching_delta`,
+  and 3A bg-exclusion all depend on it.
+- **`find_pipeline` is NOT the reason-layer composer** (D-A LOCKED 2026-06-21). The live probe
+  proved BFS composes EVERY multi-input reason cap *unsoundly* (fires on one input, drops the
+  rest; folds taken as singletons — see §4). Reason-layer edges are **provenance** the grounding
+  walk audits; a conjunction/fold finder (filed core proposal §5) is the eventual composer. BFS
+  stays the sound finder for the linear perceive/transform chains only.
+- **Invoke boundary — D3 LOCKED inline (demo).** Bodies compute **inline**, not via
+  `capacity_layer.invoke`. Conjunction is enforced by NO layer (verified §4): `find_pipeline`
+  disjunctive, L4 dispatch passes caller-assembled maps, `call_capacity` validates outputs only,
+  bodies `**kw`+`.get()` → missing input silently `None`. Invoke wiring is core-future.
 
 ---
 
@@ -66,7 +75,7 @@ All open; none locked. ★ = bottleneck. `rec` = recommendation carried from the
 | **D0** | Design↔build pivot | **LOCKED 2026-06-21 — pivot to build**: register the #8 specimen as topology-registered swept capacities (reason DataStates + `detect_background_frequency`/`reconcile_background`/`build_correspondence`/`touching_delta`/`selector`), stub bodies, real compute stays inline in `arc_solver`. Validate against the real `CapacityLayer`; #8 must still solve. |
 | **D1** | Reasoning-graph grounding semantics | **LOCKED 2026-06-21 — topology-registered**: register reason DataStates + capacities with real `PRODUCES`/`CONSUMES` edges (the perceive-chain pattern), stub/inline bodies, `find_pipeline` walks them. Provenance walks real producers (no doc/code drift); defers live bodies (D3). Rejected pure model-grounding (two drifting representations). |
 | **D2** | Approve + scope the reasoning-graph | **LOCKED 2026-06-21 — first specimen only**: `touching_delta` (state-change) + selector, the #8 spine (D18). Defers correspondence/search; grounding it surfaces D4 next. |
-| **D3** | Invoke boundary: inline body-fold vs `capacity_layer.invoke` | open (currently inline) |
+| **D3** | Invoke boundary: inline body-fold vs `capacity_layer.invoke` | **LOCKED 2026-06-21 — inline (demo)**: conjunction enforced by NO layer (verified §4); invoke is meaningful only once a conjunction finder exists → core-future. Bodies stay inline; #8 gated. |
 
 ### Reason-stage grounding
 | D | Question | Status / rec |
@@ -75,9 +84,23 @@ All open; none locked. ★ = bottleneck. `rec` = recommendation carried from the
 | **D5** | `detect_background` registration form | **LOCKED 2026-06-21 — swept, not composed**: background detection is an L4-style **sweep** over detector outputs → reconcile fold → `Background`, **not** a `find_pipeline`-pulled leg (verified: `find_pipeline` BFS returns one shortest path → can't gather N producers; ADR-0071). Corrects the prior "lazy find_pipeline-pulled" framing. |
 | **CORPUS-ANALYSIS** | Background-detector bucketing over the 400 train tasks (which detector matches the human-evident bg; where frequency vs residual wins) | **SCHEDULED** — hard prerequisite for the real `reconcile_background` policy + the detector roster (D4). |
 | **D6** | Correspondence (P3): register + resolve duplicates | **LOCKED 2026-06-21 — unambiguous-subset, defer resolution**: `build_correspondence` = swept fold over pairwise comparators → `Correspondence` DataState (not a `find_pipeline` leg, per D5). Assemble strictest-first 1:1 (`same_object` → `moved` → `same_point`); ambiguous pairs left uncorresponded; completeness check abstains if a needed object is uncorresponded. Duplicate-resolution **policy** routed to CORPUS-ANALYSIS. |
-| **D7** | Adopt profile-as-`find_pipeline`-filter | **open — has a wrinkle**: `find_pipeline` walks the **static registered** graph, but "no DimensionDelta *this task*" is **per-task instance** data. Comparators always register as producing the Delta DataState (value `None` when no change), so `find_pipeline` always sees `resize`/`recolor` as composable — it **can't** prune per-task. The filter is real but it is an **instance-level gate**, not shipped-`find_pipeline` path-availability. Resolve the mechanism before adopting. |
+| **D7** | Adopt profile-as-`find_pipeline`-filter | **LOCKED 2026-06-21 — REJECT the find_pipeline framing; filter = instance-level L3 predicate**: `find_pipeline` is type-static + value-blind (verified `pipeline.py`); comparators always produce the Delta type (None-valued), so path-availability can't prune per-task. Realize the filter as an L3 eligibility predicate over swept Delta values, consumed by L4 to bound the target set. Build deferred to D13 (no consumer until a transform-family task). |
 | **D8** | Close palette-as-set hole (recolor-by-permutation) | open |
 | **D9** | Wire `touching_delta` now vs register the induce sub-graph together | open |
+
+### Grounding fidelity (reanalysis 2026-06-21, this chat) — all LOCKED demo-side
+
+| D | Question | Status / decision |
+|---|---|---|
+| **D-A ★** | Reason-layer registration purpose: composition vs provenance | **LOCKED — provenance / finder-selection**: BFS does NOT (cannot soundly) compose the reason layer; registered reason edges are real composition substrate for a future conjunction/fold finder AND audited as provenance now. Retires §0's old "profile filter = find_pipeline path-availability". |
+| **GF-1** | Source of truth among 3 reps (bodies / bipartite topology / `arc_metagraph` REQUIRES overlay) | **LOCKED — body-canonical**: executed bodies are truth; topology is derived-and-asserted (provenance); `arc_metagraph` demoted to a generated debug-only view, REQUIRES dropped as an ontology relation. |
+| **GF-2** | §0 invariant "no capacity calls another" (`moved` calls `same_shape`+`normalize_shape`) | **LOCKED — relax**: "no capacity invokes another *capacity via the layer*; shared pure helpers allowed." `moved` shares a private normalize/compare helper, not the `same_shape` capacity. (`moved` flagged: a future finder may make it a real `SameShape` consumer.) |
+| **GF-3** | Fold caps (`reconcile_background`, `build_correspondence`) modelling | **LOCKED — keep registered (binary CONSUMES = provenance), composed by the sweep now**; NOT pulled off-graph (revised once the finder-seam landed). Typed input-group hyperedge is the core-future model (§5). D5 wording corrected: folds are swept, not "find_pipeline-impossible". |
+| **GF-4** | Background per-grid vs task-level (`_bg_color` pools demo inputs; ONTOLOGY #3 = per-grid, no Task-level) | **LOCKED — keep per-grid detect; relabel pooling as the degenerate reconcile policy**, v1-pending-CORPUS-ANALYSIS. Do NOT amend ONTOLOGY #3. |
+| **GF-5** | Selector "else abstain" contract vs hardcoded shape tie-break | **LOCKED — reword "unique else FLAG (option A)"**; shape pick stays a recorded flag; real tie-break → D11. |
+| **GF-6** | Drift enforcement | **LOCKED — add `run_spike` conformance assertion (xfail→hard)**: (a) BFS composes the linear chains soundly, (b) multi-input reason caps are NOT BFS-composable (drift made executable), (c) registered reason edges match the bodies' real *semantic* dependencies. |
+| **GF-7** | Doc/name reconciliation | **LOCKED — batch the actively-false items now** (H2 pushback; ONTOLOGY §3 stale `detect_background` row; §3 "immediate next move"); defer alias renames (`extract_shapes`→`normalize_shape`, `touching_changes`→`touching_delta`) to D14. |
+| **D1/D2** | (amendment) | **Rationale amended 2026-06-21**: registration stands, but the "find_pipeline walks the reason graph" clause is RETRACTED (false for all multi-input reason caps per the probe) → replaced by "finder-per-subgraph". |
 
 ### Generalization (beyond #8)
 | D | Question | Status / rec |
@@ -104,10 +127,14 @@ All open; none locked. ★ = bottleneck. `rec` = recommendation carried from the
 
 ## 3. Recommended order
 
-`D1 + D2` → `D4` → `D6` → `D0` (build pivot) → `D7 / D8` → `D10–D13` → `D14`.
+Demo-side locks (D0–D6, D-A, GF-1…GF-7, D1/D2 amendment, D3, D7) are decided. Remaining open
+work, in order:
+`apply GF-1…GF-7 + D-A edits to the spike/docs` → `D7-build (with D13)` → `D8` → `D9` →
+`D10–D13` → `D14` (incl. GF-7 alias renames) → artifacts `D15–D17`.
+**CORPUS-ANALYSIS** runs in parallel (gates the real `reconcile_background` policy + detector roster).
 
-Immediate next move: **D1 + D2** (reasoning-graph + grounding semantics), then **D4**
-(background detection) — the reasoning-graph is the tool that makes D4's dependents visible.
+Core-side: the finder-seam + conjunction primitive is a **separate core-mod chat** (§5); ARC is
+filed as motivating consumer; the demo does NOT block on it.
 
 ---
 
@@ -127,3 +154,47 @@ Immediate next move: **D1 + D2** (reasoning-graph + grounding semantics), then *
   DataStates + 5 swept capacities (`_reason_capacities`); perceive discovery unchanged, #8 still
   solves, Linux-gated. Commit `8fa24d6`. Open next: **D7** (profile-as-filter — has a wrinkle, see
   row), D8–D18, and **CORPUS-ANALYSIS** (gates the real background reconcile policy + detector roster).
+- **2026-06-21** — **Reanalysis pass (this chat): D7, D-A, GF-1…GF-7, D1/D2 amendment LOCKED; D3
+  LOCKED inline; core-policy = file-and-continue.** Drivers: (1) `find_pipeline` (`pipeline.py`) is
+  type-static + value-blind → D7's path-availability framing impossible. (2) **Live probe** (scratch
+  `find_pipeline` over reason targets) returned a path for EVERY reason target but each is
+  **structurally unsound** — BFS fires a cap when ANY one consumed DataState is reachable, never
+  checking the rest: `grid→state_change` via `touching` alone (dropped `correspondence`),
+  `grid→selector` via `object` alone (dropped `state_change`), `same_object→correspondence` via
+  `same_object` alone (dropped `moved`/`same_point`), `grid→background` as a 1-fold singleton. (3)
+  **Conjunction enforced by NO layer**: L4 `dispatch`/`plan_construction`/`execution` never call
+  `find_pipeline`; `runtime.call_capacity` validates outputs only; bodies `**kw`+`.get()` → missing
+  input silently `None`. (4) **Finder-seam** (owner observation): BFS should be ONE finder; the
+  architecture already names alternatives (`pipeline.py` docstring promoted-path lookup; L2
+  `promoted-pipelines`; L4's own v0 finder) but never abstracted them → reframes D-A to
+  finder-selection and revises GF-3 (keep folds registered, don't pull off-graph). (5) Not every
+  multi-input cap is a conjunction: `touching_delta`/`selector` = AND, `build_correspondence` =
+  optional-union, `reconcile_background` = fold → the core model is a **typed input-group
+  {all|any|fold}**, not a blanket "all members required" hyperedge. Core upgrade FILED as a separate
+  core-mod chat (§5), ARC = first multi-input-dispatch consumer. All demo-side locks are doc +
+  small-code only; #8 stays green.
+
+---
+
+## 5. CORE PROPOSAL (filed — for the core-mod chat; demo does NOT block on it)
+
+**Problem.** `find_pipeline` (ADR-0071, `mindsos_capacity/pipeline.py`) is a single-input BFS over
+binary `PRODUCES`/`CONSUMES` edges (ADR-0156). It (a) fires a capacity when ANY one input is
+reachable — unsound for multi-input caps; (b) returns a linear `Pipeline` (`Tuple[PipelineStep]`)
+that can't represent a converging DAG; (c) is the only implemented finder yet hardwired-canonical;
+(d) no layer enforces conjunction at dispatch/invoke (verified — see §4). First real multi-input
+consumer = the ARC reason layer.
+
+**Proposal (4 parts).**
+1. **Finder seam** — a finder-strategy interface; BFS becomes one strategy. Siblings: conjunction/
+   fold finder, promoted-path lookup (L2 `promoted-pipelines`), hand-authored.
+2. **Conjunction/fold finder** — AND/OR hyperpath search: capability = AND over required inputs,
+   DataState = OR over producers; returns a DAG.
+3. **Typed input-group hyperedge `{all_required | any_of | fold}`** on the registration contract
+   (ADR-0156/0159) — finder-agnostic; replaces N undifferentiated binary CONSUMES. NOT a blanket
+   "all members required" rule (that breaks `build_correspondence`/`reconcile_background`).
+4. **DAG result type** — replace the linear `Pipeline.steps` with a converging-DAG plan.
+
+**Caveat / discipline.** "No scaffolding without a consumer." ARC is filed as the motivating
+consumer but ships provenance-only (binary edges, sweep) and does not pin this. Confirm whether L4's
+"real finder" is meant to own conjunction before sizing the phase. Reopens ADR-0071/0156/0159.
