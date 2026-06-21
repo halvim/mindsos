@@ -6,25 +6,22 @@
 3. Builds the TaskProfile for every train task and writes the debug data
    the human interface (arc_debug.html) renders.
 
-Usage (from repo root):
-    python -m intelligence_demo.arc1.spike.run_spike [N]
+Usage (via the launcher):
+    ./run_spike [N]
 where N = number of train tasks to dump (default: all 400).
 """
 
 from __future__ import annotations
 
-# Allow running this file directly (``python run_spike.py`` or ``python -m run_spike``
-# from this folder) in addition to the canonical package form
-# (``python -m intelligence_demo.arc1.spike.run_spike`` from the repo root). The
-# relative imports below need a package context; if there is none, re-exec this
-# module inside its package and stop.
 if __package__ in (None, ""):
     import os as _os
     import runpy as _runpy
     import sys as _sys
-    _root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", ".."))
-    if _root not in _sys.path:
-        _sys.path.insert(0, _root)
+    _pkg_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", ".."))
+    _repo_root = _os.path.abspath(_os.path.join(_pkg_root, "..", ".."))
+    for _p in (_repo_root, _pkg_root):
+        if _p not in _sys.path:
+            _sys.path.insert(0, _p)
     _runpy.run_module("intelligence_demo.arc1.spike.run_spike", run_name="__main__")
     _sys.exit(0)
 
