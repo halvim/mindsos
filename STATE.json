@@ -4,6 +4,10 @@
   "core_git_sha": "20d4686",
   "last_shipped_phase": 50,
   "in_progress": { "phase": 51, "branch": "wsd-51", "note": "WSD Phase 51 core work, parked from the dirty tree; finish + gate then merge to main" },
+  "recent": [
+    { "kind": "feat", "name": "upsert-rebind", "sha": "20d4686", "gate": "green", "what": "register_capacity(if_exists=upsert) re-binds the in-memory declaration (enables reload re-activation)", "adr": "0156 §amendment-1" },
+    { "kind": "design", "name": "F9 durable Local persistence + capacity re-activation", "spec": "confirmation_docs/F9_DESIGN_LOG.md", "status": "designed, NOT implemented", "next_branch": "feat/f9-durable-local off main", "consumer": "robot DM-8 (demo/robot)" }
+  ],
   "core_contributors": {
     "wsd":                { "home": "projects/wsd",                "branch": "wsd-51", "worktree": "MindsOS-wsd" },
     "fol":                { "home": "projects/fol",                "branch": null,     "worktree": null },
