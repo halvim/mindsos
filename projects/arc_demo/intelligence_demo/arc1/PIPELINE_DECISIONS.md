@@ -24,8 +24,10 @@ reason convention), `VOCAB_CONSOLIDATION.md`.
   family (provenance vs attachment axes), **#18** Region = concrete root + located/normalized
   two-axis model, **#19** vocabulary alias reconciliation. These are settled; decisions below
   build *on* them, not against them.
-- **Grounding state.** The whole reason stage (3A–3I) is ▲ inline / off-graph; nothing
-  reason-stage is L3-registered yet. The model is locked; registration not started.
+- **Grounding state.** The **#8 specimen** (background ensemble + correspondence +
+  `touching_delta` + selector) is now **topology-registered** in `spike/arc_capacities.py`
+  (`_reason_capacities`, stub bodies, real compute still inline in `arc_solver`) and gated on
+  Linux (#8 still solves). The **rest** of 3A–3I remains ▲ inline / off-graph.
 - **Profile phase is a FILTER** realized via `find_pipeline` path-availability (an absent
   Delta ⇒ that transform family is uncomposable). **Background detection (H1) is the
   bottleneck** — the 3D selector, `touching_delta`, and 3A bg-exclusion all depend on it
@@ -73,7 +75,7 @@ All open; none locked. ★ = bottleneck. `rec` = recommendation carried from the
 | **D5** | `detect_background` registration form | **LOCKED 2026-06-21 — swept, not composed**: background detection is an L4-style **sweep** over detector outputs → reconcile fold → `Background`, **not** a `find_pipeline`-pulled leg (verified: `find_pipeline` BFS returns one shortest path → can't gather N producers; ADR-0071). Corrects the prior "lazy find_pipeline-pulled" framing. |
 | **CORPUS-ANALYSIS** | Background-detector bucketing over the 400 train tasks (which detector matches the human-evident bg; where frequency vs residual wins) | **SCHEDULED** — hard prerequisite for the real `reconcile_background` policy + the detector roster (D4). |
 | **D6** | Correspondence (P3): register + resolve duplicates | **LOCKED 2026-06-21 — unambiguous-subset, defer resolution**: `build_correspondence` = swept fold over pairwise comparators → `Correspondence` DataState (not a `find_pipeline` leg, per D5). Assemble strictest-first 1:1 (`same_object` → `moved` → `same_point`); ambiguous pairs left uncorresponded; completeness check abstains if a needed object is uncorresponded. Duplicate-resolution **policy** routed to CORPUS-ANALYSIS. |
-| **D7** | Adopt profile-as-`find_pipeline`-filter | open |
+| **D7** | Adopt profile-as-`find_pipeline`-filter | **open — has a wrinkle**: `find_pipeline` walks the **static registered** graph, but "no DimensionDelta *this task*" is **per-task instance** data. Comparators always register as producing the Delta DataState (value `None` when no change), so `find_pipeline` always sees `resize`/`recolor` as composable — it **can't** prune per-task. The filter is real but it is an **instance-level gate**, not shipped-`find_pipeline` path-availability. Resolve the mechanism before adopting. |
 | **D8** | Close palette-as-set hole (recolor-by-permutation) | open |
 | **D9** | Wire `touching_delta` now vs register the induce sub-graph together | open |
 
@@ -121,3 +123,7 @@ Immediate next move: **D1 + D2** (reasoning-graph + grounding semantics), then *
 - **2026-06-21** — **D6 locked** (correspondence = swept fold → `Correspondence`; unambiguous-subset,
   resolution policy → CORPUS-ANALYSIS). Specimen inputs now designed (background + correspondence +
   touching_delta + selector). Next: D0 (build pivot).
+- **2026-06-21** — **D0 locked + BUILT + gated.** `spike/arc_capacities.py` now registers 5 reason
+  DataStates + 5 swept capacities (`_reason_capacities`); perceive discovery unchanged, #8 still
+  solves, Linux-gated. Commit `8fa24d6`. Open next: **D7** (profile-as-filter — has a wrinkle, see
+  row), D8–D18, and **CORPUS-ANALYSIS** (gates the real background reconcile policy + detector roster).

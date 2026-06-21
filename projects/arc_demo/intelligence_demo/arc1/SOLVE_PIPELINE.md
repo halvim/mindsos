@@ -47,6 +47,11 @@ calls another. Bodies are currently computed directly (not via `capacity_layer.i
 
 ## Phase 3 — Reason — `[find_pipeline composes; transition∘state convention]`
 
+> **Grounding update (2026-06-21):** the **#8 specimen** (background ensemble, correspondence,
+> `touching_delta`, selector) is now **topology-registered** in `spike/arc_capacities.py`
+> (`_reason_capacities`; swept, not `find_pipeline`-composed; stub bodies, compute still inline in
+> `arc_solver`). Decisions + open items: `PIPELINE_DECISIONS.md`. The rest of 3A–3I is still inline.
+
 ### 3A — Correspondence (P3 — upstream of induce)
 
 - **3A.1 background proposal** — most-frequent color/grid → `Background` (reasoning-time, **not** perceive) ◐ ⚑

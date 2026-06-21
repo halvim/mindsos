@@ -13,7 +13,7 @@
   },
   "demos": {
     "robot":   { "home": "projects/robot_demo",   "branch": "demo/robot",   "worktree": "MindsOS-robot",   "pinned_core": "phase-50-confirmed", "status": "DM-7 shipped; pending move into projects/robot_demo/" },
-    "arc":     { "home": "projects/arc_demo",     "branch": "demo/arc",     "worktree": "MindsOS-arc",     "pinned_core": "phase-50-confirmed", "status": "solver stages 1-6, task #8; relocated to projects/arc_demo/ (launcher+run_spike path-fixed, #8 verified)" },
+    "arc":     { "home": "projects/arc_demo",     "branch": "demo/arc",     "worktree": "MindsOS-arc",     "pinned_core": "phase-50-confirmed", "status": "relocated; reason-stage #8 specimen topology-registered (D0/D1/D2/D4/D5/D6 locked; arc_capacities.py _reason_capacities); #8 solves, Linux-gated @8fa24d6. Open: D7-D18 + CORPUS-ANALYSIS. See projects/arc_demo/intelligence_demo/arc1/PIPELINE_DECISIONS.md" },
     "bongard": { "home": "projects/bongard_demo", "branch": "demo/bongard", "worktree": "MindsOS-bongard", "pinned_core": "phase-50-confirmed", "status": "not started; PLAN.md at main commit 85115da" }
   },
   "safety_net": { "branch": "wip/full-snapshot-2026-06-20", "note": "delete only after all three demos are reorganized + gated + pushed" }
