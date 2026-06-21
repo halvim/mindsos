@@ -4,15 +4,21 @@
 > reorg lands, move this file to the repo root on `main` and keep it current.
 > A chat must claim its lane here before pushing.
 
+Every project lives under `projects/<name>/`. Core-contributors merge to `main`;
+demos live on `demo/*` branches and never edit `mindsos_*`.
+
 ## Worktrees
 
-| Directory          | Branch checked out | Owner chat(s)                          |
-|--------------------|--------------------|----------------------------------------|
-| `MindsOS/`         | `main` (+ feature) | Core: phases, WSD/FOL/DWF, maintenance |
-| `MindsOS-robot/`   | `demo/robot`       | Robot demo                             |
-| `MindsOS-arc/`     | `demo/arc`         | ARC / intelligence demo                |
+| Directory            | Branch        | Kind             | Project home             |
+|----------------------|---------------|------------------|--------------------------|
+| `MindsOS/`           | `main`        | core             | `mindsos_*` + `tests/` + `docs/` |
+| `MindsOS-wsd/`       | `wsd-51`      | core-contributor | `projects/wsd/`          |
+| `MindsOS-robot/`     | `demo/robot`  | demo             | `projects/robot_demo/`   |
+| `MindsOS-arc/`       | `demo/arc`    | demo             | `projects/arc_demo/`     |
+| `MindsOS-bongard/`   | `demo/bongard`| demo (new)       | `projects/bongard_demo/` |
 
-Create a worktree (Mac): `git worktree add ../MindsOS-robot demo/robot`
+On demand (create when the work starts):
+`git worktree add ../MindsOS-fol -b fol-1 main` (also dwf, skill_acquisition, maintenance).
 Then point that Cowork chat's project at the new folder.
 
 ## Long-lived branches
