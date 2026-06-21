@@ -316,6 +316,7 @@ def _register_taught_factory() -> None:
             outputs=tuple(d["outputs"]),
             implementation=make_taught_impl(d["steps"], None),
         ),
+        if_exists="upsert",
     )
 
 
