@@ -288,7 +288,14 @@ class CapacityLayer:
         declaration's ``outputs``/``inputs`` at registration time. With
         ``if_exists="upsert"`` an already-registered IRI re-emits any
         missing edges idempotently (migrator + partial-state recovery
-        path) instead of raising.
+        path) instead of raising, **and re-binds the in-memory declaration**
+        (last-registration-wins, mirroring the fresh-registration branch
+        and the Local-wins ``_declarations`` semantic) so the swapped
+        ``implementation`` is the one ``invoke`` resolves. Per ADR-0156
+        §amendment-1 this broadens the original edge-only idempotency
+        scope; the persisted node ``properties`` are **not** rewritten on
+        upsert (the existing node is reused), so metadata-only re-registration
+        is out of contract.
 
         ADR-0159 registration contract v2: validates the new contract
         fields (``inline`` requires ``max_latency_ms``; ``precondition_iri``
@@ -352,8 +359,15 @@ class CapacityLayer:
                 raise CapacityRegistrationError(
                     f"Capacity {declaration.iri!r} already registered"
                 )
-            # if_exists="upsert": reuse the node; re-emit missing edges below.
+            # if_exists="upsert": reuse the node; re-emit missing edges
+            # below. Also re-bind the in-memory declaration (ADR-0156
+            # §amendment-1) — last-registration-wins, mirroring the
+            # fresh-registration branch — so a re-registered IRI swaps the
+            # bound ``implementation`` that ``invoke`` resolves via
+            # ``_declarations``. The persisted node ``properties`` are left
+            # as-is (the existing node is reused).
             node, category_graph = existing
+            self._declarations[declaration.iri] = declaration
         else:
             if declaration.iri in category_graph.nodes:
                 raise CapacityRegistrationError(
