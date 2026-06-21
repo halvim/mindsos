@@ -62,8 +62,8 @@ All open; none locked. ★ = bottleneck. `rec` = recommendation carried from the
 | D | Question | Status / rec |
 |---|---|---|
 | **D0** | Design↔build pivot — start L3 registration build, or perceive-first? | open (pivot after D1+D2+D4) |
-| **D1** | Reasoning-graph grounding semantics: **model-grounded (ii)** vs code-registered (i) | open · **rec (ii)** |
-| **D2** | Approve + scope the reasoning-graph | open |
+| **D1** | Reasoning-graph grounding semantics | **LOCKED 2026-06-21 — topology-registered**: register reason DataStates + capacities with real `PRODUCES`/`CONSUMES` edges (the perceive-chain pattern), stub/inline bodies, `find_pipeline` walks them. Provenance walks real producers (no doc/code drift); defers live bodies (D3). Rejected pure model-grounding (two drifting representations). |
+| **D2** | Approve + scope the reasoning-graph | **LOCKED 2026-06-21 — first specimen only**: `touching_delta` (state-change) + selector, the #8 spine (D18). Defers correspondence/search; grounding it surfaces D4 next. |
 | **D3** | Invoke boundary: inline body-fold vs `capacity_layer.invoke` | open (currently inline) |
 
 ### Reason-stage grounding
@@ -112,3 +112,5 @@ Immediate next move: **D1 + D2** (reasoning-graph + grounding semantics), then *
 
 - **2026-06-21** — file recovered post-reorg (was in no git ref); content rebuilt from the
   handoff register + `SOLVE_PIPELINE.md`. No decisions locked yet.
+- **2026-06-21** — **D1 locked** (topology-registered grounding) + **D2 locked** (scope = first
+  specimen `touching_delta` + selector). Next: D4 (background detection).
