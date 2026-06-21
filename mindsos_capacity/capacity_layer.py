@@ -288,7 +288,14 @@ class CapacityLayer:
         declaration's ``outputs``/``inputs`` at registration time. With
         ``if_exists="upsert"`` an already-registered IRI re-emits any
         missing edges idempotently (migrator + partial-state recovery
-        path) instead of raising.
+        path) instead of raising, **and re-binds the in-memory declaration**
+        (last-registration-wins, mirroring the fresh-registration branch
+        and the Local-wins ``_declarations`` semantic) so the swapped
+        ``implementation`` is the one ``invoke`` resolves. Per ADR-0156
+        §amendment-1 this broadens the original edge-only idempotency
+        scope; the persisted node ``properties`` are **not** rewritten on
+        upsert (the existing node is reused), so metadata-only re-registration
+        is out of contract.
 
         ADR-0159 registration contract v2: validates the new contract
         fields (``inline`` requires ``max_latency_ms``; ``precondition_iri``
@@ -319,6 +326,21 @@ class CapacityLayer:
         index = self._capacity_index[mg.metagraph_id]
 
         ds_graph = ensure_datastate_graph(mg, strict=self._strict)
+        if target_uid is not None:
+            # ADR-0185 (A2′): a Local capacity may reference DataStates
+            # that live only in the Global DataState graph (the common
+            # case — a taught composite chaining Global builtins). Both
+            # ``validate_for_registration`` and the ADR-0156
+            # PRODUCES/CONSUMES edge emission below are Local-scoped (the
+            # edges target ``ds_graph``, the Local DataState graph), so
+            # mirror any referenced Global-only DataState into the Local
+            # graph first. Idempotent — already-Local IRIs and IRIs
+            # absent from Global too are skipped, the latter falling
+            # through to ``validate_for_registration``'s raise.
+            self._mirror_global_datastates(
+                ds_graph,
+                tuple(declaration.inputs) + tuple(declaration.outputs),
+            )
         declaration.validate_for_registration(ds_graph.nodes.keys())
 
         self._validate_ref_invariants(ref_to_global, ref_type, user_id=target_uid)
@@ -352,8 +374,15 @@ class CapacityLayer:
                 raise CapacityRegistrationError(
                     f"Capacity {declaration.iri!r} already registered"
                 )
-            # if_exists="upsert": reuse the node; re-emit missing edges below.
+            # if_exists="upsert": reuse the node; re-emit missing edges
+            # below. Also re-bind the in-memory declaration (ADR-0156
+            # §amendment-1) — last-registration-wins, mirroring the
+            # fresh-registration branch — so a re-registered IRI swaps the
+            # bound ``implementation`` that ``invoke`` resolves via
+            # ``_declarations``. The persisted node ``properties`` are left
+            # as-is (the existing node is reused).
             node, category_graph = existing
+            self._declarations[declaration.iri] = declaration
         else:
             if declaration.iri in category_graph.nodes:
                 raise CapacityRegistrationError(
@@ -640,6 +669,39 @@ class CapacityLayer:
         return [
             d for d in self._declarations.values() if isinstance(d, Monitor)
         ]
+
+    def _mirror_global_datastates(self, local_ds_graph: Graph, iris) -> None:
+        """Mirror referenced Global DataStates into a Local DataState graph.
+
+        ADR-0185 (A2′). A Local capacity registration may reference
+        DataStates that live only in the Global DataState graph — the
+        common case for a taught composite chaining Global builtins.
+        Both :meth:`_CapacityBase.validate_for_registration` and the
+        ADR-0156 ``PRODUCES``/``CONSUMES`` :class:`IntergraphEdge`
+        emission are Local-scoped (the edges' DataState endpoint must be
+        in ``local_ds_graph``), so the referenced nodes must exist in the
+        *Local* DataState graph. Copy each Global-only referenced
+        DataState node verbatim (value / type / properties / id) into the
+        Local graph. The Local and Global Metagraphs have independent
+        identity registries, so re-using the IRI as the Local node id is
+        well-formed (mirrors the capacity Local-wins model). Idempotent:
+        IRIs already present Local-side are skipped; IRIs absent from
+        Global too are skipped (left for ``validate_for_registration`` to
+        reject).
+        """
+        global_ds = ensure_datastate_graph(self._global, strict=self._strict)
+        for iri in iris:
+            if iri in local_ds_graph.nodes:
+                continue
+            gnode = global_ds.nodes.get(iri)
+            if gnode is None:
+                continue
+            local_ds_graph.add_node(
+                value=gnode.value,
+                type_name=gnode.type_name,
+                properties=dict(gnode.properties),
+                node_id=gnode.node_id,
+            )
 
     def _metagraph_for(self, user_id: Optional[str]) -> Metagraph:
         if user_id is None:

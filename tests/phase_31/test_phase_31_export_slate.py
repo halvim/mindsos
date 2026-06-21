@@ -32,13 +32,18 @@ def test_each_retired_resident_export_unresolvable():
         )
 
 
-def test_phase_45_export_count_is_118():
+def test_phase_45_export_count_is_128():
     """Count-equals sentinel — 95 (P30) -> 97 (P31) -> 110 (P33) ->
-    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45). Phase 45 (Rail D,
-    ADR-0162) adds 1 export (``DreamCapacity``).
+    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9). F9
+    (feat/f9-durable-local, ADR-0185) adds 10 exports: the re-activation
+    registry (``REACTIVATION_KEY``, ``INSTALLER_SENTINEL``,
+    ``ReactivationFactory``, ``ReactivationError``,
+    ``register_reactivation_factory``, ``unregister_reactivation_factory``,
+    ``reactivation_factories``, ``is_reactivatable``, ``build_declaration``,
+    ``reactivate_from_descriptors``).
     """
-    assert len(mindsos_capacity.__all__) == 118, (
-        f"Expected 118 exports at Phase 45; found {len(mindsos_capacity.__all__)}"
+    assert len(mindsos_capacity.__all__) == 128, (
+        f"Expected 128 exports after F9; found {len(mindsos_capacity.__all__)}"
     )
 
 

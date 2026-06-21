@@ -1,0 +1,25 @@
+name: demo-no-core-edit
+on:
+  push:
+    branches: ['demo/**']
+  pull_request:
+    branches: ['demo/**']
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail if demo branch touches mindsos_* core
+        run: |
+          git fetch origin main --depth=1 || true
+          changed=$(git diff --name-only origin/main...HEAD || git diff --name-only origin/main HEAD)
+          violations=$(echo "$changed" | grep -E '^mindsos_[a-z]+/' || true)
+          if [ -n "$violations" ]; then
+            echo "::error::demo branch modifies core packages — land these on main first:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "OK — no core edits on this demo branch."

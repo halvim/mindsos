@@ -187,6 +187,18 @@ from .context import (
     ReplanVerdict,
     TierVerdict,
 )
+from .reactivation import (
+    INSTALLER_SENTINEL,
+    REACTIVATION_KEY,
+    ReactivationError,
+    ReactivationFactory,
+    build_declaration,
+    is_reactivatable,
+    reactivate_from_descriptors,
+    reactivation_factories,
+    register_reactivation_factory,
+    unregister_reactivation_factory,
+)
 from .types import SessionArg, SessionProtocol
 from .views import CapacityLayerView
 from .write_outcome import WriteOutcome, WriteResult
@@ -282,6 +294,17 @@ __all__ = [
     "ProblemTraceError",
     "WriteHandleNotWiredError",
     "CapabilityDeniedError",
+    "ReactivationError",
+    # F9 re-activation contract (ADR-0185)
+    "REACTIVATION_KEY",
+    "INSTALLER_SENTINEL",
+    "ReactivationFactory",
+    "register_reactivation_factory",
+    "unregister_reactivation_factory",
+    "reactivation_factories",
+    "is_reactivatable",
+    "build_declaration",
+    "reactivate_from_descriptors",
     # Phase 28 — CapacityLayer registry + views
     "CapacityLayer",
     "CapacityLayerView",

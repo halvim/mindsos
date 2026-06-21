@@ -70,20 +70,23 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_45_export_count_is_118():
+def test_phase_45_export_count_is_128():
     """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40)
-    -> 112 (P41) -> 117 (P42) -> 118 (P45).
+    -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9).
 
-    Phase 45 (Rail D, ADR-0162) adds 1 export: ``DreamCapacity`` (the
-    ``dream.*`` capacity-kind dataclass, alongside Monitor/Adapter in
-    ``capacity.py``). The builtins ``dream.py`` surface is NOT re-exported
-    at this top level (R0 PB-5 lock; same as text.*).
+    Phase 45 (Rail D, ADR-0162) added 1 export (``DreamCapacity``). F9
+    (feat/f9-durable-local, ADR-0185) adds 10 exports: the re-activation
+    registry (``REACTIVATION_KEY``, ``INSTALLER_SENTINEL``,
+    ``ReactivationFactory``, ``ReactivationError``,
+    ``register_reactivation_factory``, ``unregister_reactivation_factory``,
+    ``reactivation_factories``, ``is_reactivatable``, ``build_declaration``,
+    ``reactivate_from_descriptors``).
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 118, (
-        f"Phase 45 __all__ count {n} != expected 118 "
-        f"(Phase 42 baseline 117 + 1 DreamCapacity)"
+    assert n == 128, (
+        f"Phase 45 __all__ count {n} != expected 128 "
+        f"(Phase 45 baseline 118 + 10 F9 re-activation exports)"
     )
 
 
