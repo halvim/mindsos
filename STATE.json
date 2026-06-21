@@ -1,7 +1,7 @@
 {
   "_comment": "Machine-readable state. Chats read THIS first, not the 134KB HANDOFF.md. Bump as part of the ship ritual.",
   "core_version": "phase50",
-  "core_git_sha": "d30b93f",
+  "core_git_sha": "20d4686",
   "last_shipped_phase": 50,
   "in_progress": { "phase": 51, "branch": "wsd-51", "note": "WSD Phase 51 core work, parked from the dirty tree; finish + gate then merge to main" },
   "core_contributors": {
