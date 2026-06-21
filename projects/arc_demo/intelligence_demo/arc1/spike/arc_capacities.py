@@ -34,6 +34,7 @@ from . import arc_grids
 # dream.*).
 CATEGORY_COMPARATOR = "comparator"
 CATEGORY_PREDICATE = "predicate"
+CATEGORY_REASONING = "reasoning"
 
 # ── DataState IRIs (arc realm) ──────────────────────────────────────────
 DS_RAW_TASK = datastate_iri("arc.raw_task")
@@ -52,6 +53,11 @@ DS_SAME_SHAPE = datastate_iri("arc.same_shape")
 DS_SAME_POINT = datastate_iri("arc.same_point")
 DS_MOVE_TRANSFORM = datastate_iri("arc.move_transform")
 DS_TOUCHING = datastate_iri("arc.touching")
+DS_BACKGROUND_CANDIDATE = datastate_iri("arc.background_candidate")
+DS_BACKGROUND = datastate_iri("arc.background")
+DS_CORRESPONDENCE = datastate_iri("arc.correspondence")
+DS_STATE_CHANGE = datastate_iri("arc.state_change")
+DS_SELECTOR = datastate_iri("arc.selector")
 
 
 def arc_datastates() -> List[DataState]:
@@ -80,6 +86,11 @@ def arc_datastates() -> List[DataState]:
         ds("arc.same_point", CATEGORY_COMPARATOR, "same_point verdict: same colour + position."),
         ds("arc.move_transform", CATEGORY_COMPARATOR, "moved: translation Δ between same-shape objects."),
         ds("arc.touching", CATEGORY_PREDICATE, "touching verdict: different-colour components share an 8-neighbour (intra-grid)."),
+        ds("arc.background_candidate", CATEGORY_DERIVATION, "Per-grid background proposal from one detector (frequency at v1)."),
+        ds("arc.background", CATEGORY_REASONING, "Reconciled background (fold over candidates; degenerate pass-through at v1)."),
+        ds("arc.correspondence", CATEGORY_REASONING, "input ref -> output ref map; unambiguous subset (ambiguous left uncorresponded)."),
+        ds("arc.state_change", CATEGORY_COMPARATOR, "touching_delta: gained/lost/maintained across a pair over C, background-excluded."),
+        ds("arc.selector", CATEGORY_REASONING, "Minimal discriminative state-conjunction resolving a unique mover + target."),
     ]
 
 
@@ -218,6 +229,42 @@ def _intra_grid_capacities() -> List[Capacity]:
     ]
 
 
+def _reason_capacities() -> List[Capacity]:
+    return [
+        Capacity(
+            name="detect_background_frequency", category=CATEGORY_DERIVATION,
+            inputs=(DS_GRID,), outputs=(DS_BACKGROUND_CANDIDATE,),
+            implementation=lambda **kw: {DS_BACKGROUND_CANDIDATE: None},
+            description="Grid -> BackgroundCandidate (most-frequent colour). One ensemble member.",
+        ),
+        Capacity(
+            name="reconcile_background", category=CATEGORY_REASONING,
+            inputs=(DS_BACKGROUND_CANDIDATE,), outputs=(DS_BACKGROUND,),
+            implementation=lambda **kw: {DS_BACKGROUND: None},
+            description="Fold over BackgroundCandidate* -> Background. Degenerate (pass-through) at v1; policy pending CORPUS-ANALYSIS.",
+        ),
+        Capacity(
+            name="build_correspondence", category=CATEGORY_REASONING,
+            inputs=(DS_SAME_OBJECT, DS_MOVE_TRANSFORM, DS_SAME_POINT),
+            outputs=(DS_CORRESPONDENCE,),
+            implementation=lambda **kw: {DS_CORRESPONDENCE: None},
+            description="Fold over pairwise comparator verdicts -> Correspondence (strictest-first 1:1; ambiguous left uncorresponded).",
+        ),
+        Capacity(
+            name="touching_delta", category=CATEGORY_COMPARATOR,
+            inputs=(DS_TOUCHING, DS_CORRESPONDENCE), outputs=(DS_STATE_CHANGE,),
+            implementation=lambda **kw: {DS_STATE_CHANGE: None},
+            description="(touching over C) -> StateChange (gained/lost/maintained, background-excluded).",
+        ),
+        Capacity(
+            name="synthesize_selector", category=CATEGORY_REASONING,
+            inputs=(DS_STATE_CHANGE, DS_OBJECT), outputs=(DS_SELECTOR,),
+            implementation=lambda **kw: {DS_SELECTOR: None},
+            description="(StateChange, Object features) -> Selector resolving a unique mover + target (else abstain).",
+        ),
+    ]
+
+
 # capacity IRIs (for assertions / introspection)
 CAP_COMPREHEND = capacity_iri(CATEGORY_COMPREHENSION, "comprehend_task")
 CAP_BUILD_GRID = capacity_iri(CATEGORY_PERCEPTION, "build_grid")
@@ -238,7 +285,8 @@ def ordered_catalog() -> List[dict]:
     for phase, caps in (("perceive", _perceive_capacities()),
                         ("profile-sweep", _profile_comparators()),
                         ("induce", _induce_capacities()),
-                        ("intra-grid", _intra_grid_capacities())):
+                        ("intra-grid", _intra_grid_capacities()),
+                        ("reason", _reason_capacities())):
         for c in caps:
             rows.append({
                 "name": c.name,
@@ -261,6 +309,8 @@ def install_arc(capacity_layer: CapacityLayer) -> None:
     for cap in _induce_capacities():
         capacity_layer.register_capacity(cap)
     for cap in _intra_grid_capacities():
+        capacity_layer.register_capacity(cap)
+    for cap in _reason_capacities():
         capacity_layer.register_capacity(cap)
 
 

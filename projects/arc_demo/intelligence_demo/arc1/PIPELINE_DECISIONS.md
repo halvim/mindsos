@@ -61,7 +61,7 @@ All open; none locked. ★ = bottleneck. `rec` = recommendation carried from the
 ### Process
 | D | Question | Status / rec |
 |---|---|---|
-| **D0** | Design↔build pivot — start L3 registration build, or perceive-first? | open (pivot after D1+D2+D4) |
+| **D0** | Design↔build pivot | **LOCKED 2026-06-21 — pivot to build**: register the #8 specimen as topology-registered swept capacities (reason DataStates + `detect_background_frequency`/`reconcile_background`/`build_correspondence`/`touching_delta`/`selector`), stub bodies, real compute stays inline in `arc_solver`. Validate against the real `CapacityLayer`; #8 must still solve. |
 | **D1** | Reasoning-graph grounding semantics | **LOCKED 2026-06-21 — topology-registered**: register reason DataStates + capacities with real `PRODUCES`/`CONSUMES` edges (the perceive-chain pattern), stub/inline bodies, `find_pipeline` walks them. Provenance walks real producers (no doc/code drift); defers live bodies (D3). Rejected pure model-grounding (two drifting representations). |
 | **D2** | Approve + scope the reasoning-graph | **LOCKED 2026-06-21 — first specimen only**: `touching_delta` (state-change) + selector, the #8 spine (D18). Defers correspondence/search; grounding it surfaces D4 next. |
 | **D3** | Invoke boundary: inline body-fold vs `capacity_layer.invoke` | open (currently inline) |
@@ -72,7 +72,7 @@ All open; none locked. ★ = bottleneck. `rec` = recommendation carried from the
 | **D4 ★** | Background detection (frequency vs residual vs ensemble) | **LOCKED 2026-06-21 — ensemble topology, frequency-only body**: `detect_background_frequency` (real body) → `BackgroundCandidate`; `reconcile_background` = **L4 fold** over candidates → `Background`, **degenerate now** (single candidate passes through; policy-pending). Additional detectors (residual/…) + real reconcile policy deferred to **CORPUS-ANALYSIS** (below). Residual NOT built now — known-wrong on #8, family unidentified. |
 | **D5** | `detect_background` registration form | **LOCKED 2026-06-21 — swept, not composed**: background detection is an L4-style **sweep** over detector outputs → reconcile fold → `Background`, **not** a `find_pipeline`-pulled leg (verified: `find_pipeline` BFS returns one shortest path → can't gather N producers; ADR-0071). Corrects the prior "lazy find_pipeline-pulled" framing. |
 | **CORPUS-ANALYSIS** | Background-detector bucketing over the 400 train tasks (which detector matches the human-evident bg; where frequency vs residual wins) | **SCHEDULED** — hard prerequisite for the real `reconcile_background` policy + the detector roster (D4). |
-| **D6** | Correspondence (P3): register as a capacity producing a `Correspondence` DataState; resolve duplicates | open |
+| **D6** | Correspondence (P3): register + resolve duplicates | **LOCKED 2026-06-21 — unambiguous-subset, defer resolution**: `build_correspondence` = swept fold over pairwise comparators → `Correspondence` DataState (not a `find_pipeline` leg, per D5). Assemble strictest-first 1:1 (`same_object` → `moved` → `same_point`); ambiguous pairs left uncorresponded; completeness check abstains if a needed object is uncorresponded. Duplicate-resolution **policy** routed to CORPUS-ANALYSIS. |
 | **D7** | Adopt profile-as-`find_pipeline`-filter | open |
 | **D8** | Close palette-as-set hole (recolor-by-permutation) | open |
 | **D9** | Wire `touching_delta` now vs register the induce sub-graph together | open |
@@ -118,3 +118,6 @@ Immediate next move: **D1 + D2** (reasoning-graph + grounding semantics), then *
 - **2026-06-21** — **D4 + D5 locked** (ensemble topology, frequency-only body, reconcile = L4 fold
   degenerate/policy-pending; background is swept not `find_pipeline`-composed) + **CORPUS-ANALYSIS**
   scheduled (gates reconcile policy + detector roster). Next: D0 (build pivot) or D6 (correspondence).
+- **2026-06-21** — **D6 locked** (correspondence = swept fold → `Correspondence`; unambiguous-subset,
+  resolution policy → CORPUS-ANALYSIS). Specimen inputs now designed (background + correspondence +
+  touching_delta + selector). Next: D0 (build pivot).
