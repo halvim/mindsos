@@ -16,7 +16,7 @@
     "maintenance":        { "home": "projects/maintenance",        "branch": null,     "worktree": null }
   },
   "demos": {
-    "robot":   { "home": "projects/robot_demo",   "branch": "demo/robot",   "worktree": "MindsOS-robot",   "pinned_core": "phase-50-confirmed", "status": "DM-7 shipped; pending move into projects/robot_demo/" },
+    "robot":   { "home": "projects/robot_demo",   "branch": "demo/robot",   "worktree": "MindsOS-robot",   "pinned_core": "f9-confirmed", "status": "DM-8 in progress: durable Local reload; pinned f9-confirmed" },
     "arc":     { "home": "projects/arc_demo",     "branch": "demo/arc",     "worktree": "MindsOS-arc",     "pinned_core": "phase-50-confirmed", "status": "solver stages 1-6, task #8; pending move into projects/arc_demo/" },
     "bongard": { "home": "projects/bongard_demo", "branch": "demo/bongard", "worktree": "MindsOS-bongard", "pinned_core": "phase-50-confirmed", "status": "not started; PLAN.md at main commit 85115da" }
   },
