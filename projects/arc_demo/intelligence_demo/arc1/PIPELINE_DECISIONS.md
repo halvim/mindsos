@@ -69,8 +69,9 @@ All open; none locked. ★ = bottleneck. `rec` = recommendation carried from the
 ### Reason-stage grounding
 | D | Question | Status / rec |
 |---|---|---|
-| **D4 ★** | Background detection (H1): frequency vs residual vs ensemble — **the bottleneck** | open · highest priority |
-| **D5** | `detect_background` = lazy reason-time capacity → `Background` DataState | open (depends D4) |
+| **D4 ★** | Background detection (frequency vs residual vs ensemble) | **LOCKED 2026-06-21 — ensemble topology, frequency-only body**: `detect_background_frequency` (real body) → `BackgroundCandidate`; `reconcile_background` = **L4 fold** over candidates → `Background`, **degenerate now** (single candidate passes through; policy-pending). Additional detectors (residual/…) + real reconcile policy deferred to **CORPUS-ANALYSIS** (below). Residual NOT built now — known-wrong on #8, family unidentified. |
+| **D5** | `detect_background` registration form | **LOCKED 2026-06-21 — swept, not composed**: background detection is an L4-style **sweep** over detector outputs → reconcile fold → `Background`, **not** a `find_pipeline`-pulled leg (verified: `find_pipeline` BFS returns one shortest path → can't gather N producers; ADR-0071). Corrects the prior "lazy find_pipeline-pulled" framing. |
+| **CORPUS-ANALYSIS** | Background-detector bucketing over the 400 train tasks (which detector matches the human-evident bg; where frequency vs residual wins) | **SCHEDULED** — hard prerequisite for the real `reconcile_background` policy + the detector roster (D4). |
 | **D6** | Correspondence (P3): register as a capacity producing a `Correspondence` DataState; resolve duplicates | open |
 | **D7** | Adopt profile-as-`find_pipeline`-filter | open |
 | **D8** | Close palette-as-set hole (recolor-by-permutation) | open |
@@ -114,3 +115,6 @@ Immediate next move: **D1 + D2** (reasoning-graph + grounding semantics), then *
   handoff register + `SOLVE_PIPELINE.md`. No decisions locked yet.
 - **2026-06-21** — **D1 locked** (topology-registered grounding) + **D2 locked** (scope = first
   specimen `touching_delta` + selector). Next: D4 (background detection).
+- **2026-06-21** — **D4 + D5 locked** (ensemble topology, frequency-only body, reconcile = L4 fold
+  degenerate/policy-pending; background is swept not `find_pipeline`-composed) + **CORPUS-ANALYSIS**
+  scheduled (gates reconcile policy + detector roster). Next: D0 (build pivot) or D6 (correspondence).
