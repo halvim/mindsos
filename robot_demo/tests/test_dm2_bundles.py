@@ -252,17 +252,22 @@ def test_install_skill_idempotent_same_kl(tmp_path):
 
 
 @pytest.mark.integration
-def test_full_bootstrap_dm2(tmp_path):
+def test_full_bootstrap_dm2(tmp_path, monkeypatch):
     """Full DM-2 bootstrap: bundles install per device-type, seeds visible,
     4 Episodes, idempotent re-boot. Falkor parts asserted only when a live
-    FalkorDB is present (else graceful in-memory fallback, PB-Z/G-5)."""
+    FalkorDB is present (else graceful in-memory fallback, G-5). Isolated to
+    a dedicated Falkor keyspace (DM-8 durable Locals persist, so the real
+    ``robot_demo`` graph must not accumulate this test's per-device Locals)."""
     pytest.importorskip("argon2")
     try:
         import mindsos_server  # noqa: F401
     except Exception as exc:  # pragma: no cover
         pytest.skip(f"mindsos_server unavailable: {exc}")
 
+    from robot_demo.backend import persistence
     from robot_demo.backend.bootstrap import bootstrap
+
+    monkeypatch.setattr(persistence, "_DEMO_GRAPH", "robot_demo_dm2_test")
 
     r1 = bootstrap(db_path=str(tmp_path / "server.db"))
     try:
@@ -295,3 +300,11 @@ def test_full_bootstrap_dm2(tmp_path):
     finally:
         for b in r1.brains.values():
             b.il.stop()
+        try:
+            c = persistence.open_client()
+            try:
+                c.run_query("MATCH (n) DETACH DELETE n")
+            finally:
+                c.close()
+        except Exception:
+            pass
