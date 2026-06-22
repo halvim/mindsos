@@ -271,7 +271,10 @@ def test_full_bootstrap_dm2(tmp_path):
         assert r1.bundles["mgr"][0].startswith("core")
         assert any("manager@1.0" in b for b in r1.bundles["mgr"])
         assert any("arm-suction@1.0" in b for b in r1.bundles["arm1"])
-        assert all(r1.seeded_local[d] for d in DEVICE_ORDER)
+        assert all(
+            read_local_embodiment(r1.brains[d].kl, d) is not None
+            for d in DEVICE_ORDER
+        )
         # seeds visible by querying the per-device KL
         assert read_local_embodiment(r1.brains["arm1"].kl, "arm1")["provides"] \
             == ["grasp:suction"]
