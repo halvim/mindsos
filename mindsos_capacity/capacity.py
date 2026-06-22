@@ -42,6 +42,7 @@ if TYPE_CHECKING:
 
 from .exceptions import CapacityRegistrationError
 from .identifiers import (
+    INPUT_GROUP_ALL_REQUIRED,
     KIND_ADAPTER,
     KIND_MONITOR,
     KIND_REACTIVE,
@@ -79,6 +80,14 @@ class _CapacityBase:
     precondition_iri: Optional[str] = None
     effect_iri: Optional[str] = None
     reads_mm: bool = False
+    # ADR-0159 §amendment-1 — how the conjunction finder resolves this
+    # capacity's multiple declared inputs: "all_required" (AND) | "any_of"
+    # (optional-union) | "fold" (aggregate over N producers). The default
+    # preserves every pre-amendment capacity (the implicit contract *was*
+    # all-inputs-required for a sound composer; the BFS just never enforced
+    # it). Read off the declaration by the finder; not emitted to the graph
+    # at v1 (Decision 8).
+    input_group: str = INPUT_GROUP_ALL_REQUIRED
     placeholder: bool = False
 
     @property

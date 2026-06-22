@@ -194,3 +194,19 @@ Per-decision rationale, 3-round saturation (1 reversal R2 on Fork 5 three-valued
 ## §Implementation (Phase 42 — 2026-06-05)
 
 Shipped (ADR-0159). 6 new `_CapacityBase` fields (`concurrent`, `inline`, `max_latency_ms`, `precondition_iri`, `effect_iri`, `reads_mm`; the "5 new fields" framing groups inline+max_latency_ms). NEW `mindsos_capacity/context.py`: frozen `CapacityContext` (10 fields; `version_snapshot`/`learned_parameters_snapshot` read-only via `MappingProxyType`) + 4 `@runtime_checkable` Protocols (`MMHandle`, `KLHandle`, `CapacityLayerHandle`, `CancelToken`) + `CancelTokenView` + 5 verdict dataclasses (verdicts inline, not a separate `verdicts.py`). Import-isolated (no mindsos_knowledge/mindsos_instances imports; Any/forward-refs). `register_capacity` validates `inline⇒max_latency_ms` + structural precondition/effect IRIs (predicate-family resolution soft, deferred — no `predicate.*` ships v1). `KLHandle.read_at_version` declared but unimplemented (KL impl Phase 48). **Body migration `context["kl"]`→`context.kl` + invoke→CapacityContext plumbing DEFERRED to Phase 46** (PB-23): ADR-0159's CapacityContext has no `session`-object field for ADR-0146 write-body capability gating; the L4 substrate (Phase 46) owns that boundary.
+
+## §amendment-1 (feat/composition-lifecycle — 2026-06-21): typed input-group field on `_CapacityBase`
+
+**Context.** The ADR-0071 §amendment-2 adds a conjunction/fold finder that must know, per capacity, how to resolve its multiple declared inputs: are they **all** required, **any** of them (optional-union), or a **fold** over N producers of one type? The shipped contract carries only `inputs: Tuple[str, ...]` — an undifferentiated list the BFS treats as "fire on any one" (the §amendment-2 soundness defect). ARC documented exactly three shapes (`all_required` / `any_of` / `fold`); the finder needs them on the declaration to compose soundly.
+
+**What changes.** One new default-valued field on `_CapacityBase`:
+
+```python
+    input_group: str = "all_required"   # {"all_required" | "any_of" | "fold"}
+```
+
+(Open detail for ship R0: a single capacity-wide value vs per-input-subset grouping. ARC's three cases are each capacity-wide, so the scalar form ships v1; a structured `Mapping[group_name, (mode, members)]` is the documented extension if a capacity needs mixed groups — none does yet.) Default `"all_required"` preserves every Phase 27+ capacity unchanged (the existing implicit contract *was* "all inputs required" for a sound composer; the BFS just never enforced it). `register_capacity` validates the value against the three-member set.
+
+**Finder reads the declaration, not the graph (Decision 8).** The conjunction finder resolves `input_group` from the **declaration registry** (`CapacityLayerHandle.get_declaration` / the `_declarations` map), mirroring how `views.inputs_of` already reads "declaration primary, graph fallback" (ADR-0156). **No graph-layer structure is emitted for this field at v1.** The graph form — a type-layer typed **hyperedge** grouping the binary `CONSUMES` edges, plus a hyperedge-aware `views` walk — is **deferred to an ADR-0156 §amendment** until a graph-walking consumer exists (verified: `register_capacity` emits only binary `PRODUCES`/`CONSUMES`; `views.py` has no hyperedge walk; `IntergraphHyperEdge` is instance-layer only). ARC's §5 named a "hyperedge"; the declaration field is the consumer-disciplined v1 form that the finder actually needs.
+
+**Surface.** One additive default-valued `_CapacityBase` field + a `register_capacity` value check; no migration (defaults hold). Companion: ADR-0071 §amendment-2; design record `confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md`.

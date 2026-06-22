@@ -10,7 +10,7 @@ retired TYPE_COMPAT edges. Also exercises the rewritten view helpers
 
 from __future__ import annotations
 
-from mindsos_capacity import Pipeline, find_pipeline
+from mindsos_capacity import PipelineDAG, find_pipeline
 
 from tests.phase_30._fixtures import (
     DS_INPUT_IRI,
@@ -29,7 +29,7 @@ def test_linear_pipeline_semantics_preserved():
     pipeline = find_pipeline(
         cl, start_datastate=DS_INPUT_IRI, target_datastate=DS_OUTPUT_IRI
     )
-    assert isinstance(pipeline, Pipeline)
+    assert isinstance(pipeline, PipelineDAG)
     assert [s.capacity_iri for s in pipeline.steps] == [STEP1, STEP2]
 
 

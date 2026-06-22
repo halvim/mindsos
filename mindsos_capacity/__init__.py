@@ -162,7 +162,16 @@ from .family_rules import (
     FamilyDontKnowShape,
     family_rule_for,
 )
-from .pipeline import Pipeline, PipelineStep, find_pipeline
+from .pipeline import (
+    START,
+    BFSFinder,
+    ConjunctionFinder,
+    DAGEdge,
+    DAGStep,
+    Finder,
+    PipelineDAG,
+    find_pipeline,
+)
 from .runtime import (
     ProblemTraceRecord,
     ProblemTraceSink,
@@ -188,11 +197,13 @@ from .context import (
     TierVerdict,
 )
 from .reactivation import (
+    COMPOSITE_DAG,
     INSTALLER_SENTINEL,
     REACTIVATION_KEY,
     ReactivationError,
     ReactivationFactory,
     build_declaration,
+    composite_dependencies,
     is_reactivatable,
     reactivate_from_descriptors,
     reactivation_factories,
@@ -240,6 +251,10 @@ from .identifiers import (
     FUNCTIONAL_CATEGORIES,
     GLOBAL_FALKOR_GRAPH,
     GLOBAL_METAGRAPH_NAME,
+    INPUT_GROUP_ALL_REQUIRED,
+    INPUT_GROUP_ANY_OF,
+    INPUT_GROUP_FOLD,
+    INPUT_GROUPS,
     KIND_ADAPTER,
     KIND_DATASTATE,
     KIND_MONITOR,
@@ -305,6 +320,9 @@ __all__ = [
     "is_reactivatable",
     "build_declaration",
     "reactivate_from_descriptors",
+    # composition-lifecycle — composite-persistence residual
+    "COMPOSITE_DAG",
+    "composite_dependencies",
     # Phase 28 — CapacityLayer registry + views
     "CapacityLayer",
     "CapacityLayerView",
@@ -327,9 +345,15 @@ __all__ = [
     "ProblemTraceRecord",
     "ProblemTraceSink",
     "emit_problem_trace",
-    # Phase 30 — pipeline finder (ADR-0071)
-    "Pipeline",
-    "PipelineStep",
+    # Phase 30 — pipeline finder (ADR-0071) + composition-lifecycle
+    # finder seam / DAG result type (ADR-0071 §amendment-2)
+    "PipelineDAG",
+    "DAGStep",
+    "DAGEdge",
+    "START",
+    "Finder",
+    "BFSFinder",
+    "ConjunctionFinder",
     "find_pipeline",
     # Phase 33 — write-outcome substrate (ADR-0146 §amendment-1)
     "WriteResult",
@@ -398,6 +422,10 @@ __all__ = [
     "KIND_ADAPTER",
     "KIND_DATASTATE",
     "NODE_KINDS",
+    "INPUT_GROUP_ALL_REQUIRED",
+    "INPUT_GROUP_ANY_OF",
+    "INPUT_GROUP_FOLD",
+    "INPUT_GROUPS",
     "EDGE_CONSTRAINT",
     "EDGE_PRODUCES",
     "EDGE_CONSUMES",

@@ -26,11 +26,18 @@ will use.
 
 from __future__ import annotations
 
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
-from mindsos_capacity import reactivate_from_descriptors
+from mindsos_capacity import (
+    REACTIVATION_KEY,
+    build_declaration,
+    composite_dependencies,
+    is_reactivatable,
+    reactivate_from_descriptors,
+)
 from mindsos_core import Metagraph
 from mindsos_knowledge import ROLE_LEARNED_PARAMETERS
+from mindsos_knowledge.bootstrap import kahn_sort
 from mindsos_knowledge.exceptions import AlreadyInstalledError
 
 __all__ = [
@@ -94,6 +101,49 @@ def _learned_parameter_descriptors(local_mg: Metagraph) -> List[dict]:
     return []
 
 
+def _dep_order_descriptors(descriptors: List[dict]) -> List[dict]:
+    """Topologically order re-activatable composite descriptors.
+
+    A composite whose serialized DAG references another in-batch
+    composite's capacity IRI must re-activate **after** that dependency
+    (so a factory closure that resolves a live downstream declaration
+    finds it already registered). Within-batch dependencies are derived
+    from :func:`mindsos_capacity.composite_dependencies`; the order is
+    produced by ``mindsos_knowledge.kahn_sort`` — placed here because
+    ``mindsos_capacity`` may not import ``mindsos_knowledge`` (boundary,
+    test-enforced), but the server may import both (PB-C).
+
+    Non-re-activatable descriptors (installer-backed; no
+    :data:`REACTIVATION_KEY`) are returned unchanged after the ordered
+    composites — they re-activate via their installer, not this walk, and
+    carry no in-batch dependency.
+
+    A descriptor's IRI is read from its freshly-built declaration (pure
+    construction; no registration), so no extra descriptor field is
+    needed. Raises ``BootstrapCycleError`` if the composites form a
+    dependency cycle.
+    """
+    reactivatable = [d for d in descriptors if is_reactivatable(d)]
+    if len(reactivatable) <= 1:
+        return list(descriptors)
+
+    by_iri: Dict[str, dict] = {}
+    for d in reactivatable:
+        decl = build_declaration(d[REACTIVATION_KEY], d)  # pure build, no register
+        by_iri[decl.iri] = d
+    iris = set(by_iri)
+
+    applies_after = {
+        iri: frozenset(composite_dependencies(d) & iris - {iri})
+        for iri, d in by_iri.items()
+    }
+    ordered_iris = kahn_sort(iris, applies_after)
+
+    ordered = [by_iri[i] for i in ordered_iris]
+    others = [d for d in descriptors if not is_reactivatable(d)]
+    return ordered + others
+
+
 def reactivate_local_capacities(
     cl: Any,
     kl: Any,
@@ -105,7 +155,8 @@ def reactivate_local_capacities(
 
     Reads the ``learned-parameters`` descriptors out of the KL Local
     (``local_knowledge:<user_id>``) — the upward-importing step the
-    capacity layer cannot perform — and delegates capacity registration
+    capacity layer cannot perform — dep-orders any composites
+    (:func:`_dep_order_descriptors`), and delegates capacity registration
     to :func:`mindsos_capacity.reactivate_from_descriptors`, which
     (re-)registers each onto the CL Local (``local_capacity:<user_id>``)
     with ``if_exists="upsert"``. Referenced Global DataStates are
@@ -113,11 +164,12 @@ def reactivate_local_capacities(
 
     ``session`` is a Local-scoped session-like object (needs
     ``user_id``); the caller supplies it (the server owns ``Session``).
-    Returns the list of re-activated capacity IRIs.
+    Returns the list of re-activated capacity IRIs, in dependency order.
     """
     local_mg = kl.local_metagraph(user_id)
     descriptors = _learned_parameter_descriptors(local_mg)
-    return reactivate_from_descriptors(cl, descriptors, session=session)
+    ordered = _dep_order_descriptors(descriptors)
+    return reactivate_from_descriptors(cl, ordered, session=session)
 
 
 def boot_local(

@@ -801,6 +801,17 @@ Strict dependency order:
 ═══════════════════════════════════════════════════════════════════════
 ## 6. Carry-forwards + open R0 questions
 
+### 6.0 Designs awaiting implementation (newest first)
+
+- **Composition lifecycle** (core-mod; designed 2026-06-21, **impl pending**). Fixes the verified
+  `find_pipeline` multi-input unsoundness. Full spec + all decisions:
+  `confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md`. Amendment ADRs drafted:
+  **ADR-0071 §amendment-2** (pluggable finder seam + conjunction/fold finder + DAG result type) +
+  **ADR-0159 §amendment-1** (typed `input_group` declaration field). Branch to open:
+  `feat/composition-lifecycle`. Scope = ARC §5's four parts + bongard composite-persistence
+  residual; promotion + graph-hyperedge + composite-kind deferred (reasons in the log). Project-
+  independent; WSD/bongard not a dependency.
+
 ### 6.1 19-item Phase 38 carry-forward (full list in `confirmation_docs/PHASE_38_DESIGN_LOG.md §4`)
 
 **Code surfaces (9):**

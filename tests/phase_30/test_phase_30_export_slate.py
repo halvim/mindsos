@@ -16,8 +16,11 @@ PHASE_30_NEW_EXPORTS = {
     "ProblemTraceRecord",
     "ProblemTraceSink",
     "emit_problem_trace",
-    "Pipeline",
-    "PipelineStep",
+    # composition-lifecycle (ADR-0071 §am-2): linear Pipeline/PipelineStep
+    # replaced by the PipelineDAG result type + DAGStep/DAGEdge.
+    "PipelineDAG",
+    "DAGStep",
+    "DAGEdge",
     "find_pipeline",
     "PipelineNotFoundError",
     "ProblemTraceError",

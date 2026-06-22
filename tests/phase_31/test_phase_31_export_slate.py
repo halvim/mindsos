@@ -32,18 +32,15 @@ def test_each_retired_resident_export_unresolvable():
         )
 
 
-def test_phase_45_export_count_is_128():
+def test_export_count_is_139():
     """Count-equals sentinel — 95 (P30) -> 97 (P31) -> 110 (P33) ->
-    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9). F9
-    (feat/f9-durable-local, ADR-0185) adds 10 exports: the re-activation
-    registry (``REACTIVATION_KEY``, ``INSTALLER_SENTINEL``,
-    ``ReactivationFactory``, ``ReactivationError``,
-    ``register_reactivation_factory``, ``unregister_reactivation_factory``,
-    ``reactivation_factories``, ``is_reactivatable``, ``build_declaration``,
-    ``reactivate_from_descriptors``).
+    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9) -> 139
+    (composition-lifecycle: ADR-0071 §am-2 + ADR-0159 §am-1, net +11 —
+    see the phase_29 slate ledger for the breakdown).
     """
-    assert len(mindsos_capacity.__all__) == 128, (
-        f"Expected 128 exports after F9; found {len(mindsos_capacity.__all__)}"
+    assert len(mindsos_capacity.__all__) == 139, (
+        f"Expected 139 exports after composition-lifecycle; "
+        f"found {len(mindsos_capacity.__all__)}"
     )
 
 
@@ -56,8 +53,11 @@ def test_phase_30_exports_remain_intact():
         "ProblemTraceRecord",
         "ProblemTraceSink",
         "emit_problem_trace",
-        "Pipeline",
-        "PipelineStep",
+        # composition-lifecycle: linear Pipeline/PipelineStep retired,
+        # replaced by the PipelineDAG result type (ADR-0071 §am-2).
+        "PipelineDAG",
+        "DAGStep",
+        "DAGEdge",
         "find_pipeline",
         "PipelineNotFoundError",
         "ProblemTraceError",

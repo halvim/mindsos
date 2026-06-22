@@ -37,7 +37,7 @@ they are re-supplied each process rather than reloaded.
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Mapping
+from typing import Any, Callable, Dict, List, Mapping, Set
 
 from .capacity import _CapacityBase
 from .exceptions import CapacityRegistrationError
@@ -45,6 +45,17 @@ from .exceptions import CapacityRegistrationError
 #: Descriptor key (in the ``learned-parameters`` value dict) naming the
 #: factory that rebuilds the capacity. See module docstring.
 REACTIVATION_KEY = "reactivation_key"
+
+#: Descriptor key holding a serialized composite pipeline (the
+#: :meth:`mindsos_capacity.PipelineDAG.to_dict` form). A *composite*
+#: capacity is one whose implementation runs a DAG over other capacities;
+#: persisting the DAG lets a re-activation factory rebuild it without
+#: serializing Python callables (the executor closure is re-supplied by
+#: the consumer at factory-registration time, per the F9 pattern). Its
+#: presence also lets the server dep-order re-activation
+#: (:func:`composite_dependencies`): a composite must re-activate after
+#: the composites whose capacities its DAG references.
+COMPOSITE_DAG = "composite_dag"
 
 #: Reserved ``reactivation_key`` value: the capacity is NOT
 #: Local-re-activatable from its descriptor; it re-activates by re-running
@@ -106,6 +117,28 @@ def is_reactivatable(descriptor: Mapping[str, Any]) -> bool:
     """True iff ``descriptor`` carries a re-activatable ``reactivation_key``."""
     key = descriptor.get(REACTIVATION_KEY)
     return bool(key) and key != INSTALLER_SENTINEL
+
+
+def composite_dependencies(descriptor: Mapping[str, Any]) -> Set[str]:
+    """Capacity IRIs a composite descriptor's serialized DAG references.
+
+    Reads the :data:`COMPOSITE_DAG` value (a
+    :meth:`~mindsos_capacity.PipelineDAG.to_dict` dict) and returns the
+    set of ``capacity_iri`` named by its steps — the composite's
+    dependencies. Returns an empty set for a non-composite descriptor (no
+    :data:`COMPOSITE_DAG` key). This is the *data* half of dep-ordered
+    re-activation; the topological sort itself lives in
+    ``mindsos_server`` (``kahn_sort`` is in ``mindsos_knowledge`` and this
+    layer may not import it — boundary, test-enforced).
+    """
+    dag = descriptor.get(COMPOSITE_DAG)
+    if not isinstance(dag, Mapping):
+        return set()
+    return {
+        step["capacity_iri"]
+        for step in dag.get("steps", ())
+        if isinstance(step, Mapping) and "capacity_iri" in step
+    }
 
 
 def build_declaration(key: str, descriptor: Mapping[str, Any]) -> _CapacityBase:

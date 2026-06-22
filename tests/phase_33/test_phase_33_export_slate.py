@@ -33,10 +33,12 @@ def test_each_phase_33_export_resolves_to_real_object():
         assert getattr(mindsos_capacity, name) is not None
 
 
-def test_phase_45_export_count_is_128():
-    """Count sentinel — 117 -> 118 (P45 DreamCapacity) -> 128 (F9 adds 10 re-activation exports, ADR-0185)."""
-    assert len(mindsos_capacity.__all__) == 128, (
-        f"Expected 128 exports after F9; found {len(mindsos_capacity.__all__)}"
+def test_export_count_is_139():
+    """Count sentinel — 117 -> 118 (P45) -> 128 (F9) -> 139
+    (composition-lifecycle, ADR-0071 §am-2 + ADR-0159 §am-1, net +11)."""
+    assert len(mindsos_capacity.__all__) == 139, (
+        f"Expected 139 exports after composition-lifecycle; "
+        f"found {len(mindsos_capacity.__all__)}"
     )
 
 

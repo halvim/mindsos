@@ -37,8 +37,11 @@ PHASE_30_LIFTED_EXPORTS = {
     "invoke",
     "InvocationResult",
     "call_capacity",
-    "Pipeline",
-    "PipelineStep",
+    # composition-lifecycle (ADR-0071 §am-2): the linear Pipeline/PipelineStep
+    # were replaced by the PipelineDAG result type + DAGStep/DAGEdge.
+    "PipelineDAG",
+    "DAGStep",
+    "DAGEdge",
     "find_pipeline",
     "ProblemTraceRecord",
     "ProblemTraceSink",
@@ -70,23 +73,24 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_45_export_count_is_128():
+def test_export_count_is_139():
     """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40)
-    -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9).
+    -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9) -> 139
+    (composition-lifecycle).
 
-    Phase 45 (Rail D, ADR-0162) added 1 export (``DreamCapacity``). F9
-    (feat/f9-durable-local, ADR-0185) adds 10 exports: the re-activation
-    registry (``REACTIVATION_KEY``, ``INSTALLER_SENTINEL``,
-    ``ReactivationFactory``, ``ReactivationError``,
-    ``register_reactivation_factory``, ``unregister_reactivation_factory``,
-    ``reactivation_factories``, ``is_reactivatable``, ``build_declaration``,
-    ``reactivate_from_descriptors``).
+    composition-lifecycle (ADR-0071 §am-2 + ADR-0159 §am-1) net +11:
+    -2 (retire ``Pipeline``/``PipelineStep``) +7 finder seam / DAG type
+    (``PipelineDAG``, ``DAGStep``, ``DAGEdge``, ``START``, ``Finder``,
+    ``BFSFinder``, ``ConjunctionFinder``) +2 composite-persistence
+    (``COMPOSITE_DAG``, ``composite_dependencies``) +4 typed input-group
+    (``INPUT_GROUP_ALL_REQUIRED``, ``INPUT_GROUP_ANY_OF``,
+    ``INPUT_GROUP_FOLD``, ``INPUT_GROUPS``).
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 128, (
-        f"Phase 45 __all__ count {n} != expected 128 "
-        f"(Phase 45 baseline 118 + 10 F9 re-activation exports)"
+    assert n == 139, (
+        f"__all__ count {n} != expected 139 "
+        f"(F9 baseline 128 + 11 composition-lifecycle net)"
     )
 
 

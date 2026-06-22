@@ -86,6 +86,7 @@ from .identifiers import (
     EDGE_CONSTRAINT,
     EDGE_CONSUMES,
     EDGE_PRODUCES,
+    INPUT_GROUPS,
     REF_GLOBAL_CAPACITY,
     REF_TYPE_KEY,
     REF_TYPES,
@@ -434,6 +435,13 @@ class CapacityLayer:
             raise CapacityRegistrationError(
                 f"Capacity {declaration.iri!r}: inline=True requires "
                 "max_latency_ms to be declared"
+            )
+        # ADR-0159 §amendment-1 — typed input-group value check.
+        if declaration.input_group not in INPUT_GROUPS:
+            raise CapacityRegistrationError(
+                f"Capacity {declaration.iri!r}: input_group="
+                f"{declaration.input_group!r} is not one of "
+                f"{sorted(INPUT_GROUPS)}"
             )
         for field_name, iri_val in (
             ("precondition_iri", declaration.precondition_iri),
