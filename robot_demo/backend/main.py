@@ -73,8 +73,10 @@ def main(argv: list[str] | None = None) -> int:
     # ── DM-4: BrainBus + comms + WS server (Seam A/B) ──────────────────
     server = None
     bus = None
+    rt_client = None
     if os.environ.get("DEMO_NO_WS") != "1":
-        server, bus = _start_ws(result)
+        rt_client, persister = _open_runtime_persister()
+        server, bus = _start_ws(result, persister=persister)
 
     log.info("Holding (Ctrl-C to exit).")
     try:
@@ -87,12 +89,35 @@ def main(argv: list[str] | None = None) -> int:
             bus.stop()
         for brain in result.brains.values():
             brain.il.stop()
+        if rt_client is not None and hasattr(rt_client, "close"):
+            rt_client.close()
         return 0
 
 
-def _start_ws(result):
+def _open_runtime_persister():
+    """DM-8: a long-lived persister for runtime skill checkpoints (teach /
+    transfer / receive), or ``(None, None)`` when Falkor is off/unreachable.
+    Separate from the bootstrap client (which is opened/used/closed inside
+    ``bootstrap``); this one lives for the server's lifetime."""
+    if os.environ.get("DEMO_FALKOR", "1") == "0":
+        return None, None
+    try:
+        from .persistence import build_local_persister, open_client
+
+        client = open_client()
+        return client, build_local_persister(client)
+    except Exception as exc:  # PersistenceError / driver missing
+        log.warning(
+            "DM-8 runtime persister unavailable (%s); runtime-taught skills "
+            "won't persist across restart.", exc,
+        )
+        return None, None
+
+
+def _start_ws(result, *, persister=None):
     """DM-4 — wire the BrainBus + comms + pose stream and serve the brains
-    WebSocket. Returns ``(server, bus)``."""
+    WebSocket. Returns ``(server, bus)``. ``persister`` (DM-8) checkpoints
+    runtime-taught skills; ``None`` disables it (the dmN_check scripts)."""
     from .bus import BrainBus
     from .frames import DemoEvents, FrameHub
     from .wiring import (
@@ -120,7 +145,7 @@ def _start_ws(result):
     decide = make_allocator(events)
     on_command = wire_demo(
         result.brains, bus, events, run_atomic=run_atomic, decide=decide,
-        sim_engine=result.sim_engine,
+        sim_engine=result.sim_engine, persister=persister,
     )
     if result.sim_engine is not None:
         wire_pose_stream(result.sim_engine, events)

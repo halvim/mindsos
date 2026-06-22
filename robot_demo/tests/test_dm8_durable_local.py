@@ -42,6 +42,14 @@ class _Duck:
         return True
 
 
+class _Hub:
+    def __init__(self) -> None:
+        self.frames = []
+
+    def publish(self, frame) -> None:
+        self.frames.append(frame)
+
+
 def _stack(client):
     """A fresh per-device stack over ``client`` (a new 'process')."""
     from robot_demo.backend.brain import build_brain_stack
@@ -115,6 +123,49 @@ def test_taught_skill_survives_reboot(falkor):
         )[DS_MOTION_DONE]
         assert out["taught"] is True and out["composite"] is True
         assert len(out["steps"]) == 4
+    finally:
+        b2.il.stop()
+
+
+@pytest.mark.integration
+def test_runtime_teach_command_checkpoints_to_falkor(falkor):
+    """The live `teach` WS command persists the arm's Local through the
+    DM-8 runtime persister (wire_demo -> install_arm_flow), and a fresh
+    stack re-activates it via boot_local."""
+    from mindsos_server.local_boot import boot_local
+    from robot_demo.backend.bootstrap import _register_taught_factory
+    from robot_demo.backend.brain import build_brain_stack
+    from robot_demo.backend.bus import BrainBus
+    from robot_demo.backend.frames import DemoEvents
+    from robot_demo.backend.wiring import wire_demo
+
+    client, persister = falkor
+    _register_taught_factory()
+
+    brains = {}
+    for did in ("mgr", "arm1", "arm2", "conv"):
+        b = build_brain_stack(DEVICE_PROFILES[did], _Duck(did))
+        install_core_datastates(b.cl)
+        brains[did] = b
+    bus = BrainBus()
+    events = DemoEvents(_Hub())
+    try:
+        on_command = wire_demo(
+            brains, bus, events, install_datastates=True, persister=persister
+        )
+        on_command("teach", {"arm": "a1"})
+        assert has_taught(brains["arm1"], "load_into_box")
+        assert persister.load(_DID) is not None
+    finally:
+        bus.stop()
+        for b in brains.values():
+            b.il.stop()
+
+    b2 = _stack(client)
+    try:
+        boot_local(b2.cl, b2.kl, persister, _DID, session=b2.session)
+        assert has_taught(b2, "load_into_box")
+        assert b2.cl.get_declaration(_CAP) is not None
     finally:
         b2.il.stop()
 

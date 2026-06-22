@@ -357,6 +357,7 @@ def bootstrap(db_path: Optional[str] = None) -> BootstrapResult:
             brains[device_id] = brain
 
             if persister is not None:
+                persister.reset_run_state(device_id)
                 boot_local(
                     brain.cl, brain.kl, persister, device_id,
                     session=brain.session,

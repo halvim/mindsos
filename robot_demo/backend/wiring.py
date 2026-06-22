@@ -496,9 +496,22 @@ def install_manager_flow(
     install_manager_replan(mgr)
 
 
+def _checkpoint_local(persister: Any, brain: Any) -> None:
+    """DM-8: persist a brain's durable KL Local after a learned-skill change
+    (teach / receive / transfer). Best-effort — a persistence hiccup must not
+    crash the live demo; no-op when no persister (in-memory fallback)."""
+    if persister is None:
+        return
+    try:
+        persister.save(brain.device_id, brain.kl.local_metagraph(brain.device_id))
+    except Exception:
+        pass
+
+
 # ── Arm overrides + dispatch handler ──────────────────────────────────
 def install_arm_flow(
     arm: Any, bus: Any, events: DemoEvents, *, run_atomic: RunAtomic,
+    persister: Any = None,
 ) -> None:
     """Override arm phase-1 (identity + encode the dispatched target) and
     phase-2 derive (run the atomic, narrate), and set its bus dispatch
@@ -565,6 +578,7 @@ def install_arm_flow(
             "intent": f"Learn {_SKILL_LABEL} from peer",
             "decision": "skill received — stored locally",
             "chain": 3, "active": True, "caps": [[_SKILL_LABEL, "learned"]]}})
+        _checkpoint_local(persister, arm)
 
     bus.set_handler(
         arm.device_id, KIND_SHARE,
@@ -595,6 +609,7 @@ def wire_demo(
     decide: Optional[Callable[[dict], Tuple[str, str]]] = None,
     install_datastates: bool = False,
     sim_engine: Optional[Any] = None,
+    persister: Optional[Any] = None,
 ) -> "Callable[[str, dict], None]":
     """Wire the whole demo and return the WS command handler.
 
@@ -619,7 +634,8 @@ def wire_demo(
             install_manager_flow(brain, bus, events, decide=decide,
                                  conv=brains.get("conv"))
         elif did in ("arm1", "arm2"):
-            install_arm_flow(brain, bus, events, run_atomic=run_atomic)
+            install_arm_flow(brain, bus, events, run_atomic=run_atomic,
+                             persister=persister)
             install_arm_gate(brain)  # DM-5 embodiment gate (real dont-know)
 
     mgr = brains["mgr"]
@@ -696,6 +712,7 @@ def wire_demo(
                                 or (args or {}).get("arm") or "a1") or brains.get("arm1")
             if tb is not None:
                 teach_local(tb, box_workaround_artifact())
+                _checkpoint_local(persister, tb)
                 events.message("user", tb.device_id, f"taught a new skill ({_SKILL_LABEL})")
                 events.state({tb.device_id: {
                     "intent": f"Learn {_SKILL_LABEL}",
@@ -712,6 +729,7 @@ def wire_demo(
                 src.device_id if src else "", "arm2")
             if src is not None and peer_did in brains:
                 teach_local(src, box_workaround_artifact())  # idempotent ensure
+                _checkpoint_local(persister, src)
                 artifact = box_workaround_artifact(peer=peer_did)
                 # Fire at the peer; the peer's own share handler writes its Local.
                 bus.send(src.device_id, peer_did, KIND_SHARE, artifact)
