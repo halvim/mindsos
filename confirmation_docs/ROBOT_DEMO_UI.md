@@ -422,6 +422,37 @@ file map; it does **not** restate code — read the files it points to.
   5 rendered DOMs — no `embodiment_gate`/`chain_level`/`blame_score`/`divergence`/`n\d+` ref tokens; behavior words
   survive) + all inline scripts parse + `audit.js` `node --check`. No map change (audit modal map still deferred).
 
+- **v0.26 — demo-timeline STORY (intake → don't-know region) + `events[]` model + `cbeat` wiring.** The
+  thin baked intake (old beats 0–1) is rebuilt into **7 finer beats** (`cbeat 0..6`) telling the
+  perception → understand → decompose → discover-capabilities → feasibility → don't-know story; the legacy
+  beats shift to `cbeat 7..11` (12 total). (1) New **`events[]` row model** in `timeline.js`: a frame may
+  carry an ordered `events:[{source,party?,section?,sub?,text}]` list that the builder emits **verbatim and
+  chronological** (the only model that interleaves Task/Plan/message rows within one beat); frames without
+  `events[]` **fall back** to the legacy msgs→brain→server derivation, so beats 7–11 are untouched. Chosen
+  over per-section lists (can't interleave) and sub-beat-only frames after a code-grounded review. (2) The
+  intake `frames[]` were **re-baked** with card fields (intent/decision/flags) **and** the curated, IP-
+  sanitized `events[]` (the 19-row render approved 2026-06-22 — full record in
+  `ROBOT_DEMO_TIMELINE_STORY.md` "CURATED RENDER"); `msgs[]` still feed the Messages card in full while the
+  timeline shows the curated rows (e.g. beat 4's 6-message capability exchange → one compressed timeline
+  row). (3) **`cbeat` wired** (3g): the merge carries `cbeat`, `datasource.normalizeFrame` passes it through,
+  the beat strip + timeline grouping + scroll-to all prefer `cbeat` over the advisory `beat`/index, and
+  `mock_ws_server.js` now emits `cbeat`. (4) **Renumber blast-radius handled** (the cost of finer beats):
+  `resolve.js` `RESOLVE` key `3→8` (cooperative-execution beat), `graph.js` `BEATS` remapped onto 12 beats
+  via `_BEAT_REMAP` (intake placeholders clone the order/don't-know graphs — graph is illustrative + live-
+  suppressed), `SERVER_BEAT` remapped to the shifted legacy keys (`7/9/11`). Badge **v0.25 → v0.26**.
+  **Scope note:** `events[]` enriches the **mock** timeline; the **live** timeline path
+  (`tlFramesFromStates`) stays diff-based (one decision row/brain/beat) until the backend emits `events[]`
+  in `state` frames (future WS-contract addition). Verified headlessly **45/45** across three scratch
+  harnesses (the `events[]` builder + legacy fallback + IP-guard; the **real baked** `frames[]`/`SERVER_BEAT`
+  → 12 beats, 19-row intake region, beat-4 single compressed row, beats 7–11 derive correctly, resolve fires
+  on beat 8 not 3, IP-guard with `box-workaround`/`carrier-box` added to the banned set; the real `merge`
+  builds 12 states each carrying `cbeat`, `graph.buildSub` no-throw across all 48 brain×beat, `resolveStageCount`
+  follows the shift) + inline-`<script>` parse. **No map change** (the timeline-modal and beat-strip part
+  vocabularies are unchanged — only content). **Live layout = user-confirmed** (no Chromium in sandbox).
+  Beats 7–11 (learn → cooperate → share → fault → recap, reconciled with the DM-7 interactive beats) =
+  the next curation pass. DM-7 UI answers + the two new backend asks are in
+  `ROBOT_DEMO_DM7_UI_COORDINATION.md §5`.
+
 ## 4. Design decisions settled this chat (the "why", not in code)
 
 **Brain cards** (see `orchestrator_card_map.png` for part names):
@@ -492,7 +523,9 @@ was then built (v0.21) and **removed on review** — dimming alone gave the focu
    `liveResolve` store/animation, mock server emits `resolve` on beat 3. 34/34.
 3e. ~~**Header beat strip + narrow accent scrollbar**~~ — **SHIPPED v0.22**; ~~wheel-scroll over brain
    cards~~ — **SHIPPED v0.23**; ~~demo-timeline modal + beat-1 fix~~ — **SHIPPED v0.24** (see §3).
-3f. **Demo-timeline content (v0.26, deferred — renumbered from v0.25, now taken by the audit increment).**
+3f. ~~**Demo-timeline content (v0.26)**~~ — **intake → don't-know region SHIPPED v0.26** (7 beats, 19-row
+   `events[]` render; `cbeat` wired incl. 3g). Remaining: curate + encode beats 7–11. See §3.
+3f-orig. **Demo-timeline content (v0.26, deferred — renumbered from v0.25, now taken by the audit increment).**
    `ROBOT_DEMO_TIMELINE_STORY.md` (full ~55-row story) was drafted but **rejected by the user — improve in a
    future chat**. The richer per-section row model it needs (per-brain frame `sections:{task,plan,pipeline}` +
    `resolve` + `caps`; builder emits one row per *changed* section) is the v0.26 work, gated on an approved

@@ -109,6 +109,13 @@ const BEATS = {
   ]
 };
 
+// v0.26 — the intake region expanded from 2 to 7 beats (cbeat 0..6), shifting the original
+// beats 2..6 to 7..11. Remap the 7-entry authored arrays onto the 12-beat timeline; the new
+// intake placeholders (1..4) clone the order-beat graph, and 5..6 clone the don't-know graph.
+// (Graph is illustrative + live-suppressed, so placeholder fidelity here is low-stakes.)
+const _BEAT_REMAP=[0,0,0,0,0,1,1,2,3,4,5,6];  // newBeat -> original authored index
+for(const _k in BEATS){ const _o=BEATS[_k]; BEATS[_k]=_BEAT_REMAP.map(j=>_o[j]||_o[_o.length-1]); }
+
 // Build a concrete subgraph {nodes:[...], edges:[...]} for (brain, beat).
 function buildSub(brain, beat){
   const G = GRAPH[brain]; const B = (BEATS[brain]||[])[beat] || (BEATS[brain]||[]).slice(-1)[0] || {vis:[]};

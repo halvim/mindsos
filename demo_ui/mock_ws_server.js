@@ -95,7 +95,7 @@ wss.on("connection", (ws) => {
     // the real DM-4 backend + the baked `frames` where msgs are inline in the beat). Sending
     // messages before the state would attach them to the previous beat's state.
     const { msgs, ...stateFields } = b;                 // a `state` frame is the beat minus its msgs
-    ws.send(JSON.stringify(Object.assign({ type:"state", t:Date.now(), beat:i-1 }, stateFields)));
+    ws.send(JSON.stringify(Object.assign({ type:"state", t:Date.now(), beat:i-1, cbeat:i-1 }, stateFields)));
     for(const m of (b.msgs||[])) ws.send(JSON.stringify({ type:"message", from:m[0], to:m[1], text:m[2] }));
     const rf = RESOLVE_FRAMES[i-1];                     // per-brain Plan▸Resolve frames for this beat
     if(rf) for(const f of rf) ws.send(JSON.stringify(Object.assign({ type:"resolve", t:Date.now() }, f)));

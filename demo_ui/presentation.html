@@ -341,7 +341,7 @@
   <header>
     <h1>Minds<span class="osb">OS</span> Demo</h1>
     <span class="tag">presentation</span>
-    <span class="tag">v0.25</span>
+    <span class="tag">v0.26</span>
     <span class="tag" id="honesty" style="color:var(--warn);border-color:#5a4a1f">mock data · not wired to live brains</span>
     <div class="controls">
       <button id="audit"><svg class="hi" viewBox="0 0 14 14"><circle cx="6" cy="6" r="3.4" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="8.6" y1="8.6" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Audit ▾</button>
@@ -545,21 +545,69 @@ const baseBrains={
 };
 const base={items:{box1:[-0.80,0],sheet1:[-1.00,0],tube1:[-0.45,0]},eff:{a1:null,a2:null},brains:JSON.parse(JSON.stringify(baseBrains))};
 const frames=[
- {title:"Order placed", narr:"User submits an order with a spatial relation: place the Box above the Tube on Arm 2's shelf, and the Sheet at the center of Arm 1's shelf.",
-  brains:{mgr:{intent:"A2: Box above Tube · A1: Sheet @ center",chain:0,decision:"Break down the order → work out where each item goes",active:true}},
-  msgs:[["User→Orchestrator","Order: Box above Tube; Sheet at center"]]},
- {title:"Ignorant start → don’t-know", narr:"The plan needs a skill no brain has yet: hand an item across the belt gap. The system knows what it doesn’t know.",
-  brains:{mgr:{intent:"Plan the order",chain:2,decision:"Need a way to hand items across the gap → don’t know how",flags:["gap"],active:true},
-    a1:{intent:"Answer: what can I do?",chain:1,decision:"Report: don’t know",flags:["gap"]},
-    a2:{intent:"Answer: what can I do?",chain:1,decision:"Report: don’t know",flags:["gap"]}},
-  msgs:[["Orchestrator→Arm1","What can you do?"],["Arm1→Orchestrator","Don’t know how to hand across the gap"],
-        ["Orchestrator→Arm2","What can you do?"],["Arm2→Orchestrator","Don’t know how to hand across the gap"]]},
- {title:"Learn by demonstration", narr:"User demonstrates the skill once by assembling action blocks. The system captures it as a new, reusable skill.",
+ // ===== v0.26: intake → don't-know region expanded to 7 beats (cbeat 0..6). =====
+ // Each carries card fields (intent/decision/flags) for the brain cards AND an ordered events[]
+ // for the demo-timeline (the curated, IP-sanitized render approved 2026-06-22). msgs[] feed the
+ // Messages card (full exchange); events[] feed the timeline (curated). See ROBOT_DEMO_TIMELINE_STORY.md.
+ {cbeat:0,title:"Order placed", narr:"User submits an order with a spatial relation: place the Box above the Tube on Arm 2's shelf, and the Sheet at the center of Arm 1's shelf.",
+  brains:{mgr:{intent:"A2: Box above Tube · A1: Sheet @ center",chain:0,decision:"Break down the order; work out where each item goes",active:true}},
+  msgs:[["User→Orchestrator","Order: Box above Tube; Sheet at center"]],
+  events:[
+    {source:"user",party:"User→Orchestrator",text:"Order: Box above Tube; Sheet at center"},
+    {source:"seamA",text:"Session authenticated"},
+    {source:"mgr",section:"task",text:"Break down the order; work out where each item goes"}]},
+ {cbeat:1,title:"Look at the table", narr:"The system looks at the table and builds a picture of the world: it finds a Box, a Tube and a Sheet, and matches each requested placement to a real item.",
+  brains:{mgr:{intent:"Build the world from the table",chain:1,decision:"Found a Box, a Tube and a Sheet; match each to a real item",active:true}},
+  events:[
+    {source:"mgr",section:"task",text:"Look at the table — found a Box, a Tube, and a Sheet"},
+    {source:"mgr",section:"task",text:"Match each requested placement to a real item"}]},
+ {cbeat:2,title:"Understand the order", narr:"The system takes in the order: two placements and one spatial relation — one placement relative, one fixed.",
+  brains:{mgr:{intent:"Understand the order",chain:1,decision:"Two placements, one spatial relation; one relative, one fixed",active:true}},
+  events:[
+    {source:"mgr",section:"task",text:"Two placements, one spatial relation"},
+    {source:"mgr",section:"plan",text:"One placement is relative (Box above Tube), one is fixed (Sheet at center)"},
+    {source:"mgr",section:"plan",text:"Done this kind of job before? — break it into per-arm jobs"}]},
+ {cbeat:3,title:"Split into per-arm jobs", narr:"The order is broken into per-arm jobs: the Sheet goes to Arm 1, the Box-above-Tube to Arm 2 — but the Box and Tube start on Arm 1's side and must cross.",
+  brains:{mgr:{intent:"Split into per-arm jobs",chain:2,decision:"Sheet to Arm 1; Box above Tube to Arm 2; Box & Tube must cross to Arm 2",active:true}},
+  events:[
+    {source:"mgr",section:"plan",text:"Sheet at center → Arm 1 (left side)"},
+    {source:"mgr",section:"plan",text:"Box above Tube → Arm 2 (right side)"},
+    {source:"mgr",section:"plan",text:"Box & Tube start on Arm 1's side — they must cross to Arm 2"}]},
+ {cbeat:4,title:"What can each brain do?", narr:"The Orchestrator asks each brain what it can do: the arms can move and grip; the conveyor can move the belt and hold items.",
+  brains:{mgr:{intent:"Find out what each brain can do",chain:2,decision:"Asked Arm 1, Arm 2 and the Conveyor what they can do",active:true},
+    a1:{intent:"Answer: what can I do?",chain:1,decision:"I can move and grip"},
+    a2:{intent:"Answer: what can I do?",chain:1,decision:"I can move and grip"},
+    conv:{intent:"Answer: what can I do?",chain:1,decision:"I can move the belt and hold items"}},
+  msgs:[["Orchestrator→Arm1","What can you do?"],["Arm1→Orchestrator","I can move and grip"],
+        ["Orchestrator→Arm2","What can you do?"],["Arm2→Orchestrator","I can move and grip"],
+        ["Orchestrator→Conveyor","What can you do?"],["Conveyor→Orchestrator","I can move the belt and hold items"]],
+  events:[
+    {source:"seamB",party:"Orchestrator→Arm 1 / Arm 2 / Conveyor",text:"Asked Arm 1, Arm 2 and the Conveyor what they can do → move & grip; move the belt & hold items"}]},
+ {cbeat:5,title:"No way across the gap", narr:"The plan needs a skill no brain has: hand an item across the belt gap. No brain can do it, and none knows how to place an item into a shelf cell. The system knows what it doesn't know.",
+  brains:{mgr:{intent:"Test the plan",chain:2,decision:"No brain can hand items across; need a way — don't know how yet",flags:["gap"],active:true},
+    a1:{intent:"Answer honestly",chain:1,decision:"Don't know how to hand across the gap",flags:["gap"]},
+    a2:{intent:"Answer honestly",chain:1,decision:"Don't know how to hand across the gap",flags:["gap"]}},
+  msgs:[["Arm1→Orchestrator","Don't know how to hand across the gap"],
+        ["Arm2→Orchestrator","Don't know how to hand across the gap"]],
+  events:[
+    {source:"mgr",section:"plan",text:"No brain can hand items across, and none knows how to place an item into a shelf cell"},
+    {source:"a1",party:"Arm 1→Orchestrator",text:"Don't know how to hand across the gap"},
+    {source:"a2",party:"Arm 2→Orchestrator",text:"Don't know how to hand across the gap"},
+    {source:"mgr",section:"plan",text:"Need a way to hand items across the gap — don't know how yet"}]},
+ {cbeat:6,title:"Ask for help & remember", narr:"The system records the gap, asks the user to demonstrate the missing skill, and saves the run.",
+  brains:{mgr:{intent:"Ask for help",chain:2,decision:"Gap noted: hand-off is missing; ask the user to show me",flags:["gap"],active:true}},
+  msgs:[["Orchestrator→User","I don't know how to do this yet — can you show me?"]],
+  events:[
+    {source:"mgr",section:"cap",text:"Gap noted: hand-off is missing"},
+    {source:"mgr",party:"Orchestrator→User",text:"I don't know how to do this yet — can you show me?"},
+    {source:"seamA",text:"Audit entry recorded · State saved"}]},
+ // ===== legacy beats (original 2..6) → cbeat 7..11, content unchanged =====
+ {cbeat:7,title:"Learn by demonstration", narr:"User demonstrates the skill once by assembling action blocks. The system captures it as a new, reusable skill.",
   brains:{mgr:{intent:"Learn the missing skill",chain:3,decision:"Save the new skill from the demonstration",flags:["learn"],active:true},
     a1:{intent:"Learn the hand-off",chain:3,decision:"Captured the demo → new skill",flags:["learn"],caps:[["move/grip",PRIM],["hand-off","learned"]],active:true},
     conv:{intent:"Learn staging",chain:2,decision:"Learned to stage on the belt",caps:[["advance/reverse",PRIM],["stage-on-belt","learned"]],active:true}},
   msgs:[["User→Arm1","Demonstrate: place, stage, pick"],["Demonstration→Library","Saved as a new skill"]]},
- {title:"Cooperative execution", narr:"The brains run the new skill: the belt hands the Box and Tube to Arm 2, which places the Box in the cell above the Tube; Arm 1 sets the Sheet at the center of its shelf.",
+ {cbeat:8,title:"Cooperative execution", narr:"The brains run the new skill: the belt hands the Box and Tube to Arm 2, which places the Box in the cell above the Tube; Arm 1 sets the Sheet at the center of its shelf.",
   items:{box1:[0.70,-0.62], tube1:[0.70,-0.77], sheet1:[-0.70,-0.77]}, eff:{a1:[-0.70,-0.77],a2:[0.70,-0.62]},
   brains:{mgr:{intent:"Execute placements",chain:5,decision:"Work out ‘Box above Tube’ → Arm 2 top-center; go",active:true},
     a1:{intent:"Place Sheet on its shelf",chain:5,decision:"Placed Sheet in Arm 1 center ✓",caps:[["move/grip",PRIM],["hand-off","learned"],["place-in-cell","learned"]],active:true},
@@ -567,19 +615,19 @@ const frames=[
     conv:{intent:"Bridge the gap",chain:4,decision:"Advance → stage on the belt",caps:[["advance/reverse",PRIM],["stage-on-belt","learned"]],active:true}},
   msgs:[["Orchestrator→Arm1","Place Sheet in Arm 1 center"],["Orchestrator→Conveyor","Advance the belt"],
         ["Orchestrator→Arm2","Place Box above the Tube"],["Arm2→Orchestrator","Done: Box above Tube"]]},
- {title:"Share + body limits", narr:"The learned skill is shared across the fleet; Arm 2 receives it. But Arm 2’s jaw is refused the suction-only Sheet skill — the skill transfers, yet the body limits what each arm can do.",
+ {cbeat:9,title:"Share + body limits", narr:"The learned skill is shared across the fleet; Arm 2 receives it. But Arm 2’s jaw is refused the suction-only Sheet skill — the skill transfers, yet the body limits what each arm can do.",
   brains:{mgr:{intent:"Share the skill fleet-wide",chain:5,decision:"Share the skill; block Arm 2’s pick-sheet (wrong gripper)",flags:["promo","gate"],active:true},
     a1:{intent:"Share the skill",chain:5,decision:"Shared the hand-off fleet-wide",flags:["promo"]},
     a2:{intent:"Receive + check my body",chain:4,decision:"Received the hand-off; pick-sheet blocked (no suction)",flags:["promo","gate"],caps:[["hand-off","inherited"],["pick-sheet","GATED"]],active:true}},
   msgs:[["Arm1→Fleet","Share the hand-off skill"],["Fleet→Arm2","Skill available"],["Arm2→Orchestrator","Blocked: pick-sheet needs suction"]]},
- {title:"Degradation → replan", narr:"Arm 2’s wrist faults mid-order. It diagnoses itself, the gap reappears, and the Orchestrator replans around the loss.",
+ {cbeat:10,title:"Degradation → replan", narr:"Arm 2’s wrist faults mid-order. It diagnoses itself, the gap reappears, and the Orchestrator replans around the loss.",
   eff:{a1:null,a2:null},
   brains:{mgr:{intent:"Recover from fault",chain:4,decision:"Re-plan: reroute via Arm 1 + conveyor",flags:["fault","gap"],active:true},
     a2:{intent:"Self-diagnose",chain:1,decision:"Wrist fault → withdraw fine-grasp",flags:["fault","gap"],caps:[["hand-off","inherited"],["fine-grasp","FAULT"]],active:false},
     a1:{intent:"Absorb rerouted work",chain:4,decision:"Accept the reroute",active:true},
     conv:{intent:"Re-stage",chain:4,decision:"Reverse → re-stage for Arm 1",active:true}},
   msgs:[["Arm2→Orchestrator","Wrist fault → withdraw fine-grasp"],["Orchestrator→Conveyor","Reverse + re-stage"]]},
- {title:"Trace recap", narr:"The run replayed: found a gap, learned the skill, shared it, hit a body limit, recovered from a fault — reasoning visible throughout.",
+ {cbeat:11,title:"Trace recap", narr:"The run replayed: found a gap, learned the skill, shared it, hit a body limit, recovered from a fault — reasoning visible throughout.",
   brains:{mgr:{intent:"Remember this run",chain:5,decision:"Run remembered: didn’t-know → learned → shared → blocked → recovered",flags:["learn","promo","gate","fault"],active:false},
     a2:{intent:"Degraded",chain:5,decision:"Fine-grasp pending repair",active:false}},
   msgs:[["Orchestrator→Library","Remember this run"]]}
@@ -590,7 +638,7 @@ function merge(prev,f){const s=JSON.parse(JSON.stringify(prev));
   s.eff=f.eff?Object.assign({a1:null,a2:null},f.eff):{a1:null,a2:null};
   if(f.brains)for(const b in f.brains)s.brains[b]=mergeBrain(s.brains[b],f.brains[b]);
   for(const b of ["mgr","a1","a2","conv"]){if(!(f.brains&&f.brains[b]&&"active" in f.brains[b]))s.brains[b].active=false;if(!(f.brains&&f.brains[b]&&"flags" in f.brains[b]))s.brains[b].flags=[];}
-  s.title=f.title;s.narr=f.narr;s.msgs=f.msgs||[];if(f.beat!=null)s.beat=f.beat;return s;}
+  s.title=f.title;s.narr=f.narr;s.msgs=f.msgs||[];if(f.beat!=null)s.beat=f.beat;if(f.cbeat!=null)s.cbeat=f.cbeat;return s;}
 // ===== v10.6 data-source seam — mock by default; ?live=<wsurl> connects live brains =====
 // (view layer is unchanged; only WHERE `states` comes from differs. See ROBOT_DEMO_WS_CONTRACT.md)
 const LIVE_URL=(typeof location!=='undefined' && new URLSearchParams(location.search).get('live'))||null;
@@ -895,8 +943,10 @@ const TL_SECLAB={}; TL_SEC_META.forEach(([k,l])=>TL_SECLAB[k]=l); TL_SUB_META.fo
 const TL_BRAINSET={mgr:1,a1:1,a2:1,conv:1};
 // Seam A (server) events per beat — representative + sanitized in mock; empty in live until the
 // backend emits server_event (same honesty as the Server panel).
-const SERVER_BEAT={0:[{text:"Session authenticated"}],2:[{text:"State saved"}],
-  4:[{text:"Action blocked — permission required · Arm 2"}],6:[{text:"Audit entry recorded"}]};
+// v0.26: beats 0..6 carry their own Seam-A rows in events[]; these legacy entries are keyed to the
+// shifted indices (learn=7, share=9, recap=11) and only apply to the non-events[] legacy frames.
+const SERVER_BEAT={7:[{text:"State saved"}],
+  9:[{text:"Action blocked — permission required · Arm 2"}],11:[{text:"Audit entry recorded"}]};
 const TL_ON={src:new Set(TL_SRC_META.map(m=>m[0])),sec:new Set(TL_SEC_META.map(m=>m[0])),sub:new Set(TL_SUB_META.map(m=>m[0]))};
 let tlOpen=false, tlBuilt=false;
 // live: reconstruct change-only frames by diffing consecutive states (skip the idle seed)
@@ -904,7 +954,7 @@ function tlFramesFromStates(){
   const out=[]; let prev=null;
   for(let i=0;i<states.length;i++){const s=states[i];
     if(s.title==null&&!s.narr&&!(s.msgs&&s.msgs.length)){prev=s;continue;}
-    const fr={beat:(s.beat!=null?s.beat:out.length),title:s.title,narr:s.narr,msgs:s.msgs||[],brains:{}};
+    const fr={beat:(s.cbeat!=null?s.cbeat:(s.beat!=null?s.beat:out.length)),title:s.title,narr:s.narr,msgs:s.msgs||[],brains:{}};
     for(const k in TL_BRAINSET){const c=s.brains&&s.brains[k]; if(!c)continue; const p=prev&&prev.brains&&prev.brains[k];
       const delta={}; if(!p||c.decision!==p.decision)delta.decision=c.decision;
       const nc=(c.caps||[]).filter(cc=>!(p&&p.caps&&p.caps.some(pc=>pc[0]===cc[0]&&pc[1]===cc[1]))); if(nc.length)delta.caps=nc;
@@ -953,7 +1003,7 @@ function openTimeline(){
   const bd=document.getElementById("maxbackdrop");bd.style.display="block";bd.onclick=closeTimeline;
   tlRenderPills(); renderTimeline();
   const modal=document.getElementById("tlmodal");modal.style.display="flex";
-  const cur=modal.querySelector(`.tlbeat[data-beat="${(states[idx]&&states[idx].beat!=null)?states[idx].beat:idx}"]`);
+  const cur=modal.querySelector(`.tlbeat[data-beat="${(states[idx]&&states[idx].cbeat!=null)?states[idx].cbeat:((states[idx]&&states[idx].beat!=null)?states[idx].beat:idx)}"]`);
   if(cur)cur.scrollIntoView({block:"start"});
   tlBuilt=true;
 }
@@ -1148,7 +1198,7 @@ function renderPanels(st){
   // was off by one); show an honest idle line before the first frame.
   const bn=document.getElementById("beatnum"),bx=document.getElementById("beatnarr");
   const isIdle=(st.title==null&&!st.narr);
-  const bno=(st.beat!=null?st.beat:idx)+1, btot=(typeof liveBeatsTotal==="number"?liveBeatsTotal:states.length);
+  const bno=(st.cbeat!=null?st.cbeat:(st.beat!=null?st.beat:idx))+1, btot=(typeof liveBeatsTotal==="number"?liveBeatsTotal:states.length);
   if(bn) bn.textContent=isIdle?"Ready":("Beat "+bno+" / "+btot);
   if(bx) bx.textContent=isIdle?"Place an order to begin":((st.title?st.title+" — ":"")+(st.narr||""));
   for(const [k] of BR){const data=st.brains[k],card=document.getElementById("bc_"+k);

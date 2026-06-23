@@ -27,6 +27,7 @@
   function normalizeFrame(f){
     const out={};
     if(f.beat!=null)  out.beat=f.beat;   // authoritative beat index (beat-strip counter; v0.24)
+    if(f.cbeat!=null) out.cbeat=f.cbeat; // 0-based global storyline beat (v0.26; beat-strip + timeline grouping)
     if(f.title!=null) out.title=f.title;
     if(f.narr!=null)  out.narr=f.narr;
     if(f.items)       out.items=f.items;

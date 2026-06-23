@@ -13,15 +13,15 @@ const R_WIN = w=>{const m={};for(let i=0;i<9;i++)m[i]='out';m[w]='win';return m;
 // Beat 3 (Cooperative execution): "Box above Tube on Arm 2" + "Sheet @ center on Arm 1".
 // Tube sits at center (idx 4); "above" → the row above (0,1,2); tie-break → directly above (1).
 const RESOLVE = {
-  mgr:{3:{acc:'#d98040', tube:4, item:'Box', clause:'Box above Tube → Arm 2',
+  mgr:{8:{acc:'#d98040', tube:4, item:'Box', clause:'Box above Tube → Arm 2',
     stages:[{cap:'all shelf cells (9)',            cells:R_ALL()},
             {cap:'clause “above Tube” → 3',         cells:R_SET([0,1,2])},
             {cap:'tie-break: directly above → 1',   cells:R_WIN(1)}], winner:1}},
-  a2:{3:{acc:'#d98040', tube:4, item:'Box', clause:'Box above Tube',
+  a2:{8:{acc:'#d98040', tube:4, item:'Box', clause:'Box above Tube',
     stages:[{cap:'all shelf cells (9)',            cells:R_ALL()},
             {cap:'above Tube → 3 candidates',       cells:R_SET([0,1,2])},
             {cap:'directly above → place ✓',        cells:R_WIN(1)}], winner:1}},
-  a1:{3:{acc:'#3a8be0', tube:null, item:'Sheet', clause:'Sheet @ center', absolute:true,
+  a1:{8:{acc:'#3a8be0', tube:null, item:'Sheet', clause:'Sheet @ center', absolute:true,
     stages:[{cap:'all shelf cells (9)',            cells:R_ALL()},
             {cap:'term “center” → 1 cell ✓',        cells:R_WIN(4)}], winner:4}}
 };
