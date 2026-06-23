@@ -459,3 +459,58 @@ dated tag (redundant once §7's `<name>-confirmed` tag exists at the squash comm
 **Gate:** this chat adds docs only (ADR-0184 + this §13) — no `mindsos_*` code, no test delta, no
 new tag (the needed tag already exists). No gate run required beyond the standing green at
 `s2-confirmed`.
+
+---
+
+## 14. Part 5 — R0 consumer-gate verdict (core-mod chat 2026-06-23) → **KEEP DEFERRED (no code)**
+
+Part 5 (DataState operand-arity / role axis) was deferred at §9/§11 for "no executing consumer."
+This chat's R0 deliverable was a single verdict — **does any path EXECUTE a same-type
+multi-operand capability through `invoke` today?** Reanalysis converged after 4 skeptical passes
+(stable passes 3–4, no reversal). **Verdict: NO.** Ratified keep-deferred. No branch, no code, no
+tag.
+
+### Grounding (verified)
+
+- **ARC — not a consumer.** Provenance-only. The single cap it ran through `cl.invoke`
+  (`touching_delta`) is a **monolith over `(pair, background)`** — `background` is not a declared
+  input and it does **not** pass two same-type operands through the inputs map
+  (`projects/arc_demo/.../arc1/PIPELINE_DECISIONS.md` §4 D3, the 2026-06-21 pass-2 entry; §5 pts 5–6).
+- **Bongard — active milestone is m2** (polygon Local-mint + restart): a **flat composite,
+  `input_group=all_required` over distinct DataState types** (`{segments,vertices}→polygon`). No
+  same-type operand. `CORE_CHANGES.md`: "Milestone 2 is fully core-unblocked." Does not hit Part 5.
+- **Bongard comparators (`same_object`/`same_shape` = two Objects/Shapes)** are **milestone 3**
+  (scene parse / relation types, `PLAN.md` §9 + §8 mapping), downstream of the active m2 and
+  **not built** (committed `demo/bongard` = 3 docs, no runner; any uncommitted runner lives on the
+  unmounted `MindsOS-bongard` worktree, but the milestone sequence is decisive — m3 is unreached).
+- **m5 fold / promotion** — upstream-gated: no writer, WSD-routed (ADR-0184; `PLAN.md` line 28
+  "Build at m5 — not now").
+
+### Trigger conditions (un-defer only when ONE is met)
+
+1. **`invoke` must enforce `fold`.** Part 6 (§11) shipped `fold` *unenforced* because its
+   "N-values-under-one-IRI" shape needs Part 5's operand axis. The first executing `fold` consumer
+   (none today — `reconcile_background` is ARC provenance-only; m5 fold gated) makes Part 5 the
+   prerequisite to closing that validation branch. **This is the one real coupling.**
+2. **ConjunctionFinder must auto-compose a comparator from two separately-produced same-type
+   operands.** The **monolith-over-pair workaround** (one composite "Pair" DataState, body unpacks
+   internally — proven by ARC's `touching_delta`) lets a demo ship `same_object` *without* core
+   change, but hides the two operands from the finder. Part 5 is required only if the finder itself
+   must compose by role. Until a consumer needs that, the workaround stands.
+
+### Conditional dep carried forward (no action now)
+
+ADR-0184 (CC-3) ties m5's promotion-descriptor operand shape to the Part-5 resolution. Not
+circular: only the *subset* of m5 mints with same-type-operand inputs needs Part 5; the built
+polygon-family path does not. Fires conditionally if/when a same-type-operand concept is minted.
+Captured as ADR-0184's "open contract risk" — unchanged.
+
+### Side-finding (hand to Mac — STATE is Mac-owned)
+
+`STATE.json` `pending_designs.composition-lifecycle-s2-part5` labels the comparators a
+"concept-search milestone." Per `PLAN.md` §9 they are **scene-parse (m3)**; concept-search is m4.
+Substance unchanged (both downstream of m2, unbuilt). One-word fix on the next STATE touch; add a
+pointer to this §14.
+
+**Gate:** docs only (this §14) — no `mindsos_*` code, no test delta, no new tag. No gate run
+required beyond the standing green at `s2-confirmed`.
