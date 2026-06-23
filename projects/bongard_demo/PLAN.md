@@ -169,7 +169,17 @@ Mint is a **Skill**: cross-layer intelligence. **L3-the-layer is extensible; eac
 
 ## 9. Sequence / milestones
 
-1. **Perception chain on a single polygon** — `pixels→…→polygon`, with abstain.
+**2026-06-22 — MILESTONE 1 BUILT + sandbox-green (29 tests), pending Linux gate.**
+Package `projects/bongard_demo/bongard/` on the pinned `composition-lifecycle-s2-confirmed` core, all in-memory (`CapacityLayer()` + `DuckSession`), no `mindsos_*` edits. Chain runs through real `cl.invoke`: `pixels→point-set→boundary→segments→vertices→polygon`. Verdicts on the m1 set: triangle/square/pentagon **solve** (correct vertex count + type); circle **abstain(fit)**; open_strokes/near_miss **abstain(structure)**; bowtie **abstain(fit)**; held-out polygons (9 size/pos/rot variants) solve **prior-free**.
+Build findings (forcing-function payoff — implementation surfaced these, not the spec):
+- **Tracer choice is the leaf's load-bearing decision.** NN-walk stranding fabricated spurious corners; **angle-sort around the centroid** is correct *for the convex polygon family* and immune to stranding. Non-convex/concave shapes need a connectivity tracer — that is the next leaf swap (and the real home of the geometric structure gate, see below).
+- **Gate taxonomy is three, not two.** PLAN §10 D's "fit gate + structure gate" splits the structure gate into **topological** (raster: single closed stroke — `topology.py`; catches open/disconnected, R=0 since re-segment can't repair topology) and **geometric** (predicate: simple/closed ring — catches self-intersection, triggers R=1). Under the angle-sort tracer the **fit gate subsumes the geometric gate** (a convex-hull reconstruction can't match a self-intersecting stroke, so its residual is high → fit-abstain). So R=1's productive path is the **non-convex seam** — unit-tested directly, not exercised by m1 rendered samples (consistent with PLAN §10 H "clean polygons individuate first pass").
+- **Selection is parsimony-primary, not RMS-primary.** RMS-primary rewards over-fit N-gons and lets a fine polygon fit a circle within τ_fit (defeating the gate). Correct: among τ_fit-passers under a **polygon-complexity cap** (`max_sides`, the curve discriminator), pick **fewest vertices**.
+- **τ_fit is scale-banded.** Normalized residual from 1px pixelation grows ~1/size, so a single-seed (r=40) calibration under-covers small shapes; the Global-default floor (0.012) covers r≈20–55 (measured: polygons ≤0.008 vs circle ~0.018). Per-problem Local recalibration is the m2+ path. Vertex-split artifacts needed a `max(abs_floor, frac·diag)` close-vertex merge to generalize across scale.
+- **G4 confirmed in the build:** read bodies get a plain dict context (core hardcodes empty `learned_parameters` for reads), so the demo threads `Params` via the read-path `context` dict. **D-M2-b confirmed retired:** `input_group=all_required` + core Part-6 `_validate_inputs` enforce predicate input presence; the body does not re-check.
+Modules: `ontology` `harness` `render` `signals` `leaf` `topology` `geometry` `calibration` `segments` `predicate` `control`. Tests: `test_ontology/render/perception`. **Next:** Linux gate `pytest projects/bongard_demo`, then milestone 2 (Local shape-mint on the F9/composite-persistence substrate).
+
+1. **Perception chain on a single polygon** — `pixels→…→polygon`, with abstain. **← BUILT (above).**
 2. **Shape-mint = mint milestone 1** — after triangle, mint square/pentagon from the same atoms (cheapest test of the mint mechanism; the worked example handed to Skill-Acquisition).
 3. **Multi-object scene parse** (objects + relations).
 4. **Concept search + held-out verify** (no concept-mint yet).
