@@ -49,6 +49,28 @@ class CapacityRegistrationError(CapacityLayerError):
     """
 
 
+class InputContractError(CapacityRegistrationError):
+    """Invoke inputs violate the declared ``CONSUMES`` contract (ADR-0072
+    §amendment-2 / composition-lifecycle Slice 2 Part 6).
+
+    ``kind`` is ``"missing_required"`` (an ``all_required`` input absent,
+    or ``any_of`` satisfied by none) or ``"unexpected_input"`` (a key not
+    in the declared inputs). Validated against the declaration's input
+    set, respecting ``input_group``; ``fold`` is not enforced at v1 (its
+    operand multiplicity is Slice 2 Part 5).
+
+    On the ``invoke`` path it is caught into the ADR-0072 envelope
+    (``success=False``) and the problem-trace record is tagged
+    ``error_kind="input_contract:<kind>"``. Direct ``call_capacity`` and
+    the write-bypass raise it. Subclasses ``CapacityRegistrationError`` so
+    existing registration-family handlers still catch it.
+    """
+
+    def __init__(self, message: str, *, kind: str) -> None:
+        super().__init__(message)
+        self.kind = kind
+
+
 class ConstraintViolationError(CapacityLayerError):
     """A CONSTRAINT edge declaration violates an L3 invariant.
 
@@ -161,6 +183,7 @@ __all__ = [
     "CapacityLayerError",
     "DataStateError",
     "CapacityRegistrationError",
+    "InputContractError",
     "ConstraintViolationError",
     "PipelineNotFoundError",
     "ProblemTraceError",

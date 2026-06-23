@@ -32,13 +32,15 @@ def test_each_retired_resident_export_unresolvable():
         )
 
 
-def test_phase_45_export_count_is_118():
+def test_export_count_is_139():
     """Count-equals sentinel — 95 (P30) -> 97 (P31) -> 110 (P33) ->
-    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45). Phase 45 (Rail D,
-    ADR-0162) adds 1 export (``DreamCapacity``).
+    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9) -> 139
+    (composition-lifecycle: ADR-0071 §am-2 + ADR-0159 §am-1, net +11 —
+    see the phase_29 slate ledger for the breakdown).
     """
-    assert len(mindsos_capacity.__all__) == 118, (
-        f"Expected 118 exports at Phase 45; found {len(mindsos_capacity.__all__)}"
+    assert len(mindsos_capacity.__all__) == 139, (
+        f"Expected 139 exports after composition-lifecycle; "
+        f"found {len(mindsos_capacity.__all__)}"
     )
 
 
@@ -51,8 +53,11 @@ def test_phase_30_exports_remain_intact():
         "ProblemTraceRecord",
         "ProblemTraceSink",
         "emit_problem_trace",
+        # composition-lifecycle: linear Pipeline/PipelineStep retired,
+        # replaced by the Pipeline result type (ADR-0071 §am-2).
         "Pipeline",
-        "PipelineStep",
+        "DAGStep",
+        "DAGEdge",
         "find_pipeline",
         "PipelineNotFoundError",
         "ProblemTraceError",

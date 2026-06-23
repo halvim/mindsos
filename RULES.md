@@ -29,7 +29,13 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 
 ## 4. Testing (Linux, parallel)
 - Each project runs its own isolated stack, in its own terminal, concurrently:
-  `docker compose -p mindsos-<project> --profile test run --rm mindsos-test pytest <paths>`
+  `docker compose -p mindsos-<project> --profile test run --rm --build mindsos-test pytest <paths>`
+- **Always pass `--build`.** The test image bakes the source via `COPY`
+  at build time (no volume mount), so without `--build` the gate silently
+  reuses a stale image and tests OLD code. (This masked the
+  `mindsos_cli` breakage on the Slice-1 gate — a no-`--build` run reported
+  3991 green while the real branch was 4019; see STATE.recent
+  `pipeline rename` 2026-06-22.)
 - core-dev (main/phase/wsd) tests the modified core in place.
 - consumer (demo/*) tests demo code on top of the pinned, unmodified core.
 

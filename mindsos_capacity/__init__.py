@@ -59,13 +59,16 @@ the invocation runtime + BFS pipeline finder + problem-trace primitives
   instance (``self.problem_trace``); multi-tenant provenance via the
   payload dict; L4 drains and persists to L2 ``problem-trace``
   role-graph — Phase 30.
-- ``Pipeline`` + ``PipelineStep`` + ``find_pipeline`` — datastate-keyed
-  BFS over the bipartite PRODUCES/CONSUMES edge set (ADR-0071 +
-  ADR-0156). Shortest-by-capacity-count; raises ``PipelineNotFoundError``
-  on exhaustion; ignores constraints (L4 filters post-hoc) — Phase 30.
-  Pathfinding-as-registered-builtin retires at Phase 31 per ADR-0071
-  §Implementation (Phase 31) footer; ``find_pipeline`` (function-form)
-  is canonical.
+- ``Pipeline`` (+ ``DAGStep`` / ``DAGEdge``) + ``find_pipeline`` — the
+  finder result: a converging capacity DAG (``steps`` wired by ``edges``)
+  producing a target DataState from the available start DataStates, over
+  the bipartite PRODUCES/CONSUMES edge set (ADR-0071 §am-2 + ADR-0156).
+  ``find_pipeline`` is the BFS back-compat entry point; ``BFSFinder`` /
+  ``ConjunctionFinder`` are the strategies (L4 selects). Raises
+  ``PipelineNotFoundError`` on exhaustion; ignores constraints (L4
+  filters post-hoc). (Was ``PipelineDAG`` through Slice 1; renamed to
+  ``Pipeline`` — the converging plan is the pipeline, "DAG" was a
+  migration-only marker.)
 - ``PipelineNotFoundError`` + ``ProblemTraceError`` — Phase 30 raisers.
 - Monitor lifecycle (the Phase 31 descriptive subscription handle +
   per-layer registry + lifecycle methods) **relocated to the L4
@@ -162,7 +165,16 @@ from .family_rules import (
     FamilyDontKnowShape,
     family_rule_for,
 )
-from .pipeline import Pipeline, PipelineStep, find_pipeline
+from .pipeline import (
+    START,
+    BFSFinder,
+    ConjunctionFinder,
+    DAGEdge,
+    DAGStep,
+    Finder,
+    Pipeline,
+    find_pipeline,
+)
 from .runtime import (
     ProblemTraceRecord,
     ProblemTraceSink,
@@ -186,6 +198,20 @@ from .context import (
     PromotionRuleVerdict,
     ReplanVerdict,
     TierVerdict,
+)
+from .reactivation import (
+    COMPOSITE_DAG,
+    INSTALLER_SENTINEL,
+    REACTIVATION_KEY,
+    ReactivationError,
+    ReactivationFactory,
+    build_declaration,
+    composite_dependencies,
+    is_reactivatable,
+    reactivate_from_descriptors,
+    reactivation_factories,
+    register_reactivation_factory,
+    unregister_reactivation_factory,
 )
 from .types import SessionArg, SessionProtocol
 from .views import CapacityLayerView
@@ -228,6 +254,10 @@ from .identifiers import (
     FUNCTIONAL_CATEGORIES,
     GLOBAL_FALKOR_GRAPH,
     GLOBAL_METAGRAPH_NAME,
+    INPUT_GROUP_ALL_REQUIRED,
+    INPUT_GROUP_ANY_OF,
+    INPUT_GROUP_FOLD,
+    INPUT_GROUPS,
     KIND_ADAPTER,
     KIND_DATASTATE,
     KIND_MONITOR,
@@ -282,6 +312,20 @@ __all__ = [
     "ProblemTraceError",
     "WriteHandleNotWiredError",
     "CapabilityDeniedError",
+    "ReactivationError",
+    # F9 re-activation contract (ADR-0185)
+    "REACTIVATION_KEY",
+    "INSTALLER_SENTINEL",
+    "ReactivationFactory",
+    "register_reactivation_factory",
+    "unregister_reactivation_factory",
+    "reactivation_factories",
+    "is_reactivatable",
+    "build_declaration",
+    "reactivate_from_descriptors",
+    # composition-lifecycle — composite-persistence residual
+    "COMPOSITE_DAG",
+    "composite_dependencies",
     # Phase 28 — CapacityLayer registry + views
     "CapacityLayer",
     "CapacityLayerView",
@@ -304,9 +348,15 @@ __all__ = [
     "ProblemTraceRecord",
     "ProblemTraceSink",
     "emit_problem_trace",
-    # Phase 30 — pipeline finder (ADR-0071)
+    # Phase 30 — pipeline finder (ADR-0071) + composition-lifecycle
+    # finder seam / DAG result type (ADR-0071 §amendment-2)
     "Pipeline",
-    "PipelineStep",
+    "DAGStep",
+    "DAGEdge",
+    "START",
+    "Finder",
+    "BFSFinder",
+    "ConjunctionFinder",
     "find_pipeline",
     # Phase 33 — write-outcome substrate (ADR-0146 §amendment-1)
     "WriteResult",
@@ -375,6 +425,10 @@ __all__ = [
     "KIND_ADAPTER",
     "KIND_DATASTATE",
     "NODE_KINDS",
+    "INPUT_GROUP_ALL_REQUIRED",
+    "INPUT_GROUP_ANY_OF",
+    "INPUT_GROUP_FOLD",
+    "INPUT_GROUPS",
     "EDGE_CONSTRAINT",
     "EDGE_PRODUCES",
     "EDGE_CONSUMES",
