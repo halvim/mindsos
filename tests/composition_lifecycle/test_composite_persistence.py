@@ -14,14 +14,14 @@ from mindsos_capacity import (
     COMPOSITE_DAG,
     DAGEdge,
     DAGStep,
-    PipelineDAG,
+    Pipeline,
     composite_dependencies,
 )
 from mindsos_capacity.pipeline import START
 
 
-def _composite_dag() -> PipelineDAG:
-    return PipelineDAG(
+def _composite_dag() -> Pipeline:
+    return Pipeline(
         start_datastates=("datastate:t.in",),
         target_datastate="datastate:t.out",
         steps=(
@@ -41,7 +41,7 @@ def test_dag_dict_roundtrip_is_codec_safe():
     # ADR-0182 codec carries lists + primitives only.
     assert isinstance(d["steps"], list) and isinstance(d["edges"], list)
     assert isinstance(d["start_datastates"], list)
-    assert PipelineDAG.from_dict(d) == dag
+    assert Pipeline.from_dict(d) == dag
 
 
 def test_composite_dependencies_reads_step_iris():

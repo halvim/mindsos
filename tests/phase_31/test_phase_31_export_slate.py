@@ -54,8 +54,8 @@ def test_phase_30_exports_remain_intact():
         "ProblemTraceSink",
         "emit_problem_trace",
         # composition-lifecycle: linear Pipeline/PipelineStep retired,
-        # replaced by the PipelineDAG result type (ADR-0071 §am-2).
-        "PipelineDAG",
+        # replaced by the Pipeline result type (ADR-0071 §am-2).
+        "Pipeline",
         "DAGStep",
         "DAGEdge",
         "find_pipeline",

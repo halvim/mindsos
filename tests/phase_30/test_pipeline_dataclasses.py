@@ -1,8 +1,8 @@
-"""Phase 30 / composition-lifecycle — PipelineDAG result-type shape.
+"""Phase 30 / composition-lifecycle — Pipeline result-type shape.
 
 The linear ``Pipeline``/``PipelineStep`` were retired by ADR-0071
 §amendment-2 (they cannot represent a converging DAG) and replaced by
-``PipelineDAG`` + ``DAGStep`` + ``DAGEdge``. This locks the new frozen
+``Pipeline`` + ``DAGStep`` + ``DAGEdge``. This locks the new frozen
 shapes, the ``len``/iter convenience over ``steps``, and the
 ``to_dict``/``from_dict`` round-trip used by the composite-persistence
 residual.
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import pytest
 
-from mindsos_capacity import START, DAGEdge, DAGStep, PipelineDAG
+from mindsos_capacity import START, DAGEdge, DAGStep, Pipeline
 
 
 def test_dag_step_frozen_dataclass():
@@ -37,7 +37,7 @@ def test_dag_edge_start_sentinel():
 
 
 def test_pipeline_dag_empty_steps():
-    dag = PipelineDAG(
+    dag = Pipeline(
         start_datastates=("datastate:a",),
         target_datastate="datastate:a",
         steps=(),
@@ -50,7 +50,7 @@ def test_pipeline_dag_empty_steps():
 def test_pipeline_dag_len_and_iter():
     s1 = DAGStep("cap:a", ("ds:in",), ("ds:mid",))
     s2 = DAGStep("cap:b", ("ds:mid",), ("ds:out",))
-    dag = PipelineDAG(
+    dag = Pipeline(
         start_datastates=("ds:in",),
         target_datastate="ds:out",
         steps=(s1, s2),
@@ -64,7 +64,7 @@ def test_pipeline_dag_len_and_iter():
 
 
 def test_pipeline_dag_dict_roundtrip():
-    dag = PipelineDAG(
+    dag = Pipeline(
         start_datastates=("ds:in", "ds:other"),
         target_datastate="ds:out",
         steps=(
@@ -77,5 +77,5 @@ def test_pipeline_dag_dict_roundtrip():
             DAGEdge(START, 1, "ds:other"),
         ),
     )
-    restored = PipelineDAG.from_dict(dag.to_dict())
+    restored = Pipeline.from_dict(dag.to_dict())
     assert restored == dag

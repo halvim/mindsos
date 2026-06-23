@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from mindsos_capacity import PipelineDAG, find_pipeline
+from mindsos_capacity import Pipeline, find_pipeline
 
 from tests.phase_30._fixtures import (
     DS_INPUT_IRI,
@@ -19,7 +19,7 @@ def test_find_pipeline_returns_linear_chain():
         target_datastate=DS_OUTPUT_IRI,
     )
 
-    assert isinstance(pipeline, PipelineDAG)
+    assert isinstance(pipeline, Pipeline)
     assert pipeline.start_datastates == (DS_INPUT_IRI,)
     assert pipeline.target_datastate == DS_OUTPUT_IRI
     assert len(pipeline) == 2

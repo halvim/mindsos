@@ -1,7 +1,7 @@
 """composition-lifecycle — Finder seam + BFS degenerate-linear DAG.
 
 ADR-0071 §amendment-2 parts 1+4: ``Finder`` is the L3 interface, BFS is
-one strategy, the result is a ``PipelineDAG``. BFS emits a
+one strategy, the result is a ``Pipeline``. BFS emits a
 *degenerate-linear* DAG (PB-F) and retains its single-input semantics
 (only the ``via`` input is wired).
 """
@@ -12,7 +12,7 @@ from mindsos_capacity import (
     BFSFinder,
     ConjunctionFinder,
     Finder,
-    PipelineDAG,
+    Pipeline,
     find_pipeline,
 )
 from mindsos_capacity.pipeline import START
@@ -30,7 +30,7 @@ def test_find_pipeline_returns_pipeline_dag():
     cl.register_capacity(cap("s1", ("in",), ("mid",)))
     cl.register_capacity(cap("s2", ("mid",), ("out",)))
     dag = find_pipeline(cl, start_datastate=IRI("in"), target_datastate=IRI("out"))
-    assert isinstance(dag, PipelineDAG)
+    assert isinstance(dag, Pipeline)
     assert [s.capacity_iri.split(":")[-1] for s in dag.steps] == ["s1", "s2"]
 
 

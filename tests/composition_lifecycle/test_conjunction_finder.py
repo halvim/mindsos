@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from mindsos_capacity import ConjunctionFinder, PipelineDAG, PipelineNotFoundError
+from mindsos_capacity import ConjunctionFinder, Pipeline, PipelineNotFoundError
 
 from tests.composition_lifecycle._fixtures import (
     IRI,
@@ -43,7 +43,7 @@ def test_all_required_ands_over_inputs():
 
     dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
 
-    assert isinstance(dag, PipelineDAG)
+    assert isinstance(dag, Pipeline)
     ci = step_index(dag, "combine")
     assert incoming_datastates(dag, ci) == ["a", "b"]
     # both producers present, combine after them (topological order)

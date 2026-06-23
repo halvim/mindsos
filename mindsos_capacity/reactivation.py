@@ -47,7 +47,7 @@ from .exceptions import CapacityRegistrationError
 REACTIVATION_KEY = "reactivation_key"
 
 #: Descriptor key holding a serialized composite pipeline (the
-#: :meth:`mindsos_capacity.PipelineDAG.to_dict` form). A *composite*
+#: :meth:`mindsos_capacity.Pipeline.to_dict` form). A *composite*
 #: capacity is one whose implementation runs a DAG over other capacities;
 #: persisting the DAG lets a re-activation factory rebuild it without
 #: serializing Python callables (the executor closure is re-supplied by
@@ -123,7 +123,7 @@ def composite_dependencies(descriptor: Mapping[str, Any]) -> Set[str]:
     """Capacity IRIs a composite descriptor's serialized DAG references.
 
     Reads the :data:`COMPOSITE_DAG` value (a
-    :meth:`~mindsos_capacity.PipelineDAG.to_dict` dict) and returns the
+    :meth:`~mindsos_capacity.Pipeline.to_dict` dict) and returns the
     set of ``capacity_iri`` named by its steps — the composite's
     dependencies. Returns an empty set for a non-composite descriptor (no
     :data:`COMPOSITE_DAG` key). This is the *data* half of dep-ordered

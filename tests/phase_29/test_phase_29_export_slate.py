@@ -38,8 +38,8 @@ PHASE_30_LIFTED_EXPORTS = {
     "InvocationResult",
     "call_capacity",
     # composition-lifecycle (ADR-0071 §am-2): the linear Pipeline/PipelineStep
-    # were replaced by the PipelineDAG result type + DAGStep/DAGEdge.
-    "PipelineDAG",
+    # were replaced by the Pipeline result type + DAGStep/DAGEdge.
+    "Pipeline",
     "DAGStep",
     "DAGEdge",
     "find_pipeline",
@@ -80,7 +80,7 @@ def test_export_count_is_139():
 
     composition-lifecycle (ADR-0071 §am-2 + ADR-0159 §am-1) net +11:
     -2 (retire ``Pipeline``/``PipelineStep``) +7 finder seam / DAG type
-    (``PipelineDAG``, ``DAGStep``, ``DAGEdge``, ``START``, ``Finder``,
+    (``Pipeline``, ``DAGStep``, ``DAGEdge``, ``START``, ``Finder``,
     ``BFSFinder``, ``ConjunctionFinder``) +2 composite-persistence
     (``COMPOSITE_DAG``, ``composite_dependencies``) +4 typed input-group
     (``INPUT_GROUP_ALL_REQUIRED``, ``INPUT_GROUP_ANY_OF``,

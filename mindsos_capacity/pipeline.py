@@ -7,19 +7,22 @@ policy (ADR-0071 §amendment-2). No L4 "real finder" exists to extend
 (``plan_construction.py`` is a v0 stub), so the conjunction finder is
 net-new at L3.
 
-**Result is a converging DAG (``PipelineDAG``).** The linear
-``Pipeline``/``PipelineStep`` retired here cannot represent a converging
-hyperpath (a capacity consuming several inputs each produced by a
-different upstream path, or a fold over N producers of one type). The
-replacement is safe — the linear type had **zero production consumers**
-(verified: no L4/Server/L2/L0 import; the L5-chain ``Pipeline`` in
+**Result is a converging DAG, the type ``Pipeline``** (named
+``PipelineDAG`` through Slice 1; the "DAG" suffix was a migration-only
+marker and has been dropped — the converging plan *is* the pipeline).
+The earlier *linear* pipeline type (``Pipeline`` + ``PipelineStep``)
+retired here could not represent a converging hyperpath (a capacity
+consuming several inputs each produced by a different upstream path, or
+a fold over N producers of one type). The replacement was safe — the
+linear type had **zero production consumers** (verified: no
+L4/Server/L2/L0 import; the L5-chain ``Pipeline`` in
 ``chain_artifacts.py`` is an unrelated dataclass; the L2
 ``promoted_pipelines`` schema has no live writer).
 
 **Two real strategies ship** (so the seam is not premature):
 
 * :class:`BFSFinder` — the original ADR-0071 shortest-by-capacity-count
-  walk, re-expressed to emit a *degenerate-linear* ``PipelineDAG``
+  walk, re-expressed to emit a *degenerate-linear* ``Pipeline``
   (ADR-0071 §am-2 PB-F). Single-input semantics retained: it fires a
   capacity off **one** reachable input (the ``via`` datastate) and does
   not resolve the capacity's other declared inputs — that latent
@@ -115,7 +118,7 @@ class DAGEdge:
 
 
 @dataclass(frozen=True)
-class PipelineDAG:
+class Pipeline:
     """A converging capacity DAG producing ``target_datastate`` from the
     available ``start_datastates``.
 
@@ -124,8 +127,9 @@ class PipelineDAG:
     the target is already among ``start_datastates`` (no-op).
 
     ``__iter__`` / ``__len__`` range over ``steps`` so callers that
-    treated the retired linear ``Pipeline`` as a step sequence keep
-    working.
+    treated the retired linear pipeline type as a step sequence keep
+    working. (This type was named ``PipelineDAG`` through Slice 1; the
+    "DAG" suffix was a migration-only marker and has been dropped.)
     """
 
     start_datastates: Tuple[str, ...]
@@ -169,8 +173,8 @@ class PipelineDAG:
         }
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> "PipelineDAG":
-        """Rebuild a :class:`PipelineDAG` from its :meth:`to_dict` form."""
+    def from_dict(cls, data: Mapping[str, Any]) -> "Pipeline":
+        """Rebuild a :class:`Pipeline` from its :meth:`to_dict` form."""
         return cls(
             start_datastates=tuple(data["start_datastates"]),
             target_datastate=data["target_datastate"],
@@ -229,7 +233,7 @@ class Finder(ABC):
     """An L3 pipeline-finder strategy.
 
     The algorithm is L3 (computation); *which* strategy fires is an L4
-    selection policy. Every strategy returns a :class:`PipelineDAG`.
+    selection policy. Every strategy returns a :class:`Pipeline`.
     """
 
     @abstractmethod
@@ -241,7 +245,7 @@ class Finder(ABC):
         start_datastates: Tuple[str, ...],
         target_datastate: str,
         max_depth: int = 8,
-    ) -> PipelineDAG:
+    ) -> Pipeline:
         """Return a DAG producing ``target_datastate`` from
         ``start_datastates``, or raise :class:`PipelineNotFoundError`."""
         raise NotImplementedError
@@ -270,11 +274,11 @@ class BFSFinder(Finder):
         start_datastates: Tuple[str, ...],
         target_datastate: str,
         max_depth: int = 8,
-    ) -> PipelineDAG:
+    ) -> Pipeline:
         view = _view_for(capacity_layer, session)
 
         if target_datastate in set(start_datastates):
-            return PipelineDAG(
+            return Pipeline(
                 start_datastates=tuple(start_datastates),
                 target_datastate=target_datastate,
                 steps=(),
@@ -308,7 +312,7 @@ class BFSFinder(Finder):
                 )
                 for out in outputs:
                     if out == target_datastate:
-                        return PipelineDAG(
+                        return Pipeline(
                             start_datastates=tuple(start_datastates),
                             target_datastate=target_datastate,
                             steps=new_steps,
@@ -357,12 +361,12 @@ class ConjunctionFinder(Finder):
         start_datastates: Tuple[str, ...],
         target_datastate: str,
         max_depth: int = 8,
-    ) -> PipelineDAG:
+    ) -> Pipeline:
         view = _view_for(capacity_layer, session)
         starts: FrozenSet[str] = frozenset(start_datastates)
 
         if target_datastate in starts:
-            return PipelineDAG(
+            return Pipeline(
                 start_datastates=tuple(start_datastates),
                 target_datastate=target_datastate,
                 steps=(),
@@ -461,7 +465,7 @@ class ConjunctionFinder(Finder):
         )
         fire(target_producers[0].node_id, 0)
 
-        return PipelineDAG(
+        return Pipeline(
             start_datastates=tuple(start_datastates),
             target_datastate=target_datastate,
             steps=tuple(steps),
@@ -479,13 +483,13 @@ def find_pipeline(
     start_datastate: str,
     target_datastate: str,
     max_depth: int = 8,
-) -> PipelineDAG:
+) -> Pipeline:
     """Find the shortest capacity chain from ``start_datastate`` to
     ``target_datastate`` (the ADR-0071 BFS strategy).
 
     Back-compat entry point: keeps the singular ``start_datastate=``
     keyword and delegates to :class:`BFSFinder`, returning a
-    degenerate-linear :class:`PipelineDAG`. For sound multi-input
+    degenerate-linear :class:`Pipeline`. For sound multi-input
     composition use :class:`ConjunctionFinder` directly (selected by L4).
 
     Raises:
@@ -504,7 +508,7 @@ __all__ = [
     "START",
     "DAGStep",
     "DAGEdge",
-    "PipelineDAG",
+    "Pipeline",
     "Finder",
     "BFSFinder",
     "ConjunctionFinder",

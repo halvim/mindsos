@@ -16,7 +16,7 @@ from mindsos_capacity import (
     COMPOSITE_DAG,
     Capacity,
     DAGStep,
-    PipelineDAG,
+    Pipeline,
     REACTIVATION_KEY,
     register_reactivation_factory,
     unregister_reactivation_factory,
@@ -52,7 +52,7 @@ def _composite(name: str, depends_on=()):
         DAGStep(f"capacity:perception:{d}", (), (f"datastate:t.out_{d}",))
         for d in depends_on
     )
-    dag = PipelineDAG(
+    dag = Pipeline(
         start_datastates=(),
         target_datastate=f"datastate:t.out_{name}",
         steps=steps,

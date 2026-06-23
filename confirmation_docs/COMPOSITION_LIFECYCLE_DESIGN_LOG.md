@@ -270,3 +270,42 @@ with one test consumer.
 correctness fix, and defensible with no consumer; Part 5 is consumer-gated and a bigger redesign.
 Bundling lets Part 5's open consumer question stall the Part-6 fix. Track as one Slice-2 design
 chat, but ship Part 6 as the next increment and gate Part 5 behind a confirmed consumer.
+
+---
+
+## 10. Pre-Slice-2 fix (commit "a") — `PipelineDAG`→`Pipeline` rename + CLI repair
+
+**Defect found during Slice-2 reanalysis (2026-06-22).** Slice 1's §5 blast-radius table has **no
+`mindsos_cli` row** — it missed a consumer. `mindsos_cli/commands/capacity.py` unconditionally
+imports `Pipeline` from `mindsos_capacity` (removed by Slice 1; only `PipelineDAG` exported) and its
+`_pipeline_to_dict`/`_pipeline_to_human` read the **retired linear shape** (`.start_datastate`
+singular, `step.via_datastate`). So `import mindsos_cli.app` raises `ImportError` on the merged
+main tip — i.e. the CLI is broken on main. **This contradicts STATE.recent's "3991 passed / 0
+failed" green gate → reconcile on Linux** (does the gate actually collect `mindsos_cli.app`-importing
+tests? If yes, the recorded result is suspect; if no, those tests aren't gating). Flag, do not assume.
+
+**Decision (USER-CONFIRMED 2026-06-22): rename `PipelineDAG`→`Pipeline`; do NOT keep the "DAG"
+suffix.** Clean-slate principle: a type name names the domain concept (the converging plan *is* the
+pipeline), not its data structure; "DAG" was a migration-only marker to distinguish from the old
+linear `Pipeline` and earns nothing once that type is gone. The supposed collision with the L5
+`chain_artifacts.Pipeline` was **verified a non-issue** — no file imports both, neither was ever
+aliased; they only meet under qualified imports (the L5 one is really a *provenance record* of a
+pipeline, arguably `PipelineRecord`). Rejected: **revert** is the same rename in the other
+direction at higher churn; **alias `Pipeline = PipelineDAG`** fixes the import but the CLI still
+crashes on `.start_datastate`/`.via_datastate` (the break is structural, not nominal).
+
+**The fix (this commit, standalone, BEFORE Slice 2 Part 6):**
+- Token rename `PipelineDAG`→`Pipeline` across `mindsos_capacity/{pipeline.py,__init__.py,
+  reactivation.py}` + 9 test files (export slates + dataclass/finder tests). Export **count
+  unchanged (139)** — a rename, not an add. Module docstrings describing the old
+  `Pipeline`/`PipelineStep` linear shape updated.
+- CLI render rewritten for the DAG shape: plural `start_datastates`, explicit dataflow `edges`,
+  `via_datastate` dropped. The `Pipeline` import resolves again post-rename (no import-line change).
+- **Verification (in-sandbox, Python 3.10):** 151 affected tests green (CLI find, pipeline
+  dataclasses, finder seam/conjunction/composite-persistence, phase_29/30/31 export slates, phase_42
+  bipartite, phase_45). No remaining consumer of the retired singular shape (grep-clean). Server-half
+  (`test_dep_ordered_reactivation`, F9 Falkor), the CLI-importing perception suites (phase_03/04/…),
+  and the full cumulative gate run on **Linux** (RULES §4) — the arbiter.
+
+**Sequencing:** ship this as commit "a" (a Slice-1 regression fix, unrelated to the input
+contract), then open Slice-2 Part 6 off the fixed tip.
