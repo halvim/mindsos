@@ -137,6 +137,14 @@ def same_shape(sa: dict, sb: dict) -> bool:
     return shape_key(sa) == shape_key(sb)
 
 
+def _same_normalized_shape(a: dict, b: dict) -> bool:
+    """Private pure helper (GF-2): two *objects* share an identical
+    translation-normalized point-set. Shared by ``moved`` — NOT a call into
+    the ``same_shape`` capacity (the §0 invariant bans cap-invokes-cap *via
+    the layer*, not shared pure helpers)."""
+    return shape_key(normalize_shape(a)) == shape_key(normalize_shape(b))
+
+
 def moved(a: dict, b: dict):
     """moved (transform detector; ONTOLOGY §4 #10): the **move Transform**
     between two objects — the bbox-origin translation Δ = (Δr, Δc) = b - a.
@@ -149,7 +157,7 @@ def moved(a: dict, b: dict):
     """
     if a["color"] != b["color"]:
         return None
-    if same_shape(normalize_shape(a), normalize_shape(b)):
+    if _same_normalized_shape(a, b):  # GF-2: shared pure helper, not the cap
         ar, ac = a["bbox"][0], a["bbox"][1]
         br, bc = b["bbox"][0], b["bbox"][1]
         dr, dc = br - ar, bc - ac
@@ -198,6 +206,120 @@ def touching_pairs(objects: List[dict], points: List[dict]) -> List[dict]:
             if touching(cx, cy):
                 out.append({"a": {"kind": kx, "idx": ix},
                             "b": {"kind": ky, "idx": iy}})
+    return out
+
+
+def background_color(grid: Grid) -> int:
+    """Per-grid background = the most-frequent colour (ONTOLOGY #3, per-grid)."""
+    from collections import Counter
+    cnt: Counter = Counter()
+    for row in grid:
+        cnt.update(row)
+    return cnt.most_common(1)[0][0]
+
+
+def _flood_from_border(dims: Tuple[int, int], blocked: set) -> set:
+    """4-connected cells reachable from the grid border WITHOUT entering
+    ``blocked``. One pass per candidate container."""
+    H, W = dims
+    seen: set = set()
+    stack = []
+    for r in range(H):
+        for c in (0, W - 1):
+            if (r, c) not in blocked:
+                stack.append((r, c))
+    for c in range(W):
+        for r in (0, H - 1):
+            if (r, c) not in blocked:
+                stack.append((r, c))
+    while stack:
+        r, c = stack.pop()
+        if (r, c) in seen:
+            continue
+        seen.add((r, c))
+        for dr, dc in _ORTHOGONAL:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in blocked and (nr, nc) not in seen:
+                stack.append((nr, nc))
+    return seen
+
+
+def _group_4conn(cells: set, grid: Grid) -> List[dict]:
+    """Group a cell set into 4-connected pockets. Each::
+
+        {"cells": [[r, c], ...], "color": int (-1 if mixed), "size": int}
+    """
+    cset = set(cells)
+    seen: set = set()
+    pockets: List[dict] = []
+    for cell in sorted(cset):
+        if cell in seen:
+            continue
+        stack, pocket = [cell], []
+        while stack:
+            r, c = stack.pop()
+            if (r, c) in seen or (r, c) not in cset:
+                continue
+            seen.add((r, c)); pocket.append((r, c))
+            for dr, dc in _ORTHOGONAL:
+                stack.append((r + dr, c + dc))
+        cols = {grid[r][c] for (r, c) in pocket}
+        pockets.append({"cells": [list(p) for p in sorted(pocket)],
+                        "color": next(iter(cols)) if len(cols) == 1 else -1,
+                        "size": len(pocket)})
+    return pockets
+
+
+def inside_pairs(objects: List[dict], points: List[dict],
+                 dims: Tuple[int, int], bg: int, grid: Grid) -> List[dict]:
+    """Intra-grid enclosure (``a`` inside ``b``). Container ``b`` is a single-
+    colour Object that is **not** the background; ``a`` is anything ``b`` walls
+    off from the grid border (cannot reach the border without crossing ``b``).
+    Two result types per container:
+
+    - ``type="object"`` — a whole Object/Point fully enclosed, with ``b``'s bbox
+      strictly containing ``a``'s (B.top < A.top, B.bottom > A.bottom, …). The
+      object-to-object relation::
+
+          {"type": "object", "container": {"kind":"O","idx":int},
+           "inside": {"kind":"O"|"P","idx":int}}
+
+    - ``type="pocket"`` — enclosed cells NOT covered by a fully-enclosed object
+      (e.g. background holes that are not their own 8-connected component — the
+      00d62c1b case)::
+
+          {"type": "pocket", "container": {"kind":"O","idx":int},
+           "color": int(-1 mixed), "size": int, "cells": [[r,c],...]}
+    """
+    H, W = dims
+    comps = [("O", i, o) for i, o in enumerate(objects)] + \
+            [("P", i, p) for i, p in enumerate(points)]
+    out: List[dict] = []
+    for j, b in enumerate(objects):
+        if b["color"] == bg:                 # ambient background is not a container
+            continue
+        bcells = {tuple(c) for c in b["cells"]}
+        reachable = _flood_from_border(dims, bcells)
+        enclosed = {(r, c) for r in range(H) for c in range(W)
+                    if (r, c) not in bcells and (r, c) not in reachable}
+        if not enclosed:
+            continue
+        claimed: set = set()
+        # object-level: whole Objects/Points fully walled off by b, bbox-contained
+        for k, i, a in comps:
+            if k == "O" and i == j:
+                continue
+            acells = {tuple(c) for c in a["cells"]}
+            if not (acells <= enclosed):
+                continue
+            bb, ab = b["bbox"], a["bbox"]
+            if bb[0] < ab[0] and bb[1] < ab[1] and bb[2] > ab[2] and bb[3] > ab[3]:
+                out.append({"type": "object", "container": {"kind": "O", "idx": j},
+                            "inside": {"kind": k, "idx": i}})
+                claimed |= acells
+        # pocket-level: remaining enclosed cells (holes not owned by an enclosed object)
+        for pk in _group_4conn(enclosed - claimed, grid):
+            out.append({"type": "pocket", "container": {"kind": "O", "idx": j}, **pk})
     return out
 
 

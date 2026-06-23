@@ -88,7 +88,7 @@ calls another. Bodies are currently computed directly (not via `capacity_layer.i
 ### 3D — Selector / target synthesis
 
 - **3D.1 role identification** per demo — mover (gained-endpoint that moved) vs target (other endpoint) ✅
-- **3D.2 selector** = minimal discriminative state-conjunction, task-invariant; must resolve a **unique** source + target (else abstain):
+- **3D.2 selector** = minimal discriminative state-conjunction, task-invariant; must resolve a **unique** source + target, else **FLAG** (option A — the shape tie-break is a recorded flag, not an abstain; real tie-break → D11) (GF-5):
   - **3D.2.1** single-attribute candidates: color / size-rank / base-shape (`_selectors_for`) ✅
   - **3D.2.2** multi-attribute conjunctions when no single attribute discriminates ○
   - **3D.2.3** relational selectors ("the object touching X") ○

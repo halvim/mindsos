@@ -30,11 +30,105 @@ import json
 import os
 import sys
 
+from mindsos_capacity.exceptions import PipelineNotFoundError
+from mindsos_capacity.identifiers import capacity_iri
+from mindsos_capacity.pipeline import find_pipeline
+
 from . import arc_capacities as ac
-from . import arc_grids, arc_metagraph, arc_profile, arc_search, arc_solver
+from . import arc_gates, arc_grids, arc_metagraph, arc_profile, arc_search, arc_solver
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _OUT_JS = os.path.join(_HERE, "arc_debug_data.js")
+
+
+# ── (GF-6) find_pipeline soundness conformance ──────────────────────────
+def _discover(cl, start, target):
+    """The Pipeline find_pipeline yields, or None if no chain exists."""
+    try:
+        return find_pipeline(cl, start_datastate=start, target_datastate=target)
+    except PipelineNotFoundError:
+        return None
+
+
+def _path_is_sound(pipe, start) -> bool:
+    """A pipeline is SOUND iff every step's FULL declared input set is
+    available (start, or produced by an earlier step) before it fires.
+    BFS only secures the single ``via`` datastate, so a multi-input cap
+    whose other inputs are never produced on the path is unsound."""
+    available = {start}
+    for step in pipe.steps:
+        if not set(step.input_datastates) <= available:
+            return False
+        available.update(step.output_datastates)
+    return True
+
+
+def _conformance_check(cl) -> None:
+    """GF-6 — make the find_pipeline soundness drift executable:
+
+      (a) the linear perceive chains are SOUNDLY BFS-composed;
+      (b) the multi-input reason caps are FOUND-but-UNSOUND — BFS fires on
+          one reachable input and silently drops the rest (the §4 probe);
+      (c) every registered reason cap's PRODUCES/CONSUMES edges equal its
+          declared inputs/outputs (registration topology == body-canonical).
+    """
+    # (a) linear perceive chains — sound
+    for start, target in ((ac.DS_RAW_TASK, ac.DS_SHAPE),
+                          (ac.DS_RAW_TASK, ac.DS_PALETTE)):
+        pipe = _discover(cl, start, target)
+        assert pipe is not None and _path_is_sound(pipe, start), \
+            f"perceive chain {start} -> {target} must be soundly composable"
+
+    # (b) multi-input reason caps — BFS returns a path, but it is UNSOUND
+    for target in (ac.DS_STATE_CHANGE, ac.DS_SELECTOR, ac.DS_CORRESPONDENCE):
+        pipe = _discover(cl, ac.DS_GRID, target)
+        assert pipe is not None, \
+            f"BFS is expected to (unsoundly) return a path to {target}"
+        assert not _path_is_sound(pipe, ac.DS_GRID), \
+            f"{target} must NOT be soundly BFS-composable (multi-input drift)"
+
+    # (c) registered reason edges == declared (body-canonical) deps
+    view = cl.global_view()
+    for cap in ac._reason_capacities():
+        iri = capacity_iri(cap.category, cap.name)
+        assert set(view.inputs_of(iri)) == set(cap.inputs), \
+            f"{cap.name}: registered CONSUMES != declared inputs"
+        assert set(view.outputs_of(iri)) == set(cap.outputs), \
+            f"{cap.name}: registered PRODUCES != declared outputs"
+
+    print("  [ok] conformance (GF-6): perceive chains sound; reason caps "
+          "found-but-unsound; registered edges == declared deps.")
+
+
+def _invoke_biting_check(cl, prof8) -> None:
+    """D3 one-specimen spike — execute `touching_delta` THROUGH the layer for #8.
+
+    Unlike GF-6(c) (which only checks declared == registered, and so can't see
+    the body), this BITES: it runs the real body via ``cl.invoke`` and proves
+      (1) it executes and **matches** the inline solver's state-change, and
+      (2) the DECLARED inputs are **neither necessary nor sufficient** — the
+          body reads PAIR+BACKGROUND, so feeding it the declared (touching,
+          correspondence) inputs yields nothing. The registered CONSUMES
+          topology is fiction relative to the executable body.
+    """
+    iri = capacity_iri(ac.CATEGORY_COMPARATOR, "touching_delta")
+    bg = arc_solver._bg_color(prof8)
+    pair = prof8["train"][0]
+    expected = arc_solver.touching_changes(pair, bg)
+
+    # (1) real inputs the body consumes -> executes + matches the inline solver
+    res = cl.invoke(iri, inputs={ac.DS_PAIR: pair, ac.DS_BACKGROUND: bg})
+    assert res.success, f"touching_delta invoke failed: {getattr(res, 'error', None)!r}"
+    assert res.outputs[ac.DS_STATE_CHANGE] == expected, \
+        "invoked touching_delta != inline solver state-change"
+
+    # (2) DECLARED inputs only -> body can't run (it reads PAIR/BACKGROUND)
+    res2 = cl.invoke(iri, inputs={ac.DS_TOUCHING: True, ac.DS_CORRESPONDENCE: {}})
+    assert res2.success and res2.outputs[ac.DS_STATE_CHANGE] is None, \
+        "declared CONSUMES (touching, correspondence) should be insufficient to run the body"
+
+    print("  [ok] D3 spike: touching_delta executes through the layer and matches "
+          "#8; declared CONSUMES is neither necessary nor sufficient.")
 
 
 def main(argv: list) -> int:
@@ -58,6 +152,9 @@ def main(argv: list) -> int:
     ], report["raw_task -> palette"]
     print("  [ok] discovered chains match the locked perceive composition.")
 
+    # ── (2b) GF-6 conformance: find_pipeline soundness drift ────────────
+    _conformance_check(cl)
+
     # ── (3) build profiles + dump debug data ────────────────────────────
     dataset = arc_grids.load_dataset()
     # Canonical ARC order = task IDs sorted ascending (matches arc_viewer.html).
@@ -65,6 +162,9 @@ def main(argv: list) -> int:
     if limit is not None:
         ids = ids[:limit]
     tasks = [arc_profile.build_profile(dataset, "train", tid) for tid in ids]
+    # Capacity gate evaluation per task (atom truth + per-cap enabled).
+    for t in tasks:
+        t["gates"] = arc_gates.gate_report(t)
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None
@@ -74,6 +174,7 @@ def main(argv: list) -> int:
             prof8 = arc_profile.build_profile(dataset, "train", arc_solver.TASK8)
         raw8 = arc_grids.get_task(dataset, "train", arc_solver.TASK8)
         solver = arc_solver.build_solver(prof8, raw_task=raw8)
+        _invoke_biting_check(cl, prof8)  # D3 one-specimen spike
 
     payload = {
         "generated": _dt.datetime.now().isoformat(timespec="seconds"),
@@ -85,6 +186,7 @@ def main(argv: list) -> int:
             "availability": arc_search.build_availability(tasks),
         },
         "arc_metagraph": arc_metagraph.summary(),
+        "gates": arc_gates.gate_catalog(),
         "solver": solver,
         "tasks": tasks,
     }

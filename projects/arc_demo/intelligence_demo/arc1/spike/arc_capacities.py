@@ -53,6 +53,7 @@ DS_SAME_SHAPE = datastate_iri("arc.same_shape")
 DS_SAME_POINT = datastate_iri("arc.same_point")
 DS_MOVE_TRANSFORM = datastate_iri("arc.move_transform")
 DS_TOUCHING = datastate_iri("arc.touching")
+DS_INSIDE = datastate_iri("arc.inside")
 DS_BACKGROUND_CANDIDATE = datastate_iri("arc.background_candidate")
 DS_BACKGROUND = datastate_iri("arc.background")
 DS_CORRESPONDENCE = datastate_iri("arc.correspondence")
@@ -86,6 +87,7 @@ def arc_datastates() -> List[DataState]:
         ds("arc.same_point", CATEGORY_COMPARATOR, "same_point verdict: same colour + position."),
         ds("arc.move_transform", CATEGORY_COMPARATOR, "moved: translation Δ between same-shape objects."),
         ds("arc.touching", CATEGORY_PREDICATE, "touching verdict: different-colour components share an 8-neighbour (intra-grid)."),
+        ds("arc.inside", CATEGORY_PREDICATE, "inside verdict: a enclosed by a single-colour object b; intra-grid, background-excluded."),
         ds("arc.background_candidate", CATEGORY_DERIVATION, "Per-grid background proposal from one detector (frequency at v1)."),
         ds("arc.background", CATEGORY_REASONING, "Reconciled background (fold over candidates; degenerate pass-through at v1)."),
         ds("arc.correspondence", CATEGORY_REASONING, "input ref -> output ref map; unambiguous subset (ambiguous left uncorresponded)."),
@@ -95,6 +97,33 @@ def arc_datastates() -> List[DataState]:
 
 
 # ── capacity bodies (kwargs->dict convention; not invoked at M1) ─────────
+def _touching_delta(**kw: Any) -> dict:
+    """D3 ONE-SPECIMEN SPIKE (2026-06-21): a **real** body for `touching_delta`,
+    executed through `capacity_layer.invoke`. This is the only reason cap with a
+    live body — the rest stay stubs (D3 inline). It deliberately exposes the
+    inline↔registered gap rather than hiding it:
+
+      * It consumes the **pair** (`kw[DS_PAIR]`) + **background** (`kw[DS_BACKGROUND]`),
+        NOT the DECLARED inputs (`DS_TOUCHING`, `DS_CORRESPONDENCE`). `invoke`
+        never validates inputs against the registered CONSUMES edges, so the
+        declared topology is **neither necessary nor sufficient** to run this body.
+      * It recomputes touching + correspondence internally (a **monolith** over the
+        pair) — so the reason-graph decomposition is paper-only; the body is not
+        the composed cap the topology claims.
+      * It reaches into `arc_solver` (deferred import) — an **inverted dependency**
+        (the solver should invoke the cap, not vice-versa). Threading the
+        CapacityLayer into the solver is the real (deferred) wiring cost.
+
+    See PIPELINE_DECISIONS.md §4 (D3-spike entry) for the findings.
+    """
+    pair = kw.get(DS_PAIR)
+    bg = kw.get(DS_BACKGROUND)
+    if pair is None or bg is None:
+        return {DS_STATE_CHANGE: None}
+    from . import arc_solver
+    return {DS_STATE_CHANGE: arc_solver.touching_changes(pair, bg)}
+
+
 def _comprehend_task(**kw: Any) -> dict:
     return {DS_TASK: kw.get(DS_RAW_TASK), DS_PAIR: None, DS_RAW_GRID: None}
 
@@ -184,7 +213,8 @@ def _profile_comparators() -> List[Capacity]:
 def _induce_capacities() -> List[Capacity]:
     # same_object + same_shape are pairwise comparators; the tiered match
     # (object-equal pairs / shape-equal groups / rest) is a fold over them
-    # (arc_profile.match_pair), L4-style — no capacity calls another (#4 fold).
+    # (arc_profile.match_pair), L4-style — no capacity invokes another capacity
+    # via the layer (#4 fold; shared pure helpers allowed — GF-2).
     return [
         Capacity(
             name="same_object", category=CATEGORY_COMPARATOR,
@@ -226,6 +256,12 @@ def _intra_grid_capacities() -> List[Capacity]:
             implementation=lambda **kw: {DS_TOUCHING: None},
             description="(Region, Region) -> Bool (different-colour components share an 8-neighbour; intra-grid).",
         ),
+        Capacity(
+            name="inside", category=CATEGORY_PREDICATE,
+            inputs=(DS_OBJECT,), outputs=(DS_INSIDE,),
+            implementation=lambda **kw: {DS_INSIDE: None},
+            description="(Region, Region) -> Bool (a enclosed by a single-colour object b; cannot reach the grid border without crossing b; intra-grid, background-excluded).",
+        ),
     ]
 
 
@@ -253,14 +289,16 @@ def _reason_capacities() -> List[Capacity]:
         Capacity(
             name="touching_delta", category=CATEGORY_COMPARATOR,
             inputs=(DS_TOUCHING, DS_CORRESPONDENCE), outputs=(DS_STATE_CHANGE,),
-            implementation=lambda **kw: {DS_STATE_CHANGE: None},
-            description="(touching over C) -> StateChange (gained/lost/maintained, background-excluded).",
+            implementation=_touching_delta,  # D3 spike: REAL body (sole non-stub)
+            description="(touching over C) -> StateChange (gained/lost/maintained, background-excluded). "
+                        "D3-spike: real body consumes the PAIR+BACKGROUND, not the declared "
+                        "CONSUMES (which is fiction relative to the body) — see PIPELINE_DECISIONS §4.",
         ),
         Capacity(
             name="synthesize_selector", category=CATEGORY_REASONING,
             inputs=(DS_STATE_CHANGE, DS_OBJECT), outputs=(DS_SELECTOR,),
             implementation=lambda **kw: {DS_SELECTOR: None},
-            description="(StateChange, Object features) -> Selector resolving a unique mover + target (else abstain).",
+            description="(StateChange, Object features) -> Selector resolving a unique mover + target, else FLAG (option A; the shape tie-break is a recorded flag — real tie-break -> D11).",
         ),
     ]
 

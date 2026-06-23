@@ -9,10 +9,18 @@ Stages built so far (the cheap deterministic core):
      `(transition, state-change)` combination test (same object within a pair,
      existential across pairs).
 
-Stages 3–6 (selector / rule / verify / apply) are not built — surfaced as
-`pending` rows. Per the locked boundary this module only *computes*; any
-decision the machine cannot make alone is recorded as a **flag** (the human
-answers in chat → rerun; option A). Build is grounded on task #8 `05f2a901`.
+Stages 3–6 (selector / rule / verify / apply) **are built** for #8 (`stage3`…
+`stage6`, `"pending": []`); stage6 reports `matches_withheld`. Per the locked
+boundary this module only *computes*; any decision the machine cannot make
+alone is recorded as a **flag** (the human answers in chat → rerun; option A).
+Build is grounded on task #8 `05f2a901`.
+
+**Layering note (D3 evidence).** This solver is *self-contained*: it imports
+only ``arc_grids`` and takes ``(profile, raw_task)`` — it never touches the
+``CapacityLayer`` or ``find_pipeline``. The registered reason topology
+(``arc_capacities``) and this executable solver are **disjoint artifacts**; the
+"grounding" is a hand-maintained mirror, not an execution path (see
+``PIPELINE_DECISIONS.md`` §4, 2026-06-21 D3-spike entry).
 """
 
 from __future__ import annotations
@@ -41,7 +49,12 @@ def _comp(gs: dict, r: Ref) -> dict:
 
 
 def _bg_color(profile: dict) -> int:
-    """Proposed background = the most-frequent colour across the demo inputs."""
+    """The **degenerate reconcile-background policy** (GF-4): pool the demo
+    inputs and take the single most-frequent colour. This is the v1 stand-in
+    for the per-grid detect → reconcile fold (ONTOLOGY #3 is per-grid; there is
+    NO Task-level background). Pooling is the policy, NOT the model — the real
+    reconcile policy is pending CORPUS-ANALYSIS.
+    """
     cnt: Counter = Counter()
     for pr in profile["train"]:
         for row in pr["input"]["cells"]:

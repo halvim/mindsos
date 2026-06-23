@@ -37,6 +37,11 @@ def grid_summary(grid: List[List[int]]) -> dict:
         # intra-grid positional: touching pairs among this grid's components
         # (different-colour Object/Point pairs sharing an 8-neighbour; §4 #16).
         "touching": arc_grids.touching_pairs(objects, points),
+        # intra-grid positional: (a inside b) — a enclosed by a single-colour
+        # object b (cannot reach the border without crossing b; bg-excluded).
+        "inside": arc_grids.inside_pairs(
+            objects, points, arc_grids.dimension(grid),
+            arc_grids.background_color(grid), grid),
     }
 
 
@@ -177,13 +182,16 @@ def profile_sweep(task: dict) -> dict:
 #: fires in pair 1 AND in every other pair (agrees_across_demos = presence).
 #: ``touching`` is intra-grid (a candidate constraint per pair = present in
 #: either grid of the pair); the others are inter-grid (read off ``match``).
-INDUCE_CAPS = ["same_object", "same_shape", "same_point", "moved", "touching"]
+INDUCE_CAPS = ["same_object", "same_shape", "same_point", "moved", "touching", "inside"]
 
 
 def _present(pr: dict, cap: str) -> bool:
     if cap == "touching":
         return bool(pr["input"].get("touching")) or \
             bool(pr["output"].get("touching"))
+    if cap == "inside":
+        return bool(pr["input"].get("inside")) or \
+            bool(pr["output"].get("inside"))
     m = pr["match"]
     if cap == "same_object":
         return bool(m["equal"])

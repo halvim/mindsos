@@ -43,6 +43,8 @@ FACETS = [
      "requires_label": "⊃ shape, colour", "requires": ["same_shape"]},
     {"name": "touching", "kind": "bool", "phase": "intra-grid",
      "division": "intra-grid", "group": ""},
+    {"name": "inside", "kind": "bool", "phase": "intra-grid",
+     "division": "intra-grid", "group": ""},
 ]
 
 
@@ -91,6 +93,10 @@ def task_tokens(profile: dict) -> List[str]:
     # grid (input OR output). Demos only (test withheld).
     if any(d["input"].get("touching") or d["output"].get("touching") for d in demos):
         toks.append("touching")
+    # inside = intra-grid; fires when ANY demo grid (input OR output) has an
+    # (a inside b) enclosure pair. Demos only (test withheld).
+    if any(d["input"].get("inside") or d["output"].get("inside") for d in demos):
+        toks.append("inside")
     p = profile["profile"]
     toks.append("compare_grid_dimension:" + _dim_category(p["dimension_delta"]))
     toks.append("compare_palette:" + _pal_category(p["palette_delta"]))
