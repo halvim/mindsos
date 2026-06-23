@@ -385,3 +385,77 @@ bongard chat (D-M2 series) is waiting on three things; status after this chat:
 2. **Cut a core tag at the Part-6 commit** (`2676b9d` / `31d2baf`) so demos (bongard) can pin a
    convention-clean tag instead of a bare sha. These non-phase feats (Slice 1, F9, rename, Part 6)
    have all landed untagged on `main`.
+
+---
+
+## 13. Bongard core requests — CC-3 / CC-2 / Part-6 pin (core-mod chat 2026-06-23)
+
+Three asks from the bongard chat (D-M2 series). Reanalysis converged after 4 skeptical passes
+(stable on passes 3–4); the only movement was a CC-3 placement refinement (single verb →
+two-half seam), no verdict reversals. All three resolve to **docs only — zero `mindsos_*` code**
+(the Part-6 tag the analysis first called for was landed by concurrent work; see below).
+
+### CC-3 — composite-capacity promotion seam → **DESIGN-ONLY (ADR-0184)**
+
+**Strongest concern:** still **no writer**. The writer is bongard m5 (concept-mint) / Mint step 5
+/ SA-6 — unbuilt; the promoter mechanism is routed to WSD (skill-acquisition design log S10),
+undesigned. Building the verb now is the scaffolding §0 forbids and risks fixing the contract
+against an imagined caller.
+
+**Grounding (verified):** `promoted-pipelines` (Global) has no writer; the propose/release pivot
+(`mindsos_admin.promotion.propose_for_promotion` → `mindsos_server.release.release_update`) is
+ATOM-only (`PromotionItemKind.PIPELINE` raises `NotImplementedError`, Phase 24 PB-3a) and never
+calls `register_capacity`; skill-install (ADR-0183) installs *authored bundles*, not runtime-minted
+nodes.
+
+**Refinement that moved across passes:** promotion is **two halves**, not one verb — (1) descriptor
+half: Local `learned-parameters` composite → Global `promoted-pipelines` via the pivot's PIPELINE
+branch; (2) activation half: Global-scoped `reactivate_from_descriptors` (ADR-0185) to re-register,
+else the promoted node is **inert**. This corrects PLAN §7's "existing Server machinery"
+(skill-install) misread.
+
+**Pick: design-only.** ADR-0184 fixes seam shape + placement (pivot for the descriptor, reactivation
+for activation; no new module) so the eventual writer is a fill-in. **Open risk:** the descriptor's
+operand shape interacts with the deferred Part 5 (same-type operand arity) — confirm against the
+Part-5 resolution before m5 sizes the build.
+
+### CC-2 — composite `node_kind` → **KEEP DEFERRED (no code)**
+
+Verified nothing dispatches on a composite kind: the `node_kind` triad is
+REACTIVE/MONITOR/ADAPTER(+DATASTATE); only `KIND_MONITOR` is dispatched (L4
+`MonitorSubscriptionRegistry`); composites re-mint as `KIND_REACTIVE`; dep-ordered reactivation
+keys off the `COMPOSITE_DAG` descriptor + `composite_dependencies`, **not** node_kind; the
+ConjunctionFinder composes from declared edges regardless. A `KIND_COMPOSITE` constant would be
+unread. §3/§6 rationale holds verbatim. Revisit only if a finder must *recognise* composites.
+
+### Part-6 pin → **ALREADY RESOLVED by concurrent work; bongard pins `composition-lifecycle-s2-confirmed`**
+
+**Original concern (the convention gap) was real but is now closed.** Bongard pins
+`phase-50-confirmed` (`cb5d207`), which predates **everything m2 needs** — Slice 1 composite
+persistence (`b56e0ac`), F9 (`1be3a70`), the CLI rename fix (`1f09228`), **and** Part 6 (`2676b9d`).
+While this analysis ran, the convention was landed as **RULES §7** (core-ship checklist: every
+core ship — phases *and* non-phase feats/fixes — gets an annotated `<name>-confirmed` tag at the
+squash commit; §7 bullet 2 also mandates the gate exercise the CLI, closing follow-up #1 above),
+and the retroactive tags were cut: **`composition-lifecycle-s2-confirmed`** (annotated, → commit
+**`2676b9d`** = Part 6) and **`f9-confirmed`** already exist on `main`. `s2-confirmed` transitively
+includes Slice 1 + F9 + rename + Part 6 (all four reachable from `2676b9d`).
+
+**Pick (revised — supersedes the dated-`core-YYYY-MM-DD` proposal this analysis first reached):**
+no tag to cut. **Bongard pins `composition-lifecycle-s2-confirmed`** to consume invoke
+input-validation and retire its D-M2-b presence self-check. **The pin-bump is bongard's (demo-side)
+action** — `git merge composition-lifecycle-s2-confirmed` into `demo/bongard`, re-gate, set
+`pinned_core`. Rejected: bare sha-pin (breaks the tag-shaped `pinned_core` convention); a separate
+dated tag (redundant once §7's `<name>-confirmed` tag exists at the squash commit).
+
+### Side-findings
+- **STATE staleness — hand to Mac (not self-edited; STATE is Mac-owned + in flux during this
+  chat):** `core_git_sha` reads `2676b9d` but `main` has advanced to `a2e8271`; `bongard.status`
+  still reads `"not started; PLAN.md at 85115da"` though the D-M2 series + a dispatching runner
+  imply it has started. Bump both on the next ship-ritual STATE update.
+- **ADR README index is stale** past 0137 (0138–0187, incl. 0183/0185/0186/0187, unindexed). Left
+  as-is to match current practice (ADR files are the source of truth); ADR-0184 follows suit.
+  Pre-existing doc-debt for a maintenance pass.
+
+**Gate:** this chat adds docs only (ADR-0184 + this §13) — no `mindsos_*` code, no test delta, no
+new tag (the needed tag already exists). No gate run required beyond the standing green at
+`s2-confirmed`.
