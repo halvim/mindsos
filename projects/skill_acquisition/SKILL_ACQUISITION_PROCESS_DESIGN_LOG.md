@@ -163,3 +163,41 @@ R1: 4 pushbacks, all accepted. R2: 4 refinements, 0 reversals. Scope is narrow g
 5. `confirmation_docs/SA_1_NEXT_CHAT_PROMPT.md` — Phase 50 ship-chat seed.
 
 **ADRs reserved for SA-1 (drafted at ship R0, per numbered-phase precedent):** ADR-0183 (skill-bundle + install-lifecycle contract — manifest schema, preflight, two-stage lifecycle, idempotency triple, de-install semantics), ADR-0150 §am-6 (`installed-skills` role-graph; closed set 12→13). ADR-0182 impl ships in the same slot (its §Consequences surface list governs).
+
+---
+
+## §6 — (bongard-solver) Producer-front + two-path generalization (proposed 2026-06-20, NOT ratified)
+
+> **Tag: `bongard-solver`.** Suggestions for the future process; does not relitigate the closed install-tail (S1–S13). This log designed the **install/promote tail** and routed the **producer/acquisition front** to WSD (S10, producer-agnostic). The bongard-solver demo is the first concrete producer and surfaces (a) the front's shape and (b) a generalization the log doesn't cover: the leaf. Goal restated (Henrique 2026-06-20): a concise, proper, **user-facing** process to teach MindsOS *any* skill.
+
+### §6.1 — Two intake paths, divided by one line
+
+Skill-acquisition has **two** intake paths, sorted by the **composite/primitive = inspectable/opaque = mint/install** line:
+
+1. **Autonomous mint** (OPEN — the producer front): a skill expressible as a **declarative composite over existing seed capacities**. Auditable parse; few-shot; no large training run. Flows producer → S10 staging (Local tier, S3) → S4 preflight → S5 record → S6 promote. The front (SA-1..4) is §6.3.
+2. **Human-authored install** (SHIPPED — S1–S13): a skill that is an **opaque artifact** — arbitrary code, a trained model, a **neural leaf**. Not internally auditable; arrives as a bundle; admin-installed.
+
+**"Add ANY skill" = the union of the two paths** — autonomous where inspectable, human-install where opaque. The process always offers *a* path; **autonomy varies, it is not promised for arbitrary skills** (preserves the auditability moat; matches §1's deliberate narrowing in PLAN.md).
+
+### §6.2 — The neural leaf is path 2, quarantined by the grounding contract
+
+A neural leaf (raw signal → features) is opaque weights → a **primitive** → un-mintable, un-inspectable → it **cannot** be autonomously acquired. It does not need to be: it is human-authored + installed via path 2 (model file as bundle data + a `CapacityContext`-native body that loads it — S2/S9 already permit this). The **grounding contract** (raw signal → normalized **typed** atoms; in bongard, point-set → ontology shape) **quarantines** the leaf's opacity: the leaf stays a black box, but its *output is typed*, so the composite structure above it stays mint-able and auditable.
+
+> **Generalization (the requested neural-leaf part):** not "mint neural leaves," but **"an installed (path-2) neural leaf grounds an autonomously-minted (path-1) structure, with the typed grounding output as the quarantine seam."** Auditability lives **above** the leaf. "No-training-run / auditable-from-scratch" is a property of the mint path + a domain's symbolic-leaf *choice*, not a global guarantee.
+
+### §6.3 — Producer front (SA-1..4) — the open part (detail in PLAN.md §14)
+
+| Step | New/Reuse | Notes |
+|---|---|---|
+| SA-1 trigger/detection | New | watch L5 episodes for recurring composable structure or an uncomposable gap (⚠ heuristic under-specified) |
+| SA-2 candidate construction | New (core CC-2) | assemble recurring sub-structure into a composite pipeline over seeds |
+| SA-3 validation | New + oracle slot | domain-supplied verifier (bongard: held-out generator) + min support *k* |
+| SA-4 provisional register | New (core CC-1) | composite registered Local, machine-named; backing → `promoted-pipelines`+`learned-parameters` |
+| SA-5/6 present+name / promote | **Reuse S3/S4/S5/S6** | the producer is "a second producer of the same install artifacts" (S10-C) |
+| SA-7 gap → human primitive | New consumer | uncomposable → `capacity-gaps`; **this is also where a neural leaf enters** (§6.2) |
+
+Core dependencies CC-1/CC-2/CC-3 (capacity-node persistence, composite kind+runner, `promote_capacity`): `projects/bongard_demo/CORE_CHANGES.md`.
+
+### §6.4 — Grounding-confidence caveat
+
+bongard-solver uses a **symbolic** leaf (path 1 to the pixels), so it grounds the **mint front** but does **not** empirically exercise path 2 or the neural quarantine. §6.2 is principled but **untested by this demo** — a messy-image variant or another demo is needed before it is treated as validated.

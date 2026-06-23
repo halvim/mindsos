@@ -14,7 +14,7 @@
   "demos": {
     "robot":   { "home": "projects/robot_demo",   "branch": "demo/robot",   "worktree": "MindsOS-robot",   "pinned_core": "phase-50-confirmed", "status": "DM-7 shipped; pending move into projects/robot_demo/" },
     "arc":     { "home": "projects/arc_demo",     "branch": "demo/arc",     "worktree": "MindsOS-arc",     "pinned_core": "phase-50-confirmed", "status": "solver stages 1-6, task #8; pending move into projects/arc_demo/" },
-    "bongard": { "home": "projects/bongard_demo", "branch": "demo/bongard", "worktree": "MindsOS-bongard", "pinned_core": "phase-50-confirmed", "status": "not started; PLAN.md at main commit 85115da" }
+    "bongard": { "home": "projects/bongard_demo", "branch": "demo/bongard", "worktree": "MindsOS-bongard", "pinned_core": "phase-50-confirmed", "status": "design saturated vs phase50 (2026-06-20): E/H/F/D + G1 decided; §12 gaps / §13 core-asks / §14 minting recorded in PLAN.md; core asks handed off in CORE_CHANGES.md + WSD_DECOUPLING_DIAGNOSIS.md; milestone-1 perception buildable now, milestone 2+ blocked on core CC-1/2/3 + WSD detach" }
   },
   "safety_net": { "branch": "wip/full-snapshot-2026-06-20", "note": "delete only after all three demos are reorganized + gated + pushed" }
 }
