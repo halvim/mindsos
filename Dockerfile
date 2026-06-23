@@ -220,6 +220,10 @@ COPY mindsos_capacity ./mindsos_capacity
 # Phase 46: mirror of prod-stage COPY for `mindsos_intelligence/`.
 COPY mindsos_intelligence ./mindsos_intelligence
 COPY tests ./tests
+# demo/bongard: the bongard solver demo lives under projects/bongard_demo/
+# (built on top of pinned core, never edits mindsos_*). Test stage only —
+# prod images don't ship demos. Gate via `pytest projects/bongard_demo`.
+COPY projects/bongard_demo ./projects/bongard_demo
 # Phase 39: tools/ contains check_rename_state.py — Phase 39 data-state
 # detector tested by tests/phase_39/test_check_rename_state_script.py
 # which reads the script from /app/tools/. ADR-0044 §am-3 ship.
