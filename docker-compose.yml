@@ -16,10 +16,11 @@ services:
 
   falkordb:
     image: falkordb/falkordb@sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b3e46c1d90848845ba
-    container_name: mindsos-falkordb
+    container_name: mindsos-bongard-falkordb
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # No host port publish: the test/CLI containers reach FalkorDB over the
+    # compose network via FALKORDB_HOST=falkordb, so we avoid colliding with
+    # other demos' / the core stack's host 6379 (demo/bongard isolation).
     volumes:
       - ./.mindsos/falkordb-data:/data
     healthcheck:
@@ -36,7 +37,7 @@ services:
       args:
         MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
         MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
-    image: mindsos:phase50-prod
+    image: mindsos:bongard-prod
     profiles: ["cli"]
     # Phase 02 — entrypoint forces the `mindsos` binary so
     # `docker compose run --rm mindsos <subcommand>` works without the
@@ -66,7 +67,7 @@ services:
       args:
         MINDSOS_GIT_SHA: ${MINDSOS_GIT_SHA:-unknown}
         MINDSOS_IMAGE_HASH: ${MINDSOS_IMAGE_HASH:-unknown}
-    image: mindsos:phase50-test
+    image: mindsos:bongard-test
     profiles: ["test"]
     # The test service keeps the bare entrypoint so `pytest tests/` works
     # without a `mindsos` prefix.
