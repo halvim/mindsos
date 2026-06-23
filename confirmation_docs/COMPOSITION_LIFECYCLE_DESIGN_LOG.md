@@ -318,3 +318,46 @@ was broken; they now collect and pass — confirming the green-gate reconciliati
 3991 under-counted behind the broken import, it was not hiding failures. **Root-cause of the
 mask: the test image bakes source via `COPY` (no volume mount), and the first gate attempt ran
 without `--build`, silently reusing a stale image. RULES §4 amended — `--build` is now mandatory.**
+
+---
+
+## 11. Slice 2 Part 6 — invoke INPUT contract (BUILT)
+
+**Decisions (USER-CONFIRMED 2026-06-22).** D1 = **completeness + no-unexpected**. D2 = **enveloped +
+tagged `error_kind`**. `all_required` fully checked; `any_of` ⇒ ≥1; **`fold` not enforced at v1**
+(its "N values under one IRI key" shape needs Part 5's operand axis). **Part 5 stays deferred** —
+the bongard consumer (the named candidate) self-validates *presence* only and dispatches through
+core `invoke`, so Part 6 retires that self-check; it does not hit the same-type-operand case, so no
+consumer un-defers Part 5. CC-2 / CC-3 are unrelated and remain deferred.
+
+**Implementation.**
+- `exceptions.py` — `InputContractError(CapacityRegistrationError)` with `kind` ∈
+  {`missing_required`, `unexpected_input`}. Added to `exceptions.__all__` but **NOT** to the
+  top-level `mindsos_capacity.__all__` (export count stays 139; consumer-discipline — public export
+  deferred until a consumer needs the class; reachable via `mindsos_capacity.exceptions`).
+- `capacity.py` — `_validate_inputs(declaration, inputs)` validates the **declaration's** input set
+  (declaration-primary, not the dedup-lossy edge view), ignoring `context`; called at the top of
+  `call_capacity` (read path + direct callers).
+- `runtime.py` — `invoke` also calls `_validate_inputs` in the **write-bypass** branch (the second
+  splat site, which never reaches `call_capacity`); the `except` branch tags
+  `error_kind="input_contract:<kind>"` for `InputContractError` (else the existing
+  `exception:<Type>`).
+
+**Routing.** On the `invoke` path a violation is caught into the ADR-0072 envelope
+(`success=False`, `error=InputContractError`) + a tagged problem-trace record. Direct
+`call_capacity` callers and the write-bypass (when called outside `invoke`'s try) raise — the
+documented L3-invariant asymmetry.
+
+**Consumer proof.** The now-importable CLI: `mindsos capacity invoke … --input-json
+'{"datastate:text.WRONG": …}'` returns `success=False` / `error.type=InputContractError` instead of
+silently passing `None`.
+
+**Verification (in-sandbox, Python 3.10):** 10 core contract tests pass + 148 across
+phase_30/34/45 + composition_lifecycle with validation live — **no regression** (the existing
+`exception:RuntimeError` trace tag preserved; the audit's "0 violations across 61 invocations" held
+against live enforcement). The CLI typo test + `test_dep_ordered_reactivation` (server-half) gate on
+**Linux** (RULES §4, `--build`). `tests/composition_lifecycle/test_invoke_input_contract.py` (11
+tests; the CLI import is lazy so the core tests don't drag in the 3.11-only admin/server chain).
+
+**ADR:** ADR-0072 §amendment-2. No version bump (non-phase, no public-surface add — the new error
+is unexported).

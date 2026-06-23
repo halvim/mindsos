@@ -29,9 +29,15 @@ from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
 if TYPE_CHECKING:
     from .context import CapacityContext
 
-from .capacity import InvocationResult, _CapacityBase, call_capacity
+from .capacity import (
+    InvocationResult,
+    _CapacityBase,
+    _validate_inputs,
+    call_capacity,
+)
 from .exceptions import (
     CapacityRegistrationError,
+    InputContractError,
     ProblemTraceError,
 )
 # NOTE: ``WriteResult`` (from .write_outcome) is intentionally NOT imported
@@ -192,6 +198,7 @@ def invoke(
         # Bypass ``call_capacity`` for writes; validate return type
         # explicitly (R5 PB-G); stash in ``InvocationResult.write_outcome``.
         if not declaration.outputs:
+            _validate_inputs(declaration, inputs)
             # Lazy import to avoid the write_outcome ↔ runtime cycle.
             from .write_outcome import WriteResult
 
@@ -232,11 +239,16 @@ def invoke(
         )
     except Exception as exc:  # noqa: BLE001 — ADR-0072 envelope contract
         duration_ms = (time.perf_counter() - start) * 1000.0
+        error_kind = (
+            f"input_contract:{exc.kind}"
+            if isinstance(exc, InputContractError)
+            else f"exception:{type(exc).__name__}"
+        )
         if problem_trace_sink is not None and task_id is not None:
             emit_problem_trace(
                 problem_trace_sink,
                 task_id=task_id,
-                error_kind=f"exception:{type(exc).__name__}",
+                error_kind=error_kind,
                 step_id=step_id,
                 capacity_iri=declaration.iri,
                 payload={"message": str(exc)},
