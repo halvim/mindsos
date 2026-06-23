@@ -309,3 +309,12 @@ crashes on `.start_datastate`/`.via_datastate` (the break is structural, not nom
 
 **Sequencing:** ship this as commit "a" (a Slice-1 regression fix, unrelated to the input
 contract), then open Slice-2 Part 6 off the fixed tip.
+
+**SHIPPED 2026-06-22** — squash-merged to `main` @ `1f09228` (branch `fix/pipeline-rename-cli`
+deleted). **Linux gate (live FalkorDB, `--build` fresh image): 4019 passed / 11 skipped /
+1 xpassed / 0 failed / 0 errors.** The **+28 over the Slice-1 "3991"** = the
+`mindsos_cli.app`-importing suites (phase_03/04/05a/…) that could not pass while the CLI import
+was broken; they now collect and pass — confirming the green-gate reconciliation: Slice-1's
+3991 under-counted behind the broken import, it was not hiding failures. **Root-cause of the
+mask: the test image bakes source via `COPY` (no volume mount), and the first gate attempt ran
+without `--build`, silently reusing a stale image. RULES §4 amended — `--build` is now mandatory.**
