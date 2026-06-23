@@ -19,7 +19,8 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - Off `main`, squash-merge back, then delete: `phase-NN`, `wsd-NN`, `dwf-NN`,
   `fol-NN`, `feat/*`, `fix/*`, `chore/*`.
 - Long-lived: `main` (the product), `demo/*` (installs on top of main).
-- Shipped phases are `phase-NN-confirmed` **tags**, not branches.
+- Shipped core changes are **tags**, not branches: phases → `phase-NN-confirmed`;
+  non-phase feats/fixes → `<name>-confirmed`. **Every** core ship is tagged (§7).
 
 ## 3. The two hard rules
 - **Demos never edit `mindsos_*`.** Need a core change? Land it on `main` first,
@@ -54,3 +55,17 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 ## 6. State lookup
 - Current version, last shipped phase, what each demo pins → `STATE.json`.
 - Your lane + who owns what → `BRANCHES.md`.
+
+## 7. Core-ship checklist (MANDATORY for every change to `mindsos_*`)
+- **Tag the ship.** After the change merges to `main` and the Linux gate is green,
+  cut an annotated `<name>-confirmed` tag at the squash commit and push it
+  (`git tag -a <name>-confirmed <sha> -m "..."` → `git push origin <name>-confirmed`).
+  Demos pin tags, never bare shas (§3). Applies to non-phase feats/fixes too — not
+  only numbered phases. (Slice 1, F9, the rename, Part 6 all landed untagged — the gap
+  this rule closes.)
+- **Gate must exercise the CLI.** A ship is not "green" unless the cumulative gate
+  collected the `mindsos_cli.app`-importing suites (with `--build`, §4). Verify before
+  declaring green:
+  `docker compose -p mindsos-core --profile test run --rm --build mindsos-test pytest --collect-only -q | grep -c test_cli`
+  must be `> 0`. A broken CLI import must surface as gate errors, never hide silently
+  (it did on Slice 1 — see §4 + `STATE.recent`).

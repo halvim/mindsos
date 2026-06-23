@@ -361,3 +361,27 @@ tests; the CLI import is lazy so the core tests don't drag in the 3.11-only admi
 
 **ADR:** ADR-0072 §amendment-2. No version bump (non-phase, no public-surface add — the new error
 is unexported).
+
+---
+
+## 12. Next chat + open follow-ups
+
+**Next core-mod chat — bongard requests** (STATE `pending_designs.bongard-core-requests`). The
+bongard chat (D-M2 series) is waiting on three things; status after this chat:
+- **CC-3 promotion** — a `promote_capacity` / target-applier verb (Mint step 5 / SA-6, Global).
+  Still **no writer**; the `mindsos_knowledge` `pending_promotion_iri` / `validate_promotion_candidate`
+  are pre-existing schema, not the verb. Build behind a target-applier seam per §0; decide placement
+  before sizing. **Deferred — addressed in the next chat.**
+- **CC-2 composite `node_kind`** — still deferred (§3/§6: nothing dispatches; `KIND_REACTIVE`
+  suffices). Next chat confirms keep-deferred vs build.
+- **Part 6 consumption** — shipped here (§11) but bongard pins a core **tag** (`phase-50-confirmed`),
+  and Part 6 is untagged on `main`. Bongard retires its D-M2-b presence self-validation only after a
+  deliberate **pin bump** to a ref including `2676b9d` (RULES §3).
+
+**Open follow-ups (not blocking, worth doing):**
+1. **CLI not in the gate's collection.** The Slice-1 `mindsos_cli` break hid because the Linux gate
+   never collected the `mindsos_cli.app`-importing suites (the +28 only appeared once Part-6's fix
+   un-broke the import). Add the CLI suites to the gate collection so a CLI break can't hide again.
+2. **Cut a core tag at the Part-6 commit** (`2676b9d` / `31d2baf`) so demos (bongard) can pin a
+   convention-clean tag instead of a bare sha. These non-phase feats (Slice 1, F9, rename, Part 6)
+   have all landed untagged on `main`.
