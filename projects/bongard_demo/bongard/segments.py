@@ -2,12 +2,16 @@
 
 ``segments`` is a ``perception`` body (DATASTATE_MARKER don't-know): it
 runs the deterministic ε-sweep over the boundary trace and applies the
-**fit gate** — among candidates passing (RMS ≤ τ_fit, max ≤ guard,
-n_vertices ≤ max_sides), it picks the **fewest-vertex** one (parsimony;
-PLAN §10 E). No passer ⇒ ``DontKnow("fit")`` — the curve / edge-decoration
-rejector (the circle lands here). Parsimony-primary, not RMS-primary:
-RMS-primary would reward an over-fit N-gon over the true polygon, and let
-a fine-enough polygon fit a circle within τ_fit (defeating the gate).
+**curve discriminator** (PLAN §10 D revision 2026-06-23, replacing the
+old ``max_sides`` cap): a polygon is a vertex count that is BOTH
+**ε-persistent** (a vertex count holding a stable plateau across a wide
+band of the sweep — ``plateau_min_frac``) AND **per-edge-fit-passing**
+(worst per-edge RMS ≤ ``per_edge_tau``). Among qualifying plateaus, pick
+the **fewest-vertex** one (parsimony). No qualifier ⇒ ``DontKnow("fit")``
+— the curve / edge-decoration rejector. Both gates are load-bearing: a
+circle fails *persistence* (its count wanders); a self-intersecting
+bowtie holds a plateau but fails *per-edge fit*. This drops ``max_sides``
+entirely and is scale/N-invariant (validated across 10 shapes).
 
 ``vertices`` is a ``derivation`` body: it reads the shared endpoints of
 the closed segment ring (PLAN §4 — a vertex joins exactly two segments)
@@ -40,14 +44,46 @@ class Vertex:
     degree: int        # number of incident segments (a polygon vertex = 2)
 
 
-def select_polygon(cands: List[G.Candidate], p: Params) -> Optional[G.Candidate]:
-    """Fit gate + parsimony: fewest-vertex candidate that passes, else None."""
-    ok = [c for c in cands
-          if c.rms <= p.tau_fit and c.max_resid <= p.max_guard
-          and c.n_vertices <= p.max_sides]
-    if not ok:
+def select_polygon(trace: List[G.Point], p: Params) -> Optional[G.Candidate]:
+    """Persistence + per-edge fit (PLAN §10 D revision); replaces max_sides.
+
+    A polygon = a vertex count that is BOTH ε-stable across a wide band of
+    the sweep (plateau width ≥ ``plateau_min_frac`` of the valid steps) AND
+    per-edge-fit-passing (worst per-edge RMS ≤ ``per_edge_tau``). Among
+    qualifying plateaus, the fewest-vertex one wins. Returns its
+    representative :class:`~bongard.geometry.Candidate`, or ``None`` (the
+    curve / edge-decoration verdict the control loop turns into abstain).
+    """
+    profile = G.epsilon_profile(trace, k=p.k, lo_frac=p.lo_frac, hi_frac=p.hi_frac)
+    valid = [(f, v) for (f, v) in profile if len(v) >= 3]
+    if not valid:
         return None
-    return min(ok, key=lambda c: (c.n_vertices, round(c.rms, 6)))
+    diag = G.bbox_diag(trace)
+    # group consecutive equal-count ε steps into plateaus
+    plateaus: List[List] = []
+    i = 0
+    while i < len(valid):
+        j = i
+        while j + 1 < len(valid) and len(valid[j + 1][1]) == len(valid[i][1]):
+            j += 1
+        plateaus.append(valid[i:j + 1])
+        i = j + 1
+    nsteps = len(valid)
+    qualifying = []
+    for members in plateaus:
+        if len(members) / nsteps < p.plateau_min_frac:
+            continue                                   # not ε-persistent
+        # representative = the plateau member with the cleanest per-edge fit
+        _, verts = min(members,
+                       key=lambda fv: G.per_edge_max_residual(trace, fv[1], diag))
+        if G.per_edge_max_residual(trace, verts, diag) <= p.per_edge_tau:
+            qualifying.append((len(verts), verts))
+    if not qualifying:
+        return None
+    _, verts = min(qualifying, key=lambda q: q[0])     # fewest vertices
+    segs = G.segments_from_vertices(list(verts))
+    rms, mx = G.fit_residuals(trace, segs, diag)
+    return G.Candidate(tuple(verts), tuple(segs), rms, mx, 0.0)
 
 
 def _params_from_ctx(kw) -> Params:
@@ -63,12 +99,11 @@ def _segments(**kw):
     if is_dont_know(trace):
         return {SEGMENT_SET.iri: trace}
     p = _params_from_ctx(kw)
-    cands = G.epsilon_sweep(list(trace), k=p.k, lo_frac=p.lo_frac, hi_frac=p.hi_frac)
-    best = select_polygon(cands, p)
+    best = select_polygon(list(trace), p)
     if best is None:
         return {SEGMENT_SET.iri: DontKnow(
             reason="fit",
-            detail="no parsimonious polygon within tau_fit (curve/edge-decoration)")}
+            detail="no ε-persistent, per-edge-fitting polygon (curve/edge-decoration)")}
     return {SEGMENT_SET.iri: best}
 
 

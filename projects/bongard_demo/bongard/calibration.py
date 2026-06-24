@@ -40,20 +40,30 @@ PARAMS_CTX_KEY = "learned_parameters"
 class Params:
     """The Local per-problem parameter snapshot (PLAN §10 D/E/H).
 
-    ``tau_fit``    — accept threshold on scale-normalized RMS (D).
+    ``tau_fit``    — accept threshold on scale-normalized RMS (D); retained
+                     for calibration provenance / aggregate sanity (the gate
+                     is now per-edge, below).
     ``max_guard``  — abstain guard on scale-normalized max residual (D).
-    ``max_sides``  — polygon-family complexity ceiling; a shape needing
-                     more straight sides to fit within τ_fit is a curve
-                     (the curve discriminator — PLAN §10 H K-bound).
-    ``lo_frac``/``hi_frac``/``k`` — the ε-sweep band + resolution (E/H).
+    ``per_edge_tau`` — worst per-edge RMS accepted (PLAN §10 D revision; the
+                     curve discriminator, replaces the old ``max_sides`` cap).
+    ``plateau_min_frac`` — min ε-persistence: the winning vertex count must
+                     hold a plateau over ≥ this fraction of the valid sweep
+                     steps (a curve's count wanders and fails this).
+    ``lo_frac``/``hi_frac``/``k`` — the ε-sweep band + resolution (E/H);
+                     widened + denser so the persistence plateau is resolved.
     """
 
     tau_fit: float = 0.012
     max_guard: float = 0.05
-    max_sides: int = 8
-    lo_frac: float = 0.015
-    hi_frac: float = 0.11
-    k: int = 12
+    per_edge_tau: float = 0.013   # admits small polygons (r≈22 tri @0.0105),
+                                  # rejects bowtie hull (0.016); circle is
+                                  # rejected by persistence, not this. Same
+                                  # r≈20–55 band as tau_fit (per-problem
+                                  # recalibration is the m2+ path).
+    plateau_min_frac: float = 0.5
+    lo_frac: float = 0.004
+    hi_frac: float = 0.12
+    k: int = 24
 
     def as_context(self) -> Dict[str, Dict]:
         return {PARAMS_CTX_KEY: asdict(self)}
@@ -97,5 +107,7 @@ def calibrate(seed: Optional[Sample] = None, *, slack: float = 0.6,
     assert correct, f"seed parse did not recover {target_n} vertices"
     seed_rms = min(c.rms for c in correct)
     tau = max(floor, seed_rms * (1.0 + slack))
-    return Params(tau_fit=tau, max_guard=base.max_guard, max_sides=base.max_sides,
+    return Params(tau_fit=tau, max_guard=base.max_guard,
+                  per_edge_tau=base.per_edge_tau,
+                  plateau_min_frac=base.plateau_min_frac,
                   lo_frac=base.lo_frac, hi_frac=base.hi_frac, k=base.k)

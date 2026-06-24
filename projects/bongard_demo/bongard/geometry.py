@@ -202,6 +202,48 @@ def fit_residuals(trace: List[Point], segments: List[Segment], diag: float):
     return rms / diag, mx / diag
 
 
+def per_edge_max_residual(trace: List[Point], vertices, diag: float) -> float:
+    """Worst per-edge scale-normalized RMS residual (PLAN §10 D revision).
+
+    Each boundary point is assigned to its nearest polygon edge; the RMS
+    residual is computed *per edge* over its assigned points; the worst
+    edge is returned. A true polygon edge → ~0; a chord across a curve, or
+    a curved/decorated edge → high. One bad edge is enough to reject, so
+    this also *localizes* edge-decoration (the disaggregated form of the
+    aggregate fit metric). ``max_sides`` is no longer needed: a curve fails
+    this even when finely sampled, because each chord still bows.
+    """
+    segs = segments_from_vertices(list(vertices))
+    if not segs:
+        return float("inf")
+    buckets: List[List[float]] = [[] for _ in segs]
+    for p in trace:
+        dists = [point_seg_dist(p, a, b) for (a, b) in segs]
+        i = min(range(len(dists)), key=lambda k: dists[k])
+        buckets[i].append(dists[i])
+    worst = 0.0
+    for v in buckets:
+        if v:
+            worst = max(worst, math.sqrt(sum(d * d for d in v) / len(v)))
+    return worst / diag
+
+
+def epsilon_profile(trace: List[Point], k: int = 24,
+                    lo_frac: float = 0.004, hi_frac: float = 0.12):
+    """Per-ε simplification in ε order, WITHOUT dedup/sort (persistence).
+
+    Returns ``[(eps_frac, vertices_tuple), ...]``. The persistence signal
+    (a vertex count that stays *stable across a wide ε band* = a polygon;
+    a *wandering* count = a curve) reads off this ordered profile.
+    :func:`epsilon_sweep` dedups + ranks by RMS, which destroys the ε
+    ordering and the repeated counts a plateau is measured from — so it is
+    unsuitable here.
+    """
+    diag = bbox_diag(trace)
+    fracs = [lo_frac * (hi_frac / lo_frac) ** (i / (k - 1)) for i in range(k)]
+    return [(f, tuple(simplify_closed(trace, f * diag))) for f in fracs]
+
+
 def epsilon_sweep(trace: List[Point], k: int = 12,
                   lo_frac: float = 0.004, hi_frac: float = 0.08) -> List[Candidate]:
     """Sweep K ε fractions; return candidates ranked by (RMS, n_vertices).

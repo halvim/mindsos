@@ -114,4 +114,6 @@ def test_resegment_branch_retries_then_abstains():
 def test_calibration_tau_in_range():
     p = calibrate()
     assert 0.006 <= p.tau_fit <= 0.03   # seed-derived, slack-padded, floored
-    assert p.max_sides == 8
+    # curve discriminator (PLAN §10 D revision): per-edge fit + ε-persistence
+    assert p.per_edge_tau <= 0.015
+    assert 0.4 <= p.plateau_min_frac <= 0.7
