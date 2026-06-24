@@ -335,6 +335,14 @@ phase_15a bootstrap_global count (10→11), phase_50 closed-set (13→14).
 
 ### §19.5 Build/gate status + handoff
 
+- **Authoritative gate (Linux, Docker, Py3.11, live FalkorDB) — GREEN
+  2026-06-24:** `4069 passed / 11 skipped / 1 xpassed / 0 failed` on the
+  full cumulative suite. Tag `feat-subminds-slice1-confirmed` at
+  `cebd6ef`. Two gate-only fixes beyond the build: `mindsos_admin`
+  `_GLOBAL_ROLE_ORDER` parity tuple (`a64e18d`) and 5 role-set /
+  IRI-builder parity sentinels in phase_12/34/39 (`cebd6ef`) — both
+  classes were invisible to the sandbox (the `mindsos_server`
+  `datetime.UTC` / `typer` import gaps on Py3.10).
 - **Sandbox dev-check (Linux, Py3.10):** `tests/feat_subminds` 57
   passed; phase_13/14 (non-CLI) + phase_46/47/48 green. Runtime
   behaviors verified: adaptive cadence, emit-once storm suppression,
@@ -350,8 +358,8 @@ phase_15a bootstrap_global count (10→11), phase_50 closed-set (13→14).
   (SUBMIND_DESIGN_LOG.md, ADRs 0188/0189/0190, HANDOFF §6.0) + Slice 1,
   and pushes; **Linux** runs the authoritative cumulative gate. Do not
   run the gate on the Mac; do not git-mutate from the sandbox.
-- **ADRs 0188/0189/0190 stay `Proposed`** until the Linux gate is green,
-  then flip to `Accepted`.
+- **ADRs 0188/0189/0190 now `Accepted`** (gate green 2026-06-24). 0188
+  + 0190 fully Slice-1; 0189 partial (§1/§4 shipped; §2/§3 → Slice 2).
 
 ### §19.6 Open implementation items the design deferred (unchanged)
 

@@ -803,15 +803,20 @@ Strict dependency order:
 
 ### 6.0 Designs awaiting implementation (newest first)
 
-- **SubMind (Mindlet) — design CLOSED 2026-06-23, impl pending** (own chat; formalizes Minsky's
-  "society of small minds" tier). New cross-layer construct: an autonomous, no-reasoning **reflex**
-  over one self-state vital (thirst/battery/balance) that monitors via an L4-scheduled adaptive loop
-  and emits a **Signal** (queued, deliberated) or a **Reflex** (queue-bypassing, pre-wired, for
-  non-reconcilable threats). L4 = the single Mind that arbitrates. Reverses **ADR-0155** (resident
-  loops return, L4-owned not L3); amends **ADR-0150** (role-set 13→14, new `subminds` L2 role-graph);
-  added via **endowment** (distinct from skill-acquisition). **WSD owns none of it.** Full record:
-  `confirmation_docs/SUBMIND_DESIGN_LOG.md` (§18 closed decision ledger) + ADRs **0188/0189/0190**
-  (status `Proposed`). Next-chat entry point: `confirmation_docs/SUBMIND_NEXT_CHAT_PROMPT.md`.
+- **SubMind (Mindlet) — Slice 1 SHIPPED to `feat/subminds` 2026-06-24** (gate green: 4069 passed /
+  11 skipped / 1 xpassed / 0 failed, Linux + live FalkorDB; tag `feat-subminds-slice1-confirmed` at
+  `cebd6ef`). Formalizes Minsky's "society of small minds" tier: an autonomous, no-reasoning
+  **reflex** over one self-state vital (thirst/battery/balance) that monitors via an L4-scheduled
+  adaptive loop and emits a **Signal** (queued, deliberated) or a **Reflex** (queue-bypassing,
+  pre-wired, for non-reconcilable threats). L4 = the single Mind that arbitrates. Reverses
+  **ADR-0155** (resident loops return, L4-owned not L3 — Slice 1 ships the L4 `SubMindScheduler`);
+  amends **ADR-0150 §am-7** (role-set 13→14, new `subminds` L2 role-graph, Global form bootstrapped);
+  added via **endowment** (distinct from skill-acquisition). **WSD owns none of it.** Slice 1 =
+  definition + autonomous sensing (adaptive cadence + storm suppression) + Signal→triage→executor
+  heap with a stub resolver. **Pending: Slice 2** (resource model + preempt/reconcile + unsat policy —
+  largest surface), **Slice 3** (Reflex path + write-hook/arbiter seizure), **Slice 4** (Local scope +
+  taught endowment + de-endowment + tuning). ADRs **0188/0189/0190** now `Accepted`. Full record:
+  `confirmation_docs/SUBMIND_DESIGN_LOG.md` (§18 decision ledger, §19 impl plan + build/gate log).
 - **Composition lifecycle — Slice 1 SHIPPED to `main` 2026-06-21** (`b56e0ac`; gate 3991/11/1xpass/0
   live FalkorDB). Fixed the verified `find_pipeline` multi-input unsoundness: pluggable `Finder`
   seam (`Finder`/`BFSFinder`/`ConjunctionFinder`) + `PipelineDAG` replacing linear `Pipeline` +

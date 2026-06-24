@@ -1,6 +1,6 @@
 ---
 title: SubMind endowment lifecycle + `subminds` L2 role-graph
-status: Proposed
+status: Accepted
 date: 2026-06-23
 layer: L2
 amends: [ADR-0150]
@@ -9,7 +9,7 @@ related: [0180, 0183, 0188, 0189]
 
 # ADR-0190: SubMind endowment lifecycle + `subminds` L2 role-graph
 
-**Status:** Proposed — design-discussion chat (see `confirmation_docs/SUBMIND_DESIGN_LOG.md`); implementation deferred to `feat/subminds`.
+**Status:** Accepted — Slice 1 shipped on `feat/subminds` (Linux gate green; tag `feat-subminds-slice1-confirmed`). The `subminds` L2 role-graph (Global form) + ADR-0150 §amendment-7 (closed role-set 13→14) are live; the Local form + taught path + de-endowment land in Slice 4. See `confirmation_docs/SUBMIND_DESIGN_LOG.md` §19.
 
 **Date:** 2026-06-23
 

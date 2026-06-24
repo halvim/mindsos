@@ -1,6 +1,6 @@
 ---
 title: SubMind priority model + L4 arbitration (severity/tier/score, resource-contention preempt-vs-reconcile, unsatisfiable-need policy)
-status: Proposed
+status: Accepted
 date: 2026-06-23
 layer: L4
 related: [0169, 0171, 0188, 0190]
@@ -8,7 +8,7 @@ related: [0169, 0171, 0188, 0190]
 
 # ADR-0189: SubMind priority model + L4 arbitration
 
-**Status:** Proposed — design-discussion chat (see `confirmation_docs/SUBMIND_DESIGN_LOG.md`); implementation deferred to `feat/subminds`.
+**Status:** Accepted — partially shipped on `feat/subminds` (Linux gate green; tag `feat-subminds-slice1-confirmed`). Slice 1 implements §1 (severity/tier/`attention_score`) and §4 (single scheduler thread + `SubMindRegistry`, MM read-only); §2 (preempt vs reconcile / resource model) and §3 (unsatisfiable-need policy) land in Slice 2. See `confirmation_docs/SUBMIND_DESIGN_LOG.md` §19.
 
 **Date:** 2026-06-23
 

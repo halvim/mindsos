@@ -1,6 +1,6 @@
 ---
 title: SubMind (Mindlet) construct + Signal/Reflex two-output model
-status: Proposed
+status: Accepted
 date: 2026-06-23
 layer: L4
 aliases: [submind, mindlet]
@@ -10,7 +10,7 @@ related: [0150, 0159, 0162, 0169, 0180]
 
 # ADR-0188: SubMind (Mindlet) construct + Signal/Reflex two-output model
 
-**Status:** Proposed — design-discussion chat (see `confirmation_docs/SUBMIND_DESIGN_LOG.md`); implementation deferred to `feat/subminds`.
+**Status:** Accepted — Slice 1 shipped on `feat/subminds` (Linux gate green: 4069 passed / 11 skipped / 1 xpassed / 0 failed; tag `feat-subminds-slice1-confirmed`). Slices 2–4 (resource model + arbitration; Reflex path; Local scope + teaching + de-endowment) pending. See `confirmation_docs/SUBMIND_DESIGN_LOG.md` §19.
 
 **Date:** 2026-06-23
 
