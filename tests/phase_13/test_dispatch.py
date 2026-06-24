@@ -23,6 +23,7 @@ from mindsos_knowledge import (
     ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
+    ROLE_SUBMINDS,
     ROLE_TASK_PATTERNS,
     UnknownRoleError,
     schema_for_role,
@@ -46,6 +47,8 @@ _ALL_NAMED_ROLES = (
     ROLE_LEARNED_PARAMETERS,
     # Phase 50 addition per ADR-0150 §am-6.
     ROLE_INSTALLED_SKILLS,
+    # feat/subminds addition per ADR-0150 §am-7.
+    ROLE_SUBMINDS,
 )
 
 
@@ -86,8 +89,9 @@ def test_dispatch_table_size_equals_named_role_count() -> None:
     # Phase 43 PR2 commit 1 expanded the closed role-set from 8 to 12 per
     # ADR-0150 §amendment-5 (parameter-staging, pending-promotions,
     # capacity-gaps, learned-parameters). Phase 50 expanded 12 to 13 per
-    # ADR-0150 §amendment-6 (installed-skills).
-    assert len(_ROLE_SCHEMA_BUILDERS) == 13
+    # ADR-0150 §amendment-6 (installed-skills). feat/subminds expanded 13
+    # to 14 per ADR-0150 §amendment-7 (subminds).
+    assert len(_ROLE_SCHEMA_BUILDERS) == 14
 
 
 def test_dispatch_table_keys_equal_named_roles() -> None:

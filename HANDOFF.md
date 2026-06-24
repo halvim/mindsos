@@ -803,14 +803,26 @@ Strict dependency order:
 
 ### 6.0 Designs awaiting implementation (newest first)
 
-- **Composition lifecycle** (core-mod; designed 2026-06-21, **impl pending**). Fixes the verified
-  `find_pipeline` multi-input unsoundness. Full spec + all decisions:
-  `confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md`. Amendment ADRs drafted:
-  **ADR-0071 §amendment-2** (pluggable finder seam + conjunction/fold finder + DAG result type) +
-  **ADR-0159 §amendment-1** (typed `input_group` declaration field). Branch to open:
-  `feat/composition-lifecycle`. Scope = ARC §5's four parts + bongard composite-persistence
-  residual; promotion + graph-hyperedge + composite-kind deferred (reasons in the log). Project-
-  independent; WSD/bongard not a dependency.
+- **SubMind (Mindlet) — design CLOSED 2026-06-23, impl pending** (own chat; formalizes Minsky's
+  "society of small minds" tier). New cross-layer construct: an autonomous, no-reasoning **reflex**
+  over one self-state vital (thirst/battery/balance) that monitors via an L4-scheduled adaptive loop
+  and emits a **Signal** (queued, deliberated) or a **Reflex** (queue-bypassing, pre-wired, for
+  non-reconcilable threats). L4 = the single Mind that arbitrates. Reverses **ADR-0155** (resident
+  loops return, L4-owned not L3); amends **ADR-0150** (role-set 13→14, new `subminds` L2 role-graph);
+  added via **endowment** (distinct from skill-acquisition). **WSD owns none of it.** Full record:
+  `confirmation_docs/SUBMIND_DESIGN_LOG.md` (§18 closed decision ledger) + ADRs **0188/0189/0190**
+  (status `Proposed`). Next-chat entry point: `confirmation_docs/SUBMIND_NEXT_CHAT_PROMPT.md`.
+- **Composition lifecycle — Slice 1 SHIPPED to `main` 2026-06-21** (`b56e0ac`; gate 3991/11/1xpass/0
+  live FalkorDB). Fixed the verified `find_pipeline` multi-input unsoundness: pluggable `Finder`
+  seam (`Finder`/`BFSFinder`/`ConjunctionFinder`) + `PipelineDAG` replacing linear `Pipeline` +
+  typed `_CapacityBase.input_group` + composite persistence (ADR-0071 §am-2 + ADR-0159 §am-1).
+  Record: `confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md` (§8 build/gate log, §3/§6
+  scope/dispositions) + STATE `recent`. Project-independent; WSD/bongard not a dependency.
+- **Composition lifecycle — Slice 2 SCOPED, impl pending** (own chat). Two items Slice 1 left out,
+  surfaced by ARC's D3 spike: invoke INPUT-contract validation (Part 6, standalone correctness) +
+  DataState operand-arity/role axis (Part 5, consumer-gated). Scope + concerns + recommended split:
+  **design log §9** + STATE `pending_designs` (`composition-lifecycle-s2`). Reopens ADR-0156 edge
+  model + ADR-0159/0071 §am + ADR-0072/0146.
 
 ### 6.1 19-item Phase 38 carry-forward (full list in `confirmation_docs/PHASE_38_DESIGN_LOG.md §4`)
 

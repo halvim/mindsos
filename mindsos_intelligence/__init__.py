@@ -28,6 +28,17 @@ from .mm_resolver import (
 from .monitor_subscription import MonitorSubscriptionRegistry
 from .rwlock import RWLock
 from .signal_triage import SignalTriageWorker, passthrough_classifier
+from .submind import (
+    ActivationState,
+    CadenceLaw,
+    SubMind,
+    SubMindDefinition,
+    SubMindSignal,
+    SubMindState,
+    VitalDirection,
+)
+from .submind_registry import SubMindRegistry
+from .submind_scheduler import SubMindScheduler
 from .dispatch import L4Dispatcher
 from .chain_artifacts import ChainArtifactWriter
 from .orchestrator import LifecyclePhase, Orchestrator, TaskOutcome
@@ -61,4 +72,14 @@ __all__ = [
     "passthrough_classifier",
     "IntelligenceLayer",
     "DreamCycleTimer",
+    # feat/subminds (Slice 1) — SubMind runtime + scheduler + registry.
+    "SubMind",
+    "SubMindDefinition",
+    "SubMindSignal",
+    "SubMindState",
+    "ActivationState",
+    "VitalDirection",
+    "CadenceLaw",
+    "SubMindScheduler",
+    "SubMindRegistry",
 ]

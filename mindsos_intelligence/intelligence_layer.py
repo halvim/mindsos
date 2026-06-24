@@ -27,6 +27,8 @@ from .executor import PriorityTierExecutor
 from .mm import MentalModel
 from .monitor_subscription import MonitorSubscriptionRegistry
 from .signal_triage import SignalTriageWorker
+from .submind import SubMind
+from .submind_registry import SubMindRegistry
 
 
 class DreamCycleTimer:
@@ -87,6 +89,7 @@ class IntelligenceLayer:
         self._dream_driver = dream_driver
         self._mm: Optional[MentalModel] = None
         self._monitors: Optional[MonitorSubscriptionRegistry] = None
+        self._subminds: Optional[SubMindRegistry] = None
         self._dream_timer: Optional[DreamCycleTimer] = None
         self._cancel_tokens: Dict[str, CancelToken] = {}
         self._task_seq = 0
@@ -118,6 +121,22 @@ class IntelligenceLayer:
             raise RuntimeError("IntelligenceLayer not started")
         return self._monitors
 
+    @property
+    def submind_registry(self) -> SubMindRegistry:
+        if self._subminds is None:
+            raise RuntimeError("IntelligenceLayer not started")
+        return self._subminds
+
+    def endow(self, submind: SubMind) -> None:
+        """Endow this session's Mind with a SubMind (feat/subminds Slice 1).
+
+        Convenience pass-through to the per-session ``SubMindRegistry``;
+        valid only after ``start()``. Authored/Global definitions are
+        loaded from the L2 ``subminds`` role-graph by the registry; this
+        path is the runtime-object entry used by tests and the taught
+        path (later slice)."""
+        self.submind_registry.endow(submind)
+
     def start(self) -> None:
         with self._lock:
             if self._started:
@@ -131,6 +150,11 @@ class IntelligenceLayer:
             self._monitors.load_from(self._cl)
             self._executor.start()
             self._triage.start()
+            # feat/subminds (Slice 1): the per-session SubMind lifecycle
+            # owner. Empty by default — wiring triage→executor is inert
+            # until a SubMind is endowed and emits a Signal.
+            self._subminds = SubMindRegistry(self._triage, self._executor)
+            self._subminds.start()
             # Crash recovery (ADR-0179 / D-B50): scan for unconsolidated
             # checkpoint markers left by a prior crashed session and write a
             # ``crash_marker`` Episode for each. No-op when no store is wired.
@@ -189,6 +213,8 @@ class IntelligenceLayer:
             self._stopped = True
             for token in self._cancel_tokens.values():
                 token.request_cancel()
+            if self._subminds is not None:
+                self._subminds.stop()
             if self._dream_timer is not None:
                 self._dream_timer.stop()
             self._triage.stop()

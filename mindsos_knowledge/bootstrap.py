@@ -62,6 +62,7 @@ from .identifiers import (
     ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
+    ROLE_SUBMINDS,
     ROLE_TASK_PATTERNS,
 )
 from .schemas import (
@@ -89,6 +90,11 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_LEARNED_PARAMETERS,
     # Phase 50 (ADR-0150 §am-6) — skill-install state; Global-only.
     ROLE_INSTALLED_SKILLS,
+    # feat/subminds (ADR-0150 §am-7) — SubMind definition records. The
+    # role is Global+Local by design; Slice 1 bootstraps the Global form
+    # only (authored, admin-gated endowment). The Local form lands with
+    # the taught-endowment slice.
+    ROLE_SUBMINDS,
 })
 
 #: Roles that live in Local-per-user metagraph per ADR-0044
@@ -150,6 +156,8 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_LEARNED_PARAMETERS: frozenset(),
     # Phase 50 (ADR-0150 §am-6) — no bootstrap-order dependencies.
     ROLE_INSTALLED_SKILLS: frozenset(),
+    # feat/subminds (ADR-0150 §am-7) — no bootstrap-order dependencies.
+    ROLE_SUBMINDS: frozenset(),
 }
 
 
