@@ -224,10 +224,10 @@ def test_durable_local_roundtrip_reactivates_composite(falkor_client):
     cl2 = CapacityLayer(categories=(CATEGORY_PERCEPTION,))
     # The atoms (DataStates + leaf capacities) are re-registered from code
     # each boot; only the learned composite re-activates from its descriptor.
-    cl2.register_datastate(ds_in)
-    cl2.register_datastate(ds_mid)
-    cl2.register_datastate(ds_out)
     session = Session.for_testing(user_id)
+    cl2.register_datastate(ds_in, session=session, allow_new_realm=True)
+    cl2.register_datastate(ds_mid, session=session, allow_new_realm=True)
+    cl2.register_datastate(ds_out, session=session, allow_new_realm=True)
     cl2.register_capacity(leaf_a, session=session)
     cl2.register_capacity(leaf_b, session=session)
     register_reactivation_factory(REACTIVATION, _composite_factory(cl2), if_exists="upsert")
