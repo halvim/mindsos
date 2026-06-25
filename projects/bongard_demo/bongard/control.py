@@ -65,13 +65,21 @@ class Verdict:
 class Solver:
     """A built Bongard perception instance over the pinned core."""
 
-    def __init__(self, user_id: str = "bongard"):
-        self.cl = CapacityLayer()
-        self.session = DuckSession(user_id)
-        register_ontology(self.cl, self.session)
-        self.pix_iri, self.bnd_iri = register_leaf(self.cl, self.session)
-        self.seg_iri, self.vts_iri = register_segments(self.cl, self.session)
-        self.pred_iri = register_predicate(self.cl, self.session)
+    def __init__(self, user_id: str = "bongard", *, cl=None, session=None,
+                 register: bool = True):
+        self.cl = cl if cl is not None else CapacityLayer()
+        self.session = session if session is not None else DuckSession(user_id)
+        if register:
+            register_ontology(self.cl, self.session)
+            register_leaf(self.cl, self.session)
+            register_segments(self.cl, self.session)
+            register_predicate(self.cl, self.session)
+        from .leaf import PIXELS_TO_POINTS_IRI, POINTS_TO_BOUNDARY_IRI
+        from .segments import SEGMENTS_IRI, VERTICES_IRI
+        from .predicate import PREDICATE_IRI
+        self.pix_iri, self.bnd_iri = PIXELS_TO_POINTS_IRI, POINTS_TO_BOUNDARY_IRI
+        self.seg_iri, self.vts_iri = SEGMENTS_IRI, VERTICES_IRI
+        self.pred_iri = PREDICATE_IRI
         # τ_fit + band calibrated off the definitional triangle seed (D).
         self.params: Params = calibrate()
 
