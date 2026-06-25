@@ -29,6 +29,13 @@ The mint triad came in **reshaped**, as two non-phase feats on `main` (`core_ver
 
 **m2 status: core-UNBLOCKED.** Remaining gate is the Mac-side pin-bump (action below); build is mine after.
 
+**2026-06-23 — m2 SCOPE LOCKED (probe-grounded; see the in-memory mint probe this chat).**
+- **PB-1 — m2 = lifecycle proof, NOT minting power.** The probe showed a minted `square` node = m1's generic chain + a string comparison; m1 already recognizes square/pentagon, so vertex-count mint adds *zero recognition power*. m2 proves the **mint lifecycle** (teach → validate → name → persist → restart → re-invoke) with **m1 as the oracle**. Do not overclaim it as "minting works"; the hard discriminative mint is concept-mint (§9 step 5). One-node-per-shape (G1.2) is justified by downstream referenceability + promotion granularity, not recognition.
+- **PB-9 — params live IN the descriptor.** Persist the calibration (`per_edge_tau`, `plateau_min_frac`, band, τ_fit) into the `learned-parameters` descriptor so a restart restores the *exact* calibrated capacity, not a recalibration. Otherwise "survives a restart" is only half-true.
+- **PB-10 — teach-triggered, not autonomous.** Bongard has no organic recurrence signal (you hand it the shapes), and SA-1 "what counts as recurring" is ⚠ unstressed here. So m2 mints on a **teach** trigger; autonomous detection (SA-1) defers to a producer with a real recurrence signal (WSD). Attribution: the shared invariant (e.g. n=4) is computed by a **registered capacity** [SYSTEM], the label comes from **the human** [HUMAN], Claude stays out of the runtime decision path (the probe's closure-comparison discriminator was Claude-in-the-loop — m2 must register it as a predicate).
+- **First build = the durability de-risk (the only unproven piece).** Persist a nested-`COMPOSITE_DAG` descriptor through `FalkorDBLocalPersister` → fresh KL/CL → `boot_local` → `invoke` the minted composite, no code registration. The in-memory probe covered everything else; the F9 round-trip test only carried a *flat* `steps` list, so the nested-dict-through-the-real-persister path is untested. Linux-gated (needs live FalkorDB). Fail fast here before the teach/naming layer.
+- **Deferred:** `per_edge_tau` scale-hardening (only bites at r<22 / mixed shapes — not currently generated); revisit if held-out emits r<22. CC-3 Global promotion stays the m5/ADR-0184 seam. Scope fence: **Local mint + restart only.**
+
 **2026-06-20 session — decided + recorded (pointers, not restated):**
 - **E** proposer = deterministic ε-sweep (seeded-RANSAC fallback); learned deferred behind the F contract under the restated §1 bound. (§10 E)
 - **H** budget = threshold-primary; caps K + R=1 monotone re-segment; dormant op ceiling. (§10 H)
