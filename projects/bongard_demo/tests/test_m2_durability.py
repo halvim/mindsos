@@ -16,13 +16,47 @@ Two tests:
 
 from __future__ import annotations
 
-import pytest
+import uuid
 
-from tests._shared.falkordb_fixture import falkor_client  # noqa: F401
+import pytest
 
 
 CAPABILITY = "m2demo.shout"
 REACTIVATION = "m2_composite"
+
+
+@pytest.fixture
+def falkor_client():
+    """Fresh ephemeral FalkorDB graph per test; skips if no live sidecar.
+
+    Self-contained: the demo gate's sys.path does not include the core
+    ``tests/`` tree, so this does not import ``tests._shared``.
+    """
+    try:
+        from mindsos_core.config import FalkorConfig
+        from mindsos_core.persistence import FalkorClient
+    except Exception as e:
+        pytest.skip(f"FalkorClient import failed: {e}")
+    base = FalkorConfig.from_env()
+    config = FalkorConfig(
+        host=base.host, port=base.port, password=base.password,
+        graph=f"test_{uuid.uuid4().hex[:8]}",
+    )
+    try:
+        client = FalkorClient(config)
+    except Exception as e:
+        pytest.skip(f"FalkorDB unreachable at {config.host}:{config.port}: {e}")
+    try:
+        yield client
+    finally:
+        try:
+            client.run_query("MATCH (n) DETACH DELETE n")
+        except Exception:
+            pass
+        try:
+            client.close()
+        except Exception:
+            pass
 
 
 def _vocab():
