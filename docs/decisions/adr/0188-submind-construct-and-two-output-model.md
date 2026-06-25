@@ -48,4 +48,5 @@ Introduce the **SubMind** (nickname **Mindlet**): an autonomous, no-reasoning **
 ## Amendment trail
 
 - **Amends ADR-0155** — the Monitor-lifecycle retirement is partially reversed: resident self-firing returns at L4 (scheduler-owned), not L3. ADR-0155's L3-purity rationale is preserved (no resident loop in `mindsos_capacity`); the loop lives in `mindsos_intelligence`.
+- **Slice 2 resource model (shared with the Reflex path).** The forcible resource seizure of Decision 3 reuses the same `ResourceLedger` (`mindsos_intelligence/resources.py`) that Slice 2 built for Signal preempt/reconcile (ADR-0189 §2). Slice 2 uses the hold's *cooperative* `cancel` hook; the Slice-3 Reflex path adds a forcible *seize* hook (arbiter override / drain) on the same `ResourceHold` record — designed to host it without a ledger change.
 - Composes with ADR-0189 (priority + arbitration) and ADR-0190 (endowment + `subminds` role-graph).

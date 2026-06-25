@@ -152,9 +152,22 @@ class SubMindDefinition:
     activation_class: str = "always_on"
     tier_hysteresis: float = 0.0       # severity margin to flip tier band
     reset_margin: float = 0.0          # severity recovery margin to re-ARM
-    # Slice-2 consumer (unconsumed here): exclusive resources the resolver
-    # needs, for the preempt/reconcile contention check (ADR-0189 §2).
+    # ── resolver (ADR-0189 §2; consumed by submind_arbiter in Slice 2) ──
+    # The resolver is a GOAL, not a fixed capacity: the need is satisfied
+    # by a pipeline the finder builds at dispatch from whatever
+    # capabilities the system currently has (charger vs battery-swap).
+    # ``resolver_goal_datastate`` is the target the pipeline must reach
+    # ("energy sufficient"); ``resolver_start_datastate`` seeds the
+    # search. ``resolver_resources`` are the exclusive resources the
+    # resolver needs (static, for the contention check — the chosen
+    # pipeline may use a subset). ``fallback_resolver`` is a DIRECT
+    # ask-human capacity (a 1-step terminator, no recursive planning)
+    # fired when the goal is unreachable (a dont-know), so there is
+    # always a resolution path (ADR-0189 §3 — never auto-give-up).
     resolver_resources: Tuple[str, ...] = field(default_factory=tuple)
+    resolver_start_datastate: Optional[str] = None
+    resolver_goal_datastate: Optional[str] = None
+    fallback_resolver: Optional[str] = None
 
     def __post_init__(self) -> None:
         if not (0 <= self.importance_weight <= ATTENTION_SCORE_MAX):

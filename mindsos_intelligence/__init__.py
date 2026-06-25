@@ -39,6 +39,9 @@ from .submind import (
 )
 from .submind_registry import SubMindRegistry
 from .submind_scheduler import SubMindScheduler
+from .submind_arbiter import SubMindArbiter
+from .resources import Contention, ResourceHold, ResourceLedger
+from .pipeline_execution import PipelineExecutionResult, execute_pipeline
 from .dispatch import L4Dispatcher
 from .chain_artifacts import ChainArtifactWriter
 from .orchestrator import LifecyclePhase, Orchestrator, TaskOutcome
@@ -82,4 +85,11 @@ __all__ = [
     "CadenceLaw",
     "SubMindScheduler",
     "SubMindRegistry",
+    # feat/subminds (Slice 2) — resource model + arbiter + pipeline executor.
+    "SubMindArbiter",
+    "ResourceLedger",
+    "ResourceHold",
+    "Contention",
+    "PipelineExecutionResult",
+    "execute_pipeline",
 ]

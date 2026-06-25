@@ -8,7 +8,7 @@ related: [0169, 0171, 0188, 0190]
 
 # ADR-0189: SubMind priority model + L4 arbitration
 
-**Status:** Accepted — partially shipped on `feat/subminds` (Linux gate green; tag `feat-subminds-slice1-confirmed`). Slice 1 implements §1 (severity/tier/`attention_score`) and §4 (single scheduler thread + `SubMindRegistry`, MM read-only); §2 (preempt vs reconcile / resource model) and §3 (unsatisfiable-need policy) land in Slice 2. See `confirmation_docs/SUBMIND_DESIGN_LOG.md` §19.
+**Status:** Accepted — Slice 1 shipped §1 (severity/tier/`attention_score`) + §4 (scheduler + `SubMindRegistry`, MM read-only). **Slice 2 (`feat/subminds-s2`) ships §2 (preempt vs reconcile, derived from resource contention) + §3 (unsatisfiable-need policy).** Built form: a `ResourceLedger` (`mindsos_intelligence/resources.py`) + `SubMindArbiter` (`submind_arbiter.py`); cooperative preempt cannot seize, so preempt/defer collapse to *park-on-contention (+ conditional cooperative cancel)* with **event-driven resume on release**, and reconcile = an independent concurrent resolver dispatch (`executor.submit(preempt=False)`). The resolver is goal-directed (a Pipeline built at dispatch via `find_pipeline`, run by the core `pipeline_execution` executor); goal-unreachable is an honest dont-know that fires the SubMind's direct ask-human `fallback_resolver`. The `ResourceLedger` is the shared model the Slice-3 Reflex seizure path reuses (ADR-0188). See `confirmation_docs/SUBMIND_DESIGN_LOG.md` §19–§20.
 
 **Date:** 2026-06-23
 

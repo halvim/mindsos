@@ -367,3 +367,118 @@ Tuning: cadence min/max + hysteresis margins, proximity→interval curve,
 severity→tier band edges, importance weights, retry backoff + standing-
 pressure cap, cognitive-Reflex floor. Semantics: de-endowment
 (marker-only, Slice 4). All carried into Slices 2–4.
+
+---
+
+## §20 Slice-2 design decisions (resolver model + resource arbitration)
+
+Decided in the Slice-2 design chat (2026-06-25). Settled after 4 skeptical
+passes (2 consecutive clean). These supersede any earlier Slice-2 framing.
+
+**Resolver is goal-directed, not a fixed capacity/skill.** A SubMind's
+resolver is a **goal** ("add energy to the system"), satisfied by a
+**pipeline constructed at dispatch from whatever capabilities the system
+currently has** (charger *or* battery-swap; drink *or* IV). Runtime
+endowment fields (mirror the unconsumed `resolver_resources` pattern; no
+L2 migration — Local persistence rides Slice 4):
+`resolver_start_datastate`, `resolver_goal_datastate`,
+`resolver_resources` (static, for the contention check),
+`fallback_resolver` (a **direct** ask-human capacity).
+
+**A capacity *is* a 1-step pipeline.** Registering a capacity registers
+its input + output DataStates, so every capacity is itself a pipeline;
+pipelines compose into larger pipelines. There is **no** "single
+capacity vs pipeline" fork — the resolver always runs a pipeline; a
+single capacity is the degenerate 1-step case.
+
+**Real pipeline execution is a CORE component (not WSD).** The Phase-47
+`execution.run` notional-step stub must become real capacity-step
+execution (topological DAG walk → dispatch each step via `L4Dispatcher`
+→ thread DataStates). Built at core, individualized, first consumer =
+the SubMind resolver. Scope boundary: *Pipeline-step* execution now;
+*Plan/Milestone* orchestration (MSUR/SCMS) stays where it is. (See
+RULES §8 — subsystems own nothing architectural.)
+
+**`PipelineNotFoundError` is a dont-know, not a failure.** Goal-
+unreachable means "no capacity reaches a goal-DataState in the desired
+direction" — an honest dont-know (maps to the ADR-0157 path-finding
+family), not an exception. The SubMind then fires its `fallback_resolver`
+(ask-human), so there is **always** a resolution path; the need persists
+at its true tier until resolved / the vital recovers / a human dismisses
+it. **Scope split:** Slice 2 catches unreachability at the arbiter
+boundary → dont-know → ask-human fallback; the L3 finder refactor
+(replace `PipelineNotFoundError` with a path-finding dont-know verdict
+across `pipeline.py`, update composition-lifecycle) is a **separate
+core-mod chat** — logged follow-up, not in Slice 2.
+
+**Arbitration model (resource contention).** `resources.py` =
+`ResourceLedger` (acquire/release/holder + on-release callback) +
+`Contention` verdict — the reusable resource model the Slice-3 Reflex
+path reuses. `SubMindArbiter` holds the stateful policy. Verdict
+collapses (cooperative preempt cannot seize — it must wait for the
+holder to yield): **resource free → dispatch now (reconcile =
+independent concurrent task, `preempt=False`); resource contended →
+park on that resource, plus a cooperative cancel iff the need outranks
+the holder; resume event-driven on `ledger.release`.** Two park reasons
+unify: resource-contended and means-unavailable (dont-know) both park +
+resume event-driven. Tier never decays; never auto-give-up.
+
+**Executor change is additive.** `submit(preempt: bool = True)` gates
+the existing tier-based `_maybe_preempt_locked` (default = shipped
+behavior, zero impact on Phase-47); the SubMind path passes
+`preempt=False`. Optional `resource_ledger` injected (default None =
+no-op); holds bracket the worker run-loop (register on run-start,
+release on `finally`). `enqueue`/`submit` grow optional
+`held_resources=()`. The orchestrator's own blind tier-preempt is **out
+of scope** for Slice 2 (a logged follow-up — the design-log §8
+"blind-preempt" reform).
+
+**Self-contention guard (built form).** A running resolver registers its
+own `resolver_resources` as held. To avoid a SubMind parking behind its
+*own* in-flight resolver (self-deadlock), an escalation that arrives
+while the resolver is in flight short-circuits **before** the contention
+check: it updates the need's recorded tier/severity in place (dedup,
+keyed by `submind_name`) but does **not** dispatch a second resolver. The
+updated tier takes effect on the next dispatch (a retry, or a
+resume-after-release). The heavier "cancel + redispatch the running
+resolver at the higher tier" was considered and **deferred as tuning** —
+it introduces a done-callback/resume race for marginal benefit (the
+SubMind re-emits only on worsening steps, so escalations are sparse, and
+tier governs queue ordering, not a running task).
+
+**Recovery-clear.** Tier-never-decays means nothing drops a parked need
+when the vital recovers. The registry detects the per-SubMind
+`FIRED→ARMED` transition after `tick()` and calls `arbiter.clear(name)`
+— no change to the frozen Slice-1 `tick()` contract.
+
+### §20.1 Surfaces touched (Slice 2)
+
+- **New (core L4):** `mindsos_intelligence/pipeline_execution.py`
+  (`execute_pipeline` + `PipelineExecutionResult` — the real Pipeline-step
+  executor, RULES §8 core component); `resources.py` (`ResourceLedger` +
+  `ResourceHold` + `Contention`); `submind_arbiter.py` (`SubMindArbiter`).
+- **Edited (L4):** `executor.py` (additive `submit(preempt=True,
+  held_resources=())` + optional `resource_ledger` + run-loop hold
+  bracketing); `submind.py` (resolver goal/start/fallback fields on
+  `SubMindDefinition`); `submind_registry.py` (arbiter delegation +
+  FIRED→ARMED recovery-clear; arbiter optional → Slice-1 stub preserved);
+  `intelligence_layer.py` (build ledger + dispatcher + arbiter; `enqueue`
+  `held_resources`; `resource_ledger` property); `__init__.py` exports +6.
+- **Tests:** `tests/feat_subminds/` +4 files (pipeline executor, ledger,
+  executor resources, arbiter policy). No role-set change → **role-set
+  parity sentinels untouched** (landmine (a) avoided).
+
+### §20.2 Build/gate status
+
+- **Sandbox dev-check (Linux, Py3.10) GREEN:** `tests/feat_subminds` 57
+  passed (37 Slice-1 + 20 Slice-2, no regression); `tests/phase_46/47/48`
+  + `tests/phase_30` (pipeline) + `tests/composition_lifecycle` 210 passed
+  (excluding the `typer`/CLI + `datetime.UTC` modules that only collect on
+  the Py3.11 gate — landmine (b)). New modules are stdlib + the allowed
+  `mindsos_capacity.tiers` downward import; layer-isolation green.
+- **Authoritative gate (Linux, Py3.11, live FalkorDB):** PENDING —
+  pair-execution: Cowork built the code; Mac commits/pushes
+  `feat/subminds-s2` off `main`; Linux runs the cumulative gate with
+  `--build`. Tag `feat-subminds-s2-confirmed` on green.
+- **ADRs:** 0189 status → §2/§3 shipped; 0188 amendment-trail notes the
+  `ResourceLedger` is the shared Reflex-seizure model (Slice 3).

@@ -26,8 +26,10 @@ from .cancellation import CancelToken
 from .executor import PriorityTierExecutor
 from .mm import MentalModel
 from .monitor_subscription import MonitorSubscriptionRegistry
+from .resources import ResourceLedger
 from .signal_triage import SignalTriageWorker
 from .submind import SubMind
+from .submind_arbiter import SubMindArbiter
 from .submind_registry import SubMindRegistry
 
 
@@ -82,7 +84,14 @@ class IntelligenceLayer:
         self._checkpoint_store = checkpoint_store
         self._session_id = getattr(session, "session_id", "session")
         self._user_id = getattr(session, "user_id", "user")
-        self._executor = PriorityTierExecutor(max_workers=max_workers)
+        # feat/subminds Slice 2: the exclusive-resource ledger feeds the
+        # SubMind arbiter's contention check + event-driven resume. Wired
+        # into the executor so running tasks' held resources are tracked.
+        self._resource_ledger = ResourceLedger()
+        self._executor = PriorityTierExecutor(
+            max_workers=max_workers, resource_ledger=self._resource_ledger
+        )
+        self._submind_arbiter: Optional[SubMindArbiter] = None
         self._triage = SignalTriageWorker()
         self._als = ALSSubsystemRegistry()
         self._dream_interval_s = dream_interval_s
@@ -127,6 +136,10 @@ class IntelligenceLayer:
             raise RuntimeError("IntelligenceLayer not started")
         return self._subminds
 
+    @property
+    def resource_ledger(self) -> ResourceLedger:
+        return self._resource_ledger
+
     def endow(self, submind: SubMind) -> None:
         """Endow this session's Mind with a SubMind (feat/subminds Slice 1).
 
@@ -150,10 +163,40 @@ class IntelligenceLayer:
             self._monitors.load_from(self._cl)
             self._executor.start()
             self._triage.start()
-            # feat/subminds (Slice 1): the per-session SubMind lifecycle
-            # owner. Empty by default — wiring triage→executor is inert
-            # until a SubMind is endowed and emits a Signal.
-            self._subminds = SubMindRegistry(self._triage, self._executor)
+            # feat/subminds (Slice 1/2): the per-session SubMind lifecycle
+            # owner + the resource-contention arbiter. Empty by default —
+            # inert until a SubMind is endowed and emits a Signal.
+            from .dispatch import L4Dispatcher
+            from mindsos_capacity.exceptions import PipelineNotFoundError
+            from mindsos_capacity.pipeline import find_pipeline
+
+            dispatcher = L4Dispatcher(
+                self._cl, session=self._session, kl=self._kl, mm_handle=self._mm
+            )
+
+            def _plan(start, goal):
+                # The resolver is a goal: build a pipeline to it from the
+                # currently-available capabilities. A None start seeds the
+                # search with the goal itself (a real start datastate is an
+                # endowment concern, Slice 4).
+                return find_pipeline(
+                    self._cl,
+                    session=self._session,
+                    start_datastate=(start if start is not None else goal),
+                    target_datastate=goal,
+                )
+
+            self._submind_arbiter = SubMindArbiter(
+                self._executor,
+                dispatcher,
+                self._resource_ledger,
+                plan_fn=_plan,
+                pipeline_not_found=PipelineNotFoundError,
+            )
+            self._submind_arbiter.install_on_ledger()
+            self._subminds = SubMindRegistry(
+                self._triage, self._executor, arbiter=self._submind_arbiter
+            )
             self._subminds.start()
             # Crash recovery (ADR-0179 / D-B50): scan for unconsolidated
             # checkpoint markers left by a prior crashed session and write a
@@ -182,6 +225,7 @@ class IntelligenceLayer:
         tier: TierEnum = TierEnum.FOREGROUND,
         task_id: Optional[str] = None,
         score: Optional[int] = None,
+        held_resources=(),
     ):
         if not self._started:
             raise RuntimeError("IntelligenceLayer not started")
@@ -192,8 +236,17 @@ class IntelligenceLayer:
             task_id = f"task-{self._task_seq}"
         token = CancelToken()
         self._cancel_tokens[task_id] = token
+        # ``held_resources`` (default empty) declares the exclusive
+        # resources this task holds while running, for the SubMind arbiter's
+        # contention check (ADR-0189 §2). Empty = no holds = unchanged from
+        # the shipped behavior.
         return self._executor.submit(
-            task, tier=tier, task_id=task_id, score=score, cancel_token=token
+            task,
+            tier=tier,
+            task_id=task_id,
+            score=score,
+            cancel_token=token,
+            held_resources=held_resources,
         )
 
     def fork_dream_mm(self) -> MentalModel:

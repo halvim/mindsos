@@ -56,6 +56,20 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - Current version, last shipped phase, what each demo pins → `STATE.json`.
 - Your lane + who owns what → `BRANCHES.md`.
 
+## 8. Subsystems vs core (architectural ownership)
+- **Subsystems own nothing architectural.** WSD is a MindsOS *subsystem* (a Skill)
+  for text — one piece of the larger **NLU** system. It is *installed on top of*
+  the MindsOS platform and *uses* core components; it does **not** own any L0–L5
+  architectural component. Same for FOL and any future skill. (Stop deferring core
+  mechanics "to WSD" — that framing is wrong and has misled multiple chats.)
+- **Any component that belongs to MindsOS is core, even if a subsystem needs it
+  first.** If core mechanics are currently sketched inside a subsystem
+  (`projects/wsd/source/`, etc.), they are to be **extracted, individualized, and
+  implemented at the core layer** whenever any MindsOS component needs them — not
+  left as subsystem-private code. Example: real **pipeline execution** (run a
+  `Pipeline`'s capacity steps for real; the Phase-47 `execution.run` notional-step
+  stub) is a **core** component, not WSD's; build it at core when first needed.
+
 ## 7. Core-ship checklist (MANDATORY for every change to `mindsos_*`)
 - **Tag the ship.** After the change merges to `main` and the Linux gate is green,
   cut an annotated `<name>-confirmed` tag at the squash commit and push it
