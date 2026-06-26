@@ -2,6 +2,11 @@
 
 Read this + `STATE.json` before doing anything. They are the source of truth.
 
+## 0. How to talk to me
+- Say what is needed concisely, in a way I have enough context to
+  understand and make decisions — but not so long it's a chore to read.
+  If I need more, I'll ask.
+
 ## 1. Where you work
 - One chat = one worktree = one branch. Never check out another chat's branch in
   your folder. Need their work? `git merge` it.
