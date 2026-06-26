@@ -128,6 +128,23 @@ STEPS = [
 ]
 
 
+#: PROPOSED future home for each step's inline engine/uses — the real MindsOS
+#: feature + location it should map to. Aspirational (the demo runs D3-inline
+#: today; only step 2 actually discovers through the layer). Rows 3/5/6 unsettled.
+STEP_TARGETS = {
+    1: "L4 task intake → TaskRun (L3 comprehend_task binds) · mindsos_intelligence/orchestrator.py + mindsos_capacity",
+    2: "L3 perceive chain via cl.invoke, composed by find_pipeline · mindsos_capacity/pipeline.py",
+    3: "L4 phase_1 sweep over L3 comparators/profilers · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
+    4: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
+    5: "L3 reasoning — role assignment over state-change · mindsos_capacity",
+    6: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
+    7: "L3 reasoning/scoring — synthesize_selector via invoke · mindsos_capacity",
+    8: "L4 plan construction → Plan/Pipeline chain artifact · mindsos_intelligence/chain_artifacts.py",
+    9: "L4 sufficiency — sufficient_predicate / replan_check · mindsos_intelligence/orchestrator.py",
+    10: "L4 execution (PipelineRun) + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
+}
+
+
 def run_all(task_id: str, dataset: dict) -> Dict[str, Any]:
     """Run all 10 steps in-memory (no checkpoints) — used by the gate."""
     ctx: Dict[str, Any] = {"task_id": task_id}

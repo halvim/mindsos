@@ -67,6 +67,7 @@ def _print_step(n, name, scope, engine, uses, produces, result, status, task_id)
     print(f"   status   {st}  {tail}")
     print(_c("2", "   engine   ") + engine)
     print(_c("2", "   uses     ") + uses)
+    print(_c("2", "   → future ") + _c("36", pipeline.STEP_TARGETS.get(n, "—")))
     print(_c("2", "   produces ") + produces)
     print(_c("2", "   result   ") + _c("32" if "ANSWER" in result or "✓" in result else "0", result))
 
