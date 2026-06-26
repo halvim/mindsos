@@ -145,6 +145,21 @@ STEP_TARGETS = {
 }
 
 
+#: One-line description of what each phase does (for `./arc solve --phases`).
+STEP_DESC = {
+    1: "Load the raw task — the train demonstration pairs and the withheld test input.",
+    2: "Per grid, perceive the entities — objects (8-connected, ≥2 cells), points, shapes, palette, dims.",
+    3: "Per demo pair, run the profilers and comparators — same_object/shape/point, moved, touching, inside, recolored/rotated/reflected, and dim/palette deltas.",
+    4: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
+    5: "Classify the changed objects into roles — mover, target, background.",
+    6: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
+    7: "For each role, find the minimal selector that discriminates it across every demo (tie-break → shape).",
+    8: "Assemble the transformation rule — slide the mover toward the target until touching (hardcoded for #8).",
+    9: "Apply the rule to every demo and check it reproduces each output exactly.",
+    10: "Apply the rule to the test input to produce the answer grid (test output withheld).",
+}
+
+
 def run_all(task_id: str, dataset: dict) -> Dict[str, Any]:
     """Run all 10 steps in-memory (no checkpoints) — used by the gate."""
     ctx: Dict[str, Any] = {"task_id": task_id}

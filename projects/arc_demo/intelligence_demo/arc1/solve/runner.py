@@ -110,9 +110,23 @@ def solve(task_arg, step):
         print(_c("2", f" {task_id} · ran through step {step} · checkpoints in runs/{task_id}/"))
 
 
+def phases():
+    nphases = len(pipeline.STEPS)
+    print(_c("1", f"arc solve — {nphases} pipeline phases"))
+    print()
+    for (n, name, scope, fn, engine, produces) in pipeline.STEPS:
+        tag = _c("33", "⚑ #8") if scope == pipeline.SPECIMEN else _c("2", f"[{scope}]")
+        print(_c("1", f"  {n:>2}  ") + _c("36", f"{name:<26}") + " " + tag)
+        print(_c("2", "      " + pipeline.STEP_DESC.get(n, "")))
+        print()
+
+
 def main():
+    if len(sys.argv) >= 2 and sys.argv[1] == "--phases":
+        phases()
+        return
     if len(sys.argv) < 3:
-        raise SystemExit("usage: solve <task#|task_id> <step 1-10>")
+        raise SystemExit("usage: solve <task#|task_id> <step 1-10>  ·  solve --phases")
     solve(sys.argv[1], int(sys.argv[2]))
 
 
