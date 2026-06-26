@@ -76,14 +76,18 @@ class Solver:
             register_predicate(self.cl, self.session)
             from .relations import register_relations
             register_relations(self.cl, self.session)
+            from .concepts import register_concepts
+            register_concepts(self.cl, self.session)
         from .leaf import PIXELS_TO_POINTS_IRI, POINTS_TO_BOUNDARY_IRI
         from .segments import SEGMENTS_IRI, VERTICES_IRI
         from .predicate import PREDICATE_IRI
         from .relations import EXTRACT_RELATIONS_IRI
+        from .concepts import EVALUATE_CONCEPT_IRI
         self.pix_iri, self.bnd_iri = PIXELS_TO_POINTS_IRI, POINTS_TO_BOUNDARY_IRI
         self.seg_iri, self.vts_iri = SEGMENTS_IRI, VERTICES_IRI
         self.pred_iri = PREDICATE_IRI
         self.rel_iri = EXTRACT_RELATIONS_IRI
+        self.concept_iri = EVALUATE_CONCEPT_IRI
         # τ_fit + band calibrated off the definitional triangle seed (D).
         self.params: Params = calibrate()
 
