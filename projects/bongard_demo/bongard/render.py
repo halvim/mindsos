@@ -203,6 +203,52 @@ def near_miss_polygon(gap: int = 10) -> Sample:
                   expect="abstain", reason="structure")
 
 
+# ── Multi-figure scenes (m3 individuation fixtures) ────────────────────
+
+def _compose(images: List[Image]) -> Image:
+    """Union several rasters onto one canvas (disjoint = N components)."""
+    w = max(im.width for im in images)
+    h = max(im.height for im in images)
+    fg: set = set()
+    for im in images:
+        fg |= set(im.fg)
+    return Image(width=w, height=h, fg=frozenset(fg))
+
+
+def _ngon_image(n: int, *, cx: float, cy: float, r: float, stroke: int = 0) -> Image:
+    verts = _regular_polygon(n, cx=cx, cy=cy, r=r)
+    return _rasterize_path(list(verts), closed=True, stroke=stroke)
+
+
+def scene_two_squares(stroke: int = 0) -> Image:
+    """Two disjoint squares → 2 components, both solve, same_shape pair."""
+    a = _ngon_image(4, cx=34.0, cy=34.0, r=22.0, stroke=stroke)
+    b = _ngon_image(4, cx=94.0, cy=94.0, r=22.0, stroke=stroke)
+    return _compose([a, b])
+
+
+def scene_square_triangle(stroke: int = 0) -> Image:
+    """A square + a triangle → 2 components, both solve, no same_shape."""
+    a = _ngon_image(4, cx=34.0, cy=34.0, r=22.0, stroke=stroke)
+    b = _ngon_image(3, cx=94.0, cy=94.0, r=24.0, stroke=stroke)
+    return _compose([a, b])
+
+
+def scene_three_mixed(stroke: int = 0) -> Image:
+    """Two triangles + one pentagon → 3 components; one same_shape pair."""
+    a = _ngon_image(3, cx=30.0, cy=30.0, r=20.0, stroke=stroke)
+    b = _ngon_image(3, cx=98.0, cy=30.0, r=20.0, stroke=stroke)
+    c = _ngon_image(5, cx=64.0, cy=98.0, r=22.0, stroke=stroke)
+    return _compose([a, b, c])
+
+
+def scene_overlapping() -> Image:
+    """Two overlapping squares → ONE component → honest abstain (D-M3-2)."""
+    a = _ngon_image(4, cx=56.0, cy=56.0, r=24.0)
+    b = _ngon_image(4, cx=72.0, cy=72.0, r=24.0)
+    return _compose([a, b])
+
+
 # ── Fixture sets ───────────────────────────────────────────────────────
 
 def calibration_seed() -> Sample:

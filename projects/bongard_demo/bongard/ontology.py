@@ -65,6 +65,21 @@ SHAPE = _ds("shape")
 #: unbound; rank-not-score; held-out is always parsed prior-free.
 PARSE_PRIOR = _ds("parse_prior")
 
+#: m3 (PLAN D-M3-1) — a parsed multi-object scene: a tuple of solved
+#: ``Shape`` over one image. The relation/concept capacities consume this
+#: ONE collection (one CONSUMES edge, no IRI collision) and index pairs
+#: internally — the Scene-collection route that sidesteps the unbuilt core
+#: Part 5 (operand-arity). This *is* the §6 framing (concept = predicate
+#: over the whole scene parse). Assembled by demo control, not a capacity.
+SCENE = _ds("scene")
+
+#: m3 (PLAN D-M3-1/D-M3-3) — the relations extracted over a Scene: a tuple
+#: of role-labeled relation **hyperedge** records (``rel_type, subj, obj``
+#: indices into the Scene's shapes). The role axis lives in the *output
+#: data* (subj/obj explicit + auditable), NOT in the input topology — so no
+#: core change. Produced by the ``extract_relations`` predicate.
+RELATION_SET = _ds("relation_set")
+
 
 #: Closed ontology atom set, in chain order. Registration order is not
 #: load-bearing (each is independent), but kept chain-ordered for reading.
@@ -76,6 +91,8 @@ ONTOLOGY: Tuple[DataState, ...] = (
     VERTEX_SET,
     SHAPE,
     PARSE_PRIOR,
+    SCENE,
+    RELATION_SET,
 )
 
 
