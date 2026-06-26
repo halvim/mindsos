@@ -286,6 +286,28 @@ filed as motivating consumer; the demo does NOT block on it.
   Search token, and writes `capacities.json` `{task:{cap:bool}}` + `capacities_discrepancies.json`.
   Gate adds two checks: `enabled == Search token` (all 6 × 400) and **0 `./evaluate` discrepancies**
   (6 × 400). Counts: moved 82, recolored 54, rotated 75, reflected 44, touching 400, inside 275.
+- **2026-06-26 — `./arc` launcher + solve viewer UX (BUILT + gated; restructure UNCOMMITTED).**
+  Tooling: root `./arc` dispatcher (`start` builds the spike + serves `arc_debug.html`; `solve`;
+  `evaluate`) with `--help` per subcommand; `start`/`solve`/`evaluate` removed the per-folder scripts'
+  cwd dependence. `./arc solve --phases` lists every phase + description (`pipeline.STEP_DESC`).
+  **SHIPPED (pushed, Linux-gated): launcher + `--help` + cached-step full-output (each phase's
+  `result` is stamped into its checkpoint via `_result_<n>` so cached phases render in full) +
+  `→ future` line (each phase's proposed MindsOS feature+location, `pipeline.STEP_TARGETS`).**
+  **UNCOMMITTED (built, Cowork-gated 400/green, NOT pushed) — the phase RESTRUCTURE:** (1) `solve`
+  is now 10 phases — **Input+Perceive collapsed** (phase 1) and **Profile→{Profile (profilers),
+  Comparators}** split (phases 2/3); (2) `arc_profile.grid_summary` is **pure perception** (no
+  `touching`/`inside`) — those intra-grid comparator relations are attached by the new
+  `arc_profile.attach_relations` inside `build_profile` and attributed to phase 3 (option A: physically
+  in `build_profile`, displayed under phase 3 — a presentation slice; option B, computing them at
+  token time, was rejected as it breaks `build_solver`'s direct stage calls); (3) the per-phase
+  `engine` line was **dropped** — the real **function call chain** now renders on the `uses` line
+  (STEPS 5th tuple field renamed `engine`→`functions`); (4) checkpoints gained a `_name_<n>` phase
+  stamp — a layout change invalidates a stale checkpoint (auto-recompute, no manual `rm`).
+  `STEPS.md` rewritten to the 10-phase layout. **OPEN — result-line wording:** the user wants to
+  revise the per-phase `result` strings; built in `pipeline.step_*` (phases 1–7, 10) except phases 8/9
+  whose prose (`policy`/`verdict`) lives in `arc_solver.stage_rule`/`stage_verify` (also consumed by
+  the gate's `build_solver` — edit there + re-gate). No new wording was supplied yet. Gate is still
+  6 `[ok]` lines / 400 green.
 
 ---
 
