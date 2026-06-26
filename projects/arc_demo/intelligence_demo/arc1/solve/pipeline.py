@@ -23,34 +23,36 @@ def _changes(ctx: dict):
 
 
 # ── step bodies: fn(ctx, dataset) -> one-line result string (mutates ctx) ──
-def step_input(ctx, dataset):
+def step_setup(ctx, dataset):
+    """Phase 1 — input + perceive (collapsed)."""
     raw = arc_grids.get_task(dataset, "train", ctx["task_id"])
     ctx["raw"] = raw
-    g = raw["train"][0]["input"]
-    return f"train = {len(raw['train'])} pairs · test = {len(raw['test'])} · input grid {len(g)}×{len(g[0])}"
-
-
-def step_perceive(ctx, dataset):
-    grids = []
-    for p in ctx["raw"]["train"]:
-        gin = arc_profile.grid_summary(p["input"])
-        grids.append({"n_objects": gin["n_objects"], "n_points": gin["n_points"],
-                      "dims": list(gin["dims"]), "palette": gin["palette"]})
-    ctx["perceived"] = grids
-    g0 = grids[0]
-    return (f"demo1.in: {g0['n_objects']} objects · {g0['n_points']} points · "
+    g0 = arc_profile.grid_summary(raw["train"][0]["input"])
+    ctx["perceived"] = {"n_objects": g0["n_objects"], "n_points": g0["n_points"],
+                        "dims": list(g0["dims"]), "palette": sorted(g0["palette"])}
+    return (f"{len(raw['train'])} train pairs · {len(raw['test'])} test · "
+            f"demo1.in: {g0['n_objects']} objects · {g0['n_points']} points · "
             f"dims {g0['dims'][0]}×{g0['dims'][1]} · palette {sorted(g0['palette'])}")
 
 
 def step_profile(ctx, dataset):
+    """Phase 2 — profilers only."""
     prof = arc_profile.build_profile(dataset, "train", ctx["task_id"])
     ctx["profile"] = prof
     toks = set(arc_search.task_tokens(prof))
-    bools = [k for k in ("same_object", "same_shape", "same_point", "moved",
-                         "touching", "inside", "recolored", "rotated", "reflected") if k in toks]
+    ctx["tokens"] = sorted(toks)
+    profs = [k for k in ("same_object", "same_shape", "same_cell_count",
+                         "same_bbox_area", "same_point") if k in toks]
     dim = next((t.split(":", 1)[1] for t in toks if t.startswith("compare_grid_dimension:")), "?")
     pal = next((t.split(":", 1)[1] for t in toks if t.startswith("compare_palette:")), "?")
-    return f"fires: {' '.join(bools) or '(none)'} · dim={dim} palette={pal}"
+    return f"profilers: {' '.join(profs) or '(none)'} · dim={dim} palette={pal}"
+
+
+def step_comparators(ctx, dataset):
+    """Phase 3 — comparators only (over the profile built in phase 2)."""
+    toks = set(ctx.get("tokens") or arc_search.task_tokens(ctx["profile"]))
+    comps = [c for c in arc_search.comparator_names() if c in toks]
+    return f"comparators: {' '.join(comps) or '(none)'}"
 
 
 def step_background(ctx, dataset):
@@ -108,23 +110,33 @@ def step_apply(ctx, dataset):
     return f"ANSWER {dims} · {s6['steps']} slide steps · matches withheld test: {mtxt}"
 
 
-#: (n, name, scope, fn, engine, produces)
+#: (n, name, scope, fn, functions, produces) — `functions` = the real call chain
+#: (rendered on the `uses` line; the old `engine` field is dropped).
 STEPS = [
-    (1, "Input", GENERAL, step_input, "inline · arc_grids.get_task", "raw (train pairs + test)"),
-    (2, "Perceive", GENERAL, step_perceive, "layer-discovered · executed inline (arc_grids)",
-     "per-grid objects · points · shapes · palette · dims"),
-    (3, "Profile / Match", GENERAL, step_profile, "inline · arc_profile.match_pair · arc_grids.*",
-     "profile: match · touching/inside · transforms · deltas"),
+    (1, "Input + Perceive", GENERAL, step_setup,
+     "arc_grids.get_task · arc_profile.grid_summary(extract_objects, extract_points, normalize_shape, palette, dimension)",
+     "raw task · per-grid objects · points · shapes · palette · dims"),
+    (2, "Profile", GENERAL, step_profile,
+     "arc_profile.build_profile(match_pair, profile_sweep, hypotheses) · arc_search.task_tokens(same_cell_count_pairs, same_bbox_area_pairs)",
+     "profile · profiler tokens"),
+    (3, "Comparators", GENERAL, step_comparators,
+     "arc_search.task_tokens · arc_grids.touching_pairs, inside_pairs, moved, recolored_pairs, rotated_pairs, reflected_pairs",
+     "comparator tokens"),
     (4, "Background + state-change", GENERAL_STAR, step_background,
-     "inline · arc_solver._bg_color · touching_changes", "bg · changes (gained/lost/maintained)"),
-    (5, "Roles", SEMI, step_roles, "inline · arc_solver._moved_in · role classify", "stage1 (roles)"),
-    (6, "Persistence + combo", SPECIMEN, step_persistence, "inline · arc_solver",
-     "stage2 (persistence ∀demo + verdict)"),
-    (7, "Selectors", SEMI, step_selectors, "inline · arc_solver._selectors_for", "stage3 (selectors)"),
-    (8, "Rule", SPECIMEN, step_rule, "inline · arc_solver (hardcoded)", "stage4 (rule)"),
-    (9, "Verify", SPECIMEN, step_verify, "inline · arc_solver.apply_rule (demos)", "stage5 (per-demo match)"),
-    (10, "Apply test → ANSWER", SPECIMEN, step_apply, "inline · arc_solver.apply_rule (test)",
-     "stage6 + answer grid"),
+     "arc_solver.stage_background(_bg_color, touching_changes(_correspondence, _touch_set))",
+     "bg · changes (gained/lost/maintained)"),
+    (5, "Roles", SEMI, step_roles,
+     "arc_solver.stage_roles(_moved_in, _touch_set, _comp)", "stage1 (roles)"),
+    (6, "Persistence + combo", SPECIMEN, step_persistence,
+     "arc_solver.stage_persistence(_moved_in, _lbl)", "stage2 (persistence ∀demo + verdict)"),
+    (7, "Selectors", SEMI, step_selectors,
+     "arc_solver.stage_selectors(_selectors_for(_comp, _base_shape))", "stage3 (selectors)"),
+    (8, "Rule", SPECIMEN, step_rule, "arc_solver.stage_rule (static)", "stage4 (rule)"),
+    (9, "Verify", SPECIMEN, step_verify,
+     "arc_solver.stage_verify(apply_rule(_shape_roles, _move_direction, _slide, _render))",
+     "stage5 (per-demo match)"),
+    (10, "Apply test → ANSWER", SPECIMEN, step_apply,
+     "arc_solver.stage_apply(apply_rule)", "stage6 + answer grid"),
 ]
 
 
@@ -132,9 +144,9 @@ STEPS = [
 #: feature + location it should map to. Aspirational (the demo runs D3-inline
 #: today; only step 2 actually discovers through the layer). Rows 3/5/6 unsettled.
 STEP_TARGETS = {
-    1: "L4 task intake → TaskRun (L3 comprehend_task binds) · mindsos_intelligence/orchestrator.py + mindsos_capacity",
-    2: "L3 perceive chain via cl.invoke, composed by find_pipeline · mindsos_capacity/pipeline.py",
-    3: "L4 phase_1 sweep over L3 comparators/profilers · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
+    1: "L4 task intake → TaskRun + L3 perceive chain via cl.invoke (find_pipeline) · mindsos_intelligence/orchestrator.py + mindsos_capacity/pipeline.py",
+    2: "L4 phase_1 sweep — L3 profilers (compare_*, same_*) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
+    3: "L4 phase_1 sweep — L3 comparators/predicates (moved/touching/inside/transforms) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
     4: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
     5: "L3 reasoning — role assignment over state-change · mindsos_capacity",
     6: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
@@ -147,9 +159,9 @@ STEP_TARGETS = {
 
 #: One-line description of what each phase does (for `./arc solve --phases`).
 STEP_DESC = {
-    1: "Load the raw task — the train demonstration pairs and the withheld test input.",
-    2: "Per grid, perceive the entities — objects (8-connected, ≥2 cells), points, shapes, palette, dims.",
-    3: "Per demo pair, run the profilers and comparators — same_object/shape/point, moved, touching, inside, recolored/rotated/reflected, and dim/palette deltas.",
+    1: "Load the raw task and perceive each grid — objects (8-connected, ≥2 cells), points, shapes, palette, dims.",
+    2: "Run the profilers — same_object/shape/point, same_cell_count, same_bbox_area, and the dim/palette deltas.",
+    3: "Run the comparators — moved, touching, inside, recolored, rotated, reflected.",
     4: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
     5: "Classify the changed objects into roles — mover, target, background.",
     6: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",

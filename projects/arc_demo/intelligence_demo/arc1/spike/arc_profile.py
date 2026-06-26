@@ -21,8 +21,10 @@ from . import arc_grids
 
 # ── per-grid summary (the perceive output, materialized for the UI) ─────
 def grid_summary(grid: List[List[int]]) -> dict:
-    # Objects = 8-connected monochrome components of size >= 2 (ONTOLOGY §4 #1b);
-    # Points = single cells (not Objects/Shapes).
+    """PURE PERCEPTION (phase 1): entities only — objects (8-connected size>=2,
+    ONTOLOGY §4 #1b), points (single cells), shapes, palette, dims. The
+    intra-grid COMPARATOR relations (touching / inside) are NOT perception and
+    are attached separately by ``attach_relations`` (phase 3)."""
     objects = arc_grids.extract_objects(grid)
     points = arc_grids.extract_points(grid)
     return {
@@ -34,14 +36,20 @@ def grid_summary(grid: List[List[int]]) -> dict:
         "shapes": [arc_grids.normalize_shape(o) for o in objects],
         "n_points": len(points),
         "points": points,
-        # intra-grid positional: touching pairs among this grid's components
-        # (different-colour Object/Point pairs sharing an 8-neighbour; §4 #16).
-        "touching": arc_grids.touching_pairs(objects, points),
-        # intra-grid positional: (a inside b) — a walled on all 4 sides by a
-        # single object b (4-ray test; no background assumption).
-        "inside": arc_grids.inside_pairs(
-            objects, points, arc_grids.dimension(grid), grid),
     }
+
+
+def attach_relations(gs: dict) -> dict:
+    """Compute the intra-grid COMPARATOR relations and attach them to a perceived
+    grid: ``touching`` (different-colour components sharing an 8-neighbour, §4
+    #16) and ``inside`` (a walled on all 4 sides by a single object b, 4-ray, no
+    background assumption). Kept out of ``grid_summary`` so perception stays pure;
+    called from ``build_profile`` so the profile carries them for the comparator
+    phase, the state-change detector, and the debug UI."""
+    objs, pts = gs["objects"], gs["points"]
+    gs["touching"] = arc_grids.touching_pairs(objs, pts)
+    gs["inside"] = arc_grids.inside_pairs(objs, pts, tuple(gs["dims"]), gs["cells"])
+    return gs
 
 
 # ── profile comparators (run by the L4-style sweep, not find_pipeline) ──
@@ -232,14 +240,14 @@ def build_profile(dataset: dict, split: str, task_id: str) -> dict:
 
     train_grids = []
     for p in demos:
-        gin = grid_summary(p["input"])
-        gout = grid_summary(p["output"])
+        gin = attach_relations(grid_summary(p["input"]))
+        gout = attach_relations(grid_summary(p["output"]))
         # both passes run regardless of dims (same_object compares absolute
         # cells; same_shape is translation-normalized).
         train_grids.append({"input": gin, "output": gout,
                             "match": match_pair(gin, gout)})
     # test output is WITHHELD (ONTOLOGY §4 #4) — input only.
-    test_grids = [{"input": grid_summary(p["input"])} for p in tests]
+    test_grids = [{"input": attach_relations(grid_summary(p["input"]))} for p in tests]
 
     in_dims = [g["input"]["dims"] for g in train_grids]
     out_dims = [g["output"]["dims"] for g in train_grids]
