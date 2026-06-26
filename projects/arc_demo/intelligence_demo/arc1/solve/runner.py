@@ -63,10 +63,8 @@ def _print_step(n, name, scope, engine, uses, produces, result, status, task_id)
     print()
     print(_c("1", f"── STEP {n} · {name} ") + _c("2", bar) + "  " + _scope_tag(scope, task_id))
     st = _c("32", "computed") if status == "computed" else _c("2", "cached ✓")
-    tail = _c("2", f"→ step-{n}.json") if status == "computed" else ""
+    tail = _c("2", f"→ step-{n}.json") if status == "computed" else _c("2", f"(step-{n}.json)")
     print(f"   status   {st}  {tail}")
-    if status == "cached":
-        return
     print(_c("2", "   engine   ") + engine)
     print(_c("2", "   uses     ") + uses)
     print(_c("2", "   produces ") + produces)
@@ -83,20 +81,24 @@ def solve(task_arg, step):
                   f"{len(dataset['train'][task_id]['test'])} test"))
 
     ctx: Dict[str, Any] = {"task_id": task_id}
-    uses_prev = "—"
     for (n, name, scope, fn, engine, produces) in pipeline.STEPS[:step]:
         ck = _ckpt(task_id, n)
+        uses = "step-1.raw" if n == 1 else f"step-{n-1} ctx"
+        rkey = f"_result_{n}"
+        cached = False
         if n < step and os.path.exists(ck):
             with open(ck, encoding="utf-8") as fh:
-                ctx = json.load(fh)
-            _print_step(n, name, scope, engine, uses_prev, produces, "", "cached", task_id)
-        else:
+                loaded = json.load(fh)
+            if rkey in loaded:
+                ctx = loaded
+                _print_step(n, name, scope, engine, uses, produces, loaded[rkey], "cached", task_id)
+                cached = True
+        if not cached:
             result = fn(ctx, dataset)
+            ctx[rkey] = result
             with open(ck, "w", encoding="utf-8") as fh:
                 json.dump(ctx, fh)
-            uses = "step-1.raw" if n == 1 else f"step-{n-1} ctx"
             _print_step(n, name, scope, engine, uses, produces, result, "computed", task_id)
-        uses_prev = produces
 
     print(_c("2", "═" * 71))
     ans = ctx.get("answer")
