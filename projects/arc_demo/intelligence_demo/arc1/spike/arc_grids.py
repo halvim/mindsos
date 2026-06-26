@@ -137,6 +137,50 @@ def same_shape(sa: dict, sb: dict) -> bool:
     return shape_key(sa) == shape_key(sb)
 
 
+def _bbox_area(o: dict) -> int:
+    """Area of an Object/Shape bounding box (h × w). D4-invariant (rotation
+    swaps h↔w; reflection preserves both)."""
+    if "bbox" in o:
+        r0, c0, r1, c1 = o["bbox"]
+        return (r1 - r0 + 1) * (c1 - c0 + 1)
+    h, w = o["dims"]                      # Shape carries dims, not bbox
+    return h * w
+
+
+def same_cell_count(a: dict, b: dict) -> bool:
+    """same_cell_count PROFILER: two Objects/Shapes share the same cell count
+    (``size``). D4-invariant — a rotation/reflection never adds or removes
+    cells, so ``rotated``/``reflected`` ⟹ same_cell_count (used as their cheap
+    pre-filter). Implied by ``same_shape`` (identical shape ⇒ identical count)."""
+    return a["size"] == b["size"]
+
+
+def same_bbox_area(a: dict, b: dict) -> bool:
+    """same_bbox_area PROFILER: two Objects/Shapes share the same bounding-box
+    area (h × w). D4-invariant (see ``_bbox_area``), so ``rotated``/``reflected``
+    ⟹ same_bbox_area. Independent of ``same_cell_count`` (different shapes can
+    share an area at a different count, or a count at a different area). Implied
+    by ``same_shape``."""
+    return _bbox_area(a) == _bbox_area(b)
+
+
+def same_cell_count_pairs(gin: dict, gout: dict) -> List[dict]:
+    """in→out Object pairs sharing a cell count (inter-grid). Near-universal as a
+    task token; its value is as a ``rotated``/``reflected`` pre-filter + the
+    ``same_shape ⟹ same_cell_count`` display implication."""
+    return [{"in": i, "out": j}
+            for i, a in enumerate(gin["objects"])
+            for j, b in enumerate(gout["objects"]) if same_cell_count(a, b)]
+
+
+def same_bbox_area_pairs(gin: dict, gout: dict) -> List[dict]:
+    """in→out Object pairs sharing a bbox area (inter-grid). See
+    ``same_cell_count_pairs``."""
+    return [{"in": i, "out": j}
+            for i, a in enumerate(gin["objects"])
+            for j, b in enumerate(gout["objects"]) if same_bbox_area(a, b)]
+
+
 def _same_normalized_shape(a: dict, b: dict) -> bool:
     """Private pure helper (GF-2): two *objects* share an identical
     translation-normalized point-set. Shared by ``moved`` — NOT a call into
@@ -209,117 +253,102 @@ def touching_pairs(objects: List[dict], points: List[dict]) -> List[dict]:
     return out
 
 
-def background_color(grid: Grid) -> int:
-    """Per-grid background = the most-frequent colour (ONTOLOGY #3, per-grid)."""
+def verify_background(grid: Grid) -> dict:
+    """Background-colour HYPOTHESIS for one grid — never an assumed fact.
+
+    The solver has no validated way to identify the background yet (that is the
+    D4 / CORPUS-ANALYSIS work), so this returns a *flagged candidate*, not a
+    known value: the most-frequent colour as the candidate, a rough confidence
+    (its share of cells), and ``verified=False``. Per RULES §7, consumers MUST
+    treat an unverified background as "don't know" (abstain) — they may not
+    silently trust the candidate.
+
+    This is the sanctioned seam where a real detector/reconciler
+    (``detect_background_frequency`` / ``reconcile_background``) will plug in. It
+    is intentionally NOT wired into any capacity yet: after the ``inside`` ray
+    rewrite no shipped capacity consumes a background (consumer discipline).
+
+    Returns ``{"candidate": int|None, "confidence": float, "verified": bool,
+    "method": str}``.
+    """
     from collections import Counter
     cnt: Counter = Counter()
+    total = 0
     for row in grid:
         cnt.update(row)
-    return cnt.most_common(1)[0][0]
+        total += len(row)
+    if not total:
+        return {"candidate": None, "confidence": 0.0, "verified": False, "method": "frequency"}
+    color, freq = cnt.most_common(1)[0]
+    return {"candidate": color, "confidence": freq / total,
+            "verified": False, "method": "frequency"}
 
 
-def _flood_from_border(dims: Tuple[int, int], blocked: set) -> set:
-    """4-connected cells reachable from the grid border WITHOUT entering
-    ``blocked``. One pass per candidate container."""
-    H, W = dims
-    seen: set = set()
-    stack = []
-    for r in range(H):
-        for c in (0, W - 1):
-            if (r, c) not in blocked:
-                stack.append((r, c))
-    for c in range(W):
-        for r in (0, H - 1):
-            if (r, c) not in blocked:
-                stack.append((r, c))
-    while stack:
-        r, c = stack.pop()
-        if (r, c) in seen:
-            continue
-        seen.add((r, c))
-        for dr, dc in _ORTHOGONAL:
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < H and 0 <= nc < W and (nr, nc) not in blocked and (nr, nc) not in seen:
-                stack.append((nr, nc))
-    return seen
-
-
-def _group_4conn(cells: set, grid: Grid) -> List[dict]:
-    """Group a cell set into 4-connected pockets. Each::
-
-        {"cells": [[r, c], ...], "color": int (-1 if mixed), "size": int}
-    """
-    cset = set(cells)
-    seen: set = set()
-    pockets: List[dict] = []
-    for cell in sorted(cset):
-        if cell in seen:
-            continue
-        stack, pocket = [cell], []
-        while stack:
-            r, c = stack.pop()
-            if (r, c) in seen or (r, c) not in cset:
-                continue
-            seen.add((r, c)); pocket.append((r, c))
-            for dr, dc in _ORTHOGONAL:
-                stack.append((r + dr, c + dc))
-        cols = {grid[r][c] for (r, c) in pocket}
-        pockets.append({"cells": [list(p) for p in sorted(pocket)],
-                        "color": next(iter(cols)) if len(cols) == 1 else -1,
-                        "size": len(pocket)})
-    return pockets
+def _first_diff(grid: Grid, r: int, c: int, dr: int, dc: int,
+                color: int, H: int, W: int):
+    """Walk from ``(r, c)`` along ``(dr, dc)``; return the first cell whose
+    colour differs from ``color``, or ``None`` if the grid edge is reached
+    first (the ray escaped — nothing walls ``(r, c)`` off on that side)."""
+    r += dr
+    c += dc
+    while 0 <= r < H and 0 <= c < W:
+        if grid[r][c] != color:
+            return (r, c)
+        r += dr
+        c += dc
+    return None
 
 
 def inside_pairs(objects: List[dict], points: List[dict],
-                 dims: Tuple[int, int], bg: int, grid: Grid) -> List[dict]:
-    """Intra-grid enclosure (``a`` inside ``b``). Container ``b`` is a single-
-    colour Object that is **not** the background; ``a`` is anything ``b`` walls
-    off from the grid border (cannot reach the border without crossing ``b``).
-    Two result types per container:
+                 dims: Tuple[int, int], grid: Grid) -> List[dict]:
+    """Intra-grid enclosure (``a`` inside ``b``) by a 4-ray test — NO background
+    assumption. We do not yet know the background colour, so every Object of any
+    colour is a candidate container ``b`` (only ``b != a`` is required; a Point
+    cannot be a container).
 
-    - ``type="object"`` — a whole Object/Point fully enclosed, with ``b``'s bbox
-      strictly containing ``a``'s (B.top < A.top, B.bottom > A.bottom, …). The
-      object-to-object relation::
+    ``a`` is inside ``b`` iff for EVERY cell of ``a``, a ray cast up / down /
+    left / right until the colour changes lands on a cell that belongs to ``b``
+    in ALL four directions. A ray that runs off the grid edge before any colour
+    change means ``a`` can escape that side → not enclosed. Requiring every wall
+    cell to belong to the *same* object ``b`` enforces "all the same colour and
+    all belonging to ``b``".
 
-          {"type": "object", "container": {"kind":"O","idx":int},
-           "inside": {"kind":"O"|"P","idx":int}}
+    NOTE (no-bg consequence): an object floating in the ambient field is walled
+    on four sides by that field, so it is reported inside the (large) field
+    Object. Background-detection (D4) filters these later.
 
-    - ``type="pocket"`` — enclosed cells NOT covered by a fully-enclosed object
-      (e.g. background holes that are not their own 8-connected component — the
-      00d62c1b case)::
+    Object-to-object relation::
 
-          {"type": "pocket", "container": {"kind":"O","idx":int},
-           "color": int(-1 mixed), "size": int, "cells": [[r,c],...]}
+        {"a": {"kind":"O"|"P","idx":int}, "b": {"kind":"O","idx":int}}
     """
     H, W = dims
     comps = [("O", i, o) for i, o in enumerate(objects)] + \
             [("P", i, p) for i, p in enumerate(points)]
+    bsets = [{tuple(c) for c in o["cells"]} for o in objects]
     out: List[dict] = []
-    for j, b in enumerate(objects):
-        if b["color"] == bg:                 # ambient background is not a container
+    for k, ai, a in comps:
+        acolor = a["color"]
+        walls: set = set()
+        escaped = False
+        for cell in a["cells"]:
+            r, c = cell
+            for dr, dc in _ORTHOGONAL:
+                hit = _first_diff(grid, r, c, dr, dc, acolor, H, W)
+                if hit is None:           # ray escaped to the border on this side
+                    escaped = True
+                    break
+                walls.add(hit)
+            if escaped:
+                break
+        if escaped:
             continue
-        bcells = {tuple(c) for c in b["cells"]}
-        reachable = _flood_from_border(dims, bcells)
-        enclosed = {(r, c) for r in range(H) for c in range(W)
-                    if (r, c) not in bcells and (r, c) not in reachable}
-        if not enclosed:
-            continue
-        claimed: set = set()
-        # object-level: whole Objects/Points fully walled off by b, bbox-contained
-        for k, i, a in comps:
-            if k == "O" and i == j:
+        # a is inside b iff every wall cell belongs to the one object b (b != a)
+        for bj, bset in enumerate(bsets):
+            if k == "O" and ai == bj:
                 continue
-            acells = {tuple(c) for c in a["cells"]}
-            if not (acells <= enclosed):
-                continue
-            bb, ab = b["bbox"], a["bbox"]
-            if bb[0] < ab[0] and bb[1] < ab[1] and bb[2] > ab[2] and bb[3] > ab[3]:
-                out.append({"type": "object", "container": {"kind": "O", "idx": j},
-                            "inside": {"kind": k, "idx": i}})
-                claimed |= acells
-        # pocket-level: remaining enclosed cells (holes not owned by an enclosed object)
-        for pk in _group_4conn(enclosed - claimed, grid):
-            out.append({"type": "pocket", "container": {"kind": "O", "idx": j}, **pk})
+            if walls and walls <= bset:
+                out.append({"a": {"kind": k, "idx": ai},
+                            "b": {"kind": "O", "idx": bj}})
     return out
 
 
@@ -360,3 +389,138 @@ def normalize_shape(obj: dict) -> dict:
         "dims": (r1 - r0 + 1, c1 - c0 + 1),
         "size": obj["size"],
     }
+
+
+# ── transform GENERATORS (present tense; produce a transformed Object/Shape) ──
+def recolor(obj: dict, color: int) -> dict:
+    """Generator: an Object with every cell set to ``color`` (shape/position kept)."""
+    return {"color": int(color), "cells": list(obj["cells"]),
+            "bbox": tuple(obj["bbox"]), "size": obj["size"]}
+
+
+def _renorm(pts):
+    mr = min(r for r, c in pts)
+    mc = min(c for r, c in pts)
+    return sorted((r - mr, c - mc) for r, c in pts)
+
+
+def _rotate_pts(points, deg):
+    if deg == 90:
+        pts = [(c, -r) for (r, c) in points]
+    elif deg == 180:
+        pts = [(-r, -c) for (r, c) in points]
+    elif deg == 270:
+        pts = [(-c, r) for (r, c) in points]
+    else:
+        pts = list(points)
+    return _renorm(pts)
+
+
+def _reflect_pts(points, direction):
+    if direction == "horizontal":
+        pts = [(-r, c) for (r, c) in points]
+    elif direction == "vertical":
+        pts = [(r, -c) for (r, c) in points]
+    else:
+        pts = list(points)
+    return _renorm(pts)
+
+
+def rotate_shape(shape: dict, transform) -> dict:
+    """Generator: rotate a Shape by ``transform`` ∈ {90,180,270} (CW), re-normalized."""
+    pts = [tuple(p) for p in shape["points"]]
+    return {"points": _rotate_pts(pts, int(transform)), "size": shape.get("size", len(pts))}
+
+
+def reflect_shape(shape: dict, direction: str) -> dict:
+    """Generator: reflect a Shape over the horizontal / vertical axis, re-normalized."""
+    pts = [tuple(p) for p in shape["points"]]
+    return {"points": _reflect_pts(pts, direction), "size": shape.get("size", len(pts))}
+
+
+# ── transform COMPARATORS (past tense; detect the transform across in→out) ──
+def recolored(a: dict, b: dict):
+    """recolor Transform between two Objects: same normalized shape AND same
+    bbox-origin (position) AND **different** colour → ``{"kind":"recolor",...}``
+    else ``None``. (recolor ⟹ same_shape.)"""
+    if a["color"] == b["color"]:
+        return None
+    if tuple(a["bbox"][:2]) != tuple(b["bbox"][:2]):
+        return None
+    if not _same_normalized_shape(a, b):
+        return None
+    return {"kind": "recolor", "from": a["color"], "to": b["color"]}
+
+
+def rotated(sa: dict, sb: dict):
+    """rotate Transform between two Shapes: ``sb`` is a non-identity 90/180/270
+    rotation of ``sa`` (and a different normalized shape) → ``{"kind":"rotate","deg":d}``
+    else ``None``."""
+    src = sorted(tuple(p) for p in sa["points"])
+    tgt = sorted(tuple(p) for p in sb["points"])
+    if tgt == src:
+        return None
+    for deg in (90, 180, 270):
+        if _rotate_pts([tuple(p) for p in sa["points"]], deg) == tgt:
+            return {"kind": "rotate", "deg": deg}
+    return None
+
+
+def reflected(sa: dict, sb: dict):
+    """reflect Transform between two Shapes: ``sb`` is a horizontal/vertical
+    reflection of ``sa`` (and a different normalized shape) → ``{"kind":"reflect","axis":d}``
+    else ``None``."""
+    src = sorted(tuple(p) for p in sa["points"])
+    tgt = sorted(tuple(p) for p in sb["points"])
+    if tgt == src:
+        return None
+    for d in ("horizontal", "vertical"):
+        if _reflect_pts([tuple(p) for p in sa["points"]], d) == tgt:
+            return {"kind": "reflect", "axis": d}
+    return None
+
+
+def recolored_pairs(gin: dict, gout: dict) -> List[dict]:
+    out = []
+    for i, a in enumerate(gin["objects"]):
+        for j, b in enumerate(gout["objects"]):
+            t = recolored(a, b)
+            if t:
+                out.append({"in": i, "out": j, "transform": t})
+    return out
+
+
+def rotated_pairs(gin: dict, gout: dict) -> List[dict]:
+    """Same-colour objects whose out-Shape is a rotation of the in-Shape (a real
+    rotation preserves colour — scanning all shapes over-fires)."""
+    out = []
+    for i, a in enumerate(gin["objects"]):
+        for j, b in enumerate(gout["objects"]):
+            if a["color"] != b["color"]:
+                continue
+            # (cell_count, bbox_area) pre-filter — both D4-invariant, so a real
+            # rotation MUST preserve them; mismatches are pruned before the
+            # expensive shape-rotation check (necessary, not sufficient).
+            if a["size"] != b["size"] or _bbox_area(a) != _bbox_area(b):
+                continue
+            t = rotated(gin["shapes"][i], gout["shapes"][j])
+            if t:
+                out.append({"in": i, "out": j, "transform": t})
+    return out
+
+
+def reflected_pairs(gin: dict, gout: dict) -> List[dict]:
+    """Same-colour objects whose out-Shape is a reflection of the in-Shape."""
+    out = []
+    for i, a in enumerate(gin["objects"]):
+        for j, b in enumerate(gout["objects"]):
+            if a["color"] != b["color"]:
+                continue
+            # (cell_count, bbox_area) pre-filter — both D4-invariant (see
+            # rotated_pairs); prune before the shape-reflection check.
+            if a["size"] != b["size"] or _bbox_area(a) != _bbox_area(b):
+                continue
+            t = reflected(gin["shapes"][i], gout["shapes"][j])
+            if t:
+                out.append({"in": i, "out": j, "transform": t})
+    return out

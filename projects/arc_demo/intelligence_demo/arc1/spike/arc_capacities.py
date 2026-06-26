@@ -29,9 +29,17 @@ from mindsos_capacity.identifiers import (
 
 from . import arc_grids
 
-# comparator/predicate are families in ONTOLOGY §3 but NOT shipped FUNCTIONAL
-# categories; register under lazily-created category graphs (same mechanism as
-# dream.*).
+# profiler/comparator/predicate are families in ONTOLOGY §3 but NOT shipped
+# FUNCTIONAL categories; register under lazily-created category graphs (same
+# mechanism as dream.*).
+#
+# TAXONOMY (do NOT call profilers "comparators"):
+#   PROFILER  — universal task facts: compare_grid_dimension/compare_palette,
+#               same_object/same_shape/same_point, same_cell_count/same_bbox_area.
+#   COMPARATOR— the capacities: moved, recolored, rotated, reflected.
+#   PREDICATE — the intra-grid capacities: touching, inside.
+# (moved/touching/inside/recolored/rotated/reflected = the 6 ./evaluate targets.)
+CATEGORY_PROFILER = "profiler"
 CATEGORY_COMPARATOR = "comparator"
 CATEGORY_PREDICATE = "predicate"
 CATEGORY_REASONING = "reasoning"
@@ -51,6 +59,8 @@ DS_POINT = datastate_iri("arc.point")
 DS_SAME_OBJECT = datastate_iri("arc.same_object")
 DS_SAME_SHAPE = datastate_iri("arc.same_shape")
 DS_SAME_POINT = datastate_iri("arc.same_point")
+DS_SAME_CELL_COUNT = datastate_iri("arc.same_cell_count")
+DS_SAME_BBOX_AREA = datastate_iri("arc.same_bbox_area")
 DS_MOVE_TRANSFORM = datastate_iri("arc.move_transform")
 DS_TOUCHING = datastate_iri("arc.touching")
 DS_INSIDE = datastate_iri("arc.inside")
@@ -59,6 +69,11 @@ DS_BACKGROUND = datastate_iri("arc.background")
 DS_CORRESPONDENCE = datastate_iri("arc.correspondence")
 DS_STATE_CHANGE = datastate_iri("arc.state_change")
 DS_SELECTOR = datastate_iri("arc.selector")
+# transform family (generators consume a param; comparators produce a transform)
+DS_COLOR = datastate_iri("arc.color")
+DS_RECOLOR_TRANSFORM = datastate_iri("arc.recolor_transform")
+DS_ROTATE_TRANSFORM = datastate_iri("arc.rotate_transform")
+DS_REFLECT_TRANSFORM = datastate_iri("arc.reflect_transform")
 
 
 def arc_datastates() -> List[DataState]:
@@ -80,11 +95,13 @@ def arc_datastates() -> List[DataState]:
         ds("arc.object", CATEGORY_DECOMPOSITION, "Monochrome connected component (size >= 2)."),
         ds("arc.shape", CATEGORY_DERIVATION, "Colorless normalized point-set."),
         ds("arc.point", CATEGORY_DECOMPOSITION, "Single-cell component (not an Object/Shape)."),
-        ds("arc.dimension_delta", CATEGORY_COMPARATOR, "in/out Grid dimension change | None."),
-        ds("arc.palette_delta", CATEGORY_COMPARATOR, "in/out Palette change | None."),
-        ds("arc.same_object", CATEGORY_COMPARATOR, "same_object verdict: same color + position."),
-        ds("arc.same_shape", CATEGORY_COMPARATOR, "same_shape verdict: identical normalized point-set."),
-        ds("arc.same_point", CATEGORY_COMPARATOR, "same_point verdict: same colour + position."),
+        ds("arc.dimension_delta", CATEGORY_PROFILER, "in/out Grid dimension change | None (profiler)."),
+        ds("arc.palette_delta", CATEGORY_PROFILER, "in/out Palette change | None (profiler)."),
+        ds("arc.same_object", CATEGORY_PROFILER, "same_object profiler: same color + position."),
+        ds("arc.same_shape", CATEGORY_PROFILER, "same_shape profiler: identical normalized point-set."),
+        ds("arc.same_point", CATEGORY_PROFILER, "same_point profiler: same colour + position."),
+        ds("arc.same_cell_count", CATEGORY_PROFILER, "same_cell_count profiler: equal cell count (size); D4-invariant; implied by same_shape."),
+        ds("arc.same_bbox_area", CATEGORY_PROFILER, "same_bbox_area profiler: equal bbox area (h×w); D4-invariant; implied by same_shape."),
         ds("arc.move_transform", CATEGORY_COMPARATOR, "moved: translation Δ between same-shape objects."),
         ds("arc.touching", CATEGORY_PREDICATE, "touching verdict: different-colour components share an 8-neighbour (intra-grid)."),
         ds("arc.inside", CATEGORY_PREDICATE, "inside verdict: a enclosed by a single-colour object b; intra-grid, background-excluded."),
@@ -93,6 +110,10 @@ def arc_datastates() -> List[DataState]:
         ds("arc.correspondence", CATEGORY_REASONING, "input ref -> output ref map; unambiguous subset (ambiguous left uncorresponded)."),
         ds("arc.state_change", CATEGORY_COMPARATOR, "touching_delta: gained/lost/maintained across a pair over C, background-excluded."),
         ds("arc.selector", CATEGORY_REASONING, "Minimal discriminative state-conjunction resolving a unique mover + target."),
+        ds("arc.color", CATEGORY_DERIVATION, "A single colour value (recolor generator parameter)."),
+        ds("arc.recolor_transform", CATEGORY_COMPARATOR, "recolored: same shape + position, different colour | None."),
+        ds("arc.rotate_transform", CATEGORY_COMPARATOR, "rotated: 90/180/270 rotation between Shapes | None."),
+        ds("arc.reflect_transform", CATEGORY_COMPARATOR, "reflected: horizontal/vertical reflection between Shapes | None."),
     ]
 
 
@@ -191,49 +212,63 @@ def _perceive_capacities() -> List[Capacity]:
     ]
 
 
-def _profile_comparators() -> List[Capacity]:
-    # Single declared input DataState (the comparator consumes two Grids of
-    # the same DataState *type*; the in/out pairing is a sweep-time concern).
+def _profiler_capacities() -> List[Capacity]:
+    """PROFILERS (universal task facts; NOT comparators): the profile-sweep
+    multi-result facts + the sameness atoms. Single declared input DataState (the
+    in/out pairing is a sweep-time concern). same_object/same_shape feed the
+    tiered match (arc_profile.match_pair), a fold — no capacity invokes another
+    via the layer (#4 fold; shared pure helpers allowed — GF-2)."""
     return [
         Capacity(
-            name="compare_grid_dimension", category=CATEGORY_COMPARATOR,
+            name="compare_grid_dimension", category=CATEGORY_PROFILER,
             inputs=(DS_GRID,), outputs=(DS_DIMENSION_DELTA,),
             implementation=lambda **kw: {DS_DIMENSION_DELTA: None},
             description="(in Grid, out Grid) -> DimensionDelta | None.",
         ),
         Capacity(
-            name="compare_palette", category=CATEGORY_COMPARATOR,
+            name="compare_palette", category=CATEGORY_PROFILER,
             inputs=(DS_PALETTE,), outputs=(DS_PALETTE_DELTA,),
             implementation=lambda **kw: {DS_PALETTE_DELTA: None},
             description="(in Palette, out Palette) -> PaletteDelta | None.",
         ),
-    ]
-
-
-def _induce_capacities() -> List[Capacity]:
-    # same_object + same_shape are pairwise comparators; the tiered match
-    # (object-equal pairs / shape-equal groups / rest) is a fold over them
-    # (arc_profile.match_pair), L4-style — no capacity invokes another capacity
-    # via the layer (#4 fold; shared pure helpers allowed — GF-2).
-    return [
         Capacity(
-            name="same_object", category=CATEGORY_COMPARATOR,
+            name="same_object", category=CATEGORY_PROFILER,
             inputs=(DS_OBJECT,), outputs=(DS_SAME_OBJECT,),
             implementation=lambda **kw: {DS_SAME_OBJECT: None},
             description="(in Object, out Object) -> Bool (same color + position).",
         ),
         Capacity(
-            name="same_shape", category=CATEGORY_COMPARATOR,
+            name="same_shape", category=CATEGORY_PROFILER,
             inputs=(DS_SHAPE,), outputs=(DS_SAME_SHAPE,),
             implementation=lambda **kw: {DS_SAME_SHAPE: None},
-            description="(Shape, Shape) -> Bool (identical normalized point-set; no rotation).",
+            description="(Shape, Shape) -> Bool (identical normalized point-set; no rotation). Implies same_cell_count + same_bbox_area.",
         ),
         Capacity(
-            name="same_point", category=CATEGORY_COMPARATOR,
+            name="same_cell_count", category=CATEGORY_PROFILER,
+            inputs=(DS_SHAPE,), outputs=(DS_SAME_CELL_COUNT,),
+            implementation=lambda **kw: {DS_SAME_CELL_COUNT: None},
+            description="(Shape, Shape) -> Bool (equal cell count; D4-invariant). Implied by same_shape; demanded by rotated/reflected.",
+        ),
+        Capacity(
+            name="same_bbox_area", category=CATEGORY_PROFILER,
+            inputs=(DS_SHAPE,), outputs=(DS_SAME_BBOX_AREA,),
+            implementation=lambda **kw: {DS_SAME_BBOX_AREA: None},
+            description="(Shape, Shape) -> Bool (equal bbox area h×w; D4-invariant). Implied by same_shape; demanded by rotated/reflected.",
+        ),
+        Capacity(
+            name="same_point", category=CATEGORY_PROFILER,
             inputs=(DS_POINT,), outputs=(DS_SAME_POINT,),
             implementation=lambda **kw: {DS_SAME_POINT: None},
             description="(Point, Point) -> Bool (same colour + position).",
         ),
+    ]
+
+
+def _comparator_capacities() -> List[Capacity]:
+    """COMPARATOR ``moved`` (inter-grid). recolored/rotated/reflected live in
+    ``_transform_capacities``; touching/inside (PREDICATE) in
+    ``_intra_grid_capacities`` — together the 6 ./evaluate targets."""
+    return [
         Capacity(
             name="moved", category=CATEGORY_COMPARATOR,
             inputs=(DS_OBJECT,), outputs=(DS_MOVE_TRANSFORM,),
@@ -316,14 +351,61 @@ def _short_ds(iri: str) -> str:
     return iri.split(":")[-1].split(".")[-1]
 
 
+def _transform_capacities() -> List[Capacity]:
+    """Transform family: GENERATORS (present; real bodies) + COMPARATORS (past;
+    detect the transform across an in→out pair, fold-time like ``moved``).
+    Generators are invokable but have no solver consumer yet (seed vocabulary)."""
+    return [
+        # generators (real bodies) — NOT shown in the Gates panel
+        Capacity(
+            name="recolor", category=CATEGORY_DERIVATION,
+            inputs=(DS_OBJECT, DS_COLOR), outputs=(DS_OBJECT,),
+            implementation=lambda **kw: {DS_OBJECT: arc_grids.recolor(kw[DS_OBJECT], kw[DS_COLOR])},
+            description="(Object, Color) -> Object (every cell recoloured; shape/position kept).",
+        ),
+        Capacity(
+            name="rotate", category=CATEGORY_DERIVATION,
+            inputs=(DS_SHAPE, DS_ROTATE_TRANSFORM), outputs=(DS_SHAPE,),
+            implementation=lambda **kw: {DS_SHAPE: arc_grids.rotate_shape(kw[DS_SHAPE], kw[DS_ROTATE_TRANSFORM])},
+            description="(Shape, rotate Transform {90,180,270}) -> Shape (rotated, re-normalized).",
+        ),
+        Capacity(
+            name="reflect", category=CATEGORY_DERIVATION,
+            inputs=(DS_SHAPE, DS_REFLECT_TRANSFORM), outputs=(DS_SHAPE,),
+            implementation=lambda **kw: {DS_SHAPE: arc_grids.reflect_shape(kw[DS_SHAPE], kw[DS_REFLECT_TRANSFORM])},
+            description="(Shape, reflect Transform {horizontal,vertical}) -> Shape (reflected, re-normalized).",
+        ),
+        # comparators (fold-time detection; stub bodies like moved) — Gates caps
+        Capacity(
+            name="recolored", category=CATEGORY_COMPARATOR,
+            inputs=(DS_OBJECT,), outputs=(DS_RECOLOR_TRANSFORM,),
+            implementation=lambda **kw: {DS_RECOLOR_TRANSFORM: None},
+            description="(in Object, out Object | same_shape) -> recolor Transform | None (same shape+position, diff colour). recolored ⟹ same_shape.",
+        ),
+        Capacity(
+            name="rotated", category=CATEGORY_COMPARATOR,
+            inputs=(DS_SHAPE,), outputs=(DS_ROTATE_TRANSFORM,),
+            implementation=lambda **kw: {DS_ROTATE_TRANSFORM: None},
+            description="(in Shape, out Shape) -> rotate Transform (90/180/270) | None.",
+        ),
+        Capacity(
+            name="reflected", category=CATEGORY_COMPARATOR,
+            inputs=(DS_SHAPE,), outputs=(DS_REFLECT_TRANSFORM,),
+            implementation=lambda **kw: {DS_REFLECT_TRANSFORM: None},
+            description="(in Shape, out Shape) -> reflect Transform (horizontal/vertical) | None.",
+        ),
+    ]
+
+
 def ordered_catalog() -> List[dict]:
     """Capacities in pipeline order (perceive chain, then profile sweep),
     with consumes/produces — the list the debug UI renders."""
     rows: List[dict] = []
     for phase, caps in (("perceive", _perceive_capacities()),
-                        ("profile-sweep", _profile_comparators()),
-                        ("induce", _induce_capacities()),
+                        ("profile", _profiler_capacities()),
+                        ("comparator", _comparator_capacities()),
                         ("intra-grid", _intra_grid_capacities()),
+                        ("transform", _transform_capacities()),
                         ("reason", _reason_capacities())):
         for c in caps:
             rows.append({
@@ -342,11 +424,13 @@ def install_arc(capacity_layer: CapacityLayer) -> None:
         capacity_layer.register_datastate(ds, allow_new_realm=True)
     for cap in _perceive_capacities():
         capacity_layer.register_capacity(cap)
-    for cap in _profile_comparators():
+    for cap in _profiler_capacities():
         capacity_layer.register_capacity(cap)
-    for cap in _induce_capacities():
+    for cap in _comparator_capacities():
         capacity_layer.register_capacity(cap)
     for cap in _intra_grid_capacities():
+        capacity_layer.register_capacity(cap)
+    for cap in _transform_capacities():
         capacity_layer.register_capacity(cap)
     for cap in _reason_capacities():
         capacity_layer.register_capacity(cap)

@@ -1,70 +1,96 @@
 """Capacity gate system — phased comparison → result → gate → capacity.
 
-The single source of truth for the Gates panel. Layout (locked):
+The capability gate data is **derived from the Search facets in the spike**
+(same source as Search availability): a facet is a CAPACITY iff it has
+``requires`` or is intra-grid (moved / touching / inside), gated by its own
+``fires`` + each ``requires`` — so a capacity is enabled iff its Search token
+fires. The component/profiling comparisons are the full palette of conditions
+available to gate against (every comparison is shown in the panel; the facet
+multi/bool ones plus the derived profiling ones).
 
-  PHASE 1 · Profiling          PHASE 2 · Components Comparisons   GATE        CAPACITY
-  comparison → result chips    comparison → result chips          AND / OR    moved, touching
-
-A *comparison* yields exactly one *result* per task. A *capacity* is enabled
-when its *guard* (a boolean over comparison:result pairs, composed with
-AND/OR — mirroring core ``input_group`` {all_required | any_of}) passes.
-
-Grounding: profiling categories come from ``arc_search`` (the shipped facet
-index); component facets from ``arc_search.task_tokens``. The colour/object/
-point-presence profiling comparisons are computed here (real, derivable —
-not yet arc_search facets). The only *shipped* requires is ``moved ⊃
-same_shape``; the other guard clauses are this panel's proposed gating.
+Box positions for the Gates panel may be saved to ``gates_layout.json`` (written
+from the panel's Save button); it is loaded here and emitted as ``layout`` so a
+committed layout is reused by future regenerations.
 """
 
 from __future__ import annotations
 
+import json
+import os
 from typing import Any, Dict, List
 
 from . import arc_search
 
+_DASH = "—"
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_LAYOUT_JSON = os.path.join(_HERE, "gates_layout.json")
 
-# ── comparisons (phase + ordered result options) ───────────────────────
-COMPARISONS: List[Dict[str, Any]] = [
-    {"key": "compare_grid_dimension", "label": "compare_grid_dimension",
-     "phase": "profiling", "results": ["preserved", "grew", "shrank", "mixed", "varies"]},
-    {"key": "compare_palette", "label": "compare_palette",
-     "phase": "profiling", "results": ["preserved", "added", "removed", "added+removed", "varies"]},
-    {"key": "colour_count", "label": "colour count",
-     "phase": "profiling", "results": ["multicolor", "monochrome"]},
-    {"key": "object_presence", "label": "object presence",
-     "phase": "profiling", "results": ["present", "absent"]},
-    {"key": "point_presence", "label": "point presence",
-     "phase": "profiling", "results": ["present", "absent"]},
-    {"key": "object_count", "label": "object count",
-     "phase": "profiling", "results": ["none", "single", "multiple"]},
-    {"key": "same_object", "label": "same_object",
-     "phase": "components", "results": ["fires", "—"]},
-    {"key": "same_shape", "label": "same_shape",
-     "phase": "components", "results": ["fires", "—"]},
-    {"key": "same_point", "label": "same_point",
-     "phase": "components", "results": ["fires", "—"]},
+_MULTI = [f for f in arc_search.FACETS if f["kind"] == "multi"]
+_BOOL = [f for f in arc_search.FACETS if f["kind"] == "bool"]
+
+#: derived profiling comparisons (computed from the grids, not Search facets) —
+#: extra conditions available to gate against. Constant-valued profilers carry
+#: zero information across the 400-task corpus and were removed: ``colour_count``
+#: (multicolor 400/400 — 0 monochrome tasks), ``object_presence`` (present
+#: 400/400), ``component_presence`` (present 400/400). Only the discriminating
+#: ones remain: ``point_presence`` (absent 58/400), ``object_count``
+#: (single 6/400).
+_DERIVED_PROFILING = [
+    {"key": "point_presence", "results": ["present", "absent"]},
+    {"key": "object_count", "results": ["none", "single", "multiple"]},
 ]
 
-#: capacities + guards. Guard nodes:
-#:   {"op":"is","cmp":k,"result":r[,"requires":True]} | {"op":"and"|"or","args":[...]}
-CAPACITIES: List[Dict[str, Any]] = [
-    {"key": "moved", "guard": {"op": "and", "args": [
-        {"op": "is", "cmp": "same_shape", "result": "fires", "requires": True},
-        {"op": "is", "cmp": "compare_grid_dimension", "result": "preserved"},
-        {"op": "is", "cmp": "compare_palette", "result": "preserved"},
-    ]}},
-    {"key": "touching", "guard": {"op": "and", "args": [
-        {"op": "is", "cmp": "colour_count", "result": "multicolor"},
-        {"op": "or", "args": [
-            {"op": "is", "cmp": "object_presence", "result": "present"},
-            {"op": "is", "cmp": "point_presence", "result": "present"},
-        ]},
-    ]}},
-    {"key": "inside", "guard": {"op": "and", "args": [
-        {"op": "is", "cmp": "colour_count", "result": "multicolor"},
-        {"op": "is", "cmp": "object_count", "result": "multiple"},
-    ]}},
-]
+
+def _is_capacity(f: dict) -> bool:
+    """A bool facet is a Phase-4 comparison CAPACITY (comparator) iff it is not a
+    sameness profiler. Single source: ``arc_search.is_comparator``."""
+    return arc_search.is_comparator(f)
+
+
+def _build_comparisons() -> List[Dict[str, Any]]:
+    """Phase 1 profiling (multi) · Phase 2 components (sameness atoms) · Phase 4
+    comparison capacities (the other bool facets, split inter/intra). Each carries
+    its ``division``, ``implies`` and ``requires`` so the panel can place + indent
+    them. The derived profiling comparisons are NOT shown in the panel."""
+    comps: List[Dict[str, Any]] = []
+    for f in _MULTI:                          # PHASE 1 · profiling
+        comps.append({"key": f["name"], "label": f["name"], "phase": "profiling",
+                      "results": list(f["results"]), "division": f.get("division")})
+    for f in _BOOL:
+        entry = {"key": f["name"], "label": f["name"], "results": ["fires", _DASH],
+                 "division": f.get("division"), "implies": f.get("implies", []),
+                 "requires": f.get("requires", [])}
+        entry["phase"] = "capacity" if _is_capacity(f) else "components"
+        comps.append(entry)
+    return comps
+
+
+def _build_capacities() -> List[Dict[str, Any]]:
+    caps: List[Dict[str, Any]] = []
+    for f in _BOOL:
+        if _is_capacity(f):
+            clauses = [{"op": "is", "cmp": f["name"], "result": "fires"}]
+            for req in f.get("requires", []):
+                clauses.append({"op": "is", "cmp": req, "result": "fires"})
+            caps.append({"key": f["name"], "guard": {"op": "and", "args": clauses}})
+    return caps
+
+
+COMPARISONS: List[Dict[str, Any]] = _build_comparisons()
+CAPACITIES: List[Dict[str, Any]] = _build_capacities()
+
+#: capacity implication parents (child -> implier) — same capacity phase + division.
+#: When the parent tests positive the child is known-true and is NOT re-tested
+#: (sound only for capacity-phase implications, e.g. inside ⟹ touching).
+_CAP_BY_KEY = {c["key"]: c for c in COMPARISONS if c.get("phase") == "capacity"}
+_CAP_PARENT: Dict[str, str] = {}
+for _c in COMPARISONS:
+    if _c.get("phase") != "capacity":
+        continue
+    for _im in _c.get("implies", []):
+        _ch = _CAP_BY_KEY.get(_im)
+        if _ch and _ch.get("division") == _c.get("division"):
+            _CAP_PARENT[_im] = _c["key"]
 
 
 # ── per-task evaluation ─────────────────────────────────────────────────
@@ -77,32 +103,29 @@ def _grids(profile: dict) -> List[dict]:
     return out
 
 
-def _distinct_component_colours(g: dict) -> int:
-    cols = {o["color"] for o in g.get("objects", [])}
-    cols |= {p["color"] for p in g.get("points", [])}
-    return len(cols)
-
-
-def eval_comparisons(profile: dict) -> Dict[str, str]:
-    """The single result that holds for each comparison, for one task."""
-    p = profile.get("profile", {})
-    grids = _grids(profile)
+def eval_comparisons(profile: dict) -> Dict[str, Any]:
+    """The single result that holds for each comparison, for one task. Facet
+    comparisons come straight off ``arc_search.task_tokens``; the (discriminating)
+    derived profiling comparisons are computed from the grids."""
     toks = set(arc_search.task_tokens(profile))
-    holds = {
-        "compare_grid_dimension": arc_search._dim_category(p["dimension_delta"]),
-        "compare_palette": arc_search._pal_category(p["palette_delta"]),
-        "colour_count": "multicolor" if any(_distinct_component_colours(g) >= 2 for g in grids) else "monochrome",
-        "object_presence": "present" if any(g.get("n_objects", 0) > 0 for g in grids) else "absent",
-        "point_presence": "present" if any(g.get("n_points", 0) > 0 for g in grids) else "absent",
-        "object_count": (lambda mx: "none" if mx == 0 else "single" if mx == 1 else "multiple")(
-            max((g.get("n_objects", 0) for g in grids), default=0)),
-    }
-    for cap in ("same_object", "same_shape", "same_point"):
-        holds[cap] = "fires" if cap in toks else "—"
+    grids = _grids(profile)
+    holds: Dict[str, Any] = {}
+    for f in _MULTI:
+        cat = None
+        for t in toks:
+            if t.startswith(f["name"] + ":"):
+                cat = t.split(":", 1)[1]
+                break
+        holds[f["name"]] = cat
+    holds["point_presence"] = "present" if any(g.get("n_points", 0) > 0 for g in grids) else "absent"
+    mx = max((g.get("n_objects", 0) for g in grids), default=0)
+    holds["object_count"] = "none" if mx == 0 else "single" if mx == 1 else "multiple"
+    for f in _BOOL:
+        holds[f["name"]] = "fires" if f["name"] in toks else _DASH
     return holds
 
 
-def eval_guard(node: Dict[str, Any], holds: Dict[str, str]) -> bool:
+def eval_guard(node: Dict[str, Any], holds: Dict[str, Any]) -> bool:
     op = node["op"]
     if op == "is":
         return holds.get(node["cmp"]) == node["result"]
@@ -114,12 +137,58 @@ def eval_guard(node: Dict[str, Any], holds: Dict[str, str]) -> bool:
 
 
 def gate_report(profile: dict) -> Dict[str, Any]:
-    """Per-task: the holding result for each comparison + enabled per capacity."""
+    """Per-task gate evaluation, with the implication skip:
+
+    1. test the comparisons (``holds``);
+    2. test each capacity's gate (``enabled``);
+    3. for an implied capacity whose **parent tested positive**, take it as
+       known-true WITHOUT re-testing and record it in ``implied`` (child ->
+       parent). Sound because the only capacity-phase implication is the
+       verified ``inside ⟹ touching`` (0/400) — so ``enabled`` is unchanged,
+       the test is simply skipped.
+    """
     holds = eval_comparisons(profile)
     enabled = {c["key"]: eval_guard(c["guard"], holds) for c in CAPACITIES}
-    return {"holds": holds, "enabled": enabled}
+    implied: Dict[str, str] = {}
+    for child, parent in _CAP_PARENT.items():
+        if enabled.get(parent):
+            implied[child] = parent       # known-true via parent; not re-tested
+            enabled[child] = True
+    return {"holds": holds, "enabled": enabled, "implied": implied}
+
+
+# ── catalog ─────────────────────────────────────────────────────────────
+def capacity_gate_spec(cap_key: str) -> Dict[str, Any]:
+    """One capacity's table: every comparison with its results + gate value
+    (false if not part of the gate). What the editable ``{ } json`` shows."""
+    cap = next((c for c in CAPACITIES if c["key"] == cap_key), None)
+    gated: Dict[str, str] = {}
+    if cap:
+        def walk(n):
+            if n["op"] == "is":
+                gated[n["cmp"]] = n["result"]
+            else:
+                for a in n.get("args", []):
+                    walk(a)
+        walk(cap["guard"])
+    comparisons: Dict[str, Any] = {}
+    for c in COMPARISONS:
+        comparisons[c["key"]] = {"results": c["results"], "gate": gated.get(c["key"], False)}
+    return {"capacity": cap_key, "comparisons": comparisons}
+
+
+def _load_layout() -> Dict[str, Any]:
+    """Saved box positions for the Gates panel (optional)."""
+    if os.path.exists(_LAYOUT_JSON):
+        try:
+            with open(_LAYOUT_JSON, encoding="utf-8") as fh:
+                return json.load(fh)
+        except Exception:
+            return {}
+    return {}
 
 
 def gate_catalog() -> Dict[str, Any]:
-    """Static layout definitions emitted once into the payload."""
-    return {"comparisons": COMPARISONS, "capacities": CAPACITIES}
+    caps = [{"key": c["key"], "guard": c["guard"], "spec": capacity_gate_spec(c["key"])}
+            for c in CAPACITIES]
+    return {"comparisons": COMPARISONS, "capacities": caps, "layout": _load_layout()}

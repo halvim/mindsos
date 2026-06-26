@@ -131,6 +131,48 @@ def _invoke_biting_check(cl, prof8) -> None:
           "#8; declared CONSUMES is neither necessary nor sufficient.")
 
 
+def _gate_invariant_check(tasks) -> None:
+    """The locked invariant: a comparator's gate is enabled iff its Search token
+    fires — ``enabled == (cap in task_tokens)`` for all 6 comparators, every
+    task. Demands (rotated/reflected ⊃ cells,area) never break it because the
+    comparator firing implies its D4-invariant demands."""
+    comps = arc_search.comparator_names()
+    for t in tasks:
+        toks = set(arc_search.task_tokens(t))
+        en = t["gates"]["enabled"]
+        for c in comps:
+            assert en.get(c) == (c in toks), \
+                f"gate invariant broken: {t['task_id']} {c} enabled={en.get(c)} token={c in toks}"
+    print(f"  [ok] gate invariant: enabled == Search token for all "
+          f"{len(comps)} comparators across {len(tasks)} tasks.")
+
+
+def _evaluate_discrepancy_check(tasks) -> None:
+    """./evaluate applies each comparator via an independent code path and
+    cross-checks it against the Search token; assert ZERO discrepancies."""
+    from intelligence_demo.arc1.solve import evaluate as ev
+    comps = arc_search.comparator_names()
+    bad = [(t["task_id"], c) for t in tasks for c in comps
+           if ev._apply(c, t)["discrepancy"]]
+    assert not bad, f"./evaluate discrepancies vs Search: {bad[:8]}"
+    print(f"  [ok] ./evaluate: 0 discrepancies vs Search "
+          f"({len(comps)} comparators × {len(tasks)} tasks).")
+
+
+def _solve_pipeline_check(dataset, solver) -> None:
+    """The arc1/solve 10-step pipeline must (a) solve #8 and (b) agree with the
+    monolithic build_solver — the step decomposition is faithful."""
+    from intelligence_demo.arc1.solve import pipeline
+    ctx = pipeline.run_all(arc_solver.TASK8, dataset)
+    assert ctx["stage6"]["matches_withheld"] is True, \
+        "arc1/solve did not solve #8 (matches_withheld != True)"
+    assert ctx["stage6"]["output"] == solver["stage6"]["output"], \
+        "arc1/solve answer differs from build_solver"
+    assert ctx["stage1"]["roles_demo1"] == solver["stage1"]["roles_demo1"], \
+        "arc1/solve stage1 differs from build_solver"
+    print("  [ok] arc1/solve: 10-step pipeline solves #8 and matches build_solver.")
+
+
 def main(argv: list) -> int:
     limit = int(argv[1]) if len(argv) > 1 else None
 
@@ -165,6 +207,8 @@ def main(argv: list) -> int:
     # Capacity gate evaluation per task (atom truth + per-cap enabled).
     for t in tasks:
         t["gates"] = arc_gates.gate_report(t)
+    _gate_invariant_check(tasks)        # enabled == Search token (all comparators)
+    _evaluate_discrepancy_check(tasks)  # ./evaluate agrees with Search (0 discrepancies)
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None
@@ -175,6 +219,7 @@ def main(argv: list) -> int:
         raw8 = arc_grids.get_task(dataset, "train", arc_solver.TASK8)
         solver = arc_solver.build_solver(prof8, raw_task=raw8)
         _invoke_biting_check(cl, prof8)  # D3 one-specimen spike
+        _solve_pipeline_check(dataset, solver)  # arc1/solve step-pipeline parity
 
     payload = {
         "generated": _dt.datetime.now().isoformat(timespec="seconds"),

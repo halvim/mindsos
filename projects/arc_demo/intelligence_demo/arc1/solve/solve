@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# arc1/solve — step-by-step solver runner.
+#   ./solve <task#|task_id> <step 1-10>
+#   ./solve 8 3     # run steps 1-3 for task #8
+#   ./solve 8 4     # reuse cached 1-3, run step 4
+set -euo pipefail
+SELF="$(cd "$(dirname "$0")" && pwd)"          # …/arc1/solve
+ARC_DEMO="$(cd "$SELF/../../.." && pwd)"        # …/projects/arc_demo
+REPO="$(cd "$ARC_DEMO/../.." && pwd)"           # repo root (mindsos_*)
+export PYTHONPATH="$REPO:$ARC_DEMO${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 "$SELF/runner.py" "$@"

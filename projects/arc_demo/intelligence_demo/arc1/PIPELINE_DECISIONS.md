@@ -217,6 +217,75 @@ filed as motivating consumer; the demo does NOT block on it.
   bridging inline→registered is **not just plumbing** — it needs (a) the monolith body decomposed
   into the registered atoms and (b) a DataState model carrying operand arity. Both are **CORE**
   concerns → folded into §5. Demo does not block; returns to its track (D13 / CORPUS-ANALYSIS).
+- **2026-06-23 — DEMO-UI + CAPACITY + DATASET session (shipped, Linux-gated `68a0ab3`).** Built the
+  arc_debug **Gates section** — a phased `comparison → result → gate(AND/OR) → capacity` graph
+  backed by NEW `spike/arc_gates.py` (comparisons + per-task `holds`/`enabled` + capacity guards),
+  reactive result-chip filter + matching-task list, + a Map callout (`maps/gates_map.py` →
+  `gates_map.png`). Added the **`inside`** intra-grid capacity (`arc_grids`: flood-fill enclosure
+  **pockets** + object-level **bbox containment**; bg-excluded) wired end-to-end via the new
+  **`CAPACITY_CREATION_GUIDE.md`** (6 steps: grids/capacities/profile compute + spike + Main
+  accordion + gate + search facet + hypothesis tag). Fixed a compact grid-sizing overflow (cellSize
+  divides by `max(rows,cols)`). **Corrected 21 corrupted tasks in `arc1.json`** vs canonical
+  fchollet/ARC-AGI (incl. #4 `025d127b`) — now exact-matches canonical, zero mismatches. Core
+  recheck: §5 Part 6 SHIPPED, Part 5 deferred (see §5). Next-phase prompt drafted for the re-pin +
+  finder-consumption decision. Gate green (4 `[ok]`: discovery + GF-6 + D3 + write 12708 KB; #8 solves).
+- **2026-06-23 — REANALYSIS of the re-pin / finder-consumption plan (4 passes; this chat).**
+  **Re-pin is NOT a clean no-op — it reds the gate (verified in core code, not hypothesised).**
+  Core Part 6 `capacity._validate_inputs` (capacity.py:274; `input_group` defaults to
+  `all_required`, capacity.py:92) now raises on the `invoke` path. The D3 biting check
+  (`run_spike.py:120`) invokes `touching_delta` with `{DS_PAIR, DS_BACKGROUND}` while the cap
+  declares `CONSUMES=(DS_TOUCHING, DS_CORRESPONDENCE)` → violates Part 6 **two ways**
+  (`missing_required` on the two declared inputs + `unexpected_input` on pair/background) →
+  `res.success` False → `assert` at run_spike.py:121 fails → **gate #3 red on re-pin.** The fiction
+  the D3 spike deliberately exposed is exactly what Part 6 now enforces; re-pin forces choosing one
+  of: (A) redeclare CONSUMES = (pair, background) — loses the semantic provenance edges; (B) revert
+  the biting check to inline-only — loses the one layer-invoked specimen; (C) decompose the monolith
+  body to consume the declared edges — the deferred Part-5/body-decomposition work; (D) don't re-pin.
+  **Decisions (this reanalysis):** (1) **Re-pin — DEFER**, coupled to consumption per RULES §3
+  ("bump deliberately, for a reason"); re-pin without a consumer = change without a consumer.
+  Precondition still to verify Mac-side: is `composition-lifecycle-s2-confirmed` merged to `main`?
+  (the `MindsOS/` main tree carries Parts 1–4+6 in the working dir but its STATE.json still reads
+  phase50 — STATE is stale either way). (2) **Finder consumption — REJECT for ARC.** Solver and
+  registered topology are DISJOINT (solver never touches the layer), so routing the reason layer
+  through `ConjunctionFinder` is finder-level-only / cosmetic until Part 5 (operand-arity for the
+  same-type in/out-touching pair) AND monolith-body decomposition also land — multi-phase core+demo
+  work with zero task-solving payoff. ARC declines the Part-5 consumer role; **bongard m5 is §5's
+  named candidate.** Do NOT hand off the Part-5 core-mod prompt from here. (3) **Reorder §3:** the
+  real critical path is **CORPUS-ANALYSIS → D13**, not re-pin; D13 gates whether D7-build /
+  finder-consumption ever get a non-inline consumer. Demo stays provenance-only / inline (D3 holds).
+  Housekeeping: STATE.json arc.status is stale (predates the `composition-lifecycle-s2-confirmed`
+  tag + Part 6 ship); gitignore the generated `arc_debug_data.js` (12.7 MB; dirties the tree each
+  gate) before any merge work.
+- **2026-06-25 — capacity-testing pipeline + implication skip (gate panel).** Built the transform
+  family (generators `recolor`/`rotate`/`reflect` + comparators `recolored`/`rotated`/`reflected`)
+  and a 4-phase gate panel (Profiling → Components → Gating → Comparison Capacity, inter/intra).
+  **Pipeline rule added:** an *implied* capacity is **not re-tested when its parent tests positive**
+  — `gate_report` records `implied` (child→parent) and takes the child known-true. Sound only for
+  capacity-phase implications verified 0/400: **`inside ⟹ touching`** (275/400 tasks skip the
+  touching test). `moved`/`recolored ⟹ same_shape` stay as gate `requires` (cross-phase).
+  `same_object ⟹ same_shape` is **display-only** (Search indentation) — token-unsound for a skip
+  (120/400 fire same_object without same_shape), so it never drives the skip. `enabled == Search
+  token` holds for all 400 after the skip. Reference: `CAPACITY_ROADMAP.md` (icecuber = checklist).
+- **2026-06-25 — profiler/comparator taxonomy + `./evaluate` (LOCKED + BUILT + gated).** Split the
+  bool facets into two kinds. **PROFILERS** (universal task facts, NOT capacities): `compare_*`,
+  `same_object`/`same_shape`/`same_point`, and two NEW shape invariants `same_cell_count` /
+  `same_bbox_area` (both **D4-invariant** — a rotation/reflection preserves cell count and bbox
+  area). `same_object/shape/point` recategorized from `comparator` → new `CATEGORY_PROFILER`
+  (`arc_capacities`/`arc_metagraph`/docs). **COMPARATORS** (the 6 capacities): `moved`, `recolored`,
+  `rotated`, `reflected`, `touching`, `inside` — bool facets outside the `atoms` group
+  (`arc_search.is_comparator`/`comparator_names`). Implications: `same_shape ⟹ same_cell_count` and
+  `same_shape ⟹ same_bbox_area` (independent, display-only); `rotated`/`reflected` **demand**
+  `same_cell_count`+`same_bbox_area` (used as a cheap pre-filter in `rotated_pairs`/`reflected_pairs`
+  before the shape check). **Demands = `requires`** (single source: a comparator's facet). **Removed
+  constant profilers** (zero information across 400): `colour_count` (multicolor 400/400 — 0
+  monochrome tasks; 65 monochrome single grids exist, e.g. `1190e5a7`), `object_presence` (400/400),
+  `component_presence` (400/400); kept `point_presence` (absent 58/400) + `object_count` (single
+  6/400). `touching`/`inside` are now demand-less (their old `object_presence` demand was vacuous).
+  **`./evaluate <comparator> [task#|all]`** (`arc1/solve/evaluate.py`): lists demands + implication
+  parents, applies a comparator via an independent code path, demand-gates, cross-checks vs the
+  Search token, and writes `capacities.json` `{task:{cap:bool}}` + `capacities_discrepancies.json`.
+  Gate adds two checks: `enabled == Search token` (all 6 × 400) and **0 `./evaluate` discrepancies**
+  (6 × 400). Counts: moved 82, recolored 54, rotated 75, reflected 44, touching 400, inside 275.
 
 ---
 
@@ -236,11 +305,18 @@ ARC's four-part proposal on branch **`feat/composition-lifecycle`** (commit `325
   `find_pipeline` retained, BFS emits a degenerate-linear DAG.
 - Deferred: promoted-path strategy, composite `node_kind`, promotion loop (all zero-writer).
 
-**NOT addressed (my §4 D3-spike parts 5–6 — still open core items):** (5) **operand-arity / pair-axis**
-— `input_group` combines *distinct* declared input DataStates; it still can't represent **two
-operands of the same type** (in-touching vs out-touching). (6) **runtime invoke input contract** —
-`call_capacity` still validates **outputs only**; nothing checks a body's real reads against the
-declared CONSUMES. So full inline→registered fidelity for the ARC reason layer remains blocked.
+**Parts 5–6 status (updated 2026-06-23, against `composition-lifecycle-s2-confirmed`):**
+- **Part 6 (invoke input contract) — SHIPPED.** Core commit `2676b9d`: `capacity._validate_inputs`
+  now validates invoke inputs against declared CONSUMES (raises on missing required), called from
+  `call_capacity` + `runtime.invoke`. Closes the D3-spike "validates outputs only" gap.
+- **Part 5 (operand-arity / same-type operands) — DEFERRED, consumer-gated.** Core design log:
+  "ship Part 6 standalone; gate Part 5 behind a confirmed consumer." No shipped path hits the
+  same-type-operand case (bongard self-validates presence only; ARC ships provenance-only). bongard
+  m5 is the named candidate (its "N-values-under-one-IRI" fold shape). A **Part-5 core-mod prompt
+  was drafted 2026-06-23** (hand to a fresh core chat when a consumer commits).
+- Demo still pins `phase-50`; has NOT consumed the Slice-1 finder/`input_group` yet — that's the
+  next-phase decision (re-pin → declare `input_group` per reason cap → route through
+  `ConjunctionFinder`; doing so is what would un-defer Part 5).
 
 **Consumption gating (RULES §3).** This is on a feature branch — **not merged to `main`, not
 tagged, demo still pins `phase-50-confirmed`.** The demo cannot use `ConjunctionFinder`/`input_group`

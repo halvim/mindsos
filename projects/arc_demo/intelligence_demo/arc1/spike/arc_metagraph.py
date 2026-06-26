@@ -23,19 +23,26 @@ from typing import Optional
 from mindsos_core import Graph, Metagraph
 from mindsos_capacity.identifiers import capacity_iri
 
-from .arc_capacities import CATEGORY_COMPARATOR
+from .arc_capacities import CATEGORY_COMPARATOR, CATEGORY_PROFILER
 
 #: section graph → the capabilities it contains (operand-axis debug grouping).
+#: ``atoms`` + ``profile`` are PROFILERS; ``object_comparator`` is a COMPARATOR.
 SECTIONS = {
-    "atoms": ["same_object", "same_shape", "same_point"],
+    "atoms": ["same_object", "same_shape", "same_cell_count", "same_bbox_area", "same_point"],
     "object_comparator": ["moved"],
     "profile": ["compare_grid_dimension", "compare_palette"],
 }
 
+#: each section's capability category (for the registered IRI).
+_SECTION_CATEGORY = {
+    "atoms": CATEGORY_PROFILER,
+    "object_comparator": CATEGORY_COMPARATOR,
+    "profile": CATEGORY_PROFILER,
+}
 
-def _iri(name: str) -> str:
-    # All arc induce/profile capabilities register under the comparator family.
-    return capacity_iri(CATEGORY_COMPARATOR, name)
+
+def _iri(name: str, category: str = CATEGORY_PROFILER) -> str:
+    return capacity_iri(category, name)
 
 
 def build_arc_metagraph() -> Metagraph:
@@ -45,8 +52,9 @@ def build_arc_metagraph() -> Metagraph:
     for section, caps in SECTIONS.items():
         g = Graph(section, role=section)
         mg.add_graph(g)
+        cat = _SECTION_CATEGORY[section]
         for name in caps:
-            g.add_node(value=name, type_name="Capacity", node_id=_iri(name))
+            g.add_node(value=name, type_name="Capacity", node_id=_iri(name, cat))
     return mg
 
 

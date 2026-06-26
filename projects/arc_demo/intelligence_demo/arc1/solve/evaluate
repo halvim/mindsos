@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# arc1/solve — comparator capacity probe.
+#   ./evaluate <comparator>              # list demands + implication parents
+#   ./evaluate <comparator> <task#|id>   # apply to one task
+#   ./evaluate <comparator> all          # apply to every task (bulk)
+set -euo pipefail
+SELF="$(cd "$(dirname "$0")" && pwd)"          # …/arc1/solve
+ARC_DEMO="$(cd "$SELF/../../.." && pwd)"        # …/projects/arc_demo
+REPO="$(cd "$ARC_DEMO/../.." && pwd)"           # repo root (mindsos_*)
+export PYTHONPATH="$REPO:$ARC_DEMO${PYTHONPATH:+:$PYTHONPATH}"
+exec python3 "$SELF/evaluate.py" "$@"

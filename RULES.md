@@ -48,3 +48,16 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 ## 6. State lookup
 - Current version, last shipped phase, what each demo pins → `STATE.json`.
 - Your lane + who owns what → `BRANCHES.md`.
+
+## 7. Grounding discipline — only the solver's knowledge
+- **Never assume a fact the solver cannot itself derive.** Capacities and
+  profiling may use ONLY knowledge the system actually has at that point — not
+  the author's outside understanding of the task or domain.
+- Concretely: do **not** hardcode or infer the background colour, object roles,
+  task intent, palette meaning, or any "obvious to a human" fact. If a step
+  needs such a fact, it must come from an explicit capability that *derives or
+  verifies* it from the grids (e.g. `verify_background`), with its assumptions
+  visible and challengeable — never a buried default (most-frequent ≠ background).
+- When a needed fact cannot yet be derived, the honest output is "don't know"
+  (abstain / flag), not a guess. Smuggling author-knowledge in as if the solver
+  produced it makes the demo lie about what the architecture can do.

@@ -257,14 +257,20 @@ def apply_rule(gs: dict, bg: int):
     return {"grid": _render(gs["dims"], placed, bg), "steps": steps}
 
 
-def build_solver(profile: dict, raw_task: dict = None) -> dict:
-    """Compute the read-only solver run (stages 1–6) for one task."""
+# ── solver stages (decomposed so arc1/solve can run them step-by-step) ──
+def stage_background(profile: dict) -> dict:
+    """Step 4 — background + state-change: bg (pooled most-frequent, v1) + the
+    per-pair touching_changes (gained/lost/maintained)."""
     demos = profile["train"]
-    n = len(demos)
     bg = _bg_color(profile)
     changes = [touching_changes(pr, bg, exclude_bg=True) for pr in demos]
+    return {"bg": bg, "changes": changes, "n": len(demos)}
 
-    # ── stage 1: roles (demo 1, representative) ──────────────────────────
+
+def stage_roles(profile: dict, bg: int, changes: list) -> dict:
+    """Step 5 — roles (demo 1, representative): mover / target / background."""
+    demos = profile["train"]
+    n = len(demos)
     pr0, gin0 = demos[0], demos[0]["input"]
     moved0 = _moved_in(pr0)
     movers0, targets0 = set(), set()
@@ -296,12 +302,7 @@ def build_solver(profile: dict, raw_task: dict = None) -> dict:
 
     gained0 = [_pair_lbl(frozenset((a, b))) for (a, b) in changes[0]["gained"]]
     n_gained = sum(1 for c in changes if c["gained"])
-
-    # Background is OPTIONAL (analyse separately): excluding it only hides the
-    # maintained bg-touching noise — the `gained` signal is exclusion-independent.
-    # Both display variants are precomputed; the UI toggles between them (no
-    # recompute, still option A).
-    stage1 = {
+    return {
         "roles_demo1": roles,
         "touching_in_excl": disp(gin0, True),
         "touching_out_excl": disp(pr0["output"], True),
@@ -314,15 +315,18 @@ def build_solver(profile: dict, raw_task: dict = None) -> dict:
                        "note": "optional — excluded by default; the gained signal is unaffected"},
     }
 
-    # ── stage 2: persistence + combination test ──────────────────────────
+
+def stage_persistence(profile: dict, bg: int, changes: list) -> dict:
+    """Step 6 — persistence ∀demo + the (move, touching) combination test."""
+    demos = profile["train"]
+    n = len(demos)
+    n_gained = sum(1 for c in changes if c["gained"])
     persistent = [
         ["moved", f"{sum(1 for pr in demos if _moved_in(pr))}/{n}"],
         ["same_object", f"{sum(1 for pr in demos if pr['match']['equal'])}/{n}"],
         ["same_shape", f"{sum(1 for pr in demos if pr['match']['shape_groups'])}/{n}"],
         ["touching-gained", f"{n_gained}/{n}"],
     ]
-    # combo (move, touching-gained): per demo, ∃ object that moved AND is an
-    # endpoint of a gained touching pair (same object within the pair).
     per_demo, objs = [], []
     for pr, ch in zip(demos, changes):
         moved = _moved_in(pr)
@@ -330,14 +334,17 @@ def build_solver(profile: dict, raw_task: dict = None) -> dict:
         per_demo.append("✓" if sat else "✗")
         objs.append(_lbl(sat[0]) if sat else "—")
     verdict = "candidate" if all(x == "✓" for x in per_demo) else "no"
-    stage2 = {
+    return {
         "persistent": persistent,
         "excluded_static": ["same_object", "same_shape"],
         "combos": [{"combo": "(move, touching)", "per_demo": per_demo,
                     "objects": objs, "verdict": verdict}],
     }
 
-    # ── stage 3: selector synthesis (per role, across demos) ─────────────
+
+def stage_selectors(profile: dict, bg: int, changes: list):
+    """Step 7 — minimal discriminative selector per role (mover / target)."""
+    demos = profile["train"]
     mover_rd, target_rd, ok = [], [], True
     for pr, ch in zip(demos, changes):
         moved = _moved_in(pr)
@@ -355,33 +362,33 @@ def build_solver(profile: dict, raw_task: dict = None) -> dict:
                  if o["color"] != bg]
         mover_rd.append((pr["input"], mover, [r for r in nonbg if r != mover]))
         target_rd.append((pr["input"], target, [r for r in nonbg if r != target]))
-    stage3 = None
-    if ok:
-        mc, tc = _selectors_for(mover_rd), _selectors_for(target_rd)
-        tie = len(mc) > 1 or len(tc) > 1
+    if not ok:
+        return None
+    mc, tc = _selectors_for(mover_rd), _selectors_for(target_rd)
+    tie = len(mc) > 1 or len(tc) > 1
 
-        def _shape_pick(cands):
-            for c in cands:
-                if "shape" in c or "irregular" in c:
-                    return c
-            return cands[0] if cands else None
+    def _shape_pick(cands):
+        for c in cands:
+            if "shape" in c or "irregular" in c:
+                return c
+        return cands[0] if cands else None
 
-        stage3 = {
-            "mover": {"candidates": mc},
-            "target": {"candidates": tc},
-            "tie": tie,
-            # Tie resolved to the **shape** criterion (owner pick, 2026-06-17) —
-            # all candidates resolve the same objects on the #8 test.
-            "selected": "shape",
-            "mover_selected": _shape_pick(mc),
-            "target_selected": _shape_pick(tc),
-            "note": "3-way tie — all candidates resolve the same objects on the "
-                    "#8 test; locked = shape (owner). The choice is a "
-                    "generalization prior, not part of #8's answer.",
-        }
+    return {
+        "mover": {"candidates": mc},
+        "target": {"candidates": tc},
+        "tie": tie,
+        "selected": "shape",
+        "mover_selected": _shape_pick(mc),
+        "target_selected": _shape_pick(tc),
+        "note": "3-way tie — all candidates resolve the same objects on the "
+                "#8 test; locked = shape (owner). The choice is a "
+                "generalization prior, not part of #8's answer.",
+    }
 
-    # ── stage 4: rule assembly (selector locked = shape) ─────────────────
-    stage4 = {
+
+def stage_rule() -> dict:
+    """Step 8 — rule assembly. **#8-specific (hardcoded).**"""
+    return {
         "rule": "(move, touching)",
         "mover_sel": "no base shape (irregular)",
         "target_sel": "shape = square",
@@ -390,7 +397,9 @@ def build_solver(profile: dict, raw_task: dict = None) -> dict:
         "dag": "mover → target (target invariant) — grounded",
     }
 
-    # ── stage 5: verify on demos (apply rule, exact-match output) ─────────
+
+def stage_verify(profile: dict, bg: int) -> dict:
+    """Step 9 — verify: apply_rule on each demo, exact-match output."""
     per_demo = []
     all_match = True
     for i, pr in enumerate(profile["train"]):
@@ -399,32 +408,39 @@ def build_solver(profile: dict, raw_task: dict = None) -> dict:
         per_demo.append({"demo": i + 1,
                          "steps": res["steps"] if res else None, "match": m})
         all_match = all_match and m
-    stage5 = {"per_demo": per_demo, "all_match": all_match,
-              "verdict": "sufficient — consistent with all demos" if all_match
-                         else "insufficient — a demo mismatched"}
+    return {"per_demo": per_demo, "all_match": all_match,
+            "verdict": "sufficient — consistent with all demos" if all_match
+                       else "insufficient — a demo mismatched"}
 
-    # ── stage 6: apply to test (produce output; confidence-check withheld) ─
-    stage6 = None
-    if profile["test"]:
-        tin = profile["test"][0]["input"]
-        res = apply_rule(tin, bg)
-        out = res["grid"] if res else None
-        matches = None
-        if raw_task and raw_task.get("test"):
-            matches = (out == raw_task["test"][0]["output"])
-        stage6 = {"input": tin["cells"], "output": out,
-                  "steps": res["steps"] if res else None,
-                  "matches_withheld": matches}
 
+def stage_apply(profile: dict, bg: int, raw_task: dict = None):
+    """Step 10 — apply to the test input → answer (test output withheld)."""
+    if not profile["test"]:
+        return None
+    tin = profile["test"][0]["input"]
+    res = apply_rule(tin, bg)
+    out = res["grid"] if res else None
+    matches = None
+    if raw_task and raw_task.get("test"):
+        matches = (out == raw_task["test"][0]["output"])
+    return {"input": tin["cells"], "output": out,
+            "steps": res["steps"] if res else None, "matches_withheld": matches}
+
+
+def build_solver(profile: dict, raw_task: dict = None) -> dict:
+    """Read-only solver run (stages 1–6). Thin orchestrator over the stage
+    functions above — arc1/solve drives the same stages one at a time."""
+    b = stage_background(profile)
+    bg, changes = b["bg"], b["changes"]
     return {
         "task_id": profile["task_id"],
-        "n_demos": n,
+        "n_demos": b["n"],
         "background": {"color": bg, "proposed": f"exclude objects of colour {bg}"},
-        "stage1": stage1,
-        "stage2": stage2,
-        "stage3": stage3,
-        "stage4": stage4,
-        "stage5": stage5,
-        "stage6": stage6,
+        "stage1": stage_roles(profile, bg, changes),
+        "stage2": stage_persistence(profile, bg, changes),
+        "stage3": stage_selectors(profile, bg, changes),
+        "stage4": stage_rule(),
+        "stage5": stage_verify(profile, bg),
+        "stage6": stage_apply(profile, bg, raw_task),
         "pending": [],
     }

@@ -37,11 +37,10 @@ def grid_summary(grid: List[List[int]]) -> dict:
         # intra-grid positional: touching pairs among this grid's components
         # (different-colour Object/Point pairs sharing an 8-neighbour; §4 #16).
         "touching": arc_grids.touching_pairs(objects, points),
-        # intra-grid positional: (a inside b) — a enclosed by a single-colour
-        # object b (cannot reach the border without crossing b; bg-excluded).
+        # intra-grid positional: (a inside b) — a walled on all 4 sides by a
+        # single object b (4-ray test; no background assumption).
         "inside": arc_grids.inside_pairs(
-            objects, points, arc_grids.dimension(grid),
-            arc_grids.background_color(grid), grid),
+            objects, points, arc_grids.dimension(grid), grid),
     }
 
 

@@ -191,6 +191,22 @@
   .minigrid{display:grid;gap:1px;background:#0c0e14;padding:2px;border-radius:3px}
   .shint{color:var(--dim);font-size:12px;padding:18px;text-align:center;border:1px dashed var(--line);border-radius:6px}
   .hiddennote{color:var(--dim);font-size:11px;font-style:italic;padding:2px 0}
+  /* per-capacity gate JSON modal */
+  .jmodal{position:fixed;inset:0;background:rgba(8,9,13,.66);display:none;
+    align-items:center;justify-content:center;z-index:50}
+  .jbox{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    width:min(640px,92vw);max-height:84vh;display:flex;flex-direction:column;
+    box-shadow:0 18px 50px rgba(0,0,0,.5)}
+  .jhead{display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 13px;border-bottom:1px solid var(--line)}
+  .jhead b{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--accent)}
+  .jbox pre{margin:0;padding:13px;overflow:auto;font-family:ui-monospace,Menlo,Consolas,monospace;
+    font-size:12px;line-height:1.5;color:var(--ink)}
+  .jedit{margin:0;border:0;border-top:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;
+    padding:13px;min-height:300px;resize:vertical;width:100%;box-sizing:border-box;outline:none}
+  .jerr{color:var(--warn);font-size:11px;padding:0 13px 10px;min-height:14px;
+    font-family:ui-monospace,Menlo,Consolas,monospace}
   /* hypotheses */
   .hyplist{display:flex;flex-direction:column;gap:5px}
   .hyprow{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);
@@ -254,6 +270,15 @@
   .gtask:hover{border-color:var(--accent);color:var(--ink)}
   .gtask.on{border-color:var(--ok);color:var(--ok)}
   .gmore{font-size:11px;color:var(--dim);padding:3px 6px}
+  .gcmpbox{cursor:move}
+  .gcmpbox:hover{stroke-width:2.2}
+  #gatesBody .gedge{cursor:pointer}
+  #gatesBody .gedge:hover .vis{stroke:var(--accent);stroke-width:2.8;opacity:1}
+  #gatesBody .gugate{cursor:move}
+  #gatesBody .gugate:hover circle{stroke-width:2.8}
+  .gchips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+  .gchip{font:11px ui-monospace,Menlo,monospace;color:var(--ok);background:rgba(61,220,132,0.10);
+    border:1px solid var(--ok);border-radius:5px;padding:2px 7px}
 </style>
 </head>
 <body>
@@ -286,13 +311,16 @@
 <section id="secCapacities" style="display:none"><div id="capBody"></div></section>
 
 <section id="secGates" class="profile" style="display:none">
-  <h2>Capacity gates — condition-atom guards (reactive to the selected task)</h2>
+  <h2>Capacity gates — four phases (reactive to the selected task)</h2>
   <div class="note" style="margin:0 0 12px;border:0">
-    A capacity is available only when its <b>guard</b> passes. Guards are booleans over shared
-    <b>condition atoms</b> (grid-Δ, palette-Δ, operand-type), composed with AND/OR — mirroring the
-    core <code>input_group {all_required | any_of | fold}</code>. Atoms light up
-    <span style="color:var(--ok)">green</span> when satisfied for the selected task; an enabled
-    capacity turns green. Source of truth: <code>arc_gates.py</code>.
+    <b>Phase 1 Profiling</b> + <b>Phase 2 Components</b> (sameness atoms) feed <b>Phase 3 Gating</b>
+    (AND/OR per capacity) into <b>Phase 4 Comparison Capacity</b> (inter-grid: moved, recolored,
+    reflected, rotated · intra-grid: touching, inside). A capacity lights
+    <span style="color:var(--ok)">green</span> when its gate passes — equivalently, when its Search
+    token fires (gate data is derived from <code>arc_search.FACETS</code>, the same source as Search).
+    <b>Implication indentation</b>: an indented capacity is implied by the one above it
+    (<code>inside ⟹ touching</code>) — test the parent, the child is known-true (skipped). Per
+    capacity, <code>{ }json</code> edits its gate; drag any box; hover an edge to highlight.
   </div>
   <div id="gatesBody"></div>
 </section>
@@ -342,10 +370,11 @@
     <div class="note">The <b>Gates</b> section (<code>renderGates</code> ← <code>DATA.gates</code> +
       per-task <code>gates.holds</code>/<code>gates.enabled</code>). Four columns, two phase bands:
       <b>PHASE 1 · Profiling</b> (Comparison → Results) and <b>PHASE 2 · Components Comparisons</b>
-      (Comparison → Results), then <b>GATE</b> (AND = <code>all_required</code> / OR = <code>any_of</code>)
-      and <b>CAPACITY</b> (<code>moved</code>, <code>touching</code> — green when the guard passes).
-      Result chips are centered on their parent comparison and <b>click to filter</b>; the right panel
-      lists matching tasks. Source of truth: <code>arc_gates.py</code>.</div>
+      (Comparison → Results), then <b>GATE</b> (flat <b>AND</b> over gated clauses) and <b>CAPACITY</b>
+      (<code>moved</code>, <code>touching</code>, <code>inside</code> — green when the gate passes), each
+      with a <code>{ } json</code> button showing its gate table. Result chips are centered on their
+      parent comparison and <b>click to filter</b>; the right panel lists matching tasks. Gate data
+      is derived from <code>arc_search.FACETS</code> in the spike (same source as Search).</div>
   </div>
 
   <div class="mappanel" data-map="map" style="display:none">
@@ -558,11 +587,15 @@ function insideCol(gs, pairs, tag){
     sw.style.background=color>=0?(PAL[color]||"#f0f"):"#555";
     const nm=document.createElement("span"); nm.className="nm"; nm.textContent=txt; return [sw,nm]; };
   pairs.forEach(p=>{
-    const b=partRef(gs,p.container,tag);  // container object
+    // new schema: {a,b}; legacy: {type,container,inside|color,size}. Be tolerant
+    // of either so a stale payload renders instead of throwing.
+    const bRef=p.b||p.container; if(!bRef) return;
+    const aRef=p.a||(p.type!=="pocket"?p.inside:null);
+    const b=partRef(gs,bRef,tag);
     const row=document.createElement("div"); row.className="trow";
     const bond=document.createElement("span"); bond.className="tbond"; bond.textContent="⊃";
     let rhs;
-    if(p.type==="object"){ const a=partRef(gs,p.inside,tag); rhs=mk(a.color,a.nm); }
+    if(aRef){ const a=partRef(gs,aRef,tag); rhs=mk(a.color,a.nm); }
     else { rhs=mk(p.color,`${p.size} cell${p.size>1?"s":""}${p.color<0?" mixed":""}`); }
     row.append(...mk(b.color,b.nm), bond, ...rhs); col.appendChild(row);
   });
@@ -793,7 +826,23 @@ function anySel(){ return SS.bool.size>0 || Object.values(SS.multi).some(s=>s.si
 
 function buildFacets(){
   const host=document.getElementById("facets"); host.innerHTML=""; let group=null, division=null;
-  const GLABEL={profile:"profile (multi-result)",atoms:"atoms",object_comparator:"object comparator"};
+  const GLABEL={profile:"profile (multi-result)",atoms:"atoms",object_comparator:"object comparator",transform:"transform comparator"};
+  // implication children (same division + group): indent + "implied" marker
+  const impliesChildren={}, isChildF={};
+  FACETS.forEach(f=>(f.implies||[]).forEach(im=>{ const c=FACETS.find(x=>x.name===im);
+    if(c&&c.kind==="bool"&&c.division===f.division&&c.group===f.group){ (impliesChildren[f.name]=impliesChildren[f.name]||[]).push(im); isChildF[im]=true; } }));
+  function boolRow(f,indent,impliedBy){
+    const r=document.createElement("div"); r.className="frow"; if(indent) r.style.marginLeft=(indent*16)+"px";
+    const ck=document.createElement("span"); ck.className="ck"+(SS.bool.has(f.name)?" on":"");
+    const nm=document.createElement("span"); nm.className="mono"; nm.textContent=f.name;
+    r.append(ck,nm);
+    if(impliedBy){ const im=document.createElement("span"); im.className="req"; im.style.color="var(--ok)"; im.textContent="implied ⟸ "+impliedBy; r.appendChild(im); }
+    else if(f.requires_label){ const rq=document.createElement("span"); rq.className="req"; rq.textContent=f.requires_label; r.appendChild(rq); }
+    const ct=document.createElement("span"); ct.className="fct"; ct.textContent=COUNTS[f.name]||0; r.appendChild(ct);
+    r.onclick=()=>{ SS.bool.has(f.name)?SS.bool.delete(f.name):SS.bool.add(f.name); buildFacets(); renderMatches(); };
+    host.appendChild(r);
+    (impliesChildren[f.name]||[]).forEach(ch=>{ const cf=FACETS.find(x=>x.name===ch); if(cf) boolRow(cf,indent+1,f.name); });
+  }
   FACETS.forEach(f=>{
     if(f.division && f.division!==division){
       const d=document.createElement("div"); d.className="division"; d.textContent=f.division;
@@ -804,16 +853,9 @@ function buildFacets(){
         h.textContent=GLABEL[f.group]||f.group; host.appendChild(h); }
       group=f.group;
     }
+    if(isChildF[f.name]) return;   // rendered indented under its parent
     if(f.kind==="bool"){
-      const r=document.createElement("div"); r.className="frow";
-      const ck=document.createElement("span"); ck.className="ck"+(SS.bool.has(f.name)?" on":"");
-      const nm=document.createElement("span"); nm.className="mono"; nm.textContent=f.name;
-      r.append(ck,nm);
-      if(f.requires_label){ const rq=document.createElement("span"); rq.className="req"; rq.textContent=f.requires_label; r.appendChild(rq); }
-      const ct=document.createElement("span"); ct.className="fct"; ct.textContent=COUNTS[f.name]||0;
-      r.appendChild(ct);
-      r.onclick=()=>{ SS.bool.has(f.name)?SS.bool.delete(f.name):SS.bool.add(f.name); buildFacets(); renderMatches(); };
-      host.appendChild(r);
+      boolRow(f,0,null);
     } else {
       const sel=SS.multi[f.name];
       const head=document.createElement("div"); head.className="caprow";
@@ -1155,69 +1197,219 @@ function _gateMatches(){
     return keys.every(k=>h[k]===GATEF[k]);
   });
 }
+// Per-capacity gate JSON — EDITABLE. Every comparison with its results + gate
+// (false = not in the gate). Edit a gate value (false ⇄ one of its results) and
+// click Apply: the capacity's guard is rebuilt in-memory and the panel re-renders
+// immediately. (Live override; resets on reload / next spike run.)
+function _gateSpec(key){
+  const cat=DATA.gates; const c=(cat.capacities||[]).find(x=>x.key===key);
+  const gated={}; (function walk(n){ if(!n) return;
+    if(n.op==="is") gated[n.cmp]=n.result; else (n.args||[]).forEach(walk); })((c&&c.guard)||{});
+  const comparisons={};
+  cat.comparisons.forEach(cm=>{ comparisons[cm.key]={results:cm.results,
+    gate:(cm.key in gated)?gated[cm.key]:false}; });
+  return {capacity:key, comparisons};
+}
+function gateJson(key){
+  const cat=DATA&&DATA.gates; if(!cat||!cat.comparisons) return;
+  if(!(cat.capacities||[]).find(x=>x.key===key)) return;
+  let ov=document.getElementById("jsonModal");
+  if(!ov){ ov=document.createElement("div"); ov.id="jsonModal"; ov.className="jmodal";
+    ov.onclick=e=>{ if(e.target===ov) ov.style.display="none"; };
+    document.body.appendChild(ov); }
+  ov.innerHTML=`<div class="jbox"><div class="jhead"><b>gate · ${key} · editable</b><span>`
+    +`<button onclick="applyGateJson('${key}')">apply</button> `
+    +`<button onclick="document.getElementById('jsonModal').style.display='none'">close</button></span></div>`
+    +`<textarea id="jsonEdit" class="jedit" spellcheck="false"></textarea>`
+    +`<div id="jsonErr" class="jerr"></div></div>`;
+  ov.querySelector("#jsonEdit").value=JSON.stringify(_gateSpec(key),null,2);
+  ov.style.display="flex";
+}
+function applyGateJson(key){
+  const ta=document.getElementById("jsonEdit"), err=document.getElementById("jsonErr");
+  if(!ta) return;
+  let spec; try{ spec=JSON.parse(ta.value); }catch(e){ err.textContent="Invalid JSON: "+e.message; return; }
+  const cat=DATA.gates, by={}; cat.comparisons.forEach(c=>by[c.key]=c);
+  const comps=(spec&&spec.comparisons)||{};
+  for(const k in comps){
+    if(!by[k]){ err.textContent="Unknown comparison: "+k; return; }
+    const g=comps[k].gate;
+    if(g!==false && !by[k].results.includes(g)){
+      err.textContent=`${k}.gate=${JSON.stringify(g)} must be false or one of ${JSON.stringify(by[k].results)}`; return; }
+  }
+  const args=[];
+  cat.comparisons.forEach(c=>{ const e=comps[c.key]; if(e && e.gate!==false) args.push({op:"is",cmp:c.key,result:e.gate}); });
+  const c=cat.capacities.find(x=>x.key===key); if(!c){ err.textContent="capacity not found"; return; }
+  c.guard={op:"and",args}; c.spec={capacity:key, comparisons:comps};
+  document.getElementById("jsonModal").style.display="none";
+  renderGates();
+}
+// ── Gates layout + editor (draggable boxes · create gates · create edges) ─
+// GSTATE = { boxes:{cmp:{dx,dy}}, gates:[{id,op,x,y}], edges:[{from:"cmp|res",to:gateId}] }
+let GSTATE=null, GDRAG=null, LINKMODE=false, GLINK=null, _gatesDragWired=false;
+function _gstateLoad(){
+  if(GSTATE) return GSTATE;
+  let s=null; try{ s=JSON.parse(localStorage.getItem("arcGatesLayout")||"null"); }catch(e){}
+  s = s || (DATA.gates&&DATA.gates.layout) || {};
+  if(s && !s.boxes && !s.gates && !s.edges) s={boxes:s};   // migrate flat box-offset format
+  GSTATE={boxes:s.boxes||{}, gates:s.gates||[], edges:s.edges||[]};
+  return GSTATE;
+}
+function _glmsg(t){ const m=document.getElementById("glmsg"); if(m) m.textContent=t; }
+function gateSaveLayout(){ try{ localStorage.setItem("arcGatesLayout", JSON.stringify(_gstateLoad()));
+  _glmsg("saved (this browser). copy JSON → spike/gates_layout.json to bake into future builds."); }
+  catch(e){ _glmsg("save failed: "+e.message); } }
+function gateResetLayout(){ GSTATE={boxes:{},gates:[],edges:[]}; LINKMODE=false; GLINK=null;
+  try{ localStorage.removeItem("arcGatesLayout"); }catch(e){} renderGates(); _glmsg("layout reset."); }
+function gateCopyLayout(){ const t=JSON.stringify(_gstateLoad(),null,2);
+  if(navigator.clipboard) navigator.clipboard.writeText(t); _glmsg("layout JSON copied to clipboard."); }
+// — editor —
+function _gid(){ return "g"+Date.now().toString(36)+Math.floor(Math.random()*999).toString(36); }
+function gateAddGate(op){ const S=_gstateLoad();
+  S.gates.push({id:_gid(), op, x:790, y:120+S.gates.length*56}); renderGates();
+  _glmsg(op.toUpperCase()+" gate added — drag it, then link result chips to it."); }
+function gateLinkMode(){ LINKMODE=!LINKMODE; GLINK=null; renderGates();
+  _glmsg(LINKMODE?"link mode ON: click a result chip, then a gate (click a chip again to change source).":"link mode off."); }
+function gateChipClick(cmp,res){ if(LINKMODE){ GLINK=cmp+"|"+res; renderGates();
+    _glmsg("source = "+GLINK+" — now click a gate node."); } else gatePick(cmp,res); }
+function gateNodeClick(gid){ if(LINKMODE && GLINK){ const S=_gstateLoad();
+    if(!S.edges.some(e=>e.from===GLINK&&e.to===gid)) S.edges.push({from:GLINK,to:gid});
+    const f=GLINK; GLINK=null; renderGates(); _glmsg("edge "+f+" → gate added."); } }
+function gateDelGate(gid){ const S=_gstateLoad(); S.gates=S.gates.filter(g=>g.id!==gid);
+  S.edges=S.edges.filter(e=>e.to!==gid); renderGates(); _glmsg("gate + its edges deleted."); }
+function gateClearCreated(){ const S=_gstateLoad(); S.gates=[]; S.edges=[]; GLINK=null; renderGates();
+  _glmsg("created gates + edges cleared."); }
+function _ugVal(g, S){   // AND/OR over incoming result→gate edges, vs the current filter (GATEF)
+  const ins=S.edges.filter(e=>e.to===g.id).map(e=>{ const i=e.from.indexOf("|");
+    return GATEF[e.from.slice(0,i)]===e.from.slice(i+1); });
+  return ins.length ? (g.op==="and"?ins.every(Boolean):ins.some(Boolean)) : false;
+}
+function _svgPt(svg,evt){ const r=svg.getBoundingClientRect(), vb=svg.viewBox.baseVal;
+  return {x:(evt.clientX-r.left)/r.width*vb.width, y:(evt.clientY-r.top)/r.height*vb.height}; }
+function _gatesAttachDrag(){
+  const svg=document.querySelector("#gatesBody svg"); if(!svg) return;
+  const S=_gstateLoad();
+  svg.querySelectorAll(".gcmpbox").forEach(el=>{
+    el.addEventListener("mousedown", e=>{ e.preventDefault();
+      const cmp=el.getAttribute("data-cmp"), p=_svgPt(svg,e), off=S.boxes[cmp]||{};
+      GDRAG={kind:"box", cmp, sx:p.x, sy:p.y, bx:off.dx||0, by:off.dy||0}; });
+  });
+  svg.querySelectorAll(".gugate").forEach(el=>{
+    el.addEventListener("mousedown", e=>{ e.preventDefault();
+      const gid=el.getAttribute("data-gid");
+      if(LINKMODE){ gateNodeClick(gid); return; }
+      const p=_svgPt(svg,e), g=S.gates.find(x=>x.id===gid)||{};
+      GDRAG={kind:"gate", gid, sx:p.x, sy:p.y, bx:g.x||0, by:g.y||0}; });
+  });
+  if(!_gatesDragWired){ _gatesDragWired=true;
+    document.addEventListener("mousemove", e=>{ if(!GDRAG) return;
+      const svg=document.querySelector("#gatesBody svg"); if(!svg) return;
+      const p=_svgPt(svg,e), S=_gstateLoad();
+      if(GDRAG.kind==="box"){ S.boxes[GDRAG.cmp]={dx:GDRAG.bx+(p.x-GDRAG.sx), dy:GDRAG.by+(p.y-GDRAG.sy)}; }
+      else { const g=S.gates.find(x=>x.id===GDRAG.gid); if(g){ g.x=GDRAG.bx+(p.x-GDRAG.sx); g.y=GDRAG.by+(p.y-GDRAG.sy); } }
+      renderGates(); });
+    document.addEventListener("mouseup", ()=>{ GDRAG=null; });
+  }
+}
 function renderGates(){
   const host=document.getElementById("gatesBody"); if(!host) return;
   if(!DATA||!DATA.gates||!DATA.gates.comparisons){ host.innerHTML='<div class="empty">No gate data. Regenerate the spike.</div>'; return; }
-  const cat=DATA.gates;
+  const cat=DATA.gates, L=_gstateLoad();
   const OK="var(--ok)",DIM="var(--dim)",LINE="var(--line)",ACC="var(--accent)",INK="var(--ink)",PANEL="var(--panel)",PANEL2="var(--panel2)";
   const P1=cat.comparisons.filter(c=>c.phase==="profiling");
   const P2=cat.comparisons.filter(c=>c.phase==="components");
-  const resPos={}, cmpY={};
-  function layout(list,resX,halfW){
-    let y=64;
+  const P4=cat.comparisons.filter(c=>c.phase==="capacity");
+  const guardOf={}; (cat.capacities||[]).forEach(c=>guardOf[c.key]=c.guard);
+  const _off=k=>(L.boxes&&L.boxes[k])||{};
+  const cmpPos={}, resPos={};
+  function place(list,cmpX,cmpW,resX,resW,halfW){
+    let y=74;
     list.forEach(c=>{
-      const n=c.results.length, bh=Math.max(36,n*25), cy=y+bh/2, first=cy-(n-1)*12.5;
-      cmpY[c.key]=cy;
-      c.results.forEach((r,i)=>{ resPos[c.key+"|"+r]={x:resX,xr:resX+halfW,y:first+i*25}; });
-      y+=bh+16;
+      const n=c.results.length, bh=Math.max(34,n*24), cy=y+bh/2, first=cy-(n-1)*12;
+      const o=_off(c.key), dx=o.dx||0, dy=o.dy||0;
+      cmpPos[c.key]={x:cmpX+dx, w:cmpW, cy:cy+dy, resX:resX+dx, resW};
+      c.results.forEach((r,i)=>{ resPos[c.key+"|"+r]={x:resX+dx, xr:resX+dx+halfW, y:first+i*24+dy}; });
+      y+=bh+14;
     });
     return y;
   }
-  const e1=layout(P1,270,60), e2=layout(P2,659,39);
-  const totalH=Math.max(e1,e2,260), W=1040, H=totalH+30;
+  const e1=place(P1,22,146,214,76,38), e2=place(P2,282,98,414,44,22);
+  // PHASE 4 capacity layout — division order, implication indentation
+  const capByKey={}; P4.forEach(c=>capByKey[c.key]=c);
+  const childOf={}, isChild={}, parentOf={};
+  P4.forEach(c=>(c.implies||[]).forEach(im=>{ if(capByKey[im]&&capByKey[im].division===c.division){ (childOf[c.key]=childOf[c.key]||[]).push(im); isChild[im]=true; parentOf[im]=c.key; } }));
+  const GX=556, BX=656, BW=196;
+  const capPos={}, hdrs=[]; let y4=74;
+  ["inter-grid","intra-grid"].forEach(div=>{
+    hdrs.push({div,y:y4}); y4+=22;
+    const place1=(cc,indent)=>{ const o=_off(cc.key); capPos[cc.key]={indent, x:BX+indent*18+(o.dx||0), w:BW-indent*18, cy:y4+(o.dy||0)}; y4+=40;
+      (childOf[cc.key]||[]).forEach(ch=>place1(capByKey[ch],indent+1)); };
+    P4.filter(c=>c.division===div&&!isChild[c.key]).forEach(c=>place1(c,0));
+    y4+=12;
+  });
+  P4.forEach(c=>{ const cp=capPos[c.key]; if(!cp) return;
+    resPos[c.key+"|fires"]={x:cp.x, xr:cp.x, y:cp.cy};
+    resPos[c.key+"|—"]={x:cp.x, xr:cp.x, y:cp.cy}; });
+  let exX=0, exY=0;
+  Object.keys(L.boxes||{}).forEach(k=>{ const o=L.boxes[k]||{}; exX=Math.max(exX,o.dx||0); exY=Math.max(exY,o.dy||0); });
+  let W=884+Math.max(0,exX), H=Math.max(e1,e2,y4,300)+18+Math.max(0,exY);
+  (L.gates||[]).forEach(g=>{ W=Math.max(W,(g.x||0)+34); H=Math.max(H,(g.y||0)+34); });
   const P=[];
   P.push(`<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px">`);
   P.push(`<defs><marker id="gm" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="${OK}"/></marker></defs>`);
-  P.push(`<rect x="2" y="40" width="400" height="${H-46}" rx="10" fill="${ACC}" opacity="0.10" stroke="${ACC}" stroke-opacity="0.25"/>`);
-  P.push(`<rect x="406" y="40" width="302" height="${H-46}" rx="10" fill="${ACC}" opacity="0.10" stroke="${ACC}" stroke-opacity="0.25"/>`);
-  P.push(`<text x="202" y="32" text-anchor="middle" fill="${ACC}" font-size="13" font-weight="700">PHASE 1 · Profiling</text>`);
-  P.push(`<text x="557" y="32" text-anchor="middle" fill="${ACC}" font-size="13" font-weight="700">PHASE 2 · Components Comparisons</text>`);
-  P.push(`<text x="800" y="36" text-anchor="middle" fill="${DIM}" font-size="11" font-weight="700">GATE</text>`);
-  P.push(`<text x="950" y="36" text-anchor="middle" fill="${DIM}" font-size="11" font-weight="700">CAPACITY</text>`);
-  function drawPhase(list,cmpX,cmpW,resX,resW){
-    list.forEach(c=>{
-      const cy=cmpY[c.key];
-      P.push(`<rect x="${cmpX}" y="${cy-13}" width="${cmpW}" height="26" rx="5" fill="${PANEL2}" stroke="${ACC}" stroke-width="1.4"/>`);
-      P.push(`<text x="${cmpX+cmpW/2}" y="${cy+1}" text-anchor="middle" font-size="9.5" font-weight="600" fill="${INK}">${c.label}</text>`);
-      c.results.forEach(r=>{
-        const p=resPos[c.key+"|"+r], on=GATEF[c.key]===r;
-        P.push(`<path d="M${cmpX+cmpW},${cy} C ${resX-18},${cy} ${resX-18},${p.y} ${resX-resW/2},${p.y}" fill="none" stroke="${LINE}" stroke-width="1" opacity="0.55"/>`);
-        P.push(`<g style="cursor:pointer" onclick="gatePick('${c.key}','${r}')">`);
-        P.push(`<rect x="${resX-resW/2}" y="${p.y-11}" width="${resW}" height="22" rx="6" fill="${PANEL}" stroke="${on?OK:LINE}" stroke-width="${on?2:1.1}"/>`);
-        P.push(`<text x="${resX}" y="${p.y+4}" text-anchor="middle" font-size="9" fill="${on?INK:DIM}">${r}</text></g>`);
-      });
-    });
-  }
-  drawPhase(P1,14,150,270,120);
-  drawPhase(P2,440,130,659,78);
-  function renderGuard(node,depth){
-    if(node.op==="is"){ const p=resPos[node.cmp+"|"+node.result]; return p?{x:p.xr,y:p.y,sat:_gEval(node)}:{x:340,y:64,sat:false}; }
-    const ys=_gLeafY(node,resPos,[]), gy=ys.length?ys.reduce((a,b)=>a+b,0)/ys.length:120, gx=815-depth*78;
-    (node.args||[]).forEach(a=>{
-      const ch=renderGuard(a,depth+1);
-      P.push(`<path d="M${ch.x},${ch.y} C ${gx-30},${ch.y} ${gx-30},${gy} ${gx-13},${gy}" fill="none" stroke="${ch.sat?OK:LINE}" stroke-width="${ch.sat?1.5:1}" opacity="${ch.sat?0.95:0.5}"/>`);
-    });
-    const lab=node.op==="and"?"AND":"OR", sub=node.op==="and"?"all_required":"any_of";
-    P.push(`<circle cx="${gx}" cy="${gy}" r="15" fill="${PANEL2}" stroke="${ACC}" stroke-width="1.7"/>`);
-    P.push(`<text x="${gx}" y="${gy-1}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${ACC}">${lab}</text>`);
-    P.push(`<text x="${gx}" y="${gy+8}" text-anchor="middle" font-size="5.5" fill="${DIM}">${sub}</text>`);
-    return {x:gx+15,y:gy,sat:_gEval(node)};
-  }
-  cat.capacities.forEach(c=>{
-    const en=_gEval(c.guard), out=renderGuard(c.guard,0), cy=out.y;
-    P.push(`<path d="M${out.x},${out.y} C 870,${out.y} 870,${cy} 886,${cy}" fill="none" stroke="${en?OK:DIM}" stroke-width="1.5" marker-end="url(#gm)"/>`);
-    P.push(`<rect x="890" y="${cy-19}" width="120" height="38" rx="6" fill="${PANEL}" stroke="${en?OK:LINE}" stroke-width="${en?2.4:1.3}"/>`);
-    P.push(`<text x="950" y="${cy+5}" text-anchor="middle" font-size="13" font-weight="600" fill="${en?INK:DIM}">${c.key}</text>`);
+  [[14,244,"PHASE 1 · Profiling"],[270,206,"PHASE 2 · Components"],[488,142,"PHASE 3 · Gating"],[642,234,"PHASE 4 · Comparison Capacity"]].forEach(cd=>{
+    P.push(`<rect x="${cd[0]}" y="44" width="${cd[1]}" height="${H-50}" rx="10" fill="${ACC}" opacity="0.07" stroke="${ACC}" stroke-opacity="0.22"/>`);
+    P.push(`<text x="${cd[0]+cd[1]/2}" y="36" text-anchor="middle" fill="${ACC}" font-size="11.5" font-weight="700">${cd[2]}</text>`); });
+  P.push(`<text x="559" y="60" text-anchor="middle" fill="${DIM}" font-size="7.5">AND · OR · AND+OR · OR+AND</text>`);
+  // edge with a generous transparent hit-area so it highlights on hover
+  const edge=(d,stroke,w,op,marker)=>`<g class="gedge"><path d="${d}" fill="none" stroke="#000" stroke-opacity="0" stroke-width="11" pointer-events="stroke"/><path class="vis" d="${d}" fill="none" stroke="${stroke}" stroke-width="${w}" opacity="${op}" pointer-events="none"${marker?` marker-end="url(#${marker})"`:""}/></g>`;
+  function drawCmp(list){ list.forEach(c=>{ const pos=cmpPos[c.key];
+    c.results.forEach(r=>{ const p=resPos[c.key+"|"+r];
+      P.push(edge(`M${pos.x+pos.w},${pos.cy} C ${pos.resX-16},${pos.cy} ${pos.resX-16},${p.y} ${pos.resX-pos.resW/2},${p.y}`, LINE, 1, 0.5)); });
+    c.results.forEach(r=>{ const p=resPos[c.key+"|"+r], hold=GATEF[c.key]===r, src=GLINK===c.key+"|"+r;
+      P.push(`<g style="cursor:pointer" onclick="gateChipClick('${c.key}','${r}')">`);
+      P.push(`<rect x="${pos.resX-pos.resW/2}" y="${p.y-10}" width="${pos.resW}" height="20" rx="6" fill="${src?'rgba(122,162,255,0.18)':(hold?'rgba(61,220,132,0.12)':PANEL)}" stroke="${src?ACC:(hold?OK:LINE)}" stroke-width="${src||hold?2:1.1}"/>`);
+      P.push(`<text x="${pos.resX}" y="${p.y+3}" text-anchor="middle" font-size="8.5" fill="${hold||src?INK:DIM}">${r}</text></g>`); });
+    P.push(`<rect class="gcmpbox" data-cmp="${c.key}" x="${pos.x}" y="${pos.cy-12}" width="${pos.w}" height="24" rx="5" fill="${PANEL2}" stroke="${ACC}" stroke-width="1.3"/>`);
+    P.push(`<text x="${pos.x+pos.w/2}" y="${pos.cy+1}" text-anchor="middle" font-size="9" font-weight="600" fill="${INK}" pointer-events="none">${c.label}</text>`); }); }
+  // ── edges first (drawn BEHIND chips/boxes so nothing is covered) ──
+  function leaves(node,out){ if(node.op==="is")out.push(node); else (node.args||[]).forEach(a=>leaves(a,out)); return out; }
+  const gys=P4.map(c=>capPos[c.key]).filter(Boolean).map(cp=>cp.cy);
+  const nearGy=y=>{ let b=gys[0]||y, d=1e9; gys.forEach(gy=>{ const dd=Math.abs(gy-y); if(dd<d){d=dd;b=gy;} }); return b; };
+  [...P1,...P2].forEach(c=>c.results.forEach(r=>{ const p=resPos[c.key+"|"+r], gy=nearGy(p.y);
+    P.push(`<path d="M${p.xr},${p.y} C ${GX-30},${p.y} ${GX-30},${gy} ${GX-13},${gy}" fill="none" stroke="${LINE}" stroke-width="0.8" opacity="0.3"/>`); }));
+  P4.forEach(c=>{ const cp=capPos[c.key]; if(!cp) return;
+    const guard=guardOf[c.key], en=guard?_gEval(guard):false, gy=cp.cy;
+    if(guard) leaves(guard,[]).forEach(lf=>{ if(lf.cmp===c.key) return; const p=resPos[lf.cmp+"|"+lf.result]; if(!p) return; const sat=_gEval(lf);
+      P.push(edge(`M${p.xr},${p.y} C ${GX-28},${p.y} ${GX-28},${gy} ${GX-13},${gy}`, sat?OK:LINE, sat?1.6:1, sat?0.95:0.55)); });
+    P.push(edge(`M${GX+12},${gy} C ${cp.x-24},${gy} ${cp.x-24},${cp.cy} ${cp.x},${cp.cy}`, en?OK:DIM, en?2:1.2, 1, "gm"));
+    if(cp.indent>0) P.push(`<path d="M${cp.x-13},${cp.cy-24} L${cp.x-13},${cp.cy} L${cp.x},${cp.cy}" fill="none" stroke="${LINE}" stroke-width="1.3"/>`);
+  });
+  // ── comparison boxes + chips (P1/P2) on top of edges ──
+  drawCmp(P1); drawCmp(P2);
+  hdrs.forEach(h=>P.push(`<text x="${BX}" y="${h.y+6}" fill="${DIM}" font-size="9" font-weight="700">${h.div==="inter-grid"?"INTER-GRID":"INTRA-GRID"}</text>`));
+  // ── gate nodes + capacity boxes on top ──
+  P4.forEach(c=>{ const cp=capPos[c.key]; if(!cp) return;
+    const guard=guardOf[c.key], en=guard?_gEval(guard):false, gy=cp.cy, fires=GATEF[c.key]==="fires";
+    P.push(`<circle cx="${GX}" cy="${gy}" r="12" fill="${PANEL2}" stroke="${en?OK:ACC}" stroke-width="${en?2:1.4}"/>`);
+    P.push(`<text x="${GX}" y="${gy+3}" text-anchor="middle" font-size="7" font-weight="700" fill="${en?OK:ACC}">${guard&&guard.op==="or"?"OR":"AND"}</text>`);
+    P.push(`<rect class="gcmpbox" data-cmp="${c.key}" x="${cp.x}" y="${cp.cy-14}" width="${cp.w}" height="28" rx="6" fill="${en?PANEL2:'#161a24'}" stroke="${en?OK:LINE}" stroke-width="${en?2:1.3}"/>`);
+    P.push(`<text x="${cp.x+10}" y="${cp.cy+4}" font-size="11" font-weight="600" fill="${en?INK:DIM}" pointer-events="none">${c.label}</text>`);
+    const par=parentOf[c.key], impl=par&&GATEF[par]==="fires";
+    const ctxt=impl?"implied":(fires?"fires":"—"), con=impl||fires;
+    const cw=impl?48:34, fcx=cp.x+cp.w-56-cw;
+    P.push(`<g style="cursor:pointer" onclick="gateChipClick('${c.key}','${fires?'fires':'—'}')"><title>${impl?'implied true by '+par+' (not retested)':''}</title><rect x="${fcx}" y="${cp.cy-8}" width="${cw}" height="16" rx="5" fill="${con?'rgba(61,220,132,0.12)':'#1a1d27'}" stroke="${con?OK:LINE}"/><text x="${fcx+cw/2}" y="${cp.cy+3}" text-anchor="middle" font-size="8" fill="${con?OK:DIM}">${ctxt}</text></g>`);
+    P.push(`<g style="cursor:pointer" onclick="gateJson('${c.key}')"><title>edit gate JSON</title><rect x="${cp.x+cp.w-50}" y="${cp.cy-8}" width="46" height="16" rx="5" fill="#1a1d27" stroke="${ACC}"/><text x="${cp.x+cp.w-27}" y="${cp.cy+3}" text-anchor="middle" font-size="8" fill="${ACC}">{ }json</text></g>`);
+  });
+  // ── user-created gates + result→gate edges ──
+  (L.gates||[]).forEach(g=>{
+    const sat=_ugVal(g, L);
+    L.edges.filter(e=>e.to===g.id).forEach(e=>{ const p=resPos[e.from];
+      if(p) P.push(edge(`M${p.xr},${p.y} C ${g.x-34},${p.y} ${g.x-34},${g.y} ${g.x-15},${g.y}`, sat?OK:LINE, sat?1.6:1, sat?0.95:0.55)); });
+    P.push(`<g class="gugate" data-gid="${g.id}" ondblclick="gateDelGate('${g.id}')"><title>drag · dbl-click delete${LINKMODE?' · click to link':''}</title>`);
+    P.push(`<circle cx="${g.x}" cy="${g.y}" r="16" fill="${PANEL2}" stroke="${sat?OK:ACC}" stroke-width="1.9"/>`);
+    P.push(`<text x="${g.x}" y="${g.y-1}" text-anchor="middle" font-size="8.5" font-weight="700" fill="${sat?OK:ACC}" pointer-events="none">${g.op==="and"?"AND":"OR"}</text>`);
+    P.push(`<text x="${g.x}" y="${g.y+8}" text-anchor="middle" font-size="5" fill="${DIM}" pointer-events="none">user</text></g>`);
   });
   P.push("</svg>");
   const m=_gateMatches(), curId=(DATA.tasks[CUR]&&DATA.tasks[CUR].task_id)||"";
@@ -1226,12 +1418,21 @@ function renderGates(){
   if(m.length>160) list+=`<span class="gmore">+${m.length-160} more…</span>`;
   const panel=`<div class="gpanel">
     <div class="gph"><b>${m.length}</b> / ${DATA.tasks.length} tasks match</div>
-    <div class="gfx">click result chips to filter</div>
-    <div class="gbtns"><button onclick="gateSyncTask()">↺ current task (#${CUR+1} ${curId})</button>
+    <div class="gfx">drag boxes/gates · hover an edge to highlight · click chips to filter</div>
+    <div class="gbtns"><button onclick="gateAddGate('and')">+ AND gate</button>
+      <button onclick="gateAddGate('or')">+ OR gate</button>
+      <button class="${LINKMODE?'on':''}" onclick="gateLinkMode()">link result → gate</button>
+      <button onclick="gateClearCreated()">clear created</button></div>
+    <div class="gbtns"><button onclick="gateSaveLayout()">save layout</button>
+      <button onclick="gateResetLayout()">reset layout</button>
+      <button onclick="gateCopyLayout()">copy layout JSON</button>
+      <button onclick="gateSyncTask()">↺ current task (#${CUR+1} ${curId})</button>
       <button onclick="GATEF={};renderGates()">clear filter</button></div>
+    <div id="glmsg" class="gfx"></div>
     <div class="gtasks">${list||'<span class="gmore">no matches</span>'}</div>
   </div>`;
   host.innerHTML=`<div class="gwrap">${P.join("")}${panel}</div>`;
+  _gatesAttachDrag();
 }
 
 const SECTIONS=["secMain","searchPanel","secSolver","secCapacities","secGates","mapPanel"];
