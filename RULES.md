@@ -43,10 +43,15 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - Cowork builds; Mac commits + pushes; Linux runs/gates. Never run tests on the Mac.
 - Never mutate git from the Cowork sandbox (stale `index.lock` blocks the Mac).
 - Update `STATE.json` on every ship. Keep `HANDOFF.md` for narrative only.
-- **Never commit chat/next-chat prompts.** `*NEXT_CHAT_PROMPT*.md` and any
-  copy-paste handoff prompt are transient and local-only — they are gitignored
-  and must stay out of git. Hand them off by pasting into the next chat, not by
-  pushing. Same for scratch/planning dirs (`_reorg/`).
+- **Never commit chat/next-chat prompts — and never even PROPOSE a commit/stage
+  step for one.** A handoff/next-chat prompt lives **only** as a copy-paste text
+  box in the chat; do **not** write it to a file in the repo. If one is ever
+  saved, it must match a gitignored pattern (`*NEXT_CHAT_PROMPT*`,
+  `*HANDOFF_PROMPT*`, `*_chat_prompt*`) — the gitignore is a *belt*, not the
+  control; the behaviour is. When you give a commit box, stage explicit
+  doc/code paths only (PLAN.md, CORE_CHANGES.md, STATE.json, source) and verify
+  with `git diff --cached --name-only` — never anything prompt-like. Same for
+  scratch/planning dirs (`_reorg/`).
 - **Never `git add -A`/`git add .`.** Stage explicit paths only — the shared
   tree accumulates untracked floaters that a blanket add will sweep onto the
   wrong branch. Verify with `git diff --cached --name-only` before committing.
