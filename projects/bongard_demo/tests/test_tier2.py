@@ -186,8 +186,11 @@ def test_conjunction_survives_restart(falkor_client):
             sc = parse_scene(solver2, render_scene(types, rs))
             return cl2.invoke(comp_iri, {SCENE.iri: sc},
                               session=session2).outputs[COMPOSITE_VERDICT.iri]
-        assert verdict([4, 4, 4], [22, 26, 30]) is True     # 3 all-same
-        assert verdict([3, 4, 3], [22, 26, 30]) is False    # 3 mixed  -> same_shape False
+        # bottom slot _SLOTS[3]=(64,98): keep its r small so 98+r < 128 canvas
+        # (r=30 clips → the figure drops → count_eq_3 would mis-read). Varied
+        # sizes still exercise same_shape's size-invariance.
+        assert verdict([4, 4, 4], [22, 26, 22]) is True     # 3 all-same (no clip)
+        assert verdict([3, 4, 3], [22, 26, 22]) is False    # 3 mixed  -> same_shape False
         assert verdict([4, 4], [22, 26]) is False           # 2 all-same -> count_eq_3 False
     finally:
         persister.delete(user_id)
