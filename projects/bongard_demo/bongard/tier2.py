@@ -83,8 +83,18 @@ def discover_conjunction(
     tp_imgs, tn_imgs = problem.batch(n_train, seed)
     hp_imgs, hn_imgs = problem.batch(n_holdout, seed + 1000)   # disjoint seed (firewall)
 
+    def vec_or_none(im):
+        # drop a corrupt label (a figure mis-parsed) — the tier-1 discipline
+        # (`invent.scene_features` returns None on n_abstained>0). Unfiltered,
+        # a dropped figure silently changes count_eq's verdict and knocks out
+        # an otherwise-perfect conjunction on held-out (the noise guard).
+        scene = parse_scene(solver, im)
+        if scene.n_shapes == 0 or scene.n_abstained > 0:
+            return None
+        return _scene_vec(solver, operands, scene)
+
     def vecs(imgs):
-        return [_scene_vec(solver, operands, parse_scene(solver, im)) for im in imgs]
+        return [v for im in imgs if (v := vec_or_none(im)) is not None]
 
     tp, tn = vecs(tp_imgs), vecs(tn_imgs)
     hp, hn = vecs(hp_imgs), vecs(hn_imgs)

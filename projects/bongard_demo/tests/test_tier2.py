@@ -187,7 +187,7 @@ def test_conjunction_survives_restart(falkor_client):
             return cl2.invoke(comp_iri, {SCENE.iri: sc},
                               session=session2).outputs[COMPOSITE_VERDICT.iri]
         assert verdict([4, 4, 4], [22, 26, 30]) is True     # 3 all-same
-        assert verdict([3, 4, 5], [22, 26, 30]) is False    # 3 mixed  -> same_shape False
+        assert verdict([3, 4, 3], [22, 26, 30]) is False    # 3 mixed  -> same_shape False
         assert verdict([4, 4], [22, 26]) is False           # 2 all-same -> count_eq_3 False
     finally:
         persister.delete(user_id)
