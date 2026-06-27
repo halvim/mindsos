@@ -64,6 +64,7 @@ DS_SAME_BBOX_AREA = datastate_iri("arc.same_bbox_area")
 DS_MOVE_TRANSFORM = datastate_iri("arc.move_transform")
 DS_TOUCHING = datastate_iri("arc.touching")
 DS_INSIDE = datastate_iri("arc.inside")
+DS_INSET = datastate_iri("arc.inset")
 DS_BACKGROUND_CANDIDATE = datastate_iri("arc.background_candidate")
 DS_BACKGROUND = datastate_iri("arc.background")
 DS_CORRESPONDENCE = datastate_iri("arc.correspondence")
@@ -105,6 +106,7 @@ def arc_datastates() -> List[DataState]:
         ds("arc.move_transform", CATEGORY_COMPARATOR, "moved: translation Δ between same-shape objects."),
         ds("arc.touching", CATEGORY_PREDICATE, "touching verdict: different-colour components share an 8-neighbour (intra-grid)."),
         ds("arc.inside", CATEGORY_PREDICATE, "inside verdict: a enclosed by a single-colour object b; intra-grid, background-excluded."),
+        ds("arc.inset", CATEGORY_PREDICATE, "inset verdict: a's cell-set ⊆ b's cell-set (positional, reflexive); inter-grid; consumed by the subdivision process (phase 3)."),
         ds("arc.background_candidate", CATEGORY_DERIVATION, "Per-grid background proposal from one detector (frequency at v1)."),
         ds("arc.background", CATEGORY_REASONING, "Reconciled background (fold over candidates; degenerate pass-through at v1)."),
         ds("arc.correspondence", CATEGORY_REASONING, "input ref -> output ref map; unambiguous subset (ambiguous left uncorresponded)."),
@@ -274,6 +276,15 @@ def _comparator_capacities() -> List[Capacity]:
             inputs=(DS_OBJECT,), outputs=(DS_MOVE_TRANSFORM,),
             implementation=lambda **kw: {DS_MOVE_TRANSFORM: None},
             description="(in Object, out Object | same_shape) -> move Transform (Δ) | None if not displaced.",
+        ),
+        Capacity(
+            name="inset", category=CATEGORY_PREDICATE,
+            inputs=(DS_OBJECT,), outputs=(DS_INSET,),
+            implementation=lambda **kw: {DS_INSET: None},
+            description="(a Object, b Object) -> Bool (a's cell-set ⊆ b's cell-set; "
+                        "positional, reflexive; inter-grid). Capacity-only (no Search "
+                        "facet — near-universal); the subdivision process (phase 3) "
+                        "consumes it via arc_grids.inset (D3 inline).",
         ),
     ]
 

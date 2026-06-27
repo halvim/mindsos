@@ -257,6 +257,60 @@ def apply_rule(gs: dict, bg: int):
     return {"grid": _render(gs["dims"], placed, bg), "steps": steps}
 
 
+# ── task-pattern inference (phase 3) — hypothesis over the phase-2 profile ──
+#: Pattern verdicts are a *hypothesis* about what the task is doing, read off the
+#: profilers (same_object / dims / palette). They are NOT consumed downstream —
+#: the solver stages compute independently — they narrate the task. First pattern:
+#: ADDITION. The background is itself an extracted object (the big region); dropping
+#: a new object onto it changes its cells, so it is NEVER a same_object — therefore
+#: the "all inputs preserved" test MUST exclude the background object, else the
+#: pattern fires on 0/400 (verified). With bg excluded: 87/400. → future home: an
+#: L3 comprehension / L4 induce hypothesis over the profile.
+def _palette_label(pin: list, pout: list) -> str:
+    """preserved (==) vs increased (output is a strict superset)."""
+    return "preserved" if set(pin) == set(pout) else "increased"
+
+
+def _addition_evidence(profile: dict) -> dict:
+    """Per-condition booleans (∀ train pair) for the ADDITION pattern."""
+    bg = _bg_color(profile)
+    dims = pal = allin = newobj = True
+    pal_label = "preserved"
+    n_added = None
+    for pr in profile["train"]:
+        i, o, m = pr["input"], pr["output"], pr["match"]
+        if i["dims"] != o["dims"]:
+            dims = False
+        if not (set(i["palette"]) <= set(o["palette"])):
+            pal = False
+        elif set(i["palette"]) != set(o["palette"]):
+            pal_label = "increased"
+        matched_in = {e["in"] for e in m["equal"]}
+        matched_out = {e["out"] for e in m["equal"]}
+        in_nonbg = [j for j, ob in enumerate(i["objects"]) if ob["color"] != bg]
+        out_nonbg = [j for j, ob in enumerate(o["objects"]) if ob["color"] != bg]
+        if not all(j in matched_in for j in in_nonbg):
+            allin = False
+        added = [j for j in out_nonbg if j not in matched_out]
+        if not added:
+            newobj = False
+        else:
+            n_added = len(added) if n_added is None else min(n_added, len(added))
+    return {"dims_preserved": dims, "palette_subset": pal,
+            "palette_label": pal_label, "nonbg_inputs_preserved": allin,
+            "new_output_object": newobj, "n_added": n_added}
+
+
+def task_patterns(profile: dict) -> List[dict]:
+    """Phase 3 — task-pattern hypotheses over the phase-2 profile. Returns one
+    verdict per known pattern (currently: addition), each with its matched flag
+    and per-condition evidence for display."""
+    ev = _addition_evidence(profile)
+    matched = (ev["dims_preserved"] and ev["palette_subset"]
+               and ev["nonbg_inputs_preserved"] and ev["new_output_object"])
+    return [{"name": "addition", "matched": matched, "evidence": ev}]
+
+
 # ── solver stages (decomposed so arc1/solve can run them step-by-step) ──
 def stage_background(profile: dict) -> dict:
     """Step 4 — background + state-change: bg (pooled most-frequent, v1) + the

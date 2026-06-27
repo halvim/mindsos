@@ -7,8 +7,9 @@ with descriptions. Phases are **editable** — change a body in `pipeline.py`.
 
 Each phase prints `uses` (input ctx + the real **function chain**), `→ future`
 (the proposed MindsOS feature + location — see `STEP_TARGETS`), `produces`, and
-`result`. Phases 1–2 render a **multi-line** per-pair `result` (perceive summary;
-correspondence tiers); the rest are single-line.
+`result`. Phases 1–4 render a **multi-line** per-pair `result` (perceive summary;
+correspondence tiers; subdivision partitions; addition evidence); the rest are
+single-line.
 
 Scope tags: **general** = works for any task · **general\*** = general but uses a
 v1 assumption · **semi** = runs generally but encodes the move-task model ·
@@ -18,19 +19,30 @@ v1 assumption · **semi** = runs generally but encodes the move-task model ·
 |---|---|---|---|
 | 1 | Input + Perceive | general | `arc_grids.get_task` · `arc_profile.grid_summary` → `extract_objects`, `extract_points`, `normalize_shape`, `palette`, `dimension` |
 | 2 | Profile (profilers) | general | `arc_profile.build_profile`(`match_pair`, `profile_sweep`, `hypotheses`) · `arc_search.task_tokens`(`same_cell_count_pairs`, `same_bbox_area_pairs`) |
-| 3 | Comparators | general | `arc_search.task_tokens` · `arc_grids.touching_pairs`, `inside_pairs`, `moved`, `recolored_pairs`, `rotated_pairs`, `reflected_pairs` |
-| 4 | Background + state-change | general\* | `arc_solver.stage_background` → `_bg_color` (pooled most-frequent — **v1 assumption**) · `touching_changes` (`_correspondence`, `_touch_set`) |
-| 5 | Roles | semi | `arc_solver.stage_roles` → `_moved_in`, `_touch_set`, `_comp` (mover / target / background, demo-1) |
-| 6 | Persistence + combo | ⚑ #8 | `arc_solver.stage_persistence` → `_moved_in` · `(move, touching)` combo verdict |
-| 7 | Selectors | semi | `arc_solver.stage_selectors` → `_selectors_for` (minimal discriminative selector · tie → shape) |
-| 8 | Rule | ⚑ #8 | `arc_solver.stage_rule` (static — `(move, touching)`, mover=irregular, target=square, slide-to-touch, **hardcoded**) |
-| 9 | Verify | ⚑ #8 | `arc_solver.stage_verify` → `apply_rule` (each demo · exact-match all) |
-| 10 | Apply test → ANSWER | ⚑ #8 | `arc_solver.stage_apply` → `apply_rule(test input)` → output grid (test output withheld) |
+| 3 | Subdivision | general\* | `arc_grids.subdivisions` → `inset` (input object partitioned by ≥2 disjoint output insets, points included) |
+| 4 | Task pattern | general\* | `arc_solver.task_patterns` → `_addition_evidence`, `_bg_color` (addition hypothesis from the profile) |
+| 5 | Comparators | general | `arc_search.task_tokens` · `arc_grids.touching_pairs`, `inside_pairs`, `moved`, `recolored_pairs`, `rotated_pairs`, `reflected_pairs` |
+| 6 | Background + state-change | general\* | `arc_solver.stage_background` → `_bg_color` (pooled most-frequent — **v1 assumption**) · `touching_changes` (`_correspondence`, `_touch_set`) |
+| 7 | Roles | semi | `arc_solver.stage_roles` → `_moved_in`, `_touch_set`, `_comp` (mover / target / background, demo-1) |
+| 8 | Persistence + combo | ⚑ #8 | `arc_solver.stage_persistence` → `_moved_in` · `(move, touching)` combo verdict |
+| 9 | Selectors | semi | `arc_solver.stage_selectors` → `_selectors_for` (minimal discriminative selector · tie → shape) |
+| 10 | Rule | ⚑ #8 | `arc_solver.stage_rule` (static — `(move, touching)`, mover=irregular, target=square, slide-to-touch, **hardcoded**) |
+| 11 | Verify | ⚑ #8 | `arc_solver.stage_verify` → `apply_rule` (each demo · exact-match all) |
+| 12 | Apply test → ANSWER | ⚑ #8 | `arc_solver.stage_apply` → `apply_rule(test input)` → output grid (test output withheld) |
+
+**Subdivision + task pattern (phases 3–4) are hypothesis/display steps** — they
+read the phase-2 profile and narrate what the task is doing; they are NOT consumed
+downstream (the #8 stages compute independently). Phase 3 (subdivision) detects an
+input object partitioned by ≥2 disjoint output insets (`B → B.sub1, B.sub2, …`),
+∀-demo, points included (103/400). Phase 4 (addition) flags dims+palette preserved
++ all non-bg inputs kept + a new object appears. `inset` is a registered
+capacity-only predicate (no Search facet — near-universal); `subdivision` is the
+phase process that consumes it inline (D3).
 
 **Profiler / comparator split.** Phase 1 is **pure perception** — `grid_summary`
 no longer computes `touching`/`inside`. Those intra-grid **comparator** relations
 are attached by `arc_profile.attach_relations` (inside `build_profile`) and shown
-under phase 3, where they belong. Profilers (phase 2) and comparators (phase 3)
+under phase 5, where they belong. Profilers (phase 2) and comparators (phase 5)
 are presentation slices of the single `build_profile` call.
 
 **`same_shape` token vs display.** Phase 2 shows `same_shape` only for
@@ -41,9 +53,9 @@ so the token (267/400) deliberately diverges from the display. See
 
 **Honest notes.** The perceive chain is *discovered* through the capacity layer
 (`find_pipeline`); every phase *executes* inline (`arc_grids`/`arc_solver`),
-because the solver is D3-inline and disjoint from the layer. Phases 1–3 are
-general; 6/8/9/10 are #8-specific (the rule is hardcoded); 5/7 are move-model
-semi-general. The checkpoint stores `profile` + `bg` + each stage output + a
+because the solver is D3-inline and disjoint from the layer. Phases 1/2/5 are
+general (3/4/6 general\*); 8/10/11/12 are #8-specific (the rule is hardcoded);
+7/9 are move-model semi-general. The checkpoint stores `profile` + `bg` + each stage output + a
 `_name_<n>` phase stamp (a layout change invalidates a stale checkpoint); the
 per-pair `changes` (ref tuples) are **recomputed** from `profile`+`bg` each run
 so JSON round-tripping stays safe.

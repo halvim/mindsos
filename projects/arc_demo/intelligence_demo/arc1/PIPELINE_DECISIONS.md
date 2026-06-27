@@ -333,6 +333,32 @@ filed as motivating consumer; the demo does NOT block on it.
   `arc_solver.stage_rule`/`stage_verify`, the rest in `pipeline.step_*`); `gates_map.py`/PNG regen
   for the 2 phase-2 chips (`same_cell_count`/`same_bbox_area`) still deferred.
 
+- **2026-06-27 — solve-viewer phases 3–4 (Subdivision + Task pattern) + `inset` capacity
+  (BUILT + Cowork-gated 8 `[ok]`/400; NOT yet committed).** Two new hypothesis/display
+  phases inserted into `arc1/solve` (now **12 phases**), both reading the phase-2 profile and
+  **non-load-bearing** (the #8 stages compute independently). **Phase 4 Task pattern**
+  (`arc_solver.task_patterns` + `_addition_evidence`): first pattern **addition** = ∀demo
+  `dims preserved ∧ palette ⊆ output ∧ all non-bg inputs same_object ∧ ≥1 new non-bg output
+  object`. **Background-exclusion is mandatory** — the literal "all inputs preserved" fires
+  **0/400** because the background is an extracted object that mutates on any addition; bg-excluded
+  → **87/400**, #8 excluded (it's a move task). **Phase 3 Subdivision** (`arc_grids.subdivisions`
+  built on **`inset`**): an input object B partitioned by **≥2 disjoint output insets** (objects +
+  **points**) whose cell-union == B → `B → B.sub1, B.sub2, …`. ∀demo, points included = **103/400**
+  (objects-only would be 44 but task-2 fails ∀ — pair-2's fill is a single-cell **point**); #8
+  excluded. Display = finding (`{Out…}`) then indented consequence (`…sub1, sub2`). Over-fire
+  (103) accepted (single-pixel recolors read as "object → remnant + point"). **`inset(a,b)` =
+  `a.cells ⊆ b.cells`** (positional, literal, reflexive → `same_object ⟹ inset`); verified on task 2
+  pair 1 = `Out1.O2.yellow inset In1.O0.black` (the added cells were input-background cells — NOT
+  bbox/region containment, which is `inside`). Decisions: **inset = capacity-only** (registered in
+  `arc_capacities` `_comparator_capacities`, `CATEGORY_PREDICATE`, DS_INSET; **no Search facet** —
+  near-universal 350/400; **not** in `comparator_names`/`./evaluate`; 27→**28** caps);
+  **subdivision = a phase process, not a comparator and not a capacity** (consumes `inset` inline
+  per D3). Phase 3 is **background-agnostic** (treats all input objects as candidate B; the bg is
+  in fact always the B for task 2). `inset_pairs` (an earlier bbox-era helper) **removed**;
+  `subdivisions()` routes through `inset()` (single source). Gate stays green (8 `[ok]` incl. write;
+  conformance/evaluate/#8-solve all pass; run_spike label `10-step`→`12-step`). **OPEN:** phases 5–12
+  result wording unrevised; commit (Mac) + Linux-gate pending; STEPS.md updated to 12 phases.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

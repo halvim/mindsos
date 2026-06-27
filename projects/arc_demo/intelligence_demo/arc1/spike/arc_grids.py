@@ -491,6 +491,38 @@ def reflected(sa: dict, sb: dict):
     return None
 
 
+def inset(a: dict, b: dict) -> bool:
+    """``a inset b``: ``a``'s cell-set is a subset of ``b``'s cell-set
+    (positional, literal — no translation, no bbox). Reflexive:
+    ``inset(x, x)`` is True → ``same_object ⟹ inset``."""
+    bset = {(c[0], c[1]) for c in b["cells"]}
+    return all((c[0], c[1]) in bset for c in a["cells"])
+
+
+def subdivisions(gin: dict, gout: dict) -> List[dict]:
+    """Input objects (B) partitioned by ≥2 disjoint output insets (objects +
+    points) whose cell-union == B. Records ``{"in": i, "parts": [("O"|"P", j),
+    ...]}``. Points are included (a single-cell part counts). Built on ``inset``
+    (single source of the cell-subset test)."""
+    parts_pool = [("O", j, o) for j, o in enumerate(gout["objects"])] + \
+                 [("P", j, p) for j, p in enumerate(gout.get("points", []))]
+    res: List[dict] = []
+    for i, B in enumerate(gin["objects"]):
+        Bc = {(c[0], c[1]) for c in B["cells"]}
+        parts = [(k, j, o) for (k, j, o) in parts_pool if inset(o, B)]
+        if len(parts) < 2:
+            continue
+        union: set = set()
+        tot = 0
+        for (_, _, o) in parts:
+            cs = {(c[0], c[1]) for c in o["cells"]}
+            union |= cs
+            tot += len(cs)
+        if union == Bc and tot == len(Bc):          # disjoint cover == B
+            res.append({"in": i, "parts": [(k, j) for (k, j, _) in parts]})
+    return res
+
+
 def recolored_pairs(gin: dict, gout: dict) -> List[dict]:
     out = []
     for i, a in enumerate(gin["objects"]):

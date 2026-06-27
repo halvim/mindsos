@@ -103,8 +103,59 @@ def step_profile(ctx, dataset):
     return _block(f"dims={dim} · palette={pal}", lines)
 
 
+def step_subdivision(ctx, dataset):
+    """Phase 3 — subdivision: an input object B partitioned by ≥2 disjoint
+    output insets (B1, B2, …) whose cells cover exactly B (arc_grids.subdivisions,
+    points included). Holds-∀-demo = the task is a subdivision. Display/hypothesis."""
+    prof = ctx["profile"]
+    def ref(side, p, kind, j, g):
+        if kind == "O":
+            return f"{side}{p}.O{j}.{arc_grids.color_name(g['objects'][j]['color'])}"
+        return f"{side}{p}.P{j}"
+    per_pair, holds = [], []
+    for i, pr in enumerate(prof["train"]):
+        p = i + 1
+        gi, go = pr["input"], pr["output"]
+        subs = arc_grids.subdivisions(gi, go)
+        holds.append(bool(subs))
+        for s in subs:
+            B = ref("In", p, "O", s["in"], gi)
+            parts = ", ".join(ref("Out", p, k, j, go) for (k, j) in s["parts"])
+            kids = ", ".join(f"{B}.sub{k + 1}" for k in range(len(s["parts"])))
+            per_pair.append(f"Pair {p}: {B} → {{{parts}}}")
+            per_pair.append(f"         {B} → {kids}")
+    allhold = all(holds) and len(holds) > 0
+    ctx["subdivision"] = {"holds_all": allhold, "n": len(holds)}
+    head = f"subdivision — {'yes' if allhold else 'no'} (∀demo {sum(holds)}/{len(holds)})"
+    return _block(head, per_pair)
+
+
+def step_task_pattern(ctx, dataset):
+    """Phase 3 — task-pattern hypothesis over the phase-2 profile. Reads the
+    profilers (same_object / dims / palette) to infer what the task is doing.
+    First pattern: ADDITION (background-excluded — see arc_solver.task_patterns).
+    Display/hypothesis only; not consumed downstream."""
+    pats = arc_solver.task_patterns(ctx["profile"])
+    ctx["patterns"] = pats
+    a = next(p for p in pats if p["name"] == "addition")
+    ev = a["evidence"]
+    mark = lambda b: "✓" if b else "✗"
+    palv = ev["palette_label"]
+    conds = (f"dims preserved {mark(ev['dims_preserved'])} · "
+             f"palette {palv} {mark(ev['palette_subset'])} · "
+             f"non-bg inputs preserved {mark(ev['nonbg_inputs_preserved'])} · "
+             f"new output object {mark(ev['new_output_object'])}")
+    if a["matched"]:
+        n = ev["n_added"]
+        tail = f"→ addition — something is being added to the output ({n} new object{'s' if n != 1 else ''})"
+    else:
+        tail = "→ not addition (an input object changes)"
+    return _block(f"task pattern: addition — {'yes' if a['matched'] else 'no'}",
+                  [conds, tail])
+
+
 def step_comparators(ctx, dataset):
-    """Phase 3 — comparators only (over the profile built in phase 2)."""
+    """Phase 4 — comparators only (over the profile built in phase 2)."""
     toks = set(ctx.get("tokens") or arc_search.task_tokens(ctx["profile"]))
     comps = [c for c in arc_search.comparator_names() if c in toks]
     return f"comparators: {' '.join(comps) or '(none)'}"
@@ -174,23 +225,29 @@ STEPS = [
     (2, "Profile", GENERAL, step_profile,
      "arc_profile.build_profile(match_pair, profile_sweep, hypotheses) · arc_search.task_tokens(same_cell_count_pairs, same_bbox_area_pairs)",
      "profile · profiler tokens"),
-    (3, "Comparators", GENERAL, step_comparators,
+    (3, "Subdivision", GENERAL_STAR, step_subdivision,
+     "arc_grids.subdivisions(inset) — input object partitioned by ≥2 output insets",
+     "subdivision partitions (B → B1,B2,…)"),
+    (4, "Task pattern", GENERAL_STAR, step_task_pattern,
+     "arc_solver.task_patterns(_addition_evidence, _bg_color)",
+     "task-pattern hypothesis (addition)"),
+    (5, "Comparators", GENERAL, step_comparators,
      "arc_search.task_tokens · arc_grids.touching_pairs, inside_pairs, moved, recolored_pairs, rotated_pairs, reflected_pairs",
      "comparator tokens"),
-    (4, "Background + state-change", GENERAL_STAR, step_background,
+    (6, "Background + state-change", GENERAL_STAR, step_background,
      "arc_solver.stage_background(_bg_color, touching_changes(_correspondence, _touch_set))",
      "bg · changes (gained/lost/maintained)"),
-    (5, "Roles", SEMI, step_roles,
+    (7, "Roles", SEMI, step_roles,
      "arc_solver.stage_roles(_moved_in, _touch_set, _comp)", "stage1 (roles)"),
-    (6, "Persistence + combo", SPECIMEN, step_persistence,
+    (8, "Persistence + combo", SPECIMEN, step_persistence,
      "arc_solver.stage_persistence(_moved_in, _lbl)", "stage2 (persistence ∀demo + verdict)"),
-    (7, "Selectors", SEMI, step_selectors,
+    (9, "Selectors", SEMI, step_selectors,
      "arc_solver.stage_selectors(_selectors_for(_comp, _base_shape))", "stage3 (selectors)"),
-    (8, "Rule", SPECIMEN, step_rule, "arc_solver.stage_rule (static)", "stage4 (rule)"),
-    (9, "Verify", SPECIMEN, step_verify,
+    (10, "Rule", SPECIMEN, step_rule, "arc_solver.stage_rule (static)", "stage4 (rule)"),
+    (11, "Verify", SPECIMEN, step_verify,
      "arc_solver.stage_verify(apply_rule(_shape_roles, _move_direction, _slide, _render))",
      "stage5 (per-demo match)"),
-    (10, "Apply test → ANSWER", SPECIMEN, step_apply,
+    (12, "Apply test → ANSWER", SPECIMEN, step_apply,
      "arc_solver.stage_apply(apply_rule)", "stage6 + answer grid"),
 ]
 
@@ -201,14 +258,16 @@ STEPS = [
 STEP_TARGETS = {
     1: "L4 task intake → TaskRun + L3 perceive chain via cl.invoke (find_pipeline) · mindsos_intelligence/orchestrator.py + mindsos_capacity/pipeline.py",
     2: "L4 phase_1 sweep — L3 profilers (compare_*, same_*) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
-    3: "L4 phase_1 sweep — L3 comparators/predicates (moved/touching/inside/transforms) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
-    4: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
-    5: "L3 reasoning — role assignment over state-change · mindsos_capacity",
-    6: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
-    7: "L3 reasoning/scoring — synthesize_selector via invoke · mindsos_capacity",
-    8: "L4 plan construction → Plan/Pipeline chain artifact · mindsos_intelligence/chain_artifacts.py",
-    9: "L4 sufficiency — sufficient_predicate / replan_check · mindsos_intelligence/orchestrator.py",
-    10: "L4 execution (PipelineRun) + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
+    3: "L3 derivation — subdivision (inset partition) over the profile · mindsos_capacity (→ L4 induce/learner)",
+    4: "L3 comprehension — task-pattern hypothesis from the profile · mindsos_capacity (→ L4 induce/learner)",
+    5: "L4 phase_1 sweep — L3 comparators/predicates (moved/touching/inside/transforms) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
+    6: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
+    7: "L3 reasoning — role assignment over state-change · mindsos_capacity",
+    8: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
+    9: "L3 reasoning/scoring — synthesize_selector via invoke · mindsos_capacity",
+    10: "L4 plan construction → Plan/Pipeline chain artifact · mindsos_intelligence/chain_artifacts.py",
+    11: "L4 sufficiency — sufficient_predicate / replan_check · mindsos_intelligence/orchestrator.py",
+    12: "L4 execution (PipelineRun) + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
 }
 
 
@@ -216,14 +275,16 @@ STEP_TARGETS = {
 STEP_DESC = {
     1: "Load the raw task and perceive each grid — objects (8-connected, ≥2 cells), points, shapes, palette, dims.",
     2: "Run the profilers — same_object/shape/point, same_cell_count, same_bbox_area, and the dim/palette deltas.",
-    3: "Run the comparators — moved, touching, inside, recolored, rotated, reflected.",
-    4: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
-    5: "Classify the changed objects into roles — mover, target, background.",
-    6: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
-    7: "For each role, find the minimal selector that discriminates it across every demo (tie-break → shape).",
-    8: "Assemble the transformation rule — slide the mover toward the target until touching (hardcoded for #8).",
-    9: "Apply the rule to every demo and check it reproduces each output exactly.",
-    10: "Apply the rule to the test input to produce the answer grid (test output withheld).",
+    3: "Detect subdivision — an input object split into ≥2 disjoint output insets (B1, B2, …) that cover it exactly.",
+    4: "Infer the task pattern from the profile — e.g. addition (dims + palette preserved, all non-bg inputs kept, a new object appears).",
+    5: "Run the comparators — moved, touching, inside, recolored, rotated, reflected.",
+    6: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
+    7: "Classify the changed objects into roles — mover, target, background.",
+    8: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
+    9: "For each role, find the minimal selector that discriminates it across every demo (tie-break → shape).",
+    10: "Assemble the transformation rule — slide the mover toward the target until touching (hardcoded for #8).",
+    11: "Apply the rule to every demo and check it reproduces each output exactly.",
+    12: "Apply the rule to the test input to produce the answer grid (test output withheld).",
 }
 
 

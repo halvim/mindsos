@@ -175,7 +175,7 @@ def _inference_soundness_check(tasks) -> None:
 
 
 def _solve_pipeline_check(dataset, solver) -> None:
-    """The arc1/solve 10-step pipeline must (a) solve #8 and (b) agree with the
+    """The arc1/solve 12-step pipeline must (a) solve #8 and (b) agree with the
     monolithic build_solver — the step decomposition is faithful."""
     from intelligence_demo.arc1.solve import pipeline
     ctx = pipeline.run_all(arc_solver.TASK8, dataset)
@@ -185,7 +185,7 @@ def _solve_pipeline_check(dataset, solver) -> None:
         "arc1/solve answer differs from build_solver"
     assert ctx["stage1"]["roles_demo1"] == solver["stage1"]["roles_demo1"], \
         "arc1/solve stage1 differs from build_solver"
-    print("  [ok] arc1/solve: 10-step pipeline solves #8 and matches build_solver.")
+    print("  [ok] arc1/solve: 12-step pipeline solves #8 and matches build_solver.")
 
 
 def main(argv: list) -> int:
