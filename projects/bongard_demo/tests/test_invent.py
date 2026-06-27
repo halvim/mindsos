@@ -109,6 +109,7 @@ def falkor_client():
 
 
 def _register_perception(cl, session):
+    from bongard.invent import register_relation_datastates
     from bongard.leaf import register_leaf
     from bongard.ontology import register_ontology
     from bongard.predicate import register_predicate
@@ -118,6 +119,7 @@ def _register_perception(cl, session):
     register_segments(cl, session)
     register_predicate(cl, session)
     register_shapes(cl, session)
+    register_relation_datastates(cl, session)
 
 
 @pytest.mark.integration

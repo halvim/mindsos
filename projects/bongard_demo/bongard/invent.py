@@ -284,13 +284,19 @@ def register_relation_reactivation(cl) -> None:
     )
 
 
+def register_relation_datastates(cl, session) -> None:
+    """Register the invented-relation output DataState (must run at boot, like
+    m2's ``register_shapes`` registers ``DEFINITION_MATCH``, so a reactivated
+    relation's declared output is known on a fresh CapacityLayer)."""
+    cl.register_datastate(RELATION_VERDICT, session=session, allow_new_realm=True)
+
+
 def register_invented_relation(solver, result: InventResult) -> str:
     """In-memory register the concluded relation as a SCENE→bool predicate
     (usable immediately); returns its capability IRI. Durable persistence to
     Local ``learned-parameters`` + cross-process restart is the m2 mint path
     (Linux-gated), driven from the same descriptor."""
-    solver.cl.register_datastate(RELATION_VERDICT, session=solver.session,
-                                 allow_new_realm=True)
+    register_relation_datastates(solver.cl, solver.session)
     register_relation_reactivation(solver.cl)
     decl = relation_reactivation_factory(solver.cl)(relation_descriptor(result))
     solver.cl.register_capacity(decl, session=solver.session, if_exists="upsert")
@@ -322,8 +328,7 @@ def mint_relation(solver, kl, persister, result: InventResult) -> str:
     )
     persister.save(user_id, local_mg)
 
-    solver.cl.register_datastate(RELATION_VERDICT, session=solver.session,
-                                 allow_new_realm=True)
+    register_relation_datastates(solver.cl, solver.session)
     register_relation_reactivation(solver.cl)
     decl = relation_reactivation_factory(solver.cl)(descriptor)
     solver.cl.register_capacity(decl, session=solver.session, if_exists="upsert")
