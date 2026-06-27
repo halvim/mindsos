@@ -1,22 +1,25 @@
 """Ingest real Bongard-LOGO panels into our `Image` format (demo-side; the
 real-data limitation test — PLAN real-data diagnostic block).
 
-Bongard-LOGO (NVlabs) draws shape outlines as discrete decorative GLYPHs
-(triangles/circles spaced along the path) + occasional arcs, NOT solid closed
-strokes. Our perception assumes *shape = one continuous closed stroke*, so a
-raw panel shatters into 9-23 connected components (every glyph = its own blob).
-The fixtures bridge that with a morphological pass (sandbox-side, see
-`scripts/ingest_bongard_logo.py`):
+FAITHFUL diagnostic (Henrique 2026-06-26): the fixtures are the **raw** marks —
+`binarize(gray<128)` ONLY, native 512, NO closing/fill/skeletonize. An earlier
+version morphologically closed+filled the glyphs into a clean contour, but that
+was *cheating the perception*: `fill_holes` is the actual perceptual act
+(deciding scattered glyphs enclose a region), done by scipy with operations not
+in our atom vocabulary. The faithful test feeds the real pixels and reports what
+OUR atoms deduce.
 
-    binarize(<128) -> binary_closing(9) -> block-max downscale 512->128 -> skeletonize
-
-which yields a 1px closed contour — our perception's native input. The bridge
-makes the stroke solid; it does NOT inject the answer (it never decides
-rectangle vs circle). No `mindsos_*` edits.
+Bongard-LOGO (NVlabs) draws outlines as discrete decorative GLYPHs (small
+triangles ▷ / circles ○ along the path) + solid arcs — NOT closed strokes. So a
+raw panel is ~15-23 connected components: a few big arc segments + many ~12px
+glyphs. Our perception (vertex/segment/angle → polygon, closed-stroke gate,
+~44-60px size regime) therefore sees the local MARKS (or abstains on them), not
+the gestalt rectangle/circle. That gap — no perception of how marks ARRANGE into
+an enclosing shape — is the real, grounded finding.
 
 This module is the GATE-side loader only (pure python, no PIL/scipy): it reads
 the serialized fg-coordinate fixtures into `render.Image`, so the Linux gate
-runs real `parse_scene` on real-derived panels without any image libraries.
+runs real `parse_scene` on real raw panels without any image libraries.
 """
 
 from __future__ import annotations

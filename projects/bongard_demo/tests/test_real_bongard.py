@@ -1,26 +1,31 @@
-"""Real-data limitation test — run our perception on REAL Bongard-LOGO panels
-(NVlabs), ingested via the morphological glyph-bridge (PLAN real-data
-diagnostic). Two contrasting problems:
+"""FAITHFUL real-data diagnostic — run our perception on the RAW marks of a
+real Bongard-LOGO panel (NVlabs `00-rectangle_vs_circle`), binarize-only, no
+morphological fabrication (PLAN real-data diagnostic).
 
-  * rectangle_vs_circle — our system SEPARATES the two sides by PARSE-vs-ABSTAIN:
-    rectangles parse (polygon), circles hit the existing fit-gate abstain. A
-    real Bongard problem resolved by the abstain SIGNAL (on-philosophy).
-  * convex_vs_concave — the vocabulary CEILING: both sides are curves our
-    perception abstains on (and we hold no convexity atom), so our system does
-    NOT separate it. Honest negative.
+The question (Henrique): how does our system actually recognize the panel, whose
+contours are drawn as trails of small triangle/circle GLYPHs + solid arcs? This
+test individuates the raw foreground into connected components (what our
+`parse_scene` does) and reports, per mark, what our atoms deduce —
+`solve(polygon_k)` / `abstain(reason)` — plus the mark's pixel size.
 
-Bounded claim: ONE favorable real problem via parse-vs-abstain, NOT a general
-Bongard-LOGO solver. The panels are real (ingested from the dataset); only the
-stroke-bridge is demo-side and it never decides the label.
+Expected finding (not asserted as success, it IS the limitation): our perception
+(vertex/segment/angle → polygon, closed-stroke gate, ~44-60px regime) sees the
+local marks or abstains on them; it has NO perception of how the marks ARRANGE
+into the enclosing rectangle/circle. So a panel shatters into ~15-23 marks and
+the gestalt shape is never formed. This is the grounded wall — no shape is
+fabricated by scipy; the report is what OUR system earns from real pixels.
 """
 
 from __future__ import annotations
+
+from collections import Counter
 
 import pytest
 
 from bongard.control import build_solver
 from bongard.ingest import load_problem
-from bongard.scene import parse_scene
+from bongard.render import Sample
+from bongard.scene import connected_components
 from bongard.shapes import register_shapes
 
 
@@ -31,43 +36,48 @@ def solver():
     return s
 
 
-def _panel(solver, img):
-    """(n_solved_shapes, polygon_types, abstain_reasons) for one panel."""
-    sc = parse_scene(solver, img)
-    types = [s.polygon_type for s in sc.shapes]
-    reasons = [v.reason for v in sc.figures if not v.solved]
-    return sc.n_shapes, types, reasons
+def _marks(solver, img):
+    """Per connected component: (size_px, 'solve:<type>' | 'abstain:<reason>').
+
+    Guarded: raw panels contain 1-2px specks our synthetic scenes never make,
+    so a degenerate perceive is recorded as an outcome, not a crash."""
+    out = []
+    for sub in connected_components(img):
+        try:
+            v = solver.perceive(Sample(name="m", pixels=sub, truth_vertices=None,
+                                       expect="", reason=""))
+            if v.solved and v.shape is not None:
+                out.append((len(sub.fg), f"solve:{v.shape.polygon_type}"))
+            else:
+                out.append((len(sub.fg), f"abstain:{v.reason}"))
+        except Exception as e:
+            out.append((len(sub.fg), f"error:{type(e).__name__}"))
+    return out
 
 
-def _side(solver, panels):
-    return [_panel(solver, im) for im in panels]
+def _report(solver, panels, label):
+    print(f"\n=== {label} (raw marks, per panel) ===")
+    n_components = 0
+    verdicts = Counter()
+    gestalt_solves = 0   # a panel-spanning solved shape (>400px) = a real gestalt
+    for i, img in enumerate(panels):
+        marks = _marks(solver, img)
+        n_components += len(marks)
+        verdicts.update(v for _, v in marks)
+        gestalt_solves += sum(1 for sz, v in marks if v.startswith("solve") and sz > 400)
+        summ = Counter(v for _, v in marks)
+        print(f"  panel{i}: {len(marks)} marks -> {dict(summ)}")
+    print(f"  TOTAL {label}: {n_components} marks, verdicts={dict(verdicts)}, gestalt_solves={gestalt_solves}")
+    return n_components, verdicts, gestalt_solves
 
 
-def test_rectangle_vs_circle_separates(solver):
+def test_raw_marks_no_gestalt(solver):
     prob = load_problem("rectangle_vs_circle")
-    curve = _side(solver, prob["0"])   # circles
-    poly = _side(solver, prob["1"])    # rectangles
-    poly_solves = sum(r[0] for r in poly)
-    curve_solves = sum(r[0] for r in curve)
-    print("\n[rect_vs_circle] polygon-side (n,types,reasons):", poly)
-    print("[rect_vs_circle] curve-side  (n,types,reasons):", curve)
-    # circles must abstain (the fit gate is the circle detector)
-    assert curve_solves == 0, f"circles should abstain, got {curve_solves} solved: {curve}"
-    # rectangles must parse at least once (else: ingestion/calibration gap = finding)
-    assert poly_solves >= 1, f"no rectangle parsed (ingestion/calibration gap): {poly}"
-    # the separation: parse-vs-abstain tells the two sides apart
-    assert poly_solves > curve_solves
+    poly_n, poly_v, poly_gestalt = _report(solver, prob["1"], "rectangle-side")
+    curve_n, curve_v, curve_gestalt = _report(solver, prob["0"], "circle-side")
 
-
-def test_convex_vs_concave_is_ceiling(solver):
-    prob = load_problem("convex_vs_concave")
-    s0 = _side(solver, prob["0"])
-    s1 = _side(solver, prob["1"])
-    n0 = sum(r[0] for r in s0)
-    n1 = sum(r[0] for r in s1)
-    print("\n[convex_vs_concave] side0 (n,types,reasons):", s0)
-    print("[convex_vs_concave] side1 (n,types,reasons):", s1)
-    # vocabulary ceiling: curves on both sides → our perception abstains on
-    # both, so parse-vs-abstain gives NO separation (we cannot tell convex from
-    # concave). Both sides should produce no parsed polygon.
-    assert n0 == 0 and n1 == 0, f"expected the ceiling (no parse either side); got s0={n0} s1={n1}"
+    # 1. raw panels SHATTER — our individuation sees many marks, not one shape.
+    assert poly_n >= 7 * 3 and curve_n >= 7 * 3, (poly_n, curve_n)
+    # 2. the GESTALT is never formed — no panel-spanning shape is solved on
+    #    either side. Our system has no arrangement perception (the wall).
+    assert poly_gestalt == 0 and curve_gestalt == 0, (poly_gestalt, curve_gestalt)
