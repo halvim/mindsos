@@ -39,6 +39,7 @@ help_solve() {
   cat <<'EOF'
 arc solve <task#|task_id> <step> — run the solver pipeline up to <step> (resumable)
 arc solve --phases — list every phase with a description (no task run)
+arc solve --inferences — list the declared inference edges (wired / requires / display)
 
   task    1-based index into the 400 sorted train tasks, or a task id (e.g. 05f2a901)
   step    1–10; each step checkpoints to runs/<task_id>/step-<n>.json and is
@@ -49,6 +50,7 @@ arc solve --phases — list every phase with a description (no task run)
 
 examples:
   ./arc solve --phases         list the 10 phases + descriptions
+  ./arc solve --inferences     list the declared inference edges
   ./arc solve 8 3              run steps 1–3 for task #8
   ./arc solve 8 4              reuse cached 1–3, compute step 4
   ./arc solve 8 10             full pipeline → ANSWER grid

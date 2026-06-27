@@ -308,6 +308,30 @@ filed as motivating consumer; the demo does NOT block on it.
   whose prose (`policy`/`verdict`) lives in `arc_solver.stage_rule`/`stage_verify` (also consumed by
   the gate's `build_solver` — edit there + re-gate). No new wording was supplied yet. Gate is still
   6 `[ok]` lines / 400 green.
+- **2026-06-26 — solve-viewer result rewrite (phases 1-2) + `same_object⟹same_shape` token wire +
+  `--inferences` (BUILT + Linux-gated; `arc_debug_data.js` now untracked).** Prior phase RESTRUCTURE
+  confirmed **already committed+pushed** (HEAD `2f0e71e` == `origin/demo/arc`; the "uncommitted"
+  handoff note was stale). Shipped on `demo/arc`: (1) **Phase 1** result → per-pair perceive
+  (`pipeline._perceive_line` + `_block`): header `N train pairs · M test`; per train pair In/Out
+  `dims · pal[..] · N obj` + `N pt` **only when points >0**; multi-line. (2) **Phase 2** result →
+  per-pair correspondence tiers (`step_profile`): top `dims=… · palette=…`; positives only, order
+  **same_object → same_shape → same_point**; objects `O#.colour`, points `P#` (no colour); group
+  brackets only when a side has >1; `same_shape` shown only for **non-identical** `shape_groups`;
+  empty pairs omitted. (3) **Colour map** `arc_grids.COLOR_NAMES`/`color_name` (0 black,1 blue,2 red,
+  3 green,4 yellow,5 grey,6 magenta,7 orange,8 cyan,9 brown). (4) **`same_object ⟹ same_shape` WIRED
+  as a token skip — REVERSES the prior "display-only / token-unsound 120/400" framing** (the GF/D row
+  + arc_search comment): `task_tokens` same_shape = `shape_groups OR equal` → **147→267/400**; sound
+  0/400 (identical cells ⇒ identical `shape_key`); `skip` field added to the `same_object` facet. The
+  TOKEN (267) **deliberately diverges** from the phase-2 DISPLAY (non-trivial reuse only) — **option
+  A**, documented by `--inferences`. (5) **`./arc solve --inferences`** (static; `arc_search.inferences()`)
+  groups edges wired / requires / display-only. (6) **Gate** gained `run_spike._inference_soundness_check`
+  (same_object⟹same_shape 0/400) → now **7 `[ok]`**; #8 still solves. (7) **`arc_debug_data.js`
+  untracked** (`git rm --cached` + gitignore) — resolves the Linux pull-dirty gotcha. **Checkpoint
+  gotcha:** a result-STRING edit does NOT invalidate a checkpoint (only a phase-NAME change does) →
+  `rm -rf runs/<task>` to see new wording; `runs/` is owned per-machine (Cowork can't `rm`
+  Mac-written ones). **OPEN:** phases **3-10** result wording (unrevised — phases 8/9 prose lives in
+  `arc_solver.stage_rule`/`stage_verify`, the rest in `pipeline.step_*`); `gates_map.py`/PNG regen
+  for the 2 phase-2 chips (`same_cell_count`/`same_bbox_area`) still deferred.
 
 ---
 

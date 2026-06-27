@@ -39,13 +39,15 @@ FACETS = [
      "division": "inter-grid", "group": "profile",
      "results": ["preserved", "added", "removed", "added+removed", "varies"]},
     {"name": "same_object", "kind": "bool", "phase": "induce",
-     "division": "inter-grid", "group": "atoms", "implies": ["same_shape"]},
-    # same_object ⟹ same_shape (identical cells ⇒ identical normalized shape) — a
-    # DISPLAY implication (shown indented in Search/structure). NOTE it is unsound
-    # at the TOKEN level for a per-task skip: `same_shape` fires only among
-    # NON-identical objects, so 120/400 fire same_object without same_shape. It is
-    # therefore NOT used to mark same_shape "implied-true" in the gates answer
-    # (gates only skip-evaluates Phase-4 capacity implications, e.g. inside⟹touching).
+     "division": "inter-grid", "group": "atoms",
+     "implies": ["same_shape"], "skip": ["same_shape"]},
+    # same_object ⟹ same_shape (identical cells ⇒ identical normalized shape).
+    # WIRED as a token skip (``skip`` field): when same_object fires the same_shape
+    # TOKEN is taken true without a separate test (task_tokens OR-s ``equal`` into
+    # same_shape). Sound 0/400 because identical cells ⇒ identical shape_key. The
+    # phase-2 *display* still shows same_shape only for shape_groups (non-identical
+    # reuse), so token (267/400) deliberately diverges from display (option A); the
+    # divergence is documented by ``./arc solve --inferences``.
     # same_shape ⟹ same_cell_count AND same_bbox_area (identical shape ⇒ identical
     # cell count + identical bbox area). Both are PROFILERS (not comparators) —
     # D4-invariant shape facts, near-universal as tokens, used as the
@@ -111,9 +113,15 @@ def task_tokens(profile: dict) -> List[str]:
     """Tokens for one task (output of ``arc_profile.build_profile``)."""
     toks: List[str] = []
     demos = profile["train"]
-    if any(d["match"]["equal"] for d in demos):
+    same_obj = any(d["match"]["equal"] for d in demos)
+    if same_obj:
         toks.append("same_object")
-    if any(d["match"]["shape_groups"] for d in demos):
+    # same_shape token = different objects share a shape (shape_groups) OR an
+    # identical object exists (same_object ⟹ same_shape, wired skip — see the
+    # same_object facet ``skip`` field). Sound 0/400: identical cells ⇒ identical
+    # shape_key. Note the phase-2 *display* still shows same_shape only for
+    # shape_groups (non-trivial reuse); token deliberately diverges (option A).
+    if same_obj or any(d["match"]["shape_groups"] for d in demos):
         toks.append("same_shape")
     if any(d["match"]["point_equal"] for d in demos):
         toks.append("same_point")
@@ -192,3 +200,38 @@ def comparator_parents(cap: str) -> List[str]:
                 and f.get("division") == child.get("division"):
             out.append(f["name"])
     return out
+
+
+def inferences() -> Dict[str, List[tuple]]:
+    """All declared inference edges, grouped by how each is used. Single source:
+    the FACET table (``requires`` / ``implies`` / ``skip``). Each edge is a
+    ``(parent, [children])`` tuple.
+
+    - ``wired``       — drives a skip (the child is taken true when the parent
+                        fires, not re-tested): comparator skips (inside ⟹ touching)
+                        and token skips (same_object ⟹ same_shape).
+    - ``requires``    — a comparator's profiler DEMANDS (cross-phase gate edge).
+    - ``display``     — true but not wired (e.g. same_shape ⟹ cell/bbox).
+    """
+    wired: List[tuple] = []
+    requires: List[tuple] = []
+    display: List[tuple] = []
+    for f in FACETS:
+        name, reqs = f["name"], f.get("requires", [])
+        if reqs:
+            requires.append((name, list(reqs)))
+        skip = list(f.get("skip", []))
+        if skip:
+            wired.append((name, skip))
+        # comparator→comparator implies in the same division = a wired skip
+        cap_skip = [im for im in f.get("implies", [])
+                    if is_comparator(f) and is_comparator(_facet(im))
+                    and f.get("division") == _facet(im).get("division")]
+        if cap_skip:
+            wired.append((name, cap_skip))
+        # remaining implies (not a requires-dup, not a skip) = display-only
+        disp = [im for im in f.get("implies", [])
+                if im not in reqs and im not in skip and im not in cap_skip]
+        if disp:
+            display.append((name, disp))
+    return {"wired": wired, "requires": requires, "display": display}

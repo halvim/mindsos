@@ -76,10 +76,12 @@ phase, and as the existing `requires` gate edge when they cross phases.
 - `rotated`/`reflected ⟹ same_cell_count` + `same_bbox_area` — their `requires` (D4-invariant). Sound.
 - `same_shape ⟹ same_cell_count`, `same_shape ⟹ same_bbox_area` — display-only (Search indentation),
   among profilers; independent of each other.
-- `same_object ⟹ same_shape` — logically true but **NOT declared**: unsound at the token level
-  (120/400). `same_shape` fires only for a shape-group among *non-identical* objects, so an
-  all-identical task fires `same_object` without `same_shape`. The verification caught this; the
-  skip would wrongly mark `same_shape` true.
+- `same_object ⟹ same_shape` — **WIRED 2026-06-26** as a token skip (was display-only). Originally
+  token-unsound (120/400) because `same_shape` counted only *non-identical* shape-groups; the
+  `same_shape` TOKEN was redefined to also count identical objects (`task_tokens`: `shape_groups OR
+  equal`, 147→267/400), making it sound 0/400 (identical cells ⇒ identical shape_key). The phase-2
+  *display* still shows `same_shape` only for non-identical groups, so token diverges from display by
+  design — see `PIPELINE_DECISIONS.md` §4 (2026-06-26) + `./arc solve --inferences`.
 
 Skip is wired **only** where the implication holds empirically over all 400 tasks (verified at spike
 time), never on logical-looking pairs that fail at the token level.

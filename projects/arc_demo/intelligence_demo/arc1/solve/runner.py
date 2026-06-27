@@ -123,12 +123,45 @@ def phases():
         print()
 
 
+def inferences():
+    from intelligence_demo.arc1.spike import arc_search
+    inf = arc_search.inferences()
+    print(_c("1", "arc — declared inference edges"))
+
+    def show(edges):
+        for parent, children in edges:
+            print("  " + _c("36", parent) + _c("2", " ⟹ ") + ", ".join(children))
+
+    note = {
+        ("inside",): "sound 0/400",
+        ("same_object",): "sound 0/400 (same_shape token includes identical objects)",
+    }
+    print()
+    print(_c("2", "wired (drives skip):"))
+    for parent, children in inf["wired"]:
+        line = "  " + _c("36", parent) + _c("2", " ⟹ ") + ", ".join(children)
+        tag = note.get((parent,))
+        if tag:
+            line += _c("2", "   " + tag)
+        print(line)
+    print()
+    print(_c("2", "requires (cross-phase demand):"))
+    show(inf["requires"])
+    print()
+    print(_c("2", "display-only (not wired):"))
+    show(inf["display"])
+
+
 def main():
     if len(sys.argv) >= 2 and sys.argv[1] == "--phases":
         phases()
         return
+    if len(sys.argv) >= 2 and sys.argv[1] == "--inferences":
+        inferences()
+        return
     if len(sys.argv) < 3:
-        raise SystemExit("usage: solve <task#|task_id> <step 1-10>  ·  solve --phases")
+        raise SystemExit("usage: solve <task#|task_id> <step 1-10>  ·  "
+                         "solve --phases  ·  solve --inferences")
     solve(sys.argv[1], int(sys.argv[2]))
 
 

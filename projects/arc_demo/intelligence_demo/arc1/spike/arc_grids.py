@@ -19,6 +19,17 @@ from typing import Dict, List, Tuple
 
 Grid = List[List[int]]
 
+#: ARC colour palette (0-9) → canonical name. Used for object colour suffixes in
+#: the solve viewer (e.g. ``O1.red``).
+COLOR_NAMES = ["black", "blue", "red", "green", "yellow",
+               "grey", "magenta", "orange", "cyan", "brown"]
+
+
+def color_name(c: int) -> str:
+    """Name of an ARC colour int (0-9); falls back to ``c<n>`` out of range."""
+    return COLOR_NAMES[c] if 0 <= c < len(COLOR_NAMES) else f"c{c}"
+
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _DATA = os.path.join(_HERE, "..", "arc1.json")
 

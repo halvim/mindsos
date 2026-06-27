@@ -159,6 +159,21 @@ def _evaluate_discrepancy_check(tasks) -> None:
           f"({len(comps)} comparators × {len(tasks)} tasks).")
 
 
+def _inference_soundness_check(tasks) -> None:
+    """The wired token skip ``same_object ⟹ same_shape`` must be 0/400: every task
+    that fires same_object must also fire same_shape (identical cells ⇒ identical
+    shape_key). Makes the skip's soundness executable."""
+    bad = []
+    for t in tasks:
+        toks = set(arc_search.task_tokens(t))
+        if "same_object" in toks and "same_shape" not in toks:
+            bad.append(t["task_id"])
+    assert not bad, f"same_object ⟹ same_shape unsound (skip wired): {bad[:8]}"
+    n = sum(1 for t in tasks if "same_shape" in set(arc_search.task_tokens(t)))
+    print(f"  [ok] inference: same_object ⟹ same_shape sound 0/{len(tasks)} "
+          f"(same_shape token now {n}/{len(tasks)}).")
+
+
 def _solve_pipeline_check(dataset, solver) -> None:
     """The arc1/solve 10-step pipeline must (a) solve #8 and (b) agree with the
     monolithic build_solver — the step decomposition is faithful."""
@@ -209,6 +224,7 @@ def main(argv: list) -> int:
         t["gates"] = arc_gates.gate_report(t)
     _gate_invariant_check(tasks)        # enabled == Search token (all comparators)
     _evaluate_discrepancy_check(tasks)  # ./evaluate agrees with Search (0 discrepancies)
+    _inference_soundness_check(tasks)   # same_object ⟹ same_shape wired skip 0/400
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None

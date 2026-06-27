@@ -15,6 +15,17 @@ from intelligence_demo.arc1.spike import arc_grids, arc_profile, arc_solver, arc
 
 GENERAL, GENERAL_STAR, SEMI, SPECIMEN = "general", "general*", "semi", "#8"
 
+#: continuation-line indent so a multi-line ``result`` aligns under the runner's
+#: "result" column (``"   result   "`` = 12 chars).
+_RESULT_INDENT = " " * 12
+
+
+def _block(header: str, lines: list) -> str:
+    """A multi-line result: ``header`` on the result line, ``lines`` indented."""
+    if not lines:
+        return header
+    return header + "\n" + "\n".join(_RESULT_INDENT + ln for ln in lines)
+
 
 def _changes(ctx: dict):
     """Recompute the per-pair state-change (ref tuples) from profile + bg."""
@@ -23,29 +34,73 @@ def _changes(ctx: dict):
 
 
 # ── step bodies: fn(ctx, dataset) -> one-line result string (mutates ctx) ──
+def _perceive_line(p, gi_raw, go_raw):
+    """One ``Pair p: In … → Out …`` perceive line (dims · palette · obj [· pt])."""
+    def fmt(grid):
+        s = arc_profile.grid_summary(grid)
+        d = f"{s['dims'][0]}×{s['dims'][1]}"
+        pal = "pal[" + ",".join(str(c) for c in sorted(s["palette"])) + "]"
+        body = f"{s['n_objects']} obj"
+        if s["n_points"] > 0:                 # only show points when present
+            body += f" {s['n_points']} pt"
+        return f"{d} {pal} · {body}"
+    return f"Pair {p}: In {fmt(gi_raw)}  →  Out {fmt(go_raw)}"
+
+
 def step_setup(ctx, dataset):
-    """Phase 1 — input + perceive (collapsed)."""
+    """Phase 1 — input + perceive (collapsed); per-pair perceive summary."""
     raw = arc_grids.get_task(dataset, "train", ctx["task_id"])
     ctx["raw"] = raw
     g0 = arc_profile.grid_summary(raw["train"][0]["input"])
     ctx["perceived"] = {"n_objects": g0["n_objects"], "n_points": g0["n_points"],
                         "dims": list(g0["dims"]), "palette": sorted(g0["palette"])}
-    return (f"{len(raw['train'])} train pairs · {len(raw['test'])} test · "
-            f"demo1.in: {g0['n_objects']} objects · {g0['n_points']} points · "
-            f"dims {g0['dims'][0]}×{g0['dims'][1]} · palette {sorted(g0['palette'])}")
+    lines = [_perceive_line(i + 1, pr["input"], pr["output"])
+             for i, pr in enumerate(raw["train"])]
+    header = f"{len(raw['train'])} train pairs · {len(raw['test'])} test"
+    return _block(header, lines)
+
+
+def _oref(side, p, idx, color):
+    return f"{side}{p}.O{idx}.{arc_grids.color_name(color)}"
+
+
+def _group_ref(side, p, idxs, objs):
+    """Object-group ref; brackets only when the side has >1 object."""
+    refs = [_oref(side, p, i, objs[i]["color"]) for i in idxs]
+    return refs[0] if len(refs) == 1 else "[" + ", ".join(refs) + "]"
 
 
 def step_profile(ctx, dataset):
-    """Phase 2 — profilers only."""
+    """Phase 2 — profilers: per-pair correspondence tiers (same_object →
+    same_shape → same_point). same_shape shown only for non-identical
+    shape_groups (the token also counts identical objects — see arc_search)."""
     prof = arc_profile.build_profile(dataset, "train", ctx["task_id"])
     ctx["profile"] = prof
     toks = set(arc_search.task_tokens(prof))
     ctx["tokens"] = sorted(toks)
-    profs = [k for k in ("same_object", "same_shape", "same_cell_count",
-                         "same_bbox_area", "same_point") if k in toks]
     dim = next((t.split(":", 1)[1] for t in toks if t.startswith("compare_grid_dimension:")), "?")
     pal = next((t.split(":", 1)[1] for t in toks if t.startswith("compare_palette:")), "?")
-    return f"profilers: {' '.join(profs) or '(none)'} · dim={dim} palette={pal}"
+    lines = []
+    for i, pr in enumerate(prof["train"]):
+        p = i + 1
+        m, gi, go = pr["match"], pr["input"], pr["output"]
+        tiers = []
+        if m["equal"]:
+            eqs = [f"{_oref('In', p, e['in'], gi['objects'][e['in']]['color'])} = "
+                   f"{_oref('Out', p, e['out'], go['objects'][e['out']]['color'])}"
+                   for e in m["equal"]]
+            tiers.append(("same_object", ", ".join(eqs)))
+        for g in m["shape_groups"]:           # same_shape = non-identical reuse only
+            left = _group_ref("In", p, g["in"], gi["objects"])
+            right = _group_ref("Out", p, g["out"], go["objects"])
+            tiers.append(("same_shape", f"{left} = {right}"))
+        if m["point_equal"]:
+            pts = [f"In{p}.P{e['in']} = Out{p}.P{e['out']}" for e in m["point_equal"]]
+            tiers.append(("same_point", ", ".join(pts)))
+        if tiers:                             # omit pairs with no positives
+            lines.append(f"Pair {p}:")
+            lines.extend(f"  {lbl:<11}  {body}" for lbl, body in tiers)
+    return _block(f"dims={dim} · palette={pal}", lines)
 
 
 def step_comparators(ctx, dataset):

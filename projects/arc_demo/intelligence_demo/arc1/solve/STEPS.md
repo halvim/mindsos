@@ -7,7 +7,8 @@ with descriptions. Phases are **editable** — change a body in `pipeline.py`.
 
 Each phase prints `uses` (input ctx + the real **function chain**), `→ future`
 (the proposed MindsOS feature + location — see `STEP_TARGETS`), `produces`, and
-`result`.
+`result`. Phases 1–2 render a **multi-line** per-pair `result` (perceive summary;
+correspondence tiers); the rest are single-line.
 
 Scope tags: **general** = works for any task · **general\*** = general but uses a
 v1 assumption · **semi** = runs generally but encodes the move-task model ·
@@ -31,6 +32,12 @@ no longer computes `touching`/`inside`. Those intra-grid **comparator** relation
 are attached by `arc_profile.attach_relations` (inside `build_profile`) and shown
 under phase 3, where they belong. Profilers (phase 2) and comparators (phase 3)
 are presentation slices of the single `build_profile` call.
+
+**`same_shape` token vs display.** Phase 2 shows `same_shape` only for
+non-identical `shape_groups` (real reuse). The `same_shape` *token* additionally
+counts identical objects (`same_object ⟹ same_shape`, a wired skip — sound 0/400),
+so the token (267/400) deliberately diverges from the display. See
+`./arc solve --inferences`.
 
 **Honest notes.** The perceive chain is *discovered* through the capacity layer
 (`find_pipeline`); every phase *executes* inline (`arc_grids`/`arc_solver`),
