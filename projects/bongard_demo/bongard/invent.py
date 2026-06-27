@@ -287,8 +287,14 @@ def register_relation_reactivation(cl) -> None:
 def register_relation_datastates(cl, session) -> None:
     """Register the invented-relation output DataState (must run at boot, like
     m2's ``register_shapes`` registers ``DEFINITION_MATCH``, so a reactivated
-    relation's declared output is known on a fresh CapacityLayer)."""
-    cl.register_datastate(RELATION_VERDICT, session=session, allow_new_realm=True)
+    relation's declared output is known on a fresh CapacityLayer). Idempotent
+    so the boot path and the mint path can both call it safely."""
+    from mindsos_capacity.exceptions import CapacityRegistrationError
+    try:
+        cl.register_datastate(RELATION_VERDICT, session=session, allow_new_realm=True)
+    except CapacityRegistrationError as e:
+        if "already" not in str(e).lower():
+            raise
 
 
 def register_invented_relation(solver, result: InventResult) -> str:
