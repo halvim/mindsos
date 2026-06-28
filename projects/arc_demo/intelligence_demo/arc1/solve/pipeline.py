@@ -104,9 +104,11 @@ def step_profile(ctx, dataset):
 
 
 def step_subdivision(ctx, dataset):
-    """Phase 3 — subdivision: an input object B partitioned by ≥2 disjoint
-    output insets (B1, B2, …) whose cells cover exactly B (arc_grids.subdivisions,
-    points included). Holds-∀-demo = the task is a subdivision. Display/hypothesis."""
+    """Phase 3 — subdivision: a disjoint cover holds in EITHER direction
+    (bg-AGNOSTIC, points included): `split` = an INPUT object = ≥2 OUTPUT insets;
+    `assemble` = an OUTPUT object = ≥2 INPUT insets (arc_grids.subdivisions both
+    ways). Holds-∀-demo (either direction per pair) = the task is a subdivision.
+    Display/hypothesis."""
     prof = ctx["profile"]
     def ref(side, p, kind, j, g):
         if kind == "O":
@@ -116,14 +118,18 @@ def step_subdivision(ctx, dataset):
     for i, pr in enumerate(prof["train"]):
         p = i + 1
         gi, go = pr["input"], pr["output"]
-        subs = arc_grids.subdivisions(gi, go)
-        holds.append(bool(subs))
-        for s in subs:
-            B = ref("In", p, "O", s["in"], gi)
-            parts = ", ".join(ref("Out", p, k, j, go) for (k, j) in s["parts"])
-            kids = ", ".join(f"{B}.sub{k + 1}" for k in range(len(s["parts"])))
-            per_pair.append(f"Pair {p}: {B} → {{{parts}}}")
-            per_pair.append(f"         {B} → {kids}")
+        hit = False
+        for direction, whole_g, part_g, w_side, p_side in (
+                ("split", gi, go, "In", "Out"),       # whole=input, parts=output
+                ("assemble", go, gi, "Out", "In")):   # whole=output, parts=input
+            for s in arc_grids.subdivisions(whole_g, part_g):
+                hit = True
+                B = ref(w_side, p, "O", s["in"], whole_g)
+                parts = ", ".join(ref(p_side, p, k, j, part_g) for (k, j) in s["parts"])
+                kids = ", ".join(f"{B}.sub{k + 1}" for k in range(len(s["parts"])))
+                per_pair.append(f"Pair {p} [{direction}]: {B} → {{{parts}}}")
+                per_pair.append(f"         {B} → {kids}")
+        holds.append(hit)
     allhold = all(holds) and len(holds) > 0
     ctx["subdivision"] = {"holds_all": allhold, "n": len(holds)}
     head = f"subdivision — {'yes' if allhold else 'no'} (∀demo {sum(holds)}/{len(holds)})"

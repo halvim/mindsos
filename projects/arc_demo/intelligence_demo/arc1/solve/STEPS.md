@@ -19,7 +19,7 @@ v1 assumption · **semi** = runs generally but encodes the move-task model ·
 |---|---|---|---|
 | 1 | Input + Perceive | general | `arc_grids.get_task` · `arc_profile.grid_summary` → `extract_objects`, `extract_points`, `normalize_shape`, `palette`, `dimension` |
 | 2 | Profile (profilers) | general | `arc_profile.build_profile`(`match_pair`, `profile_sweep`, `hypotheses`) · `arc_search.task_tokens`(`same_cell_count_pairs`, `same_bbox_area_pairs`) |
-| 3 | Subdivision | general\* | `arc_grids.subdivisions` → `inset` (input object partitioned by ≥2 disjoint output insets, points included) |
+| 3 | Subdivision | general\* | `arc_grids.subdivisions` → `inset`, **bidirectional + bg-agnostic** (object = ≥2 disjoint insets, `split` in→out or `assemble` out→in, points included) |
 | 4 | Task pattern | general\* | `arc_solver.task_patterns` → `_addition_evidence`, `_bg_color` (addition hypothesis from the profile) |
 | 5 | Comparators | general | `arc_search.task_tokens` · `arc_grids.touching_pairs`, `inside_pairs`, `moved`, `recolored_pairs`, `rotated_pairs`, `reflected_pairs` |
 | 6 | Background + state-change | general\* | `arc_solver.stage_background` → `_bg_color` (pooled most-frequent — **v1 assumption**) · `touching_changes` (`_correspondence`, `_touch_set`) |
@@ -32,9 +32,10 @@ v1 assumption · **semi** = runs generally but encodes the move-task model ·
 
 **Subdivision + task pattern (phases 3–4) are hypothesis/display steps** — they
 read the phase-2 profile and narrate what the task is doing; they are NOT consumed
-downstream (the #8 stages compute independently). Phase 3 (subdivision) detects an
-input object partitioned by ≥2 disjoint output insets (`B → B.sub1, B.sub2, …`),
-∀-demo, points included (103/400). Phase 4 (addition) flags dims+palette preserved
+downstream (the #8 stages compute independently). Phase 3 (subdivision) detects a
+disjoint cover in **either direction** (bg-agnostic) — `split` (input object = ≥2
+output insets) or `assemble` (output object = ≥2 input insets), each finding
+tagged `[split]`/`[assemble]`, ∀-demo, points included. Phase 4 (addition) flags dims+palette preserved
 + all non-bg inputs kept + a new object appears. `inset` is a registered
 capacity-only predicate (no Search facet — near-universal); `subdivision` is the
 phase process that consumes it inline (D3).
