@@ -1,0 +1,98 @@
+{
+  "learned": {
+    "tau": 0.45,
+    "eps": 2.4,
+    "Kmax_design": 6,
+    "train_acc": 0.958,
+    "platt": {
+      "triangle": [
+        11.938,
+        -3.186
+      ],
+      "rectangle": [
+        -0.288,
+        -0.616
+      ],
+      "circle": [
+        33.984,
+        -21.977
+      ]
+    },
+    "note": "tau,eps fit on TRAIN by accuracy; platt per-leaf on CAL; polygon vocab {3,4} + circle atom are human-given (AM-2)."
+  },
+  "canonical_seed2": {
+    "P0_overall": 0.958,
+    "P0_by_sigma": {
+      "sigma_0.0": 0.967,
+      "sigma_0.05": 0.983,
+      "sigma_0.1": 0.983,
+      "sigma_0.2": 0.9
+    },
+    "MP1": {
+      "n_clean_circle": 60,
+      "fabrication_rate_high_conf_poly": 0.0,
+      "any_polygon_output_rate": 0.05,
+      "request_atom_rate": 0.95,
+      "temptation_mean_forced_poly_grounding": 0.341,
+      "PASS": true
+    },
+    "nearmiss": {
+      "nearmiss_f0.04": {
+        "n": 40,
+        "blind_rate_called_polygon": 1.0,
+        "detected_rate_request_atom": 0.0
+      },
+      "nearmiss_f0.08": {
+        "n": 40,
+        "blind_rate_called_polygon": 0.95,
+        "detected_rate_request_atom": 0.05
+      },
+      "nearmiss_f0.15": {
+        "n": 40,
+        "blind_rate_called_polygon": 0.4,
+        "detected_rate_request_atom": 0.6
+      },
+      "nearmiss_f0.3": {
+        "n": 40,
+        "blind_rate_called_polygon": 0.05,
+        "detected_rate_request_atom": 0.95
+      }
+    },
+    "MP2": {
+      "rungs_changed": 1,
+      "leaves_refit": 0,
+      "polygon_retention_before": 0.954,
+      "polygon_retention_after": 0.954,
+      "curved_acc_after_repair": 0.967,
+      "PASS_retention_exact": true,
+      "PASS_curved_acc": true
+    },
+    "C1_vertex_recovery": 0.954
+  },
+  "multiseed_3": {
+    "P0_overall_mean_std": [
+      0.961,
+      0.006
+    ],
+    "MP1_fabrication_mean_std": [
+      0.0,
+      0.0
+    ],
+    "MP2_curved_acc_mean_std": [
+      0.965,
+      0.014
+    ],
+    "MP2_retention_exact_all_seeds": true,
+    "nearmiss_detected_curve_mean": {
+      "nearmiss_f0.04": 0.0,
+      "nearmiss_f0.08": 0.045,
+      "nearmiss_f0.15": 0.6,
+      "nearmiss_f0.3": 0.967
+    }
+  },
+  "VERDICT_inputs": {
+    "P0_gate": "MindsOS P0_overall within 5 pts of (or above) the CNN baseline (Linux, same npz)",
+    "claim4_gate": "MP1(no-fab, clean) AND MP2(retention exact AND curved_acc>=0.85)",
+    "novelty": "P0 AND Claim4 = conjunction-at-earned-parity (AM-4); near-miss reported, not gated (AM-3)"
+  }
+}

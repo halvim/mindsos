@@ -124,7 +124,91 @@ re-derives from thresholds.
   as the supporting mechanism.
 - **Partial** ⇒ record exactly which property holds vs collapses to the known tradeoff.
 
+## 9. Results
+
+### Step 1 — MindsOS leaf-chain (numpy, in-sandbox) — **TRUSTWORTHY (audited 2026-06-28)**
+Scripts: `leaf_novelty_generator.py` → `leaf_novelty_data.npz`; `leaf_novelty_mindsos.py` →
+`leaf_novelty_mindsos_results.json`. Learned `tau=0.45, eps=2.4` (fit on TRAIN by accuracy),
+per-leaf Platt on CAL; polygon vocab {3-gon,4-gon}+circle atom human-given (AM-2). 3 seeds.
+- **P0 (MindsOS side):** in-vocab accuracy **0.961 ± 0.006** (σ0 .97 / σ.05 .98 / σ.1 .98 / σ.2 .90).
+  Earned by **learned** leaves — audit confirmed **LEARNED-FAIR**, not baked (no generator params
+  reach the chain; verified by grep + trace). P0 *gate* is comparative → needs the Linux CNN.
+- **Claim 4 MP-1 (no fabrication, clean circles):** high-conf polygon-fabrication **0.0 ± 0.0**
+  (0/60). Non-trivial: forced ≤4-gon "temptation" grounding mean **0.341**. Audit: the operative
+  mechanism is the {3,4} vocabulary/K-routing (circles give K≥5); the IoU grounding is a weak
+  secondary (rect ≈ circle ≈ 0.34) but independently also 0/60 ≥ 0.5. Both hold.
+- **Claim 4 MP-2 (repair):** polygon retention **exactly 1.0** (0/480 verdicts flip — architectural:
+  the arc leaf is a fallback that never overrides a polygon), curved accuracy **0.965 ± 0.014**,
+  rungs_changed 1, leaves_refit 0. Repair uses 100 labeled CAL circles (counted).
+- **Near-miss (REPORTED, AM-3):** request-atom (detected) curve **0.0 → 0.045 → 0.6 → 0.967** as
+  curvature f∈{.04,.08,.15,.30}; blind-rate 1.0→0.05. The predicted P17 continuous blind spot,
+  fully disclosed — no novelty claimed on near-miss.
+- **C1 inspectability (reported):** vertex-count recovery 0.954. **C2 localization (reported):**
+  grounding drops on rung corruption. **C3 reuse:** same mechanism as MP-2.
+
+### Step 2 — strong CNN baseline (torch, user's Linux) — **PENDING (authored, unrun)**
+`leaf_novelty_baseline.py` (deep-ensemble OOD head + 3 repair modes incl. the audit-mandated
+row-frozen warm-started head, AM-5). Loads the same `.npz`. Run on Linux → fills the P0 parity gate
++ the decisive repair-cost contrast. **Pre-committed reading stands (§7 + AM-4 + AM-5).**
+
+### Audit (independent ML-advocate, in-sandbox, 2026-06-28)
+MindsOS half **TRUSTWORTHY-PASS** (P0-side, MP-1, MP-2, learned-not-baked, clean anti-tuning
+process). Two risks to the conjunction-at-parity (AM-4) flagged for the Linux run: (1) P0 could
+fail *either* direction (CNN ≫ MindsOS → NULL; or within 5 → pass); (2) the strengthened row-frozen
+head (AM-5) might reach exactly 1.0 retention, narrowing novelty to gap-naming. Both are decided on
+Linux, honestly, per the frozen readings.
+
 ## 8. Amendment log
+
+**AM-5 (2026-06-28, pre-Linux-run — baseline strengthened per adversarial audit).** The in-sandbox
+ML-advocate audit found the original baseline gave the opaque model a *weak* repair (its
+frozen-backbone head was not warm-started and re-learned polygon rows from scratch), risking a
+**strawman in MindsOS's favor**. Per the anti-strawman rule (§4.3), the baseline gains a third,
+**stronger** repair variant `repair_R_row_frozen_warmstart_BEST`: frozen backbone + the trained
+polygon head rows copied in and FROZEN + a single new trainable circle logit. This is the ML
+advocate's best shot at matching MindsOS's exact-1.0 retention. **The decisive Claim-4 repair
+comparison is now this variant vs MindsOS retention=1.0.** This strengthens the baseline (makes the
+contest harder for MindsOS); no MindsOS threshold changed. Pre-committed reading: if the row-frozen
+head still cannot reach exactly 1.0 polygon retention, the repair-cost discriminator stands; if it
+*can*, the v1 novelty narrows to gap-naming (named atom vs OOD scalar), which v1 leaves undefended
+(PB-K) — report that honestly, do not spin. (Recorded before the Linux baseline run.)
+
+**AM-2 (2026-06-28, pre-build — operational "learned, not baked").** §0 made P0's NULL hinge
+on "learned leaves, not a baked generator" without defining either. Frozen definition: a leaf is
+**learned** iff (i) every decision threshold (foreground-intensity cut, collinearity tolerance,
+polygon-closure tolerance, vertex-count split) is **fit from a labeled TRAIN split disjoint from
+test**, and (ii) each leaf's `grounding_conf`/`decision_conf` is **per-leaf Platt-calibrated on a
+held-out CAL split** (the P14 contract). The geometric *proposal* (least-squares segment/polygon/
+circle fit) is a fixed inference algorithm whose **atom vocabulary is human-given** (allowed by
+P2/P9); what is learned is the calibration + tolerances. **The generator's per-instance parameters
+(which shapes, vertices, radii) are NEVER passed to the chain** — only the labeled rendered images
++ class/level labels. The ML-advocate auditor **adjudicates whether this is "baked"**; if the
+auditor rules the geometric core is effectively the generator inverse, the result is **NULL**
+(reported, not spun). No threshold relaxed; this fixes a missing definition.
+
+**AM-3 (2026-06-28, pre-build — MP-1 scope vs the chat's own doctrine).** §3 MP-1 demanded "no
+high-conf polygon fit on curved inputs, *including near-miss*." This **contradicts** the audited
+cross-family/P15/P17 finding that the **near-vocabulary blind spot is continuous-substrate-specific
+and irreducible at fixed vocab+resolution** — on sub-tolerance-curved shapes MindsOS is *expected*
+to fabricate, and the numpy chain has no P17 multi-resolution descent. Frozen correction: **MP-1
+(no-fabrication, ≤0.05) is gated on CLEAN circles only.** Near-miss (slightly-curved superellipse)
+inputs remain **mandatory in the dataset** (PB-5 honored) but are **REPORTED, not gated** — they
+are the honest-limit boundary, and the chain being blind there is a *predicted* result per P17, not
+a failure. v1 makes **no novelty claim on near-miss**. No threshold relaxed (0.05 unchanged); scope
+of the existing bar narrowed to the regime where it is a fair fight.
+
+**AM-4 (2026-06-28, pre-build — novelty verdict = conjunction-at-parity).** v2's own demotions
+(PB-2: Claims 1–3 overlap published neuro-symbolic work; PB-4: gap-naming demoted) risk hollowing
+Claim 4 down to "local one-leaf repair = modularity," which the spec concedes is known. Frozen
+reading: **the contested novelty is the CONJUNCTION at earned parity** — (no-fabrication on clean
+circles) ∧ (localized one-leaf repair, zero re-fit, retention=1.0) ∧ (repair target is a *named,
+inspectable* atom) — **achieved without sacrificing in-vocab accuracy (P0)**. No single MP is the
+claim; opaque ML cannot match the conjunction *at parity* even if each piece individually overlaps
+prior work. Claims 1–3 carry internal sanity thresholds but are **reported, NOT gating**; only
+**P0 ∧ Claim 4** decide the verdict (§0/§7). Caveat recorded (PB-K): the recon-AE that PB-4 cited
+to demote gap-naming is **deferred from v1**, so the "AE residual ≈ our gap-naming" equivalence is
+*asserted, not demonstrated* here.
+
 **AM-1 (2026-06-28, v1→v2 redesign, pre-build).** Skeptical pass-to-saturation (4 passes, 1
 reversal at P2) tightened v1: (PB-1) leaves must be **learned from data**, no baked generator, or
 P0 is meaningless; (PB-2/P2 reversal) **Claim 4 is the sole v1 novelty contest** — Claims 1–3
