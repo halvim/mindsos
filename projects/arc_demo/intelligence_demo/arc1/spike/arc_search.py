@@ -202,6 +202,28 @@ def comparator_parents(cap: str) -> List[str]:
     return out
 
 
+# ── operators (./evaluate show-only; NOT comparators, NOT Search facets) ──
+# ``inset`` and ``union`` are registered capacities that carry NO Search token
+# (inset is near-universal; union is an OPERATOR, not a bool comparator). They
+# appear in ./evaluate as occurrence + demands only — no token cross-check, so
+# they never enter the gate's 6-comparator discrepancy/enabled invariants.
+# Operator inference: union ⟹ inset (C=union(A,B) ⟹ inset(A,C) ∧ inset(B,C)) —
+# when a union occurs, inset is known-true and its check is skipped.
+OPERATOR_NAMES = ["inset", "union"]
+OPERATOR_DEMANDS: Dict[str, List[str]] = {"inset": [], "union": ["inset"]}
+OPERATOR_INFERENCES: List[tuple] = [("union", ["inset"])]  # parent ⟹ children
+
+
+def operator_names() -> List[str]:
+    """The non-comparator ./evaluate targets (operators/near-universal
+    predicates): inset, union. Show-only (occurrence + demands)."""
+    return list(OPERATOR_NAMES)
+
+
+def operator_demands(op: str) -> List[str]:
+    return list(OPERATOR_DEMANDS.get(op, []))
+
+
 def inferences() -> Dict[str, List[tuple]]:
     """All declared inference edges, grouped by how each is used. Single source:
     the FACET table (``requires`` / ``implies`` / ``skip``). Each edge is a
@@ -234,4 +256,6 @@ def inferences() -> Dict[str, List[tuple]]:
                 if im not in reqs and im not in skip and im not in cap_skip]
         if disp:
             display.append((name, disp))
+    # operator-level inferences (union ⟹ inset) — wired skips, not FACET-derived.
+    wired.extend(OPERATOR_INFERENCES)
     return {"wired": wired, "requires": requires, "display": display}

@@ -39,6 +39,16 @@ input object partitioned by ≥2 disjoint output insets (`B → B.sub1, B.sub2, 
 capacity-only predicate (no Search facet — near-universal); `subdivision` is the
 phase process that consumes it inline (D3).
 
+**Operators in `./evaluate` (2026-06-27).** `inset` and `union` are now
+`./evaluate` targets on a **show-only OPERATOR track** (occurrence + demands; no
+Search-token cross-check). `union` is the first object **operator**
+(`CATEGORY_OPERATOR`, output `DS_REGION`): ≥2 parts disjoint-cover a whole, both
+directions (`split`=whole-in, `assemble`=whole-out), **bg-excluded**, built on
+`inset`. Inference `union ⟹ inset` is a wired skip. Note: phase-3 `subdivision`
+stays **bg-agnostic** and is the in→out *split* test only — the new *assemble*
+direction is union-only (e.g. #46 `234bbc79`). See `./arc solve --inferences`
+and PIPELINE_DECISIONS §4 (2026-06-27 union entry).
+
 **Profiler / comparator split.** Phase 1 is **pure perception** — `grid_summary`
 no longer computes `touching`/`inside`. Those intra-grid **comparator** relations
 are attached by `arc_profile.attach_relations` (inside `build_profile`) and shown

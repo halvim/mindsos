@@ -512,15 +512,73 @@ def subdivisions(gin: dict, gout: dict) -> List[dict]:
         parts = [(k, j, o) for (k, j, o) in parts_pool if inset(o, B)]
         if len(parts) < 2:
             continue
-        union: set = set()
+        cov: set = set()
         tot = 0
         for (_, _, o) in parts:
             cs = {(c[0], c[1]) for c in o["cells"]}
-            union |= cs
+            cov |= cs
             tot += len(cs)
-        if union == Bc and tot == len(Bc):          # disjoint cover == B
+        if cov == Bc and tot == len(Bc):            # disjoint cover == B
             res.append({"in": i, "parts": [(k, j) for (k, j, _) in parts]})
     return res
+
+
+def union(a: dict, b: dict) -> dict:
+    """Object OPERATOR (combination — dual of decomposition): combine two
+    cell-sets into one **Region** (positional cell-union). The result is a
+    Region (arbitrary cell-set), NOT necessarily a valid Object (it may be
+    multi-colour and/or disconnected) — that is why its output DataState is
+    ``DS_REGION``, not ``DS_OBJECT``.
+
+    Algebraic identity (the registered inference): ``C = union(A, B)`` ⟹
+    ``inset(A, C) ∧ inset(B, C)`` — both operands are cell-subsets of the
+    union. Operators are L4-called when needed; this is the compute body."""
+    cells = {(c[0], c[1]) for c in a["cells"]} | {(c[0], c[1]) for c in b["cells"]}
+    return {"cells": sorted([r, c] for (r, c) in cells), "size": len(cells)}
+
+
+def _nonbg_items(gs: dict, bg: int) -> List[tuple]:
+    """Non-background objects + points of a grid summary as
+    ``("O"|"P", idx, comp)`` triples — the union part/whole pool."""
+    objs = [("O", j, o) for j, o in enumerate(gs["objects"]) if o["color"] != bg]
+    pts = [("P", j, p) for j, p in enumerate(gs.get("points", [])) if p["color"] != bg]
+    return objs + pts
+
+
+def _union_cover(whole_gs: dict, part_gs: dict, bg: int) -> List[dict]:
+    """One direction of the union check: each non-bg WHOLE object (size ≥ 2) of
+    ``whole_gs`` that is exactly the **disjoint union of ≥2 non-bg parts**
+    (objects + points) of ``part_gs`` at identical absolute cells (positional
+    ``inset``). Records ``{"whole": ("O", idx, color), "parts": [("O"|"P", j)]}``.
+    Built on ``inset`` (single source of the cell-subset test). Background is
+    **excluded** (locked: union disregards the background colour)."""
+    pool = _nonbg_items(part_gs, bg)
+    res: List[dict] = []
+    for (wk, wj, W) in _nonbg_items(whole_gs, bg):
+        if wk != "O" or W["size"] < 2:
+            continue
+        Wc = {(c[0], c[1]) for c in W["cells"]}
+        chosen, cov, tot = [], set(), 0
+        for (pk, pj, P) in pool:
+            if inset(P, W):                       # P's cells ⊆ W's cells
+                chosen.append((pk, pj))
+                cov |= {(c[0], c[1]) for c in P["cells"]}
+                tot += P["size"]
+        if len(chosen) >= 2 and cov == Wc and tot == len(Wc):  # disjoint cover == W
+            res.append({"whole": (wk, wj, W["color"]), "parts": chosen})
+    return res
+
+
+def union_in_pair(gin: dict, gout: dict, bg: int) -> dict:
+    """Bidirectional bg-excluded union over one in→out pair (grid summaries):
+    ``split``    = an INPUT object is the disjoint union of ≥2 OUTPUT parts
+                   (whole=in, parts=out);
+    ``assemble`` = an OUTPUT object is the disjoint union of ≥2 INPUT parts
+                   (whole=out, parts=in).
+    union *occurs* on the pair iff either side is non-empty. ``inset`` is the
+    single primitive both directions call."""
+    return {"split": _union_cover(gin, gout, bg),       # whole=in, parts=out
+            "assemble": _union_cover(gout, gin, bg)}    # whole=out, parts=in
 
 
 def recolored_pairs(gin: dict, gout: dict) -> List[dict]:

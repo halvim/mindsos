@@ -311,6 +311,56 @@ def task_patterns(profile: dict) -> List[dict]:
     return [{"name": "addition", "matched": matched, "evidence": ev}]
 
 
+# ── union operator — task-level occurrence + display (bg-aware) ──────────
+def _union_per_pair(profile: dict):
+    """(bg, [union_in_pair result per demo]) — bg-excluded, both directions."""
+    bg = _bg_color(profile)
+    return bg, [arc_grids.union_in_pair(pr["input"], pr["output"], bg)
+                for pr in profile["train"]]
+
+
+def union_occurs(profile: dict) -> bool:
+    """∃ demo with a bg-excluded union in either direction (literal "are there
+    any unions in the task"). union is built on inset → C=union(A,B) ⟹ inset."""
+    _bg, per = _union_per_pair(profile)
+    return any(u["split"] or u["assemble"] for u in per)
+
+
+def inset_occurs(profile: dict) -> bool:
+    """∃ demo with a cross-grid inset pair (an in-object's cells ⊆ an out-object
+    or vice-versa; positional, reflexive — bg-agnostic, inset's native form)."""
+    for pr in profile["train"]:
+        ins, outs = pr["input"]["objects"], pr["output"]["objects"]
+        for a in ins:
+            for b in outs:
+                if arc_grids.inset(a, b) or arc_grids.inset(b, a):
+                    return True
+    return False
+
+
+def union_detail(profile: dict) -> dict:
+    """Per-pair union findings for ./evaluate display, in the decided
+    subdivision format (whole → {parts}; whole → whole.partN). ``.partN``
+    (not ``.subN``) because for union the parts COMPOSE the whole."""
+    bg, per = _union_per_pair(profile)
+    rows, holds = [], []
+    for i, (pr, u) in enumerate(zip(profile["train"], per)):
+        p = i + 1
+        holds.append(bool(u["split"] or u["assemble"]))
+        for direction, side_w, side_p in (("split", "In", "Out"),
+                                          ("assemble", "Out", "In")):
+            for f in u[direction]:
+                _wk, wj, col = f["whole"]
+                B = f"{side_w}{p}.O{wj}.{arc_grids.color_name(col)}"
+                parts = ", ".join(f"{side_p}{p}.{pk}{pj}" for (pk, pj) in f["parts"])
+                kids = ", ".join(f"{B}.part{k + 1}" for k in range(len(f["parts"])))
+                rows.append(f"Pair {p} [{direction}]: {B} → {{{parts}}}")
+                rows.append(f"           {B} → {kids}")
+    return {"bg": bg, "rows": rows, "occurs": any(holds),
+            "holds_all": all(holds) and len(holds) > 0,
+            "n": len(holds), "n_hold": sum(holds)}
+
+
 # ── solver stages (decomposed so arc1/solve can run them step-by-step) ──
 def stage_background(profile: dict) -> dict:
     """Step 4 — background + state-change: bg (pooled most-frequent, v1) + the

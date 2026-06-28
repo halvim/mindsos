@@ -174,6 +174,19 @@ def _inference_soundness_check(tasks) -> None:
           f"(same_shape token now {n}/{len(tasks)}).")
 
 
+def _operator_inference_check(tasks) -> None:
+    """The operator inference ``union ⟹ inset`` must be 0/400: every task where a
+    union occurs must also have inset occur (C=union(A,B) ⟹ inset(A,C)∧inset(B,C),
+    so the operands are cell-subsets of the union — sound by construction). Makes
+    the union→inset skip's soundness executable."""
+    bad = [t["task_id"] for t in tasks
+           if arc_solver.union_occurs(t) and not arc_solver.inset_occurs(t)]
+    assert not bad, f"union ⟹ inset unsound (skip wired): {bad[:8]}"
+    n_u = sum(1 for t in tasks if arc_solver.union_occurs(t))
+    print(f"  [ok] inference: union ⟹ inset sound 0/{len(tasks)} "
+          f"(union occurs {n_u}/{len(tasks)}).")
+
+
 def _solve_pipeline_check(dataset, solver) -> None:
     """The arc1/solve 12-step pipeline must (a) solve #8 and (b) agree with the
     monolithic build_solver — the step decomposition is faithful."""
@@ -225,6 +238,7 @@ def main(argv: list) -> int:
     _gate_invariant_check(tasks)        # enabled == Search token (all comparators)
     _evaluate_discrepancy_check(tasks)  # ./evaluate agrees with Search (0 discrepancies)
     _inference_soundness_check(tasks)   # same_object ⟹ same_shape wired skip 0/400
+    _operator_inference_check(tasks)    # union ⟹ inset operator skip 0/400
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None

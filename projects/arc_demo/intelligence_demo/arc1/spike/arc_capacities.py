@@ -39,10 +39,15 @@ from . import arc_grids
 #   COMPARATOR— the capacities: moved, recolored, rotated, reflected.
 #   PREDICATE — the intra-grid capacities: touching, inside.
 # (moved/touching/inside/recolored/rotated/reflected = the 6 ./evaluate targets.)
+#   OPERATOR  — object constructors (the dual of DECOMPOSITION): union. An
+#               operator takes objects and PRODUCES a new Region; it is
+#               L4-called when needed (no standing demo consumer — provenance
+#               like every ARC cap). NOT a bool; not a ./evaluate comparator.
 CATEGORY_PROFILER = "profiler"
 CATEGORY_COMPARATOR = "comparator"
 CATEGORY_PREDICATE = "predicate"
 CATEGORY_REASONING = "reasoning"
+CATEGORY_OPERATOR = "operator"
 
 # ── DataState IRIs (arc realm) ──────────────────────────────────────────
 DS_RAW_TASK = datastate_iri("arc.raw_task")
@@ -65,6 +70,7 @@ DS_MOVE_TRANSFORM = datastate_iri("arc.move_transform")
 DS_TOUCHING = datastate_iri("arc.touching")
 DS_INSIDE = datastate_iri("arc.inside")
 DS_INSET = datastate_iri("arc.inset")
+DS_REGION = datastate_iri("arc.region")
 DS_BACKGROUND_CANDIDATE = datastate_iri("arc.background_candidate")
 DS_BACKGROUND = datastate_iri("arc.background")
 DS_CORRESPONDENCE = datastate_iri("arc.correspondence")
@@ -106,7 +112,8 @@ def arc_datastates() -> List[DataState]:
         ds("arc.move_transform", CATEGORY_COMPARATOR, "moved: translation Δ between same-shape objects."),
         ds("arc.touching", CATEGORY_PREDICATE, "touching verdict: different-colour components share an 8-neighbour (intra-grid)."),
         ds("arc.inside", CATEGORY_PREDICATE, "inside verdict: a enclosed by a single-colour object b; intra-grid, background-excluded."),
-        ds("arc.inset", CATEGORY_PREDICATE, "inset verdict: a's cell-set ⊆ b's cell-set (positional, reflexive); inter-grid; consumed by the subdivision process (phase 3)."),
+        ds("arc.inset", CATEGORY_PREDICATE, "inset verdict: a's cell-set ⊆ b's cell-set (positional, reflexive); inter-grid; consumed by the subdivision process (phase 3) + the union operator."),
+        ds("arc.region", CATEGORY_OPERATOR, "Region: an arbitrary cell-set (NOT necessarily monochrome/connected, so NOT an Object). Output of the union operator (cell-union of ≥2 components)."),
         ds("arc.background_candidate", CATEGORY_DERIVATION, "Per-grid background proposal from one detector (frequency at v1)."),
         ds("arc.background", CATEGORY_REASONING, "Reconciled background (fold over candidates; degenerate pass-through at v1)."),
         ds("arc.correspondence", CATEGORY_REASONING, "input ref -> output ref map; unambiguous subset (ambiguous left uncorresponded)."),
@@ -289,6 +296,28 @@ def _comparator_capacities() -> List[Capacity]:
     ]
 
 
+def _operator_capacities() -> List[Capacity]:
+    """OPERATORS — object constructors (combination family; dual of
+    DECOMPOSITION). ``union`` combines objects into a Region. Registered for its
+    I/O contract; L4-called when needed (no standing demo consumer — provenance,
+    stub body, like every ARC cap per D3). Output is DS_REGION, not DS_OBJECT
+    (the union of two objects need not be a valid Object). Arity fiction: a
+    single declared DS_OBJECT input (operand-position is a core concern — §5
+    Part 5), as with inset and the comparators."""
+    return [
+        Capacity(
+            name="union", category=CATEGORY_OPERATOR,
+            inputs=(DS_OBJECT,), outputs=(DS_REGION,),
+            implementation=lambda **kw: {DS_REGION: None},
+            description="(a Object, b Object) -> Region (positional cell-union; "
+                        "may be multi-colour/disconnected → Region not Object). "
+                        "C = union(a,b) ⟹ inset(a,C) ∧ inset(b,C). Bg-excluded "
+                        "occurrence detector = arc_grids.union_in_pair (D3 inline); "
+                        "shown in ./evaluate as an operator (occurrence + demands).",
+        ),
+    ]
+
+
 def _intra_grid_capacities() -> List[Capacity]:
     # touching = intra-grid positional predicate. Computed by the per-grid fold
     # (arc_profile.grid_summary -> touching_pairs), NOT discovered by
@@ -416,6 +445,7 @@ def ordered_catalog() -> List[dict]:
                         ("profile", _profiler_capacities()),
                         ("comparator", _comparator_capacities()),
                         ("intra-grid", _intra_grid_capacities()),
+                        ("operator", _operator_capacities()),
                         ("transform", _transform_capacities()),
                         ("reason", _reason_capacities())):
         for c in caps:
@@ -440,6 +470,8 @@ def install_arc(capacity_layer: CapacityLayer) -> None:
     for cap in _comparator_capacities():
         capacity_layer.register_capacity(cap)
     for cap in _intra_grid_capacities():
+        capacity_layer.register_capacity(cap)
+    for cap in _operator_capacities():
         capacity_layer.register_capacity(cap)
     for cap in _transform_capacities():
         capacity_layer.register_capacity(cap)

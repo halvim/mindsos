@@ -359,6 +359,54 @@ filed as motivating consumer; the demo does NOT block on it.
   conformance/evaluate/#8-solve all pass; run_spike label `10-step`→`12-step`). **OPEN:** phases 5–12
   result wording unrevised; commit (Mac) + Linux-gate pending; STEPS.md updated to 12 phases.
 
+- **2026-06-27 — `union` operator + `./evaluate` operator track + `union ⟹ inset`
+  (BUILT + Cowork-gated 8 `[ok]`/400; NOT yet committed).** Adds the first
+  **object operator** to the demo. Decisions locked this chat:
+  - **`union` = an OPERATOR** (new `CATEGORY_OPERATOR`, the dual of
+    `CATEGORY_DECOMPOSITION`), output **`DS_REGION`** (new DataState — an
+    arbitrary cell-set; NOT an Object, since the union of two objects may be
+    multi-colour/disconnected). Registered in `arc_capacities._operator_capacities`
+    (`inputs=(DS_OBJECT,)` **arity fiction** as with `inset`/comparators —
+    operand-position is the deferred §5 Part-5 core concern); stub body,
+    L4-called-when-needed (provenance only, D3, like every ARC cap). **28→29 caps.**
+  - **`union` compute = `arc_grids.union(a,b)`** (positional cell-union → Region).
+    **Occurrence detector = `arc_grids.union_in_pair(in,out,bg)`**, built on
+    `inset` (single source): a non-bg whole object = the disjoint union of ≥2
+    non-bg parts (objects+points) at identical cells, checked **both directions**
+    — `split` (whole=in, parts=out) and `assemble` (whole=out, parts=in).
+    **Background-EXCLUDED** (locked: "disregard the background colour for this
+    test"). Task-level helpers in `arc_solver` (`union_occurs`/`inset_occurs`/
+    `union_detail`, bg via `_bg_color`).
+  - **`inset` + `union` added to `./evaluate` as a show-only OPERATOR track**
+    (`arc_search.operator_names()`): reports whether the operator **occurs** in
+    the task (∃ demo, either direction) + its **demands** — **NO Search-token
+    cross-check, NO discrepancy** (operators carry no token). The gate's
+    6-comparator invariants (`enabled==token`, `0 discrepancies`) stay scoped to
+    `comparator_names()` and are untouched. `union <task>` prints the partition
+    detail in the decided subdivision format (`whole → {parts}`; `whole →
+    whole.part1…`), `.partN` not `.subN` (for union the parts **compose** the
+    whole). Reverses the 2026-06-27 "inset = not in `./evaluate`" line.
+  - **`union ⟹ inset` inference** (`C=union(A,B) ⟹ inset(A,C)∧inset(B,C)` — sound
+    by construction): a **wired skip** (`arc_search.OPERATOR_INFERENCES`) — when
+    union occurs, `inset` is known-true and its check is skipped. New gate check
+    `run_spike._operator_inference_check` (0/400) → **8 `[ok]`** lines + write
+    (was 7); also surfaced in `./arc solve --inferences`.
+  - **Corpus (bg-excluded):** union *occurs* (∃ demo, either dir) **39/400**;
+    ∀demo split **19** / assemble **3** / either **22**. **split ⊆ subdivision**
+    (subdivision = the in→out split test) — the genuinely new detection is the
+    **assemble** direction (3 ∀demo: #11 `09629e4f`, #46 `234bbc79`, #192
+    `7e0986d6`; subdivision reads `no` on all three). Verify specimen = **#46**.
+  - **PB2 (recorded, not actioned):** subdivision stays **bg-AGNOSTIC** (103/400,
+    its own tests, unchanged); union is **bg-EXCLUDED** (criterion-1 conceptually,
+    code-disjoint). They diverge on the ~84 bg-cover tasks (e.g. #59 `29623171`:
+    subdivision 0/3, and union’s earlier "3/3" was a **background-cover artifact**
+    — corrected to 0/3 bg-excluded). A future subdivision criterion-1 = bg-excluded
+    union would drop 103→19. Do NOT amend subdivision now.
+  - union’s task payoff over subdivision is only the 3 assemble tasks; its real
+    justification is the **operator vocabulary + the `union ⟹ inset` inference +
+    `./evaluate` visibility** (not coverage). Gate green (8 `[ok]` incl. write;
+    conformance/evaluate/#8-solve pass). **OPEN:** commit (Mac) + Linux-gate.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

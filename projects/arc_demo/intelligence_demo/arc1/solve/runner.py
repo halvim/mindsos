@@ -135,6 +135,7 @@ def inferences():
     note = {
         ("inside",): "sound 0/400",
         ("same_object",): "sound 0/400 (same_shape token includes identical objects)",
+        ("union",): "sound 0/400 (operands ⊆ union; operator skip)",
     }
     print()
     print(_c("2", "wired (drives skip):"))

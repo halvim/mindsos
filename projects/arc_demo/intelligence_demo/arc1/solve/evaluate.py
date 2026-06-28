@@ -1,21 +1,30 @@
-"""evaluate(comparator, task) — apply a COMPARATOR capacity to a task (or all).
+"""evaluate(target, task) — apply a COMPARATOR or OPERATOR to a task (or all).
 
-Two forms (driven by the ``evaluate`` script):
+Forms (driven by the ``evaluate`` script):
 
-    ./evaluate <comparator>              # list its demands + implication parents
-    ./evaluate <comparator> <task#|id>   # apply to one task
-    ./evaluate <comparator> all          # apply to every task (bulk)
+    ./evaluate <target>              # list its demands (+ implication parents)
+    ./evaluate <target> <task#|id>   # apply to one task
+    ./evaluate <target> all          # apply to every task (bulk)
 
-A comparator is one of the 6 capacities (``arc_search.comparator_names()``):
-moved · recolored · rotated · reflected · touching · inside. Profilers
-(same_object/shape/point/cell_count/bbox_area, compare_*) are NOT comparators
-and are rejected.
+Two kinds of target:
 
-Each application is **demand-gated**: every profiler the comparator ``requires``
-must fire, else the result is FALSE (the unmet demand is printed). The result is
-then cross-checked against the Search token (``arc_search.task_tokens``); a
-mismatch is a DISCREPANCY (flagged + stored). A bulk run accumulates a
-``capacities.json`` dict ``{task: {cap: bool}}`` and ``capacities_discrepancies.json``.
+- COMPARATORS — the 6 bool capacities (``arc_search.comparator_names()``):
+  moved · recolored · rotated · reflected · touching · inside. Demand-gated,
+  then cross-checked against the Search token (``arc_search.task_tokens``); a
+  mismatch is a DISCREPANCY (flagged + stored). Bulk run accumulates
+  ``capacities.json`` ``{task: {cap: bool}}`` + ``capacities_discrepancies.json``.
+
+- OPERATORS — ``inset`` and ``union`` (``arc_search.operator_names()``).
+  ``inset`` is a near-universal predicate; ``union`` is an object operator
+  (CATEGORY_OPERATOR, output DS_REGION). Neither carries a Search token, so
+  they are **show-only**: ``./evaluate`` reports whether the operator OCCURS in
+  the task (union = ≥2 parts disjoint-cover a whole, either direction,
+  bg-excluded; inset = a cross-grid cell-subset) plus its demands — NO token
+  cross-check, NO discrepancy. Operator inference: union ⟹ inset (when union
+  occurs, inset is known-true → its check is skipped).
+
+Profilers (same_object/shape/point/cell_count/bbox_area, compare_*) are not
+targets and are rejected.
 """
 from __future__ import annotations
 
@@ -24,7 +33,8 @@ import os
 import sys
 from typing import Any, Dict, List, Optional
 
-from intelligence_demo.arc1.spike import arc_grids, arc_profile, arc_search, arc_capacities
+from intelligence_demo.arc1.spike import (
+    arc_grids, arc_profile, arc_search, arc_capacities, arc_solver)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 CAP_JSON = os.path.join(_HERE, "capacities.json")
@@ -67,6 +77,24 @@ def _apply(cap: str, profile: dict) -> Dict[str, Any]:
     return {"task": profile["task_id"], "capacity": cap, "result": result,
             "fires": fires, "unmet_demands": unmet, "search": search,
             "discrepancy": result != search}
+
+
+# ── operator application (show-only: occurrence + demands, no token check) ──
+def _op_occurs(op: str, profile: dict) -> bool:
+    if op == "inset":
+        return arc_solver.inset_occurs(profile)
+    if op == "union":
+        return arc_solver.union_occurs(profile)
+    raise ValueError(f"not an operator: {op!r}")
+
+
+def _apply_operator(op: str, profile: dict) -> Dict[str, Any]:
+    """One task: does the operator OCCUR + are its demands met. No Search
+    cross-check (operators carry no token) → never a discrepancy."""
+    occurs = _op_occurs(op, profile)
+    unmet = [d for d in arc_search.operator_demands(op) if not _op_occurs(d, profile)]
+    return {"task": profile["task_id"], "operator": op,
+            "occurs": occurs, "unmet_demands": unmet}
 
 
 # ── persistence ─────────────────────────────────────────────────────────
@@ -129,6 +157,70 @@ def _print_one(r: dict) -> None:
     print(line)
 
 
+def _list_operator(op: str) -> None:
+    print(_c("1", f"operator {op}") + _c("2", "  · capacity probe (show-only; no Search token)"))
+    dem = arc_search.operator_demands(op)
+    print(_c("2", "  demands  ") + (
+        ", ".join(_c("36", d) for d in dem) if dem else _c("2", "(none)")))
+    par = [p for (p, kids) in arc_search.OPERATOR_INFERENCES if op in kids]
+    if par:
+        print(_c("2", "  implied by  ") + ", ".join(_c("33", p) for p in par)
+              + _c("2", "  (when it occurs, this is known-true — not re-tested)"))
+    kids = next((k for (p, k) in arc_search.OPERATOR_INFERENCES if p == op), [])
+    if kids:
+        print(_c("2", "  implies  ") + ", ".join(_c("33", k) for k in kids)
+              + _c("2", "  (skips their check when this occurs)"))
+
+
+def _print_operator(r: dict, profile: dict) -> None:
+    res = _c("32", "OCCURS") if r["occurs"] else _c("0", "absent")
+    line = f"  {r['task']:10} {res}"
+    if r["unmet_demands"]:
+        line += _c("33", f"  ⚑ demand unmet: {', '.join(r['unmet_demands'])}")
+    print(line)
+    if r["operator"] == "union" and r["occurs"]:
+        det = arc_solver.union_detail(profile)
+        print(_c("2", f"    union — {det['n_hold']}/{det['n']} demos (bg={det['bg']})"))
+        for row in det["rows"]:
+            print(_c("2", "    " + row))
+
+
+def _store_operator(op: str, records: List[dict]) -> None:
+    """Operators write occurrence into capacities.json only (no discrepancy
+    file — they have no Search token to cross-check)."""
+    caps: Dict[str, Dict[str, bool]] = _load(CAP_JSON, {})
+    for r in records:
+        caps.setdefault(r["task"], {})[op] = bool(r["occurs"])
+    with open(CAP_JSON, "w", encoding="utf-8") as fh:
+        json.dump(caps, fh, indent=2, sort_keys=True)
+
+
+def _evaluate_operator(op: str, task_arg: Optional[str]) -> None:
+    if task_arg is None:
+        _list_operator(op)
+        return
+    dataset = arc_grids.load_dataset()
+    _list_operator(op)
+    if str(task_arg).lower() == "all":
+        ids = sorted(dataset["train"])
+        profs = [arc_profile.build_profile(dataset, "train", tid) for tid in ids]
+        records = [_apply_operator(op, p) for p in profs]
+        _store_operator(op, records)
+        n_occ = sum(1 for r in records if r["occurs"])
+        print(_c("2", "─" * 60))
+        print(f"  {op}: {_c('32', str(n_occ))} occurs / {len(records)} tasks "
+              + _c("2", "(show-only — no Search cross-check)"))
+        print(_c("2", f"  → capacities.json ({len(records)} tasks)"))
+    else:
+        tid = _resolve_task(dataset, task_arg)
+        prof = arc_profile.build_profile(dataset, "train", tid)
+        r = _apply_operator(op, prof)
+        print(_c("2", "─" * 60))
+        _print_operator(r, prof)
+        _store_operator(op, [r])
+        print(_c("2", "  → capacities.json"))
+
+
 def _resolve_task(dataset: dict, arg: str) -> str:
     ids = sorted(dataset["train"])
     if str(arg).isdigit():
@@ -143,9 +235,14 @@ def _resolve_task(dataset: dict, arg: str) -> str:
 
 def evaluate(cap: str, task_arg: Optional[str]) -> None:
     comparators = arc_search.comparator_names()
+    operators = arc_search.operator_names()
+    if cap in operators:
+        return _evaluate_operator(cap, task_arg)
     if cap not in comparators:
-        raise SystemExit(f"{cap!r} is not a comparator. choose one of: "
-                         f"{', '.join(comparators)} (profilers are not ./evaluate targets)")
+        raise SystemExit(f"{cap!r} is not a comparator or operator. choose one of: "
+                         f"comparators [{', '.join(comparators)}] · "
+                         f"operators [{', '.join(operators)}] "
+                         f"(profilers are not ./evaluate targets)")
     if task_arg is None:                       # form 1: list demands + parents
         _list_demands(cap)
         return
@@ -177,7 +274,7 @@ def evaluate(cap: str, task_arg: Optional[str]) -> None:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        raise SystemExit("usage: evaluate <comparator> [task#|task_id|all]")
+        raise SystemExit("usage: evaluate <comparator|operator> [task#|task_id|all]")
     cap = sys.argv[1]
     task_arg = sys.argv[2] if len(sys.argv) > 2 else None
     evaluate(cap, task_arg)
