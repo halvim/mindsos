@@ -73,6 +73,7 @@ DS_INSET = datastate_iri("arc.inset")
 DS_REGION = datastate_iri("arc.region")
 DS_BACKGROUND_CANDIDATE = datastate_iri("arc.background_candidate")
 DS_BACKGROUND = datastate_iri("arc.background")
+DS_BACKGROUND_SET = datastate_iri("arc.background_set")
 DS_CORRESPONDENCE = datastate_iri("arc.correspondence")
 DS_STATE_CHANGE = datastate_iri("arc.state_change")
 DS_SELECTOR = datastate_iri("arc.selector")
@@ -116,6 +117,7 @@ def arc_datastates() -> List[DataState]:
         ds("arc.region", CATEGORY_OPERATOR, "Region: an arbitrary cell-set (NOT necessarily monochrome/connected, so NOT an Object). Output of the union operator (cell-union of ≥2 components)."),
         ds("arc.background_candidate", CATEGORY_DERIVATION, "Per-grid background proposal from one detector (frequency at v1)."),
         ds("arc.background", CATEGORY_REASONING, "Reconciled background (fold over candidates; degenerate pass-through at v1)."),
+        ds("arc.background_set", CATEGORY_REASONING, "Per-grid background-candidate set: per-colour component lists are mutated by the phases (add/remove/replace) and a colour is eliminated when its list empties; rules reapplied after each phase (arc_solver.bg_advance)."),
         ds("arc.correspondence", CATEGORY_REASONING, "input ref -> output ref map; unambiguous subset (ambiguous left uncorresponded)."),
         ds("arc.state_change", CATEGORY_COMPARATOR, "touching_delta: gained/lost/maintained across a pair over C, background-excluded."),
         ds("arc.selector", CATEGORY_REASONING, "Minimal discriminative state-conjunction resolving a unique mover + target."),
@@ -374,6 +376,21 @@ def _reason_capacities() -> List[Capacity]:
             inputs=(DS_STATE_CHANGE, DS_OBJECT), outputs=(DS_SELECTOR,),
             implementation=lambda **kw: {DS_SELECTOR: None},
             description="(StateChange, Object features) -> Selector resolving a unique mover + target, else FLAG (option A; the shape tie-break is a recorded flag — real tie-break -> D11).",
+        ),
+        Capacity(
+            name="bg_deduction", category=CATEGORY_REASONING,
+            inputs=(DS_PALETTE, DS_SAME_OBJECT, DS_SAME_POINT),
+            outputs=(DS_BACKGROUND_SET,),
+            implementation=lambda **kw: {DS_BACKGROUND_SET: None},
+            description="Per-grid background by ELIMINATION over PERSISTENT "
+                        "per-colour component lists. The phases mutate the lists "
+                        "(1 add · 2 remove same_object/same_point matches · 3 replace "
+                        "subdivided wholes with sub-pieces · 4 remove colour-kept "
+                        "sub-pieces); after each phase all rules reapply (FR1 commit "
+                        "guard · FR3 len(cand)==1=>bg · PR1 empty-list elimination · "
+                        "PR2 train->test inheritance). A colour is eliminated when its "
+                        "component list empties. Real compute = arc_solver.bg_advance "
+                        "(stub-registered here, D3).",
         ),
     ]
 

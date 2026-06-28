@@ -405,7 +405,88 @@ filed as motivating consumer; the demo does NOT block on it.
   - union’s task payoff over subdivision is only the 3 assemble tasks; its real
     justification is the **operator vocabulary + the `union ⟹ inset` inference +
     `./evaluate` visibility** (not coverage). Gate green (8 `[ok]` incl. write;
-    conformance/evaluate/#8-solve pass). **OPEN:** commit (Mac) + Linux-gate.
+    conformance/evaluate/#8-solve pass). **SHIPPED — committed `a8f7a13`.**
+
+- **2026-06-27 — result-output format contract + bidirectional subdivision
+  (BUILT + Cowork-gated 8 `[ok]`/400).** Format work over the `./arc solve`
+  phase viewer:
+  - **New canonical doc `solve/RESULT_OUTPUT_FORMAT.md`** — the per-phase
+    result-output rendering contract (reference STEP blocks for phases 1/2/3 +
+    the locked decisions). This is the single source for "the result output"
+    format; when the user asks for it, reproduce the STEP block **verbatim**.
+  - **Phase 1** (`pipeline.step_setup`) — `· {k} pt` segment is **CONDITIONAL**
+    (only when points > 0). LOCKED; verified conformant 400/400.
+  - **Phase 2** (`step_profile`) — tiers **INCLUDE background**; **empty pairs
+    OMITTED** (all-empty task = header only). Both LOCKED (a bg-exclude attempt
+    was reverted); verified 400/400 (300 with tiers / 100 header-only).
+  - **Phase 3** (`step_subdivision`) — now **BIDIRECTIONAL + bg-AGNOSTIC**:
+    `arc_grids.subdivisions` run both ways, a pair holds if a disjoint cover
+    exists in EITHER direction; each finding tagged `[split]` (input whole) /
+    `[assemble]` (output whole). LOCKED bg-agnostic (user chose it over the
+    bg-excluded `union` route — so Phase-3 subdivision and the `union` operator
+    now differ only in bg handling). Verified 400/400 (yes 118 / no 282 / 244
+    header-only; findings split 464 / assemble 192). #8 still solves.
+  - All per-phase format decisions are in `RESULT_OUTPUT_FORMAT.md` "Locked
+    format decisions" — do not re-litigate. **OPEN:** Phase-4 result format +
+    further task patterns (next chat); commit + Linux-gate the subdivision change.
+
+- **2026-06-28 — Phase 4 "Component Re-Comparison" inserted + bg_deduction
+  reworked to the persistent component-list model (BUILT + Cowork-gated 8
+  `[ok]`/400; NOT committed).** Two threads, both in `arc1/solve`.
+
+  **(A) New phase 4 = "Component Re-Comparison" (pipeline now 13 phases).**
+  Inserted after Subdivision; Task pattern→5, Comparators→6, …, Apply→13. All
+  `STEPS`/`STEP_DESC`/`STEP_TARGETS` keys + the gate "13-step" label renumbered;
+  `STEPS.md` rewritten to 13 phases. `pipeline.step_objcomp` reads the phase-3
+  findings and, per sub-piece, renders `{relation} {sub} = {component}  [from
+  {direction}]`, grouped by pair under `Pair {p}:`. **Phase 3 stays subdivision
+  ONLY (the cover); the same_* COMPARISON is phase 4** (relations computed in
+  `step_objcomp`, NOT `step_subdivision`). Relation = `same_object`/`same_point`
+  when the colour is KEPT, else `same_shape` (colour changed; a colour-changed
+  point is also `same_shape`). Sub-label format **`{side}{p}.O{i}.sub{k}.{color}`**
+  — the `.sub{k}` BEFORE the colour (e.g. `In1.O1.sub1.grey`); fixed in BOTH
+  phase 3 (the `→ kids` line) and phase 4. Header = `component re-comparison —
+  {n} sub-piece correspondence(s)` ("component" because points too). Verified
+  structurally uniform 400/400 (0 nonconforming; 156 with content, 244
+  header-only). Phase 4 + the phase-3 sub-label LOCKED in `RESULT_OUTPUT_FORMAT.md`.
+  Phase 4 publishes `ctx["recomparison"]` (the per-sub-piece relations) for the
+  bg rules.
+
+  **(B) bg_deduction = persistent per-grid/per-colour component lists, mutated
+  by the phases; ONE rule reapplied after each phase (`arc_solver.bg_advance`).**
+  Final model (after several wrong turns — recorded so they're not repeated):
+  - **State** (persistent in `ctx["bg_state"]`, JSON-safe, checkpointed): per
+    grid, per colour, a **list of still-UNMATCHED components** (ids `O{j}`/`P{j}`/
+    `S{whole}_{k}`), plus a `cand` set and the resolved `bg`.
+  - **The phases MUTATE the state** (not rebuilt): phase 1 **add** components ·
+    phase 2 **remove** same_object/same_point matches (per grid: input uses the
+    match `in` side, output the `out` side) · phase 3 **REPLACE** each subdivided
+    whole `O{idx}` with its sub-pieces `S{idx}_{k}` · phase 4 **remove** the
+    sub-pieces that KEPT colour (same_object/same_point; same_shape does NOT
+    count as a match).
+  - **After EVERY phase (FR2) re-apply ALL rules** (`_bg_rules`): **FR1** commit
+    guard (never empty `cand`) · **FR3** `len(cand)==1 → bg` · **PR1** ELIMINATION
+    — a colour whose component list is EMPTY is dropped from `cand` (the one rule,
+    unchanged, reapplied) · **PR2** train→test inheritance (all train grids resolve
+    to one agreeing bg → test inherits it; this is what resolves the test grid).
+    The runner calls `bg_advance(ctx, n)` after every phase from step 1;
+    `bg_advance` self-initialises if `bg_state` is absent (recovers a stale
+    checkpoint).
+  - Capacity `bg_deduction` (`CATEGORY_REASONING`, `DS_BACKGROUND_SET`) registered
+    in `arc_capacities` (stub body, provenance, D3) — the real logic is
+    `arc_solver.bg_advance` per D3.
+  - **Reversals locked this chat (do NOT reintroduce):** NO separate "PR3"
+    same_*-elimination rule (it's just phase 4 mutating the lists + PR1) · NO
+    recompute-from-palette / replay-from-profile orchestrator (state is genuinely
+    persistent + mutated across phases) · `same_shape` is NOT a match for the
+    component lists · addition's bg is via the pre-existing `_bg_color` interim
+    (the earlier "discovered single_canvas" was Claude's unrequested invention,
+    removed).
+  - **OPEN (deferred):** #294 resolves bg=grey not black — rule 1 eliminates the
+    static (unchanged, same_object-preserved) black canvas, leaving grey as the
+    survivor. The "static-bg" gap; a future rule (e.g. containment/coverage guard)
+    will fix it — owner declined all candidates for now. `bg_cand` is computed
+    into ctx but NOT displayed in the `./arc solve` viewer.
 
 ---
 

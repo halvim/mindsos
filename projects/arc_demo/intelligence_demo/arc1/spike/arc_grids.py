@@ -192,6 +192,20 @@ def same_bbox_area_pairs(gin: dict, gout: dict) -> List[dict]:
             for j, b in enumerate(gout["objects"]) if same_bbox_area(a, b)]
 
 
+def color_components(objects: list, points: list) -> list:
+    """colour -> its components (objects AND points) as ``[kind, idx]`` refs
+    (``kind`` in O|P). Returned JSON-safe as a list of
+    ``[colour, [[kind, idx], ...]]`` (dict int-keys don't survive checkpoint
+    round-trips). This is the per-grid grouping the bg rules consume; the
+    profiler attaches it to each grid (``arc_profile.attach_relations``)."""
+    cc: dict = {}
+    for j, ob in enumerate(objects):
+        cc.setdefault(ob["color"], []).append(["O", j])
+    for j, pt in enumerate(points):
+        cc.setdefault(pt["color"], []).append(["P", j])
+    return [[color, comps] for color, comps in cc.items()]
+
+
 def _same_normalized_shape(a: dict, b: dict) -> bool:
     """Private pure helper (GF-2): two *objects* share an identical
     translation-normalized point-set. Shared by ``moved`` — NOT a call into

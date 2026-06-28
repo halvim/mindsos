@@ -49,6 +49,7 @@ def attach_relations(gs: dict) -> dict:
     objs, pts = gs["objects"], gs["points"]
     gs["touching"] = arc_grids.touching_pairs(objs, pts)
     gs["inside"] = arc_grids.inside_pairs(objs, pts, tuple(gs["dims"]), gs["cells"])
+    gs["color_components"] = arc_grids.color_components(objs, pts)
     return gs
 
 

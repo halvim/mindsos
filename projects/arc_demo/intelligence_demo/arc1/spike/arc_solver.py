@@ -62,6 +62,138 @@ def _bg_color(profile: dict) -> int:
     return cnt.most_common(1)[0][0]
 
 
+# ── bg deduction — PERSISTENT per-grid/per-colour component lists ──────────
+# MODEL: state = per grid, per colour, a LIST of that colour's still-UNMATCHED
+# components, plus a bg_cand set. The state lives in ``ctx['bg_state']`` and is
+# PERSISTENT — each phase MUTATES it in place (not rebuilt):
+#   phase 1  add components · phase 2  remove same_object/same_point matches ·
+#   phase 3  REPLACE each subdivided whole with its sub-pieces ·
+#   phase 4  remove the sub-pieces that kept colour (same_object/same_point).
+# After EVERY phase (FR2) re-apply ALL the rules:
+#   FR1 commit-guard (never empty bg_cand) · FR3 len(cand)==1 => that colour is
+#   the bg · PR1 ELIMINATION (colour's list empty => drop it; the one rule,
+#   unchanged, reapplied) · PR2 train->test inheritance.
+# Component ids are strings: "O{j}" / "P{j}" / "S{whole}_{k}" (a sub-piece).
+# State is stored JSON-safe (colour keys -> str, ids -> str) for checkpointing.
+
+def _bg_grec_from(cells: list) -> dict:
+    """A grid's bg record from raw cells: colour -> set of component-id strings
+    ("O{j}"/"P{j}"), the candidate set (palette), and the resolved bg."""
+    lists: dict = {}
+    for j, ob in enumerate(arc_grids.extract_objects(cells)):
+        lists.setdefault(ob["color"], set()).add(f"O{j}")
+    for j, pt in enumerate(arc_grids.extract_points(cells)):
+        lists.setdefault(pt["color"], set()).add(f"P{j}")
+    return {"lists": lists, "cand": set(arc_grids.palette(cells)), "bg": None}
+
+
+def _bg_grids(state):
+    for t in state["train"]:
+        yield t["input"]
+        yield t["output"]
+    for te in state["test"]:
+        yield te["input"]
+
+
+def _bg_remove(grec: dict, ids: set) -> None:
+    for lst in grec["lists"].values():
+        lst -= ids
+
+
+def _bg_dump(state: dict) -> dict:
+    def gj(g):
+        return {"lists": {str(c): sorted(v) for c, v in g["lists"].items()},
+                "cand": sorted(g["cand"]), "bg": g["bg"]}
+    return {"train": [{"input": gj(t["input"]), "output": gj(t["output"])}
+                      for t in state["train"]],
+            "test": [{"input": gj(te["input"])} for te in state["test"]]}
+
+
+def _bg_load(j: dict) -> dict:
+    def gl(g):
+        return {"lists": {int(c): set(v) for c, v in g["lists"].items()},
+                "cand": set(g["cand"]), "bg": g["bg"]}
+    return {"train": [{"input": gl(t["input"]), "output": gl(t["output"])}
+                      for t in j["train"]],
+            "test": [{"input": gl(te["input"])} for te in j["test"]]}
+
+
+def _bg_rules(state: dict) -> None:
+    """FR2: reapply ALL rules after a phase mutation."""
+    for g in _bg_grids(state):                                   # PR1 + FR1 + FR3
+        for colour in list(g["cand"]):
+            if not g["lists"].get(colour) and len(g["cand"]) > 1:   # empty list, FR1 guard
+                g["cand"].discard(colour)                           # PR1 eliminate
+        g["bg"] = next(iter(g["cand"])) if len(g["cand"]) == 1 else None   # FR3
+    bgs = [b for t in state["train"]                             # PR2 train->test
+           for b in (t["input"]["bg"], t["output"]["bg"])]
+    if bgs and all(b is not None for b in bgs) and len(set(bgs)) == 1:
+        c = bgs[0]
+        for te in state["test"]:
+            g = te["input"]
+            if c in g["cand"] and g["cand"] != {c}:                # FR1 ok (non-empty)
+                g["cand"] = {c}
+                g["bg"] = c
+
+
+def bg_advance(ctx: dict, phase: int) -> None:
+    """Mutate the PERSISTENT ``ctx['bg_state']`` for this phase, then reapply all
+    rules (FR2). Phase 1 inits the per-colour component lists from the perceived
+    grids; phase 2 removes same_object/same_point matches; phase 3 replaces each
+    subdivided whole with its sub-pieces; phase 4 removes colour-kept sub-pieces;
+    later phases just reapply the rules. Writes ``ctx['bg_state']`` (full state)
+    + ``ctx['bg_cand']`` (the {cand, bg} summary)."""
+    if phase == 1 or "bg_state" not in ctx:    # init (or recover a stale checkpoint)
+        raw = ctx["raw"]
+        state = {"train": [{"input": _bg_grec_from(pr["input"]),
+                            "output": _bg_grec_from(pr["output"])}
+                           for pr in raw["train"]],
+                 "test": [{"input": _bg_grec_from(pr["input"])}
+                          for pr in raw["test"]]}
+    else:
+        state = _bg_load(ctx["bg_state"])
+
+    if phase == 2:                              # remove same_object/same_point matches
+        for i, pr in enumerate(ctx["profile"]["train"]):
+            m = pr["match"]
+            _bg_remove(state["train"][i]["input"],
+                       {f"O{e['in']}" for e in m["equal"]}
+                       | {f"P{e['in']}" for e in m["point_equal"]})
+            _bg_remove(state["train"][i]["output"],
+                       {f"O{e['out']}" for e in m["equal"]}
+                       | {f"P{e['out']}" for e in m["point_equal"]})
+    elif phase == 3:                            # replace subdivided wholes with sub-pieces
+        for f in ctx.get("subdivision", {}).get("findings", []):
+            side = "input" if f["direction"] == "split" else "output"
+            g = state["train"][f["pair"] - 1][side]
+            lst = g["lists"].get(f["whole_color"])
+            whole = f"O{f['whole_idx']}"
+            if lst is not None and whole in lst:
+                lst.discard(whole)
+                for k in range(len(f["parts"])):
+                    lst.add(f"S{f['whole_idx']}_{k}")
+    elif phase == 4:                            # remove colour-kept sub-pieces
+        for f in ctx.get("recomparison", []):
+            side = "input" if f["direction"] == "split" else "output"
+            g = state["train"][f["pair"] - 1][side]
+            lst = g["lists"].get(f["whole_color"])
+            if lst is None:
+                continue
+            for k, p in enumerate(f["parts"]):
+                if p["rel"] in ("same_object", "same_point"):
+                    lst.discard(f"S{f['whole_idx']}_{k}")
+
+    _bg_rules(state)
+    ctx["bg_state"] = _bg_dump(state)
+    ctx["bg_cand"] = {
+        "train": [{"input": {"cand": sorted(t["input"]["cand"]), "bg": t["input"]["bg"]},
+                   "output": {"cand": sorted(t["output"]["cand"]), "bg": t["output"]["bg"]}}
+                  for t in state["train"]],
+        "test": [{"input": {"cand": sorted(te["input"]["cand"]), "bg": te["input"]["bg"]}}
+                 for te in state["test"]],
+    }
+
+
 def _correspondence(pr: dict) -> Dict[Ref, Ref]:
     """C: input ref → output ref, from the unambiguous subset only —
     `same_object` (exact) ∪ 1:1 `moved` ∪ `same_point`. Ambiguous (duplicate)
@@ -272,9 +404,14 @@ def _palette_label(pin: list, pout: list) -> str:
 
 
 def _addition_evidence(profile: dict) -> dict:
-    """Per-condition booleans (∀ train pair) for the ADDITION pattern."""
+    """Per-condition booleans (∀ train pair) for the ADDITION pattern.
+
+    Interim: the background is the `_bg_color` helper (to be replaced by the
+    per-grid bg-determination process once built). `nonbg_inputs_preserved`
+    removed per user request.
+    """
     bg = _bg_color(profile)
-    dims = pal = allin = newobj = True
+    dims = pal = newobj = True
     pal_label = "preserved"
     n_added = None
     for pr in profile["train"]:
@@ -285,29 +422,25 @@ def _addition_evidence(profile: dict) -> dict:
             pal = False
         elif set(i["palette"]) != set(o["palette"]):
             pal_label = "increased"
-        matched_in = {e["in"] for e in m["equal"]}
         matched_out = {e["out"] for e in m["equal"]}
-        in_nonbg = [j for j, ob in enumerate(i["objects"]) if ob["color"] != bg]
         out_nonbg = [j for j, ob in enumerate(o["objects"]) if ob["color"] != bg]
-        if not all(j in matched_in for j in in_nonbg):
-            allin = False
         added = [j for j in out_nonbg if j not in matched_out]
         if not added:
             newobj = False
         else:
             n_added = len(added) if n_added is None else min(n_added, len(added))
     return {"dims_preserved": dims, "palette_subset": pal,
-            "palette_label": pal_label, "nonbg_inputs_preserved": allin,
+            "palette_label": pal_label,
             "new_output_object": newobj, "n_added": n_added}
 
 
 def task_patterns(profile: dict) -> List[dict]:
-    """Phase 3 — task-pattern hypotheses over the phase-2 profile. Returns one
+    """Phase 4 — task-pattern hypotheses over the phase-2 profile. Returns one
     verdict per known pattern (currently: addition), each with its matched flag
     and per-condition evidence for display."""
     ev = _addition_evidence(profile)
     matched = (ev["dims_preserved"] and ev["palette_subset"]
-               and ev["nonbg_inputs_preserved"] and ev["new_output_object"])
+               and ev["new_output_object"])
     return [{"name": "addition", "matched": matched, "evidence": ev}]
 
 

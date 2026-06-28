@@ -98,9 +98,16 @@ def solve(task_arg, step):
         if not cached:
             result = fn(ctx, dataset)
             ctx[rkey], ctx[nkey] = result, name
+            # foundational rule 2 — after each phase, mutate the PERSISTENT
+            # ctx['bg_state'] for that phase and reapply all the rules.
+            if n >= 1 and "raw" in ctx:
+                arc_solver.bg_advance(ctx, n)
             with open(ck, "w", encoding="utf-8") as fh:
                 json.dump(ctx, fh)
             _print_step(n, name, scope, functions, uses_prefix, produces, result, "computed", task_id)
+        elif n >= 1 and "raw" in ctx:
+            # cached step: advance the persistent bg_state for this phase too.
+            arc_solver.bg_advance(ctx, n)
 
     print(_c("2", "═" * 71))
     ans = ctx.get("answer")

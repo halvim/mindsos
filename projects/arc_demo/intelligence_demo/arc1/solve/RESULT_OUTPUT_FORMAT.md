@@ -67,13 +67,13 @@ STEP block: the header lines + the `result` block), as pasted below.
    produces subdivision partitions (B → B1,B2,…)
    result   subdivision — yes (∀demo 2/2)
             Pair 1 [split]: In1.O1.grey → {Out1.O1.grey, Out1.O2.red}
-                     In1.O1.grey → In1.O1.grey.sub1, In1.O1.grey.sub2
+                     In1.O1.grey → In1.O1.sub1.grey, In1.O1.sub2.grey
             Pair 1 [split]: In1.O2.grey → {Out1.O3.grey, Out1.O4.red}
-                     In1.O2.grey → In1.O2.grey.sub1, In1.O2.grey.sub2
+                     In1.O2.grey → In1.O2.sub1.grey, In1.O2.sub2.grey
             Pair 2 [split]: In2.O1.grey → {Out2.O1.grey, Out2.O2.red}
-                     In2.O1.grey → In2.O1.grey.sub1, In2.O1.grey.sub2
+                     In2.O1.grey → In2.O1.sub1.grey, In2.O1.sub2.grey
             Pair 2 [split]: In2.O2.grey → {Out2.O3.grey, Out2.O4.red}
-                     In2.O2.grey → In2.O2.grey.sub1, In2.O2.grey.sub2
+                     In2.O2.grey → In2.O2.sub1.grey, In2.O2.sub2.grey
 ```
 
 ### Phase 3 result body — format
@@ -82,19 +82,65 @@ STEP block: the header lines + the `result` block), as pasted below.
   holds on **every** demo pair (either direction); `{k}/{n}` = pairs with ≥1
   finding / total pairs.
 - **Per finding** (two lines): the whole `→ {parts}`, then the whole `→
-  {whole}.sub1, …`:
+  {sub-label}, …`:
   - `Pair {p} [{direction}]: {B} → {{part, part, …}}`
-  - `{B} → {B}.sub1, {B}.sub2, …`
+  - `{B} → {O{i}.sub1.{color}}, {O{i}.sub2.{color}}, …`
 - **`{direction}` tag** — `split` (whole = INPUT object, parts = OUTPUT pieces)
   or `assemble` (whole = OUTPUT object, parts = INPUT pieces). Subdivision is
   **BIDIRECTIONAL** (LOCKED 2026-06-27): a pair holds if a cover exists in
   EITHER direction.
 - `{B}` = `In{p}.O{i}.{color}` (split) or `Out{p}.O{i}.{color}` (assemble);
   parts = `Out…`/`In…` objects (`.O{j}.{color}`) or points (`.P{j}`, no colour).
+- **Sub-label = `{side}{p}.O{i}.sub{k}.{color}`** — the `.sub{k}` suffix comes
+  **before** the colour (LOCKED 2026-06-28; e.g. `In1.O1.sub1.grey`, not
+  `In1.O1.grey.sub1`). The colour is the **whole's** colour.
 - **Background is NOT excluded** (bg-AGNOSTIC, LOCKED 2026-06-27 — `subdivisions`
   treats every object incl. the background as a candidate whole, both
   directions). This is intentionally *different* from the `union` operator, which
   is bg-EXCLUDED. Empty pairs print nothing; a `no` task shows the header only.
+
+## Reference example — Phase 4 (Component Re-Comparison), task #294
+
+```
+── STEP 4 · Component Re-Comparison ─────────────────────────────────────  [general*]
+   status   computed  → step-4.json
+   uses     step-3 ctx · step-3 findings · same_object/same_point/same_shape(sub-piece, component) per sub-piece
+   → future L3 reasoning — re-compare derived sub-pieces against perceived components (same_*) · mindsos_capacity (→ L4 induce/learner)
+   produces sub-piece ↔ component correspondences
+   result   component re-comparison — 8 sub-piece correspondence(s)
+            Pair 1:
+              same_object In1.O1.sub1.grey = Out1.O1.grey  [from split]
+              same_shape In1.O1.sub2.grey = Out1.O2.red  [from split]
+              same_object In1.O2.sub1.grey = Out1.O3.grey  [from split]
+              same_shape In1.O2.sub2.grey = Out1.O4.red  [from split]
+            Pair 2:
+              same_object In2.O1.sub1.grey = Out2.O1.grey  [from split]
+              same_shape In2.O1.sub2.grey = Out2.O2.red  [from split]
+              same_object In2.O2.sub1.grey = Out2.O3.grey  [from split]
+              same_shape In2.O2.sub2.grey = Out2.O4.red  [from split]
+```
+
+### Phase 4 result body — format
+
+- **Header line:** `component re-comparison — {n} sub-piece correspondence(s)`
+  — `{n}` = total sub-pieces across all subdivision findings (objects **and**
+  points, so "component", not "object"). A task with no subdivision finding
+  shows the header only (`— 0 …`).
+- **Grouped by pair** (pairs with ≥1 finding only), in pair order: a `Pair {p}:`
+  line, then one 2-space-indented line per sub-piece of every finding in that
+  pair (finding order, then sub-index):
+  - `{relation} {sub} = {component}  [from {direction}]`
+- **`{relation}`** — the strongest true relation between the sub-piece and the
+  component it covers (cells match by construction): `same_object` if the colour
+  is kept (object), `same_point` if kept (point), else `same_shape` (colour
+  changed; the colour-changed-point case is also `same_shape`, verified in a
+  later phase).
+- **`{sub}`** = `{side}{p}.O{i}.sub{k}.{color}` — the `.sub{k}` suffix comes
+  **before** the colour; colour is the **whole's** colour.
+- **`{component}`** = `{side}{p}.O{j}.{color}` (object) or `{side}{p}.P{j}`
+  (point, no colour).
+- **`[from {direction}]`** — `[from split]` / `[from assemble]`, carrying the
+  phase-3 `[split]`/`[assemble]` tag the sub-piece came **from**.
 
 ## Block structure (what each line is)
 
@@ -127,3 +173,11 @@ per-phase body content is defined in `pipeline.py` / `arc_solver`.
   `assemble` (output whole / input parts) — each finding tagged `[split]` /
   `[assemble]`; background is included as a candidate whole. LOCKED 2026-06-27
   (user chose bg-agnostic over the bg-excluded `union` route). Do not ask again.
+- **Phase 3 sub-label = `{side}{p}.O{i}.sub{k}.{color}`** — `.sub{k}` before the
+  colour (e.g. `In1.O1.sub1.grey`). LOCKED 2026-06-28; shared with phase 4.
+- **Phase 4 (Component Re-Comparison) format LOCKED 2026-06-28.** Header
+  `component re-comparison — {n} sub-piece correspondence(s)`; per pair, one
+  `{relation} {sub} = {component}  [from {direction}]` line per sub-piece;
+  relation = same_object / same_point if colour kept, else same_shape; verified
+  structurally uniform across all 400 tasks (0 nonconforming; 156 with content,
+  244 header-only). Do not re-litigate.
