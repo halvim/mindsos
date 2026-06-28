@@ -160,6 +160,19 @@ Linux, honestly, per the frozen readings.
 
 ## 8. Amendment log
 
+**AM-6 (2026-06-28, after Linux baseline run 1 — POSITIVE CONTROL FAILED, baseline strengthened).**
+Run 1 of `leaf_novelty_baseline.py` FAILED the §4.1 positive control: CNN P0 = **0.703** (flat
+~0.70 even at σ=0) vs MindsOS 0.961, and OOD AUROC 0.351 (< 0.5). Per §4.1 ("a win against a weak
+net is a FAIL of the test") + §5 (stop-and-fix on baseline-strength failure), run 1 is **VOID — not
+a MindsOS win** and no verdict is read. Diagnosed under-powering (NOT threshold tuning): (1) three
+2×2 max-pools collapse a 1-px outline to 8×8, erasing the triangle-vs-rectangle corner signal — cut
+to **two pools** (→16×16) + more channels; (2) only 480 training images — give the CNN a **large
+generated train set** (test set unchanged = the frozen npz, so P0 stays comparable); (3) 18 epochs →
+**24**; (4) max-softmax OOD replaced/augmented with **Mahalanobis on penultimate features** (the
+pre-reg's allowed stronger OOD). These are standard competent-baseline choices, applied to make the
+contest fair to opaque ML; **no MindsOS threshold or any P0/Claim-4 bar changed.** Run-1 numbers
+stand on record. Re-run gates on the same S-pos control before any Claim-4 reading.
+
 **AM-5 (2026-06-28, pre-Linux-run — baseline strengthened per adversarial audit).** The in-sandbox
 ML-advocate audit found the original baseline gave the opaque model a *weak* repair (its
 frozen-backbone head was not warm-started and re-learned polygon rows from scratch), risking a

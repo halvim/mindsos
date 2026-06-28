@@ -32,10 +32,11 @@ import json, os, numpy as np, torch, torch.nn as nn, torch.nn.functional as F
 
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
 SEEDS = [0, 1, 2]
-M_ENS = 5                       # deep-ensemble size (the OOD head)
-EPOCHS, BATCH, LR = 18, 128, 2e-3
+M_ENS = 3                       # deep-ensemble size (the OOD head)
+EPOCHS, BATCH, LR = 24, 128, 2e-3
 DROP = 0.2
 KSHOT = [5, 20, 100]           # few-shot repair budgets (labeled circles)
+TRAIN_N_PER_CELL = 180         # AM-6: large CNN train set (test set unchanged -> P0 comparable)
 MINDSOS_RESULTS = "leaf_novelty_mindsos_results.json"
 
 
@@ -44,13 +45,14 @@ class CNN(nn.Module):
     def __init__(self, nc):
         super().__init__()
         self.c = nn.Sequential(
-            nn.Conv2d(1, 16, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),   # 32
-            nn.Conv2d(16, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),  # 16
-            nn.Conv2d(32, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),  # 8
+            nn.Conv2d(1, 32, 3, padding=1), nn.ReLU(),
+            nn.Conv2d(32, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),  # 32
+            nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(),
+            nn.Conv2d(64, 64, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),  # 16
         )
         self.drop = nn.Dropout(DROP)
-        self.feat = nn.Linear(32 * 8 * 8, 64)
-        self.head = nn.Linear(64, nc)
+        self.feat = nn.Linear(64 * 16 * 16, 128)
+        self.head = nn.Linear(128, nc)
 
     def features(self, x):
         h = self.c(x).flatten(1)
@@ -136,6 +138,29 @@ def ens_probs(models, X):
     return mean, disag
 
 
+@torch.no_grad()
+def feats(model, X):
+    model.eval()
+    return model.features(_t(X)).cpu().numpy()
+
+
+def maha_auroc(model, Xtr_poly, ytr_poly, Xte_poly, Xte_circ):
+    """Mahalanobis OOD (the fair strong signal): class-conditional means + shared covariance on
+    penultimate features; score = min distance to any in-vocab class (high = OOD)."""
+    Ftr = feats(model, Xtr_poly)
+    cs = np.unique(ytr_poly)
+    means = {c: Ftr[ytr_poly == c].mean(0) for c in cs}
+    cen = np.vstack([Ftr[ytr_poly == c] - means[c] for c in cs])
+    cov = np.cov(cen.T) + 1e-3 * np.eye(Ftr.shape[1])
+    inv = np.linalg.pinv(cov)
+
+    def score(F):
+        return np.min(np.stack([(((F - means[c]) @ inv) * (F - means[c])).sum(1) for c in cs], 1), 1)
+    s_in = score(feats(model, Xte_poly)); s_out = score(feats(model, Xte_circ))
+    return auroc(np.concatenate([s_in, s_out]),
+                 np.concatenate([np.zeros(len(s_in)), np.ones(len(s_out))]))
+
+
 def auroc(scores, labels):
     """labels: 1 = positive (OOD). rank-based AUROC."""
     order = np.argsort(scores)
@@ -157,9 +182,11 @@ def acc_by_sigma(models, X, y, sig, classes_idx):
 
 
 def main():
+    import leaf_novelty_generator as G
     d = np.load("leaf_novelty_data.npz", allow_pickle=True)
     classes = list(d["classes"]); CI = {c: i for i, c in enumerate(classes)}
-    Xtr, ytr, ktr = d["Xtr"], d["ytr"], d["kind_tr"]
+    # AM-6: large CNN train set (seed 7, disjoint from test seed 2); TEST stays the frozen npz
+    Xtr, ytr, _stc, _ktc, _ = G.make_split(TRAIN_N_PER_CELL, seed=7, include_nearmiss=False)
     Xte, yte, ste, kte = d["Xte"], d["yte"], d["sigma_te"], d["kind_te"]
     inv = kte == "invocab"
     ci = CI["circle"]
@@ -167,8 +194,9 @@ def main():
     mind = json.load(open(MINDSOS_RESULTS)) if os.path.exists(MINDSOS_RESULTS) else None
     mind_p0 = mind["multiseed_3"]["P0_overall_mean_std"][0] if mind else None
 
-    res = {"device": DEV, "ensemble_M": M_ENS, "seeds": SEEDS, "mindsos_P0_ref": mind_p0}
-    P0s, OODs, FABs = [], [], []
+    res = {"device": DEV, "ensemble_M": M_ENS, "seeds": SEEDS, "mindsos_P0_ref": mind_p0,
+           "train_n": int(len(Xtr))}
+    P0s, OODs, OODm, FABs = [], [], [], []
     rep_full = {k: [] for k in KSHOT}; rep_head = {k: [] for k in KSHOT}; rep_row = {k: [] for k in KSHOT}
     nm_ood = {f: [] for f in ["nearmiss_f0.04", "nearmiss_f0.08", "nearmiss_f0.15", "nearmiss_f0.3"]}
 
@@ -196,6 +224,7 @@ def main():
         s_in = 1 - mean_p.max(1); s_out = 1 - mean_c.max(1)
         scores = np.concatenate([s_in, s_out]); labs = np.concatenate([np.zeros(len(s_in)), np.ones(len(s_out))])
         OODs.append(auroc(scores, labs))
+        OODm.append(maha_auroc(ens2[0], Xp, yp2, Xte[polyte], Xte[circte]))
 
         # fabrication: operating point = 95% coverage on in-vocab (threshold on maxsoftmax).
         thr = np.quantile(mean_p.max(1), 0.05)         # keep 95% of in-vocab
@@ -244,7 +273,8 @@ def main():
         "cnn_P0": ms(P0s)[0], "mindsos_P0": mind_p0,
         "cnn_competitive(>=mindsos-5pts)": (mind_p0 is None) or (ms(P0s)[0] >= mind_p0 - 0.05),
         "P0_parity(|cnn-mindsos|<=5pts)": (mind_p0 is None) or (abs(ms(P0s)[0] - mind_p0) <= 0.05)}
-    res["OOD_auroc_circle_mean_std"] = ms(OODs)
+    res["OOD_auroc_maxsoftmax_mean_std"] = ms(OODs)
+    res["OOD_auroc_mahalanobis_mean_std"] = ms(OODm)
     res["fabrication_rate_nonabstain_circle_mean_std"] = ms(FABs)
     res["nearmiss_OOD_score_curve"] = {f: round(float(np.mean(v)), 3) for f, v in nm_ood.items() if v}
 
