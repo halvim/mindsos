@@ -803,6 +803,21 @@ Strict dependency order:
 
 ### 6.0 Designs awaiting implementation (newest first)
 
+- **SubMind (Mindlet) — Slice 2 SHIPPED to `main` 2026-06-25** (squash `66315f3`; tag
+  `feat-subminds-s2-confirmed`; gate **4090 passed / 11 skipped / 1 xpassed / 0 failed**, Linux +
+  live FalkorDB). Consumes the Slice-1 stub resolver: the resolver is **goal-directed** (a Pipeline
+  built at dispatch via `find_pipeline`), run by the new **core** Pipeline-step executor
+  (`mindsos_intelligence/pipeline_execution.py` — RULES §8: this is core, NOT WSD). New
+  `resources.py` (`ResourceLedger`/`ResourceHold`/`Contention` — the shared model Slice-3 Reflex
+  reuses) + `submind_arbiter.py`. Preempt/reconcile is **derived from resource contention** (free →
+  concurrent dispatch; contended → park + cooperative-cancel-if-outranked → event-driven resume on
+  release); unsatisfiable need = tier-never-decays + capped backoff + never-give-up; goal-unreachable
+  = honest dont-know → fires the SubMind's direct **ask-human** `fallback_resolver`. Additive
+  executor change (`submit(preempt=True)` default unchanged + optional `resource_ledger`). **No
+  role-set change** → parity sentinels untouched. ADR-0189 §2/§3 now shipped; ADR-0188 amendment-trail
+  notes the shared seizure model. Full record: `confirmation_docs/SUBMIND_DESIGN_LOG.md` §20.
+  **Pending: Slice 3** (Reflex path — reuses `ResourceLedger`), **Slice 4** (Local/teaching/tuning).
+  Split-out follow-up: `pipelinenotfound-to-dontknow` (see STATE `pending_designs`).
 - **SubMind (Mindlet) — Slice 1 SHIPPED to `feat/subminds` 2026-06-24** (gate green: 4069 passed /
   11 skipped / 1 xpassed / 0 failed, Linux + live FalkorDB; tag `feat-subminds-slice1-confirmed` at
   `cebd6ef`). Formalizes Minsky's "society of small minds" tier: an autonomous, no-reasoning
@@ -1017,6 +1032,7 @@ These conventions hold for any future code-shipping phase or chat:
 | Maintenance chat | `_workbench/STREAM_A_BACKLOG.md`; relevant `_workbench/L*_FUTURE_WORK.md`; `confirmation_docs/PHASE_MAP.md` for the layer's row |
 | L4-v2 follow-up chat | **Opens after Phase 49 confirmed.** `_workbench/L4_FUTURE_WORK.md`; this §3.1 + §3.1.5 |
 | Bug-fix / maintenance chat | `confirmation_docs/PHASE_MAP.md` for the layer's row; `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §4` for the corresponding Phase 39-49 row; this §2 + §3.1.7 |
+| Perception chat (atoms / grounding / learned leaves) | **Doctrine landed 2026-06-27 (docs-only, no code).** Read `docs/concepts/perception-principles.md` (P1–P17, the governing doctrine); ADRs **0191–0194** (Proposed: confidence seam, atom layer, grounding control loop, recognizers+promotion); evidence `docs/_workbench/PERCEPTION_LEARNING_NOTES.md` + `PERCEPTION_LEARNING_PREREG.md` (AM-1…AM-8 + §12 results) + `PERCEPTION_DISCOVERY_TEST_SPEC.md` + `discovery_test.py`. Key results: P14 validated (→ADR-0191); P15 grounding novelty-distance-relative; P16 reuse-driven *propagation* shown, unsupervised *discovery* **tested negative**; P17 near-miss = architectural (descent+finer-atom). ADRs flip Proposed→Accepted when a perception/vision subsystem consumes them. **Update 2026-06-28 (docs-only):** (1) cross-family confidence study `docs/_workbench/PERCEPTION_CROSSFAMILY_PREREG.md` — two-axis confidence + calibration generalizes across scoring/retrieval/derivation AND to real data (FrameNet, §11), but *which axis carries correctness is family-dependent*, independence requires proposer≠critic, calibration is conditional, blind-spot is continuous-only (all audited). (2) **Next experiment = LEAF NOVELTY** `docs/_workbench/PERCEPTION_LEAF_NOVELTY_PREREG.md` (v2, pre-registered, not built): isolates the real differentiator — learned-but-named-atom leaves + irreducibility→request-atom→one-shot-repair (Claim 4 centerpiece, 50-gon) at noise-parity (P0) vs a strong CNN+OOD baseline; MindsOS half is numpy/in-sandbox, baseline is torch/Linux. Build in a fresh focused chat. |
 
 **Optional reference / forensic only:**
 
