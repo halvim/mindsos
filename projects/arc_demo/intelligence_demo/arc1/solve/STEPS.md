@@ -21,7 +21,7 @@ v1 assumption · **semi** = runs generally but encodes the move-task model ·
 | 2 | Profile (profilers) | general | `arc_profile.build_profile`(`match_pair`, `profile_sweep`, `hypotheses`) · `arc_search.task_tokens`(`same_cell_count_pairs`, `same_bbox_area_pairs`) |
 | 3 | Subdivision | general\* | `arc_grids.subdivisions` → `inset`, **bidirectional + bg-agnostic** (object = ≥2 disjoint insets, `split` in→out or `assemble` out→in, points included) |
 | 4 | Component Re-Comparison | general\* | `pipeline.step_objcomp` over step-3 findings → per sub-piece `same_object`/`same_point` (colour kept) or `same_shape` (colour changed), tagged `[from split]`/`[from assemble]` |
-| 5 | Comparators Hypothesis | general | `arc_search.forall_comparators` over per-pair sets — the comparators triggering on **ALL** demo pairs (∀, add-only); `touching_delta` (`arc_solver.touching_changes`, bg-forgotten) replaces intra-grid `touching`; ∃ `task_tokens` untouched |
+| 5 | Comparators Hypothesis | general | `arc_search.forall_comparators` over per-pair sets — the comparators triggering on **ALL** demo pairs (∀, add-only); `touching_delta` (`arc_solver.touching_changes`, bg-forgotten) replaces intra-grid `touching`; **bg-colour objects excluded when bg is resolved** (`pipeline._drop_bg_grid`); ∃ `task_tokens` untouched |
 | 6 | Task pattern | general\* | `arc_solver.task_patterns` → `_addition_evidence`, `_bg_color` (addition hypothesis from the profile) |
 | 7 | Background + state-change | general\* | `arc_solver.stage_background` → `_bg_color` (pooled most-frequent — **v1 assumption**) · `touching_changes` (`_correspondence`, `_touch_set`) |
 | 8 | Roles | semi | `arc_solver.stage_roles` → `_moved_in`, `_touch_set`, `_comp` (mover / target / background, demo-1) |
@@ -81,5 +81,14 @@ general (3/4/6/7 general\*); 9/11/12/13 are #8-specific (the rule is hardcoded);
 per-pair `changes` (ref tuples) are **recomputed** from `profile`+`bg` each run
 so JSON round-tripping stays safe.
 
+**Background Color line (phases 2–13).** Each phase ≥2 prints a `Background Color`
+step-block line rendering `bg_advance`'s per-grid `bg_cand`: `Pair{i}.bg=X` when
+one side resolves to X **and** X is a candidate on the other side (option C), else
+`In{i}.bg={…} · Out{i}.bg={…}`; `test.bg={…}` always (singletons bare, multi in
+braces). The bg model adds **Phase Rule 4** (`arc_solver.bg_advance`): remove
+same_shape+same_color components at phase 2 (objects) and phase 4 (sub-pieces).
+See `PIPELINE_DECISIONS.md` §4 (2026-06-28 cont. entry) for the full bg model.
+
 **Checkpoints** are committed-optional (gitignored by default). Run dir:
-`runs/<task_id>/`.
+`runs/<task_id>/`. A bg-logic change does NOT invalidate a checkpoint when the
+phase NAME is unchanged → `rm -rf runs/<task>` to refresh the bg line.
