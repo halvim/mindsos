@@ -179,6 +179,41 @@ STEP block: the header lines + the `result` block), as pasted below.
   when phase 5 has resolved a grid's bg (`ctx['bg_cand']`). The ∃ `task_tokens`
   (gate) are untouched.
 
+## Reference example — Phase 6 (Task Patterns), task #8
+
+```
+── STEP 6 · Task Patterns ───────────────────────────────────────────────  [general*]
+   uses     step-5 ctx · arc_solver.task_patterns over phase-2/4 same_* matches (addition/subtraction/recoloring/moving/rotation/reflection; ∀ pairs; bg from bg_cand)
+   → future L3 comprehension — task-pattern hypothesis from the profile · mindsos_capacity (→ L4 induce/learner)
+   produces task-pattern hypothesis
+   result   Pattern Hypothesis:
+            moving ✓
+```
+
+### Phase 6 result body — format
+
+- **Header line:** `Pattern Hypothesis:` then one **bare** `{name} ✓` line per
+  task pattern whose filter holds on **EVERY** demo pair (∀). No matching
+  pattern → `(none)`. (Patterns are bare; if a pattern later gains options they
+  render after the name — none do today.)
+- **Patterns + filters** (all require dims=preserved; ∀ demo pairs):
+  - **addition** — palette ∈ {preserved, increased} · ≥1 **unmatched output** component.
+  - **subtraction** — palette ∈ {preserved, decreased} · ≥1 **unmatched input** component.
+  - **recoloring** — ≥1 recolored-family (same_shape + different colour).
+  - **moving** — palette = preserved · **all** components matched · ≥1 moved-family.
+  - **rotation** — ≥1 rotated-family.
+  - **reflection** — ≥1 reflected-family.
+- **matched / unmatched** — a component (object or point) is **matched** iff it
+  has a phase-2/4 `same_*` correspondence in one of: same_object · same_point ·
+  same_shape+same_color (moved) · same_shape+different_color (recolored) ·
+  rotated · reflected; else **unmatched**.
+- **Background** comes **only** from `bg_cand` (`bg_advance`): bg-colour
+  components are excluded when the grid's bg is resolved, included when not.
+  When any grid's bg is unresolved, the firing lines are prefixed
+  **`bg not resolved`**.
+- **Descriptive, not the rule** — hypothesis/display only; not consumed
+  downstream (#8 reads `moving ✓`).
+
 ## Block structure (what each line is)
 
 - `── STEP {n} · {name} ───…  [{scope}]` — phase number, name, scope tag.
@@ -229,6 +264,12 @@ per-phase body content is defined in `pipeline.py` / `arc_solver`.
   was dropped. A STEP block now opens with the `── STEP {n} · {name} …` bar
   followed directly by the `uses` line. The phase-1–4 reference blocks above are
   relocked without it.
+- **Phase 6 (Task Patterns) LOCKED** (2026-06-28). Bare `{name} ✓` per pattern
+  holding ∀ demo pair, over the phase-2/4 `same_*` matches (addition /
+  subtraction / recoloring / moving / rotation / reflection); matched = the 6
+  correspondence families (incl rotated/reflected); background **only** from
+  `bg_cand`, firing lines prefixed `bg not resolved` when unresolved. #8 →
+  `moving`. Verified 400/400 (0 errors; #8 → moving). Do not re-litigate.
 - **Phase 5 (Comparators Hypothesis) per-pair parameters + conclusion LOCKED**
   (2026-06-28). Each ∀-firing parametric comparator renders
   `{comp} → {item} | … → {conclusion}`, one item per pair; `item` = the agreed

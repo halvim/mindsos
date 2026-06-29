@@ -71,7 +71,6 @@ DS_TOUCHING = datastate_iri("arc.touching")
 DS_INSIDE = datastate_iri("arc.inside")
 DS_INSET = datastate_iri("arc.inset")
 DS_REGION = datastate_iri("arc.region")
-DS_BACKGROUND_CANDIDATE = datastate_iri("arc.background_candidate")
 DS_BACKGROUND = datastate_iri("arc.background")
 DS_BACKGROUND_SET = datastate_iri("arc.background_set")
 DS_CORRESPONDENCE = datastate_iri("arc.correspondence")
@@ -344,18 +343,6 @@ def _intra_grid_capacities() -> List[Capacity]:
 
 def _reason_capacities() -> List[Capacity]:
     return [
-        Capacity(
-            name="detect_background_frequency", category=CATEGORY_DERIVATION,
-            inputs=(DS_GRID,), outputs=(DS_BACKGROUND_CANDIDATE,),
-            implementation=lambda **kw: {DS_BACKGROUND_CANDIDATE: None},
-            description="Grid -> BackgroundCandidate (most-frequent colour). One ensemble member.",
-        ),
-        Capacity(
-            name="reconcile_background", category=CATEGORY_REASONING,
-            inputs=(DS_BACKGROUND_CANDIDATE,), outputs=(DS_BACKGROUND,),
-            implementation=lambda **kw: {DS_BACKGROUND: None},
-            description="Fold over BackgroundCandidate* -> Background. Degenerate (pass-through) at v1; policy pending CORPUS-ANALYSIS.",
-        ),
         Capacity(
             name="build_correspondence", category=CATEGORY_REASONING,
             inputs=(DS_SAME_OBJECT, DS_MOVE_TRANSFORM, DS_SAME_POINT),

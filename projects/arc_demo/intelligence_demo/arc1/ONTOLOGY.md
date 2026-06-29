@@ -176,8 +176,8 @@ Every derivation/comparison registers as a capacity under an **existing** family
 |---|---|---|---|
 | recognize_cell | (Coordinate, Color) → Cell | `perception` | DATASTATE_MARKER |
 | build_grid | Cell* → Grid | `perception` | DATASTATE_MARKER |
-| detect_background_frequency | Grid → BackgroundCandidate (most-frequent colour, **per-grid**) | `derivation` | DATASTATE_MARKER |
-| reconcile_background | BackgroundCandidate* → Background (fold; degenerate pass-through at v1, policy → CORPUS-ANALYSIS) | `reasoning` | DATASTATE_MARKER |
+| ~~detect_background_frequency~~ | **REMOVED 2026-06-28** — frequency bg deleted; the sole bg method is `bg_deduction` (`bg_advance` elimination → `bg_cand`). Re-add when a real detector is needed. | — | — |
+| ~~reconcile_background~~ | **REMOVED 2026-06-28** — see above (the frequency reconcile chain is gone; `DS_BACKGROUND` survives, fed by `bg_advance`/D3 spike). | — | — |
 | extract_objects | **Region** → Object* (8-conn, size ≥ 2) | `decomposition` | (deferred default) |
 | extract_points | **Region** → Point* (single cells) | `decomposition` | (deferred default) |
 | recognize_pattern / recognize_lattice / recognize_group | **Region** → Pattern \| Lattice \| Group \| None (down-only; reason-time) | `comparator` | OPTIONAL_RETURN |

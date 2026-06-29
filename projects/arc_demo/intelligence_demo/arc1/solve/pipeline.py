@@ -187,27 +187,16 @@ def step_objcomp(ctx, dataset):
 
 
 def step_task_pattern(ctx, dataset):
-    """Phase 6 — task-pattern hypothesis over the phase-2 profile. Reads the
-    profilers (same_object / dims / palette) to infer what the task is doing.
-    First pattern: ADDITION (bg via _bg_color interim — see
-    arc_solver._addition_evidence). Display/hypothesis only; not consumed
-    downstream."""
-    pats = arc_solver.task_patterns(ctx["profile"])
-    ctx["patterns"] = pats
-    a = next(p for p in pats if p["name"] == "addition")
-    ev = a["evidence"]
-    mark = lambda b: "✓" if b else "✗"
-    palv = ev["palette_label"]
-    conds = (f"dims preserved {mark(ev['dims_preserved'])} · "
-             f"palette {palv} {mark(ev['palette_subset'])} · "
-             f"new output object {mark(ev['new_output_object'])}")
-    if a["matched"]:
-        n = ev["n_added"]
-        tail = f"→ addition — something is being added to the output ({n} new object{'s' if n != 1 else ''})"
-    else:
-        tail = "→ not addition (an input object changes)"
-    return _block(f"task pattern: addition — {'yes' if a['matched'] else 'no'}",
-                  [conds, tail])
+    """Phase 6 — Task Patterns: the patterns whose filter holds on EVERY demo
+    pair (∀), over the phase-2/4 ``same_*`` match results. Background comes only
+    from ``bg_cand``; when a grid's bg is unresolved the firing lines are
+    prefixed ``bg not resolved``. Bare ``{name} ✓`` per matching pattern.
+    Display/hypothesis only; not consumed downstream."""
+    res = arc_solver.task_patterns(ctx["profile"], ctx.get("bg_cand"))
+    ctx["patterns"] = res
+    prefix = "" if res["bg_resolved"] else "bg not resolved  "
+    lines = [f"{prefix}{p['name']} ✓" for p in res["patterns"] if p["matched"]]
+    return _block("Pattern Hypothesis:", lines or ["(none)"])
 
 
 def _hyp_order() -> list:
@@ -379,7 +368,8 @@ def step_comparators_hypothesis(ctx, dataset):
 
 
 def step_background(ctx, dataset):
-    b = arc_solver.stage_background(ctx["profile"])
+    bg = arc_solver._resolve_solver_bg(ctx.get("bg_cand"))
+    b = arc_solver.stage_background(ctx["profile"], bg)
     ctx["bg"] = b["bg"]
     n_gained = sum(1 for c in b["changes"] if c["gained"])
     return f"bg = {b['bg']} (exclude colour {b['bg']}) · touching-gained persists {n_gained}/{b['n']}"
@@ -451,11 +441,11 @@ STEPS = [
     (5, "Comparators Hypothesis", GENERAL, step_comparators_hypothesis,
      "arc_search.forall_comparators over per-pair sets — touching_delta (arc_solver.touching_changes, bg-forgotten) replaces intra-grid touching; ∀ all pairs, add-only",
      "comparator hypothesis (∀-pair comparators)"),
-    (6, "Task pattern", GENERAL_STAR, step_task_pattern,
-     "arc_solver.task_patterns(_addition_evidence, _bg_color)",
-     "task-pattern hypothesis (addition)"),
+    (6, "Task Patterns", GENERAL_STAR, step_task_pattern,
+     "arc_solver.task_patterns over phase-2/4 same_* matches (addition/subtraction/recoloring/moving/rotation/reflection; ∀ pairs; bg from bg_cand)",
+     "task-pattern hypothesis"),
     (7, "Background + state-change", GENERAL_STAR, step_background,
-     "arc_solver.stage_background(_bg_color, touching_changes(_correspondence, _touch_set))",
+     "arc_solver.stage_background(bg from bg_cand, touching_changes(_correspondence, _touch_set))",
      "bg · changes (gained/lost/maintained)"),
     (8, "Roles", SEMI, step_roles,
      "arc_solver.stage_roles(_moved_in, _touch_set, _comp)", "stage1 (roles)"),
@@ -511,8 +501,12 @@ STEP_DESC = {
 
 
 def run_all(task_id: str, dataset: dict) -> Dict[str, Any]:
-    """Run all steps in-memory (no checkpoints) — used by the gate."""
+    """Run all steps in-memory (no checkpoints) — used by the gate. Advances the
+    persistent ``bg_state`` after each phase (same as the runner) so ``bg_cand``
+    is available to the steps that read it (phase 6, the background stage)."""
     ctx: Dict[str, Any] = {"task_id": task_id}
-    for (_n, _name, _scope, fn, _eng, _prod) in STEPS:
+    for (n, _name, _scope, fn, _eng, _prod) in STEPS:
         fn(ctx, dataset)
+        if n >= 1 and "raw" in ctx:
+            arc_solver.bg_advance(ctx, n)
     return ctx

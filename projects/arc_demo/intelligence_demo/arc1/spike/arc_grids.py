@@ -278,37 +278,6 @@ def touching_pairs(objects: List[dict], points: List[dict]) -> List[dict]:
     return out
 
 
-def verify_background(grid: Grid) -> dict:
-    """Background-colour HYPOTHESIS for one grid — never an assumed fact.
-
-    The solver has no validated way to identify the background yet (that is the
-    D4 / CORPUS-ANALYSIS work), so this returns a *flagged candidate*, not a
-    known value: the most-frequent colour as the candidate, a rough confidence
-    (its share of cells), and ``verified=False``. Per RULES §7, consumers MUST
-    treat an unverified background as "don't know" (abstain) — they may not
-    silently trust the candidate.
-
-    This is the sanctioned seam where a real detector/reconciler
-    (``detect_background_frequency`` / ``reconcile_background``) will plug in. It
-    is intentionally NOT wired into any capacity yet: after the ``inside`` ray
-    rewrite no shipped capacity consumes a background (consumer discipline).
-
-    Returns ``{"candidate": int|None, "confidence": float, "verified": bool,
-    "method": str}``.
-    """
-    from collections import Counter
-    cnt: Counter = Counter()
-    total = 0
-    for row in grid:
-        cnt.update(row)
-        total += len(row)
-    if not total:
-        return {"candidate": None, "confidence": 0.0, "verified": False, "method": "frequency"}
-    color, freq = cnt.most_common(1)[0]
-    return {"candidate": color, "confidence": freq / total,
-            "verified": False, "method": "frequency"}
-
-
 def _first_diff(grid: Grid, r: int, c: int, dr: int, dc: int,
                 color: int, H: int, W: int):
     """Walk from ``(r, c)`` along ``(dr, dc)``; return the first cell whose

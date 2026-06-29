@@ -594,6 +594,63 @@ filed as motivating consumer; the demo does NOT block on it.
   RESULT_OUTPUT_FORMAT.md (new reference block + locked-decision) + STEPS.md.
   Gate: `./arc solve 8 13` still solves #8; full Linux gate pending.
 
+- **2026-06-28 (cont.) — phase 6 "Task Patterns" (multi-pattern) + frequency-bg
+  PURGED (BUILT + Cowork-gated 8 `[ok]`/400, #8 solves; NOT committed).** Two
+  threads.
+
+  **(A) Phase 6 = "Task Patterns".** Renamed from "Task pattern"; `produces`
+  drops "(addition)". Now lists the patterns holding on EVERY demo pair (∀),
+  read off the phase-2/4 `same_*` match results — bare `{name} ✓` per match
+  (`Pattern Hypothesis:` header; `(none)` if none); a firing line is prefixed
+  `bg not resolved` when a grid's bg is unresolved (PB-F). Six patterns
+  (`arc_solver.task_patterns(profile, bg_cand)` + `_pattern_flags` /
+  `_matched_families` / `_grid_components` / `_palette_label`):
+  - **matched** (PB1/q2) = a component (object **or** point) with one of:
+    same_object · same_point · same_shape+same_color (moved) ·
+    same_shape+different_color (recolored) · **rotated** · **reflected**
+    (rotated/reflected via the actual detectors — option **a**, not the
+    same_cell_count∧same_bbox_area proxy, which over-matches). Else **unmatched**.
+  - filters (all dims=preserved, ∀ pairs): addition = palette∈{preserved,
+    increased} ∧ ≥1 unmatched **output**; subtraction = palette∈{preserved,
+    decreased} ∧ ≥1 unmatched **input**; recoloring = ≥1 recolored-family (PB-A:
+    **no palette gate** — {preserved,increased} rejected 19/37 real recolours);
+    moving = palette=preserved ∧ all matched ∧ ≥1 moved (PB3 ≥1-moved guard);
+    rotation = ≥1 rotated; reflection = ≥1 reflected (PB-D).
+  - **#8 → `moving ✓`** (was wrongly "addition" — equal-only matched counted the
+    mover as a new output object). Corpus (phases 1-6, ∀): addition 160 /
+    subtraction 94 / recoloring 37 / moving 7 / rotation 16 / reflection 8;
+    bg unresolved on 380/400 (those prefixed `bg not resolved`). Display-only,
+    not consumed downstream. Phase 6 LOCKED in RESULT_OUTPUT_FORMAT + STEPS.md.
+  - **Deferred (noted):** the phase-3 subdivision **component-universe**
+    modification (PB-E "modified in phase 3") is NOT folded into matched yet —
+    matched is computed over phase-1 objects+points (correct for the 244
+    no-subdivision tasks + #8). Confirm if subdivided-task addition/subtraction
+    accuracy matters.
+
+  **(B) Frequency background DELETED — `bg_cand`/`bg_advance` is the SOLE bg
+  method (owner directive).** Removed `arc_solver._bg_color` (pooled
+  most-frequent) + `arc_grids.verify_background` (dead frequency helper) + the
+  registered reason-caps `detect_background_frequency` + `reconcile_background`
+  + `DS_BACKGROUND_CANDIDATE` (kept `DS_BACKGROUND` — the touching_delta body +
+  D3 spike consume it). `bg_ground.py` deleted (its only purpose was the
+  bg_advance-vs-frequency divergence). All executable consumers re-routed to
+  **`arc_solver.resolve_bg(profile, raw)`** (runs `bg_advance` phases 1-2 →
+  `bg_cand`) + `_resolve_solver_bg` (single bg for the placeholder #8 solver):
+  `stage_background(profile, bg)` now takes bg injected; `step_background` feeds
+  it from `ctx['bg_cand']`; `build_solver` from `resolve_bg`; `run_all` now runs
+  `bg_advance` after each phase so `bg_cand` exists on the gate path; the gate
+  D3 spike (`run_spike`) + the `./evaluate` `union` track use `resolve_bg`.
+  Conformance unaffected (it iterates the remaining reason caps). **`union ⟹
+  inset` fix:** routing union's bg through `bg_advance` exposed a latent bug —
+  `union_in_pair` composes wholes from objects **and points** but `inset_occurs`
+  scanned objects only, so a point-part union broke the skip-soundness on 2
+  tasks; `inset_occurs` now scans objects+points → sound by construction,
+  bg-independent. **Consequence:** union *occurs* drops 39→23/400 (bg-exclusion
+  now relies on `bg_advance`, which abstains more than frequency did) — accepted
+  per the directive. **`detect_background_frequency`/`reconcile_background` rows
+  struck in ONTOLOGY §; re-add a detector only when needed.** **Mac: `git rm`
+  the now-deleted `spike/bg_ground.py`.**
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

@@ -100,7 +100,7 @@ def _conformance_check(cl) -> None:
           "found-but-unsound; registered edges == declared deps.")
 
 
-def _invoke_biting_check(cl, prof8) -> None:
+def _invoke_biting_check(cl, prof8, raw8) -> None:
     """D3 one-specimen spike — execute `touching_delta` THROUGH the layer for #8.
 
     Unlike GF-6(c) (which only checks declared == registered, and so can't see
@@ -112,7 +112,7 @@ def _invoke_biting_check(cl, prof8) -> None:
           topology is fiction relative to the executable body.
     """
     iri = capacity_iri(ac.CATEGORY_COMPARATOR, "touching_delta")
-    bg = arc_solver._bg_color(prof8)
+    bg = arc_solver._resolve_solver_bg(arc_solver.resolve_bg(prof8, raw8))
     pair = prof8["train"][0]
     expected = arc_solver.touching_changes(pair, bg)
 
@@ -248,7 +248,7 @@ def main(argv: list) -> int:
             prof8 = arc_profile.build_profile(dataset, "train", arc_solver.TASK8)
         raw8 = arc_grids.get_task(dataset, "train", arc_solver.TASK8)
         solver = arc_solver.build_solver(prof8, raw_task=raw8)
-        _invoke_biting_check(cl, prof8)  # D3 one-specimen spike
+        _invoke_biting_check(cl, prof8, raw8)  # D3 one-specimen spike
         _solve_pipeline_check(dataset, solver)  # arc1/solve step-pipeline parity
 
     payload = {

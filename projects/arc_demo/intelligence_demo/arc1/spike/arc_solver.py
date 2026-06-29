@@ -48,18 +48,36 @@ def _comp(gs: dict, r: Ref) -> dict:
     return gs["objects"][r[1]] if r[0] == "O" else gs["points"][r[1]]
 
 
-def _bg_color(profile: dict) -> int:
-    """The **degenerate reconcile-background policy** (GF-4): pool the demo
-    inputs and take the single most-frequent colour. This is the v1 stand-in
-    for the per-grid detect → reconcile fold (ONTOLOGY #3 is per-grid; there is
-    NO Task-level background). Pooling is the policy, NOT the model — the real
-    reconcile policy is pending CORPUS-ANALYSIS.
-    """
+def resolve_bg(profile: dict, raw: dict) -> dict:
+    """Background comes ONLY from ``bg_advance`` (the single bg method). For
+    callers outside the pipeline (the standalone #8 solver, the ./evaluate
+    operator track) this runs ``bg_advance`` over a fresh ctx for the
+    match-based phases — 1 (init) + 2 (same_* elimination) — and returns its
+    ``bg_cand`` (per-grid resolved bg, or None where it abstains). Subdivision /
+    recomparison refinements (phases 3-4) need the pipeline and are skipped here;
+    they don't change the #8 / no-subdivision resolution."""
+    ctx = {"raw": raw, "profile": profile}
+    bg_advance(ctx, 1)
+    bg_advance(ctx, 2)
+    return ctx["bg_cand"]
+
+
+def _resolve_solver_bg(bg_cand: dict) -> int:
+    """A single background colour for the placeholder #8 solver, taken from
+    ``bg_cand``: the test input's resolved bg, else the majority resolved bg
+    across the demo grids, else 0 (ARC canonical empty) as a last resort."""
+    if bg_cand is None:
+        return 0
+    test = bg_cand["test"][0]["input"]["bg"] if bg_cand["test"] else None
+    if test is not None:
+        return test
     cnt: Counter = Counter()
-    for pr in profile["train"]:
-        for row in pr["input"]["cells"]:
-            cnt.update(row)
-    return cnt.most_common(1)[0][0]
+    for t in bg_cand["train"]:
+        for side in ("input", "output"):
+            b = t[side]["bg"]
+            if b is not None:
+                cnt[b] += 1
+    return cnt.most_common(1)[0][0] if cnt else 0
 
 
 # ── bg deduction — PERSISTENT per-grid/per-colour component lists ──────────
@@ -413,51 +431,113 @@ def _palette_label(pin: list, pout: list) -> str:
     return "preserved" if set(pin) == set(pout) else "increased"
 
 
-def _addition_evidence(profile: dict) -> dict:
-    """Per-condition booleans (∀ train pair) for the ADDITION pattern.
+# ── phase-6 task patterns — over the phase-2/4 same_* match results ──────
+PATTERN_NAMES = ["addition", "subtraction", "recoloring",
+                 "moving", "rotation", "reflection"]
 
-    Interim: the background is the `_bg_color` helper (to be replaced by the
-    per-grid bg-determination process once built). `nonbg_inputs_preserved`
-    removed per user request.
-    """
-    bg = _bg_color(profile)
-    dims = pal = newobj = True
-    pal_label = "preserved"
-    n_added = None
-    for pr in profile["train"]:
-        i, o, m = pr["input"], pr["output"], pr["match"]
-        if i["dims"] != o["dims"]:
-            dims = False
-        if not (set(i["palette"]) <= set(o["palette"])):
-            pal = False
-        elif set(i["palette"]) != set(o["palette"]):
-            pal_label = "increased"
-        matched_out = {e["out"] for e in m["equal"]}
-        out_nonbg = [j for j, ob in enumerate(o["objects"]) if ob["color"] != bg]
-        added = [j for j in out_nonbg if j not in matched_out]
-        if not added:
-            newobj = False
+
+def _palette_label(pr: dict) -> str:
+    """preserved | increased (output adds colours) | decreased (output loses
+    colours) | added+removed (both)."""
+    i, o = set(pr["input"]["palette"]), set(pr["output"]["palette"])
+    if i == o:
+        return "preserved"
+    if i < o:
+        return "increased"
+    if o < i:
+        return "decreased"
+    return "added+removed"
+
+
+def _grid_components(gs: dict, bg) -> set:
+    """Component-id strings (O{i}/P{i}) for a grid, bg-colour excluded when
+    ``bg`` is resolved (not None)."""
+    ids = {f"O{i}" for i, o in enumerate(gs["objects"]) if bg is None or o["color"] != bg}
+    ids |= {f"P{i}" for i, p in enumerate(gs["points"]) if bg is None or p["color"] != bg}
+    return ids
+
+
+def _matched_families(pr: dict):
+    """Object/point correspondences from the phase-2 match + the comparator
+    detectors. Returns (matched_in, matched_out, families) — matched_* = sets of
+    component-id strings; families ⊆ {moved, recolored, rotated, reflected}.
+    Matched buckets: same_object, same_point, same_shape+same_color (moved),
+    same_shape+different_color (recolored), rotated, reflected."""
+    m, gin, gout = pr["match"], pr["input"], pr["output"]
+    mi, mo, fams = set(), set(), set()
+    for e in m["equal"]:                                   # same_object
+        mi.add(f"O{e['in']}"); mo.add(f"O{e['out']}")
+    for e in m["point_equal"]:                             # same_point
+        mi.add(f"P{e['in']}"); mo.add(f"P{e['out']}")
+    for g in m["shape_groups"]:                            # same_shape+same_color
+        for mv in g.get("moves", []):
+            mi.add(f"O{mv['in']}"); mo.add(f"O{mv['out']}"); fams.add("moved")
+    for t in arc_grids.recolored_pairs(gin, gout):         # same_shape+diff_color
+        mi.add(f"O{t['in']}"); mo.add(f"O{t['out']}"); fams.add("recolored")
+    for t in arc_grids.rotated_pairs(gin, gout):           # rotated (opt a)
+        mi.add(f"O{t['in']}"); mo.add(f"O{t['out']}"); fams.add("rotated")
+    for t in arc_grids.reflected_pairs(gin, gout):         # reflected (opt a)
+        mi.add(f"O{t['in']}"); mo.add(f"O{t['out']}"); fams.add("reflected")
+    return mi, mo, fams
+
+
+def _pattern_flags(pr: dict, bg_in, bg_out) -> dict:
+    """The six patterns' per-pair truth (bg-colour components excluded when the
+    grid's bg is resolved)."""
+    full_in = _grid_components(pr["input"], bg_in)
+    full_out = _grid_components(pr["output"], bg_out)
+    mi, mo, fams = _matched_families(pr)
+    unmatched_in = full_in - mi
+    unmatched_out = full_out - mo
+    dims = pr["input"]["dims"] == pr["output"]["dims"]
+    pal = _palette_label(pr)
+    all_matched = not unmatched_in and not unmatched_out
+    return {
+        "addition":    dims and pal in ("preserved", "increased") and bool(unmatched_out),
+        "subtraction": dims and pal in ("preserved", "decreased") and bool(unmatched_in),
+        "recoloring":  dims and "recolored" in fams,
+        "moving":      dims and pal == "preserved" and all_matched and "moved" in fams,
+        "rotation":    dims and "rotated" in fams,
+        "reflection":  dims and "reflected" in fams,
+    }
+
+
+def task_patterns(profile: dict, bg_cand: dict = None) -> dict:
+    """Phase 6 — task-pattern hypotheses. A pattern holds iff its filter is true
+    on EVERY demo pair (∀). Filters read the phase-2/4 ``same_*`` match results;
+    background comes ONLY from ``bg_cand`` (per-grid `bg_advance` resolution) —
+    bg-colour components are excluded when resolved, included when not (and the
+    task is flagged ``bg_resolved=False``). Returns
+    ``{patterns:[{name,matched}], bg_resolved}``."""
+    demos = profile["train"]
+    bg_resolved = bg_cand is not None
+    per = []
+    for i, pr in enumerate(demos):
+        if bg_cand is not None:
+            bg_in = bg_cand["train"][i]["input"]["bg"]
+            bg_out = bg_cand["train"][i]["output"]["bg"]
         else:
-            n_added = len(added) if n_added is None else min(n_added, len(added))
-    return {"dims_preserved": dims, "palette_subset": pal,
-            "palette_label": pal_label,
-            "new_output_object": newobj, "n_added": n_added}
-
-
-def task_patterns(profile: dict) -> List[dict]:
-    """Phase 4 — task-pattern hypotheses over the phase-2 profile. Returns one
-    verdict per known pattern (currently: addition), each with its matched flag
-    and per-condition evidence for display."""
-    ev = _addition_evidence(profile)
-    matched = (ev["dims_preserved"] and ev["palette_subset"]
-               and ev["new_output_object"])
-    return [{"name": "addition", "matched": matched, "evidence": ev}]
+            bg_in = bg_out = None
+        if bg_in is None or bg_out is None:
+            bg_resolved = False
+        per.append(_pattern_flags(pr, bg_in, bg_out))
+    matched = {n: bool(per) and all(p[n] for p in per) for n in PATTERN_NAMES}
+    return {"patterns": [{"name": n, "matched": matched[n]} for n in PATTERN_NAMES],
+            "bg_resolved": bg_resolved}
 
 
 # ── union operator — task-level occurrence + display (bg-aware) ──────────
+def _raw_from_profile(profile: dict) -> dict:
+    """A raw-task shell (grid cells only) reconstructed from a profile, so
+    ``resolve_bg`` can run ``bg_advance`` for callers that hold only a profile."""
+    return {"train": [{"input": pr["input"]["cells"], "output": pr["output"]["cells"]}
+                      for pr in profile["train"]], "test": []}
+
+
 def _union_per_pair(profile: dict):
-    """(bg, [union_in_pair result per demo]) — bg-excluded, both directions."""
-    bg = _bg_color(profile)
+    """(bg, [union_in_pair result per demo]) — bg-excluded, both directions.
+    bg from bg_advance (resolve_bg), never frequency."""
+    bg = _resolve_solver_bg(resolve_bg(profile, _raw_from_profile(profile)))
     return bg, [arc_grids.union_in_pair(pr["input"], pr["output"], bg)
                 for pr in profile["train"]]
 
@@ -470,10 +550,14 @@ def union_occurs(profile: dict) -> bool:
 
 
 def inset_occurs(profile: dict) -> bool:
-    """∃ demo with a cross-grid inset pair (an in-object's cells ⊆ an out-object
-    or vice-versa; positional, reflexive — bg-agnostic, inset's native form)."""
+    """∃ demo with a cross-grid inset pair (an in-component's cells ⊆ an
+    out-component or vice-versa; positional, reflexive — bg-agnostic, inset's
+    native form). Components = objects AND points, matching ``union_in_pair``
+    (which composes wholes from objects+points) so ``union ⟹ inset`` stays sound
+    by construction regardless of the resolved background."""
     for pr in profile["train"]:
-        ins, outs = pr["input"]["objects"], pr["output"]["objects"]
+        ins = pr["input"]["objects"] + pr["input"]["points"]
+        outs = pr["output"]["objects"] + pr["output"]["points"]
         for a in ins:
             for b in outs:
                 if arc_grids.inset(a, b) or arc_grids.inset(b, a):
@@ -505,11 +589,11 @@ def union_detail(profile: dict) -> dict:
 
 
 # ── solver stages (decomposed so arc1/solve can run them step-by-step) ──
-def stage_background(profile: dict) -> dict:
-    """Step 4 — background + state-change: bg (pooled most-frequent, v1) + the
-    per-pair touching_changes (gained/lost/maintained)."""
+def stage_background(profile: dict, bg: int) -> dict:
+    """Step 7 — background + state-change: the resolved background ``bg``
+    (from ``bg_advance``/``bg_cand``, injected by the caller — never frequency)
+    + the per-pair touching_changes (gained/lost/maintained)."""
     demos = profile["train"]
-    bg = _bg_color(profile)
     changes = [touching_changes(pr, bg, exclude_bg=True) for pr in demos]
     return {"bg": bg, "changes": changes, "n": len(demos)}
 
@@ -676,8 +760,11 @@ def stage_apply(profile: dict, bg: int, raw_task: dict = None):
 
 def build_solver(profile: dict, raw_task: dict = None) -> dict:
     """Read-only solver run (stages 1–6). Thin orchestrator over the stage
-    functions above — arc1/solve drives the same stages one at a time."""
-    b = stage_background(profile)
+    functions above — arc1/solve drives the same stages one at a time.
+    Background comes from ``bg_advance`` (resolve_bg), never frequency."""
+    bg = _resolve_solver_bg(resolve_bg(
+        profile, raw_task if raw_task is not None else _raw_from_profile(profile)))
+    b = stage_background(profile, bg)
     bg, changes = b["bg"], b["changes"]
     return {
         "task_id": profile["task_id"],
