@@ -48,3 +48,4 @@ node_modules/
 .DS_Store
 *NEXT_CHAT_PROMPT*.md
 projects/arc_demo/intelligence_demo/arc1/spike/arc_debug_data.js
+projects/arc_demo/intelligence_demo/arc1/spike/bg_ground.py

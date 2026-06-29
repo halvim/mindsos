@@ -138,6 +138,47 @@ STEP block: the header lines + the `result` block), as pasted below.
 - **`[from {direction}]`** — `[from split]` / `[from assemble]`, carrying the
   phase-3 `[split]`/`[assemble]` tag the sub-piece came **from**.
 
+## Reference example — Phase 5 (Comparators Hypothesis), task #8
+
+```
+── STEP 5 · Comparators Hypothesis ──────────────────────────────────────  [general]
+   uses     step-4 ctx · arc_search.forall_comparators over per-pair sets — touching_delta (arc_solver.touching_changes, bg-forgotten) replaces intra-grid touching; ∀ all pairs, add-only
+   → future L4 phase_1 sweep — L3 comparators/predicates (moved/touching/inside/transforms) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity
+   produces comparator hypothesis (∀-pair comparators)
+   result   Comparators Hypothesis:
+            moved → (6,0) | (0,3) | (-3,0) → varies
+            touching_delta → gained | gained | gained → all gained
+```
+
+### Phase 5 result body — format
+
+- **Header line:** `Comparators Hypothesis:` then one line per comparator that
+  triggers on **EVERY** demo pair (∀, add-only over `comparator_names()`, with
+  the intra-grid `touching` shown as the `touching_delta` state-change). No
+  ∀-comparator → `(none)`.
+- **Per comparator line** — one of two shapes:
+  - **parameter-less** (`inside`): bare `inside ✓`.
+  - **parametric** (moved / rotated / reflected / recolored / touching_delta):
+    `{comp} → {item} | {item} | … → {conclusion}` — **one item per demo pair**,
+    in pair order.
+- **`{item}`** = the pair's parameter when **all** of that pair's instances
+  agree, else the token **`multi`** (multi = genuine within-pair disagreement —
+  a uniform many-object transform still shows its parameter, PB-l). Rendering:
+  - moved → `(dr,dc)` · rotated → `90`/`180`/`270` · reflected → `H-axis`/`V-axis`
+    · recolored → `{from}→{to}` (colour names) · touching_delta → `gained`/`lost`.
+- **`{conclusion}`** = the ∀ aggregate over the per-pair values (any `multi` ⟹
+  `varies`; else, first match wins):
+  - **moved** — `constant` (all equal) → `all vertical: (X,0)` (all dc=0) →
+    `all horizontal: (0,Y)` (all dr=0) → `varies`.
+  - **rotated** / **recolored** — `constant` → `varies`.
+  - **reflected** — `all H-axis` / `all V-axis` (all one axis) → `varies`.
+  - **touching_delta** — `all gained` / `all lost` → `varies`.
+- **Descriptive, not the rule** — phase 5 is hypothesis/display only (the per-pair
+  parameter is *observed*, e.g. #8's vectors vary because the rule is slide-to-
+  touch). It does not couple into the #8 stages. **bg-colour objects are excluded**
+  when phase 5 has resolved a grid's bg (`ctx['bg_cand']`). The ∃ `task_tokens`
+  (gate) are untouched.
+
 ## Block structure (what each line is)
 
 - `── STEP {n} · {name} ───…  [{scope}]` — phase number, name, scope tag.
@@ -188,3 +229,11 @@ per-phase body content is defined in `pipeline.py` / `arc_solver`.
   was dropped. A STEP block now opens with the `── STEP {n} · {name} …` bar
   followed directly by the `uses` line. The phase-1–4 reference blocks above are
   relocked without it.
+- **Phase 5 (Comparators Hypothesis) per-pair parameters + conclusion LOCKED**
+  (2026-06-28). Each ∀-firing parametric comparator renders
+  `{comp} → {item} | … → {conclusion}`, one item per pair; `item` = the agreed
+  parameter or `multi` (= within-pair disagreement, PB-l b); `inside` stays bare.
+  Conclusion taxonomy per the "Phase 5 result body" section above
+  (constant / all vertical|horizontal / all H-axis|V-axis / all gained|lost /
+  varies). Verified total across all 400 tasks (0 nonconforming; 86 enriched
+  lines, conclusions all in the closed set). Do not re-litigate.

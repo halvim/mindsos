@@ -230,16 +230,22 @@ def _drop_bg_grid(gs, bg):
     return arc_profile.attach_relations(g2)
 
 
-def _hyp_pair_set(d, bg_in=None, bg_out=None) -> set:
-    """The comparators triggering on one demo pair, for the phase-5 hypothesis.
-    If the grid's bg is resolved by phase 5, the bg-colour objects are dropped
-    first (and match + relations recomputed over the non-bg components) so they
-    don't participate. Then the registry atom runs ALL comparators, with the
-    intra-grid ``touching`` swapped for the ``touching_delta`` state-change."""
-    if bg_in is not None or bg_out is not None:
-        gin = _drop_bg_grid(d["input"], bg_in) if bg_in is not None else d["input"]
-        gout = _drop_bg_grid(d["output"], bg_out) if bg_out is not None else d["output"]
-        d = {"input": gin, "output": gout, "match": arc_profile.match_pair(gin, gout)}
+def _hyp_pair_d(d, bg_in=None, bg_out=None) -> dict:
+    """The demo-pair dict the phase-5 hypothesis runs over. If the grid's bg is
+    resolved by phase 5, the bg-colour objects are dropped first (and match +
+    relations recomputed over the non-bg components) so they don't participate;
+    otherwise the original profile pair is used unchanged."""
+    if bg_in is None and bg_out is None:
+        return d
+    gin = _drop_bg_grid(d["input"], bg_in) if bg_in is not None else d["input"]
+    gout = _drop_bg_grid(d["output"], bg_out) if bg_out is not None else d["output"]
+    return {"input": gin, "output": gout, "match": arc_profile.match_pair(gin, gout)}
+
+
+def _hyp_pair_set(d) -> set:
+    """The comparators triggering on one (already bg-resolved) demo pair: the
+    registry atom runs ALL comparators, with the intra-grid ``touching`` swapped
+    for the ``touching_delta`` state-change."""
     s = arc_search._pair_comparators(d)            # all registered comparators
     s.discard("touching")
     ch = arc_solver.touching_changes(d, 0, exclude_bg=False)   # forget bg
@@ -248,20 +254,127 @@ def _hyp_pair_set(d, bg_in=None, bg_out=None) -> set:
     return s
 
 
+# ── phase-5 perception: per-comparator per-pair param + ∀ conclusion ─────
+# Each transform-family comparator (+ touching_delta) reports, per demo pair,
+# the parameter of its instance(s): the actual value when the pair's instances
+# AGREE, else the token ``multi`` (PB-l: multi = real within-pair disagreement,
+# so a uniform many-object transform still reads constant). The line then states
+# a ∀ conclusion over the per-pair values. ``inside`` has no parameter → bare.
+_MULTI = "multi"
+
+
+def _moved_params(d):
+    return [tuple(m["transform"]["vector"])
+            for g in d["match"]["shape_groups"] for m in g.get("moves", [])]
+
+
+def _rotated_params(d):
+    return [t["transform"]["deg"]
+            for t in arc_grids.rotated_pairs(d["input"], d["output"])]
+
+
+def _reflected_params(d):
+    return [t["transform"]["axis"]
+            for t in arc_grids.reflected_pairs(d["input"], d["output"])]
+
+
+def _recolored_params(d):
+    return [(t["transform"]["from"], t["transform"]["to"])
+            for t in arc_grids.recolored_pairs(d["input"], d["output"])]
+
+
+def _touching_delta_params(d):
+    ch = arc_solver.touching_changes(d, 0, exclude_bg=False)
+    return ["gained"] * len(ch["gained"]) + ["lost"] * len(ch["lost"])
+
+
+#: comparator -> per-pair parameter extractor. A comparator absent here renders
+#: bare (``inside``). Registry-shaped: a new transform comparator flows into the
+#: phase-5 perception by registering an extractor + a ``_render_param`` arm.
+_PAIR_PERCEPTION = {
+    "moved": _moved_params,
+    "rotated": _rotated_params,
+    "reflected": _reflected_params,
+    "recolored": _recolored_params,
+    "touching_delta": _touching_delta_params,
+}
+
+
+def _render_param(comp, p) -> str:
+    if comp == "moved":
+        return f"({p[0]},{p[1]})"
+    if comp == "rotated":
+        return str(p)
+    if comp == "reflected":
+        return "H-axis" if p == "horizontal" else "V-axis"
+    if comp == "recolored":
+        return f"{arc_grids.color_name(p[0])}→{arc_grids.color_name(p[1])}"
+    if comp == "touching_delta":
+        return p                                   # 'gained' / 'lost'
+    return str(p)
+
+
+def _pair_value(params):
+    """One pair's value: the agreed parameter if all the pair's instances match
+    (PB-l b), else ``multi``. Empty (shouldn't occur for a ∀ comparator) → multi."""
+    uniq = set(params)
+    return next(iter(uniq)) if len(uniq) == 1 else _MULTI
+
+
+def _conclusion(comp, values) -> str:
+    """∀ conclusion over the per-pair values (a parameter or ``multi``). Any
+    ``multi`` (within-pair disagreement) ⟹ ``varies``; else, per family:
+    constant (all equal) → directional → varies."""
+    if _MULTI in values:
+        return "varies"
+    if comp == "moved":
+        if len(set(values)) == 1:
+            return "constant"
+        if all(dc == 0 for (_dr, dc) in values):
+            return "all vertical: (X,0)"
+        if all(dr == 0 for (dr, _dc) in values):
+            return "all horizontal: (0,Y)"
+        return "varies"
+    if comp == "reflected":
+        if len(set(values)) == 1:
+            return "all H-axis" if values[0] == "horizontal" else "all V-axis"
+        return "varies"
+    if comp == "touching_delta":
+        if len(set(values)) == 1:
+            return "all gained" if values[0] == "gained" else "all lost"
+        return "varies"
+    # rotated, recolored: constant / varies
+    return "constant" if len(set(values)) == 1 else "varies"
+
+
+def _comparator_line(comp, pair_ds) -> str:
+    """Phase-5 line for one ∀-firing comparator: bare ``✓`` for a parameter-less
+    comparator (``inside``), else ``{comp} → {item} | … → {conclusion}``."""
+    if comp not in _PAIR_PERCEPTION:
+        return f"{comp} ✓"
+    extract = _PAIR_PERCEPTION[comp]
+    values = [_pair_value(extract(d)) for d in pair_ds]
+    items = [_MULTI if v == _MULTI else _render_param(comp, v) for v in values]
+    return f"{comp} → {' | '.join(items)} → {_conclusion(comp, values)}"
+
+
 def step_comparators_hypothesis(ctx, dataset):
     """Phase 5 — Comparators Hypothesis: the comparators that trigger on EVERY
     demo pair (∀), running ALL registered comparators (comparator_names()), with
     ``touching_delta`` shown instead of the intra-grid ``touching``. If the bg is
     resolved by phase 5 (``ctx['bg_cand']``), bg-colour objects are excluded from
-    the checks. Display/hypothesis only; the ∃ task_tokens (gate) are untouched."""
+    the checks. Each firing comparator reports its per-pair parameter(s) + a ∀
+    conclusion (``inside`` stays bare). Display/hypothesis only; the ∃ task_tokens
+    (gate) are untouched."""
     bc = ctx.get("bg_cand")
-    per = []
+    pair_ds = []
     for i, d in enumerate(ctx["profile"]["train"]):
         bg_in = bc["train"][i]["input"]["bg"] if bc else None
         bg_out = bc["train"][i]["output"]["bg"] if bc else None
-        per.append(_hyp_pair_set(d, bg_in, bg_out))
+        pair_ds.append(_hyp_pair_d(d, bg_in, bg_out))
+    per = [_hyp_pair_set(d) for d in pair_ds]
     comps = arc_search.forall_comparators(per, _hyp_order())
-    lines = [f"{c} ✓" for c in comps]
+    lines = [_comparator_line(c, pair_ds) for c in comps]
     return _block("Comparators Hypothesis:", lines or ["(none)"])
 
 

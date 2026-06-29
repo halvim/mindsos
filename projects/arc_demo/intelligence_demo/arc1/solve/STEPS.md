@@ -21,7 +21,7 @@ v1 assumption · **semi** = runs generally but encodes the move-task model ·
 | 2 | Profile (profilers) | general | `arc_profile.build_profile`(`match_pair`, `profile_sweep`, `hypotheses`) · `arc_search.task_tokens`(`same_cell_count_pairs`, `same_bbox_area_pairs`) |
 | 3 | Subdivision | general\* | `arc_grids.subdivisions` → `inset`, **bidirectional + bg-agnostic** (object = ≥2 disjoint insets, `split` in→out or `assemble` out→in, points included) |
 | 4 | Component Re-Comparison | general\* | `pipeline.step_objcomp` over step-3 findings → per sub-piece `same_object`/`same_point` (colour kept) or `same_shape` (colour changed), tagged `[from split]`/`[from assemble]` |
-| 5 | Comparators Hypothesis | general | `arc_search.forall_comparators` over per-pair sets — the comparators triggering on **ALL** demo pairs (∀, add-only); `touching_delta` (`arc_solver.touching_changes`, bg-forgotten) replaces intra-grid `touching`; **bg-colour objects excluded when bg is resolved** (`pipeline._drop_bg_grid`); ∃ `task_tokens` untouched |
+| 5 | Comparators Hypothesis | general | `arc_search.forall_comparators` over per-pair sets — the comparators triggering on **ALL** demo pairs (∀, add-only); each parametric comparator reports its **per-pair parameter + ∀ conclusion** (`pipeline._comparator_line`/`_conclusion`: `moved`→`(dr,dc)`, `rotated`→deg, `reflected`→`H/V-axis`, `recolored`→`from→to`, `touching_delta`→`gained/lost`; `multi`=within-pair disagreement, PB-l; `inside` bare); `touching_delta` (`arc_solver.touching_changes`, bg-forgotten) replaces intra-grid `touching`; **bg-colour objects excluded when bg is resolved** (`pipeline._drop_bg_grid`); ∃ `task_tokens` untouched |
 | 6 | Task pattern | general\* | `arc_solver.task_patterns` → `_addition_evidence`, `_bg_color` (addition hypothesis from the profile) |
 | 7 | Background + state-change | general\* | `arc_solver.stage_background` → `_bg_color` (pooled most-frequent — **v1 assumption**) · `touching_changes` (`_correspondence`, `_touch_set`) |
 | 8 | Roles | semi | `arc_solver.stage_roles` → `_moved_in`, `_touch_set`, `_comp` (mover / target / background, demo-1) |
@@ -43,9 +43,12 @@ component it covers — `same_object`/`same_point` if colour kept, else
 `same_shape`. Phase 5 (comparators hypothesis) lists the comparators that trigger
 on **every** demo pair (∀); a comparator triggers on a pair iff it has ≥1
 instance there, and the ∀ list is built add-only (the ∃ `task_tokens` driving the
-gate/`./evaluate` are untouched). The intra-grid `touching` is replaced here by
-the `touching_delta` state-change (`arc_solver.touching_changes`: a corresponded
-object's touching status flips gained/lost, bg-forgotten). Phase 6 (addition) flags dims+palette preserved
+gate/`./evaluate` are untouched). Each parametric comparator also reports its
+**per-pair parameter** (one item per pair: the value if the pair's instances
+agree, else `multi`) and a **∀ conclusion** (constant / directional / varies) —
+see RESULT_OUTPUT_FORMAT.md "Phase 5 result body". The intra-grid `touching` is
+replaced here by the `touching_delta` state-change (`arc_solver.touching_changes`:
+a corresponded object's touching status flips gained/lost, bg-forgotten). Phase 6 (addition) flags dims+palette preserved
 + all non-bg inputs kept + a new object appears. `inset` is a registered
 capacity-only predicate (no Search facet — near-universal); `subdivision` is the
 phase process that consumes it inline (D3).

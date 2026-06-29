@@ -563,6 +563,37 @@ filed as motivating consumer; the demo does NOT block on it.
   `*_NEXT_CHAT_PROMPT.md` handoffs is now superseded by this entry.** **Mac:
   `rm -rf` the now-unignored `runs/` before commit; then gate.**
 
+- **2026-06-28 (cont.) — phase-5 per-pair PARAMETER + ∀ CONCLUSION (BUILT +
+  Cowork-gated; NOT committed).** Phase 5 lines go from bare `{name} ✓` to
+  `{comp} → {item} | … → {conclusion}` — one item per demo pair. Decisions
+  (this chat): **PB1=(a)+conclusion**; **per-pair item model** (supersedes the
+  earlier per-instance-flat PB-d): item = the pair's parameter when all that
+  pair's instances **agree**, else `multi` — **PB-l(b)**: `multi` = genuine
+  within-pair disagreement, so a uniform many-object transform still shows its
+  parameter (grounded: same-param multi-pairs = moved 16 / rotated 26 / reflected
+  13 / recolored 16 over the ∀ set — (b) keeps those `constant`, literal-`multi`
+  would have mislabeled them `varies`). Item rendering: moved `(dr,dc)` · rotated
+  deg · reflected `H-axis`/`V-axis` (PB-g) · recolored `{from}→{to}` colour names
+  (PB-f constant/varies only — no same-target bucket) · touching_delta
+  `gained`/`lost` (PB-c: per-transition, all-same→`all gained`/`all lost`).
+  Conclusion (any `multi`⟹`varies`; else first-match): moved `constant`→`all
+  vertical: (X,0)`(dc=0)→`all horizontal: (0,Y)`(dr=0)→`varies`; rotated/recolored
+  `constant`/`varies`; reflected `all H-axis`/`all V-axis`/`varies` (PB-a mixed→
+  varies, PB-b constant-first); touching_delta `all gained`/`all lost`/`varies`.
+  `inside` stays **bare `✓`** (PB-c/PB-k — a predicate, no transform param).
+  Over-fire (rotated/reflected/recolored `*_pairs` over-fire) is **absorbed by
+  `multi`** (a spurious extra instance just makes the pair `multi`→conservative),
+  so the correspondence-filter (PB-h opt 3) was **not** needed. **Descriptive,
+  not the rule** (PB5): #8 reads `moved → (6,0) | (0,3) | (-3,0) → varies`
+  (slide-to-touch — vectors vary) + `touching_delta → gained | gained | gained →
+  all gained`; non-load-bearing, no coupling to the #8 stages. Code: all in
+  `pipeline.py` (`_PAIR_PERCEPTION` extractors + `_render_param` + `_pair_value` +
+  `_conclusion` + `_comparator_line`; `_hyp_pair_set` split into `_hyp_pair_d`).
+  **Corpus-grounded 400/400: 0 nonconforming, 86 enriched lines, all conclusions
+  in the closed set, 50 lines carry `multi`.** Phase 5 reopened + relocked in
+  RESULT_OUTPUT_FORMAT.md (new reference block + locked-decision) + STEPS.md.
+  Gate: `./arc solve 8 13` still solves #8; full Linux gate pending.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**
