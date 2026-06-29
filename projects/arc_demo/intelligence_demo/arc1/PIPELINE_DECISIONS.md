@@ -488,6 +488,61 @@ filed as motivating consumer; the demo does NOT block on it.
     will fix it — owner declined all candidates for now. `bg_cand` is computed
     into ctx but NOT displayed in the `./arc solve` viewer.
 
+- **2026-06-28 (cont.) — phase-5 Comparators Hypothesis + Background-Color display
+  + Phase Rule 4 (same_shape+same_color) + phase-5 bg-exclusion.** Threads in
+  `arc1/solve`.
+
+  **(A) Phase 5 = "Comparators Hypothesis" — SHIPPED `eafd824`.** Swap: old phase 6
+  "Comparators" → phase 5 (renamed); "Task pattern" (addition) → phase 6; still 13
+  phases. Phase 5 lists the comparators firing on **ALL** demo pairs (∀, add-only
+  walk = the per-pair intersection; over a fixed comparator vocabulary secondary
+  adds never fire and removal is disabled per owner — verified 0/400 secondary
+  add, 79/400 would-remove). **Registry-driven**: `arc_search._PAIR_PRED`
+  (name→per-pair predicate) + `comparator_names()` are the single source for BOTH
+  the ∃ `task_tokens` and the ∀ hypothesis (a future comparator auto-runs once it
+  registers a facet + predicate). **`touching_delta` shown instead of intra-grid
+  `touching`** (reuses `arc_solver.touching_changes`, gained∪lost over
+  correspondence, **bg-forgotten** `exclude_bg=False`; ∀=12/400 vs touching
+  400/400). Result = `Comparators Hypothesis:` header + one `{name} ✓` line per
+  ∀-comparator (option a: only-firing). ∃ `task_tokens`/`./evaluate`/gate counts
+  unchanged. Files: `arc_search.py`, `pipeline.py`, `STEPS.md`.
+
+  **(B) Background Color display line — UNCOMMITTED.** New step-block line on
+  phases 2–13 of `./arc solve` rendering `bg_advance`'s per-grid `bg_cand`. Per
+  pair: `Pair{i}.bg=X` when one side resolves to X **and** X is a candidate on the
+  other side (**option C**, consistency-guarded — the naive "one side resolves →
+  other auto-resolves" conflicts on 133/1302 pairs: 36 resolve to different
+  colours, 97 to a colour the other side excludes); else `In{i}.bg={…} ·
+  Out{i}.bg={…}`; `test.bg={…}` always. Singletons bare, multi in braces; colour
+  names. Files: `runner.py`, `RESULT_OUTPUT_FORMAT.md`.
+
+  **(C) Phase Rule 4 = same_shape + same_color — UNCOMMITTED.** A bg-deduction
+  **phase rule** (list mutation, like Rules 1–3 — NOT a foundational `_bg_rules`
+  rule; the PR3-in-`_bg_rules` direction was tried and **reverted**, the state
+  carries no shape data). Removes components whose in/out counterparts share shape
+  + colour, at **phase 2** (objects — shape-group colour-matched pairs) and
+  **phase 4** (sub-pieces — the colour-kept `same_object`/`same_point`, i.e. the
+  former Rule 3 folded in). PR1 then eliminates the colour once its list empties.
+  **REVERSES the 2026-06-28 lock "`same_shape` is NOT a match for the component
+  lists"** (narrowly: shape **+ colour**, excluding recolored). No `moved`
+  framing/data (owner: "the system doesn't know moved at phase 2"); identified via
+  shape-group colour match. Impact: 65/400 `bg_cand` change, test bg resolved
+  2→11; **#8 resolves bg=black**. Phase 2 vs 4 vs both = identical final result
+  (0/400 differ); both chosen so the display resolves from phase 2. File:
+  `arc_solver.bg_advance`.
+
+  **(D) Phase-5 bg-object exclusion — UNCOMMITTED.** At phase 5, if a grid's bg is
+  resolved (`ctx['bg_cand']`), its bg-colour objects/points are dropped and
+  match/relations recomputed before the comparator checks. #8 phase-5 →
+  `moved`/`touching_delta` (was +`inside`; the `inside` involved the black bg).
+  Gate path (`run_all`, no `bg_cand`) unaffected. File:
+  `pipeline.step_comparators_hypothesis`.
+
+  **(E) bg resolution is NOT a success metric (owner).** The bg model is a
+  per-phase elimination *trace*; abstaining is fine, and for #294 the bg doesn't
+  matter. Baseline grounding (pre-Phase-Rule-4): `bg_advance` resolved a test bg on
+  only 2/400 — recorded, not a target.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

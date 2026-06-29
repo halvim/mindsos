@@ -150,6 +150,12 @@ STEP block: the header lines + the `result` block), as pasted below.
 - `   → future {proposed MindsOS feature + location}`
 - `   produces {what the phase adds to ctx}`
 - `   result   {header line}` then the multi-line body indented 12 spaces.
+- `   Background Color  {per-grid bg}` — **phases 2+ only.** Each train pair's
+  background candidate(s) from `bg_advance`: `Pair{i}.bg=X` when one side
+  resolved to `X` **and** `X` is a candidate on the other side
+  (consistency-guarded propagation, option C), else `In{i}.bg={…} ·
+  Out{i}.bg={…}`; the test grid always shows `test.bg={…}`. Singletons render
+  bare (no braces), multi-candidate sets in `{…}`; colours are names.
 
 Result body per phase = a header line + one block per train pair (see STEPS.md
 for each phase's body format). This file fixes the **rendering** contract; the

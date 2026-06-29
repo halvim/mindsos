@@ -68,7 +68,7 @@ def _bg_color(profile: dict) -> int:
 # PERSISTENT — each phase MUTATES it in place (not rebuilt):
 #   phase 1  add components · phase 2  remove same_object/same_point matches ·
 #   phase 3  REPLACE each subdivided whole with its sub-pieces ·
-#   phase 4  remove the sub-pieces that kept colour (same_object/same_point).
+#   phase 2 & 4  remove same_shape+same_color components (objects at 2, sub-pieces at 4).
 # After EVERY phase (FR2) re-apply ALL the rules:
 #   FR1 commit-guard (never empty bg_cand) · FR3 len(cand)==1 => that colour is
 #   the bg · PR1 ELIMINATION (colour's list empty => drop it; the one rule,
@@ -140,9 +140,10 @@ def bg_advance(ctx: dict, phase: int) -> None:
     """Mutate the PERSISTENT ``ctx['bg_state']`` for this phase, then reapply all
     rules (FR2). Phase 1 inits the per-colour component lists from the perceived
     grids; phase 2 removes same_object/same_point matches; phase 3 replaces each
-    subdivided whole with its sub-pieces; phase 4 removes colour-kept sub-pieces;
-    later phases just reapply the rules. Writes ``ctx['bg_state']`` (full state)
-    + ``ctx['bg_cand']`` (the {cand, bg} summary)."""
+    subdivided whole with its sub-pieces; phases 2 & 4 remove same_shape+same_color
+    components (objects at phase 2, sub-pieces at phase 4); later phases just
+    reapply the rules. Writes ``ctx['bg_state']`` (full state) + ``ctx['bg_cand']``
+    (the {cand, bg} summary)."""
     if phase == 1 or "bg_state" not in ctx:    # init (or recover a stale checkpoint)
         raw = ctx["raw"]
         state = {"train": [{"input": _bg_grec_from(pr["input"]),
@@ -172,16 +173,24 @@ def bg_advance(ctx: dict, phase: int) -> None:
                 lst.discard(whole)
                 for k in range(len(f["parts"])):
                     lst.add(f"S{f['whole_idx']}_{k}")
-    elif phase == 4:                            # remove colour-kept sub-pieces
-        for f in ctx.get("recomparison", []):
-            side = "input" if f["direction"] == "split" else "output"
-            g = state["train"][f["pair"] - 1][side]
-            lst = g["lists"].get(f["whole_color"])
-            if lst is None:
-                continue
-            for k, p in enumerate(f["parts"]):
-                if p["rel"] in ("same_object", "same_point"):
-                    lst.discard(f"S{f['whole_idx']}_{k}")
+    if phase in (2, 4):                         # phase rule 4: same_shape + same_color
+        if phase == 2:                          #   objects — Profile shape_groups, colour-matched
+            for i, pr in enumerate(ctx["profile"]["train"]):
+                in_o, out_o = pr["input"]["objects"], pr["output"]["objects"]
+                for g in pr["match"]["shape_groups"]:
+                    pairs = [(ii, jj) for ii in g["in"] for jj in g["out"]
+                             if in_o[ii]["color"] == out_o[jj]["color"]]
+                    _bg_remove(state["train"][i]["input"], {f"O{ii}" for ii, _ in pairs})
+                    _bg_remove(state["train"][i]["output"], {f"O{jj}" for _, jj in pairs})
+        else:                                   #   sub-pieces — Component Re-Comparison, colour kept
+            for f in ctx.get("recomparison", []):
+                side = "input" if f["direction"] == "split" else "output"
+                lst = state["train"][f["pair"] - 1][side]["lists"].get(f["whole_color"])
+                if lst is None:
+                    continue
+                for k, p in enumerate(f["parts"]):
+                    if p["rel"] in ("same_object", "same_point"):
+                        lst.discard(f"S{f['whole_idx']}_{k}")
 
     _bg_rules(state)
     ctx["bg_state"] = _bg_dump(state)

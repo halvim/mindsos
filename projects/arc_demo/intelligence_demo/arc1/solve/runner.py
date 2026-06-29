@@ -71,6 +71,42 @@ def _print_step(n, name, scope, functions, uses_prefix, produces, result, status
     print(_c("2", "   result   ") + _c("32" if "ANSWER" in result or "✓" in result else "0", result))
 
 
+def _bg_fmt_set(cand) -> str:
+    """A candidate set as colour names: bare for a singleton (no braces), else
+    ``{a, b, …}``."""
+    names = [arc_grids.color_name(c) for c in cand]
+    return names[0] if len(names) == 1 else "{" + ", ".join(names) + "}"
+
+
+def _bg_line(bg_cand) -> str:
+    """Per-grid Background Color line. A pair collapses to ``Pair{i}.bg=X`` only
+    when one side resolved to X AND X is a candidate on the other side
+    (consistency-guarded propagation, option C); otherwise the two sides show
+    their candidate sets. The test grid always shows its own set."""
+    segs = []
+    for i, g in enumerate(bg_cand["train"], 1):
+        ic, oc = g["input"]["cand"], g["output"]["cand"]
+        ib, ob = g["input"]["bg"], g["output"]["bg"]
+        pair_bg = None
+        if ib is not None and ob is not None and ib == ob:
+            pair_bg = ib
+        elif ib is not None and ob is None and ib in oc:
+            pair_bg = ib
+        elif ob is not None and ib is None and ob in ic:
+            pair_bg = ob
+        if pair_bg is not None:
+            segs.append(f"Pair{i}.bg={arc_grids.color_name(pair_bg)}")
+        else:
+            segs.append(f"In{i}.bg={_bg_fmt_set(ic)}")
+            segs.append(f"Out{i}.bg={_bg_fmt_set(oc)}")
+    segs.append(f"test.bg={_bg_fmt_set(bg_cand['test'][0]['input']['cand'])}")
+    return " · ".join(segs)
+
+
+def _print_bg(bg_cand) -> None:
+    print(_c("2", "   Background Color  ") + _bg_line(bg_cand))
+
+
 def solve(task_arg, step):
     dataset = arc_grids.load_dataset()
     task_id = _resolve_task(dataset, task_arg)
@@ -108,6 +144,8 @@ def solve(task_arg, step):
         elif n >= 1 and "raw" in ctx:
             # cached step: advance the persistent bg_state for this phase too.
             arc_solver.bg_advance(ctx, n)
+        if n >= 2 and "bg_cand" in ctx:
+            _print_bg(ctx["bg_cand"])
 
     print(_c("2", "═" * 71))
     ans = ctx.get("answer")

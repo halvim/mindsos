@@ -219,12 +219,28 @@ def _hyp_order() -> list:
             for c in arc_search.comparator_names()]
 
 
-def _hyp_pair_set(d) -> set:
-    """The comparators triggering on one demo pair, for the phase-5 hypothesis:
-    the shared registry-driven atom (runs ALL registered comparators) with the
-    intra-grid ``touching`` dropped and ``touching_delta`` added when a
-    corresponded object's touching status flips (gained/lost), bg NOT excluded
-    (forget bg) — reusing arc_solver.touching_changes."""
+def _drop_bg_grid(gs, bg):
+    """A copy of a grid summary with the bg-colour objects/points removed and the
+    intra-grid relations (touching/inside) recomputed over what remains."""
+    objs = [o for o in gs["objects"] if o["color"] != bg]
+    pts = [p for p in gs["points"] if p["color"] != bg]
+    g2 = dict(gs)
+    g2["objects"], g2["points"] = objs, pts
+    g2["n_objects"], g2["n_points"] = len(objs), len(pts)
+    g2["shapes"] = [arc_grids.normalize_shape(o) for o in objs]
+    return arc_profile.attach_relations(g2)
+
+
+def _hyp_pair_set(d, bg_in=None, bg_out=None) -> set:
+    """The comparators triggering on one demo pair, for the phase-5 hypothesis.
+    If the grid's bg is resolved by phase 5, the bg-colour objects are dropped
+    first (and match + relations recomputed over the non-bg components) so they
+    don't participate. Then the registry atom runs ALL comparators, with the
+    intra-grid ``touching`` swapped for the ``touching_delta`` state-change."""
+    if bg_in is not None or bg_out is not None:
+        gin = _drop_bg_grid(d["input"], bg_in) if bg_in is not None else d["input"]
+        gout = _drop_bg_grid(d["output"], bg_out) if bg_out is not None else d["output"]
+        d = {"input": gin, "output": gout, "match": arc_profile.match_pair(gin, gout)}
     s = arc_search._pair_comparators(d)            # all registered comparators
     s.discard("touching")
     ch = arc_solver.touching_changes(d, 0, exclude_bg=False)   # forget bg
@@ -236,10 +252,15 @@ def _hyp_pair_set(d) -> set:
 def step_comparators_hypothesis(ctx, dataset):
     """Phase 5 — Comparators Hypothesis: the comparators that trigger on EVERY
     demo pair (∀), running ALL registered comparators (comparator_names()), with
-    ``touching_delta`` shown instead of the intra-grid ``touching``.
-    Display/hypothesis only; the ∃ task_tokens (phase-2 / gate) are untouched.
-    Result = the final ∀ list."""
-    per = [_hyp_pair_set(d) for d in ctx["profile"]["train"]]
+    ``touching_delta`` shown instead of the intra-grid ``touching``. If the bg is
+    resolved by phase 5 (``ctx['bg_cand']``), bg-colour objects are excluded from
+    the checks. Display/hypothesis only; the ∃ task_tokens (gate) are untouched."""
+    bc = ctx.get("bg_cand")
+    per = []
+    for i, d in enumerate(ctx["profile"]["train"]):
+        bg_in = bc["train"][i]["input"]["bg"] if bc else None
+        bg_out = bc["train"][i]["output"]["bg"] if bc else None
+        per.append(_hyp_pair_set(d, bg_in, bg_out))
     comps = arc_search.forall_comparators(per, _hyp_order())
     lines = [f"{c} ✓" for c in comps]
     return _block("Comparators Hypothesis:", lines or ["(none)"])
