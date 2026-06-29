@@ -33,10 +33,10 @@ import json, os, numpy as np, torch, torch.nn as nn, torch.nn.functional as F
 DEV = "cuda" if torch.cuda.is_available() else "cpu"
 SEEDS = [0, 1, 2]
 M_ENS = 3                       # deep-ensemble size (the OOD head)
-EPOCHS, BATCH, LR = 24, 128, 2e-3
+EPOCHS, BATCH, LR = 35, 128, 2e-3
 DROP = 0.2
 KSHOT = [5, 20, 100]           # few-shot repair budgets (labeled circles)
-TRAIN_N_PER_CELL = 180         # AM-6: large CNN train set (test set unchanged -> P0 comparable)
+TRAIN_N_PER_CELL = 220         # AM-6/AM-7: large CNN train set (test unchanged -> P0 comparable)
 MINDSOS_RESULTS = "leaf_novelty_mindsos_results.json"
 
 
@@ -45,18 +45,19 @@ class CNN(nn.Module):
     def __init__(self, nc):
         super().__init__()
         self.c = nn.Sequential(
-            nn.Conv2d(1, 32, 3, padding=1), nn.ReLU(),
-            nn.Conv2d(32, 32, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),  # 32
-            nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(),
-            nn.Conv2d(64, 64, 3, padding=1), nn.ReLU(), nn.MaxPool2d(2),  # 16
+            nn.Conv2d(1, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(),
+            nn.Conv2d(32, 32, 3, padding=1), nn.BatchNorm2d(32), nn.ReLU(), nn.MaxPool2d(2),  # 32
+            nn.Conv2d(32, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(),
+            nn.Conv2d(64, 64, 3, padding=1), nn.BatchNorm2d(64), nn.ReLU(), nn.MaxPool2d(2),  # 16
         )
         self.drop = nn.Dropout(DROP)
         self.feat = nn.Linear(64 * 16 * 16, 128)
+        self.fbn = nn.BatchNorm1d(128)
         self.head = nn.Linear(128, nc)
 
     def features(self, x):
         h = self.c(x).flatten(1)
-        return F.relu(self.feat(self.drop(h)))
+        return F.relu(self.fbn(self.feat(self.drop(h))))
 
     def forward(self, x):
         return self.head(self.drop(self.features(x)))
@@ -75,13 +76,16 @@ def train_model(X, y, nc, seed, epochs=EPOCHS, init=None, freeze_backbone=False)
             if k in sd and sd[k].shape == v.shape:
                 sd[k] = v.clone()
         m.load_state_dict(sd)
+    m.train()
     if freeze_backbone:
         for p in m.c.parameters():
             p.requires_grad = False
         for p in m.feat.parameters():
             p.requires_grad = False
+        m.c.eval(); m.feat.eval(); m.fbn.eval()
     Xt, yt = _t(X), torch.tensor(y, device=DEV)
     opt = torch.optim.Adam([p for p in m.parameters() if p.requires_grad], lr=LR)
+    sched = torch.optim.lr_scheduler.StepLR(opt, step_size=max(1, int(epochs * 0.4)), gamma=0.3)
     n = len(X)
     for ep in range(epochs):
         idx = np.random.permutation(n)
@@ -90,6 +94,7 @@ def train_model(X, y, nc, seed, epochs=EPOCHS, init=None, freeze_backbone=False)
             opt.zero_grad()
             loss = F.cross_entropy(m(Xt[b]), yt[b])
             loss.backward(); opt.step()
+        sched.step()
     return m
 
 

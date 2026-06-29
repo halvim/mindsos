@@ -160,6 +160,16 @@ Linux, honestly, per the frozen readings.
 
 ## 8. Amendment log
 
+**AM-7 (2026-06-28, after Linux baseline run 2 — STILL sub-competent, BatchNorm added).** Run 2
+(2-pool, 2160 imgs, 24 ep) still FAILED the control: CNN P0 = **0.776**; frozen-backbone retention
+≈ **0.51** (= 2-class chance), i.e. the conv features did not even separate triangle from
+rectangle — the diagnostic signature of an **under-trained** net, not a capacity ceiling. Standard
+competent fix (no threshold touched): add **BatchNorm** (conv + penultimate), a **StepLR** schedule,
+**35 epochs**, train n→220/cell (2640). Backbone BN set to eval under freeze so the frozen-backbone
+repair reads stable stats. Still gates on S-pos before any Claim-4 reading. If a BN net STILL can't
+clear the control, that is reported as "opaque ML cannot reach parity on this substrate at this data
+scale" → P0 NULL/void per §7, not a MindsOS win. Run-2 numbers stand on record.
+
 **AM-6 (2026-06-28, after Linux baseline run 1 — POSITIVE CONTROL FAILED, baseline strengthened).**
 Run 1 of `leaf_novelty_baseline.py` FAILED the §4.1 positive control: CNN P0 = **0.703** (flat
 ~0.70 even at σ=0) vs MindsOS 0.961, and OOD AUROC 0.351 (< 0.5). Per §4.1 ("a win against a weak
