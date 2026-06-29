@@ -149,6 +149,42 @@ def feats(model, X):
     return model.features(_t(X)).cpu().numpy()
 
 
+def repair_modular(base, Xpoly, ypoly, Xcirc_k, Xte_poly, yte_poly, Xte_circ, seed):
+    """OPTION A -- the FAIR modular CNN repair, mirroring MindsOS's fallback architecture:
+    a SEPARATE binary circle detector on frozen features ROUTES the input; the 2-class polygon
+    head is left byte-identical and only consulted when the detector says 'not circle'. This is the
+    test of whether the repair-cost / retention=1.0 discriminator survives -- a modular CNN can also
+    leave the old task untouched. Reports detector separability + the retention achievable at the
+    operating point that MATCHES MindsOS curved-acc (>=0.85), i.e. can the CNN tie (1.0, ~0.96)?"""
+    base.eval()
+    Fp = feats(base, Xpoly); Fc = feats(base, Xcirc_k)
+    w = nn.Linear(Fp.shape[1], 1).to(DEV)
+    opt = torch.optim.Adam(w.parameters(), lr=5e-2)
+    Xf = torch.tensor(np.vstack([Fp, Fc]), dtype=torch.float32, device=DEV)
+    yf = torch.tensor(np.concatenate([np.zeros(len(Fp)), np.ones(len(Fc))]), dtype=torch.float32, device=DEV)
+    for _ in range(400):
+        opt.zero_grad()
+        loss = F.binary_cross_entropy_with_logits(w(Xf).squeeze(1), yf)
+        loss.backward(); opt.step()
+    with torch.no_grad():
+        poly_head_pred = base.head(torch.tensor(feats(base, Xte_poly), device=DEV)).argmax(1).cpu().numpy()
+        sc_poly = torch.sigmoid(w(torch.tensor(feats(base, Xte_poly), device=DEV))).squeeze(1).cpu().numpy()
+        sc_circ = torch.sigmoid(w(torch.tensor(feats(base, Xte_circ), device=DEV))).squeeze(1).cpu().numpy()
+    det_auroc = auroc(np.concatenate([sc_poly, sc_circ]),
+                      np.concatenate([np.zeros(len(sc_poly)), np.ones(len(sc_circ))]))
+    # router: circle_score >= tau -> circle (wrong on a polygon); else polygon head (untouched)
+    best = {"retention": 0.0, "curved_acc": 0.0, "tau": None}
+    for tau in np.linspace(0.02, 0.98, 49):
+        cur = float((sc_circ >= tau).mean())
+        if cur < 0.85:                                   # require MindsOS-comparable curved recall
+            continue
+        ret = float(((sc_poly < tau) & (poly_head_pred == yte_poly)).mean())
+        if ret > best["retention"]:
+            best = {"retention": round(ret, 3), "curved_acc": round(cur, 3), "tau": round(float(tau), 3)}
+    return {"detector_auroc": round(float(det_auroc), 3), "params_changed": "separate_circle_detector",
+            "best_at_curved>=0.85": best}
+
+
 def maha_auroc(model, Xtr_poly, ytr_poly, Xte_poly, Xte_circ):
     """Mahalanobis OOD (the fair strong signal): class-conditional means + shared covariance on
     penultimate features; score = min distance to any in-vocab class (high = OOD)."""
@@ -203,6 +239,7 @@ def main():
            "train_n": int(len(Xtr))}
     P0s, OODs, OODm, FABs = [], [], [], []
     rep_full = {k: [] for k in KSHOT}; rep_head = {k: [] for k in KSHOT}; rep_row = {k: [] for k in KSHOT}
+    rep_mod = {k: [] for k in KSHOT}
     nm_ood = {f: [] for f in ["nearmiss_f0.04", "nearmiss_f0.08", "nearmiss_f0.15", "nearmiss_f0.3"]}
 
     for seed in SEEDS:
@@ -270,6 +307,8 @@ def main():
             yte_poly = np.array([lut[v] for v in yte[polyte]])
             rep_row[k].append(repair_row_frozen(ens2[0], Xp, yp2, Xtr[kidx],
                                                 Xte[polyte], yte_poly, Xte[circte], len(lut), seed))
+            rep_mod[k].append(repair_modular(ens2[0], Xp, yp2, Xtr[kidx],
+                                             Xte[polyte], yte_poly, Xte[circte], seed))
 
     def ms(x): return [round(float(np.mean(x)), 3), round(float(np.std(x)), 3)]
 
@@ -291,15 +330,27 @@ def main():
     res["repair_R_head_frozen_backbone"] = rep_ms(rep_head)
     res["repair_R_row_frozen_warmstart_BEST"] = rep_ms(rep_row)   # AM-5: the ML-advocate's strongest
 
+    def mod_ms(rep):                                               # AM-8 Option A: fair modular repair
+        o = {}
+        for k in KSHOT:
+            o[f"k{k}"] = {
+                "detector_auroc_mean_std": ms([r["detector_auroc"] for r in rep[k]]),
+                "retention_at_curved>=0.85_mean_std": ms([r["best_at_curved>=0.85"]["retention"] for r in rep[k]]),
+                "curved_acc_mean_std": ms([r["best_at_curved>=0.85"]["curved_acc"] for r in rep[k]])}
+        return o
+    res["repair_R_modular_separate_detector_FAIR"] = mod_ms(rep_mod)
+
     res["structured_gap_REPORTED"] = ("baseline gap signal = scalar OOD score / per-pixel residual; "
                                       "cannot NAME the missing primitive ('curvature') as MindsOS's "
                                       "REQUEST_ATOM does. AE/residual contest deferred (PB-K/AM-4).")
     res["CONTRAST_vs_mindsos"] = {
         "P0": "parity gate: see S_pos_positive_control",
-        "claim4_repair": "DECISIVE comparison = repair_R_row_frozen_warmstart_BEST.retention vs "
-                         "MindsOS exact 1.0. If even the row-frozen warm-started head cannot reach "
-                         "1.0, the repair-cost discriminator survives; if it reaches exactly 1.0, the "
-                         "novelty narrows to gap-naming (named atom vs OOD scalar), undefended in v1 (AM-5).",
+        "claim4_repair": "DECISIVE = repair_R_modular_separate_detector_FAIR (AM-8, Option A): a "
+                         "modular CNN with an UNTOUCHED polygon head + separate circle router, mirroring "
+                         "MindsOS's fallback. If its retention_at_curved>=0.85 reaches ~1.0, the repair-cost "
+                         "discriminator COLLAPSES (modularity is the known Claims-1-3 property, not Claim 4) "
+                         "-> novelty narrows to gap-naming (named atom vs OOD scalar), undefended in v1 "
+                         "(PB-K/AM-4). R_row/R_head/R_full are shared-softmax repairs (expected to forget).",
         "claim4_nofab": "OOD AUROC high is allowed (not the differentiator); fabrication_rate is the "
                         "honest-failure number; the NAMED-gap is the qualitative differentiator",
         "novelty": "conjunction-at-parity (AM-4): only stands if S_pos passes AND repair retention gap is real"}

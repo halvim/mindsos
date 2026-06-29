@@ -160,6 +160,21 @@ Linux, honestly, per the frozen readings.
 
 ## 8. Amendment log
 
+**AM-8 (2026-06-28, pre-run — FAIR modular CNN repair added; the decisive falsifier of Claim 4).**
+Self-critique (extends PB-D): MindsOS's retention=1.0 is **architectural** — its arc leaf is a
+fallback that never overrides a polygon. Every CNN repair shipped so far (R-full/R-head/R-row)
+shares one softmax, so a new circle output can always steal a polygon — a **strawman in MindsOS's
+favour**. Added `repair_R_modular_separate_detector_FAIR`: a separate binary circle detector on
+frozen features ROUTES the input; the 2-class polygon head is left byte-identical and consulted only
+when the detector says "not circle" — i.e. the **same fallback architecture MindsOS uses**. Reports
+the detector's separability (AUROC) and the **retention achievable at curved-acc ≥ 0.85** (matching
+MindsOS's curved-acc). **Pre-committed reading:** if the modular CNN reaches retention ≈ 1.0 at
+curved-acc ≥ 0.85, the repair-cost discriminator **collapses** — local repair = the *known
+modularity* (Claims 1–3), NOT Claim 4 — and the v1 novelty narrows to **gap-naming** (named,
+inspectable `REQUEST_ATOM("curvature")` vs an opaque scalar OOD score), which v1 explicitly does
+**not** contest (PB-K). Report that honestly; do not spin a shared-softmax-only contrast as a win.
+This strengthens the baseline (harder for MindsOS); no MindsOS threshold changed.
+
 **AM-7 (2026-06-28, after Linux baseline run 2 — STILL sub-competent, BatchNorm added).** Run 2
 (2-pool, 2160 imgs, 24 ep) still FAILED the control: CNN P0 = **0.776**; frozen-backbone retention
 ≈ **0.51** (= 2-class chance), i.e. the conv features did not even separate triangle from
