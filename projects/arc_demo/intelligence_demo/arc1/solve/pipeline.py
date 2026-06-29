@@ -188,7 +188,7 @@ def step_objcomp(ctx, dataset):
 
 
 def step_task_pattern(ctx, dataset):
-    """Phase 4 — task-pattern hypothesis over the phase-2 profile. Reads the
+    """Phase 6 — task-pattern hypothesis over the phase-2 profile. Reads the
     profilers (same_object / dims / palette) to infer what the task is doing.
     First pattern: ADDITION (bg via _bg_color interim — see
     arc_solver._addition_evidence). Display/hypothesis only; not consumed
@@ -211,11 +211,38 @@ def step_task_pattern(ctx, dataset):
                   [conds, tail])
 
 
-def step_comparators(ctx, dataset):
-    """Phase 4 — comparators only (over the profile built in phase 2)."""
-    toks = set(ctx.get("tokens") or arc_search.task_tokens(ctx["profile"]))
-    comps = [c for c in arc_search.comparator_names() if c in toks]
-    return f"comparators: {' '.join(comps) or '(none)'}"
+def _hyp_order() -> list:
+    """Phase-5 comparator order — the canonical ``comparator_names()`` with the
+    intra-grid ``touching`` shown as the ``touching_delta`` state-change. Driven
+    by the registry, so future comparators flow in automatically."""
+    return ["touching_delta" if c == "touching" else c
+            for c in arc_search.comparator_names()]
+
+
+def _hyp_pair_set(d) -> set:
+    """The comparators triggering on one demo pair, for the phase-5 hypothesis:
+    the shared registry-driven atom (runs ALL registered comparators) with the
+    intra-grid ``touching`` dropped and ``touching_delta`` added when a
+    corresponded object's touching status flips (gained/lost), bg NOT excluded
+    (forget bg) — reusing arc_solver.touching_changes."""
+    s = arc_search._pair_comparators(d)            # all registered comparators
+    s.discard("touching")
+    ch = arc_solver.touching_changes(d, 0, exclude_bg=False)   # forget bg
+    if ch["gained"] or ch["lost"]:
+        s.add("touching_delta")
+    return s
+
+
+def step_comparators_hypothesis(ctx, dataset):
+    """Phase 5 — Comparators Hypothesis: the comparators that trigger on EVERY
+    demo pair (∀), running ALL registered comparators (comparator_names()), with
+    ``touching_delta`` shown instead of the intra-grid ``touching``.
+    Display/hypothesis only; the ∃ task_tokens (phase-2 / gate) are untouched.
+    Result = the final ∀ list."""
+    per = [_hyp_pair_set(d) for d in ctx["profile"]["train"]]
+    comps = arc_search.forall_comparators(per, _hyp_order())
+    lines = [f"{c} ✓" for c in comps]
+    return _block("Comparators Hypothesis:", lines or ["(none)"])
 
 
 def step_background(ctx, dataset):
@@ -288,12 +315,12 @@ STEPS = [
     (4, "Component Re-Comparison", GENERAL_STAR, step_objcomp,
      "step-3 findings · same_object/same_point/same_shape(sub-piece, component) per sub-piece",
      "sub-piece ↔ component correspondences"),
-    (5, "Task pattern", GENERAL_STAR, step_task_pattern,
+    (5, "Comparators Hypothesis", GENERAL, step_comparators_hypothesis,
+     "arc_search.forall_comparators over per-pair sets — touching_delta (arc_solver.touching_changes, bg-forgotten) replaces intra-grid touching; ∀ all pairs, add-only",
+     "comparator hypothesis (∀-pair comparators)"),
+    (6, "Task pattern", GENERAL_STAR, step_task_pattern,
      "arc_solver.task_patterns(_addition_evidence, _bg_color)",
      "task-pattern hypothesis (addition)"),
-    (6, "Comparators", GENERAL, step_comparators,
-     "arc_search.task_tokens · arc_grids.touching_pairs, inside_pairs, moved, recolored_pairs, rotated_pairs, reflected_pairs",
-     "comparator tokens"),
     (7, "Background + state-change", GENERAL_STAR, step_background,
      "arc_solver.stage_background(_bg_color, touching_changes(_correspondence, _touch_set))",
      "bg · changes (gained/lost/maintained)"),
@@ -320,8 +347,8 @@ STEP_TARGETS = {
     2: "L4 phase_1 sweep — L3 profilers (compare_*, same_*) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
     3: "L3 derivation — subdivision (inset partition) over the profile · mindsos_capacity (→ L4 induce/learner)",
     4: "L3 reasoning — re-compare derived sub-pieces against perceived components (same_*) · mindsos_capacity (→ L4 induce/learner)",
-    5: "L3 comprehension — task-pattern hypothesis from the profile · mindsos_capacity (→ L4 induce/learner)",
-    6: "L4 phase_1 sweep — L3 comparators/predicates (moved/touching/inside/transforms) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
+    5: "L4 phase_1 sweep — L3 comparators/predicates (moved/touching/inside/transforms) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
+    6: "L3 comprehension — task-pattern hypothesis from the profile · mindsos_capacity (→ L4 induce/learner)",
     7: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
     8: "L3 reasoning — role assignment over state-change · mindsos_capacity",
     9: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
@@ -338,8 +365,8 @@ STEP_DESC = {
     2: "Run the profilers — same_object/shape/point, same_cell_count, same_bbox_area, and the dim/palette deltas.",
     3: "Detect subdivision — an input object split into ≥2 disjoint output insets (B1, B2, …) that cover it exactly.",
     4: "Re-compare each subdivision sub-piece against the component it covers — same_object/same_point if the colour is kept, else same_shape.",
-    5: "Infer the task pattern from the profile — e.g. addition (dims + palette preserved, all non-bg inputs kept, a new object appears).",
-    6: "Run the comparators — moved, touching, inside, recolored, rotated, reflected.",
+    5: "List the comparators that trigger on EVERY demo pair (∀) — the comparator hypothesis (moved, touching_delta, inside, recolored, rotated, reflected); touching_delta = touching status change over correspondence, shown instead of intra-grid touching.",
+    6: "Infer the task pattern from the profile — e.g. addition (dims + palette preserved, all non-bg inputs kept, a new object appears).",
     7: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
     8: "Classify the changed objects into roles — mover, target, background.",
     9: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",

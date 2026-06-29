@@ -109,6 +109,52 @@ def _pal_category(v: dict) -> str:
     return "varies"
 
 
+#: per-pair comparator predicates — the SINGLE source for "does comparator c
+#: trigger on one demo pair (≥1 instance)". A new comparator is auto-run by BOTH
+#: the ∃ token and the ∀ hypothesis as soon as it (a) is a comparator facet
+#: (``comparator_names()``) and (b) registers a predicate here. A registered
+#: comparator with no predicate raises (loud, by design — see _pair_comparators).
+_PAIR_PRED = {
+    "moved": lambda d: any(g.get("moves") for g in d["match"]["shape_groups"]),
+    "recolored": lambda d: bool(arc_grids.recolored_pairs(d["input"], d["output"])),
+    "reflected": lambda d: bool(arc_grids.reflected_pairs(d["input"], d["output"])),
+    "rotated": lambda d: bool(arc_grids.rotated_pairs(d["input"], d["output"])),
+    "touching": lambda d: bool(d["input"].get("touching") or d["output"].get("touching")),
+    "inside": lambda d: bool(d["input"].get("inside") or d["output"].get("inside")),
+}
+
+
+def _pair_comparators(d: dict) -> set:
+    """The comparators that TRIGGER on one demo pair — driven by
+    ``comparator_names()`` so EVERY registered comparator is run, current or
+    future (add a facet + a ``_PAIR_PRED`` entry and it flows into both the ∃
+    token and the ∀ hypothesis with no edit here). Single source for
+    ``task_tokens`` and ``forall_comparators``."""
+    return {c for c in comparator_names() if _PAIR_PRED[c](d)}
+
+
+def forall_comparators(per_pair: List[set], order=None) -> List[str]:
+    """Phase 5 'Comparators Hypothesis' checking function: given each demo pair's
+    triggering-comparator set, return the comparators that trigger on EVERY pair
+    (∀), in ``order`` (default ``comparator_names()``). Incremental add-only per
+    the design — walk the pairs; for each, add any not-yet-listed comparator
+    confirmed on every pair (no removal: a ∀ member is already seeded at pair 1).
+    The per-pair sets are supplied by the caller — phase 5 swaps the intra-grid
+    ``touching`` for the ``touching_delta`` state-change (see
+    pipeline.step_comparators_hypothesis)."""
+    if not per_pair:
+        return []
+    if order is None:
+        order = comparator_names()
+    confirmed = set.intersection(*per_pair)       # c triggers on every pair
+    listed: List[str] = []
+    for s in per_pair:                            # add-only, pair by pair
+        for c in s:
+            if c not in listed and c in confirmed:
+                listed.append(c)
+    return [c for c in order if c in listed]
+
+
 def task_tokens(profile: dict) -> List[str]:
     """Tokens for one task (output of ``arc_profile.build_profile``)."""
     toks: List[str] = []
@@ -132,23 +178,13 @@ def task_tokens(profile: dict) -> List[str]:
         toks.append("same_cell_count")
     if any(arc_grids.same_bbox_area_pairs(d["input"], d["output"]) for d in demos):
         toks.append("same_bbox_area")
-    if any(any(g.get("moves") for g in d["match"]["shape_groups"]) for d in demos):
-        toks.append("moved")
-    # transform comparators (inter-grid) — detected per demo pair over objects/shapes
-    if any(arc_grids.recolored_pairs(d["input"], d["output"]) for d in demos):
-        toks.append("recolored")
-    if any(arc_grids.reflected_pairs(d["input"], d["output"]) for d in demos):
-        toks.append("reflected")
-    if any(arc_grids.rotated_pairs(d["input"], d["output"]) for d in demos):
-        toks.append("rotated")
-    # touching = intra-grid; fires when ANY demo has a touching pair in either
-    # grid (input OR output). Demos only (test withheld).
-    if any(d["input"].get("touching") or d["output"].get("touching") for d in demos):
-        toks.append("touching")
-    # inside = intra-grid; fires when ANY demo grid (input OR output) has an
-    # (a inside b) enclosure pair. Demos only (test withheld).
-    if any(d["input"].get("inside") or d["output"].get("inside") for d in demos):
-        toks.append("inside")
+    # comparators (moved / recolored / reflected / rotated / touching / inside) —
+    # ∃ token: fires if the comparator triggers on ANY demo pair. Per-pair atom is
+    # the single source shared with forall_comparators (phase 5). Demos only.
+    ex = set().union(*(_pair_comparators(d) for d in demos)) if demos else set()
+    for c in comparator_names():
+        if c in ex:
+            toks.append(c)
     p = profile["profile"]
     toks.append("compare_grid_dimension:" + _dim_category(p["dimension_delta"]))
     toks.append("compare_palette:" + _pal_category(p["palette_delta"]))
