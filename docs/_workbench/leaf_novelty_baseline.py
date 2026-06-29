@@ -67,7 +67,7 @@ def _t(x):
     return torch.tensor(x, dtype=torch.float32, device=DEV).unsqueeze(1)
 
 
-def train_model(X, y, nc, seed, epochs=EPOCHS, init=None, freeze_backbone=False):
+def train_model(X, y, nc, seed, epochs=EPOCHS, init=None, freeze_backbone=False, tag=""):
     torch.manual_seed(seed); np.random.seed(seed)
     m = CNN(nc).to(DEV)
     if init is not None:
@@ -87,14 +87,18 @@ def train_model(X, y, nc, seed, epochs=EPOCHS, init=None, freeze_backbone=False)
     opt = torch.optim.Adam([p for p in m.parameters() if p.requires_grad], lr=LR)
     sched = torch.optim.lr_scheduler.StepLR(opt, step_size=max(1, int(epochs * 0.4)), gamma=0.3)
     n = len(X)
+    hb = max(1, epochs // 5)
     for ep in range(epochs):
         idx = np.random.permutation(n)
+        last = 0.0
         for s in range(0, n, BATCH):
             b = idx[s:s + BATCH]
             opt.zero_grad()
             loss = F.cross_entropy(m(Xt[b]), yt[b])
-            loss.backward(); opt.step()
+            loss.backward(); opt.step(); last = float(loss)
         sched.step()
+        if tag and (ep % hb == 0 or ep == epochs - 1):
+            print(f"      {tag} ep {ep + 1}/{epochs} loss {last:.3f}", flush=True)
     return m
 
 
@@ -185,6 +189,32 @@ def repair_modular(base, Xpoly, ypoly, Xcirc_k, Xte_poly, yte_poly, Xte_circ, se
             "best_at_curved>=0.85": best}
 
 
+def repair_modular_fresh(poly_model, Xpoly, ypoly, Xcirc_k, Xte_poly, yte_poly, Xte_circ, seed, tag=""):
+    """STRONGEST fair modular repair (AM-9): a FRESH raw-pixel circle-vs-polygon CNN (new learned
+    machinery, not frozen features) ROUTES the input; the deployed polygon model is left UNTOUCHED.
+    Mirrors MindsOS's fallback exactly. k circles oversampled to balance the negatives."""
+    reps = max(1, len(Xpoly) // max(1, len(Xcirc_k)))
+    Xc = np.repeat(Xcirc_k, reps, axis=0)
+    Xdet = np.concatenate([Xpoly, Xc])
+    ydet = np.concatenate([np.zeros(len(Xpoly), int), np.ones(len(Xc), int)])
+    det = train_model(Xdet, ydet, 2, seed * 31 + len(Xcirc_k), tag=tag)
+    with torch.no_grad():
+        php = poly_model(_t(Xte_poly)).argmax(1).cpu().numpy()
+        sp = F.softmax(det(_t(Xte_poly)), 1)[:, 1].cpu().numpy()
+        sc = F.softmax(det(_t(Xte_circ)), 1)[:, 1].cpu().numpy()
+    det_auroc = auroc(np.concatenate([sp, sc]), np.concatenate([np.zeros(len(sp)), np.ones(len(sc))]))
+    best = {"retention": 0.0, "curved_acc": 0.0, "tau": None}
+    for tau in np.linspace(0.02, 0.98, 97):
+        cur = float((sc >= tau).mean())
+        if cur < 0.85:
+            continue
+        ret = float(((sp < tau) & (php == yte_poly)).mean())
+        if ret > best["retention"]:
+            best = {"retention": round(ret, 3), "curved_acc": round(cur, 3), "tau": round(float(tau), 3)}
+    return {"detector_auroc": round(float(det_auroc), 3), "params_changed": "fresh_raw_pixel_detector",
+            "best_at_curved>=0.85": best}
+
+
 def maha_auroc(model, Xtr_poly, ytr_poly, Xte_poly, Xte_circ):
     """Mahalanobis OOD (the fair strong signal): class-conditional means + shared covariance on
     penultimate features; score = min distance to any in-vocab class (high = OOD)."""
@@ -239,24 +269,28 @@ def main():
            "train_n": int(len(Xtr))}
     P0s, OODs, OODm, FABs = [], [], [], []
     rep_full = {k: [] for k in KSHOT}; rep_head = {k: [] for k in KSHOT}; rep_row = {k: [] for k in KSHOT}
-    rep_mod = {k: [] for k in KSHOT}
+    rep_mod = {k: [] for k in KSHOT}; rep_modf = {k: [] for k in KSHOT}
     nm_ood = {f: [] for f in ["nearmiss_f0.04", "nearmiss_f0.08", "nearmiss_f0.15", "nearmiss_f0.3"]}
 
     for seed in SEEDS:
+        print(f"=== seed {seed}/{len(SEEDS)} ===", flush=True)
         # ---- P0 arm: full 3-class ensemble on the SAME npz ----
-        ens3 = [train_model(Xtr, ytr, len(classes), seed * 10 + j) for j in range(M_ENS)]
+        print(f"[seed {seed}] P0: training 3-class ensemble ({M_ENS} models)...", flush=True)
+        ens3 = [train_model(Xtr, ytr, len(classes), seed * 10 + j, tag=f"P0 m{j}") for j in range(M_ENS)]
         bys, overall = acc_by_sigma(ens3, Xte[inv], yte[inv], ste[inv], CI)
         P0s.append(overall)
+        print(f"[seed {seed}] P0 overall acc {overall:.3f}", flush=True)
         if seed == SEEDS[0]:
             res["P0_by_sigma_seed0"] = bys
 
         # ---- Claim-4 arm: WITHHELD circle (train on triangle+rectangle only) ----
+        print(f"[seed {seed}] Claim4: training 2-class (withheld-circle) ensemble...", flush=True)
         poly = ytr != ci
         Xp, yp = Xtr[poly], ytr[poly]                 # labels 0/1 are triangle/rectangle (ci excluded)
         # remap labels to 0..1 contiguous
         lut = {lab: i for i, lab in enumerate(sorted(set(yp.tolist())))}
         yp2 = np.array([lut[v] for v in yp])
-        ens2 = [train_model(Xp, yp2, len(lut), seed * 10 + 100 + j) for j in range(M_ENS)]
+        ens2 = [train_model(Xp, yp2, len(lut), seed * 10 + 100 + j, tag=f"C4 m{j}") for j in range(M_ENS)]
 
         # OOD: in-vocab polygons (test) vs circles (test). score = 1 - maxsoftmax (+ entropy/disag reported)
         polyte = inv & (yte != ci)
@@ -283,6 +317,7 @@ def main():
         # ---- repair: add circle class ----
         cal_circ_idx = np.where(ytr == ci)[0]
         for k in KSHOT:
+            print(f"[seed {seed}] repair k={k}...", flush=True)
             kidx = cal_circ_idx[:k]
             # 3-class fine-tune set = k circles (new label) + all polygons (labels 0,1) for R-head
             X3 = np.concatenate([Xp, Xtr[kidx]]); y3 = np.concatenate([yp2, np.full(k, len(lut))])
@@ -309,6 +344,9 @@ def main():
                                                 Xte[polyte], yte_poly, Xte[circte], len(lut), seed))
             rep_mod[k].append(repair_modular(ens2[0], Xp, yp2, Xtr[kidx],
                                              Xte[polyte], yte_poly, Xte[circte], seed))
+            rep_modf[k].append(repair_modular_fresh(ens2[0], Xp, yp2, Xtr[kidx],
+                                                    Xte[polyte], yte_poly, Xte[circte], seed,
+                                                    tag=f"Rmod-fresh k{k}"))
 
     def ms(x): return [round(float(np.mean(x)), 3), round(float(np.std(x)), 3)]
 
@@ -339,18 +377,20 @@ def main():
                 "curved_acc_mean_std": ms([r["best_at_curved>=0.85"]["curved_acc"] for r in rep[k]])}
         return o
     res["repair_R_modular_separate_detector_FAIR"] = mod_ms(rep_mod)
+    res["repair_R_modular_FRESH_raw_detector_STRONGEST"] = mod_ms(rep_modf)   # AM-9 decisive
 
     res["structured_gap_REPORTED"] = ("baseline gap signal = scalar OOD score / per-pixel residual; "
                                       "cannot NAME the missing primitive ('curvature') as MindsOS's "
                                       "REQUEST_ATOM does. AE/residual contest deferred (PB-K/AM-4).")
     res["CONTRAST_vs_mindsos"] = {
         "P0": "parity gate: see S_pos_positive_control",
-        "claim4_repair": "DECISIVE = repair_R_modular_separate_detector_FAIR (AM-8, Option A): a "
-                         "modular CNN with an UNTOUCHED polygon head + separate circle router, mirroring "
-                         "MindsOS's fallback. If its retention_at_curved>=0.85 reaches ~1.0, the repair-cost "
-                         "discriminator COLLAPSES (modularity is the known Claims-1-3 property, not Claim 4) "
-                         "-> novelty narrows to gap-naming (named atom vs OOD scalar), undefended in v1 "
-                         "(PB-K/AM-4). R_row/R_head/R_full are shared-softmax repairs (expected to forget).",
+        "claim4_repair": "DECISIVE = repair_R_modular_FRESH_raw_detector_STRONGEST (AM-9): a fresh "
+                         "raw-pixel circle detector ROUTES, polygon model UNTOUCHED -- the strongest fair "
+                         "modular CNN repair (mirrors MindsOS's fallback). If its retention_at_curved>=0.85 "
+                         "reaches ~1.0, the repair-cost discriminator COLLAPSES (modularity is the known "
+                         "Claims-1-3 property, not Claim 4) -> novelty narrows to gap-naming (named atom vs "
+                         "OOD scalar), undefended in v1 (PB-K/AM-4). R_modular(frozen)/R_row/R_head/R_full "
+                         "are weaker repairs; FRESH is the one that can tie MindsOS.",
         "claim4_nofab": "OOD AUROC high is allowed (not the differentiator); fabrication_rate is the "
                         "honest-failure number; the NAMED-gap is the qualitative differentiator",
         "novelty": "conjunction-at-parity (AM-4): only stands if S_pos passes AND repair retention gap is real"}

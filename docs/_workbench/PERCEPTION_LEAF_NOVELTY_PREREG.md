@@ -160,6 +160,23 @@ Linux, honestly, per the frozen readings.
 
 ## 8. Amendment log
 
+**AM-9 (2026-06-28, after Linux run 3 — competence gate PASSED; strongest fair-modular probe added).**
+Run 3 (BatchNorm net) cleared the §4.1 control: **CNN P0 = 0.967 ± 0.007 vs MindsOS 0.961 — parity
+holds, contest VALID.** Mahalanobis OOD 0.953 (a fair OOD head flags circles, as allowed). Repairs:
+shared-softmax (R-full/R-head/R-row) all forget (retention ≤ 0.79, curved ≤ 0.30). The frozen-
+backbone modular repair (R-modular) reached detector AUROC 0.925 @k100 but only retention 0.27 at
+curved≥0.85 — i.e. it did NOT tie MindsOS. **Caveat (self-critique):** R-modular's detector sits on
+features trained without circles, so it may under-represent curvature. The ML-advocate's strongest
+modular repair is a **FRESH raw-pixel circle detector**, folded into `leaf_novelty_baseline.py` as
+the 5th repair variant `repair_R_modular_FRESH_raw_detector_STRONGEST` (new learned circle machinery
+routes; the deployed polygon model left UNTOUCHED; identical arch/seeds/harness as every variant).
+The baseline now emits a per-stage + per-model epoch heartbeat so a long run is observably healthy.
+**Pre-committed
+reading (unchanged from AM-8):** if the FRESH modular CNN reaches retention ≈ 1.0 at curved-acc ≥
+0.85, the repair-cost discriminator **collapses** → v1 novelty narrows to gap-naming (PB-K), report
+honestly; if it stays materially < 1.0, the discriminator **survives even against the strongest fair
+modular CNN.** No MindsOS threshold changed. Run-3 numbers stand on record.
+
 **AM-8 (2026-06-28, pre-run — FAIR modular CNN repair added; the decisive falsifier of Claim 4).**
 Self-critique (extends PB-D): MindsOS's retention=1.0 is **architectural** — its arc leaf is a
 fallback that never overrides a polygon. Every CNN repair shipped so far (R-full/R-head/R-row)
