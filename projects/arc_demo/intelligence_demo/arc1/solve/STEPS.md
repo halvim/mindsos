@@ -1,9 +1,9 @@
 # arc1/solve — pipeline phases
 
-`./arc solve <task#|task_id> <step>` runs the pipeline up to `step`, checkpointing
-each phase to `runs/<task_id>/step-<n>.json`. A later run reuses the cached prior
-phases and (re)computes the requested one. `./arc solve --phases` lists the phases
-with descriptions. Phases are **editable** — change a body in `pipeline.py`.
+`./arc solve <task#|task_id> <step>` runs the pipeline up to `step`, recomputing
+every phase in-memory on each invocation (no checkpoints). `./arc solve --phases`
+lists the phases with descriptions. Phases are **editable** — change a body in
+`pipeline.py`.
 
 Each phase prints `uses` (input ctx + the real **function chain**), `→ future`
 (the proposed MindsOS feature + location — see `STEP_TARGETS`), `produces`, and
@@ -76,10 +76,8 @@ so the token (267/400) deliberately diverges from the display. See
 (`find_pipeline`); every phase *executes* inline (`arc_grids`/`arc_solver`),
 because the solver is D3-inline and disjoint from the layer. Phases 1/2/5 are
 general (3/4/6/7 general\*); 9/11/12/13 are #8-specific (the rule is hardcoded);
-8/10 are move-model semi-general. The checkpoint stores `profile` + `bg` + each stage output + a
-`_name_<n>` phase stamp (a layout change invalidates a stale checkpoint); the
-per-pair `changes` (ref tuples) are **recomputed** from `profile`+`bg` each run
-so JSON round-tripping stays safe.
+8/10 are move-model semi-general. The whole pipeline runs in-memory and is
+recomputed from scratch on every invocation (no checkpoints).
 
 **Background Color line (phases 2–13).** Each phase ≥2 prints a `Background Color`
 step-block line rendering `bg_advance`'s per-grid `bg_cand`: `Pair{i}.bg=X` when
@@ -88,7 +86,3 @@ one side resolves to X **and** X is a candidate on the other side (option C), el
 braces). The bg model adds **Phase Rule 4** (`arc_solver.bg_advance`): remove
 same_shape+same_color components at phase 2 (objects) and phase 4 (sub-pieces).
 See `PIPELINE_DECISIONS.md` §4 (2026-06-28 cont. entry) for the full bg model.
-
-**Checkpoints** are committed-optional (gitignored by default). Run dir:
-`runs/<task_id>/`. A bg-logic change does NOT invalidate a checkpoint when the
-phase NAME is unchanged → `rm -rf runs/<task>` to refresh the bg line.

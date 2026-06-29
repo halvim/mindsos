@@ -195,8 +195,8 @@ def same_bbox_area_pairs(gin: dict, gout: dict) -> List[dict]:
 def color_components(objects: list, points: list) -> list:
     """colour -> its components (objects AND points) as ``[kind, idx]`` refs
     (``kind`` in O|P). Returned JSON-safe as a list of
-    ``[colour, [[kind, idx], ...]]`` (dict int-keys don't survive checkpoint
-    round-trips). This is the per-grid grouping the bg rules consume; the
+    ``[colour, [[kind, idx], ...]]`` (dict int-keys don't survive the JSON
+    round-trip). This is the per-grid grouping the bg rules consume; the
     profiler attaches it to each grid (``arc_profile.attach_relations``)."""
     cc: dict = {}
     for j, ob in enumerate(objects):

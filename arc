@@ -37,24 +37,24 @@ EOF
 
 help_solve() {
   cat <<'EOF'
-arc solve <task#|task_id> <step> — run the solver pipeline up to <step> (resumable)
+arc solve <task#|task_id> <step> — run the solver pipeline up to <step>
 arc solve --phases — list every phase with a description (no task run)
 arc solve --inferences — list the declared inference edges (wired / requires / display)
 
   task    1-based index into the 400 sorted train tasks, or a task id (e.g. 05f2a901)
-  step    1–10; each step checkpoints to runs/<task_id>/step-<n>.json and is
-          reused by a later run, so you can advance one step at a time
+  step    1–13; phases 1..<step> are recomputed in-memory on every run (no cache)
 
-  steps:  1 input · 2 perceive · 3 profile/match · 4 background · 5 roles ·
-          6 persistence · 7 selectors · 8 rule · 9 verify · 10 apply → ANSWER
+  steps:  1 input+perceive · 2 profile · 3 subdivision · 4 component re-comparison ·
+          5 comparators hypothesis · 6 task pattern · 7 background+state-change ·
+          8 roles · 9 persistence · 10 selectors · 11 rule · 12 verify ·
+          13 apply → ANSWER
 
 examples:
-  ./arc solve --phases         list the 10 phases + descriptions
+  ./arc solve --phases         list the 13 phases + descriptions
   ./arc solve --inferences     list the declared inference edges
   ./arc solve 8 3              run steps 1–3 for task #8
-  ./arc solve 8 4              reuse cached 1–3, compute step 4
-  ./arc solve 8 10             full pipeline → ANSWER grid
-  ./arc solve 05f2a901 10      same task, by id
+  ./arc solve 8 13             full pipeline → ANSWER grid
+  ./arc solve 05f2a901 13      same task, by id
 EOF
 }
 
@@ -92,7 +92,7 @@ case "$cmd" in
     echo
     echo "▶ arc system ready"
     echo "    debug UI   http://localhost:${PORT}/arc_debug.html   (search · gates · map)"
-    echo "    solve      ./arc solve <task#|id> <step 1-10>"
+    echo "    solve      ./arc solve <task#|id> <step 1-13>"
     echo "    evaluate   ./arc evaluate <comparator> [task#|id|all]"
     echo
     echo "  (Ctrl-C to stop the server)"

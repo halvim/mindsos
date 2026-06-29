@@ -1,21 +1,16 @@
-"""solve(task, step) — run the pipeline up to `step`, checkpointing each step.
+"""solve(task, step) — run the pipeline up to `step`, in-memory.
 
-`solve(t, s)` loads cached checkpoints for steps < s and (re)computes step s.
-A missing earlier step is computed on the way. Checkpoints (full ctx) live in
-``runs/<task_id>/step-<n>.json``. Invoke via the `solve` script: `./solve 8 4`.
+`solve(t, s)` recomputes phases 1..s from scratch on every invocation (no
+checkpoints). Invoke via the `solve` script: `./solve 8 4`.
 """
 from __future__ import annotations
 
-import json
-import os
 import sys
 from typing import Any, Dict
 
 from intelligence_demo.arc1.spike import arc_grids, arc_capacities, arc_solver
 from intelligence_demo.arc1.solve import pipeline
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-RUNS = os.path.join(_HERE, "runs")
 _TTY = sys.stdout.isatty()
 
 
@@ -35,10 +30,6 @@ def _resolve_task(dataset, arg):
     return arg
 
 
-def _ckpt(task_id, n):
-    return os.path.join(RUNS, task_id, f"step-{n}.json")
-
-
 def _scope_tag(scope, task_id):
     if scope == pipeline.SPECIMEN:
         extra = "" if task_id == arc_solver.TASK8 else " — not general for this task"
@@ -51,20 +42,16 @@ def _print_instance(cl, task_id):
     by_phase: Dict[str, list] = {}
     for r in cat:
         by_phase.setdefault(r["phase"], []).append(r["name"])
-    print(_c("1", "mindsos-arc-solve") + _c("2", "  · in-process instance (no docker)") +
-          f"   run: runs/{task_id}/")
+    print(_c("1", "mindsos-arc-solve") + _c("2", "  · in-process instance (no docker)"))
     print(_c("2", f"  CapacityLayer — {len(cat)} capacities installed"))
     for ph, names in by_phase.items():
         print(_c("2", f"    {ph:<14}") + _c("36", " ".join(names)))
 
 
-def _print_step(n, name, scope, functions, uses_prefix, produces, result, status, task_id):
+def _print_step(n, name, scope, functions, uses_prefix, produces, result, task_id):
     bar = "─" * max(4, 60 - len(name))
     print()
     print(_c("1", f"── STEP {n} · {name} ") + _c("2", bar) + "  " + _scope_tag(scope, task_id))
-    st = _c("32", "computed") if status == "computed" else _c("2", "cached ✓")
-    tail = _c("2", f"→ step-{n}.json") if status == "computed" else _c("2", f"(step-{n}.json)")
-    print(f"   status   {st}  {tail}")
     print(_c("2", "   uses     ") + _c("2", uses_prefix + " · ") + functions)
     print(_c("2", "   → future ") + _c("36", pipeline.STEP_TARGETS.get(n, "—")))
     print(_c("2", "   produces ") + produces)
@@ -110,7 +97,6 @@ def _print_bg(bg_cand) -> None:
 def solve(task_arg, step):
     dataset = arc_grids.load_dataset()
     task_id = _resolve_task(dataset, task_arg)
-    os.makedirs(os.path.join(RUNS, task_id), exist_ok=True)
     cl = arc_capacities.fresh_layer()  # the instance (perceive caps live here)
     _print_instance(cl, task_id)
     print(_c("2", f"  task {task_id} · {len(dataset['train'][task_id]['train'])} train pairs + "
@@ -118,32 +104,13 @@ def solve(task_arg, step):
 
     ctx: Dict[str, Any] = {"task_id": task_id}
     for (n, name, scope, fn, functions, produces) in pipeline.STEPS[:step]:
-        ck = _ckpt(task_id, n)
         uses_prefix = "task input" if n == 1 else f"step-{n-1} ctx"
-        rkey, nkey = f"_result_{n}", f"_name_{n}"
-        cached = False
-        if n < step and os.path.exists(ck):
-            with open(ck, encoding="utf-8") as fh:
-                loaded = json.load(fh)
-            # recompute if the checkpoint predates result/name stamping OR was
-            # written under a different phase layout (name mismatch → stale).
-            if rkey in loaded and loaded.get(nkey) == name:
-                ctx = loaded
-                _print_step(n, name, scope, functions, uses_prefix, produces, loaded[rkey], "cached", task_id)
-                cached = True
-        if not cached:
-            result = fn(ctx, dataset)
-            ctx[rkey], ctx[nkey] = result, name
-            # foundational rule 2 — after each phase, mutate the PERSISTENT
-            # ctx['bg_state'] for that phase and reapply all the rules.
-            if n >= 1 and "raw" in ctx:
-                arc_solver.bg_advance(ctx, n)
-            with open(ck, "w", encoding="utf-8") as fh:
-                json.dump(ctx, fh)
-            _print_step(n, name, scope, functions, uses_prefix, produces, result, "computed", task_id)
-        elif n >= 1 and "raw" in ctx:
-            # cached step: advance the persistent bg_state for this phase too.
+        result = fn(ctx, dataset)
+        # foundational rule 2 — after each phase, mutate the PERSISTENT
+        # ctx['bg_state'] for that phase and reapply all the rules.
+        if n >= 1 and "raw" in ctx:
             arc_solver.bg_advance(ctx, n)
+        _print_step(n, name, scope, functions, uses_prefix, produces, result, task_id)
         if n >= 2 and "bg_cand" in ctx:
             _print_bg(ctx["bg_cand"])
 
@@ -154,7 +121,7 @@ def solve(task_arg, step):
         print(_c("1", f" solved {task_id}") + _c("2", f" · steps 1–{nph} · ") +
               _c("32", f"answer {len(ans)}×{len(ans[0])}"))
     else:
-        print(_c("2", f" {task_id} · ran through step {step} · checkpoints in runs/{task_id}/"))
+        print(_c("2", f" {task_id} · ran through step {step}"))
 
 
 def phases():

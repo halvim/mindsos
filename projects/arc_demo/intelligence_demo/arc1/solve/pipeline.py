@@ -2,10 +2,9 @@
 
 Steps 1–3 (general) are perceive/profile over `arc_profile`/`arc_grids`; steps
 4–10 drive the `arc_solver.stage_*` functions. A run carries one accumulating
-``ctx`` dict; each step reads it and adds its piece. Non-serialisable
-intermediates (the per-pair ``changes``, which hold ref tuples) are NOT stored —
-they are recomputed from the checkpointed ``profile`` + ``bg`` so JSON
-round-tripping is safe. See STEPS.md for the sub-steps.
+``ctx`` dict in-memory; each step reads it and adds its piece. The whole
+pipeline is recomputed from scratch on every invocation (no checkpoints). See
+STEPS.md for the sub-steps.
 """
 from __future__ import annotations
 

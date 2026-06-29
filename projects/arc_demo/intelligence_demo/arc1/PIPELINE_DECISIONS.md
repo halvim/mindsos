@@ -543,6 +543,26 @@ filed as motivating consumer; the demo does NOT block on it.
   matter. Baseline grounding (pre-Phase-Rule-4): `bg_advance` resolved a test bg on
   only 2/400 — recorded, not a target.
 
+- **2026-06-28 (cont.) — checkpoint/`runs` tracking REMOVED from `./arc solve`
+  (option C: full removal).** `./arc solve <task> <step>` now recomputes phases
+  1..step in-memory on every invocation; no `runs/<task_id>/step-<n>.json`, no
+  cached-vs-computed distinction, no `_result_<n>`/`_name_<n>` stamping. **The
+  `status` STEP-block line is dropped entirely** (option C — it only ever carried
+  the checkpoint path); a STEP block now opens `── STEP n · name …` then `uses`.
+  RESULT_OUTPUT_FORMAT phase-1–4 reference blocks relocked without it. **The gate
+  is unaffected** (`run_spike._solve_pipeline_check` already used
+  `pipeline.run_all`, in-memory). `bg_state` is still JSON-round-tripped between
+  phases *in-memory* (`_bg_dump`/`_bg_load`) — that machinery stays. Removed:
+  `runner.RUNS`/`_ckpt`/the cache block/`os`+`json` imports; `solve/.gitignore`
+  `runs/` line (kept `capacities*.json`); doc refs in STEPS.md / RESULT_OUTPUT_FORMAT
+  / root `./arc` help (also corrected its stale 10-phase list → 13). **Kills the
+  whole checkpoint-staleness gotcha class** (`rm -rf runs/<task>`, the
+  Cowork-can't-rm `{}`-write workaround, `_name_<n>` invalidation). Verified
+  Cowork-side: `./arc solve 8 13` solves #8, `run_all` `matches_withheld` True,
+  no `runs/` written. **NOTE the stale gotcha text still in the
+  `*_NEXT_CHAT_PROMPT.md` handoffs is now superseded by this entry.** **Mac:
+  `rm -rf` the now-unignored `runs/` before commit; then gate.**
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

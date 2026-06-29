@@ -8,7 +8,6 @@ STEP block: the header lines + the `result` block), as pasted below.
 
 ```
 ── STEP 1 · Input + Perceive ────────────────────────────────────────────  [general]
-   status   computed  → step-1.json
    uses     task input · arc_grids.get_task · arc_profile.grid_summary(extract_objects, extract_points, normalize_shape, palette, dimension)
    → future L4 task intake → TaskRun + L3 perceive chain via cl.invoke (find_pipeline) · mindsos_intelligence/orchestrator.py + mindsos_capacity/pipeline.py
    produces raw task · per-grid objects · points · shapes · palette · dims
@@ -21,7 +20,6 @@ STEP block: the header lines + the `result` block), as pasted below.
 
 ```
 ── STEP 2 · Profile ─────────────────────────────────────────────────────  [general]
-   status   computed  → step-2.json
    uses     step-1 ctx · arc_profile.build_profile(match_pair, profile_sweep, hypotheses) · arc_search.task_tokens(same_cell_count_pairs, same_bbox_area_pairs)
    → future L4 phase_1 sweep — L3 profilers (compare_*, same_*) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity
    produces profile · profiler tokens
@@ -61,7 +59,6 @@ STEP block: the header lines + the `result` block), as pasted below.
 
 ```
 ── STEP 3 · Subdivision ─────────────────────────────────────────────────  [general*]
-   status   computed  → step-3.json
    uses     step-2 ctx · arc_grids.subdivisions(inset) — input object partitioned by ≥2 output insets
    → future L3 derivation — subdivision (inset partition) over the profile · mindsos_capacity (→ L4 induce/learner)
    produces subdivision partitions (B → B1,B2,…)
@@ -103,7 +100,6 @@ STEP block: the header lines + the `result` block), as pasted below.
 
 ```
 ── STEP 4 · Component Re-Comparison ─────────────────────────────────────  [general*]
-   status   computed  → step-4.json
    uses     step-3 ctx · step-3 findings · same_object/same_point/same_shape(sub-piece, component) per sub-piece
    → future L3 reasoning — re-compare derived sub-pieces against perceived components (same_*) · mindsos_capacity (→ L4 induce/learner)
    produces sub-piece ↔ component correspondences
@@ -145,7 +141,6 @@ STEP block: the header lines + the `result` block), as pasted below.
 ## Block structure (what each line is)
 
 - `── STEP {n} · {name} ───…  [{scope}]` — phase number, name, scope tag.
-- `   status   {computed|cached ✓}  → step-{n}.json` — compute vs cache + checkpoint.
 - `   uses     {input ctx} · {real function chain}`
 - `   → future {proposed MindsOS feature + location}`
 - `   produces {what the phase adds to ctx}`
@@ -187,3 +182,9 @@ per-phase body content is defined in `pipeline.py` / `arc_solver`.
   relation = same_object / same_point if colour kept, else same_shape; verified
   structurally uniform across all 400 tasks (0 nonconforming; 156 with content,
   244 header-only). Do not re-litigate.
+- **The `status` line is REMOVED** (2026-06-28). `./arc solve` no longer
+  checkpoints — every phase recomputes in-memory each invocation — so the
+  `status computed → step-{n}.json` / `cached ✓` line carried no information and
+  was dropped. A STEP block now opens with the `── STEP {n} · {name} …` bar
+  followed directly by the `uses` line. The phase-1–4 reference blocks above are
+  relocked without it.

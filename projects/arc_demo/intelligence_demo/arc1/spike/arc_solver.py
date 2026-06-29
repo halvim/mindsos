@@ -74,7 +74,8 @@ def _bg_color(profile: dict) -> int:
 #   the bg · PR1 ELIMINATION (colour's list empty => drop it; the one rule,
 #   unchanged, reapplied) · PR2 train->test inheritance.
 # Component ids are strings: "O{j}" / "P{j}" / "S{whole}_{k}" (a sub-piece).
-# State is stored JSON-safe (colour keys -> str, ids -> str) for checkpointing.
+# State is stored JSON-safe (colour keys -> str, ids -> str) — round-tripped
+# between phases in-memory via _bg_dump / _bg_load.
 
 def _bg_grec_from(cells: list) -> dict:
     """A grid's bg record from raw cells: colour -> set of component-id strings
@@ -144,7 +145,7 @@ def bg_advance(ctx: dict, phase: int) -> None:
     components (objects at phase 2, sub-pieces at phase 4); later phases just
     reapply the rules. Writes ``ctx['bg_state']`` (full state) + ``ctx['bg_cand']``
     (the {cand, bg} summary)."""
-    if phase == 1 or "bg_state" not in ctx:    # init (or recover a stale checkpoint)
+    if phase == 1 or "bg_state" not in ctx:    # init (or if bg_state is absent)
         raw = ctx["raw"]
         state = {"train": [{"input": _bg_grec_from(pr["input"]),
                             "output": _bg_grec_from(pr["output"])}
