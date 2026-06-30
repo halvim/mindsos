@@ -210,10 +210,13 @@ STEP block: the header lines + the `result` block), as pasted below.
   a component is **matched** iff it has a correspondence in one of: same_object ·
   same_point · same_shape+same_color (moved) · same_shape+different_color
   (recolored) · rotated · reflected · (sub-piece covers a part); else
-  **unmatched**. **No bg exclusion** — bg-colour objects participate (an
-  unmatched bg-colour object that isn't subdivided drives `addition`/`subtraction`).
-- **Background** is taken **only** from `bg_cand` (`bg_advance`) and only sets
-  the `bg not resolved` suffix; it does not exclude anything here.
+  **unmatched**.
+- **Resolved bg in addition/subtraction** — bg-colour objects participate in
+  matched/unmatched, but for the `addition`/`subtraction` unmatched-test the
+  **resolved** bg colour is dropped (a resolved bg cannot read as added/removed).
+  When a grid's bg is unresolved it still counts. (recoloring/moving/rotation/
+  reflection are family-presence tests and are unaffected.) `bg_cand` also sets
+  the `bg not resolved` suffix.
 - **Descriptive, not the rule** — hypothesis/display only; not consumed
   downstream.
 

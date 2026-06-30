@@ -58,9 +58,11 @@ reflected correspondence (or it's a sub-piece covering a part), else
 **unmatched**. addition = ≥1 unmatched output (dims preserved, palette
 preserved/increased); subtraction = ≥1 unmatched input (palette
 preserved/decreased); moving = ≥1 moved (dims+palette preserved);
-recoloring/rotation/reflection = ≥1 of that family (dims preserved). **No bg
-exclusion** — bg objects participate; `bg_cand` only sets the `· bg not resolved`
-suffix. `inset` is a registered capacity-only predicate (no
+recoloring/rotation/reflection = ≥1 of that family (dims preserved). bg objects
+participate in matched/unmatched, **but the addition/subtraction unmatched-test
+drops the resolved bg colour** (a resolved bg can't read as added/removed; an
+unresolved bg still counts); `bg_cand` also sets the `· bg not resolved` suffix.
+`inset` is a registered capacity-only predicate (no
 Search facet — near-universal); `subdivision` is the phase process that consumes
 it inline (D3).
 

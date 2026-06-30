@@ -701,6 +701,15 @@ filed as motivating consumer; the demo does NOT block on it.
   (8 `[ok]`, #8 solves; union occurs 24/400). Phases 4/5/6 reopened + relocked in
   RESULT_OUTPUT_FORMAT + STEPS.md.
 
+  **(F) Resolved bg considered for addition/subtraction (owner follow-up).** bg
+  objects still participate in matched/unmatched, but the `addition`/`subtraction`
+  unmatched-test drops the **resolved** bg colour (`_pattern_flags`/`_comp_color`,
+  per-grid `bg_in`/`bg_out`) — a resolved bg can't read as added/removed; an
+  unresolved bg still counts. recoloring/moving/rotation/reflection (family-presence)
+  unaffected. **#8 → `moving` only** now (its unmatched black object is the bg →
+  dropped); #2 still `recoloring`. Corpus shifts: addition 74→67, subtraction
+  88→80. Gate stays green (8 `[ok]`, #8 solves).
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

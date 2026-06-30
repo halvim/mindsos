@@ -511,29 +511,46 @@ def _matched_families(pr: dict):
     return mi, mo, fams
 
 
-def _pattern_flags(pr: dict, findings: list) -> dict:
+def _comp_color(gs: dict, cid: str, sub_colors: dict):
+    """Colour of a component id (O{i}/P{i}/S{w}_{k}) on a grid."""
+    if cid in sub_colors:
+        return sub_colors[cid]
+    if cid[0] == "O":
+        return gs["objects"][int(cid[1:])]["color"]
+    return gs["points"][int(cid[1:])]["color"]
+
+
+def _pattern_flags(pr: dict, findings: list, bg_in, bg_out) -> dict:
     """The six patterns' per-pair truth over the AUGMENTED object universe — a
     subdivided whole is replaced by its sub-pieces (full objects), which are
     matched (each covers a part) and contribute `recolored` when the colour
-    changed. ``findings`` = the phase-4 recomparison findings for this pair. No
-    bg exclusion (bg objects participate)."""
+    changed. ``findings`` = the phase-4 recomparison findings for this pair.
+    For addition/subtraction the resolved bg colour is dropped from the unmatched
+    set (a resolved bg cannot read as added/removed); when bg is unresolved it
+    participates."""
     in_univ, out_univ = _grid_components(pr["input"]), _grid_components(pr["output"])
     mi, mo, fams = _matched_families(pr)
+    in_sub, out_sub = {}, {}                                # sub-piece -> colour
     for f in findings:
         if f["direction"] == "split":
-            w_univ, w_m, p_m = in_univ, mi, mo
+            w_univ, w_m, p_m, w_sub = in_univ, mi, mo, in_sub
         else:
-            w_univ, w_m, p_m = out_univ, mo, mi
+            w_univ, w_m, p_m, w_sub = out_univ, mo, mi, out_sub
         whole = f"O{f['whole_idx']}"
         w_univ.discard(whole); w_m.discard(whole)          # whole replaced by sub-pieces
         for k, part in enumerate(f["parts"]):
-            w_univ.add(f"S{f['whole_idx']}_{k}")           # sub-piece is a full object …
-            w_m.add(f"S{f['whole_idx']}_{k}")              # … matched (covers a part)
+            sid = f"S{f['whole_idx']}_{k}"
+            w_univ.add(sid); w_m.add(sid)                  # sub-piece (full object), matched
+            w_sub[sid] = f["whole_color"]
             p_m.add(f"{part['kind']}{part['pidx']}")       # the covered part is matched
             if part["rel"] == "recolored":
                 fams.add("recolored")
     unmatched_in = in_univ - mi
     unmatched_out = out_univ - mo
+    if bg_in is not None:                                  # drop resolved bg from add/sub
+        unmatched_in = {c for c in unmatched_in if _comp_color(pr["input"], c, in_sub) != bg_in}
+    if bg_out is not None:
+        unmatched_out = {c for c in unmatched_out if _comp_color(pr["output"], c, out_sub) != bg_out}
     dims = pr["input"]["dims"] == pr["output"]["dims"]
     pal = _palette_label(pr)
     return {
@@ -558,12 +575,14 @@ def task_patterns(profile: dict, bg_cand: dict = None,
     bg_resolved = bg_cand is not None
     per = []
     for i, pr in enumerate(demos):
+        bg_in = bg_out = None
         if bg_cand is not None:
-            if (bg_cand["train"][i]["input"]["bg"] is None
-                    or bg_cand["train"][i]["output"]["bg"] is None):
+            bg_in = bg_cand["train"][i]["input"]["bg"]
+            bg_out = bg_cand["train"][i]["output"]["bg"]
+            if bg_in is None or bg_out is None:
                 bg_resolved = False
         findings = [f for f in recomp if f["pair"] == i + 1]
-        per.append(_pattern_flags(pr, findings))
+        per.append(_pattern_flags(pr, findings, bg_in, bg_out))
     matched = {n: bool(per) and all(p[n] for p in per) for n in PATTERN_NAMES}
     return {"patterns": [{"name": n, "matched": matched[n]} for n in PATTERN_NAMES],
             "bg_resolved": bg_resolved}
