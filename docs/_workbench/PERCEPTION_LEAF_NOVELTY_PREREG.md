@@ -160,6 +160,18 @@ Linux, honestly, per the frozen readings.
 
 ## 8. Amendment log
 
+**AM-10 (2026-06-29, after run 4 — FRESH-detector result was a BUG, invalidated + fixed, re-run).**
+Run 4 (folded fresh-detector) returned `repair_R_modular_FRESH_raw_detector_STRONGEST` detector
+AUROC **0.48–0.51 (chance)** across k — impossible for a fresh CNN on the trivial circle-vs-polygon
+task (the *frozen-feature* detector scored 0.925 on the same task). Root cause: `repair_modular_fresh`
+scored the detector **without `.eval()`**, so BatchNorm used per-batch stats; with polygons and
+circles passed as *separate* batches, BN normalised the class difference away → uninformative scores.
+**Fix:** `det.eval(); poly_model.eval()` before scoring (running stats). All other paths route through
+helpers that already set eval (P0 0.967, Mahalanobis 0.953, frozen R-modular AUROC 0.925/retention
+0.27, R-full/head/row) — **those run-4 numbers remain valid**; only the FRESH variant was corrupted
+and is re-run. No threshold changed. The decisive reading (AM-8/AM-9) is unchanged and now rests on
+the *fixed* FRESH retention@curved≥0.85 vs MindsOS 1.0. Run-4 FRESH numbers void on record.
+
 **AM-9 (2026-06-28, after Linux run 3 — competence gate PASSED; strongest fair-modular probe added).**
 Run 3 (BatchNorm net) cleared the §4.1 control: **CNN P0 = 0.967 ± 0.007 vs MindsOS 0.961 — parity
 holds, contest VALID.** Mahalanobis OOD 0.953 (a fair OOD head flags circles, as allowed). Repairs:

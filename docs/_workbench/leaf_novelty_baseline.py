@@ -95,7 +95,7 @@ def train_model(X, y, nc, seed, epochs=EPOCHS, init=None, freeze_backbone=False,
             b = idx[s:s + BATCH]
             opt.zero_grad()
             loss = F.cross_entropy(m(Xt[b]), yt[b])
-            loss.backward(); opt.step(); last = float(loss)
+            loss.backward(); opt.step(); last = float(loss.detach())
         sched.step()
         if tag and (ep % hb == 0 or ep == epochs - 1):
             print(f"      {tag} ep {ep + 1}/{epochs} loss {last:.3f}", flush=True)
@@ -198,6 +198,7 @@ def repair_modular_fresh(poly_model, Xpoly, ypoly, Xcirc_k, Xte_poly, yte_poly, 
     Xdet = np.concatenate([Xpoly, Xc])
     ydet = np.concatenate([np.zeros(len(Xpoly), int), np.ones(len(Xc), int)])
     det = train_model(Xdet, ydet, 2, seed * 31 + len(Xcirc_k), tag=tag)
+    det.eval(); poly_model.eval()                         # BN must use running stats, not batch stats
     with torch.no_grad():
         php = poly_model(_t(Xte_poly)).argmax(1).cpu().numpy()
         sp = F.softmax(det(_t(Xte_poly)), 1)[:, 1].cpu().numpy()
@@ -325,14 +326,15 @@ def main():
 
             # R-full: full fine-tune (few epochs) on circles ONLY -> catastrophic forgetting probe
             mfull = train_model(Xtr[kidx], np.full(k, len(lut)), len(lut) + 1, seed,
-                                epochs=12, init=init, freeze_backbone=False)
+                                epochs=12, init=init, freeze_backbone=False, tag=f"R-full k{k}")
             mean_full, _ = ens_probs([mfull], Xte[polyte])
             ret_full = float((mean_full.argmax(1) == np.array([lut[v] for v in yte[polyte]])).mean())
             cur_full = float((ens_probs([mfull], Xte[circte])[0].argmax(1) == len(lut)).mean())
             rep_full[k].append({"retention": ret_full, "curved_acc": cur_full, "params_changed": "all"})
 
             # R-head: FROZEN backbone + new 3-way head on k circles + polygon features (auditor's best)
-            mhead = train_model(X3, y3, len(lut) + 1, seed, epochs=20, init=init, freeze_backbone=True)
+            mhead = train_model(X3, y3, len(lut) + 1, seed, epochs=20, init=init, freeze_backbone=True,
+                                tag=f"R-head k{k}")
             mean_h, _ = ens_probs([mhead], Xte[polyte])
             ret_head = float((mean_h.argmax(1) == np.array([lut[v] for v in yte[polyte]])).mean())
             cur_head = float((ens_probs([mhead], Xte[circte])[0].argmax(1) == len(lut)).mean())
