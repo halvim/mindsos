@@ -137,7 +137,7 @@ def step_subdivision(ctx, dataset):
                           else part_g["points"][j]["color"])
                     sub = f"{w_base}.sub{kk + 1}.{w_color}"   # In1.O1.sub1.grey
                     part_items.append({"sub": sub, "ref": pref,
-                                       "part_color": Cp, "kind": k})
+                                       "part_color": Cp, "kind": k, "pidx": j})
                     part_refs.append(pref)
                     kids.append(sub)
                 parts = ", ".join(part_refs)
@@ -168,8 +168,10 @@ def step_objcomp(ctx, dataset):
         parts_rel = []
         for part in f["parts"]:
             kept = part["part_color"] == f["whole_color"]
+            # sub-piece and the object it covers share cells by construction, so a
+            # colour change is a RECOLOR (a subdivision sub-piece is a full object).
             rel = ("same_object" if (kept and part["kind"] == "O")
-                   else "same_point" if kept else "same_shape")
+                   else "same_point" if kept else "recolored")
             parts_rel.append({**part, "rel": rel})
             n += 1
             by_pair.setdefault(f["pair"], []).append(
@@ -192,10 +194,11 @@ def step_task_pattern(ctx, dataset):
     from ``bg_cand``; when a grid's bg is unresolved the firing lines are
     prefixed ``bg not resolved``. Bare ``{name} ✓`` per matching pattern.
     Display/hypothesis only; not consumed downstream."""
-    res = arc_solver.task_patterns(ctx["profile"], ctx.get("bg_cand"))
+    res = arc_solver.task_patterns(ctx["profile"], ctx.get("bg_cand"),
+                                   ctx.get("recomparison"))
     ctx["patterns"] = res
-    prefix = "" if res["bg_resolved"] else "bg not resolved  "
-    lines = [f"{prefix}{p['name']} ✓" for p in res["patterns"] if p["matched"]]
+    suffix = "" if res["bg_resolved"] else " · bg not resolved"
+    lines = [f"{p['name']} ✓{suffix}" for p in res["patterns"] if p["matched"]]
     return _block("Pattern Hypothesis:", lines or ["(none)"])
 
 
@@ -219,61 +222,95 @@ def _drop_bg_grid(gs, bg):
     return arc_profile.attach_relations(g2)
 
 
-def _hyp_pair_d(d, bg_in=None, bg_out=None) -> dict:
-    """The demo-pair dict the phase-5 hypothesis runs over. If the grid's bg is
-    resolved by phase 5, the bg-colour objects are dropped first (and match +
-    relations recomputed over the non-bg components) so they don't participate;
-    otherwise the original profile pair is used unchanged."""
-    if bg_in is None and bg_out is None:
-        return d
-    gin = _drop_bg_grid(d["input"], bg_in) if bg_in is not None else d["input"]
-    gout = _drop_bg_grid(d["output"], bg_out) if bg_out is not None else d["output"]
-    return {"input": gin, "output": gout, "match": arc_profile.match_pair(gin, gout)}
+# ── phase-5 perception: per-comparator per-pair param + ∀ conclusion ─────
+# A "pair context" (pc) carries the FULL demo pair + the grid bgs `bg_advance`
+# resolved + the phase-4 recomparison findings. Transforms run over the full
+# grids (no bg exclusion); `touching`/`inside`/`touching_delta` exclude the bg
+# colour ONLY when that grid's bg is resolved. `recolored` also fires off
+# subdivision sub-pieces (a sub-piece is a full object). Each comparator reports
+# its per-pair parameter(s): the value when the pair's instances AGREE, else
+# ``multi`` (PB-l). ``inside`` has no parameter → bare.
+_MULTI = "multi"
 
 
-def _hyp_pair_set(d) -> set:
-    """The comparators triggering on one (already bg-resolved) demo pair: the
-    registry atom runs ALL comparators, with the intra-grid ``touching`` swapped
-    for the ``touching_delta`` state-change."""
-    s = arc_search._pair_comparators(d)            # all registered comparators
-    s.discard("touching")
-    ch = arc_solver.touching_changes(d, 0, exclude_bg=False)   # forget bg
+def _pair_ctx(ctx, i, d) -> dict:
+    bc = ctx.get("bg_cand")
+    return {
+        "d": d,
+        "bg_in": bc["train"][i]["input"]["bg"] if bc else None,
+        "bg_out": bc["train"][i]["output"]["bg"] if bc else None,
+        "findings": [f for f in (ctx.get("recomparison") or []) if f["pair"] == i + 1],
+    }
+
+
+def _pair_bg_excl(pc):
+    """(bg, exclude?) for touching_delta — exclude only when both grids resolved
+    to the same colour."""
+    bi, bo = pc["bg_in"], pc["bg_out"]
+    return (bi, True) if (bi is not None and bi == bo) else (0, False)
+
+
+def _inside_present(pc) -> bool:
+    """`inside` over each grid, bg-colour excluded when that grid's bg is
+    resolved (intra-grid relation the bg dominates)."""
+    d = pc["d"]
+    for side, bg in (("input", pc["bg_in"]), ("output", pc["bg_out"])):
+        g = _drop_bg_grid(d[side], bg) if bg is not None else d[side]
+        if g.get("inside"):
+            return True
+    return False
+
+
+def _hyp_pair_set(pc) -> set:
+    """The comparators triggering on one demo pair (phase-5 rules): transforms
+    over the full grids; `recolored` also from sub-pieces; `inside` and
+    `touching_delta` exclude the bg colour when resolved."""
+    d = pc["d"]
+    s = {c for c in ("moved", "recolored", "rotated", "reflected")
+         if arc_search._PAIR_PRED[c](d)}
+    if any(p["rel"] == "recolored" for f in pc["findings"] for p in f["parts"]):
+        s.add("recolored")
+    if _inside_present(pc):
+        s.add("inside")
+    bg, excl = _pair_bg_excl(pc)
+    ch = arc_solver.touching_changes(d, bg, exclude_bg=excl)
     if ch["gained"] or ch["lost"]:
         s.add("touching_delta")
     return s
 
 
-# ── phase-5 perception: per-comparator per-pair param + ∀ conclusion ─────
-# Each transform-family comparator (+ touching_delta) reports, per demo pair,
-# the parameter of its instance(s): the actual value when the pair's instances
-# AGREE, else the token ``multi`` (PB-l: multi = real within-pair disagreement,
-# so a uniform many-object transform still reads constant). The line then states
-# a ∀ conclusion over the per-pair values. ``inside`` has no parameter → bare.
-_MULTI = "multi"
-
-
-def _moved_params(d):
+def _moved_params(pc):
+    d = pc["d"]
     return [tuple(m["transform"]["vector"])
             for g in d["match"]["shape_groups"] for m in g.get("moves", [])]
 
 
-def _rotated_params(d):
+def _rotated_params(pc):
+    d = pc["d"]
     return [t["transform"]["deg"]
             for t in arc_grids.rotated_pairs(d["input"], d["output"])]
 
 
-def _reflected_params(d):
+def _reflected_params(pc):
+    d = pc["d"]
     return [t["transform"]["axis"]
             for t in arc_grids.reflected_pairs(d["input"], d["output"])]
 
 
-def _recolored_params(d):
-    return [(t["transform"]["from"], t["transform"]["to"])
-            for t in arc_grids.recolored_pairs(d["input"], d["output"])]
+def _recolored_params(pc):
+    d = pc["d"]
+    out = [(t["transform"]["from"], t["transform"]["to"])
+           for t in arc_grids.recolored_pairs(d["input"], d["output"])]
+    for f in pc["findings"]:                        # sub-piece recolors
+        for p in f["parts"]:
+            if p["rel"] == "recolored":
+                out.append((f["whole_color"], p["part_color"]))
+    return out
 
 
-def _touching_delta_params(d):
-    ch = arc_solver.touching_changes(d, 0, exclude_bg=False)
+def _touching_delta_params(pc):
+    bg, excl = _pair_bg_excl(pc)
+    ch = arc_solver.touching_changes(pc["d"], bg, exclude_bg=excl)
     return ["gained"] * len(ch["gained"]) + ["lost"] * len(ch["lost"])
 
 
@@ -336,34 +373,29 @@ def _conclusion(comp, values) -> str:
     return "constant" if len(set(values)) == 1 else "varies"
 
 
-def _comparator_line(comp, pair_ds) -> str:
+def _comparator_line(comp, pcs) -> str:
     """Phase-5 line for one ∀-firing comparator: bare ``✓`` for a parameter-less
     comparator (``inside``), else ``{comp} → {item} | … → {conclusion}``."""
     if comp not in _PAIR_PERCEPTION:
         return f"{comp} ✓"
     extract = _PAIR_PERCEPTION[comp]
-    values = [_pair_value(extract(d)) for d in pair_ds]
+    values = [_pair_value(extract(pc)) for pc in pcs]
     items = [_MULTI if v == _MULTI else _render_param(comp, v) for v in values]
     return f"{comp} → {' | '.join(items)} → {_conclusion(comp, values)}"
 
 
 def step_comparators_hypothesis(ctx, dataset):
     """Phase 5 — Comparators Hypothesis: the comparators that trigger on EVERY
-    demo pair (∀), running ALL registered comparators (comparator_names()), with
-    ``touching_delta`` shown instead of the intra-grid ``touching``. If the bg is
-    resolved by phase 5 (``ctx['bg_cand']``), bg-colour objects are excluded from
-    the checks. Each firing comparator reports its per-pair parameter(s) + a ∀
-    conclusion (``inside`` stays bare). Display/hypothesis only; the ∃ task_tokens
-    (gate) are untouched."""
-    bc = ctx.get("bg_cand")
-    pair_ds = []
-    for i, d in enumerate(ctx["profile"]["train"]):
-        bg_in = bc["train"][i]["input"]["bg"] if bc else None
-        bg_out = bc["train"][i]["output"]["bg"] if bc else None
-        pair_ds.append(_hyp_pair_d(d, bg_in, bg_out))
-    per = [_hyp_pair_set(d) for d in pair_ds]
+    demo pair (∀), with ``touching_delta`` shown instead of the intra-grid
+    ``touching``. Transforms run over the full grids; ``touching``/``inside``/
+    ``touching_delta`` exclude the bg colour only when that grid's bg is resolved;
+    ``recolored`` also fires off subdivision sub-pieces. Each firing comparator
+    reports its per-pair parameter(s) + a ∀ conclusion (``inside`` stays bare).
+    Display/hypothesis only; the ∃ task_tokens (gate) are untouched."""
+    pcs = [_pair_ctx(ctx, i, d) for i, d in enumerate(ctx["profile"]["train"])]
+    per = [_hyp_pair_set(pc) for pc in pcs]
     comps = arc_search.forall_comparators(per, _hyp_order())
-    lines = [_comparator_line(c, pair_ds) for c in comps]
+    lines = [_comparator_line(c, pcs) for c in comps]
     return _block("Comparators Hypothesis:", lines or ["(none)"])
 
 

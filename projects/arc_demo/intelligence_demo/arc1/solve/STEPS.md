@@ -20,9 +20,9 @@ v1 assumption · **semi** = runs generally but encodes the move-task model ·
 | 1 | Input + Perceive | general | `arc_grids.get_task` · `arc_profile.grid_summary` → `extract_objects`, `extract_points`, `normalize_shape`, `palette`, `dimension` |
 | 2 | Profile (profilers) | general | `arc_profile.build_profile`(`match_pair`, `profile_sweep`, `hypotheses`) · `arc_search.task_tokens`(`same_cell_count_pairs`, `same_bbox_area_pairs`) |
 | 3 | Subdivision | general\* | `arc_grids.subdivisions` → `inset`, **bidirectional + bg-agnostic** (object = ≥2 disjoint insets, `split` in→out or `assemble` out→in, points included) |
-| 4 | Component Re-Comparison | general\* | `pipeline.step_objcomp` over step-3 findings → per sub-piece `same_object`/`same_point` (colour kept) or `same_shape` (colour changed), tagged `[from split]`/`[from assemble]` |
-| 5 | Comparators Hypothesis | general | `arc_search.forall_comparators` over per-pair sets — the comparators triggering on **ALL** demo pairs (∀, add-only); each parametric comparator reports its **per-pair parameter + ∀ conclusion** (`pipeline._comparator_line`/`_conclusion`: `moved`→`(dr,dc)`, `rotated`→deg, `reflected`→`H/V-axis`, `recolored`→`from→to`, `touching_delta`→`gained/lost`; `multi`=within-pair disagreement, PB-l; `inside` bare); `touching_delta` (`arc_solver.touching_changes`, bg-forgotten) replaces intra-grid `touching`; **bg-colour objects excluded when bg is resolved** (`pipeline._drop_bg_grid`); ∃ `task_tokens` untouched |
-| 6 | Task Patterns | general\* | `arc_solver.task_patterns` over the phase-2/4 `same_*` matches — the patterns holding ∀ demo pair (addition / subtraction / recoloring / moving / rotation / reflection); bg from `bg_cand` |
+| 4 | Component Re-Comparison | general\* | `pipeline.step_objcomp` over step-3 findings → per sub-piece (a **full object**) `same_object`/`same_point` (colour kept) or **`recolored`** (colour changed — same cells), tagged `[from split]`/`[from assemble]` |
+| 5 | Comparators Hypothesis | general | `arc_search.forall_comparators` over per-pair sets — the comparators triggering on **ALL** demo pairs (∀, add-only); each parametric comparator reports its **per-pair parameter + ∀ conclusion** (`moved`→`(dr,dc)`, `rotated`→deg, `reflected`→`H/V-axis`, `recolored`→`from→to`, `touching_delta`→`gained/lost`; `multi`=within-pair disagreement; `inside` bare). Transforms over the full grids; `recolored` also fires off subdivision sub-pieces; **only `touching`/`inside`/`touching_delta` exclude the bg colour, and only when that grid's bg is resolved**; ∃ `task_tokens` untouched |
+| 6 | Task Patterns | general\* | `arc_solver.task_patterns` over the phase-2/4 `same_*` matches with subdivided wholes replaced by their sub-pieces — patterns holding ∀ demo pair (addition / subtraction / recoloring / moving / rotation / reflection); `moving` = dims+palette preserved + ≥1 moved; **no bg exclusion** (bg objects participate); bg from `bg_cand` only sets the `bg not resolved` suffix |
 | 7 | Background + state-change | general\* | `arc_solver.stage_background` → bg from `bg_cand` (`bg_advance`, injected) · `touching_changes` (`_correspondence`, `_touch_set`) |
 | 8 | Roles | semi | `arc_solver.stage_roles` → `_moved_in`, `_touch_set`, `_comp` (mover / target / background, demo-1) |
 | 9 | Persistence + combo | ⚑ #8 | `arc_solver.stage_persistence` → `_moved_in` · `(move, touching)` combo verdict |
@@ -50,15 +50,17 @@ see RESULT_OUTPUT_FORMAT.md "Phase 5 result body". The intra-grid `touching` is
 replaced here by the `touching_delta` state-change (`arc_solver.touching_changes`:
 a corresponded object's touching status flips gained/lost, bg-forgotten).
 Phase 6 (Task Patterns) lists the patterns holding on **every** demo pair (∀),
-read off the phase-2/4 `same_*` match results: a component is **matched** if it
-has a same_object / same_point / same_shape+same_color (moved) /
-same_shape+different_color (recolored) / rotated / reflected correspondence,
-else **unmatched**. addition = ≥1 unmatched output (dims preserved, palette
+read off the phase-2/4 `same_*` matches over the **augmented** universe (a
+subdivided whole is replaced by its sub-pieces, each a full object, matched): a
+component is **matched** if it has a same_object / same_point /
+same_shape+same_color (moved) / same_shape+different_color (recolored) / rotated /
+reflected correspondence (or it's a sub-piece covering a part), else
+**unmatched**. addition = ≥1 unmatched output (dims preserved, palette
 preserved/increased); subtraction = ≥1 unmatched input (palette
-preserved/decreased); moving = all matched + ≥1 moved (palette preserved);
-recoloring/rotation/reflection = ≥1 of that family (dims preserved). Background
-comes only from `bg_cand`; when a grid's bg is unresolved the firing lines are
-prefixed `bg not resolved`. `inset` is a registered capacity-only predicate (no
+preserved/decreased); moving = ≥1 moved (dims+palette preserved);
+recoloring/rotation/reflection = ≥1 of that family (dims preserved). **No bg
+exclusion** — bg objects participate; `bg_cand` only sets the `· bg not resolved`
+suffix. `inset` is a registered capacity-only predicate (no
 Search facet — near-universal); `subdivision` is the phase process that consumes
 it inline (D3).
 

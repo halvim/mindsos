@@ -137,13 +137,49 @@ def _bg_load(j: dict) -> dict:
             "test": [{"input": gl(te["input"])} for te in j["test"]]}
 
 
-def _bg_rules(state: dict) -> None:
+def _c_persists(G: dict, Gp: dict, C: int) -> bool:
+    """Does colour ``C`` persist from grid ``G`` into its pair-partner ``Gp`` —
+    i.e. the ``C``-coloured objects of ``G`` are NOT all uniformly recolored to a
+    single other colour? (PR3 predicate: 'the shapes with the resolved bg don't
+    all change colour together'.) An object that stays ``C`` (same_object /
+    moved / unmatched) makes ``C`` persist."""
+    c_objs = [i for i, o in enumerate(G["objects"]) if o["color"] == C]
+    if not c_objs:
+        return False
+    rec = arc_grids.recolored_pairs(G, Gp)
+    rec_src = {t["in"] for t in rec}
+    targets = {t["transform"]["to"] for t in rec if t["in"] in c_objs}
+    uniform_recolor = all(i in rec_src for i in c_objs) and len(targets) == 1
+    return not uniform_recolor
+
+
+def _bg_propagate(state: dict, profile: dict) -> None:
+    """PR3 (pairwise): when one grid of a train pair has bg resolved to ``C`` and
+    the partner has ``C`` still among its candidates, re-check the ``C``-coloured
+    shapes — if they don't all recolor to one colour together (``_c_persists``),
+    the partner resolves to ``C`` too. Uses the profile match (colour history)."""
+    for i, pr in enumerate(profile["train"]):
+        gin_s, gout_s = state["train"][i]["input"], state["train"][i]["output"]
+        gin_p, gout_p = pr["input"], pr["output"]
+        for src, dst, Gsrc, Gdst in ((gin_s, gout_s, gin_p, gout_p),
+                                     (gout_s, gin_s, gout_p, gin_p)):
+            C = src["bg"]
+            if C is None or dst["bg"] is not None:
+                continue
+            if C in dst["cand"] and dst["cand"] != {C} and _c_persists(Gsrc, Gdst, C):
+                dst["cand"] = {C}
+                dst["bg"] = C
+
+
+def _bg_rules(state: dict, profile: dict = None) -> None:
     """FR2: reapply ALL rules after a phase mutation."""
     for g in _bg_grids(state):                                   # PR1 + FR1 + FR3
         for colour in list(g["cand"]):
             if not g["lists"].get(colour) and len(g["cand"]) > 1:   # empty list, FR1 guard
                 g["cand"].discard(colour)                           # PR1 eliminate
         g["bg"] = next(iter(g["cand"])) if len(g["cand"]) == 1 else None   # FR3
+    if profile is not None:                                      # PR3 pairwise propagation
+        _bg_propagate(state, profile)
     bgs = [b for t in state["train"]                             # PR2 train->test
            for b in (t["input"]["bg"], t["output"]["bg"])]
     if bgs and all(b is not None for b in bgs) and len(set(bgs)) == 1:
@@ -211,7 +247,7 @@ def bg_advance(ctx: dict, phase: int) -> None:
                     if p["rel"] in ("same_object", "same_point"):
                         lst.discard(f"S{f['whole_idx']}_{k}")
 
-    _bg_rules(state)
+    _bg_rules(state, ctx.get("profile"))
     ctx["bg_state"] = _bg_dump(state)
     ctx["bg_cand"] = {
         "train": [{"input": {"cand": sorted(t["input"]["cand"]), "bg": t["input"]["bg"]},
@@ -426,11 +462,6 @@ def apply_rule(gs: dict, bg: int):
 #: the "all inputs preserved" test MUST exclude the background object, else the
 #: pattern fires on 0/400 (verified). With bg excluded: 87/400. → future home: an
 #: L3 comprehension / L4 induce hypothesis over the profile.
-def _palette_label(pin: list, pout: list) -> str:
-    """preserved (==) vs increased (output is a strict superset)."""
-    return "preserved" if set(pin) == set(pout) else "increased"
-
-
 # ── phase-6 task patterns — over the phase-2/4 same_* match results ──────
 PATTERN_NAMES = ["addition", "subtraction", "recoloring",
                  "moving", "rotation", "reflection"]
@@ -449,12 +480,11 @@ def _palette_label(pr: dict) -> str:
     return "added+removed"
 
 
-def _grid_components(gs: dict, bg) -> set:
-    """Component-id strings (O{i}/P{i}) for a grid, bg-colour excluded when
-    ``bg`` is resolved (not None)."""
-    ids = {f"O{i}" for i, o in enumerate(gs["objects"]) if bg is None or o["color"] != bg}
-    ids |= {f"P{i}" for i, p in enumerate(gs["points"]) if bg is None or p["color"] != bg}
-    return ids
+def _grid_components(gs: dict) -> set:
+    """All component-id strings (O{i}/P{i}) for a grid — NO bg exclusion (bg
+    objects participate in matched/unmatched)."""
+    return ({f"O{i}" for i in range(len(gs["objects"]))}
+            | {f"P{i}" for i in range(len(gs["points"]))})
 
 
 def _matched_families(pr: dict):
@@ -481,46 +511,59 @@ def _matched_families(pr: dict):
     return mi, mo, fams
 
 
-def _pattern_flags(pr: dict, bg_in, bg_out) -> dict:
-    """The six patterns' per-pair truth (bg-colour components excluded when the
-    grid's bg is resolved)."""
-    full_in = _grid_components(pr["input"], bg_in)
-    full_out = _grid_components(pr["output"], bg_out)
+def _pattern_flags(pr: dict, findings: list) -> dict:
+    """The six patterns' per-pair truth over the AUGMENTED object universe — a
+    subdivided whole is replaced by its sub-pieces (full objects), which are
+    matched (each covers a part) and contribute `recolored` when the colour
+    changed. ``findings`` = the phase-4 recomparison findings for this pair. No
+    bg exclusion (bg objects participate)."""
+    in_univ, out_univ = _grid_components(pr["input"]), _grid_components(pr["output"])
     mi, mo, fams = _matched_families(pr)
-    unmatched_in = full_in - mi
-    unmatched_out = full_out - mo
+    for f in findings:
+        if f["direction"] == "split":
+            w_univ, w_m, p_m = in_univ, mi, mo
+        else:
+            w_univ, w_m, p_m = out_univ, mo, mi
+        whole = f"O{f['whole_idx']}"
+        w_univ.discard(whole); w_m.discard(whole)          # whole replaced by sub-pieces
+        for k, part in enumerate(f["parts"]):
+            w_univ.add(f"S{f['whole_idx']}_{k}")           # sub-piece is a full object …
+            w_m.add(f"S{f['whole_idx']}_{k}")              # … matched (covers a part)
+            p_m.add(f"{part['kind']}{part['pidx']}")       # the covered part is matched
+            if part["rel"] == "recolored":
+                fams.add("recolored")
+    unmatched_in = in_univ - mi
+    unmatched_out = out_univ - mo
     dims = pr["input"]["dims"] == pr["output"]["dims"]
     pal = _palette_label(pr)
-    all_matched = not unmatched_in and not unmatched_out
     return {
         "addition":    dims and pal in ("preserved", "increased") and bool(unmatched_out),
         "subtraction": dims and pal in ("preserved", "decreased") and bool(unmatched_in),
         "recoloring":  dims and "recolored" in fams,
-        "moving":      dims and pal == "preserved" and all_matched and "moved" in fams,
+        "moving":      dims and pal == "preserved" and "moved" in fams,
         "rotation":    dims and "rotated" in fams,
         "reflection":  dims and "reflected" in fams,
     }
 
 
-def task_patterns(profile: dict, bg_cand: dict = None) -> dict:
+def task_patterns(profile: dict, bg_cand: dict = None,
+                  recomparison: list = None) -> dict:
     """Phase 6 — task-pattern hypotheses. A pattern holds iff its filter is true
-    on EVERY demo pair (∀). Filters read the phase-2/4 ``same_*`` match results;
-    background comes ONLY from ``bg_cand`` (per-grid `bg_advance` resolution) —
-    bg-colour components are excluded when resolved, included when not (and the
-    task is flagged ``bg_resolved=False``). Returns
+    on EVERY demo pair (∀), over the phase-2/4 ``same_*`` matches with subdivided
+    wholes replaced by their sub-pieces (full objects). No bg exclusion — the
+    resolved bg only sets the informational ``bg_resolved`` flag. Returns
     ``{patterns:[{name,matched}], bg_resolved}``."""
     demos = profile["train"]
+    recomp = recomparison or []
     bg_resolved = bg_cand is not None
     per = []
     for i, pr in enumerate(demos):
         if bg_cand is not None:
-            bg_in = bg_cand["train"][i]["input"]["bg"]
-            bg_out = bg_cand["train"][i]["output"]["bg"]
-        else:
-            bg_in = bg_out = None
-        if bg_in is None or bg_out is None:
-            bg_resolved = False
-        per.append(_pattern_flags(pr, bg_in, bg_out))
+            if (bg_cand["train"][i]["input"]["bg"] is None
+                    or bg_cand["train"][i]["output"]["bg"] is None):
+                bg_resolved = False
+        findings = [f for f in recomp if f["pair"] == i + 1]
+        per.append(_pattern_flags(pr, findings))
     matched = {n: bool(per) and all(p[n] for p in per) for n in PATTERN_NAMES}
     return {"patterns": [{"name": n, "matched": matched[n]} for n in PATTERN_NAMES],
             "bg_resolved": bg_resolved}

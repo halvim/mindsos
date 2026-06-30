@@ -126,11 +126,10 @@ STEP block: the header lines + the `result` block), as pasted below.
   line, then one 2-space-indented line per sub-piece of every finding in that
   pair (finding order, then sub-index):
   - `{relation} {sub} = {component}  [from {direction}]`
-- **`{relation}`** — the strongest true relation between the sub-piece and the
-  component it covers (cells match by construction): `same_object` if the colour
-  is kept (object), `same_point` if kept (point), else `same_shape` (colour
-  changed; the colour-changed-point case is also `same_shape`, verified in a
-  later phase).
+- **`{relation}`** — the relation between the sub-piece (a **full object** after
+  subdivision) and the component it covers (cells match by construction):
+  `same_object` if the colour is kept (object), `same_point` if kept (point),
+  else **`recolored`** (colour changed — same cells, different colour = a recolor).
 - **`{sub}`** = `{side}{p}.O{i}.sub{k}.{color}` — the `.sub{k}` suffix comes
   **before** the colour; colour is the **whole's** colour.
 - **`{component}`** = `{side}{p}.O{j}.{color}` (object) or `{side}{p}.P{j}`
@@ -173,11 +172,14 @@ STEP block: the header lines + the `result` block), as pasted below.
   - **rotated** / **recolored** — `constant` → `varies`.
   - **reflected** — `all H-axis` / `all V-axis` (all one axis) → `varies`.
   - **touching_delta** — `all gained` / `all lost` → `varies`.
+- **bg-exclusion is conditional + scoped** — transforms (`moved`/`recolored`/
+  `rotated`/`reflected`) run over the **full** grids; only `touching`/`inside`/
+  `touching_delta` drop the bg colour, and only when that grid's bg is resolved.
+  `recolored` also fires off **subdivision sub-pieces** (a sub-piece is a full
+  object; its colour change vs the part it covers is a recolor).
 - **Descriptive, not the rule** — phase 5 is hypothesis/display only (the per-pair
-  parameter is *observed*, e.g. #8's vectors vary because the rule is slide-to-
-  touch). It does not couple into the #8 stages. **bg-colour objects are excluded**
-  when phase 5 has resolved a grid's bg (`ctx['bg_cand']`). The ∃ `task_tokens`
-  (gate) are untouched.
+  parameter is *observed*, e.g. #8's vectors vary). It does not couple into the
+  #8 stages. The ∃ `task_tokens` (gate) are untouched.
 
 ## Reference example — Phase 6 (Task Patterns), task #8
 
@@ -194,25 +196,26 @@ STEP block: the header lines + the `result` block), as pasted below.
 
 - **Header line:** `Pattern Hypothesis:` then one **bare** `{name} ✓` line per
   task pattern whose filter holds on **EVERY** demo pair (∀). No matching
-  pattern → `(none)`. (Patterns are bare; if a pattern later gains options they
-  render after the name — none do today.)
+  pattern → `(none)`. When any grid's bg is unresolved, the firing lines get a
+  **suffix** `· bg not resolved` (informational — it gates nothing).
 - **Patterns + filters** (all require dims=preserved; ∀ demo pairs):
   - **addition** — palette ∈ {preserved, increased} · ≥1 **unmatched output** component.
   - **subtraction** — palette ∈ {preserved, decreased} · ≥1 **unmatched input** component.
-  - **recoloring** — ≥1 recolored-family (same_shape + different colour).
-  - **moving** — palette = preserved · **all** components matched · ≥1 moved-family.
+  - **recoloring** — ≥1 recolored-family.
+  - **moving** — palette = preserved · ≥1 moved-family.
   - **rotation** — ≥1 rotated-family.
   - **reflection** — ≥1 reflected-family.
-- **matched / unmatched** — a component (object or point) is **matched** iff it
-  has a phase-2/4 `same_*` correspondence in one of: same_object · same_point ·
-  same_shape+same_color (moved) · same_shape+different_color (recolored) ·
-  rotated · reflected; else **unmatched**.
-- **Background** comes **only** from `bg_cand` (`bg_advance`): bg-colour
-  components are excluded when the grid's bg is resolved, included when not.
-  When any grid's bg is unresolved, the firing lines are prefixed
-  **`bg not resolved`**.
+- **matched / unmatched over the AUGMENTED universe** — a subdivided whole is
+  replaced by its sub-pieces (each a full object, matched — it covers a part);
+  a component is **matched** iff it has a correspondence in one of: same_object ·
+  same_point · same_shape+same_color (moved) · same_shape+different_color
+  (recolored) · rotated · reflected · (sub-piece covers a part); else
+  **unmatched**. **No bg exclusion** — bg-colour objects participate (an
+  unmatched bg-colour object that isn't subdivided drives `addition`/`subtraction`).
+- **Background** is taken **only** from `bg_cand` (`bg_advance`) and only sets
+  the `bg not resolved` suffix; it does not exclude anything here.
 - **Descriptive, not the rule** — hypothesis/display only; not consumed
-  downstream (#8 reads `moving ✓`).
+  downstream.
 
 ## Block structure (what each line is)
 

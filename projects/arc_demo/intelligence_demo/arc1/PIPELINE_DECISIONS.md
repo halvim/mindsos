@@ -651,6 +651,56 @@ filed as motivating consumer; the demo does NOT block on it.
   struck in ONTOLOGY §; re-add a detector only when needed.** **Mac: `git rm`
   the now-deleted `spike/bg_ground.py`.**
 
+- **2026-06-29 — bg PR3 propagation + subdivision-sub-pieces-as-objects + phase-6
+  `moving` fix (BUILT + Cowork-gated 8 `[ok]`/400, #8 solves; NOT committed).**
+  Driven by 4 logic problems the owner found on `./arc solve 2 6` (#2 `00d62c1b`).
+
+  **(A) New bg rule PR3 (pairwise propagation), `arc_solver._bg_propagate`.** When
+  one grid of a train pair has bg resolved to `C` and the partner has `C` among
+  its candidates, re-check the `C`-coloured objects: if they do **not** all
+  recolor to one single colour together (`_c_persists` — uniform-recolor test
+  over `recolored_pairs`), the partner resolves to `C` too. Reapplied each phase
+  in `_bg_rules` (now takes `profile`); PR2 then carries `C` to test. Fixes the
+  #2 issues: train **outputs** never resolved (the added colour blocks
+  elimination), so PR2 couldn't fire; PR3 resolves them (`C` persists) →
+  `bg_resolved=True`, the `bg not resolved` tag drops. (The option-C display line
+  was *also* misleading — it showed `Pair.bg=black` when only the input resolved;
+  PR3 makes display + per-grid agree for #2.)
+
+  **(B) Subdivision sub-pieces ARE full objects (PB-E, full + "recoloring").**
+  Owner: "when an object gets subdivided, the subdivisions are considered full
+  objects." So a subdivided whole is replaced (in the matched/comparator universe)
+  by its sub-pieces, driven off the **phase-4 recomparison** (no parallel object
+  dicts). Phase 4 relation relabel `same_shape`→**`recolored`** (sub-piece + the
+  object it covers share cells → colour change = recolor). Phase 5 `recolored`
+  also fires off sub-pieces (`_recolored_params` adds `whole_color→part_color`).
+  Phase 6 matched/unmatched over the augmented universe (whole removed, sub-pieces
+  added + matched, covered parts matched). **#2 → phase 5 `recolored → black→yellow
+  (×5) → constant`, phase 6 `recoloring`** (was `addition`/`bg not resolved`).
+
+  **(C) bg-exclusion is now conditional + scoped (owner, option iii-refined).**
+  NOT removed wholesale: transforms + phase-6 matched/unmatched **never** exclude
+  (bg objects participate — an un-subdivided unmatched bg object drives
+  `addition`/`subtraction`). Only `touching`/`inside`/`touching_delta` exclude the
+  bg colour, and **only when that grid's bg is resolved** (`pipeline._inside_present`
+  / `_pair_bg_excl`). #8 (bg resolved) keeps `moved` + `touching_delta` and still
+  drops `inside`; an unresolved grid evaluates them with the bg colour in.
+
+  **(D) `moving` filter corrected (owner).** `moving` = **dims=preserved ·
+  palette=preserved · ≥1 moved-family** (dropped the "all matched" condition).
+  So #8 reads `moving` again — and also `addition`+`subtraction` (its black bg
+  object's cells change as movers move → unmatched, #8 not subdivided). "Fill"/
+  "canvas"/"foreground" language struck from code/docs per owner ("the arc-solver
+  doesn't know fill") — only mechanical terms (object, sub-piece, recolored,
+  matched, the colour bg_advance resolved).
+
+  **(E) `bg not resolved` flag** moved to a **suffix** `· bg not resolved` after
+  the pattern name; purely informational (gates nothing now). Corpus (phases 1-6,
+  ∀): recoloring 145 / addition 74 / subtraction 88 / moving 11 / rotation 16 /
+  reflection 8; bg unresolved 289/400 (was 380 pre-PR3). 0 errors. Gate green
+  (8 `[ok]`, #8 solves; union occurs 24/400). Phases 4/5/6 reopened + relocked in
+  RESULT_OUTPUT_FORMAT + STEPS.md.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**
