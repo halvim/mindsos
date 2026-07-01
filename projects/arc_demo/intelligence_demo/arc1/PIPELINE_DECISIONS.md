@@ -710,6 +710,59 @@ filed as motivating consumer; the demo does NOT block on it.
   dropped); #2 still `recoloring`. Corpus shifts: addition 74→67, subtraction
   88→80. Gate stays green (8 `[ok]`, #8 solves).
 
+- **2026-06-30 — Step-7 "Motivations" design + Batch-1 prerequisites (BUILT +
+  gated 8 `[ok]`/400, #8 solves; NOT committed). Phase 7 itself = Batch 2.**
+
+  **Design (Step 7 = "Motivations"; owner-driven).** Phase-5 detector conclusions
+  and predicates become **motivations** driving the **generators**, in two flavors:
+  - **reason** = a condition/parameter (the constant transform param, or a
+    predicate condition `if touching`/`if inside` which also **scopes which
+    objects**); **goal** = a target *state* a continuous transform proceeds toward
+    (`until touching`).
+  - **generator KIND**: **continuous** {move} → needs **reason + goal**;
+    **discrete** {recolor,rotate,reflect} → **reason only**. A constant *vector*
+    move is complete (`move (dr,dc)`); a constant *direction* rides with a goal
+    (`move up until touching`); #8 = `move until touching` (direction varies).
+  - Phase 7 enumerates candidate motivations per generator (parameter-reasons
+    from phase-5 constants; condition-reasons + until-goals from predicates —
+    predicate×generator combos are **open**, pruned by the demo test, not a fixed
+    validity table), and **shows + tests each separately** per pair, ∀ add-only
+    (like phase 5): **generative** test for parameter/goal (apply the generator,
+    check it reproduces the output), **correspondence** test for a condition
+    (transformed set == predicate set). Phase 8 combines motivations into rules
+    (a later reasoning layer). A motivation is reasoning but individually tested;
+    kept display-only for now (no capacity registered).
+
+  **Capacities re-organized into 7 categories** (the organizing axis; free-string
+  categories → lazily-created graphs, no core validation; `capacity_iri` embeds
+  the category so `CAP_*` + the gate D3 IRI were resynced): **perceiver**(6) ·
+  **profiler**(7) · **operator**(1 union) · **detector**(5: moved, recolored,
+  rotated, reflected, touching_delta) · **generator**(4) · **predicate**(3: inset,
+  touching, inside) · **reasoning**(3: build_correspondence, synthesize_selector,
+  bg_deduction). DataState `provenance_category` tags left unchanged.
+  `ordered_catalog` regroups by category (`CATEGORY_ORDER`).
+
+  **`move`/`moved` generator↔detector pair.** Added the **`move`** generator
+  (`(object, move_transform) → object`, body `arc_grids.translate`), completing
+  the four pairs. Generator **`kind`** field (`GENERATOR_KIND` +
+  `generator_kind`/`generator_args`) defines the arg set per KIND.
+
+  **Comparatives — a VALUE family (DataState), not a capacity category**, modeled
+  as **`(dimension, form)`**, form ∈ {sign(±), rank(1..n)}: **direction**(spatial
+  axis, sign — movement/orientation), **relative-position**(spatial axis, sign —
+  between objects), **size**(size, sign/rank), **ordering**(rank). direction &
+  relative-position are the same `(axis, sign)`, different uses. First consumer
+  already exists: `synthesize_selector` uses the size comparative
+  (`largest/smallest non-bg`). Built **`direction`** now (`arc_grids.direction_of`
+  — derived `(axis,sign)`, **4 orthogonal**, up=−row, diagonal/zero→None); size
+  formalized where it lives; relative-position/ordering deferred to a consumer.
+
+  **`synthesize_selector`** (clarified): from a `state_change` (mover/target
+  roles) + object features → the **minimal discriminative selector** per role
+  (colour / size / shape) that holds ∀ demos and distinguishes the role from the
+  other non-bg objects. Batch 1 = these prerequisites (gate green). Batch 2 =
+  phase 7 (enumerate + show/test motivations, ∀, generative/correspondence).
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

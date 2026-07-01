@@ -236,6 +236,32 @@ def moved(a: dict, b: dict):
     return None
 
 
+def translate(obj: dict, transform: dict) -> dict:
+    """`move` GENERATOR body: translate an Object by a move Transform's vector.
+    Returns a new Object (cells shifted, bbox/size recomputed); colour + shape
+    unchanged."""
+    dr, dc = transform["vector"]
+    cells = sorted((r + dr, c + dc) for (r, c) in obj["cells"])
+    rs, cs = [c[0] for c in cells], [c[1] for c in cells]
+    return {"color": obj["color"], "cells": cells,
+            "bbox": (min(rs), min(cs), max(rs), max(cs)), "size": len(cells)}
+
+
+# ── Comparative: direction = (spatial axis, sign) of a vector, named ──────
+_DIRECTIONS = {(-1, 0): "up", (1, 0): "down", (0, -1): "left", (0, 1): "right"}
+
+
+def direction_of(vector) -> str:
+    """The `direction` Comparative — the `(spatial axis, sign)` of a move vector,
+    named. `up` = decreasing row (origin top-left). 4 orthogonal only: a diagonal
+    (both components non-zero) or zero vector -> None (no single direction)."""
+    dr, dc = vector
+    sr, sc = (dr > 0) - (dr < 0), (dc > 0) - (dc < 0)
+    if (sr and sc) or (not sr and not sc):
+        return None
+    return _DIRECTIONS[(sr, sc)]
+
+
 def touching(a: dict, b: dict) -> bool:
     """touching (intra-grid positional predicate; ONTOLOGY §3 / §4 #16): two
     components touch iff they are **different colour** AND share an 8-neighbour

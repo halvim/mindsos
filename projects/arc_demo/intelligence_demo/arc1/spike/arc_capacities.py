@@ -58,6 +58,26 @@ CATEGORY_REASONING = "reasoning"
 # origin-family labels; only capacities move to the 7-category organization).
 CATEGORY_COMPARATOR = "comparator"
 
+# Generator KIND — the subdivision that defines a generator's argument set:
+#   continuous (move) needs a reason AND a goal (move <direction> until <predicate>);
+#   discrete   (recolor/rotate/reflect) needs only a reason (the transform param).
+KIND_CONTINUOUS = "continuous"
+KIND_DISCRETE = "discrete"
+GENERATOR_KIND = {
+    "move": KIND_CONTINUOUS,
+    "recolor": KIND_DISCRETE, "rotate": KIND_DISCRETE, "reflect": KIND_DISCRETE,
+}
+
+
+def generator_kind(name: str) -> str:
+    return GENERATOR_KIND.get(name)
+
+
+def generator_args(name: str) -> tuple:
+    """The motivation argument set for a generator (per its KIND):
+    continuous -> ("reason", "goal"); discrete -> ("reason",)."""
+    return ("reason", "goal") if GENERATOR_KIND.get(name) == KIND_CONTINUOUS else ("reason",)
+
 # ── DataState IRIs (arc realm) ──────────────────────────────────────────
 DS_RAW_TASK = datastate_iri("arc.raw_task")
 DS_TASK = datastate_iri("arc.task")
@@ -427,6 +447,12 @@ def _transform_capacities() -> List[Capacity]:
             inputs=(DS_SHAPE, DS_REFLECT_TRANSFORM), outputs=(DS_SHAPE,),
             implementation=lambda **kw: {DS_SHAPE: arc_grids.reflect_shape(kw[DS_SHAPE], kw[DS_REFLECT_TRANSFORM])},
             description="(Shape, reflect Transform {horizontal,vertical}) -> Shape (reflected, re-normalized).",
+        ),
+        Capacity(
+            name="move", category=CATEGORY_GENERATOR,
+            inputs=(DS_OBJECT, DS_MOVE_TRANSFORM), outputs=(DS_OBJECT,),
+            implementation=lambda **kw: {DS_OBJECT: arc_grids.translate(kw[DS_OBJECT], kw[DS_MOVE_TRANSFORM])},
+            description="(Object, move Transform [dr,dc]) -> Object (translated; the moved↔move generator/detector pair). CONTINUOUS generator (needs a goal — move until a predicate).",
         ),
         # comparators (fold-time detection; stub bodies like moved) — Gates caps
         Capacity(
