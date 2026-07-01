@@ -173,8 +173,11 @@ STEP block: the header lines + the `result` block), as pasted below.
   - **reflected** — `all H-axis` / `all V-axis` (all one axis) → `varies`.
   - **touching_delta** — `all gained` / `all lost` → `varies`.
 - **bg-exclusion is conditional + scoped** — transforms (`moved`/`recolored`/
-  `rotated`/`reflected`) run over the **full** grids; only `touching`/`inside`/
-  `touching_delta` drop the bg colour, and only when that grid's bg is resolved.
+  `rotated`/`reflected`) run over the **full** grids; `touching`/`touching_delta`
+  drop the bg colour when that grid's bg is resolved. `inside` applies the
+  background **rule** instead: an enclosure is dropped only when its OUTSIDE
+  container is bg (a shape floating in the bg field); a bg-coloured enclosed
+  pocket (bg is the INSIDE) is KEPT (`arc_grids.inside_bg_filtered`).
   `recolored` also fires off **subdivision sub-pieces** (a sub-piece is a full
   object; its colour change vs the part it covers is a recolor).
 - **Descriptive, not the rule** — phase 5 is hypothesis/display only (the per-pair

@@ -372,6 +372,19 @@ def inside_pairs(objects: List[dict], points: List[dict],
     return out
 
 
+def inside_bg_filtered(gs: dict, bg) -> List[dict]:
+    """``inside`` pairs under the background rule: an enclosure is dropped only
+    when the OUTSIDE container ``b`` is the background colour (an object merely
+    floating in the ambient bg field is not a real enclosure). A bg-coloured
+    INSIDE ``a`` — an enclosed pocket — is KEPT. ``bg`` None (unresolved) → keep
+    all pairs (bg-agnostic, as at perception)."""
+    ins = gs.get("inside", [])
+    if bg is None:
+        return ins
+    objs = gs["objects"]
+    return [p for p in ins if objs[p["b"]["idx"]]["color"] != bg]
+
+
 def base_shape_name(shape: dict):
     """Recognize a Shape as a named base shape (ONTOLOGY §4 #9), parametric by
     size: ``square`` (filled n×n), ``vertical``/``horizontal`` (1-wide lines),

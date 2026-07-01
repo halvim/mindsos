@@ -828,6 +828,23 @@ filed as motivating consumer; the demo does NOT block on it.
   RESULT_OUTPUT_FORMAT + STEPS.md (15-phase). Next layer: general test-apply
   (the general replacement for the #8-specific stages 13–15).
 
+- **2026-06-30 (cont.) — `inside` background RULE (owner directive; replaces the
+  wholesale bg-strip).** `inside` no longer excludes bg symmetrically. An
+  enclosure `a inside b` is dropped **only when the OUTSIDE container `b` is the
+  bg colour** (an object merely floating in the ambient bg field is not a real
+  enclosure); a **bg-coloured INSIDE `a` — an enclosed pocket — is KEPT**. bg
+  unresolved → keep all (bg-agnostic, as at perception). `arc_grids.inside_bg_filtered`
+  applied at the reasoning consumers: phase 5 `_inside_present` (the wholesale
+  `_drop_bg_grid` retired) and phase 7 `_pred_objs(rel, bg)`. The ∃ `inside`
+  Search token / `./evaluate` / induce stay **bg-blind** (the gate comparator
+  contract — untouched). Grounded on #2 `00d62c1b`: the fill target `O2` (colour
+  0 = bg) `inside O1` (the shape) is now kept ∀ the pockets exist; the noise
+  (`O0`/points inside the bg field) is dropped. Corpus: 240/400 fire `inside` at
+  phase 5. Rationale: **bg is a colour with shapes too** — a bg region enclosed
+  by another object is a first-class object, not a thing to exclude. Gate green 8
+  `[ok]`/400, #8 unaffected. STEPS.md + RESULT_OUTPUT_FORMAT.md phase-5 lines
+  updated.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

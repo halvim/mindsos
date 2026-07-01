@@ -590,11 +590,15 @@ def task_patterns(profile: dict, bg_cand: dict = None,
 
 # ── phase 7 — MOTIVATIONS: generator goals/reasons from detector conclusions
 #    + predicates, each tested ∀ demo pair (show + test, add-only). ────────
-def _pred_objs(gs: dict, rel: str) -> set:
+def _pred_objs(gs: dict, rel: str, bg: int = None) -> set:
     """Input-object indices in a predicate relation. touching = both participants;
-    inside = the contained object (`a`)."""
+    inside = the contained object (`a`). For ``inside`` the background rule
+    applies (drop pairs whose outside container is bg; keep bg-coloured enclosed
+    pockets) when ``bg`` is given (`arc_grids.inside_bg_filtered`)."""
+    pairs = (arc_grids.inside_bg_filtered(gs, bg) if rel == "inside"
+             else gs.get(rel, []))
     s = set()
-    for p in gs.get(rel, []):
+    for p in pairs:
         refs = (p["a"], p["b"]) if rel == "touching" else (p["a"],)
         for r in refs:
             if r["kind"] == "O":
@@ -626,6 +630,7 @@ def motivations(profile: dict, bg_cand: dict = None, recomparison: list = None) 
     reason (constant vector) and/or a goal (move [<dir>] until touching)."""
     demos = profile["train"]
     recomp = recomparison or []
+    bg = _resolve_solver_bg(bg_cand)
     out = {}
 
     def whole_inst(pr, fn):
@@ -642,7 +647,7 @@ def motivations(profile: dict, bg_cand: dict = None, recomparison: list = None) 
         if all(per) and len({t[pkey] for p in per for t in p.values()}) == 1:
             mots.append(render(next(iter(per[0].values()))[pkey]))
         for rel in ("touching", "inside"):
-            if all(p and set(p) == _pred_objs(pr["input"], rel) for pr, p in zip(demos, per)):
+            if all(p and set(p) == _pred_objs(pr["input"], rel, bg) for pr, p in zip(demos, per)):
                 mots.append(f"{gen} if {rel}")
         if mots:
             out[gen] = mots
@@ -657,7 +662,7 @@ def motivations(profile: dict, bg_cand: dict = None, recomparison: list = None) 
             rmots.append(f"recolor {arc_grids.color_name(next(iter(allc)))}")
     for rel in ("touching", "inside"):
         per_w = [set(whole_inst(pr, arc_grids.recolored_pairs)) for pr in demos]
-        if all(w and w == _pred_objs(pr["input"], rel) for pr, w in zip(demos, per_w)):
+        if all(w and w == _pred_objs(pr["input"], rel, bg) for pr, w in zip(demos, per_w)):
             rmots.append(f"recolor if {rel}")
     if rmots:
         out["recolor"] = rmots

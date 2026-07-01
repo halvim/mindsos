@@ -210,23 +210,13 @@ def _hyp_order() -> list:
             for c in arc_search.comparator_names()]
 
 
-def _drop_bg_grid(gs, bg):
-    """A copy of a grid summary with the bg-colour objects/points removed and the
-    intra-grid relations (touching/inside) recomputed over what remains."""
-    objs = [o for o in gs["objects"] if o["color"] != bg]
-    pts = [p for p in gs["points"] if p["color"] != bg]
-    g2 = dict(gs)
-    g2["objects"], g2["points"] = objs, pts
-    g2["n_objects"], g2["n_points"] = len(objs), len(pts)
-    g2["shapes"] = [arc_grids.normalize_shape(o) for o in objs]
-    return arc_profile.attach_relations(g2)
-
-
 # ── phase-5 perception: per-comparator per-pair param + ∀ conclusion ─────
 # A "pair context" (pc) carries the FULL demo pair + the grid bgs `bg_advance`
 # resolved + the phase-4 recomparison findings. Transforms run over the full
-# grids (no bg exclusion); `touching`/`inside`/`touching_delta` exclude the bg
-# colour ONLY when that grid's bg is resolved. `recolored` also fires off
+# grids (no bg exclusion); `touching`/`touching_delta` exclude the bg colour ONLY
+# when that grid's bg is resolved; `inside` applies the background RULE (drop an
+# enclosure only when its OUTSIDE container is bg; keep a bg-coloured enclosed
+# pocket — `arc_grids.inside_bg_filtered`). `recolored` also fires off
 # subdivision sub-pieces (a sub-piece is a full object). Each comparator reports
 # its per-pair parameter(s): the value when the pair's instances AGREE, else
 # ``multi`` (PB-l). ``inside`` has no parameter → bare.
@@ -251,12 +241,13 @@ def _pair_bg_excl(pc):
 
 
 def _inside_present(pc) -> bool:
-    """`inside` over each grid, bg-colour excluded when that grid's bg is
-    resolved (intra-grid relation the bg dominates)."""
+    """`inside` over each grid under the background rule: an enclosure is dropped
+    only when the OUTSIDE container is the bg colour (a shape floating in the bg
+    field); a bg-coloured enclosed pocket (bg is the INSIDE) is kept
+    (`arc_grids.inside_bg_filtered`)."""
     d = pc["d"]
     for side, bg in (("input", pc["bg_in"]), ("output", pc["bg_out"])):
-        g = _drop_bg_grid(d[side], bg) if bg is not None else d[side]
-        if g.get("inside"):
+        if arc_grids.inside_bg_filtered(d[side], bg):
             return True
     return False
 
