@@ -685,6 +685,179 @@ def motivations(profile: dict, bg_cand: dict = None, recomparison: list = None) 
     return out
 
 
+# ── phase 8: RULES — combine a phase-7 motivation with a selector, then
+#    generatively verify the assembled rule reproduces every demo output (∀).
+#    v1 = the MOVE family only (recolor rule deferred — its reference #2 is an
+#    interior/enclosure recolor needing a region selector + partial-cell apply;
+#    rotate/reflect deferred — no reliable in→out object correspondence). A rule
+#    is kept only if every role is pinned by a selector that holds ∀ AND the
+#    selector-driven apply reproduces every demo output; else it abstains.
+
+def _shape_pick(cands: List[str]):
+    """Prefer a shape selector (the generalization prior locked at stage_selectors),
+    else the first survivor, else None."""
+    for c in cands:
+        if "shape" in c or "irregular" in c:
+            return c
+    return cands[0] if cands else None
+
+
+def _select(gs: dict, bg: int, sel: str) -> List[Ref]:
+    """Resolve a selector string to the matching non-background object refs in
+    ``gs`` (the inverse of ``_selectors_for``). Used to drive the rule apply on a
+    fresh grid — the object is identified by feature, not by observed change."""
+    objs = gs["objects"]
+    nonbg = [("O", i) for i, o in enumerate(objs) if o["color"] != bg]
+    if sel == "all non-background":
+        return nonbg
+    if sel == "no base shape (irregular)":
+        return [r for r in nonbg
+                if arc_grids.base_shape_name(gs["shapes"][r[1]]) is None]
+    if sel.startswith("colour = "):
+        c = int(sel.split("= ", 1)[1])
+        return [r for r in nonbg if objs[r[1]]["color"] == c]
+    if sel.startswith("shape = "):
+        nm = sel.split("= ", 1)[1]
+        return [r for r in nonbg
+                if arc_grids.base_shape_name(gs["shapes"][r[1]]) == nm]
+    if sel in ("largest non-background", "smallest non-background"):
+        if not nonbg:
+            return []
+        pick = max if sel.startswith("largest") else min
+        ext = pick(objs[r[1]]["size"] for r in nonbg)
+        hit = [r for r in nonbg if objs[r[1]]["size"] == ext]
+        return hit if len(hit) == 1 else []          # extremum must be unique
+    return []
+
+
+def _apply_move_goal(gs: dict, bg: int, mover: Ref, target: Ref):
+    """Slide ``mover`` toward ``target`` until touching, re-render the grid.
+    Selector-driven generalization of ``apply_rule`` (roles are passed in, not
+    read via the hardcoded ``_shape_roles``)."""
+    mi = mover[1]
+    mo, to = gs["objects"][mi], gs["objects"][target[1]]
+    dirn = _move_direction(mo, to)
+    if dirn is None:
+        return None
+    new_cells, _ = _slide(gs["dims"], mo["cells"], to["cells"], dirn)
+    if new_cells is None:
+        return None
+    placed = [(o["cells"], o["color"]) for i, o in enumerate(gs["objects"])
+              if o["color"] != bg and i != mi]
+    placed.append((new_cells, mo["color"]))
+    placed += [(p["cells"], p["color"]) for p in gs["points"]]
+    return _render(gs["dims"], placed, bg)
+
+
+def _apply_move_vector(gs: dict, bg: int, refs: List[Ref], vec: Tuple[int, int]):
+    """Translate every selected object by ``vec``, re-render (abstain if any
+    selected object would leave the grid)."""
+    H, W = gs["dims"]
+    idxs = {r[1] for r in refs}
+    placed = []
+    for i, o in enumerate(gs["objects"]):
+        if o["color"] == bg:
+            continue
+        cells = o["cells"]
+        if i in idxs:
+            cells = [(r + vec[0], c + vec[1]) for (r, c) in cells]
+            if any(not (0 <= r < H and 0 <= c < W) for (r, c) in cells):
+                return None
+        placed.append((cells, o["color"]))
+    placed += [(p["cells"], p["color"]) for p in gs["points"]]
+    return _render(gs["dims"], placed, bg)
+
+
+def _assemble_move_goal(demos: list, bg: int):
+    """#8 family: mover + target roles (from touching-gained + moved), a minimal
+    discriminative selector for each, then a generative ∀ verify (slide the
+    selector-picked mover to the selector-picked target until touching)."""
+    mover_rd, target_rd = [], []
+    for pr in demos:
+        ch = touching_changes(pr, bg, exclude_bg=True)
+        moved = _moved_in(pr)
+        mover = target = None
+        for (a, b) in ch["gained"]:
+            for r in (a, b):
+                if r in moved:
+                    mover = r
+                elif _comp(pr["input"], r)["color"] != bg:
+                    target = r
+        if mover is None or target is None:
+            return None                              # role incomplete → abstain
+        nonbg = [("O", i) for i, o in enumerate(pr["input"]["objects"])
+                 if o["color"] != bg]
+        mover_rd.append((pr["input"], mover, [r for r in nonbg if r != mover]))
+        target_rd.append((pr["input"], target, [r for r in nonbg if r != target]))
+    ms = _shape_pick(_selectors_for(mover_rd))
+    ts = _shape_pick(_selectors_for(target_rd))
+    if not ms or not ts:
+        return None                                  # no ∀ selector → abstain
+    n = len(demos)
+    for pr in demos:
+        gin = pr["input"]
+        mv, tg = _select(gin, bg, ms), _select(gin, bg, ts)
+        if len(mv) != 1 or len(tg) != 1:
+            return None                              # selector not unique → abstain
+        res = _apply_move_goal(gin, bg, mv[0], tg[0])
+        if res is None or res != pr["output"]["cells"]:
+            return None                              # not ∀ → abstain
+    return {"text": f"slide [{ms}] to [{ts}] until touching", "n_ok": n, "n": n}
+
+
+def _assemble_move_vector(demos: list, bg: int, motiv: str):
+    """Constant-vector move: selector = all-non-bg (whole-grid shift) or a single
+    mover's feature; generative ∀ verify (translate the selected set by (dr,dc))."""
+    dr, dc = (int(x) for x in motiv[motiv.index("(") + 1:motiv.index(")")].split(","))
+    vec = (dr, dc)
+    # role = the moved objects; pin a selector holding ∀
+    sels = ["all non-background"]
+    single = all(len(_moved_in(pr)) == 1 for pr in demos)
+    if single:
+        rd = []
+        for pr in demos:
+            mv = next(iter(_moved_in(pr)))
+            nonbg = [("O", i) for i, o in enumerate(pr["input"]["objects"])
+                     if o["color"] != bg]
+            rd.append((pr["input"], mv, [r for r in nonbg if r != mv]))
+        sels = [_shape_pick(_selectors_for(rd))] + sels
+    n = len(demos)
+    for sel in sels:
+        if not sel:
+            continue
+        ok = True
+        for pr in demos:
+            gin = pr["input"]
+            refs = _select(gin, bg, sel)
+            if not refs:
+                ok = False
+                break
+            res = _apply_move_vector(gin, bg, refs, vec)
+            if res is None or res != pr["output"]["cells"]:
+                ok = False
+                break
+        if ok:
+            return {"text": f"move [{sel}] by ({dr},{dc})", "n_ok": n, "n": n}
+    return None
+
+
+def rules(profile: dict, bg_cand: dict = None, recomparison: list = None) -> dict:
+    """Phase 8 — assemble each phase-7 MOVE motivation into a selector-bound rule
+    and generatively verify it reproduces every demo output (∀ add-only). Kept
+    only if every role is pinned by an ∀ selector and the apply reproduces all
+    demos; else abstains. v1 = move family (recolor / rotate / reflect deferred)."""
+    demos = profile["train"]
+    bg = _resolve_solver_bg(bg_cand)
+    mot = motivations(profile, bg_cand, recomparison)
+    out = []
+    for m in mot.get("move", []):
+        r = (_assemble_move_goal(demos, bg) if "until touching" in m
+             else _assemble_move_vector(demos, bg, m))
+        if r:
+            out.append(r)
+    return {"rules": out, "bg": bg}
+
+
 # ── union operator — task-level occurrence + display (bg-aware) ──────────
 def _raw_from_profile(profile: dict) -> dict:
     """A raw-task shell (grid cells only) reconstructed from a profile, so

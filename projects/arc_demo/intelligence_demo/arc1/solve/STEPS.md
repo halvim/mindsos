@@ -24,18 +24,21 @@ v1 assumption · **semi** = runs generally but encodes the move-task model ·
 | 5 | Comparators Hypothesis | general | `arc_search.forall_comparators` over per-pair sets — the comparators triggering on **ALL** demo pairs (∀, add-only); each parametric comparator reports its **per-pair parameter + ∀ conclusion** (`moved`→`(dr,dc)`, `rotated`→deg, `reflected`→`H/V-axis`, `recolored`→`from→to`, `touching_delta`→`gained/lost`; `multi`=within-pair disagreement; `inside` bare). Transforms over the full grids; `recolored` also fires off subdivision sub-pieces; **only `touching`/`inside`/`touching_delta` exclude the bg colour, and only when that grid's bg is resolved**; ∃ `task_tokens` untouched |
 | 6 | Task Patterns | general\* | `arc_solver.task_patterns` over the phase-2/4 `same_*` matches with subdivided wholes replaced by their sub-pieces — patterns holding ∀ demo pair (addition / subtraction / recoloring / moving / rotation / reflection); `moving` = dims+palette preserved + ≥1 moved; **no bg exclusion** (bg objects participate); bg from `bg_cand` only sets the `bg not resolved` suffix |
 | 7 | Motivations | general\* | `arc_solver.motivations` — per **generator**, the goals/reasons holding ∀ demo pair (add-only): discrete (recolor/rotate/reflect) = a constant-parameter reason (`recolor yellow`) + a predicate condition-reason (`… if touching`/`… if inside`, transformed set == predicate set); continuous `move` = a reason (`move (dr,dc)`) and/or a goal (`move [<dir>] until touching`). Tested by applying the generator. Display/hypothesis |
-| 8 | Background + state-change | general\* | `arc_solver.stage_background` → bg from `bg_cand` (`bg_advance`, injected) · `touching_changes` (`_correspondence`, `_touch_set`) |
-| 9 | Roles | semi | `arc_solver.stage_roles` → `_moved_in`, `_touch_set`, `_comp` (mover / target / background, demo-1) |
-| 10 | Persistence + combo | ⚑ #8 | `arc_solver.stage_persistence` → `_moved_in` · `(move, touching)` combo verdict |
-| 11 | Selectors | semi | `arc_solver.stage_selectors` → `_selectors_for` (minimal discriminative selector · tie → shape) |
-| 12 | Rule | ⚑ #8 | `arc_solver.stage_rule` (static — `(move, touching)`, mover=irregular, target=square, slide-to-touch, **hardcoded**) |
-| 13 | Verify | ⚑ #8 | `arc_solver.stage_verify` → `apply_rule` (each demo · exact-match all) |
-| 14 | Apply test → ANSWER | ⚑ #8 | `arc_solver.stage_apply` → `apply_rule(test input)` → output grid (test output withheld) |
+| 8 | Rules | general\* | `arc_solver.rules` — bind a selector (`_selectors_for`) to a **MOVE** motivation → a candidate rule, **generatively verified ∀** (`_apply_move_goal`/`_apply_move_vector` reuse `_slide`/`_render`); abstain if a role isn't pinned ∀. `slide [<mover>] to [<target>] until touching` (#8) or `move [<sel>] by (dr,dc)`. **v1 = move family only** (recolor rule deferred — #2 is interior/enclosure recolor needing a region selector + partial-cell apply; rotate/reflect deferred — no reliable in→out object correspondence). Display/hypothesis; the general precursor to the hardcoded #8 stages 13–15 |
+| 9 | Background + state-change | general\* | `arc_solver.stage_background` → bg from `bg_cand` (`bg_advance`, injected) · `touching_changes` (`_correspondence`, `_touch_set`) |
+| 10 | Roles | semi | `arc_solver.stage_roles` → `_moved_in`, `_touch_set`, `_comp` (mover / target / background, demo-1) |
+| 11 | Persistence + combo | ⚑ #8 | `arc_solver.stage_persistence` → `_moved_in` · `(move, touching)` combo verdict |
+| 12 | Selectors | semi | `arc_solver.stage_selectors` → `_selectors_for` (minimal discriminative selector · tie → shape) |
+| 13 | Rule | ⚑ #8 | `arc_solver.stage_rule` (static — `(move, touching)`, mover=irregular, target=square, slide-to-touch, **hardcoded**) |
+| 14 | Verify | ⚑ #8 | `arc_solver.stage_verify` → `apply_rule` (each demo · exact-match all) |
+| 15 | Apply test → ANSWER | ⚑ #8 | `arc_solver.stage_apply` → `apply_rule(test input)` → output grid (test output withheld) |
 
-**Subdivision, component re-comparison, comparators hypothesis, task pattern
-(phases 3–6) are hypothesis/display steps** — they read the phase-2 profile and
-narrate what the task is doing; they are NOT consumed downstream (the #8 stages
-compute independently). Phase 3 (subdivision) detects a disjoint cover in
+**Subdivision, component re-comparison, comparators hypothesis, task pattern,
+motivations, rules (phases 3–8) are hypothesis/display steps** — they read the
+phase-2 profile and narrate what the task is doing; they are NOT consumed
+downstream (the #8 stages compute independently). Phase 8 (rules) assembles a
+selector-bound MOVE motivation and generatively verifies it reproduces every
+demo output ∀ — the general precursor to the hardcoded rule stages 13–15. Phase 3 (subdivision) detects a disjoint cover in
 **either direction** (bg-agnostic) — `split` (input object = ≥2 output insets) or
 `assemble` (output object = ≥2 input insets), each finding tagged
 `[split]`/`[assemble]`, points included. Phase 4 (component re-comparison)
@@ -92,8 +95,8 @@ so the token (267/400) deliberately diverges from the display. See
 **Honest notes.** The perceive chain is *discovered* through the capacity layer
 (`find_pipeline`); every phase *executes* inline (`arc_grids`/`arc_solver`),
 because the solver is D3-inline and disjoint from the layer. Phases 1/2/5 are
-general (3/4/6/7 general\*); 10/12/13/14 are #8-specific (the rule is hardcoded);
-9/11 are move-model semi-general. The whole pipeline runs in-memory and is
+general (3/4/6/7/8 general\*); 11/13/14/15 are #8-specific (the rule is
+hardcoded); 10/12 are move-model semi-general. The whole pipeline runs in-memory and is
 recomputed from scratch on every invocation (no checkpoints).
 
 **Background Color line (phases 2–14).** Each phase ≥2 prints a `Background Color`

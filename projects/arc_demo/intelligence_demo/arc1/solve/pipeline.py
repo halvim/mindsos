@@ -470,6 +470,22 @@ def step_motivations(ctx, dataset):
     return _block("Motivations:", lines or ["(none)"])
 
 
+def step_rules(ctx, dataset):
+    """Phase 8 — Rules: bind a selector to each phase-7 MOVE motivation and
+    generatively verify the assembled rule reproduces every demo output (∀). A
+    rule is kept only if every role is pinned by an ∀ selector and the
+    selector-driven apply reproduces all demos; else it abstains. v1 = the move
+    family (recolor rule deferred — #2 is interior/enclosure recolor needing a
+    region selector + partial-cell apply; rotate/reflect deferred — no reliable
+    in→out object correspondence). Display/hypothesis; the general precursor to
+    the hardcoded #8 stages 9–15."""
+    res = arc_solver.rules(ctx["profile"], ctx.get("bg_cand"),
+                           ctx.get("recomparison"))
+    ctx["rules"] = res
+    lines = [f"{r['text']}   ✓∀ {r['n_ok']}/{r['n']}" for r in res["rules"]]
+    return _block("Rules:", lines or ["(none)"])
+
+
 #: (n, name, scope, fn, functions, produces) — `functions` = the real call chain
 #: (rendered on the `uses` line; the old `engine` field is dropped).
 STEPS = [
@@ -494,20 +510,23 @@ STEPS = [
     (7, "Motivations", GENERAL_STAR, step_motivations,
      "arc_solver.motivations — per generator, ∀-holding goals/reasons from the detector conclusions + predicates (recolor/rotate/reflect = reason; move = reason+goal)",
      "generator motivations (goal/reason)"),
-    (8, "Background + state-change", GENERAL_STAR, step_background,
+    (8, "Rules", GENERAL_STAR, step_rules,
+     "arc_solver.rules — bind a selector (_selectors_for) to a MOVE motivation, generatively verify ∀ (_apply_move_goal/_apply_move_vector reuse _slide/_render); abstain if a role isn't pinned ∀. v1 = move (recolor/rotate/reflect deferred)",
+     "verified selector-bound rules (∀)"),
+    (9, "Background + state-change", GENERAL_STAR, step_background,
      "arc_solver.stage_background(bg from bg_cand, touching_changes(_correspondence, _touch_set))",
      "bg · changes (gained/lost/maintained)"),
-    (9, "Roles", SEMI, step_roles,
+    (10, "Roles", SEMI, step_roles,
      "arc_solver.stage_roles(_moved_in, _touch_set, _comp)", "stage1 (roles)"),
-    (10, "Persistence + combo", SPECIMEN, step_persistence,
+    (11, "Persistence + combo", SPECIMEN, step_persistence,
      "arc_solver.stage_persistence(_moved_in, _lbl)", "stage2 (persistence ∀demo + verdict)"),
-    (11, "Selectors", SEMI, step_selectors,
+    (12, "Selectors", SEMI, step_selectors,
      "arc_solver.stage_selectors(_selectors_for(_comp, _base_shape))", "stage3 (selectors)"),
-    (12, "Rule", SPECIMEN, step_rule, "arc_solver.stage_rule (static)", "stage4 (rule)"),
-    (13, "Verify", SPECIMEN, step_verify,
+    (13, "Rule", SPECIMEN, step_rule, "arc_solver.stage_rule (static)", "stage4 (rule)"),
+    (14, "Verify", SPECIMEN, step_verify,
      "arc_solver.stage_verify(apply_rule(_shape_roles, _move_direction, _slide, _render))",
      "stage5 (per-demo match)"),
-    (14, "Apply test → ANSWER", SPECIMEN, step_apply,
+    (15, "Apply test → ANSWER", SPECIMEN, step_apply,
      "arc_solver.stage_apply(apply_rule)", "stage6 + answer grid"),
 ]
 
@@ -523,13 +542,14 @@ STEP_TARGETS = {
     5: "L4 phase_1 sweep — L3 comparators/predicates (moved/touching/inside/transforms) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
     6: "L3 comprehension — task-pattern hypothesis from the profile · mindsos_capacity (→ L4 induce/learner)",
     7: "L3 reasoning — generator motivations (goal/reason) tested by applying the generators · mindsos_capacity (→ L4 induce/learner)",
-    8: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
-    9: "L3 reasoning — role assignment over state-change · mindsos_capacity",
-    10: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
-    11: "L3 reasoning/scoring — synthesize_selector via invoke · mindsos_capacity",
-    12: "L4 plan construction → Plan/Pipeline chain artifact · mindsos_intelligence/chain_artifacts.py",
-    13: "L4 sufficiency — sufficient_predicate / replan_check · mindsos_intelligence/orchestrator.py",
-    14: "L4 execution (PipelineRun) + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
+    8: "L4 plan construction — bind a selector to a motivation → a candidate rule, generatively verified ∀ demos (Plan/Pipeline chain artifact; apply = L3 generators via invoke) · mindsos_intelligence/chain_artifacts.py",
+    9: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
+    10: "L3 reasoning — role assignment over state-change · mindsos_capacity",
+    11: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
+    12: "L3 reasoning/scoring — synthesize_selector via invoke · mindsos_capacity",
+    13: "L4 plan construction → Plan/Pipeline chain artifact · mindsos_intelligence/chain_artifacts.py",
+    14: "L4 sufficiency — sufficient_predicate / replan_check · mindsos_intelligence/orchestrator.py",
+    15: "L4 execution (PipelineRun) + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
 }
 
 
@@ -542,13 +562,14 @@ STEP_DESC = {
     5: "List the comparators that trigger on EVERY demo pair (∀) — the comparator hypothesis (moved, touching_delta, inside, recolored, rotated, reflected); touching_delta = touching status change over correspondence, shown instead of intra-grid touching.",
     6: "Infer the task pattern from the profile — e.g. addition (dims + palette preserved, all non-bg inputs kept, a new object appears).",
     7: "Motivations — per generator, the goals/reasons that hold on every demo (recolor <c>, rotate <deg>, … if touching, move … until touching), tested by applying the generator.",
-    8: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
-    9: "Classify the changed objects into roles — mover, target, background.",
-    10: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
-    11: "For each role, find the minimal selector that discriminates it across every demo (tie-break → shape).",
-    12: "Assemble the transformation rule — slide the mover toward the target until touching (hardcoded for #8).",
-    13: "Apply the rule to every demo and check it reproduces each output exactly.",
-    14: "Apply the rule to the test input to produce the answer grid (test output withheld).",
+    8: "Rules — bind a selector to a MOVE motivation (slide <mover> to <target> until touching, or move <sel> by (dr,dc)) and generatively verify it reproduces every demo output (∀); abstain otherwise. v1 = move family (recolor/rotate/reflect deferred).",
+    9: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
+    10: "Classify the changed objects into roles — mover, target, background.",
+    11: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
+    12: "For each role, find the minimal selector that discriminates it across every demo (tie-break → shape).",
+    13: "Assemble the transformation rule — slide the mover toward the target until touching (hardcoded for #8).",
+    14: "Apply the rule to every demo and check it reproduces each output exactly.",
+    15: "Apply the rule to the test input to produce the answer grid (test output withheld).",
 }
 
 

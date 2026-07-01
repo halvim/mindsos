@@ -778,6 +778,56 @@ filed as motivating consumer; the demo does NOT block on it.
   reflect 1). Phase 7 LOCKED in RESULT_OUTPUT_FORMAT + STEPS.md (14-phase). Phase
   8 (combine motivations into rules) is the next layer.
 
+- **2026-06-30 (cont.) — Step-8 "Rules" SHIPPED (move-only v1; gate green 8
+  `[ok]`/400, #8 solves, 15-step). Solver stages 8–14 renumber → 9–15; gate label
+  `14-step`→`15-step`.**
+
+  **Design (Step 8 = "Rules").** A **rule** = a generator + selector-bound role(s)
+  + reason/goal, assembled so it reproduces every demo output. Phase 7 tested a
+  motivation's components separately using the objects it *observed* changing;
+  phase 8's step up is **binding a feature-selector that identifies those objects
+  without observing the change** (`_selectors_for`, the inverse `_select` drives
+  the apply), then **generatively verifying** the fully selector-driven rule
+  reproduces every demo output (∀ add-only). A rule is kept only if every role is
+  pinned by an ∀ selector AND the apply reproduces all demos; else it abstains.
+  `arc_solver.rules` + `pipeline.step_rules` (phase 8, `general*`, display/
+  hypothesis — the general precursor to the hardcoded #8 rule stages 13–15).
+  Forms: move-goal `slide [{mover}] to [{target}] until touching` (#8; reuses the
+  `_slide` machinery via `_apply_move_goal`, single mover→single target v1);
+  move-vector `move [{sel}] by (dr,dc)` (`_apply_move_vector`, sel = all-non-bg or
+  a single mover's feature). Corpus: **2/400** assemble a verified rule — #8
+  (`slide [no base shape (irregular)] to [shape = square] until touching`, ✓∀ 3/3)
+  and #53 `25ff71a9` (`move [all non-background] by (1,0)`, ✓∀ 3/3); 0 errors. The
+  other 7 move-motivation tasks abstain (selector doesn't reproduce ∀) — sound
+  add-only behaviour, like phases 5–7.
+
+  **Scope = MOVE family only (owner: A→C→C-move, grounded).** Owner first chose
+  "all four families" (A); two probes narrowed it:
+  - **rotate/reflect rules deferred — no reliable in→out correspondence.** Probe
+    over the 9 rotate + 1 reflect motivation tasks: **0/10 have a clean 1-to-1
+    in→out object correspondence** (2–42 rotated/reflected candidate pairs per
+    demo — small/symmetric shapes match many rotations); the bbox-origin
+    placement delta is ∀-constant for only 1/10 (an artifact of picking
+    candidate-0). The origin-delta placement model (owner's proposal) is sound
+    *given* correspondence, but correspondence is the upstream blocker (several of
+    these look grid/region-level, not per-object). Filed: **"rotate/reflect rule —
+    blocked on in→out object correspondence (+ probably a grid/region-level
+    transform model, not per-object placement)."**
+  - **recolor rule deferred — its reference #2 is interior recolor.** #2
+    (`00d62c1b`, `recolor yellow`) recolors an **enclosed interior sub-piece**
+    (via subdivision/`inside`), not a whole object — the recolor generator acts on
+    whole objects, so verifying #2 needs a **region selector + partial-cell recolor
+    apply** (a distinct surface). Filed: **"recolor rule — needs an interior/
+    enclosure region selector + partial-cell recolor apply."** #2 shows `(none)`
+    at phase 8 in v1.
+
+  The move family already has correspondence (via `moved` + touching-gained) and a
+  sound grid-apply (`_slide`/`_render`), so it ships verified; the deferred
+  families are gated on machinery upstream of the rule (correspondence / region
+  selection) — "no scaffolding without a consumer." Phase 8 LOCKED in
+  RESULT_OUTPUT_FORMAT + STEPS.md (15-phase). Next layer: general test-apply
+  (the general replacement for the #8-specific stages 13–15).
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**
