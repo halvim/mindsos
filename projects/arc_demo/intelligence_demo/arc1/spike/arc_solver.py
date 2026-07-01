@@ -690,13 +690,12 @@ def motivations(profile: dict, bg_cand: dict = None, recomparison: list = None) 
     return out
 
 
-# ── phase 8: RULES — combine a phase-7 motivation with a selector, then
-#    generatively verify the assembled rule reproduces every demo output (∀).
-#    v1 = the MOVE family only (recolor rule deferred — its reference #2 is an
-#    interior/enclosure recolor needing a region selector + partial-cell apply;
-#    rotate/reflect deferred — no reliable in→out object correspondence). A rule
-#    is kept only if every role is pinned by a selector that holds ∀ AND the
-#    selector-driven apply reproduces every demo output; else it abstains.
+# ── phase 8: RULES — assemble a phase-7 motivation into a rule, then
+#    generatively verify it reproduces every demo output (∀). Families: MOVE
+#    (selector-bound goal/vector) and RECOLOR (`recolor [enclosed] {colour}` —
+#    fill the enclosed background region). rotate/reflect deferred — no reliable
+#    in→out object correspondence. A rule is kept only if it reproduces every
+#    demo output; else it abstains.
 
 def _shape_pick(cands: List[str]):
     """Prefer a shape selector (the generalization prior locked at stage_selectors),
@@ -807,7 +806,7 @@ def _assemble_move_goal(demos: list, bg: int):
         res = _apply_move_goal(gin, bg, mv[0], tg[0])
         if res is None or res != pr["output"]["cells"]:
             return None                              # not ∀ → abstain
-    return {"text": f"slide [{ms}] to [{ts}] until touching", "n_ok": n, "n": n}
+    return {"text": f"move [{ms}] to [{ts}] until touching", "n_ok": n, "n": n}
 
 
 def _assemble_move_vector(demos: list, bg: int, motiv: str):
@@ -846,11 +845,46 @@ def _assemble_move_vector(demos: list, bg: int, motiv: str):
     return None
 
 
-def rules(profile: dict, bg_cand: dict = None, recomparison: list = None) -> dict:
-    """Phase 8 — assemble each phase-7 MOVE motivation into a selector-bound rule
-    and generatively verify it reproduces every demo output (∀ add-only). Kept
-    only if every role is pinned by an ∀ selector and the apply reproduces all
-    demos; else abstains. v1 = move family (recolor / rotate / reflect deferred)."""
+def _assemble_recolor(demos: list, bg: int, enclosed: list):
+    """recolor rule = `recolor [enclosed] {colour}`. The recolor target is the
+    ENCLOSED SUB-PIECE(S), computed **input-only at phase 3** and passed in as
+    `enclosed` (one cell-list per demo input — `arc_grids.enclosed_bg_cells`: bg
+    cells that can't reach the grid border through bg, 4-conn; the cell analogue
+    of `inside`). Phase 8 CONSUMES the phase-3 regions, it does not re-derive
+    them. Derive the single constant fill colour from what the enclosed cells
+    become across demos, then generatively verify recolouring them reproduces
+    every demo output (∀). Abstain if there's no enclosed region, the colour
+    isn't constant, or the fill doesn't reproduce some demo."""
+    cols = set()
+    for pr, enc in zip(demos, enclosed):
+        cout = pr["output"]["cells"]
+        for (r, c) in enc:
+            if cout[r][c] != bg:
+                cols.add(cout[r][c])
+    if len(cols) != 1:
+        return None                                  # none / non-constant colour
+    colour = next(iter(cols))
+    n = len(demos)
+    for pr, enc in zip(demos, enclosed):
+        g = [row[:] for row in pr["input"]["cells"]]
+        for (r, c) in enc:
+            g[r][c] = colour
+        if g != pr["output"]["cells"]:
+            return None                              # not ∀ → abstain
+    return {"text": f"recolor [enclosed] {arc_grids.color_name(colour)}",
+            "n_ok": n, "n": n}
+
+
+def rules(profile: dict, bg_cand: dict = None, recomparison: list = None,
+          enclosed: list = None) -> dict:
+    """Phase 8 — assemble each phase-7 motivation into a rule and generatively
+    verify it reproduces every demo output (∀ add-only); abstain otherwise.
+    Families: move (goal + vector, selector-bound) and recolor
+    (`recolor [enclosed] {colour}`, filling the phase-3 enclosed sub-pieces
+    passed in via `enclosed`). rotate / reflect rules deferred (no reliable
+    in→out correspondence). `enclosed` = one input cell-list per demo, produced
+    input-only at phase 3 (`ctx["enclosed"]["train"]`); recolor abstains without
+    it."""
     demos = profile["train"]
     bg = _resolve_solver_bg(bg_cand)
     mot = motivations(profile, bg_cand, recomparison)
@@ -858,6 +892,10 @@ def rules(profile: dict, bg_cand: dict = None, recomparison: list = None) -> dic
     for m in mot.get("move", []):
         r = (_assemble_move_goal(demos, bg) if "until touching" in m
              else _assemble_move_vector(demos, bg, m))
+        if r:
+            out.append(r)
+    if mot.get("recolor") and enclosed:
+        r = _assemble_recolor(demos, bg, enclosed)
         if r:
             out.append(r)
     return {"rules": out, "bg": bg}

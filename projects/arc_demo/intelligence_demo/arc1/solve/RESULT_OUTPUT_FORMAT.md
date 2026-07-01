@@ -259,32 +259,33 @@ STEP block: the header lines + the `result` block), as pasted below.
 ```
 ── STEP 8 · Rules ──────────────────────────────────────────────────────  [general*]
    result   Rules:
-            slide [no base shape (irregular)] to [shape = square] until touching   ✓∀ 3/3
+            move [no base shape (irregular)] to [shape = square] until touching   ✓∀ 3/3
 ```
 ```
    result   Rules:
-            (none)
+            recolor [enclosed] yellow   ✓∀ 5/5
 ```
 
 ### Phase 8 result body — format
 
-- **Header:** `Rules:` then one line per **assembled + ∀-verified** rule, one per
-  MOVE motivation that both (a) pins every role with a selector holding on EVERY
-  demo and (b) generatively reproduces every demo output. None → `(none)`.
-- **Move goal (until touching):** `slide [{mover-sel}] to [{target-sel}] until touching`
+- **Header:** `Rules:` then one line per **assembled + ∀-verified** rule — a
+  motivation whose assembled rule generatively reproduces every demo output.
+  None → `(none)`.
+- **Move goal (until touching):** `move [{mover-sel}] to [{target-sel}] until touching`
   — the mover + target selectors are the minimal discriminative descriptions
-  (`_selectors_for`, tie→shape). #8 → `slide [no base shape (irregular)] to
+  (`_selectors_for`, tie→shape). #8 → `move [no base shape (irregular)] to
   [shape = square] until touching`.
 - **Move vector:** `move [{sel}] by ({dr},{dc})` — `{sel}` = `all non-background`
   (whole-grid shift) or a single mover's feature selector.
+- **Recolor:** `recolor [enclosed] {colour}` — fill the **enclosed background
+  region** (bg cells that can't reach the grid border through bg, 4-connectivity;
+  `arc_grids.enclosed_bg_cells`, the cell-level analogue of `inside`). #2 →
+  `recolor [enclosed] yellow`.
 - **∀ verdict:** each rule line ends `   ✓∀ {n_ok}/{n}` (n = demo pairs); a rule
   only appears when it verifies on all of them (add-only, like phases 5–7).
-- **v1 = MOVE family only.** The recolor rule is deferred (its reference #2 is an
-  interior/enclosure recolor needing a region selector + partial-cell apply);
-  rotate/reflect rules are deferred (no reliable in→out object correspondence).
-  So a task whose only phase-7 motivation is recolor/rotate/reflect shows
-  `(none)` at phase 8 (e.g. #2). Display/hypothesis; the general precursor to the
-  hardcoded #8 rule stages 13–15.
+- **rotate/reflect rules deferred** (no reliable in→out object correspondence),
+  so a task whose only motivation is rotate/reflect shows `(none)`.
+  Display/hypothesis; the general precursor to the hardcoded #8 rule stages 13–15.
 
 ## Block structure (what each line is)
 

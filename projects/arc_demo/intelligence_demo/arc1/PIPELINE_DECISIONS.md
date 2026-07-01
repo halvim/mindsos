@@ -778,7 +778,7 @@ filed as motivating consumer; the demo does NOT block on it.
   reflect 1). Phase 7 LOCKED in RESULT_OUTPUT_FORMAT + STEPS.md (14-phase). Phase
   8 (combine motivations into rules) is the next layer.
 
-- **2026-06-30 (cont.) — Step-8 "Rules" SHIPPED (move-only v1; gate green 8
+- **2026-06-30 (cont.) — Step-8 "Rules" SHIPPED (move + recolor; gate green 8
   `[ok]`/400, #8 solves, 15-step). Solver stages 8–14 renumber → 9–15; gate label
   `14-step`→`15-step`.**
 
@@ -792,17 +792,17 @@ filed as motivating consumer; the demo does NOT block on it.
   pinned by an ∀ selector AND the apply reproduces all demos; else it abstains.
   `arc_solver.rules` + `pipeline.step_rules` (phase 8, `general*`, display/
   hypothesis — the general precursor to the hardcoded #8 rule stages 13–15).
-  Forms: move-goal `slide [{mover}] to [{target}] until touching` (#8; reuses the
+  Forms: move-goal `move [{mover}] to [{target}] until touching` (#8; reuses the
   `_slide` machinery via `_apply_move_goal`, single mover→single target v1);
   move-vector `move [{sel}] by (dr,dc)` (`_apply_move_vector`, sel = all-non-bg or
   a single mover's feature). Corpus: **2/400** assemble a verified rule — #8
-  (`slide [no base shape (irregular)] to [shape = square] until touching`, ✓∀ 3/3)
+  (`move [no base shape (irregular)] to [shape = square] until touching`, ✓∀ 3/3)
   and #53 `25ff71a9` (`move [all non-background] by (1,0)`, ✓∀ 3/3); 0 errors. The
   other 7 move-motivation tasks abstain (selector doesn't reproduce ∀) — sound
   add-only behaviour, like phases 5–7.
 
-  **Scope = MOVE family only (owner: A→C→C-move, grounded).** Owner first chose
-  "all four families" (A); two probes narrowed it:
+  **Scope = move + recolor (owner: A→C→C-move→+recolor, grounded).** Owner first
+  chose "all four families" (A); probes narrowed then re-expanded:
   - **rotate/reflect rules deferred — no reliable in→out correspondence.** Probe
     over the 9 rotate + 1 reflect motivation tasks: **0/10 have a clean 1-to-1
     in→out object correspondence** (2–42 rotated/reflected candidate pairs per
@@ -813,13 +813,27 @@ filed as motivating consumer; the demo does NOT block on it.
     these look grid/region-level, not per-object). Filed: **"rotate/reflect rule —
     blocked on in→out object correspondence (+ probably a grid/region-level
     transform model, not per-object placement)."**
-  - **recolor rule deferred — its reference #2 is interior recolor.** #2
-    (`00d62c1b`, `recolor yellow`) recolors an **enclosed interior sub-piece**
-    (via subdivision/`inside`), not a whole object — the recolor generator acts on
-    whole objects, so verifying #2 needs a **region selector + partial-cell recolor
-    apply** (a distinct surface). Filed: **"recolor rule — needs an interior/
-    enclosure region selector + partial-cell recolor apply."** #2 shows `(none)`
-    at phase 8 in v1.
+  - **recolor rule — BUILT: `recolor [enclosed] {colour}` (enclosed sub-piece
+    fill).** The recolor target is the **enclosed subdivision sub-piece(s)**: phase
+    3 splits the bg object into an outer region + its enclosed pockets, phase 4
+    marks the pocket recolored (verified #2 pair1 → `In1.O0.sub2` recolored yellow).
+    Because subdivision partitions using the OUTPUT insets it can't run on the test
+    input, so the enclosed region is computed **input-only** by
+    `arc_grids.enclosed_bg_cells` (bg cells that can't reach the border through bg,
+    4-conn — the cell analogue of `inside`); this **equals** the phase-3 enclosed
+    sub-pieces' cells (verified #2: == the recolored sub-pieces, incl. pair3's
+    two-pocket union) but computes from the input alone so the rule generalizes to
+    the test. **Owner directive: this input-only enclosure is a PHASE-3 product
+    (`ctx["enclosed"]`), and phase 8 CONSUMES it — `enclosed_bg_cells` is not
+    called in any validation after phase 3.** (Validating on the phase-3 *output*-
+    derived sub-pieces would be circular — they're defined by the recolor — so the
+    input-only enclosure is what keeps the ∀ verify a real generalization test.)
+    Derive the constant fill colour, verify the fill reproduces every demo ∀. Corpus: **2/400** — #2 `00d62c1b` (`recolor [enclosed]
+    yellow`, ✓∀ 5/5) + #251 `a5313dff` (`recolor [enclosed] blue`, ✓∀ 3/3). This is
+    the owner's "bg is a colour with shapes too" point at cell granularity.
+    (Correction: an earlier note claimed the pocket is "part of the big bg
+    component / not a separate object" — that was the phase-1 view; post-phase-3
+    the pocket IS a first-class sub-piece.)
 
   The move family already has correspondence (via `moved` + touching-gained) and a
   sound grid-apply (`_slide`/`_render`), so it ships verified; the deferred

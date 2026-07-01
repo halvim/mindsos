@@ -372,6 +372,33 @@ def inside_pairs(objects: List[dict], points: List[dict],
     return out
 
 
+def enclosed_bg_cells(cells: Grid, bg: int) -> List[Tuple[int, int]]:
+    """Background cells that cannot reach the grid border through background
+    (4-connectivity) — i.e. enclosed by non-bg objects. The cell-level analogue
+    of the `inside` object test; the recolor `enclosed` region. A diagonal gap
+    lets bg escape (4-conn), matching the `inside` 4-ray semantics."""
+    H = len(cells)
+    W = len(cells[0]) if H else 0
+    seen = [[False] * W for _ in range(H)]
+    stack = []
+    for r in range(H):
+        for c in range(W):
+            if (r in (0, H - 1) or c in (0, W - 1)) \
+                    and cells[r][c] == bg and not seen[r][c]:
+                seen[r][c] = True
+                stack.append((r, c))
+    while stack:
+        r, c = stack.pop()
+        for dr, dc in _ORTHOGONAL:
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < H and 0 <= nc < W and not seen[nr][nc] \
+                    and cells[nr][nc] == bg:
+                seen[nr][nc] = True
+                stack.append((nr, nc))
+    return [(r, c) for r in range(H) for c in range(W)
+            if cells[r][c] == bg and not seen[r][c]]
+
+
 def inside_bg_filtered(gs: dict, bg) -> List[dict]:
     """``inside`` pairs under the background rule: an enclosure is dropped only
     when the OUTSIDE container ``b`` is the background colour (an object merely

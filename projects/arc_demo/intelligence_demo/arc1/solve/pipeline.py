@@ -149,6 +149,23 @@ def step_subdivision(ctx, dataset):
         holds.append(hit)
     allhold = all(holds) and len(holds) > 0
     ctx["subdivision"] = {"holds_all": allhold, "n": len(holds), "findings": findings}
+    # INPUT-ONLY enclosure sub-pieces (bg → outer + enclosed pockets), the
+    # cell-level analogue of `inside`. Computed here so phases after 3 CONSUME
+    # them without re-deriving; bg per grid from the already-advanced bg_cand
+    # (unresolved → no enclosure). Phase 8's recolor rule fills these.
+    bc = ctx.get("bg_cand")
+    ctx["enclosed"] = {
+        "train": [arc_grids.enclosed_bg_cells(
+                      pr["input"]["cells"],
+                      bc["train"][i]["input"]["bg"] if bc else None)
+                  if bc and bc["train"][i]["input"]["bg"] is not None else []
+                  for i, pr in enumerate(prof["train"])],
+        "test": [arc_grids.enclosed_bg_cells(
+                     t["input"]["cells"],
+                     bc["test"][i]["input"]["bg"] if bc else None)
+                 if bc and bc["test"][i]["input"].get("bg") is not None else []
+                 for i, t in enumerate(prof.get("test", []))],
+    }
     head = f"subdivision — {'yes' if allhold else 'no'} (∀demo {sum(holds)}/{len(holds)})"
     return _block(head, per_pair)
 
@@ -462,16 +479,16 @@ def step_motivations(ctx, dataset):
 
 
 def step_rules(ctx, dataset):
-    """Phase 8 — Rules: bind a selector to each phase-7 MOVE motivation and
-    generatively verify the assembled rule reproduces every demo output (∀). A
-    rule is kept only if every role is pinned by an ∀ selector and the
-    selector-driven apply reproduces all demos; else it abstains. v1 = the move
-    family (recolor rule deferred — #2 is interior/enclosure recolor needing a
-    region selector + partial-cell apply; rotate/reflect deferred — no reliable
-    in→out object correspondence). Display/hypothesis; the general precursor to
-    the hardcoded #8 stages 9–15."""
+    """Phase 8 — Rules: assemble each phase-7 motivation into a rule and
+    generatively verify it reproduces every demo output (∀); abstain otherwise.
+    Families: MOVE — `move [<mover>] to [<target>] until touching` (#8) /
+    `move [<sel>] by (dr,dc)` (selector-bound, reuse `_slide`/`_render`); RECOLOR
+    — `recolor [enclosed] {colour}` (fill the enclosed background region, #2).
+    rotate/reflect deferred (no reliable in→out object correspondence).
+    Display/hypothesis; the general precursor to the hardcoded #8 stages 9–15."""
     res = arc_solver.rules(ctx["profile"], ctx.get("bg_cand"),
-                           ctx.get("recomparison"))
+                           ctx.get("recomparison"),
+                           (ctx.get("enclosed") or {}).get("train"))
     ctx["rules"] = res
     lines = [f"{r['text']}   ✓∀ {r['n_ok']}/{r['n']}" for r in res["rules"]]
     return _block("Rules:", lines or ["(none)"])
@@ -502,7 +519,7 @@ STEPS = [
      "arc_solver.motivations — per generator, ∀-holding goals/reasons from the detector conclusions + predicates (recolor/rotate/reflect = reason; move = reason+goal)",
      "generator motivations (goal/reason)"),
     (8, "Rules", GENERAL_STAR, step_rules,
-     "arc_solver.rules — bind a selector (_selectors_for) to a MOVE motivation, generatively verify ∀ (_apply_move_goal/_apply_move_vector reuse _slide/_render); abstain if a role isn't pinned ∀. v1 = move (recolor/rotate/reflect deferred)",
+     "arc_solver.rules — assemble each motivation into a rule, generatively verify ∀ (move: _apply_move_goal/_apply_move_vector; recolor: fill the phase-3 enclosed regions ctx['enclosed']); abstain otherwise. move + recolor[enclosed] (rotate/reflect deferred)",
      "verified selector-bound rules (∀)"),
     (9, "Background + state-change", GENERAL_STAR, step_background,
      "arc_solver.stage_background(bg from bg_cand, touching_changes(_correspondence, _touch_set))",
@@ -553,7 +570,7 @@ STEP_DESC = {
     5: "List the comparators that trigger on EVERY demo pair (∀) — the comparator hypothesis (moved, touching_delta, inside, recolored, rotated, reflected); touching_delta = touching status change over correspondence, shown instead of intra-grid touching.",
     6: "Infer the task pattern from the profile — e.g. addition (dims + palette preserved, all non-bg inputs kept, a new object appears).",
     7: "Motivations — per generator, the goals/reasons that hold on every demo (recolor <c>, rotate <deg>, … if touching, move … until touching), tested by applying the generator.",
-    8: "Rules — bind a selector to a MOVE motivation (slide <mover> to <target> until touching, or move <sel> by (dr,dc)) and generatively verify it reproduces every demo output (∀); abstain otherwise. v1 = move family (recolor/rotate/reflect deferred).",
+    8: "Rules — assemble each motivation into a rule and generatively verify it reproduces every demo output (∀); abstain otherwise. move (move <mover> to <target> until touching / move <sel> by (dr,dc)) + recolor (recolor [enclosed] <colour> — fill the enclosed background region). rotate/reflect deferred.",
     9: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
     10: "Classify the changed objects into roles — mover, target, background.",
     11: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
