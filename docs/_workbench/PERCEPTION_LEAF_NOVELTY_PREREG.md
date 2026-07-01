@@ -146,17 +146,33 @@ per-leaf Platt on CAL; polygon vocab {3-gon,4-gon}+circle atom human-given (AM-2
 - **C1 inspectability (reported):** vertex-count recovery 0.954. **C2 localization (reported):**
   grounding drops on rung corruption. **C3 reuse:** same mechanism as MP-2.
 
-### Step 2 — strong CNN baseline (torch, user's Linux) — **PENDING (authored, unrun)**
-`leaf_novelty_baseline.py` (deep-ensemble OOD head + 3 repair modes incl. the audit-mandated
-row-frozen warm-started head, AM-5). Loads the same `.npz`. Run on Linux → fills the P0 parity gate
-+ the decisive repair-cost contrast. **Pre-committed reading stands (§7 + AM-4 + AM-5).**
+### Step 2 — strong CNN baseline (torch, Linux, run 5 final) — **COMPLETE (audited 2026-06-29)**
+`leaf_novelty_baseline.py`, BatchNorm net, 3 seeds, same frozen `.npz`. P0 **0.967 ± 0.007** →
+**positive control PASSES** (parity with MindsOS 0.961; contest VALID). Mahalanobis OOD **0.953**.
+Repairs vs MindsOS (retention 1.0 / curved 0.965): shared-softmax all forget (R-full ret ≤0.10;
+R-head/R-row ret ~0.79 but curved ≤0.30). The **strongest fair modular repair** (fresh raw-pixel
+circle detector routing an untouched polygon head): detector AUROC 0.79→0.938→**0.995** (k5/20/100),
+retention@curved≥0.85 = 0/0/**0.792 ± 0.092** (curved 0.86).
 
-### Audit (independent ML-advocate, in-sandbox, 2026-06-28)
-MindsOS half **TRUSTWORTHY-PASS** (P0-side, MP-1, MP-2, learned-not-baked, clean anti-tuning
-process). Two risks to the conjunction-at-parity (AM-4) flagged for the Linux run: (1) P0 could
-fail *either* direction (CNN ≫ MindsOS → NULL; or within 5 → pass); (2) the strengthened row-frozen
-head (AM-5) might reach exactly 1.0 retention, narrowing novelty to gap-naming. Both are decided on
-Linux, honestly, per the frozen readings.
+### FINAL VERDICT — independent ML-advocate audit (2026-06-29) — **NOVELTY NARROWED, reported honestly**
+- **P0 parity: TRUSTWORTHY-PASS, earned.** CNN 0.967 vs MindsOS 0.961; learned-not-baked verified.
+- **The headline "retention 1.0 vs 0.792" is a UNIT MISMATCH** (audit): MindsOS's "1.0" is a *zero-flip
+  delta* (absolute polygon acc 0.954, architecturally unchangeable since the arc leaf is a fallback);
+  the CNN's 0.792 is *absolute joint* accuracy capped by its polygon head. Matched units: **0.954 vs
+  0.792** (gap 0.16), or routing-loss **~0.18 vs 0**.
+- **Not a ROC-frontier impossibility.** At AUROC 0.995 the CNN's frontier permits ~0.97 routing-
+  retention at ~0.96 curved; the reported 0.792 is the tail/cap effect at k=100, and AUROC is already
+  saturated → the gap is **sample-efficiency + crisp-categorical routing**, NOT "a CNN cannot match."
+- **No-fabrication is CONCEDED**, not a differentiator (CNN Mahalanobis OOD 0.953; OOD flagging is
+  explicitly allowed, §3).
+- **Mechanism is substrate-contingent.** MindsOS's zero polygon-mis-route comes from vertex-count K
+  being perfectly discrete on this clean grid; it erodes under occlusion/deformation — and MindsOS
+  *already* collapses in the near-miss regime (blind 1.0 @f.04) where K stops being crisp.
+- **Verdict on conjunction-at-parity (AM-4):** holds **only as a NARROWER claim** — *data-efficient,
+  crisp-symbolic-routing repair with a named/inspectable request-atom* — **NOT** "a property strong
+  baselines cannot match at parity." Per the pre-reg's own AM-8/AM-9 pre-committed reading, this is
+  the case where v1 novelty narrows to **gap-naming (PB-K), which v1 deliberately does not contest.**
+  AM-10 eval-fix confirmed correct; no leakage; CNN given *more* train data (generous to baseline).
 
 ## 8. Amendment log
 
