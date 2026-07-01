@@ -29,25 +29,34 @@ from mindsos_capacity.identifiers import (
 
 from . import arc_grids
 
-# profiler/comparator/predicate are families in ONTOLOGY §3 but NOT shipped
-# FUNCTIONAL categories; register under lazily-created category graphs (same
-# mechanism as dream.*).
+# These categories are NOT shipped core FUNCTIONAL categories; they register
+# under lazily-created category graphs (same mechanism as dream.*), so any
+# string works. capacity_iri embeds the category, so renaming a category
+# re-IRIs its caps (keep CAP_* + gate references in sync).
 #
-# TAXONOMY (do NOT call profilers "comparators"):
-#   PROFILER  — universal task facts: compare_grid_dimension/compare_palette,
+# THE 7 CAPACITY CATEGORIES (the organizing axis):
+#   PERCEIVER — build objects from the raw grid: comprehend_task, build_grid,
+#               extract_palette/objects/shapes/points.
+#   PROFILER  — universal sameness facts: compare_grid_dimension/compare_palette,
 #               same_object/same_shape/same_point, same_cell_count/same_bbox_area.
-#   COMPARATOR— the capacities: moved, recolored, rotated, reflected.
-#   PREDICATE — the intra-grid capacities: touching, inside.
+#   OPERATOR  — combine components → a new Region (dual of decomposition): union.
+#   DETECTOR  — detect a transform/change across in→out: moved, recolored,
+#               rotated, reflected, touching_delta.
+#   GENERATOR — apply a transform: recolor, rotate, reflect, move. A `kind`
+#               field (continuous|discrete) sets the argument set (reason [+goal]).
+#   PREDICATE — test an intra/inter-grid relation: touching, inside, inset.
+#   REASONING — compose: build_correspondence, synthesize_selector, bg_deduction.
 # (moved/touching/inside/recolored/rotated/reflected = the 6 ./evaluate targets.)
-#   OPERATOR  — object constructors (the dual of DECOMPOSITION): union. An
-#               operator takes objects and PRODUCES a new Region; it is
-#               L4-called when needed (no standing demo consumer — provenance
-#               like every ARC cap). NOT a bool; not a ./evaluate comparator.
+CATEGORY_PERCEIVER = "perceiver"
 CATEGORY_PROFILER = "profiler"
-CATEGORY_COMPARATOR = "comparator"
+CATEGORY_OPERATOR = "operator"
+CATEGORY_DETECTOR = "detector"
+CATEGORY_GENERATOR = "generator"
 CATEGORY_PREDICATE = "predicate"
 CATEGORY_REASONING = "reasoning"
-CATEGORY_OPERATOR = "operator"
+# retained for the DataState provenance_category tags (DataStates keep their
+# origin-family labels; only capacities move to the 7-category organization).
+CATEGORY_COMPARATOR = "comparator"
 
 # ── DataState IRIs (arc realm) ──────────────────────────────────────────
 DS_RAW_TASK = datastate_iri("arc.raw_task")
@@ -187,34 +196,34 @@ def _extract_points(**kw: Any) -> dict:
 def _perceive_capacities() -> List[Capacity]:
     return [
         Capacity(
-            name="comprehend_task", category=CATEGORY_COMPREHENSION,
+            name="comprehend_task", category=CATEGORY_PERCEIVER,
             inputs=(DS_RAW_TASK,), outputs=(DS_TASK, DS_PAIR, DS_RAW_GRID),
             implementation=_comprehend_task,
             description="Structural comprehension + role binding.",
         ),
         Capacity(
-            name="build_grid", category=CATEGORY_PERCEPTION,
+            name="build_grid", category=CATEGORY_PERCEIVER,
             inputs=(DS_RAW_GRID,), outputs=(DS_GRID,),
             implementation=_build_grid, description="RawGrid -> Grid (cells).",
         ),
         Capacity(
-            name="extract_palette", category=CATEGORY_DERIVATION,
+            name="extract_palette", category=CATEGORY_PERCEIVER,
             inputs=(DS_GRID,), outputs=(DS_PALETTE,),
             implementation=_extract_palette, description="Per-grid color set.",
         ),
         Capacity(
-            name="extract_objects", category=CATEGORY_DECOMPOSITION,
+            name="extract_objects", category=CATEGORY_PERCEIVER,
             inputs=(DS_GRID,), outputs=(DS_OBJECT,),
             implementation=_extract_objects,
             description="Monochrome connected components, all colors.",
         ),
         Capacity(
-            name="extract_shapes", category=CATEGORY_DERIVATION,
+            name="extract_shapes", category=CATEGORY_PERCEIVER,
             inputs=(DS_OBJECT,), outputs=(DS_SHAPE,),
             implementation=_extract_shapes, description="Object -> normalized Shape.",
         ),
         Capacity(
-            name="extract_points", category=CATEGORY_DECOMPOSITION,
+            name="extract_points", category=CATEGORY_PERCEIVER,
             inputs=(DS_GRID,), outputs=(DS_POINT,),
             implementation=_extract_points,
             description="Grid -> single-cell Points (size 1; not Objects/Shapes).",
@@ -280,7 +289,7 @@ def _comparator_capacities() -> List[Capacity]:
     ``_intra_grid_capacities`` — together the 6 ./evaluate targets."""
     return [
         Capacity(
-            name="moved", category=CATEGORY_COMPARATOR,
+            name="moved", category=CATEGORY_DETECTOR,
             inputs=(DS_OBJECT,), outputs=(DS_MOVE_TRANSFORM,),
             implementation=lambda **kw: {DS_MOVE_TRANSFORM: None},
             description="(in Object, out Object | same_shape) -> move Transform (Δ) | None if not displaced.",
@@ -351,7 +360,7 @@ def _reason_capacities() -> List[Capacity]:
             description="Fold over pairwise comparator verdicts -> Correspondence (strictest-first 1:1; ambiguous left uncorresponded).",
         ),
         Capacity(
-            name="touching_delta", category=CATEGORY_COMPARATOR,
+            name="touching_delta", category=CATEGORY_DETECTOR,
             inputs=(DS_TOUCHING, DS_CORRESPONDENCE), outputs=(DS_STATE_CHANGE,),
             implementation=_touching_delta,  # D3 spike: REAL body (sole non-stub)
             description="(touching over C) -> StateChange (gained/lost/maintained, background-excluded). "
@@ -383,11 +392,11 @@ def _reason_capacities() -> List[Capacity]:
 
 
 # capacity IRIs (for assertions / introspection)
-CAP_COMPREHEND = capacity_iri(CATEGORY_COMPREHENSION, "comprehend_task")
-CAP_BUILD_GRID = capacity_iri(CATEGORY_PERCEPTION, "build_grid")
-CAP_EXTRACT_PALETTE = capacity_iri(CATEGORY_DERIVATION, "extract_palette")
-CAP_EXTRACT_OBJECTS = capacity_iri(CATEGORY_DECOMPOSITION, "extract_objects")
-CAP_EXTRACT_SHAPES = capacity_iri(CATEGORY_DERIVATION, "extract_shapes")
+CAP_COMPREHEND = capacity_iri(CATEGORY_PERCEIVER, "comprehend_task")
+CAP_BUILD_GRID = capacity_iri(CATEGORY_PERCEIVER, "build_grid")
+CAP_EXTRACT_PALETTE = capacity_iri(CATEGORY_PERCEIVER, "extract_palette")
+CAP_EXTRACT_OBJECTS = capacity_iri(CATEGORY_PERCEIVER, "extract_objects")
+CAP_EXTRACT_SHAPES = capacity_iri(CATEGORY_PERCEIVER, "extract_shapes")
 
 
 def _short_ds(iri: str) -> str:
@@ -402,38 +411,38 @@ def _transform_capacities() -> List[Capacity]:
     return [
         # generators (real bodies) — NOT shown in the Gates panel
         Capacity(
-            name="recolor", category=CATEGORY_DERIVATION,
+            name="recolor", category=CATEGORY_GENERATOR,
             inputs=(DS_OBJECT, DS_COLOR), outputs=(DS_OBJECT,),
             implementation=lambda **kw: {DS_OBJECT: arc_grids.recolor(kw[DS_OBJECT], kw[DS_COLOR])},
             description="(Object, Color) -> Object (every cell recoloured; shape/position kept).",
         ),
         Capacity(
-            name="rotate", category=CATEGORY_DERIVATION,
+            name="rotate", category=CATEGORY_GENERATOR,
             inputs=(DS_SHAPE, DS_ROTATE_TRANSFORM), outputs=(DS_SHAPE,),
             implementation=lambda **kw: {DS_SHAPE: arc_grids.rotate_shape(kw[DS_SHAPE], kw[DS_ROTATE_TRANSFORM])},
             description="(Shape, rotate Transform {90,180,270}) -> Shape (rotated, re-normalized).",
         ),
         Capacity(
-            name="reflect", category=CATEGORY_DERIVATION,
+            name="reflect", category=CATEGORY_GENERATOR,
             inputs=(DS_SHAPE, DS_REFLECT_TRANSFORM), outputs=(DS_SHAPE,),
             implementation=lambda **kw: {DS_SHAPE: arc_grids.reflect_shape(kw[DS_SHAPE], kw[DS_REFLECT_TRANSFORM])},
             description="(Shape, reflect Transform {horizontal,vertical}) -> Shape (reflected, re-normalized).",
         ),
         # comparators (fold-time detection; stub bodies like moved) — Gates caps
         Capacity(
-            name="recolored", category=CATEGORY_COMPARATOR,
+            name="recolored", category=CATEGORY_DETECTOR,
             inputs=(DS_OBJECT,), outputs=(DS_RECOLOR_TRANSFORM,),
             implementation=lambda **kw: {DS_RECOLOR_TRANSFORM: None},
             description="(in Object, out Object | same_shape) -> recolor Transform | None (same shape+position, diff colour). recolored ⟹ same_shape.",
         ),
         Capacity(
-            name="rotated", category=CATEGORY_COMPARATOR,
+            name="rotated", category=CATEGORY_DETECTOR,
             inputs=(DS_SHAPE,), outputs=(DS_ROTATE_TRANSFORM,),
             implementation=lambda **kw: {DS_ROTATE_TRANSFORM: None},
             description="(in Shape, out Shape) -> rotate Transform (90/180/270) | None.",
         ),
         Capacity(
-            name="reflected", category=CATEGORY_COMPARATOR,
+            name="reflected", category=CATEGORY_DETECTOR,
             inputs=(DS_SHAPE,), outputs=(DS_REFLECT_TRANSFORM,),
             implementation=lambda **kw: {DS_REFLECT_TRANSFORM: None},
             description="(in Shape, out Shape) -> reflect Transform (horizontal/vertical) | None.",
@@ -441,25 +450,26 @@ def _transform_capacities() -> List[Capacity]:
     ]
 
 
+#: display order of the 7 capacity categories (the organizing axis).
+CATEGORY_ORDER = [CATEGORY_PERCEIVER, CATEGORY_PROFILER, CATEGORY_OPERATOR,
+                  CATEGORY_DETECTOR, CATEGORY_GENERATOR, CATEGORY_PREDICATE,
+                  CATEGORY_REASONING]
+
+
 def ordered_catalog() -> List[dict]:
-    """Capacities in pipeline order (perceive chain, then profile sweep),
-    with consumes/produces — the list the debug UI renders."""
-    rows: List[dict] = []
-    for phase, caps in (("perceive", _perceive_capacities()),
-                        ("profile", _profiler_capacities()),
-                        ("comparator", _comparator_capacities()),
-                        ("intra-grid", _intra_grid_capacities()),
-                        ("operator", _operator_capacities()),
-                        ("transform", _transform_capacities()),
-                        ("reason", _reason_capacities())):
-        for c in caps:
-            rows.append({
-                "name": c.name,
-                "category": c.category,
-                "phase": phase,
-                "consumes": [_short_ds(i) for i in c.inputs],
-                "produces": [_short_ds(o) for o in c.outputs],
-            })
+    """Capacities grouped by the 7 categories (perceiver → profiler → operator
+    → detector → generator → predicate → reasoning), with consumes/produces —
+    the list the debug UI + `_print_instance` render. ``phase`` = the category
+    (the organizing axis)."""
+    caps = (_perceive_capacities() + _profiler_capacities()
+            + _comparator_capacities() + _intra_grid_capacities()
+            + _operator_capacities() + _transform_capacities()
+            + _reason_capacities())
+    rows = [{"name": c.name, "category": c.category, "phase": c.category,
+             "consumes": [_short_ds(i) for i in c.inputs],
+             "produces": [_short_ds(o) for o in c.outputs]} for c in caps]
+    order = {cat: i for i, cat in enumerate(CATEGORY_ORDER)}
+    rows.sort(key=lambda r: order.get(r["category"], len(order)))
     return rows
 
 

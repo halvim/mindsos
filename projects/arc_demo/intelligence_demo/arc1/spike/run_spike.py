@@ -111,7 +111,7 @@ def _invoke_biting_check(cl, prof8, raw8) -> None:
           correspondence) inputs yields nothing. The registered CONSUMES
           topology is fiction relative to the executable body.
     """
-    iri = capacity_iri(ac.CATEGORY_COMPARATOR, "touching_delta")
+    iri = capacity_iri(ac.CATEGORY_DETECTOR, "touching_delta")
     bg = arc_solver._resolve_solver_bg(arc_solver.resolve_bg(prof8, raw8))
     pair = prof8["train"][0]
     expected = arc_solver.touching_changes(pair, bg)
