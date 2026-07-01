@@ -220,6 +220,37 @@ STEP block: the header lines + the `result` block), as pasted below.
 - **Descriptive, not the rule** — hypothesis/display only; not consumed
   downstream.
 
+## Reference example — Phase 7 (Motivations), tasks #8 / #2
+
+```
+── STEP 7 · Motivations ─────────────────────────────────────────────────  [general*]
+   result   Motivations:
+            move until touching
+```
+```
+   result   Motivations:
+            recolor yellow
+```
+
+### Phase 7 result body — format
+
+- **Header:** `Motivations:` then one line per motivation that holds on **EVERY**
+  demo pair (∀ add-only), grouped by generator in order move · recolor · rotate ·
+  reflect. None → `(none)`.
+- **Discrete generators** (recolor / rotate / reflect) — reasons only:
+  - **parameter-reason**: `recolor {colour}` / `rotate {deg}` / `reflect {H-axis|V-axis}`
+    when the detector's parameter is constant ∀ (recolor also reads subdivision
+    sub-piece targets). Tested by applying the generator.
+  - **condition-reason**: `{gen} if touching` / `{gen} if inside` when the set of
+    transformed objects == the set satisfying the predicate, ∀ (correspondence).
+- **Continuous generator** (move) — reason and/or goal:
+  - **reason**: `move ({dr},{dc})` when the move vector is constant ∀.
+  - **goal**: `move {direction} until touching` when the direction is constant ∀
+    (else `move until touching`, direction per object) and the moved objects gain
+    touching ∀. `direction` = the `(axis, sign)` comparative (up/down/left/right).
+- **Descriptive, not the rule** — each motivation is tested *separately* here
+  (phase 8 combines them into rules). Display/hypothesis only.
+
 ## Block structure (what each line is)
 
 - `── STEP {n} · {name} ───…  [{scope}]` — phase number, name, scope tag.

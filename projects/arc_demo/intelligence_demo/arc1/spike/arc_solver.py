@@ -588,6 +588,103 @@ def task_patterns(profile: dict, bg_cand: dict = None,
             "bg_resolved": bg_resolved}
 
 
+# ── phase 7 — MOTIVATIONS: generator goals/reasons from detector conclusions
+#    + predicates, each tested ∀ demo pair (show + test, add-only). ────────
+def _pred_objs(gs: dict, rel: str) -> set:
+    """Input-object indices in a predicate relation. touching = both participants;
+    inside = the contained object (`a`)."""
+    s = set()
+    for p in gs.get(rel, []):
+        refs = (p["a"], p["b"]) if rel == "touching" else (p["a"],)
+        for r in refs:
+            if r["kind"] == "O":
+                s.add(r["idx"])
+    return s
+
+
+def _gained_objs(pr: dict) -> set:
+    ch = touching_changes(pr, 0, exclude_bg=False)
+    return {r[1] for pair in ch["gained"] for r in pair if r[0] == "O"}
+
+
+def _recolor_targets(pr: dict, findings: list):
+    """(fires?, {target colours}) for recolor on one pair — whole-object recolored
+    + subdivision sub-piece recolors (a sub-piece is a full object)."""
+    tg = {t["transform"]["to"] for t in arc_grids.recolored_pairs(pr["input"], pr["output"])}
+    for f in findings:
+        for p in f["parts"]:
+            if p["rel"] == "recolored":
+                tg.add(p["part_color"])
+    return (len(tg) > 0, tg)
+
+
+def motivations(profile: dict, bg_cand: dict = None, recomparison: list = None) -> dict:
+    """Phase 7 — per generator, the motivations (goal/reason) that hold on EVERY
+    demo pair (∀ add-only). Discrete generators (recolor/rotate/reflect) get
+    reasons only: a constant-parameter reason + a predicate condition-reason
+    (transformed set == predicate set). The continuous generator (move) gets a
+    reason (constant vector) and/or a goal (move [<dir>] until touching)."""
+    demos = profile["train"]
+    recomp = recomparison or []
+    out = {}
+
+    def whole_inst(pr, fn):
+        return {t["in"]: t["transform"] for t in fn(pr["input"], pr["output"])}
+
+    # discrete generators: (name, detector, param-of-transform, render)
+    for gen, fn, pkey, render in (
+        ("rotate", arc_grids.rotated_pairs, "deg", lambda d: f"rotate {d}"),
+        ("reflect", arc_grids.reflected_pairs, "axis",
+         lambda a: f"reflect {'H-axis' if a == 'horizontal' else 'V-axis'}"),
+    ):
+        per = [whole_inst(pr, fn) for pr in demos]
+        mots = []
+        if all(per) and len({t[pkey] for p in per for t in p.values()}) == 1:
+            mots.append(render(next(iter(per[0].values()))[pkey]))
+        for rel in ("touching", "inside"):
+            if all(p and set(p) == _pred_objs(pr["input"], rel) for pr, p in zip(demos, per)):
+                mots.append(f"{gen} if {rel}")
+        if mots:
+            out[gen] = mots
+
+    # recolor (whole-object + sub-piece targets)
+    per_t = [_recolor_targets(pr, [f for f in recomp if f["pair"] == i + 1])
+             for i, pr in enumerate(demos)]
+    rmots = []
+    if all(fires for fires, _ in per_t):
+        allc = {c for _, tg in per_t for c in tg}
+        if len(allc) == 1:
+            rmots.append(f"recolor {arc_grids.color_name(next(iter(allc)))}")
+    for rel in ("touching", "inside"):
+        per_w = [set(whole_inst(pr, arc_grids.recolored_pairs)) for pr in demos]
+        if all(w and w == _pred_objs(pr["input"], rel) for pr, w in zip(demos, per_w)):
+            rmots.append(f"recolor if {rel}")
+    if rmots:
+        out["recolor"] = rmots
+
+    # move (continuous): constant vector reason + until-touching goal
+    per_m = [{mv["in"]: tuple(mv["transform"]["vector"])
+              for g in pr["match"]["shape_groups"] for mv in g.get("moves", [])}
+             for pr in demos]
+    mmots = []
+    if all(per_m):
+        vecs = {v for p in per_m for v in p.values()}
+        goal = all(set(p) <= _gained_objs(pr) for pr, p in zip(demos, per_m))
+        if len(vecs) == 1:
+            dr, dc = next(iter(vecs))
+            mmots.append(f"move ({dr},{dc})")
+        dirs = {arc_grids.direction_of(list(v)) for v in vecs}
+        if goal:
+            if len(dirs) == 1 and next(iter(dirs)) is not None:
+                mmots.append(f"move {next(iter(dirs))} until touching")
+            else:
+                mmots.append("move until touching")
+    if mmots:
+        out["move"] = mmots
+
+    return out
+
+
 # ── union operator — task-level occurrence + display (bg-aware) ──────────
 def _raw_from_profile(profile: dict) -> dict:
     """A raw-task shell (grid cells only) reconstructed from a profile, so

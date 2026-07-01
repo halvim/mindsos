@@ -763,6 +763,21 @@ filed as motivating consumer; the demo does NOT block on it.
   other non-bg objects. Batch 1 = these prerequisites (gate green). Batch 2 =
   phase 7 (enumerate + show/test motivations, ∀, generative/correspondence).
 
+  **Batch 2 — phase 7 "Motivations" SHIPPED (gate green 8 `[ok]`/400, #8 solves,
+  14-step; NOT committed).** Inserted **phase 7 = Motivations** (the #8 solver
+  stages renumber 7–13 → 8–14; gate label `13-step`→`14-step`).
+  `arc_solver.motivations(profile, bg_cand, recomparison)` + `pipeline.step_motivations`:
+  per generator, the ∀-holding goals/reasons — discrete (recolor/rotate/reflect):
+  constant-parameter reason (`recolor {colour}` reading whole-object recolored +
+  subdivision sub-piece targets; `rotate {deg}`; `reflect {H/V-axis}`) + predicate
+  condition-reason (`… if touching`/`… if inside`, transformed set == predicate
+  set); continuous move: `move ({dr},{dc})` (constant vector) and/or
+  `move [{dir}] until touching` (goal — moved objects gained touching; `dir` via
+  `arc_grids.direction_of`). **#8 → `move until touching`, #2 → `recolor yellow`.**
+  Corpus: 85/400 tasks have ≥1 motivation (recolor 66 / move 9 / rotate 9 /
+  reflect 1). Phase 7 LOCKED in RESULT_OUTPUT_FORMAT + STEPS.md (14-phase). Phase
+  8 (combine motivations into rules) is the next layer.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**
