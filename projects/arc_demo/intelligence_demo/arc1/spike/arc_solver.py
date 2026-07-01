@@ -592,11 +592,11 @@ def task_patterns(profile: dict, bg_cand: dict = None,
 #    + predicates, each tested ∀ demo pair (show + test, add-only). ────────
 def _pred_objs(gs: dict, rel: str, bg: int = None) -> set:
     """Input-object indices in a predicate relation. touching = both participants;
-    inside = the contained object (`a`). For ``inside`` the background rule
-    applies (drop pairs whose outside container is bg; keep bg-coloured enclosed
-    pockets) when ``bg`` is given (`arc_grids.inside_bg_filtered`)."""
-    pairs = (arc_grids.inside_bg_filtered(gs, bg) if rel == "inside"
-             else gs.get(rel, []))
+    inside = the contained object (`a`). For ``inside`` the ray-based containment
+    comparator is used (`arc_grids.contained_pairs`: valid container = non-bg, or
+    a bg pocket that is itself contained) when ``bg`` is given."""
+    pairs = (arc_grids.contained_pairs(gs, bg, bg_resolved=bg is not None)
+             if rel == "inside" else gs.get(rel, []))
     s = set()
     for p in pairs:
         refs = (p["a"], p["b"]) if rel == "touching" else (p["a"],)

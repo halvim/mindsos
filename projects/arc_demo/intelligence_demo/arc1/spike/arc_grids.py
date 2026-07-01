@@ -399,17 +399,66 @@ def enclosed_bg_cells(cells: Grid, bg: int) -> List[Tuple[int, int]]:
             if cells[r][c] == bg and not seen[r][c]]
 
 
-def inside_bg_filtered(gs: dict, bg) -> List[dict]:
-    """``inside`` pairs under the background rule: an enclosure is dropped only
-    when the OUTSIDE container ``b`` is the background colour (an object merely
-    floating in the ambient bg field is not a real enclosure). A bg-coloured
-    INSIDE ``a`` — an enclosed pocket — is KEPT. ``bg`` None (unresolved) → keep
-    all pairs (bg-agnostic, as at perception)."""
-    ins = gs.get("inside", [])
-    if bg is None:
-        return ins
-    objs = gs["objects"]
-    return [p for p in ins if objs[p["b"]["idx"]]["color"] != bg]
+def contained_pairs(gs: dict, bg=None, bg_resolved: bool = False) -> List[dict]:
+    """Ray-based ``inside`` comparator. ``a`` is inside an OBJECT ``b`` iff, from
+    EVERY cell of ``a``, a ray to the grid edge in each of the 4 directions passes
+    through ``b`` — so ``b`` blocks ``a`` on every side (unlike the first-diff
+    ``inside_pairs``, ``b`` may sit beyond other objects, so nested containment
+    O1⊃O2⊃P0 is captured).
+
+    ``bg_resolved`` gates the background rule:
+    - ``True`` (bg known): a bg-coloured object is a VALID container only if it is
+      itself contained by a valid container (fixpoint bottoming at non-bg objects)
+      — the ambient bg (inside nothing) is excluded, an enclosed bg pocket kept.
+    - ``False`` (bg not yet resolved, e.g. at perception / the ∃ token): NO bg
+      filter — every surrounding object is a container (raw ray containment).
+
+    Returns ``{"a": contained, "b": container-Object}`` pairs (same shape as
+    ``inside_pairs``; one per container, so a nested element yields several)."""
+    objs, pts = gs["objects"], gs["points"]
+    H, W = gs["dims"]
+    owner = {}
+    for j, o in enumerate(objs):
+        for c in o["cells"]:
+            owner[tuple(c)] = j
+    comps = [("O", j, o["cells"]) for j, o in enumerate(objs)] + \
+            [("P", j, p["cells"]) for j, p in enumerate(pts)]
+    raw = {}
+    for kind, idx, cells in comps:
+        cand = None
+        for (r, c) in cells:
+            for dr, dc in _ORTHOGONAL:
+                hit = set()
+                nr, nc = r + dr, c + dc
+                while 0 <= nr < H and 0 <= nc < W:
+                    ow = owner.get((nr, nc))
+                    if ow is not None and ow != idx:
+                        hit.add(ow)
+                    nr += dr
+                    nc += dc
+                cand = hit if cand is None else (cand & hit)
+                if not cand:
+                    break
+            if cand == set():
+                break
+        raw[(kind, idx)] = cand or set()
+    if bg_resolved and bg is not None:
+        keep = {j for j, o in enumerate(objs) if o["color"] != bg}
+        changed = True
+        while changed:
+            changed = False
+            for j, o in enumerate(objs):
+                if o["color"] == bg and j not in keep and (raw[("O", j)] & keep):
+                    keep.add(j)
+                    changed = True
+    else:
+        keep = set(range(len(objs)))          # bg-agnostic: every object valid
+    out = []
+    for (kind, idx), cs in raw.items():
+        for b in sorted(cs & keep):
+            out.append({"a": {"kind": kind, "idx": idx},
+                        "b": {"kind": "O", "idx": b}})
+    return out
 
 
 def base_shape_name(shape: dict):

@@ -231,9 +231,11 @@ def _hyp_order() -> list:
 # A "pair context" (pc) carries the FULL demo pair + the grid bgs `bg_advance`
 # resolved + the phase-4 recomparison findings. Transforms run over the full
 # grids (no bg exclusion); `touching`/`touching_delta` exclude the bg colour ONLY
-# when that grid's bg is resolved; `inside` applies the background RULE (drop an
-# enclosure only when its OUTSIDE container is bg; keep a bg-coloured enclosed
-# pocket — `arc_grids.inside_bg_filtered`). `recolored` also fires off
+# when that grid's bg is resolved; `inside` is the ray-based containment
+# comparator `arc_grids.contained_pairs` (a inside b iff every ray from every
+# cell of a hits object b; a bg-coloured object is a valid container only if it
+# is itself contained — the ambient bg is excluded, an enclosed pocket kept).
+# `recolored` also fires off
 # subdivision sub-pieces (a sub-piece is a full object). Each comparator reports
 # its per-pair parameter(s): the value when the pair's instances AGREE, else
 # ``multi`` (PB-l). ``inside`` has no parameter → bare.
@@ -258,13 +260,14 @@ def _pair_bg_excl(pc):
 
 
 def _inside_present(pc) -> bool:
-    """`inside` over each grid under the background rule: an enclosure is dropped
-    only when the OUTSIDE container is the bg colour (a shape floating in the bg
-    field); a bg-coloured enclosed pocket (bg is the INSIDE) is kept
-    (`arc_grids.inside_bg_filtered`)."""
+    """`inside` over each grid = ray-based containment (`arc_grids.contained_pairs`):
+    `a inside b` iff every ray from every cell of `a` hits object `b`; a
+    bg-coloured object is a valid container only if it is itself contained
+    (ambient bg excluded, enclosed pocket kept). Nested containment (O1⊃O2⊃P0) is
+    captured, unlike the first-diff `inside_pairs`."""
     d = pc["d"]
     for side, bg in (("input", pc["bg_in"]), ("output", pc["bg_out"])):
-        if arc_grids.inside_bg_filtered(d[side], bg):
+        if arc_grids.contained_pairs(d[side], bg, bg_resolved=bg is not None):
             return True
     return False
 

@@ -175,9 +175,12 @@ STEP block: the header lines + the `result` block), as pasted below.
 - **bg-exclusion is conditional + scoped** — transforms (`moved`/`recolored`/
   `rotated`/`reflected`) run over the **full** grids; `touching`/`touching_delta`
   drop the bg colour when that grid's bg is resolved. `inside` applies the
-  background **rule** instead: an enclosure is dropped only when its OUTSIDE
-  container is bg (a shape floating in the bg field); a bg-coloured enclosed
-  pocket (bg is the INSIDE) is KEPT (`arc_grids.inside_bg_filtered`).
+  ray-based containment comparator (`arc_grids.contained_pairs`): `a inside b`
+  iff every ray from every cell of `a` to the grid edge passes through object
+  `b` (nested containment O1⊃O2⊃P0 captured). `bg_resolved=True` (phase 5/7):
+  a bg-coloured object is a valid container only if itself contained — ambient
+  bg excluded, enclosed pocket kept; `bg_resolved=False` (perception/∃ token):
+  raw, no bg filter.
   `recolored` also fires off **subdivision sub-pieces** (a sub-piece is a full
   object; its colour change vs the part it covers is a recolor).
 - **Descriptive, not the rule** — phase 5 is hypothesis/display only (the per-pair

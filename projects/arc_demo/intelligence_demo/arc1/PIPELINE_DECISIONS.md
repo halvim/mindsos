@@ -842,22 +842,31 @@ filed as motivating consumer; the demo does NOT block on it.
   RESULT_OUTPUT_FORMAT + STEPS.md (15-phase). Next layer: general test-apply
   (the general replacement for the #8-specific stages 13–15).
 
-- **2026-06-30 (cont.) — `inside` background RULE (owner directive; replaces the
-  wholesale bg-strip).** `inside` no longer excludes bg symmetrically. An
-  enclosure `a inside b` is dropped **only when the OUTSIDE container `b` is the
-  bg colour** (an object merely floating in the ambient bg field is not a real
-  enclosure); a **bg-coloured INSIDE `a` — an enclosed pocket — is KEPT**. bg
-  unresolved → keep all (bg-agnostic, as at perception). `arc_grids.inside_bg_filtered`
-  applied at the reasoning consumers: phase 5 `_inside_present` (the wholesale
-  `_drop_bg_grid` retired) and phase 7 `_pred_objs(rel, bg)`. The ∃ `inside`
-  Search token / `./evaluate` / induce stay **bg-blind** (the gate comparator
-  contract — untouched). Grounded on #2 `00d62c1b`: the fill target `O2` (colour
-  0 = bg) `inside O1` (the shape) is now kept ∀ the pockets exist; the noise
-  (`O0`/points inside the bg field) is dropped. Corpus: 240/400 fire `inside` at
-  phase 5. Rationale: **bg is a colour with shapes too** — a bg region enclosed
-  by another object is a first-class object, not a thing to exclude. Gate green 8
-  `[ok]`/400, #8 unaffected. STEPS.md + RESULT_OUTPUT_FORMAT.md phase-5 lines
-  updated.
+- **2026-06-30 (cont.) — `inside` = ray-based containment (`arc_grids.contained_pairs`);
+  REPLACES first-diff `inside_pairs` as the `inside` comparator everywhere.**
+  `a inside b` iff, from EVERY cell of `a`, a ray to the grid edge in each of the
+  4 directions passes through object `b` (b may sit beyond other objects, so
+  **nested containment O1⊃O2⊃P0 is captured** — the first-diff test dropped it
+  because the inner content polluted the wall set). Emits one `{"a","b"}` pair per
+  container (nested element → several), same shape as `inside_pairs`.
+  **`bg_resolved` flag** (owner directive): **True** (bg known — phase 5
+  `_inside_present`, phase 7 `_pred_objs`) applies the background rule — a
+  bg-coloured object is a VALID container only if it is **itself contained** by a
+  valid container (fixpoint bottoming at non-bg objects), so the ambient bg
+  (inside nothing) is excluded and an enclosed bg pocket is kept; **False**
+  (perception `attach_relations`, driving the ∃ Search token / `./evaluate` /
+  induce, where bg isn't resolved) = raw ray containment, no bg filter. This
+  unblocks using the same comparator bg-blind (the ∃ token) and bg-aware
+  (reasoning). **Design path** (owner, iterated): the ambient-bg exclusion is NOT
+  a border-touching test (an invented dead-end, reverted) but the structural
+  "valid container ⟺ itself contained" rule. Grounded on **#251 `a5313dff`**: O1
+  (red shape) ⊃ O2 (black pocket) ⊃ P0 (red dot); first-diff missed `O2 inside O1`
+  because O2's walls span O1 **and** P0 (both red, different components); the ray
+  test + valid-container rule yields `O1⊃O2, O1⊃P0, O2⊃P0` and excludes the
+  ambient bg O0. Cost 1302 grids/0.59s. Gate green 8 `[ok]`/400 (invariant +
+  evaluate self-adjusted; ∃ `inside` token 259→268/400), #8 solves, #251 fires
+  `inside` ∀. `inside_pairs` (first-diff) retained as a primitive but no longer
+  called. STEPS.md + RESULT_OUTPUT_FORMAT.md updated.
 
 ---
 
