@@ -210,6 +210,32 @@ def _inside_layer_conformance(cl, tasks) -> None:
           f"inline perception across {n_grids} grids / {len(tasks)} tasks.")
 
 
+def _l4_intake_check(cl, tasks) -> None:
+    """MindsOS wiring step 2 — the L4 intake slice. Dispatch the perceive
+    extractors through the REAL L4 choke point (`L4Dispatcher` -> runtime.invoke)
+    for every grid and prove L4->L3 dispatch reproduces the inline perception;
+    then emit a real L5 `TaskRun` chain artifact into an in-memory MentalModel.
+    Proves the boundary end-to-end: L4 orchestrates, L3 computes, L5 stores."""
+    from . import arc_l4
+    disp = arc_l4.dispatcher(cl)
+    n_grids = 0
+    for t in tasks:
+        grids = [p["input"] for p in t["train"]] + \
+                [p["output"] for p in t["train"]] + \
+                [tg["input"] for tg in t["test"]]
+        for gs in grids:
+            got = arc_l4.perceive_grid(disp, gs["cells"])
+            assert got["objects"] == gs["objects"], \
+                f"L4-dispatched extract_objects != inline on {t['task_id']}"
+            assert got["points"] == gs["points"], \
+                f"L4-dispatched extract_points != inline on {t['task_id']}"
+            n_grids += 1
+    tr = arc_l4.emit_task_run(arc_solver.TASK8)
+    assert getattr(tr, "iri", None), "L5 TaskRun emit produced no artifact"
+    print(f"  [ok] wiring: L4Dispatcher dispatches perceive (L3) matching inline "
+          f"across {n_grids} grids; L5 TaskRun emitted for #8.")
+
+
 #: A synthetic 2-demo task for the phase-9 CONJUNCTION path: recolor to red the
 #: object that is (biggest AND green). No corpus task needs a ≥2 conjunction with
 #: today's condition vocabulary (probe 2026-07-01), so the ≥2 branch is gated here
@@ -298,6 +324,7 @@ def main(argv: list) -> int:
     _inference_soundness_check(tasks)   # same_object ⟹ same_shape wired skip 0/400
     _operator_inference_check(tasks)    # union ⟹ inset operator skip 0/400
     _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
+    _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None
