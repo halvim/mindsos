@@ -118,6 +118,7 @@ def run_and_persist(inst, task_id: str) -> int:
     assert outcome.status == "succeeded", f"L4 lifecycle status={outcome.status!r}"
 
     local_mg = inst.kl.local_metagraph(inst.user)
+    inst.persister.delete(inst.user)                          # clean prior Local (no stale accumulation)
     inst.persister.save(inst.user, local_mg)                  # flush Local -> Falkor
     loaded = inst.persister.load(inst.user)                   # reload from Falkor
     assert loaded is not None, "Local did not reload from Falkor"
