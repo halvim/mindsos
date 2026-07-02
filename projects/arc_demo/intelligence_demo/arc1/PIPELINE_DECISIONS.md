@@ -926,6 +926,44 @@ filed as motivating consumer; the demo does NOT block on it.
     hardcoded #8 tail (stages 10–16 still serve `build_solver`/arc_debug);
     general test-apply of the selected set (phase 10). `inside_pairs` still dead.
 
+- **2026-07-01 (cont.) — Phase 10 "Solve Task" + the #8 hardcoded tail RETIRED;
+  pipeline is now 10 general phases (BUILT + Cowork-gated 8 `[ok]`/400, #8/#2/#251
+  solve end-to-end; NOT committed).** Owner directives: add phase 10 (apply the
+  phase-9 rule set to the test → answer + explanation); **delete all phases after
+  10** (the old #8-specific stages 10–16); add a **description section** to each
+  phase 1–10.
+  - **Phase 10 = `pipeline.step_solve`.** Applies the phase-9 selected set to the
+    **test input** via `arc_solver._apply_candidate_set` (reused from phase-9 demo
+    verification) → answer grid; result = `solved by: {rule set}` +
+    `ANSWER {H}×{W} · matches withheld test: {✓|✗|n/a}`; abstains
+    `I don't know how to solve this task` when phase 9 found no set. **No new
+    apply code** — the move/recolor apply already existed. **Enclosure fallback:**
+    for `recolor [enclosed]` the phase-3 test enclosure is `[]` when the test bg
+    is unresolved (#251); phase 10 recomputes `enclosed_bg_cells(test, solver-bg)`
+    (guarded on `not enc_cells`, not `is None` — phase 3 returns `[[]]`). #8 (move
+    goal), #2/#251 (`recolor [enclosed]`), #53 (move vector) all solve their test
+    ∀; 396/400 → `I don't know`; 0 apply-failures, 0 exceptions across 400.
+  - **#8 tail RETIRED.** Removed `step_background`/`step_roles`/`step_persistence`/
+    `step_selectors`/`step_rule`/`step_verify`/`step_apply` + the dead `_changes`
+    helper + `ctx["bg"]`/`stage1..stage6` producers from the pipeline; `STEPS`
+    16→**10 rows**, all `general`/`general*` (no more `semi`/`⚑#8`). The
+    `arc_solver.stage_*` functions + `build_solver` **survive** (still called at
+    `run_spike:287` for the `arc_debug` solver panel + the D3 biting check) — only
+    the pipeline's `step_*` wrappers went. This is the retire-the-tail step
+    flagged as deferred on 2026-07-01 morning, now greenlit.
+  - **Gate repointed.** `_solve_pipeline_check` no longer asserts `stage6`/`stage1`
+    or run_all-vs-`build_solver` parity (run_all has no `stage*` now); it asserts
+    **phase 10 solves #8/#2/#251** (test answer == withheld output) + the phase-9
+    synthetic size-2 conjunction. Same single `[ok]` line, still **8 `[ok]`**;
+    label `16-step`→`10-step`.
+  - **Description line.** `runner._print_step` renders an `about` line (the
+    `STEP_DESC` phase description) under each STEP header; `STEP_DESC`/`STEP_TARGETS`
+    trimmed to 1–10. STEPS.md + RESULT_OUTPUT_FORMAT.md relocked to 10 phases.
+  - **Still deferred:** cross-generator composition + copy/replicate/tile
+    generators (task-5 family); real ≥2-conjunction corpus consumer (synthetic
+    fixture until more comparators land); retiring `build_solver`/`arc_debug`
+    hardcoded panel; `inside_pairs` dead code.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

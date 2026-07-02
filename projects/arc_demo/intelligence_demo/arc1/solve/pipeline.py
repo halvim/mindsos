@@ -26,12 +26,6 @@ def _block(header: str, lines: list) -> str:
     return header + "\n" + "\n".join(_RESULT_INDENT + ln for ln in lines)
 
 
-def _changes(ctx: dict):
-    """Recompute the per-pair state-change (ref tuples) from profile + bg."""
-    return [arc_solver.touching_changes(pr, ctx["bg"], exclude_bg=True)
-            for pr in ctx["profile"]["train"]]
-
-
 # ── step bodies: fn(ctx, dataset) -> one-line result string (mutates ctx) ──
 def _perceive_line(p, gi_raw, go_raw):
     """One ``Pair p: In … → Out …`` perceive line (dims · palette · obj [· pt])."""
@@ -410,60 +404,39 @@ def step_comparators_hypothesis(ctx, dataset):
     return _block("Comparators Hypothesis:", lines or ["(none)"])
 
 
-def step_background(ctx, dataset):
-    bg = arc_solver._resolve_solver_bg(ctx.get("bg_cand"))
-    b = arc_solver.stage_background(ctx["profile"], bg)
-    ctx["bg"] = b["bg"]
-    n_gained = sum(1 for c in b["changes"] if c["gained"])
-    return f"bg = {b['bg']} (exclude colour {b['bg']}) · touching-gained persists {n_gained}/{b['n']}"
-
-
-def step_roles(ctx, dataset):
-    s1 = arc_solver.stage_roles(ctx["profile"], ctx["bg"], _changes(ctx))
-    ctx["stage1"] = s1
-    return " · ".join(f"{r['ref']}={r['role']}" for r in s1["roles_demo1"])
-
-
-def step_persistence(ctx, dataset):
-    s2 = arc_solver.stage_persistence(ctx["profile"], ctx["bg"], _changes(ctx))
-    ctx["stage2"] = s2
-    combo = s2["combos"][0]
-    return (f"(move, touching): {' '.join(combo['per_demo'])} → verdict = {combo['verdict']} "
-            f"· objects {','.join(combo['objects'])}")
-
-
-def step_selectors(ctx, dataset):
-    s3 = arc_solver.stage_selectors(ctx["profile"], ctx["bg"], _changes(ctx))
-    ctx["stage3"] = s3
-    if not s3:
-        return "selectors: roles incomplete (no mover/target)"
-    return f"mover = {s3['mover_selected']} · target = {s3['target_selected']} · tie→selected = {s3['selected']}"
-
-
-def step_rule(ctx, dataset):
-    s4 = arc_solver.stage_rule()
-    ctx["stage4"] = s4
-    return f"{s4['rule']} · {s4['policy']}"
-
-
-def step_verify(ctx, dataset):
-    s5 = arc_solver.stage_verify(ctx["profile"], ctx["bg"])
-    ctx["stage5"] = s5
-    marks = " ".join("✓" if d["match"] else "✗" for d in s5["per_demo"])
-    return f"demos {marks} → {s5['verdict']}"
-
-
-def step_apply(ctx, dataset):
-    s6 = arc_solver.stage_apply(ctx["profile"], ctx["bg"], ctx.get("raw"))
-    ctx["stage6"] = s6
-    if not s6:
-        return "no test grid"
-    out = s6["output"]
+def step_solve(ctx, dataset):
+    """Phase 10 — Solve Task: apply the phase-9 selected rule set to the TEST
+    input → answer grid, and explain the solution by summarising that rule set.
+    The general replacement for the retired #8-specific verify/apply stages.
+    Abstains (no answer) when phase 9 returned no set, or when the selected set
+    cannot apply to the test input. `matches withheld test` shows ✓/✗ only when
+    the dataset carries the withheld test output (gate/eval), else n/a."""
+    sel = ctx.get("selection")
+    prof = ctx["profile"]
+    if sel is None or not prof.get("test"):
+        ctx["answer"] = None
+        return _block("Solve Task:", ["I don't know how to solve this task"])
+    bg = ctx["rules"]["bg"]
+    tin = prof["test"][0]["input"]
+    enc = (ctx.get("enclosed") or {}).get("test") or []
+    enc_cells = enc[0] if enc else None
+    if not enc_cells:                                # empty/None (test bg unresolved
+        enc_cells = arc_grids.enclosed_bg_cells(tin["cells"], bg)  # at phase 3) → recompute
+    out = arc_solver._apply_candidate_set(sel["set"], tin, bg, enc_cells)
     ctx["answer"] = out
-    dims = f"{len(out)}×{len(out[0])}" if out else "—"
-    m = s6["matches_withheld"]
-    mtxt = "✓" if m else ("✗" if m is not None else "n/a")
-    return f"ANSWER {dims} · {s6['steps']} slide steps · matches withheld test: {mtxt}"
+    if out is None:
+        ctx["solve"] = None
+        return _block("Solve Task:",
+                      [f"rule set found but it could not apply to the test input — {sel['text']}"])
+    raw = ctx.get("raw")
+    matches = None
+    if raw and raw.get("test"):
+        matches = (out == raw["test"][0]["output"])
+    ctx["solve"] = {"output": out, "matches_withheld": matches}
+    dims = f"{len(out)}×{len(out[0])}"
+    mtxt = "✓" if matches else ("✗" if matches is not None else "n/a")
+    return _block("Solve Task:", [f"solved by: {sel['text']}",
+                                  f"ANSWER {dims} · matches withheld test: {mtxt}"])
 
 
 def step_motivations(ctx, dataset):
@@ -544,21 +517,9 @@ STEPS = [
     (9, "Rules Selection", GENERAL_STAR, step_rules_selection,
      "arc_solver.select_rules — minimum candidate set reproducing every demo (apply set to input_k, match output_k, ∀); singles → 2×2 → 3×3 conjunction of same-param recolor_obj; none → I don't know",
      "minimum rule set (∀) or abstain"),
-    (10, "Background + state-change", GENERAL_STAR, step_background,
-     "arc_solver.stage_background(bg from bg_cand, touching_changes(_correspondence, _touch_set))",
-     "bg · changes (gained/lost/maintained)"),
-    (11, "Roles", SEMI, step_roles,
-     "arc_solver.stage_roles(_moved_in, _touch_set, _comp)", "stage1 (roles)"),
-    (12, "Persistence + combo", SPECIMEN, step_persistence,
-     "arc_solver.stage_persistence(_moved_in, _lbl)", "stage2 (persistence ∀demo + verdict)"),
-    (13, "Selectors", SEMI, step_selectors,
-     "arc_solver.stage_selectors(_selectors_for(_comp, _base_shape))", "stage3 (selectors)"),
-    (14, "Rule", SPECIMEN, step_rule, "arc_solver.stage_rule (static)", "stage4 (rule)"),
-    (15, "Verify", SPECIMEN, step_verify,
-     "arc_solver.stage_verify(apply_rule(_shape_roles, _move_direction, _slide, _render))",
-     "stage5 (per-demo match)"),
-    (16, "Apply test → ANSWER", SPECIMEN, step_apply,
-     "arc_solver.stage_apply(apply_rule)", "stage6 + answer grid"),
+    (10, "Solve Task", GENERAL_STAR, step_solve,
+     "arc_solver._apply_candidate_set — apply the phase-9 rule set to the test input → answer grid; explanation summarises the rule set; abstains I don't know",
+     "answer grid + explanation"),
 ]
 
 
@@ -575,13 +536,7 @@ STEP_TARGETS = {
     7: "L3 reasoning — generator motivations (goal/reason) tested by applying the generators · mindsos_capacity (→ L4 induce/learner)",
     8: "L4 plan construction — candidate rules per generator+param+condition (Plan/Pipeline chain artifact; apply = L3 generators via invoke) · mindsos_intelligence/chain_artifacts.py",
     9: "L4 plan search — minimum candidate set reproducing all demos (conjunction over L3 predicates) · mindsos_intelligence/orchestrator.py (replan_check / sufficient_predicate)",
-    10: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
-    11: "L3 reasoning — role assignment over state-change · mindsos_capacity",
-    12: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
-    13: "L3 reasoning/scoring — synthesize_selector via invoke · mindsos_capacity",
-    14: "L4 plan construction → Plan/Pipeline chain artifact · mindsos_intelligence/chain_artifacts.py",
-    15: "L4 sufficiency — sufficient_predicate / replan_check · mindsos_intelligence/orchestrator.py",
-    16: "L4 execution (PipelineRun) + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
+    10: "L4 execution (PipelineRun) — apply the selected Plan to the test input → answer + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
 }
 
 
@@ -596,13 +551,7 @@ STEP_DESC = {
     7: "Motivations — per generator, the goals/reasons that hold on every demo (recolor <c>, rotate <deg>, … if touching, move … until touching), tested by applying the generator.",
     8: "Rules — emit candidate rules, one per generator+param+condition. Move + cell-recolor (recolor [enclosed]) are complete candidates; object-recolor emits one candidate per necessary condition (inside/touching/biggest/smallest/colour/shape). rotate/reflect deferred.",
     9: "Rules Selection — find the minimum set of candidates reproducing every demo output (apply set to input, match output, ∀): singles, then 2×2, 3×3 conjunctions of same-param object-recolor conditions; first covering set wins; none → I don't know how to solve this task.",
-    10: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
-    11: "Classify the changed objects into roles — mover, target, background.",
-    12: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
-    13: "For each role, find the minimal selector that discriminates it across every demo (tie-break → shape).",
-    14: "Assemble the transformation rule — slide the mover toward the target until touching (hardcoded for #8).",
-    15: "Apply the rule to every demo and check it reproduces each output exactly.",
-    16: "Apply the rule to the test input to produce the answer grid (test output withheld).",
+    10: "Solve Task — apply the minimum rule set from phase 9 to the test input to produce the answer grid, and explain the solution by summarising that rule set. Abstain (I don't know) if phase 9 found no set.",
 }
 
 

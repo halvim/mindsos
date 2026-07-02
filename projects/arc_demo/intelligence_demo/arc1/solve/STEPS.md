@@ -5,15 +5,23 @@ every phase in-memory on each invocation (no checkpoints). `./arc solve --phases
 lists the phases with descriptions. Phases are **editable** — change a body in
 `pipeline.py`.
 
-Each phase prints `uses` (input ctx + the real **function chain**), `→ future`
-(the proposed MindsOS feature + location — see `STEP_TARGETS`), `produces`, and
-`result`. Phases 1–4 render a **multi-line** per-pair `result` (perceive summary;
-correspondence tiers; subdivision partitions; addition evidence); the rest are
-single-line.
+Each phase prints `about` (the phase description — see `STEP_DESC`), `uses`
+(input ctx + the real **function chain**), `→ future` (the proposed MindsOS
+feature + location — see `STEP_TARGETS`), `produces`, and `result`. Phases 1–4
+render a **multi-line** per-pair `result` (perceive summary; correspondence
+tiers; subdivision partitions; addition evidence); the rest are single-line.
+
+The pipeline is **10 phases, fully general** (2026-07-01): 1–8 perceive →
+profile → hypothesis → **candidate rules**; 9 **Rules Selection** (minimum rule
+set, or `I don't know how to solve this task`); 10 **Solve Task** (apply the set
+to the test input → answer + explanation). The #8-specific hardcoded tail (old
+stages 10–16: Background/Roles/Persistence/Selectors/Rule/Verify/Apply) was
+**retired** — its reasoning is now general (bg from phases 1–9, selectors from
+phase 8). The monolithic `arc_solver.build_solver` (the same `stage_*` functions)
+survives only for the `arc_debug` solver panel + the D3 spike.
 
 Scope tags: **general** = works for any task · **general\*** = general but uses a
-v1 assumption · **semi** = runs generally but encodes the move-task model ·
-**⚑ #8** = specimen-specific (hardcoded for 05f2a901; won't generalize).
+v1 assumption.
 
 | # | phase | scope | functions used |
 |---|---|---|---|
@@ -25,23 +33,17 @@ v1 assumption · **semi** = runs generally but encodes the move-task model ·
 | 6 | Task Patterns | general\* | `arc_solver.task_patterns` over the phase-2/4 `same_*` matches with subdivided wholes replaced by their sub-pieces — patterns holding ∀ demo pair (addition / subtraction / recoloring / moving / rotation / reflection); `moving` = dims+palette preserved + ≥1 moved; **no bg exclusion** (bg objects participate); bg from `bg_cand` only sets the `bg not resolved` suffix |
 | 7 | Motivations | general\* | `arc_solver.motivations` — per **generator**, the goals/reasons holding ∀ demo pair (add-only): discrete (recolor/rotate/reflect) = a constant-parameter reason (`recolor yellow`) + a predicate condition-reason (`… if touching`/`… if inside`, transformed set == predicate set); continuous `move` = a reason (`move (dr,dc)`) and/or a goal (`move [<dir>] until touching`). Tested by applying the generator. Display/hypothesis |
 | 8 | Rules | general\* | `arc_solver.rules` — emit **candidate** rules, one per generator+param+condition. **MOVE** (`move [<mover>] to [<target>] until touching` #8 / `move [<sel>] by (dr,dc)`) and **cell-RECOLOR** (`recolor [enclosed] {colour}`, #2) are self-contained **complete** candidates (marked `✓ complete`, ∀-verified at assembly). **object-RECOLOR** emits one candidate per **necessary** single condition (`recolor {c} if inside` / `… if biggest` / `… if colour=…` / `… if shape=…` — every recoloured object satisfies it ∀), which need **not** reproduce the output alone → phase 9 conjoins them. rotate/reflect deferred. Display/hypothesis |
-| 9 | Rules Selection | general\* | `arc_solver.select_rules` — the **minimum candidate set** reproducing every demo (apply set to `input_k`, match `output_k`, ∀): singles first (a complete candidate = size 1), then **2×2 → 3×3 conjunctions** of same-param `recolor_obj` conditions (intersect target sets); first covering set wins; **no covering set → `I don't know how to solve this task`**. Conjunction only; cross-generator composition deferred. Does **not** apply to the test (phase 16). The general replacement for the #8 verify/apply stages |
-| 10 | Background + state-change | general\* | `arc_solver.stage_background` → bg from `bg_cand` (`bg_advance`, injected) · `touching_changes` (`_correspondence`, `_touch_set`) |
-| 11 | Roles | semi | `arc_solver.stage_roles` → `_moved_in`, `_touch_set`, `_comp` (mover / target / background, demo-1) |
-| 12 | Persistence + combo | ⚑ #8 | `arc_solver.stage_persistence` → `_moved_in` · `(move, touching)` combo verdict |
-| 13 | Selectors | semi | `arc_solver.stage_selectors` → `_selectors_for` (minimal discriminative selector · tie → shape) |
-| 14 | Rule | ⚑ #8 | `arc_solver.stage_rule` (static — `(move, touching)`, mover=irregular, target=square, slide-to-touch, **hardcoded**) |
-| 15 | Verify | ⚑ #8 | `arc_solver.stage_verify` → `apply_rule` (each demo · exact-match all) |
-| 16 | Apply test → ANSWER | ⚑ #8 | `arc_solver.stage_apply` → `apply_rule(test input)` → output grid (test output withheld) |
+| 9 | Rules Selection | general\* | `arc_solver.select_rules` — the **minimum candidate set** reproducing every demo (apply set to `input_k`, match `output_k`, ∀): singles first (a complete candidate = size 1), then **2×2 → 3×3 conjunctions** of same-param `recolor_obj` conditions (intersect target sets); first covering set wins; **no covering set → `I don't know how to solve this task`**. Conjunction only; cross-generator composition deferred. Does **not** apply to the test (that is phase 10) |
+| 10 | Solve Task | general\* | `arc_solver._apply_candidate_set` — apply the phase-9 rule set to the **test input** → answer grid, with an explanation summarising the rule set (`solved by: {rule set}`). Recolor-enclosed recomputes the test enclosure at the solver bg if phase 3 abstained. `matches withheld test` ✓/✗ only when the dataset carries the withheld output. Abstains `I don't know how to solve this task` when phase 9 found no set. The general replacement for the retired #8 verify/apply stages |
 
 **Subdivision, component re-comparison, comparators hypothesis, task pattern,
-motivations, rules (phases 3–8) are hypothesis/display steps** — they read the
-phase-2 profile and narrate what the task is doing; they are NOT consumed by the
-hardcoded #8 tail (stages 10–16 compute independently). Phase 8 (rules) emits
+motivations (phases 3–7) are hypothesis/display steps** — they read the
+phase-2 profile and narrate what the task is doing. Phase 8 (rules) emits
 **candidate** rules (complete move/cell-recolor + per-condition object-recolor);
 **phase 9 (rules selection)** picks the **minimum candidate set** that reproduces
-every demo (or abstains `I don't know how to solve this task`) — together the
-general replacement for the hardcoded #8 rule/verify/apply stages 14–16. Phase 3 (subdivision) detects a disjoint cover in
+every demo (or abstains `I don't know how to solve this task`); **phase 10 (solve
+task)** applies that set to the test input → answer + explanation. Phases 8–10
+are the general solver (they replaced the retired #8-specific tail). Phase 3 (subdivision) detects a disjoint cover in
 **either direction** (bg-agnostic) — `split` (input object = ≥2 output insets) or
 `assemble` (output object = ≥2 input insets), each finding tagged
 `[split]`/`[assemble]`, points included. Phase 4 (component re-comparison)
@@ -98,11 +100,12 @@ so the token (267/400) deliberately diverges from the display. See
 **Honest notes.** The perceive chain is *discovered* through the capacity layer
 (`find_pipeline`); every phase *executes* inline (`arc_grids`/`arc_solver`),
 because the solver is D3-inline and disjoint from the layer. Phases 1/2/5 are
-general (3/4/6/7/8/9 general\*); 12/14/15/16 are #8-specific (the rule is
-hardcoded); 11/13 are move-model semi-general. The whole pipeline runs in-memory and is
-recomputed from scratch on every invocation (no checkpoints).
+general; 3/4/6/7/8/9/10 are general\* (v1 assumptions — the move/recolor rule
+model). **No phase is #8-specific any more** (the hardcoded tail was retired
+2026-07-01). The whole pipeline runs in-memory and is recomputed from scratch on
+every invocation (no checkpoints).
 
-**Background Color line (phases 2–16).** Each phase ≥2 prints a `Background Color`
+**Background Color line (phases 2–10).** Each phase ≥2 prints a `Background Color`
 step-block line rendering `bg_advance`'s per-grid `bg_cand`: `Pair{i}.bg=X` when
 one side resolves to X **and** X is a candidate on the other side (option C), else
 `In{i}.bg={…} · Out{i}.bg={…}`; `test.bg={…}` always (singletons bare, multi in

@@ -213,29 +213,27 @@ _SYN_CONJ = {"train": {"SYN": {"train": [
 
 
 def _solve_pipeline_check(dataset, solver) -> None:
-    """The arc1/solve 16-step pipeline must (a) solve #8 via the hardcoded tail
-    and agree with build_solver, (b) have phase 9 select a covering rule set for
-    #8 / #2 / #251, and (c) resolve the synthetic conjunction fixture at size 2."""
+    """The arc1/solve 10-step GENERAL pipeline must solve #8 / #2 / #251 end to
+    end — phase 9 selects a covering rule set and phase 10 applies it to the test
+    input, matching the withheld output — and resolve the synthetic conjunction
+    fixture at size 2. (The #8-specific stages 10–16 were retired 2026-07-01; the
+    monolithic build_solver still runs for the arc_debug solver panel + D3 spike,
+    but the pipeline no longer mirrors it.)"""
     from intelligence_demo.arc1.solve import pipeline
-    ctx = pipeline.run_all(arc_solver.TASK8, dataset)
-    assert ctx["stage6"]["matches_withheld"] is True, \
-        "arc1/solve did not solve #8 (matches_withheld != True)"
-    assert ctx["stage6"]["output"] == solver["stage6"]["output"], \
-        "arc1/solve answer differs from build_solver"
-    assert ctx["stage1"]["roles_demo1"] == solver["stage1"]["roles_demo1"], \
-        "arc1/solve stage1 differs from build_solver"
-    # phase 9 — a covering rule set is selected on the reference tasks (size 1)
     for tid in (arc_solver.TASK8, "00d62c1b", "a5313dff"):
-        if tid in dataset["train"]:
-            sel = pipeline.run_all(tid, dataset)["selection"]
-            assert sel is not None, f"phase 9 found no rule set for {tid}"
+        if tid not in dataset["train"]:
+            continue
+        ctx = pipeline.run_all(tid, dataset)
+        assert ctx["selection"] is not None, f"phase 9 found no rule set for {tid}"
+        assert ctx.get("solve") and ctx["solve"]["matches_withheld"] is True, \
+            f"phase 10 did not solve {tid} (test answer != withheld output)"
     # phase 9 — the ≥2 conjunction path (synthetic; no corpus consumer yet)
     sprof = arc_profile.build_profile(_SYN_CONJ, "train", "SYN")
     ssel = arc_solver.select_rules(sprof, arc_solver.rules(sprof))
     assert ssel is not None and ssel["size"] == 2, \
         f"phase-9 conjunction fixture did not resolve at size 2 ({ssel})"
-    print("  [ok] arc1/solve: 16-step pipeline solves #8, matches build_solver; "
-          "phase 9 selects #8/#2/#251 + a size-2 conjunction.")
+    print("  [ok] arc1/solve: 10-step general pipeline solves #8/#2/#251 "
+          "(phase 9 select + phase 10 apply to test) + a size-2 conjunction.")
 
 
 def main(argv: list) -> int:

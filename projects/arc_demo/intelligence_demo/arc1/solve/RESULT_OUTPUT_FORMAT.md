@@ -327,11 +327,42 @@ STEP block: the header lines + the `result` block), as pasted below.
   task` (e.g. task 5 `045e512c` — needs copy/replicate generators the demo
   doesn't have; cross-generator composition is deferred).
 - **No test apply here** — phase 9 verifies on the demos only; applying the
-  selected set to the test input → answer is phase 16 (`⚑ #8` hardcoded today).
+  selected set to the test input → answer is **phase 10 (Solve Task)**.
+
+## Reference example — Phase 10 (Solve Task), task #8
+
+```
+── STEP 10 · Solve Task ──────────────────────────────────────────────────  [general*]
+   result   Solve Task:
+            solved by: move [no base shape (irregular)] to [shape = square] until touching
+            ANSWER 11×10 · matches withheld test: ✓
+```
+```
+   result   Solve Task:
+            I don't know how to solve this task
+```
+
+### Phase 10 result body — format
+
+- **Header:** `Solve Task:` then either the two solved lines, or the single
+  abstain line `I don't know how to solve this task`.
+- **Solved (phase 9 returned a set that applies to the test):**
+  - `solved by: {rule-set text}` — the phase-9 `text` (the complete rule, or the
+    `recolor {colour} if [{cond} ∧ …]` conjunction).
+  - `ANSWER {H}×{W} · matches withheld test: {✓|✗|n/a}` — the produced test
+    answer grid; `matches withheld test` is `✓`/`✗` only when the dataset carries
+    the withheld test output (gate/eval), else `n/a` (a real solve).
+- **Abstain:** `I don't know how to solve this task` when phase 9 found no set
+  (e.g. task 5 `045e512c`), **or** `rule set found but it could not apply to the
+  test input — {text}` when a set was found but the apply returned nothing.
+- **Enclosure fallback:** for `recolor [enclosed]`, if phase 3 abstained on the
+  test enclosure (test bg unresolved), phase 10 recomputes it from the test input
+  at the solver bg (`arc_grids.enclosed_bg_cells`), so #251 solves.
 
 ## Block structure (what each line is)
 
 - `── STEP {n} · {name} ───…  [{scope}]` — phase number, name, scope tag.
+- `   about    {phase description}` — the one-line phase description (`STEP_DESC`).
 - `   uses     {input ctx} · {real function chain}`
 - `   → future {proposed MindsOS feature + location}`
 - `   produces {what the phase adds to ctx}`
@@ -401,4 +432,11 @@ per-phase body content is defined in `pipeline.py` / `arc_solver`.
   `Rules Selection:` then the minimum covering candidate set
   `{text}   ✓∀ {n}/{n}  (min set · size {k})` (singles → 2×2 → 3×3 conjunction
   of same-param `recolor_obj`), or the abstain string `I don't know how to solve
-  this task`. No test apply (phase 16). Cross-generator composition deferred.
+  this task`. No test apply (phase 10). Cross-generator composition deferred.
+- **Phase 10 (Solve Task) NEW + LOCKED** (2026-07-01). Header `Solve Task:` then
+  `solved by: {rule set}` + `ANSWER {H}×{W} · matches withheld test: {✓|✗|n/a}`,
+  or the abstain string. Applies the phase-9 set to the test input (recolor-
+  enclosed recomputes the test enclosure at the solver bg if phase 3 abstained).
+  The pipeline is now **10 phases**; the #8-specific stages 10–16 were retired.
+- **`about` description line ADDED** (2026-07-01). Every STEP block renders an
+  `about` line (the `STEP_DESC` phase description) between the header and `uses`.

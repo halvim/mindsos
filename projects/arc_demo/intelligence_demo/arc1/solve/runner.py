@@ -52,6 +52,7 @@ def _print_step(n, name, scope, functions, uses_prefix, produces, result, task_i
     bar = "─" * max(4, 60 - len(name))
     print()
     print(_c("1", f"── STEP {n} · {name} ") + _c("2", bar) + "  " + _scope_tag(scope, task_id))
+    print(_c("2", "   about    ") + _c("2", pipeline.STEP_DESC.get(n, "")))
     print(_c("2", "   uses     ") + _c("2", uses_prefix + " · ") + functions)
     print(_c("2", "   → future ") + _c("36", pipeline.STEP_TARGETS.get(n, "—")))
     print(_c("2", "   produces ") + produces)
