@@ -90,11 +90,9 @@ def main() -> int:
     client = connect()
     try:
         roundtrip_probe(client)
+        print("  [i] data LEFT in Falkor graph 'arc' (Local 'local_knowledge:arc') "
+              "for inspection — query it with redis-cli (see below).")
     finally:
-        try:
-            client.run_query("MATCH (n) DETACH DELETE n")
-        except Exception:
-            pass
         try:
             client.close()
         except Exception:
