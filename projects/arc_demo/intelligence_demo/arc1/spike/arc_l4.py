@@ -18,11 +18,28 @@ on top of this driver.
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
+from mindsos_capacity.capacity_layer import CapacityLayer
 from mindsos_capacity.identifiers import capacity_iri
+from mindsos_capacity.builtins import (
+    install_orchestration_v0,
+    install_phase1_v0,
+    install_planning_v0,
+    install_text_capacities,
+    reset_v0_verdicts,
+)
+from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
+from mindsos_capacity.builtins.dream import install_dream_capacities
 
 from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
 from mindsos_intelligence.dispatch import L4Dispatcher
 from mindsos_intelligence.mm import MentalModel
+from mindsos_intelligence.orchestrator import Orchestrator
+
+from mindsos_knowledge import KnowledgeLayer
+from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
+from mindsos_knowledge.metagraph_view import MetagraphView
 
 from . import arc_capacities as ac
 
@@ -51,3 +68,57 @@ def emit_task_run(task_id: str):
     mm = MentalModel(session_id="arc", user_id="arc")
     writer = ChainArtifactWriter(mm, task_scope=task_id)
     return writer.emit_task_run()
+
+
+# ── the real MindsOS instance (a): bootstrapped stack + arc caps ─────────
+class _ArcSession:
+    """Minimal SessionProtocol session for one Local user (mirrors the Phase-49
+    scenario session). ``has()`` is permissive — the trivial consolidate writes
+    the user's OWN Local, which needs no CAN_WRITE_GLOBAL (ADR-0180 gate only
+    fires for Global writes)."""
+
+    def __init__(self, user_id: str = "arc") -> None:
+        self.user_id = user_id
+        self.session_id = f"arc-{user_id}"
+        self.actor_role = "user"
+
+    def has(self, capability: str) -> bool:
+        return True
+
+
+def build_instance(user: str = "arc"):
+    """Stand up a REAL in-process MindsOS instance (option (a)) — the shipped
+    Phase-49 `build_stack` recipe (bootstrapped KL + CapacityLayer with every v0
+    catalog + consolidate/text/dream builtins) with the ARC capacities registered
+    ON TOP. This is an actual instance of the stack, not an isolated
+    CapacityLayer.
+
+    Seam for option (b): swap the in-memory `KnowledgeLayer.bootstrap()` for a
+    live Falkor-bootstrapped KL + a FalkorDBLocalPersister (the Phase-49
+    `build_stack(kl=...)` comment) — nothing else here changes."""
+    kl = KnowledgeLayer.bootstrap()
+    layer = CapacityLayer(kl=kl)
+    install_planning_v0(layer)
+    install_phase1_v0(layer)
+    install_orchestration_v0(layer)
+    install_consolidate_capacities(layer)
+    install_text_capacities(layer)
+    install_dream_capacities(layer)
+    reset_v0_verdicts()
+    ac.install_arc(layer)  # arc L3 caps registered onto the real instance
+    session = _ArcSession(user)
+    mm = MentalModel(session_id=session.session_id, user_id=user)
+    dispatcher = L4Dispatcher(layer, session=session, kl=kl)
+    orch = Orchestrator(dispatcher, mm, task_scope="arc")
+    return SimpleNamespace(kl=kl, layer=layer, session=session, mm=mm,
+                           dispatcher=dispatcher, orch=orch, user=user)
+
+
+def episodes(inst) -> list:
+    """L5 read-back: the Episode nodes consolidation wrote into the user's Local
+    episodic_memories role graph."""
+    g = MetagraphView(inst.kl.local_metagraph(inst.user)).graphs_by_role(
+        ROLE_EPISODIC_MEMORIES
+    )[0]
+    return [n for n in g.nodes.values()
+            if getattr(n, "type_name", None) == "Episode"]

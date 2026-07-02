@@ -236,6 +236,32 @@ def _l4_intake_check(cl, tasks) -> None:
           f"across {n_grids} grids; L5 TaskRun emitted for #8.")
 
 
+def _mindsos_instance_check() -> None:
+    """MindsOS wiring step 3 — prove the LAYERS work together on a REAL in-process
+    instance (option (a), prep for (b)). Stand up the shipped stack (bootstrapped
+    KnowledgeLayer + CapacityLayer with the v0/consolidate/text/dream builtins)
+    with the arc caps on top, then assert:
+      * L4 — the six-phase lifecycle runs to `succeeded` (Orchestrator.run_lifecycle);
+      * L5 — consolidation wrote an Episode we can read back from the user's Local;
+      * L3 — an arc capacity dispatches on the same instance.
+    The task content through the lifecycle is the shipped v0 smoke; routing ARC
+    content through it is the later phase-8/9/10 wiring."""
+    from . import arc_l4
+    inst = arc_l4.build_instance()
+    # L3 — arc cap dispatches on the real instance
+    got = arc_l4.perceive_grid(inst.dispatcher, [[1, 1, 0], [0, 0, 2]])
+    assert "objects" in got and "points" in got, "arc perceive did not dispatch on the instance"
+    # L4 — six-phase lifecycle runs to completion
+    outcome = inst.orch.run_lifecycle({"text": "the cat sat"}, task_id="arc-smoke")
+    assert outcome.status == "succeeded", f"L4 lifecycle status={outcome.status!r}"
+    # L5 — consolidation wrote an Episode; read it back
+    eps = arc_l4.episodes(inst)
+    assert len(eps) >= 1, "L5 consolidation wrote no Episode to the Local"
+    print(f"  [ok] MindsOS instance: L4 six-phase lifecycle -> succeeded, L5 "
+          f"consolidation Episode read-back ({len(eps)}), arc L3 dispatchable "
+          f"on a bootstrapped KL/CapacityLayer.")
+
+
 #: A synthetic 2-demo task for the phase-9 CONJUNCTION path: recolor to red the
 #: object that is (biggest AND green). No corpus task needs a ≥2 conjunction with
 #: today's condition vocabulary (probe 2026-07-01), so the ≥2 branch is gated here
@@ -325,6 +351,7 @@ def main(argv: list) -> int:
     _operator_inference_check(tasks)    # union ⟹ inset operator skip 0/400
     _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
     _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
+    _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None
