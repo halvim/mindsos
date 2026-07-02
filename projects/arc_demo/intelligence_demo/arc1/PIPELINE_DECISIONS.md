@@ -964,6 +964,60 @@ filed as motivating consumer; the demo does NOT block on it.
     fixture until more comparators land); retiring `build_solver`/`arc_debug`
     hardcoded panel; `inside_pairs` dead code.
 
+- **2026-07-02 — MindsOS WIRING chat (branch `demo/arc-wiring` off `demo/arc`; NOT
+  merged). The arc-solver now RUNS ON THE REAL MindsOS layers; a durable Falkor-backed
+  instance persists solved-task Episodes. ZERO core changes.** Full running record in
+  memory `[[arc-wiring-progress]]` + `[[mindsos-persistence-model]]` +
+  `[[arc-mindsos-layer-mapping]]`.
+  - **Layer model (owner-corrected + code-verified).** capacity = L3 (fixed function);
+    its per-task RESULT = L5 mental-model instance; L4 = orchestration (decides which
+    caps to call + sequence); `cl.invoke`/`find_pipeline` = the L3 door. Persistence:
+    L2 + L3 = Global+Local metagraphs; L4 outputs persist via L2; **L5 episodes are
+    LOCAL-ONLY ("No Global L5")** ⇒ arc-solve is Local.
+  - **New files:** `spike/arc_l4.py` (L4 driver + in-memory instance assembly — mirrors
+    the shipped `tests/phase_49` `build_stack`), `spike/arc_instance.py` (the DURABLE
+    Falkor instance — Linux+docker only, NOT in `./run_spike`), `docker-compose.yml`
+    (FalkorDB sidecar). Modified: `spike/arc_capacities.py` (+`inside` real body, +3
+    solve caps, +8 DataStates, `install_arc(session=…)`), `spike/run_spike.py` (+3
+    in-memory checks).
+  - **Solve through the layer.** 3 new L3 DECISION caps in `_solver_capacities`
+    (CATEGORY_REASONING): `emit_candidates` (phase 8 = `arc_solver.rules`),
+    `select_rules` (9), `apply_solution` (10) + 7 solve DataStates (DS_PROFILE/BG_CAND/
+    RECOMPARISON/ENCLOSED/RULES/SELECTION/SOLVE). `arc_l4.solve_through_layer` runs
+    phases 1-7 inline (profile) then DISPATCHES 8→9→10 via `L4Dispatcher` — L4=control,
+    caps=decisions (NO monolith `arc.solve` — that puts orchestration in L3, the
+    boundary the owner corrected). `run_spike._arc_solve_layer_check`: dispatched answer
+    == inline AND == withheld ground-truth for #8/#2/#251 (non-tautological). `inside`
+    became the first real predicate cap (`arc.perceived_grid` bundle DS, ray
+    `contained_pairs`, 400-grid conformance). Phases 1-7 stay inline in the driver
+    (perceive IS dispatchable — `_l4_intake_check` — decompose later).
+  - **Why no core needed.** `find_pipeline`/ConjunctionFinder compose data-flow chains,
+    NOT the solver's control logic (∀/min-set/apply) → an authored L4 sequence, not
+    discovered (so `composition-lifecycle` merge + Part 5 are OFF the path). Caps take
+    COARSE bundle inputs (profile/pair/grid) → no same-type-operand arity ever (Part 5
+    moot). Durable Episode: ADR-0182 (Phase 50) already routes dict node `value` → the
+    `_value_json` column (live-tested `tests/maintenance/…::test_live_structured_value_
+    round_trip`) → an Episode dict persists with NO core change; the demo calls
+    `FalkorDBLocalPersister.save(user, kl.local_metagraph(user))`.
+  - **Durable instance (b), Local.** `build_durable_instance` =
+    `arc_l4.build_instance(arc_local=True)` (arc caps + DataStates → the user's Local L3;
+    all-Local — both share scope, mixed Global-ds+Local-caps raises) + `FalkorDBLocalPersister`.
+    `run_and_persist(SOLVED_TASKS = 05f2a901 #8, 00d62c1b #2, a5313dff #251, 25ff71a9 #53)`:
+    per task solve_through_layer → `consolidate_task(task_pattern_iri="arc:solved:<id>",
+    outcome)` → 4 Episodes in one Local → `delete`+`save` → reload asserts 4. `restart`
+    mode: fresh `KL.bootstrap()` + `install_local_metagraph(user, persister.load(user))`
+    finds all 4 with NO trip re-run (survives restart). Run:
+    `python3 -m intelligence_demo.arc1.spike.arc_instance [restart]`; container
+    `mindsos-falkordb` (6379); `FalkorConfig.from_env()`. Gotcha: `delete`-before-`save`
+    (same Local name `local_knowledge:arc` else runs accumulate).
+  - **Gate:** `./run_spike` now prints **13 `[ok]` lines**; #8/#2/#251 still solve; durable
+    path separate (Linux+docker). Discipline: Cowork builds / Mac commits / Linux gates
+    (`[[machine-paths-and-gate]]`).
+  - **Deferred:** decompose phases 1-7 into dispatched caps; `synthesize_selector`/
+    `bg_deduction` remain stubs (not on the solve-decision path in use); merge
+    `demo/arc-wiring`→`demo/arc`. Next-chat prompts drafted:
+    `ARC_REPORTING_NEXT_CHAT_PROMPT.md`, `ARC_SOLVER_CAPACITY_NEXT_CHAT_PROMPT.md`.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**
