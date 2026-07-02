@@ -62,6 +62,30 @@ def perceive_grid(disp: L4Dispatcher, grid) -> dict:
     return {"objects": ro.outputs[ac.DS_OBJECT], "points": rp.outputs[ac.DS_POINT]}
 
 
+_CAP_EMIT = capacity_iri(ac.CATEGORY_REASONING, "emit_candidates")
+_CAP_SELECT = capacity_iri(ac.CATEGORY_REASONING, "select_rules")
+_CAP_APPLY = capacity_iri(ac.CATEGORY_REASONING, "apply_solution")
+
+
+def solve_through_layer(disp, task_id: str, dataset: dict):
+    """L4 DRIVER — sequence the arc solve's phases 8→9→10, dispatching each as a
+    REAL L3 decision cap through the layer (not inline). Phases 1-7 (perceive +
+    hypothesis working state) are run inline to build the profile the decisions
+    consume. Returns (dispatched_solve, inline_solve) for conformance."""
+    from intelligence_demo.arc1.solve import pipeline
+    ctx = pipeline.run_all(task_id, dataset)          # inline profile + inline answer (oracle)
+    base = {ac.DS_PROFILE: ctx["profile"], ac.DS_ENCLOSED: ctx.get("enclosed")}
+    rules = disp.dispatch(_CAP_EMIT, {**base,
+                                      ac.DS_BG_CAND: ctx.get("bg_cand"),
+                                      ac.DS_RECOMPARISON: ctx.get("recomparison")}
+                          ).outputs[ac.DS_RULES]
+    sel = disp.dispatch(_CAP_SELECT, {**base, ac.DS_RULES: rules}).outputs[ac.DS_SELECTION]
+    solve = disp.dispatch(_CAP_APPLY, {**base, ac.DS_RULES: rules,
+                                       ac.DS_SELECTION: sel,
+                                       ac.DS_RAW_TASK: ctx.get("raw")}).outputs[ac.DS_SOLVE]
+    return solve, ctx.get("solve")
+
+
 def emit_task_run(task_id: str):
     """Stand up an in-memory L5 MentalModel + writer and emit the TaskRun chain
     artifact for the task (the L4 intake's L5 product)."""

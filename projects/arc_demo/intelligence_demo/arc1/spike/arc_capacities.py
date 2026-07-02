@@ -111,6 +111,15 @@ DS_COLOR = datastate_iri("arc.color")
 DS_RECOLOR_TRANSFORM = datastate_iri("arc.recolor_transform")
 DS_ROTATE_TRANSFORM = datastate_iri("arc.rotate_transform")
 DS_REFLECT_TRANSFORM = datastate_iri("arc.reflect_transform")
+# solve-stage DataStates — phases 8/9/10 dispatched as L3 DECISIONS (the L4
+# driver sequences them; each result is L5 MM working state).
+DS_PROFILE = datastate_iri("arc.profile")
+DS_BG_CAND = datastate_iri("arc.bg_cand")
+DS_RECOMPARISON = datastate_iri("arc.recomparison")
+DS_ENCLOSED = datastate_iri("arc.enclosed")
+DS_RULES = datastate_iri("arc.rules")
+DS_SELECTION = datastate_iri("arc.selection")
+DS_SOLVE = datastate_iri("arc.solve")
 
 
 def arc_datastates() -> List[DataState]:
@@ -155,6 +164,13 @@ def arc_datastates() -> List[DataState]:
         ds("arc.recolor_transform", CATEGORY_COMPARATOR, "recolored: same shape + position, different colour | None."),
         ds("arc.rotate_transform", CATEGORY_COMPARATOR, "rotated: 90/180/270 rotation between Shapes | None."),
         ds("arc.reflect_transform", CATEGORY_COMPARATOR, "reflected: horizontal/vertical reflection between Shapes | None."),
+        ds("arc.profile", CATEGORY_REASONING, "Built TaskProfile + per-phase working state (perceive/hypothesis)."),
+        ds("arc.bg_cand", CATEGORY_REASONING, "Per-grid background candidates (bg_advance)."),
+        ds("arc.recomparison", CATEGORY_REASONING, "Phase-4 sub-piece re-comparison results."),
+        ds("arc.enclosed", CATEGORY_REASONING, "Phase-3 input-only enclosed-region cells per split (train/test)."),
+        ds("arc.rules", CATEGORY_REASONING, "Phase-8 candidate rules + resolved bg."),
+        ds("arc.selection", CATEGORY_REASONING, "Phase-9 minimum covering rule set (or None)."),
+        ds("arc.solve", CATEGORY_REASONING, "Phase-10 solution: answer grid + matches_withheld."),
     ]
 
 
@@ -198,6 +214,49 @@ def _inside(**kw: Any) -> dict:
     if gs is None:
         return {DS_INSIDE: None}
     return {DS_INSIDE: arc_grids.contained_pairs(gs, bg_resolved=False)}
+
+
+def _arc_emit_candidates(**kw: Any) -> dict:
+    """Phase 8 (L3 decision) — emit candidate rules from the profile. REAL body =
+    the shipped `arc_solver.rules`; dispatched by the L4 driver, not inline."""
+    prof = kw.get(DS_PROFILE)
+    if prof is None:
+        return {DS_RULES: None}
+    from . import arc_solver
+    enclosed = kw.get(DS_ENCLOSED)
+    return {DS_RULES: arc_solver.rules(prof, kw.get(DS_BG_CAND),
+                                       kw.get(DS_RECOMPARISON),
+                                       (enclosed or {}).get("train"))}
+
+
+def _arc_select_rules(**kw: Any) -> dict:
+    """Phase 9 (L3 decision) — the minimum covering rule set (arc_solver.select_rules)."""
+    prof, rules = kw.get(DS_PROFILE), kw.get(DS_RULES)
+    if prof is None or rules is None:
+        return {DS_SELECTION: None}
+    from . import arc_solver
+    return {DS_SELECTION: arc_solver.select_rules(prof, rules, kw.get(DS_ENCLOSED))}
+
+
+def _arc_apply_solution(**kw: Any) -> dict:
+    """Phase 10 (L3 decision) — apply the selected set to the TEST input → answer
+    (mirrors `pipeline.step_solve` over `arc_solver._apply_candidate_set`)."""
+    prof, sel, rules = kw.get(DS_PROFILE), kw.get(DS_SELECTION), kw.get(DS_RULES)
+    if prof is None or sel is None or rules is None or not prof.get("test"):
+        return {DS_SOLVE: None}
+    from . import arc_solver
+    bg = rules["bg"]
+    tin = prof["test"][0]["input"]
+    enc = (kw.get(DS_ENCLOSED) or {}).get("test") or []
+    enc_cells = enc[0] if enc else None
+    if not enc_cells:
+        enc_cells = arc_grids.enclosed_bg_cells(tin["cells"], bg)
+    out = arc_solver._apply_candidate_set(sel["set"], tin, bg, enc_cells)
+    if out is None:
+        return {DS_SOLVE: None}
+    raw = kw.get(DS_RAW_TASK)
+    matches = (out == raw["test"][0]["output"]) if (raw and raw.get("test")) else None
+    return {DS_SOLVE: {"output": out, "matches_withheld": matches}}
 
 
 def _comprehend_task(**kw: Any) -> dict:
@@ -431,8 +490,37 @@ def _reason_capacities() -> List[Capacity]:
     ]
 
 
+def _solver_capacities() -> List[Capacity]:
+    """The SOLVE-stage L3 decisions (phases 8/9/10), real bodies wrapping the
+    shipped `arc_solver` functions. The L4 driver (`arc_l4.solve_through_layer`)
+    sequences them and threads the results — L4 = control, these = the decisions."""
+    return [
+        Capacity(
+            name="emit_candidates", category=CATEGORY_REASONING,
+            inputs=(DS_PROFILE, DS_BG_CAND, DS_RECOMPARISON, DS_ENCLOSED),
+            outputs=(DS_RULES,), implementation=_arc_emit_candidates,
+            description="Phase 8 — candidate rules per generator+param+condition.",
+        ),
+        Capacity(
+            name="select_rules", category=CATEGORY_REASONING,
+            inputs=(DS_PROFILE, DS_RULES, DS_ENCLOSED),
+            outputs=(DS_SELECTION,), implementation=_arc_select_rules,
+            description="Phase 9 — minimum covering rule set (or None).",
+        ),
+        Capacity(
+            name="apply_solution", category=CATEGORY_REASONING,
+            inputs=(DS_PROFILE, DS_SELECTION, DS_RULES, DS_ENCLOSED, DS_RAW_TASK),
+            outputs=(DS_SOLVE,), implementation=_arc_apply_solution,
+            description="Phase 10 — apply the selected set to the test input -> answer.",
+        ),
+    ]
+
+
 # capacity IRIs (for assertions / introspection)
 CAP_COMPREHEND = capacity_iri(CATEGORY_PERCEIVER, "comprehend_task")
+CAP_EMIT_CANDIDATES = capacity_iri(CATEGORY_REASONING, "emit_candidates")
+CAP_SELECT_RULES = capacity_iri(CATEGORY_REASONING, "select_rules")
+CAP_APPLY_SOLUTION = capacity_iri(CATEGORY_REASONING, "apply_solution")
 CAP_BUILD_GRID = capacity_iri(CATEGORY_PERCEIVER, "build_grid")
 CAP_EXTRACT_PALETTE = capacity_iri(CATEGORY_PERCEIVER, "extract_palette")
 CAP_EXTRACT_OBJECTS = capacity_iri(CATEGORY_PERCEIVER, "extract_objects")
@@ -510,7 +598,7 @@ def ordered_catalog() -> List[dict]:
     caps = (_perceive_capacities() + _profiler_capacities()
             + _comparator_capacities() + _intra_grid_capacities()
             + _operator_capacities() + _transform_capacities()
-            + _reason_capacities())
+            + _reason_capacities() + _solver_capacities())
     rows = [{"name": c.name, "category": c.category, "phase": c.category,
              "consumes": [_short_ds(i) for i in c.inputs],
              "produces": [_short_ds(o) for o in c.outputs]} for c in caps]
@@ -536,6 +624,8 @@ def install_arc(capacity_layer: CapacityLayer) -> None:
     for cap in _transform_capacities():
         capacity_layer.register_capacity(cap)
     for cap in _reason_capacities():
+        capacity_layer.register_capacity(cap)
+    for cap in _solver_capacities():
         capacity_layer.register_capacity(cap)
 
 

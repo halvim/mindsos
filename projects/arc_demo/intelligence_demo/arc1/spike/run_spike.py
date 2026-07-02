@@ -262,6 +262,27 @@ def _mindsos_instance_check() -> None:
           f"on a bootstrapped KL/CapacityLayer.")
 
 
+def _arc_solve_layer_check(cl, dataset) -> None:
+    """MindsOS wiring step 4 — the arc SOLVE runs through the layer. An L4 driver
+    sequences phases 8/9/10, dispatching each as a real L3 decision cap via
+    L4Dispatcher; the dispatched answer must reproduce the inline solve AND match
+    the withheld test output for #8/#2/#251. Proves solve DECISIONS (not just
+    perceive) execute through L4->L3."""
+    from . import arc_l4
+    disp = arc_l4.dispatcher(cl)
+    for tid in (arc_solver.TASK8, "00d62c1b", "a5313dff"):
+        if tid not in dataset["train"]:
+            continue
+        dispatched, inline = arc_l4.solve_through_layer(disp, tid, dataset)
+        assert dispatched is not None and inline is not None, f"no solve for {tid}"
+        assert dispatched["output"] == inline["output"], \
+            f"L4-dispatched solve != inline answer for {tid}"
+        assert dispatched["matches_withheld"] is True, \
+            f"L4-dispatched solve did not match withheld test for {tid}"
+    print("  [ok] arc solve: phases 8/9/10 dispatched through L4->L3 reproduce the "
+          "inline answer + match the withheld test (#8/#2/#251).")
+
+
 #: A synthetic 2-demo task for the phase-9 CONJUNCTION path: recolor to red the
 #: object that is (biggest AND green). No corpus task needs a ≥2 conjunction with
 #: today's condition vocabulary (probe 2026-07-01), so the ≥2 branch is gated here
@@ -352,6 +373,7 @@ def main(argv: list) -> int:
     _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
     _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
     _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
+    _arc_solve_layer_check(cl, dataset)   # wiring step 4: arc solve (phases 8/9/10) dispatched L4->L3
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None
