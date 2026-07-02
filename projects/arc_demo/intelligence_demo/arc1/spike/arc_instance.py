@@ -44,6 +44,8 @@ from mindsos_knowledge.metagraph_view import MetagraphView
 
 from mindsos_server.persistence.local_persister import FalkorDBLocalPersister
 
+from . import arc_grids, arc_l4, arc_solver
+
 
 def connect(graph: str = "arc") -> FalkorClient:
     """Connect to the Falkor sidecar — host/port/password from env, graph override
@@ -86,12 +88,54 @@ def roundtrip_probe(client: FalkorClient, user: str = "arc") -> None:
           f"node round-tripped through FalkorDBLocalPersister for user {user!r}.")
 
 
+# ── STEP 2: real arc trip on the durable instance -> Local Episode in Falkor ──
+def build_durable_instance(client: FalkorClient, user: str = "arc"):
+    """The proven in-process stack (`arc_l4.build_instance`: bootstrapped KL +
+    CapacityLayer with the v0/consolidate/text/dream builtins + arc caps) with a
+    `FalkorDBLocalPersister` attached for durable LOCAL persistence. Arc caps stay
+    Global (system capabilities); the durable per-task DATA (the Episode) is
+    Local — L5 is Local-only ("No Global L5")."""
+    inst = arc_l4.build_instance(user=user)
+    inst.persister = FalkorDBLocalPersister(client)
+    return inst
+
+
+def run_and_persist(inst, task_id: str) -> int:
+    """Run a real arc trip on the durable instance and durably persist its
+    Episode to Local Falkor:
+      * L3 — dispatch the arc perceive chain for the task through L4Dispatcher;
+      * L4/L5 — run the six-phase lifecycle; consolidation writes an Episode into
+        the user's Local `episodic_memories`;
+      * persist that Local metagraph to Falkor, reload it, and assert the Episode
+        round-tripped from the database."""
+    dataset = arc_grids.load_dataset()
+    grid = arc_grids.get_task(dataset, "train", task_id)["train"][0]["input"]
+    perceived = arc_l4.perceive_grid(inst.dispatcher, grid)  # arc L3 on the instance
+    assert perceived["objects"] is not None, "arc perceive did not dispatch"
+
+    outcome = inst.orch.run_lifecycle({"text": f"arc {task_id}"}, task_id=f"arc-{task_id}")
+    assert outcome.status == "succeeded", f"L4 lifecycle status={outcome.status!r}"
+
+    local_mg = inst.kl.local_metagraph(inst.user)
+    inst.persister.save(inst.user, local_mg)                  # flush Local -> Falkor
+    loaded = inst.persister.load(inst.user)                   # reload from Falkor
+    assert loaded is not None, "Local did not reload from Falkor"
+    g = MetagraphView(loaded).graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
+    eps = [n for n in g.nodes.values() if getattr(n, "type_name", None) == "Episode"]
+    assert eps, "Episode not persisted/reloaded from Falkor"
+    return len(eps)
+
+
 def main() -> int:
     client = connect()
     try:
-        roundtrip_probe(client)
-        print("  [i] data LEFT in Falkor graph 'arc' (Local 'local_knowledge:arc') "
-              "for inspection — query it with redis-cli (see below).")
+        inst = build_durable_instance(client)
+        n = run_and_persist(inst, arc_solver.TASK8)
+        print(f"  [ok] (b) step 2: arc trip on the durable instance -> L4 lifecycle "
+              f"succeeded, L5 Episode consolidated + persisted to Falkor Local + "
+              f"reloaded ({n}) for user 'arc'.")
+        print("  [i] inspect: docker exec <falkor> redis-cli GRAPH.QUERY arc "
+              "\"MATCH (n) WHERE n.type_name='Episode' RETURN n\"")
     finally:
         try:
             client.close()
