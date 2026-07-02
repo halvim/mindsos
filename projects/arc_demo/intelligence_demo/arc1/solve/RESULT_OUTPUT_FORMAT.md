@@ -262,33 +262,72 @@ STEP block: the header lines + the `result` block), as pasted below.
 ```
 ── STEP 8 · Rules ──────────────────────────────────────────────────────  [general*]
    result   Rules:
-            move [no base shape (irregular)] to [shape = square] until touching   ✓∀ 3/3
+            move [no base shape (irregular)] to [shape = square] until touching   ✓ complete
 ```
 ```
    result   Rules:
-            recolor [enclosed] yellow   ✓∀ 5/5
+            recolor [enclosed] yellow   ✓ complete
 ```
 
 ### Phase 8 result body — format
 
-- **Header:** `Rules:` then one line per **assembled + ∀-verified** rule — a
-  motivation whose assembled rule generatively reproduces every demo output.
-  None → `(none)`.
-- **Move goal (until touching):** `move [{mover-sel}] to [{target-sel}] until touching`
-  — the mover + target selectors are the minimal discriminative descriptions
-  (`_selectors_for`, tie→shape). #8 → `move [no base shape (irregular)] to
-  [shape = square] until touching`.
-- **Move vector:** `move [{sel}] by ({dr},{dc})` — `{sel}` = `all non-background`
-  (whole-grid shift) or a single mover's feature selector.
-- **Recolor:** `recolor [enclosed] {colour}` — fill the **enclosed background
-  region** (bg cells that can't reach the grid border through bg, 4-connectivity;
-  `arc_grids.enclosed_bg_cells`, the cell-level analogue of `inside`). #2 →
-  `recolor [enclosed] yellow`.
-- **∀ verdict:** each rule line ends `   ✓∀ {n_ok}/{n}` (n = demo pairs); a rule
-  only appears when it verifies on all of them (add-only, like phases 5–7).
-- **rotate/reflect rules deferred** (no reliable in→out object correspondence),
-  so a task whose only motivation is rotate/reflect shows `(none)`.
-  Display/hypothesis; the general precursor to the hardcoded #8 rule stages 13–15.
+- **Header:** `Rules:` then one line per **candidate** rule (a generator + param
+  + condition). A candidate need NOT reproduce the whole output alone — phase 9
+  finds the minimum set that does. None → `(none)`.
+- **Complete candidates** (self-contained + ∀-verified at assembly, marked
+  `   ✓ complete`):
+  - **Move goal:** `move [{mover-sel}] to [{target-sel}] until touching`
+    (`_selectors_for`, tie→shape). #8 → `move [no base shape (irregular)] to
+    [shape = square] until touching   ✓ complete`.
+  - **Move vector:** `move [{sel}] by ({dr},{dc})` — `{sel}` = `all non-background`
+    or a single mover's feature selector.
+  - **Cell recolor:** `recolor [enclosed] {colour}` — fill the **enclosed
+    background region** (`arc_grids.enclosed_bg_cells`, input-only from phase 3).
+    #2 → `recolor [enclosed] yellow   ✓ complete`.
+- **Object-recolor condition candidates** (one per **necessary** single
+  condition; no `✓ complete` unless it alone reproduces the output):
+  `recolor {colour} if {cond}` where `{cond}` ∈ `inside`, `touching`, `biggest`,
+  `smallest`, `colour={name}`, `shape={name}`. Necessary = every recoloured
+  object satisfies it ∀; vacuous conditions (selecting every non-bg object) are
+  dropped. Requires a constant target colour ∀.
+- **rotate/reflect rules deferred** (no reliable in→out object correspondence).
+  Display/hypothesis; the substrate phase 9 selects from.
+
+## Reference example — Phase 9 (Rules Selection), tasks #8 / #2 / (synthetic)
+
+```
+── STEP 9 · Rules Selection ─────────────────────────────────────────────  [general*]
+   result   Rules Selection:
+            move [no base shape (irregular)] to [shape = square] until touching   ✓∀ 3/3  (min set · size 1)
+```
+```
+   result   Rules Selection:
+            recolor red if [biggest ∧ colour=green]   ✓∀ 2/2  (min set · size 2)
+```
+```
+   result   Rules Selection:
+            I don't know how to solve this task
+```
+
+### Phase 9 result body — format
+
+- **Header:** `Rules Selection:` then one line — either the minimum covering rule
+  set, or the abstain string `I don't know how to solve this task`.
+- **Selected set:** the phase-8 candidate set that reproduces **every** demo
+  output when applied (apply set to `input_k`, exact-match `output_k`, ∀), of
+  minimum cardinality. Search order: singles (a complete candidate = size 1),
+  then **2×2 → 3×3** conjunctions of same-param `recolor_obj` candidates
+  (target = the **intersection** of the conditions' object sets); the first
+  covering set wins.
+- **Line shape:** `{text}   ✓∀ {n}/{n}  (min set · size {k})`.
+  - size-1 complete candidate → its own `text` (e.g. the move goal, or
+    `recolor [enclosed] yellow`).
+  - conjunction → `recolor {colour} if [{cond1} ∧ {cond2} …]`.
+- **Abstain:** no covering set of any size → `I don't know how to solve this
+  task` (e.g. task 5 `045e512c` — needs copy/replicate generators the demo
+  doesn't have; cross-generator composition is deferred).
+- **No test apply here** — phase 9 verifies on the demos only; applying the
+  selected set to the test input → answer is phase 16 (`⚑ #8` hardcoded today).
 
 ## Block structure (what each line is)
 
@@ -354,3 +393,12 @@ per-phase body content is defined in `pipeline.py` / `arc_solver`.
   (constant / all vertical|horizontal / all H-axis|V-axis / all gained|lost /
   varies). Verified total across all 400 tasks (0 nonconforming; 86 enriched
   lines, conclusions all in the closed set). Do not re-litigate.
+- **Phase 8 (Rules) REOPENED → candidate emission** (2026-07-01). The prior
+  `✓∀ n/n` whole-task verify moved to phase 9; phase 8 now lists **candidate**
+  rules (complete move/cell-recolor marked `✓ complete`; object-recolor = one
+  `recolor {c} if {cond}` per necessary condition). See "Phase 8 result body".
+- **Phase 9 (Rules Selection) NEW + LOCKED** (2026-07-01). Header
+  `Rules Selection:` then the minimum covering candidate set
+  `{text}   ✓∀ {n}/{n}  (min set · size {k})` (singles → 2×2 → 3×3 conjunction
+  of same-param `recolor_obj`), or the abstain string `I don't know how to solve
+  this task`. No test apply (phase 16). Cross-generator composition deferred.

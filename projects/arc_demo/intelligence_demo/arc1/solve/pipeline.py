@@ -482,19 +482,36 @@ def step_motivations(ctx, dataset):
 
 
 def step_rules(ctx, dataset):
-    """Phase 8 — Rules: assemble each phase-7 motivation into a rule and
-    generatively verify it reproduces every demo output (∀); abstain otherwise.
-    Families: MOVE — `move [<mover>] to [<target>] until touching` (#8) /
-    `move [<sel>] by (dr,dc)` (selector-bound, reuse `_slide`/`_render`); RECOLOR
-    — `recolor [enclosed] {colour}` (fill the enclosed background region, #2).
-    rotate/reflect deferred (no reliable in→out object correspondence).
-    Display/hypothesis; the general precursor to the hardcoded #8 stages 9–15."""
+    """Phase 8 — Rules: emit CANDIDATE rules, one per generator+param+condition.
+    MOVE (`move [<mover>] to [<target>] until touching` / `move [<sel>] by
+    (dr,dc)`) and cell-RECOLOR (`recolor [enclosed] {colour}`) are self-contained
+    COMPLETE candidates (marked `✓ complete`). Object-RECOLOR emits one candidate
+    per NECESSARY single condition (`recolor {c} if inside`, `… if biggest`, …)
+    that need NOT reproduce the output alone — phase 9 conjoins them.
+    rotate/reflect deferred. Display/hypothesis."""
     res = arc_solver.rules(ctx["profile"], ctx.get("bg_cand"),
                            ctx.get("recomparison"),
                            (ctx.get("enclosed") or {}).get("train"))
     ctx["rules"] = res
-    lines = [f"{r['text']}   ✓∀ {r['n_ok']}/{r['n']}" for r in res["rules"]]
+    lines = [f"{r['text']}{'   ✓ complete' if r.get('complete') else ''}"
+             for r in res["candidates"]]
     return _block("Rules:", lines or ["(none)"])
+
+
+def step_rules_selection(ctx, dataset):
+    """Phase 9 — Rules Selection: from the phase-8 candidates, find the MINIMUM
+    set (conjunction of same-param `recolor_obj` conditions; a complete candidate
+    = size 1) that reproduces every demo output (apply set to input_k, match
+    output_k, ∀). Singles → 2×2 → 3×3 …; first covering set wins; none →
+    "I don't know how to solve this task". Does NOT apply to the test (phase 10).
+    The general replacement for the #8-specific verify/apply stages 14/15."""
+    sel = arc_solver.select_rules(ctx["profile"], ctx["rules"], ctx.get("enclosed"))
+    ctx["selection"] = sel
+    if sel is None:
+        return _block("Rules Selection:", ["I don't know how to solve this task"])
+    n = len(ctx["profile"]["train"])
+    return _block("Rules Selection:",
+                  [f"{sel['text']}   ✓∀ {n}/{n}  (min set · size {sel['size']})"])
 
 
 #: (n, name, scope, fn, functions, produces) — `functions` = the real call chain
@@ -522,22 +539,25 @@ STEPS = [
      "arc_solver.motivations — per generator, ∀-holding goals/reasons from the detector conclusions + predicates (recolor/rotate/reflect = reason; move = reason+goal)",
      "generator motivations (goal/reason)"),
     (8, "Rules", GENERAL_STAR, step_rules,
-     "arc_solver.rules — assemble each motivation into a rule, generatively verify ∀ (move: _apply_move_goal/_apply_move_vector; recolor: fill the phase-3 enclosed regions ctx['enclosed']); abstain otherwise. move + recolor[enclosed] (rotate/reflect deferred)",
-     "verified selector-bound rules (∀)"),
-    (9, "Background + state-change", GENERAL_STAR, step_background,
+     "arc_solver.rules — emit candidate rules (move/cell-recolor = complete; object-recolor = one candidate per necessary condition inside/touching/biggest/smallest/colour/shape). rotate/reflect deferred",
+     "candidate rules (complete + per-condition)"),
+    (9, "Rules Selection", GENERAL_STAR, step_rules_selection,
+     "arc_solver.select_rules — minimum candidate set reproducing every demo (apply set to input_k, match output_k, ∀); singles → 2×2 → 3×3 conjunction of same-param recolor_obj; none → I don't know",
+     "minimum rule set (∀) or abstain"),
+    (10, "Background + state-change", GENERAL_STAR, step_background,
      "arc_solver.stage_background(bg from bg_cand, touching_changes(_correspondence, _touch_set))",
      "bg · changes (gained/lost/maintained)"),
-    (10, "Roles", SEMI, step_roles,
+    (11, "Roles", SEMI, step_roles,
      "arc_solver.stage_roles(_moved_in, _touch_set, _comp)", "stage1 (roles)"),
-    (11, "Persistence + combo", SPECIMEN, step_persistence,
+    (12, "Persistence + combo", SPECIMEN, step_persistence,
      "arc_solver.stage_persistence(_moved_in, _lbl)", "stage2 (persistence ∀demo + verdict)"),
-    (12, "Selectors", SEMI, step_selectors,
+    (13, "Selectors", SEMI, step_selectors,
      "arc_solver.stage_selectors(_selectors_for(_comp, _base_shape))", "stage3 (selectors)"),
-    (13, "Rule", SPECIMEN, step_rule, "arc_solver.stage_rule (static)", "stage4 (rule)"),
-    (14, "Verify", SPECIMEN, step_verify,
+    (14, "Rule", SPECIMEN, step_rule, "arc_solver.stage_rule (static)", "stage4 (rule)"),
+    (15, "Verify", SPECIMEN, step_verify,
      "arc_solver.stage_verify(apply_rule(_shape_roles, _move_direction, _slide, _render))",
      "stage5 (per-demo match)"),
-    (15, "Apply test → ANSWER", SPECIMEN, step_apply,
+    (16, "Apply test → ANSWER", SPECIMEN, step_apply,
      "arc_solver.stage_apply(apply_rule)", "stage6 + answer grid"),
 ]
 
@@ -553,14 +573,15 @@ STEP_TARGETS = {
     5: "L4 phase_1 sweep — L3 comparators/predicates (moved/touching/inside/transforms) · mindsos_intelligence/builtins/phase1_v0.py + mindsos_capacity",
     6: "L3 comprehension — task-pattern hypothesis from the profile · mindsos_capacity (→ L4 induce/learner)",
     7: "L3 reasoning — generator motivations (goal/reason) tested by applying the generators · mindsos_capacity (→ L4 induce/learner)",
-    8: "L4 plan construction — bind a selector to a motivation → a candidate rule, generatively verified ∀ demos (Plan/Pipeline chain artifact; apply = L3 generators via invoke) · mindsos_intelligence/chain_artifacts.py",
-    9: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
-    10: "L3 reasoning — role assignment over state-change · mindsos_capacity",
-    11: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
-    12: "L3 reasoning/scoring — synthesize_selector via invoke · mindsos_capacity",
-    13: "L4 plan construction → Plan/Pipeline chain artifact · mindsos_intelligence/chain_artifacts.py",
-    14: "L4 sufficiency — sufficient_predicate / replan_check · mindsos_intelligence/orchestrator.py",
-    15: "L4 execution (PipelineRun) + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
+    8: "L4 plan construction — candidate rules per generator+param+condition (Plan/Pipeline chain artifact; apply = L3 generators via invoke) · mindsos_intelligence/chain_artifacts.py",
+    9: "L4 plan search — minimum candidate set reproducing all demos (conjunction over L3 predicates) · mindsos_intelligence/orchestrator.py (replan_check / sufficient_predicate)",
+    10: "L3 derivation+reasoning (detect/reconcile background; touching_delta) via invoke · mindsos_capacity",
+    11: "L3 reasoning — role assignment over state-change · mindsos_capacity",
+    12: "L4 induction — agrees-across-demos hypotheses fold · mindsos_intelligence (orchestrator/learner)",
+    13: "L3 reasoning/scoring — synthesize_selector via invoke · mindsos_capacity",
+    14: "L4 plan construction → Plan/Pipeline chain artifact · mindsos_intelligence/chain_artifacts.py",
+    15: "L4 sufficiency — sufficient_predicate / replan_check · mindsos_intelligence/orchestrator.py",
+    16: "L4 execution (PipelineRun) + L5 consolidation → Episode/Memory · mindsos_intelligence/consolidation.py",
 }
 
 
@@ -573,14 +594,15 @@ STEP_DESC = {
     5: "List the comparators that trigger on EVERY demo pair (∀) — the comparator hypothesis (moved, touching_delta, inside, recolored, rotated, reflected); touching_delta = touching status change over correspondence, shown instead of intra-grid touching.",
     6: "Infer the task pattern from the profile — e.g. addition (dims + palette preserved, all non-bg inputs kept, a new object appears).",
     7: "Motivations — per generator, the goals/reasons that hold on every demo (recolor <c>, rotate <deg>, … if touching, move … until touching), tested by applying the generator.",
-    8: "Rules — assemble each motivation into a rule and generatively verify it reproduces every demo output (∀); abstain otherwise. move (move <mover> to <target> until touching / move <sel> by (dr,dc)) + recolor (recolor [enclosed] <colour> — fill the enclosed background region). rotate/reflect deferred.",
-    9: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
-    10: "Classify the changed objects into roles — mover, target, background.",
-    11: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
-    12: "For each role, find the minimal selector that discriminates it across every demo (tie-break → shape).",
-    13: "Assemble the transformation rule — slide the mover toward the target until touching (hardcoded for #8).",
-    14: "Apply the rule to every demo and check it reproduces each output exactly.",
-    15: "Apply the rule to the test input to produce the answer grid (test output withheld).",
+    8: "Rules — emit candidate rules, one per generator+param+condition. Move + cell-recolor (recolor [enclosed]) are complete candidates; object-recolor emits one candidate per necessary condition (inside/touching/biggest/smallest/colour/shape). rotate/reflect deferred.",
+    9: "Rules Selection — find the minimum set of candidates reproducing every demo output (apply set to input, match output, ∀): singles, then 2×2, 3×3 conjunctions of same-param object-recolor conditions; first covering set wins; none → I don't know how to solve this task.",
+    10: "Propose the background colour, build the in→out correspondence, and classify touching changes (gained/lost/maintained).",
+    11: "Classify the changed objects into roles — mover, target, background.",
+    12: "Test which capabilities persist across all demos and form the (move, touching) combination verdict.",
+    13: "For each role, find the minimal selector that discriminates it across every demo (tie-break → shape).",
+    14: "Assemble the transformation rule — slide the mover toward the target until touching (hardcoded for #8).",
+    15: "Apply the rule to every demo and check it reproduces each output exactly.",
+    16: "Apply the rule to the test input to produce the answer grid (test output withheld).",
 }
 
 

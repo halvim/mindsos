@@ -806,7 +806,8 @@ def _assemble_move_goal(demos: list, bg: int):
         res = _apply_move_goal(gin, bg, mv[0], tg[0])
         if res is None or res != pr["output"]["cells"]:
             return None                              # not ∀ → abstain
-    return {"text": f"move [{ms}] to [{ts}] until touching", "n_ok": n, "n": n}
+    return {"kind": "move_goal", "param": (ms, ts), "complete": True,
+            "text": f"move [{ms}] to [{ts}] until touching", "n_ok": n, "n": n}
 
 
 def _assemble_move_vector(demos: list, bg: int, motiv: str):
@@ -841,7 +842,8 @@ def _assemble_move_vector(demos: list, bg: int, motiv: str):
                 ok = False
                 break
         if ok:
-            return {"text": f"move [{sel}] by ({dr},{dc})", "n_ok": n, "n": n}
+            return {"kind": "move_vector", "param": (sel, vec), "complete": True,
+                    "text": f"move [{sel}] by ({dr},{dc})", "n_ok": n, "n": n}
     return None
 
 
@@ -871,20 +873,114 @@ def _assemble_recolor(demos: list, bg: int, enclosed: list):
             g[r][c] = colour
         if g != pr["output"]["cells"]:
             return None                              # not ∀ → abstain
-    return {"text": f"recolor [enclosed] {arc_grids.color_name(colour)}",
+    return {"kind": "recolor_cells", "param": colour, "complete": True,
+            "text": f"recolor [enclosed] {arc_grids.color_name(colour)}",
             "n_ok": n, "n": n}
+
+
+# ── condition vocabulary (object-index sets over a grid) ─────────────────
+def _cond_objs(gs: dict, bg: int, cond: str):
+    """The set of non-background object indices in ``gs`` satisfying a single
+    condition label. Object PREDICATES (`inside`/`touching`) reuse `_pred_objs`;
+    object FEATURES are size (`biggest`/`smallest`), `colour=<name>`,
+    `shape=<name>`. Returns ``None`` for an unknown label."""
+    objs = gs["objects"]
+    nonbg = {i for i, o in enumerate(objs) if o["color"] != bg}
+    if not nonbg:
+        return set()
+    if cond in ("inside", "touching"):
+        return {i for i in _pred_objs(gs, cond, bg) if i in nonbg}
+    if cond in ("biggest", "smallest"):
+        sizes = {i: objs[i]["size"] for i in nonbg}
+        ext = (max if cond == "biggest" else min)(sizes.values())
+        return {i for i in nonbg if sizes[i] == ext}
+    if cond.startswith("colour="):
+        nm = cond.split("=", 1)[1]
+        return {i for i in nonbg if arc_grids.color_name(objs[i]["color"]) == nm}
+    if cond.startswith("shape="):
+        nm = cond.split("=", 1)[1]
+        return {i for i in nonbg if arc_grids.base_shape_name(gs["shapes"][i]) == nm}
+    return None
+
+
+#: the fixed single-condition vocabulary phase 8 enumerates (feature conditions
+#: `colour=`/`shape=` are expanded per value present). More comparators/predicates
+#: land here as they are built (RULES §8 — the vocabulary grows over time).
+def _condition_labels(gs: dict, bg: int) -> List[str]:
+    objs = gs["objects"]
+    nonbg = [i for i, o in enumerate(objs) if o["color"] != bg]
+    labels = ["inside", "touching", "biggest", "smallest"]
+    labels += [f"colour={arc_grids.color_name(objs[i]['color'])}" for i in nonbg]
+    labels += [f"shape={arc_grids.base_shape_name(gs['shapes'][i])}"
+               for i in nonbg if arc_grids.base_shape_name(gs["shapes"][i])]
+    seen, uniq = set(), []
+    for x in labels:                                 # de-dup, keep order
+        if x not in seen:
+            seen.add(x)
+            uniq.append(x)
+    return uniq
+
+
+def _apply_recolor_objs(gs: dict, bg: int, conds: List[str], colour: int):
+    """Recolour to ``colour`` every non-bg object satisfying ALL of ``conds``
+    (the target set = the intersection of the condition object-sets); re-render.
+    Returns ``None`` if a condition is unknown."""
+    sets = [_cond_objs(gs, bg, c) for c in conds]
+    if any(s is None for s in sets):
+        return None
+    target = set.intersection(*sets) if sets else set()
+    g = [row[:] for row in gs["cells"]]
+    for i in target:
+        for (r, c) in gs["objects"][i]["cells"]:
+            g[r][c] = colour
+    return g
+
+
+def _recolor_condition_candidates(demos: list, bg: int) -> list:
+    """Phase 8 (object recolor family): emit ONE candidate per NECESSARY
+    single condition. A constant target colour ``C`` is required ∀ (like the
+    phase-7 recolor motivation). A condition is *necessary* iff every recoloured
+    object satisfies it on every demo (transformed ⊆ condition ∀); such a
+    candidate need NOT reproduce the whole output alone — phase 9 conjoins them.
+    ``complete`` marks a candidate that alone reproduces every demo output."""
+    tset, cols = [], set()
+    for pr in demos:
+        rp = arc_grids.recolored_pairs(pr["input"], pr["output"])
+        if not rp:
+            return []                                # not an object-recolor task
+        tset.append({t["in"] for t in rp})
+        cols |= {t["transform"]["to"] for t in rp}
+    if len(cols) != 1:
+        return []                                    # non-constant target colour
+    colour = next(iter(cols))
+    # conditions present on every demo, necessary on every demo
+    common = set.intersection(*[set(_condition_labels(pr["input"], bg)) for pr in demos])
+    out = []
+    for cond in sorted(common):
+        csets = [_cond_objs(pr["input"], bg, cond) for pr in demos]
+        nonbg = [{i for i, o in enumerate(pr["input"]["objects"]) if o["color"] != bg}
+                 for pr in demos]
+        if not all(tset[i] <= csets[i] for i in range(len(demos))):
+            continue                                 # not necessary on some demo
+        if all(csets[i] == nonbg[i] for i in range(len(demos))):
+            continue                                 # vacuous: selects every non-bg object
+        complete = all(_apply_recolor_objs(pr["input"], bg, [cond], colour)
+                       == pr["output"]["cells"] for pr in demos)
+        out.append({"kind": "recolor_obj", "param": colour, "cond": cond,
+                    "complete": complete,
+                    "text": f"recolor {arc_grids.color_name(colour)} if {cond}"})
+    return out
 
 
 def rules(profile: dict, bg_cand: dict = None, recomparison: list = None,
           enclosed: list = None) -> dict:
-    """Phase 8 — assemble each phase-7 motivation into a rule and generatively
-    verify it reproduces every demo output (∀ add-only); abstain otherwise.
-    Families: move (goal + vector, selector-bound) and recolor
-    (`recolor [enclosed] {colour}`, filling the phase-3 enclosed sub-pieces
-    passed in via `enclosed`). rotate / reflect rules deferred (no reliable
-    in→out correspondence). `enclosed` = one input cell-list per demo, produced
-    input-only at phase 3 (`ctx["enclosed"]["train"]`); recolor abstains without
-    it."""
+    """Phase 8 — emit CANDIDATE rules, one per generator+param+condition. Move
+    (goal/vector, selector-bound) and cell-recolor (`recolor [enclosed]`) are
+    self-contained COMPLETE candidates (they carry their own apply spec + are ∀-
+    verified at assembly). Object-recolor emits one candidate per NECESSARY
+    single condition (`recolor {c} if inside`, `… if biggest`, …), which need
+    NOT reproduce the output alone — phase 9 finds the minimum conjunction that
+    does. `enclosed` = one input cell-list per demo from phase 3."""
     demos = profile["train"]
     bg = _resolve_solver_bg(bg_cand)
     mot = motivations(profile, bg_cand, recomparison)
@@ -898,7 +994,88 @@ def rules(profile: dict, bg_cand: dict = None, recomparison: list = None,
         r = _assemble_recolor(demos, bg, enclosed)
         if r:
             out.append(r)
-    return {"rules": out, "bg": bg}
+    out += _recolor_condition_candidates(demos, bg)
+    return {"candidates": out, "bg": bg}
+
+
+# ── phase 9: RULES SELECTION — minimum candidate set reproducing every demo ──
+def _apply_candidate_set(subset: list, gs: dict, bg: int, enclosed_cells):
+    """Apply a candidate SET to one input grid → predicted output grid (or
+    ``None`` if the set cannot apply / cannot combine). A size-1 set dispatches
+    on the candidate kind. A size ≥2 set is a CONJUNCTION: only same-param
+    `recolor_obj` candidates combine (intersect their target sets); any other
+    multi-kind mix is cross-generator composition — NOT supported (returns
+    ``None``)."""
+    if len(subset) == 1:
+        c = subset[0]
+        k = c["kind"]
+        if k == "move_goal":
+            ms, ts = c["param"]
+            mv, tg = _select(gs, bg, ms), _select(gs, bg, ts)
+            if len(mv) != 1 or len(tg) != 1:
+                return None
+            return _apply_move_goal(gs, bg, mv[0], tg[0])
+        if k == "move_vector":
+            sel, vec = c["param"]
+            refs = _select(gs, bg, sel)
+            if not refs:
+                return None
+            return _apply_move_vector(gs, bg, refs, vec)
+        if k == "recolor_cells":
+            if not enclosed_cells:
+                return None
+            g = [row[:] for row in gs["cells"]]
+            for (r, cc) in enclosed_cells:
+                g[r][cc] = c["param"]
+            return g
+        if k == "recolor_obj":
+            return _apply_recolor_objs(gs, bg, [c["cond"]], c["param"])
+        return None
+    if all(c["kind"] == "recolor_obj" for c in subset) \
+            and len({c["param"] for c in subset}) == 1:
+        return _apply_recolor_objs(gs, bg, [c["cond"] for c in subset],
+                                   subset[0]["param"])
+    return None                                      # composition — not supported
+
+
+def select_rules(profile: dict, rules_res: dict, enclosed: dict = None) -> dict:
+    """Phase 9 — from the phase-8 candidates, find the MINIMUM-cardinality set
+    that reproduces every demo output (apply set to input_k, match output_k, ∀).
+    Search by increasing size: singles first (a complete candidate = size 1),
+    then conjunctions of same-param `recolor_obj` candidates (2×2, 3×3, …); the
+    first covering set wins. No covering set → ``None`` ("I don't know how to
+    solve this task"). Does NOT apply to the test (that is phase 10)."""
+    from itertools import combinations
+    from collections import defaultdict
+    demos = profile["train"]
+    bg = rules_res["bg"]
+    cands = rules_res["candidates"]
+    enc_train = (enclosed or {}).get("train") if enclosed else None
+
+    def covers(subset) -> bool:
+        for i, pr in enumerate(demos):
+            enc = enc_train[i] if enc_train else None
+            g = _apply_candidate_set(subset, pr["input"], bg, enc)
+            if g is None or g != pr["output"]["cells"]:
+                return False
+        return True
+
+    for c in cands:                                  # size 1
+        if covers([c]):
+            return {"set": [c], "size": 1, "text": c["text"]}
+    groups = defaultdict(list)                        # size ≥2: conjoin recolor_obj
+    for c in cands:
+        if c["kind"] == "recolor_obj":
+            groups[c["param"]].append(c)
+    max_size = max((len(g) for g in groups.values()), default=0)
+    for size in range(2, max_size + 1):
+        for colour, grp in groups.items():
+            for sub in combinations(grp, size):
+                if covers(list(sub)):
+                    conds = " ∧ ".join(c["cond"] for c in sub)
+                    text = f"recolor {arc_grids.color_name(colour)} if [{conds}]"
+                    return {"set": list(sub), "size": size, "text": text}
+    return None
 
 
 # ── union operator — task-level occurrence + display (bg-aware) ──────────

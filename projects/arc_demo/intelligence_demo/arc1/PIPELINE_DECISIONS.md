@@ -868,6 +868,64 @@ filed as motivating consumer; the demo does NOT block on it.
   `inside` ∀. `inside_pairs` (first-diff) retained as a primitive but no longer
   called. STEPS.md + RESULT_OUTPUT_FORMAT.md updated.
 
+- **2026-07-01 — Phase 8 REWORKED to candidate emission + NEW Phase 9 "Rules
+  Selection" (BUILT + Cowork-gated 8 `[ok]`/400, #8 solves, 16-step; NOT
+  committed).** Old solver stages 9–15 renumber → 10–16 (gate label
+  `15-step`→`16-step`); `STEPS`/`STEP_DESC`/`STEP_TARGETS` renumbered; STEPS.md +
+  RESULT_OUTPUT_FORMAT.md updated (phase-8 reopened, phase-9 locked).
+
+  **Design (owner-driven, this chat).** Phase 8 previously emitted **complete**
+  ∀-verified rules only; the owner's intended contract is **per-comparator
+  CANDIDATES** — "recolor because inside" + "recolor because biggest" are two
+  individual candidates that need **not** reproduce the output alone. Phase 9
+  finds the **minimum candidate set** that does (e.g. `recolor [biggest ∧
+  inside]`). Split:
+  - **Phase 8 = candidate emission.** `arc_solver.rules` now returns
+    `{"candidates":[…], "bg":…}`. MOVE (goal/vector) + cell-RECOLOR
+    (`recolor [enclosed]`) stay self-contained **complete** candidates (carry
+    their apply spec: `kind`+`param`; `_assemble_*` enriched, ∀-verified at
+    assembly, marked `✓ complete`). **object-RECOLOR** emits one
+    `recolor_obj` candidate per **necessary** single condition
+    (`_recolor_condition_candidates`): a constant target colour ∀, condition ∈
+    `_condition_labels` (`inside`/`touching`/`biggest`/`smallest`/`colour=`/
+    `shape=`), necessary = transformed ⊆ condition ∀, **vacuous** (== every non-bg
+    object) dropped. `_cond_objs(gs,bg,cond)` resolves a label → object-index set
+    (predicates reuse `_pred_objs`; features = size/colour/shape).
+  - **Phase 9 = `arc_solver.select_rules` + `pipeline.step_rules_selection`.**
+    Minimum-cardinality covering set: singles first (complete candidate = size 1),
+    then **2×2 → 3×3** conjunctions of same-param `recolor_obj` (target = the
+    **intersection** of condition sets, `_apply_recolor_objs`); apply set to each
+    demo input, exact-match output ∀; first covering set wins; none →
+    **`I don't know how to solve this task`**. **Conjunction only** — a size-≥2
+    set must share one (generator, param); mixed-kind = cross-generator
+    **composition** → `_apply_candidate_set` returns None (deferred). **No test
+    apply** in phase 9 (owner PBE → phase 16 / a future phase 10).
+  - **Decisions locked (owner):** PBA build the candidate model now (few
+    comparators today, more later); PBB **conjunction only**, composition
+    deferred; PBC phase 8 emits candidates (was complete-only — reopened the
+    LOCKED phase-8 format); PBD a **complete** rule is reused as-is (size-1 set)
+    or conjoined; PBE phase 9 selects on demos only, no test-apply; PBF combos
+    matter (see corpus finding).
+  - **Corpus finding (probe 2026-07-01).** With today's 6-condition vocab, the
+    **≥2 conjunction path has ZERO corpus consumers**: object-recolor to a
+    constant colour = 10 tasks (0 selectable by any conjunction), per-colour
+    object-recolor ∀ = 2 tasks (both size-1). So the ≥2 branch is **forward-
+    looking** (consumers arrive as comparators/predicates land, RULES §8) and is
+    gated on a **synthetic 2-demo fixture** (`run_spike._SYN_CONJ`: recolor red
+    the biggest∧green object → phase 9 returns size 2). Live size-1 path:
+    #8 (move goal), #2/#251 (`recolor [enclosed]`). **task 5 `045e512c`** (owner's
+    "copy shape / follow directions / with given colours") → **`I don't know`**:
+    it needs copy/replicate + tile + direction-from-marker generators the demo
+    lacks, and is cross-generator **composition** (not conjunction) — filed as
+    the next, larger arc (new generator family + composition algebra).
+  - **Gate:** `_solve_pipeline_check` extended (same `[ok]` line, still 8) — #8
+    solves via the hardcoded tail + matches `build_solver`; phase 9 selects a
+    covering set for #8/#2/#251; the synthetic conjunction resolves at size 2.
+    Gate green (8 `[ok]`, wrote 400 profiles). **DEFERRED:** cross-generator
+    composition + copy/replicate/tile generators (task-5 family); retiring the
+    hardcoded #8 tail (stages 10–16 still serve `build_solver`/arc_debug);
+    general test-apply of the selected set (phase 10). `inside_pairs` still dead.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

@@ -187,9 +187,35 @@ def _operator_inference_check(tasks) -> None:
           f"(union occurs {n_u}/{len(tasks)}).")
 
 
+#: A synthetic 2-demo task for the phase-9 CONJUNCTION path: recolor to red the
+#: object that is (biggest AND green). No corpus task needs a ≥2 conjunction with
+#: today's condition vocabulary (probe 2026-07-01), so the ≥2 branch is gated here
+#: on a constructed fixture until more comparators/predicates land.
+_SYN_CONJ = {"train": {"SYN": {"train": [
+    {"input":  [[3, 3, 3, 0, 0, 0, 0, 0], [3, 3, 3, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [3, 0, 0, 0, 0, 1, 1, 1],
+                [3, 0, 0, 0, 0, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0, 0]],
+     "output": [[2, 2, 2, 0, 0, 0, 0, 0], [2, 2, 2, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [3, 0, 0, 0, 0, 1, 1, 1],
+                [3, 0, 0, 0, 0, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0, 0]]},
+    {"input":  [[1, 1, 1, 0, 0, 0, 0, 0], [1, 1, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [3, 3, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 3, 3, 3],
+                [0, 0, 0, 0, 0, 3, 3, 3], [0, 0, 0, 0, 0, 0, 0, 0]],
+     "output": [[1, 1, 1, 0, 0, 0, 0, 0], [1, 1, 1, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [3, 3, 0, 0, 0, 0, 0, 0],
+                [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 2, 2, 2],
+                [0, 0, 0, 0, 0, 2, 2, 2], [0, 0, 0, 0, 0, 0, 0, 0]]}],
+    "test": [{"input": [[0] * 8 for _ in range(8)],
+              "output": [[0] * 8 for _ in range(8)]}]}}}
+
+
 def _solve_pipeline_check(dataset, solver) -> None:
-    """The arc1/solve 15-step pipeline must (a) solve #8 and (b) agree with the
-    monolithic build_solver — the step decomposition is faithful."""
+    """The arc1/solve 16-step pipeline must (a) solve #8 via the hardcoded tail
+    and agree with build_solver, (b) have phase 9 select a covering rule set for
+    #8 / #2 / #251, and (c) resolve the synthetic conjunction fixture at size 2."""
     from intelligence_demo.arc1.solve import pipeline
     ctx = pipeline.run_all(arc_solver.TASK8, dataset)
     assert ctx["stage6"]["matches_withheld"] is True, \
@@ -198,7 +224,18 @@ def _solve_pipeline_check(dataset, solver) -> None:
         "arc1/solve answer differs from build_solver"
     assert ctx["stage1"]["roles_demo1"] == solver["stage1"]["roles_demo1"], \
         "arc1/solve stage1 differs from build_solver"
-    print("  [ok] arc1/solve: 15-step pipeline solves #8 and matches build_solver.")
+    # phase 9 — a covering rule set is selected on the reference tasks (size 1)
+    for tid in (arc_solver.TASK8, "00d62c1b", "a5313dff"):
+        if tid in dataset["train"]:
+            sel = pipeline.run_all(tid, dataset)["selection"]
+            assert sel is not None, f"phase 9 found no rule set for {tid}"
+    # phase 9 — the ≥2 conjunction path (synthetic; no corpus consumer yet)
+    sprof = arc_profile.build_profile(_SYN_CONJ, "train", "SYN")
+    ssel = arc_solver.select_rules(sprof, arc_solver.rules(sprof))
+    assert ssel is not None and ssel["size"] == 2, \
+        f"phase-9 conjunction fixture did not resolve at size 2 ({ssel})"
+    print("  [ok] arc1/solve: 16-step pipeline solves #8, matches build_solver; "
+          "phase 9 selects #8/#2/#251 + a size-2 conjunction.")
 
 
 def main(argv: list) -> int:
