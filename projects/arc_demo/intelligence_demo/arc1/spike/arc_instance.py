@@ -99,40 +99,47 @@ def build_durable_instance(client: FalkorClient, user: str = "arc"):
     `FalkorDBLocalPersister` attached for durable LOCAL persistence. Arc caps stay
     Global (system capabilities); the durable per-task DATA (the Episode) is
     Local — L5 is Local-only ("No Global L5")."""
-    inst = arc_l4.build_instance(user=user)
+    inst = arc_l4.build_instance(user=user, arc_local=True)  # arc caps + DS -> user's Local L3
     inst.persister = FalkorDBLocalPersister(client)
     return inst
 
 
-def run_and_persist(inst, task_id: str):
-    """Run the REAL arc solve on the durable instance and persist its Episode:
-      * L3 — dispatch phases 8/9/10 (`arc_l4.solve_through_layer`) to solve the
-        task's test input; assert the answer matches the withheld output;
-      * L5 — consolidate an Episode tagged with the SOLVED task + outcome (not the
-        v0 smoke) into the user's Local `episodic_memories`;
-      * persist that Local to Falkor, reload, and assert the arc Episode
+#: The tasks the layer-driven solver handles today (#8/#2/#251/#53).
+SOLVED_TASKS = ["05f2a901", "00d62c1b", "a5313dff", "25ff71a9"]
+
+
+def run_and_persist(inst, task_ids):
+    """Run the REAL arc solve for each task on the durable instance and persist
+    every Episode:
+      * L3 — dispatch phases 8/9/10 (`solve_through_layer`) → answer matches the
+        withheld output;
+      * L5 — consolidate an Episode tagged with the SOLVED task + outcome into the
+        user's Local `episodic_memories`;
+      * persist the Local to Falkor once, reload, and assert every arc Episode
         round-tripped."""
     dataset = arc_grids.load_dataset()
-    solve, _inline = arc_l4.solve_through_layer(inst.dispatcher, task_id, dataset)
-    assert solve is not None, f"solve produced no answer for {task_id}"
-    outcome = "succeeded" if solve.get("matches_withheld") else "failed"
+    solved = []
+    for task_id in task_ids:
+        solve, _inline = arc_l4.solve_through_layer(inst.dispatcher, task_id, dataset)
+        assert solve is not None, f"solve produced no answer for {task_id}"
+        outcome = "succeeded" if solve.get("matches_withheld") else "failed"
+        writer = ChainArtifactWriter(inst.mm, task_scope=f"arc-{task_id}")
+        task_run = writer.emit_task_run()
+        res = consolidate_task(inst.dispatcher, inst.mm, task_run,
+                               task_pattern_iri=f"arc:solved:{task_id}",
+                               outcome_classification=outcome)
+        assert res is not None and res.success, f"consolidation failed for {task_id}: {res!r}"
+        solved.append((task_id, outcome))
 
-    writer = ChainArtifactWriter(inst.mm, task_scope=f"arc-{task_id}")
-    task_run = writer.emit_task_run()
-    res = consolidate_task(inst.dispatcher, inst.mm, task_run,
-                           task_pattern_iri=f"arc:solved:{task_id}",
-                           outcome_classification=outcome)
-    assert res is not None and res.success, f"consolidation did not fire: {res!r}"
-
-    local_mg = inst.kl.local_metagraph(inst.user)
     inst.persister.delete(inst.user)                          # clean prior Local (no stale accumulation)
-    inst.persister.save(inst.user, local_mg)                  # flush Local -> Falkor
+    inst.persister.save(inst.user, inst.kl.local_metagraph(inst.user))
     loaded = inst.persister.load(inst.user)                   # reload from Falkor
     assert loaded is not None, "Local did not reload from Falkor"
     g = MetagraphView(loaded).graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
     eps = [n for n in g.nodes.values() if getattr(n, "type_name", None) == "Episode"]
-    assert eps, "arc Episode not persisted/reloaded from Falkor"
-    return len(eps), outcome
+    assert len(eps) == len(task_ids), \
+        f"expected {len(task_ids)} Episodes reloaded, got {len(eps)}"
+    return solved, len(eps)
 
 
 # ── STEP 3: restart durability — a FRESH instance loads the Local from Falkor ──
@@ -148,7 +155,7 @@ def verify_restart(client: FalkorClient, user: str = "arc"):
     g = MetagraphView(kl.local_metagraph(user)).graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
     eps = [n for n in g.nodes.values() if getattr(n, "type_name", None) == "Episode"]
     assert eps, "no Episode found after restart-reload from Falkor"
-    return eps[0]
+    return eps
 
 
 def main(argv=None) -> int:
@@ -158,18 +165,20 @@ def main(argv=None) -> int:
     client = connect()
     try:
         if mode == "restart":
-            ep = verify_restart(client)
-            pat = ep.value.get("task_pattern_iri") if isinstance(ep.value, dict) else ep.value
+            eps = verify_restart(client)
+            pats = sorted(e.value.get("task_pattern_iri") for e in eps
+                          if isinstance(e.value, dict))
             print(f"  [ok] (b) step 3: FRESH instance loaded the Local from Falkor "
-                  f"(no trip re-run) — prior Episode present (pattern {pat!r}). "
+                  f"(no trip re-run) — {len(eps)} prior Episodes present: {pats}. "
                   f"The durable instance survives a restart.")
         else:
             inst = build_durable_instance(client)
-            n, outcome = run_and_persist(inst, arc_solver.TASK8)
-            print(f"  [ok] (b) step 2: arc SOLVE #{arc_solver.TASK8} through L4->L3 "
-                  f"({outcome}, answer matches withheld) -> L5 Episode "
-                  f"'arc:solved:{arc_solver.TASK8}' consolidated + persisted to Falkor "
-                  f"Local + reloaded ({n}) for user 'arc'.")
+            solved, n = run_and_persist(inst, SOLVED_TASKS)
+            tags = ", ".join(f"{t}({o})" for t, o in solved)
+            print(f"  [ok] (b) step 2: arc caps registered LOCAL; solved {len(solved)} "
+                  f"tasks through L4->L3 [{tags}] -> {n} L5 Episodes "
+                  f"'arc:solved:*' consolidated + persisted to Falkor Local + reloaded "
+                  f"for user 'arc'.")
             print("  [i] then verify restart durability: "
                   "python3 -m intelligence_demo.arc1.spike.arc_instance restart")
     finally:

@@ -110,7 +110,7 @@ class _ArcSession:
         return True
 
 
-def build_instance(user: str = "arc"):
+def build_instance(user: str = "arc", *, arc_local: bool = False):
     """Stand up a REAL in-process MindsOS instance (option (a)) — the shipped
     Phase-49 `build_stack` recipe (bootstrapped KL + CapacityLayer with every v0
     catalog + consolidate/text/dream builtins) with the ARC capacities registered
@@ -129,8 +129,10 @@ def build_instance(user: str = "arc"):
     install_text_capacities(layer)
     install_dream_capacities(layer)
     reset_v0_verdicts()
-    ac.install_arc(layer)  # arc L3 caps registered onto the real instance
     session = _ArcSession(user)
+    # arc caps + DataStates: Global by default (gate); the user's LOCAL L3 when
+    # arc_local (durable instance) — arc-solve content Local, per "No Global L5".
+    ac.install_arc(layer, session=session if arc_local else None)
     mm = MentalModel(session_id=session.session_id, user_id=user)
     dispatcher = L4Dispatcher(layer, session=session, kl=kl)
     orch = Orchestrator(dispatcher, mm, task_scope="arc")

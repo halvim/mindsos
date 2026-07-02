@@ -607,26 +607,18 @@ def ordered_catalog() -> List[dict]:
     return rows
 
 
-def install_arc(capacity_layer: CapacityLayer) -> None:
-    """Register all arc DataStates + perceive/profile capacities (Global)."""
+def install_arc(capacity_layer: CapacityLayer, session: Any = None) -> None:
+    """Register all arc DataStates + capacities. ``session=None`` → Global (the
+    demo gate). ``session`` present → the user's **Local** L3 (DataStates AND caps
+    together — they must share scope; a Local cap referencing a Global DataState
+    raises). Verified: all-Local registration round-trips."""
     for ds in arc_datastates():
-        capacity_layer.register_datastate(ds, allow_new_realm=True)
-    for cap in _perceive_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _profiler_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _comparator_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _intra_grid_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _operator_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _transform_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _reason_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _solver_capacities():
-        capacity_layer.register_capacity(cap)
+        capacity_layer.register_datastate(ds, allow_new_realm=True, session=session)
+    for group in (_perceive_capacities, _profiler_capacities, _comparator_capacities,
+                  _intra_grid_capacities, _operator_capacities, _transform_capacities,
+                  _reason_capacities, _solver_capacities):
+        for cap in group():
+            capacity_layer.register_capacity(cap, session=session)
 
 
 def fresh_layer() -> CapacityLayer:
