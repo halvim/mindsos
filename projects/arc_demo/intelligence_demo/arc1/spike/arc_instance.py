@@ -39,6 +39,7 @@ from mindsos_core.config import FalkorConfig
 from mindsos_core.models.graph import Graph
 from mindsos_core.persistence import FalkorClient
 
+from mindsos_knowledge import KnowledgeLayer
 from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
 from mindsos_knowledge.metagraph_view import MetagraphView
 
@@ -126,16 +127,42 @@ def run_and_persist(inst, task_id: str) -> int:
     return len(eps)
 
 
-def main() -> int:
+# ── STEP 3: restart durability — a FRESH instance loads the Local from Falkor ──
+def verify_restart(client: FalkorClient, user: str = "arc"):
+    """Simulate a process restart: a BRAND-NEW KnowledgeLayer loads the persisted
+    Local from Falkor via the ADR-0042 install hook and finds the prior Episode
+    WITHOUT re-running any trip. Proves the durable instance survives a restart —
+    not just a same-process round-trip."""
+    loaded = FalkorDBLocalPersister(client).load(user)
+    assert loaded is not None, "no persisted Local in Falkor — run step 2 first"
+    kl = KnowledgeLayer.bootstrap()                 # fresh instance (post-restart)
+    kl.install_local_metagraph(user, loaded)        # reload the user's Local
+    g = MetagraphView(kl.local_metagraph(user)).graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
+    eps = [n for n in g.nodes.values() if getattr(n, "type_name", None) == "Episode"]
+    assert eps, "no Episode found after restart-reload from Falkor"
+    return eps[0]
+
+
+def main(argv=None) -> int:
+    import sys
+    args = list(argv if argv is not None else sys.argv[1:])
+    mode = args[0] if args else "run"
     client = connect()
     try:
-        inst = build_durable_instance(client)
-        n = run_and_persist(inst, arc_solver.TASK8)
-        print(f"  [ok] (b) step 2: arc trip on the durable instance -> L4 lifecycle "
-              f"succeeded, L5 Episode consolidated + persisted to Falkor Local + "
-              f"reloaded ({n}) for user 'arc'.")
-        print("  [i] inspect: docker exec <falkor> redis-cli GRAPH.QUERY arc "
-              "\"MATCH (n) WHERE n.type_name='Episode' RETURN n\"")
+        if mode == "restart":
+            ep = verify_restart(client)
+            pat = ep.value.get("task_pattern_iri") if isinstance(ep.value, dict) else ep.value
+            print(f"  [ok] (b) step 3: FRESH instance loaded the Local from Falkor "
+                  f"(no trip re-run) — prior Episode present (pattern {pat!r}). "
+                  f"The durable instance survives a restart.")
+        else:
+            inst = build_durable_instance(client)
+            n = run_and_persist(inst, arc_solver.TASK8)
+            print(f"  [ok] (b) step 2: arc trip on the durable instance -> L4 lifecycle "
+                  f"succeeded, L5 Episode consolidated + persisted to Falkor Local + "
+                  f"reloaded ({n}) for user 'arc'.")
+            print("  [i] then verify restart durability: "
+                  "python3 -m intelligence_demo.arc1.spike.arc_instance restart")
     finally:
         try:
             client.close()
