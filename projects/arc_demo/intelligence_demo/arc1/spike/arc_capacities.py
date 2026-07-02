@@ -84,6 +84,7 @@ DS_TASK = datastate_iri("arc.task")
 DS_PAIR = datastate_iri("arc.pair")
 DS_RAW_GRID = datastate_iri("arc.raw_grid")
 DS_GRID = datastate_iri("arc.grid")
+DS_PERCEIVED_GRID = datastate_iri("arc.perceived_grid")
 DS_PALETTE = datastate_iri("arc.palette")
 DS_OBJECT = datastate_iri("arc.object")
 DS_SHAPE = datastate_iri("arc.shape")
@@ -127,6 +128,7 @@ def arc_datastates() -> List[DataState]:
         ds("arc.pair", CATEGORY_COMPREHENSION, "A demonstration|test pair."),
         ds("arc.raw_grid", CATEGORY_COMPREHENSION, "An input|output grid, uninterpreted."),
         ds("arc.grid", CATEGORY_PERCEPTION, "A built Grid (cells)."),
+        ds("arc.perceived_grid", CATEGORY_PERCEPTION, "Materialized per-grid perception bundle (objects+points+dims); the intra-grid predicate input."),
         ds("arc.palette", CATEGORY_DERIVATION, "Per-grid color set."),
         ds("arc.object", CATEGORY_DECOMPOSITION, "Monochrome connected component (size >= 2)."),
         ds("arc.shape", CATEGORY_DERIVATION, "Colorless normalized point-set."),
@@ -182,6 +184,20 @@ def _touching_delta(**kw: Any) -> dict:
         return {DS_STATE_CHANGE: None}
     from . import arc_solver
     return {DS_STATE_CHANGE: arc_solver.touching_changes(pair, bg)}
+
+
+def _inside(**kw: Any) -> dict:
+    """REAL body for the `inside` predicate (step 1 of the MindsOS wiring — the
+    first detector/predicate moved off a stub). Consumes the **perceived-grid
+    bundle** (objects+points+dims) — its honest input, mirroring how the
+    `touching_delta` spike consumes the pair bundle — and returns the ray-based
+    containment pairs. `bg_resolved=False` = the perception/∃-token result, so it
+    matches `arc_profile.attach_relations` (`gs["inside"]`) grid-for-grid. Invoked
+    through `cl.invoke`; no shadow — the registered cap IS the executed compute."""
+    gs = kw.get(DS_PERCEIVED_GRID)
+    if gs is None:
+        return {DS_INSIDE: None}
+    return {DS_INSIDE: arc_grids.contained_pairs(gs, bg_resolved=False)}
 
 
 def _comprehend_task(**kw: Any) -> dict:
@@ -363,9 +379,13 @@ def _intra_grid_capacities() -> List[Capacity]:
         ),
         Capacity(
             name="inside", category=CATEGORY_PREDICATE,
-            inputs=(DS_OBJECT,), outputs=(DS_INSIDE,),
-            implementation=lambda **kw: {DS_INSIDE: None},
-            description="(Region, Region) -> Bool (a enclosed by a single-colour object b; cannot reach the grid border without crossing b; intra-grid, background-excluded).",
+            inputs=(DS_PERCEIVED_GRID,), outputs=(DS_INSIDE,),
+            implementation=_inside,  # step-1 wiring: REAL body (first non-stub predicate)
+            description="(perceived grid: objects+points+dims) -> contained_pairs "
+                        "[{a, b}] (ray-based; a enclosed by single-colour object b; "
+                        "cannot reach the grid border without crossing b; intra-grid). "
+                        "bg_resolved=False = perception/∃-token result. REAL body "
+                        "invoked through the layer — matches attach_relations 400/400.",
         ),
     ]
 

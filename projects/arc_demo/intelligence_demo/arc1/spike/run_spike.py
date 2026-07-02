@@ -187,6 +187,29 @@ def _operator_inference_check(tasks) -> None:
           f"(union occurs {n_u}/{len(tasks)}).")
 
 
+def _inside_layer_conformance(cl, tasks) -> None:
+    """MindsOS wiring step 1 — the `inside` predicate now has a REAL body invoked
+    THROUGH the layer (`cl.invoke`), not a stub. Prove the layer-invoked cap
+    reproduces the inline perception result (`attach_relations` ->
+    `contained_pairs`, bg_resolved=False) for EVERY perceived grid across the 400
+    tasks — i.e. the registered cap IS the executed compute, no shadow."""
+    iri = capacity_iri(ac.CATEGORY_PREDICATE, "inside")
+    n_grids = 0
+    for t in tasks:
+        grids = [pair["input"] for pair in t["train"]] + \
+                [pair["output"] for pair in t["train"]] + \
+                [tg["input"] for tg in t["test"]]
+        for gs in grids:
+            res = cl.invoke(iri, inputs={ac.DS_PERCEIVED_GRID: gs})
+            assert res.success, \
+                f"inside invoke failed on {t['task_id']}: {getattr(res, 'error', None)!r}"
+            assert res.outputs[ac.DS_INSIDE] == gs["inside"], \
+                f"invoked inside != inline attach_relations on {t['task_id']}"
+            n_grids += 1
+    print(f"  [ok] wiring: inside real body invoked through the layer matches "
+          f"inline perception across {n_grids} grids / {len(tasks)} tasks.")
+
+
 #: A synthetic 2-demo task for the phase-9 CONJUNCTION path: recolor to red the
 #: object that is (biggest AND green). No corpus task needs a ≥2 conjunction with
 #: today's condition vocabulary (probe 2026-07-01), so the ≥2 branch is gated here
@@ -274,6 +297,7 @@ def main(argv: list) -> int:
     _evaluate_discrepancy_check(tasks)  # ./evaluate agrees with Search (0 discrepancies)
     _inference_soundness_check(tasks)   # same_object ⟹ same_shape wired skip 0/400
     _operator_inference_check(tasks)    # union ⟹ inset operator skip 0/400
+    _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None
