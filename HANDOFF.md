@@ -710,6 +710,12 @@ First slot (and only slot) of `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`; design s
 
 **Full record:** `confirmation_docs/PHASE_50_DESIGN_LOG.md` + `PHASE_50_CONFIRMED.md`.
 
+### 3.1.24 Phase-1 interpretation seam + `needs_input` clarification — DESIGN ONLY (2026-07-02; NOT shipped, no code)
+
+A **generic core** feature converged in the core-design chat; **ADRs 0195 + 0196 written as Proposed, design-only — nothing built.** Core-owned per RULES §8; **arc-solver (mOS-AS) is the first consumer** (interpretation-only) and owns no core component. Two **decoupled, independently-shippable** features: **(A, ADR-0195)** a pluggable Phase-1 interpretation seam — a construction-bound `Phase1Profile` (per-step slots, v0 fallback) + a standalone `interpret()` decoupled from `run_lifecycle`, `resolve`-in-interpretation, opaque-dict hints + `reference_kind`; **(B, ADR-0196)** a `needs_input` capacity verdict (sibling to `dont_know`, caller-controlled trigger, non-terminal `pending_confirmation` on `TaskOutcome`, stateless re-submit at v1; MM-owns-pending + in-memory continuation designed-not-built). arc confirmed adoption with **two hard constraints**: (a) dispatcher-level body binding, no metagraph scope-mix; (b) `needs_input` trigger caller-controlled. **Next = implementation chat** (STATE.json `pending_designs` → `phase1-seam-and-needs-input`).
+
+**Full record:** `docs/decisions/adr/0195-phase1-interpretation-seam.md` + `0196-needs-input-clarification.md` + `docs/_workbench/L4_FUTURE_WORK.md` §6/§6.2 + `L5_FUTURE_WORK.md` L5-NEW-19.
+
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 
 Each is in active review. **Resolution gates the L4/L5 plan** (see §4).
