@@ -87,11 +87,12 @@ def test_read_local_happy_path_json_output(runner, env_setup) -> None:
     roles = {rg["role"] for rg in payload["role_graphs"]}
     # Phase 43 (ADR-0150 §am-5): Local-named role-graphs grew from 2 to
     # 5 (parameter-staging + pending-promotions + learned-parameters
-    # dual-scope additions).
+    # dual-scope additions). ADR-0150 §am-8: + dual-scope task-patterns → 6.
     assert roles == {
         "episodic_memories",
         "capacity-state",
         "parameter-staging",
         "pending-promotions",
         "learned-parameters",
+        "task-patterns",
     }

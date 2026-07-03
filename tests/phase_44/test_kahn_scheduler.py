@@ -2,9 +2,11 @@
 
 Consumes the Phase-43 ``_APPLIES_AFTER_BY_ROLE`` declarations (L2-37
 consumer split). The single v1 edge (``episodic_memories <- task-patterns``)
-is cross-scope, so single-scope sorts reduce to alphabetical; the
-scheduler enforces within-scope ordering for future edges and rejects
-cycles.
+was cross-scope until ADR-0150 §am-8 made ``task-patterns`` dual-scope; it
+is now **within-Local-scope**, so the Local sort orders ``task-patterns``
+before ``episodic_memories`` (Global still reduces to alphabetical — it has
+no within-scope edge). The scheduler enforces within-scope ordering and
+rejects cycles.
 """
 
 from __future__ import annotations
@@ -52,8 +54,21 @@ def test_cycle_raises() -> None:
         )
 
 
-def test_real_declarations_reduce_to_alphabetical_per_scope() -> None:
+def test_real_declarations_order_per_scope() -> None:
+    # Global has no within-scope edge (episodic_memories is Local) → alphabetical.
     global_order = kahn_sort(_GLOBAL_NAMED_ROLES, _APPLIES_AFTER_BY_ROLE)
-    local_order = kahn_sort(_LOCAL_NAMED_ROLES, _APPLIES_AFTER_BY_ROLE)
     assert global_order == tuple(sorted(_GLOBAL_NAMED_ROLES))
-    assert local_order == tuple(sorted(_LOCAL_NAMED_ROLES))
+    # Local: ADR-0150 §am-8 made task-patterns dual-scope, so the
+    # episodic_memories <- task-patterns edge is within-Local; task-patterns
+    # is emitted before episodic_memories, otherwise alphabetical tie-break.
+    local_order = kahn_sort(_LOCAL_NAMED_ROLES, _APPLIES_AFTER_BY_ROLE)
+    assert set(local_order) == set(_LOCAL_NAMED_ROLES)
+    assert local_order.index("task-patterns") < local_order.index("episodic_memories")
+    assert local_order == (
+        "capacity-state",
+        "learned-parameters",
+        "parameter-staging",
+        "pending-promotions",
+        "task-patterns",
+        "episodic_memories",
+    )
