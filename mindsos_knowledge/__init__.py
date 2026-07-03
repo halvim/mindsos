@@ -141,6 +141,7 @@ from .identifiers import (
     ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
+    ROLE_SUBMINDS,
     ROLE_TASK_PATTERNS,
     SEED_ROLES,
     UPPER_LAYER_ROLES,
@@ -169,6 +170,7 @@ from .identifiers import (
     skill_install_record_iri,
     staged_evidence_iri,
     subgoal_template_iri,
+    submind_definition_iri,
     task_pattern_iri,
 )
 
@@ -190,6 +192,7 @@ from .schemas import (
     build_pending_promotions_schema,
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
+    build_subminds_schema,
     build_task_patterns_schema,
     schema_for_role,
 )
@@ -221,6 +224,8 @@ __all__ = [
     "ROLE_LEARNED_PARAMETERS",
     # Phase 50 role-graph (ADR-0150 §am-6).
     "ROLE_INSTALLED_SKILLS",
+    # feat/subminds role-graph (ADR-0150 §am-7).
+    "ROLE_SUBMINDS",
     "SEED_ROLES",
     "UPPER_LAYER_ROLES",
     "ALL_ROLES",
@@ -250,6 +255,8 @@ __all__ = [
     "learned_parameter_iri",
     # Phase 50 IRI builder (ADR-0150 §am-6).
     "skill_install_record_iri",
+    # feat/subminds IRI builder (ADR-0150 §am-7).
+    "submind_definition_iri",
     # ── parser ─────────────────────────────────────────────────────
     "ParsedIri",
     "parse_iri",
@@ -276,6 +283,8 @@ __all__ = [
     "build_learned_parameters_schema",
     # Phase 50 builder (ADR-0150 §am-6).
     "build_installed_skills_schema",
+    # feat/subminds builder (ADR-0150 §am-7).
+    "build_subminds_schema",
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",
     # ── L2-private vocabulary (Phase 43 — ADR-0153 §am-1 + ADR-0151) ─

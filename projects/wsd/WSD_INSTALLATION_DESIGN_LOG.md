@@ -89,4 +89,29 @@ R0 (10 pushbacks) / R1 (6 + 4 minors) / R2 (6) / R3 (3) — all accepted, zero r
 3. HANDOFF slot-reservation note (Phases 51–56 = WSD; DWF takes 57+).
 4. This log → CLOSED; §3 coordination notes remain live for the parallel DWF chat.
 
+## §7 — Ownership clarification (appended 2026-06-25; supersedes wording only, no design reversal)
+
+**Why this section exists.** Downstream chats were reading the §1–§5 decision rows and the phase-map slot table as if WSD *owns* the mechanics scheduled in Phases 51–56. It does not. WSD is a **subsystem/skill** in a larger NLU stack; it **consumes** MindsOS features, it does not own architectural components (RULES §8 / `wsd-subsystem-not-core` memory). The mechanics were designed *here* because WSD was the first concrete consumer (a forcing-function and validation case), but ownership of the resulting feature/code stays with the MindsOS layer that hosts it. This section is the canonical per-item record; the phase-map §2.1 Owner column is its at-a-glance form. **No slot timing, scope, or decision is reversed** — only attribution is made explicit.
+
+**Ownership ≠ scheduling.** The slot/phase says which chat *builds* the work. The Owner says who *owns the result* long-term. They are different axes. A `MindsOS-core` item shipping inside a WSD-scheduled phase is correct under consumer discipline (co-locate a mechanic with its first consumer); it does not transfer ownership to WSD.
+
+**Categories.**
+- `MindsOS-core` — owned by a MindsOS layer (L0–L5 / Server); ships as release code with a **layer-owned ADR** (not a "WSD ADR"); reusable by FOL/DWF and any consumer. WSD named only as first consumer.
+- `shared` — a `MindsOS-core` mechanic + a WSD-specific instance/content fill. The mechanic is core; only the fill is WSD-owned.
+- `WSD-bundle` — WSD-specific content shipped in a `wsd-*` bundle / `projects/wsd/`.
+
+**Per-item classification** (full table in phase-map §2.1):
+- **51** — *core:* L3-59(b) CapacityContext read-path + CLI + union-drop + phase_34 cleanup; L0-25 delete-sweep audit. *shared:* lexicon empirical-layer EdgeTypes (machinery = L2 lexicon feature / strata = WSD).
+- **52** — *core:* ADR-0181 physical Falkor index creation. *shared:* density instrumentation + DWF hook. *WSD:* SemCor/GlossTag importers + bootstrap population.
+- **53** — *shared:* dependency-policy ADR + `[nlu]` extra (policy = core precedent, FOL reuses / spaCy = WSD); REALM_NLU DataState roster (realm = core, reserved Phase 40 / DataStates = WSD). *WSD:* `perception.nlu_parse`, `process.extract_predicate_arguments`, `scoring.wsd_rank_senses` bodies + `wsd-core` bundle.
+- **54** — *core:* `hint.*`/`predicate.*`/`decision.*` families; atomic v0→real `planning.*`/`phase1.*`/`orchestration.*` flip (L4 orchestrator graduation); first-real-capacity-dispatch e2e milestone. *WSD:* `wsd-pipeline` bundle + nlu-slice cookbook.
+- **55** — *core:* promotion-loop mechanism (producer-agnostic, S10, FOL reuses); real L4 slot-shapes; ALS audit constants + capacity-gaps tooling. *shared:* ALS sense-ranker (contract = core / fill = WSD); dream-miner hook (hook = core / miner = WSD). *WSD:* `wsd-learning` bundle.
+- **56** — *shared:* DOLCE/FrameNet enrichment-read in `scoring.wsd_rank_senses` (read mechanism = core / stratum content = DWF+WSD).
+
+**Wording corrections to earlier rows** (rows left intact for audit trail; this section governs):
+- **PB-W2 / §3.2** — "the lexicon **empirical-layer** is **WSD-owned**" is **incorrect**. The empirical-layer EdgeType *machinery on `lexicon`* is a **MindsOS L2 (knowledge-layer) feature**; WSD owns only the **sense-correlation strata content**. DWF correctly adds **no** empirical-layer machinery, but the reason is "it's not DWF's content," not "the layer belongs to WSD." Any future axiom/alignment/other-domain consumer may add its own strata over the same core machinery.
+- **ADR roster (§5)** — the 6–7 ADRs to be authored for `MindsOS-core` and `shared`-mechanic surfaces (empirical-layer vocabulary, dependency policy, NLU-DataState/capacity contract insofar as it defines core families, promotion mechanism, L4 slot-shapes amendment, v0-flip/orchestration) file as **layer-owned core ADRs**, with WSD named as first consumer — **not** as "WSD ADRs."
+
+**Lesson recorded.** Putting the principle only in RULES did not stop the drift, because chats believe **artifacts** (phase map / design log / HANDOFF / CLAUDE.md), not rules. The fix is to make ownership a **field in the artifacts chats actually read** — hence the Owner column and this section. Future downstream phase-maps (FOL, DWF) should carry an Owner column from authoring.
+
 *End of WSD_INSTALLATION_DESIGN_LOG.md.*

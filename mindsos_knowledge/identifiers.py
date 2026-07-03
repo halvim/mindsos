@@ -79,6 +79,11 @@ ROLE_LEARNED_PARAMETERS = "learned-parameters"
 # ADR-0183 (closed set 12 → 13; Global-only, append-only action records).
 ROLE_INSTALLED_SKILLS = "installed-skills"
 
+# feat/subminds (Slice 1) — SubMind definition records per ADR-0190 +
+# ADR-0150 §amendment-7 (closed set 13 → 14; Global + Local, admin-
+# authored). Slice 1 bootstraps the Global form only.
+ROLE_SUBMINDS = "subminds"
+
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
@@ -93,6 +98,8 @@ UPPER_LAYER_ROLES = frozenset({
     ROLE_LEARNED_PARAMETERS,
     # Phase 50 addition per ADR-0150 §am-6.
     ROLE_INSTALLED_SKILLS,
+    # feat/subminds addition per ADR-0150 §am-7.
+    ROLE_SUBMINDS,
 })
 ALL_ROLES = SEED_ROLES | UPPER_LAYER_ROLES
 
@@ -358,6 +365,25 @@ def skill_install_record_iri(
     return f"installed-skills-{v}:record:{bn}:{rid}"
 
 
+def submind_definition_iri(
+    version: str, submind_name: str, record_id: str
+) -> str:
+    """SubMind definition record (Global + Local; ADR-0190 + ADR-0150 §am-7):
+    ``subminds-<v>:definition:<submind_name>:<record_id>``.
+
+    One record per authored/taught endowment of a named SubMind; current
+    state = latest record per ``submind_name`` (de-endowment is a later
+    ``deprecated``-status record, lifecycle slice). ``record_id`` is
+    writer-minted and, like ``skill_install_record_iri`` (PB-8
+    precedent), may carry colons — the parser leaves the body opaque
+    after the ``definition:`` kind and full-string round-trip holds.
+    """
+    v = _ensure_version(version)
+    sn = _normalise_fragment(submind_name)
+    rid = _normalise_fragment(record_id)
+    return f"subminds-{v}:definition:{sn}:{rid}"
+
+
 # ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
 # Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
@@ -449,6 +475,19 @@ def _mint_skill_install_record(version: str, /, **content: object) -> str:
     )
 
 
+def _mint_submind_definition(version: str, /, **content: object) -> str:
+    """Adapter: ``submind_definition_iri`` ← ``mint_iri`` kwargs (feat/subminds).
+
+    Requires ``submind_name`` + ``record_id`` keys. ``KeyError`` on
+    missing per ADR-0146 §Decision (programmer error).
+    """
+    return submind_definition_iri(
+        version,
+        submind_name=str(content["submind_name"]),
+        record_id=str(content["record_id"]),
+    )
+
+
 #: Per-(role, NodeType_name) IRI-builder dispatch table for
 #: :meth:`KLWriteHandle.mint_iri`. Phase 39 ships 3 entries per
 #: ADR-0146 §amendment-3 (Episode + Memory composite under
@@ -468,6 +507,8 @@ _IRI_BUILDERS: dict[tuple[str, str], object] = {
     (ROLE_LEARNED_PARAMETERS, "LearnedParameter"): _mint_learned_parameter,
     # Phase 50 addition per ADR-0150 §am-6.
     (ROLE_INSTALLED_SKILLS, "SkillInstallRecord"): _mint_skill_install_record,
+    # feat/subminds addition per ADR-0150 §am-7.
+    (ROLE_SUBMINDS, "SubMindDefinition"): _mint_submind_definition,
 }
 
 
@@ -511,6 +552,8 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("learned-parameters-", ROLE_LEARNED_PARAMETERS),
     # Phase 50 addition per ADR-0150 §am-6.
     ("installed-skills-", ROLE_INSTALLED_SKILLS),
+    # feat/subminds addition per ADR-0150 §am-7.
+    ("subminds-", ROLE_SUBMINDS),
 )
 
 # Per-role kind-extraction whitelist. The parser strips the kind
@@ -532,6 +575,8 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_LEARNED_PARAMETERS: frozenset({"parameter"}),
     # Phase 50 addition per ADR-0150 §am-6.
     ROLE_INSTALLED_SKILLS: frozenset({"record"}),
+    # feat/subminds addition per ADR-0150 §am-7.
+    ROLE_SUBMINDS: frozenset({"definition"}),
 }
 
 

@@ -40,8 +40,12 @@ from typing import (
 if TYPE_CHECKING:
     from .context import CapacityContext
 
-from .exceptions import CapacityRegistrationError
+from .exceptions import CapacityRegistrationError, InputContractError
+from .needs_input import NeedsInput
 from .identifiers import (
+    INPUT_GROUP_ALL_REQUIRED,
+    INPUT_GROUP_ANY_OF,
+    INPUT_GROUP_FOLD,
     KIND_ADAPTER,
     KIND_MONITOR,
     KIND_REACTIVE,
@@ -79,6 +83,14 @@ class _CapacityBase:
     precondition_iri: Optional[str] = None
     effect_iri: Optional[str] = None
     reads_mm: bool = False
+    # ADR-0159 §amendment-1 — how the conjunction finder resolves this
+    # capacity's multiple declared inputs: "all_required" (AND) | "any_of"
+    # (optional-union) | "fold" (aggregate over N producers). The default
+    # preserves every pre-amendment capacity (the implicit contract *was*
+    # all-inputs-required for a sound composer; the BFS just never enforced
+    # it). Read off the declaration by the finder; not emitted to the graph
+    # at v1 (Decision 8).
+    input_group: str = INPUT_GROUP_ALL_REQUIRED
     placeholder: bool = False
 
     @property
@@ -249,6 +261,11 @@ class InvocationResult:
             Holds the typed ``WriteResult | ProblemTraceRecord`` the
             write body returned. ``runtime.invoke``'s bypass branch
             stashes it here; read paths leave ``None``.
+        needs_input: ADR-0196 — the ``NeedsInput`` verdict a body returned
+            to request user clarification (``None`` normally). Orthogonal
+            to ``success`` (the body ran fine; it deliberately asked), so
+            ``needs_input``-aware callers (``pipeline_execution``,
+            ``phase_1.interpret``) must check this field explicitly.
     """
 
     outputs: Mapping[str, Any]
@@ -258,6 +275,54 @@ class InvocationResult:
     signals: Tuple[Any, ...] = ()
     trace: Mapping[str, Any] = field(default_factory=dict)
     write_outcome: Optional[Any] = None  # WriteResult | ProblemTraceRecord
+    needs_input: Optional[Any] = None  # NeedsInput (ADR-0196)
+
+
+def _validate_inputs(
+    declaration: _CapacityBase, inputs: Mapping[str, Any]
+) -> None:
+    """Validate ``inputs`` against the declaration's ``CONSUMES`` contract.
+
+    Composition-lifecycle Slice 2 Part 6 (ADR-0072 §amendment-2). Checks
+    the declaration's declared input set (declaration-primary, not the
+    edge-sourced view), respecting ``input_group``:
+
+    - ``all_required`` — every declared input must be present.
+    - ``any_of`` — at least one declared input must be present.
+    - ``fold`` — not enforced at v1; operand multiplicity is Part 5.
+
+    Non-fold groups also reject keys absent from the declared inputs
+    (no-unexpected). The ``context`` key is never an input and is
+    ignored. Raises :class:`InputContractError` (``kind`` set); on the
+    ``invoke`` path the caller envelopes it per ADR-0072.
+    """
+    declared = tuple(declaration.inputs)
+    if declaration.input_group == INPUT_GROUP_FOLD:
+        return
+    declared_set = set(declared)
+    present = {k for k in inputs if k != "context"}
+    if declaration.input_group == INPUT_GROUP_ANY_OF:
+        if declared and not (present & declared_set):
+            raise InputContractError(
+                f"Capacity {declaration.iri!r}: input_group=any_of requires at "
+                f"least one of {sorted(declared_set)}; got {sorted(present)}",
+                kind="missing_required",
+            )
+    else:
+        missing = [ds for ds in declared if ds not in present]
+        if missing:
+            raise InputContractError(
+                f"Capacity {declaration.iri!r}: missing required inputs "
+                f"{missing!r} (declared CONSUMES; got {sorted(present)})",
+                kind="missing_required",
+            )
+    unexpected = sorted(k for k in present if k not in declared_set)
+    if unexpected:
+        raise InputContractError(
+            f"Capacity {declaration.iri!r}: unexpected inputs {unexpected!r} "
+            f"not in declared CONSUMES {sorted(declared_set)}",
+            kind="unexpected_input",
+        )
 
 
 def call_capacity(
@@ -288,10 +353,17 @@ def call_capacity(
         raise CapacityRegistrationError(
             f"Capacity {declaration.iri!r} has no implementation bound"
         )
+    _validate_inputs(declaration, inputs)
     kwargs = dict(inputs)
     if context is not None:
         kwargs.setdefault("context", context)
     result = declaration.implementation(**kwargs)
+
+    # ADR-0196 — a body may return the ``NeedsInput`` clarification verdict
+    # instead of its declared outputs. Short-circuit output validation;
+    # ``runtime.invoke`` envelopes it onto ``InvocationResult.needs_input``.
+    if isinstance(result, NeedsInput):
+        return result
 
     outputs = declaration.outputs
     if isinstance(result, Mapping):

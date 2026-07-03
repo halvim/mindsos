@@ -47,6 +47,7 @@ from ..identifiers import (
     ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
+    ROLE_SUBMINDS,
     ROLE_TASK_PATTERNS,
 )
 from .alignment import build_alignment_schema
@@ -62,6 +63,7 @@ from .parameter_staging import build_parameter_staging_schema
 from .pending_promotions import build_pending_promotions_schema
 from .problem_trace import build_problem_trace_schema
 from .promoted_pipelines import build_promoted_pipelines_schema
+from .subminds import build_subminds_schema
 from .task_patterns import build_task_patterns_schema
 
 
@@ -86,6 +88,8 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     ROLE_LEARNED_PARAMETERS: build_learned_parameters_schema,
     # Phase 50 addition per ADR-0150 §am-6.
     ROLE_INSTALLED_SKILLS: build_installed_skills_schema,
+    # feat/subminds addition per ADR-0150 §am-7.
+    ROLE_SUBMINDS: build_subminds_schema,
 }
 
 
@@ -140,6 +144,8 @@ __all__ = [
     "build_learned_parameters_schema",
     # Phase 50 builder (ADR-0150 §am-6).
     "build_installed_skills_schema",
+    # feat/subminds builder (ADR-0150 §am-7).
+    "build_subminds_schema",
     # Dispatch surface.
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",

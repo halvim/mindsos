@@ -31,6 +31,7 @@ from mindsos_knowledge import (
     ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
+    ROLE_SUBMINDS,
     ROLE_TASK_PATTERNS,
 )
 
@@ -48,6 +49,8 @@ _EXPECTED_BOOTSTRAP_GLOBAL_ROLES = {
     ROLE_LEARNED_PARAMETERS,
     # Phase 50 (ADR-0150 §am-6) addition — Global-only.
     ROLE_INSTALLED_SKILLS,
+    # feat/subminds (ADR-0150 §am-7) addition — Global form (Slice 1).
+    ROLE_SUBMINDS,
 }
 
 _EXPECTED_LAZY_LOCAL_ROLES = {
@@ -57,13 +60,15 @@ _EXPECTED_LAZY_LOCAL_ROLES = {
     ROLE_PARAMETER_STAGING,
     ROLE_PENDING_PROMOTIONS,
     ROLE_LEARNED_PARAMETERS,
+    # feat/phase1-seam (ADR-0150 §am-8) — task-patterns dual-scope.
+    ROLE_TASK_PATTERNS,
 }
 
 
 def test_bootstrap_global_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     g = kl.global_metagraph()
-    assert len(g.graphs) == 10
+    assert len(g.graphs) == 11
     observed = {gr.role for gr in g.graphs.values()}
     assert observed == _EXPECTED_BOOTSTRAP_GLOBAL_ROLES
 
@@ -71,7 +76,7 @@ def test_bootstrap_global_dimensional_snapshot() -> None:
 def test_lazy_local_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
-    assert len(local.graphs) == 5
+    assert len(local.graphs) == 6
     observed = {gr.role for gr in local.graphs.values()}
     assert observed == _EXPECTED_LAZY_LOCAL_ROLES
 

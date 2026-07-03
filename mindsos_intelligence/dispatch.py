@@ -28,15 +28,24 @@ authorization-free (ADR-0170 §amendment-1).
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Optional
+from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 from mindsos_capacity.context import CancelTokenView, CapacityContext, make_writeable
 from mindsos_capacity.runtime import invoke as _runtime_invoke
 
+if TYPE_CHECKING:  # pragma: no cover — typing only
+    from .phase1_profile import Phase1Profile
+
 
 class L4Dispatcher:
     """Builds CapacityContexts (incl. the gated ``writeable`` capability)
-    and dispatches L3 capacities for one session (ADR-0180)."""
+    and dispatches L3 capacities for one session (ADR-0180).
+
+    ``phase1_profile`` (ADR-0195) is the construction-bound, per-consumer
+    selection of Phase-1 interpretation bodies (``None`` → all v0). It is a
+    dispatch-time IRI selection, NOT a registration — the seam never mixes
+    Global DataStates with Local capacities in one metagraph.
+    """
 
     def __init__(
         self,
@@ -47,6 +56,7 @@ class L4Dispatcher:
         mm_handle: Any = None,
         learned_parameters: Optional[Mapping[str, Any]] = None,
         version_snapshot: Optional[Mapping[str, int]] = None,
+        phase1_profile: "Optional[Phase1Profile]" = None,
     ) -> None:
         self._cl = capacity_layer
         self._session = session
@@ -54,6 +64,26 @@ class L4Dispatcher:
         self._mm_handle = mm_handle
         self._learned_parameters = dict(learned_parameters or {})
         self._version_snapshot = dict(version_snapshot or {})
+        self._phase1_profile = phase1_profile
+
+    # ── read-only accessors (used by ``phase_1.interpret`` for
+    #    find_pipeline composition + the map-resolution KL check) ─────────
+
+    @property
+    def capacity_layer(self):
+        return self._cl
+
+    @property
+    def session(self):
+        return self._session
+
+    @property
+    def kl(self):
+        return self._kl
+
+    @property
+    def phase1_profile(self) -> "Optional[Phase1Profile]":
+        return self._phase1_profile
 
     def build_context(
         self,

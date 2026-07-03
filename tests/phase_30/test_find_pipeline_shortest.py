@@ -20,7 +20,7 @@ def test_find_pipeline_returns_linear_chain():
     )
 
     assert isinstance(pipeline, Pipeline)
-    assert pipeline.start_datastate == DS_INPUT_IRI
+    assert pipeline.start_datastates == (DS_INPUT_IRI,)
     assert pipeline.target_datastate == DS_OUTPUT_IRI
     assert len(pipeline) == 2
     iris = [step.capacity_iri for step in pipeline.steps]

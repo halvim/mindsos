@@ -29,11 +29,18 @@ from typing import TYPE_CHECKING, Any, List, Mapping, Optional, Union
 if TYPE_CHECKING:
     from .context import CapacityContext
 
-from .capacity import InvocationResult, _CapacityBase, call_capacity
+from .capacity import (
+    InvocationResult,
+    _CapacityBase,
+    _validate_inputs,
+    call_capacity,
+)
 from .exceptions import (
     CapacityRegistrationError,
+    InputContractError,
     ProblemTraceError,
 )
+from .needs_input import NeedsInput
 # NOTE: ``WriteResult`` (from .write_outcome) is intentionally NOT imported
 # at module level — ``write_outcome.py`` imports ``ProblemTraceRecord``
 # from this module, so a top-level import here would form a cycle.
@@ -192,6 +199,7 @@ def invoke(
         # Bypass ``call_capacity`` for writes; validate return type
         # explicitly (R5 PB-G); stash in ``InvocationResult.write_outcome``.
         if not declaration.outputs:
+            _validate_inputs(declaration, inputs)
             # Lazy import to avoid the write_outcome ↔ runtime cycle.
             from .write_outcome import WriteResult
 
@@ -220,6 +228,18 @@ def invoke(
 
         outputs = call_capacity(declaration, inputs, context=context)
         duration_ms = (time.perf_counter() - start) * 1000.0
+        # ADR-0196 — the body returned a NeedsInput clarification verdict
+        # (call_capacity short-circuited output validation). Envelope it on
+        # ``needs_input``; ``success`` stays True (the body ran fine and
+        # deliberately asked) with empty outputs.
+        if isinstance(outputs, NeedsInput):
+            return InvocationResult(
+                outputs={},
+                duration_ms=duration_ms,
+                success=True,
+                needs_input=outputs,
+                trace={"capacity": declaration.iri, "needs_input": True},
+            )
         return InvocationResult(
             outputs=outputs,
             duration_ms=duration_ms,
@@ -232,11 +252,16 @@ def invoke(
         )
     except Exception as exc:  # noqa: BLE001 — ADR-0072 envelope contract
         duration_ms = (time.perf_counter() - start) * 1000.0
+        error_kind = (
+            f"input_contract:{exc.kind}"
+            if isinstance(exc, InputContractError)
+            else f"exception:{type(exc).__name__}"
+        )
         if problem_trace_sink is not None and task_id is not None:
             emit_problem_trace(
                 problem_trace_sink,
                 task_id=task_id,
-                error_kind=f"exception:{type(exc).__name__}",
+                error_kind=error_kind,
                 step_id=step_id,
                 capacity_iri=declaration.iri,
                 payload={"message": str(exc)},

@@ -43,6 +43,14 @@ class SignalTriageWorker:
     def submit_signal(self, signal: Any) -> None:
         self._queue.put(signal)
 
+    def set_on_classified(
+        self, on_classified: Optional[Callable[[Any, TierEnum], None]]
+    ) -> None:
+        """Set the post-classification sink (feat/subminds: the SubMind
+        registry routes classified Signals onto the executor heap). Additive
+        — the shipped default remains ``None`` until a consumer wires one."""
+        self._on_classified = on_classified
+
     def start(self) -> None:
         if self._thread is not None:
             return

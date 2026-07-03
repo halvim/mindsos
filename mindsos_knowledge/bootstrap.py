@@ -62,6 +62,7 @@ from .identifiers import (
     ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
+    ROLE_SUBMINDS,
     ROLE_TASK_PATTERNS,
 )
 from .schemas import (
@@ -89,13 +90,22 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_LEARNED_PARAMETERS,
     # Phase 50 (ADR-0150 §am-6) — skill-install state; Global-only.
     ROLE_INSTALLED_SKILLS,
+    # feat/subminds (ADR-0150 §am-7) — SubMind definition records. The
+    # role is Global+Local by design; Slice 1 bootstraps the Global form
+    # only (authored, admin-gated endowment). The Local form lands with
+    # the taught-endowment slice.
+    ROLE_SUBMINDS,
 })
 
 #: Roles that live in Local-per-user metagraph per ADR-0044
 #: (§am-3 renamed ``memories`` → ``episodic_memories``) + ADR-0150
 #: §amendment-5 (Phase 43 — 3 of the 4 new role-graphs have a Local
 #: form: parameter-staging, pending-promotions, learned-parameters;
-#: capacity-gaps is Global-only).
+#: capacity-gaps is Global-only) + ADR-0150 §amendment-8 (task-patterns
+#: gains a Local form — dual-scope like pending-promotions /
+#: learned-parameters: per-user patterns are authored/learned Local and
+#: promoted to the shared Global form; discipline is
+#: ``immutable_successor`` so new pattern nodes are addable Local).
 _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_EPISODIC_MEMORIES,
     ROLE_CAPACITY_STATE,
@@ -103,6 +113,8 @@ _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_PARAMETER_STAGING,
     ROLE_PENDING_PROMOTIONS,
     ROLE_LEARNED_PARAMETERS,
+    # feat/phase1-seam (ADR-0150 §am-8) — task-patterns is now dual-scope.
+    ROLE_TASK_PATTERNS,
 })
 
 #: Alignment role-prefix per ADR-0150. Per §amendment-1 (Phase 14
@@ -129,8 +141,10 @@ _LOCAL_ONLY_ROLES: frozenset[str] = (
 #:
 #: Soft edge: ``episodic_memories ← {task-patterns}`` per Chat B D-B47
 #: (Episodes carry ``task_pattern_iri`` so task-patterns must exist
-#: before episodes can reference). Other role-graphs are independent
-#: at Phase 43 scope.
+#: before episodes can reference). Since ADR-0150 §am-8 task-patterns is
+#: dual-scope, this edge is now **within-Local-scope** too, so the Local
+#: kahn_sort orders task-patterns before episodic_memories (previously
+#: cross-scope / ignored). Other role-graphs are independent.
 #:
 #: Phase 43 declares the field shape only; consumers raise no errors
 #: when ordering is violated. Phase 44 ships the scheduler that turns
@@ -150,6 +164,8 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_LEARNED_PARAMETERS: frozenset(),
     # Phase 50 (ADR-0150 §am-6) — no bootstrap-order dependencies.
     ROLE_INSTALLED_SKILLS: frozenset(),
+    # feat/subminds (ADR-0150 §am-7) — no bootstrap-order dependencies.
+    ROLE_SUBMINDS: frozenset(),
 }
 
 

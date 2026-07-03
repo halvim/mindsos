@@ -7,7 +7,7 @@ Sub-subgroup shape:
       [Phase 30] Run datastate-keyed BFS over the auto-discovered
       TYPE_COMPAT graph (ADR-0071); print the shortest pipeline by
       capacity count. Default human-readable arrow chain; ``--json``
-      emits the verbose Pipeline + PipelineStep dataclass shape.
+      emits the verbose Pipeline shape (steps + dataflow edges).
 
   mindsos capacity problem-trace tail [--limit N] [--json]
       [Phase 30] Peek at the most-recent N ProblemTraceRecords on the
@@ -96,9 +96,14 @@ def _construct_global_layer() -> CapacityLayer:
 
 
 def _pipeline_to_dict(pipeline: Pipeline) -> dict:
-    """Render a Pipeline as a verbose JSON-ready dict (R2 PB-33(a))."""
+    """Render a Pipeline (converging DAG) as a verbose JSON-ready dict.
+
+    R2 PB-33(a); updated for the DAG shape (ADR-0071 §am-2): plural
+    ``start_datastates`` and explicit dataflow ``edges`` replace the old
+    linear ``start_datastate`` / per-step ``via_datastate``.
+    """
     return {
-        "start_datastate": pipeline.start_datastate,
+        "start_datastates": list(pipeline.start_datastates),
         "target_datastate": pipeline.target_datastate,
         "length": len(pipeline),
         "steps": [
@@ -106,24 +111,32 @@ def _pipeline_to_dict(pipeline: Pipeline) -> dict:
                 "capacity_iri": step.capacity_iri,
                 "input_datastates": list(step.input_datastates),
                 "output_datastates": list(step.output_datastates),
-                "via_datastate": step.via_datastate,
             }
             for step in pipeline.steps
+        ],
+        "edges": [
+            {
+                "producer": edge.producer,
+                "consumer": edge.consumer,
+                "datastate": edge.datastate,
+            }
+            for edge in pipeline.edges
         ],
     }
 
 
 def _pipeline_to_human(pipeline: Pipeline) -> str:
-    """Render a Pipeline as an arrow chain for human-readable output."""
+    """Render a Pipeline as an arrow chain for human-readable output.
+
+    The BFS back-compat path (``find_pipeline``) yields a degenerate-
+    linear DAG, so the topologically-ordered ``steps`` read as a chain.
+    """
+    starts = ", ".join(pipeline.start_datastates)
     if not pipeline.steps:
-        return (
-            f"{pipeline.start_datastate} (already at target; 0 capacities)"
-        )
-    chain = [pipeline.start_datastate]
+        return f"{starts} (already at target; 0 capacities)"
+    chain = [starts]
     for step in pipeline.steps:
         chain.append(step.capacity_iri)
-        # Pick the output that matches the next step's `via_datastate`
-        # or the pipeline's target on the last step.
         chain.append(step.output_datastates[0] if step.output_datastates else "?")
     chain[-1] = pipeline.target_datastate
     return " -> ".join(chain)

@@ -67,3 +67,12 @@ All three defer to the first phase with a local-first / portable-export consumer
 1. **Ship both stores now (CR-2 original).** Rejected on investigation — the SQLite serializer is a disk-coupled refactor with CLI-regression risk for a consumer-less store.
 2. **Net-new self-contained serializer for the SQLite path (Opt-3b).** Rejected for v1 — still builds a serializer (and a duplicate format) for a store with no consumer.
 3. **Promote + dependency-inject the CLI serializer now (Opt-3a).** Rejected for v1 — correct eventual design, but premature; it lands with the first SQLite consumer.
+
+## §amendment-1 (feat/f9-durable-local — 2026-06-21): FalkorDBLocalPersister promoted to live surface
+
+F9 (ADR-0186) promotes `FalkorDBLocalPersister` from dormant
+(module-`__all__` only, no consumer) to live public surface — re-exported
+from `mindsos_server.persistence.__all__` and consumed by
+`mindsos_server.local_boot.load_or_mint_local` as the durable backing
+store for per-device Locals. A role-scoped `reset_run_state` is added
+alongside the hard `delete` (ADR-0187).

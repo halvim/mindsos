@@ -45,6 +45,7 @@ def test_registry_contains_three_entries_post_rename() -> None:
         ROLE_LEARNED_PARAMETERS,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
+        ROLE_SUBMINDS,
     )
     assert set(_IRI_BUILDERS.keys()) == {
         (ROLE_EPISODIC_MEMORIES, "Episode"),
@@ -57,6 +58,8 @@ def test_registry_contains_three_entries_post_rename() -> None:
         (ROLE_LEARNED_PARAMETERS, "LearnedParameter"),
         # Phase 50 addition per ADR-0150 §am-6.
         (ROLE_INSTALLED_SKILLS, "SkillInstallRecord"),
+        # feat/subminds addition per ADR-0150 §am-7.
+        (ROLE_SUBMINDS, "SubMindDefinition"),
     }
 
 

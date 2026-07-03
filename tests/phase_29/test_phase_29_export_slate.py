@@ -37,8 +37,11 @@ PHASE_30_LIFTED_EXPORTS = {
     "invoke",
     "InvocationResult",
     "call_capacity",
+    # composition-lifecycle (ADR-0071 §am-2): the linear Pipeline/PipelineStep
+    # were replaced by the Pipeline result type + DAGStep/DAGEdge.
     "Pipeline",
-    "PipelineStep",
+    "DAGStep",
+    "DAGEdge",
     "find_pipeline",
     "ProblemTraceRecord",
     "ProblemTraceSink",
@@ -70,20 +73,24 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_phase_45_export_count_is_118():
+def test_export_count_is_139():
     """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40)
-    -> 112 (P41) -> 117 (P42) -> 118 (P45).
+    -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9) -> 139
+    (composition-lifecycle).
 
-    Phase 45 (Rail D, ADR-0162) adds 1 export: ``DreamCapacity`` (the
-    ``dream.*`` capacity-kind dataclass, alongside Monitor/Adapter in
-    ``capacity.py``). The builtins ``dream.py`` surface is NOT re-exported
-    at this top level (R0 PB-5 lock; same as text.*).
+    composition-lifecycle (ADR-0071 §am-2 + ADR-0159 §am-1) net +11:
+    -2 (retire ``Pipeline``/``PipelineStep``) +7 finder seam / DAG type
+    (``Pipeline``, ``DAGStep``, ``DAGEdge``, ``START``, ``Finder``,
+    ``BFSFinder``, ``ConjunctionFinder``) +2 composite-persistence
+    (``COMPOSITE_DAG``, ``composite_dependencies``) +4 typed input-group
+    (``INPUT_GROUP_ALL_REQUIRED``, ``INPUT_GROUP_ANY_OF``,
+    ``INPUT_GROUP_FOLD``, ``INPUT_GROUPS``).
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 118, (
-        f"Phase 45 __all__ count {n} != expected 118 "
-        f"(Phase 42 baseline 117 + 1 DreamCapacity)"
+    assert n == 139, (
+        f"__all__ count {n} != expected 139 "
+        f"(F9 baseline 128 + 11 composition-lifecycle net)"
     )
 
 

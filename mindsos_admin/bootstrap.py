@@ -161,6 +161,9 @@ _GLOBAL_ROLE_ORDER: tuple[str, ...] = (
     "learned-parameters",
     # Phase 50 (ADR-0150 §am-6) — skill-install state; Global-only.
     "installed-skills",
+    # feat/subminds (ADR-0150 §am-7) — SubMind definition records; Global
+    # form bootstrapped at Slice 1.
+    "subminds",
 )
 # Sanity: matches mindsos_knowledge.bootstrap's frozenset content.
 assert frozenset(_GLOBAL_ROLE_ORDER) == _GLOBAL_NAMED_ROLES, (
