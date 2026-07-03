@@ -292,30 +292,33 @@ def _arc_intake_check(dataset) -> None:
           (ADR-0196; arc-Local cold-start policy, caller-controlled);
       (2) re-submitting the canonical request resolves + solves #8 (the dispatched
           answer matches the withheld test — a real ask->solve, not a stub);
-      (3) once the Local ordering marker is set, an index resolves silently.
+      (3) the user confirms -> the Local ordering marker is set (a persisted
+          capacity-state node), and a FRESH index request resolves silently.
     """
     from . import arc_intake as ai
     from mindsos_capacity.needs_input import NeedsInput
     from mindsos_intelligence import InterpretationResult, interpret
 
-    inst = ai.build_intake(dataset, ordering_established=False)
-    r1 = ai.solve_task(inst, "solve task 8", dataset)          # (1)
+    inst = ai.build_intake(dataset)
+    assert not ai.ordering_established(inst), "fresh instance must be cold-start"
+    r1 = ai.solve_task(inst, "solve task 8", dataset)          # (1) cold start asks
     assert isinstance(r1, NeedsInput) and r1.missing == ai.ARC_CANON_DS, \
         "cold-start index must return NeedsInput"
     resubmit = r1.choices["yes"]["text"]
     assert resubmit == "solve task 05f2a901", resubmit
 
-    dispatched, inline = ai.solve_task(inst, resubmit, dataset)  # (2)
+    ai.confirm_ordering(inst)                                   # (2) user confirms -> marker set
+    assert ai.ordering_established(inst), "confirm must set the Local marker"
+    dispatched, inline = ai.solve_task(inst, resubmit, dataset)
     assert dispatched["matches_withheld"] and dispatched == inline, \
         "canonical re-submit must solve #8 through the layer"
 
-    inst2 = ai.build_intake(dataset, ordering_established=True)  # (3)
-    r3 = interpret(inst2.dispatcher, "solve task 2")
+    r3 = interpret(inst.dispatcher, "solve task 2")            # (3) fresh index now silent
     assert isinstance(r3, InterpretationResult) and r3.resolved_reference == "00d62c1b", \
-        "marker set: index must resolve silently"
+        "after confirm, an index must resolve silently"
 
-    print("  [ok] arc intake: 'solve task <ref>' interpreted through the Phase-1 "
-          "seam -> cold-start NeedsInput, re-submit resolves + solves #8, marker silent.")
+    print("  [ok] arc intake: 'solve task <ref>' through the Phase-1 seam -> cold-start "
+          "NeedsInput, re-submit solves #8, confirm sets the Local marker -> index silent.")
 
 
 #: A synthetic 2-demo task for the phase-9 CONJUNCTION path: recolor to red the

@@ -40,7 +40,7 @@ from mindsos_core.models.graph import Graph
 from mindsos_core.persistence import FalkorClient
 
 from mindsos_knowledge import KnowledgeLayer
-from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
+from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES, ROLE_TASK_PATTERNS
 from mindsos_knowledge.metagraph_view import MetagraphView
 
 from mindsos_server.persistence.local_persister import FalkorDBLocalPersister
@@ -48,7 +48,7 @@ from mindsos_server.persistence.local_persister import FalkorDBLocalPersister
 from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
 from mindsos_intelligence.consolidation import consolidate_task
 
-from . import arc_grids, arc_l4, arc_solver
+from . import arc_grids, arc_intake, arc_l4, arc_solver
 
 
 def connect(graph: str = "arc") -> FalkorClient:
@@ -101,6 +101,7 @@ def build_durable_instance(client: FalkorClient, user: str = "arc"):
     Local — L5 is Local-only ("No Global L5")."""
     inst = arc_l4.build_instance(user=user, arc_local=True)  # arc caps + DS -> user's Local L3
     inst.persister = FalkorDBLocalPersister(client)
+    arc_intake.register_intake(inst, arc_grids.load_dataset())  # Local hint/map/resolve + task-pattern
     return inst
 
 
@@ -131,6 +132,7 @@ def run_and_persist(inst, task_ids):
         assert res is not None and res.success, f"consolidation failed for {task_id}: {res!r}"
         solved.append((task_id, outcome))
 
+    arc_intake.confirm_ordering(inst)                         # user confirmed the enum -> Local marker
     inst.persister.delete(inst.user)                          # clean prior Local (no stale accumulation)
     inst.persister.save(inst.user, inst.kl.local_metagraph(inst.user))
     loaded = inst.persister.load(inst.user)                   # reload from Falkor
@@ -139,6 +141,11 @@ def run_and_persist(inst, task_ids):
     eps = [n for n in g.nodes.values() if getattr(n, "type_name", None) == "Episode"]
     assert len(eps) == len(task_ids), \
         f"expected {len(task_ids)} Episodes reloaded, got {len(eps)}"
+    # intake state round-trips too: the map target (task-pattern) + the cold-start marker
+    tp = MetagraphView(loaded).graphs_by_role(ROLE_TASK_PATTERNS)[0]
+    assert arc_intake.ARC_PATTERN in tp.nodes, "arc-solve task-pattern did not persist"
+    cs = MetagraphView(loaded).graphs_by_role(arc_intake._MARKER_ROLE)[0]
+    assert arc_intake._MARKER_NODE in cs.nodes, "ordering marker did not persist"
     return solved, len(eps)
 
 
@@ -152,9 +159,16 @@ def verify_restart(client: FalkorClient, user: str = "arc"):
     assert loaded is not None, "no persisted Local in Falkor — run step 2 first"
     kl = KnowledgeLayer.bootstrap()                 # fresh instance (post-restart)
     kl.install_local_metagraph(user, loaded)        # reload the user's Local
-    g = MetagraphView(kl.local_metagraph(user)).graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
+    mv = MetagraphView(kl.local_metagraph(user))
+    g = mv.graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
     eps = [n for n in g.nodes.values() if getattr(n, "type_name", None) == "Episode"]
     assert eps, "no Episode found after restart-reload from Falkor"
+    # the "ask" intake state also survives: the map target + the cold-start marker,
+    # so a reloaded instance resolves an index silently (no re-confirmation).
+    assert arc_intake.ARC_PATTERN in mv.graphs_by_role(ROLE_TASK_PATTERNS)[0].nodes, \
+        "arc-solve task-pattern missing after restart"
+    assert arc_intake._MARKER_NODE in mv.graphs_by_role(arc_intake._MARKER_ROLE)[0].nodes, \
+        "ordering marker missing after restart — cold-start would re-ask"
     return eps
 
 
@@ -169,8 +183,9 @@ def main(argv=None) -> int:
             pats = sorted(e.value.get("task_pattern_iri") for e in eps
                           if isinstance(e.value, dict))
             print(f"  [ok] (b) step 3: FRESH instance loaded the Local from Falkor "
-                  f"(no trip re-run) — {len(eps)} prior Episodes present: {pats}. "
-                  f"The durable instance survives a restart.")
+                  f"(no trip re-run) — {len(eps)} prior Episodes present: {pats}; "
+                  f"intake task-pattern + ordering marker survived too (index resolves "
+                  f"silently, no re-confirm). The durable instance survives a restart.")
         else:
             inst = build_durable_instance(client)
             solved, n = run_and_persist(inst, SOLVED_TASKS)
@@ -178,7 +193,7 @@ def main(argv=None) -> int:
             print(f"  [ok] (b) step 2: arc caps registered LOCAL; solved {len(solved)} "
                   f"tasks through L4->L3 [{tags}] -> {n} L5 Episodes "
                   f"'arc:solved:*' consolidated + persisted to Falkor Local + reloaded "
-                  f"for user 'arc'.")
+                  f"for user 'arc'; intake state (task-pattern + ordering marker) persisted too.")
             print("  [i] then verify restart durability: "
                   "python3 -m intelligence_demo.arc1.spike.arc_instance restart")
     finally:

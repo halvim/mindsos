@@ -55,7 +55,13 @@ HINT_IRI = capacity_iri(CATEGORY_HINT, "arc")
 MAP_IRI = capacity_iri(CATEGORY_DECISION, "arc_map")
 RESOLVE_IRI = capacity_iri(CATEGORY_DECISION, "arc_resolve")
 
+# The arc-Local "ordering-established" cold-start marker: a CapacitySnapshot node
+# in the user's Local capacity-state graph (runtime state — persisted with the
+# instance, so cold-start is once-per-USER, not once-per-session).
 _MARKER = "ordering-established"
+_MARKER_ROLE = "capacity-state"
+_MARKER_NODE = "arc:ordering-established"
+_MARKER_TYPE = "CapacitySnapshot"
 
 
 def _ds(name: str) -> DataState:
@@ -85,17 +91,35 @@ def _map_impl(**kw: Any) -> dict:
     return {DS_MAPPING: {"task_pattern_iri": ARC_PATTERN, "mapping_confidence": 1.0}}
 
 
-def build_intake(dataset: dict, *, ordering_established: bool = False):
-    """Stand up a Local arc instance (the proven ``build_instance`` recipe) with
-    the intake bodies + task-pattern registered on top, and a Phase1Profile-bound
-    dispatcher. ``ordering_established`` seeds the arc-Local cold-start marker.
+def _capacity_state_graph(inst):
+    mg = inst.kl.local_metagraph(inst.user)
+    return next(g for g in mg.graphs.values() if g.role == _MARKER_ROLE)
 
-    Returns the ``build_instance`` namespace with ``.dispatcher`` rebound to carry
-    the Phase1Profile (so ``interpret`` + ``solve_through_layer`` share one layer).
-    """
-    inst = arc_l4.build_instance(arc_local=True)
+
+def ordering_established(inst) -> bool:
+    """True iff the Local ordering marker node is present (persisted across restart)."""
+    return _MARKER_NODE in _capacity_state_graph(inst).nodes
+
+
+def confirm_ordering(inst) -> None:
+    """The user confirmed the enumeration (accepted a cold-start proposal). Set the
+    marker LIVE (this session, via the shared set the resolve body closes over) AND
+    write it to the Local capacity-state graph so it persists with the instance —
+    future int requests resolve silently, once per user, across restarts."""
+    inst._intake_marker.add(_MARKER)                      # live within-session
+    g = _capacity_state_graph(inst)
+    if _MARKER_NODE not in g.nodes:
+        g.add_node(value={"established": True}, type_name=_MARKER_TYPE, node_id=_MARKER_NODE)
+
+
+def register_intake(inst, dataset: dict):
+    """Register arc's Local Phase-1 intake (hint/map/resolve + the task-pattern) onto
+    an existing instance and rebind its dispatcher with a Phase1Profile. Seeds the
+    cold-start flag from the persisted Local marker (so a reloaded instance resolves
+    silently). Idempotent on the task-pattern node."""
     cl, kl, session = inst.layer, inst.kl, inst.session
-    marker = {_MARKER} if ordering_established else set()
+    inst._intake_marker = {_MARKER} if ordering_established(inst) else set()
+    marker = inst._intake_marker                          # live set the resolve body reads
 
     cl.register_datastate(_ds("arc.index_ref"), session=session, allow_new_realm=True)
     cl.register_datastate(_ds("arc.canonical_ref"), session=session, allow_new_realm=True)
@@ -141,6 +165,14 @@ def build_intake(dataset: dict, *, ordering_established: bool = False):
                             resolve_target_datastate=ARC_CANON_DS)
     inst.dispatcher = L4Dispatcher(cl, session=session, kl=kl, phase1_profile=profile)
     return inst
+
+
+def build_intake(dataset: dict):
+    """In-memory: a fresh Local arc instance with the intake registered. (The
+    durable Falkor-backed path stands up the instance in ``arc_instance.py`` and
+    calls ``register_intake`` on the reloaded Local.)"""
+    inst = arc_l4.build_instance(arc_local=True)
+    return register_intake(inst, dataset)
 
 
 def solve_task(inst, request: str, dataset: dict):
