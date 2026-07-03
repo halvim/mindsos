@@ -41,11 +41,15 @@ Prior anchors were stale; the settled model:
 3. **`promoted-pipelines` (L2) is writer-less / empty** at current main (verified
    in `pipeline.py` + grep). **Not checked** — traversing it would flag 100% of
    capacities as false orphans. Dropped (see Decision Log D1).
-4. **L3 is persistent.** F9 (2026-06-21, ADR-0185/0186) shipped
-   `FalkorDBLocalPersister` — native Global + Local metagraph round-trip. The
-   capacity graph (nodes + `PRODUCES`/`CONSUMES` edges) persists to FalkorDB.
-   Only the Python `implementation` callable is re-minted per process (via
-   reactivation factory / installer re-run) — the verifier does not need it.
+4. **L2 persists; L3 reactivates** (probe-confirmed 2026-07-02, §9). F9
+   (2026-06-21, ADR-0185/0186) persists the **knowledge** metagraphs (Global +
+   `local_knowledge:<uid>`). The **capacity** graph is **not** persisted at rest —
+   `boot_local` reactivates Local L3 from `learned-parameters` descriptors and
+   Global builtins reactivate via installers. The §9 probe confirmed
+   `PRODUCES`/`CONSUMES` *do* round-trip through the persister, but the standard
+   boot does not persist them — so the verifier reads L2 from persisted state and
+   **reactivates L3** (approach C′, §4). Only the Python `implementation` callable
+   is re-minted per process — the verifier does not need it.
 5. **Single Local.** v1 is single-tenant (HANDOFF §893, Chat A R5 D35). Per-user
    machinery exists in code but there is **one** Local. No tenant selection.
 6. **L3 is organized by category graphs today**, not skill graphs
@@ -58,28 +62,34 @@ Prior anchors were stale; the settled model:
    store). This tool implements the *chain query* now (check 5); building the
    mapping is **deferred "A"** (its own chat).
 
-## 4. State source — how the verifier reads state (D3)
+## 4. State source — how the verifier reads state (D3, corrected to C′)
 
-Approach **C: read the persisted graph directly, no reactivation.** Reflects real
-installed state; avoids the reactivation-factory problem (Local composites use
-factories that close over runtime handles a standalone CLI lacks).
+Approach **C′: boot the real stack read-only, then read reconciled views.** L2
+role-graphs persist and are read directly; L3 capacity graphs are not persisted at
+rest (§3.4) and are reactivated. Both come from one standard boot — no manual
+persist, so read-only holds.
 
-- Boot: reuse `mindsos_server/persistence/bootstrap.py` (load Global from
-  FalkorDB) + `local_boot.load_or_mint_local` for the single Local.
-- **Read Global + the single Local** — `global_view()` and `local_view(uid)`.
-  `local_view` does **not** fall through to Global, so the engine reads **both
-  views and reconciles by IRI**.
+- Boot: `mindsos_server/persistence/bootstrap.py::bootstrap_kl_from_falkordb`
+  (loads L2 Global) + `local_boot.boot_local` (loads L2 Local **and reactivates
+  L3** — Local from `learned-parameters` descriptors, per
+  `reactivate_local_capacities`). A minimal Local-scoped session is supplied by
+  the CLI.
+- **Read L2 checks against the KL views, L3 checks against the CL views**, for
+  Global and the single Local — `global_view()` / `local_view(uid)`. `local_view`
+  does **not** fall through to Global, so the engine reads **both views and
+  reconciles by IRI**.
 - **A2′ mirror dedup**: Global DataStates are mirrored into the Local (F9), so a
   DataState IRI can appear in both — dedupe, Global canonical. A Local capacity
   consuming a Global DataState whose mirror is **missing** → a real dangling
   defect (check 2).
 - **Scope-aware resolution**: a Local capacity's edges resolve against Local ∪
   Global.
-
-Open build-time fact (does not change the design, confirm at build): whether
-Global L3 capacity nodes persist as Falkor nodes or are reactivated-at-boot from
-`installed-skills` records. If the latter, the Global half materializes via
-installer-only reactivation (no runtime factories needed → no false-missing).
+- **Do not mint** the Local: `load_or_mint_local` would *write* if the Local is
+  absent. The verifier must refuse/skip the Local half instead of minting
+  (read-only invariant).
+- **Local composites are out of scope v1**: reactivating a composite needs runtime
+  factories a standalone CLI lacks; v1 verify covers atomic capacities (the ref
+  bundle's `text.ref_shout` is atomic). Composites ride deferred "B".
 
 ## 5. Check catalog
 
@@ -137,12 +147,15 @@ Every content check reads persisted state → **Falkor is required.** Unreachabl
   persist → reload → verify → assert happy path (`ref_shout` atomic OK, no drift,
   schema OK, task-mapped none). No shipped-fixture edit.
 
-**Gating probe (do first):** confirm `PRODUCES`/`CONSUMES` **IntergraphEdges
-round-trip through `FalkorDBLocalPersister`**. Reading persisted bipartite state
-(§4) depends on it. Precedent for a persistence gap exists (Phase 49 descoped
-durable episode flush → L0-26). If IntergraphEdges do not reload, check 1 finds no
-edges and every capacity is a false defect → **D3=C reopens** (fall back to
-reactivation). This is a decision-reopener, not a test tweak.
+**Gating probe — RESOLVED 2026-07-02** (Linux gate, real FalkorDB):
+`PRODUCES`/`CONSUMES` round-trip through `FalkorDBLocalPersister` = **PASS** (6 / 5
+survived; `CapacityLayerView.outputs_of` non-empty on reload);
+`Schema.validate_node_properties` reachable standalone = **PASS**
+(`UnknownTypeError`, not `WriteHandleNotWiredError` — check 6 surface confirmed).
+Edges are persist-*capable* but **not persisted at rest** (the standard boot
+reactivates L3), so the decision is **C′** (§4): read L2 from persisted state,
+reactivate L3. Precedent for a persistence gap: Phase 49 durable episode flush →
+L0-26.
 
 ## 10. Deferred work
 
