@@ -1048,6 +1048,44 @@ filed as motivating consumer; the demo does NOT block on it.
   - Gate: re-run `run_spike` on the merged core; anchor **13 `[ok]`** (Cowork built; Mac
     commits; Linux gates).
 
+- **2026-07-02 (cont.) — the "ask" front door: `solve task <ref>` intake via the shipped
+  Phase-1 seam (ADR-0195/0196); gate 13→14.** A user request now enters through
+  `mindsos_intelligence.interpret()` instead of a hardcoded `task_id`. New `spike/arc_intake.py`:
+  arc-Local `hint`/`map`/`resolve` bodies + a `Phase1Profile`-bound dispatcher + `solve_task()`.
+  Flow: `interpret("solve task <ref>")` → hint `{predicate:solve, object:task, reference,
+  reference_kind}` → `map` → `task-pattern:arc:solve` (Local, ADR-0150 §am-8) → `resolve`
+  (index→id8, `find_pipeline` composes `[resolve? → solve]` off `reference_kind`) → id8 fed to
+  the bespoke `solve_through_layer`. Interpretation-only (ADR-0195): stops at
+  `resolved_reference`; no core TaskRun/Episode for arc runs (arc's own `consolidate_task` writes
+  the Episode). Seam contract confirmed in the core chat (ADR-0195 seam + ADR-0196 needs_input);
+  arc owns the bodies + task-pattern + enumeration, all Local (RULES §8).
+  - **`<ref>` = 8-char id OR int index.** Enumeration is PINNED: canonical ARC order = task ids
+    **sorted ascending, 1-based** (`sorted(dataset['train'])[idx-1]`; matches `run_spike`/viewer;
+    **#8=05f2a901, #2=00d62c1b, #251=a5313dff, #53=25ff71a9**). CORRECTION: earlier `#labels`
+    used *insertion* order and were wrong — canonical is sorted.
+  - **Cold-start confirm (ADR-0196 `NeedsInput`), policy = cold-start-only (owner).** While the
+    arc-Local "ordering-established" marker is absent, an index request returns `NeedsInput`
+    (propose the id8; user confirms → re-submits the canonical request, stateless two-turn).
+    `confirm_ordering(inst)` sets it. The marker is a **persisted** `CapacitySnapshot` node in the
+    Local `capacity-state` graph (+ a live in-memory mirror the resolve body reads) → confirm is
+    **once-per-USER, survives restart**, not once-per-session.
+  - **Durable (b).** `arc_instance.build_durable_instance` now `register_intake`s; `run_and_persist`
+    `confirm_ordering`s + persists the task-pattern + marker alongside the 4 Episodes; `restart`
+    asserts both survived (index resolves silently, no re-confirm). Verified on Falkor.
+  - **Gate:** `_arc_intake_check` (wiring step 5) — one `[ok]` line; anchor now **14**. Run
+    `arc_instance` as a **script** (`python3 intelligence_demo/arc1/spike/arc_instance.py [restart]`),
+    NOT `-m` (the `__package__` guard sets `sys.path`; `-m` skips it → `mindsos_intelligence`
+    ModuleNotFoundError).
+  - **§0 D3 amendment (from the merge).** Core now ENFORCES the invoke input-contract
+    (composition-lifecycle Part 6, ADR-0072 §am-2): `call_capacity` validates inputs vs declared
+    CONSUMES (missing/unexpected), **except `input_group=fold`**. `touching_delta` → `fold` (it
+    folds over C; provenance topology kept). The old "layer validates outputs only / declared may
+    be fiction" clause is dead; provenance-divergent reason caps must be `fold`.
+  - **Deferred (intake):** out-of-range index crashes (`canonical_for_index` IndexError, unguarded);
+    no CLI verb (Python API only); `map` single-target. Still open from prior: `grid_rigid` (+7,
+    built + verified 4→11/0-wrong then **REVERTED by owner** — coverage stays 4); merge
+    `demo/arc-wiring`→`demo/arc`.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**
