@@ -1,9 +1,9 @@
 name: demo-no-core-edit
 on:
   push:
-    branches: ['demo/**']
+    branches: ['demo/**', 'arc-solver', 'arc-solver-viz']
   pull_request:
-    branches: ['demo/**']
+    branches: ['demo/**', 'arc-solver', 'arc-solver-viz']
 
 jobs:
   guard:
