@@ -1,6 +1,6 @@
 ---
-title: Phase-1 interpretation seam — pluggable Phase1Profile (design-only)
-status: Proposed
+title: Phase-1 interpretation seam — pluggable Phase1Profile
+status: Accepted
 date: 2026-07-02
 layer: L4
 amends: []
@@ -9,9 +9,11 @@ aliases: [Feature-A, phase1-seam]
 
 # ADR-0195: Phase-1 interpretation seam
 
-**Status:** Proposed (design-only; no code — pairs with [[ADR-0196]])
+**Status:** Accepted (shipped on `feat/phase1-seam-and-needs-input`, Linux
+gate green; pairs with [[ADR-0196]])
 
-**Date:** 2026-07-02 (core-design chat; first consumer = arc-solver / mOS-AS)
+**Date:** 2026-07-02 (core-design chat; implemented 2026-07-02; first consumer
+= arc-solver / mOS-AS)
 
 ## Context
 

@@ -1,6 +1,6 @@
 ---
-title: needs_input verdict — non-terminal user-clarification (design-only)
-status: Proposed
+title: needs_input verdict — non-terminal user-clarification
+status: Accepted
 date: 2026-07-02
 layer: L4
 amends: []
@@ -9,9 +9,11 @@ aliases: [Feature-B, needs_input, clarification]
 
 # ADR-0196: `needs_input` — non-terminal user-clarification
 
-**Status:** Proposed (design-only; no code — pairs with [[ADR-0195]])
+**Status:** Accepted (shipped on `feat/phase1-seam-and-needs-input`, Linux
+gate green; pairs with [[ADR-0195]])
 
-**Date:** 2026-07-02 (core-design chat; first consumer = arc-solver / mOS-AS)
+**Date:** 2026-07-02 (core-design chat; implemented 2026-07-02; first consumer
+= arc-solver / mOS-AS)
 
 ## Context
 
