@@ -1018,6 +1018,36 @@ filed as motivating consumer; the demo does NOT block on it.
     `demo/arc-wiring`→`demo/arc`. Next-chat prompts drafted:
     `ARC_REPORTING_NEXT_CHAT_PROMPT.md`, `ARC_SOLVER_CAPACITY_NEXT_CHAT_PROMPT.md`.
 
+- **2026-07-02 (cont.) — merged `main` (phase-1 seam + composition-lifecycle) into
+  `demo/arc-wiring`; `touching_delta` → `input_group=fold` (§0 D3 amendment).** Merging
+  `main` brought core's **input-contract enforcement** (`call_capacity`, ADR-0072
+  §am-2 / composition-lifecycle Slice 2 Part 6): `invoke` now validates inputs against
+  declared CONSUMES (`missing_required` + `unexpected_input`; **`fold` is not enforced**).
+  This broke the D3 biting spike — `touching_delta` **declares** `(touching, correspondence)`
+  but its body reads `(pair, background)`, and the wrong-input invoke is now rejected.
+  - **Fix = `input_group=INPUT_GROUP_FOLD` on `touching_delta`** (one line). Chosen over
+    re-declaring the real inputs `(pair, background)`: re-declaration breaks conformance
+    check **(b)** (`DS_STATE_CHANGE` unreachable from `DS_GRID` once it consumes `pair`,
+    which isn't grid-reachable) + forces a spike/docstring/§0 rewrite. `fold` keeps the
+    gate green as-is (both spike invokes pass; declared edges unchanged so (b)/(c) hold)
+    and is the **GF-3 "typed input-group, core-future" arriving** — the cap folds over C,
+    so `fold` is the honest label, not a dodge.
+  - **§0 D3 / GF-1 amendment.** The clause "invoke validates outputs only; declared
+    CONSUMES may be fiction; bodies `**kw`+`.get` → missing → None" is **superseded** by
+    ADR-0072 §am-2 (inputs now enforced). Provenance-divergent reason caps must be
+    `input_group=fold` to keep that latitude. GF-1 body-canonical stands; D-A
+    (`find_pipeline` isn't the fold composer) stands, reinforced (missing inputs fail loud).
+    The deeper D3 truth is UNCHANGED by this fix — `touching_delta` is still a **monolith**
+    with an **inverted `arc_solver` dependency** (the real decomposition/wiring stays deferred).
+  - **Divergence audit (reason caps, declared-inputs vs body).** Only `touching_delta` is
+    **invoked** through the layer and diverges → fixed. `build_correspondence` /
+    `synthesize_selector` / `bg_deduction` are stub bodies (`… → None`, ignore inputs),
+    **dormant** (never invoked in the gate); they'd only bite if invoked with non-declared
+    inputs → mark `fold` **when/if** invoked. `emit_candidates`/`select_rules`/
+    `apply_solution` + generators are honest (declared == read). No other runtime break.
+  - Gate: re-run `run_spike` on the merged core; anchor **13 `[ok]`** (Cowork built; Mac
+    commits; Linux gates).
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

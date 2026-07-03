@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any, List
 
-from mindsos_capacity.capacity import Capacity
+from mindsos_capacity.capacity import Capacity, INPUT_GROUP_FOLD
 from mindsos_capacity.capacity_layer import CapacityLayer
 from mindsos_capacity.datastate import DataState, ShapeDescriptor
 from mindsos_capacity.identifiers import (
@@ -182,9 +182,11 @@ def _touching_delta(**kw: Any) -> dict:
     inline↔registered gap rather than hiding it:
 
       * It consumes the **pair** (`kw[DS_PAIR]`) + **background** (`kw[DS_BACKGROUND]`),
-        NOT the DECLARED inputs (`DS_TOUCHING`, `DS_CORRESPONDENCE`). `invoke`
-        never validates inputs against the registered CONSUMES edges, so the
-        declared topology is **neither necessary nor sufficient** to run this body.
+        NOT the DECLARED inputs (`DS_TOUCHING`, `DS_CORRESPONDENCE`). Core now
+        enforces the CONSUMES contract at `invoke` (ADR-0072 §am-2), so this cap
+        is registered `input_group=fold` — the sanctioned escape (GF-3 typed
+        input-group): declared topology stays **provenance** (the cap folds over
+        C), enforcement skipped, so the body's real inputs need not match it.
       * It recomputes touching + correspondence internally (a **monolith** over the
         pair) — so the reason-graph decomposition is paper-only; the body is not
         the composed cap the topology claims.
@@ -461,6 +463,9 @@ def _reason_capacities() -> List[Capacity]:
         Capacity(
             name="touching_delta", category=CATEGORY_DETECTOR,
             inputs=(DS_TOUCHING, DS_CORRESPONDENCE), outputs=(DS_STATE_CHANGE,),
+            input_group=INPUT_GROUP_FOLD,  # folds over C; provenance topology,
+            # invoke enforcement skipped (ADR-0072 §am-2 fold escape = GF-3 typed
+            # input-group; the body reads pair+background, declared = provenance)
             implementation=_touching_delta,  # D3 spike: REAL body (sole non-stub)
             description="(touching over C) -> StateChange (gained/lost/maintained, background-excluded). "
                         "D3-spike: real body consumes the PAIR+BACKGROUND, not the declared "
