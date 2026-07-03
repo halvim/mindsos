@@ -2,4 +2,5 @@
 set -e
 cd "$(dirname "$0")"                 # -> repo root
 export PYTHONPATH="$(pwd)${PYTHONPATH:+:$PYTHONPATH}"   # repo root -> arc_solver + mindsos_*
-exec python3 -m arc_solver.viz.gate "$@"
+python3 -m arc_solver.viz.gate "$@"          # fixtures (no solver): registration + #2 verified + #5 abstain
+exec python3 -m arc_solver.viz.combined "$@" # LIVE: solve->ingest->express through one L4
