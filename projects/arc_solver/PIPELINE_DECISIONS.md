@@ -1086,6 +1086,34 @@ filed as motivating consumer; the demo does NOT block on it.
     built + verified 4→11/0-wrong then **REVERTED by owner** — coverage stays 4); merge
     `demo/arc-wiring`→`demo/arc`.
 
+- **2026-07-03 — PROJECT ORGANIZATION chat (git layout only; ZERO solver behavior change; gate stayed 14 [ok]).
+  arc is now ONE independent project `arc-solver`.** Records: `STATE.json` demos.arc, `BRANCHES.md`,
+  `RULES.md §1`, memory `[[machine-paths-and-gate]]` + `[[arc-wiring-progress]]`.
+  - **Consolidation.** The three arc branches — `demo/arc` (blueprint) + `demo/arc-wiring` (impl) +
+    `demo/arc-viz` (viz, spec-only) — collapsed to a single line. `demo/arc` renamed → **`arc-solver`**;
+    `demo/arc-viz` renamed → **`arc-solver-viz`** (parallel viz sub-project lane, parked at `18573ed`);
+    `demo/arc-wiring` folded in then deleted. Renamed **off the `demo/` prefix** (arc is now an
+    *independent consumer*, not a demo — still pins core, never edits `mindsos_*`). Final merge `396e68d`.
+  - **Stale merge RESOLVED not aborted.** The main worktree held an abandoned `merge tag
+    feat-phase1-seam-confirmed into demo/arc` (138 staged, 1 conflict `RULES.md`). Proved lossless
+    (all 138 files already ∈ `demo/arc-wiring`; only `RULES.md` differed), so completed it with the
+    already-vetted resolution, then merged the wiring. `RULES.md` §7/§8/§9 conflict-markers resolved
+    (Grounding / Subsystems / Core-ship, renumbered).
+  - **Flatten (Phase 2).** `projects/arc_demo/intelligence_demo/arc1/` → **`projects/arc_solver/`**;
+    package **`intelligence_demo.arc1` → `arc_solver`**. Package nesting dropped one level, so the
+    wrappers/guard were rewritten: `run_spike` + root `./arc` now put `projects/` on `sys.path`
+    (`-m arc_solver.spike.run_spike`, PYTHONPATH = repo + projects); `arc_instance.py` `__package__`
+    guard depth `../../..`→`../..`. Gate = **`cd projects/arc_solver && ./run_spike` → 14 [ok]**.
+  - **Core state — NO debt, NO core chat needed.** Verified `arc-solver` **contains all of `origin/main`**
+    (origin/main tip `bba4e02` is an ancestor; `arc-solver..origin/main` empty; 0 `mindsos_*` diff).
+    The phase-1 seam was ALREADY on main (earlier "not on main" was a stale *local* main). `pinned_core`
+    bumped `phase-50-confirmed` → **`feat-phase1-seam-confirmed`** (= origin/main tip). CI
+    `demo-no-core-edit.yml` wired to `arc-solver*` → runs **green** (0 core edits).
+  - **Open / parked:** viz sub-project (`arc-solver-viz` merges `arc-solver` when work starts;
+    `ARC_VIZ_CONTRACT_SPEC.md` still untracked → commit at `projects/arc_solver/viz/` then); decompose
+    perceive phases 1-7 into dispatched caps; `grid_rigid` reverted (coverage stays 4). NOT arc's:
+    the local `main` worktree is stale + holds a perception chat's uncommitted files (don't pull from arc).
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**
