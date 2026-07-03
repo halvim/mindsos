@@ -16,6 +16,7 @@ from mindsos_server.skills.verify import (
     render_json,
     verify_bundle,
 )
+from tests._shared.falkordb_fixture import falkor_client  # noqa: F401
 from tests.fixtures.skill_bundle_ref import MANIFEST_PATH
 from tests.fixtures.skill_bundle_ref.installer import CAP_REF_SHOUT
 
@@ -71,17 +72,22 @@ def test_ref_bundle_l2_conforms_to_schema(installed):
     assert not [r for r in results if r.severity == DEFECT]
 
 
-def test_verify_after_persist_reload(kl, cl):
+@pytest.mark.integration
+def test_verify_after_persist_reload(falkor_client):  # noqa: F811
     from mindsos_core.persistence import MetagraphRepository
-    from mindsos_core.persistence.client import InMemoryClient
     from mindsos_core.reconstruction import MetagraphLoader
 
+    kl = KnowledgeLayer.bootstrap()
+    cl = CapacityLayer()
+    install_text_capacities(cl)
     install_skill(parse_manifest(MANIFEST_PATH), kl=kl, cl=cl, current_phase=50)
 
-    mg = kl.global_metagraph()
-    client = InMemoryClient()
-    MetagraphRepository(client).persist(mg)
-    reloaded = MetagraphLoader(client).load(mg.metagraph_id)
+    global_mg = kl.global_metagraph()
+    MetagraphRepository(falkor_client).persist(global_mg)
+    loader = MetagraphLoader(falkor_client)
+    mid = loader.find_by_name(global_mg.name)
+    assert mid is not None
+    reloaded = loader.load(mid)
 
     kl2 = KnowledgeLayer(global_metagraph=reloaded)
     cl2 = CapacityLayer()
