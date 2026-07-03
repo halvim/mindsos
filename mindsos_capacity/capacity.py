@@ -41,6 +41,7 @@ if TYPE_CHECKING:
     from .context import CapacityContext
 
 from .exceptions import CapacityRegistrationError, InputContractError
+from .needs_input import NeedsInput
 from .identifiers import (
     INPUT_GROUP_ALL_REQUIRED,
     INPUT_GROUP_ANY_OF,
@@ -260,6 +261,11 @@ class InvocationResult:
             Holds the typed ``WriteResult | ProblemTraceRecord`` the
             write body returned. ``runtime.invoke``'s bypass branch
             stashes it here; read paths leave ``None``.
+        needs_input: ADR-0196 — the ``NeedsInput`` verdict a body returned
+            to request user clarification (``None`` normally). Orthogonal
+            to ``success`` (the body ran fine; it deliberately asked), so
+            ``needs_input``-aware callers (``pipeline_execution``,
+            ``phase_1.interpret``) must check this field explicitly.
     """
 
     outputs: Mapping[str, Any]
@@ -269,6 +275,7 @@ class InvocationResult:
     signals: Tuple[Any, ...] = ()
     trace: Mapping[str, Any] = field(default_factory=dict)
     write_outcome: Optional[Any] = None  # WriteResult | ProblemTraceRecord
+    needs_input: Optional[Any] = None  # NeedsInput (ADR-0196)
 
 
 def _validate_inputs(
@@ -351,6 +358,12 @@ def call_capacity(
     if context is not None:
         kwargs.setdefault("context", context)
     result = declaration.implementation(**kwargs)
+
+    # ADR-0196 — a body may return the ``NeedsInput`` clarification verdict
+    # instead of its declared outputs. Short-circuit output validation;
+    # ``runtime.invoke`` envelopes it onto ``InvocationResult.needs_input``.
+    if isinstance(result, NeedsInput):
+        return result
 
     outputs = declaration.outputs
     if isinstance(result, Mapping):

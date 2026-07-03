@@ -583,6 +583,61 @@ rows; bundles cannot expand the role-set at install time (design log
 S2/S4 — role-set expansion is a code-release + ADR-amendment event,
 never bundle content).
 
+### amendment-7 (feat/subminds Slice 1 — 2026-06-24) — `subminds` role-graph
+
+**Backfilled here (2026-07-02) to reconcile the code reference** — the
+Slice-1 ship added `ROLE_SUBMINDS` to `_GLOBAL_NAMED_ROLES` and cited
+"ADR-0150 §am-7", but the amendment section was not authored at the
+time. Authoritative record: `confirmation_docs/SUBMIND_DESIGN_LOG.md`
+§19 + ADR-0190.
+
+The §Decision closed role-set expands by 1 named entry (`subminds`).
+The post-§am-7 closed role-set is **14 named entries + alignment-prefix**.
+The role is **Global + Local by design**; Slice 1 bootstraps the Global
+form only (authored, admin-gated endowment). The Local form lands with
+the taught-endowment slice (subminds Slice 4).
+
+### amendment-8 (feat/phase1-seam — 2026-07-02) — `task-patterns` gains a Local form
+
+`task-patterns` shipped Global-only (§am-4 / Phase 13), but the general
+L2 model is per-role Global **and/or** Local, and the Local→Global
+promotion loop that already exists for `promoted-pipelines` /
+`learned-parameters` applies equally to task-patterns: a user (or a
+consumer such as the arc-solver / mOS-AS) authors and learns patterns in
+its **Local** scope, which are then promoted into the shared **Global**
+form.
+
+**Amended behavior.** `task-patterns` becomes **dual-scope** — it now
+appears in **both** `_GLOBAL_NAMED_ROLES` and `_LOCAL_NAMED_ROLES`
+(joining `pending-promotions` + `learned-parameters` as a dual-scope
+role). Consequences:
+
+- The lazy Local metagraph auto-ensures a `task-patterns` graph
+  (Local named-role count 5 → 6).
+- Mutation discipline is unchanged (`immutable_successor`, §am-5 /
+  ADR-0153 §1) — new pattern nodes are addable Local; existing nodes are
+  never mutated. Local writes need no capability (own-user scope, per
+  ADR-0180 `make_writeable`); Global writes still require
+  `CAN_WRITE_GLOBAL`.
+- `reset_run_state` (ADR-0187) is **unchanged**: task-patterns is
+  durable learning, not run-state, so it is retained on reset (the
+  `run_state_roles` list is not extended).
+- The soft bootstrap edge `episodic_memories ← task-patterns` (Chat B
+  D-B47) is now **within-Local-scope**, so the Local `kahn_sort` orders
+  task-patterns before episodic_memories (previously cross-scope /
+  ignored). No cycle.
+
+**Closed role-set count is UNCHANGED** — this amendment adds no new named
+role (task-patterns was already counted at §am-4); it only widens an
+existing role's scope. The post-§am-8 closed role-set is still **14
+named entries + alignment-prefix**.
+
+**Consumer:** the Phase-1 interpretation seam (ADR-0195) — a consumer's
+`map` body returns a `task-pattern:*` IRI it authored in its Local scope,
+resolved (Local→Global) at interpretation time. First consumer =
+arc-solver (interpretation-only). Reusable by WSD / FOL (many Local
+patterns each).
+
 ## Source
 
 Phase 13 design log §1 PB-19 (Flavor A vs Flavor B closure question);

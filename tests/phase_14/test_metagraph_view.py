@@ -168,4 +168,4 @@ def test_metagraph_view_over_local() -> None:
     kl = KnowledgeLayer.bootstrap()
     view = kl.local_view("alice")
     assert "alice" in view.metagraph_name
-    assert len(view.roles()) == 5  # episodic_memories + capacity-state + 3 Phase 43 dual-scope
+    assert len(view.roles()) == 6  # 2 base + 3 Phase 43 dual-scope + task-patterns (§am-8)

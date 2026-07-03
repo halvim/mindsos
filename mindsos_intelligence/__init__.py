@@ -42,8 +42,15 @@ from .submind_scheduler import SubMindScheduler
 from .submind_arbiter import SubMindArbiter
 from .resources import Contention, ResourceHold, ResourceLedger
 from .pipeline_execution import PipelineExecutionResult, execute_pipeline
+from mindsos_capacity.needs_input import NeedsInput
 from .dispatch import L4Dispatcher
 from .chain_artifacts import ChainArtifactWriter
+from .phase1_profile import Phase1Profile
+from .phase_1 import (
+    InterpretationError,
+    InterpretationResult,
+    interpret,
+)
 from .orchestrator import LifecyclePhase, Orchestrator, TaskOutcome
 from .signal_sources import register_signal_sources
 from .als_subsystems import register_als_subsystems
@@ -54,6 +61,13 @@ __all__ = [
     "TaskOutcome",
     "LifecyclePhase",
     "ChainArtifactWriter",
+    # ADR-0195 — Phase-1 interpretation seam.
+    "Phase1Profile",
+    "interpret",
+    "InterpretationResult",
+    "InterpretationError",
+    # ADR-0196 — user-clarification verdict (re-exported from L3).
+    "NeedsInput",
     "register_signal_sources",
     "register_als_subsystems",
     "CancelToken",

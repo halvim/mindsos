@@ -60,6 +60,8 @@ _EXPECTED_LAZY_LOCAL_ROLES = {
     ROLE_PARAMETER_STAGING,
     ROLE_PENDING_PROMOTIONS,
     ROLE_LEARNED_PARAMETERS,
+    # feat/phase1-seam (ADR-0150 §am-8) — task-patterns dual-scope.
+    ROLE_TASK_PATTERNS,
 }
 
 
@@ -74,7 +76,7 @@ def test_bootstrap_global_dimensional_snapshot() -> None:
 def test_lazy_local_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
-    assert len(local.graphs) == 5
+    assert len(local.graphs) == 6
     observed = {gr.role for gr in local.graphs.values()}
     assert observed == _EXPECTED_LAZY_LOCAL_ROLES
 

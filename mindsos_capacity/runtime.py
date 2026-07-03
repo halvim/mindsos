@@ -40,6 +40,7 @@ from .exceptions import (
     InputContractError,
     ProblemTraceError,
 )
+from .needs_input import NeedsInput
 # NOTE: ``WriteResult`` (from .write_outcome) is intentionally NOT imported
 # at module level — ``write_outcome.py`` imports ``ProblemTraceRecord``
 # from this module, so a top-level import here would form a cycle.
@@ -227,6 +228,18 @@ def invoke(
 
         outputs = call_capacity(declaration, inputs, context=context)
         duration_ms = (time.perf_counter() - start) * 1000.0
+        # ADR-0196 — the body returned a NeedsInput clarification verdict
+        # (call_capacity short-circuited output validation). Envelope it on
+        # ``needs_input``; ``success`` stays True (the body ran fine and
+        # deliberately asked) with empty outputs.
+        if isinstance(outputs, NeedsInput):
+            return InvocationResult(
+                outputs={},
+                duration_ms=duration_ms,
+                success=True,
+                needs_input=outputs,
+                trace={"capacity": declaration.iri, "needs_input": True},
+            )
         return InvocationResult(
             outputs=outputs,
             duration_ms=duration_ms,

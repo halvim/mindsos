@@ -51,17 +51,18 @@ def test_extract_uninstalled_raises_not_installed() -> None:
 
 
 def test_install_auto_ensures_missing_local_roles() -> None:
-    """Phase 14 PB-9 — install auto-ensures all 5 Local-named role-graphs (Phase 43 §am-5: episodic_memories + capacity-state + 3 dual-scope additions)."""
+    """Phase 14 PB-9 — install auto-ensures all 6 Local-named role-graphs (Phase 43 §am-5: 2 base + 3 dual-scope; ADR-0150 §am-8: + task-patterns)."""
     from mindsos_knowledge import (
         ROLE_LEARNED_PARAMETERS,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
+        ROLE_TASK_PATTERNS,
     )
     kl = KnowledgeLayer.bootstrap()
     bare = Metagraph(name="bare")
     assert len(bare.graphs) == 0
     kl.install_local_metagraph("alice", bare)
-    # All 5 Local-named role-graphs now present per Phase 43 §am-5.
+    # All 6 Local-named role-graphs now present.
     observed = {g.role for g in bare.graphs.values()}
     assert observed == {
         ROLE_EPISODIC_MEMORIES,
@@ -69,19 +70,20 @@ def test_install_auto_ensures_missing_local_roles() -> None:
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
         ROLE_LEARNED_PARAMETERS,
+        ROLE_TASK_PATTERNS,
     }
 
 
 def test_install_idempotent_on_already_ensured_local() -> None:
-    """Pre-ensured Local install doesn't duplicate role-graphs; auto-ensures the rest (Phase 43 §am-5: 2 pre-ensured + 3 dual-scope auto)."""
+    """Pre-ensured Local install doesn't duplicate role-graphs; auto-ensures the rest (2 pre-ensured + 3 §am-5 dual-scope + task-patterns §am-8 auto)."""
     kl = KnowledgeLayer.bootstrap()
     pre = Metagraph(name="pre")
     ensure_local_role_graph(pre, ROLE_EPISODIC_MEMORIES)
     ensure_local_role_graph(pre, ROLE_CAPACITY_STATE)
     assert len(pre.graphs) == 2
     kl.install_local_metagraph("alice", pre)
-    # 5 Local-named role-graphs after install; 2 pre-ensured + 3 auto.
-    assert len(pre.graphs) == 5
+    # 6 Local-named role-graphs after install; 2 pre-ensured + 4 auto.
+    assert len(pre.graphs) == 6
 
 
 def test_extract_pops_user_id() -> None:

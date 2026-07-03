@@ -42,6 +42,9 @@ class PipelineExecutionResult:
       before a step (cooperative; mid-pipeline preemption).
     * ``error`` — the underlying ``InvocationResult.error`` of the
       failing step, if any.
+    * ``needs_input`` — the ``NeedsInput`` verdict a step's body returned
+      (ADR-0196); the walk halts and bubbles it (``success=False``). The
+      caller (e.g. ``phase_1.interpret``) surfaces it to the user.
     """
 
     success: bool
@@ -50,6 +53,7 @@ class PipelineExecutionResult:
     cancelled: bool = False
     error: Optional[BaseException] = None
     steps_run: int = 0
+    needs_input: Optional[Any] = None
 
 
 def _is_cancelled(token: Any) -> bool:
@@ -103,6 +107,17 @@ def execute_pipeline(
             task_id=task_id,
             step_id=f"{task_id}-step-{idx}",
         )
+        # ADR-0196 — a step asked the user; halt the walk and bubble the
+        # verdict (before the success check: needs_input carries success=True
+        # with empty outputs, but is not a completed step).
+        step_needs_input = getattr(result, "needs_input", None)
+        if step_needs_input is not None:
+            return PipelineExecutionResult(
+                success=False,
+                outputs=blackboard,
+                needs_input=step_needs_input,
+                steps_run=idx,
+            )
         if not getattr(result, "success", False):
             return PipelineExecutionResult(
                 success=False,

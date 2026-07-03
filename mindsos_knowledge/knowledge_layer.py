@@ -88,9 +88,10 @@ class KnowledgeLayer:
     Per ADR-0061, KL owns one Global Metagraph and a lazy dict of
     Local metagraphs keyed by ``user_id``. Per ADR-0044, ``memories``
     and ``capacity-state`` are Local-scoped; ``ontology``, ``lexicon``,
-    ``concepts``, ``promoted-pipelines``, ``task-patterns``,
-    ``problem-trace`` are Global-scoped; ``alignment:<a>:<b>`` is
-    Global-only at v1 per ADR-0150 §amendment-1.
+    ``concepts``, ``promoted-pipelines``, ``problem-trace`` are
+    Global-scoped; ``task-patterns`` is **dual-scope** (Global + Local
+    per ADR-0150 §amendment-8); ``alignment:<a>:<b>`` is Global-only at
+    v1 per ADR-0150 §amendment-1.
 
     **Lifecycle:**
 
@@ -248,12 +249,13 @@ class KnowledgeLayer:
           this method's prior call or via :meth:`install_local_metagraph`),
           returns the existing reference.
         * Otherwise: creates a fresh :class:`Metagraph` with
-          ``name=local_knowledge:<user_id>``, auto-ensures both
-          Local-named role-graphs (``memories`` + ``capacity-state``
-          per ADR-0044), stores in ``self._locals``, returns.
+          ``name=local_knowledge:<user_id>``, auto-ensures every
+          Local-named role-graph (``_LOCAL_NAMED_ROLES``), stores in
+          ``self._locals``, returns.
 
-        Symmetric with :meth:`bootstrap` (Global auto-ensures 6 named
-        roles; lazy Local auto-ensures 2 named roles).
+        Symmetric with :meth:`bootstrap` (Global auto-ensures the
+        ``_GLOBAL_NAMED_ROLES``; lazy Local auto-ensures the
+        ``_LOCAL_NAMED_ROLES``).
 
         Per Phase 14 PB-12 calibration: lazy access is a library-style
         convenience. In production, the server uses

@@ -55,10 +55,19 @@ planning/execution catalog.
 ## Decision
 
 Introduce a **`Phase1Profile`** — a per-consumer selection of interpretation
-bodies — bound at **`L4Dispatcher` construction**. Five optional slots, one per
-interpretation step: `process`, `hint`, `derive_goal`, `map`, and `resolve`.
-Each slot holds a capacity IRI; an unset slot falls back to the shipped v0
-placeholder. Phase 1 dispatches `profile.slot or <v0 default IRI>`.
+bodies — bound at **`L4Dispatcher` construction**. **Four optional step slots**:
+`process`, `hint`, `derive_goal`, `map`. Each slot holds a capacity IRI; an
+unset slot falls back to the shipped v0 placeholder. Phase 1 dispatches
+`profile.slot or <v0 default IRI>`.
+
+Reference `resolve` is **not a fixed slot** — it is *composed* by the shipped
+bipartite `find_pipeline` (ADR-0156) from the reference's DataState type to the
+consumer-declared `resolve_target_datastate` (the fifth `Phase1Profile` field,
+a DataState IRI, not a capacity IRI), then run via the shipped
+`pipeline_execution` executor. A 1-capacity resolve is the degenerate 1-step
+pipeline; an already-canonical reference composes a 0-step pipeline
+(pass-through). This is the same "everything is a `find_pipeline` over a set,
+even at cardinality 1" model the `map` step uses.
 
 1. **Dispatcher-level binding, no metagraph scope-mix (hard constraint).** The
    profile is a **dispatch-time selection** of *which IRI to invoke*, held on
@@ -75,48 +84,64 @@ placeholder. Phase 1 dispatches `profile.slot or <v0 default IRI>`.
    another. `InterpretationResult` carries `{hints, task_pattern_iri,
    mapping_confidence, resolved_reference?}`.
 
-3. **`resolve` runs inside interpretation.** When `map` classifies the request
-   as carrying an indirect reference, the `resolve` slot is dispatched *within
-   interpret* to produce the canonical reference (e.g. `id8`). Its
-   clarification path (`NeedsInput`) surfaces from the `interpret` return — not
-   from `execution.run`. This keeps the interpretation-only consumer decoupled
-   from the execution machinery. (For a full-lifecycle consumer, `resolve` may
-   alternatively appear as a `find_pipeline`-composed step; that path defers
-   with L4-25 and is not required here.)
+3. **`resolve` runs inside interpretation, composed via `find_pipeline`.**
+   When the hint body reports an indirect `reference_kind` and the profile
+   declares a `resolve_target_datastate`, `interpret` composes the resolve
+   chain with `find_pipeline(start=reference_kind, target=resolve_target)` and
+   runs it via `pipeline_execution` — *within interpret*, not via
+   `execution.run`. Its clarification path (`NeedsInput`) surfaces from the
+   `interpret` return. This uses the shipped composition + execution mechanisms
+   (no bespoke direct-dispatch special case) while keeping the
+   interpretation-only consumer decoupled from the orchestrator lifecycle.
+   The `execution.run` halt+bubble (orchestrator mid-execution) remains the
+   general/full-lifecycle path, deferred (L4-25).
 
-4. **Hints = opaque dict + per-consumer schema.** Core does not define a typed
-   `HintSet`. The hint body returns a dict on the consumer's own schema; a
-   `reference_kind` field (consumer-defined) sets the **input DataState type**
-   so `find_pipeline` composition (when used) is driven by type, not by
-   consumer-specific routing.
+4. **Hints = opaque dict + per-consumer schema; `reference_kind` is
+   type-driving.** Core does not define a typed `HintSet`. The hint body
+   returns a dict on the consumer's own schema, optionally carrying
+   `reference_kind` (a DataState IRI naming the reference's **type** = the
+   `find_pipeline` start) and `reference` (the raw value). Composition is driven
+   by DataState type, not consumer-specific routing.
 
 5. **`map` returns a real target.** The map body returns a
-   `task_pattern_iri` that resolves in `ROLE_TASK_PATTERNS` plus a
-   `mapping_confidence`. Core validates the IRI resolves (else `dont_know`) and
-   exposes a never-trip confidence threshold hook. **No generic hints→pattern
-   matcher ships at v1** — a real consumer supplies both `hint` and `map`;
-   `process`/`derive_goal` default to v0. Multi-pattern disambiguation is
-   deferred (L4-26).
+   `task_pattern_iri` that resolves in `ROLE_TASK_PATTERNS` (**Local→Global**,
+   per the dual-scope task-patterns of ADR-0150 §am-8) plus a
+   `mapping_confidence`. Core validates the IRI resolves and exposes a
+   never-trip confidence threshold hook; **both checks are gated on a real
+   `map` slot** so the all-v0 path (whose trivial pattern is not KL-registered)
+   is unaffected. **No generic hints→pattern matcher ships at v1** — a real
+   consumer supplies both `hint` and `map`; `process`/`derive_goal` default to
+   v0. Multi-pattern disambiguation is deferred (L4-26).
 
-**Scope:** consumer bodies + task-patterns install into the consumer's Local
-scope; the v0 placeholders + the generic fallback stay Global.
+**Scope:** consumer bodies + DataStates + task-patterns install into the
+consumer's Local scope (task-patterns is dual-scope per ADR-0150 §am-8; a Local
+capacity may reference Global DataStates via the ADR-0185 A2′ mirror, so the
+resolve chain composes over the consumer's Local view). The v0 placeholders +
+the generic fallback stay Global.
 
 ## Consequences
 
 - **Enables the arc-solver worked example** without arc running the L4
-  lifecycle: `interpret("solve task 8")` → hints `{…, reference_kind:index}`
-  → `map` (arc-solve) → `resolve` (int→id8) → `InterpretationResult{id8}` (or
-  `NeedsInput` on cold start, per [[ADR-0196]]).
+  lifecycle: `interpret("solve task 8")` → hints `{reference_kind:<index DS>,
+  reference:8}` → `map` (arc-solve pattern) → `find_pipeline(index→canonical)`
+  composes `[resolve]` → run → `InterpretationResult{resolved_reference:id8}`
+  (or `NeedsInput` on cold start, per [[ADR-0196]]). Note the composed chain is
+  `[resolve]`, **not** `[resolve → solve]` — solve is arc's own downstream
+  bespoke driver, outside interpretation.
 - **`execution.run` step-result propagation is NOT on this ADR's critical
   path.** Because arc surfaces `NeedsInput` from `interpret`, the halt+bubble
   handling in `execution.run` (shared with `dont_know`) is the general/full-
   lifecycle path, deferred (L4-25).
 - **Interpretation-only consumers opt out of MM / consolidation / Episode** —
   no core L5 audit trail for such runs. Documented, consumer's choice.
-- **Build scope when implemented:** factor `interpret`; add `Phase1Profile` +
-  the `resolve` slot; wire `L4Dispatcher` to carry the profile; verify
-  Local-only capacity registration + Local `task-patterns` writes; version
-  bump. Independently shippable from [[ADR-0196]].
+- **Build scope (S1):** a precursor S0.5 makes `task-patterns` dual-scope
+  (ADR-0150 §am-8, so a consumer's map target resolves Local→Global); then
+  factor a writer-free `interpret`; add `Phase1Profile` (4 slots +
+  `resolve_target_datastate`); carry it on `L4Dispatcher`; compose `resolve`
+  via `find_pipeline` + `pipeline_execution`; gate the map-resolution + confidence
+  checks on a real `map` slot (v0 unaffected); version bump. The `NeedsInput`
+  branch of `interpret` lands with [[ADR-0196]] (S2). Independently shippable
+  from [[ADR-0196]] otherwise.
 
 ## Alternatives considered
 

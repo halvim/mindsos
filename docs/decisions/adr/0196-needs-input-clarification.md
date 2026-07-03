@@ -60,11 +60,17 @@ dispatched the capacity handles it.
    - **Standalone `interpret` (arc):** returns the `NeedsInput` directly to the
      caller, which drives the two-turn flow itself.
    - **`run_lifecycle` (full lifecycle):** surfaces it as a **non-terminal
-     `pending_confirmation` field on `TaskOutcome`**, orthogonal to `status`
-     (the three terminal statuses + the `_OUTCOME_BY_STATUS` consolidation map
-     are untouched). **No consolidation on that turn.** Detecting `needs_input`
-     mid-execution (`execution.run` halt+bubble, shared with `dont_know`) is the
-     general path, deferred (L4-25) — not required by the arc consumer.
+     `pending_confirmation` field on `TaskOutcome`**, orthogonal to the three
+     *terminal* statuses + the `_OUTCOME_BY_STATUS` consolidation map (both
+     untouched). Implementation: `run_lifecycle` short-circuits at the **Phase-1
+     `interpret` call site** (interpretation-time, before plan/exec — so it
+     needs no `execution.run` change), returning `TaskOutcome(status=
+     "pending_confirmation", task_run_ref=None, pending_confirmation=<NeedsInput>)`.
+     `"pending_confirmation"` is a **non-terminal** status marker that is never a
+     key in the consolidation map, so **no consolidation on that turn** and no
+     TaskRun. Detecting `needs_input` *mid-execution* (`execution.run`
+     halt+bubble, shared with `dont_know`) is the general path, deferred (L4-25)
+     — not required by the arc consumer.
 
 4. **Wait model v1 = stateless re-submit.** The caller folds the chosen
    `task_input` into a fresh request; a new run re-does interpretation and
@@ -93,10 +99,16 @@ dispatched the capacity handles it.
   disposition distinct from `uncertain_answer` (L4-27, folded here).
 - **v1 audit gap:** the `needs_input` turn writes no Episode (no consolidation)
   → no durable ask/answer record. Revisit only if audit needs it (L4-28).
-- **Build scope when implemented:** the verdict type + `pending_confirmation`
-  field + the `interpret`-return path (arc). The `run_lifecycle` field-surface
-  is small; the `execution.run` propagation defers. Independently shippable from
-  [[ADR-0195]]. Version bump.
+- **Build scope (S2):** `NeedsInput` (a plain dataclass in
+  `mindsos_capacity/needs_input.py`, import-isolated, **not** in
+  `mindsos_capacity.__all__` — export-slate parity, the `InputContractError`
+  precedent) + `call_capacity` short-circuit + `InvocationResult.needs_input`
+  envelope (parallel to `write_outcome`) + `pipeline_execution` halt+bubble
+  (needed because ADR-0195's resolve runs through that executor) + the
+  `interpret`-return path (arc) + the `TaskOutcome.pending_confirmation` field
+  and `run_lifecycle` Phase-1 short-circuit. The `execution.run` mid-execution
+  propagation defers (L4-25). Independently shippable from [[ADR-0195]] (the
+  arc integration test needs both). Version bump.
 
 ## Alternatives considered
 
