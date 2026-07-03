@@ -1,7 +1,7 @@
 # `skill verify` — confirmation
 
-Status: **built; gate-green at the 7-check baseline (2026-07-02), re-gate pending
-for the check-5 pipeline-traversal addition.** Design: `SKILL_VERIFY_DESIGN_NOTE.md`.
+Status: **built + gate-green (2026-07-02), incl. the check-5 pipeline-traversal
+half.** Design: `SKILL_VERIFY_DESIGN_NOTE.md`.
 Placement: **maintenance — no numbered phase, no version bump, no new ADR** (D10).
 
 ## What shipped
@@ -95,12 +95,13 @@ Rollup metrics: `broken_atomic`, `task_unmapped`/`task_total`, `code_scan_hits`.
   sidecar), mirroring `test_skill_record_falkor_live.py`. Rerun pending.
 - `tests/skill_verify/` after the Falkor-live fix: **10 passed** (7-check baseline).
 - `tests/skill_verify/` after the check-5 pipeline half (+`test_chain_finds_pipeline_mapping`,
-  11 total): **re-gate pending**.
-- Full cumulative gate: **4102 passed / 9 skipped / 1 xpassed / 0 failed**
-  (2026-07-02, Linux gate; `MINDSOS_REPO_ROOT` + `FALKORDB_HOST=localhost` set —
-  an initial raw-host run surfaced 11 pre-existing container-only failures
-  (`/app` image-completeness + the `falkordb` compose-hostname test), all
-  unrelated to this change and green once the env was set).
+  11 total): **11 passed**. Cumulative re-gate pending.
+- Full cumulative gate: **4103 passed / 9 skipped / 1 xpassed / 0 failed**
+  (2026-07-02, Linux gate, incl. the check-5 addition; `MINDSOS_REPO_ROOT` +
+  `FALKORDB_HOST=localhost` set — a raw-host run surfaces 11 pre-existing
+  container-only failures (`/app` image-completeness + the `falkordb`
+  compose-hostname test), all unrelated to this change and green once the env is
+  set).
 - `skill_verify_probe.py`: temp probe removed at the build commit.
 
 ## Deferred (hooks only, per the note)
