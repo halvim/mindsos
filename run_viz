@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")"                 # -> repo root
+export PYTHONPATH="$(pwd)${PYTHONPATH:+:$PYTHONPATH}"   # repo root -> arc_solver + mindsos_*
+exec python3 -m arc_solver.viz.gate "$@"
