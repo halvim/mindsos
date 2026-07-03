@@ -964,6 +964,128 @@ filed as motivating consumer; the demo does NOT block on it.
     fixture until more comparators land); retiring `build_solver`/`arc_debug`
     hardcoded panel; `inside_pairs` dead code.
 
+- **2026-07-02 — MindsOS WIRING chat (branch `demo/arc-wiring` off `demo/arc`; NOT
+  merged). The arc-solver now RUNS ON THE REAL MindsOS layers; a durable Falkor-backed
+  instance persists solved-task Episodes. ZERO core changes.** Full running record in
+  memory `[[arc-wiring-progress]]` + `[[mindsos-persistence-model]]` +
+  `[[arc-mindsos-layer-mapping]]`.
+  - **Layer model (owner-corrected + code-verified).** capacity = L3 (fixed function);
+    its per-task RESULT = L5 mental-model instance; L4 = orchestration (decides which
+    caps to call + sequence); `cl.invoke`/`find_pipeline` = the L3 door. Persistence:
+    L2 + L3 = Global+Local metagraphs; L4 outputs persist via L2; **L5 episodes are
+    LOCAL-ONLY ("No Global L5")** ⇒ arc-solve is Local.
+  - **New files:** `spike/arc_l4.py` (L4 driver + in-memory instance assembly — mirrors
+    the shipped `tests/phase_49` `build_stack`), `spike/arc_instance.py` (the DURABLE
+    Falkor instance — Linux+docker only, NOT in `./run_spike`), `docker-compose.yml`
+    (FalkorDB sidecar). Modified: `spike/arc_capacities.py` (+`inside` real body, +3
+    solve caps, +8 DataStates, `install_arc(session=…)`), `spike/run_spike.py` (+3
+    in-memory checks).
+  - **Solve through the layer.** 3 new L3 DECISION caps in `_solver_capacities`
+    (CATEGORY_REASONING): `emit_candidates` (phase 8 = `arc_solver.rules`),
+    `select_rules` (9), `apply_solution` (10) + 7 solve DataStates (DS_PROFILE/BG_CAND/
+    RECOMPARISON/ENCLOSED/RULES/SELECTION/SOLVE). `arc_l4.solve_through_layer` runs
+    phases 1-7 inline (profile) then DISPATCHES 8→9→10 via `L4Dispatcher` — L4=control,
+    caps=decisions (NO monolith `arc.solve` — that puts orchestration in L3, the
+    boundary the owner corrected). `run_spike._arc_solve_layer_check`: dispatched answer
+    == inline AND == withheld ground-truth for #8/#2/#251 (non-tautological). `inside`
+    became the first real predicate cap (`arc.perceived_grid` bundle DS, ray
+    `contained_pairs`, 400-grid conformance). Phases 1-7 stay inline in the driver
+    (perceive IS dispatchable — `_l4_intake_check` — decompose later).
+  - **Why no core needed.** `find_pipeline`/ConjunctionFinder compose data-flow chains,
+    NOT the solver's control logic (∀/min-set/apply) → an authored L4 sequence, not
+    discovered (so `composition-lifecycle` merge + Part 5 are OFF the path). Caps take
+    COARSE bundle inputs (profile/pair/grid) → no same-type-operand arity ever (Part 5
+    moot). Durable Episode: ADR-0182 (Phase 50) already routes dict node `value` → the
+    `_value_json` column (live-tested `tests/maintenance/…::test_live_structured_value_
+    round_trip`) → an Episode dict persists with NO core change; the demo calls
+    `FalkorDBLocalPersister.save(user, kl.local_metagraph(user))`.
+  - **Durable instance (b), Local.** `build_durable_instance` =
+    `arc_l4.build_instance(arc_local=True)` (arc caps + DataStates → the user's Local L3;
+    all-Local — both share scope, mixed Global-ds+Local-caps raises) + `FalkorDBLocalPersister`.
+    `run_and_persist(SOLVED_TASKS = 05f2a901 #8, 00d62c1b #2, a5313dff #251, 25ff71a9 #53)`:
+    per task solve_through_layer → `consolidate_task(task_pattern_iri="arc:solved:<id>",
+    outcome)` → 4 Episodes in one Local → `delete`+`save` → reload asserts 4. `restart`
+    mode: fresh `KL.bootstrap()` + `install_local_metagraph(user, persister.load(user))`
+    finds all 4 with NO trip re-run (survives restart). Run:
+    `python3 -m intelligence_demo.arc1.spike.arc_instance [restart]`; container
+    `mindsos-falkordb` (6379); `FalkorConfig.from_env()`. Gotcha: `delete`-before-`save`
+    (same Local name `local_knowledge:arc` else runs accumulate).
+  - **Gate:** `./run_spike` now prints **13 `[ok]` lines**; #8/#2/#251 still solve; durable
+    path separate (Linux+docker). Discipline: Cowork builds / Mac commits / Linux gates
+    (`[[machine-paths-and-gate]]`).
+  - **Deferred:** decompose phases 1-7 into dispatched caps; `synthesize_selector`/
+    `bg_deduction` remain stubs (not on the solve-decision path in use); merge
+    `demo/arc-wiring`→`demo/arc`. Next-chat prompts drafted:
+    `ARC_REPORTING_NEXT_CHAT_PROMPT.md`, `ARC_SOLVER_CAPACITY_NEXT_CHAT_PROMPT.md`.
+
+- **2026-07-02 (cont.) — merged `main` (phase-1 seam + composition-lifecycle) into
+  `demo/arc-wiring`; `touching_delta` → `input_group=fold` (§0 D3 amendment).** Merging
+  `main` brought core's **input-contract enforcement** (`call_capacity`, ADR-0072
+  §am-2 / composition-lifecycle Slice 2 Part 6): `invoke` now validates inputs against
+  declared CONSUMES (`missing_required` + `unexpected_input`; **`fold` is not enforced**).
+  This broke the D3 biting spike — `touching_delta` **declares** `(touching, correspondence)`
+  but its body reads `(pair, background)`, and the wrong-input invoke is now rejected.
+  - **Fix = `input_group=INPUT_GROUP_FOLD` on `touching_delta`** (one line). Chosen over
+    re-declaring the real inputs `(pair, background)`: re-declaration breaks conformance
+    check **(b)** (`DS_STATE_CHANGE` unreachable from `DS_GRID` once it consumes `pair`,
+    which isn't grid-reachable) + forces a spike/docstring/§0 rewrite. `fold` keeps the
+    gate green as-is (both spike invokes pass; declared edges unchanged so (b)/(c) hold)
+    and is the **GF-3 "typed input-group, core-future" arriving** — the cap folds over C,
+    so `fold` is the honest label, not a dodge.
+  - **§0 D3 / GF-1 amendment.** The clause "invoke validates outputs only; declared
+    CONSUMES may be fiction; bodies `**kw`+`.get` → missing → None" is **superseded** by
+    ADR-0072 §am-2 (inputs now enforced). Provenance-divergent reason caps must be
+    `input_group=fold` to keep that latitude. GF-1 body-canonical stands; D-A
+    (`find_pipeline` isn't the fold composer) stands, reinforced (missing inputs fail loud).
+    The deeper D3 truth is UNCHANGED by this fix — `touching_delta` is still a **monolith**
+    with an **inverted `arc_solver` dependency** (the real decomposition/wiring stays deferred).
+  - **Divergence audit (reason caps, declared-inputs vs body).** Only `touching_delta` is
+    **invoked** through the layer and diverges → fixed. `build_correspondence` /
+    `synthesize_selector` / `bg_deduction` are stub bodies (`… → None`, ignore inputs),
+    **dormant** (never invoked in the gate); they'd only bite if invoked with non-declared
+    inputs → mark `fold` **when/if** invoked. `emit_candidates`/`select_rules`/
+    `apply_solution` + generators are honest (declared == read). No other runtime break.
+  - Gate: re-run `run_spike` on the merged core; anchor **13 `[ok]`** (Cowork built; Mac
+    commits; Linux gates).
+
+- **2026-07-02 (cont.) — the "ask" front door: `solve task <ref>` intake via the shipped
+  Phase-1 seam (ADR-0195/0196); gate 13→14.** A user request now enters through
+  `mindsos_intelligence.interpret()` instead of a hardcoded `task_id`. New `spike/arc_intake.py`:
+  arc-Local `hint`/`map`/`resolve` bodies + a `Phase1Profile`-bound dispatcher + `solve_task()`.
+  Flow: `interpret("solve task <ref>")` → hint `{predicate:solve, object:task, reference,
+  reference_kind}` → `map` → `task-pattern:arc:solve` (Local, ADR-0150 §am-8) → `resolve`
+  (index→id8, `find_pipeline` composes `[resolve? → solve]` off `reference_kind`) → id8 fed to
+  the bespoke `solve_through_layer`. Interpretation-only (ADR-0195): stops at
+  `resolved_reference`; no core TaskRun/Episode for arc runs (arc's own `consolidate_task` writes
+  the Episode). Seam contract confirmed in the core chat (ADR-0195 seam + ADR-0196 needs_input);
+  arc owns the bodies + task-pattern + enumeration, all Local (RULES §8).
+  - **`<ref>` = 8-char id OR int index.** Enumeration is PINNED: canonical ARC order = task ids
+    **sorted ascending, 1-based** (`sorted(dataset['train'])[idx-1]`; matches `run_spike`/viewer;
+    **#8=05f2a901, #2=00d62c1b, #251=a5313dff, #53=25ff71a9**). CORRECTION: earlier `#labels`
+    used *insertion* order and were wrong — canonical is sorted.
+  - **Cold-start confirm (ADR-0196 `NeedsInput`), policy = cold-start-only (owner).** While the
+    arc-Local "ordering-established" marker is absent, an index request returns `NeedsInput`
+    (propose the id8; user confirms → re-submits the canonical request, stateless two-turn).
+    `confirm_ordering(inst)` sets it. The marker is a **persisted** `CapacitySnapshot` node in the
+    Local `capacity-state` graph (+ a live in-memory mirror the resolve body reads) → confirm is
+    **once-per-USER, survives restart**, not once-per-session.
+  - **Durable (b).** `arc_instance.build_durable_instance` now `register_intake`s; `run_and_persist`
+    `confirm_ordering`s + persists the task-pattern + marker alongside the 4 Episodes; `restart`
+    asserts both survived (index resolves silently, no re-confirm). Verified on Falkor.
+  - **Gate:** `_arc_intake_check` (wiring step 5) — one `[ok]` line; anchor now **14**. Run
+    `arc_instance` as a **script** (`python3 intelligence_demo/arc1/spike/arc_instance.py [restart]`),
+    NOT `-m` (the `__package__` guard sets `sys.path`; `-m` skips it → `mindsos_intelligence`
+    ModuleNotFoundError).
+  - **§0 D3 amendment (from the merge).** Core now ENFORCES the invoke input-contract
+    (composition-lifecycle Part 6, ADR-0072 §am-2): `call_capacity` validates inputs vs declared
+    CONSUMES (missing/unexpected), **except `input_group=fold`**. `touching_delta` → `fold` (it
+    folds over C; provenance topology kept). The old "layer validates outputs only / declared may
+    be fiction" clause is dead; provenance-divergent reason caps must be `fold`.
+  - **Deferred (intake):** out-of-range index crashes (`canonical_for_index` IndexError, unguarded);
+    no CLI verb (Python API only); `map` single-target. Still open from prior: `grid_rigid` (+7,
+    built + verified 4→11/0-wrong then **REVERTED by owner** — coverage stays 4); merge
+    `demo/arc-wiring`→`demo/arc`.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**

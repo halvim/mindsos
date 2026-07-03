@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any, List
 
-from mindsos_capacity.capacity import Capacity
+from mindsos_capacity.capacity import Capacity, INPUT_GROUP_FOLD
 from mindsos_capacity.capacity_layer import CapacityLayer
 from mindsos_capacity.datastate import DataState, ShapeDescriptor
 from mindsos_capacity.identifiers import (
@@ -84,6 +84,7 @@ DS_TASK = datastate_iri("arc.task")
 DS_PAIR = datastate_iri("arc.pair")
 DS_RAW_GRID = datastate_iri("arc.raw_grid")
 DS_GRID = datastate_iri("arc.grid")
+DS_PERCEIVED_GRID = datastate_iri("arc.perceived_grid")
 DS_PALETTE = datastate_iri("arc.palette")
 DS_OBJECT = datastate_iri("arc.object")
 DS_SHAPE = datastate_iri("arc.shape")
@@ -110,6 +111,15 @@ DS_COLOR = datastate_iri("arc.color")
 DS_RECOLOR_TRANSFORM = datastate_iri("arc.recolor_transform")
 DS_ROTATE_TRANSFORM = datastate_iri("arc.rotate_transform")
 DS_REFLECT_TRANSFORM = datastate_iri("arc.reflect_transform")
+# solve-stage DataStates — phases 8/9/10 dispatched as L3 DECISIONS (the L4
+# driver sequences them; each result is L5 MM working state).
+DS_PROFILE = datastate_iri("arc.profile")
+DS_BG_CAND = datastate_iri("arc.bg_cand")
+DS_RECOMPARISON = datastate_iri("arc.recomparison")
+DS_ENCLOSED = datastate_iri("arc.enclosed")
+DS_RULES = datastate_iri("arc.rules")
+DS_SELECTION = datastate_iri("arc.selection")
+DS_SOLVE = datastate_iri("arc.solve")
 
 
 def arc_datastates() -> List[DataState]:
@@ -127,6 +137,7 @@ def arc_datastates() -> List[DataState]:
         ds("arc.pair", CATEGORY_COMPREHENSION, "A demonstration|test pair."),
         ds("arc.raw_grid", CATEGORY_COMPREHENSION, "An input|output grid, uninterpreted."),
         ds("arc.grid", CATEGORY_PERCEPTION, "A built Grid (cells)."),
+        ds("arc.perceived_grid", CATEGORY_PERCEPTION, "Materialized per-grid perception bundle (objects+points+dims); the intra-grid predicate input."),
         ds("arc.palette", CATEGORY_DERIVATION, "Per-grid color set."),
         ds("arc.object", CATEGORY_DECOMPOSITION, "Monochrome connected component (size >= 2)."),
         ds("arc.shape", CATEGORY_DERIVATION, "Colorless normalized point-set."),
@@ -153,6 +164,13 @@ def arc_datastates() -> List[DataState]:
         ds("arc.recolor_transform", CATEGORY_COMPARATOR, "recolored: same shape + position, different colour | None."),
         ds("arc.rotate_transform", CATEGORY_COMPARATOR, "rotated: 90/180/270 rotation between Shapes | None."),
         ds("arc.reflect_transform", CATEGORY_COMPARATOR, "reflected: horizontal/vertical reflection between Shapes | None."),
+        ds("arc.profile", CATEGORY_REASONING, "Built TaskProfile + per-phase working state (perceive/hypothesis)."),
+        ds("arc.bg_cand", CATEGORY_REASONING, "Per-grid background candidates (bg_advance)."),
+        ds("arc.recomparison", CATEGORY_REASONING, "Phase-4 sub-piece re-comparison results."),
+        ds("arc.enclosed", CATEGORY_REASONING, "Phase-3 input-only enclosed-region cells per split (train/test)."),
+        ds("arc.rules", CATEGORY_REASONING, "Phase-8 candidate rules + resolved bg."),
+        ds("arc.selection", CATEGORY_REASONING, "Phase-9 minimum covering rule set (or None)."),
+        ds("arc.solve", CATEGORY_REASONING, "Phase-10 solution: answer grid + matches_withheld."),
     ]
 
 
@@ -164,9 +182,11 @@ def _touching_delta(**kw: Any) -> dict:
     inline↔registered gap rather than hiding it:
 
       * It consumes the **pair** (`kw[DS_PAIR]`) + **background** (`kw[DS_BACKGROUND]`),
-        NOT the DECLARED inputs (`DS_TOUCHING`, `DS_CORRESPONDENCE`). `invoke`
-        never validates inputs against the registered CONSUMES edges, so the
-        declared topology is **neither necessary nor sufficient** to run this body.
+        NOT the DECLARED inputs (`DS_TOUCHING`, `DS_CORRESPONDENCE`). Core now
+        enforces the CONSUMES contract at `invoke` (ADR-0072 §am-2), so this cap
+        is registered `input_group=fold` — the sanctioned escape (GF-3 typed
+        input-group): declared topology stays **provenance** (the cap folds over
+        C), enforcement skipped, so the body's real inputs need not match it.
       * It recomputes touching + correspondence internally (a **monolith** over the
         pair) — so the reason-graph decomposition is paper-only; the body is not
         the composed cap the topology claims.
@@ -182,6 +202,63 @@ def _touching_delta(**kw: Any) -> dict:
         return {DS_STATE_CHANGE: None}
     from . import arc_solver
     return {DS_STATE_CHANGE: arc_solver.touching_changes(pair, bg)}
+
+
+def _inside(**kw: Any) -> dict:
+    """REAL body for the `inside` predicate (step 1 of the MindsOS wiring — the
+    first detector/predicate moved off a stub). Consumes the **perceived-grid
+    bundle** (objects+points+dims) — its honest input, mirroring how the
+    `touching_delta` spike consumes the pair bundle — and returns the ray-based
+    containment pairs. `bg_resolved=False` = the perception/∃-token result, so it
+    matches `arc_profile.attach_relations` (`gs["inside"]`) grid-for-grid. Invoked
+    through `cl.invoke`; no shadow — the registered cap IS the executed compute."""
+    gs = kw.get(DS_PERCEIVED_GRID)
+    if gs is None:
+        return {DS_INSIDE: None}
+    return {DS_INSIDE: arc_grids.contained_pairs(gs, bg_resolved=False)}
+
+
+def _arc_emit_candidates(**kw: Any) -> dict:
+    """Phase 8 (L3 decision) — emit candidate rules from the profile. REAL body =
+    the shipped `arc_solver.rules`; dispatched by the L4 driver, not inline."""
+    prof = kw.get(DS_PROFILE)
+    if prof is None:
+        return {DS_RULES: None}
+    from . import arc_solver
+    enclosed = kw.get(DS_ENCLOSED)
+    return {DS_RULES: arc_solver.rules(prof, kw.get(DS_BG_CAND),
+                                       kw.get(DS_RECOMPARISON),
+                                       (enclosed or {}).get("train"))}
+
+
+def _arc_select_rules(**kw: Any) -> dict:
+    """Phase 9 (L3 decision) — the minimum covering rule set (arc_solver.select_rules)."""
+    prof, rules = kw.get(DS_PROFILE), kw.get(DS_RULES)
+    if prof is None or rules is None:
+        return {DS_SELECTION: None}
+    from . import arc_solver
+    return {DS_SELECTION: arc_solver.select_rules(prof, rules, kw.get(DS_ENCLOSED))}
+
+
+def _arc_apply_solution(**kw: Any) -> dict:
+    """Phase 10 (L3 decision) — apply the selected set to the TEST input → answer
+    (mirrors `pipeline.step_solve` over `arc_solver._apply_candidate_set`)."""
+    prof, sel, rules = kw.get(DS_PROFILE), kw.get(DS_SELECTION), kw.get(DS_RULES)
+    if prof is None or sel is None or rules is None or not prof.get("test"):
+        return {DS_SOLVE: None}
+    from . import arc_solver
+    bg = rules["bg"]
+    tin = prof["test"][0]["input"]
+    enc = (kw.get(DS_ENCLOSED) or {}).get("test") or []
+    enc_cells = enc[0] if enc else None
+    if not enc_cells:
+        enc_cells = arc_grids.enclosed_bg_cells(tin["cells"], bg)
+    out = arc_solver._apply_candidate_set(sel["set"], tin, bg, enc_cells)
+    if out is None:
+        return {DS_SOLVE: None}
+    raw = kw.get(DS_RAW_TASK)
+    matches = (out == raw["test"][0]["output"]) if (raw and raw.get("test")) else None
+    return {DS_SOLVE: {"output": out, "matches_withheld": matches}}
 
 
 def _comprehend_task(**kw: Any) -> dict:
@@ -363,9 +440,13 @@ def _intra_grid_capacities() -> List[Capacity]:
         ),
         Capacity(
             name="inside", category=CATEGORY_PREDICATE,
-            inputs=(DS_OBJECT,), outputs=(DS_INSIDE,),
-            implementation=lambda **kw: {DS_INSIDE: None},
-            description="(Region, Region) -> Bool (a enclosed by a single-colour object b; cannot reach the grid border without crossing b; intra-grid, background-excluded).",
+            inputs=(DS_PERCEIVED_GRID,), outputs=(DS_INSIDE,),
+            implementation=_inside,  # step-1 wiring: REAL body (first non-stub predicate)
+            description="(perceived grid: objects+points+dims) -> contained_pairs "
+                        "[{a, b}] (ray-based; a enclosed by single-colour object b; "
+                        "cannot reach the grid border without crossing b; intra-grid). "
+                        "bg_resolved=False = perception/∃-token result. REAL body "
+                        "invoked through the layer — matches attach_relations 400/400.",
         ),
     ]
 
@@ -382,6 +463,9 @@ def _reason_capacities() -> List[Capacity]:
         Capacity(
             name="touching_delta", category=CATEGORY_DETECTOR,
             inputs=(DS_TOUCHING, DS_CORRESPONDENCE), outputs=(DS_STATE_CHANGE,),
+            input_group=INPUT_GROUP_FOLD,  # folds over C; provenance topology,
+            # invoke enforcement skipped (ADR-0072 §am-2 fold escape = GF-3 typed
+            # input-group; the body reads pair+background, declared = provenance)
             implementation=_touching_delta,  # D3 spike: REAL body (sole non-stub)
             description="(touching over C) -> StateChange (gained/lost/maintained, background-excluded). "
                         "D3-spike: real body consumes the PAIR+BACKGROUND, not the declared "
@@ -411,8 +495,37 @@ def _reason_capacities() -> List[Capacity]:
     ]
 
 
+def _solver_capacities() -> List[Capacity]:
+    """The SOLVE-stage L3 decisions (phases 8/9/10), real bodies wrapping the
+    shipped `arc_solver` functions. The L4 driver (`arc_l4.solve_through_layer`)
+    sequences them and threads the results — L4 = control, these = the decisions."""
+    return [
+        Capacity(
+            name="emit_candidates", category=CATEGORY_REASONING,
+            inputs=(DS_PROFILE, DS_BG_CAND, DS_RECOMPARISON, DS_ENCLOSED),
+            outputs=(DS_RULES,), implementation=_arc_emit_candidates,
+            description="Phase 8 — candidate rules per generator+param+condition.",
+        ),
+        Capacity(
+            name="select_rules", category=CATEGORY_REASONING,
+            inputs=(DS_PROFILE, DS_RULES, DS_ENCLOSED),
+            outputs=(DS_SELECTION,), implementation=_arc_select_rules,
+            description="Phase 9 — minimum covering rule set (or None).",
+        ),
+        Capacity(
+            name="apply_solution", category=CATEGORY_REASONING,
+            inputs=(DS_PROFILE, DS_SELECTION, DS_RULES, DS_ENCLOSED, DS_RAW_TASK),
+            outputs=(DS_SOLVE,), implementation=_arc_apply_solution,
+            description="Phase 10 — apply the selected set to the test input -> answer.",
+        ),
+    ]
+
+
 # capacity IRIs (for assertions / introspection)
 CAP_COMPREHEND = capacity_iri(CATEGORY_PERCEIVER, "comprehend_task")
+CAP_EMIT_CANDIDATES = capacity_iri(CATEGORY_REASONING, "emit_candidates")
+CAP_SELECT_RULES = capacity_iri(CATEGORY_REASONING, "select_rules")
+CAP_APPLY_SOLUTION = capacity_iri(CATEGORY_REASONING, "apply_solution")
 CAP_BUILD_GRID = capacity_iri(CATEGORY_PERCEIVER, "build_grid")
 CAP_EXTRACT_PALETTE = capacity_iri(CATEGORY_PERCEIVER, "extract_palette")
 CAP_EXTRACT_OBJECTS = capacity_iri(CATEGORY_PERCEIVER, "extract_objects")
@@ -490,7 +603,7 @@ def ordered_catalog() -> List[dict]:
     caps = (_perceive_capacities() + _profiler_capacities()
             + _comparator_capacities() + _intra_grid_capacities()
             + _operator_capacities() + _transform_capacities()
-            + _reason_capacities())
+            + _reason_capacities() + _solver_capacities())
     rows = [{"name": c.name, "category": c.category, "phase": c.category,
              "consumes": [_short_ds(i) for i in c.inputs],
              "produces": [_short_ds(o) for o in c.outputs]} for c in caps]
@@ -499,24 +612,18 @@ def ordered_catalog() -> List[dict]:
     return rows
 
 
-def install_arc(capacity_layer: CapacityLayer) -> None:
-    """Register all arc DataStates + perceive/profile capacities (Global)."""
+def install_arc(capacity_layer: CapacityLayer, session: Any = None) -> None:
+    """Register all arc DataStates + capacities. ``session=None`` → Global (the
+    demo gate). ``session`` present → the user's **Local** L3 (DataStates AND caps
+    together — they must share scope; a Local cap referencing a Global DataState
+    raises). Verified: all-Local registration round-trips."""
     for ds in arc_datastates():
-        capacity_layer.register_datastate(ds, allow_new_realm=True)
-    for cap in _perceive_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _profiler_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _comparator_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _intra_grid_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _operator_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _transform_capacities():
-        capacity_layer.register_capacity(cap)
-    for cap in _reason_capacities():
-        capacity_layer.register_capacity(cap)
+        capacity_layer.register_datastate(ds, allow_new_realm=True, session=session)
+    for group in (_perceive_capacities, _profiler_capacities, _comparator_capacities,
+                  _intra_grid_capacities, _operator_capacities, _transform_capacities,
+                  _reason_capacities, _solver_capacities):
+        for cap in group():
+            capacity_layer.register_capacity(cap, session=session)
 
 
 def fresh_layer() -> CapacityLayer:

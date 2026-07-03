@@ -187,6 +187,140 @@ def _operator_inference_check(tasks) -> None:
           f"(union occurs {n_u}/{len(tasks)}).")
 
 
+def _inside_layer_conformance(cl, tasks) -> None:
+    """MindsOS wiring step 1 — the `inside` predicate now has a REAL body invoked
+    THROUGH the layer (`cl.invoke`), not a stub. Prove the layer-invoked cap
+    reproduces the inline perception result (`attach_relations` ->
+    `contained_pairs`, bg_resolved=False) for EVERY perceived grid across the 400
+    tasks — i.e. the registered cap IS the executed compute, no shadow."""
+    iri = capacity_iri(ac.CATEGORY_PREDICATE, "inside")
+    n_grids = 0
+    for t in tasks:
+        grids = [pair["input"] for pair in t["train"]] + \
+                [pair["output"] for pair in t["train"]] + \
+                [tg["input"] for tg in t["test"]]
+        for gs in grids:
+            res = cl.invoke(iri, inputs={ac.DS_PERCEIVED_GRID: gs})
+            assert res.success, \
+                f"inside invoke failed on {t['task_id']}: {getattr(res, 'error', None)!r}"
+            assert res.outputs[ac.DS_INSIDE] == gs["inside"], \
+                f"invoked inside != inline attach_relations on {t['task_id']}"
+            n_grids += 1
+    print(f"  [ok] wiring: inside real body invoked through the layer matches "
+          f"inline perception across {n_grids} grids / {len(tasks)} tasks.")
+
+
+def _l4_intake_check(cl, tasks) -> None:
+    """MindsOS wiring step 2 — the L4 intake slice. Dispatch the perceive
+    extractors through the REAL L4 choke point (`L4Dispatcher` -> runtime.invoke)
+    for every grid and prove L4->L3 dispatch reproduces the inline perception;
+    then emit a real L5 `TaskRun` chain artifact into an in-memory MentalModel.
+    Proves the boundary end-to-end: L4 orchestrates, L3 computes, L5 stores."""
+    from . import arc_l4
+    disp = arc_l4.dispatcher(cl)
+    n_grids = 0
+    for t in tasks:
+        grids = [p["input"] for p in t["train"]] + \
+                [p["output"] for p in t["train"]] + \
+                [tg["input"] for tg in t["test"]]
+        for gs in grids:
+            got = arc_l4.perceive_grid(disp, gs["cells"])
+            assert got["objects"] == gs["objects"], \
+                f"L4-dispatched extract_objects != inline on {t['task_id']}"
+            assert got["points"] == gs["points"], \
+                f"L4-dispatched extract_points != inline on {t['task_id']}"
+            n_grids += 1
+    tr = arc_l4.emit_task_run(arc_solver.TASK8)
+    assert getattr(tr, "iri", None), "L5 TaskRun emit produced no artifact"
+    print(f"  [ok] wiring: L4Dispatcher dispatches perceive (L3) matching inline "
+          f"across {n_grids} grids; L5 TaskRun emitted for #8.")
+
+
+def _mindsos_instance_check() -> None:
+    """MindsOS wiring step 3 — prove the LAYERS work together on a REAL in-process
+    instance (option (a), prep for (b)). Stand up the shipped stack (bootstrapped
+    KnowledgeLayer + CapacityLayer with the v0/consolidate/text/dream builtins)
+    with the arc caps on top, then assert:
+      * L4 — the six-phase lifecycle runs to `succeeded` (Orchestrator.run_lifecycle);
+      * L5 — consolidation wrote an Episode we can read back from the user's Local;
+      * L3 — an arc capacity dispatches on the same instance.
+    The task content through the lifecycle is the shipped v0 smoke; routing ARC
+    content through it is the later phase-8/9/10 wiring."""
+    from . import arc_l4
+    inst = arc_l4.build_instance()
+    # L3 — arc cap dispatches on the real instance
+    got = arc_l4.perceive_grid(inst.dispatcher, [[1, 1, 0], [0, 0, 2]])
+    assert "objects" in got and "points" in got, "arc perceive did not dispatch on the instance"
+    # L4 — six-phase lifecycle runs to completion
+    outcome = inst.orch.run_lifecycle({"text": "the cat sat"}, task_id="arc-smoke")
+    assert outcome.status == "succeeded", f"L4 lifecycle status={outcome.status!r}"
+    # L5 — consolidation wrote an Episode; read it back
+    eps = arc_l4.episodes(inst)
+    assert len(eps) >= 1, "L5 consolidation wrote no Episode to the Local"
+    print(f"  [ok] MindsOS instance: L4 six-phase lifecycle -> succeeded, L5 "
+          f"consolidation Episode read-back ({len(eps)}), arc L3 dispatchable "
+          f"on a bootstrapped KL/CapacityLayer.")
+
+
+def _arc_solve_layer_check(cl, dataset) -> None:
+    """MindsOS wiring step 4 — the arc SOLVE runs through the layer. An L4 driver
+    sequences phases 8/9/10, dispatching each as a real L3 decision cap via
+    L4Dispatcher; the dispatched answer must reproduce the inline solve AND match
+    the withheld test output for #8/#2/#251. Proves solve DECISIONS (not just
+    perceive) execute through L4->L3."""
+    from . import arc_l4
+    disp = arc_l4.dispatcher(cl)
+    for tid in (arc_solver.TASK8, "00d62c1b", "a5313dff"):
+        if tid not in dataset["train"]:
+            continue
+        dispatched, inline = arc_l4.solve_through_layer(disp, tid, dataset)
+        assert dispatched is not None and inline is not None, f"no solve for {tid}"
+        assert dispatched["output"] == inline["output"], \
+            f"L4-dispatched solve != inline answer for {tid}"
+        assert dispatched["matches_withheld"] is True, \
+            f"L4-dispatched solve did not match withheld test for {tid}"
+    print("  [ok] arc solve: phases 8/9/10 dispatched through L4->L3 reproduce the "
+          "inline answer + match the withheld test (#8/#2/#251).")
+
+
+def _arc_intake_check(dataset) -> None:
+    """MindsOS wiring step 5 — the real "ask" front door. A user request
+    ``"solve task <ref>"`` is interpreted through the shipped Phase-1 seam
+    (ADR-0195) using arc's Local hint/map/resolve bodies:
+
+      (1) cold-start index ``"solve task 8"`` -> ``NeedsInput`` proposing the id8
+          (ADR-0196; arc-Local cold-start policy, caller-controlled);
+      (2) re-submitting the canonical request resolves + solves #8 (the dispatched
+          answer matches the withheld test — a real ask->solve, not a stub);
+      (3) the user confirms -> the Local ordering marker is set (a persisted
+          capacity-state node), and a FRESH index request resolves silently.
+    """
+    from . import arc_intake as ai
+    from mindsos_capacity.needs_input import NeedsInput
+    from mindsos_intelligence import InterpretationResult, interpret
+
+    inst = ai.build_intake(dataset)
+    assert not ai.ordering_established(inst), "fresh instance must be cold-start"
+    r1 = ai.solve_task(inst, "solve task 8", dataset)          # (1) cold start asks
+    assert isinstance(r1, NeedsInput) and r1.missing == ai.ARC_CANON_DS, \
+        "cold-start index must return NeedsInput"
+    resubmit = r1.choices["yes"]["text"]
+    assert resubmit == "solve task 05f2a901", resubmit
+
+    ai.confirm_ordering(inst)                                   # (2) user confirms -> marker set
+    assert ai.ordering_established(inst), "confirm must set the Local marker"
+    dispatched, inline = ai.solve_task(inst, resubmit, dataset)
+    assert dispatched["matches_withheld"] and dispatched == inline, \
+        "canonical re-submit must solve #8 through the layer"
+
+    r3 = interpret(inst.dispatcher, "solve task 2")            # (3) fresh index now silent
+    assert isinstance(r3, InterpretationResult) and r3.resolved_reference == "00d62c1b", \
+        "after confirm, an index must resolve silently"
+
+    print("  [ok] arc intake: 'solve task <ref>' through the Phase-1 seam -> cold-start "
+          "NeedsInput, re-submit solves #8, confirm sets the Local marker -> index silent.")
+
+
 #: A synthetic 2-demo task for the phase-9 CONJUNCTION path: recolor to red the
 #: object that is (biggest AND green). No corpus task needs a ≥2 conjunction with
 #: today's condition vocabulary (probe 2026-07-01), so the ≥2 branch is gated here
@@ -274,6 +408,11 @@ def main(argv: list) -> int:
     _evaluate_discrepancy_check(tasks)  # ./evaluate agrees with Search (0 discrepancies)
     _inference_soundness_check(tasks)   # same_object ⟹ same_shape wired skip 0/400
     _operator_inference_check(tasks)    # union ⟹ inset operator skip 0/400
+    _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
+    _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
+    _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
+    _arc_solve_layer_check(cl, dataset)   # wiring step 4: arc solve (phases 8/9/10) dispatched L4->L3
+    _arc_intake_check(dataset)            # wiring step 5: 'ask' front door — Phase-1 seam -> solve
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None
