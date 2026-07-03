@@ -78,11 +78,10 @@ def test_verify_after_persist_reload(kl, cl):
 
     install_skill(parse_manifest(MANIFEST_PATH), kl=kl, cl=cl, current_phase=50)
 
+    mg = kl.global_metagraph()
     client = InMemoryClient()
-    MetagraphRepository(client).persist(kl.global_metagraph())
-    loader = MetagraphLoader(client)
-    mid = loader.find_by_name(kl.global_metagraph().name)
-    reloaded = loader.load(mid)
+    MetagraphRepository(client).persist(mg)
+    reloaded = MetagraphLoader(client).load(mg.metagraph_id)
 
     kl2 = KnowledgeLayer(global_metagraph=reloaded)
     cl2 = CapacityLayer()

@@ -77,12 +77,15 @@ Rollup metrics: `broken_atomic`, `task_unmapped`/`task_total`, `code_scan_hits`.
 - Check 7 AST scan is best-effort; a scan failure is reported INFO, never fails
   the command.
 
-## Tests — results (fill from Linux gate)
+## Tests — results (Linux gate)
 
-- `tests/skill_verify/test_verify.py`: _pending gate run_.
+- `tests/skill_verify/test_verify.py`: first run **9 passed / 1 failed** — the
+  failure was a test-only plumbing bug (`find_by_name` → `None` on
+  `InMemoryClient`); fixed to load by `metagraph_id`. **Check-6 canary
+  `test_ref_bundle_l2_conforms_to_schema` PASSED** — strict schema validation does
+  not over-flag the ref bundle, so no check-6 loosening needed. Rerun pending.
 - Full cumulative gate: _pending_.
-- `skill_verify_probe.py`: temp probe, remove before merge (already reverted per
-  the pre-build commit).
+- `skill_verify_probe.py`: temp probe removed at the build commit.
 
 ## Deferred (hooks only, per the note)
 
