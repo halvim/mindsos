@@ -4,7 +4,7 @@ The checklist to follow whenever a new capacity is added to the arc1 spike. Ever
 capacity must be wired through **all five** surfaces below or the debug UI / gate
 model fall out of sync. Running example: the `inside` intra-grid predicate.
 
-Files live in `intelligence_demo/arc1/spike/`. Single-source-of-truth rule: the UI
+Files live in `arc_solver/spike/`. Single-source-of-truth rule: the UI
 **draws** what Python computes — never re-derive a capacity's result in JS.
 
 ---
@@ -44,7 +44,7 @@ def inside_pairs(objects, points, dims, bg): ...   # the per-grid fold
 ## 2. Run the spike including the new capacity
 
 ```
-cd projects/arc_demo && ./run_spike
+cd projects/arc_solver && ./run_spike
 ```
 
 This re-registers the CapacityLayer and regenerates `arc_debug_data.js`.

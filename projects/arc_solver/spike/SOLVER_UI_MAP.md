@@ -124,4 +124,4 @@ When `pending` is non-empty, a "pending (not built)" `.sl` label + `.spend` rows
 - **Restyle a step** → edit the `solver*` JS template strings + the `.s*` CSS block in `arc_debug.html`.
 - **Promote a pending step to built** → add a `solverStepN(...)` template + its data in `build_solver`, append it in `renderSolver()`, and remove its `.spend` row from `pending`.
 - **Add an interactive (non-recompute) view toggle** → precompute both variants in `build_solver` (as done for background `_excl`/`_full`), add a JS state var + a toggle element that calls `renderSolver()`. Recompute-requiring choices stay option A (answer in chat → rerun).
-- **Regenerate after any code/data change**: `python -m intelligence_demo.arc1.spike.run_spike` (writes `arc_debug_data.js`), then reload `arc_debug.html`.
+- **Regenerate after any code/data change**: `python -m arc_solver.spike.run_spike` (writes `arc_debug_data.js`), then reload `arc_debug.html`.

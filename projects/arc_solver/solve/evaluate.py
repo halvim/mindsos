@@ -33,7 +33,7 @@ import os
 import sys
 from typing import Any, Dict, List, Optional
 
-from intelligence_demo.arc1.spike import (
+from arc_solver.spike import (
     arc_grids, arc_profile, arc_search, arc_capacities, arc_solver)
 
 _HERE = os.path.dirname(os.path.abspath(__file__))

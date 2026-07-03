@@ -1007,7 +1007,7 @@ filed as motivating consumer; the demo does NOT block on it.
     outcome)` → 4 Episodes in one Local → `delete`+`save` → reload asserts 4. `restart`
     mode: fresh `KL.bootstrap()` + `install_local_metagraph(user, persister.load(user))`
     finds all 4 with NO trip re-run (survives restart). Run:
-    `python3 -m intelligence_demo.arc1.spike.arc_instance [restart]`; container
+    `python3 -m arc_solver.spike.arc_instance [restart]`; container
     `mindsos-falkordb` (6379); `FalkorConfig.from_env()`. Gotcha: `delete`-before-`save`
     (same Local name `local_knowledge:arc` else runs accumulate).
   - **Gate:** `./run_spike` now prints **13 `[ok]` lines**; #8/#2/#251 still solve; durable
@@ -1073,7 +1073,7 @@ filed as motivating consumer; the demo does NOT block on it.
     `confirm_ordering`s + persists the task-pattern + marker alongside the 4 Episodes; `restart`
     asserts both survived (index resolves silently, no re-confirm). Verified on Falkor.
   - **Gate:** `_arc_intake_check` (wiring step 5) — one `[ok]` line; anchor now **14**. Run
-    `arc_instance` as a **script** (`python3 intelligence_demo/arc1/spike/arc_instance.py [restart]`),
+    `arc_instance` as a **script** (`python3 arc_solver/spike/arc_instance.py [restart]`),
     NOT `-m` (the `__package__` guard sets `sys.path`; `-m` skips it → `mindsos_intelligence`
     ModuleNotFoundError).
   - **§0 D3 amendment (from the merge).** Core now ENFORCES the invoke input-contract

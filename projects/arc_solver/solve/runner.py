@@ -8,8 +8,8 @@ from __future__ import annotations
 import sys
 from typing import Any, Dict
 
-from intelligence_demo.arc1.spike import arc_grids, arc_capacities, arc_solver
-from intelligence_demo.arc1.solve import pipeline
+from arc_solver.spike import arc_grids, arc_capacities, arc_solver
+from arc_solver.solve import pipeline
 
 _TTY = sys.stdout.isatty()
 
@@ -137,7 +137,7 @@ def phases():
 
 
 def inferences():
-    from intelligence_demo.arc1.spike import arc_search
+    from arc_solver.spike import arc_search
     inf = arc_search.inferences()
     print(_c("1", "arc — declared inference edges"))
 

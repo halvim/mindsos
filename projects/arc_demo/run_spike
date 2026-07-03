@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -e
-cd "$(dirname "$0")"
-export PYTHONPATH="$(cd ../.. && pwd)${PYTHONPATH:+:$PYTHONPATH}"
-exec python3 -m intelligence_demo.arc1.spike.run_spike "$@"

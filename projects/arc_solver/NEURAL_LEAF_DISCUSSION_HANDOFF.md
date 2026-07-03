@@ -15,7 +15,7 @@ The `intelligence_demo` is an AI-community proof-of-path for the MindsOS learnin
 - **Claim = option c**: headline *reasoning where blind ML fails* + moat *auditability + honest abstention*.
 - **Learning split**: frozen seed primitives (fixed in code) + **autonomous composition/minting** of named composites (the priority, the unbuilt 80%).
 - **Autonomous mechanism**: compositional search over the seeds (the `coherence_loop` strategy), scored by fit on the few-shot examples, **MDL-penalized**, with a **structural verify/abstain gate**.
-- ARC ontology/lexicon foundation is already built in `intelligence_demo/arc1/` (see `arc1/README.md`, `arc1/ONTOLOGY.md`); the task-solving pipeline is the active build thread (`arc1/PIPELINE_NEXT_CHAT_PROMPT.md`). **The neural-leaf is the proposer that makes that pipeline's search tractable** — this discussion feeds it.
+- ARC ontology/lexicon foundation is already built in `arc_solver/` (see `arc1/README.md`, `arc1/ONTOLOGY.md`); the task-solving pipeline is the active build thread (`arc1/PIPELINE_NEXT_CHAT_PROMPT.md`). **The neural-leaf is the proposer that makes that pipeline's search tractable** — this discussion feeds it.
 
 ## The neural-leaf — complete description
 
@@ -64,7 +64,7 @@ The proposer should be the **last** thing added and the **smallest** thing that 
 1. **This file.**
 2. `intelligence_demo/INTELLIGENCE_PARADIGM_HANDOFF.md` — §4 honest boundaries (esp. §4.1 small leaves, §4.2 leaf calibration), §7 criteria.
 3. `intelligence_demo/DEMO_BUILD_NEXT_CHAT_PROMPT.md` — the locked contract (autonomous mechanism, verify/abstain gate, baselines, firewall).
-4. `intelligence_demo/arc1/ONTOLOGY.md` + `arc1/README.md` — the ARC primitive/family grounding the proposer ranks over.
+4. `arc_solver/ONTOLOGY.md` + `arc1/README.md` — the ARC primitive/family grounding the proposer ranks over.
 5. (background) `ROBOTICS_PITCH_HANDOFF.md §3` — zero-proof audit; the learning engine is unbuilt.
 
 ## Outcome of the discussion (what to produce)

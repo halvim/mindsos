@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")" && pwd)"
-ARC_DEMO="$REPO/projects/arc_demo"
-ARC1="$ARC_DEMO/intelligence_demo/arc1"
-export PYTHONPATH="$REPO:$ARC_DEMO${PYTHONPATH:+:$PYTHONPATH}"
+ARC_SOLVER="$REPO/projects/arc_solver"
+export PYTHONPATH="$REPO:$REPO/projects${PYTHONPATH:+:$PYTHONPATH}"
 
 help_top() {
   cat <<'EOF'
@@ -88,7 +87,7 @@ case "$cmd" in
     case "${1:-}" in -h|--help) help_start; exit 0;; esac
     PORT="${1:-8042}"
     echo "▶ building spike (perceive + profile + gates over 400 tasks) ..."
-    "$ARC_DEMO/run_spike"
+    "$ARC_SOLVER/run_spike"
     echo
     echo "▶ arc system ready"
     echo "    debug UI   http://localhost:${PORT}/arc_debug.html   (search · gates · map)"
@@ -97,16 +96,16 @@ case "$cmd" in
     echo
     echo "  (Ctrl-C to stop the server)"
     echo
-    cd "$ARC1/spike"
+    cd "$ARC_SOLVER/spike"
     exec python3 -m http.server "$PORT"
     ;;
   solve)
     case "${1:-}" in ""|-h|--help) help_solve; exit 0;; esac
-    exec python3 "$ARC1/solve/runner.py" "$@"
+    exec python3 "$ARC_SOLVER/solve/runner.py" "$@"
     ;;
   evaluate)
     case "${1:-}" in ""|-h|--help) help_evaluate; exit 0;; esac
-    exec python3 "$ARC1/solve/evaluate.py" "$@"
+    exec python3 "$ARC_SOLVER/solve/evaluate.py" "$@"
     ;;
   *)
     echo "unknown command: $cmd" >&2

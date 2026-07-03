@@ -17,8 +17,11 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
   `projects/{wsd,fol,dwf_mapping,skill_acquisition,maintenance}/`, own worktree
   + own test instance, branches `wsd-NN`/`fol-NN`/`dwf-NN`/`feat/*`.
 - **Demo projects** (built on top, never edit core) →
-  `projects/{robot_demo,arc_demo,bongard_demo}/` on `demo/*` branches, own
-  worktree (`MindsOS-robot`, `MindsOS-arc`, `MindsOS-bongard`) + own instance.
+  `projects/{robot_demo,bongard_demo}/` on `demo/*` branches, own
+  worktree (`MindsOS-robot`, `MindsOS-bongard`) + own instance.
+- **arc-solver** (independent consumer, off `demo/*`) → `projects/arc_solver/`
+  (+ parallel `projects/arc_solver/viz/`), worktrees `MindsOS-arc` /
+  `MindsOS-arc-viz`; never edits core, pins a core version. See `BRANCHES.md`.
 
 ## 2. Branches
 - Off `main`, squash-merge back, then delete: `phase-NN`, `wsd-NN`, `dwf-NN`,

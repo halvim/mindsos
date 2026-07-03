@@ -47,6 +47,6 @@ node_modules/
 .fuse_hidden*
 .DS_Store
 *NEXT_CHAT_PROMPT*.md
-projects/arc_demo/intelligence_demo/arc1/spike/arc_debug_data.js
-projects/arc_demo/intelligence_demo/arc1/solve/runs/
-projects/arc_demo/intelligence_demo/arc1/spike/bg_ground.py
+projects/arc_solver/spike/arc_debug_data.js
+projects/arc_solver/solve/runs/
+projects/arc_solver/spike/bg_ground.py

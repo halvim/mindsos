@@ -4,7 +4,7 @@ Renders the Solver stepper faithfully + leader-line callouts to the bold part
 name and its `.class` / `#id` / `solverStepN ← stageN` code binding, then
 rasterises to ../solver_map.png via cairosvg. Re-run after UI changes:
 
-    python maps/solver_map.py        # from intelligence_demo/arc1/spike/
+    python maps/solver_map.py        # from arc_solver/spike/
 """
 import os
 import cairosvg

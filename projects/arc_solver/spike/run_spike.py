@@ -22,7 +22,7 @@ if __package__ in (None, ""):
     for _p in (_repo_root, _pkg_root):
         if _p not in _sys.path:
             _sys.path.insert(0, _p)
-    _runpy.run_module("intelligence_demo.arc1.spike.run_spike", run_name="__main__")
+    _runpy.run_module("arc_solver.spike.run_spike", run_name="__main__")
     _sys.exit(0)
 
 import datetime as _dt
@@ -150,7 +150,7 @@ def _gate_invariant_check(tasks) -> None:
 def _evaluate_discrepancy_check(tasks) -> None:
     """./evaluate applies each comparator via an independent code path and
     cross-checks it against the Search token; assert ZERO discrepancies."""
-    from intelligence_demo.arc1.solve import evaluate as ev
+    from arc_solver.solve import evaluate as ev
     comps = arc_search.comparator_names()
     bad = [(t["task_id"], c) for t in tasks for c in comps
            if ev._apply(c, t)["discrepancy"]]
@@ -353,7 +353,7 @@ def _solve_pipeline_check(dataset, solver) -> None:
     fixture at size 2. (The #8-specific stages 10–16 were retired 2026-07-01; the
     monolithic build_solver still runs for the arc_debug solver panel + D3 spike,
     but the pipeline no longer mirrors it.)"""
-    from intelligence_demo.arc1.solve import pipeline
+    from arc_solver.solve import pipeline
     for tid in (arc_solver.TASK8, "00d62c1b", "a5313dff"):
         if tid not in dataset["train"]:
             continue

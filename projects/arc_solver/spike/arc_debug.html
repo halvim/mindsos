@@ -1444,7 +1444,7 @@ function setSection(id){
 function init(){
   if(typeof window.ARC_DATA==="undefined"){
     document.getElementById("mainBody").innerHTML=
-      '<div class="empty">No data. Run <code>python -m intelligence_demo.arc1.spike.run_spike</code> '
+      '<div class="empty">No data. Run <code>python -m arc_solver.spike.run_spike</code> '
       +'to generate arc_debug_data.js, then reload.</div>';
     return;
   }

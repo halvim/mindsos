@@ -13,7 +13,7 @@ in `../ONTOLOGY.md` (§4) and `../PIPELINE.md`. Read those for the *why*.
 From the repo root:
 
 ```
-python -m intelligence_demo.arc1.spike.run_spike      # registers caps, proves discovery, writes arc_debug_data.js
+python -m arc_solver.spike.run_spike      # registers caps, proves discovery, writes arc_debug_data.js
 ```
 
 Or directly from this folder (re-execs itself into the package): `python run_spike.py`

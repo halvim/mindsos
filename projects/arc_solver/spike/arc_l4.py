@@ -72,7 +72,7 @@ def solve_through_layer(disp, task_id: str, dataset: dict):
     REAL L3 decision cap through the layer (not inline). Phases 1-7 (perceive +
     hypothesis working state) are run inline to build the profile the decisions
     consume. Returns (dispatched_solve, inline_solve) for conformance."""
-    from intelligence_demo.arc1.solve import pipeline
+    from arc_solver.solve import pipeline
     ctx = pipeline.run_all(task_id, dataset)          # inline profile + inline answer (oracle)
     base = {ac.DS_PROFILE: ctx["profile"], ac.DS_ENCLOSED: ctx.get("enclosed")}
     rules = disp.dispatch(_CAP_EMIT, {**base,

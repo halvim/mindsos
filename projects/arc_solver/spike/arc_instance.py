@@ -1,7 +1,7 @@
 """(b) durable MindsOS instance — Falkor-backed, LOCAL persistence.
 
 Runs ONLY on the Linux machine with a FalkorDB container up (see
-``projects/arc_demo/docker-compose.yml``); it cannot run in Cowork (no sidecar)
+``projects/arc_solver/docker-compose.yml``); it cannot run in Cowork (no sidecar)
 and is NOT part of the in-memory ``./run_spike`` gate.
 
 Layer/persistence model it targets (see the `mindsos-persistence-model` note):
@@ -17,7 +17,7 @@ values through the node ``_value_json`` column, so NO core change is needed for
 durable episodes — this confirms it live before steps 2-3 (install content, run
 the arc trip, consolidate, save/reload the Episode).
 
-    python intelligence_demo/arc1/spike/arc_instance.py
+    python arc_solver/spike/arc_instance.py
 """
 
 from __future__ import annotations
@@ -26,12 +26,12 @@ if __package__ in (None, ""):
     import os as _os
     import runpy as _runpy
     import sys as _sys
-    _pkg_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", "..", ".."))
-    _repo_root = _os.path.abspath(_os.path.join(_pkg_root, "..", ".."))
-    for _p in (_repo_root, _pkg_root):
+    _projects = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", ".."))
+    _repo_root = _os.path.abspath(_os.path.join(_projects, ".."))
+    for _p in (_repo_root, _projects):
         if _p not in _sys.path:
             _sys.path.insert(0, _p)
-    _runpy.run_module("intelligence_demo.arc1.spike.arc_instance", run_name="__main__")
+    _runpy.run_module("arc_solver.spike.arc_instance", run_name="__main__")
     _sys.exit(0)
 
 from mindsos_core import Metagraph
@@ -195,7 +195,7 @@ def main(argv=None) -> int:
                   f"'arc:solved:*' consolidated + persisted to Falkor Local + reloaded "
                   f"for user 'arc'; intake state (task-pattern + ordering marker) persisted too.")
             print("  [i] then verify restart durability: "
-                  "python3 -m intelligence_demo.arc1.spike.arc_instance restart")
+                  "python3 -m arc_solver.spike.arc_instance restart")
     finally:
         try:
             client.close()

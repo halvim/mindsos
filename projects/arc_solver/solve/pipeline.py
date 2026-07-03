@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from intelligence_demo.arc1.spike import arc_grids, arc_profile, arc_solver, arc_search
+from arc_solver.spike import arc_grids, arc_profile, arc_solver, arc_search
 
 GENERAL, GENERAL_STAR, SEMI, SPECIMEN = "general", "general*", "semi", "#8"
 
