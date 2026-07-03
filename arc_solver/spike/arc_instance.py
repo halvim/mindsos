@@ -26,11 +26,9 @@ if __package__ in (None, ""):
     import os as _os
     import runpy as _runpy
     import sys as _sys
-    _projects = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", ".."))
-    _repo_root = _os.path.abspath(_os.path.join(_projects, ".."))
-    for _p in (_repo_root, _projects):
-        if _p not in _sys.path:
-            _sys.path.insert(0, _p)
+    _repo_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", ".."))
+    if _repo_root not in _sys.path:
+        _sys.path.insert(0, _repo_root)
     _runpy.run_module("arc_solver.spike.arc_instance", run_name="__main__")
     _sys.exit(0)
 

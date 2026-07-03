@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -e
+cd "$(dirname "$0")/.."                 # -> repo root (arc_solver's parent)
+export PYTHONPATH="$(pwd)${PYTHONPATH:+:$PYTHONPATH}"   # repo root -> arc_solver + mindsos_*
+exec python3 -m arc_solver.spike.run_spike "$@"

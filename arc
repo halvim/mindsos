@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 REPO="$(cd "$(dirname "$0")" && pwd)"
-ARC_SOLVER="$REPO/projects/arc_solver"
-export PYTHONPATH="$REPO:$REPO/projects${PYTHONPATH:+:$PYTHONPATH}"
+ARC_SOLVER="$REPO/arc_solver"
+export PYTHONPATH="$REPO${PYTHONPATH:+:$PYTHONPATH}"
 
 help_top() {
   cat <<'EOF'

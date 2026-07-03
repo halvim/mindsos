@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-set -e
-cd "$(dirname "$0")/.."                 # -> projects/  (so `arc_solver` is importable)
-export PYTHONPATH="$(cd .. && pwd)${PYTHONPATH:+:$PYTHONPATH}"   # repo root -> mindsos_*
-exec python3 -m arc_solver.spike.run_spike "$@"
