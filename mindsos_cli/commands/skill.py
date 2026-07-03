@@ -240,6 +240,66 @@ def skill_activate(
         _close(client)
 
 
+def _refuse_verify(msg: str) -> None:
+    typer.echo(f"Error: {msg}", err=True)
+    raise typer.Exit(code=1)
+
+
+@skill_app.command(
+    name="verify",
+    help="Read-only cross-layer check of an installed bundle (approach C').",
+)
+def skill_verify(
+    bundle: Optional[str] = typer.Argument(
+        None, help="Bundle name to verify (omit when using --all)."
+    ),
+    as_json: bool = typer.Option(False, "--json", help="Emit JSON."),
+    check_all: bool = typer.Option(
+        False, "--all", help="Verify every recorded bundle."
+    ),
+) -> None:
+    from mindsos_server.skills import apply_installed_skills
+    from mindsos_server.skills.verify import (
+        render_human,
+        render_json,
+        verify_all,
+        verify_bundle,
+    )
+
+    if not bundle and not check_all:
+        _refuse_verify("provide a bundle name or --all")
+
+    kl, client = _build_kl_and_client()
+    if client is None:
+        _refuse_verify(
+            "FalkorDB unreachable — verify reads persisted state and cannot run"
+        )
+    try:
+        cl = _build_cl()
+        apply_installed_skills(cl, kl)
+        if check_all:
+            reports = verify_all(kl, cl)
+        else:
+            reports = [verify_bundle(kl, cl, bundle)]
+
+        if as_json:
+            typer.echo(
+                _json.dumps(
+                    {"reports": [render_json(r) for r in reports]},
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            for report in reports:
+                typer.echo(render_human(report))
+
+        if not all(report.ok() for report in reports):
+            raise typer.Exit(code=1)
+    finally:
+        _close(client)
+
+
 def register_skill_app(parent: typer.Typer) -> None:
     """Register the ``skill`` subapp on the root Typer."""
     parent.add_typer(skill_app, name="skill")
