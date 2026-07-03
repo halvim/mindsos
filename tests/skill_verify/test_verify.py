@@ -120,6 +120,39 @@ def test_chain_is_neutral(installed):
     assert results[0].detail.startswith("mapped:")
 
 
+def test_chain_finds_pipeline_mapping(installed):
+    from mindsos_knowledge import ROLE_PROMOTED_PIPELINES, ROLE_TASK_PATTERNS
+    from mindsos_knowledge.bootstrap import ensure_global_role_graph
+
+    kl, _ = installed
+    mg = kl.global_metagraph()
+    tp = ensure_global_role_graph(mg, ROLE_TASK_PATTERNS)
+    pp = ensure_global_role_graph(mg, ROLE_PROMOTED_PIPELINES)
+
+    pipeline = pp.add_node(
+        "demo-pipeline", "Pipeline", node_id="pipeline:demo", _validate=False
+    )
+    step = pp.add_node(
+        "demo-step",
+        "PipelineStep",
+        properties={"capacity_iri": CAP_REF_SHOUT, "position": 0},
+        node_id="pipeline:demo:step0",
+        _validate=False,
+    )
+    pp.add_edge(pipeline, step, "HAS_STEP", _validate=False)
+    tp.add_node(
+        "demo-tp",
+        "TaskPattern",
+        properties={"paired_pipelines": ["pipeline:demo"]},
+        node_id="taskpattern:demo",
+        _validate=False,
+    )
+
+    results = _check_chain(kl, {"l3_capacities": [CAP_REF_SHOUT]})
+    assert results
+    assert results[0].detail == "mapped: pipeline"
+
+
 def test_schema_flags_bad_node_type(installed):
     kl, _ = installed
     concept_iri = None

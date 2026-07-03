@@ -1,6 +1,7 @@
 # `skill verify` — confirmation
 
-Status: **built + gate-green (2026-07-02).** Design: `SKILL_VERIFY_DESIGN_NOTE.md`.
+Status: **built; gate-green at the 7-check baseline (2026-07-02), re-gate pending
+for the check-5 pipeline-traversal addition.** Design: `SKILL_VERIFY_DESIGN_NOTE.md`.
 Placement: **maintenance — no numbered phase, no version bump, no new ADR** (D10).
 
 ## What shipped
@@ -42,7 +43,12 @@ same one `skill activate` uses.
 4. **Broken ref** — task-pattern `sufficient_predicate_iri` / pipeline
    `capacity_iri` → absent capacity. DEFECT. (Catalog-wide; `promoted-pipelines`
    is empty.)
-5. **Task→capacity chain** — NEUTRAL; `mapped: none` for all today (deferred "A").
+5. **Task→capacity chain** — NEUTRAL. Both paths built: direct
+   `sufficient_predicate_iri` **and** `task-pattern.paired_pipelines → Pipeline
+   —HAS_STEP→ PipelineStep.capacity_iri` (schema-pinned, Phase 43). `mapped: none`
+   for all today (the pipeline store is writer-less/empty); lights up when "A"
+   lands. Pipeline-path coverage is a **seeded** test (`test_chain_finds_pipeline
+   _mapping`) — synthetic by necessity, since nothing writes pipelines yet.
 6. **Schema nonconformance** — declared L2 node vs its role-graph schema via
    `schema_for_role(role, strict=True).validate_node_properties`. DEFECT.
 7. **Capacity→L2 role** (code-derived) — AST scan of installer modules for
@@ -87,7 +93,9 @@ Rollup metrics: `broken_atomic`, `task_unmapped`/`task_total`, `code_scan_hits`.
   reconstruct on `load`); converted to a Falkor-live test using the shared
   `falkor_client` fixture (`@pytest.mark.integration`, auto-skips without a
   sidecar), mirroring `test_skill_record_falkor_live.py`. Rerun pending.
-- `tests/skill_verify/` rerun after the Falkor-live fix: **10 passed**.
+- `tests/skill_verify/` after the Falkor-live fix: **10 passed** (7-check baseline).
+- `tests/skill_verify/` after the check-5 pipeline half (+`test_chain_finds_pipeline_mapping`,
+  11 total): **re-gate pending**.
 - Full cumulative gate: **4102 passed / 9 skipped / 1 xpassed / 0 failed**
   (2026-07-02, Linux gate; `MINDSOS_REPO_ROOT` + `FALKORDB_HOST=localhost` set —
   an initial raw-host run surfaced 11 pre-existing container-only failures

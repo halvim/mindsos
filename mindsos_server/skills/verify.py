@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import json
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -172,6 +173,44 @@ def _check_broken_refs(kl: Any, view: Any) -> List[CheckResult]:
     return results
 
 
+def _paired_pipelines(node: Any) -> List[str]:
+    paired = node.properties.get("paired_pipelines")
+    if isinstance(paired, str):
+        try:
+            paired = json.loads(paired)
+        except Exception:
+            return []
+    if isinstance(paired, (list, tuple)):
+        return [str(p) for p in paired]
+    return []
+
+
+def _pipeline_mapped_capacities(kl: Any) -> set:
+    from mindsos_knowledge import ROLE_PROMOTED_PIPELINES, ROLE_TASK_PATTERNS
+    from mindsos_knowledge.schemas.promoted_pipelines import EDGE_HAS_STEP
+
+    tp = _role_graph(kl, ROLE_TASK_PATTERNS)
+    pp = _role_graph(kl, ROLE_PROMOTED_PIPELINES)
+    mapped: set = set()
+    if tp is None or pp is None:
+        return mapped
+
+    referenced: set = set()
+    for node in tp.nodes.values():
+        referenced.update(_paired_pipelines(node))
+
+    for edge in pp.iter_edges():
+        if edge.type_name != EDGE_HAS_STEP or edge.source.node_id not in referenced:
+            continue
+        step = pp.nodes.get(edge.target.node_id)
+        if step is None:
+            continue
+        capacity = step.properties.get("capacity_iri")
+        if isinstance(capacity, str):
+            mapped.add(capacity)
+    return mapped
+
+
 def _check_chain(kl: Any, roster: Dict[str, Any]) -> List[CheckResult]:
     from mindsos_knowledge import ROLE_TASK_PATTERNS
 
@@ -182,9 +221,16 @@ def _check_chain(kl: Any, roster: Dict[str, Any]) -> List[CheckResult]:
             ref = node.properties.get("sufficient_predicate_iri")
             if isinstance(ref, str):
                 predicates.add(ref)
+    pipeline_mapped = _pipeline_mapped_capacities(kl)
+
     results: List[CheckResult] = []
     for iri in roster.get("l3_capacities") or []:
-        mapped = "direct-predicate" if iri in predicates else "none"
+        if iri in predicates:
+            mapped = "direct-predicate"
+        elif iri in pipeline_mapped:
+            mapped = "pipeline"
+        else:
+            mapped = "none"
         results.append(CheckResult(
             5, "task-chain", PRESENT, NEUTRAL, f"mapped: {mapped}", iri,
         ))
