@@ -200,6 +200,8 @@ def test_roles_list_all_json() -> None:
         "capacity-gaps", "learned-parameters",
         # Phase 50 (ADR-0150 §am-6) addition.
         "installed-skills",
+        # feat/subminds (ADR-0150 §am-7) addition.
+        "subminds",
     }
 
 
@@ -228,6 +230,8 @@ def test_roles_list_upper_only() -> None:
         "capacity-gaps", "learned-parameters",
         # Phase 50 (ADR-0150 §am-6) addition.
         "installed-skills",
+        # feat/subminds (ADR-0150 §am-7) addition.
+        "subminds",
     }
 
 

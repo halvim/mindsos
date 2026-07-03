@@ -28,8 +28,29 @@ from .mm_resolver import (
 from .monitor_subscription import MonitorSubscriptionRegistry
 from .rwlock import RWLock
 from .signal_triage import SignalTriageWorker, passthrough_classifier
+from .submind import (
+    ActivationState,
+    CadenceLaw,
+    SubMind,
+    SubMindDefinition,
+    SubMindSignal,
+    SubMindState,
+    VitalDirection,
+)
+from .submind_registry import SubMindRegistry
+from .submind_scheduler import SubMindScheduler
+from .submind_arbiter import SubMindArbiter
+from .resources import Contention, ResourceHold, ResourceLedger
+from .pipeline_execution import PipelineExecutionResult, execute_pipeline
+from mindsos_capacity.needs_input import NeedsInput
 from .dispatch import L4Dispatcher
 from .chain_artifacts import ChainArtifactWriter
+from .phase1_profile import Phase1Profile
+from .phase_1 import (
+    InterpretationError,
+    InterpretationResult,
+    interpret,
+)
 from .orchestrator import LifecyclePhase, Orchestrator, TaskOutcome
 from .signal_sources import register_signal_sources
 from .als_subsystems import register_als_subsystems
@@ -40,6 +61,13 @@ __all__ = [
     "TaskOutcome",
     "LifecyclePhase",
     "ChainArtifactWriter",
+    # ADR-0195 — Phase-1 interpretation seam.
+    "Phase1Profile",
+    "interpret",
+    "InterpretationResult",
+    "InterpretationError",
+    # ADR-0196 — user-clarification verdict (re-exported from L3).
+    "NeedsInput",
     "register_signal_sources",
     "register_als_subsystems",
     "CancelToken",
@@ -61,4 +89,21 @@ __all__ = [
     "passthrough_classifier",
     "IntelligenceLayer",
     "DreamCycleTimer",
+    # feat/subminds (Slice 1) — SubMind runtime + scheduler + registry.
+    "SubMind",
+    "SubMindDefinition",
+    "SubMindSignal",
+    "SubMindState",
+    "ActivationState",
+    "VitalDirection",
+    "CadenceLaw",
+    "SubMindScheduler",
+    "SubMindRegistry",
+    # feat/subminds (Slice 2) — resource model + arbiter + pipeline executor.
+    "SubMindArbiter",
+    "ResourceLedger",
+    "ResourceHold",
+    "Contention",
+    "PipelineExecutionResult",
+    "execute_pipeline",
 ]

@@ -215,3 +215,68 @@ class FalkorDBLocalPersister:
                 ]
             )
             return True
+
+    def reset_run_state(self, user_id: str) -> bool:
+        """Wipe a Local's run-state, retaining its durable learning.
+
+        ADR-0187 (F9-C reset boundary). Unlike :meth:`delete` (a full
+        hard teardown that drops every graph AND the Metagraph node),
+        reset is role-scoped: it ``DETACH DELETE``\\ s only the
+        *elements* contained in the run-state role-graphs, leaving the
+        (now-empty) graph nodes, the durable role-graphs, and the
+        Metagraph node in place — so the Local stays well-formed and
+        re-loadable.
+
+        * **Wiped (run-state):** ``episodic_memories`` (per-task/run
+          history), ``parameter-staging`` + ``pending-promotions``
+          (in-flight ALS evidence/proposals — PB-A).
+        * **Retained (durable learning):** ``learned-parameters`` +
+          ``capacity-state`` — and every other graph.
+
+        Returns ``True`` if the user's Local existed, ``False`` otherwise
+        (idempotent — mirrors :meth:`delete`). Holds the per-user mutex
+        (ADR-0006) because Falkor lacks multi-statement atomicity.
+        """
+        from mindsos_core.reconstruction import MetagraphLoader
+        from mindsos_knowledge import (
+            ROLE_EPISODIC_MEMORIES,
+            ROLE_PARAMETER_STAGING,
+            ROLE_PENDING_PROMOTIONS,
+        )
+
+        run_state_roles = [
+            ROLE_EPISODIC_MEMORIES,
+            ROLE_PARAMETER_STAGING,
+            ROLE_PENDING_PROMOTIONS,
+        ]
+        with self._mutex.user_mutexes([user_id]):
+            loader = MetagraphLoader(self._client)
+            metagraph_id = loader.find_by_name(self._metagraph_name(user_id))
+            if metagraph_id is None:
+                return False
+            gid_rows = self._client.run_query(
+                "MATCH (m:Metagraph {id: $mid})<-[:IN_METAGRAPH]-(g:Graph) "
+                "WHERE g.role IN $roles RETURN g.id AS gid",
+                {"mid": metagraph_id, "roles": run_state_roles},
+            ).rows
+            graph_ids = [row["gid"] for row in gid_rows]
+            if not graph_ids:
+                return True
+            # Reuse only the per-graph element-delete subset of delete()
+            # (the elements + their tombstones), scoped to run-state
+            # graph ids. The graph nodes + Metagraph node are NOT dropped.
+            self._client.run_batch(
+                [
+                    (
+                        "MATCH (g:Graph)<-[:IN_GRAPH]-(el) "
+                        "WHERE g.id IN $gids DETACH DELETE el",
+                        {"gids": graph_ids},
+                    ),
+                    (
+                        "MATCH (t:Tombstone) WHERE t.graph_id IN $gids "
+                        "DETACH DELETE t",
+                        {"gids": graph_ids},
+                    ),
+                ]
+            )
+            return True

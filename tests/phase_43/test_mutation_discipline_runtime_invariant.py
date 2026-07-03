@@ -5,7 +5,8 @@ Per ADR-0153 §2 startup invariant. Tests:
 * ``KnowledgeLayer.bootstrap()`` populates the discipline dispatch
   table for every Global role-graph it creates.
 * ``KnowledgeLayer.discipline_for(mg, role)`` returns the expected
-  discipline for each of the 9 Global + 5 Local roles.
+  discipline for each of the 9 Global + 6 Local roles (task-patterns
+  gained a Local form per ADR-0150 §am-8).
 * ``KLWriteHandle.write_and_validate(...)`` raises
   :class:`MutationDisciplineError` on ``admin_authored`` writes
   without ``_is_admin=True``.
@@ -57,6 +58,9 @@ _LOCAL_EXPECTED = {
     ROLE_PARAMETER_STAGING: Discipline.MUTABLE_WITH_RETENTION,
     ROLE_PENDING_PROMOTIONS: Discipline.AUDIT_ONLY_AFTER_SETTLED,
     ROLE_LEARNED_PARAMETERS: Discipline.MUTABLE_WITH_RETENTION,
+    # feat/phase1-seam Local-form addition per ADR-0150 §am-8 — same
+    # discipline as the Global form (immutable_successor).
+    ROLE_TASK_PATTERNS: Discipline.IMMUTABLE_SUCCESSOR,
 }
 
 

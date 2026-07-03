@@ -23,6 +23,7 @@ from typing import Any, Optional
 
 from mindsos_capacity.builtins.orchestration_v0 import DS_SCORE, DS_SCORE_INPUT
 from mindsos_capacity.identifiers import CATEGORY_SCORING, capacity_iri
+from mindsos_capacity.needs_input import NeedsInput
 from mindsos_capacity.tiers import TierEnum
 
 from . import (
@@ -58,12 +59,18 @@ class LifecyclePhase(IntEnum):
 
 @dataclass
 class TaskOutcome:
-    status: str  # succeeded | dont_know | aborted
-    task_run_ref: str
+    status: str  # succeeded | dont_know | aborted | pending_confirmation
+    task_run_ref: Optional[str]  # None on the pending_confirmation path (no TaskRun yet)
     outcome: Any = None
     dont_know_reason: Optional[str] = None
     blame: Any = None
     replans_used: int = 0
+    # ADR-0196 — non-terminal clarification request. Orthogonal to the three
+    # terminal statuses + the ``_OUTCOME_BY_STATUS`` consolidation map (both
+    # untouched); when set, the lifecycle short-circuited at Phase 1 and did
+    # NOT consolidate. ``status`` carries the non-terminal
+    # ``"pending_confirmation"`` marker (never a key in the consolidation map).
+    pending_confirmation: Any = None
 
 
 class Orchestrator:
@@ -135,6 +142,17 @@ class Orchestrator:
 
         # Phase 1 — task interpretation (HintSet + MappingResult)
         p1 = phase_1.run(self._dispatcher, writer, task_input)
+        # ADR-0196 — interpretation asked the user. Short-circuit into a
+        # non-terminal pending_confirmation outcome BEFORE plan/exec: no
+        # TaskRun, no consolidation, terminal invariants untouched. (The
+        # mid-execution needs_input path — execution.run halt+bubble — is
+        # deferred, L4-25.)
+        if isinstance(p1, NeedsInput):
+            return TaskOutcome(
+                status="pending_confirmation",
+                task_run_ref=None,
+                pending_confirmation=p1,
+            )
         self._checkpoint(
             task_id, last_phase="INTERPRETATION", task_input_ref=task_input_ref
         )

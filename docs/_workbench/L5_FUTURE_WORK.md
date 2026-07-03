@@ -137,7 +137,8 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 | L5-NEW-Q2 (Falkor checkpoint mechanism) | **Phase 46 R0** (L4-implementation) | Continuous vs phase-boundary periodic. |
 | L5-NEW-Q3 (Episode storage growth thresholds) | **Phase 48 R0** | Sets monitoring exporter thresholds. |
 | L5-NEW-Q4 (aggregator capacity catalog v1) | **WSD_INSTALLATION_CHAT — scheduled Phase 54** (real `planning.*` catalog incl. aggregation; `WSD_INSTALLATION_PHASE_MAP.md` §2 WSD-4, 2026-06-10) | sum/max/last/concat — first consumer triggers. |
+| L5-NEW-19 (**"awaiting-input / suspended" MM disposition**) — a pending (awaiting user-clarification) task's state belongs to that task's MM; a parked MM is a new disposition alongside `active → consolidated → retired`. Needed only by the deferred **in-memory continuation** (L4-25); v1 clarification is stateless re-submit (discards the MM), so v1 needs no L5 change. | **L4-v2 follow-up** (paired with L4-25 / L4-2) | Design converged 2026-07-02; see `L4_FUTURE_WORK.md` §6 + memory `l4-phase1-seam-clarification-design`. |
 
 ---
 
-*End of L5_FUTURE_WORK.md. Last updated 2026-06-02 post Chat C plan-authoring closure.*
+*End of L5_FUTURE_WORK.md. Last updated 2026-07-02 (added L5-NEW-19 awaiting-input MM disposition; paired with L4 §6).*

@@ -105,4 +105,110 @@ Chat C plan-authoring closed 2026-06-02 (`confirmation_docs/POST_PHASE_38_PHASE_
 
 ---
 
-*End of L4_FUTURE_WORK.md. Last updated 2026-06-02 post Chat C plan-authoring closure.*
+## 6. Phase-1 interpretation seam + user-clarification (design converged 2026-07-02; core-owned, arc-driven)
+
+A standalone **core** deliverable that brings forward the REAL Phase-1 "understand the
+request" families **plus** a user-clarification mechanism — both currently shipped only as
+v0 placeholders (`mindsos_capacity/builtins/phase1_v0.py`; `hint.global`→`{}`,
+`decision.map_to_task_pattern`→`task-pattern:v0:trivial`). Driven by **arc-solver (mOS-AS)**
+as the first consumer. **Core-owned per RULES §8** — the Phase-1 seam and the
+hint/map/clarification mechanics are reusable core, consumed by arc-solver / WSD / FOL alike;
+no consumer owns them. This **reattributes the core-mechanism half of L4-11 / L4-15 / L4-16
+from "WSD installation" to core** (WSD still owns its own hint grammar + ALS calibration *as a
+consumer*, not the mechanism). Design NOT yet drafted as ADRs or built. Full record: memory
+`l4-phase1-seam-clarification-design`.
+
+ADRs drafted 2026-07-02 (Proposed, design-only): **ADR-0195** (Feature A — seam)
++ **ADR-0196** (Feature B — `needs_input`). Two **decoupled** features (each shippable
+independently):
+
+**Feature A — pluggable interpretation seam.** A `Phase1Profile` bound at `L4Dispatcher`
+construction, with one optional slot per Phase-1 step (`process` / `hint` / `derive_goal` /
+`map`), each `None` → the shipped v0 placeholder. A real consumer supplies `hint` + `map`
+(the only generic default is v0→trivial; no generic hints→pattern matcher at v1) and registers
+its capacities / DataStates / task-patterns into its **Local** scope; core v0 + generic bodies
+stay Global. Hints = **opaque dict + per-consumer schema** (NOT a core typed HintSet); a
+`reference_kind` field sets the input DataState **type** so the shipped bipartite
+`find_pipeline` (ADR-0156) composes `[resolve? → solve]` — no map-routing. `map` returns a
+real registered `ROLE_TASK_PATTERNS` IRI + confidence (light resolve-check; never-trip
+threshold hook).
+
+**Feature B — user clarification.** `needs_input` modeled as a capacity **verdict** (sibling
+to `dont_know`, reuses the existing dont-know propagation; works at any phase / any capacity).
+Gate scope (block-whole-pipeline vs block-only-the-dependent-tail) is **emergent** from where
+the clarified value enters the produces/consumes DAG — **no manual blocking flag**. Surfaced as
+a **non-terminal `pending_confirmation` field** on `TaskOutcome` (the three terminal statuses +
+consolidation are untouched; **no consolidation on that turn**). Payload contract =
+`{question, missing DataState, choices: {label → ready-to-resubmit task_input}}`. **v1 wait
+model = stateless re-submit** (caller folds the answer into a fresh request).
+
+**MM-ownership principle (user, 2026-07-02): a PENDING (awaiting-input) task's state belongs
+to that task's Mental Model.** Consequences:
+
+- No separate global pending registry — parked tasks **are** suspended MMs (indexed by task id).
+- The **continuation** model (deferred, below) = **retain + resume the specific task's MM**;
+  the answer is injected into that MM and the lifecycle re-enters. This adds a new MM
+  disposition **"awaiting-input / suspended"** alongside `active → consolidated (retained,
+  Chat B D'1) → retired`. That is an **L5 MM-lifecycle addition** (see
+  `L5_FUTURE_WORK.md` L5-NEW-19).
+- **v1 stateless re-submit does NOT retain the MM** (it discards it; the re-submit builds a
+  fresh MM) — so **v1 needs no L5 change**; MM-ownership + the new disposition land **only**
+  with the deferred continuation.
+
+**Near-term build scope (when ADRs are drafted):** two ADRs — ADR-A (interpretation seam) then
+ADR-B (`needs_input` verdict + non-terminal outcome + re-submit contract), independently
+shippable; `resolve` runs INSIDE interpretation as a `Phase1Profile` slot (interpret returns
+`id8`-or-`needs_input`), so `needs_input` surfaces from the standalone interpret call —
+`execution.run` halt+bubble (shared with `dont_know`) is the GENERAL/full-lifecycle path, **not
+arc-blocking** (see §6.2, defer with L4-25); verify Local-only capacity registration + Local
+`task-patterns` writes; version bump. arc-solver is the integration test (owns no core
+component).
+
+### 6.1 Deferred future-work rows
+
+| # | Item | Routed to | Notes |
+|---|---|---|---|
+| L4-25 | **In-memory continuation for non-blocking clarification** — retain + resume the task's MM, run independent DAG branches while awaiting the answer, inject the answer, complete the dependent tail. | **L4-v2 follow-up** (realizes L4-2 pause-and-resume via MM retention) | Needs a re-entrant lifecycle at the clarification point + answer-injection API + parked-MM index + the "awaiting-input" MM disposition (L5-NEW-19). **Durable** variant blocked on the node-value→Falkor gap (PB-RT / L0-26); the **in-memory** variant is feasible independently. User pick 2026-07-02: v1 = re-submit, continuation **designed-not-built**. |
+| L4-26 | **Generic hints→task-pattern matcher / multi-pattern disambiguation** — v1 requires each consumer to supply its own `map` body; a registry-driven matcher with `mapping_confidence` disambiguation across many patterns. | **L4-v2 / relates L4-13** | arc has one solve pattern; WSD/FOL will have many. |
+| L4-27 | **`needs_input` in the TaskOutcome schema** — reconcile with L4-11 (`answer \| dont_know \| uncertain_answer`). `needs_input` is a **recoverable-by-user, non-terminal** disposition distinct from `uncertain_answer`. | **Folded into ADR-B** | — |
+| L4-28 | **Clarification-turn audit trail** — v1's `needs_input` turn writes no Episode (no consolidation) → no durable record of the ask/answer. | **watch** | Revisit if audit needs it (a lightweight interaction-episode); reopens the MM-dict→Falkor flush question. |
+
+### 6.2 arc-solver consumer confirmation (2026-07-02)
+
+arc-solver (mOS-AS) confirmed the plan as first consumer (4 yes + 1 arc-Local policy).
+Refinements folded into ADR scope:
+
+- **Interpretation-only adoption.** arc adopts the seam for INTERPRETATION ONLY
+  (`hint → map → [resolve?] → id8`). arc does NOT run `run_lifecycle` and needs NO core
+  planning/execution catalogs — the arc-solve pipeline stays arc-authored (bespoke driver).
+  The seam feeds `id8` into arc-solve's intake; that is the only coupling. **Consequences:**
+  (i) the interpret surface must be callable STANDALONE (returns an interpretation result OR
+  `needs_input`), decoupled from `run_lifecycle`; (ii) `resolve` runs INSIDE interpretation (a
+  `Phase1Profile` slot), NOT as a core-executed pipeline step, so `needs_input` surfaces from
+  the interpret call and the `execution.run` halt+bubble propagation is the general/full-
+  lifecycle path, deferred (L4-25), not arc-blocking; (iii) interpretation-only means arc opts
+  out of core MM / consolidation / Episode — no core L5 audit trail for arc runs (arc's choice).
+- **Two hard constraints for the ADRs:**
+  - (a) **Dispatcher-level body binding, no metagraph scope-mix (ADR-A).** `Phase1Profile`
+    binds bodies at the DISPATCHER level (a selection over Global-v0 fallback), NOT by
+    co-registering Global-DataStates + Local-capacities in one metagraph — the latter trips the
+    existing scope-mix guard ("mixed Global-ds + Local-caps raises", already bit `arc_instance`).
+    ADR-A states this explicitly in the seam contract.
+  - (b) **`needs_input` trigger caller-controlled (ADR-B).** Core must NOT hardcode WHEN
+    `needs_input` fires. The cold-start-only policy (fire while an arc-Local "ordering-
+    established" marker is absent; the first confirm sets it; silent thereafter) is arc-Local
+    policy inside the `resolve` body. Core ships the mechanism, not the trigger.
+- **"Known" ≠ "enumeration exists."** The enumeration convention (train-split, 1-based) is
+  authored Local L2 data; "ordering known" means the arc-Local marker is SET, not that
+  enumeration data exists. Keep the two distinct in ADR-B.
+- **`find_pipeline` soundness:** `[resolve → solve]` is linear + single-input → within the
+  locked sound envelope (the unsound case is multi-input fold caps, N/A here). Noted for ADR-A.
+- **Payload:** `choices:{label → task_input}` suffices — arc renders question + one candidate
+  (`"#8 → 05f2a901" ⇒ {"text":"solve task 05f2a901"}`) + cancel. Keep the map shape
+  (future-proofs ambiguous train-vs-eval indexing; pinned train-only now).
+
+Loop CLOSED 2026-07-02 — nothing blocks ADR-A or ADR-B.
+
+---
+
+*End of L4_FUTURE_WORK.md. Last updated 2026-07-02 (added §6 Phase-1 seam + clarification + §6.2 arc-solver confirmation).*

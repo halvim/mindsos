@@ -42,9 +42,12 @@ class _Entry:
         "cancel_token",
         "future",
         "live",
+        "held_resources",
     )
 
-    def __init__(self, tier, score, seq, task_id, fn, cancel_token, future):
+    def __init__(
+        self, tier, score, seq, task_id, fn, cancel_token, future, held_resources=()
+    ):
         self.tier = tier
         self.score = score
         self.seq = seq
@@ -53,6 +56,7 @@ class _Entry:
         self.cancel_token = cancel_token
         self.future = future
         self.live = True
+        self.held_resources = frozenset(held_resources)
 
     def key(self):
         return (int(self.tier), -self.score, self.seq)
@@ -66,9 +70,17 @@ class PriorityTierExecutor:
         self,
         max_workers: Optional[int] = None,
         hysteresis: int = DEFAULT_HYSTERESIS,
+        *,
+        resource_ledger=None,
     ) -> None:
         self._max_workers = max_workers or default_worker_count()
         self._hysteresis = hysteresis
+        # Optional L4 exclusive-resource ledger (feat/subminds Slice 2). When
+        # wired, a running task's ``held_resources`` are registered while it
+        # runs and released on completion — feeding the SubMind arbiter's
+        # contention check + event-driven resume. Default None = no-op, so
+        # the shipped behavior (and every existing caller) is unchanged.
+        self._resource_ledger = resource_ledger
         self._heap: List[_Entry] = []
         self._pending: Dict[str, _Entry] = {}
         self._running: Dict[str, _Entry] = {}
@@ -103,17 +115,29 @@ class PriorityTierExecutor:
         task_id: str,
         score: Optional[int] = None,
         cancel_token=None,
+        preempt: bool = True,
+        held_resources=(),
     ) -> Future:
+        # ``preempt`` (default True = shipped behavior) gates the
+        # tier/score cooperative-cancel of outranked running work. The
+        # SubMind path passes ``preempt=False``: its preemption is decided
+        # by resource contention in the arbiter, not blindly by tier
+        # (ADR-0189 §1 — tier is decoupled from preemption). ``held_
+        # resources`` are registered in the ledger while the task runs.
         if score is None:
             score = default_score(tier)
         fut: Future = Future()
         with self._lock:
             if self._shutdown:
                 raise RuntimeError("PriorityTierExecutor is shut down")
-            entry = _Entry(tier, score, next(self._seq), task_id, fn, cancel_token, fut)
+            entry = _Entry(
+                tier, score, next(self._seq), task_id, fn, cancel_token, fut,
+                held_resources,
+            )
             self._pending[task_id] = entry
             heapq.heappush(self._heap, entry)
-            self._maybe_preempt_locked(entry)
+            if preempt:
+                self._maybe_preempt_locked(entry)
             self._not_empty.notify()
         return fut
 
@@ -149,6 +173,7 @@ class PriorityTierExecutor:
                 entry.fn,
                 entry.cancel_token,
                 entry.future,
+                entry.held_resources,
             )
             self._pending[task_id] = replacement
             heapq.heappush(self._heap, replacement)
@@ -209,6 +234,23 @@ class PriorityTierExecutor:
                 with self._lock:
                     self._running.pop(entry.task_id, None)
                 continue
+            # Register exclusive-resource holds for the duration of the run
+            # (acquire/release fire no executor-lock callbacks, but release
+            # invokes the ledger's resume hook → arbiter → submit, so it
+            # must run OUTSIDE self._lock to avoid re-entrant deadlock).
+            if self._resource_ledger is not None and entry.held_resources:
+                cancel = (
+                    entry.cancel_token.request_cancel
+                    if entry.cancel_token is not None
+                    else None
+                )
+                self._resource_ledger.acquire(
+                    entry.task_id,
+                    entry.held_resources,
+                    tier=int(entry.tier),
+                    score=entry.score,
+                    cancel=cancel,
+                )
             try:
                 entry.future.set_result(entry.fn())
             except BaseException as exc:  # noqa: BLE001 — surfaced on the Future
@@ -216,6 +258,8 @@ class PriorityTierExecutor:
             finally:
                 with self._lock:
                     self._running.pop(entry.task_id, None)
+                if self._resource_ledger is not None and entry.held_resources:
+                    self._resource_ledger.release(entry.task_id)
 
 
 __all__ = ["PriorityTierExecutor", "default_worker_count"]

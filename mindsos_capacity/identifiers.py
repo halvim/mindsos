@@ -170,6 +170,24 @@ NODE_KINDS: FrozenSet[str] = frozenset({
 })
 
 
+# ── Typed input-group vocabulary (ADR-0159 §amendment-1) ───────────────
+#
+# How a capacity's multiple declared inputs resolve when a finder
+# composes it. Read off the declaration (``_CapacityBase.input_group``);
+# no graph-layer structure is emitted for this field at v1 (Decision 8 —
+# the type-layer hyperedge form defers to ADR-0156 §am). Scalar /
+# capacity-wide at v1 (ARC's three cases are each capacity-wide); a
+# structured per-subset form is the documented extension if a capacity
+# ever needs mixed groups.
+INPUT_GROUP_ALL_REQUIRED = "all_required"   # AND over inputs (the sound default)
+INPUT_GROUP_ANY_OF = "any_of"               # optional-union over inputs
+INPUT_GROUP_FOLD = "fold"                   # aggregate over N producers of an input
+
+INPUT_GROUPS: FrozenSet[str] = frozenset({
+    INPUT_GROUP_ALL_REQUIRED, INPUT_GROUP_ANY_OF, INPUT_GROUP_FOLD,
+})
+
+
 # ── Core edge-type vocabulary ──────────────────────────────────────────
 
 #: Constraint edge — admin-authored restriction on pipelines.

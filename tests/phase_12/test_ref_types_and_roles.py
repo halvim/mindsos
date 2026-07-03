@@ -94,6 +94,7 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
         ROLE_LEARNED_PARAMETERS,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
+        ROLE_SUBMINDS,
     )
 
     assert UPPER_LAYER_ROLES == frozenset({
@@ -109,6 +110,8 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
         ROLE_LEARNED_PARAMETERS,
         # Phase 50 (ADR-0150 §am-6) addition.
         ROLE_INSTALLED_SKILLS,
+        # feat/subminds (ADR-0150 §am-7) addition.
+        ROLE_SUBMINDS,
     })
 
 

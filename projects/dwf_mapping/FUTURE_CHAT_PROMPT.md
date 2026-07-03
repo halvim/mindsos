@@ -1,5 +1,7 @@
 # DWF Mapping — Future Chat Seed (knowledge acquisition design)
 
+> ⚠️ **OWNERSHIP DISCIPLINE (2026-06-25) — author an Owner column from the start.** DWF is a **knowledge-acquisition consumer**, not an owner of MindsOS components (RULES §8). When this chat authors its phase-map, every line item gets an `Owner` tag — `MindsOS-core` (a layer owns it; release code + layer-owned ADR; reusable) / `shared` (core mechanic + DWF-specific fill) / `DWF-bundle` (DWF content). DWF-*scheduled* ≠ DWF-*owned*. Note specifically: the lexicon **empirical-layer machinery** is a **MindsOS L2 feature** (WSD was its first consumer, not its owner — see `projects/wsd/WSD_INSTALLATION_PHASE_MAP.md` §2.1 + design log §7); DWF owns alignment ingestion content only, over that same core machinery.
+
 > **Read `MindsOS/HANDOFF.md` FIRST.** It is the canonical entry point and contains the post-housekeeping system state.
 >
 > **Purpose.** Seed the future chat that designs (a) the knowledge-acquisition process for MindsOS and (b) the DWF Mapping installation as the first consumer of that process.

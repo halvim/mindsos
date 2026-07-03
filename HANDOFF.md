@@ -706,9 +706,15 @@ First slot (and only slot) of `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md`; design s
 
 **Next chat = WSD_INSTALLATION_CHAT** (`projects/wsd/FUTURE_CHAT_PROMPT.md`, banner updated; inheritance contract `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5`). DWF parallelizable (L2-only).
 
-> **UPDATE 2026-06-10 — WSD_INSTALLATION design CLOSED; slots reserved.** `WSD_INSTALLATION_DESIGN_LOG.md` (R0–R3) + `WSD_INSTALLATION_PHASE_MAP.md` on disk. **Phases 51–56 reserved for WSD** (51 riders+empirical-layer → 52 corpus bootstrap → 53 capacity+`wsd-core` bundle → 54 lifecycle+v0-flip → 55 learning loop → 56 DWF-gated enrichment). DWF_INSTALLATION_CHAT opened in parallel 2026-06-10 — it takes Phase 57+ and owes WSD the alignment-density number (gates slot 56; coordination contract: `WSD_INSTALLATION_DESIGN_LOG.md §3`). Notable plan deltas vs the POST_PHASE_38 §6 WSD row (scope amendments in phase-map §4): importers 6→2 (SemCor+GlossTag); ALS = consumed subsystems only; `world-axioms` deferred (no ADR-0150 amendment anywhere in the plan); PB-T trimmed. Next ship chat seed: `WSD_PHASE_51_NEXT_CHAT_PROMPT.md`.
+> **UPDATE 2026-06-10 — WSD_INSTALLATION design CLOSED; slots reserved.** `WSD_INSTALLATION_DESIGN_LOG.md` (R0–R3) + `WSD_INSTALLATION_PHASE_MAP.md` on disk. **Phases 51–56 are WSD-*scheduled* (not WSD-*owned*)** (51 riders+empirical-layer → 52 corpus bootstrap → 53 capacity+`wsd-core` bundle → 54 lifecycle+v0-flip → 55 learning loop → 56 DWF-gated enrichment). **Ownership ≠ scheduling:** core mechanics built inside these slots (empirical-layer machinery, promotion-loop, L4 slot-shapes, the v0→real flip, `hint/predicate/decision` families, ADR-0181 indexes, L3-59(b)/L0-25 cleanup) are MindsOS-owned and reusable by FOL/DWF; WSD owns only `wsd-*` bundle content. Do not record WSD as owner of any core mechanic — authoritative per-item split = **phase-map §2.1 Owner column + design log §7** (`projects/wsd/`). DWF_INSTALLATION_CHAT opened in parallel 2026-06-10 — it takes Phase 57+ and owes WSD the alignment-density number (gates slot 56; coordination contract: `WSD_INSTALLATION_DESIGN_LOG.md §3`). Notable plan deltas vs the POST_PHASE_38 §6 WSD row (scope amendments in phase-map §4): importers 6→2 (SemCor+GlossTag); ALS = consumed subsystems only; `world-axioms` deferred (no ADR-0150 amendment anywhere in the plan); PB-T trimmed. Next ship chat seed: `WSD_PHASE_51_NEXT_CHAT_PROMPT.md`.
 
 **Full record:** `confirmation_docs/PHASE_50_DESIGN_LOG.md` + `PHASE_50_CONFIRMED.md`.
+
+### 3.1.24 Phase-1 interpretation seam + `needs_input` clarification — DESIGN ONLY (2026-07-02; NOT shipped, no code)
+
+A **generic core** feature converged in the core-design chat; **ADRs 0195 + 0196 written as Proposed, design-only — nothing built.** Core-owned per RULES §8; **arc-solver (mOS-AS) is the first consumer** (interpretation-only) and owns no core component. Two **decoupled, independently-shippable** features: **(A, ADR-0195)** a pluggable Phase-1 interpretation seam — a construction-bound `Phase1Profile` (per-step slots, v0 fallback) + a standalone `interpret()` decoupled from `run_lifecycle`, `resolve`-in-interpretation, opaque-dict hints + `reference_kind`; **(B, ADR-0196)** a `needs_input` capacity verdict (sibling to `dont_know`, caller-controlled trigger, non-terminal `pending_confirmation` on `TaskOutcome`, stateless re-submit at v1; MM-owns-pending + in-memory continuation designed-not-built). arc confirmed adoption with **two hard constraints**: (a) dispatcher-level body binding, no metagraph scope-mix; (b) `needs_input` trigger caller-controlled. **Next = implementation chat** (STATE.json `pending_designs` → `phase1-seam-and-needs-input`).
+
+**Full record:** `docs/decisions/adr/0195-phase1-interpretation-seam.md` + `0196-needs-input-clarification.md` + `docs/_workbench/L4_FUTURE_WORK.md` §6/§6.2 + `L5_FUTURE_WORK.md` L5-NEW-19.
 
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 
@@ -800,6 +806,49 @@ Strict dependency order:
 
 ═══════════════════════════════════════════════════════════════════════
 ## 6. Carry-forwards + open R0 questions
+
+### 6.0 Designs awaiting implementation (newest first)
+
+- **SubMind (Mindlet) — Slice 2 SHIPPED to `main` 2026-06-25** (squash `66315f3`; tag
+  `feat-subminds-s2-confirmed`; gate **4090 passed / 11 skipped / 1 xpassed / 0 failed**, Linux +
+  live FalkorDB). Consumes the Slice-1 stub resolver: the resolver is **goal-directed** (a Pipeline
+  built at dispatch via `find_pipeline`), run by the new **core** Pipeline-step executor
+  (`mindsos_intelligence/pipeline_execution.py` — RULES §8: this is core, NOT WSD). New
+  `resources.py` (`ResourceLedger`/`ResourceHold`/`Contention` — the shared model Slice-3 Reflex
+  reuses) + `submind_arbiter.py`. Preempt/reconcile is **derived from resource contention** (free →
+  concurrent dispatch; contended → park + cooperative-cancel-if-outranked → event-driven resume on
+  release); unsatisfiable need = tier-never-decays + capped backoff + never-give-up; goal-unreachable
+  = honest dont-know → fires the SubMind's direct **ask-human** `fallback_resolver`. Additive
+  executor change (`submit(preempt=True)` default unchanged + optional `resource_ledger`). **No
+  role-set change** → parity sentinels untouched. ADR-0189 §2/§3 now shipped; ADR-0188 amendment-trail
+  notes the shared seizure model. Full record: `confirmation_docs/SUBMIND_DESIGN_LOG.md` §20.
+  **Pending: Slice 3** (Reflex path — reuses `ResourceLedger`), **Slice 4** (Local/teaching/tuning).
+  Split-out follow-up: `pipelinenotfound-to-dontknow` (see STATE `pending_designs`).
+- **SubMind (Mindlet) — Slice 1 SHIPPED to `feat/subminds` 2026-06-24** (gate green: 4069 passed /
+  11 skipped / 1 xpassed / 0 failed, Linux + live FalkorDB; tag `feat-subminds-slice1-confirmed` at
+  `cebd6ef`). Formalizes Minsky's "society of small minds" tier: an autonomous, no-reasoning
+  **reflex** over one self-state vital (thirst/battery/balance) that monitors via an L4-scheduled
+  adaptive loop and emits a **Signal** (queued, deliberated) or a **Reflex** (queue-bypassing,
+  pre-wired, for non-reconcilable threats). L4 = the single Mind that arbitrates. Reverses
+  **ADR-0155** (resident loops return, L4-owned not L3 — Slice 1 ships the L4 `SubMindScheduler`);
+  amends **ADR-0150 §am-7** (role-set 13→14, new `subminds` L2 role-graph, Global form bootstrapped);
+  added via **endowment** (distinct from skill-acquisition). **WSD owns none of it.** Slice 1 =
+  definition + autonomous sensing (adaptive cadence + storm suppression) + Signal→triage→executor
+  heap with a stub resolver. **Pending: Slice 2** (resource model + preempt/reconcile + unsat policy —
+  largest surface), **Slice 3** (Reflex path + write-hook/arbiter seizure), **Slice 4** (Local scope +
+  taught endowment + de-endowment + tuning). ADRs **0188/0189/0190** now `Accepted`. Full record:
+  `confirmation_docs/SUBMIND_DESIGN_LOG.md` (§18 decision ledger, §19 impl plan + build/gate log).
+- **Composition lifecycle — Slice 1 SHIPPED to `main` 2026-06-21** (`b56e0ac`; gate 3991/11/1xpass/0
+  live FalkorDB). Fixed the verified `find_pipeline` multi-input unsoundness: pluggable `Finder`
+  seam (`Finder`/`BFSFinder`/`ConjunctionFinder`) + `PipelineDAG` replacing linear `Pipeline` +
+  typed `_CapacityBase.input_group` + composite persistence (ADR-0071 §am-2 + ADR-0159 §am-1).
+  Record: `confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md` (§8 build/gate log, §3/§6
+  scope/dispositions) + STATE `recent`. Project-independent; WSD/bongard not a dependency.
+- **Composition lifecycle — Slice 2 SCOPED, impl pending** (own chat). Two items Slice 1 left out,
+  surfaced by ARC's D3 spike: invoke INPUT-contract validation (Part 6, standalone correctness) +
+  DataState operand-arity/role axis (Part 5, consumer-gated). Scope + concerns + recommended split:
+  **design log §9** + STATE `pending_designs` (`composition-lifecycle-s2`). Reopens ADR-0156 edge
+  model + ADR-0159/0071 §am + ADR-0072/0146.
 
 ### 6.1 19-item Phase 38 carry-forward (full list in `confirmation_docs/PHASE_38_DESIGN_LOG.md §4`)
 
@@ -989,6 +1038,7 @@ These conventions hold for any future code-shipping phase or chat:
 | Maintenance chat | `_workbench/STREAM_A_BACKLOG.md`; relevant `_workbench/L*_FUTURE_WORK.md`; `confirmation_docs/PHASE_MAP.md` for the layer's row |
 | L4-v2 follow-up chat | **Opens after Phase 49 confirmed.** `_workbench/L4_FUTURE_WORK.md`; this §3.1 + §3.1.5 |
 | Bug-fix / maintenance chat | `confirmation_docs/PHASE_MAP.md` for the layer's row; `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §4` for the corresponding Phase 39-49 row; this §2 + §3.1.7 |
+| Perception chat (atoms / grounding / learned leaves) | **Doctrine landed 2026-06-27 (docs-only, no code).** Read `docs/concepts/perception-principles.md` (P1–P17, the governing doctrine); ADRs **0191–0194** (Proposed: confidence seam, atom layer, grounding control loop, recognizers+promotion); evidence `docs/_workbench/PERCEPTION_LEARNING_NOTES.md` + `PERCEPTION_LEARNING_PREREG.md` (AM-1…AM-8 + §12 results) + `PERCEPTION_DISCOVERY_TEST_SPEC.md` + `discovery_test.py`. Key results: P14 validated (→ADR-0191); P15 grounding novelty-distance-relative; P16 reuse-driven *propagation* shown, unsupervised *discovery* **tested negative**; P17 near-miss = architectural (descent+finer-atom). ADRs flip Proposed→Accepted when a perception/vision subsystem consumes them. **Update 2026-06-28 (docs-only):** (1) cross-family confidence study `docs/_workbench/PERCEPTION_CROSSFAMILY_PREREG.md` — two-axis confidence + calibration generalizes across scoring/retrieval/derivation AND to real data (FrameNet, §11), but *which axis carries correctness is family-dependent*, independence requires proposer≠critic, calibration is conditional, blind-spot is continuous-only (all audited). (2) **LEAF-NOVELTY study CONCLUDED 2026-06-29** (`PERCEPTION_LEAF_NOVELTY_PREREG.md` §9 FINAL VERDICT + §8 AM-1..AM-10; runs 1–5 on Linux, audited): P0 parity holds (CNN 0.967 vs MindsOS 0.961) but the STRONG novelty claim does NOT — headline retention gap was a unit mismatch, the real gap is sample-efficiency + crisp-categorical routing (fresh modular CNN AUROC 0.995), no-fabrication conceded. Lesson: v1's MindsOS was a hand-coded corner-counter, not genuine leaf-learning. **Update 2026-06-29 — SUPERSEDED by STUDY 2 (design settled, NOT built):** paper-grade validation `docs/_workbench/PERCEPTION_LEAF_VALIDATION_PREREG.md` — bidirectional joint inference over named atoms, hypotheses H1–H6 (**H6 rescue-without-hallucination = headline/riskiest**), atoms-learned/composition-given, 4 baselines incl a feedback/part-whole mechanism control; per-sample metrics; build order in its §10. Build in a fresh focused chat (memory `perception-leaf-validation-study2`). |
 
 **Optional reference / forensic only:**
 

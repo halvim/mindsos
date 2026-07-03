@@ -2,11 +2,14 @@
 
 Covers per Phase 14 round-1 PB-4 + PB-8:
 
-* Happy path for 2 Local-named roles (parametric).
+* Happy path for the Local-named roles (parametric).
 * Idempotence.
-* Scope-rejection: 6 Global-named roles raise ``KnowledgeError``.
+* Scope-rejection: Global-only roles raise ``KnowledgeError``.
 * Alignment-prefix rejected (per ADR-0150 §amendment-1 — Global-only).
 * Unknown roles raise ``UnknownRoleError``.
+
+``task-patterns`` is dual-scope (ADR-0150 §amendment-8) so it is a Local
+happy-path role, NOT a scope-rejection case.
 """
 
 from __future__ import annotations
@@ -30,20 +33,23 @@ from mindsos_knowledge import (
 )
 
 
-_LOCAL_NAMED = (ROLE_EPISODIC_MEMORIES, ROLE_CAPACITY_STATE)
+_LOCAL_NAMED = (
+    ROLE_EPISODIC_MEMORIES,
+    ROLE_CAPACITY_STATE,
+    ROLE_TASK_PATTERNS,  # dual-scope per ADR-0150 §am-8
+)
 _GLOBAL_NAMED = (
     ROLE_ONTOLOGY,
     ROLE_LEXICON,
     ROLE_CONCEPTS,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
     ROLE_PROBLEM_TRACE,
 )
 
 
 @pytest.mark.parametrize("role", _LOCAL_NAMED)
 def test_ensure_local_named_role_creates_graph(role: str) -> None:
-    """Both Local-named roles create a Graph with the role attached."""
+    """Each Local-named role creates a Graph with the role attached."""
     mg = Metagraph(name="local_t")
     g = ensure_local_role_graph(mg, role)
     assert g.role == role
@@ -63,7 +69,7 @@ def test_ensure_local_named_role_idempotent(role: str) -> None:
 
 @pytest.mark.parametrize("role", _GLOBAL_NAMED)
 def test_ensure_local_rejects_global_role(role: str) -> None:
-    """ADR-0044 enforced — 6 Global-named roles reject in Local scope."""
+    """ADR-0044 enforced — Global-only roles reject in Local scope."""
     mg = Metagraph(name="local_t")
     with pytest.raises(KnowledgeError, match="Global-only"):
         ensure_local_role_graph(mg, role)
