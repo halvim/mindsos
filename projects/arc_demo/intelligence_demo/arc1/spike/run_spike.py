@@ -283,6 +283,41 @@ def _arc_solve_layer_check(cl, dataset) -> None:
           "inline answer + match the withheld test (#8/#2/#251).")
 
 
+def _arc_intake_check(dataset) -> None:
+    """MindsOS wiring step 5 — the real "ask" front door. A user request
+    ``"solve task <ref>"`` is interpreted through the shipped Phase-1 seam
+    (ADR-0195) using arc's Local hint/map/resolve bodies:
+
+      (1) cold-start index ``"solve task 8"`` -> ``NeedsInput`` proposing the id8
+          (ADR-0196; arc-Local cold-start policy, caller-controlled);
+      (2) re-submitting the canonical request resolves + solves #8 (the dispatched
+          answer matches the withheld test — a real ask->solve, not a stub);
+      (3) once the Local ordering marker is set, an index resolves silently.
+    """
+    from . import arc_intake as ai
+    from mindsos_capacity.needs_input import NeedsInput
+    from mindsos_intelligence import InterpretationResult, interpret
+
+    inst = ai.build_intake(dataset, ordering_established=False)
+    r1 = ai.solve_task(inst, "solve task 8", dataset)          # (1)
+    assert isinstance(r1, NeedsInput) and r1.missing == ai.ARC_CANON_DS, \
+        "cold-start index must return NeedsInput"
+    resubmit = r1.choices["yes"]["text"]
+    assert resubmit == "solve task 05f2a901", resubmit
+
+    dispatched, inline = ai.solve_task(inst, resubmit, dataset)  # (2)
+    assert dispatched["matches_withheld"] and dispatched == inline, \
+        "canonical re-submit must solve #8 through the layer"
+
+    inst2 = ai.build_intake(dataset, ordering_established=True)  # (3)
+    r3 = interpret(inst2.dispatcher, "solve task 2")
+    assert isinstance(r3, InterpretationResult) and r3.resolved_reference == "00d62c1b", \
+        "marker set: index must resolve silently"
+
+    print("  [ok] arc intake: 'solve task <ref>' interpreted through the Phase-1 "
+          "seam -> cold-start NeedsInput, re-submit resolves + solves #8, marker silent.")
+
+
 #: A synthetic 2-demo task for the phase-9 CONJUNCTION path: recolor to red the
 #: object that is (biggest AND green). No corpus task needs a ≥2 conjunction with
 #: today's condition vocabulary (probe 2026-07-01), so the ≥2 branch is gated here
@@ -374,6 +409,7 @@ def main(argv: list) -> int:
     _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
     _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
     _arc_solve_layer_check(cl, dataset)   # wiring step 4: arc solve (phases 8/9/10) dispatched L4->L3
+    _arc_intake_check(dataset)            # wiring step 5: 'ask' front door — Phase-1 seam -> solve
 
     # Solver run (read-only, option A) — scoped to task #8 (the use case).
     solver = None
