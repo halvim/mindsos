@@ -61,7 +61,6 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - Current version, last shipped phase, what each demo pins → `STATE.json`.
 - Your lane + who owns what → `BRANCHES.md`.
 
-<<<<<<< HEAD
 ## 7. Grounding discipline — only the solver's knowledge
 - **Never assume a fact the solver cannot itself derive.** Capacities and
   profiling may use ONLY knowledge the system actually has at that point — not
@@ -74,7 +73,7 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - When a needed fact cannot yet be derived, the honest output is "don't know"
   (abstain / flag), not a guess. Smuggling author-knowledge in as if the solver
   produced it makes the demo lie about what the architecture can do.
-=======
+
 ## 8. Subsystems vs core (architectural ownership)
 - **Subsystems own nothing architectural.** WSD is a MindsOS *subsystem* (a Skill)
   for text — one piece of the larger **NLU** system. It is *installed on top of*
@@ -89,7 +88,7 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
   `Pipeline`'s capacity steps for real; the Phase-47 `execution.run` notional-step
   stub) is a **core** component, not WSD's; build it at core when first needed.
 
-## 7. Core-ship checklist (MANDATORY for every change to `mindsos_*`)
+## 9. Core-ship checklist (MANDATORY for every change to `mindsos_*`)
 - **Tag the ship.** After the change merges to `main` and the Linux gate is green,
   cut an annotated `<name>-confirmed` tag at the squash commit and push it
   (`git tag -a <name>-confirmed <sha> -m "..."` → `git push origin <name>-confirmed`).
@@ -102,4 +101,3 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
   `docker compose -p mindsos-core --profile test run --rm --build mindsos-test pytest --collect-only -q | grep -c test_cli`
   must be `> 0`. A broken CLI import must surface as gate errors, never hide silently
   (it did on Slice 1 — see §4 + `STATE.recent`).
->>>>>>> feat-phase1-seam-confirmed
