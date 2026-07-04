@@ -23,6 +23,7 @@ from .capabilities import (
     install_viz_standalone,
 )
 from .fixtures import ABSTAIN_5, SOLVED_2
+from .human import render_html
 
 
 def _run(fixture: dict):
@@ -59,6 +60,14 @@ def main() -> int:
     assert art2["summary"].startswith(ABSTAIN_TEXT), art2["summary"]
     print(f"  [ok] arc-viz: #5 abstain -> outcome=abstained, '{ABSTAIN_TEXT}' expressed "
           f"(note block + NL summary).")
+
+    # (3) human adapter renders the artifact blocks -> self-contained HTML.
+    html_solved = render_html(art)
+    assert "recolor [enclosed] yellow" in html_solved and "#FFDC00" in html_solved, "solved render"
+    html_abstain = render_html(art2)
+    assert "know how to solve this task" in html_abstain, "abstain render"  # apostrophe is HTML-escaped
+    print("  [ok] arc-viz human adapter: renders #2 (grids + rule chip + verified pill) "
+          "and #5 ('I don't know') to self-contained HTML.")
     return 0
 
 
