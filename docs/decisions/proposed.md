@@ -10,6 +10,9 @@ This page holds decisions that are acknowledged, understood, and have a known pa
 
 Most deferred decisions carry a known tradeoff. The system works well even though the decision is deferred; fixing it would improve something non-critical or would require design work out of scope for the current layer's maturity.
 
+!!! warning "Largely historical — most items below have shipped"
+    The **L1 Core redesign (ADRs 0121–0137)** and the **Server-layer pivot (ADRs 0114/0115/0118 …)** captured on this page have since **shipped**. Their ADR files may still carry `status: Proposed` front-matter that was never flipped — treat the individual ADR + the [changelog](../changelog/CHANGELOG.md) as authoritative, not this page. The only genuinely-open proposals are the **perception ADRs 0191–0194** in the section at the bottom.
+
 ## L1 Core Layer — redesign 2026-04-27
 
 The 2026-04-27 L1 redesign pass turned the long-deferred items below into Proposed ADRs (0121–0137) plus their downstream coordinated changes. See `docs/HANDOFF_L1_REDESIGN_2026-04-27.md` for the migration plan.
@@ -104,15 +107,15 @@ Procedures that assemble pipelines (map task → pipeline, order steps, pick alt
 
 Pipelines mixing Global and Local capacities cannot safely promote without promoting all Local step dependencies first. See **ADR-0083**. Admin tool should display dependency graph and gate promotion.
 
-## L4 Intelligence Layer
+## L4 Intelligence Layer — SHIPPED
 
-All L4 decisions are Proposed (design phase). See [L4 decisions](summary/intelligence.md) for details.
+The Phase 46–48 convergence **shipped** Layers 4 and 5. The original design-phase menu (ADRs 0101–0112) was settled at the Chat A/B foundation chats and superseded by the shipped decisions **ADRs 0163–0181**. See [L4/L5 decisions](summary/intelligence.md). The 0101–0112 files remain as historical design exploration and should not be read as open questions.
 
 ## Server Layer pivot — 2026-04-26
 
 A multi-session design conversation in April 2026 produced a model pivot for how Globals are curated and released. The pivot moves the system from real-time-shared Globals with cross-user atomic promotion → admin-curated Globals shipped via discrete releases, with per-user transactional promotion into a `pending_global` buffer.
 
-The pivot's full scope is captured in `docs/PIVOT_V1_SCOPE_2026-04-26.md`. The model itself is described at [The release model](../concepts/release-model.md). The handoff for the next implementation session is `docs/HANDOFF_SERVER_PIVOT_2026-04-26.md`.
+The pivot's full scope is captured in `docs/PIVOT_V1_SCOPE_2026-04-26.md`. The model itself is described in the release-model design notes. The handoff for the next implementation session is `docs/HANDOFF_SERVER_PIVOT_2026-04-26.md`. **This pivot has since shipped** (Phase 24 and later); the entry is retained for historical context.
 
 Eight ADRs cover the model. All are **Proposed** until both code and a user-facing doc reflect them. Drafting begins with ADR-0118 (highest priority — supersedes ADR-0007).
 
@@ -153,6 +156,17 @@ Per PIVOT §6, ten reconciliation decisions inform the ADR drafting:
 - L2 critique items §5.6, §5.7, §5.8 bundle with the pivot; §5.1 ships independently.
 - `mindsos_server/` → `mindsos_runtime/` rename deferred to a dedicated post-pivot PR.
 - No fixed v1 deadline; iterate via PIVOT amendments.
+
+## Perception (open) — ADRs 0191–0194
+
+The current genuinely-open proposals. All carry `status: Proposed`; validated on synthetic substrates, not yet shipped as release code. See [`perception-principles.md`](../concepts/perception-principles.md) for the doctrine (P1–P17).
+
+| ADR # | Title | Status |
+|-------|-------|--------|
+| [0191](adr/0191-two-axis-perception-confidence.md) | Two-axis perception confidence (grounding + decision) + per-capacity calibration | Proposed |
+| [0192](adr/0192-perception-atom-layer.md) | Perception atom layer — geometry/signal realms + the introduce-atom primitive | Proposed |
+| [0193](adr/0193-grounding-control-loop.md) | Grounding control loop — irreducibility/request-atom signal + top-down descent trigger | Proposed |
+| [0194](adr/0194-recursive-recognizers-and-reuse-promotion.md) | Recursive scale-relative recognizers + reuse-driven promotion | Proposed |
 
 ---
 

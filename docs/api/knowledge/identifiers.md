@@ -4,8 +4,10 @@ last_confirmed_phase: 12
 
 # `mindsos_knowledge.identifiers`
 
-Phase 12 ships the L2 IRI vocabulary: 14 builders covering ADR-0045,
-a graph-name helper for alignment metagraphs, a table-driven parser,
+Phase 12 shipped the L2 IRI vocabulary (14 builders covering ADR-0045);
+subsequent phases added builders for the Phase-43/50/SubMind roles, so
+the module now exposes ~23 `*_iri` builders. It also provides a
+graph-name helper for alignment metagraphs, a table-driven parser,
 role constants, and ref-key helpers. The module is **pure library** —
 no L1 mutation, no metagraph, no persistence. KL writes are relocated
 to L3 capacities per the L2 redesign locks 2026-04-27.
@@ -48,14 +50,25 @@ Phase 39 L2-35 reconciliation). The parser rejects it.
 | `episodic_memories` | `ROLE_EPISODIC_MEMORIES` | upper | `episodic-memories-` |
 | `problem-trace` | `ROLE_PROBLEM_TRACE` | upper | `problem-trace-` |
 | `capacity-state` | `ROLE_CAPACITY_STATE` | upper | `capacity-state-` |
+| `parameter-staging` | `ROLE_PARAMETER_STAGING` | upper | `parameter-staging-` |
+| `pending-promotions` | `ROLE_PENDING_PROMOTIONS` | upper | `pending-promotions-` |
+| `capacity-gaps` | `ROLE_CAPACITY_GAPS` | upper | `capacity-gaps-` |
+| `learned-parameters` | `ROLE_LEARNED_PARAMETERS` | upper | `learned-parameters-` |
+| `installed-skills` | `ROLE_INSTALLED_SKILLS` | upper | `installed-skills-` |
+| `subminds` | `ROLE_SUBMINDS` | upper | `subminds-` |
 
-Three frozensets group the roles:
+The role-set is closed at **14 named roles** (3 seed + 11 upper) per
+ADR-0150 and amendments §am-5 (Phase 43 +4), §am-6 (`installed-skills`),
+§am-7 (`subminds`). Three frozensets group the roles:
 
 ```python
 SEED_ROLES        = {ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS}
 UPPER_LAYER_ROLES = {ROLE_PROMOTED_PIPELINES, ROLE_TASK_PATTERNS,
                      ROLE_EPISODIC_MEMORIES, ROLE_PROBLEM_TRACE,
-                     ROLE_CAPACITY_STATE}
+                     ROLE_CAPACITY_STATE,
+                     ROLE_PARAMETER_STAGING, ROLE_PENDING_PROMOTIONS,
+                     ROLE_CAPACITY_GAPS, ROLE_LEARNED_PARAMETERS,
+                     ROLE_INSTALLED_SKILLS, ROLE_SUBMINDS}
 ALL_ROLES         = SEED_ROLES | UPPER_LAYER_ROLES
 ```
 

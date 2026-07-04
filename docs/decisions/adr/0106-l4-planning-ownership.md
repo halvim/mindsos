@@ -1,6 +1,7 @@
 ---
 title: Planning ownership - L4 orchestrates; planning algorithms are L3 capacities
-status: Proposed
+status: Superseded
+superseded_by: ADR-0172
 date: 2026-04-22
 layer: L4
 aliases: [L4-planning]
@@ -8,7 +9,7 @@ aliases: [L4-planning]
 
 # ADR-0106: Planning ownership - L4 runs planning meta-pipeline
 
-**Status:** Proposed
+**Status:** Superseded by [ADR-0172](0172-phase-1-five-step-task-interpretation.md) — design-phase decision; the shipped L4/L5 architecture (Phases 46–48) implements it. Reconciled in the 2026-07 doc-vs-code audit.
 
 **Date:** 2026-04-22
 

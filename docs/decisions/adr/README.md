@@ -45,7 +45,7 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0030](0030-client-protocol-minimal-sync.md) | Client protocol minimal sync | Accepted | L1 | core-ADR-017 |
 | [0031](0031-reconstruction-via-private-factories.md) | Reconstruction via private factories | Accepted | L1 | core-ADR-018 |
 | [0032](0032-reserved-property-keys-metagraph-wide.md) | Reserved property keys metagraph-wide | Accepted | L1 | core-ADR-019 |
-| [0033](0033-property-bag-on-metagraph-deferred.md) | Property bag on metagraph deferred | Accepted | L1 | core-ADR-020 |
+| [0033](0033-property-bag-on-metagraph-deferred.md) | Property bag on metagraph deferred | Superseded | L1 | core-ADR-020 |
 | [0034](0034-core-never-validates-refs.md) | Core never validates refs | Accepted | L1 | core-ADR-021 |
 | [0035](0035-uuid-generation-non-deterministic.md) | UUID generation non-deterministic | Accepted | L1 | core-ADR-022 |
 | [0036](0036-no-multi-writer-concurrency-control.md) | No multi-writer concurrency control | Accepted | L1 | core-ADR-023 |
@@ -92,8 +92,8 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0079](0079-l3-session-compat-shim.md) | Backward-compat shim with DeprecationWarning during migration | Accepted | L3 | capacity-ADR-020 |
 | [0080](0080-l3-bootstrap-carveout.md) | Bootstrap carve-out: session=None Global writes still allowed | Accepted | L3 | capacity-ADR-021 |
 | [0081](0081-l3-session-context-threading.md) | invoke/start_resident thread session_user_id into context | Accepted | L3 | capacity-ADR-022 |
-| [0082](0082-pipeline-generation-capacity.md) | Pipeline generation is itself a category of capacity in L3 | Proposed | L3 | capacity-ADR-023 |
-| [0083](0083-pipeline-promotion-transitive.md) | Promoting a pipeline transitively requires promoting its Local-capacity dependencies | Proposed | L3 | capacity-ADR-024 |
+| [0082](0082-pipeline-generation-capacity.md) | Pipeline generation is itself a category of capacity in L3 | Deferred | L3 | capacity-ADR-023 |
+| [0083](0083-pipeline-promotion-transitive.md) | Promoting a pipeline transitively requires promoting its Local-capacity dependencies | Deferred | L3 | capacity-ADR-024 |
 | [0084](0084-l3-capacities-fixed-not-learned.md) | L3 - Functional-category as primary axis for graphs | Accepted | L3 | L3-Q1 |
 | [0085](0085-multi-graph-membership.md) | Capacities can belong to multiple graphs | Accepted | L3 | L3-Q2 |
 | [0086](0086-auto-discovery-with-admin-override.md) | Auto-discovery of type-compat edges with admin override | Accepted | L3 | L3-Q3 |
@@ -111,36 +111,36 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0098](0098-mental-model-retention-default.md) | Mental Model retention - retained by default into memories | Accepted | L3 | L3-Q16 |
 | [0099](0099-resident-state-persistence-dynamic.md) | Resident state persistence policy - activity-based dynamic snapshots | Accepted | L3 | L3-Q17 |
 | [0100](0100-resident-watches-first-input.md) | Resident granularity - watches first pipeline input | Accepted | L3 | L3-Q18 |
-| [0101](0101-l4-per-session-orchestrator.md) | One IntelligenceLayer per live user session | Proposed | L4 | L4-tenancy |
-| [0102](0102-l4-policy-as-meta-pipelines.md) | All decision-point policies composed from L3 capacities | Proposed | L4 | L4-policy |
-| [0103](0103-l4-attention-priority-queue.md) | Orchestrator attention mechanism - priority queue | Proposed | L4 | L4-attention |
-| [0104](0104-l4-replan-always-on.md) | Replan trigger - always-on at every step boundary | Proposed | L4 | L4-replan |
-| [0105](0105-l4-replan-atomicity-discard.md) | Replan atomicity - discard remaining plan; regenerate | Proposed | L4 | L4-replan-atomicity |
-| [0106](0106-l4-planning-ownership.md) | Planning ownership - L4 orchestrates; algorithms are L3 | Proposed | L4 | L4-planning |
-| [0107](0107-l4-six-planner-menu.md) | Planner menu - six loadable planning algorithms | Proposed | L4 | L4-planners |
-| [0108](0108-l4-planner-selection-learned.md) | Planner selection is learned per task shape | Proposed | L4 | L4-planner-selection |
-| [0109](0109-l4-cost-estimators-as-capacities.md) | Cost estimators are L3 capacities, not static properties | Proposed | L4 | L4-cost |
-| [0110](0110-l4-coherence-dream.md) | Coherence dream intent - GAN-like generator vs critic | Proposed | L4 | L4-coherence |
-| [0111](0111-l4-promotion-dependency-graph.md) | Promotion dependency graph - Local capacities block Global | Proposed | L4 | L4-promotion-deps |
-| [0112](0112-l4-pause-and-resume.md) | Pause-and-resume support for voluntary logout | Proposed | L4 | L4-pause |
+| [0101](0101-l4-per-session-orchestrator.md) | One IntelligenceLayer per live user session | Superseded | L4 | L4-tenancy |
+| [0102](0102-l4-policy-as-meta-pipelines.md) | All decision-point policies composed from L3 capacities | Deferred | L4 | L4-policy |
+| [0103](0103-l4-attention-priority-queue.md) | Orchestrator attention mechanism - priority queue | Superseded | L4 | L4-attention |
+| [0104](0104-l4-replan-always-on.md) | Replan trigger - always-on at every step boundary | Superseded | L4 | L4-replan |
+| [0105](0105-l4-replan-atomicity-discard.md) | Replan atomicity - discard remaining plan; regenerate | Superseded | L4 | L4-replan-atomicity |
+| [0106](0106-l4-planning-ownership.md) | Planning ownership - L4 orchestrates; algorithms are L3 | Superseded | L4 | L4-planning |
+| [0107](0107-l4-six-planner-menu.md) | Planner menu - six loadable planning algorithms | Deferred | L4 | L4-planners |
+| [0108](0108-l4-planner-selection-learned.md) | Planner selection is learned per task shape | Deferred | L4 | L4-planner-selection |
+| [0109](0109-l4-cost-estimators-as-capacities.md) | Cost estimators are L3 capacities, not static properties | Deferred | L4 | L4-cost |
+| [0110](0110-l4-coherence-dream.md) | Coherence dream intent - GAN-like generator vs critic | Deferred | L4 | L4-coherence |
+| [0111](0111-l4-promotion-dependency-graph.md) | Promotion dependency graph - Local capacities block Global | Deferred | L4 | L4-promotion-deps |
+| [0112](0112-l4-pause-and-resume.md) | Pause-and-resume support for voluntary logout | Deferred | L4 | L4-pause |
 | [0118](0118-per-user-transactional-promotion.md) | Per-user transactional promotion + release-boundary atomicity | Proposed | Server | — |
-| [0121](0121-substrate-falkordb-for-graphs-sqlite-for-non-graph.md) | Substrate — FalkorDB for graphs, SQLite for non-graph state | Proposed | L1 | L1-redesign-M1 |
+| [0121](0121-substrate-falkordb-for-graphs-sqlite-for-non-graph.md) | Substrate — FalkorDB for graphs, SQLite for non-graph state | Accepted | L1 | L1-redesign-M1 |
 | [0122](0122-wal-graph-for-multi-statement-write-safety.md) | WAL graph for multi-statement write safety | Proposed | L1 | L1-redesign-W1 |
 | [0123](0123-indexes-and-verify-integrity.md) | Indexes + persist-time check + per-layer verify_integrity | Proposed | L1 | L1-redesign-W2 |
 | [0124](0124-streaming-loader-iter-load-and-refresh.md) | Streaming loader: iter_load and MetagraphLoader.refresh | Proposed | L1 | L1-redesign-W3 |
-| [0125](0125-lazy-local-hydration-with-lru-eviction.md) | Lazy Local hydration with LRU eviction | Proposed | Server | L1-redesign-W4 |
+| [0125](0125-lazy-local-hydration-with-lru-eviction.md) | Lazy Local hydration with LRU eviction | Deferred | Server | L1-redesign-W4 |
 | [0126](0126-async-client-via-thread-pool-wrapper.md) | AsyncClient Protocol via asyncio.to_thread | Proposed | L1 | L1-redesign-W5 |
 | [0127](0127-optimistic-concurrency-on-global-writes.md) | Optimistic concurrency on Global writes (`_version` property) | Proposed | L1 | L1-redesign-W6 |
-| [0128](0128-hybrid-xref-cross-metagraph-refs.md) | Hybrid cross-graph refs — XRef primitive + ref-string convention | Proposed | L1 | L1-redesign-M2 |
+| [0128](0128-hybrid-xref-cross-metagraph-refs.md) | Hybrid cross-graph refs — XRef primitive + ref-string convention | Accepted | L1 | L1-redesign-M2 |
 | [0129](0129-metagraph-snapshot-narrowed-to-release-ship.md) | MetagraphSnapshot scope narrowed to release-ship | Accepted | L1 | L1-redesign-M4 |
 | [0130](0130-property-bag-on-metagraph-graph.md) | Property bag on Metagraph and Graph | Proposed | L1 | L1-redesign-M5 |
-| [0131](0131-pluggable-id-strategy.md) | Pluggable IdStrategy on Metagraph | Proposed | L1 | L1-redesign-M6 |
-| [0132](0132-instancing-moved-to-mindsos-instances.md) | Instancing vocabulary moved to mindsos_instances package | Proposed | L1 | L1-redesign-M7 |
+| [0131](0131-pluggable-id-strategy.md) | Pluggable IdStrategy on Metagraph | Accepted | L1 | L1-redesign-M6 |
+| [0132](0132-instancing-moved-to-mindsos-instances.md) | Instancing vocabulary moved to mindsos_instances package | Accepted | L1 | L1-redesign-M7 |
 | [0133](0133-soft-delete-via-deprecated-disputed-properties.md) | Soft-delete via deprecated_at / disputed_at properties | Proposed | L1 | L1-redesign-M9-N1 |
 | [0134](0134-schema-migration-scanner.md) | Schema migration scanner + loader warning | Proposed | L1 | L1-redesign-M11 |
 | [0135](0135-removal-impact-on-remove-graph.md) | RemovalImpact report on remove_graph | Proposed | L1 | L1-redesign-M10 |
 | [0136](0136-server-as-orthogonal-layer.md) | Server is orthogonal to the domain stack, not Layer 0 | Accepted | Cross-layer | L1-redesign-H2 |
-| [0137](0137-user-facing-request-promotion.md) | User-facing request_promotion API | Proposed | Server | L1-redesign-N6 |
+| [0137](0137-user-facing-request-promotion.md) | User-facing request_promotion API | Deferred | Server | L1-redesign-N6 |
 
 !!! note "ADRs 0113–0117, 0119–0120 reserved"
     Numbers 0113 through 0120 are reserved for the [Server Layer pivot](../proposed.md#server-layer-pivot--2026-04-26) (mutation model, release manifest + version DB, audit gate, edge soft-delete, compositional metaedge immutability, per-user transactional promotion, composition-signature dedup, cross-layer rewrite handler contract). ADR-0118 is drafted; the remaining seven are pending. See `docs/HANDOFF_SERVER_PIVOT_2026-04-26.md` for the drafting plan.

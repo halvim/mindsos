@@ -24,19 +24,25 @@ After Phase 02, the repository contains:
 ├── mindsos_core/         # Domain Layer 1 — slim Phase 02 surface (identity only).
 │   ├── exceptions.py     # CoreError, IdentityError (more land per phase).
 │   └── models/identity.py    # generate_uuid, IdStrategy, IdentityRegistry.
-├── mindsos_knowledge/    # Domain Layer 2 — Phase 13 surface (IRIs + REF_TYPES + 9 schema builders).
-│   ├── exceptions.py     # KnowledgeError, RefFormatError, UnknownRoleError (Phase 13).
-│   ├── identifiers.py    # 14 IRI builders + parser + role constants + ref-key helpers.
-│   └── schemas/         # 9 role-graph schema builders + schema_for_role dispatch (Phase 13).
+├── mindsos_knowledge/    # Domain Layer 2 — IRIs + REF_TYPES + 14 role-schema builders (closed set, ADR-0150).
+│   ├── exceptions.py     # KnowledgeError, RefFormatError, UnknownRoleError.
+│   ├── identifiers.py    # ~23 IRI builders + parser + 14 role constants + ref-key helpers.
+│   └── schemas/         # 14 role-graph schema builders + schema_for_role dispatch.
 │       ├── ontology.py        # 10 N / 13 E / 7 HE (HyperEdgeType lift per PB-4).
 │       ├── lexicon.py         # 4 N / 21 E.
 │       ├── concepts.py        # 4 N / 11 E.
 │       ├── alignment.py       # 1 N / 8 E (open via extra_edge_types kwarg).
 │       ├── promoted_pipelines.py
 │       ├── task_patterns.py
-│       ├── memories.py
+│       ├── episodic_memories.py   # was memories.py — renamed Phase 39 (ADR-0044 §am-3).
 │       ├── problem_trace.py
-│       └── capacity_state.py
+│       ├── capacity_state.py
+│       ├── parameter_staging.py    # Phase 43 (ADR-0150 §am-5).
+│       ├── pending_promotions.py   # Phase 43.
+│       ├── capacity_gaps.py        # Phase 43.
+│       ├── learned_parameters.py   # Phase 43.
+│       ├── installed_skills.py     # Phase 50 (ADR-0183, §am-6).
+│       └── subminds.py             # SubMind Slice 1 (ADR-0190, §am-7).
 ├── tests/phase_00/       # Phase 00 automated test suite.
 ├── tests/phase_01/       # Phase 01 automated test suite.
 ├── tests/phase_02/       # Phase 02 automated test suite.

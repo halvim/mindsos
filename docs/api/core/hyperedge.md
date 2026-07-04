@@ -5,8 +5,9 @@ last_confirmed_phase: 04-v2
 # `mindsos_core.HyperEdge`
 
 An n-ary, **typed** (Phase 04-v2 — ADR-0017 / MC-2) relationship across
-an arbitrary set of `Node`s. Phase 03 slim port — drops the soft-delete
-fields (Phase 10).
+an arbitrary set of `Node`s. Introduced as a Phase 03 slim port; the
+`_version` field (Phase 07) and soft-delete fields (Phase 10) are now
+live.
 
 > **Code location:** `HyperEdge` ships in `mindsos_core/models/edge.py`
 > next to `Edge` (matches the parent project's layout). The doc page is
@@ -22,6 +23,9 @@ fields (Phase 10).
 | `label` | `Optional[str]` | `None` | Optional human-readable label. |
 | `edge_id` | `str` | UUID4 | Stable id. |
 | `properties` | `Dict[str, Any]` | `{}` | Open property dict. |
+| `_version` | `int` | `1` | Monotonic OCC version counter (ADR-0127). Added Phase 07. |
+| `deprecated_at` | `Optional[datetime]` | `None` | Soft-delete timestamp (ADR-0133). Added Phase 10. |
+| `disputed_at` | `Optional[datetime]` | `None` | Dispute timestamp (ADR-0133). Added Phase 10. |
 
 ## Empty members invariant
 
@@ -63,7 +67,8 @@ v=1/v=2 hyperedges loaded under SENT-1 carry the `UNSPECIFIED`
 sentinel and need a recovery path. `Edge` / `Node` have no analogous
 legacy-migration concern.
 
-## What's not in Phase 03 / Phase 04-v2
+## History
 
-* `deprecated_at` / `disputed_at` soft-delete fields (ADR-0133) — Phase 10.
-* `iter_hyperedges(include_deprecated=...)` — Phase 10.
+* `_version` field (ADR-0127 OCC) — added Phase 07.
+* `deprecated_at` / `disputed_at` soft-delete fields (ADR-0133) — added Phase 10 (now live, see table above).
+* `iter_hyperedges(include_deprecated=...)` / `deprecate_hyperedge` / `dispute_hyperedge` — added Phase 10; see [soft-delete.md](soft-delete.md).

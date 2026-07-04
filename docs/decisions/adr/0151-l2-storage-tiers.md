@@ -11,7 +11,7 @@ layer: L2
 
 **Date:** 2026-06-01 (L2 chat closure)
 
-**Related (Accepted):** [ADR-0121](0121-falkordb-persistence.md),
+**Related (Accepted):** [ADR-0121](0121-substrate-falkordb-for-graphs-sqlite-for-non-graph.md),
 [ADR-0150](0150-l2-knowledge-lifecycle.md),
 [ADR-0044](0044-memories-move-to-local-per-user.md) §amendment-3,
 [ADR-0152](0152-l2-role-graph-schema-v2.md),

@@ -30,7 +30,8 @@ kl = KnowledgeLayer(global_metagraph=loaded_global)
 
 The 6 Global named role-graphs ensured at bootstrap are listed
 in [global-local.md](../../concepts/global-local.md#global). The
-2 Local named role-graphs (`memories`, `capacity-state`) are
+Local named role-graphs (`episodic_memories`, `capacity-state`, and
+the Phase-43+ dual-scope roles) are
 ensured per-user on the first `kl.local_metagraph(user_id)` or
 `kl.install_local_metagraph(...)` call.
 
@@ -119,8 +120,8 @@ the *schema* is identical.
 ```python
 from mindsos_knowledge import schema_for_role
 
-s = schema_for_role("lexicon")          # one of the 8 named roles
-s = schema_for_role("alignment:a<->b")  # alignment-prefix branch
+s = schema_for_role("lexicon")          # one of the 14 named roles
+s = schema_for_role("alignment:a:b")    # alignment-prefix branch
 s = schema_for_role("unknown")          # raises UnknownRoleError
 ```
 
@@ -128,7 +129,7 @@ s = schema_for_role("unknown")          # raises UnknownRoleError
 
 ```bash
 mindsos knowledge schema show --role lexicon [--json]
-mindsos knowledge schema validate --role memories \
+mindsos knowledge schema validate --role episodic_memories \
     --graph-file ~/.mindsos/graph-mymemories.json \
     [--json] [--exit-zero]
 ```

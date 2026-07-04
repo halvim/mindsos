@@ -1,6 +1,7 @@
 ---
 title: Orchestrator attention mechanism - priority queue keyed by live attention score
-status: Proposed
+status: Superseded
+superseded_by: ADR-0163
 date: 2026-04-22
 layer: L4
 aliases: [L4-attention]
@@ -8,7 +9,7 @@ aliases: [L4-attention]
 
 # ADR-0103: Attention mechanism - priority queue and preemption
 
-**Status:** Proposed
+**Status:** Superseded by [ADR-0163](0163-l4-priority-tier-executor.md) — design-phase decision; the shipped L4/L5 architecture (Phases 46–48) implements it. Reconciled in the 2026-07 doc-vs-code audit.
 
 **Date:** 2026-04-22
 

@@ -113,8 +113,9 @@ _ = layer.local_metagraph("admin")      # lazily creates admin's Local
 
 `CapacityLayer.bootstrap_*` is **not** a classmethod; the constructor
 is the bootstrap. `local_metagraph(user_id)` is lazy — first access
-creates the per-user Local metagraph and auto-ensures the 2 named
-Local role-graphs (`memories` + `capacity-state`) per ADR-0044.
+creates the per-user Local metagraph and auto-ensures the named
+Local role-graphs (`episodic_memories` + `capacity-state`, plus the
+Phase-43+ dual-scope roles) per ADR-0044 (§am-3 rename).
 
 ### 5. Install the text capacities
 

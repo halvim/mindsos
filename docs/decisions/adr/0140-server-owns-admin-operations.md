@@ -1,13 +1,13 @@
 ---
 title: Server owns bootstrap and admin operations
-status: Proposed
+status: Accepted
 date: 2026-04-27
 layer: L0
 ---
 
 # ADR-0140: Server owns bootstrap and admin operations
 
-**Status:** Proposed
+**Status:** Accepted (shipped; frontmatter reconciled during the 2026-07 doc-vs-code audit)
 
 **Date:** 2026-04-27
 

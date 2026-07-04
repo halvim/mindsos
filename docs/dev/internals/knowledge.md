@@ -8,7 +8,10 @@ next: dev/internals/capacity.md
 
 # L2 Knowledge internals
 
-The Knowledge Layer wraps one **Global metagraph** (ontology, lexicon, concepts, alignments) plus **N Local metagraphs**, one per user, that accumulate user's private knowledge and memories.
+!!! note "Scope: this page is a Phase-13-era module map"
+    The architecture (Global metagraph + per-user Locals; the importer/schema/validator layering) is still accurate, but the **counts and role list below predate later phases**. The closed role-set is now **14** (not the original 8/9), the `memories` role was renamed **`episodic_memories`** (Phase 39, ADR-0044 �am-3), and the L2-write/`value_codec` surface is not covered here. For the current role-set see [role-graphs.md](../../concepts/role-graphs.md).
+
+The Knowledge Layer wraps one **Global metagraph** (ontology, lexicon, concepts, alignments) plus **N Local metagraphs**, one per user, that accumulate the user's private knowledge and episodic memories.
 
 !!! info "Quick facts"
     - Layer: **L2 Knowledge**
@@ -167,7 +170,7 @@ All validators are idempotent and side-effect-free.
 
 L3 write capacities call semantic validators as **preconditions** before invoking `handle.write_and_validate(...)`. Two equivalent styles:
 
-**Canonical — `handle.validate_node(value, type_)` composite.** Wired for roles with a registered adapter in `_VALIDATORS_BY_ROLE` (Phase 36: `memories` + `problem-trace`). Returns `ValidationResult`; capacity body raises `SemanticValidationError(result)` on `not result.ok`. The composite owns metagraph routing internally and is the single place the role→chain mapping lives.
+**Canonical — `handle.validate_node(value, type_)` composite.** Wired for roles with a registered adapter in `_VALIDATORS_BY_ROLE` (Phase 36: `episodic_memories` + `problem-trace`; role renamed from `memories` at Phase 39). Returns `ValidationResult`; capacity body raises `SemanticValidationError(result)` on `not result.ok`. The composite owns metagraph routing internally and is the single place the role→chain mapping lives.
 
 ```python
 vr = handle.validate_node(value=record["value"], type_="Memory")
