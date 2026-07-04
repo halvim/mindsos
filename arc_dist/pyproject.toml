@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mindsos-arc"
+version = "0.1.0"
+description = "ARC intelligence packaged as an on-top MindsOS skill bundle (installs via the Phase-50 skill path; consumes released mindsos)."
+requires-python = ">=3.10"
+# Consumes MindsOS; installed ON TOP (not part of the mindsos wheel).
+dependencies = ["mindsos"]
+
+[tool.setuptools.packages.find]
+include = ["mindsos_arc*"]
+
+[tool.setuptools.package-data]
+# Ship the bundle manifest inside the wheel so `mindsos skill install -m <path>`
+# can resolve it with no bind-mount (the mindsos_cli manifest precedent).
+mindsos_arc = ["bundle/manifest.toml"]
