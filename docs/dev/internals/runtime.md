@@ -52,6 +52,18 @@ copy-pasted). It lives in `mindsos_server` because it composes L0–L5 and the
 server already owns `bootstrap_kl_from_falkordb`, `boot_local`, and the
 persisters — Server imports downward into the stack (ADR-0010).
 
+### Installed-skill reactivation
+
+The durable boot reactivates installed skills by re-running their L3 installer
+entry points (`apply_installed_skills`), which the skill packages must therefore
+be **importable** to provide — so the brain runs in an environment where every
+installed skill's package is on the path. The source of truth is the durable
+`installed-skills` ledger record written at install time; the CLI `skill install`
+that writes it is **operator-trusted** (not session-gated — the ADR-0183
+capability gate engages only on the server-session path, per the
+`mindsos_cli/commands/skill.py` header), so reactivation depends on the persisted
+record, never on any live session or token.
+
 ### Session
 
 `boot_brain` builds a permissive single-user `_BrainSession` (`has()` → `True`)
