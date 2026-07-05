@@ -1,6 +1,7 @@
 ---
 title: Property bag on Metagraph / Graph - deferred
-status: Proposed
+status: Superseded
+superseded_by: ADR-0130
 date: 2026-04-22
 layer: L1
 aliases: [core-ADR-020]
@@ -8,7 +9,7 @@ aliases: [core-ADR-020]
 
 # ADR-0033: Property bag on Metagraph / Graph - deferred
 
-**Status:** Proposed
+**Status:** Superseded by [ADR-0130](0130-property-bag-on-metagraph-graph.md) — design-phase decision; the shipped L4/L5 architecture (Phases 46–48) implements it. Reconciled in the 2026-07 doc-vs-code audit.
 
 **Date:** 2026-04-22
 

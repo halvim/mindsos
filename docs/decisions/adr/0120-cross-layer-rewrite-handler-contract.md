@@ -1,6 +1,6 @@
 ---
 title: Cross-layer rewrite handler contract (v1 contract only; impl deferred)
-status: Proposed
+status: Deferred
 date: 2026-05-22
 layer: L0 / cross-layer
 amends: []
@@ -9,11 +9,11 @@ related: [0114, 0118, 0125]
 
 # ADR-0120: Cross-layer rewrite handler contract (v1 contract only)
 
-**Status:** Proposed (2026-05-22 — Phase 24 draft; contract only at P24; first KL implementation at Phase 25 alongside lazy migration; Capacity implementation at L3 ship phase; L4 / L5 implementations are v2.)
+**Status:** Deferred (contract drafted 2026-05-22 — Phase 24 draft; contract only at P24; first KL implementation at Phase 25 alongside lazy migration; Capacity implementation at L3 ship phase; L4 / L5 implementations are v2.)
 
 **Date:** 2026-05-22
 
-**Related:** [ADR-0114](0114-release-manifest-and-version-db-schema.md) (`manifest_json.rewrite_map` source); [ADR-0118](0118-per-user-transactional-promotion.md) (release-ship + lazy-migration architecture this contract serves); [ADR-0125](0125-lazy-local-hydration-with-lru-eviction.md) (per-user lazy hydration which lazy migration extends); [PIVOT_V1_SCOPE_2026-04-26.md](../../PIVOT_V1_SCOPE_2026-04-26.md) §6.B.1 (cross-layer ref breakage problem this addresses) + §7.3 (lazy migration mechanism) + §7.4 (multi-Local rollback semantics).
+**Related:** [ADR-0114](0114-release-manifest-and-version-db-schema.md) (`manifest_json.rewrite_map` source); [ADR-0118](0118-per-user-transactional-promotion.md) (release-ship + lazy-migration architecture this contract serves); [ADR-0125](0125-lazy-local-hydration-with-lru-eviction.md) (per-user lazy hydration which lazy migration extends); `PIVOT_V1_SCOPE_2026-04-26.md` §6.B.1 (cross-layer ref breakage problem this addresses) + §7.3 (lazy migration mechanism) + §7.4 (multi-Local rollback semantics).
 
 ## Context
 

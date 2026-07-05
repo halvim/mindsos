@@ -1,18 +1,44 @@
 ---
-title: L4 Intelligence decisions
-tag: design
-teaser: Proposed decisions shaping the Intelligence Layer (design-phase).
+title: L4 / L5 Intelligence decisions
+tag: shipped
+teaser: Decisions shaping the Intelligence Layer and Mental Model.
 next: decisions/summary/server.md
 ---
 
-# L4 Intelligence decisions
+# L4 / L5 Intelligence decisions
 
-Layer 4 is the orchestrator and learner — the part of the system that improves with experience. It is currently in design phase. All decisions listed here are **Proposed** and will lock in as L4 implementation progresses.
+Layer 4 is the orchestrator and learner — the part of the system that improves with experience. Layer 5 is the per-task Mental Model. Both **shipped** in the Phase 46–48 convergence (`mindsos_intelligence` package).
 
-!!! warning "Design phase"
-    Layer 4 Intelligence is not yet shipped. All ADRs listed here are **Proposed** and are subject to change during implementation.
+!!! success "Shipped"
+    L4 and L5 are live as of Phase 48. The shipped decisions are **ADRs 0163–0181** (table below). The earlier **ADRs 0101–0112** were the design-phase menu settled at the Chat A/B foundation chats; they are retained for historical context and were superseded/absorbed by the shipped set.
 
-## Proposed decisions
+## Shipped decisions (ADRs 0163–0181)
+
+| ADR # | Title | Summary |
+|-------|-------|---------|
+| [0163](../adr/0163-l4-priority-tier-executor.md) | L4 priority-tier Executor + `attention_score` | Four-tier priority executor; preemption by effective score within tier |
+| [0164](../adr/0164-mm-rwlock-granularity.md) | MM RWLock — per-active-MM, root granularity, writer-preferred | Concurrency control for the Mental Model |
+| [0165](../adr/0165-three-sub-mm-composition.md) | Three-sub-MM composition + thin root + no-shadow-state invariant | Knowledge / capacity / intelligence sub-MMs per task |
+| [0166](../adr/0166-mm-resolution-and-instantiation.md) | MM resolution + instantiation layer | Concrete `MMHandle`; pin-at-instantiation |
+| [0167](../adr/0167-cooperative-cancellation-contract.md) | Cooperative cancellation framework | Cooperative task cancellation contract |
+| [0168](../adr/0168-monitor-subscription-registry.md) | MonitorSubscriptionRegistry — L4-side Monitor lifecycle | Consumes `cl.iter_monitors()`; L4 owns the loop (ADR-0155) |
+| [0169](../adr/0169-tier-enum-home-and-signal-triage.md) | TierEnum home (L3) + signal-triage worker thread | Tier enum lives in L3; triage thread placement |
+| [0170](../adr/0170-write-body-session-gating-boundary.md) | Write-body capability gating — boundary resolution | Reconciles ADR-0146 / ADR-0159 write gating |
+| [0171](../adr/0171-six-phase-task-lifecycle.md) | Six-phase task lifecycle — orchestrator, worker-per-task | The core orchestrator control flow |
+| [0172](../adr/0172-phase-1-five-step-task-interpretation.md) | Phase-1 five-step task interpretation + v0 catalog discipline | Task interpretation front-half |
+| [0173](../adr/0173-replan-check-dispatch-and-invalidation.md) | Replan-check dispatch + invalidate-at-and-below | Replan trigger + ReplanRecord sparsity |
+| [0174](../adr/0174-sufficient-predicate-and-phase6-blame-dispatch.md) | Sufficient-predicate evaluator + Phase-6 BlameVerdict dispatch | Completion + blame assignment |
+| [0175](../adr/0175-invoke-capacity-context-flip-and-write-gate.md) | `invoke`→CapacityContext flip + write-body gate enforcement | Capacity invocation contract v2 |
+| [0176](../adr/0176-mm-consolidation-write-path.md) | MM consolidation write path — freeze+assemble, Episode write, Memory materialize | Task-completion consolidation into L2 |
+| [0177](../adr/0177-d-prime-1-retention-lazy-inline-on-retire.md) | D'1 retention — version-pinned refs + lazy inline-on-retire | Full KL version read/retire stack |
+| [0178](../adr/0178-dream-live-re-execution-driver.md) | Dream live re-execution driver | Timer hookup + episode `task_input` re-run |
+| [0179](../adr/0179-crash-recovery-checkpoint-and-startup-scan.md) | Crash recovery — checkpoint trigger set + tombstone + startup scan | Durability on crash |
+| [0180](../adr/0180-write-capability-on-context-scope-aware-gate.md) | Write-half close — pre-authorized `writeable` capability + scope-aware gate | S12 write-half closure |
+| [0181](../adr/0181-falkor-index-strategy-cross-sub-mm-queries.md) | Falkor index strategy for cross-sub-MM hyperedge queries | Decide-and-document (physical creation → WSD) |
+
+## Design-phase menu (ADRs 0101–0112 — historical)
+
+The original L4 design exploration, settled at the Chat A/B foundation chats and superseded/absorbed by the shipped set above. Retained for context.
 
 | ADR # | Title | Summary |
 |-------|-------|---------|

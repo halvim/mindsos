@@ -28,9 +28,12 @@ schema = build_alignment_schema(extra_edge_types=("CUSTOM_MAP",))
 ## Parametric
 
 The same builder serves all role-pair alignment graphs:
-`alignment:lexicon<->concepts`, `alignment:ontology<->lexicon`, etc.
+`alignment:concepts:lexicon`, `alignment:lexicon:ontology`, etc.
 The graph *name* (per `alignment_role(a, b)`) differs per pair; the
-*schema* is identical.
+*schema* is identical. `alignment_role` sorts the two roles and joins
+them with a `:` separator (ADR-0154), so `alignment_role("lexicon",
+"concepts")` and `alignment_role("concepts", "lexicon")` both return
+`alignment:concepts:lexicon`.
 
 ## Anchor IRI minting
 
@@ -40,7 +43,7 @@ patterns are documented in the design log:
 
 - (b.i) Anchor reuses the referenced entity's IRI directly.
 - (b.ii) Anchor mints a wrapper IRI (e.g.,
-  `alignment:lexicon<->concepts:anchor:<source_iri>`).
+  `alignment:concepts:lexicon:anchor:<source_iri>`).
 
 Phase 14 picks per consumer need.
 

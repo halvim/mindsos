@@ -1,6 +1,7 @@
 ---
 title: Instancing vocabulary lives in Core
-status: Accepted
+status: Superseded
+superseded_by: ADR-0132
 date: 2026-04-22
 layer: L1
 aliases: [core-ADR-024]
@@ -8,7 +9,7 @@ aliases: [core-ADR-024]
 
 # ADR-0037: Instancing vocabulary lives in Core
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0132](0132-instancing-moved-to-mindsos-instances.md) — the instancing vocabulary moved to the `mindsos_instances` package (shipped). Reconciled in the 2026-07 doc-vs-code audit.
 
 **Date:** 2026-04-22
 

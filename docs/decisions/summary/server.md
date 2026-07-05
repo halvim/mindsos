@@ -27,7 +27,7 @@ The Server Layer is **orthogonal** to the domain stack (per ADR-0136) — it pro
 | [0004](../adr/0004-split-persistence.md) | SQLite for server state, FalkorDB for graphs | Accepted | Clean separation: SQLite for identity/audit, FalkorDB for domain data |
 | [0005](../adr/0005-refuse-concurrent-login.md) | Refuse concurrent login; provide kill-session escape valves | Accepted | One session per user at a time; admin can kill sessions to recover |
 | [0006](../adr/0006-promotion-locking.md) | Per-user RLocks + GLOBAL_PROMOTE_LOCK in lexicographic order | Accepted | Deadlock-free multi-user coordination for safe promotion |
-| [0007](../adr/0007-metagraph-snapshot-rollback.md) | In-memory `MetagraphSnapshot` for promotion rollback | Accepted | Deep copy on enter; mutate in place on rollback |
+| [0007](../adr/0007-metagraph-snapshot-rollback.md) | In-memory `MetagraphSnapshot` for promotion rollback | Superseded by [0118](../adr/0118-per-user-transactional-promotion.md) | Deep copy on enter; mutate in place on rollback |
 | [0008](../adr/0008-cross-user-reads-no-flush.md) | Admin cross-user reads never flush (I-S3) with refcount install | Accepted | Transient installs for read-only admin queries |
 | [0009](../adr/0009-similarity-report-freshness.md) | Similarity-report freshness via content hash | Accepted | Stale reports detected by re-computing hash |
 | [0010](../adr/0010-layer-isolation.md) | KL does not import server (I-S1); L3 accepts `SessionProtocol` | Accepted | Hard layer boundaries; domain layers never depend upward |
@@ -39,7 +39,7 @@ The Server Layer is **orthogonal** to the domain stack (per ADR-0136) — it pro
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|
-| [0118](../adr/0118-per-user-transactional-promotion.md) | Per-user transactional promotion + release-boundary atomicity | Proposed *(vertical slice landed 2026-04-27)* | Supersedes ADR-0007 in full. Two independent atomicity boundaries: per-user `propose_for_promotion` and admin-triggered `release_update`. Lazy per-user migration runs separately. Slice ships ATOM-only; STRUCTURE/SUBGRAPH/PIPELINE land with ADR-0117/0119/0120. |
+| [0118](../adr/0118-per-user-transactional-promotion.md) | Per-user transactional promotion + release-boundary atomicity | Accepted | Supersedes ADR-0007 in full. Two independent atomicity boundaries: per-user `propose_for_promotion` and admin-triggered `release_update`. Lazy per-user migration runs separately. Slice ships ATOM-only; STRUCTURE/SUBGRAPH/PIPELINE land with ADR-0117/0119/0120. |
 | 0113 | Mutation model — Resolution A | Reserved | Mutation auto-bumps version under the hood; admin UX is "edit," storage is append-only. |
 | 0114 | Release manifest + version DB schema (SQLite) | Reserved | Schema for `pending_mutations`, `releases`, `node_versions`, `peer_deps`. |
 | 0115 | Audit gate + impact report format | Reserved | Supersedes ADR-0009. Pre-ship audit; structured `ImpactReport`; no override in v1. |
@@ -54,9 +54,9 @@ The L1 redesign pass produced two server-layer ADRs in addition to its L1 Core s
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|
-| [0125](../adr/0125-lazy-local-hydration-with-lru-eviction.md) | Lazy Local hydration with LRU eviction | Proposed | Login no longer hydrates; first read/write triggers; idle Locals evicted under RAM watermark |
+| [0125](../adr/0125-lazy-local-hydration-with-lru-eviction.md) | Lazy Local hydration with LRU eviction | Deferred | Login no longer hydrates; first read/write triggers; idle Locals evicted under RAM watermark |
 | [0136](../adr/0136-server-as-orthogonal-layer.md) | Server is orthogonal to the domain stack, not Layer 0 | Accepted | Documentation pass: Server provides runtime envelope, not layer composition |
-| [0137](../adr/0137-user-facing-request-promotion.md) | User-facing `request_promotion` API | Proposed | New ordinary-user API to surface promotion candidates; admin reviews and triggers `propose_for_promotion` |
+| [0137](../adr/0137-user-facing-request-promotion.md) | User-facing `request_promotion` API | Deferred | New ordinary-user API to surface promotion candidates; admin reviews and triggers `propose_for_promotion` |
 
 ---
 

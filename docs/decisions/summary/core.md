@@ -46,24 +46,33 @@ Core carries several design tradeoffs that are not yet shipped but have known pa
 
 ## L1 redesign decisions (2026-04-27)
 
-The L1 redesign pass (see `docs/HANDOFF_L1_REDESIGN_2026-04-27.md`) drafted seventeen Proposed ADRs covering substrate commitment, FalkorDB-weakness mitigations, the hybrid XRef model, soft-delete representation, and the package move for instancing. All are **Proposed** until code lands.
+The L1 redesign pass (see `docs/HANDOFF_L1_REDESIGN_2026-04-27.md`) drafted seventeen ADRs covering substrate commitment, FalkorDB-weakness mitigations, the hybrid XRef model, soft-delete representation, and the package move for instancing. **These have since shipped** (FalkorDB substrate, XRef, soft-delete, and the `mindsos_instances` move are all live) and are marked Accepted below.
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|
-| [0121](../adr/0121-substrate-falkordb-for-graphs-sqlite-for-non-graph.md) | Substrate — FalkorDB for graphs, SQLite for non-graph state | Proposed | Commits to FalkorDB; six paired weakness mitigations land as ADRs 0122–0127 |
-| [0122](../adr/0122-wal-graph-for-multi-statement-write-safety.md) | WAL graph for multi-statement write safety | Proposed | Sibling `:WAL` graph per Metagraph; replays uncommitted entries on crash |
-| [0123](../adr/0123-indexes-and-verify-integrity.md) | Indexes + persist-time check + per-layer `verify_integrity` | Proposed | FalkorDB indexes for cheap dup detection; `mindsos-server fsck` CLI |
-| [0124](../adr/0124-streaming-loader-iter-load-and-refresh.md) | Streaming loader: `iter_load` and `MetagraphLoader.refresh` | Proposed | Pagination via SKIP/LIMIT; per-role refresh for L4 delta reloads |
-| [0126](../adr/0126-async-client-via-thread-pool-wrapper.md) | `AsyncClient` Protocol via `asyncio.to_thread` | Proposed | Thread-pool wrapper around sync Client; ~50 LOC |
-| [0127](../adr/0127-optimistic-concurrency-on-global-writes.md) | Optimistic concurrency on Global writes (`_version` property) | Proposed | Conditional MERGE; retry-on-conflict; `_version` reserved property |
-| [0128](../adr/0128-hybrid-xref-cross-metagraph-refs.md) | Hybrid cross-graph refs — XRef primitive + ref-string convention | Proposed | First-class XRef for cross-metagraph; ref-strings for intra-metagraph |
+| [0121](../adr/0121-substrate-falkordb-for-graphs-sqlite-for-non-graph.md) | Substrate — FalkorDB for graphs, SQLite for non-graph state | Accepted | Commits to FalkorDB; six paired weakness mitigations land as ADRs 0122–0127 |
+| [0122](../adr/0122-wal-graph-for-multi-statement-write-safety.md) | WAL graph for multi-statement write safety | Accepted | Sibling `:WAL` graph per Metagraph; replays uncommitted entries on crash |
+| [0123](../adr/0123-indexes-and-verify-integrity.md) | Indexes + persist-time check + per-layer `verify_integrity` | Accepted | FalkorDB indexes for cheap dup detection; `mindsos-server fsck` CLI |
+| [0124](../adr/0124-streaming-loader-iter-load-and-refresh.md) | Streaming loader: `iter_load` and `MetagraphLoader.refresh` | Accepted | Pagination via SKIP/LIMIT; per-role refresh for L4 delta reloads |
+| [0126](../adr/0126-async-client-via-thread-pool-wrapper.md) | `AsyncClient` Protocol via `asyncio.to_thread` | Accepted | Thread-pool wrapper around sync Client; ~50 LOC |
+| [0127](../adr/0127-optimistic-concurrency-on-global-writes.md) | Optimistic concurrency on Global writes (`_version` property) | Accepted | Conditional MERGE; retry-on-conflict; `_version` reserved property |
+| [0128](../adr/0128-hybrid-xref-cross-metagraph-refs.md) | Hybrid cross-graph refs — XRef primitive + ref-string convention | Accepted | First-class XRef for cross-metagraph; ref-strings for intra-metagraph |
 | [0129](../adr/0129-metagraph-snapshot-narrowed-to-release-ship.md) | MetagraphSnapshot scope narrowed to release-ship | Accepted | KL drops snapshot for ordinary writes; uses WAL graph |
-| [0130](../adr/0130-property-bag-on-metagraph-graph.md) | Property bag on `Metagraph` and `Graph` | Proposed | Typed `properties` field; supersedes ADRs 0029 and 0033 |
-| [0131](../adr/0131-pluggable-id-strategy.md) | Pluggable `IdStrategy` on `Metagraph` | Proposed | Default UUID4; opt-in `UUID5FromContent` and `IRIPassthrough` |
-| [0132](../adr/0132-instancing-moved-to-mindsos-instances.md) | Instancing vocabulary moved to `mindsos_instances` package | Proposed | Sibling package; supersedes ADR-0037 |
-| [0133](../adr/0133-soft-delete-via-deprecated-disputed-properties.md) | Soft-delete via `deprecated_at` / `disputed_at` properties | Proposed | Property-on-edge representation; default `include_deprecated=False` |
-| [0134](../adr/0134-schema-migration-scanner.md) | Schema migration scanner + loader warning on unknown edge types | Proposed | `Schema.migrate_from`; configurable `unknown_edge_type_policy` |
-| [0135](../adr/0135-removal-impact-on-remove-graph.md) | `RemovalImpact` report on `remove_graph` | Proposed | Detects incoming XRefs and ref-strings; `force` flag required for removal |
+| [0130](../adr/0130-property-bag-on-metagraph-graph.md) | Property bag on `Metagraph` and `Graph` | Accepted | Typed `properties` field; supersedes ADRs 0029 and 0033 |
+| [0131](../adr/0131-pluggable-id-strategy.md) | Pluggable `IdStrategy` on `Metagraph` | Accepted | Default UUID4; opt-in `UUID5FromContent` and `IRIPassthrough` |
+| [0132](../adr/0132-instancing-moved-to-mindsos-instances.md) | Instancing vocabulary moved to `mindsos_instances` package | Accepted | Sibling package; supersedes ADR-0037 |
+| [0133](../adr/0133-soft-delete-via-deprecated-disputed-properties.md) | Soft-delete via `deprecated_at` / `disputed_at` properties | Accepted | Property-on-edge representation; default `include_deprecated=False` |
+| [0134](../adr/0134-schema-migration-scanner.md) | Schema migration scanner + loader warning on unknown edge types | Accepted | `Schema.migrate_from`; configurable `unknown_edge_type_policy` |
+| [0135](../adr/0135-removal-impact-on-remove-graph.md) | `RemovalImpact` report on `remove_graph` | Accepted | Detects incoming XRefs and ref-strings; `force` flag required for removal |
+
+## Node-value + durable-persistence — SHIPPED (Phases 50, F9)
+
+| ADR # | Title | Status | Summary |
+|-------|-------|--------|---------|
+| [0182](../adr/0182-node-value-serialization-contract.md) | Node-value serialization contract for structured values | Accepted | `_value_json` codec (`mindsos_core/persistence/value_codec.py`); dict/list node `value` round-trips; writer lifts filterable fields flat |
+| [0185](../adr/0185-capacity-reactivation-contract.md) | Capacity re-activation contract | Accepted | Descriptor-of-record + factory registry for rehydrating Local capacities |
+| [0186](../adr/0186-durable-local-persistence-lifecycle.md) | Durable Local-persistence lifecycle | Accepted | `FalkorDBLocalPersister` + `load_or_mint_local` / `boot_local` |
+| [0187](../adr/0187-reset-run-state-boundary.md) | Reset boundary — role-scoped `reset_run_state` vs hard delete | Accepted | Scoped run-state reset distinct from destructive delete |
 
 ---
 

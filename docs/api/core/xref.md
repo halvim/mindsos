@@ -21,7 +21,7 @@ from mindsos_core import XRef
 Frozen dataclass (in spirit — `kw_only=True` for safe field reorders;
 `__hash__` + `__eq__` keyed by `xref_id`).
 
-### Fields (8)
+### Fields (10)
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -33,9 +33,11 @@ Frozen dataclass (in spirit — `kw_only=True` for safe field reorders;
 | `ref_type` | `str` | KL `REF_TYPES` vocabulary entry (Core does not enforce) |
 | `xref_id` | `str` | UUID4 stable across the lifetime of this XRef (auto-minted if not supplied) |
 | `properties` | `dict[str, Any]` | optional per-XRef property bag; reserved-key-aware |
+| `target_stale` | `bool` | `True` once the target metagraph's element was removed/archived. Added Phase 10; setter `mark_xref_stale`. |
+| `deprecated_at` | `Optional[datetime]` | timestamp when the XRef itself was deprecated (ADR-0133 soft-delete). Added Phase 10; setters `deprecate_xref` / `undeprecate_xref`. |
 
-`target_stale` and `deprecated_at` from the v3 baseline are **not
-present** at Phase 09 (deferred to Phase 10 alongside their setters).
+`target_stale` and `deprecated_at` landed at Phase 10 alongside their
+setters (see [soft-delete.md](soft-delete.md)); they are live fields.
 
 ## `Metagraph.add_xref` — programmatic construction
 

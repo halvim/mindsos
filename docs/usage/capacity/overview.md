@@ -18,7 +18,7 @@ A Capacity Layer instance owns:
 
 | Surface | What it holds | Phase |
 |---|---|---|
-| Global Metagraph | One shared L3 metagraph with 12 category role-graphs + the shared `capacity:datastates` graph | 28 |
+| Global Metagraph | One shared L3 metagraph with 13 category role-graphs + the shared `capacity:datastates` graph | 28 |
 | Local Metagraphs | One per active user, lazily created on first write | 28 |
 | Capacity registry | Maps every IRI to its Python declaration (Local-wins over Global) | 28 |
 | Capability gate | Enforces `CAN_WRITE_GLOBAL` on Global-scoped writes; carve-out for pre-server bootstrap | 28 |
@@ -85,7 +85,7 @@ cap = Capacity(
 cl.register_capacity(cap)
 ```
 
-The IRI form is `capacity:<category>:<name>` (ADR-0066); collisions within a metagraph raise `CapacityRegistrationError`. The `category` MUST be one of the [12 functional categories](categories.md) (ADR-0065).
+The IRI form is `capacity:<category>:<name>` (ADR-0066); collisions within a metagraph raise `CapacityRegistrationError`. The `category` MUST be one of the [13 functional categories](categories.md) (ADR-0065; `consolidate` added post-Phase-42).
 
 ## Global vs. Local — Local wins on collision
 
@@ -125,7 +125,7 @@ User sessions (`Session.for_testing(uid, is_admin=False)`) lack the capability; 
 | Capability | Phase | Notes |
 |---|---|---|
 | Register / lookup / Local-wins / capability gate | **28** | This page |
-| 12 functional categories — see `categories.md` | 28 (+ 29 amend) | |
+| 13 functional categories — see `categories.md` | 28 (+ 29 amend) | |
 | Bipartite PRODUCES/CONSUMES topology (ADR-0156) + constraint enforcement | 42 (topology); 29 (constraints) | |
 | Pipeline finder + invocation runtime + ProblemTraceRecord | 30 | |
 | Residents + text builtins + pathfinding | 31 | |

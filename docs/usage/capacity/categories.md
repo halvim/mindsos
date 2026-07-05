@@ -65,7 +65,7 @@ Capacity flow topology is the explicit **bipartite** `PRODUCES` /
 (ADR-0156, Phase 42; supersedes the Phase 29 type-compatibility
 auto-discovery substrate).
 The 5-kind **CONSTRAINT** enforcement layer ships per ADRs
-0068/0070/0092. The 12-category enumeration itself is stable.
+0068/0070/0092. The 13-category enumeration itself is stable.
 
 ## See also
 

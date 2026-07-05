@@ -1,13 +1,13 @@
 ---
 title: KL drops its write API; writes relocate to L3 capacities
-status: Proposed
+status: Accepted
 date: 2026-04-27
 layer: L2
 ---
 
 # ADR-0138: KL drops its write API; writes relocate to L3 capacities
 
-**Status:** Proposed
+**Status:** Accepted (shipped; frontmatter reconciled during the 2026-07 doc-vs-code audit)
 
 **Date:** 2026-04-27
 

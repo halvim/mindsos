@@ -4,7 +4,7 @@ tag: shipped
 last_confirmed_phase: 02
 teaser: IdentityRegistry scope, stable version-qualified IRIs, and why this matters.
 source: mindsos_core/models/identity.py
-next: concepts/instancing.md
+next: concepts/mm-substrate.md
 ---
 
 # Identity and IRIs
@@ -187,5 +187,5 @@ keeps the id stable across read/write cycles.
 
 ---
 
-**Next:** [Instancing model](instancing.md) — how the Mental Model reuses
-knowledge with task-specific overrides.
+**Next:** [Mental Model substrate](mm-substrate.md) — how the Mental Model reuses
+knowledge with task-specific overrides (instancing vocabulary now lives in the `mindsos_instances` package, ADR-0132).

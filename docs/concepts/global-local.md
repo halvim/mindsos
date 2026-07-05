@@ -168,7 +168,7 @@ not through a mutation method on the view).
   model puts cross-metagraph composition at L3 / Mental Model).
 - **`version=`** kwarg on `step()` — VACATED at Phase 17 retirement
   (2026-05-20) per
-  [ADR-0150 §amendment-3](../decisions/adr/0150-l2-knowledge-lifecycle.md#amendment-3-phase-17-retirement--2026-05-20--version-dispatch-model-lock).
+  [ADR-0150 §amendment-3](../decisions/adr/0150-l2-knowledge-lifecycle.md).
   The shipped one-graph-per-role invariant leaves "active version"
   undefined; version lives in IRI strings, enumerable via
   `MetagraphView.versions_in_role(role)` (Phase 17 retirement

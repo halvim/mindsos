@@ -41,8 +41,8 @@ Capacities are *fixed-not-learned*; state lives in L2. See
 **Capacity Layer (L3).** The layer that holds Capacities + DataStates
 + Constraints + Discovery + the pipeline finder + invoke runtime +
 problem-trace. Shipped Phases 27–31. See
-[Capacity vs Intelligence](capacity-vs-intelligence.md) (out of
-scope; L4/L5 conceptual content).
+[Intelligence Layer](intelligence-layer.md) for the L4/L5 conceptual
+content.
 
 **CapacityLayer.** The Python class that owns the L3 dual metagraph
 (`ds_graph` + `_capacity_index`). Constructor takes an optional
@@ -177,7 +177,7 @@ by L3 capacity bodies + the invoke runtime. Persisted to L2's
 **Promotion.** The act of moving a Local-authored knowledge item
 into Global via a release. Per-user transactional;
 admin-direct-ATOM only at v1 (Phase 24). See
-[Release model](release-model.md).
+[Promotion bridge](promotion-bridge.md).
 
 ## R — Z
 
@@ -209,7 +209,7 @@ consumer (CLI, future web UI, batch jobs) needs.
 
 **Session.** A server-issued bearer of a user identity + capability
 roster + TTL. Issued by `mindsos server login`; verified via
-`session_from_token`. See [Sessions](../usage/server/sessions.md).
+`session_from_token`.
 
 **Soft-delete.** L1's tombstone discipline — instead of hard-removing
 a Node/Edge, mark it `deprecated_at: <ts>` and keep it for audit
@@ -218,6 +218,16 @@ trail. Runtime filter is advisory; queries opt in. Shipped Phase 10.
 **Snapshot.** An L1 `MetagraphSnapshot` captures a metagraph's state
 for release-ship rollback. Narrowed to release-ship scope per
 ADR-0129. Shipped Phase 10.
+
+**SubMind (Mindlet).** An autonomous, no-reasoning reflex over one
+self-state vital — a `sense → threshold → emit` loop that self-schedules
+its own cadence and never deliberates. The single L4 Mind arbitrates all
+SubMind outputs (Signal, deliberated; or Reflex, a queue-bypassing
+emergency). Partially reverses ADR-0155: the self-firing loop returns as
+an L4-owned scheduler, not the retired L3 `start_resident`. Runtime in
+`mindsos_intelligence/submind*.py`; endowment record in the L2 `subminds`
+role-graph. Slice 1 shipped (ADRs 0188–0190). See
+[Society of Mind](society-of-mind.md).
 
 **Tester.** The human who runs `mindsos confirm-phase` on the Linux
 host, hand-edits the generated `PHASE_<NN>_CONFIRMED.md`, and

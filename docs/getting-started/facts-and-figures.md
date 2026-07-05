@@ -6,12 +6,14 @@ Quick-reference tables for the L4/L5 substance shipped through Phase 48.
 
 | Layer | Package | One-line role |
 |---|---|---|
-| L0 Server | `mindsos_server` | auth / sessions / authorization / audit |
+| Server (orthogonal, per ADR-0010/0136) | `mindsos_server` | auth / sessions / authorization / audit |
 | L1 Core | `mindsos_core` | graphs, metagraphs, schemas, persistence primitives |
 | L2 Knowledge | `mindsos_knowledge` | role-graphs; Global + per-user Local |
 | L3 Capacity | `mindsos_capacity` | fixed-not-learned capability families |
 | L4 Intelligence | `mindsos_intelligence` | orchestrator + MM substrate + dispatch |
-| L5 Mental Model | (L4 + L2) | per-task working memory → retained Episodes |
+| L5 Mental Model | (in `mindsos_intelligence` + L2) | per-task working memory → retained Episodes |
+
+Plus three off-axis packages: `mindsos_instances` (MM instancing vocabulary, ADR-0132), `mindsos_admin` (admin/promotion operations), and `mindsos_cli` — **8 top-level packages** in total.
 
 ## The six-phase task lifecycle
 
