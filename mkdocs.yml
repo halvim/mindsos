@@ -71,6 +71,8 @@ nav:
           - Data states: usage/capacity/data-states.md
           - Building: usage/capacity/building.md
           - Retrieval: usage/capacity/retrieval.md
+      - Runtime:
+          - Resident brain — mindsos brain: usage/runtime/resident-brain.md
       - Cookbook (Phase 38):
           - Text realm — vertical slice: usage/cookbook/text-realm.md
           - End-to-end — L0→L5 trivial-task slice: usage/cookbook/end-to-end.md
@@ -108,6 +110,7 @@ nav:
       - Internals — Core: dev/internals/core.md
       - Internals — Snapshot (Phase 10): dev/internals/snapshots.md
       - Internals — Capacity (Phase 33): dev/internals/capacity.md
+      - Internals — Resident-brain runtime: dev/internals/runtime.md
       - L3 write-capacity per-flow tracker: dev/coordinated-changes/L3-capacity-write-flows.md
       - Review checklist (Phase 34): dev/review-checklist.md
       - CLI conventions: dev/conventions.md
