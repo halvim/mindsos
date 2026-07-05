@@ -9,7 +9,7 @@ next: dev/internals/capacity.md
 # L2 Knowledge internals
 
 !!! note "Scope: this page is a Phase-13-era module map"
-    The architecture (Global metagraph + per-user Locals; the importer/schema/validator layering) is still accurate, but the **counts and role list below predate later phases**. The closed role-set is now **14** (not the original 8/9), the `memories` role was renamed **`episodic_memories`** (Phase 39, ADR-0044 §am-3), and the L2-write/`value_codec` surface is not covered here. For the current role-set see [role-graphs.md](../../concepts/role-graphs.md).
+    The architecture (Global metagraph + per-user Locals; the importer/schema/validator layering) is still accurate, but the **counts and role list below predate later phases**. The closed role-set is now **14** (not the original 8/9), the `memories` role was renamed **`episodic_memories`** (Phase 39, ADR-0044 Â§am-3), and the L2-write/`value_codec` surface is not covered here. For the current role-set see [role-graphs.md](../../concepts/role-graphs.md).
 
 The Knowledge Layer wraps one **Global metagraph** (ontology, lexicon, concepts, alignments) plus **N Local metagraphs**, one per user, that accumulate the user's private knowledge and episodic memories.
 
