@@ -166,5 +166,8 @@ the generic fallback stay Global.
   `CapacityContext`), **ADR-0171** (orchestrator). Amends none.
 - **Pairs with [[ADR-0196]]** (the `needs_input` verdict `interpret` returns).
   The two are independently shippable.
+- **Amended by [[ADR-0197]]** (modality-aware ingress): adds a runtime
+  `{modality→Phase1Profile}` table over the construction-bound profile and
+  de-hardcodes the interpretation DataState spine to environment-threaded.
 - Future work: `L4_FUTURE_WORK.md` §6 / §6.2; deferred L4-25 (execution
   propagation + in-memory continuation), L4-26 (generic matcher).

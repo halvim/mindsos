@@ -57,6 +57,7 @@ class L4Dispatcher:
         learned_parameters: Optional[Mapping[str, Any]] = None,
         version_snapshot: Optional[Mapping[str, int]] = None,
         phase1_profile: "Optional[Phase1Profile]" = None,
+        modality_profiles: "Optional[Mapping[str, Phase1Profile]]" = None,
     ) -> None:
         self._cl = capacity_layer
         self._session = session
@@ -65,6 +66,9 @@ class L4Dispatcher:
         self._learned_parameters = dict(learned_parameters or {})
         self._version_snapshot = dict(version_snapshot or {})
         self._phase1_profile = phase1_profile
+        # ADR-0197 §3 — runtime {modality (ingress DataState IRI) ->
+        # Phase1Profile} table, selected per input by the stamped modality.
+        self._modality_profiles = dict(modality_profiles or {})
 
     # ── read-only accessors (used by ``phase_1.interpret`` for
     #    find_pipeline composition + the map-resolution KL check) ─────────
@@ -84,6 +88,10 @@ class L4Dispatcher:
     @property
     def phase1_profile(self) -> "Optional[Phase1Profile]":
         return self._phase1_profile
+
+    @property
+    def modality_profiles(self) -> "Mapping[str, Phase1Profile]":
+        return self._modality_profiles
 
     def build_context(
         self,
