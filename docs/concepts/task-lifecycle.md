@@ -22,6 +22,28 @@ receive → `process.*` → `hint.*` extract → `decision.derive_goal` →
 `map_to_task_pattern`. It emits a **HintSet** (step 3) and a **MappingResult**
 (step 5) into intelligence-MM.
 
+The flow is factored into a standalone `interpret()` decoupled from the
+lifecycle (ADR-0195): the orchestrator is one caller, an interpretation-only
+consumer (e.g. arc-solver) is another. Which body runs each step is a
+**`Phase1Profile`** — a construction-bound, per-consumer selection of capacity
+IRIs held on the `L4Dispatcher`; an unset slot falls back to the shipped v0
+placeholder, so the all-v0 path needs no profile. Reference `resolve` is not a
+fixed slot: when a hint reports an indirect `reference_kind`, it is composed by
+the bipartite `find_pipeline` (ADR-0156) from the reference's DataState type to
+the profile's `resolve_target_datastate`.
+
+Input is **modality-typed at ingress** (ADR-0197). An `InputEnvelope` carries
+the raw value, a **modality** (the identity of the ingress DataState —
+`text.raw`, `image.raw`, …; there is no separate modality enum) and a **source**
+(provenance, never read for selection). The boundary stamps the modality,
+*declared by the source*; the dispatcher's `{modality → Phase1Profile}` table
+then selects the interpretation bodies per input. The interpretation spine is
+**environment-threaded** — each step keys its inputs/outputs off the selected
+capacity's declared DataStates rather than a fixed spine — so a text input runs
+through the real `text.space_split` (`text.raw → text.tokens`) as its `process`
+step. `image` / `action` are contract-only extension points (register a
+catalog); the all-v0 path is byte-identical.
+
 **LifecyclePhase 2 — Plan + Pipeline construction.** `planning.derive_initial_
 plan` seeds a **Plan**; the Plan is a recursive **Milestone** tree decomposed
 lazily (`planning.decompose`) with a leaf predicate (`planning.is_leaf`) and a
