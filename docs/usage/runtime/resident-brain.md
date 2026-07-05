@@ -85,16 +85,23 @@ Notes:
 
 | verb | what it does |
 |------|--------------|
-| `ls [category]` | list capabilities, optionally one functional category |
-| `datastate [iri]` | list DataStates; with an IRI, show its producers / consumers |
-| `caps` | list every capability with its `consumes` / `produces` wiring |
-| `verify` | structural catalog check — sources / sinks / orphans |
-| `invoke <iri> [json]` | dispatch **one** capability; the JSON maps DataState-IRI → value |
-| `task <text>` | run the six-phase task lifecycle over `<text>` |
+| `ls [-l\|-g]` | firehose overview — list every element (caps, ds, pipelines, skills, episodes) |
+| `search [-i] [-l\|-g] <pattern>` | reverse-lookup a string across all registries (glob `*` `?` `[Aa]`) |
+| `ds [-l\|-g] [--code] [<iri>]` | datastates: list / inspect / `--code` = schema |
+| `caps [-l\|-g] [--code] [<iri>]` | capacities: list / inspect / `--code` = declaration + module |
+| `pl [-l\|-g] [--transitions] [<from> <to>]` | pipelines: list / find a chain / datastate hops |
+| `skills [-l\|-g] [<name>]` | installed-skills ledger: list / inspect |
+| `episodes [-l\|-g] [<iri>]` | episodic memory: list / inspect |
+| `invoke <cap\|pipeline\|suffix> [inputs]` | run one capacity or a promoted pipeline; inputs = positional, `key=value`, or single-quoted JSON |
+| `execute <input>` | run an installed skill's declared entry pipeline |
+| `verify [--ds\|--caps\|--pl]` | system report + health (absorbs the old `status`) |
+| `task <text>` | run the generic six-phase lifecycle |
 | `save` | persist this user's Local to Falkor |
 | `reset` | wipe run-state (episodic memory), keep learned parameters |
-| `help` | show the verb list |
+| `help` | verb index |
 | `quit` | `save` then exit |
+
+> Every verb has a manual page: `<verb> -h`. Scope `-l/--local` / `-g/--global` default to both. Create options (`--new`/`--seq`/`--sub`/`--prototype`) are placeholders pending the skill-acquisition process. Renamed since v1: `datastate`→`ds`; `ls` now lists everything (capability listing moved to `caps`); `status` folded into `verify`; `invoke` gained pipeline support; `execute` added.
 
 ## Probing (the payoff)
 
