@@ -37,6 +37,50 @@ Local — including accrued episodes — back to Falkor.
 **Ephemeral mode** (`--ephemeral`) boots an in-memory stack with builtins only,
 no Falkor and no persistence. Use it for a quick look or a scripted trial.
 
+## Set up and run (any skill)
+
+A resident brain must run as a **long-lived native process** — not `docker exec`,
+which starts a fresh process (and a fresh boot) on every call, so no state would
+survive. Run it in a virtualenv next to a FalkorDB sidecar. The recipe is generic;
+substitute any skill for `<skill-package>` / `<manifest>`.
+
+```
+# 1. FalkorDB sidecar (the compose file maps 6379 to the host)
+docker compose up -d falkordb
+
+# 2. venv + editable installs of MindsOS core and the skill package
+python3 -m venv ~/.venvs/brain && source ~/.venvs/brain/bin/activate
+pip install -e <path-to-mindsos>                    # provides the `mindsos` command
+pip install -e <skill-package> --no-deps            # e.g. a `mindsos-<skill>` dist
+#   --no-deps: the skill depends on `mindsos`, which is not on PyPI
+
+# 3. point at the host-mapped FalkorDB
+export FALKORDB_HOST=localhost FALKORDB_PORT=6379
+
+# 4. install the skill into the durable ledger (no login required — see notes)
+MANIFEST=<manifest.toml>                             # or resolve from package data, below
+mindsos skill install -m "$MANIFEST" --persist
+
+# 5. run the brain — same venv, so the skill package stays importable at boot
+mindsos brain --user <you>
+```
+
+Notes:
+
+- **No login is needed for `skill install`.** The CLI install path is
+  operator-trusted (it runs on the admin's own machine); the ADR-0183 capability
+  gate only engages on the server-session path. `--persist` writes the durable
+  `installed-skills` ledger record — that record, not any session, is what a later
+  brain reactivates. (A failed `mindsos server login` does **not** block the install.)
+- **Same environment.** Boot re-imports the skill's installer entry point, so the
+  skill package must be importable wherever `mindsos brain` runs — keep the venv
+  from step 2 active for step 5.
+- **Resolving a package-data manifest.** If the skill ships its manifest inside the
+  package rather than as a loose file:
+  ```
+  MANIFEST=$(python3 -c "from importlib import resources; print(resources.files('<skill_pkg>').joinpath('bundle/manifest.toml'))")
+  ```
+
 ## Verbs
 
 | verb | what it does |
@@ -100,30 +144,31 @@ L3 capability (see [end-to-end cookbook](../cookbook/end-to-end.md)). A
 installation replaces the v0 catalogs with real ones. Until then, use `invoke`
 to drive real capability bodies.
 
-## Installing a skill, then probing it
+## Probing an installed skill
 
-The resident brain is generic — ARC (or any skill) is just a consumer. A fresh
-brain shows only builtins; install a skill first, then boot and probe:
+The resident brain is generic — any skill is just a consumer. A fresh brain shows
+only builtins; after the install in [Set up and run](#set-up-and-run-any-skill),
+the skill's capabilities appear live:
 
 ```
-mindsos skill install -m <manifest.toml> --persist   # durable ledger; needs Falkor
-mindsos brain --user alice
 brain> ls        # builtins + the installed skill's capabilities
 brain> caps      # the installed wiring
 brain> verify    # orphan-free
 brain> invoke <installed-cap-iri> {...}   # drive a real installed body
 ```
 
-`--persist` is required — without it the install record is in-memory and a fresh
-`brain` process finds nothing. The skill's Python package must also be
-importable in the `brain` process (the boot re-runs its installer entry point).
+If `ls` shows the skill's capabilities, `apply_installed_skills` reactivated them
+from the ledger — the `fresh brain → install → probe` loop is closed. If they are
+missing, the two usual causes are a missing `--persist` (nothing in the ledger) or
+the skill package not being importable in the brain's environment.
 
 ## Prerequisites
 
-- **Durable mode:** a running `falkordb` sidecar (docker-compose default).
+- **Durable mode:** a running `falkordb` sidecar reachable via `FALKORDB_HOST` /
+  `FALKORDB_PORT` (see [Set up and run](#set-up-and-run-any-skill)).
 - **Ephemeral mode:** none.
-- To probe an installed skill: install it first with `--persist` and keep its
-  package importable where `brain` runs.
+- To probe an installed skill: install it with `--persist` and keep its package
+  importable in the same environment where `brain` runs.
 
 ## Limitations (read honestly)
 
