@@ -143,7 +143,7 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0137](0137-user-facing-request-promotion.md) | User-facing request_promotion API | Deferred | Server | L1-redesign-N6 |
 
 !!! note "ADRs 0113–0117, 0119–0120 reserved"
-    Numbers 0113 through 0120 are reserved for the [Server Layer pivot](../proposed.md#server-layer-pivot--2026-04-26) (mutation model, release manifest + version DB, audit gate, edge soft-delete, compositional metaedge immutability, per-user transactional promotion, composition-signature dedup, cross-layer rewrite handler contract). ADR-0118 is drafted; the remaining seven are pending. See `docs/HANDOFF_SERVER_PIVOT_2026-04-26.md` for the drafting plan.
+    Numbers 0113 through 0120 are reserved for the [Server Layer pivot](../proposed.md) (mutation model, release manifest + version DB, audit gate, edge soft-delete, compositional metaedge immutability, per-user transactional promotion, composition-signature dedup, cross-layer rewrite handler contract). ADR-0118 is drafted; the remaining seven are pending. See `docs/HANDOFF_SERVER_PIVOT_2026-04-26.md` for the drafting plan.
 
 !!! note "ADRs 0121–0137 — L1 redesign (2026-04-27)"
     Seventeen ADRs drafted in the L1 Core redesign pass. They formalise the substrate commitment (0121), six FalkorDB-weakness mitigations (0122–0127), the hybrid XRef model (0128), MetagraphSnapshot scope narrowing (0129), property bag (0130), pluggable IdStrategy (0131), instancing-package move (0132), soft-delete representation (0133), schema migration scanner (0134), removal-impact reporting (0135), server orthogonal placement (0136), and user-facing promotion request (0137). See `docs/HANDOFF_L1_REDESIGN_2026-04-27.md` for the migration plan.

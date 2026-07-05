@@ -11,7 +11,7 @@ last_confirmed_phase: 17
 
 ## The model — one graph per role, version in the IRI string
 
-Per [ADR-0150 §amendment-3](../../decisions/adr/0150-l2-knowledge-lifecycle.md#amendment-3-phase-17-retirement--2026-05-20--version-dispatch-model-lock),
+Per [ADR-0150 §amendment-3](../../decisions/adr/0150-l2-knowledge-lifecycle.md),
 MindsOS Knowledge dispatches role-graphs by **role string alone**.
 Each metagraph contains **at most one graph per role**:
 
@@ -147,7 +147,7 @@ architecture, not eternal architecture.
 
 ## See also
 
-- [ADR-0150 §amendment-3](../../decisions/adr/0150-l2-knowledge-lifecycle.md#amendment-3-phase-17-retirement--2026-05-20--version-dispatch-model-lock) — the version-dispatch model lock
+- [ADR-0150 §amendment-3](../../decisions/adr/0150-l2-knowledge-lifecycle.md) — the version-dispatch model lock
 - [ADR-0045](../../decisions/adr/0045-per-role-iri-builders.md) — per-role IRI builders (where version flows into IRIs)
 - [ADR-0051](../../decisions/adr/0051-promoted-ref-type-marks-surviving-draft.md) — PROMOTED breadcrumb (Local-draft-after-promote)
 - [global-local.md](../../concepts/global-local.md) — the Global/Local metagraph split
