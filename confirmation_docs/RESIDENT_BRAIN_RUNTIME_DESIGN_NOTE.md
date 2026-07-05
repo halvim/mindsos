@@ -48,6 +48,7 @@ Holds one `Stack`, synchronous loop:
 | `datastate [iri]` | `iter_datastates`; with IRI → `producers_of`/`consumers_of` |
 | `caps` | all caps + `inputs_of`/`outputs_of` wiring |
 | `verify` | `catalog_check` |
+| `invoke <iri> [json]` | `dispatcher.dispatch(iri, inputs)` — one capability, generic (any installed skill) |
 | `task <text>` | `orch.run_lifecycle` |
 | `save` | `persister.save(user, kl.local_metagraph(user))` |
 | `reset` | `persister.reset_run_state(user)` (explicit) |

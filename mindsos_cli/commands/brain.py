@@ -11,6 +11,7 @@ testable headless. ``loop()`` is the thin stdin front end.
 
 from __future__ import annotations
 
+import json
 from typing import Any, List
 
 import typer
@@ -26,6 +27,7 @@ verbs:
   datastate [iri]      list datastates; with IRI show its producers/consumers
   caps                 list capabilities with their consumes/produces wiring
   verify               structural catalog check (dangling / orphan / terminal)
+  invoke <iri> [json]  dispatch one capability; json maps datastate-iri -> value
   task <text>          run the six-phase lifecycle over <text>
   save                 persist this user's Local to Falkor
   reset                wipe run-state (episodic memory), keep learned params
@@ -104,6 +106,33 @@ class BrainREPL:
         return "\n".join(lines)
 
     # ── task + persistence verbs ──────────────────────────────────────
+
+    def _do_invoke(self, args: List[str]) -> str:
+        if not args:
+            return "usage: invoke <cap_iri> [json-inputs]"
+        cap_iri = args[0]
+        view = self.stack.global_view()
+        if view.get_capacity(cap_iri) is None:
+            return f"no such capability: {cap_iri!r}"
+        raw = " ".join(args[1:]).strip() or "{}"
+        try:
+            inputs = json.loads(raw)
+        except json.JSONDecodeError as e:
+            return f"bad json inputs: {e}"
+        if not isinstance(inputs, dict):
+            return "inputs must be a JSON object (datastate-iri -> value)"
+        try:
+            result = self.stack.dispatcher.dispatch(cap_iri, inputs)
+        except Exception as e:
+            return f"invoke error: {type(e).__name__}: {e}"
+        if not result.success:
+            return f"invoke failed: {result.error}"
+        if getattr(result, "needs_input", None) is not None:
+            return f"needs input: {result.needs_input}"
+        outs = dict(result.outputs)
+        if not outs:
+            return "ok (no outputs / write capability)"
+        return "outputs:\n" + "\n".join(f"  {k} = {v!r}" for k, v in outs.items())
 
     def _do_task(self, args: List[str]) -> str:
         if not args:

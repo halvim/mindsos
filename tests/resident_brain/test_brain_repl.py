@@ -6,6 +6,8 @@ testable without a TTY, over an ephemeral in-memory brain.
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from mindsos_cli.commands.brain import _HELP, BrainREPL
@@ -48,6 +50,28 @@ def test_verify(repl):
     out = repl.dispatch("verify")
     assert "catalog:" in out
     assert "status:" in out
+
+
+def test_invoke_runs_a_real_capability(repl):
+    from mindsos_capacity.builtins.text import DS_RAW_TEXT
+
+    payload = json.dumps({DS_RAW_TEXT: "the cat sat"})
+    out = repl.dispatch(f"invoke capacity:perception:text.space_split {payload}")
+    assert out.startswith("outputs:")
+    assert "cat" in out
+
+
+def test_invoke_unknown_capability(repl):
+    assert "no such capability" in repl.dispatch("invoke capacity:nope.not.real {}")
+
+
+def test_invoke_bad_json(repl):
+    out = repl.dispatch("invoke capacity:perception:text.space_split {not-json")
+    assert "bad json" in out
+
+
+def test_invoke_usage(repl):
+    assert "usage:" in repl.dispatch("invoke")
 
 
 def test_task_runs(repl):
