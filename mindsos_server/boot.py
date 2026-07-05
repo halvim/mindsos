@@ -41,6 +41,10 @@ class Stack:
         """The read-only bipartite probe surface over the Global L3."""
         return self.cl.global_view()
 
+    def local_view(self) -> Any:
+        """The read-only probe surface over this user's Local L3 partition."""
+        return self.cl.local_view(self.user)
+
     def save(self) -> None:
         """Persist the user's Local to Falkor (no-op when ephemeral)."""
         if self.persister is None:
