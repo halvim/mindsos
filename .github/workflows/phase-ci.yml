@@ -45,15 +45,9 @@ jobs:
 
       - name: Bring FalkorDB up
         run: |
-          docker compose up -d falkordb
-          # Wait up to 30s for healthcheck to flip to healthy.
-          for i in $(seq 1 30); do
-            status=$(docker inspect --format='{{.State.Health.Status}}' mindsos-falkordb 2>/dev/null || echo "starting")
-            if [ "$status" = "healthy" ]; then
-              echo "FalkorDB healthy after ${i}s"; break
-            fi
-            sleep 1
-          done
+          # `--wait` blocks until the healthcheck passes — no fixed
+          # container name needed (compose auto-names the container).
+          docker compose up -d --wait falkordb
 
       - name: Run cumulative test suite
         run: |
