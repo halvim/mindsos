@@ -117,23 +117,38 @@ OPTIONS
   -h, --help     Print this page.
 SEE ALSO  verify""",
     "invoke": """\
-NAME     invoke — run one capacity
-SYNOPSIS invoke [-h] <cap-iri|suffix> [inputs]
+NAME     invoke — run one capacity or pipeline
+SYNOPSIS invoke [-h] <cap|pipeline-iri|suffix> [inputs]
 DESCRIPTION
-  Dispatches a single capacity against the live merged catalog, driving the
-  real body. The capacity may be given as a unique IRI suffix. A single-input
-  capacity binds its input positionally; multiple inputs use key=value with
-  short datastate names. Resolution spans both scopes (no -l/-g).
-  (Invoking a whole pipeline is Slice 2.)
+  Dispatches a single capacity, or runs a named promoted pipeline, against the
+  live merged catalog. The target may be a unique IRI suffix. A single-input
+  capacity (or single-start pipeline) binds its input positionally; multiple
+  inputs use key=value with short datastate names. JSON object also accepted.
+  Resolution spans both scopes (no -l/-g).
 OPTIONS
-  <cap-iri|suffix>  The capacity to run (unique suffix accepted).
-  [inputs]          One positional value (single-input cap) OR key=value pairs
-                    (short datastate name = value). JSON object also accepted.
-  -h, --help        Print this page.
+  <cap|pipeline|suffix>  The capacity or promoted pipeline to run.
+  [inputs]               One positional value, key=value pairs, or a JSON object.
+  -h, --help             Print this page.
 EXAMPLES
   invoke space_split "the cat sat"
-  invoke some_cap a=1 b=2
-SEE ALSO  caps, pl""",
+  invoke some_pipeline:1 "the cat sat"
+SEE ALSO  execute, caps, pl""",
+    "execute": """\
+NAME     execute — run a skill's declared entry pipeline
+SYNOPSIS execute [-h] <input>
+DESCRIPTION
+  Runs the installed skill's declared runtime entry: seeds its
+  entry_start_datastate with <input>, composes a pipeline to its
+  entry_target_datastate via the conjunction finder, and runs it standalone.
+  If no installed skill declares an entry, execute is a no-op notice (task
+  remains for the generic six-phase lifecycle). If several skills declare
+  entries it reports the ambiguity.
+OPTIONS
+  <input>        The value seeded into the entry start datastate.
+  -h, --help     Print this page.
+EXAMPLES
+  execute "the cat sat"
+SEE ALSO  invoke, skills, pl""",
     "verify": """\
 NAME     verify — system report and health check
 SYNOPSIS verify [--ds | --caps | --pl] [-h]

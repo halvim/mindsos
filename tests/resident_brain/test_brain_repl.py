@@ -181,7 +181,7 @@ def test_invoke_json_still_works(repl):
     from mindsos_capacity.builtins.text import DS_RAW_TEXT
 
     payload = json.dumps({DS_RAW_TEXT: "the cat sat"})
-    out = repl.dispatch(f"invoke space_split {payload}")
+    out = repl.dispatch(f"invoke space_split '{payload}'")
     assert out.startswith("outputs:")
 
 
@@ -202,3 +202,16 @@ def test_verify_full_and_scoped(repl):
 
 def test_task_still_present(repl):
     assert repl.dispatch("task the cat sat") == "task: succeeded"
+
+
+def test_pl_finds_real_chain(repl):
+    from mindsos_capacity.builtins.text import DS_RAW_TEXT
+
+    v = repl.stack.global_view()
+    cap = next((n.node_id for n in v.iter_capacities() if n.node_id.endswith("space_split")), None)
+    if cap is None:
+        pytest.skip("space_split not found")
+    target = v.outputs_of(cap)[0]
+    out = repl.dispatch(f"pl {DS_RAW_TEXT} {target}")
+    assert out.startswith("pipeline:")
+    assert "space_split" in out

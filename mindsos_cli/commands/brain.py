@@ -42,6 +42,7 @@ verbs (try '<verb> -h' for a manual page):
   skills [<name>]            installed skills: list / inspect
   episodes [<iri>]           episodic memory: list / inspect
   invoke <cap> [inputs]      run one capacity
+  execute <input>            run a skill's declared entry pipeline
   verify [--ds|--caps|--pl]  system report + health
   task <text>                run the six-phase lifecycle
   save                       persist this user's Local to Falkor
@@ -302,7 +303,7 @@ class BrainREPL:
         try:
             pipe = find_pipeline(
                 self.stack.cl,
-                session=self.stack.session,
+                session=None,
                 start_datastate=start,
                 target_datastate=target,
             )
@@ -497,31 +498,119 @@ class BrainREPL:
             )
         return None, "too many values; use key=value or a JSON object"
 
+    def _resolve_pipeline(self, target):
+        from mindsos_capacity.pipeline import Pipeline
+        from mindsos_server.pipelines import iter_promoted_pipelines
+
+        nodes = list(iter_promoted_pipelines(self.stack.kl))
+        match = [n for n in nodes if n.node_id == target or n.node_id.endswith(target)]
+        if not match:
+            return None, f"no such capability or pipeline: {target!r}"
+        if len(match) > 1:
+            return None, "ambiguous pipeline: " + ", ".join(n.node_id for n in match)
+        val = match[0].value if isinstance(match[0].value, dict) else {}
+        try:
+            return Pipeline.from_dict(val), None
+        except Exception as e:
+            return None, f"pipeline {match[0].node_id} not reconstructable: {type(e).__name__}"
+
+    def _parse_pipeline_inputs(self, pipe, rest):
+        starts = list(pipe.start_datastates)
+        if not rest:
+            return {}, None
+        joined = " ".join(rest).strip()
+        if joined.startswith("{"):
+            try:
+                obj = json.loads(joined)
+            except json.JSONDecodeError as e:
+                return None, f"bad json inputs: {e}"
+            if not isinstance(obj, dict):
+                return None, "inputs must be a JSON object"
+            return obj, None
+        if all("=" in t for t in rest):
+            mapping = {}
+            for t in rest:
+                k, _, v = t.partition("=")
+                full = self._match_input(starts, k)
+                if full is None:
+                    return None, f"no start datastate matching {k!r}"
+                mapping[full] = self._coerce(v)
+            return mapping, None
+        if len(rest) == 1 and len(starts) == 1:
+            return {starts[0]: self._coerce(rest[0])}, None
+        return None, "use key=value or JSON (starts: " + ", ".join(starts) + ")"
+
     def _do_invoke(self, args: List[str]) -> str:
         opts, pos, err = parse(args, {})
         if err:
             return err
         if not pos:
-            return "usage: invoke <cap-iri|suffix> [inputs]"
-        cap_iri, rerr = self._resolve_capacity(pos[0])
-        if rerr:
-            return rerr
-        assert cap_iri is not None
-        inputs, ierr = self._parse_inputs(cap_iri, pos[1:])
+            return "usage: invoke <cap|pipeline-iri|suffix> [inputs]"
+        target = pos[0]
+        cap_iri, caperr = self._resolve_capacity(target)
+        if cap_iri is not None:
+            inputs, ierr = self._parse_inputs(cap_iri, pos[1:])
+            if ierr:
+                return ierr
+            try:
+                result = self.stack.dispatcher.dispatch(cap_iri, inputs)
+            except Exception as e:
+                return f"invoke error: {type(e).__name__}: {e}"
+            if not result.success:
+                return f"invoke failed: {result.error}"
+            if getattr(result, "needs_input", None) is not None:
+                return f"needs input: {result.needs_input}"
+            outs = dict(result.outputs)
+            if not outs:
+                return "ok (no outputs / write capability)"
+            return "outputs:\n" + "\n".join(f"  {k} = {v!r}" for k, v in outs.items())
+        pipe, perr = self._resolve_pipeline(target)
+        if pipe is None:
+            return caperr if "ambiguous" in caperr else perr
+        inputs, ierr = self._parse_pipeline_inputs(pipe, pos[1:])
         if ierr:
             return ierr
+        from mindsos_server.pipeline_runner import run_pipeline
+
+        state, rerr = run_pipeline(self.stack.dispatcher, pipe, inputs)
+        if rerr:
+            return f"invoke pipeline failed: {rerr}"
+        out = state.get(pipe.target_datastate)
+        return f"pipeline -> {pipe.target_datastate} = {out!r}"
+
+    def _do_execute(self, args: List[str]) -> str:
+        from mindsos_capacity.exceptions import PipelineNotFoundError
+        from mindsos_capacity.pipeline import ConjunctionFinder
+        from mindsos_server.pipeline_runner import run_pipeline
+        from mindsos_server.skills.records import skill_entries
+
+        opts, pos, err = parse(args, {})
+        if err:
+            return err
+        entries = skill_entries(self.stack.kl)
+        if not entries:
+            return "execute: no installed skill declares an entry pipeline"
+        if len(entries) > 1:
+            return "execute: ambiguous — entries declared by " + ", ".join(
+                n for n, _, _ in entries
+            )
+        name, start, target = entries[0]
+        if not pos:
+            return f"usage: execute <input>   (runs {name}: {start} -> {target})"
+        value = self._coerce(pos[0]) if len(pos) == 1 else " ".join(pos)
         try:
-            result = self.stack.dispatcher.dispatch(cap_iri, inputs)
-        except Exception as e:
-            return f"invoke error: {type(e).__name__}: {e}"
-        if not result.success:
-            return f"invoke failed: {result.error}"
-        if getattr(result, "needs_input", None) is not None:
-            return f"needs input: {result.needs_input}"
-        outs = dict(result.outputs)
-        if not outs:
-            return "ok (no outputs / write capability)"
-        return "outputs:\n" + "\n".join(f"  {k} = {v!r}" for k, v in outs.items())
+            pipe = ConjunctionFinder().find(
+                self.stack.cl,
+                session=None,
+                start_datastates=(start,),
+                target_datastate=target,
+            )
+        except PipelineNotFoundError as e:
+            return f"execute: no pipeline {start} -> {target}: {e}"
+        state, rerr = run_pipeline(self.stack.dispatcher, pipe, {start: value})
+        if rerr:
+            return f"execute failed: {rerr}"
+        return f"execute[{name}]: {target} = {state.get(target)!r}"
 
     # ── task + persistence verbs ──────────────────────────────────────
 

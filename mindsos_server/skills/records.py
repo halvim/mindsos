@@ -8,7 +8,8 @@ The record ``value`` is a structured dict — the first production
 consumer of the ADR-0182 ``_value_json`` round-trip. Queryable fields
 are lifted flat by this writer per ADR-0182 rule 5: ``bundle_name``,
 ``bundle_version``, ``bundle_digest``, ``status``, ``action``,
-``recorded_at``, ``seq``.
+``recorded_at``, ``seq``, and (ADR-0183 §am-1, Slice 2) the optional
+runtime-entry props ``entry_start_datastate`` / ``entry_target_datastate``.
 
 All writes travel through the ADR-0180 ``make_writeable`` gate built by
 the caller (driver) — this module receives the gate, never a session.
@@ -18,7 +19,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Callable, Dict, List, Mapping, Optional
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from mindsos_knowledge import ROLE_INSTALLED_SKILLS
 from mindsos_knowledge.schemas.installed_skills import (
@@ -45,6 +46,8 @@ class SkillRecordView:
     recorded_at: str
     seq: int
     value: Mapping[str, Any]
+    entry_start_datastate: Optional[str] = None
+    entry_target_datastate: Optional[str] = None
 
 
 def _installed_skills_graph(kl: Any):
@@ -76,6 +79,8 @@ def iter_skill_records(kl: Any) -> List[SkillRecordView]:
                 recorded_at=str(props.get("recorded_at")),
                 seq=int(props.get("seq", 0)),
                 value=node.value if isinstance(node.value, dict) else {},
+                entry_start_datastate=props.get("entry_start_datastate"),
+                entry_target_datastate=props.get("entry_target_datastate"),
             )
         )
     views.sort(key=lambda v: v.seq)
@@ -90,6 +95,19 @@ def latest_records_by_bundle(kl: Any) -> Dict[str, SkillRecordView]:
     return latest
 
 
+def skill_entries(kl: Any) -> List[Tuple[str, str, str]]:
+    """``(bundle_name, entry_start, entry_target)`` for currently-installed
+    skills whose latest record declares a runtime entry (ADR-0183 §am-1)."""
+    out: List[Tuple[str, str, str]] = []
+    for name, r in latest_records_by_bundle(kl).items():
+        if r.status != "installed":
+            continue
+        if r.entry_start_datastate and r.entry_target_datastate:
+            out.append((name, r.entry_start_datastate, r.entry_target_datastate))
+    out.sort()
+    return out
+
+
 def append_record(
     *,
     writeable: Callable[..., Any],
@@ -100,12 +118,17 @@ def append_record(
     status: str,
     action: str,
     value: Dict[str, Any],
+    entry_start_datastate: Optional[str] = None,
+    entry_target_datastate: Optional[str] = None,
 ) -> SkillRecordView:
     """Append one action record through the ADR-0180 gate.
 
     ``seq`` is minted as ``max(existing) + 1`` over ALL records (global
     install order — activation replays in this order). The record-walk
     cost note (R2-2) tracks here: flip to a counter only with evidence.
+
+    ADR-0183 §am-1: when supplied, the runtime-entry props are lifted flat
+    (queryable) alongside the other flat fields.
     """
     existing = iter_skill_records(kl)
     seq = (existing[-1].seq + 1) if existing else 1
@@ -128,6 +151,10 @@ def append_record(
     }
     if bundle_digest is not None:
         flat["bundle_digest"] = bundle_digest
+    if entry_start_datastate is not None:
+        flat["entry_start_datastate"] = entry_start_datastate
+    if entry_target_datastate is not None:
+        flat["entry_target_datastate"] = entry_target_datastate
     handle.graph().add_node(
         full_value,
         NODE_SKILL_INSTALL_RECORD,
@@ -144,6 +171,8 @@ def append_record(
         recorded_at=recorded_at,
         seq=seq,
         value=full_value,
+        entry_start_datastate=entry_start_datastate,
+        entry_target_datastate=entry_target_datastate,
     )
 
 
@@ -151,5 +180,6 @@ __all__ = [
     "SkillRecordView",
     "iter_skill_records",
     "latest_records_by_bundle",
+    "skill_entries",
     "append_record",
 ]
