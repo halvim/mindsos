@@ -1,8 +1,12 @@
 # Direction: main/projects CLI redundancy fix
 
-**Status:** DIRECTION recorded 2026-07-05 (env-debug from the resident-brain
-REPL ship chat). NOT built — chartered as its own chat. Decisions here can
-change in that chat.
+**Status:** DIRECTION recorded 2026-07-05. **Base half IMPLEMENTED 2026-07-06**
+(this chat) — see `SKILL_REPO_CONTRACT.md`. Open questions resolved: multi-repo
++ skill-only repos (not monorepo); git-dependency only (no private index);
+`doctor` detector built; pin = git tag + `requires_mindsos_phase`; base dist
+renamed `mindsos-cli`→`mindsos-runtime`; install stays two-step `--no-deps`
+(PB4). **Arc half OWED:** purge the arc repo's vendored `mindsos_*` tree + set
+its dep to `mindsos-runtime`, folded with landing `mindsos_arc`.
 
 ## Problem
 Multiple full `mindsos_*` checkouts editable-installed into one interpreter
