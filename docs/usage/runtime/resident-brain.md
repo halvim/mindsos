@@ -50,9 +50,10 @@ docker compose up -d falkordb
 
 # 2. venv + editable installs of MindsOS core and the skill package
 python3 -m venv ~/.venvs/brain && source ~/.venvs/brain/bin/activate
-pip install -e <path-to-mindsos>                    # provides the `mindsos` command
-pip install -e <skill-package> --no-deps            # e.g. a `mindsos-<skill>` dist
-#   --no-deps: the skill depends on `mindsos`, which is not on PyPI
+pip install -e <path-to-mindsos>                    # the `mindsos-runtime` dist; provides the `mindsos` command
+pip install -e <skill-package> --no-deps            # a `mindsos-<skill>` dist (e.g. mindsos-arc)
+#   --no-deps is REQUIRED: the skill depends on `mindsos-runtime` (not on PyPI), and a skill
+#   must never carry its own `mindsos_*` copy — see "One shared mindsos_cli" below
 
 # 3. point at the host-mapped FalkorDB
 export FALKORDB_HOST=localhost FALKORDB_PORT=6379
@@ -75,6 +76,13 @@ Notes:
 - **Same environment.** Boot re-imports the skill's installer entry point, so the
   skill package must be importable wherever `mindsos brain` runs — keep the venv
   from step 2 active for step 5.
+- **One shared `mindsos_cli` — never vendor base.** A skill package ships only its own
+  `mindsos_<skill>` and depends on the `mindsos-runtime` base distribution; it must not
+  contain a second `mindsos_cli` / `mindsos_core` / … tree. Two full trees editable-installed
+  in one venv collide on the import-package name and pip silently picks one — the cause of the
+  `No such command 'brain'` symptom (a brain-less base shadows the real one). Install base
+  first, the skill `--no-deps` second. `mindsos doctor --self-test` fails when more than one
+  installed distribution provides `mindsos_cli`.
 - **Resolving a package-data manifest.** If the skill ships its manifest inside the
   package rather than as a loose file:
   ```
