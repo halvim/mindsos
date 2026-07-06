@@ -130,27 +130,63 @@ skill-verify chat can extend it.
 ## The REPL
 
 `mindsos_cli/commands/brain.py` keeps verb dispatch pure — `BrainREPL.dispatch(
-line) -> str` — so the whole verb surface is unit-testable without a TTY
-(`tests/resident_brain/test_brain_repl.py`). `loop()` is the thin stdin front
-end; `quit` calls `save` then exits. Being an interactive REPL, `brain` is the
-documented exception to the `--json`-universal CLI convention.
+line) -> str` — so the whole verb surface is unit-testable without a TTY. `loop()`
+is the thin stdin front end; `quit` calls `save` then exits. Being an interactive
+REPL, `brain` is the documented exception to the `--json`-universal convention.
+
+Verbs take Linux-style flags. Two support modules sit beside `brain.py`:
+`_replparse.py` tokenizes with `shlex` (quoting works) and parses flags without
+ever raising or `sys.exit`-ing — it returns an error *string*, honouring the
+`dispatch` contract. `_manpages.py` holds a per-verb man page shown by
+`<verb> -h`, pre-scanned before verb logic. Verbs: probes `ls` / `search` /
+`ds` / `caps` / `pl` / `skills` / `episodes` / `verify`; actions `invoke` /
+`execute` / `task` / `save` / `reset`. The read verbs' `-l/--local` /
+`-g/--global` scope flags select `Stack.local_view()` (the Local L3 partition)
+vs `global_view()`; datastates/pipelines/skills/episodes are read through the L0
+readers `mindsos_server/episodes.py` and `pipelines.py`.
 
 `invoke` routes through `Stack.dispatcher.dispatch(cap_iri, inputs)` — the same
 `L4Dispatcher` path the lifecycle uses — so it drives real capability bodies for
-any builtin or installed skill. `task` routes through `orch.run_lifecycle`, which
-at v1 runs the v0 placeholder catalogs (no real L3 dispatch); the honest split is
-documented in the [user guide](../../usage/runtime/resident-brain.md).
+any builtin or installed skill; the capacity may be named by a unique IRI
+suffix, and inputs are a positional value, `key=value` pairs, or **single-quoted**
+JSON (bare JSON is mangled because `shlex` strips its quotes). `task` routes
+through `orch.run_lifecycle`, which at v1 runs the v0 placeholder catalogs (no
+real L3 dispatch); the honest split is documented in the
+[user guide](../../usage/runtime/resident-brain.md).
+
+## `execute` and the standalone pipeline runner
+
+`execute <input>` runs an installed skill's declared *entry* pipeline. A skill
+declares its entry with two optional flat props on its `SkillInstallRecord` —
+`entry_start_datastate` / `entry_target_datastate` (ADR-0183 §am-1; additive on
+the `strict=False` schema), read by `records.py::skill_entries`. `execute` seeds
+the start DataState with `<input>`, composes a chain to the target with
+`ConjunctionFinder` (sound for multi-input; `input_group` defaults to
+`all_required`, so single-input caps work too), and runs it through
+`mindsos_server/pipeline_runner.py::run_pipeline` — a standalone step-runner that
+walks the topo-ordered `Pipeline.steps` threading a `{datastate: value}` map via
+the dispatcher, with **no** `ChainArtifactWriter`, TaskRun, or MM coupling. The
+same runner backs `invoke <promoted-pipeline>`.
+
+Two contract notes: the finder's view is chosen by `session.user_id`, so
+`execute`/`pl` call it with **`session=None`** to search the Global catalog (a
+session-bearing view resolves to the Local partition, which lacks the global
+builtins). And `execute` is **inert** until some skill declares an entry — none
+ship one yet; ARC-packaging is the first consumer, so `task` is retained.
 
 ## Tests
 
-`tests/resident_brain/`: `test_catalog_check.py` (fake-view unit cases + an
-ephemeral orphan-free smoke), `test_boot_brain.py` (ephemeral shape / task /
-save), `test_brain_repl.py` (every verb, headless), and
+`tests/resident_brain/`: `test_replparse.py` (the flag parser, pure),
+`test_catalog_check.py` (fake-view unit cases + an ephemeral orphan-free smoke),
+`test_boot_brain.py` (ephemeral shape / task / save), `test_brain_repl.py`
+(every verb, headless), `test_execute.py` (the step-runner + `execute` +
+invoke-pipeline over synthetic install-record / promoted-pipeline fixtures), and
 `test_durable_roundtrip.py` (`@pytest.mark.integration`, live-Falkor Episode
-save→load). The first three run without a sidecar; the last runs on the gate.
+save→load). All but the last run without a sidecar.
 
 ## Deferred
 
 Daemon + socket client (background cognition) · a retention policy for unbounded
-Local growth · crash-autosave · full engine-backed `verify` · real `task`-driven
-solves (blocked on the WSD v0→real orchestration flip, Phases 51–56).
+Local growth · crash-autosave · full engine-backed `verify` · `verify --diff`
+against a persisted prior-state snapshot · real `task`-driven solves (blocked on
+the WSD v0→real orchestration flip, Phases 51–56).
