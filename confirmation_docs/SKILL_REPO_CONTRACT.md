@@ -58,7 +58,13 @@ through the shadowed `mindsos` command):
     p=sorted(set(m.packages_distributions().get('mindsos_cli',[]))); \
     print('COLLISION' if len(p)>1 else 'ok', p)"
 
-**Gotcha:** after the `mindsos-cli`→`mindsos-runtime` rename, remove the stale
-`mindsos_cli.egg-info/` before reinstalling base — otherwise metadata reports
-both `mindsos-cli` and `mindsos-runtime` as providers and the detector
-false-positives.
+**Rename cleanup gotcha.** After `mindsos-cli`→`mindsos-runtime`, any venv that
+previously did an editable install under the old name still carries a stale
+`mindsos-cli` dist-info in site-packages (pip does not remove it on a rename) —
+and the in-tree `mindsos_cli.egg-info/` regenerates under the old name too. Both
+make `packages_distributions()` report two providers of `mindsos_cli` and the
+detector false-positives. Cleanup in each such venv:
+
+    pip uninstall -y mindsos-cli        # drop the old-named dist-info
+    rm -rf mindsos_cli.egg-info         # drop the in-tree stale metadata
+    pip install -e . --no-deps          # reinstall base as mindsos-runtime
