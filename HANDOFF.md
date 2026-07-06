@@ -716,6 +716,16 @@ A **generic core** feature converged in the core-design chat; **ADRs 0195 + 0196
 
 **Full record:** `docs/decisions/adr/0195-phase1-interpretation-seam.md` + `0196-needs-input-clarification.md` + `docs/_workbench/L4_FUTURE_WORK.md` §6/§6.2 + `L5_FUTURE_WORK.md` L5-NEW-19.
 
+### 3.1.25 Resident-brain REPL — flagged command surface + `execute` (Slices 1–2 SHIPPED 2026-07-05)
+
+Reworked `mindsos brain` into a Linux-style flagged REPL (Slice 1, main `14efafc`) and added skill-entry `execute` (Slice 2, main `e1b10d6`; closeout `2baa956` + docs `2c18a94`). Gate 4175 passed / 0 fail, containerized.
+
+**Slice 1:** parser foundation `mindsos_cli/commands/_replparse.py` (shlex tokenize + REPL-safe flag parser + `-h` pre-scan; never raises/exits) + per-verb man pages `_manpages.py` (`<verb> -h`). Verbs `ls` (everything overview) / `search` (glob reverse-lookup, `-i`) / `ds` (rename of `datastate`; `--code`=schema) / `caps` (`--code`=decl+module) / `pl` (list promoted+learned / find / `--transitions`) / `skills` / `episodes` / `verify` (absorbs `status`). `invoke` ergonomics: suffix + single-input positional + `key=value` + single-quoted JSON. Scope `-l/-g` via a one-line `Stack.local_view()` over the existing `CapacityLayer.local_view`. New L0 readers `mindsos_server/episodes.py` + `pipelines.py`. `--new/--seq/--sub/--prototype` are SAP placeholders. Breaking CLI: `datastate`→`ds`, `ls`→everything, `status`→`verify`.
+
+**Slice 2:** `execute <input>` runs a skill's declared entry pipeline — seeds `entry_start_datastate`, composes start→target via `ConjunctionFinder` over the **Global** view (`session=None`), runs it through the new standalone `mindsos_server/pipeline_runner.py` (no MM/writer/TaskRun; shared with `invoke <promoted-pipeline>`). New optional flat props `entry_start_datastate`/`entry_target_datastate` on `SkillInstallRecord` (ADR-0183 §am-1, additive/`strict=False`). `task` retained; `execute` inert until a skill declares an entry (ARC-packaging = first consumer, coordinated via the transient `.scratch/ARC_ENTRY_DECLARATION.md`).
+
+**No version bump** — non-phase feats; `core_version` stays `phase50`. A `phase50a` bump was implemented and **reverted**: the version scheme is integer-phase-locked (manifest `phase` field + digit-only `preflight` regex + ~5 doctor parity tests; ≥51 reserved for WSD). Design record: `confirmation_docs/RESIDENT_BRAIN_REPL_COMMANDS_DESIGN.md`; dev internals: `docs/dev/internals/runtime.md`. Deferred: `verify --diff` + a prior-state snapshot store.
+
 ### 3.2 Contested (HISTORICAL — superseded by Chat A closure above)
 
 Each is in active review. **Resolution gates the L4/L5 plan** (see §4).
