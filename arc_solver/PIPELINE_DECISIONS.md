@@ -1114,6 +1114,145 @@ filed as motivating consumer; the demo does NOT block on it.
     perceive phases 1-7 into dispatched caps; `grid_rigid` reverted (coverage stays 4). NOT arc's:
     the local `main` worktree is stale + holds a perception chat's uncommitted files (don't pull from arc).
 
+- **2026-07-04 — REANALYSIS chat (no solver code; findings + one deferral; docs-only).**
+  State first: since the 2026-07-03 org entry the branch also FLATTENED `projects/arc_solver`
+  → **repo-root `arc_solver/`** (root `run_spike` execs `arc_solver/run_spike`) and added the
+  **`mindsos_arc` on-top bundle + install-path tests** (arc packaged as an installable
+  consumer; pytest gate "6 passed"). `run_spike` anchor unchanged = **14 [ok]** + wrote 400
+  profiles (re-verified this chat). `pinned_core` = `feat-phase1-seam-confirmed`; **re-pin is
+  DONE** (commit `eb9f420`) — the STATE "PENDING re-pin" prose was stale. arc-solver is ~14
+  commits behind `origin/main` (perception/leaf + skill-verify work); not merged, pins hold.
+  - **Layer-integration map (code-verified). Three run planes:** (A) standalone viewer
+    `./arc solve` → inline `pipeline.run_all`, never touches the layer; (B) through-the-layer
+    `arc_l4.solve_through_layer` — dispatches ONLY phases 8/9/10 via `L4Dispatcher`, runs 1–7
+    inline AND computes the full inline answer as an oracle, then checks dispatched==inline →
+    the layer path is a **redundant echo, not load-bearing**; (C) durable `arc_instance` —
+    Falkor Local L5 Episodes, docker+script-only, NOT in the gate.
+  - **DataState-graph disconnect (the key finding for "arc in the architecture").** DataStates
+    ARE real nodes (`ROLE_DATASTATES`, `type_name="DataState"`) with PRODUCES/CONSUMES edges,
+    but **type-only — runtime values never become nodes** (only the L5 Episode is a persisted
+    value-node). The solve caps consume `profile`/`bg_cand`/`recomparison`/`enclosed` —
+    DataStates **no capacity produces** (orphan source nodes, injected from inline `run_all`);
+    `bg_deduction` produces `background_set`, which the solver never reads (it reads `bg_cand`).
+    Net: the registered graph is **two disconnected components** (perceive+reason vs solve),
+    bridged only by inline code. Real bodies = perceive extractors, `inside`, `touching_delta`,
+    the 4 generators, emit/select/apply; everything else (profilers, comparators bar `inside`,
+    `union`, `build_correspondence`, `synthesize_selector`, `bg_deduction`) is a provenance
+    stub (`→ None`). Declared inputs are fiction for multi-operand caps (Part-5 arity gap);
+    `touching_delta` declares `(touching,correspondence)` but its body reads `(pair,background)`
+    (masked by `input_group=fold`).
+  - **DEFERRED — modality-aware input ingress (was: "a capacity that reads text").** Core
+    already HAS text readers: `phase1.identity` (placeholder passthrough) + the real-but-DORMANT
+    `text.space_split` (text.raw→text.tokens, disconnected from the intake). A general
+    modality-typed ingress (input.text/image/action → select capacities) is a **CORE** feature
+    (RULES §8; arc owns none) with **no arc consumer today** → PARKED. Only consumer-backed
+    slice = wire `text.space_split` into the intake so the request is tokenized by a capacity
+    (arc-local, small). Framing if/when built: separate **modality** (data type → capacity
+    selection) from **source** (provenance metadata, NOT a selector); "load" = SELECT (register
+    at bootstrap) not INSTALL; the core `Adapter` kind (`KIND_ADAPTER`, bridges near-compatible
+    DataStates) is the candidate mechanism. **Terminology fix:** `ADAPTER_FAMILY_CHAT`/`Adapter`
+    = a core L3 capacity kind for cross-realm DataState bridges, NOT a UI/input boundary adapter
+    (earlier "reconcile with adapter-family" was a conflation, retracted).
+  - **Hygiene (found, unfixed — batch one housekeeping pass):** root `./arc` help still lists
+    the retired 13-step tail; `spike/bg_ground.py` is a broken orphan (calls the deleted
+    `arc_solver._bg_color`; the 2026-06-28 "deleted" note never executed); `spike/arc_solver.py`
+    docstring still says "scoped to #8"; the two `*_NEXT_CHAT_PROMPT.md` cite branch
+    `demo/arc-wiring` (deleted) + `-m arc_instance` (must run as a script).
+  - **Next-phase recommendation (owner picks).** Honest fork for "arc in MindsOS": (a) make the
+    dispatched solve **sole-path** (drop the inline oracle in `solve_through_layer` so the answer
+    only exists via the layer — smallest real step), then (b) **produce** `profile`/`bg_cand`/…
+    as registered caps to close the graph disconnect. Alternatives: reporting intelligence
+    (consumer = human; needs scope + arc-solver-viz de-confliction); coverage via
+    CORPUS-ANALYSIS→D13 (grid_rigid's verified +7 was reverted with no recorded reason — ask
+    first). See the next-chat prompt.
+
+- **2026-07-06** — **Blocker-1 premise INVALIDATED; reframed to an atom-grounding chat (design
+  reanalysis, no code, gate untouched).** The 2026-07-05 plan ("register producer caps for
+  `DS_PROFILE`/`DS_BG_CAND`/`DS_RECOMPARISON`/`DS_ENCLOSED` so `find_pipeline(raw_task→solve)`
+  is solvable") rests on treating `profile`/`bg_cand`/`enclosed`/`recomparison` as opaque L3
+  DataStates. Owner reframe (this chat), confirmed against `ONTOLOGY.md` §0/§2/§4#19 and memory
+  [[arc-mindsos-layer-mapping]]/[[arc-layer-datastate-gap]]: **they are L5 per-task aggregates,
+  not L3 atoms.** A datum lives in all three layers in different senses — **class def = L2**
+  (`ontology`/`lexicon`), **DataState type = L3**, **per-task value = L5** (ABox). Findings:
+  (a) `ONTOLOGY.md` already defines the atom layer — `Coordinate`, `Color`, `Cell = {Coordinate,
+  Color}`, `recognize_cell:(Coordinate,Color)→Cell`, `build_grid: Cell*→Grid`,
+  `extract_objects: Region→Object*` — but the SHIPPED spike/bundle drifted coarser (no
+  `arc.cell`/`arc.coordinate`; `arc.color` mis-declared as a recolor param only;
+  `build_grid: raw_grid→grid` skips the cell layer). (b) MindsOS has **no sub-pipeline object**
+  (a sub-pipeline is just a transitive subdivision of the one query-time DAG); capacities are
+  atomic (composites deferred ADR-0184); `promoted-pipelines` has no writer; `ConjunctionFinder`
+  fires each cap once, value-blind, type-level — **no cardinality**, so `Cell*→Grid` (fold) and
+  `Grid→Object*` (fan-out) and per-pair/per-task aggregation are NOT expressible as finder edges.
+  (c) **THE OPEN CRUX (decide first next chat):** is the profiling pipeline an executable
+  `find_pipeline` L3 type-path, or **provenance + L4-orchestration** (the reason-stage precedent,
+  §5 / [[arc-reason-stage-grounding]], already concluded provenance-not-composition)? If the
+  latter, `execute` (one value-blind ConjunctionFinder DAG) **cannot run ARC's profiling** — the
+  same wall the runtime lane hit; the honest v1 entry path is L4-orchestrated (`arc_l4`), not a
+  single composed DAG. Next chat = reconcile shipped L3 with the `ONTOLOGY.md` atom layer + settle
+  the fold/provenance decision, updating `ONTOLOGY.md`. Blocker-1 producer-registration is **on
+  hold** under its old framing.
+
+- **2026-07-06 (cont.) — CRUX RESOLVED + full atom/capacity/pipeline model settled (docs-only, gate
+  untouched). Working record: `arc_solver/ATOM_TABLE.md`; core asks: `arc_solver/CORE_REQUESTS.md`.**
+  The fold/provenance crux dissolved into a cleaner model (owner-driven, ~8 reanalysis passes):
+  - **A capacity IS a DataState transition** (`consumes → produces`); `arc_solver`/`arc_profile` is
+    imperative Python *mimicking* transitions, and `arc_capacities.py` is a **shim** that got some
+    wrong. This chat extracts the *true* transitions.
+  - **No "L4 capacities."** Per Chat A, decisions are **L3**; **L4 is the substrate** (Executor/
+    Dispatcher/MM) that iterates, dispatches, routes — it owns no transitions. Orchestration
+    *decisions* are L3 caps in the shipped `planning.*`/`orchestration.*`/`phase1.*` families
+    (`mindsos_capacity/builtins/`, dispatched via the normal invoke path). Verified in core.
+  - **DataState is the universal unit.** Anything in L2/L5 *is* a DataState. A cap declares only
+    in_ds/out_ds **types**; **L4 binds each to a source (input/L2/L5) and dest (output/L2/L5)**.
+    This **dissolves the ∅-producer "gap"**: `profile`/`bg_cand`/`enclosed`/`recomparison` are normal
+    L3 DataStates **stored in L5** by decision caps + L4, then **sourced from L5** — not find_pipeline
+    targets, never ∅. Blocker-1 ("register producers for them") is **closed as mis-framed**.
+  - **find_pipeline = discovery of UNKNOWN compositions.** **Known** pipelines (`perceive`) are
+    recorded in **L2 `promoted-pipelines`** and looked up; L4 falls back to `find_pipeline` only for
+    novelty. **L4 processes** (profile-build, bg-deduction) are the substrate running a plan that
+    calls domain caps + orchestration-decision caps — not pipelines, not recorded.
+  - **Groups (C4).** A `*` DataState is a group (list/set) whose members L4 iterates; group ≠ member
+    as *types*, so fan-out needs **no** finder cardinality — the old C2 is dropped, replaced by C4.
+    Verified: `register_capacity` emits **binary** PRODUCES/CONSUMES (no hyperedge; the typed
+    input-group graph form is deferred); `CapacityContext.MMHandle` is the L5 read/write surface.
+  - **Core requests (ARC = consumer of record; one proposal, §5 extension):** **C1** same-type
+    operand arity (= Part 5, un-defer) · **C3** truthful invoke contract (declared == body; = Part 6
+    extension) · **C4** group/member DataState attribute · **C5** known-pipeline teaching/dream writer
+    + promoted-path lookup. **C2 dropped.** ARC-side code fixes (not core): E1 `perceived_grid`
+    producer, E2 `arc.background` orphan, E7 `arc.color`/`recolor`-pairing.
+  - **Entry-declaration consequence** (noted in `MindsOS/.scratch/ARC_ENTRY_DECLARATION.md`): the
+    `raw_task → arc.solve` **single-ConjunctionFinder-DAG** entry is **retired** — the entry is the
+    **L4 substrate running a plan** (known pipelines via L2 + domain/orchestration L3 caps), not one
+    composed DAG.
+
+- **2026-07-07 — ARC commits to REAL registration; the core track flips from "file" to "BUILD"
+  (design reanalysis, docs-only, gate untouched; ~5 convergence passes).** Decisions (reversals vs
+  the 2026-07-06 framing):
+  - **(1) ARC will EXECUTE comparators through `invoke`** (real registration), not stay inline/
+    provenance-only → **reopens D3** (decompose the #8 monolith) and makes ARC the **executing
+    consumer of record** for §5 **Part 5**, superseding the 2026-06-23 keep-deferred park
+    (`STATE.json` → `pending_designs.composition-lifecycle-s2-part5`). bongard-m3 = the **same
+    binary shape**, co-signs; bongard-m5/fold = the separate **5b** axis, out of scope.
+  - **(2) CORE chat = BUILD, not file:** **C4** (groups) + **Part-5/5a** (same-type operand arity) +
+    **C3** (Part-6 extension). **C5** stays deferred on the **ADR-0184** promoted-pipelines seam
+    (teaching/dream = a second trigger into that same writer, not a new one).
+  - **(3) 5a shape settled + validated → `arc_solver/PART5_OPERAND_SPEC.md`:** core needs
+    **positional operand arity only**; roles (from/to, container/contained, in/out) are ARC-local
+    slot conventions, never a core field. Validated against all 14 same-type-operand bodies (7 sym /
+    7 asym). Two contract forms; **Form B** (additive `operand_arity` field, reuses Part-6 +
+    `**inputs`) recommended. `touching` cross-kind edge case resolved ARC-side (region view).
+  - **(4) C3 reframed:** "declared==body" isn't statically checkable; the buildable core version =
+    **restrict the body-facing MMHandle to writes/scope only; all read-data arrives as declared
+    inputs** (Part-6 extension). Demoted from "core contract" to this concrete form.
+  - **(5) Sequencing:** core ships **5a + C4** → ARC reopens D3, re-registers the family with real
+    arity, routes through `invoke`. **ARC blocks on 5a; core blocks only on the spec (done).**
+  - **Consumer-discipline caveat (RULES §3):** the part5 gate wants an *executing* consumer *today*;
+    ARC can't execute until 5a lands → the CORE chat must consciously build on a **committed
+    consumer + validated spec** (pair-execution), not a live one. **Open decision for the CORE chat.**
+  - **Zero task-solving payoff** — honest grounding (the skill-acquisition done-test), not new
+    solves; accepted eyes-open. Updated asks: `CORE_REQUESTS.md`. **Owed by the CORE chat:** update
+    the `STATE.json` part5 entry (consumer = ARC confirmed) + file the ADR at build.
+
 ---
 
 ## 5. CORE PROPOSAL — **IMPLEMENTED (parts 1–4), 2026-06-21**
@@ -1145,10 +1284,15 @@ ARC's four-part proposal on branch **`feat/composition-lifecycle`** (commit `325
   next-phase decision (re-pin → declare `input_group` per reason cap → route through
   `ConjunctionFinder`; doing so is what would un-defer Part 5).
 
-**Consumption gating (RULES §3).** This is on a feature branch — **not merged to `main`, not
-tagged, demo still pins `phase-50-confirmed`.** The demo cannot use `ConjunctionFinder`/`input_group`
-until: `feat/composition-lifecycle` → merge to `main` → confirmed tag → `git merge <tag>` into
-`demo/arc` → re-pin `STATE.json`. The demo does **not** block on this.
+**Consumption gating (RULES §3) — status corrected 2026-07-07.** Slice 1 (`b56e0ac`:
+finder seam / `ConjunctionFinder` / `input_group` / `PipelineDAG`) and Part 6 (`2676b9d`) are
+**MERGED to `main`** and **tagged `composition-lifecycle-s2-confirmed`** (core stayed phase-50 —
+non-phase feats). The earlier "not merged, not tagged" wording was stale. **Still true:** the ARC
+demo pins `phase-50-confirmed`, a tag that **predates** these commits, so it has not consumed them
+yet. To use `ConjunctionFinder`/`input_group`/Part-6 (and the coming 5a): `git merge
+composition-lifecycle-s2-confirmed` (or the future 5a tag) into `demo/arc` → re-pin `STATE.json`.
+The CORE chat therefore builds 5a **on top of the already-merged base** — no re-merge of
+composition-lifecycle needed. The demo does **not** block on this.
 
 **What it unlocks (new decision when pinned):** declare `input_group` per reason cap
 (`touching_delta`/`synthesize_selector` = `all_required`, `build_correspondence` = `any_of`,
