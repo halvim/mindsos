@@ -146,8 +146,30 @@ and `"ProblemTraceEntry"` respectively. Phase 39 `consolidate:mm`
 keeps `type_="Memory"` per design log PB-3 (semantic retarget to
 `"Episode"` deferred to Phase 48 per D-L2-17).
 
+## Invoke input contract — arity + MM-read gate
+
+`_validate_inputs` (`capacity.py`) validates invoke inputs against declared
+`CONSUMES`, keyed by DataState IRI (Part 6). Two later additions:
+
+- **Operand arity (ADR-0198).** For each declared input with
+  `operand_arity[k] = N > 1`, `inputs[k]` must be a length-N **list** — a
+  **length check only**, no per-operand value-type inspection (core never
+  types operand values; that stays with the body). `register_capacity`
+  (`validate_for_registration`) rejects `operand_arity` keys that are not
+  declared inputs. The operand axis rides this registration field, not the
+  graph topology — no extra `CONSUMES` edges (like `input_group`, Decision 8).
+
+- **MM-read gate (ADR-0200).** `L4Dispatcher.build_context` (the single
+  `CapacityContext` construction site every L4 invocation funnels through)
+  injects `mm_handle` only when the declaration sets `reads_mm=True`; otherwise
+  `None`. This activates the previously-dead `reads_mm` field so a
+  `reads_mm=False` body can only read declared inputs. `kl` and `writeable` are
+  untouched; the `capacity_layer.invoke` L3/CLI path carries no `mm_handle` at
+  all (L3 has no MM).
+
 ## See also
 
+- ADR-0198 / ADR-0199 / ADR-0200: operand arity, group/member DataState, MM-read gate.
 - ADR-0145: L3 per-target write capacity categories.
 - ADR-0146: L3 symmetric write invocation contract.
 - ADR-0143: KLWriteHandle pattern for L3 write capacities.

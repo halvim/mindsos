@@ -72,6 +72,11 @@ and produce DataStates. IRIs follow `datastate:<realm>.<name>`. See
 
 ## E — K
 
+**Group DataState.** A DataState whose value is a set/list of
+individually-addressable members (`group=True` + `member_ds`). A distinct
+type from its member — the finder never bridges them; L4 owns the unpack
+loop (ADR-0199).
+
 **Edge.** A binary, intra-graph link between two Nodes; carries a
 `rel_type` plus properties. See [Building graphs](../usage/core/building-graphs.md).
 
@@ -134,6 +139,11 @@ Phase 36 (`validate_node`).
 
 ## L — Q
 
+**Operand arity.** A capacity's `operand_arity={ds: N}` declaration for
+consuming N operands of **one** DataState type. At invoke the key carries a
+length-N list, read positionally by the body; core checks length only —
+per-slot typing and roles stay body-side (ADR-0198).
+
 **Layer.** One of the five domain layers (L1–L5) plus the
 orthogonal Server layer. Layers compose downward: L3 imports L2
 imports L1; Server imports all three.
@@ -180,6 +190,11 @@ admin-direct-ATOM only at v1 (Phase 24). See
 [Promotion bridge](promotion-bridge.md).
 
 ## R — Z
+
+**reads_mm.** A capacity-declaration flag. When `True` the body receives the
+mental-model read handle (`context.mm_handle`); when `False` (default) it gets
+`None`, so read-data must arrive as declared inputs. Gated in L4 dispatch
+(ADR-0200).
 
 **Release.** A discrete versioned snapshot of Global. Admin curates,
 proposes for promotion, releases via `mindsos server release ship`.

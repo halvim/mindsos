@@ -60,6 +60,21 @@ Without a `session` kwarg the registration targets the Global metagraph
 (ADR-0080 bootstrap carve-out — `session=None` permits Global writes).
 Passing a `session` targets the Local metagraph of `session.user_id`.
 
+### Group DataStates (ADR-0199)
+
+A DataState whose value is a set/list of individually-addressable members
+declares `group=True` + `member_ds` (the member type's IRI). Group and member
+are **distinct** types — the finder never bridges them; L4 owns the loop that
+unpacks a group to feed member-consuming capacities.
+
+```python
+obj = DataState(name="object", shape=ShapeDescriptor.scalar("object"))
+objects = DataState(
+    name="objects", shape=ShapeDescriptor.list_of("object"),
+    group=True, member_ds=obj.iri,
+)
+```
+
 ## 3. Register a `Capacity` declaration
 
 A `Capacity` pairs a graph-level identity (IRI + category + I/O
@@ -86,6 +101,34 @@ one `PRODUCES` IntergraphEdge per declared output (capacity→DataState)
 and one `CONSUMES` IntergraphEdge per declared input (DataState→
 capacity). The pipeline-finder walks these edges; the `inputs`/`outputs`
 lists are no longer stored as node properties.
+
+### Same-type operands (ADR-0198)
+
+A capacity consuming N operands of **one** DataState type (e.g. a binary
+comparator over two objects) declares `operand_arity={ds.iri: N}`. At invoke
+that key must carry a length-N list, which the body reads positionally. Core
+checks **length only** — per-slot typing and operand roles (from/to,
+container/contained) are the body's concern. Arity keys must be declared
+inputs, else `register_capacity` raises.
+
+```python
+same_object = Capacity(
+    name="same_object", category=CATEGORY_PERCEPTION,
+    inputs=(obj.iri,), outputs=(verdict.iri,),
+    operand_arity={obj.iri: 2},
+    implementation=lambda **kw: {verdict.iri: kw[obj.iri][0] == kw[obj.iri][1]},
+)
+cl.register_capacity(same_object)
+cl.invoke(same_object.iri, inputs={obj.iri: [o_a, o_b]})
+```
+
+### MM reads must be declared (ADR-0200)
+
+A reactive body receives the mental-model read handle (`context.mm_handle`)
+only if its declaration sets `reads_mm=True`. The default (`False`) yields
+`mm_handle=None`, so read-data must arrive as declared inputs. Set
+`reads_mm=True` only for capacities that legitimately navigate the MM
+(retrieval, trace).
 
 ## 4. Invoke (Phase 30)
 
