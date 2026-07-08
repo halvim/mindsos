@@ -1,6 +1,6 @@
 ---
 title: reads_mm gates the body-facing MM read handle (truthful invoke read contract)
-status: Proposed
+status: Accepted
 date: 2026-07-07
 layer: L3
 amends: [ADR-0159, ADR-0072]
@@ -9,7 +9,7 @@ aliases: [C3, truthful-read-contract, reads-mm-enforcement]
 
 # ADR-0200: `reads_mm` gates the body-facing MM read handle
 
-**Status:** Proposed (ships with ADR-0198 + ADR-0199 as one ARC-family build)
+**Status:** Accepted (shipped 2026-07-07, main 54b00c0, tag operand-arity-groups-readsmm-confirmed; built with ADR-0198 + ADR-0199)
 
 **Date:** 2026-07-07 (CORE build chat — ARC comparator family)
 

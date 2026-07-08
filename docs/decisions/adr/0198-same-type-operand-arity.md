@@ -1,6 +1,6 @@
 ---
 title: Same-type operand arity on the capacity registration + invoke input contract (Form B)
-status: Proposed
+status: Accepted
 date: 2026-07-07
 layer: L3
 amends: [ADR-0156, ADR-0159, ADR-0072]
@@ -9,7 +9,7 @@ aliases: [Part-5, 5a, C1, operand-arity]
 
 # ADR-0198: Same-type operand arity (Form B)
 
-**Status:** Proposed (build scoped to 5a + C4; ships with ADR-0199)
+**Status:** Accepted (shipped 2026-07-07, main 54b00c0, tag operand-arity-groups-readsmm-confirmed; built with ADR-0199 + ADR-0200)
 
 **Date:** 2026-07-07 (CORE build chat — ARC comparator family)
 

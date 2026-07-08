@@ -1,6 +1,6 @@
 ---
 title: Group / member DataState registration attribute (typed L3→L4 iteration seam)
-status: Proposed
+status: Accepted
 date: 2026-07-07
 layer: L3
 amends: [ADR-0159, ADR-0156]
@@ -9,7 +9,7 @@ aliases: [C4, group-member, datastate-group]
 
 # ADR-0199: Group / member DataState attribute
 
-**Status:** Proposed (build scoped to 5a + C4; ships with ADR-0198)
+**Status:** Accepted (shipped 2026-07-07, main 54b00c0, tag operand-arity-groups-readsmm-confirmed; built with ADR-0198 + ADR-0200)
 
 **Date:** 2026-07-07 (CORE build chat — ARC comparator family)
 
