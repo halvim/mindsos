@@ -91,6 +91,16 @@ class _CapacityBase:
     # it). Read off the declaration by the finder; not emitted to the graph
     # at v1 (Decision 8).
     input_group: str = INPUT_GROUP_ALL_REQUIRED
+    # ADR-0198 (Part 5 / 5a) — same-type operand arity. Maps an input
+    # DataState IRI to the number of operands of that type the body
+    # consumes (``{DS_OBJECT: 2}`` for a binary comparator). Absent /
+    # ``1`` = today's single-operand behaviour, so every pre-ADR-0198
+    # capacity is unchanged. The operand *axis* rides this registration
+    # field, not the graph topology — like ``input_group`` (Decision 8),
+    # it is NOT emitted as N ``CONSUMES`` edges (ADR-0156 unchanged). The
+    # operand *role* (from/to, container/contained) is read off list
+    # position inside the body and never enters core.
+    operand_arity: Mapping[str, int] = field(default_factory=dict)
     placeholder: bool = False
 
     @property
@@ -125,6 +135,18 @@ class _CapacityBase:
             raise CapacityRegistrationError(
                 f"Capacity {self.iri!r}: unknown DataState IRIs "
                 f"{sorted(set(missing))!r}"
+            )
+        # ADR-0198 (5a) — operand_arity keys must be declared inputs, so a
+        # typo'd IRI fails loud at registration instead of silently skipping
+        # the arity check at invoke. (Cannot regress existing capacities —
+        # none declare operand_arity.)
+        arity_keys = set(getattr(self, "operand_arity", None) or {})
+        stray_arity = sorted(arity_keys - set(self.inputs))
+        if stray_arity:
+            raise CapacityRegistrationError(
+                f"Capacity {self.iri!r}: operand_arity names non-input "
+                f"DataState IRIs {stray_arity!r} (declared inputs: "
+                f"{sorted(self.inputs)!r})"
             )
         if self.implementation is not None and not callable(self.implementation):
             raise CapacityRegistrationError(
@@ -323,6 +345,29 @@ def _validate_inputs(
             f"not in declared CONSUMES {sorted(declared_set)}",
             kind="unexpected_input",
         )
+    # ADR-0198 (5a) — same-type operand arity. For each declared input with
+    # ``operand_arity[k] = N > 1``, the supplied value must be a length-N
+    # list. Length only — core never inspects operand *value* types (the
+    # per-slot role/type is the body's concern; cross-kind operands like
+    # ``touching``'s region view are resolved consumer-side). Keys absent
+    # from ``inputs`` are already handled by the missing/any_of checks
+    # above; arity is validated only for present keys.
+    arity = getattr(declaration, "operand_arity", None) or {}
+    for key, n in arity.items():
+        if n <= 1 or key not in present:
+            continue
+        value = inputs[key]
+        if not isinstance(value, list) or len(value) != n:
+            got = (
+                f"list of length {len(value)}"
+                if isinstance(value, list)
+                else type(value).__name__
+            )
+            raise InputContractError(
+                f"Capacity {declaration.iri!r}: input {key!r} declares "
+                f"operand_arity {n}; expected a length-{n} list, got {got}",
+                kind="operand_arity",
+            )
 
 
 def call_capacity(
