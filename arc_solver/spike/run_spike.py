@@ -208,6 +208,24 @@ def _inside_layer_conformance(cl, tasks) -> None:
           f"inline perception across {n_grids} grids / {len(tasks)} tasks.")
 
 
+def _matrix_same_object_check(cl, tasks) -> None:
+    """Slice-2b-i: same_object slice of the comparison_matrix, cell-exact vs inline."""
+    iri = ac.capacity_iri(ac.CATEGORY_PROFILER, "same_object")
+    n = 0
+    for t in tasks:
+        for pr in t["train"]:
+            for a in pr["input"]["objects"]:
+                for b in pr["output"]["objects"]:
+                    res = cl.invoke(iri, inputs={ac.DS_OBJECT: [a, b]})
+                    assert res.success, \
+                        f"same_object invoke failed on {t['task_id']}: {getattr(res, 'error', None)!r}"
+                    assert res.outputs[ac.DS_SAME_OBJECT] == arc_grids.same_object(a, b), \
+                        f"invoked same_object != inline on {t['task_id']}"
+                    n += 1
+    print(f"  [ok] matrix: same_object cell-exact through the layer == inline "
+          f"across {n} cells / {len(tasks)} tasks.")
+
+
 def _l4_intake_check(cl, tasks) -> None:
     """MindsOS wiring step 2 — the L4 intake slice. Dispatch the perceive
     extractors through the REAL L4 choke point (`L4Dispatcher` -> runtime.invoke)
@@ -407,6 +425,7 @@ def main(argv: list) -> int:
     _inference_soundness_check(tasks)   # same_object ⟹ same_shape wired skip 0/400
     _operator_inference_check(tasks)    # union ⟹ inset operator skip 0/400
     _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
+    _matrix_same_object_check(cl, tasks)  # slice 2b-i: same_object matrix cell-exact
     _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
     _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
     _arc_solve_layer_check(cl, dataset)   # wiring step 4: arc solve (phases 8/9/10) dispatched L4->L3

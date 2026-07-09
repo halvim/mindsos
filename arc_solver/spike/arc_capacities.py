@@ -218,6 +218,11 @@ def _inside(**kw: Any) -> dict:
     return {DS_INSIDE: arc_grids.contained_pairs(gs, bg_resolved=False)}
 
 
+def _same_object(**kw: Any) -> dict:
+    a, b = kw[DS_OBJECT]
+    return {DS_SAME_OBJECT: arc_grids.same_object(a, b)}
+
+
 def _arc_emit_candidates(**kw: Any) -> dict:
     """Phase 8 (L3 decision) — emit candidate rules from the profile. REAL body =
     the shipped `arc_solver.rules`; dispatched by the L4 driver, not inline."""
@@ -350,7 +355,7 @@ def _profiler_capacities() -> List[Capacity]:
         Capacity(
             name="same_object", category=CATEGORY_PROFILER,
             inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_SAME_OBJECT,),
-            implementation=lambda **kw: {DS_SAME_OBJECT: None},
+            implementation=_same_object,
             description="(in Object, out Object) -> Bool (same color + position).",
         ),
         Capacity(
