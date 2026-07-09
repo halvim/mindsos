@@ -13,7 +13,7 @@ related: [0002, 0006, 0007, 0013, 0118, 0141, 0144]
 
 **Date:** 2026-05-22
 
-**Related:** [ADR-0118](0118-per-user-transactional-promotion.md) (atomicity model that owns these tables); [ADR-0115](0115-release-ship-audit-gate.md) (audit gate that reads from them); [ADR-0006](0006-promotion-locking.md) (RELEASE_SHIP_LOCK guards writes); [ADR-0013](0013-audit-and-test-shim.md) (audit_event_id FK target); [PIVOT_V1_SCOPE_2026-04-26.md](../../PIVOT_V1_SCOPE_2026-04-26.md) §7.5 (data shapes — narrowed at this ADR).
+**Related:** [ADR-0118](0118-per-user-transactional-promotion.md) (atomicity model that owns these tables); [ADR-0115](0115-release-ship-audit-gate.md) (audit gate that reads from them); [ADR-0006](0006-promotion-locking.md) (RELEASE_SHIP_LOCK guards writes); [ADR-0013](0013-audit-and-test-shim.md) (audit_event_id FK target); `PIVOT_V1_SCOPE_2026-04-26.md` §7.5 (data shapes — narrowed at this ADR).
 
 ## Context
 

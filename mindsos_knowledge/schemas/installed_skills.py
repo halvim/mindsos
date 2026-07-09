@@ -57,6 +57,8 @@ SKILL_INSTALL_RECORD_PROPS: frozenset[str] = frozenset({
     "status",
     "action",
     "recorded_at",
+    "entry_start_datastate",
+    "entry_target_datastate",
 })
 
 #: ``status`` vocabulary per ADR-0183 (install lifecycle S7/S8/S11):

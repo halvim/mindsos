@@ -231,7 +231,7 @@ migration scanner" for CLI invocation detail.
 > - **Drop-and-reimport** — for importer-curated role-graphs where
 >   re-running the importer is cheaper than rewriting persisted rows.
 > - **In-place rewrite** — for role-graphs where persisted data must
->   be preserved (e.g., `memories`, `problem-trace`) and a migration
+>   be preserved (e.g., `episodic_memories`, `problem-trace`) and a migration
 >   script consumes `detail="each"` violations to update rows.
 > - **Accept-as-stale** — for role-graphs where the new schema's
 >   tightening is forward-only and existing rows are knowingly

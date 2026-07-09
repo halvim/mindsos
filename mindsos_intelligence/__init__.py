@@ -45,6 +45,7 @@ from .pipeline_execution import PipelineExecutionResult, execute_pipeline
 from mindsos_capacity.needs_input import NeedsInput
 from .dispatch import L4Dispatcher
 from .chain_artifacts import ChainArtifactWriter
+from .ingress import InputEnvelope
 from .phase1_profile import Phase1Profile
 from .phase_1 import (
     InterpretationError,
@@ -66,6 +67,8 @@ __all__ = [
     "interpret",
     "InterpretationResult",
     "InterpretationError",
+    # ADR-0197 — modality-aware input ingress.
+    "InputEnvelope",
     # ADR-0196 — user-clarification verdict (re-exported from L3).
     "NeedsInput",
     "register_signal_sources",

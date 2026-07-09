@@ -69,11 +69,12 @@ invariant home). ADRs 0038–0057, 0138–0150 govern.
 
 ### Capacity (L3)
 
-12 functional categories (perception, comprehension, derivation,
-decomposition, combination, retrieval, scoring, trace,
+13 functional categories (perception, comprehension, derivation,
+decomposition, combination, path-finding, retrieval, scoring, trace,
 signalling, interaction, learning-methods, consolidate),
 DataStates + Capacities + dual metagraph (DataState graph +
-Capacity graph) + capability gate + discovery +
+Capacity graph) + capability gate + bipartite `produces`/`consumes`
+edges (ADR-0156; superseded the earlier type-compat auto-discovery) +
 constraint-driven pipeline finder + invoke runtime +
 ProblemTraceRecord + residents + built-in text capacities + 2
 wired write capacities (`capacity:consolidate:mm` +

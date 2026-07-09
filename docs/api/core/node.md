@@ -4,17 +4,18 @@ last_confirmed_phase: 03
 
 # `mindsos_core.Node`
 
-A typed vertex with identity and an open property bag. Phase 03 slim
-port — drops the `_version` OCC field (Phase 07).
+A typed vertex with identity and an open property bag. Introduced as a
+Phase 03 slim port; the `_version` OCC field landed at Phase 07.
 
 ## Dataclass fields
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `value` | `Any` | — | Primary display value. Any JSON-serialisable type (str / int / float / bool / None / list / dict). |
+| `value` | `Any` | — | Primary display value. Any JSON-serialisable type (str / int / float / bool / None / list / dict). Non-scalar values persist via the ADR-0182 `_value_json` codec (`mindsos_core/persistence/value_codec.py`). |
 | `type_name` | `str` | — | Node type name. Phase 04's `Schema` validates against a declared `NodeType` vocabulary; Phase 03 stores verbatim. |
 | `node_id` | `str` | UUID4 | Stable id for the lifetime of the object. Caller may supply an IRI / content-addressed id for stable references (KL importers). |
 | `properties` | `Dict[str, Any]` | `{}` | Open property dict. |
+| `_version` | `int` | `1` | Monotonic version counter for optimistic-concurrency control (ADR-0127). Added Phase 07. |
 
 ## Identity semantics
 
@@ -42,6 +43,6 @@ n = Node(value="Alice", type_name="Person",
 In practice, code constructs nodes via `Graph.add_node(...)` rather than
 direct instantiation, so the registry is updated.
 
-## What's not in Phase 03
+## History
 
-* `_version` field (ADR-0127 OCC) — Phase 07 with persistence.
+* `_version` field (ADR-0127 OCC) — added Phase 07 with persistence (now a live field, see table above).

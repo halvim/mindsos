@@ -1,6 +1,6 @@
 ---
 title: Instancing vocabulary moved to mindsos_instances package
-status: Proposed
+status: Accepted
 date: 2026-04-27
 layer: L1
 supersedes: [0037]
@@ -8,7 +8,7 @@ supersedes: [0037]
 
 # ADR-0132: Instancing vocabulary moved to `mindsos_instances` package
 
-**Status:** Proposed
+**Status:** Accepted (shipped; frontmatter reconciled during the 2026-07 doc-vs-code audit)
 
 **Date:** 2026-04-27
 

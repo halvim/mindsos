@@ -73,8 +73,7 @@ the semantic validators required by the capacity's role as
 preconditions, before invoking `handle.write_and_validate(...)`.
 
 **Prefer** `handle.validate_node(value=..., type_=...)` composite when
-the role has a registered adapter in `_VALIDATORS_BY_ROLE` (Phase 36:
-`memories` + `problem-trace`). The composite owns metagraph routing
+the role has a registered adapter in `_VALIDATORS_BY_ROLE` (Phase 36: `episodic_memories` + `problem-trace`; `memories` renamed Phase 39). The composite owns metagraph routing
 internally and keeps the role→chain mapping in one place.
 
 **Fallback** — direct `validate_*` calls from

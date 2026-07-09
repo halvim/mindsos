@@ -93,12 +93,7 @@ jobs:
 
       - name: Run cumulative test suite (release gate)
         run: |
-          docker compose up -d falkordb
-          for i in $(seq 1 30); do
-            status=$(docker inspect --format='{{.State.Health.Status}}' mindsos-falkordb 2>/dev/null || echo "starting")
-            if [ "$status" = "healthy" ]; then break; fi
-            sleep 1
-          done
+          docker compose up -d --wait falkordb
           docker compose run --rm mindsos-test pytest tests/ -v
 
       - name: Export image tarball

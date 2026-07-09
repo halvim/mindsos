@@ -1,13 +1,13 @@
 ---
 title: XRef cutover for ref:global_<role> user data
-status: Proposed
+status: Accepted
 date: 2026-04-27
 layer: L2
 ---
 
 # ADR-0142: XRef cutover for `ref:global_<role>` user data
 
-**Status:** Proposed
+**Status:** Accepted (shipped; frontmatter reconciled during the 2026-07 doc-vs-code audit)
 
 **Date:** 2026-04-27
 

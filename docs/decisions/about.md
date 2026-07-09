@@ -70,8 +70,7 @@ Each layer has a summary page that indexes all the ADRs affecting it:
 - [L1 Core decisions](summary/core.md) — the primitives every other layer depends on
 - [L2 Knowledge decisions](summary/knowledge.md) — the long-term memory and versioning contract
 - [L3 Capacity decisions](summary/capacity.md) — fixed abilities and discovery
-- [L4 Intelligence decisions](summary/intelligence.md) — learning and orchestration (design-phase)
-- [L5 Mental Model decisions](summary/mental-model.md) — working memory (design-phase)
+- [L4 / L5 Intelligence decisions](summary/intelligence.md) — learning, orchestration, and the Mental Model (shipped, Phases 46–48)
 - [Server decisions](summary/server.md) — identity, session, audit, promotion
 - [Cross-layer decisions](summary/cross-layer.md) — boundaries, isolation, handoffs
 

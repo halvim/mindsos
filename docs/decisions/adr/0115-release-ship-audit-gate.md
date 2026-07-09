@@ -16,7 +16,7 @@ supersedes: [0009]
 
 **Supersedes:** [ADR-0009](0009-similarity-report-freshness.md) (freshness-id mechanism — replaced by audit-gate two-pass similarity).
 
-**Related:** [ADR-0118](0118-per-user-transactional-promotion.md) (`release_update` callsite); [ADR-0144](0144-similarity-at-release-ship-audit-gate.md) (`compute_similarity` heuristic + §Placement full Accept at this ship); [ADR-0114](0114-release-manifest-and-version-db-schema.md) (releases / pending_mutations tables the gate reads); [ADR-0049](0049-similarity-report-before-promotion.md) + [ADR-0053](0053-promote-per-candidate-atomic-rollback.md) + [ADR-0056](0056-promotion-result-preserves-input-order.md) (indirect Supersessions per Phase 16 §am1 lock — fully closed at this ship); [PIVOT_V1_SCOPE_2026-04-26.md](../../PIVOT_V1_SCOPE_2026-04-26.md) §7.8 (ImpactReport future shape — v1 narrows).
+**Related:** [ADR-0118](0118-per-user-transactional-promotion.md) (`release_update` callsite); [ADR-0144](0144-similarity-at-release-ship-audit-gate.md) (`compute_similarity` heuristic + §Placement full Accept at this ship); [ADR-0114](0114-release-manifest-and-version-db-schema.md) (releases / pending_mutations tables the gate reads); [ADR-0049](0049-similarity-report-before-promotion.md) + [ADR-0053](0053-promote-per-candidate-atomic-rollback.md) + [ADR-0056](0056-promotion-result-preserves-input-order.md) (indirect Supersessions per Phase 16 §am1 lock — fully closed at this ship); `PIVOT_V1_SCOPE_2026-04-26.md` §7.8 (ImpactReport future shape — v1 narrows).
 
 ## Context
 

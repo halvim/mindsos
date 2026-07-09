@@ -30,6 +30,42 @@ to check for regressions and drift. Learning does not happen inside any single
 agent; it happens across the society, mediated by the audited learning
 subsystem (ALS) that observes signals emitted during execution and dreaming.
 
+## SubMinds — the autonomous reflex agents
+
+The capacities above are *passive*: they run only when the orchestrator calls
+them. The **SubMind** (nickname *Mindlet*) is the society's *active* agent — an
+autonomous, no-reasoning reflex over a single self-state vital (battery, thermal
+headroom, a safety envelope). It owns a minimal control loop, **sense → compare
+to threshold → emit**, and never deliberates. Deliberation stays with the single
+L4 "Mind", which arbitrates the outputs of every SubMind; a SubMind does not get
+its own L4. This is Minsky's framing taken literally: many small autonomous
+minds, one arbiter.
+
+A SubMind self-schedules an adaptive **cadence** — a fixed control law that
+samples rarely when safe and faster near a threshold, with bounded min/max and
+anti-thrash hysteresis. Its sense loop has two output modes (ADR-0188 §3): a
+**Signal**, the normal output, enqueued with a `(tier, severity)` pair and
+deliberated by L4; and a **Reflex**, an emergency output where a declared
+non-reconcilable predicate fires a single pre-wired capacity that bypasses the
+queue and L4 entirely, notifying L4 only afterward. Storm suppression is
+edge-triggered — a threshold crossing emits once, then stays silent until the
+vital recovers past a reset margin.
+
+SubMinds **reverse ADR-0155** in a disciplined way: the self-firing monitor loop
+returns, but as an L4-owned scheduler (one thread, a timer-heap), *not* the
+deleted L3 `start_resident` lifecycle — L3 stays loop-free per ADR-0155's
+rationale. The runtime lives in `mindsos_intelligence` (`submind.py` +
+`submind_scheduler.py` + `submind_registry.py` + `submind_arbiter.py`); the
+durable endowment record lives in the L2 `subminds` role-graph (ADR-0190).
+SubMinds are read-only on the Mental Model — they push Signals, they never write.
+
+Only **Slice 1** has shipped: the pure sense→threshold→Signal path with a stub
+resolver. The resource/contention model (Slice 2) and the Reflex bypass +
+arbiter seizure (Slice 3) are designed but deferred. See ADRs
+[0188](../decisions/adr/0188-submind-construct-and-two-output-model.md),
+[0189](../decisions/adr/0189-submind-priority-and-arbitration.md),
+[0190](../decisions/adr/0190-submind-endowment-and-role-graph.md).
+
 ## Why this matters
 
 The payoff of the society framing is *honest composition*: because no agent

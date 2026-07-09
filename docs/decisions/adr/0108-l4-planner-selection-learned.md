@@ -1,6 +1,6 @@
 ---
 title: Planner selection is learned per task shape
-status: Proposed
+status: Deferred
 date: 2026-04-22
 layer: L4
 aliases: [L4-planner-selection]
@@ -8,7 +8,7 @@ aliases: [L4-planner-selection]
 
 # ADR-0108: Planner selection - learned per task shape
 
-**Status:** Proposed
+**Status:** Deferred — acknowledged with a known path forward but not implemented in v1; revisit post-v1. Reconciled in the 2026-07 doc-vs-code audit.
 
 **Date:** 2026-04-22
 

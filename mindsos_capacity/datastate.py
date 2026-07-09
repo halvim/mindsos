@@ -119,6 +119,16 @@ class DataState:
     description: str = ""
     provenance_category: Optional[str] = None
     l2_roles: Tuple[str, ...] = ()
+    # ADR-0199 (C4) — group / member typing. ``group=True`` marks a
+    # DataState whose value is a set/list of individually-addressable
+    # members; ``member_ds`` is the DS-IRI of the member type L4 iterates
+    # into. Group and member stay distinct DataState types — the finder
+    # never bridges them (it already treats them as distinct IRIs); L4
+    # owns the unpack loop. Absent (``group=False``, ``member_ds=None``)
+    # = today's behaviour. A single entity that internally holds a set
+    # (e.g. a palette) is NOT a group.
+    group: bool = False
+    member_ds: Optional[str] = None
 
     @property
     def iri(self) -> str:
@@ -144,6 +154,11 @@ class DataState:
             props["shape_opaque_tag"] = self.shape.opaque_tag
         if self.shape.fields:
             props["shape_fields"] = [f"{k}:{v}" for k, v in self.shape.fields]
+        # ADR-0199 (C4) — group / member typing, emitted for inspectability.
+        if self.group:
+            props["group"] = True
+        if self.member_ds is not None:
+            props["member_ds"] = self.member_ds
         return props
 
 
@@ -158,6 +173,20 @@ def validate_datastate(ds: DataState) -> None:
     if ds.shape.kind not in {"scalar", "list", "record", "opaque", "graph", "dict"}:
         raise DataStateError(
             f"DataState {ds.name!r}: unknown shape kind {ds.shape.kind!r}"
+        )
+    # ADR-0199 (C4) — group / member coherence. ``group`` and ``member_ds``
+    # travel together: a group must name its member type; a non-group must
+    # not carry one. Member-IRI *existence* is NOT validated at v1 (no
+    # consumer requires it; the pointer is advisory metadata L4 reads).
+    # DataStates may register in any order, so an existence check would need
+    # a seal-time pass — deferred until a consumer needs it.
+    if ds.group and not ds.member_ds:
+        raise DataStateError(
+            f"DataState {ds.name!r}: group=True requires a member_ds IRI"
+        )
+    if not ds.group and ds.member_ds is not None:
+        raise DataStateError(
+            f"DataState {ds.name!r}: member_ds is set but group=False"
         )
 
 

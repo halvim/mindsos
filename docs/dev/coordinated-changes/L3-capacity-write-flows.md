@@ -13,7 +13,7 @@ each ships in. Updated each phase that lights up a new capacity.
 
 | Category | Capacity IRI | Target role | Scope | Serves L4 flow | Status | Phase |
 |---|---|---|---|---|---|---|
-| `consolidate` | `capacity:consolidate:mm` | `memories` | Local | Consolidation flow (TBD) | **wired** | 33→34 |
+| `consolidate` | `capacity:consolidate:mm` | `episodic_memories` | Local | Consolidation flow (TBD) | **wired** | 33→34 |
 | `trace` | `capacity:trace:problem` | `problem-trace` | Global | Trace flow (TBD) | **wired** | 33→34 |
 | `promote` | `capacity:promote:pipeline` | promotion path | per server | Pipeline-finder flow (TBD) | deferred | TBD |
 | `promote` | `capacity:promote:pattern` | promotion path | per server | Pipeline-finder flow (TBD) | deferred | TBD |

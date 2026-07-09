@@ -1,6 +1,6 @@
 ---
 title: Hybrid cross-graph refs — XRef primitive + ref-string convention
-status: Proposed
+status: Accepted
 date: 2026-04-27
 layer: L1
 amends: [0016, 0034]
@@ -8,7 +8,7 @@ amends: [0016, 0034]
 
 # ADR-0128: Hybrid cross-graph refs — `XRef` primitive + `ref:<role>` strings
 
-**Status:** Proposed
+**Status:** Accepted (shipped; frontmatter reconciled during the 2026-07 doc-vs-code audit)
 
 **Date:** 2026-04-27
 

@@ -203,6 +203,47 @@ def _requirements_sha256() -> str | None:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _cli_dist_collision() -> dict[str, Any]:
+    """Detect a `mindsos_cli` import-package collision in the installed env.
+
+    Root cause of the Phase-50 ``No such command 'brain'`` bug: a project
+    repo that vendors a full ``mindsos_*`` tree gets editable-installed
+    alongside base mindsos and silently shadows it — pip has NO guard for
+    editable module-name collisions, the last install wins. The structural
+    fix (skill-only repos, depend-don't-vendor) removes the vector; this is
+    the defense-in-depth regression guard + a diagnostic for a suspected-bad
+    env.
+
+    Signal = MORE THAN ONE installed distribution provides the ``mindsos_cli``
+    import package. Name-agnostic (works before/after the base dist rename);
+    reports the resolved ``__file__`` for human triage. Zero providers (a
+    bare source checkout on PYTHONPATH, no install) is NOT a collision.
+    """
+    import importlib.metadata as _im
+
+    providers: list[str] = []
+    error: str | None = None
+    try:
+        providers = sorted(set(_im.packages_distributions().get("mindsos_cli", [])))
+    except Exception as exc:  # pragma: no cover - metadata backend variance
+        error = f"{type(exc).__name__}: {exc}"
+
+    resolved: str | None = None
+    try:
+        import mindsos_cli  # noqa: PLC0415
+
+        resolved = getattr(mindsos_cli, "__file__", None)
+    except Exception as exc:  # pragma: no cover
+        error = error or f"{type(exc).__name__}: {exc}"
+
+    return {
+        "providers": providers,
+        "resolved": resolved,
+        "collision": len(providers) > 1,
+        "error": error,
+    }
+
+
 def doctor(
     self_test: bool = typer.Option(
         False,
@@ -231,6 +272,7 @@ def doctor(
 
     runtime_python = ".".join(str(x) for x in sys.version_info[:3])
     runtime_req_sha = _requirements_sha256()
+    cli_collision = _cli_dist_collision()
     if static_only and self_test:
         # Skip the live ping; use a sentinel so downstream report code knows
         # we deliberately skipped reachability.
@@ -257,6 +299,7 @@ def doctor(
             "python_version": runtime_python,
             "requirements_txt_sha256": runtime_req_sha,
             "falkordb": falkordb_state,
+            "mindsos_cli_providers": cli_collision,
         },
     }
 
@@ -290,10 +333,33 @@ def doctor(
                     f"error={falkordb_state['error']})",
                     err=True,
                 )
+            if cli_collision["collision"]:
+                typer.echo(
+                    f"mindsos_cli:    COLLISION — "
+                    f"{len(cli_collision['providers'])} dists provide it "
+                    f"({', '.join(cli_collision['providers'])}); "
+                    f"resolved={cli_collision['resolved']}. A project must not "
+                    f"vendor a mindsos_* tree — install skill-only + base only.",
+                    err=True,
+                )
+            else:
+                typer.echo(
+                    f"mindsos_cli:    OK "
+                    f"(providers={cli_collision['providers'] or 'none-installed'})"
+                )
         return
 
     # Self-test mode — compare runtime to manifest.
     failures: list[str] = []
+
+    if cli_collision["collision"]:
+        failures.append(
+            f"mindsos_cli import-package collision: "
+            f"{len(cli_collision['providers'])} installed dists provide it "
+            f"({', '.join(cli_collision['providers'])}); resolved="
+            f"{cli_collision['resolved']}. A project repo must not vendor a "
+            f"mindsos_* tree (depend on base, ship only mindsos_<skill>)."
+        )
 
     if runtime_python != python_pin["version"]:
         failures.append(

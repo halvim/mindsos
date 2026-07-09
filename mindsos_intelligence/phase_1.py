@@ -27,13 +27,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
-from mindsos_capacity.builtins.phase1_v0 import (
-    DS_GOAL,
-    DS_HINT_SET,
-    DS_MAPPING,
-    DS_RAW_INPUT,
-    DS_STRUCTURED_INPUT,
-)
 from mindsos_capacity.exceptions import PipelineNotFoundError
 from mindsos_capacity.identifiers import (
     CATEGORY_DECISION,
@@ -45,6 +38,7 @@ from mindsos_capacity.needs_input import NeedsInput
 from mindsos_capacity.pipeline import find_pipeline
 from mindsos_knowledge import ROLE_TASK_PATTERNS
 
+from .ingress import InputEnvelope
 from .phase1_profile import Phase1Profile
 from .pipeline_execution import execute_pipeline
 
@@ -100,6 +94,28 @@ def _slot(profile: Optional[Phase1Profile], attr: str, default: str) -> str:
     if profile is None:
         return default
     return getattr(profile, attr) or default
+
+
+def _run_step(dispatcher, capacity_iri: str, env: dict) -> Any:
+    """Run one interpretation step, wiring its inputs from ``env`` by the
+    selected capacity's declared ``CONSUMES`` and merging its outputs back
+    (ADR-0197 §Build-decision-2 — environment-threaded spine).
+
+    Returns the step's sole declared output value. Raises
+    :class:`InterpretationError` when a declared input was not produced
+    upstream (a mis-wired profile) — a clear failure ahead of the strict
+    ``_validate_inputs`` no-unexpected/missing-required contract.
+    """
+    decl = dispatcher.capacity_layer.get_declaration(capacity_iri)
+    missing = [ds for ds in decl.inputs if ds not in env]
+    if missing:
+        raise InterpretationError(
+            f"phase-1 step {capacity_iri!r} needs {missing!r} not produced "
+            f"upstream (mis-wired profile; env has {sorted(env)})"
+        )
+    result = dispatcher.dispatch(capacity_iri, {ds: env[ds] for ds in decl.inputs})
+    env.update(result.outputs)
+    return result.outputs[decl.outputs[0]]
 
 
 def _map_target_resolves(dispatcher, task_pattern_iri: str) -> bool:
@@ -179,23 +195,37 @@ def interpret(
     the corresponding slots (``map`` / ``resolve_target_datastate``), so the
     all-v0 path is unchanged.
     """
+    # ADR-0197 — unwrap the ingress envelope and select the profile by
+    # modality. A raw value is the legacy path (no modality). When the
+    # envelope stamps a modality, the dispatcher's {modality->Phase1Profile}
+    # table (§3) selects per input, taking precedence over the
+    # construction-bound ``phase1_profile``; an explicit ``profile=`` arg
+    # still wins over both. ``source`` is provenance only — never selects.
+    if isinstance(task_input, InputEnvelope):
+        value = task_input.value
+        modality = task_input.modality
+    else:
+        value = task_input
+        modality = None
+
+    if profile is None and modality is not None:
+        profile = (getattr(dispatcher, "modality_profiles", None) or {}).get(modality)
     if profile is None:
         profile = getattr(dispatcher, "phase1_profile", None)
 
-    structured = dispatcher.dispatch(
-        _slot(profile, "process", PROCESS_IRI), {DS_RAW_INPUT: task_input}
-    ).outputs[DS_STRUCTURED_INPUT]
-    hints = dispatcher.dispatch(
-        _slot(profile, "hint", HINT_IRI), {DS_STRUCTURED_INPUT: structured}
-    ).outputs[DS_HINT_SET]
-    goal = dispatcher.dispatch(
-        _slot(profile, "derive_goal", DERIVE_GOAL_IRI),
-        {DS_STRUCTURED_INPUT: structured, DS_HINT_SET: hints},
-    ).outputs[DS_GOAL]
-    mapping = dispatcher.dispatch(
-        _slot(profile, "map", MAP_IRI),
-        {DS_STRUCTURED_INPUT: structured, DS_HINT_SET: hints, DS_GOAL: goal},
-    ).outputs[DS_MAPPING]
+    # ADR-0197 §Build-decision-2 — environment-threaded spine. Seed with
+    # the selected ``process`` cap's declared ingress DataState so a
+    # modality-typed process (e.g. ``text.raw``) wires without a fixed
+    # ``DS_RAW_INPUT`` assumption. All-v0 is byte-identical: the v0 caps
+    # declare exactly DS_RAW_INPUT -> DS_STRUCTURED_INPUT -> ... .
+    process_iri = _slot(profile, "process", PROCESS_IRI)
+    ingress_ds = dispatcher.capacity_layer.get_declaration(process_iri).inputs[0]
+    env: dict = {ingress_ds: value}
+
+    structured = _run_step(dispatcher, process_iri, env)
+    hints = _run_step(dispatcher, _slot(profile, "hint", HINT_IRI), env)
+    goal = _run_step(dispatcher, _slot(profile, "derive_goal", DERIVE_GOAL_IRI), env)
+    mapping = _run_step(dispatcher, _slot(profile, "map", MAP_IRI), env)
 
     task_pattern_iri = mapping["task_pattern_iri"]
     mapping_confidence = mapping["mapping_confidence"]

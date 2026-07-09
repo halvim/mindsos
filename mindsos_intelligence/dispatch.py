@@ -57,6 +57,7 @@ class L4Dispatcher:
         learned_parameters: Optional[Mapping[str, Any]] = None,
         version_snapshot: Optional[Mapping[str, int]] = None,
         phase1_profile: "Optional[Phase1Profile]" = None,
+        modality_profiles: "Optional[Mapping[str, Phase1Profile]]" = None,
     ) -> None:
         self._cl = capacity_layer
         self._session = session
@@ -65,6 +66,9 @@ class L4Dispatcher:
         self._learned_parameters = dict(learned_parameters or {})
         self._version_snapshot = dict(version_snapshot or {})
         self._phase1_profile = phase1_profile
+        # ADR-0197 §3 — runtime {modality (ingress DataState IRI) ->
+        # Phase1Profile} table, selected per input by the stamped modality.
+        self._modality_profiles = dict(modality_profiles or {})
 
     # ── read-only accessors (used by ``phase_1.interpret`` for
     #    find_pipeline composition + the map-resolution KL check) ─────────
@@ -85,19 +89,31 @@ class L4Dispatcher:
     def phase1_profile(self) -> "Optional[Phase1Profile]":
         return self._phase1_profile
 
+    @property
+    def modality_profiles(self) -> "Mapping[str, Phase1Profile]":
+        return self._modality_profiles
+
     def build_context(
         self,
         *,
         cancel_token: Any = None,
         task_iri: Optional[str] = None,
         pattern_iri: Optional[str] = None,
+        reads_mm: bool = False,
     ) -> CapacityContext:
+        # ADR-0200 (C3) — the body-facing MM read handle is injected only
+        # when the declaration sets ``reads_mm=True``. A ``reads_mm=False``
+        # body (the default) receives ``mm_handle=None``, so its only
+        # read-data source is its declared inputs — declared == body-reads
+        # becomes structurally true for the MM channel. ``kl`` and
+        # ``writeable`` are untouched (kl carries write handles; its read
+        # method has no v1 body caller).
         session = self._session
         return CapacityContext(
             session_id=getattr(session, "session_id", "session"),
             user_id=getattr(session, "user_id", "user"),
             learned_parameters_snapshot=dict(self._learned_parameters),
-            mm_handle=self._mm_handle,
+            mm_handle=self._mm_handle if reads_mm else None,
             cancel_token=(
                 CancelTokenView(cancel_token) if cancel_token is not None else None
             ),
@@ -122,7 +138,10 @@ class L4Dispatcher:
     ):
         declaration = self._cl.get_declaration(capacity_iri)
         ctx = self.build_context(
-            cancel_token=cancel_token, task_iri=task_iri, pattern_iri=pattern_iri
+            cancel_token=cancel_token,
+            task_iri=task_iri,
+            pattern_iri=pattern_iri,
+            reads_mm=bool(getattr(declaration, "reads_mm", False)),
         )
         return _runtime_invoke(
             declaration,

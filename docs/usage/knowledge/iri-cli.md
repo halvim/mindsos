@@ -15,7 +15,7 @@ the pure-library surface in
 Build a version-qualified IRI for the given role + kwargs:
 
 ```bash
-mindsos knowledge iri build --role memories --kind memory \
+mindsos knowledge iri build --role episodic_memories --kind memory \
     --version 1 --user-id alice --memory-id m-001 --json
 ```
 
@@ -53,7 +53,7 @@ Output (JSON):
 ### `iri validate`
 
 Yes/no probe over `is_version_qualified_iri`. Exit `0` if valid,
-`1` if not. `alignment:lex<->con` graph-names are NOT
+`1` if not. `alignment:concepts:lexicon` graph-names are NOT
 version-qualified IRIs — `validate` returns `1` on them per PB-4.
 
 ### `ref-types --list`

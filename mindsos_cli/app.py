@@ -3,6 +3,7 @@
 import typer
 
 from mindsos_cli.commands.admin import register_admin_app
+from mindsos_cli.commands.brain import register_brain_app
 from mindsos_cli.commands.capacity import register_capacity_app
 from mindsos_cli.commands.confirm_phase import confirm_phase
 from mindsos_cli.commands.doctor import doctor
@@ -65,3 +66,5 @@ register_capacity_app(app)
 # Phase 50 — NEW `mindsos skill` group (ADR-0183 bundle install lifecycle;
 # session-less Global-only per the capacity-CLI precedent).
 register_skill_app(app)
+# Resident-brain REPL — one long-lived instance; task + probe live.
+register_brain_app(app)

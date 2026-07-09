@@ -15,7 +15,7 @@ Layer 3 is the repertoire of *fixed*, deterministic abilities the system has. It
 |-------|-------|---------|
 | [0060](../adr/0060-l3-fixed-not-learned.md) | L3 holds only fixed functions; learned state lives in L4 | Pure functions plus immutable context; no updates after registration |
 | [0061](../adr/0061-dual-metagraph-global-local.md) | Dual metagraph (Global + per-user Local) mirrors KL | Local capacities may carry `ref:global_capacity`; on collision, Local wins |
-| [0062](../adr/0062-three-node-types-capacity-monitor-adapter.md) | Three node types: Capacity, Monitor, Adapter | One registration path; three invocation verbs (`invoke`, `start_resident`, adapter-insertion) |
+| [0062](../adr/0062-three-node-types-capacity-monitor-adapter.md) | Three node types: Capacity, Monitor, Adapter | One registration path. (Historical: `start_resident` was the Monitor verb; retired at Phase 41 per ADR-0155 — L3 now ships `cl.iter_monitors()` and L4 owns the loop.) |
 | [0063](../adr/0063-datastates-purely-structural.md) | DataStates carry only a structural ShapeDescriptor | Deterministic auto-discovery via structural matching; semantic depth implicit in operators |
 | [0064](../adr/0064-one-shared-datastates-graph.md) | One shared `capacity:datastates` graph per metagraph | Avoids duplication; TYPE_COMPAT edges are intra-graph or cross-graph MetaEdges |
 | [0065](../adr/0065-twelve-functional-categories.md) | Twelve functional categories as the node-graph partition | Readable partition keeps discovery fast; extension is one file edit |
@@ -53,7 +53,7 @@ Layer 3 is the repertoire of *fixed*, deterministic abilities the system has. It
 | [0099](../adr/0099-resident-state-persistence-dynamic.md) | Resident state persistence policy - activity-based dynamic snapshots | Snapshot cadence proportional to state-delta rate; per-resident overrides available |
 | [0100](../adr/0100-resident-watches-first-input.md) | Resident granularity - watches input DataState of first pipeline node | Residents compose naturally with reactive pipelines at same scale |
 
-## Proposed decisions
+## Deferred decisions
 
 | ADR # | Title | Summary |
 |-------|-------|---------|
@@ -66,12 +66,26 @@ The 2026-04-27 L2 redesign relocates KL's write API into L3 as named capacities.
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|
-| [0145](../adr/0145-l3-per-target-write-capacity-categories.md) | L3 per-target write capacity categories | Proposed | Five new categories: `capacity:consolidate`, `capacity:trace` (write side), `capacity:promote`, `capacity:author`, `capacity:state`. No umbrella `capacity:write` |
-| [0146](../adr/0146-l3-symmetric-write-invocation-contract.md) | L3 symmetric write invocation contract | Proposed | `WriteResult \| ProblemTraceRecord` return; capability check at entry + handle methods; L1 errors caught and wrapped; programmer errors propagate |
-| [0147](../adr/0147-l3-per-flow-write-capacity-build-pattern.md) | Per-flow build pattern for L3 write capacities | Proposed | Each capacity built when its L4 flow closes design; KL `DeprecationWarning`s stay until relocation lands per-flow |
+| [0145](../adr/0145-l3-per-target-write-capacity-categories.md) | L3 per-target write capacity categories | Accepted | Five new categories: `capacity:consolidate`, `capacity:trace` (write side), `capacity:promote`, `capacity:author`, `capacity:state`. No umbrella `capacity:write` |
+| [0146](../adr/0146-l3-symmetric-write-invocation-contract.md) | L3 symmetric write invocation contract | Accepted | `WriteResult \| ProblemTraceRecord` return; capability check at entry + handle methods; L1 errors caught and wrapped; programmer errors propagate |
+| [0147](../adr/0147-l3-per-flow-write-capacity-build-pattern.md) | Per-flow build pattern for L3 write capacities | Accepted | Each capacity built when its L4 flow closes design; KL `DeprecationWarning`s stay until relocation lands per-flow |
 
 See `docs/HANDOFF_L3_WRITE_DESIGN_2026-04-27.md` for the full L3 write-side handoff and the 6 minimum capacities for L4 v1.
 
+## L3 reframe + dream family — SHIPPED (Phases 40–45)
+
+The bipartite-topology reframe, dont-know contracts, registration-contract v2, and the dream family shipped across Phases 40–45. These are the current authoritative L3 decisions and supersede the TYPE_COMPAT/auto-discovery/resident lines above.
+
+| ADR # | Title | Status | Summary |
+|-------|-------|--------|---------|
+| [0155](../adr/0155-monitor-lifecycle-relocated-from-l3-to-l4.md) | Monitor lifecycle relocated from L3 to L4 substrate | Accepted | `KIND_RESIDENT`→`KIND_MONITOR`; L3 ships `iter_monitors()`, L4 owns the loop. Supersedes 0073. |
+| [0156](../adr/0156-l3-bipartite-topology-reframe.md) | Capacity-to-DataState topology reframed as explicit bipartite | Accepted | `PRODUCES`/`CONSUMES` IntergraphEdges at `register_capacity`; TYPE_COMPAT + `discovery.py` retired. Supersedes 0069, 0086. |
+| [0157](../adr/0157-family-specific-dontknow-contracts.md) | Dont-know contracts are family-specific | Accepted | `FAMILY_RULES` per functional family, not a universal contract |
+| [0158](../adr/0158-datastate-naming-convention-and-realms.md) | DataState naming convention + realm sub-namespace | Accepted | `REALM_*` namespaces; strict realm validation at `register_datastate` |
+| [0159](../adr/0159-capacity-registration-contract-v2.md) | Capacity registration contract v2 | Accepted | Typed `CapacityContext`; concurrent/inline/action contracts; `reads_mm` |
+| [0162](../adr/0162-l3-dream-family.md) | L3 dream family — 3 v1 dream capacities | Accepted | `CATEGORY_DREAM` (lazy-installed); `DreamCapacity` kind; execution-policy contracts |
+| [0184](../adr/0184-composite-capacity-promotion-seam.md) | Composite-capacity promotion — two-half target-applier seam | Deferred | Design-only; no writer exists at v1 |
+
 ---
 
-**Next:** [L4 Intelligence decisions](intelligence.md) — orchestration, learning, and confidence (design-phase).
+**Next:** [L4 / L5 Intelligence decisions](intelligence.md) — orchestration, learning, and the Mental Model (shipped).

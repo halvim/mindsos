@@ -1,6 +1,7 @@
 ---
 title: Replan atomicity - discard remaining plan; regenerate from current state
-status: Proposed
+status: Superseded
+superseded_by: ADR-0173
 date: 2026-04-22
 layer: L4
 aliases: [L4-replan-atomicity]
@@ -8,7 +9,7 @@ aliases: [L4-replan-atomicity]
 
 # ADR-0105: Replan atomicity - full regeneration
 
-**Status:** Proposed
+**Status:** Superseded by [ADR-0173](0173-replan-check-dispatch-and-invalidation.md) — design-phase decision; the shipped L4/L5 architecture (Phases 46–48) implements it. Reconciled in the 2026-07 doc-vs-code audit.
 
 **Date:** 2026-04-22
 

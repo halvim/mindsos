@@ -4,9 +4,12 @@ last_confirmed_phase: 15b
 
 # Knowledge addition lifecycle (L2)
 
-L2's role-set is closed at 9 entries (8 named + 1 parametric alignment
-template) per
-[ADR-0150](../decisions/adr/0150-l2-knowledge-lifecycle.md). Given that
+L2's role-set is closed at **14 named entries + 1 parametric alignment
+template** per
+[ADR-0150](../decisions/adr/0150-l2-knowledge-lifecycle.md) and its
+amendments (§am-5 Phase-43 +4, §am-6 `installed-skills`, §am-7
+`subminds`). See [role-graphs.md](role-graphs.md) for the full set.
+Given that
 closure, "how does knowledge get into L2" is a finite enumeration of
 entry points. This page is the index. Sibling pages own the per-path
 mechanics.

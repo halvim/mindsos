@@ -71,9 +71,11 @@ are emitted. (L0 uses `server.db` (SQLite) + the token file — no Falkor.)
 
 ### 2. L2/L3 — build the stack + the read-side tokenize
 
-The L4/L5 substrate has no CLI verb today; the scenario drives it through the
-Python API. One `CapacityLayer` over one `KnowledgeLayer` holds every catalog
-the slice needs:
+This cookbook drives the substrate through the Python API to show each step
+explicitly. For an interactive way to hold the same stack alive and task/probe
+it live, see [Resident brain — `mindsos brain`](../runtime/resident-brain.md),
+which wraps exactly this `boot`→task→consolidate flow behind a REPL. One
+`CapacityLayer` over one `KnowledgeLayer` holds every catalog the slice needs:
 
 ```python
 from mindsos_capacity import CapacityLayer

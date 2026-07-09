@@ -33,8 +33,12 @@ nav:
       - Planning (Phase 47): concepts/planning.md
       - The five layers (Phase 48): concepts/layers.md
       - Society of Mind (Phase 48): concepts/society-of-mind.md
+      - Perception principles: concepts/perception-principles.md
       - Knowledge lifecycle:
           - Synthesis: concepts/knowledge-lifecycle.md
+          - Role-graphs (closed set): concepts/role-graphs.md
+          - Mutation discipline: concepts/mutation-discipline.md
+          - Storage tiers: concepts/storage-tiers.md
           - Global + Local metagraphs (Phase 14): concepts/global-local.md
           - User-Local authoring: concepts/user-local-authoring.md
           - Admin-Global shipping: concepts/admin-global-shipping.md
@@ -67,6 +71,8 @@ nav:
           - Data states: usage/capacity/data-states.md
           - Building: usage/capacity/building.md
           - Retrieval: usage/capacity/retrieval.md
+      - Runtime:
+          - Resident brain — mindsos brain: usage/runtime/resident-brain.md
       - Cookbook (Phase 38):
           - Text realm — vertical slice: usage/cookbook/text-realm.md
           - End-to-end — L0→L5 trivial-task slice: usage/cookbook/end-to-end.md
@@ -94,6 +100,7 @@ nav:
       - Core Loaders (Phase 08): api/core/loaders.md
       - Core XRef (Phase 09): api/core/xref.md
       - Core Soft-delete (Phase 10): api/core/soft-delete.md
+      - Core Value codec (Phase 50): api/core/value-codec.md
       - Core MetagraphSnapshot (Phase 10): api/core/metagraph-snapshot.md
       - Knowledge identifiers (Phase 12): api/knowledge/identifiers.md
       - Knowledge REF_TYPES (Phase 12): api/knowledge/ref-types.md
@@ -103,6 +110,8 @@ nav:
       - Internals — Core: dev/internals/core.md
       - Internals — Snapshot (Phase 10): dev/internals/snapshots.md
       - Internals — Capacity (Phase 33): dev/internals/capacity.md
+      - Internals — Resident-brain runtime: dev/internals/runtime.md
+      - Internals — Phase-1 ingress + modality: dev/internals/phase1-ingress.md
       - L3 write-capacity per-flow tracker: dev/coordinated-changes/L3-capacity-write-flows.md
       - Review checklist (Phase 34): dev/review-checklist.md
       - CLI conventions: dev/conventions.md
@@ -111,9 +120,6 @@ nav:
       - Schema migration playbook (Phase 15b): dev/migration-playbook.md
       - L4 design notes (in design): dev/l4_intelligence_design_notes.md
       - L5 design notes (in design): dev/l5_mental_model_design_notes.md
-      - Handoffs:
-          - System overview (2026-04-26): dev/handoffs/system_overview_2026-04-26.md
-          - L4 session handoff (2026-04-25): dev/handoffs/l4_session_handoff_2026-04-25.md
   - Decisions (ADRs):
       - About: decisions/about.md
       - Proposed: decisions/proposed.md

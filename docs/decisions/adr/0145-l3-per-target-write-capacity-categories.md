@@ -1,13 +1,13 @@
 ---
 title: L3 per-target write capacity categories
-status: Proposed
+status: Accepted
 date: 2026-04-27
 layer: L3
 ---
 
 # ADR-0145: L3 per-target write capacity categories
 
-**Status:** Proposed
+**Status:** Accepted (shipped; frontmatter reconciled during the 2026-07 doc-vs-code audit)
 
 **Date:** 2026-04-27
 

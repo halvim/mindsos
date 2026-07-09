@@ -16,10 +16,12 @@ services:
 
   falkordb:
     image: falkordb/falkordb@sha256:30c530c193ac48cb6ea8c6cae745f793d2c098a0a138f7b3e46c1d90848845ba
-    container_name: mindsos-falkordb
     restart: unless-stopped
-    ports:
-      - "6379:6379"
+    # No fixed container_name or host-port publish: both defeat compose
+    # `-p <project>` isolation (RULES §4 parallel stacks) — a fixed name
+    # collides ("container name already in use") and a fixed host port
+    # fights a second stack. mindsos/mindsos-test reach falkordb over the
+    # compose network (FALKORDB_HOST=falkordb); nothing needs the host port.
     volumes:
       - ./.mindsos/falkordb-data:/data
     healthcheck:

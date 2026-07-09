@@ -30,7 +30,7 @@ cl = CapacityLayer(categories=(CATEGORY_PERCEPTION,))
 
 `CapacityLayer(categories=...)` bootstraps the Global metagraph with
 the named category role-graphs plus a shared `capacity:datastates`
-graph. The full 12-category bootstrap (`CapacityLayer()` with no
+graph. The full 13-category bootstrap (`CapacityLayer()` with no
 `categories` kwarg) is the production path; the example above narrows
 to a single category for clarity. Local metagraphs are created lazily
 on first write under a session.
@@ -161,8 +161,6 @@ exists for the session's user, the Local declaration wins on
 `invoke` lookup — mirroring KL's specialisation rule (ADR-0061):
 
 ```python
-from mindsos_capacity import build_session  # test-only fixture pattern
-
 sess = make_session("alice")  # any SessionProtocol-conforming object
 
 # Same IRI as global; Local impl overrides.
@@ -177,7 +175,7 @@ cl.register_capacity(
     local_echo,
     session=sess,
     ref_to_global=local_echo.iri,
-    ref_type="specialises_capacity",
+    ref_type="SPECIALISES",
 )
 
 res = cl.invoke(local_echo.iri, inputs={raw_text.iri: "x"}, session=sess)

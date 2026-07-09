@@ -205,5 +205,5 @@ display.
 * [Persistence CLI usage](../../usage/core/persistence.md) — operator
   surface (`sync --metagraph M` / `load --metagraph M` /
   `verify --source=db --metagraph M`).
-* [Persistence layer internals](../../dev/internals/core.md#reconstruction-layer)
+* [Persistence layer internals](../../dev/internals/core.md#reconstruction-layer-phase-08)
   — read-side mechanics in narrative form.

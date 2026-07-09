@@ -174,3 +174,26 @@ conflict preflight). Its mechanism ships in WSD
 - v2-trigger ledger (phase-map §3): bundle-shipped code; Local-tier
   installs; in-place upgrade; hard delete; node-level deprecation
   read-filtering; dangling-IRI chasing; rich L4 slots.
+## Amendment §am-1 (2026-07-05) — runtime-entry declaration
+
+**Context.** The resident-brain `execute` verb (REPL Slice 2) runs a skill's
+declared runtime entry pipeline. No prior field carried it; `_resolve_entry_point`
+(driver.py) is install-time only.
+
+**Decision.** Add two optional flat advisory props to `SkillInstallRecord`:
+`entry_start_datastate` and `entry_target_datastate`. When both are present on
+a skill's latest (`status="installed"`) record, `execute` seeds the start
+datastate with the caller input, builds a pipeline start→target via
+`find_pipeline`, and runs it through the standalone step-runner
+(`mindsos_server/pipeline_runner.py`).
+
+**Scope / status.** Additive to the strict=False schema; append-only (fixed per
+install record — changing an entry means a new record). Populated by the SAP
+manifest installer when SAP ships; until then only test fixtures / ARC-packaging
+set it, so `execute` is inert ("no entry declared") in a stock brain and `task`
+is retained. Additive/optional on a strict=False schema — no release-train version bump (the label moves only at numbered phases; version_db node-versioning is deferred).
+
+**Alternatives rejected.** (a) entry in the opaque record `value` — no bump but
+untyped/unqueryable; (b) promoted-pipeline marker — needs a marker convention
+and pre-promotion. Chose flat props for queryability (operator's call, bump
+accepted).

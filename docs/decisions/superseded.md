@@ -15,6 +15,27 @@ When an ADR becomes superseded:
 3. Add a line like `superseded_by: ADR-NNNN` to link the replacement.
 4. The reader can see the old reasoning, the old decision date, and the new decision that replaced it.
 
+## Effective supersessions
+
+These supersessions are **in effect** — the superseding ADR's code has shipped. Each original ADR's front-matter is `status: Superseded`; the prose Status line names the replacement.
+
+| Original | Superseded by | Effective | Notes |
+|----------|---------------|-----------|-------|
+| [0049](adr/0049-similarity-report-before-promotion.md) | [0115](adr/0115-release-ship-audit-gate.md) + [0144](adr/0144-similarity-at-release-ship-audit-gate.md) | Phase 24 | Gate-on-`promote()` replaced by the release-ship audit gate. |
+| [0053](adr/0053-promote-per-candidate-atomic-rollback.md) | [0118](adr/0118-per-user-transactional-promotion.md) + [0129](adr/0129-metagraph-snapshot-narrowed-to-release-ship.md) | Phase 24 | Per-candidate atomic rollback replaced by per-role atomic ship + admin rerun. |
+| [0056](adr/0056-promotion-result-preserves-input-order.md) | [0114](adr/0114-release-manifest-and-version-db-schema.md) + [0118](adr/0118-per-user-transactional-promotion.md) | Phase 24 | `PromotionResult` order semantic replaced by the `manifest_json.included_mutation_ids` contract. |
+| [0069](adr/0069-type-compat-auto-discovery.md) | [0156](adr/0156-l3-bipartite-topology-reframe.md) | Phase 42 | TYPE_COMPAT auto-discovery + `discovery.py` retired for explicit bipartite PRODUCES/CONSUMES edges. |
+| [0073](adr/0073-residents-descriptive.md) | [0155](adr/0155-monitor-lifecycle-relocated-from-l3-to-l4.md) | Phase 41 | Resident event-loop relocated from L3 to L4 (`KIND_RESIDENT` → `KIND_MONITOR`). Note: ADR-0155 is itself later amended by [0188](adr/0188-submind-construct-and-two-output-model.md) (SubMind reflex construct). |
+| [0086](adr/0086-auto-discovery-with-admin-override.md) | [0156](adr/0156-l3-bipartite-topology-reframe.md) | Phase 42 | TYPE_COMPAT substrate + `add_type_compat` + `rediscover_all` retired. |
+| [0033](adr/0033-property-bag-on-metagraph-deferred.md) | [0130](adr/0130-property-bag-on-metagraph-graph.md) | L1 redesign | The deferred property-bag lands as typed `properties` on `Metagraph` / `Graph`. |
+| [0101](adr/0101-l4-per-session-orchestrator.md) | [0171](adr/0171-six-phase-task-lifecycle.md) | Phase 47 | Design-phase L4 tenancy menu; the shipped orchestrator is per-session, worker-per-task. |
+| [0103](adr/0103-l4-attention-priority-queue.md) | [0163](adr/0163-l4-priority-tier-executor.md) | Phase 46 | Four-tier priority queue shipped as the priority-tier Executor + `attention_score`. |
+| [0104](adr/0104-l4-replan-always-on.md) | [0173](adr/0173-replan-check-dispatch-and-invalidation.md) | Phase 47 | Always-on replan shipped as replan-check dispatch. |
+| [0105](adr/0105-l4-replan-atomicity-discard.md) | [0173](adr/0173-replan-check-dispatch-and-invalidation.md) | Phase 47 | Discard-and-regenerate replan atomicity shipped with 0173. |
+| [0106](adr/0106-l4-planning-ownership.md) | [0172](adr/0172-phase-1-five-step-task-interpretation.md) | Phase 47 | Planning-ownership (L4 orchestrates; planning is an L3 capacity) shipped via the v0 planning catalog. |
+
+The remaining design-phase L4 menu ADRs (0102, 0107–0112) plus 0082/0083 were **not** carried into v1 as specced and are marked **Deferred** on their own files (revisit post-v1 / WSD); the live L4/L5 architecture is [ADRs 0163–0181](summary/intelligence.md).
+
 ## Supersessions in flight
 
 These supersessions have been **proposed** by later ADRs and become effective when the superseding ADR's code lands and a user-facing doc reflects the decision (per `about.md`).
@@ -23,7 +44,6 @@ These supersessions have been **proposed** by later ADRs and become effective wh
 |----------|--------|---------------|-------|
 | [0007](adr/0007-metagraph-snapshot-rollback.md) | Accepted *(supersession proposed)* | [0118](adr/0118-per-user-transactional-promotion.md) | Cross-user atomic promotion model replaced by per-user transactional + release-boundary atomicity. The `MetagraphSnapshot` machinery itself is retained; only its use for cross-user rollback is superseded. ADR-0129 documents the narrowed scope. |
 | [0029](adr/0029-piggyback-metadata-via-metagraph-settings.md) | Accepted *(supersession proposed)* | [0130](adr/0130-property-bag-on-metagraph-graph.md) | `:MetagraphSettings` JSON-singleton interim mechanism replaced by typed `properties: Dict` on `Metagraph` / `Graph`. Existing settings migrate on first load. |
-| [0033](adr/0033-property-bag-on-metagraph-deferred.md) | Proposed *(supersession proposed)* | [0130](adr/0130-property-bag-on-metagraph-graph.md) | Original deferred ADR; ADR-0130 ships what 0033 deferred. |
 | [0037](adr/0037-instancing-vocabulary-in-core.md) | Accepted *(supersession proposed)* | [0132](adr/0132-instancing-moved-to-mindsos-instances.md) | Instancing vocabulary moves out of Core to a sibling `mindsos_instances` package. |
 
 ## Amendments in flight

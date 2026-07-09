@@ -15,9 +15,9 @@ supersedes: [0007]
 **Supersedes:** [ADR-0007](0007-metagraph-snapshot-rollback.md) (in full).
 **Related:** [ADR-0006](0006-promotion-locking.md) (amended; see §"Consequences"),
 [ADR-0027](0027-metagraph-snapshot-restore-in-place.md) (retained, narrowed).
-**Companion docs:** [PIVOT_V1_SCOPE_2026-04-26.md](../../PIVOT_V1_SCOPE_2026-04-26.md) §7
-(implementation specs); [HANDOFF_SERVER_PIVOT_2026-04-26.md](../../HANDOFF_SERVER_PIVOT_2026-04-26.md);
-[The release model](../../concepts/release-model.md).
+**Companion docs:** `PIVOT_V1_SCOPE_2026-04-26.md` §7
+(implementation specs); `HANDOFF_SERVER_PIVOT_2026-04-26.md`;
+the release-model design notes.
 
 ## Context
 
