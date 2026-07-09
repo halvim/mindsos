@@ -337,43 +337,43 @@ def _profiler_capacities() -> List[Capacity]:
     return [
         Capacity(
             name="compare_grid_dimension", category=CATEGORY_PROFILER,
-            inputs=(DS_GRID,), outputs=(DS_DIMENSION_DELTA,),
+            inputs=(DS_GRID,), operand_arity={DS_GRID: 2}, outputs=(DS_DIMENSION_DELTA,),
             implementation=lambda **kw: {DS_DIMENSION_DELTA: None},
             description="(in Grid, out Grid) -> DimensionDelta | None.",
         ),
         Capacity(
             name="compare_palette", category=CATEGORY_PROFILER,
-            inputs=(DS_PALETTE,), outputs=(DS_PALETTE_DELTA,),
+            inputs=(DS_PALETTE,), operand_arity={DS_PALETTE: 2}, outputs=(DS_PALETTE_DELTA,),
             implementation=lambda **kw: {DS_PALETTE_DELTA: None},
             description="(in Palette, out Palette) -> PaletteDelta | None.",
         ),
         Capacity(
             name="same_object", category=CATEGORY_PROFILER,
-            inputs=(DS_OBJECT,), outputs=(DS_SAME_OBJECT,),
+            inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_SAME_OBJECT,),
             implementation=lambda **kw: {DS_SAME_OBJECT: None},
             description="(in Object, out Object) -> Bool (same color + position).",
         ),
         Capacity(
             name="same_shape", category=CATEGORY_PROFILER,
-            inputs=(DS_SHAPE,), outputs=(DS_SAME_SHAPE,),
+            inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_SAME_SHAPE,),
             implementation=lambda **kw: {DS_SAME_SHAPE: None},
             description="(Shape, Shape) -> Bool (identical normalized point-set; no rotation). Implies same_cell_count + same_bbox_area.",
         ),
         Capacity(
             name="same_cell_count", category=CATEGORY_PROFILER,
-            inputs=(DS_SHAPE,), outputs=(DS_SAME_CELL_COUNT,),
+            inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_SAME_CELL_COUNT,),
             implementation=lambda **kw: {DS_SAME_CELL_COUNT: None},
             description="(Shape, Shape) -> Bool (equal cell count; D4-invariant). Implied by same_shape; demanded by rotated/reflected.",
         ),
         Capacity(
             name="same_bbox_area", category=CATEGORY_PROFILER,
-            inputs=(DS_SHAPE,), outputs=(DS_SAME_BBOX_AREA,),
+            inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_SAME_BBOX_AREA,),
             implementation=lambda **kw: {DS_SAME_BBOX_AREA: None},
             description="(Shape, Shape) -> Bool (equal bbox area h×w; D4-invariant). Implied by same_shape; demanded by rotated/reflected.",
         ),
         Capacity(
             name="same_point", category=CATEGORY_PROFILER,
-            inputs=(DS_POINT,), outputs=(DS_SAME_POINT,),
+            inputs=(DS_POINT,), operand_arity={DS_POINT: 2}, outputs=(DS_SAME_POINT,),
             implementation=lambda **kw: {DS_SAME_POINT: None},
             description="(Point, Point) -> Bool (same colour + position).",
         ),
@@ -387,13 +387,13 @@ def _comparator_capacities() -> List[Capacity]:
     return [
         Capacity(
             name="moved", category=CATEGORY_DETECTOR,
-            inputs=(DS_OBJECT,), outputs=(DS_MOVE_TRANSFORM,),
+            inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_MOVE_TRANSFORM,),
             implementation=lambda **kw: {DS_MOVE_TRANSFORM: None},
             description="(in Object, out Object | same_shape) -> move Transform (Δ) | None if not displaced.",
         ),
         Capacity(
             name="inset", category=CATEGORY_PREDICATE,
-            inputs=(DS_OBJECT,), outputs=(DS_INSET,),
+            inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_INSET,),
             implementation=lambda **kw: {DS_INSET: None},
             description="(a Object, b Object) -> Bool (a's cell-set ⊆ b's cell-set; "
                         "positional, reflexive; inter-grid). Capacity-only (no Search "
@@ -414,7 +414,7 @@ def _operator_capacities() -> List[Capacity]:
     return [
         Capacity(
             name="union", category=CATEGORY_OPERATOR,
-            inputs=(DS_OBJECT,), outputs=(DS_REGION,),
+            inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_REGION,),
             implementation=lambda **kw: {DS_REGION: None},
             description="(a Object, b Object) -> Region (positional cell-union; "
                         "may be multi-colour/disconnected → Region not Object). "
@@ -570,19 +570,19 @@ def _transform_capacities() -> List[Capacity]:
         # comparators (fold-time detection; stub bodies like moved) — Gates caps
         Capacity(
             name="recolored", category=CATEGORY_DETECTOR,
-            inputs=(DS_OBJECT,), outputs=(DS_RECOLOR_TRANSFORM,),
+            inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_RECOLOR_TRANSFORM,),
             implementation=lambda **kw: {DS_RECOLOR_TRANSFORM: None},
             description="(in Object, out Object | same_shape) -> recolor Transform | None (same shape+position, diff colour). recolored ⟹ same_shape.",
         ),
         Capacity(
             name="rotated", category=CATEGORY_DETECTOR,
-            inputs=(DS_SHAPE,), outputs=(DS_ROTATE_TRANSFORM,),
+            inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_ROTATE_TRANSFORM,),
             implementation=lambda **kw: {DS_ROTATE_TRANSFORM: None},
             description="(in Shape, out Shape) -> rotate Transform (90/180/270) | None.",
         ),
         Capacity(
             name="reflected", category=CATEGORY_DETECTOR,
-            inputs=(DS_SHAPE,), outputs=(DS_REFLECT_TRANSFORM,),
+            inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_REFLECT_TRANSFORM,),
             implementation=lambda **kw: {DS_REFLECT_TRANSFORM: None},
             description="(in Shape, out Shape) -> reflect Transform (horizontal/vertical) | None.",
         ),
