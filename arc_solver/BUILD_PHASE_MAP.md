@@ -5,6 +5,8 @@
 **Core deps:** shipped — `operand-arity-groups-readsmm-confirmed` (ADR-0198/0199/0200 = C1/C3/C4).
 **Machine discipline:** Cowork builds → Mac commits → Linux gates. Gate = root `./run_spike` = **14
 `[ok]`** (400-task profiling + #8 solves). Never `git add -A`; `arc_debug_data.js` stays gitignored.
+**Linux has NO `python` alias — every script/pytest/probe command uses `python3`** (`./run_spike` is a
+wrapper and is fine). New files must be committed + pushed (Mac) and pulled (Linux) before they gate.
 
 ## Locked decisions
 

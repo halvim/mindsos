@@ -1,15 +1,23 @@
 """Slice-2a perf probe: measures invoke overhead + counts the exhaustive
 comparison_matrix invocations over the 400 tasks, to extrapolate the added
 layer-execution time BEFORE building the full matrix. Measurement only; no
-solver change. Run: python arc_solver/spike/probe_matrix_perf.py"""
-import os
-import sys
+solver change. Run: python3 arc_solver/spike/probe_matrix_perf.py"""
+from __future__ import annotations
+
+if __package__ in (None, ""):
+    import os as _os
+    import runpy as _runpy
+    import sys as _sys
+    _repo_root = _os.path.abspath(_os.path.join(_os.path.dirname(__file__), "..", ".."))
+    if _repo_root not in _sys.path:
+        _sys.path.insert(0, _repo_root)
+    _runpy.run_module("arc_solver.spike.probe_matrix_perf", run_name="__main__")
+    _sys.exit(0)
+
 import time
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-from arc_solver.spike import arc_capacities as ac
-from arc_solver.spike import arc_grids, arc_profile
+from . import arc_capacities as ac
+from . import arc_grids, arc_profile
 
 
 def count_invocations(tasks):
