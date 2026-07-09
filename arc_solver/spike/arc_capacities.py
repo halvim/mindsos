@@ -223,6 +223,56 @@ def _same_object(**kw: Any) -> dict:
     return {DS_SAME_OBJECT: arc_grids.same_object(a, b)}
 
 
+def _same_shape(**kw: Any) -> dict:
+    a, b = kw[DS_SHAPE]
+    return {DS_SAME_SHAPE: arc_grids.same_shape(a, b)}
+
+
+def _same_point(**kw: Any) -> dict:
+    a, b = kw[DS_POINT]
+    return {DS_SAME_POINT: arc_grids.same_point(a, b)}
+
+
+def _same_cell_count(**kw: Any) -> dict:
+    a, b = kw[DS_SHAPE]
+    return {DS_SAME_CELL_COUNT: arc_grids.same_cell_count(a, b)}
+
+
+def _same_bbox_area(**kw: Any) -> dict:
+    a, b = kw[DS_SHAPE]
+    return {DS_SAME_BBOX_AREA: arc_grids.same_bbox_area(a, b)}
+
+
+def _moved(**kw: Any) -> dict:
+    a, b = kw[DS_OBJECT]
+    return {DS_MOVE_TRANSFORM: arc_grids.moved(a, b)}
+
+
+def _inset(**kw: Any) -> dict:
+    a, b = kw[DS_OBJECT]
+    return {DS_INSET: arc_grids.inset(a, b)}
+
+
+def _union(**kw: Any) -> dict:
+    a, b = kw[DS_OBJECT]
+    return {DS_REGION: arc_grids.union(a, b)}
+
+
+def _recolored(**kw: Any) -> dict:
+    a, b = kw[DS_OBJECT]
+    return {DS_RECOLOR_TRANSFORM: arc_grids.recolored(a, b)}
+
+
+def _rotated(**kw: Any) -> dict:
+    a, b = kw[DS_SHAPE]
+    return {DS_ROTATE_TRANSFORM: arc_grids.rotated(a, b)}
+
+
+def _reflected(**kw: Any) -> dict:
+    a, b = kw[DS_SHAPE]
+    return {DS_REFLECT_TRANSFORM: arc_grids.reflected(a, b)}
+
+
 def _arc_emit_candidates(**kw: Any) -> dict:
     """Phase 8 (L3 decision) — emit candidate rules from the profile. REAL body =
     the shipped `arc_solver.rules`; dispatched by the L4 driver, not inline."""
@@ -361,25 +411,25 @@ def _profiler_capacities() -> List[Capacity]:
         Capacity(
             name="same_shape", category=CATEGORY_PROFILER,
             inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_SAME_SHAPE,),
-            implementation=lambda **kw: {DS_SAME_SHAPE: None},
+            implementation=_same_shape,
             description="(Shape, Shape) -> Bool (identical normalized point-set; no rotation). Implies same_cell_count + same_bbox_area.",
         ),
         Capacity(
             name="same_cell_count", category=CATEGORY_PROFILER,
             inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_SAME_CELL_COUNT,),
-            implementation=lambda **kw: {DS_SAME_CELL_COUNT: None},
+            implementation=_same_cell_count,
             description="(Shape, Shape) -> Bool (equal cell count; D4-invariant). Implied by same_shape; demanded by rotated/reflected.",
         ),
         Capacity(
             name="same_bbox_area", category=CATEGORY_PROFILER,
             inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_SAME_BBOX_AREA,),
-            implementation=lambda **kw: {DS_SAME_BBOX_AREA: None},
+            implementation=_same_bbox_area,
             description="(Shape, Shape) -> Bool (equal bbox area h×w; D4-invariant). Implied by same_shape; demanded by rotated/reflected.",
         ),
         Capacity(
             name="same_point", category=CATEGORY_PROFILER,
             inputs=(DS_POINT,), operand_arity={DS_POINT: 2}, outputs=(DS_SAME_POINT,),
-            implementation=lambda **kw: {DS_SAME_POINT: None},
+            implementation=_same_point,
             description="(Point, Point) -> Bool (same colour + position).",
         ),
     ]
@@ -393,13 +443,13 @@ def _comparator_capacities() -> List[Capacity]:
         Capacity(
             name="moved", category=CATEGORY_DETECTOR,
             inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_MOVE_TRANSFORM,),
-            implementation=lambda **kw: {DS_MOVE_TRANSFORM: None},
+            implementation=_moved,
             description="(in Object, out Object | same_shape) -> move Transform (Δ) | None if not displaced.",
         ),
         Capacity(
             name="inset", category=CATEGORY_PREDICATE,
             inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_INSET,),
-            implementation=lambda **kw: {DS_INSET: None},
+            implementation=_inset,
             description="(a Object, b Object) -> Bool (a's cell-set ⊆ b's cell-set; "
                         "positional, reflexive; inter-grid). Capacity-only (no Search "
                         "facet — near-universal); the subdivision process (phase 3) "
@@ -420,7 +470,7 @@ def _operator_capacities() -> List[Capacity]:
         Capacity(
             name="union", category=CATEGORY_OPERATOR,
             inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_REGION,),
-            implementation=lambda **kw: {DS_REGION: None},
+            implementation=_union,
             description="(a Object, b Object) -> Region (positional cell-union; "
                         "may be multi-colour/disconnected → Region not Object). "
                         "C = union(a,b) ⟹ inset(a,C) ∧ inset(b,C). Bg-excluded "
@@ -576,19 +626,19 @@ def _transform_capacities() -> List[Capacity]:
         Capacity(
             name="recolored", category=CATEGORY_DETECTOR,
             inputs=(DS_OBJECT,), operand_arity={DS_OBJECT: 2}, outputs=(DS_RECOLOR_TRANSFORM,),
-            implementation=lambda **kw: {DS_RECOLOR_TRANSFORM: None},
+            implementation=_recolored,
             description="(in Object, out Object | same_shape) -> recolor Transform | None (same shape+position, diff colour). recolored ⟹ same_shape.",
         ),
         Capacity(
             name="rotated", category=CATEGORY_DETECTOR,
             inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_ROTATE_TRANSFORM,),
-            implementation=lambda **kw: {DS_ROTATE_TRANSFORM: None},
+            implementation=_rotated,
             description="(in Shape, out Shape) -> rotate Transform (90/180/270) | None.",
         ),
         Capacity(
             name="reflected", category=CATEGORY_DETECTOR,
             inputs=(DS_SHAPE,), operand_arity={DS_SHAPE: 2}, outputs=(DS_REFLECT_TRANSFORM,),
-            implementation=lambda **kw: {DS_REFLECT_TRANSFORM: None},
+            implementation=_reflected,
             description="(in Shape, out Shape) -> reflect Transform (horizontal/vertical) | None.",
         ),
     ]

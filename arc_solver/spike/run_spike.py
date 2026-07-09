@@ -208,22 +208,38 @@ def _inside_layer_conformance(cl, tasks) -> None:
           f"inline perception across {n_grids} grids / {len(tasks)} tasks.")
 
 
-def _matrix_same_object_check(cl, tasks) -> None:
-    """Slice-2b-i: same_object slice of the comparison_matrix, cell-exact vs inline."""
-    iri = ac.capacity_iri(ac.CATEGORY_PROFILER, "same_object")
-    n = 0
-    for t in tasks:
-        for pr in t["train"]:
-            for a in pr["input"]["objects"]:
-                for b in pr["output"]["objects"]:
-                    res = cl.invoke(iri, inputs={ac.DS_OBJECT: [a, b]})
-                    assert res.success, \
-                        f"same_object invoke failed on {t['task_id']}: {getattr(res, 'error', None)!r}"
-                    assert res.outputs[ac.DS_SAME_OBJECT] == arc_grids.same_object(a, b), \
-                        f"invoked same_object != inline on {t['task_id']}"
-                    n += 1
-    print(f"  [ok] matrix: same_object cell-exact through the layer == inline "
-          f"across {n} cells / {len(tasks)} tasks.")
+_MATRIX_COMPS = [
+    ("same_object", ac.CATEGORY_PROFILER, ac.DS_OBJECT, ac.DS_SAME_OBJECT, "objects", arc_grids.same_object),
+    ("same_shape", ac.CATEGORY_PROFILER, ac.DS_SHAPE, ac.DS_SAME_SHAPE, "shapes", arc_grids.same_shape),
+    ("same_point", ac.CATEGORY_PROFILER, ac.DS_POINT, ac.DS_SAME_POINT, "points", arc_grids.same_point),
+    ("same_cell_count", ac.CATEGORY_PROFILER, ac.DS_SHAPE, ac.DS_SAME_CELL_COUNT, "shapes", arc_grids.same_cell_count),
+    ("same_bbox_area", ac.CATEGORY_PROFILER, ac.DS_SHAPE, ac.DS_SAME_BBOX_AREA, "shapes", arc_grids.same_bbox_area),
+    ("moved", ac.CATEGORY_DETECTOR, ac.DS_OBJECT, ac.DS_MOVE_TRANSFORM, "objects", arc_grids.moved),
+    ("inset", ac.CATEGORY_PREDICATE, ac.DS_OBJECT, ac.DS_INSET, "objects", arc_grids.inset),
+    ("union", ac.CATEGORY_OPERATOR, ac.DS_OBJECT, ac.DS_REGION, "objects", arc_grids.union),
+    ("recolored", ac.CATEGORY_DETECTOR, ac.DS_OBJECT, ac.DS_RECOLOR_TRANSFORM, "objects", arc_grids.recolored),
+    ("rotated", ac.CATEGORY_DETECTOR, ac.DS_SHAPE, ac.DS_ROTATE_TRANSFORM, "shapes", arc_grids.rotated),
+    ("reflected", ac.CATEGORY_DETECTOR, ac.DS_SHAPE, ac.DS_REFLECT_TRANSFORM, "shapes", arc_grids.reflected),
+]
+
+
+def _matrix_comparators_check(cl, tasks) -> None:
+    """Slice-2b: component-comparator slices of the comparison_matrix, cell-exact vs inline."""
+    total = 0
+    for name, cat, in_ds, out_ds, key, fn in _MATRIX_COMPS:
+        iri = ac.capacity_iri(cat, name)
+        for t in tasks:
+            for pr in t["train"]:
+                for a in pr["input"][key]:
+                    for b in pr["output"][key]:
+                        res = cl.invoke(iri, inputs={in_ds: [a, b]})
+                        assert res.success, \
+                            f"{name} invoke failed on {t['task_id']}: {getattr(res, 'error', None)!r}"
+                        assert res.outputs[out_ds] == fn(a, b), \
+                            f"invoked {name} != inline on {t['task_id']}"
+                        total += 1
+    print(f"  [ok] matrix: {len(_MATRIX_COMPS)} component comparators cell-exact through "
+          f"the layer == inline across {total} cells / {len(tasks)} tasks.")
 
 
 def _l4_intake_check(cl, tasks) -> None:
@@ -425,7 +441,7 @@ def main(argv: list) -> int:
     _inference_soundness_check(tasks)   # same_object ⟹ same_shape wired skip 0/400
     _operator_inference_check(tasks)    # union ⟹ inset operator skip 0/400
     _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
-    _matrix_same_object_check(cl, tasks)  # slice 2b-i: same_object matrix cell-exact
+    _matrix_comparators_check(cl, tasks)  # slice 2b: component comparators matrix cell-exact
     _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
     _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
     _arc_solve_layer_check(cl, dataset)   # wiring step 4: arc solve (phases 8/9/10) dispatched L4->L3
