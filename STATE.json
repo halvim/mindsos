@@ -1,345 +1,361 @@
 {
- "_comment": "Machine-readable state. Chats read THIS first, not the 134KB HANDOFF.md. Bump as part of the ship ritual.",
- "core_version": "phase50",
- "core_git_sha": "9698769",
- "last_shipped_phase": 50,
- "in_progress": {
-  "phase": 51,
-  "branch": "wsd-51",
-  "note": "WSD Phase 51 core work, parked from the dirty tree; finish + gate then merge to main"
- },
- "pending_designs": [
-  {
-   "name": "arc-atom-grounding",
-   "status": "OPEN (design). Reframed 2026-07-06 out of the ARC Blocker-1 chat (premise invalidated — see recent[] + PIPELINE_DECISIONS.md §4 2026-07-06). Goal: reconcile the SHIPPED arc L3 (spike arc_solver/spike/arc_capacities.py + bundle arc_dist/mindsos_arc/capacities.py) with the ALREADY-DECIDED atom layer in arc_solver/ONTOLOGY.md, and settle the fold/provenance decision that governs the whole mapping. NO code until the fold/provenance crux is decided.",
-   "branch_to_open": "arc-solver (same worktree; docs-first, then spike)",
-   "spec": "arc_solver/ONTOLOGY.md (canonical: §0 layer map, §2 class catalog, §3 capacities, §4 #19 raw-layer grounding) + arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-06) + §5 (finder limits) + memory arc-datastate-model-reframe + arc-mindsos-layer-mapping + arc-layer-datastate-gap + arc-reason-stage-grounding",
-   "reopens": "arc_solver/ONTOLOGY.md (bring shipped code in line: add Coordinate/Cell DataStates, re-cast Color as the perception atom, recognize_cell, fix build_grid Cell*->Grid + extract_objects Region->Object*); the arc DataState/capacity inventory in both spike + bundle; the arc.profile-as-DataState mistake (profile = L5 aggregate). Does NOT reopen mindsos_* (core) unless the fold/provenance decision demands finder cardinality (out of arc lane).",
-   "what": "FIRST decide the crux: is the profiling pipeline (raw_task -> done profile) an executable find_pipeline L3 type-path, or provenance + L4-orchestration? find_pipeline is value-blind/type-level/no-cardinality, so fold (Cell*->Grid) + fan-out (Grid->Object*) + per-pair/per-task aggregation are not finder-expressible; the reason-stage already locked provenance-not-composition. If provenance: define atoms/caps/DataStates as VOCABULARY (L2 class + L3 type) + a provenance grounding-walk, and the executable solve stays L4-orchestrated (arc_l4) -> execute/entry-declaration is L4, not a single DAG. THEN: define each atom DataState (Coordinate, Color, Cell, RawGrid, Grid, Object, Point, Shape, Palette, Dimension...), the capacities consuming/producing them, the per-instance perceive spine vs the fold-to-profile boundary, and the L2/L3/L5 membership of each. Update ONTOLOGY.md as the canonical record.",
-   "consumer": "arc solve wiring; the runtime entry-declaration (held per arc-entry-declaration-coordination — now gated on THIS, since Blocker-1's producer-registration was the wrong step)",
-   "independent_of": "WSD, SubMind slices, other demos"
+  "_comment": "Machine-readable state. Chats read THIS first, not the 134KB HANDOFF.md. Bump as part of the ship ritual.",
+  "core_version": "phase50",
+  "core_git_sha": "9698769",
+  "last_shipped_phase": 50,
+  "in_progress": {
+    "phase": 51,
+    "branch": "wsd-51",
+    "note": "WSD Phase 51 core work, parked from the dirty tree; finish + gate then merge to main"
   },
-  {
-   "name": "phase1-seam-and-needs-input",
-   "status": "DESIGN CONVERGED 2026-07-02 (core-design chat; ADRs 0195+0196 Proposed, design-only, NO code). arc-solver confirmed as first consumer (interpretation-only) with 2 hard constraints. Two decoupled, independently-shippable core features (RULES §8 core-owned; consumers = arc-solver / any request-interpretation consumer).",
-   "branch_to_open": "feat/phase1-seam off main (ADR-0195 first), then feat/needs-input (ADR-0196)",
-   "spec": "docs/decisions/adr/0195-phase1-interpretation-seam.md + 0196-needs-input-clarification.md + docs/_workbench/L4_FUTURE_WORK.md §6/§6.2 + L5_FUTURE_WORK.md L5-NEW-19 + memory [[l4-phase1-seam-clarification-design]].",
-   "reopens": "phase_1.py (fixed IRIs -> Phase1Profile + standalone interpret()), phase1_v0.py (fallback), dispatch.py (L4Dispatcher carries profile, no metagraph scope-mix), orchestrator.py TaskOutcome (add pending_confirmation field), execution.run (needs_input/dont_know propagation = DEFERRED general path L4-25), capacity verdict contract (ADR-0157 sibling needs_input).",
-   "what": "(A) ADR-0195 seam: construction-bound Phase1Profile (per-step optional slots, v0 fallback); factor a standalone interpret() decoupled from run_lifecycle; resolve runs inside interpretation; dispatcher-level binding, NO Global-ds+Local-caps metagraph scope-mix (hard constraint a). (B) ADR-0196 needs_input: verdict sibling to dont_know, caller-controlled trigger (hard constraint b), non-terminal pending_confirmation on TaskOutcome (no consolidation), stateless re-submit v1. Then arc-solver worked example as integration test. Deferred: L4-25 (execution propagation + in-memory continuation), L4-26 (generic matcher), L4-27/28, L5-NEW-19.",
-   "consumer": "arc-solver / mOS-AS (interpretation-only)",
-   "independent_of": "WSD, demos, SubMind slices"
+  "pending_designs": [
+    {
+      "name": "arc-atom-grounding",
+      "status": "DECOMPOSITION COMPLETE 2026-07-07 (docs-only). All 7 decision caps + subdivision/re-comparison decomposed into honest transitions; enclosed deleted; comparison_matrix unified; reads_mm=False default. Model in arc_solver/ATOM_TABLE.md. Core C1/C3/C4 SHIPPED (tag operand-arity-groups-readsmm-confirmed). NEXT = BUILD per arc_solver/BUILD_PHASE_MAP.md: Slice 1 (re-pin + register comparators operand_arity/groups; verify fold escape) -> Slice 2 (comparison_matrix executable, MEASURED perf go/no-go) -> Slices 3-8 (decision pipelines, shadow-verify, remove inline). Gate stays 14 [ok]; Cowork builds/Mac commits/Linux gates.",
+      "branch_to_open": "arc-solver (same worktree; docs-first, then spike)",
+      "spec": "arc_solver/ONTOLOGY.md (canonical: §0 layer map, §2 class catalog, §3 capacities, §4 #19 raw-layer grounding) + arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-06) + §5 (finder limits) + memory arc-datastate-model-reframe + arc-mindsos-layer-mapping + arc-layer-datastate-gap + arc-reason-stage-grounding",
+      "reopens": "arc_solver/ONTOLOGY.md (bring shipped code in line: add Coordinate/Cell DataStates, re-cast Color as the perception atom, recognize_cell, fix build_grid Cell*->Grid + extract_objects Region->Object*); the arc DataState/capacity inventory in both spike + bundle; the arc.profile-as-DataState mistake (profile = L5 aggregate). Does NOT reopen mindsos_* (core) unless the fold/provenance decision demands finder cardinality (out of arc lane).",
+      "what": "FIRST decide the crux: is the profiling pipeline (raw_task -> done profile) an executable find_pipeline L3 type-path, or provenance + L4-orchestration? find_pipeline is value-blind/type-level/no-cardinality, so fold (Cell*->Grid) + fan-out (Grid->Object*) + per-pair/per-task aggregation are not finder-expressible; the reason-stage already locked provenance-not-composition. If provenance: define atoms/caps/DataStates as VOCABULARY (L2 class + L3 type) + a provenance grounding-walk, and the executable solve stays L4-orchestrated (arc_l4) -> execute/entry-declaration is L4, not a single DAG. THEN: define each atom DataState (Coordinate, Color, Cell, RawGrid, Grid, Object, Point, Shape, Palette, Dimension...), the capacities consuming/producing them, the per-instance perceive spine vs the fold-to-profile boundary, and the L2/L3/L5 membership of each. Update ONTOLOGY.md as the canonical record.",
+      "consumer": "arc solve wiring; the runtime entry-declaration (held per arc-entry-declaration-coordination — now gated on THIS, since Blocker-1's producer-registration was the wrong step)",
+      "independent_of": "WSD, SubMind slices, other demos"
+    },
+    {
+      "name": "phase1-seam-and-needs-input",
+      "status": "DESIGN CONVERGED 2026-07-02 (core-design chat; ADRs 0195+0196 Proposed, design-only, NO code). arc-solver confirmed as first consumer (interpretation-only) with 2 hard constraints. Two decoupled, independently-shippable core features (RULES §8 core-owned; consumers = arc-solver / any request-interpretation consumer).",
+      "branch_to_open": "feat/phase1-seam off main (ADR-0195 first), then feat/needs-input (ADR-0196)",
+      "spec": "docs/decisions/adr/0195-phase1-interpretation-seam.md + 0196-needs-input-clarification.md + docs/_workbench/L4_FUTURE_WORK.md §6/§6.2 + L5_FUTURE_WORK.md L5-NEW-19 + memory [[l4-phase1-seam-clarification-design]].",
+      "reopens": "phase_1.py (fixed IRIs -> Phase1Profile + standalone interpret()), phase1_v0.py (fallback), dispatch.py (L4Dispatcher carries profile, no metagraph scope-mix), orchestrator.py TaskOutcome (add pending_confirmation field), execution.run (needs_input/dont_know propagation = DEFERRED general path L4-25), capacity verdict contract (ADR-0157 sibling needs_input).",
+      "what": "(A) ADR-0195 seam: construction-bound Phase1Profile (per-step optional slots, v0 fallback); factor a standalone interpret() decoupled from run_lifecycle; resolve runs inside interpretation; dispatcher-level binding, NO Global-ds+Local-caps metagraph scope-mix (hard constraint a). (B) ADR-0196 needs_input: verdict sibling to dont_know, caller-controlled trigger (hard constraint b), non-terminal pending_confirmation on TaskOutcome (no consolidation), stateless re-submit v1. Then arc-solver worked example as integration test. Deferred: L4-25 (execution propagation + in-memory continuation), L4-26 (generic matcher), L4-27/28, L5-NEW-19.",
+      "consumer": "arc-solver / mOS-AS (interpretation-only)",
+      "independent_of": "WSD, demos, SubMind slices"
+    },
+    {
+      "name": "subminds-slice-3",
+      "status": "PENDING — SubMind Slice 2 SHIPPED to main 2026-06-25 (squash 66315f3; tag feat-subminds-s2-confirmed; gate 4090/11/1xpass/0). Slice 3 = the Reflex path: declared non-reconcilable predicate → single fast capacity; the net-new write-hook/arbiter feed over MonitorSubscriptionRegistry (today a passive lookup, not a feed); supersede-not-cancel seizure (arbiter override / drain); cognitive-Reflex floor. REUSES the Slice-2 ResourceLedger/ResourceHold as-is — add a forcible `seize` hook alongside the cooperative `cancel` hook (the record was designed to host it; ADR-0188 amendment-trail).",
+      "branch_to_open": "feat/subminds-s3 off main",
+      "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §10 (Reflex) + §19.1 (Slice 3 row) + §20 (resource model) + ADR-0188 Decision 3.",
+      "reopens": "ADR-0188 Decision 3 (forcible seizure); the Phase-46 MonitorSubscriptionRegistry (passive→reactive feed).",
+      "what": "Reflex bypass: declared predicate at endowment fires a pre-wired single capacity that bypasses the queue + L4 deliberation, notifying L4 after; forcible resource seizure via arbiter override (actuators) / drain (compute) on the shared ResourceHold; cognitive-Reflex hard floor that never starves the monitoring layer.",
+      "consumer": "SubMind Reflex-eligible vitals",
+      "independent_of": "WSD, demos"
+    },
+    {
+      "name": "subminds-slice-4",
+      "status": "PENDING — after Slice 2 (shipped) / Slice 3. Local `subminds` scope + taught endowment + marker-only de-endowment (Phase-50 precedent) + tuning knobs as config (cadence min/max + hysteresis, proximity→interval curve, severity→tier band edges, importance weights, retry backoff + standing-pressure cap, cognitive-Reflex floor).",
+      "branch_to_open": "feat/subminds-s4 off main",
+      "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §19.1 (Slice 4 row) + §13 (endowment) + §19.6 (tuning items).",
+      "reopens": "ADR-0190 (endowment/role-graph — Local bootstrap).",
+      "what": "Local subminds bootstrap (episodic_memories pattern); taught endowment writes a record into `subminds`; marker-only de-endowment; surface the deferred tuning constants as config.",
+      "consumer": "taught/per-user SubMinds",
+      "independent_of": "WSD, demos"
+    },
+    {
+      "name": "pipelinenotfound-to-dontknow",
+      "status": "PENDING — split out of SubMind Slice 2 (2026-06-25). PRINCIPLE RATIFIED: PipelineNotFoundError 'shouldn't exist' — a single capacity IS a 1-step pipeline (register = input+output DataState), so 'no route' is not a technical failure but an honest dont-know ('no capacity reaches the goal DataState in the desired direction'). Slice 2 honors this AT THE CONSUMER (the SubMind arbiter catches it → dont-know → ask-human fallback); this entry is the CORE-L3 refactor to remove the exception concept itself.",
+      "branch_to_open": "feat/pipelinenotfound-to-dontknow off main",
+      "spec": "SUBMIND_DESIGN_LOG.md §20 + RULES §8 + ADR-0157 (family-specific dont-know).",
+      "reopens": "pipeline.py (4 raise sites in BFSFinder/ConjunctionFinder), find_pipeline return signature, mindsos_capacity.exceptions + __all__ export, ADR-0071/0156.",
+      "what": "Replace PipelineNotFoundError (raised, never caught in production — verified zero `except` outside pipeline.py) with a path-finding dont-know verdict (NEW verdict type — find_pipeline is a function, not a registered capacity, so FAMILY_RULES does not govern it; decide Optional[Pipeline] vs PathFindingVerdict). Blast radius: 2 finder methods + exceptions + __all__ export-slate sentinels (phase_30/31) + test_cli_capacity_find render. Touches both Slice-1 landmines (export-slate parity + Py3.10-blind CLI) so kept OFF Slice 2.",
+      "consumer": "SubMind arbiter (swaps its `except` for a verdict read when this lands); mindsos capacity find CLI",
+      "independent_of": "SubMind Slices 2-4, WSD, demos"
+    },
+    {
+      "name": "bongard-core-requests",
+      "status": "RESOLVED 2026-06-23 (core-mod chat; docs at main 8464dfe; see COMPOSITION_LIFECYCLE_DESIGN_LOG.md §13). CC-3 = DESIGN-ONLY (ADR-0184 two-half target-applier seam; build deferred, no writer — bongard m5/SA-6 unbuilt). CC-2 = KEEP DEFERRED (nothing dispatches; KIND_REACTIVE suffices). Part-6 = RESOLVED by existing tag composition-lifecycle-s2-confirmed (->2676b9d) under RULES §7. OWED (demo-side, not core): bongard merges that tag into demo/bongard, re-gates, bumps pinned_core, retires its D-M2-b presence self-check.",
+      "branch_to_open": "feat/bongard-core-requests (or per-item branch)",
+      "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §0 (promotion placement principle) + §3/§6 (CC-2/CC-3 deferral rationale) + §11 (Part 6, shipped). Bongard's own asks: the bongard demo design log (D-M2-a/D-M2-b).",
+      "reopens": "CC-3: §0 placement principle (core-owned promotion behind a target-applier seam). CC-2: §3/§6 (node_kind free field).",
+      "what": "(1) CC-3 promotion — build a promote_capacity / target-applier verb (Mint step 5 / SA-6, Global). STILL NO WRITER; mindsos_knowledge pending_promotion_iri/validate_promotion_candidate are pre-existing schema, NOT the verb. Decide placement + the target-applier seam before building (consumer discipline §0). (2) CC-2 composite node_kind — confirm keep-deferred (nothing dispatches; KIND_REACTIVE suffices) vs build. (3) Part-6 consumption — bongard must pin a core ref including 2676b9d to use invoke input-validation (cut a core tag at the Part-6 commit, or pin the sha); this un-blocks retiring the runner's presence self-validation (D-M2-b).",
+      "consumer": "bongard demo (CC-3 = m5; Part-6 = m2)",
+      "independent_of": "Part 5; WSD"
+    },
+    {
+      "name": "composition-lifecycle-s2-part5",
+      "status": "[2026-06-23 R0] keep-deferred RATIFIED — no executing same-type-operand consumer (ARC monolith; bongard m2 = all_required distinct types; m3 comparators unbuilt; m5 gated). Triggers + grounding in COMPOSITION_LIFECYCLE_DESIGN_LOG §14. Part 6 SHIPPED 2026-06-22 (main 2676b9d; gate 4030/0 failed; design log §11). Part 5 (DataState operand-arity / role axis) DEFERRED — no executing consumer (bongard hits input-PRESENCE only, not same-type operands; ARC provenance-only; WSD undesigned). Un-defer only when a real same-type-operand executing consumer is confirmed. [2026-06-23 core-mod update] CC-3 design = ADR-0184 (m5's promotion descriptor must confirm the operand shape HERE before sizing). NEXT-CHAT R0 = the consumer gate, NOT the build: confirm whether any path EXECUTES a same-type multi-operand cap through invoke today — check the bongard BINARY comparator dispatch (same_object/same_shape = two Objects/Shapes; scene-parse milestone (m3), EARLIER than m5) FIRST, m5 fold SECOND. m5 is upstream-gated (no writer, WSD-routed) so it is not a live pin. If no executing consumer: ratify keep-deferred (design-log note, no branch). Bongard runner lives on the demo/bongard worktree (NOT on main).",
+      "branch_to_open": "feat/composition-lifecycle-s2-part5 (when un-deferred)",
+      "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §9 (Part 5 scope + concern) + §11 (Part 6 shipped, fold deferred here)",
+      "reopens": "ADR-0156 (binary-edge model), ADR-0159 (registration contract), ADR-0071 §am (finder operand threading), invoke inputs-map keying",
+      "what": "operand-position/role/arity on the registration + invoke contracts so a body declares+receives N operands of ONE DataState type (today they collapse on one IRI key / one CONSUMES edge); threaded through ConjunctionFinder; interacts with input_group; resolves the fold-input shape Part 6 deferred.",
+      "consumer": "TBD — none confirmed",
+      "independent_of": "WSD, ARC"
+    },
+    {
+      "name": "skill-verify-cli",
+      "status": "DESIGN SETTLED 2026-07-02 (this chat). Read-only cross-layer `mindsos skill verify` CLI; NOT built. Full spec + D1-D10 decision log in confirmation_docs/SKILL_VERIFY_DESIGN_NOTE.md. Deferred B (skill-as-graph L3 reorg) = confirmation_docs/SKILL_AS_GRAPH_L3_DESIGN_SEED.md. Maintenance chat, no numbered phase, no version bump.",
+      "branch_to_open": "feat/skill-verify off main",
+      "spec": "confirmation_docs/SKILL_VERIFY_DESIGN_NOTE.md (canonical, self-contained: corrected model + state-source C + 7-check catalog + severities + Falkor-refuse + tests + deferrals A/B + probe corrections) + SKILL_AS_GRAPH_L3_DESIGN_SEED.md",
+      "reopens": "NONE additive (read-only, no contract change). CONDITIONAL fork: if the DESIGN_NOTE §9 gating probe (PRODUCES/CONSUMES IntergraphEdge round-trip through FalkorDBLocalPersister) FAILS, a persister fix forks out (real code + version bump) and D3=C reopens.",
+      "what": "mindsos skill verify <bundle> [--json] [--all]; reads persisted Global + the single Local (approach C, no reactivation), two views reconciled + A2' mirror dedup; 7 checks (atomic-pipeline integrity=the invariant, dangling edge, manifest<->installer drift, broken ref, NEUTRAL task->pipeline->capacity chain, schema via core/L2 Schema NOT write_handle.validate_node, AST code-scan cap->L2 role); Falkor required -> refuse whole-command if down. FIRST STEP = the IntergraphEdge round-trip probe (gates the whole approach).",
+      "consumer": "bundle authors / ops; the run's counts inform deferred A (task->capacity mapping) + whether B/(B-provenance) are worth building",
+      "independent_of": "WSD, demos, SubMind slices"
+    }
+  ],
+  "recent": [
+    {
+      "kind": "design",
+      "name": "ARC decision-cap decomposition COMPLETE + build phase-map (docs-only; core C1/C3/C4 shipped & to be consumed)",
+      "sha": "(uncommitted; arc-solver worktree; no code, gate untouched 14 [ok])",
+      "gate": "n/a — docs-only",
+      "what": "Full ARC pipeline model settled (converged, 4 passes). Killed the shim decision caps -> honest transitions: profile(god-object DELETED; it's the L5 MM); build_correspondence -> comparison_matrix (computed ONCE, all comparators x in/out object pairs, both inset dirs; object/shape/point_matches* are SLICES) + resolve_correspondence; bg_deduction -> bg-pipeline (eliminate_bg_colour, reactive on objects* change); synthesize_selector -> identify_roles + synthesize_selector (motivations soft-scope); emit_candidates -> motivations-pipeline + per-family assemble_* (enumerate only); select_rules -> verifier pipeline (apply_rule_set uses generator caps L4-orchestrated + grids_equal + combine_candidates; select_min is L4 iterate-order not a cap); apply_solution -> thin apply_rule_set on test, matches_withheld lifted to EVAL; subdivision (detect_cover) + re-comparison (classify_part_relation reuses same_object/recolored). ENCLOSED DELETED (a bg-coloured object inside another; inside covers it, no enclose_bg). reads_mm=False is the ARC default (routing[L5] != reads_mm; comparators get operands via operand_arity; none navigate MM). Everything L4 runs is a pipeline (iterate/fold = ARC caps; no 'L4 process'). Core shipped C1/C3/C4 (ADR-0198 operand_arity Form B / 0199 group+member_ds / 0200 reads_mm gates mm_handle; tag operand-arity-groups-readsmm-confirmed). BUILD PLANNED: 8 slices, full layer-execution all 400 (PB-3b), shadow-verify per slice (PB-2a), Slice 2 (comparison_matrix executable) = a measured PERF go/no-go (PB-4a, ~1e6 invokes); touching_delta C3 fix deferred to Slice 4 (inputs not layer-produced until then; fold escape holds Slice 1).",
+      "docs": "arc_solver/ATOM_TABLE.md (full decomposition + reconciled A/B), arc_solver/BUILD_PHASE_MAP.md (new; 8-slice build plan), arc_solver/CORE_REQUESTS.md (C1/C3/C4 SHIPPED disposition); STATE.json recent[]+pending_designs. No code; ONTOLOGY/PIPELINE_DECISIONS unchanged this pass."
+    },
+    {
+      "kind": "design",
+      "name": "ARC atom-grounding — crux resolved; capacity/DataState/pipeline model settled (docs-only, gate untouched)",
+      "sha": "(uncommitted; arc-solver worktree; no code)",
+      "gate": "n/a — docs-only, ./run_spike untouched (still 14 [ok])",
+      "what": "Resolved the fold/provenance crux via ~8 owner-driven reanalysis passes. Model: a capacity IS a DataState transition; DataState is the universal unit (a cap declares in_ds/out_ds TYPES, L4 binds source/dest input|L2|L5); NO 'L4 capacities' (L4=substrate Executor/Dispatcher/MM, orchestration DECISIONS are L3 caps in planning.*/orchestration.*/phase1.*); aggregates (profile/bg_cand/enclosed/recomparison) are normal L3 DataStates STORED IN L5 -> Blocker-1 closed as mis-framed (no producer to register, never a d-producer); find_pipeline=discovery of UNKNOWN compositions, KNOWN pipelines->L2 promoted-pipelines; groups (*,C4) distinct types L4 iterates (fan-out needs no finder cardinality, C2 dropped). Verified in core: register_capacity emits binary PRODUCES/CONSUMES (no hyperedge; typed input-group graph form deferred), CapacityContext.MMHandle is the L5 read/write surface, planning_v0/orchestration_v0 are registered caps dispatched by L4. Filed 4 core requests (CORE_REQUESTS.md, ARC=consumer): C1 same-type operand arity (=Part 5), C3 truthful invoke contract (=Part 6 ext), C4 group/member DataState attribute, C5 known-pipeline teaching/dream writer+lookup. ARC-side code fixes deferred: E1 perceived_grid producer, E2 arc.background orphan, E7 arc.color/recolor pairing. Entry declaration retired the single-DAG framing -> L4-substrate/plan.",
+      "docs": "arc_solver/ATOM_TABLE.md (new), arc_solver/CORE_REQUESTS.md (new), arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-06 cont.), arc_solver/ONTOLOGY.md §4 #20 + changelog v0.10, MindsOS/.scratch/ARC_ENTRY_DECLARATION.md (2026-07-06 cont.); STATE.json recent[]+pending_designs"
+    },
+    {
+      "kind": "packaging",
+      "name": "ARC on-top skill bundle placed on arc-solver (arc_dist/) — CLI-redundancy arc half",
+      "sha": "0e9babe (place) + confirm at tag arc-packaging-confirmed",
+      "gate": "Linux py3.11 arc_dist/tests: 6 passed (parity 3 + e2e 3); parity+idempotency 3/3 re-verified in-sandbox py3.10 2026-07-06",
+      "what": "Placed the prebuilt mindsos-arc distribution (arc_dist/: mindsos_arc/{__init__,capacities,grids,solver}.py + bundle/manifest.toml, own pyproject dep mindsos-runtime, gen_manifest.py, 2 gate tests) as an on-top skill bundle on arc-solver after merging the base rename (main >= cli-redundancy-base-confirmed). L3-only manifest: 32 caps / 39 datastates, realm arc, entry install_arc; L2/L4 empty; requires_mindsos_phase=50. Install discipline: base first then arc_dist --no-deps; never pip-install the arc-solver root (shadows base -> No such command brain); doctor --self-test catches >1 mindsos_cli provider. No core change, no phase, no version bump.",
+      "docs": "arc_dist/RUNBOOK.md (§1 layout + §2 gate cmd fixed, python3); confirmation_docs/ARC_PACKAGING_CONFIRMED.md (rewritten, dep mindsos-runtime + gate 6 passed); STATE.recent (this entry). HANDOFF: none (branch-only non-core ship)."
+    },
+    {
+      "kind": "docs",
+      "name": "arc Blocker-1 reanalysis — profile is L5-aggregate not L3-DataState; reframed to atom-grounding chat",
+      "sha": "uncommitted (Cowork; Mac to commit)",
+      "gate": "n/a (design reanalysis; no code, gate untouched)",
+      "what": "Blocker-1 (register producer caps for DS_PROFILE/DS_BG_CAND/DS_RECOMPARISON/DS_ENCLOSED) PREMISE INVALIDATED. Owner reframe, confirmed vs ONTOLOGY.md + memories: profile/bg_cand/enclosed/recomparison are L5 per-task AGGREGATES, not opaque L3 DataStates. A datum lives in 3 layers in different senses — class def=L2 (ontology/lexicon), DataState TYPE=L3, per-task VALUE=L5 (ABox). ONTOLOGY.md already defines the atom layer (Coordinate/Color/Cell=+{Coordinate,Color}, recognize_cell, build_grid:Cell*->Grid, extract_objects:Region->Object*) but the SHIPPED spike/bundle drifted coarser (no arc.cell/arc.coordinate; arc.color mis-declared as recolor-param; build_grid skips the cell layer). MindsOS grounded: no sub-pipeline object (transitive subdivision of one query-time DAG); caps atomic (composites deferred ADR-0184); promoted-pipelines writer-less; ConjunctionFinder fires each cap once, value-blind, no cardinality -> fold (Cell*->Grid) + fan-out (Grid->Object*) + per-pair/per-task aggregation are NOT finder-expressible. OPEN CRUX (decide first): is profiling an executable find_pipeline L3 path or provenance+L4-orchestration (reason-stage precedent already says provenance-not-composition)? If provenance, execute (one value-blind DAG) CANNOT run ARC profiling = same wall the runtime lane hit -> honest v1 entry is L4-orchestrated (arc_l4), not a single DAG.",
+      "adr": "none (design reanalysis; supersedes the Blocker-1 framing, no contract change)",
+      "consumer": "next = arc-atom-grounding chat (see pending_designs 'arc-atom-grounding')",
+      "spec": "arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-06 entry) + arc_solver/ONTOLOGY.md (canonical atom layer) + memory arc-datastate-model-reframe",
+      "docs": "arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-06); STATE demos.arc.status + pending_designs 'arc-atom-grounding'; memory arc-datastate-model-reframe (new) + arc-layer-datastate-gap/arc-entry-declaration-coordination (reframe notes); MindsOS/.scratch/ARC_ENTRY_DECLARATION.md (Blocker-1 reframe note)"
+    },
+    {
+      "kind": "docs",
+      "name": "arc reanalysis — layer-integration map + modality-ingress deferred",
+      "sha": "uncommitted (Cowork; Mac to commit)",
+      "gate": "14 [ok] re-verified (./run_spike); no solver code change",
+      "what": "Mapped arc's MindsOS integration from code (3 run planes; through-the-layer solve_through_layer dispatches only phases 8/9/10 as a redundant echo over an inline oracle). Key finding: solve caps consume profile/bg_cand/recomparison/enclosed which NO capacity produces, and bg_deduction->background_set never meets the solver's bg_cand -> the registered DataState graph is TWO disconnected components bridged only by inline run_all. DataStates are real ROLE_DATASTATES nodes but type-only (values never nodes; only the L5 Episode persists a value). DEFERRED modality-aware input ingress (core, RULES §8, no arc consumer; only text.space_split wiring is consumer-backed). Confirmed re-pin already DONE + root-flatten + mindsos_arc on-top bundle landed.",
+      "docs": "arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-04 entry); STATE demos.arc.status; memory arc-layer-datastate-gap + arc-modality-ingress-deferred"
+    },
+    {
+      "kind": "docs",
+      "name": "skill verify CLI — read-only cross-layer component verifier (design settled)",
+      "sha": "uncommitted (Cowork worktree; Mac to commit)",
+      "gate": "n/a (docs only; no mindsos_* change)",
+      "what": "Designed a read-only `mindsos skill verify <bundle>` diagnostic. Corrected a stale model over many skeptical passes: a capacity IS its atomic pipeline (bipartite PRODUCES/CONSUMES edges emitted at registration, ADR-0156), so the 'no capacity without a pipeline' invariant holds by construction; promoted-pipelines is writer-less/empty -> its orphan traversal DROPPED; L3 IS persistent (F9 FalkorDBLocalPersister) -> read persisted Global + the single Local directly (approach C, no reactivation); single-tenant (one Local); L3 organized by category graphs today (skill-as-graph = deferred B). 7-check catalog with severities, Falkor-required refuse, tests + a gating IntergraphEdge-round-trip probe. D1-D10 decision log with reversals recorded.",
+      "adr": "none (read-only diagnostic; asserts no new contract)",
+      "consumer": "next = implementation chat (STATE pending_designs 'skill-verify-cli')",
+      "spec": "confirmation_docs/SKILL_VERIFY_DESIGN_NOTE.md + SKILL_AS_GRAPH_L3_DESIGN_SEED.md",
+      "note": "NO code. Deferred: A (task->capacity mapping architecture), B (skill-as-graph L3 reorg), (B-provenance) DataState->L2 provenance. Build risk: IntergraphEdge round-trip through FalkorDBLocalPersister must be confirmed FIRST (if it fails, approach C reopens). Docs uncommitted (Mac commits; pair-exec)."
+    },
+    {
+      "kind": "docs",
+      "name": "L4 Phase-1 interpretation seam + needs_input clarification — design + ADRs 0195/0196",
+      "sha": "uncommitted (Cowork worktree; Mac to commit)",
+      "gate": "n/a (docs + ADRs only; no mindsos_* change)",
+      "what": "Converged a GENERIC core feature (arc-solver = first consumer, owns no core component, RULES §8): (A) pluggable Phase-1 interpretation seam via a construction-bound Phase1Profile (per-step slots, v0 fallback; standalone interpret() decoupled from run_lifecycle; resolve-in-interpretation; opaque-dict hints + reference_kind); (B) needs_input capacity verdict (sibling to dont_know; caller-controlled trigger; non-terminal pending_confirmation on TaskOutcome; stateless re-submit v1; MM-owns-pending + in-memory continuation designed-not-built). arc reply CONFIRMED interpretation-only adoption + 2 hard ADR constraints (dispatcher-level binding/no scope-mix; caller-controlled trigger). Wrote ADR-0195 (seam) + ADR-0196 (needs_input), both Proposed/design-only.",
+      "adr": "0195 + 0196 (Proposed, design-only)",
+      "consumer": "arc-solver / mOS-AS (interpretation-only); any future request-interpretation consumer",
+      "spec": "docs/decisions/adr/0195-phase1-interpretation-seam.md + 0196-needs-input-clarification.md + docs/_workbench/L4_FUTURE_WORK.md §6/§6.2 + L5_FUTURE_WORK.md L5-NEW-19 + HANDOFF §3.1.24 + memory [[l4-phase1-seam-clarification-design]]",
+      "note": "NO code. Next = implementation chat (STATE.json pending_designs 'phase1-seam-and-needs-input'). Deferred: L4-25 (execution.run propagation + in-memory continuation), L4-26 (generic matcher), L4-27/28. Docs uncommitted (Mac commits; pair-exec)."
+    },
+    {
+      "kind": "docs",
+      "name": "Perception capacity ladder — capacity 2 (grounding) committed",
+      "sha": "branch perception-capacity2 (Mac to push)",
+      "gate": "n/a (docs+scripts, no mindsos_* change)",
+      "what": "PIVOTED the Study-2 perception IMPLEMENTATION (study DESIGN unchanged: PERCEPTION_LEAF_VALIDATION_PREREG.md §0-10 + AM-1..AM-16). First build (blob classifier + edge-completion + gates) was scaffolding — DISCARDED after a skeptical pass (hand-coded geometry/Study-1 sin, test leakage, incoherent, honest rebuild ~0.55). New approach: grounded STAGED CAPACITY LADDER, one capacity at a time, each frozen before the next. Capacity 2 (grounding: pixel->structural-pixel) = DETERMINISTIC contrast filter (tau=0.3), NOT learned (nothing to learn once P1 no-noise-judgment removed; learning lives at composition); committed as capacity2_filter.py + generator (two-way forward/inverse pair). Recovery test: clean-outline exact (recall/prec 1.0), permissive under noise (recall 1.0/prec 0.14). A 'point' as defined = filtered pixel = grounding, NOT a derived atom; first real derived atom = the segment.",
+      "adr": "none (docs/scripts)",
+      "consumer": "capacity 2.1 (structural-pixels->segment, next phase)",
+      "spec": "docs/_workbench/PERCEPTION_CAPACITY_LADDER.md (full record + locked decisions) + memory [[perception-leaf-validation-study2]]",
+      "note": "Next chat = capacity 2.1 (first LEARNED composition; import frozen capacity 2, train on its real noisy output, output named segment atoms, noise falls out here, analysis-by-synthesis verification becomes meaningful). Discipline: concise comms; never git add -A; dev-split hygiene (test read once); pair-exec."
+    },
+    {
+      "kind": "docs",
+      "name": "Perception leaf-NOVELTY BUILD — MindsOS chain (in-sandbox) + CNN baseline (Linux, authored) + audit",
+      "sha": "uncommitted (Cowork worktree; Mac to commit)",
+      "gate": "n/a (docs+scripts only; no mindsos_* change)",
+      "what": "Built the LEAF_NOVELTY_PREREG v2 experiment. MindsOS numpy leaf-chain (pixel->point->segment->polygon{3,4}+withholdable arc; learned tau/eps + per-leaf Platt; RDP vertex-count irreducibility -> REQUEST_ATOM; analysis-by-synthesis grounding). In-sandbox results (3 seeds, AUDITED TRUSTWORTHY by an independent ML-advocate subagent): P0 in-vocab acc 0.961+/-0.006 (LEARNED-FAIR, not baked - verified no generator-param leakage); MP1 no-fabrication on clean circles 0.0 (temptation 0.34, non-trivial); MP2 repair retention EXACTLY 1.0 (0/480 flip - arc leaf is a fallback, never overrides a polygon) + curved acc 0.965 + 1 leaf added/0 re-fit; near-miss request-atom curve 0.0->0.045->0.6->0.967 (the predicted P17 continuous blind spot, reported-not-gated per AM-3). Strong CNN+OOD+3-repair-mode baseline AUTHORED for the user's Linux (torch; unrun in sandbox like discovery_test.py) - includes the audit-mandated row-frozen warm-started head (AM-5) as the ML-advocate's best shot. 3 pre-build amendments (AM-2 learned-not-baked def; AM-3 MP1 clean-only + near-miss reported; AM-4 novelty=conjunction-at-parity) + AM-5 (baseline strengthened post-audit) recorded in PREREG sec.8 before the affected runs.",
+      "adr": "none (docs/scripts only; refinements to 0191/0193 still pending a real consumer)",
+      "consumer": "Linux run fills the P0 parity gate + decisive repair-cost contrast; future perception/vision subsystem",
+      "spec": "docs/_workbench/PERCEPTION_LEAF_NOVELTY_PREREG.md (v2 + sec.9 Results) + leaf_novelty_{generator,mindsos,baseline}.py",
+      "note": "COMPLETE + AUDITED 2026-06-29 (runs 1-5 on Linux). FINAL VERDICT (honest, no spin): P0 parity PASSES (CNN 0.967 vs MindsOS 0.961, earned/learned-not-baked). BUT the strong novelty claim does NOT stand: (1) headline 'retention 1.0 vs CNN 0.792' is a UNIT MISMATCH (MindsOS=zero-flip delta @abs 0.954; CNN=absolute-capped) -> matched 0.954 vs 0.792; (2) fresh modular CNN detector AUROC 0.995 -> the gap is sample-efficiency + crisp-categorical routing, NOT a ROC-frontier impossibility; (3) no-fabrication CONCEDED (CNN Mahalanobis OOD 0.953). Conjunction-at-parity (AM-4) holds ONLY as the NARROWER claim = data-efficient crisp-symbolic routing + named/inspectable request-atom (gap-naming), which v1 deliberately does not contest (PB-K). Mechanism substrate-contingent (erodes off the clean discrete grid; MindsOS already blind in near-miss). Baseline strengthened 4x per pre-committed anti-strawman rule (AM-6/7/8/9); 1 BatchNorm-eval bug caught+fixed (AM-10). SUPERSEDED BY STUDY 2 (design settled this chat, not built): the strong claim + fair test is redesigned in docs/_workbench/PERCEPTION_LEAF_VALIDATION_PREREG.md — bidirectional joint inference, H1-H6 (H6 rescue-without-hallucination = headline/riskiest), atoms-learned/composition-given, 4 baselines incl a feedback/part-whole model; v1's MindsOS was a hand-coded corner-counter (not genuine leaf-learning) which is the core thing study 2 fixes. Full study-1 record: PERCEPTION_LEAF_NOVELTY_PREREG.md sec.9 FINAL VERDICT + sec.8 AM-1..AM-10. NEXT = Study-2 build chat (see that pre-reg sec.10 build order; memory [[perception-leaf-validation-study2]]). Docs+scripts uncommitted (Mac to commit)."
+    },
+    {
+      "kind": "docs",
+      "name": "Perception leaf — cross-family confidence study + leaf-novelty pre-reg (v2)",
+      "sha": "uncommitted (Cowork worktree; Mac to commit)",
+      "gate": "n/a (docs+scripts only; no mindsos_* change)",
+      "what": "Audited empirical study: does the two-axis confidence + per-capacity-calibration leaf-contract generalize? Synthetic scoring/retrieval/derivation + real-data FrameNet frame-disambiguation. Findings (CROSSFAMILY_PREREG §10/§11): both axes generalize beyond perception, but WHICH axis carries correctness is family-dependent (selection→decision, entailment→grounding); two-axis independence requires proposer≠critic; per-capacity calibration is CONDITIONAL (only under incommensurability); near-vocab blind-spot is continuous-substrate-ONLY (absent in discrete); grounding = inverse-critic anchored at a REFERENCE (floor=perception special case). Real-data = TRUSTWORTHY-PARTIAL (decision transfers qualitatively, risk-coverage 6.5x; AUROC degrades synth 0.83→real 0.745). PIVOT (user-driven): the confidence work is ORTHOGONAL to the real MindsOS novelty; designed (pre-registered, NOT built) the LEAF-NOVELTY test = learned-but-NAMED-atom leaves + irreducibility→request-atom→one-shot-repair vs a strong CNN+OOD baseline at noise-parity.",
+      "adr": "none (refinements to 0191/0193 recommended in CROSSFAMILY §10, not applied)",
+      "consumer": "next chat builds leaf-novelty; future perception/vision subsystem",
+      "spec": "docs/_workbench/PERCEPTION_CROSSFAMILY_PREREG.md + docs/_workbench/PERCEPTION_LEAF_NOVELTY_PREREG.md (v2) + docs/_workbench/crossfamily_*.py",
+      "note": "Docs+scripts only, uncommitted (Mac to commit). 5 adversarial audits this chat caught 2 false framings + 1 process slip — all corrected. NEXT = build leaf-novelty in a fresh chat per LEAF_NOVELTY_PREREG v2; P0 earned-parity (learned leaves, no baked generator) is the NULL gate."
+    },
+    {
+      "kind": "docs",
+      "name": "Perception doctrine + learned-leaf design (P1–P17, ADRs 0191–0194)",
+      "sha": "uncommitted (Cowork worktree; Mac to commit on a branch)",
+      "gate": "n/a (docs only; no mindsos_* change, no test delta)",
+      "what": "Landed the perception doctrine `docs/concepts/perception-principles.md` (Part A P1–P11 verbatim from demo/bongard + Part II P12–P17 validated extensions). Designed B1–B6 as 4 Proposed ADRs: 0191 two-axis confidence (grounding+decision) + per-capacity calibration; 0192 perception atom layer (geometry/signal realms, minimal-orthogonal, fundamental=no-producer, unified introduce-atom primitive; PB-2=Option C core-vs-subsystem, reversible); 0193 grounding control loop (irreducibility→REQUEST_ATOM B4 + borderline-zone descent trigger B5); 0194 recursive scale-relative recognizers + reuse-driven promotion (P3). Empirical program (pre-registered, 6 adversarial-audit rounds, caught 2+ false passes): P14 VALIDATED on 1D+2D (substrate-neutral) → ADR-0191; P15 grounding absolute-claim RETIRED, re-specified as novelty-distance curve + intrinsic near-vocabulary blind spot; P16 reuse-driven PROPAGATION shown but unsupervised DISCOVERY TESTED NEGATIVE (torch β-VAE: encoder encodes task-sufficient statistic ≈ label ceiling, not beyond — confirms P2 atoms-are-exogenous); P17 near-miss handling is architectural (descent+finer-atom), not a statistic.",
+      "adr": "0191/0192/0193/0194 (all Proposed — flip to Accepted when a perception/vision subsystem consumes them)",
+      "consumer": "future perception/vision subsystem (none yet — design-only per consumer discipline)",
+      "spec": "docs/concepts/perception-principles.md + docs/decisions/adr/0191-0194 + docs/_workbench/PERCEPTION_LEARNING_{NOTES,PREREG}.md + PERCEPTION_DISCOVERY_TEST_SPEC.md + discovery_test.py/.ipynb",
+      "note": "No code written by design. Original CORE-chat mandate (land Part A + design B1–B6) COMPLETE. Open doors: (1) build a perception/vision subsystem consuming 0191–0194; (2) a NON-task discovery mechanism (reuse pressure provably only propagates). HANDOFF §10 has a 'Perception chat' reading row. mkdocs page in nav + builds clean (no new warnings)."
+    },
+    {
+      "kind": "docs",
+      "name": "WSD ownership separation — MindsOS-owned vs WSD-owned scope",
+      "sha": "f4f7ddf",
+      "gate": "n/a (docs only; no mindsos_* change, no test delta)",
+      "what": "Corrected the conflation where downstream chats treated the mechanics scheduled in WSD Phases 51-56 as WSD-owned. Ownership != scheduling: WSD is a subsystem that CONSUMES MindsOS features (RULES §8); the slot that BUILDS a mechanic is not its owner. Added an authoritative Owner column (MindsOS-core / shared / WSD-bundle, per-slot) to projects/wsd/WSD_INSTALLATION_PHASE_MAP.md §2.1 + a full per-item ownership-clarification record in WSD_INSTALLATION_DESIGN_LOG.md §7 (corrects PB-W2/§3.2 'lexicon empirical-layer is WSD-owned' -> the machinery is a MindsOS L2 feature; only the sense-correlation strata content is WSD). Ownership notes added to CLAUDE.md WSD para + HANDOFF WSD block + POST_PHASE_38 §6 WSD row; Owner-column banners added to FOL/DWF FUTURE_CHAT_PROMPT.md.",
+      "adr": "none (attribution only; no code, no decision reversal, no phase re-sequence)",
+      "consumer": "all downstream chats (WSD/FOL/DWF) reading the phase maps + CLAUDE.md/HANDOFF/STATE",
+      "spec": "projects/wsd/WSD_INSTALLATION_PHASE_MAP.md §2.1 + WSD_INSTALLATION_DESIGN_LOG.md §7",
+      "note": "Lesson: putting the principle only in RULES did NOT stop the drift — chats believe ARTIFACTS, not rules; the fix is to make ownership a FIELD in the artifacts chats read. Phase timing/scope UNCHANGED — Phase 51 (wsd-51) work is unaffected, just correctly attributed."
+    },
+    {
+      "kind": "feat",
+      "name": "SubMind (Mindlet) Slice 2 — resource model + arbiter + core pipeline executor",
+      "sha": "66315f3",
+      "gate": "green (4090 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB Py3.11; tag feat-subminds-s2-confirmed)",
+      "what": "Consumes the Slice-1 stub resolver. NEW core L4: mindsos_intelligence/pipeline_execution.py (real Pipeline-step executor — topological DAG walk + per-step L4Dispatcher + datastate threading + cooperative cancel; RULES §8 core component, NOT WSD) + resources.py (ResourceLedger + ResourceHold + Contention — the shared model Slice-3 Reflex reuses) + submind_arbiter.py (SubMindArbiter). Resolver is GOAL-directed: a Pipeline built at dispatch via find_pipeline; reconcile=free→concurrent dispatch (preempt=False), contended→park (+cooperative cancel iff need outranks holder)→event-driven resume on release; unsatisfiable=tier-never-decays + capped backoff + never-give-up; goal-unreachable=dont-know→fires the SubMindDefinition.fallback_resolver (direct ask-human). Additive executor change: submit(preempt=True default unchanged) + optional resource_ledger + held_resources bracketed around the worker run-loop; enqueue grows held_resources. Registry: stub→arbiter delegation + FIRED→ARMED recovery-clear. __init__ exports +6.",
+      "adr": "0189 §2/§3 shipped (was partial); 0188 amendment-trail (ResourceLedger = shared Reflex-seizure model)",
+      "consumer": "SubMind resolvers",
+      "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §20 (Slice-2 decisions + build record)",
+      "note": "core_version stays phase50 (non-phase feat). NO role-set change → parity sentinels untouched. Sandbox Py3.10 cannot run the typer/CLI + datetime.UTC suites — Linux gate (Py3.11) authoritative. RULES §8 added (WSD/subsystem owns no architectural component; core mechanics belong at core). Split-out follow-up: pipelinenotfound-to-dontknow (PipelineNotFoundError → path-finding dont-know verdict, separate core-mod chat). Next = subminds-slice-3 (Reflex path)."
+    },
+    {
+      "kind": "feat",
+      "name": "SubMind (Mindlet) Slice 1 — subminds L2 role-graph + L4 SubMind runtime/scheduler/registry",
+      "sha": "9698769",
+      "gate": "green (4069 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB; gated code at cebd6ef; tag feat-subminds-slice1-confirmed)",
+      "what": "New cross-layer construct (Minsky 'society of small minds'): an autonomous, no-reasoning reflex over one self-state vital. L2 'subminds' Global role-graph (ADR-0150 §am-7, closed role-set 13->14) + L4 SubMind / SubMindScheduler (single-thread timer-heap; reverses the ADR-0155 loop at L4) / SubMindRegistry wired into IntelligenceLayer.endow; adaptive cadence + ARMED/FIRED storm suppression + severity->tier mapping + int-scaled attention_score; live sense->triage->executor-heap with a STUB resolver. resolver_resources ships unconsumed.",
+      "adr": "0188/0189/0190 (Accepted; 0188+0190 fully Slice-1, 0189 partial §1/§4) + ADR-0150 §am-7",
+      "consumer": "none yet — inert by default (nothing emits unless endow() is called)",
+      "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §19 (impl plan + grounding drift + build/gate log)",
+      "note": "core_version stays phase50 (non-phase feat). Sandbox is Py3.10 (no datetime.UTC/typer) so server/CLI role-set parity sentinels only fail on the Linux gate — two gate-only fixes landed: mindsos_admin._GLOBAL_ROLE_ORDER + phase_12/34/39 sentinels. Next = subminds-slice-2 (resource model + preempt/reconcile); see pending_designs."
+    },
+    {
+      "kind": "docs",
+      "name": "bongard core requests — CC-3 seam (ADR-0184) + CC-2/Part-6 dispositions",
+      "sha": "8464dfe",
+      "gate": "n/a (docs only; no mindsos_* change, no test delta)",
+      "what": "Closed the bongard chat's three D-M2 asks. CC-3 promotion = DESIGN-ONLY: ADR-0184 two-half target-applier seam — (1) Local learned-parameters composite -> Global promoted-pipelines via the propose/release pivot's NotImplementedError PIPELINE branch; (2) Global-scoped reactivate_from_descriptors to re-register (else inert). NOT skill-install (ADR-0183 installs authored bundles, not runtime-minted nodes). Build deferred — no writer (m5/SA-6 unbuilt, WSD-routed). CC-2 composite node_kind = KEEP DEFERRED (verified nothing dispatches; KIND_REACTIVE suffices; reactivation keys off COMPOSITE_DAG not node_kind). Part-6 pin = ALREADY RESOLVED by concurrent work: tag composition-lifecycle-s2-confirmed (->2676b9d) exists under new RULES §7; bongard pins it (demo-side).",
+      "adr": "ADR-0184 (Deferred)",
+      "consumer": "bongard m5 (CC-3, design-only); bongard m2 (Part-6, via demo-side pin bump)",
+      "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §13",
+      "note": "Next phase = composition-lifecycle-s2-part5 (consumer gate first — see that pending_designs entry). OWED elsewhere: bongard pin bump + bongard.status (demo-side); HANDOFF §6.0 narrative (another chat's in-flight edit); ADR README index stale past 0137 (pre-existing); f9-confirmed tags the chore 7d8584e not the feat squash (RULES §7 nit)."
+    },
+    {
+      "kind": "feat",
+      "name": "composition-lifecycle Slice 2 Part 6 (invoke INPUT contract)",
+      "sha": "2676b9d",
+      "gate": "green (4030 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB, --build)",
+      "what": "call_capacity/runtime.invoke validated outputs only; inputs were splatted unchecked, so a missing/wrong declared input reached the body as silent None. Added _validate_inputs (declaration-primary, ignores context) respecting input_group: all_required=>all present, any_of=>>=1, fold NOT enforced at v1 (Part 5). Non-fold also rejects undeclared keys. New InputContractError(kind in {missing_required, unexpected_input}); on the invoke path it is enveloped (success=False) + the problem-trace is tagged error_kind=input_contract:<kind>; direct call_capacity + the write-bypass raise. +11 gate tests (tests/composition_lifecycle/test_invoke_input_contract.py).",
+      "adr": "ADR-0072 §amendment-2",
+      "consumer": "mindsos capacity invoke CLI; bongard runner retires its presence self-validation (D-M2-b) -- it routes through core invoke and self-validates presence only",
+      "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §11",
+      "note": "core_version stays phase50 (non-phase feat). InputContractError is NOT in mindsos_capacity.__all__ (export count stays 139; reachable via mindsos_capacity.exceptions) per consumer-discipline. STILL DEFERRED: Part 5 (DataState operand-arity -- no executing consumer; bongard hits presence only, not same-type operands), CC-2 composite kind, CC-3 promote_capacity verb."
+    },
+    {
+      "kind": "fix",
+      "name": "pipeline rename (PipelineDAG->Pipeline) + CLI render repair",
+      "sha": "1f09228",
+      "gate": "green (4019 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB, --build fresh image)",
+      "what": "Slice-1 blast-radius miss (its replace table had no mindsos_cli row): mindsos_cli/commands/capacity.py imported the removed `Pipeline` (only PipelineDAG was exported) and _pipeline_to_dict/_pipeline_to_human read the retired linear shape (.start_datastate singular, step.via_datastate) -> mindsos_cli.app unimportable on main. Renamed PipelineDAG->Pipeline (the DAG suffix was a migration-only marker; the L5 chain_artifacts.Pipeline 'collision' verified a non-issue -- no file imports both, never aliased) + rewrote the CLI render for the DAG shape (plural start_datastates + dataflow edges, via_datastate dropped). Export count unchanged (139). The +28 gate delta over 3991 = the mindsos_cli.app-importing suites now collect + pass.",
+      "adr": "none (decision recorded in COMPOSITION_LIFECYCLE_DESIGN_LOG.md §10)",
+      "consumer": "mindsos capacity CLI; unblocks composition-lifecycle-s2 Part 6 (whose justification is the CLI invoke path)",
+      "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §10",
+      "note": "core_version stays phase50 (non-phase fix, public-surface touch). PROCESS FIX: run the Linux gate with `docker compose ... run --rm --build` (or bump the image tag per branch) -- the baked test image (COPY at build, no source mount) silently tested stale code; Slice-1's recorded 3991 under-counted by 28 behind the broken CLI import."
+    },
+    {
+      "kind": "feat",
+      "name": "composition-lifecycle Slice 1 (finder seam + PipelineDAG + typed input_group + composite persistence)",
+      "sha": "b56e0ac",
+      "gate": "green (3991 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB)",
+      "what": "ADR-0071 §am-2: pluggable Finder seam (Finder ABC + BFSFinder + ConjunctionFinder; L3 algos / L4 selection) + PipelineDAG/DAGStep/DAGEdge replacing linear Pipeline/PipelineStep (fixes find_pipeline multi-input unsoundness). ADR-0159 §am-1: typed _CapacityBase.input_group {all_required|any_of|fold} + register validation. Composite persistence: PipelineDAG to_dict/from_dict + COMPOSITE_DAG + composite_dependencies + dep-ordered reactivation (_dep_order_descriptors via kahn_sort in mindsos_server/local_boot.py, PB-C). Exports 128->139.",
+      "adr": "0071 §am-2 + 0159 §am-1 (0156 graph-hyperedge deferred)",
+      "consumer": "ARC reason-layer (documents semantics, ships provenance-only); bongard composite-persistence m2",
+      "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md",
+      "note": "core_version stays phase50 — non-phase feat, public-surface touch. Slice 2 (invoke input contract + operand-arity) scoped in pending_designs."
+    },
+    {
+      "kind": "feat",
+      "name": "F9 durable Local persistence + capacity re-activation",
+      "sha": "1be3a70",
+      "gate": "green (3988 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB)",
+      "what": "FalkorDBLocalPersister public export + load_or_mint_local/boot_local (mindsos_server/local_boot.py); descriptor-driven reactivation registry + reactivate_local_capacities; A2' Local-register mirrors Global DataStates; reset_run_state role-scoped wipe",
+      "adr": "0185/0186/0187 + 0156 §am-2 + 0160/0042 §am",
+      "consumer": "robot DM-8 (demo/robot)",
+      "spec": "confirmation_docs/F9_DESIGN_LOG.md",
+      "note": "core_version stays phase50 — non-phase feat, public-surface touch per ADR-0186"
+    },
+    {
+      "kind": "feat",
+      "name": "upsert-rebind",
+      "sha": "20d4686",
+      "gate": "green",
+      "what": "register_capacity(if_exists=upsert) re-binds the in-memory declaration (enables reload re-activation)",
+      "adr": "0156 §amendment-1"
+    }
+  ],
+  "core_contributors": {
+    "wsd": {
+      "home": "projects/wsd",
+      "branch": "wsd-51",
+      "worktree": "MindsOS-wsd"
+    },
+    "fol": {
+      "home": "projects/fol",
+      "branch": null,
+      "worktree": null
+    },
+    "dwf": {
+      "home": "projects/dwf_mapping",
+      "branch": null,
+      "worktree": null
+    },
+    "skill_acquisition": {
+      "home": "projects/skill_acquisition",
+      "branch": null,
+      "worktree": null
+    },
+    "maintenance": {
+      "home": "projects/maintenance",
+      "branch": null,
+      "worktree": null
+    }
   },
-  {
-   "name": "subminds-slice-3",
-   "status": "PENDING — SubMind Slice 2 SHIPPED to main 2026-06-25 (squash 66315f3; tag feat-subminds-s2-confirmed; gate 4090/11/1xpass/0). Slice 3 = the Reflex path: declared non-reconcilable predicate → single fast capacity; the net-new write-hook/arbiter feed over MonitorSubscriptionRegistry (today a passive lookup, not a feed); supersede-not-cancel seizure (arbiter override / drain); cognitive-Reflex floor. REUSES the Slice-2 ResourceLedger/ResourceHold as-is — add a forcible `seize` hook alongside the cooperative `cancel` hook (the record was designed to host it; ADR-0188 amendment-trail).",
-   "branch_to_open": "feat/subminds-s3 off main",
-   "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §10 (Reflex) + §19.1 (Slice 3 row) + §20 (resource model) + ADR-0188 Decision 3.",
-   "reopens": "ADR-0188 Decision 3 (forcible seizure); the Phase-46 MonitorSubscriptionRegistry (passive→reactive feed).",
-   "what": "Reflex bypass: declared predicate at endowment fires a pre-wired single capacity that bypasses the queue + L4 deliberation, notifying L4 after; forcible resource seizure via arbiter override (actuators) / drain (compute) on the shared ResourceHold; cognitive-Reflex hard floor that never starves the monitoring layer.",
-   "consumer": "SubMind Reflex-eligible vitals",
-   "independent_of": "WSD, demos"
+  "demos": {
+    "robot": {
+      "home": "projects/robot_demo",
+      "branch": "demo/robot",
+      "worktree": "MindsOS-robot",
+      "pinned_core": "phase-50-confirmed",
+      "status": "DM-7 shipped; pending move into projects/robot_demo/"
+    },
+    "arc": {
+      "home": "arc_solver",
+      "branch": "arc-solver",
+      "worktree": "MindsOS-arc",
+      "pinned_core": "feat-phase1-seam-confirmed",
+      "status": "2026-07-06 REANALYSIS (design-only, no code): ARC Blocker-1 PREMISE INVALIDATED. profile/bg_cand/enclosed/recomparison are L5 per-task AGGREGATES, not L3 DataStates; registering producers for them was the WRONG step. Class def=L2 / DataState type=L3 / per-task value=L5. ONTOLOGY.md already defines the atom layer (Coordinate/Color/Cell, recognize_cell, build_grid:Cell*->Grid) but shipped code drifted coarser. OPEN CRUX: profiling = executable find_pipeline path OR provenance+L4-orchestration (reason-stage precedent = provenance). If provenance, execute cannot run profiling as one DAG. Blocker-1 producer-registration ON HOLD; next = pending_designs 'arc-atom-grounding'. Details: PIPELINE_DECISIONS.md §4 (2026-07-06). --- 2026-07-04 REANALYSIS (docs-only; gate 14 [ok] re-verified): re-pin DONE (eb9f420); root-flatten (arc_solver/ at repo root) + mindsos_arc on-top bundle landed. Layer path (arc_l4.solve_through_layer) dispatches only phases 8/9/10 as a redundant echo over an inline oracle; solve caps consume profile/bg_cand/recomparison/enclosed which NO cap produces + bg_deduction->background_set != solver bg_cand => registered graph is TWO disconnected components. Modality-ingress DEFERRED (core, no consumer). Details: arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-04). --- PRIOR: CONSOLIDATED 2026-07-03: demo/arc + demo/arc-wiring merged into a single independent line 'arc-solver' (blueprint + phase-1 seam + wiring; merge 396e68d; Linux gate 14 [ok]); parallel lane 'arc-solver-viz' (worktree MindsOS-arc-viz / linux mindsos-arc-viz). Renamed off demo/*. SEAM already on origin/main (verified 2026-07-03: origin/main..feat-phase1-seam-confirmed = 0 commits; arc-solver core == origin/main core, 0 diff) -> NO seam-to-main chat needed; arc-solver is a clean consumer. PENDING: re-pin phase-50 -> feat-phase1-seam-confirmed (bookkeeping; core already matches); wire demo-no-core-edit CI to arc-solver* (now passes, 0 core diff); folder FLATTENED projects/arc_demo/intelligence_demo/arc1 -> projects/arc_solver + package rename intelligence_demo.arc1 -> arc_solver (Phase 2 DONE 2026-07-03; wrappers + arc_instance guard rewritten); local main worktree is stale (git pull). --- prior: reason-stage #8 topology-registered (#8 solves, Linux-gated @8fa24d6). Reanalysis 2026-06-21 LOCKED D7+D-A+GF-1..7+D3(inline)+D1/D2-amendment: find_pipeline is type-static/value-blind + composes multi-input reason caps UNSOUNDLY (probe) + conjunction enforced by NO layer -> reason edges are PROVENANCE not BFS-composition; bodies stay inline. Core upgrade (finder-seam + conjunction/fold finder + typed input-group hyperedge + DAG result) FILED as a separate core-mod chat (PIPELINE_DECISIONS.md §5), ARC = motivating consumer, demo does NOT block. Demo-side GF-1..GF-6 APPLIED + gated 2026-06-21 (arc_metagraph demoted to debug view; run_spike hard conformance assertion: perceive sound / multi-input reason caps found-but-unsound / registered edges==declared; moved shares private helper not same_shape cap; _bg_color relabeled degenerate reconcile policy; selector 'unique else FLAG'; D5 wording fixed; #8 still solves). GF-7 alias renames deferred to D14. D3 one-specimen spike DONE 2026-06-21: touching_delta given a real body invoked via cl.invoke for #8 + biting check (run_spike._invoke_biting_check) - executes through the layer + matches inline solver, #8 still green. Findings: registered reason topology and arc_solver are DISJOINT (solver never touches the layer); invoke validates outputs only (declared CONSUMES neither necessary nor sufficient); real body is a monolith over (pair,background) not the declared (touching,correspondence) so the reason-graph decomposition is paper-only; DataState model can't represent same-type pair operands. Two new CORE findings folded into PIPELINE_DECISIONS §5 parts 5-6 (operand-arity; invoke input contract). CORE PROPOSAL parts 1-4 IMPLEMENTED 2026-06-21 on core branch feat/composition-lifecycle (commit 3253ce8; ADR-0071 am-2 + ADR-0159 am-1): Finder seam (BFSFinder+ConjunctionFinder) + PipelineDAG replacing Pipeline + typed _CapacityBase.input_group (INPUT_GROUP_ALL_REQUIRED/ANY_OF/FOLD). NOT YET on main / not tagged / demo still pins phase-50-confirmed -> demo cannot consume until merge-to-main + tag + merge into demo/arc + re-pin. Parts 5-6 (operand-arity, invoke-input-validation) NOT addressed -> still open core. Open: (new) decide whether to consume ConjunctionFinder once pinned [declare input_group per reason cap]; D13 (gated on CORPUS-ANALYSIS), D7-build/D10-D12, D14. 2026-06-23 demo-UI session: built arc_debug Gates section (phased comparison->result->gate->capacity, reactive result-chip filter + matching-task list + Map callout gates_map.png) backed by NEW arc_gates.py; added 'inside' intra-grid capacity (flood-fill enclosure pockets + object-level bbox containment) wired through all 6 steps of the new CAPACITY_CREATION_GUIDE.md (arc_grids/arc_capacities/arc_profile/arc_search/arc_debug + hypothesis tag); fixed compact grid-sizing overflow for tall grids (cellSize divides by max(rows,cols)); CORRECTED 21 corrupted tasks in arc1.json vs canonical fchollet/ARC-AGI (incl. 025d127b) - arc1.json now exact-matches canonical, zero mismatches. Spike green (conformance+D3+#8). See projects/arc_solver/PIPELINE_DECISIONS.md"
+    },
+    "bongard": {
+      "home": "projects/bongard_demo",
+      "branch": "demo/bongard",
+      "worktree": "MindsOS-bongard",
+      "pinned_core": "phase-50-confirmed",
+      "status": "not started; PLAN.md at main commit 85115da"
+    },
+    "arc_viz": {
+      "home": "arc_solver/viz",
+      "branch": "arc-solver-viz",
+      "worktree": "MindsOS-arc-viz",
+      "pinned_core": "phase-50-confirmed",
+      "status": "parallel sub-project of arc-solver (system<->human communication). Branch at 18573ed (pre-consolidation, pre-RULES-fix, no wiring); merges arc-solver when work starts. ARC_VIZ_CONTRACT_SPEC.md untracked in viz worktree -> to be committed at arc_solver/viz/ when viz work starts."
+    }
   },
-  {
-   "name": "subminds-slice-4",
-   "status": "PENDING — after Slice 2 (shipped) / Slice 3. Local `subminds` scope + taught endowment + marker-only de-endowment (Phase-50 precedent) + tuning knobs as config (cadence min/max + hysteresis, proximity→interval curve, severity→tier band edges, importance weights, retry backoff + standing-pressure cap, cognitive-Reflex floor).",
-   "branch_to_open": "feat/subminds-s4 off main",
-   "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §19.1 (Slice 4 row) + §13 (endowment) + §19.6 (tuning items).",
-   "reopens": "ADR-0190 (endowment/role-graph — Local bootstrap).",
-   "what": "Local subminds bootstrap (episodic_memories pattern); taught endowment writes a record into `subminds`; marker-only de-endowment; surface the deferred tuning constants as config.",
-   "consumer": "taught/per-user SubMinds",
-   "independent_of": "WSD, demos"
-  },
-  {
-   "name": "pipelinenotfound-to-dontknow",
-   "status": "PENDING — split out of SubMind Slice 2 (2026-06-25). PRINCIPLE RATIFIED: PipelineNotFoundError 'shouldn't exist' — a single capacity IS a 1-step pipeline (register = input+output DataState), so 'no route' is not a technical failure but an honest dont-know ('no capacity reaches the goal DataState in the desired direction'). Slice 2 honors this AT THE CONSUMER (the SubMind arbiter catches it → dont-know → ask-human fallback); this entry is the CORE-L3 refactor to remove the exception concept itself.",
-   "branch_to_open": "feat/pipelinenotfound-to-dontknow off main",
-   "spec": "SUBMIND_DESIGN_LOG.md §20 + RULES §8 + ADR-0157 (family-specific dont-know).",
-   "reopens": "pipeline.py (4 raise sites in BFSFinder/ConjunctionFinder), find_pipeline return signature, mindsos_capacity.exceptions + __all__ export, ADR-0071/0156.",
-   "what": "Replace PipelineNotFoundError (raised, never caught in production — verified zero `except` outside pipeline.py) with a path-finding dont-know verdict (NEW verdict type — find_pipeline is a function, not a registered capacity, so FAMILY_RULES does not govern it; decide Optional[Pipeline] vs PathFindingVerdict). Blast radius: 2 finder methods + exceptions + __all__ export-slate sentinels (phase_30/31) + test_cli_capacity_find render. Touches both Slice-1 landmines (export-slate parity + Py3.10-blind CLI) so kept OFF Slice 2.",
-   "consumer": "SubMind arbiter (swaps its `except` for a verdict read when this lands); mindsos capacity find CLI",
-   "independent_of": "SubMind Slices 2-4, WSD, demos"
-  },
-  {
-   "name": "bongard-core-requests",
-   "status": "RESOLVED 2026-06-23 (core-mod chat; docs at main 8464dfe; see COMPOSITION_LIFECYCLE_DESIGN_LOG.md §13). CC-3 = DESIGN-ONLY (ADR-0184 two-half target-applier seam; build deferred, no writer — bongard m5/SA-6 unbuilt). CC-2 = KEEP DEFERRED (nothing dispatches; KIND_REACTIVE suffices). Part-6 = RESOLVED by existing tag composition-lifecycle-s2-confirmed (->2676b9d) under RULES §7. OWED (demo-side, not core): bongard merges that tag into demo/bongard, re-gates, bumps pinned_core, retires its D-M2-b presence self-check.",
-   "branch_to_open": "feat/bongard-core-requests (or per-item branch)",
-   "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §0 (promotion placement principle) + §3/§6 (CC-2/CC-3 deferral rationale) + §11 (Part 6, shipped). Bongard's own asks: the bongard demo design log (D-M2-a/D-M2-b).",
-   "reopens": "CC-3: §0 placement principle (core-owned promotion behind a target-applier seam). CC-2: §3/§6 (node_kind free field).",
-   "what": "(1) CC-3 promotion — build a promote_capacity / target-applier verb (Mint step 5 / SA-6, Global). STILL NO WRITER; mindsos_knowledge pending_promotion_iri/validate_promotion_candidate are pre-existing schema, NOT the verb. Decide placement + the target-applier seam before building (consumer discipline §0). (2) CC-2 composite node_kind — confirm keep-deferred (nothing dispatches; KIND_REACTIVE suffices) vs build. (3) Part-6 consumption — bongard must pin a core ref including 2676b9d to use invoke input-validation (cut a core tag at the Part-6 commit, or pin the sha); this un-blocks retiring the runner's presence self-validation (D-M2-b).",
-   "consumer": "bongard demo (CC-3 = m5; Part-6 = m2)",
-   "independent_of": "Part 5; WSD"
-  },
-  {
-   "name": "composition-lifecycle-s2-part5",
-   "status": "[2026-06-23 R0] keep-deferred RATIFIED — no executing same-type-operand consumer (ARC monolith; bongard m2 = all_required distinct types; m3 comparators unbuilt; m5 gated). Triggers + grounding in COMPOSITION_LIFECYCLE_DESIGN_LOG §14. Part 6 SHIPPED 2026-06-22 (main 2676b9d; gate 4030/0 failed; design log §11). Part 5 (DataState operand-arity / role axis) DEFERRED — no executing consumer (bongard hits input-PRESENCE only, not same-type operands; ARC provenance-only; WSD undesigned). Un-defer only when a real same-type-operand executing consumer is confirmed. [2026-06-23 core-mod update] CC-3 design = ADR-0184 (m5's promotion descriptor must confirm the operand shape HERE before sizing). NEXT-CHAT R0 = the consumer gate, NOT the build: confirm whether any path EXECUTES a same-type multi-operand cap through invoke today — check the bongard BINARY comparator dispatch (same_object/same_shape = two Objects/Shapes; scene-parse milestone (m3), EARLIER than m5) FIRST, m5 fold SECOND. m5 is upstream-gated (no writer, WSD-routed) so it is not a live pin. If no executing consumer: ratify keep-deferred (design-log note, no branch). Bongard runner lives on the demo/bongard worktree (NOT on main).",
-   "branch_to_open": "feat/composition-lifecycle-s2-part5 (when un-deferred)",
-   "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §9 (Part 5 scope + concern) + §11 (Part 6 shipped, fold deferred here)",
-   "reopens": "ADR-0156 (binary-edge model), ADR-0159 (registration contract), ADR-0071 §am (finder operand threading), invoke inputs-map keying",
-   "what": "operand-position/role/arity on the registration + invoke contracts so a body declares+receives N operands of ONE DataState type (today they collapse on one IRI key / one CONSUMES edge); threaded through ConjunctionFinder; interacts with input_group; resolves the fold-input shape Part 6 deferred.",
-   "consumer": "TBD — none confirmed",
-   "independent_of": "WSD, ARC"
-  },
-  {
-   "name": "skill-verify-cli",
-   "status": "DESIGN SETTLED 2026-07-02 (this chat). Read-only cross-layer `mindsos skill verify` CLI; NOT built. Full spec + D1-D10 decision log in confirmation_docs/SKILL_VERIFY_DESIGN_NOTE.md. Deferred B (skill-as-graph L3 reorg) = confirmation_docs/SKILL_AS_GRAPH_L3_DESIGN_SEED.md. Maintenance chat, no numbered phase, no version bump.",
-   "branch_to_open": "feat/skill-verify off main",
-   "spec": "confirmation_docs/SKILL_VERIFY_DESIGN_NOTE.md (canonical, self-contained: corrected model + state-source C + 7-check catalog + severities + Falkor-refuse + tests + deferrals A/B + probe corrections) + SKILL_AS_GRAPH_L3_DESIGN_SEED.md",
-   "reopens": "NONE additive (read-only, no contract change). CONDITIONAL fork: if the DESIGN_NOTE §9 gating probe (PRODUCES/CONSUMES IntergraphEdge round-trip through FalkorDBLocalPersister) FAILS, a persister fix forks out (real code + version bump) and D3=C reopens.",
-   "what": "mindsos skill verify <bundle> [--json] [--all]; reads persisted Global + the single Local (approach C, no reactivation), two views reconciled + A2' mirror dedup; 7 checks (atomic-pipeline integrity=the invariant, dangling edge, manifest<->installer drift, broken ref, NEUTRAL task->pipeline->capacity chain, schema via core/L2 Schema NOT write_handle.validate_node, AST code-scan cap->L2 role); Falkor required -> refuse whole-command if down. FIRST STEP = the IntergraphEdge round-trip probe (gates the whole approach).",
-   "consumer": "bundle authors / ops; the run's counts inform deferred A (task->capacity mapping) + whether B/(B-provenance) are worth building",
-   "independent_of": "WSD, demos, SubMind slices"
+  "safety_net": {
+    "branch": "wip/full-snapshot-2026-06-20",
+    "note": "delete only after all three demos are reorganized + gated + pushed"
   }
- ],
- "recent": [
-  {
-   "kind": "packaging",
-   "name": "ARC on-top skill bundle placed on arc-solver (arc_dist/) — CLI-redundancy arc half",
-   "sha": "0e9babe (place) + confirm at tag arc-packaging-confirmed",
-   "gate": "Linux py3.11 arc_dist/tests: 6 passed (parity 3 + e2e 3); parity+idempotency 3/3 re-verified in-sandbox py3.10 2026-07-06",
-   "what": "Placed the prebuilt mindsos-arc distribution (arc_dist/: mindsos_arc/{__init__,capacities,grids,solver}.py + bundle/manifest.toml, own pyproject dep mindsos-runtime, gen_manifest.py, 2 gate tests) as an on-top skill bundle on arc-solver after merging the base rename (main >= cli-redundancy-base-confirmed). L3-only manifest: 32 caps / 39 datastates, realm arc, entry install_arc; L2/L4 empty; requires_mindsos_phase=50. Install discipline: base first then arc_dist --no-deps; never pip-install the arc-solver root (shadows base -> No such command brain); doctor --self-test catches >1 mindsos_cli provider. No core change, no phase, no version bump.",
-   "docs": "arc_dist/RUNBOOK.md (§1 layout + §2 gate cmd fixed, python3); confirmation_docs/ARC_PACKAGING_CONFIRMED.md (rewritten, dep mindsos-runtime + gate 6 passed); STATE.recent (this entry). HANDOFF: none (branch-only non-core ship)."
-  },
-  {
-   "kind": "docs",
-   "name": "arc Blocker-1 reanalysis — profile is L5-aggregate not L3-DataState; reframed to atom-grounding chat",
-   "sha": "uncommitted (Cowork; Mac to commit)",
-   "gate": "n/a (design reanalysis; no code, gate untouched)",
-   "what": "Blocker-1 (register producer caps for DS_PROFILE/DS_BG_CAND/DS_RECOMPARISON/DS_ENCLOSED) PREMISE INVALIDATED. Owner reframe, confirmed vs ONTOLOGY.md + memories: profile/bg_cand/enclosed/recomparison are L5 per-task AGGREGATES, not opaque L3 DataStates. A datum lives in 3 layers in different senses — class def=L2 (ontology/lexicon), DataState TYPE=L3, per-task VALUE=L5 (ABox). ONTOLOGY.md already defines the atom layer (Coordinate/Color/Cell=+{Coordinate,Color}, recognize_cell, build_grid:Cell*->Grid, extract_objects:Region->Object*) but the SHIPPED spike/bundle drifted coarser (no arc.cell/arc.coordinate; arc.color mis-declared as recolor-param; build_grid skips the cell layer). MindsOS grounded: no sub-pipeline object (transitive subdivision of one query-time DAG); caps atomic (composites deferred ADR-0184); promoted-pipelines writer-less; ConjunctionFinder fires each cap once, value-blind, no cardinality -> fold (Cell*->Grid) + fan-out (Grid->Object*) + per-pair/per-task aggregation are NOT finder-expressible. OPEN CRUX (decide first): is profiling an executable find_pipeline L3 path or provenance+L4-orchestration (reason-stage precedent already says provenance-not-composition)? If provenance, execute (one value-blind DAG) CANNOT run ARC profiling = same wall the runtime lane hit -> honest v1 entry is L4-orchestrated (arc_l4), not a single DAG.",
-   "adr": "none (design reanalysis; supersedes the Blocker-1 framing, no contract change)",
-   "consumer": "next = arc-atom-grounding chat (see pending_designs 'arc-atom-grounding')",
-   "spec": "arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-06 entry) + arc_solver/ONTOLOGY.md (canonical atom layer) + memory arc-datastate-model-reframe",
-   "docs": "arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-06); STATE demos.arc.status + pending_designs 'arc-atom-grounding'; memory arc-datastate-model-reframe (new) + arc-layer-datastate-gap/arc-entry-declaration-coordination (reframe notes); MindsOS/.scratch/ARC_ENTRY_DECLARATION.md (Blocker-1 reframe note)"
-  },
-  {
-   "kind": "docs",
-   "name": "arc reanalysis — layer-integration map + modality-ingress deferred",
-   "sha": "uncommitted (Cowork; Mac to commit)",
-   "gate": "14 [ok] re-verified (./run_spike); no solver code change",
-   "what": "Mapped arc's MindsOS integration from code (3 run planes; through-the-layer solve_through_layer dispatches only phases 8/9/10 as a redundant echo over an inline oracle). Key finding: solve caps consume profile/bg_cand/recomparison/enclosed which NO capacity produces, and bg_deduction->background_set never meets the solver's bg_cand -> the registered DataState graph is TWO disconnected components bridged only by inline run_all. DataStates are real ROLE_DATASTATES nodes but type-only (values never nodes; only the L5 Episode persists a value). DEFERRED modality-aware input ingress (core, RULES §8, no arc consumer; only text.space_split wiring is consumer-backed). Confirmed re-pin already DONE + root-flatten + mindsos_arc on-top bundle landed.",
-   "docs": "arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-04 entry); STATE demos.arc.status; memory arc-layer-datastate-gap + arc-modality-ingress-deferred"
-  },
-  {
-   "kind": "docs",
-   "name": "skill verify CLI — read-only cross-layer component verifier (design settled)",
-   "sha": "uncommitted (Cowork worktree; Mac to commit)",
-   "gate": "n/a (docs only; no mindsos_* change)",
-   "what": "Designed a read-only `mindsos skill verify <bundle>` diagnostic. Corrected a stale model over many skeptical passes: a capacity IS its atomic pipeline (bipartite PRODUCES/CONSUMES edges emitted at registration, ADR-0156), so the 'no capacity without a pipeline' invariant holds by construction; promoted-pipelines is writer-less/empty -> its orphan traversal DROPPED; L3 IS persistent (F9 FalkorDBLocalPersister) -> read persisted Global + the single Local directly (approach C, no reactivation); single-tenant (one Local); L3 organized by category graphs today (skill-as-graph = deferred B). 7-check catalog with severities, Falkor-required refuse, tests + a gating IntergraphEdge-round-trip probe. D1-D10 decision log with reversals recorded.",
-   "adr": "none (read-only diagnostic; asserts no new contract)",
-   "consumer": "next = implementation chat (STATE pending_designs 'skill-verify-cli')",
-   "spec": "confirmation_docs/SKILL_VERIFY_DESIGN_NOTE.md + SKILL_AS_GRAPH_L3_DESIGN_SEED.md",
-   "note": "NO code. Deferred: A (task->capacity mapping architecture), B (skill-as-graph L3 reorg), (B-provenance) DataState->L2 provenance. Build risk: IntergraphEdge round-trip through FalkorDBLocalPersister must be confirmed FIRST (if it fails, approach C reopens). Docs uncommitted (Mac commits; pair-exec)."
-  },
-  {
-   "kind": "docs",
-   "name": "L4 Phase-1 interpretation seam + needs_input clarification — design + ADRs 0195/0196",
-   "sha": "uncommitted (Cowork worktree; Mac to commit)",
-   "gate": "n/a (docs + ADRs only; no mindsos_* change)",
-   "what": "Converged a GENERIC core feature (arc-solver = first consumer, owns no core component, RULES §8): (A) pluggable Phase-1 interpretation seam via a construction-bound Phase1Profile (per-step slots, v0 fallback; standalone interpret() decoupled from run_lifecycle; resolve-in-interpretation; opaque-dict hints + reference_kind); (B) needs_input capacity verdict (sibling to dont_know; caller-controlled trigger; non-terminal pending_confirmation on TaskOutcome; stateless re-submit v1; MM-owns-pending + in-memory continuation designed-not-built). arc reply CONFIRMED interpretation-only adoption + 2 hard ADR constraints (dispatcher-level binding/no scope-mix; caller-controlled trigger). Wrote ADR-0195 (seam) + ADR-0196 (needs_input), both Proposed/design-only.",
-   "adr": "0195 + 0196 (Proposed, design-only)",
-   "consumer": "arc-solver / mOS-AS (interpretation-only); any future request-interpretation consumer",
-   "spec": "docs/decisions/adr/0195-phase1-interpretation-seam.md + 0196-needs-input-clarification.md + docs/_workbench/L4_FUTURE_WORK.md §6/§6.2 + L5_FUTURE_WORK.md L5-NEW-19 + HANDOFF §3.1.24 + memory [[l4-phase1-seam-clarification-design]]",
-   "note": "NO code. Next = implementation chat (STATE.json pending_designs 'phase1-seam-and-needs-input'). Deferred: L4-25 (execution.run propagation + in-memory continuation), L4-26 (generic matcher), L4-27/28. Docs uncommitted (Mac commits; pair-exec)."
-  },
-  {
-   "kind": "docs",
-   "name": "Perception capacity ladder — capacity 2 (grounding) committed",
-   "sha": "branch perception-capacity2 (Mac to push)",
-   "gate": "n/a (docs+scripts, no mindsos_* change)",
-   "what": "PIVOTED the Study-2 perception IMPLEMENTATION (study DESIGN unchanged: PERCEPTION_LEAF_VALIDATION_PREREG.md §0-10 + AM-1..AM-16). First build (blob classifier + edge-completion + gates) was scaffolding — DISCARDED after a skeptical pass (hand-coded geometry/Study-1 sin, test leakage, incoherent, honest rebuild ~0.55). New approach: grounded STAGED CAPACITY LADDER, one capacity at a time, each frozen before the next. Capacity 2 (grounding: pixel->structural-pixel) = DETERMINISTIC contrast filter (tau=0.3), NOT learned (nothing to learn once P1 no-noise-judgment removed; learning lives at composition); committed as capacity2_filter.py + generator (two-way forward/inverse pair). Recovery test: clean-outline exact (recall/prec 1.0), permissive under noise (recall 1.0/prec 0.14). A 'point' as defined = filtered pixel = grounding, NOT a derived atom; first real derived atom = the segment.",
-   "adr": "none (docs/scripts)",
-   "consumer": "capacity 2.1 (structural-pixels->segment, next phase)",
-   "spec": "docs/_workbench/PERCEPTION_CAPACITY_LADDER.md (full record + locked decisions) + memory [[perception-leaf-validation-study2]]",
-   "note": "Next chat = capacity 2.1 (first LEARNED composition; import frozen capacity 2, train on its real noisy output, output named segment atoms, noise falls out here, analysis-by-synthesis verification becomes meaningful). Discipline: concise comms; never git add -A; dev-split hygiene (test read once); pair-exec."
-  },
-  {
-   "kind": "docs",
-   "name": "Perception leaf-NOVELTY BUILD — MindsOS chain (in-sandbox) + CNN baseline (Linux, authored) + audit",
-   "sha": "uncommitted (Cowork worktree; Mac to commit)",
-   "gate": "n/a (docs+scripts only; no mindsos_* change)",
-   "what": "Built the LEAF_NOVELTY_PREREG v2 experiment. MindsOS numpy leaf-chain (pixel->point->segment->polygon{3,4}+withholdable arc; learned tau/eps + per-leaf Platt; RDP vertex-count irreducibility -> REQUEST_ATOM; analysis-by-synthesis grounding). In-sandbox results (3 seeds, AUDITED TRUSTWORTHY by an independent ML-advocate subagent): P0 in-vocab acc 0.961+/-0.006 (LEARNED-FAIR, not baked - verified no generator-param leakage); MP1 no-fabrication on clean circles 0.0 (temptation 0.34, non-trivial); MP2 repair retention EXACTLY 1.0 (0/480 flip - arc leaf is a fallback, never overrides a polygon) + curved acc 0.965 + 1 leaf added/0 re-fit; near-miss request-atom curve 0.0->0.045->0.6->0.967 (the predicted P17 continuous blind spot, reported-not-gated per AM-3). Strong CNN+OOD+3-repair-mode baseline AUTHORED for the user's Linux (torch; unrun in sandbox like discovery_test.py) - includes the audit-mandated row-frozen warm-started head (AM-5) as the ML-advocate's best shot. 3 pre-build amendments (AM-2 learned-not-baked def; AM-3 MP1 clean-only + near-miss reported; AM-4 novelty=conjunction-at-parity) + AM-5 (baseline strengthened post-audit) recorded in PREREG sec.8 before the affected runs.",
-   "adr": "none (docs/scripts only; refinements to 0191/0193 still pending a real consumer)",
-   "consumer": "Linux run fills the P0 parity gate + decisive repair-cost contrast; future perception/vision subsystem",
-   "spec": "docs/_workbench/PERCEPTION_LEAF_NOVELTY_PREREG.md (v2 + sec.9 Results) + leaf_novelty_{generator,mindsos,baseline}.py",
-   "note": "COMPLETE + AUDITED 2026-06-29 (runs 1-5 on Linux). FINAL VERDICT (honest, no spin): P0 parity PASSES (CNN 0.967 vs MindsOS 0.961, earned/learned-not-baked). BUT the strong novelty claim does NOT stand: (1) headline 'retention 1.0 vs CNN 0.792' is a UNIT MISMATCH (MindsOS=zero-flip delta @abs 0.954; CNN=absolute-capped) -> matched 0.954 vs 0.792; (2) fresh modular CNN detector AUROC 0.995 -> the gap is sample-efficiency + crisp-categorical routing, NOT a ROC-frontier impossibility; (3) no-fabrication CONCEDED (CNN Mahalanobis OOD 0.953). Conjunction-at-parity (AM-4) holds ONLY as the NARROWER claim = data-efficient crisp-symbolic routing + named/inspectable request-atom (gap-naming), which v1 deliberately does not contest (PB-K). Mechanism substrate-contingent (erodes off the clean discrete grid; MindsOS already blind in near-miss). Baseline strengthened 4x per pre-committed anti-strawman rule (AM-6/7/8/9); 1 BatchNorm-eval bug caught+fixed (AM-10). SUPERSEDED BY STUDY 2 (design settled this chat, not built): the strong claim + fair test is redesigned in docs/_workbench/PERCEPTION_LEAF_VALIDATION_PREREG.md — bidirectional joint inference, H1-H6 (H6 rescue-without-hallucination = headline/riskiest), atoms-learned/composition-given, 4 baselines incl a feedback/part-whole model; v1's MindsOS was a hand-coded corner-counter (not genuine leaf-learning) which is the core thing study 2 fixes. Full study-1 record: PERCEPTION_LEAF_NOVELTY_PREREG.md sec.9 FINAL VERDICT + sec.8 AM-1..AM-10. NEXT = Study-2 build chat (see that pre-reg sec.10 build order; memory [[perception-leaf-validation-study2]]). Docs+scripts uncommitted (Mac to commit)."
-  },
-  {
-   "kind": "docs",
-   "name": "Perception leaf — cross-family confidence study + leaf-novelty pre-reg (v2)",
-   "sha": "uncommitted (Cowork worktree; Mac to commit)",
-   "gate": "n/a (docs+scripts only; no mindsos_* change)",
-   "what": "Audited empirical study: does the two-axis confidence + per-capacity-calibration leaf-contract generalize? Synthetic scoring/retrieval/derivation + real-data FrameNet frame-disambiguation. Findings (CROSSFAMILY_PREREG §10/§11): both axes generalize beyond perception, but WHICH axis carries correctness is family-dependent (selection→decision, entailment→grounding); two-axis independence requires proposer≠critic; per-capacity calibration is CONDITIONAL (only under incommensurability); near-vocab blind-spot is continuous-substrate-ONLY (absent in discrete); grounding = inverse-critic anchored at a REFERENCE (floor=perception special case). Real-data = TRUSTWORTHY-PARTIAL (decision transfers qualitatively, risk-coverage 6.5x; AUROC degrades synth 0.83→real 0.745). PIVOT (user-driven): the confidence work is ORTHOGONAL to the real MindsOS novelty; designed (pre-registered, NOT built) the LEAF-NOVELTY test = learned-but-NAMED-atom leaves + irreducibility→request-atom→one-shot-repair vs a strong CNN+OOD baseline at noise-parity.",
-   "adr": "none (refinements to 0191/0193 recommended in CROSSFAMILY §10, not applied)",
-   "consumer": "next chat builds leaf-novelty; future perception/vision subsystem",
-   "spec": "docs/_workbench/PERCEPTION_CROSSFAMILY_PREREG.md + docs/_workbench/PERCEPTION_LEAF_NOVELTY_PREREG.md (v2) + docs/_workbench/crossfamily_*.py",
-   "note": "Docs+scripts only, uncommitted (Mac to commit). 5 adversarial audits this chat caught 2 false framings + 1 process slip — all corrected. NEXT = build leaf-novelty in a fresh chat per LEAF_NOVELTY_PREREG v2; P0 earned-parity (learned leaves, no baked generator) is the NULL gate."
-  },
-  {
-   "kind": "docs",
-   "name": "Perception doctrine + learned-leaf design (P1–P17, ADRs 0191–0194)",
-   "sha": "uncommitted (Cowork worktree; Mac to commit on a branch)",
-   "gate": "n/a (docs only; no mindsos_* change, no test delta)",
-   "what": "Landed the perception doctrine `docs/concepts/perception-principles.md` (Part A P1–P11 verbatim from demo/bongard + Part II P12–P17 validated extensions). Designed B1–B6 as 4 Proposed ADRs: 0191 two-axis confidence (grounding+decision) + per-capacity calibration; 0192 perception atom layer (geometry/signal realms, minimal-orthogonal, fundamental=no-producer, unified introduce-atom primitive; PB-2=Option C core-vs-subsystem, reversible); 0193 grounding control loop (irreducibility→REQUEST_ATOM B4 + borderline-zone descent trigger B5); 0194 recursive scale-relative recognizers + reuse-driven promotion (P3). Empirical program (pre-registered, 6 adversarial-audit rounds, caught 2+ false passes): P14 VALIDATED on 1D+2D (substrate-neutral) → ADR-0191; P15 grounding absolute-claim RETIRED, re-specified as novelty-distance curve + intrinsic near-vocabulary blind spot; P16 reuse-driven PROPAGATION shown but unsupervised DISCOVERY TESTED NEGATIVE (torch β-VAE: encoder encodes task-sufficient statistic ≈ label ceiling, not beyond — confirms P2 atoms-are-exogenous); P17 near-miss handling is architectural (descent+finer-atom), not a statistic.",
-   "adr": "0191/0192/0193/0194 (all Proposed — flip to Accepted when a perception/vision subsystem consumes them)",
-   "consumer": "future perception/vision subsystem (none yet — design-only per consumer discipline)",
-   "spec": "docs/concepts/perception-principles.md + docs/decisions/adr/0191-0194 + docs/_workbench/PERCEPTION_LEARNING_{NOTES,PREREG}.md + PERCEPTION_DISCOVERY_TEST_SPEC.md + discovery_test.py/.ipynb",
-   "note": "No code written by design. Original CORE-chat mandate (land Part A + design B1–B6) COMPLETE. Open doors: (1) build a perception/vision subsystem consuming 0191–0194; (2) a NON-task discovery mechanism (reuse pressure provably only propagates). HANDOFF §10 has a 'Perception chat' reading row. mkdocs page in nav + builds clean (no new warnings)."
-  },
-  {
-   "kind": "docs",
-   "name": "WSD ownership separation — MindsOS-owned vs WSD-owned scope",
-   "sha": "f4f7ddf",
-   "gate": "n/a (docs only; no mindsos_* change, no test delta)",
-   "what": "Corrected the conflation where downstream chats treated the mechanics scheduled in WSD Phases 51-56 as WSD-owned. Ownership != scheduling: WSD is a subsystem that CONSUMES MindsOS features (RULES §8); the slot that BUILDS a mechanic is not its owner. Added an authoritative Owner column (MindsOS-core / shared / WSD-bundle, per-slot) to projects/wsd/WSD_INSTALLATION_PHASE_MAP.md §2.1 + a full per-item ownership-clarification record in WSD_INSTALLATION_DESIGN_LOG.md §7 (corrects PB-W2/§3.2 'lexicon empirical-layer is WSD-owned' -> the machinery is a MindsOS L2 feature; only the sense-correlation strata content is WSD). Ownership notes added to CLAUDE.md WSD para + HANDOFF WSD block + POST_PHASE_38 §6 WSD row; Owner-column banners added to FOL/DWF FUTURE_CHAT_PROMPT.md.",
-   "adr": "none (attribution only; no code, no decision reversal, no phase re-sequence)",
-   "consumer": "all downstream chats (WSD/FOL/DWF) reading the phase maps + CLAUDE.md/HANDOFF/STATE",
-   "spec": "projects/wsd/WSD_INSTALLATION_PHASE_MAP.md §2.1 + WSD_INSTALLATION_DESIGN_LOG.md §7",
-   "note": "Lesson: putting the principle only in RULES did NOT stop the drift — chats believe ARTIFACTS, not rules; the fix is to make ownership a FIELD in the artifacts chats read. Phase timing/scope UNCHANGED — Phase 51 (wsd-51) work is unaffected, just correctly attributed."
-  },
-  {
-   "kind": "feat",
-   "name": "SubMind (Mindlet) Slice 2 — resource model + arbiter + core pipeline executor",
-   "sha": "66315f3",
-   "gate": "green (4090 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB Py3.11; tag feat-subminds-s2-confirmed)",
-   "what": "Consumes the Slice-1 stub resolver. NEW core L4: mindsos_intelligence/pipeline_execution.py (real Pipeline-step executor — topological DAG walk + per-step L4Dispatcher + datastate threading + cooperative cancel; RULES §8 core component, NOT WSD) + resources.py (ResourceLedger + ResourceHold + Contention — the shared model Slice-3 Reflex reuses) + submind_arbiter.py (SubMindArbiter). Resolver is GOAL-directed: a Pipeline built at dispatch via find_pipeline; reconcile=free→concurrent dispatch (preempt=False), contended→park (+cooperative cancel iff need outranks holder)→event-driven resume on release; unsatisfiable=tier-never-decays + capped backoff + never-give-up; goal-unreachable=dont-know→fires the SubMindDefinition.fallback_resolver (direct ask-human). Additive executor change: submit(preempt=True default unchanged) + optional resource_ledger + held_resources bracketed around the worker run-loop; enqueue grows held_resources. Registry: stub→arbiter delegation + FIRED→ARMED recovery-clear. __init__ exports +6.",
-   "adr": "0189 §2/§3 shipped (was partial); 0188 amendment-trail (ResourceLedger = shared Reflex-seizure model)",
-   "consumer": "SubMind resolvers",
-   "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §20 (Slice-2 decisions + build record)",
-   "note": "core_version stays phase50 (non-phase feat). NO role-set change → parity sentinels untouched. Sandbox Py3.10 cannot run the typer/CLI + datetime.UTC suites — Linux gate (Py3.11) authoritative. RULES §8 added (WSD/subsystem owns no architectural component; core mechanics belong at core). Split-out follow-up: pipelinenotfound-to-dontknow (PipelineNotFoundError → path-finding dont-know verdict, separate core-mod chat). Next = subminds-slice-3 (Reflex path)."
-  },
-  {
-   "kind": "feat",
-   "name": "SubMind (Mindlet) Slice 1 — subminds L2 role-graph + L4 SubMind runtime/scheduler/registry",
-   "sha": "9698769",
-   "gate": "green (4069 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB; gated code at cebd6ef; tag feat-subminds-slice1-confirmed)",
-   "what": "New cross-layer construct (Minsky 'society of small minds'): an autonomous, no-reasoning reflex over one self-state vital. L2 'subminds' Global role-graph (ADR-0150 §am-7, closed role-set 13->14) + L4 SubMind / SubMindScheduler (single-thread timer-heap; reverses the ADR-0155 loop at L4) / SubMindRegistry wired into IntelligenceLayer.endow; adaptive cadence + ARMED/FIRED storm suppression + severity->tier mapping + int-scaled attention_score; live sense->triage->executor-heap with a STUB resolver. resolver_resources ships unconsumed.",
-   "adr": "0188/0189/0190 (Accepted; 0188+0190 fully Slice-1, 0189 partial §1/§4) + ADR-0150 §am-7",
-   "consumer": "none yet — inert by default (nothing emits unless endow() is called)",
-   "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §19 (impl plan + grounding drift + build/gate log)",
-   "note": "core_version stays phase50 (non-phase feat). Sandbox is Py3.10 (no datetime.UTC/typer) so server/CLI role-set parity sentinels only fail on the Linux gate — two gate-only fixes landed: mindsos_admin._GLOBAL_ROLE_ORDER + phase_12/34/39 sentinels. Next = subminds-slice-2 (resource model + preempt/reconcile); see pending_designs."
-  },
-  {
-   "kind": "docs",
-   "name": "bongard core requests — CC-3 seam (ADR-0184) + CC-2/Part-6 dispositions",
-   "sha": "8464dfe",
-   "gate": "n/a (docs only; no mindsos_* change, no test delta)",
-   "what": "Closed the bongard chat's three D-M2 asks. CC-3 promotion = DESIGN-ONLY: ADR-0184 two-half target-applier seam — (1) Local learned-parameters composite -> Global promoted-pipelines via the propose/release pivot's NotImplementedError PIPELINE branch; (2) Global-scoped reactivate_from_descriptors to re-register (else inert). NOT skill-install (ADR-0183 installs authored bundles, not runtime-minted nodes). Build deferred — no writer (m5/SA-6 unbuilt, WSD-routed). CC-2 composite node_kind = KEEP DEFERRED (verified nothing dispatches; KIND_REACTIVE suffices; reactivation keys off COMPOSITE_DAG not node_kind). Part-6 pin = ALREADY RESOLVED by concurrent work: tag composition-lifecycle-s2-confirmed (->2676b9d) exists under new RULES §7; bongard pins it (demo-side).",
-   "adr": "ADR-0184 (Deferred)",
-   "consumer": "bongard m5 (CC-3, design-only); bongard m2 (Part-6, via demo-side pin bump)",
-   "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §13",
-   "note": "Next phase = composition-lifecycle-s2-part5 (consumer gate first — see that pending_designs entry). OWED elsewhere: bongard pin bump + bongard.status (demo-side); HANDOFF §6.0 narrative (another chat's in-flight edit); ADR README index stale past 0137 (pre-existing); f9-confirmed tags the chore 7d8584e not the feat squash (RULES §7 nit)."
-  },
-  {
-   "kind": "feat",
-   "name": "composition-lifecycle Slice 2 Part 6 (invoke INPUT contract)",
-   "sha": "2676b9d",
-   "gate": "green (4030 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB, --build)",
-   "what": "call_capacity/runtime.invoke validated outputs only; inputs were splatted unchecked, so a missing/wrong declared input reached the body as silent None. Added _validate_inputs (declaration-primary, ignores context) respecting input_group: all_required=>all present, any_of=>>=1, fold NOT enforced at v1 (Part 5). Non-fold also rejects undeclared keys. New InputContractError(kind in {missing_required, unexpected_input}); on the invoke path it is enveloped (success=False) + the problem-trace is tagged error_kind=input_contract:<kind>; direct call_capacity + the write-bypass raise. +11 gate tests (tests/composition_lifecycle/test_invoke_input_contract.py).",
-   "adr": "ADR-0072 §amendment-2",
-   "consumer": "mindsos capacity invoke CLI; bongard runner retires its presence self-validation (D-M2-b) -- it routes through core invoke and self-validates presence only",
-   "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §11",
-   "note": "core_version stays phase50 (non-phase feat). InputContractError is NOT in mindsos_capacity.__all__ (export count stays 139; reachable via mindsos_capacity.exceptions) per consumer-discipline. STILL DEFERRED: Part 5 (DataState operand-arity -- no executing consumer; bongard hits presence only, not same-type operands), CC-2 composite kind, CC-3 promote_capacity verb."
-  },
-  {
-   "kind": "fix",
-   "name": "pipeline rename (PipelineDAG->Pipeline) + CLI render repair",
-   "sha": "1f09228",
-   "gate": "green (4019 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB, --build fresh image)",
-   "what": "Slice-1 blast-radius miss (its replace table had no mindsos_cli row): mindsos_cli/commands/capacity.py imported the removed `Pipeline` (only PipelineDAG was exported) and _pipeline_to_dict/_pipeline_to_human read the retired linear shape (.start_datastate singular, step.via_datastate) -> mindsos_cli.app unimportable on main. Renamed PipelineDAG->Pipeline (the DAG suffix was a migration-only marker; the L5 chain_artifacts.Pipeline 'collision' verified a non-issue -- no file imports both, never aliased) + rewrote the CLI render for the DAG shape (plural start_datastates + dataflow edges, via_datastate dropped). Export count unchanged (139). The +28 gate delta over 3991 = the mindsos_cli.app-importing suites now collect + pass.",
-   "adr": "none (decision recorded in COMPOSITION_LIFECYCLE_DESIGN_LOG.md §10)",
-   "consumer": "mindsos capacity CLI; unblocks composition-lifecycle-s2 Part 6 (whose justification is the CLI invoke path)",
-   "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md §10",
-   "note": "core_version stays phase50 (non-phase fix, public-surface touch). PROCESS FIX: run the Linux gate with `docker compose ... run --rm --build` (or bump the image tag per branch) -- the baked test image (COPY at build, no source mount) silently tested stale code; Slice-1's recorded 3991 under-counted by 28 behind the broken CLI import."
-  },
-  {
-   "kind": "feat",
-   "name": "composition-lifecycle Slice 1 (finder seam + PipelineDAG + typed input_group + composite persistence)",
-   "sha": "b56e0ac",
-   "gate": "green (3991 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB)",
-   "what": "ADR-0071 §am-2: pluggable Finder seam (Finder ABC + BFSFinder + ConjunctionFinder; L3 algos / L4 selection) + PipelineDAG/DAGStep/DAGEdge replacing linear Pipeline/PipelineStep (fixes find_pipeline multi-input unsoundness). ADR-0159 §am-1: typed _CapacityBase.input_group {all_required|any_of|fold} + register validation. Composite persistence: PipelineDAG to_dict/from_dict + COMPOSITE_DAG + composite_dependencies + dep-ordered reactivation (_dep_order_descriptors via kahn_sort in mindsos_server/local_boot.py, PB-C). Exports 128->139.",
-   "adr": "0071 §am-2 + 0159 §am-1 (0156 graph-hyperedge deferred)",
-   "consumer": "ARC reason-layer (documents semantics, ships provenance-only); bongard composite-persistence m2",
-   "spec": "confirmation_docs/COMPOSITION_LIFECYCLE_DESIGN_LOG.md",
-   "note": "core_version stays phase50 — non-phase feat, public-surface touch. Slice 2 (invoke input contract + operand-arity) scoped in pending_designs."
-  },
-  {
-   "kind": "feat",
-   "name": "F9 durable Local persistence + capacity re-activation",
-   "sha": "1be3a70",
-   "gate": "green (3988 passed / 11 skipped / 1 xpassed / 0 failed, live FalkorDB)",
-   "what": "FalkorDBLocalPersister public export + load_or_mint_local/boot_local (mindsos_server/local_boot.py); descriptor-driven reactivation registry + reactivate_local_capacities; A2' Local-register mirrors Global DataStates; reset_run_state role-scoped wipe",
-   "adr": "0185/0186/0187 + 0156 §am-2 + 0160/0042 §am",
-   "consumer": "robot DM-8 (demo/robot)",
-   "spec": "confirmation_docs/F9_DESIGN_LOG.md",
-   "note": "core_version stays phase50 — non-phase feat, public-surface touch per ADR-0186"
-  },
-  {
-   "kind": "feat",
-   "name": "upsert-rebind",
-   "sha": "20d4686",
-   "gate": "green",
-   "what": "register_capacity(if_exists=upsert) re-binds the in-memory declaration (enables reload re-activation)",
-   "adr": "0156 §amendment-1"
-  }
- ],
- "core_contributors": {
-  "wsd": {
-   "home": "projects/wsd",
-   "branch": "wsd-51",
-   "worktree": "MindsOS-wsd"
-  },
-  "fol": {
-   "home": "projects/fol",
-   "branch": null,
-   "worktree": null
-  },
-  "dwf": {
-   "home": "projects/dwf_mapping",
-   "branch": null,
-   "worktree": null
-  },
-  "skill_acquisition": {
-   "home": "projects/skill_acquisition",
-   "branch": null,
-   "worktree": null
-  },
-  "maintenance": {
-   "home": "projects/maintenance",
-   "branch": null,
-   "worktree": null
-  }
- },
- "demos": {
-  "robot": {
-   "home": "projects/robot_demo",
-   "branch": "demo/robot",
-   "worktree": "MindsOS-robot",
-   "pinned_core": "phase-50-confirmed",
-   "status": "DM-7 shipped; pending move into projects/robot_demo/"
-  },
-  "arc": {
-   "home": "arc_solver",
-   "branch": "arc-solver",
-   "worktree": "MindsOS-arc",
-   "pinned_core": "feat-phase1-seam-confirmed",
-   "status": "2026-07-06 REANALYSIS (design-only, no code): ARC Blocker-1 PREMISE INVALIDATED. profile/bg_cand/enclosed/recomparison are L5 per-task AGGREGATES, not L3 DataStates; registering producers for them was the WRONG step. Class def=L2 / DataState type=L3 / per-task value=L5. ONTOLOGY.md already defines the atom layer (Coordinate/Color/Cell, recognize_cell, build_grid:Cell*->Grid) but shipped code drifted coarser. OPEN CRUX: profiling = executable find_pipeline path OR provenance+L4-orchestration (reason-stage precedent = provenance). If provenance, execute cannot run profiling as one DAG. Blocker-1 producer-registration ON HOLD; next = pending_designs 'arc-atom-grounding'. Details: PIPELINE_DECISIONS.md §4 (2026-07-06). --- 2026-07-04 REANALYSIS (docs-only; gate 14 [ok] re-verified): re-pin DONE (eb9f420); root-flatten (arc_solver/ at repo root) + mindsos_arc on-top bundle landed. Layer path (arc_l4.solve_through_layer) dispatches only phases 8/9/10 as a redundant echo over an inline oracle; solve caps consume profile/bg_cand/recomparison/enclosed which NO cap produces + bg_deduction->background_set != solver bg_cand => registered graph is TWO disconnected components. Modality-ingress DEFERRED (core, no consumer). Details: arc_solver/PIPELINE_DECISIONS.md §4 (2026-07-04). --- PRIOR: CONSOLIDATED 2026-07-03: demo/arc + demo/arc-wiring merged into a single independent line 'arc-solver' (blueprint + phase-1 seam + wiring; merge 396e68d; Linux gate 14 [ok]); parallel lane 'arc-solver-viz' (worktree MindsOS-arc-viz / linux mindsos-arc-viz). Renamed off demo/*. SEAM already on origin/main (verified 2026-07-03: origin/main..feat-phase1-seam-confirmed = 0 commits; arc-solver core == origin/main core, 0 diff) -> NO seam-to-main chat needed; arc-solver is a clean consumer. PENDING: re-pin phase-50 -> feat-phase1-seam-confirmed (bookkeeping; core already matches); wire demo-no-core-edit CI to arc-solver* (now passes, 0 core diff); folder FLATTENED projects/arc_demo/intelligence_demo/arc1 -> projects/arc_solver + package rename intelligence_demo.arc1 -> arc_solver (Phase 2 DONE 2026-07-03; wrappers + arc_instance guard rewritten); local main worktree is stale (git pull). --- prior: reason-stage #8 topology-registered (#8 solves, Linux-gated @8fa24d6). Reanalysis 2026-06-21 LOCKED D7+D-A+GF-1..7+D3(inline)+D1/D2-amendment: find_pipeline is type-static/value-blind + composes multi-input reason caps UNSOUNDLY (probe) + conjunction enforced by NO layer -> reason edges are PROVENANCE not BFS-composition; bodies stay inline. Core upgrade (finder-seam + conjunction/fold finder + typed input-group hyperedge + DAG result) FILED as a separate core-mod chat (PIPELINE_DECISIONS.md §5), ARC = motivating consumer, demo does NOT block. Demo-side GF-1..GF-6 APPLIED + gated 2026-06-21 (arc_metagraph demoted to debug view; run_spike hard conformance assertion: perceive sound / multi-input reason caps found-but-unsound / registered edges==declared; moved shares private helper not same_shape cap; _bg_color relabeled degenerate reconcile policy; selector 'unique else FLAG'; D5 wording fixed; #8 still solves). GF-7 alias renames deferred to D14. D3 one-specimen spike DONE 2026-06-21: touching_delta given a real body invoked via cl.invoke for #8 + biting check (run_spike._invoke_biting_check) - executes through the layer + matches inline solver, #8 still green. Findings: registered reason topology and arc_solver are DISJOINT (solver never touches the layer); invoke validates outputs only (declared CONSUMES neither necessary nor sufficient); real body is a monolith over (pair,background) not the declared (touching,correspondence) so the reason-graph decomposition is paper-only; DataState model can't represent same-type pair operands. Two new CORE findings folded into PIPELINE_DECISIONS §5 parts 5-6 (operand-arity; invoke input contract). CORE PROPOSAL parts 1-4 IMPLEMENTED 2026-06-21 on core branch feat/composition-lifecycle (commit 3253ce8; ADR-0071 am-2 + ADR-0159 am-1): Finder seam (BFSFinder+ConjunctionFinder) + PipelineDAG replacing Pipeline + typed _CapacityBase.input_group (INPUT_GROUP_ALL_REQUIRED/ANY_OF/FOLD). NOT YET on main / not tagged / demo still pins phase-50-confirmed -> demo cannot consume until merge-to-main + tag + merge into demo/arc + re-pin. Parts 5-6 (operand-arity, invoke-input-validation) NOT addressed -> still open core. Open: (new) decide whether to consume ConjunctionFinder once pinned [declare input_group per reason cap]; D13 (gated on CORPUS-ANALYSIS), D7-build/D10-D12, D14. 2026-06-23 demo-UI session: built arc_debug Gates section (phased comparison->result->gate->capacity, reactive result-chip filter + matching-task list + Map callout gates_map.png) backed by NEW arc_gates.py; added 'inside' intra-grid capacity (flood-fill enclosure pockets + object-level bbox containment) wired through all 6 steps of the new CAPACITY_CREATION_GUIDE.md (arc_grids/arc_capacities/arc_profile/arc_search/arc_debug + hypothesis tag); fixed compact grid-sizing overflow for tall grids (cellSize divides by max(rows,cols)); CORRECTED 21 corrupted tasks in arc1.json vs canonical fchollet/ARC-AGI (incl. 025d127b) - arc1.json now exact-matches canonical, zero mismatches. Spike green (conformance+D3+#8). See projects/arc_solver/PIPELINE_DECISIONS.md"
-  },
-  "bongard": {
-   "home": "projects/bongard_demo",
-   "branch": "demo/bongard",
-   "worktree": "MindsOS-bongard",
-   "pinned_core": "phase-50-confirmed",
-   "status": "not started; PLAN.md at main commit 85115da"
-  },
-  "arc_viz": {
-   "home": "arc_solver/viz",
-   "branch": "arc-solver-viz",
-   "worktree": "MindsOS-arc-viz",
-   "pinned_core": "phase-50-confirmed",
-   "status": "parallel sub-project of arc-solver (system<->human communication). Branch at 18573ed (pre-consolidation, pre-RULES-fix, no wiring); merges arc-solver when work starts. ARC_VIZ_CONTRACT_SPEC.md untracked in viz worktree -> to be committed at arc_solver/viz/ when viz work starts."
-  }
- },
- "safety_net": {
-  "branch": "wip/full-snapshot-2026-06-20",
-  "note": "delete only after all three demos are reorganized + gated + pushed"
- }
 }

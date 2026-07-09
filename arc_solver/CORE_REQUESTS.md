@@ -18,20 +18,26 @@ Orchestration *decisions* are L3 caps (`planning.*`/`orchestration.*`/`phase1.*`
 
 ---
 
-## Disposition (updated 2026-07-07) — ARC commits to REAL registration; this is now a BUILD
+## Disposition (updated 2026-07-07) — C1/C3/C4 SHIPPED by core; ARC now decomposes + re-registers
 
-Detail + rationale: `PIPELINE_DECISIONS.md §4` (2026-07-07). Spec for C1: `PART5_OPERAND_SPEC.md`.
-- **C1** — ARC is now the **executing consumer of record** (will route comparators through `invoke`;
-  reopens D3). Scope = **positional operand arity only** (5a); roles are ARC-local. Shape validated
-  against all 14 bodies → `PART5_OPERAND_SPEC.md`; **Form B** recommended. bongard-m3 = same shape.
-- **C3** — reframed to a buildable form: **restrict the body-facing MMHandle to writes/scope only;
-  all read-data arrives as declared inputs** (Part-6 extension). Not "declared==body" (uncheckable).
-- **C4** — unchanged; **lands now** (additive; unblocks group naming). No consumer gate.
-- **C5** — deferred onto the **ADR-0184** promoted-pipelines seam (teaching/dream = a second trigger
-  into the same writer). Non-blocking; ARC sequences known pipelines in L4 code meanwhile.
-- **Sequence:** core ships **5a + C4** → ARC decomposes + re-registers. **Open decision for CORE:**
-  consumer-discipline gate (RULES §3) is met by a *committed* consumer + validated spec, not a live
-  one (see §4 caveat). CORE also owes: `STATE.json` part5 consumer update + the ADR.
+**Core shipped 2026-07-07** — commit `54b00c0`, tag `operand-arity-groups-readsmm-confirmed`,
+ADR-0198 (C1) / ADR-0199 (C4) / ADR-0200 (C3). ARC must re-pin `STATE.json` `phase50` → that tag.
+Detail: `PIPELINE_DECISIONS.md §4` (2026-07-07); C1 spec: `PART5_OPERAND_SPEC.md`.
+- **C1 — SHIPPED (ADR-0198, Form B).** `operand_arity: {DS_IRI: N}` on the declaration; invoke passes
+  a **length-N list** under the key (`a, b = inputs[DS_OBJECT]`), length-check only. `touching`'s
+  cross-kind operands (Object/Point) bind as a `region` view **ARC-side**.
+- **C3 — SHIPPED (ADR-0200), phrasing corrected.** `MMHandle` is a **read** surface (writes are the
+  separate `writeable`, untouched). Core gates it: **`reads_mm=True` injects `mm_handle`; default
+  `False` → body's only read source is its declared inputs.** Per-ARC-cap `reads_mm` is TBD in the
+  decomposition analysis (many decision caps likely `True`). **Decomposing `profile` into named
+  DataStates is required regardless** — MM navigation is by DataState type, so a nameless blob can't
+  be queried.
+- **C4 — SHIPPED (ADR-0199).** `group: bool` + `member_ds` on DataState; distinct types; member
+  existence unchecked v1; naming (plural+`*`) doc-only.
+- **C5** — deferred onto the **ADR-0184** promoted-pipelines seam. Non-blocking; ARC sequences known
+  pipelines in L4 code meanwhile.
+- **Next (ARC lane):** decision-cap decomposition (kill `profile`-as-blob) → re-pin → re-register
+  comparators with `operand_arity` + groups with `group/member_ds`; gate stays 14 `[ok]`.
 
 ---
 

@@ -102,12 +102,10 @@ member-consuming capacities.
 | profile[L5], rules*[L5], enclosed[L5] | select_rules | selection[L5] |
 | profile[L5], selection[L5], rules*[L5], enclosed[L5], raw_task[L5] | apply_solution | solve[L5] |
 
-`⚠C3` = declared in_ds (touching, correspondence) ≠ what the body reads (pair, background) — the
-truthful-contract violation. `bg_deduction` is re-applied per phase by L4 (cross-phase state).
-`profile`/`enclosed`/`recomparison` are L5 MM state assembled by earlier caps + L4 control flow —
-a decision cap sources them from L5. **No ∅-producer**: they're stored, then sourced.
-`*` on a decision's in_ds = it consumes the **whole group** (the comparator emits one verdict per
-call; L4 collects them into `same_objects*` etc. — C4).
+> **⚠ SUPERSEDED (2026-07-07).** This decision-cap table is the *old shim shape*. It is being
+> replaced by the **Decision-cap decomposition** section below (profile/bg/correspondence/
+> touching_delta done; `synthesize_selector`/`emit`/`select`/`apply` pending). `build_correspondence`,
+> `bg_deduction`, and `profile`-as-a-DataState are **killed** there. Kept here only for the diff.
 
 **Comparators / profilers — L3·C1 (two same-type operands; L4 picks the pair from a group in L5)**
 
@@ -133,37 +131,136 @@ call; L4 collects them into `same_objects*` etc. — C4).
 
 ---
 
-## Known pipelines & L4 processes
+## Decision-cap decomposition (v0.3 · 2026-07-07 · IN PROGRESS)
 
-A **pipeline** = a composition of L3 capacities → a target. **Known** pipelines are recorded in
-**L2 `promoted-pipelines`** and looked up by L4; `find_pipeline` is the **discovery fallback for
-*unknown* compositions** (novelty), not the path for known ones. An **L4 process** is orchestration
-that *selects pipelines + iterates groups + folds L5* — it is **not** a pipeline and is not recorded.
+Core shipped **C1/C3/C4** (ADR-0198/0199/0200, tag `operand-arity-groups-readsmm-confirmed`). ARC now
+decomposes the shim's decision caps into honest transitions. **`reads_mm=False` is the ARC default**
+— L4 sources every input from L5 and passes it (comparators get operands via `operand_arity`).
+`reads_mm=True` is reserved for MM-*navigation* (retrieval / path-finding / trace) — **none found in
+ARC yet**. Sourcing an input from L5 ≠ `reads_mm=True`. `bg_colour` is **optional everywhere** (PB-4):
+unresolved → no bg-exclusion (permissive); `select_rules` verification catches any bg-mis-inclusion.
 
-**Known pipelines (→ L2)**
+**Status:** **full pipeline model complete** ✓ (7 decision caps + subdivision + re-comparison;
+converged 2026-07-07). **`enclosed` deleted** — a "trapped background region" is just a bg-coloured
+**object** that is `inside` another; `inside` (any-colour, already extracted) covers it, and the
+recolor-fill rule recolors that contained object's cells. No `enclose_bg` cap.
 
-| pipeline | composes | target |
+### Killed / replaced
+- **`profile`** (god-object DataState) → **deleted**; it *is* the L5 knowledge-MM. Consumers source
+  the named DataStates below.
+- **`build_correspondence`** (hardcoded 3-comparator fold) → **deleted** → `comparison_matrix` +
+  `resolve_correspondence`.
+- **`bg_deduction`** (cross-phase monolith) → **deleted** → bg-pipeline + `eliminate_bg_colour`.
+- **`synthesize_selector`** monolith → split into `identify_roles` + `synthesize_selector`.
+- **`emit_candidates`** → motivations-pipeline + per-family `assemble_*` (enumerate only; no verify).
+- **`select_rules`** → **verifier pipeline** (verify moved out of emit).
+- **`apply_solution`** → thin `apply_rule_set` on the test; `matches_withheld` lifted to **eval**.
+
+### Foundational structure (PB-1): one `comparison_matrix`, computed once
+
+Comparators run **once** over all in×out object pairs → `comparison_matrix` `{(in,out):[comparators
+that fire]}` (L4-assembled). **`object_matches*` / `shape_matches*` / `point_matches*` are named
+slices/views of it** — *not* separately computed. The strictest-first filtering ("same_shape matters
+only where not same_object") lives in `resolve_correspondence`.
+
+### Pipelines (everything L4 runs is a pipeline; iterate/fold are ARC caps; no separate "L4 process")
+
+| pipeline | composition | out |
 |---|---|---|
-| perceive (per grid) | comprehend_task → build_grid → extract_palette/objects/points/shapes, inside | perceived grid |
-| pair-compare (per object-pair) | same_object / moved / … (C1-blocked) | verdict |
-| selector-spine (#8) | touching_delta → synthesize_selector | selector |
-| rule-synthesis | emit_candidates → select_rules → apply_solution | solve |
+| **comparison-matrix** | all comparators × in×out pairs → matrix | `comparison_matrix` (+ slices) |
+| **profile** (2 sub-pipelines ‖) | dims-vary (`compare_grid_dimension`* → `classify_variance`) + palette-vary (`compare_palette`* → `classify_variance`) | `dimension_variance`, `palette_variance` |
+| **bg** (re-run on `objects*` change; explicit re-call v1) | init `bg_candidate` → `eliminate_bg_colour` → resolve `bg_colour` | `bg_candidate`, `bg_colour` |
+| **correspondence** | `comparison_matrix` → `resolve_correspondence` | `correspondence` (1:1, carries transform) |
+| **touching-change** | `touching`* → `touching_delta` (scoped ≥1 moved) | `state_change` |
+| **motivations** (before selector) | `detect_move_motivation`, `detect_recolor_motivation`, … | `motivations` |
+| **selector** | `identify_roles` → `synthesize_selector` (motivations = **soft** scope) | `selector` |
+| **emit** | per-family `assemble_move` / `assemble_recolor` (use `selector`+`demos`) | `candidates*` (unverified) |
+| **select_rules** (verifier) | iterate subsets → `combine_candidates` → per demo (`apply_rule_set` → `grids_equal`) → ∀-cover fold → first covering | `selection` |
+| **apply_rule_set** (shared) | `resolve_selector` → dispatch by transform type → `move`/`recolor` generator | predicted grid |
+| **apply_solution** (thin) | `apply_rule_set` on test grid | `answer` (`solve`) |
+| **subdivision** | `inset` (from `comparison_matrix`, **both directions** — PB-C) → `detect_cover` (≥2 disjoint parts = whole; split/assemble) | `subdivision` |
+| **re-comparison** | `subdivision` + colours → `classify_part_relation` (**reuses** `same_object`/`recolored` — PB-B) | `recomparison` |
 
-**L4 processes** are run by the **L4 substrate** (`mindsos_intelligence` Executor/Dispatcher — it
-iterates, dispatches, holds the MM; **not** a capacity). The **control decisions** inside them are
-**L3 capacities** in the `orchestration.*`/`planning.*`/`phase1.*` families (`mindsos_capacity/
-builtins/`, registered like any cap, dispatched via the normal invoke path). So a "process" = the
-substrate executing a plan that calls (a) ARC domain caps + (b) these orchestration-decision caps.
-*(Shipped `planning.*` etc. are `placeholder=True`, opt-in — an installer swaps the real family;
-ARC reuses or ships its own.)*
+`apply_rule_set`'s dispatch (transform type → generator) is a legit **find_pipeline**-composable step
+(PRODUCES/CONSUMES, ONTOLOGY #10). `select_min_covering` is **not a cap** — minimality = the pipeline's
+iterate-by-size order (PB-3). `apply_rule_set` is a **pipeline**, not a cap (PB-2).
 
-| process | substrate does | decision cap (L3) | target (→L5) |
-|---|---|---|---|
-| profile-build | iterate pairs, dispatch | pair-compare + aggregate | profile |
-| subdivision | iterate, dispatch | inset + cover-reduce | enclosed |
-| re-comparison | iterate sub-pieces | same_* | recomparison |
-| bg-deduction | iterate phases, route/write | bg elimination rule | bg_cand |
-| comparators-hyp | iterate, ∀-fold | the 6 comparators | hypotheses |
+### New / changed caps (all `reads_mm=False`)
+
+| cap | in → out | note |
+|---|---|---|
+| `classify_variance` | `delta*` → `variance` | fold (dims + palette) |
+| `eliminate_bg_colour` | (`bg_candidate`, `object_matches*`, `shape_matches*`) → `bg_candidate'` | fold; fixpoint on `objects*` change |
+| `resolve_correspondence` | `comparison_matrix` → `correspondence` | 1:1; strictest-first; ambiguous → uncorresponded |
+| `touching_delta` | (`touchings_in*`, `touchings_out*`, `correspondence`, `bg_colour?`) → `state_change` | C3-fixed; scoped ≥1 moved participant (incl. static neighbours) |
+| `identify_roles` | (`state_change`, `correspondence`) → `roles` | per demo; mover/target; v1 slide-to-touch family |
+| `synthesize_selector` | (`roles*`, object features, `motivations?`) → `selector` | ∀demo fold; per role; motivations soft-scope |
+| `detect_*_motivation` | matches/`state_change`/variance → `motivations` | per transform family |
+| `assemble_move` / `assemble_recolor` | (`motivations`, `selector`, `demos*`) → `candidates*` | enumerate only |
+| `combine_candidates` | (`candidate`, `candidate`) → combined \| None | explicit combine (intersect targets); extensible |
+| `grids_equal` | `grid × grid` → bool | verify match |
+| `resolve_selector` | (`selector`, `grid`, `bg_colour?`) → target objects | "the red object" → actual objects |
+| `∀-cover` | per-demo bool* → bool | generic all-true fold |
+| `detect_cover` | `inset` slices (both dirs) → `subdivision` | ≥2 disjoint parts exactly cover a whole |
+| `classify_part_relation` | (`subdivision`, colours) → `recomparison` | routes each part through `same_object`/`recolored` (no new comparator) |
+
+### New DataStates (beyond the perceive/comparator ones)
+
+| DataState | scope | produced by |
+|---|---|---|
+| `comparison_matrix` (+ `object_matches*`/`shape_matches*`/`point_matches*` slices) | per pair | comparison-matrix pipeline (L4-assembled) |
+| `dimension_variance`, `palette_variance` | task | `classify_variance` |
+| `bg_candidate` (refined), `bg_colour` | per grid | bg-pipeline |
+| `correspondence` (1:1) | per pair | `resolve_correspondence` |
+| `state_change` | per pair | `touching_delta` |
+| `roles` | per demo | `identify_roles` |
+| `motivations` | task | motivations pipeline |
+| `selector` | task | `synthesize_selector` |
+| `candidates*` | task | `assemble_*` |
+| `selection` | task | `select_rules` |
+| `answer` (`solve`) | test | `apply_solution` |
+| `subdivision` | per pair | `detect_cover` |
+| `recomparison` | per pair | `classify_part_relation` |
+
+### Comparators (register with `operand_arity` per C1; `reads_mm=False`)
+`same_object`, `same_shape`, `same_point`, `moved`, `rotated`, `reflected`, `inside`, `touching`,
+`grids_equal`, … — each runs `component × component` (or `grid × grid`), filling `comparison_matrix`.
+
+### Eval (outside the solve pipeline)
+`matches_withheld` = `grids_equal(answer, withheld_output)` — a **scoring** step run only when the
+known answer exists; **not** part of solving.
+
+---
+
+## Pipelines (what L4 runs)
+
+**Everything L4 runs is a pipeline** — a composition of L3 capacities, *including* ARC-specific
+**iterate/fold** caps (the fold cap **is** the domain decision cap, e.g. `classify_variance`). **There
+is no separate "L4 process" category** (PB3): the L4 substrate (`mindsos_intelligence`
+Executor/Dispatcher) only **walks** pipelines + holds the MM — it owns no logic. `decompose`-style
+fan-out (iterate) and aggregate (fold) are **caps** in the pipeline, not substrate.
+
+**Known** pipelines are recorded in **L2 `promoted-pipelines`** (C5, pending); `find_pipeline` is the
+fallback for **unknown** compositions only. Meanwhile L4 code sequences the known ones. Detail for the
+decision-side pipelines is in the **Decision-cap decomposition** section above.
+
+Full composition detail is in the **Decision-cap decomposition** section above; this is the index.
+
+| pipeline | target | status |
+|---|---|---|
+| perceive (per grid; L4 iterates `grids*`) | perceived grid | ✓ |
+| comparison-matrix | `comparison_matrix` (+ match slices) | ✓ |
+| profile (dims-vary + palette-vary) | `dimension_variance`, `palette_variance` | ✓ |
+| bg | `bg_candidate`, `bg_colour` | ✓ |
+| correspondence | `correspondence` | ✓ |
+| touching-change | `state_change` | ✓ |
+| motivations | `motivations` | ✓ |
+| selector (`identify_roles` → `synthesize_selector`) | `selector` | ✓ |
+| emit (`assemble_*`) | `candidates*` | ✓ |
+| select_rules (verifier) | `selection` | ✓ |
+| apply_solution (`apply_rule_set` on test) | `answer` | ✓ |
+| subdivision | `subdivision` | ✓ |
+| re-comparison | `recomparison` | ✓ |
 
 **C5 gap:** L2 `promoted-pipelines` is written by **user teaching (explicit entry)** now,
 **dream-suggestion** later — **not** an auto-promotion loop. Today it has **no writer** and the finder's
@@ -187,7 +284,7 @@ Every DataState is an **L3 type** with an **L5 value** (class=L2 / type=L3 / val
 | pairs* / pair | Pair | comprehend_task / unpack | per-pair processes |
 | raw_grids* / raw_grid | Grid (raw) | comprehend_task / unpack | build_grid |
 | grids* / grid | Grid | L4 collect / build_grid | extract_* , compare_grid_dimension |
-| palette | Palette | extract_palette | compare_palette, bg_deduction |
+| palette | Palette | extract_palette | compare_palette, bg-pipeline |
 | objects* / object | Object | extract_objects / unpack | comparators, generators, extract_shapes |
 | shapes* / shape | Shape | L4 collect / extract_shapes | shape comparators, generators |
 | points* / point | Point | extract_points / unpack | same_point |
@@ -200,33 +297,25 @@ Every DataState is an **L3 type** with an **L5 value** (class=L2 / type=L3 / val
 |---|---|---|
 | dimension_delta | compare_grid_dimension | profile |
 | palette_delta | compare_palette | profile |
-| same_object / same_objects* | same_object | build_correspondence, bg_deduction |
-| same_shape / same_shapes* | same_shape | profile |
-| same_point / same_points* | same_point | build_correspondence, bg_deduction |
-| same_cell_count, same_bbox_area | same_* | profile (rot/refl pre-filter) |
-| move_transform / move_transforms* | moved | move, build_correspondence |
+| same_object / same_objects* | same_object | `comparison_matrix` (cells) → correspondence, bg |
+| same_shape / same_shapes* | same_shape | `comparison_matrix` → correspondence, bg |
+| same_point / same_points* | same_point | `comparison_matrix` → correspondence, bg |
+| same_cell_count, same_bbox_area | same_* | rot/refl pre-filter |
+| move_transform / move_transforms* | moved | `comparison_matrix`, move (gen) |
 | touching / touchings* | touching | touching_delta |
-| inside | inside | hypotheses |
+| inside | inside | `comparison_matrix` |
 | inset | inset | subdivision |
-| region | union | subdivision, rules |
+| region | union | subdivision |
 | recolor_transform | recolored | (recolor pair broken — E7) |
 | rotate_transform | rotated | rotate |
 | reflect_transform | reflected | reflect |
 
-**Aggregates (decision outputs / MM composites — stored in L5, sourced by later caps)**
-
-| ds | from | consumed by |
-|---|---|---|
-| correspondence | build_correspondence | touching_delta, subdivision |
-| state_change | touching_delta | synthesize_selector |
-| selector | synthesize_selector | apply |
-| bg_cand (background) | bg_deduction | emit_candidates |
-| profile | profile-build | emit / select / apply |
-| recomparison | re-comparison | emit_candidates |
-| enclosed | subdivision | emit / select / apply |
-| rules* | emit_candidates | select / apply |
-| selection | select_rules | apply |
-| solve | apply_solution | terminal |
+**Decision-side DataStates → see the Decision-cap decomposition section above.** The old aggregate
+list (`profile`, `bg_cand`, `build_correspondence`/`bg_deduction` outputs) is **superseded**: `profile`
+is killed (it's the MM); the real DataStates are `comparison_matrix` (+ match slices),
+`dimension_variance`/`palette_variance`, `bg_candidate`/`bg_colour`, `correspondence`, `state_change`,
+`roles`, `motivations`, `selector`, `candidates*`, `selection`, `answer`, `subdivision`,
+`recomparison`. **`enclosed` is deleted** (a bg-coloured object `inside` another; `inside` covers it).
 
 ### Atom-layer — L2 class + L5 value only, no L3 DataState (coarse-perceive pick)
 
