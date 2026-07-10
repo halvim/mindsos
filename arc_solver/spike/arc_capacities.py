@@ -90,6 +90,9 @@ DS_OBJECT = datastate_iri("arc.object")
 DS_SHAPE = datastate_iri("arc.shape")
 DS_DIMENSION_DELTA = datastate_iri("arc.dimension_delta")
 DS_PALETTE_DELTA = datastate_iri("arc.palette_delta")
+DS_DELTA_SAME = datastate_iri("arc.delta_same")
+DS_ALL_SAME = datastate_iri("arc.all_same")
+DS_DIMENSION_VARIANCE = datastate_iri("arc.dimension_variance")
 DS_POINT = datastate_iri("arc.point")
 DS_SAME_OBJECT = datastate_iri("arc.same_object")
 DS_SAME_SHAPE = datastate_iri("arc.same_shape")
@@ -144,6 +147,9 @@ def arc_datastates() -> List[DataState]:
         ds("arc.point", CATEGORY_DECOMPOSITION, "Single-cell component (not an Object/Shape)."),
         ds("arc.dimension_delta", CATEGORY_PROFILER, "in/out Grid dimension change | None (profiler)."),
         ds("arc.palette_delta", CATEGORY_PROFILER, "in/out Palette change | None (profiler)."),
+        ds("arc.delta_same", CATEGORY_PROFILER, "same_delta verdict: two deltas equal (None-safe)."),
+        ds("arc.all_same", CATEGORY_REASONING, "L4-accumulated running flag: all deltas matched the reference (running state, not a group)."),
+        ds("arc.dimension_variance", CATEGORY_REASONING, "conclude_variance: {agrees, common} over per-pair dimension deltas (= arc_profile._agrees)."),
         ds("arc.same_object", CATEGORY_PROFILER, "same_object profiler: same color + position."),
         ds("arc.same_shape", CATEGORY_PROFILER, "same_shape profiler: identical normalized point-set."),
         ds("arc.same_point", CATEGORY_PROFILER, "same_point profiler: same colour + position."),
@@ -288,6 +294,17 @@ def _compare_palette(**kw: Any) -> dict:
 def _touching(**kw: Any) -> dict:
     a, b = kw[DS_REGION]
     return {DS_TOUCHING: arc_grids.touching(a, b)}
+
+
+def _same_dimension_delta(**kw: Any) -> dict:
+    a, b = kw[DS_DIMENSION_DELTA]
+    return {DS_DELTA_SAME: a == b}
+
+
+def _conclude_variance(**kw: Any) -> dict:
+    all_same = kw[DS_ALL_SAME]
+    ref = kw.get(DS_DIMENSION_DELTA)
+    return {DS_DIMENSION_VARIANCE: {"agrees": all_same, "common": ref if all_same else None}}
 
 
 def _arc_emit_candidates(**kw: Any) -> dict:
@@ -449,6 +466,12 @@ def _profiler_capacities() -> List[Capacity]:
             implementation=_same_point,
             description="(Point, Point) -> Bool (same colour + position).",
         ),
+        Capacity(
+            name="same_dimension_delta", category=CATEGORY_PROFILER,
+            inputs=(DS_DIMENSION_DELTA,), operand_arity={DS_DIMENSION_DELTA: 2},
+            outputs=(DS_DELTA_SAME,), implementation=_same_dimension_delta,
+            description="(delta, delta) -> Bool (equal, None-safe); per-step matcher for variance.",
+        ),
     ]
 
 
@@ -525,6 +548,12 @@ def _intra_grid_capacities() -> List[Capacity]:
 
 def _reason_capacities() -> List[Capacity]:
     return [
+        Capacity(
+            name="conclude_variance", category=CATEGORY_REASONING,
+            inputs=(DS_ALL_SAME, DS_DIMENSION_DELTA), outputs=(DS_DIMENSION_VARIANCE,),
+            implementation=_conclude_variance,
+            description="(all_same running flag, ref delta) -> {agrees, common} = arc_profile._agrees; resolves the running variance state (no group input).",
+        ),
         Capacity(
             name="build_correspondence", category=CATEGORY_REASONING,
             inputs=(DS_SAME_OBJECT, DS_MOVE_TRANSFORM, DS_SAME_POINT),

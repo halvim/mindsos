@@ -285,6 +285,33 @@ def _matrix_touching_check(cl, tasks) -> None:
           f"{len(tasks)} tasks.")
 
 
+def _variance_dims_check(cl, tasks) -> None:
+    """Slice-3a: dims-vary through the layer, incrementally — L4 walks the per-pair
+    deltas invoking same_dimension_delta vs the reference, accumulates all_same,
+    then conclude_variance resolves. Result must equal inline arc_profile._agrees."""
+    sd = ac.capacity_iri(ac.CATEGORY_PROFILER, "same_dimension_delta")
+    cv = ac.capacity_iri(ac.CATEGORY_REASONING, "conclude_variance")
+    n = 0
+    for t in tasks:
+        deltas = [arc_profile.dimension_delta(p["input"]["cells"], p["output"]["cells"])
+                  for p in t["train"]]
+        if not deltas:
+            continue
+        ref = deltas[0]
+        all_same = True
+        for d in deltas:
+            r = cl.invoke(sd, inputs={ac.DS_DIMENSION_DELTA: [d, ref]})
+            assert r.success, f"same_dimension_delta failed on {t['task_id']}"
+            all_same = all_same and r.outputs[ac.DS_DELTA_SAME]
+        rc = cl.invoke(cv, inputs={ac.DS_ALL_SAME: all_same, ac.DS_DIMENSION_DELTA: ref})
+        assert rc.success, f"conclude_variance failed on {t['task_id']}"
+        assert rc.outputs[ac.DS_DIMENSION_VARIANCE] == arc_profile._agrees(deltas), \
+            f"conclude_variance != inline _agrees on {t['task_id']}"
+        n += 1
+    print(f"  [ok] variance: dims-vary (same_dimension_delta + conclude_variance) "
+          f"incremental == inline _agrees across {n} tasks.")
+
+
 def _l4_intake_check(cl, tasks) -> None:
     """MindsOS wiring step 2 — the L4 intake slice. Dispatch the perceive
     extractors through the REAL L4 choke point (`L4Dispatcher` -> runtime.invoke)
@@ -487,6 +514,7 @@ def main(argv: list) -> int:
     _matrix_comparators_check(cl, tasks)  # slice 2b: component comparators matrix cell-exact
     _matrix_grid_check(cl, tasks)         # slice 2b-iii: grid comparators per-pair
     _matrix_touching_check(cl, tasks)     # slice 2b-iv: touching intra-grid
+    _variance_dims_check(cl, tasks)       # slice 3a: dims-vary incremental (same_delta + conclude)
     _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
     _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
     _arc_solve_layer_check(cl, dataset)   # wiring step 4: arc solve (phases 8/9/10) dispatched L4->L3
