@@ -273,6 +273,18 @@ def _reflected(**kw: Any) -> dict:
     return {DS_REFLECT_TRANSFORM: arc_grids.reflected(a, b)}
 
 
+def _compare_grid_dimension(**kw: Any) -> dict:
+    from . import arc_profile
+    a, b = kw[DS_GRID]
+    return {DS_DIMENSION_DELTA: arc_profile.dimension_delta(a, b)}
+
+
+def _compare_palette(**kw: Any) -> dict:
+    from . import arc_profile
+    a, b = kw[DS_PALETTE]
+    return {DS_PALETTE_DELTA: arc_profile.palette_set_delta(a, b)}
+
+
 def _arc_emit_candidates(**kw: Any) -> dict:
     """Phase 8 (L3 decision) — emit candidate rules from the profile. REAL body =
     the shipped `arc_solver.rules`; dispatched by the L4 driver, not inline."""
@@ -393,13 +405,13 @@ def _profiler_capacities() -> List[Capacity]:
         Capacity(
             name="compare_grid_dimension", category=CATEGORY_PROFILER,
             inputs=(DS_GRID,), operand_arity={DS_GRID: 2}, outputs=(DS_DIMENSION_DELTA,),
-            implementation=lambda **kw: {DS_DIMENSION_DELTA: None},
+            implementation=_compare_grid_dimension,
             description="(in Grid, out Grid) -> DimensionDelta | None.",
         ),
         Capacity(
             name="compare_palette", category=CATEGORY_PROFILER,
             inputs=(DS_PALETTE,), operand_arity={DS_PALETTE: 2}, outputs=(DS_PALETTE_DELTA,),
-            implementation=lambda **kw: {DS_PALETTE_DELTA: None},
+            implementation=_compare_palette,
             description="(in Palette, out Palette) -> PaletteDelta | None.",
         ),
         Capacity(

@@ -242,6 +242,27 @@ def _matrix_comparators_check(cl, tasks) -> None:
           f"the layer == inline across {total} cells / {len(tasks)} tasks.")
 
 
+def _matrix_grid_check(cl, tasks) -> None:
+    """Slice-2b-iii: grid-level comparators (dimension, palette) per-pair, layer == inline."""
+    dim_iri = ac.capacity_iri(ac.CATEGORY_PROFILER, "compare_grid_dimension")
+    pal_iri = ac.capacity_iri(ac.CATEGORY_PROFILER, "compare_palette")
+    n = 0
+    for t in tasks:
+        for pr in t["train"]:
+            gi, go = pr["input"], pr["output"]
+            rd = cl.invoke(dim_iri, inputs={ac.DS_GRID: [gi["cells"], go["cells"]]})
+            assert rd.success and \
+                rd.outputs[ac.DS_DIMENSION_DELTA] == arc_profile.dimension_delta(gi["cells"], go["cells"]), \
+                f"compare_grid_dimension != inline on {t['task_id']}"
+            rp = cl.invoke(pal_iri, inputs={ac.DS_PALETTE: [gi["palette"], go["palette"]]})
+            assert rp.success and \
+                rp.outputs[ac.DS_PALETTE_DELTA] == arc_profile.palette_set_delta(gi["palette"], go["palette"]), \
+                f"compare_palette != inline on {t['task_id']}"
+            n += 2
+    print(f"  [ok] matrix: grid comparators (dimension, palette) per-pair == inline "
+          f"across {n} cells / {len(tasks)} tasks.")
+
+
 def _l4_intake_check(cl, tasks) -> None:
     """MindsOS wiring step 2 — the L4 intake slice. Dispatch the perceive
     extractors through the REAL L4 choke point (`L4Dispatcher` -> runtime.invoke)
@@ -442,6 +463,7 @@ def main(argv: list) -> int:
     _operator_inference_check(tasks)    # union ⟹ inset operator skip 0/400
     _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
     _matrix_comparators_check(cl, tasks)  # slice 2b: component comparators matrix cell-exact
+    _matrix_grid_check(cl, tasks)         # slice 2b-iii: grid comparators per-pair
     _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
     _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
     _arc_solve_layer_check(cl, dataset)   # wiring step 4: arc solve (phases 8/9/10) dispatched L4->L3

@@ -69,6 +69,13 @@ def palette_delta(a: List[List[int]], b: List[List[int]]) -> Optional[dict]:
     return {"added": sorted(pb - pa), "removed": sorted(pa - pb)}
 
 
+def palette_set_delta(pa, pb) -> Optional[dict]:
+    sa, sb = set(pa), set(pb)
+    if sa == sb:
+        return None
+    return {"added": sorted(sb - sa), "removed": sorted(sa - sb)}
+
+
 def match_pair(gin: dict, gout: dict) -> dict:
     """Two-comparator fold (#4 fold) over a demo pair, producing three tiers:
 
