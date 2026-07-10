@@ -285,6 +285,11 @@ def _compare_palette(**kw: Any) -> dict:
     return {DS_PALETTE_DELTA: arc_profile.palette_set_delta(a, b)}
 
 
+def _touching(**kw: Any) -> dict:
+    a, b = kw[DS_REGION]
+    return {DS_TOUCHING: arc_grids.touching(a, b)}
+
+
 def _arc_emit_candidates(**kw: Any) -> dict:
     """Phase 8 (L3 decision) — emit candidate rules from the profile. REAL body =
     the shipped `arc_solver.rules`; dispatched by the L4 driver, not inline."""
@@ -501,8 +506,8 @@ def _intra_grid_capacities() -> List[Capacity]:
     return [
         Capacity(
             name="touching", category=CATEGORY_PREDICATE,
-            inputs=(DS_OBJECT,), outputs=(DS_TOUCHING,),
-            implementation=lambda **kw: {DS_TOUCHING: None},
+            inputs=(DS_REGION,), operand_arity={DS_REGION: 2}, outputs=(DS_TOUCHING,),
+            implementation=_touching,
             description="(Region, Region) -> Bool (different-colour components share an 8-neighbour; intra-grid).",
         ),
         Capacity(

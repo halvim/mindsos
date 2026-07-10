@@ -263,6 +263,28 @@ def _matrix_grid_check(cl, tasks) -> None:
           f"across {n} cells / {len(tasks)} tasks.")
 
 
+def _matrix_touching_check(cl, tasks) -> None:
+    """Slice-2b-iv: touching intra-grid over all (region, region) pairs, layer == inline."""
+    iri = ac.capacity_iri(ac.CATEGORY_PREDICATE, "touching")
+    n = 0
+    for t in tasks:
+        grids = [p["input"] for p in t["train"]] + [p["output"] for p in t["train"]] + \
+                [tg["input"] for tg in t["test"]]
+        for gs in grids:
+            regions = gs["objects"] + gs["points"]
+            for x in range(len(regions)):
+                for y in range(x + 1, len(regions)):
+                    a, b = regions[x], regions[y]
+                    res = cl.invoke(iri, inputs={ac.DS_REGION: [a, b]})
+                    assert res.success, \
+                        f"touching invoke failed on {t['task_id']}: {getattr(res, 'error', None)!r}"
+                    assert res.outputs[ac.DS_TOUCHING] == arc_grids.touching(a, b), \
+                        f"invoked touching != inline on {t['task_id']}"
+                    n += 1
+    print(f"  [ok] matrix: touching intra-grid == inline across {n} region-pairs / "
+          f"{len(tasks)} tasks.")
+
+
 def _l4_intake_check(cl, tasks) -> None:
     """MindsOS wiring step 2 — the L4 intake slice. Dispatch the perceive
     extractors through the REAL L4 choke point (`L4Dispatcher` -> runtime.invoke)
@@ -464,6 +486,7 @@ def main(argv: list) -> int:
     _inside_layer_conformance(cl, tasks)  # wiring step 1: inside real body via cl.invoke
     _matrix_comparators_check(cl, tasks)  # slice 2b: component comparators matrix cell-exact
     _matrix_grid_check(cl, tasks)         # slice 2b-iii: grid comparators per-pair
+    _matrix_touching_check(cl, tasks)     # slice 2b-iv: touching intra-grid
     _l4_intake_check(cl, tasks)           # wiring step 2: L4Dispatcher -> L3 perceive + L5 TaskRun
     _mindsos_instance_check()             # wiring step 3: real instance — L4 lifecycle + L5 consolidation
     _arc_solve_layer_check(cl, dataset)   # wiring step 4: arc solve (phases 8/9/10) dispatched L4->L3
