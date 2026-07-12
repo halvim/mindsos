@@ -87,3 +87,33 @@ additive-inertness basis as ADR-0198.
 - Amends **ADR-0159** (DataState registration gains `group`/`member_ds`) and
   relates to **ADR-0156** (bipartite topology unchanged — the seam is metadata L4
   reads, not new edges). Replaces the dropped C2. Ships with **ADR-0198**.
+
+## Amendment 1 (2026-07-11) — attribute renamed `group` → `collection`
+
+The typing attribute `group` (field, emitted node prop, and `validate_datastate`
+messages) is renamed to `collection`; `member_ds` is unchanged. **Pure rename,
+zero behaviour change.**
+
+Reason: "group" is an overloaded domain word — the ARC brains use `group` /
+`Group` for a composite of ≥2 objects that functions as one. A `group=True`
+DataState is really a *collection* (an ordered list, dups allowed), distinct from
+that domain entity. Renaming the typing attribute frees "group" for its domain
+meaning and disambiguates DataState names inside brains.
+
+Scope: `mindsos_capacity/datastate.py` + `tests/composition_lifecycle/`
+(`test_group_member_datastate.py` → `test_collection_member_datastate.py`). The
+prop is write-only (inspectability only; never round-tripped — reactivation
+rebuilds from code factories, not props), so no data migration is required in
+core; existing persisted nodes keep an inert `group:true` breadcrumb, and no
+read path exists to dual-read.
+
+**Deprecated constructor alias (transition window).** `DataState` accepts a
+deprecated `group=` keyword (an `InitVar`, so `ds.group` is *not* stored — reads
+must use `ds.collection`). Passing `group=True` folds into `collection` and emits
+a `DeprecationWarning`. This lets not-yet-migrated consumers (arc3) keep
+constructing without breaking mid-transition. Drop the alias once consumers move
+to `collection=`.
+
+The `C4` / `group-member` / `datastate-group` aliases and this file's number are
+retained for history; the original decision text above is left intact as the
+record of what shipped 2026-07-07.

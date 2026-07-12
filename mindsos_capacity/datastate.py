@@ -20,7 +20,8 @@ adapter-reachable dimensions (handled at the :mod:`.discovery` level).
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import warnings
+from dataclasses import InitVar, dataclass, field
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
 from .exceptions import DataStateError
@@ -119,16 +120,34 @@ class DataState:
     description: str = ""
     provenance_category: Optional[str] = None
     l2_roles: Tuple[str, ...] = ()
-    # ADR-0199 (C4) — group / member typing. ``group=True`` marks a
-    # DataState whose value is a set/list of individually-addressable
+    # ADR-0199 (C4) — collection / member typing. ``collection=True`` marks
+    # a DataState whose value is a set/list of individually-addressable
     # members; ``member_ds`` is the DS-IRI of the member type L4 iterates
-    # into. Group and member stay distinct DataState types — the finder
+    # into. Collection and member stay distinct DataState types — the finder
     # never bridges them (it already treats them as distinct IRIs); L4
-    # owns the unpack loop. Absent (``group=False``, ``member_ds=None``)
+    # owns the unpack loop. Absent (``collection=False``, ``member_ds=None``)
     # = today's behaviour. A single entity that internally holds a set
-    # (e.g. a palette) is NOT a group.
-    group: bool = False
+    # (e.g. a palette) is NOT a collection.
+    collection: bool = False
     member_ds: Optional[str] = None
+    # DEPRECATED constructor alias (transition window, ADR-0199 am-1). Accepts
+    # ``DataState(group=...)`` from not-yet-migrated consumers (e.g. arc3),
+    # emits a DeprecationWarning, and folds the value into ``collection``.
+    # InitVar: consumed at construction, NOT stored — ``ds.group`` does not
+    # exist (reads must use ``ds.collection``). Drop once consumers migrate.
+    group: InitVar[Optional[bool]] = None
+
+    def __post_init__(self, group: Optional[bool]) -> None:
+        if group is not None:
+            warnings.warn(
+                "DataState(group=...) is deprecated (ADR-0199 am-1); "
+                "use collection= instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            if group and not self.collection:
+                # frozen dataclass — bypass the immutability guard.
+                object.__setattr__(self, "collection", True)
 
     @property
     def iri(self) -> str:
@@ -154,9 +173,9 @@ class DataState:
             props["shape_opaque_tag"] = self.shape.opaque_tag
         if self.shape.fields:
             props["shape_fields"] = [f"{k}:{v}" for k, v in self.shape.fields]
-        # ADR-0199 (C4) — group / member typing, emitted for inspectability.
-        if self.group:
-            props["group"] = True
+        # ADR-0199 (C4) — collection / member typing, emitted for inspectability.
+        if self.collection:
+            props["collection"] = True
         if self.member_ds is not None:
             props["member_ds"] = self.member_ds
         return props
@@ -174,19 +193,20 @@ def validate_datastate(ds: DataState) -> None:
         raise DataStateError(
             f"DataState {ds.name!r}: unknown shape kind {ds.shape.kind!r}"
         )
-    # ADR-0199 (C4) — group / member coherence. ``group`` and ``member_ds``
-    # travel together: a group must name its member type; a non-group must
-    # not carry one. Member-IRI *existence* is NOT validated at v1 (no
-    # consumer requires it; the pointer is advisory metadata L4 reads).
-    # DataStates may register in any order, so an existence check would need
-    # a seal-time pass — deferred until a consumer needs it.
-    if ds.group and not ds.member_ds:
+    # ADR-0199 (C4) — collection / member coherence. ``collection`` and
+    # ``member_ds`` travel together: a collection must name its member type;
+    # a non-collection must not carry one. Member-IRI *existence* is NOT
+    # validated at v1 (no consumer requires it; the pointer is advisory
+    # metadata L4 reads). DataStates may register in any order, so an
+    # existence check would need a seal-time pass — deferred until a
+    # consumer needs it.
+    if ds.collection and not ds.member_ds:
         raise DataStateError(
-            f"DataState {ds.name!r}: group=True requires a member_ds IRI"
+            f"DataState {ds.name!r}: collection=True requires a member_ds IRI"
         )
-    if not ds.group and ds.member_ds is not None:
+    if not ds.collection and ds.member_ds is not None:
         raise DataStateError(
-            f"DataState {ds.name!r}: member_ds is set but group=False"
+            f"DataState {ds.name!r}: member_ds is set but collection=False"
         )
 
 
