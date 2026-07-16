@@ -42,7 +42,9 @@ then selects the interpretation bodies per input. The interpretation spine is
 capacity's declared DataStates rather than a fixed spine — so a text input runs
 through the real `text.space_split` (`text.raw → text.tokens`) as its `process`
 step. `image` / `action` are contract-only extension points (register a
-catalog); the all-v0 path is byte-identical.
+catalog); the all-v0 path is byte-identical. A *stamped* modality absent from
+the `{modality → Phase1Profile}` table is an **unroutable** input — `interpret`
+returns a `dont_know`, not a v0-trivial mapping (ADR-0197 am-1).
 
 **LifecyclePhase 2 — Plan + Pipeline construction.** `planning.derive_initial_
 plan` seeds a **Plan**; the Plan is a recursive **Milestone** tree decomposed

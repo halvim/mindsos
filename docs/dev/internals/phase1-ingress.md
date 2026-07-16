@@ -39,10 +39,20 @@ Every slot is optional; an unset slot falls back to the shipped v0 placeholder.
 Profiles are chosen with this precedence (`phase_1.interpret`):
 
 1. an explicit `profile=` argument (an interpretation-only consumer, e.g. arc);
-2. else the dispatcher's `{modality → Phase1Profile}` table, keyed by the
-   stamped modality (ADR-0197);
-3. else the dispatcher's construction-bound `phase1_profile` (ADR-0195);
+2. else, **if a modality is stamped**, the dispatcher's `{modality →
+   Phase1Profile}` table, keyed by the stamped modality (ADR-0197). The stamped
+   modality is **authoritative** (ADR-0197 am-1): if it is not in the table,
+   `interpret` **raises** `InterpretationError` (Mode A — an unroutable input)
+   and does **not** fall through to the construction-bound profile or v0;
+3. else (**no modality stamped**) the dispatcher's construction-bound
+   `phase1_profile` (ADR-0195);
 4. else all-v0.
+
+A stamped modality is also checked against the selected profile's `process`
+ingress: if they differ, `interpret` raises `InterpretationError` (Mode B — a
+mis-registered profile; ADR-0197 §2 defines the modality *as* the ingress
+DataState). Both raises are dont-know-class — `run_lifecycle` maps them to a
+terminal `TaskOutcome.status = dont_know` (ADR-0196).
 
 ```python
 L4Dispatcher(
@@ -124,6 +134,10 @@ contract exists, but no bodies ship until a consumer needs them (RULES §8).
   and the check is gated on a supplied `map` slot.
 - **`source` never selects.** It is carried for provenance only; interpretation
   is identical regardless of source.
+- **A stamped modality does not fall back.** With both a `modality_profiles`
+  table and a construction-bound `phase1_profile`, a stamped-but-unregistered
+  modality **raises** (Mode A) rather than using the construction-bound profile —
+  that binding serves the `modality=None` legacy path only (ADR-0197 am-1).
 - **Reference `resolve` is not a slot.** When a hint reports an indirect
   `reference_kind`, it is composed by `find_pipeline` (ADR-0156) from that
   DataState type to the profile's `resolve_target_datastate` — see ADR-0195.

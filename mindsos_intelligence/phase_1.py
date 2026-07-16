@@ -194,13 +194,23 @@ def interpret(
     and the reference-resolve step fire only when a *real* consumer supplies
     the corresponding slots (``map`` / ``resolve_target_datastate``), so the
     all-v0 path is unchanged.
+
+    A *stamped* modality (``InputEnvelope.modality``) is authoritative
+    (ADR-0197 am-1): it must route via the dispatcher's
+    ``{modality -> Phase1Profile}`` table or ``interpret`` raises
+    :class:`InterpretationError` -- Mode A when the modality has no registered
+    profile (an unroutable input; it does *not* fall back to the
+    construction-bound profile or v0), Mode B when the selected profile's
+    ``process`` declares an ingress != the modality. ``run_lifecycle`` maps the
+    raise to a terminal ``dont_know`` (ADR-0196). The ``modality=None`` legacy
+    path is unaffected.
     """
-    # ADR-0197 — unwrap the ingress envelope and select the profile by
-    # modality. A raw value is the legacy path (no modality). When the
-    # envelope stamps a modality, the dispatcher's {modality->Phase1Profile}
-    # table (§3) selects per input, taking precedence over the
-    # construction-bound ``phase1_profile``; an explicit ``profile=`` arg
-    # still wins over both. ``source`` is provenance only — never selects.
+    # ADR-0197 (+ am-1) — unwrap the ingress envelope and select the profile
+    # by modality. A raw value / modality=None is the legacy path. A stamped
+    # modality is AUTHORITATIVE: it must route via the {modality->Phase1Profile}
+    # table or interpret raises (am-1); it does NOT fall back to the
+    # construction-bound profile or v0. An explicit ``profile=`` arg still wins.
+    # ``source`` is provenance only — never selects.
     if isinstance(task_input, InputEnvelope):
         value = task_input.value
         modality = task_input.modality
