@@ -19,6 +19,8 @@ from mindsos_capacity.builtins.phase1_text import (
     TEXT_TASK_PATTERN_IRI,
     install_phase1_text,
 )
+import pytest
+
 from mindsos_knowledge import KnowledgeLayer, ROLE_TASK_PATTERNS
 from mindsos_intelligence import (
     InputEnvelope,
@@ -27,6 +29,7 @@ from mindsos_intelligence import (
     Phase1Profile,
     interpret,
 )
+from mindsos_intelligence.phase_1 import InterpretationError
 
 
 def _text_profile() -> Phase1Profile:
@@ -80,7 +83,21 @@ def test_unstamped_input_falls_back_to_v0() -> None:
     assert r.task_pattern_iri == TRIVIAL_TASK_PATTERN_IRI
 
 
-def test_unknown_modality_falls_back_to_v0() -> None:
+def test_unknown_modality_raises_not_v0() -> None:
     d = _setup()
-    r = interpret(d, InputEnvelope(value="hi", modality="datastate:image.raw"))
-    assert r.task_pattern_iri == TRIVIAL_TASK_PATTERN_IRI
+    with pytest.raises(InterpretationError, match="unroutable modality"):
+        interpret(d, InputEnvelope(value="hi", modality="datastate:image.raw"))
+
+
+def test_modality_routes_to_wrong_ingress_raises() -> None:
+    cl = CapacityLayer()
+    install_phase1_text(cl)
+    kl = KnowledgeLayer.bootstrap()
+    bad = L4Dispatcher(
+        cl,
+        session=None,
+        kl=kl,
+        modality_profiles={"datastate:image.raw": _text_profile()},
+    )
+    with pytest.raises(InterpretationError, match="requires them"):
+        interpret(bad, InputEnvelope(value="hi", modality="datastate:image.raw"))
