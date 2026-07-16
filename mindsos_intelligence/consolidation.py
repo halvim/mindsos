@@ -6,11 +6,11 @@ chain, and dispatches ``capacity:consolidate:mm`` — the L3 write surface
 (ADR-0146) that writes the Episode and materialises the Memory composite
 (ADR-0176 §3). Retain-by-default on success / failure / abort (Chat B §4.1).
 
-v1 stores ``mm_root_ref`` as a reference to the MM's intelligence sub-graph
-identifier; the MM metagraph itself is persisted by the L0 Falkor persister
-(Phase 44), so the Episode points at it rather than embedding a deep snapshot
-(the heavy full-MM serialization is deferred — consistent with the Phase-48
-instrument-now posture). Consolidation is **skipped** in simplified mode and
+``mm_root_ref`` points at *this task's* chain graph_id (DQ-8 / CR#4). The
+per-task chain graph is persisted here via the injected ``MMPersister`` (only
+that one graph, so consolidation stays O(this task) — not a full-MM re-walk);
+the heavy full-MM serialization is deferred. ``capacity_mm`` / ``knowledge_mm``
+are live-only (WSD). Consolidation is **skipped** in simplified mode and
 gracefully skipped when no consolidate capacity / KL is wired (e.g. the v0
 orchestrator smoke), per the opt-out-per-task contract.
 """
@@ -52,6 +52,8 @@ def consolidate_task(
     task_pattern_iri: Optional[str],
     outcome_classification: str,
     crash_marker: Optional[Any] = None,
+    chain_graph: Any = None,
+    mm_persister: Any = None,
 ):
     """Freeze the MM + assemble the Episode record + dispatch ``consolidate:mm``.
 
@@ -61,11 +63,23 @@ def consolidate_task(
     """
     if not consolidation_enabled(dispatcher):
         return None
+    # Persist THIS task's chain graph BEFORE the Episode references it (DQ-8 /
+    # CR#4) so ``mm_root_ref`` never dangles. Persisting a single graph keeps
+    # this O(this task). No-op when unwired (ephemeral / no persister) or when
+    # no chain graph was produced. Done outside the MM lock: the graph is
+    # frozen at the terminal path (no further emits) and other tasks write only
+    # their own graphs, so nothing mutates it concurrently.
+    if mm_persister is not None and chain_graph is not None:
+        mm_persister.persist(mm.intelligence_mm, chain_graph)
+    mm_root_ref = (
+        chain_graph.graph_id if chain_graph is not None
+        else mm.intelligence_mm.metagraph_id
+    )
     with mm.lock.write_locked():
         task_input_ref = task_run.task_input_ref or f"taskinput:{task_run.iri}"
         episode_value = {
             "task_input_ref": task_input_ref,
-            "mm_root_ref": mm.intelligence_mm.metagraph_id,
+            "mm_root_ref": mm_root_ref,
             "task_pattern_iri": task_pattern_iri,
             "outcome_classification": outcome_classification,
             "crash_marker": crash_marker,

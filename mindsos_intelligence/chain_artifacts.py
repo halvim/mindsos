@@ -154,11 +154,19 @@ class StepExecutionRecord:
 # ── Writer — emits artifacts into intelligence-MM under the MM lock ───
 
 
-def _chain_graph(mm: MentalModel) -> Graph:
+def _chain_graph(mm: MentalModel, scope: str) -> Graph:
+    """Find-or-create the per-task chain graph for ``scope`` (DQ-8 / CR#4).
+
+    One chain graph per TaskRun (keyed by the task-unique writer scope) so
+    (a) chain node-ids never collide across tasks in one session, and
+    (b) consolidation persists O(this task) — just this graph — rather than a
+    session-shared graph that grows every task.
+    """
+    name = f"chain:{scope}"
     for g in mm.intelligence_mm.graphs.values():
-        if g.role == CHAIN_GRAPH_ROLE:
+        if g.role == CHAIN_GRAPH_ROLE and g.name == name:
             return g
-    g = Graph(name="chain", role=CHAIN_GRAPH_ROLE)
+    g = Graph(name=name, role=CHAIN_GRAPH_ROLE)
     mm.intelligence_mm.add_graph(g)
     return g
 
@@ -172,8 +180,15 @@ class ChainArtifactWriter:
 
     def __init__(self, mm: MentalModel, task_scope: str) -> None:
         self._mm = mm
+        #: Task-UNIQUE scope (DQ-8 / CR#4). The orchestrator passes a per-task
+        #: value (``<orch-scope>:<task_id>``); without it, two tasks in one
+        #: session mint identical chain IRIs (``taskrun:brain:1`` …) and their
+        #: Episodes collide on ``episode_id``.
         self._scope = task_scope
         self._seq = 0
+        #: Cached per-task chain graph, set on first ``_emit`` under the MM
+        #: write lock; ``chain_graph()`` hands it to consolidation.
+        self._graph: Optional[Graph] = None
 
     def _mint(self, prefix: str) -> str:
         self._seq += 1
@@ -181,10 +196,18 @@ class ChainArtifactWriter:
 
     def _emit(self, iri: str, type_name: str, artifact: Any) -> str:
         with self._mm.lock.write_locked():
-            _chain_graph(self._mm).add_node(
+            if self._graph is None:
+                self._graph = _chain_graph(self._mm, self._scope)
+            self._graph.add_node(
                 value=artifact, type_name=type_name, node_id=iri
             )
         return iri
+
+    def chain_graph(self) -> Optional[Graph]:
+        """The per-task chain graph this writer emits into (``None`` before the
+        first emit). Consolidation persists it and points ``mm_root_ref`` at
+        its ``graph_id`` (DQ-8 / CR#4)."""
+        return self._graph
 
     def emit_hint_set(self, hints: Dict[str, Any]) -> HintSet:
         art = HintSet(iri=self._mint("hintset"), hints=dict(hints))

@@ -17,6 +17,7 @@ consolidate capacity / KL is wired — e.g. the v0 smoke).
 
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Optional
@@ -83,6 +84,7 @@ class Orchestrator:
         per_task_replan_budget: int = DEFAULT_PER_TASK_REPLAN_BUDGET,
         simplified: bool = False,
         checkpoint_store: Any = None,
+        mm_persister: Any = None,
     ) -> None:
         self._dispatcher = dispatcher
         self._mm = mm
@@ -90,6 +92,25 @@ class Orchestrator:
         self._budget = per_task_replan_budget
         self._simplified = simplified
         self._checkpoint_store = checkpoint_store
+        # DQ-8 / CR#4 — narrow MM persister (``persist(metagraph, graph)``);
+        # None = live-only (ephemeral / no Falkor client). Injected at boot.
+        self._mm_persister = mm_persister
+        # Per-orchestrator counter for the task-unique writer scope when a
+        # caller supplies no task_id. Guarded — run_lifecycle runs on
+        # concurrent worker threads.
+        self._lifecycle_seq = 0
+        self._seq_lock = threading.Lock()
+
+    def _writer_scope(self, task_id) -> str:
+        """A task-UNIQUE chain-writer scope (DQ-8 / CR#4). ``task_id`` when the
+        caller supplies one; else a per-orchestrator counter. This uniqueness
+        is what keeps two tasks' chain IRIs — and thus their ``episode_id``s —
+        from colliding in one resident session."""
+        if task_id is not None:
+            return f"{self._task_scope}:{task_id}"
+        with self._seq_lock:
+            self._lifecycle_seq += 1
+            return f"{self._task_scope}:auto{self._lifecycle_seq}"
 
     # ── attention-score write-through (PB-6 / D32.5c.4) ────────────────
 
@@ -108,10 +129,11 @@ class Orchestrator:
 
     # ── consolidation seam (Phase 5 -> completion; ADR-0176) ───────────
 
-    def _consolidate(self, task_run, task_pattern_iri, task_id=None) -> None:
+    def _consolidate(self, task_run, task_pattern_iri, task_id=None, writer=None) -> None:
         """Freeze the MM + write the Episode on a terminal path (retain-by-
         default). No-op in simplified mode; graceful skip when unwired. Clears
-        the crash-recovery checkpoint on completion (ADR-0179)."""
+        the crash-recovery checkpoint on completion (ADR-0179). Persists this
+        task's chain graph and points ``mm_root_ref`` at it (DQ-8 / CR#4)."""
         if self._simplified:
             return
         consolidation.consolidate_task(
@@ -120,6 +142,8 @@ class Orchestrator:
             task_run,
             task_pattern_iri=task_pattern_iri,
             outcome_classification=_OUTCOME_BY_STATUS.get(task_run.status, "failed"),
+            chain_graph=writer.chain_graph() if writer is not None else None,
+            mm_persister=self._mm_persister,
         )
         if self._checkpoint_store is not None and task_id is not None:
             self._checkpoint_store.mark_consolidated(task_id)
@@ -136,7 +160,7 @@ class Orchestrator:
     # ── six-phase lifecycle ────────────────────────────────────────────
 
     def run_lifecycle(self, task_input, *, tier=TierEnum.FOREGROUND, executor=None, task_id=None) -> TaskOutcome:
-        writer = ChainArtifactWriter(self._mm, self._task_scope)
+        writer = ChainArtifactWriter(self._mm, self._writer_scope(task_id))
 
         task_input_ref = f"taskinput:{task_id}" if task_id is not None else None
 
@@ -184,7 +208,7 @@ class Orchestrator:
             if verdict.decision == "abort":
                 writer.emit_replan_record("pipeline", verdict)
                 task_run.status = "aborted"
-                self._consolidate(task_run, p1.task_pattern_iri, task_id)
+                self._consolidate(task_run, p1.task_pattern_iri, task_id, writer)
                 return TaskOutcome("aborted", task_run.iri, replans_used=replans)
             if verdict.decision == "replan" and replans < self._budget:
                 replans += 1
@@ -199,7 +223,7 @@ class Orchestrator:
         if not self._simplified and not sufficient:
             blame = phase_6.diagnose(self._dispatcher)
             task_run.status = "failed"
-            self._consolidate(task_run, p1.task_pattern_iri, task_id)
+            self._consolidate(task_run, p1.task_pattern_iri, task_id, writer)
             return TaskOutcome(
                 "dont_know",
                 task_run.iri,
@@ -210,7 +234,7 @@ class Orchestrator:
 
         # Phase 5 -> completion: freeze MM + write Episode (ADR-0176).
         task_run.status = "completed"
-        self._consolidate(task_run, p1.task_pattern_iri, task_id)
+        self._consolidate(task_run, p1.task_pattern_iri, task_id, writer)
         return TaskOutcome(
             "succeeded", task_run.iri, outcome=p1.task_pattern_iri, replans_used=replans
         )
