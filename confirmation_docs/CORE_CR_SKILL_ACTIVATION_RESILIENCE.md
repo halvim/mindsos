@@ -3,8 +3,8 @@
 **Filed:** 2026-07-15 · joint arc1+arc3 core chat
 **Surfaced by:** `mindsos brain --user arc1` on the arc1-brain venv — `ModuleNotFoundError:
 No module named 'mindsos_arc'`, raised out of `boot_brain` before the REPL starts.
-**Status:** IMPLEMENTED (installed-skills path), 2026-07-16 — pending test run on a
-3.11 env + owner review. Scope: the installed-skills path AND the learned-capacity
+**Status:** IMPLEMENTED (both paths) + Linux-gate green, 2026-07-16 — pending the full
+authoritative gate + owner review/merge. Scope: the installed-skills path AND the learned-capacity
 reactivation twin (both covered — see As-built §D). The proposal below is preserved as filed;
 the **As-built addendum at the foot of this doc** records what actually shipped and where
 it diverges.
@@ -274,10 +274,13 @@ edit — held out of this change because ADR files are gated by
 
 ## Verification status
 
-`py_compile` clean on all six code files; `ActivationReport` tuple semantics unit-checked
-standalone. Full `pytest` **not run here** — the connected Linux workspace is Python 3.10
-(the code needs 3.11+ `datetime.UTC`) with no pytest and no network to install one. Run on a
-3.11 env:
+Gate-verified on the Linux host (`/home/sanmyaku/mindsos`, the authoritative runner): all
+green — `tests/phase_50` 106; `tests/f9`+`tests/composition_lifecycle` 69; ADR-consistency 1;
+`tests/resident_brain`+`test_skill_cli` 60/1-skip; resilience+`TestActivation` 17; learned-path
+sweep 132/1-skip. Full `run_linux_tests.sh` still owed before the PR to main. (Authored in the
+Cowork sandbox — Python 3.10, which cannot run mindsos since the code needs 3.11+
+`datetime.UTC` — so all execution ran on the Linux gate per the pair-execution workflow.)
+Targeted re-run:
 
 ```bash
 python -m pytest tests/phase_50/test_skill_activation_resilience.py \

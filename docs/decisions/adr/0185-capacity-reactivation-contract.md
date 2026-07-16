@@ -111,3 +111,8 @@ lives in `mindsos_server` (ADR-0186), which may import both layers.
 - Amends **ADR-0156** — supersedes its Cost-§ premise "Locals are
   in-memory and re-registered each session" (see ADR-0156 §amendment-2).
   Builds on ADR-0156 §amendment-1 (upsert re-binds the declaration).
+- **Resilient re-activation at boot (2026-07-16)** — `reactivate_from_descriptors`
+  gains an additive-inert `strict` flag (default `True`; every pre-existing caller
+  byte-identical). At resident-brain boot the server passes `strict=False`: a descriptor
+  whose factory is not registered in this process is skipped with a loud `log.warning`
+  naming the `reactivation_key`, never silently. Contract + rationale in **ADR-0183 §am-2**.
