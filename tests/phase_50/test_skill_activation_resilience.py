@@ -193,3 +193,42 @@ class TestHappyPathAndReturnShape:
         report = apply_installed_skills(_fresh_cl(), kl, strict=False)
         assert report == ()
         assert report.skipped == ()
+
+
+# -- advisory capacity verification (log-only) --------------------------
+
+
+def _noop_installer(cl) -> None:
+    return None
+
+
+class TestAdvisoryVerify:
+    def test_missing_declared_capacity_warns_but_activates(self, kl, caplog) -> None:
+        import logging
+
+        _plant_record(
+            kl,
+            "hollow",
+            ["tests.phase_50.test_skill_activation_resilience:_noop_installer"],
+            capacities=["capacity:test:ghost.absent"],
+        )
+        with caplog.at_level(logging.WARNING):
+            report = apply_installed_skills(_fresh_cl(), kl, strict=False)
+        assert "hollow" in report.activated
+        assert "hollow" not in [n for n, _ in report.skipped]
+        assert any(
+            "declared capacities are not registered" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_declared_capacity_present_no_warning(self, kl, caplog) -> None:
+        import logging
+
+        _install_ref(kl)
+        with caplog.at_level(logging.WARNING):
+            report = apply_installed_skills(_fresh_cl(), kl, strict=False)
+        assert "ref-skill" in report.activated
+        assert not any(
+            "declared capacities are not registered" in r.getMessage()
+            for r in caplog.records
+        )
