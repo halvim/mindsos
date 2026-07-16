@@ -9,11 +9,13 @@ points (capacity). Layout:
 * :mod:`preflight` — read-only collision scan; ``PreflightReport``.
 * :mod:`records` — ``installed-skills`` append-only record read/write
   (ADR-0150 §am-6; the ADR-0182 ``_value_json`` first consumer).
+* :mod:`entry_points` — shared ``module:function`` installer resolution.
 * :mod:`driver` — ``install_skill`` / ``uninstall_skill``.
-* :mod:`activation` — ``apply_installed_skills`` per-process re-run.
+* :mod:`activation` — ``apply_installed_skills`` per-process re-run
+  (resilient at boot, strict on explicit activate; ``ActivationReport``).
 """
 
-from .activation import apply_installed_skills
+from .activation import ActivationReport, apply_installed_skills
 from .driver import (
     InstallResult,
     SkillInstallError,
@@ -23,6 +25,7 @@ from .driver import (
     install_skill,
     uninstall_skill,
 )
+from .entry_points import EntryPointError, resolve_entry_point
 from .manifest import L2ContentEntry, ManifestError, SkillManifest, parse_manifest
 from .preflight import PreflightFinding, PreflightReport, run_preflight
 from .records import SkillRecordView, iter_skill_records, latest_records_by_bundle
@@ -38,6 +41,8 @@ __all__ = [
     "SkillRecordView",
     "iter_skill_records",
     "latest_records_by_bundle",
+    "EntryPointError",
+    "resolve_entry_point",
     "InstallResult",
     "UninstallResult",
     "SkillInstallError",
@@ -45,5 +50,6 @@ __all__ = [
     "SkillUninstallRefusedError",
     "install_skill",
     "uninstall_skill",
+    "ActivationReport",
     "apply_installed_skills",
 ]

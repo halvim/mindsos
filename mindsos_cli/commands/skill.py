@@ -222,20 +222,45 @@ def skill_list(
 )
 def skill_activate(
     as_json: bool = typer.Option(False, "--json", help="Emit JSON."),
+    best_effort: bool = typer.Option(
+        False,
+        "--best-effort",
+        help=(
+            "Skip-and-report unactivatable bundles instead of failing on the "
+            "first — mirrors the resilient boot path, useful for diagnosing "
+            "which bundles are absent in this venv. Default is strict: an "
+            "explicit activate that cannot activate exits non-zero."
+        ),
+    ),
 ) -> None:
     from mindsos_server.skills import apply_installed_skills
 
     kl, client = _build_kl_and_client()
     try:
-        activated = apply_installed_skills(_build_cl(), kl)
+        try:
+            report = apply_installed_skills(
+                _build_cl(), kl, strict=not best_effort
+            )
+        except Exception as e:  # strict: an unactivatable bundle fails loud
+            typer.echo(f"activation failed: {e}", err=True)
+            raise typer.Exit(code=1)
         if as_json:
             typer.echo(
-                _json.dumps({"activated": list(activated)}, indent=2)
+                _json.dumps(
+                    {
+                        "activated": list(report),
+                        "skipped": [list(s) for s in report.skipped],
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
             )
         else:
             typer.echo(
-                "activated: " + (", ".join(activated) if activated else "(none)")
+                "activated: " + (", ".join(report) if report else "(none)")
             )
+            for name, reason in report.skipped:
+                typer.echo(f"skipped {name}: {reason}", err=True)
     finally:
         _close(client)
 

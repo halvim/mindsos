@@ -19,7 +19,6 @@ the same bundle-version+digest repairs (completed steps no-op, S8).
 
 from __future__ import annotations
 
-import importlib
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -33,6 +32,7 @@ from mindsos_server.audit import (
 )
 from mindsos_server.capabilities import CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL
 
+from .entry_points import EntryPointError, resolve_entry_point
 from .manifest import SkillManifest, parse_manifest
 from .preflight import PreflightReport, run_preflight
 from .records import (
@@ -117,15 +117,19 @@ def _audit(
 
 def _resolve_entry_point(spec: str):
     """``"package.module:function"`` → callable, over release-shipped
-    modules only (R2-3; no bundle-path code loading)."""
-    module_name, func_name = spec.split(":", 1)
-    module = importlib.import_module(module_name)
-    fn = getattr(module, func_name, None)
-    if fn is None or not callable(fn):
-        raise SkillInstallError(
-            f"installer entry point {spec!r} did not resolve to a callable."
-        )
-    return fn
+    modules only (R2-3; no bundle-path code loading).
+
+    Delegates to the shared
+    :func:`~mindsos_server.skills.entry_points.resolve_entry_point` and
+    re-raises its neutral ``EntryPointError`` as :class:`SkillInstallError`,
+    so the install driver's contract (a resolve failure is a mid-sequence
+    install failure → ``failed`` record) is unchanged. Per-process
+    activation catches the neutral ``EntryPointError`` instead.
+    """
+    try:
+        return resolve_entry_point(spec)
+    except EntryPointError as exc:
+        raise SkillInstallError(str(exc)) from exc
 
 
 def _roster_value(manifest: SkillManifest) -> Dict[str, Any]:

@@ -20,8 +20,11 @@ The caller owns the ``client`` lifecycle (open / close) per Phase 07 P4 A;
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any, Optional
+
+log = logging.getLogger(__name__)
 
 
 @dataclass
@@ -36,6 +39,11 @@ class Stack:
     session: Any
     persister: Any
     user: str
+    #: Boot-time :class:`~mindsos_server.skills.ActivationReport` for
+    #: installed-skill activation (``None`` on the ephemeral path, which
+    #: activates no installed skills). Its ``skipped`` roster names any
+    #: bundle a REPL/operator surface should report as unactivated.
+    activation: Any = None
 
     def global_view(self) -> Any:
         """The read-only bipartite probe surface over the Global L3."""
@@ -115,6 +123,7 @@ def boot_brain(
     from mindsos_knowledge import KnowledgeLayer
 
     session = session if session is not None else _BrainSession(user)
+    activation: Any = None
 
     if client is None:
         # Ephemeral: in-memory Global, in-memory Local persister, no ledger.
@@ -135,7 +144,18 @@ def boot_brain(
         cl = CapacityLayer(kl=kl)
         if install_builtins:
             _install_builtins(cl)
-        apply_installed_skills(cl, kl)
+        # Resilient at boot: one absent or broken bundle must not brick the
+        # brain (ADR-0183 §am-2). Strict activation is the explicit
+        # ``mindsos skill activate`` path, not this one. Skips are
+        # process-local and reported, never written back to the record.
+        activation = apply_installed_skills(cl, kl, strict=False)
+        for _bundle, _reason in activation.skipped:
+            log.warning(
+                "boot: skill %r not activated for user %r: %s",
+                _bundle,
+                user,
+                _reason,
+            )
         persister = FalkorDBLocalPersister(client)
 
     # Load-or-mint the user's durable Local + reactivate its learned caps.
@@ -146,7 +166,10 @@ def boot_brain(
     mm = MentalModel(session_id=session.session_id, user_id=user)
     dispatcher = L4Dispatcher(cl, session=session, kl=kl)
     orch = Orchestrator(dispatcher, mm, task_scope="brain")
-    return Stack(kl, cl, mm, dispatcher, orch, session, persister, user)
+    return Stack(
+        kl, cl, mm, dispatcher, orch, session, persister, user,
+        activation=activation,
+    )
 
 
 __all__ = ["Stack", "boot_brain"]
