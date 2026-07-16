@@ -22,8 +22,8 @@ structured ``value`` rides the ADR-0182 ``_value_json`` round-trip.
 
 Activation (`skill activate`) is the design-log PB-4 v1 caller of
 :func:`mindsos_server.skills.apply_installed_skills`: it builds a fresh
-in-memory CapacityLayer (text builtins installed, mirroring `capacity
-invoke`), re-runs the installed bundles' L3 installers, and reports.
+in-memory CapacityLayer (the resident brain's full builtin set installed,
+mirroring `boot_brain`), re-runs the installed bundles' L3 installers, and reports.
 
 Exit codes: 0 success; 1 rejected/refused/failed (reasons on stderr);
 2 Typer usage error.
@@ -69,6 +69,15 @@ def _build_cl() -> Any:
 
     cl = CapacityLayer()
     install_text_capacities(cl)
+    return cl
+
+
+def _build_brain_cl() -> Any:
+    from mindsos_capacity import CapacityLayer
+    from mindsos_server.boot import install_brain_builtins
+
+    cl = CapacityLayer()
+    install_brain_builtins(cl)
     return cl
 
 
@@ -239,7 +248,7 @@ def skill_activate(
     try:
         try:
             report = apply_installed_skills(
-                _build_cl(), kl, strict=not best_effort
+                _build_brain_cl(), kl, strict=not best_effort
             )
         except Exception as e:  # strict: an unactivatable bundle fails loud
             typer.echo(f"activation failed: {e}", err=True)

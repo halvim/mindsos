@@ -229,16 +229,17 @@ now would **silently swallow the missing factory-registration wiring** — the v
 silent-degradation failure mode this CR removes. DEFERRED until factory registration is wired
 into resident-brain boot. Tracked as a follow-up.
 
-## Deferred within the installed-skills path (noted, not built)
+## Follow-ups within the installed-skills path
 
 - **Advisory capacity verification** — check the record's declared `l3_capacities` are
   present on `cl` after apply and warn on a mismatch. Pokes `cl._capacity_index` (as preflight
   does) and can false-positive if an installer's registered surface ≠ its declared set; log-only
   value, deferred.
-- **Builtins alignment for `skill activate`** — the verb still builds a text-only `cl`
-  (`_build_cl`), so it is not yet a faithful rehearsal of boot's full builtin set; a bundle
-  needing a non-text builtin could report a skip boot would not. Share `boot`'s builtin-install
-  routine to close this.
+- **Builtins alignment for `skill activate`** — LANDED 2026-07-16. `boot._install_builtins`
+  is now public `install_brain_builtins`; `skill activate` builds its `cl` via a new
+  `_build_brain_cl` using that full builtin set, so it faithfully rehearses boot (`skill
+  install` keeps the text-only `_build_cl`). Advisory capacity verification remains the only
+  item deferred above.
 
 ## Files touched
 
@@ -247,8 +248,8 @@ New: `mindsos_server/skills/entry_points.py`,
 Edited: `mindsos_server/skills/activation.py` (rewrite),
 `mindsos_server/skills/__init__.py` (exports),
 `mindsos_server/skills/driver.py` (shared resolver),
-`mindsos_server/boot.py` (`strict=False`, WARNING log, `Stack.activation`),
-`mindsos_cli/commands/skill.py` (report render + `--best-effort`).
+`mindsos_server/boot.py` (`strict=False`, WARNING log, `Stack.activation`; `_install_builtins`→public `install_brain_builtins`),
+`mindsos_cli/commands/skill.py` (report render + `--best-effort`; `_build_brain_cl` for full-builtin activate).
 No schema / role / category / count change; no ADR decision reversal.
 
 ## ADR

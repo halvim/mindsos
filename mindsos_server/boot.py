@@ -78,7 +78,7 @@ class _BrainSession:
         return True
 
 
-def _install_builtins(cl: Any) -> None:
+def install_brain_builtins(cl: Any) -> None:
     """Install the v0 catalogs + builtins onto ``cl`` (build_stack parity)."""
     from mindsos_capacity.builtins import (
         install_orchestration_v0,
@@ -132,7 +132,7 @@ def boot_brain(
         kl = KnowledgeLayer.bootstrap()
         cl = CapacityLayer(kl=kl)
         if install_builtins:
-            _install_builtins(cl)
+            install_brain_builtins(cl)
         persister: Optional[Any] = InMemoryLocalPersister()
     else:
         # Durable: load-or-mint Global from Falkor, reactivate installed skills.
@@ -143,7 +143,7 @@ def boot_brain(
         kl = bootstrap_kl_from_falkordb(client)
         cl = CapacityLayer(kl=kl)
         if install_builtins:
-            _install_builtins(cl)
+            install_brain_builtins(cl)
         # Resilient at boot: one absent or broken bundle must not brick the
         # brain (ADR-0183 §am-2). Strict activation is the explicit
         # ``mindsos skill activate`` path, not this one. Skips are
@@ -172,4 +172,4 @@ def boot_brain(
     )
 
 
-__all__ = ["Stack", "boot_brain"]
+__all__ = ["Stack", "boot_brain", "install_brain_builtins"]
