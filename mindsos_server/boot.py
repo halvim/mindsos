@@ -168,7 +168,17 @@ def boot_brain(
 
     mm = MentalModel(session_id=session.session_id, user_id=user)
     dispatcher = L4Dispatcher(cl, session=session, kl=kl)
-    orch = Orchestrator(dispatcher, mm, task_scope="brain")
+    # DQ-8 / CR#4 — persist per-task chain graphs so an Episode's mm_root_ref
+    # resolves. Durable path only; the ephemeral path (client is None) stays
+    # live-only.
+    mm_persister = None
+    if client is not None:
+        from mindsos_intelligence.mm_persister import FalkorMMPersister
+
+        mm_persister = FalkorMMPersister(client)
+    orch = Orchestrator(
+        dispatcher, mm, task_scope="brain", mm_persister=mm_persister
+    )
     return Stack(
         kl, cl, mm, dispatcher, orch, session, persister, user,
         activation=activation,
