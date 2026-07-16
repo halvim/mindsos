@@ -4,8 +4,8 @@
 **Surfaced by:** `mindsos brain --user arc1` on the arc1-brain venv — `ModuleNotFoundError:
 No module named 'mindsos_arc'`, raised out of `boot_brain` before the REPL starts.
 **Status:** IMPLEMENTED (installed-skills path), 2026-07-16 — pending test run on a
-3.11 env + owner review. Scope decision: installed-skills only; the learned-capacity
-reactivation twin is DEFERRED (As-built §D). The proposal below is preserved as filed;
+3.11 env + owner review. Scope: the installed-skills path AND the learned-capacity
+reactivation twin (both covered — see As-built §D). The proposal below is preserved as filed;
 the **As-built addendum at the foot of this doc** records what actually shipped and where
 it diverges.
 **Version impact:** none. `core_version` stays `phase50` (additive, non-phase fix).
@@ -217,17 +217,25 @@ report on `Stack.activation` (a new field, default `None`) for a future REPL ban
 `skill activate` verb renders skips and gains `--best-effort` (resilient diagnosis; default
 stays strict → non-zero exit on the first failure).
 
-## D. Scope — learned-capacity reactivation twin DEFERRED (new finding)
+## D. Scope — learned-capacity reactivation twin NOW COVERED (2026-07-16)
 
-The learned-capacity reactivation path (`local_boot.reactivate_local_capacities` →
-`mindsos_capacity.reactivate_from_descriptors` → `build_declaration`) crashes out of boot the
-same way. But a trace found **no production code registers a reactivation factory** — every
-`register_reactivation_factory` call in the repo is in tests. So the learned crash is
-**dormant because the feature is unwired**, not merely unhardened; a durable Local carrying a
-reactivatable descriptor would already crash today for lack of a factory. Hardening that path
-now would **silently swallow the missing factory-registration wiring** — the very
-silent-degradation failure mode this CR removes. DEFERRED until factory registration is wired
-into resident-brain boot. Tracked as a follow-up.
+Originally deferred. The learned path (`local_boot.reactivate_local_capacities` →
+`reactivate_from_descriptors` → `build_declaration`) crashes out of boot the same way, and a
+trace found **no production code registers a reactivation factory** (every
+`register_reactivation_factory` call is in tests). The reanalysis that settled it: the
+resident brain's durable path boots **arbitrary** persisted Locals out of Falkor, so a durable
+descriptor carrying a `reactivation_key` with no matching factory in the booting process is the
+**same cross-lane / foreign-persisted-state failure class** as the `mindsos_arc` bug —
+reachable by design, testable, and hardenable **loudly** (so it does not mask the missing
+factory wiring). Production code does not yet *write* such a descriptor, so this is
+defense-in-depth (no observed incident) rather than a reported fix.
+
+Landed: additive-inert `strict` flag on `reactivate_from_descriptors`,
+`reactivate_local_capacities`, `boot_local`, and `_dep_order_descriptors` (default `True` →
+callers byte-identical); `boot_brain` passes `strict=False`. A factoryless descriptor is
+skipped with a loud `log.warning` naming the `reactivation_key`; a dependency cycle degrades
+to unordered re-activation. Learned skips are process-local, never written back. Tests:
+`tests/f9/test_reactivation_resilience.py`.
 
 ## Follow-ups within the installed-skills path
 
@@ -245,12 +253,16 @@ into resident-brain boot. Tracked as a follow-up.
 ## Files touched
 
 New: `mindsos_server/skills/entry_points.py`,
-`tests/phase_50/test_skill_activation_resilience.py`.
+`tests/phase_50/test_skill_activation_resilience.py`,
+`tests/f9/test_reactivation_resilience.py`.
 Edited: `mindsos_server/skills/activation.py` (rewrite + advisory capacity verify),
 `mindsos_server/skills/__init__.py` (exports),
 `mindsos_server/skills/driver.py` (shared resolver),
 `mindsos_server/boot.py` (`strict=False`, WARNING log, `Stack.activation`; `_install_builtins`→public `install_brain_builtins`),
-`mindsos_cli/commands/skill.py` (report render + `--best-effort`; `_build_brain_cl` for full-builtin activate).
+`mindsos_cli/commands/skill.py` (report render + `--best-effort`; `_build_brain_cl` for full-builtin activate),
+`mindsos_capacity/reactivation.py` (learned-path `strict` flag),
+`mindsos_server/local_boot.py` (learned-path `strict` threading + resilient dep-order),
+`mindsos_server/boot.py` also passes `boot_local(strict=False)`.
 No schema / role / category / count change; no ADR decision reversal.
 
 ## ADR

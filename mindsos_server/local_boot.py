@@ -26,6 +26,7 @@ will use.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List, Tuple
 
 from mindsos_capacity import (
@@ -39,6 +40,8 @@ from mindsos_core import Metagraph
 from mindsos_knowledge import ROLE_LEARNED_PARAMETERS
 from mindsos_knowledge.bootstrap import kahn_sort
 from mindsos_knowledge.exceptions import AlreadyInstalledError
+
+log = logging.getLogger(__name__)
 
 __all__ = [
     "load_or_mint_local",
@@ -101,7 +104,9 @@ def _learned_parameter_descriptors(local_mg: Metagraph) -> List[dict]:
     return []
 
 
-def _dep_order_descriptors(descriptors: List[dict]) -> List[dict]:
+def _dep_order_descriptors(
+    descriptors: List[dict], *, strict: bool = True
+) -> List[dict]:
     """Topologically order re-activatable composite descriptors.
 
     A composite whose serialized DAG references another in-batch
@@ -129,18 +134,45 @@ def _dep_order_descriptors(descriptors: List[dict]) -> List[dict]:
 
     by_iri: Dict[str, dict] = {}
     for d in reactivatable:
-        decl = build_declaration(d[REACTIVATION_KEY], d)  # pure build, no register
+        try:
+            decl = build_declaration(d[REACTIVATION_KEY], d)  # pure build
+        except Exception as exc:  # noqa: BLE001 — resilience contract
+            if strict:
+                raise
+            log.warning(
+                "learned descriptor could not be built for dep-ordering "
+                "(reactivation_key=%r): %s (%s); dropped from this boot.",
+                d.get(REACTIVATION_KEY),
+                exc.__class__.__name__,
+                exc,
+            )
+            continue
         by_iri[decl.iri] = d
+
+    others = [d for d in descriptors if not is_reactivatable(d)]
     iris = set(by_iri)
+    if not iris:
+        return others
 
     applies_after = {
         iri: frozenset(composite_dependencies(d) & iris - {iri})
         for iri, d in by_iri.items()
     }
-    ordered_iris = kahn_sort(iris, applies_after)
+    try:
+        ordered_iris = kahn_sort(iris, applies_after)
+    except Exception as exc:  # noqa: BLE001 — e.g. BootstrapCycleError
+        if strict:
+            raise
+        log.warning(
+            "learned-capacity dependency cycle among %d descriptor(s): "
+            "%s (%s); re-activating unordered.",
+            len(iris),
+            exc.__class__.__name__,
+            exc,
+        )
+        ordered_iris = list(iris)
 
     ordered = [by_iri[i] for i in ordered_iris]
-    others = [d for d in descriptors if not is_reactivatable(d)]
     return ordered + others
 
 
@@ -150,6 +182,7 @@ def reactivate_local_capacities(
     user_id: str,
     *,
     session: Any,
+    strict: bool = True,
 ) -> List[str]:
     """Re-activate a user's Local capacities from persisted descriptors.
 
@@ -168,8 +201,10 @@ def reactivate_local_capacities(
     """
     local_mg = kl.local_metagraph(user_id)
     descriptors = _learned_parameter_descriptors(local_mg)
-    ordered = _dep_order_descriptors(descriptors)
-    return reactivate_from_descriptors(cl, ordered, session=session)
+    ordered = _dep_order_descriptors(descriptors, strict=strict)
+    return reactivate_from_descriptors(
+        cl, ordered, session=session, strict=strict
+    )
 
 
 def boot_local(
@@ -179,6 +214,7 @@ def boot_local(
     user_id: str,
     *,
     session: Any,
+    strict: bool = True,
 ) -> Tuple[Metagraph, bool, List[str]]:
     """Lazy load-on-first-access for one user's Local.
 
@@ -188,5 +224,7 @@ def boot_local(
     no global scan.
     """
     mg, minted = load_or_mint_local(kl, persister, user_id)
-    reactivated = reactivate_local_capacities(cl, kl, user_id, session=session)
+    reactivated = reactivate_local_capacities(
+        cl, kl, user_id, session=session, strict=strict
+    )
     return mg, minted, reactivated
