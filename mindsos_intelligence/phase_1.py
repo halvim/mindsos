@@ -209,7 +209,14 @@ def interpret(
         modality = None
 
     if profile is None and modality is not None:
-        profile = (getattr(dispatcher, "modality_profiles", None) or {}).get(modality)
+        table = getattr(dispatcher, "modality_profiles", None) or {}
+        if modality not in table:
+            raise InterpretationError(
+                f"unroutable modality {modality!r}: no profile registered "
+                f"(ADR-0197 am-1). Register a modality profile, or omit the "
+                f"modality to use the construction-bound / v0 path."
+            )
+        profile = table[modality]
     if profile is None:
         profile = getattr(dispatcher, "phase1_profile", None)
 
@@ -220,6 +227,12 @@ def interpret(
     # declare exactly DS_RAW_INPUT -> DS_STRUCTURED_INPUT -> ... .
     process_iri = _slot(profile, "process", PROCESS_IRI)
     ingress_ds = dispatcher.capacity_layer.get_declaration(process_iri).inputs[0]
+    if modality is not None and ingress_ds != modality:
+        raise InterpretationError(
+            f"modality {modality!r} routes to process {process_iri!r} whose "
+            f"declared ingress is {ingress_ds!r}; ADR-0197 §2 requires them "
+            f"equal (mis-registered modality profile?)."
+        )
     env: dict = {ingress_ds: value}
 
     structured = _run_step(dispatcher, process_iri, env)

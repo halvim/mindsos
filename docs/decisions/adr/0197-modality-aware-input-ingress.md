@@ -224,3 +224,51 @@ Deferred: finder-composed modality selection (modality DataState as a
   environment-threaded one. Builds on **ADR-0156** (bipartite topology /
   `find_pipeline`) and **ADR-0063** (the shipped `text.*` family).
 - Supersedes / superseded by: none.
+
+## Amendment 1 (modality is authoritative — unroutable is dont-know, not v0)
+
+**Status:** Accepted (self-amendment; scope = `mindsos_intelligence/phase_1.py`
+selection path + `tests/modality_ingress`). Does not change this ADR's status.
+
+§3 as shipped let a **stamped** modality with no table entry fall back to the
+construction-bound `phase1_profile` and then to all-v0. Combined with the v0
+`map` body's fixed `mapping_confidence = 1.0`, an unhandled input (unknown,
+typo'd, or unsupported modality) returned `task-pattern:v0:trivial` at full
+confidence — a confident answer to an input the brain cannot interpret.
+`tests/modality_ingress/test_ingress_text.py::test_unknown_modality_falls_back_to_v0`
+pinned that as intended, so this is a deliberate **policy reversal of the §3
+fallback clause**, not a bug patch. The rest of the Decision (§1, §2, §4, §5) is
+intact.
+
+The modality is **authoritative** (§2: the modality *is* the ingress DataState):
+
+1. **Unroutable (Mode A).** A stamped modality absent from the
+   `{modality→Phase1Profile}` table raises `InterpretationError`. It does **not**
+   fall back to the construction-bound profile — that binding is the legacy
+   `modality=None` path only. `run_lifecycle` maps the raise to a terminal
+   `TaskOutcome.status = dont_know` (ADR-0196; DontKnowReason class
+   `UNHANDLED_INPUT`, ADR-0157).
+2. **Mis-registered (Mode B).** A stamped modality whose selected profile's
+   `process` declares an ingress ≠ the modality raises `InterpretationError`,
+   enforcing §2 at the point of use.
+
+**Unchanged:** the `modality=None` legacy path (raw value or
+`InputEnvelope(modality=None)`) is byte-identical — neither guard fires. No new
+verdict type: `interpret` already raises `InterpretationError` for its
+dont-know-class conditions (unresolvable `map` target, below-threshold
+confidence), and this is the same class. Both guards live in
+`phase_1.interpret`'s selection path (no separate boot-time validator — that
+would couple dispatcher construction to capacity-install order and be
+forgettable).
+
+**Not additive-inert** (unlike the base ADR's §4): this reverses a shipped,
+tested behavior and inverts `test_unknown_modality_falls_back_to_v0`
+(→ `test_unknown_modality_raises_not_v0`), plus adds
+`test_modality_routes_to_wrong_ingress_raises`. It is carried by this amendment,
+not routed through the design-log §0 additive-inertness gate.
+
+**Deferred / out of scope:** killing the v0-trivial default and mandatory
+stamping (every raw caller depends on `modality=None → v0`); threading
+`DontKnowReason.UNHANDLED_INPUT` into the raise for richer L4 telemetry; and an
+optional boot-time `validate_modality_table()` for fail-at-CI rather than
+fail-at-first-use (the per-selection Mode-B guard already covers correctness).
