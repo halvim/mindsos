@@ -197,3 +197,58 @@ is retained. Additive/optional on a strict=False schema — no release-train ver
 untyped/unqueryable; (b) promoted-pipeline marker — needs a marker convention
 and pre-promotion. Chose flat props for queryability (operator's call, bump
 accepted).
+
+## Amendment §am-2 (2026-07-16) — activation resilience
+
+**Context.** §6 stage 2 says activation "re-runs the L3 installer entry points
+(idempotent)" but specified no failure handling, and `apply_installed_skills` had
+none: it imported and called every installer bare. Because `installed-skills` is
+Global (§5), a single record whose `l3_installers` names a module absent from the
+booting venv — the common cross-lane case, e.g. a bundle pip-installed only in
+another checkout — raised `ModuleNotFoundError` out of `boot_brain` and bricked the
+brain for **every** user. An absent skill is the textbook honest don't-know; a
+traceback contradicts the system's stated posture. (Surfaced by `mindsos brain
+--user arc1`: `No module named 'mindsos_arc'`.)
+
+**Decision.** Per-process activation is **best-effort at boot and strict on explicit
+invocation**. Each bundle is processed in two phases:
+
+- **resolve** — import + `getattr` of every installer via the shared
+  `mindsos_server/skills/entry_points.py::resolve_entry_point`, which raises a
+  neutral `EntryPointError` for every "not resolvable here" cause (malformed spec,
+  unimportable module, missing attribute, non-callable). No side effects on `cl`. A
+  resolve failure ⇒ the bundle is absent in this process ⇒ skip it cleanly.
+- **apply** — call each `fn(cl)`, outside the resolve `try`. A mid-apply failure may
+  leave the bundle **partially registered**; there is no per-bundle rollback (no
+  deregister surface exists — §8(4)), so the partial is repaired by the next
+  process's idempotent `if_exists="upsert"` re-run (§7 grain). The bundle is skipped
+  and reported, tagged as possibly partial.
+
+With `strict=True` (the **default** — every pre-existing call site is byte-identical)
+either failure re-raises: an explicit `mindsos skill activate` that cannot activate
+fails loud. `boot_brain` passes `strict=False`. `apply_installed_skills` returns an
+`ActivationReport(activated, skipped)` that **subclasses `tuple`** (so the historical
+`Tuple[str, ...]` return is unchanged) with an additive `skipped` roster of
+`(bundle_name, reason)`; `boot_brain` logs skips at WARNING and carries the report on
+`Stack.activation`. The `skill activate` verb renders skips and gains `--best-effort`
+(resilient diagnosis; default stays strict).
+
+**Scope / status.** Additive-inert: no schema change, no role/category/count change,
+no release-train version bump (stays `phase50`). Skips are **process-local and never
+written back** to the durable Global record (§5) — its `status` stays `installed`; a
+module missing in *this* venv says nothing about the bundle's validity elsewhere, so
+no `failed` status is written at activation time (distinct from the install-time
+`failed` of §6(1)). Scope is the **installed-skills** path only. The learned-capacity
+reactivation twin (`reactivate_from_descriptors`, ADR-0185/0186) crashes boot the same
+way but is **deferred**: no production code registers a reactivation factory (all call
+sites are tests), so that crash is dormant because the feature is unwired, not merely
+unhardened — hardening it now would silently swallow the missing factory-registration
+wiring. Deferred until factory registration is wired into resident-brain boot.
+
+**Alternatives rejected.** (a) catch resolve only, keep `fn(cl)` fatal (the original
+CR proposal) — re-introduces the Global brick-all for any importable-but-broken
+installer, and its catch missed a malformed spec (`ValueError`); (b) per-bundle
+rollback / staging overlay — no deregister surface exists and it fights the §7
+upsert-repair grain; (c) write `failed` back to the record at activation — activation
+is per-process and the record is durable + Global, so a process-local resolution
+result must not mutate durable state.
