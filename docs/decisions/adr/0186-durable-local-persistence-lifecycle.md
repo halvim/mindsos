@@ -75,3 +75,8 @@ functions) — a version-surface touch on a non-phase `feat/` ship
 - **Amends ADR-0042** — forward-reference: F9 provides the durable backing
   store its install/extract hooks will use; the hooks' login/logout
   wiring is unchanged (still deferred).
+- **Resilient `boot_local` re-activation (2026-07-16)** — `boot_local` /
+  `reactivate_local_capacities` / `_dep_order_descriptors` take an additive-inert `strict`
+  flag (default `True`); `boot_brain` passes `strict=False` so one durable Local carrying a
+  learned descriptor whose factory is absent cannot brick boot (build pre-pass drops-and-warns;
+  a dependency cycle degrades to unordered). See **ADR-0183 §am-2** + **ADR-0185**.
