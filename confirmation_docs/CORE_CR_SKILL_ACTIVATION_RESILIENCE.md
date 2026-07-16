@@ -231,21 +231,22 @@ into resident-brain boot. Tracked as a follow-up.
 
 ## Follow-ups within the installed-skills path
 
-- **Advisory capacity verification** — check the record's declared `l3_capacities` are
-  present on `cl` after apply and warn on a mismatch. Pokes `cl._capacity_index` (as preflight
-  does) and can false-positive if an installer's registered surface ≠ its declared set; log-only
-  value, deferred.
+- **Advisory capacity verification** — LANDED 2026-07-16. After a bundle's installers run
+  clean, `_warn_missing_declared_capacities` warns (log-only, in `activation.py`) if the
+  record's declared `l3_capacities` are absent from `cl` — catching an installer that
+  succeeded but did not register its declared surface. Reads `cl._capacity_index` (as
+  preflight does), never raises, and never changes activation classification; a bundle whose
+  installer registers a different set than it declares (rare) is a tolerable false positive.
 - **Builtins alignment for `skill activate`** — LANDED 2026-07-16. `boot._install_builtins`
   is now public `install_brain_builtins`; `skill activate` builds its `cl` via a new
   `_build_brain_cl` using that full builtin set, so it faithfully rehearses boot (`skill
-  install` keeps the text-only `_build_cl`). Advisory capacity verification remains the only
-  item deferred above.
+  install` keeps the text-only `_build_cl`).
 
 ## Files touched
 
 New: `mindsos_server/skills/entry_points.py`,
 `tests/phase_50/test_skill_activation_resilience.py`.
-Edited: `mindsos_server/skills/activation.py` (rewrite),
+Edited: `mindsos_server/skills/activation.py` (rewrite + advisory capacity verify),
 `mindsos_server/skills/__init__.py` (exports),
 `mindsos_server/skills/driver.py` (shared resolver),
 `mindsos_server/boot.py` (`strict=False`, WARNING log, `Stack.activation`; `_install_builtins`→public `install_brain_builtins`),

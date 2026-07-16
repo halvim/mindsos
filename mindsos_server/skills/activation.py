@@ -88,6 +88,33 @@ class ActivationReport(tuple):
         )
 
 
+def _warn_missing_declared_capacities(cl, bundle_name, value):
+    """Advisory (log-only): warn if a bundle's installers ran without
+    error but did not register the capacities its record declares. Never
+    changes activation classification and never raises. A bundle whose
+    installer registers a set different from its declared ``l3_capacities``
+    (rare) is a tolerable false positive for a warning. Mirrors preflight's
+    Global capacity-index read.
+    """
+    try:
+        declared = list(value.get("l3_capacities") or [])
+        if not declared:
+            return
+        mg = cl.global_metagraph()
+        index = cl._capacity_index.get(mg.metagraph_id, {})
+        missing = [c for c in declared if c not in index]
+    except Exception:
+        return
+    if missing:
+        log.warning(
+            "skill %r activated but its declared capacities are not "
+            "registered: %s (its L3 installer registered a different "
+            "surface than the record declares).",
+            bundle_name,
+            missing,
+        )
+
+
 def apply_installed_skills(
     cl: Any, kl: Any, *, strict: bool = True
 ) -> ActivationReport:
@@ -152,6 +179,7 @@ def apply_installed_skills(
                 (view.bundle_name, f"apply-failed (possibly partial): {exc}")
             )
             continue
+        _warn_missing_declared_capacities(cl, view.bundle_name, view.value)
         activated.append(view.bundle_name)
     return ActivationReport(activated, skipped)
 
