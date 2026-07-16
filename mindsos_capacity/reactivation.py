@@ -37,10 +37,13 @@ they are re-supplied each process rather than reloaded.
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Callable, Dict, List, Mapping, Set
 
 from .capacity import _CapacityBase
 from .exceptions import CapacityRegistrationError
+
+log = logging.getLogger(__name__)
 
 #: Descriptor key (in the ``learned-parameters`` value dict) naming the
 #: factory that rebuilds the capacity. See module docstring.
@@ -163,6 +166,7 @@ def reactivate_from_descriptors(
     descriptors: Any,
     *,
     session: Any,
+    strict: bool = True,
 ) -> List[str]:
     """Re-activate Local capacities from ``learned-parameters`` descriptors.
 
@@ -186,6 +190,11 @@ def reactivate_from_descriptors(
         session: a Local-scoped session-like object (needs ``user_id``);
             supplied by the caller — this module never constructs a
             ``Session`` (layer boundary).
+        strict: when ``True`` (default) a descriptor whose factory cannot
+            rebuild or register re-raises — every pre-existing caller is
+            byte-identical. When ``False`` (resilient boot) it is skipped
+            with a loud ``log.warning`` naming the ``reactivation_key`` so a
+            missing factory registration is surfaced, not swallowed.
 
     Returns:
         The list of re-activated capacity IRIs, in walk order.
@@ -195,7 +204,21 @@ def reactivate_from_descriptors(
         key = descriptor.get(REACTIVATION_KEY)
         if not key or key == INSTALLER_SENTINEL:
             continue
-        decl = build_declaration(key, descriptor)
-        cl.register_capacity(decl, session=session, if_exists="upsert")
+        try:
+            decl = build_declaration(key, descriptor)
+            cl.register_capacity(decl, session=session, if_exists="upsert")
+        except Exception as exc:  # noqa: BLE001 — resilience contract
+            if strict:
+                raise
+            log.warning(
+                "learned capacity not re-activated (reactivation_key=%r): "
+                "%s (%s). Its descriptor is durable but the factory could "
+                "not rebuild/register it in this process; the capacity is "
+                "absent.",
+                key,
+                exc.__class__.__name__,
+                exc,
+            )
+            continue
         reactivated.append(decl.iri)
     return reactivated

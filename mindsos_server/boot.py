@@ -161,7 +161,10 @@ def boot_brain(
     # Load-or-mint the user's durable Local + reactivate its learned caps.
     from mindsos_server.local_boot import boot_local
 
-    boot_local(cl, kl, persister, user, session=session)
+    # Resilient: a durable Local carrying a learned descriptor whose
+    # factory is not registered in this process must not brick the brain
+    # (ADR-0183 §am-2 extended to reactivation). Skips are logged loudly.
+    boot_local(cl, kl, persister, user, session=session, strict=False)
 
     mm = MentalModel(session_id=session.session_id, user_id=user)
     dispatcher = L4Dispatcher(cl, session=session, kl=kl)

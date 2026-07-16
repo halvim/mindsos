@@ -238,12 +238,19 @@ no release-train version bump (stays `phase50`). Skips are **process-local and n
 written back** to the durable Global record (§5) — its `status` stays `installed`; a
 module missing in *this* venv says nothing about the bundle's validity elsewhere, so
 no `failed` status is written at activation time (distinct from the install-time
-`failed` of §6(1)). Scope is the **installed-skills** path only. The learned-capacity
-reactivation twin (`reactivate_from_descriptors`, ADR-0185/0186) crashes boot the same
-way but is **deferred**: no production code registers a reactivation factory (all call
-sites are tests), so that crash is dormant because the feature is unwired, not merely
-unhardened — hardening it now would silently swallow the missing factory-registration
-wiring. Deferred until factory registration is wired into resident-brain boot.
+`failed` of §6(1)). The same contract now also covers the **learned-capacity
+reactivation** twin (`reactivate_from_descriptors`, ADR-0185/0186; reached via
+`boot_local` on the durable path): `reactivate_from_descriptors`,
+`reactivate_local_capacities`, `boot_local` and `_dep_order_descriptors` take an
+additive-inert `strict` flag (default `True` — every pre-existing caller byte-identical);
+`boot_brain` passes `strict=False`. A descriptor whose factory is not registered in this
+process is skipped with a **loud** `log.warning` naming the `reactivation_key` (and a
+dependency cycle degrades to unordered) — resilient but never silent, so the missing
+factory registration is surfaced, not swallowed. The resident brain boots arbitrary
+durable Locals out of Falkor, so this is the same cross-lane / foreign-persisted-state
+failure class as the installed-skills case; production code does not yet write such a
+descriptor, so it is defense-in-depth (no observed incident). Learned skips, too, are
+process-local and never written back.
 
 **Alternatives rejected.** (a) catch resolve only, keep `fn(cl)` fatal (the original
 CR proposal) — re-introduces the Global brick-all for any importable-but-broken
