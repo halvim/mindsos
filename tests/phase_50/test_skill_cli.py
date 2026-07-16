@@ -84,4 +84,4 @@ def test_skill_activate_empty(monkeypatch) -> None:
     )
     result = runner.invoke(app, ["skill", "activate", "--json"])
     assert result.exit_code == 0
-    assert json.loads(result.stdout) == {"activated": []}
+    assert json.loads(result.stdout) == {"activated": [], "skipped": []}
