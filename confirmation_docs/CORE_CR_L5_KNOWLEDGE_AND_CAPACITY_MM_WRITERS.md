@@ -276,9 +276,11 @@ small additive fix.** The capacity writer (DQ-3 = "L5 is the blackboard") is pha
 
 - **New: ADR-0201** — `docs/decisions/adr/0201-capacity-mm-instance-vocabulary.md` (DQ-2
   vocabulary + minting + topology).
-- **Amends:** ADR-0165/0166 (rooms now written); ADR-0200 (`mm_handle = MMResolver`);
-  ADR-0176/0180 (DQ-8: per-task chain graphs persisted at consolidation; `mm_root_ref` → chain
-  graph_id; drop the false persistence claim).
+- **New: ADR-0202** — `docs/decisions/adr/0202-per-task-chain-graphs-persist.md` (DQ-8: per-task
+  chain graphs + persist; **built** as slice D8-B/3b, PR #52).
+- **Relates:** ADR-0165/0166 (rooms now written); ADR-0200 (`mm_handle = MMResolver`);
+  ADR-0176/0180 (DQ-8 per-task chain persist via ADR-0202; false persistence claim dropped);
+  ADR-0182 (chain persist works around the codec via a dict-snapshot).
 - **Untouched:** ADR-0139 §am-1 (`validate_xref` deferral).
 
 ## Why core and not the brains
