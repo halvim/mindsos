@@ -12,6 +12,15 @@ O(session²) across a resident session. The metagraph anchor is MERGE-created
 first because ``build_create_graph_anchor`` links via ``MATCH (m:Metagraph)``
 and would otherwise leave the graph unlinked.
 
+Chain nodes hold dataclass values (HintSet, TaskRun, …) that the ADR-0182
+value codec cannot encode (it takes only primitives / dict / list). We persist
+a *snapshot* of the graph whose node values are those dataclasses reduced to
+dicts, keeping the same ``graph_id`` so ``mm_root_ref`` still resolves and the
+live graph keeps its dataclasses for in-session readers. Serializing at persist
+time (not emit time) captures each artifact's final mutated state (e.g.
+``TaskRun.status`` set to ``completed`` at the terminal path). Chain artifacts
+are nodes-only (refs are IRI fields, not graph edges), so nodes suffice.
+
 Both calls are Core (L1) persistence primitives; this class only orchestrates
 them with the injected client — it does not reimplement persistence.
 """
@@ -39,6 +48,9 @@ class FalkorMMPersister:
         self._client = client
 
     def persist(self, metagraph: Any, graph: Any) -> None:
+        from dataclasses import asdict, is_dataclass
+
+        from mindsos_core import Graph
         from mindsos_core.cypher.builders import build_create_metagraph_anchor
         from mindsos_core.persistence.graph_repository import GraphRepository
         from mindsos_core.persistence.metagraph_repository import MetagraphRepository
@@ -54,9 +66,21 @@ class FalkorMMPersister:
         )
         self._client.run_query(q, p)
 
-        # 2. Persist just this task's chain graph (anchor + nodes + edges).
+        # 2. Snapshot the chain graph with dataclass node values reduced to
+        #    dicts (codec-encodable), preserving graph_id / type_name / node_id.
+        snapshot = Graph(graph.name, role=graph.role, graph_id=graph.graph_id)
+        for node in graph.nodes.values():
+            value = asdict(node.value) if is_dataclass(node.value) else node.value
+            snapshot.add_node(
+                value,
+                node.type_name,
+                properties=dict(node.properties or {}),
+                node_id=node.node_id,
+            )
+
+        # 3. Persist just this task's chain snapshot (anchor + nodes).
         GraphRepository(self._client).persist(
-            graph, metagraph_id=metagraph.metagraph_id
+            snapshot, metagraph_id=metagraph.metagraph_id
         )
 
 
