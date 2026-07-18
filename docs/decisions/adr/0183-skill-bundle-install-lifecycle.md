@@ -259,3 +259,59 @@ rollback / staging overlay — no deregister surface exists and it fights the §
 upsert-repair grain; (c) write `failed` back to the record at activation — activation
 is per-process and the record is durable + Global, so a process-local resolution
 result must not mutate durable state.
+
+## Amendment §am-3 (2026-07-17) — skill-declared brain verbs (`[l4].slots` consumed)
+
+**Context.** `[l4].slots` (`SkillManifest.l4_slots`, `manifest.py:63`) is parsed from
+`[l4.slots]` (`manifest.py:165-168`) and persisted into the install record
+(`driver.py:143`: `"l4_slots": dict(manifest.l4_slots)`), but — before this amendment —
+read by nothing (repo-wide grep). Meanwhile `BrainREPL` dispatched verbs by attribute
+lookup (`getattr(self, f"_do_{verb}")`, `brain.py:70`), so an installed Skill could
+contribute no verb: its only route to a lifecycle was the generic `task` verb, which
+passes a bare `{"text": ...}` dict with `modality=None`. Since ADR-0197 am-1 an
+unregistered modality no longer falls back to the construction-bound profile — so from
+`mindsos brain` there was **no path to a Skill's lifecycle at all**.
+
+**Decision.** `[l4].slots` is consumed at boot. `boot_brain` (via the new
+`build_skill_l4_tables`) reads each installed (`status="installed"`) record's `l4_slots`
+and, in one filtered pass, builds (a) the L4 dispatcher's `{modality → Phase1Profile}`
+table (ADR-0197) and (b) the resident-brain verb table `{verb → slots}`, carried on
+`Stack.skill_verbs`. A slot declares a brain `verb`, an ingress `modality` (DataState
+IRI), and the Phase-1 capacity slots (`process`/`hint`/`derive_goal`/`map`/
+`resolve_target_datastate`). `BrainREPL` checks its builtin `_do_*` handlers first, then
+the skill-verb table; a skill verb builds a modality-stamped `InputEnvelope` and calls
+`run_lifecycle`. The verb is **data, not a callable** — the Skill injects no code into the
+REPL namespace; its behaviour is reached only through its registered L3 capacities via the
+dispatcher. This also removes the brain's need to construct a dispatcher with a
+construction-bound `phase1_profile=` (arc1 D1.13): the table is built from the manifests.
+
+**Filtering + collisions.** The one pass applies: a bundle in `Stack.activation.skipped`
+(§am-2) contributes nothing — its capacities are absent, so a profile bound to it would
+raise at first use; it is skipped and reported in `help`. A slot with no `modality`
+contributes no verb and no profile. Verb and modality collisions resolve **first-wins by
+install `seq`** (never silent last-wins). **Builtins always win**: the REPL drops any
+skill verb shadowed by a `_do_*` at construction — runtime-authoritative, which also
+catches builtins added *after* a Skill was installed. A `pending_confirmation` outcome
+(ADR-0196) is surfaced, not swallowed; a propagated `InterpretationError` is caught so a
+mis-registered skill cannot crash the REPL.
+
+**Deviation from the CR proposal.** The CR (D-1) proposed rejecting verb/builtin
+collisions at install-time in `preflight.py`. That was **not adopted**: the builtin verb
+set lives in `BrainREPL` (`mindsos_cli`), and `preflight` (`mindsos_server`) owning it
+would force a `server→cli` dependency or a drifting duplicate list — the exact drift the
+ADR-status gate exists to prevent. The runtime REPL shadow-guard is authoritative instead;
+an optional CLI-side install pre-check is deferred (no `preflight` change shipped).
+
+**Scope / status.** CLI + an L4 read of an already-persisted field. No new manifest field,
+no schema change, no record migration, no release-train version bump (stays `phase50`).
+Inert in a stock brain until a record declares `[l4.slots]` with a `modality`. Depends on
+§am-2 (`Stack.activation.skipped`). Cross-ref ADR-0195 (`Phase1Profile`), ADR-0197 + am-1
+(modality ingress), ADR-0196 (needs-input). Shipped on `mindsos_server/boot.py` +
+`mindsos_cli/commands/brain.py`; covered by `tests/resident_brain/test_skill_verbs.py`
+and `test_skill_verb_durable.py` (full gate 4237/0).
+
+**Alternatives rejected.** (a) preflight verb-conflict (D-1) — `server→cli` coupling /
+drift (above); (b) last-wins on collisions, mirroring `_declarations` — silently disables
+an already-working verb, inconsistent with preflight's first-wins IRI-collision precedent;
+(c) reach skills through `task` with a `{"text": ...}` dict — no `InputEnvelope`,
+unroutable modality since ADR-0197 am-1.
