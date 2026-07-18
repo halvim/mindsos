@@ -69,7 +69,7 @@ from mindsos_capacity.exceptions import WriteHandleNotWiredError
 from mindsos_capacity.write_outcome import WriteResult
 
 from .exceptions import MutationDisciplineError
-from .identifiers import _IRI_BUILDERS
+from .identifiers import DATASET_ROLE_PREFIX, _IRI_BUILDERS, dataset_node_iri
 from .validators import ValidationResult, _VALIDATORS_BY_ROLE
 
 if TYPE_CHECKING:
@@ -190,6 +190,17 @@ class KLWriteHandle:
         try:
             builder = _IRI_BUILDERS[(self.role, type_)]
         except KeyError as exc:
+            # ADR-0150 §am-9 — dataset roles are a parametric prefix, so
+            # they have no static ``_IRI_BUILDERS`` entry. Dispatch by
+            # prefix to the parametric ``dataset_node_iri`` (requires an
+            # ``entry_id`` content kwarg).
+            if self.role.startswith(DATASET_ROLE_PREFIX):
+                return dataset_node_iri(
+                    self._version,
+                    dataset_name=self.role[len(DATASET_ROLE_PREFIX):],
+                    node_type=type_,
+                    entry_id=str(content["entry_id"]),
+                )
             raise KeyError(
                 f"KLWriteHandle.mint_iri(role={self.role!r}, type_={type_!r}): "
                 f"no IRI builder registered for (role, NodeType). Phase 39 "

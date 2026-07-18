@@ -127,6 +127,7 @@ from .validators import ValidationResult
 from .write_handle import KLWriteHandle
 from .identifiers import (
     ALL_ROLES,
+    DATASET_ROLE_PREFIX,
     REF_TYPE_KEY,
     REF_TYPES,
     ROLE_CAPACITY_GAPS,
@@ -149,6 +150,7 @@ from .identifiers import (
     alignment_role,
     capacity_gap_iri,
     capacity_snapshot_iri,
+    dataset_node_iri,
     dolce_iri,
     framenet_fe_iri,
     framenet_frame_iri,
@@ -183,6 +185,7 @@ from .schemas import (
     build_capacity_gaps_schema,
     build_capacity_state_schema,
     build_concepts_schema,
+    build_dataset_schema,
     build_episodic_memories_schema,
     build_installed_skills_schema,
     build_learned_parameters_schema,
@@ -194,6 +197,7 @@ from .schemas import (
     build_promoted_pipelines_schema,
     build_subminds_schema,
     build_task_patterns_schema,
+    register_dataset_schema,
     schema_for_role,
 )
 
@@ -285,6 +289,11 @@ __all__ = [
     "build_installed_skills_schema",
     # feat/subminds builder (ADR-0150 §am-7).
     "build_subminds_schema",
+    # ADR-0150 §am-9 — dataset prefix.
+    "DATASET_ROLE_PREFIX",
+    "dataset_node_iri",
+    "build_dataset_schema",
+    "register_dataset_schema",
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",
     # ── L2-private vocabulary (Phase 43 — ADR-0153 §am-1 + ADR-0151) ─
