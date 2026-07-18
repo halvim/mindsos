@@ -10,25 +10,26 @@ testable headless. Verbs take Linux-style flags (see ``_replparse``); every
 verb has a man page shown by ``<verb> -h`` (see ``_manpages``). ``loop()`` is
 the thin stdin front end.
 
-Slice 1: read/probe surface + single-capacity ``invoke``. ``execute`` and
-pipeline-invoke are Slice 2, so ``task`` is still here. Create options
-(``--new`` / ``--seq`` / ``--sub`` / ``--prototype``) are placeholders pending
-the skill-acquisition process (SAP).
+Slice 1: read/probe surface + single-capacity ``invoke``. Slice 2 adds
+``execute`` (a skill's declared entry pipeline); ``task`` (the generic,
+modality-less lifecycle) is retained. Installed Skills also contribute their
+own verbs via ``[l4.slots]`` (ADR-0183 §am-3): a skill verb builds a
+modality-stamped ``InputEnvelope`` and drives ``run_lifecycle`` through the L4
+dispatcher — builtins always win a name clash, so a shadowed skill verb is
+dropped at construction. Create options (``--new`` / ``--seq`` / ``--sub`` /
+``--prototype``) are placeholders pending the skill-acquisition process (SAP).
 """
 
 from __future__ import annotations
 
 import fnmatch
 import json
-import logging
 from typing import Any, Dict, List, Optional, Tuple
 
 import typer
 
 from ._manpages import MANPAGES
 from ._replparse import SCOPE, parse, scope_of, tokenize, wants_help
-
-log = logging.getLogger(__name__)
 
 brain_app = typer.Typer(
     name="brain",
@@ -61,21 +62,6 @@ class BrainREPL:
 
     def __init__(self, stack: Any) -> None:
         self.stack = stack
-        # ADR-0183 §am-3 — installed-skill verb table. Builtins WIN: a skill
-        # verb colliding with a ``_do_<verb>`` method is unreachable, so it is
-        # dropped here (runtime-authoritative; catches builtins added AFTER a
-        # skill was installed, which a one-time install preflight cannot).
-        self._skill_verbs: Dict[str, Dict[str, Any]] = {}
-        self._shadowed: List[str] = []
-        for verb, slots in getattr(stack, "skill_verbs", {}).items():
-            if getattr(self, f"_do_{verb}", None) is not None:
-                self._shadowed.append(verb)
-                log.warning(
-                    "brain: skill verb %r shadowed by a builtin; unreachable.",
-                    verb,
-                )
-                continue
-            self._skill_verbs[verb] = slots
 
     def dispatch(self, line: str) -> str:
         """Execute one verb line; return the rendered output."""
@@ -86,16 +72,11 @@ class BrainREPL:
             return ""
         verb, args = tokens[0], tokens[1:]
         handler = getattr(self, f"_do_{verb}", None)
-        if handler is not None:
-            if wants_help(args):
-                return MANPAGES.get(verb, f"(no manual page for {verb!r})")
-            return handler(args)
-        slots = self._skill_verbs.get(verb)
-        if slots is not None:
-            if wants_help(args):
-                return self._skill_verb_help(verb, slots)
-            return self._run_skill_verb(slots, args)
-        return f"unknown verb: {verb!r} (try 'help')"
+        if handler is None:
+            return f"unknown verb: {verb!r} (try 'help')"
+        if wants_help(args):
+            return MANPAGES.get(verb, f"(no manual page for {verb!r})")
+        return handler(args)
 
     # ── helpers ───────────────────────────────────────────────────────
 
@@ -635,51 +616,6 @@ class BrainREPL:
             return f"execute failed: {rerr}"
         return f"execute[{name}]: {target} = {state.get(target)!r}"
 
-    # ── skill-declared verbs (ADR-0183 §am-3) ─────────────────────────
-
-    def _run_skill_verb(self, slots: Dict[str, Any], args: List[str]) -> str:
-        """Run an installed skill's Phase-1 ingress lifecycle: build a
-        modality-stamped :class:`InputEnvelope` and drive ``run_lifecycle``.
-
-        ``run_lifecycle`` PROPAGATES ``InterpretationError`` (unroutable /
-        mis-wired modality, unresolved map target) — the orchestrator has no
-        try/except around ``phase_1.run``, so it does NOT become a
-        ``dont_know``. Mirror the ``_do_invoke`` guard so a mis-registered
-        skill cannot crash the REPL.
-        """
-        if not args:
-            return (
-                f"usage: {slots.get('verb', '?')} <input>   "
-                f"(modality {slots.get('modality')!r})"
-            )
-        from mindsos_intelligence.ingress import InputEnvelope
-
-        env = InputEnvelope(
-            value=" ".join(args),
-            modality=slots["modality"],
-            source="brain-cli",
-        )
-        try:
-            outcome = self.stack.orch.run_lifecycle(env)
-        except Exception as e:  # noqa: BLE001 — REPL guard, _do_invoke precedent
-            return f"skill error: {type(e).__name__}: {e}"
-        # ADR-0196 — the skill asked the user; surface it, don't swallow it
-        # behind a bare status string.
-        if outcome.status == "pending_confirmation":
-            return f"needs input: {outcome.pending_confirmation}"
-        return outcome.status
-
-    @staticmethod
-    def _skill_verb_help(verb: str, slots: Dict[str, Any]) -> str:
-        return "\n".join(
-            [
-                f"{verb} <input> — run this skill's Phase-1 ingress lifecycle",
-                f"  modality: {slots.get('modality')}",
-                f"  process:  {slots.get('process')}",
-                f"  map:      {slots.get('map')}",
-            ]
-        )
-
     # ── task + persistence verbs ──────────────────────────────────────
 
     def _do_task(self, args: List[str]) -> str:
@@ -703,28 +639,7 @@ class BrainREPL:
         return "run-state wiped" if existed else "(no Local to reset)"
 
     def _do_help(self, args: List[str]) -> str:
-        out = [_HELP]
-        if self._skill_verbs:
-            out.append("")
-            out.append("installed skill verbs:")
-            out += [
-                f"  {v} <input>    -> {self._skill_verbs[v].get('modality')}"
-                for v in sorted(self._skill_verbs)
-            ]
-        if self._shadowed:
-            out.append("")
-            out.append(
-                "shadowed by builtins (unreachable): "
-                + ", ".join(sorted(self._shadowed))
-            )
-        skipped = getattr(getattr(self.stack, "activation", None), "skipped", ())
-        if skipped:
-            out.append("")
-            out.append(
-                "skills not activated (verbs unavailable): "
-                + ", ".join(sorted(b for b, _ in skipped))
-            )
-        return "\n".join(out)
+        return _HELP
 
     def _do_quit(self, args: List[str]) -> str:
         return ""
@@ -733,13 +648,6 @@ class BrainREPL:
 def loop(repl: BrainREPL) -> None:
     """Read-eval-print until EOF or ``quit``."""
     typer.echo("MindsOS resident brain. Type 'help', 'quit' to exit.")
-    n_skill = len(getattr(repl, "_skill_verbs", {}))
-    n_bad = len(getattr(repl, "_shadowed", []))
-    if n_skill or n_bad:
-        typer.echo(
-            f"  {n_skill} skill verb(s) available"
-            + (f", {n_bad} shadowed (see 'help')" if n_bad else "")
-        )
     while True:
         try:
             line = input("brain> ").strip()
