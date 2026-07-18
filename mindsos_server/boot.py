@@ -21,8 +21,8 @@ The caller owns the ``client`` lifecycle (open / close) per Phase 07 P4 A;
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import Any, Optional
+from dataclasses import dataclass, field
+from typing import Any, Mapping, Optional
 
 log = logging.getLogger(__name__)
 
@@ -44,6 +44,11 @@ class Stack:
     #: activates no installed skills). Its ``skipped`` roster names any
     #: bundle a REPL/operator surface should report as unactivated.
     activation: Any = None
+    #: {verb -> l4_slots} for installed-skill brain verbs (ADR-0183 §am-3).
+    #: Built at boot from the installed records (durable path; empty on the
+    #: ephemeral path). PRE-shadow — the REPL drops any verb colliding with a
+    #: builtin ``_do_*`` at construction (builtins win).
+    skill_verbs: Mapping[str, Any] = field(default_factory=dict)
 
     def global_view(self) -> Any:
         """The read-only bipartite probe surface over the Global L3."""
@@ -97,6 +102,66 @@ def install_brain_builtins(cl: Any) -> None:
     install_text_capacities(cl)
     install_dream_capacities(cl)
     reset_v0_verdicts()
+
+
+def build_skill_l4_tables(records, skipped_bundles):
+    """``(modality_profiles, skill_verbs, drops)`` from installed records'
+    ``l4_slots`` (ADR-0183 §am-3).
+
+    ``records`` — installed ``SkillRecordView``s, seq-ascending (install
+        order == first-wins).
+    ``skipped_bundles`` — bundle names in ``ActivationReport.skipped`` this
+        process; their L3 capacities are absent, so binding a Phase1Profile
+        against them would raise in ``phase_1.interpret`` at first use.
+        Excluded here (ADR-0197 am-1 / CR D-4).
+
+    Rules:
+      * bundle in ``skipped_bundles``        → contributes nothing, reported.
+      * slot dict with no ``modality``       → no verb, no profile (D-3).
+      * ``modality`` already claimed (earlier seq) → first-wins, dropped +
+        reported (no silent last-wins overwrite).
+      * ``verb`` already claimed (earlier seq)     → first-wins, dropped +
+        reported (preflight is the primary verb guard; this is defence-in-
+        depth).
+
+    Returns ``(modality_profiles, skill_verbs, drops)`` where ``drops`` is a
+    list of ``(bundle_name, verb, reason)`` for anything excluded (surfaced
+    by the REPL ``help``).
+    """
+    from mindsos_intelligence.phase1_profile import Phase1Profile
+
+    modality_profiles: dict = {}
+    skill_verbs: dict = {}
+    drops: list = []
+    for r in records:  # seq-ascending == install order == first-wins
+        if r.bundle_name in skipped_bundles:
+            drops.append(
+                (r.bundle_name, None, "bundle not activated in this process")
+            )
+            continue
+        slots = r.value.get("l4_slots") or {}
+        modality = slots.get("modality")
+        if not modality:
+            continue  # D-3: a slot with no modality contributes nothing
+        verb = slots.get("verb")
+        if verb and verb in skill_verbs:
+            drops.append((r.bundle_name, verb, f"verb {verb!r} already claimed"))
+            continue
+        if modality in modality_profiles:
+            drops.append(
+                (r.bundle_name, verb, f"modality {modality!r} already claimed")
+            )
+            continue
+        modality_profiles[modality] = Phase1Profile(
+            process=slots.get("process"),
+            hint=slots.get("hint"),
+            derive_goal=slots.get("derive_goal"),
+            map=slots.get("map"),
+            resolve_target_datastate=slots.get("resolve_target_datastate"),
+        )
+        if verb:
+            skill_verbs[verb] = dict(slots)
+    return modality_profiles, skill_verbs, drops
 
 
 def boot_brain(
@@ -166,8 +231,38 @@ def boot_brain(
     # (ADR-0183 §am-2 extended to reactivation). Skips are logged loudly.
     boot_local(cl, kl, persister, user, session=session, strict=False)
 
+    # ── skill L4 bindings (ADR-0183 §am-3): the dispatcher's modality->
+    #    Phase1Profile table AND the REPL's verb->slots table, built in ONE
+    #    filtered pass so both share the skipped + has-modality + first-wins
+    #    filter. Empty on the ephemeral path (no installed-skills graph). ──
+    from mindsos_server.skills.records import latest_records_by_bundle
+
+    installed_records = sorted(
+        (
+            r
+            for r in latest_records_by_bundle(kl).values()
+            if r.status == "installed"
+        ),
+        key=lambda r: r.seq,
+    )
+    skipped_bundles = {
+        name for name, _ in (activation.skipped if activation is not None else ())
+    }
+    modality_profiles, skill_verbs, skill_drops = build_skill_l4_tables(
+        installed_records, skipped_bundles
+    )
+    for _bundle, _verb, _why in skill_drops:
+        log.warning(
+            "boot: skill verb/profile dropped for %r (verb=%r): %s",
+            _bundle,
+            _verb,
+            _why,
+        )
+
     mm = MentalModel(session_id=session.session_id, user_id=user)
-    dispatcher = L4Dispatcher(cl, session=session, kl=kl)
+    dispatcher = L4Dispatcher(
+        cl, session=session, kl=kl, modality_profiles=modality_profiles
+    )
     # DQ-8 / CR#4 — persist per-task chain graphs so an Episode's mm_root_ref
     # resolves. Durable path only; the ephemeral path (client is None) stays
     # live-only.
@@ -182,7 +277,13 @@ def boot_brain(
     return Stack(
         kl, cl, mm, dispatcher, orch, session, persister, user,
         activation=activation,
+        skill_verbs=skill_verbs,
     )
 
 
-__all__ = ["Stack", "boot_brain", "install_brain_builtins"]
+__all__ = [
+    "Stack",
+    "boot_brain",
+    "install_brain_builtins",
+    "build_skill_l4_tables",
+]
