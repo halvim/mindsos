@@ -110,6 +110,18 @@ _VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _FRAGMENT_RE = re.compile(r"^[^\s]+$")  # anything non-whitespace
 _USER_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")  # PB-11
 
+#: Local-only parametric role prefix per ADR-0150 §amendment-9. One graph
+#: per dataset instance (``dataset:arc1``, ``dataset:arc3``). Unlike the
+#: ``alignment:`` prefix (Global-only, single parametric schema), dataset
+#: schemas are REGISTERED per instance (shapes differ) — see
+#: ``mindsos_knowledge.schemas.register_dataset_schema``.
+DATASET_ROLE_PREFIX = "dataset:"
+
+#: Dataset instance name charset. Deliberately EXCLUDES ``-`` (and ``.``)
+#: so ``dataset-<name>-<version>`` is unambiguously splittable on the first
+#: hyphen at parse time (``_VERSION_RE`` permits ``-``/``.`` in versions).
+_DATASET_NAME_RE = re.compile(r"^[A-Za-z0-9_]+$")
+
 
 def _ensure_version(version: object) -> str:
     if not isinstance(version, str) or not version or not _VERSION_RE.match(version):
@@ -344,6 +356,30 @@ def learned_parameter_iri(version: str, parameter_id: str) -> str:
     v = _ensure_version(version)
     pid = _normalise_fragment(parameter_id)
     return f"learned-parameters-{v}:parameter:{pid}"
+
+
+def dataset_node_iri(
+    version: str, dataset_name: str, node_type: str, entry_id: str
+) -> str:
+    """Dataset corpus node (Local-only; ADR-0150 §amendment-9):
+    ``dataset-<name>-<v>:<kind>:<entry_id>``.
+
+    ``<name>`` is the dataset instance (``arc1``); ``<kind>`` is the
+    lower-cased NodeType (``task`` / ``game``); ``entry_id`` is the
+    per-corpus stable id (e.g. the ARC id8). Mirrors the
+    ``learned-parameters-<v>:parameter:<id>`` shape. ``dataset_name`` is
+    restricted to :data:`_DATASET_NAME_RE` (no ``-``) so the parametric
+    ``dataset-<name>-<version>`` head splits unambiguously at parse time.
+    """
+    v = _ensure_version(version)
+    if not isinstance(dataset_name, str) or not _DATASET_NAME_RE.match(dataset_name):
+        raise RefFormatError(
+            f"Invalid dataset name {dataset_name!r} — must match "
+            f"{_DATASET_NAME_RE.pattern} (no '-'; ADR-0150 §am-9)"
+        )
+    nt = _normalise_fragment(node_type).lower()
+    eid = _normalise_fragment(entry_id)
+    return f"dataset-{dataset_name}-{v}:{nt}:{eid}"
 
 
 def skill_install_record_iri(
@@ -604,6 +640,33 @@ def parse_iri(iri: object) -> ParsedIri:
         raise RefFormatError(
             f"Not a version-qualified IRI: {iri!r} — expected "
             f"'<source>-<version>:<body>' (e.g. 'dolce-dul-4.0:PhysicalObject')"
+        )
+
+    # Parametric ``dataset-<name>-<version>:<body>`` branch (ADR-0150
+    # §amendment-9). No static ``_PREFIXES`` entry can carry the variable
+    # ``<name>``; the head splits on the FIRST '-' after ``dataset-``
+    # because ``_DATASET_NAME_RE`` forbids '-' in names. ``role`` is the
+    # parametric ``dataset:<name>`` (not a member of ``ALL_ROLES``).
+    if iri.startswith("dataset-"):
+        head, sep, rest = iri.partition(":")
+        if not sep:
+            raise RefFormatError(
+                f"dataset IRI {iri!r} missing ':' body separator"
+            )
+        inner = head[len("dataset-"):]  # "<name>-<version>"
+        name, dash, version_part = inner.partition("-")
+        if not dash or not name or not version_part:
+            raise RefFormatError(
+                f"dataset IRI {iri!r} is not "
+                f"'dataset-<name>-<version>:<body>'"
+            )
+        return ParsedIri(
+            role=f"{DATASET_ROLE_PREFIX}{name}",
+            source=f"dataset-{name}",
+            version=version_part,
+            kind=None,
+            body=rest,
+            full=iri,
         )
 
     # Identify source prefix.

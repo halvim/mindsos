@@ -50,6 +50,7 @@ from mindsos_core.models.metagraph import Metagraph
 from .exceptions import BootstrapCycleError, KnowledgeError, UnknownRoleError
 from .identifiers import (
     ALL_ROLES,
+    DATASET_ROLE_PREFIX,
     ROLE_CAPACITY_GAPS,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
@@ -302,6 +303,13 @@ def ensure_global_role_graph(
             f"ensure_local_role_graph instead."
         )
 
+    # Step 1b — dataset prefix is Local-only (ADR-0150 §am-9).
+    if role.startswith(DATASET_ROLE_PREFIX):
+        raise KnowledgeError(
+            f"Role {role!r} is a dataset role; dataset graphs are Local-only "
+            f"per ADR-0150 §am-9. Use ensure_local_role_graph instead."
+        )
+
     # Step 2 — accept alignment-prefixed branch (per ADR-0150
     # §amendment-1, alignment is Global-only at v1).
     if role.startswith(_ALIGNMENT_PREFIX):
@@ -406,13 +414,19 @@ def ensure_local_role_graph(
         schema = build_learned_parameters_schema(strict=False, scope="local")
     elif role in _LOCAL_NAMED_ROLES:
         schema = schema_for_role(role, strict=False)
+    elif role.startswith(DATASET_ROLE_PREFIX):
+        # ADR-0150 §am-9 — dataset prefix (Local-only). Schema comes from
+        # the per-instance registry via ``schema_for_role``; an
+        # unregistered dataset role raises ``UnknownRoleError`` there.
+        schema = schema_for_role(role, strict=False)
     else:
         # Step 4 — unknown role.
         valid = sorted(ALL_ROLES)
         raise UnknownRoleError(
             f"Unknown role {role!r}. Valid roles: {valid}. "
             f"For alignment graphs, use the 'alignment:<role_a>:<role_b>' "
-            f"form."
+            f"form. For dataset graphs, use the 'dataset:<name>' form and "
+            f"register the schema first (ADR-0150 §am-9)."
         )
 
     # Step 5 — idempotent lookup.

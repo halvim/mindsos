@@ -35,6 +35,7 @@ from ._base import Discipline, L2Schema, StorageMode
 from ..exceptions import UnknownRoleError
 from ..identifiers import (
     ALL_ROLES,
+    DATASET_ROLE_PREFIX,
     ROLE_CAPACITY_GAPS,
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
@@ -51,6 +52,7 @@ from ..identifiers import (
     ROLE_TASK_PATTERNS,
 )
 from .alignment import build_alignment_schema
+from .dataset import build_dataset_schema
 from .capacity_gaps import build_capacity_gaps_schema
 from .capacity_state import build_capacity_state_schema
 from .concepts import build_concepts_schema
@@ -116,6 +118,21 @@ def schema_for_role(role: str, strict: bool = False) -> Schema:
     if role.startswith("alignment:"):
         return build_alignment_schema(strict=strict)
 
+    # ADR-0150 §am-9 — dataset prefix. Unlike alignment there is no single
+    # parametric builder (instances differ in shape), so the schema is
+    # looked up from the per-instance registry, populated by the owning
+    # brain via ``register_dataset_schema``. ``strict`` is fixed at
+    # registration time and ignored here. Miss ⇒ UnknownRoleError.
+    if role.startswith(DATASET_ROLE_PREFIX):
+        schema = _DATASET_SCHEMA_REGISTRY.get(role)
+        if schema is None:
+            raise UnknownRoleError(
+                f"Unknown dataset role {role!r}: no schema registered. Call "
+                f"register_dataset_schema({role!r}, schema) before use "
+                f"(ADR-0150 §am-9)."
+            )
+        return schema
+
     builder = _ROLE_SCHEMA_BUILDERS.get(role)
     if builder is None:
         valid = sorted(ALL_ROLES)
@@ -124,6 +141,31 @@ def schema_for_role(role: str, strict: bool = False) -> Schema:
             f"For alignment graphs, use the 'alignment:<role_a>:<role_b>' form."
         )
     return builder(strict=strict)
+
+
+#: Per-instance dataset schema registry (ADR-0150 §am-9). Keyed on the
+#: full role ``dataset:<name>``; populated at import time by the owning
+#: brain. Process-local (schemas are never persisted); re-registered each
+#: process, like capacities. Parallels ``_ROLE_SCHEMA_BUILDERS`` but holds
+#: built ``Schema`` instances (not builders) because instances differ in
+#: shape and are authored by the brain, not by a fixed core builder.
+_DATASET_SCHEMA_REGISTRY: dict[str, Schema] = {}
+
+
+def register_dataset_schema(name: str, schema: Schema) -> None:
+    """Register the schema for a dataset instance role ``dataset:<name>``.
+
+    ``name`` may be the bare instance (``"arc1"``) or the full role
+    (``"dataset:arc1"``). Idempotent last-write-wins. Call before any
+    ``ensure_local_role_graph("dataset:<name>")`` /
+    ``schema_for_role("dataset:<name>")`` in this process (ADR-0150 §am-9).
+    """
+    role = (
+        name
+        if name.startswith(DATASET_ROLE_PREFIX)
+        else f"{DATASET_ROLE_PREFIX}{name}"
+    )
+    _DATASET_SCHEMA_REGISTRY[role] = schema
 
 
 __all__ = [
@@ -149,6 +191,10 @@ __all__ = [
     # Dispatch surface.
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",
+    # ADR-0150 §am-9 — dataset prefix registry.
+    "register_dataset_schema",
+    "_DATASET_SCHEMA_REGISTRY",
+    "build_dataset_schema",
     # L2-private vocabulary (Phase 43 — ADR-0153 §am-1 + ADR-0151).
     "Discipline",
     "L2Schema",
