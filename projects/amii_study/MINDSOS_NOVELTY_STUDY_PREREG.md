@@ -124,3 +124,66 @@ Set the *(calibrate)* numbers from the Phase-2 pilot on **dev only**, then freez
 ## 11. Prior-art check (run before Phase 4 — do not skip)
 
 Confirm no existing method already reports this *joint* result in PQ or a comparable domain: search neuro-symbolic / compositional continual learning, few-shot class-incremental learning (FSCIL), and PQ-classification continual-learning papers. If someone already owns the four-axis joint claim, narrow to the axis that is still open. Findings recorded here before building.
+
+---
+
+## 12. Implementation & methodology decisions (2026-07-19, pre-freeze)
+
+Refinements settled while building the rig (Phase 1). They lock *how* the
+pre-registered axes are measured; recorded here before freeze (Phase 3) and
+before any judged run.
+
+**Input.** Raw 1-D waveform for every arm — no hand-computed features handed to
+any model. Removes the textbook lookup shortcut, makes the LLM a fair-but-hard
+comparator, and raises the bar equally for MindsOS (its leaves must learn
+features from signal).
+
+**Scoring — one joint test with confusable negatives.** Arms are scored on a
+single frozen joint test pooling all concepts + clean, so a negative for any
+class may carry a *different* disturbance. Discrimination between confusable
+disturbances (sag vs swell, harmonic vs transient) is measured, not just
+presence-vs-silence. Per-class F1 on this joint test is the atomic score.
+
+**A3 forgetting (BWT).** Per-class F1 trajectory across increments; BWT = mean
+over taught primitives of (final F1 − F1 right after that primitive's first
+increment). Negative = forgetting. Shared primitives are re-exposed in later
+combination increments by design — this lowers apparent forgetting for a
+replay-like learner and is reported honestly.
+
+**A4 transfer.** Measured on the never-trained held-out combinations, two ways:
+(i) continual zero-shot composition rate — both constituent classes fire on a
+held-out combo's examples after the stream; (ii) [run-phase] labels-to-competence
+to learn a held-out combination *with* pre-learned primitives vs *from scratch*.
+The earlier forgetting-matrix FWT average was dropped — it conflated primitive
+increments where transfer is impossible by construction.
+
+**Train/test split.** i.i.d. instances (same parameter distribution, independent
+RNG, no shared instances) with the **SNR band as a pre-registered robustness
+variable** (train {20,30,40} dB, test {25,35,45,50} dB). Deliberately NOT
+disjoint parameter ranges — that tests extrapolation, a different and harder
+claim than the generalization asserted.
+
+**Operating point.** Per-class decision thresholds selected on a DEV set (never
+the test), maximizing F1; fixed-0.5 is used only for the unscored harness
+trajectory.
+
+**Reproducibility.** ≥5 seeds, mean ± 95% CI (Student-t), paired Wilcoxon for
+significance; deterministic seeding of all arms (incl. torch). No single-seed
+number is reported.
+
+**Unscored until convergence.** Every baseline is tuned to convergence with an
+equal engineering budget before any number counts. The naive 1-D CNN currently
+underfits harmonic/transient — it is harness plumbing, not a scored baseline,
+until it converges (Phase-2 pilot).
+
+**Still open — resolve before freeze (Phase 3):**
+- Precise definition of the **"MindsOS − structure" ablation** (ATTR is
+  load-bearing) — provisionally: same learned leaves, compositional typing
+  replaced by a single flat classifier with no primitive reuse.
+- The **supervision ledger** — enumerate, per arm, every human prior supplied
+  (MindsOS: typed primitive definitions + parametric priors; baselines:
+  architecture, hyperparameters, pretraining). Published with the result.
+- **IEEE-1159 fidelity** — verify the generator's disturbance parameter ranges
+  against IEEE-1159 before freezing.
+- **Competence threshold** (per-class F1 ≥ *(calibrate)*) set on the Phase-2 dev
+  pilot, then frozen.
