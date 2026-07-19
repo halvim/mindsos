@@ -276,6 +276,116 @@ def parse_datastate_iri(iri: str) -> str:
     return iri[len("datastate:") :]
 
 
+# ── Instance-IRI vocabulary (ADR-0201 — capacity_mm instance layer) ─────
+#
+# capacity_mm holds per-invocation *instances* of L3 DataState / Capacity
+# *types*. An instance IRI is deliberately NOT a type IRI: it carries a
+# task-scoped ``#`` fragment that is OUT of ``_DATASTATE_NAME_RE`` /
+# ``_CAPACITY_NAME_RE``, so it can never be produced by or registered
+# through :func:`datastate_iri` / :func:`capacity_iri` — a structural
+# type-vs-instance guard (ADR-0201 §Minting), not an accident. Instances
+# keep the ``datastate:`` / ``capacity:`` prefix ONLY so ``sub_mm_for_iri``
+# routes them by prefix; the type is recovered from the instance node's
+# ``datastate_type`` / ``capacity`` property, never by parsing the IRI.
+#
+# These builders compose the node_id directly and MUST NOT call the type
+# builders. Instances are live-only (never persisted or registered).
+
+#: Separator between a type IRI and its per-invocation instance fragment.
+#: Out-of-charset by design → an instance IRI is unregisterable as a type.
+_INSTANCE_SEP = "#"
+
+_PIPELINERUN_PREFIX = "pipelinerun:"
+
+#: ``type_name`` markers carried by capacity_mm instance nodes. Deliberately
+#: NOT members of :data:`NODE_TYPES`: those are the Core-schema type-node
+#: kinds, whereas instances are live-only and materialise with a free-form
+#: ``type_name`` (``Graph.add_node`` does not constrain node ``type_name``).
+NODE_TYPE_DATASTATE_INSTANCE = "DataStateInstance"
+NODE_TYPE_CAPACITY_INSTANCE = "CapacityInstance"
+
+#: Property key on an instance node holding its *type* IRI, so the type is
+#: recoverable without parsing the instance IRI (feeds the writer's
+#: run-local type→instance index; ADR-0201 §Minting).
+PROP_DATASTATE_INSTANCE_TYPE = "datastate_type"
+PROP_CAPACITY_INSTANCE_TYPE = "capacity"
+
+
+def _require_nonempty(value, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{label} must be a non-empty string, got {value!r}")
+    return value
+
+
+def _sanitize_run_ref(pipeline_run_ref: str) -> str:
+    """Reduce a ``pipeline_run_ref`` to a fragment-safe token: strip the
+    ``pipelinerun:`` prefix and replace any remaining ``:`` with ``-`` (a
+    raw colon would corrupt the instance fragment). ADR-0201 §Minting."""
+    _require_nonempty(pipeline_run_ref, "pipeline_run_ref")
+    ref = pipeline_run_ref
+    if ref.startswith(_PIPELINERUN_PREFIX):
+        ref = ref[len(_PIPELINERUN_PREFIX) :]
+    return ref.replace(":", "-")
+
+
+def _datastate_type_name(type_iri: str) -> str:
+    """The bare DataState type name for ``type_iri`` (accepts a full
+    ``datastate:<name>`` IRI or a bare ``<name>``)."""
+    _require_nonempty(type_iri, "type_iri")
+    if type_iri.startswith("datastate:"):
+        return type_iri[len("datastate:") :]
+    return type_iri
+
+
+def _capacity_type_name(cap_iri: str) -> str:
+    """The ``<category>:<name>`` capacity type token for ``cap_iri`` (accepts
+    a full ``capacity:<category>:<name>`` IRI or a bare ``<category>:<name>``)."""
+    _require_nonempty(cap_iri, "cap_iri")
+    if cap_iri.startswith("capacity:"):
+        return cap_iri[len("capacity:") :]
+    return cap_iri
+
+
+def datastate_instance_iri(
+    type_iri: str, task_id: str, pipeline_run_ref: str, seq: int
+) -> str:
+    """Return a per-invocation DataStateInstance node IRI (ADR-0201).
+
+    Format: ``datastate:<type>#<task_id>.<run>.<seq>`` where ``<run>`` is
+    the sanitized ``pipeline_run_ref``. Never routed through
+    :func:`datastate_iri` — the ``#`` fragment is out of the type charset.
+    """
+    name = _datastate_type_name(type_iri)
+    _require_nonempty(task_id, "task_id")
+    run = _sanitize_run_ref(pipeline_run_ref)
+    return f"datastate:{name}{_INSTANCE_SEP}{task_id}.{run}.{int(seq)}"
+
+
+def capacity_instance_iri(
+    cap_iri: str, task_id: str, pipeline_run_ref: str, seq: int
+) -> str:
+    """Return a per-invocation CapacityInstance node IRI (ADR-0201).
+
+    Format: ``capacity:<category>:<name>#<task_id>.<run>.<seq>``.
+    """
+    name = _capacity_type_name(cap_iri)
+    _require_nonempty(task_id, "task_id")
+    run = _sanitize_run_ref(pipeline_run_ref)
+    return f"capacity:{name}{_INSTANCE_SEP}{task_id}.{run}.{int(seq)}"
+
+
+def datastate_instance_root_iri(type_iri: str, task_id: str) -> str:
+    """Return the grounding-DAG root DataStateInstance IRI (ADR-0201 DQ-1):
+    the distinguished ``raw_task`` ingress for a task.
+
+    Format: ``datastate:<type>#<task_id>.root`` — no pipeline run / seq;
+    the root is task-level, minted once before any pipeline run.
+    """
+    name = _datastate_type_name(type_iri)
+    _require_nonempty(task_id, "task_id")
+    return f"datastate:{name}{_INSTANCE_SEP}{task_id}.root"
+
+
 REALM_CORE = "core"
 REALM_MARKER = "marker"
 REALM_BRIDGE = "bridge"
@@ -401,6 +511,14 @@ __all__ = [
     "datastate_iri",
     "parse_capacity_iri",
     "parse_datastate_iri",
+    # Instance vocabulary (ADR-0201 — capacity_mm instance layer)
+    "NODE_TYPE_DATASTATE_INSTANCE",
+    "NODE_TYPE_CAPACITY_INSTANCE",
+    "PROP_DATASTATE_INSTANCE_TYPE",
+    "PROP_CAPACITY_INSTANCE_TYPE",
+    "datastate_instance_iri",
+    "capacity_instance_iri",
+    "datastate_instance_root_iri",
     # Ref keys
     "REF_GLOBAL_CAPACITY",
     "REF_GLOBAL_DATASTATE",
