@@ -76,10 +76,6 @@ Two artifacts, built fresh at the end:
 - a **live-talk demo** presenting study results, with live compose +
   teach-without-forgetting as *illustration* (not proof).
 
-Superseded, to be removed in the consolidation commit:
-`mindsos_ondevice_walkthrough.ipynb`, `MINDSOS_AMII_DEMO.md`,
-`ondevice_profile.py`, and the `amii_demo/` pressure→vent core + its guard test.
-
 ## Progress — Phase 1 (built + Linux-validated on `chore/amii-study`)
 In `projects/amii_study/study/`:
 - `generator.py` — PQ raw-waveform generator (14 tests)
