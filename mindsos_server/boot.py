@@ -49,6 +49,12 @@ class Stack:
     #: ephemeral path). PRE-shadow — the REPL drops any verb colliding with a
     #: builtin ``_do_*`` at construction (builtins win).
     skill_verbs: Mapping[str, Any] = field(default_factory=dict)
+    #: ADR-0183 §am-4 — ``(bundle_name, reason)`` for each installed skill
+    #: whose first-run Local-bootstrap importer failed at boot (unresolvable
+    #: or raised). Empty on success / ephemeral path. A REPL/operator surface
+    #: should report these as "reimport needed"; the next boot re-attempts
+    #: (the importer self-guards on completeness).
+    corpus_imports_failed: tuple = ()
 
     def global_view(self) -> Any:
         """The read-only bipartite probe surface over the Global L3."""
@@ -259,6 +265,48 @@ def boot_brain(
             _why,
         )
 
+    # ── first-run Local-bootstrap importers (ADR-0183 §am-4): seed a
+    #    brain-owned Local corpus (e.g. a ``dataset:<name>`` graph) once, on
+    #    the durable path. Best-effort like activation (§am-2): an importer
+    #    that is unresolvable or raises is logged + recorded on
+    #    ``Stack.corpus_imports_failed``, never bricks boot. The next boot
+    #    re-attempts — the importer self-guards on completeness, so a warm
+    #    Local is a cheap no-op (no corpus re-read). Called with
+    #    ``(cl, kl, session)`` so it can write its own Local (the L3 ``fn(cl)``
+    #    installer cannot — it has no ``kl``). ──
+    corpus_imports_failed: list = []
+    if client is not None:
+        from mindsos_server.skills.entry_points import (
+            EntryPointError,
+            resolve_entry_point,
+        )
+
+        for _rec in installed_records:
+            _spec = _rec.local_bootstrap_importer
+            if not _spec or _rec.bundle_name in skipped_bundles:
+                continue
+            try:
+                _fn = resolve_entry_point(_spec)
+                _fn(cl, kl, session)
+            except EntryPointError as _exc:
+                log.warning(
+                    "boot: skill %r local-bootstrap importer %r not resolvable "
+                    "(%s); corpus not seeded — reimport needed.",
+                    _rec.bundle_name, _spec, _exc,
+                )
+                corpus_imports_failed.append(
+                    (_rec.bundle_name, f"unresolved: {_exc}")
+                )
+            except Exception as _exc:  # noqa: BLE001 — resilience contract
+                log.warning(
+                    "boot: skill %r local-bootstrap importer %r raised (%s: %s); "
+                    "corpus may be incomplete — reimport needed.",
+                    _rec.bundle_name, _spec, _exc.__class__.__name__, _exc,
+                )
+                corpus_imports_failed.append(
+                    (_rec.bundle_name, f"import-failed: {_exc}")
+                )
+
     mm = MentalModel(session_id=session.session_id, user_id=user)
     dispatcher = L4Dispatcher(
         cl, session=session, kl=kl, modality_profiles=modality_profiles
@@ -278,6 +326,7 @@ def boot_brain(
         kl, cl, mm, dispatcher, orch, session, persister, user,
         activation=activation,
         skill_verbs=skill_verbs,
+        corpus_imports_failed=tuple(corpus_imports_failed),
     )
 
 
