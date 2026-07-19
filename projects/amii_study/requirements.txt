@@ -1,0 +1,5 @@
+# amii_study project env (isolated — never installed into core).
+numpy
+pytest
+torch
+# Avalanche (CL baselines) added when we reach the CL zoo.
