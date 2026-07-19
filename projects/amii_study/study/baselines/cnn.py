@@ -46,7 +46,9 @@ def _standardize(X):
 
 class CNNArm:
     def __init__(self, n_classes: int = N_CLASSES, epochs: int = 40, lr: float = 3e-3,
-                 batch_size: int = 32, device: str = "cpu"):
+                 batch_size: int = 32, device: str = "cpu", seed: int | None = None):
+        if seed is not None:
+            torch.manual_seed(seed)  # deterministic init + batch shuffling
         self.net = _Net(n_classes).to(device)
         self.epochs = epochs
         self.lr = lr
@@ -70,9 +72,11 @@ class CNNArm:
                 opt.step()
         return self
 
-    def predict(self, X):
+    def predict_proba(self, X):
         self.net.eval()
         with torch.no_grad():
             Xt = torch.tensor(_standardize(X), dtype=torch.float32).unsqueeze(1).to(self.device)
-            probs = torch.sigmoid(self.net(Xt)).cpu().numpy()
-        return (probs > 0.5).astype(int)
+            return torch.sigmoid(self.net(Xt)).cpu().numpy()
+
+    def predict(self, X):
+        return (self.predict_proba(X) > 0.5).astype(int)

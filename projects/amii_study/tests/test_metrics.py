@@ -8,6 +8,7 @@ from study.metrics import (
     forward_transfer,
     labels_to_competence,
     per_class_f1,
+    select_thresholds,
 )
 
 
@@ -51,3 +52,14 @@ def test_average_accuracy_is_last_row_mean():
 def test_labels_to_competence():
     assert labels_to_competence([10, 20, 40], [0.5, 0.9, 0.97], 0.95) == 40
     assert labels_to_competence([10, 20], [0.5, 0.9], 0.95) is None
+
+
+def test_select_thresholds_beats_fixed_half():
+    # class where positives score 0.6 and negatives 0.55: a 0.5 threshold calls
+    # everything positive (poor), but a dev-tuned threshold separates them.
+    proba = np.array([[0.60], [0.60], [0.55], [0.55]])
+    y = np.array([[1], [1], [0], [0]])
+    th = select_thresholds(proba, y)
+    pred_tuned = (proba[:, 0] >= th[0]).astype(int)
+    assert np.array_equal(pred_tuned, [1, 1, 0, 0])   # perfectly separated
+    assert 0.55 < th[0] <= 0.60

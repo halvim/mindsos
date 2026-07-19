@@ -67,3 +67,26 @@ def labels_to_competence(labels, f1s, threshold: float = 0.95) -> Optional[int]:
         if f >= threshold:
             return int(n)
     return None
+
+
+def select_thresholds(proba, y_true, grid=None) -> np.ndarray:
+    """Per-class decision threshold that maximizes F1 — chosen on a DEV set, never
+    the test set (removes the arbitrary fixed-0.5 operating point)."""
+    proba = np.asarray(proba, dtype=float)
+    y = np.asarray(y_true).astype(bool)
+    if grid is None:
+        grid = np.linspace(0.1, 0.9, 17)
+    thresholds = np.full(proba.shape[1], 0.5)
+    for c in range(proba.shape[1]):
+        best_f1, best_t = -1.0, 0.5
+        for t in grid:
+            pred = proba[:, c] >= t
+            tp = np.sum(y[:, c] & pred)
+            fp = np.sum(~y[:, c] & pred)
+            fn = np.sum(y[:, c] & ~pred)
+            denom = 2 * tp + fp + fn
+            f1 = (2 * tp / denom) if denom > 0 else 0.0
+            if f1 > best_f1:
+                best_f1, best_t = f1, t
+        thresholds[c] = best_t
+    return thresholds
