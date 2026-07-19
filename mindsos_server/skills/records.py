@@ -48,6 +48,11 @@ class SkillRecordView:
     value: Mapping[str, Any]
     entry_start_datastate: Optional[str] = None
     entry_target_datastate: Optional[str] = None
+    #: ADR-0183 §am-4 — ``"module:function"`` of a first-run Local-bootstrap
+    #: importer (e.g. an arc corpus loader). Resolved + invoked once at boot
+    #: by ``boot_brain`` with ``(cl, kl, session)``; None when the bundle
+    #: declares no importer.
+    local_bootstrap_importer: Optional[str] = None
 
 
 def _installed_skills_graph(kl: Any):
@@ -81,6 +86,7 @@ def iter_skill_records(kl: Any) -> List[SkillRecordView]:
                 value=node.value if isinstance(node.value, dict) else {},
                 entry_start_datastate=props.get("entry_start_datastate"),
                 entry_target_datastate=props.get("entry_target_datastate"),
+                local_bootstrap_importer=props.get("local_bootstrap_importer"),
             )
         )
     views.sort(key=lambda v: v.seq)
@@ -120,6 +126,7 @@ def append_record(
     value: Dict[str, Any],
     entry_start_datastate: Optional[str] = None,
     entry_target_datastate: Optional[str] = None,
+    local_bootstrap_importer: Optional[str] = None,
 ) -> SkillRecordView:
     """Append one action record through the ADR-0180 gate.
 
@@ -155,6 +162,8 @@ def append_record(
         flat["entry_start_datastate"] = entry_start_datastate
     if entry_target_datastate is not None:
         flat["entry_target_datastate"] = entry_target_datastate
+    if local_bootstrap_importer is not None:
+        flat["local_bootstrap_importer"] = local_bootstrap_importer
     handle.graph().add_node(
         full_value,
         NODE_SKILL_INSTALL_RECORD,
@@ -173,6 +182,7 @@ def append_record(
         value=full_value,
         entry_start_datastate=entry_start_datastate,
         entry_target_datastate=entry_target_datastate,
+        local_bootstrap_importer=local_bootstrap_importer,
     )
 
 
