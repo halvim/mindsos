@@ -103,3 +103,50 @@ write up. Phases run in the prereg's order.
 - Env: Linux repo `/home/sanmyaku/mindsos`; Mac worktree `.../mindsos-amii-study`
   on `chore/amii-study`. The Linux checkout has drifted to `main` mid-work —
   always confirm it's on `chore/amii-study` before validating.
+
+---
+
+## ADDENDUM 2026-07-19 — leaf-learning pivot (supersedes the "MindsOS arm" section above)
+
+The leaf-learning doctrine surfaced mid-chat and **invalidates the MindsOS-arm
+plan above** (and reframes the study). What changed, decided this chat:
+
+**MindsOS arm = the leaf-learning system in the PQ domain**, built per the
+perception doctrine — **not** corpus-trained per-primitive detectors (this
+chat's own first attempt). A gradient-over-a-corpus model is **out of bounds as
+a leaf**: a learned leaf is few-shot, persisted (τ_fit), inspectable, emits a
+**known atom**; grounding is deterministic ("learning lives at composition"); a
+neural net is admissible only as an installed primitive *quarantined behind the
+typed-atom contract*. (`LEAF_LEARNING_SYSTEM.md` §3.)
+
+**Frame → leaf-novelty / validation-study frame**, not the four-axis prereg.
+The four-axis frame predates the doctrine and either wins by definition (A1
+few-shot-declarative vs corpus-gradient) or trivially-by-architecture (A3
+retention=1.0 = the audited unit-mismatch trap). Use instead: P0 earned-parity
+precondition → honest failure → named request-atom → few-shot one-leaf repair
+(Study-2 H1–H6).
+
+**Expect narrowing.** The vision twin (Study 1) ran to a rigorous ML-advocate
+audit: parity earned (0.961 vs 0.967) but novelty **narrowed** to "data-efficient
+crisp-symbolic routing + a named/inspectable request-atom" — not "beats strong
+baselines at parity"; no-fabrication conceded; retention-1.0 = unit-mismatch;
+de-leaked honest accuracy fell to ~0.55. The honest PQ contribution is a
+**second-domain replication of that bounded finding** — which *vindicates* the
+novelty-is-stance positioning — not a "beats ML" headline.
+
+**What stands.** All PQ infra above (`generator`, `stream`, `metrics`, `runner`
+w/ confusable negatives, CNN + CL zoo ER/EWC/LwF, A1 sweep, LLM probe) is
+**built, Linux-validated, and reusable** as the opaque-baseline side + PQ signal
+source. Only the MindsOS arm pivots. The four-axis prereg
+(`MINDSOS_NOVELTY_STUDY_PREREG.md`) is retained as history but is **not** the
+governing frame.
+
+**Next = a dedicated leaf-learning design chat** (this chat is closing),
+**design-first**: a PQ leaf pre-registration in the validation-study frame +
+skeptical passes before any code. Traps to design out: corpus-trained leaf
+(forbidden), the faithfulness/cheat test (every op in-vocabulary, explainable to
+the signal floor), trivial-by-architecture metrics (retention-1.0), the fat
+single-level leaf, test leakage.
+
+Full context lives in project memory `amii-leaf-learning-pivot.md` and the
+doctrine/prior-study files it points to — read those, don't restate.
