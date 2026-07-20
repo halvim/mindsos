@@ -638,6 +638,107 @@ resolved (Local→Global) at interpretation time. First consumer =
 arc-solver (interpretation-only). Reusable by WSD / FOL (many Local
 patterns each).
 
+### amendment-9 (joint arc1+arc3 — 2026-07-17) — `dataset:` role prefix (Local-only)
+
+The L2 role vocabulary gains a **second parametric prefix**, `dataset:`,
+alongside `alignment:`. It exists so a fully-Local intelligence (a resident
+brain) can hold its own reference corpus as a first-class L2 role-graph in its
+Local scope. Consumer of record: arc1 (`fetch_task` resolves `"solve task 7"`
+against `dataset:arc1`); arc3 next (`dataset:arc3`, Games).
+
+**Why a prefix, not a named role.** A named role has one fixed schema baked
+into `_ROLE_SCHEMA_BUILDERS` (`schemas/__init__.py:75-93`). Datasets do not
+share a shape — `dataset:arc1` holds `Task` nodes carrying train/test grid
+content; `dataset:arc3` holds `Game` nodes carrying only a handle (id +
+title, no content). One graph per dataset (L2 is a metagraph; a dataset is a
+graph, not a node in a shared graph). A closed named entry cannot represent an
+open, per-instance family — the prefix can.
+
+**Why it cannot copy `alignment:`.** `alignment:` is parametric via a single
+builder (`build_alignment_schema`, `schema_for_role` short-circuit at
+`schemas/__init__.py:116-117`) because every alignment pair-graph has one
+shape, and it is **Global-only** at v1 (§am-1). `dataset:` is the inverse on
+both axes: **Local-only**, and **per-instance schema** (arc1 ≠ arc3), so the
+schema must be **registered**, not built.
+
+**Amended behavior.**
+
+- **Vocabulary.** `dataset:<name>` is a recognized Local role prefix.
+  `ensure_local_role_graph` (`bootstrap.py:341-427`) gains a `dataset:`
+  branch that resolves the instance schema from the registry and attaches it
+  to the freshly-minted graph; `ensure_global_role_graph` rejects `dataset:`
+  (Local-only, mirroring how it treats Local-only named roles).
+- **Schema registry.** A module-level `register_dataset_schema(name, schema)`
+  in `mindsos_knowledge/schemas/` holds a `dataset:<name> → Schema` dict
+  parallel to `_ROLE_SCHEMA_BUILDERS`. `schema_for_role` gains a `dataset:`
+  branch: registry lookup, **miss → `UnknownRoleError`** (registered schema
+  chosen over an unvalidated `strict=False` graph). The registry is
+  process-local (schemas are never persisted — `metagraph_repository.py:129`
+  stores only `schema_name`); the owning brain re-registers on module import,
+  which on the boot path precedes any dataset access
+  (`apply_installed_skills` → `boot_local`, `boot.py:151→167`).
+- **Discipline.** `append_only` (`_base.py:42`) — a corpus is pure append; an
+  entry is never superseded. (Note: `append_only` has no live write-boundary
+  enforcement at v1 — `validate_mutation_discipline`, `validators.py:298-387`,
+  has no production caller — so this is a declared discipline, matching the
+  status of `task-patterns`' `immutable_successor`.)
+- **Persistence.** No new machinery. A `dataset:<name>` graph lives inside
+  `local_knowledge:<user>`, which `FalkorDBLocalPersister.save`
+  (`local_persister.py:160-168`) already round-trips and
+  `install_local_metagraph` reloads as-is (`knowledge_layer.py:490-495`,
+  "permissive about extra content"). Written once, it reloads for free — the
+  corpus is **not** re-materialised per boot.
+- **NOT install content.** The corpus is authored by the brain into its own
+  Local at first run, not shipped through `manifest.l2_content`. Therefore the
+  install preflight (`preflight.py`) — its tier check, its role check, and the
+  "role-set expansion is a non-goal" stance (`preflight.py:9-12`) — is
+  **untouched**. This amendment does not reverse §am-6's `installed-skills`
+  Global-only stance and does not open Local `l2_content`. A dataset is
+  brain-owned Local data; you cannot ship it as install content.
+- **`reset_run_state` (ADR-0187).** A dataset is durable data, not run-state;
+  `run_state_roles` is **not** extended, so a corpus survives reset. (First
+  boot after a full `delete` re-imports; a `reset_run_state` retains it.)
+
+**Closed role-set.** No new named role — the named count stays **14**
+(unchanged since §am-7). This amendment adds the **second prefix**. The
+post-§am-9 closed role-set is **14 named entries + 2 prefixes
+(`alignment:`, `dataset:`)**.
+
+**Escape-clause refinement.** The §am-5 escape clause required a new
+§Revisions entry per new **named** role. This amendment states the rule for
+prefixes precisely: **registered prefixes are accommodated; names are not.** A
+new dataset instance (`dataset:arcN`) needs only a `register_dataset_schema`
+call by its owning brain — no ADR amendment, no named-role addition, no
+sentinel churn. A new *prefix* (a third one) still requires an amendment; a
+new *named* role still requires the §am-5 §Revisions entry. The Phase-13
+role-count sentinel asserts the named count (14) and the prefix set, so a
+stray named-role addition still fails loud.
+
+**Out-of-scope for amendment-9.**
+
+- **No Global `dataset:` form.** Datasets are Local-only at v1; a Global
+  dataset (shared corpus) is a future amendment with its own consumer.
+- **No Local `installed-skills` form.** The install *record* stays Global
+  (§am-6, `installed_skills.py:1-13`); only the corpus is Local. Reopening
+  §am-6 is a separate, larger event.
+- **The general schema-rehydration gap.** Reloaded graphs are schema-less
+  system-wide (loader passes `schema=None`, `metagraph_loader.py:135,258`),
+  which silently disables `admin_authored` enforcement for the 6 roles that
+  declare it until an explicit per-graph `mindsos graph attach-schema`
+  (`graph.py:998`). Pre-existing; not introduced or fixed here. `dataset:`
+  uses `append_only` (unenforced regardless), so it is unaffected.
+
+**Consumer.** arc1 `fetch_task` (D1.6) reads `dataset:arc1` out of Local L2;
+the resolve chain `[arc_resolve, fetch_task]` composed by `find_pipeline`
+inside `interpret()` (`phase_1.py:137-175`) replaces arc1's current
+closed-over Python `dataset` dict. arc3 (`dataset:arc3`, Games) is the second
+consumer. The one-time corpus import trigger is a new absence-guarded step in
+`boot_local` (CR §7-A / P-2) — the ADR-0183 §am-1 runtime-entry mechanism
+(`records.py::skill_entries`, `mindsos brain execute`) was evaluated and
+**rejected** for this: it is a manual, single-start, solve-pipeline verb
+(`brain.py:581`), not an automatic first-run data-load, and it is itself a
+*reader* of the corpus.
+
 ## Source
 
 Phase 13 design log §1 PB-19 (Flavor A vs Flavor B closure question);
