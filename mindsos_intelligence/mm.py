@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
-from typing import Optional
+from typing import Dict, Optional
 
 from mindsos_core import Metagraph
 import mindsos_instances as mi
@@ -83,6 +83,24 @@ class MentalModel:
         clone.intelligence_mm = copy.deepcopy(self.intelligence_mm)
         clone.root = copy.deepcopy(self.root)
         clone.lock = RWLock()
+
+        # Fork independence (ADR-0201 / CR#4 Slice 1). ``copy.deepcopy``
+        # preserves ids verbatim, so the clone would collide with the origin
+        # (same metagraph_id / graph_id / identity entries) and its XRefs
+        # would resolve back to the origin's metagraphs. Regenerate each
+        # sub-MM's own ids (core) + reid its L1 instances (mindsos_instances),
+        # accumulating one merged {old -> new} map, then fix cross-sub-MM XRef
+        # targets so the fork's provenance links point within the fork.
+        sub_mms = (clone.knowledge_mm, clone.capacity_mm, clone.intelligence_mm)
+        id_map: Dict[str, str] = {}
+        for sub in sub_mms:
+            sub_map = sub.regenerate_ids()
+            registry = getattr(sub, "element_registry", None)
+            if registry is not None:
+                registry.remap_ids(sub_map)
+            id_map.update(sub_map)
+        for sub in sub_mms:
+            sub.remap_xref_targets(id_map)
         return clone
 
 

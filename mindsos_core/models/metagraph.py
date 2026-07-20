@@ -804,6 +804,109 @@ class Metagraph:
             f"{target_metagraph.metagraph_id!r} under role {target_role!r}"
         )
 
+    # ── fork independence (ADR-0201 / CR#4 Slice 1) ──────────────────────
+
+    def regenerate_ids(self) -> Dict[str, str]:
+        """Reassign this metagraph's own ids to fresh UUIDs and remap every
+        *internal* reference to them; return the ``{old_id -> new_id}`` map
+        (its ``metagraph_id`` plus every contained ``graph_id``).
+
+        ``copy.deepcopy`` preserves ids verbatim, so a cloned metagraph
+        otherwise collides with its origin (same ``metagraph_id`` /
+        ``graph_id`` / identity entries) and any XRef in the clone resolves
+        back to the origin. This regenerates ``metagraph_id`` and every
+        ``graph_id`` (updating :attr:`identity` and rekeying :attr:`graphs`)
+        and remaps the graph-id references in :attr:`intergraph_edges` /
+        :attr:`intergraph_hyperedges` and this metagraph's own XRef
+        ``source_metagraph_id`` (self is always the source).
+
+        NOT handled here (a metagraph cannot know its siblings, and core does
+        not import ``mindsos_instances``): cross-metagraph XRef *targets* —
+        see :meth:`remap_xref_targets`, called by the coordinator with the
+        merged map — and L1 ``ElementInstance`` ids (the caller reids the
+        attached ``ElementRegistry``).
+        """
+        id_map: Dict[str, str] = {}
+
+        old_mg = self.metagraph_id
+        new_mg = generate_uuid()
+        if self.identity.contains(old_mg):
+            self.identity.replace(old_mg, new_mg)
+        else:
+            self.identity.register(new_mg)
+        self.metagraph_id = new_mg
+        id_map[old_mg] = new_mg
+
+        graphs = list(self.graphs.values())
+        for g in graphs:
+            old_g = g.graph_id
+            new_g = generate_uuid()
+            if self.identity.contains(old_g):
+                self.identity.replace(old_g, new_g)
+            else:
+                self.identity.register(new_g)
+            object.__setattr__(g, "graph_id", new_g)
+            id_map[old_g] = new_g
+        self.graphs = {g.graph_id: g for g in graphs}
+
+        # IntergraphEdge graph-id refs (object.__setattr__ — the edge may be
+        # post-init immutable).
+        for ie in self.intergraph_edges.values():
+            if ie.source_graph_id in id_map:
+                object.__setattr__(ie, "source_graph_id", id_map[ie.source_graph_id])
+            if ie.target_graph_id in id_map:
+                object.__setattr__(ie, "target_graph_id", id_map[ie.target_graph_id])
+
+        # IntergraphHyperEdge anchors/members = ((graph_id, node_id), ...)
+        # tuples, immutable post-init -> rebuild + object.__setattr__.
+        for ihe in self.intergraph_hyperedges.values():
+            object.__setattr__(
+                ihe,
+                "anchors",
+                tuple((id_map.get(gid, gid), nid) for gid, nid in ihe.anchors),
+            )
+            object.__setattr__(
+                ihe,
+                "members",
+                tuple((id_map.get(gid, gid), nid) for gid, nid in ihe.members),
+            )
+
+        # Own XRefs: self is always the source, so source_metagraph_id was
+        # old_mg. (``_xrefs_by_source`` is keyed by source_id = a node id,
+        # which is unchanged -> no index rebuild.)
+        for x in self.xrefs.values():
+            if x.source_metagraph_id in id_map:
+                object.__setattr__(
+                    x, "source_metagraph_id", id_map[x.source_metagraph_id]
+                )
+
+        return id_map
+
+    def remap_xref_targets(self, id_map: Dict[str, str]) -> None:
+        """Rewrite this metagraph's XRef ``target_metagraph_id`` fields via
+        ``id_map`` (``{old_metagraph_id -> new}``) and rebuild the
+        :attr:`_xrefs_by_target` compound index (its key embeds
+        ``target_metagraph_id``).
+
+        The cross-metagraph (sibling) leg of a fork: :meth:`regenerate_ids`
+        fixes each metagraph's own ids, then the coordinator merges the maps
+        from all forked metagraphs and calls this so every XRef target points
+        at the fork's sibling, not the origin's.
+        """
+        changed = False
+        for x in self.xrefs.values():
+            new_t = id_map.get(x.target_metagraph_id)
+            if new_t is not None and new_t != x.target_metagraph_id:
+                object.__setattr__(x, "target_metagraph_id", new_t)
+                changed = True
+        if changed:
+            rebuilt: Dict[Tuple[str, str], Set[str]] = {}
+            for xid, x in self.xrefs.items():
+                rebuilt.setdefault(
+                    (x.target_metagraph_id, x.target_id), set()
+                ).add(xid)
+            self._xrefs_by_target = rebuilt
+
     # ── graph membership ─────────────────────────────────────────────────
 
     def add_graph(self, graph: Graph) -> Graph:
