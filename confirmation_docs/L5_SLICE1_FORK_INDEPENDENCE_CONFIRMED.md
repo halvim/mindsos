@@ -54,4 +54,4 @@ root/object independence still holds.
 Slice 2 (capacity writer) — delete the executor blackboard, `capacity_mm` becomes source of truth,
 write the grounding DAG + `raw_task` provenance XRef (which now resolves correctly in a fork).
 
-**Merge sha:** _(fill after merge to main)_
+**Merge sha:** f3cc950 (PR #60)

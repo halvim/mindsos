@@ -1,6 +1,6 @@
 # ADR-0201 — capacity-MM instance vocabulary + minting (DQ-2)
 
-**Status:** Proposed. Marks **ratified 2026-07-16** (D-1, D-3, minting scope; arc/L5).
+**Status:** Accepted (decision ratified 2026-07-16; D-1/D-3/minting). Vocabulary SHIPPED as CR#4 Slice 0 (PR #59, e234914); the two-graph writer topology it specifies is exercised by Slice 2 (not yet built).
 Prerequisite for CR#4 capacity writer (Slice 0). Additive.
 **Ratification note:** the minting IRI form is revised from the first draft to clear a
 core-validator blocker (`datastate_iri()` rejects `#`/`:`) — see §Minting.

@@ -5,7 +5,7 @@
 **Consumer of record:** arc1 (D1.6/D1.7/D1.8 — full task lifecycle); arc3 next
 **Status:** RESOLVED. **Slice D8-B/3b BUILT + GATE-GREEN 2026-07-17** — branch
 `fix/l5-per-task-chain-persist`, PR #52 (halvim/mindsos), full gate 4223 passed / 0 failed on live
-Falkor. Slices 0 / 1 / 2 / 3 (§Slice plan) NOT built. **live-only** (per-task chain persist;
+Falkor. Slices 0 + 1 SHIPPED (PR #59 e234914 / PR #60 f3cc950); Slices 2 / 3 NOT built. **live-only** (per-task chain persist;
 capacity/knowledge deferred to WSD).
 Resolved build detail: task-unique writer scope = `task_id` when supplied, else a per-orchestrator
 counter (`Orchestrator._writer_scope`).
@@ -155,9 +155,9 @@ becomes the **live** working memory; cross-session persistence stays out of scop
   (`mindsos_intelligence/mm_persister.py`, wired on the durable `boot.py` path; `None`-no-op
   ephemeral/`simplified`); `mm_root_ref` → the task's chain graph_id; corrected `consolidation.py:9-10`.
   Test updated: `phase_48/test_consolidation_seam.py`.
-- **Slice 0 — DQ-2 vocabulary (ADR-0201, additive):** typed `DataStateInstance`/`CapacityInstance`,
+- **Slice 0 — DQ-2 vocabulary (ADR-0201, additive) [SHIPPED — PR #59, e234914]:** typed `DataStateInstance`/`CapacityInstance`,
   two-graph bipartite mirroring L3, composite scope, node+edge instancing.
-- **Slice 1 — deep_copy independence:** regenerate clone sub-MM ids **+ graph ids** + remap
+- **Slice 1 — deep_copy independence [SHIPPED — PR #60, f3cc950]:** regenerate clone sub-MM ids **+ graph ids** + remap
   `XRef`/identity.
 - **Slice 2 — capacity writer:** delete the blackboard; write the grounding DAG; carry
   `resolved_reference` into Phase 2 (the Phase-1 drop fix); add the nullable raw_task provenance

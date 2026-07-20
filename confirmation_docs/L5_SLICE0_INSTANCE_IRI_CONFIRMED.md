@@ -40,4 +40,4 @@ writer lands.
 Slice 1 (deep_copy independence, `mm.py`) — the first non-additive core change — must precede the
 Slice 2 capacity writer. See `CORE_WORKITEM_TASK_INTO_L5.md` Steps 2-3.
 
-**Merge sha:** _(fill after merge to main)_
+**Merge sha:** e234914 (PR #59)
