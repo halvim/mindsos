@@ -21,6 +21,14 @@ step_id=None)`` returning an object with ``.success: bool`` and
 ``.outputs: Mapping[str, Any]`` (the shipped
 :class:`~mindsos_capacity.runtime.InvocationResult`). Output keys are
 DataState IRIs and are merged onto the blackboard.
+
+**L5 grounding (CR#4 Slice 2, ADR-0201).** When an ``mm`` is supplied, the
+executor additionally records each invocation into ``mm.capacity_mm`` as a
+bipartite grounding DAG via :class:`~mindsos_intelligence.capacity_mm_writer.CapacityMMWriter`
+(DQ-3 "L5 IS the blackboard"). ``mm=None`` (the default) is byte-identical to
+the pre-Slice-2 behavior — value-only threading, no MM write — which is the
+sanctioned path for interpret-resolve and isolated tests (B2). The value dict
+is retained for dispatch-input assembly; the MM holds the durable grounding.
 """
 
 from __future__ import annotations
@@ -70,6 +78,8 @@ def execute_pipeline(
     *,
     task_id: str,
     cancel_token: Any = None,
+    mm: Any = None,
+    pipeline_run_ref: Optional[str] = None,
 ) -> PipelineExecutionResult:
     """Execute ``pipeline`` step-by-step via ``dispatcher``.
 
@@ -82,8 +92,27 @@ def execute_pipeline(
     token stops the walk and returns ``cancelled=True`` — this is how a
     higher-priority need / Reflex preempts a running resolver without a
     forced kill mid-capacity.
+
+    ``mm`` (CR#4 Slice 2, optional): when supplied, each start input and each
+    invocation output is recorded into ``mm.capacity_mm`` as a grounding DAG
+    (ADR-0201) via :class:`CapacityMMWriter`, under the MM write lock and never
+    across a dispatch. ``pipeline_run_ref`` scopes the minted instance IRIs
+    (defaults to ``task_id``). ``mm=None`` leaves behavior byte-identical to
+    the pre-Slice-2 value-only path.
     """
     blackboard: Dict[str, Any] = dict(initial_inputs or {})
+
+    # CR#4 Slice 2 — optional L5 grounding writer (B2: write only when an MM
+    # is present; the no-MM path is unchanged). Seed the start inputs as
+    # DataStateInstances so downstream CONSUMES edges have a producer to point at.
+    writer = None
+    if mm is not None:
+        from .capacity_mm_writer import CapacityMMWriter
+
+        writer = CapacityMMWriter(mm, task_id, pipeline_run_ref or task_id)
+        for ds, value in blackboard.items():
+            writer.seed(ds, value)
+
     steps = tuple(getattr(pipeline, "steps", ()) or ())
 
     # No-op pipeline: the target is already available (target ∈ starts).
@@ -126,7 +155,13 @@ def execute_pipeline(
                 error=getattr(result, "error", None),
                 steps_run=idx,
             )
-        for ds, value in dict(getattr(result, "outputs", {}) or {}).items():
+        outs = dict(getattr(result, "outputs", {}) or {})
+        # CR#4 Slice 2 — ground the completed invocation into capacity_mm
+        # (between dispatches; the writer takes/releases the MM lock itself,
+        # so it is never held across the dispatch above).
+        if writer is not None:
+            writer.record(step.capacity_iri, step.input_datastates, outs)
+        for ds, value in outs.items():
             blackboard[ds] = value
 
     return PipelineExecutionResult(
