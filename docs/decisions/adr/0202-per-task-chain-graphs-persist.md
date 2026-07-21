@@ -46,7 +46,9 @@ Scope the chain **per task** and persist each task's chain graph at consolidatio
    serialized at persist time so mutated fields (e.g. `TaskRun.status`) capture their final state.
    The live graph keeps its dataclasses for in-session readers. L4-local; no Core codec change.
 
-`capacity_mm` / `knowledge_mm` stay **live-only** — persistence deferred to WSD.
+`knowledge_mm` stays **live-only** — persistence deferred to WSD. (`capacity_mm`
+was live-only under this decision too; **Amendment 1 (below) reverses that** —
+the architect reopened DQ-8 on 2026-07-21 and `capacity_mm` now persists.)
 
 ## Consequences
 
@@ -74,3 +76,43 @@ Scope the chain **per task** and persist each task's chain graph at consolidatio
 
 Built and gated as slice D8-B/3b. The remaining CR#4 slices — 0 (DQ-2 vocabulary, ADR-0201), 1
 (deep_copy independence), 2 (capacity writer), 3 (knowledge writer + `mm_handle`) — are not built.
+
+---
+
+## Amendment 1 (2026-07-21) — capacity_mm persists (CR reopen DQ-8, Slice B)
+
+CR `confirmation_docs/CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` (APPROVED) reopened DQ-8: the
+architect pulled `capacity_mm` persistence forward from WSD. This amendment **reverses the
+"`capacity_mm` … stay live-only — persistence deferred to WSD" clause** of the Decision above for
+`capacity_mm` only. `knowledge_mm` is unchanged (still live-only, Slice 3 / later). The base
+decision's chain-graph mechanism is untouched; the "Intentional asymmetry" consequence (chain
+per-task/persisted vs capacity session-shared/live-only) is now **superseded** — Slice A already
+made `capacity_mm` per-run, and this slice persists it.
+
+What Slice B adds (built this CR):
+
+1. **Per-run capacity graphs persist, edges included.** Slice A keys one grounding graph per
+   `(task_id, pipeline_run_ref)` with intra-graph `PRODUCES`/`CONSUMES` edges (ADR-0201 am-2).
+   `FalkorMMPersister.persist` — nodes-only before — now copies `graph.edges` too (PB-4).
+   `GraphRepository.persist` already writes+reloads edges, so this is a small snapshot change, not
+   a new persistence capability.
+2. **Task-level index graph + `capacity_root_ref` (PB-2).** Replan yields N per-run graphs under
+   one task; a task-level **index graph** (one `CapacityRunRef` node per run graph) is persisted and
+   the Episode's `capacity_root_ref` points at it, mirroring `mm_root_ref` → the chain graph
+   (ADR-0176 am-1). Reader: index → each run graph. No v1 reader yet (dangles like `mm_root_ref`;
+   PB-5 accepted).
+3. **Inspectable per-DataState encoding (PB-1).** A DataStateInstance's runtime value is an
+   arbitrary domain object the ADR-0182 codec rejects unless already primitive/dict/list. An
+   optional **`encode` hint on the `DataState` declaration** (brain-supplied) reduces it to an
+   inspectable dict/list (D-C — never an opaque blob); core only *dispatches* on it
+   (`mindsos_intelligence/capacity_persister.py`), default = require primitive/dict/list else
+   `PersistenceError` at persist. ADR-0182's `_value_json` codec is used as-is (not amended); the
+   `encode` hint feeds it a codec-safe value.
+
+Inert until Step 5 (PB-3): no in-CR path threads run graphs into `consolidate_task` (the submind
+never consolidates; the solve path's `execution.run` → `execute_pipeline` consolidation is
+out-of-CR Step 5). Shipped behind synthetic phase-48 tests. Surfaces:
+`mindsos_intelligence/{mm_persister,capacity_persister,consolidation}.py`,
+`mindsos_capacity/datastate.py` (the `encode` field), `mindsos_capacity/builtins/consolidate.py`
+(docstring). Confirm `confirmation_docs/L5_SLICE_B_CONFIRMED.md`. Slice C (submind wiring, D-B) is
+next.
