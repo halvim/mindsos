@@ -1,26 +1,48 @@
-"""Capacity-MM writer — the runtime instance projection of L3 (CR#4 Slice 2).
+"""Capacity-MM writer — the runtime instance projection of L3 (ADR-0201;
+CR#4 Slice 2 origin, reshaped by CR: capacity_mm persist Slice A).
 
 ``execute_pipeline`` records each capacity invocation's outputs into
-``capacity_mm`` as a bipartite **grounding DAG** (ADR-0201): DataStateInstance
-payloads in one graph, CapacityInstance nodes in another, wired by ``PRODUCES``
-(capacity→datastate) / ``CONSUMES`` (datastate→capacity) IntergraphEdges. This is
-the "L5 IS the blackboard" writer (DQ-3): a produced value becomes a node payload
-here instead of living only on the executor's transient dict.
+``capacity_mm`` as a **grounding DAG** (ADR-0201): DataStateInstance payloads
+and CapacityInstance nodes, wired by ``PRODUCES`` (capacity→datastate) /
+``CONSUMES`` (datastate→capacity) edges. This is the "L5 IS the blackboard"
+writer (DQ-3): a produced value becomes a node payload here instead of living
+only on the executor's transient dict.
 
-**Live-only (ADR-0201):** capacity_mm instances are not persisted. Minting uses the
-``ElementRegistry`` attached per sub-MM; instance IRIs bypass the L3 type validators
-(they carry a ``#`` fragment out of the type charset — a structural type-vs-instance
-guard). ``capacity_mm`` carries no schema (``Metagraph.schema is None``), so free-form
-instance ``type_name``s and PRODUCES/CONSUMES edges need no type registration.
+**Per-run graph (D-A, CR: capacity_mm persist Slice A).** The writer keys ONE
+graph per pipeline run on ``(task_id, pipeline_run_ref)`` — replacing the two
+shared fixed-role graphs the origin slice used. Consequences:
 
-**Lock discipline (ADR-0201 DQ-6):** every write takes ``mm.lock`` (write); the lock is
-NEVER held across a dispatch — the executor calls :meth:`record` *between* steps, after
-each dispatch returns. ``RWLock`` is not reentrant, so a held-across-dispatch lock would
-be a live defect; :meth:`record`/:meth:`seed`/:meth:`root` each acquire and release.
+* **Replan is fixed by construction.** A second run under the same task gets a
+  fresh graph (fresh ``role`` → fresh instance space), so it can never overwrite
+  the first run's nodes. (The origin slice namespaced only by IRI and defaulted
+  ``pipeline_run_ref`` to ``task_id`` — a silent replan collision, now removed at
+  the ``execute_pipeline`` boundary.)
+* **PRODUCES/CONSUMES are intra-graph edges.** Both instance node-types live in
+  the single per-run graph, so the topology is ``Graph.add_edge`` (not the
+  metagraph-level ``add_intergraph_edge`` the two-graph split needed). This
+  sidesteps *intergraph*-edge persistence; the per-run graph is a single object
+  the Slice-B persister takes whole (edges included).
+* **Isolation is real, not just naming.** Two concurrent runs (e.g. a submind
+  resolver and a main-task solve) write disjoint graphs.
 
-Scope key = ``(task_id, pipeline_run_ref)`` (ADR-0201 §Minting): survives replan and stays
-groupable by task. The provenance XRef (raw_task → knowledge_mm corpus entry) is **not**
-written here — it needs the knowledge-MM target that Slice 3 mints (``add_xref`` requires a
+**Live/persist note:** Slice A writes the live per-run graph only. Persistence of
+that graph into the Episode (``capacity_root_ref`` + the per-DataState inspectable
+encoding) is Slice B; nothing here persists.
+
+Minting uses the ``ElementRegistry`` attached per sub-MM; instance IRIs bypass the
+L3 type validators (they carry a ``#`` fragment out of the type charset — a
+structural type-vs-instance guard). ``capacity_mm`` carries no schema
+(``Metagraph.schema is None``), so free-form instance ``type_name``s and
+PRODUCES/CONSUMES edge types need no type registration.
+
+**Lock discipline (ADR-0201 DQ-6):** every write takes ``mm.lock`` (write); the
+lock is NEVER held across a dispatch — the executor calls :meth:`record` *between*
+steps, after each dispatch returns. ``RWLock`` is not reentrant, so a
+held-across-dispatch lock would be a live defect; :meth:`record`/:meth:`seed`/
+:meth:`root` each acquire and release.
+
+The provenance XRef (raw_task → knowledge_mm corpus entry) is **not** written here
+— it needs the knowledge-MM target that Slice 3 mints (``add_xref`` requires a
 concrete target; the arc3 "None" case is simply no XRef row).
 """
 
@@ -44,14 +66,39 @@ from mindsos_capacity.identifiers import (
 
 from .mm import MentalModel
 
-#: Roles for the two bipartite capacity_mm instance graphs (ADR-0201 D-3),
-#: mirroring L3's shared-datastates-graph / category-graph split.
-DATASTATE_INSTANCE_GRAPH_ROLE = "capacity:instances:datastates"
-CAPACITY_INSTANCE_GRAPH_ROLE = "capacity:instances:capacities"
+#: Role prefix for a per-``(task_id, pipeline_run_ref)`` capacity instance graph
+#: (D-A). One graph per run replaces the origin slice's two shared fixed-role
+#: graphs, giving replan a fresh instance space and Slice-B persistence a single
+#: per-run object to take.
+RUN_GRAPH_ROLE_PREFIX = "capacity:run:"
+
+_PIPELINERUN_PREFIX = "pipelinerun:"
+
+
+def run_graph_role(task_id: str, pipeline_run_ref: str) -> str:
+    """Deterministic role for a run's instance graph.
+
+    Same ``(task_id, pipeline_run_ref)`` → same role (so a run's writer finds its
+    own graph); different runs → different roles (replan / concurrent isolation).
+    The ``pipelinerun:`` prefix is stripped and any remaining ``:`` folded to
+    ``-`` for a clean role token.
+    """
+    if not isinstance(task_id, str) or not task_id:
+        raise ValueError(f"task_id must be a non-empty string, got {task_id!r}")
+    if not isinstance(pipeline_run_ref, str) or not pipeline_run_ref:
+        raise ValueError(
+            f"pipeline_run_ref must be a non-empty string, got {pipeline_run_ref!r}"
+        )
+    run = pipeline_run_ref
+    if run.startswith(_PIPELINERUN_PREFIX):
+        run = run[len(_PIPELINERUN_PREFIX):]
+    run = run.replace(":", "-")
+    return f"{RUN_GRAPH_ROLE_PREFIX}{task_id}:{run}"
 
 
 class CapacityMMWriter:
-    """Writes the per-task grounding DAG into ``mm.capacity_mm``.
+    """Writes one pipeline run's grounding DAG into a single per-run graph in
+    ``mm.capacity_mm``.
 
     One per pipeline run. :attr:`index` maps a DataState *type* IRI to the
     *instance* IRI currently carrying its value, so a downstream consumer's
@@ -62,31 +109,31 @@ class CapacityMMWriter:
         self._mm = mm
         self._task_id = task_id
         self._run_ref = pipeline_run_ref
-        self._ds_graph: Optional[Graph] = None
-        self._cap_graph: Optional[Graph] = None
+        self._graph_role = run_graph_role(task_id, pipeline_run_ref)
+        self._graph: Optional[Graph] = None
         self._seq: Dict[str, int] = {}
         #: DataState type IRI -> current instance IRI (run-local routing index).
         self.index: Dict[str, str] = {}
 
     # ── graph find-or-create (caller already holds the write lock) ────────
 
-    def _ds_instance_graph(self) -> Graph:
-        if self._ds_graph is None:
-            self._ds_graph = self._find_or_create(DATASTATE_INSTANCE_GRAPH_ROLE)
-        return self._ds_graph
+    def _run_graph(self) -> Graph:
+        if self._graph is None:
+            for g in self._mm.capacity_mm.graphs.values():
+                if g.role == self._graph_role:
+                    self._graph = g
+                    break
+            else:
+                g = Graph(name=self._graph_role, role=self._graph_role)
+                self._mm.capacity_mm.add_graph(g)
+                self._graph = g
+        return self._graph
 
-    def _cap_instance_graph(self) -> Graph:
-        if self._cap_graph is None:
-            self._cap_graph = self._find_or_create(CAPACITY_INSTANCE_GRAPH_ROLE)
-        return self._cap_graph
-
-    def _find_or_create(self, role: str) -> Graph:
-        for g in self._mm.capacity_mm.graphs.values():
-            if g.role == role:
-                return g
-        g = Graph(name=role, role=role)
-        self._mm.capacity_mm.add_graph(g)
-        return g
+    @property
+    def graph(self) -> Optional[Graph]:
+        """This run's instance graph, or ``None`` if the run wrote nothing.
+        Exposed for the Slice-B persister (persist exactly this run's graph)."""
+        return self._graph
 
     def _next_seq(self, key: str) -> int:
         n = self._seq.get(key, 0)
@@ -106,7 +153,7 @@ class CapacityMMWriter:
         for the solve-path caller (Step 5); ``execute_pipeline`` uses :meth:`seed`."""
         with self._mm.lock.write_locked():
             inst = datastate_instance_root_iri(raw_task_datastate_iri, self._task_id)
-            self._ds_instance_graph().add_node(
+            self._run_graph().add_node(
                 value=value,
                 type_name=NODE_TYPE_DATASTATE_INSTANCE,
                 properties={PROP_DATASTATE_INSTANCE_TYPE: raw_task_datastate_iri},
@@ -123,17 +170,15 @@ class CapacityMMWriter:
     ) -> str:
         """Record one capacity invocation: mint the CapacityInstance, wire
         CONSUMES from each already-instanced input, mint a DataStateInstance per
-        output and wire PRODUCES, updating the index. Returns the CapacityInstance IRI."""
+        output and wire PRODUCES, updating the index. All nodes + edges live in
+        this run's single graph (intra-graph edges). Returns the CapacityInstance IRI."""
         with self._mm.lock.write_locked():
-            cap_graph = self._cap_instance_graph()
-            ds_graph = self._ds_instance_graph()
-            cap_gid, ds_gid = cap_graph.graph_id, ds_graph.graph_id
-
+            graph = self._run_graph()
             cap_inst = capacity_instance_iri(
                 capacity_iri, self._task_id, self._run_ref,
                 self._next_seq(f"cap:{capacity_iri}"),
             )
-            cap_graph.add_node(
+            cap_node = graph.add_node(
                 value=capacity_iri,
                 type_name=NODE_TYPE_CAPACITY_INSTANCE,
                 properties={PROP_CAPACITY_INSTANCE_TYPE: capacity_iri},
@@ -144,15 +189,11 @@ class CapacityMMWriter:
             for in_iri in input_datastate_iris:
                 producer = self.index.get(in_iri)
                 if producer is not None:
-                    self._mm.capacity_mm.add_intergraph_edge(
-                        ds_gid, producer, cap_gid, cap_inst, EDGE_CONSUMES
-                    )
+                    graph.add_edge(graph.nodes[producer], cap_node, EDGE_CONSUMES)
             # PRODUCES: capacity-instance -> datastate-instance, per output.
             for out_iri, value in outputs.items():
                 out_inst = self._mint_datastate(out_iri, value)
-                self._mm.capacity_mm.add_intergraph_edge(
-                    cap_gid, cap_inst, ds_gid, out_inst, EDGE_PRODUCES
-                )
+                graph.add_edge(cap_node, graph.nodes[out_inst], EDGE_PRODUCES)
             return cap_inst
 
     # ── internal (lock already held by the caller) ───────────────────────
@@ -162,7 +203,7 @@ class CapacityMMWriter:
             datastate_iri, self._task_id, self._run_ref,
             self._next_seq(f"ds:{datastate_iri}"),
         )
-        self._ds_instance_graph().add_node(
+        self._run_graph().add_node(
             value=value,
             type_name=NODE_TYPE_DATASTATE_INSTANCE,
             properties={PROP_DATASTATE_INSTANCE_TYPE: datastate_iri},
@@ -174,6 +215,6 @@ class CapacityMMWriter:
 
 __all__ = [
     "CapacityMMWriter",
-    "DATASTATE_INSTANCE_GRAPH_ROLE",
-    "CAPACITY_INSTANCE_GRAPH_ROLE",
+    "RUN_GRAPH_ROLE_PREFIX",
+    "run_graph_role",
 ]
