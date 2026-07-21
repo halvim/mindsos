@@ -22,13 +22,15 @@ step_id=None)`` returning an object with ``.success: bool`` and
 :class:`~mindsos_capacity.runtime.InvocationResult`). Output keys are
 DataState IRIs and are merged onto the blackboard.
 
-**L5 grounding (CR#4 Slice 2, ADR-0201).** When an ``mm`` is supplied, the
-executor additionally records each invocation into ``mm.capacity_mm`` as a
-bipartite grounding DAG via :class:`~mindsos_intelligence.capacity_mm_writer.CapacityMMWriter`
-(DQ-3 "L5 IS the blackboard"). ``mm=None`` (the default) is byte-identical to
-the pre-Slice-2 behavior — value-only threading, no MM write — which is the
-sanctioned path for interpret-resolve and isolated tests (B2). The value dict
-is retained for dispatch-input assembly; the MM holds the durable grounding.
+**L5 grounding (CR#4 Slice 2, ADR-0201; per-run graph — CR: capacity_mm
+persist Slice A).** When an ``mm`` is supplied, the executor additionally
+records each invocation into ``mm.capacity_mm`` as a grounding DAG via
+:class:`~mindsos_intelligence.capacity_mm_writer.CapacityMMWriter` (DQ-3
+"L5 IS the blackboard"), keyed on ``(task_id, pipeline_run_ref)``. ``mm=None``
+(the default) is byte-identical to the pre-Slice-2 behavior — value-only
+threading, no MM write — which is the sanctioned path for interpret-resolve
+and isolated tests (B2). The value dict is retained for dispatch-input
+assembly; the MM holds the durable grounding.
 """
 
 from __future__ import annotations
@@ -96,9 +98,14 @@ def execute_pipeline(
     ``mm`` (CR#4 Slice 2, optional): when supplied, each start input and each
     invocation output is recorded into ``mm.capacity_mm`` as a grounding DAG
     (ADR-0201) via :class:`CapacityMMWriter`, under the MM write lock and never
-    across a dispatch. ``pipeline_run_ref`` scopes the minted instance IRIs
-    (defaults to ``task_id``). ``mm=None`` leaves behavior byte-identical to
-    the pre-Slice-2 value-only path.
+    across a dispatch. ``pipeline_run_ref`` is then **required** and scopes the
+    per-run instance graph + minted instance IRIs — it must be a fresh
+    per-run reference (a ``pipelinerun:`` IRI). There is **no** default: the old
+    ``run_ref = task_id`` fallback silently collided on replan (a second run
+    re-minted identical IRIs into the same graph), so ``mm`` present with
+    ``pipeline_run_ref=None`` is a ``ValueError`` (CR: capacity_mm persist
+    Slice A). ``mm=None`` leaves behavior byte-identical to the pre-Slice-2
+    value-only path (``pipeline_run_ref`` is ignored).
     """
     blackboard: Dict[str, Any] = dict(initial_inputs or {})
 
@@ -107,9 +114,18 @@ def execute_pipeline(
     # DataStateInstances so downstream CONSUMES edges have a producer to point at.
     writer = None
     if mm is not None:
+        if pipeline_run_ref is None:
+            raise ValueError(
+                "execute_pipeline requires an explicit `pipeline_run_ref` when "
+                "`mm` is supplied: the removed `run_ref = task_id` default "
+                "collided on replan (a second run under the same task re-minted "
+                "identical instance IRIs and overwrote the first run). Pass a "
+                "fresh per-run reference (a `pipelinerun:` IRI) — CR: capacity_mm "
+                "persist Slice A."
+            )
         from .capacity_mm_writer import CapacityMMWriter
 
-        writer = CapacityMMWriter(mm, task_id, pipeline_run_ref or task_id)
+        writer = CapacityMMWriter(mm, task_id, pipeline_run_ref)
         for ds, value in blackboard.items():
             writer.seed(ds, value)
 
