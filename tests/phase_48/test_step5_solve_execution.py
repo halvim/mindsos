@@ -36,6 +36,7 @@ from mindsos_capacity.identifiers import (
     EDGE_PRODUCES,
     NODE_TYPE_CAPACITY_INSTANCE,
     NODE_TYPE_DATASTATE_INSTANCE,
+    PROP_DATASTATE_INSTANCE_TYPE,
     capacity_iri,
     datastate_iri,
 )
@@ -147,7 +148,7 @@ def test_execution_run_grounds_capacity_mm_on_solve():
     g = _capacity_run_graph(mm)
     assert g is not None, "solve run did not create a capacity_mm run graph"
     ds_types = {
-        n.properties.get("datastate_instance_type")
+        n.properties.get(PROP_DATASTATE_INSTANCE_TYPE)
         for n in g.nodes.values()
         if n.type_name == NODE_TYPE_DATASTATE_INSTANCE
     }
@@ -160,7 +161,7 @@ def test_execution_run_grounds_capacity_mm_on_solve():
     assert graphs == [g]
     answer_nodes = [
         n.value for n in g.nodes.values()
-        if n.properties.get("datastate_instance_type") == DS_ANSWER
+        if n.properties.get(PROP_DATASTATE_INSTANCE_TYPE) == DS_ANSWER
     ]
     assert answer_nodes == [_ANSWER_VALUE]
     # Real (not notional) provenance: one StepExecutionRecord per capacity step.
