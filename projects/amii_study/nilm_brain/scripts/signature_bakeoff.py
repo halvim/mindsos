@@ -168,21 +168,23 @@ def build_and_print(title, per_window, names, metric):
         print(f"\n### {title}: too few usable records ({live})")
         return
 
-    if metric == "euclid":     # ONE mu/sd for windows and profiles; scale=median gap
+    dist = metric != "cosine"          # "euclid" | "euclid_raw" are distance-based
+    if metric == "euclid":             # standardize; "euclid_raw" = already in final space
         feats = _standardize({n: feats[n] for n in live}, live)
-        teach = {n: feats[n].mean(0) for n in live}
+    teach = {n: feats[n].mean(0) for n in live}
+    if dist:
         profs = np.vstack([teach[n] for n in live])
         gaps = [np.linalg.norm(profs[i] - profs[j])
                 for i in range(len(live)) for j in range(i + 1, len(live))]
         scale = float(np.median(gaps)) or 1.0
     else:
         scale = 1.0
-        teach = {n: feats[n].mean(0) for n in live}
 
+    sim_metric = "euclid" if dist else "cosine"
     M = np.zeros((len(live), len(live)))
     for r, rn in enumerate(live):
         for c, cn in enumerate(live):
-            M[r, c] = np.mean([_sim(v, teach[cn], metric, scale) for v in feats[rn]])
+            M[r, c] = np.mean([_sim(v, teach[cn], sim_metric, scale) for v in feats[rn]])
 
     def short(x):
         return x.split("_")[0][:9]
@@ -328,6 +330,27 @@ def main():
             rows.append(np.concatenate([vi, feat_power(i, v, cfg)]) if vi is not None else None)
         gcombo[n] = rows
     build_and_print("G vi+power (per-window)", gcombo, names, "euclid")
+
+    # I: union [physics H (+) raw_harmonic] with a WHITENED (Mahalanobis) metric.
+    #    Pooled ZCA-whitening decorrelates axes so an internally-variable class
+    #    (kettle) isn't penalized for its own spread — tests metric-vs-feature.
+    def feat_union(i, v, cfg):
+        return np.concatenate([feat_physics(i, v, cfg), feat_raw_harmonic(i, v, cfg)])
+
+    uni = {}
+    for n in names:
+        iw, vw = recs[n]["i"], recs[n]["v"]
+        uni[n] = np.asarray([feat_union(iw[s:s + cfg["wlen"]], vw[s:s + cfg["wlen"]], cfg)
+                             for s in starts(len(iw))])
+    allX = np.vstack([uni[n] for n in names])
+    mu, sd = allX.mean(0), allX.std(0) + EPS
+    Xs = (allX - mu) / sd
+    C = np.cov(Xs.T) + 1e-3 * np.eye(Xs.shape[1])
+    w, V = np.linalg.eigh(C)
+    Wht = V @ np.diag(1.0 / np.sqrt(np.clip(w, 1e-9, None))) @ V.T
+    whit = {n: list(((uni[n] - mu) / sd) @ Wht) for n in names}
+    build_and_print("I union+whitened (Mahalanobis, decorrelated axes)",
+                    whit, names, "euclid_raw")
 
     print("\nread: SCORE line per candidate. Higher own-dominant count + larger "
           "worst margin = better separation. Compare against baseline A.")
