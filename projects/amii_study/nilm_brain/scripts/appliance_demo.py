@@ -1,14 +1,8 @@
-"""Appliance-signature recognition on the CURRENT channel (#3) — YOU run this.
+"""Appliance-signature recognition on the CURRENT channel (#3) — DIAGNOSTIC.
 
-Teach one appliance's current signature, then recognize every record on current
-and report which windows match the taught reference. The appliance fingerprint
-lives in the current waveform shape: fit the fundamental sinusoid -> the residual
-is the harmonic signature. Switching loads (laptop / CFL / microwave) have rich,
-distinctive signatures; resistive loads (kettle / hairdryer) draw near-sinusoidal
-current, so their residual is faint and they read as clean current cycles.
-
-The calibrate seed is a *resistive* appliance's current (a clean current cycle),
-so a switching appliance departs from that band -> request_reference -> teachable.
+Prints, per record, the verdict tally and the feature ranges (conf / spec / temp
+/ residual_energy) plus the learned gates, so we can see *why* each appliance
+lands where it does before teaching. Then attempts teach->recognize (guarded).
 
     PYTHONPATH=.:projects/amii_study \
       python projects/amii_study/nilm_brain/scripts/appliance_demo.py \
@@ -34,12 +28,16 @@ def _load(base: str, name: str) -> np.ndarray:
     return np.loadtxt(matches[0], delimiter=",")
 
 
+def _mm(outs, key):
+    xs = [float(o[key]) for o in outs]
+    return f"{min(xs):.3f}/{sum(xs) / len(xs):.3f}/{max(xs):.3f}"
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--data", required=True, help="dir of PLAID *.csv records")
-    ap.add_argument("--teach", default="Laptop", help="appliance to teach (a switching load)")
-    ap.add_argument("--seed", default="Water_kettle",
-                    help="resistive appliance for the clean-current calibrate seed")
+    ap.add_argument("--data", required=True)
+    ap.add_argument("--teach", default="Laptop")
+    ap.add_argument("--seed", default="Water_kettle")
     ap.add_argument("--max-windows", type=int, default=16)
     args = ap.parse_args()
 
@@ -48,19 +46,27 @@ def main() -> None:
 
     s = Solver("appliance-demo")
     s.fit_calibrate(_load(args.data, args.seed), channel="current")
-    ref = s.teach(args.teach, _load(args.data, args.teach), channel="current")
-    print(f"seed(current)={args.seed!r}  taught={args.teach!r} "
-          f"(template {len(ref['template'])} samples)")
-    print(f"gates={s.thresholds}\n")
+    print(f"seed(current)={args.seed!r}   gates={s.thresholds}\n")
 
     terms = ("cycle", "recognized", "request_reference", "held_ambiguity")
-    print(f"{'record':30s} {'tally':46s} matched[{args.teach}]")
+    print(f"{'record':30s} tally  |  (min/mean/max) conf · spec · temp · resid")
     for name, raw in records.items():
         outs = s.recognize(raw, max_windows=args.max_windows, channel="current")
         tally = {t: sum(o["verdict"]["state"] == t for o in outs) for t in terms}
-        matched = sum(o["verdict"].get("reference") == args.teach for o in outs)
-        flag = "  <-- TAUGHT" if name.startswith(args.teach) else ""
-        print(f"{name:30s} {str(tally):46s} {matched}{flag}")
+        print(f"{name:30s} {tally}\n"
+              f"{'':30s} conf={_mm(outs, 'confidence')}  spec={_mm(outs, 'spectral')}  "
+              f"temp={_mm(outs, 'temporal')}  resid={_mm(outs, 'residual_energy')}")
+
+    print()
+    try:
+        ref = s.teach(args.teach, _load(args.data, args.teach), channel="current")
+        print(f"taught {args.teach!r} (template {len(ref['template'])} samples)")
+        for name, raw in records.items():
+            outs = s.recognize(raw, max_windows=args.max_windows, channel="current")
+            matched = sum(o["verdict"].get("reference") == args.teach for o in outs)
+            print(f"  matched[{args.teach}] on {name:28s} = {matched}")
+    except RuntimeError as e:
+        print(f"teach skipped: {e}")
 
 
 if __name__ == "__main__":
