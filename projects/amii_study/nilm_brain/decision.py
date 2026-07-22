@@ -41,22 +41,37 @@ def default_thresholds() -> dict:
     return {"spectral": 0.5, "temporal": 0.5}
 
 
-def fit_thresholds(seed_features: list, k: float) -> dict:
+def fit_thresholds(clean_features: list, noise_features: list, k: float) -> dict:
     """Learn the per-axis structuredness gates off the clean-cycle seed (open
-    item #1, step 1b). Each axis threshold = the seed's mean concentration on
-    that axis + ``k``·σ — so 'structured' means *more concentrated than a healthy
-    cycle is*, not 'above 0.5'. Mirrors ``scoring.fit_calibrate_params``.
+    item #1, step 1b). A residual is 'structured' on an axis only if its
+    concentration exceeds **both** what a clean cycle shows **and** what
+    unstructured noise shows — so each gate is::
+
+        gate_axis = max( clean_mean + k·σ_clean ,  noise_mean + k·σ_noise )
+
+    Why both floors: a steady cycle is near-flat on the *temporal* axis
+    (concentration ~0), so the clean floor there is ~0 and would gate in even
+    noise — the *noise* floor is what binds. On the *spectral* axis the clean
+    grid harmonics dominate (concentration ~0.995), so the *clean* floor binds
+    and the noise floor (~0.44) is irrelevant. `max` picks the right one per
+    axis with no special-casing. `noise_features` are measured by running the
+    real fft/flatness capacities on a white-noise surrogate (see
+    ``Solver._noise_floor``).
 
     ``k`` is an L4 fit hyperparameter (passed by ``Solver.fit_calibrate``), NOT a
     DataState: no capacity consumes it, so registering it would be a dead (orphan)
-    ontology node. A threshold landing ≥ 1.0 is honest — it means that axis never
-    out-structures a clean cycle, so it simply never fires (expected on the
-    spectral axis for voltage: grid harmonics are in every window)."""
-    s = np.asarray([f["spectral_concentration"] for f in seed_features], dtype=float)
-    t = np.asarray([f["temporal_concentration"] for f in seed_features], dtype=float)
-    return {"spectral": float(np.mean(s) + k * np.std(s)),
-            "temporal": float(np.mean(t) + k * np.std(t)),
-            "provenance": f"seed_fit:{len(seed_features)}_windows,k={k}"}
+    ontology node."""
+    def _floor(feats, key):
+        x = np.asarray([f[key] for f in feats], dtype=float)
+        return float(np.mean(x) + k * np.std(x))
+
+    return {
+        "spectral": max(_floor(clean_features, "spectral_concentration"),
+                        _floor(noise_features, "spectral_concentration")),
+        "temporal": max(_floor(clean_features, "temporal_concentration"),
+                        _floor(noise_features, "temporal_concentration")),
+        "provenance": f"seed_fit:{len(clean_features)}w+noise_floor,k={k}",
+    }
 
 
 def _verdict(**kw):

@@ -19,6 +19,8 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+import numpy as np
+
 from mindsos_capacity import CapacityLayer, capacity_iri
 from mindsos_capacity import (
     CATEGORY_PERCEPTION, CATEGORY_DERIVATION,
@@ -41,6 +43,9 @@ _PARSE_RAW = capacity_iri(CATEGORY_PERCEPTION, "parse_raw")
 _BIND      = capacity_iri(CATEGORY_DERIVATION, "bind")
 _WINDOW    = capacity_iri(CATEGORY_DERIVATION, "window")
 _FIT       = capacity_iri(CATEGORY_DERIVATION, "fit_reference")
+_FFT       = capacity_iri(CATEGORY_DERIVATION, "fft")
+_SPEC_FLAT = capacity_iri(CATEGORY_DERIVATION, "spectral_flatness")
+_TEMP_FLAT = capacity_iri(CATEGORY_DERIVATION, "temporal_flatness")
 
 
 def build_given(**overrides) -> Dict[str, object]:
@@ -160,23 +165,49 @@ class Solver:
             cycle scores high and a disturbance low (resolves the single-pass
             collapse);
           - `structuredness_thresholds` — the per-axis gates (step 1b), each set
-            to seed mean + `k`·σ of that axis's concentration, so 'structured'
-            means *more concentrated than a clean cycle*, not 'above 0.5'.
+            to `max(clean floor, noise floor)` so 'structured' means *more
+            concentrated than BOTH a clean cycle and unstructured noise*. The
+            noise floor is measured per window by `_noise_floor` (a white-noise
+            surrogate through the real fft/flatness capacities); it is what binds
+            the temporal axis, where a clean cycle is ~flat.
         `k` is an L4 fit hyperparameter (default 3.0), not a DataState."""
+        g = self.given
+        fs = float(g[O.FS.iri]); n_bins = g[O.N_TIME_BINS.iri]
+        rng = np.random.default_rng(0)
         vs = self._voltage_signal(seed_raw)
         history: List[Dict] = []
-        feats: List[Dict] = []
+        clean_feats: List[Dict] = []
+        noise_feats: List[Dict] = []
         for start in self._window_starts(len(vs["values"]))[:max_windows]:
             vw, cm = self._refine_window(vs, start)
             bb = self._run_segment(cm, vw, history)
-            feats.append({"residual_energy": bb[O.RESIDUAL_ENERGY.iri],
-                          "harmonic_fraction": bb[O.HARMONIC_FRACTION.iri],
-                          "spectral_concentration": bb[O.SPECTRAL_CONCENTRATION.iri],
-                          "temporal_concentration": bb[O.TEMPORAL_CONCENTRATION.iri]})
+            clean_feats.append({"residual_energy": bb[O.RESIDUAL_ENERGY.iri],
+                                "harmonic_fraction": bb[O.HARMONIC_FRACTION.iri],
+                                "spectral_concentration": bb[O.SPECTRAL_CONCENTRATION.iri],
+                                "temporal_concentration": bb[O.TEMPORAL_CONCENTRATION.iri]})
+            noise_feats.append(self._noise_floor(len(vw["values"]), fs, n_bins, rng))
             history.append(cm)
-        self.params = fit_calibrate_params(feats)
-        self.thresholds = fit_thresholds(feats, k)
+        self.params = fit_calibrate_params(clean_feats)
+        self.thresholds = fit_thresholds(clean_feats, noise_feats, k)
         return self.params
+
+    def _noise_floor(self, n_samples, fs, n_bins, rng):
+        """Measure the concentration an *unstructured* residual produces — the
+        null the structuredness gate must clear. A white-noise surrogate of the
+        window's length is pushed through the real `fft`/`spectral_flatness`/
+        `temporal_flatness` capacities (concentration is scale-invariant, so
+        unit-variance noise suffices; no duplicated numpy — the bodies own it,
+        arc D4)."""
+        surr = {"values": rng.standard_normal(int(n_samples))}
+        spec = self._invoke(_FFT, {O.RESIDUAL.iri: surr,
+                                   O.FS.iri: fs})[O.RESIDUAL_SPECTRUM.iri]
+        return {
+            "spectral_concentration": self._invoke(
+                _SPEC_FLAT, {O.RESIDUAL_SPECTRUM.iri: spec})[O.SPECTRAL_CONCENTRATION.iri],
+            "temporal_concentration": self._invoke(
+                _TEMP_FLAT, {O.RESIDUAL.iri: surr,
+                             O.N_TIME_BINS.iri: n_bins})[O.TEMPORAL_CONCENTRATION.iri],
+        }
 
     def _voltage_signal(self, raw):
         g = self.given
