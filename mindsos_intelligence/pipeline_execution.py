@@ -64,6 +64,12 @@ class PipelineExecutionResult:
     error: Optional[BaseException] = None
     steps_run: int = 0
     needs_input: Optional[Any] = None
+    #: This run's ``capacity_mm`` grounding graph (the ``CapacityMMWriter``'s
+    #: per-run graph), or ``None`` when no ``mm`` was supplied / nothing was
+    #: written. Exposed so the solve-path caller (Step 5, ``execution.run``)
+    #: can hand the graph to ``consolidate_task`` for Slice-B persistence
+    #: without re-reaching into the writer.
+    capacity_graph: Optional[Any] = None
 
 
 def _is_cancelled(token: Any) -> bool:
@@ -127,18 +133,30 @@ def execute_pipeline(
 
         writer = CapacityMMWriter(mm, task_id, pipeline_run_ref)
         for ds, value in blackboard.items():
-            writer.seed(ds, value)
+            # Idempotent seed: a start input already carried in the index (e.g.
+            # a raw_task root the caller pre-minted) is not re-minted. Empty
+            # index on the submind / interpret paths → every start seeds, so
+            # those are byte-identical.
+            if ds not in writer.index:
+                writer.seed(ds, value)
+
+    def _cap_graph():
+        return writer.graph if writer is not None else None
 
     steps = tuple(getattr(pipeline, "steps", ()) or ())
 
     # No-op pipeline: the target is already available (target ∈ starts).
     if not steps:
-        return PipelineExecutionResult(success=True, outputs=blackboard, steps_run=0)
+        return PipelineExecutionResult(
+            success=True, outputs=blackboard, steps_run=0,
+            capacity_graph=_cap_graph(),
+        )
 
     for idx, step in enumerate(steps):
         if _is_cancelled(cancel_token):
             return PipelineExecutionResult(
-                success=False, outputs=blackboard, cancelled=True, steps_run=idx
+                success=False, outputs=blackboard, cancelled=True, steps_run=idx,
+                capacity_graph=_cap_graph(),
             )
         inputs = {
             ds: blackboard[ds]
@@ -162,6 +180,7 @@ def execute_pipeline(
                 outputs=blackboard,
                 needs_input=step_needs_input,
                 steps_run=idx,
+                capacity_graph=_cap_graph(),
             )
         if not getattr(result, "success", False):
             return PipelineExecutionResult(
@@ -170,6 +189,7 @@ def execute_pipeline(
                 failed_step=step.capacity_iri,
                 error=getattr(result, "error", None),
                 steps_run=idx,
+                capacity_graph=_cap_graph(),
             )
         outs = dict(getattr(result, "outputs", {}) or {})
         # CR#4 Slice 2 — ground the completed invocation into capacity_mm
@@ -181,7 +201,8 @@ def execute_pipeline(
             blackboard[ds] = value
 
     return PipelineExecutionResult(
-        success=True, outputs=blackboard, steps_run=len(steps)
+        success=True, outputs=blackboard, steps_run=len(steps),
+        capacity_graph=_cap_graph(),
     )
 
 

@@ -10,7 +10,7 @@ max-depth=3 (admin-tunable); v0's single-Milestone Plan never reaches it.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List, Mapping, Optional
 
 from mindsos_capacity.builtins.planning_v0 import (
     DS_IS_LEAF,
@@ -34,13 +34,55 @@ class PlanResult:
     root_milestone_ref: str
     leaf_milestone_refs: List[str] = field(default_factory=list)
     pipeline_refs: Dict[str, str] = field(default_factory=dict)
+    #: The DataState endpoints of the solve pipeline the leaf(s) run, read from
+    #: the planner's ``planning.plan`` output (out-of-CR Step 5). ``None`` when
+    #: the plan names none — the v0 placeholder planner does, so the v0 path is
+    #: unchanged (``execution.run`` emits the notional record). A real consumer's
+    #: ``derive_initial_plan`` (e.g. arc, seeing ``resolved_reference``) names
+    #: ``{"start_datastate", "target_datastate"}``; ``execution.run`` then finds
+    #: + runs a real pipeline (single-leaf scope at v1; multi-leaf target routing
+    #: is deferred with real decomposition / WSD).
+    solve_target: Optional[Dict[str, str]] = None
 
 
-def build(dispatcher, writer, mapping_result_ref, task_pattern_iri) -> PlanResult:
-    # derive initial plan (v0: single-Milestone)
-    dispatcher.dispatch(
-        DERIVE_PLAN_IRI, {DS_MAPPING_RESULT: {"task_pattern_iri": task_pattern_iri}}
-    )
+def _read_solve_target(plan_out: Any) -> Optional[Dict[str, str]]:
+    """Extract the solve pipeline's ``{start,target}`` DataState endpoints from
+    the planner's ``planning.plan`` output, or ``None``.
+
+    Tolerant by construction: a v0 plan (or any plan without a well-formed
+    ``solve_target`` naming both a non-empty ``start_datastate`` and
+    ``target_datastate``) yields ``None`` → the notional-record fallback."""
+    if not isinstance(plan_out, Mapping):
+        return None
+    st = plan_out.get("solve_target")
+    if not isinstance(st, Mapping):
+        return None
+    start = st.get("start_datastate")
+    target = st.get("target_datastate")
+    if not start or not target:
+        return None
+    return {"start_datastate": start, "target_datastate": target}
+
+
+def build(
+    dispatcher, writer, mapping_result_ref, task_pattern_iri, *,
+    resolved_reference: Any = None,
+) -> PlanResult:
+    # Derive initial plan (v0: single-Milestone). ``resolved_reference`` (Step
+    # 5.1 / Phase-1→2 drop fix) rides the already-declared ``DS_MAPPING_RESULT``
+    # value dict — no new declared input, so the strict ``_validate_inputs``
+    # contract is untouched and the v0 body (reads only ``task_pattern_iri``)
+    # ignores it. The planner's output is no longer discarded: its
+    # ``solve_target`` (when present) tells ``execution.run`` what pipeline to
+    # find + run.
+    plan_out = dispatcher.dispatch(
+        DERIVE_PLAN_IRI,
+        {DS_MAPPING_RESULT: {
+            "task_pattern_iri": task_pattern_iri,
+            "resolved_reference": resolved_reference,
+        }},
+    ).outputs.get(DS_PLAN)
+    solve_target = _read_solve_target(plan_out)
     root = writer.emit_milestone("root", 0, is_leaf=True)
     plan = writer.emit_plan(root.iri, mapping_result_ref)
 
@@ -57,6 +99,7 @@ def build(dispatcher, writer, mapping_result_ref, task_pattern_iri) -> PlanResul
         root_milestone_ref=root.iri,
         leaf_milestone_refs=leaves,
         pipeline_refs=pipelines,
+        solve_target=solve_target,
     )
 
 

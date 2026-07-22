@@ -87,6 +87,14 @@ class Phase1Result:
     task_pattern_iri: str
     mapping_confidence: float
     mapping_result_ref: str
+    #: The canonical reference the resolve chain produced (``None`` when the
+    #: consumer declares no ``resolve_target_datastate`` or the request carried
+    #: no reference). Carried out of ``interpret()`` so Phase 2/3 can plan +
+    #: execute against the resolved task instead of dropping it (out-of-CR
+    #: Step 5 / ADR-0172 §Step-5 amendment; subsumes CORE_CR_PHASE1_RESOLVED_
+    #: REFERENCE). Byte-identical when absent — every existing caller reads a
+    #: default ``None``.
+    resolved_reference: Any = None
 
 
 def _slot(profile: Optional[Phase1Profile], attr: str, default: str) -> str:
@@ -304,6 +312,7 @@ def run(dispatcher, writer, task_input) -> "Phase1Result | NeedsInput":
         task_pattern_iri=r.task_pattern_iri,
         mapping_confidence=r.mapping_confidence,
         mapping_result_ref=mr.iri,
+        resolved_reference=r.resolved_reference,
     )
 
 

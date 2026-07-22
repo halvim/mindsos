@@ -129,11 +129,22 @@ class Orchestrator:
 
     # ── consolidation seam (Phase 5 -> completion; ADR-0176) ───────────
 
-    def _consolidate(self, task_run, task_pattern_iri, task_id=None, writer=None) -> None:
+    def _consolidate(
+        self, task_run, task_pattern_iri, task_id=None, writer=None,
+        capacity_graphs=None,
+    ) -> None:
         """Freeze the MM + write the Episode on a terminal path (retain-by-
         default). No-op in simplified mode; graceful skip when unwired. Clears
         the crash-recovery checkpoint on completion (ADR-0179). Persists this
-        task's chain graph and points ``mm_root_ref`` at it (DQ-8 / CR#4)."""
+        task's chain graph and points ``mm_root_ref`` at it (DQ-8 / CR#4).
+
+        ``capacity_graphs`` (Step 5.4): this task's per-run ``capacity_mm``
+        grounding graphs. When supplied (a real solve run) and a persister is
+        wired, Slice-B persist writes them + a task-level index and points the
+        Episode's ``capacity_root_ref`` at it — non-inert. Empty / ``None``
+        (v0, notional runs) leaves ``capacity_root_ref`` ``None``. Per-DataState
+        ``encode`` hints are a brain follow-up (PB-1); with none supplied every
+        grounded value must already be codec-safe (primitive/dict/list)."""
         if self._simplified:
             return
         consolidation.consolidate_task(
@@ -144,6 +155,7 @@ class Orchestrator:
             outcome_classification=_OUTCOME_BY_STATUS.get(task_run.status, "failed"),
             chain_graph=writer.chain_graph() if writer is not None else None,
             mm_persister=self._mm_persister,
+            capacity_graphs=capacity_graphs or None,
         )
         if self._checkpoint_store is not None and task_id is not None:
             self._checkpoint_store.mark_consolidated(task_id)
@@ -160,7 +172,11 @@ class Orchestrator:
     # ── six-phase lifecycle ────────────────────────────────────────────
 
     def run_lifecycle(self, task_input, *, tier=TierEnum.FOREGROUND, executor=None, task_id=None) -> TaskOutcome:
-        writer = ChainArtifactWriter(self._mm, self._writer_scope(task_id))
+        # Task-unique scope (DQ-8): drives both the chain-writer graph and the
+        # capacity grounding run's task_id / run refs (Step 5), so a task with
+        # no explicit ``task_id`` still grounds into an isolated per-run graph.
+        scope = self._writer_scope(task_id)
+        writer = ChainArtifactWriter(self._mm, scope)
 
         task_input_ref = f"taskinput:{task_id}" if task_id is not None else None
 
@@ -181,9 +197,12 @@ class Orchestrator:
             task_id, last_phase="INTERPRETATION", task_input_ref=task_input_ref
         )
 
-        # Phase 2 — Plan + Pipeline construction
+        # Phase 2 — Plan + Pipeline construction. Thread the Phase-1
+        # ``resolved_reference`` (Step 5.1 drop fix) so the planner can name a
+        # solve target against the resolved task.
         plan_result = plan_construction.build(
-            self._dispatcher, writer, p1.mapping_result_ref, p1.task_pattern_iri
+            self._dispatcher, writer, p1.mapping_result_ref, p1.task_pattern_iri,
+            resolved_reference=p1.resolved_reference,
         )
         self._checkpoint(
             task_id,
@@ -196,11 +215,30 @@ class Orchestrator:
         task_run = writer.emit_task_run(plan_ref=plan_result.plan_ref)
         self.update_priority(task_run, tier=tier, executor=executor, task_id=task_id)
 
+        # Step 5 — solve seed + capacity-graph collection. When the plan names a
+        # ``solve_target`` (a real consumer, not v0) and we're not in simplified
+        # mode, seed the resolved task at the pipeline's start DataState and let
+        # ``execution.run`` ground + run the real pipeline into ``capacity_mm``.
+        # ``capacity_graphs`` accumulates each real run's grounding graph (incl.
+        # replan re-runs) for Slice-B persistence at consolidation.
+        solve_target = None if self._simplified else getattr(
+            plan_result, "solve_target", None
+        )
+        solve_seed = (
+            {solve_target["start_datastate"]: p1.resolved_reference}
+            if solve_target is not None else None
+        )
+        capacity_graphs: list = []
+
         # Phase 3-5 — execution with bounded replan (invalidate-at-and-below)
         replans = 0
         sufficient = True
         while True:
-            execution.run(self._dispatcher, writer, plan_result, task_run)
+            execution.run(
+                self._dispatcher, writer, plan_result, task_run,
+                mm=self._mm, run_scope=scope, solve_seed=solve_seed,
+                capacity_graphs=capacity_graphs, run_attempt=replans,
+            )
             if self._simplified:
                 break
             sufficient = sufficient_predicate.evaluate(self._dispatcher)
@@ -208,7 +246,9 @@ class Orchestrator:
             if verdict.decision == "abort":
                 writer.emit_replan_record("pipeline", verdict)
                 task_run.status = "aborted"
-                self._consolidate(task_run, p1.task_pattern_iri, task_id, writer)
+                self._consolidate(
+                    task_run, p1.task_pattern_iri, task_id, writer, capacity_graphs
+                )
                 return TaskOutcome("aborted", task_run.iri, replans_used=replans)
             if verdict.decision == "replan" and replans < self._budget:
                 replans += 1
@@ -223,7 +263,9 @@ class Orchestrator:
         if not self._simplified and not sufficient:
             blame = phase_6.diagnose(self._dispatcher)
             task_run.status = "failed"
-            self._consolidate(task_run, p1.task_pattern_iri, task_id, writer)
+            self._consolidate(
+                task_run, p1.task_pattern_iri, task_id, writer, capacity_graphs
+            )
             return TaskOutcome(
                 "dont_know",
                 task_run.iri,
@@ -234,7 +276,9 @@ class Orchestrator:
 
         # Phase 5 -> completion: freeze MM + write Episode (ADR-0176).
         task_run.status = "completed"
-        self._consolidate(task_run, p1.task_pattern_iri, task_id, writer)
+        self._consolidate(
+            task_run, p1.task_pattern_iri, task_id, writer, capacity_graphs
+        )
         return TaskOutcome(
             "succeeded", task_run.iri, outcome=p1.task_pattern_iri, replans_used=replans
         )
