@@ -50,6 +50,7 @@ _TEMP_FLAT = capacity_iri(CATEGORY_DERIVATION, "temporal_flatness")
 _SYNTH     = capacity_iri(CATEGORY_DERIVATION, "synthesize")
 _SUBTRACT  = capacity_iri(CATEGORY_DERIVATION, "subtract")
 _NORMALIZE = capacity_iri(CATEGORY_DERIVATION, "normalize")
+_HARM_PROFILE = capacity_iri(CATEGORY_DERIVATION, "harmonic_profile")
 
 
 def build_given(**overrides) -> Dict[str, object]:
@@ -335,6 +336,60 @@ class Solver:
             rows.append({"start": start, "state": bb[O.CYCLE_VERDICT.iri]["state"],
                          "leftover_spec": ls, "leftover_temp": lt})
         return rows
+
+    # ── SPECTRAL appliance signature (test — the harmonic-magnitude profile) ──
+    def _residual_profile(self, residual):
+        """The residual's per-order harmonic profile (phase-invariant appliance
+        signature), via the real fft + harmonic_profile capacities."""
+        g = self.given; fs = float(g[O.FS.iri])
+        spec = self._invoke(_FFT, {O.RESIDUAL.iri: residual, O.FS.iri: fs})[O.RESIDUAL_SPECTRUM.iri]
+        prof = self._invoke(_HARM_PROFILE, {
+            O.RESIDUAL_SPECTRUM.iri: spec, O.F0.iri: g[O.F0.iri],
+            O.HARMONIC_ORDERS.iri: g[O.HARMONIC_ORDERS.iri],
+            O.HARMONIC_BANDWIDTH.iri: g[O.HARMONIC_BANDWIDTH.iri]})[O.HARMONIC_AMPLITUDES.iri]
+        return np.asarray(prof, dtype=float)
+
+    def teach_spectral(self, name, example_raw, channel: str = "voltage",
+                       max_windows: int = 40):
+        """Teach an appliance's spectral signature: the MEAN harmonic profile
+        over its `request_reference` windows (robust to per-window noise)."""
+        vs = self._signal(example_raw, channel)
+        history: List[Dict] = []
+        profs = []
+        for start in self._window_starts(len(vs["values"]))[:max_windows]:
+            vw, cm = self._refine_window(vs, start)
+            bb = self._run_segment(cm, vw, history)
+            history.append(cm)
+            if bb[O.CYCLE_VERDICT.iri]["state"] == "request_reference":
+                profs.append(self._residual_profile(self._window_residual(vw, cm)))
+        if not profs:
+            raise RuntimeError(f"teach_spectral({name!r}): no request_reference window")
+        ref = {"name": name, "form": "spectral",
+               "profile": np.mean(np.asarray(profs), axis=0).tolist()}
+        self.known_references = self.known_references + [ref]
+        return ref
+
+    def profile_similarities(self, raw, ref_name, channel: str = "voltage",
+                             max_windows: int = 16):
+        """Diagnostic: per-window cosine similarity of the window's harmonic
+        profile to the named taught spectral signature. High for the taught
+        appliance, low for others iff the signature discriminates."""
+        ref = next((r for r in self.known_references
+                    if r.get("name") == ref_name and r.get("form") == "spectral"), None)
+        if ref is None:
+            raise RuntimeError(f"no spectral reference {ref_name!r}")
+        p0 = np.asarray(ref["profile"], dtype=float)
+        vs = self._signal(raw, channel)
+        history: List[Dict] = []
+        sims = []
+        for start in self._window_starts(len(vs["values"]))[:max_windows]:
+            vw, cm = self._refine_window(vs, start)
+            self._run_segment(cm, vw, history)
+            history.append(cm)
+            p = self._residual_profile(self._window_residual(vw, cm))
+            sims.append(float(np.dot(p, p0) /
+                              ((np.linalg.norm(p) * np.linalg.norm(p0)) + 1e-12)))
+        return sims
 
     # ── teach: add ONE template reference from a flagged residual (§5) ──────
     def teach(self, name: str, example_raw, max_windows: int = 40,

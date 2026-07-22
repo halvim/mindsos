@@ -87,6 +87,22 @@ def main() -> None:
     except RuntimeError as e:
         print(f"teach skipped: {e}")
 
+    # ── SPECTRAL signature test — does the harmonic profile discriminate? ──
+    print("\n=== SPECTRAL signature test (cosine sim of each appliance to the "
+          f"taught {args.teach} profile) ===")
+    s2 = Solver("appliance-spectral")
+    s2.fit_calibrate(_synthetic_clean_current(), channel="current")
+    try:
+        s2.teach_spectral(args.teach, _load(args.data, args.teach), channel="current")
+        for name, raw in records.items():
+            sims = s2.profile_similarities(raw, args.teach, channel="current",
+                                           max_windows=args.max_windows)
+            flag = "  <-- TAUGHT" if name.startswith(args.teach) else ""
+            print(f"  {name:30s} cos-sim min/mean/max = "
+                  f"{min(sims):.3f}/{sum(sims) / len(sims):.3f}/{max(sims):.3f}{flag}")
+    except RuntimeError as e:
+        print(f"spectral teach skipped: {e}")
+
 
 if __name__ == "__main__":
     main()

@@ -25,7 +25,8 @@ from .ontology import (
     WINDOW_START, FS, F0, SIGNAL_WINDOW, CYCLE_REFERENCE, FREQ_SEARCH_FRAC,
     N_GRID, CYCLE_MODEL, RECONSTRUCTED_WINDOW, RESIDUAL, RESIDUAL_ENERGY,
     RESIDUAL_SPECTRUM, SPECTRAL_CONCENTRATION, N_TIME_BINS, TEMPORAL_CONCENTRATION,
-    HARMONIC_ORDERS, HARMONIC_BANDWIDTH, HARMONIC_FRACTION, CYCLE_MODEL_HISTORY,
+    HARMONIC_ORDERS, HARMONIC_BANDWIDTH, HARMONIC_FRACTION, HARMONIC_AMPLITUDES,
+    CYCLE_MODEL_HISTORY,
     PERIOD_STABILITY, POWER, NORMALIZED_SIGNAL, PHASE, SEGMENTS, CYCLE_COUNT,
     INDUCED_STRUCTURE,
 )
@@ -159,6 +160,18 @@ def _band_energy(**kw):
     return {HARMONIC_FRACTION.iri: harm / tot}
 
 
+def _harmonic_profile(**kw):
+    """Per-order harmonic magnitude profile of the residual spectrum — the
+    phase-invariant appliance signature (energy at each k*f0), normalized to a
+    shape (unit sum). Unlike `band_energy` (one scalar fraction) this keeps the
+    full per-order vector, which is what distinguishes a laptop from a kettle."""
+    rs = kw[RESIDUAL_SPECTRUM.iri]; f0 = float(kw[F0.iri])
+    orders = kw[HARMONIC_ORDERS.iri]; bw = float(kw[HARMONIC_BANDWIDTH.iri])
+    fr = rs["freqs"]; pw = rs["mag"] ** 2
+    prof = np.array([float(np.sum(pw[np.abs(fr - k * f0) <= bw])) for k in orders], dtype=float)
+    return {HARMONIC_AMPLITUDES.iri: (prof / (float(np.sum(prof)) + _EPS)).tolist()}
+
+
 def _compare_across_windows(**kw):
     cm = kw[CYCLE_MODEL.iri]; hist = list(kw[CYCLE_MODEL_HISTORY.iri])
     per = np.array([1.0 / m["freq"] for m in hist + [cm]])
@@ -251,6 +264,10 @@ def register_derivation(cl, session):
                  inputs=(RESIDUAL_SPECTRUM.iri, F0.iri, HARMONIC_ORDERS.iri, HARMONIC_BANDWIDTH.iri),
                  outputs=(HARMONIC_FRACTION.iri,), implementation=_band_energy,
                  description="spectrum -> harmonic_fraction at k*f0"),
+        Capacity(name="harmonic_profile", category=D,
+                 inputs=(RESIDUAL_SPECTRUM.iri, F0.iri, HARMONIC_ORDERS.iri, HARMONIC_BANDWIDTH.iri),
+                 outputs=(HARMONIC_AMPLITUDES.iri,), implementation=_harmonic_profile,
+                 description="spectrum -> per-order harmonic profile (appliance signature)"),
         Capacity(name="compare_across_windows", category=D,
                  inputs=(CYCLE_MODEL.iri, CYCLE_MODEL_HISTORY.iri),
                  outputs=(PERIOD_STABILITY.iri,), implementation=_compare_across_windows,
