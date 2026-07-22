@@ -1,10 +1,12 @@
 # CORE WORK ITEM — load the resolved task into L5 (make it reach the solve)
 
 **Type:** sequencing work item — orders existing CRs; not a new design.
-**Status:** Slices 0 + 1 + 2 + 3 ALL SHIPPED to main. **Only out-of-CR Step 5 (`execution.run` →
-`execute_pipeline`) remains** — the true end-to-end blocker for `arc solve task 7`. Steps 1-4 gave
-the task a home in L5 (capacity_mm grounding DAG + persist, knowledge_mm writer, provenance XRef);
-they are **inert in prod** until Step 5 wires the solve path to actually read/write them.
+**Status:** Slices 0 + 1 + 2 + 3 SHIPPED + **out-of-CR Step 5 BUILT + gate-green** (branch
+`feat/l5-step5-solve-execution`; effective 4308 / 0, +8, 0 regressions; `L5_STEP5_CONFIRMED.md`,
+ADR-0172 am-1). Steps 1-4 gave the task a home in L5 (capacity_mm grounding DAG + persist,
+knowledge_mm writer, provenance XRef); Step 5 wires the solve path so the capacity writer + persist
+fire non-inert. **Remaining = the arc-brain half** (arc's `derive_initial_plan` must emit
+`solve_target`) + deferred provenance XRef (5.5) + per-DataState `encode` hints (brain, PB-1).
 
 > **UPDATE 2026-07-21:** Slice 2 (capacity writer) has since SHIPPED (PR #61) — but is now
 > being **reopened**: `CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` (APPROVED) rewrites it to a
@@ -25,7 +27,12 @@ ADR-0202, PR #52 (merged). This work item builds on it.
 - Step 4 / Slice 3 — **SHIPPED** (branch `feat/l5-slice-3-knowledge-writer`; gate 4300/0, 0 regressions).
   Knowledge writer + `mm_handle`=`MMResolver` + DQ-1 provenance XRef. `L5_SLICE_3_CONFIRMED.md`;
   memory [[l5-slice-3-knowledge-writer-shipped]].
-- **Step 5 — NOT built. ← NEXT (the only remaining work).** See §Step 5 below.
+- Step 5 — **BUILT + gate-green 2026-07-22** (branch `feat/l5-step5-solve-execution`; effective
+  4308 / 12 skip / 1 xpass / 0 fail, +8 tests, 0 regressions). `execution.run` → `execute_pipeline`
+  on the solve path: the resolved task grounds into `capacity_mm` and the Episode persists the
+  capacity graph. Also fixes the Phase-1→2 drop (3.1) + reads the plan's `solve_target`.
+  `L5_STEP5_CONFIRMED.md`, ADR-0172 am-1, memory [[task-into-l5-not-built]]. **Core done; arc e2e
+  gated on the arc brain naming `solve_target` (brain follow-up).** See §Step 5 below.
 
 ---
 
