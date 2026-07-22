@@ -97,3 +97,23 @@ def test_only_declared_placeholder(solver):
     for name in cyc:
         decl = solver.cl.get_declaration(capacity_iri(CATEGORY_DERIVATION, name))
         assert decl.implementation is not None and not getattr(decl, "placeholder", False)
+
+
+# ── 1b: held_ambiguity is reachable (low-conf window, flat on BOTH axes) ─
+def test_held_ambiguity_reachable():
+    """After seed-fitting the structuredness gates, a window that is
+    low-confidence *and* unstructured on both axes (broadband noise) must route
+    to `held_ambiguity` — not `request_reference` (nothing to ask for) and not
+    `cycle` (low confidence). This protects the third terminal state from
+    silently disappearing if the gates are ever re-tuned. Broadband noise is
+    spectrally flat (spec far below the learned gate) and temporally uniform
+    (temp below the learned gate), while its large residual drives confidence
+    to ~0. Several windows are checked so the assertion does not hinge on one
+    noise draw grazing the temporal gate."""
+    s = Solver("nilm-test-hold")
+    s.fit_calibrate(_clean_record())                    # learn the clean band + gates
+    rng = np.random.default_rng(1)
+    noise = _clean_record()                             # correct shape / channel_map
+    noise[:, 1] = 5.0 * rng.standard_normal(noise.shape[0])   # voltage = broadband noise
+    states = [o["verdict"]["state"] for o in s.recognize(noise, max_windows=8)]
+    assert "held_ambiguity" in states, f"held_ambiguity unreachable; got {set(states)}"

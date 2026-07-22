@@ -50,42 +50,45 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
 ## Validated (green)
 - Gate `tests/test_gate.py` — **6 passed** on Linux (F1 finder-composes, F2
   executes-to-real-values, seeded-clean-cycle→`cycle`, disturbance<clean, C7 envelope,
-  placeholder check).
-- Demo on **real PLAID `Water_kettle`**: finder composed a **10-step** pipeline; 18/19
-  steady windows → `cycle` (conf 1.000); the one anomalous window (start=5000, residual
-  3.35 vs ~2.1 baseline) → **`request_reference [spectral]`** (conf 0.001). The thesis
-  end-to-end: steady cycles recognized, genuine outlier honestly flagged as "no reference
-  for this."
+  placeholder check). +1 reachability test added post-1b (see #1).
+- Demo on **real PLAID `Water_kettle_1805`** (data at `/home/sanmyaku/_sample`): finder
+  composed the recognition segment; 18/19 steady windows → `cycle` (conf 1.000); the one
+  anomalous window (start=5000, residual 3.35 vs ~2.1 baseline, `temp` 0.064 vs clean ~0.012)
+  → **`request_reference [temporal]`** (conf 0.001). **Post-1b the attribution is now
+  `[temporal]`, not `[spectral]`** — `spec` saturates ~0.995 on every window so the learned
+  spectral gate (~0.997) correctly stays silent; discrimination is carried by the temporal
+  axis, and the request is now **structure-driven** (temp ≫ learned threshold), not fired by
+  a degenerate always-on gate. `held_ambiguity` is reachable-in-principle but not exercised by
+  this clean record (no low-conf + flat-both window).
 - Re-run: gate `PYTHONPATH=.:projects/amii_study python -m pytest
-  projects/amii_study/nilm_brain/tests -q`; demo `… scripts/cycle_demo.py --data <PLAID
-  dir> --record Water_kettle`.
+  projects/amii_study/nilm_brain/tests -q`; demo `… scripts/cycle_demo.py --data
+  /home/sanmyaku/_sample --record Water_kettle`.
 
 ## Open items / next phase (pick one)
-1. **Axis degeneracy (highest-value fix) — split 1a/1b.**
-   - **1a — re-home the threshold source (implemented this chat; awaiting Linux gate).**
-     `structuredness_thresholds` moved out of `build_given` into a Solver learned slot
-     (`self.thresholds` ← `decision.default_thresholds()`), threaded into the segment like
-     `calibrate_params`. **Behavioral no-op** — fixes the §7 doc-divergence, not behavior yet.
-   - **1b — fit the thresholds off the clean-cycle seed (implemented this chat; awaiting Linux
-     gate + demo).** `fit_calibrate` now also fits `structuredness_thresholds` = seed mean +
-     `k`·σ per axis (`decision.fit_thresholds`), so 'structured' means *more concentrated than a
-     healthy cycle*, not 'above 0.5'. `k` is an **L4 fit hyperparameter** on `fit_calibrate`
-     (default 3.0), **not** a DataState — no capacity consumes it, so a DataState would be an
-     orphan node. **Gate stays 6/6** (1b is gate-neutral: clean cycles still score ≥ req →
-     `cycle` before any threshold check); its effect shows only in the **demo**. Caveat:
-     `spectral_concentration` saturates ~0.995 on voltage (harmonics everywhere), so the spectral
-     gate may still never fire — discrimination is expected to fall on the **temporal** axis.
-     Whether `held_ambiguity` actually becomes reachable is the empirical result the demo reports.
-   - **1b-test — `held_ambiguity` reachability gate test: DEFERRED.** A robust fixture depends on
-     the real seed-fit concentration numbers (guessing them risks a red gate + breaks the
-     contamination rule). Author it against the demo output, next.
-2. **Teach a reference (the leaf-learning).** Inspect what the `Water_kettle` start=5000
+1. **✔ DONE (this chat) — Axis degeneracy fixed (1a + 1b).**
+   - **1a** — `structuredness_thresholds` re-homed out of `build_given` into the Solver learned
+     slot (`self.thresholds` ← `decision.default_thresholds()`); fixes the §7 doc-divergence.
+   - **1b** — `fit_calibrate` now seed-fits the gates (`decision.fit_thresholds`, mean + `k`·σ,
+     `k`=3.0 an L4 fit arg, **not** a DataState). Result on real PLAID: request_reference is now
+     **structure-driven and correctly `[temporal]`** (was a degenerate `[spectral]`); gate 6/6.
+   - **1b-test** — `test_held_ambiguity_reachable` added (synthetic low-conf broadband-noise
+     window → flat both axes → `held_ambiguity`), authored against the observed numbers.
+   - **Follow-ups noted, not done:** `held_ambiguity` is a narrow corner (low-conf almost always
+     co-occurs with axis structure → request_reference) — accepted as doctrine-consistent, not
+     forced. `required_confidence` still literal in `build_given` (§7 = L5 task input) — re-home
+     next, same species as the 1a fix.
+2. **Matcher (NEXT — the #2 prerequisite).** Recognition currently fits only the *given*
+   `cycle_reference`; the verdict consults `known_references` by *name*, never fitting them. So
+   doctrine §5 ("recognition is matching against known references") is half-built and #2's
+   "teach → recognition" cannot close. Add a step that fits each known reference to the residual
+   and routes by best-explanation. Design pending approval.
+3. **Teach a reference (the leaf-learning).** Inspect what the `Water_kettle` start=5000
    structure actually is; add it to `known_references` (and persist to L2). That *adding*
    is the leaf-learning; request_reference for that pattern then becomes a confident
    recognition.
-3. **Wire the secondary pipelines / rungs** — `power` needs a current-signal bind; each
+4. **Wire the secondary pipelines / rungs** — `power` needs a current-signal bind; each
    rung needs its own reference + §4A template instance.
-4. **Durable L2 (v1)** — persist learned `calibrate` params + taught references as
+5. **Durable L2 (v1)** — persist learned `calibrate` params + taught references as
    `learned-parameters` nodes (arc3 B6: L2 is the layer that works); `boot_brain` +
    FalkorDBLocalPersister.
 
