@@ -283,31 +283,58 @@ class Solver:
         return {**verdict, "state": "recognized", "reference": best,
                 "structure": f"matched taught reference {best!r}"}
 
+    def _ref_leftover(self, residual, ref):
+        """Fit one template `ref` to `residual` and return the leftover's
+        (spectral, temporal) concentration after subtracting the aligned+scaled
+        template — how well this reference explains the residual."""
+        g = self.given; fs = float(g[O.FS.iri])
+        model = self._invoke(_FIT, {
+            O.SIGNAL_WINDOW.iri: residual, O.CYCLE_REFERENCE.iri: ref,
+            O.FREQ_ESTIMATE.iri: float(g[O.F0.iri]), O.FS.iri: fs,
+            O.FREQ_SEARCH_FRAC.iri: g[O.FREQ_SEARCH_FRAC.iri],
+            O.N_GRID.iri: g[O.N_GRID.iri]})[O.CYCLE_MODEL.iri]
+        recon = self._invoke(_SYNTH, {O.CYCLE_MODEL.iri: model,
+                                      O.SIGNAL_WINDOW.iri: residual,
+                                      O.FS.iri: fs})[O.RECONSTRUCTED_WINDOW.iri]
+        leftover = self._invoke(_SUBTRACT, {O.SIGNAL_WINDOW.iri: residual,
+                                            O.RECONSTRUCTED_WINDOW.iri: recon})[O.RESIDUAL.iri]
+        spec = self._invoke(_FFT, {O.RESIDUAL.iri: leftover,
+                                   O.FS.iri: fs})[O.RESIDUAL_SPECTRUM.iri]
+        ls = float(self._invoke(_SPEC_FLAT,
+                                {O.RESIDUAL_SPECTRUM.iri: spec})[O.SPECTRAL_CONCENTRATION.iri])
+        lt = float(self._invoke(_TEMP_FLAT, {O.RESIDUAL.iri: leftover,
+                                             O.N_TIME_BINS.iri: g[O.N_TIME_BINS.iri]})[O.TEMPORAL_CONCENTRATION.iri])
+        return ls, lt
+
     def _match_references(self, residual):
-        g = self.given; fs = float(g[O.FS.iri]); n_bins = g[O.N_TIME_BINS.iri]
         th = self.thresholds
         best = None
         for ref in self._templates():
-            model = self._invoke(_FIT, {
-                O.SIGNAL_WINDOW.iri: residual, O.CYCLE_REFERENCE.iri: ref,
-                O.FREQ_ESTIMATE.iri: float(g[O.F0.iri]), O.FS.iri: fs,
-                O.FREQ_SEARCH_FRAC.iri: g[O.FREQ_SEARCH_FRAC.iri],
-                O.N_GRID.iri: g[O.N_GRID.iri]})[O.CYCLE_MODEL.iri]
-            recon = self._invoke(_SYNTH, {O.CYCLE_MODEL.iri: model,
-                                          O.SIGNAL_WINDOW.iri: residual,
-                                          O.FS.iri: fs})[O.RECONSTRUCTED_WINDOW.iri]
-            leftover = self._invoke(_SUBTRACT, {O.SIGNAL_WINDOW.iri: residual,
-                                                O.RECONSTRUCTED_WINDOW.iri: recon})[O.RESIDUAL.iri]
-            spec = self._invoke(_FFT, {O.RESIDUAL.iri: leftover,
-                                       O.FS.iri: fs})[O.RESIDUAL_SPECTRUM.iri]
-            ls = float(self._invoke(_SPEC_FLAT,
-                                    {O.RESIDUAL_SPECTRUM.iri: spec})[O.SPECTRAL_CONCENTRATION.iri])
-            lt = float(self._invoke(_TEMP_FLAT, {O.RESIDUAL.iri: leftover,
-                                                 O.N_TIME_BINS.iri: n_bins})[O.TEMPORAL_CONCENTRATION.iri])
+            ls, lt = self._ref_leftover(residual, ref)
             if ls < float(th["spectral"]) and lt < float(th["temporal"]):
                 if best is None or lt < best[1]:
                     best = (ref["name"], lt)
         return best[0] if best else None
+
+    def match_leftovers(self, raw, ref_name, channel: str = "voltage",
+                        max_windows: int = 16):
+        """Diagnostic: per window, the verdict state and the leftover
+        (spectral, temporal) after matching the named template to the residual
+        — whether or not it matched. Reveals memorization vs near-miss."""
+        ref = next((r for r in self.known_references if r.get("name") == ref_name), None)
+        if ref is None:
+            raise RuntimeError(f"no reference {ref_name!r}")
+        vs = self._signal(raw, channel)
+        history: List[Dict] = []
+        rows: List[Dict] = []
+        for start in self._window_starts(len(vs["values"]))[:max_windows]:
+            vw, cm = self._refine_window(vs, start)
+            bb = self._run_segment(cm, vw, history)
+            history.append(cm)
+            ls, lt = self._ref_leftover(self._window_residual(vw, cm), ref)
+            rows.append({"start": start, "state": bb[O.CYCLE_VERDICT.iri]["state"],
+                         "leftover_spec": ls, "leftover_temp": lt})
+        return rows
 
     # ── teach: add ONE template reference from a flagged residual (§5) ──────
     def teach(self, name: str, example_raw, max_windows: int = 40,

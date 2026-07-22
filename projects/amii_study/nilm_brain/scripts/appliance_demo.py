@@ -77,6 +77,13 @@ def main() -> None:
             outs = s.recognize(raw, max_windows=args.max_windows, channel="current")
             matched = sum(o["verdict"].get("reference") == args.teach for o in outs)
             print(f"  matched[{args.teach}] on {name:28s} = {matched}")
+
+        gs, gt = s.thresholds["spectral"], s.thresholds["temporal"]
+        print(f"\nper-window leftover on {args.teach} (match needs spec<{gs:.3f} AND temp<{gt:.3f}):")
+        for r in s.match_leftovers(_load(args.data, args.teach), args.teach, channel="current"):
+            hit = "MATCH" if (r["leftover_spec"] < gs and r["leftover_temp"] < gt) else ""
+            print(f"  start={r['start']:6d} {r['state']:16s} "
+                  f"leftover spec={r['leftover_spec']:.3f} temp={r['leftover_temp']:.3f}  {hit}")
     except RuntimeError as e:
         print(f"teach skipped: {e}")
 
