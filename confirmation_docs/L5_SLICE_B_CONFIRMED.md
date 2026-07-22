@@ -3,9 +3,10 @@
 **CR:** `confirmation_docs/CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` — Slice B (of A→B→C),
 built per §7 PB-resolutions + project-memory `capacity-mm-persist-reopen-dq8.md` "SLICE B scope".
 **Branch:** `feat/capacity-mm-persist-slice-b` (off `main` after Slice A `d82123e` / PR #62).
-**Gate:** **PENDING** — Cowork built; commit on Mac, run the containerized full gate from a fresh
-clone on Linux (baseline **4281** from Slice A; the pass count MUST move or the new
-`tests/phase_48/test_capacity_mm_persist.py` did not run). Fill the number here after green.
+**Gate:** **4287 passed / 12 skipped / 1 xpassed / 0 failed** (containerized full, Linux, live
+FalkorDB, 2026-07-22, 32m24s). Baseline 4281 (Slice A) + **6 new** (5 unit + 1 integration in
+`tests/phase_48/test_capacity_mm_persist.py`); **0 regressions**. The +6 confirms the new tests
+ran; the integration case exercised the live edge round-trip + `capacity_root_ref` resolution.
 **core_version:** stays `phase50` (L5-side code; no core-package / role / category change).
 
 ## What shipped (Slice B)
