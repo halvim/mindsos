@@ -103,6 +103,36 @@ def main() -> None:
     except RuntimeError as e:
         print(f"spectral teach skipped: {e}")
 
+    # ── 6x6 discrimination matrix: teach EVERY appliance, compare all vs all ──
+    print("\n=== discrimination matrix (mean cos-sim: ROW appliance's windows vs "
+          "COL's taught spectral profile; diagonal should dominate its column) ===")
+    sm = Solver("appliance-matrix")
+    sm.fit_calibrate(_synthetic_clean_current(), channel="current")
+    names = list(records.keys())
+    taught = []
+    for n in names:
+        try:
+            sm.teach_spectral(n, records[n], channel="current")
+            taught.append(n)
+        except RuntimeError as e:
+            print(f"  (skip teach {n}: {e})")
+
+    def _s(x):
+        return x.split("_")[0][:9]
+
+    print("row \\ col".ljust(12) + "".join(_s(t).ljust(10) for t in taught))
+    for rn in names:
+        cells = []
+        for tn in taught:
+            sims = sm.profile_similarities(records[rn], tn, channel="current",
+                                           max_windows=args.max_windows)
+            cells.append(sum(sims) / len(sims))
+        mark = ""  # flag if the row's own column is NOT the max (a confusion)
+        own = taught.index(rn) if rn in taught else -1
+        if own >= 0 and cells[own] < max(cells) - 1e-9:
+            mark = f"  <-- confused with {_s(taught[cells.index(max(cells))])}"
+        print(_s(rn).ljust(12) + "".join(f"{c:<10.3f}" for c in cells) + mark)
+
 
 if __name__ == "__main__":
     main()

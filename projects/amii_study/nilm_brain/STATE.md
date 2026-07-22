@@ -6,6 +6,12 @@
 DataState/capacity/pipeline registry the brain implements), and
 `docs/LEAF_LEARNING_PROCESS.md` (the domain-neutral leaf-learning doctrine).
 
+**Locked framing (this chat): recognition is mindsos; diagnosis was the operator (an LLM)
+standing in for the unbuilt L4 loop.** The brain's *recognition* (raw→verdict) is capacities/
+pipelines; the *diagnosis* (why recognition fails, what to change) was NOT in the architecture.
+The recorded reasoning + the recognition/diagnosis line + the transfer spec live in
+`docs/DIAGNOSTIC_INTELLIGENCE.md` — read it to understand what this project is actually proving.
+
 ## Where it lives
 - Branch **`nilm_brain`** (off `chore/amii-study`, verified API-compatible).
 - Worktrees: Mac `…/Projects/nilm_brain`, Linux `/home/sanmyaku/nilm_brain`.
@@ -130,12 +136,22 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    synthetic pure-sinusoid seed). The loop *runs* (teach→recognize→reject, 0 false matches) but
    recognition is **memorization only** (see Validated) — the time-domain residual template is the
    wrong signature.
-   - **Spectral signature TESTED + KEPT (generalizes + discriminates, see Validated).** Built:
-     `harmonic_profile` cap, `Solver.teach_spectral`, `Solver.profile_similarities`. NEXT SESSION —
-     finish it: (a) a **learned cutoff** (from the taught appliance's own window-sim spread, not a
-     literal); (b) wire spectral into `_match_verdict`/`_match_references` so a spectral match emits
-     `recognized[name]`; (c) a data-gated/synthetic acceptance test (teach → many windows recognized
-     → others rejected). Then appliance recognition is real, not memorization.
+   - **Spectral signature TESTED + KEPT (generalizes + discriminates for Laptop, see Validated).**
+     Built: `harmonic_profile` cap, `Solver.teach_spectral`, `Solver.profile_similarities`, and a
+     **6×6 discrimination matrix** in `scripts/appliance_demo.py` (teach every appliance, all-vs-all
+     cos-sim; flags any row confused with another).
+   - **DECISION this chat: validate before building the decision layer.** The 3 decision pieces
+     below rest on an unvalidated 0.04 margin (one appliance vs five). So NEXT SESSION, **step 1 =
+     run the 6×6 matrix and read it** — is the diagonal clearly dominant across ALL appliances, or
+     just Laptop? If muddy, the signature needs work before any verdict machinery.
+   - **NEXT SESSION step 2 (only if the matrix holds) — make appliance recognition mindsos
+     end-to-end** (the 3 recognition gaps; see `docs/DIAGNOSTIC_INTELLIGENCE.md` §4): (a) a
+     **comparison capacity** (predicate family: `harmonic_amplitudes` + reference → similarity,
+     replaces inline cosine); (b) a **learned match-cutoff DataState** (L2, from the taught
+     appliance's own window-sim spread, not a literal); (c) the **verdict emitting `recognized`**
+     from (similarity, cutoff) — needs a **design pass** on *where* the compare-cap + recognized-
+     decision sit relative to the segment (verdict runs inside the segment; matching runs after in
+     L4). These are *recognition* (belong in the architecture), NOT the diagnostic loop.
    - **Shift-invariance (`_shift` + cross-correlate in `fit_reference`): INERT** — verified math,
      but a single lag can't align a mixed periodic+localized residual. Harmless; keep or revert.
    - **Follow-up — resistive-vs-resistive discrimination** (kettle vs hairdryer): amplitude-based,
