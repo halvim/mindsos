@@ -117,3 +117,29 @@ always-injected to declaration-gated). Core blast radius is **0** (nothing reads
   point) and **ADR-0072** (extends the Part-6 truthful-invoke contract from
   input-presence to the MM read channel). Ships with **ADR-0198** (operand arity)
   and **ADR-0199** (group/member) as one ARC comparator-family enablement.
+
+## Amendment 1 (2026-07-22 — the handle is the concrete `MMResolver`, Slice 3)
+
+_Inline amendment; base ADR status unchanged (Accepted)._
+
+Records the L5 umbrella CR (`CORE_CR_L5_KNOWLEDGE_AND_CAPACITY_MM_WRITERS.md`)
+**Slice 3**. C3 gated `mm_handle` at `build_context` but left *what* gets injected
+as the raw `MentalModel` (`intelligence_layer.py`) or absent
+(`mindsos_server/boot.py`). A `MentalModel` is not an `MMHandle` — it lacks
+`get_or_instantiate` — so a `reads_mm=True` body would have received a non-handle.
+The gate never fired in prod only because **no shipped capacity declares
+`reads_mm=True`** (the §Consequences re-pin cost is still latent).
+
+Slice 3 makes the injected value the concrete read-only **`MMResolver`** (its
+`get_or_instantiate` now finishes the pinned instance INTO the routed sub-MM graph
+— the knowledge writer; see ADR-0201 Amendment 3), sourced by the new KL-backed
+`KnowledgeMMSource`. Wired at both L4 dispatcher sites (`intelligence_layer.py`
+submind path + `mindsos_server/boot.py` solve path). The read handle stays
+**distinct from write access**: L4 is the sole L5 writer (the capacity writer holds
+the real `mm`; ADR-0201/0202), and capacity bodies only *read* through this handle.
+
+- **Blast radius still empty:** no non-test body reads `mm_handle`; no shipped cap
+  declares `reads_mm=True`. The handle is inert in prod until a `reads_mm=True`
+  consumer ships — same posture as the capacity writer (Slices A/C). Exercised by
+  `tests/phase_48/test_knowledge_mm_writer.py`.
+- **No status flip.** Additive wiring on the existing gate; C3 semantics unchanged.
