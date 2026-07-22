@@ -1,7 +1,7 @@
 """L4 pipelines — composed by the finder, not hand-listed (arc A6/D8).
 
 The flagship is the `cycle` recognition **segment**: from a fitted
-`cycle_model` + its `voltage_window` (produced by the L4 refinement loop) to
+`cycle_model` + its `signal_window` (produced by the L4 refinement loop) to
 `cycle_verdict`. We compose it with the real `ConjunctionFinder` (sound on the
 multi-input `calibrate`/`verdict`; BFS is unsound there — arc A7) and execute
 it with core's `execute_pipeline`. That the finder *returns* this pipeline AND
@@ -26,7 +26,7 @@ from typing import Tuple
 from mindsos_capacity import ConjunctionFinder
 
 from .ontology import (
-    CYCLE_MODEL, VOLTAGE_WINDOW, FS, F0, HARMONIC_ORDERS, HARMONIC_BANDWIDTH,
+    CYCLE_MODEL, SIGNAL_WINDOW, FS, F0, HARMONIC_ORDERS, HARMONIC_BANDWIDTH,
     N_TIME_BINS, CYCLE_MODEL_HISTORY, CALIBRATE_PARAMS, STRUCTUREDNESS_THRESHOLDS,
     REQUIRED_CONFIDENCE, CYCLE_VERDICT,
 )
@@ -38,7 +38,7 @@ def recognition_segment_starts() -> Tuple[str, ...]:
     thresholds, references, task confidence). All are legitimate entry inputs,
     not orphans (arc C2b)."""
     return (
-        CYCLE_MODEL.iri, VOLTAGE_WINDOW.iri,
+        CYCLE_MODEL.iri, SIGNAL_WINDOW.iri,
         FS.iri, F0.iri, HARMONIC_ORDERS.iri, HARMONIC_BANDWIDTH.iri, N_TIME_BINS.iri,
         CYCLE_MODEL_HISTORY.iri, CALIBRATE_PARAMS.iri, STRUCTUREDNESS_THRESHOLDS.iri,
         REQUIRED_CONFIDENCE.iri,

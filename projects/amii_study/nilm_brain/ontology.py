@@ -67,7 +67,7 @@ CALIBRATE_PARAMS = _ds("calibrate_params", "L2 learned scoring params (fit off a
 CYCLE_MODEL_HISTORY = _ds("cycle_model_history", "prior windows' cycle_models (L4 fold)")
 FREQ_ESTIMATE       = _ds("freq_estimate", "current freq estimate (init f0; updated each loop pass)")
 DECLARED_STRUCTURE  = _ds("declared_structure", "human-authored DAG (acquisition input)")
-WINDOW_START        = _ds("window_start", "L4 iteration offset into voltage_signal (sample index)")
+WINDOW_START        = _ds("window_start", "L4 iteration offset into the signal (sample index)")
 
 # ── floor — irreducible atoms ──────────────────────────────────────────
 VOLTAGE = _ds("voltage", "voltage channel (floor)")
@@ -75,12 +75,12 @@ CURRENT = _ds("current", "current channel (floor)")
 TIME    = _ds("time", "sample times (floor)")
 
 # ── derived — composition outputs ──────────────────────────────────────
-VOLTAGE_SIGNAL      = _ds("voltage_signal", "voltage bound to time")
+SIGNAL      = _ds("signal", "the signal under analysis (voltage or current) bound to time")
 CURRENT_SIGNAL      = _ds("current_signal", "current bound to time")
-VOLTAGE_WINDOW      = _ds("voltage_window", "one analysis window of the voltage signal")
+SIGNAL_WINDOW      = _ds("signal_window", "one analysis window of the signal")
 CYCLE_MODEL         = _ds("cycle_model", "fitted reference params {reference, freq, DC, a, b}")
 RECONSTRUCTED_WINDOW = _ds("reconstructed_window", "the reference synthesized over the window")
-RESIDUAL            = _ds("residual", "voltage_window - reconstructed_window")
+RESIDUAL            = _ds("residual", "signal_window - reconstructed_window")
 RESIDUAL_ENERGY     = _ds("residual_energy", "RMS of the residual")
 RESIDUAL_SPECTRUM   = _ds("residual_spectrum", "windowed FFT of the residual")
 SPECTRAL_CONCENTRATION = _ds("spectral_concentration", "1 - spectral flatness (freq-axis structure)")
@@ -123,7 +123,7 @@ ONTOLOGY: Tuple[DataState, ...] = (
     # floor
     VOLTAGE, CURRENT, TIME,
     # derived
-    VOLTAGE_SIGNAL, CURRENT_SIGNAL, VOLTAGE_WINDOW, CYCLE_MODEL,
+    SIGNAL, CURRENT_SIGNAL, SIGNAL_WINDOW, CYCLE_MODEL,
     RECONSTRUCTED_WINDOW, RESIDUAL, RESIDUAL_ENERGY, RESIDUAL_SPECTRUM,
     SPECTRAL_CONCENTRATION, TEMPORAL_CONCENTRATION, HARMONIC_FRACTION,
     PERIOD_STABILITY, POWER, HARMONIC_AMPLITUDES, SHAPE, PHASE,

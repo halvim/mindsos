@@ -21,8 +21,8 @@ import numpy as np
 from mindsos_capacity import Capacity, CATEGORY_DERIVATION
 
 from .ontology import (
-    VOLTAGE, TIME, VOLTAGE_SIGNAL, CURRENT_SIGNAL, FREQ_ESTIMATE, WINDOW_CYCLES,
-    WINDOW_START, FS, F0, VOLTAGE_WINDOW, CYCLE_REFERENCE, FREQ_SEARCH_FRAC,
+    VOLTAGE, CURRENT, TIME, SIGNAL, CURRENT_SIGNAL, FREQ_ESTIMATE, WINDOW_CYCLES,
+    WINDOW_START, FS, F0, SIGNAL_WINDOW, CYCLE_REFERENCE, FREQ_SEARCH_FRAC,
     N_GRID, CYCLE_MODEL, RECONSTRUCTED_WINDOW, RESIDUAL, RESIDUAL_ENERGY,
     RESIDUAL_SPECTRUM, SPECTRAL_CONCENTRATION, N_TIME_BINS, TEMPORAL_CONCENTRATION,
     HARMONIC_ORDERS, HARMONIC_BANDWIDTH, HARMONIC_FRACTION, CYCLE_MODEL_HISTORY,
@@ -37,24 +37,33 @@ _PI = np.pi
 # ── cycle-path bodies ──────────────────────────────────────────────────
 
 def _bind(**kw):
-    return {VOLTAGE_SIGNAL.iri: {"values": np.asarray(kw[VOLTAGE.iri], dtype=float),
+    return {SIGNAL.iri: {"values": np.asarray(kw[VOLTAGE.iri], dtype=float),
                                  "time": np.asarray(kw[TIME.iri], dtype=float)}}
 
 
+def _bind_current(**kw):
+    """Bind the current channel into the generic `signal` under analysis — the
+    current-channel sibling of `bind`. Same transition (value+time -> signal),
+    distinct floor atom (current, not voltage). This is what lets the recognition
+    segment run on current for appliance-signature recognition (#3)."""
+    return {SIGNAL.iri: {"values": np.asarray(kw[CURRENT.iri], dtype=float),
+                         "time": np.asarray(kw[TIME.iri], dtype=float)}}
+
+
 def _window(**kw):
-    vs = kw[VOLTAGE_SIGNAL.iri]
+    vs = kw[SIGNAL.iri]
     fe = float(kw[FREQ_ESTIMATE.iri]); wc = float(kw[WINDOW_CYCLES.iri])
     fs = float(kw[FS.iri]); start = int(kw[WINDOW_START.iri])
     length = int(round(wc * fs / fe))
     v = vs["values"]; t = vs["time"]
     i1 = min(len(v), start + length)
-    return {VOLTAGE_WINDOW.iri: {"values": v[start:i1], "time": t[start:i1]}}
+    return {SIGNAL_WINDOW.iri: {"values": v[start:i1], "time": t[start:i1]}}
 
 
 def _fit_reference(**kw):
     """Fit the L2 reference to the window. Basis comes from the reference
     (`form`), not from this body — the sinusoid knowledge lives in L2."""
-    vw = kw[VOLTAGE_WINDOW.iri]; ref = kw[CYCLE_REFERENCE.iri]
+    vw = kw[SIGNAL_WINDOW.iri]; ref = kw[CYCLE_REFERENCE.iri]
     fe = float(kw[FREQ_ESTIMATE.iri]); fs = float(kw[FS.iri])
     frac = float(kw[FREQ_SEARCH_FRAC.iri]); n = int(kw[N_GRID.iri])
     v = vw["values"]; t = vw["time"]
@@ -85,7 +94,7 @@ def _fit_reference(**kw):
 
 
 def _synthesize(**kw):
-    m = kw[CYCLE_MODEL.iri]; vw = kw[VOLTAGE_WINDOW.iri]
+    m = kw[CYCLE_MODEL.iri]; vw = kw[SIGNAL_WINDOW.iri]
     t = vw["time"]
     if m.get("form") == "template":
         tmpl = np.asarray(m["template"], dtype=float) * float(m["scale"])
@@ -98,7 +107,7 @@ def _synthesize(**kw):
 
 
 def _subtract(**kw):
-    vw = kw[VOLTAGE_WINDOW.iri]; rw = kw[RECONSTRUCTED_WINDOW.iri]
+    vw = kw[SIGNAL_WINDOW.iri]; rw = kw[RECONSTRUCTED_WINDOW.iri]
     return {RESIDUAL.iri: {"values": vw["values"] - rw["values"], "time": vw["time"]}}
 
 
@@ -149,13 +158,13 @@ def _compare_across_windows(**kw):
 # ── secondary / acquisition bodies ─────────────────────────────────────
 
 def _multiply(**kw):
-    a = kw[VOLTAGE_SIGNAL.iri]["values"]; b = kw[CURRENT_SIGNAL.iri]["values"]
-    t = kw[VOLTAGE_SIGNAL.iri]["time"]
+    a = kw[SIGNAL.iri]["values"]; b = kw[CURRENT_SIGNAL.iri]["values"]
+    t = kw[SIGNAL.iri]["time"]
     return {POWER.iri: {"values": a * b, "time": t}}
 
 
 def _normalize(**kw):
-    v = kw[VOLTAGE_SIGNAL.iri]["values"]; t = kw[VOLTAGE_SIGNAL.iri]["time"]
+    v = kw[SIGNAL.iri]["values"]; t = kw[SIGNAL.iri]["time"]
     mu = float(np.mean(v)); sd = float(np.std(v)) + _EPS
     return {NORMALIZED_SIGNAL.iri: {"values": (v - mu) / sd, "time": t}}
 
@@ -166,7 +175,7 @@ def _angle(**kw):
 
 
 def _segment(**kw):
-    vs = kw[VOLTAGE_SIGNAL.iri]; fs = float(kw[FS.iri]); f0 = float(kw[F0.iri])
+    vs = kw[SIGNAL.iri]; fs = float(kw[FS.iri]); f0 = float(kw[F0.iri])
     v = vs["values"]; t = vs["time"]
     step = int(round(fs / f0))
     segs = [{"values": v[i:i + step], "time": t[i:i + step]}
@@ -190,24 +199,27 @@ def register_derivation(cl, session):
     D = CATEGORY_DERIVATION
     caps = [
         Capacity(name="bind", category=D, inputs=(VOLTAGE.iri, TIME.iri),
-                 outputs=(VOLTAGE_SIGNAL.iri,), implementation=_bind,
-                 description="value+time -> voltage_signal"),
+                 outputs=(SIGNAL.iri,), implementation=_bind,
+                 description="voltage+time -> signal"),
+        Capacity(name="bind_current", category=D, inputs=(CURRENT.iri, TIME.iri),
+                 outputs=(SIGNAL.iri,), implementation=_bind_current,
+                 description="current+time -> signal (current-channel sibling of bind)"),
         Capacity(name="window", category=D,
-                 inputs=(VOLTAGE_SIGNAL.iri, FREQ_ESTIMATE.iri, WINDOW_CYCLES.iri,
+                 inputs=(SIGNAL.iri, FREQ_ESTIMATE.iri, WINDOW_CYCLES.iri,
                          FS.iri, WINDOW_START.iri),
-                 outputs=(VOLTAGE_WINDOW.iri,), implementation=_window,
+                 outputs=(SIGNAL_WINDOW.iri,), implementation=_window,
                  description="signal -> one analysis window (position = L4 window_start)"),
         Capacity(name="fit_reference", category=D,
-                 inputs=(VOLTAGE_WINDOW.iri, CYCLE_REFERENCE.iri, FREQ_ESTIMATE.iri,
+                 inputs=(SIGNAL_WINDOW.iri, CYCLE_REFERENCE.iri, FREQ_ESTIMATE.iri,
                          FS.iri, FREQ_SEARCH_FRAC.iri, N_GRID.iri),
                  outputs=(CYCLE_MODEL.iri,), implementation=_fit_reference,
                  description="observation + L2 reference -> fitted model"),
         Capacity(name="synthesize", category=D,
-                 inputs=(CYCLE_MODEL.iri, VOLTAGE_WINDOW.iri, FS.iri),
+                 inputs=(CYCLE_MODEL.iri, SIGNAL_WINDOW.iri, FS.iri),
                  outputs=(RECONSTRUCTED_WINDOW.iri,), implementation=_synthesize,
                  description="model -> reconstructed signal"),
         Capacity(name="subtract", category=D,
-                 inputs=(VOLTAGE_WINDOW.iri, RECONSTRUCTED_WINDOW.iri),
+                 inputs=(SIGNAL_WINDOW.iri, RECONSTRUCTED_WINDOW.iri),
                  outputs=(RESIDUAL.iri,), implementation=_subtract,
                  description="observation - reconstruction -> residual"),
         Capacity(name="rms", category=D, inputs=(RESIDUAL.iri,),
@@ -232,17 +244,17 @@ def register_derivation(cl, session):
                  description="model + history -> period_stability"),
         # secondary / acquisition
         Capacity(name="multiply", category=D,
-                 inputs=(VOLTAGE_SIGNAL.iri, CURRENT_SIGNAL.iri),
+                 inputs=(SIGNAL.iri, CURRENT_SIGNAL.iri),
                  outputs=(POWER.iri,), implementation=_multiply,
                  description="V*I -> power (power pipeline; needs a current bind, v1)"),
-        Capacity(name="normalize", category=D, inputs=(VOLTAGE_SIGNAL.iri,),
+        Capacity(name="normalize", category=D, inputs=(SIGNAL.iri,),
                  outputs=(NORMALIZED_SIGNAL.iri,), implementation=_normalize,
                  description="signal -> zero-mean unit-std"),
         Capacity(name="angle", category=D, inputs=(CYCLE_MODEL.iri,),
                  outputs=(PHASE.iri,), implementation=_angle,
                  description="model -> phase of the fundamental"),
         Capacity(name="segment", category=D,
-                 inputs=(VOLTAGE_SIGNAL.iri, FS.iri, F0.iri),
+                 inputs=(SIGNAL.iri, FS.iri, F0.iri),
                  outputs=(SEGMENTS.iri,), implementation=_segment,
                  description="signal -> per-cycle segments"),
         Capacity(name="count", category=D, inputs=(SEGMENTS.iri,),

@@ -3,7 +3,7 @@ drives cycle recognition.
 
 Honest layering (arc, shipped level):
 - **Composition** is the finder's job: the recognition segment
-  (`cycle_model` + `voltage_window` -> `cycle_verdict`) is composed once by
+  (`cycle_model` + `signal_window` -> `cycle_verdict`) is composed once by
   `ConjunctionFinder` and executed by core's `execute_pipeline` — never a
   hand-rolled walk (D8).
 - **Iteration/refinement** is L4's job (A4/C4): parse/bind, the window
@@ -41,6 +41,7 @@ from .pipelines import compose_recognition_segment
 # capacity IRIs L4 dispatches directly (the refinement loop)
 _PARSE_RAW = capacity_iri(CATEGORY_PERCEPTION, "parse_raw")
 _BIND      = capacity_iri(CATEGORY_DERIVATION, "bind")
+_BIND_CUR  = capacity_iri(CATEGORY_DERIVATION, "bind_current")
 _WINDOW    = capacity_iri(CATEGORY_DERIVATION, "window")
 _FIT       = capacity_iri(CATEGORY_DERIVATION, "fit_reference")
 _FFT       = capacity_iri(CATEGORY_DERIVATION, "fft")
@@ -107,19 +108,19 @@ class Solver:
             raise RuntimeError(f"{iri} failed: {r.error!r}")
         return r.outputs
 
-    # ── L4 refinement loop: signal + start -> (voltage_window, cycle_model)
-    def _refine_window(self, voltage_signal, start):
+    # ── L4 refinement loop: signal + start -> (signal_window, cycle_model)
+    def _refine_window(self, signal, start):
         g = self.given
         fe = float(g[O.F0.iri])
         vw = None; cm = None
         for _ in range(int(g[O.MAX_LOOP_ITERS.iri])):
             vw = self._invoke(_WINDOW, {
-                O.VOLTAGE_SIGNAL.iri: voltage_signal, O.FREQ_ESTIMATE.iri: fe,
+                O.SIGNAL.iri: signal, O.FREQ_ESTIMATE.iri: fe,
                 O.WINDOW_CYCLES.iri: g[O.WINDOW_CYCLES.iri], O.FS.iri: g[O.FS.iri],
                 O.WINDOW_START.iri: start,
-            })[O.VOLTAGE_WINDOW.iri]
+            })[O.SIGNAL_WINDOW.iri]
             cm = self._invoke(_FIT, {
-                O.VOLTAGE_WINDOW.iri: vw, O.CYCLE_REFERENCE.iri: self.cycle_reference,
+                O.SIGNAL_WINDOW.iri: vw, O.CYCLE_REFERENCE.iri: self.cycle_reference,
                 O.FREQ_ESTIMATE.iri: fe, O.FS.iri: g[O.FS.iri],
                 O.FREQ_SEARCH_FRAC.iri: g[O.FREQ_SEARCH_FRAC.iri], O.N_GRID.iri: g[O.N_GRID.iri],
             })[O.CYCLE_MODEL.iri]
@@ -131,7 +132,7 @@ class Solver:
     def _segment_inputs(self, cm, vw, history):
         g = self.given
         return {
-            O.CYCLE_MODEL.iri: cm, O.VOLTAGE_WINDOW.iri: vw,
+            O.CYCLE_MODEL.iri: cm, O.SIGNAL_WINDOW.iri: vw,
             O.FS.iri: g[O.FS.iri], O.F0.iri: g[O.F0.iri],
             O.HARMONIC_ORDERS.iri: g[O.HARMONIC_ORDERS.iri],
             O.HARMONIC_BANDWIDTH.iri: g[O.HARMONIC_BANDWIDTH.iri],
@@ -157,7 +158,8 @@ class Solver:
         return list(range(0, max(1, n_samples - wlen), step))
 
     # ── seed calibration: fit params off clean-cycle windows ───────────
-    def fit_calibrate(self, seed_raw, max_windows: int = 16, k: float = 3.0):
+    def fit_calibrate(self, seed_raw, max_windows: int = 16, k: float = 3.0,
+                      channel: str = "voltage"):
         """Fit the learned L2 state off a clean-cycle seed. Runs the feature
         path on the seed's windows (calibrate's own output is ignored during
         the fit — we read the feature DataStates off the blackboard), then
@@ -175,7 +177,7 @@ class Solver:
         g = self.given
         fs = float(g[O.FS.iri]); n_bins = g[O.N_TIME_BINS.iri]
         rng = np.random.default_rng(0)
-        vs = self._voltage_signal(seed_raw)
+        vs = self._signal(seed_raw, channel)
         history: List[Dict] = []
         clean_feats: List[Dict] = []
         noise_feats: List[Dict] = []
@@ -210,16 +212,24 @@ class Solver:
                              O.N_TIME_BINS.iri: n_bins})[O.TEMPORAL_CONCENTRATION.iri],
         }
 
-    def _voltage_signal(self, raw):
+    def _signal(self, raw, channel: str = "voltage"):
+        """Parse the record and bind the chosen channel into the generic
+        `signal` under analysis. `channel="voltage"` (grid-cycle recognition,
+        the default) or `channel="current"` (appliance-signature recognition,
+        #3). The downstream segment is channel-agnostic."""
         g = self.given
         p = self._invoke(_PARSE_RAW, {O.RAW_DATA.iri: raw, O.FS.iri: g[O.FS.iri],
                                       O.CHANNEL_MAP.iri: g[O.CHANNEL_MAP.iri]})
+        if channel == "current":
+            return self._invoke(_BIND_CUR, {O.CURRENT.iri: p[O.CURRENT.iri],
+                                            O.TIME.iri: p[O.TIME.iri]})[O.SIGNAL.iri]
         return self._invoke(_BIND, {O.VOLTAGE.iri: p[O.VOLTAGE.iri],
-                                    O.TIME.iri: p[O.TIME.iri]})[O.VOLTAGE_SIGNAL.iri]
+                                    O.TIME.iri: p[O.TIME.iri]})[O.SIGNAL.iri]
 
     # ── recognize: per-window cycle verdicts over a record ─────────────
-    def recognize(self, raw_data, max_windows: int = 40) -> List[Dict]:
-        vs = self._voltage_signal(raw_data)
+    def recognize(self, raw_data, max_windows: int = 40,
+                  channel: str = "voltage") -> List[Dict]:
+        vs = self._signal(raw_data, channel)
         history: List[Dict] = []
         out: List[Dict] = []
         for start in self._window_starts(len(vs["values"]))[:max_windows]:
@@ -242,9 +252,9 @@ class Solver:
         """Recompute this window's residual via the real synthesize/subtract
         capacities (independent of blackboard internals)."""
         fs = float(self.given[O.FS.iri])
-        recon = self._invoke(_SYNTH, {O.CYCLE_MODEL.iri: cm, O.VOLTAGE_WINDOW.iri: vw,
+        recon = self._invoke(_SYNTH, {O.CYCLE_MODEL.iri: cm, O.SIGNAL_WINDOW.iri: vw,
                                       O.FS.iri: fs})[O.RECONSTRUCTED_WINDOW.iri]
-        return self._invoke(_SUBTRACT, {O.VOLTAGE_WINDOW.iri: vw,
+        return self._invoke(_SUBTRACT, {O.SIGNAL_WINDOW.iri: vw,
                                         O.RECONSTRUCTED_WINDOW.iri: recon})[O.RESIDUAL.iri]
 
     def _templates(self):
@@ -271,14 +281,14 @@ class Solver:
         best = None
         for ref in self._templates():
             model = self._invoke(_FIT, {
-                O.VOLTAGE_WINDOW.iri: residual, O.CYCLE_REFERENCE.iri: ref,
+                O.SIGNAL_WINDOW.iri: residual, O.CYCLE_REFERENCE.iri: ref,
                 O.FREQ_ESTIMATE.iri: float(g[O.F0.iri]), O.FS.iri: fs,
                 O.FREQ_SEARCH_FRAC.iri: g[O.FREQ_SEARCH_FRAC.iri],
                 O.N_GRID.iri: g[O.N_GRID.iri]})[O.CYCLE_MODEL.iri]
             recon = self._invoke(_SYNTH, {O.CYCLE_MODEL.iri: model,
-                                          O.VOLTAGE_WINDOW.iri: residual,
+                                          O.SIGNAL_WINDOW.iri: residual,
                                           O.FS.iri: fs})[O.RECONSTRUCTED_WINDOW.iri]
-            leftover = self._invoke(_SUBTRACT, {O.VOLTAGE_WINDOW.iri: residual,
+            leftover = self._invoke(_SUBTRACT, {O.SIGNAL_WINDOW.iri: residual,
                                                 O.RECONSTRUCTED_WINDOW.iri: recon})[O.RESIDUAL.iri]
             spec = self._invoke(_FFT, {O.RESIDUAL.iri: leftover,
                                        O.FS.iri: fs})[O.RESIDUAL_SPECTRUM.iri]
@@ -292,12 +302,13 @@ class Solver:
         return best[0] if best else None
 
     # ── teach: add ONE template reference from a flagged residual (§5) ──────
-    def teach(self, name: str, example_raw, max_windows: int = 40) -> Dict:
+    def teach(self, name: str, example_raw, max_windows: int = 40,
+              channel: str = "voltage") -> Dict:
         """The leaf-learning: run recognition on `example_raw`, take the residual
         of the MOST structured `request_reference` window, and register it as one
         new template reference under `name`. Additive — existing references are
         untouched (no forgetting)."""
-        vs = self._voltage_signal(example_raw)
+        vs = self._signal(example_raw, channel)
         history: List[Dict] = []
         best = None                                  # (temporal_concentration, values)
         for start in self._window_starts(len(vs["values"]))[:max_windows]:
