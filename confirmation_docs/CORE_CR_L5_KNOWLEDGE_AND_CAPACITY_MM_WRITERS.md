@@ -1,12 +1,26 @@
 # CORE CHANGE REQUEST — L5 has three rooms and only one door
 
+> **⚠️ UPDATE 2026-07-21 — DQ-8 partially reopened.** This CR's ruling that
+> `capacity_mm`/`knowledge_mm` stay **live-only until WSD** (DQ-8 / ADR-0202) is being
+> **reversed for `capacity_mm`**: it now persists into Episodes. See
+> `CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` (APPROVED). That CR also replaces the shipped
+> Slice 2 two-graph model with one per-task/run graph and fixes the replan collision.
+> `knowledge_mm` remains live-only for now. Read every "live-only"/DQ-8/DQ-4/DQ-7 statement
+> below in that light.
+
 **Filed:** 2026-07-15 · joint arc1+arc3 core chat
 **Resolved:** 2026-07-16 · design converged (core/L5 + arc rulings). See §Resolution.
 **Consumer of record:** arc1 (D1.6/D1.7/D1.8 — full task lifecycle); arc3 next
-**Status:** RESOLVED. **Slice D8-B/3b BUILT + GATE-GREEN 2026-07-17** — branch
-`fix/l5-per-task-chain-persist`, PR #52 (halvim/mindsos), full gate 4223 passed / 0 failed on live
-Falkor. Slices 0 + 1 SHIPPED (PR #59 e234914 / PR #60 f3cc950); Slices 2 / 3 NOT built. **live-only** (per-task chain persist;
-capacity/knowledge deferred to WSD).
+**Status:** RESOLVED + **ALL SLICES BUILT.** Slice D8-B/3b (per-task chain persist) BUILT +
+GATE-GREEN 2026-07-17 (PR #52). Slices 0 + 1 SHIPPED (PR #59 e234914 / PR #60 f3cc950). Slice 2
+(capacity writer) SHIPPED (PR #61 a4e4e12); its two-graph model was then REPLACED by the per-run +
+persist model of `CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` (DQ-8 reopened for `capacity_mm`;
+Slices A/B/C landed). **Slice 3 (knowledge writer + `mm_handle`=`MMResolver` + DQ-1 provenance
+XRef) BUILT + GATE-GREEN 2026-07-22** — branch `feat/l5-slice-3-knowledge-writer`, full gate
+**4300 passed / 0 failed** on live Falkor; see `confirmation_docs/L5_SLICE_3_CONFIRMED.md`. The §0
+"three rooms, one door" gate is cleared at the substrate (all three sub-MMs have their L4 writer);
+remaining work is out-of-CR **Step 5** (make the writes non-inert on the solve path).
+`knowledge_mm` stays **live-only** (only `capacity_mm` persistence was pulled forward).
 Resolved build detail: task-unique writer scope = `task_id` when supplied, else a per-orchestrator
 counter (`Orchestrator._writer_scope`).
 **Version impact:** phase-shaped (the capacity writer deletes the blackboard and flips the
@@ -162,9 +176,12 @@ becomes the **live** working memory; cross-session persistence stays out of scop
 - **Slice 2 — capacity writer:** delete the blackboard; write the grounding DAG; carry
   `resolved_reference` into Phase 2 (the Phase-1 drop fix); add the nullable raw_task provenance
   XRef.
-- **Slice 3 — knowledge writer + `mm_handle`:** finish `MMResolver` into the graph, wire it as the
-  handle (un-inert `reads_mm`). Its corpus-entry instantiation is a **prerequisite** for the arc1
-  provenance XRef (`add_xref` target-existence); arc3 (no XRef) is clean capacity-first.
+- **Slice 3 — knowledge writer + `mm_handle`. [BUILT + GATE-GREEN 2026-07-22 — 4300/0]** Finished
+  `MMResolver` into the graph (pinned version-ref nodes in `knowledge_mm`'s `mm:instances` graph),
+  wired it as the read handle at both L4 dispatcher sites (un-inert `reads_mm`; ADR-0200 am-1), and
+  wrote the deferred DQ-1 provenance XRef via `CapacityMMWriter.link_provenance` (arc1 pinned
+  corpus-entry target / arc3 None). New `KnowledgeMMSource` (KL-backed). ADR-0201 am-3. Inert in
+  prod until Step 5. See `confirmation_docs/L5_SLICE_3_CONFIRMED.md`.
 
 ---
 
