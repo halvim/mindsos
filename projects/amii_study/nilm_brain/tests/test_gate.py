@@ -99,21 +99,53 @@ def test_only_declared_placeholder(solver):
         assert decl.implementation is not None and not getattr(decl, "placeholder", False)
 
 
-# ── 1b: held_ambiguity is reachable (low-conf window, flat on BOTH axes) ─
-def test_held_ambiguity_reachable():
-    """After seed-fitting the structuredness gates, a window that is
-    low-confidence *and* unstructured on both axes (broadband noise) must route
-    to `held_ambiguity` — not `request_reference` (nothing to ask for) and not
-    `cycle` (low confidence). This protects the third terminal state from
-    silently disappearing if the gates are ever re-tuned. Broadband noise is
-    spectrally flat (spec far below the learned gate) and temporally uniform
-    (temp below the learned gate), while its large residual drives confidence
-    to ~0. Several windows are checked so the assertion does not hinge on one
-    noise draw grazing the temporal gate."""
-    s = Solver("nilm-test-hold")
-    s.fit_calibrate(_clean_record())                    # learn the clean band + gates
-    rng = np.random.default_rng(1)
-    noise = _clean_record()                             # correct shape / channel_map
-    noise[:, 1] = 5.0 * rng.standard_normal(noise.shape[0])   # voltage = broadband noise
-    states = [o["verdict"]["state"] for o in s.recognize(noise, max_windows=8)]
-    assert "held_ambiguity" in states, f"held_ambiguity unreachable; got {set(states)}"
+# ── Terminal-state acceptance battery (labeled synthetic; known ground truth) ─
+# Good-design criterion for the three terminals: each KNOWN class must land in
+# its intended terminal. The gate is fit off the clean seed ONLY; the battery is
+# held-out (never fit on) — so this is not teaching-to-the-test.
+
+def _noise_record(alpha, seed):
+    """Clean grid record swamped by broadband voltage noise at ``alpha``*V_nom
+    (low SNR). Intended terminal: ``held_ambiguity`` — low confidence, and no
+    measurable structure to request a reference for."""
+    rec = _clean_record()
+    rng = np.random.default_rng(seed)
+    rec[:, 1] = rec[:, 1] + alpha * 170.0 * rng.standard_normal(rec.shape[0])
+    return rec
+
+
+def _terminal_battery():
+    """Labeled synthetic inputs with known intended terminals."""
+    return [
+        ("clean",     _clean_record(),           "cycle"),
+        ("notch",     _clean_record(notch=True), "request_reference"),
+        ("noise_1.0", _noise_record(1.0, 11),    "held_ambiguity"),
+        ("noise_2.0", _noise_record(2.0, 12),    "held_ambiguity"),
+    ]
+
+
+def test_terminal_battery():
+    """Acceptance criterion for the three terminal states. Each known class must
+    land in its intended terminal; the two confusions that matter must be zero:
+    a MISS (structured -> not request_reference) and a FALSE ALARM (clean/noise
+    -> request_reference). Prints the confusion matrix so the baseline is visible
+    before any redesign."""
+    s = Solver("nilm-battery")
+    s.fit_calibrate(_clean_record())
+    terms = ("cycle", "held_ambiguity", "request_reference")
+    rows, fails = [], []
+    for name, rec, intended in _terminal_battery():
+        states = [o["verdict"]["state"] for o in s.recognize(rec, max_windows=12)]
+        tally = {t: states.count(t) for t in terms}
+        rows.append(f"  {name:10s} intended={intended:18s} got={tally}")
+        if intended in ("cycle", "held_ambiguity") and tally["request_reference"]:
+            fails.append(f"{name}: FALSE ALARM ({tally['request_reference']} request_reference)")
+        if intended == "held_ambiguity" and tally["held_ambiguity"] == 0:
+            fails.append(f"{name}: noise never reached held_ambiguity")
+        if intended == "request_reference" and tally["request_reference"] == 0:
+            fails.append(f"{name}: MISS (structured window never request_reference)")
+        if intended == "cycle" and tally["cycle"] == 0:
+            fails.append(f"{name}: clean never reached cycle")
+    matrix = "terminal battery (intended -> observed):\n" + "\n".join(rows)
+    print("\n" + matrix)
+    assert not fails, matrix + "\n\nFAILURES:\n  " + "\n  ".join(fails)

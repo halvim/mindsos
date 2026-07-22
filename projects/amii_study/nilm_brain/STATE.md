@@ -50,7 +50,8 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
 ## Validated (green)
 - Gate `tests/test_gate.py` — **6 passed** on Linux (F1 finder-composes, F2
   executes-to-real-values, seeded-clean-cycle→`cycle`, disturbance<clean, C7 envelope,
-  placeholder check). +1 reachability test added post-1b (see #1).
+  placeholder check). A terminal-state acceptance battery replaced the weak reachability
+  test — currently RED at the baseline (see #1); driving the gate redesign, not yet green.
 - Demo on **real PLAID `Water_kettle_1805`** (data at `/home/sanmyaku/_sample`): finder
   composed the recognition segment; 18/19 steady windows → `cycle` (conf 1.000); the one
   anomalous window (start=5000, residual 3.35 vs ~2.1 baseline, `temp` 0.064 vs clean ~0.012)
@@ -58,8 +59,12 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
   `[temporal]`, not `[spectral]`** — `spec` saturates ~0.995 on every window so the learned
   spectral gate (~0.997) correctly stays silent; discrimination is carried by the temporal
   axis, and the request is now **structure-driven** (temp ≫ learned threshold), not fired by
-  a degenerate always-on gate. `held_ambiguity` is reachable-in-principle but not exercised by
-  this clean record (no low-conf + flat-both window).
+  a degenerate always-on gate. **`held_ambiguity` is currently UNREACHABLE** (the reachability
+  test falsified my earlier "reachable-in-principle" claim): the temporal gate is fit to a clean
+  residual that is a *smooth harmonic* (near-zero dispersion), so its `mean + 3σ` bar sits below
+  even broadband noise → noise trips `[temporal]` → `request_reference`. This is a real gate
+  MIScalibration (per §4A/P1 noise is the canonical `held_ambiguity` case). Being driven by the
+  acceptance battery (#1).
 - Re-run: gate `PYTHONPATH=.:projects/amii_study python -m pytest
   projects/amii_study/nilm_brain/tests -q`; demo `… scripts/cycle_demo.py --data
   /home/sanmyaku/_sample --record Water_kettle`.
@@ -70,13 +75,20 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      slot (`self.thresholds` ← `decision.default_thresholds()`); fixes the §7 doc-divergence.
    - **1b** — `fit_calibrate` now seed-fits the gates (`decision.fit_thresholds`, mean + `k`·σ,
      `k`=3.0 an L4 fit arg, **not** a DataState). Result on real PLAID: request_reference is now
-     **structure-driven and correctly `[temporal]`** (was a degenerate `[spectral]`); gate 6/6.
-   - **1b-test** — `test_held_ambiguity_reachable` added (synthetic low-conf broadband-noise
-     window → flat both axes → `held_ambiguity`), authored against the observed numbers.
-   - **Follow-ups noted, not done:** `held_ambiguity` is a narrow corner (low-conf almost always
-     co-occurs with axis structure → request_reference) — accepted as doctrine-consistent, not
-     forced. `required_confidence` still literal in `build_given` (§7 = L5 task input) — re-home
-     next, same species as the 1a fix.
+     **structure-driven and correctly `[temporal]`** (was a degenerate `[spectral]`). The axis
+     fix is done; the separate `held_ambiguity` gate problem it exposed is tracked below.
+   - **1b-test → acceptance battery (IN PROGRESS, RED).** The weak `test_held_ambiguity_reachable`
+     was replaced by `test_terminal_battery`: labeled synthetic classes (clean→`cycle`,
+     notch→`request_reference`, noise@SNR→`held_ambiguity`) with a confusion-matrix criterion —
+     the two forbidden confusions are a MISS (structured→not-request) and a FALSE ALARM
+     (clean/noise→request). Gate fit on the clean seed only (held-out battery). Expected to fail
+     at baseline (noise→request, per the miscalibration above); it prints the matrix. **Design
+     rule:** if a threshold placement can pass → calibration fix (noise-floor gate); if no
+     placement separates noise from structure → the *feature* is inadequate → redesign the
+     structuredness metric. `held_ambiguity` is not load-bearing for the H4/H5 claims, so minimal
+     bar first.
+   - **Watch item:** `required_confidence` still literal in `build_given` (§7 = L5 task input) —
+     re-home next, same species as the 1a fix.
 2. **Matcher (NEXT — the #2 prerequisite).** Recognition currently fits only the *given*
    `cycle_reference`; the verdict consults `known_references` by *name*, never fitting them. So
    doctrine §5 ("recognition is matching against known references") is half-built and #2's
