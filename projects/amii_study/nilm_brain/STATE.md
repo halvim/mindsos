@@ -54,15 +54,18 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
   no real appliance is distortion-free; a real resistive seed pushed the spectral gate to 1.57 >
   1.0, dead). All six appliances → `request_reference`; teaching an appliance rejects the other
   five with **zero false matches**.
-  **BUT — recognition does NOT generalize (memorization).** `match_leftovers` diagnostic on Laptop:
-  the taught window matches at leftover spec/temp = 0.000; **every other window of the same
-  appliance has leftover spec ~0.8–0.99** (template explains ~nothing). So `matched=1` is the
-  taught window matching itself, not appliance recognition. Root cause: the **time-domain residual
-  waveform is the wrong appliance signature** — phase-sensitive, varies window-to-window. Shift-
-  invariance (cross-correlate for best lag, math verified on a toy) was **inert** for both the
-  appliance and the notch (a single global lag can't align a mixed periodic-harmonic + localized
-  residual). NEXT: match on the **harmonic-magnitude spectrum** (phase-invariant; the standard NILM
-  signature; `band_energy`/`harmonic_amplitudes` already exist), not the residual waveform.
+  The **time-domain residual template MEMORIZES** (`match_leftovers`: taught window leftover 0.000,
+  every other Laptop window ~0.8–0.99 → template explains nothing; shift-invariance inert — a single
+  lag can't align a mixed periodic+localized residual). Wrong signature.
+  **SPECTRAL signature WORKS (tested, kept) — the fix.** `harmonic_profile` cap (per-order harmonic
+  magnitudes, phase-invariant) + `teach_spectral` (mean profile over the appliance's windows) +
+  `profile_similarities` (cosine sim). Result on real PLAID: teach `Laptop` → **all 16 Laptop
+  windows cos-sim 0.994–0.998 to the profile (generalizes)**, and every other appliance's best
+  window ≤ 0.957 (CFL 0.922 / fridge 0.887 / hairdryer 0.930 / microwave 0.957 / kettle 0.942) →
+  **separable at a cutoff ~0.98**, margin ≈0.04. Caveats: modest margin, switching loads somewhat
+  confusable, cutoff must be **learned** (not hardcoded). NEXT SESSION: wire the spectral matcher
+  into a `recognized` verdict with a learned cutoff (replace/augment `form:"template"` for
+  appliances); the time-domain template stays for localized voltage disturbances.
 - Gate `tests/test_gate.py` — **8 passed** on Linux (F1/F2, seeded-clean→`cycle`,
   disturbance<clean, C7, placeholder, `test_terminal_battery`, `test_teach_then_recognize`).
   The battery separates all three base terminals on labeled synthetic data (clean→`cycle`,
@@ -127,11 +130,12 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    synthetic pure-sinusoid seed). The loop *runs* (teach→recognize→reject, 0 false matches) but
    recognition is **memorization only** (see Validated) — the time-domain residual template is the
    wrong signature.
-   - **NEXT (the actual fix) — spectral appliance signature.** Teach/match on the harmonic-
-     magnitude profile (`band_energy` per order → `harmonic_amplitudes`), which is phase-invariant
-     and consistent window-to-window — the standard NILM appliance ID. This is a template-
-     representation change (`form:"spectral"` alongside `form:"template"`), designed test-first
-     (teach Laptop → recognize MANY Laptop windows → reject the other five).
+   - **Spectral signature TESTED + KEPT (generalizes + discriminates, see Validated).** Built:
+     `harmonic_profile` cap, `Solver.teach_spectral`, `Solver.profile_similarities`. NEXT SESSION —
+     finish it: (a) a **learned cutoff** (from the taught appliance's own window-sim spread, not a
+     literal); (b) wire spectral into `_match_verdict`/`_match_references` so a spectral match emits
+     `recognized[name]`; (c) a data-gated/synthetic acceptance test (teach → many windows recognized
+     → others rejected). Then appliance recognition is real, not memorization.
    - **Shift-invariance (`_shift` + cross-correlate in `fit_reference`): INERT** — verified math,
      but a single lag can't align a mixed periodic+localized residual. Harmless; keep or revert.
    - **Follow-up — resistive-vs-resistive discrimination** (kettle vs hairdryer): amplitude-based,
