@@ -66,12 +66,19 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      `structuredness_thresholds` moved out of `build_given` into a Solver learned slot
      (`self.thresholds` ← `decision.default_thresholds()`), threaded into the segment like
      `calibrate_params`. **Behavioral no-op** — fixes the §7 doc-divergence, not behavior yet.
-   - **1b — fit the thresholds off the clean-cycle seed** (mean + k·σ per axis) in the same
-     pass that fits `calibrate_params`. `spectral_concentration` **saturates ~0.995** on every
-     window (real voltage always has harmonics), so a fixed 0.5 gate is always-true → every
-     low-confidence window → `request_reference`, and **`held_ambiguity` is unreachable**.
-     De-saturating via seed-fit is what makes the terminal states real. Threshold-learning
-     issue, not a plumbing bug.
+   - **1b — fit the thresholds off the clean-cycle seed (implemented this chat; awaiting Linux
+     gate + demo).** `fit_calibrate` now also fits `structuredness_thresholds` = seed mean +
+     `k`·σ per axis (`decision.fit_thresholds`), so 'structured' means *more concentrated than a
+     healthy cycle*, not 'above 0.5'. `k` is an **L4 fit hyperparameter** on `fit_calibrate`
+     (default 3.0), **not** a DataState — no capacity consumes it, so a DataState would be an
+     orphan node. **Gate stays 6/6** (1b is gate-neutral: clean cycles still score ≥ req →
+     `cycle` before any threshold check); its effect shows only in the **demo**. Caveat:
+     `spectral_concentration` saturates ~0.995 on voltage (harmonics everywhere), so the spectral
+     gate may still never fire — discrimination is expected to fall on the **temporal** axis.
+     Whether `held_ambiguity` actually becomes reachable is the empirical result the demo reports.
+   - **1b-test — `held_ambiguity` reachability gate test: DEFERRED.** A robust fixture depends on
+     the real seed-fit concentration numbers (guessing them risks a red gate + breaks the
+     contamination rule). Author it against the demo output, next.
 2. **Teach a reference (the leaf-learning).** Inspect what the `Water_kettle` start=5000
    structure actually is; add it to `known_references` (and persist to L2). That *adding*
    is the leaf-learning; request_reference for that pattern then becomes a confident

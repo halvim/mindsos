@@ -32,7 +32,7 @@ from .dispatch import CLDispatcher
 from .perception import register_perception
 from .derivation import register_derivation
 from .scoring import register_scoring, default_params, fit_calibrate_params
-from .decision import register_decision, default_thresholds
+from .decision import register_decision, default_thresholds, fit_thresholds
 from .comprehension import register_comprehension, register_predicate
 from .pipelines import compose_recognition_segment
 
@@ -151,12 +151,18 @@ class Solver:
         return list(range(0, max(1, n_samples - wlen), step))
 
     # ── seed calibration: fit params off clean-cycle windows ───────────
-    def fit_calibrate(self, seed_raw, max_windows: int = 16):
-        """Fit `calibrate_params` off a clean-cycle seed. Runs the feature
+    def fit_calibrate(self, seed_raw, max_windows: int = 16, k: float = 3.0):
+        """Fit the learned L2 state off a clean-cycle seed. Runs the feature
         path on the seed's windows (calibrate's own output is ignored during
-        the fit — we read the residual/harmonic feature DataStates), then
-        learns the normal band. This is what lets a healthy cycle score high
-        and a disturbance score low (resolves the single-pass collapse)."""
+        the fit — we read the feature DataStates off the blackboard), then
+        learns two things:
+          - `calibrate_params` — the normal residual/harmonic band, so a healthy
+            cycle scores high and a disturbance low (resolves the single-pass
+            collapse);
+          - `structuredness_thresholds` — the per-axis gates (step 1b), each set
+            to seed mean + `k`·σ of that axis's concentration, so 'structured'
+            means *more concentrated than a clean cycle*, not 'above 0.5'.
+        `k` is an L4 fit hyperparameter (default 3.0), not a DataState."""
         vs = self._voltage_signal(seed_raw)
         history: List[Dict] = []
         feats: List[Dict] = []
@@ -164,9 +170,12 @@ class Solver:
             vw, cm = self._refine_window(vs, start)
             bb = self._run_segment(cm, vw, history)
             feats.append({"residual_energy": bb[O.RESIDUAL_ENERGY.iri],
-                          "harmonic_fraction": bb[O.HARMONIC_FRACTION.iri]})
+                          "harmonic_fraction": bb[O.HARMONIC_FRACTION.iri],
+                          "spectral_concentration": bb[O.SPECTRAL_CONCENTRATION.iri],
+                          "temporal_concentration": bb[O.TEMPORAL_CONCENTRATION.iri]})
             history.append(cm)
         self.params = fit_calibrate_params(feats)
+        self.thresholds = fit_thresholds(feats, k)
         return self.params
 
     def _voltage_signal(self, raw):

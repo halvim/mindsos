@@ -38,6 +38,42 @@ nilm_brain/
   tests/test_gate.py      the F1/F2/F3 + C7 acceptance gate
 ```
 
+## The consumer helpers (every non-capacity function)
+
+`nilm_brain` is a **consumer**: the only mindsos code is what it imports
+(`Capacity`, `CapacityLayer`, `execute_pipeline`, the category constants).
+Everything below is therefore *ours* — and by the doctrine that is correct:
+L4 iteration/control, wiring, L2-value production, and the `execute_pipeline`
+seam are Python, **not** capacities (arc A4/C4). Each is listed so none is
+hidden. Audit rule: **legit iff it is control-flow / wiring / an L2 value / the
+dispatch seam and hides no decision threshold or reference that should be a
+DataState-or-L2 input.**
+
+| function / class (file) | role | kind |
+|---|---|---|
+| `build_given` (control) | caller-supplied given constants + promoted hyperparameters | L4 config |
+| `Solver.__init__` (control) | registers ontology + families, composes the segment | wiring |
+| `Solver._invoke` (control) | invoke wrapper that checks `success` (C7) | L4 |
+| `Solver._refine_window` (control) | the period-refinement loop (A4/C4) | L4 iteration |
+| `Solver._window_starts` (control) | window fan-out positions | L4 iteration |
+| `Solver._segment_inputs` / `_run_segment` (control) | assemble + execute the segment | L4 plumbing |
+| `Solver._voltage_signal` (control) | parse+bind pre-processing | L4 |
+| `Solver.fit_calibrate` (control) | seed-fit of `calibrate_params` + `structuredness_thresholds` | L2 learning |
+| `Solver.recognize` (control) | per-window recognition loop | L4 control |
+| `build_solver` (control) | convenience constructor | wiring |
+| `default_params` / `fit_calibrate_params` (scoring) | L2 calibrate params: default + seed-fit | L2 value |
+| `default_thresholds` / `fit_thresholds` (decision) | L2 structuredness gates: default + seed-fit | L2 value |
+| `cycle_reference` / `known_references` (references) | L2 reference library values | L2 value |
+| `recognition_segment_starts` / `compose_recognition_segment` (pipelines) | declare entry inputs; finder composition | L4 |
+| `DuckSession` (harness) | in-memory Local (no Falkor); v0 substrate — #4 swaps in `FalkorDBLocalPersister` | substrate |
+| `CLDispatcher` (dispatch) | thin dispatcher over `cl.invoke` (the `execute_pipeline` seam) | seam |
+
+**No entry hides L3 knowledge.** The one historical violation was
+`structuredness_thresholds` living in `build_given` (a decision gate posing as a
+domain constant) — fixed in open item #1a. **Remaining watch item:**
+`required_confidence` still sits in `build_given` (`0.9`), but §7 classifies it
+as an *L5 task input*, not a domain constant — same species, to be re-homed next.
+
 ## Run it
 
 ```

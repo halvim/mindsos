@@ -19,6 +19,8 @@ reference library) arrives as a DataState (arc D2 — no buried L3 knowledge).
 
 from __future__ import annotations
 
+import numpy as np
+
 from mindsos_capacity import Capacity
 from mindsos_capacity.identifiers import CATEGORY_DECISION
 
@@ -37,6 +39,24 @@ def default_thresholds() -> dict:
     ``calibrate_params`` — NOT a domain constant in ``build_given`` (doc §7:
     ``structuredness_thresholds`` is learned in L2, not a given)."""
     return {"spectral": 0.5, "temporal": 0.5}
+
+
+def fit_thresholds(seed_features: list, k: float) -> dict:
+    """Learn the per-axis structuredness gates off the clean-cycle seed (open
+    item #1, step 1b). Each axis threshold = the seed's mean concentration on
+    that axis + ``k``·σ — so 'structured' means *more concentrated than a healthy
+    cycle is*, not 'above 0.5'. Mirrors ``scoring.fit_calibrate_params``.
+
+    ``k`` is an L4 fit hyperparameter (passed by ``Solver.fit_calibrate``), NOT a
+    DataState: no capacity consumes it, so registering it would be a dead (orphan)
+    ontology node. A threshold landing ≥ 1.0 is honest — it means that axis never
+    out-structures a clean cycle, so it simply never fires (expected on the
+    spectral axis for voltage: grid harmonics are in every window)."""
+    s = np.asarray([f["spectral_concentration"] for f in seed_features], dtype=float)
+    t = np.asarray([f["temporal_concentration"] for f in seed_features], dtype=float)
+    return {"spectral": float(np.mean(s) + k * np.std(s)),
+            "temporal": float(np.mean(t) + k * np.std(t)),
+            "provenance": f"seed_fit:{len(seed_features)}_windows,k={k}"}
 
 
 def _verdict(**kw):
