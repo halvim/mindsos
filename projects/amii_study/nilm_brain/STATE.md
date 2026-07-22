@@ -48,10 +48,11 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    of open item #1. Seed-fitting the value is **step 1b**.
 
 ## Validated (green)
-- Gate `tests/test_gate.py` — **6 passed** on Linux (F1 finder-composes, F2
+- Gate `tests/test_gate.py` — **7 passed** on Linux (F1 finder-composes, F2
   executes-to-real-values, seeded-clean-cycle→`cycle`, disturbance<clean, C7 envelope,
-  placeholder check). A terminal-state acceptance battery replaced the weak reachability
-  test — currently RED at the baseline (see #1); driving the gate redesign, not yet green.
+  placeholder check, + `test_terminal_battery`). The acceptance battery separates all three
+  terminals on labeled synthetic data: clean→`cycle` (no false alarm), notch→`request_reference`,
+  noise→`held_ambiguity`.
 - Demo on **real PLAID `Water_kettle_1805`** (data at `/home/sanmyaku/_sample`): finder
   composed the recognition segment; 18/19 steady windows → `cycle` (conf 1.000); the one
   anomalous window (start=5000, residual 3.35 vs ~2.1 baseline, `temp` 0.064 vs clean ~0.012)
@@ -59,12 +60,9 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
   `[temporal]`, not `[spectral]`** — `spec` saturates ~0.995 on every window so the learned
   spectral gate (~0.997) correctly stays silent; discrimination is carried by the temporal
   axis, and the request is now **structure-driven** (temp ≫ learned threshold), not fired by
-  a degenerate always-on gate. **`held_ambiguity` is currently UNREACHABLE** (the reachability
-  test falsified my earlier "reachable-in-principle" claim): the temporal gate is fit to a clean
-  residual that is a *smooth harmonic* (near-zero dispersion), so its `mean + 3σ` bar sits below
-  even broadband noise → noise trips `[temporal]` → `request_reference`. This is a real gate
-  MIScalibration (per §4A/P1 noise is the canonical `held_ambiguity` case). Being driven by the
-  acceptance battery (#1).
+  a degenerate always-on gate. **`held_ambiguity` is now reachable and correctly bounded** — the
+  temporal gate is `max(clean floor, white-noise floor)` (0.021), so noise (temp ≤0.018) →
+  `held_ambiguity` and only genuine localized structure (temp 0.065) → `request_reference`.
 - Re-run: gate `PYTHONPATH=.:projects/amii_study python -m pytest
   projects/amii_study/nilm_brain/tests -q`; demo `… scripts/cycle_demo.py --data
   /home/sanmyaku/_sample --record Water_kettle`.
@@ -73,20 +71,23 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
 1. **✔ DONE (this chat) — Axis degeneracy fixed (1a + 1b).**
    - **1a** — `structuredness_thresholds` re-homed out of `build_given` into the Solver learned
      slot (`self.thresholds` ← `decision.default_thresholds()`); fixes the §7 doc-divergence.
-   - **1b** — `fit_calibrate` now seed-fits the gates (`decision.fit_thresholds`, mean + `k`·σ,
-     `k`=3.0 an L4 fit arg, **not** a DataState). Result on real PLAID: request_reference is now
-     **structure-driven and correctly `[temporal]`** (was a degenerate `[spectral]`). The axis
-     fix is done; the separate `held_ambiguity` gate problem it exposed is tracked below.
-   - **1b-test → acceptance battery (IN PROGRESS, RED).** The weak `test_held_ambiguity_reachable`
-     was replaced by `test_terminal_battery`: labeled synthetic classes (clean→`cycle`,
-     notch→`request_reference`, noise@SNR→`held_ambiguity`) with a confusion-matrix criterion —
-     the two forbidden confusions are a MISS (structured→not-request) and a FALSE ALARM
-     (clean/noise→request). Gate fit on the clean seed only (held-out battery). Expected to fail
-     at baseline (noise→request, per the miscalibration above); it prints the matrix. **Design
-     rule:** if a threshold placement can pass → calibration fix (noise-floor gate); if no
-     placement separates noise from structure → the *feature* is inadequate → redesign the
-     structuredness metric. `held_ambiguity` is not load-bearing for the H4/H5 claims, so minimal
-     bar first.
+   - **1b** — `fit_calibrate` now seed-fits the gates (`decision.fit_thresholds`, `k`=3.0 an L4
+     fit arg, **not** a DataState). Result on real PLAID: request_reference is now
+     **structure-driven and correctly `[temporal]`** (was a degenerate `[spectral]`).
+   - **1c — noise-surrogate gate (DONE, battery green).** The acceptance battery
+     (`test_terminal_battery`, held-out labeled synthetic) exposed that a clean-only gate is
+     `~0` on the temporal axis (a steady cycle is temporally flat) so noise tripped it → 12/12
+     `request_reference`. Fix: each gate = `max(clean floor, noise floor)`, where the noise floor
+     is the concentration a **white-noise surrogate** produces, measured by running the real
+     `fft`/`spectral_flatness`/`temporal_flatness` caps on it (`Solver._noise_floor`, no
+     duplicated numpy). Temporal gate 0.0004→0.021; noise→`held_ambiguity`, structure→`request`,
+     clean→no false alarm. The battery *diagnosed* this as a threshold (not feature) problem:
+     noise temp ≤0.018 vs structure 0.065 separated cleanly.
+   - **Follow-up (NOT done) — `calibrate` over-sensitivity.** 4/12 clean windows fall to
+     `held_ambiguity` (conf min 0.144) because `seed_std` is tiny → `energy_score=exp(-½z²)` is
+     razor-sharp, so normal residual jitter reads as low confidence. Harmless on real PLAID (conf
+     1.000) but under-confident on synthetic clean. Fix later (floor on `seed_std`, or a gentler
+     curve). Also still open: `required_confidence` literal in `build_given` (§7 = L5 input).
    - **Watch item:** `required_confidence` still literal in `build_given` (§7 = L5 task input) —
      re-home next, same species as the 1a fix.
 2. **Matcher (NEXT — the #2 prerequisite).** Recognition currently fits only the *given*
