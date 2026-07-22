@@ -41,6 +41,11 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
 6. Two secondary pipelines (`power`, `harmonic_amplitudes`) and the rungs (`onset`,
    `harmonics_present`, `load_type`, `appliance`) are **registered but not composed** — the
    rungs need their own L2 references (§8), which don't exist yet. Flagged, not faked.
+7. **`structuredness_thresholds` is L2-learned, not a domain given.** It travels the
+   `calibrate_params` channel — a Solver-held slot (`self.thresholds`, default
+   `{spectral:0.5, temporal:0.5}` from `decision.default_thresholds()`), **not** `build_given`.
+   v0 code wrongly minted it in `build_given` (a doc §7 divergence); re-homing it is **step 1a**
+   of open item #1. Seed-fitting the value is **step 1b**.
 
 ## Validated (green)
 - Gate `tests/test_gate.py` — **6 passed** on Linux (F1 finder-composes, F2
@@ -56,12 +61,17 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
   dir> --record Water_kettle`.
 
 ## Open items / next phase (pick one)
-1. **Axis degeneracy (highest-value fix).** `spectral_concentration` **saturates ~0.995**
-   on every window (real voltage always has harmonics), so discrimination comes entirely
-   from `calibrate` confidence, and **`held_ambiguity` is currently unreachable** (any
-   low-confidence window trips the always-true spectral gate → `request_reference`). Fix:
-   calibrate `structuredness_thresholds` to the saturated range, or normalize
-   `spectral_concentration`. This is a threshold/normalization issue, not a plumbing bug.
+1. **Axis degeneracy (highest-value fix) — split 1a/1b.**
+   - **1a — re-home the threshold source (implemented this chat; awaiting Linux gate).**
+     `structuredness_thresholds` moved out of `build_given` into a Solver learned slot
+     (`self.thresholds` ← `decision.default_thresholds()`), threaded into the segment like
+     `calibrate_params`. **Behavioral no-op** — fixes the §7 doc-divergence, not behavior yet.
+   - **1b — fit the thresholds off the clean-cycle seed** (mean + k·σ per axis) in the same
+     pass that fits `calibrate_params`. `spectral_concentration` **saturates ~0.995** on every
+     window (real voltage always has harmonics), so a fixed 0.5 gate is always-true → every
+     low-confidence window → `request_reference`, and **`held_ambiguity` is unreachable**.
+     De-saturating via seed-fit is what makes the terminal states real. Threshold-learning
+     issue, not a plumbing bug.
 2. **Teach a reference (the leaf-learning).** Inspect what the `Water_kettle` start=5000
    structure actually is; add it to `known_references` (and persist to L2). That *adding*
    is the leaf-learning; request_reference for that pattern then becomes a confident

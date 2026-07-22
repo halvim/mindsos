@@ -32,7 +32,7 @@ from .dispatch import CLDispatcher
 from .perception import register_perception
 from .derivation import register_derivation
 from .scoring import register_scoring, default_params, fit_calibrate_params
-from .decision import register_decision
+from .decision import register_decision, default_thresholds
 from .comprehension import register_comprehension, register_predicate
 from .pipelines import compose_recognition_segment
 
@@ -63,7 +63,6 @@ def build_given(**overrides) -> Dict[str, object]:
         O.N_GRID.iri: 21,
         O.MAX_LOOP_ITERS.iri: 6,
         O.REQUIRED_CONFIDENCE.iri: 0.9,
-        O.STRUCTUREDNESS_THRESHOLDS.iri: {"spectral": 0.5, "temporal": 0.5},
     }
     g.update(overrides)
     return g
@@ -89,6 +88,7 @@ class Solver:
         self.cycle_reference = R.cycle_reference()
         self.known_references = R.known_references()
         self.params = default_params()          # until fit off a seed
+        self.thresholds = default_thresholds()  # L2-learned gate; seed-fit is step 2 (#1b)
 
         # Compose the recognition segment once (finder-composed; F1 gate).
         self.segment = compose_recognition_segment(self.cl, self.session)
@@ -131,7 +131,7 @@ class Solver:
             O.N_TIME_BINS.iri: g[O.N_TIME_BINS.iri],
             O.CYCLE_MODEL_HISTORY.iri: list(history),
             O.CALIBRATE_PARAMS.iri: self.params,
-            O.STRUCTUREDNESS_THRESHOLDS.iri: g[O.STRUCTUREDNESS_THRESHOLDS.iri],
+            O.STRUCTUREDNESS_THRESHOLDS.iri: self.thresholds,
             O.REQUIRED_CONFIDENCE.iri: g[O.REQUIRED_CONFIDENCE.iri],
             O.KNOWN_REFERENCES.iri: self.known_references,
         }

@@ -28,6 +28,17 @@ from .ontology import (
 )
 
 
+def default_thresholds() -> dict:
+    """Bootstrap per-axis structuredness gates — the L2-learned band *before* a
+    seed is fit (mirrors ``scoring.default_params``' GLOBAL_DEFAULT role). The
+    0.5 values are a deliberately-uncommitted placeholder; they do NOT
+    discriminate yet — fitting them off the clean-cycle seed is step 2 of open
+    item #1. Held on the Solver and threaded into the segment exactly like
+    ``calibrate_params`` — NOT a domain constant in ``build_given`` (doc §7:
+    ``structuredness_thresholds`` is learned in L2, not a given)."""
+    return {"spectral": 0.5, "temporal": 0.5}
+
+
 def _verdict(**kw):
     cm = kw[CYCLE_MODEL.iri]
     conf = float(kw[CYCLE_CONFIDENCE.iri])
