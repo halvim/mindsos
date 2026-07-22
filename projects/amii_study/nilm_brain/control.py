@@ -49,6 +49,7 @@ _SPEC_FLAT = capacity_iri(CATEGORY_DERIVATION, "spectral_flatness")
 _TEMP_FLAT = capacity_iri(CATEGORY_DERIVATION, "temporal_flatness")
 _SYNTH     = capacity_iri(CATEGORY_DERIVATION, "synthesize")
 _SUBTRACT  = capacity_iri(CATEGORY_DERIVATION, "subtract")
+_NORMALIZE = capacity_iri(CATEGORY_DERIVATION, "normalize")
 
 
 def build_given(**overrides) -> Dict[str, object]:
@@ -221,8 +222,15 @@ class Solver:
         p = self._invoke(_PARSE_RAW, {O.RAW_DATA.iri: raw, O.FS.iri: g[O.FS.iri],
                                       O.CHANNEL_MAP.iri: g[O.CHANNEL_MAP.iri]})
         if channel == "current":
-            return self._invoke(_BIND_CUR, {O.CURRENT.iri: p[O.CURRENT.iri],
-                                            O.TIME.iri: p[O.TIME.iri]})[O.SIGNAL.iri]
+            sig = self._invoke(_BIND_CUR, {O.CURRENT.iri: p[O.CURRENT.iri],
+                                           O.TIME.iri: p[O.TIME.iri]})[O.SIGNAL.iri]
+            # Amplitude-normalize the current: appliance currents span orders of
+            # magnitude and the confidence gate is absolute-energy, so without
+            # this a low-power switching load reads as a clean cycle (its
+            # harmonics masked). Shape — the appliance signature — survives;
+            # absolute power does not (resistive discrimination is the harder
+            # follow-up that would keep power as a feature).
+            return self._invoke(_NORMALIZE, {O.SIGNAL.iri: sig})[O.NORMALIZED_SIGNAL.iri]
         return self._invoke(_BIND, {O.VOLTAGE.iri: p[O.VOLTAGE.iri],
                                     O.TIME.iri: p[O.TIME.iri]})[O.SIGNAL.iri]
 
