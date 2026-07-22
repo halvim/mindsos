@@ -101,7 +101,8 @@ provenance XRef is `CapacityMMWriter.link_provenance` (arc1 pinned corpus-entry 
 Slice 3 is inert in prod until Step 5 supplies the caller (mint `raw_task` root, pass the phase-1
 resolved reference as the knowledge target to `link_provenance`).
 
-**Step 5 — OUT-OF-CR GAP: make Phase 3-5 real. ← NEXT (the only remaining work).**
+**Step 5 — OUT-OF-CR GAP: make Phase 3-5 real. ✅ BUILT + gate-green 2026-07-22 (main `7d32fce`,
+PR #66; effective 4308/0). Core done; arc e2e gated on the arc brain naming `solve_target`.**
 Wire `execution.run` to actually call `execute_pipeline(mm=…, pipeline_run_ref=…)` on each leaf
 pipeline, seeding L5 with the task. This is what makes Steps 1-4 non-inert: the capacity grounding
 DAG + Slice-B persist and the knowledge writer + provenance XRef all fire only when a real solve run
