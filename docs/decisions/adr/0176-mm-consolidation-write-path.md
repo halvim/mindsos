@@ -60,6 +60,18 @@ Consolidation is idempotent on `episode_id`: a crash *during* consolidation (aft
 2. **`consolidate:mm` does freeze + assemble + write.** Rejected — freeze is a live-MM mutation under the MM writer lock, an L4 substrate concern the capacity has no lock handle for.
 3. **Separate `consolidate:memory` capacity for Memory.** Rejected — two dispatches + two handles + cross-write ordering for no v1 benefit.
 
+## Amendment 1 (2026-07-21) — Episode gains `capacity_root_ref` (CR reopen DQ-8, Slice B)
+
+CR `confirmation_docs/CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` (APPROVED) adds a **7th** content
+field to the assembled Episode record: `capacity_root_ref`, the pointer to this task's persisted
+capacity-MM index graph (ADR-0202 am-1), mirroring `mm_root_ref` → the chain graph. It rides
+**inside** the codec-encoded `value` dict alongside the existing six fields — `value` is already
+`Any` (ADR-0182 `_value_json`), so there is **no `DS_MM_COMPOSITE_INSTANCE` shape change and no L2
+`episodic_memories` schema change** (`EPISODE_METADATA_FIELDS` stays empty). L4
+`consolidation.py` assembles it (`None` when no capacity graphs are supplied — the case today,
+inert until out-of-CR Step 5); L3 `consolidate:mm` writes the dict unchanged. The §2 "6 fields"
+count reads as **7** from this amendment on.
+
 ## §Implementation (Phase 48; pending ship)
 
 `mindsos_intelligence/consolidation.py` (NEW); `mindsos_capacity/builtins/consolidate.py` (finalize body + Memory materialize); `mindsos_knowledge/schemas/episodic_memories.py` (Episode/Memory write helpers — S10); orchestrator Phase-5→complete seam wired (commit-group 3). Tests: `tests/phase_48/test_consolidation_write_path.py`, `test_memory_composite_materialization.py`, `test_memory_contains_episode_edge.py`, `test_consolidate_capacity_v2.py`.

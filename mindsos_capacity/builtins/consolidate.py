@@ -147,9 +147,12 @@ def _consolidate_mm_impl(**kwargs: Any) -> Any:
     handle = writeable(role=ROLE_EPISODIC_MEMORIES, scope="local", version="v1")
     value = record["value"]
     # ``value`` carries the frozen-MM Episode record assembled by L4
-    # consolidation (ADR-0176 §1): the 6 D-B47 content fields incl.
-    # ``task_pattern_iri``. (A bare value is tolerated — Memory materialises
-    # only when ``task_pattern_iri`` is present.)
+    # consolidation (ADR-0176 §1): the 7 D-B47 content fields incl.
+    # ``task_pattern_iri`` and ``capacity_root_ref`` (CR: reopen DQ-8, Slice B —
+    # the capacity-MM index-graph pointer, mirroring ``mm_root_ref``; rides
+    # inside the codec-encoded value dict, no L2 schema change). (A bare value
+    # is tolerated — Memory materialises only when ``task_pattern_iri`` is
+    # present.)
     vr = handle.validate_node(value=value, type_="Episode")
     if not vr.ok:
         raise SemanticValidationError(vr)

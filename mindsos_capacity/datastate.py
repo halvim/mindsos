@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import InitVar, dataclass, field
-from typing import Any, Dict, List, Mapping, Optional, Tuple
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple
 
 from .exceptions import DataStateError
 from .identifiers import datastate_iri
@@ -130,6 +130,24 @@ class DataState:
     # (e.g. a palette) is NOT a collection.
     collection: bool = False
     member_ds: Optional[str] = None
+    # PB-1 (CR: capacity_mm persist Slice B) — optional brain-supplied value
+    # encoder for capacity_mm persistence. A DataStateInstance's runtime value
+    # is an arbitrary domain object (a grid, a component set, …) that the
+    # ADR-0182 node-value codec rejects unless it is already a primitive /
+    # dict / list. ``encode`` reduces such a value to an **inspectable**
+    # JSON-native structure (D-C: nested list, structured records — never an
+    # opaque blob) at persist time. Core only *dispatches* on it (see
+    # ``mindsos_intelligence/capacity_persister.py``); the encoders themselves
+    # are brain-owned follow-up. ``None`` (default A) = require the value be
+    # primitive/dict/list already, else ``PersistenceError`` at persist. Not
+    # emitted by :meth:`to_properties` — it is live brain code, not node data,
+    # and never rides into the Core DataState node. Excluded from eq/hash: a
+    # DataState's identity is its structural declaration, not which function
+    # object happens to encode it (two otherwise-identical declarations must
+    # stay equal even with distinct encoder objects).
+    encode: Optional[Callable[[Any], Any]] = field(
+        default=None, compare=False, repr=False
+    )
     # DEPRECATED constructor alias (transition window, ADR-0199 am-1). Accepts
     # ``DataState(group=...)`` from not-yet-migrated consumers (e.g. arc3),
     # emits a DeprecationWarning, and folds the value into ``collection``.
@@ -207,6 +225,13 @@ def validate_datastate(ds: DataState) -> None:
     if not ds.collection and ds.member_ds is not None:
         raise DataStateError(
             f"DataState {ds.name!r}: member_ds is set but collection=False"
+        )
+    # PB-1 — an ``encode`` hint, when present, must be callable (core
+    # dispatches on it at persist; a non-callable would fail obscurely there).
+    if ds.encode is not None and not callable(ds.encode):
+        raise DataStateError(
+            f"DataState {ds.name!r}: encode must be callable or None, "
+            f"got {type(ds.encode).__name__}"
         )
 
 
