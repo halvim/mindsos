@@ -48,18 +48,21 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    of open item #1. Seed-fitting the value is **step 1b**.
 
 ## Validated (green)
-- **Appliance recognition on real PLAID CURRENT (#3, `scripts/appliance_demo.py`).** The
-  recognition pipeline now runs channel-agnostically on current (`recognize(..., channel=
-  "current")`, amplitude-normalized). Current gates are seeded on a **synthetic pure-sinusoid
-  current** (the honest zero-distortion baseline — no real appliance is distortion-free; seeding
-  on a real resistive load pushed the spectral gate to 1.57 > 1.0, dead). With that seed
-  (spectral 0.49 / temporal 0.021), all six appliances → `request_reference`; **teach `Laptop`'s
-  current signature → `matched[Laptop]` = 1 on Laptop, 0 on all five other appliances** (CFL,
-  fridge, hairdryer, microwave, kettle) — real teach→recognize→reject-others, zero false matches.
-  CAVEATS: recognition position-specific (1/16 Laptop windows — template not shift-invariant, now
-  the key robustness gap); held-out is other windows of the same record (one instance per
-  appliance in `_sample`); resistive-vs-resistive discrimination (amplitude-based) is the harder
-  follow-up.
+- **Current channel operational (#3, `scripts/appliance_demo.py`).** The recognition pipeline
+  runs channel-agnostically on current (`recognize(..., channel="current")`, amplitude-normalized;
+  gates seeded on a **synthetic pure-sinusoid current** — the honest zero-distortion baseline, as
+  no real appliance is distortion-free; a real resistive seed pushed the spectral gate to 1.57 >
+  1.0, dead). All six appliances → `request_reference`; teaching an appliance rejects the other
+  five with **zero false matches**.
+  **BUT — recognition does NOT generalize (memorization).** `match_leftovers` diagnostic on Laptop:
+  the taught window matches at leftover spec/temp = 0.000; **every other window of the same
+  appliance has leftover spec ~0.8–0.99** (template explains ~nothing). So `matched=1` is the
+  taught window matching itself, not appliance recognition. Root cause: the **time-domain residual
+  waveform is the wrong appliance signature** — phase-sensitive, varies window-to-window. Shift-
+  invariance (cross-correlate for best lag, math verified on a toy) was **inert** for both the
+  appliance and the notch (a single global lag can't align a mixed periodic-harmonic + localized
+  residual). NEXT: match on the **harmonic-magnitude spectrum** (phase-invariant; the standard NILM
+  signature; `band_energy`/`harmonic_amplitudes` already exist), not the residual waveform.
 - Gate `tests/test_gate.py` — **8 passed** on Linux (F1/F2, seeded-clean→`cycle`,
   disturbance<clean, C7, placeholder, `test_terminal_battery`, `test_teach_then_recognize`).
   The battery separates all three base terminals on labeled synthetic data (clean→`cycle`,
@@ -118,16 +121,19 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      others fall back to `request`/`held`. The brain recognizes "notch-at-this-offset," not
      "notch." Test-exposed template rigidity → next matcher improvement = cross-correlate for best
      lag before the scale-fit (or a parametric shape). Not required for the mechanism claim.
-3. **✔ DONE (this chat) — Current channel + appliance recognition (the flagship, #3).** The
-   recognition pipeline was made channel-agnostic (Slice 3a: `voltage_signal/window` →
-   `signal/signal_window`, `bind_current`, `recognize(channel=)`; gate stayed 8/8) and pointed at
-   current (Slice 3b: amplitude-normalized; synthetic pure-sinusoid current seed). Demonstrated on
-   real PLAID: teach `Laptop` → recognize Laptop, reject 5 other appliances, 0 false matches (see
-   Validated). Reuses the matcher/teach unchanged.
-   - **NEXT (highest-value robustness) — shift-invariant matching.** Recognition is 1/16 windows
-     (template not shift-invariant); cross-correlate the template for best lag before the scale-fit
-     in `fit_reference`'s `form:"template"` branch. Turns brittle-but-correct into robust. This is
-     the single limitation blocking a strong appliance claim.
+3. **PARTLY DONE — Current channel wired (3a/3b); appliance recognition NOT yet real.** The
+   pipeline is channel-agnostic (Slice 3a: `voltage_signal/window` → `signal/signal_window`,
+   `bind_current`, `recognize(channel=)`; gate 8/8) and runs on current (Slice 3b: normalized;
+   synthetic pure-sinusoid seed). The loop *runs* (teach→recognize→reject, 0 false matches) but
+   recognition is **memorization only** (see Validated) — the time-domain residual template is the
+   wrong signature.
+   - **NEXT (the actual fix) — spectral appliance signature.** Teach/match on the harmonic-
+     magnitude profile (`band_energy` per order → `harmonic_amplitudes`), which is phase-invariant
+     and consistent window-to-window — the standard NILM appliance ID. This is a template-
+     representation change (`form:"spectral"` alongside `form:"template"`), designed test-first
+     (teach Laptop → recognize MANY Laptop windows → reject the other five).
+   - **Shift-invariance (`_shift` + cross-correlate in `fit_reference`): INERT** — verified math,
+     but a single lag can't align a mixed periodic+localized residual. Harmless; keep or revert.
    - **Follow-up — resistive-vs-resistive discrimination** (kettle vs hairdryer): amplitude-based,
      erased by the current-normalization; would need power/RMS kept as a feature.
 4. **Wire the secondary pipelines / rungs** — each rung needs its own reference + §4A template
