@@ -48,6 +48,18 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    of open item #1. Seed-fitting the value is **step 1b**.
 
 ## Validated (green)
+- **Appliance recognition on real PLAID CURRENT (#3, `scripts/appliance_demo.py`).** The
+  recognition pipeline now runs channel-agnostically on current (`recognize(..., channel=
+  "current")`, amplitude-normalized). Current gates are seeded on a **synthetic pure-sinusoid
+  current** (the honest zero-distortion baseline — no real appliance is distortion-free; seeding
+  on a real resistive load pushed the spectral gate to 1.57 > 1.0, dead). With that seed
+  (spectral 0.49 / temporal 0.021), all six appliances → `request_reference`; **teach `Laptop`'s
+  current signature → `matched[Laptop]` = 1 on Laptop, 0 on all five other appliances** (CFL,
+  fridge, hairdryer, microwave, kettle) — real teach→recognize→reject-others, zero false matches.
+  CAVEATS: recognition position-specific (1/16 Laptop windows — template not shift-invariant, now
+  the key robustness gap); held-out is other windows of the same record (one instance per
+  appliance in `_sample`); resistive-vs-resistive discrimination (amplitude-based) is the harder
+  follow-up.
 - Gate `tests/test_gate.py` — **8 passed** on Linux (F1/F2, seeded-clean→`cycle`,
   disturbance<clean, C7, placeholder, `test_terminal_battery`, `test_teach_then_recognize`).
   The battery separates all three base terminals on labeled synthetic data (clean→`cycle`,
@@ -106,13 +118,20 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      others fall back to `request`/`held`. The brain recognizes "notch-at-this-offset," not
      "notch." Test-exposed template rigidity → next matcher improvement = cross-correlate for best
      lag before the scale-fit (or a parametric shape). Not required for the mechanism claim.
-3. **Teach a reference on real data (transfer check).** Inspect what the `Water_kettle` start=5000
-   structure actually is; teach it and confirm request→recognize on real PLAID (the synthetic loop
-   is proven; the real-data transfer is not yet run). That *adding*
-   is the leaf-learning; request_reference for that pattern then becomes a confident
-   recognition.
-4. **Wire the secondary pipelines / rungs** — `power` needs a current-signal bind; each
-   rung needs its own reference + §4A template instance.
+3. **✔ DONE (this chat) — Current channel + appliance recognition (the flagship, #3).** The
+   recognition pipeline was made channel-agnostic (Slice 3a: `voltage_signal/window` →
+   `signal/signal_window`, `bind_current`, `recognize(channel=)`; gate stayed 8/8) and pointed at
+   current (Slice 3b: amplitude-normalized; synthetic pure-sinusoid current seed). Demonstrated on
+   real PLAID: teach `Laptop` → recognize Laptop, reject 5 other appliances, 0 false matches (see
+   Validated). Reuses the matcher/teach unchanged.
+   - **NEXT (highest-value robustness) — shift-invariant matching.** Recognition is 1/16 windows
+     (template not shift-invariant); cross-correlate the template for best lag before the scale-fit
+     in `fit_reference`'s `form:"template"` branch. Turns brittle-but-correct into robust. This is
+     the single limitation blocking a strong appliance claim.
+   - **Follow-up — resistive-vs-resistive discrimination** (kettle vs hairdryer): amplitude-based,
+     erased by the current-normalization; would need power/RMS kept as a feature.
+4. **Wire the secondary pipelines / rungs** — each rung needs its own reference + §4A template
+   instance. (`power`/`multiply` now references the generic `signal`; rewire for P=V·I in v1.)
 5. **Durable L2 (v1)** — persist learned `calibrate` params + taught references as
    `learned-parameters` nodes (arc3 B6: L2 is the layer that works); `boot_brain` +
    FalkorDBLocalPersister.
