@@ -28,6 +28,18 @@ def _load(base: str, name: str) -> np.ndarray:
     return np.loadtxt(matches[0], delimiter=",")
 
 
+def _synthetic_clean_current(fs=30000.0, f0=60.0, n_cycles=40, v_nom=170.0):
+    """A perfectly-resistive (pure-sinusoid) current — the zero-distortion
+    baseline. No real appliance supplies this (all carry some harmonics), so the
+    current-gate seed is synthetic (sanctioned; held out from the test set).
+    col0=current, col1=voltage (matches the default channel_map)."""
+    n = int(round(n_cycles * fs / f0))
+    t = np.arange(n) / fs
+    cur = np.sin(2 * np.pi * f0 * t)
+    volt = v_nom * np.sin(2 * np.pi * f0 * t)
+    return np.stack([cur, volt], axis=1)
+
+
 def _mm(outs, key):
     xs = [float(o[key]) for o in outs]
     return f"{min(xs):.3f}/{sum(xs) / len(xs):.3f}/{max(xs):.3f}"
@@ -45,8 +57,8 @@ def main() -> None:
     records = {os.path.basename(f)[:-4]: np.loadtxt(f, delimiter=",") for f in files}
 
     s = Solver("appliance-demo")
-    s.fit_calibrate(_load(args.data, args.seed), channel="current")
-    print(f"seed(current)={args.seed!r}   gates={s.thresholds}\n")
+    s.fit_calibrate(_synthetic_clean_current(), channel="current")
+    print(f"seed(current)=synthetic pure sinusoid   gates={s.thresholds}\n")
 
     terms = ("cycle", "recognized", "request_reference", "held_ambiguity")
     print(f"{'record':30s} tally  |  (min/mean/max) conf · spec · temp · resid")
