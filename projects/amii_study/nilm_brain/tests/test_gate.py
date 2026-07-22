@@ -134,10 +134,18 @@ def test_terminal_battery():
     s.fit_calibrate(_clean_record())
     terms = ("cycle", "held_ambiguity", "request_reference")
     rows, fails = [], []
+
+    def _mm(outs, key):
+        xs = [float(o[key]) for o in outs]
+        return f"{min(xs):.3f}/{sum(xs) / len(xs):.3f}/{max(xs):.3f}"
+
     for name, rec, intended in _terminal_battery():
-        states = [o["verdict"]["state"] for o in s.recognize(rec, max_windows=12)]
+        outs = s.recognize(rec, max_windows=12)
+        states = [o["verdict"]["state"] for o in outs]
         tally = {t: states.count(t) for t in terms}
-        rows.append(f"  {name:10s} intended={intended:18s} got={tally}")
+        rows.append(f"  {name:10s} intended={intended:18s} got={tally}\n"
+                    f"             (min/mean/max) conf={_mm(outs, 'confidence')} "
+                    f"spec={_mm(outs, 'spectral')} temp={_mm(outs, 'temporal')}")
         if intended in ("cycle", "held_ambiguity") and tally["request_reference"]:
             fails.append(f"{name}: FALSE ALARM ({tally['request_reference']} request_reference)")
         if intended == "held_ambiguity" and tally["held_ambiguity"] == 0:
@@ -146,6 +154,7 @@ def test_terminal_battery():
             fails.append(f"{name}: MISS (structured window never request_reference)")
         if intended == "cycle" and tally["cycle"] == 0:
             fails.append(f"{name}: clean never reached cycle")
-    matrix = "terminal battery (intended -> observed):\n" + "\n".join(rows)
+    matrix = (f"learned gates: {s.thresholds}\n"
+              "terminal battery (intended -> observed):\n" + "\n".join(rows))
     print("\n" + matrix)
     assert not fails, matrix + "\n\nFAILURES:\n  " + "\n  ".join(fails)
