@@ -26,7 +26,7 @@ from mindsos_capacity.identifiers import CATEGORY_DECISION
 
 from .ontology import (
     CYCLE_MODEL, CYCLE_CONFIDENCE, SPECTRAL_CONCENTRATION, TEMPORAL_CONCENTRATION,
-    KNOWN_REFERENCES, REQUIRED_CONFIDENCE, STRUCTUREDNESS_THRESHOLDS, CYCLE_VERDICT,
+    REQUIRED_CONFIDENCE, STRUCTUREDNESS_THRESHOLDS, CYCLE_VERDICT,
 )
 
 
@@ -79,7 +79,6 @@ def _verdict(**kw):
     conf = float(kw[CYCLE_CONFIDENCE.iri])
     sc = float(kw[SPECTRAL_CONCENTRATION.iri])
     tc = float(kw[TEMPORAL_CONCENTRATION.iri])
-    known = kw[KNOWN_REFERENCES.iri]
     req = float(kw[REQUIRED_CONFIDENCE.iri])
     th = kw[STRUCTUREDNESS_THRESHOLDS.iri]
 
@@ -92,18 +91,15 @@ def _verdict(**kw):
     spectral_hit = sc >= float(th["spectral"])
     temporal_hit = tc >= float(th["temporal"])
     if spectral_hit or temporal_hit:
-        # Residual carries structure. Does any KNOWN reference beyond the one
-        # already fit explain it? In v0 the library is just cycle_reference,
-        # already used -> nothing matches -> request a new reference.
-        used = cm.get("reference")
-        unused = [r for r in known if r.get("name") != used]
+        # Residual carries structure the base cycle_reference does not explain.
+        # This is a *tentative* request: the L4 matcher (control.py) then tries
+        # the taught reference library against the residual and may upgrade this
+        # to `recognized[<name>]`. Real matching lives in L4 (§4 joint
+        # inference), not a name-check here (that was the arc PB3 half-build).
         axis = "spectral" if spectral_hit and sc >= tc else ("temporal" if temporal_hit else None)
-        if not unused:
-            return {CYCLE_VERDICT.iri: {
-                "state": "request_reference", "axis": axis,
-                "structure": f"unexplained {axis}-axis structure", **base}}
-        return {CYCLE_VERDICT.iri: {"state": "held_ambiguity", "axis": axis,
-                                    "structure": "multiple candidate references", **base}}
+        return {CYCLE_VERDICT.iri: {
+            "state": "request_reference", "axis": axis,
+            "structure": f"unexplained {axis}-axis structure", **base}}
 
     return {CYCLE_VERDICT.iri: {"state": "held_ambiguity", "axis": None,
                                 "structure": "low confidence, flat on both axes", **base}}
@@ -114,10 +110,11 @@ def register_decision(cl, session):
         Capacity(
             name="verdict", category=CATEGORY_DECISION,
             inputs=(CYCLE_MODEL.iri, CYCLE_CONFIDENCE.iri, SPECTRAL_CONCENTRATION.iri,
-                    TEMPORAL_CONCENTRATION.iri, KNOWN_REFERENCES.iri,
+                    TEMPORAL_CONCENTRATION.iri,
                     REQUIRED_CONFIDENCE.iri, STRUCTUREDNESS_THRESHOLDS.iri),
             outputs=(CYCLE_VERDICT.iri,), implementation=_verdict,
-            description="(model, confidence, structure, references) -> cycle_verdict",
+            description="(model, confidence, structuredness) -> cycle_verdict "
+                        "(cycle/request_reference/held_ambiguity; recognized is L4)",
         ),
     ]
     for c in caps:

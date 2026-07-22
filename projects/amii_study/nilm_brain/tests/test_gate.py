@@ -18,13 +18,14 @@ from nilm_brain import ontology as O
 from nilm_brain.control import Solver, build_given
 
 
-def _clean_record(n_cycles=40, fs=30000.0, f0=60.0, v_nom=170.0, notch=False):
+def _clean_record(n_cycles=40, fs=30000.0, f0=60.0, v_nom=170.0, notch=False, seed=0):
     """A clean grid-voltage record: fundamental + small 3rd harmonic + tiny
-    noise. col0=current, col1=voltage (matches the default channel_map)."""
+    noise. col0=current, col1=voltage (matches the default channel_map).
+    `seed` varies the noise draw so teach/recognize can use distinct instances."""
     n = int(round(n_cycles * fs / f0))
     t = np.arange(n) / fs
     v = v_nom * np.sin(2 * np.pi * f0 * t) + 0.03 * v_nom * np.sin(2 * np.pi * 3 * f0 * t)
-    rng = np.random.default_rng(0)
+    rng = np.random.default_rng(seed)
     v = v + 0.002 * v_nom * rng.standard_normal(n)
     if notch:
         period = int(round(fs / f0))
@@ -158,3 +159,64 @@ def test_terminal_battery():
               "terminal battery (intended -> observed):\n" + "\n".join(rows))
     print("\n" + matrix)
     assert not fails, matrix + "\n\nFAILURES:\n  " + "\n  ".join(fails)
+
+
+# ── Matcher: the teach -> recognize loop (doctrine §5) ─────────────────
+def _sag_record(seed=21):
+    """A voltage sag: fundamental amplitude dips ~20% over a multi-cycle span
+    (a DIFFERENT structure than a notch's brief deep dip). Novel -> must stay
+    request_reference, and must NOT match a taught `notch` template."""
+    rec = _clean_record(seed=seed)
+    n = rec.shape[0]
+    i0, i1 = n // 3, n // 3 + n // 6
+    rec[i0:i1, 1] *= 0.8
+    return rec
+
+
+def test_teach_then_recognize():
+    """Teach one template reference from a flagged residual, then require a
+    HELD-OUT instance of the same structure to be `recognized` (not requested),
+    while a different structure (sag) and noise must NOT match, and clean
+    recognition is untouched (additive, no forgetting). Prints a per-class
+    breakdown so a failure is diagnosable."""
+    s = Solver("nilm-teach")
+    s.fit_calibrate(_clean_record())
+
+    def states(rec):
+        return [o["verdict"] for o in s.recognize(rec, max_windows=12)]
+
+    before = [v["state"] for v in states(_clean_record(notch=True))]
+    s.teach("notch", _clean_record(notch=True))
+    notch_b = states(_clean_record(notch=True, seed=7))
+    sag = states(_sag_record())
+    noise = states(_noise_record(1.0, 11))
+    clean = states(_clean_record())
+
+    def _tally(vs):
+        return {k: sum(v["state"] == k for v in vs)
+                for k in ("cycle", "recognized", "request_reference", "held_ambiguity")}
+
+    report = "\n".join([
+        f"  before-teach notch : request in states? {'request_reference' in before}",
+        f"  notch_B (held-out) : {_tally(notch_b)}  refs={sorted({v.get('reference') for v in notch_b})}",
+        f"  sag                : {_tally(sag)}  refs={sorted({v.get('reference') for v in sag})}",
+        f"  noise              : {_tally(noise)}",
+        f"  clean              : {_tally(clean)}",
+    ])
+    print("\nteach->recognize:\n" + report)
+
+    fails = []
+    if "request_reference" not in before:
+        fails.append("notch was not novel (request_reference) before teaching")
+    if not any(v["state"] == "recognized" and v.get("reference") == "notch" for v in notch_b):
+        fails.append("FAIL-TO-RECOGNIZE: held-out notch not recognized as `notch`")
+    if any(v.get("reference") == "notch" for v in sag):
+        fails.append("FALSE MATCH: sag matched the taught `notch` reference")
+    if "request_reference" not in [v["state"] for v in sag]:
+        fails.append("sag should stay request_reference (it is novel)")
+    if any(v.get("reference") == "notch" for v in noise):
+        fails.append("FALSE MATCH: noise matched the taught `notch` reference")
+    if "cycle" not in [v["state"] for v in clean] or \
+            "request_reference" in [v["state"] for v in clean]:
+        fails.append("teaching broke clean recognition (no-forgetting violated)")
+    assert not fails, report + "\n\nFAILURES:\n  " + "\n  ".join(fails)

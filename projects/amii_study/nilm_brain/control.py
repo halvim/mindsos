@@ -46,6 +46,8 @@ _FIT       = capacity_iri(CATEGORY_DERIVATION, "fit_reference")
 _FFT       = capacity_iri(CATEGORY_DERIVATION, "fft")
 _SPEC_FLAT = capacity_iri(CATEGORY_DERIVATION, "spectral_flatness")
 _TEMP_FLAT = capacity_iri(CATEGORY_DERIVATION, "temporal_flatness")
+_SYNTH     = capacity_iri(CATEGORY_DERIVATION, "synthesize")
+_SUBTRACT  = capacity_iri(CATEGORY_DERIVATION, "subtract")
 
 
 def build_given(**overrides) -> Dict[str, object]:
@@ -138,7 +140,6 @@ class Solver:
             O.CALIBRATE_PARAMS.iri: self.params,
             O.STRUCTUREDNESS_THRESHOLDS.iri: self.thresholds,
             O.REQUIRED_CONFIDENCE.iri: g[O.REQUIRED_CONFIDENCE.iri],
-            O.KNOWN_REFERENCES.iri: self.known_references,
         }
 
     def _run_segment(self, cm, vw, history):
@@ -225,14 +226,94 @@ class Solver:
             vw, cm = self._refine_window(vs, start)
             bb = self._run_segment(cm, vw, history)
             history.append(cm)
+            verdict = self._match_verdict(bb[O.CYCLE_VERDICT.iri], vw, cm)
             out.append({"start": start, "freq": cm["freq"],
-                        "verdict": bb[O.CYCLE_VERDICT.iri],
+                        "verdict": verdict,
                         "residual_energy": bb[O.RESIDUAL_ENERGY.iri],
                         "spectral": bb[O.SPECTRAL_CONCENTRATION.iri],
                         "temporal": bb[O.TEMPORAL_CONCENTRATION.iri],
                         "harmonic": bb[O.HARMONIC_FRACTION.iri],
                         "confidence": bb[O.CYCLE_CONFIDENCE.iri]})
         return out
+
+    # ── the matcher (L4 §4 joint inference): resolve a request by matching the
+    #    residual against the taught reference library ──────────────────────
+    def _window_residual(self, vw, cm):
+        """Recompute this window's residual via the real synthesize/subtract
+        capacities (independent of blackboard internals)."""
+        fs = float(self.given[O.FS.iri])
+        recon = self._invoke(_SYNTH, {O.CYCLE_MODEL.iri: cm, O.VOLTAGE_WINDOW.iri: vw,
+                                      O.FS.iri: fs})[O.RECONSTRUCTED_WINDOW.iri]
+        return self._invoke(_SUBTRACT, {O.VOLTAGE_WINDOW.iri: vw,
+                                        O.RECONSTRUCTED_WINDOW.iri: recon})[O.RESIDUAL.iri]
+
+    def _templates(self):
+        return [r for r in self.known_references if r.get("form") == "template"]
+
+    def _match_verdict(self, verdict, vw, cm):
+        """If the segment flagged `request_reference`, try each taught template
+        against the residual (analysis-by-synthesis with the real caps). A
+        template that reduces the leftover below BOTH structuredness gates
+        *explains* the residual -> upgrade to `recognized[<name>]`. Confident-only
+        (the §4 anti-hallucination invariant): no match -> the request stands."""
+        if verdict["state"] != "request_reference" or not self._templates():
+            return verdict
+        residual = self._window_residual(vw, cm)
+        best = self._match_references(residual)
+        if best is None:
+            return verdict
+        return {**verdict, "state": "recognized", "reference": best,
+                "structure": f"matched taught reference {best!r}"}
+
+    def _match_references(self, residual):
+        g = self.given; fs = float(g[O.FS.iri]); n_bins = g[O.N_TIME_BINS.iri]
+        th = self.thresholds
+        best = None
+        for ref in self._templates():
+            model = self._invoke(_FIT, {
+                O.VOLTAGE_WINDOW.iri: residual, O.CYCLE_REFERENCE.iri: ref,
+                O.FREQ_ESTIMATE.iri: float(g[O.F0.iri]), O.FS.iri: fs,
+                O.FREQ_SEARCH_FRAC.iri: g[O.FREQ_SEARCH_FRAC.iri],
+                O.N_GRID.iri: g[O.N_GRID.iri]})[O.CYCLE_MODEL.iri]
+            recon = self._invoke(_SYNTH, {O.CYCLE_MODEL.iri: model,
+                                          O.VOLTAGE_WINDOW.iri: residual,
+                                          O.FS.iri: fs})[O.RECONSTRUCTED_WINDOW.iri]
+            leftover = self._invoke(_SUBTRACT, {O.VOLTAGE_WINDOW.iri: residual,
+                                                O.RECONSTRUCTED_WINDOW.iri: recon})[O.RESIDUAL.iri]
+            spec = self._invoke(_FFT, {O.RESIDUAL.iri: leftover,
+                                       O.FS.iri: fs})[O.RESIDUAL_SPECTRUM.iri]
+            ls = float(self._invoke(_SPEC_FLAT,
+                                    {O.RESIDUAL_SPECTRUM.iri: spec})[O.SPECTRAL_CONCENTRATION.iri])
+            lt = float(self._invoke(_TEMP_FLAT, {O.RESIDUAL.iri: leftover,
+                                                 O.N_TIME_BINS.iri: n_bins})[O.TEMPORAL_CONCENTRATION.iri])
+            if ls < float(th["spectral"]) and lt < float(th["temporal"]):
+                if best is None or lt < best[1]:
+                    best = (ref["name"], lt)
+        return best[0] if best else None
+
+    # ── teach: add ONE template reference from a flagged residual (§5) ──────
+    def teach(self, name: str, example_raw, max_windows: int = 40) -> Dict:
+        """The leaf-learning: run recognition on `example_raw`, take the residual
+        of the MOST structured `request_reference` window, and register it as one
+        new template reference under `name`. Additive — existing references are
+        untouched (no forgetting)."""
+        vs = self._voltage_signal(example_raw)
+        history: List[Dict] = []
+        best = None                                  # (temporal_concentration, values)
+        for start in self._window_starts(len(vs["values"]))[:max_windows]:
+            vw, cm = self._refine_window(vs, start)
+            bb = self._run_segment(cm, vw, history)
+            history.append(cm)
+            if bb[O.CYCLE_VERDICT.iri]["state"] == "request_reference":
+                t = float(bb[O.TEMPORAL_CONCENTRATION.iri])
+                if best is None or t > best[0]:
+                    best = (t, self._window_residual(vw, cm)["values"])
+        if best is None:
+            raise RuntimeError(f"teach({name!r}): no request_reference window to learn from")
+        ref = {"name": name, "form": "template",
+               "template": np.asarray(best[1], dtype=float).tolist()}
+        self.known_references = self.known_references + [ref]
+        return ref
 
 
 def build_solver(user_id: str = "nilm", **given) -> Solver:

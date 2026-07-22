@@ -58,6 +58,16 @@ def _fit_reference(**kw):
     fe = float(kw[FREQ_ESTIMATE.iri]); fs = float(kw[FS.iri])
     frac = float(kw[FREQ_SEARCH_FRAC.iri]); n = int(kw[N_GRID.iri])
     v = vw["values"]; t = vw["time"]
+    if ref["form"] == "template":
+        # Match a taught template to the observation: least-squares scale
+        # (alignment assumed — windows are uniform length). Basis = the stored
+        # residual shape, so the knowledge lives in the L2 reference, not here.
+        tmpl = np.asarray(ref["template"], dtype=float)
+        L = min(len(v), len(tmpl))
+        vv = np.asarray(v[:L], dtype=float); tt = tmpl[:L]
+        scale = float(np.dot(vv, tt) / (float(np.dot(tt, tt)) + _EPS))
+        return {CYCLE_MODEL.iri: {"reference": ref["name"], "form": "template",
+                                  "scale": scale, "template": tt.tolist()}}
     if ref["form"] != "sinusoid":
         raise ValueError(f"unknown reference form: {ref['form']!r}")
     lo, hi = fe * (1.0 - frac), fe * (1.0 + frac)
@@ -77,6 +87,12 @@ def _fit_reference(**kw):
 def _synthesize(**kw):
     m = kw[CYCLE_MODEL.iri]; vw = kw[VOLTAGE_WINDOW.iri]
     t = vw["time"]
+    if m.get("form") == "template":
+        tmpl = np.asarray(m["template"], dtype=float) * float(m["scale"])
+        recon = np.zeros(len(t), dtype=float)
+        L = min(len(recon), len(tmpl))
+        recon[:L] = tmpl[:L]
+        return {RECONSTRUCTED_WINDOW.iri: {"values": recon, "time": t}}
     recon = m["DC"] + m["a"] * np.cos(2 * _PI * m["freq"] * t) + m["b"] * np.sin(2 * _PI * m["freq"] * t)
     return {RECONSTRUCTED_WINDOW.iri: {"values": recon, "time": t}}
 
