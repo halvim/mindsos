@@ -1,0 +1,242 @@
+"""Derivation family — the 17 single-step deterministic capacities (§6).
+
+Every body **owns its numpy** (arc D4: a capacity whose body wraps an inline
+oracle is a label, not a transition — there is no `probe.py` imported here).
+Inputs arrive as `**kw` keyed by DataState IRI; each returns `{out_iri: value}`.
+`eps` values below are numerical divide-by-zero guards, not decision constants
+(every decision constant arrives as a DataState).
+
+Cycle-path caps (compose + execute in the flagship pipeline): `bind`, `window`,
+`fit_reference`, `synthesize`, `subtract`, `rms`, `fft`, `spectral_flatness`,
+`temporal_flatness`, `band_energy`, `compare_across_windows`.
+Secondary / acquisition caps (registered; serve power / harmonic_amplitudes /
+future rungs): `multiply`, `normalize`, `angle`, `segment`, `count`,
+`induce_structure`.
+"""
+
+from __future__ import annotations
+
+import numpy as np
+
+from mindsos_capacity import Capacity, CATEGORY_DERIVATION
+
+from .ontology import (
+    VOLTAGE, TIME, VOLTAGE_SIGNAL, CURRENT_SIGNAL, FREQ_ESTIMATE, WINDOW_CYCLES,
+    WINDOW_START, FS, F0, VOLTAGE_WINDOW, CYCLE_REFERENCE, FREQ_SEARCH_FRAC,
+    N_GRID, CYCLE_MODEL, RECONSTRUCTED_WINDOW, RESIDUAL, RESIDUAL_ENERGY,
+    RESIDUAL_SPECTRUM, SPECTRAL_CONCENTRATION, N_TIME_BINS, TEMPORAL_CONCENTRATION,
+    HARMONIC_ORDERS, HARMONIC_BANDWIDTH, HARMONIC_FRACTION, CYCLE_MODEL_HISTORY,
+    PERIOD_STABILITY, POWER, NORMALIZED_SIGNAL, PHASE, SEGMENTS, CYCLE_COUNT,
+    INDUCED_STRUCTURE,
+)
+
+_EPS = 1e-20
+_PI = np.pi
+
+
+# ── cycle-path bodies ──────────────────────────────────────────────────
+
+def _bind(**kw):
+    return {VOLTAGE_SIGNAL.iri: {"values": np.asarray(kw[VOLTAGE.iri], dtype=float),
+                                 "time": np.asarray(kw[TIME.iri], dtype=float)}}
+
+
+def _window(**kw):
+    vs = kw[VOLTAGE_SIGNAL.iri]
+    fe = float(kw[FREQ_ESTIMATE.iri]); wc = float(kw[WINDOW_CYCLES.iri])
+    fs = float(kw[FS.iri]); start = int(kw[WINDOW_START.iri])
+    length = int(round(wc * fs / fe))
+    v = vs["values"]; t = vs["time"]
+    i1 = min(len(v), start + length)
+    return {VOLTAGE_WINDOW.iri: {"values": v[start:i1], "time": t[start:i1]}}
+
+
+def _fit_reference(**kw):
+    """Fit the L2 reference to the window. Basis comes from the reference
+    (`form`), not from this body — the sinusoid knowledge lives in L2."""
+    vw = kw[VOLTAGE_WINDOW.iri]; ref = kw[CYCLE_REFERENCE.iri]
+    fe = float(kw[FREQ_ESTIMATE.iri]); fs = float(kw[FS.iri])
+    frac = float(kw[FREQ_SEARCH_FRAC.iri]); n = int(kw[N_GRID.iri])
+    v = vw["values"]; t = vw["time"]
+    if ref["form"] != "sinusoid":
+        raise ValueError(f"unknown reference form: {ref['form']!r}")
+    lo, hi = fe * (1.0 - frac), fe * (1.0 + frac)
+    best = None
+    for f in np.linspace(lo, hi, n):
+        M = np.stack([np.ones_like(t), np.cos(2 * _PI * f * t), np.sin(2 * _PI * f * t)], 1)
+        coef, *_ = np.linalg.lstsq(M, v, rcond=None)
+        e = float(np.sum((v - M @ coef) ** 2))
+        if best is None or e < best[0]:
+            best = (e, f, coef)
+    _, f, coef = best
+    return {CYCLE_MODEL.iri: {"reference": ref["name"], "form": ref["form"],
+                              "freq": float(f), "DC": float(coef[0]),
+                              "a": float(coef[1]), "b": float(coef[2])}}
+
+
+def _synthesize(**kw):
+    m = kw[CYCLE_MODEL.iri]; vw = kw[VOLTAGE_WINDOW.iri]
+    t = vw["time"]
+    recon = m["DC"] + m["a"] * np.cos(2 * _PI * m["freq"] * t) + m["b"] * np.sin(2 * _PI * m["freq"] * t)
+    return {RECONSTRUCTED_WINDOW.iri: {"values": recon, "time": t}}
+
+
+def _subtract(**kw):
+    vw = kw[VOLTAGE_WINDOW.iri]; rw = kw[RECONSTRUCTED_WINDOW.iri]
+    return {RESIDUAL.iri: {"values": vw["values"] - rw["values"], "time": vw["time"]}}
+
+
+def _rms(**kw):
+    r = kw[RESIDUAL.iri]["values"]
+    return {RESIDUAL_ENERGY.iri: float(np.sqrt(np.mean(r ** 2)))}
+
+
+def _fft(**kw):
+    r = kw[RESIDUAL.iri]["values"]; fs = float(kw[FS.iri])
+    mag = np.abs(np.fft.rfft(r * np.hanning(len(r))))
+    freqs = np.fft.rfftfreq(len(r), 1.0 / fs)
+    return {RESIDUAL_SPECTRUM.iri: {"mag": mag, "freqs": freqs}}
+
+
+def _spectral_flatness(**kw):
+    p = kw[RESIDUAL_SPECTRUM.iri]["mag"] ** 2 + _EPS
+    flat = float(np.exp(np.mean(np.log(p))) / np.mean(p))   # 1 = flat across FREQ
+    return {SPECTRAL_CONCENTRATION.iri: 1.0 - flat}
+
+
+def _temporal_flatness(**kw):
+    r = kw[RESIDUAL.iri]["values"] ** 2
+    n = int(kw[N_TIME_BINS.iri])
+    e = np.array([float(np.sum(b)) for b in np.array_split(r, n)]) + _EPS
+    flat = float(np.exp(np.mean(np.log(e))) / np.mean(e))   # 1 = flat across TIME
+    return {TEMPORAL_CONCENTRATION.iri: 1.0 - flat}
+
+
+def _band_energy(**kw):
+    rs = kw[RESIDUAL_SPECTRUM.iri]; f0 = float(kw[F0.iri])
+    orders = kw[HARMONIC_ORDERS.iri]; bw = float(kw[HARMONIC_BANDWIDTH.iri])
+    fr = rs["freqs"]; pw = rs["mag"] ** 2
+    tot = float(np.sum(pw)) + _EPS
+    harm = float(sum(np.sum(pw[np.abs(fr - k * f0) <= bw]) for k in orders))
+    return {HARMONIC_FRACTION.iri: harm / tot}
+
+
+def _compare_across_windows(**kw):
+    cm = kw[CYCLE_MODEL.iri]; hist = list(kw[CYCLE_MODEL_HISTORY.iri])
+    per = np.array([1.0 / m["freq"] for m in hist + [cm]])
+    if len(per) < 2:
+        return {PERIOD_STABILITY.iri: 1.0}
+    cv = float(np.std(per) / (np.mean(per) + _EPS))
+    return {PERIOD_STABILITY.iri: 1.0 / (1.0 + cv)}
+
+
+# ── secondary / acquisition bodies ─────────────────────────────────────
+
+def _multiply(**kw):
+    a = kw[VOLTAGE_SIGNAL.iri]["values"]; b = kw[CURRENT_SIGNAL.iri]["values"]
+    t = kw[VOLTAGE_SIGNAL.iri]["time"]
+    return {POWER.iri: {"values": a * b, "time": t}}
+
+
+def _normalize(**kw):
+    v = kw[VOLTAGE_SIGNAL.iri]["values"]; t = kw[VOLTAGE_SIGNAL.iri]["time"]
+    mu = float(np.mean(v)); sd = float(np.std(v)) + _EPS
+    return {NORMALIZED_SIGNAL.iri: {"values": (v - mu) / sd, "time": t}}
+
+
+def _angle(**kw):
+    m = kw[CYCLE_MODEL.iri]
+    return {PHASE.iri: float(np.arctan2(m["b"], m["a"]))}
+
+
+def _segment(**kw):
+    vs = kw[VOLTAGE_SIGNAL.iri]; fs = float(kw[FS.iri]); f0 = float(kw[F0.iri])
+    v = vs["values"]; t = vs["time"]
+    step = int(round(fs / f0))
+    segs = [{"values": v[i:i + step], "time": t[i:i + step]}
+            for i in range(0, max(1, len(v) - step + 1), step)]
+    return {SEGMENTS.iri: segs}
+
+
+def _count(**kw):
+    return {CYCLE_COUNT.iri: int(len(kw[SEGMENTS.iri]))}
+
+
+def _induce_structure(**kw):
+    """Minimal honest structure induction: name the cardinality of the
+    example set. Real DAG induction (the acquisition #2 path) is not yet
+    designed — declared placeholder so it never reads as complete."""
+    segs = kw[SEGMENTS.iri]
+    return {INDUCED_STRUCTURE.iri: {"kind": "cycle_series", "n": int(len(segs))}}
+
+
+def register_derivation(cl, session):
+    D = CATEGORY_DERIVATION
+    caps = [
+        Capacity(name="bind", category=D, inputs=(VOLTAGE.iri, TIME.iri),
+                 outputs=(VOLTAGE_SIGNAL.iri,), implementation=_bind,
+                 description="value+time -> voltage_signal"),
+        Capacity(name="window", category=D,
+                 inputs=(VOLTAGE_SIGNAL.iri, FREQ_ESTIMATE.iri, WINDOW_CYCLES.iri,
+                         FS.iri, WINDOW_START.iri),
+                 outputs=(VOLTAGE_WINDOW.iri,), implementation=_window,
+                 description="signal -> one analysis window (position = L4 window_start)"),
+        Capacity(name="fit_reference", category=D,
+                 inputs=(VOLTAGE_WINDOW.iri, CYCLE_REFERENCE.iri, FREQ_ESTIMATE.iri,
+                         FS.iri, FREQ_SEARCH_FRAC.iri, N_GRID.iri),
+                 outputs=(CYCLE_MODEL.iri,), implementation=_fit_reference,
+                 description="observation + L2 reference -> fitted model"),
+        Capacity(name="synthesize", category=D,
+                 inputs=(CYCLE_MODEL.iri, VOLTAGE_WINDOW.iri, FS.iri),
+                 outputs=(RECONSTRUCTED_WINDOW.iri,), implementation=_synthesize,
+                 description="model -> reconstructed signal"),
+        Capacity(name="subtract", category=D,
+                 inputs=(VOLTAGE_WINDOW.iri, RECONSTRUCTED_WINDOW.iri),
+                 outputs=(RESIDUAL.iri,), implementation=_subtract,
+                 description="observation - reconstruction -> residual"),
+        Capacity(name="rms", category=D, inputs=(RESIDUAL.iri,),
+                 outputs=(RESIDUAL_ENERGY.iri,), implementation=_rms,
+                 description="residual -> residual_energy"),
+        Capacity(name="fft", category=D, inputs=(RESIDUAL.iri, FS.iri),
+                 outputs=(RESIDUAL_SPECTRUM.iri,), implementation=_fft,
+                 description="residual -> windowed spectrum"),
+        Capacity(name="spectral_flatness", category=D, inputs=(RESIDUAL_SPECTRUM.iri,),
+                 outputs=(SPECTRAL_CONCENTRATION.iri,), implementation=_spectral_flatness,
+                 description="spectrum -> spectral_concentration (freq-axis structure)"),
+        Capacity(name="temporal_flatness", category=D, inputs=(RESIDUAL.iri, N_TIME_BINS.iri),
+                 outputs=(TEMPORAL_CONCENTRATION.iri,), implementation=_temporal_flatness,
+                 description="residual -> temporal_concentration (time-axis structure)"),
+        Capacity(name="band_energy", category=D,
+                 inputs=(RESIDUAL_SPECTRUM.iri, F0.iri, HARMONIC_ORDERS.iri, HARMONIC_BANDWIDTH.iri),
+                 outputs=(HARMONIC_FRACTION.iri,), implementation=_band_energy,
+                 description="spectrum -> harmonic_fraction at k*f0"),
+        Capacity(name="compare_across_windows", category=D,
+                 inputs=(CYCLE_MODEL.iri, CYCLE_MODEL_HISTORY.iri),
+                 outputs=(PERIOD_STABILITY.iri,), implementation=_compare_across_windows,
+                 description="model + history -> period_stability"),
+        # secondary / acquisition
+        Capacity(name="multiply", category=D,
+                 inputs=(VOLTAGE_SIGNAL.iri, CURRENT_SIGNAL.iri),
+                 outputs=(POWER.iri,), implementation=_multiply,
+                 description="V*I -> power (power pipeline; needs a current bind, v1)"),
+        Capacity(name="normalize", category=D, inputs=(VOLTAGE_SIGNAL.iri,),
+                 outputs=(NORMALIZED_SIGNAL.iri,), implementation=_normalize,
+                 description="signal -> zero-mean unit-std"),
+        Capacity(name="angle", category=D, inputs=(CYCLE_MODEL.iri,),
+                 outputs=(PHASE.iri,), implementation=_angle,
+                 description="model -> phase of the fundamental"),
+        Capacity(name="segment", category=D,
+                 inputs=(VOLTAGE_SIGNAL.iri, FS.iri, F0.iri),
+                 outputs=(SEGMENTS.iri,), implementation=_segment,
+                 description="signal -> per-cycle segments"),
+        Capacity(name="count", category=D, inputs=(SEGMENTS.iri,),
+                 outputs=(CYCLE_COUNT.iri,), implementation=_count,
+                 description="segments -> count"),
+        Capacity(name="induce_structure", category=D, inputs=(SEGMENTS.iri,),
+                 outputs=(INDUCED_STRUCTURE.iri,), implementation=_induce_structure,
+                 description="examples -> DAG (acquisition #2; placeholder body)",
+                 placeholder=True),
+    ]
+    for c in caps:
+        cl.register_capacity(c, session=session, if_exists="upsert")
+    return [c.iri for c in caps]
