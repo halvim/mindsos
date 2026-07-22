@@ -5,6 +5,10 @@ full NILM application-doc registry into a pinned core and recognizes grid
 cycles by dispatching L3 capacities the **finder composes** and core's
 **`execute_pipeline`** runs. It never edits `mindsos_*` (the bongard/arc rule).
 
+> **Current state, decisions, and next phase:** see **`STATE.md`**.
+> Design refs: `docs/LEAF_LEARNING_NILM_APPLICATION.md` (the registry) and
+> `docs/LEAF_LEARNING_PROCESS.md` (the domain-neutral doctrine).
+
 ## What's in it (the whole doc registry)
 
 - **~44 DataStates** (`nilm.*` realm, doc §7 + 4 promoted search/loop
