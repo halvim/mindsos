@@ -123,11 +123,25 @@ def feat_power(iw, vw, cfg):
     return np.array([np.log10(irms), pf, crest, p])   # standardized later
 
 
+def feat_physics(iw, vw, cfg):
+    """Low-dim interpretable vector [PF, crest, THD, log Irms] — the scalars the
+    physics table separates on, kept low-dim so cosine/dimensionality can't wash
+    them out."""
+    irms = np.sqrt(np.mean(iw ** 2)) + EPS
+    vrms = np.sqrt(np.mean(vw ** 2)) + EPS
+    pf = np.mean(vw * iw) / (vrms * irms)
+    crest = np.max(np.abs(iw)) / irms
+    fund = harmonic_mags(iw, cfg["f0"], cfg["fs"], [1])[0] + EPS
+    thd = np.linalg.norm(harmonic_mags(iw, cfg["f0"], cfg["fs"], cfg["orders"])) / fund
+    return np.array([pf, crest, thd, np.log10(irms)])
+
+
 CANDIDATES = {
     "A resid_harmonic": ("cosine", feat_resid_harmonic),
     "B raw_harmonic":   ("euclid", feat_raw_harmonic),
     "C vi_trajectory":  ("cosine", feat_vi),
     "E power":          ("euclid", feat_power),
+    "H physics_scalars": ("euclid", feat_physics),
 }
 
 
