@@ -1,18 +1,31 @@
 # CORE WORK ITEM — load the resolved task into L5 (make it reach the solve)
 
 **Type:** sequencing work item — orders existing CRs; not a new design.
-**Status:** IN PROGRESS. Slices 0 + 1 SHIPPED to main; Slices 2/3 + Step 5 NOT built.
+**Status:** Slices 0 + 1 + 2 + 3 ALL SHIPPED to main. **Only out-of-CR Step 5 (`execution.run` →
+`execute_pipeline`) remains** — the true end-to-end blocker for `arc solve task 7`. Steps 1-4 gave
+the task a home in L5 (capacity_mm grounding DAG + persist, knowledge_mm writer, provenance XRef);
+they are **inert in prod** until Step 5 wires the solve path to actually read/write them.
+
+> **UPDATE 2026-07-21:** Slice 2 (capacity writer) has since SHIPPED (PR #61) — but is now
+> being **reopened**: `CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` (APPROVED) rewrites it to a
+> per-task/run graph, adds `capacity_mm`→Episode persistence (reopens DQ-8/ADR-0202), and
+> **absorbs the submind follow-on CR** (`CORE_CR_SUBMIND_RESOLVER_MM.md`, now SUPERSEDED) as its
+> Slice C. That CR is the trunk of the L5 lane — Slice 3 + Step 5 should build on its model.
 **Consumers of record:** arc1 (D1.6 / D1.8), arc3 (C9 "L5 unused").
 **Reframes:** `CORE_CR_PHASE1_RESOLVED_REFERENCE.md` — that CR is **Step 3.1 below, in isolation.**
 **Foundation (BUILT + on main):** D8-B/3b per-task chain persist — `mm_persister.py`,
 ADR-0202, PR #52 (merged). This work item builds on it.
 
-**Build progress (2026-07-19):**
-- Step 1 / Slice 0 — **SHIPPED** (PR #59, squash `e234914`; gate 4266/0). Confirm:
-  `L5_SLICE0_INSTANCE_IRI_CONFIRMED.md`.
-- Step 2 / Slice 1 — **SHIPPED** (PR #60, squash `f3cc950`; gate 4271/0, 0 regressions).
-  Confirm: `L5_SLICE1_FORK_INDEPENDENCE_CONFIRMED.md`.
-- Steps 3 (Slice 2) / 4 (Slice 3) / 5 — **NOT built.** Next = Slice 2 (see §Slice 2 below).
+**Build progress (updated 2026-07-22):**
+- Step 1 / Slice 0 — **SHIPPED** (PR #59, `e234914`; gate 4266/0). `L5_SLICE0_INSTANCE_IRI_CONFIRMED.md`.
+- Step 2 / Slice 1 — **SHIPPED** (PR #60, `f3cc950`; gate 4271/0). `L5_SLICE1_FORK_INDEPENDENCE_CONFIRMED.md`.
+- Step 3 / Slice 2 — **SHIPPED** (PR #61, `a4e4e12`; gate 4277/0), then **reshaped + persisted** by
+  `CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` Slices A/B/C (per-run graph + Episode persist + real
+  MM into the submind arbiter; all merged, gate 4292/0). `L5_SLICE_A/B/C_CONFIRMED.md`.
+- Step 4 / Slice 3 — **SHIPPED** (branch `feat/l5-slice-3-knowledge-writer`; gate 4300/0, 0 regressions).
+  Knowledge writer + `mm_handle`=`MMResolver` + DQ-1 provenance XRef. `L5_SLICE_3_CONFIRMED.md`;
+  memory [[l5-slice-3-knowledge-writer-shipped]].
+- **Step 5 — NOT built. ← NEXT (the only remaining work).** See §Step 5 below.
 
 ---
 
@@ -58,7 +71,9 @@ Instance-IRI builders + vocabulary in `mindsos_capacity/identifiers.py`. **Block
 Three-layer fork-id independence (core `Metagraph.regenerate_ids`/`remap_xref_targets`, L1
 `ElementRegistry.remap_ids`, L5 `mm.deep_copy`). Prerequisite for provenance surviving a fork.
 
-**Step 3 — Slice 2: the capacity writer (phase-shaped core). ← NEXT. See §Slice 2 below.**
+**Step 3 — Slice 2: the capacity writer (phase-shaped core). ✅ SHIPPED (PR #61), then reshaped +
+persisted by the capacity-persist CR (Slices A/B/C, gate 4292/0). §Slice 2 below is the original
+scope; the shipped model is per-run graph + Episode persist (see `L5_SLICE_A/B/C_CONFIRMED.md`).**
   3.1 *Phase-1 drop fix* — add `resolved_reference` to `Phase1Result`, populate in `run()`,
       thread orchestrator → `plan_construction`. **← this is the entire pasted CR.**
   3.2 *Delete the dict blackboard* in `execute_pipeline`; `capacity_mm` is source of truth;
@@ -70,19 +85,40 @@ Three-layer fork-id independence (core `Metagraph.regenerate_ids`/`remap_xref_ta
   Flip the empty-room pin (`tests/phase_47/test_chain_artifact_emit.py:79-80`) — the
   non-additive breakpoint. Lock discipline: single `mm.lock`; never held across a `dispatch`.
 
-**Step 4 — Slice 3: knowledge writer + `mm_handle` (REQUIRED for arc1).**
-Finish `MMResolver` into the graph; wire as the handle (un-inert `reads_mm`). arc1's
-provenance XRef (3.4) must resolve to a real target (the pinned corpus-entry instance in
-`knowledge_mm`), so this is on the critical path. **Validation target = arc1** (decided
-2026-07-19): it has the built solver, so Step 5 has a real pipeline to run end-to-end. arc3
-would skip Steps 3.4/4 but has no runnable solve to validate against — deferred.
+**Step 4 — Slice 3: knowledge writer + `mm_handle`. ✅ SHIPPED (gate 4300/0). See
+`L5_SLICE_3_CONFIRMED.md` + memory [[l5-slice-3-knowledge-writer-shipped]].**
+`MMResolver` finishes into the `knowledge_mm` graph; wired as the read handle at both L4 dispatcher
+sites (`intelligence_layer.py` + `mindsos_server/boot.py`), un-inerting `reads_mm`. The DQ-1
+provenance XRef is `CapacityMMWriter.link_provenance` (arc1 pinned corpus-entry target / arc3 None).
+**Validation target = arc1** (has the built solver) — its Step-5 e2e has a real pipeline to run.
+Slice 3 is inert in prod until Step 5 supplies the caller (mint `raw_task` root, pass the phase-1
+resolved reference as the knowledge target to `link_provenance`).
 
-**Step 5 — OUT-OF-CR GAP: make Phase 3-5 real.**
-Wire `execution.run` to actually call `execute_pipeline` on each leaf pipeline, seeding the
-blackboard (now L5) with the task. Without this, Steps 1-3 give the task a home in L5 that
-the execution phase never reads. **This is the true end-to-end blocker for `arc solve
-task 7`, and it is NOT in the L5 CR's blast radius** (it lives in `L4_FUTURE_WORK.md`).
-File as its own core item; amend the L5 CR slice plan to reference it.
+**Step 5 — OUT-OF-CR GAP: make Phase 3-5 real. ← NEXT (the only remaining work).**
+Wire `execution.run` to actually call `execute_pipeline(mm=…, pipeline_run_ref=…)` on each leaf
+pipeline, seeding L5 with the task. This is what makes Steps 1-4 non-inert: the capacity grounding
+DAG + Slice-B persist and the knowledge writer + provenance XRef all fire only when a real solve run
+grounds through `execute_pipeline` and consolidates. Also fixes the Phase-1 → 2 drop (3.1) and the
+hardcoded plan (#2) so the resolved task actually reaches execution. **True end-to-end blocker for
+`arc solve task 7`; NOT in the L5 CR's blast radius** (lives in `L4_FUTURE_WORK.md`). File as its
+own core item. See §Step 5 detail immediately below.
+
+### Step 5 detail (for the next chat)
+- **Trigger for the inert writers:** `execute_pipeline` already takes `mm=`/`pipeline_run_ref=`
+  (Slice A) and grounds the capacity DAG when present; the submind arbiter already threads a real
+  `mm` (Slice C). `execution.run` must do the same on the solve path — thread the session `mm` +
+  a fresh `pipelinerun:<task_id>` ref, and `consolidate_task` the run so Slice-B persist becomes
+  non-inert (persist is `capacity_root_ref` index + per-DataState `encode`; note the per-DataState
+  encoders are a **brain follow-up**, not core — see `capacity-mm-persist-reopen-dq8` PB-1).
+- **Knowledge target for the XRef:** the phase-1 resolved reference (once 3.1 lands) is the L2
+  corpus entry; instantiate it via the knowledge writer (`MMResolver.get_or_instantiate`) to get
+  the pinned `knowledge_mm` instance, then pass its iri + `INSTANCE_GRAPH_ROLE` to
+  `CapacityMMWriter.link_provenance` on the `raw_task` root (arc1). arc3 passes `None`.
+- **3.1 (Phase-1 drop) + #2 (hardcoded plan)** are the upstream half — without them the resolved
+  task never reaches Phase 3-5. `CORE_CR_PHASE1_RESOLVED_REFERENCE.md` is 3.1 in isolation (do not
+  ship alone). Decide with the owner whether Step 5 subsumes 3.1 or lands it first.
+- **Acceptance:** `arc solve task 7` → `raw_task` lands in `capacity_mm` → the leaf solve pipeline
+  reads it → produces an answer → the Episode persists the capacity graph. Cannot pass today.
 
 ---
 
