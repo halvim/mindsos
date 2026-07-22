@@ -288,19 +288,32 @@ def main():
             if best is None or e > best[0]:
                 best = (e, feat_raw_harmonic(i, vw[s:s + cfg["wlen"]], cfg))
         trans[n] = [best[1]]
-    build_and_print("D transient_harm (max-residual window)", trans, names, "euclid")
+    build_and_print("D transient_harm (1 vec/record — diagonal is trivial, read off-diag only)",
+                    trans, names, "euclid")
 
-    # F: shape(B, steady mean) + power(E, steady mean) concatenated per record
+    # F: shape (B) + power (E) concatenated PER WINDOW — honest diagonal, spread counts
     combo = {}
     for n in names:
         iw, vw = recs[n]["i"], recs[n]["v"]
-        bs, es = [], []
+        combo[n] = [np.concatenate([
+            feat_raw_harmonic(iw[s:s + cfg["wlen"]], vw[s:s + cfg["wlen"]], cfg),
+            feat_power(iw[s:s + cfg["wlen"]], vw[s:s + cfg["wlen"]], cfg)])
+            for s in starts(len(iw))]
+    build_and_print("F shape+power (per-window)", combo, names, "euclid")
+
+    # G: V-I shape (C) + power (E) concatenated PER WINDOW — does magnitude fix VI's
+    #    Hairdryer/kettle->Fridge leak? (caveat: 64 shape dims vs 4 power dims after
+    #    standardizing, so shape still dominates the distance — directional only)
+    gcombo = {}
+    for n in names:
+        iw, vw = recs[n]["i"], recs[n]["v"]
+        rows = []
         for s in starts(len(iw)):
             i, v = iw[s:s + cfg["wlen"]], vw[s:s + cfg["wlen"]]
-            bs.append(feat_raw_harmonic(i, v, cfg))
-            es.append(feat_power(i, v, cfg))
-        combo[n] = [np.concatenate([np.mean(bs, 0), np.mean(es, 0)])]
-    build_and_print("F shape+power (B mean concat E mean)", combo, names, "euclid")
+            vi = feat_vi(i, v, cfg)
+            rows.append(np.concatenate([vi, feat_power(i, v, cfg)]) if vi is not None else None)
+        gcombo[n] = rows
+    build_and_print("G vi+power (per-window)", gcombo, names, "euclid")
 
     print("\nread: SCORE line per candidate. Higher own-dominant count + larger "
           "worst margin = better separation. Compare against baseline A.")
