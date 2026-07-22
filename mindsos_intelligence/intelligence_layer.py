@@ -169,9 +169,20 @@ class IntelligenceLayer:
             from .dispatch import L4Dispatcher
             from mindsos_capacity.exceptions import PipelineNotFoundError
             from mindsos_capacity.pipeline import find_pipeline
+            from .mm_resolver import KnowledgeMMSource, MMResolver
 
+            # ADR-0200 (Slice 3): the body-facing MM read handle is the
+            # concrete read-only ``MMResolver`` (KL-backed source), NOT the raw
+            # ``MentalModel`` (which lacks ``get_or_instantiate``). ``build_
+            # context`` still gates it on ``reads_mm``; inert until a
+            # ``reads_mm=True`` consumer ships. The capacity writer's write
+            # access is the real ``self._mm`` threaded to the arbiter below —
+            # distinct from this read handle.
             dispatcher = L4Dispatcher(
-                self._cl, session=self._session, kl=self._kl, mm_handle=self._mm
+                self._cl,
+                session=self._session,
+                kl=self._kl,
+                mm_handle=MMResolver(self._mm, KnowledgeMMSource(self._kl)),
             )
 
             def _plan(start, goal):

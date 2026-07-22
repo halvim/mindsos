@@ -41,9 +41,15 @@ steps, after each dispatch returns. ``RWLock`` is not reentrant, so a
 held-across-dispatch lock would be a live defect; :meth:`record`/:meth:`seed`/
 :meth:`root` each acquire and release.
 
-The provenance XRef (raw_task → knowledge_mm corpus entry) is **not** written here
-— it needs the knowledge-MM target that Slice 3 mints (``add_xref`` requires a
-concrete target; the arc3 "None" case is simply no XRef row).
+**Provenance XRef (DQ-1 / T2 / M1 — Slice 3).** :meth:`link_provenance` writes the
+nullable first-class ``capacity_mm``→``knowledge_mm`` XRef (``ref_type=INSTANCE_OF``)
+from the ``raw_task`` grounding-DAG root to the pinned corpus-entry instance the
+knowledge writer (``MMResolver``) minted. It is nullable: arc1 supplies the target;
+the arc3 "None" case is simply **no XRef row**. The XRef is a metagraph-level row
+(ADR-0128), not a routed node — no ``sub_mm_for_iri`` concern; ``validate_xref``
+(KL-scoped) is untouched. ``add_xref`` self-validates the source in ``capacity_mm``'s
+identity (the root node registered on :meth:`root`) and, when the target metagraph is
+passed, the target's existence under its role.
 """
 
 from __future__ import annotations
@@ -195,6 +201,42 @@ class CapacityMMWriter:
                 out_inst = self._mint_datastate(out_iri, value)
                 graph.add_edge(cap_node, graph.nodes[out_inst], EDGE_PRODUCES)
             return cap_inst
+
+    def link_provenance(
+        self,
+        raw_task_root_iri: str,
+        *,
+        target_id: Optional[str],
+        target_role: str,
+        target_metagraph_id: Optional[str] = None,
+    ) -> Any:
+        """Write the DQ-1 provenance XRef ``capacity_mm``→``knowledge_mm``.
+
+        From the ``raw_task`` grounding-DAG root (minted by :meth:`root`) to the
+        pinned corpus-entry instance the knowledge writer put in ``knowledge_mm``
+        (``target_id`` under ``target_role`` — the ``MMResolver`` instance graph
+        role). ``ref_type=INSTANCE_OF`` (M1). **Nullable (T2):** ``target_id=None``
+        (arc3) writes nothing and returns ``None``; a concrete target (arc1) writes
+        one first-class :class:`XRef` row on ``capacity_mm`` and returns it.
+
+        ``add_xref`` validates the source id in ``capacity_mm``'s identity (the root
+        node registered on :meth:`root`) and — since ``knowledge_mm`` is passed as
+        the target metagraph — the target's existence under ``target_role`` before
+        the WAL (P59). Takes ``mm.lock`` (write); never held across a dispatch.
+        """
+        if target_id is None:
+            return None  # arc3 — no XRef row (T2)
+        with self._mm.lock.write_locked():
+            return self._mm.capacity_mm.add_xref(
+                source_id=raw_task_root_iri,
+                target_metagraph_id=(
+                    target_metagraph_id or self._mm.knowledge_mm.metagraph_id
+                ),
+                target_role=target_role,
+                target_id=target_id,
+                ref_type="INSTANCE_OF",
+                target_metagraph=self._mm.knowledge_mm,
+            )
 
     # ── internal (lock already held by the caller) ───────────────────────
 

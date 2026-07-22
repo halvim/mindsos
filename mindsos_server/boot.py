@@ -190,6 +190,7 @@ def boot_brain(
     from mindsos_capacity import CapacityLayer
     from mindsos_intelligence.dispatch import L4Dispatcher
     from mindsos_intelligence.mm import MentalModel
+    from mindsos_intelligence.mm_resolver import KnowledgeMMSource, MMResolver
     from mindsos_intelligence.orchestrator import Orchestrator
     from mindsos_knowledge import KnowledgeLayer
 
@@ -308,8 +309,16 @@ def boot_brain(
                 )
 
     mm = MentalModel(session_id=session.session_id, user_id=user)
+    # ADR-0200 (Slice 3): the solve-path dispatcher's read-only MM handle is
+    # the concrete ``MMResolver`` (KL-backed source), gated on ``reads_mm``.
+    # Inert until a ``reads_mm=True`` consumer ships. The Orchestrator's write
+    # access is the real ``mm`` passed below, not this read handle.
     dispatcher = L4Dispatcher(
-        cl, session=session, kl=kl, modality_profiles=modality_profiles
+        cl,
+        session=session,
+        kl=kl,
+        mm_handle=MMResolver(mm, KnowledgeMMSource(kl)),
+        modality_profiles=modality_profiles,
     )
     # DQ-8 / CR#4 — persist per-task chain graphs so an Episode's mm_root_ref
     # resolves. Durable path only; the ephemeral path (client is None) stays
