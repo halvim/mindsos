@@ -34,6 +34,17 @@ _EPS = 1e-20
 _PI = np.pi
 
 
+def _shift(tmpl, lag, n):
+    """Place `tmpl` into a length-`n` zero array at offset `lag`:
+    out[i] = tmpl[i - lag] over the valid overlap. Used to align a taught
+    template to an observation (shift-invariant template matching)."""
+    out = np.zeros(n, dtype=float)
+    dst0 = max(0, lag); dst1 = min(n, lag + len(tmpl))
+    if dst1 > dst0:
+        out[dst0:dst1] = tmpl[dst0 - lag:dst1 - lag]
+    return out
+
+
 # ── cycle-path bodies ──────────────────────────────────────────────────
 
 def _bind(**kw):
@@ -68,15 +79,19 @@ def _fit_reference(**kw):
     frac = float(kw[FREQ_SEARCH_FRAC.iri]); n = int(kw[N_GRID.iri])
     v = vw["values"]; t = vw["time"]
     if ref["form"] == "template":
-        # Match a taught template to the observation: least-squares scale
-        # (alignment assumed — windows are uniform length). Basis = the stored
-        # residual shape, so the knowledge lives in the L2 reference, not here.
+        # Match a taught template to the observation, SHIFT-INVARIANTLY: the
+        # signature sits at a different offset in each window (periodic current,
+        # or a disturbance the window catches at a different phase). Cross-
+        # correlate to find the best lag, align, then least-squares scale. Basis
+        # = the stored residual shape, so the knowledge lives in the L2 reference.
         tmpl = np.asarray(ref["template"], dtype=float)
-        L = min(len(v), len(tmpl))
-        vv = np.asarray(v[:L], dtype=float); tt = tmpl[:L]
-        scale = float(np.dot(vv, tt) / (float(np.dot(tt, tt)) + _EPS))
+        vv = np.asarray(v, dtype=float)
+        corr = np.correlate(vv, tmpl, mode="full")
+        lag = int(np.argmax(np.abs(corr))) - (len(tmpl) - 1)
+        ts = _shift(tmpl, lag, len(vv))
+        scale = float(np.dot(vv, ts) / (float(np.dot(ts, ts)) + _EPS))
         return {CYCLE_MODEL.iri: {"reference": ref["name"], "form": "template",
-                                  "scale": scale, "template": tt.tolist()}}
+                                  "scale": scale, "lag": lag, "template": tmpl.tolist()}}
     if ref["form"] != "sinusoid":
         raise ValueError(f"unknown reference form: {ref['form']!r}")
     lo, hi = fe * (1.0 - frac), fe * (1.0 + frac)
@@ -97,10 +112,8 @@ def _synthesize(**kw):
     m = kw[CYCLE_MODEL.iri]; vw = kw[SIGNAL_WINDOW.iri]
     t = vw["time"]
     if m.get("form") == "template":
-        tmpl = np.asarray(m["template"], dtype=float) * float(m["scale"])
-        recon = np.zeros(len(t), dtype=float)
-        L = min(len(recon), len(tmpl))
-        recon[:L] = tmpl[:L]
+        tmpl = np.asarray(m["template"], dtype=float)
+        recon = float(m["scale"]) * _shift(tmpl, int(m.get("lag", 0)), len(t))
         return {RECONSTRUCTED_WINDOW.iri: {"values": recon, "time": t}}
     recon = m["DC"] + m["a"] * np.cos(2 * _PI * m["freq"] * t) + m["b"] * np.sin(2 * _PI * m["freq"] * t)
     return {RECONSTRUCTED_WINDOW.iri: {"values": recon, "time": t}}
