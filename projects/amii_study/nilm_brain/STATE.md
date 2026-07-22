@@ -48,11 +48,12 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    of open item #1. Seed-fitting the value is **step 1b**.
 
 ## Validated (green)
-- Gate `tests/test_gate.py` — **7 passed** on Linux (F1 finder-composes, F2
-  executes-to-real-values, seeded-clean-cycle→`cycle`, disturbance<clean, C7 envelope,
-  placeholder check, + `test_terminal_battery`). The acceptance battery separates all three
-  terminals on labeled synthetic data: clean→`cycle` (no false alarm), notch→`request_reference`,
-  noise→`held_ambiguity`.
+- Gate `tests/test_gate.py` — **8 passed** on Linux (F1/F2, seeded-clean→`cycle`,
+  disturbance<clean, C7, placeholder, `test_terminal_battery`, `test_teach_then_recognize`).
+  The battery separates all three base terminals on labeled synthetic data (clean→`cycle`,
+  notch→`request_reference`, noise→`held_ambiguity`); the teach→recognize test closes the
+  leaf-learning loop (teach notch → held-out notch `recognized`, sag/noise not matched, clean
+  untouched) — with recognition position-specific for now (see #2).
 - Demo on **real PLAID `Water_kettle_1805`** (data at `/home/sanmyaku/_sample`): finder
   composed the recognition segment; 18/19 steady windows → `cycle` (conf 1.000); the one
   anomalous window (start=5000, residual 3.35 vs ~2.1 baseline, `temp` 0.064 vs clean ~0.012)
@@ -90,13 +91,24 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      curve). Also still open: `required_confidence` literal in `build_given` (§7 = L5 input).
    - **Watch item:** `required_confidence` still literal in `build_given` (§7 = L5 task input) —
      re-home next, same species as the 1a fix.
-2. **Matcher (NEXT — the #2 prerequisite).** Recognition currently fits only the *given*
-   `cycle_reference`; the verdict consults `known_references` by *name*, never fitting them. So
-   doctrine §5 ("recognition is matching against known references") is half-built and #2's
-   "teach → recognition" cannot close. Add a step that fits each known reference to the residual
-   and routes by best-explanation. Design pending approval.
-3. **Teach a reference (the leaf-learning).** Inspect what the `Water_kettle` start=5000
-   structure actually is; add it to `known_references` (and persist to L2). That *adding*
+2. **✔ DONE (this chat) — Matcher + teach (the leaf-learning loop closes).** The verdict was
+   refactored (structured→`request_reference`; the fake name-check dropped — PB3); `recognized` is
+   a 4th terminal emitted by an **L4 matcher** (`Solver._match_verdict`/`_match_references`).
+   `fit_reference`/`synthesize` gained `form:"template"` (guarded; sinusoid path untouched).
+   `Solver.teach(name, record)` stores the most-structured flagged residual as one additive
+   template reference. Matcher: on a `request_reference` window, fit each taught template to the
+   residual, subtract, and if the leftover drops below **both** gates → `recognized[name]`.
+   `test_teach_then_recognize` green: teach notch_A → a **held-out** notch_B window is
+   `recognized[notch]`, sag+noise are **not** matched (0 false matches), clean untouched
+   (no-forgetting). Gate **8 passed**.
+   - **KNOWN LIMITATION — recognition is position-specific.** The template is NOT shift-invariant:
+     only the notch_B window whose notch aligns with the taught offset is recognized (1/≈3);
+     others fall back to `request`/`held`. The brain recognizes "notch-at-this-offset," not
+     "notch." Test-exposed template rigidity → next matcher improvement = cross-correlate for best
+     lag before the scale-fit (or a parametric shape). Not required for the mechanism claim.
+3. **Teach a reference on real data (transfer check).** Inspect what the `Water_kettle` start=5000
+   structure actually is; teach it and confirm request→recognize on real PLAID (the synthetic loop
+   is proven; the real-data transfer is not yet run). That *adding*
    is the leaf-learning; request_reference for that pattern then becomes a confident
    recognition.
 4. **Wire the secondary pipelines / rungs** — `power` needs a current-signal bind; each
