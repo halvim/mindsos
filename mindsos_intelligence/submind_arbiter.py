@@ -45,6 +45,7 @@ from typing import Any, Callable, Dict, FrozenSet, Optional
 from mindsos_capacity.tiers import DEFAULT_HYSTERESIS, TierEnum
 
 from .cancellation import CancelToken
+from .mm import MentalModel
 from .pipeline_execution import execute_pipeline as _default_execute_pipeline
 
 
@@ -70,6 +71,7 @@ class SubMindArbiter:
         dispatcher: Any,
         ledger: Any,
         *,
+        mm: MentalModel,
         plan_fn: Callable[[Optional[str], str], Any],
         pipeline_not_found: type = Exception,
         execute_pipeline: Callable[..., Any] = _default_execute_pipeline,
@@ -83,6 +85,18 @@ class SubMindArbiter:
         self._executor = executor
         self._dispatcher = dispatcher
         self._ledger = ledger
+        # D-B (CR: capacity_mm persist §2.5): the REAL MentalModel the solve
+        # path threads, injected directly (NOT the dispatcher's mm_handle). The
+        # resolver grounds + persists its run into it. Mandatory: a None mm
+        # would silently drop grounding via execute_pipeline's mm=None path.
+        if mm is None:
+            raise ValueError(
+                "SubMindArbiter requires a real MentalModel (`mm`): the resolver "
+                "grounds its run into the injected MM (D-B, "
+                "CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND §2.5); a None mm would "
+                "silently drop grounding."
+            )
+        self._mm = mm
         self._plan_fn = plan_fn
         self._pnf = pipeline_not_found
         self._execute_pipeline = execute_pipeline
@@ -206,8 +220,20 @@ class SubMindArbiter:
         if pipeline is None:
             return self._fire_fallback(definition, signal, task_id)
         init = {start: signal.reading} if start is not None else {}
+        # D-B: ground + persist this resolver run into the injected MM. Slice A
+        # made `pipeline_run_ref` mandatory whenever `mm` is supplied (it killed
+        # the `run_ref = task_id` default that collided on replan), so mint a
+        # fresh per-run ref from this dispatch's unique `task_id` — each resolver
+        # dispatch (incl. a replan re-dispatch) is its own run and gets its own
+        # per-run grounding graph, so runs never overwrite each other.
         result = self._execute_pipeline(
-            self._dispatcher, pipeline, init, task_id=task_id, cancel_token=token
+            self._dispatcher,
+            pipeline,
+            init,
+            task_id=task_id,
+            cancel_token=token,
+            mm=self._mm,
+            pipeline_run_ref=f"pipelinerun:{task_id}",
         )
         return {
             "resolved": bool(getattr(result, "success", False)),

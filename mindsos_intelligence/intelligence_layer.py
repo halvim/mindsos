@@ -190,6 +190,7 @@ class IntelligenceLayer:
                 self._executor,
                 dispatcher,
                 self._resource_ledger,
+                mm=self._mm,
                 plan_fn=_plan,
                 pipeline_not_found=PipelineNotFoundError,
             )

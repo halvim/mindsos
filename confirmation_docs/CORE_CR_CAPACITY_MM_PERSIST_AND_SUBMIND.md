@@ -1,9 +1,10 @@
 # CORE CHANGE REQUEST — capacity_mm persistence (reopen DQ-8) + SubMind resolver grounding
 
 **Filed:** 2026-07-21
-**Status:** APPROVED — all decisions settled 2026-07-21 (reopen ADR-0202 + D-A..D-D). **Slice A
-SHIPPED to `main` (`d82123e`, PR #62) 2026-07-21. Slice B BUILT (branch
-`feat/capacity-mm-persist-slice-b`; Linux gate pending) — see §3 + `L5_SLICE_B_CONFIRMED.md`.**
+**Status:** LANDED — all decisions settled 2026-07-21 (reopen ADR-0202 + D-A..D-D). **Slice A
+SHIPPED to `main` (`d82123e`, PR #62) 2026-07-21; Slice B SHIPPED to `main` (`5b07b8d`, PR #63)
+2026-07-22; Slice C SHIPPED 2026-07-22 (gate 4292/0) — see `L5_SLICE_C_CONFIRMED.md`. All three
+slices in; the capacity-writer surface freeze LIFTS.**
 Build-reanalysis PB-1..PB-5 resolved — see §7; those §7 resolutions OVERRIDE the D-C wording in
 §2.4 and the singular `capacity_root_ref` in §2.3.
 **Supersedes:** `CORE_CR_SUBMIND_RESOLVER_MM.md` (the small "inject `mm`" CR — absorbed as the last slice here)
@@ -181,8 +182,13 @@ this CR until it lands, and land it before Slice 3.
    dispatch) + the PB-4 nodes-only-snapshot → edges fix; persist the full DAG, no truncation (D-D).
    Inert until Step 5 (PB-3), synthetic phase-48 tests. Confirm
    `confirmation_docs/L5_SLICE_B_CONFIRMED.md`; ADR-0202 am-1 + ADR-0176 am-1.
-3. **Slice C — submind wiring:** §2.5 (D-B), with grounding + persistence + concurrent-resolver +
-   replan tests. Submind must pass a fresh `pipeline_run_ref` (Slice A now requires it). Land with/near Phase-1.
+3. **Slice C — submind wiring: ✅ SHIPPED 2026-07-22** (branch `feat/capacity-mm-persist-slice-c`,
+   gate **4292/12/1xpass/0**, baseline 4287 + 5). §2.5 (D-B): mandatory real `mm` on
+   `SubMindArbiter`; `_run_resolver` → `execute_pipeline(mm=self._mm,
+   pipeline_run_ref=pipelinerun:<task_id>)` (fresh per-run ref); wired at `intelligence_layer.py`
+   `start()`; fallback unaffected. Tests = grounding+edges / concurrent / replan / MM-less carve-out
+   (+ null-mm guard). ADR-0189 am-1. Confirm `confirmation_docs/L5_SLICE_C_CONFIRMED.md`. **CR fully
+   lands; freeze lifts.**
 
 ---
 

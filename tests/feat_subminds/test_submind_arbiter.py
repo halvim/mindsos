@@ -12,6 +12,7 @@ dedup while in-flight, recovery clear.
 from __future__ import annotations
 
 from mindsos_capacity.tiers import TierEnum
+from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.resources import ResourceLedger
 from mindsos_intelligence.submind_arbiter import SubMindArbiter
 
@@ -108,8 +109,13 @@ def _ok_plan(s, g):
     return _Pipeline(steps=(_Step("cap.charge"),))
 
 
-def _arb(executor, dispatcher, ledger, plan=_ok_plan, **kw):
-    a = SubMindArbiter(executor, dispatcher, ledger, plan_fn=plan,
+def _arb(executor, dispatcher, ledger, plan=_ok_plan, mm=None, **kw):
+    # Slice C: `mm` is now mandatory on the arbiter (D-B). These policy tests
+    # don't inspect grounding, so a real (empty) MentalModel satisfies the
+    # contract; the resolver path writes into it harmlessly where it runs.
+    if mm is None:
+        mm = MentalModel(session_id="s", user_id="u")
+    a = SubMindArbiter(executor, dispatcher, ledger, mm=mm, plan_fn=plan,
                        pipeline_not_found=PNF, **kw)
     a.install_on_ledger()
     return a
