@@ -104,6 +104,25 @@ BOUND_DECLARATION   = _ds("bound_declaration", "bind_declaration(): bound | requ
 # ── learned output ─────────────────────────────────────────────────────
 CYCLE_CONFIDENCE = _ds("cycle_confidence", "calibrate() output (per-rung: <rung>_confidence)")
 
+# ── appliance recognition (#3): signature + k-NN match ─────────────────
+# The appliance path is PARALLEL to the cycle segment: it keeps BOTH channels
+# and absolute amplitude (power factor + current magnitude are discriminative),
+# which the normalized single-signal cycle path discards. Feature set validated
+# cross-instance on real PLAID (union + turn-on onset).
+CURRENT_WINDOW      = _ds("current_window", "one analysis window of the current channel")
+VOLTAGE_WINDOW      = _ds("voltage_window", "one analysis window of the voltage channel")
+RAW_HARMONICS       = _ds("raw_harmonics", "raw-current Fourier amplitudes at [1]+orders")
+POWER_FEATURES      = _ds("power_features", "[power_factor, crest, log_irms] from a V,I window")
+STEADY_SIGNATURE    = _ds("steady_signature", "steady per-window appliance signature (composed)")
+ONSET_FEATURES      = _ds("onset_features", "record-level turn-on [inrush_ratio, onset_frac]")
+APPLIANCE_SIGNATURE = _ds("appliance_signature", "full appliance signature (steady (+) onset)")
+REFERENCE_SIGNATURE = _ds("reference_signature", "L2 taught appliance signature (one exemplar)")
+SIGNATURE_NORM      = _ds("signature_norm", "L2 learned per-dim mean/std for the distance")
+MATCH_DISTANCE      = _ds("match_distance", "standardized distance signature<->reference")
+MATCH_CUTOFF        = _ds("match_cutoff", "L2 learned nearest-distance cutoff for a valid match")
+VOTED_APPLIANCE     = _ds("voted_appliance", "L4 k-NN vote {name, distance, confidence}")
+APPLIANCE_VERDICT   = _ds("appliance_verdict", "terminal: recognized[name] | request_reference")
+
 # ── verdict / terminal ─────────────────────────────────────────────────
 #: value = {"state": "cycle" | "held_ambiguity" | "request_reference",
 #:          "structure": <named structure>, "axis": "spectral"|"temporal"|None}
@@ -131,6 +150,10 @@ ONTOLOGY: Tuple[DataState, ...] = (
     STRUCTURE_AGREEMENT, INDUCED_STRUCTURE, BOUND_DECLARATION,
     # learned output
     CYCLE_CONFIDENCE,
+    # appliance recognition (#3)
+    CURRENT_WINDOW, VOLTAGE_WINDOW, RAW_HARMONICS, POWER_FEATURES,
+    STEADY_SIGNATURE, ONSET_FEATURES, APPLIANCE_SIGNATURE, REFERENCE_SIGNATURE,
+    SIGNATURE_NORM, MATCH_DISTANCE, MATCH_CUTOFF, VOTED_APPLIANCE, APPLIANCE_VERDICT,
     # verdict
     CYCLE_VERDICT,
 )

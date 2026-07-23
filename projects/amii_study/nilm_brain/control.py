@@ -17,13 +17,14 @@ ships the WSD/phase-1 placeholders — same as both arc brains. Not faked.
 
 from __future__ import annotations
 
+from collections import Counter
 from typing import Dict, List
 
 import numpy as np
 
 from mindsos_capacity import CapacityLayer, capacity_iri
 from mindsos_capacity import (
-    CATEGORY_PERCEPTION, CATEGORY_DERIVATION,
+    CATEGORY_PERCEPTION, CATEGORY_DERIVATION, CATEGORY_DECISION,
 )
 from mindsos_intelligence.pipeline_execution import execute_pipeline
 
@@ -34,9 +35,13 @@ from .dispatch import CLDispatcher
 from .perception import register_perception
 from .derivation import register_derivation
 from .scoring import register_scoring, default_params, fit_calibrate_params
-from .decision import register_decision, default_thresholds, fit_thresholds
+from .decision import (
+    register_decision, default_thresholds, fit_thresholds,
+    default_signature_norm, fit_signature_norm,
+    default_match_cutoff, fit_match_cutoff,
+)
 from .comprehension import register_comprehension, register_predicate
-from .pipelines import compose_recognition_segment
+from .pipelines import compose_recognition_segment, compose_appliance_segment
 
 # capacity IRIs L4 dispatches directly (the refinement loop)
 _PARSE_RAW = capacity_iri(CATEGORY_PERCEPTION, "parse_raw")
@@ -51,6 +56,12 @@ _SYNTH     = capacity_iri(CATEGORY_DERIVATION, "synthesize")
 _SUBTRACT  = capacity_iri(CATEGORY_DERIVATION, "subtract")
 _NORMALIZE = capacity_iri(CATEGORY_DERIVATION, "normalize")
 _HARM_PROFILE = capacity_iri(CATEGORY_DERIVATION, "harmonic_profile")
+# appliance recognition (#3): onset + assemble + distance are L4-dispatched;
+# power_features/current_harmonics/steady_signature run inside the segment.
+_ONSET     = capacity_iri(CATEGORY_DERIVATION, "onset_features")
+_ASSEMBLE  = capacity_iri(CATEGORY_DERIVATION, "assemble_signature")
+_SIG_DIST  = capacity_iri(CATEGORY_DERIVATION, "signature_distance")
+_RECOGNIZE = capacity_iri(CATEGORY_DECISION, "recognize")
 
 
 def build_given(**overrides) -> Dict[str, object]:
@@ -100,8 +111,16 @@ class Solver:
         self.params = default_params()          # until fit off a seed
         self.thresholds = default_thresholds()  # L2-learned gate; seed-fit is step 2 (#1b)
 
-        # Compose the recognition segment once (finder-composed; F1 gate).
+        # Appliance recognition (#3): the taught instance library (k-NN exemplars)
+        # and its learned L2 state (distance normalizer + negative-aware cutoff).
+        self.appliance_library: List[Dict] = []
+        self.signature_norm = default_signature_norm()
+        self.match_cutoff = default_match_cutoff()
+
+        # Compose the segments once (finder-composed; F1 gate). The appliance
+        # signature segment is parallel to the cycle segment.
         self.segment = compose_recognition_segment(self.cl, self.session)
+        self.appliance_segment = compose_appliance_segment(self.cl, self.session)
 
     # ── invoke helper (checks success — arc C7) ────────────────────────
     def _invoke(self, iri, inputs):
@@ -415,6 +434,135 @@ class Solver:
                "template": np.asarray(best[1], dtype=float).tolist()}
         self.known_references = self.known_references + [ref]
         return ref
+
+    # ── appliance recognition (#3): signature -> k-NN match -> recognized ────
+    def _raw_channels(self, raw):
+        """Parse and bind BOTH channels, RAW (un-normalized): appliance identity
+        lives in absolute current + power factor, which the cycle path's
+        normalize step removes. Returns (current_signal, voltage_signal)."""
+        g = self.given
+        p = self._invoke(_PARSE_RAW, {O.RAW_DATA.iri: raw, O.FS.iri: g[O.FS.iri],
+                                      O.CHANNEL_MAP.iri: g[O.CHANNEL_MAP.iri]})
+        cur = self._invoke(_BIND_CUR, {O.CURRENT.iri: p[O.CURRENT.iri],
+                                       O.TIME.iri: p[O.TIME.iri]})[O.SIGNAL.iri]
+        volt = self._invoke(_BIND, {O.VOLTAGE.iri: p[O.VOLTAGE.iri],
+                                    O.TIME.iri: p[O.TIME.iri]})[O.SIGNAL.iri]
+        return cur, volt
+
+    def _run_appliance_segment(self, cw, vw):
+        g = self.given
+        disp = CLDispatcher(self.cl, self.session)
+        inputs = {O.CURRENT_WINDOW.iri: cw, O.VOLTAGE_WINDOW.iri: vw,
+                  O.F0.iri: g[O.F0.iri], O.FS.iri: g[O.FS.iri],
+                  O.HARMONIC_ORDERS.iri: g[O.HARMONIC_ORDERS.iri]}
+        res = execute_pipeline(disp, self.appliance_segment, inputs,
+                               task_id="nilm-appliance")
+        if not res.success:
+            raise RuntimeError(f"appliance segment failed at {res.failed_step}: {res.error!r}")
+        return res.outputs[O.STEADY_SIGNATURE.iri]
+
+    def _appliance_signatures(self, raw, max_windows: int = 16):
+        """Per-window full appliance signatures over a record: run the composed
+        signature segment on each steady window, then assemble with the record's
+        turn-on onset. Windows before the detected onset are skipped (transient
+        belongs to the onset feature, not the steady signature)."""
+        g = self.given
+        cur, volt = self._raw_channels(raw)
+        onset = self._invoke(_ONSET, {O.SIGNAL.iri: cur, O.FS.iri: g[O.FS.iri],
+                                      O.F0.iri: g[O.F0.iri]})[O.ONSET_FEATURES.iri]
+        n = len(cur["values"])
+        skip = int(float(onset[1]) * n) + int(5 * g[O.FS.iri] / g[O.F0.iri])
+        starts = [s for s in self._window_starts(n) if s >= skip][:max_windows]
+        if not starts:
+            starts = self._window_starts(n)[:max_windows]
+        sigs = []
+        for start in starts:
+            win_in = {O.FREQ_ESTIMATE.iri: g[O.F0.iri],
+                      O.WINDOW_CYCLES.iri: g[O.WINDOW_CYCLES.iri],
+                      O.FS.iri: g[O.FS.iri], O.WINDOW_START.iri: start}
+            cw = self._invoke(_WINDOW, {O.SIGNAL.iri: cur, **win_in})[O.SIGNAL_WINDOW.iri]
+            vw = self._invoke(_WINDOW, {O.SIGNAL.iri: volt, **win_in})[O.SIGNAL_WINDOW.iri]
+            steady = self._run_appliance_segment(cw, vw)
+            full = self._invoke(_ASSEMBLE, {O.STEADY_SIGNATURE.iri: steady,
+                                            O.ONSET_FEATURES.iri: onset})[O.APPLIANCE_SIGNATURE.iri]
+            sigs.append(full)
+        return sigs
+
+    def _sig_distance(self, a, b):
+        return float(self._invoke(_SIG_DIST, {
+            O.APPLIANCE_SIGNATURE.iri: a, O.REFERENCE_SIGNATURE.iri: b,
+            O.SIGNATURE_NORM.iri: self.signature_norm})[O.MATCH_DISTANCE.iri])
+
+    def teach_appliance(self, name: str, record, max_windows: int = 16) -> Dict:
+        """Leaf-learning for appliances: store this instance's PER-WINDOW
+        signatures as k-NN exemplars under `name`, tagged with an instance id.
+        Additive — many instances of a class become many exemplars (recognition
+        matches window-to-window, so exemplars, not a mean); existing references
+        untouched (no forgetting)."""
+        sigs = self._appliance_signatures(record, max_windows)
+        if not sigs:
+            raise RuntimeError(f"teach_appliance({name!r}): no usable window")
+        inst = 1 + max((r.get("inst", -1) for r in self.appliance_library), default=-1)
+        refs = [{"name": name, "form": "signature", "inst": inst, "vector": s}
+                for s in sigs]
+        self.appliance_library = self.appliance_library + refs
+        return {"name": name, "inst": inst, "exemplars": len(refs)}
+
+    def fit_appliance(self, margin: float = 0.25):
+        """Learn the L2 distance normalizer and the NEGATIVE-AWARE, INSTANCE-aware
+        match cutoff off the taught library. `within` = nearest same-class
+        exemplar from a DIFFERENT instance (same-instance pairs are trivially
+        close and would bias the cutoff tight); `between` = nearest different-class
+        exemplar. The cutoff sits between them (never set from positives blind —
+        the §2.2 rule). `margin` is an L4 fit arg (no capacity consumes it)."""
+        lib = self.appliance_library
+        if not lib:
+            raise RuntimeError("fit_appliance: empty library")
+        self.signature_norm = fit_signature_norm([r["vector"] for r in lib])
+        within, between = [], []
+        for i, ri in enumerate(lib):
+            same, diff = [], []
+            for j, rj in enumerate(lib):
+                if j == i:
+                    continue
+                if rj["name"] == ri["name"]:
+                    if rj.get("inst") == ri.get("inst"):
+                        continue                       # same instance -> skip
+                    same.append(self._sig_distance(ri["vector"], rj["vector"]))
+                else:
+                    diff.append(self._sig_distance(ri["vector"], rj["vector"]))
+            if same:
+                within.append(min(same))
+            if diff:
+                between.append(min(diff))
+        self.match_cutoff = fit_match_cutoff(within, between, margin)
+        return self.match_cutoff
+
+    def _match_appliance(self, sig, k: int):
+        """L4 k-NN over the taught library (variable-size fan-out = iteration,
+        not composition): the k nearest references vote; return the winner with
+        its nearest in-class distance and vote confidence."""
+        lib = self.appliance_library
+        if not lib:
+            return None
+        ranked = sorted(((self._sig_distance(sig, r["vector"]), r["name"]) for r in lib),
+                        key=lambda x: x[0])[:max(1, k)]
+        names = [n for _, n in ranked]
+        win = Counter(names).most_common(1)[0][0]
+        nearest = min(d for d, n in ranked if n == win)
+        return {"name": win, "distance": float(nearest),
+                "confidence": names.count(win) / len(names)}
+
+    def recognize_appliance(self, raw, max_windows: int = 16, k: int = 5) -> List[Dict]:
+        """Per-window appliance verdicts: signature -> L4 k-NN vote -> the
+        `recognize` decision capacity (recognized[name] | request_reference)."""
+        out = []
+        for sig in self._appliance_signatures(raw, max_windows):
+            voted = self._match_appliance(sig, k)
+            verdict = self._invoke(_RECOGNIZE, {O.VOTED_APPLIANCE.iri: voted,
+                                                O.MATCH_CUTOFF.iri: self.match_cutoff})[O.APPLIANCE_VERDICT.iri]
+            out.append({"signature": sig, "voted": voted, "verdict": verdict})
+        return out
 
 
 def build_solver(user_id: str = "nilm", **given) -> Solver:

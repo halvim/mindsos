@@ -29,6 +29,7 @@ from .ontology import (
     CYCLE_MODEL, SIGNAL_WINDOW, FS, F0, HARMONIC_ORDERS, HARMONIC_BANDWIDTH,
     N_TIME_BINS, CYCLE_MODEL_HISTORY, CALIBRATE_PARAMS, STRUCTUREDNESS_THRESHOLDS,
     REQUIRED_CONFIDENCE, CYCLE_VERDICT,
+    CURRENT_WINDOW, VOLTAGE_WINDOW, STEADY_SIGNATURE,
 )
 
 
@@ -56,5 +57,28 @@ def compose_recognition_segment(cl, session, *, max_depth: int = 16):
         cl, session=session,
         start_datastates=recognition_segment_starts(),
         target_datastate=CYCLE_VERDICT.iri,
+        max_depth=max_depth,
+    )
+
+
+def appliance_segment_starts() -> Tuple[str, ...]:
+    """The windowed channels + harmonic constants L4 supplies to the appliance
+    signature segment. Both channels are entry inputs (appliance recognition
+    keeps voltage + absolute current — the normalized cycle path drops them)."""
+    return (CURRENT_WINDOW.iri, VOLTAGE_WINDOW.iri, F0.iri, FS.iri, HARMONIC_ORDERS.iri)
+
+
+def compose_appliance_segment(cl, session, *, max_depth: int = 16):
+    """Compose the appliance-signature segment (#3) with the sound finder:
+    from the windowed current+voltage to `steady_signature`, composing
+    `power_features` + `current_harmonics` + `steady_signature`. A real
+    finder-composed pipeline (F1/F2), parallel to the cycle segment. The onset
+    feature (record-level) and the k-NN match over the taught library are L4 —
+    a variable-size library fan-out is iteration, not composition (as the window
+    fan-out is), so `find(window -> appliance_verdict)` is correctly NOT FOUND."""
+    return ConjunctionFinder().find(
+        cl, session=session,
+        start_datastates=appliance_segment_starts(),
+        target_datastate=STEADY_SIGNATURE.iri,
         max_depth=max_depth,
     )

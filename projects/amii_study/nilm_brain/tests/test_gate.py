@@ -11,6 +11,8 @@ sanctioned tool). Run on Linux/Mac with mindsos importable::
 
 from __future__ import annotations
 
+from collections import Counter
+
 import numpy as np
 import pytest
 
@@ -219,4 +221,80 @@ def test_teach_then_recognize():
     if "cycle" not in [v["state"] for v in clean] or \
             "request_reference" in [v["state"] for v in clean]:
         fails.append("teaching broke clean recognition (no-forgetting violated)")
+    assert not fails, report + "\n\nFAILURES:\n  " + "\n  ".join(fails)
+
+
+# ── Appliance recognition (#3): the composed signature segment + L4 k-NN ─────
+# Mechanism gate (runs anywhere; no PLAID). Dataset performance (~88% cross-
+# instance) is validated separately by scripts/classify_eval.py on Linux.
+
+def _appliance_record(amp, harm, crest_exp, inrush, seed=0,
+                      n_cycles=120, fs=30000.0, f0=60.0, v_nom=170.0):
+    """A synthetic off-on submetered record (col0=current, col1=voltage) with a
+    controllable magnitude, harmonic shape, crest, and turn-on inrush — the axes
+    the signature reads. Per-instance jitter via `seed`."""
+    n = int(round(n_cycles * fs / f0))
+    t = np.arange(n) / fs
+    rng = np.random.default_rng(seed)
+    v = v_nom * np.sin(2 * np.pi * f0 * t)
+    i = amp * np.sin(2 * np.pi * f0 * t)
+    for k, c in harm.items():
+        i = i + amp * c * np.sin(2 * np.pi * f0 * k * t)
+    i = np.sign(i) * np.abs(i) ** crest_exp
+    on = int(0.2 * n)
+    i[:on] = 0.0
+    i[on:on + 500] *= inrush                                    # turn-on inrush
+    i = i * (1 + 0.03 * rng.standard_normal()) + 0.01 * amp * rng.standard_normal(n)
+    return np.stack([i, v], axis=1)
+
+
+_APPLIANCE_SPECS = {
+    "heaterA":     (8.0, {3: 0.02},         1.0, 1.2),          # high I, resistive
+    "heaterB":     (4.0, {3: 0.03},         1.0, 3.0),          # mid I, motor inrush
+    "electronics": (0.8, {3: 0.5, 5: 0.3},  1.6, 1.0),          # low I, nonlinear
+}
+_UNTAUGHT = (20.0, {3: 0.8, 5: 0.6, 7: 0.4}, 2.0, 8.0)          # clearly novel
+
+
+def test_appliance_teach_recognize():
+    """The #3 loop end-to-end as mindsos: the finder composes the signature
+    segment (F1), it executes to real values (F2), teach adds per-window
+    exemplars, fit learns the negative-aware cutoff, and the `recognize` decision
+    capacity emits the verdict. A held-out instance of each taught class must be
+    `recognized` as itself; a novel appliance must stay `request_reference`."""
+    s = Solver("nilm-appliance")
+
+    # F1: the appliance signature segment is finder-composed to steady_signature
+    names = {st.capacity_iri.rsplit(":", 1)[-1] for st in s.appliance_segment.steps}
+    for expected in ("power_features", "current_harmonics", "steady_signature"):
+        assert expected in names, f"finder did not compose {expected}"
+
+    for name, (amp, h, ce, inr) in _APPLIANCE_SPECS.items():
+        for seed in (1, 2):
+            s.teach_appliance(name, _appliance_record(amp, h, ce, inr, seed=seed),
+                              max_windows=12)
+    s.fit_appliance()
+
+    rows, fails = [], []
+    for name, (amp, h, ce, inr) in _APPLIANCE_SPECS.items():
+        outs = s.recognize_appliance(_appliance_record(amp, h, ce, inr, seed=99),
+                                     max_windows=12, k=5)
+        # F2: real values, not None
+        for o in outs:
+            assert o["signature"] and all(np.isfinite(o["signature"]))
+        got = [o["verdict"]["appliance"] for o in outs if o["verdict"]["state"] == "recognized"]
+        top = Counter(got).most_common(1)[0][0] if got else None
+        rows.append(f"  {name:12s} held-out -> {dict(Counter(got))} top={top}")
+        if top != name:
+            fails.append(f"{name}: recognized as {top!r}")
+
+    novel = s.recognize_appliance(_appliance_record(*_UNTAUGHT, seed=5),
+                                  max_windows=12, k=5)
+    novel_states = [o["verdict"]["state"] for o in novel]
+    rows.append(f"  untaught      -> request_reference {novel_states.count('request_reference')}/{len(novel_states)}")
+    if "request_reference" not in novel_states:
+        fails.append("untaught appliance never request_reference (cutoff too loose)")
+
+    report = f"cutoff={s.match_cutoff}\nappliance recognition:\n" + "\n".join(rows)
+    print("\n" + report)
     assert not fails, report + "\n\nFAILURES:\n  " + "\n  ".join(fails)

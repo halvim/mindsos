@@ -29,6 +29,9 @@ from .ontology import (
     CYCLE_MODEL_HISTORY,
     PERIOD_STABILITY, POWER, NORMALIZED_SIGNAL, PHASE, SEGMENTS, CYCLE_COUNT,
     INDUCED_STRUCTURE,
+    CURRENT_WINDOW, VOLTAGE_WINDOW, RAW_HARMONICS, POWER_FEATURES,
+    STEADY_SIGNATURE, ONSET_FEATURES, APPLIANCE_SIGNATURE, REFERENCE_SIGNATURE,
+    SIGNATURE_NORM, MATCH_DISTANCE,
 )
 
 _EPS = 1e-20
@@ -221,6 +224,91 @@ def _induce_structure(**kw):
     return {INDUCED_STRUCTURE.iri: {"kind": "cycle_series", "n": int(len(segs))}}
 
 
+# ── appliance-signature bodies (#3) — own their numpy, no residual path ────
+# These implement the cross-instance-validated feature set: power factor +
+# crest + log-RMS current (magnitude/reactivity) and raw-current harmonic
+# ratios (waveform shape), plus a record-level turn-on onset. Every constant
+# (orders) arrives as a DataState; eps is a divide guard only.
+
+def _harm_amps(x, f0, fs, orders):
+    """Fourier projection amplitude of `x` at each k*f0 (k in orders)."""
+    n = len(x); t = np.arange(n) / fs
+    out = []
+    for k in orders:
+        w = 2.0 * _PI * f0 * k
+        a = 2.0 / n * float(np.sum(x * np.sin(w * t)))
+        b = 2.0 / n * float(np.sum(x * np.cos(w * t)))
+        out.append(float(np.hypot(a, b)))
+    return out
+
+
+def _power_features(**kw):
+    """[power_factor, crest, log10(irms)] from a raw current+voltage window.
+    Magnitude and reactivity — the axes the normalized cycle path throws away."""
+    iw = np.asarray(kw[CURRENT_WINDOW.iri]["values"], dtype=float)
+    vw = np.asarray(kw[VOLTAGE_WINDOW.iri]["values"], dtype=float)
+    irms = float(np.sqrt(np.mean(iw ** 2))) + _EPS
+    vrms = float(np.sqrt(np.mean(vw ** 2))) + _EPS
+    pf = float(np.mean(vw * iw)) / (vrms * irms)
+    crest = float(np.max(np.abs(iw))) / irms
+    return {POWER_FEATURES.iri: [pf, crest, float(np.log10(irms))]}
+
+
+def _current_harmonics(**kw):
+    """Raw-current Fourier amplitudes at [fundamental] + orders (waveform shape,
+    kept in raw amplitude so a THD ratio can be formed downstream)."""
+    iw = np.asarray(kw[CURRENT_WINDOW.iri]["values"], dtype=float)
+    fs = float(kw[FS.iri]); f0 = float(kw[F0.iri])
+    orders = list(kw[HARMONIC_ORDERS.iri])
+    return {RAW_HARMONICS.iri: _harm_amps(iw, f0, fs, [1] + orders)}
+
+
+def _steady_signature(**kw):
+    """Assemble the steady per-window signature: [pf, crest, log_irms, THD,
+    ratio_k...] — power features (+) harmonic ratios relative to the fundamental."""
+    pf, crest, logi = [float(x) for x in kw[POWER_FEATURES.iri]]
+    raw = np.asarray(kw[RAW_HARMONICS.iri], dtype=float)
+    fund = float(raw[0]) + _EPS
+    harm = raw[1:]
+    thd = float(np.linalg.norm(harm)) / fund
+    return {STEADY_SIGNATURE.iri: [pf, crest, logi, thd] + (harm / fund).tolist()}
+
+
+def _onset_features(**kw):
+    """Record-level turn-on signature (PLAID captures are off-on): the inrush
+    ratio (peak just after switch-on / steady RMS) and the onset time fraction.
+    Computed once per record in L4 from the raw current signal."""
+    sig = np.asarray(kw[SIGNAL.iri]["values"], dtype=float)
+    fs = float(kw[FS.iri]); f0 = float(kw[F0.iri])
+    env = np.abs(sig)
+    steady = float(np.sqrt(np.mean(env[int(0.8 * len(env)):] ** 2))) + _EPS
+    thr = 0.2 * (float(np.max(env)) + _EPS)
+    on = int(np.argmax(env > thr)) if np.any(env > thr) else 0
+    span = int(5 * fs / f0)
+    inrush = float(np.max(env[on:on + span])) if on < len(env) else float(np.max(env))
+    return {ONSET_FEATURES.iri: [inrush / steady, on / len(env)]}
+
+
+def _assemble_signature(**kw):
+    """Concatenate the steady signature with the record-level onset features
+    into the full appliance signature used for matching."""
+    steady = list(kw[STEADY_SIGNATURE.iri])
+    onset = list(kw[ONSET_FEATURES.iri])
+    return {APPLIANCE_SIGNATURE.iri: steady + onset}
+
+
+def _signature_distance(**kw):
+    """Standardized Euclidean distance between an observed signature and one
+    taught reference (per-dim mean/std = the learned L2 `signature_norm`). The
+    SCORE is a derivation; the recognized DECISION is the decision family; the
+    k-NN vote over the (variable-size) library is L4 iteration."""
+    a = np.asarray(kw[APPLIANCE_SIGNATURE.iri], dtype=float)
+    b = np.asarray(kw[REFERENCE_SIGNATURE.iri], dtype=float)
+    norm = kw[SIGNATURE_NORM.iri]
+    sd = np.asarray(norm["std"], dtype=float) + _EPS
+    return {MATCH_DISTANCE.iri: float(np.linalg.norm((a - b) / sd))}
+
+
 def register_derivation(cl, session):
     D = CATEGORY_DERIVATION
     caps = [
@@ -294,6 +382,31 @@ def register_derivation(cl, session):
                  outputs=(INDUCED_STRUCTURE.iri,), implementation=_induce_structure,
                  description="examples -> DAG (acquisition #2; placeholder body)",
                  placeholder=True),
+        # appliance recognition (#3) — the signature segment composes 1->3->assemble
+        Capacity(name="power_features", category=D,
+                 inputs=(CURRENT_WINDOW.iri, VOLTAGE_WINDOW.iri),
+                 outputs=(POWER_FEATURES.iri,), implementation=_power_features,
+                 description="V,I window -> [power_factor, crest, log_irms]"),
+        Capacity(name="current_harmonics", category=D,
+                 inputs=(CURRENT_WINDOW.iri, F0.iri, FS.iri, HARMONIC_ORDERS.iri),
+                 outputs=(RAW_HARMONICS.iri,), implementation=_current_harmonics,
+                 description="current window -> raw Fourier amps at [1]+orders"),
+        Capacity(name="steady_signature", category=D,
+                 inputs=(POWER_FEATURES.iri, RAW_HARMONICS.iri),
+                 outputs=(STEADY_SIGNATURE.iri,), implementation=_steady_signature,
+                 description="power + harmonics -> steady appliance signature"),
+        Capacity(name="onset_features", category=D,
+                 inputs=(SIGNAL.iri, FS.iri, F0.iri),
+                 outputs=(ONSET_FEATURES.iri,), implementation=_onset_features,
+                 description="current signal -> turn-on [inrush_ratio, onset_frac]"),
+        Capacity(name="assemble_signature", category=D,
+                 inputs=(STEADY_SIGNATURE.iri, ONSET_FEATURES.iri),
+                 outputs=(APPLIANCE_SIGNATURE.iri,), implementation=_assemble_signature,
+                 description="steady (+) onset -> full appliance signature"),
+        Capacity(name="signature_distance", category=D,
+                 inputs=(APPLIANCE_SIGNATURE.iri, REFERENCE_SIGNATURE.iri, SIGNATURE_NORM.iri),
+                 outputs=(MATCH_DISTANCE.iri,), implementation=_signature_distance,
+                 description="signature + reference + norm -> standardized distance"),
     ]
     for c in caps:
         cl.register_capacity(c, session=session, if_exists="upsert")

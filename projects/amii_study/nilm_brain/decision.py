@@ -27,6 +27,7 @@ from mindsos_capacity.identifiers import CATEGORY_DECISION
 from .ontology import (
     CYCLE_MODEL, CYCLE_CONFIDENCE, SPECTRAL_CONCENTRATION, TEMPORAL_CONCENTRATION,
     REQUIRED_CONFIDENCE, STRUCTUREDNESS_THRESHOLDS, CYCLE_VERDICT,
+    VOTED_APPLIANCE, MATCH_CUTOFF, APPLIANCE_VERDICT,
 )
 
 
@@ -74,6 +75,69 @@ def fit_thresholds(clean_features: list, noise_features: list, k: float) -> dict
     }
 
 
+# ── appliance recognition (#3): learned norm + cutoff, and the decision ────
+
+def default_signature_norm() -> dict:
+    """Bootstrap per-dim standardizer for the signature distance (before a
+    library is fit). Unit std = raw Euclidean; the real values are learned off
+    the taught library (`fit_signature_norm`)."""
+    return {"mean": [], "std": [], "provenance": "default:unit"}
+
+
+def fit_signature_norm(vectors: list) -> dict:
+    """Per-dim mean/std over the taught reference vectors — so no single feature
+    axis (log-current vs a harmonic ratio) dominates the distance by its scale."""
+    x = np.asarray(vectors, dtype=float)
+    return {"mean": x.mean(0).tolist(), "std": (x.std(0) + 1e-9).tolist(),
+            "provenance": f"library_fit:{len(vectors)}refs"}
+
+
+def default_match_cutoff() -> dict:
+    """Bootstrap match cutoff (before a library is fit). +inf = accept the
+    nearest reference always; the real, negative-aware value is learned."""
+    return {"cutoff": float("inf"), "provenance": "default:accept-all"}
+
+
+def fit_match_cutoff(within: list, between: list, margin: float) -> dict:
+    """Learn the nearest-distance cutoff for a valid match — NEGATIVE-AWARE: it
+    sits between the taught classes' own within-class nearest distances and the
+    cross-class (between) nearest distances, so it is not set from positives
+    blind (the §2.2 'need negatives to place a boundary' rule). Falls back to the
+    within-class spread when no negatives exist (single-class library).
+
+        cutoff = mean(max within-class NN, min between-class NN), clamped so a
+        genuine within-class neighbour always clears it.
+    `margin` is an L4 fit arg (not a DataState — no capacity consumes it)."""
+    w = np.asarray(within, dtype=float) if len(within) else np.asarray([0.0])
+    hi_within = float(np.quantile(w, 0.9))
+    if len(between):
+        lo_between = float(np.quantile(np.asarray(between, dtype=float), 0.1))
+        cut = 0.5 * (hi_within + lo_between)
+        cut = max(cut, hi_within * (1.0 + margin))     # never reject a true neighbour
+        prov = f"neg_aware:w90={hi_within:.3f},b10={lo_between:.3f}"
+    else:
+        cut = hi_within * (1.0 + margin)
+        prov = f"within_only:w90={hi_within:.3f}"
+    return {"cutoff": float(cut), "provenance": prov}
+
+
+def _recognize(**kw):
+    """Emit the appliance verdict from the L4 k-NN result and the learned cutoff.
+    The vote (name, nearest distance, confidence) is computed in L4 over the
+    variable library; THIS capacity is the honest decision: near enough ->
+    `recognized[name]`, else `request_reference` (an unknown appliance to teach)."""
+    voted = kw[VOTED_APPLIANCE.iri]
+    cut = float(kw[MATCH_CUTOFF.iri]["cutoff"])
+    if voted and float(voted["distance"]) <= cut:
+        return {APPLIANCE_VERDICT.iri: {
+            "state": "recognized", "appliance": voted["name"],
+            "distance": float(voted["distance"]), "confidence": float(voted["confidence"])}}
+    return {APPLIANCE_VERDICT.iri: {
+        "state": "request_reference", "appliance": None,
+        "distance": (float(voted["distance"]) if voted else None),
+        "structure": "no taught appliance within the learned match cutoff"}}
+
+
 def _verdict(**kw):
     cm = kw[CYCLE_MODEL.iri]
     conf = float(kw[CYCLE_CONFIDENCE.iri])
@@ -115,6 +179,13 @@ def register_decision(cl, session):
             outputs=(CYCLE_VERDICT.iri,), implementation=_verdict,
             description="(model, confidence, structuredness) -> cycle_verdict "
                         "(cycle/request_reference/held_ambiguity; recognized is L4)",
+        ),
+        Capacity(
+            name="recognize", category=CATEGORY_DECISION,
+            inputs=(VOTED_APPLIANCE.iri, MATCH_CUTOFF.iri),
+            outputs=(APPLIANCE_VERDICT.iri,), implementation=_recognize,
+            description="(k-NN vote, learned cutoff) -> appliance_verdict "
+                        "(recognized[name] | request_reference)",
         ),
     ]
     for c in caps:
