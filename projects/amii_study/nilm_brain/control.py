@@ -24,8 +24,9 @@ import numpy as np
 
 from mindsos_capacity import CapacityLayer, capacity_iri
 from mindsos_capacity import (
-    CATEGORY_PERCEPTION, CATEGORY_DERIVATION, CATEGORY_DECISION,
+    CATEGORY_PERCEPTION, CATEGORY_DERIVATION,
 )
+from mindsos_capacity.identifiers import CATEGORY_DECISION
 from mindsos_intelligence.pipeline_execution import execute_pipeline
 
 from . import ontology as O
