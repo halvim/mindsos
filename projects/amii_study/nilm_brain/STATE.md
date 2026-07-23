@@ -52,6 +52,19 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    `{spectral:0.5, temporal:0.5}` from `decision.default_thresholds()`), **not** `build_given`.
    v0 code wrongly minted it in `build_given` (a doc §7 divergence); re-homing it is **step 1a**
    of open item #1. Seed-fitting the value is **step 1b**.
+8. **Appliance recognition built as mindsos (#3 done).** Its own path **parallel to the cycle
+   segment**: binds BOTH channels **un-normalized** (keeps power factor + absolute current, which
+   the normalized cycle path drops). Signature = **union + turn-on onset** (`[pf, crest, log_irms,
+   THD, harmonic ratios]` (+) `[inrush_ratio, onset_frac]`), the cross-instance-validated feature.
+   Layering: **score = `signature_distance` capacity**; **match = L4 k-NN** over the taught library
+   (variable-size fan-out = iteration, honest — `find(window→appliance_verdict)` correctly NOT
+   FOUND); **decision = `recognize` capacity** emitting `appliance_verdict` (`recognized[name]` |
+   `request_reference`). Cutoff learned **negative-aware + instance-aware** (`within` = nearest
+   same-class *different-instance*, `between` = nearest different-class; never from positives blind).
+   Teach = **per-window exemplars, additive** (no forgetting). Signature extraction is a real
+   **finder-composed segment** (`power_features`→`current_harmonics`→`steady_signature`; F1/F2);
+   `onset_features`/`assemble_signature` are record-level L4. Library + norm + cutoff are **in-memory
+   on the Solver** (durable L2 = next slice, STATE #5 species).
 
 ## Validated (green)
 - **Current channel operational (#3, `scripts/appliance_demo.py`).** The recognition pipeline
@@ -91,6 +104,17 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
 - Re-run: gate `PYTHONPATH=.:projects/amii_study python -m pytest
   projects/amii_study/nilm_brain/tests -q`; demo `… scripts/cycle_demo.py --data
   /home/sanmyaku/_sample --record Water_kettle`.
+- **Appliance recognition (#3) — gate + real-PLAID brain demo green.** Gate **9 passed** incl.
+  `test_appliance_teach_recognize`: the finder composes the signature segment (F1), it executes to
+  real values (F2), teach→fit→recognize round-trips, and a **novel appliance is rejected**
+  (`request_reference`, not mis-recognized). Real-PLAID demo (`scripts/appliance_recognize_demo.py`,
+  the BRAIN's `recognize_appliance` over `_sample_expanded`, leave-out split) recognizes held-out
+  real records in the cross-instance ballpark; Fridge/Microwave/kettle strongest, Laptop↔Fridge the
+  weakest pair, kettle optimistic (PLAID has only 10 kettle captures, one house). The *feature set*
+  was chosen by a bake-off (`scripts/signature_bakeoff.py`) and confirmed cross-instance by
+  `scripts/classify_eval.py` (leave-one-instance-out k-NN over `_plaid_full/_sample_expanded`, built
+  by `scripts/pull_instances.py`) — those two are **operator/L4 diagnostics (standalone numpy, NOT
+  the brain)**; the demo is the brain.
 
 ## Open items / next phase (pick one)
 1. **✔ DONE (this chat) — Axis degeneracy fixed (1a + 1b).**
@@ -130,37 +154,38 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      others fall back to `request`/`held`. The brain recognizes "notch-at-this-offset," not
      "notch." Test-exposed template rigidity → next matcher improvement = cross-correlate for best
      lag before the scale-fit (or a parametric shape). Not required for the mechanism claim.
-3. **PARTLY DONE — Current channel wired (3a/3b); appliance recognition NOT yet real.** The
-   pipeline is channel-agnostic (Slice 3a: `voltage_signal/window` → `signal/signal_window`,
-   `bind_current`, `recognize(channel=)`; gate 8/8) and runs on current (Slice 3b: normalized;
-   synthetic pure-sinusoid seed). The loop *runs* (teach→recognize→reject, 0 false matches) but
-   recognition is **memorization only** (see Validated) — the time-domain residual template is the
-   wrong signature.
-   - **Spectral signature TESTED + KEPT (generalizes + discriminates for Laptop, see Validated).**
-     Built: `harmonic_profile` cap, `Solver.teach_spectral`, `Solver.profile_similarities`, and a
-     **6×6 discrimination matrix** in `scripts/appliance_demo.py` (teach every appliance, all-vs-all
-     cos-sim; flags any row confused with another).
-   - **DECISION this chat: validate before building the decision layer.** The 3 decision pieces
-     below rest on an unvalidated 0.04 margin (one appliance vs five). So NEXT SESSION, **step 1 =
-     run the 6×6 matrix and read it** — is the diagonal clearly dominant across ALL appliances, or
-     just Laptop? If muddy, the signature needs work before any verdict machinery.
-   - **NEXT SESSION step 2 (only if the matrix holds) — make appliance recognition mindsos
-     end-to-end** (the 3 recognition gaps; see `docs/DIAGNOSTIC_INTELLIGENCE.md` §4): (a) a
-     **comparison capacity** (predicate family: `harmonic_amplitudes` + reference → similarity,
-     replaces inline cosine); (b) a **learned match-cutoff DataState** (L2, from the taught
-     appliance's own window-sim spread, not a literal); (c) the **verdict emitting `recognized`**
-     from (similarity, cutoff) — needs a **design pass** on *where* the compare-cap + recognized-
-     decision sit relative to the segment (verdict runs inside the segment; matching runs after in
-     L4). These are *recognition* (belong in the architecture), NOT the diagnostic loop.
-   - **Shift-invariance (`_shift` + cross-correlate in `fit_reference`): INERT** — verified math,
-     but a single lag can't align a mixed periodic+localized residual. Harmless; keep or revert.
-   - **Follow-up — resistive-vs-resistive discrimination** (kettle vs hairdryer): amplitude-based,
-     erased by the current-normalization; would need power/RMS kept as a feature.
+3. **✔ DONE (this chat) — Appliance recognition is mindsos end-to-end.** See decision #8 for the
+   design. Path: parse → bind current+voltage (raw) → per window run the **composed signature
+   segment** (`power_features`+`current_harmonics`→`steady_signature`) + record-level `onset_features`
+   → `assemble_signature` → L4 k-NN over the taught library (`signature_distance` cap) → `recognize`
+   cap → `appliance_verdict`. `Solver.teach_appliance`/`fit_appliance`/`recognize_appliance`. Gate
+   `test_appliance_teach_recognize` green (9 passed); real-PLAID brain demo in ballpark (Validated).
+   - **How the signature was chosen (the long way, honestly):** the residual-harmonic profile from
+     the earlier plan only separated **Laptop** (n=1 6×6 matrix — a tight-class-biased centroid test
+     that MISLED; e.g. predicted a kettle↔hairdryer confusion that real data did not show). Fixed by
+     (a) **more data** — `pull_instances.py` builds `_sample_expanded` from `_plaid_full`; (b) a
+     **feature bake-off** (`signature_bakeoff.py`, candidates A–I) whose n=1 "winners" (transient,
+     shape+power) were **one-sample artifacts** that collapsed per-window; (c) a **cross-instance
+     classifier** (`classify_eval.py`, leave-one-instance-out k-NN) → **union+onset ~88%**. Lesson
+     (the DIAGNOSTIC method, §2): **do not tune a signature on n=1**; a centroid/argmax test
+     is biased toward tight classes; only leave-one-instance-out is trustworthy.
+   - **Weakest pair = Laptop↔Fridge** (both can look motor-ish across the split); onset is what
+     separates the motor/resistive loads. **Kettle** is single-house in PLAID (10 captures) — its
+     score is optimistic; a genuine second kettle instance does not exist in the dataset.
+   - **Superseded:** the current-channel spectral profile / `teach_spectral` / `profile_similarities`
+     / 6×6 matrix (`appliance_demo.py`) were the *exploration*, now replaced by the union+onset
+     signature. `harmonic_profile` cap stays registered (harmless). Resistive-vs-resistive is now
+     handled by keeping power/RMS in the signature (the old normalization follow-up — resolved).
 4. **Wire the secondary pipelines / rungs** — each rung needs its own reference + §4A template
    instance. (`power`/`multiply` now references the generic `signal`; rewire for P=V·I in v1.)
-5. **Durable L2 (v1)** — persist learned `calibrate` params + taught references as
+5. **Durable L2 (v1) — the next appliance slice.** Persist learned `calibrate` params + taught
+   references AND the **appliance library + `signature_norm` + `match_cutoff`** as
    `learned-parameters` nodes (arc3 B6: L2 is the layer that works); `boot_brain` +
-   FalkorDBLocalPersister.
+   FalkorDBLocalPersister. Today the appliance library/norm/cutoff are **in-memory on the Solver** —
+   the brain boots and runs, but does not boot *knowing* taught appliances.
+6. **`fit_appliance` is O(n²)** in library exemplars (pairwise `signature_distance` for the
+   negative-aware cutoff). Fine for demo-scale; an efficiency (not correctness) item before a large
+   library — e.g. sample pairs, or a spatial index. Flagged, not faked.
 
 ## Working protocol (unchanged, enforced)
 Explain in plain English → user approves → then run. Be **concise and skeptical** (a
