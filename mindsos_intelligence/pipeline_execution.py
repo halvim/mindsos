@@ -16,7 +16,7 @@ has. A single capacity is the degenerate 1-step Pipeline, so there is no
 "single capacity vs pipeline" special case — everything is a Pipeline.
 
 Dispatcher contract (duck-typed so tests can inject a fake): a
-``.dispatch(capacity_iri, inputs, *, cancel_token=None, task_id=None,
+``.dispatch(capacity_iri, inputs, *, cancel_token=None, request_id=None,
 step_id=None)`` returning an object with ``.success: bool`` and
 ``.outputs: Mapping[str, Any]`` (the shipped
 :class:`~mindsos_capacity.runtime.InvocationResult`). Output keys are
@@ -26,7 +26,7 @@ DataState IRIs and are merged onto the blackboard.
 persist Slice A).** When an ``mm`` is supplied, the executor additionally
 records each invocation into ``mm.capacity_mm`` as a grounding DAG via
 :class:`~mindsos_intelligence.capacity_mm_writer.CapacityMMWriter` (DQ-3
-"L5 IS the blackboard"), keyed on ``(task_id, pipeline_run_ref)``. ``mm=None``
+"L5 IS the blackboard"), keyed on ``(request_id, pipeline_run_ref)``. ``mm=None``
 (the default) is byte-identical to the pre-Slice-2 behavior — value-only
 threading, no MM write — which is the sanctioned path for interpret-resolve
 and isolated tests (B2). The value dict is retained for dispatch-input
@@ -107,7 +107,7 @@ def execute_pipeline(
     across a dispatch. ``pipeline_run_ref`` is then **required** and scopes the
     per-run instance graph + minted instance IRIs — it must be a fresh
     per-run reference (a ``pipelinerun:`` IRI). There is **no** default: the old
-    ``run_ref = task_id`` fallback silently collided on replan (a second run
+    ``run_ref = request_id`` fallback silently collided on replan (a second run
     re-minted identical IRIs into the same graph), so ``mm`` present with
     ``pipeline_run_ref=None`` is a ``ValueError`` (CR: capacity_mm persist
     Slice A). ``mm=None`` leaves behavior byte-identical to the pre-Slice-2
@@ -123,7 +123,7 @@ def execute_pipeline(
         if pipeline_run_ref is None:
             raise ValueError(
                 "execute_pipeline requires an explicit `pipeline_run_ref` when "
-                "`mm` is supplied: the removed `run_ref = task_id` default "
+                "`mm` is supplied: the removed `run_ref = request_id` default "
                 "collided on replan (a second run under the same task re-minted "
                 "identical instance IRIs and overwrote the first run). Pass a "
                 "fresh per-run reference (a `pipelinerun:` IRI) — CR: capacity_mm "
@@ -168,7 +168,7 @@ def execute_pipeline(
             inputs,
             cancel_token=cancel_token,
             request_id=request_id,
-            step_id=f"{task_id}-step-{idx}",
+            step_id=f"{request_id}-step-{idx}",
         )
         # ADR-0196 — a step asked the user; halt the walk and bubble the
         # verdict (before the success check: needs_input carries success=True

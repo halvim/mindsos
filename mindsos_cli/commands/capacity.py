@@ -147,7 +147,7 @@ def _record_to_dict(record: ProblemTraceRecord) -> dict:
     return {
         "entry_id": record.entry_id,
         "timestamp": record.timestamp,
-        "task_id": record.request_id,
+        "request_id": record.request_id,
         "error_kind": record.error_kind,
         "step_id": record.step_id,
         "mm_ref": record.mm_ref,
@@ -242,7 +242,7 @@ def problem_trace_tail_cmd(
         else:
             for r in tail:
                 print(
-                    f"[{r.timestamp:.3f}] {r.error_kind}  task={r.task_id} "
+                    f"[{r.timestamp:.3f}] {r.error_kind}  task={r.request_id} "
                     f"step={r.step_id or '-'}  cap={r.capacity_iri or '-'}"
                 )
 

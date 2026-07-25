@@ -96,18 +96,18 @@ class Orchestrator:
         # None = live-only (ephemeral / no Falkor client). Injected at boot.
         self._mm_persister = mm_persister
         # Per-orchestrator counter for the task-unique writer scope when a
-        # caller supplies no task_id. Guarded — run_lifecycle runs on
+        # caller supplies no request_id. Guarded — run_lifecycle runs on
         # concurrent worker threads.
         self._lifecycle_seq = 0
         self._seq_lock = threading.Lock()
 
     def _writer_scope(self, request_id) -> str:
-        """A task-UNIQUE chain-writer scope (DQ-8 / CR#4). ``task_id`` when the
+        """A task-UNIQUE chain-writer scope (DQ-8 / CR#4). ``request_id`` when the
         caller supplies one; else a per-orchestrator counter. This uniqueness
         is what keeps two tasks' chain IRIs — and thus their ``episode_id``s —
         from colliding in one resident session."""
         if request_id is not None:
-            return f"{self._task_scope}:{task_id}"
+            return f"{self._task_scope}:{request_id}"
         with self._seq_lock:
             self._lifecycle_seq += 1
             return f"{self._task_scope}:auto{self._lifecycle_seq}"
@@ -173,12 +173,12 @@ class Orchestrator:
 
     def run_lifecycle(self, request_input, *, tier=TierEnum.FOREGROUND, executor=None, request_id=None) -> RequestOutcome:
         # Task-unique scope (DQ-8): drives both the chain-writer graph and the
-        # capacity grounding run's task_id / run refs (Step 5), so a task with
-        # no explicit ``task_id`` still grounds into an isolated per-run graph.
+        # capacity grounding run's request_id / run refs (Step 5), so a task with
+        # no explicit ``request_id`` still grounds into an isolated per-run graph.
         scope = self._writer_scope(request_id)
         writer = ChainArtifactWriter(self._mm, scope)
 
-        task_input_ref = f"taskinput:{task_id}" if request_id is not None else None
+        task_input_ref = f"taskinput:{request_id}" if request_id is not None else None
 
         # Phase 1 — task interpretation (HintSet + MappingResult)
         p1 = phase_1.run(self._dispatcher, writer, request_input)

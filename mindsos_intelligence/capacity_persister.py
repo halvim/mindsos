@@ -2,7 +2,7 @@
 persist Slice B; reopens DQ-8 / ADR-0202).
 
 Slice A made the capacity writer emit **one grounding graph per pipeline run**
-(``(task_id, pipeline_run_ref)``) holding CapacityInstance + DataStateInstance
+(``(request_id, pipeline_run_ref)``) holding CapacityInstance + DataStateInstance
 nodes wired by intra-graph ``PRODUCES`` / ``CONSUMES`` edges. This module makes
 those graphs durable at consolidation, reversing ADR-0202's "capacity_mm
 live-only until WSD" clause for capacity_mm (knowledge_mm stays live-only).
@@ -67,8 +67,8 @@ _CODEC_SAFE_TYPES = (str, int, float, bool, dict, list)
 def index_graph_role(request_id: str) -> str:
     """Deterministic role for a task's capacity index graph."""
     if not isinstance(request_id, str) or not request_id:
-        raise ValueError(f"task_id must be a non-empty string, got {task_id!r}")
-    return f"{INDEX_GRAPH_ROLE_PREFIX}{task_id}"
+        raise ValueError(f"request_id must be a non-empty string, got {request_id!r}")
+    return f"{INDEX_GRAPH_ROLE_PREFIX}{request_id}"
 
 
 def default_encode(value: Any) -> Any:
@@ -135,7 +135,7 @@ def persist_capacity_mm(
             the index live under.
         run_graphs: this task's per-run grounding graphs (the writer's
             ``.graph`` for each run). Empty / all-``None`` → returns ``None``.
-        task_id: the task these runs belong to (the index graph's role key).
+        request_id: the task these runs belong to (the index graph's role key).
         encoders: DataState-type-IRI → ``encode`` callable (PB-1). ``None`` /
             empty ⇒ every DataStateInstance value must already be codec-safe.
 

@@ -165,9 +165,9 @@ class SubMindArbiter:
             return
         contention = self._ledger.contention(resources)
         # A conflict that is THIS need's own running resolver is not a
-        # rival — but running_task_id is None here, so any conflict is
+        # rival — but running_request_id is None here, so any conflict is
         # external. (Self-contention only matters if we ever dispatch
-        # while still holding; guarded by the running_task_id check.)
+        # while still holding; guarded by the running_request_id check.)
         conflicts = contention.conflicts
         if not conflicts:
             need.blocked_on = frozenset()
@@ -222,8 +222,8 @@ class SubMindArbiter:
         init = {start: signal.reading} if start is not None else {}
         # D-B: ground + persist this resolver run into the injected MM. Slice A
         # made `pipeline_run_ref` mandatory whenever `mm` is supplied (it killed
-        # the `run_ref = task_id` default that collided on replan), so mint a
-        # fresh per-run ref from this dispatch's unique `task_id` — each resolver
+        # the `run_ref = request_id` default that collided on replan), so mint a
+        # fresh per-run ref from this dispatch's unique `request_id` — each resolver
         # dispatch (incl. a replan re-dispatch) is its own run and gets its own
         # per-run grounding graph, so runs never overwrite each other.
         result = self._execute_pipeline(
@@ -233,7 +233,7 @@ class SubMindArbiter:
             request_id=request_id,
             cancel_token=token,
             mm=self._mm,
-            pipeline_run_ref=f"pipelinerun:{task_id}",
+            pipeline_run_ref=f"pipelinerun:{request_id}",
         )
         return {
             "resolved": bool(getattr(result, "success", False)),
@@ -249,7 +249,7 @@ class SubMindArbiter:
         if not fallback:
             return {"resolved": False, "dont_know": True, "fallback": False}
         res = self._dispatcher.dispatch(
-            fallback, {}, request_id=f"{task_id}-fallback"
+            fallback, {}, request_id=f"{request_id}-fallback"
         )
         return {
             "resolved": bool(getattr(res, "success", False)),

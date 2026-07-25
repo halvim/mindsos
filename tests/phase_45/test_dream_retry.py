@@ -20,8 +20,8 @@ from mindsos_capacity.builtins.dream import (
 )
 from mindsos_capacity.family_rules import FamilyDontKnowShape, family_rule_for
 
-_FAILED = {"source_episode_iri": "ep:7", "task_run_iri": "tr:7", "failed": True}
-_OK = {"source_episode_iri": "ep:7", "task_run_iri": "tr:7", "failed": False}
+_FAILED = {"source_episode_iri": "ep:7", "request_run_iri": "tr:7", "failed": True}
+_OK = {"source_episode_iri": "ep:7", "request_run_iri": "tr:7", "failed": False}
 
 
 def test_declaration_shape():

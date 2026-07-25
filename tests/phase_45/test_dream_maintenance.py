@@ -19,7 +19,7 @@ from mindsos_capacity.builtins.dream import (
 )
 from mindsos_capacity.family_rules import FamilyDontKnowShape, family_rule_for
 
-_EP = {"source_episode_iri": "ep:1", "task_run_iri": "tr:1", "failed": False}
+_EP = {"source_episode_iri": "ep:1", "request_run_iri": "tr:1", "failed": False}
 
 
 def test_declaration_shape():

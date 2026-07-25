@@ -50,7 +50,7 @@ def test_invoke_emits_problem_trace_record_on_exception():
 
 
 def test_invoke_without_task_id_skips_trace_emission_foot_gun():
-    """R1 PB-16 lock — task_id=None silently skips trace emission.
+    """R1 PB-16 lock — request_id=None silently skips trace emission.
 
     Envelope still returned with success=False; sink stays empty.
     """

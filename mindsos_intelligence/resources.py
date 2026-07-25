@@ -77,7 +77,7 @@ class ResourceLedger:
         self, callback: Optional[Callable[[FrozenSet[str], str], None]]
     ) -> None:
         """Register the single resume hook: ``callback(freed_resources,
-        task_id)`` fired after each release. The arbiter uses it to wake
+        request_id)`` fired after each release. The arbiter uses it to wake
         parked needs blocked on a now-free resource."""
         with self._lock:
             self._on_release = callback

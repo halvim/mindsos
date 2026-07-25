@@ -208,7 +208,7 @@ def _run_milestone_sequence(
     ``leaf_targets``/``solve_target``/``milestone_specs`` are read exactly as the
     top-level loop did; ``real_mode`` gates the real-vs-notional branch (a nested
     sub-plan is inherently real — ``mm`` is present). Every emitted PipelineRun is
-    appended to ``task_run.pipeline_runs`` (a flat list; the tree lives in the
+    appended to ``request_run.pipeline_runs`` (a flat list; the tree lives in the
     ref-path — Slice 2 decision)."""
     pipeline_run_refs: List[str] = []
     for leaf_idx, leaf_ref in enumerate(leaf_refs):
@@ -304,7 +304,7 @@ def _run_leaf_pipeline(
         for ds in pipeline.start_datastates
         if ds in blackboard
     }
-    run_ref = f"pipelinerun:{task_id}:{leaf_path}:{run_attempt}"
+    run_ref = f"pipelinerun:{request_id}:{leaf_path}:{run_attempt}"
     result = execute_pipeline(
         dispatcher,
         pipeline,
@@ -394,7 +394,7 @@ def _run_map_milestone(
         last_pipeline = None
         for retry_idx in range(MEMBER_RETRY_CAP):
             run_ref = (
-                f"pipelinerun:{task_id}:{member_path}"
+                f"pipelinerun:{request_id}:{member_path}"
                 f":{run_attempt}:r{retry_idx}"
             )
             result, last_pipeline = _run_member_pipeline(
