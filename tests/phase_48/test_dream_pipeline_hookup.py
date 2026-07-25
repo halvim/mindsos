@@ -59,8 +59,8 @@ def test_run_dream_cycle_over_corpus_calls_re_executor_per_directive():
     d = _dispatcher()
     seen = []
     episodes = [
-        {"source_episode_iri": "ep:1", "request_run_iri": "tr:1", "failed": False},
-        {"source_episode_iri": "ep:2", "request_run_iri": "tr:2", "failed": True},
+        {"source_episode_iri": "ep:1", "task_run_iri": "tr:1", "failed": False},
+        {"source_episode_iri": "ep:2", "task_run_iri": "tr:2", "failed": True},
     ]
     directives = run_dream_cycle(d, episodes, re_executor=seen.append)
     # ep:1 -> 2 directives; ep:2 -> 3 directives

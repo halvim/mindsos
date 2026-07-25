@@ -30,7 +30,7 @@ _ADR = (
 
 
 def _ref(failed: bool) -> dict:
-    return {"source_episode_iri": "ep:42", "request_run_iri": "tr:42", "failed": failed}
+    return {"source_episode_iri": "ep:42", "task_run_iri": "tr:42", "failed": failed}
 
 
 def test_every_directive_carries_source_episode_iri():
