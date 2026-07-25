@@ -137,7 +137,7 @@ class CapacityContext:
     learned_parameters_snapshot: Mapping[str, Any]
     mm_handle: Optional[MMHandle] = None
     cancel_token: Optional[CancelTokenView] = None
-    current_task_iri: Optional[str] = None
+    current_request_iri: Optional[str] = None
     current_pattern_iri: Optional[str] = None
     version_snapshot: Mapping[str, int] = MappingProxyType({})
     kl: Optional[KLHandle] = None

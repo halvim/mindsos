@@ -147,7 +147,7 @@ def _record_to_dict(record: ProblemTraceRecord) -> dict:
     return {
         "entry_id": record.entry_id,
         "timestamp": record.timestamp,
-        "task_id": record.task_id,
+        "task_id": record.request_id,
         "error_kind": record.error_kind,
         "step_id": record.step_id,
         "mm_ref": record.mm_ref,
@@ -362,7 +362,7 @@ def invoke_cmd(
             "Mutually exclusive with --input-json."
         ),
     ),
-    task_id: Optional[str] = typer.Option(
+    request_id: Optional[str] = typer.Option(
         None,
         "--task-id",
         help="Optional task id (enables problem-trace emission on failure).",
@@ -424,7 +424,7 @@ def invoke_cmd(
     # Build layer + invoke.
     layer = _construct_invoke_layer()
     try:
-        result = layer.invoke(iri, inputs, task_id=task_id)
+        result = layer.invoke(iri, inputs, request_id=request_id)
     except CapacityRegistrationError as exc:
         if json_out:
             print(

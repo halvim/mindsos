@@ -129,7 +129,7 @@ def run(
     dispatcher,
     writer,
     plan_result,
-    task_run,
+    request_run,
     *,
     mm: Any = None,
     run_scope: Optional[str] = None,
@@ -176,7 +176,7 @@ def run(
     # per ``run`` call (so replan re-enters clean); seeded from ``solve_seed``.
     blackboard: dict = dict(solve_seed or {})
     return _run_milestone_sequence(
-        dispatcher, writer, task_run,
+        dispatcher, writer, request_run,
         leaf_refs=plan_result.leaf_milestone_refs,
         pipeline_refs=plan_result.pipeline_refs,
         milestone_specs=milestone_specs,
@@ -184,7 +184,7 @@ def run(
         solve_target=solve_target,
         blackboard=blackboard,
         mm=mm,
-        scope=run_scope or task_run.iri,
+        scope=run_scope or request_run.iri,
         ref_path="",
         run_attempt=run_attempt,
         capacity_graphs=capacity_graphs,
@@ -193,7 +193,7 @@ def run(
 
 
 def _run_milestone_sequence(
-    dispatcher, writer, task_run, *,
+    dispatcher, writer, request_run, *,
     leaf_refs, pipeline_refs, milestone_specs, leaf_targets, solve_target,
     blackboard, mm, scope: str, ref_path: str, run_attempt: int,
     capacity_graphs: Optional[list], real_mode: bool,
@@ -213,7 +213,7 @@ def _run_milestone_sequence(
     pipeline_run_refs: List[str] = []
     for leaf_idx, leaf_ref in enumerate(leaf_refs):
         pipeline_ref = pipeline_refs.get(leaf_ref)
-        pr = writer.emit_pipeline_run(pipeline_ref, leaf_ref, task_run.iri)
+        pr = writer.emit_pipeline_run(pipeline_ref, leaf_ref, request_run.iri)
         spec = milestone_specs.get(leaf_ref)
         kind = spec.get("kind") if spec else None
         leaf_path = f"{ref_path}:{leaf_idx}" if ref_path else f"{leaf_idx}"
@@ -225,7 +225,7 @@ def _run_milestone_sequence(
             # the ordered member outputs to the blackboard for the fold. Raises
             # MemberAbortError on an exhausted member -> orchestrator aborts.
             _run_map_milestone(
-                dispatcher, writer, task_run, pr, leaf_ref, spec, blackboard,
+                dispatcher, writer, request_run, pr, leaf_ref, spec, blackboard,
                 mm, scope, leaf_path, run_attempt, capacity_graphs,
             )
         elif real_mode and kind == "fold":
@@ -251,13 +251,13 @@ def _run_milestone_sequence(
             )
             pr.status = "completed"
         pipeline_run_refs.append(pr.iri)
-        task_run.pipeline_runs.append(pr.iri)
+        request_run.pipeline_runs.append(pr.iri)
     return pipeline_run_refs
 
 
 def _run_leaf_pipeline(
     dispatcher, writer, pr, leaf_ref, endpoints, blackboard,
-    mm, task_id: str, leaf_path: str, run_attempt: int,
+    mm, request_id: str, leaf_path: str, run_attempt: int,
     capacity_graphs: Optional[list],
 ) -> dict:
     """Find + run the real leaf pipeline; ground it into ``capacity_mm``, collect
@@ -309,7 +309,7 @@ def _run_leaf_pipeline(
         dispatcher,
         pipeline,
         seed,
-        task_id=task_id,
+        request_id=request_id,
         mm=mm,
         pipeline_run_ref=run_ref,
     )
@@ -329,8 +329,8 @@ def _run_leaf_pipeline(
 
 
 def _run_map_milestone(
-    dispatcher, writer, task_run, pr, leaf_ref, spec, blackboard,
-    mm, task_id: str, leaf_path: str, run_attempt: int,
+    dispatcher, writer, request_run, pr, leaf_ref, spec, blackboard,
+    mm, request_id: str, leaf_path: str, run_attempt: int,
     capacity_graphs: Optional[list],
 ) -> None:
     """Map fan-out (collection-iteration Slice 1b; nesting Slice 2).
@@ -373,7 +373,7 @@ def _run_map_milestone(
             # unretried. Collect the member's sub_target from its sub-blackboard.
             sub_blackboard: dict = {member_ds: member_value}
             _run_milestone_sequence(
-                dispatcher, writer, task_run,
+                dispatcher, writer, request_run,
                 leaf_refs=sub_plan["leaf_milestone_refs"],
                 pipeline_refs=sub_plan.get("pipeline_refs") or {},
                 milestone_specs=sub_plan.get("milestone_specs") or {},
@@ -381,7 +381,7 @@ def _run_map_milestone(
                 solve_target=sub_plan.get("solve_target"),
                 blackboard=sub_blackboard,
                 mm=mm,
-                scope=task_id,
+                scope=request_id,
                 ref_path=member_path,
                 run_attempt=run_attempt,
                 capacity_graphs=capacity_graphs,
@@ -399,7 +399,7 @@ def _run_map_milestone(
             )
             result, last_pipeline = _run_member_pipeline(
                 dispatcher, member_ds, member_value, sub_target,
-                task_id, run_ref, mm,
+                request_id, run_ref, mm,
             )
             if result.success:
                 accepted = result
@@ -432,7 +432,7 @@ def _run_map_milestone(
 
 def _run_member_pipeline(
     dispatcher, start_ds, seed_value, target_ds,
-    task_id: str, run_ref: str, mm,
+    request_id: str, run_ref: str, mm,
 ):
     """Find + run one member's sub-pipeline, isolated per member (Slice 1b).
 
@@ -469,7 +469,7 @@ def _run_member_pipeline(
         dispatcher,
         pipeline,
         seed,
-        task_id=task_id,
+        request_id=request_id,
         mm=mm,
         pipeline_run_ref=run_ref,
     )

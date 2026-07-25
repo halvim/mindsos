@@ -69,7 +69,7 @@ def test_registered_and_invokable_replan_executes():
     result = layer.invoke(
         "capacity:dream:retry",
         {DS_DREAM_TASK_REF: _FAILED},
-        task_id="dream-test",
+        request_id="dream-test",
     )
     assert result.success is True
     directive = result.outputs[DS_DREAM_DIRECTIVE]
@@ -83,7 +83,7 @@ def test_registered_non_failed_surfaces_none():
     result = layer.invoke(
         "capacity:dream:retry",
         {DS_DREAM_TASK_REF: _OK},
-        task_id="dream-test",
+        request_id="dream-test",
     )
     assert result.success is True
     assert result.outputs[DS_DREAM_DIRECTIVE] is None

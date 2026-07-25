@@ -47,5 +47,5 @@ def test_invoke_emits_no_problem_trace_on_success():
     cl = build_min_layer()
     echo = build_echo_capacity()
     cl.register_capacity(echo)
-    cl.invoke(echo.iri, inputs={DS_INPUT_IRI: "x"}, task_id="t1")
+    cl.invoke(echo.iri, inputs={DS_INPUT_IRI: "x"}, request_id="t1")
     assert len(cl.problem_trace) == 0

@@ -29,7 +29,7 @@ def test_held_resources_registered_during_run_and_released():
 
     try:
         fut = ex.submit(
-            work, tier=TierEnum.FOREGROUND, task_id="t1", held_resources=("arm",)
+            work, tier=TierEnum.FOREGROUND, request_id="t1", held_resources=("arm",)
         )
         assert started.wait(2.0)
         # hold visible while running
@@ -59,12 +59,12 @@ def test_preempt_false_does_not_cancel_running_lower_priority():
 
     try:
         fut_low = ex.submit(
-            low, tier=TierEnum.BACKGROUND, task_id="low", cancel_token=token
+            low, tier=TierEnum.BACKGROUND, request_id="low", cancel_token=token
         )
         assert started.wait(2.0)
         # a higher-tier arrival with preempt=False must NOT request cancel
         ex.submit(
-            lambda: "hi", tier=TierEnum.CRITICAL, task_id="hi", preempt=False
+            lambda: "hi", tier=TierEnum.CRITICAL, request_id="hi", preempt=False
         )
         time.sleep(0.05)
         assert not token.is_set()
@@ -87,10 +87,10 @@ def test_preempt_true_still_cancels_running_lower_priority():
         return "low"
 
     try:
-        ex.submit(low, tier=TierEnum.BACKGROUND, task_id="low", cancel_token=token)
+        ex.submit(low, tier=TierEnum.BACKGROUND, request_id="low", cancel_token=token)
         assert started.wait(2.0)
         # default path (preempt=True) preserves the shipped cooperative cancel
-        ex.submit(lambda: "hi", tier=TierEnum.CRITICAL, task_id="hi")
+        ex.submit(lambda: "hi", tier=TierEnum.CRITICAL, request_id="hi")
         deadline = time.time() + 2.0
         while not token.is_set() and time.time() < deadline:
             time.sleep(0.01)

@@ -143,7 +143,7 @@ def _map_target_resolves(dispatcher, task_pattern_iri: str) -> bool:
 
 
 def _resolve_reference(
-    dispatcher, profile: Phase1Profile, hints: Mapping[str, Any], task_id: str
+    dispatcher, profile: Phase1Profile, hints: Mapping[str, Any], request_id: str
 ) -> Any:
     """Compose + run the reference-resolve chain by DataState type
     (ADR-0195 §Decision.3). Returns the canonical reference, ``None`` (no
@@ -172,7 +172,7 @@ def _resolve_reference(
             f"no resolve pipeline from {start!r} to {target!r}"
         ) from exc
     exec_result = execute_pipeline(
-        dispatcher, pipeline, {start: reference}, task_id=task_id
+        dispatcher, pipeline, {start: reference}, request_id=request_id
     )
     if exec_result.needs_input is not None:
         return exec_result.needs_input
@@ -185,10 +185,10 @@ def _resolve_reference(
 
 def interpret(
     dispatcher,
-    task_input,
+    request_input,
     *,
     profile: Optional[Phase1Profile] = None,
-    task_id: str = "interpret",
+    request_id: str = "interpret",
     mapping_confidence_threshold: float = 0.0,
 ) -> "InterpretationResult | NeedsInput":
     """Run the standalone interpretation flow (ADR-0195 / ADR-0196).
@@ -219,11 +219,11 @@ def interpret(
     # table or interpret raises (am-1); it does NOT fall back to the
     # construction-bound profile or v0. An explicit ``profile=`` arg still wins.
     # ``source`` is provenance only — never selects.
-    if isinstance(task_input, InputEnvelope):
-        value = task_input.value
-        modality = task_input.modality
+    if isinstance(request_input, InputEnvelope):
+        value = request_input.value
+        modality = request_input.modality
     else:
-        value = task_input
+        value = request_input
         modality = None
 
     if profile is None and modality is not None:
@@ -275,7 +275,7 @@ def interpret(
                 f"map target {task_pattern_iri!r} does not resolve in "
                 f"{ROLE_TASK_PATTERNS!r}"
             )
-        resolved_reference = _resolve_reference(dispatcher, profile, hints, task_id)
+        resolved_reference = _resolve_reference(dispatcher, profile, hints, request_id)
         # ADR-0196 — the resolve body asked the user; surface it directly.
         if isinstance(resolved_reference, NeedsInput):
             return resolved_reference
@@ -290,7 +290,7 @@ def interpret(
     )
 
 
-def run(dispatcher, writer, task_input) -> "Phase1Result | NeedsInput":
+def run(dispatcher, writer, request_input) -> "Phase1Result | NeedsInput":
     """Full-lifecycle Phase 1: interpret, then emit the HintSet +
     MappingResult chain artifacts and return :class:`Phase1Result`.
 
@@ -298,7 +298,7 @@ def run(dispatcher, writer, task_input) -> "Phase1Result | NeedsInput":
     return it un-emitted (no chain artifacts) so ``run_lifecycle`` can
     short-circuit into a non-terminal ``pending_confirmation`` outcome
     without consolidating."""
-    r = interpret(dispatcher, task_input)
+    r = interpret(dispatcher, request_input)
     if isinstance(r, NeedsInput):
         return r
     hint_set = writer.emit_hint_set(r.hints)

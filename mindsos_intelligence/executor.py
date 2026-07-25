@@ -46,12 +46,12 @@ class _Entry:
     )
 
     def __init__(
-        self, tier, score, seq, task_id, fn, cancel_token, future, held_resources=()
+        self, tier, score, seq, request_id, fn, cancel_token, future, held_resources=()
     ):
         self.tier = tier
         self.score = score
         self.seq = seq
-        self.task_id = task_id
+        self.request_id = request_id
         self.fn = fn
         self.cancel_token = cancel_token
         self.future = future
@@ -112,7 +112,7 @@ class PriorityTierExecutor:
         fn: Callable[[], object],
         *,
         tier: TierEnum,
-        task_id: str,
+        request_id: str,
         score: Optional[int] = None,
         cancel_token=None,
         preempt: bool = True,
@@ -131,10 +131,10 @@ class PriorityTierExecutor:
             if self._shutdown:
                 raise RuntimeError("PriorityTierExecutor is shut down")
             entry = _Entry(
-                tier, score, next(self._seq), task_id, fn, cancel_token, fut,
+                tier, score, next(self._seq), request_id, fn, cancel_token, fut,
                 held_resources,
             )
-            self._pending[task_id] = entry
+            self._pending[request_id] = entry
             heapq.heappush(self._heap, entry)
             if preempt:
                 self._maybe_preempt_locked(entry)
@@ -143,14 +143,14 @@ class PriorityTierExecutor:
 
     def write_priority(
         self,
-        task_id: str,
+        request_id: str,
         score: Optional[int] = None,
         tier: Optional[TierEnum] = None,
     ) -> None:
         with self._lock:
-            entry = self._pending.get(task_id)
+            entry = self._pending.get(request_id)
             if entry is None:
-                running = self._running.get(task_id)
+                running = self._running.get(request_id)
                 if running is not None:
                     if tier is not None:
                         running.tier = tier
@@ -169,20 +169,20 @@ class PriorityTierExecutor:
                 new_tier,
                 new_score,
                 next(self._seq),
-                task_id,
+                request_id,
                 entry.fn,
                 entry.cancel_token,
                 entry.future,
                 entry.held_resources,
             )
-            self._pending[task_id] = replacement
+            self._pending[request_id] = replacement
             heapq.heappush(self._heap, replacement)
             self._maybe_preempt_locked(replacement)
             self._not_empty.notify()
 
     def pending_order(self) -> List[str]:
         with self._lock:
-            return [e.task_id for e in sorted(self._pending.values())]
+            return [e.request_id for e in sorted(self._pending.values())]
 
     def shutdown(self, wait: bool = True) -> None:
         with self._lock:
@@ -211,7 +211,7 @@ class PriorityTierExecutor:
     def _pop_live_locked(self) -> Optional[_Entry]:
         while self._heap:
             entry = heapq.heappop(self._heap)
-            if entry.live and self._pending.get(entry.task_id) is entry:
+            if entry.live and self._pending.get(entry.request_id) is entry:
                 return entry
         return None
 
@@ -228,11 +228,11 @@ class PriorityTierExecutor:
                     if entry is not None:
                         break
                     self._not_empty.wait()
-                self._pending.pop(entry.task_id, None)
-                self._running[entry.task_id] = entry
+                self._pending.pop(entry.request_id, None)
+                self._running[entry.request_id] = entry
             if not entry.future.set_running_or_notify_cancel():
                 with self._lock:
-                    self._running.pop(entry.task_id, None)
+                    self._running.pop(entry.request_id, None)
                 continue
             # Register exclusive-resource holds for the duration of the run
             # (acquire/release fire no executor-lock callbacks, but release
@@ -245,7 +245,7 @@ class PriorityTierExecutor:
                     else None
                 )
                 self._resource_ledger.acquire(
-                    entry.task_id,
+                    entry.request_id,
                     entry.held_resources,
                     tier=int(entry.tier),
                     score=entry.score,
@@ -257,9 +257,9 @@ class PriorityTierExecutor:
                 entry.future.set_exception(exc)
             finally:
                 with self._lock:
-                    self._running.pop(entry.task_id, None)
+                    self._running.pop(entry.request_id, None)
                 if self._resource_ledger is not None and entry.held_resources:
-                    self._resource_ledger.release(entry.task_id)
+                    self._resource_ledger.release(entry.request_id)
 
 
 __all__ = ["PriorityTierExecutor", "default_worker_count"]

@@ -37,7 +37,7 @@ def test_emit_full_chain_into_intelligence_mm():
     mr = w.emit_mapping_result(hs.iri, "task-pattern:v0:trivial", 1.0)
     root = w.emit_milestone("root", 0, is_leaf=True)
     plan = w.emit_plan(root.iri, mr.iri)
-    tr = w.emit_task_run(plan_ref=plan.iri)
+    tr = w.emit_request_run(plan_ref=plan.iri)
     pipe = w.emit_pipeline(plan.iri, root.iri)
     pr = w.emit_pipeline_run(pipe.iri, root.iri, tr.iri)
     w.emit_step_execution_record("capacity:planning:derive_initial_plan", pipeline_run_ref=pr.iri)
@@ -55,7 +55,7 @@ def test_emit_full_chain_into_intelligence_mm():
 def test_task_run_ref_recorded_on_root():
     mm = _mm()
     w = ChainArtifactWriter(mm, "task-2")
-    tr = w.emit_task_run()
+    tr = w.emit_request_run()
     assert mm.root.task_run_ref == tr.iri
 
 
@@ -74,7 +74,7 @@ def test_iter_filters_by_type():
 def test_artifacts_live_in_intelligence_sub_mm_only():
     mm = _mm()
     w = ChainArtifactWriter(mm, "task-4")
-    w.emit_task_run()
+    w.emit_request_run()
     # nothing leaked into knowledge-/capacity-MM
     assert sum(len(g.nodes) for g in mm.knowledge_mm.graphs.values()) == 0
     assert sum(len(g.nodes) for g in mm.capacity_mm.graphs.values()) == 0

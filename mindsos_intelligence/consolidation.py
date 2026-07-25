@@ -55,10 +55,10 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def consolidate_task(
+def consolidate_request(
     dispatcher: Any,
     mm: Any,
-    task_run: Any,
+    request_run: Any,
     *,
     task_pattern_iri: Optional[str],
     outcome_classification: str,
@@ -100,11 +100,11 @@ def consolidate_task(
             mm_persister,
             mm.capacity_mm,
             list(capacity_graphs),
-            task_id=task_run.iri,
+            request_id=request_run.iri,
             encoders=capacity_encoders,
         )
     with mm.lock.write_locked():
-        task_input_ref = task_run.task_input_ref or f"taskinput:{task_run.iri}"
+        task_input_ref = request_run.task_input_ref or f"taskinput:{task_run.iri}"
         episode_value = {
             "task_input_ref": task_input_ref,
             "mm_root_ref": mm_root_ref,
@@ -116,11 +116,11 @@ def consolidate_task(
         }
     record = {
         DS_MM_COMPOSITE_INSTANCE: {
-            "episode_id": task_run.iri,
+            "episode_id": request_run.iri,
             "value": episode_value,
         }
     }
-    return dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, task_id=task_run.iri)
+    return dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, request_id=request_run.iri)
 
 
 __all__ = ["consolidate_task", "consolidation_enabled", "CONSOLIDATE_MM_IRI"]

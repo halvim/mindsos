@@ -49,7 +49,7 @@ def test_episode_written_and_memory_materialised_with_edge():
     kl = KnowledgeLayer.bootstrap()
     sess = build_session_with_caps("alice", frozenset())  # Local write, no cap
     result = _layer_dispatcher(kl, sess).dispatch(
-        "capacity:consolidate:mm", _record("e1"), task_id="T"
+        "capacity:consolidate:mm", _record("e1"), request_id="T"
     )
     assert result.success is True
     episode_iri = result.write_outcome.iri
@@ -67,8 +67,8 @@ def test_memory_materialises_once_per_pattern():
     kl = KnowledgeLayer.bootstrap()
     sess = build_session_with_caps("alice", frozenset())
     d = _layer_dispatcher(kl, sess)
-    d.dispatch("capacity:consolidate:mm", _record("e1"), task_id="T1")
-    d.dispatch("capacity:consolidate:mm", _record("e2"), task_id="T2")
+    d.dispatch("capacity:consolidate:mm", _record("e1"), request_id="T1")
+    d.dispatch("capacity:consolidate:mm", _record("e2"), request_id="T2")
 
     view = MetagraphView(kl.local_metagraph("alice"))
     g = view.graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
@@ -92,7 +92,7 @@ def test_bare_value_writes_episode_without_memory():
     result = _layer_dispatcher(kl, sess).dispatch(
         "capacity:consolidate:mm",
         {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "bare"}},
-        task_id="T",
+        request_id="T",
     )
     assert result.success is True
     view = MetagraphView(kl.local_metagraph("alice"))

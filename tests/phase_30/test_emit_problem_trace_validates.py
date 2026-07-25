@@ -13,8 +13,8 @@ from mindsos_capacity import (
 
 def test_emit_returns_constructed_record():
     sink = ProblemTraceSink()
-    rec = emit_problem_trace(sink, task_id="t1", error_kind="exception:RuntimeError")
-    assert rec.task_id == "t1"
+    rec = emit_problem_trace(sink, request_id="t1", error_kind="exception:RuntimeError")
+    assert rec.request_id == "t1"
     assert rec.error_kind == "exception:RuntimeError"
     assert len(sink) == 1
     assert sink.records()[0] is rec
@@ -23,7 +23,7 @@ def test_emit_returns_constructed_record():
 def test_empty_task_id_raises():
     sink = ProblemTraceSink()
     with pytest.raises(ProblemTraceError) as exc_info:
-        emit_problem_trace(sink, task_id="", error_kind="x")
+        emit_problem_trace(sink, request_id="", error_kind="x")
     assert "task_id" in str(exc_info.value)
     assert len(sink) == 0
 
@@ -31,7 +31,7 @@ def test_empty_task_id_raises():
 def test_empty_error_kind_raises():
     sink = ProblemTraceSink()
     with pytest.raises(ProblemTraceError) as exc_info:
-        emit_problem_trace(sink, task_id="t1", error_kind="")
+        emit_problem_trace(sink, request_id="t1", error_kind="")
     assert "error_kind" in str(exc_info.value)
     assert len(sink) == 0
 
@@ -40,6 +40,6 @@ def test_payload_dict_copied_not_aliased():
     """Caller-provided payload dict must not be aliased to the record."""
     sink = ProblemTraceSink()
     payload = {"k": "v"}
-    rec = emit_problem_trace(sink, task_id="t1", error_kind="x", payload=payload)
+    rec = emit_problem_trace(sink, request_id="t1", error_kind="x", payload=payload)
     payload["k"] = "MUTATED"
     assert rec.payload == {"k": "v"}

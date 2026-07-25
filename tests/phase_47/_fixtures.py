@@ -37,6 +37,6 @@ def make_orchestrator(*, task_scope="task-1", simplified=False, budget=5):
     dispatcher = L4Dispatcher(layer, session=FakeSession())
     orch = Orchestrator(
         dispatcher, mm, task_scope=task_scope, simplified=simplified,
-        per_task_replan_budget=budget,
+        per_request_replan_budget=budget,
     )
     return orch, mm, layer

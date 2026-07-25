@@ -105,9 +105,9 @@ def test_skill_verb_runs_through_durable_brain(falkordb_clean, tmp_path):
         seen = []
         real = stack.orch.run_lifecycle
 
-        def _spy(task_input, **kw):
-            seen.append(task_input)
-            return real(task_input, **kw)
+        def _spy(request_input, **kw):
+            seen.append(request_input)
+            return real(request_input, **kw)
 
         stack.orch.run_lifecycle = _spy
 

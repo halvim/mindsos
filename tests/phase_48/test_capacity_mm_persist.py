@@ -111,8 +111,8 @@ def _run_graph(role):
 
 def test_persist_capacity_mm_empty_is_noop():
     fp = _FakePersister()
-    assert persist_capacity_mm(fp, object(), [], task_id="T") is None
-    assert persist_capacity_mm(fp, object(), [None], task_id="T") is None
+    assert persist_capacity_mm(fp, object(), [], request_id="T") is None
+    assert persist_capacity_mm(fp, object(), [None], request_id="T") is None
     assert fp.calls == []
 
 
@@ -120,7 +120,7 @@ def test_persist_capacity_mm_persists_runs_then_index():
     g1 = _run_graph("capacity:run:T:1")
     g2 = _run_graph("capacity:run:T:2")
     fp = _FakePersister()
-    root = persist_capacity_mm(fp, object(), [g1, g2], task_id="T")
+    root = persist_capacity_mm(fp, object(), [g1, g2], request_id="T")
 
     # Two run persists (with the per-DataState encoder) + one index persist
     # (default encoder — index node values are graph-id primitives).
@@ -162,7 +162,7 @@ def test_capacity_persist_round_trip(falkor_client):
     encoders = {"datastate:b": lambda v: {"encoded": v}}
     persister = FalkorMMPersister(falkor_client)
     root_ref = persist_capacity_mm(
-        persister, mm.capacity_mm, [graph], task_id="t1", encoders=encoders
+        persister, mm.capacity_mm, [graph], request_id="t1", encoders=encoders
     )
     assert root_ref is not None
 

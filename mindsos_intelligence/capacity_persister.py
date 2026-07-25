@@ -64,9 +64,9 @@ PROP_RUN_GRAPH_ROLE = "run_graph_role"
 _CODEC_SAFE_TYPES = (str, int, float, bool, dict, list)
 
 
-def index_graph_role(task_id: str) -> str:
+def index_graph_role(request_id: str) -> str:
     """Deterministic role for a task's capacity index graph."""
-    if not isinstance(task_id, str) or not task_id:
+    if not isinstance(request_id, str) or not request_id:
         raise ValueError(f"task_id must be a non-empty string, got {task_id!r}")
     return f"{INDEX_GRAPH_ROLE_PREFIX}{task_id}"
 
@@ -122,7 +122,7 @@ def persist_capacity_mm(
     capacity_metagraph: Any,
     run_graphs: List[Any],
     *,
-    task_id: str,
+    request_id: str,
     encoders: Optional[Mapping[str, Callable[[Any], Any]]] = None,
 ) -> Optional[str]:
     """Persist this task's per-run capacity grounding graphs + a task-level
@@ -155,7 +155,7 @@ def persist_capacity_mm(
     # Task-level index: one CapacityRunRef node per persisted run graph. Node
     # value = the run graph's graph_id (a primitive → codec fast path), so the
     # index persists with the default encoder (no per-DataState dispatch).
-    index = Graph(name=index_graph_role(task_id), role=index_graph_role(task_id))
+    index = Graph(name=index_graph_role(request_id), role=index_graph_role(request_id))
     for g in graphs:
         index.add_node(
             value=g.graph_id,

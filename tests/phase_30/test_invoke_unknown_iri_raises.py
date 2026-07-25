@@ -25,7 +25,7 @@ def test_invoke_unknown_iri_does_not_emit_problem_trace():
         cl.invoke(
             "capacity:perception:no.such.cap",
             inputs={DS_INPUT_IRI: "x"},
-            task_id="t1",
+            request_id="t1",
         )
     except CapacityRegistrationError:
         pass

@@ -38,7 +38,7 @@ def test_durable_episode_roundtrip(falkordb_clean):
     client = FalkorClient(FalkorConfig.from_env())
     try:
         stack = boot_brain(client, user=user)
-        outcome = stack.orch.run_lifecycle({"text": "the cat sat"}, task_id="D1")
+        outcome = stack.orch.run_lifecycle({"text": "the cat sat"}, request_id="D1")
         assert outcome.status == "succeeded"
         written = _episode_count(stack.kl, user)
         assert written > 0, "task did not write an Episode into the Local"

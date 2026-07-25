@@ -122,10 +122,10 @@ def step_read_side_tokenize(stack: Stack, text: str = SEED_TEXT) -> List[str]:
     return list(result.outputs[DS_TOKENS])
 
 
-def step_run_trivial_task(stack: Stack, text: str = SEED_TEXT, *, task_id: str = "T1"):
+def step_run_trivial_task(stack: Stack, text: str = SEED_TEXT, *, request_id: str = "T1"):
     """L4 enqueue-equivalent: run the six-phase lifecycle over the v0
     catalogs. Consolidation (L5) fires on the terminal path."""
-    outcome = stack.orch.run_lifecycle({"text": text}, task_id=task_id)
+    outcome = stack.orch.run_lifecycle({"text": text}, request_id=request_id)
     assert outcome.status == "succeeded"
     return outcome
 

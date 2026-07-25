@@ -131,11 +131,11 @@ def test_value_bus_threads_produced_value_to_downstream_leaf():
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess)
     writer = ChainArtifactWriter(mm, "t1")
-    task_run = writer.emit_task_run()
+    request_run = writer.emit_request_run()
 
     graphs: list = []
     execution.run(
-        disp, writer, _two_stage_plan(), task_run,
+        disp, writer, _two_stage_plan(), request_run,
         mm=mm, run_scope="t1",
         solve_seed={DS_RAW: {"seed": 1}},  # ONLY raw_task is seeded
         capacity_graphs=graphs,
@@ -148,7 +148,7 @@ def test_value_bus_threads_produced_value_to_downstream_leaf():
     # Both leaves ran for real (two isolated per-run grounding graphs collected).
     assert len(_all_run_graphs(mm)) == 2
     assert len(graphs) == 2
-    assert len(task_run.pipeline_runs) == 2
+    assert len(request_run.pipeline_runs) == 2
 
     # Stage B's grounding graph carries the threaded raw_grids as its seeded root
     # plus the produced answer.
@@ -180,9 +180,9 @@ def test_blackboard_is_attempt_scoped_fresh_per_run():
 
     for attempt, seed in enumerate([{"seed": "first"}, {"seed": "second"}]):
         writer = ChainArtifactWriter(mm, f"t{attempt}")
-        task_run = writer.emit_task_run()
+        request_run = writer.emit_request_run()
         execution.run(
-            disp, writer, _two_stage_plan(), task_run,
+            disp, writer, _two_stage_plan(), request_run,
             mm=mm, run_scope=f"t{attempt}",
             solve_seed={DS_RAW: seed}, capacity_graphs=[],
             run_attempt=attempt,

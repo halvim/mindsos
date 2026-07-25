@@ -56,7 +56,7 @@ class _Fut:
 class _Exec:
     """Synchronous executor: runs the resolver inline at submit."""
 
-    def submit(self, fn, *, tier, task_id, score=None, cancel_token=None,
+    def submit(self, fn, *, tier, request_id, score=None, cancel_token=None,
                preempt=True, held_resources=()):
         try:
             return _Fut(ret=fn())
@@ -79,7 +79,7 @@ class _Dispatcher:
         self._out = outputs_by_cap
         self.calls = []
 
-    def dispatch(self, cap, inputs, *, cancel_token=None, task_id=None, step_id=None):
+    def dispatch(self, cap, inputs, *, cancel_token=None, request_id=None, step_id=None):
         self.calls.append(cap)
         return _Inv(dict(self._out.get(cap, {})))
 
@@ -202,7 +202,7 @@ def test_mm_less_interpret_carveout_unchanged():
     dp = _Dispatcher({"capacity:charge": {"datastate:energy": 7}})
     pipe = _Pipeline([_Step("capacity:charge", inputs=("datastate:reading",))])
 
-    res = execute_pipeline(dp, pipe, {"datastate:reading": [[1]]}, task_id="interpret")
+    res = execute_pipeline(dp, pipe, {"datastate:reading": [[1]]}, request_id="interpret")
     assert res.success and res.outputs["datastate:energy"] == 7
     # No mm supplied → nothing grounded (a fresh MM stays empty).
     assert sum(len(g.nodes) for g in control.capacity_mm.graphs.values()) == 0

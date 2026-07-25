@@ -181,8 +181,8 @@ def _harness(obj_impl):
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess)
     writer = ChainArtifactWriter(mm, "t")
-    task_run = writer.emit_task_run()
-    return mm, disp, writer, task_run
+    request_run = writer.emit_request_run()
+    return mm, disp, writer, request_run
 
 
 # grids = [grid0, grid1]; each grid = [obj, obj]
@@ -195,10 +195,10 @@ def test_map_in_map_double_folds_in_order_with_isolated_nested_refs():
     OBJ_SEEN.clear()
     OBJ_REDUCER_SEEN.clear()
     GRID_REDUCER_SEEN.clear()
-    mm, disp, writer, task_run = _harness(_obj_body)
+    mm, disp, writer, request_run = _harness(_obj_body)
     graphs: list = []
     execution.run(
-        disp, writer, _nested_plan(), task_run,
+        disp, writer, _nested_plan(), request_run,
         mm=mm, run_scope="t", solve_seed=SEED, capacity_graphs=graphs,
     )
     # Double fan-out: every object ran, in outer-then-inner collection order.
@@ -214,7 +214,7 @@ def test_map_in_map_double_folds_in_order_with_isolated_nested_refs():
         {"grid_conclusion": [{"solved": {"o": "10"}}, {"solved": {"o": "11"}}]},
     ]]
     # Provenance: 2 top milestones (map+fold) + per grid 2 (map+fold) x2 = 6.
-    assert len(task_run.pipeline_runs) == 6
+    assert len(request_run.pipeline_runs) == 6
     # One grounding graph per innermost object member (4); folds dispatch, no graph.
     assert len(graphs) == 4
     # Core Slice-2 change: nested per-object grounding graphs carry DISTINCT role
@@ -241,10 +241,10 @@ def test_inner_member_abort_propagates_unretried_and_skips_rest():
             raise RuntimeError("object 01 load failure")
         return {DS_OBJFACT: {"solved": v}}
 
-    mm, disp, writer, task_run = _harness(_fail_obj_01)
+    mm, disp, writer, request_run = _harness(_fail_obj_01)
     with pytest.raises(execution.MemberAbortError) as ei:
         execution.run(
-            disp, writer, _nested_plan(), task_run,
+            disp, writer, _nested_plan(), request_run,
             mm=mm, run_scope="t", solve_seed=SEED, capacity_graphs=[],
         )
     # The escaping abort names the innermost failing member (inner map index 1).
@@ -271,9 +271,9 @@ def test_retry_then_succeed_inside_nested_map():
             raise RuntimeError("transient inner load failure")
         return {DS_OBJFACT: {"solved": v}}
 
-    mm, disp, writer, task_run = _harness(_fail_obj_10_once)
+    mm, disp, writer, request_run = _harness(_fail_obj_10_once)
     execution.run(
-        disp, writer, _nested_plan(), task_run,
+        disp, writer, _nested_plan(), request_run,
         mm=mm, run_scope="t", solve_seed=SEED, capacity_graphs=[],
     )
     # Inner member retried once within the cap, then the whole nest completed.

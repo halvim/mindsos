@@ -54,7 +54,7 @@ def test_write_outcome_is_union_of_writeresult_and_problemtracerecord():
         iri="x", role="episodic_memories", scope="local", written_at=datetime.now(timezone.utc)
     )
     ptr = ProblemTraceRecord(
-        task_id="t1",
+        request_id="t1",
         capacity_iri="capacity:trace:problem",
         error_kind="probe",
         payload={},
