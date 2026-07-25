@@ -60,7 +60,11 @@ def test_run_lifecycle_writes_episode_on_success():
     assert len(eps) == 1
     val = eps[0].value
     assert val["outcome_classification"] == "succeeded"
-    assert val["mm_root_ref"] == mm.intelligence_mm.metagraph_id
+    chain_graphs = [
+        g for g in mm.intelligence_mm.graphs.values() if g.role == "chain"
+    ]
+    assert len(chain_graphs) == 1
+    assert val["mm_root_ref"] == chain_graphs[0].graph_id
 
 
 def test_simplified_mode_skips_consolidation():

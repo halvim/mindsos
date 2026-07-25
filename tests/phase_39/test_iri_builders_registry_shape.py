@@ -43,6 +43,7 @@ def test_registry_contains_three_entries_post_rename() -> None:
         ROLE_CAPACITY_GAPS,
         ROLE_INSTALLED_SKILLS,
         ROLE_LEARNED_PARAMETERS,
+        ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
         ROLE_SUBMINDS,
@@ -60,6 +61,8 @@ def test_registry_contains_three_entries_post_rename() -> None:
         (ROLE_INSTALLED_SKILLS, "SkillInstallRecord"),
         # feat/subminds addition per ADR-0150 §am-7.
         (ROLE_SUBMINDS, "SubMindDefinition"),
+        # feat/learned-pipeline-persistence addition per ADR-0203.
+        (ROLE_LEARNED_PIPELINES, "LearnedPipeline"),
     }
 
 

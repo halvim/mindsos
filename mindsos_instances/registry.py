@@ -40,6 +40,21 @@ from .models.element_instance import (
 RegistryEntry = Union[ElementInstance, CompositeInstance]
 
 
+def _remap_value(value: Any, id_map: Mapping[str, str]) -> Any:
+    """Substitute any string in ``value`` that is a key of ``id_map`` with its
+    mapped value, recursing through list/tuple/set/frozenset. Used to reid
+    id-bearing override values (e.g. an IntergraphEdgeInstance's graph ids)
+    after the parent metagraph regenerated its ids. Non-id strings and other
+    scalars pass through unchanged."""
+    if isinstance(value, str):
+        return id_map.get(value, value)
+    if isinstance(value, frozenset):
+        return frozenset(_remap_value(v, id_map) for v in value)
+    if isinstance(value, (list, tuple, set)):
+        return type(value)(_remap_value(v, id_map) for v in value)
+    return value
+
+
 class ElementRegistry:
     """In-memory per-metagraph registry of element + composite instances.
 
@@ -147,6 +162,32 @@ class ElementRegistry:
 
     def __len__(self) -> int:
         return len(self._instances)
+
+    # ── fork independence (ADR-0201 / CR#4 Slice 1) ──────────────────────
+
+    def remap_ids(self, id_map: Mapping[str, str]) -> None:
+        """Reid every held instance after the parent metagraph regenerated
+        its ids (fork independence). Rewrites each instance's ``metagraph_id``
+        and any ``template_id`` / override value that is a regenerated id (a
+        key of ``id_map``). Instance ids themselves are NOT remapped — node /
+        instance ids are not regenerated, so they stay valid in the fork.
+
+        No-op when ``id_map`` is empty. ``object.__setattr__`` is used for the
+        structural fields because ``ElementInstance`` enforces post-init
+        immutability on them (P27)."""
+        if not id_map:
+            return
+        for inst in self._instances.values():
+            mg = getattr(inst, "metagraph_id", None)
+            if isinstance(mg, str) and mg in id_map:
+                object.__setattr__(inst, "metagraph_id", id_map[mg])
+            tid = getattr(inst, "template_id", None)
+            if isinstance(tid, str) and tid in id_map:
+                object.__setattr__(inst, "template_id", id_map[tid])
+            overrides = getattr(inst, "overrides", None)
+            if isinstance(overrides, dict):
+                for key, val in list(overrides.items()):
+                    overrides[key] = _remap_value(val, id_map)
 
     # ── private helpers (Phase 06 row §C — P46 C, P55 A, P59 A) ──────────
 

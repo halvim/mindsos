@@ -136,7 +136,7 @@ class L4Dispatcher:
         task_id: Optional[str] = None,
         step_id: Optional[str] = None,
     ):
-        declaration = self._cl.get_declaration(capacity_iri)
+        declaration = self._cl.resolve_declaration(capacity_iri, session=self._session)
         ctx = self.build_context(
             cancel_token=cancel_token,
             task_iri=task_iri,

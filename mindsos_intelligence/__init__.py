@@ -20,6 +20,7 @@ from .intelligence_layer import DreamCycleTimer, IntelligenceLayer
 from .mm import MentalModel, MMRoot
 from .mm_resolver import (
     InstantiatedNode,
+    KnowledgeMMSource,
     MMResolver,
     MMSource,
     PinnedRef,
@@ -85,6 +86,7 @@ __all__ = [
     "SourceNode",
     "InstantiatedNode",
     "PinnedRef",
+    "KnowledgeMMSource",
     "MonitorSubscriptionRegistry",
     "ALSSubsystemRegistry",
     "ALSSubsystemRegistration",

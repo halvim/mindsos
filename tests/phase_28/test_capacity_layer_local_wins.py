@@ -57,7 +57,7 @@ def test_resolve_returns_local_when_local_exists():
     resolved = cl._resolve_declaration(local_cap.iri, user_id="alice")
     assert resolved is local_cap
     resolved_no_local = cl._resolve_declaration(local_cap.iri, user_id=None)
-    assert resolved_no_local is local_cap
+    assert resolved_no_local is gcap
 
 
 def test_resolve_unknown_capacity_raises():
@@ -104,6 +104,6 @@ def test_local_registration_overwrites_global_in_declarations():
     global_idx = cl._capacity_index[cl.global_metagraph().metagraph_id]
     assert gcap.iri in alice_idx
     assert gcap.iri in global_idx
-    local_node, _ = alice_idx[gcap.iri]
+    local_node, _, _ = alice_idx[gcap.iri]
     assert local_node.properties[REF_GLOBAL_CAPACITY] == gcap.iri
     assert local_node.properties[REF_TYPE_KEY] == "SPECIALISES"

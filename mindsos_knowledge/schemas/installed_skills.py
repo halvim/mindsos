@@ -59,6 +59,8 @@ SKILL_INSTALL_RECORD_PROPS: frozenset[str] = frozenset({
     "recorded_at",
     "entry_start_datastate",
     "entry_target_datastate",
+    # ADR-0183 §am-4 — first-run Local-bootstrap importer entry point.
+    "local_bootstrap_importer",
 })
 
 #: ``status`` vocabulary per ADR-0183 (install lifecycle S7/S8/S11):

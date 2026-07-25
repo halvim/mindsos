@@ -95,4 +95,5 @@ def test_read_local_happy_path_json_output(runner, env_setup) -> None:
         "pending-promotions",
         "learned-parameters",
         "task-patterns",
+        "learned-pipelines",
     }

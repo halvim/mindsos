@@ -17,6 +17,7 @@ from mindsos_knowledge import (
     ROLE_EPISODIC_MEMORIES,
     ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
+    ROLE_LEARNED_PIPELINES,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
     ROLE_PARAMETER_STAGING,
@@ -49,6 +50,8 @@ _ALL_NAMED_ROLES = (
     ROLE_INSTALLED_SKILLS,
     # feat/subminds addition per ADR-0150 §am-7.
     ROLE_SUBMINDS,
+    # feat/learned-pipeline-persistence addition per ADR-0203.
+    ROLE_LEARNED_PIPELINES,
 )
 
 
@@ -91,7 +94,7 @@ def test_dispatch_table_size_equals_named_role_count() -> None:
     # capacity-gaps, learned-parameters). Phase 50 expanded 12 to 13 per
     # ADR-0150 §amendment-6 (installed-skills). feat/subminds expanded 13
     # to 14 per ADR-0150 §amendment-7 (subminds).
-    assert len(_ROLE_SCHEMA_BUILDERS) == 14
+    assert len(_ROLE_SCHEMA_BUILDERS) == 15
 
 
 def test_dispatch_table_keys_equal_named_roles() -> None:

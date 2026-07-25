@@ -259,3 +259,141 @@ rollback / staging overlay — no deregister surface exists and it fights the §
 upsert-repair grain; (c) write `failed` back to the record at activation — activation
 is per-process and the record is durable + Global, so a process-local resolution
 result must not mutate durable state.
+
+## Amendment §am-3 (2026-07-17) — skill-declared brain verbs (`[l4].slots` consumed)
+
+**Context.** `[l4].slots` (`SkillManifest.l4_slots`, `manifest.py:63`) is parsed from
+`[l4.slots]` (`manifest.py:165-168`) and persisted into the install record
+(`driver.py:143`: `"l4_slots": dict(manifest.l4_slots)`), but — before this amendment —
+read by nothing (repo-wide grep). Meanwhile `BrainREPL` dispatched verbs by attribute
+lookup (`getattr(self, f"_do_{verb}")`, `brain.py:70`), so an installed Skill could
+contribute no verb: its only route to a lifecycle was the generic `task` verb, which
+passes a bare `{"text": ...}` dict with `modality=None`. Since ADR-0197 am-1 an
+unregistered modality no longer falls back to the construction-bound profile — so from
+`mindsos brain` there was **no path to a Skill's lifecycle at all**.
+
+**Decision.** `[l4].slots` is consumed at boot. `boot_brain` (via the new
+`build_skill_l4_tables`) reads each installed (`status="installed"`) record's `l4_slots`
+and, in one filtered pass, builds (a) the L4 dispatcher's `{modality → Phase1Profile}`
+table (ADR-0197) and (b) the resident-brain verb table `{verb → slots}`, carried on
+`Stack.skill_verbs`. A slot declares a brain `verb`, an ingress `modality` (DataState
+IRI), and the Phase-1 capacity slots (`process`/`hint`/`derive_goal`/`map`/
+`resolve_target_datastate`). `BrainREPL` checks its builtin `_do_*` handlers first, then
+the skill-verb table; a skill verb builds a modality-stamped `InputEnvelope` and calls
+`run_lifecycle`. The verb is **data, not a callable** — the Skill injects no code into the
+REPL namespace; its behaviour is reached only through its registered L3 capacities via the
+dispatcher. This also removes the brain's need to construct a dispatcher with a
+construction-bound `phase1_profile=` (arc1 D1.13): the table is built from the manifests.
+
+**Filtering + collisions.** The one pass applies: a bundle in `Stack.activation.skipped`
+(§am-2) contributes nothing — its capacities are absent, so a profile bound to it would
+raise at first use; it is skipped and reported in `help`. A slot with no `modality`
+contributes no verb and no profile. Verb and modality collisions resolve **first-wins by
+install `seq`** (never silent last-wins). **Builtins always win**: the REPL drops any
+skill verb shadowed by a `_do_*` at construction — runtime-authoritative, which also
+catches builtins added *after* a Skill was installed. A `pending_confirmation` outcome
+(ADR-0196) is surfaced, not swallowed; a propagated `InterpretationError` is caught so a
+mis-registered skill cannot crash the REPL.
+
+**Deviation from the CR proposal.** The CR (D-1) proposed rejecting verb/builtin
+collisions at install-time in `preflight.py`. That was **not adopted**: the builtin verb
+set lives in `BrainREPL` (`mindsos_cli`), and `preflight` (`mindsos_server`) owning it
+would force a `server→cli` dependency or a drifting duplicate list — the exact drift the
+ADR-status gate exists to prevent. The runtime REPL shadow-guard is authoritative instead;
+an optional CLI-side install pre-check is deferred (no `preflight` change shipped).
+
+**Scope / status.** CLI + an L4 read of an already-persisted field. No new manifest field,
+no schema change, no record migration, no release-train version bump (stays `phase50`).
+Inert in a stock brain until a record declares `[l4.slots]` with a `modality`. Depends on
+§am-2 (`Stack.activation.skipped`). Cross-ref ADR-0195 (`Phase1Profile`), ADR-0197 + am-1
+(modality ingress), ADR-0196 (needs-input). Shipped on `mindsos_server/boot.py` +
+`mindsos_cli/commands/brain.py`; covered by `tests/resident_brain/test_skill_verbs.py`
+and `test_skill_verb_durable.py` (full gate 4237/0).
+
+**Alternatives rejected.** (a) preflight verb-conflict (D-1) — `server→cli` coupling /
+drift (above); (b) last-wins on collisions, mirroring `_declarations` — silently disables
+an already-working verb, inconsistent with preflight's first-wins IRI-collision precedent;
+(c) reach skills through `task` with a `{"text": ...}` dict — no `InputEnvelope`,
+unroutable modality since ADR-0197 am-1.
+
+## Amendment §am-4 (2026-07-18) — first-run Local-bootstrap importer
+
+**Context.** A fully-Local resident brain (arc1, arc3) must seed a persistent
+Local role-graph — its dataset corpus, `dataset:<name>` per ADR-0150 §am-9 —
+into its own Local L2 **once**, after which F9 persistence (ADR-0186) reloads
+it for free. Neither existing hook can do it:
+
+- The L3 installer runs as `fn(cl)` (`activation.py:165-166`) — it receives no
+  `kl`, so it cannot write Local at activation.
+- The §am-1 runtime entry (`entry_start_datastate`/`entry_target_datastate`,
+  `mindsos brain execute`) is a **manual, single-start solve pipeline** to a
+  target datastate (`brain.py:581`), never auto-run at boot, and it is itself a
+  *reader* of the corpus (`ARC_ENTRY_DECLARATION.md`: raw-task-input →
+  solved-grid). Reusing it would be a category error and stay manual.
+
+**Decision (as implemented, Increment 2).** Add one optional flat advisory prop
+to `SkillInstallRecord`: `local_bootstrap_importer` — a `"module:function"`
+spec, resolved the same way as `l3_installers` / §am-1 entries (via
+`mindsos_server/skills/entry_points.py::resolve_entry_point`). Add a boot step
+in `mindsos_server/boot.py::boot_brain`, **after** `boot_local` and after
+`apply_installed_skills` (so the owning module — and its ADR-0150 §am-9
+`register_dataset_schema` call — is already imported). It reuses the
+`installed_records` list `boot_brain` already builds for the §am-3 skill-verb
+tables: for each installed record declaring the prop (and not in
+`activation.skipped`), resolve it and invoke it with a **Local-write context**
+`fn(cl, kl, session)` — the brain's own single-user session, which writes its
+own Local per the ADR-0180 own-user gate. (`boot_brain` was chosen over
+`boot_local` so the behaviour stays with the resident-brain assembly and does
+not leak to other `boot_local` callers.)
+
+**Idempotency — the importer self-guards (the owner's "no reinstall per boot"
+requirement + P2 partial-failure detection).** Core does **not** manage a
+marker; the importer is idempotent and decides for itself. On a warm Local —
+the common case, since F9 reloaded the persisted `dataset:<name>` — the importer
+sees its corpus already complete and returns immediately (a cheap check, **no
+corpus bytes read**). Completeness detection (a done-marker, an expected count,
+etc.) lives in the importer because only it knows what "complete" means for its
+corpus; a crashed prior import is thus re-detected and re-run next boot. This
+keeps the core seam minimal and matches "don't complicate": core declares +
+invokes; the importer owns idempotency. A `reset_run_state` (ADR-0187) retains
+the corpus (durable, not run-state), so reset does not re-trigger import.
+
+**Resilience + reporting (mirrors §am-2; P2).** The boot step is **best-effort
+at boot**: an unresolvable importer (`EntryPointError`) or one that raises is
+logged at WARNING with a **"reimport needed"** message and recorded on the new
+`Stack.corpus_imports_failed` roster — `(bundle_name, reason)` tuples, parallel
+to `activation.skipped`. It is **never raised out of `boot_brain`** — a brain
+whose importer is absent or throws must still boot. The next boot re-attempts
+automatically (the importer self-guards, so a healthy corpus is a no-op and only
+a genuinely failed/partial one re-imports). A `mindsos brain reimport <dataset>`
+verb is the explicit operator re-trigger — deferred to a follow-up (the boot
+roster already satisfies "know + report + suggest"). For a dedicated resident
+brain the importer is its own package and is never absent; the resilience is
+defensive but the roster makes a genuine import failure visible
+rather than a silently empty corpus.
+
+**Scope / status.** Additive to the strict=False `installed-skills` schema
+(one optional flat prop; queryable per ADR-0182 rule 5); append-only (fixed per
+install record). No release-train version bump (label moves only at numbered
+phases). Inert in a stock brain until a record declares the prop — first
+consumer is arc1's install (arc-side), which sets `local_bootstrap_importer` to
+its corpus-import entry point. The corpus itself is **not** install content
+(no `l2_content` entry, no tier change) — this amendment adds only the
+*trigger*, not a Local install path; §5's Global install record and §am-6's
+Global-only `installed-skills` scope are unchanged.
+
+**Alternatives rejected.** (a) **Reuse the §am-1 entry** — manual,
+solve-pipeline-shaped, corpus-reading; wrong mechanism (see Context).
+(b) **Importer spec in the opaque record `value`** — no queryability; the
+boot step would have to deserialize `value` to find it. (c) **A boot step with
+no declaration** (hard-code the arc importer in core) — couples core to a brain
+package; violates the skill-as-bundle contract. (d) **A dedicated Local
+`l2_content` install path** (the rejected option (A) from the CR) — reopens the
+install target-user problem (`driver.py:250` is Global-only; install has no
+Local principal). Chose the flat-prop + best-effort boot resolve.
+
+**Known debt (owner-accepted, P-2).** This is the **third** entry-point kind on
+a bundle — L3 `fn(cl)` installer (§6), §am-1 `execute` entry, and now the boot
+`fn(cl, kl, session)` bootstrap importer. Three declaration surfaces is a smell;
+a future amendment may generalize them into one typed entry-point table. Not
+done here — additive prop now, generalization deferred.

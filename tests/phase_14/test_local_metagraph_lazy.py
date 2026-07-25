@@ -21,6 +21,7 @@ def test_lazy_local_creates_on_first_access() -> None:
     §am-5: 2 base + 3 dual-scope; ADR-0150 §am-8: + dual-scope task-patterns)."""
     from mindsos_knowledge import (
         ROLE_LEARNED_PARAMETERS,
+        ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
         ROLE_TASK_PATTERNS,
@@ -35,6 +36,7 @@ def test_lazy_local_creates_on_first_access() -> None:
         ROLE_PENDING_PROMOTIONS,
         ROLE_LEARNED_PARAMETERS,
         ROLE_TASK_PATTERNS,
+        ROLE_LEARNED_PIPELINES,
     }
 
 

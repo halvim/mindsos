@@ -67,6 +67,7 @@ def test_real_declarations_order_per_scope() -> None:
     assert local_order == (
         "capacity-state",
         "learned-parameters",
+        "learned-pipelines",
         "parameter-staging",
         "pending-promotions",
         "task-patterns",

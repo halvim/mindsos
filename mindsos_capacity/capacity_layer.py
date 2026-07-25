@@ -168,7 +168,7 @@ class CapacityLayer:
         self._strict = strict
         self._kl: Optional[Any] = kl
 
-        self._capacity_index: Dict[str, Dict[str, Tuple[Node, Graph]]] = {
+        self._capacity_index: Dict[str, Dict[str, Tuple[Node, Graph, _CapacityBase]]] = {
             self._global.metagraph_id: {},
         }
         self._declarations: Dict[str, _CapacityBase] = {}
@@ -382,7 +382,8 @@ class CapacityLayer:
             # bound ``implementation`` that ``invoke`` resolves via
             # ``_declarations``. The persisted node ``properties`` are left
             # as-is (the existing node is reused).
-            node, category_graph = existing
+            node, category_graph, _ = existing
+            index[declaration.iri] = (node, category_graph, declaration)
             self._declarations[declaration.iri] = declaration
         else:
             if declaration.iri in category_graph.nodes:
@@ -396,7 +397,7 @@ class CapacityLayer:
                 properties=props,
                 node_id=declaration.iri,
             )
-            index[declaration.iri] = (node, category_graph)
+            index[declaration.iri] = (node, category_graph, declaration)
             self._declarations[declaration.iri] = declaration
 
         # ADR-0156 — bipartite topology. The declaration's inputs/outputs
@@ -492,8 +493,8 @@ class CapacityLayer:
         mg = self._metagraph_for(target_uid)
         index = self._capacity_index[mg.metagraph_id]
         try:
-            source_node, source_graph = index[source_iri]
-            target_node, target_graph = index[target_iri]
+            source_node, source_graph, _ = index[source_iri]
+            target_node, target_graph, _ = index[target_iri]
         except KeyError as exc:
             raise ConstraintViolationError(
                 f"Constraint endpoints must be registered; missing {exc.args[0]!r}"
@@ -538,6 +539,16 @@ class CapacityLayer:
             raise CapacityRegistrationError(
                 f"No declaration registered for {capacity_iri!r}"
             ) from exc
+
+    def resolve_declaration(
+        self, capacity_iri: str, *, session: SessionArg = None
+    ) -> _CapacityBase:
+        """Scope-correct resolution: the owner's Local override when one
+        exists, else Global. Two-tier surface for dispatch + input-wiring;
+        ``get_declaration`` stays sessionless/merged.
+        """
+        target_uid = session.user_id if session is not None else None
+        return self._resolve_declaration(capacity_iri, user_id=target_uid)
 
     def iter_declarations(self) -> List[_CapacityBase]:
         """Return every registered declaration (Local + Global)."""
@@ -726,13 +737,14 @@ class CapacityLayer:
         specialisation rule (Local overrides Global on IRI collision).
         """
         if user_id is not None:
-            local_mg = self.local_metagraph(user_id)
-            local_index = self._capacity_index[local_mg.metagraph_id]
-            if capacity_iri in local_index:
-                return self._declarations[capacity_iri]
+            local_mg = self._locals.get(user_id)
+            if local_mg is not None:
+                local_index = self._capacity_index[local_mg.metagraph_id]
+                if capacity_iri in local_index:
+                    return local_index[capacity_iri][2]
         global_index = self._capacity_index[self._global.metagraph_id]
         if capacity_iri in global_index:
-            return self._declarations[capacity_iri]
+            return global_index[capacity_iri][2]
         raise CapacityRegistrationError(
             f"No capacity registered with IRI {capacity_iri!r} "
             f"(user_id={user_id!r})"

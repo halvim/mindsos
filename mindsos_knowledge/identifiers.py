@@ -84,6 +84,12 @@ ROLE_INSTALLED_SKILLS = "installed-skills"
 # authored). Slice 1 bootstraps the Global form only.
 ROLE_SUBMINDS = "subminds"
 
+# feat/learned-pipeline-persistence — first-class Local persistence for
+# taught ConjunctionFinder pipelines per ADR-0203 (closed set 14 → 15;
+# Local-only, immutable_successor append-ordinal). Sibling to
+# ``learned-parameters`` (mirrors its zero-edge single-NodeType shape).
+ROLE_LEARNED_PIPELINES = "learned-pipelines"
+
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
@@ -100,6 +106,8 @@ UPPER_LAYER_ROLES = frozenset({
     ROLE_INSTALLED_SKILLS,
     # feat/subminds addition per ADR-0150 §am-7.
     ROLE_SUBMINDS,
+    # feat/learned-pipeline-persistence addition per ADR-0203.
+    ROLE_LEARNED_PIPELINES,
 })
 ALL_ROLES = SEED_ROLES | UPPER_LAYER_ROLES
 
@@ -420,6 +428,27 @@ def submind_definition_iri(
     return f"subminds-{v}:definition:{sn}:{rid}"
 
 
+def learned_pipeline_iri(
+    version: str, pipeline_name: str, record_id: str
+) -> str:
+    """Learned-pipeline node (Local-only; ADR-0203):
+    ``learned-pipelines-<v>:pipeline:<pipeline_name>:<record_id>``.
+
+    One append-only immutable node per teach of a named pipeline; current
+    state = the highest-``taught_seq`` node per ``pipeline_name`` (reader
+    resolves latest by ordinal scan). ``record_id`` is the writer-minted
+    append ordinal (``str(taught_seq)``) and, like
+    ``skill_install_record_iri`` (PB-8 precedent), the body may carry
+    colons — the parser leaves it opaque after the ``pipeline:`` kind and
+    full-string round-trip holds. ``pipeline_name`` is a normalised
+    fragment (any non-whitespace).
+    """
+    v = _ensure_version(version)
+    pn = _normalise_fragment(pipeline_name)
+    rid = _normalise_fragment(record_id)
+    return f"learned-pipelines-{v}:pipeline:{pn}:{rid}"
+
+
 # ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
 # Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
@@ -498,6 +527,19 @@ def _mint_learned_parameter(version: str, /, **content: object) -> str:
     )
 
 
+def _mint_learned_pipeline(version: str, /, **content: object) -> str:
+    """Adapter: ``learned_pipeline_iri`` ← ``mint_iri`` kwargs (ADR-0203).
+
+    Requires ``pipeline_name`` + ``record_id`` keys. ``KeyError`` on
+    missing per ADR-0146 §Decision (programmer error).
+    """
+    return learned_pipeline_iri(
+        version,
+        pipeline_name=str(content["pipeline_name"]),
+        record_id=str(content["record_id"]),
+    )
+
+
 def _mint_skill_install_record(version: str, /, **content: object) -> str:
     """Adapter: ``skill_install_record_iri`` ← ``mint_iri`` kwargs (Phase 50).
 
@@ -545,6 +587,8 @@ _IRI_BUILDERS: dict[tuple[str, str], object] = {
     (ROLE_INSTALLED_SKILLS, "SkillInstallRecord"): _mint_skill_install_record,
     # feat/subminds addition per ADR-0150 §am-7.
     (ROLE_SUBMINDS, "SubMindDefinition"): _mint_submind_definition,
+    # feat/learned-pipeline-persistence addition per ADR-0203.
+    (ROLE_LEARNED_PIPELINES, "LearnedPipeline"): _mint_learned_pipeline,
 }
 
 
@@ -590,6 +634,8 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("installed-skills-", ROLE_INSTALLED_SKILLS),
     # feat/subminds addition per ADR-0150 §am-7.
     ("subminds-", ROLE_SUBMINDS),
+    # feat/learned-pipeline-persistence addition per ADR-0203.
+    ("learned-pipelines-", ROLE_LEARNED_PIPELINES),
 )
 
 # Per-role kind-extraction whitelist. The parser strips the kind
@@ -613,6 +659,8 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_INSTALLED_SKILLS: frozenset({"record"}),
     # feat/subminds addition per ADR-0150 §am-7.
     ROLE_SUBMINDS: frozenset({"definition"}),
+    # feat/learned-pipeline-persistence addition per ADR-0203.
+    ROLE_LEARNED_PIPELINES: frozenset({"pipeline"}),
 }
 
 

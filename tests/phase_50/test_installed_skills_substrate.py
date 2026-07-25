@@ -54,7 +54,7 @@ class TestRoleConstant:
         # feat/subminds grew the closed role-set 13 → 14 per ADR-0150
         # §amendment-7 (subminds). The Phase-50 closure sentinel updates
         # forward, mirroring how Phase 50 updated the Phase-43 12 → 13.
-        assert len(ALL_ROLES) == 14
+        assert len(ALL_ROLES) == 15
 
     def test_global_only_scope(self) -> None:
         assert ROLE_INSTALLED_SKILLS in _GLOBAL_NAMED_ROLES

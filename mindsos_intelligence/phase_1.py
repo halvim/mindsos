@@ -87,6 +87,14 @@ class Phase1Result:
     task_pattern_iri: str
     mapping_confidence: float
     mapping_result_ref: str
+    #: The canonical reference the resolve chain produced (``None`` when the
+    #: consumer declares no ``resolve_target_datastate`` or the request carried
+    #: no reference). Carried out of ``interpret()`` so Phase 2/3 can plan +
+    #: execute against the resolved task instead of dropping it (out-of-CR
+    #: Step 5 / ADR-0172 §Step-5 amendment; subsumes CORE_CR_PHASE1_RESOLVED_
+    #: REFERENCE). Byte-identical when absent — every existing caller reads a
+    #: default ``None``.
+    resolved_reference: Any = None
 
 
 def _slot(profile: Optional[Phase1Profile], attr: str, default: str) -> str:
@@ -106,7 +114,7 @@ def _run_step(dispatcher, capacity_iri: str, env: dict) -> Any:
     upstream (a mis-wired profile) — a clear failure ahead of the strict
     ``_validate_inputs`` no-unexpected/missing-required contract.
     """
-    decl = dispatcher.capacity_layer.get_declaration(capacity_iri)
+    decl = dispatcher.capacity_layer.resolve_declaration(capacity_iri, session=dispatcher.session)
     missing = [ds for ds in decl.inputs if ds not in env]
     if missing:
         raise InterpretationError(
@@ -236,7 +244,7 @@ def interpret(
     # ``DS_RAW_INPUT`` assumption. All-v0 is byte-identical: the v0 caps
     # declare exactly DS_RAW_INPUT -> DS_STRUCTURED_INPUT -> ... .
     process_iri = _slot(profile, "process", PROCESS_IRI)
-    ingress_ds = dispatcher.capacity_layer.get_declaration(process_iri).inputs[0]
+    ingress_ds = dispatcher.capacity_layer.resolve_declaration(process_iri, session=dispatcher.session).inputs[0]
     if modality is not None and ingress_ds != modality:
         raise InterpretationError(
             f"modality {modality!r} routes to process {process_iri!r} whose "
@@ -304,6 +312,7 @@ def run(dispatcher, writer, task_input) -> "Phase1Result | NeedsInput":
         task_pattern_iri=r.task_pattern_iri,
         mapping_confidence=r.mapping_confidence,
         mapping_result_ref=mr.iri,
+        resolved_reference=r.resolved_reference,
     )
 
 

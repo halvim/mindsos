@@ -59,3 +59,41 @@ A need is a *rival* only when resources overlap; otherwise it is a *constraint*.
 
 - Composes with ADR-0188 (construct + outputs) and ADR-0190 (endowment + role-graph).
 - Reuses ADR-0169 (`TierEnum` + signal-triage) and the ADR-0171 worker-per-task executor without amendment.
+
+## Amendment 1 — SubMind resolver grounding under its own task_id/run_ref scope (Slice C)
+
+**Status:** Accepted (2026-07-22). Records the final slice (Slice C) of
+`CORE_CR_CAPACITY_MM_PERSIST_AND_SUBMIND.md` (D-B), landed on top of that CR's
+per-run capacity graph (Slice A, ADR-0201 am-2) and persistence path (Slice B,
+ADR-0202 am-1 / ADR-0176 am-1). Does **not** change this ADR's status.
+
+Slice 2 shipped the arbiter dispatching a goal-directed resolver via the core
+`pipeline_execution` executor (§2 above), but with **no MentalModel** — the
+resolver ran value-only and grounded nothing. Slice C closes that:
+
+- **`SubMindArbiter.__init__` now takes a mandatory `mm`** — the **real**
+  `MentalModel` the solve path threads (D-B), injected directly, **not** the
+  dispatcher's `mm_handle` (which goes read-only in Slice 3 / ADR-0200). A None
+  `mm` is rejected at construction, so grounding can never be silently dropped.
+  The narrow-writer wrapper was rejected: L4 is the legitimate L5 writer, so it
+  needs no privilege-narrowing shim and no shared-executor refactor.
+- **`_run_resolver` grounds each run** — it calls
+  `execute_pipeline(..., mm=self._mm, pipeline_run_ref=<fresh per-run ref>)`,
+  minting the run ref from the dispatch's unique `task_id` (`pipelinerun:<task_id>`).
+  Slice A made `pipeline_run_ref` mandatory whenever `mm` is supplied (it removed
+  the `run_ref = task_id` default that collided on replan), so every resolver
+  dispatch — including a replan re-dispatch of the same need — writes an isolated
+  per-run grounding DAG (CapacityInstance + DataStateInstance nodes wired by
+  intra-graph PRODUCES/CONSUMES) that never overwrites another run's.
+- **The fallback path is unchanged** — a goal-unreachable dont-know still fires
+  the direct ask-human `fallback_resolver` as a single dispatch (no MM, no
+  pipeline run).
+- **The phase-1 interpret-resolve carve-out is untouched** — it calls
+  `execute_pipeline` with `mm=None` and stays MM-less permanently
+  (`CORE_CR_PHASE1_RESOLVE_MM.md`). "Mandatory MM" scopes to the solve + submind
+  paths only.
+
+Persistence of a resolver run's graph into an Episode is **not** triggered here:
+the submind runs the writer but never calls `consolidate_task` (PB-3). The
+grounding is live; consolidation onto the solve path is out-of-CR Step 5.
+Wiring point: `intelligence_layer.py`. See `confirmation_docs/L5_SLICE_C_CONFIRMED.md`.
