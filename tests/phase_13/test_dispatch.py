@@ -17,6 +17,7 @@ from mindsos_knowledge import (
     ROLE_EPISODIC_MEMORIES,
     ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
+    ROLE_LEARNED_PIPELINES,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
     ROLE_PARAMETER_STAGING,
@@ -49,6 +50,8 @@ _ALL_NAMED_ROLES = (
     ROLE_INSTALLED_SKILLS,
     # feat/subminds addition per ADR-0150 §am-7.
     ROLE_SUBMINDS,
+    # feat/learned-pipeline-persistence addition per ADR-0203.
+    ROLE_LEARNED_PIPELINES,
 )
 
 

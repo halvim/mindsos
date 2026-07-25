@@ -202,6 +202,8 @@ def test_roles_list_all_json() -> None:
         "installed-skills",
         # feat/subminds (ADR-0150 §am-7) addition.
         "subminds",
+        # feat/learned-pipeline-persistence (ADR-0203) addition.
+        "learned-pipelines",
     }
 
 
@@ -232,6 +234,8 @@ def test_roles_list_upper_only() -> None:
         "installed-skills",
         # feat/subminds (ADR-0150 §am-7) addition.
         "subminds",
+        # feat/learned-pipeline-persistence (ADR-0203) addition.
+        "learned-pipelines",
     }
 
 
