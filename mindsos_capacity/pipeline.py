@@ -71,6 +71,7 @@ from .identifiers import (
     INPUT_GROUP_FOLD,
 )
 from .types import SessionArg
+from .views import LocalPreferringView
 
 if TYPE_CHECKING:  # pragma: no cover — circular-import guard
     from .capacity_layer import CapacityLayer
@@ -200,19 +201,23 @@ class Pipeline:
 # ── view resolution shared by the strategies ─────────────────────────
 
 
-def _view_for(
-    capacity_layer: "CapacityLayer", session: SessionArg
-) -> "CapacityLayerView":
-    """Resolve the Global or per-user Local view (R3 PB-44(a) inline)."""
+def _view_for(capacity_layer: "CapacityLayer", session: SessionArg):
+    """Resolve the finder view. Global for a sessionless search; for a session,
+    a Local-preferring UNION of Global + the user Local (Local overrides Global
+    at a colliding IRI) so a one-step Local override composes inside an
+    otherwise-Global pipeline. Falls back to Global when the user has no Local
+    metagraph."""
     target_uid = session.user_id if session is not None else None
-    return (
-        capacity_layer.global_view()
-        if target_uid is None
-        else capacity_layer.local_view(target_uid)
+    if target_uid is None or not capacity_layer.has_local(target_uid):
+        return capacity_layer.global_view()
+    return LocalPreferringView(
+        capacity_layer.global_view(), capacity_layer.local_view(target_uid)
     )
 
 
-def _input_group_of(capacity_layer: "CapacityLayer", capacity_iri: str) -> str:
+def _input_group_of(
+    capacity_layer: "CapacityLayer", capacity_iri: str, session: SessionArg = None
+) -> str:
     """Read a capacity's ``input_group`` from the declaration registry.
 
     Decision 8: the finder reads the declaration, not the graph. Defaults
@@ -220,7 +225,7 @@ def _input_group_of(capacity_layer: "CapacityLayer", capacity_iri: str) -> str:
     node, e.g. a bare reference) — the sound-composer default.
     """
     try:
-        decl = capacity_layer.get_declaration(capacity_iri)
+        decl = capacity_layer.resolve_declaration(capacity_iri, session=session)
     except Exception:  # noqa: BLE001 — missing declaration → default
         return INPUT_GROUP_ALL_REQUIRED
     return getattr(decl, "input_group", INPUT_GROUP_ALL_REQUIRED)
@@ -388,7 +393,7 @@ class ConjunctionFinder(Finder):
             inputs = view.inputs_of(cap_iri)
             if not inputs:
                 return True
-            mode = _input_group_of(capacity_layer, cap_iri)
+            mode = _input_group_of(capacity_layer, cap_iri, session)
             if mode == INPUT_GROUP_ANY_OF:
                 return any(ds_reachable(ds, stack) for ds in inputs)
             # all_required and fold both need every declared input producible
@@ -417,7 +422,7 @@ class ConjunctionFinder(Finder):
                 )
             inputs = tuple(view.inputs_of(cap_iri))
             outputs = tuple(view.outputs_of(cap_iri))
-            mode = _input_group_of(capacity_layer, cap_iri)
+            mode = _input_group_of(capacity_layer, cap_iri, session)
             incoming: List[Tuple[int, str]] = []
             for ds in inputs:
                 if ds in starts:

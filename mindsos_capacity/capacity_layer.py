@@ -184,6 +184,10 @@ class CapacityLayer:
     def global_view(self) -> CapacityLayerView:
         return CapacityLayerView(self._global)
 
+    def has_local(self, user_id: str) -> bool:
+        """True if a Local metagraph exists for ``user_id`` (no lazy create)."""
+        return user_id in self._locals
+
     def local_metagraph(self, user_id: str) -> Metagraph:
         """Return (creating lazily) the Local Metagraph for ``user_id``.
 

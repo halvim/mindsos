@@ -208,4 +208,56 @@ class CapacityLayerView:
         return f"CapacityLayerView({self._mg.name!r}, graphs={len(self._mg.graphs)})"
 
 
-__all__ = ["CapacityLayerView"]
+class LocalPreferringView:
+    """Local-preferring UNION over a Global + one Local metagraph view.
+
+    Presents the finder read surface (``producers_of`` / ``consumers_of`` /
+    ``inputs_of`` / ``outputs_of`` / ``get_capacity``) as the union of the two
+    underlying :class:`CapacityLayerView` s, with **Local overriding Global at
+    a colliding capacity IRI**: a Global capacity whose IRI is also registered
+    Locally is hidden entirely (its node + its PRODUCES/CONSUMES edges are
+    dropped), so a one-step Local override composes inside an otherwise-Global
+    pipeline without the finder OR-over-producers pick re-selecting the
+    shadowed Global capacity. Read-only (mirrors :class:`CapacityLayerView`).
+    """
+
+    def __init__(
+        self, global_view: "CapacityLayerView", local_view: "CapacityLayerView"
+    ) -> None:
+        self._g = global_view
+        self._l = local_view
+        self._local_iris = {n.node_id for n in local_view.iter_capacities()}
+
+    def _merge(self, local_nodes: List[Node], global_nodes: List[Node]) -> List[Node]:
+        out: List[Node] = list(local_nodes)
+        seen = {n.node_id for n in out}
+        for n in global_nodes:
+            if n.node_id in self._local_iris or n.node_id in seen:
+                continue
+            seen.add(n.node_id)
+            out.append(n)
+        return out
+
+    def producers_of(self, datastate_iri: str) -> List[Node]:
+        return self._merge(
+            self._l.producers_of(datastate_iri), self._g.producers_of(datastate_iri)
+        )
+
+    def consumers_of(self, datastate_iri: str) -> List[Node]:
+        return self._merge(
+            self._l.consumers_of(datastate_iri), self._g.consumers_of(datastate_iri)
+        )
+
+    def inputs_of(self, capacity_iri: str) -> List[str]:
+        src = self._l if capacity_iri in self._local_iris else self._g
+        return src.inputs_of(capacity_iri)
+
+    def outputs_of(self, capacity_iri: str) -> List[str]:
+        src = self._l if capacity_iri in self._local_iris else self._g
+        return src.outputs_of(capacity_iri)
+
+    def get_capacity(self, iri: str) -> Optional[Node]:
+        return self._l.get_capacity(iri) or self._g.get_capacity(iri)
+
+
+__all__ = ["CapacityLayerView", "LocalPreferringView"]

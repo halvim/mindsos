@@ -89,7 +89,6 @@ def _run_leaf_pipeline(
     collect its per-run graph. Local imports keep this module's import graph
     light and cycle-free (``pipeline_execution`` reaches ``capacity_mm_writer``
     → ``mm`` → core, none of which import ``execution``)."""
-    from mindsos_capacity.exceptions import PipelineNotFoundError
     from mindsos_capacity.pipeline import find_pipeline
 
     from .pipeline_execution import execute_pipeline
@@ -98,25 +97,18 @@ def _run_leaf_pipeline(
     target = solve_target["target_datastate"]
     # Compose the pipeline from the currently-registered capacities (the finder
     # is role-blind; L4 binds operands at dispatch — ADR-0071/0156). The finder
-    # sees a single view (Local OR Global, never unioned — pipeline.py
-    # ``_view_for``); a consumer's solve caps are typically Local (arc), so try
-    # the session's Local view first and fall back to Global. A fresh per-run
-    # ref per leaf gives each run its own isolated grounding graph (Slice A:
-    # replan / concurrent isolation).
-    try:
-        pipeline = find_pipeline(
-            dispatcher.capacity_layer,
-            session=dispatcher.session,
-            start_datastate=start,
-            target_datastate=target,
-        )
-    except PipelineNotFoundError:
-        pipeline = find_pipeline(
-            dispatcher.capacity_layer,
-            session=None,
-            start_datastate=start,
-            target_datastate=target,
-        )
+    # resolves a Local-preferring UNION view for the session (Global + the user
+    # Local, Local overriding Global at a colliding IRI — pipeline.py
+    # ``_view_for``), so a one-step Local override composes inside an otherwise-
+    # Global pipeline in a single find; session=None searches Global only. A
+    # fresh per-run ref per leaf gives each run its own isolated grounding graph
+    # (Slice A: replan / concurrent isolation).
+    pipeline = find_pipeline(
+        dispatcher.capacity_layer,
+        session=dispatcher.session,
+        start_datastate=start,
+        target_datastate=target,
+    )
     run_ref = f"pipelinerun:{task_id}:{leaf_idx}:{run_attempt}"
     result = execute_pipeline(
         dispatcher,
