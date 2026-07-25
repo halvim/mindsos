@@ -114,7 +114,7 @@ def _run_step(dispatcher, capacity_iri: str, env: dict) -> Any:
     upstream (a mis-wired profile) — a clear failure ahead of the strict
     ``_validate_inputs`` no-unexpected/missing-required contract.
     """
-    decl = dispatcher.capacity_layer.get_declaration(capacity_iri)
+    decl = dispatcher.capacity_layer.resolve_declaration(capacity_iri, session=dispatcher.session)
     missing = [ds for ds in decl.inputs if ds not in env]
     if missing:
         raise InterpretationError(
@@ -244,7 +244,7 @@ def interpret(
     # ``DS_RAW_INPUT`` assumption. All-v0 is byte-identical: the v0 caps
     # declare exactly DS_RAW_INPUT -> DS_STRUCTURED_INPUT -> ... .
     process_iri = _slot(profile, "process", PROCESS_IRI)
-    ingress_ds = dispatcher.capacity_layer.get_declaration(process_iri).inputs[0]
+    ingress_ds = dispatcher.capacity_layer.resolve_declaration(process_iri, session=dispatcher.session).inputs[0]
     if modality is not None and ingress_ds != modality:
         raise InterpretationError(
             f"modality {modality!r} routes to process {process_iri!r} whose "

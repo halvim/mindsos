@@ -43,6 +43,15 @@ class PlanResult:
     #: + runs a real pipeline (single-leaf scope at v1; multi-leaf target routing
     #: is deferred with real decomposition / WSD).
     solve_target: Optional[Dict[str, str]] = None
+    #: Optional per-leaf solve endpoints ``{leaf_ref: {start_datastate,
+    #: target_datastate}}`` for a multi-stage plan whose leaves form a value
+    #: chain (collection-iteration Slice 1a — ``execution.run`` threads a leaf's
+    #: outputs to a downstream leaf's start via the run blackboard). A leaf with
+    #: no entry falls back to the plan-global ``solve_target``; ``None``/absent →
+    #: today's single-target behaviour (v0 + Step-5 single-leaf path unchanged).
+    #: The map/fold fan-out that populates this for real rides Slice 1b + arc's
+    #: planner; the v0 builder below never sets it.
+    leaf_targets: Optional[Dict[str, Dict[str, str]]] = None
 
 
 def _read_solve_target(plan_out: Any) -> Optional[Dict[str, str]]:
