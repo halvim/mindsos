@@ -57,7 +57,7 @@ Phase 39 L2-35 reconciliation). The parser rejects it.
 | `installed-skills` | `ROLE_INSTALLED_SKILLS` | upper | `installed-skills-` |
 | `subminds` | `ROLE_SUBMINDS` | upper | `subminds-` |
 
-The role-set is closed at **14 named roles** (3 seed + 11 upper) per
+The role-set is closed at **15 named roles** (3 seed + 12 upper) per
 ADR-0150 and amendments §am-5 (Phase 43 +4), §am-6 (`installed-skills`),
 §am-7 (`subminds`). Three frozensets group the roles:
 
