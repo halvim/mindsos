@@ -60,7 +60,7 @@ def test_execute_pipeline_bubbles_needs_input() -> None:
     pipeline = SimpleNamespace(
         steps=(SimpleNamespace(capacity_iri="c:1", input_datastates=(), output_datastates=()),)
     )
-    r = execute_pipeline(_Disp(), pipeline, {}, task_id="t")
+    r = execute_pipeline(_Disp(), pipeline, {}, request_id="t")
     assert isinstance(r, PipelineExecutionResult)
     assert r.needs_input is ni
     assert r.success is False

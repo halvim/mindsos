@@ -101,7 +101,7 @@ class IntelligenceLayer:
         self._subminds: Optional[SubMindRegistry] = None
         self._dream_timer: Optional[DreamCycleTimer] = None
         self._cancel_tokens: Dict[str, CancelToken] = {}
-        self._task_seq = 0
+        self._request_seq = 0
         self._started = False
         self._stopped = False
         self._lock = threading.Lock()
@@ -235,7 +235,7 @@ class IntelligenceLayer:
         task: Callable[[], object],
         *,
         tier: TierEnum = TierEnum.FOREGROUND,
-        task_id: Optional[str] = None,
+        request_id: Optional[str] = None,
         score: Optional[int] = None,
         held_resources=(),
     ):
@@ -243,11 +243,11 @@ class IntelligenceLayer:
             raise RuntimeError("IntelligenceLayer not started")
         if self._stopped:
             raise RuntimeError("IntelligenceLayer is stopped")
-        if task_id is None:
-            self._task_seq += 1
-            task_id = f"task-{self._task_seq}"
+        if request_id is None:
+            self._request_seq += 1
+            request_id = f"task-{self._task_seq}"
         token = CancelToken()
-        self._cancel_tokens[task_id] = token
+        self._cancel_tokens[request_id] = token
         # ``held_resources`` (default empty) declares the exclusive
         # resources this task holds while running, for the SubMind arbiter's
         # contention check (ADR-0189 §2). Empty = no holds = unchanged from
@@ -255,7 +255,7 @@ class IntelligenceLayer:
         return self._executor.submit(
             task,
             tier=tier,
-            task_id=task_id,
+            request_id=request_id,
             score=score,
             cancel_token=token,
             held_resources=held_resources,

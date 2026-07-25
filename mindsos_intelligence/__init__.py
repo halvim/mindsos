@@ -53,7 +53,7 @@ from .phase_1 import (
     InterpretationResult,
     interpret,
 )
-from .orchestrator import LifecyclePhase, Orchestrator, TaskOutcome
+from .orchestrator import LifecyclePhase, Orchestrator, RequestOutcome
 from .signal_sources import register_signal_sources
 from .als_subsystems import register_als_subsystems
 

@@ -44,7 +44,7 @@ def test_recover_writes_crash_tombstone_episode():
     store = InMemoryCheckpointStore()
     store.record(
         CheckpointMarker(
-            task_id="t-crashed",
+            request_id="t-crashed",
             task_input_ref="ti:x",
             task_pattern_iri="tp:x",
             last_phase="EXECUTION",
@@ -65,12 +65,12 @@ def test_recover_is_idempotent_on_existing_episode():
     kl = KnowledgeLayer.bootstrap()
     d = _dispatcher(kl)
     s1 = InMemoryCheckpointStore()
-    s1.record(CheckpointMarker(task_id="t1", task_pattern_iri="tp:x"))
+    s1.record(CheckpointMarker(request_id="t1", task_pattern_iri="tp:x"))
     recover_unconsolidated(s1, d)
     # A second scan that sees the same task id finds the Episode already
     # present and writes no duplicate (ADR-0176 §4).
     s2 = InMemoryCheckpointStore()
-    s2.record(CheckpointMarker(task_id="t1", task_pattern_iri="tp:x"))
+    s2.record(CheckpointMarker(request_id="t1", task_pattern_iri="tp:x"))
     recover_unconsolidated(s2, d)
     assert len(_episodes(kl)) == 1
 
@@ -78,7 +78,7 @@ def test_recover_is_idempotent_on_existing_episode():
 def test_consolidated_marker_not_recovered():
     kl = KnowledgeLayer.bootstrap()
     store = InMemoryCheckpointStore()
-    store.record(CheckpointMarker(task_id="t1"))
+    store.record(CheckpointMarker(request_id="t1"))
     store.mark_consolidated("t1")
     assert recover_unconsolidated(store, _dispatcher(kl)) == []
     assert _episodes(kl) == []
@@ -100,6 +100,6 @@ def test_orchestrator_records_then_clears_checkpoint_on_success():
         task_scope="task-1",
         checkpoint_store=store,
     )
-    outcome = orch.run_lifecycle("hi", task_id="task-7")
+    outcome = orch.run_lifecycle("hi", request_id="task-7")
     assert outcome.status == "succeeded"
     assert store.iter_unconsolidated() == []  # recorded at triggers, cleared on consolidation

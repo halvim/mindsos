@@ -28,7 +28,7 @@ def _write_episode(dispatcher, episode_id, task_pattern_iri=_TP):
             },
         }
     }
-    dispatcher.dispatch("capacity:consolidate:mm", record, task_id=episode_id)
+    dispatcher.dispatch("capacity:consolidate:mm", record, request_id=episode_id)
 
 
 def test_metrics_zero_for_fresh_user():

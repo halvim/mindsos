@@ -84,7 +84,7 @@ def execute_pipeline(
     pipeline: Any,
     initial_inputs: Optional[Mapping[str, Any]] = None,
     *,
-    task_id: str,
+    request_id: str,
     cancel_token: Any = None,
     mm: Any = None,
     pipeline_run_ref: Optional[str] = None,
@@ -131,7 +131,7 @@ def execute_pipeline(
             )
         from .capacity_mm_writer import CapacityMMWriter
 
-        writer = CapacityMMWriter(mm, task_id, pipeline_run_ref)
+        writer = CapacityMMWriter(mm, request_id, pipeline_run_ref)
         for ds, value in blackboard.items():
             # Idempotent seed: a start input already carried in the index (e.g.
             # a raw_task root the caller pre-minted) is not re-minted. Empty
@@ -167,7 +167,7 @@ def execute_pipeline(
             step.capacity_iri,
             inputs,
             cancel_token=cancel_token,
-            task_id=task_id,
+            request_id=request_id,
             step_id=f"{task_id}-step-{idx}",
         )
         # ADR-0196 — a step asked the user; halt the walk and bubble the

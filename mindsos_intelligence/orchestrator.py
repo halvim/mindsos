@@ -48,7 +48,7 @@ _OUTCOME_BY_STATUS = {
 
 ATTENTION_SCORE_IRI = capacity_iri(CATEGORY_SCORING, "attention_score")
 
-DEFAULT_PER_TASK_REPLAN_BUDGET = 5
+DEFAULT_PER_REQUEST_REPLAN_BUDGET = 5
 
 
 class LifecyclePhase(IntEnum):
@@ -59,7 +59,7 @@ class LifecyclePhase(IntEnum):
 
 
 @dataclass
-class TaskOutcome:
+class RequestOutcome:
     status: str  # succeeded | dont_know | aborted | pending_confirmation
     task_run_ref: Optional[str]  # None on the pending_confirmation path (no TaskRun yet)
     outcome: Any = None
@@ -81,7 +81,7 @@ class Orchestrator:
         mm,
         *,
         task_scope: str = "task",
-        per_task_replan_budget: int = DEFAULT_PER_TASK_REPLAN_BUDGET,
+        per_request_replan_budget: int = DEFAULT_PER_REQUEST_REPLAN_BUDGET,
         simplified: bool = False,
         checkpoint_store: Any = None,
         mm_persister: Any = None,
@@ -89,7 +89,7 @@ class Orchestrator:
         self._dispatcher = dispatcher
         self._mm = mm
         self._task_scope = task_scope
-        self._budget = per_task_replan_budget
+        self._budget = per_request_replan_budget
         self._simplified = simplified
         self._checkpoint_store = checkpoint_store
         # DQ-8 / CR#4 — narrow MM persister (``persist(metagraph, graph)``);
@@ -101,12 +101,12 @@ class Orchestrator:
         self._lifecycle_seq = 0
         self._seq_lock = threading.Lock()
 
-    def _writer_scope(self, task_id) -> str:
+    def _writer_scope(self, request_id) -> str:
         """A task-UNIQUE chain-writer scope (DQ-8 / CR#4). ``task_id`` when the
         caller supplies one; else a per-orchestrator counter. This uniqueness
         is what keeps two tasks' chain IRIs — and thus their ``episode_id``s —
         from colliding in one resident session."""
-        if task_id is not None:
+        if request_id is not None:
             return f"{self._task_scope}:{task_id}"
         with self._seq_lock:
             self._lifecycle_seq += 1
@@ -114,7 +114,7 @@ class Orchestrator:
 
     # ── attention-score write-through (PB-6 / D32.5c.4) ────────────────
 
-    def update_priority(self, task_run, *, tier=TierEnum.FOREGROUND, executor=None, task_id=None) -> int:
+    def update_priority(self, request_run, *, tier=TierEnum.FOREGROUND, executor=None, request_id=None) -> int:
         """Invoke L3 ``scoring.attention_score`` and write the result to the
         queue (if an executor is given) AND through to ``TaskRun.attention_
         score`` under the MM writer lock (atomic, D32.5c.4)."""
@@ -122,15 +122,15 @@ class Orchestrator:
             ATTENTION_SCORE_IRI, {DS_SCORE_INPUT: tier}
         ).outputs[DS_SCORE]
         with self._mm.lock.write_locked():
-            task_run.attention_score = score
-        if executor is not None and task_id is not None:
-            executor.write_priority(task_id, score=score, tier=tier)
+            request_run.attention_score = score
+        if executor is not None and request_id is not None:
+            executor.write_priority(request_id, score=score, tier=tier)
         return score
 
     # ── consolidation seam (Phase 5 -> completion; ADR-0176) ───────────
 
     def _consolidate(
-        self, task_run, task_pattern_iri, task_id=None, writer=None,
+        self, request_run, task_pattern_iri, request_id=None, writer=None,
         capacity_graphs=None,
     ) -> None:
         """Freeze the MM + write the Episode on a terminal path (retain-by-
@@ -147,54 +147,54 @@ class Orchestrator:
         grounded value must already be codec-safe (primitive/dict/list)."""
         if self._simplified:
             return
-        consolidation.consolidate_task(
+        consolidation.consolidate_request(
             self._dispatcher,
             self._mm,
-            task_run,
+            request_run,
             task_pattern_iri=task_pattern_iri,
-            outcome_classification=_OUTCOME_BY_STATUS.get(task_run.status, "failed"),
+            outcome_classification=_OUTCOME_BY_STATUS.get(request_run.status, "failed"),
             chain_graph=writer.chain_graph() if writer is not None else None,
             mm_persister=self._mm_persister,
             capacity_graphs=capacity_graphs or None,
         )
-        if self._checkpoint_store is not None and task_id is not None:
-            self._checkpoint_store.mark_consolidated(task_id)
+        if self._checkpoint_store is not None and request_id is not None:
+            self._checkpoint_store.mark_consolidated(request_id)
 
-    def _checkpoint(self, task_id, **fields) -> None:
+    def _checkpoint(self, request_id, **fields) -> None:
         """Record a crash-recovery checkpoint at a D-B50 trigger (no-op when no
         store is configured or the task is anonymous)."""
-        if self._checkpoint_store is None or task_id is None:
+        if self._checkpoint_store is None or request_id is None:
             return
         crash_recovery.record_checkpoint(
-            self._checkpoint_store, task_id=task_id, **fields
+            self._checkpoint_store, request_id=request_id, **fields
         )
 
     # ── six-phase lifecycle ────────────────────────────────────────────
 
-    def run_lifecycle(self, task_input, *, tier=TierEnum.FOREGROUND, executor=None, task_id=None) -> TaskOutcome:
+    def run_lifecycle(self, request_input, *, tier=TierEnum.FOREGROUND, executor=None, request_id=None) -> RequestOutcome:
         # Task-unique scope (DQ-8): drives both the chain-writer graph and the
         # capacity grounding run's task_id / run refs (Step 5), so a task with
         # no explicit ``task_id`` still grounds into an isolated per-run graph.
-        scope = self._writer_scope(task_id)
+        scope = self._writer_scope(request_id)
         writer = ChainArtifactWriter(self._mm, scope)
 
-        task_input_ref = f"taskinput:{task_id}" if task_id is not None else None
+        task_input_ref = f"taskinput:{task_id}" if request_id is not None else None
 
         # Phase 1 — task interpretation (HintSet + MappingResult)
-        p1 = phase_1.run(self._dispatcher, writer, task_input)
+        p1 = phase_1.run(self._dispatcher, writer, request_input)
         # ADR-0196 — interpretation asked the user. Short-circuit into a
         # non-terminal pending_confirmation outcome BEFORE plan/exec: no
         # TaskRun, no consolidation, terminal invariants untouched. (The
         # mid-execution needs_input path — execution.run halt+bubble — is
         # deferred, L4-25.)
         if isinstance(p1, NeedsInput):
-            return TaskOutcome(
+            return RequestOutcome(
                 status="pending_confirmation",
                 task_run_ref=None,
                 pending_confirmation=p1,
             )
         self._checkpoint(
-            task_id, last_phase="INTERPRETATION", task_input_ref=task_input_ref
+            request_id, last_phase="INTERPRETATION", task_input_ref=task_input_ref
         )
 
         # Phase 2 — Plan + Pipeline construction. Thread the Phase-1
@@ -205,15 +205,15 @@ class Orchestrator:
             resolved_reference=p1.resolved_reference,
         )
         self._checkpoint(
-            task_id,
+            request_id,
             last_phase="PLAN_CONSTRUCTION",
             task_input_ref=task_input_ref,
             task_pattern_iri=p1.task_pattern_iri,
         )
 
         # TaskRun wraps the whole execution (Level 6)
-        task_run = writer.emit_task_run(plan_ref=plan_result.plan_ref)
-        self.update_priority(task_run, tier=tier, executor=executor, task_id=task_id)
+        request_run = writer.emit_request_run(plan_ref=plan_result.plan_ref)
+        self.update_priority(request_run, tier=tier, executor=executor, request_id=request_id)
 
         # Step 5 — solve seed + capacity-graph collection. When the plan names a
         # ``solve_target`` (a real consumer, not v0) and we're not in simplified
@@ -236,7 +236,7 @@ class Orchestrator:
         while True:
             try:
                 execution.run(
-                    self._dispatcher, writer, plan_result, task_run,
+                    self._dispatcher, writer, plan_result, request_run,
                     mm=self._mm, run_scope=scope, solve_seed=solve_seed,
                     capacity_graphs=capacity_graphs, run_attempt=replans,
                 )
@@ -245,25 +245,25 @@ class Orchestrator:
                 # MEMBER_RETRY_CAP still failing (all-or-nothing abort). The
                 # fold did not run; abort the task (distinct from a reducer
                 # dont_know and from a replan). Consolidate what grounded.
-                task_run.status = "aborted"
+                request_run.status = "aborted"
                 self._consolidate(
-                    task_run, p1.task_pattern_iri, task_id, writer, capacity_graphs
+                    request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
                 )
-                return TaskOutcome("aborted", task_run.iri, replans_used=replans)
+                return RequestOutcome("aborted", request_run.iri, replans_used=replans)
             if self._simplified:
                 break
             sufficient = sufficient_predicate.evaluate(self._dispatcher)
             verdict = replan_check.check(self._dispatcher)
             if verdict.decision == "abort":
                 writer.emit_replan_record("pipeline", verdict)
-                task_run.status = "aborted"
+                request_run.status = "aborted"
                 self._consolidate(
-                    task_run, p1.task_pattern_iri, task_id, writer, capacity_graphs
+                    request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
                 )
-                return TaskOutcome("aborted", task_run.iri, replans_used=replans)
+                return RequestOutcome("aborted", request_run.iri, replans_used=replans)
             if verdict.decision == "replan" and replans < self._budget:
                 replans += 1
-                invalidated = replan_check.invalidate_at_and_below(task_run, "pipeline")
+                invalidated = replan_check.invalidate_at_and_below(request_run, "pipeline")
                 writer.emit_replan_record(
                     "pipeline", verdict, invalidated_refs=invalidated
                 )
@@ -273,25 +273,25 @@ class Orchestrator:
         # Phase 6 — failure diagnosis on the dont-know path
         if not self._simplified and not sufficient:
             blame = phase_6.diagnose(self._dispatcher)
-            task_run.status = "failed"
+            request_run.status = "failed"
             self._consolidate(
-                task_run, p1.task_pattern_iri, task_id, writer, capacity_graphs
+                request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
             )
-            return TaskOutcome(
+            return RequestOutcome(
                 "dont_know",
-                task_run.iri,
+                request_run.iri,
                 dont_know_reason="INSUFFICIENT",
                 blame=blame,
                 replans_used=replans,
             )
 
         # Phase 5 -> completion: freeze MM + write Episode (ADR-0176).
-        task_run.status = "completed"
+        request_run.status = "completed"
         self._consolidate(
-            task_run, p1.task_pattern_iri, task_id, writer, capacity_graphs
+            request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
         )
-        return TaskOutcome(
-            "succeeded", task_run.iri, outcome=p1.task_pattern_iri, replans_used=replans
+        return RequestOutcome(
+            "succeeded", request_run.iri, outcome=p1.task_pattern_iri, replans_used=replans
         )
 
 

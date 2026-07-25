@@ -83,8 +83,8 @@ class _RecordingOrch:
     def __init__(self, outcome=None, exc=None):
         self.calls, self._outcome, self._exc = [], outcome, exc
 
-    def run_lifecycle(self, task_input, **kw):
-        self.calls.append(task_input)
+    def run_lifecycle(self, request_input, **kw):
+        self.calls.append(request_input)
         if self._exc is not None:
             raise self._exc
         return self._outcome

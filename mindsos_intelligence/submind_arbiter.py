@@ -60,7 +60,7 @@ class _PendingNeed:
     tier: TierEnum
     blocked_on: FrozenSet[str] = frozenset()
     attempts: int = 0
-    running_task_id: Optional[str] = None
+    running_request_id: Optional[str] = None
     timer: Any = None
 
 
@@ -159,7 +159,7 @@ class SubMindArbiter:
     # ── core decision (lock held) ────────────────────────────────────
 
     def _evaluate_locked(self, need: _PendingNeed, resources: FrozenSet[str]) -> None:
-        if need.running_task_id is not None:
+        if need.running_request_id is not None:
             # A resolver is already in flight for this need; an escalation
             # while in-flight does not stack a second dispatch.
             return
@@ -175,26 +175,26 @@ class SubMindArbiter:
             return
         # Contended: park, and cooperatively cancel holders we outrank.
         need.blocked_on = resources
-        self.parked.append((need.submind_name, tuple(h.task_id for h in conflicts)))
+        self.parked.append((need.submind_name, tuple(h.request_id for h in conflicts)))
         for hold in conflicts:
             if self._outranks(need, hold) and hold.cancel is not None:
                 hold.cancel()
 
     def _dispatch_locked(self, need: _PendingNeed, resources: FrozenSet[str]) -> None:
-        task_id = f"submind-resolver-{need.submind_name}-{next(self._seq)}"
+        request_id = f"submind-resolver-{need.submind_name}-{next(self._seq)}"
         token = self._token_factory()
-        need.running_task_id = task_id
+        need.running_request_id = request_id
         definition, signal, tier = need.definition, need.signal, need.tier
         score = int(getattr(signal, "attention_score", 0))
 
         def _resolver() -> dict:
-            return self._run_resolver(definition, signal, token, task_id)
+            return self._run_resolver(definition, signal, token, request_id)
 
-        self.dispatched.append((need.submind_name, task_id))
+        self.dispatched.append((need.submind_name, request_id))
         fut = self._executor.submit(
             _resolver,
             tier=tier,
-            task_id=task_id,
+            request_id=request_id,
             score=score,
             cancel_token=token,
             preempt=False,
@@ -207,7 +207,7 @@ class SubMindArbiter:
     # ── resolver body (runs on an executor worker) ────────────────────
 
     def _run_resolver(
-        self, definition: Any, signal: Any, token: Any, task_id: str
+        self, definition: Any, signal: Any, token: Any, request_id: str
     ) -> dict:
         start = getattr(definition, "resolver_start_datastate", None)
         goal = getattr(definition, "resolver_goal_datastate", None)
@@ -218,7 +218,7 @@ class SubMindArbiter:
             except self._pnf:
                 pipeline = None  # goal unreachable → dont-know (below)
         if pipeline is None:
-            return self._fire_fallback(definition, signal, task_id)
+            return self._fire_fallback(definition, signal, request_id)
         init = {start: signal.reading} if start is not None else {}
         # D-B: ground + persist this resolver run into the injected MM. Slice A
         # made `pipeline_run_ref` mandatory whenever `mm` is supplied (it killed
@@ -230,7 +230,7 @@ class SubMindArbiter:
             self._dispatcher,
             pipeline,
             init,
-            task_id=task_id,
+            request_id=request_id,
             cancel_token=token,
             mm=self._mm,
             pipeline_run_ref=f"pipelinerun:{task_id}",
@@ -240,7 +240,7 @@ class SubMindArbiter:
             "cancelled": bool(getattr(result, "cancelled", False)),
         }
 
-    def _fire_fallback(self, definition: Any, signal: Any, task_id: str) -> dict:
+    def _fire_fallback(self, definition: Any, signal: Any, request_id: str) -> dict:
         """Goal unreachable → honest dont-know. Fire the declared direct
         ask-human fallback (a 1-step terminator — no recursive planning),
         so the need is escalated, not silently dropped."""
@@ -249,7 +249,7 @@ class SubMindArbiter:
         if not fallback:
             return {"resolved": False, "dont_know": True, "fallback": False}
         res = self._dispatcher.dispatch(
-            fallback, {}, task_id=f"{task_id}-fallback"
+            fallback, {}, request_id=f"{task_id}-fallback"
         )
         return {
             "resolved": bool(getattr(res, "success", False)),
@@ -264,7 +264,7 @@ class SubMindArbiter:
             need = self._pending.get(submind_name)
             if need is None:
                 return  # cleared (vital recovered) while in flight
-            need.running_task_id = None
+            need.running_request_id = None
             exc = None
             outcome: dict = {}
             try:
@@ -308,7 +308,7 @@ class SubMindArbiter:
     def _retry(self, submind_name: str) -> None:
         with self._lock:
             need = self._pending.get(submind_name)
-            if need is None or need.running_task_id is not None:
+            if need is None or need.running_request_id is not None:
                 return
             need.timer = None
             resources = frozenset(
@@ -318,19 +318,19 @@ class SubMindArbiter:
 
     # ── event-driven resume on resource release ───────────────────────
 
-    def _on_release(self, freed: FrozenSet[str], task_id: str) -> None:
+    def _on_release(self, freed: FrozenSet[str], request_id: str) -> None:
         with self._lock:
             # Most-urgent parked need first (lower tier int, higher score).
             candidates = [
                 n
                 for n in self._pending.values()
-                if n.running_task_id is None and (n.blocked_on & freed)
+                if n.running_request_id is None and (n.blocked_on & freed)
             ]
             candidates.sort(
                 key=lambda n: (int(n.tier), -int(getattr(n.signal, "attention_score", 0)))
             )
             for need in candidates:
-                if need.running_task_id is not None:
+                if need.running_request_id is not None:
                     continue
                 resources = frozenset(
                     getattr(need.definition, "resolver_resources", ()) or ()
@@ -356,15 +356,15 @@ class SubMindArbiter:
     def _cancel_inflight(self, need: _PendingNeed) -> None:
         # Cooperatively cancel an in-flight resolver via its ledger hold
         # (the executor wired the hold's cancel to the task's token).
-        task_id = need.running_task_id
-        if task_id is None:
+        request_id = need.running_request_id
+        if request_id is None:
             return
         for r in getattr(need.definition, "resolver_resources", ()) or ():
             hold = self._ledger.holder_of(r)
-            if hold is not None and hold.task_id == task_id and hold.cancel:
+            if hold is not None and hold.request_id == request_id and hold.cancel:
                 hold.cancel()
                 break
-        need.running_task_id = None
+        need.running_request_id = None
 
 
 __all__ = ["SubMindArbiter"]

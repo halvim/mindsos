@@ -563,7 +563,7 @@ class CapacityLayer:
         *,
         session: SessionArg = None,
         context: Optional[Mapping[str, Any]] = None,
-        task_id: Optional[str] = None,
+        request_id: Optional[str] = None,
         step_id: Optional[str] = None,
     ) -> InvocationResult:
         """Run the Python implementation bound to ``capacity_iri``.
@@ -630,7 +630,7 @@ class CapacityLayer:
                 declaration,
                 inputs,
                 context=write_ctx,
-                task_id=task_id,
+                request_id=request_id,
                 step_id=step_id,
                 problem_trace_sink=self.problem_trace,
             )
@@ -660,7 +660,7 @@ class CapacityLayer:
             declaration,
             inputs,
             context=ctx,
-            task_id=task_id,
+            request_id=request_id,
             step_id=step_id,
             problem_trace_sink=self.problem_trace,
         )

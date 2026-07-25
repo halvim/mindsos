@@ -29,23 +29,23 @@ _DREAM_CAPACITY_IRIS = (
 
 
 def dream_task_ref(
-    *, source_episode_iri: str, task_run_iri: str = "", failed: bool = False
+    *, source_episode_iri: str, request_run_iri: str = "", failed: bool = False
 ) -> Dict[str, Any]:
     """Build the ``dream.task_ref`` record the dream capacities consume."""
     return {
         "source_episode_iri": source_episode_iri,
-        "task_run_iri": task_run_iri,
+        "task_run_iri": request_run_iri,
         "failed": bool(failed),
     }
 
 
-def invoke_dream_capacities(dispatcher: Any, task_ref: Dict[str, Any]) -> List[Any]:
+def invoke_dream_capacities(dispatcher: Any, request_ref: Dict[str, Any]) -> List[Any]:
     """Invoke the 3 ``dream.*`` capacities over ``task_ref``; return the emitted
     ``DreamDirective``s (dont-know ``None`` returns skipped). Each directive
     carries ``source_episode_iri`` provenance."""
     directives: List[Any] = []
     for iri in _DREAM_CAPACITY_IRIS:
-        result = dispatcher.dispatch(iri, {DS_DREAM_TASK_REF: task_ref})
+        result = dispatcher.dispatch(iri, {DS_DREAM_TASK_REF: request_ref})
         if not getattr(result, "success", False):
             continue
         directive = result.outputs.get(DS_DREAM_DIRECTIVE)
@@ -65,12 +65,12 @@ def run_dream_cycle(
     directive via ``re_executor`` (if given). Returns all emitted directives."""
     all_directives: List[Any] = []
     for ep in episodes:
-        task_ref = dream_task_ref(
+        request_ref = dream_task_ref(
             source_episode_iri=ep["source_episode_iri"],
-            task_run_iri=ep.get("task_run_iri", ""),
+            request_run_iri=ep.get("task_run_iri", ""),
             failed=ep.get("failed", False),
         )
-        for directive in invoke_dream_capacities(dispatcher, task_ref):
+        for directive in invoke_dream_capacities(dispatcher, request_ref):
             if re_executor is not None:
                 re_executor(directive)
             all_directives.append(directive)

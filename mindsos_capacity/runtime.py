@@ -74,7 +74,7 @@ class ProblemTraceRecord:
         entry_id: UUID4 string (default = fresh per construction).
     """
 
-    task_id: str
+    request_id: str
     error_kind: str
     step_id: Optional[str] = None
     mm_ref: Optional[str] = None
@@ -120,7 +120,7 @@ class ProblemTraceSink:
 def emit_problem_trace(
     sink: ProblemTraceSink,
     *,
-    task_id: str,
+    request_id: str,
     error_kind: str,
     step_id: Optional[str] = None,
     mm_ref: Optional[str] = None,
@@ -142,12 +142,12 @@ def emit_problem_trace(
     Returns:
         The constructed (and emitted) :class:`ProblemTraceRecord`.
     """
-    if not task_id:
+    if not request_id:
         raise ProblemTraceError("problem-trace record requires task_id")
     if not error_kind:
         raise ProblemTraceError("problem-trace record requires error_kind")
     record = ProblemTraceRecord(
-        task_id=task_id,
+        request_id=request_id,
         error_kind=error_kind,
         step_id=step_id,
         mm_ref=mm_ref,
@@ -166,7 +166,7 @@ def invoke(
     inputs: Mapping[str, Any],
     *,
     context: "Optional[Union[Mapping[str, Any], CapacityContext]]" = None,
-    task_id: Optional[str] = None,
+    request_id: Optional[str] = None,
     step_id: Optional[str] = None,
     problem_trace_sink: Optional[ProblemTraceSink] = None,
 ) -> InvocationResult:
@@ -257,10 +257,10 @@ def invoke(
             if isinstance(exc, InputContractError)
             else f"exception:{type(exc).__name__}"
         )
-        if problem_trace_sink is not None and task_id is not None:
+        if problem_trace_sink is not None and request_id is not None:
             emit_problem_trace(
                 problem_trace_sink,
-                task_id=task_id,
+                request_id=request_id,
                 error_kind=error_kind,
                 step_id=step_id,
                 capacity_iri=declaration.iri,

@@ -347,7 +347,7 @@ def _capacity_type_name(cap_iri: str) -> str:
 
 
 def datastate_instance_iri(
-    type_iri: str, task_id: str, pipeline_run_ref: str, seq: int
+    type_iri: str, request_id: str, pipeline_run_ref: str, seq: int
 ) -> str:
     """Return a per-invocation DataStateInstance node IRI (ADR-0201).
 
@@ -356,25 +356,25 @@ def datastate_instance_iri(
     :func:`datastate_iri` — the ``#`` fragment is out of the type charset.
     """
     name = _datastate_type_name(type_iri)
-    _require_nonempty(task_id, "task_id")
+    _require_nonempty(request_id, "task_id")
     run = _sanitize_run_ref(pipeline_run_ref)
     return f"datastate:{name}{_INSTANCE_SEP}{task_id}.{run}.{int(seq)}"
 
 
 def capacity_instance_iri(
-    cap_iri: str, task_id: str, pipeline_run_ref: str, seq: int
+    cap_iri: str, request_id: str, pipeline_run_ref: str, seq: int
 ) -> str:
     """Return a per-invocation CapacityInstance node IRI (ADR-0201).
 
     Format: ``capacity:<category>:<name>#<task_id>.<run>.<seq>``.
     """
     name = _capacity_type_name(cap_iri)
-    _require_nonempty(task_id, "task_id")
+    _require_nonempty(request_id, "task_id")
     run = _sanitize_run_ref(pipeline_run_ref)
     return f"capacity:{name}{_INSTANCE_SEP}{task_id}.{run}.{int(seq)}"
 
 
-def datastate_instance_root_iri(type_iri: str, task_id: str) -> str:
+def datastate_instance_root_iri(type_iri: str, request_id: str) -> str:
     """Return the grounding-DAG root DataStateInstance IRI (ADR-0201 DQ-1):
     the distinguished ``raw_task`` ingress for a task.
 
@@ -382,7 +382,7 @@ def datastate_instance_root_iri(type_iri: str, task_id: str) -> str:
     the root is task-level, minted once before any pipeline run.
     """
     name = _datastate_type_name(type_iri)
-    _require_nonempty(task_id, "task_id")
+    _require_nonempty(request_id, "task_id")
     return f"datastate:{name}{_INSTANCE_SEP}{task_id}.root"
 
 

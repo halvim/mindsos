@@ -122,7 +122,7 @@ class PipelineRun:
 
 
 @dataclass
-class TaskRun:
+class RequestRun:
     iri: str
     task_input_ref: Optional[str] = None
     plan_ref: Optional[str] = None
@@ -270,8 +270,8 @@ class ChainArtifactWriter:
         self._emit(art.iri, TYPE_PIPELINE_RUN, art)
         return art
 
-    def emit_task_run(self, *, task_input_ref=None, plan_ref=None) -> TaskRun:
-        art = TaskRun(
+    def emit_request_run(self, *, task_input_ref=None, plan_ref=None) -> RequestRun:
+        art = RequestRun(
             iri=self._mint("taskrun"),
             task_input_ref=task_input_ref,
             plan_ref=plan_ref,

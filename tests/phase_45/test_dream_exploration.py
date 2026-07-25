@@ -59,7 +59,7 @@ def test_registered_and_invokable():
     result = layer.invoke(
         "capacity:dream:exploration",
         {DS_DREAM_TASK_REF: _EP},
-        task_id="dream-test",
+        request_id="dream-test",
     )
     assert result.success is True
     directive = result.outputs[DS_DREAM_DIRECTIVE]

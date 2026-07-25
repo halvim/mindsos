@@ -127,7 +127,7 @@ class DreamDirective:
     execution_policy: str
     entry_point: str
     source_episode_iri: str
-    task_run_iri: str
+    request_run_iri: str
     replan_injection: Optional[ReplanInjectionDirective] = None
 
 
@@ -191,7 +191,7 @@ def dream_datastates() -> List[DataState]:
 # ── Capacity bodies (directive-emitters) ───────────────────────────────
 
 
-def _require_task_ref(kwargs: Any) -> Optional[dict]:
+def _require_request_ref(kwargs: Any) -> Optional[dict]:
     """Extract + minimally validate the task-ref record.
 
     Returns ``None`` (dont-know) when the source episode is absent — the
@@ -209,14 +209,14 @@ def _dream_maintenance_impl(**kwargs: Any) -> Optional[DreamDirective]:
     Emits a directive instructing the L4 loop to replay the recorded
     chain artifacts under pinned state (no generative re-invocation).
     """
-    record = _require_task_ref(kwargs)
+    record = _require_request_ref(kwargs)
     if record is None:
         return None
     return DreamDirective(
         execution_policy=DreamExecutionPolicy.REPLAY_RECORDED.value,
         entry_point=ENTRY_POINT_LATEST_ACTIVE_TASKRUN,
         source_episode_iri=record["source_episode_iri"],
-        task_run_iri=record.get("task_run_iri", ""),
+        request_run_iri=record.get("task_run_iri", ""),
         replan_injection=None,
     )
 
@@ -227,14 +227,14 @@ def _dream_exploration_impl(**kwargs: Any) -> Optional[DreamDirective]:
     Emits a directive instructing the L4 loop to re-invoke generative
     capacities against current L2/L3 (drift detection / alt strategies).
     """
-    record = _require_task_ref(kwargs)
+    record = _require_request_ref(kwargs)
     if record is None:
         return None
     return DreamDirective(
         execution_policy=DreamExecutionPolicy.RE_EXECUTE_CAPACITIES.value,
         entry_point=ENTRY_POINT_LATEST_ACTIVE_TASKRUN,
         source_episode_iri=record["source_episode_iri"],
-        task_run_iri=record.get("task_run_iri", ""),
+        request_run_iri=record.get("task_run_iri", ""),
         replan_injection=None,
     )
 
@@ -247,7 +247,7 @@ def _dream_retry_impl(**kwargs: Any) -> Optional[DreamDirective]:
     :class:`ReplanInjectionDirective`; on a non-failed episode the
     capacity returns ``None`` (dont-know — retry only applies to failures).
     """
-    record = _require_task_ref(kwargs)
+    record = _require_request_ref(kwargs)
     if record is None:
         return None
     if not record.get("failed"):
@@ -259,7 +259,7 @@ def _dream_retry_impl(**kwargs: Any) -> Optional[DreamDirective]:
         execution_policy=DreamExecutionPolicy.RE_EXECUTE_CAPACITIES.value,
         entry_point=ENTRY_POINT_LATEST_ACTIVE_TASKRUN,
         source_episode_iri=source,
-        task_run_iri=record.get("task_run_iri", ""),
+        request_run_iri=record.get("task_run_iri", ""),
         replan_injection=ReplanInjectionDirective(
             replan_level=REPLAN_LEVEL_TASKRUN,
             source_episode_iri=source,

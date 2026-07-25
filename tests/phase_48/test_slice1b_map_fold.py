@@ -127,17 +127,17 @@ def _harness(member_impl):
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess)
     writer = ChainArtifactWriter(mm, "t")
-    task_run = writer.emit_task_run()
-    return mm, disp, writer, task_run
+    request_run = writer.emit_request_run()
+    return mm, disp, writer, request_run
 
 
 def test_map_fans_out_and_fold_reduces_in_order():
     MEMBER_SEEN.clear()
     REDUCER_SEEN.clear()
-    mm, disp, writer, task_run = _harness(_member_body)
+    mm, disp, writer, request_run = _harness(_member_body)
     graphs: list = []
     execution.run(
-        disp, writer, _map_fold_plan(), task_run,
+        disp, writer, _map_fold_plan(), request_run,
         mm=mm, run_scope="t",
         solve_seed={DS_COLL: [{"m": 0}, {"m": 1}, {"m": 2}]},
         capacity_graphs=graphs,
@@ -149,7 +149,7 @@ def test_map_fans_out_and_fold_reduces_in_order():
         {"solved": {"m": 0}}, {"solved": {"m": 1}}, {"solved": {"m": 2}},
     ]]
     # Two milestone PipelineRuns (map + fold); one grounding graph per member.
-    assert len(task_run.pipeline_runs) == 2
+    assert len(request_run.pipeline_runs) == 2
     assert len(graphs) == 3
 
 
@@ -164,10 +164,10 @@ def test_all_abort_on_member_failure_skips_rest_and_fold():
             raise RuntimeError("member 1 load failure")
         return {DS_SUB: {"solved": v}}
 
-    mm, disp, writer, task_run = _harness(_fail_member_1)
+    mm, disp, writer, request_run = _harness(_fail_member_1)
     with pytest.raises(execution.MemberAbortError) as ei:
         execution.run(
-            disp, writer, _map_fold_plan(), task_run,
+            disp, writer, _map_fold_plan(), request_run,
             mm=mm, run_scope="t",
             solve_seed={DS_COLL: [{"m": 0}, {"m": 1}, {"m": 2}]},
             capacity_graphs=[],
@@ -193,9 +193,9 @@ def test_bounded_retry_accepts_first_clean_attempt():
             raise RuntimeError("transient load failure")
         return {DS_SUB: {"solved": v}}
 
-    mm, disp, writer, task_run = _harness(_fail_once)
+    mm, disp, writer, request_run = _harness(_fail_once)
     execution.run(
-        disp, writer, _map_fold_plan(), task_run,
+        disp, writer, _map_fold_plan(), request_run,
         mm=mm, run_scope="t",
         solve_seed={DS_COLL: [{"m": 0}, {"m": 1}, {"m": 2}]},
         capacity_graphs=[],
@@ -212,7 +212,7 @@ def test_no_specs_plan_is_plain_leaf_unchanged():
     proving 1b is inert unless a map/fold spec is present."""
     MEMBER_SEEN.clear()
     REDUCER_SEEN.clear()
-    mm, disp, writer, task_run = _harness(_member_body)
+    mm, disp, writer, request_run = _harness(_member_body)
     plan = PlanResult(
         plan_ref="plan:leaf",
         root_milestone_ref="m0",
@@ -221,11 +221,11 @@ def test_no_specs_plan_is_plain_leaf_unchanged():
         leaf_targets={"mA": {"start_datastate": DS_MEMBER, "target_datastate": DS_SUB}},
     )
     execution.run(
-        disp, writer, plan, task_run,
+        disp, writer, plan, request_run,
         mm=mm, run_scope="t",
         solve_seed={DS_MEMBER: {"m": 9}}, capacity_graphs=[],
     )
     # Ran the single leaf as a normal pipeline; no map fan-out, no fold.
     assert MEMBER_SEEN == [{"m": 9}]
     assert REDUCER_SEEN == []
-    assert len(task_run.pipeline_runs) == 1
+    assert len(request_run.pipeline_runs) == 1

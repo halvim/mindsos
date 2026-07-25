@@ -54,7 +54,7 @@ def _episodes(kl):
 
 def test_run_lifecycle_writes_episode_on_success():
     orch, mm, kl = _orch_with_kl()
-    outcome = orch.run_lifecycle("hello", task_id="T")
+    outcome = orch.run_lifecycle("hello", request_id="T")
     assert outcome.status == "succeeded"
     eps = _episodes(kl)
     assert len(eps) == 1
@@ -69,6 +69,6 @@ def test_run_lifecycle_writes_episode_on_success():
 
 def test_simplified_mode_skips_consolidation():
     orch, mm, kl = _orch_with_kl(simplified=True)
-    outcome = orch.run_lifecycle("hello", task_id="T")
+    outcome = orch.run_lifecycle("hello", request_id="T")
     assert outcome.status == "succeeded"
     assert _episodes(kl) == []
