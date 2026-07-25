@@ -54,6 +54,7 @@ def test_install_auto_ensures_missing_local_roles() -> None:
     """Phase 14 PB-9 — install auto-ensures all 6 Local-named role-graphs (Phase 43 §am-5: 2 base + 3 dual-scope; ADR-0150 §am-8: + task-patterns)."""
     from mindsos_knowledge import (
         ROLE_LEARNED_PARAMETERS,
+        ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
         ROLE_TASK_PATTERNS,
@@ -71,6 +72,7 @@ def test_install_auto_ensures_missing_local_roles() -> None:
         ROLE_PENDING_PROMOTIONS,
         ROLE_LEARNED_PARAMETERS,
         ROLE_TASK_PATTERNS,
+        ROLE_LEARNED_PIPELINES,
     }
 
 
@@ -83,7 +85,7 @@ def test_install_idempotent_on_already_ensured_local() -> None:
     assert len(pre.graphs) == 2
     kl.install_local_metagraph("alice", pre)
     # 6 Local-named role-graphs after install; 2 pre-ensured + 4 auto.
-    assert len(pre.graphs) == 6
+    assert len(pre.graphs) == 7
 
 
 def test_extract_pops_user_id() -> None:

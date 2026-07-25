@@ -42,6 +42,7 @@ from ..identifiers import (
     ROLE_EPISODIC_MEMORIES,
     ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
+    ROLE_LEARNED_PIPELINES,
     ROLE_LEXICON,
     ROLE_ONTOLOGY,
     ROLE_PARAMETER_STAGING,
@@ -60,6 +61,7 @@ from .installed_skills import build_installed_skills_schema
 from .lexicon import build_lexicon_schema
 from .episodic_memories import build_episodic_memories_schema
 from .learned_parameters import build_learned_parameters_schema
+from .learned_pipelines import build_learned_pipelines_schema
 from .ontology import build_ontology_schema
 from .parameter_staging import build_parameter_staging_schema
 from .pending_promotions import build_pending_promotions_schema
@@ -92,6 +94,8 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     ROLE_INSTALLED_SKILLS: build_installed_skills_schema,
     # feat/subminds addition per ADR-0150 §am-7.
     ROLE_SUBMINDS: build_subminds_schema,
+    # feat/learned-pipeline-persistence addition per ADR-0203.
+    ROLE_LEARNED_PIPELINES: build_learned_pipelines_schema,
 }
 
 
@@ -188,6 +192,8 @@ __all__ = [
     "build_installed_skills_schema",
     # feat/subminds builder (ADR-0150 §am-7).
     "build_subminds_schema",
+    # feat/learned-pipeline-persistence builder (ADR-0203).
+    "build_learned_pipelines_schema",
     # Dispatch surface.
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",

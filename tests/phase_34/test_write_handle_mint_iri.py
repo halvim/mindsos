@@ -99,6 +99,7 @@ def test_iri_builders_registry_phase_39_three_entries():
         ROLE_CAPACITY_GAPS,
         ROLE_INSTALLED_SKILLS,
         ROLE_LEARNED_PARAMETERS,
+        ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
         ROLE_SUBMINDS,
@@ -116,4 +117,6 @@ def test_iri_builders_registry_phase_39_three_entries():
         (ROLE_INSTALLED_SKILLS, "SkillInstallRecord"),
         # feat/subminds addition per ADR-0150 §am-7.
         (ROLE_SUBMINDS, "SubMindDefinition"),
+        # feat/learned-pipeline-persistence addition per ADR-0203.
+        (ROLE_LEARNED_PIPELINES, "LearnedPipeline"),
     }

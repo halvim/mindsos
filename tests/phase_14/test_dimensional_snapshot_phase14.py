@@ -24,6 +24,7 @@ from mindsos_knowledge import (
     ROLE_CONCEPTS,
     ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
+    ROLE_LEARNED_PIPELINES,
     ROLE_LEXICON,
     ROLE_EPISODIC_MEMORIES,
     ROLE_ONTOLOGY,
@@ -62,6 +63,8 @@ _EXPECTED_LAZY_LOCAL_ROLES = {
     ROLE_LEARNED_PARAMETERS,
     # feat/phase1-seam (ADR-0150 §am-8) — task-patterns dual-scope.
     ROLE_TASK_PATTERNS,
+    # feat/learned-pipeline-persistence (ADR-0203) — Local-only.
+    ROLE_LEARNED_PIPELINES,
 }
 
 
@@ -76,7 +79,7 @@ def test_bootstrap_global_dimensional_snapshot() -> None:
 def test_lazy_local_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
-    assert len(local.graphs) == 6
+    assert len(local.graphs) == 7
     observed = {gr.role for gr in local.graphs.values()}
     assert observed == _EXPECTED_LAZY_LOCAL_ROLES
 
