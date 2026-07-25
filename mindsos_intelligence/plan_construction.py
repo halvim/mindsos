@@ -52,7 +52,7 @@ class PlanResult:
     #: The map/fold fan-out that populates this for real rides Slice 1b + arc's
     #: planner; the v0 builder below never sets it.
     leaf_targets: Optional[Dict[str, Dict[str, str]]] = None
-    #: Slice 1b — per-milestone map/fold spec the executor interprets. Maps a
+    #: Slice 1b/2 — per-milestone map/fold spec the executor interprets. Maps a
     #: milestone ref to a kind descriptor: a ``map`` node
     #: (``{"kind": "map", "collection_ds", "member_ds", "sub_target",
     #: "out_ds"}``) fans a uniform sub-plan over the ordered members of a
@@ -60,7 +60,18 @@ class PlanResult:
     #: outputs to ``out_ds``; a ``fold`` node (``{"kind": "fold",
     #: "reducer_iri", "in_ds"}``) dispatches an L3 reducer over that ordered
     #: list. A ref absent from this map is a plain leaf (v0 / Slice-1a path,
-    #: unchanged). Emitted by the consumer's planner (arc's
+    #: unchanged).
+    #:
+    #: **Nesting (Slice 2):** a ``map`` node may additionally carry an optional
+    #: ``"sub_plan"`` — a nested plan
+    #: ``{"leaf_milestone_refs", "pipeline_refs", "milestone_specs",
+    #: "leaf_targets"?, "solve_target"?}`` (the same shape this dataclass
+    #: carries, as a plain dict). When present, each member runs that sub-plan in
+    #: an isolated sub-blackboard (seeded with the member value) instead of the
+    #: flat 1b ``find_pipeline(member_ds -> sub_target)`` leaf, and the map
+    #: collects ``sub_target`` from that sub-blackboard; the sub-plan may itself
+    #: contain a nested ``map``/``fold``. When absent, the member runs the flat
+    #: 1b path — byte-identical. Emitted by the consumer's planner (arc's
     #: ``derive_initial_plan`` shadow), not by core (locked decision 3).
     milestone_specs: Optional[Dict[str, Dict[str, Any]]] = None
 
