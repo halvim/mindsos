@@ -4,7 +4,7 @@ last_confirmed_phase: 15b
 
 # Knowledge addition lifecycle (L2)
 
-L2's role-set is closed at **14 named entries + 1 parametric alignment
+L2's role-set is closed at **15 named entries + 1 parametric alignment
 template** per
 [ADR-0150](../decisions/adr/0150-l2-knowledge-lifecycle.md) and its
 amendments (§am-5 Phase-43 +4, §am-6 `installed-skills`, §am-7
