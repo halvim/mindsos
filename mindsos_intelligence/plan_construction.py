@@ -52,6 +52,17 @@ class PlanResult:
     #: The map/fold fan-out that populates this for real rides Slice 1b + arc's
     #: planner; the v0 builder below never sets it.
     leaf_targets: Optional[Dict[str, Dict[str, str]]] = None
+    #: Slice 1b — per-milestone map/fold spec the executor interprets. Maps a
+    #: milestone ref to a kind descriptor: a ``map`` node
+    #: (``{"kind": "map", "collection_ds", "member_ds", "sub_target",
+    #: "out_ds"}``) fans a uniform sub-plan over the ordered members of a
+    #: collection DataState (ADR-0199) and writes their ordered ``sub_target``
+    #: outputs to ``out_ds``; a ``fold`` node (``{"kind": "fold",
+    #: "reducer_iri", "in_ds"}``) dispatches an L3 reducer over that ordered
+    #: list. A ref absent from this map is a plain leaf (v0 / Slice-1a path,
+    #: unchanged). Emitted by the consumer's planner (arc's
+    #: ``derive_initial_plan`` shadow), not by core (locked decision 3).
+    milestone_specs: Optional[Dict[str, Dict[str, Any]]] = None
 
 
 def _read_solve_target(plan_out: Any) -> Optional[Dict[str, str]]:
