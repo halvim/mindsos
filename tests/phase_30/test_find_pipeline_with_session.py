@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
 from mindsos_capacity import (
     CATEGORY_PERCEPTION,
     Capacity,
     DataState,
-    PipelineNotFoundError,
     ShapeDescriptor,
     find_pipeline,
 )
@@ -31,12 +28,14 @@ def test_find_pipeline_no_session_walks_global():
     assert len(pipeline) == 2
 
 
-def test_find_pipeline_with_unpopulated_session_local_raises():
-    """When session points to a Local that has no capacities, BFS fails."""
+def test_find_pipeline_unpopulated_session_local_falls_back_to_global():
+    """Session with an empty Local composes the Global pipeline via the
+    Local-preferring union view (CORE_CR step 3 — previously raised)."""
     cl = build_linear_pipeline_layer()  # Global has 2 caps
     sess = build_session("alice")  # alice has no Local capacities
 
-    # Need DataState nodes in Local for the view's iter_capacities walks.
+    # Local DataState nodes present but no Local capacity: the union view
+    # falls back to the Global producers, so the Global 2-cap chain composes.
     cl.register_datastate(
         DataState(
             name="test.input",
@@ -54,13 +53,13 @@ def test_find_pipeline_with_unpopulated_session_local_raises():
         allow_new_realm=True,
     )
 
-    with pytest.raises(PipelineNotFoundError):
-        find_pipeline(
-            cl,
-            session=sess,
-            start_datastate=DS_INPUT_IRI,
-            target_datastate=DS_OUTPUT_IRI,
-        )
+    pipeline = find_pipeline(
+        cl,
+        session=sess,
+        start_datastate=DS_INPUT_IRI,
+        target_datastate=DS_OUTPUT_IRI,
+    )
+    assert len(pipeline) == 2
 
 
 def test_find_pipeline_with_local_capacity_succeeds():
