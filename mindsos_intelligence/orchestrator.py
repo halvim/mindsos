@@ -234,11 +234,22 @@ class Orchestrator:
         replans = 0
         sufficient = True
         while True:
-            execution.run(
-                self._dispatcher, writer, plan_result, task_run,
-                mm=self._mm, run_scope=scope, solve_seed=solve_seed,
-                capacity_graphs=capacity_graphs, run_attempt=replans,
-            )
+            try:
+                execution.run(
+                    self._dispatcher, writer, plan_result, task_run,
+                    mm=self._mm, run_scope=scope, solve_seed=solve_seed,
+                    capacity_graphs=capacity_graphs, run_attempt=replans,
+                )
+            except execution.MemberAbortError:
+                # Collection-iteration Slice 1b — a map member exhausted
+                # MEMBER_RETRY_CAP still failing (all-or-nothing abort). The
+                # fold did not run; abort the task (distinct from a reducer
+                # dont_know and from a replan). Consolidate what grounded.
+                task_run.status = "aborted"
+                self._consolidate(
+                    task_run, p1.task_pattern_iri, task_id, writer, capacity_graphs
+                )
+                return TaskOutcome("aborted", task_run.iri, replans_used=replans)
             if self._simplified:
                 break
             sufficient = sufficient_predicate.evaluate(self._dispatcher)
