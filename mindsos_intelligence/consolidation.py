@@ -71,7 +71,7 @@ def consolidate_request(
     """Freeze the MM + assemble the Episode record + dispatch ``consolidate:mm``.
 
     Returns the consolidate ``InvocationResult``, or ``None`` if consolidation
-    is not wired (graceful skip). Idempotent on ``episode_id = task_run.iri``
+    is not wired (graceful skip). Idempotent on ``episode_id = request_run.iri``
     (ADR-0176 §4 — the crash-recovery startup scan relies on it).
     """
     if not consolidation_enabled(dispatcher):
@@ -104,7 +104,7 @@ def consolidate_request(
             encoders=capacity_encoders,
         )
     with mm.lock.write_locked():
-        task_input_ref = request_run.task_input_ref or f"taskinput:{task_run.iri}"
+        task_input_ref = request_run.task_input_ref or f"taskinput:{request_run.iri}"
         episode_value = {
             "task_input_ref": task_input_ref,
             "mm_root_ref": mm_root_ref,

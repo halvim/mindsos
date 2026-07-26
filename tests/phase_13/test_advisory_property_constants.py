@@ -65,7 +65,7 @@ def test_subgoal_template_props_is_frozenset() -> None:
 
 
 def test_problem_trace_entry_props_declare_design_properties() -> None:
-    assert {"capacity_iri", "task_id", "error_type", "error_message"} <= PROBLEM_TRACE_ENTRY_PROPS
+    assert {"capacity_iri", "request_id", "error_type", "error_message"} <= PROBLEM_TRACE_ENTRY_PROPS
 
 
 def test_capacity_snapshot_props_declare_design_properties() -> None:

@@ -24,7 +24,7 @@ def test_empty_task_id_raises():
     sink = ProblemTraceSink()
     with pytest.raises(ProblemTraceError) as exc_info:
         emit_problem_trace(sink, request_id="", error_kind="x")
-    assert "task_id" in str(exc_info.value)
+    assert "request_id" in str(exc_info.value)
     assert len(sink) == 0
 
 

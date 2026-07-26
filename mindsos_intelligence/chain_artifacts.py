@@ -181,7 +181,7 @@ class ChainArtifactWriter:
     def __init__(self, mm: MentalModel, task_scope: str) -> None:
         self._mm = mm
         #: Task-UNIQUE scope (DQ-8 / CR#4). The orchestrator passes a per-task
-        #: value (``<orch-scope>:<task_id>``); without it, two tasks in one
+        #: value (``<orch-scope>:<request_id>``); without it, two tasks in one
         #: session mint identical chain IRIs (``taskrun:brain:1`` …) and their
         #: Episodes collide on ``episode_id``.
         self._scope = task_scope

@@ -1,10 +1,10 @@
 """CR#4 Slice 2 / CR: capacity_mm persist Slice A — the capacity-MM writer
 grounds pipeline execution into ``capacity_mm`` (ADR-0201) as a **per-run**
-grounding DAG: one graph per ``(task_id, pipeline_run_ref)`` holding both
+grounding DAG: one graph per ``(request_id, pipeline_run_ref)`` holding both
 CapacityInstance and DataStateInstance nodes, PRODUCES/CONSUMES **intra-graph**
 edges, minted instance IRIs routing to capacity_mm. Slice A reshapes the origin
 slice's two shared fixed-role graphs into one graph per run (D-A) and removes the
-``run_ref = task_id`` default (replan collision). ``mm=None`` stays value-only.
+``run_ref = request_id`` default (replan collision). ``mm=None`` stays value-only.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ def _mm() -> MentalModel:
 
 
 def _run_graph(mm: MentalModel, request_id: str, run_ref: str):
-    """Find the single per-run instance graph for ``(task_id, run_ref)``."""
+    """Find the single per-run instance graph for ``(request_id, run_ref)``."""
     role = run_graph_role(request_id, run_ref)
     for g in mm.capacity_mm.graphs.values():
         if g.role == role:
@@ -180,7 +180,7 @@ def test_no_mm_is_value_only_and_leaves_rooms_empty():
 
 
 def test_mm_present_without_run_ref_raises():
-    """Slice A: the silent ``run_ref = task_id`` default is removed — an MM
+    """Slice A: the silent ``run_ref = request_id`` default is removed — an MM
     write without an explicit per-run ref is a programmer error, not a
     replan-colliding default."""
     mm = _mm()
@@ -190,7 +190,7 @@ def test_mm_present_without_run_ref_raises():
 
 
 def test_replan_second_run_does_not_overwrite_first():
-    """Two runs under the SAME task_id with distinct run refs get distinct
+    """Two runs under the SAME request_id with distinct run refs get distinct
     per-run graphs; the first run's nodes are untouched by the second (the
     replan collision the origin slice had)."""
     mm = _mm()

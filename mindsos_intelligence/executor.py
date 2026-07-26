@@ -9,7 +9,7 @@ outranks a running task by more than the hysteresis margin calls
 ``request_cancel`` on that task's token (the worker releases at its next
 yield).
 
-``write_priority(task_id, score=None, tier=None)`` is the single v1
+``write_priority(request_id, score=None, tier=None)`` is the single v1
 mutation primitive (PB-1): ``score`` and/or ``tier`` change a pending
 task; ``score=None`` with a ``tier`` is the "top of new tier" elevate
 default. The L3-invoking ``update_priority`` wrapper + the MM
@@ -37,7 +37,7 @@ class _Entry:
         "tier",
         "score",
         "seq",
-        "task_id",
+        "request_id",
         "fn",
         "cancel_token",
         "future",

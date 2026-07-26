@@ -32,7 +32,7 @@ def test_capacity_context_has_eleven_fields():
         "learned_parameters_snapshot",
         "mm_handle",
         "cancel_token",
-        "current_task_iri",
+        "current_request_iri",
         "current_pattern_iri",
         "version_snapshot",
         "kl",

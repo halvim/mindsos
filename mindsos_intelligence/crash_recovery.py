@@ -48,7 +48,7 @@ class CheckpointMarker:
 
 
 class InMemoryCheckpointStore:
-    """v1 checkpoint store — keyed by ``task_id`` (upsert; latest trigger wins).
+    """v1 checkpoint store — keyed by ``request_id`` (upsert; latest trigger wins).
 
     A durable Falkor-backed store is the persister-wiring follow-up (ADR-0179
     §marker store); this in-memory store makes the scan contract testable.
@@ -132,7 +132,7 @@ def recover_unconsolidated(store: Any, dispatcher: Any) -> List[str]:
                 "episode_id": marker.request_id,
                 "value": {
                     "task_input_ref": marker.task_input_ref
-                    or f"taskinput:{marker.task_id}",
+                    or f"taskinput:{marker.request_id}",
                     "mm_root_ref": None,
                     "task_pattern_iri": marker.task_pattern_iri,
                     "outcome_classification": "failed",

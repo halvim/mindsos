@@ -230,7 +230,7 @@ def test_escalation_while_in_flight_does_not_double_dispatch():
     # Simpler: call on_need twice; the resolver runs inline (ret None →
     # not resolved → backoff), so simulate in-flight via a never-finishing
     # future is overkill. Instead assert dedup: second identical need with
-    # an active running_task_id is a no-op.
+    # an active running_request_id is a no-op.
     need_defn = _Defn(res=("arm",))
     a.on_need(_Sig("energy", TierEnum.FOREGROUND, 100), TierEnum.FOREGROUND, need_defn)
     first = ex.count

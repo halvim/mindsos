@@ -162,7 +162,7 @@ def step_dream(stack: Stack, episode_iris: List[str], *, failed: bool = False) -
     episode corpus; an identity re-executor stands in for the WSD-gated
     faithful re-execution. Returns the emitted ``DreamDirective``s."""
     episodes: List[Dict[str, Any]] = [
-        {"source_episode_iri": iri, "task_run_iri": "", "failed": failed}
+        {"source_episode_iri": iri, "request_run_iri": "", "failed": failed}
         for iri in episode_iris
     ]
     return run_dream_cycle(stack.dispatcher, episodes, re_executor=lambda _d: None)
