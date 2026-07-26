@@ -23,6 +23,7 @@ from mindsos_server.pipelines import iter_local_pipelines, learn_pipeline
 from mindsos_cli.commands.brain import BrainREPL, loop
 
 from nilm_brain.control import Solver
+from nilm_brain import viz_spec
 
 USER = "nilm"
 SEGMENTS = ("cycle_recognition", "appliance_signature")
@@ -63,7 +64,7 @@ def main() -> None:
         print(f"nilm resident brain booted "
               f"({'durable/Falkor' if durable else 'ephemeral'}). "
               "Try: pl · ls · caps nilm:* · quit")
-        loop(BrainREPL(stack))
+        loop(BrainREPL(stack, viz_spec=viz_spec))
     finally:
         if client is not None:
             client.close()
