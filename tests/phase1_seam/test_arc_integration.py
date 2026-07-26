@@ -11,8 +11,8 @@ for interpretation only. Demonstrates:
 * once the arc-Local marker is set, an index request resolves silently
   (trigger is arc-Local policy, never core-hardcoded).
 
-All arc bodies + DataStates + the task-pattern live in the consumer's **Local**
-scope (task-patterns is dual-scope per ADR-0150 §am-8; Local capacities
+All arc bodies + DataStates + the request-pattern live in the consumer's **Local**
+scope (request-patterns is dual-scope per ADR-0150 §am-8; Local capacities
 reference the Global ``phase1.*`` DataStates via the ADR-0185 A2′ mirror).
 """
 
@@ -34,7 +34,7 @@ from mindsos_capacity.identifiers import (
 )
 from mindsos_capacity.needs_input import NeedsInput
 
-from mindsos_knowledge import KnowledgeLayer, ROLE_TASK_PATTERNS
+from mindsos_knowledge import KnowledgeLayer, ROLE_REQUEST_PATTERNS
 from mindsos_intelligence import (
     InterpretationResult,
     L4Dispatcher,
@@ -46,7 +46,7 @@ from mindsos_intelligence.phase_1 import HINT_REFERENCE, HINT_REFERENCE_KIND
 # arc-Local vocabulary.
 ARC_INDEX_DS = datastate_iri("arc.index_ref")
 ARC_CANON_DS = datastate_iri("arc.canonical_ref")
-ARC_PATTERN = "task-pattern:arc:solve"
+ARC_PATTERN = "request-pattern:arc:solve"
 HINT_IRI = capacity_iri(CATEGORY_HINT, "arc")
 MAP_IRI = capacity_iri(CATEGORY_DECISION, "arc_map")
 RESOLVE_IRI = capacity_iri(CATEGORY_DECISION, "arc_resolve")
@@ -105,7 +105,7 @@ def _build_arc(marker: set):
             name="arc_map", category=CATEGORY_DECISION,
             inputs=(DS_STRUCTURED_INPUT, DS_HINT_SET, DS_GOAL), outputs=(DS_MAPPING,),
             implementation=lambda **kw: {
-                DS_MAPPING: {"task_pattern_iri": ARC_PATTERN, "mapping_confidence": 1.0}
+                DS_MAPPING: {"request_pattern_iri": ARC_PATTERN, "mapping_confidence": 1.0}
             },
         ),
         session=session,
@@ -131,12 +131,12 @@ def _build_arc(marker: set):
         session=session,
     )
 
-    # arc's Local task-pattern (map target; resolves Local per ADR-0150 §am-8).
+    # arc's Local request-pattern (map target; resolves Local per ADR-0150 §am-8).
     tp = next(
         g for g in kl.local_metagraph("arc").graphs.values()
-        if g.role == ROLE_TASK_PATTERNS
+        if g.role == ROLE_REQUEST_PATTERNS
     )
-    tp.add_node(value=ARC_PATTERN, type_name="TaskPattern", node_id=ARC_PATTERN)
+    tp.add_node(value=ARC_PATTERN, type_name="RequestPattern", node_id=ARC_PATTERN)
 
     profile = Phase1Profile(
         hint=HINT_IRI, map=MAP_IRI, resolve_target_datastate=ARC_CANON_DS
@@ -160,7 +160,7 @@ def test_cold_start_asks_then_resubmit_resolves() -> None:
     # already canonical → 0-step resolve → InterpretationResult.
     r2 = interpret(disp, resubmit)
     assert isinstance(r2, InterpretationResult)
-    assert r2.task_pattern_iri == ARC_PATTERN
+    assert r2.request_pattern_iri == ARC_PATTERN
     assert r2.resolved_reference == "05f2a901"
 
 
@@ -176,8 +176,8 @@ def test_marker_set_resolves_index_silently() -> None:
 
 
 def test_arc_pattern_is_local_only() -> None:
-    """The map target lives in the consumer's Local task-patterns, not Global."""
+    """The map target lives in the consumer's Local request-patterns, not Global."""
     disp = _build_arc(set())
     kl = disp.kl
-    assert kl.local_view("arc").get_node(ROLE_TASK_PATTERNS, ARC_PATTERN) is not None
-    assert kl.global_view().get_node(ROLE_TASK_PATTERNS, ARC_PATTERN) is None
+    assert kl.local_view("arc").get_node(ROLE_REQUEST_PATTERNS, ARC_PATTERN) is not None
+    assert kl.global_view().get_node(ROLE_REQUEST_PATTERNS, ARC_PATTERN) is None

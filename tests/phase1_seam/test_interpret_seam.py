@@ -23,7 +23,7 @@ from mindsos_capacity.builtins.phase1_v0 import (
     DS_HINT_SET,
     DS_MAPPING,
     DS_STRUCTURED_INPUT,
-    TRIVIAL_TASK_PATTERN_IRI,
+    TRIVIAL_REQUEST_PATTERN_IRI,
     install_phase1_v0,
 )
 from mindsos_capacity.identifiers import (
@@ -33,7 +33,7 @@ from mindsos_capacity.identifiers import (
     datastate_iri,
 )
 
-from mindsos_knowledge import KnowledgeLayer, ROLE_TASK_PATTERNS
+from mindsos_knowledge import KnowledgeLayer, ROLE_REQUEST_PATTERNS
 
 from mindsos_intelligence import (
     InterpretationError,
@@ -45,7 +45,7 @@ from mindsos_intelligence.phase_1 import HINT_REFERENCE, HINT_REFERENCE_KIND
 
 ARC_INDEX_DS = datastate_iri("arc.index_ref")
 ARC_CANON_DS = datastate_iri("arc.canonical_ref")
-ARC_PATTERN = "task-pattern:arc:solve"
+ARC_PATTERN = "request-pattern:arc:solve"
 
 HINT_IRI = capacity_iri(CATEGORY_HINT, "arc")
 MAP_IRI = capacity_iri(CATEGORY_DECISION, "arc_map")
@@ -59,7 +59,7 @@ def _ds(name: str) -> DataState:
 def _build_consumer(*, write_pattern: bool = True):
     """A Global-scope arc-like consumer: v0 defaults for process/derive_goal,
     real hint/map/resolve bodies, plus (optionally) the Local... here Global
-    task-pattern node the map targets."""
+    request-pattern node the map targets."""
     cl = CapacityLayer()
     install_phase1_v0(cl)
 
@@ -87,7 +87,7 @@ def _build_consumer(*, write_pattern: bool = True):
             outputs=(DS_MAPPING,),
             implementation=lambda **kw: {
                 DS_MAPPING: {
-                    "task_pattern_iri": ARC_PATTERN,
+                    "request_pattern_iri": ARC_PATTERN,
                     "mapping_confidence": 1.0,
                 }
             },
@@ -108,10 +108,10 @@ def _build_consumer(*, write_pattern: bool = True):
     if write_pattern:
         tp_graph = next(
             g for g in kl.global_metagraph().graphs.values()
-            if g.role == ROLE_TASK_PATTERNS
+            if g.role == ROLE_REQUEST_PATTERNS
         )
         tp_graph.add_node(
-            value=ARC_PATTERN, type_name="TaskPattern", node_id=ARC_PATTERN
+            value=ARC_PATTERN, type_name="RequestPattern", node_id=ARC_PATTERN
         )
     return cl, kl
 
@@ -130,7 +130,7 @@ def test_v0_no_profile_returns_trivial_and_no_resolution() -> None:
     install_phase1_v0(cl)
     disp = L4Dispatcher(cl)  # no profile, no kl
     r = interpret(disp, "anything")
-    assert r.task_pattern_iri == TRIVIAL_TASK_PATTERN_IRI
+    assert r.request_pattern_iri == TRIVIAL_REQUEST_PATTERN_IRI
     assert r.mapping_confidence == 1.0
     assert r.resolved_reference is None
 
@@ -142,7 +142,7 @@ def test_real_consumer_composes_and_resolves() -> None:
         hint=HINT_IRI, map=MAP_IRI, resolve_target_datastate=ARC_CANON_DS
     )
     r = interpret(_dispatcher(cl, kl, profile), "solve task 8")
-    assert r.task_pattern_iri == ARC_PATTERN
+    assert r.request_pattern_iri == ARC_PATTERN
     assert r.mapping_confidence == 1.0
     assert r.resolved_reference == "id8"
 
@@ -164,12 +164,12 @@ def test_no_resolve_target_returns_mapping_only() -> None:
     cl, kl = _build_consumer()
     profile = Phase1Profile(hint=HINT_IRI, map=MAP_IRI)
     r = interpret(_dispatcher(cl, kl, profile), "solve task 8")
-    assert r.task_pattern_iri == ARC_PATTERN
+    assert r.request_pattern_iri == ARC_PATTERN
     assert r.resolved_reference is None
 
 
 def test_unresolvable_map_target_raises() -> None:
-    """map target absent from task-patterns → InterpretationError."""
+    """map target absent from request-patterns → InterpretationError."""
     cl, kl = _build_consumer(write_pattern=False)
     profile = Phase1Profile(hint=HINT_IRI, map=MAP_IRI)
     with pytest.raises(InterpretationError, match="does not resolve"):
@@ -190,10 +190,10 @@ def test_run_wrapper_preserves_v0_behavior() -> None:
             return SimpleNamespace(iri="hintset:1")
 
         def emit_mapping_result(self, hs_iri, tp_iri, conf):
-            assert tp_iri == TRIVIAL_TASK_PATTERN_IRI
+            assert tp_iri == TRIVIAL_REQUEST_PATTERN_IRI
             return SimpleNamespace(iri="mapping:1")
 
     result = run(disp, _Writer(), "anything")
-    assert result.task_pattern_iri == TRIVIAL_TASK_PATTERN_IRI
+    assert result.request_pattern_iri == TRIVIAL_REQUEST_PATTERN_IRI
     assert result.hint_set_ref == "hintset:1"
     assert result.mapping_result_ref == "mapping:1"

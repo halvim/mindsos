@@ -20,17 +20,17 @@ from mindsos_knowledge.metagraph_view import MetagraphView
 from mindsos_knowledge.schemas.episodic_memories import EDGE_MEMORY_CONTAINS_EPISODE
 from tests.phase_33._fixtures import build_session_with_caps
 
-_TP = "task-pattern-v1:pattern:greet"
+_TP = "request-pattern-v1:pattern:greet"
 
 
-def _record(episode_id, task_pattern_iri=_TP):
+def _record(episode_id, request_pattern_iri=_TP):
     return {
         DS_MM_COMPOSITE_INSTANCE: {
             "episode_id": episode_id,
             "value": {
-                "task_input_ref": "xref:ti",
+                "request_input_ref": "xref:ti",
                 "mm_root_ref": "xref:mm",
-                "task_pattern_iri": task_pattern_iri,
+                "request_pattern_iri": request_pattern_iri,
                 "outcome_classification": "succeeded",
                 "crash_marker": None,
                 "consolidated_at": "2026-06-09T00:00:00Z",
@@ -74,7 +74,7 @@ def test_memory_materialises_once_per_pattern():
     g = view.graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
     memories = [n for n in g.nodes.values() if n.type_name == "Memory"]
     episodes = [n for n in g.nodes.values() if n.type_name == "Episode"]
-    assert len(memories) == 1  # one Memory per task-pattern
+    assert len(memories) == 1  # one Memory per request-pattern
     assert len(episodes) == 2
 
     memory_iri = memory_composite_iri("v1", "alice", _memory_id_for(_TP))
@@ -85,7 +85,7 @@ def test_memory_materialises_once_per_pattern():
 
 
 def test_bare_value_writes_episode_without_memory():
-    """Backward-compat: a non-dict value (no task_pattern_iri) writes the
+    """Backward-compat: a non-dict value (no request_pattern_iri) writes the
     Episode and materialises no Memory."""
     kl = KnowledgeLayer.bootstrap()
     sess = build_session_with_caps("alice", frozenset())

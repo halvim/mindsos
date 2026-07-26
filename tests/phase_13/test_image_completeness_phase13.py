@@ -23,7 +23,7 @@ _PHASE_13_NEW_FILES = (
     "mindsos_knowledge/schemas/concepts.py",
     "mindsos_knowledge/schemas/alignment.py",
     "mindsos_knowledge/schemas/promoted_pipelines.py",
-    "mindsos_knowledge/schemas/task_patterns.py",
+    "mindsos_knowledge/schemas/request_patterns.py",
     "mindsos_knowledge/schemas/episodic_memories.py",
     "mindsos_knowledge/schemas/problem_trace.py",
     "mindsos_knowledge/schemas/capacity_state.py",

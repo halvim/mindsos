@@ -3,7 +3,7 @@
 Per Phase 14 PB-9 lock: lazy access creates a fresh Local Metagraph
 with every ``_LOCAL_NAMED_ROLES`` ensured before return (Phase 39 rename
 per ADR-0044 §am-3; Phase 43 §am-5 adds 3; ADR-0150 §am-8 adds the
-dual-scope ``task-patterns``).
+dual-scope ``request-patterns``).
 Symmetric with Global bootstrap auto-ensuring the Global named roles.
 """
 
@@ -18,13 +18,13 @@ from mindsos_knowledge import (
 
 def test_lazy_local_creates_on_first_access() -> None:
     """First call mints a Local with the 6 Local-named role-graphs (Phase 43
-    §am-5: 2 base + 3 dual-scope; ADR-0150 §am-8: + dual-scope task-patterns)."""
+    §am-5: 2 base + 3 dual-scope; ADR-0150 §am-8: + dual-scope request-patterns)."""
     from mindsos_knowledge import (
         ROLE_LEARNED_PARAMETERS,
         ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
-        ROLE_TASK_PATTERNS,
+        ROLE_REQUEST_PATTERNS,
     )
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
@@ -35,7 +35,7 @@ def test_lazy_local_creates_on_first_access() -> None:
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
         ROLE_LEARNED_PARAMETERS,
-        ROLE_TASK_PATTERNS,
+        ROLE_REQUEST_PATTERNS,
         ROLE_LEARNED_PIPELINES,
     }
 

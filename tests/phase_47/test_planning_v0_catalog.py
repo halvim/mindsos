@@ -24,7 +24,7 @@ from mindsos_capacity.builtins.phase1_v0 import (
     DS_HINT_SET,
     DS_GOAL,
     DS_MAPPING,
-    TRIVIAL_TASK_PATTERN_IRI,
+    TRIVIAL_REQUEST_PATTERN_IRI,
     install_phase1_v0,
 )
 from mindsos_capacity.builtins.orchestration_v0 import (
@@ -69,7 +69,7 @@ def test_planning_v0_invokable_and_marked():
     decl = layer.get_declaration(iri)
     assert decl.placeholder is True
 
-    r = layer.invoke(iri, {DS_MAPPING_RESULT: {"task_pattern_iri": "x"}})
+    r = layer.invoke(iri, {DS_MAPPING_RESULT: {"request_pattern_iri": "x"}})
     assert r.success
     plan = r.outputs[DS_PLAN]
     assert plan["single_milestone"] is True
@@ -118,7 +118,7 @@ def test_phase1_v0_five_step_chain():
         {DS_STRUCTURED_INPUT: structured, DS_HINT_SET: {}, DS_GOAL: {}},
     )
     mapping = m.outputs[DS_MAPPING]
-    assert mapping["task_pattern_iri"] == TRIVIAL_TASK_PATTERN_IRI
+    assert mapping["request_pattern_iri"] == TRIVIAL_REQUEST_PATTERN_IRI
     assert mapping["mapping_confidence"] == 1.0
 
 

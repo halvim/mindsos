@@ -24,9 +24,9 @@ dict / list) are reduced to codec-safe form in a *snapshot* that keeps the same
 ``graph_id`` (so the Episode ref still resolves) while the live graph keeps its
 in-memory values for in-session readers:
 
-* Chain nodes hold dataclass values (HintSet, TaskRun, …) → reduced via
+* Chain nodes hold dataclass values (HintSet, RequestRun, …) → reduced via
   ``dataclasses.asdict`` (the default). Serializing at persist time (not emit
-  time) captures each artifact's final mutated state (e.g. ``TaskRun.status``
+  time) captures each artifact's final mutated state (e.g. ``RequestRun.status``
   set to ``completed`` at the terminal path).
 * Capacity DataStateInstance nodes hold arbitrary domain values → reduced via
   the caller-supplied ``node_value_encoder`` (the PB-1 per-DataState ``encode``

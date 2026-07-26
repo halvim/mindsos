@@ -2,7 +2,7 @@
 
 Chat B D-B22 settled an immutable chain of artifacts authored by L4 into
 the intelligence sub-MM: HintSet -> MappingResult -> Plan(+Milestone tree)
--> Pipeline -> PipelineRun -> TaskRun, plus the provenance composites
+-> Pipeline -> PipelineRun -> RequestRun, plus the provenance composites
 ReplanRecord + StepExecutionRecord. Phase 47 emits them as nodes in a
 ``chain`` graph inside ``mm.intelligence_mm`` under the MM writer lock
 (no shadow state outside the MM — Chat B D-B11).
@@ -30,7 +30,7 @@ TYPE_PLAN = "Plan"
 TYPE_MILESTONE = "Milestone"
 TYPE_PIPELINE = "Pipeline"
 TYPE_PIPELINE_RUN = "PipelineRun"
-TYPE_TASK_RUN = "TaskRun"
+TYPE_REQUEST_RUN = "RequestRun"
 TYPE_REPLAN_RECORD = "ReplanRecord"
 TYPE_STEP_EXECUTION_RECORD = "StepExecutionRecord"
 
@@ -41,7 +41,7 @@ CHAIN_ARTIFACT_TYPES = (
     TYPE_MILESTONE,
     TYPE_PIPELINE,
     TYPE_PIPELINE_RUN,
-    TYPE_TASK_RUN,
+    TYPE_REQUEST_RUN,
     TYPE_REPLAN_RECORD,
     TYPE_STEP_EXECUTION_RECORD,
 )
@@ -94,7 +94,7 @@ class HintSet:
 class MappingResult:
     iri: str
     hint_set_ref: Optional[str]
-    selected_task_pattern_iri: Optional[str]
+    selected_request_pattern_iri: Optional[str]
     mapping_confidence: float
 
 
@@ -131,14 +131,14 @@ class PipelineRun:
     iri: str
     pipeline_ref: Optional[str]
     milestone_ref: Optional[str]
-    task_run_ref: Optional[str]
+    request_run_ref: Optional[str]
     status: str = "running"
 
 
 @dataclass
 class RequestRun:
     iri: str
-    task_input_ref: Optional[str] = None
+    request_input_ref: Optional[str] = None
     plan_ref: Optional[str] = None
     pipeline_runs: List[str] = field(default_factory=list)
     replan_history: List[str] = field(default_factory=list)
@@ -171,7 +171,7 @@ class StepExecutionRecord:
 def _chain_graph(mm: MentalModel, scope: str) -> Graph:
     """Find-or-create the per-task chain graph for ``scope`` (DQ-8 / CR#4).
 
-    One chain graph per TaskRun (keyed by the task-unique writer scope) so
+    One chain graph per RequestRun (keyed by the task-unique writer scope) so
     (a) chain node-ids never collide across tasks in one session, and
     (b) consolidation persists O(this task) — just this graph — rather than a
     session-shared graph that grows every task.
@@ -188,17 +188,17 @@ def _chain_graph(mm: MentalModel, scope: str) -> Graph:
 class ChainArtifactWriter:
     """Mints chain-artifact IRIs and emits them into intelligence-MM.
 
-    One per TaskRun. All writes acquire the MM writer lock (D32.3) so
+    One per RequestRun. All writes acquire the MM writer lock (D32.3) so
     chain emission is serialized against worker-thread MM reads.
     """
 
-    def __init__(self, mm: MentalModel, task_scope: str) -> None:
+    def __init__(self, mm: MentalModel, request_scope: str) -> None:
         self._mm = mm
         #: Task-UNIQUE scope (DQ-8 / CR#4). The orchestrator passes a per-task
         #: value (``<orch-scope>:<request_id>``); without it, two tasks in one
-        #: session mint identical chain IRIs (``taskrun:brain:1`` …) and their
+        #: session mint identical chain IRIs (``requestrun:brain:1`` …) and their
         #: Episodes collide on ``episode_id``.
-        self._scope = task_scope
+        self._scope = request_scope
         self._seq = 0
         #: Cached per-task chain graph, set on first ``_emit`` under the MM
         #: write lock; ``chain_graph()`` hands it to consolidation.
@@ -229,12 +229,12 @@ class ChainArtifactWriter:
         return art
 
     def emit_mapping_result(
-        self, hint_set_ref, task_pattern_iri, confidence
+        self, hint_set_ref, request_pattern_iri, confidence
     ) -> MappingResult:
         art = MappingResult(
             iri=self._mint("mappingresult"),
             hint_set_ref=hint_set_ref,
-            selected_task_pattern_iri=task_pattern_iri,
+            selected_request_pattern_iri=request_pattern_iri,
             mapping_confidence=confidence,
         )
         self._emit(art.iri, TYPE_MAPPING_RESULT, art)
@@ -272,26 +272,26 @@ class ChainArtifactWriter:
         return art
 
     def emit_pipeline_run(
-        self, pipeline_ref, milestone_ref, task_run_ref, status="running"
+        self, pipeline_ref, milestone_ref, request_run_ref, status="running"
     ) -> PipelineRun:
         art = PipelineRun(
             iri=self._mint("pipelinerun"),
             pipeline_ref=pipeline_ref,
             milestone_ref=milestone_ref,
-            task_run_ref=task_run_ref,
+            request_run_ref=request_run_ref,
             status=status,
         )
         self._emit(art.iri, TYPE_PIPELINE_RUN, art)
         return art
 
-    def emit_request_run(self, *, task_input_ref=None, plan_ref=None) -> RequestRun:
+    def emit_request_run(self, *, request_input_ref=None, plan_ref=None) -> RequestRun:
         art = RequestRun(
-            iri=self._mint("taskrun"),
-            task_input_ref=task_input_ref,
+            iri=self._mint("requestrun"),
+            request_input_ref=request_input_ref,
             plan_ref=plan_ref,
         )
-        self._emit(art.iri, TYPE_TASK_RUN, art)
-        self._mm.root.task_run_ref = art.iri
+        self._emit(art.iri, TYPE_REQUEST_RUN, art)
+        self._mm.root.request_run_ref = art.iri
         return art
 
     def emit_replan_record(
@@ -345,7 +345,7 @@ __all__ = [
     "TYPE_MILESTONE",
     "TYPE_PIPELINE",
     "TYPE_PIPELINE_RUN",
-    "TYPE_TASK_RUN",
+    "TYPE_REQUEST_RUN",
     "TYPE_REPLAN_RECORD",
     "TYPE_STEP_EXECUTION_RECORD",
     "ReplanVerdict",
@@ -356,7 +356,7 @@ __all__ = [
     "Plan",
     "Pipeline",
     "PipelineRun",
-    "TaskRun",
+    "RequestRun",
     "ReplanRecord",
     "StepExecutionRecord",
     "ChainArtifactWriter",

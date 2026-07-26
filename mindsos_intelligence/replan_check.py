@@ -38,9 +38,9 @@ def check(dispatcher, state=None) -> ReplanVerdict:
 def invalidate_at_and_below(request_run, replan_level: str) -> list:
     """Return the chain refs invalidated at and below ``replan_level``.
 
-    v0 (pipeline-level): the TaskRun's PipelineRuns are the at-and-below
+    v0 (pipeline-level): the RequestRun's PipelineRuns are the at-and-below
     set; upstream Plan/Mapping/HintSet are reused. Returns the invalidated
-    refs and clears them from the TaskRun so execution re-enters.
+    refs and clears them from the RequestRun so execution re-enters.
     """
     if replan_level not in REPLAN_LEVELS:
         raise ValueError(f"unknown replan_level {replan_level!r}")

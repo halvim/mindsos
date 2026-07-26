@@ -51,13 +51,13 @@ def test_extract_uninstalled_raises_not_installed() -> None:
 
 
 def test_install_auto_ensures_missing_local_roles() -> None:
-    """Phase 14 PB-9 — install auto-ensures all 6 Local-named role-graphs (Phase 43 §am-5: 2 base + 3 dual-scope; ADR-0150 §am-8: + task-patterns)."""
+    """Phase 14 PB-9 — install auto-ensures all 6 Local-named role-graphs (Phase 43 §am-5: 2 base + 3 dual-scope; ADR-0150 §am-8: + request-patterns)."""
     from mindsos_knowledge import (
         ROLE_LEARNED_PARAMETERS,
         ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
-        ROLE_TASK_PATTERNS,
+        ROLE_REQUEST_PATTERNS,
     )
     kl = KnowledgeLayer.bootstrap()
     bare = Metagraph(name="bare")
@@ -71,13 +71,13 @@ def test_install_auto_ensures_missing_local_roles() -> None:
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
         ROLE_LEARNED_PARAMETERS,
-        ROLE_TASK_PATTERNS,
+        ROLE_REQUEST_PATTERNS,
         ROLE_LEARNED_PIPELINES,
     }
 
 
 def test_install_idempotent_on_already_ensured_local() -> None:
-    """Pre-ensured Local install doesn't duplicate role-graphs; auto-ensures the rest (2 pre-ensured + 3 §am-5 dual-scope + task-patterns §am-8 auto)."""
+    """Pre-ensured Local install doesn't duplicate role-graphs; auto-ensures the rest (2 pre-ensured + 3 §am-5 dual-scope + request-patterns §am-8 auto)."""
     kl = KnowledgeLayer.bootstrap()
     pre = Metagraph(name="pre")
     ensure_local_role_graph(pre, ROLE_EPISODIC_MEMORIES)

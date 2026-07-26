@@ -44,7 +44,7 @@ TEXT_HINT_IRI = capacity_iri(CATEGORY_HINT, "text")
 TEXT_DERIVE_GOAL_IRI = capacity_iri(CATEGORY_DECISION, "text_derive_goal")
 TEXT_MAP_IRI = capacity_iri(CATEGORY_DECISION, "text_map")
 
-TEXT_TASK_PATTERN_IRI = "task-pattern:text:trivial"
+TEXT_REQUEST_PATTERN_IRI = "request-pattern:text:trivial"
 
 
 # ── Capacity implementations (keyword-first, input-iri-keyed) ─────────
@@ -62,7 +62,7 @@ def _text_derive_goal(**kwargs: Any) -> dict:
 def _text_map(**kwargs: Any) -> dict:
     return {
         DS_MAPPING: {
-            "task_pattern_iri": TEXT_TASK_PATTERN_IRI,
+            "request_pattern_iri": TEXT_REQUEST_PATTERN_IRI,
             "mapping_confidence": 1.0,
         }
     }
@@ -101,7 +101,7 @@ def build_text_map() -> Capacity:
         inputs=(DS_TOKENS, DS_HINT_SET, DS_GOAL),
         outputs=(DS_MAPPING,),
         implementation=_text_map,
-        description="Text map: fixed text task-pattern, confidence 1.0.",
+        description="Text map: fixed text request-pattern, confidence 1.0.",
     )
 
 
@@ -148,7 +148,7 @@ __all__ = [
     "TEXT_HINT_IRI",
     "TEXT_DERIVE_GOAL_IRI",
     "TEXT_MAP_IRI",
-    "TEXT_TASK_PATTERN_IRI",
+    "TEXT_REQUEST_PATTERN_IRI",
     "build_text_hint",
     "build_text_derive_goal",
     "build_text_map",

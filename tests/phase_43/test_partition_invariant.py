@@ -1,8 +1,8 @@
 """Phase 43 PR1 sentinel — content/metadata partition invariant.
 
 ADR-0153 §3 partition discipline + ADR-0152 §1 + §2 (Pipeline +
-TaskPattern field cardinalities). Covers ``promoted_pipelines`` +
-``task_patterns`` + ``problem_trace`` per design log §5.2.
+RequestPattern field cardinalities). Covers ``promoted_pipelines`` +
+``request_patterns`` + ``problem_trace`` per design log §5.2.
 """
 
 from __future__ import annotations
@@ -19,10 +19,10 @@ from mindsos_knowledge.schemas.promoted_pipelines import (
     PIPELINE_METADATA_FIELDS,
     PIPELINE_PROPS,
 )
-from mindsos_knowledge.schemas.task_patterns import (
-    TASK_PATTERN_CONTENT_FIELDS,
-    TASK_PATTERN_METADATA_FIELDS,
-    TASK_PATTERN_PROPS,
+from mindsos_knowledge.schemas.request_patterns import (
+    REQUEST_PATTERN_CONTENT_FIELDS,
+    REQUEST_PATTERN_METADATA_FIELDS,
+    REQUEST_PATTERN_PROPS,
 )
 from mindsos_knowledge.validators import validate_partition_invariant
 
@@ -37,10 +37,10 @@ _TRIPLES = (
         11,
     ),
     (
-        "TaskPattern",
-        TASK_PATTERN_CONTENT_FIELDS,
-        TASK_PATTERN_METADATA_FIELDS,
-        TASK_PATTERN_PROPS,
+        "RequestPattern",
+        REQUEST_PATTERN_CONTENT_FIELDS,
+        REQUEST_PATTERN_METADATA_FIELDS,
+        REQUEST_PATTERN_PROPS,
         5,
         8,
     ),
@@ -95,9 +95,9 @@ def test_pipeline_confidence_dropped() -> None:
 
 
 def test_task_pattern_confidence_kept_as_metadata() -> None:
-    """ADR-0152 §2: per-pattern confidence kept on TaskPattern as metadata."""
-    assert "confidence" in TASK_PATTERN_METADATA_FIELDS
-    assert "confidence" not in TASK_PATTERN_CONTENT_FIELDS
+    """ADR-0152 §2: per-pattern confidence kept on RequestPattern as metadata."""
+    assert "confidence" in REQUEST_PATTERN_METADATA_FIELDS
+    assert "confidence" not in REQUEST_PATTERN_CONTENT_FIELDS
 
 
 def test_problem_trace_metadata_partition_empty() -> None:

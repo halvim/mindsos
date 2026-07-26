@@ -24,13 +24,13 @@ from mindsos_capacity.identifiers import (
 )
 from mindsos_capacity.needs_input import NeedsInput
 
-from mindsos_knowledge import KnowledgeLayer, ROLE_TASK_PATTERNS
+from mindsos_knowledge import KnowledgeLayer, ROLE_REQUEST_PATTERNS
 from mindsos_intelligence import L4Dispatcher, Phase1Profile
 from mindsos_intelligence.phase_1 import HINT_REFERENCE, HINT_REFERENCE_KIND
 
 ARC_INDEX_DS = datastate_iri("arc.index_ref")
 ARC_CANON_DS = datastate_iri("arc.canonical_ref")
-ARC_PATTERN = "task-pattern:arc:solve"
+ARC_PATTERN = "request-pattern:arc:solve"
 
 HINT_IRI = capacity_iri(CATEGORY_HINT, "arc")
 MAP_IRI = capacity_iri(CATEGORY_DECISION, "arc_map")
@@ -73,7 +73,7 @@ def build_consumer(*, resolve_impl=None, write_pattern: bool = True):
             inputs=(DS_STRUCTURED_INPUT, DS_HINT_SET, DS_GOAL),
             outputs=(DS_MAPPING,),
             implementation=lambda **kw: {
-                DS_MAPPING: {"task_pattern_iri": ARC_PATTERN, "mapping_confidence": 1.0}
+                DS_MAPPING: {"request_pattern_iri": ARC_PATTERN, "mapping_confidence": 1.0}
             },
         )
     )
@@ -91,9 +91,9 @@ def build_consumer(*, resolve_impl=None, write_pattern: bool = True):
     if write_pattern:
         g = next(
             gr for gr in kl.global_metagraph().graphs.values()
-            if gr.role == ROLE_TASK_PATTERNS
+            if gr.role == ROLE_REQUEST_PATTERNS
         )
-        g.add_node(value=ARC_PATTERN, type_name="TaskPattern", node_id=ARC_PATTERN)
+        g.add_node(value=ARC_PATTERN, type_name="RequestPattern", node_id=ARC_PATTERN)
 
     profile = Phase1Profile(
         hint=HINT_IRI, map=MAP_IRI, resolve_target_datastate=ARC_CANON_DS

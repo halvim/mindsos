@@ -7,7 +7,7 @@ role is where that taught pipeline lives so it survives a boot (F9) and
 appears in ``mindsos brain pl``.
 
 Single NodeType (``LearnedPipeline``); **no EdgeTypes** — this role mirrors
-the ``learned_parameters`` / ``task_patterns`` zero-edge shape. Cross-version
+the ``learned_parameters`` / ``request_patterns`` zero-edge shape. Cross-version
 lineage (a ``DERIVED_FROM``-style edge, à la promoted pipelines) is
 deliberately NOT modelled (ADR-0203 §Decision #2 → "no edges"): latest is
 resolved by an append-ordinal scan, not by a lineage link.
@@ -31,7 +31,7 @@ mint or link a successor and there is no active-version routing, which is
 vacated + locked per ADR-0150 §am-3). Re-teaching a name therefore **appends**
 a new immutable node stamped with the next monotonic ``taught_seq`` ordinal
 (metadata); the reader groups by ``pipeline_name`` and returns ``max(taught_seq)``.
-This copies the ``task_patterns`` / ``installed-skills`` append-ordinal
+This copies the ``request_patterns`` / ``installed-skills`` append-ordinal
 precedent verbatim (``mindsos_server/skills/records.py``).
 
 **Content / metadata partition (ADR-0153 §3).** ``pipeline_name`` is content

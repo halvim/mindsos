@@ -43,7 +43,7 @@ def _orch_with_kl(simplified: bool = False):
     reset_v0_verdicts()
     mm = MentalModel(session_id="s", user_id="u")
     dispatcher = L4Dispatcher(layer, session=FakeSession(), kl=kl)
-    orch = Orchestrator(dispatcher, mm, task_scope="task-1", simplified=simplified)
+    orch = Orchestrator(dispatcher, mm, request_scope="request-1", simplified=simplified)
     return orch, mm, kl
 
 

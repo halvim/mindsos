@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from mindsos_capacity import CapacityLayer
 from mindsos_capacity.builtins.phase1_v0 import (
-    TRIVIAL_TASK_PATTERN_IRI,
+    TRIVIAL_REQUEST_PATTERN_IRI,
     install_phase1_v0,
 )
 from mindsos_knowledge import KnowledgeLayer
@@ -38,7 +38,7 @@ def test_v0_all_placeholder_path_unchanged() -> None:
     assert r.structured_input == "hello world"
     assert r.hints == {}
     assert r.goal == {"goal": "v0:trivial-goal"}
-    assert r.task_pattern_iri == TRIVIAL_TASK_PATTERN_IRI
+    assert r.request_pattern_iri == TRIVIAL_REQUEST_PATTERN_IRI
     assert r.mapping_confidence == 1.0
     assert r.resolved_reference is None
 
@@ -51,6 +51,6 @@ def test_envelope_raw_value_equivalent_and_source_ignored() -> None:
     )
     assert isinstance(env, InterpretationResult)
     assert env.structured_input == raw.structured_input == "hi"
-    assert env.task_pattern_iri == raw.task_pattern_iri
+    assert env.request_pattern_iri == raw.request_pattern_iri
     assert env.mapping_confidence == raw.mapping_confidence
     # source is provenance only — it changes nothing about interpretation.

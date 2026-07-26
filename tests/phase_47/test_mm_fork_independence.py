@@ -176,9 +176,9 @@ def test_fork_regenerates_ids_and_provenance_xref_resolves_in_fork():
 def test_fork_root_and_object_independence_preserved():
     # The pre-existing independence guarantee (phase_46) still holds.
     mm = MentalModel(session_id="s1", user_id="u1")
-    mm.root.task_run_ref = "taskrun:orig"
+    mm.root.request_run_ref = "requestrun:orig"
     clone = mm.deep_copy()
-    assert clone.root.task_run_ref == "taskrun:orig"
+    assert clone.root.request_run_ref == "requestrun:orig"
     clone.root.outcome_ref = "outcome:x"
     assert mm.root.outcome_ref is None
     assert clone.knowledge_mm is not mm.knowledge_mm

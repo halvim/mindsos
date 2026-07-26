@@ -10,7 +10,7 @@ Public surface:
 * ``build_alignment_schema(strict=False, extra_edge_types=())`` —
   parametric; one builder per alignment-pair graph
   (`alignment:<a>:<b>`).
-* ``build_promoted_pipelines_schema``, ``build_task_patterns_schema``,
+* ``build_promoted_pipelines_schema``, ``build_request_patterns_schema``,
   ``build_episodic_memories_schema``, ``build_problem_trace_schema``,
   ``build_capacity_state_schema`` — 5 upper-layer roles
   (Phase 13 NET-NEW; strict=False per ADR-0149; ``episodic_memories``
@@ -50,7 +50,7 @@ from ..identifiers import (
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_SUBMINDS,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
 )
 from .alignment import build_alignment_schema
 from .dataset import build_dataset_schema
@@ -68,7 +68,7 @@ from .pending_promotions import build_pending_promotions_schema
 from .problem_trace import build_problem_trace_schema
 from .promoted_pipelines import build_promoted_pipelines_schema
 from .subminds import build_subminds_schema
-from .task_patterns import build_task_patterns_schema
+from .request_patterns import build_request_patterns_schema
 
 
 #: Dispatch table — role → builder callable. Phase 14 (KL bootstrap)
@@ -81,7 +81,7 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     ROLE_LEXICON: build_lexicon_schema,
     ROLE_CONCEPTS: build_concepts_schema,
     ROLE_PROMOTED_PIPELINES: build_promoted_pipelines_schema,
-    ROLE_TASK_PATTERNS: build_task_patterns_schema,
+    ROLE_REQUEST_PATTERNS: build_request_patterns_schema,
     ROLE_EPISODIC_MEMORIES: build_episodic_memories_schema,
     ROLE_PROBLEM_TRACE: build_problem_trace_schema,
     ROLE_CAPACITY_STATE: build_capacity_state_schema,
@@ -179,7 +179,7 @@ __all__ = [
     "build_concepts_schema",
     "build_alignment_schema",
     "build_promoted_pipelines_schema",
-    "build_task_patterns_schema",
+    "build_request_patterns_schema",
     "build_episodic_memories_schema",
     "build_problem_trace_schema",
     "build_capacity_state_schema",

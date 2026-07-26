@@ -20,7 +20,7 @@ from mindsos_knowledge.bootstrap import (
 )
 from mindsos_knowledge.identifiers import (
     ROLE_EPISODIC_MEMORIES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
 )
 
 
@@ -52,15 +52,15 @@ def test_applies_after_table_covers_all_12_named_roles() -> None:
 
 
 def test_episodic_memories_soft_edge_on_task_patterns() -> None:
-    """Per NPB6-6: episodic_memories depends on task-patterns (Episodes
-    carry ``task_pattern_iri`` so task-patterns must exist first)."""
+    """Per NPB6-6: episodic_memories depends on request-patterns (Episodes
+    carry ``request_pattern_iri`` so request-patterns must exist first)."""
     assert _APPLIES_AFTER_BY_ROLE[ROLE_EPISODIC_MEMORIES] == frozenset(
-        {ROLE_TASK_PATTERNS}
+        {ROLE_REQUEST_PATTERNS}
     )
 
 
 def test_all_other_roles_have_empty_applies_after_at_phase_43() -> None:
-    """Phase 43 R0b §1.2: only the episodic_memories ← task-patterns
+    """Phase 43 R0b §1.2: only the episodic_memories ← request-patterns
     soft edge is declared. Other roles are independent at Phase 43 scope.
     """
     for role, deps in _APPLIES_AFTER_BY_ROLE.items():

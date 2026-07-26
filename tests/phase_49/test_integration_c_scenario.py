@@ -23,7 +23,7 @@ from mindsos_knowledge.schemas.episodic_memories import EDGE_MEMORY_CONTAINS_EPI
 
 from tests.phase_49 import integration_c as ic
 
-_V0_TASK_PATTERN = "task-pattern:v0:trivial"
+_V0_REQUEST_PATTERN = "request-pattern:v0:trivial"
 
 
 def _assert_chain(stack) -> list:
@@ -32,7 +32,7 @@ def _assert_chain(stack) -> list:
     assert tokens == ic.EXPECTED_TOKENS
 
     outcome = ic.step_run_trivial_task(stack)
-    assert outcome.outcome == _V0_TASK_PATTERN
+    assert outcome.outcome == _V0_REQUEST_PATTERN
 
     episodes = ic.step_collect_episodes(stack)
     assert len(episodes) == 1
@@ -42,7 +42,7 @@ def _assert_chain(stack) -> list:
     # MEMORY_CONTAINS_EPISODE edge on the materialised Memory.
     from mindsos_capacity.builtins.consolidate import _memory_id_for
 
-    memory_iri = memory_composite_iri("v1", stack.user, _memory_id_for(_V0_TASK_PATTERN))
+    memory_iri = memory_composite_iri("v1", stack.user, _memory_id_for(_V0_REQUEST_PATTERN))
     edges = MetagraphView(stack.kl.local_metagraph(stack.user)).get_edges(
         ROLE_EPISODIC_MEMORIES, memory_iri, edge_type=EDGE_MEMORY_CONTAINS_EPISODE
     )

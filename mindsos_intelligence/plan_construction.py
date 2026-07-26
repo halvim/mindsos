@@ -96,20 +96,20 @@ def _read_solve_target(plan_out: Any) -> Optional[Dict[str, str]]:
 
 
 def build(
-    dispatcher, writer, mapping_result_ref, task_pattern_iri, *,
+    dispatcher, writer, mapping_result_ref, request_pattern_iri, *,
     resolved_reference: Any = None,
 ) -> PlanResult:
     # Derive initial plan (v0: single-Milestone). ``resolved_reference`` (Step
     # 5.1 / Phase-1→2 drop fix) rides the already-declared ``DS_MAPPING_RESULT``
     # value dict — no new declared input, so the strict ``_validate_inputs``
-    # contract is untouched and the v0 body (reads only ``task_pattern_iri``)
+    # contract is untouched and the v0 body (reads only ``request_pattern_iri``)
     # ignores it. The planner's output is no longer discarded: its
     # ``solve_target`` (when present) tells ``execution.run`` what pipeline to
     # find + run.
     plan_out = dispatcher.dispatch(
         DERIVE_PLAN_IRI,
         {DS_MAPPING_RESULT: {
-            "task_pattern_iri": task_pattern_iri,
+            "request_pattern_iri": request_pattern_iri,
             "resolved_reference": resolved_reference,
         }},
     ).outputs.get(DS_PLAN)

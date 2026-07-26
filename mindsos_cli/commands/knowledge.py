@@ -54,7 +54,7 @@ from mindsos_knowledge import (
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     RefFormatError,
     SEED_ROLES,
     UPPER_LAYER_ROLES,
@@ -76,7 +76,7 @@ from mindsos_knowledge import (
     problem_trace_iri,
     schema_for_role,
     subgoal_template_iri,
-    task_pattern_iri,
+    request_pattern_iri,
 )
 
 
@@ -128,8 +128,8 @@ _BUILDERS = {
         "pipeline": (pipeline_iri, ("version", "pipeline-id")),
         "step": (pipeline_step_iri, ("version", "pipeline-id", "step-id")),
     },
-    ROLE_TASK_PATTERNS: {
-        "pattern": (task_pattern_iri, ("version", "pattern-id")),
+    ROLE_REQUEST_PATTERNS: {
+        "pattern": (request_pattern_iri, ("version", "pattern-id")),
         "subgoal": (
             subgoal_template_iri,
             ("version", "pattern-id", "subgoal-id"),

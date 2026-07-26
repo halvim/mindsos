@@ -24,12 +24,12 @@ def test_full_record_construction():
         request_id="t1",
         error_kind="latency",
         step_id="s1",
-        mm_ref="mm:task-42",
+        mm_ref="mm:request-42",
         capacity_iri="capacity:perception:test.echo",
         payload={"latency_ms": 1500},
     )
     assert rec.step_id == "s1"
-    assert rec.mm_ref == "mm:task-42"
+    assert rec.mm_ref == "mm:request-42"
     assert rec.capacity_iri == "capacity:perception:test.echo"
     assert rec.payload == {"latency_ms": 1500}
 

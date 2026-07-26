@@ -245,7 +245,7 @@ class IntelligenceLayer:
             raise RuntimeError("IntelligenceLayer is stopped")
         if request_id is None:
             self._request_seq += 1
-            request_id = f"task-{self._request_seq}"
+            request_id = f"request-{self._request_seq}"
         token = CancelToken()
         self._cancel_tokens[request_id] = token
         # ``held_resources`` (default empty) declares the exclusive

@@ -36,7 +36,7 @@ INTELLIGENCE_PREFIXES = (
     "milestone:",
     "pipeline:",
     "pipelinerun:",
-    "taskrun:",
+    "requestrun:",
 )
 
 
@@ -44,7 +44,7 @@ INTELLIGENCE_PREFIXES = (
 class MMRoot:
     """Thin root — pointers only (D-B10)."""
 
-    task_run_ref: Optional[str] = None
+    request_run_ref: Optional[str] = None
     problem_trace_ref: Optional[str] = None
     outcome_ref: Optional[str] = None
 

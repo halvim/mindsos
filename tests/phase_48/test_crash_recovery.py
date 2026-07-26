@@ -45,8 +45,8 @@ def test_recover_writes_crash_tombstone_episode():
     store.record(
         CheckpointMarker(
             request_id="t-crashed",
-            task_input_ref="ti:x",
-            task_pattern_iri="tp:x",
+            request_input_ref="ti:x",
+            request_pattern_iri="tp:x",
             last_phase="EXECUTION",
         )
     )
@@ -65,12 +65,12 @@ def test_recover_is_idempotent_on_existing_episode():
     kl = KnowledgeLayer.bootstrap()
     d = _dispatcher(kl)
     s1 = InMemoryCheckpointStore()
-    s1.record(CheckpointMarker(request_id="t1", task_pattern_iri="tp:x"))
+    s1.record(CheckpointMarker(request_id="t1", request_pattern_iri="tp:x"))
     recover_unconsolidated(s1, d)
     # A second scan that sees the same task id finds the Episode already
     # present and writes no duplicate (ADR-0176 §4).
     s2 = InMemoryCheckpointStore()
-    s2.record(CheckpointMarker(request_id="t1", task_pattern_iri="tp:x"))
+    s2.record(CheckpointMarker(request_id="t1", request_pattern_iri="tp:x"))
     recover_unconsolidated(s2, d)
     assert len(_episodes(kl)) == 1
 
@@ -97,9 +97,9 @@ def test_orchestrator_records_then_clears_checkpoint_on_success():
     orch = Orchestrator(
         L4Dispatcher(layer, session=build_session_with_caps("alice", frozenset()), kl=kl),
         mm,
-        task_scope="task-1",
+        request_scope="request-1",
         checkpoint_store=store,
     )
-    outcome = orch.run_lifecycle("hi", request_id="task-7")
+    outcome = orch.run_lifecycle("hi", request_id="request-7")
     assert outcome.status == "succeeded"
     assert store.iter_unconsolidated() == []  # recorded at triggers, cleared on consolidation

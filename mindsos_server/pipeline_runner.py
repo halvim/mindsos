@@ -1,7 +1,7 @@
 """Thin standalone pipeline runner (Slice 2).
 
 Runs a :class:`~mindsos_capacity.pipeline.Pipeline` outside the six-phase
-lifecycle: no ChainArtifactWriter, no synthetic TaskRun, no MM coupling.
+lifecycle: no ChainArtifactWriter, no synthetic RequestRun, no MM coupling.
 Walks the topo-ordered ``steps``, threading a ``{datastate_iri: value}``
 state map (seeded with the caller's inputs), dispatching each capacity via
 the live ``dispatcher`` and folding its outputs back into the map.

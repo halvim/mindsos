@@ -9,7 +9,7 @@ placeholders so the trivial-task smoke runs the real 5-step control path:
 - ``process.identity``           → structured == raw (passthrough).
 - ``hint.global``                → empty global hint set.
 - ``decision.derive_goal``       → a fixed trivial goal.
-- ``decision.map_to_task_pattern`` → a fixed task-pattern + confidence 1.0.
+- ``decision.map_to_task_pattern`` → a fixed request-pattern + confidence 1.0.
 
 All carry ``placeholder=True``; install is opt-in; WSD replaces. Bodies
 are pure and context-agnostic.
@@ -38,7 +38,7 @@ DS_HINT_SET = datastate_iri("phase1.hint_set")
 DS_GOAL = datastate_iri("phase1.goal")
 DS_MAPPING = datastate_iri("phase1.mapping")
 
-TRIVIAL_TASK_PATTERN_IRI = "task-pattern:v0:trivial"
+TRIVIAL_REQUEST_PATTERN_IRI = "request-pattern:v0:trivial"
 
 
 def phase1_datastates() -> List[DataState]:
@@ -88,10 +88,10 @@ def _derive_goal(**kwargs: Any) -> dict:
     return {DS_GOAL: {"goal": "v0:trivial-goal"}}
 
 
-def _map_to_task_pattern(**kwargs: Any) -> dict:
+def _map_to_request_pattern(**kwargs: Any) -> dict:
     return {
         DS_MAPPING: {
-            "task_pattern_iri": TRIVIAL_TASK_PATTERN_IRI,
+            "request_pattern_iri": TRIVIAL_REQUEST_PATTERN_IRI,
             "mapping_confidence": 1.0,
         }
     }
@@ -133,14 +133,14 @@ def build_derive_goal() -> Capacity:
     )
 
 
-def build_map_to_task_pattern() -> Capacity:
+def build_map_to_request_pattern() -> Capacity:
     return Capacity(
         name="map_to_task_pattern",
         category=CATEGORY_DECISION,
         inputs=(DS_STRUCTURED_INPUT, DS_HINT_SET, DS_GOAL),
         outputs=(DS_MAPPING,),
-        implementation=_map_to_task_pattern,
-        description="v0 placeholder: fixed task-pattern, confidence 1.0.",
+        implementation=_map_to_request_pattern,
+        description="v0 placeholder: fixed request-pattern, confidence 1.0.",
         placeholder=True,
     )
 
@@ -182,7 +182,7 @@ def install_phase1_v0(capacity_layer) -> None:
     capacity_layer.register_capacity(build_process_identity())
     capacity_layer.register_capacity(build_hint_global())
     capacity_layer.register_capacity(build_derive_goal())
-    capacity_layer.register_capacity(build_map_to_task_pattern())
+    capacity_layer.register_capacity(build_map_to_request_pattern())
 
 
 __all__ = [
@@ -191,11 +191,11 @@ __all__ = [
     "DS_HINT_SET",
     "DS_GOAL",
     "DS_MAPPING",
-    "TRIVIAL_TASK_PATTERN_IRI",
+    "TRIVIAL_REQUEST_PATTERN_IRI",
     "phase1_datastates",
     "build_process_identity",
     "build_hint_global",
     "build_derive_goal",
-    "build_map_to_task_pattern",
+    "build_map_to_request_pattern",
     "install_phase1_v0",
 ]

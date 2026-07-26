@@ -8,7 +8,7 @@ Covers per Phase 14 round-1 PB-4 + PB-8:
 * Alignment-prefix rejected (per ADR-0150 §amendment-1 — Global-only).
 * Unknown roles raise ``UnknownRoleError``.
 
-``task-patterns`` is dual-scope (ADR-0150 §amendment-8) so it is a Local
+``request-patterns`` is dual-scope (ADR-0150 §amendment-8) so it is a Local
 happy-path role, NOT a scope-rejection case.
 """
 
@@ -27,7 +27,7 @@ from mindsos_knowledge import (
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     UnknownRoleError,
     ensure_local_role_graph,
 )
@@ -36,7 +36,7 @@ from mindsos_knowledge import (
 _LOCAL_NAMED = (
     ROLE_EPISODIC_MEMORIES,
     ROLE_CAPACITY_STATE,
-    ROLE_TASK_PATTERNS,  # dual-scope per ADR-0150 §am-8
+    ROLE_REQUEST_PATTERNS,  # dual-scope per ADR-0150 §am-8
 )
 _GLOBAL_NAMED = (
     ROLE_ONTOLOGY,

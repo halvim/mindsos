@@ -39,7 +39,7 @@ from . import (
 )
 from .chain_artifacts import ChainArtifactWriter
 
-# Episode ``outcome_classification`` (Chat B §4.3 enum) by TaskRun status.
+# Episode ``outcome_classification`` (Chat B §4.3 enum) by RequestRun status.
 _OUTCOME_BY_STATUS = {
     "aborted": "failed",
     "failed": "dont_know",
@@ -61,7 +61,7 @@ class LifecyclePhase(IntEnum):
 @dataclass
 class RequestOutcome:
     status: str  # succeeded | dont_know | aborted | pending_confirmation
-    task_run_ref: Optional[str]  # None on the pending_confirmation path (no TaskRun yet)
+    request_run_ref: Optional[str]  # None on the pending_confirmation path (no RequestRun yet)
     outcome: Any = None
     dont_know_reason: Optional[str] = None
     blame: Any = None
@@ -80,7 +80,7 @@ class Orchestrator:
         dispatcher,
         mm,
         *,
-        task_scope: str = "task",
+        request_scope: str = "task",
         per_request_replan_budget: int = DEFAULT_PER_REQUEST_REPLAN_BUDGET,
         simplified: bool = False,
         checkpoint_store: Any = None,
@@ -88,7 +88,7 @@ class Orchestrator:
     ) -> None:
         self._dispatcher = dispatcher
         self._mm = mm
-        self._task_scope = task_scope
+        self._task_scope = request_scope
         self._budget = per_request_replan_budget
         self._simplified = simplified
         self._checkpoint_store = checkpoint_store
@@ -116,7 +116,7 @@ class Orchestrator:
 
     def update_priority(self, request_run, *, tier=TierEnum.FOREGROUND, executor=None, request_id=None) -> int:
         """Invoke L3 ``scoring.attention_score`` and write the result to the
-        queue (if an executor is given) AND through to ``TaskRun.attention_
+        queue (if an executor is given) AND through to ``RequestRun.attention_
         score`` under the MM writer lock (atomic, D32.5c.4)."""
         score = self._dispatcher.dispatch(
             ATTENTION_SCORE_IRI, {DS_SCORE_INPUT: tier}
@@ -130,7 +130,7 @@ class Orchestrator:
     # ── consolidation seam (Phase 5 -> completion; ADR-0176) ───────────
 
     def _consolidate(
-        self, request_run, task_pattern_iri, request_id=None, writer=None,
+        self, request_run, request_pattern_iri, request_id=None, writer=None,
         capacity_graphs=None,
     ) -> None:
         """Freeze the MM + write the Episode on a terminal path (retain-by-
@@ -151,7 +151,7 @@ class Orchestrator:
             self._dispatcher,
             self._mm,
             request_run,
-            task_pattern_iri=task_pattern_iri,
+            request_pattern_iri=request_pattern_iri,
             outcome_classification=_OUTCOME_BY_STATUS.get(request_run.status, "failed"),
             chain_graph=writer.chain_graph() if writer is not None else None,
             mm_persister=self._mm_persister,
@@ -178,40 +178,40 @@ class Orchestrator:
         scope = self._writer_scope(request_id)
         writer = ChainArtifactWriter(self._mm, scope)
 
-        task_input_ref = f"taskinput:{request_id}" if request_id is not None else None
+        request_input_ref = f"requestinput:{request_id}" if request_id is not None else None
 
         # Phase 1 — task interpretation (HintSet + MappingResult)
         p1 = phase_1.run(self._dispatcher, writer, request_input)
         # ADR-0196 — interpretation asked the user. Short-circuit into a
         # non-terminal pending_confirmation outcome BEFORE plan/exec: no
-        # TaskRun, no consolidation, terminal invariants untouched. (The
+        # RequestRun, no consolidation, terminal invariants untouched. (The
         # mid-execution needs_input path — execution.run halt+bubble — is
         # deferred, L4-25.)
         if isinstance(p1, NeedsInput):
             return RequestOutcome(
                 status="pending_confirmation",
-                task_run_ref=None,
+                request_run_ref=None,
                 pending_confirmation=p1,
             )
         self._checkpoint(
-            request_id, last_phase="INTERPRETATION", task_input_ref=task_input_ref
+            request_id, last_phase="INTERPRETATION", request_input_ref=request_input_ref
         )
 
         # Phase 2 — Plan + Pipeline construction. Thread the Phase-1
         # ``resolved_reference`` (Step 5.1 drop fix) so the planner can name a
         # solve target against the resolved task.
         plan_result = plan_construction.build(
-            self._dispatcher, writer, p1.mapping_result_ref, p1.task_pattern_iri,
+            self._dispatcher, writer, p1.mapping_result_ref, p1.request_pattern_iri,
             resolved_reference=p1.resolved_reference,
         )
         self._checkpoint(
             request_id,
             last_phase="PLAN_CONSTRUCTION",
-            task_input_ref=task_input_ref,
-            task_pattern_iri=p1.task_pattern_iri,
+            request_input_ref=request_input_ref,
+            request_pattern_iri=p1.request_pattern_iri,
         )
 
-        # TaskRun wraps the whole execution (Level 6)
+        # RequestRun wraps the whole execution (Level 6)
         request_run = writer.emit_request_run(plan_ref=plan_result.plan_ref)
         self.update_priority(request_run, tier=tier, executor=executor, request_id=request_id)
 
@@ -247,7 +247,7 @@ class Orchestrator:
                 # dont_know and from a replan). Consolidate what grounded.
                 request_run.status = "aborted"
                 self._consolidate(
-                    request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
+                    request_run, p1.request_pattern_iri, request_id, writer, capacity_graphs
                 )
                 return RequestOutcome("aborted", request_run.iri, replans_used=replans)
             if self._simplified:
@@ -264,7 +264,7 @@ class Orchestrator:
                 )
                 request_run.status = "aborted"
                 self._consolidate(
-                    request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
+                    request_run, p1.request_pattern_iri, request_id, writer, capacity_graphs
                 )
                 return RequestOutcome("aborted", request_run.iri, replans_used=replans)
             if verdict.decision == "replan" and replans < self._budget:
@@ -304,7 +304,7 @@ class Orchestrator:
             blame = phase_6.diagnose(self._dispatcher, outcome=diag_outcome)
             request_run.status = "failed"
             self._consolidate(
-                request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
+                request_run, p1.request_pattern_iri, request_id, writer, capacity_graphs
             )
             return RequestOutcome(
                 "dont_know",
@@ -317,10 +317,10 @@ class Orchestrator:
         # Phase 5 -> completion: freeze MM + write Episode (ADR-0176).
         request_run.status = "completed"
         self._consolidate(
-            request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
+            request_run, p1.request_pattern_iri, request_id, writer, capacity_graphs
         )
         return RequestOutcome(
-            "succeeded", request_run.iri, outcome=p1.task_pattern_iri, replans_used=replans
+            "succeeded", request_run.iri, outcome=p1.request_pattern_iri, replans_used=replans
         )
 
 

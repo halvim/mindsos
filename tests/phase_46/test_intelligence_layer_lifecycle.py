@@ -78,9 +78,9 @@ def test_stop_abort_cancels_in_flight():
 def test_fork_dream_mm_is_independent():
     il = _il()
     il.start()
-    il.mm.root.task_run_ref = "taskrun:orig"
+    il.mm.root.request_run_ref = "requestrun:orig"
     fork = il.fork_dream_mm()
-    assert fork.root.task_run_ref == "taskrun:orig"
+    assert fork.root.request_run_ref == "requestrun:orig"
     fork.root.outcome_ref = "outcome:x"
     assert il.mm.root.outcome_ref is None
     il.stop("abort")

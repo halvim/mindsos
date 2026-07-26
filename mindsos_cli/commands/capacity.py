@@ -16,7 +16,7 @@ Sub-subgroup shape:
 
   mindsos capacity invoke <iri>
                           (--input-json '<json>' | --input-file <path>)
-                          [--json] [--task-id <id>]
+                          [--json] [--request-id <id>]
       [Phase 31] Invoke a registered Capacity by IRI. The CLI builds
       a fresh in-memory layer, auto-installs text builtins (R0 PB-ε
       opt-in but CLI's fresh-layer init calls it — only family at
@@ -364,7 +364,7 @@ def invoke_cmd(
     ),
     request_id: Optional[str] = typer.Option(
         None,
-        "--task-id",
+        "--request-id",
         help="Optional task id (enables problem-trace emission on failure).",
     ),
     json_out: bool = typer.Option(
