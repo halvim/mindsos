@@ -54,6 +54,7 @@ verbs (try '<verb> -h' for a manual page):
   task <text>                run the six-phase lifecycle
   save                       persist this user's Local to Falkor
   reset                      wipe run-state, keep learned params
+  view [path]                build + open a graph of the brain (new tab)
   help                       show this
   quit                       save then exit"""
 
@@ -63,8 +64,9 @@ _SAP = "not yet — pending skill-acquisition (SAP)"
 class BrainREPL:
     """Stateful verb dispatcher over one held :class:`Stack`."""
 
-    def __init__(self, stack: Any) -> None:
+    def __init__(self, stack: Any, viz_spec: Any = None) -> None:
         self.stack = stack
+        self.viz_spec = viz_spec
         # ADR-0183 §am-3 — installed-skill verb table. Builtins WIN: a skill
         # verb colliding with a ``_do_<verb>`` method is unreachable, so it is
         # dropped here (runtime-authoritative; catches builtins added AFTER a
@@ -80,6 +82,62 @@ class BrainREPL:
                 )
                 continue
             self._skill_verbs[verb] = slots
+
+    def _do_view(self, args: List[str]) -> str:
+        """view [path] [-l|-g] [--no-open] — build a self-contained interactive
+        graph of this brain (DataStates, capacities, finder segments) and open
+        it in a new browser tab. Re-run after changes for a fresh tab."""
+        import glob
+        import json
+        import os
+        import tempfile
+        import time
+        from pathlib import Path
+
+        spec = {**SCOPE, "no_open": (("--no-open",), False)}
+        opts, pos, err = parse(args, spec)
+        if err:
+            return err
+        views = self._views(scope_of(opts))
+        try:
+            import importlib.resources as ir
+            template = (ir.files("mindsos_cli.commands")
+                        .joinpath("brain_viz_template.html")
+                        .read_text(encoding="utf-8"))
+        except Exception as e:
+            return f"view: cannot load viewer template ({type(e).__name__}: {e})"
+        from mindsos_cli.brain_viz import build_data
+        data = build_data(views, spec=getattr(self, "viz_spec", None),
+                          context=self.stack)
+        html = template.replace(
+            "const DATA = /*__DATA__*/{};",
+            "const DATA = " + json.dumps(data, separators=(",", ":")) + ";")
+        if pos:
+            out = Path(pos[0])
+        else:
+            d = Path(tempfile.gettempdir())
+            old = sorted(glob.glob(str(d / f"{self.stack.user}_graph_*.html")))
+            for f in old[:-3]:
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+            out = d / f"{self.stack.user}_graph_{int(time.time())}.html"
+        out.write_text(html, encoding="utf-8")
+        opened = False
+        if not opts.get("no_open"):
+            try:
+                import webbrowser
+                opened = webbrowser.open_new_tab("file://" + str(out.resolve()))
+            except Exception:
+                opened = False
+        ncap = sum(1 for n in data["nodes"] if n["kind"] == "cap")
+        nds = sum(1 for n in data["nodes"] if n["kind"] == "ds")
+        nseg = len(data["segments"])
+        tail = "" if getattr(self, "viz_spec", None) else \
+            "  (no viz_spec - heuristic groups, no segments)"
+        return (f"{'opened new tab' if opened else 'wrote'}: {out}  "
+                f"({ncap} caps, {nds} datastates, {nseg} segments){tail}")
 
     def dispatch(self, line: str) -> str:
         """Execute one verb line; return the rendered output."""
