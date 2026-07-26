@@ -194,6 +194,26 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    negative-aware cutoff). Fine for demo-scale; an efficiency (not correctness) item before a large
    library — e.g. sample pairs, or a spatial index. Flagged, not faked.
 
+## Cross-chat context (this session)
+- **L4 doctrine (corrected, locked).** L4 = **dispatch only** (`L4Dispatcher` / `run_lifecycle`);
+  NO capacities live in L4. ALL computation — incl. orchestration/eval — is L3 capabilities:
+  fan-out = planning `decompose`+`aggregate_outputs`, teach = consolidate, eval = phase_6 verify.
+  nilm's L4 Python loops (window fan-out, k-NN vote, teach) are an **interim scaffold**, to move
+  onto those caps as they ship. The generic fan-out/aggregate are **Global builtins**
+  (`install_brain_builtins` → planning_v0/orchestration_v0), being made real by the
+  `collection-iteration` work on `main`. Still MISSING globally: a `select`/argmax cap (k-NN needs
+  it) — CR out.
+- **Resident brain.** `repl.py` = thin per-brain shim over core `boot_brain` + `BrainREPL`/`loop`
+  (arc1 pattern). Engine is core; only nilm-specific lines = the Solver install + `learn_pipeline`.
+  Brain-agnostic goal = **skill-package** nilm (`mindsos skill install`) so even the shim goes; the
+  bundle format already carries l3 caps/datastates/`allow_new_realm`/l2_content/l4_slots. Blockers:
+  L3 install is Global-only (user-Local skills = CR out) + a Global re-home of nilm's caps.
+- **CRs out (other chats):** (1) user-scoped Local skill install; (2) Global `select`/argmax cap;
+  (3) learned-pipeline persistence — **DONE, merged, ADR-0203**.
+- **Viewer (separate chat).** A `mindsos brain view` verb + `mindsos_cli/brain_graph.py` + template
+  are **STASHED** on the Mac (`git stash` "viewer WIP: brain view verb"); that chat reconciles onto
+  main's `brain.py`. Its source generator is this chat's `brain_graph.py` (nilm graph).
+
 ## Working protocol (unchanged, enforced)
 Explain in plain English → user approves → then run. Be **concise and skeptical** (a
 critical design reviewer, not a validator). **Never edit `mindsos_*`.** **No git from the
