@@ -26,7 +26,7 @@ from mindsos_knowledge import (
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     UnknownRoleError,
     ensure_global_role_graph,
 )
@@ -37,7 +37,7 @@ _GLOBAL_NAMED = (
     ROLE_LEXICON,
     ROLE_CONCEPTS,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     ROLE_PROBLEM_TRACE,
 )
 

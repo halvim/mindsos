@@ -6,7 +6,7 @@ trigger (LifecyclePhase transition + per-replan) the orchestrator records a
 small marker; on ``IntelligenceLayer.start`` the unconsolidated markers are
 scanned and each produces a ``crash_marker`` Episode (``outcome_classification
 = "failed"``, ``mm_root_ref = None``) — delivering clean startup, a crash
-record, and ``task_input_ref`` preservation. Partial-MM **content** recovery
+record, and ``request_input_ref`` preservation. Partial-MM **content** recovery
 is deferred to v1.5 (ADR-0179 §3).
 
 The marker store is an injectable abstraction. v1 ships ``InMemoryCheckpoint
@@ -40,8 +40,8 @@ class CrashInfo:
 @dataclass
 class CheckpointMarker:
     request_id: str
-    task_input_ref: Optional[str] = None
-    task_pattern_iri: Optional[str] = None
+    request_input_ref: Optional[str] = None
+    request_pattern_iri: Optional[str] = None
     last_phase: Optional[str] = None
     last_milestone: Optional[str] = None
     consolidated: bool = False
@@ -82,8 +82,8 @@ def record_checkpoint(
     request_id: str,
     last_phase: Optional[str] = None,
     last_milestone: Optional[str] = None,
-    task_input_ref: Optional[str] = None,
-    task_pattern_iri: Optional[str] = None,
+    request_input_ref: Optional[str] = None,
+    request_pattern_iri: Optional[str] = None,
 ) -> None:
     """Record/update a checkpoint marker at a D-B50 trigger (no-op if no store)."""
     if store is None:
@@ -91,8 +91,8 @@ def record_checkpoint(
     store.record(
         CheckpointMarker(
             request_id=request_id,
-            task_input_ref=task_input_ref,
-            task_pattern_iri=task_pattern_iri,
+            request_input_ref=request_input_ref,
+            request_pattern_iri=request_pattern_iri,
             last_phase=last_phase,
             last_milestone=last_milestone,
         )
@@ -131,10 +131,10 @@ def recover_unconsolidated(store: Any, dispatcher: Any) -> List[str]:
             DS_MM_COMPOSITE_INSTANCE: {
                 "episode_id": marker.request_id,
                 "value": {
-                    "task_input_ref": marker.task_input_ref
-                    or f"taskinput:{marker.request_id}",
+                    "request_input_ref": marker.request_input_ref
+                    or f"requestinput:{marker.request_id}",
                     "mm_root_ref": None,
-                    "task_pattern_iri": marker.task_pattern_iri,
+                    "request_pattern_iri": marker.request_pattern_iri,
                     "outcome_classification": "failed",
                     "crash_marker": asdict(crash),
                     "consolidated_at": _utc_now_iso(),

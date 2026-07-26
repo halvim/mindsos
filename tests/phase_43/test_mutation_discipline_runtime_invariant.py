@@ -5,7 +5,7 @@ Per ADR-0153 §2 startup invariant. Tests:
 * ``KnowledgeLayer.bootstrap()`` populates the discipline dispatch
   table for every Global role-graph it creates.
 * ``KnowledgeLayer.discipline_for(mg, role)`` returns the expected
-  discipline for each of the 9 Global + 6 Local roles (task-patterns
+  discipline for each of the 9 Global + 6 Local roles (request-patterns
   gained a Local form per ADR-0150 §am-8).
 * ``KLWriteHandle.write_and_validate(...)`` raises
   :class:`MutationDisciplineError` on ``admin_authored`` writes
@@ -34,7 +34,7 @@ from mindsos_knowledge import (
     ROLE_PENDING_PROMOTIONS,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
 )
 
 
@@ -43,7 +43,7 @@ _GLOBAL_EXPECTED = {
     ROLE_LEXICON: Discipline.ADMIN_AUTHORED,
     ROLE_CONCEPTS: Discipline.ADMIN_AUTHORED,
     ROLE_PROMOTED_PIPELINES: Discipline.IMMUTABLE_SUCCESSOR,
-    ROLE_TASK_PATTERNS: Discipline.IMMUTABLE_SUCCESSOR,
+    ROLE_REQUEST_PATTERNS: Discipline.IMMUTABLE_SUCCESSOR,
     ROLE_PROBLEM_TRACE: Discipline.APPEND_ONLY,
     # Phase 43 Global-form additions per ADR-0150 §am-5.
     ROLE_PENDING_PROMOTIONS: Discipline.AUDIT_ONLY_AFTER_SETTLED,
@@ -60,7 +60,7 @@ _LOCAL_EXPECTED = {
     ROLE_LEARNED_PARAMETERS: Discipline.MUTABLE_WITH_RETENTION,
     # feat/phase1-seam Local-form addition per ADR-0150 §am-8 — same
     # discipline as the Global form (immutable_successor).
-    ROLE_TASK_PATTERNS: Discipline.IMMUTABLE_SUCCESSOR,
+    ROLE_REQUEST_PATTERNS: Discipline.IMMUTABLE_SUCCESSOR,
 }
 
 

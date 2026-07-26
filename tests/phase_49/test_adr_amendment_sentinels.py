@@ -29,7 +29,7 @@ def test_adr_0181_present_and_accepted() -> None:
 def test_adr_0181_documents_strategy_and_consumer_deferral() -> None:
     body = _read("0181-falkor-index-strategy-cross-sub-mm-queries.md")
     for token in (
-        "task_pattern_iri",
+        "request_pattern_iri",
         "memory_id",
         "IntergraphHyperEdge",
         "WSD",

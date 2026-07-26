@@ -74,7 +74,7 @@ class TestAllRolesEnumeration:
             "lexicon",
             "concepts",
             "promoted-pipelines",
-            "task-patterns",
+            "request-patterns",
             "problem-trace",
         ):
             assert role in result.stdout

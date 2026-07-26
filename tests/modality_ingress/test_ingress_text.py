@@ -9,19 +9,19 @@ Also checks selection precedence and fallback.
 from __future__ import annotations
 
 from mindsos_capacity import CapacityLayer
-from mindsos_capacity.builtins.phase1_v0 import TRIVIAL_TASK_PATTERN_IRI
+from mindsos_capacity.builtins.phase1_v0 import TRIVIAL_REQUEST_PATTERN_IRI
 from mindsos_capacity.builtins.phase1_text import (
     TEXT_DERIVE_GOAL_IRI,
     TEXT_HINT_IRI,
     TEXT_MAP_IRI,
     TEXT_MODALITY_DS,
     TEXT_PROCESS_IRI,
-    TEXT_TASK_PATTERN_IRI,
+    TEXT_REQUEST_PATTERN_IRI,
     install_phase1_text,
 )
 import pytest
 
-from mindsos_knowledge import KnowledgeLayer, ROLE_TASK_PATTERNS
+from mindsos_knowledge import KnowledgeLayer, ROLE_REQUEST_PATTERNS
 from mindsos_intelligence import (
     InputEnvelope,
     InterpretationResult,
@@ -47,12 +47,12 @@ def _setup():
     kl = KnowledgeLayer.bootstrap()
     g = next(
         gr for gr in kl.global_metagraph().graphs.values()
-        if gr.role == ROLE_TASK_PATTERNS
+        if gr.role == ROLE_REQUEST_PATTERNS
     )
     g.add_node(
-        value=TEXT_TASK_PATTERN_IRI,
-        type_name="TaskPattern",
-        node_id=TEXT_TASK_PATTERN_IRI,
+        value=TEXT_REQUEST_PATTERN_IRI,
+        type_name="RequestPattern",
+        node_id=TEXT_REQUEST_PATTERN_IRI,
     )
     dispatcher = L4Dispatcher(
         cl,
@@ -71,7 +71,7 @@ def test_text_modality_tokenizes_by_capacity() -> None:
     assert r.structured_input == ["hello", "world", "foo"]
     # the hint body consumed those tokens (disconnect closed)
     assert r.hints == {"n_tokens": 3}
-    assert r.task_pattern_iri == TEXT_TASK_PATTERN_IRI
+    assert r.request_pattern_iri == TEXT_REQUEST_PATTERN_IRI
     assert r.mapping_confidence == 1.0
 
 
@@ -80,7 +80,7 @@ def test_unstamped_input_falls_back_to_v0() -> None:
     # No modality on the envelope → construction-bound profile (None) → v0.
     r = interpret(d, InputEnvelope(value="hi", modality=None))
     assert r.structured_input == "hi"  # identity passthrough, not tokenized
-    assert r.task_pattern_iri == TRIVIAL_TASK_PATTERN_IRI
+    assert r.request_pattern_iri == TRIVIAL_REQUEST_PATTERN_IRI
 
 
 def test_unknown_modality_raises_not_v0() -> None:

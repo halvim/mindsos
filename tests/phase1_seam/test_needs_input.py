@@ -85,14 +85,14 @@ def test_run_lifecycle_pending_confirmation() -> None:
     cl, kl, profile = build_consumer(resolve_impl=cold_start_resolve())
     dispatcher = dispatcher_for(cl, kl, profile)
     mm = MentalModel(session_id="s", user_id="u")
-    orch = Orchestrator(dispatcher, mm, task_scope="task-1")
+    orch = Orchestrator(dispatcher, mm, request_scope="request-1")
 
     outcome = orch.run_lifecycle("solve task 8")
 
     assert outcome.status == "pending_confirmation"
     assert isinstance(outcome.pending_confirmation, NeedsInput)
-    assert outcome.task_run_ref is None  # no TaskRun on the pending path
-    # No consolidation / TaskRun emitted (terminal invariants untouched).
-    from mindsos_intelligence.chain_artifacts import TYPE_TASK_RUN, iter_chain_artifacts
+    assert outcome.request_run_ref is None  # no RequestRun on the pending path
+    # No consolidation / RequestRun emitted (terminal invariants untouched).
+    from mindsos_intelligence.chain_artifacts import TYPE_REQUEST_RUN, iter_chain_artifacts
 
-    assert not any(True for _ in iter_chain_artifacts(mm, TYPE_TASK_RUN))
+    assert not any(True for _ in iter_chain_artifacts(mm, TYPE_REQUEST_RUN))

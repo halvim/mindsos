@@ -23,7 +23,7 @@ from mindsos_knowledge import (
     build_ontology_schema,
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
-    build_task_patterns_schema,
+    build_request_patterns_schema,
 )
 
 
@@ -55,7 +55,7 @@ _BUILDERS_AND_DISCIPLINES = (
     (build_concepts_schema, Discipline.ADMIN_AUTHORED),
     (build_alignment_schema, Discipline.ADMIN_AUTHORED),
     (build_promoted_pipelines_schema, Discipline.IMMUTABLE_SUCCESSOR),
-    (build_task_patterns_schema, Discipline.IMMUTABLE_SUCCESSOR),
+    (build_request_patterns_schema, Discipline.IMMUTABLE_SUCCESSOR),
     (
         build_episodic_memories_schema,
         Discipline.APPEND_ONLY_WITH_LAZY_INLINE,

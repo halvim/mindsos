@@ -76,7 +76,7 @@ def _mm():
 
 def _writer(mm):
     return CapacityMMWriter(
-        mm, request_id="task-1", pipeline_run_ref="pipelinerun:task-1"
+        mm, request_id="request-1", pipeline_run_ref="pipelinerun:request-1"
     )
 
 

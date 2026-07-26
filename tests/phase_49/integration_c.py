@@ -98,7 +98,7 @@ def build_stack(kl: Any = None, *, user: str = TASK_USER) -> Stack:
     session = _Session(user)
     mm = MentalModel(session_id=session.session_id, user_id=user)
     dispatcher = L4Dispatcher(layer, session=session, kl=kl)
-    orch = Orchestrator(dispatcher, mm, task_scope="integration-c")
+    orch = Orchestrator(dispatcher, mm, request_scope="integration-c")
     return Stack(orch, mm, kl, layer, dispatcher, session, user)
 
 

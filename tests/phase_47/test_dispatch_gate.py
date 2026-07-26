@@ -115,7 +115,7 @@ def test_read_dispatch_builds_capacity_context():
 
     result = dispatcher.dispatch(
         capacity_iri(CATEGORY_PLANNING, "derive_initial_plan"),
-        {DS_MAPPING_RESULT: {"task_pattern_iri": "x"}},
+        {DS_MAPPING_RESULT: {"request_pattern_iri": "x"}},
     )
     assert result.success
     assert result.outputs[DS_PLAN]["single_milestone"] is True

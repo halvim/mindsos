@@ -14,11 +14,11 @@ from ._base import Discipline, L2Schema
 
 # ── Node types ─────────────────────────────────────────────────────────
 
-NODE_TASK_PATTERN = "TaskPattern"
+NODE_REQUEST_PATTERN = "RequestPattern"
 NODE_SUBGOAL_TEMPLATE = "SubgoalTemplate"
 
-TASK_PATTERNS_NODE_TYPES: tuple[str, ...] = (
-    NODE_TASK_PATTERN,
+REQUEST_PATTERNS_NODE_TYPES: tuple[str, ...] = (
+    NODE_REQUEST_PATTERN,
     NODE_SUBGOAL_TEMPLATE,
 )
 
@@ -28,20 +28,20 @@ TASK_PATTERNS_NODE_TYPES: tuple[str, ...] = (
 EDGE_DECOMPOSES_INTO = "DECOMPOSES_INTO"
 EDGE_PREREQUISITE_OF = "PREREQUISITE_OF"
 
-TASK_PATTERNS_EDGE_TYPES: tuple[str, ...] = (
+REQUEST_PATTERNS_EDGE_TYPES: tuple[str, ...] = (
     EDGE_DECOMPOSES_INTO,
     EDGE_PREREQUISITE_OF,
 )
 
 
-# ── TaskPattern content / metadata partition (Phase 43 — ADR-0152 §2 + ADR-0153 §3) ──
+# ── RequestPattern content / metadata partition (Phase 43 — ADR-0152 §2 + ADR-0153 §3) ──
 #
-# 13-field TaskPattern schema v2 per ADR-0152 §2. ``confidence`` KEPT
+# 13-field RequestPattern schema v2 per ADR-0152 §2. ``confidence`` KEPT
 # (metadata; per-pattern confidence remains useful for L4 prioritisation
 # distinct from per-pipeline confidence dropped on Pipeline). Discipline
 # is ``immutable_successor`` (ADR-0153 §1).
 
-TASK_PATTERN_CONTENT_FIELDS: frozenset[str] = frozenset({
+REQUEST_PATTERN_CONTENT_FIELDS: frozenset[str] = frozenset({
     "pattern_name",
     "task_shape_recognizer",
     "sufficient_predicate_iri",
@@ -49,7 +49,7 @@ TASK_PATTERN_CONTENT_FIELDS: frozenset[str] = frozenset({
     "paired_pipelines",
 })
 
-TASK_PATTERN_METADATA_FIELDS: frozenset[str] = frozenset({
+REQUEST_PATTERN_METADATA_FIELDS: frozenset[str] = frozenset({
     "relevant_hints",
     "mapping_confidence_threshold",
     "n_observations",
@@ -60,8 +60,8 @@ TASK_PATTERN_METADATA_FIELDS: frozenset[str] = frozenset({
     "last_updated_at",
 })
 
-TASK_PATTERN_PROPS: frozenset[str] = (
-    TASK_PATTERN_CONTENT_FIELDS | TASK_PATTERN_METADATA_FIELDS
+REQUEST_PATTERN_PROPS: frozenset[str] = (
+    REQUEST_PATTERN_CONTENT_FIELDS | REQUEST_PATTERN_METADATA_FIELDS
 )
 
 # SubgoalTemplate partition deferred per ADR-0152 §2 (edge types
@@ -73,17 +73,17 @@ SUBGOAL_TEMPLATE_PROPS: frozenset[str] = frozenset({
 })
 
 
-def build_task_patterns_schema(strict: bool = False) -> L2Schema:
-    """Construct the task-patterns role Schema."""
+def build_request_patterns_schema(strict: bool = False) -> L2Schema:
+    """Construct the request-patterns role Schema."""
     s = L2Schema(
         mutation_discipline=Discipline.IMMUTABLE_SUCCESSOR, strict=strict
     )
 
-    for nt in TASK_PATTERNS_NODE_TYPES:
+    for nt in REQUEST_PATTERNS_NODE_TYPES:
         s.add_node_type(NodeType(nt))
 
-    any_node = frozenset(TASK_PATTERNS_NODE_TYPES)
-    for et in TASK_PATTERNS_EDGE_TYPES:
+    any_node = frozenset(REQUEST_PATTERNS_NODE_TYPES)
+    for et in REQUEST_PATTERNS_EDGE_TYPES:
         s.add_edge_type(EdgeType(et, any_node, any_node))
 
     return s

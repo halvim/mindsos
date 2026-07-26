@@ -2,7 +2,7 @@
 
 Per Phase 14 PB-1 lock: bootstrap auto-ensures the 6 Global named
 roles (``ontology``, ``lexicon``, ``concepts``, ``promoted-pipelines``,
-``task-patterns``, ``problem-trace``). Alignment pair-graphs are
+``request-patterns``, ``problem-trace``). Alignment pair-graphs are
 **not** created at bootstrap — Phase 15's Alignments importer mints
 those on demand.
 
@@ -26,7 +26,7 @@ from mindsos_knowledge import (
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_SUBMINDS,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
 )
 
 
@@ -35,7 +35,7 @@ _EXPECTED_GLOBAL_ROLES = frozenset({
     ROLE_LEXICON,
     ROLE_CONCEPTS,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     ROLE_PROBLEM_TRACE,
     # Phase 43 (ADR-0150 §am-5) Global-form additions.
     ROLE_PENDING_PROMOTIONS,

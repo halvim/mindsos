@@ -227,7 +227,7 @@ class DreamCapacity(_CapacityBase):
       (re-invoke generative capacities against current L2/L3). Per Chat B
       D-B8. The ``hybrid`` policy is a v2 reservation (no v1 assignee).
     - ``entry_point`` — the chain entry the dream re-executes from. v1 is
-      ``latest_active_taskrun`` for all three capacities (Chat B D-B7);
+      ``latest_active_requestrun`` for all three capacities (Chat B D-B7);
       specific PipelineRun / Milestone / replan-point entries are v2.
 
     The body itself is a **directive-emitter** (Phase 45 R0 S1): it

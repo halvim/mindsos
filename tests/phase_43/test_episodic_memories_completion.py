@@ -47,9 +47,9 @@ def test_episode_content_partition_cardinality() -> None:
     assert len(EPISODE_CONTENT_FIELDS) == 6
     assert EPISODE_METADATA_FIELDS == frozenset()
     expected_content = {
-        "task_input_ref",
+        "request_input_ref",
         "mm_root_ref",
-        "task_pattern_iri",
+        "request_pattern_iri",
         "outcome_classification",
         "crash_marker",
         "consolidated_at",
@@ -58,7 +58,7 @@ def test_episode_content_partition_cardinality() -> None:
 
 
 def test_memory_content_partition_cardinality() -> None:
-    assert MEMORY_CONTENT_FIELDS == frozenset({"task_pattern_iri"})
+    assert MEMORY_CONTENT_FIELDS == frozenset({"request_pattern_iri"})
     assert MEMORY_METADATA_FIELDS == frozenset(
         {"created_at", "admin_notes", "rejected_promotions"}
     )

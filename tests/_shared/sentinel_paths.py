@@ -151,7 +151,7 @@ SENTINEL_PATHS: tuple[str, ...] = (
     # COPY directive needed; existing `COPY mindsos_knowledge`
     # picks up the new tree automatically. Docs
     # (`docs/usage/knowledge/{overview,ontology,lexicon,concepts,
-    # alignment,promoted-pipelines,task-patterns,episodic-memories,
+    # alignment,promoted-pipelines,request-patterns,episodic-memories,
     # problem-trace,capacity-state}.md`) intentionally NOT
     # sentinelled per `feedback_sentinel_paths_runtime_only.md`.
     "mindsos_knowledge/schemas/__init__.py",
@@ -160,7 +160,7 @@ SENTINEL_PATHS: tuple[str, ...] = (
     "mindsos_knowledge/schemas/concepts.py",
     "mindsos_knowledge/schemas/alignment.py",
     "mindsos_knowledge/schemas/promoted_pipelines.py",
-    "mindsos_knowledge/schemas/task_patterns.py",
+    "mindsos_knowledge/schemas/request_patterns.py",
     "mindsos_knowledge/schemas/episodic_memories.py",
     "mindsos_knowledge/schemas/problem_trace.py",
     "mindsos_knowledge/schemas/capacity_state.py",

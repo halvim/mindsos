@@ -18,7 +18,7 @@ from mindsos_intelligence.chain_artifacts import (
     TYPE_PLAN,
     TYPE_PIPELINE,
     TYPE_PIPELINE_RUN,
-    TYPE_TASK_RUN,
+    TYPE_REQUEST_RUN,
     TYPE_REPLAN_RECORD,
     TYPE_STEP_EXECUTION_RECORD,
     iter_chain_artifacts,
@@ -31,10 +31,10 @@ def _mm():
 
 def test_emit_full_chain_into_intelligence_mm():
     mm = _mm()
-    w = ChainArtifactWriter(mm, "task-1")
+    w = ChainArtifactWriter(mm, "request-1")
 
     hs = w.emit_hint_set({"hint.modality": "text"})
-    mr = w.emit_mapping_result(hs.iri, "task-pattern:v0:trivial", 1.0)
+    mr = w.emit_mapping_result(hs.iri, "request-pattern:v0:trivial", 1.0)
     root = w.emit_milestone("root", 0, is_leaf=True)
     plan = w.emit_plan(root.iri, mr.iri)
     tr = w.emit_request_run(plan_ref=plan.iri)
@@ -54,14 +54,14 @@ def test_emit_full_chain_into_intelligence_mm():
 
 def test_task_run_ref_recorded_on_root():
     mm = _mm()
-    w = ChainArtifactWriter(mm, "task-2")
+    w = ChainArtifactWriter(mm, "request-2")
     tr = w.emit_request_run()
-    assert mm.root.task_run_ref == tr.iri
+    assert mm.root.request_run_ref == tr.iri
 
 
 def test_iter_filters_by_type():
     mm = _mm()
-    w = ChainArtifactWriter(mm, "task-3")
+    w = ChainArtifactWriter(mm, "request-3")
     w.emit_hint_set({})
     w.emit_hint_set({"a": 1})
     w.emit_plan(None, None)
@@ -73,7 +73,7 @@ def test_iter_filters_by_type():
 
 def test_artifacts_live_in_intelligence_sub_mm_only():
     mm = _mm()
-    w = ChainArtifactWriter(mm, "task-4")
+    w = ChainArtifactWriter(mm, "request-4")
     w.emit_request_run()
     # nothing leaked into knowledge-/capacity-MM
     assert sum(len(g.nodes) for g in mm.knowledge_mm.graphs.values()) == 0

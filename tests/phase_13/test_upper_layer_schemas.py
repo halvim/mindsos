@@ -14,7 +14,7 @@ from mindsos_knowledge.schemas import (
     build_episodic_memories_schema,
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
-    build_task_patterns_schema,
+    build_request_patterns_schema,
 )
 from mindsos_knowledge.schemas.capacity_state import (
     CAPACITY_STATE_EDGE_TYPES,
@@ -40,13 +40,13 @@ from mindsos_knowledge.schemas.promoted_pipelines import (
     PROMOTED_PIPELINES_EDGE_TYPES,
     PROMOTED_PIPELINES_NODE_TYPES,
 )
-from mindsos_knowledge.schemas.task_patterns import (
+from mindsos_knowledge.schemas.request_patterns import (
     EDGE_DECOMPOSES_INTO,
     EDGE_PREREQUISITE_OF,
     NODE_SUBGOAL_TEMPLATE,
-    NODE_TASK_PATTERN,
-    TASK_PATTERNS_EDGE_TYPES,
-    TASK_PATTERNS_NODE_TYPES,
+    NODE_REQUEST_PATTERN,
+    REQUEST_PATTERNS_EDGE_TYPES,
+    REQUEST_PATTERNS_NODE_TYPES,
 )
 
 
@@ -76,19 +76,19 @@ def test_promoted_pipelines_has_step_is_regular_edge_not_hyperedge() -> None:
     assert HAS_STEP_POSITION_PROPERTY == "position"
 
 
-# ── task_patterns ──────────────────────────────────────────────────────
+# ── request_patterns ──────────────────────────────────────────────────────
 
 
 def test_task_patterns_nodes_match() -> None:
-    s = build_task_patterns_schema()
-    assert set(s.node_types) == set(TASK_PATTERNS_NODE_TYPES)
-    assert NODE_TASK_PATTERN in s.node_types
+    s = build_request_patterns_schema()
+    assert set(s.node_types) == set(REQUEST_PATTERNS_NODE_TYPES)
+    assert NODE_REQUEST_PATTERN in s.node_types
     assert NODE_SUBGOAL_TEMPLATE in s.node_types
 
 
 def test_task_patterns_edges_match() -> None:
-    s = build_task_patterns_schema()
-    assert set(s.edge_types) == set(TASK_PATTERNS_EDGE_TYPES)
+    s = build_request_patterns_schema()
+    assert set(s.edge_types) == set(REQUEST_PATTERNS_EDGE_TYPES)
     assert EDGE_DECOMPOSES_INTO in s.edge_types
     assert EDGE_PREREQUISITE_OF in s.edge_types
 
@@ -151,7 +151,7 @@ def test_capacity_state_has_no_edges_in_v1() -> None:
     "builder",
     [
         build_promoted_pipelines_schema,
-        build_task_patterns_schema,
+        build_request_patterns_schema,
         build_episodic_memories_schema,
         build_problem_trace_schema,
         build_capacity_state_schema,
@@ -167,7 +167,7 @@ def test_upper_layer_schema_strict_true_round_trip(builder) -> None:
     "builder",
     [
         build_promoted_pipelines_schema,
-        build_task_patterns_schema,
+        build_request_patterns_schema,
         build_episodic_memories_schema,
         build_problem_trace_schema,
         build_capacity_state_schema,

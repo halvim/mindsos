@@ -148,10 +148,10 @@ def _consolidate_mm_impl(**kwargs: Any) -> Any:
     value = record["value"]
     # ``value`` carries the frozen-MM Episode record assembled by L4
     # consolidation (ADR-0176 §1): the 7 D-B47 content fields incl.
-    # ``task_pattern_iri`` and ``capacity_root_ref`` (CR: reopen DQ-8, Slice B —
+    # ``request_pattern_iri`` and ``capacity_root_ref`` (CR: reopen DQ-8, Slice B —
     # the capacity-MM index-graph pointer, mirroring ``mm_root_ref``; rides
     # inside the codec-encoded value dict, no L2 schema change). (A bare value
-    # is tolerated — Memory materialises only when ``task_pattern_iri`` is
+    # is tolerated — Memory materialises only when ``request_pattern_iri`` is
     # present.)
     vr = handle.validate_node(value=value, type_="Episode")
     if not vr.ok:
@@ -165,42 +165,42 @@ def _consolidate_mm_impl(**kwargs: Any) -> Any:
 
     # Memory materialise-on-first-episode + MEMORY_CONTAINS_EPISODE edge
     # (Chat B D-B47 §4.6; ADR-0176 §3). Cluster key = the Episode's
-    # ``task_pattern_iri``; Memory materialises once per pattern (idempotent
+    # ``request_pattern_iri``; Memory materialises once per pattern (idempotent
     # on its derived IRI) and each episode attaches via the within-role-graph
     # edge.
-    task_pattern_iri = value.get("task_pattern_iri") if isinstance(value, dict) else None
-    if task_pattern_iri:
+    request_pattern_iri = value.get("request_pattern_iri") if isinstance(value, dict) else None
+    if request_pattern_iri:
         _materialise_memory(
-            handle, context.user_id, task_pattern_iri, episode_result.iri
+            handle, context.user_id, request_pattern_iri, episode_result.iri
         )
     return episode_result
 
 
-def _memory_id_for(task_pattern_iri: str) -> str:
-    """Deterministic, fragment-safe ``memory_id`` for a task-pattern cluster
-    key (ADR-0176 §3). The raw ``task_pattern_iri`` is the cluster key but is
+def _memory_id_for(request_pattern_iri: str) -> str:
+    """Deterministic, fragment-safe ``memory_id`` for a request-pattern cluster
+    key (ADR-0176 §3). The raw ``request_pattern_iri`` is the cluster key but is
     not a stable IRI fragment, so the Memory IRI uses a content hash —
     idempotent (same pattern → same Memory)."""
     import hashlib
 
-    digest = hashlib.sha1(task_pattern_iri.encode("utf-8")).hexdigest()[:16]
+    digest = hashlib.sha1(request_pattern_iri.encode("utf-8")).hexdigest()[:16]
     return f"tp-{digest}"
 
 
-def _materialise_memory(handle, user_id, task_pattern_iri, episode_iri) -> None:
-    """Materialise the Memory composite for ``task_pattern_iri`` on first
+def _materialise_memory(handle, user_id, request_pattern_iri, episode_iri) -> None:
+    """Materialise the Memory composite for ``request_pattern_iri`` on first
     episode (idempotent) and add the ``MEMORY_CONTAINS_EPISODE`` edge
     (Memory → Episode) for ``episode_iri`` (ADR-0176 §3)."""
     from mindsos_knowledge.schemas.episodic_memories import (
         EDGE_MEMORY_CONTAINS_EPISODE,
     )
 
-    memory_id = _memory_id_for(task_pattern_iri)
+    memory_id = _memory_id_for(request_pattern_iri)
     mem_iri = handle.mint_iri("Memory", user_id=user_id, memory_id=memory_id)
     g = handle.graph()
     if mem_iri not in g.nodes:
         handle.write_and_validate(
-            value={"task_pattern_iri": task_pattern_iri},
+            value={"request_pattern_iri": request_pattern_iri},
             type_="Memory",
             user_id=user_id,
             memory_id=memory_id,

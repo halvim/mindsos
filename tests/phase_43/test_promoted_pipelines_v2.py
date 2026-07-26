@@ -1,7 +1,7 @@
 """Phase 43 PR2 — promoted-pipelines schema v2.
 
 Per ADR-0152 §1: 16-field Pipeline schema. ``confidence`` DROPPED per
-ADR-0094 §am-1. ``paired_pipelines`` lives ONLY on task-patterns
+ADR-0094 §am-1. ``paired_pipelines`` lives ONLY on request-patterns
 (D-L2-7 eliminated pipeline-side cache); MUST NOT be in
 ``PIPELINE_PROPS``.
 """
@@ -62,7 +62,7 @@ def test_confidence_absent_from_pipeline() -> None:
 
 def test_paired_pipelines_absent_from_pipeline() -> None:
     """D-L2-7: pipeline-side cache eliminated entirely; lives only on
-    task-patterns."""
+    request-patterns."""
     assert "paired_pipelines" not in PIPELINE_PROPS
 
 

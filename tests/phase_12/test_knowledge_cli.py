@@ -193,7 +193,7 @@ def test_roles_list_all_json() -> None:
     names = {r["name"] for r in payload["roles"]}
     assert names == {
         "ontology", "lexicon", "concepts",
-        "promoted-pipelines", "task-patterns", "episodic_memories",
+        "promoted-pipelines", "request-patterns", "episodic_memories",
         "problem-trace", "capacity-state",
         # Phase 43 (ADR-0150 §am-5) additions.
         "parameter-staging", "pending-promotions",
@@ -225,7 +225,7 @@ def test_roles_list_upper_only() -> None:
     payload = json.loads(result.stdout)
     names = {r["name"] for r in payload["roles"]}
     assert names == {
-        "promoted-pipelines", "task-patterns", "episodic_memories",
+        "promoted-pipelines", "request-patterns", "episodic_memories",
         "problem-trace", "capacity-state",
         # Phase 43 (ADR-0150 §am-5) upper-layer additions.
         "parameter-staging", "pending-promotions",

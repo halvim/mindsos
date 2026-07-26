@@ -30,7 +30,7 @@ def _fresh_global() -> Metagraph:
         "lexicon",
         "concepts",
         "promoted-pipelines",
-        "task-patterns",
+        "request-patterns",
         "problem-trace",
     ):
         ensure_global_role_graph(mg, role)

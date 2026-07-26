@@ -245,7 +245,7 @@ def test_plan_construction_reads_solve_target_and_threads_resolved_reference():
     }
     disp = _RecordingDispatcher(plan_out)
     result = plan_construction.build(
-        disp, _FakeWriter(), "mappingresult:1", "task-pattern:x",
+        disp, _FakeWriter(), "mappingresult:1", "request-pattern:x",
         resolved_reference={"grid": [[9]]},
     )
     assert result.solve_target == {
@@ -255,7 +255,7 @@ def test_plan_construction_reads_solve_target_and_threads_resolved_reference():
     # resolved_reference rode the DS_MAPPING_RESULT value dict (no new input).
     derive_payload = disp.payloads[0][1][DS_MAPPING_RESULT]
     assert derive_payload["resolved_reference"] == {"grid": [[9]]}
-    assert derive_payload["task_pattern_iri"] == "task-pattern:x"
+    assert derive_payload["request_pattern_iri"] == "request-pattern:x"
 
 
 def test_plan_construction_v0_shape_yields_no_solve_target():
@@ -360,7 +360,7 @@ def _orch_with_solve(persister=None):
     reset_v0_verdicts()
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess, kl=kl)
-    orch = Orchestrator(disp, mm, task_scope="task-1", mm_persister=persister)
+    orch = Orchestrator(disp, mm, request_scope="request-1", mm_persister=persister)
     return orch, mm, kl
 
 
@@ -407,7 +407,7 @@ def test_v0_lifecycle_unchanged_no_capacity_grounding():
     reset_v0_verdicts()
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess, kl=kl)
-    orch = Orchestrator(disp, mm, task_scope="task-1")
+    orch = Orchestrator(disp, mm, request_scope="request-1")
     outcome = orch.run_lifecycle("hello", request_id="T")
     assert outcome.status == "succeeded"
     assert _capacity_run_graph(mm) is None

@@ -35,7 +35,7 @@ def build_corpus() -> Metagraph:
       in the same role-graph per ADR-0150 §amendment-3).
     * ``lexicon`` — 1 node at v2024 (single-version).
     * ``concepts`` — 1 node at v1.7 (single-version).
-    * ``promoted-pipelines`` / ``task-patterns`` / ``problem-trace`` —
+    * ``promoted-pipelines`` / ``request-patterns`` / ``problem-trace`` —
       empty (the enumerator returns empty set).
     """
     mg = Metagraph(
@@ -46,7 +46,7 @@ def build_corpus() -> Metagraph:
         "lexicon",
         "concepts",
         "promoted-pipelines",
-        "task-patterns",
+        "request-patterns",
         "problem-trace",
     ):
         ensure_global_role_graph(mg, role)

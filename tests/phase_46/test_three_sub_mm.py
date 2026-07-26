@@ -24,7 +24,7 @@ def test_three_sub_mms_present():
 
 def test_thin_root_is_pointers_only():
     mm = _mm()
-    assert mm.root.task_run_ref is None
+    assert mm.root.request_run_ref is None
     assert mm.root.problem_trace_ref is None
     assert mm.root.outcome_ref is None
 
@@ -35,7 +35,7 @@ def test_iri_namespace_dispatch():
     assert mm.sub_mm_for_iri("episodic:e1") is mm.knowledge_mm
     assert mm.sub_mm_for_iri("capacity:text:tokenize") is mm.capacity_mm
     assert mm.sub_mm_for_iri("datastate:nlu.tokens") is mm.capacity_mm
-    assert mm.sub_mm_for_iri("taskrun:abc") is mm.intelligence_mm
+    assert mm.sub_mm_for_iri("requestrun:abc") is mm.intelligence_mm
     assert mm.sub_mm_for_iri("plan:p1") is mm.intelligence_mm
     with pytest.raises(KeyError):
         mm.sub_mm_for_iri("unknown:thing")
@@ -43,9 +43,9 @@ def test_iri_namespace_dispatch():
 
 def test_deep_copy_is_independent():
     mm = _mm()
-    mm.root.task_run_ref = "taskrun:orig"
+    mm.root.request_run_ref = "requestrun:orig"
     clone = mm.deep_copy()
-    assert clone.root.task_run_ref == "taskrun:orig"
+    assert clone.root.request_run_ref == "requestrun:orig"
     clone.root.outcome_ref = "outcome:x"
     assert mm.root.outcome_ref is None
     assert clone.knowledge_mm is not mm.knowledge_mm

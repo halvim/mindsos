@@ -14,8 +14,8 @@ NodeTypes per Chat B D-B47 + D-B48 + L5 design notes §4.3 + §4.6:
   inline-on-retire is the only permitted internal mutation
   (D-B17 + L2_CHAT_DECISIONS D-L2-3 + D-L2-5).
 * ``Memory`` — clustering composite over Episodes, keyed by
-  ``task_pattern_iri``. Materializes on first episode of a
-  task-pattern; subsequent episodes attach via the
+  ``request_pattern_iri``. Materializes on first episode of a
+  request-pattern; subsequent episodes attach via the
   ``MEMORY_CONTAINS_EPISODE`` edge (Phase 43 schema-v2 ship — Chat B
   PB-VV; NOT an embedded list).
 
@@ -67,14 +67,14 @@ EPISODIC_MEMORIES_EDGE_TYPES: tuple[str, ...] = (
 # v1 — externally append-only; all fields are reference-stable per
 # ADR-0153 §4. ``crash_marker`` is set during consolidation per Chat B
 # D-B50 when the previous session crashed; once written, immutable like
-# other Episode content. Storage tier for ``task_input_ref`` cascades
+# other Episode content. Storage tier for ``request_input_ref`` cascades
 # through the XRef target's ``storage_mode`` per ADR-0151 (no
 # Episode-level ``storage_mode`` declaration per design log §6.1).
 
 EPISODE_CONTENT_FIELDS: frozenset[str] = frozenset({
-    "task_input_ref",
+    "request_input_ref",
     "mm_root_ref",
-    "task_pattern_iri",
+    "request_pattern_iri",
     "outcome_classification",
     "crash_marker",
     "consolidated_at",
@@ -89,12 +89,12 @@ EPISODE_PROPS: frozenset[str] = (
 
 # ── Memory content / metadata partition (Phase 43 — ADR-0152 §7) ──
 #
-# 1 content field (``task_pattern_iri`` — the primary cluster key per
+# 1 content field (``request_pattern_iri`` — the primary cluster key per
 # Chat B D-B47). 3 metadata fields per ADR-0152 §7 — ``rejected_promotions``
 # is denormalised list; audit log remains authoritative per D-B47.
 
 MEMORY_CONTENT_FIELDS: frozenset[str] = frozenset({
-    "task_pattern_iri",
+    "request_pattern_iri",
 })
 
 MEMORY_METADATA_FIELDS: frozenset[str] = frozenset({
