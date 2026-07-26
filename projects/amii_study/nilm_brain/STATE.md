@@ -178,11 +178,18 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      handled by keeping power/RMS in the signature (the old normalization follow-up — resolved).
 4. **Wire the secondary pipelines / rungs** — each rung needs its own reference + §4A template
    instance. (`power`/`multiply` now references the generic `signal`; rewire for P=V·I in v1.)
-5. **Durable L2 (v1) — the next appliance slice.** Persist learned `calibrate` params + taught
-   references AND the **appliance library + `signature_norm` + `match_cutoff`** as
-   `learned-parameters` nodes (arc3 B6: L2 is the layer that works); `boot_brain` +
-   FalkorDBLocalPersister. Today the appliance library/norm/cutoff are **in-memory on the Solver** —
-   the brain boots and runs, but does not boot *knowing* taught appliances.
+5. **Durable L2 (v1) — PARTLY DONE.** ✔ **Pipelines persisted.** `repl.py` boots nilm as a
+   resident mindsos brain (core `boot_brain` + `BrainREPL`/`loop`), installs L3, and persists the
+   two composed segments as **learned pipelines** (ADR-0203: `learn_pipeline`, `immutable_successor`,
+   value = full `Pipeline.to_dict()` incl. `edges`; persist-once guard so re-boot doesn't churn
+   `taught_seq`). `mindsos brain` → `pl` lists `cycle_recognition` + `appliance_signature`;
+   `--durable` (`stack.save()` → FalkorDBLocalPersister) boots knowing them. Verified: both listed,
+   no round-trip rejection.
+   **NEXT (remaining slice):** persist the **taught appliance library + `signature_norm` +
+   `match_cutoff`** — these are `learned-parameters` (weights/references), NOT `learned-pipelines`,
+   so they use the parameter-persistence path (`LearnedParameter` / durable Local), not
+   `learn_pipeline`. Today they are **in-memory on the Solver**, so `--durable` boots knowing the
+   *pipelines* but not the *appliances*. (arc3 B6: L2 is the layer that works.)
 6. **`fit_appliance` is O(n²)** in library exemplars (pairwise `signature_distance` for the
    negative-aware cutoff). Fine for demo-scale; an efficiency (not correctness) item before a large
    library — e.g. sample pairs, or a spatial index. Flagged, not faked.
