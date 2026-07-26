@@ -84,17 +84,22 @@ class BrainREPL:
             self._skill_verbs[verb] = slots
 
     def _do_view(self, args: List[str]) -> str:
-        """view [path] [-l|-g] [--no-open] — build a self-contained interactive
-        graph of this brain (DataStates, capacities, finder segments) and open
-        it in a new browser tab. Re-run after changes for a fresh tab."""
+        """view [-l|-g] [--no-serve] — build an interactive graph of this brain
+        and serve it over localhost so an SSH-forwarded browser can open it.
+        Re-run after changes; each run yields a fresh URL. --no-serve just
+        writes the HTML file and prints its path."""
+        import functools
         import glob
+        import http.server
         import json
         import os
+        import socketserver
         import tempfile
+        import threading
         import time
         from pathlib import Path
 
-        spec = {**SCOPE, "no_open": (("--no-open",), False)}
+        spec = {**SCOPE, "no_serve": (("--no-serve",), False)}
         opts, pos, err = parse(args, spec)
         if err:
             return err
@@ -112,32 +117,48 @@ class BrainREPL:
         html = template.replace(
             "const DATA = /*__DATA__*/{};",
             "const DATA = " + json.dumps(data, separators=(",", ":")) + ";")
-        if pos:
-            out = Path(pos[0])
-        else:
-            d = Path(tempfile.gettempdir())
-            old = sorted(glob.glob(str(d / f"{self.stack.user}_graph_*.html")))
-            for f in old[:-3]:
-                try:
-                    os.remove(f)
-                except OSError:
-                    pass
-            out = d / f"{self.stack.user}_graph_{int(time.time())}.html"
-        out.write_text(html, encoding="utf-8")
-        opened = False
-        if not opts.get("no_open"):
+
+        serve_dir = Path(tempfile.gettempdir()) / "mindsos_viz"
+        serve_dir.mkdir(exist_ok=True)
+        pat = str(serve_dir / f"{self.stack.user}_graph_*.html")
+        for f in sorted(glob.glob(pat))[:-3]:
             try:
-                import webbrowser
-                opened = webbrowser.open_new_tab("file://" + str(out.resolve()))
-            except Exception:
-                opened = False
+                os.remove(f)
+            except OSError:
+                pass
+        out = serve_dir / f"{self.stack.user}_graph_{int(time.time())}.html"
+        out.write_text(html, encoding="utf-8")
+
         ncap = sum(1 for n in data["nodes"] if n["kind"] == "cap")
         nds = sum(1 for n in data["nodes"] if n["kind"] == "ds")
         nseg = len(data["segments"])
-        tail = "" if getattr(self, "viz_spec", None) else \
-            "  (no viz_spec - heuristic groups, no segments)"
-        return (f"{'opened new tab' if opened else 'wrote'}: {out}  "
-                f"({ncap} caps, {nds} datastates, {nseg} segments){tail}")
+        stats = f"({ncap} caps, {nds} datastates, {nseg} segments)"
+        if not getattr(self, "viz_spec", None):
+            stats += "  (no viz_spec - heuristic groups, no segments)"
+        if opts.get("no_serve"):
+            return f"wrote: {out}  {stats}"
+
+        if getattr(self, "_viz_httpd", None) is None:
+            class _Server(socketserver.ThreadingTCPServer):
+                allow_reuse_address = True
+                daemon_threads = True
+
+            class _Quiet(http.server.SimpleHTTPRequestHandler):
+                def log_message(self, *a):
+                    pass
+
+            handler = functools.partial(_Quiet, directory=str(serve_dir))
+            try:
+                httpd = _Server(("127.0.0.1", 8777), handler)
+            except OSError:
+                httpd = _Server(("127.0.0.1", 0), handler)
+            threading.Thread(target=httpd.serve_forever, daemon=True).start()
+            self._viz_httpd = httpd
+        port = self._viz_httpd.server_address[1]
+        url = f"http://localhost:{port}/{out.name}"
+        return (f"serving {stats}\n"
+                f"  Mac tunnel:  ssh -N -L {port}:localhost:{port} <you>@<linux-host>\n"
+                f"  then open:   {url}")
 
     def dispatch(self, line: str) -> str:
         """Execute one verb line; return the rendered output."""
