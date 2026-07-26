@@ -255,7 +255,13 @@ class Orchestrator:
             sufficient = sufficient_predicate.evaluate(self._dispatcher)
             verdict = replan_check.check(self._dispatcher)
             if verdict.decision == "abort":
-                writer.emit_replan_record("pipeline", verdict)
+                # Slice 3 — record the consumer's advisory target (if any) on the
+                # abort ReplanRecord for member-scoped audit. ``replan_level``
+                # stays "pipeline" (the ACTUAL action); ``replan_milestone_ref``
+                # is the advisory pointer (None for v0 → byte-identical).
+                writer.emit_replan_record(
+                    "pipeline", verdict, replan_milestone_ref=verdict.target_ref
+                )
                 request_run.status = "aborted"
                 self._consolidate(
                     request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
@@ -263,16 +269,39 @@ class Orchestrator:
                 return RequestOutcome("aborted", request_run.iri, replans_used=replans)
             if verdict.decision == "replan" and replans < self._budget:
                 replans += 1
+                # Execution stays whole-pipeline (clear-all) this slice — so
+                # invalidated_refs = ALL of request_run.pipeline_runs, and the
+                # recorded ``replan_level`` is "pipeline" (the ACTUAL action):
+                # never a finer level that would contradict a full-clear. Slice
+                # 3 records the consumer's advisory member target separately on
+                # ``replan_milestone_ref`` (None for v0 → byte-identical).
+                # Targeted re-execution (honoring verdict.replan_level to re-run
+                # only that member) is a later, non-additive slice.
                 invalidated = replan_check.invalidate_at_and_below(request_run, "pipeline")
                 writer.emit_replan_record(
-                    "pipeline", verdict, invalidated_refs=invalidated
+                    "pipeline", verdict,
+                    replan_milestone_ref=verdict.target_ref,
+                    invalidated_refs=invalidated,
                 )
                 continue
             break
 
         # Phase 6 — failure diagnosis on the dont-know path
         if not self._simplified and not sufficient:
-            blame = phase_6.diagnose(self._dispatcher)
+            # Slice 3 — feed the last verdict's advisory target (grounding
+            # ref-path of the suspect member) into diagnosis so the L3
+            # ``attribute_blame`` capability can return member-scoped blame
+            # (``BlameVerdict.milestone_ref``) instead of whole-pipeline. When no
+            # target was named (v0), pass ``outcome=None`` so ``phase_6.diagnose``
+            # dispatches ``{}`` exactly as before — byte-identical. (``verdict``
+            # is always bound here: in non-simplified mode the loop runs
+            # ``replan_check.check`` before any break.)
+            diag_outcome = (
+                {"target_ref": verdict.target_ref, "replan_level": verdict.replan_level}
+                if verdict.target_ref
+                else None
+            )
+            blame = phase_6.diagnose(self._dispatcher, outcome=diag_outcome)
             request_run.status = "failed"
             self._consolidate(
                 request_run, p1.task_pattern_iri, request_id, writer, capacity_graphs
