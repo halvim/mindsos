@@ -55,6 +55,20 @@ class ReplanVerdict:
     decision: str  # "continue" | "replan" | "abort"
     verified: bool = True
     divergence: float = 0.0
+    #: Collection-iteration Slice 3 — optional *advisory* targeted-replan
+    #: address a real consumer (arc) may name to focus replan/diagnosis on a
+    #: specific member instead of the whole pipeline. ``replan_level`` is one of
+    #: the reserved ``REPLAN_LEVELS`` granularities (``"map"`` / ``"plan_
+    #: subtree"``); ``target_ref`` is the Slice-2 grounding ref-path of the
+    #: member (``pipelinerun:{scope}:…:m{i}:…``). **Advisory only** this slice:
+    #: replan *execution* stays whole-pipeline (clear-all), so the target is
+    #: recorded on the ``ReplanRecord`` (``replan_milestone_ref``) for audit and
+    #: fed to Phase-6 diagnosis (``BlameVerdict.milestone_ref``) — it does NOT
+    #: scope what re-runs (targeted re-execution is a later, non-additive slice
+    #: that reverses Slice-1a's attempt-scoped blackboard). Every v0/1a/1b/2
+    #: verdict omits both → ``None`` → all shipped paths byte-identical.
+    replan_level: Optional[str] = None
+    target_ref: Optional[str] = None
 
 
 @dataclass

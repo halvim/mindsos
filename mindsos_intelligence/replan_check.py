@@ -22,10 +22,16 @@ REPLAN_LEVELS = ("hint", "map", "plan", "plan_subtree", "pipeline")
 def check(dispatcher, state=None) -> ReplanVerdict:
     result = dispatcher.dispatch(SHOULD_REPLAN_IRI, {DS_REPLAN_STATE: state or {}})
     v = result.outputs[DS_REPLAN_VERDICT]
+    # Collection-iteration Slice 3 — carry the consumer's optional *advisory*
+    # targeted-replan address (reserved ``"map"``/``"plan_subtree"`` level + the
+    # Slice-2 member ref-path). Tolerant ``.get`` (like ``verified``/
+    # ``divergence``): a v0 verdict omits both → ``None`` → byte-identical.
     return ReplanVerdict(
         decision=v["decision"],
         verified=v.get("verified", True),
         divergence=v.get("divergence", 0.0),
+        replan_level=v.get("replan_level"),
+        target_ref=v.get("target_ref"),
     )
 
 
