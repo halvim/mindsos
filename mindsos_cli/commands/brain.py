@@ -84,23 +84,18 @@ class BrainREPL:
             self._skill_verbs[verb] = slots
 
     def _do_view(self, args: List[str]) -> str:
-        """view [-l|-g] [--no-serve] — build an interactive graph of this brain
-        and serve it over localhost so an SSH-forwarded browser can open it.
-        Re-run after changes; each run yields a fresh URL. --no-serve just
-        writes the HTML file and prints its path."""
-        import functools
+        """view [-l|-g] — build a self-contained interactive graph of this brain
+        (DataStates, capacities, finder segments) into a temp file on this host,
+        and print a one-line scp command to download + open it on your Mac."""
+        import getpass
         import glob
-        import http.server
         import json
         import os
-        import socketserver
         import tempfile
-        import threading
         import time
         from pathlib import Path
 
-        spec = {**SCOPE, "no_serve": (("--no-serve",), False)}
-        opts, pos, err = parse(args, spec)
+        opts, pos, err = parse(args, SCOPE)
         if err:
             return err
         views = self._views(scope_of(opts))
@@ -120,8 +115,7 @@ class BrainREPL:
 
         serve_dir = Path(tempfile.gettempdir()) / "mindsos_viz"
         serve_dir.mkdir(exist_ok=True)
-        pat = str(serve_dir / f"{self.stack.user}_graph_*.html")
-        for f in sorted(glob.glob(pat))[:-3]:
+        for f in sorted(glob.glob(str(serve_dir / f"{self.stack.user}_graph_*.html")))[:-3]:
             try:
                 os.remove(f)
             except OSError:
@@ -135,30 +129,15 @@ class BrainREPL:
         stats = f"({ncap} caps, {nds} datastates, {nseg} segments)"
         if not getattr(self, "viz_spec", None):
             stats += "  (no viz_spec - heuristic groups, no segments)"
-        if opts.get("no_serve"):
-            return f"wrote: {out}  {stats}"
 
-        if getattr(self, "_viz_httpd", None) is None:
-            class _Server(socketserver.ThreadingTCPServer):
-                allow_reuse_address = True
-                daemon_threads = True
-
-            class _Quiet(http.server.SimpleHTTPRequestHandler):
-                def log_message(self, *a):
-                    pass
-
-            handler = functools.partial(_Quiet, directory=str(serve_dir))
-            try:
-                httpd = _Server(("127.0.0.1", 8777), handler)
-            except OSError:
-                httpd = _Server(("127.0.0.1", 0), handler)
-            threading.Thread(target=httpd.serve_forever, daemon=True).start()
-            self._viz_httpd = httpd
-        port = self._viz_httpd.server_address[1]
-        url = f"http://localhost:{port}/{out.name}"
-        return (f"serving {stats}\n"
-                f"  Mac tunnel:  ssh -N -L {port}:localhost:{port} <you>@<linux-host>\n"
-                f"  then open:   {url}")
+        conn = os.environ.get("SSH_CONNECTION", "").split()
+        host = conn[2] if len(conn) >= 3 else None
+        target = f"{getpass.getuser()}@{host}" if host else "<user>@<linux-host>"
+        scp = f"scp {target}:{out} ~/Downloads/ && open ~/Downloads/{out.name}"
+        hint = ("\n  (if you ssh via a ~/.ssh/config alias, use it in place of "
+                f"{target})") if host else \
+               "\n  (not detected as an SSH session - fill in the host you connect with)"
+        return f"view: {out}  {stats}\n  run on your Mac:\n    {scp}{hint}"
 
     def dispatch(self, line: str) -> str:
         """Execute one verb line; return the rendered output."""
