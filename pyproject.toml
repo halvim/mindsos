@@ -53,4 +53,4 @@ mindsos = "mindsos_cli.__main__:main"
 include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*", "mindsos_capacity*", "mindsos_intelligence*"]
 
 [tool.setuptools.package-data]
-mindsos_cli = ["manifest.toml"]
+mindsos_cli = ["manifest.toml", "commands/*.html"]
