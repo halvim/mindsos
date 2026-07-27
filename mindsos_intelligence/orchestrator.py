@@ -35,12 +35,9 @@ from . import (
     phase_6,
     plan_construction,
     replan_check,
-    request_input_persister,
     sufficient_predicate,
 )
 from .chain_artifacts import ChainArtifactWriter
-from .ingress import InputEnvelope
-from mindsos_core.exceptions import PersistenceError
 
 # Episode ``outcome_classification`` (Chat B §4.3 enum) by RequestRun status.
 _OUTCOME_BY_STATUS = {
@@ -183,30 +180,6 @@ class Orchestrator:
 
         request_input_ref = f"requestinput:{request_id}" if request_id is not None else None
 
-        # PRE-1 — persist the raw input value (+ modality) at Request START so
-        # the Episode carries a real reload anchor (``request_input_root_ref``),
-        # not just a label. Doubles as the Episode "open" (raw input recorded
-        # before any phase runs; incremental build, D1). Best-effort + inert:
-        # skipped in simplified mode or with no persister wired, and a
-        # non-codec-safe input with no encoder is swallowed (ref stays None)
-        # rather than failing the solve.
-        request_input_root_ref = None
-        if self._mm_persister is not None and not self._simplified:
-            if isinstance(request_input, InputEnvelope):
-                _in_value, _in_modality = request_input.value, request_input.modality
-            else:
-                _in_value, _in_modality = request_input, None
-            try:
-                request_input_root_ref = request_input_persister.persist_request_input(
-                    self._mm_persister,
-                    self._mm.intelligence_mm,
-                    scope=scope,
-                    value=_in_value,
-                    modality=_in_modality,
-                )
-            except PersistenceError:
-                request_input_root_ref = None
-
         # Phase 1 — task interpretation (HintSet + MappingResult)
         p1 = phase_1.run(self._dispatcher, writer, request_input)
         # ADR-0196 — interpretation asked the user. Short-circuit into a
@@ -239,11 +212,7 @@ class Orchestrator:
         )
 
         # RequestRun wraps the whole execution (Level 6)
-        request_run = writer.emit_request_run(
-            request_input_ref=request_input_ref,
-            request_input_root_ref=request_input_root_ref,
-            plan_ref=plan_result.plan_ref,
-        )
+        request_run = writer.emit_request_run(plan_ref=plan_result.plan_ref)
         self.update_priority(request_run, tier=tier, executor=executor, request_id=request_id)
 
         # Step 5 — solve seed + capacity-graph collection. When the plan names a
@@ -261,15 +230,22 @@ class Orchestrator:
         )
         capacity_graphs: list = []
 
-        # Phase 3-5 — execution with bounded replan (invalidate-at-and-below)
+        # Phase 3-5 — execution with bounded replan (invalidate-at-and-below).
+        # Slice 3b — the blackboard is held across the loop so a *targeted* replan
+        # (the verdict names a re-runnable top-level map member) can re-run only
+        # that member and reuse the completed siblings' values; a whole-pipeline
+        # replan resets it to a fresh seed → byte-identical to the pre-3b path.
         replans = 0
         sufficient = True
+        blackboard: dict = dict(solve_seed or {}) if solve_seed is not None else {}
+        targeted = None
         while True:
             try:
                 execution.run(
                     self._dispatcher, writer, plan_result, request_run,
                     mm=self._mm, run_scope=scope, solve_seed=solve_seed,
                     capacity_graphs=capacity_graphs, run_attempt=replans,
+                    blackboard=blackboard, targeted=targeted,
                 )
             except execution.MemberAbortError:
                 # Collection-iteration Slice 1b — a map member exhausted
@@ -300,17 +276,40 @@ class Orchestrator:
                 return RequestOutcome("aborted", request_run.iri, replans_used=replans)
             if verdict.decision == "replan" and replans < self._budget:
                 replans += 1
-                # Execution stays whole-pipeline (clear-all) this slice — so
-                # invalidated_refs = ALL of request_run.pipeline_runs, and the
-                # recorded ``replan_level`` is "pipeline" (the ACTUAL action):
-                # never a finer level that would contradict a full-clear. Slice
-                # 3 records the consumer's advisory member target separately on
-                # ``replan_milestone_ref`` (None for v0 → byte-identical).
-                # Targeted re-execution (honoring verdict.replan_level to re-run
-                # only that member) is a later, non-additive slice.
-                invalidated = replan_check.invalidate_at_and_below(request_run, "pipeline")
+                # Slice 3b — if the verdict names a re-runnable top-level map
+                # member (reserved "map"/"plan_subtree" level + a resolvable
+                # ref-path), invalidate only that map + fold + downstream and
+                # re-run just that member against the RETAINED blackboard (the
+                # untargeted siblings + their grounding graphs are reused); the
+                # recorded ``replan_level`` is then the ACTUAL targeted level.
+                # Otherwise fall back to the whole-pipeline clear + a fresh
+                # blackboard, recorded as "pipeline" — byte-identical to Slice 3
+                # (a v0 verdict, a full ``pipelinerun:`` advisory ref, or a nested
+                # target all resolve to None here).
+                member_target = (
+                    execution.resolve_member_target(plan_result, verdict.target_ref)
+                    if verdict.replan_level in ("map", "plan_subtree")
+                    and verdict.target_ref
+                    else None
+                )
+                if member_target is not None:
+                    map_idx, member_idx = member_target
+                    targeted = (map_idx, member_idx)
+                    invalidated = replan_check.invalidate_at_and_below(
+                        request_run, verdict.replan_level, at_index=map_idx
+                    )
+                    recorded_level = verdict.replan_level
+                else:
+                    targeted = None
+                    blackboard = (
+                        dict(solve_seed or {}) if solve_seed is not None else {}
+                    )
+                    invalidated = replan_check.invalidate_at_and_below(
+                        request_run, "pipeline"
+                    )
+                    recorded_level = "pipeline"
                 writer.emit_replan_record(
-                    "pipeline", verdict,
+                    recorded_level, verdict,
                     replan_milestone_ref=verdict.target_ref,
                     invalidated_refs=invalidated,
                 )
