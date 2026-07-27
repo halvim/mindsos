@@ -72,6 +72,24 @@ capacity-MM index graph (ADR-0202 am-1), mirroring `mm_root_ref` → the chain g
 inert until out-of-CR Step 5); L3 `consolidate:mm` writes the dict unchanged. The §2 "6 fields"
 count reads as **7** from this amendment on.
 
+## Amendment 2 (2026-07-27) — Episode gains `request_input_root_ref` (Dream PRE-1)
+
+Dream prerequisite PRE-1 (`confirmation_docs/DREAM_BUILD_PLAN.md`) adds an **8th** content field to
+the assembled Episode record: `request_input_root_ref`, the pointer to this Request's persisted raw
+input value + modality (a one-node `RequestInput` graph; see
+`mindsos_intelligence/request_input_persister.py`). It mirrors `capacity_root_ref`/`mm_root_ref`
+(graph-id pointers) and stands beside the existing logical `request_input_ref` **label**, which
+until now had no backing store. It rides **inside** the codec-encoded `value` dict — no
+`DS_MM_COMPOSITE_INSTANCE` shape change and no L2 `episodic_memories` schema change
+(`EPISODE_METADATA_FIELDS` stays empty).
+
+L4 `Orchestrator.run_lifecycle` persists the input at Request **start** (the Episode "open", D1) via
+the injected `MMPersister` and carries the ref on the `RequestRun` artifact; `consolidation.py`
+reads it into the Episode. **Best-effort + inert:** `None` in simplified mode, with no persister
+wired, or when a non-codec-safe input has no `encode` (swallowed — a non-persistable input must not
+fail the solve). The field count reads as **8** from this amendment on. Unlike `capacity_root_ref`,
+PRE-1 ships a reader (`load_request_input`) — the Dream's reload anchor is proven to round-trip.
+
 ## §Implementation (Phase 48; pending ship)
 
 `mindsos_intelligence/consolidation.py` (NEW); `mindsos_capacity/builtins/consolidate.py` (finalize body + Memory materialize); `mindsos_knowledge/schemas/episodic_memories.py` (Episode/Memory write helpers — S10); orchestrator Phase-5→complete seam wired (commit-group 3). Tests: `tests/phase_48/test_consolidation_write_path.py`, `test_memory_composite_materialization.py`, `test_memory_contains_episode_edge.py`, `test_consolidate_capacity_v2.py`.

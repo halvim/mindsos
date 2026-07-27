@@ -35,9 +35,12 @@ from . import (
     phase_6,
     plan_construction,
     replan_check,
+    request_input_persister,
     sufficient_predicate,
 )
 from .chain_artifacts import ChainArtifactWriter
+from .ingress import InputEnvelope
+from mindsos_core.exceptions import PersistenceError
 
 # Episode ``outcome_classification`` (Chat B §4.3 enum) by RequestRun status.
 _OUTCOME_BY_STATUS = {
@@ -180,6 +183,30 @@ class Orchestrator:
 
         request_input_ref = f"requestinput:{request_id}" if request_id is not None else None
 
+        # PRE-1 — persist the raw input value (+ modality) at Request START so
+        # the Episode carries a real reload anchor (``request_input_root_ref``),
+        # not just a label. Doubles as the Episode "open" (raw input recorded
+        # before any phase runs; incremental build, D1). Best-effort + inert:
+        # skipped in simplified mode or with no persister wired, and a
+        # non-codec-safe input with no encoder is swallowed (ref stays None)
+        # rather than failing the solve.
+        request_input_root_ref = None
+        if self._mm_persister is not None and not self._simplified:
+            if isinstance(request_input, InputEnvelope):
+                _in_value, _in_modality = request_input.value, request_input.modality
+            else:
+                _in_value, _in_modality = request_input, None
+            try:
+                request_input_root_ref = request_input_persister.persist_request_input(
+                    self._mm_persister,
+                    self._mm.intelligence_mm,
+                    scope=scope,
+                    value=_in_value,
+                    modality=_in_modality,
+                )
+            except PersistenceError:
+                request_input_root_ref = None
+
         # Phase 1 — task interpretation (HintSet + MappingResult)
         p1 = phase_1.run(self._dispatcher, writer, request_input)
         # ADR-0196 — interpretation asked the user. Short-circuit into a
@@ -212,7 +239,11 @@ class Orchestrator:
         )
 
         # RequestRun wraps the whole execution (Level 6)
-        request_run = writer.emit_request_run(plan_ref=plan_result.plan_ref)
+        request_run = writer.emit_request_run(
+            request_input_ref=request_input_ref,
+            request_input_root_ref=request_input_root_ref,
+            plan_ref=plan_result.plan_ref,
+        )
         self.update_priority(request_run, tier=tier, executor=executor, request_id=request_id)
 
         # Step 5 — solve seed + capacity-graph collection. When the plan names a
