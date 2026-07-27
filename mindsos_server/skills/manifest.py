@@ -57,7 +57,7 @@ class LocalCapabilityEntry:
     the builder to rebuild the live function on first use). Persisted into
     the user's Local ``installed-capacities`` role at install."""
 
-    capacity_iri: str
+    name: str
     reactivation_key: str
     category: str
     inputs: Tuple[str, ...]
@@ -199,7 +199,7 @@ def parse_manifest(path: str | Path) -> SkillManifest:
             raise ManifestError(f"{cwhere}.params must be a table")
         local_caps.append(
             LocalCapabilityEntry(
-                capacity_iri=_require(raw_cap, "capacity_iri", str, cwhere),
+                name=_require(raw_cap, "name", str, cwhere),
                 reactivation_key=_require(
                     raw_cap, "reactivation_key", str, cwhere
                 ),

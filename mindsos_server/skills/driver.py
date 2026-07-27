@@ -147,7 +147,7 @@ def _roster_value(manifest: SkillManifest) -> Dict[str, Any]:
         # Local installed-capacities store against this roster.
         "l3_local_capacities": [
             {
-                "capacity_iri": e.capacity_iri,
+                "name": e.name,
                 "reactivation_key": e.reactivation_key,
                 "category": e.category,
                 "inputs": list(e.inputs),
