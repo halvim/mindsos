@@ -25,14 +25,14 @@ value = "whisper"
 description = "A second demo concept."
 
 [[l2.content]]
-role = "task-patterns"
+role = "request-patterns"
 tier = "global"
-node_type = "TaskPattern"
+node_type = "RequestPattern"
 iri = "ref-skill-0.1.0:pattern:shout-the-input"
 value = "shout-the-input"
 
 [l2.content.properties]
-description = "Demo task pattern referencing the ref_shout capacity."
+description = "Demo request pattern referencing the ref_shout capacity."
 
 [l3]
 installers = ["tests.fixtures.skill_bundle_ref.installer:install_ref_skill"]

@@ -293,7 +293,7 @@ def test_advisory_target_flows_to_replan_record_and_diagnosis():
         layer = _fresh_targeted_layer(kl)
         mm = MentalModel(session_id="s", user_id="u")
         disp = L4Dispatcher(layer, session=FakeSession(), kl=kl)
-        orch = Orchestrator(disp, mm, task_scope="task-1", mm_persister=_FakePersister())
+        orch = Orchestrator(disp, mm, request_scope="request-1", mm_persister=_FakePersister())
         outcome = orch.run_lifecycle("hello", request_id="T")
     finally:
         reset_v0_verdicts()
@@ -345,7 +345,7 @@ def test_v0_replan_record_has_no_target_byte_identical():
         _register_solve(layer, session=sess)
         mm = MentalModel(session_id="s", user_id="u")
         disp = L4Dispatcher(layer, session=sess, kl=kl)
-        orch = Orchestrator(disp, mm, task_scope="task-1")
+        orch = Orchestrator(disp, mm, request_scope="request-1")
         outcome = orch.run_lifecycle("hello", request_id="T")
     finally:
         reset_v0_verdicts()
