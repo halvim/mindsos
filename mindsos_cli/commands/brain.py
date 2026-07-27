@@ -54,6 +54,7 @@ verbs (try '<verb> -h' for a manual page):
   task <text>                run the six-phase lifecycle
   save                       persist this user's Local to Falkor
   reset                      wipe run-state, keep learned params
+  view [path]                build a graph + print an scp line to open on your Mac
   help                       show this
   quit                       save then exit"""
 
@@ -63,8 +64,9 @@ _SAP = "not yet — pending skill-acquisition (SAP)"
 class BrainREPL:
     """Stateful verb dispatcher over one held :class:`Stack`."""
 
-    def __init__(self, stack: Any) -> None:
+    def __init__(self, stack: Any, viz_spec: Any = None) -> None:
         self.stack = stack
+        self.viz_spec = viz_spec
         # ADR-0183 §am-3 — installed-skill verb table. Builtins WIN: a skill
         # verb colliding with a ``_do_<verb>`` method is unreachable, so it is
         # dropped here (runtime-authoritative; catches builtins added AFTER a
@@ -80,6 +82,62 @@ class BrainREPL:
                 )
                 continue
             self._skill_verbs[verb] = slots
+
+    def _do_view(self, args: List[str]) -> str:
+        """view [-l|-g] — build a self-contained interactive graph of this brain
+        (DataStates, capacities, finder segments) into a temp file on this host,
+        and print a one-line scp command to download + open it on your Mac."""
+        import getpass
+        import glob
+        import json
+        import os
+        import tempfile
+        import time
+        from pathlib import Path
+
+        opts, pos, err = parse(args, SCOPE)
+        if err:
+            return err
+        views = self._views(scope_of(opts))
+        try:
+            import importlib.resources as ir
+            template = (ir.files("mindsos_cli.commands")
+                        .joinpath("brain_viz_template.html")
+                        .read_text(encoding="utf-8"))
+        except Exception as e:
+            return f"view: cannot load viewer template ({type(e).__name__}: {e})"
+        from mindsos_cli.brain_viz import build_data
+        data = build_data(views, spec=getattr(self, "viz_spec", None),
+                          context=self.stack)
+        html = template.replace(
+            "const DATA = /*__DATA__*/{};",
+            "const DATA = " + json.dumps(data, separators=(",", ":")) + ";")
+
+        serve_dir = Path(tempfile.gettempdir()) / "mindsos_viz"
+        serve_dir.mkdir(exist_ok=True)
+        for f in sorted(glob.glob(str(serve_dir / f"{self.stack.user}_graph_*.html")))[:-3]:
+            try:
+                os.remove(f)
+            except OSError:
+                pass
+        out = serve_dir / f"{self.stack.user}_graph_{int(time.time())}.html"
+        out.write_text(html, encoding="utf-8")
+
+        ncap = sum(1 for n in data["nodes"] if n["kind"] == "cap")
+        nds = sum(1 for n in data["nodes"] if n["kind"] == "ds")
+        nseg = len(data["segments"])
+        stats = f"({ncap} caps, {nds} datastates, {nseg} segments)"
+        if not getattr(self, "viz_spec", None):
+            stats += "  (no viz_spec - heuristic groups, no segments)"
+
+        conn = os.environ.get("SSH_CONNECTION", "").split()
+        host = conn[2] if len(conn) >= 3 else None
+        target = f"{getpass.getuser()}@{host}" if host else "<user>@<linux-host>"
+        scp = f"scp {target}:{out} ~/Downloads/ && open ~/Downloads/{out.name}"
+        hint = ("\n  (if you ssh via a ~/.ssh/config alias, use it in place of "
+                f"{target})") if host else \
+               "\n  (not detected as an SSH session - fill in the host you connect with)"
+        return f"view: {out}  {stats}\n  run on your Mac:\n    {scp}{hint}"
 
     def dispatch(self, line: str) -> str:
         """Execute one verb line; return the rendered output."""
