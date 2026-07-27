@@ -117,6 +117,15 @@ CATEGORY_DECISION = "decision"
 CATEGORY_PREDICATE = "predicate"
 CATEGORY_PHASE6 = "phase6"
 
+#: Reduction family (ADR-0204) — L4-support selection decisions
+#: (argmin/argmax/top_k/majority_vote). Like ``decision``/``planning`` this is
+#: an opt-in installable family (``install_reduction_v0``) whose category graph
+#: is created lazily by ``ensure_category_graph`` at first register, NOT
+#: pre-bootstrapped by ``create_global`` and NOT a member of
+#: ``FUNCTIONAL_CATEGORIES`` (the count invariant stays 13). Real bodies
+#: (``placeholder=False``), not a WSD placeholder catalog.
+CATEGORY_REDUCTION = "reduction"
+
 #: Functional categories recognised by the default Global L3 bootstrap.
 #:
 #: Phase 33 extends to 13 (was 12 through Phase 32) per R0 PB-6 +
@@ -483,6 +492,7 @@ __all__ = [
     "CATEGORY_DECISION",
     "CATEGORY_PREDICATE",
     "CATEGORY_PHASE6",
+    "CATEGORY_REDUCTION",
     "FUNCTIONAL_CATEGORIES",
     # Node-type vocabulary
     "NODE_TYPE_CAPACITY",
