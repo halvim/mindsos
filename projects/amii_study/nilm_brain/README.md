@@ -32,10 +32,15 @@ nilm_brain/
   comprehension.py  bind_declaration + compare + compare_structures (acquisition)
   pipelines.py      compose the recognition segment via the finder
   dispatch.py       thin dispatcher over cl.invoke (execute_pipeline seam)
-  control.py        Solver: register + calibrate(seed) + recognize()
-  harness.py        DuckSession (in-memory Local, no Falkor)
-  scripts/cycle_demo.py   run it yourself over a PLAID record
-  tests/test_gate.py      the F1/F2/F3 + C7 acceptance gate
+  control.py        Solver: register + calibrate(seed) + recognize() + teach/fit/recognize_appliance
+  persistence.py    durable L2: taught appliance library + signature_norm + match_cutoff (learned-parameters role)
+  repl.py           boot nilm as a RESIDENT brain (durable by default; --ephemeral opt-out)
+  viz_spec.py       per-brain graph spec for the shared `view` verb
+  harness.py        DuckSession (in-memory Local, no Falkor) — the gate substrate
+  scripts/cycle_demo.py             run cycle recognition over a PLAID record
+  scripts/teach_appliances.py       teach appliances over PLAID -> fit -> persist -> save
+  tests/test_gate.py                the F1/F2 + C7 synthetic acceptance gate
+  tests/test_durable_appliances.py  durable persist/load/append (gate-level, no Falkor)
 ```
 
 ## The consumer helpers (every non-capacity function)
@@ -87,7 +92,26 @@ PYTHONPATH=.:projects/amii_study \
 ```
 
 Needs `mindsos_capacity` + `mindsos_intelligence` importable and `numpy`.
-In-memory only — no `boot_brain`/Falkor for v0.
+
+### Resident / durable brain (STATE #5 — the taught appliance library persists)
+
+`repl.py` boots nilm as a resident mindsos brain, **durable by default**
+(`--ephemeral` = throwaway). Teaching is a one-time script; a later boot
+reloads the taught appliances from Falkor.
+
+```
+# a FalkorDB the host can reach (the repo compose does NOT publish the port)
+docker run -d -p 6379:6379 -v $HOME/.mindsos/falkordb-data:/data falkordb/falkordb
+
+# teach the appliance library over real PLAID, then persist + save
+PYTHONPATH=.:projects/amii_study python projects/amii_study/nilm_brain/scripts/teach_appliances.py --data /home/sanmyaku/_plaid_full/_sample_expanded
+
+# boot the resident brain — reloads the taught library ("N appliance exemplar(s) loaded")
+PYTHONPATH=.:projects/amii_study python -m nilm_brain.repl
+```
+
+The synthetic **gate** stays in-memory (no Falkor); only the resident/durable
+path above needs the sidecar.
 
 ## The design discipline (why this isn't a "44 caps, 3 live" brain)
 
@@ -110,7 +134,8 @@ this brain is built against them:
 - **Learned state is L2** — `calibrate` is a `Params` fit off a clean-cycle
   seed; a healthy cycle scores high, a disturbance low (this is what resolves
   the single-pass "everything is request_reference" collapse). Durable L2
-  persistence of the params + taught references is v1.
+  persistence of the taught appliance library + norm + cutoff is **shipped**
+  (learned-parameters role; `persistence.py`, STATE #5).
 
 ## The acceptance gate (`tests/test_gate.py`)
 
