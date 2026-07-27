@@ -112,7 +112,7 @@ def test_consolidate_mm_session_none_yields_value_error_via_envelope():
     result = dispatcher.dispatch(
         "capacity:consolidate:mm",
         {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "test"}},
-        task_id="T1",
+        request_id="T1",
     )
     assert result.success is False
     assert isinstance(result.error, ValueError)
@@ -130,7 +130,7 @@ def test_consolidate_mm_with_session_succeeds_with_write_outcome():
     result = dispatcher.dispatch(
         "capacity:consolidate:mm",
         {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "remember this"}},
-        task_id="T2",
+        request_id="T2",
     )
     assert result.success is True
     assert result.error is None
@@ -151,7 +151,7 @@ def test_consolidate_mm_success_emits_no_problem_trace():
     dispatcher.dispatch(
         "capacity:consolidate:mm",
         {DS_MM_COMPOSITE_INSTANCE: {"episode_id": "e1", "value": "ok"}},
-        task_id="T3",
+        request_id="T3",
     )
     recs = layer.problem_trace.records()
     assert len(recs) == 0

@@ -11,9 +11,9 @@ from mindsos_intelligence.resources import Contention, ResourceLedger
 def test_acquire_records_holder_and_contention():
     led = ResourceLedger()
     led.acquire("t1", frozenset({"arm", "grip"}), tier=1, score=5)
-    assert led.holder_of("arm").task_id == "t1"
+    assert led.holder_of("arm").request_id == "t1"
     c = led.contention(frozenset({"grip"}))
-    assert not c.free and c.conflicts[0].task_id == "t1"
+    assert not c.free and c.conflicts[0].request_id == "t1"
     # disjoint resource is free
     assert led.contention(frozenset({"wheels"})).free
 
@@ -27,7 +27,7 @@ def test_empty_set_is_free_and_noop():
 def test_release_frees_and_fires_hook():
     led = ResourceLedger()
     fired = []
-    led.set_on_release(lambda freed, task_id: fired.append((frozenset(freed), task_id)))
+    led.set_on_release(lambda freed, request_id: fired.append((frozenset(freed), request_id)))
     led.acquire("t1", frozenset({"arm"}), tier=1, score=5)
     freed = led.release("t1")
     assert freed == frozenset({"arm"})

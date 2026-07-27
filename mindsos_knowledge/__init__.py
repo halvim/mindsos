@@ -16,7 +16,7 @@ Phase 12 shipped:
 * IRI builders covering ADR-0045: 7 seed-role builders ported from
   the v3 `mindsos_knowledge/identifiers.py` (DOLCE / OEWN / FrameNet)
   plus 7 upper-layer builders (`pipeline_iri`, `pipeline_step_iri`,
-  `task_pattern_iri`, `subgoal_template_iri`, `episode_iri`,
+  `request_pattern_iri`, `subgoal_template_iri`, `episode_iri`,
   `memory_composite_iri`, `problem_trace_iri`, `capacity_snapshot_iri`).
   Per ADR-0044 §amendment-3 + ADR-0146 §amendment-3 (Phase 39), the
   pre-rename upper-layer memory builder was split into two minters
@@ -37,7 +37,7 @@ Phase 13 added:
 * 9 schema builders under `mindsos_knowledge.schemas`:
   4 seed (`ontology` / `lexicon` / `concepts` / `alignment` —
   v3 ports with ontology HyperEdgeType lift) + 5 upper-layer
-  (`promoted_pipelines` / `task_patterns` / `episodic_memories` /
+  (`promoted_pipelines` / `request_patterns` / `episodic_memories` /
   `problem_trace` / `capacity_state` — NET-NEW at strict=False;
   `episodic_memories` renamed from `memories` at Phase 39 per
   ADR-0044 §am-3 + ADR-0150 §am-4).
@@ -144,7 +144,7 @@ from .identifiers import (
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_SUBMINDS,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     SEED_ROLES,
     UPPER_LAYER_ROLES,
     ParsedIri,
@@ -175,7 +175,7 @@ from .identifiers import (
     staged_evidence_iri,
     subgoal_template_iri,
     submind_definition_iri,
-    task_pattern_iri,
+    request_pattern_iri,
 )
 
 from .schemas import (
@@ -199,7 +199,7 @@ from .schemas import (
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
     build_subminds_schema,
-    build_task_patterns_schema,
+    build_request_patterns_schema,
     register_dataset_schema,
     schema_for_role,
 )
@@ -220,7 +220,7 @@ __all__ = [
     "ROLE_LEXICON",
     "ROLE_CONCEPTS",
     "ROLE_PROMOTED_PIPELINES",
-    "ROLE_TASK_PATTERNS",
+    "ROLE_REQUEST_PATTERNS",
     "ROLE_EPISODIC_MEMORIES",
     "ROLE_PROBLEM_TRACE",
     "ROLE_CAPACITY_STATE",
@@ -250,7 +250,7 @@ __all__ = [
     # ── upper-layer IRI builders (ADR-0045) ────────────────────────
     "pipeline_iri",
     "pipeline_step_iri",
-    "task_pattern_iri",
+    "request_pattern_iri",
     "subgoal_template_iri",
     "episode_iri",
     "memory_composite_iri",
@@ -281,7 +281,7 @@ __all__ = [
     "build_concepts_schema",
     "build_alignment_schema",
     "build_promoted_pipelines_schema",
-    "build_task_patterns_schema",
+    "build_request_patterns_schema",
     "build_episodic_memories_schema",
     "build_problem_trace_schema",
     "build_capacity_state_schema",

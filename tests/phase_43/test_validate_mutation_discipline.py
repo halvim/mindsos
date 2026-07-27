@@ -40,10 +40,10 @@ def test_immutable_successor_allows_metadata_field() -> None:
 def test_append_only_with_lazy_inline_rejects_non_lazy_content() -> None:
     r = validate_mutation_discipline(
         discipline=Discipline.APPEND_ONLY_WITH_LAZY_INLINE,
-        field="task_input_ref",
+        field="request_input_ref",
         role="episodic_memories",
         iri="iri://x",
-        content_fields=frozenset({"task_input_ref"}),
+        content_fields=frozenset({"request_input_ref"}),
         via_lazy_inline=False,
     )
     assert not r.ok
@@ -52,10 +52,10 @@ def test_append_only_with_lazy_inline_rejects_non_lazy_content() -> None:
 def test_append_only_with_lazy_inline_allows_lazy_inline_path() -> None:
     r = validate_mutation_discipline(
         discipline=Discipline.APPEND_ONLY_WITH_LAZY_INLINE,
-        field="task_input_ref",
+        field="request_input_ref",
         role="episodic_memories",
         iri="iri://x",
-        content_fields=frozenset({"task_input_ref"}),
+        content_fields=frozenset({"request_input_ref"}),
         via_lazy_inline=True,
     )
     assert r.ok

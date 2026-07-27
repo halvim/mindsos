@@ -107,7 +107,7 @@ def test_trace_problem_cap_denied_when_session_lacks_can_write_global():
     result = dispatcher.dispatch(
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "err"}},
-        task_id="T1",
+        request_id="T1",
     )
     assert result.success is False
     assert isinstance(result.error, CapabilityDeniedError)
@@ -126,7 +126,7 @@ def test_trace_problem_session_with_cap_succeeds():
     result = dispatcher.dispatch(
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "boom"}},
-        task_id="T2",
+        request_id="T2",
     )
     assert result.success is True
     assert result.error is None
@@ -146,7 +146,7 @@ def test_trace_problem_session_none_skips_gate_per_adr_0080_and_succeeds():
     result = dispatcher.dispatch(
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t-boot", "value": "init"}},
-        task_id="T3",
+        request_id="T3",
     )
     assert result.success is True
     assert isinstance(result.write_outcome, WriteResult)
@@ -163,7 +163,7 @@ def test_trace_problem_success_emits_no_problem_trace():
     dispatcher.dispatch(
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "ok"}},
-        task_id="T4",
+        request_id="T4",
     )
     recs = layer.problem_trace.records()
     assert len(recs) == 0

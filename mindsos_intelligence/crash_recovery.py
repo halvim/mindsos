@@ -6,7 +6,7 @@ trigger (LifecyclePhase transition + per-replan) the orchestrator records a
 small marker; on ``IntelligenceLayer.start`` the unconsolidated markers are
 scanned and each produces a ``crash_marker`` Episode (``outcome_classification
 = "failed"``, ``mm_root_ref = None``) — delivering clean startup, a crash
-record, and ``task_input_ref`` preservation. Partial-MM **content** recovery
+record, and ``request_input_ref`` preservation. Partial-MM **content** recovery
 is deferred to v1.5 (ADR-0179 §3).
 
 The marker store is an injectable abstraction. v1 ships ``InMemoryCheckpoint
@@ -39,16 +39,16 @@ class CrashInfo:
 
 @dataclass
 class CheckpointMarker:
-    task_id: str
-    task_input_ref: Optional[str] = None
-    task_pattern_iri: Optional[str] = None
+    request_id: str
+    request_input_ref: Optional[str] = None
+    request_pattern_iri: Optional[str] = None
     last_phase: Optional[str] = None
     last_milestone: Optional[str] = None
     consolidated: bool = False
 
 
 class InMemoryCheckpointStore:
-    """v1 checkpoint store — keyed by ``task_id`` (upsert; latest trigger wins).
+    """v1 checkpoint store — keyed by ``request_id`` (upsert; latest trigger wins).
 
     A durable Falkor-backed store is the persister-wiring follow-up (ADR-0179
     §marker store); this in-memory store makes the scan contract testable.
@@ -58,13 +58,13 @@ class InMemoryCheckpointStore:
         self._markers: Dict[str, CheckpointMarker] = {}
 
     def record(self, marker: CheckpointMarker) -> None:
-        existing = self._markers.get(marker.task_id)
+        existing = self._markers.get(marker.request_id)
         if existing is not None and existing.consolidated:
             return
-        self._markers[marker.task_id] = marker
+        self._markers[marker.request_id] = marker
 
-    def mark_consolidated(self, task_id: str) -> None:
-        m = self._markers.get(task_id)
+    def mark_consolidated(self, request_id: str) -> None:
+        m = self._markers.get(request_id)
         if m is not None:
             m.consolidated = True
 
@@ -79,20 +79,20 @@ def _utc_now_iso() -> str:
 def record_checkpoint(
     store: Any,
     *,
-    task_id: str,
+    request_id: str,
     last_phase: Optional[str] = None,
     last_milestone: Optional[str] = None,
-    task_input_ref: Optional[str] = None,
-    task_pattern_iri: Optional[str] = None,
+    request_input_ref: Optional[str] = None,
+    request_pattern_iri: Optional[str] = None,
 ) -> None:
     """Record/update a checkpoint marker at a D-B50 trigger (no-op if no store)."""
     if store is None:
         return
     store.record(
         CheckpointMarker(
-            task_id=task_id,
-            task_input_ref=task_input_ref,
-            task_pattern_iri=task_pattern_iri,
+            request_id=request_id,
+            request_input_ref=request_input_ref,
+            request_pattern_iri=request_pattern_iri,
             last_phase=last_phase,
             last_milestone=last_milestone,
         )
@@ -117,9 +117,9 @@ def recover_unconsolidated(store: Any, dispatcher: Any) -> List[str]:
 
     recovered: List[str] = []
     for marker in store.iter_unconsolidated():
-        epi_iri = episode_iri("v1", user_id, marker.task_id)
+        epi_iri = episode_iri("v1", user_id, marker.request_id)
         if kl is not None and kl.read_at_version(epi_iri, 1) is not None:
-            store.mark_consolidated(marker.task_id)  # already consolidated
+            store.mark_consolidated(marker.request_id)  # already consolidated
             continue
         crash = CrashInfo(
             last_phase=marker.last_phase,
@@ -129,22 +129,22 @@ def recover_unconsolidated(store: Any, dispatcher: Any) -> List[str]:
         )
         record = {
             DS_MM_COMPOSITE_INSTANCE: {
-                "episode_id": marker.task_id,
+                "episode_id": marker.request_id,
                 "value": {
-                    "task_input_ref": marker.task_input_ref
-                    or f"taskinput:{marker.task_id}",
+                    "request_input_ref": marker.request_input_ref
+                    or f"requestinput:{marker.request_id}",
                     "mm_root_ref": None,
-                    "task_pattern_iri": marker.task_pattern_iri,
+                    "request_pattern_iri": marker.request_pattern_iri,
                     "outcome_classification": "failed",
                     "crash_marker": asdict(crash),
                     "consolidated_at": _utc_now_iso(),
                 },
             }
         }
-        result = dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, task_id=marker.task_id)
+        result = dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, request_id=marker.request_id)
         if result is not None and getattr(result, "success", False):
-            store.mark_consolidated(marker.task_id)
-            recovered.append(marker.task_id)
+            store.mark_consolidated(marker.request_id)
+            recovered.append(marker.request_id)
     return recovered
 
 

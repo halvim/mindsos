@@ -89,7 +89,7 @@ class KnowledgeLayer:
     Local metagraphs keyed by ``user_id``. Per ADR-0044, ``memories``
     and ``capacity-state`` are Local-scoped; ``ontology``, ``lexicon``,
     ``concepts``, ``promoted-pipelines``, ``problem-trace`` are
-    Global-scoped; ``task-patterns`` is **dual-scope** (Global + Local
+    Global-scoped; ``request-patterns`` is **dual-scope** (Global + Local
     per ADR-0150 §amendment-8); ``alignment:<a>:<b>`` is Global-only at
     v1 per ADR-0150 §amendment-1.
 

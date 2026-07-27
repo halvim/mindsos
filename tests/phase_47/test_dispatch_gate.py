@@ -106,16 +106,16 @@ def test_read_dispatch_builds_capacity_context():
     install_planning_v0(layer)
     dispatcher = L4Dispatcher(layer, session=_FakeSession([]))
 
-    ctx = dispatcher.build_context(task_iri="task:1", pattern_iri="pattern:1")
+    ctx = dispatcher.build_context(request_iri="task:1", pattern_iri="pattern:1")
     assert isinstance(ctx, CapacityContext)
     assert ctx.session_id == "s-1"
     assert ctx.user_id == "u-1"
     assert ctx.cl is layer
-    assert ctx.current_task_iri == "task:1"
+    assert ctx.current_request_iri == "task:1"
 
     result = dispatcher.dispatch(
         capacity_iri(CATEGORY_PLANNING, "derive_initial_plan"),
-        {DS_MAPPING_RESULT: {"task_pattern_iri": "x"}},
+        {DS_MAPPING_RESULT: {"request_pattern_iri": "x"}},
     )
     assert result.success
     assert result.outputs[DS_PLAN]["single_milestone"] is True

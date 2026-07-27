@@ -1,7 +1,7 @@
 """L4 MM consolidation write path (ADR-0176 §1).
 
 At task completion the orchestrator freezes the live MM (acquires the MM
-writer lock), assembles the 6-field D-B47 Episode record from the TaskRun
+writer lock), assembles the 6-field D-B47 Episode record from the RequestRun
 chain, and dispatches ``capacity:consolidate:mm`` — the L3 write surface
 (ADR-0146) that writes the Episode and materialises the Memory composite
 (ADR-0176 §3). Retain-by-default on success / failure / abort (Chat B §4.1).
@@ -55,12 +55,12 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def consolidate_task(
+def consolidate_request(
     dispatcher: Any,
     mm: Any,
-    task_run: Any,
+    request_run: Any,
     *,
-    task_pattern_iri: Optional[str],
+    request_pattern_iri: Optional[str],
     outcome_classification: str,
     crash_marker: Optional[Any] = None,
     chain_graph: Any = None,
@@ -71,7 +71,7 @@ def consolidate_task(
     """Freeze the MM + assemble the Episode record + dispatch ``consolidate:mm``.
 
     Returns the consolidate ``InvocationResult``, or ``None`` if consolidation
-    is not wired (graceful skip). Idempotent on ``episode_id = task_run.iri``
+    is not wired (graceful skip). Idempotent on ``episode_id = request_run.iri``
     (ADR-0176 §4 — the crash-recovery startup scan relies on it).
     """
     if not consolidation_enabled(dispatcher):
@@ -100,27 +100,27 @@ def consolidate_task(
             mm_persister,
             mm.capacity_mm,
             list(capacity_graphs),
-            task_id=task_run.iri,
+            request_id=request_run.iri,
             encoders=capacity_encoders,
         )
     with mm.lock.write_locked():
-        task_input_ref = task_run.task_input_ref or f"taskinput:{task_run.iri}"
+        request_input_ref = request_run.request_input_ref or f"requestinput:{request_run.iri}"
         episode_value = {
-            "task_input_ref": task_input_ref,
+            "request_input_ref": request_input_ref,
             "mm_root_ref": mm_root_ref,
             "capacity_root_ref": capacity_root_ref,
-            "task_pattern_iri": task_pattern_iri,
+            "request_pattern_iri": request_pattern_iri,
             "outcome_classification": outcome_classification,
             "crash_marker": crash_marker,
             "consolidated_at": _utc_now_iso(),
         }
     record = {
         DS_MM_COMPOSITE_INSTANCE: {
-            "episode_id": task_run.iri,
+            "episode_id": request_run.iri,
             "value": episode_value,
         }
     }
-    return dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, task_id=task_run.iri)
+    return dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, request_id=request_run.iri)
 
 
 __all__ = ["consolidate_task", "consolidation_enabled", "CONSOLIDATE_MM_IRI"]

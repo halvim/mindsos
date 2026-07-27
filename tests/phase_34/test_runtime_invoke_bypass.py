@@ -27,7 +27,7 @@ def test_bypass_stashes_writeresult_in_invocation_result():
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "v"}},
         session=sess,
-        task_id="T",
+        request_id="T",
     )
     assert result.success is True
     assert result.outputs == {}
@@ -42,7 +42,7 @@ def test_bypass_trace_records_write_outcome_kind():
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "v"}},
         session=sess,
-        task_id="T",
+        request_id="T",
     )
     assert result.trace.get("write_outcome_kind") == "WriteResult"
 
@@ -77,7 +77,7 @@ def test_bypass_accepts_problem_trace_record_return():
     """Bypass also accepts ProblemTraceRecord (future clause-1 flip path)."""
 
     def _ptr_return_impl(**kwargs):
-        return ProblemTraceRecord(task_id="T", error_kind="test")
+        return ProblemTraceRecord(request_id="T", error_kind="test")
 
     decl = Capacity(
         name="ptr",
@@ -105,7 +105,7 @@ def test_read_capacity_path_unchanged_no_write_outcome():
     # Run minimal invoke; assert write_outcome stays None.
     # (We don't care about success here; just shape.)
     try:
-        result = layer.invoke(cap.iri, {iri: "x" for iri in cap.inputs}, task_id="T")
+        result = layer.invoke(cap.iri, {iri: "x" for iri in cap.inputs}, request_id="T")
         assert result.write_outcome is None
     except Exception:
         # If invoke fails (e.g., shape mismatch), still confirm via the

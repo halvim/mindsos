@@ -329,7 +329,7 @@ def boot_brain(
 
         mm_persister = FalkorMMPersister(client)
     orch = Orchestrator(
-        dispatcher, mm, task_scope="brain", mm_persister=mm_persister
+        dispatcher, mm, request_scope="brain", mm_persister=mm_persister
     )
     return Stack(
         kl, cl, mm, dispatcher, orch, session, persister, user,

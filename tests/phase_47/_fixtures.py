@@ -27,7 +27,7 @@ class FakeSession:
         return capability in self.capabilities
 
 
-def make_orchestrator(*, task_scope="task-1", simplified=False, budget=5):
+def make_orchestrator(*, request_scope="request-1", simplified=False, budget=5):
     layer = CapacityLayer()
     install_planning_v0(layer)
     install_phase1_v0(layer)
@@ -36,7 +36,7 @@ def make_orchestrator(*, task_scope="task-1", simplified=False, budget=5):
     mm = MentalModel(session_id="s", user_id="u")
     dispatcher = L4Dispatcher(layer, session=FakeSession())
     orch = Orchestrator(
-        dispatcher, mm, task_scope=task_scope, simplified=simplified,
-        per_task_replan_budget=budget,
+        dispatcher, mm, request_scope=request_scope, simplified=simplified,
+        per_request_replan_budget=budget,
     )
     return orch, mm, layer

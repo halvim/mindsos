@@ -7,7 +7,7 @@ the Step-0 probe, then assert.
 Bootstrapped KL shape:
 
 * Global: 6 role-graphs (ontology, lexicon, concepts,
-  promoted-pipelines, task-patterns, problem-trace). No alignment.
+  promoted-pipelines, request-patterns, problem-trace). No alignment.
   No episodic_memories, no capacity-state.
 * Per Local (lazy or installed): 2 role-graphs (episodic_memories,
   capacity-state; Phase 39 rename per ADR-0044 §am-3).
@@ -33,7 +33,7 @@ from mindsos_knowledge import (
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_SUBMINDS,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
 )
 
 
@@ -42,7 +42,7 @@ _EXPECTED_BOOTSTRAP_GLOBAL_ROLES = {
     ROLE_LEXICON,
     ROLE_CONCEPTS,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     ROLE_PROBLEM_TRACE,
     # Phase 43 (ADR-0150 §am-5) Global-form additions.
     ROLE_PENDING_PROMOTIONS,
@@ -61,8 +61,8 @@ _EXPECTED_LAZY_LOCAL_ROLES = {
     ROLE_PARAMETER_STAGING,
     ROLE_PENDING_PROMOTIONS,
     ROLE_LEARNED_PARAMETERS,
-    # feat/phase1-seam (ADR-0150 §am-8) — task-patterns dual-scope.
-    ROLE_TASK_PATTERNS,
+    # feat/phase1-seam (ADR-0150 §am-8) — request-patterns dual-scope.
+    ROLE_REQUEST_PATTERNS,
     # feat/learned-pipeline-persistence (ADR-0203) — Local-only.
     ROLE_LEARNED_PIPELINES,
 }

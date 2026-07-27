@@ -17,7 +17,7 @@ def test_empty_sink_starts_empty():
 
 def test_emit_appends_record_to_buffer():
     sink = ProblemTraceSink()
-    rec = ProblemTraceRecord(task_id="t1", error_kind="exception:RuntimeError")
+    rec = ProblemTraceRecord(request_id="t1", error_kind="exception:RuntimeError")
     sink.emit(rec)
     assert len(sink) == 1
     assert sink.records() == [rec]
@@ -25,7 +25,7 @@ def test_emit_appends_record_to_buffer():
 
 def test_records_returns_a_snapshot_copy():
     sink = ProblemTraceSink()
-    rec = ProblemTraceRecord(task_id="t1", error_kind="x")
+    rec = ProblemTraceRecord(request_id="t1", error_kind="x")
     sink.emit(rec)
     snapshot = sink.records()
     snapshot.append("not-a-record")  # mutating the snapshot must not affect sink
@@ -34,8 +34,8 @@ def test_records_returns_a_snapshot_copy():
 
 def test_drain_returns_and_clears_buffer():
     sink = ProblemTraceSink()
-    emit_problem_trace(sink, task_id="t1", error_kind="x")
-    emit_problem_trace(sink, task_id="t2", error_kind="y")
+    emit_problem_trace(sink, request_id="t1", error_kind="x")
+    emit_problem_trace(sink, request_id="t2", error_kind="y")
     assert len(sink) == 2
 
     drained = sink.drain()

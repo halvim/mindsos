@@ -17,7 +17,7 @@ def test_invoke_captures_exception_into_envelope():
     result = cl.invoke(
         boom.iri,
         inputs={DS_INPUT_IRI: "anything"},
-        task_id="task-1",
+        request_id="request-1",
         step_id="step-1",
     )
 
@@ -35,7 +35,7 @@ def test_invoke_emits_problem_trace_record_on_exception():
     cl.invoke(
         boom.iri,
         inputs={DS_INPUT_IRI: "anything"},
-        task_id="task-1",
+        request_id="request-1",
         step_id="step-1",
     )
 
@@ -43,14 +43,14 @@ def test_invoke_emits_problem_trace_record_on_exception():
     assert len(records) == 1
     rec = records[0]
     assert rec.error_kind == "exception:RuntimeError"
-    assert rec.task_id == "task-1"
+    assert rec.request_id == "request-1"
     assert rec.step_id == "step-1"
     assert rec.capacity_iri == boom.iri
     assert "intentional" in rec.payload["message"]
 
 
 def test_invoke_without_task_id_skips_trace_emission_foot_gun():
-    """R1 PB-16 lock — task_id=None silently skips trace emission.
+    """R1 PB-16 lock — request_id=None silently skips trace emission.
 
     Envelope still returned with success=False; sink stays empty.
     """

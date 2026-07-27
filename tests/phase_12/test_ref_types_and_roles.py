@@ -25,7 +25,7 @@ from mindsos_knowledge import (
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     SEED_ROLES,
     UPPER_LAYER_ROLES,
     global_ref_key,
@@ -75,7 +75,7 @@ def test_global_ref_key_handles_upper_layer_roles() -> None:
 
 
 def test_local_ref_key_handles_upper_layer_roles() -> None:
-    assert local_ref_key("task-patterns") == "ref:task-patterns"
+    assert local_ref_key("request-patterns") == "ref:request-patterns"
 
 
 # ── Role constants + frozensets (PB-9) ────────────────────────────────
@@ -100,7 +100,7 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
 
     assert UPPER_LAYER_ROLES == frozenset({
         ROLE_PROMOTED_PIPELINES,
-        ROLE_TASK_PATTERNS,
+        ROLE_REQUEST_PATTERNS,
         ROLE_EPISODIC_MEMORIES,
         ROLE_PROBLEM_TRACE,
         ROLE_CAPACITY_STATE,
@@ -141,7 +141,7 @@ _ADR_0045_BUILDERS = (
     # alongside the schema-v2 ship per design log §3 phasing).
     "pipeline_iri",
     "pipeline_step_iri",
-    "task_pattern_iri",
+    "request_pattern_iri",
     "subgoal_template_iri",
     "episode_iri",
     "memory_composite_iri",

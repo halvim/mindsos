@@ -22,7 +22,7 @@ def _write_manifest(tmp_path):
         TEXT_MAP_IRI,
         TEXT_MODALITY_DS,
         TEXT_PROCESS_IRI,
-        TEXT_TASK_PATTERN_IRI,
+        TEXT_REQUEST_PATTERN_IRI,
     )
 
     p = tmp_path / "manifest.toml"
@@ -35,11 +35,11 @@ requires_mindsos_phase = 50
 requires_bundles = []
 
 [[l2.content]]
-role = "task-patterns"
+role = "request-patterns"
 tier = "global"
-node_type = "TaskPattern"
-iri = "{TEXT_TASK_PATTERN_IRI}"
-value = "{TEXT_TASK_PATTERN_IRI}"
+node_type = "RequestPattern"
+iri = "{TEXT_REQUEST_PATTERN_IRI}"
+value = "{TEXT_REQUEST_PATTERN_IRI}"
 
 [l2.content.properties]
 description = "text task pattern for the brain-verb integration skill."
@@ -105,9 +105,9 @@ def test_skill_verb_runs_through_durable_brain(falkordb_clean, tmp_path):
         seen = []
         real = stack.orch.run_lifecycle
 
-        def _spy(task_input, **kw):
-            seen.append(task_input)
-            return real(task_input, **kw)
+        def _spy(request_input, **kw):
+            seen.append(request_input)
+            return real(request_input, **kw)
 
         stack.orch.run_lifecycle = _spy
 

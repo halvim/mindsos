@@ -98,7 +98,7 @@ def build_stack(kl: Any = None, *, user: str = TASK_USER) -> Stack:
     session = _Session(user)
     mm = MentalModel(session_id=session.session_id, user_id=user)
     dispatcher = L4Dispatcher(layer, session=session, kl=kl)
-    orch = Orchestrator(dispatcher, mm, task_scope="integration-c")
+    orch = Orchestrator(dispatcher, mm, request_scope="integration-c")
     return Stack(orch, mm, kl, layer, dispatcher, session, user)
 
 
@@ -122,10 +122,10 @@ def step_read_side_tokenize(stack: Stack, text: str = SEED_TEXT) -> List[str]:
     return list(result.outputs[DS_TOKENS])
 
 
-def step_run_trivial_task(stack: Stack, text: str = SEED_TEXT, *, task_id: str = "T1"):
+def step_run_trivial_task(stack: Stack, text: str = SEED_TEXT, *, request_id: str = "T1"):
     """L4 enqueue-equivalent: run the six-phase lifecycle over the v0
     catalogs. Consolidation (L5) fires on the terminal path."""
-    outcome = stack.orch.run_lifecycle({"text": text}, task_id=task_id)
+    outcome = stack.orch.run_lifecycle({"text": text}, request_id=request_id)
     assert outcome.status == "succeeded"
     return outcome
 
@@ -162,7 +162,7 @@ def step_dream(stack: Stack, episode_iris: List[str], *, failed: bool = False) -
     episode corpus; an identity re-executor stands in for the WSD-gated
     faithful re-execution. Returns the emitted ``DreamDirective``s."""
     episodes: List[Dict[str, Any]] = [
-        {"source_episode_iri": iri, "task_run_iri": "", "failed": failed}
+        {"source_episode_iri": iri, "request_run_iri": "", "failed": failed}
         for iri in episode_iris
     ]
     return run_dream_cycle(stack.dispatcher, episodes, re_executor=lambda _d: None)

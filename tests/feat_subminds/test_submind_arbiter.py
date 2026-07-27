@@ -43,11 +43,11 @@ class _Exec:
         self.submitted = []
 
     def submit(
-        self, fn, *, tier, task_id, score=None, cancel_token=None,
+        self, fn, *, tier, request_id, score=None, cancel_token=None,
         preempt=True, held_resources=(),
     ):
         self.submitted.append(
-            dict(task_id=task_id, tier=tier, preempt=preempt,
+            dict(request_id=request_id, tier=tier, preempt=preempt,
                  held=frozenset(held_resources))
         )
         try:
@@ -66,7 +66,7 @@ class _Dispatcher:
         self.calls = []
         self._success = success
 
-    def dispatch(self, cap, inputs, *, cancel_token=None, task_id=None, step_id=None):
+    def dispatch(self, cap, inputs, *, cancel_token=None, request_id=None, step_id=None):
         self.calls.append(cap)
         return _Inv(success=self._success)
 
@@ -196,7 +196,7 @@ def test_runs_and_fails_schedules_capped_backoff():
             pass
 
     class _FailExec:
-        def submit(self, fn, *, tier, task_id, score=None, cancel_token=None,
+        def submit(self, fn, *, tier, request_id, score=None, cancel_token=None,
                    preempt=True, held_resources=()):
             return _Fut(ret={"resolved": False})  # ran and failed
 
@@ -219,7 +219,7 @@ def test_escalation_while_in_flight_does_not_double_dispatch():
         def __init__(self):
             self.count = 0
 
-        def submit(self, fn, *, tier, task_id, score=None, cancel_token=None,
+        def submit(self, fn, *, tier, request_id, score=None, cancel_token=None,
                    preempt=True, held_resources=()):
             self.count += 1
             return _Fut(ret=None)  # callback fires but we inspect count
@@ -230,12 +230,12 @@ def test_escalation_while_in_flight_does_not_double_dispatch():
     # Simpler: call on_need twice; the resolver runs inline (ret None →
     # not resolved → backoff), so simulate in-flight via a never-finishing
     # future is overkill. Instead assert dedup: second identical need with
-    # an active running_task_id is a no-op.
+    # an active running_request_id is a no-op.
     need_defn = _Defn(res=("arm",))
     a.on_need(_Sig("energy", TierEnum.FOREGROUND, 100), TierEnum.FOREGROUND, need_defn)
     first = ex.count
     # Manually mark in-flight to exercise the early-return guard.
-    a._pending["energy"].running_task_id = "still-running"
+    a._pending["energy"].running_request_id = "still-running"
     a.on_need(_Sig("energy", TierEnum.CRITICAL, 9000), TierEnum.CRITICAL, need_defn)
     assert ex.count == first  # no second dispatch while in flight
     # but the escalated tier was recorded in place (dedup, not stacked)

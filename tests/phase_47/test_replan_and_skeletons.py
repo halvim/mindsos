@@ -13,13 +13,13 @@ from mindsos_intelligence.als_subsystems import (
     ALS_SUBSYSTEM_SKELETONS,
     register_als_subsystems,
 )
-from mindsos_intelligence.chain_artifacts import TaskRun
+from mindsos_intelligence.chain_artifacts import RequestRun
 from mindsos_intelligence.replan_check import invalidate_at_and_below
 from mindsos_intelligence.signal_sources import register_signal_sources
 
 
 def test_invalidate_at_and_below_clears_pipeline_runs():
-    tr = TaskRun(iri="taskrun:t:1", pipeline_runs=["pr:1", "pr:2"])
+    tr = RequestRun(iri="requestrun:t:1", pipeline_runs=["pr:1", "pr:2"])
     invalidated = invalidate_at_and_below(tr, "pipeline")
     assert invalidated == ["pr:1", "pr:2"]
     assert tr.pipeline_runs == []
@@ -27,7 +27,7 @@ def test_invalidate_at_and_below_clears_pipeline_runs():
 
 def test_invalidate_rejects_unknown_level():
     with pytest.raises(ValueError):
-        invalidate_at_and_below(TaskRun(iri="taskrun:t:1"), "bogus")
+        invalidate_at_and_below(RequestRun(iri="requestrun:t:1"), "bogus")
 
 
 def test_ten_signal_sources_s7_reserved():

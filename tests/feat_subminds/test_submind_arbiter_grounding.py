@@ -5,13 +5,13 @@ The arbiter now takes a mandatory ``mm`` and runs its resolver via
 ``execute_pipeline(..., mm=self._mm, pipeline_run_ref=<fresh per run>)``, so each
 resolver dispatch records a per-run grounding DAG (CapacityInstance +
 DataStateInstance nodes wired by ``PRODUCES``/``CONSUMES``) into ``mm.capacity_mm``,
-keyed on its own ``(task_id, run_ref)``. Covers CR §6: grounding with edges, two
+keyed on its own ``(request_id, run_ref)``. Covers CR §6: grounding with edges, two
 concurrent resolvers → distinct graphs, a re-dispatch (replan) that does not
 overwrite, and the phase-1 interpret-resolve MM-less carve-out left unchanged.
 
 Pure unit tests with injected fakes (synchronous inline executor, fake
 dispatcher/plan) + a real MentalModel — no threads, no FalkorDB (Py3.10 sandbox).
-The writer-level same-``task_id`` replan / distinct-task guarantees are additionally
+The writer-level same-``request_id`` replan / distinct-task guarantees are additionally
 covered at the ``execute_pipeline`` boundary by
 ``tests/phase_48/test_capacity_mm_writer.py``.
 """
@@ -56,7 +56,7 @@ class _Fut:
 class _Exec:
     """Synchronous executor: runs the resolver inline at submit."""
 
-    def submit(self, fn, *, tier, task_id, score=None, cancel_token=None,
+    def submit(self, fn, *, tier, request_id, score=None, cancel_token=None,
                preempt=True, held_resources=()):
         try:
             return _Fut(ret=fn())
@@ -79,7 +79,7 @@ class _Dispatcher:
         self._out = outputs_by_cap
         self.calls = []
 
-    def dispatch(self, cap, inputs, *, cancel_token=None, task_id=None, step_id=None):
+    def dispatch(self, cap, inputs, *, cancel_token=None, request_id=None, step_id=None):
         self.calls.append(cap)
         return _Inv(dict(self._out.get(cap, {})))
 
@@ -176,8 +176,8 @@ def test_two_concurrent_resolvers_write_distinct_graphs():
 
 def test_redispatch_same_submind_does_not_overwrite():
     """§6.3 (replan): a second resolver dispatch for the SAME need mints a
-    fresh per-run graph (fresh task_id → fresh run_ref); the first run's nodes
-    are untouched. (Same-``task_id`` / different-``run_ref`` replan is covered
+    fresh per-run graph (fresh request_id → fresh run_ref); the first run's nodes
+    are untouched. (Same-``request_id`` / different-``run_ref`` replan is covered
     at the ``execute_pipeline`` boundary by test_capacity_mm_writer.)"""
     mm = MentalModel(session_id="s", user_id="u")
     dp = _Dispatcher({"capacity:charge": {"datastate:energy": 1}})
@@ -202,7 +202,7 @@ def test_mm_less_interpret_carveout_unchanged():
     dp = _Dispatcher({"capacity:charge": {"datastate:energy": 7}})
     pipe = _Pipeline([_Step("capacity:charge", inputs=("datastate:reading",))])
 
-    res = execute_pipeline(dp, pipe, {"datastate:reading": [[1]]}, task_id="interpret")
+    res = execute_pipeline(dp, pipe, {"datastate:reading": [[1]]}, request_id="interpret")
     assert res.success and res.outputs["datastate:energy"] == 7
     # No mm supplied → nothing grounded (a fresh MM stays empty).
     assert sum(len(g.nodes) for g in control.capacity_mm.graphs.values()) == 0

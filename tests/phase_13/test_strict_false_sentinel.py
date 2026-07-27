@@ -19,7 +19,7 @@ from mindsos_knowledge.schemas import (
     build_ontology_schema,
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
-    build_task_patterns_schema,
+    build_request_patterns_schema,
 )
 
 
@@ -31,7 +31,7 @@ from mindsos_knowledge.schemas import (
         build_concepts_schema,
         build_alignment_schema,
         build_promoted_pipelines_schema,
-        build_task_patterns_schema,
+        build_request_patterns_schema,
         build_episodic_memories_schema,
         build_problem_trace_schema,
         build_capacity_state_schema,

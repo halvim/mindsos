@@ -97,7 +97,7 @@ class L4Dispatcher:
         self,
         *,
         cancel_token: Any = None,
-        task_iri: Optional[str] = None,
+        request_iri: Optional[str] = None,
         pattern_iri: Optional[str] = None,
         reads_mm: bool = False,
     ) -> CapacityContext:
@@ -117,7 +117,7 @@ class L4Dispatcher:
             cancel_token=(
                 CancelTokenView(cancel_token) if cancel_token is not None else None
             ),
-            current_task_iri=task_iri,
+            current_request_iri=request_iri,
             current_pattern_iri=pattern_iri,
             version_snapshot=dict(self._version_snapshot),
             kl=self._kl,
@@ -131,15 +131,15 @@ class L4Dispatcher:
         inputs: Mapping[str, Any],
         *,
         cancel_token: Any = None,
-        task_iri: Optional[str] = None,
+        request_iri: Optional[str] = None,
         pattern_iri: Optional[str] = None,
-        task_id: Optional[str] = None,
+        request_id: Optional[str] = None,
         step_id: Optional[str] = None,
     ):
         declaration = self._cl.resolve_declaration(capacity_iri, session=self._session)
         ctx = self.build_context(
             cancel_token=cancel_token,
-            task_iri=task_iri,
+            request_iri=request_iri,
             pattern_iri=pattern_iri,
             reads_mm=bool(getattr(declaration, "reads_mm", False)),
         )
@@ -147,7 +147,7 @@ class L4Dispatcher:
             declaration,
             inputs,
             context=ctx,
-            task_id=task_id,
+            request_id=request_id,
             step_id=step_id,
             problem_trace_sink=getattr(self._cl, "problem_trace", None),
         )

@@ -2,7 +2,7 @@
 
 Port of the v3 ``mindsos_knowledge/identifiers.py`` (seed roles
 DOLCE / OEWN / FrameNet) **extended** with upper-layer builders
-declared by ADR-0045 (pipelines, task-patterns, episodic-memories,
+declared by ADR-0045 (pipelines, request-patterns, episodic-memories,
 problem-trace, capacity-state). Together this module ships the
 upper-layer builder surface ADR-0045 names. Per ADR-0044
 §amendment-3 + ADR-0150 §amendment-4 + ADR-0146 §amendment-3
@@ -63,7 +63,7 @@ ROLE_CONCEPTS = "concepts"
 # Phase 39 rename: ``memories`` → ``episodic_memories`` per ADR-0044
 # §amendment-3 + ADR-0150 §amendment-4.
 ROLE_PROMOTED_PIPELINES = "promoted-pipelines"
-ROLE_TASK_PATTERNS = "task-patterns"
+ROLE_REQUEST_PATTERNS = "request-patterns"
 ROLE_EPISODIC_MEMORIES = "episodic_memories"
 ROLE_PROBLEM_TRACE = "problem-trace"
 ROLE_CAPACITY_STATE = "capacity-state"
@@ -93,7 +93,7 @@ ROLE_LEARNED_PIPELINES = "learned-pipelines"
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     ROLE_EPISODIC_MEMORIES,
     ROLE_PROBLEM_TRACE,
     ROLE_CAPACITY_STATE,
@@ -237,20 +237,20 @@ def pipeline_step_iri(version: str, pipeline_id: str, step_id: str) -> str:
     return f"promoted-pipelines-{v}:step:{pid}:{sid}"
 
 
-def task_pattern_iri(version: str, pattern_id: str) -> str:
-    """Task pattern: ``task-patterns-<v>:pattern:<id>``."""
+def request_pattern_iri(version: str, pattern_id: str) -> str:
+    """Task pattern: ``request-patterns-<v>:pattern:<id>``."""
     v = _ensure_version(version)
     pid = _normalise_fragment(pattern_id)
-    return f"task-patterns-{v}:pattern:{pid}"
+    return f"request-patterns-{v}:pattern:{pid}"
 
 
 def subgoal_template_iri(version: str, pattern_id: str, subgoal_id: str) -> str:
     """Task-pattern subgoal template:
-    ``task-patterns-<v>:subgoal:<pid>:<sid>``."""
+    ``request-patterns-<v>:subgoal:<pid>:<sid>``."""
     v = _ensure_version(version)
     pid = _normalise_fragment(pattern_id)
     sid = _normalise_fragment(subgoal_id)
-    return f"task-patterns-{v}:subgoal:{pid}:{sid}"
+    return f"request-patterns-{v}:subgoal:{pid}:{sid}"
 
 
 def episode_iri(version: str, user_id: str, episode_id: str) -> str:
@@ -271,7 +271,7 @@ def memory_composite_iri(version: str, user_id: str, memory_id: str) -> str:
     """User memory-as-clustering-composite (Local-per-user, ADR-0044 §am-3):
     ``episodic-memories-<v>:memory:<user_id>:<memory_id>``.
 
-    Clustering composite over Episodes, keyed by ``task_pattern_iri``
+    Clustering composite over Episodes, keyed by ``request_pattern_iri``
     per Chat B D-B47 + L5 design notes §4.6. ``user_id`` charset
     enforced by `_ensure_user_id` per ADR-0044 §amendment-1.
     """
@@ -621,7 +621,7 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("oewn-", ROLE_LEXICON),
     ("framenet-", ROLE_CONCEPTS),
     ("promoted-pipelines-", ROLE_PROMOTED_PIPELINES),
-    ("task-patterns-", ROLE_TASK_PATTERNS),
+    ("request-patterns-", ROLE_REQUEST_PATTERNS),
     ("episodic-memories-", ROLE_EPISODIC_MEMORIES),
     ("problem-trace-", ROLE_PROBLEM_TRACE),
     ("capacity-state-", ROLE_CAPACITY_STATE),
@@ -646,7 +646,7 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_LEXICON: frozenset({"synset", "sense", "lemma"}),
     ROLE_CONCEPTS: frozenset({"frame", "lu", "fe"}),
     ROLE_PROMOTED_PIPELINES: frozenset({"pipeline", "step"}),
-    ROLE_TASK_PATTERNS: frozenset({"pattern", "subgoal"}),
+    ROLE_REQUEST_PATTERNS: frozenset({"pattern", "subgoal"}),
     ROLE_EPISODIC_MEMORIES: frozenset({"episode", "memory"}),
     ROLE_PROBLEM_TRACE: frozenset({"entry"}),
     ROLE_CAPACITY_STATE: frozenset({"snapshot"}),

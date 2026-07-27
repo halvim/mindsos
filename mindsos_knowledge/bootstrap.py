@@ -65,7 +65,7 @@ from .identifiers import (
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_SUBMINDS,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
 )
 from .schemas import (
     build_alignment_schema,
@@ -84,7 +84,7 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_LEXICON,
     ROLE_CONCEPTS,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     ROLE_PROBLEM_TRACE,
     # Phase 43 (ADR-0150 §am-5) — Global-form role-graphs.
     ROLE_PENDING_PROMOTIONS,
@@ -103,7 +103,7 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
 #: (§am-3 renamed ``memories`` → ``episodic_memories``) + ADR-0150
 #: §amendment-5 (Phase 43 — 3 of the 4 new role-graphs have a Local
 #: form: parameter-staging, pending-promotions, learned-parameters;
-#: capacity-gaps is Global-only) + ADR-0150 §amendment-8 (task-patterns
+#: capacity-gaps is Global-only) + ADR-0150 §amendment-8 (request-patterns
 #: gains a Local form — dual-scope like pending-promotions /
 #: learned-parameters: per-user patterns are authored/learned Local and
 #: promoted to the shared Global form; discipline is
@@ -115,8 +115,8 @@ _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_PARAMETER_STAGING,
     ROLE_PENDING_PROMOTIONS,
     ROLE_LEARNED_PARAMETERS,
-    # feat/phase1-seam (ADR-0150 §am-8) — task-patterns is now dual-scope.
-    ROLE_TASK_PATTERNS,
+    # feat/phase1-seam (ADR-0150 §am-8) — request-patterns is now dual-scope.
+    ROLE_REQUEST_PATTERNS,
     # feat/learned-pipeline-persistence (ADR-0203) — Local-only taught
     # pipelines; immutable_successor append-ordinal.
     ROLE_LEARNED_PIPELINES,
@@ -144,11 +144,11 @@ _LOCAL_ONLY_ROLES: frozenset[str] = (
 #: NPB6-6 + L2-37 split (NPB11-1 field-only at Phase 43; Phase 44 ships
 #: the Kahn topological-sort scheduler that consumes these declarations).
 #:
-#: Soft edge: ``episodic_memories ← {task-patterns}`` per Chat B D-B47
-#: (Episodes carry ``task_pattern_iri`` so task-patterns must exist
-#: before episodes can reference). Since ADR-0150 §am-8 task-patterns is
+#: Soft edge: ``episodic_memories ← {request-patterns}`` per Chat B D-B47
+#: (Episodes carry ``request_pattern_iri`` so request-patterns must exist
+#: before episodes can reference). Since ADR-0150 §am-8 request-patterns is
 #: dual-scope, this edge is now **within-Local-scope** too, so the Local
-#: kahn_sort orders task-patterns before episodic_memories (previously
+#: kahn_sort orders request-patterns before episodic_memories (previously
 #: cross-scope / ignored). Other role-graphs are independent.
 #:
 #: Phase 43 declares the field shape only; consumers raise no errors
@@ -159,8 +159,8 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_LEXICON: frozenset(),
     ROLE_CONCEPTS: frozenset(),
     ROLE_PROMOTED_PIPELINES: frozenset(),
-    ROLE_TASK_PATTERNS: frozenset(),
-    ROLE_EPISODIC_MEMORIES: frozenset({ROLE_TASK_PATTERNS}),
+    ROLE_REQUEST_PATTERNS: frozenset(),
+    ROLE_EPISODIC_MEMORIES: frozenset({ROLE_REQUEST_PATTERNS}),
     ROLE_PROBLEM_TRACE: frozenset(),
     ROLE_CAPACITY_STATE: frozenset(),
     ROLE_PARAMETER_STAGING: frozenset(),
@@ -205,7 +205,7 @@ def kahn_sort(
 
     Consumes the Phase-43 ``_APPLIES_AFTER_BY_ROLE`` declarations
     (L2-37 consumer split). With the v1 declarations the only edge
-    (``episodic_memories ← task-patterns``) is cross-scope, so every
+    (``episodic_memories ← request-patterns``) is cross-scope, so every
     single-scope sort reduces to alphabetical; the scheduler exists to
     enforce ordering for future within-scope edges and to reject cycles.
 
@@ -265,7 +265,7 @@ def ensure_global_role_graph(
     Accepts:
 
     * The 6 Global-named roles (``ontology``, ``lexicon``, ``concepts``,
-      ``promoted-pipelines``, ``task-patterns``, ``problem-trace``).
+      ``promoted-pipelines``, ``request-patterns``, ``problem-trace``).
     * ``alignment:<role-a>:<role-b>`` prefixed roles (per ADR-0150
       §amendment-1).
 

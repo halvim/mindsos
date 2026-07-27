@@ -34,7 +34,7 @@ def test_invoke_injects_kl_into_context_when_kl_present():
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "ok"}},
         session=sess,
-        task_id="T",
+        request_id="T",
     )
     assert result.success is True
 
@@ -48,7 +48,7 @@ def test_invoke_without_kl_yields_runtime_error_via_envelope():
         "capacity:trace:problem",
         {DS_PROBLEM_TRACE_RECORD: {"trace_id": "t1", "value": "ok"}},
         session=sess,
-        task_id="T",
+        request_id="T",
     )
     assert result.success is False
     assert isinstance(result.error, RuntimeError)

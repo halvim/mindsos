@@ -12,13 +12,13 @@ former ``MEMORY_PROPS`` constant was dropped from the Phase 39
 NodeTypes land at Phase 43 alongside CONTENT_FIELDS / METADATA_FIELDS /
 mutation_discipline apparatus per ADR-0153 / ADR-0152 (Rail A schema-v2).
 
-**Phase 43 schema-v2 update (ADR-0152 §1 + §2):** Pipeline + TaskPattern
+**Phase 43 schema-v2 update (ADR-0152 §1 + §2):** Pipeline + RequestPattern
 PROPS sets expanded from Phase 13 advisory shape to full v2 field set
 (union of ``*_CONTENT_FIELDS`` + ``*_METADATA_FIELDS``). ``task_type``
-dropped from both (Pipeline never had a real ``task_type``; TaskPattern
+dropped from both (Pipeline never had a real ``task_type``; RequestPattern
 ``task_type`` renamed to ``pattern_name`` per ADR-0152 §2).
 ``confidence`` dropped from Pipeline per ADR-0094 §am-1 (migrates to
-ALS subsystems); kept on TaskPattern as metadata.
+ALS subsystems); kept on RequestPattern as metadata.
 """
 
 from __future__ import annotations
@@ -29,9 +29,9 @@ from mindsos_knowledge.schemas.promoted_pipelines import (
     PIPELINE_PROPS,
     PIPELINE_STEP_PROPS,
 )
-from mindsos_knowledge.schemas.task_patterns import (
+from mindsos_knowledge.schemas.request_patterns import (
     SUBGOAL_TEMPLATE_PROPS,
-    TASK_PATTERN_PROPS,
+    REQUEST_PATTERN_PROPS,
 )
 
 
@@ -56,8 +56,8 @@ def test_task_pattern_props_declare_design_properties() -> None:
     # Phase 13 advisory ``task_type`` renamed to ``pattern_name`` per
     # ADR-0152 §2 schema-v2 expansion; ``n_observations`` +
     # ``confidence`` (metadata) preserved per ADR-0152 §2.
-    assert {"pattern_name", "n_observations", "confidence"} <= TASK_PATTERN_PROPS
-    assert "task_type" not in TASK_PATTERN_PROPS
+    assert {"pattern_name", "n_observations", "confidence"} <= REQUEST_PATTERN_PROPS
+    assert "task_type" not in REQUEST_PATTERN_PROPS
 
 
 def test_subgoal_template_props_is_frozenset() -> None:
@@ -65,7 +65,7 @@ def test_subgoal_template_props_is_frozenset() -> None:
 
 
 def test_problem_trace_entry_props_declare_design_properties() -> None:
-    assert {"capacity_iri", "task_id", "error_type", "error_message"} <= PROBLEM_TRACE_ENTRY_PROPS
+    assert {"capacity_iri", "request_id", "error_type", "error_message"} <= PROBLEM_TRACE_ENTRY_PROPS
 
 
 def test_capacity_snapshot_props_declare_design_properties() -> None:

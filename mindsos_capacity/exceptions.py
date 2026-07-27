@@ -112,7 +112,7 @@ class ProblemTraceError(CapacityLayerError):
     Phase 30 raisers:
 
     - ``mindsos_capacity.runtime.emit_problem_trace`` — empty
-      ``task_id`` or empty ``error_kind`` argument.
+      ``request_id`` or empty ``error_kind`` argument.
 
     Kept thin — problem-trace records themselves are free-form, but
     the required keys must be present per ADR-0074.

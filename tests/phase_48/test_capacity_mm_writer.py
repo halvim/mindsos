@@ -1,10 +1,10 @@
 """CR#4 Slice 2 / CR: capacity_mm persist Slice A — the capacity-MM writer
 grounds pipeline execution into ``capacity_mm`` (ADR-0201) as a **per-run**
-grounding DAG: one graph per ``(task_id, pipeline_run_ref)`` holding both
+grounding DAG: one graph per ``(request_id, pipeline_run_ref)`` holding both
 CapacityInstance and DataStateInstance nodes, PRODUCES/CONSUMES **intra-graph**
 edges, minted instance IRIs routing to capacity_mm. Slice A reshapes the origin
 slice's two shared fixed-role graphs into one graph per run (D-A) and removes the
-``run_ref = task_id`` default (replan collision). ``mm=None`` stays value-only.
+``run_ref = request_id`` default (replan collision). ``mm=None`` stays value-only.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ class _Dispatcher:
         self._out = outputs_by_cap
         self.calls: list = []
 
-    def dispatch(self, capacity_iri, inputs, *, cancel_token=None, task_id=None, step_id=None):
+    def dispatch(self, capacity_iri, inputs, *, cancel_token=None, request_id=None, step_id=None):
         self.calls.append((capacity_iri, dict(inputs)))
         return _Result(success=True, outputs=dict(self._out.get(capacity_iri, {})))
 
@@ -68,9 +68,9 @@ def _mm() -> MentalModel:
     return MentalModel(session_id="s", user_id="u")
 
 
-def _run_graph(mm: MentalModel, task_id: str, run_ref: str):
-    """Find the single per-run instance graph for ``(task_id, run_ref)``."""
-    role = run_graph_role(task_id, run_ref)
+def _run_graph(mm: MentalModel, request_id: str, run_ref: str):
+    """Find the single per-run instance graph for ``(request_id, run_ref)``."""
+    role = run_graph_role(request_id, run_ref)
     for g in mm.capacity_mm.graphs.values():
         if g.role == role:
             return g
@@ -105,7 +105,7 @@ def test_writes_grounding_dag_when_mm_present():
     pipe, disp = _two_step()
     res = execute_pipeline(
         disp, pipe, {"datastate:a": "A"},
-        task_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
+        request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
     )
     assert res.success
     assert res.outputs["datastate:c"] == "C"
@@ -134,7 +134,7 @@ def test_datastate_instance_carries_payload_and_type():
     pipe, disp = _two_step()
     execute_pipeline(
         disp, pipe, {"datastate:a": "A"},
-        task_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
+        request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
     )
     graph = _run_graph(mm, "t1", "pipelinerun:t1:1")
     by_type = {
@@ -150,7 +150,7 @@ def test_minted_instance_iris_route_to_capacity_mm():
     pipe, disp = _two_step()
     execute_pipeline(
         disp, pipe, {"datastate:a": "A"},
-        task_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
+        request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
     )
     graph = _run_graph(mm, "t1", "pipelinerun:t1:1")
     for node_id in graph.nodes:
@@ -172,7 +172,7 @@ def test_root_mints_grounding_root():
 def test_no_mm_is_value_only_and_leaves_rooms_empty():
     mm = _mm()
     pipe, disp = _two_step()
-    res = execute_pipeline(disp, pipe, {"datastate:a": "A"}, task_id="t1")  # no mm
+    res = execute_pipeline(disp, pipe, {"datastate:a": "A"}, request_id="t1")  # no mm
     assert res.success
     assert res.outputs["datastate:c"] == "C"
     # A fresh MM the run never touched stays empty (byte-identical old path).
@@ -180,17 +180,17 @@ def test_no_mm_is_value_only_and_leaves_rooms_empty():
 
 
 def test_mm_present_without_run_ref_raises():
-    """Slice A: the silent ``run_ref = task_id`` default is removed — an MM
+    """Slice A: the silent ``run_ref = request_id`` default is removed — an MM
     write without an explicit per-run ref is a programmer error, not a
     replan-colliding default."""
     mm = _mm()
     pipe, disp = _two_step()
     with pytest.raises(ValueError):
-        execute_pipeline(disp, pipe, {"datastate:a": "A"}, task_id="t1", mm=mm)
+        execute_pipeline(disp, pipe, {"datastate:a": "A"}, request_id="t1", mm=mm)
 
 
 def test_replan_second_run_does_not_overwrite_first():
-    """Two runs under the SAME task_id with distinct run refs get distinct
+    """Two runs under the SAME request_id with distinct run refs get distinct
     per-run graphs; the first run's nodes are untouched by the second (the
     replan collision the origin slice had)."""
     mm = _mm()
@@ -198,12 +198,12 @@ def test_replan_second_run_does_not_overwrite_first():
     pipe1, disp1 = _two_step()
     execute_pipeline(
         disp1, pipe1, {"datastate:a": "A"},
-        task_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
+        request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
     )
     pipe2, disp2 = _two_step()
     execute_pipeline(
         disp2, pipe2, {"datastate:a": "A2"},
-        task_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:2",
+        request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:2",
     )
 
     g1 = _run_graph(mm, "t1", "pipelinerun:t1:1")
@@ -226,12 +226,12 @@ def test_distinct_tasks_get_distinct_graphs():
     pipe_a, disp_a = _two_step()
     execute_pipeline(
         disp_a, pipe_a, {"datastate:a": "A"},
-        task_id="main-task", mm=mm, pipeline_run_ref="pipelinerun:main:1",
+        request_id="main-task", mm=mm, pipeline_run_ref="pipelinerun:main:1",
     )
     pipe_b, disp_b = _two_step()
     execute_pipeline(
         disp_b, pipe_b, {"datastate:a": "A"},
-        task_id="submind-resolver-x-0", mm=mm, pipeline_run_ref="pipelinerun:sr:1",
+        request_id="submind-resolver-x-0", mm=mm, pipeline_run_ref="pipelinerun:sr:1",
     )
     assert len(_all_run_graphs(mm)) == 2
     ga = _run_graph(mm, "main-task", "pipelinerun:main:1")
@@ -266,7 +266,7 @@ def test_lock_never_held_across_dispatch():
     )
     execute_pipeline(
         disp, pipe, {"datastate:a": "A"},
-        task_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
+        request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
     )
     assert disp.held_at_dispatch == [False, False]
     # And the lock is free after the run.

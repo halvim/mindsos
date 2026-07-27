@@ -52,6 +52,38 @@ an all-or-nothing (``∀-abort``) barrier — an exhausted member raises
 fold dispatches an L3 reducer over that ordered list and merges the aggregate
 back. A milestone with no spec is a plain leaf (the 1a path, unchanged).
 
+**Nesting (collection-iteration Slice 2).**
+
+A map's per-member work may itself be a whole sub-plan rather than a single
+``find_pipeline`` leaf — and that sub-plan may itself contain a map/fold (e.g.
+objects within grids within a task). A map spec carries this via an optional
+``sub_plan`` key (a mini plan: ``{leaf_milestone_refs, pipeline_refs,
+milestone_specs, leaf_targets?, solve_target?}``); when present, each member runs
+that sub-plan in its own isolated sub-blackboard (seeded with the member value)
+instead of the flat 1b leaf, and the map collects ``sub_target`` from that
+sub-blackboard. When absent, the member runs the flat 1b path — byte-identical.
+
+The milestone loop is factored into :func:`_run_milestone_sequence`, which both
+``run`` (top level) and a map member (its sub-plan) invoke. Every executed leaf's
+per-run ref is a **path** — ``pipelinerun:{scope}:{ref_path}[...]`` — that
+accumulates a ``{milestone_idx}`` segment per level and an ``m{member_idx}``
+segment per map fan-out, so a nested run's grounding graph stays isolated from
+its siblings and the provenance tree (the set of per-run graphs, keyed by role)
+is walkable by path. At depth 0 the path is just ``{leaf_idx}`` → the refs are
+byte-identical to Slice 1a/1b. (Cross-stage grounding *continuity* — linking a
+consumer's seeded start to the producer's instance across per-run graphs — is
+NOT resolved here: it would reverse the Slice-A per-run-graph / intra-graph-edge
+model and is deferred to its own slice. The ref-path gives isolation + a
+locatable tree, not connected cross-stage edges.)
+
+Bounded retry + ∀-abort apply at map-member granularity at **every** level: a
+nested map enforces its own retry cap and barrier over its members, and a nested
+``MemberAbortError`` propagates out unretried (a deterministic load failure that
+exhausted its own budget aborts the whole task). A sub-plan member itself is not
+retried (retry lives at the flat find+execute leaf where transient load failure
+actually occurs); a plain sub-plan stage fails soft exactly as a top-level plain
+stage does (1a behaviour, unchanged).
+
 MSUR + SCMS Plan/Milestone orchestration hooks (WSD) are still absent; the loop
 stays sibling-sequential v1.
 """
@@ -76,7 +108,12 @@ class MemberAbortError(Exception):
     the orchestrator catches this and aborts the task. Deliberately distinct from
     (a) a reducer concluding "no consistent rule" — a legitimate ``dont_know``
     *value*, not an abort — and (b) a replan (a member load failure is not
-    retried at the whole-task level)."""
+    retried at the whole-task level).
+
+    ``member_index`` names the failing member at its own level; with Slice 2
+    nesting the abort raised by a nested map propagates unretried through the
+    parent members, so the exception that escapes ``run`` names the innermost
+    failing member (the deterministic load failure that started the abort)."""
 
     def __init__(self, leaf_ref: str, member_index: int, message: str = ""):
         self.leaf_ref = leaf_ref
@@ -92,7 +129,7 @@ def run(
     dispatcher,
     writer,
     plan_result,
-    task_run,
+    request_run,
     *,
     mm: Any = None,
     run_scope: Optional[str] = None,
@@ -100,7 +137,7 @@ def run(
     capacity_graphs: Optional[list] = None,
     run_attempt: int = 0,
 ) -> List[str]:
-    """Run each leaf Pipeline; return the PipelineRun IRIs.
+    """Run each leaf Pipeline; return the top-level PipelineRun IRIs.
 
     ``mm`` / ``run_scope`` / ``solve_seed`` are supplied by the orchestrator on
     the solve path (Step 5). ``solve_seed`` maps the plan's ``start_datastate``
@@ -114,8 +151,11 @@ def run(
     fresh, so a re-dispatch grounds an isolated graph instead of overwriting the
     prior attempt's (Slice A isolation). A map milestone whose member exhausts
     ``MEMBER_RETRY_CAP`` raises :class:`MemberAbortError` (the orchestrator turns
-    it into an aborted task)."""
-    pipeline_run_refs: List[str] = []
+    it into an aborted task).
+
+    The per-leaf work is delegated to :func:`_run_milestone_sequence` (Slice 2),
+    entered here with an empty ``ref_path`` so a top-level leaf's per-run ref is
+    ``{leaf_idx}`` — byte-identical to Slice 1a/1b."""
     solve_target = getattr(plan_result, "solve_target", None)
     leaf_targets = getattr(plan_result, "leaf_targets", None) or {}
     milestone_specs = getattr(plan_result, "milestone_specs", None) or {}
@@ -135,21 +175,58 @@ def run(
     # Slice 1a — one attempt-scoped blackboard threaded across milestones. Fresh
     # per ``run`` call (so replan re-enters clean); seeded from ``solve_seed``.
     blackboard: dict = dict(solve_seed or {})
-    for leaf_idx, leaf_ref in enumerate(plan_result.leaf_milestone_refs):
-        pipeline_ref = plan_result.pipeline_refs.get(leaf_ref)
-        pr = writer.emit_pipeline_run(pipeline_ref, leaf_ref, task_run.iri)
+    return _run_milestone_sequence(
+        dispatcher, writer, request_run,
+        leaf_refs=plan_result.leaf_milestone_refs,
+        pipeline_refs=plan_result.pipeline_refs,
+        milestone_specs=milestone_specs,
+        leaf_targets=leaf_targets,
+        solve_target=solve_target,
+        blackboard=blackboard,
+        mm=mm,
+        scope=run_scope or request_run.iri,
+        ref_path="",
+        run_attempt=run_attempt,
+        capacity_graphs=capacity_graphs,
+        real_mode=real_mode,
+    )
+
+
+def _run_milestone_sequence(
+    dispatcher, writer, request_run, *,
+    leaf_refs, pipeline_refs, milestone_specs, leaf_targets, solve_target,
+    blackboard, mm, scope: str, ref_path: str, run_attempt: int,
+    capacity_graphs: Optional[list], real_mode: bool,
+) -> List[str]:
+    """Run one ordered sequence of milestones over a shared ``blackboard`` and
+    return the emitted PipelineRun IRIs (collection-iteration Slice 2 factoring).
+
+    Shared by ``run`` (top level, ``ref_path=""``) and each map member's sub-plan
+    (``ref_path`` = the member's path). Each milestone's per-run ref path is
+    ``{ref_path}:{leaf_idx}`` (or ``{leaf_idx}`` at the top), so grounding graphs
+    stay isolated per position and the provenance tree is walkable. The
+    ``leaf_targets``/``solve_target``/``milestone_specs`` are read exactly as the
+    top-level loop did; ``real_mode`` gates the real-vs-notional branch (a nested
+    sub-plan is inherently real — ``mm`` is present). Every emitted PipelineRun is
+    appended to ``request_run.pipeline_runs`` (a flat list; the tree lives in the
+    ref-path — Slice 2 decision)."""
+    pipeline_run_refs: List[str] = []
+    for leaf_idx, leaf_ref in enumerate(leaf_refs):
+        pipeline_ref = pipeline_refs.get(leaf_ref)
+        pr = writer.emit_pipeline_run(pipeline_ref, leaf_ref, request_run.iri)
         spec = milestone_specs.get(leaf_ref)
         kind = spec.get("kind") if spec else None
+        leaf_path = f"{ref_path}:{leaf_idx}" if ref_path else f"{leaf_idx}"
         endpoints = leaf_targets.get(leaf_ref) or solve_target
         if real_mode and kind == "map":
-            # Slice 1b — fan out a uniform sub-plan over the collection's members
-            # (∀-abort barrier + bounded retry inside); writes the ordered member
-            # outputs to the blackboard for the fold. Raises MemberAbortError on
-            # an exhausted member -> orchestrator aborts the task.
+            # Slice 1b/2 — fan out a uniform sub-plan over the collection's
+            # members (∀-abort barrier + bounded retry inside); a member's work
+            # is either the flat 1b leaf or a nested sub-plan (Slice 2). Writes
+            # the ordered member outputs to the blackboard for the fold. Raises
+            # MemberAbortError on an exhausted member -> orchestrator aborts.
             _run_map_milestone(
-                dispatcher, writer, pr, leaf_ref, spec, blackboard,
-                mm, run_scope or task_run.iri, leaf_idx, run_attempt,
-                capacity_graphs,
+                dispatcher, writer, request_run, pr, leaf_ref, spec, blackboard,
+                mm, scope, leaf_path, run_attempt, capacity_graphs,
             )
         elif real_mode and kind == "fold":
             # Slice 1b — dispatch the L3 reducer over the ordered member outputs.
@@ -159,8 +236,7 @@ def run(
         elif real_mode and endpoints is not None:
             outputs = _run_leaf_pipeline(
                 dispatcher, writer, pr, leaf_ref, endpoints, blackboard,
-                mm, run_scope or task_run.iri, leaf_idx, run_attempt,
-                capacity_graphs,
+                mm, scope, leaf_path, run_attempt, capacity_graphs,
             )
             # Thread this stage's produced values to downstream stages.
             blackboard.update(outputs)
@@ -175,20 +251,22 @@ def run(
             )
             pr.status = "completed"
         pipeline_run_refs.append(pr.iri)
-        task_run.pipeline_runs.append(pr.iri)
+        request_run.pipeline_runs.append(pr.iri)
     return pipeline_run_refs
 
 
 def _run_leaf_pipeline(
     dispatcher, writer, pr, leaf_ref, endpoints, blackboard,
-    mm, task_id: str, leaf_idx: int, run_attempt: int,
+    mm, request_id: str, leaf_path: str, run_attempt: int,
     capacity_graphs: Optional[list],
 ) -> dict:
     """Find + run the real leaf pipeline; ground it into ``capacity_mm``, collect
     its per-run graph, and return its outputs (for the caller to thread onto the
     run blackboard). Local imports keep this module's import graph light and
     cycle-free (``pipeline_execution`` reaches ``capacity_mm_writer`` → ``mm`` →
-    core, none of which import ``execution``)."""
+    core, none of which import ``execution``). ``leaf_path`` (Slice 2) is the
+    milestone's ref-path position; at depth 0 it is ``str(leaf_idx)`` so the ref
+    is byte-identical to Slice 1a/1b."""
     from mindsos_capacity.exceptions import PipelineNotFoundError
     from mindsos_capacity.pipeline import find_pipeline
 
@@ -226,12 +304,12 @@ def _run_leaf_pipeline(
         for ds in pipeline.start_datastates
         if ds in blackboard
     }
-    run_ref = f"pipelinerun:{task_id}:{leaf_idx}:{run_attempt}"
+    run_ref = f"pipelinerun:{request_id}:{leaf_path}:{run_attempt}"
     result = execute_pipeline(
         dispatcher,
         pipeline,
         seed,
-        task_id=task_id,
+        request_id=request_id,
         mm=mm,
         pipeline_run_ref=run_ref,
     )
@@ -251,40 +329,77 @@ def _run_leaf_pipeline(
 
 
 def _run_map_milestone(
-    dispatcher, writer, pr, leaf_ref, spec, blackboard,
-    mm, task_id: str, leaf_idx: int, run_attempt: int,
+    dispatcher, writer, request_run, pr, leaf_ref, spec, blackboard,
+    mm, request_id: str, leaf_path: str, run_attempt: int,
     capacity_graphs: Optional[list],
 ) -> None:
-    """Map fan-out (collection-iteration Slice 1b).
+    """Map fan-out (collection-iteration Slice 1b; nesting Slice 2).
 
     Read the ordered collection value from the shared blackboard (ADR-0199: L4
-    owns the unpack loop) and, for each member **sequentially** (v1), run a
-    uniform sub-pipeline ``find_pipeline(member_ds -> sub_target)`` in an isolated
-    sub-blackboard seeded with just the member value, under a fresh per-member
-    run-ref so its ``capacity_mm`` grounding graph stays isolated. Bounded retry:
-    accept the first attempt with ``success=True`` (only its grounding graph is
-    persisted; rejected attempts leave nothing in ``capacity_graphs``). ∀-abort: a
-    member still failing at ``MEMBER_RETRY_CAP`` raises :class:`MemberAbortError`
-    — remaining members are skipped and the fold never runs. On success, writes
-    the ordered list of members' ``sub_target`` outputs to ``blackboard[out_ds]``
-    for the fold."""
+    owns the unpack loop) and, for each member **sequentially** (v1), produce its
+    ``sub_target`` output. A member's work is one of:
+
+    * **Flat leaf (1b)** — ``find_pipeline(member_ds -> sub_target)`` +
+      ``execute_pipeline`` in an isolated sub-blackboard seeded with just the
+      member value, under a fresh per-member run-ref so its ``capacity_mm``
+      grounding graph stays isolated. Bounded retry: accept the first attempt
+      with ``success=True`` (only its grounding graph is persisted; rejected
+      attempts leave nothing in ``capacity_graphs``). ∀-abort: a member still
+      failing at ``MEMBER_RETRY_CAP`` raises :class:`MemberAbortError`.
+    * **Sub-plan (Slice 2)** — when ``spec["sub_plan"]`` is present, the member
+      runs that nested milestone sequence in its own isolated sub-blackboard
+      (seeded with the member value) under the member's ref-path, and the map
+      collects ``sub_target`` from that sub-blackboard. The sub-plan may itself
+      contain a nested map/fold; a nested ``MemberAbortError`` propagates
+      unretried (all-or-nothing at every level). The sub-plan member itself is
+      not retried — retry lives at the flat find+execute leaf inside it.
+
+    On success, writes the ordered list of members' ``sub_target`` outputs to
+    ``blackboard[out_ds]`` for the fold. Remaining members are skipped once any
+    member aborts (the fold never runs)."""
     collection_ds = spec["collection_ds"]
     member_ds = spec["member_ds"]
     sub_target = spec["sub_target"]
     out_ds = spec["out_ds"]
+    sub_plan = spec.get("sub_plan")  # Slice 2 — nested plan (optional)
     members = list(blackboard.get(collection_ds) or [])
     member_outputs: List[Any] = []
     for member_idx, member_value in enumerate(members):
+        member_path = f"{leaf_path}:m{member_idx}"
+        if sub_plan is not None:
+            # Slice 2 — the member's work is a whole sub-plan (which may nest a
+            # further map/fold). Run it once in an isolated sub-blackboard seeded
+            # with the member value; a nested ∀-abort raises and propagates
+            # unretried. Collect the member's sub_target from its sub-blackboard.
+            sub_blackboard: dict = {member_ds: member_value}
+            _run_milestone_sequence(
+                dispatcher, writer, request_run,
+                leaf_refs=sub_plan["leaf_milestone_refs"],
+                pipeline_refs=sub_plan.get("pipeline_refs") or {},
+                milestone_specs=sub_plan.get("milestone_specs") or {},
+                leaf_targets=sub_plan.get("leaf_targets") or {},
+                solve_target=sub_plan.get("solve_target"),
+                blackboard=sub_blackboard,
+                mm=mm,
+                scope=request_id,
+                ref_path=member_path,
+                run_attempt=run_attempt,
+                capacity_graphs=capacity_graphs,
+                real_mode=True,
+            )
+            member_outputs.append(sub_blackboard.get(sub_target))
+            continue
+        # Flat 1b member (no sub_plan): bounded retry + accept-first-clean.
         accepted = None
         last_pipeline = None
         for retry_idx in range(MEMBER_RETRY_CAP):
             run_ref = (
-                f"pipelinerun:{task_id}:{leaf_idx}:m{member_idx}"
+                f"pipelinerun:{request_id}:{member_path}"
                 f":{run_attempt}:r{retry_idx}"
             )
             result, last_pipeline = _run_member_pipeline(
                 dispatcher, member_ds, member_value, sub_target,
-                task_id, run_ref, mm,
+                request_id, run_ref, mm,
             )
             if result.success:
                 accepted = result
@@ -317,7 +432,7 @@ def _run_map_milestone(
 
 def _run_member_pipeline(
     dispatcher, start_ds, seed_value, target_ds,
-    task_id: str, run_ref: str, mm,
+    request_id: str, run_ref: str, mm,
 ):
     """Find + run one member's sub-pipeline, isolated per member (Slice 1b).
 
@@ -354,7 +469,7 @@ def _run_member_pipeline(
         dispatcher,
         pipeline,
         seed,
-        task_id=task_id,
+        request_id=request_id,
         mm=mm,
         pipeline_run_ref=run_ref,
     )

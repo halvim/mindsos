@@ -36,7 +36,7 @@ from mindsos_capacity.identifiers import (
 )
 from mindsos_capacity.needs_input import NeedsInput
 from mindsos_capacity.pipeline import find_pipeline
-from mindsos_knowledge import ROLE_TASK_PATTERNS
+from mindsos_knowledge import ROLE_REQUEST_PATTERNS
 
 from .ingress import InputEnvelope
 from .phase1_profile import Phase1Profile
@@ -74,7 +74,7 @@ class InterpretationResult:
     structured_input: Any
     hints: Mapping[str, Any]
     goal: Any
-    task_pattern_iri: str
+    request_pattern_iri: str
     mapping_confidence: float
     resolved_reference: Any = None
 
@@ -84,7 +84,7 @@ class Phase1Result:
     structured_input: Any
     hint_set_ref: str
     goal: Any
-    task_pattern_iri: str
+    request_pattern_iri: str
     mapping_confidence: float
     mapping_result_ref: str
     #: The canonical reference the resolve chain produced (``None`` when the
@@ -126,8 +126,8 @@ def _run_step(dispatcher, capacity_iri: str, env: dict) -> Any:
     return result.outputs[decl.outputs[0]]
 
 
-def _map_target_resolves(dispatcher, task_pattern_iri: str) -> bool:
-    """True iff ``task_pattern_iri`` resolves in ``task-patterns`` (Local→
+def _map_target_resolves(dispatcher, request_pattern_iri: str) -> bool:
+    """True iff ``request_pattern_iri`` resolves in ``request-patterns`` (Local→
     Global). A consumer authors its pattern Local (ADR-0150 §am-8)."""
     kl = getattr(dispatcher, "kl", None)
     if kl is None:
@@ -136,14 +136,14 @@ def _map_target_resolves(dispatcher, task_pattern_iri: str) -> bool:
         return True
     user_id = getattr(getattr(dispatcher, "session", None), "user_id", None)
     if user_id is not None and kl.has_local(user_id):
-        node = kl.local_view(user_id).get_node(ROLE_TASK_PATTERNS, task_pattern_iri)
+        node = kl.local_view(user_id).get_node(ROLE_REQUEST_PATTERNS, request_pattern_iri)
         if node is not None:
             return True
-    return kl.global_view().get_node(ROLE_TASK_PATTERNS, task_pattern_iri) is not None
+    return kl.global_view().get_node(ROLE_REQUEST_PATTERNS, request_pattern_iri) is not None
 
 
 def _resolve_reference(
-    dispatcher, profile: Phase1Profile, hints: Mapping[str, Any], task_id: str
+    dispatcher, profile: Phase1Profile, hints: Mapping[str, Any], request_id: str
 ) -> Any:
     """Compose + run the reference-resolve chain by DataState type
     (ADR-0195 §Decision.3). Returns the canonical reference, ``None`` (no
@@ -172,7 +172,7 @@ def _resolve_reference(
             f"no resolve pipeline from {start!r} to {target!r}"
         ) from exc
     exec_result = execute_pipeline(
-        dispatcher, pipeline, {start: reference}, task_id=task_id
+        dispatcher, pipeline, {start: reference}, request_id=request_id
     )
     if exec_result.needs_input is not None:
         return exec_result.needs_input
@@ -185,10 +185,10 @@ def _resolve_reference(
 
 def interpret(
     dispatcher,
-    task_input,
+    request_input,
     *,
     profile: Optional[Phase1Profile] = None,
-    task_id: str = "interpret",
+    request_id: str = "interpret",
     mapping_confidence_threshold: float = 0.0,
 ) -> "InterpretationResult | NeedsInput":
     """Run the standalone interpretation flow (ADR-0195 / ADR-0196).
@@ -219,11 +219,11 @@ def interpret(
     # table or interpret raises (am-1); it does NOT fall back to the
     # construction-bound profile or v0. An explicit ``profile=`` arg still wins.
     # ``source`` is provenance only — never selects.
-    if isinstance(task_input, InputEnvelope):
-        value = task_input.value
-        modality = task_input.modality
+    if isinstance(request_input, InputEnvelope):
+        value = request_input.value
+        modality = request_input.modality
     else:
-        value = task_input
+        value = request_input
         modality = None
 
     if profile is None and modality is not None:
@@ -258,7 +258,7 @@ def interpret(
     goal = _run_step(dispatcher, _slot(profile, "derive_goal", DERIVE_GOAL_IRI), env)
     mapping = _run_step(dispatcher, _slot(profile, "map", MAP_IRI), env)
 
-    task_pattern_iri = mapping["task_pattern_iri"]
+    request_pattern_iri = mapping["request_pattern_iri"]
     mapping_confidence = mapping["mapping_confidence"]
 
     resolved_reference = None
@@ -270,12 +270,12 @@ def interpret(
                 f"mapping confidence {mapping_confidence} < threshold "
                 f"{mapping_confidence_threshold}"
             )
-        if not _map_target_resolves(dispatcher, task_pattern_iri):
+        if not _map_target_resolves(dispatcher, request_pattern_iri):
             raise InterpretationError(
-                f"map target {task_pattern_iri!r} does not resolve in "
-                f"{ROLE_TASK_PATTERNS!r}"
+                f"map target {request_pattern_iri!r} does not resolve in "
+                f"{ROLE_REQUEST_PATTERNS!r}"
             )
-        resolved_reference = _resolve_reference(dispatcher, profile, hints, task_id)
+        resolved_reference = _resolve_reference(dispatcher, profile, hints, request_id)
         # ADR-0196 — the resolve body asked the user; surface it directly.
         if isinstance(resolved_reference, NeedsInput):
             return resolved_reference
@@ -284,13 +284,13 @@ def interpret(
         structured_input=structured,
         hints=hints,
         goal=goal,
-        task_pattern_iri=task_pattern_iri,
+        request_pattern_iri=request_pattern_iri,
         mapping_confidence=mapping_confidence,
         resolved_reference=resolved_reference,
     )
 
 
-def run(dispatcher, writer, task_input) -> "Phase1Result | NeedsInput":
+def run(dispatcher, writer, request_input) -> "Phase1Result | NeedsInput":
     """Full-lifecycle Phase 1: interpret, then emit the HintSet +
     MappingResult chain artifacts and return :class:`Phase1Result`.
 
@@ -298,18 +298,18 @@ def run(dispatcher, writer, task_input) -> "Phase1Result | NeedsInput":
     return it un-emitted (no chain artifacts) so ``run_lifecycle`` can
     short-circuit into a non-terminal ``pending_confirmation`` outcome
     without consolidating."""
-    r = interpret(dispatcher, task_input)
+    r = interpret(dispatcher, request_input)
     if isinstance(r, NeedsInput):
         return r
     hint_set = writer.emit_hint_set(r.hints)
     mr = writer.emit_mapping_result(
-        hint_set.iri, r.task_pattern_iri, r.mapping_confidence
+        hint_set.iri, r.request_pattern_iri, r.mapping_confidence
     )
     return Phase1Result(
         structured_input=r.structured_input,
         hint_set_ref=hint_set.iri,
         goal=r.goal,
-        task_pattern_iri=r.task_pattern_iri,
+        request_pattern_iri=r.request_pattern_iri,
         mapping_confidence=r.mapping_confidence,
         mapping_result_ref=mr.iri,
         resolved_reference=r.resolved_reference,

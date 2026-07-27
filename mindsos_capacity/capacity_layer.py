@@ -563,7 +563,7 @@ class CapacityLayer:
         *,
         session: SessionArg = None,
         context: Optional[Mapping[str, Any]] = None,
-        task_id: Optional[str] = None,
+        request_id: Optional[str] = None,
         step_id: Optional[str] = None,
     ) -> InvocationResult:
         """Run the Python implementation bound to ``capacity_iri``.
@@ -572,7 +572,7 @@ class CapacityLayer:
         session is supplied) wins over Global on a collision (mirrors
         :func:`KL`'s specialisation rule per ADR-0061). On exception
         from the bound implementation, a problem-trace record is
-        emitted to ``self.problem_trace`` (when ``task_id`` is also
+        emitted to ``self.problem_trace`` (when ``request_id`` is also
         supplied) and ``InvocationResult(success=False, error=exc)``
         is returned. ADR-0072 §amendment-1 fixes the field rename.
 
@@ -588,7 +588,7 @@ class CapacityLayer:
                 ``None`` resolves against Global only (no Local lookup).
             context: Optional auxiliary mapping passed through to the
                 callable.
-            task_id: Optional L4 task identifier — required for problem-
+            request_id: Optional L4 task identifier — required for problem-
                 trace emission. ``None`` silently skips trace on
                 exception (the envelope is still returned).
             step_id: Optional L4 step identifier — propagated into
@@ -630,7 +630,7 @@ class CapacityLayer:
                 declaration,
                 inputs,
                 context=write_ctx,
-                task_id=task_id,
+                request_id=request_id,
                 step_id=step_id,
                 problem_trace_sink=self.problem_trace,
             )
@@ -660,7 +660,7 @@ class CapacityLayer:
             declaration,
             inputs,
             context=ctx,
-            task_id=task_id,
+            request_id=request_id,
             step_id=step_id,
             problem_trace_sink=self.problem_trace,
         )

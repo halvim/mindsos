@@ -21,7 +21,7 @@ first-install sequence (after server warm-restart and
 Global named role-graphs ensured (Phase 15a PB-21 parity with
 ``KnowledgeLayer.bootstrap()``'s output); 3 of them are populated by
 importer content, the other 3 (``promoted-pipelines``,
-``task-patterns``, ``problem-trace``) ship empty pending downstream
+``request-patterns``, ``problem-trace``) ship empty pending downstream
 phases (Phase 16/24/28-31/33-35 populate them).
 
 Per Phase 15a PB-22: importers self-describe via ``target_roles``
@@ -153,7 +153,7 @@ _GLOBAL_ROLE_ORDER: tuple[str, ...] = (
     "lexicon",
     "concepts",
     "promoted-pipelines",
-    "task-patterns",
+    "request-patterns",
     "problem-trace",
     # Phase 43 (ADR-0150 §am-5) Global-form additions.
     "pending-promotions",
@@ -183,7 +183,7 @@ def bootstrap_global(
 
     Per Phase 15a PB-21 (Round 5): the returned Metagraph has all 6
     Global named role-graphs ensured (``ontology``, ``lexicon``,
-    ``concepts``, ``promoted-pipelines``, ``task-patterns``,
+    ``concepts``, ``promoted-pipelines``, ``request-patterns``,
     ``problem-trace``) — end-state parity with
     :meth:`mindsos_knowledge.KnowledgeLayer.bootstrap`'s output. The
     3 importer-driven roles (``ontology``/``lexicon``/``concepts``)

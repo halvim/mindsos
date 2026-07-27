@@ -40,7 +40,7 @@ class ResourceHold:
     by the Slice-3 Reflex path.
     """
 
-    task_id: str
+    request_id: str
     resources: FrozenSet[str]
     tier: int
     score: int
@@ -77,14 +77,14 @@ class ResourceLedger:
         self, callback: Optional[Callable[[FrozenSet[str], str], None]]
     ) -> None:
         """Register the single resume hook: ``callback(freed_resources,
-        task_id)`` fired after each release. The arbiter uses it to wake
+        request_id)`` fired after each release. The arbiter uses it to wake
         parked needs blocked on a now-free resource."""
         with self._lock:
             self._on_release = callback
 
     def acquire(
         self,
-        task_id: str,
+        request_id: str,
         resources: FrozenSet[str],
         *,
         tier: int,
@@ -100,20 +100,20 @@ class ResourceLedger:
         if not rs:
             return None
         hold = ResourceHold(
-            task_id=task_id, resources=rs, tier=tier, score=score, cancel=cancel
+            request_id=request_id, resources=rs, tier=tier, score=score, cancel=cancel
         )
         with self._lock:
-            self._by_task[task_id] = hold
+            self._by_task[request_id] = hold
             for r in rs:
                 self._by_resource[r] = hold
         return hold
 
-    def release(self, task_id: str) -> FrozenSet[str]:
+    def release(self, request_id: str) -> FrozenSet[str]:
         """Drop a task's hold and fire ``on_release`` with the freed
         resources. Returns the freed set (empty if the task held
         nothing)."""
         with self._lock:
-            hold = self._by_task.pop(task_id, None)
+            hold = self._by_task.pop(request_id, None)
             if hold is None:
                 return frozenset()
             freed = hold.resources
@@ -123,7 +123,7 @@ class ResourceLedger:
                     del self._by_resource[r]
             callback = self._on_release
         if callback is not None and freed:
-            callback(freed, task_id)
+            callback(freed, request_id)
         return freed
 
     def holder_of(self, resource: str) -> Optional[ResourceHold]:
@@ -140,8 +140,8 @@ class ResourceLedger:
             conflicts = []
             for r in rs:
                 hold = self._by_resource.get(r)
-                if hold is not None and hold.task_id not in seen_ids:
-                    seen_ids.add(hold.task_id)
+                if hold is not None and hold.request_id not in seen_ids:
+                    seen_ids.add(hold.request_id)
                     conflicts.append(hold)
         return Contention(free=not conflicts, conflicts=tuple(conflicts))
 

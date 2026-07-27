@@ -33,7 +33,7 @@ def _dispatcher():
 def test_non_failed_episode_emits_maintenance_and_exploration_only():
     d = _dispatcher()
     directives = invoke_dream_capacities(
-        d, dream_task_ref(source_episode_iri="ep:1", task_run_iri="tr:1", failed=False)
+        d, dream_task_ref(source_episode_iri="ep:1", request_run_iri="tr:1", failed=False)
     )
     policies = sorted(x.execution_policy for x in directives)
     assert policies == ["re_execute_capacities", "replay_recorded"]  # exploration + maintenance
@@ -44,7 +44,7 @@ def test_non_failed_episode_emits_maintenance_and_exploration_only():
 def test_failed_episode_emits_retry_with_replan_injection():
     d = _dispatcher()
     directives = invoke_dream_capacities(
-        d, dream_task_ref(source_episode_iri="ep:2", task_run_iri="tr:2", failed=True)
+        d, dream_task_ref(source_episode_iri="ep:2", request_run_iri="tr:2", failed=True)
     )
     # maintenance + exploration + retry all fire on a failed episode
     assert len(directives) == 3
@@ -52,7 +52,7 @@ def test_failed_episode_emits_retry_with_replan_injection():
     assert len(with_injection) == 1
     inj = with_injection[0].replan_injection
     assert inj.source_episode_iri == "ep:2"
-    assert inj.replan_level == "taskrun"
+    assert inj.replan_level == "requestrun"
 
 
 def test_run_dream_cycle_over_corpus_calls_re_executor_per_directive():

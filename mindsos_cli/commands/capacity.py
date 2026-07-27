@@ -16,7 +16,7 @@ Sub-subgroup shape:
 
   mindsos capacity invoke <iri>
                           (--input-json '<json>' | --input-file <path>)
-                          [--json] [--task-id <id>]
+                          [--json] [--request-id <id>]
       [Phase 31] Invoke a registered Capacity by IRI. The CLI builds
       a fresh in-memory layer, auto-installs text builtins (R0 PB-ε
       opt-in but CLI's fresh-layer init calls it — only family at
@@ -147,7 +147,7 @@ def _record_to_dict(record: ProblemTraceRecord) -> dict:
     return {
         "entry_id": record.entry_id,
         "timestamp": record.timestamp,
-        "task_id": record.task_id,
+        "request_id": record.request_id,
         "error_kind": record.error_kind,
         "step_id": record.step_id,
         "mm_ref": record.mm_ref,
@@ -242,7 +242,7 @@ def problem_trace_tail_cmd(
         else:
             for r in tail:
                 print(
-                    f"[{r.timestamp:.3f}] {r.error_kind}  task={r.task_id} "
+                    f"[{r.timestamp:.3f}] {r.error_kind}  task={r.request_id} "
                     f"step={r.step_id or '-'}  cap={r.capacity_iri or '-'}"
                 )
 
@@ -362,9 +362,9 @@ def invoke_cmd(
             "Mutually exclusive with --input-json."
         ),
     ),
-    task_id: Optional[str] = typer.Option(
+    request_id: Optional[str] = typer.Option(
         None,
-        "--task-id",
+        "--request-id",
         help="Optional task id (enables problem-trace emission on failure).",
     ),
     json_out: bool = typer.Option(
@@ -424,7 +424,7 @@ def invoke_cmd(
     # Build layer + invoke.
     layer = _construct_invoke_layer()
     try:
-        result = layer.invoke(iri, inputs, task_id=task_id)
+        result = layer.invoke(iri, inputs, request_id=request_id)
     except CapacityRegistrationError as exc:
         if json_out:
             print(

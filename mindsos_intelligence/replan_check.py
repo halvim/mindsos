@@ -22,24 +22,30 @@ REPLAN_LEVELS = ("hint", "map", "plan", "plan_subtree", "pipeline")
 def check(dispatcher, state=None) -> ReplanVerdict:
     result = dispatcher.dispatch(SHOULD_REPLAN_IRI, {DS_REPLAN_STATE: state or {}})
     v = result.outputs[DS_REPLAN_VERDICT]
+    # Collection-iteration Slice 3 — carry the consumer's optional *advisory*
+    # targeted-replan address (reserved ``"map"``/``"plan_subtree"`` level + the
+    # Slice-2 member ref-path). Tolerant ``.get`` (like ``verified``/
+    # ``divergence``): a v0 verdict omits both → ``None`` → byte-identical.
     return ReplanVerdict(
         decision=v["decision"],
         verified=v.get("verified", True),
         divergence=v.get("divergence", 0.0),
+        replan_level=v.get("replan_level"),
+        target_ref=v.get("target_ref"),
     )
 
 
-def invalidate_at_and_below(task_run, replan_level: str) -> list:
+def invalidate_at_and_below(request_run, replan_level: str) -> list:
     """Return the chain refs invalidated at and below ``replan_level``.
 
-    v0 (pipeline-level): the TaskRun's PipelineRuns are the at-and-below
+    v0 (pipeline-level): the RequestRun's PipelineRuns are the at-and-below
     set; upstream Plan/Mapping/HintSet are reused. Returns the invalidated
-    refs and clears them from the TaskRun so execution re-enters.
+    refs and clears them from the RequestRun so execution re-enters.
     """
     if replan_level not in REPLAN_LEVELS:
         raise ValueError(f"unknown replan_level {replan_level!r}")
-    invalidated = list(task_run.pipeline_runs)
-    task_run.pipeline_runs.clear()
+    invalidated = list(request_run.pipeline_runs)
+    request_run.pipeline_runs.clear()
     return invalidated
 
 

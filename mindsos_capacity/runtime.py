@@ -59,7 +59,7 @@ class ProblemTraceRecord:
     an L4 lifecycle process that isn't part of this package.
 
     Fields:
-        task_id: Caller-supplied task identifier. Required.
+        request_id: Caller-supplied task identifier. Required.
         error_kind: Free-form classification
             (``"exception:RuntimeError"``, ``"latency"``,
             ``"low_confidence"``, …). Required.
@@ -74,7 +74,7 @@ class ProblemTraceRecord:
         entry_id: UUID4 string (default = fresh per construction).
     """
 
-    task_id: str
+    request_id: str
     error_kind: str
     step_id: Optional[str] = None
     mm_ref: Optional[str] = None
@@ -120,7 +120,7 @@ class ProblemTraceSink:
 def emit_problem_trace(
     sink: ProblemTraceSink,
     *,
-    task_id: str,
+    request_id: str,
     error_kind: str,
     step_id: Optional[str] = None,
     mm_ref: Optional[str] = None,
@@ -131,23 +131,23 @@ def emit_problem_trace(
 
     Args:
         sink: The problem-trace sink (owned by :class:`CapacityLayer`).
-        task_id: Caller-supplied task identifier. Required (non-empty).
+        request_id: Caller-supplied task identifier. Required (non-empty).
         error_kind: Free-form classification. Required (non-empty).
         step_id / mm_ref / capacity_iri / payload: see
             :class:`ProblemTraceRecord`.
 
     Raises:
-        ProblemTraceError: If ``task_id`` or ``error_kind`` is empty.
+        ProblemTraceError: If ``request_id`` or ``error_kind`` is empty.
 
     Returns:
         The constructed (and emitted) :class:`ProblemTraceRecord`.
     """
-    if not task_id:
-        raise ProblemTraceError("problem-trace record requires task_id")
+    if not request_id:
+        raise ProblemTraceError("problem-trace record requires request_id")
     if not error_kind:
         raise ProblemTraceError("problem-trace record requires error_kind")
     record = ProblemTraceRecord(
-        task_id=task_id,
+        request_id=request_id,
         error_kind=error_kind,
         step_id=step_id,
         mm_ref=mm_ref,
@@ -166,7 +166,7 @@ def invoke(
     inputs: Mapping[str, Any],
     *,
     context: "Optional[Union[Mapping[str, Any], CapacityContext]]" = None,
-    task_id: Optional[str] = None,
+    request_id: Optional[str] = None,
     step_id: Optional[str] = None,
     problem_trace_sink: Optional[ProblemTraceSink] = None,
 ) -> InvocationResult:
@@ -175,18 +175,18 @@ def invoke(
     On exception (raised by the bound implementation OR by
     :func:`call_capacity` for shape mismatch), the exception is caught,
     a problem-trace record is emitted (when both ``problem_trace_sink``
-    and ``task_id`` are non-None), and the returned
+    and ``request_id`` are non-None), and the returned
     :class:`InvocationResult` has ``success=False`` with ``error`` set.
 
     This gives L4 a single well-defined code path regardless of whether
     the capacity raised — see ADR-0072 §amendment-1 (field rename) and
     §Implementation footer.
 
-    **Foot-gun (Phase 30 R1 PB-16 lock):** ``task_id=None`` short-
+    **Foot-gun (Phase 30 R1 PB-16 lock):** ``request_id=None`` short-
     circuits problem-trace emission. The exception is still enveloped
     in ``InvocationResult(success=False)`` but NO trace record is
     created. L4's lifecycle process is the canonical caller and will
-    always pass ``task_id``.
+    always pass ``request_id``.
     """
     start = time.perf_counter()
     try:
@@ -257,10 +257,10 @@ def invoke(
             if isinstance(exc, InputContractError)
             else f"exception:{type(exc).__name__}"
         )
-        if problem_trace_sink is not None and task_id is not None:
+        if problem_trace_sink is not None and request_id is not None:
             emit_problem_trace(
                 problem_trace_sink,
-                task_id=task_id,
+                request_id=request_id,
                 error_kind=error_kind,
                 step_id=step_id,
                 capacity_iri=declaration.iri,

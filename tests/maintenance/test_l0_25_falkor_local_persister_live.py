@@ -97,7 +97,7 @@ def test_live_structured_value_round_trip(falkor_client) -> None:  # noqa: F811
     mg = Metagraph(name="local_knowledge:carol")
     g = mg.add_graph(Graph(name="carol-notes", role="episodic_memories"))
     structured = {
-        "task_pattern_iri": "tp:demo",
+        "request_pattern_iri": "tp:demo",
         "chain": {"hints": ["h1", "h2"], "plan_depth": 2},
         "outcome": None,
         "scores": [0.5, 1.0],

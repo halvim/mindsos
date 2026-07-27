@@ -26,7 +26,7 @@ from mindsos_knowledge import (
     pipeline_step_iri,
     problem_trace_iri,
     subgoal_template_iri,
-    task_pattern_iri,
+    request_pattern_iri,
 )
 
 
@@ -76,13 +76,13 @@ def test_pipeline_step_iri_happy() -> None:
 
 
 def test_task_pattern_iri_happy() -> None:
-    assert task_pattern_iri("1", "tp-7") == "task-patterns-1:pattern:tp-7"
+    assert request_pattern_iri("1", "tp-7") == "request-patterns-1:pattern:tp-7"
 
 
 def test_subgoal_template_iri_happy() -> None:
     assert (
         subgoal_template_iri("1", "tp-7", "sg-2")
-        == "task-patterns-1:subgoal:tp-7:sg-2"
+        == "request-patterns-1:subgoal:tp-7:sg-2"
     )
 
 

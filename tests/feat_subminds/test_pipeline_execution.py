@@ -36,7 +36,7 @@ class _Dispatcher:
         self.calls = []
         self._by_cap = by_cap or {}
 
-    def dispatch(self, cap, inputs, *, cancel_token=None, task_id=None, step_id=None):
+    def dispatch(self, cap, inputs, *, cancel_token=None, request_id=None, step_id=None):
         self.calls.append((cap, dict(inputs), step_id))
         return self._by_cap.get(cap, _Res())
 
@@ -50,7 +50,7 @@ class _Token:
 
 
 def test_noop_pipeline_is_success():
-    r = execute_pipeline(_Dispatcher(), _Pipeline(steps=()), {"x": 1}, task_id="t")
+    r = execute_pipeline(_Dispatcher(), _Pipeline(steps=()), {"x": 1}, request_id="t")
     assert isinstance(r, PipelineExecutionResult)
     assert r.success and r.steps_run == 0 and r.outputs == {"x": 1}
 
@@ -65,7 +65,7 @@ def test_multi_step_threads_blackboard():
     pipe = _Pipeline(
         steps=[_Step("cap.a", ins=("a",), outs=("b",)), _Step("cap.b", ins=("b",), outs=("c",))]
     )
-    r = execute_pipeline(dp, pipe, {"a": 1}, task_id="t")
+    r = execute_pipeline(dp, pipe, {"a": 1}, request_id="t")
     assert r.success and r.steps_run == 2
     # step b received the output of step a off the blackboard
     assert dp.calls[1][0] == "cap.b" and dp.calls[1][1] == {"b": 10}
@@ -75,7 +75,7 @@ def test_multi_step_threads_blackboard():
 def test_failure_stops_walk():
     dp = _Dispatcher(by_cap={"cap.a": _Res(success=False, error=ValueError("boom"))})
     pipe = _Pipeline(steps=[_Step("cap.a", outs=("b",)), _Step("cap.b")])
-    r = execute_pipeline(dp, pipe, {}, task_id="t")
+    r = execute_pipeline(dp, pipe, {}, request_id="t")
     assert not r.success and r.failed_step == "cap.a" and r.steps_run == 0
     assert len(dp.calls) == 1  # second step never dispatched
 
@@ -83,5 +83,5 @@ def test_failure_stops_walk():
 def test_cancel_before_step():
     dp = _Dispatcher()
     pipe = _Pipeline(steps=[_Step("cap.a")])
-    r = execute_pipeline(dp, pipe, {}, task_id="t", cancel_token=_Token(set_=True))
+    r = execute_pipeline(dp, pipe, {}, request_id="t", cancel_token=_Token(set_=True))
     assert not r.success and r.cancelled and not dp.calls

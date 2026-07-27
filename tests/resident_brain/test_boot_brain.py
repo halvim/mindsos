@@ -19,7 +19,7 @@ def test_ephemeral_boot_shape():
 
 def test_ephemeral_task_runs():
     stack = boot_brain(user="alice")
-    outcome = stack.orch.run_lifecycle({"text": "the cat sat"}, task_id="T1")
+    outcome = stack.orch.run_lifecycle({"text": "the cat sat"}, request_id="T1")
     assert outcome.status == "succeeded"
 
 

@@ -2,7 +2,7 @@
 persist Slice B; reopens DQ-8 / ADR-0202).
 
 Slice A made the capacity writer emit **one grounding graph per pipeline run**
-(``(task_id, pipeline_run_ref)``) holding CapacityInstance + DataStateInstance
+(``(request_id, pipeline_run_ref)``) holding CapacityInstance + DataStateInstance
 nodes wired by intra-graph ``PRODUCES`` / ``CONSUMES`` edges. This module makes
 those graphs durable at consolidation, reversing ADR-0202's "capacity_mm
 live-only until WSD" clause for capacity_mm (knowledge_mm stays live-only).
@@ -64,11 +64,11 @@ PROP_RUN_GRAPH_ROLE = "run_graph_role"
 _CODEC_SAFE_TYPES = (str, int, float, bool, dict, list)
 
 
-def index_graph_role(task_id: str) -> str:
+def index_graph_role(request_id: str) -> str:
     """Deterministic role for a task's capacity index graph."""
-    if not isinstance(task_id, str) or not task_id:
-        raise ValueError(f"task_id must be a non-empty string, got {task_id!r}")
-    return f"{INDEX_GRAPH_ROLE_PREFIX}{task_id}"
+    if not isinstance(request_id, str) or not request_id:
+        raise ValueError(f"request_id must be a non-empty string, got {request_id!r}")
+    return f"{INDEX_GRAPH_ROLE_PREFIX}{request_id}"
 
 
 def default_encode(value: Any) -> Any:
@@ -122,7 +122,7 @@ def persist_capacity_mm(
     capacity_metagraph: Any,
     run_graphs: List[Any],
     *,
-    task_id: str,
+    request_id: str,
     encoders: Optional[Mapping[str, Callable[[Any], Any]]] = None,
 ) -> Optional[str]:
     """Persist this task's per-run capacity grounding graphs + a task-level
@@ -135,7 +135,7 @@ def persist_capacity_mm(
             the index live under.
         run_graphs: this task's per-run grounding graphs (the writer's
             ``.graph`` for each run). Empty / all-``None`` → returns ``None``.
-        task_id: the task these runs belong to (the index graph's role key).
+        request_id: the task these runs belong to (the index graph's role key).
         encoders: DataState-type-IRI → ``encode`` callable (PB-1). ``None`` /
             empty ⇒ every DataStateInstance value must already be codec-safe.
 
@@ -155,7 +155,7 @@ def persist_capacity_mm(
     # Task-level index: one CapacityRunRef node per persisted run graph. Node
     # value = the run graph's graph_id (a primitive → codec fast path), so the
     # index persists with the default encoder (no per-DataState dispatch).
-    index = Graph(name=index_graph_role(task_id), role=index_graph_role(task_id))
+    index = Graph(name=index_graph_role(request_id), role=index_graph_role(request_id))
     for g in graphs:
         index.add_node(
             value=g.graph_id,

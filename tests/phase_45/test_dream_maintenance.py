@@ -46,7 +46,7 @@ def test_body_emits_replay_recorded_directive():
     assert isinstance(directive, DreamDirective)
     assert directive.execution_policy == "replay_recorded"
     assert directive.source_episode_iri == "ep:1"
-    assert directive.task_run_iri == "tr:1"
+    assert directive.request_run_iri == "tr:1"
     assert directive.replan_injection is None  # maintenance never injects
 
 
@@ -72,7 +72,7 @@ def test_registered_and_invokable():
     result = layer.invoke(
         "capacity:dream:maintenance",
         {DS_DREAM_TASK_REF: _EP},
-        task_id="dream-test",
+        request_id="dream-test",
     )
     assert result.success is True
     directive = result.outputs[DS_DREAM_DIRECTIVE]
@@ -86,7 +86,7 @@ def test_invoke_dont_know_surfaces_none_not_failure():
     result = layer.invoke(
         "capacity:dream:maintenance",
         {DS_DREAM_TASK_REF: {}},
-        task_id="dream-test",
+        request_id="dream-test",
     )
     assert result.success is True
     assert result.outputs[DS_DREAM_DIRECTIVE] is None

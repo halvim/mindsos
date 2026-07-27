@@ -9,13 +9,13 @@ writer (DQ-3): a produced value becomes a node payload here instead of living
 only on the executor's transient dict.
 
 **Per-run graph (D-A, CR: capacity_mm persist Slice A).** The writer keys ONE
-graph per pipeline run on ``(task_id, pipeline_run_ref)`` — replacing the two
+graph per pipeline run on ``(request_id, pipeline_run_ref)`` — replacing the two
 shared fixed-role graphs the origin slice used. Consequences:
 
 * **Replan is fixed by construction.** A second run under the same task gets a
   fresh graph (fresh ``role`` → fresh instance space), so it can never overwrite
   the first run's nodes. (The origin slice namespaced only by IRI and defaulted
-  ``pipeline_run_ref`` to ``task_id`` — a silent replan collision, now removed at
+  ``pipeline_run_ref`` to ``request_id`` — a silent replan collision, now removed at
   the ``execute_pipeline`` boundary.)
 * **PRODUCES/CONSUMES are intra-graph edges.** Both instance node-types live in
   the single per-run graph, so the topology is ``Graph.add_edge`` (not the
@@ -72,7 +72,7 @@ from mindsos_capacity.identifiers import (
 
 from .mm import MentalModel
 
-#: Role prefix for a per-``(task_id, pipeline_run_ref)`` capacity instance graph
+#: Role prefix for a per-``(request_id, pipeline_run_ref)`` capacity instance graph
 #: (D-A). One graph per run replaces the origin slice's two shared fixed-role
 #: graphs, giving replan a fresh instance space and Slice-B persistence a single
 #: per-run object to take.
@@ -81,16 +81,16 @@ RUN_GRAPH_ROLE_PREFIX = "capacity:run:"
 _PIPELINERUN_PREFIX = "pipelinerun:"
 
 
-def run_graph_role(task_id: str, pipeline_run_ref: str) -> str:
+def run_graph_role(request_id: str, pipeline_run_ref: str) -> str:
     """Deterministic role for a run's instance graph.
 
-    Same ``(task_id, pipeline_run_ref)`` → same role (so a run's writer finds its
+    Same ``(request_id, pipeline_run_ref)`` → same role (so a run's writer finds its
     own graph); different runs → different roles (replan / concurrent isolation).
     The ``pipelinerun:`` prefix is stripped and any remaining ``:`` folded to
     ``-`` for a clean role token.
     """
-    if not isinstance(task_id, str) or not task_id:
-        raise ValueError(f"task_id must be a non-empty string, got {task_id!r}")
+    if not isinstance(request_id, str) or not request_id:
+        raise ValueError(f"request_id must be a non-empty string, got {request_id!r}")
     if not isinstance(pipeline_run_ref, str) or not pipeline_run_ref:
         raise ValueError(
             f"pipeline_run_ref must be a non-empty string, got {pipeline_run_ref!r}"
@@ -99,7 +99,7 @@ def run_graph_role(task_id: str, pipeline_run_ref: str) -> str:
     if run.startswith(_PIPELINERUN_PREFIX):
         run = run[len(_PIPELINERUN_PREFIX):]
     run = run.replace(":", "-")
-    return f"{RUN_GRAPH_ROLE_PREFIX}{task_id}:{run}"
+    return f"{RUN_GRAPH_ROLE_PREFIX}{request_id}:{run}"
 
 
 class CapacityMMWriter:
@@ -111,11 +111,11 @@ class CapacityMMWriter:
     CONSUMES edge points at the producing instance.
     """
 
-    def __init__(self, mm: MentalModel, task_id: str, pipeline_run_ref: str) -> None:
+    def __init__(self, mm: MentalModel, request_id: str, pipeline_run_ref: str) -> None:
         self._mm = mm
-        self._task_id = task_id
+        self._request_id = request_id
         self._run_ref = pipeline_run_ref
-        self._graph_role = run_graph_role(task_id, pipeline_run_ref)
+        self._graph_role = run_graph_role(request_id, pipeline_run_ref)
         self._graph: Optional[Graph] = None
         self._seq: Dict[str, int] = {}
         #: DataState type IRI -> current instance IRI (run-local routing index).
@@ -158,7 +158,7 @@ class CapacityMMWriter:
         and index it. Task-level; minted once before any pipeline run. Exposed
         for the solve-path caller (Step 5); ``execute_pipeline`` uses :meth:`seed`."""
         with self._mm.lock.write_locked():
-            inst = datastate_instance_root_iri(raw_task_datastate_iri, self._task_id)
+            inst = datastate_instance_root_iri(raw_task_datastate_iri, self._request_id)
             self._run_graph().add_node(
                 value=value,
                 type_name=NODE_TYPE_DATASTATE_INSTANCE,
@@ -181,7 +181,7 @@ class CapacityMMWriter:
         with self._mm.lock.write_locked():
             graph = self._run_graph()
             cap_inst = capacity_instance_iri(
-                capacity_iri, self._task_id, self._run_ref,
+                capacity_iri, self._request_id, self._run_ref,
                 self._next_seq(f"cap:{capacity_iri}"),
             )
             cap_node = graph.add_node(
@@ -242,7 +242,7 @@ class CapacityMMWriter:
 
     def _mint_datastate(self, datastate_iri: str, value: Any) -> str:
         inst = datastate_instance_iri(
-            datastate_iri, self._task_id, self._run_ref,
+            datastate_iri, self._request_id, self._run_ref,
             self._next_seq(f"ds:{datastate_iri}"),
         )
         self._run_graph().add_node(

@@ -21,7 +21,7 @@ from mindsos_knowledge.schemas import (
     build_ontology_schema,
     build_problem_trace_schema,
     build_promoted_pipelines_schema,
-    build_task_patterns_schema,
+    build_request_patterns_schema,
 )
 
 
@@ -35,7 +35,7 @@ EXPECTED_DIMENSIONS: dict[str, dict[str, int]] = {
     "concepts":            {"nodes": 4,  "edges": 11, "hyperedges": 0},
     "alignment":           {"nodes": 1,  "edges": 8,  "hyperedges": 0},
     "promoted_pipelines":  {"nodes": 2,  "edges": 2,  "hyperedges": 0},
-    "task_patterns":       {"nodes": 2,  "edges": 2,  "hyperedges": 0},
+    "request_patterns":       {"nodes": 2,  "edges": 2,  "hyperedges": 0},
     "episodic_memories":   {"nodes": 2,  "edges": 1,  "hyperedges": 0},
     "problem_trace":       {"nodes": 1,  "edges": 0,  "hyperedges": 0},
     "capacity_state":      {"nodes": 1,  "edges": 0,  "hyperedges": 0},
@@ -48,7 +48,7 @@ _BUILDERS = {
     "concepts": build_concepts_schema,
     "alignment": build_alignment_schema,
     "promoted_pipelines": build_promoted_pipelines_schema,
-    "task_patterns": build_task_patterns_schema,
+    "request_patterns": build_request_patterns_schema,
     "episodic_memories": build_episodic_memories_schema,
     "problem_trace": build_problem_trace_schema,
     "capacity_state": build_capacity_state_schema,

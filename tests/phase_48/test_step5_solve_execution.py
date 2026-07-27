@@ -128,7 +128,7 @@ def test_execution_run_grounds_capacity_mm_on_solve():
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess)
     writer = ChainArtifactWriter(mm, "t1")
-    task_run = writer.emit_task_run()
+    request_run = writer.emit_request_run()
 
     plan = PlanResult(
         plan_ref="plan:1",
@@ -139,7 +139,7 @@ def test_execution_run_grounds_capacity_mm_on_solve():
     )
     graphs: list = []
     execution.run(
-        disp, writer, plan, task_run,
+        disp, writer, plan, request_run,
         mm=mm, run_scope="t1",
         solve_seed={DS_RAW: {"grid": [[1, 2]]}},
         capacity_graphs=graphs,
@@ -176,7 +176,7 @@ def test_execution_run_notional_when_no_solve_target():
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess)
     writer = ChainArtifactWriter(mm, "t1")
-    task_run = writer.emit_task_run()
+    request_run = writer.emit_request_run()
     plan = PlanResult(
         plan_ref="plan:1",
         root_milestone_ref="milestone:1",
@@ -186,7 +186,7 @@ def test_execution_run_notional_when_no_solve_target():
     )
     graphs: list = []
     execution.run(
-        disp, writer, plan, task_run, mm=mm, run_scope="t1",
+        disp, writer, plan, request_run, mm=mm, run_scope="t1",
         solve_seed=None, capacity_graphs=graphs,
     )
     assert _capacity_run_graph(mm) is None
@@ -245,7 +245,7 @@ def test_plan_construction_reads_solve_target_and_threads_resolved_reference():
     }
     disp = _RecordingDispatcher(plan_out)
     result = plan_construction.build(
-        disp, _FakeWriter(), "mappingresult:1", "task-pattern:x",
+        disp, _FakeWriter(), "mappingresult:1", "request-pattern:x",
         resolved_reference={"grid": [[9]]},
     )
     assert result.solve_target == {
@@ -255,7 +255,7 @@ def test_plan_construction_reads_solve_target_and_threads_resolved_reference():
     # resolved_reference rode the DS_MAPPING_RESULT value dict (no new input).
     derive_payload = disp.payloads[0][1][DS_MAPPING_RESULT]
     assert derive_payload["resolved_reference"] == {"grid": [[9]]}
-    assert derive_payload["task_pattern_iri"] == "task-pattern:x"
+    assert derive_payload["request_pattern_iri"] == "request-pattern:x"
 
 
 def test_plan_construction_v0_shape_yields_no_solve_target():
@@ -281,14 +281,14 @@ def test_execute_pipeline_exposes_capacity_graph():
     )
     res = execute_pipeline(
         disp, pipeline, {DS_RAW: {"grid": [[1]]}},
-        task_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:0:0",
+        request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:0:0",
     )
     assert res.success
     assert res.capacity_graph is not None
     assert res.capacity_graph is _capacity_run_graph(mm)
 
     # No MM → no grounding graph exposed (byte-identical no-MM path).
-    res2 = execute_pipeline(disp, pipeline, {DS_RAW: {"grid": [[1]]}}, task_id="t2")
+    res2 = execute_pipeline(disp, pipeline, {DS_RAW: {"grid": [[1]]}}, request_id="t2")
     assert res2.success
     assert res2.capacity_graph is None
 
@@ -360,13 +360,13 @@ def _orch_with_solve(persister=None):
     reset_v0_verdicts()
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess, kl=kl)
-    orch = Orchestrator(disp, mm, task_scope="task-1", mm_persister=persister)
+    orch = Orchestrator(disp, mm, request_scope="request-1", mm_persister=persister)
     return orch, mm, kl
 
 
 def test_run_lifecycle_grounds_solve_into_capacity_mm():
     orch, mm, _kl = _orch_with_solve()
-    outcome = orch.run_lifecycle("hello", task_id="T")
+    outcome = orch.run_lifecycle("hello", request_id="T")
     assert outcome.status == "succeeded"
     g = _capacity_run_graph(mm)
     assert g is not None
@@ -380,7 +380,7 @@ def test_run_lifecycle_grounds_solve_into_capacity_mm():
 def test_run_lifecycle_persists_capacity_root_ref():
     persister = _FakePersister()
     orch, _mm, kl = _orch_with_solve(persister=persister)
-    outcome = orch.run_lifecycle("hello", task_id="T")
+    outcome = orch.run_lifecycle("hello", request_id="T")
     assert outcome.status == "succeeded"
     vals = _episode_values(kl)
     assert len(vals) == 1
@@ -407,7 +407,7 @@ def test_v0_lifecycle_unchanged_no_capacity_grounding():
     reset_v0_verdicts()
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess, kl=kl)
-    orch = Orchestrator(disp, mm, task_scope="task-1")
-    outcome = orch.run_lifecycle("hello", task_id="T")
+    orch = Orchestrator(disp, mm, request_scope="request-1")
+    outcome = orch.run_lifecycle("hello", request_id="T")
     assert outcome.status == "succeeded"
     assert _capacity_run_graph(mm) is None

@@ -19,7 +19,7 @@ from mindsos_knowledge import (
     ROLE_ONTOLOGY,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
-    ROLE_TASK_PATTERNS,
+    ROLE_REQUEST_PATTERNS,
     RefFormatError,
     alignment_role,
     capacity_snapshot_iri,
@@ -38,7 +38,7 @@ from mindsos_knowledge import (
     pipeline_step_iri,
     problem_trace_iri,
     subgoal_template_iri,
-    task_pattern_iri,
+    request_pattern_iri,
 )
 
 
@@ -97,14 +97,14 @@ _BUILDER_ROUND_TRIPS = [
         "pipeline_step",
     ),
     (
-        lambda: task_pattern_iri("1", "tp"),
-        ROLE_TASK_PATTERNS,
+        lambda: request_pattern_iri("1", "tp"),
+        ROLE_REQUEST_PATTERNS,
         "pattern",
         "task_pattern",
     ),
     (
         lambda: subgoal_template_iri("1", "tp", "sg"),
-        ROLE_TASK_PATTERNS,
+        ROLE_REQUEST_PATTERNS,
         "subgoal",
         "subgoal_template",
     ),

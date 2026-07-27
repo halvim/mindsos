@@ -11,7 +11,7 @@ constraint a).** A profile is a *dispatch-time selection of which capacity
 IRI to invoke*, held on the :class:`~mindsos_intelligence.dispatch.L4Dispatcher`.
 It is NOT a registration that co-locates Global DataStates with Local
 capacities in one metagraph. A consumer registers its real bodies +
-DataStates + task-patterns into its own (Local) scope; the profile merely
+DataStates + request-patterns into its own (Local) scope; the profile merely
 names the IRIs to dispatch.
 
 **resolve is composed, not slotted (ADR-0195 §Decision.3).** Reference

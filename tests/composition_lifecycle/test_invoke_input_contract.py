@@ -102,7 +102,7 @@ def test_error_kind_tagged_in_problem_trace():
     cl = build_min_layer()
     echo = build_echo_capacity()
     cl.register_capacity(echo)
-    cl.invoke(echo.iri, inputs={}, task_id="t1")
+    cl.invoke(echo.iri, inputs={}, request_id="t1")
     records = cl.problem_trace.records()
     assert len(records) == 1
     assert records[0].error_kind == "input_contract:missing_required"

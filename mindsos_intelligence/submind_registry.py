@@ -177,11 +177,11 @@ class SubMindRegistry:
             definition = self._subminds[signal.submind_name].definition
             self._arbiter.on_need(signal, tier, definition)
             return
-        task_id = f"submind-{signal.submind_name}-{next(self._seq)}"
+        request_id = f"submind-{signal.submind_name}-{next(self._seq)}"
         self._executor.submit(
             self._resolver_factory(signal),
             tier=tier,
-            task_id=task_id,
+            request_id=request_id,
             score=signal.attention_score,
         )
 

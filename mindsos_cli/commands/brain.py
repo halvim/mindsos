@@ -54,7 +54,7 @@ verbs (try '<verb> -h' for a manual page):
   task <text>                run the six-phase lifecycle
   save                       persist this user's Local to Falkor
   reset                      wipe run-state, keep learned params
-  view [path]                build + open a graph of the brain (new tab)
+  view [path]                build a graph + print an scp line to open on your Mac
   help                       show this
   quit                       save then exit"""
 
