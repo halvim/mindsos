@@ -168,7 +168,7 @@ class Solver:
     def _run_segment(self, cm, vw, history):
         disp = CLDispatcher(self.cl, self.session)
         res = execute_pipeline(disp, self.segment, self._segment_inputs(cm, vw, history),
-                               task_id="nilm-cycle")
+                               request_id="nilm-cycle")
         if not res.success:
             raise RuntimeError(f"segment failed at {res.failed_step}: {res.error!r}")
         return res.outputs      # blackboard: all feature DataStates + cycle_verdict
@@ -457,7 +457,7 @@ class Solver:
                   O.F0.iri: g[O.F0.iri], O.FS.iri: g[O.FS.iri],
                   O.HARMONIC_ORDERS.iri: g[O.HARMONIC_ORDERS.iri]}
         res = execute_pipeline(disp, self.appliance_segment, inputs,
-                               task_id="nilm-appliance")
+                               request_id="nilm-appliance")
         if not res.success:
             raise RuntimeError(f"appliance segment failed at {res.failed_step}: {res.error!r}")
         return res.outputs[O.STEADY_SIGNATURE.iri]

@@ -198,7 +198,8 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      opt-out**, matching core's `mindsos brain` (was an inverted `--durable`). Tests:
      `tests/test_durable_appliances.py` (4, gate-level, no Falkor) +
      `tests/test_durable_appliances_falkor.py` (@integration, skips w/o Falkor).
-     **VALIDATE:** run the gate on Linux (expect **9→13**); then
+     **R2 reconcile (post main-merge 0021058):** the merge pulled R2 core (`execute_pipeline`/`invoke` `task_id`->`request_id`) but R2's rename ran on main and skipped `projects/amii_study/nilm_brain/` — `control.py` (2) + `dispatch.py` (3) call-sites were re-homed to `request_id` (the ONLY nilm consumer breakage; grep-clean). viz_spec survived the merge, so `repl.py` still boots.
+   **VALIDATE:** run the gate on Linux (expect **9→13**); then
      `teach_appliances.py --data /home/sanmyaku/_plaid_full/_sample_expanded` →
      `python -m nilm_brain.repl` should report the loaded exemplars.
 6. **`fit_appliance` is O(n²)** in library exemplars (pairwise `signature_distance` for the
