@@ -17,11 +17,11 @@ related: [0160, 0176, 0121]
 
 ## Context
 
-Chat B routed **PB-HHH** ("Falkor query indexes for cross-sub-MM hyperedge queries"; `_workbench/L5_FUTURE_WORK.md` L5-NEW-13; PHASE_MAP §7 q2) to **Phase 49 R0** for decision. The question: which cross-sub-MM queries — Pipeline → member CapacityInstances/DataStateInstances via `IntergraphHyperEdge`, the `MEMORY_CONTAINS_EPISODE` Memory→Episode association, and Episode lookup by task-pattern — need FalkorDB indexes to stay performant at scale?
+Chat B routed **PB-HHH** ("Falkor query indexes for cross-sub-MM hyperedge queries"; `_workbench/L5_FUTURE_WORK.md` L5-NEW-13; PHASE_MAP §7 q2) to **Phase 49 R0** for decision. The question: which cross-sub-MM queries — Pipeline → member CapacityInstances/DataStateInstances via `IntergraphHyperEdge`, the `MEMORY_CONTAINS_EPISODE` Memory→Episode association, and Episode lookup by request-pattern — need FalkorDB indexes to stay performant at scale?
 
 Phase-49 grounding (probe-first, `PHASE_49_DESIGN_LOG.md` §2 finding 4): **there is no indexed-query consumer in v1.** The shipped persistence path is whole-metagraph save/load — `FalkorDBLocalPersister.save`/`load` round-trip the entire Local Metagraph natively (ADR-0160); reads walk an in-memory `MetagraphView` (`get_node`/`get_edges`), not a Cypher query against Falkor. The future consumers of an *indexed* query are all deferred:
 
-- WSD retrieval (episode lookup by task-pattern / Memory cluster walk) — WSD installation chat.
+- WSD retrieval (episode lookup by request-pattern / Memory cluster walk) — WSD installation chat.
 - Memory-cluster secondary index (L5-NEW-11) — v2 if query volume.
 - Dream candidate scans over the episode corpus — currently pulled in-process from a descriptor list (ADR-0178), not queried.
 
@@ -33,7 +33,7 @@ Shipping index DDL now would be **speculative**: the index set is best chosen *w
 
 The strategy — the indexes the future query consumer SHOULD create, recorded so that chat applies them verbatim rather than re-deriving them:
 
-1. **`Episode.task_pattern_iri`** — a node label+property index `CREATE INDEX FOR (e:Episode) ON (e.task_pattern_iri)`. Consumer: "episodes for task-pattern X" retrieval (the primary-cluster lookup, Chat B D-B54).
+1. **`Episode.request_pattern_iri`** — a node label+property index `CREATE INDEX FOR (e:Episode) ON (e.request_pattern_iri)`. Consumer: "episodes for request-pattern X" retrieval (the primary-cluster lookup, Chat B D-B54).
 2. **`Memory.memory_id`** — `CREATE INDEX FOR (m:Memory) ON (m.memory_id)`. Consumer: Memory-composite lookup during consolidation's materialise-once-per-pattern check at scale (today an in-memory walk).
 3. **`IntergraphHyperEdge` membership** — index the membership relation's property used by Pipeline→member walks once cross-sub-MM queries run as Cypher (today the walk is in-memory `MetagraphView`).
 

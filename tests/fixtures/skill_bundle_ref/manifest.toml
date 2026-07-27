@@ -25,7 +25,7 @@ value = "whisper"
 description = "A second demo concept."
 
 [[l2.content]]
-role = "task-patterns"
+role = "request-patterns"
 tier = "global"
 node_type = "TaskPattern"
 iri = "ref-skill-0.1.0:pattern:shout-the-input"
