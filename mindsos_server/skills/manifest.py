@@ -48,6 +48,30 @@ class L2ContentEntry:
 
 
 @dataclass(frozen=True)
+class LocalCapabilityEntry:
+    """One Local L3 capability descriptor declared by the bundle
+    (ADR-0183 §am-5). Metadata (``capacity_iri`` / ``category`` /
+    ``inputs`` / ``outputs``) lets boot register a selectable,
+    function-less capability; ``reactivation_key`` names the builder the
+    skill registers on import; ``params`` are opaque to core (handed to
+    the builder to rebuild the live function on first use). Persisted into
+    the user's Local ``installed-capacities`` role at install."""
+
+    capacity_iri: str
+    reactivation_key: str
+    category: str
+    inputs: Tuple[str, ...]
+    outputs: Tuple[str, ...]
+    params: Mapping[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.params, MappingProxyType):
+            object.__setattr__(
+                self, "params", MappingProxyType(dict(self.params))
+            )
+
+
+@dataclass(frozen=True)
 class SkillManifest:
     """Parsed, digest-stamped bundle manifest (ADR-0183 §1-§2)."""
 
@@ -63,6 +87,7 @@ class SkillManifest:
     l4_slots: Mapping[str, Any]
     digest: str
     source_path: str
+    l3_local_capacities: Tuple[LocalCapabilityEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.l4_slots, MappingProxyType):
@@ -162,6 +187,31 @@ def parse_manifest(path: str | Path) -> SkillManifest:
         l3_table.get("allow_new_realm"), "[l3].allow_new_realm"
     )
 
+    local_caps: list[LocalCapabilityEntry] = []
+    for i, raw_cap in enumerate(l3_table.get("local_capacity") or []):
+        if not isinstance(raw_cap, dict):
+            raise ManifestError(
+                f"[[l3.local_capacity]] entry {i} is not a table"
+            )
+        cwhere = f"[[l3.local_capacity]] entry {i}"
+        cparams = raw_cap.get("params") or {}
+        if not isinstance(cparams, dict):
+            raise ManifestError(f"{cwhere}.params must be a table")
+        local_caps.append(
+            LocalCapabilityEntry(
+                capacity_iri=_require(raw_cap, "capacity_iri", str, cwhere),
+                reactivation_key=_require(
+                    raw_cap, "reactivation_key", str, cwhere
+                ),
+                category=_require(raw_cap, "category", str, cwhere),
+                inputs=_str_tuple(raw_cap.get("inputs"), f"{cwhere}.inputs"),
+                outputs=_str_tuple(
+                    raw_cap.get("outputs"), f"{cwhere}.outputs"
+                ),
+                params=cparams,
+            )
+        )
+
     l4_table = data.get("l4") or {}
     l4_slots = l4_table.get("slots") or {}
     if not isinstance(l4_slots, dict):
@@ -180,7 +230,14 @@ def parse_manifest(path: str | Path) -> SkillManifest:
         l4_slots=l4_slots,
         digest=hashlib.sha256(raw_bytes).hexdigest(),
         source_path=str(p),
+        l3_local_capacities=tuple(local_caps),
     )
 
 
-__all__ = ["ManifestError", "L2ContentEntry", "SkillManifest", "parse_manifest"]
+__all__ = [
+    "ManifestError",
+    "L2ContentEntry",
+    "LocalCapabilityEntry",
+    "SkillManifest",
+    "parse_manifest",
+]

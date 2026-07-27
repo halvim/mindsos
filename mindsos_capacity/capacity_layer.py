@@ -207,6 +207,7 @@ class CapacityLayer:
         *,
         session: SessionArg = None,
         allow_new_realm: bool = False,
+        if_exists: Literal["raise", "ignore"] = "raise",
     ) -> Node:
         """Create the Core DataState node for ``datastate``.
 
@@ -221,7 +222,10 @@ class CapacityLayer:
             DataStateError: ``datastate`` shape is malformed
                 (propagated from :func:`validate_datastate`).
             CapacityRegistrationError: ``datastate.iri`` already
-                registered in the target DataState graph.
+                registered in the target DataState graph (only when
+                ``if_exists="raise"``; ``"ignore"`` returns the existing
+                node — the every-boot skill-capacity rehydrate path,
+                ADR-0183 §am-5).
             PermissionError: ``session`` lacks ``CAN_WRITE_GLOBAL``
                 when the write targets Global.
         """
@@ -256,6 +260,8 @@ class CapacityLayer:
         mg = self._metagraph_for(target_uid)
         ds_graph = ensure_datastate_graph(mg, strict=self._strict)
         if datastate.iri in ds_graph.nodes:
+            if if_exists == "ignore":
+                return ds_graph.nodes[datastate.iri]
             raise CapacityRegistrationError(
                 f"DataState {datastate.iri!r} already registered in "
                 f"metagraph {mg.name!r}"
