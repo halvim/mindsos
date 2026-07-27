@@ -73,7 +73,7 @@ def _converging_pipeline() -> Pipeline:
 
 def test_role_is_in_closed_set_and_local_only() -> None:
     assert ROLE_LEARNED_PIPELINES in ALL_ROLES
-    assert len(ALL_ROLES) == 15
+    assert len(ALL_ROLES) == 16
     assert ROLE_LEARNED_PIPELINES in _LOCAL_NAMED_ROLES
     assert ROLE_LEARNED_PIPELINES not in _GLOBAL_NAMED_ROLES
 

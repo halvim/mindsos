@@ -55,6 +55,7 @@ from .identifiers import (
     ROLE_CAPACITY_STATE,
     ROLE_CONCEPTS,
     ROLE_EPISODIC_MEMORIES,
+    ROLE_INSTALLED_CAPACITIES,
     ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
     ROLE_LEARNED_PIPELINES,
@@ -120,6 +121,8 @@ _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     # feat/learned-pipeline-persistence (ADR-0203) — Local-only taught
     # pipelines; immutable_successor append-ordinal.
     ROLE_LEARNED_PIPELINES,
+    # ADR-0183 §am-5 — Local-only installed-skill capability descriptors.
+    ROLE_INSTALLED_CAPACITIES,
 })
 
 #: Alignment role-prefix per ADR-0150. Per §amendment-1 (Phase 14
@@ -173,6 +176,8 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_SUBMINDS: frozenset(),
     # feat/learned-pipeline-persistence (ADR-0203) — independent.
     ROLE_LEARNED_PIPELINES: frozenset(),
+    # ADR-0183 §am-5 — independent.
+    ROLE_INSTALLED_CAPACITIES: frozenset(),
 }
 
 
