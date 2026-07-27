@@ -142,6 +142,20 @@ def _roster_value(manifest: SkillManifest) -> Dict[str, Any]:
         "l3_datastates": list(manifest.l3_datastates),
         "l4_slots": dict(manifest.l4_slots),
         "requires_bundles": list(manifest.requires_bundles),
+        # ADR-0183 §am-5 — Local capability descriptors carried on the
+        # durable (Global) install record; boot reconciles the user's
+        # Local installed-capacities store against this roster.
+        "l3_local_capacities": [
+            {
+                "capacity_iri": e.capacity_iri,
+                "reactivation_key": e.reactivation_key,
+                "category": e.category,
+                "inputs": list(e.inputs),
+                "outputs": list(e.outputs),
+                "params": dict(e.params),
+            }
+            for e in manifest.l3_local_capacities
+        ],
     }
 
 
