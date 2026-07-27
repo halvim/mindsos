@@ -185,7 +185,7 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    `taught_seq`). `mindsos brain` → `pl` lists `cycle_recognition` + `appliance_signature`;
    `--durable` (`stack.save()` → FalkorDBLocalPersister) boots knowing them. Verified: both listed,
    no round-trip rejection.
-   **✔ BUILT (this chat) — NOT yet validated on Linux.** The taught appliance library +
+   **✔ BUILT + VALIDATED end-to-end (this chat).** The taught appliance library +
      `signature_norm` + `match_cutoff` now persist as **learned-parameters** (one bundled
      `LearnedParameter` node in the Local `learned-parameters` role, **append-only / latest-wins**),
      NOT as learned pipelines. New `nilm_brain/persistence.py`
@@ -199,7 +199,11 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      `tests/test_durable_appliances.py` (4, gate-level, no Falkor) +
      `tests/test_durable_appliances_falkor.py` (@integration, skips w/o Falkor).
      **R2 reconcile (post main-merge 0021058):** the merge pulled R2 core (`execute_pipeline`/`invoke` `task_id`->`request_id`) but R2's rename ran on main and skipped `projects/amii_study/nilm_brain/` — `control.py` (2) + `dispatch.py` (3) call-sites were re-homed to `request_id` (the ONLY nilm consumer breakage; grep-clean). viz_spec survived the merge, so `repl.py` still boots.
-   **VALIDATE:** run the gate on Linux (expect **9→13**); then
+   **VALIDATED (Linux):** gate **13 passed / 1 skipped** (Falkor test skips w/o sidecar);
+     live round-trip PROVEN — `teach_appliances.py` taught 6 PLAID classes (288 exemplars,
+     finite neg-aware cutoff), persisted seq=1 to Falkor; a fresh `--durable` boot reported
+     **"288 appliance exemplar(s) loaded"**. Host note: compose does NOT publish Falkor's port —
+     run a standalone `-p 6379:6379` FalkorDB for host-run teach/repl. Superseded next step:
      `teach_appliances.py --data /home/sanmyaku/_plaid_full/_sample_expanded` →
      `python -m nilm_brain.repl` should report the loaded exemplars.
 6. **`fit_appliance` is O(n²)** in library exemplars (pairwise `signature_distance` for the
