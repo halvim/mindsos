@@ -185,11 +185,22 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
    `taught_seq`). `mindsos brain` → `pl` lists `cycle_recognition` + `appliance_signature`;
    `--durable` (`stack.save()` → FalkorDBLocalPersister) boots knowing them. Verified: both listed,
    no round-trip rejection.
-   **NEXT (remaining slice):** persist the **taught appliance library + `signature_norm` +
-   `match_cutoff`** — these are `learned-parameters` (weights/references), NOT `learned-pipelines`,
-   so they use the parameter-persistence path (`LearnedParameter` / durable Local), not
-   `learn_pipeline`. Today they are **in-memory on the Solver**, so `--durable` boots knowing the
-   *pipelines* but not the *appliances*. (arc3 B6: L2 is the layer that works.)
+   **✔ BUILT (this chat) — NOT yet validated on Linux.** The taught appliance library +
+     `signature_norm` + `match_cutoff` now persist as **learned-parameters** (one bundled
+     `LearnedParameter` node in the Local `learned-parameters` role, **append-only / latest-wins**),
+     NOT as learned pipelines. New `nilm_brain/persistence.py`
+     (`persist_appliance_state` / `load_appliance_state` / `apply_appliance_state`); `repl.py`
+     reloads it at boot. Core ships **no `learn_parameter` writer**, so nilm writes/reads the role
+     itself (consumer-side, mirrors `learn_pipeline`) — **CR out** for a core helper. A non-finite
+     (accept-all) cutoff is **refused**; boot's reactivation walk **skips** nilm's nodes (no
+     `reactivation_key`). Teach+persist flow = `scripts/teach_appliances.py` (there is no interactive
+     `teach` verb). **Flag convention fixed:** `repl.py` is now **durable by default / `--ephemeral`
+     opt-out**, matching core's `mindsos brain` (was an inverted `--durable`). Tests:
+     `tests/test_durable_appliances.py` (4, gate-level, no Falkor) +
+     `tests/test_durable_appliances_falkor.py` (@integration, skips w/o Falkor).
+     **VALIDATE:** run the gate on Linux (expect **9→13**); then
+     `teach_appliances.py --data /home/sanmyaku/_plaid_full/_sample_expanded` →
+     `python -m nilm_brain.repl` should report the loaded exemplars.
 6. **`fit_appliance` is O(n²)** in library exemplars (pairwise `signature_distance` for the
    negative-aware cutoff). Fine for demo-scale; an efficiency (not correctness) item before a large
    library — e.g. sample pairs, or a spatial index. Flagged, not faked.

@@ -2,17 +2,20 @@
 
 A thin per-brain shim over the shipped resident runtime (``boot_brain`` +
 ``BrainREPL``/``loop``): boot the stack, install nilm's L3, persist its two
-finder-composed segments as learned pipelines (ADR-0203), then hand to the
-generic REPL. The engine — boot, persister, REPL, ``save`` — is core; the only
-nilm-specific lines are the ``Solver`` install and the two ``learn_pipeline``
-calls. (The brain-agnostic goal is to skill-package nilm so even this shim goes
-away and ``mindsos brain`` runs it; that is a separate slice.)
+finder-composed segments as learned pipelines (ADR-0203), reload the durable
+appliance library, then hand to the generic REPL. The engine — boot, persister,
+REPL, ``save`` — is core; the only nilm-specific lines are the ``Solver``
+install, the two ``learn_pipeline`` calls, and the appliance-state reload.
+(The brain-agnostic goal is to skill-package nilm so even this shim goes away
+and ``mindsos brain`` runs it; that is a separate slice.)
 
-Ephemeral by default (no Falkor); ``--durable`` boots on the Falkor sidecar and
-the REPL's ``save``/``quit`` persists the taught pipelines across reboots.
+**Durable by default** (matches core's ``mindsos brain``): boots on the Falkor
+sidecar, and ``save``/``quit`` persists the taught pipelines + appliance library
+across reboots. ``--ephemeral`` is the throwaway mode (in-memory, nothing
+survives exit).
 
     PYTHONPATH=.:projects/amii_study python -m nilm_brain.repl
-    PYTHONPATH=.:projects/amii_study python -m nilm_brain.repl --durable
+    PYTHONPATH=.:projects/amii_study python -m nilm_brain.repl --ephemeral
 """
 from __future__ import annotations
 
@@ -23,6 +26,7 @@ from mindsos_server.pipelines import iter_local_pipelines, learn_pipeline
 from mindsos_cli.commands.brain import BrainREPL, loop
 
 from nilm_brain.control import Solver
+from nilm_brain.persistence import load_appliance_state, apply_appliance_state
 from nilm_brain import viz_spec
 
 USER = "nilm"
@@ -32,7 +36,7 @@ SEGMENTS = ("cycle_recognition", "appliance_signature")
 def _persist_segments(stack, solver) -> None:
     """Persist the finder-composed segments as learned pipelines, ONCE each:
     the ADR-0203 discipline is append-only (``immutable_successor``), so skip any
-    name already present or re-boot would churn versions under ``--durable``.
+    name already present or re-boot would churn versions in durable mode.
     Non-fatal — a persist/round-trip failure logs and never bricks the brain."""
     segs = {"cycle_recognition": solver.segment,
             "appliance_signature": solver.appliance_segment}
@@ -51,9 +55,9 @@ def _persist_segments(stack, solver) -> None:
 
 
 def main() -> None:
-    durable = "--durable" in sys.argv
+    ephemeral = "--ephemeral" in sys.argv
     client = None
-    if durable:
+    if not ephemeral:
         from mindsos_core.config import FalkorConfig
         from mindsos_core.persistence.client import FalkorClient
         client = FalkorClient(FalkorConfig.from_env())
@@ -61,8 +65,18 @@ def main() -> None:
         stack = boot_brain(client, user=USER)
         solver = Solver(USER, cl=stack.cl, session=stack.session)   # install nilm L3
         _persist_segments(stack, solver)
+        # Reload the durable appliance library + norm + cutoff (empty on a
+        # fresh/ephemeral brain — same as before this slice).
+        try:
+            applied = apply_appliance_state(
+                solver, load_appliance_state(stack.kl, stack.user))
+        except Exception as e:  # never let a bad node brick the boot
+            print(f"  (skip appliance reload: {type(e).__name__}: {e})")
+            applied = False
+        n = len(getattr(solver, "appliance_library", []) or [])
+        loaded = f" ({n} appliance exemplar(s) loaded)" if applied else ""
         print(f"nilm resident brain booted "
-              f"({'durable/Falkor' if durable else 'ephemeral'}). "
+              f"({'ephemeral' if ephemeral else 'durable/Falkor'}){loaded}. "
               "Try: pl · ls · caps nilm:* · quit")
         loop(BrainREPL(stack, viz_spec=viz_spec))
     finally:
