@@ -1,8 +1,10 @@
 # Brain `view` verb — graph visualizer
 
-Status: shipped for nilm and verified live (`view` → 51 caps / 92 datastates /
-2 segments, scp-download flow works). Inherited by every brain that boots the
-shared `BrainREPL` (arc1, arc3) — but only nilm has a `viz_spec` so far.
+Status: **SHIPPED to `main`** (PR #78, Linux gate 4334 passed) and tagged
+**`brain-view-confirmed`**. Verified live on nilm (`view` → 51 caps / 92
+datastates / 2 segments; scp-download flow works). Inherited by every brain that
+boots the shared `BrainREPL`; only nilm has a `viz_spec` so far. The generic
+verb/builder/template now live on `main`, not on any brain branch.
 
 ## What it is
 `view` inside the brain REPL builds a **self-contained interactive HTML graph**
@@ -15,6 +17,12 @@ on the Mac. No tunnel, no server, no wrapper.
   `Metagraph` / role-graphs are core concepts and `mindsos_cli/commands/graph.py`
   already exists — `graph` would clash. "graph" survives only as the artifact
   noun in help text.
+- **Distribution.** The generic verb/builder/template are shared `mindsos_cli`
+  and live on **main**, released as a `mindsos-runtime` tag
+  (`brain-view-confirmed`); brains inherit by pinning that tag — never by
+  committing the generic code on a per-brain branch. Only each brain's
+  `viz_spec.py` + one-line repl wiring is per-brain (this is why the work was
+  split off the nilm branch this chat).
 - **Shared verb + per-brain hook.** One `_do_view` on `BrainREPL`; every brain
   inherits it. Each brain optionally ships a `viz_spec` (semantic ds-groups +
   finder segments). No `viz_spec` → a topology heuristic
@@ -46,7 +54,8 @@ capColor:{family:hex}, dsColor:{group:hex} }`. Node ids collapse to short names.
 (commit on the Mac, run on the Linux box; `view` prints the scp line to paste).
 
 ## Open items / next
-- **arc1 + arc3 to parity:** each needs its own `viz_spec.py` (DS_GROUPS +
+- **arc1 + arc3 to parity:** bump each repo's `mindsos-runtime` pin to
+  `brain-view-confirmed` (inherits `view`), then add each its own `viz_spec.py` (DS_GROUPS +
   SEGMENTS) + one-line `repl.py` wiring. Derive each brain's real ds-group
   taxonomy and finder segments from *that brain's own code* — do not copy nilm's.
 - **Wheel packaging:** add `package_data` `mindsos_cli = ["commands/*.html"]` so
