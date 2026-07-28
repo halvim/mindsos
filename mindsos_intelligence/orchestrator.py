@@ -230,15 +230,22 @@ class Orchestrator:
         )
         capacity_graphs: list = []
 
-        # Phase 3-5 — execution with bounded replan (invalidate-at-and-below)
+        # Phase 3-5 — execution with bounded replan (invalidate-at-and-below).
+        # Slice 3b — the blackboard is held across the loop so a *targeted* replan
+        # (the verdict names a re-runnable top-level map member) can re-run only
+        # that member and reuse the completed siblings' values; a whole-pipeline
+        # replan resets it to a fresh seed → byte-identical to the pre-3b path.
         replans = 0
         sufficient = True
+        blackboard: dict = dict(solve_seed or {}) if solve_seed is not None else {}
+        targeted = None
         while True:
             try:
                 execution.run(
                     self._dispatcher, writer, plan_result, request_run,
                     mm=self._mm, run_scope=scope, solve_seed=solve_seed,
                     capacity_graphs=capacity_graphs, run_attempt=replans,
+                    blackboard=blackboard, targeted=targeted,
                 )
             except execution.MemberAbortError:
                 # Collection-iteration Slice 1b — a map member exhausted
@@ -269,17 +276,40 @@ class Orchestrator:
                 return RequestOutcome("aborted", request_run.iri, replans_used=replans)
             if verdict.decision == "replan" and replans < self._budget:
                 replans += 1
-                # Execution stays whole-pipeline (clear-all) this slice — so
-                # invalidated_refs = ALL of request_run.pipeline_runs, and the
-                # recorded ``replan_level`` is "pipeline" (the ACTUAL action):
-                # never a finer level that would contradict a full-clear. Slice
-                # 3 records the consumer's advisory member target separately on
-                # ``replan_milestone_ref`` (None for v0 → byte-identical).
-                # Targeted re-execution (honoring verdict.replan_level to re-run
-                # only that member) is a later, non-additive slice.
-                invalidated = replan_check.invalidate_at_and_below(request_run, "pipeline")
+                # Slice 3b — if the verdict names a re-runnable top-level map
+                # member (reserved "map"/"plan_subtree" level + a resolvable
+                # ref-path), invalidate only that map + fold + downstream and
+                # re-run just that member against the RETAINED blackboard (the
+                # untargeted siblings + their grounding graphs are reused); the
+                # recorded ``replan_level`` is then the ACTUAL targeted level.
+                # Otherwise fall back to the whole-pipeline clear + a fresh
+                # blackboard, recorded as "pipeline" — byte-identical to Slice 3
+                # (a v0 verdict, a full ``pipelinerun:`` advisory ref, or a nested
+                # target all resolve to None here).
+                member_target = (
+                    execution.resolve_member_target(plan_result, verdict.target_ref)
+                    if verdict.replan_level in ("map", "plan_subtree")
+                    and verdict.target_ref
+                    else None
+                )
+                if member_target is not None:
+                    map_idx, member_idx = member_target
+                    targeted = (map_idx, member_idx)
+                    invalidated = replan_check.invalidate_at_and_below(
+                        request_run, verdict.replan_level, at_index=map_idx
+                    )
+                    recorded_level = verdict.replan_level
+                else:
+                    targeted = None
+                    blackboard = (
+                        dict(solve_seed or {}) if solve_seed is not None else {}
+                    )
+                    invalidated = replan_check.invalidate_at_and_below(
+                        request_run, "pipeline"
+                    )
+                    recorded_level = "pipeline"
                 writer.emit_replan_record(
-                    "pipeline", verdict,
+                    recorded_level, verdict,
                     replan_milestone_ref=verdict.target_ref,
                     invalidated_refs=invalidated,
                 )

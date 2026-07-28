@@ -52,7 +52,7 @@ def test_failed_episode_emits_retry_with_replan_injection():
     assert len(with_injection) == 1
     inj = with_injection[0].replan_injection
     assert inj.source_episode_iri == "ep:2"
-    assert inj.replan_level == "requestrun"
+    assert inj.replan_level == "taskrun"
 
 
 def test_run_dream_cycle_over_corpus_calls_re_executor_per_directive():

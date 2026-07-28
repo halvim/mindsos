@@ -139,6 +139,7 @@ class PipelineRun:
 class RequestRun:
     iri: str
     request_input_ref: Optional[str] = None
+    request_input_root_ref: Optional[str] = None
     plan_ref: Optional[str] = None
     pipeline_runs: List[str] = field(default_factory=list)
     replan_history: List[str] = field(default_factory=list)
@@ -284,10 +285,11 @@ class ChainArtifactWriter:
         self._emit(art.iri, TYPE_PIPELINE_RUN, art)
         return art
 
-    def emit_request_run(self, *, request_input_ref=None, plan_ref=None) -> RequestRun:
+    def emit_request_run(self, *, request_input_ref=None, request_input_root_ref=None, plan_ref=None) -> RequestRun:
         art = RequestRun(
             iri=self._mint("requestrun"),
             request_input_ref=request_input_ref,
+            request_input_root_ref=request_input_root_ref,
             plan_ref=plan_ref,
         )
         self._emit(art.iri, TYPE_REQUEST_RUN, art)

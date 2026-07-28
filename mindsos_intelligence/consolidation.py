@@ -105,8 +105,10 @@ def consolidate_request(
         )
     with mm.lock.write_locked():
         request_input_ref = request_run.request_input_ref or f"requestinput:{request_run.iri}"
+        request_input_root_ref = getattr(request_run, "request_input_root_ref", None)
         episode_value = {
             "request_input_ref": request_input_ref,
+            "request_input_root_ref": request_input_root_ref,
             "mm_root_ref": mm_root_ref,
             "capacity_root_ref": capacity_root_ref,
             "request_pattern_iri": request_pattern_iri,
