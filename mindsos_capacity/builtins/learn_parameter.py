@@ -42,7 +42,7 @@ from ..identifiers import (
 
 # ── DataState IRI (record shape) ───────────────────────────────────────
 
-DS_LEARNED_PARAMETER_WRITE = datastate_iri("learned_parameter.write")
+DS_LEARNED_PARAMETER_WRITE = datastate_iri("core.learned_parameter_write")
 
 
 def learn_parameter_datastates() -> List[DataState]:
@@ -54,7 +54,7 @@ def learn_parameter_datastates() -> List[DataState]:
     """
     return [
         DataState(
-            name="learned_parameter.write",
+            name="core.learned_parameter_write",
             shape=ShapeDescriptor.record(
                 {
                     "parameter_set": "str",
@@ -62,7 +62,7 @@ def learn_parameter_datastates() -> List[DataState]:
                     "value": "Any",
                     "learned_by": "str",
                 },
-                opaque_tag="learned_parameter.write",
+                opaque_tag="core.learned_parameter_write",
             ),
             description=(
                 "Record bearing one learned parameter to persist/update in the "

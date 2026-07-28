@@ -209,3 +209,9 @@ def test_reader_skips_nodes_without_labels():
     kl = _FakeKL([g], [_FakeGraph(ROLE_LEARNED_PARAMETERS)])
     snap = read_learned_parameter_snapshot(kl, "u1")
     assert snap == {"s": {"a": 1}}  # opaque node skipped, not guessed
+
+
+def test_reader_returns_empty_when_kl_is_none():
+    # L4 dispatch may build a context with no KL (some lifecycle paths);
+    # the snapshot fill must degrade to empty, not crash.
+    assert read_learned_parameter_snapshot(None, "u1") == {}

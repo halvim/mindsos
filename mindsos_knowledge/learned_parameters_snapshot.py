@@ -57,6 +57,8 @@ def read_learned_parameter_snapshot(
     the result to ``L4Dispatcher(learned_parameters=...)``; it becomes each
     request's frozen ``learned_parameters_snapshot``.
     """
+    if kl is None:
+        return {}
     snapshot: Dict[str, Dict[str, Any]] = {}
     _overlay(snapshot, kl.global_metagraph())
     _overlay(snapshot, kl.local_metagraph(user))
