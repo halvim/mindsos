@@ -1,3 +1,5 @@
+> **STATUS 2026-07-27 — SUPERSEDED IN PART.** The PRE-0 model here (marker-based, terminal episodes) was revised in design with HA. The LIVE, authoritative plan is project-memory **`dream-episode-model.md`** (one Episode in L2, graph-structured, open->grow->close; decision=success/crash=only-failure; suspended separate; no marker). PRE-1 SHIPPED to main (tag dream-pre1-confirmed). PRE-0 Slice 1a (L2 edit path) SHIPPED gate-green on branch feat/dream-build (not yet on main); Slice 1b is next. See `DREAM_PRE1_CONFIRMED.md` + `DREAM_PRE0_SLICE1A_CONFIRMED.md`. Read the memory file before building.
+
 # Dream Build Plan (dependency-ordered)
 
 Status: DESIGN-READY. Build in its own chat/branch, AFTER the rename lands.
