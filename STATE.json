@@ -177,7 +177,7 @@
       "adr": "n/a (test-harness hardening)",
       "note": "Not a mask (no skip/xfail/rename/serialize). Broaden to tests/conftest.py if a non-_run_cli spawn ever -11s. SEPARATE deferred flake: phase_48 test_execution_run_grounds_capacity_mm_on_solve (L5 Step 5, global-state contamination, missing PROP_DATASTATE_INSTANCE_TYPE) needs its own bisect.",
       "chat": "phase_05c/06 flaky SIGSEGV infra fix",
-      "sha": "PENDING push"
+      "sha": "880161f (#88)"
     },
     {
       "kind": "refactor",
