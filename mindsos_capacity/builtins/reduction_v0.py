@@ -1,13 +1,15 @@
 """Reduction capability family (ADR-0204) — L4-support selection decisions.
 
-Four pure selection capabilities the L4 orchestrator invokes as intelligence
+Five pure selection capabilities the L4 orchestrator invokes as intelligence
 decisions over a variable-size, per-member-scored collection:
 
 - ``reduction.argmin`` / ``reduction.argmax`` → the member with the min / max
   score. Direction is fixed by the two named variants (not a parameter).
-- ``reduction.top_k`` → the ``k`` highest-score members, ranked best-first.
-  ``k`` is a **declared input** the L4 layer supplies (never a literal); ``k > n``
-  clamps to ``n``.
+- ``reduction.top_k`` / ``reduction.bottom_k`` → the ``k`` highest- / lowest-score
+  members, ranked best-first (largest-first for ``top_k``, smallest-first for
+  ``bottom_k``). Direction is fixed by the two named variants, mirroring
+  ``argmin``/``argmax`` — never a ``reverse`` parameter. ``k`` is a **declared
+  input** the L4 layer supplies (never a literal); ``k > n`` clamps to ``n``.
 - ``reduction.majority_vote`` → the modal label among the members.
 
 These are **L4-invoked decisions**, not ``execution.py`` fold reducers: L4
@@ -24,8 +26,8 @@ caller need not re-derive them; the vote carries its tally.
 **Ties / empties.** Ties resolve to **first-in-list** (input order is
 authoritative — the caller controls order). An empty collection is a legitimate
 "nothing found" **value**, never an error: ``argmin``/``argmax`` return ``None``,
-``top_k`` returns ``[]``, ``majority_vote`` returns ``{label: None, won: 0,
-total: 0}``.
+``top_k``/``bottom_k`` return ``[]``, ``majority_vote`` returns ``{label: None,
+won: 0, total: 0}``.
 
 The family is **opt-in** (``install_reduction_v0``); its category graph is
 created lazily at first register and it is NOT bootstrapped by ``create_global``
@@ -48,7 +50,7 @@ from ..identifiers import CATEGORY_REDUCTION, capacity_iri, datastate_iri
 DS_SCORED_COLLECTION = datastate_iri("reduction.scored_collection")
 DS_K = datastate_iri("reduction.k")
 DS_SELECTION = datastate_iri("reduction.selection")
-DS_TOP_SELECTION = datastate_iri("reduction.top_selection")
+DS_K_SELECTION = datastate_iri("reduction.k_selection")
 DS_VOTE = datastate_iri("reduction.vote")
 
 #: Convention keys read off each member record.
@@ -70,7 +72,7 @@ def reduction_datastates() -> List[DataState]:
         DataState(
             name="reduction.k",
             shape=ShapeDescriptor.scalar("int", opaque_tag="reduction.k"),
-            description="How many members top_k selects — an L4-supplied input.",
+            description="How many members top_k/bottom_k select — an L4-supplied input.",
             provenance_category=CATEGORY_REDUCTION,
         ),
         DataState(
@@ -83,11 +85,13 @@ def reduction_datastates() -> List[DataState]:
             provenance_category=CATEGORY_REDUCTION,
         ),
         DataState(
-            name="reduction.top_selection",
-            shape=ShapeDescriptor.opaque("reduction.top_selection"),
+            name="reduction.k_selection",
+            shape=ShapeDescriptor.opaque("reduction.k_selection"),
             description=(
-                "Ordered [{index, member, score}] of the k best, best-first "
-                "(top_k); [] on an empty collection."
+                "Ordered [{index, member, score}] of the k selected members, "
+                "best-first — largest-first (top_k) or smallest-first (bottom_k); "
+                "[] on an empty collection. Direction-neutral: the producing cap "
+                "fixes the direction, mirroring reduction.selection for argmin/argmax."
             ),
             provenance_category=CATEGORY_REDUCTION,
         ),
@@ -117,20 +121,33 @@ def _arg_select(collection: Any, *, largest: bool) -> Optional[Dict[str, Any]]:
     return best
 
 
-def _top_k(collection: Any, k: Any) -> List[Dict[str, Any]]:
-    """The k highest-score members, best-first. Stable on ties (first-in-list),
-    clamps k to the collection size, and returns [] for empty/k<=0."""
+def _k_select(collection: Any, k: Any, *, largest: bool) -> List[Dict[str, Any]]:
+    """The k best-scoring members, best-first — largest-first when ``largest``,
+    smallest-first otherwise. Stable on ties (first-in-list), clamps k to the
+    collection size, and returns [] for empty/k<=0. Direction is an internal
+    argument; the two public caps (top_k / bottom_k) fix it, so there is no
+    public reverse parameter (family convention, mirrors argmin/argmax)."""
     members = list(collection or [])
     k = int(k) if k is not None else 0
     if k <= 0 or not members:
         return []
-    # sorted(reverse=True) is stable → equal scores keep original (first-in-list)
-    # order; slice to at most the collection size.
-    order = sorted(range(len(members)), key=lambda i: members[i][SCORE_KEY], reverse=True)
+    # sorted() is stable → equal scores keep original (first-in-list) order in
+    # BOTH directions; slice to at most the collection size.
+    order = sorted(range(len(members)), key=lambda i: members[i][SCORE_KEY], reverse=largest)
     return [
         {"index": i, "member": members[i], "score": members[i][SCORE_KEY]}
         for i in order[:k]
     ]
+
+
+def _top_k(collection: Any, k: Any) -> List[Dict[str, Any]]:
+    """The k highest-score members, best-first (largest-first)."""
+    return _k_select(collection, k, largest=True)
+
+
+def _bottom_k(collection: Any, k: Any) -> List[Dict[str, Any]]:
+    """The k lowest-score members, best-first (smallest-first)."""
+    return _k_select(collection, k, largest=False)
 
 
 def _majority_vote(collection: Any) -> Dict[str, Any]:
@@ -162,7 +179,11 @@ def _argmax_impl(**kwargs: Any) -> dict:
 
 
 def _top_k_impl(**kwargs: Any) -> dict:
-    return {DS_TOP_SELECTION: _top_k(kwargs.get(DS_SCORED_COLLECTION), kwargs.get(DS_K))}
+    return {DS_K_SELECTION: _top_k(kwargs.get(DS_SCORED_COLLECTION), kwargs.get(DS_K))}
+
+
+def _bottom_k_impl(**kwargs: Any) -> dict:
+    return {DS_K_SELECTION: _bottom_k(kwargs.get(DS_SCORED_COLLECTION), kwargs.get(DS_K))}
 
 
 def _majority_vote_impl(**kwargs: Any) -> dict:
@@ -199,9 +220,20 @@ def build_top_k() -> Capacity:
         name="top_k",
         category=CATEGORY_REDUCTION,
         inputs=(DS_SCORED_COLLECTION, DS_K),
-        outputs=(DS_TOP_SELECTION,),
+        outputs=(DS_K_SELECTION,),
         implementation=_top_k_impl,
         description="Select the k highest-score members, best-first; k>n clamps to n.",
+    )
+
+
+def build_bottom_k() -> Capacity:
+    return Capacity(
+        name="bottom_k",
+        category=CATEGORY_REDUCTION,
+        inputs=(DS_SCORED_COLLECTION, DS_K),
+        outputs=(DS_K_SELECTION,),
+        implementation=_bottom_k_impl,
+        description="Select the k lowest-score members, smallest-first; k>n clamps to n.",
     )
 
 
@@ -220,13 +252,14 @@ _DS_IRIS = (
     DS_SCORED_COLLECTION,
     DS_K,
     DS_SELECTION,
-    DS_TOP_SELECTION,
+    DS_K_SELECTION,
     DS_VOTE,
 )
 _CAP_IRIS = (
     capacity_iri(CATEGORY_REDUCTION, "argmin"),
     capacity_iri(CATEGORY_REDUCTION, "argmax"),
     capacity_iri(CATEGORY_REDUCTION, "top_k"),
+    capacity_iri(CATEGORY_REDUCTION, "bottom_k"),
     capacity_iri(CATEGORY_REDUCTION, "majority_vote"),
 )
 
@@ -255,6 +288,7 @@ def install_reduction_v0(capacity_layer) -> None:
     capacity_layer.register_capacity(build_argmin())
     capacity_layer.register_capacity(build_argmax())
     capacity_layer.register_capacity(build_top_k())
+    capacity_layer.register_capacity(build_bottom_k())
     capacity_layer.register_capacity(build_majority_vote())
 
 
@@ -262,7 +296,7 @@ __all__ = [
     "DS_SCORED_COLLECTION",
     "DS_K",
     "DS_SELECTION",
-    "DS_TOP_SELECTION",
+    "DS_K_SELECTION",
     "DS_VOTE",
     "SCORE_KEY",
     "LABEL_KEY",
@@ -270,6 +304,7 @@ __all__ = [
     "build_argmin",
     "build_argmax",
     "build_top_k",
+    "build_bottom_k",
     "build_majority_vote",
     "install_reduction_v0",
 ]
