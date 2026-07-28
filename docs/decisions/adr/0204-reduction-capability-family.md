@@ -1,6 +1,6 @@
 ---
 title: Reduction capability family (L4-support) — argmin / argmax / top_k / majority_vote
-status: Proposed
+status: Accepted
 date: 2026-07-27
 layer: L4-support
 amends: []
@@ -9,7 +9,7 @@ aliases: [reduction-family, argmax, top_k, majority-vote, CR-reduction]
 
 # ADR-0204: Reduction capability family (L4-support)
 
-**Status:** Proposed (design converged 2026-07-27; → Accepted on gate-green)
+**Status:** Accepted (gate green 2026-07-27 — Linux full suite 4361 passed / 0 failed; PR #86, main `c5c5d4d`; built on ADR-0199)
 
 **Date:** 2026-07-27 (CORE build chat — generic reduction family)
 
@@ -154,5 +154,5 @@ carry the winner's position and score so the caller need not re-derive them.
 
 ## Status flip
 
-Proposed → **Accepted** when the full suite + the new tests pass green on the
-Linux gate.
+Proposed → **Accepted** on 2026-07-27: the full Linux suite passed green
+(4361 passed / 0 failed) with the 10 new `tests/reduction/` tests.
