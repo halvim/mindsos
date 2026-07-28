@@ -50,7 +50,11 @@ def export_retention_metrics(kl: Any, user_id: str) -> RetentionMetrics:
     memories = [n for n in g.nodes.values() if n.type_name == NODE_MEMORY]
     histogram: Dict[str, int] = {}
     for n in episodes:
-        bucket = _size_bucket(n.value)
+        # Dream PRE-0 Slice 1b (D1): streaming Episodes carry their fields as node
+        # properties; legacy Episodes carry an opaque ``value`` blob. Size over
+        # whichever holds the content.
+        payload = n.properties if getattr(n, "properties", None) else n.value
+        bucket = _size_bucket(payload)
         histogram[bucket] = histogram.get(bucket, 0) + 1
     return RetentionMetrics(
         episode_count=len(episodes),

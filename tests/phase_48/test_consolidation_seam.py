@@ -58,13 +58,16 @@ def test_run_lifecycle_writes_episode_on_success():
     assert outcome.status == "succeeded"
     eps = _episodes(kl)
     assert len(eps) == 1
-    val = eps[0].value
-    assert val["outcome_classification"] == "succeeded"
+    # Dream PRE-0 Slice 1b (D1): the Episode's fields are node properties; it was
+    # opened at start (state=open) and closed at completion (state=closed).
+    props = eps[0].properties
+    assert props["state"] == "closed"
+    assert props["outcome_classification"] == "succeeded"
     chain_graphs = [
         g for g in mm.intelligence_mm.graphs.values() if g.role == "chain"
     ]
     assert len(chain_graphs) == 1
-    assert val["mm_root_ref"] == chain_graphs[0].graph_id
+    assert props["mm_root_ref"] == chain_graphs[0].graph_id
 
 
 def test_simplified_mode_skips_consolidation():

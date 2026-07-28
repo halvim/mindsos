@@ -36,14 +36,16 @@ def test_dont_know_when_insufficient():
     assert outcome.blame.chain_level == "pipeline"
 
 
-def test_aborted_on_abort_verdict():
+def test_conceded_on_abort_verdict():
+    # Dream PRE-0 Slice 1b (D4): a reached abort is a DECISION → "conceded"
+    # (was the misleading "aborted"/"failed"); "failed" is reserved for a crash.
     orch, mm, _layer = make_orchestrator()
     try:
         set_should_replan_decision("abort")
         outcome = orch.run_lifecycle({"x": 1})
     finally:
         reset_v0_verdicts()
-    assert outcome.status == "aborted"
+    assert outcome.status == "conceded"
     assert len(list(iter_chain_artifacts(mm, TYPE_REPLAN_RECORD))) == 1
 
 

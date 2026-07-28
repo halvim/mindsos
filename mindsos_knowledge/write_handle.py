@@ -219,6 +219,7 @@ class KLWriteHandle:
         *,
         value: Any,
         type_: str,
+        properties: "Optional[Mapping[str, Any]]" = None,
         _is_admin: bool = False,
         **mint_content: Any,
     ) -> WriteResult:
@@ -312,7 +313,17 @@ class KLWriteHandle:
         # L1 ``add_node`` signature: (value, type_name, *, properties=None,
         # node_id=None, _validate=True). L2 convention exposes ``type_``;
         # translate at the boundary per Phase 34 R4 §am-impl-1.
-        self.graph().add_node(value=value, type_name=type_, node_id=iri)
+        # ``properties`` (Dream PRE-0 Slice 1b): create the node with its L1
+        # property bag populated in one shot — the streaming Episode is created
+        # at "open" with its fields as real node properties (D1), not an opaque
+        # ``value`` blob. ``None`` (every pre-1b caller) → no property bag, byte-
+        # identical to the Phase 34 create.
+        self.graph().add_node(
+            value=value,
+            type_name=type_,
+            node_id=iri,
+            properties=dict(properties) if properties else None,
+        )
         return WriteResult(
             iri=iri,
             role=self.role,

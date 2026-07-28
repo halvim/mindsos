@@ -32,6 +32,11 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from mindsos_capacity.builtins.consolidate import DS_MM_COMPOSITE_INSTANCE
+from mindsos_knowledge.schemas.episodic_memories import (
+    EPISODE_STATE_CLOSED,
+    EPISODE_STATE_OPEN,
+    EPISODE_STATE_SUSPENDED,
+)
 
 CONSOLIDATE_MM_IRI = "capacity:consolidate:mm"
 
@@ -55,11 +60,67 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def open_episode(
+    dispatcher: Any,
+    *,
+    episode_id: str,
+    request_input_ref: Optional[str] = None,
+    request_input_root_ref: Optional[str] = None,
+):
+    """Open the streaming Episode at Request START (Dream PRE-0 Slice 1b, D2).
+
+    Creates the ``Episode`` node ``state=open`` carrying the reload anchors
+    (``request_input_ref`` / ``request_input_root_ref`` from PRE-1). Idempotent —
+    the capacity no-ops if the node already exists. Graceful skip when
+    consolidation is unwired (v0 smoke / no KL). The open Episode IS the crash
+    bookmark (subsumes the legacy InMemoryCheckpointStore): a crash before the
+    terminal ``close`` leaves this ``state=open`` node for the startup scan.
+    """
+    if not consolidation_enabled(dispatcher):
+        return None
+    record = {
+        DS_MM_COMPOSITE_INSTANCE: {
+            "episode_id": episode_id,
+            "value": {
+                "op": "open",
+                "props": {
+                    "state": EPISODE_STATE_OPEN,
+                    "request_input_ref": request_input_ref
+                    or f"requestinput:{episode_id}",
+                    "request_input_root_ref": request_input_root_ref,
+                },
+            },
+        }
+    }
+    return dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, request_id=episode_id)
+
+
+def suspend_episode(dispatcher: Any, *, episode_id: str):
+    """Mark the open Episode SUSPENDED (needs-input / pending-confirmation).
+
+    A suspended Episode is NOT a crash — it resumes. The startup crash scan
+    ignores it (it scans ``state=open`` only). Graceful skip when unwired.
+    """
+    if not consolidation_enabled(dispatcher):
+        return None
+    record = {
+        DS_MM_COMPOSITE_INSTANCE: {
+            "episode_id": episode_id,
+            "value": {
+                "op": "suspend",
+                "props": {"state": EPISODE_STATE_SUSPENDED},
+            },
+        }
+    }
+    return dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, request_id=episode_id)
+
+
 def consolidate_request(
     dispatcher: Any,
     mm: Any,
     request_run: Any,
     *,
+    episode_id: str,
     request_pattern_iri: Optional[str],
     outcome_classification: str,
     crash_marker: Optional[Any] = None,
@@ -68,11 +129,15 @@ def consolidate_request(
     capacity_graphs: Any = None,
     capacity_encoders: Any = None,
 ):
-    """Freeze the MM + assemble the Episode record + dispatch ``consolidate:mm``.
+    """CLOSE the Episode: freeze the MM + stamp the terminal content + ``state=closed``.
 
-    Returns the consolidate ``InvocationResult``, or ``None`` if consolidation
-    is not wired (graceful skip). Idempotent on ``episode_id = request_run.iri``
-    (ADR-0176 §4 — the crash-recovery startup scan relies on it).
+    Upserts the open Episode (Dream PRE-0 Slice 1b): updates its ``state`` and the
+    now-known content fields (``mm_root_ref`` / ``capacity_root_ref`` /
+    ``request_pattern_iri`` / ``outcome_classification`` / ``consolidated_at``) via
+    the lazy-inline edit, or writes it whole if no open node exists (a crash
+    write, or open was unwired). Returns the consolidate ``InvocationResult``, or
+    ``None`` if consolidation is not wired (graceful skip). Idempotent on
+    ``episode_id`` (ADR-0176 §4).
     """
     if not consolidation_enabled(dispatcher):
         return None
@@ -104,9 +169,10 @@ def consolidate_request(
             encoders=capacity_encoders,
         )
     with mm.lock.write_locked():
-        request_input_ref = request_run.request_input_ref or f"requestinput:{request_run.iri}"
+        request_input_ref = request_run.request_input_ref or f"requestinput:{episode_id}"
         request_input_root_ref = getattr(request_run, "request_input_root_ref", None)
-        episode_value = {
+        episode_props = {
+            "state": EPISODE_STATE_CLOSED,
             "request_input_ref": request_input_ref,
             "request_input_root_ref": request_input_root_ref,
             "mm_root_ref": mm_root_ref,
@@ -118,11 +184,17 @@ def consolidate_request(
         }
     record = {
         DS_MM_COMPOSITE_INSTANCE: {
-            "episode_id": request_run.iri,
-            "value": episode_value,
+            "episode_id": episode_id,
+            "value": {"op": "close", "props": episode_props},
         }
     }
-    return dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, request_id=request_run.iri)
+    return dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, request_id=episode_id)
 
 
-__all__ = ["consolidate_task", "consolidation_enabled", "CONSOLIDATE_MM_IRI"]
+__all__ = [
+    "open_episode",
+    "suspend_episode",
+    "consolidate_request",
+    "consolidation_enabled",
+    "CONSOLIDATE_MM_IRI",
+]

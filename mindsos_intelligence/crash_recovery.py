@@ -1,35 +1,47 @@
-"""L4 crash recovery — checkpoint markers + L4-startup unconsolidated scan
-(ADR-0179; Chat B D-B50).
+"""L4 crash recovery — L4-startup scan for crashed (open) Episodes
+(ADR-0179; Chat B D-B50; reworked Dream PRE-0 Slice 1b).
 
-v1 mechanism = **tombstone marker** (not a live-MM flush). At each D-B50
-trigger (LifecyclePhase transition + per-replan) the orchestrator records a
-small marker; on ``IntelligenceLayer.start`` the unconsolidated markers are
-scanned and each produces a ``crash_marker`` Episode (``outcome_classification
-= "failed"``, ``mm_root_ref = None``) — delivering clean startup, a crash
-record, and ``request_input_ref`` preservation. Partial-MM **content** recovery
-is deferred to v1.5 (ADR-0179 §3).
+**Dream PRE-0 Slice 1b model.** The streaming Episode subsumes the legacy
+tombstone-marker mechanism (``InMemoryCheckpointStore`` / ``CheckpointMarker`` /
+``record_checkpoint`` — all removed). The Episode is opened ``state=open`` at
+Request start and closed ``state=closed`` on every terminal decision, so:
 
-The marker store is an injectable abstraction. v1 ships ``InMemoryCheckpoint
-Store``; a durable Falkor-backed store (so markers survive process death) is
-the persister-wiring follow-up — the scan/contract is testable now by leaving
-an unconsolidated marker and running :func:`recover_unconsolidated`.
+* a normally-decided Request leaves a ``closed`` Episode;
+* a needs-input Request leaves a ``suspended`` Episode (resumes; NOT a crash);
+* a **crash** (process died before the terminal close) leaves the Episode
+  ``state=open`` — the ONLY failure.
+
+On ``IntelligenceLayer.start`` :func:`recover_unconsolidated` scans the user's
+Local ``episodic_memories`` role-graph for ``state == open`` Episodes and stamps
+each ``state=closed`` + ``outcome_classification="failed"`` + a ``crash_marker``,
+**preserving whatever partial content was already written at open** (promotes
+ADR-0179 §3 partial-content recovery from deferred to real — the open Episode
+already holds the ``request_input_ref`` / ``request_input_root_ref`` anchors).
+The close goes through the same ``consolidate:mm`` capacity (op=close upsert), so
+the write path is uniform. Durable when a Local persister is supplied.
 """
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from mindsos_capacity.builtins.consolidate import DS_MM_COMPOSITE_INSTANCE
-from mindsos_knowledge.identifiers import episode_iri
+from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
+from mindsos_knowledge.metagraph_view import MetagraphView
+from mindsos_knowledge.schemas.episodic_memories import (
+    EPISODE_STATE_CLOSED,
+    EPISODE_STATE_OPEN,
+    NODE_EPISODE,
+)
 
 CONSOLIDATE_MM_IRI = "capacity:consolidate:mm"
 
 
 @dataclass
 class CrashInfo:
-    """Stamped on a recovered Episode (Chat B §4.3 ``crash_marker``)."""
+    """Stamped on a recovered Episode's ``crash_marker`` (Chat B §4.3)."""
 
     last_phase: Optional[str] = None
     last_milestone: Optional[str] = None
@@ -37,121 +49,91 @@ class CrashInfo:
     recovered: bool = False
 
 
-@dataclass
-class CheckpointMarker:
-    request_id: str
-    request_input_ref: Optional[str] = None
-    request_pattern_iri: Optional[str] = None
-    last_phase: Optional[str] = None
-    last_milestone: Optional[str] = None
-    consolidated: bool = False
-
-
-class InMemoryCheckpointStore:
-    """v1 checkpoint store — keyed by ``request_id`` (upsert; latest trigger wins).
-
-    A durable Falkor-backed store is the persister-wiring follow-up (ADR-0179
-    §marker store); this in-memory store makes the scan contract testable.
-    """
-
-    def __init__(self) -> None:
-        self._markers: Dict[str, CheckpointMarker] = {}
-
-    def record(self, marker: CheckpointMarker) -> None:
-        existing = self._markers.get(marker.request_id)
-        if existing is not None and existing.consolidated:
-            return
-        self._markers[marker.request_id] = marker
-
-    def mark_consolidated(self, request_id: str) -> None:
-        m = self._markers.get(request_id)
-        if m is not None:
-            m.consolidated = True
-
-    def iter_unconsolidated(self) -> List[CheckpointMarker]:
-        return [m for m in self._markers.values() if not m.consolidated]
-
-
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def record_checkpoint(
-    store: Any,
-    *,
-    request_id: str,
-    last_phase: Optional[str] = None,
-    last_milestone: Optional[str] = None,
-    request_input_ref: Optional[str] = None,
-    request_pattern_iri: Optional[str] = None,
-) -> None:
-    """Record/update a checkpoint marker at a D-B50 trigger (no-op if no store)."""
-    if store is None:
-        return
-    store.record(
-        CheckpointMarker(
-            request_id=request_id,
-            request_input_ref=request_input_ref,
-            request_pattern_iri=request_pattern_iri,
-            last_phase=last_phase,
-            last_milestone=last_milestone,
-        )
-    )
+def _episode_state(node: Any) -> Optional[str]:
+    """The Episode's lifecycle ``state`` (Dream PRE-0 Slice 1b: a real node
+    property). Tolerates a missing property (returns ``None``)."""
+    props = getattr(node, "properties", None) or {}
+    return props.get("state")
 
 
-def recover_unconsolidated(store: Any, dispatcher: Any) -> List[str]:
-    """L4-startup scan: for each unconsolidated marker, write a ``crash_marker``
-    Episode via ``consolidate:mm`` unless one already exists for that task
-    (idempotent — ADR-0176 §4). Returns the recovered task_ids. No-op when the
-    store or the consolidate capacity / KL is unavailable.
+def _episode_id_of(node: Any) -> Optional[str]:
+    """Recover the ``episode_id`` from a crashed Episode node.
+
+    The node's primary ``value`` IS the ``episode_id`` (set at open); fall back
+    to nothing if that invariant does not hold (skip the node)."""
+    val = getattr(node, "value", None)
+    return val if isinstance(val, str) and val else None
+
+
+def recover_unconsolidated(dispatcher: Any, *, local_persister: Any = None) -> List[str]:
+    """L4-startup scan: close every crashed (``state=open``) Episode in place.
+
+    For each open Episode, stamp ``state=closed`` + ``outcome_classification=
+    "failed"`` + a recovered ``crash_marker`` via the ``consolidate:mm`` op=close
+    upsert (merge — the open anchors are preserved). Returns the recovered
+    ``episode_id``s. No-op when the KL / consolidate capacity is unavailable or
+    no Episode is open. Durably flushes the Local when ``local_persister`` is
+    supplied and anything was recovered.
     """
-    if store is None:
+    kl = getattr(dispatcher, "_kl", None)
+    session = getattr(dispatcher, "_session", None)
+    if kl is None:
         return []
     from .consolidation import consolidation_enabled
 
     if not consolidation_enabled(dispatcher):
         return []
-    kl = getattr(dispatcher, "_kl", None)
-    session = getattr(dispatcher, "_session", None)
     user_id = getattr(session, "user_id", "user")
+    try:
+        local_mg = kl.local_metagraph(user_id)
+    except Exception:
+        return []
+    graphs = MetagraphView(local_mg).graphs_by_role(ROLE_EPISODIC_MEMORIES)
+    if not graphs:
+        return []
+    g = graphs[0]
+    open_episodes = [
+        n
+        for n in g.nodes.values()
+        if n.type_name == NODE_EPISODE and _episode_state(n) == EPISODE_STATE_OPEN
+    ]
 
     recovered: List[str] = []
-    for marker in store.iter_unconsolidated():
-        epi_iri = episode_iri("v1", user_id, marker.request_id)
-        if kl is not None and kl.read_at_version(epi_iri, 1) is not None:
-            store.mark_consolidated(marker.request_id)  # already consolidated
+    for node in open_episodes:
+        episode_id = _episode_id_of(node)
+        if episode_id is None:
             continue
-        crash = CrashInfo(
-            last_phase=marker.last_phase,
-            last_milestone=marker.last_milestone,
-            detected_at=_utc_now_iso(),
-            recovered=False,
-        )
+        crash = CrashInfo(detected_at=_utc_now_iso(), recovered=True)
         record = {
             DS_MM_COMPOSITE_INSTANCE: {
-                "episode_id": marker.request_id,
+                "episode_id": episode_id,
                 "value": {
-                    "request_input_ref": marker.request_input_ref
-                    or f"requestinput:{marker.request_id}",
-                    "mm_root_ref": None,
-                    "request_pattern_iri": marker.request_pattern_iri,
-                    "outcome_classification": "failed",
-                    "crash_marker": asdict(crash),
-                    "consolidated_at": _utc_now_iso(),
+                    "op": "close",
+                    "props": {
+                        "state": EPISODE_STATE_CLOSED,
+                        "outcome_classification": "failed",
+                        "crash_marker": asdict(crash),
+                        "consolidated_at": _utc_now_iso(),
+                    },
                 },
             }
         }
-        result = dispatcher.dispatch(CONSOLIDATE_MM_IRI, record, request_id=marker.request_id)
-        if result is not None and getattr(result, "success", False):
-            store.mark_consolidated(marker.request_id)
-            recovered.append(marker.request_id)
+        result = dispatcher.dispatch(
+            CONSOLIDATE_MM_IRI, record, request_id=episode_id
+        )
+        if result is not None and getattr(result, "success", True):
+            recovered.append(episode_id)
+
+    if recovered and local_persister is not None:
+        try:
+            local_persister.save(user_id, kl.local_metagraph(user_id))
+        except Exception:
+            pass
     return recovered
 
 
-__all__ = [
-    "CrashInfo",
-    "CheckpointMarker",
-    "InMemoryCheckpointStore",
-    "record_checkpoint",
-    "recover_unconsolidated",
-]
+__all__ = ["CrashInfo", "recover_unconsolidated"]

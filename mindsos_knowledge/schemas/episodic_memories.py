@@ -61,26 +61,56 @@ EPISODIC_MEMORIES_EDGE_TYPES: tuple[str, ...] = (
 )
 
 
-# ── Episode content / metadata partition (Phase 43 — ADR-0152 §7 + ADR-0153 §3) ──
+# ── Episode lifecycle state (Dream PRE-0 Slice 1b) ────────────────────
 #
-# 6 content fields (Chat B D-B47). Episode has NO metadata partition in
-# v1 — externally append-only; all fields are reference-stable per
-# ADR-0153 §4. ``crash_marker`` is set during consolidation per Chat B
-# D-B50 when the previous session crashed; once written, immutable like
-# other Episode content. Storage tier for ``request_input_ref`` cascades
-# through the XRef target's ``storage_mode`` per ADR-0151 (no
-# Episode-level ``storage_mode`` declaration per design log §6.1).
+# The streaming Episode carries a mutable ``state`` metadata property that
+# tracks its open->grow->close lifecycle (dream-episode-model, locked w/ HA
+# 2026-07-27). ``open`` = the request is in flight OR the session crashed
+# before a decision (the ONLY failure); ``closed`` = a terminal decision was
+# reached (solved / dont_know / conceded — all successes) OR a crash was
+# recovered + recorded; ``suspended`` = needs-input / pending-confirmation
+# (resumes; NOT a crash). Crash recovery scans for ``state == open``.
+
+EPISODE_STATE_OPEN = "open"
+EPISODE_STATE_CLOSED = "closed"
+EPISODE_STATE_SUSPENDED = "suspended"
+
+EPISODE_STATES: frozenset[str] = frozenset({
+    EPISODE_STATE_OPEN,
+    EPISODE_STATE_CLOSED,
+    EPISODE_STATE_SUSPENDED,
+})
+
+
+# ── Episode content / metadata partition (Phase 43 — ADR-0152 §7 + ADR-0153 §3;
+#    restructured Dream PRE-0 Slice 1b D1) ──
+#
+# Dream PRE-0 Slice 1b (D1): the Episode's fields are stored as real L1 node
+# **properties** (not an opaque ``value`` blob), so the streaming lifecycle can
+# edit them field-by-field through ``KLWriteHandle.update_and_validate`` (Slice
+# 1a). ``state`` is the sole METADATA field (freely mutable — it flips
+# open->closed/suspended through the lifecycle). The 8 CONTENT fields stay
+# frozen except via the retire-time lazy-inline (``via_lazy_inline=True``): they
+# are written once when known — ``request_input_ref`` / ``request_input_root_ref``
+# at open; ``mm_root_ref`` / ``capacity_root_ref`` / ``request_pattern_iri`` /
+# ``outcome_classification`` / ``consolidated_at`` at close; ``crash_marker`` only
+# on a recovered crash (Chat B D-B50). ``append_only_with_lazy_inline`` discipline
+# unchanged (ADR-0153 §1).
 
 EPISODE_CONTENT_FIELDS: frozenset[str] = frozenset({
     "request_input_ref",
+    "request_input_root_ref",
     "mm_root_ref",
+    "capacity_root_ref",
     "request_pattern_iri",
     "outcome_classification",
     "crash_marker",
     "consolidated_at",
 })
 
-EPISODE_METADATA_FIELDS: frozenset[str] = frozenset()
+EPISODE_METADATA_FIELDS: frozenset[str] = frozenset({
+    "state",
+})
 
 EPISODE_PROPS: frozenset[str] = (
     EPISODE_CONTENT_FIELDS | EPISODE_METADATA_FIELDS
