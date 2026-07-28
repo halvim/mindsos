@@ -17,7 +17,6 @@ ships the WSD/phase-1 placeholders — same as both arc brains. Not faked.
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import Dict, List
 
 import numpy as np
@@ -26,7 +25,10 @@ from mindsos_capacity import CapacityLayer, capacity_iri
 from mindsos_capacity import (
     CATEGORY_PERCEPTION, CATEGORY_DERIVATION,
 )
-from mindsos_capacity.identifiers import CATEGORY_DECISION
+from mindsos_capacity.identifiers import CATEGORY_DECISION, CATEGORY_REDUCTION
+from mindsos_capacity.builtins.reduction_v0 import (
+    install_reduction_v0, DS_SCORED_COLLECTION, DS_SELECTION,
+)
 from mindsos_intelligence.pipeline_execution import execute_pipeline
 
 from . import ontology as O
@@ -63,6 +65,9 @@ _ONSET     = capacity_iri(CATEGORY_DERIVATION, "onset_features")
 _ASSEMBLE  = capacity_iri(CATEGORY_DERIVATION, "assemble_signature")
 _SIG_DIST  = capacity_iri(CATEGORY_DERIVATION, "signature_distance")
 _RECOGNIZE = capacity_iri(CATEGORY_DECISION, "recognize")
+# appliance selection is a real capacity now (was Python sorted+Counter): the
+# nearest exemplar is `reduction.argmin` over a scored collection (ADR-0204).
+_ARGMIN    = capacity_iri(CATEGORY_REDUCTION, "argmin")
 
 
 def build_given(**overrides) -> Dict[str, object]:
@@ -98,6 +103,10 @@ class Solver:
         self.cl = cl if cl is not None else CapacityLayer()
         self.session = session if session is not None else DuckSession(user_id)
         self.given = given if given is not None else build_given()
+
+        # Global reduction builtins (argmin selection for the appliance matcher);
+        # idempotent — no-op if the cl already has them (e.g. a shared resident cl).
+        install_reduction_v0(self.cl)
 
         O.register_ontology(self.cl, self.session)
         register_perception(self.cl, self.session)
@@ -539,24 +548,30 @@ class Solver:
         self.match_cutoff = fit_match_cutoff(within, between, margin)
         return self.match_cutoff
 
-    def _match_appliance(self, sig, k: int):
-        """L4 k-NN over the taught library (variable-size fan-out = iteration,
-        not composition): the k nearest references vote; return the winner with
-        its nearest in-class distance and vote confidence."""
+    def _match_appliance(self, sig, k: int = 1):
+        """Nearest taught exemplar via the `reduction.argmin` capacity (was a
+        Python `sorted`+`Counter` vote). The variable-size library fan-out stays
+        L4 iteration (invoking `signature_distance` per exemplar); the SELECTION
+        is now a real capacity. 1-NN: the nearest exemplar's class is the verdict
+        — k>1 majority vote gave no measurable gain on PLAID (leave-one-instance-
+        out). `k` is vestigial (kept for call-site compatibility)."""
         lib = self.appliance_library
         if not lib:
             return None
-        ranked = sorted(((self._sig_distance(sig, r["vector"]), r["name"]) for r in lib),
-                        key=lambda x: x[0])[:max(1, k)]
-        names = [n for _, n in ranked]
-        win = Counter(names).most_common(1)[0][0]
-        nearest = min(d for d, n in ranked if n == win)
-        return {"name": win, "distance": float(nearest),
-                "confidence": names.count(win) / len(names)}
+        collection = [{"score": self._sig_distance(sig, r["vector"]), "label": r["name"]}
+                      for r in lib]
+        sel = self._invoke(_ARGMIN, {DS_SCORED_COLLECTION: collection})[DS_SELECTION]
+        if sel is None:
+            return None
+        # 1-NN has no vote fraction; distance vs the learned cutoff (in `recognize`)
+        # carries accept/reject. confidence is trivially 1.0 (mirrors old k=1).
+        return {"name": sel["member"]["label"], "distance": float(sel["score"]),
+                "confidence": 1.0}
 
-    def recognize_appliance(self, raw, max_windows: int = 16, k: int = 5) -> List[Dict]:
-        """Per-window appliance verdicts: signature -> L4 k-NN vote -> the
-        `recognize` decision capacity (recognized[name] | request_reference)."""
+    def recognize_appliance(self, raw, max_windows: int = 16, k: int = 1) -> List[Dict]:
+        """Per-window appliance verdicts: signature -> nearest exemplar via the
+        `reduction.argmin` capacity -> the `recognize` decision capacity
+        (recognized[name] | request_reference)."""
         out = []
         for sig in self._appliance_signatures(raw, max_windows):
             voted = self._match_appliance(sig, k)

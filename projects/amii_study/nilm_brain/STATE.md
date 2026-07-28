@@ -238,3 +238,9 @@ pulls/validates; read-only git from the sandbox is fine. **No hardcoded values**
 constant is a DataState input. **Do not document numpy probe/test *results*** in any
 persisted file (contamination rule): the brain's capacities are the source of truth, not
 throwaway numpy.
+- **Build through mindsos.** When the task is to wire/add a capability, go straight to the
+  capacity change — do **NOT** run standalone Python/numpy, or hand the user an operator
+  script (`classify_eval`, bake-offs, ad-hoc numpy), as a **decision gate** or ground truth.
+  Operator scripts are exploration only, never a prerequisite to a requested wiring. (Extends
+  the contamination rule: don't *decide-by* numpy, not just don't *persist* it.) Read-only
+  inspection to verify repo/brain state — `git log`/`grep`/reading files — is fine and expected.
