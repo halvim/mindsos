@@ -104,6 +104,7 @@ def install_brain_builtins(cl: Any) -> None:
     )
     from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
     from mindsos_capacity.builtins.dream import install_dream_capacities
+    from mindsos_capacity.builtins.learn_parameter import install_learn_parameter_capacities
 
     install_planning_v0(cl)
     install_phase1_v0(cl)
@@ -111,6 +112,7 @@ def install_brain_builtins(cl: Any) -> None:
     install_consolidate_capacities(cl)
     install_text_capacities(cl)
     install_dream_capacities(cl)
+    install_learn_parameter_capacities(cl)
     reset_v0_verdicts()
 
 
@@ -370,10 +372,14 @@ def boot_brain(
     # the concrete ``MMResolver`` (KL-backed source), gated on ``reads_mm``.
     # Inert until a ``reads_mm=True`` consumer ships. The Orchestrator's write
     # access is the real ``mm`` passed below, not this read handle.
+    from mindsos_knowledge.learned_parameters_snapshot import (
+        read_learned_parameter_snapshot,
+    )
     dispatcher = L4Dispatcher(
         cl,
         session=session,
         kl=kl,
+        learned_parameters=read_learned_parameter_snapshot(kl, user),
         mm_handle=MMResolver(mm, KnowledgeMMSource(kl)),
         modality_profiles=modality_profiles,
     )
