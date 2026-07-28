@@ -56,7 +56,7 @@ and title, so on arc1/arc3 the legend + datastate-detail labels rendered
 `{ nodes:[{id:"ds:x"|"cap:x", label, kind:"ds"|"cap", group, color{}, shape,
 seg:[segkey], cap?:{family,inputs,outputs}}], edges:[{id,from,to,arrows,
 kind:"produce"|"consume", seg:[segkey]}], segments:{key:{label,caps[],nodeIds[]}},
-capColor:{family:hex}, dsColor:{group:hex}, title:str|null, capNames:{family:label}, dsNames:{group:label} }`. Node ids collapse to short names; `capNames`/`dsNames` are filtered to groups present in the nodes.
+capColor:{family:hex}, dsColor:{group:hex}, title:str|null, capNames:{family:label}, dsNames:{group:label} }`. Node ids collapse to short names, but **node ids are the full IRI** (`cap:`/`ds:` + iri) so they are unique; `label` is the short name. `capNames`/`dsNames` are filtered to groups present in the nodes.
 
 ## Install divergence (load-bearing)
 The generic `view` code ships inside the `mindsos-runtime` package. How a brain
@@ -116,10 +116,6 @@ locally — re-run with `scp`.
   what the finder can actually build; the node/edge graph is the payload,
   segments are a secondary overlay. Not enriched by hand (hand-authored segments
   would show pipelines the finder can't assemble = misleading).
-- **Node-id collisions.** Ids are `cap:` / `ds:` + `_short(iri)` (text after the
-  last `:` then last `.`). A capacity and a datastate sharing a short name do
-  NOT collide (distinct prefix). Real collisions are only two *capacities* (across
-  categories) or two *datastates* (across groups) sharing a last segment — those
-  merge into one node. `build_data` emits a `logging.warning` naming any distinct IRIs that collapse to one id, so a real clash surfaces live on every brain (unit-tested in `tests/brain_viz/test_brain_viz_data.py`). No collision on nilm/arc1/arc3 as of 2026-07-28.
+- **Node ids are the full IRI (unique).** `_vid` keys each node on `cap:`/`ds:` + the full IRI, so two datastates sharing a short name (arc1's `path_finding.goal` vs `phase1.goal`) stay distinct nodes; `label` shows the short name, the detail panel shows the namespace. Before this fix they collapsed to one id and `vis.DataSet` threw "id already exists", blanking the whole graph (arc1 never rendered). Fixed 2026-07-28; the earlier collision `logging.warning` removed as unreachable. Regression-tested in `tests/brain_viz/test_brain_viz_data.py`.
 - **scp host** inferred from `SSH_CONNECTION`; hardcode the ssh-config alias if
   desired.

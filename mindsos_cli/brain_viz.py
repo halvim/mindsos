@@ -35,9 +35,6 @@ from __future__ import annotations
 
 import json
 from typing import Any, Dict, List, Optional, Tuple
-import logging
-
-_log = logging.getLogger(__name__)
 
 # Generic labels for the topology-heuristic ds groups (any brain, no viz_spec
 # needed). Brain-specific nice names come from viz_spec.DS_LABELS / CAP_LABELS.
@@ -70,7 +67,10 @@ def _short(iri: Any) -> str:
 
 
 def _vid(kind: str, iri: Any) -> str:
-    return ("cap:" if kind == "cap" else "ds:") + _short(iri)
+    # Full IRI keeps ids unique — two datastates that share a short name
+    # (e.g. path_finding.goal vs phase1.goal) must not collapse to one node,
+    # or vis.DataSet raises "id already exists" and the graph never renders.
+    return ("cap:" if kind == "cap" else "ds:") + str(iri)
 
 
 def _node_color(bg: str) -> Dict[str, Any]:
@@ -184,19 +184,6 @@ def _norm_segments(raw: Any) -> List[Dict[str, Any]]:
     return out
 
 
-def _warn_id_collisions(iris, kind):
-    """Distinct IRIs that collapse to the same cap:/ds: short id merge into one
-    node in the viewer. Log a warning so the clash is visible on every brain."""
-    by_id = {}
-    for iri in iris:
-        by_id.setdefault(_vid(kind, iri), set()).add(str(iri))
-    for vid, group in by_id.items():
-        if len(group) > 1:
-            _log.warning(
-                "brain_viz: %s id %r collides — %d distinct IRIs merge into "
-                "one node: %s", kind, vid, len(group), ", ".join(sorted(group)))
-
-
 # ── main builder ─────────────────────────────────────────────────────────
 
 def build_data(views: List[Any], spec: Any = None, context: Any = None) -> Dict[str, Any]:
@@ -212,8 +199,6 @@ def build_data(views: List[Any], spec: Any = None, context: Any = None) -> Dict[
     ds_iris = [n.node_id for n, _ in _iter_unique(views, "iter_datastates")]
     cap_iris = [n.node_id for n, _ in _iter_unique(views, "iter_capacities")]
     cap_io = {c: _io_of(views, c) for c in cap_iris}
-    _warn_id_collisions(ds_iris, "ds")
-    _warn_id_collisions(cap_iris, "cap")
     groups = _resolve_groups(ds_iris, cap_io, ds_group_map)
 
     # assign ramp colors to any family lacking an explicit color
