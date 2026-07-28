@@ -63,14 +63,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal, Mapping, Optional
 
 from mindsos_capacity.exceptions import WriteHandleNotWiredError
 from mindsos_capacity.write_outcome import WriteResult
 
 from .exceptions import MutationDisciplineError
 from .identifiers import DATASET_ROLE_PREFIX, _IRI_BUILDERS, dataset_node_iri
-from .validators import ValidationResult, _VALIDATORS_BY_ROLE
+from .validators import (
+    ValidationResult,
+    _VALIDATORS_BY_ROLE,
+    validate_mutation_discipline,
+)
 
 if TYPE_CHECKING:
     from mindsos_core import Graph, Metagraph
@@ -309,6 +313,95 @@ class KLWriteHandle:
         # node_id=None, _validate=True). L2 convention exposes ``type_``;
         # translate at the boundary per Phase 34 R4 §am-impl-1.
         self.graph().add_node(value=value, type_name=type_, node_id=iri)
+        return WriteResult(
+            iri=iri,
+            role=self.role,
+            scope=self.scope,
+            written_at=datetime.now(timezone.utc),
+            extras={},
+        )
+
+    def update_and_validate(
+        self,
+        *,
+        iri: str,
+        field_updates: Mapping[str, Any],
+        content_fields: "frozenset[str]" = frozenset(),
+        via_lazy_inline: bool = False,
+        is_settled: bool = False,
+        is_admin: bool = False,
+    ) -> WriteResult:
+        """Edit an EXISTING node's fields under the role's mutation discipline.
+
+        The L2 *edit* counterpart to :meth:`write_and_validate` (which only
+        creates). This is the first shipped caller of
+        :func:`mindsos_knowledge.validators.validate_mutation_discipline`
+        (ADR-0153 §3 per-field enforcement — deferred at Phase 43 "until the
+        first capacity that edits an existing node"). It resolves the node by
+        ``iri``, checks EACH updated field against the role's declared
+        discipline using the caller-supplied ``content_fields`` partition, then
+        applies the merge in-memory via :meth:`Graph.update_node_properties`
+        (persistence stays the server's job, exactly as for creates — the KL
+        never touches Falkor).
+
+        Discipline behaviour (per ``validate_mutation_discipline``):
+
+        * ``admin_authored`` — any field rejected unless ``is_admin``.
+        * ``immutable_successor`` / ``append_only`` — content-field edits
+          rejected (mint a successor / append instead).
+        * ``append_only_with_lazy_inline`` — content-field edits rejected
+          unless ``via_lazy_inline`` (the retire-time inline write).
+        * ``audit_only_after_settled`` — any edit rejected once ``is_settled``.
+        * ``mutable_with_retention`` / no L2Schema (``None``) — no field block.
+
+        Metadata fields (NOT in ``content_fields``) are always mutable, except
+        under the whole-node ``admin_authored`` / settled gates.
+
+        Args:
+            iri: node_id of the EXISTING node to edit (must already exist in
+                the role-graph).
+            field_updates: property name -> new value (dict-merged; other
+                properties preserved).
+            content_fields: the schema's content/metadata partition
+                (``*_CONTENT_FIELDS``). Fields absent from it are metadata;
+                empty ⇒ every field is metadata (no content gate).
+            via_lazy_inline: permit a content-field write under
+                ``append_only_with_lazy_inline`` (the retire-time mechanism).
+            is_settled: target row is terminal (``audit_only_after_settled``).
+            is_admin: write is via admin tooling (``admin_authored``).
+
+        Raises:
+            MutationDisciplineError: first field that violates the discipline.
+            IdentityError: no node with ``iri`` in the role-graph.
+            UnknownTypeError / PropertyShapeError: L1 schema validation of the
+                merged property bag failed.
+        """
+        discipline = self._kl.discipline_for(self._metagraph, self.role)
+        if discipline is not None:
+            for field in field_updates:
+                result = validate_mutation_discipline(
+                    discipline=discipline,
+                    field=field,
+                    role=self.role,
+                    iri=iri,
+                    content_fields=content_fields,
+                    is_settled=is_settled,
+                    is_admin=is_admin,
+                    via_lazy_inline=via_lazy_inline,
+                )
+                if not result.ok:
+                    raise MutationDisciplineError(
+                        iri=iri,
+                        role=self.role,
+                        discipline=discipline.value,
+                        field=field,
+                        attempted_op="update",
+                        hint=result.violation
+                        or "write violates the role's mutation discipline",
+                    )
+        self.graph().update_node_properties(
+            iri, dict(field_updates), replace=False
+        )
         return WriteResult(
             iri=iri,
             role=self.role,
