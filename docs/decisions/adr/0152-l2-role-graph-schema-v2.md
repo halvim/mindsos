@@ -394,3 +394,30 @@ PB-R3-22, PB-R3-31 (promoted-pipelines lifecycle); Chat A R3 Method δ
 D-B47 + D-B48 (episodic_memories entry types); WSD
 `coordinated_change_L2_lexicon_layers_and_role_graphs.md` §6
 (role-graph specs).
+
+## Amendment (CR learned-parameters — L3 write capacity + L4 snapshot)
+
+Date: 2026-07-28. Status: Proposed (gate pending).
+
+The `learned-parameters` role (§6) gains first-class read/write surfaces so any
+brain / subsystem can persist and consume learned parameters uniformly, instead
+of hand-rolling KL writes (nilm's `persistence.py`).
+
+- **Addressing.** One node per `(parameter_set, target)` — node id
+  `learned_parameter_iri("v1", f"{parameter_set}:{target}")`. The IRI is opaque;
+  `parameter_set_iri` / `target_parameter_iri` props are authoritative.
+- **Write = L3 capacity.** `capacity:learning-methods:learn_parameter`
+  (write-body, ADR-0180) targets Local only; overwrite-in-place (remove+add,
+  no version history) since Local discipline is `mutable_with_retention`. Global
+  stays `admin_authored` — L3/L4 cannot write it; a system improvement is a
+  Local write + a promotion proposal (separate approval CR, not this one).
+- **Read = L4 plumbing.** `read_learned_parameter_snapshot(kl, user)` fills
+  `CapacityContext.learned_parameters_snapshot`, **Local overriding Global per
+  knob**. It is NOT a capacity (it builds the context capacities run inside).
+- **Provenance.** Every write stamps `learned_by` / `recorded_at` / `reason`
+  (added to `LEARNED_PARAMETER_PROPS`, advisory, `strict=False`).
+  `applied_from_promotion_iri` remains absent for direct learns.
+- Nodes carry no `reactivation_key`, so the boot reactivation walk skips them.
+
+Note: the CR text's "amend ADR-0203" was incorrect (0203 is learned-pipelines);
+this feature amends ADR-0152 §6.
