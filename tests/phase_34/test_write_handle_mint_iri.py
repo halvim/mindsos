@@ -97,6 +97,7 @@ def test_iri_builders_registry_phase_39_three_entries():
     """
     from mindsos_knowledge.identifiers import (
         ROLE_CAPACITY_GAPS,
+        ROLE_INSTALLED_CAPACITIES,
         ROLE_INSTALLED_SKILLS,
         ROLE_LEARNED_PARAMETERS,
         ROLE_LEARNED_PIPELINES,
@@ -119,4 +120,6 @@ def test_iri_builders_registry_phase_39_three_entries():
         (ROLE_SUBMINDS, "SubMindDefinition"),
         # feat/learned-pipeline-persistence addition per ADR-0203.
         (ROLE_LEARNED_PIPELINES, "LearnedPipeline"),
+        # ADR-0183 §am-5 addition.
+        (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"),
     }
