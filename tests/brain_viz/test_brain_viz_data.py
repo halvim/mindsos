@@ -1,14 +1,13 @@
 """Unit coverage for ``mindsos_cli.brain_viz.build_data`` — the headless core of
 the ``view`` REPL verb. Pure duck-typed views; no FalkorDB / Stack.
 
-Covers the brain-neutral labelling landed alongside the arc1/arc3 viz_spec hooks:
-per-brain ``CAP_LABELS`` / ``DS_LABELS`` / ``TITLE`` pass-through, the generic
-heuristic ds-group labels, present-only legend filtering, and the node-id
-collision warning (distinct IRIs that collapse to one ``cap:``/``ds:`` short id).
+Covers the brain-neutral labelling (per-brain ``CAP_LABELS`` / ``DS_LABELS`` /
+``TITLE`` + generic heuristic ds labels, present-only legend filtering) and the
+node-id uniqueness regression: two datastates that share a short name must stay
+distinct nodes, or ``vis.DataSet`` raises "id already exists" and the graph never
+renders (the arc1 blank-graph bug).
 """
 from __future__ import annotations
-
-import logging
 
 from mindsos_cli.brain_viz import build_data
 
@@ -19,13 +18,13 @@ class _N:
 
 
 class _View:
-    """A minimal capacity view: two datastates collide on their short name."""
+    """Two datastates share the short name 'goal' across namespaces."""
 
-    _DS = ["arc.grid", "arc.palette", "other.grid"]  # arc.grid & other.grid -> ds:grid
+    _DS = ["path_finding.goal", "phase1.goal", "arc.grid"]
     _CAPS = {"perceiver": ["arc.perceive"], "reasoning": ["arc.reason"]}
     _IO = {
-        "arc.perceive": (["arc.grid"], ["arc.palette"]),
-        "arc.reason": (["arc.palette"], []),
+        "arc.perceive": (["arc.grid"], ["path_finding.goal"]),
+        "arc.reason": (["path_finding.goal"], []),
     }
 
     def iter_datastates(self):
@@ -56,34 +55,36 @@ class _Spec:
     TITLE = "arc1_brain graph"
 
 
+def test_shared_short_name_stays_distinct():
+    """Regression: distinct IRIs with the same short name must be distinct nodes
+    with unique ids (else vis.DataSet crashes and the graph is blank)."""
+    data = build_data([_View()], spec=_Spec())
+    ds = [n for n in data["nodes"] if n["kind"] == "ds"]
+    ids = [n["id"] for n in ds]
+    assert len(ids) == len(set(ids)), f"duplicate node ids: {ids}"
+    assert "ds:path_finding.goal" in ids and "ds:phase1.goal" in ids
+    # the short label is still what the user sees
+    assert sorted(n["label"] for n in ds) == ["goal", "goal", "grid"]
+
+
 def test_title_and_labels_emitted():
     data = build_data([_View()], spec=_Spec())
     assert data["title"] == "arc1_brain graph"
-    # per-brain cap labels pass through, filtered to families actually present
     assert data["capNames"] == {"perceiver": "Perceiver", "reasoning": "Reasoning"}
-    # generic heuristic ds labels appear for the groups the heuristic assigns
     assert data["dsNames"]["given"] == "given (entry input)"
     assert data["dsNames"]["derived"] == "derived"
 
 
 def test_legend_is_present_only():
     data = build_data([_View()], spec=_Spec())
-    # only groups/families that occur in nodes are legended
     node_ds_groups = {n["group"] for n in data["nodes"] if n["kind"] == "ds"}
     assert set(data["dsColor"]) == node_ds_groups
     assert set(data["dsNames"]) <= node_ds_groups
     assert "l2" not in data["dsColor"]  # nilm-specific default never leaks in
 
 
-def test_id_collision_warns(caplog):
-    with caplog.at_level(logging.WARNING, logger="mindsos_cli.brain_viz"):
-        build_data([_View()], spec=_Spec())
-    msgs = [r.getMessage() for r in caplog.records]
-    assert any("ds:grid" in m and "collides" in m for m in msgs), msgs
-
-
 def test_no_spec_degrades_cleanly():
     data = build_data([_View()], spec=None)
     assert data["title"] is None
-    assert data["capNames"] == {}          # no per-brain labels -> template falls back to key
-    assert data["dsNames"]["given"] == "given (entry input)"  # generic labels still there
+    assert data["capNames"] == {}
+    assert data["dsNames"]["given"] == "given (entry input)"
