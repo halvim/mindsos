@@ -37,11 +37,11 @@ def test_role_constant_value():
 def test_closed_role_set_is_14():
     assert ROLE_SUBMINDS in UPPER_LAYER_ROLES
     assert ROLE_SUBMINDS in ALL_ROLES
-    assert len(ALL_ROLES) == 15
+    assert len(ALL_ROLES) == 16
 
 
 def test_dispatch_table_includes_subminds():
-    assert len(_ROLE_SCHEMA_BUILDERS) == 15
+    assert len(_ROLE_SCHEMA_BUILDERS) == 16
     assert _ROLE_SCHEMA_BUILDERS[ROLE_SUBMINDS] is build_subminds_schema
 
 

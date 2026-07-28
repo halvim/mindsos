@@ -41,6 +41,7 @@ def test_registry_contains_three_entries_post_rename() -> None:
     """
     from mindsos_knowledge.identifiers import (
         ROLE_CAPACITY_GAPS,
+        ROLE_INSTALLED_CAPACITIES,
         ROLE_INSTALLED_SKILLS,
         ROLE_LEARNED_PARAMETERS,
         ROLE_LEARNED_PIPELINES,
@@ -63,6 +64,8 @@ def test_registry_contains_three_entries_post_rename() -> None:
         (ROLE_SUBMINDS, "SubMindDefinition"),
         # feat/learned-pipeline-persistence addition per ADR-0203.
         (ROLE_LEARNED_PIPELINES, "LearnedPipeline"),
+        # ADR-0183 §am-5 addition.
+        (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"),
     }
 
 

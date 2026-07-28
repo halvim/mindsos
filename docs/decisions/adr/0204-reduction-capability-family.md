@@ -1,10 +1,10 @@
 ---
-title: Reduction capability family (L4-support) — argmin / argmax / top_k / majority_vote
+title: Reduction capability family (L4-support) — argmin / argmax / top_k / bottom_k / majority_vote
 status: Accepted
 date: 2026-07-27
 layer: L4-support
 amends: []
-aliases: [reduction-family, argmax, top_k, majority-vote, CR-reduction]
+aliases: [reduction-family, argmax, top_k, bottom_k, majority-vote, CR-reduction]
 ---
 
 # ADR-0204: Reduction capability family (L4-support)
@@ -51,8 +51,9 @@ step) because core exposes no reusable capability for it — it is the last
 
 ## Decision
 
-Introduce a new **L4-support** capability family, `reduction`, holding four
-pure selection capabilities that L4 invokes as intelligence decisions.
+Introduce a new **L4-support** capability family, `reduction`, holding five
+pure selection capabilities that L4 invokes as intelligence decisions
+(`bottom_k` added by amendment am-1 — see below; originally four).
 
 ### Family / install
 
@@ -81,6 +82,13 @@ carry the winner's position and score so the caller need not re-derive them.
   - Inputs: `(scored_collection, k)` — **`k` is a declared input** supplied by
     L4, never a literal.
   - Output: ordered `[{index, member, score}, …]`; `k > n` clamps to `n`.
+- **`reduction.bottom_k`** *(amendment am-1)* — the `k` lowest-score members,
+  ranked smallest-first. Direction is fixed by the named variant, mirroring
+  `argmin`/`argmax` — **not** a `reverse` flag on `top_k`.
+  - Inputs: `(scored_collection, k)`.
+  - Output: `reduction.k_selection` — the **same** direction-neutral output DS as
+    `top_k` (am-1 renamed `top_selection` → `k_selection`; see below). Ordered
+    `[{index, member, score}, …]`; `k > n` clamps to `n`; `[]` on empty/`k<=0`.
 - **`reduction.majority_vote`** — the modal label among the members.
   - Inputs: `(scored_collection)`
   - Output: `{label, won, total}` (caller derives confidence = `won / total`).
@@ -156,3 +164,68 @@ carry the winner's position and score so the caller need not re-derive them.
 
 Proposed → **Accepted** on 2026-07-27: the full Linux suite passed green
 (4361 passed / 0 failed) with the 10 new `tests/reduction/` tests.
+
+## Amendment am-1 (2026-07-28): `reduction.bottom_k` + neutral `k_selection`
+
+**What.** Two coupled changes:
+
+1. Add a fifth cap, **`reduction.bottom_k`** — the `k` *lowest*-score members,
+   smallest-first.
+2. **Rename the k-pick output DataState `reduction.top_selection` →
+   `reduction.k_selection`**, and point **both** `top_k` and `bottom_k` at it.
+   `reduction.bottom_selection` does **not** exist.
+
+Cap roster is now **argmin / argmax / top_k / bottom_k / majority_vote** —
+**five caps, five DataStates** (`scored_collection`, `k`, `selection`,
+`k_selection`, `vote`). Note: `bottom_k` adds a capacity and **zero**
+DataStates, exactly as `argmax` added zero over `argmin`.
+
+**Why bottom_k.** The family shipped both directions of the *single* pick
+(`argmin`/`argmax`) but only the largest direction of the *k* pick (`top_k`,
+`sorted(reverse=True)` hardcoded). A distance-native consumer — nilm's k-NN,
+where the *k nearest* = the *k smallest* distances — had no clean cap and would
+otherwise negate scores or convert distance→similarity to reuse `top_k`.
+`bottom_k` restores the directional symmetry and lets a distance-native consumer
+select the k nearest directly.
+
+**Direction stays a named variant, not a parameter.** `top_k` and `bottom_k`
+are two named caps, no public `reverse`/direction input (consistent with this
+ADR's rejected "per-`k` variants" / "reverse flag" lines and with
+`argmin`/`argmax`). Internally they share one ordering helper taking direction
+as a private argument; `top_k`'s *behavior* is byte-identical.
+
+**Why the rename (the output-DS decision).** The right rule is **one
+direction-neutral output DataState per output *shape*, shared across
+directions** — which `argmin`/`argmax` already follow via `reduction.selection`.
+The *k* pick's output (an ordered `[{index, member, score}]`, direction already
+applied) is likewise direction-neutral downstream, so it should share **one**
+DS across `top_k`/`bottom_k`. The original name `top_selection` broke this by
+baking a direction into the name; a `top_selection` box holding smallest-first
+results would mislead. Considered but rejected:
+- *Reuse `top_selection` for `bottom_k`* — zero new DS but the name lies.
+- *New `bottom_selection`* — additive but entrenches the split (six DataStates;
+  the tell that the shape is wrong).
+Renaming to the neutral `k_selection` is the proper design. It is **not
+additive** (it rewrites `top_k`'s shipped output IRI), but the family is opt-in,
+not bootstrapped, and has **no consumers** (grep: no reference to
+`reduction.selection`/`top_selection` outside this module + its tests; nilm/ARC
+have not adopted). Blast radius is this module, its tests, and this ADR — the
+rename is nearly free now and strictly costlier once a consumer adopts, so it
+lands **before** adoption. This supersedes the byte-identical-`top_k`
+expectation for the *output IRI* only (behavior and all other caps unchanged).
+
+**Invariants preserved.** `argmin`/`argmax`/`majority_vote` and `top_k`'s
+selection *behavior* byte-identical. Still opt-in (`install_reduction_v0`
+registers five caps / five DataStates), still lazy category graph, still **not**
+in `FUNCTIONAL_CATEGORIES` (stays 13), surface still non-re-exported so the
+package `__all__` export-slate (139) is unchanged. Two capacities sharing one
+output DS is already the shipped norm (`argmin`/`argmax` → `reduction.selection`,
+gate-green), so `top_k`/`bottom_k` → `k_selection` introduces no new planner
+condition. Ties resolve first-in-list in both directions (stable sort);
+empty/`k<=0` → `[]`.
+
+**Gate.** `tests/reduction/` extended with smallest-first order, tie-at-boundary
+= first-in-list, `k>n` clamp, empty→`[]`, a top/bottom opposite-ends check, a
+distance-native `bottom_k → majority_vote` composition smoke, and an explicit
+assertion that each direction-pair shares one neutral output DS
+(`argmin`/`argmax` → `selection`, `top_k`/`bottom_k` → `k_selection`).

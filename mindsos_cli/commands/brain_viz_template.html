@@ -52,7 +52,7 @@ padding:1px 6px;margin:2px 3px 2px 0;font-size:11.5px;color:#cdd3de}
 .segrow{font-size:12px;color:var(--muted);margin:3px 0}
 </style></head><body><div id="app">
 <div id="side">
-  <h1>nilm_brain graph</h1>
+  <h1 id="title">brain graph</h1>
   <p class="sub">Every DataState (boxes) and capacity (ellipses); edges are consume → / produce →.
   Pick a segment to see how the <b>Conjunction Finder</b> chains capacities from start DataStates to a target.</p>
 
@@ -87,15 +87,14 @@ const net = new vis.Network(document.getElementById('net'),{nodes,edges},{
 });
 
 // legends
-const CAPNAMES={perception:'perception',derivation:'derivation',scoring:'scoring',
-  decision:'decision',comprehension:'comprehension',predicate:'predicate'};
-const DSNAMES={given:'given (const/task/state)',l2:'L2 refs + learned',floor:'floor atoms',
-  derived:'derived',learned_out:'learned output',appliance:'appliance (#3)',verdict:'verdict'};
+document.getElementById('title').textContent=DATA.title||'brain graph';
+const CAPNAMES=DATA.capNames||{};
+const DSNAMES=DATA.dsNames||{};
 const hidden={cap:new Set(),ds:new Set()};
 function legend(el,colors,names,kind){
   Object.entries(colors).forEach(([k,c])=>{
     const d=document.createElement('div');d.className='leg';
-    d.innerHTML=`<span class="sw" style="background:${c}"></span><span>${names[k]}</span>`;
+    d.innerHTML=`<span class="sw" style="background:${c}"></span><span>${names[k]||k}</span>`;
     d.onclick=()=>{const s=hidden[kind];s.has(k)?s.delete(k):s.add(k);d.classList.toggle('dim');applyFilter();};
     el.appendChild(d);
   });
@@ -157,13 +156,13 @@ document.getElementById('q').addEventListener('input',e=>{
 function showDet(id){
   const n=DATA.nodes.find(x=>x.id===id);const d=document.getElementById('det');
   if(n.kind==='cap'){
-    d.innerHTML=`<b>${n.label}</b> · <span style="color:${DATA.capColor[n.group]}">${n.group} capacity</span><br><br>`+
+    d.innerHTML=`<b>${n.label}</b> · <span style="color:${DATA.capColor[n.group]}">${CAPNAMES[n.group]||n.group} capacity</span><br><br>`+
       `<b>consumes</b><br>${n.cap.inputs.map(x=>`<span class="chip">${x}</span>`).join('')}<br><br>`+
       `<b>produces</b><br>${n.cap.outputs.map(x=>`<span class="chip">${x}</span>`).join('')}`;
   } else {
     const producers=DATA.edges.filter(e=>e.to===id&&e.kind==='produce').map(e=>strip(e.from));
     const consumers=DATA.edges.filter(e=>e.from===id&&e.kind==='consume').map(e=>strip(e.to));
-    d.innerHTML=`<b>${n.label}</b> · <span style="color:${DATA.dsColor[n.group]}">${DSNAMES[n.group]}</span> DataState<br><br>`+
+    d.innerHTML=`<b>${n.label}</b> · <span style="color:${DATA.dsColor[n.group]}">${DSNAMES[n.group]||n.group}</span> DataState<br><br>`+
       `<b>produced by</b><br>${producers.length?producers.map(x=>`<span class="chip">${x}</span>`).join(''):'<span class="hint">— entry input (L4/L2/L5) —</span>'}<br><br>`+
       `<b>consumed by</b><br>${consumers.length?consumers.map(x=>`<span class="chip">${x}</span>`).join(''):'<span class="hint">— terminal / unused —</span>'}`;
   }

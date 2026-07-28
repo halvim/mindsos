@@ -66,6 +66,7 @@ def test_real_declarations_order_per_scope() -> None:
     assert local_order.index("request-patterns") < local_order.index("episodic_memories")
     assert local_order == (
         "capacity-state",
+        "installed-capacities",
         "learned-parameters",
         "learned-pipelines",
         "parameter-staging",

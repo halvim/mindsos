@@ -172,6 +172,11 @@ class CapacityLayer:
             self._global.metagraph_id: {},
         }
         self._declarations: Dict[str, _CapacityBase] = {}
+        # ADR-0183 §am-5 — descriptors for lazily-built skill capabilities
+        # (iri -> descriptor). A cap registered metadata-only (function None)
+        # has its live function built on first resolve from its descriptor's
+        # ``reactivation_key`` factory. Boot runs no skill code.
+        self._lazy_descriptors: Dict[str, Dict[str, Any]] = {}
 
         # Phase 30 — single in-memory ProblemTraceSink per layer instance
         # (ADR-0074 §Implementation). Multi-tenant scoping is L4's
@@ -207,6 +212,7 @@ class CapacityLayer:
         *,
         session: SessionArg = None,
         allow_new_realm: bool = False,
+        if_exists: Literal["raise", "ignore"] = "raise",
     ) -> Node:
         """Create the Core DataState node for ``datastate``.
 
@@ -221,7 +227,10 @@ class CapacityLayer:
             DataStateError: ``datastate`` shape is malformed
                 (propagated from :func:`validate_datastate`).
             CapacityRegistrationError: ``datastate.iri`` already
-                registered in the target DataState graph.
+                registered in the target DataState graph (only when
+                ``if_exists="raise"``; ``"ignore"`` returns the existing
+                node — the every-boot skill-capacity rehydrate path,
+                ADR-0183 §am-5).
             PermissionError: ``session`` lacks ``CAN_WRITE_GLOBAL``
                 when the write targets Global.
         """
@@ -256,6 +265,8 @@ class CapacityLayer:
         mg = self._metagraph_for(target_uid)
         ds_graph = ensure_datastate_graph(mg, strict=self._strict)
         if datastate.iri in ds_graph.nodes:
+            if if_exists == "ignore":
+                return ds_graph.nodes[datastate.iri]
             raise CapacityRegistrationError(
                 f"DataState {datastate.iri!r} already registered in "
                 f"metagraph {mg.name!r}"
@@ -741,14 +752,56 @@ class CapacityLayer:
             if local_mg is not None:
                 local_index = self._capacity_index[local_mg.metagraph_id]
                 if capacity_iri in local_index:
-                    return local_index[capacity_iri][2]
+                    return self._maybe_build_lazy(capacity_iri, local_index)
         global_index = self._capacity_index[self._global.metagraph_id]
         if capacity_iri in global_index:
-            return global_index[capacity_iri][2]
+            return self._maybe_build_lazy(capacity_iri, global_index)
         raise CapacityRegistrationError(
             f"No capacity registered with IRI {capacity_iri!r} "
             f"(user_id={user_id!r})"
         )
+
+    def _maybe_build_lazy(self, capacity_iri, index):
+        """Build a metadata-only capability's live function on first resolve
+        (ADR-0183 §am-5). If the resolved declaration has no implementation and
+        a lazy descriptor is stashed for its IRI, call its ``reactivation_key``
+        factory to construct the full declaration, rebind it in the index +
+        ``_declarations`` (so later resolves hit the bound function), and return
+        it. A factory failure raises ``ReactivationError`` (a
+        ``CapacityRegistrationError``) — the capability is unavailable for this
+        call, no crash. No-op for normal (already-bound) capabilities."""
+        node, graph, decl = index[capacity_iri]
+        if decl.implementation is not None or capacity_iri not in self._lazy_descriptors:
+            return decl
+        from .reactivation import build_declaration
+        desc = self._lazy_descriptors[capacity_iri]
+        built = build_declaration(desc["reactivation_key"], desc)
+        index[capacity_iri] = (node, graph, built)
+        self._declarations[capacity_iri] = built
+        return built
+
+    def register_lazy_capacity(self, descriptor, *, session=None):
+        """Register a skill capability **metadata-only** (ADR-0183 §am-5).
+
+        Constructs a function-less ``Capacity`` from the descriptor's
+        declarative metadata (``name`` / ``category`` / ``inputs`` /
+        ``outputs``) — the skill's builder is NOT called here, so boot runs no
+        skill code (flat boot by construction). The live function is built on
+        first ``invoke`` from the stashed descriptor via its
+        ``reactivation_key`` factory. ``if_exists="upsert"`` — idempotent per
+        boot. Referenced DataStates must already exist (Global builtins are
+        mirrored Local-side by ``register_capacity``)."""
+        from .capacity import Capacity
+        decl = Capacity(
+            name=str(descriptor["name"]),
+            category=str(descriptor["category"]),
+            inputs=tuple(descriptor.get("inputs") or ()),
+            outputs=tuple(descriptor.get("outputs") or ()),
+            implementation=None,
+        )
+        node = self.register_capacity(decl, session=session, if_exists="upsert")
+        self._lazy_descriptors[decl.iri] = dict(descriptor)
+        return node
 
     def _enforce_global_write(
         self,

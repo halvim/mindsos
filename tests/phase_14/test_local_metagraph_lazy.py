@@ -20,6 +20,7 @@ def test_lazy_local_creates_on_first_access() -> None:
     """First call mints a Local with the 6 Local-named role-graphs (Phase 43
     §am-5: 2 base + 3 dual-scope; ADR-0150 §am-8: + dual-scope request-patterns)."""
     from mindsos_knowledge import (
+        ROLE_INSTALLED_CAPACITIES,
         ROLE_LEARNED_PARAMETERS,
         ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
@@ -37,6 +38,7 @@ def test_lazy_local_creates_on_first_access() -> None:
         ROLE_LEARNED_PARAMETERS,
         ROLE_REQUEST_PATTERNS,
         ROLE_LEARNED_PIPELINES,
+        ROLE_INSTALLED_CAPACITIES,
     }
 
 

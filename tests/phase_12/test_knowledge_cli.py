@@ -204,6 +204,8 @@ def test_roles_list_all_json() -> None:
         "subminds",
         # feat/learned-pipeline-persistence (ADR-0203) addition.
         "learned-pipelines",
+        # ADR-0183 §am-5 addition — installed Local capabilities.
+        "installed-capacities",
     }
 
 
@@ -236,6 +238,8 @@ def test_roles_list_upper_only() -> None:
         "subminds",
         # feat/learned-pipeline-persistence (ADR-0203) addition.
         "learned-pipelines",
+        # ADR-0183 §am-5 addition — installed Local capabilities.
+        "installed-capacities",
     }
 
 

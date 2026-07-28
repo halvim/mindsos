@@ -96,6 +96,7 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
         ROLE_PENDING_PROMOTIONS,
         ROLE_SUBMINDS,
         ROLE_LEARNED_PIPELINES,
+        ROLE_INSTALLED_CAPACITIES,
     )
 
     assert UPPER_LAYER_ROLES == frozenset({
@@ -115,6 +116,8 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
         ROLE_SUBMINDS,
         # feat/learned-pipeline-persistence (ADR-0203) addition.
         ROLE_LEARNED_PIPELINES,
+        # ADR-0183 §am-5 addition — installed Local capabilities.
+        ROLE_INSTALLED_CAPACITIES,
     })
 
 
