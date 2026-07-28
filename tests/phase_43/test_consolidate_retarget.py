@@ -35,7 +35,10 @@ def test_writes_type_episode() -> None:
 def test_episode_id_record_key() -> None:
     body = _read()
     assert "episode_id" in body
-    assert 'episode_id=record["episode_id"]' in body
+    # Dream PRE-0 Slice 1b: the record key is now bound to a local
+    # (``episode_id = record["episode_id"]``) then threaded into the write.
+    assert 'record["episode_id"]' in body
+    assert "episode_id=episode_id" in body
 
 
 def test_no_memory_id_in_active_code() -> None:
