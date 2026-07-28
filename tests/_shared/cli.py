@@ -17,6 +17,17 @@ import os
 import subprocess
 import sys
 
+# Gate hardening (phase_05c/06 flaky SIGSEGV): CPython's vfork()+exec()
+# fast path shares the parent address space until exec and is a known
+# source of rare, nondeterministic child SIGSEGV when a heavyweight
+# interpreter (the full pytest gate) spawns thousands of subprocesses.
+# These CLI tests fork `mindsos` ~8k times per gate; forcing plain fork()
+# removes the fragile path. Root-cause mitigation of the spawn, not a
+# test mask (no skip/xfail/rename/serialisation). Confirmed: _run_cli's
+# capture_output+close_fds+bare-exec spawn takes fork_exec(vfork), not
+# posix_spawn, on the 3.12 container.
+subprocess._USE_VFORK = False
+
 
 def _run_cli(
     *args: str, env: dict[str, str] | None = None, timeout: int = 30
