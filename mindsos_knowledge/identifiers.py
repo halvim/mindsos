@@ -90,6 +90,12 @@ ROLE_SUBMINDS = "subminds"
 # ``learned-parameters`` (mirrors its zero-edge single-NodeType shape).
 ROLE_LEARNED_PIPELINES = "learned-pipelines"
 
+# ADR-0183 §amendment-5 — installed-skill Local capability descriptors
+# (closed set 15 -> 16; Local-only, mutable_with_retention). Persist-once
+# store seeded at install and rehydrated (metadata at boot, function on
+# first use).
+ROLE_INSTALLED_CAPACITIES = "installed-capacities"
+
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
@@ -108,6 +114,8 @@ UPPER_LAYER_ROLES = frozenset({
     ROLE_SUBMINDS,
     # feat/learned-pipeline-persistence addition per ADR-0203.
     ROLE_LEARNED_PIPELINES,
+    # ADR-0183 §am-5 addition — installed-skill Local capability descriptors.
+    ROLE_INSTALLED_CAPACITIES,
 })
 ALL_ROLES = SEED_ROLES | UPPER_LAYER_ROLES
 
@@ -449,6 +457,19 @@ def learned_pipeline_iri(
     return f"learned-pipelines-{v}:pipeline:{pn}:{rid}"
 
 
+def installed_capability_iri(version: str, capacity_name: str) -> str:
+    """Installed-capability descriptor node (Local-only; ADR-0183 §am-5):
+    ``installed-capacities-<v>:cap:<capacity_name>``.
+
+    One node per installed Local capability; stable id per capacity so a
+    skill upgrade rewrites in place (``mutable_with_retention``) and an
+    uninstall removes it. ``capacity_name`` is a normalised fragment.
+    """
+    v = _ensure_version(version)
+    cn = _normalise_fragment(capacity_name)
+    return f"installed-capacities-{v}:cap:{cn}"
+
+
 # ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
 # Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
@@ -540,6 +561,16 @@ def _mint_learned_pipeline(version: str, /, **content: object) -> str:
     )
 
 
+def _mint_installed_capability(version: str, /, **content: object) -> str:
+    """Adapter: ``installed_capability_iri`` <- ``mint_iri`` kwargs (ADR-0183 §am-5).
+
+    Requires ``capacity_name``. ``KeyError`` on missing per ADR-0146.
+    """
+    return installed_capability_iri(
+        version, capacity_name=str(content["capacity_name"])
+    )
+
+
 def _mint_skill_install_record(version: str, /, **content: object) -> str:
     """Adapter: ``skill_install_record_iri`` ← ``mint_iri`` kwargs (Phase 50).
 
@@ -589,6 +620,8 @@ _IRI_BUILDERS: dict[tuple[str, str], object] = {
     (ROLE_SUBMINDS, "SubMindDefinition"): _mint_submind_definition,
     # feat/learned-pipeline-persistence addition per ADR-0203.
     (ROLE_LEARNED_PIPELINES, "LearnedPipeline"): _mint_learned_pipeline,
+    # ADR-0183 §am-5 addition.
+    (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"): _mint_installed_capability,
 }
 
 
@@ -636,6 +669,8 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("subminds-", ROLE_SUBMINDS),
     # feat/learned-pipeline-persistence addition per ADR-0203.
     ("learned-pipelines-", ROLE_LEARNED_PIPELINES),
+    # ADR-0183 §am-5 addition.
+    ("installed-capacities-", ROLE_INSTALLED_CAPACITIES),
 )
 
 # Per-role kind-extraction whitelist. The parser strips the kind
@@ -661,6 +696,8 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_SUBMINDS: frozenset({"definition"}),
     # feat/learned-pipeline-persistence addition per ADR-0203.
     ROLE_LEARNED_PIPELINES: frozenset({"pipeline"}),
+    # ADR-0183 §am-5 addition.
+    ROLE_INSTALLED_CAPACITIES: frozenset({"cap"}),
 }
 
 
