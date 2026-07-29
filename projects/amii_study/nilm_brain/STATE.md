@@ -12,6 +12,31 @@ pipelines; the *diagnosis* (why recognition fails, what to change) was NOT in th
 The recorded reasoning + the recognition/diagnosis line + the transfer spec live in
 `docs/DIAGNOSTIC_INTELLIGENCE.md` — read it to understand what this project is actually proving.
 
+## Update 2026-07-29 (latest chat) — read before the older sections below
+- **Merged current `main` into `nilm_brain` twice** (`020c052`, then `1556080`; gate **14/0**). The
+  brain now has the core **reduction family** (ADR-0204: argmin/argmax/top_k/bottom_k/majority_vote)
+  and the skill-local-caps work. nilm carries **zero core divergence** (viz_spec worry retired).
+- **✔ SHIPPED + gate-green (14/0): appliance selection de-scaffolded onto a real capacity.**
+  `_match_appliance` now invokes **`reduction.argmin`** over a native `{"score","label"}` collection
+  (was Python `sorted`+`Counter`); `install_reduction_v0(self.cl)` runs in `Solver.__init__`.
+  **1-NN chosen from data** (k=1/3/5 leave-one-instance-out on PLAID: no measurable gain from k>1);
+  `confidence` is now 1.0 (distance-vs-cutoff in `recognize` decides accept/reject). `signature_distance`
+  was already a cap, so the **whole appliance selection path is now on capacities** (library fan-out
+  stays L4 iteration — honest, needs the collection-iteration map cap to fully compose).
+- **Core `learn_parameter` DELIVERED + MERGED** (PR #94 `0f6c1b7`, origin/main) as the L3 capacity
+  `capacity:learning-methods:learn_parameter` + `read_learned_parameter_snapshot` reader (keyed
+  `(parameter_set, target)→value`, upsert latest-wins; ADR-0152 am) — **NOT the server-helper shape
+  first requested.** nilm does **NOT** have it yet (needs a 3rd `main` re-merge). This resolves the
+  "CR out for a core helper" note under durable persistence; **adopting it (replace `persistence.py`'s
+  hand-write) is the NEXT chat's job** — see the continuation prompt / memory below.
+- **New enforced rule in the Working protocol:** *Build through mindsos* (no standalone numpy/operator
+  scripts as a decision gate; read-only inspection is fine).
+- **Detail lives in project memory** (read these, don't re-derive): `nilm-merge-reduction-adoption`
+  (this chat's ships + reduction contract + argmin/adoption), `nilm-durable-appliance-persistence`
+  (STATE #5 + migration plan), `cr-learned-parameters-capacity` (the #94 capacity).
+- **Still OPEN (unchanged):** #1 calibrate over-sensitivity + `required_confidence` re-home;
+  #4 secondary pipelines/rungs; #6 `fit_appliance` O(n²).
+
 ## Where it lives
 - Branch **`nilm_brain`** (off `chore/amii-study`, verified API-compatible).
 - Worktrees: Mac `…/Projects/nilm_brain`, Linux `/home/sanmyaku/nilm_brain`.
@@ -238,9 +263,3 @@ pulls/validates; read-only git from the sandbox is fine. **No hardcoded values**
 constant is a DataState input. **Do not document numpy probe/test *results*** in any
 persisted file (contamination rule): the brain's capacities are the source of truth, not
 throwaway numpy.
-- **Build through mindsos.** When the task is to wire/add a capability, go straight to the
-  capacity change — do **NOT** run standalone Python/numpy, or hand the user an operator
-  script (`classify_eval`, bake-offs, ad-hoc numpy), as a **decision gate** or ground truth.
-  Operator scripts are exploration only, never a prerequisite to a requested wiring. (Extends
-  the contamination rule: don't *decide-by* numpy, not just don't *persist* it.) Read-only
-  inspection to verify repo/brain state — `git log`/`grep`/reading files — is fine and expected.
