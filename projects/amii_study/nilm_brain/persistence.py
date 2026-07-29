@@ -1,84 +1,52 @@
-"""Durable persistence for nilm's LEARNED PARAMETERS — the taught appliance
-library + its signature normalizer + match cutoff.
+"""Durable persistence for nilm's learned appliance state — the taught library
++ its signature normalizer + match cutoff.
 
-These are learned *parameters* (references/weights fit off data), not learned
-*pipelines* (recipe structure — persisted separately by ``learn_pipeline``).
-Core ships no ``learn_parameter`` writer (only ``learn_pipeline``), so — as a
-CONSUMER — nilm writes/reads the shipped ``learned-parameters`` Local role
-itself, exactly the way ``learn_pipeline`` uses ``learned-pipelines``. A core
-``learn_parameter``/``iter_local_parameters`` helper is the right long-term
-home — CR out.
+Routed through the core learned-parameters family (CR merged, PR #94): the WRITE
+is the L3 capacity ``capacity:learning-methods:learn_parameter`` (invoked via
+``cl.invoke``, which auto-injects the pre-authorized ``writeable`` capability for
+write-capacities when the CapacityLayer carries a ``kl``); the READ is core's
+``read_learned_parameter_snapshot`` L4 plumbing (deliberately NOT a capacity —
+it builds the context capacities run inside). nilm no longer hand-writes the
+Local role-graph.
 
-Discipline (mirrors ADR-0203 / ``learn_pipeline``): APPEND-ONLY, latest-wins.
-Each persist appends one ``LearnedParameter`` node stamped with the next
-``taught_seq``; the reader returns the max-ordinal nilm node. Appliance state
-MUTATES as you teach (the library grows; norm/cutoff refit), so — unlike the
-composed pipelines — there is NO persist-once guard: every save snapshots the
-current Solver state.
-
-The three params bundle into ONE node value (co-fit: the cutoff and normalizer
-are meaningless without the library they were tuned on). Values are plain
-lists/floats/str straight off the capacity bodies (``.tolist()`` there) —
-JSON-clean, no numpy. A non-finite cutoff (the accept-all default, before any
-fit) is refused rather than persisted, mirroring ``learn_pipeline``'s
-round-trip guard.
-
-nilm's nodes carry NO ``reactivation_key``, so core's boot-time reactivation
-walk (``reactivate_from_descriptors``) skips them — they ride the shared role
-without being mistaken for re-activatable capacities. Read-back is nilm's own
-job (below), done explicitly at boot.
-
-Contamination rule: the library vectors ARE capacity-extracted learned
-references, so persisting them is sanctioned; throwaway numpy probe/eval
-results are never persisted.
+The three params bundle into ONE node value (co-fit: cutoff + normalizer are
+meaningless without the library they were tuned on), addressed by the core
+``(parameter_set, target)`` key. Discipline is the capacity's own:
+OVERWRITE-IN-PLACE (latest-wins) — a re-teach replaces the node; no version
+history (review decision). A non-finite cutoff (the accept-all default, before
+any fit) is refused at the call site rather than persisted (the capacity has no
+such guard). Values are plain lists/floats/str straight off the capacity bodies
+(``.tolist()`` there) — JSON-clean, no numpy.
 """
 from __future__ import annotations
 
 import math
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from mindsos_knowledge.identifiers import (
-    ROLE_LEARNED_PARAMETERS,
-    learned_parameter_iri,
+from mindsos_capacity import capacity_iri
+from mindsos_capacity.identifiers import CATEGORY_LEARNING_METHODS
+from mindsos_capacity.builtins.learn_parameter import DS_LEARNED_PARAMETER_WRITE
+from mindsos_knowledge.learned_parameters_snapshot import (
+    read_learned_parameter_snapshot,
+    get_parameter,
 )
-from mindsos_knowledge.schemas.learned_parameters import NODE_LEARNED_PARAMETER
 
-#: this brain's kind tag inside the shared learned-parameters role.
-KIND = "nilm.appliance_state"
-_VERSION = "v1"
+#: (parameter_set, target) address for nilm's bundled appliance-state node in the
+#: shared Local learned-parameters role.
+PARAMETER_SET = "nilm.appliance_state"
+TARGET = "appliance_state"
 
-
-def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+_LEARN_PARAMETER_IRI = capacity_iri(CATEGORY_LEARNING_METHODS, "learn_parameter")
 
 
-def _role_graph(kl: Any, user: str):
-    """The user's Local ``learned-parameters`` role-graph (lazy-ensured)."""
-    mg = kl.local_metagraph(user)  # ensures the 5 Local roles incl. learned-parameters
-    for g in mg.graphs.values():
-        if getattr(g, "role", None) == ROLE_LEARNED_PARAMETERS:
-            return g
-    return None
+def persist_appliance_state(cl: Any, session: Any, solver: Any) -> Optional[Any]:
+    """Snapshot the Solver's current appliance state to the user's Local
+    learned-parameters role via the core ``learn_parameter`` capacity.
 
-
-def _nilm_nodes(g) -> List[Any]:
-    """nilm's appliance-state nodes in the role-graph, taught_seq-ascending."""
-    if g is None:
-        return []
-    ns = [n for n in g.nodes.values()
-          if isinstance(n.value, dict) and n.value.get("kind") == KIND]
-    ns.sort(key=lambda n: int((n.properties or {}).get("taught_seq", 0)))
-    return ns
-
-
-def persist_appliance_state(kl: Any, user: str, solver: Any) -> Optional[Any]:
-    """Append the Solver's current appliance state as one node; return it.
-
-    Returns ``None`` if there is nothing worth persisting (empty library).
-    Raises ``ValueError`` on a non-finite (unfit accept-all) cutoff — call
-    ``fit_appliance()`` first. Best-effort by contract: callers guard it so a
-    write failure never bricks the brain."""
+    Returns the write outcome (truthy) on success, or ``None`` when there is
+    nothing worth persisting (empty library). Raises ``ValueError`` on a
+    non-finite (unfit accept-all) cutoff — call ``fit_appliance()`` first.
+    Requires a ``cl`` whose CapacityLayer carries a ``kl`` (boot_brain does)."""
     lib = list(getattr(solver, "appliance_library", []) or [])
     if not lib:
         return None
@@ -88,43 +56,44 @@ def persist_appliance_state(kl: Any, user: str, solver: Any) -> Optional[Any]:
             "persist_appliance_state: match_cutoff is non-finite "
             "(unfit accept-all); call fit_appliance() before persisting."
         )
-    value = {
-        "kind": KIND,
-        "library": lib,
-        "signature_norm": getattr(solver, "signature_norm", None),
-        "match_cutoff": cutoff,
+    record = {
+        "parameter_set": PARAMETER_SET,
+        "target": TARGET,
+        "value": {
+            "library": lib,
+            "signature_norm": getattr(solver, "signature_norm", None),
+            "match_cutoff": cutoff,
+        },
+        "learned_by": getattr(session, "user_id", "nilm"),
+        "reason": "teach_appliances",
     }
-    g = _role_graph(kl, user)
-    if g is None:  # pragma: no cover — lazy-ensure guarantees presence
-        raise KeyError(
-            f"persist_appliance_state: no {ROLE_LEARNED_PARAMETERS!r} role-graph "
-            f"in Local for user {user!r}."
-        )
-    existing = _nilm_nodes(g)
-    seq = (int((existing[-1].properties or {}).get("taught_seq", 0)) + 1
-           if existing else 1)
-    iri = learned_parameter_iri(_VERSION, parameter_id=f"{KIND}:{seq}")
-    return g.add_node(
-        value,
-        NODE_LEARNED_PARAMETER,
-        properties={"parameter_kind": KIND, "taught_seq": seq,
-                    "recorded_at": _now_iso(), "storage_mode": "inline"},
-        node_id=iri,
+    r = cl.invoke(
+        _LEARN_PARAMETER_IRI, {DS_LEARNED_PARAMETER_WRITE: record}, session=session
     )
+    if not r.success:
+        raise RuntimeError(
+            f"persist_appliance_state: learn_parameter failed: {r.error!r}"
+        )
+    return getattr(r, "write_outcome", None) or True
 
 
 def load_appliance_state(kl: Any, user: str) -> Optional[Dict[str, Any]]:
     """The latest persisted appliance state for ``user``, or ``None``.
 
-    Returns ``{"library", "signature_norm", "match_cutoff"}`` from the
-    max-``taught_seq`` nilm node — the last snapshot saved."""
-    nodes = _nilm_nodes(_role_graph(kl, user))
-    if not nodes:
+    Reads the bundled node via the core snapshot reader (Local overrides Global
+    per knob); returns ``{"library", "signature_norm", "match_cutoff"}``. nilm's
+    pre-#94 hand-written nodes lack the capacity's key props, so the reader skips
+    them — re-teach, not migrate."""
+    bundle = get_parameter(
+        read_learned_parameter_snapshot(kl, user), PARAMETER_SET, TARGET
+    )
+    if not bundle or not bundle.get("library"):
         return None
-    v = nodes[-1].value
-    return {"library": v.get("library", []),
-            "signature_norm": v.get("signature_norm"),
-            "match_cutoff": v.get("match_cutoff")}
+    return {
+        "library": bundle.get("library", []),
+        "signature_norm": bundle.get("signature_norm"),
+        "match_cutoff": bundle.get("match_cutoff"),
+    }
 
 
 def apply_appliance_state(solver: Any, state: Optional[Dict[str, Any]]) -> bool:

@@ -29,6 +29,7 @@ from mindsos_capacity.identifiers import CATEGORY_DECISION, CATEGORY_REDUCTION
 from mindsos_capacity.builtins.reduction_v0 import (
     install_reduction_v0, DS_SCORED_COLLECTION, DS_SELECTION,
 )
+from mindsos_capacity.builtins.learn_parameter import install_learn_parameter_capacities
 from mindsos_intelligence.pipeline_execution import execute_pipeline
 
 from . import ontology as O
@@ -107,6 +108,9 @@ class Solver:
         # Global reduction builtins (argmin selection for the appliance matcher);
         # idempotent — no-op if the cl already has them (e.g. a shared resident cl).
         install_reduction_v0(self.cl)
+        # Global learned-parameters write capacity (durable appliance persistence);
+        # idempotent — no-op if boot_brain already installed it on a shared cl.
+        install_learn_parameter_capacities(self.cl)
 
         O.register_ontology(self.cl, self.session)
         register_perception(self.cl, self.session)

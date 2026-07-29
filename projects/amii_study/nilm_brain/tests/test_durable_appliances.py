@@ -1,12 +1,12 @@
 """Durable appliance-state persistence — the STATE #5 slice (gate-level).
 
 No Falkor: an EPHEMERAL boot gives a full Local with the ``learned-parameters``
-role + an in-memory persister. These tests exercise the persistence LOGIC only
-(persist/load/apply the three learned params), using a lightweight fake in place
-of a real ``Solver`` — persistence reads just ``appliance_library`` /
-``signature_norm`` / ``match_cutoff``, so no capacity registration is needed
-(and none is duplicated). The live Falkor codec round-trip is the @integration
-test ``test_durable_appliances_falkor.py``.
+role + the ``learn_parameter`` capacity (in-memory ``kl``), so persistence now
+goes through the real core capacity + snapshot reader (not a hand-write). A
+lightweight fake stands in for the ``Solver`` — persistence reads just
+``appliance_library`` / ``signature_norm`` / ``match_cutoff`` off it, and takes
+``cl`` + ``session`` from the booted stack. The live Falkor codec round-trip is
+the @integration test ``test_durable_appliances_falkor.py``.
 """
 from __future__ import annotations
 
@@ -21,9 +21,10 @@ from nilm_brain.persistence import (
 
 
 @pytest.fixture
-def kl():
-    # Fresh ephemeral brain per test (in-memory, no Falkor) -> isolated Local.
-    return boot_brain(None, user="nilm").kl
+def stack():
+    # Fresh ephemeral brain per test (in-memory, no Falkor) -> isolated Local
+    # with the learn_parameter capacity installed and a kl-bearing cl.
+    return boot_brain(None, user="nilm")
 
 
 def _fake(library=None, norm=None, cutoff=None):
@@ -36,14 +37,14 @@ def _lib():
             {"name": "B", "form": "signature", "inst": 1, "vector": [0.4, 0.5, 0.6]}]
 
 
-def test_persist_load_roundtrip(kl):
+def test_persist_load_roundtrip(stack):
     norm = {"mean": [0.25, 0.35, 0.45], "std": [0.15, 0.15, 0.15],
             "provenance": "library_fit:2refs"}
     cutoff = {"cutoff": 0.5, "provenance": "neg_aware"}
     s = _fake(_lib(), norm, cutoff)
 
-    assert persist_appliance_state(kl, "nilm", s) is not None
-    got = load_appliance_state(kl, "nilm")
+    assert persist_appliance_state(stack.cl, stack.session, s) is not None
+    got = load_appliance_state(stack.kl, "nilm")
     assert got["library"] == s.appliance_library
     assert got["signature_norm"] == norm
     assert got["match_cutoff"] == cutoff
@@ -54,25 +55,26 @@ def test_persist_load_roundtrip(kl):
     assert s2.match_cutoff == cutoff
 
 
-def test_append_latest_wins(kl):
-    persist_appliance_state(kl, "nilm", _fake([{"name": "A", "vector": [1.0]}],
-                                              cutoff={"cutoff": 0.3}))
-    persist_appliance_state(kl, "nilm", _fake(
+def test_overwrite_latest_wins(stack):
+    persist_appliance_state(stack.cl, stack.session,
+                            _fake([{"name": "A", "vector": [1.0]}],
+                                  cutoff={"cutoff": 0.3}))
+    persist_appliance_state(stack.cl, stack.session, _fake(
         [{"name": "A", "vector": [1.0]}, {"name": "C", "vector": [2.0]}],
         cutoff={"cutoff": 0.4}))
-    got = load_appliance_state(kl, "nilm")
+    got = load_appliance_state(stack.kl, "nilm")
     assert len(got["library"]) == 2
     assert got["match_cutoff"]["cutoff"] == 0.4
 
 
-def test_refuse_unfit_cutoff(kl):
+def test_refuse_unfit_cutoff(stack):
     s = _fake([{"name": "A", "vector": [1.0]}],
               cutoff={"cutoff": float("inf"), "provenance": "default:accept-all"})
     with pytest.raises(ValueError):
-        persist_appliance_state(kl, "nilm", s)
+        persist_appliance_state(stack.cl, stack.session, s)
 
 
-def test_empty_is_noop(kl):
-    assert persist_appliance_state(kl, "nilm", _fake()) is None
-    assert load_appliance_state(kl, "nilm") is None
+def test_empty_is_noop(stack):
+    assert persist_appliance_state(stack.cl, stack.session, _fake()) is None
+    assert load_appliance_state(stack.kl, "nilm") is None
     assert apply_appliance_state(_fake(), None) is False

@@ -37,7 +37,7 @@ def test_appliance_state_survives_falkor_roundtrip():
     client = _client_or_skip()
     try:
         stack = boot_brain(client, user=user)
-        assert persist_appliance_state(stack.kl, user, s) is not None
+        assert persist_appliance_state(stack.cl, stack.session, s) is not None
         stack.save()
     finally:
         client.close()

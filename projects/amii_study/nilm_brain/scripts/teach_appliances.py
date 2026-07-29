@@ -65,11 +65,10 @@ def main() -> None:
         s.fit_appliance()
         print(f"fit: {len(s.appliance_library)} exemplars  cutoff={s.match_cutoff}")
 
-        node = persist_appliance_state(stack.kl, a.user, s)
+        persist_appliance_state(stack.cl, stack.session, s)
         stack.save()
-        seq = (node.properties or {}).get("taught_seq") if node else None
-        print(f"persisted appliance_state (seq={seq}) and saved Local for "
-              f"{a.user!r}. Boot: python -m nilm_brain.repl")
+        print(f"persisted appliance_state and saved Local for {a.user!r}. "
+              "Boot: python -m nilm_brain.repl")
     finally:
         client.close()
 
