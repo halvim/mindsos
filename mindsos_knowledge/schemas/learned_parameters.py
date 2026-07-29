@@ -56,6 +56,11 @@ LEARNED_PARAMETER_PROPS: frozenset[str] = frozenset({
     "confidence",
     "applied_at",
     "applied_from_promotion_iri",
+    # Provenance for direct (non-promotion) learns — CR learned-parameters
+    # capacity. Advisory (strict=False); additive, non-breaking.
+    "learned_by",
+    "recorded_at",
+    "reason",
 })
 
 

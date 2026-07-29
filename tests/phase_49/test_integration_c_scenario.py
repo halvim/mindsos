@@ -36,7 +36,8 @@ def _assert_chain(stack) -> list:
 
     episodes = ic.step_collect_episodes(stack)
     assert len(episodes) == 1
-    assert episodes[0].value["outcome_classification"] == "succeeded"
+    # Dream PRE-0 Slice 1b (D1): Episode fields are node properties, not a value blob.
+    assert episodes[0].properties["outcome_classification"] == "succeeded"
     assert ic.step_memory_count(stack) == 1
 
     # MEMORY_CONTAINS_EPISODE edge on the materialised Memory.

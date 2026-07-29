@@ -178,10 +178,16 @@ class IntelligenceLayer:
             # ``reads_mm=True`` consumer ships. The capacity writer's write
             # access is the real ``self._mm`` threaded to the arbiter below —
             # distinct from this read handle.
+            from mindsos_knowledge.learned_parameters_snapshot import (
+                read_learned_parameter_snapshot,
+            )
             dispatcher = L4Dispatcher(
                 self._cl,
                 session=self._session,
                 kl=self._kl,
+                learned_parameters=read_learned_parameter_snapshot(
+                    self._kl, self._session.user_id
+                ),
                 mm_handle=MMResolver(self._mm, KnowledgeMMSource(self._kl)),
             )
 
@@ -210,19 +216,23 @@ class IntelligenceLayer:
                 self._triage, self._executor, arbiter=self._submind_arbiter
             )
             self._subminds.start()
-            # Crash recovery (ADR-0179 / D-B50): scan for unconsolidated
-            # checkpoint markers left by a prior crashed session and write a
-            # ``crash_marker`` Episode for each. No-op when no store is wired.
-            if self._checkpoint_store is not None:
+            # Crash recovery (ADR-0179 / D-B50; reworked Dream PRE-0 Slice 1b):
+            # scan the user's Local for ``state=open`` Episodes left by a prior
+            # crashed session and stamp each closed + ``outcome=failed``. Runs
+            # whenever a KL is wired (no legacy checkpoint store needed — the open
+            # Episode IS the bookmark). No-op when consolidation is unwired / no
+            # Episode is open. Best-effort — never bricks start.
+            if self._kl is not None:
                 from . import crash_recovery
                 from .dispatch import L4Dispatcher
 
                 recovery_dispatcher = L4Dispatcher(
                     self._cl, session=self._session, kl=self._kl
                 )
-                crash_recovery.recover_unconsolidated(
-                    self._checkpoint_store, recovery_dispatcher
-                )
+                try:
+                    crash_recovery.recover_unconsolidated(recovery_dispatcher)
+                except Exception:  # noqa: BLE001 — start resilience
+                    pass
             if self._dream_driver is not None and self._dream_interval_s is not None:
                 self._dream_timer = DreamCycleTimer(
                     self._dream_interval_s, self._dream_driver

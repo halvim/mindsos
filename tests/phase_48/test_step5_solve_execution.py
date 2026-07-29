@@ -343,7 +343,8 @@ def _episode_values(kl):
     from mindsos_knowledge.metagraph_view import MetagraphView
 
     g = MetagraphView(kl.local_metagraph("u")).graphs_by_role(ROLE_EPISODIC_MEMORIES)[0]
-    return [n.value for n in g.nodes.values() if n.type_name == "Episode"]
+    # Dream PRE-0 Slice 1b (D1): Episode fields are node properties, not a value blob.
+    return [n.properties for n in g.nodes.values() if n.type_name == "Episode"]
 
 
 def _orch_with_solve(persister=None):

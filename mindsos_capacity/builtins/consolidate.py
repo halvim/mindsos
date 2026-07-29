@@ -119,20 +119,57 @@ def mm_composite_datastates() -> List[DataState]:
 # ── Capacity body ──────────────────────────────────────────────────────
 
 
+def _encode_props(props: Any) -> dict:
+    """Coerce an Episode field bag into an L1-property-safe dict.
+
+    L1 node properties are **primitives only** (``validate_user_properties``:
+    str / int / float / bool / None / primitive-list). Dream PRE-0 Slice 1b (D1)
+    stores the Episode's fields as real properties, so any non-primitive field
+    (today only ``crash_marker``, a dict) is JSON-encoded to a string; the Dream
+    reader decodes it. ``None`` values pass through (allowed).
+    """
+    import json
+
+    if not isinstance(props, dict):
+        return {}
+    out: dict = {}
+    for k, v in props.items():
+        out[k] = json.dumps(v) if isinstance(v, (dict, tuple)) else v
+    return out
+
+
 def _consolidate_mm_impl(**kwargs: Any) -> Any:
-    """Body of ``capacity:consolidate:mm`` — Phase 48 write-half (ADR-0180).
+    """Body of ``capacity:consolidate:mm`` — the Episode lifecycle write surface.
 
     Obtains its :class:`KLWriteHandle` from the **pre-authorized
     ``context.writeable`` capability** (L4-injected; scope-aware gate at
     call-time) rather than ``kl.writeable(session, …)`` — the body holds
     no session and makes no authorization decision (ADR-0170 §am-1).
-    Runs the semantic-validator precondition via ``handle.validate_node``
-    (ADR-0139 §Capacity-contract), then mints + writes through
-    :meth:`write_and_validate`; returns :class:`WriteResult`. Raises
+
+    **Dream PRE-0 Slice 1b (D1 + open/close lifecycle).** The record's ``value``
+    now carries ``{"op": ..., "props": {...}}`` where ``props`` are the Episode's
+    fields written as real L1 node **properties** (not an opaque ``value`` blob):
+
+    * ``op == "open"`` — CREATE the Episode node ``state=open`` with the
+      known-at-start fields (idempotent: no-op if the node already exists).
+    * ``op == "suspend"`` — flip ``state=suspended`` on the existing node
+      (needs-input; metadata-only edit, resumes later).
+    * ``op == "close"`` (default) — UPSERT: update the open node's ``state`` +
+      the now-known content fields via :meth:`update_and_validate`
+      (``via_lazy_inline=True``, the retire-time inline), or create it whole if
+      no open node exists (crash-recovery write / open was unwired). Materialises
+      the Memory composite once ``request_pattern_iri`` is present.
+
+    Returns the :class:`WriteResult` (create or update). Raises
     :class:`SemanticValidationError` on validator failure.
     """
     from mindsos_knowledge.exceptions import SemanticValidationError
     from mindsos_knowledge.identifiers import ROLE_EPISODIC_MEMORIES
+    from mindsos_knowledge.schemas.episodic_memories import (
+        EPISODE_CONTENT_FIELDS,
+        EPISODE_STATE_CLOSED,
+        EPISODE_STATE_SUSPENDED,
+    )
 
     context = kwargs.get("context")
     writeable = getattr(context, "writeable", None)
@@ -145,35 +182,97 @@ def _consolidate_mm_impl(**kwargs: Any) -> Any:
 
     record = kwargs[DS_MM_COMPOSITE_INSTANCE]
     handle = writeable(role=ROLE_EPISODIC_MEMORIES, scope="local", version="v1")
-    value = record["value"]
-    # ``value`` carries the frozen-MM Episode record assembled by L4
-    # consolidation (ADR-0176 §1): the 7 D-B47 content fields incl.
-    # ``request_pattern_iri`` and ``capacity_root_ref`` (CR: reopen DQ-8, Slice B —
-    # the capacity-MM index-graph pointer, mirroring ``mm_root_ref``; rides
-    # inside the codec-encoded value dict, no L2 schema change). (A bare value
-    # is tolerated — Memory materialises only when ``request_pattern_iri`` is
-    # present.)
-    vr = handle.validate_node(value=value, type_="Episode")
-    if not vr.ok:
-        raise SemanticValidationError(vr)
-    episode_result = handle.write_and_validate(
-        value=value,
-        type_="Episode",
-        user_id=context.user_id,
-        episode_id=record["episode_id"],
+    payload = record["value"]
+    episode_id = record["episode_id"]
+
+    # ── LEGACY value-blob write (pre-Slice-1b callers) ────────────────
+    # A payload WITHOUT an ``op`` key is the historical opaque ``value`` blob:
+    # write it byte-identically as the node value (no properties). Preserves
+    # every pre-Slice-1b caller/test; the streaming lifecycle (below) always
+    # tags ``op``.
+    if not (isinstance(payload, dict) and "op" in payload):
+        vr = handle.validate_node(value=payload, type_="Episode")
+        if not vr.ok:
+            raise SemanticValidationError(vr)
+        episode_result = handle.write_and_validate(
+            value=payload,
+            type_="Episode",
+            user_id=context.user_id,
+            episode_id=episode_id,
+        )
+        rpi = payload.get("request_pattern_iri") if isinstance(payload, dict) else None
+        if rpi:
+            _materialise_memory(handle, context.user_id, rpi, episode_result.iri)
+        return episode_result
+
+    # ── Streaming lifecycle (Dream PRE-0 Slice 1b): fields as properties ──
+    op = payload["op"]
+    props = _encode_props(payload.get("props", {}))
+    if op == "close" and "state" not in props:
+        props["state"] = EPISODE_STATE_CLOSED
+    epi_iri = handle.mint_iri(
+        "Episode", user_id=context.user_id, episode_id=episode_id
     )
+    exists = epi_iri in handle.graph().nodes
+
+    # ── suspend: metadata-only flip on the existing node ──────────────
+    if op == "suspend":
+        if not exists:
+            return None
+        return handle.update_and_validate(
+            iri=epi_iri,
+            field_updates={"state": props.get("state", EPISODE_STATE_SUSPENDED)},
+            content_fields=EPISODE_CONTENT_FIELDS,
+        )
+
+    # ── open: create the streaming Episode (idempotent) ───────────────
+    if op == "open":
+        if exists:
+            return None
+        vr = handle.validate_node(value=episode_id, type_="Episode")
+        if not vr.ok:
+            raise SemanticValidationError(vr)
+        return handle.write_and_validate(
+            value=episode_id,
+            type_="Episode",
+            properties=props,
+            user_id=context.user_id,
+            episode_id=episode_id,
+        )
+
+    # ── close (default): upsert the terminal content + flip state ─────
+    if exists:
+        result = handle.update_and_validate(
+            iri=epi_iri,
+            field_updates=props,
+            content_fields=EPISODE_CONTENT_FIELDS,
+            via_lazy_inline=True,
+        )
+        result_iri = epi_iri
+    else:
+        vr = handle.validate_node(value=episode_id, type_="Episode")
+        if not vr.ok:
+            raise SemanticValidationError(vr)
+        result = handle.write_and_validate(
+            value=episode_id,
+            type_="Episode",
+            properties=props,
+            user_id=context.user_id,
+            episode_id=episode_id,
+        )
+        result_iri = result.iri
 
     # Memory materialise-on-first-episode + MEMORY_CONTAINS_EPISODE edge
     # (Chat B D-B47 §4.6; ADR-0176 §3). Cluster key = the Episode's
     # ``request_pattern_iri``; Memory materialises once per pattern (idempotent
     # on its derived IRI) and each episode attaches via the within-role-graph
     # edge.
-    request_pattern_iri = value.get("request_pattern_iri") if isinstance(value, dict) else None
+    request_pattern_iri = props.get("request_pattern_iri")
     if request_pattern_iri:
         _materialise_memory(
-            handle, context.user_id, request_pattern_iri, episode_result.iri
+            handle, context.user_id, request_pattern_iri, result_iri
         )
-    return episode_result
+    return result
 
 
 def _memory_id_for(request_pattern_iri: str) -> str:

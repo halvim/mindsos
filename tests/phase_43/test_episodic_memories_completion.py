@@ -15,6 +15,10 @@ from mindsos_knowledge.schemas.episodic_memories import (
     EPISODE_CONTENT_FIELDS,
     EPISODE_METADATA_FIELDS,
     EPISODE_PROPS,
+    EPISODE_STATE_CLOSED,
+    EPISODE_STATE_OPEN,
+    EPISODE_STATE_SUSPENDED,
+    EPISODE_STATES,
     MEMORY_CONTENT_FIELDS,
     MEMORY_METADATA_FIELDS,
     MEMORY_PROPS,
@@ -44,17 +48,36 @@ def test_schema_discipline_is_append_only_with_lazy_inline() -> None:
 
 
 def test_episode_content_partition_cardinality() -> None:
-    assert len(EPISODE_CONTENT_FIELDS) == 6
-    assert EPISODE_METADATA_FIELDS == frozenset()
+    # Dream PRE-0 Slice 1b (D1): fields promoted from the opaque ``value`` blob
+    # to real node properties; ``request_input_root_ref`` + ``capacity_root_ref``
+    # join the content partition, and ``state`` is the sole metadata field.
+    assert len(EPISODE_CONTENT_FIELDS) == 8
+    assert EPISODE_METADATA_FIELDS == frozenset({"state"})
     expected_content = {
         "request_input_ref",
+        "request_input_root_ref",
         "mm_root_ref",
+        "capacity_root_ref",
         "request_pattern_iri",
         "outcome_classification",
         "crash_marker",
         "consolidated_at",
     }
     assert EPISODE_CONTENT_FIELDS == expected_content
+
+
+def test_episode_state_is_the_metadata_field_and_states_enumerated() -> None:
+    # Dream PRE-0 Slice 1b: ``state`` is the sole mutable metadata property; the
+    # lifecycle flips it across the three enumerated states.
+    assert EPISODE_METADATA_FIELDS == frozenset({"state"})
+    assert EPISODE_STATES == frozenset(
+        {EPISODE_STATE_OPEN, EPISODE_STATE_CLOSED, EPISODE_STATE_SUSPENDED}
+    )
+    assert (EPISODE_STATE_OPEN, EPISODE_STATE_CLOSED, EPISODE_STATE_SUSPENDED) == (
+        "open",
+        "closed",
+        "suspended",
+    )
 
 
 def test_memory_content_partition_cardinality() -> None:

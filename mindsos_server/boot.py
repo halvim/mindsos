@@ -104,6 +104,7 @@ def install_brain_builtins(cl: Any) -> None:
     )
     from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
     from mindsos_capacity.builtins.dream import install_dream_capacities
+    from mindsos_capacity.builtins.learn_parameter import install_learn_parameter_capacities
 
     install_planning_v0(cl)
     install_phase1_v0(cl)
@@ -111,6 +112,7 @@ def install_brain_builtins(cl: Any) -> None:
     install_consolidate_capacities(cl)
     install_text_capacities(cl)
     install_dream_capacities(cl)
+    install_learn_parameter_capacities(cl)
     reset_v0_verdicts()
 
 
@@ -370,10 +372,14 @@ def boot_brain(
     # the concrete ``MMResolver`` (KL-backed source), gated on ``reads_mm``.
     # Inert until a ``reads_mm=True`` consumer ships. The Orchestrator's write
     # access is the real ``mm`` passed below, not this read handle.
+    from mindsos_knowledge.learned_parameters_snapshot import (
+        read_learned_parameter_snapshot,
+    )
     dispatcher = L4Dispatcher(
         cl,
         session=session,
         kl=kl,
+        learned_parameters=read_learned_parameter_snapshot(kl, user),
         mm_handle=MMResolver(mm, KnowledgeMMSource(kl)),
         modality_profiles=modality_profiles,
     )
@@ -385,9 +391,32 @@ def boot_brain(
         from mindsos_intelligence.mm_persister import FalkorMMPersister
 
         mm_persister = FalkorMMPersister(client)
+    # Dream PRE-0 Slice 1b (D3) — give the Orchestrator the durable Local
+    # persister so the streaming Episode's open / suspend / close each flush the
+    # Local to Falkor (crash durability). Durable path only; the ephemeral
+    # in-memory persister is left unwired here (nothing to make durable).
+    local_persister = persister if client is not None else None
     orch = Orchestrator(
-        dispatcher, mm, request_scope="brain", mm_persister=mm_persister
+        dispatcher,
+        mm,
+        request_scope="brain",
+        mm_persister=mm_persister,
+        local_persister=local_persister,
     )
+    # Dream PRE-0 Slice 1b — recover crashed Episodes from a prior session at
+    # boot: scan the user's Local for ``state=open`` Episodes (a crash before the
+    # terminal close) and stamp each closed + ``outcome=failed``. Durable path
+    # only; a fresh in-memory Local has nothing to recover. Best-effort — a
+    # recovery failure must not brick the brain (ADR-0183 §am-2 posture).
+    if client is not None:
+        from mindsos_intelligence import crash_recovery
+
+        try:
+            crash_recovery.recover_unconsolidated(
+                dispatcher, local_persister=persister
+            )
+        except Exception as exc:  # noqa: BLE001 — boot resilience
+            log.warning("boot: crash recovery scan failed for %r: %s", user, exc)
     return Stack(
         kl, cl, mm, dispatcher, orch, session, persister, user,
         activation=activation,
