@@ -62,6 +62,24 @@ vocabulary (building pre-rename means re-churning this code in the rename).
    valid graph paths (not just the chosen one). The dream needs these to have
    alternatives to try.
 
+- **PRE-6 Knowledge grounding persistence (added 2026-07-29).** Persist + stream
+  the resolved knowledge grounding (`knowledge_mm`) the same way PRE-0 handles
+  capacity_mm: persist each resolution, stream it into the OPEN Episode, make it
+  findable by role, set a `knowledge_root_ref`. The knowledge writer already
+  exists (`MMResolver` + the capacity->knowledge provenance XRef); only
+  PERSISTENCE / streaming is missing (`knowledge_mm` is live-only today —
+  `mm_persister.py:12`). Independent of PRE-2..PRE-5; must land BEFORE D-1 for
+  faithful replay of knowledge-dependent tasks (arc).
+  - **Decision first (re-resolve vs replay-exact).** If the dream may RE-RUN
+    knowledge lookups against the current system at replay time, PRE-6 is NOT
+    needed; if it must replay the EXACT original resolution, PRE-6 is required.
+    Decide with the D-1/D-4 design; build only if replay-exact wins. (Knowledge
+    lookups read INTERNAL state, not a true external call, so re-deriving them is
+    at least possible — unlike the plan, which is non-deterministic and cannot be
+    reproduced, which is why PRE-0 must stream the plan.)
+  - NOTE: distinct from the capacity-persist umbrella CR's "knowledge writer
+    Slice 3" (naming collision) AND from Dream PRE-0 Slice 3 (the reader).
+
 ## Dream core (after prerequisites)
 6. **D-1 Dream driver** implementing `dream(task, objective, signal, strategy)`:
    - reload the Task/Request from the Episode onto a `fork_dream_mm()` fork;
