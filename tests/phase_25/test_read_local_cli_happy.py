@@ -96,4 +96,5 @@ def test_read_local_happy_path_json_output(runner, env_setup) -> None:
         "learned-parameters",
         "request-patterns",
         "learned-pipelines",
+        "installed-capacities",
     }

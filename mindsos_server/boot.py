@@ -55,6 +55,10 @@ class Stack:
     #: should report these as "reimport needed"; the next boot re-attempts
     #: (the importer self-guards on completeness).
     corpus_imports_failed: tuple = ()
+    #: ADR-0183 §am-5 — ``(bundle_name, reason)`` for each installed-skill
+    #: Local capability that could not be registered at boot (builder not
+    #: registered, or register failed). Empty on success / ephemeral path.
+    local_caps_failed: tuple = ()
 
     def global_view(self) -> Any:
         """The read-only bipartite probe surface over the Global L3."""
@@ -100,6 +104,7 @@ def install_brain_builtins(cl: Any) -> None:
     )
     from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
     from mindsos_capacity.builtins.dream import install_dream_capacities
+    from mindsos_capacity.builtins.learn_parameter import install_learn_parameter_capacities
 
     install_planning_v0(cl)
     install_phase1_v0(cl)
@@ -107,6 +112,7 @@ def install_brain_builtins(cl: Any) -> None:
     install_consolidate_capacities(cl)
     install_text_capacities(cl)
     install_dream_capacities(cl)
+    install_learn_parameter_capacities(cl)
     reset_v0_verdicts()
 
 
@@ -308,15 +314,72 @@ def boot_brain(
                     (_rec.bundle_name, f"import-failed: {_exc}")
                 )
 
+    # ── installed-skill Local capabilities (ADR-0183 §am-5): register each
+    #    declared capability **metadata-only** into the booting user's Local
+    #    (the skill's builder is NOT called — boot runs no skill code; the live
+    #    function is built on first ``invoke``). Descriptors come from the
+    #    durable install records (admin/Global install) and the user's Local
+    #    ``installed-capacities`` role (user-scoped install; empty until that
+    #    ships). The CL Local is rebuilt each boot, so uninstalled/upgraded
+    #    skills need no cleanup — only currently-``installed`` caps register.
+    #    Best-effort like activation (§am-2): a bad cap is logged + recorded on
+    #    ``Stack.local_caps_failed``, never bricks boot. Durable path only. ──
+    local_caps_failed: list = []
+    if client is not None:
+        from mindsos_capacity.reactivation import reactivation_factories
+        from mindsos_knowledge import ROLE_INSTALLED_CAPACITIES
+
+        _cap_descs: list = []
+        for _rec in installed_records:
+            if _rec.bundle_name in skipped_bundles:
+                continue
+            for _d in (_rec.value.get("l3_local_capacities") or []):
+                _cap_descs.append((_rec.bundle_name, _d))
+        _local_mg = kl.local_metagraph(user)
+        for _g in _local_mg.graphs.values():
+            if getattr(_g, "role", None) == ROLE_INSTALLED_CAPACITIES:
+                for _n in _g.nodes.values():
+                    if isinstance(_n.value, dict):
+                        _cap_descs.append(
+                            (_n.value.get("installed_by", "?"), _n.value)
+                        )
+        _known = reactivation_factories()
+        for _bundle, _d in _cap_descs:
+            _key = _d.get("reactivation_key")
+            if not _key or _key not in _known:
+                log.warning(
+                    "boot: skill %r Local cap %r builder %r not registered; "
+                    "skipped (its function cannot be built).",
+                    _bundle, _d.get("name"), _key,
+                )
+                local_caps_failed.append(
+                    (_bundle, f"builder-unregistered: {_key}")
+                )
+                continue
+            try:
+                cl.register_lazy_capacity(_d, session=session)
+            except Exception as _exc:  # noqa: BLE001 — resilience contract
+                log.warning(
+                    "boot: skill %r Local cap %r not registered (%s: %s).",
+                    _bundle, _d.get("name"), _exc.__class__.__name__, _exc,
+                )
+                local_caps_failed.append(
+                    (_bundle, f"register-failed: {_exc}")
+                )
+
     mm = MentalModel(session_id=session.session_id, user_id=user)
     # ADR-0200 (Slice 3): the solve-path dispatcher's read-only MM handle is
     # the concrete ``MMResolver`` (KL-backed source), gated on ``reads_mm``.
     # Inert until a ``reads_mm=True`` consumer ships. The Orchestrator's write
     # access is the real ``mm`` passed below, not this read handle.
+    from mindsos_knowledge.learned_parameters_snapshot import (
+        read_learned_parameter_snapshot,
+    )
     dispatcher = L4Dispatcher(
         cl,
         session=session,
         kl=kl,
+        learned_parameters=read_learned_parameter_snapshot(kl, user),
         mm_handle=MMResolver(mm, KnowledgeMMSource(kl)),
         modality_profiles=modality_profiles,
     )
@@ -359,6 +422,7 @@ def boot_brain(
         activation=activation,
         skill_verbs=skill_verbs,
         corpus_imports_failed=tuple(corpus_imports_failed),
+        local_caps_failed=tuple(local_caps_failed),
     )
 
 

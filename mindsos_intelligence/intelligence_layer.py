@@ -178,10 +178,16 @@ class IntelligenceLayer:
             # ``reads_mm=True`` consumer ships. The capacity writer's write
             # access is the real ``self._mm`` threaded to the arbiter below —
             # distinct from this read handle.
+            from mindsos_knowledge.learned_parameters_snapshot import (
+                read_learned_parameter_snapshot,
+            )
             dispatcher = L4Dispatcher(
                 self._cl,
                 session=self._session,
                 kl=self._kl,
+                learned_parameters=read_learned_parameter_snapshot(
+                    self._kl, self._session.user_id
+                ),
                 mm_handle=MMResolver(self._mm, KnowledgeMMSource(self._kl)),
             )
 

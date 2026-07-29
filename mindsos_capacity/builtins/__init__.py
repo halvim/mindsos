@@ -47,6 +47,7 @@ from .text import (
     text_datastates,
 )
 from .planning_v0 import install_planning_v0
+from .reduction_v0 import install_reduction_v0
 from .phase1_v0 import install_phase1_v0
 from .orchestration_v0 import (
     classify_signal_to_tier,
@@ -77,6 +78,7 @@ __all__ = [
     "install_dream_capacities",
     # Phase 47 placeholder v0 catalogs (ADR-0172)
     "install_planning_v0",
+    "install_reduction_v0",
     "install_phase1_v0",
     "install_orchestration_v0",
     "classify_signal_to_tier",

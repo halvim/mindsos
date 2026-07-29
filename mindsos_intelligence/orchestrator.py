@@ -9,10 +9,11 @@ intelligence-MM under the MM writer lock.
 
 Phase 47 ran over the v0 catalogs; real catalogs ship in WSD installation.
 Consolidation (Phase 5 -> completion) is **wired at Phase 48** (ADR-0176):
-on every terminal path (success / dont-know / abort) the MM is frozen and an
-Episode is written to L2 ``episodic_memories`` via ``consolidate:mm``
-(retain-by-default; gracefully skipped in simplified mode or when no
-consolidate capacity / KL is wired — e.g. the v0 smoke).
+on every terminal path (success / dont-know / conceded) the MM is frozen and an
+Episode is written to L2 ``episodic_memories`` via ``consolidate:mm``. Dream
+PRE-0 Slice 1b makes the Episode a STREAMING record — opened ``state=open`` at
+Request start, closed ``state=closed`` on the terminal decision (gracefully
+skipped in simplified mode or when no consolidate capacity / KL is wired).
 """
 
 from __future__ import annotations
@@ -147,7 +148,7 @@ class Orchestrator:
             executor.write_priority(request_id, score=score, tier=tier)
         return score
 
-    # ── consolidation seam (Phase 5 -> completion; ADR-0176) ───────────
+    # ── streaming-Episode durability (Dream PRE-0 Slice 1b) ────────────
 
     def _flush_local(self) -> None:
         """Durably flush the user's Local to Falkor (Dream PRE-0 Slice 1b, D3).
@@ -189,6 +190,8 @@ class Orchestrator:
             return
         consolidation.suspend_episode(self._dispatcher, episode_id=episode_id)
         self._flush_local()
+
+    # ── consolidation seam (Phase 5 -> completion; ADR-0176) ───────────
 
     def _consolidate(
         self, request_run, request_pattern_iri, episode_id, writer=None,
@@ -241,13 +244,13 @@ class Orchestrator:
 
         request_input_ref = f"requestinput:{request_id}"
 
-        # PRE-1 — persist the raw input value (+ modality) at Request START so
-        # the Episode carries a real reload anchor (``request_input_root_ref``),
-        # not just a label. Doubles as the Episode "open" (raw input recorded
-        # before any phase runs; incremental build, D1). Best-effort + inert:
-        # skipped in simplified mode or with no persister wired, and a
-        # non-codec-safe input with no encoder is swallowed (ref stays None)
-        # rather than failing the solve.
+        # PRE-1 — persist the raw input value (+ modality) at Request START so the
+        # Episode carries a real reload anchor (``request_input_root_ref``), not
+        # just a label. Best-effort + inert: skipped in simplified mode or with no
+        # persister wired, and a non-codec-safe input with no encoder is swallowed
+        # (ref stays None) rather than failing the solve. (Restored here — a prior
+        # collection-iteration merge to main dropped this run_lifecycle wiring
+        # while keeping the persister + chain fields; Slice 1b's open needs it.)
         request_input_root_ref = None
         if self._mm_persister is not None and not self._simplified:
             if isinstance(request_input, InputEnvelope):
@@ -297,7 +300,8 @@ class Orchestrator:
             resolved_reference=p1.resolved_reference,
         )
 
-        # RequestRun wraps the whole execution (Level 6)
+        # RequestRun wraps the whole execution (Level 6). Thread the PRE-1 input
+        # refs onto it (the Episode's reload anchor).
         request_run = writer.emit_request_run(
             request_input_ref=request_input_ref,
             request_input_root_ref=request_input_root_ref,
@@ -320,23 +324,28 @@ class Orchestrator:
         )
         capacity_graphs: list = []
 
-        # Phase 3-5 — execution with bounded replan (invalidate-at-and-below)
+        # Phase 3-5 — execution with bounded replan (invalidate-at-and-below).
+        # Slice 3b — the blackboard is held across the loop so a *targeted* replan
+        # (the verdict names a re-runnable top-level map member) can re-run only
+        # that member and reuse the completed siblings' values; a whole-pipeline
+        # replan resets it to a fresh seed → byte-identical to the pre-3b path.
         replans = 0
         sufficient = True
+        blackboard: dict = dict(solve_seed or {}) if solve_seed is not None else {}
+        targeted = None
         while True:
             try:
                 execution.run(
                     self._dispatcher, writer, plan_result, request_run,
                     mm=self._mm, run_scope=scope, solve_seed=solve_seed,
                     capacity_graphs=capacity_graphs, run_attempt=replans,
+                    blackboard=blackboard, targeted=targeted,
                 )
             except execution.MemberAbortError:
                 # Collection-iteration Slice 1b — a map member exhausted
                 # MEMBER_RETRY_CAP still failing (all-or-nothing abort). The
-                # fold did not run; abort the task (distinct from a reducer
-                # dont_know and from a replan). Close (conceded) what grounded.
-                # Dream Slice 1b (D4): a reached abort is a DECISION → conceded,
-                # not "failed" (failed is reserved for a crash).
+                # fold did not run; close (conceded) what grounded. Dream Slice
+                # 1b (D4): a reached abort is a DECISION → conceded, not "failed".
                 request_run.status = "conceded"
                 self._consolidate(
                     request_run, p1.request_pattern_iri, episode_id, writer, capacity_graphs
@@ -362,17 +371,40 @@ class Orchestrator:
                 return RequestOutcome("conceded", request_run.iri, replans_used=replans)
             if verdict.decision == "replan" and replans < self._budget:
                 replans += 1
-                # Execution stays whole-pipeline (clear-all) this slice — so
-                # invalidated_refs = ALL of request_run.pipeline_runs, and the
-                # recorded ``replan_level`` is "pipeline" (the ACTUAL action):
-                # never a finer level that would contradict a full-clear. Slice
-                # 3 records the consumer's advisory member target separately on
-                # ``replan_milestone_ref`` (None for v0 → byte-identical).
-                # Targeted re-execution (honoring verdict.replan_level to re-run
-                # only that member) is a later, non-additive slice.
-                invalidated = replan_check.invalidate_at_and_below(request_run, "pipeline")
+                # Slice 3b — if the verdict names a re-runnable top-level map
+                # member (reserved "map"/"plan_subtree" level + a resolvable
+                # ref-path), invalidate only that map + fold + downstream and
+                # re-run just that member against the RETAINED blackboard (the
+                # untargeted siblings + their grounding graphs are reused); the
+                # recorded ``replan_level`` is then the ACTUAL targeted level.
+                # Otherwise fall back to the whole-pipeline clear + a fresh
+                # blackboard, recorded as "pipeline" — byte-identical to Slice 3
+                # (a v0 verdict, a full ``pipelinerun:`` advisory ref, or a nested
+                # target all resolve to None here).
+                member_target = (
+                    execution.resolve_member_target(plan_result, verdict.target_ref)
+                    if verdict.replan_level in ("map", "plan_subtree")
+                    and verdict.target_ref
+                    else None
+                )
+                if member_target is not None:
+                    map_idx, member_idx = member_target
+                    targeted = (map_idx, member_idx)
+                    invalidated = replan_check.invalidate_at_and_below(
+                        request_run, verdict.replan_level, at_index=map_idx
+                    )
+                    recorded_level = verdict.replan_level
+                else:
+                    targeted = None
+                    blackboard = (
+                        dict(solve_seed or {}) if solve_seed is not None else {}
+                    )
+                    invalidated = replan_check.invalidate_at_and_below(
+                        request_run, "pipeline"
+                    )
+                    recorded_level = "pipeline"
                 writer.emit_replan_record(
-                    "pipeline", verdict,
+                    recorded_level, verdict,
                     replan_milestone_ref=verdict.target_ref,
                     invalidated_refs=invalidated,
                 )
@@ -396,8 +428,8 @@ class Orchestrator:
             )
             blame = phase_6.diagnose(self._dispatcher, outcome=diag_outcome)
             # Dream Slice 1b (D4): the insufficient path is a reached "I can't
-            # determine this" DECISION → dont_know, NOT "failed" (which is now
-            # reserved for a crash). Runtime status matches the recorded outcome.
+            # determine this" DECISION → dont_know, NOT "failed" (reserved for a
+            # crash). Runtime status matches the recorded outcome.
             request_run.status = "dont_know"
             self._consolidate(
                 request_run, p1.request_pattern_iri, episode_id, writer, capacity_graphs

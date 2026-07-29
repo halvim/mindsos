@@ -36,6 +36,14 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional, Tuple
 
+# Generic labels for the topology-heuristic ds groups (any brain, no viz_spec
+# needed). Brain-specific nice names come from viz_spec.DS_LABELS / CAP_LABELS.
+_HEURISTIC_DS_LABELS: Dict[str, str] = {
+    "given": "given (entry input)", "derived": "derived",
+    "verdict": "verdict (terminal output)", "constant": "constant / unused",
+    "other": "other",
+}
+
 # Palette parity with brain_graph_2.html (the shipped prototype).
 DEFAULT_CAP_COLORS: Dict[str, str] = {
     "perception": "#ff8f6b", "derivation": "#2dd4bf", "scoring": "#fbbf24",
@@ -59,7 +67,10 @@ def _short(iri: Any) -> str:
 
 
 def _vid(kind: str, iri: Any) -> str:
-    return ("cap:" if kind == "cap" else "ds:") + _short(iri)
+    # Full IRI keeps ids unique — two datastates that share a short name
+    # (e.g. path_finding.goal vs phase1.goal) must not collapse to one node,
+    # or vis.DataSet raises "id already exists" and the graph never renders.
+    return ("cap:" if kind == "cap" else "ds:") + str(iri)
 
 
 def _node_color(bg: str) -> Dict[str, Any]:
@@ -180,6 +191,9 @@ def build_data(views: List[Any], spec: Any = None, context: Any = None) -> Dict[
     ds_group_map = dict(getattr(spec, "DS_GROUPS", {}) or {})
     cap_colors = {**DEFAULT_CAP_COLORS, **(getattr(spec, "CAP_COLORS", {}) or {})}
     ds_colors = {**DEFAULT_DS_COLORS, **(getattr(spec, "DS_COLORS", {}) or {})}
+    cap_labels = dict(getattr(spec, "CAP_LABELS", {}) or {})
+    ds_labels = {**_HEURISTIC_DS_LABELS, **(getattr(spec, "DS_LABELS", {}) or {})}
+    title = getattr(spec, "TITLE", None)
 
     fam = _family_map(views)
     ds_iris = [n.node_id for n, _ in _iter_unique(views, "iter_datastates")]
@@ -262,6 +276,9 @@ def build_data(views: List[Any], spec: Any = None, context: Any = None) -> Dict[
         "segments": segments,
         "capColor": {f: cap_colors[f] for f in cap_colors if f in present_fams},
         "dsColor": {g: ds_colors[g] for g in ds_colors if g in present_grps},
+        "title": title,
+        "capNames": {f: cap_labels[f] for f in cap_labels if f in present_fams},
+        "dsNames": {g: ds_labels[g] for g in ds_labels if g in present_grps},
     }
 
 

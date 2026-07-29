@@ -114,6 +114,18 @@ def build(
         }},
     ).outputs.get(DS_PLAN)
     solve_target = _read_solve_target(plan_out)
+
+    # Collection-iteration wiring (ADR-0199 / locked decision 3): when the
+    # planner returns an ordered ``milestones`` list, emit one leaf per entry
+    # (in planner order) under a non-leaf root and key ``milestone_specs`` /
+    # ``leaf_targets`` to the emitted refs. Absent the list, the body below is
+    # byte-identical to the v0 / single-``solve_target`` path.
+    milestones = _read_milestones(plan_out)
+    if milestones is not None:
+        return _build_from_milestones(
+            writer, mapping_result_ref, milestones, solve_target
+        )
+
     root = writer.emit_milestone("root", 0, is_leaf=True)
     plan = writer.emit_plan(root.iri, mapping_result_ref)
 
@@ -131,6 +143,83 @@ def build(
         leaf_milestone_refs=leaves,
         pipeline_refs=pipelines,
         solve_target=solve_target,
+    )
+
+
+def _read_milestones(plan_out: Any) -> Optional[List[Mapping]]:
+    """Extract a planner's ordered ``milestones`` list from ``plan_out``, or
+    ``None`` for the v0 / single-``solve_target`` path.
+
+    Tolerant by construction: anything other than a Mapping carrying a **non-empty
+    list** under ``"milestones"`` yields ``None`` (an empty list included -> v0).
+    Each entry must be a Mapping ``{"spec"?, "leaf_target"?}``; one malformed entry
+    aborts the whole list to ``None`` (a bad shape must not emit a partial plan)."""
+    if not isinstance(plan_out, Mapping):
+        return None
+    ms = plan_out.get("milestones")
+    if not isinstance(ms, list) or not ms:
+        return None
+    if not all(isinstance(m, Mapping) for m in ms):
+        return None
+    return ms
+
+
+def _read_leaf_target(entry: Mapping) -> Optional[Dict[str, str]]:
+    """A milestone entry's optional per-leaf ``{start,target}`` endpoints, or
+    ``None`` -- same well-formedness rule as :func:`_read_solve_target`."""
+    lt = entry.get("leaf_target")
+    if not isinstance(lt, Mapping):
+        return None
+    start = lt.get("start_datastate")
+    target = lt.get("target_datastate")
+    if not start or not target:
+        return None
+    return {"start_datastate": start, "target_datastate": target}
+
+
+def _build_from_milestones(
+    writer, mapping_result_ref, milestones, solve_target,
+) -> PlanResult:
+    """Emit one leaf Milestone per planner ``milestones`` entry (in order) under a
+    synthetic non-leaf root, keying ``milestone_specs`` / ``leaf_targets`` to the
+    emitted refs (collection-iteration; ADR-0199 / locked decision 3).
+
+    The root stays a non-leaf parent -- ``emit_plan`` anchors on it and
+    ``root_milestone_ref`` is a single ref -- and the entries are its ordered leaf
+    children. ``leaf_milestone_refs`` preserves planner order (the executor's value
+    bus depends on it: a map's ``out_ds`` must be produced before the fold reads its
+    ``in_ds``). ``spec`` is passed through verbatim (core stays agnostic to map/fold
+    contents); ``leaf_target`` is validated like the plan-global ``solve_target``.
+    An entry with neither is a plain leaf -- it falls back to ``solve_target`` at
+    execution. ``milestone_specs`` / ``leaf_targets`` stay ``None`` when empty so a
+    milestones-list of plain leaves keeps the executor's plain-leaf path."""
+    root = writer.emit_milestone("root", 0, is_leaf=False)
+    plan = writer.emit_plan(root.iri, mapping_result_ref)
+    leaf_refs: List[str] = []
+    pipelines: Dict[str, str] = {}
+    milestone_specs: Dict[str, Dict[str, Any]] = {}
+    leaf_targets: Dict[str, Dict[str, str]] = {}
+    for idx, entry in enumerate(milestones):
+        child = writer.emit_milestone(
+            f"m0.{idx}", idx, parent_ref=root.iri, is_leaf=True
+        )
+        leaf_refs.append(child.iri)
+        pipe = writer.emit_pipeline(plan.iri, child.iri)
+        pipelines[child.iri] = pipe.iri
+        spec = entry.get("spec")
+        if isinstance(spec, Mapping):
+            milestone_specs[child.iri] = dict(spec)
+        leaf_target = _read_leaf_target(entry)
+        if leaf_target is not None:
+            leaf_targets[child.iri] = leaf_target
+    return PlanResult(
+        plan_ref=plan.iri,
+        root_milestone_ref=root.iri,
+        leaf_milestone_refs=leaf_refs,
+        pipeline_refs=pipelines,
+        solve_target=solve_target,
+        leaf_targets=leaf_targets or None,
+        milestone_specs=milestone_specs or None,
     )
 
 
