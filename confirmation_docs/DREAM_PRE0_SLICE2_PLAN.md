@@ -1,6 +1,6 @@
 # DREAM PRE-0 Slice 2 — stream per-run content into the OPEN Episode (BUILD PLAN)
 
-**Status:** DESIGN CONVERGED w/ HA 2026-07-29. Branch `feat/dream-pre0-slice2` off
+**Status:** SHIPPED 2026-07-30 (Slice 2a+2b; merged-state Linux gate 4415 passed / 12 skip / 1 xpass / 0 failed; tag dream-pre0-slice2-confirmed). DESIGN CONVERGED w/ HA 2026-07-29. Branch `feat/dream-pre0-slice2` off
 `origin/main` @ `997a6fa` (Slice-1b ship). Authoritative model = project memory
 `dream-episode-model.md`. Merged-state gate baseline = **4408**.
 
