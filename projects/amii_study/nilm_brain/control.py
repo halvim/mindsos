@@ -29,7 +29,6 @@ from mindsos_capacity.identifiers import CATEGORY_DECISION, CATEGORY_REDUCTION
 from mindsos_capacity.builtins.reduction_v0 import (
     install_reduction_v0, DS_SCORED_COLLECTION, DS_SELECTION,
 )
-from mindsos_capacity.builtins.learn_parameter import install_learn_parameter_capacities
 from mindsos_intelligence.pipeline_execution import execute_pipeline
 
 from . import ontology as O
@@ -65,6 +64,7 @@ _HARM_PROFILE = capacity_iri(CATEGORY_DERIVATION, "harmonic_profile")
 _ONSET     = capacity_iri(CATEGORY_DERIVATION, "onset_features")
 _ASSEMBLE  = capacity_iri(CATEGORY_DERIVATION, "assemble_signature")
 _SIG_DIST  = capacity_iri(CATEGORY_DERIVATION, "signature_distance")
+_SCORE_LIB = capacity_iri(CATEGORY_DERIVATION, "score_appliance_library")
 _RECOGNIZE = capacity_iri(CATEGORY_DECISION, "recognize")
 # appliance selection is a real capacity now (was Python sorted+Counter): the
 # nearest exemplar is `reduction.argmin` over a scored collection (ADR-0204).
@@ -108,9 +108,6 @@ class Solver:
         # Global reduction builtins (argmin selection for the appliance matcher);
         # idempotent — no-op if the cl already has them (e.g. a shared resident cl).
         install_reduction_v0(self.cl)
-        # Global learned-parameters write capacity (durable appliance persistence);
-        # idempotent — no-op if boot_brain already installed it on a shared cl.
-        install_learn_parameter_capacities(self.cl)
 
         O.register_ontology(self.cl, self.session)
         register_perception(self.cl, self.session)
@@ -553,17 +550,19 @@ class Solver:
         return self.match_cutoff
 
     def _match_appliance(self, sig, k: int = 1):
-        """Nearest taught exemplar via the `reduction.argmin` capacity (was a
-        Python `sorted`+`Counter` vote). The variable-size library fan-out stays
-        L4 iteration (invoking `signature_distance` per exemplar); the SELECTION
-        is now a real capacity. 1-NN: the nearest exemplar's class is the verdict
-        — k>1 majority vote gave no measurable gain on PLAID (leave-one-instance-
-        out). `k` is vestigial (kept for call-site compatibility)."""
+        """Nearest taught exemplar as TWO capabilities, no Python loop: the
+        `score_appliance_library` derivation scores the query against every
+        exemplar (the variable-size library fan-out is now inside that capacity,
+        not an L4 loop over `signature_distance`), then `reduction.argmin` selects
+        the nearest. 1-NN: the nearest exemplar's class is the verdict — k>1
+        majority vote gave no measurable gain on PLAID (leave-one-instance-out).
+        `k` is vestigial (kept for call-site compatibility)."""
         lib = self.appliance_library
         if not lib:
             return None
-        collection = [{"score": self._sig_distance(sig, r["vector"]), "label": r["name"]}
-                      for r in lib]
+        collection = self._invoke(_SCORE_LIB, {
+            O.APPLIANCE_SIGNATURE.iri: sig, O.APPLIANCE_LIBRARY.iri: lib,
+            O.SIGNATURE_NORM.iri: self.signature_norm})[O.SCORED_LIBRARY.iri]
         sel = self._invoke(_ARGMIN, {DS_SCORED_COLLECTION: collection})[DS_SELECTION]
         if sel is None:
             return None

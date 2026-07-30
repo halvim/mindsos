@@ -31,7 +31,7 @@ from .ontology import (
     INDUCED_STRUCTURE,
     CURRENT_WINDOW, VOLTAGE_WINDOW, RAW_HARMONICS, POWER_FEATURES,
     STEADY_SIGNATURE, ONSET_FEATURES, APPLIANCE_SIGNATURE, REFERENCE_SIGNATURE,
-    SIGNATURE_NORM, MATCH_DISTANCE,
+    SIGNATURE_NORM, MATCH_DISTANCE, APPLIANCE_LIBRARY, SCORED_LIBRARY,
 )
 
 _EPS = 1e-20
@@ -309,6 +309,25 @@ def _signature_distance(**kw):
     return {MATCH_DISTANCE.iri: float(np.linalg.norm((a - b) / sd))}
 
 
+def _score_appliance_library(**kw):
+    """Standardized-Euclidean distance from ONE query signature to EVERY taught
+    exemplar in the library, as a scored collection ``[{score, label}]`` (the
+    reduction ``scored_collection`` shape). Replaces the L4 per-exemplar Python
+    loop: the variable-size library fan-out is now this one derivation, so
+    matching is ``score_appliance_library`` -> ``reduction.argmin`` (two
+    capabilities, no Python loop). Same per-dim standardizer as
+    ``signature_distance`` (``std`` = the learned ``signature_norm``)."""
+    q = np.asarray(kw[APPLIANCE_SIGNATURE.iri], dtype=float)
+    library = kw[APPLIANCE_LIBRARY.iri] or []
+    sd = np.asarray(kw[SIGNATURE_NORM.iri]["std"], dtype=float) + _EPS
+    scored = [
+        {"score": float(np.linalg.norm((q - np.asarray(r["vector"], dtype=float)) / sd)),
+         "label": r["name"]}
+        for r in library
+    ]
+    return {SCORED_LIBRARY.iri: scored}
+
+
 def register_derivation(cl, session):
     D = CATEGORY_DERIVATION
     caps = [
@@ -407,6 +426,10 @@ def register_derivation(cl, session):
                  inputs=(APPLIANCE_SIGNATURE.iri, REFERENCE_SIGNATURE.iri, SIGNATURE_NORM.iri),
                  outputs=(MATCH_DISTANCE.iri,), implementation=_signature_distance,
                  description="signature + reference + norm -> standardized distance"),
+        Capacity(name="score_appliance_library", category=D,
+                 inputs=(APPLIANCE_SIGNATURE.iri, APPLIANCE_LIBRARY.iri, SIGNATURE_NORM.iri),
+                 outputs=(SCORED_LIBRARY.iri,), implementation=_score_appliance_library,
+                 description="query signature + taught library + norm -> scored_collection [{score,label}]"),
     ]
     for c in caps:
         cl.register_capacity(c, session=session, if_exists="upsert")
