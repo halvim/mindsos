@@ -40,6 +40,7 @@ from ..exceptions import (
     WALReplayerMissingError,
 )
 from .graph_loader import (
+    graph_anchors_by_role,
     iter_load_graph,
     load_graph,
     load_graph_with_report,
@@ -54,6 +55,7 @@ from .xref_loader import XRefLoader, attach_xref_loader
 
 __all__ = [
     "load_graph",
+    "graph_anchors_by_role",
     "iter_load_graph",
     "load_graph_with_report",
     "load_metagraph_with_report",

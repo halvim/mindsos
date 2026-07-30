@@ -480,6 +480,43 @@ def _load_graph_anchor(client: Client, graph_id: str) -> Dict[str, Any]:
     return res.rows[0]
 
 
+def graph_anchors_by_role(
+    client: Client,
+    *,
+    role_prefix: Optional[str] = None,
+    name_suffix: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Return ``:Graph`` anchor rows (``{id, role, name}``) matching a role prefix
+    and/or a name suffix, across ALL metagraphs (Dream PRE-0 Slice 3).
+
+    ``load_graph`` finds a graph by id, and ``MetagraphLoader.refresh`` finds
+    role-graphs *within one metagraph*; neither helps when the writing
+    ``metagraph_id`` is unknown -- the case for a crashed request's streamed
+    grounding after a restart (its session MM object is gone, but the persisted
+    ``:Graph`` rows survive with their deterministic ``role``/``name``). This
+    locates them by those deterministic anchors. At least one filter is required.
+    """
+    clauses: List[str] = []
+    params: Dict[str, Any] = {}
+    if role_prefix is not None:
+        clauses.append("g.role STARTS WITH $role_prefix")
+        params["role_prefix"] = role_prefix
+    if name_suffix is not None:
+        clauses.append("g.name ENDS WITH $name_suffix")
+        params["name_suffix"] = name_suffix
+    if not clauses:
+        raise ValueError(
+            "graph_anchors_by_role requires role_prefix and/or name_suffix"
+        )
+    q = (
+        "MATCH (g:Graph) WHERE "
+        + " AND ".join(clauses)
+        + " RETURN g.id AS id, g.role AS role, g.name AS name"
+    )
+    res = client.run_query(q, params)
+    return list(res.rows)
+
+
 def _fetch_node_page(
     client: Client, graph_id: str, offset: int, limit: int
 ) -> List[Dict[str, Any]]:
