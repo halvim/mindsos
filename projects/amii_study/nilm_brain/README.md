@@ -18,6 +18,11 @@ cycles by dispatching L3 capacities the **finder composes** and core's
   comprehension (`bind_declaration`); decision (`verdict`).
 - **The `cycle` recognition pipeline** (doc §6.1), composed by
   `ConjunctionFinder` and executed by `execute_pipeline`.
+- **Appliance recognition is capabilities (2026-07-30):** matching =
+  `score_appliance_library` → `reduction.argmin`; fitting = `fit_signature_norm`
+  + `fit_appliance_cutoff` (`margin` a DataState); per-channel windowing =
+  `window_current`/`window_voltage`. The only remaining L4 loop on that path is
+  the window fan-out (Phase 2, waiting on a core map/fold edit). See STATE.md.
 
 ## Layout
 
@@ -33,7 +38,7 @@ nilm_brain/
   pipelines.py      compose the recognition segment via the finder
   dispatch.py       thin dispatcher over cl.invoke (execute_pipeline seam)
   control.py        Solver: register + calibrate(seed) + recognize() + teach/fit/recognize_appliance
-  persistence.py    durable L2: taught appliance library + signature_norm + match_cutoff (learned-parameters role)
+  persistence.py    durable L2 appliance state via core learn_parameter capacity + read_learned_parameter_snapshot (STATE 2026-07-30)
   repl.py           boot nilm as a RESIDENT brain (durable by default; --ephemeral opt-out)
   viz_spec.py       per-brain graph spec for the shared `view` verb
   harness.py        DuckSession (in-memory Local, no Falkor) — the gate substrate
@@ -134,8 +139,9 @@ this brain is built against them:
 - **Learned state is L2** — `calibrate` is a `Params` fit off a clean-cycle
   seed; a healthy cycle scores high, a disturbance low (this is what resolves
   the single-pass "everything is request_reference" collapse). Durable L2
-  persistence of the taught appliance library + norm + cutoff is **shipped**
-  (learned-parameters role; `persistence.py`, STATE #5).
+  persistence of the taught appliance library + norm + cutoff rides the **core
+  `learn_parameter` capacity** + `read_learned_parameter_snapshot` (not a
+  hand-written role; `persistence.py`, STATE #5 / 2026-07-30).
 
 ## The acceptance gate (`tests/test_gate.py`)
 
