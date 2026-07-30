@@ -51,7 +51,16 @@ class PlanResult:
     #: today's single-target behaviour (v0 + Step-5 single-leaf path unchanged).
     #: The map/fold fan-out that populates this for real rides Slice 1b + arc's
     #: planner; the v0 builder below never sets it.
-    leaf_targets: Optional[Dict[str, Dict[str, str]]] = None
+    #:
+    #: **Multi-input leaves (map-member multi-input CR):** an entry may declare
+    #: plural ``"start_datastates": [ds, ...]`` *instead of* the singular
+    #: ``"start_datastate"`` (declaring both raises). More than one start selects
+    #: the sound ``ConjunctionFinder``; exactly one keeps ``BFSFinder`` — so
+    #: every pre-CR entry composes exactly as before. An optional ``"finder"``
+    #: (``"bfs"`` | ``"conjunction"``) overrides that arity derivation;
+    #: ``"bfs"`` with plural starts raises rather than silently wiring one input
+    #: and dropping the rest.
+    leaf_targets: Optional[Dict[str, Dict[str, Any]]] = None
     #: Slice 1b/2 — per-milestone map/fold spec the executor interprets. Maps a
     #: milestone ref to a kind descriptor: a ``map`` node
     #: (``{"kind": "map", "collection_ds", "member_ds", "sub_target",
@@ -73,6 +82,18 @@ class PlanResult:
     #: contain a nested ``map``/``fold``. When absent, the member runs the flat
     #: 1b path — byte-identical. Emitted by the consumer's planner (arc's
     #: ``derive_initial_plan`` shadow), not by core (locked decision 3).
+    #:
+    #: **Multi-input members (map-member multi-input CR):** a ``map`` node may
+    #: additionally carry an optional ``"shared_inputs": [ds, ...]`` — parent
+    #: blackboard keys copied into **every** member's sub-blackboard alongside
+    #: the member value, so a member capacity's non-member inputs (domain
+    #: constants, or a per-map shared value) have a source inside the member run.
+    #: They also join the member composition's start set, so the arity-derived
+    #: finder (``ConjunctionFinder`` past one start) wires a multi-input member
+    #: soundly; an optional ``"finder"`` key overrides the derivation as for
+    #: ``leaf_targets``. A declared key missing from the parent blackboard raises
+    #: ``ValueError`` naming the key and the map. Absent → byte-identical to
+    #: Slice 1b/2/3b.
     milestone_specs: Optional[Dict[str, Dict[str, Any]]] = None
 
 
