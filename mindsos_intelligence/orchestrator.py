@@ -40,6 +40,7 @@ from . import (
     sufficient_predicate,
 )
 from .chain_artifacts import ChainArtifactWriter
+from .capacity_persister import CapacityStreamSink
 from .ingress import InputEnvelope
 from mindsos_core.exceptions import PersistenceError
 
@@ -322,7 +323,17 @@ class Orchestrator:
             {solve_target["start_datastate"]: p1.resolved_reference}
             if solve_target is not None else None
         )
-        capacity_graphs: list = []
+        # Dream PRE-0 Slice 2 — stream each run's capacity grounding graph
+        # to Falkor as the run completes (crash durability), instead of
+        # batching at terminal consolidation. The sink IS the ``capacity_graphs``
+        # list ``execution.run`` appends to; its append persists the graph.
+        # Plain list (byte-identical, no streaming) in simplified mode or with
+        # no persister wired.
+        capacity_graphs = (
+            CapacityStreamSink(self._mm, self._mm_persister)
+            if (not self._simplified and self._mm_persister is not None)
+            else []
+        )
 
         # Phase 3-5 — execution with bounded replan (invalidate-at-and-below).
         # Slice 3b — the blackboard is held across the loop so a *targeted* replan

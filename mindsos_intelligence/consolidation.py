@@ -153,21 +153,28 @@ def consolidate_request(
         chain_graph.graph_id if chain_graph is not None
         else mm.intelligence_mm.metagraph_id
     )
-    # capacity_mm persistence (CR: reopen DQ-8, Slice B). Persist this task's
-    # per-run grounding graphs (edges included) + a task-level index graph;
-    # ``capacity_root_ref`` mirrors ``mm_root_ref``. Inert until Step 5: no
-    # in-CR caller supplies ``capacity_graphs`` yet, so this stays ``None``.
+    # capacity_mm persistence. Dream PRE-0 Slice 2: run graphs are streamed
+    # durably as each run completes (CapacityStreamSink), so here we build the
+    # task-level index ONLY over them (``capacity_root_ref``). A non-streamed
+    # caller (plain list) falls back to persist-run-graphs-then-index
+    # (byte-identical to the pre-Slice-2 path). Empty/None leaves it ``None``.
     capacity_root_ref = None
     if mm_persister is not None and capacity_graphs:
-        from .capacity_persister import persist_capacity_mm
+        from .capacity_persister import build_capacity_index, persist_capacity_mm
 
-        capacity_root_ref = persist_capacity_mm(
-            mm_persister,
-            mm.capacity_mm,
-            list(capacity_graphs),
-            request_id=request_run.iri,
-            encoders=capacity_encoders,
-        )
+        graphs = list(capacity_graphs)
+        if getattr(capacity_graphs, "streamed", False):
+            capacity_root_ref = build_capacity_index(
+                mm_persister, mm.capacity_mm, graphs, request_id=request_run.iri
+            )
+        else:
+            capacity_root_ref = persist_capacity_mm(
+                mm_persister,
+                mm.capacity_mm,
+                graphs,
+                request_id=request_run.iri,
+                encoders=capacity_encoders,
+            )
     with mm.lock.write_locked():
         request_input_ref = request_run.request_input_ref or f"requestinput:{episode_id}"
         request_input_root_ref = getattr(request_run, "request_input_root_ref", None)

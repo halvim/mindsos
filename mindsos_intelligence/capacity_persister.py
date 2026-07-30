@@ -117,6 +117,38 @@ def make_node_value_encoder(
     return _encode
 
 
+def build_capacity_index(
+    persister: Any,
+    capacity_metagraph: Any,
+    run_graphs: List[Any],
+    *,
+    request_id: str,
+) -> Optional[str]:
+    """Persist ONLY the task-level capacity **index** (PB-2) over run graphs that
+    are ALREADY durable; return the index graph's ``graph_id`` (the Episode's
+    ``capacity_root_ref``), or ``None`` when there is nothing to index.
+
+    Dream PRE-0 Slice 2: the per-run grounding graphs are streamed to Falkor as
+    each run completes (:class:`CapacityStreamSink`), so at terminal consolidation
+    only the index is built here — no run-graph re-persist. One
+    ``CapacityRunRef`` node per run graph; its ``value`` is the run graph's
+    ``graph_id`` (a primitive → codec fast path), so the index persists with
+    the default encoder.
+    """
+    graphs = [g for g in (run_graphs or []) if g is not None and g.nodes]
+    if not graphs:
+        return None
+    index = Graph(name=index_graph_role(request_id), role=index_graph_role(request_id))
+    for g in graphs:
+        index.add_node(
+            value=g.graph_id,
+            type_name=NODE_TYPE_CAPACITY_RUN_REF,
+            properties={PROP_RUN_GRAPH_ROLE: g.role} if g.role else None,
+        )
+    persister.persist(capacity_metagraph, index)
+    return index.graph_id
+
+
 def persist_capacity_mm(
     persister: Any,
     capacity_metagraph: Any,
@@ -151,19 +183,57 @@ def persist_capacity_mm(
         persister.persist(
             capacity_metagraph, g, node_value_encoder=node_encoder
         )
+    # Task-level index over these now-persisted run graphs (PB-2).
+    return build_capacity_index(
+        persister, capacity_metagraph, graphs, request_id=request_id
+    )
 
-    # Task-level index: one CapacityRunRef node per persisted run graph. Node
-    # value = the run graph's graph_id (a primitive → codec fast path), so the
-    # index persists with the default encoder (no per-DataState dispatch).
-    index = Graph(name=index_graph_role(request_id), role=index_graph_role(request_id))
-    for g in graphs:
-        index.add_node(
-            value=g.graph_id,
-            type_name=NODE_TYPE_CAPACITY_RUN_REF,
-            properties={PROP_RUN_GRAPH_ROLE: g.role} if g.role else None,
-        )
-    persister.persist(capacity_metagraph, index)
-    return index.graph_id
+
+class CapacityStreamSink(list):
+    """Drop-in for the orchestrator's per-run ``capacity_graphs`` list that ALSO
+    persists each run's grounding graph to Falkor the moment it is appended
+    (Dream PRE-0 Slice 2 — stream per-run content). ``execution.run`` appends
+    each completed run's ``capacity_mm`` graph exactly as before; the sink makes
+    that append durable via a graph-scoped :meth:`MMPersister.persist`, so a crash
+    mid-solve keeps the partial grounding instead of losing everything until
+    terminal consolidation.
+
+    * **Best-effort:** a failed persist NEVER fails the solve (mirrors the
+      Slice-1b local-flush posture). The graph stays in the in-memory list so the
+      close-time :func:`build_capacity_index` still references it.
+    * ``streamed = True`` tells
+      :func:`mindsos_intelligence.consolidation.consolidate_request` the run
+      graphs are already durable, so close builds the index ONLY.
+    * Persist runs OUTSIDE the MM lock: a run's graph is frozen once the run
+      completes (the append point) and each run owns its own graph, so nothing
+      mutates it concurrently (same rationale as the terminal chain-graph persist).
+
+    ``mm``/``persister`` ``None`` → behaves as a plain list (no streaming), so
+    the simplified / no-Falkor paths stay byte-identical.
+    """
+
+    #: Marks the run graphs as already-streamed (read by ``consolidate_request``).
+    streamed = True
+
+    def __init__(self, mm: Any, persister: Any, *, encoders=None) -> None:
+        super().__init__()
+        self._mm = mm
+        self._persister = persister
+        self._node_encoder = make_node_value_encoder(encoders or {})
+
+    def append(self, graph: Any) -> None:
+        super().append(graph)
+        if self._persister is None or self._mm is None or graph is None:
+            return
+        try:
+            self._persister.persist(
+                self._mm.capacity_mm, graph, node_value_encoder=self._node_encoder
+            )
+        except Exception:
+            # Best-effort durability: a failed stream-flush must never fail the
+            # solve (Dream PRE-0 D3 posture). The graph remains in the list, so
+            # the close-time index still references it.
+            pass
 
 
 __all__ = [
@@ -174,4 +244,6 @@ __all__ = [
     "default_encode",
     "make_node_value_encoder",
     "persist_capacity_mm",
+    "build_capacity_index",
+    "CapacityStreamSink",
 ]

@@ -24,7 +24,9 @@ from tests._shared.falkordb_fixture import falkor_client  # noqa: F401 — fixtu
 from mindsos_core.exceptions import PersistenceError
 from mindsos_core.models.graph import Graph
 from mindsos_intelligence.capacity_persister import (
+    CapacityStreamSink,
     NODE_TYPE_CAPACITY_RUN_REF,
+    build_capacity_index,
     default_encode,
     index_graph_role,
     make_node_value_encoder,
@@ -193,3 +195,71 @@ def test_capacity_persist_round_trip(falkor_client):
     assert index.role == index_graph_role("t1")
     refs = [n for n in index.nodes.values() if n.type_name == NODE_TYPE_CAPACITY_RUN_REF]
     assert [n.value for n in refs] == [graph.graph_id]
+
+
+# ── Dream PRE-0 Slice 2: build_capacity_index (index-only) + streaming sink ──
+
+
+def test_build_capacity_index_persists_index_only():
+    """Slice 2: at close the run graphs are already streamed, so
+    ``build_capacity_index`` persists ONLY the index (one call, no run-graph
+    re-persist) and returns its graph_id."""
+    g1 = _run_graph("capacity:run:T:1")
+    g2 = _run_graph("capacity:run:T:2")
+    fp = _FakePersister()
+    root = build_capacity_index(fp, object(), [g1, g2], request_id="T")
+
+    assert len(fp.calls) == 1  # index only — NOT the two run graphs
+    index_graph, enc_set = fp.calls[0]
+    assert enc_set is False
+    assert index_graph.role == index_graph_role("T")
+    assert root == index_graph.graph_id
+    refs = [n for n in index_graph.nodes.values() if n.type_name == NODE_TYPE_CAPACITY_RUN_REF]
+    assert {n.value for n in refs} == {g1.graph_id, g2.graph_id}
+
+
+def test_build_capacity_index_empty_is_noop():
+    fp = _FakePersister()
+    assert build_capacity_index(fp, object(), [], request_id="T") is None
+    assert build_capacity_index(fp, object(), [None], request_id="T") is None
+    assert fp.calls == []
+
+
+def test_capacity_stream_sink_persists_each_run_on_append():
+    """Slice 2: the sink IS the per-run list; appending a run graph persists it
+    immediately (graph-scoped, with the node encoder) — the streaming spine."""
+    mm = MentalModel(session_id="s", user_id="u")
+    fp = _FakePersister()
+    sink = CapacityStreamSink(mm, fp)
+    assert sink.streamed is True
+
+    g = _run_graph("capacity:run:T:1")
+    sink.append(g)
+    assert list(sink) == [g]  # still behaves as the capacity_graphs list
+    assert len(fp.calls) == 1
+    graph, enc_set = fp.calls[0]
+    assert graph is g and enc_set is True
+
+
+def test_capacity_stream_sink_best_effort_on_persist_error():
+    """A failed stream-flush must never fail the solve; the graph is retained in
+    the list so the close-time index still references it."""
+
+    class _Boom:
+        def persist(self, *a, **k):
+            raise PersistenceError("boom")
+
+    mm = MentalModel(session_id="s", user_id="u")
+    sink = CapacityStreamSink(mm, _Boom())
+    g = _run_graph("capacity:run:T:1")
+    sink.append(g)  # must NOT raise
+    assert list(sink) == [g]
+
+
+def test_capacity_stream_sink_plain_list_without_persister():
+    """No persister → behaves as a plain list (byte-identical to the
+    simplified / no-Falkor path)."""
+    sink = CapacityStreamSink(None, None)
+    g = _run_graph("capacity:run:T:1")
+    sink.append(g)
+    assert list(sink) == [g]

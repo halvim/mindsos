@@ -412,3 +412,28 @@ def test_v0_lifecycle_unchanged_no_capacity_grounding():
     outcome = orch.run_lifecycle("hello", request_id="T")
     assert outcome.status == "succeeded"
     assert _capacity_run_graph(mm) is None
+
+
+def test_run_graph_stream_is_best_effort_no_solve_crash():
+    """Dream PRE-0 Slice 2: run graphs stream during execution, and a failed
+    stream-flush must NOT fail the solve (was a crash pre-Slice-2, when the run
+    graph was persisted at terminal consolidation without a best-effort guard).
+    The close-time index (a separate persist) is unaffected."""
+    from mindsos_core.exceptions import PersistenceError
+
+    class _RaiseOnRunPersister:
+        def __init__(self):
+            self.roles = []
+
+        def persist(self, metagraph, graph, *, node_value_encoder=None):
+            self.roles.append(graph.role)
+            if graph.role and graph.role.startswith("capacity:run:"):
+                raise PersistenceError("stream flush boom")
+
+    persister = _RaiseOnRunPersister()
+    orch, _mm, kl = _orch_with_solve(persister=persister)
+    outcome = orch.run_lifecycle("hello", request_id="T")
+
+    assert outcome.status == "succeeded"  # streaming failure did NOT fail the solve
+    assert any(r.startswith("capacity:run:") for r in persister.roles)  # streamed
+    assert any(r.startswith("capacity:index:") for r in persister.roles)  # index at close
