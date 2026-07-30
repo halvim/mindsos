@@ -12,6 +12,43 @@ pipelines; the *diagnosis* (why recognition fails, what to change) was NOT in th
 The recorded reasoning + the recognition/diagnosis line + the transfer spec live in
 `docs/DIAGNOSTIC_INTELLIGENCE.md` — read it to understand what this project is actually proving.
 
+## Update 2026-07-30 (latest chat) — read before the older sections below
+- **Persistence ADOPTED onto core `learn_parameter`.** `persistence.py`'s hand-written
+  learned-parameters role write/read is gone: the core capacity
+  `capacity:learning-methods:learn_parameter` (write; `cl.invoke` auto-injects `writeable` for a
+  zero-output cap when the CapacityLayer carries a `kl` — `boot_brain` does) + core
+  `read_learned_parameter_snapshot` (boot read). ONE bundled node keyed
+  `(parameter_set="nilm.appliance_state", target="appliance_state")`, **overwrite-in-place** (was
+  append-only latest-wins); non-finite cutoff refused at the call site; old hand-written nodes are
+  ignored by the reader — **re-teach, not migrate**. Gate 14/0 incl. the live Falkor round-trip.
+- **"Eliminate Python" thread — appliance path DONE. Three ships, each gate 14/0, behavior-preserving:**
+  - **1a — matching:** `_match_appliance`'s per-exemplar Python loop → `score_appliance_library`
+    capacity (owns the loop, standardized-Euclid) → `reduction.argmin`. New DataStates
+    `appliance_library`, `scored_library`.
+  - **1b — fitting (resolves open item #6):** `fit_appliance`'s O(n²) pairwise Python loop →
+    `fit_signature_norm` + `fit_appliance_cutoff` capacities (own the numpy). `margin` is now a
+    DataState (`build_given`), no longer a buried L4 literal.
+  - **per-channel split:** `bind`/`window` no longer force both channels through generic `signal`:
+    new `voltage_signal` DataState + `window_current`/`window_voltage` capacities produce
+    `current_window`/`voltage_window` directly (the sound finder fires one cap per IRI, so two
+    channels need two caps). Clears the demo blocker for a declared plan.
+- **Phase 2 (window fan-out → declared map/fold) — BLOCKED on core; CR out + OWNER-SIGNED-OFF.** The
+  lifecycle map/fold executor composes each member's pipeline with the single-input BFS finder and
+  seeds only the member value; nilm's per-window work is multi-input. Core CR (COMMON L4): (A1)
+  compose members with the sound multi-input `ConjunctionFinder` (or a pre-composed pipeline); (A2)
+  `shared_inputs` on the map spec to surface signals + window params to members. Thread =
+  `confirmation_docs/COLLECTION_MAP_FANOUT_COORDINATION.md` §11/§12 — core verified both premises,
+  decisions D1–D7, owner signed off; core building. Target plan when it lands: outer map member =
+  `window_start`; shared = `current_signal`/`voltage_signal`/`f0`/`fs`/`window_cycles`; sub-pipeline =
+  `window_current`/`window_voltage` → `power_features`/`current_harmonics` → `steady_signature` →
+  `assemble_signature` (onset a shared input) → `score_appliance_library` → `reduction.argmin` →
+  `recognize`. `_refine_window` stays L4 (converge-until-tolerance ≠ map/fold; cycle path only).
+- **Handoff notes:** memory is disabled this session — THIS block is the durable handoff. Minor cleanup
+  owed: `control.py` still imports now-unused `fit_signature_norm`/`fit_match_cutoff` from `decision.py`
+  (harmless). The `learn_pipeline`-based pipeline persistence (STATE #5) is unchanged.
+- **Still OPEN:** #1 calibrate over-sensitivity + `required_confidence` re-home; #4 secondary
+  pipelines/rungs. (#6 now DONE — see 1b.)
+
 ## Update 2026-07-29 (latest chat) — read before the older sections below
 - **Merged current `main` into `nilm_brain` twice** (`020c052`, then `1556080`; gate **14/0**). The
   brain now has the core **reduction family** (ADR-0204: argmin/argmax/top_k/bottom_k/majority_vote)
@@ -231,9 +268,12 @@ audits: `arc1-brain/docs/BRAIN_MINDSOS_CONFLICTS.md` (Part D catalogue) and
      run a standalone `-p 6379:6379` FalkorDB for host-run teach/repl. Superseded next step:
      `teach_appliances.py --data /home/sanmyaku/_plaid_full/_sample_expanded` →
      `python -m nilm_brain.repl` should report the loaded exemplars.
-6. **`fit_appliance` is O(n²)** in library exemplars (pairwise `signature_distance` for the
-   negative-aware cutoff). Fine for demo-scale; an efficiency (not correctness) item before a large
-   library — e.g. sample pairs, or a spatial index. Flagged, not faked.
+6. **✔ DONE (2026-07-30, Phase 1b) — `fit_appliance` O(n²) moved off the L4 loop into a capacity.**
+   The negative-aware cutoff is now the `fit_appliance_cutoff` capacity body (+ `fit_signature_norm`),
+   not an L4 loop of per-pair `signature_distance` invokes; `margin` is a DataState. Still O(n²) *inside*
+   the body (one numpy pass, vectorizable; not n² capacity dispatches) — a spatial index / pair sampling
+   stays a later efficiency option if the library grows large, but the Python loop + the STATE-#6 flag
+   are cleared.
 
 ## Cross-chat context (this session)
 - **L4 doctrine (corrected, locked).** L4 = **dispatch only** (`L4Dispatcher` / `run_lifecycle`);
