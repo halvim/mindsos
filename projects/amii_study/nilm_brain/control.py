@@ -67,6 +67,8 @@ _ONSET     = capacity_iri(CATEGORY_DERIVATION, "onset_features")
 _ASSEMBLE  = capacity_iri(CATEGORY_DERIVATION, "assemble_signature")
 _SIG_DIST  = capacity_iri(CATEGORY_DERIVATION, "signature_distance")
 _SCORE_LIB = capacity_iri(CATEGORY_DERIVATION, "score_appliance_library")
+_FIT_NORM  = capacity_iri(CATEGORY_DERIVATION, "fit_signature_norm")
+_FIT_CUTOFF = capacity_iri(CATEGORY_DERIVATION, "fit_appliance_cutoff")
 _RECOGNIZE = capacity_iri(CATEGORY_DECISION, "recognize")
 # appliance selection is a real capacity now (was Python sorted+Counter): the
 # nearest exemplar is `reduction.argmin` over a scored collection (ADR-0204).
@@ -93,6 +95,7 @@ def build_given(**overrides) -> Dict[str, object]:
         O.N_GRID.iri: 21,
         O.MAX_LOOP_ITERS.iri: 6,
         O.REQUIRED_CONFIDENCE.iri: 0.9,
+        O.MARGIN.iri: 0.25,
     }
     g.update(overrides)
     return g
@@ -521,34 +524,23 @@ class Solver:
         self.appliance_library = self.appliance_library + refs
         return {"name": name, "inst": inst, "exemplars": len(refs)}
 
-    def fit_appliance(self, margin: float = 0.25):
+    def fit_appliance(self, margin: float = None):
         """Learn the L2 distance normalizer and the NEGATIVE-AWARE, INSTANCE-aware
-        match cutoff off the taught library. `within` = nearest same-class
-        exemplar from a DIFFERENT instance (same-instance pairs are trivially
-        close and would bias the cutoff tight); `between` = nearest different-class
-        exemplar. The cutoff sits between them (never set from positives blind —
-        the §2.2 rule). `margin` is an L4 fit arg (no capacity consumes it)."""
+        match cutoff off the taught library — now via the `fit_signature_norm` and
+        `fit_appliance_cutoff` capacities. The O(n^2) pairwise search lives inside
+        the cutoff capacity's body (STATE #6), not an L4 loop of per-pair
+        `signature_distance` invokes. `margin` overrides the `margin` DataState
+        default (`build_given`); the capacity consumes it, so it is no longer a
+        buried L4 literal."""
         lib = self.appliance_library
         if not lib:
             raise RuntimeError("fit_appliance: empty library")
-        self.signature_norm = fit_signature_norm([r["vector"] for r in lib])
-        within, between = [], []
-        for i, ri in enumerate(lib):
-            same, diff = [], []
-            for j, rj in enumerate(lib):
-                if j == i:
-                    continue
-                if rj["name"] == ri["name"]:
-                    if rj.get("inst") == ri.get("inst"):
-                        continue                       # same instance -> skip
-                    same.append(self._sig_distance(ri["vector"], rj["vector"]))
-                else:
-                    diff.append(self._sig_distance(ri["vector"], rj["vector"]))
-            if same:
-                within.append(min(same))
-            if diff:
-                between.append(min(diff))
-        self.match_cutoff = fit_match_cutoff(within, between, margin)
+        self.signature_norm = self._invoke(
+            _FIT_NORM, {O.APPLIANCE_LIBRARY.iri: lib})[O.SIGNATURE_NORM.iri]
+        m = self.given[O.MARGIN.iri] if margin is None else margin
+        self.match_cutoff = self._invoke(_FIT_CUTOFF, {
+            O.APPLIANCE_LIBRARY.iri: lib, O.SIGNATURE_NORM.iri: self.signature_norm,
+            O.MARGIN.iri: m})[O.MATCH_CUTOFF.iri]
         return self.match_cutoff
 
     def _match_appliance(self, sig, k: int = 1):

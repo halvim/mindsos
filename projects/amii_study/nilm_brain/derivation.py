@@ -32,7 +32,7 @@ from .ontology import (
     CURRENT_WINDOW, VOLTAGE_WINDOW, RAW_HARMONICS, POWER_FEATURES,
     STEADY_SIGNATURE, ONSET_FEATURES, APPLIANCE_SIGNATURE, REFERENCE_SIGNATURE,
     SIGNATURE_NORM, MATCH_DISTANCE, APPLIANCE_LIBRARY, SCORED_LIBRARY,
-    CURRENT_SIGNAL, VOLTAGE_SIGNAL,
+    CURRENT_SIGNAL, VOLTAGE_SIGNAL, MATCH_CUTOFF, MARGIN,
 )
 
 _EPS = 1e-20
@@ -356,6 +356,60 @@ def _score_appliance_library(**kw):
     return {SCORED_LIBRARY.iri: scored}
 
 
+def _fit_signature_norm(**kw):
+    """Learn the per-dim standardizer (mean/std) over the taught library vectors
+    so no feature axis dominates the distance by scale. One batch derivation over
+    the whole library — the L4 comprehension that built this is gone."""
+    vecs = [r["vector"] for r in (kw[APPLIANCE_LIBRARY.iri] or [])]
+    x = np.asarray(vecs, dtype=float)
+    return {SIGNATURE_NORM.iri: {
+        "mean": x.mean(0).tolist(), "std": (x.std(0) + 1e-9).tolist(),
+        "provenance": f"library_fit:{len(vecs)}refs"}}
+
+
+def _fit_appliance_cutoff(**kw):
+    """Learn the NEGATIVE-AWARE, INSTANCE-aware match cutoff off the taught
+    library. `within` = nearest same-class exemplar from a DIFFERENT instance
+    (same-instance pairs are trivially close and would bias the cutoff tight);
+    `between` = nearest different-class exemplar; the cutoff sits between them,
+    never from positives blind (§2.2). Standardized-Euclidean distance (same
+    `signature_norm` as `signature_distance`). The O(n^2) pairwise search now
+    lives inside this one capacity body — not an L4 loop of per-pair
+    `signature_distance` invokes (STATE #6)."""
+    lib = kw[APPLIANCE_LIBRARY.iri] or []
+    sd = np.asarray(kw[SIGNATURE_NORM.iri]["std"], dtype=float) + _EPS
+    margin = float(kw[MARGIN.iri])
+    vecs = [np.asarray(r["vector"], dtype=float) for r in lib]
+    within, between = [], []
+    for i, ri in enumerate(lib):
+        same, diff = [], []
+        for j, rj in enumerate(lib):
+            if j == i:
+                continue
+            d = float(np.linalg.norm((vecs[i] - vecs[j]) / sd))
+            if rj["name"] == ri["name"]:
+                if rj.get("inst") == ri.get("inst"):
+                    continue                       # same instance -> skip
+                same.append(d)
+            else:
+                diff.append(d)
+        if same:
+            within.append(min(same))
+        if diff:
+            between.append(min(diff))
+    w = np.asarray(within, dtype=float) if within else np.asarray([0.0])
+    hi_within = float(np.quantile(w, 0.9))
+    if between:
+        lo_between = float(np.quantile(np.asarray(between, dtype=float), 0.1))
+        cut = 0.5 * (hi_within + lo_between)
+        cut = max(cut, hi_within * (1.0 + margin))
+        prov = f"neg_aware:w90={hi_within:.3f},b10={lo_between:.3f}"
+    else:
+        cut = hi_within * (1.0 + margin)
+        prov = f"within_only:w90={hi_within:.3f}"
+    return {MATCH_CUTOFF.iri: {"cutoff": float(cut), "provenance": prov}}
+
+
 def register_derivation(cl, session):
     D = CATEGORY_DERIVATION
     caps = [
@@ -468,6 +522,14 @@ def register_derivation(cl, session):
                  inputs=(APPLIANCE_SIGNATURE.iri, APPLIANCE_LIBRARY.iri, SIGNATURE_NORM.iri),
                  outputs=(SCORED_LIBRARY.iri,), implementation=_score_appliance_library,
                  description="query signature + taught library + norm -> scored_collection [{score,label}]"),
+        Capacity(name="fit_signature_norm", category=D,
+                 inputs=(APPLIANCE_LIBRARY.iri,),
+                 outputs=(SIGNATURE_NORM.iri,), implementation=_fit_signature_norm,
+                 description="taught library -> per-dim mean/std standardizer"),
+        Capacity(name="fit_appliance_cutoff", category=D,
+                 inputs=(APPLIANCE_LIBRARY.iri, SIGNATURE_NORM.iri, MARGIN.iri),
+                 outputs=(MATCH_CUTOFF.iri,), implementation=_fit_appliance_cutoff,
+                 description="library + norm + margin -> negative-aware match cutoff"),
     ]
     for c in caps:
         cl.register_capacity(c, session=session, if_exists="upsert")

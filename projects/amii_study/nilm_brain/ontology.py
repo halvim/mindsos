@@ -125,6 +125,7 @@ VOTED_APPLIANCE     = _ds("voted_appliance", "L4 k-NN vote {name, distance, conf
 APPLIANCE_VERDICT   = _ds("appliance_verdict", "terminal: recognized[name] | request_reference")
 APPLIANCE_LIBRARY   = _ds("appliance_library", "L2 taught appliance library (list of exemplar signatures)")
 SCORED_LIBRARY      = _ds("scored_library", "[{score,label}] query-vs-library distances (reduction scored_collection shape)")
+MARGIN              = _ds("margin", "L2 fit margin for the negative-aware match cutoff")
 
 # ── verdict / terminal ─────────────────────────────────────────────────
 #: value = {"state": "cycle" | "held_ambiguity" | "request_reference",
@@ -157,7 +158,7 @@ ONTOLOGY: Tuple[DataState, ...] = (
     CURRENT_WINDOW, VOLTAGE_WINDOW, RAW_HARMONICS, POWER_FEATURES,
     STEADY_SIGNATURE, ONSET_FEATURES, APPLIANCE_SIGNATURE, REFERENCE_SIGNATURE,
     SIGNATURE_NORM, MATCH_DISTANCE, MATCH_CUTOFF, VOTED_APPLIANCE, APPLIANCE_VERDICT,
-    APPLIANCE_LIBRARY, SCORED_LIBRARY,
+    APPLIANCE_LIBRARY, SCORED_LIBRARY, MARGIN,
     # verdict
     CYCLE_VERDICT,
 )
