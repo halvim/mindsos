@@ -437,3 +437,23 @@ def test_run_graph_stream_is_best_effort_no_solve_crash():
     assert outcome.status == "succeeded"  # streaming failure did NOT fail the solve
     assert any(r.startswith("capacity:run:") for r in persister.roles)  # streamed
     assert any(r.startswith("capacity:index:") for r in persister.roles)  # index at close
+
+
+def test_chain_graph_streams_after_plan_before_execution():
+    """Dream PRE-0 Slice 2b: the chain (plan/task tree) graph is persisted right
+    after plan construction — BEFORE the per-run capacity graphs stream — so a
+    crash mid-solve leaves the (non-re-derivable) plan on disk. Pre-Slice-2b the
+    chain persisted only at terminal consolidation (AFTER the runs)."""
+    from mindsos_intelligence.chain_artifacts import CHAIN_GRAPH_ROLE
+
+    persister = _FakePersister()
+    orch, _mm, _kl = _orch_with_solve(persister=persister)
+    outcome = orch.run_lifecycle("hello", request_id="T")
+    assert outcome.status == "succeeded"
+
+    roles = persister.roles
+    assert CHAIN_GRAPH_ROLE in roles
+    first_chain = roles.index(CHAIN_GRAPH_ROLE)
+    run_idxs = [i for i, r in enumerate(roles) if r.startswith("capacity:run:")]
+    assert run_idxs, "expected capacity run graphs to stream"
+    assert first_chain < run_idxs[0]

@@ -171,6 +171,27 @@ class Orchestrator:
             # flush loses only the crash anchor for this window, never the solve.
             pass
 
+    def _flush_chain(self, writer) -> None:
+        """Durably persist the intelligence_mm CHAIN graph (the plan / task tree)
+        once the plan is fixed (Dream PRE-0 Slice 2b).
+
+        Planning is NON-DETERMINISTIC (confidence-driven map selection + drift),
+        so a crashed request's plan cannot be re-derived — persisting it here (not
+        only at terminal consolidation) leaves the plan on disk for crash recovery
+        / dream replay. Per-run COMPLETION is streamed separately by the capacity
+        sink. Best-effort: durability must NEVER fail the solve; no-op in
+        simplified mode, with no persister, or before any chain artifact exists."""
+        if self._simplified or self._mm_persister is None:
+            return
+        graph = writer.chain_graph()
+        if graph is None:
+            return
+        try:
+            self._mm_persister.persist(self._mm.intelligence_mm, graph)
+        except Exception:
+            # Best-effort durability (mirrors _flush_local / the capacity sink).
+            pass
+
     def _open_episode(
         self, episode_id, request_input_ref, request_input_root_ref
     ) -> None:
@@ -309,6 +330,12 @@ class Orchestrator:
             plan_ref=plan_result.plan_ref,
         )
         self.update_priority(request_run, tier=tier, executor=executor, request_id=request_id)
+
+        # Dream PRE-0 Slice 2b — stream the CHAIN (plan/task tree) graph now
+        # that the plan + RequestRun exist. The plan is non-deterministic and
+        # cannot be re-derived, so persisting it here leaves it on disk if the
+        # solve crashes (per-run completion is streamed by the capacity sink).
+        self._flush_chain(writer)
 
         # Step 5 — solve seed + capacity-graph collection. When the plan names a
         # ``solve_target`` (a real consumer, not v0) and we're not in simplified
