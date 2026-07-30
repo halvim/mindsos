@@ -77,6 +77,7 @@ TIME    = _ds("time", "sample times (floor)")
 # ── derived — composition outputs ──────────────────────────────────────
 SIGNAL      = _ds("signal", "the signal under analysis (voltage or current) bound to time")
 CURRENT_SIGNAL      = _ds("current_signal", "current bound to time")
+VOLTAGE_SIGNAL      = _ds("voltage_signal", "voltage bound to time")
 SIGNAL_WINDOW      = _ds("signal_window", "one analysis window of the signal")
 CYCLE_MODEL         = _ds("cycle_model", "fitted reference params {reference, freq, DC, a, b}")
 RECONSTRUCTED_WINDOW = _ds("reconstructed_window", "the reference synthesized over the window")
@@ -144,7 +145,7 @@ ONTOLOGY: Tuple[DataState, ...] = (
     # floor
     VOLTAGE, CURRENT, TIME,
     # derived
-    SIGNAL, CURRENT_SIGNAL, SIGNAL_WINDOW, CYCLE_MODEL,
+    SIGNAL, CURRENT_SIGNAL, VOLTAGE_SIGNAL, SIGNAL_WINDOW, CYCLE_MODEL,
     RECONSTRUCTED_WINDOW, RESIDUAL, RESIDUAL_ENERGY, RESIDUAL_SPECTRUM,
     SPECTRAL_CONCENTRATION, TEMPORAL_CONCENTRATION, HARMONIC_FRACTION,
     PERIOD_STABILITY, POWER, HARMONIC_AMPLITUDES, SHAPE, PHASE,

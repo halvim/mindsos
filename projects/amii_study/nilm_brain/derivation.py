@@ -32,6 +32,7 @@ from .ontology import (
     CURRENT_WINDOW, VOLTAGE_WINDOW, RAW_HARMONICS, POWER_FEATURES,
     STEADY_SIGNATURE, ONSET_FEATURES, APPLIANCE_SIGNATURE, REFERENCE_SIGNATURE,
     SIGNATURE_NORM, MATCH_DISTANCE, APPLIANCE_LIBRARY, SCORED_LIBRARY,
+    CURRENT_SIGNAL, VOLTAGE_SIGNAL,
 )
 
 _EPS = 1e-20
@@ -73,6 +74,33 @@ def _window(**kw):
     v = vs["values"]; t = vs["time"]
     i1 = min(len(v), start + length)
     return {SIGNAL_WINDOW.iri: {"values": v[start:i1], "time": t[start:i1]}}
+
+
+def _window_current(**kw):
+    """Slice one analysis window from the CURRENT channel — the channel-specific
+    sibling of `window` (current_signal -> current_window). Distinct input/output
+    DataStates so a declared plan can window both channels: the sound finder fires
+    one capacity per IRI, so two channels need two capacities (not `window` twice
+    under one `signal` IRI)."""
+    vs = kw[CURRENT_SIGNAL.iri]
+    fe = float(kw[FREQ_ESTIMATE.iri]); wc = float(kw[WINDOW_CYCLES.iri])
+    fs = float(kw[FS.iri]); start = int(kw[WINDOW_START.iri])
+    length = int(round(wc * fs / fe))
+    v = vs["values"]; t = vs["time"]
+    i1 = min(len(v), start + length)
+    return {CURRENT_WINDOW.iri: {"values": v[start:i1], "time": t[start:i1]}}
+
+
+def _window_voltage(**kw):
+    """Slice one analysis window from the VOLTAGE channel: voltage_signal ->
+    voltage_window (channel-specific sibling of `window`)."""
+    vs = kw[VOLTAGE_SIGNAL.iri]
+    fe = float(kw[FREQ_ESTIMATE.iri]); wc = float(kw[WINDOW_CYCLES.iri])
+    fs = float(kw[FS.iri]); start = int(kw[WINDOW_START.iri])
+    length = int(round(wc * fs / fe))
+    v = vs["values"]; t = vs["time"]
+    i1 = min(len(v), start + length)
+    return {VOLTAGE_WINDOW.iri: {"values": v[start:i1], "time": t[start:i1]}}
 
 
 def _fit_reference(**kw):
@@ -342,6 +370,16 @@ def register_derivation(cl, session):
                          FS.iri, WINDOW_START.iri),
                  outputs=(SIGNAL_WINDOW.iri,), implementation=_window,
                  description="signal -> one analysis window (position = L4 window_start)"),
+        Capacity(name="window_current", category=D,
+                 inputs=(CURRENT_SIGNAL.iri, FREQ_ESTIMATE.iri, WINDOW_CYCLES.iri,
+                         FS.iri, WINDOW_START.iri),
+                 outputs=(CURRENT_WINDOW.iri,), implementation=_window_current,
+                 description="current_signal -> one current window (position = window_start)"),
+        Capacity(name="window_voltage", category=D,
+                 inputs=(VOLTAGE_SIGNAL.iri, FREQ_ESTIMATE.iri, WINDOW_CYCLES.iri,
+                         FS.iri, WINDOW_START.iri),
+                 outputs=(VOLTAGE_WINDOW.iri,), implementation=_window_voltage,
+                 description="voltage_signal -> one voltage window (position = window_start)"),
         Capacity(name="fit_reference", category=D,
                  inputs=(SIGNAL_WINDOW.iri, CYCLE_REFERENCE.iri, FREQ_ESTIMATE.iri,
                          FS.iri, FREQ_SEARCH_FRAC.iri, N_GRID.iri),

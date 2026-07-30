@@ -51,6 +51,8 @@ _PARSE_RAW = capacity_iri(CATEGORY_PERCEPTION, "parse_raw")
 _BIND      = capacity_iri(CATEGORY_DERIVATION, "bind")
 _BIND_CUR  = capacity_iri(CATEGORY_DERIVATION, "bind_current")
 _WINDOW    = capacity_iri(CATEGORY_DERIVATION, "window")
+_WINDOW_CUR  = capacity_iri(CATEGORY_DERIVATION, "window_current")
+_WINDOW_VOLT = capacity_iri(CATEGORY_DERIVATION, "window_voltage")
 _FIT       = capacity_iri(CATEGORY_DERIVATION, "fit_reference")
 _FFT       = capacity_iri(CATEGORY_DERIVATION, "fft")
 _SPEC_FLAT = capacity_iri(CATEGORY_DERIVATION, "spectral_flatness")
@@ -491,8 +493,8 @@ class Solver:
             win_in = {O.FREQ_ESTIMATE.iri: g[O.F0.iri],
                       O.WINDOW_CYCLES.iri: g[O.WINDOW_CYCLES.iri],
                       O.FS.iri: g[O.FS.iri], O.WINDOW_START.iri: start}
-            cw = self._invoke(_WINDOW, {O.SIGNAL.iri: cur, **win_in})[O.SIGNAL_WINDOW.iri]
-            vw = self._invoke(_WINDOW, {O.SIGNAL.iri: volt, **win_in})[O.SIGNAL_WINDOW.iri]
+            cw = self._invoke(_WINDOW_CUR, {O.CURRENT_SIGNAL.iri: cur, **win_in})[O.CURRENT_WINDOW.iri]
+            vw = self._invoke(_WINDOW_VOLT, {O.VOLTAGE_SIGNAL.iri: volt, **win_in})[O.VOLTAGE_WINDOW.iri]
             steady = self._run_appliance_segment(cw, vw)
             full = self._invoke(_ASSEMBLE, {O.STEADY_SIGNATURE.iri: steady,
                                             O.ONSET_FEATURES.iri: onset})[O.APPLIANCE_SIGNATURE.iri]
