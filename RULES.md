@@ -6,6 +6,12 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - Say what is needed concisely, in a way I have enough context to
   understand and make decisions — but not so long it's a chore to read.
   If I need more, I'll ask.
+- **Never put comments in a command block.** Any block I am meant to run
+  (`bash`, `git`, `docker`, SQL, a REPL) contains commands only — no `#`
+  comments, no inline annotations, no explanatory trailing text. I copy
+  those blocks straight into a terminal; comments are noise there and are
+  a paste hazard. If a command needs explaining, explain it in prose
+  outside the block.
 
 ## 1. Where you work
 - One chat = one worktree = one branch. Never check out another chat's branch in
