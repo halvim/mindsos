@@ -32,7 +32,7 @@ won: 0, total: 0}``.
 The family is **opt-in** (``install_reduction_v0``); its category graph is
 created lazily at first register and it is NOT bootstrapped by ``create_global``
 nor a member of ``FUNCTIONAL_CATEGORIES``. Bodies are real
-(``placeholder=False``) — a permanent utility family, not a WSD placeholder.
+(``placeholder=False``) — a permanent utility family, not a placeholder.
 Bodies are pure and context-agnostic (they ignore ``context``).
 """
 

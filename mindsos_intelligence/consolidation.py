@@ -15,7 +15,8 @@ the heavy full-MM serialization is deferred.
 capacity_mm: when a caller passes this task's per-run capacity grounding graphs,
 they persist (edges included) and the Episode's ``capacity_root_ref`` points at
 their task-level index graph (see :mod:`mindsos_intelligence.capacity_persister`).
-This reverses the ADR-0202 "capacity_mm live-only until WSD" clause. ``None`` when
+This reverses the ADR-0202 "capacity_mm live-only until WSD" clause
+(a misattribution — RULES §8). ``None`` when
 no capacity graphs are supplied — the case today: no in-CR path threads them
 (the submind never consolidates; the solve path's ``execution.run`` →
 ``execute_pipeline`` consolidation is out-of-CR Step 5), so the capacity

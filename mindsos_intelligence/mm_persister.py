@@ -9,7 +9,8 @@ persist at consolidation:
 * the per-run **capacity** grounding graphs + their task-level index graph
   (capacity_mm), so an Episode's ``capacity_root_ref`` resolves (CR: reopen
   DQ-8 — capacity_mm is **no longer live-only**; the ADR-0202 "live-only until
-  WSD" clause is reversed for capacity_mm). ``knowledge_mm`` stays live-only
+  WSD" clause is reversed for capacity_mm; that clause named a subsystem as
+  owner of core work — a misattribution, RULES §8). ``knowledge_mm`` stays live-only
   (Slice 3 / later).
 
 Persisting a *single* graph (not :meth:`MetagraphRepository.persist`, which

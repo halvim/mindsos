@@ -3,7 +3,7 @@
 The L4 orchestrator's LifecyclePhase 1 runs a 5-step flow (receive →
 process → extract_hints → derive_goal → map_to_task_pattern). Its real L3
 capacities (``process.*``, ``hint.*``, ``decision.derive_goal``, the
-mapping subsystem) ship in WSD installation. Phase 47 ships trivial
+mapping subsystem) are unbuilt CORE work (RULES §8). Phase 47 ships trivial
 placeholders so the trivial-task smoke runs the real 5-step control path:
 
 - ``process.identity``           → structured == raw (passthrough).
@@ -11,7 +11,7 @@ placeholders so the trivial-task smoke runs the real 5-step control path:
 - ``decision.derive_goal``       → a fixed trivial goal.
 - ``decision.map_to_task_pattern`` → a fixed request-pattern + confidence 1.0.
 
-All carry ``placeholder=True``; install is opt-in; WSD replaces. Bodies
+All carry ``placeholder=True``; install is opt-in; CORE-C4R8 replaces. Bodies
 are pure and context-agnostic.
 """
 

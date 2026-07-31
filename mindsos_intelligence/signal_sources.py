@@ -1,8 +1,8 @@
 """10 signal-source registration skeletons (Chat A R3 D9.2 + Chat B D-B51).
 
 The v1 signal catalog: 10 sources (S7 reserved). Phase 47 ships empty
-payload contracts; the concrete payload schemas + emitters land in WSD
-installation. ``signal.plan_decomposition_outcome`` (S10) was added by
+payload contracts; the concrete payload schemas + emitters are unbuilt
+CORE work (RULES §8). ``signal.plan_decomposition_outcome`` (S10) was added by
 Chat B D-B51 for ALS subsystem #11.
 """
 

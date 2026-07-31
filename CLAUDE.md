@@ -28,6 +28,8 @@ Persistence layout: graphs live in **FalkorDB** (per ADR-0121); non-graph state 
 
 **High-level:** the numbered-phase plan (Phases 39–49) is complete and Phase 50 (skill-install) shipped; active work is the downstream sequence (WSD Phases 51+, plus subminds / perception / demos). This block is intentionally *not* hand-maintained per-phase — that duplication of `STATE.json` was itself a drift source (see “Keeping docs in sync” below).
 
+**Subsystems own nothing architectural.** A subsystem or brain (WSD, FOL, DWF, arc, nilm, a demo) never owns a core mechanism. If core is missing something, core builds it — a "ships in <subsystem>" comment is a defect. See `RULES.md` §8 + ADR-0205.
+
 **Sister projects:** `projects/dwf_mapping/` (knowledge acquisition), `projects/wsd/` + `projects/fol/` (skill acquisition). Each has an `ANALYSIS.md` + `FUTURE_CHAT_PROMPT.md` + `source/`. See `projects/README.md` for the recommended chat ordering.
 
 **Folder structure:** See `HANDOFF.md` §7.3 for the canonical layout.

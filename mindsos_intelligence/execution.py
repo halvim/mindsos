@@ -84,8 +84,8 @@ retried (retry lives at the flat find+execute leaf where transient load failure
 actually occurs); a plain sub-plan stage fails soft exactly as a top-level plain
 stage does (1a behaviour, unchanged).
 
-MSUR + SCMS Plan/Milestone orchestration hooks (WSD) are still absent; the loop
-stays sibling-sequential v1.
+MSUR + SCMS Plan/Milestone orchestration hooks are still absent; the loop
+stays sibling-sequential v1. (Unbuilt CORE work — ADR-0206, CORE-C4R4.)
 """
 
 from __future__ import annotations

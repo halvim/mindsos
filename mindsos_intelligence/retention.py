@@ -10,7 +10,7 @@ next read (bounded transitive inflation: one level per read).
 **v1 consumer status (PB-9):** the v1 dream driver re-runs from the episode's
 ``task_input`` rather than reconstructing the full episode MM, so this
 resolver has **no live v1 consumer** and ships unit-test-only. Its real
-consumers — WSD episode reconstruction / retrieval — wire later.
+consumers — episode reconstruction / retrieval — wire later.
 """
 
 from __future__ import annotations

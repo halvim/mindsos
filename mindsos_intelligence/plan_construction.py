@@ -41,7 +41,7 @@ class PlanResult:
     #: ``derive_initial_plan`` (e.g. arc, seeing ``resolved_reference``) names
     #: ``{"start_datastate", "target_datastate"}``; ``execution.run`` then finds
     #: + runs a real pipeline (single-leaf scope at v1; multi-leaf target routing
-    #: is deferred with real decomposition / WSD).
+    #: is deferred with real decomposition — ADR-0206, CORE-C4R4).
     solve_target: Optional[Dict[str, str]] = None
     #: Optional per-leaf solve endpoints ``{leaf_ref: {start_datastate,
     #: target_datastate}}`` for a multi-stage plan whose leaves form a value

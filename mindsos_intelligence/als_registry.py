@@ -3,7 +3,8 @@
 L4-owned registry of ALS subsystem registrations. The dataclass shape is
 the Chat A D9.1 contract; all IRIs point to L3 capabilities. The v0
 catalog is **empty** — the concrete 10-subsystem catalog (D9.2) lands
-when WSD installation ships. Global aggregation has no L4 home (D9.4 →
+when the ALS catalog is built (CORE work — RULES §8). Global
+aggregation has no L4 home (D9.4 →
 L0 admin); this is registration + lookup only.
 """
 

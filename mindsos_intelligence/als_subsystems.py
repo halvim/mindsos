@@ -3,8 +3,8 @@
 v1 ALS has 11 subsystems (Chat A's 10 + Chat B #11 planning-decomposition
 calibration). Phase 47 registers them as skeletons — empty signal-source
 weights, empty update-mechanism + validator pointers — into an
-``ALSSubsystemRegistry``. WSD installation fills the concrete mechanism +
-validator catalogs. Audit policies per the D9.2 table.
+``ALSSubsystemRegistry``. Filling the concrete mechanism +
+validator catalogs is unbuilt CORE work (RULES §8). Audit policies per the D9.2 table.
 """
 
 from __future__ import annotations

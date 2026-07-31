@@ -10,7 +10,7 @@ v1 scope (PB-9, ADR-0178): the timer → capacity → directive → re-exec **wi
 ships here, exercised over the real episode corpus. The faithful episode→MM
 reconstruction (``fork_dream_mm`` of a rebuilt episode MM) and the
 ``replay_recorded`` vs ``re_execute_capacities`` behavioral differentiation +
-real ALS signal firing are WSD-gated — v1 re-execution runs through the
+real ALS signal firing are unbuilt CORE work — v1 re-execution runs through the
 provided ``re_executor`` hook with the directive's provenance.
 """
 
@@ -82,7 +82,7 @@ class DreamDriver:
 
     ``episode_source()`` returns the episode descriptors (the dream corpus);
     ``re_executor(directive)`` optionally re-executes each emitted directive
-    (the faithful re-exec + ALS firing land with WSD)."""
+    (the faithful re-exec + ALS firing are unbuilt CORE work)."""
 
     def __init__(
         self,

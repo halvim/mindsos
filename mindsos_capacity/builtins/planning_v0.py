@@ -10,7 +10,7 @@ Plan tree before the real planning catalog exists:
 
 Every capacity carries ``placeholder=True``. The install is **opt-in**
 (never called by ``create_global`` bootstrap) — that opt-in discipline IS
-the production guard: a bare system never holds these. WSD installation
+the production guard: a bare system never holds these. CORE-C4R4
 atomically replaces this catalog with the real ``planning.*`` family.
 
 The bodies are pure and context-agnostic (they ignore ``context``), so
