@@ -7,7 +7,8 @@ invocations route through the L4 ``L4Dispatcher`` (CapacityContext build +
 write-gate), and every reasoning step emits a chain artifact into
 intelligence-MM under the MM writer lock.
 
-Phase 47 ran over the v0 catalogs; real catalogs ship in WSD installation.
+Phase 47 ran over the v0 catalogs; the real catalogs are unbuilt CORE work
+(RULES §8, ADR-0206) — CORE-C4R4 / C4R8 / C4R9.
 Consolidation (Phase 5 -> completion) is **wired at Phase 48** (ADR-0176):
 on every terminal path (success / dont-know / conceded) the MM is frozen and an
 Episode is written to L2 ``episodic_memories`` via ``consolidate:mm``. Dream

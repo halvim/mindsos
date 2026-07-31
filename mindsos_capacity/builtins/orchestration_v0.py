@@ -1,7 +1,7 @@
 """Placeholder orchestration v0 catalog (Phase 47, ADR-0172 / PB-C).
 
 The L4 orchestrator dispatches five L3 decision/scoring points whose real
-bodies ship in WSD installation. Phase 47 ships placeholders so the
+bodies are unbuilt CORE work (RULES §8). Phase 47 ships placeholders so the
 control paths (including the replan + dont-know branches) are exercised:
 
 - ``decision.signal_to_tier``   → tier hint on the signal, else FOREGROUND
@@ -16,7 +16,7 @@ control paths (including the replan + dont-know branches) are exercised:
 (``set_should_replan_decision`` / ``set_sufficient_result``) so the
 ReplanRecord-emit + invalidate-at-and-below path and the dont-know path
 are exercisable — constant stubs would dead-ship those paths. All carry
-``placeholder=True``; install is opt-in; WSD replaces.
+``placeholder=True``; install is opt-in; CORE-C4R1/C4R9 replaces.
 """
 
 from __future__ import annotations

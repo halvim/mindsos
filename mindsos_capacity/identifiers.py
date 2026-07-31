@@ -109,7 +109,7 @@ CATEGORY_DREAM = "dream"
 #: first register, NOT pre-bootstrapped by ``create_global`` and NOT
 #: members of ``FUNCTIONAL_CATEGORIES`` (the count invariant stays 13).
 #: Phase 47 ships them as placeholder v0 catalogs (``placeholder=True``);
-#: WSD installation atomically replaces them with real catalogs.
+#: CORE-C4R4 / C4R8 / C4R9 replace them with real catalogs (RULES §8).
 CATEGORY_PLANNING = "planning"
 CATEGORY_PROCESS = "process"
 CATEGORY_HINT = "hint"
@@ -123,7 +123,7 @@ CATEGORY_PHASE6 = "phase6"
 #: is created lazily by ``ensure_category_graph`` at first register, NOT
 #: pre-bootstrapped by ``create_global`` and NOT a member of
 #: ``FUNCTIONAL_CATEGORIES`` (the count invariant stays 13). Real bodies
-#: (``placeholder=False``), not a WSD placeholder catalog.
+#: (``placeholder=False``), not a placeholder catalog.
 CATEGORY_REDUCTION = "reduction"
 
 #: Functional categories recognised by the default Global L3 bootstrap.

@@ -5,7 +5,9 @@ Slice A made the capacity writer emit **one grounding graph per pipeline run**
 (``(request_id, pipeline_run_ref)``) holding CapacityInstance + DataStateInstance
 nodes wired by intra-graph ``PRODUCES`` / ``CONSUMES`` edges. This module makes
 those graphs durable at consolidation, reversing ADR-0202's "capacity_mm
-live-only until WSD" clause for capacity_mm (knowledge_mm stays live-only).
+live-only until WSD" clause for capacity_mm (knowledge_mm stays
+live-only). That clause named a subsystem as owner of core work — a
+misattribution; see RULES §8.
 
 Two mechanisms live here; both are **Core mechanism only** — no brain policy:
 
@@ -25,7 +27,7 @@ Two mechanisms live here; both are **Core mechanism only** — no brain policy:
   ``graph_id`` as the ``capacity_root_ref`` (mirrors ``mm_root_ref`` → the chain
   graph). A reader loads the index, then each referenced run graph. No v1 reader
   exists yet (PB-5, accepted): the ref dangles exactly as ``mm_root_ref`` does
-  until dream reconstruction (WSD).
+  until dream reconstruction (unbuilt CORE work).
 
 Inert until Step 5 (PB-3): the submind resolver runs the writer but never
 consolidates, and the solve path's ``execution.run`` → ``execute_pipeline``

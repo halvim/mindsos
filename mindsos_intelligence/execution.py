@@ -115,8 +115,8 @@ the remaining members and retries (the starts and target are identical across
 members). Composition stays lazy: an empty collection composes nothing and still
 completes with an empty output list, exactly as before.
 
-MSUR + SCMS Plan/Milestone orchestration hooks (WSD) are still absent; the loop
-stays sibling-sequential v1.
+MSUR + SCMS Plan/Milestone orchestration hooks are still absent; the loop
+stays sibling-sequential v1. (Unbuilt CORE work — ADR-0206, CORE-C4R4.)
 """
 
 from __future__ import annotations

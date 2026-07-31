@@ -3,7 +3,7 @@
 On the failure path L4 dispatches the L3 ``phase6.attribute_blame``
 capacity, which returns a BlameVerdict locating blame at a chain level +
 step. At Phase 47 the body is a v0 skeleton; the concrete cross-validation
-body ships in WSD installation.
+body is unbuilt CORE work (ADR-0206; CORE-C4R9).
 """
 
 from __future__ import annotations
