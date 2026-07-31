@@ -84,13 +84,44 @@ retried (retry lives at the flat find+execute leaf where transient load failure
 actually occurs); a plain sub-plan stage fails soft exactly as a top-level plain
 stage does (1a behaviour, unchanged).
 
+**Multi-input members / leaves (map-member multi-input CR).**
+
+Through Slice 3b a member's and a plain leaf's pipeline was composed with the
+single-input ``find_pipeline`` (``BFSFinder``), which fires each capacity off one
+``via`` datastate and leaves its other declared inputs unwired — so a member
+whose work is a genuinely multi-input composed segment could not run. Two
+additive spec keys lift that, and neither is read unless the plan sets it:
+
+* ``leaf_targets[ref]["start_datastates"]`` (plural) — a leaf may declare several
+  available start DataStates instead of the singular ``start_datastate``.
+* a map spec's ``shared_inputs: [DataState IRI, ...]`` — values copied from the
+  parent blackboard into every member's sub-blackboard alongside the member
+  value, so a member capacity's non-member inputs (domain constants, or a
+  per-map shared value like a query signature) have a source inside the member
+  run. A declared key absent from the parent blackboard is a hard ``ValueError``
+  naming the key and the map — never a silent skip, which would resurface much
+  later as an opaque "required input unproducible" from the finder.
+
+**Finder selection is derived from arity** (:func:`_select_finder`): more than
+one start DataState ⇒ :class:`~mindsos_capacity.pipeline.ConjunctionFinder` (the
+sound multi-input finder); exactly one ⇒ ``BFSFinder``, byte-identical to every
+pre-CR path. Plural starts is a spec shape no consumer emits today, so no shipped
+consumer changes behaviour. An explicit ``"finder"`` key on the leaf endpoints or
+the map spec overrides the derivation; asking for ``"bfs"`` with plural starts is
+a ``ValueError`` rather than a silently under-wired pipeline.
+
+A map's member pipeline is **composed once, on the first member, and reused** for
+the remaining members and retries (the starts and target are identical across
+members). Composition stays lazy: an empty collection composes nothing and still
+completes with an empty output list, exactly as before.
+
 MSUR + SCMS Plan/Milestone orchestration hooks (WSD) are still absent; the loop
 stays sibling-sequential v1.
 """
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 #: Slice 1b — hard cap on per-member sub-run attempts (initial + retries) inside
 #: a map fan-out. Owner's call (CR §Bounded retry): 2 total attempts. A named
@@ -123,6 +154,121 @@ class MemberAbortError(Exception):
             or f"map {leaf_ref!r}: member {member_index} failed after "
             f"{MEMBER_RETRY_CAP} attempt(s) (all-or-nothing abort)"
         )
+
+
+#: Finder-strategy names accepted by an explicit ``"finder"`` spec key.
+FINDER_BFS = "bfs"
+FINDER_CONJUNCTION = "conjunction"
+
+
+def _endpoint_starts(endpoints) -> Tuple[str, ...]:
+    """The available start DataStates a leaf's endpoints declare.
+
+    Accepts the plural ``start_datastates`` (multi-input CR) or the original
+    singular ``start_datastate``; the singular form yields a 1-tuple, so every
+    pre-CR plan resolves exactly as before. Declaring both is a ``ValueError`` —
+    silently preferring one would hide a plan-authoring mistake."""
+    plural = endpoints.get("start_datastates")
+    single = endpoints.get("start_datastate")
+    if plural is not None and single is not None:
+        raise ValueError(
+            "leaf endpoints declare both 'start_datastate' and "
+            "'start_datastates'; use exactly one"
+        )
+    if plural is not None:
+        starts = tuple(plural)
+        if not starts:
+            raise ValueError("leaf endpoints declare an empty 'start_datastates'")
+        return starts
+    if single is None:
+        raise ValueError(
+            "leaf endpoints declare neither 'start_datastate' nor "
+            "'start_datastates'"
+        )
+    return (single,)
+
+
+def _select_finder(starts: Tuple[str, ...], explicit, where: str) -> str:
+    """Pick the finder strategy for a composition (multi-input CR).
+
+    Derived from **arity**: more than one start DataState ⇒ the sound
+    ``ConjunctionFinder``; exactly one ⇒ ``BFSFinder`` (the pre-CR path, so every
+    shipped consumer is byte-identical — plural starts is a spec shape no
+    consumer emits today). An explicit ``"finder"`` key overrides the derivation.
+
+    Asking for ``"bfs"`` with plural starts raises: BFS wires only the single
+    ``via`` datastate it arrived on, so it would quietly drop the other declared
+    inputs — exactly the failure this CR exists to remove. Fail loud instead."""
+    if explicit is None:
+        return FINDER_CONJUNCTION if len(starts) > 1 else FINDER_BFS
+    if explicit not in (FINDER_BFS, FINDER_CONJUNCTION):
+        raise ValueError(
+            f"{where}: unknown finder {explicit!r} "
+            f"(expected {FINDER_BFS!r} or {FINDER_CONJUNCTION!r})"
+        )
+    if explicit == FINDER_BFS and len(starts) > 1:
+        raise ValueError(
+            f"{where}: finder={FINDER_BFS!r} cannot compose {len(starts)} start "
+            f"datastates {list(starts)!r} soundly — it wires only one and leaves "
+            f"the rest unwired. Use {FINDER_CONJUNCTION!r} (the default at this "
+            f"arity) or declare a single start."
+        )
+    return explicit
+
+
+def _compose_pipeline(dispatcher, starts: Tuple[str, ...], target: str, finder_name: str):
+    """Compose one pipeline from the currently-registered capacities.
+
+    The finder is role-blind; L4 binds operands at dispatch (ADR-0071/0156). It
+    sees a single view (Local OR Global, never unioned — ``pipeline.py``
+    ``_view_for``); a consumer's solve caps are typically Local (arc), so try the
+    session's Local view first and fall back to Global. With one start and the
+    ``bfs`` strategy this is exactly what ``find_pipeline`` did — the back-compat
+    free function is ``BFSFinder().find(start_datastates=(start,), …)``."""
+    from mindsos_capacity.exceptions import PipelineNotFoundError
+    from mindsos_capacity.pipeline import BFSFinder, ConjunctionFinder
+
+    finder = (
+        ConjunctionFinder() if finder_name == FINDER_CONJUNCTION else BFSFinder()
+    )
+    try:
+        return finder.find(
+            dispatcher.capacity_layer,
+            session=dispatcher.session,
+            start_datastates=starts,
+            target_datastate=target,
+        )
+    except PipelineNotFoundError:
+        return finder.find(
+            dispatcher.capacity_layer,
+            session=None,
+            start_datastates=starts,
+            target_datastate=target,
+        )
+
+
+def _resolve_shared_inputs(spec, blackboard, leaf_ref: str) -> Dict[str, Any]:
+    """Snapshot a map spec's ``shared_inputs`` off the parent blackboard.
+
+    Returns ``{}`` when the key is absent — the whole multi-input path is then
+    inert and the map is byte-identical to Slice 1b/2/3b. A declared key with no
+    value on the parent blackboard raises ``ValueError`` naming both the key and
+    the map: skipping it would surface much later as an opaque "required input
+    unproducible" from the finder, or (with BFS) as a capacity body failing on a
+    missing kwarg. Validated once, before the fan-out, so an empty collection
+    still reports a mis-authored spec."""
+    keys = spec.get("shared_inputs") or ()
+    shared: Dict[str, Any] = {}
+    for ds in keys:
+        if ds not in blackboard:
+            raise ValueError(
+                f"map {leaf_ref!r}: shared input {ds!r} is not on the parent "
+                f"blackboard (available: {sorted(blackboard)!r}). A shared input "
+                f"must be produced by an upstream milestone or seeded into the "
+                f"run before this map."
+            )
+        shared[ds] = blackboard[ds]
+    return shared
 
 
 def _parse_member_target(target_ref):
@@ -341,35 +487,23 @@ def _run_leaf_pipeline(
     cycle-free (``pipeline_execution`` reaches ``capacity_mm_writer`` → ``mm`` →
     core, none of which import ``execution``). ``leaf_path`` (Slice 2) is the
     milestone's ref-path position; at depth 0 it is ``str(leaf_idx)`` so the ref
-    is byte-identical to Slice 1a/1b."""
-    from mindsos_capacity.exceptions import PipelineNotFoundError
-    from mindsos_capacity.pipeline import find_pipeline
+    is byte-identical to Slice 1a/1b.
 
+    Multi-input CR: ``endpoints`` may declare plural ``start_datastates`` instead
+    of the singular ``start_datastate``, in which case the sound
+    ``ConjunctionFinder`` composes the leaf (arity-derived — see
+    :func:`_select_finder`). With a single start this is the pre-CR path
+    unchanged."""
     from .pipeline_execution import execute_pipeline
 
-    start = endpoints["start_datastate"]
+    starts = _endpoint_starts(endpoints)
     target = endpoints["target_datastate"]
-    # Compose the pipeline from the currently-registered capacities (the finder
-    # is role-blind; L4 binds operands at dispatch — ADR-0071/0156). The finder
-    # sees a single view (Local OR Global, never unioned — pipeline.py
-    # ``_view_for``); a consumer's solve caps are typically Local (arc), so try
-    # the session's Local view first and fall back to Global. A fresh per-run
-    # ref per leaf gives each run its own isolated grounding graph (Slice A:
-    # replan / concurrent isolation).
-    try:
-        pipeline = find_pipeline(
-            dispatcher.capacity_layer,
-            session=dispatcher.session,
-            start_datastate=start,
-            target_datastate=target,
-        )
-    except PipelineNotFoundError:
-        pipeline = find_pipeline(
-            dispatcher.capacity_layer,
-            session=None,
-            start_datastate=start,
-            target_datastate=target,
-        )
+    finder_name = _select_finder(
+        starts, endpoints.get("finder"), f"leaf {leaf_ref!r}"
+    )
+    # A fresh per-run ref per leaf gives each run its own isolated grounding
+    # graph (Slice A: replan / concurrent isolation).
+    pipeline = _compose_pipeline(dispatcher, starts, target, finder_name)
     # Slice 1a — seed only the values the pipeline declares as starts, drawn from
     # the shared blackboard (an upstream stage may have produced them). Filtering
     # to ``start_datastates`` keeps ``execute_pipeline`` from minting unrelated
@@ -415,10 +549,10 @@ def _run_map_milestone(
     owns the unpack loop) and, for each member **sequentially** (v1), produce its
     ``sub_target`` output. A member's work is one of:
 
-    * **Flat leaf (1b)** — ``find_pipeline(member_ds -> sub_target)`` +
-      ``execute_pipeline`` in an isolated sub-blackboard seeded with just the
-      member value, under a fresh per-member run-ref so its ``capacity_mm``
-      grounding graph stays isolated. Bounded retry: accept the first attempt
+    * **Flat leaf (1b)** — compose ``(member_ds, *shared_inputs) -> sub_target``
+      and ``execute_pipeline`` in an isolated sub-blackboard seeded with the
+      member value plus the shared inputs, under a fresh per-member run-ref so
+      its ``capacity_mm`` grounding graph stays isolated. Bounded retry: accept the first attempt
       with ``success=True`` (only its grounding graph is persisted; rejected
       attempts leave nothing in ``capacity_graphs``). ∀-abort: a member still
       failing at ``MEMBER_RETRY_CAP`` raises :class:`MemberAbortError`.
@@ -432,9 +566,19 @@ def _run_map_milestone(
 
     On success, writes the ordered list of members' ``sub_target`` outputs to
     ``blackboard[out_ds]`` for the fold. Remaining members are skipped once any
-    member aborts (the fold never runs)."""
+    member aborts (the fold never runs).
+
+    Multi-input CR: ``spec["shared_inputs"]`` (optional) names parent-blackboard
+    keys copied into **every** member's sub-blackboard alongside the member
+    value, so a member capacity's non-member inputs have a source. They are
+    snapshotted once, before the fan-out, so a mis-authored key fails loudly even
+    for an empty collection. The member pipeline is composed lazily on the first
+    member and reused (``compose_cache``) — starts and target are identical
+    across members, and an empty collection must still compose nothing."""
     collection_ds = spec["collection_ds"]
     out_ds = spec["out_ds"]
+    shared = _resolve_shared_inputs(spec, blackboard, leaf_ref)
+    compose_cache: Dict[str, Any] = {}
     members = list(blackboard.get(collection_ds) or [])
     if only_member is not None:
         # Slice 3b — targeted: re-run just this one member and splice its output
@@ -446,7 +590,7 @@ def _run_map_milestone(
         output = _run_one_member(
             dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
             request_id, leaf_path, only_member, members[only_member],
-            run_attempt, capacity_graphs,
+            run_attempt, capacity_graphs, shared, compose_cache,
         )
         if only_member < len(existing):
             existing[only_member] = output
@@ -461,7 +605,7 @@ def _run_map_milestone(
             _run_one_member(
                 dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
                 request_id, leaf_path, member_idx, member_value,
-                run_attempt, capacity_graphs,
+                run_attempt, capacity_graphs, shared, compose_cache,
             )
         )
     blackboard[out_ds] = member_outputs
@@ -472,24 +616,36 @@ def _run_one_member(
     dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
     request_id: str, leaf_path: str, member_idx: int, member_value: Any,
     run_attempt: int, capacity_graphs: Optional[list],
+    shared: Optional[Dict[str, Any]] = None,
+    compose_cache: Optional[Dict[str, Any]] = None,
 ) -> Any:
     """Run one map member and return its ``sub_target`` output (Slice 3b factoring).
 
     Extracted from the map loop so the full fan-out and a targeted single-member
     re-run (:func:`_run_map_milestone`) share one code path. A member's work is a
-    nested sub-plan (Slice 2) or the flat 1b ``find_pipeline`` + ``execute_pipeline``
-    leaf with bounded retry + accept-first-clean; an exhausted member raises
-    :class:`MemberAbortError` (∀-abort). Behaviour is unchanged from the inline
-    Slice-1b/2 loop."""
+    nested sub-plan (Slice 2) or the flat 1b find + ``execute_pipeline`` leaf with
+    bounded retry + accept-first-clean; an exhausted member raises
+    :class:`MemberAbortError` (∀-abort).
+
+    Multi-input CR: ``shared`` (the map's snapshotted ``shared_inputs``) is merged
+    into the member's sub-blackboard **under** the member value — a spec that
+    named ``member_ds`` as a shared input would otherwise shadow the member it is
+    iterating. ``compose_cache`` carries the once-composed member pipeline across
+    members and retries. With ``shared={}`` (no ``shared_inputs``) behaviour is
+    unchanged from the inline Slice-1b/2 loop."""
     member_ds = spec["member_ds"]
     sub_target = spec["sub_target"]
     sub_plan = spec.get("sub_plan")  # Slice 2 — nested plan (optional)
     member_path = f"{leaf_path}:m{member_idx}"
+    shared = shared or {}
     if sub_plan is not None:
         # Slice 2 — the member's work is a whole sub-plan (which may nest a
         # further map/fold). Run it once in an isolated sub-blackboard seeded with
         # the member value; a nested ∀-abort raises and propagates unretried.
-        sub_blackboard: dict = {member_ds: member_value}
+        # Multi-input CR: the shared inputs seed it too, so every leaf and nested
+        # map inside the sub-plan can see them (a nested map re-declares the ones
+        # it needs — there is no implicit inheritance past the sub-blackboard).
+        sub_blackboard: dict = {**shared, member_ds: member_value}
         _run_milestone_sequence(
             dispatcher, writer, request_run,
             leaf_refs=sub_plan["leaf_milestone_refs"],
@@ -517,6 +673,8 @@ def _run_one_member(
         result, last_pipeline = _run_member_pipeline(
             dispatcher, member_ds, member_value, sub_target,
             request_id, run_ref, mm,
+            shared=shared, spec=spec, leaf_ref=leaf_ref,
+            compose_cache=compose_cache,
         )
         if result.success:
             accepted = result
@@ -548,38 +706,48 @@ def _run_one_member(
 def _run_member_pipeline(
     dispatcher, start_ds, seed_value, target_ds,
     request_id: str, run_ref: str, mm,
+    *,
+    shared: Optional[Dict[str, Any]] = None,
+    spec: Optional[dict] = None,
+    leaf_ref: str = "",
+    compose_cache: Optional[Dict[str, Any]] = None,
 ):
     """Find + run one member's sub-pipeline, isolated per member (Slice 1b).
 
     Pure — no writer / ``capacity_graphs`` side effects: the caller
     (:func:`_run_map_milestone`) decides accept/reject, so a rejected retry
-    attempt leaves nothing persisted. Seeds only the member value under
-    ``start_ds`` into a fresh sub-blackboard (per-member grounding isolated by the
-    fresh ``run_ref``). Returns ``(PipelineExecutionResult, pipeline)``."""
-    from mindsos_capacity.exceptions import PipelineNotFoundError
-    from mindsos_capacity.pipeline import find_pipeline
+    attempt leaves nothing persisted. Seeds the member value under ``start_ds``
+    into a fresh sub-blackboard (per-member grounding isolated by the fresh
+    ``run_ref``). Returns ``(PipelineExecutionResult, pipeline)``.
 
+    Multi-input CR: ``shared`` adds the map's ``shared_inputs`` values to that
+    sub-blackboard and to the composition's start set, so the arity-derived
+    finder wires a multi-input member soundly. ``compose_cache`` (one slot,
+    owned by the map) composes on the first member and reuses it for the rest —
+    starts and target are identical across members. With no ``shared`` and no
+    cache this composes exactly what ``find_pipeline`` did."""
     from .pipeline_execution import execute_pipeline
 
-    try:
-        pipeline = find_pipeline(
-            dispatcher.capacity_layer,
-            session=dispatcher.session,
-            start_datastate=start_ds,
-            target_datastate=target_ds,
+    shared = shared or {}
+    # Member value first so a spec that (wrongly) also lists ``member_ds`` as a
+    # shared input cannot shadow the member being iterated.
+    starts = (start_ds,) + tuple(ds for ds in shared if ds != start_ds)
+    pipeline = compose_cache.get("pipeline") if compose_cache is not None else None
+    if pipeline is None:
+        finder_name = _select_finder(
+            starts,
+            (spec or {}).get("finder"),
+            f"map {leaf_ref!r} member",
         )
-    except PipelineNotFoundError:
-        pipeline = find_pipeline(
-            dispatcher.capacity_layer,
-            session=None,
-            start_datastate=start_ds,
-            target_datastate=target_ds,
-        )
-    seed = (
-        {start_ds: seed_value}
-        if start_ds in pipeline.start_datastates
-        else {}
-    )
+        pipeline = _compose_pipeline(dispatcher, starts, target_ds, finder_name)
+        if compose_cache is not None:
+            compose_cache["pipeline"] = pipeline
+    available = {**shared, start_ds: seed_value}
+    seed = {
+        ds: value
+        for ds, value in available.items()
+        if ds in pipeline.start_datastates
+    }
     result = execute_pipeline(
         dispatcher,
         pipeline,
@@ -619,4 +787,11 @@ def _run_fold_milestone(
     pr.status = "completed" if success else "failed"
 
 
-__all__ = ["run", "MemberAbortError", "MEMBER_RETRY_CAP", "resolve_member_target"]
+__all__ = [
+    "run",
+    "MemberAbortError",
+    "MEMBER_RETRY_CAP",
+    "resolve_member_target",
+    "FINDER_BFS",
+    "FINDER_CONJUNCTION",
+]
