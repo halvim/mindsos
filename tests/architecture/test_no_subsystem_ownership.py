@@ -85,16 +85,33 @@ ALLOWLIST: tuple[tuple[str, str], ...] = (
 )
 
 
-def _repo_root() -> Path:
-    here = Path(__file__).resolve()
-    for parent in here.parents:
-        if (parent / "RULES.md").exists():
+def _source_root() -> Path:
+    """The directory containing the `mindsos_*` packages.
+
+    Marker-free on purpose. The test image copies the packages + ``tests`` into
+    ``/app`` but **not** ``RULES.md`` or ``projects/`` (see ``Dockerfile``), so
+    anchoring on a repo-root marker passes in a checkout and fails in the
+    container. Anchoring on the packages themselves works in both.
+    """
+    for parent in Path(__file__).resolve().parents:
+        if all((parent / pkg).is_dir() for pkg in _PACKAGES):
             return parent
-    raise RuntimeError("repo root not found (no RULES.md above this test)")
+    try:  # installed rather than laid out beside the tests
+        import mindsos_capacity
+
+        candidate = Path(mindsos_capacity.__file__).resolve().parent.parent
+        if all((candidate / pkg).is_dir() for pkg in _PACKAGES):
+            return candidate
+    except Exception:  # noqa: BLE001 - fall through to the explicit error
+        pass
+    raise RuntimeError(
+        "source root not found: no directory above this test contains all of "
+        f"{list(_PACKAGES)}"
+    )
 
 
 def _python_files() -> list[Path]:
-    root = _repo_root()
+    root = _source_root()
     files: list[Path] = []
     for pkg in _PACKAGES:
         files.extend(sorted((root / pkg).rglob("*.py")))
@@ -111,7 +128,7 @@ def _allowed(rel: str, text: str, span: tuple[int, int]) -> bool:
 
 
 def test_no_subsystem_named_as_owner_of_core_work() -> None:
-    root = _repo_root()
+    root = _source_root()
     violations: list[str] = []
 
     for path in _python_files():
@@ -135,7 +152,7 @@ def test_no_subsystem_named_as_owner_of_core_work() -> None:
 
 def test_allowlist_entries_still_exist() -> None:
     """An allowlist entry whose text is gone is stale and must be removed."""
-    root = _repo_root()
+    root = _source_root()
     stale: list[str] = []
     for rel, needle in ALLOWLIST:
         path = root / rel
@@ -155,4 +172,4 @@ def test_allowlist_entries_still_exist() -> None:
 @pytest.mark.parametrize("pkg", _PACKAGES)
 def test_package_is_scanned(pkg: str) -> None:
     """Fail loudly if a package moved or was renamed, rather than scanning zero."""
-    assert (_repo_root() / pkg).is_dir(), f"{pkg} not found — update _PACKAGES"
+    assert (_source_root() / pkg).is_dir(), f"{pkg} not found — update _PACKAGES"
