@@ -26,7 +26,7 @@ Persistence layout: graphs live in **FalkorDB** (per ADR-0121); non-graph state 
 
 **Current state lives in `STATE.json`, not here.** Read it for the version, last shipped phase, in-progress work, pending designs, and the `recent[]` ship log. Per-phase ship narrative (Phases 39–50) is in `HANDOFF.md §3.1.11–§3.1.23`; downstream sequencing is in `confirmation_docs/POST_PHASE_38_PHASE_MAP.md §6`.
 
-**High-level:** the numbered-phase plan (Phases 39–49) is complete and Phase 50 (skill-install) shipped; active work is the downstream sequence (WSD Phases 51+, plus subminds / perception / demos). This block is intentionally *not* hand-maintained per-phase — that duplication of `STATE.json` was itself a drift source (see “Keeping docs in sync” below).
+**High-level:** the numbered-phase plan (Phases 39–49) is complete and Phase 50 (skill-install) shipped. **Active core work is the CORE-C reconciliation plan** (`confirmation_docs/CORE_RECONCILIATION_PLAN.md`), governed by **ADR-0205** (abstraction levels) + **ADR-0206** (planning, decomposition, confidence) — read those two before touching planning, pipelines, milestones or request-patterns. Core work uses `feat/*` branches + `<name>-confirmed` tags, **not** phase numbers (51–56 are WSD's, 57+ DWF's). Also active: subminds / perception / demos / dream. This block is intentionally *not* hand-maintained per-phase — that duplication of `STATE.json` was itself a drift source (see “Keeping docs in sync” below).
 
 **Subsystems own nothing architectural.** A subsystem or brain (WSD, FOL, DWF, arc, nilm, a demo) never owns a core mechanism. If core is missing something, core builds it — a "ships in <subsystem>" comment is a defect. See `RULES.md` §8 + ADR-0205.
 
