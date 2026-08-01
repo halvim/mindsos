@@ -1,10 +1,11 @@
 # CORE — verified findings
 
 **Filed:** 2026-07-31, core reconciliation chat.
-**Verified at:** `origin/main` `fafc679` (re-confirmed unchanged from `644e91c` →
-`01e4d0d` → `9fcb694` → `fafc679` across every file cited here).
-**Re-verified 2026-07-31 at `origin/main` `b612c93`** by the CORE-C2 chat: every claim below
-held. §12 records what the re-read added.
+**Verified at:** `origin/main` `b612c93` (re-confirmed unchanged from `644e91c` →
+`01e4d0d` → `9fcb694` → `fafc679` → `b612c93` across every file cited here;
+`9879a71` and `b612c93` are docs-only).
+**§12 added by the CORE-C2 chat**, re-verified at `b612c93` and reconciled against
+`60fe2ae` (the C3R1 ship). §12.6 **withdraws** a §3 claim of the reconciliation plan.
 Everything below was read from the code, not inferred.
 
 ---
@@ -14,15 +15,38 @@ Everything below was read from the code, not inferred.
 | # | Defect | Evidence |
 |---|---|---|
 | **D-A** | The sound finder was never wired to anything that executes. `find_pipeline` has no strategy parameter and hardcodes `BFSFinder`. BFS fires a capacity off the one input it arrived on and leaves the rest unwired. With `INPUT_GROUP_FOLD`, `_validate_inputs` short-circuits, so a 3-input capacity runs on 1 input and **reports success**. | `pipeline.py:479-505`, `capacity.py:322` |
-| **D-B** | `ConjunctionFinder.fire` is non-monotonic. Phase 2 re-tests satisfiability with an **empty stack**, discarding phase 1's cycle guard, so a producer can be selected to feed itself. Adding an available input makes composition *fail*. | `pipeline.py:427-436`, `:451` |
-| **D-C** | `INPUT_GROUP_FOLD` fans in every producer at composition and aggregates nothing at execution — one blackboard slot per DataState IRI, so N producers overwrite each other and the run reports success. | `pipeline.py:433`, `pipeline_execution.py:193-201` |
+| **D-B** | `ConjunctionFinder.fire` is non-monotonic. Phase 2 re-tests satisfiability with an **empty stack**, discarding phase 1's cycle guard, so a producer can be selected to feed itself. Adding an available input makes composition *fail*. | `pipeline.py:430`, `:462` (phase-1 site is `:398`) |
+| **D-C** | `INPUT_GROUP_FOLD` fans in every producer at composition and aggregates nothing at execution — one blackboard slot per DataState IRI, so N producers overwrite each other and the run reports success. | `pipeline.py:433`, `pipeline_execution.py:200-202` |
 | **D-D** | Arbitrary producer selection is unrecorded. `fire` takes `satisfiable[0]` sorted by IRI and records nothing, so the plan is indistinguishable from one where only a single producer existed. | `pipeline.py:424-436` |
+| **D-E** | *(added 2026-07-31)* A capacity **under construction** is invisible to both guards. `fired[cap_iri]` is written *after* its inputs are built, and the cycle stack tracks DataStates under resolution, not capacities under construction — so mid-`fire` a capacity can be selected to produce one of its own transitive inputs. It then either recurses to `max_depth`, **or completes and is appended to `steps` twice**: a `Pipeline` naming one capacity as two distinct steps, returned with no error. `execute_pipeline` runs it twice and D-C's one-slot blackboard silently overwrites the first result. **D-B raises; D-E lies.** Also falsifies `ConjunctionFinder`'s own docstring claim that shared upstream producers fire once. | `pipeline.py:411-413` (memo written on exit), `:430`, `:462` |
+
+### Line-number corrections (2026-07-31)
+
+The first draft cited D-B at `pipeline.py:427-436, :451`. The empty-stack call sites are
+**398** (phase 1, correct there), **430** and **462**. `:451` is wrong. D-C's execution
+half is at `:200-202`, not `:193-201`.
+
+### Measurement (2026-07-31)
+
+`confirmation_docs/finder_variants_model.py` reproduces both finder phases exactly and
+swaps only the phase-2 admission rule. Over 20,000 generated capacity graphs:
+
+| phase-2 rule | `max_depth` blowups | duplicate-step pipelines |
+|---|---|---|
+| shipped (`frozenset()`) | — | — |
+| live cycle stack only | **369** | **20** |
+| live stack + in-flight guard | **0** | **0** |
+
+The three conformance shapes (`all_required` AND, diamond convergence, fold fan-in) are
+byte-identical across all three. Separately: the `fired` memo short-circuit is a **cost
+optimisation, not a correctness clause** — identical results with and without it in all
+20,000 graphs.
 
 ### Correction to the CR spec
 
 The spec states `ConjunctionFinder` had **zero call sites**. **False.**
 `mindsos_cli/commands/brain.py:687` (`_do_execute`, the skill-entry `execute` verb) calls
-it on a shipped path. So D-B is live in the product today, and
+it on a shipped path. So D-B **and D-E** are live in the product today, and
 `tests/resident_brain/test_execute.py` is in scope for any fix.
 
 ### Known-open, introduced by the just-merged #99
@@ -351,8 +375,47 @@ file searched for (`PHASE_05c_DESIGN_LOG.md`) never existed, while
 cite each other for an amendment neither reproduces and **assert opposite outcomes**.
 Resolved at ADR-0148 §amendment-1 and ADR-0205 §amendment-1.
 
-### 12.6 Environment
+### 12.6 Attribution's "declared footprint" does not exist
 
-`origin/main` is `b612c93` (`9879a71` + `b612c93` landed after `df8d3a5`). A worktree created
-**on the Mac** is unusable for git from the sandbox — its `.git` file points at a Mac path —
-but file writes work, which is the correct split.
+`CORE_RECONCILIATION_PLAN.md` §3 claimed the declared half of skill attribution already
+worked, because `installed-capacities` carries `capacity_iri` + `installed_by`. **The C3R1
+chat verified that claim false and it is withdrawn.** The driver stamps `installed_by` on
+**Global L2 content nodes** (`skills/driver.py`) and filters *those* on uninstall;
+`mindsos_server/boot.py` states the `installed-capacities` role is "empty until" a
+user-scoped install exists. The schema and IRI minting ship; **nothing populates them.**
+ADR-0183 §am-5's Local half is specified and unbuilt.
+
+⟹ **The skill ledger (`CORE_C2_DECISIONS.md` §7a) has no existing half to build on.** Its
+"declared footprint already works" premise is void; the skill-packaging chat builds the
+whole thing. This does **not** affect CORE-C2R1, which touched only `installed-skills`.
+
+### 12.7 `input_group` is still unowned
+
+`CORE_C2_DECISIONS.md` assigned the graph form of `input_group` to C3R1. **C3R1's
+half-ship (`4fd8baa`) did not include it** — it shipped the two phase-2 cycle guards and
+left `find_verdict` and the `catalog_check.py` divergence sweep open. `input_group` appears
+in neither. **It remains unowned and it blocks the pipeline level.**
+
+### 12.9 Reconciled with the CORE-C1R4 sweep at `2c56246`
+
+The sweep (ADR-0205 §amendment-1, `CORE_ADR_CONTRADICTION_SWEEP.md`) reached §12.1, §12.2,
+§12.3 and §12.5 **independently**. Two of its findings this read-through did **not** have,
+both of which change CORE-C2's design:
+
+- **am-1.2 — the composition primitive is selected by arity.** `add_intergraph_hyperedge`
+  refuses 1-anchor/1-member (validation step 8, "NOT 1-1"); a single-member composition is
+  an `IntergraphEdge` with `compositional=True`. **A milestone takes one link per pipeline
+  reaching it, and a request one link to its plan — every one of those is single-member**,
+  so the hyperedge alone cannot express the design. Adopted.
+- **am-1.6 — a composition pins its graphs.** `remove_graph` refuses while any incident
+  compositional edge exists, and ADR-0202 persists one chain graph per task. **Ruling for
+  the trace: per-request links are non-compositional** (ADR-0205 §am-2.2), so task graphs
+  stay removable. The wider question stays open with the milestone-level item.
+
+### 12.8 Environment
+
+`origin/main` is `60fe2ae`. A worktree created **on the Mac** is unusable for git from the
+sandbox — its `.git` file points at a Mac path — but file writes work, which is the correct
+split. **The Linux gate host and the Mac are different machines: a `docker.sock` under
+`/Users/` means the gate was run on the Mac, which RULES §5 forbids and which will silently
+gate the wrong branch.**

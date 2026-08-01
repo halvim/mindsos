@@ -326,6 +326,13 @@ link. Two things forbid that:
 **Amended:** one compositional link per pipeline reaching the milestone. Frozen members and
 growing membership are then the same mechanism, not two.
 
+**Which primitive** (ADR-0205 §amendment-1.2, reconciled at `2c56246`): each of those links
+has **exactly one member**, and `add_intergraph_hyperedge` refuses 1-anchor/1-member. So a
+milestone→pipeline link is an **`IntergraphEdge` with `compositional=True`**, not a
+hyperedge — same semantics, same `_compositional` persistence, selected by member count.
+The hyperedge carries the many-member cases (a pipeline's ordered steps, a plan's set of
+milestones). Convention: **source = anchor, target = member**.
+
 **4. Hub-ness is a discovery method, not the definition.** §1's *"appearing in multiple
 pipelines"* threshold (two or more) describes how **discovery** finds candidates. A **taught**
 milestone — which §1 already permits — needs **one** pipeline beneath it, per the rule that a

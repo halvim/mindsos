@@ -138,3 +138,127 @@ def test_no_producer_raises():
     cl = layer("out")
     with pytest.raises(PipelineNotFoundError):
         ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+
+
+# ── CORE-C3R1 — the two phase-2 cycle guards ─────────────────────────
+#
+# These assert BEHAVIOUR, not implementation. They are written to survive the
+# bottom-up-fixpoint rewrite (confirmation_docs/CORE_CR_FINDER_AS_CAPACITIES.md)
+# unchanged, and are that rewrite's acceptance bar. Do not rewrite them to match
+# an implementation; if one fails, the implementation is wrong.
+#
+# Evidence for the numbers quoted in ConjunctionFinder's docstring:
+# confirmation_docs/finder_variants_model.py
+
+
+def _self_feeding_layer():
+    """``out`` has one producer; its input ``x`` has a looping producer first.
+
+    ``a_loop`` sorts before ``b_direct`` by IRI, so a phase 2 that discards the
+    cycle stack selects ``a_loop`` — which needs ``out``, the thing being
+    produced — and recurses to ``max_depth``. Phase 1 has already proved the
+    route through ``b_direct`` exists, so the two phases disagree.
+    """
+    cl = layer("seed", "x", "out")
+    cl.register_capacity(cap("make_out", ("x",), ("out",)))
+    cl.register_capacity(cap("a_loop", ("out",), ("x",)))
+    cl.register_capacity(cap("b_direct", ("seed",), ("x",)))
+    return cl
+
+
+def test_self_feeding_producer_is_refused():
+    """D-B — phase 2 must honour phase 1's cycle guard.
+
+    Pre-fix this raised ``max_depth=8 exceeded resolving 'a_loop'`` on a graph
+    where phase 1 had already found a route.
+    """
+    dag = ConjunctionFinder().find(
+        _self_feeding_layer(),
+        start_datastates=(IRI("seed"),),
+        target_datastate=IRI("out"),
+    )
+
+    names = [s.capacity_iri.split(":")[-1] for s in dag.steps]
+    assert set(names) == {"b_direct", "make_out"}
+    assert "a_loop" not in names
+    assert incoming_datastates(dag, step_index(dag, "make_out")) == ["x"]
+
+
+def test_composition_is_monotonic_in_the_start_set():
+    """Widening the start set must never turn a success into a failure.
+
+    With no starts the graph is honestly unsatisfiable. Adding ``seed`` opens a
+    real route — and pre-fix that is exactly what moved the walk onto the
+    defective path, so the *wider* start set failed while the narrower one gave
+    a clean verdict.
+    """
+    with pytest.raises(PipelineNotFoundError):
+        ConjunctionFinder().find(
+            _self_feeding_layer(), start_datastates=(), target_datastate=IRI("out")
+        )
+
+    widened = ConjunctionFinder().find(
+        _self_feeding_layer(),
+        start_datastates=(IRI("seed"),),
+        target_datastate=IRI("out"),
+    )
+    assert widened.steps  # the wider start set composes
+
+
+def test_capacity_under_construction_is_not_selected():
+    """D-E — a capacity mid-``fire`` must be refused as a producer.
+
+    ``mk_out`` is being built when resolving ``mid`` leads back to ``out``. The
+    ``fired`` memo is written only *after* construction, so ``mk_out`` is in
+    neither ``fired`` nor the DataState stack, and a stack-only fix still admits
+    it — returning a Pipeline whose steps are ``[mk_out, mk_mid, mk_out]``, with
+    no error. ``execute_pipeline`` would then run ``mk_out`` twice and overwrite
+    its own output, since the blackboard holds one value per DataState IRI.
+    """
+    cl = layer("seed", "gone", "mid", "out")
+    cl.register_capacity(
+        cap("mk_out", ("seed", "mid"), ("out",), INPUT_GROUP_ANY_OF)
+    )
+    cl.register_capacity(
+        cap("mk_mid", ("gone", "out"), ("mid",), INPUT_GROUP_ANY_OF)
+    )
+
+    dag = ConjunctionFinder().find(
+        cl, start_datastates=(IRI("seed"),), target_datastate=IRI("out")
+    )
+
+    iris = [s.capacity_iri for s in dag.steps]
+    names = [i.split(":")[-1] for i in iris]
+    # The invariant, not the shape: no capacity may appear as two steps.
+    # (Deliberately NOT asserting the exact step list. The bottom-up-fixpoint
+    # rewrite drops `mk_mid` entirely -- `out` is producible from `seed` alone,
+    # and a stratum filter refuses a producer that only becomes satisfiable
+    # after the DataState it would produce. That is a different, also-correct
+    # DAG, and this test must not fail on it.)
+    assert len(iris) == len(set(iris)), f"capacity duplicated in steps: {names}"
+    assert names.count("mk_out") == 1
+    assert dag.target_datastate == IRI("out")
+
+
+def test_shared_upstream_is_one_step_not_two():
+    """The memo's convergence claim, asserted rather than documented.
+
+    ``ConjunctionFinder``'s docstring claims shared upstream producers fire
+    once. D-E falsified that claim in the general case; this pins it for the
+    diamond, which is the shape the claim was written about.
+    """
+    cl = layer("root", "a", "b", "out")
+    cl.register_capacity(cap("mk_root", (), ("root",)))
+    cl.register_capacity(cap("to_a", ("root",), ("a",)))
+    cl.register_capacity(cap("to_b", ("root",), ("b",)))
+    cl.register_capacity(
+        cap("combine", ("a", "b"), ("out",), INPUT_GROUP_ALL_REQUIRED)
+    )
+
+    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+
+    iris = [s.capacity_iri for s in dag.steps]
+    assert len(iris) == len(set(iris))
+    ri = step_index(dag, "mk_root")
+    # both consumers wire to the SAME step index for the shared upstream
+    assert {e.producer for e in dag.edges if e.datastate == IRI("root")} == {ri}

@@ -1,10 +1,13 @@
 # CORE-C2 — decisions taken before building
 
 **Filed:** 2026-07-31, CORE-C2 chat. Branch `feat/core-c2`, worktree `_MindsOS-core-c2`.
-**Verified at:** `origin/main` `b612c93`.
-**Status:** decisions taken, nothing built.
+**Verified at:** `origin/main` `b612c93`; reconciled at `2c56246`.
+**Status:** A0 + C2R1 **built**, not gated. C2R2 onward not started. One decision reopened — §2.
 
-**Revision 3.** Revision 2 added §7's chain proposal, since **rejected** — see §7. Revision 1 framed every abstraction level as a *store* — a new node type in
+**Revision 5.** Reconciled at `origin/main` `2c56246` with two lanes that shipped mid-chat —
+the C3R1 ship and the C1R4 sweep; **see §11**, and read §2's reopening note before acting on
+D1. Revision 4 settled ordering per level. Revision 3 rejected revision 2's chain proposal
+(§7). Revision 1 framed every abstraction level as a *store* — a new node type in
 a new L2 role with a field schema. That is ADR-0205's **rejected Alternative 2**
 (*"A separate registry per level. Rejected — a registry grants a level's topology different
 trust from the edges beside it, and the finder already reads all topology from graph
@@ -96,7 +99,18 @@ demote verb so an identity could not be unwound after dependents existed.
 **The reason is sound and it is narrow.** It constrains *membership*. It says nothing about
 a number attached to the link, and nothing about whether the assertion is still in force.
 
-**Decision.** Amend the immutability rule to **block membership only**:
+> ⚠ **REOPENED at `2c56246`.** The C1R4 sweep (ADR-0205 §am-1.5) independently confirmed
+> compositional terminality and resolved it the other way — leave the primitive alone, and
+> note that **node** properties (`Pipeline.status`, provenance) are unaffected. That works
+> only if confidence lives on nodes, which ADR-0206 §5 rejects by name. A third option
+> neither chat wrote down: **keep compositional links terminal and carry confidence and
+> `in_force` on a separate ordinary link beside each composition.** ADR-0206 §5 keeps
+> confidence on a link, the core invariant is untouched, and no Phase-05b pushback is
+> reopened. **This is now the recommended resolution.** Not decided; **C2R2's subject.**
+> **A0 deliberately does not carry D1** — nothing built so far depends on it.
+
+**Decision (as originally taken — see the note above).** Amend the immutability rule to
+**block membership only**:
 
 | Aspect | Compositional | Rationale |
 |---|---|---|
@@ -191,7 +205,15 @@ Invalidation is UP. Verification is DOWN. Attribution is DOWN then a property re
 
 **Attribution folds in here.** It answers "which Skills does this element depend on", so
 uninstall can say what stops working and dormancy can be per-dependency. It is the DOWN walk
-plus `installed_by`, both of which already exist. Two named line items remain: the walk must
+plus `installed_by`.
+
+> **[corrected at `60fe2ae`] `installed_by` does not exist where this assumed.** The C3R1
+> chat verified that the driver stamps `installed_by` on **Global L2 content nodes**, not on
+> `installed-capacities` — which `mindsos_server/boot.py` says is "empty until" a
+> user-scoped install exists. Schema and IRI minting ship; nothing populates them. So the
+> DOWN walk lands on content nodes carrying a provenance tag, and ADR-0183 §am-5's Local
+> half is specified and unbuilt. **§7a's ledger is therefore built whole, with no existing
+> declared half.** Recorded as `CORE_VERIFIED_FINDINGS.md` §12.6. Two named line items remain: the walk must
 return **which dependencies are missing**, not a boolean; and uninstall needs to run it
 **eagerly** over everything a user built, not lazily on read.
 
@@ -332,6 +354,9 @@ nothing is read twice.**
   critically, **which links** it created. An install-time fact, not derivable from the graph
   (nothing in a link says who put it there), and it never changes afterwards. Append-only,
   matching D1's append-only structure. Entries are **modification events**.
+  **It is built whole:** the "declared footprint already works" premise was verified **false**
+  at `60fe2ae` — `installed-capacities` has a schema and IRI minting and **no writer**
+  (`CORE_VERIFIED_FINDINGS.md` §12.6). There is no existing half to extend.
 - **The graph is the only source of truth for *what an element depends on*** — its links.
   Live, and moving.
 
@@ -533,6 +558,10 @@ DataStates"* would otherwise duplicate what the capacities' declarations already
 
 ## 10. Open
 
+- ⚠ **`input_group` graph form — UNOWNED AGAIN.** It was assigned to C3R1; **C3R1's
+  half-ship (`4fd8baa`) did not include it**, and the remaining C3R1/C3R3 scope (the
+  finder-as-capacities CR) does not name it. **It blocks C2R4.**
+
 - **The graph form of `input_group`** — `CORE_VERIFIED_FINDINGS` §11.5 says it blocks both
   the pipeline-store unification and the finder. **Assigned to C3R1.** ⚠ This makes C2R4 wait
   on a C3 deliverable; the two chains are no longer fully parallel.
@@ -541,3 +570,32 @@ DataStates"* would otherwise duplicate what the capacities' declarations already
 - Whether skill uninstall covers Local artifacts built on a Skill — **effectively answered by
   §7a**, and owned by the skill-packaging chat.
 - `origin/main` is `b612c93`; `CORE_VERIFIED_FINDINGS.md` states `fafc679`.
+
+---
+
+## 11. Reconciliation with two lanes that shipped mid-chat
+
+`origin/main` moved twice while CORE-C2 was building, both times into these documents.
+
+**`60fe2ae` — the C3R1 ship.** Corrections carried through: `types.py` is not dead code and
+**S14 is struck**; **C3R1 is half-shipped** (the two phase-2 cycle guards only — `find_verdict`
+and the `catalog_check.py` sweep remain); C3R3 merged into the finder-as-capacities CR and
+`BFSFinder` becomes a `selection_policy` **value**; C3R3 depends only on C3R1, so the finder
+rewrite runs fully parallel to C2. **And the claim that skill attribution's declared footprint
+already worked is FALSE** — see §7a and findings §12.6.
+
+**`2c56246` — the C1R4 sweep (ADR-0205 §amendment-1).** It reached four of this chat's
+findings independently. Two it had that this chat did not, both adopted:
+
+- **§am-1.2 — the primitive is selected by arity.** Single-member compositions are
+  `IntergraphEdge`; the hyperedge refuses 1-1. **Every milestone→pipeline and request→plan
+  link is single-member**, so the design as first written was unbuildable.
+- **§am-1.6 — a composition pins its graphs.** Ruled for the trace: per-request links are
+  **non-compositional**, so task graphs stay removable (§am-2.2). The durable case is open.
+
+**Numbering.** Their amendment holds ADR-0205 §amendment-1; this chat's is **§amendment-2**,
+and it does not restate theirs. Their note that §am-1 "flips to Accepted with CORE-C2R1" uses
+the pre-renumbering ids — under this plan's numbering that is **C2R2**.
+
+**Standing lesson, third instance.** Merge `origin/main` into a lane the moment another lane
+ships. Two of the three conflicts here were substantive, not textual.

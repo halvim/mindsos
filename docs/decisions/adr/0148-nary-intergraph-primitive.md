@@ -101,4 +101,5 @@ above) and the line is corrected to match, rather than treated as authority.
 **Consequence for anyone citing this ADR.** ADR-0205 §2's amendment permitting
 `compositional=True` with `ordered=False` is a **deliberate override of P8-A's argument**, not
 a restoration of an ADR-0148 contract. Do not cite this ADR as the ground for it; cite
-ADR-0205 §amendment-1.
+ADR-0205 §amendment-1 (which independently located the same rationale in
+`INTERGRAPH_EDGES_DESIGN.md`) together with §amendment-2.3.
