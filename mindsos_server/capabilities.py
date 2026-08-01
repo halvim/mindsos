@@ -82,24 +82,45 @@ CAN_APPROVE_RELEASE = "CAN_APPROVE_RELEASE"
 #: that reads cross-user episodic memory (default-deny; admin opt-in).
 CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY = "CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY"
 
-#: Run the skill-bundle install driver (ADR-0183, Phase 50). Install
-#: sessions additionally hold ``CAN_WRITE_GLOBAL`` — all graph writes
-#: travel through the ADR-0180 ``make_writeable`` gate; this capability
-#: gates the install *lifecycle* (preflight + installer entry points +
-#: record write), not a new write path.
+#: Run the skill-bundle install driver (ADR-0183, Phase 50). Gates the
+#: install *lifecycle* (preflight + installer entry points + record
+#: write), not a write path — all graph writes travel through the
+#: ADR-0180 ``make_writeable`` gate regardless.
+#:
+#: **CORE-C2R1 (ADR-0150 §am-11 / ADR-0002 §am-3):** held by ordinary
+#: users, not only admins. ``scope`` decides the realm and the ADR-0180
+#: gate still requires ``CAN_WRITE_GLOBAL`` for a Global install, so an
+#: admin-only *Global* install is preserved while a user may install
+#: into their own Local realm. This capability answers "may this
+#: principal install a Skill at all" — worth being able to withhold,
+#: since an installed Skill registers capacities that then execute.
 CAN_INSTALL_SKILL = "CAN_INSTALL_SKILL"
 
 #: Run the skill-bundle de-install driver (ADR-0183 §De-install, Phase
 #: 50): reverse-dependency refuse + deprecate bundle-tagged content +
-#: record flip. Same ``CAN_WRITE_GLOBAL`` co-requirement as install.
+#: record flip. Same scope rules as ``CAN_INSTALL_SKILL`` — a Global
+#: de-install still needs ``CAN_WRITE_GLOBAL``. Held by ordinary users
+#: from CORE-C2R1: a principal who may install their own Skill may
+#: remove it.
 CAN_UNINSTALL_SKILL = "CAN_UNINSTALL_SKILL"
 
 
-#: User default capability bundle — strictly empty in v1 per ADR-0002 +
-#: Phase 18 PB-12. Reserved for future per-user grants; Proposed-status
-#: caps from ADR-0137 add to this set at their Accept-flip phase, not
-#: before.
-USER_CAPS: frozenset[str] = frozenset()
+#: User default capability bundle. Empty from v1 through Phase 50 per
+#: ADR-0002 + Phase 18 PB-12; **CORE-C2R1 (ADR-0002 §am-3) adds the two
+#: skill-lifecycle capabilities** so a user can install a Skill into
+#: their own Local realm. This is the first non-empty ``USER_CAPS``.
+#:
+#: It grants no new *write* reach: every graph write still passes the
+#: ADR-0180 gate, which requires ``CAN_WRITE_GLOBAL`` for ``scope=
+#: "global"``. A user therefore installs Local and an admin promotes.
+#: Proposed-status caps from ADR-0137 add here at their Accept-flip
+#: phase, not before.
+USER_CAPS: frozenset[str] = frozenset(
+    {
+        CAN_INSTALL_SKILL,
+        CAN_UNINSTALL_SKILL,
+    }
+)
 
 #: Admin default capability bundle — all twelve per ADR-0002 §Decision +
 #: §am2 (Phase 24 ship; +CAN_PROPOSE_MUTATION + CAN_APPROVE_RELEASE per

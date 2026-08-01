@@ -178,19 +178,32 @@ class TestCapabilitiesAndAudit:
         assert CAN_INSTALL_SKILL == "CAN_INSTALL_SKILL"
         assert CAN_UNINSTALL_SKILL == "CAN_UNINSTALL_SKILL"
 
-    def test_capabilities_admin_bundled_user_denied(self) -> None:
+    def test_capabilities_held_by_users_and_admins(self) -> None:
+        """CORE-C2R1 (ADR-0002 §am-3) — both bundles hold the pair.
+
+        Shipped at Phase 50 as admin-only. Under ADR-0205 §8 a *user*
+        installs a Skill, so the capability moved into ``USER_CAPS``.
+        Admin-only *Global* install is preserved by the ADR-0180 gate's
+        ``CAN_WRITE_GLOBAL`` requirement, not by withholding these.
+        """
         from mindsos_server.capabilities import (
             ADMIN_CAPS,
             ALL_CAPABILITIES,
             CAN_INSTALL_SKILL,
             CAN_UNINSTALL_SKILL,
+            CAN_WRITE_GLOBAL,
             USER_CAPS,
         )
 
         for cap in (CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL):
             assert cap in ALL_CAPABILITIES
             assert cap in ADMIN_CAPS
-            assert cap not in USER_CAPS
+            assert cap in USER_CAPS
+
+        # The scope gate, not the capability, is what keeps Global
+        # install admin-only.
+        assert CAN_WRITE_GLOBAL in ADMIN_CAPS
+        assert CAN_WRITE_GLOBAL not in USER_CAPS
 
     def test_audit_event_values_and_roster(self) -> None:
         from mindsos_server.audit import (

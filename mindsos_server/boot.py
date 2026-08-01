@@ -226,7 +226,7 @@ def boot_brain(
         # brain (ADR-0183 §am-2). Strict activation is the explicit
         # ``mindsos skill activate`` path, not this one. Skips are
         # process-local and reported, never written back to the record.
-        activation = apply_installed_skills(cl, kl, strict=False)
+        activation = apply_installed_skills(cl, kl, strict=False, user_id=user)
         for _bundle, _reason in activation.skipped:
             log.warning(
                 "boot: skill %r not activated for user %r: %s",
@@ -253,7 +253,7 @@ def boot_brain(
     installed_records = sorted(
         (
             r
-            for r in latest_records_by_bundle(kl).values()
+            for r in latest_records_by_bundle(kl, user).values()
             if r.status == "installed"
         ),
         key=lambda r: r.seq,

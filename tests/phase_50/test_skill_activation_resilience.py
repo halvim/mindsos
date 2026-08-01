@@ -13,6 +13,11 @@ would reject — can still be planted, mimicking a durable Global record
 authored by another checkout.
 """
 
+# CORE-C2R1 (ADR-0150 §am-11 / ADR-0183 §am-6): install/uninstall now
+# default to ``scope="local"``. These suites exercise the ADMIN /
+# Global path, so every call is explicit about it. The Local path
+# has its own suite: tests/phase_50/test_skill_install_local_scope.py
+
 from __future__ import annotations
 
 import pytest
@@ -56,7 +61,9 @@ def _fresh_cl() -> CapacityLayer:
 def _install_ref(kl) -> None:
     """Install the good reference bundle onto ``kl`` (record + L2)."""
     manifest = parse_manifest(MANIFEST_PATH)
-    install_skill(manifest, kl=kl, cl=_fresh_cl(), current_phase=50)
+    install_skill(
+        manifest, kl=kl, cl=_fresh_cl(), current_phase=50, scope="global"
+    )
 
 
 def _plant_record(kl, name: str, installers, *, capacities=(), requires=()) -> None:

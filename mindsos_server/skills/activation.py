@@ -41,7 +41,7 @@ flag/verb over server-startup hook until a server consumer exists);
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, List, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
 from .entry_points import EntryPointError, resolve_entry_point
 from .records import latest_records_by_bundle
@@ -116,7 +116,7 @@ def _warn_missing_declared_capacities(cl, bundle_name, value):
 
 
 def apply_installed_skills(
-    cl: Any, kl: Any, *, strict: bool = True
+    cl: Any, kl: Any, *, strict: bool = True, user_id: Optional[str] = None
 ) -> ActivationReport:
     """Re-run the L3 installer entry points of every ``installed`` bundle.
 
@@ -133,10 +133,15 @@ def apply_installed_skills(
     (``boot_brain``) skips-and-reports so a single absent or broken bundle
     never bricks boot.
 
+    ``user_id`` unions that user's **Local** install roster with the Global
+    one (ADR-0150 §amendment-11, CORE-C2R1). Without it a Skill a user
+    installed into their own realm would never activate — the write half of
+    dual-scope install is inert unless every reader is scope-aware.
+
     Returns an :class:`ActivationReport` — a tuple of the activated bundle
     names (activation order) plus a ``skipped`` roster.
     """
-    latest = latest_records_by_bundle(kl)
+    latest = latest_records_by_bundle(kl, user_id)
     ordered = sorted(
         (view for view in latest.values() if view.status == "installed"),
         key=lambda v: v.seq,

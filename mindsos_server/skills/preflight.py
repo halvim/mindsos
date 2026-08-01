@@ -80,12 +80,19 @@ def run_preflight(
     kl: Any,
     cl: Any,
     current_phase: Optional[int] = None,
+    user_id: Optional[str] = None,
 ) -> PreflightReport:
     """Scan every declared artifact; collect ALL findings (not fail-fast)
     so the rejection report names the full conflict set.
 
     ``current_phase`` defaults to :func:`current_mindsos_phase`;
     injectable for tests.
+
+    ``user_id`` unions that user's Local install roster with the Global one
+    (ADR-0150 §amendment-11) for both the ``requires_bundles`` check and the
+    prior-ownership scan — otherwise a dependency the user installed into
+    their own realm reads as missing, and their own prior install of the
+    same bundle reads as a foreign conflict.
     """
     findings: List[PreflightFinding] = []
 
@@ -116,7 +123,7 @@ def run_preflight(
             )
 
     # ── requires_bundles ──────────────────────────────────────────────
-    latest = latest_records_by_bundle(kl)
+    latest = latest_records_by_bundle(kl, user_id)
     for dep in manifest.requires_bundles:
         view = latest.get(dep)
         if view is None or view.status != "installed":
@@ -145,7 +152,7 @@ def run_preflight(
     #    repair path, and in-process reinstall after uninstall, where
     #    registrations persist because S11 ships no deregistration) ──
     owned: set[str] = set()
-    for view in iter_skill_records(kl):
+    for view in iter_skill_records(kl, user_id):
         if view.bundle_name == manifest.name:
             owned.update(view.value.get("l3_capacities") or [])
             owned.update(view.value.get("l3_datastates") or [])

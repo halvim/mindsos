@@ -71,8 +71,14 @@ def test_local_cap_installs_boots_builds_and_is_verb_reachable(
             if mid is not None
             else KnowledgeLayer.bootstrap()
         )
+        # CORE-C2R1: this suite persists the GLOBAL metagraph, so the
+        # install must land Global (the driver now defaults to "local").
         install_skill(
-            parse_manifest(manifest), kl=kl, cl=CapacityLayer(), current_phase=50
+            parse_manifest(manifest),
+            kl=kl,
+            cl=CapacityLayer(),
+            current_phase=50,
+            scope="global",
         )
         MetagraphRepository(client).persist(kl.global_metagraph())
     finally:

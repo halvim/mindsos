@@ -76,10 +76,24 @@ class TestUpperCasingPerPB4:
 
 
 class TestBundlesPerPB12:
-    """PB-12 — USER_CAPS strictly empty; ADMIN_CAPS = all (12 at Phase 50)."""
+    """PB-12 — ADMIN_CAPS = all (12 at Phase 50).
 
-    def test_user_caps_empty(self) -> None:
-        assert USER_CAPS == frozenset()
+    ``USER_CAPS`` was strictly empty from Phase 18 through Phase 50.
+    **CORE-C2R1 (ADR-0002 §amendment-3)** adds the two skill-lifecycle
+    capabilities so a user can install a Skill into their own realm
+    (ADR-0150 §am-11). It grants no new write reach — a Global install
+    still needs ``CAN_WRITE_GLOBAL`` at the ADR-0180 gate.
+    """
+
+    def test_user_caps_are_the_skill_lifecycle_pair(self) -> None:
+        assert USER_CAPS == frozenset(
+            {CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL}
+        )
+
+    def test_user_caps_hold_no_write_or_admin_capability(self) -> None:
+        """The point of §am-3: install, and nothing else."""
+        assert CAN_WRITE_GLOBAL not in USER_CAPS
+        assert not (USER_CAPS - {CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL})
 
     def test_admin_caps_all(self) -> None:
         assert ADMIN_CAPS == frozenset(ALL_CAPABILITIES)

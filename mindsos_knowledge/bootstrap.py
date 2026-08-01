@@ -108,7 +108,10 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
 #: gains a Local form — dual-scope like pending-promotions /
 #: learned-parameters: per-user patterns are authored/learned Local and
 #: promoted to the shared Global form; discipline is
-#: ``immutable_successor`` so new pattern nodes are addable Local).
+#: ``immutable_successor`` so new pattern nodes are addable Local)
+#: + ADR-0150 §amendment-11 (CORE-C2R1 — ``installed-skills`` gains a Local
+#: form so a user installs a Skill into their own realm and an admin
+#: promotes it to Global; the §am-6 Global form is untouched).
 _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_EPISODIC_MEMORIES,
     ROLE_CAPACITY_STATE,
@@ -123,6 +126,11 @@ _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     ROLE_LEARNED_PIPELINES,
     # ADR-0183 §am-5 — Local-only installed-skill capability descriptors.
     ROLE_INSTALLED_CAPACITIES,
+    # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is now dual-scope.
+    # A user installs Local; an admin promotes to the Global form added
+    # by §am-6. Same ``append_only`` schema serves both scopes — the
+    # record is an action record either way, only its realm differs.
+    ROLE_INSTALLED_SKILLS,
 })
 
 #: Alignment role-prefix per ADR-0150. Per §amendment-1 (Phase 14

@@ -10,6 +10,11 @@ Uses the ``tests/_shared`` ``falkor_client`` fixture (per-test fresh
 graph; skips without a sidecar).
 """
 
+# CORE-C2R1 (ADR-0150 §am-11 / ADR-0183 §am-6): install/uninstall now
+# default to ``scope="local"``. These suites exercise the ADMIN /
+# Global path, so every call is explicit about it. The Local path
+# has its own suite: tests/phase_50/test_skill_install_local_scope.py
+
 from __future__ import annotations
 
 import pytest
@@ -35,7 +40,9 @@ def test_live_install_record_round_trip(falkor_client) -> None:  # noqa: F811
     cl = CapacityLayer()
     install_text_capacities(cl)
     manifest = parse_manifest(MANIFEST_PATH)
-    result = install_skill(manifest, kl=kl, cl=cl, current_phase=50)
+    result = install_skill(
+        manifest, kl=kl, cl=cl, current_phase=50, scope="global"
+    )
     assert result.record is not None
 
     global_mg = kl.global_metagraph()

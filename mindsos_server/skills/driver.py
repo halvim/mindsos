@@ -167,11 +167,23 @@ def install_skill(
     session: Any = None,
     audit_conn: Any = None,
     current_phase: Optional[int] = None,
+    scope: str = "local",
 ) -> InstallResult:
     """Install a bundle per ADR-0183 §4-§7.
 
+    ``scope`` selects the realm (ADR-0150 §amendment-11, CORE-C2R1) and
+    defaults to ``"local"``: under ADR-0205 §8 a user installs a Skill
+    into their own realm, and ``scope="global"`` is the admin promotion
+    path. The default does not widen anyone's reach — every write still
+    passes the ADR-0180 gate, which requires ``CAN_WRITE_GLOBAL`` for a
+    Global write. Before §am-11 this was hardcoded to ``"global"``,
+    which is what made install admin-only in practice regardless of
+    ``CAN_INSTALL_SKILL``.
+
     Raises:
-        PermissionError: session lacks ``CAN_INSTALL_SKILL``.
+        PermissionError: session lacks ``CAN_INSTALL_SKILL`` — or, for
+            ``scope="global"``, ``CAN_WRITE_GLOBAL`` at the ADR-0180
+            gate.
         SkillInstallRejectedError: bundle-level idempotency reject
             (digest mismatch / version change while installed) or
             preflight findings; audited ``EVT_SKILL_INSTALL_REJECTED``.
@@ -179,6 +191,7 @@ def install_skill(
             with the completed-step roster was appended first.
     """
     _require_capability(session, CAN_INSTALL_SKILL, "install_skill")
+    user_id = getattr(session, "user_id", None)
     manifest = (
         manifest_or_path
         if isinstance(manifest_or_path, SkillManifest)
@@ -207,7 +220,7 @@ def install_skill(
     )
 
     # ── bundle-level idempotency (S8) ─────────────────────────────────
-    prior = latest_records_by_bundle(kl).get(manifest.name)
+    prior = latest_records_by_bundle(kl, user_id).get(manifest.name)
     if prior is not None:
         if prior.status == "installed":
             if (
@@ -250,7 +263,7 @@ def install_skill(
 
     # ── preflight (S4: atomic abort) ──────────────────────────────────
     report = run_preflight(
-        manifest, kl=kl, cl=cl, current_phase=current_phase
+        manifest, kl=kl, cl=cl, current_phase=current_phase, user_id=user_id
     )
     if not report.ok:
         reject(report.reasons, report)
@@ -261,7 +274,7 @@ def install_skill(
     installers_run: List[str] = []
     try:
         for entry in manifest.l2_content:
-            handle = writeable(role=entry.role, scope="global")
+            handle = writeable(role=entry.role, scope=scope)
             graph = handle.graph()
             existing = graph.nodes.get(entry.iri)
             if existing is not None:
@@ -312,6 +325,8 @@ def install_skill(
             status="failed",
             action="install-failed",
             value=value,
+            scope=scope,
+            user_id=user_id,
         )
         raise SkillInstallError(
             f"install of {manifest.provenance_tag} failed at step "
@@ -329,6 +344,8 @@ def install_skill(
         status="installed",
         action="install",
         value=value,
+        scope=scope,
+        user_id=user_id,
     )
     _audit(
         audit_conn,
@@ -357,8 +374,14 @@ def uninstall_skill(
     kl: Any,
     session: Any = None,
     audit_conn: Any = None,
+    scope: str = "local",
 ) -> UninstallResult:
     """De-install per ADR-0183 §8 (narrow v1 semantics).
+
+    ``scope`` mirrors :func:`install_skill` (ADR-0150 §am-11) and
+    defaults to ``"local"`` — a principal removes what they installed.
+    A Global de-install still requires ``CAN_WRITE_GLOBAL`` at the
+    ADR-0180 gate.
 
     (1) reverse-dependency refuse; (2) deprecate bundle-tagged L2
     content — ``deprecated_at`` stamped via direct system write
@@ -373,9 +396,10 @@ def uninstall_skill(
             ``EVT_SKILL_INSTALL_REJECTED``).
     """
     _require_capability(session, CAN_UNINSTALL_SKILL, "uninstall_skill")
+    user_id = getattr(session, "user_id", None)
     writeable = make_writeable(kl, session)
 
-    latest = latest_records_by_bundle(kl)
+    latest = latest_records_by_bundle(kl, user_id)
     target = latest.get(bundle_name)
     if target is None or target.status != "installed":
         raise SkillUninstallRefusedError(
@@ -431,6 +455,8 @@ def uninstall_skill(
             "deprecated_node_ids": deprecated,
             "uninstalled_at": stamp,
         },
+        scope=scope,
+        user_id=user_id,
     )
     _audit(
         audit_conn,
