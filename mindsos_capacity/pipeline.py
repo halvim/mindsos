@@ -347,10 +347,83 @@ class ConjunctionFinder(Finder):
     * ``fold`` — each input is fanned-in from **all** of its satisfiable
       producers (aggregate); one edge per producer.
 
-    A two-phase design avoids partial-DAG leaks: a pure
-    ``_satisfiable`` reachability check runs first, then ``_fire`` only
-    constructs over satisfiable producers. Shared upstream producers fire
-    once (memoised), so diamonds and folds converge correctly.
+    A two-phase design avoids partial-DAG leaks: a pure reachability
+    check (``ds_reachable`` / ``cap_satisfiable``) runs first, then
+    ``fire`` only constructs over admissible producers. Shared upstream
+    producers fire once (memoised), so diamonds and folds converge to a
+    single step.
+
+    ----
+
+    **RATIONALE RECORD — two cycle guards in phase 2** (CORE-C3R1,
+    ADR-0071 §am-2, ADR-0205 §1 "each level is verified by the level
+    below"). *Read this before changing* :func:`eligible` *or* :func:`fire`.
+
+    *What changed, conceptually.* This class makes the same claim at two
+    resolutions — "a route exists" (phase 1) and "here is the route"
+    (phase 2) — so the two phases must agree. They did not.
+
+    **D-B.** Phase 1 threads a cycle ``stack`` and refuses to rely on a
+    DataState producing itself. Phase 2 re-tested producers with an
+    **empty** stack, so a producer phase 1 had refused could still be
+    selected during construction, including to feed itself. Composition
+    was **non-monotonic in the start set**: adding an available input
+    could make a compose *fail*. Fixed by threading the live stack into
+    ``fire`` and admitting producers only through :func:`eligible`.
+
+    **D-E.** The ``fired`` memo is written *after* a capacity's inputs are
+    built, so during ``fire(c)`` the capacity ``c`` is in neither ``fired``
+    nor the DataState stack — the stack tracks DataStates under
+    resolution, not capacities under construction. A capacity could
+    therefore be selected to produce one of its own transitive inputs
+    while still being built, and either recurse to ``max_depth`` **or
+    complete and be appended to** ``steps`` **twice**. The second outcome
+    returned a ``Pipeline`` naming one capacity as two distinct steps with
+    no error; ``execute_pipeline`` then ran it twice and, because the
+    blackboard holds one value per DataState IRI, the second run silently
+    overwrote the first. **D-B raises; D-E lied.** Fixed by the
+    ``in_flight`` set.
+
+    *Evidence, not argument.*
+    ``confirmation_docs/finder_variants_model.py`` reproduces both phases
+    exactly and swaps only the phase-2 admission rule. Over 20,000
+    generated capacity graphs: shipped-with-empty-stack and
+    threaded-stack-alone leave **369 max_depth blowups + 20 duplicate-step
+    pipelines**; with the ``in_flight`` guard, **0 and 0**. The three
+    conformance shapes (``all_required`` AND, diamond convergence, fold
+    fan-in) are byte-identical across all variants.
+
+    *What was rejected.* (a) Guarding in phase 1 only — phase 2 is where
+    the DAG is built, so the leak is there. (b) Treating the ``fired``
+    short-circuit in :func:`eligible` as a correctness clause — measured
+    identical with and without it in all 20,000 graphs; it is a cost
+    optimisation and is documented as one. (c) Parameterising ``max_depth``
+    per map spec (the prior CR's D10) — superseded; see below.
+
+    *What a subsystem must do differently.* Nothing is added to any
+    capacity declaration. Catalogs that composed only because of the leak
+    will now report the input as unproducible, which is the honest answer.
+    nilm and arc1 should run the divergence sweep
+    (``mindsos_capacity.catalog_check``) over their own catalogs before
+    declaring a ``shared_inputs`` map.
+
+    *Where this is going.* This is a **patch, not the design.** Both
+    defects exist because the walk is a top-down recursion that needs
+    ad-hoc guards. The agreed replacement computes reachability
+    **bottom-up as a fixpoint** across four dispatched capacities
+    (``path-finding.reachable_strata`` → ``path-finding.producer_candidates``
+    → ``decision.select_producers`` → ``path-finding.construct_dag``),
+    which makes both defects impossible by construction and retires the
+    cycle stack, ``in_flight`` **and** ``max_depth``. ``BFSFinder`` is
+    deleted there and BFS becomes a ``selection_policy`` value. The tests
+    guarding this patch assert behaviour, not implementation, and are that
+    rewrite's acceptance bar. Spec:
+    ``confirmation_docs/CORE_CR_FINDER_AS_CAPACITIES.md`` — §8 lists eight
+    already-rejected alternatives; read it before proposing a ninth.
+
+    *ADRs.* Amends **ADR-0071 §am-2** (§am-3, this change). Supersedes the
+    fix shape in ``CORE_CR_FINDER_CYCLE_SOUNDNESS.md``; its D8, D9 and D11
+    stand, D10 is retired with ``max_depth``.
     """
 
     def find(
@@ -407,14 +480,50 @@ class ConjunctionFinder(Finder):
         steps: List[DAGStep] = []
         edges: List[DAGEdge] = []
         fired: Dict[str, int] = {}  # capacity_iri -> step index
+        #: Capacities whose ``fire`` call has started but not finished. The
+        #: ``fired`` memo cannot serve this purpose: it is written *after*
+        #: construction, so during ``fire(c)`` the capacity ``c`` is in
+        #: neither map and is invisible to both guards. That is D-E.
+        in_flight: Set[str] = set()
 
-        def fire(cap_iri: str, depth: int) -> int:
+        def eligible(cap_iri: str, stack: FrozenSet[str]) -> bool:
+            """Phase-2 producer admission — both cycle guards.
+
+            Three clauses:
+
+            * **in flight** — a capacity whose ``fire`` has started and not
+              returned is refused outright. Without this a capacity can be
+              selected to produce one of its own transitive inputs while it
+              is still being built; ``fired`` does not stop it, because the
+              memo is written only on the way *out* of ``fire``. This is the
+              **D-E** guard and it is the one the cycle ``stack`` cannot
+              cover: the stack tracks DataStates under resolution, not
+              capacities under construction.
+            * **already fired** — a capacity with a step index has a
+              materialised subtree built from starts and concrete producers,
+              so it is admissible and reuses its step. This clause is a
+              **cost optimisation, not a correctness clause** — measured over
+              20,000 generated graphs, results are identical with and without
+              it (``confirmation_docs/finder_variants_model.py``). It is kept
+              because it skips a full reachability walk per already-built
+              producer, and because it makes the memo's authority explicit.
+            * **satisfiable under the live stack** — otherwise fall through to
+              phase 1's own predicate, with the *current* cycle stack rather
+              than the empty one the pre-fix code passed. This is the **D-B**
+              guard.
+            """
+            if cap_iri in in_flight:
+                return False
+            return cap_iri in fired or cap_satisfiable(cap_iri, stack)
+
+        def fire(cap_iri: str, depth: int, stack: FrozenSet[str]) -> int:
             if cap_iri in fired:
                 return fired[cap_iri]
             if depth > max_depth:
                 raise PipelineNotFoundError(
                     f"max_depth={max_depth} exceeded resolving {cap_iri!r}"
                 )
+            in_flight.add(cap_iri)
             inputs = tuple(view.inputs_of(cap_iri))
             outputs = tuple(view.outputs_of(cap_iri))
             mode = _input_group_of(capacity_layer, cap_iri)
@@ -423,17 +532,22 @@ class ConjunctionFinder(Finder):
                 if ds in starts:
                     incoming.append((START, ds))
                     continue
+                # Mirror phase 1's ``ds_reachable``: ``ds`` joins the stack
+                # before its producers are tested, so a producer that can
+                # only be reached back through ``ds`` is refused instead of
+                # being admitted to feed itself.
+                nxt = stack | {ds}
                 producers = sorted(
                     view.producers_of(ds), key=lambda n: n.node_id
                 )
-                satisfiable = [
-                    p for p in producers if cap_satisfiable(p.node_id, frozenset())
-                ]
+                satisfiable = [p for p in producers if eligible(p.node_id, nxt)]
                 if mode == INPUT_GROUP_FOLD:
                     for p in satisfiable:  # fan-in: every producer
-                        incoming.append((fire(p.node_id, depth + 1), ds))
+                        incoming.append((fire(p.node_id, depth + 1, nxt), ds))
                 elif satisfiable:  # all_required / any_of: OR → first producer
-                    incoming.append((fire(satisfiable[0].node_id, depth + 1), ds))
+                    incoming.append(
+                        (fire(satisfiable[0].node_id, depth + 1, nxt), ds)
+                    )
                 elif mode == INPUT_GROUP_ALL_REQUIRED:
                     raise PipelineNotFoundError(
                         f"required input {ds!r} of {cap_iri!r} is unproducible"
@@ -449,6 +563,12 @@ class ConjunctionFinder(Finder):
                 )
             )
             fired[cap_iri] = step_idx
+            # Construction finished: the capacity moves from in-flight to
+            # fired in one step, so it is never in neither set. No cleanup is
+            # needed on the raise paths above — every ``PipelineNotFoundError``
+            # raised inside ``fire`` propagates out of ``find`` uncaught, so
+            # the whole walk (and ``in_flight`` with it) is discarded.
+            in_flight.discard(cap_iri)
             for prod_idx, ds in incoming:
                 edges.append(
                     DAGEdge(producer=prod_idx, consumer=step_idx, datastate=ds)
@@ -463,7 +583,10 @@ class ConjunctionFinder(Finder):
             ),
             key=lambda n: n.node_id,
         )
-        fire(target_producers[0].node_id, 0)
+        # Empty initial stack, exactly as phase 1's top-level check above:
+        # the target is what we are trying to *produce*, so it is not yet
+        # "under resolution" and must not guard against its own producers.
+        fire(target_producers[0].node_id, 0, frozenset())
 
         return Pipeline(
             start_datastates=tuple(start_datastates),
