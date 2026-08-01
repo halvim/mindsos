@@ -63,7 +63,7 @@ pencilled for 57+. Use `feat/*` branches and `<name>-confirmed` tags (RULES §2)
 | **C1R1** | Extract the `MindsOS-core` rows out of WSD slots 51–56; fix the 16 wrong `mindsos_*` docstrings; land these documents + the shim register. ~~delete dead `mindsos_capacity/types.py`~~ — **[corrected 2026-07-31] not done, and correctly so:** `types.py` holds the live `SessionArg` / `SessionProtocol` that domain layers accept. It is not dead code and must not be deleted; **shim S14 is struck** (§9). C5R1's session primitive lands in `mindsos_server` and `types.py` keeps the protocol |
 | **C1R2** | **ADR — abstraction levels.** The governing idea: one graph at several resolutions, each composed of the level below and verifiable by it. Fixes the vocabulary (*abstraction level*; `capacity / pipeline / milestone / plan / request`) |
 | **C1R3** | **ADR — planning, decomposition and confidence.** The loop, the stopping rule, relational confidence, "I'm not sure". Closes POST_PHASE_38 q4 |
-| **C1R4** | **ADR contradiction sweep.** Written criterion — *does this decision store a higher-level structure opaquely, or duplicate it outside the graph?* — applied across all ADRs. Known hits: ADR-0203, `PlanResult` vs the Milestone tree, `Milestone.parent_ref`/`children_refs`, `relevant_hints` / `paired_pipelines` |
+| **C1R4** | **ADR contradiction sweep.** **[part 1 SHIPPED 2026-08-01 `2c56246` PR #104]** Six passes; the per-ADR framing did not converge, a code sweep did. Output = **ADR-0205 §amendment-1** (Proposed → Accepted at C2R1) + the coverage ledger `CORE_ADR_CONTRADICTION_SWEEP.md`. Criterion gained a **scope clause**; composition primitive is **arity-selected**; subsumption is **not** composition; compositional is **terminal**. **Part 2 owed:** the per-ADR amendments — 21 `contradicts` + 9 `contradicts-if-built`, listed with evidence and liveness in the ledger |
 
 ---
 
@@ -276,3 +276,16 @@ Each chat hands off to the next; sequential within a chain, parallel across chai
 4. **[added 2026-07-31] Merge `origin/main` into every open lane now.** `feat/core-c2` and
    `feat/adr-sweep` were both sitting at `b612c93` when `4fd8baa` shipped. The recorded
    lesson is to merge as soon as *another* lane ships, not at gate time.
+5. **[added 2026-08-01] `ADR-0205 §amendment-1.6` blocks C2R2.** `Metagraph.remove_graph`
+   refuses if any incident intergraph edge or hyperedge is `compositional=True`
+   (Pushback 17-A), and ADR-0202 persists **one chain graph per task**. If per-request plan
+   structure is compositional, every task's graph becomes permanently unremovable.
+   Compositional is terminal — remove, mutate **and deprecate** all raise
+   `CompositionalImmutableError`, and the flag cannot flip. Three options are recorded in the
+   amendment; **none is chosen**. The C2 chat decides this *before* building the milestone
+   graph.
+6. **[added 2026-08-01] Two `_source_backup` orphans.**
+   `_source_backup/root/mindsos_future_plans.md` no longer exists. It is the filed home of
+   Pushback 6-A's escape hatch, the `IntergraphEdge` endpoint-update verb, the in-place
+   hyperedge→edge downgrade (P19-A), and Pushbacks 25-B / 31-B / 33-B / 34-B. No record
+   survives anywhere.
