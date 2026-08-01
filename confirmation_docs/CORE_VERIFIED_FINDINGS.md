@@ -3,6 +3,8 @@
 **Filed:** 2026-07-31, core reconciliation chat.
 **Verified at:** `origin/main` `fafc679` (re-confirmed unchanged from `644e91c` →
 `01e4d0d` → `9fcb694` → `fafc679` across every file cited here).
+**Re-verified 2026-07-31 at `origin/main` `b612c93`** by the CORE-C2 chat: every claim below
+held. §12 records what the re-read added.
 Everything below was read from the code, not inferred.
 
 ---
@@ -290,3 +292,67 @@ All stale worktrees cleared (`_MindsOS-iteration-map`, `_MindsOS-finder-default-
 `/tmp/seam_wt`); `feat/finder-default-ruling` deleted — it had zero commits and an empty
 diff. Sandbox-created worktrees carry a `locked` marker: `git worktree unlock <path>` then
 `prune`, since the registered path does not exist from the Mac.
+
+---
+
+## 12. Round-3 findings (2026-07-31, CORE-C2 pre-build read-through @ `b612c93`)
+
+Every claim in §§1–11 held. What the re-read **added**:
+
+### 12.1 The L2 knowledge layer cannot write a link
+
+`KLWriteHandle` (`mindsos_knowledge/write_handle.py`) exposes `write_and_validate`,
+`update_and_validate`, `validate_node` and `mint_iri` — **node operations only**.
+`KLWriteHandle.validate_xref` raises `WriteHandleNotWiredError` (deferred at Phase 36
+"alongside the first XRef writer"; the writer never arrived). `MetagraphView` reads edges
+(`get_edges`, `step`) but has no writer. **`IntergraphHyperEdge` has zero consumers in
+`mindsos_knowledge`, `mindsos_intelligence` and `mindsos_capacity`** — only `mindsos_cli`
+and `mindsos_cli/migrations`.
+
+⟹ ADR-0205's *"the composition primitive already ships; this is a use of core, not an
+extension of it"* is true of `mindsos_core` and **false of the layer that has to use it**.
+Four CORE-C2 items assumed the capability existed.
+
+### 12.2 Compositional links can never be removed or have properties updated
+
+`Metagraph.remove_intergraph_hyperedge` and `update_intergraph_hyperedge` both raise
+`CompositionalImmutableError` when `compositional=True`, **with no escape hatch** —
+`metagraph.py`, Phase 05b pushback **6-A**: *"Tester recovery for a wedged metagraph is
+`mindsos metagraph reset`."* `remove_graph` carries the same cascade refusal.
+
+⟹ ADR-0206's ALS-moves-confidence-on-the-edge, its recompute-hubs-on-every-learn, and
+ADR-0205 §8's uninstall-removes-the-vertical are **all structurally impossible** on the
+primitive both ADRs designate. Resolved by `CORE_C2_DECISIONS.md` §2.
+
+### 12.3 The pipeline level is a fourth topology-in-properties instance
+
+`promoted-pipelines` carries **both** a normalised `HAS_STEP`→`PipelineStep` partition **and**
+an `edge_sequence` content property (`mindsos_knowledge/schemas/promoted_pipelines.py`).
+§11.4 listed `edge_sequence` without flagging it. Phase 13 **PB-9** additionally locked
+`HAS_STEP` as an ordinary `EdgeType` with an advisory `position`, *"NOT an ordered
+hyperedge"* — a decision ADR-0205 §2 never considered.
+
+### 12.4 `chain_artifacts.py` adds six more instances, and the C1R4 sweep missed the file
+
+`HintSet.hints` is a `Dict[str, Any]` holding structure (ADR-0205 §5 bans it).
+`StepExecutionRecord.confidence` sits on a node (ADR-0206 §5: confidence is relational).
+`RequestRun.pipeline_runs`, `RequestRun.replan_history`, `ReplanRecord.invalidated_refs` and
+`ReplanRecord.spawned_refs` are reference lists inside records.
+
+⟹ §11.6 counts three instances of the defect system-wide. **With §12.3 and §12.4 the real
+count is nine.**
+
+### 12.5 P8-A's rationale is recoverable, and ADR-0148 contradicts the glossary
+
+§10 of the plan and ADR-0205 §2 both record that the P8-A argument was lost. It is not — it
+survives in `INTERGRAPH_EDGES_DESIGN.md`, `PHASE_MAP.md` and `PHASE_05c_CONFIRMED.md`; the
+file searched for (`PHASE_05c_DESIGN_LOG.md`) never existed, while
+`PHASE_05c_IMPLEMENTATION_LOG.md` does. Separately, ADR-0148 and `docs/concepts/glossary.md`
+cite each other for an amendment neither reproduces and **assert opposite outcomes**.
+Resolved at ADR-0148 §amendment-1 and ADR-0205 §amendment-1.
+
+### 12.6 Environment
+
+`origin/main` is `b612c93` (`9879a71` + `b612c93` landed after `df8d3a5`). A worktree created
+**on the Mac** is unusable for git from the sandbox — its `.git` file points at a Mac path —
+but file writes work, which is the correct split.

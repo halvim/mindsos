@@ -215,3 +215,115 @@ and never duplicates it.
    edges sharing an anchor already express it.
 5. **Design the traversal primitive standalone, ahead of consumers.** Rejected on consumer
    discipline; built with its first consumer instead, with the rest named.
+
+---
+
+## Amendments
+
+### amendment-1 (2026-07-31, CORE-C2 pre-build read-through) — §2's P8-A ground is withdrawn
+
+**Trigger.** The CORE-C2 chat read this ADR against the code before building, per §0 of
+`confirmation_docs/CORE_RECONCILIATION_PLAN.md`. Three of §2's supporting statements do not
+survive. The **decision** to permit `compositional=True` with `ordered=False` stands; its
+**recorded justification** is replaced.
+
+**What was wrong.**
+
+1. §2 states the original argument *"could not be recovered — `PHASE_05c_DESIGN_LOG.md` does
+   not exist."* That file does not exist; `PHASE_05c_IMPLEMENTATION_LOG.md` does, and the
+   argument survives in three places — `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`,
+   `confirmation_docs/PHASE_MAP.md` (the Phase 05c P8-A row) and
+   `confirmation_docs/PHASE_05c_CONFIRMED.md`. It reads: *compositional implies
+   identity-bearing composition (`cat = c + a + t` — order and duplicates matter); set
+   semantics is incompatible with that invariant.* The ADR set was never searched.
+
+2. §2 states `ordered=False`'s *"only real effect is factory dedup"*. It **sorts and dedups**
+   at construction (`mindsos_core/schema/types.py`, `IntergraphHyperEdgeType.ordered`).
+
+3. **There is no recoverable ADR-0148 amendment on this point, and the two documents citing
+   it contradict each other.** ADR-0148 §Decision says compositional hyperedges are
+   `compositional=True, ordered=False` *"by default (per the amendment cited in the
+   glossary)"*. `docs/concepts/glossary.md` says the primitive *"Refuses
+   `compositional=True, ordered=False` per ADR-0148 amendment."* Each cites the other,
+   neither reproduces the amendment, and they assert opposite outcomes. ADR-0148 is itself a
+   reconstructed record which states it is *"not the original text"*. **Four independent
+   sources — the code, the glossary, `PHASE_MAP.md` and `INTERGRAPH_EDGES_DESIGN.md` — say
+   refused; one reconstructed line says default.** The refusal was the real decision.
+   ADR-0148's line is a reconstruction error, corrected at ADR-0148 §amendment-1.
+
+**What replaces it.** The amendment is a **deliberate override of a sound argument** — not
+the recovery of a lost one, and not the restoration of a contract a later phase reversed:
+
+> P8-A's rationale is correct about `cat = c + a + t`, and that case must keep working:
+> `ordered=True` compositional links remain expressible and are what the pipeline level
+> uses. What the rationale did not anticipate is a composition whose members form a **set
+> with a partial order over them**. §3 of this ADR requires exactly that at the plan level —
+> a plan's members are its milestones, all necessary, with sequencing carried by separate
+> sibling dependency links so that *parallel* is the **absence** of a link (ADR-0206 §2). An
+> `ordered=True` member list can only express a **total** order, and would make parallel
+> siblings inexpressible. `ordered=False` compositional links are therefore required, and
+> `ordered` is chosen **per level**, never fixed for the primitive.
+
+**Ordering per level.**
+
+| Link | `ordered` | Why |
+|---|---|---|
+| pipeline → its capacity steps | `True` | the sequence *is* the pipeline; duplicates legal (a capacity may fire twice). Holds only the capacity steps — start and end DataStates are separate links |
+| milestone → a pipeline reaching it | moot | single-member links (ADR-0206 §amendment-1) |
+| plan → its milestones | `False` | the **set** of milestones; the partial order over them lives in sibling→sibling dependency links |
+| request → its plan | moot | single-member |
+
+**Consumer:** CORE-C2R2, which also updates `docs/concepts/glossary.md`.
+
+### amendment-2 (2026-07-31, same read-through) — §11's `chain_level` evidence is withdrawn
+
+§11 states: *"'Level' is correct and already in the code: `BlameVerdict.chain_level` takes
+`hint | map | plan | plan_subtree | pipeline` — this ladder, already named."*
+
+**The terminology choice stands** — *layer* is taken by L0–L5 and *tier* by `TierEnum`, so
+*abstraction level* is correct. **The evidence does not.** §1's ladder is
+`capacity | pipeline | milestone | plan | request`. Two of five values match. `hint` and
+`map` are Phase-1 **steps**, not levels (ADR-0206 §3: *"The steps are request → hint → map →
+plan"*); `plan_subtree` is already retired by ADR-0206 §Consequences; `capacity`, `milestone`
+and `request` are absent from `chain_level` entirely.
+
+⟹ **`chain_level` has no defined target set** until hint and map are settled as steps rather
+than levels. That is a decision for CORE-C4R2, not a wording fix, and that item's scope
+("reconcile `chain_level` to the ladder") is undefined until it is made.
+
+⟹ **Consequence for `request_knowledge`** (ADR-0206 §7): it references two different kinds of
+thing — step outputs (hint, map) and levels (plan, milestone, pipeline). The rule that a
+declared level requires the level below applies to the **level half only**; a hint has no
+level beneath it to require. A validator must not demand all five.
+
+### amendment-3 (2026-07-31, same read-through) — lazy descent implies a per-level trace
+
+§4 states that the Mental Model loads the highest abstraction level and descends only as far
+as confidence requires. §11 states the chain is *"the per-request trace across these same
+levels"*. **Neither says the trace must therefore carry a record at each level** — and
+without that statement, an optimisation replacing the per-level trace records with links into
+the durable levels looks correct. It preserves *which* node was used at each level while
+silently deleting **the descent itself**: loaded the plan level, not confident, descended to
+milestone, still not confident, descended to pipeline. That history is the per-request
+reasoning record, and it is what §4 describes.
+
+**Amended:** the per-request trace carries **one record per abstraction level**. Those records
+are thin — an identity, a link to the durable node used, and per-request state; all structure
+remains links. The trace record for level *L* is named `<L>Run`.
+
+| Level | Durable node | Trace record |
+|---|---|---|
+| capacity | `Capacity` / `DataState` | `CapacityRun` |
+| pipeline | `Pipeline` | `PipelineRun` |
+| milestone | `Milestone` | `MilestoneRun` |
+| plan | `Plan` | `PlanRun` |
+| request | `RequestKnowledge` | `RequestRun` |
+
+`ReplanRecord` is a provenance composite, not a level. `Hints` and `Mapping` record **step**
+outputs, not levels, and take no `Run` suffix; they attach to the request-level trace. §11's
+list of three execution records (`PipelineRun`, `RequestRun`, `ReplanRecord`) was not
+exhaustive — `StepExecutionRecord` is the capacity-level trace and is renamed `CapacityRun`
+rather than removed.
+
+**Consumers:** the per-level items of CORE-C2. Renames land with each level's schema change,
+never as a sweep (`CORE_RECONCILIATION_PLAN.md` §10).
