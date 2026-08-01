@@ -92,7 +92,13 @@ def admin_session() -> Session:
 
 @pytest.fixture()
 def non_admin_session() -> Session:
-    """Caller with USER_CAPS (= frozenset()) — denied on every P25 cap."""
+    """Caller with ``USER_CAPS`` — denied on every P25 cap.
+
+    ``USER_CAPS`` is no longer empty — CORE-C2R1 / ADR-0002 §am-3
+    added the two skill-lifecycle capabilities — but it holds none
+    of the capabilities under test here, so the denial paths are
+    unaffected.
+    """
     return Session.for_testing("alice-caller", is_admin=False)
 
 

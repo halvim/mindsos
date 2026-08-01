@@ -5,7 +5,10 @@ Extends the Phase 22 conftest shape. Adds:
 * :func:`admin_session_propose` — admin session with CAN_PROPOSE_MUTATION.
 * :func:`admin_session_release` — admin session with CAN_APPROVE_RELEASE.
 * :func:`admin_session_both` — admin with both Phase 24 caps + Phase 22 baseline.
-* :func:`non_admin_session` — USER_CAPS empty (denial-path tests).
+* :func:`non_admin_session` — carries ``USER_CAPS`` (denial-path tests).
+  ``USER_CAPS`` is no longer empty — CORE-C2R1 / ADR-0002 §am-3 added
+  the two skill-lifecycle capabilities — but it holds none of the
+  capabilities under test here, so the denial paths are unaffected.
 * :func:`canonical_global_mg` — canonical-Global Metagraph from
   ``bootstrap_global(importers=())``.
 * :func:`pending_global_mg` — pending-Global Metagraph from
