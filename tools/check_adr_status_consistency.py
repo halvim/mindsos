@@ -24,6 +24,25 @@ Compatibility rules (a status *cell* may be annotated, not bare):
     as compatible with whatever the front-matter says.
   * bare ``Accepted`` / ``Proposed`` / ``Deferred`` / ``Withdrawn``
     -> must equal the front-matter status.
+
+2026-08-01 repair (CORE-C1R4 follow-on). Three defects, all of which
+made the guard report green while the index was stale:
+
+  * **The index was never checked at all.** ``_iter_table_rows`` only
+    armed itself when the table header contained a cell with "adr" in
+    it. ``README.md``'s header is ``| # | Title | Status | Layer |
+    Aliases |`` — no such cell — so zero rows were ever yielded and
+    ``check_index`` was a no-op on the one file it exists to police.
+    The index had silently stopped at ADR-0137, missing 76 rows.
+  * **No completeness check.** An ADR absent from the index was
+    invisible; only *disagreeing* rows could ever be reported. That is
+    the defect that let the index rot in the first place, so the fix
+    for it (``require_complete``) is the part that stops recurrence.
+  * **Duplicate ADR numbers collapsed.** Statuses were keyed by
+    ``filename[:4]``, so ``0172`` (2 files) and ``0201`` (4 files)
+    shared one key each and the losers were silently discarded. Keyed
+    by filename now; the index links carry the filename, so rows for
+    amendment files are matched exactly.
 """
 
 from __future__ import annotations
@@ -37,8 +56,9 @@ SUMMARY_DIR = ADR_DIR.parent / "summary"
 README = ADR_DIR / "README.md"
 
 CANON = {"accepted", "proposed", "superseded", "deferred", "withdrawn"}
-_ADR_LINK = re.compile(r"\[?(\d{4})\]?\((?:\.\./adr/)?\d{4}[-a-z0-9]*\.md\)")
-_ADR_NUM = re.compile(r"\b(\d{4})\b")
+#: Pull the ADR filename out of a markdown link target, with or without
+#: a ``../adr/`` prefix (the summary pages use one, the README does not).
+_ADR_HREF = re.compile(r"\]\((?:\.\./adr/)?([0-9]{4}[-A-Za-z0-9]*\.md)\)")
 
 
 def _canon(text: str) -> str | None:
@@ -56,16 +76,24 @@ def _frontmatter_status(md: str) -> str | None:
 
 def _prose_status(md: str) -> str | None:
     # Later ADRs use ``**Status:** X``; the earliest (0001-0013) use a
-    # bullet ``- **Status:** X``. Accept either.
+    # bullet ``- **Status:** X``. Accept either. Only the FIRST such
+    # line counts — an in-file amendment section must therefore label
+    # its own status differently (``**Amendment status:**``) so it does
+    # not shadow the base ADR's.
     m = re.search(r"^[-*\s]*\*\*Status:\*\*\s*(.+)$", md, re.MULTILINE)
     return _canon(m.group(1)) if m else None
 
 
 def load_adr_statuses() -> tuple[dict[str, str], list[str]]:
+    """Map ADR *filename* -> canonical status.
+
+    Keyed by filename, not by the 4-digit number: ADR-0172 and ADR-0201
+    each have amendment files sharing their number, and keying by number
+    silently dropped all but one.
+    """
     out: dict[str, str] = {}
     problems: list[str] = []
     for f in sorted(ADR_DIR.glob("[0-9][0-9][0-9][0-9]-*.md")):
-        num = f.name[:4]
         md = f.read_text(encoding="utf-8")
         fm = _frontmatter_status(md)          # YAML front-matter (may be None)
         pr = _prose_status(md)                # prose/bullet Status line
@@ -79,45 +107,65 @@ def load_adr_statuses() -> tuple[dict[str, str], list[str]]:
             problems.append(
                 f"{f.name}: front-matter '{fm}' != prose Status '{pr}'"
             )
-        out[num] = authoritative
+        out[f.name] = authoritative
     for p in problems:
         print(f"  [ADR file]   {p}")
     return out, problems
 
 
 def _iter_table_rows(md: str):
-    """Yield (status_cell, adr_num) for every markdown-table row that
-    lives under a header containing a 'Status' column."""
+    """Yield ``(status_cell, adr_filename)`` for every markdown-table row
+    that lives under a header containing a 'Status' column.
+
+    A table is in scope iff its header row has a cell that is exactly
+    ``status``. The previous version additionally required a cell
+    containing "adr", which no shipped table has — so no row was ever
+    yielded. See the module docstring.
+    """
     status_col = None
     for line in md.splitlines():
         if not line.lstrip().startswith("|"):
             status_col = None
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        # header row?
         lowered = [c.lower() for c in cells]
-        if "status" in lowered and "adr #" in lowered or (
-            "status" in lowered and any("adr" in c for c in lowered)
-        ):
+        if "status" in lowered:
             status_col = lowered.index("status")
             continue
         if status_col is None or len(cells) <= status_col:
             continue
         if set(cells[0]) <= {"-", ":", " "}:  # separator row
             continue
-        m = _ADR_NUM.search(cells[0])
+        m = _ADR_HREF.search(cells[0])
         if not m:
             continue
         yield cells[status_col], m.group(1)
 
 
-def check_index(path: Path, adr_status: dict[str, str]) -> list[str]:
+def check_index(
+    path: Path,
+    adr_status: dict[str, str],
+    *,
+    require_complete: bool = False,
+) -> list[str]:
+    """Compare an index/summary table against the ADR files.
+
+    ``require_complete`` additionally asserts that every ADR file has a
+    row. Only the README claims to be a full index; the per-layer
+    summaries are deliberately partial, so they are checked for
+    agreement but not for coverage.
+    """
     problems: list[str] = []
     md = path.read_text(encoding="utf-8")
-    for cell, num in _iter_table_rows(md):
-        truth = adr_status.get(num)
+    seen: set[str] = set()
+    for cell, fname in _iter_table_rows(md):
+        truth = adr_status.get(fname)
         if truth is None:
-            continue  # ADR not in the canonical set (e.g. reserved number)
+            problems.append(
+                f"{path.name}: row links '{fname}', which is not an ADR file"
+            )
+            continue
+        seen.add(fname)
         low = cell.lower()
         if "amended by" in low:
             continue  # amendment does not change base status
@@ -126,8 +174,14 @@ def check_index(path: Path, adr_status: dict[str, str]) -> list[str]:
             continue  # non-status annotation
         if cell_status != truth:
             problems.append(
-                f"{path.name}: ADR {num} cell '{cell}' != file status "
+                f"{path.name}: ADR {fname} cell '{cell}' != file status "
                 f"'{truth}'"
+            )
+    if require_complete:
+        for fname in sorted(set(adr_status) - seen):
+            problems.append(
+                f"{path.name}: ADR {fname} has no row in the index "
+                f"(every ADR file must be listed)"
             )
     return problems
 
@@ -137,11 +191,18 @@ def main() -> int:
     adr_status, adr_problems = load_adr_statuses()
     all_problems = list(adr_problems)
 
-    for path in [README, *sorted(SUMMARY_DIR.glob("*.md"))]:
-        if path.exists():
-            for p in check_index(path, adr_status):
-                print(f"  [index]      {p}")
-                all_problems.append(p)
+    if README.exists():
+        for p in check_index(README, adr_status, require_complete=True):
+            print(f"  [index]      {p}")
+            all_problems.append(p)
+    else:
+        all_problems.append("README.md missing — the ADR index is the guard's subject")
+        print("  [index]      README.md missing")
+
+    for path in sorted(SUMMARY_DIR.glob("*.md")):
+        for p in check_index(path, adr_status):
+            print(f"  [summary]    {p}")
+            all_problems.append(p)
 
     n = len(adr_status)
     from collections import Counter
