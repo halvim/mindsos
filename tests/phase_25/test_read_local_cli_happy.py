@@ -97,4 +97,6 @@ def test_read_local_happy_path_json_output(runner, env_setup) -> None:
         "request-patterns",
         "learned-pipelines",
         "installed-capacities",
+        # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is dual-scope.
+        "installed-skills",
     }

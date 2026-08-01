@@ -67,6 +67,8 @@ def test_real_declarations_order_per_scope() -> None:
     assert local_order == (
         "capacity-state",
         "installed-capacities",
+        # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is dual-scope.
+        "installed-skills",
         "learned-parameters",
         "learned-pipelines",
         "parameter-staging",

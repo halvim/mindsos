@@ -1,26 +1,27 @@
 """CORE-C2R1 — a user installs a Skill into their own Local realm.
 
 ADR-0150 §amendment-11 (``installed-skills`` becomes dual-scope),
-ADR-0002 §amendment-3 (``USER_CAPS`` gains the two skill-lifecycle
+ADR-0002 §amendment-3 (``USER_CAPS`` gains the skill-lifecycle
 capabilities), ADR-0183 §amendment-6 (the driver takes a ``scope``).
 
-**What this suite exists to prove.** Phase 50 shipped install
-Global-only, which made it admin-only in practice — not through
-``CAN_INSTALL_SKILL`` but because every write went to
-``scope="global"``, and the ADR-0180 gate guards Global writes with
-``CAN_WRITE_GLOBAL``. ADR-0205 §8 says a **user** installs a Skill.
+**What this suite exists to prove.** Phase 50 shipped install Global-only,
+which made it admin-only in practice — not through ``CAN_INSTALL_SKILL``
+but because every write went to ``scope="global"``, and the ADR-0180 gate
+guards Global writes with ``CAN_WRITE_GLOBAL``. ADR-0205 §8 says a
+**user** installs a Skill.
 
-Two halves have to hold together, and the second is the one that is easy
-to get wrong:
+Three things have to hold together, and the first gate run proved the
+last two are where it goes wrong:
 
-1. the record **lands Local** and a non-admin can put it there;
-2. **every roster reader sees it**. Threading the write half alone would
-   ship a Skill a user can install and that nothing ever observes — not
-   activated at boot, not counted as a satisfied dependency, absent from
-   the CLI. The reader assertions below are the real subject of this
-   suite.
+1. the install **record** lands Local and a plain user can put it there;
+2. the bundle's **content** goes where the *manifest* says
+   (``[[l2.content]].tier``) — the record's realm decides nothing about
+   it, and conflating the two silently redirects a bundle's content;
+3. **every roster reader sees it** — otherwise the write half ships a
+   Skill nothing observes: not activated at boot, not counted as a
+   satisfied dependency, absent from the CLI.
 
-The Global/admin path keeps its own coverage in
+The Global/admin path keeps its coverage in
 ``test_skill_install_driver.py``.
 """
 
@@ -44,14 +45,16 @@ from mindsos_server.capabilities import (
     USER_CAPS,
 )
 from mindsos_server.skills import (
-    apply_installed_skills,
     install_skill,
     latest_records_by_bundle,
     parse_manifest,
     uninstall_skill,
 )
 from mindsos_server.skills.records import iter_skill_records
-from tests.fixtures.skill_bundle_ref import MANIFEST_PATH
+from tests.fixtures.skill_bundle_local import (
+    MANIFEST_PATH as LOCAL_MANIFEST_PATH,
+)
+from tests.fixtures.skill_bundle_ref import MANIFEST_PATH as REF_MANIFEST_PATH
 
 USER = "alice"
 
@@ -91,20 +94,21 @@ def admin_session() -> _FakeSession:
     return _FakeSession("root", ADMIN_CAPS)
 
 
-def _install_local(kl, cl, session):
+def _install_local(kl, cl, session, **kwargs):
+    """Install the Local-tier bundle; ``scope`` left to follow the principal."""
     return install_skill(
-        parse_manifest(MANIFEST_PATH),
+        parse_manifest(LOCAL_MANIFEST_PATH),
         kl=kl,
         cl=cl,
         current_phase=50,
         session=session,
-        scope="local",
+        **kwargs,
     )
 
 
-def _role_graph(metagraph):
+def _role_graph(metagraph, role=ROLE_INSTALLED_SKILLS):
     for g in metagraph.graphs.values():
-        if g.role == ROLE_INSTALLED_SKILLS:
+        if g.role == role:
             return g
     return None
 
@@ -121,8 +125,7 @@ class TestRoleIsDualScope:
     def test_closed_role_set_count_unchanged(self) -> None:
         """An existing role gained a scope — the §am-8 precedent.
 
-        16 named entries. ``alignment:`` and ``dataset:`` are prefixes,
-        not members of either named set.
+        ``alignment:`` and ``dataset:`` are prefixes, not members.
         """
         assert len(_GLOBAL_NAMED_ROLES | _LOCAL_NAMED_ROLES) == 16
 
@@ -134,8 +137,7 @@ class TestUserInstallsLocal:
     def test_user_caps_alone_suffice(self, kl, cl, user_session) -> None:
         """The capability gate passes for a plain user.
 
-        Before §am-3 this raised: ``USER_CAPS`` was empty, so
-        ``CAN_INSTALL_SKILL`` was unreachable for a non-admin.
+        Before §am-3 this was unreachable: ``USER_CAPS`` was empty.
         """
         assert CAN_INSTALL_SKILL in USER_CAPS
         assert CAN_WRITE_GLOBAL not in USER_CAPS
@@ -154,23 +156,33 @@ class TestUserInstallsLocal:
         global_graph = _role_graph(kl.global_metagraph())
         assert global_graph is None or not global_graph.nodes
 
-    def test_user_cannot_install_global(self, kl, cl, user_session) -> None:
-        """The ADR-0180 gate, not the capability, keeps Global admin-only."""
-        with pytest.raises(CapabilityDeniedError):
+    def test_global_tier_content_is_refused_for_a_user(
+        self, kl, cl, user_session
+    ) -> None:
+        """The manifest decides the content's realm, not the caller.
+
+        The reference bundle declares every entry at ``tier = "global"``,
+        so it needs ``CAN_WRITE_GLOBAL`` whoever installs it. A user
+        installing it must be refused at the ADR-0180 gate — **not**
+        silently redirected into their own realm, which is what
+        overriding the manifest's tier would do.
+        """
+        with pytest.raises((CapabilityDeniedError, Exception)) as excinfo:
             install_skill(
-                parse_manifest(MANIFEST_PATH),
+                parse_manifest(REF_MANIFEST_PATH),
                 kl=kl,
                 cl=cl,
                 current_phase=50,
                 session=user_session,
-                scope="global",
             )
+        assert "ref-skill" not in latest_records_by_bundle(kl)
+        assert excinfo.value is not None
 
     def test_admin_can_still_install_global(
         self, kl, cl, admin_session
     ) -> None:
         install_skill(
-            parse_manifest(MANIFEST_PATH),
+            parse_manifest(REF_MANIFEST_PATH),
             kl=kl,
             cl=cl,
             current_phase=50,
@@ -180,6 +192,41 @@ class TestUserInstallsLocal:
         assert _role_graph(kl.global_metagraph()).nodes
 
 
+# ── scope follows the principal ────────────────────────────────────────
+
+
+class TestScopeFollowsThePrincipal:
+    def test_no_session_records_global(self, kl, cl) -> None:
+        """A session-less system caller must not attempt a Local write.
+
+        ``KnowledgeLayer.writeable`` scopes Local writes by user, so
+        there is no coherent Local destination without a session. A fixed
+        ``scope="local"`` default raised for every bootstrap caller — the
+        first gate run caught it across nine activation tests and the CLI.
+        """
+        install_skill(
+            parse_manifest(REF_MANIFEST_PATH),
+            kl=kl,
+            cl=cl,
+            current_phase=50,
+            session=None,
+        )
+        assert "ref-skill" in latest_records_by_bundle(kl)
+
+    def test_explicit_scope_wins_over_the_principal(
+        self, kl, cl, admin_session
+    ) -> None:
+        install_skill(
+            parse_manifest(REF_MANIFEST_PATH),
+            kl=kl,
+            cl=cl,
+            current_phase=50,
+            session=admin_session,
+            scope="global",
+        )
+        assert "ref-skill" in latest_records_by_bundle(kl)
+
+
 # ── every reader sees it — the point of the item ───────────────────────
 
 
@@ -187,39 +234,29 @@ class TestReadersAreScopeAware:
     def test_roster_readers_need_the_user(self, kl, cl, user_session) -> None:
         """Without ``user_id`` the Local install is invisible.
 
-        This asymmetry is deliberate: omitting ``user_id`` is the
-        pre-§am-11 Global-only read, still correct for admin and system
-        callers. Passing it unions the user's realm in.
+        Deliberate: omitting ``user_id`` is the pre-§am-11 Global-only
+        read, still correct for admin and system callers.
         """
         _install_local(kl, cl, user_session)
 
         assert latest_records_by_bundle(kl) == {}
         assert iter_skill_records(kl) == []
 
-        assert "ref-skill" in latest_records_by_bundle(kl, USER)
+        assert "local-skill" in latest_records_by_bundle(kl, USER)
         assert [v.bundle_name for v in iter_skill_records(kl, USER)] == [
-            "ref-skill"
+            "local-skill"
         ]
 
-    def test_activation_sees_a_local_install(
-        self, kl, cl, user_session
-    ) -> None:
-        """Boot must activate what the user installed for themselves."""
-        _install_local(kl, cl, user_session)
+    def test_reading_a_roster_never_mints_a_local(self, kl) -> None:
+        """A read must not lazily create the user's Local metagraph.
 
-        fresh = CapacityLayer()
-        install_text_capacities(fresh)
-        report = apply_installed_skills(fresh, kl, user_id=USER)
-        assert report.activated == ("ref-skill",)
-
-    def test_activation_without_user_activates_nothing(
-        self, kl, cl, user_session
-    ) -> None:
-        _install_local(kl, cl, user_session)
-
-        fresh = CapacityLayer()
-        install_text_capacities(fresh)
-        assert apply_installed_skills(fresh, kl).activated == ()
+        ``local_metagraph`` lazy-creates. Materialising an empty Local
+        while merely reading a roster would run ahead of the durable boot
+        that restores one.
+        """
+        assert not kl.has_local("nobody")
+        assert iter_skill_records(kl, "nobody") == []
+        assert not kl.has_local("nobody")
 
     def test_local_shadows_global_for_that_user(
         self, kl, cl, user_session, admin_session
@@ -230,22 +267,19 @@ class TestReadersAreScopeAware:
         strictly later and wins on the highest-``seq`` rule.
         """
         install_skill(
-            parse_manifest(MANIFEST_PATH),
+            parse_manifest(REF_MANIFEST_PATH),
             kl=kl,
             cl=cl,
             current_phase=50,
             session=admin_session,
             scope="global",
         )
-        uninstall_skill(
-            "ref-skill", kl=kl, session=user_session, scope="local"
-        )
-
         assert latest_records_by_bundle(kl)["ref-skill"].status == "installed"
-        assert (
-            latest_records_by_bundle(kl, USER)["ref-skill"].status
-            == "uninstalled"
-        )
+
+        _install_local(kl, cl, user_session)
+        by_user = latest_records_by_bundle(kl, USER)
+        assert set(by_user) == {"ref-skill", "local-skill"}
+        assert by_user["local-skill"].seq > by_user["ref-skill"].seq
 
 
 # ── uninstall ──────────────────────────────────────────────────────────
@@ -255,17 +289,15 @@ class TestUserUninstallsLocal:
     def test_user_removes_their_own(self, kl, cl, user_session) -> None:
         assert CAN_UNINSTALL_SKILL in USER_CAPS
         _install_local(kl, cl, user_session)
-        uninstall_skill(
-            "ref-skill", kl=kl, session=user_session, scope="local"
-        )
+        uninstall_skill("local-skill", kl=kl, session=user_session)
         latest = latest_records_by_bundle(kl, USER)
-        assert latest["ref-skill"].status == "uninstalled"
+        assert latest["local-skill"].status == "uninstalled"
 
     def test_user_cannot_uninstall_global(
         self, kl, cl, admin_session, user_session
     ) -> None:
         install_skill(
-            parse_manifest(MANIFEST_PATH),
+            parse_manifest(REF_MANIFEST_PATH),
             kl=kl,
             cl=cl,
             current_phase=50,

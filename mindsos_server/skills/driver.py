@@ -132,6 +132,20 @@ def _resolve_entry_point(spec: str):
         raise SkillInstallError(str(exc)) from exc
 
 
+def _resolve_scope(scope: Optional[str], user_id: Optional[str]) -> str:
+    """The install/uninstall *record's* realm (CORE-C2R1, ADR-0150 §am-11).
+
+    Explicit ``scope`` wins. Otherwise the record follows the principal:
+    a session with a ``user_id`` writes Local, a session-less system or
+    bootstrap caller writes Global. Local writes are user-scoped by
+    ``KnowledgeLayer.writeable``, so there is no coherent Local
+    destination without a user.
+    """
+    if scope is not None:
+        return scope
+    return "local" if user_id else "global"
+
+
 def _roster_value(manifest: SkillManifest) -> Dict[str, Any]:
     """The structured record ``value`` (ADR-0182 first consumer)."""
     return {
@@ -167,18 +181,26 @@ def install_skill(
     session: Any = None,
     audit_conn: Any = None,
     current_phase: Optional[int] = None,
-    scope: str = "local",
+    scope: Optional[str] = None,
 ) -> InstallResult:
     """Install a bundle per ADR-0183 §4-§7.
 
-    ``scope`` selects the realm (ADR-0150 §amendment-11, CORE-C2R1) and
-    defaults to ``"local"``: under ADR-0205 §8 a user installs a Skill
-    into their own realm, and ``scope="global"`` is the admin promotion
-    path. The default does not widen anyone's reach — every write still
-    passes the ADR-0180 gate, which requires ``CAN_WRITE_GLOBAL`` for a
-    Global write. Before §am-11 this was hardcoded to ``"global"``,
-    which is what made install admin-only in practice regardless of
-    ``CAN_INSTALL_SKILL``.
+``scope`` is the realm of the **install record** (ADR-0150
+    §amendment-11, CORE-C2R1). It does **not** decide where the bundle's
+    L2 content goes: every ``[[l2.content]]`` entry declares its own
+    ``tier`` and that is honoured, so a bundle shipping ``tier =
+    "global"`` content needs ``CAN_WRITE_GLOBAL`` whoever installs it.
+
+    ``scope=None`` (the default) **follows the principal** — a session
+    carrying a ``user_id`` records Local; a session-less system or
+    bootstrap caller records Global. `KnowledgeLayer.writeable` scopes a
+    Local write by user, so without a session there is no coherent Local
+    destination and a fixed ``"local"`` default would raise for every
+    system caller. An explicit ``scope=`` always wins.
+
+    Before §am-11 the record *and* the content were both hardcoded to
+    ``"global"`` — which is what made install admin-only in practice,
+    through the ADR-0180 gate rather than ``CAN_INSTALL_SKILL``.
 
     Raises:
         PermissionError: session lacks ``CAN_INSTALL_SKILL`` — or, for
@@ -192,6 +214,7 @@ def install_skill(
     """
     _require_capability(session, CAN_INSTALL_SKILL, "install_skill")
     user_id = getattr(session, "user_id", None)
+    scope = _resolve_scope(scope, user_id)
     manifest = (
         manifest_or_path
         if isinstance(manifest_or_path, SkillManifest)
@@ -274,7 +297,10 @@ def install_skill(
     installers_run: List[str] = []
     try:
         for entry in manifest.l2_content:
-            handle = writeable(role=entry.role, scope=scope)
+            # The manifest declares each entry's realm; honour it.
+            # ``scope`` is the *record's* realm and says nothing about
+            # where the bundle's content belongs (CORE-C2R1).
+            handle = writeable(role=entry.role, scope=entry.tier)
             graph = handle.graph()
             existing = graph.nodes.get(entry.iri)
             if existing is not None:
@@ -374,14 +400,14 @@ def uninstall_skill(
     kl: Any,
     session: Any = None,
     audit_conn: Any = None,
-    scope: str = "local",
+    scope: Optional[str] = None,
 ) -> UninstallResult:
     """De-install per ADR-0183 §8 (narrow v1 semantics).
 
-    ``scope`` mirrors :func:`install_skill` (ADR-0150 §am-11) and
-    defaults to ``"local"`` — a principal removes what they installed.
-    A Global de-install still requires ``CAN_WRITE_GLOBAL`` at the
-    ADR-0180 gate.
+``scope`` mirrors :func:`install_skill` (ADR-0150 §am-11): it is the
+    realm of the **uninstall record**, and ``None`` follows the
+    principal. A Global de-install still requires ``CAN_WRITE_GLOBAL``
+    at the ADR-0180 gate.
 
     (1) reverse-dependency refuse; (2) deprecate bundle-tagged L2
     content — ``deprecated_at`` stamped via direct system write
@@ -397,6 +423,7 @@ def uninstall_skill(
     """
     _require_capability(session, CAN_UNINSTALL_SKILL, "uninstall_skill")
     user_id = getattr(session, "user_id", None)
+    scope = _resolve_scope(scope, user_id)
     writeable = make_writeable(kl, session)
 
     latest = latest_records_by_bundle(kl, user_id)

@@ -108,12 +108,12 @@ def _installed_skills_graphs(kl: Any, user_id: Optional[str] = None):
     g = _role_graph_in(kl.global_metagraph())
     if g is not None:
         graphs.append(g)
-    if user_id:
-        try:
-            local_mg = kl.local_metagraph(user_id)
-        except Exception:
-            local_mg = None
-        g = _role_graph_in(local_mg)
+    if user_id and getattr(kl, "has_local", lambda _u: False)(user_id):
+        # ``has_local`` first: ``local_metagraph`` LAZILY CREATES, and
+        # materialising an empty Local while reading a roster would run
+        # ahead of the durable boot that restores one. Reading must
+        # never mint state.
+        g = _role_graph_in(kl.local_metagraph(user_id))
         if g is not None:
             graphs.append(g)
     return graphs
@@ -203,7 +203,7 @@ def append_record(
     status: str,
     action: str,
     value: Dict[str, Any],
-    scope: str = "local",
+    scope: str = "global",
     user_id: Optional[str] = None,
     entry_start_datastate: Optional[str] = None,
     entry_target_datastate: Optional[str] = None,
