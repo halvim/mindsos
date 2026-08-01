@@ -1,7 +1,9 @@
 # CORE reconciliation plan (CORE-C chains)
 
 **Filed:** 2026-07-31. **Revised** after the abstraction-levels conclusion.
-**Status:** proposed, not approved, nothing built.
+**Status:** approved. **C1 shipped** (`df8d3a5`). **C3R1 half-shipped** — see §4.
+**Revised 2026-07-31** by the C3R1 chat: corrections in §2, §3, §4, §9, §11 are marked
+`[corrected 2026-07-31]` and were verified against the code, not inferred.
 **Reads with:** `CORE_CONCEPT_PLANNING_AND_CONFIDENCE.md` (the model),
 `CORE_VERIFIED_FINDINGS.md` (the evidence), `OPEN_DECISIONS.md`.
 
@@ -58,7 +60,7 @@ pencilled for 57+. Use `feat/*` branches and `<name>-confirmed` tags (RULES §2)
 
 | ID | Scope |
 |---|---|
-| **C1R1** | Extract the `MindsOS-core` rows out of WSD slots 51–56; fix the 16 wrong `mindsos_*` docstrings; land these documents + the shim register; delete dead `mindsos_capacity/types.py` |
+| **C1R1** | Extract the `MindsOS-core` rows out of WSD slots 51–56; fix the 16 wrong `mindsos_*` docstrings; land these documents + the shim register. ~~delete dead `mindsos_capacity/types.py`~~ — **[corrected 2026-07-31] not done, and correctly so:** `types.py` holds the live `SessionArg` / `SessionProtocol` that domain layers accept. It is not dead code and must not be deleted; **shim S14 is struck** (§9). C5R1's session primitive lands in `mindsos_server` and `types.py` keeps the protocol |
 | **C1R2** | **ADR — abstraction levels.** The governing idea: one graph at several resolutions, each composed of the level below and verifiable by it. Fixes the vocabulary (*abstraction level*; `capacity / pipeline / milestone / plan / request`) |
 | **C1R3** | **ADR — planning, decomposition and confidence.** The loop, the stopping rule, relational confidence, "I'm not sure". Closes POST_PHASE_38 q4 |
 | **C1R4** | **ADR contradiction sweep.** Written criterion — *does this decision store a higher-level structure opaquely, or duplicate it outside the graph?* — applied across all ADRs. Known hits: ADR-0203, `PlanResult` vs the Milestone tree, `Milestone.parent_ref`/`children_refs`, `relevant_hints` / `paired_pipelines` |
@@ -67,6 +69,13 @@ pencilled for 57+. Use `feat/*` branches and `<name>-confirmed` tags (RULES §2)
 
 ## 3. CORE-C2 — the abstraction substrate
 
+> **[corrected 2026-07-31] ID collision — read before citing a C2 id.** This table numbers
+> `installed-skills` dual-scope as **C2R0** and the P8-A amendment as **C2R1**.
+> `STATE.json` and the chat prompts number `installed-skills` as **C2R1**. Two different
+> items are called C2R1 depending on which artifact you read. **Cite C2 items by name, not
+> by id, until the C2 chat renumbers this chain** — it owns the chain, so the C3 chat did
+> not renumber it unilaterally. First C2 chat: settle it and delete this note.
+
 | ID | Scope | Depends on |
 |---|---|---|
 | **C2R0** | **`installed-skills` becomes dual-scope.** Today it is Global-only (ADR-0150 §am-6) while `installed-capacities` is Local-only — an asymmetry that makes skill install effectively **admin-only**. Under the model a **user installs a Skill Local**; an admin promotes it to Global. Role bootstrap + `CAN_INSTALL_SKILL` semantics. **Cheapest high-value item in the plan** — it is the precondition for everything in the model being user-driven, and it depends on nothing | — |
@@ -74,7 +83,7 @@ pencilled for 57+. Use `feat/*` branches and `<name>-confirmed` tags (RULES §2)
 | **C2R2** | **The milestone graph** — a new abstraction level. Milestone nodes anchoring compositional hyperedges over the pipelines they are hubs of | C2R1 |
 | **C2R3** | **The pipeline level** — one pipeline store named **`pipelines`**, normalised, no structural blob. Retire `learned-pipelines` and `promoted-pipelines`; `status` carries provenance | C2R1, C1R4 |
 | **C2R4** | **The plan level** — Milestone declares its target DataState; parent/child and sibling relations become edges; `PlanResult` stops being a second description; `sequence_index` and `MAX_DEPTH` retired | C2R2 |
-| **C2R4a** | **Skill isolation / attribution.** Any element answers "which Skill(s) do I depend on?", so uninstall knows its blast radius and a user can be told what they lose. **Declared footprint already works** — `installed-capacities` carries `capacity_iri` + `installed_by`, the driver writes it and filters by it on uninstall. **Derived footprint is a graph walk up the abstraction levels**, not a new store. Dependency is **many-to-many**; **dormancy is per-dependency** ("which of my dependencies are missing"), never a boolean | C2R2, C2R3 |
+| **C2R4a** | **Skill isolation / attribution.** Any element answers "which Skill(s) do I depend on?", so uninstall knows its blast radius and a user can be told what they lose. **[corrected 2026-07-31] Declared footprint does NOT work — the claim below was false.** The driver never writes `installed-capacities`: `mindsos_server/boot.py:322` states the role is "empty until" a user-scoped install exists, and `skills/driver.py` stamps `installed_by` on **Global L2 content nodes** (`:285`) and filters *those* on uninstall (`:416`). The `installed-capacities` schema and IRI minting ship; nothing populates them. So ADR-0183 §am-5's Local half is **specified and unbuilt**, which is the real hole C2R1/C2R0 sits on. **Derived footprint is a graph walk up the abstraction levels**, not a new store. Dependency is **many-to-many**; **dormancy is per-dependency** ("which of my dependencies are missing"), never a boolean | C2R2, C2R3 |
 | **C2R5** | **`request_knowledge`** — rename from `request_patterns`; `relevant_hints` and `paired_pipelines` become edges; confidence moves onto those edges; `SubgoalTemplate` retired | C2R3, C2R4 |
 
 ---
@@ -98,9 +107,9 @@ instances happened.
 
 | ID | Scope | Depends on |
 |---|---|---|
-| **C3R1** | Fix the self-feeding producer; replace `PipelineNotFoundError` with an honest don't-know verdict (the ratified `pipelinenotfound-to-dontknow` pending design); land the divergence sweep in `catalog_check.py` | — |
+| **C3R1** | **[HALF SHIPPED 2026-07-31 — `4fd8baa`, tag `finder-cycle-guards-confirmed`, gate 4450/0]** Done: the two phase-2 cycle guards — **D-B** (self-feeding producer) and **D-E** (a capacity under construction, *new*, returned a Pipeline with the same capacity twice and reported success). ADR-0071 §am-3. **Not done:** the `find_verdict` type replacing `PipelineNotFoundError` (5 closed reasons, `(capacity, datastate)` pairs, no `__bool__`, faithful conversion with **no new checks**) and the divergence sweep in `catalog_check.py` (sources × producible targets, self-feeding from the existing x-ray). | — |
 | **C3R2** | **The search capacity** — look up known pipelines in L2, read the confidence off the edge, compare to threshold. A capacity, so `CapacityContext.kl` makes the layering problem moot | C2R5, C3R1 |
-| **C3R3** | Producer-choice seam: record alternatives, selection as a policy; `BFSFinder` retired as a class, BFS becomes a method | C3R1 |
+| **C3R3** | **[corrected 2026-07-31 — MERGED INTO the finder-as-capacities CR]** Producer-choice seam: record alternatives, selection as a policy; `BFSFinder` retired. The seam is now `decision.select_producers`, one of the four capacities in `CORE_CR_FINDER_AS_CAPACITIES.md`, and BFS becomes a `selection_policy` **value** rather than a method. C3R1's remainder and C3R3 are one item. | C3R1 |
 | **C3R4** | **The find capacity** (Plan → Pipeline); `find_pipeline` and `mindsos_server/pipeline_runner.py` retired | C3R3 |
 
 ---
@@ -209,7 +218,7 @@ named to replace it. Anything failing either test is a defect.
 | # | Shim | Stands in for | Replacement | In |
 |---|---|---|---|---|
 | S1 | `find_pipeline` | the old singular keyword; 7 call sites | the find capacity | C3R4 |
-| S2 | `BFSFinder` | a search that cannot wire >1 input | a method on the one Finder | C3R3 |
+| S2 | `BFSFinder` | a search that cannot wire >1 input | **[corrected 2026-07-31]** a `selection_policy` **value**, not a method — see `CORE_CR_FINDER_AS_CAPACITIES.md` | C3R3 |
 | S3 | `mindsos_server/pipeline_runner.py` | REPL pipeline running, in L0 | `execute_pipeline` | C3R4 |
 | S4 | `PipelineNotFoundError` | a technical failure that isn't one | an honest don't-know verdict | C3R1 |
 | S5 | `learned-pipelines` + opaque blob | taught-pipeline storage | one normalised pipeline store | C2R3 |
@@ -221,7 +230,7 @@ named to replace it. Anything failing either test is a defect.
 | S11 | `phase1_v0` / `planning_v0` / `orchestration_v0` (13 caps) | the real catalogs | C4R3, C4R7, C4R8 | C4R7 |
 | S12 | `DuckSession` ×3 (brain-side) | a minimal Local session | core L0 primitive | C5R1 |
 | S13 | `Session.for_testing` | test-only Session construction | folds into S12 | C5R1 |
-| S14 | `mindsos_capacity/types.py` | deprecation shim, dead code | delete | C1R1 |
+| ~~S14~~ | ~~`mindsos_capacity/types.py`~~ | **[STRUCK 2026-07-31]** not a shim and not dead code — it holds the live `SessionArg` / `SessionProtocol` domain layers accept. Do not delete | — |
 | S15 | `signal_triage` passthrough | real triage | `decision.signal_to_tier` | C4R8 |
 | S16 | `submind` stub resolver | a real resolver | submind arbiter work | separate lane |
 
@@ -251,7 +260,7 @@ standalone churn pass.
 
 - **C1** — this chat. Ends after C1R1.
 - **C2** — the abstraction substrate. The longest chain and the one everything waits on.
-- **C3** — search and find. Starts with C3R1 (independent), then waits on C2R5.
+- **C3** — search and find. **[corrected 2026-07-31]** C3R1 is independent (half shipped). **C3R3 depends only on C3R1, not on C2R5** — only C3R2 (the search capacity) waits on C2R5. The C3 chat can do the whole finder rewrite while C2 runs.
 - **C4/C5** — starts on C5R1, then follows C2 and C3.
 
 Each chat hands off to the next; sequential within a chain, parallel across chains.
@@ -262,5 +271,8 @@ Each chat hands off to the next; sequential within a chain, parallel across chai
 
 1. **Open decisions** — `OPEN_DECISIONS.md`. C4 cannot start until the concept questions
    close.
-2. **STATE.json `recent[]`** for #99 still owed.
-3. **Worktree teardown** — `_MindsOS-core-c1` removed before this chat closes.
+2. ~~**STATE.json `recent[]`** for #99 still owed.~~ **[done]**
+3. **Worktree teardown** — each chat removes its own worktree before it closes.
+4. **[added 2026-07-31] Merge `origin/main` into every open lane now.** `feat/core-c2` and
+   `feat/adr-sweep` were both sitting at `b612c93` when `4fd8baa` shipped. The recorded
+   lesson is to merge as soon as *another* lane ships, not at gate time.

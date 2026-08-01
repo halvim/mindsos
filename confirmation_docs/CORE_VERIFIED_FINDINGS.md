@@ -1,8 +1,9 @@
 # CORE — verified findings
 
 **Filed:** 2026-07-31, core reconciliation chat.
-**Verified at:** `origin/main` `fafc679` (re-confirmed unchanged from `644e91c` →
-`01e4d0d` → `9fcb694` → `fafc679` across every file cited here).
+**Verified at:** `origin/main` `b612c93` (re-confirmed unchanged from `644e91c` →
+`01e4d0d` → `9fcb694` → `fafc679` → `b612c93` across every file cited here;
+`9879a71` and `b612c93` are docs-only).
 Everything below was read from the code, not inferred.
 
 ---
@@ -12,15 +13,38 @@ Everything below was read from the code, not inferred.
 | # | Defect | Evidence |
 |---|---|---|
 | **D-A** | The sound finder was never wired to anything that executes. `find_pipeline` has no strategy parameter and hardcodes `BFSFinder`. BFS fires a capacity off the one input it arrived on and leaves the rest unwired. With `INPUT_GROUP_FOLD`, `_validate_inputs` short-circuits, so a 3-input capacity runs on 1 input and **reports success**. | `pipeline.py:479-505`, `capacity.py:322` |
-| **D-B** | `ConjunctionFinder.fire` is non-monotonic. Phase 2 re-tests satisfiability with an **empty stack**, discarding phase 1's cycle guard, so a producer can be selected to feed itself. Adding an available input makes composition *fail*. | `pipeline.py:427-436`, `:451` |
-| **D-C** | `INPUT_GROUP_FOLD` fans in every producer at composition and aggregates nothing at execution — one blackboard slot per DataState IRI, so N producers overwrite each other and the run reports success. | `pipeline.py:433`, `pipeline_execution.py:193-201` |
+| **D-B** | `ConjunctionFinder.fire` is non-monotonic. Phase 2 re-tests satisfiability with an **empty stack**, discarding phase 1's cycle guard, so a producer can be selected to feed itself. Adding an available input makes composition *fail*. | `pipeline.py:430`, `:462` (phase-1 site is `:398`) |
+| **D-C** | `INPUT_GROUP_FOLD` fans in every producer at composition and aggregates nothing at execution — one blackboard slot per DataState IRI, so N producers overwrite each other and the run reports success. | `pipeline.py:433`, `pipeline_execution.py:200-202` |
 | **D-D** | Arbitrary producer selection is unrecorded. `fire` takes `satisfiable[0]` sorted by IRI and records nothing, so the plan is indistinguishable from one where only a single producer existed. | `pipeline.py:424-436` |
+| **D-E** | *(added 2026-07-31)* A capacity **under construction** is invisible to both guards. `fired[cap_iri]` is written *after* its inputs are built, and the cycle stack tracks DataStates under resolution, not capacities under construction — so mid-`fire` a capacity can be selected to produce one of its own transitive inputs. It then either recurses to `max_depth`, **or completes and is appended to `steps` twice**: a `Pipeline` naming one capacity as two distinct steps, returned with no error. `execute_pipeline` runs it twice and D-C's one-slot blackboard silently overwrites the first result. **D-B raises; D-E lies.** Also falsifies `ConjunctionFinder`'s own docstring claim that shared upstream producers fire once. | `pipeline.py:411-413` (memo written on exit), `:430`, `:462` |
+
+### Line-number corrections (2026-07-31)
+
+The first draft cited D-B at `pipeline.py:427-436, :451`. The empty-stack call sites are
+**398** (phase 1, correct there), **430** and **462**. `:451` is wrong. D-C's execution
+half is at `:200-202`, not `:193-201`.
+
+### Measurement (2026-07-31)
+
+`confirmation_docs/finder_variants_model.py` reproduces both finder phases exactly and
+swaps only the phase-2 admission rule. Over 20,000 generated capacity graphs:
+
+| phase-2 rule | `max_depth` blowups | duplicate-step pipelines |
+|---|---|---|
+| shipped (`frozenset()`) | — | — |
+| live cycle stack only | **369** | **20** |
+| live stack + in-flight guard | **0** | **0** |
+
+The three conformance shapes (`all_required` AND, diamond convergence, fold fan-in) are
+byte-identical across all three. Separately: the `fired` memo short-circuit is a **cost
+optimisation, not a correctness clause** — identical results with and without it in all
+20,000 graphs.
 
 ### Correction to the CR spec
 
 The spec states `ConjunctionFinder` had **zero call sites**. **False.**
 `mindsos_cli/commands/brain.py:687` (`_do_execute`, the skill-entry `execute` verb) calls
-it on a shipped path. So D-B is live in the product today, and
+it on a shipped path. So D-B **and D-E** are live in the product today, and
 `tests/resident_brain/test_execute.py` is in scope for any fix.
 
 ### Known-open, introduced by the just-merged #99
