@@ -3,7 +3,7 @@ title: Abstraction levels — one graph at several resolutions
 status: Accepted
 date: 2026-07-31
 layer: L3
-related: [0071, 0132, 0156, 0182, 0183, 0203, 0206]
+related: [0071, 0132, 0148, 0156, 0182, 0183, 0203, 0206]
 ---
 
 # ADR-0205: Abstraction levels — one graph at several resolutions
@@ -14,7 +14,8 @@ related: [0071, 0132, 0156, 0182, 0183, 0203, 0206]
 
 **Related:** ADR-0156 (bipartite capacity↔DataState topology — the ground level),
 ADR-0132 (intergraph edges / hyperedges — the composition primitive), ADR-0071
-(pipeline finder), ADR-0182 (node-value serialization), ADR-0183 (skill bundle
+(pipeline finder), ADR-0148 (the intergraph primitives themselves — see
+§amendment-1), ADR-0182 (node-value serialization), ADR-0183 (skill bundle
 lifecycle), ADR-0203 (learned-pipelines Local persistence — **contradicted, see §6**),
 ADR-0206 (planning, decomposition and confidence — builds on this).
 
@@ -29,7 +30,7 @@ they relate. The results are visible:
 
 - A taught pipeline is stored as an **opaque blob** (ADR-0203) while a promoted pipeline is
   stored as a **normalised graph** (ADR-0071 / ADR-0152 §1) — two representations of the
-  same thing.
+  same thing. *(This second claim is false as written — see §amendment-1.8.)*
 - A plan exists twice: as a `Milestone` tree in the chain graph and as endpoint
   dictionaries on `PlanResult`.
 - Topology is repeatedly stored as **node properties instead of edges**
@@ -64,6 +65,9 @@ discovered without pipelines to intersect.
 
 ### 2. Composition is `IntergraphHyperEdge` with `compositional=True`
 
+*(Amended — see §amendment-1.1 and §amendment-1.2. The primitive is selected by arity:
+`IntergraphEdge` for one member, `IntergraphHyperEdge` for several.)*
+
 The primitive already ships (Phase 05c). Its **anchors** side is identity-bearing (*the cat
 in cat = c + a + t*); its **members** side is the constituents; it works across graphs.
 A level-N node anchors a compositional hyperedge over its level-(N−1) members.
@@ -78,7 +82,7 @@ be expressible. **P8-A — the factory's refusal of `compositional=True` with
 conflates *identity-bearing* with *sequence-bearing*; a set-composed identity is coherent,
 and `ordered=False`'s only real effect is factory dedup, which is harmless for genuine
 sets. The original argument could not be recovered — `PHASE_05c_DESIGN_LOG.md` does not
-exist.
+exist. *(This last sentence is wrong — see §amendment-1.1.)*
 
 ### 3. AND and OR are carried by the structure; nothing is labelled
 
@@ -101,6 +105,8 @@ to descend (ADR-0206).
 A structure stored opaquely cannot be verified by the level below, so it breaks the model.
 **This does not restrict opaque *values*** — a numpy array on a DataState is data, not
 structure. ADR-0182's codec is unaffected; what changes is what may ride on it.
+
+*(Scope clause added by §amendment-1.4 — the criterion as published has no boundary.)*
 
 ### 6. Verification is part of learning, and runs on read
 
@@ -138,7 +144,8 @@ pointing at something that no longer exists.
 
 On-read verification (§6) enforces the difference without deleting anything: a dormant
 structure fails verification against the capacity level and is not offered. Reinstalling
-revives it. Removing user data is an explicit opt-in.
+revives it. Removing user data is an explicit opt-in. *(Narrowed — structure can never be
+removed at all; see §amendment-1.5.)*
 
 **Dormancy is per-dependency** — "which of my dependencies are missing" — never a boolean.
 Attribution is **many-to-many**: a pipeline built from Skills X and Y depends on both and
@@ -215,3 +222,163 @@ and never duplicates it.
    edges sharing an anchor already express it.
 5. **Design the traversal primitive standalone, ahead of consumers.** Rejected on consumer
    discipline; built with its first consumer instead, with the rest named.
+
+---
+
+## §amendment-1 (feat/adr-sweep — 2026-08-01): composition primitives, criterion scope, and four corrections
+
+**Amendment status:** Proposed. Flips to Accepted with **CORE-C2R1**.
+
+Produced by the CORE-C1R4 contradiction sweep. Coverage record and evidence:
+`confirmation_docs/CORE_ADR_CONTRADICTION_SWEEP.md`. The canonical source for everything
+about the intergraph primitives is `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`, which
+declares itself so and which §2 below failed to consult.
+
+### am-1.1 — §2's stated basis for amending P8-A is wrong. The conclusion stands.
+
+§2 says *"The original argument could not be recovered — `PHASE_05c_DESIGN_LOG.md` does not
+exist."* The argument was never in a 05c design log. It is recorded in
+`INTERGRAPH_EDGES_DESIGN.md` (2026-05-06 amendment block):
+
+> compositional implies identity-bearing composition (cat=c+a+t — order/duplicates matter);
+> set semantics is incompatible.
+
+§2's conclusion is unaffected — the rationale does conflate *identity-bearing* with
+*sequence-bearing*, and a set-composed identity is coherent. **What must change is the
+argument's basis:** §2 overrides a recorded decision, not an absent one, and must say so.
+Strike the "could not be recovered" sentence and argue against the quoted rationale
+directly.
+
+**Lesson, recorded because it caused the error:** `INTERGRAPH_EDGES_DESIGN.md` is the single
+canonical source for both intergraph primitives and instructs readers not to chase pointers
+elsewhere. Any future decision touching them reads it first.
+
+### am-1.2 — The composition primitive is selected by arity, not fixed
+
+§2 names `IntergraphHyperEdge` as *the* composition primitive. That is incomplete, and the
+gap is at the ladder's base case.
+
+- **Several members → `IntergraphHyperEdge` with `compositional=True`.** Ordered or not
+  (per §2 as amended).
+- **Exactly one member → `IntergraphEdge` with `compositional=True`.** Shipped Phase 05b;
+  identical semantics (`INTERGRAPH_EDGES_DESIGN.md` field table row 9 and row 7); persists
+  as the same `_compositional` reserved property.
+
+**This is the recorded design, not a change to it.** The hyperedge's cardinality check
+refuses 1-anchor/1-member (validation step 8: *n≥1, m≥1, NOT 1-1*), and P19-A names
+`add-intergraph-edge --intergraph-edge-id <orig>` as the route for a composition that
+collapses to 1-1. The two primitives partition by arity; ADR-0205 §2 used only one of them.
+
+**Why it matters:** the base case of the ladder is 1-1. A capacity is a 1-step pipeline
+(ADR-0206 §floor). `planning_v0` produces a single-milestone plan today. A milestone reached
+by exactly one pipeline. None of these is expressible with the hyperedge alone.
+
+**Amend §2** to read: *a level-N node anchors a compositional intergraph edge or hyperedge
+over its level-(N−1) members, the primitive chosen by member count.*
+
+**Ruling B — anchor direction.** A compositional `IntergraphEdge` has `source` and `target`,
+not `anchors` and `members`. The convention is **source = anchor, target = member**, mirroring
+the hyperedge's anchors-first ordering. This is not currently recorded anywhere; §10's upward
+walk must traverse both primitives, so it must be, in `INTERGRAPH_EDGES_DESIGN.md` §4.3.
+
+### am-1.3 — Ruling A: subsumption is not composition
+
+DataState subsumption — the missing `SPECIALIZES` edge (C11), named in §Consequences — is
+1-1 **within one graph**: ADR-0064 puts every DataState in the single shared
+`capacity:datastates` graph. `add_intergraph_edge` step 3 refuses same-graph edges, and the
+intra-graph `Edge` primitive has no `compositional` flag (verified: zero occurrences in
+`mindsos_core/models/edge.py`). So a same-graph 1-1 composition is inexpressible under any
+shipped primitive.
+
+**Ruling: it should not be a composition.** A child DataState is not *made of* its parent —
+subsumption is a typing relation, not a part-whole one, and §2's semantics ("remove one
+member and the anchor no longer exists") does not hold for it.
+
+⟹ C11 ships as a **plain typed `SPECIALIZES` edge** in the datastates graph. It remains an
+instance of §Consequences' *topology stored as properties* class, and is fixed there. It is
+**not** an instance of the composition class, and requires no core change.
+
+This ruling is what makes am-1.2 sufficient: with subsumption excluded, no ladder
+composition is same-graph.
+
+### am-1.4 — §5 needs a scope clause
+
+As published, §5's criterion has no boundary. Applied literally it condemns ADR-0016
+(`ref:<role>` string properties) and ADR-0029 (a JSON pointer map) — L1 primitives that
+predate this ladder and that this ADR does not intend to reverse. Add to §5:
+
+> **Scope.** This applies to **members of the ladder at any level, including the ground**:
+> capacities, DataStates, pipelines, milestones, plans, request knowledge — their
+> composition, ordering, subsumption and dependencies. It does **not** apply to substrate:
+> `Metagraph`, `Graph`, persistence, release manifests, server/session/auth state, audit
+> logs, `ref:<role>` strings, `XRef`, `mindsos_instances`.
+>
+> Test: *if this structure disappeared, would the system have forgotten something it knows,
+> or merely lost a way to store it?* Forgotten → in scope.
+
+### am-1.5 — Compositional is terminal. §8 narrows accordingly.
+
+Per `INTERGRAPH_EDGES_DESIGN.md` §4.3, when `compositional=True`:
+
+- `remove_intergraph_edge` / `remove_intergraph_hyperedge` raise `CompositionalImmutableError`
+- the mutation API raises the same
+- `deprecate_intergraph_edge` (Phase 10) raises the same
+- the flag itself cannot flip, deliberately: *"a `True` edge can't be removed, so flipping in
+  error wedges the metagraph"*
+
+Recovery is `mindsos metagraph reset --force`. **Pushback 6-A recorded this as a known gap
+with no escape hatch**, and filed it to `_source_backup/root/mindsos_future_plans.md` — a
+file that no longer exists. Three other deferrals point at the same missing file (endpoint
+update, hyperedge→edge downgrade, structural mutation).
+
+**Scope is narrower than it looks.** Immutability binds the edge/hyperedge, **not the nodes
+it connects**:
+
+- `Pipeline.status` (tested / activated / quarantined / retired), confidence and provenance
+  are node properties. Unaffected.
+- §8's dormancy is **derived** by on-read verification (§6), not recorded. Unaffected.
+
+**What does not survive:** §8's *"Removing user data is an explicit opt-in"* implies removal
+is available for structure. It is not, at any price short of wiping the metagraph. **Amend
+§8** to state that taught structure can be made permanently dormant but never removed, and
+that removal applies to *data* only. This does not weaken the model — dormancy was already
+the default and the mechanism — but the ADR must stop implying an operation the primitive
+forbids.
+
+### am-1.6 — Open item: a composition pins its graphs
+
+`Metagraph.remove_graph` runs an atomic precheck over both `intergraph_edges` and
+`intergraph_hyperedges` and refuses if any incident edge is compositional (Pushback 17-A).
+ADR-0202 persists **one chain graph per task**. If per-request plan structure is
+compositional, every task's graph becomes permanently unremovable.
+
+**Not decided here.** Owner: **CORE-C2R2**, before the milestone graph is built. Options
+recorded, none chosen:
+
+1. Per-request structure is non-compositional; only durable taught structure is compositional.
+2. Compositions live only in durable role-graphs; the chain references them and composes nothing.
+3. `remove_graph` gains a cascade for compositional edges (reopens 6-A).
+
+### am-1.7 — §2's claim about consumers, checked
+
+§Consequences says *"The composition primitive already ships; this is a use of core, not an
+extension of it."* The first half is true. The second needs stating plainly: as of
+`60fe2ae`, `IntergraphHyperEdge` and `compositional` have **zero users** in
+`mindsos_capacity`, `mindsos_intelligence` and `mindsos_knowledge` — only `mindsos_instances`
+and core itself. No abstraction level above `capacity` currently has any graph
+representation. This is not an argument against the ADR; it is the size of the work it
+implies, and it was not recorded.
+
+### am-1.8 — §Context's "normalised graph" claim is false
+
+§Context contrasts ADR-0203's blob against *"a promoted pipeline is stored as a normalised
+graph (ADR-0071 / ADR-0152 §1)."* Verified in
+`mindsos_knowledge/schemas/promoted_pipelines.py`: `edge_sequence` is a `list[capacity_edge_id]`
+**content field**, `start_ds` / `end_ds` are content fields the ADR itself annotates
+"Derivable", and `PipelineStep` / `HAS_STEP` are declared with no writer
+(`PIPELINE_STEP_PROPS` is annotated *"deferred to ADR-0152 §amendment-1"*). Three
+descriptions of one pipeline's topology, none of them written.
+
+⟹ ADR-0152 §1 is itself an instance of both halves of the §5 criterion, and the ADR cited
+as the good counterexample is not one. Correct §Context; the contrast it draws is between a
+blob and a *declared but unbuilt* normalised form.
