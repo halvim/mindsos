@@ -94,3 +94,33 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
   `docker compose -p mindsos-core --profile test run --rm --build mindsos-test pytest --collect-only -q | grep -c test_cli`
   must be `> 0`. A broken CLI import must surface as gate errors, never hide silently
   (it did on Slice 1 — see §4 + `STATE.recent`).
+
+---
+
+## 9. ADRs and their guards
+
+- **Adding an ADR file REQUIRES adding its row to `docs/decisions/adr/README.md`.** The gate
+  fails otherwise (`tests/test_adr_status_consistency.py`). The README is the full index and is
+  held to that; the per-layer `docs/decisions/summary/*.md` pages are deliberately partial and
+  are checked for agreement, not coverage.
+- **An ADR-level status change is FOUR edits** — front-matter `status:`, the prose
+  `**Status:**` line, the README row, and any summary-table cell.
+- **An in-file amendment needs no README row**, but must label its status
+  `**Amendment status:**` — never `**Status:**`. The checker reads the *first* `**Status:**`
+  line as the ADR's own, so an amendment using that label shadows it.
+- **A contradicted ADR flips to `Proposed`** (new form decided, not built) **or `Superseded`**
+  (decision wholly replaced). There is no other status word. Where an ADR is shipped and only
+  partly wrong, leave it `Accepted` and let the amendment carry `Proposed`, naming the CR that
+  flips it.
+- **Never name a subsystem as the owner of core work in a `mindsos_*` docstring** (§8). Gate
+  -enforced by `tests/architecture/test_no_subsystem_ownership.py`, which also refuses an
+  ALLOWLIST entry that exempts nothing.
+
+**Why this section exists.** Both guards were written in the 2026-07 doc-vs-code audit to stop
+exactly the drift they were then unable to see: the ADR guard silently checked zero rows for
+~69 ADRs, and the ownership guard could not match the phrasings RULES §8 itself uses. Repaired
+2026-08-01 (PRs #106, #108).
+
+> **A green guard that cannot fail is worse than no guard.** When you add or change one, write
+> a test that makes it go RED — assert the failure behaviour, not only the passing state.
+

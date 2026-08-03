@@ -84,7 +84,7 @@ pencilled for 57+. Use `feat/*` branches and `<name>-confirmed` tags (RULES §2)
 | **C1R1** | Extract the `MindsOS-core` rows out of WSD slots 51–56; fix the 16 wrong `mindsos_*` docstrings; land these documents + the shim register. ~~delete dead `mindsos_capacity/types.py`~~ — **not done, and correctly so** (C3R1 chat): `types.py` holds the live `SessionArg` / `SessionProtocol` that domain layers accept. Not dead code, must not be deleted; **shim S14 is struck** (§9). C5R1's session primitive lands in `mindsos_server`; `types.py` keeps the protocol |
 | **C1R2** | **ADR — abstraction levels.** The governing idea: one graph at several resolutions, each composed of the level below and verifiable by it. Fixes the vocabulary (*abstraction level*; `capacity / pipeline / milestone / plan / request`) |
 | **C1R3** | **ADR — planning, decomposition and confidence.** The loop, the stopping rule, relational confidence, "I'm not sure". Closes POST_PHASE_38 q4 |
-| **C1R4** | **ADR contradiction sweep.** Written criterion — *does this decision store a higher-level structure opaquely, or duplicate it outside the graph?* — applied across all ADRs. Known hits: ADR-0203, `PlanResult` vs the Milestone tree, `Milestone.parent_ref`/`children_refs`, `relevant_hints` / `paired_pipelines` |
+| **C1R4** | **ADR contradiction sweep.** **[part 1 SHIPPED 2026-08-01 — `2c56246` PR #104, record `f7be926` PR #105]** Six passes; the per-ADR framing did not converge, an exhaustive code sweep did. Output = **ADR-0205 §amendment-1** (Proposed → Accepted at C2R1) + the coverage ledger `CORE_ADR_CONTRADICTION_SWEEP.md`. Criterion gained a **scope clause**; the composition primitive is **arity-selected** (`IntergraphEdge` for one member, `IntergraphHyperEdge` for several — already shipped, no core change); subsumption is **not** composition; compositional is **terminal**. **Part 2 OWED:** the per-ADR amendments — 21 `contradicts` + 9 `contradicts-if-built`, each listed in the ledger with evidence and reachability (LIVE-WRITE / LIVE-READ / DECLARED) |
 
 ---
 
@@ -404,6 +404,20 @@ include it**, and the remaining C3R1/C3R3 scope is the finder-as-capacities CR, 
 not name it either. **It blocks C2R4.** Someone must take it — fold it into the
 finder-as-capacities CR, or make it its own item before C2R4 starts. Recorded as
 `CORE_VERIFIED_FINDINGS.md` §12.7.
+
+6. **[re-filed 2026-08-01 — dropped by an intervening rewrite] `ADR-0205 §amendment-1.6`
+   blocks C2R2.** `Metagraph.remove_graph` refuses if any incident intergraph edge or hyperedge
+   is `compositional=True` (Pushback 17-A), and ADR-0202 persists **one chain graph per task**.
+   If per-request plan structure is compositional, every task's graph becomes permanently
+   unremovable. Compositional is **terminal** — remove, mutate **and deprecate** all raise
+   `CompositionalImmutableError`, and the flag cannot flip; the only recovery on record is
+   `mindsos metagraph reset --force`. Three options are recorded in the amendment; **none is
+   chosen.** §12.1 says C2R2 is next — decide this before the milestone graph is built.
+7. **[re-filed 2026-08-01] Four orphaned deferrals.**
+   `_source_backup/root/mindsos_future_plans.md` no longer exists. It is the filed home of
+   Pushback 6-A's compositional escape hatch, the `IntergraphEdge` endpoint-update verb, the
+   in-place hyperedge→edge downgrade (P19-A), and Pushbacks 25-B / 31-B / 33-B / 34-B. No
+   record survives anywhere.
 
 ### 12.1 Start order — updated 2026-08-01
 
