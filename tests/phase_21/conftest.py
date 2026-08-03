@@ -12,7 +12,10 @@ Phase 21 fixtures added on top of Phase 19/20's:
 * :func:`admin_session` — :meth:`Session.for_testing` with
   ``is_admin=True`` (``ADMIN_CAPS``, includes ``CAN_VIEW_AUDIT_LOG``).
 * :func:`user_session` — :meth:`Session.for_testing` with
-  ``is_admin=False`` (``USER_CAPS`` = empty per ADR-0002 §am1).
+  ``is_admin=False`` (capabilities default to ``USER_CAPS``).
+  ``USER_CAPS`` is no longer empty — CORE-C2R1 / ADR-0002 §am-3 added
+  the two skill-lifecycle capabilities — but it holds none of the
+  capabilities under test here, so the denial paths are unaffected.
 * :func:`auditor_only_session` — minimal session holding ONLY
   ``CAN_VIEW_AUDIT_LOG`` (verifies the capability-based design from
   ADR-0002 — read access without other admin powers).

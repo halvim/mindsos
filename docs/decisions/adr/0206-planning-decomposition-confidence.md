@@ -282,3 +282,70 @@ it was written for and every other brain would shadow it.
    placeholders came to be mistaken for the plan. The reference bundle replaces them.
 7. **Deriving sequence/parallel from graph topology.** Rejected — path-reachability is not
    the pipeline chosen. The execution tree is an output of the loop.
+
+---
+
+## Amendments
+
+### amendment-1 (2026-07-31, CORE-C2 pre-build read-through) — §1's milestone is corrected
+
+**Trigger.** The CORE-C2 chat read this ADR against ADR-0205 and against the code before
+building the milestone level. §1 makes three statements that do not survive.
+
+**1. A milestone is not a DataState.** §1 says *"A milestone is a DataState the system
+already knows about…"*. ADR-0205 §1 places the milestone level **above** pipelines, and a
+DataState is a **member** of pipelines. Under both statements the same node sits above and
+below the pipeline level, and "verified by the level below" contains a cycle.
+
+**Amended:** a milestone is a **node at the milestone level**. It is neither a DataState nor a
+chain artifact. It **references** the DataState it targets and **composes** the pipelines that
+reach it — two distinct links to two distinct objects, which §1 collapsed into one sentence.
+§1's prohibition on milestones becoming nodes in the capacity graph is preserved and now
+holds structurally: the milestone level is its own graph (ADR-0205 §2, the *inter*graph
+primitive), so the capacity graph keeps exactly the bipartite topology the finder walks.
+
+**2. "Needs no new declaration type" is wrong as stated — and must not be corrected toward
+"a new declaration type".** A declaration is what a capacity or DataState has: a registry
+entry with a field schema. Wording the correction that way rebuilds ADR-0205's rejected
+Alternative 2 (*"a separate registry per level"*). **What makes a node a milestone is the link
+it anchors, not a declared type.** Its node is thin — an identity and a target link; all
+structure is links.
+
+**3. Membership is one link per pipeline, not one link over all coincident pipelines.** §1
+says *"its compositional members **are** the pipelines it is coincident in"* — plural, one
+link. Two things forbid that:
+
+- ADR-0205 §2: every member of a compositional link is **necessary**. Coincident pipelines are
+  **alternative routes** to the milestone; a single many-member link would make every one of
+  them required, so removing any one would destroy the milestone.
+- ADR-0205 §3 already states the correct form: alternatives are **several compositional links
+  sharing an anchor**. Combined with the compositional-immutability rule (members frozen),
+  this is also the only way membership can grow — a milestone that later gains a pipeline
+  gains a **new link on the same anchor**.
+
+**Amended:** one compositional link per pipeline reaching the milestone. Frozen members and
+growing membership are then the same mechanism, not two.
+
+**Which primitive** (ADR-0205 §amendment-1.2, reconciled at `2c56246`): each of those links
+has **exactly one member**, and `add_intergraph_hyperedge` refuses 1-anchor/1-member. So a
+milestone→pipeline link is an **`IntergraphEdge` with `compositional=True`**, not a
+hyperedge — same semantics, same `_compositional` persistence, selected by member count.
+The hyperedge carries the many-member cases (a pipeline's ordered steps, a plan's set of
+milestones). Convention: **source = anchor, target = member**.
+
+**4. Hub-ness is a discovery method, not the definition.** §1's *"appearing in multiple
+pipelines"* threshold (two or more) describes how **discovery** finds candidates. A **taught**
+milestone — which §1 already permits — needs **one** pipeline beneath it, per the rule that a
+declared level requires the level below. A validator written from §1 alone would reject every
+taught milestone.
+
+**5. Taught milestones are structural change outside a Skill.** ADR-0205 §7 restricts
+structural change to Skill install. Until the skill-packaging system can declare milestone
+content, a **temporary exception** is granted, recorded in the shim register of
+`CORE_RECONCILIATION_PLAN.md` §9 with *the skill-packaging system* as its named replacement.
+This is not optional slack: `promoted-pipelines` has no writer, so there are zero Global
+pipelines and discovery will return nothing for the foreseeable future. **The taught path is
+the primary path, not a stopgap**, and is a write capacity (precedent: `learn_parameter`),
+not a CLI verb.
+
+**Consumers:** the milestone-level item of CORE-C2, and every brain adopting milestones.

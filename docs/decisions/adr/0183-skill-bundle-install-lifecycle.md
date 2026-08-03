@@ -463,3 +463,57 @@ structural (boot calls no skill code) with no author burden.
 skill's installer module (imported by `apply_installed_skills`) registering its
 `reactivation_key` factory at import. A missing registration surfaces as a
 `local_caps_failed` entry at boot (before first use), not a mid-task surprise.
+
+## Amendment §am-6 (2026-07-31, CORE-C2R1) — a user installs Local
+
+**Trigger.** ADR-0205 §8: a Skill is the unit of structural change and **a user installs
+one**. The Phase-50 driver hardcoded `scope="global"` at every write, which made install
+admin-only in practice — through the ADR-0180 gate's `CAN_WRITE_GLOBAL` requirement, not
+through `CAN_INSTALL_SKILL`.
+
+**Amended behavior.**
+
+- `install_skill` and `uninstall_skill` take `scope`, defaulting to **`"local"`**. Global
+  install is the admin promotion path and still requires `CAN_WRITE_GLOBAL`.
+- The `installed-skills` role is dual-scope (ADR-0150 §am-11); `append_record` writes to the
+  requested scope.
+- **Every roster reader takes `user_id`** and unions Global with that user's Local:
+  `iter_skill_records`, `latest_records_by_bundle`, `skill_entries`,
+  `apply_installed_skills`, `run_preflight`, `boot_brain`, and the CLI's `skill list`,
+  `skill activate` and five `brain` call sites. A Local record shadows a Global one of the
+  same bundle name.
+- `CAN_INSTALL_SKILL` / `CAN_UNINSTALL_SKILL` are user capabilities (ADR-0002 §am-3).
+
+**Why the reader sweep is part of this amendment and not a follow-up.** With the write half
+alone, a user could install a Skill into their own realm and nothing would see it: it would
+not activate at boot, would not satisfy another bundle's `requires_bundles`, and would not
+appear in the CLI. That is a feature that silently does nothing — the defect class the
+CORE-C reconciliation exists to remove.
+
+**S3 is amended — `tier = "local"` is now accepted.** The Phase-50 preflight refused every
+non-Global tier outright (`tier-not-global`, *"v1 installs are Global-only (Local = v2
+trigger)"*). With that rule intact, ADR-0150 §am-11's Local install record had **no bundle it
+could ever carry**: every declarable bundle was Global-tier and therefore admin-only, so the
+substrate could not be exercised end to end and the feature would have shipped unusable.
+
+The tier check and the role check now do different jobs, and the split is the point:
+
+* **tier** — which realm the content *wants*. Accepts `global` or `local`; anything else is
+  `unknown-tier`.
+* **role** — which realms can *hold* it. A Local entry must target a role with a Local form;
+  a Global entry a Global-named or alignment-prefixed role. Either way the failure is
+  `role-cannot-hold-tier`, replacing `unknown-or-non-global-role`.
+
+So `tier = "local"` on `concepts` is still refused — `concepts` is Global-only — but for the
+honest reason, and `tier = "local"` on `request-patterns` (dual-scope since ADR-0150 §am-8)
+is accepted. `tests/fixtures/skill_bundle_local` is the first bundle a non-admin can install.
+
+**What this does not settle.** Most useful bundle content — concepts, ontology — lives in
+Global-only roles, so in practice a user-installable bundle is a narrow thing today. Which
+bundles *should* be user-installable, and what a Skill may legitimately place in a user's
+realm, is a **skill-packaging** question and is the unbuilt Local half of §am-5.
+
+**Unchanged.** The append-only record discipline, `seq` as global install order (now minted
+over the unioned set), activation resilience (§am-2), the reverse-dependency uninstall guard — which still covers `requires_bundles` only, **not**
+Local artifacts a user built on top of a Skill. That gap is recorded for the skill-packaging
+chat along with the **skill ledger**.

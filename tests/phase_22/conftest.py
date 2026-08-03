@@ -5,7 +5,7 @@ Extends the Phase 20 conftest shape. Adds:
 
 * :func:`admin_session` — Phase 21-style ``Session.for_testing`` shim
   with ``ADMIN_CAPS``; the canonical caller for happy-path tests.
-* :func:`non_admin_session` — same shim, ``USER_CAPS`` empty;
+* :func:`non_admin_session` — same shim, carrying ``USER_CAPS``;
   capability-denial tests.
 * :func:`seeded_two_admins` — two admin rows ('admin', 'admin2'); lets
   demote/disable/hard-delete tests target one while keeping
@@ -63,7 +63,13 @@ def admin_session() -> Session:
 
 @pytest.fixture()
 def non_admin_session() -> Session:
-    """Caller session with USER_CAPS (= frozenset()) — denied on every P22 cap."""
+    """Caller session with ``USER_CAPS`` — denied on every P22 cap.
+
+    ``USER_CAPS`` is no longer empty — CORE-C2R1 / ADR-0002 §am-3
+    added the two skill-lifecycle capabilities — but it holds none
+    of the capabilities under test here, so the denial paths are
+    unaffected.
+    """
     return Session.for_testing("alice-caller", is_admin=False)
 
 

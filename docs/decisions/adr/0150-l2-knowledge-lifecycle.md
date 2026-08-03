@@ -777,3 +777,57 @@ narrowing → A2), PB-E (title rename → E2), PB-Q (Decision wording
 option (a) — amendment escape hatch retained). See
 `halvim_mindsos/confirmation_docs/PHASE_13_DESIGN_LOG.md` §1 +
 Phase 14a chat transcript captured by Phase 14a's PR.
+
+### amendment-11 (CORE-C2R1 — 2026-07-31) — `installed-skills` gains a Local form
+
+**Trigger.** ADR-0205 §8 makes the **Skill** the unit of structural change and states that
+**a user installs one**; an admin promotes it to Global. `installed-skills` shipped
+Global-only at §am-6 on the earlier reading that skill installs are admin-gated Global
+actions (SKILL_ACQUISITION design log S3). That reading no longer holds.
+
+**What actually made install admin-only.** Not `CAN_INSTALL_SKILL`. Every write in
+`mindsos_server/skills/` was hardcoded to `scope="global"`, and the ADR-0180
+`make_writeable` gate guards Global writes with `CAN_WRITE_GLOBAL`. The **destination** was
+the gate, not the capability — which is why a capability named "may install a skill" existed
+and could not be granted to anyone usefully.
+
+**Amended behavior.**
+
+`installed-skills` becomes **dual-scope**, joining `pending-promotions`,
+`learned-parameters` and `request-patterns`. **The closed role-set count is unchanged** — an
+existing role gains a scope, exactly the §am-8 precedent for `request-patterns`. It remains
+**16 named entries + 2 prefixes** (`alignment:`, `dataset:`).
+
+| Scope | Role | Schema builder | Discipline |
+|---|---|---|---|
+| Global | `installed-skills` | `build_installed_skills_schema(strict)` | `append_only` |
+| **Local** | `installed-skills` | *same builder* | `append_only` |
+
+**One schema serves both scopes.** Unlike `learned-parameters`, whose forms differ in
+mutation discipline, an install record is an action record in either realm, so
+`build_installed_skills_schema` takes no `scope` kwarg.
+
+**Writes are scope-parameterised.** `append_record`, `install_skill` and `uninstall_skill`
+take a `scope`, defaulting to **`"local"`**. The default narrows rather than widens: a Global
+install still requires `CAN_WRITE_GLOBAL` at the ADR-0180 gate, so admin promotion is
+unchanged and no new write path exists.
+
+**Reads union both realms.** `iter_skill_records`, `latest_records_by_bundle` and
+`skill_entries` take an optional `user_id` and walk Global first, then that user's Local, so
+a Local record shadows a Global one of the same bundle name (the `LocalPreferringView`
+precedent — a user's own install state governs for that user). `seq` is minted across the
+**unioned** set, so install order stays one sequence per principal and activation replays in
+it regardless of realm.
+
+**Every reader is scope-aware, and this is load-bearing.** `apply_installed_skills`,
+`run_preflight`, `boot_brain` and five CLI call sites all pass `user_id`. Threading the write
+half alone would have shipped a Skill a user could install and that **nothing would ever see**
+— not activated at boot, not counted as a satisfied dependency, absent from the CLI.
+
+**Capabilities.** `CAN_INSTALL_SKILL` and `CAN_UNINSTALL_SKILL` move into `USER_CAPS` — see
+ADR-0002 §amendment-3. `USER_CAPS` is non-empty for the first time.
+
+**Out-of-scope for amendment-11:** promotion of a Local install record to Global (the admin
+path exists as `scope="global"`, but *promotion of an existing Local record* is skill-packaging
+work); Local-artifact reverse-dependency on uninstall (the guard still covers
+`requires_bundles` only); and the **skill ledger**, which the skill-packaging chat owns.
