@@ -14,7 +14,33 @@ will ship it.
 
 Adding a legitimate exception: append to :data:`ALLOWLIST` with the reason, and
 only when the mention is a subsystem acting as a *consumer* or as a genuine
-subsystem-owned identifier — never to re-admit an ownership claim.
+subsystem-owned identifier — never to re-admit an ownership claim. An entry that
+exempts nothing fails :func:`test_allowlist_entries_are_load_bearing`.
+
+2026-08-01 audit (CORE-C1R4 follow-on). The guard was verified to actually bite
+— it scans 226 files and :func:`test_package_is_scanned` already defended the
+scan-zero failure mode. Two defects were found and fixed:
+
+  * **Coverage was narrow enough to miss the phrasings people use.** Of fourteen
+    plausible ownership claims probed, fourteen slipped through — including
+    ``"WSD ships the real catalog"`` (the pattern required the literal "ships
+    *in*"), ``"owned by WSD"`` (only the hyphenated ``WSD-owned`` matched), and
+    ``"deferred to WSD"`` / ``"routed to WSD"``. That last pair is the one that
+    matters: RULES §8's own text is *"Stop deferring core mechanics 'to WSD'"*.
+    Five patterns added; all five were verified to produce **zero** hits across
+    the scanned packages, so broadening cost no cleanup.
+  * **The ALLOWLIST was inert and its staleness test could not tell.** All five
+    entries exempted text that no pattern flagged, so the raw hit count before
+    allowlisting was already zero. The old ``test_allowlist_entries_still_exist``
+    asserted the exempted *text* still existed, not that the entry was *needed*
+    — so an allowlist can rot to 100% inert and stay green. That is the same
+    defect class as the ADR status guard (which asserted agreement on rows it
+    was silently never reading). The entries are removed and the test now
+    asserts each entry is **load-bearing**: delete it, and a violation must
+    appear.
+
+:data:`_PROBES` pins the phrasings the patterns must catch, so a future
+refactor cannot quietly narrow them.
 """
 
 from __future__ import annotations
@@ -50,39 +76,59 @@ _PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(rf"\b(?:{_SUB})[- ]gated\b", re.IGNORECASE),
     re.compile(rf"\bland(?:s|ing)? (?:with|in)\s+(?:{_SUB})\b", re.IGNORECASE),
     re.compile(rf"\b(?:{_SUB})[- ]owned\b", re.IGNORECASE),
+    # ── added 2026-08-01, each verified zero-hit on the scanned packages ──
+    re.compile(
+        rf"\b(?:{_SUB})\b[^.\n]{{0,40}}\b(?:ships?|will ship|shipped by)\b",
+        re.IGNORECASE,
+    ),
+    re.compile(rf"\bowned by\s+(?:{_SUB})\b", re.IGNORECASE),
+    re.compile(
+        rf"\b(?:deferred|routed|blocked|pending|waiting)\s+(?:to|on|for)?\s*"
+        rf"(?:{_SUB})\b",
+        re.IGNORECASE,
+    ),
+    re.compile(rf"\b(?:{_SUB})\b[^.\n]{{0,30}}\bresponsible\b", re.IGNORECASE),
+    re.compile(
+        rf"\b(?:{_SUB})\b[^.\n]{{0,20}}\b(?:provides|owns)\b", re.IGNORECASE
+    ),
+    # Verb-then-subsystem — the mirror of the two patterns above, which only
+    # match when the subsystem precedes the verb ("WSD ships X" but not
+    # "will ship with WSD").
+    re.compile(
+        rf"\b(?:ships?|shipped|shipping|will ship|lands?|landing)\b[^.\n]{{0,25}}"
+        rf"\b(?:with|by|in|to)\s+(?:the\s+)?(?:{_SUB})\b",
+        re.IGNORECASE,
+    ),
+)
+
+#: Phrasings the patterns MUST catch. Pins coverage against silent narrowing.
+_PROBES: tuple[str, ...] = (
+    "WSD installation ships this",
+    "this ships in WSD",
+    "WSD replaces the v0 catalog",
+    "WSD-gated until phase 54",
+    "lands with WSD",
+    "WSD-owned catalog",
+    "WSD ships the real catalog",
+    "this will ship with DWF",
+    "owned by WSD",
+    "deferred to WSD",
+    "routed to WSD",
+    "blocked on WSD",
+    "WSD is responsible for this",
+    "the nilm brain owns this",
+    "FOL provides the rule confidences",
+    "will ship with the arc brain",
+    "shipped by WSD",
 )
 
 #: (relative path, substring) pairs that are legitimate and must not fail.
 #: Each entry states WHY. Quotations of a historical ADR clause are allowed
 #: only where the surrounding text marks the attribution as wrong.
-ALLOWLIST: tuple[tuple[str, str], ...] = (
-    (
-        "mindsos_intelligence/als_subsystems.py",
-        "wsd-candidate-scorer",
-        # A genuine WSD-owned subsystem identifier, not a core mechanism.
-    ),
-    (
-        "mindsos_capacity/family_rules.py",
-        "WSD / FOL / code-skill / adapter",
-        # Names installing chats as consumers, which is correct.
-    ),
-    (
-        "mindsos_intelligence/capacity_persister.py",
-        'live-only until WSD" clause',
-        # Quotes ADR-0202's clause name; the surrounding text marks it a
-        # misattribution and cites RULES §8.
-    ),
-    (
-        "mindsos_intelligence/mm_persister.py",
-        'live-only until\n  WSD" clause',
-        # Same ADR-0202 quotation, same correction alongside it.
-    ),
-    (
-        "mindsos_intelligence/consolidation.py",
-        'capacity_mm live-only until WSD" clause',
-        # Same ADR-0202 quotation, same correction alongside it.
-    ),
-)
+#:
+#: Empty as of 2026-08-01: the five prior entries exempted text that no pattern
+#: flagged, so none was load-bearing. See the module docstring.
+ALLOWLIST: tuple[tuple[str, str], ...] = ()
 
 
 def _source_root() -> Path:
@@ -118,29 +164,51 @@ def _python_files() -> list[Path]:
     return files
 
 
-def _allowed(rel: str, text: str, span: tuple[int, int]) -> bool:
+def _scanned_sources() -> dict[str, str]:
+    """``{repo-relative path: file text}`` for every scanned module."""
+    root = _source_root()
+    return {
+        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
+        for p in _python_files()
+    }
+
+
+def _allowed(
+    rel: str,
+    text: str,
+    span: tuple[int, int],
+    allowlist: tuple[tuple[str, str], ...],
+) -> bool:
     """True when this hit is covered by an allowlist entry in the same file."""
     window = text[max(0, span[0] - 200) : span[1] + 200]
-    for allow_rel, needle in ALLOWLIST:
+    for allow_rel, needle in allowlist:
         if rel == allow_rel and needle in window:
             return True
     return False
 
 
-def test_no_subsystem_named_as_owner_of_core_work() -> None:
-    root = _source_root()
-    violations: list[str] = []
+def _violations(
+    sources: dict[str, str],
+    allowlist: tuple[tuple[str, str], ...] = ALLOWLIST,
+) -> list[str]:
+    """Ownership claims in *sources* not covered by *allowlist*.
 
-    for path in _python_files():
-        rel = path.relative_to(root).as_posix()
-        text = path.read_text(encoding="utf-8")
+    Pure over its inputs so the allowlist mechanism itself can be tested
+    without touching the repo.
+    """
+    out: list[str] = []
+    for rel, text in sources.items():
         for pattern in _PATTERNS:
             for match in pattern.finditer(text):
-                if _allowed(rel, text, match.span()):
+                if _allowed(rel, text, match.span(), allowlist):
                     continue
                 line = text.count("\n", 0, match.start()) + 1
-                violations.append(f"{rel}:{line}: {match.group(0)!r}")
+                out.append(f"{rel}:{line}: {match.group(0)!r}")
+    return out
 
+
+def test_no_subsystem_named_as_owner_of_core_work() -> None:
+    violations = _violations(_scanned_sources())
     assert not violations, (
         "A `mindsos_*` module names a subsystem as the owner/shipper/gate of core "
         "work. A subsystem is a CONSUMER (RULES §8, ADR-0205 §8); core builds its "
@@ -150,22 +218,76 @@ def test_no_subsystem_named_as_owner_of_core_work() -> None:
     )
 
 
-def test_allowlist_entries_still_exist() -> None:
-    """An allowlist entry whose text is gone is stale and must be removed."""
-    root = _source_root()
-    stale: list[str] = []
-    for rel, needle in ALLOWLIST:
-        path = root / rel
-        if not path.exists():
-            stale.append(f"{rel} (file missing)")
-            continue
-        if needle not in path.read_text(encoding="utf-8"):
-            stale.append(f"{rel}: {needle!r}")
+def test_patterns_catch_known_phrasings() -> None:
+    """Pin coverage. A refactor must not silently narrow the patterns.
 
-    assert not stale, (
-        "Stale ALLOWLIST entries — the exempted text no longer exists. Remove "
-        "them so the allowlist stays an accurate record of real exceptions.\n"
-        + "\n".join(stale)
+    The 2026-08-01 audit found fourteen plausible ownership claims slipping
+    through, including the one RULES §8 names verbatim ("deferring core
+    mechanics 'to WSD'"). These probes stop that regressing.
+    """
+    missed = [p for p in _PROBES if not any(r.search(p) for r in _PATTERNS)]
+    assert not missed, (
+        "these ownership phrasings are no longer caught by any pattern:\n  "
+        + "\n  ".join(repr(m) for m in missed)
+    )
+
+
+def test_allowlist_entries_are_load_bearing() -> None:
+    """Every ALLOWLIST entry must actually exempt a real hit.
+
+    The prior version asserted the exempted *text* still existed, which an
+    entry can satisfy while exempting nothing — and all five entries did
+    exactly that. Removing an entry must produce a violation; if it does not,
+    the entry is dead and should be deleted rather than left implying an
+    exception is in force.
+    """
+    sources = _scanned_sources()
+    inert: list[str] = []
+    for entry in ALLOWLIST:
+        without = tuple(e for e in ALLOWLIST if e != entry)
+        if len(_violations(sources, without)) == len(_violations(sources, ALLOWLIST)):
+            inert.append(f"{entry[0]}: {entry[1]!r}")
+    assert not inert, (
+        "ALLOWLIST entries that exempt nothing — delete them, they document an "
+        "exception that is not in force:\n  " + "\n  ".join(inert)
+    )
+
+
+def test_allowlist_mechanism_exempts_and_stops_exempting() -> None:
+    """The allowlist must be able to both exempt and not-exempt.
+
+    ``test_allowlist_entries_are_load_bearing`` is vacuous while ALLOWLIST is
+    empty, so prove the mechanism on synthetic input instead. Without this, an
+    empty allowlist would let a broken ``_allowed`` sit undetected until the
+    first real exception needed it.
+    """
+    rel = "mindsos_core/_synthetic.py"
+    sources = {rel: '"""A placeholder; this ships in WSD until the catalog lands."""'}
+
+    assert _violations(sources, ()), "synthetic violation not detected at all"
+    assert not _violations(sources, ((rel, "until the catalog lands"),)), (
+        "an allowlist entry near the hit failed to exempt it"
+    )
+    other_file = (("mindsos_core/other.py", "until the catalog lands"),)
+    assert _violations(sources, other_file), (
+        "an allowlist entry for a DIFFERENT file wrongly exempted the hit"
+    )
+    assert _violations(sources, ((rel, "text that is not present"),)), (
+        "an allowlist entry whose needle is absent wrongly exempted the hit"
+    )
+
+
+def test_scan_reads_a_plausible_number_of_files() -> None:
+    """Guard against the guard silently scanning nothing.
+
+    ``test_package_is_scanned`` proves the directories exist; this proves files
+    were actually read from them. The ADR status guard failed for exactly this
+    reason — it checked zero rows and reported success.
+    """
+    sources = _scanned_sources()
+    assert len(sources) > 100, (
+        f"only {len(sources)} module(s) scanned — the package layout changed and "
+        "the guard is no longer reading the source tree"
     )
 
 
