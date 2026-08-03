@@ -177,9 +177,19 @@ class TestUserInstallsLocal:
                 current_phase=50,
                 session=user_session,
             )
-        # Nothing recorded, in either realm.
-        assert "ref-skill" not in latest_records_by_bundle(kl)
-        assert "ref-skill" not in latest_records_by_bundle(kl, USER)
+
+        # A refused install is NOT a no-op: ADR-0183 §S8 appends a
+        # ``failed`` record before re-raising, so the attempt stays
+        # auditable. What must never happen is the bundle reaching
+        # ``installed`` — in either realm.
+        for roster in (
+            latest_records_by_bundle(kl),
+            latest_records_by_bundle(kl, USER),
+        ):
+            view = roster.get("ref-skill")
+            if view is not None:
+                assert view.status == "failed"
+                assert view.action == "install-failed"
 
     def test_admin_can_still_install_global(
         self, kl, cl, admin_session
