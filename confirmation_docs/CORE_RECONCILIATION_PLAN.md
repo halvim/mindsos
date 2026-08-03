@@ -2,7 +2,9 @@
 
 **Filed:** 2026-07-31. **Revised** after the abstraction-levels conclusion.
 **Status:** approved. **C1 shipped** (`df8d3a5`). **C3R1 half-shipped** (`4fd8baa`) — see §4.
-**C2: A0 + C2R1 built on `feat/core-c2`, not yet gated.**
+**C2: A0 + C2R1 SHIPPED** — squash `0496e7f` (PR #107), tag
+`installed-skills-dual-scope-confirmed`, merged-state gate 4472/0. **C2R2 is next and opens
+with a reopened decision** — see the note under §3's table.
 **Revised** 2026-07-31 by the CORE-C2 pre-build read-through (§0, §3, §3.1, §7, §9, §10, §12),
 then reconciled at `60fe2ae` with the C3R1 chat's corrections (§2, §4, §9, §11) and at
 `2c56246` with the C1R4 sweep (ADR-0205 §amendment-1) — both verified against the code and
@@ -103,8 +105,8 @@ links.
 
 | ID | Scope | Depends on |
 |---|---|---|
-| **A0** | **The four ADR amendments** — ADR-0205 §am-1/2/3, ADR-0206 §am-1, ADR-0148 §am-1, plus these plan corrections and `CORE_VERIFIED_FINDINGS.md` §12. **Docs only, lands before every code item.** Not bundled with C2R2: bundling doc corrections with a code change makes the gate result unattributable. Docs-only is still **gated** — `tests/test_adr_status_consistency.py`, and the test image copies `docs/` and `confirmation_docs/` into `/app` | — |
-| **C2R1** | **`installed-skills` becomes dual-scope.** Today it is Global-only (ADR-0150 §am-6) while `installed-capacities` is Local-only — an asymmetry that makes skill install effectively **admin-only**. Under the model a **user installs a Skill Local**; an admin promotes it to Global. Role bootstrap + `CAN_INSTALL_SKILL` semantics. **Cheapest high-value item in the plan**, and it depends on nothing — runs in parallel with A0 | — |
+| **A0** ✅ | **[SHIPPED `1e45067`]** **The four ADR amendments** — ADR-0205 §am-1/2/3, ADR-0206 §am-1, ADR-0148 §am-1, plus these plan corrections and `CORE_VERIFIED_FINDINGS.md` §12. **Docs only, lands before every code item.** Not bundled with C2R2: bundling doc corrections with a code change makes the gate result unattributable. Docs-only is still **gated** — `tests/test_adr_status_consistency.py`, and the test image copies `docs/` and `confirmation_docs/` into `/app` | — |
+| **C2R1** ✅ | **[SHIPPED — `df3af56`…`fa5e18d`, gate 4472/0]** **`installed-skills` became dual-scope.** Also amended **ADR-0183 S3** so a user-installable bundle can exist at all, and added the first one (`tests/fixtures/skill_bundle_local`). Four design corrections came out of building it — `CORE_C2_DECISIONS.md` §12.1. Originally scoped as: Today it is Global-only (ADR-0150 §am-6) while `installed-capacities` is Local-only — an asymmetry that makes skill install effectively **admin-only**. Under the model a **user installs a Skill Local**; an admin promotes it to Global. Role bootstrap + `CAN_INSTALL_SKILL` semantics. **Cheapest high-value item in the plan**, and it depends on nothing — runs in parallel with A0 | — |
 | **C2R2** | **The composition primitive.** ⚠ **Two open items land here** — see §12.7 and the note under this table. (a) Permit `compositional=True` with `ordered=False` — a deliberate override of P8-A's argument, per ADR-0205 §am-1, **not** a restoration of an ADR-0148 contract. (b) **Membership frozen, properties editable**: `members`/`anchors` and existence stay immutable (ADR-0148 identity-bearing; PB 6-A), `properties` become writable so confidence and an `in_force` flag can move. Retirement, supersession, dormancy and uninstall become a **property flip, never a delete**. Also updates `docs/concepts/glossary.md` | A0 |
 | **C2R3** | **The link mechanism — what creates levels at all.** Write and read compositional and ordinary intergraph links between L2 role-graphs; **persister round-trip in the gate**, covering the link kinds every later item needs. Plus **the traversal primitive**, **attribution** (the DOWN walk + `installed_by`; must return *which* dependencies are missing, not a boolean) and **invalidation** (the UP walk — a level node becomes unsupported when its last member link is flipped out of force) | C2R2 |
 | **C2R4** | **The pipeline level** — one store named **`pipelines`**; retire `learned-pipelines` and `promoted-pipelines`; steps convert to the composition primitive (`ordered=True`, holding only the capacity steps; start and end DataStates are separate links); `edge_sequence` retired; **migration of shipped `promoted-pipelines` data**. Supersedes Phase 13 **PB-9** | C2R3, **C3R1** |
@@ -402,3 +404,14 @@ include it**, and the remaining C3R1/C3R3 scope is the finder-as-capacities CR, 
 not name it either. **It blocks C2R4.** Someone must take it — fold it into the
 finder-as-capacities CR, or make it its own item before C2R4 starts. Recorded as
 `CORE_VERIFIED_FINDINGS.md` §12.7.
+
+### 12.1 Start order — updated 2026-08-01
+
+**A0 ✅ and C2R1 ✅ are shipped** (squash `0496e7f`, tag
+`installed-skills-dual-scope-confirmed`, gate 4472/0). **C2R2 is next**, and it opens with the
+reopened D1 decision — where confidence lives (`CORE_C2_DECISIONS.md` §2).
+
+⚠ **`input_group`'s graph form is UNOWNED.** It was assigned to C3R1; **C3R1's half-ship
+(`4fd8baa`) did not include it**, and the finder-as-capacities CR does not name it either.
+**It blocks C2R4 (the pipeline level).** Someone must take it — fold it into that CR, or make
+it its own item — before C2R4 starts.

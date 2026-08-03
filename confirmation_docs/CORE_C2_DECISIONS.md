@@ -1,10 +1,14 @@
 # CORE-C2 — decisions taken before building
 
-**Filed:** 2026-07-31, CORE-C2 chat. Branch `feat/core-c2`, worktree `_MindsOS-core-c2`.
+**Filed:** 2026-07-31, CORE-C2 chat. **Closed** 2026-08-01.
 **Verified at:** `origin/main` `b612c93`; reconciled at `2c56246`.
-**Status:** A0 + C2R1 **built**, not gated. C2R2 onward not started. One decision reopened — §2.
+**Status:** **A0 + C2R1 SHIPPED** — squash `0496e7f` (PR #107), tag
+`installed-skills-dual-scope-confirmed`, merged-state gate **4472 / 12 skip / 1 xpass / 0
+fail**, `test_cli` 256. **C2R2 onward not started.** **One decision is reopened and C2R2
+opens with it — read §2's note before acting on D1.** §12 records what shipped and what the
+build taught.
 
-**Revision 5.** Reconciled at `origin/main` `2c56246` with two lanes that shipped mid-chat —
+**Revision 6.** Reconciled at `origin/main` `2c56246` with two lanes that shipped mid-chat —
 the C3R1 ship and the C1R4 sweep; **see §11**, and read §2's reopening note before acting on
 D1. Revision 4 settled ordering per level. Revision 3 rejected revision 2's chain proposal
 (§7). Revision 1 framed every abstraction level as a *store* — a new node type in
@@ -599,3 +603,62 @@ the pre-renumbering ids — under this plan's numbering that is **C2R2**.
 
 **Standing lesson, third instance.** Merge `origin/main` into a lane the moment another lane
 ships. Two of the three conflicts here were substantive, not textual.
+
+---
+
+## 12. What shipped, and what building it taught
+
+**A0** — `1e45067`. Docs only, landed ahead of every code item so the gate result stayed
+attributable. ADR-0205 §amendment-2, ADR-0206 §amendment-1, ADR-0148 §amendment-1, plus the
+plan corrections and `CORE_VERIFIED_FINDINGS.md` §12.
+
+**C2R1** — `df3af56` → `fa5e18d`. `installed-skills` dual-scope; the install **record's**
+realm follows the principal; the bundle's **content** goes where the manifest's `entry.tier`
+says; ten roster readers scope-aware; `USER_CAPS` non-empty; **ADR-0183 S3 amended**; the
+first bundle a non-admin can install.
+
+### 12.1 Four things the build corrected in the design
+
+1. **`scope` was doing two jobs.** It was applied to the bundle's L2 content as well as the
+   install record, which **silently redirected a bundle's content away from where its
+   manifest declared it**. The record's realm and the content's realm are unrelated.
+2. **A fixed `scope="local"` default broke every session-less caller.** Local writes are
+   user-scoped, so there is no coherent Local destination without a session. `_resolve_scope`
+   follows the principal instead.
+3. **Reading a roster was minting state.** `local_metagraph` lazy-creates, so consulting the
+   install roster materialised an empty Local *ahead of the durable boot that restores one* —
+   which is what broke `test_durable_roundtrip`. Guarded with `has_local`. **A read must
+   never create.**
+4. **S3 made the feature unreachable.** Preflight refused every non-Global tier, so
+   §am-11's Local install record had **no bundle it could ever carry**. Without the S3
+   amendment C2R1 would have shipped a capability nobody could use — the write half working
+   and no way to exercise it.
+
+### 12.2 Behaviour worth knowing before touching the install path
+
+**A refused install is not a no-op.** ADR-0183 §S8 appends a `failed` record before
+re-raising, so the attempt stays auditable. Assert *"never reaches `installed`"*, never
+*"no record exists"*.
+
+### 12.3 What C2R1 deliberately did not settle
+
+Most useful bundle content — concepts, ontology — lives in **Global-only** roles, so a
+user-installable bundle is a narrow thing today. **Which bundles should be user-installable,
+and what a Skill may legitimately place in a user's realm, is a skill-packaging question**
+and is ADR-0183 §am-5's unbuilt Local half. The **skill ledger** (§7a) belongs there too, and
+is built whole — the "declared footprint already works" premise was verified false.
+
+### 12.4 Gate hygiene — three full runs were wasted
+
+The gate clone sat in an **unresolved merge**. Every `checkout` and `merge` refused with
+*"you need to resolve your current index first"*, and each run silently reused the image
+built from the first stale state. One earlier green belonged to a **different lane**
+entirely.
+
+- **`git status --short` must be clean before believing any gate result.** A wedged index is
+  silent and survives every subsequent command.
+- **Gate `origin/feat/<lane>` directly** when the lane already contains `main` — the merge
+  step is a failure point, not a safeguard.
+- **Never create a gate branch inside a lane's worktree.** It evicts the lane's branch.
+- **The diagnostic that worked:** grep the gate host *and* the container for a string only
+  the new commit has. Failing tests whose names no longer exist prove staleness outright.

@@ -1,5 +1,29 @@
 # MindsOS — HANDOFF
 
+> **⚠️ 2026-08-01 — CORE-C2 substrate opened: A0 + C2R1 shipped.** Squash `0496e7f` (PR #107),
+> tag `installed-skills-dual-scope-confirmed`, merged-state gate **4472/0**, `test_cli` 256.
+>
+> **Before touching ANY C2 item, read `confirmation_docs/CORE_C2_DECISIONS.md`.** It carries
+> three corrections that change the design and are not obvious from ADR-0205 alone:
+> **(1) an abstraction level is NOT a store** — it is a compositional intergraph *link*;
+> framing a level as a node-type + role + field schema is ADR-0205's **rejected
+> Alternative 2**. **(2) The per-request trace carries one record per level** (`<Level>Run`),
+> because links cannot record the *descent* that ADR-0205 §4 describes. **(3) The primitive is
+> selected by arity** — the hyperedge refuses 1-anchor/1-member, so every milestone→pipeline
+> and request→plan link is an `IntergraphEdge` with `compositional=True`.
+>
+> **A0** amended four defects found in ADR-0205/0206 within a day of their being Accepted —
+> hence the new standing rule in the plan's §0: *an ADR does not reach Accepted until someone
+> has read it against the code it governs.* **C2R1** made `installed-skills` dual-scope and
+> **amended ADR-0183 S3**, without which a user-installable bundle could not exist.
+>
+> **Two things are open and both block work.** `input_group`'s graph form is **unowned** and
+> blocks the pipeline level. **D1 — where confidence lives — is reopened**, and C2R2 opens
+> with it; compositional links are *terminal*, and the recommended resolution is a separate
+> ordinary link beside each composition rather than amending the core.
+>
+> Numbering follows `STATE.json`: **C2R1 = `installed-skills`**.
+
 > **⚠️ 2026-07-31 — READ THIS BEFORE THE BANNER BELOW.** Two ADRs now govern everything
 > above the L3 graph: **ADR-0205 (abstraction levels)** and **ADR-0206 (planning as a loop,
 > milestones, confidence)** — shipped `df8d3a5`, tag `abstraction-levels-confirmed`, gate
