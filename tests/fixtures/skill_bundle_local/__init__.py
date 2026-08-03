@@ -12,13 +12,19 @@ This bundle declares its content at ``tier = "local"``, in
 bundle's content land, and who can see them*, not capacity registration,
 which the reference bundle already covers.
 
-**What its existence proves, and the limit it marks.** A bundle can only
-be user-installable if its content is Local-tier. Nothing in the shipped
-bundle format stops an author writing ``tier = "global"``, and most
-useful content — concepts, ontology — lives in Global-only roles a user
-cannot write. So §am-11 delivers the substrate; **which bundles are
-genuinely user-installable is a skill-packaging question**, and is the
-unbuilt Local half of ADR-0183 §am-5.
+**It is the first bundle a non-admin can install.** Phase-50 preflight
+refused every non-Global tier outright (S3, *"Local = v2 trigger"*), so
+§am-11's Local install record had no bundle it could carry. ADR-0183
+§amendment-6 amends S3: the **tier** says which realm the content wants,
+the **role** says which realms can hold it. ``request-patterns`` is
+dual-scope, so this bundle passes; ``tier = "local"`` on ``concepts``
+still does not.
+
+**The limit it marks.** Most useful content — concepts, ontology — lives
+in Global-only roles, so a user-installable bundle is a narrow thing
+today. Which bundles *should* be user-installable, and what a Skill may
+legitimately place in a user's realm, is a **skill-packaging** question
+and is the unbuilt Local half of ADR-0183 §am-5.
 """
 
 from pathlib import Path

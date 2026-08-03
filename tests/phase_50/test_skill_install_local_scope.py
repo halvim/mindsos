@@ -167,7 +167,9 @@ class TestUserInstallsLocal:
         silently redirected into their own realm, which is what
         overriding the manifest's tier would do.
         """
-        with pytest.raises((CapabilityDeniedError, Exception)) as excinfo:
+        from mindsos_server.skills import SkillInstallError
+
+        with pytest.raises((CapabilityDeniedError, SkillInstallError)):
             install_skill(
                 parse_manifest(REF_MANIFEST_PATH),
                 kl=kl,
@@ -175,8 +177,9 @@ class TestUserInstallsLocal:
                 current_phase=50,
                 session=user_session,
             )
+        # Nothing recorded, in either realm.
         assert "ref-skill" not in latest_records_by_bundle(kl)
-        assert excinfo.value is not None
+        assert "ref-skill" not in latest_records_by_bundle(kl, USER)
 
     def test_admin_can_still_install_global(
         self, kl, cl, admin_session
