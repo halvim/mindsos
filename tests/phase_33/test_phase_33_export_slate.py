@@ -33,11 +33,11 @@ def test_each_phase_33_export_resolves_to_real_object():
         assert getattr(mindsos_capacity, name) is not None
 
 
-def test_export_count_is_139():
-    """Count sentinel — 117 -> 118 (P45) -> 128 (F9) -> 139
+def test_export_count_is_145():
+    """Count sentinel — 117 -> 118 (P45) -> 128 (F9) -> 139 -> 145
     (composition-lifecycle, ADR-0071 §am-2 + ADR-0159 §am-1, net +11)."""
-    assert len(mindsos_capacity.__all__) == 139, (
-        f"Expected 139 exports after composition-lifecycle; "
+    assert len(mindsos_capacity.__all__) == 145, (
+        f"Expected 145 exports (139 -> 145 (CORE-C3R1: -PipelineNotFoundError, +FindVerdict + 6 FIND_* reasons)); " 
         f"found {len(mindsos_capacity.__all__)}"
     )
 
