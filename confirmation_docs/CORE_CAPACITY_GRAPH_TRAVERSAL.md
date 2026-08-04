@@ -274,11 +274,44 @@ produces **25** on the population those documents describe.
 1. **A capacity's outputs must not intersect its inputs.** A refined DataState is
    a different DataState — `A` and `A'` are separated by the capacity that
    transforms one into the other, and that separation is what makes them
-   distinct. Enforced at registration (`capacity_layer.py::_validate_declaration`,
-   `capacity_layer.py::_validate_declaration`). Plan item **C3R1b**. **Known
-   violator: arc3's `grouped` verdict self-loop** — that chat must be told before
-   this lands. Note this is hygiene, **not** a fix for D-B: it halves the failure
-   rate and does not close it (§6.1).
+   distinct.
+
+   **[CORRECTED 2026-08-04 — this is NOT a registration check.]** It ships as a
+   **producer-eligibility refusal inside the finder**: when choosing which capacity
+   produces a DataState, do not pick one that consumes it. No capacity is refused at
+   registration and no brain fails to boot. Grounds: measured as a *rate* over the
+   same 20,000 catalogs, the blanket predicate gives 0.46% vs 2.69% for no rule, and
+   the narrow (sole-producer) variant gives **3.20% — worse than no rule**; neither is
+   causal, because the failures come from cycles between two *distinct* capacities,
+   which are legitimate and permanent. Separately, arc1's `rotate` / `reflect` /
+   `move` / `recolor` are **closed operations on a type** — a rotated shape is a shape
+   — so the refinement principle above holds for refinement and not for endomorphism,
+   and a registration raise would have destroyed transform composition.
+
+   **It does not fix arc3's case at all** (arc3 executed it): `moved` fails first and
+   is not a self-loop. Symptom to expect: `viz_spec` recomposition silently loses any
+   segment routing through a refused pick — a missing picture, not an error.
+
+1b. **A consumer declaring `operand_arity=N` is not satisfied by a producer supplying
+   one value.** The higher-value predicate, on the **same shared admission seam**.
+   `operand_arity` is invisible to both finders today, so a composed route into a
+   Form-B consumer passes compose and raises at execute — the same
+   wrong-answer-reported-as-right class as D-A and D-C. Executed in two catalogs:
+   **arc3 14 of 27, arc1 16 of 45**, on **both** finders.
+
+   **Both predicates go in a shared step-admission check that BOTH finders read** —
+   not `ConjunctionFinder`'s local `eligible` (`pipeline.py:489`), which `BFSFinder`
+   never calls. Under #99's `_select_finder` a single start selects `BFSFinder`, so
+   predicates on `eligible` alone would miss every single-start brain.
+
+   **Form B is not routable over scalars** — a type-level walk cannot decide *which
+   two* components to pair, exactly as it cannot decide which shape to rotate (§8's
+   arc1 ruling). The composable form is a **collection**, and the collection input
+   **keeps `operand_arity`** so the length check survives the migration. That target
+   is contingent on `COLLECTION_ITERATION_ADOPTION_GUIDE.md` §14.1(a), unanswered
+   since 2026-07-30; until it is answered, brain-side dispatch bridges are the only
+   available shape and are correct.
+
 2. **No capacity outside CGT may consume a `core.*` traversal DataState.** If one
    ever does, domain searches begin routing through the traversal itself. This is
    **gate-enforced by a guard test**, not a docstring — the repo's own recorded
