@@ -113,7 +113,7 @@ def step_read_side_tokenize(stack: Stack, text: str = SEED_TEXT) -> List[str]:
     """
     pipeline = find_pipeline(
         stack.layer, start_datastate=DS_RAW_TEXT, target_datastate=DS_TOKENS
-    )
+    ).pipeline
     assert pipeline.steps, "no pipeline raw-text -> tokens"
     cap_iri = pipeline.steps[0].capacity_iri
     assert cap_iri == "capacity:perception:text.space_split"

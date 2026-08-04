@@ -14,7 +14,7 @@ def test_find_pipeline_start_equals_target_returns_empty_steps():
         cl,
         start_datastate=DS_INPUT_IRI,
         target_datastate=DS_INPUT_IRI,
-    )
+    ).pipeline
 
     assert pipeline.start_datastates == (DS_INPUT_IRI,)
     assert pipeline.target_datastate == DS_INPUT_IRI

@@ -159,7 +159,6 @@ def test_execute_ambiguous(repl):
 # ── invoke a promoted pipeline ────────────────────────────────────────
 
 def test_invoke_promoted_pipeline(repl):
-    from mindsos_capacity.exceptions import PipelineNotFoundError
     from mindsos_capacity.pipeline import find_pipeline
     from mindsos_knowledge import ROLE_PROMOTED_PIPELINES
     from mindsos_knowledge.schemas.promoted_pipelines import NODE_PIPELINE
@@ -170,15 +169,15 @@ def test_invoke_promoted_pipeline(repl):
     g = _global_role_graph(repl.stack.kl, ROLE_PROMOTED_PIPELINES)
     if g is None:
         pytest.skip("promoted-pipelines role-graph absent in ephemeral bootstrap")
-    try:
-        pipe = find_pipeline(
-            repl.stack.cl,
-            session=repl.stack.session,
-            start_datastate=start,
-            target_datastate=target,
-        )
-    except PipelineNotFoundError:
+    verdict = find_pipeline(
+        repl.stack.cl,
+        session=repl.stack.session,
+        start_datastate=start,
+        target_datastate=target,
+    )
+    if not verdict.found:
         pytest.skip("no space_split pipeline available")
+    pipe = verdict.pipeline
     g.add_node(
         pipe.to_dict(),
         NODE_PIPELINE,

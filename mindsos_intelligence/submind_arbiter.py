@@ -26,10 +26,10 @@ recovers (``clear``), the resolver resolves it, or a human dismisses it.
 Goal-unreachable is **not** a failure — it is an honest *dont-know* ("no
 capability reaches the goal"). The arbiter catches the finder's
 not-found signal and fires the SubMind's ``fallback_resolver`` (a direct
-ask-human capacity), so there is always a resolution path. (Replacing the
-finder's ``PipelineNotFoundError`` with a path-finding dont-know verdict
-is a separate core-mod chat — see STATE ``pipelinenotfound-to-dontknow``;
-the arbiter swaps its ``except`` for a verdict read when that lands.)
+ask-human capacity), so there is always a resolution path. (CORE-C3R1
+landed the don't-know verdict: ``plan_fn`` returns a ``FindVerdict`` and
+the arbiter reads ``.pipeline``, so the old ``pipeline_not_found``
+injection and its ``except`` are both gone.)
 
 All injected dependencies are duck-typed so the policy is unit-testable
 without threads, a real executor, a finder, or FalkorDB.
@@ -73,7 +73,6 @@ class SubMindArbiter:
         *,
         mm: MentalModel,
         plan_fn: Callable[[Optional[str], str], Any],
-        pipeline_not_found: type = Exception,
         execute_pipeline: Callable[..., Any] = _default_execute_pipeline,
         cancel_token_factory: Callable[[], Any] = CancelToken,
         timer_factory: Optional[Callable[[float, Callable[[], None]], Any]] = None,
@@ -98,7 +97,6 @@ class SubMindArbiter:
             )
         self._mm = mm
         self._plan_fn = plan_fn
-        self._pnf = pipeline_not_found
         self._execute_pipeline = execute_pipeline
         self._token_factory = cancel_token_factory
         self._timer_factory = timer_factory or (
@@ -213,10 +211,10 @@ class SubMindArbiter:
         goal = getattr(definition, "resolver_goal_datastate", None)
         pipeline = None
         if goal is not None:
-            try:
-                pipeline = self._plan_fn(start, goal)
-            except self._pnf:
-                pipeline = None  # goal unreachable → dont-know (below)
+            # CORE-C3R1: ``plan_fn`` returns a ``FindVerdict`` — a route or an
+            # honest don't-know. It no longer raises, so the
+            # ``pipeline_not_found`` injection is gone with it.
+            pipeline = self._plan_fn(start, goal).pipeline
         if pipeline is None:
             return self._fire_fallback(definition, signal, request_id)
         init = {start: signal.reading} if start is not None else {}

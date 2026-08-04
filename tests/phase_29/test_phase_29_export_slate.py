@@ -46,7 +46,6 @@ PHASE_30_LIFTED_EXPORTS = {
     "ProblemTraceRecord",
     "ProblemTraceSink",
     "emit_problem_trace",
-    "PipelineNotFoundError",
     "ProblemTraceError",
 }
 

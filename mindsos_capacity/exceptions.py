@@ -5,7 +5,8 @@ definition surface. Subsequent L3 phases append their own as they
 ship the raisers:
 
 - Phase 28 — ``ConstraintViolationError`` (via ``CapacityLayer.add_constraint``).
-- Phase 30 — ``PipelineNotFoundError`` + ``ProblemTraceError``.
+- Phase 30 — ``ProblemTraceError``. (``PipelineNotFoundError`` retired at
+  CORE-C3R1, shim **S4** — no-route is a ``FindVerdict``, not an exception.)
 
 (Phase 31's monitor-lifecycle exception was retired in Phase 41 when the
 monitor lifecycle relocated to the L4 substrate per ADR-0155.)
@@ -89,23 +90,6 @@ class ConstraintViolationError(CapacityLayerError):
     """
 
 
-class PipelineNotFoundError(CapacityLayerError):
-    """BFS pipeline-finder exhausted without reaching the target.
-
-    Phase 30 raisers:
-
-    - ``mindsos_capacity.pipeline.find_pipeline`` — BFS over the
-      bipartite PRODUCES/CONSUMES edge set (ADR-0071 + ADR-0156)
-      exhausted without finding a chain from ``start_datastate`` to
-      ``target_datastate`` within ``max_depth`` steps.
-
-    Raised (not enveloped) because "no path exists" is an L3 invariant
-    of the requested query, not an implementation error in a bound
-    capacity callable. ADR-0072 §Decision's "L3 raises for its own
-    invariants" carve-out applies.
-    """
-
-
 class ProblemTraceError(CapacityLayerError):
     """Problem-trace emission is malformed.
 
@@ -185,7 +169,6 @@ __all__ = [
     "CapacityRegistrationError",
     "InputContractError",
     "ConstraintViolationError",
-    "PipelineNotFoundError",
     "ProblemTraceError",
     "WriteHandleNotWiredError",
     "CapabilityDeniedError",

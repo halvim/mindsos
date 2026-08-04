@@ -28,7 +28,7 @@ def test_linear_pipeline_semantics_preserved():
     cl = build_linear_pipeline_layer()
     pipeline = find_pipeline(
         cl, start_datastate=DS_INPUT_IRI, target_datastate=DS_OUTPUT_IRI
-    )
+    ).pipeline
     assert isinstance(pipeline, Pipeline)
     assert [s.capacity_iri for s in pipeline.steps] == [STEP1, STEP2]
 
@@ -37,7 +37,7 @@ def test_shortest_by_capacity_count_preserved():
     cl = build_branching_capacity_layer()
     pipeline = find_pipeline(
         cl, start_datastate=DS_INPUT_IRI, target_datastate=DS_OUTPUT_IRI
-    )
+    ).pipeline
     # The 2-capacity path (multi -> fork_to_output) beats the 4-capacity path.
     assert len(pipeline) == 2
 

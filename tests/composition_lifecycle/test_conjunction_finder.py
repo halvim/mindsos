@@ -15,9 +15,8 @@ upstream fires once), and the not-found path.
 
 from __future__ import annotations
 
-import pytest
 
-from mindsos_capacity import ConjunctionFinder, Pipeline, PipelineNotFoundError
+from mindsos_capacity import ConjunctionFinder, Pipeline
 
 from tests.composition_lifecycle._fixtures import (
     IRI,
@@ -41,7 +40,7 @@ def test_all_required_ands_over_inputs():
     cl.register_capacity(cap("mk_b", (), ("b",)))
     cl.register_capacity(cap("combine", ("a", "b"), ("out",), INPUT_GROUP_ALL_REQUIRED))
 
-    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out")).pipeline
 
     assert isinstance(dag, Pipeline)
     ci = step_index(dag, "combine")
@@ -52,14 +51,16 @@ def test_all_required_ands_over_inputs():
     assert names.index("combine") == 2
 
 
-def test_all_required_missing_input_raises():
+def test_all_required_missing_input_is_not_found():
     """If a required input has no producer, the whole compose fails."""
     cl = layer("a", "b", "out")
     cl.register_capacity(cap("mk_a", (), ("a",)))  # no producer for b
     cl.register_capacity(cap("combine", ("a", "b"), ("out",), INPUT_GROUP_ALL_REQUIRED))
 
-    with pytest.raises(PipelineNotFoundError):
-        ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+    verdict = ConjunctionFinder().find(
+        cl, start_datastates=(), target_datastate=IRI("out")
+    )
+    assert not verdict.found
 
 
 def test_any_of_wires_only_producible_inputs():
@@ -68,7 +69,7 @@ def test_any_of_wires_only_producible_inputs():
     cl.register_capacity(cap("mk_a", (), ("a",)))  # b has no producer
     cl.register_capacity(cap("anyc", ("a", "b"), ("out",), INPUT_GROUP_ANY_OF))
 
-    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out")).pipeline
 
     ai = step_index(dag, "anyc")
     assert incoming_datastates(dag, ai) == ["a"]
@@ -81,7 +82,7 @@ def test_fold_fans_in_all_producers():
         cl.register_capacity(cap(f"gen_{i}", (), ("d",)))
     cl.register_capacity(cap("reduce", ("d",), ("out",), INPUT_GROUP_FOLD))
 
-    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out")).pipeline
 
     ri = step_index(dag, "reduce")
     fold_edges = [e for e in dag.edges if e.consumer == ri]
@@ -101,7 +102,7 @@ def test_start_datastate_is_a_root():
 
     dag = ConjunctionFinder().find(
         cl, start_datastates=(IRI("a"),), target_datastate=IRI("out")
-    )
+    ).pipeline
     ci = step_index(dag, "combine")
     # a comes from START (no producing step), b from mk_b
     a_edge = next(e for e in dag.edges if e.consumer == ci and e.datastate == IRI("a"))
@@ -118,7 +119,7 @@ def test_diamond_shared_upstream_fires_once():
     cl.register_capacity(cap("to_b", ("root",), ("b",)))
     cl.register_capacity(cap("combine", ("a", "b"), ("out",), INPUT_GROUP_ALL_REQUIRED))
 
-    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out")).pipeline
 
     names = [s.capacity_iri.split(":")[-1] for s in dag.steps]
     assert names.count("mk_root") == 1  # fired once, not once per consumer
@@ -129,15 +130,17 @@ def test_target_already_available_is_empty():
     cl = layer("out")
     dag = ConjunctionFinder().find(
         cl, start_datastates=(IRI("out"),), target_datastate=IRI("out")
-    )
+    ).pipeline
     assert dag.steps == ()
     assert dag.edges == ()
 
 
-def test_no_producer_raises():
+def test_no_producer_is_not_found():
     cl = layer("out")
-    with pytest.raises(PipelineNotFoundError):
-        ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+    verdict = ConjunctionFinder().find(
+        cl, start_datastates=(), target_datastate=IRI("out")
+    )
+    assert not verdict.found
 
 
 # ── CORE-C3R1 — the two phase-2 cycle guards ─────────────────────────
@@ -176,7 +179,7 @@ def test_self_feeding_producer_is_refused():
         _self_feeding_layer(),
         start_datastates=(IRI("seed"),),
         target_datastate=IRI("out"),
-    )
+    ).pipeline
 
     names = [s.capacity_iri.split(":")[-1] for s in dag.steps]
     assert set(names) == {"b_direct", "make_out"}
@@ -192,16 +195,16 @@ def test_composition_is_monotonic_in_the_start_set():
     defective path, so the *wider* start set failed while the narrower one gave
     a clean verdict.
     """
-    with pytest.raises(PipelineNotFoundError):
-        ConjunctionFinder().find(
-            _self_feeding_layer(), start_datastates=(), target_datastate=IRI("out")
-        )
+    narrow = ConjunctionFinder().find(
+        _self_feeding_layer(), start_datastates=(), target_datastate=IRI("out")
+    )
+    assert not narrow.found
 
     widened = ConjunctionFinder().find(
         _self_feeding_layer(),
         start_datastates=(IRI("seed"),),
         target_datastate=IRI("out"),
-    )
+    ).pipeline
     assert widened.steps  # the wider start set composes
 
 
@@ -225,7 +228,7 @@ def test_capacity_under_construction_is_not_selected():
 
     dag = ConjunctionFinder().find(
         cl, start_datastates=(IRI("seed"),), target_datastate=IRI("out")
-    )
+    ).pipeline
 
     iris = [s.capacity_iri for s in dag.steps]
     names = [i.split(":")[-1] for i in iris]
@@ -255,7 +258,7 @@ def test_shared_upstream_is_one_step_not_two():
         cap("combine", ("a", "b"), ("out",), INPUT_GROUP_ALL_REQUIRED)
     )
 
-    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out"))
+    dag = ConjunctionFinder().find(cl, start_datastates=(), target_datastate=IRI("out")).pipeline
 
     iris = [s.capacity_iri for s in dag.steps]
     assert len(iris) == len(set(iris))

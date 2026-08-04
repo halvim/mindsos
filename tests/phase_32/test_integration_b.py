@@ -181,7 +181,7 @@ def _step_06_find_pipeline(state: ScenarioState) -> ScenarioState:
        with text capacities installed from step 5.
     2. CLI smoke (negative path per R4 §am-impl-5) — `mindsos capacity
        find` builds a fresh EMPTY layer (no auto-install), so it
-       returns exit 1 + PipelineNotFoundError. The smoke verifies the
+       returns exit 1 + a ``bfs_exhausted`` verdict. The smoke verifies the
        CLI verb is wired correctly; positive-path CLI find is a
        Phase 33+ enhancement (carry-forward).
 
@@ -195,7 +195,7 @@ def _step_06_find_pipeline(state: ScenarioState) -> ScenarioState:
         state.layer,
         start_datastate=DS_RAW_TEXT,
         target_datastate=DS_TOKENS,
-    )
+    ).pipeline
     assert len(pipeline.steps) == 1, (
         f"expected 1-step pipeline; got {len(pipeline.steps)} steps"
     )
@@ -216,12 +216,12 @@ def _step_06_find_pipeline(state: ScenarioState) -> ScenarioState:
         ],
     )
     assert r.exit_code == 1, (
-        f"expected exit 1 (empty CLI layer → PipelineNotFoundError); "
+        f"expected exit 1 (empty CLI layer → bfs_exhausted verdict); "
         f"got exit {r.exit_code} / output={r.output!r}"
     )
     payload = json.loads(r.output)
-    assert payload.get("error") == "PipelineNotFoundError", (
-        f"expected error=PipelineNotFoundError; got {payload!r}"
+    assert payload.get("error") == "bfs_exhausted", (
+        f"expected error=bfs_exhausted; got {payload!r}"
     )
     return state
 

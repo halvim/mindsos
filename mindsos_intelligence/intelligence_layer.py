@@ -167,7 +167,6 @@ class IntelligenceLayer:
             # owner + the resource-contention arbiter. Empty by default —
             # inert until a SubMind is endowed and emits a Signal.
             from .dispatch import L4Dispatcher
-            from mindsos_capacity.exceptions import PipelineNotFoundError
             from mindsos_capacity.pipeline import find_pipeline
             from .mm_resolver import KnowledgeMMSource, MMResolver
 
@@ -192,6 +191,8 @@ class IntelligenceLayer:
             )
 
             def _plan(start, goal):
+                # CORE-C3R1: returns a ``FindVerdict``; the arbiter reads
+                # ``.pipeline`` and treats ``None`` as don't-know.
                 # The resolver is a goal: build a pipeline to it from the
                 # currently-available capabilities. A None start seeds the
                 # search with the goal itself (a real start datastate is an
@@ -209,7 +210,6 @@ class IntelligenceLayer:
                 self._resource_ledger,
                 mm=self._mm,
                 plan_fn=_plan,
-                pipeline_not_found=PipelineNotFoundError,
             )
             self._submind_arbiter.install_on_ledger()
             self._subminds = SubMindRegistry(

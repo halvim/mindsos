@@ -8,7 +8,6 @@ from mindsos_capacity import (
     CATEGORY_PERCEPTION,
     Capacity,
     DataState,
-    PipelineNotFoundError,
     ShapeDescriptor,
     find_pipeline,
 )
@@ -27,7 +26,7 @@ def test_find_pipeline_no_session_walks_global():
         cl,
         start_datastate=DS_INPUT_IRI,
         target_datastate=DS_OUTPUT_IRI,
-    )
+    ).pipeline
     assert len(pipeline) == 2
 
 
@@ -54,13 +53,13 @@ def test_find_pipeline_with_unpopulated_session_local_raises():
         allow_new_realm=True,
     )
 
-    with pytest.raises(PipelineNotFoundError):
-        find_pipeline(
-            cl,
-            session=sess,
-            start_datastate=DS_INPUT_IRI,
-            target_datastate=DS_OUTPUT_IRI,
-        )
+    verdict = find_pipeline(
+        cl,
+        session=sess,
+        start_datastate=DS_INPUT_IRI,
+        target_datastate=DS_OUTPUT_IRI,
+    )
+    assert not verdict.found
 
 
 def test_find_pipeline_with_local_capacity_succeeds():
@@ -98,6 +97,6 @@ def test_find_pipeline_with_local_capacity_succeeds():
         session=sess,
         start_datastate=DS_INPUT_IRI,
         target_datastate=DS_OUTPUT_IRI,
-    )
+    ).pipeline
     assert len(pipeline) == 1
     assert pipeline.steps[0].capacity_iri == direct.iri

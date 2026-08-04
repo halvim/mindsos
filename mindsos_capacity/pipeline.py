@@ -51,6 +51,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections import deque
 from dataclasses import dataclass, field
+from types import MappingProxyType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -64,7 +65,6 @@ from typing import (
     Tuple,
 )
 
-from .exceptions import PipelineNotFoundError
 from .identifiers import (
     INPUT_GROUP_ALL_REQUIRED,
     INPUT_GROUP_ANY_OF,
@@ -200,6 +200,101 @@ class Pipeline:
 # ── view resolution shared by the strategies ─────────────────────────
 
 
+# ── find verdict (CORE-C3R1 / shim S4; ADR-0206 §3) ───────────────────
+
+#: BFS exhausted the frontier without reaching the target.
+FIND_BFS_EXHAUSTED = "bfs_exhausted"
+#: No producer of the target is satisfiable from the start set (phase 1).
+FIND_NO_SATISFIABLE_PRODUCER = "no_satisfiable_producer"
+#: Construction recursed past ``max_depth``.
+FIND_MAX_DEPTH_EXCEEDED = "max_depth_exceeded"
+#: An ``all_required`` input of a selected capacity cannot be produced.
+FIND_REQUIRED_INPUT_UNPRODUCIBLE = "required_input_unproducible"
+#: The target IRI is not registered. Never raised by a finder — the views
+#: return ``[]`` for an unknown IRI and never raise — but callers that do
+#: check need a reason to name.
+FIND_UNREGISTERED_TARGET = "unregistered_target"
+
+#: The closed set. Consumers branch on ``reason``; nothing parses ``detail``.
+FIND_REASONS: FrozenSet[str] = frozenset(
+    {
+        FIND_BFS_EXHAUSTED,
+        FIND_NO_SATISFIABLE_PRODUCER,
+        FIND_MAX_DEPTH_EXCEEDED,
+        FIND_REQUIRED_INPUT_UNPRODUCIBLE,
+        FIND_UNREGISTERED_TARGET,
+    }
+)
+
+
+class _FindAbort(Exception):
+    """Internal unwind for ``ConjunctionFinder.find``. Never escapes.
+
+    ``fire`` is recursive and used a raise to unwind. Threading an optional
+    return through every recursion step would change the algorithm; raising a
+    private exception and converting it to a :class:`FindVerdict` at the method
+    boundary keeps the conversion **faithful** — no new checks, no new failure
+    modes, identical control flow. This class is not exported and no consumer
+    can catch it.
+    """
+
+    def __init__(self, reason: str, detail: str, unproducible=None) -> None:
+        super().__init__(detail)
+        self.reason = reason
+        self.detail = detail
+        self.unproducible = unproducible or {}
+
+
+@dataclass(frozen=True)
+class FindVerdict:
+    """What a finder answers: a route, or an honest don't-know.
+
+    Replaces ``PipelineNotFoundError`` (shim **S4**). No-route is a verdict
+    about the world, not a technical failure, so it is returned rather than
+    raised (ADR-0206 §3).
+
+    Attributes:
+        pipeline: the DAG, or ``None`` when no route was found.
+        reason: one of :data:`FIND_REASONS`, or ``None`` when found. A
+            **closed set** — consumers branch on it, and the dream must not
+            parse English.
+        detail: human-readable, for logs and CLI output. Never parsed.
+        unproducible: **grouped** ``capacity_iri -> (datastate_iri, ...)``.
+            The capacity is the grouping key that separates AND from OR:
+            one capacity short of two DataStates needs **both**; two
+            capacities each short of one are **alternatives**. A flat list
+            of pairs cannot express that. Empty unless ``reason`` is
+            :data:`FIND_REQUIRED_INPUT_UNPRODUCIBLE`.
+
+    **No ``__bool__``** (CR §4). A result type meaning "found or not" invites
+    ``if verdict:`` and a silent wrong branch. Use :attr:`found`, or
+    ``verdict.pipeline is None``. Note the residual hazard this leaves: with
+    no ``__bool__`` a dataclass is *always* truthy, so ``if verdict:`` still
+    reads as success. The guard is review, not the type.
+
+    Reasons retiring: :data:`FIND_BFS_EXHAUSTED` goes with ``BFSFinder`` and
+    :data:`FIND_MAX_DEPTH_EXCEEDED` goes with ``max_depth``, both at the
+    Capacity Graph Traversal rewrite (`CORE_CAPACITY_GRAPH_TRAVERSAL.md`).
+    The end state is two reasons: target unreachable, target unregistered.
+    """
+
+    pipeline: Optional[Pipeline] = None
+    reason: Optional[str] = None
+    detail: str = ""
+    unproducible: Mapping[str, Tuple[str, ...]] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self, "unproducible", MappingProxyType(dict(self.unproducible))
+        )
+
+    @property
+    def found(self) -> bool:
+        """True when a route was found."""
+        return self.pipeline is not None
+
+
+
 def _view_for(
     capacity_layer: "CapacityLayer", session: SessionArg
 ) -> "CapacityLayerView":
@@ -233,7 +328,8 @@ class Finder(ABC):
     """An L3 pipeline-finder strategy.
 
     The algorithm is L3 (computation); *which* strategy fires is an L4
-    selection policy. Every strategy returns a :class:`Pipeline`.
+    selection policy. Every strategy returns a :class:`FindVerdict` — a route
+    or an honest don't-know. No strategy raises for "no route" (shim S4).
     """
 
     @abstractmethod
@@ -245,9 +341,9 @@ class Finder(ABC):
         start_datastates: Tuple[str, ...],
         target_datastate: str,
         max_depth: int = 8,
-    ) -> Pipeline:
-        """Return a DAG producing ``target_datastate`` from
-        ``start_datastates``, or raise :class:`PipelineNotFoundError`."""
+    ) -> "FindVerdict":
+        """Return a :class:`FindVerdict` for ``target_datastate`` from
+        ``start_datastates``."""
         raise NotImplementedError
 
 
@@ -274,15 +370,17 @@ class BFSFinder(Finder):
         start_datastates: Tuple[str, ...],
         target_datastate: str,
         max_depth: int = 8,
-    ) -> Pipeline:
+    ) -> FindVerdict:
         view = _view_for(capacity_layer, session)
 
         if target_datastate in set(start_datastates):
-            return Pipeline(
-                start_datastates=tuple(start_datastates),
-                target_datastate=target_datastate,
-                steps=(),
-                edges=(),
+            return FindVerdict(
+                pipeline=Pipeline(
+                    start_datastates=tuple(start_datastates),
+                    target_datastate=target_datastate,
+                    steps=(),
+                    edges=(),
+                )
             )
 
         # Queue entries: (current_ds, steps, edges, producer_idx_of_current_ds)
@@ -312,19 +410,24 @@ class BFSFinder(Finder):
                 )
                 for out in outputs:
                     if out == target_datastate:
-                        return Pipeline(
-                            start_datastates=tuple(start_datastates),
-                            target_datastate=target_datastate,
-                            steps=new_steps,
-                            edges=new_edges,
+                        return FindVerdict(
+                            pipeline=Pipeline(
+                                start_datastates=tuple(start_datastates),
+                                target_datastate=target_datastate,
+                                steps=new_steps,
+                                edges=new_edges,
+                            )
                         )
                     if out not in visited:
                         visited.add(out)
                         queue.append((out, new_steps, new_edges, new_idx))
 
-        raise PipelineNotFoundError(
-            f"No pipeline found from {list(start_datastates)!r} to "
-            f"{target_datastate!r} (max_depth={max_depth})"
+        return FindVerdict(
+            reason=FIND_BFS_EXHAUSTED,
+            detail=(
+                f"No pipeline found from {list(start_datastates)!r} to "
+                f"{target_datastate!r} (max_depth={max_depth})"
+            ),
         )
 
 
@@ -434,16 +537,18 @@ class ConjunctionFinder(Finder):
         start_datastates: Tuple[str, ...],
         target_datastate: str,
         max_depth: int = 8,
-    ) -> Pipeline:
+    ) -> FindVerdict:
         view = _view_for(capacity_layer, session)
         starts: FrozenSet[str] = frozenset(start_datastates)
 
         if target_datastate in starts:
-            return Pipeline(
-                start_datastates=tuple(start_datastates),
-                target_datastate=target_datastate,
-                steps=(),
-                edges=(),
+            return FindVerdict(
+                pipeline=Pipeline(
+                    start_datastates=tuple(start_datastates),
+                    target_datastate=target_datastate,
+                    steps=(),
+                    edges=(),
+                )
             )
 
         # ── phase 1: reachability (no mutation) ──
@@ -471,9 +576,12 @@ class ConjunctionFinder(Finder):
             cap_satisfiable(cap.node_id, frozenset())
             for cap in view.producers_of(target_datastate)
         ):
-            raise PipelineNotFoundError(
-                f"No pipeline found to {target_datastate!r} from "
-                f"{list(start_datastates)!r} (no satisfiable producer)"
+            return FindVerdict(
+                reason=FIND_NO_SATISFIABLE_PRODUCER,
+                detail=(
+                    f"No pipeline found to {target_datastate!r} from "
+                    f"{list(start_datastates)!r} (no satisfiable producer)"
+                ),
             )
 
         # ── phase 2: construct over satisfiable producers ──
@@ -520,8 +628,9 @@ class ConjunctionFinder(Finder):
             if cap_iri in fired:
                 return fired[cap_iri]
             if depth > max_depth:
-                raise PipelineNotFoundError(
-                    f"max_depth={max_depth} exceeded resolving {cap_iri!r}"
+                raise _FindAbort(
+                    FIND_MAX_DEPTH_EXCEEDED,
+                    f"max_depth={max_depth} exceeded resolving {cap_iri!r}",
                 )
             in_flight.add(cap_iri)
             inputs = tuple(view.inputs_of(cap_iri))
@@ -549,8 +658,10 @@ class ConjunctionFinder(Finder):
                         (fire(satisfiable[0].node_id, depth + 1, nxt), ds)
                     )
                 elif mode == INPUT_GROUP_ALL_REQUIRED:
-                    raise PipelineNotFoundError(
-                        f"required input {ds!r} of {cap_iri!r} is unproducible"
+                    raise _FindAbort(
+                        FIND_REQUIRED_INPUT_UNPRODUCIBLE,
+                        f"required input {ds!r} of {cap_iri!r} is unproducible",
+                        {cap_iri: (ds,)},
                     )
                 # any_of with no producible producer for this input: skip it
 
@@ -565,9 +676,9 @@ class ConjunctionFinder(Finder):
             fired[cap_iri] = step_idx
             # Construction finished: the capacity moves from in-flight to
             # fired in one step, so it is never in neither set. No cleanup is
-            # needed on the raise paths above — every ``PipelineNotFoundError``
-            # raised inside ``fire`` propagates out of ``find`` uncaught, so
-            # the whole walk (and ``in_flight`` with it) is discarded.
+            # needed on the abort paths above — every ``_FindAbort`` raised
+            # inside ``fire`` unwinds to ``find``, which discards the whole
+            # walk (and ``in_flight`` with it) and returns a verdict.
             in_flight.discard(cap_iri)
             for prod_idx, ds in incoming:
                 edges.append(
@@ -586,13 +697,24 @@ class ConjunctionFinder(Finder):
         # Empty initial stack, exactly as phase 1's top-level check above:
         # the target is what we are trying to *produce*, so it is not yet
         # "under resolution" and must not guard against its own producers.
-        fire(target_producers[0].node_id, 0, frozenset())
+        try:
+            fire(target_producers[0].node_id, 0, frozenset())
+        except _FindAbort as abort:
+            # ``_FindAbort`` never escapes: the whole walk is discarded here,
+            # which is why ``in_flight`` needs no cleanup on the abort paths.
+            return FindVerdict(
+                reason=abort.reason,
+                detail=abort.detail,
+                unproducible=abort.unproducible,
+            )
 
-        return Pipeline(
-            start_datastates=tuple(start_datastates),
-            target_datastate=target_datastate,
-            steps=tuple(steps),
-            edges=tuple(edges),
+        return FindVerdict(
+            pipeline=Pipeline(
+                start_datastates=tuple(start_datastates),
+                target_datastate=target_datastate,
+                steps=tuple(steps),
+                edges=tuple(edges),
+            )
         )
 
 
@@ -615,8 +737,9 @@ def find_pipeline(
     degenerate-linear :class:`Pipeline`. For sound multi-input
     composition use :class:`ConjunctionFinder` directly (selected by L4).
 
-    Raises:
-        PipelineNotFoundError: no chain within ``max_depth`` steps.
+    Returns:
+        FindVerdict: the chain, or a don't-know carrying
+        :data:`FIND_BFS_EXHAUSTED`.
     """
     return BFSFinder().find(
         capacity_layer,

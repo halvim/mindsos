@@ -59,7 +59,6 @@ def test_phase_30_exports_remain_intact():
         "DAGStep",
         "DAGEdge",
         "find_pipeline",
-        "PipelineNotFoundError",
         "ProblemTraceError",
     }
     missing = phase_30_set - set(mindsos_capacity.__all__)

@@ -17,7 +17,7 @@ def test_find_pipeline_returns_linear_chain():
         cl,
         start_datastate=DS_INPUT_IRI,
         target_datastate=DS_OUTPUT_IRI,
-    )
+    ).pipeline
 
     assert isinstance(pipeline, Pipeline)
     assert pipeline.start_datastates == (DS_INPUT_IRI,)
@@ -36,6 +36,6 @@ def test_pipeline_iter_yields_steps_in_order():
         cl,
         start_datastate=DS_INPUT_IRI,
         target_datastate=DS_OUTPUT_IRI,
-    )
+    ).pipeline
     steps_via_iter = list(pipeline)
     assert steps_via_iter == list(pipeline.steps)
