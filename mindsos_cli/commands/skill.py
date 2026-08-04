@@ -200,7 +200,7 @@ def skill_list(
 
     kl, client = _build_kl_and_client()
     try:
-        latest = latest_records_by_bundle(kl)
+        latest = latest_records_by_bundle(kl, getattr(client, "user_id", None))
         rows = [
             {
                 "bundle_name": v.bundle_name,
@@ -248,7 +248,10 @@ def skill_activate(
     try:
         try:
             report = apply_installed_skills(
-                _build_brain_cl(), kl, strict=not best_effort
+                _build_brain_cl(),
+                kl,
+                strict=not best_effort,
+                user_id=getattr(client, "user_id", None),
             )
         except Exception as e:  # strict: an unactivatable bundle fails loud
             typer.echo(f"activation failed: {e}", err=True)

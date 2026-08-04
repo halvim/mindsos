@@ -1,8 +1,24 @@
 """Installed-skills role-graph schema (Phase 50 — SA-1 NET-NEW).
 
-Per ADR-0183 + ADR-0150 §amendment-6 (closed role-set 12 → 13).
-**Global-only** (skill installs are admin-gated Global actions per the
-SKILL_ACQUISITION design log S3); there is no Local form.
+Per ADR-0183 + ADR-0150 §amendment-6 (closed role-set 12 → 13) and
+**§amendment-11 (CORE-C2R1)**, which added the Local form.
+
+**Dual-scope.** §am-6 shipped this role Global-only, on the reading that
+skill installs are admin-gated Global actions (SKILL_ACQUISITION design
+log S3). Under ADR-0205 §8 a Skill is the unit of structural change and
+**a user installs one into their own realm**; an admin promotes it to
+Global. The Global-only shape made install effectively admin-only —
+not through ``CAN_INSTALL_SKILL`` but because every write went to
+``scope="global"``, which the ADR-0180 gate guards with
+``CAN_WRITE_GLOBAL``. §am-11 adds the Local form; scope now decides
+which realm, and the capability decides whether the user may install at
+all. The closed role-set count is unchanged (an existing role gains a
+scope — the ADR-0150 §am-8 precedent for ``request-patterns``).
+
+**One schema serves both scopes.** Unlike ``learned-parameters``, whose
+Local and Global forms differ in mutation discipline, an install record
+is an action record in either realm — ``append_only`` is correct for
+both, so ``build_installed_skills_schema`` takes no ``scope`` kwarg.
 
 Discipline: ``append_only`` per design log R2-2 — one
 ``SkillInstallRecord`` action record per install / uninstall / failure
@@ -89,11 +105,12 @@ STORAGE_MODE_FIELDS: dict[str, frozenset[str]] = {
 
 
 def build_installed_skills_schema(strict: bool = False) -> L2Schema:
-    """Construct the installed-skills role Schema (Global-only).
+    """Construct the installed-skills role Schema (Global + Local).
 
     Discipline ``append_only`` per ADR-0183 + design log R2-2. No
-    ``scope`` kwarg — unlike learned-parameters there is no Local form
-    (ADR-0150 §am-6).
+    ``scope`` kwarg — unlike learned-parameters, both scopes share one
+    discipline, so one schema serves the Global form (ADR-0150 §am-6)
+    and the Local form (§am-11, CORE-C2R1).
 
     Args:
         strict: Opt-in property-type enforcement. Default ``False`` per

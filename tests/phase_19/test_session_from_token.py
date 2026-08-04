@@ -20,7 +20,7 @@ import time
 
 import pytest
 
-from mindsos_server.capabilities import ADMIN_CAPS, USER_CAPS
+from mindsos_server.capabilities import ADMIN_CAPS, USER_CAPS  # noqa: F401
 from mindsos_server.errors import InvalidSessionCause, InvalidSessionError
 from mindsos_server.sessions import (
     SessionTTL,
@@ -49,16 +49,23 @@ class TestHappyPath:
         session = session_from_token(seeded_admin, result.token, ttl=fast_ttl)
         assert session.capabilities == ADMIN_CAPS
 
-    def test_user_capabilities_empty(
+    def test_user_capabilities_are_user_caps(
         self, seeded_user, fast_params, fast_ttl
     ) -> None:
-        """USER_CAPS strictly empty in v1 per Phase 18 PB-12 / ADR-0002 §am1."""
+        """A non-admin login carries exactly ``USER_CAPS``.
+
+        Empty from Phase 18 through Phase 50 (PB-12 / ADR-0002 §am1);
+        since CORE-C2R1 (§am-3) it holds the two skill-lifecycle
+        capabilities. The contract under test is the *binding* — a
+        non-admin session gets ``USER_CAPS`` and nothing more — not the
+        set's contents, which §am-3 owns.
+        """
         result = login(
             seeded_user, "alice", "alicepw", ttl=fast_ttl, params=fast_params
         )
         session = session_from_token(seeded_user, result.token, ttl=fast_ttl)
         assert session.capabilities == USER_CAPS
-        assert session.capabilities == frozenset()
+        assert session.capabilities != ADMIN_CAPS
 
 
 class TestSlidingRefresh:

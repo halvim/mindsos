@@ -1,0 +1,15 @@
+[bundle]
+name = "local-skill"
+version = "0.1.0"
+requires_mindsos_phase = 50
+requires_bundles = []
+
+[[l2.content]]
+role = "request-patterns"
+tier = "local"
+node_type = "RequestPattern"
+iri = "local-skill-0.1.0:pattern:user-owned"
+value = "user-owned-pattern"
+
+[l2.content.properties]
+description = "A request pattern a user installs into their own realm."

@@ -191,7 +191,11 @@ class BrainREPL:
         cap_iris = sorted({n.node_id for v in views for n in v.iter_capacities()})
         ds_iris = sorted({n.node_id for v in views for n in v.iter_datastates()})
         pls = list(iter_pipelines(self.stack.kl, self.stack.user, scope))
-        skills = iter_skill_records(self.stack.kl) if scope in ("both", "global") else []
+        skills = (
+            iter_skill_records(self.stack.kl, self.stack.user)
+            if scope in ("both", "global", "local")
+            else []
+        )
         eps = (
             list(iter_episodes(self.stack.kl, self.stack.user))
             if scope in ("both", "local")
@@ -233,7 +237,7 @@ class BrainREPL:
         if scope in ("both", "global"):
             from mindsos_server.skills.records import iter_skill_records
 
-            for r in iter_skill_records(self.stack.kl):
+            for r in iter_skill_records(self.stack.kl, self.stack.user):
                 cands.append(("skill", r.bundle_name))
         if scope in ("both", "local"):
             from mindsos_server.episodes import iter_episodes
@@ -416,7 +420,7 @@ class BrainREPL:
                 return f"skills --{ph}: {_SAP}"
         from mindsos_server.skills.records import iter_skill_records
 
-        recs = iter_skill_records(self.stack.kl)
+        recs = iter_skill_records(self.stack.kl, self.stack.user)
         if pos:
             name = pos[0]
             hit = [r for r in recs if r.bundle_name == name]
@@ -498,7 +502,7 @@ class BrainREPL:
             else "durable"
         )
         neps = sum(1 for _ in iter_episodes(self.stack.kl, self.stack.user))
-        nskills = len(iter_skill_records(self.stack.kl))
+        nskills = len(iter_skill_records(self.stack.kl, self.stack.user))
         return "\n".join(
             [
                 f"user: {self.stack.user}",
@@ -672,7 +676,7 @@ class BrainREPL:
         opts, pos, err = parse(args, {})
         if err:
             return err
-        entries = skill_entries(self.stack.kl)
+        entries = skill_entries(self.stack.kl, self.stack.user)
         if not entries:
             return "execute: no installed skill declares an entry pipeline"
         if len(entries) > 1:

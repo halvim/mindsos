@@ -68,6 +68,8 @@ _EXPECTED_LAZY_LOCAL_ROLES = {
     ROLE_LEARNED_PIPELINES,
     # ADR-0183 §am-5 — installed Local capabilities.
     ROLE_INSTALLED_CAPACITIES,
+    # CORE-C2R1 (ADR-0150 §am-11) — installed-skills gained a Local form.
+    ROLE_INSTALLED_SKILLS,
 }
 
 
@@ -82,7 +84,7 @@ def test_bootstrap_global_dimensional_snapshot() -> None:
 def test_lazy_local_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
-    assert len(local.graphs) == 8
+    assert len(local.graphs) == 9
     observed = {gr.role for gr in local.graphs.values()}
     assert observed == _EXPECTED_LAZY_LOCAL_ROLES
 

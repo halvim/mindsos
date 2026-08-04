@@ -6,10 +6,25 @@ the ``EVT_SKILL_INSTALL_REJECTED`` audit payload and the
 ``SkillInstallRejectedError``.
 
 Check roster (design log S4): tier; ``requires_mindsos_phase``;
-``requires_bundles``; unknown/non-Global role; capacity + DataState IRI
-collisions; realm conflicts absent ``allow_new_realm``. Role-set
-expansion is a non-goal — a bundle naming an unknown role is rejected,
-never accommodated.
+``requires_bundles``; unknown role, or a role that cannot hold the
+declared tier; capacity + DataState IRI collisions; realm conflicts
+absent ``allow_new_realm``. Role-set expansion is a non-goal — a bundle
+naming an unknown role is rejected, never accommodated.
+
+**S3 amended (CORE-C2R1 — ADR-0183 §amendment-6).** v1 accepted
+``tier = "global"`` only, marking Local as "the v2 trigger". ADR-0205 §8
+makes the Skill the unit of structural change and says **a user installs
+one**, and ADR-0150 §amendment-11 gave ``installed-skills`` a Local form
+so the install *record* can land in the user's realm. With the tier
+check unchanged, that substrate had no bundle it could carry: every
+declarable bundle was Global-tier and therefore admin-only, so the
+feature could not be exercised end to end.
+
+``tier = "local"`` is now accepted, and the role check enforces the pair
+— a Local entry must target a role that **has** a Local form. The two
+checks are separate on purpose: the tier says which realm the content
+wants, the role says which realms can hold it, and a Global-only role
+like ``concepts`` still refuses a Local entry.
 """
 
 from __future__ import annotations
@@ -19,7 +34,11 @@ from dataclasses import dataclass, field
 from typing import Any, List, Optional, Tuple
 
 from mindsos_capacity.identifiers import RESERVED_REALMS
-from mindsos_knowledge.bootstrap import _ALIGNMENT_PREFIX, _GLOBAL_NAMED_ROLES
+from mindsos_knowledge.bootstrap import (
+    _ALIGNMENT_PREFIX,
+    _GLOBAL_NAMED_ROLES,
+    _LOCAL_NAMED_ROLES,
+)
 
 from .manifest import SkillManifest
 from .records import iter_skill_records, latest_records_by_bundle
@@ -80,25 +99,32 @@ def run_preflight(
     kl: Any,
     cl: Any,
     current_phase: Optional[int] = None,
+    user_id: Optional[str] = None,
 ) -> PreflightReport:
     """Scan every declared artifact; collect ALL findings (not fail-fast)
     so the rejection report names the full conflict set.
 
     ``current_phase`` defaults to :func:`current_mindsos_phase`;
     injectable for tests.
+
+    ``user_id`` unions that user's Local install roster with the Global one
+    (ADR-0150 §amendment-11) for both the ``requires_bundles`` check and the
+    prior-ownership scan — otherwise a dependency the user installed into
+    their own realm reads as missing, and their own prior install of the
+    same bundle reads as a foreign conflict.
     """
     findings: List[PreflightFinding] = []
 
     def reject(code: str, message: str) -> None:
         findings.append(PreflightFinding(code=code, message=message))
 
-    # ── tier (S3: Global-only at v1) ──────────────────────────────────
+    # ── tier (S3 as amended — CORE-C2R1, ADR-0183 §am-6) ─────────────
     for entry in manifest.l2_content:
-        if entry.tier != "global":
+        if entry.tier not in ("global", "local"):
             reject(
-                "tier-not-global",
+                "unknown-tier",
                 f"l2 entry {entry.iri!r} declares tier {entry.tier!r}; "
-                "v1 installs are Global-only (Local = v2 trigger).",
+                "the only tiers are 'global' and 'local'.",
             )
 
     # ── requires_mindsos_phase ────────────────────────────────────────
@@ -116,7 +142,7 @@ def run_preflight(
             )
 
     # ── requires_bundles ──────────────────────────────────────────────
-    latest = latest_records_by_bundle(kl)
+    latest = latest_records_by_bundle(kl, user_id)
     for dep in manifest.requires_bundles:
         view = latest.get(dep)
         if view is None or view.status != "installed":
@@ -126,18 +152,26 @@ def run_preflight(
                 f"(state: {view.status if view else 'absent'}).",
             )
 
-    # ── roles (closed set; Global-named or alignment-prefix only) ────
+    # ── roles (closed set; the role must be able to hold the tier) ───
+    # CORE-C2R1: the tier says which realm the content wants, the role
+    # says which realms can hold it. A Global-only role such as
+    # ``concepts`` still refuses a Local entry — that is the check, not
+    # a blanket Global-only rule.
     for entry in manifest.l2_content:
-        role_ok = (
-            entry.role in _GLOBAL_NAMED_ROLES
-            or entry.role.startswith(_ALIGNMENT_PREFIX)
-        )
+        if entry.tier == "local":
+            role_ok = entry.role in _LOCAL_NAMED_ROLES
+        else:
+            role_ok = (
+                entry.role in _GLOBAL_NAMED_ROLES
+                or entry.role.startswith(_ALIGNMENT_PREFIX)
+            )
         if not role_ok:
             reject(
-                "unknown-or-non-global-role",
-                f"l2 entry {entry.iri!r} targets role {entry.role!r}, "
-                "which is not a Global-named role (closed set; "
-                "ADR-0150 — bundles cannot expand the role-set).",
+                "role-cannot-hold-tier",
+                f"l2 entry {entry.iri!r} targets role {entry.role!r} at "
+                f"tier {entry.tier!r}, which that role has no form for "
+                "(closed set; ADR-0150 — bundles cannot expand the "
+                "role-set).",
             )
 
     # ── L3 IRI collisions (S4: a collision is waived when the IRI is
@@ -145,7 +179,7 @@ def run_preflight(
     #    repair path, and in-process reinstall after uninstall, where
     #    registrations persist because S11 ships no deregistration) ──
     owned: set[str] = set()
-    for view in iter_skill_records(kl):
+    for view in iter_skill_records(kl, user_id):
         if view.bundle_name == manifest.name:
             owned.update(view.value.get("l3_capacities") or [])
             owned.update(view.value.get("l3_datastates") or [])

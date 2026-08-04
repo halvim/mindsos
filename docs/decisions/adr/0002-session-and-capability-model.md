@@ -159,3 +159,26 @@ ships (no audit-gate-internal call counts as direct consumer).
 
 **Phase 24 design log:** `halvim_mindsos/confirmation_docs/PHASE_24_
 DESIGN_LOG.md` §1 Round 4 PB-23 (2-caps-not-3 lock) + §4 ADR delta.
+
+### amendment-3 (CORE-C2R1 — 2026-07-31) — `USER_CAPS` becomes non-empty
+
+**Trigger.** ADR-0150 §amendment-11 makes `installed-skills` dual-scope so a user can install
+a Skill into their own realm, per ADR-0205 §8. `USER_CAPS` was strictly empty (§amendment-1),
+so the install lifecycle — which checks `CAN_INSTALL_SKILL` before doing anything — could
+never pass for a non-admin, regardless of scope.
+
+**Amended behavior.** `USER_CAPS` gains `CAN_INSTALL_SKILL` and `CAN_UNINSTALL_SKILL`. This
+is the first non-empty `USER_CAPS`, and §amendment-1's "strictly empty in v1" statement is
+superseded.
+
+**It grants no new write reach.** Every graph write still passes the ADR-0180
+`make_writeable` gate, which requires `CAN_WRITE_GLOBAL` for `scope="global"`. A user
+therefore installs **Local**; a Global install remains admin-only. What the two capabilities
+add is the ability to answer *"may this principal install a Skill at all"* — worth being able
+to withhold, because an installed Skill registers capacities that subsequently execute.
+
+**Rejected alternative.** Skip the capability check entirely on the Local path, on the
+argument that writing your own Local store needs no permission. Rejected: it would make
+"this user may not install software" inexpressible, and the check costs nothing.
+
+**`ADMIN_CAPS` is unchanged** — admins already held both. The roster stays at 12.

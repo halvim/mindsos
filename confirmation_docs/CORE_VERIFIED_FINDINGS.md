@@ -4,6 +4,8 @@
 **Verified at:** `origin/main` `b612c93` (re-confirmed unchanged from `644e91c` →
 `01e4d0d` → `9fcb694` → `fafc679` → `b612c93` across every file cited here;
 `9879a71` and `b612c93` are docs-only).
+**§12 added by the CORE-C2 chat**, re-verified at `b612c93` and reconciled against
+`60fe2ae` (the C3R1 ship). §12.6 **withdraws** a §3 claim of the reconciliation plan.
 Everything below was read from the code, not inferred.
 
 ---
@@ -314,3 +316,106 @@ All stale worktrees cleared (`_MindsOS-iteration-map`, `_MindsOS-finder-default-
 `/tmp/seam_wt`); `feat/finder-default-ruling` deleted — it had zero commits and an empty
 diff. Sandbox-created worktrees carry a `locked` marker: `git worktree unlock <path>` then
 `prune`, since the registered path does not exist from the Mac.
+
+---
+
+## 12. Round-3 findings (2026-07-31, CORE-C2 pre-build read-through @ `b612c93`)
+
+Every claim in §§1–11 held. What the re-read **added**:
+
+### 12.1 The L2 knowledge layer cannot write a link
+
+`KLWriteHandle` (`mindsos_knowledge/write_handle.py`) exposes `write_and_validate`,
+`update_and_validate`, `validate_node` and `mint_iri` — **node operations only**.
+`KLWriteHandle.validate_xref` raises `WriteHandleNotWiredError` (deferred at Phase 36
+"alongside the first XRef writer"; the writer never arrived). `MetagraphView` reads edges
+(`get_edges`, `step`) but has no writer. **`IntergraphHyperEdge` has zero consumers in
+`mindsos_knowledge`, `mindsos_intelligence` and `mindsos_capacity`** — only `mindsos_cli`
+and `mindsos_cli/migrations`.
+
+⟹ ADR-0205's *"the composition primitive already ships; this is a use of core, not an
+extension of it"* is true of `mindsos_core` and **false of the layer that has to use it**.
+Four CORE-C2 items assumed the capability existed.
+
+### 12.2 Compositional links can never be removed or have properties updated
+
+`Metagraph.remove_intergraph_hyperedge` and `update_intergraph_hyperedge` both raise
+`CompositionalImmutableError` when `compositional=True`, **with no escape hatch** —
+`metagraph.py`, Phase 05b pushback **6-A**: *"Tester recovery for a wedged metagraph is
+`mindsos metagraph reset`."* `remove_graph` carries the same cascade refusal.
+
+⟹ ADR-0206's ALS-moves-confidence-on-the-edge, its recompute-hubs-on-every-learn, and
+ADR-0205 §8's uninstall-removes-the-vertical are **all structurally impossible** on the
+primitive both ADRs designate. Resolved by `CORE_C2_DECISIONS.md` §2.
+
+### 12.3 The pipeline level is a fourth topology-in-properties instance
+
+`promoted-pipelines` carries **both** a normalised `HAS_STEP`→`PipelineStep` partition **and**
+an `edge_sequence` content property (`mindsos_knowledge/schemas/promoted_pipelines.py`).
+§11.4 listed `edge_sequence` without flagging it. Phase 13 **PB-9** additionally locked
+`HAS_STEP` as an ordinary `EdgeType` with an advisory `position`, *"NOT an ordered
+hyperedge"* — a decision ADR-0205 §2 never considered.
+
+### 12.4 `chain_artifacts.py` adds six more instances, and the C1R4 sweep missed the file
+
+`HintSet.hints` is a `Dict[str, Any]` holding structure (ADR-0205 §5 bans it).
+`StepExecutionRecord.confidence` sits on a node (ADR-0206 §5: confidence is relational).
+`RequestRun.pipeline_runs`, `RequestRun.replan_history`, `ReplanRecord.invalidated_refs` and
+`ReplanRecord.spawned_refs` are reference lists inside records.
+
+⟹ §11.6 counts three instances of the defect system-wide. **With §12.3 and §12.4 the real
+count is nine.**
+
+### 12.5 P8-A's rationale is recoverable, and ADR-0148 contradicts the glossary
+
+§10 of the plan and ADR-0205 §2 both record that the P8-A argument was lost. It is not — it
+survives in `INTERGRAPH_EDGES_DESIGN.md`, `PHASE_MAP.md` and `PHASE_05c_CONFIRMED.md`; the
+file searched for (`PHASE_05c_DESIGN_LOG.md`) never existed, while
+`PHASE_05c_IMPLEMENTATION_LOG.md` does. Separately, ADR-0148 and `docs/concepts/glossary.md`
+cite each other for an amendment neither reproduces and **assert opposite outcomes**.
+Resolved at ADR-0148 §amendment-1 and ADR-0205 §amendment-1.
+
+### 12.6 Attribution's "declared footprint" does not exist
+
+`CORE_RECONCILIATION_PLAN.md` §3 claimed the declared half of skill attribution already
+worked, because `installed-capacities` carries `capacity_iri` + `installed_by`. **The C3R1
+chat verified that claim false and it is withdrawn.** The driver stamps `installed_by` on
+**Global L2 content nodes** (`skills/driver.py`) and filters *those* on uninstall;
+`mindsos_server/boot.py` states the `installed-capacities` role is "empty until" a
+user-scoped install exists. The schema and IRI minting ship; **nothing populates them.**
+ADR-0183 §am-5's Local half is specified and unbuilt.
+
+⟹ **The skill ledger (`CORE_C2_DECISIONS.md` §7a) has no existing half to build on.** Its
+"declared footprint already works" premise is void; the skill-packaging chat builds the
+whole thing. This does **not** affect CORE-C2R1, which touched only `installed-skills`.
+
+### 12.7 `input_group` is still unowned
+
+`CORE_C2_DECISIONS.md` assigned the graph form of `input_group` to C3R1. **C3R1's
+half-ship (`4fd8baa`) did not include it** — it shipped the two phase-2 cycle guards and
+left `find_verdict` and the `catalog_check.py` divergence sweep open. `input_group` appears
+in neither. **It remains unowned and it blocks the pipeline level.**
+
+### 12.9 Reconciled with the CORE-C1R4 sweep at `2c56246`
+
+The sweep (ADR-0205 §amendment-1, `CORE_ADR_CONTRADICTION_SWEEP.md`) reached §12.1, §12.2,
+§12.3 and §12.5 **independently**. Two of its findings this read-through did **not** have,
+both of which change CORE-C2's design:
+
+- **am-1.2 — the composition primitive is selected by arity.** `add_intergraph_hyperedge`
+  refuses 1-anchor/1-member (validation step 8, "NOT 1-1"); a single-member composition is
+  an `IntergraphEdge` with `compositional=True`. **A milestone takes one link per pipeline
+  reaching it, and a request one link to its plan — every one of those is single-member**,
+  so the hyperedge alone cannot express the design. Adopted.
+- **am-1.6 — a composition pins its graphs.** `remove_graph` refuses while any incident
+  compositional edge exists, and ADR-0202 persists one chain graph per task. **Ruling for
+  the trace: per-request links are non-compositional** (ADR-0205 §am-2.2), so task graphs
+  stay removable. The wider question stays open with the milestone-level item.
+
+### 12.8 Environment
+
+`origin/main` is `60fe2ae`. A worktree created **on the Mac** is unusable for git from the
+sandbox — its `.git` file points at a Mac path — but file writes work, which is the correct
+split. **The Linux gate host and the Mac are different machines: a `docker.sock` under
+`/Users/` means the gate was run on the Mac, which RULES §5 forbids and which will silently
+gate the wrong branch.**

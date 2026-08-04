@@ -88,8 +88,14 @@ def test_skill_verb_runs_through_durable_brain(falkordb_clean, tmp_path):
             if mid is not None
             else KnowledgeLayer.bootstrap()
         )
+        # CORE-C2R1: this suite persists the GLOBAL metagraph, so the
+        # install must land Global (the driver now defaults to "local").
         install_skill(
-            parse_manifest(manifest), kl=kl, cl=CapacityLayer(), current_phase=50
+            parse_manifest(manifest),
+            kl=kl,
+            cl=CapacityLayer(),
+            current_phase=50,
+            scope="global",
         )
         MetagraphRepository(client).persist(kl.global_metagraph())
     finally:

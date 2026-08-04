@@ -86,8 +86,15 @@ def _audit_events(conn) -> list[str]:
     ]
 
 
+# CORE-C2R1 (ADR-0150 §am-11 / ADR-0183 §am-6): install/uninstall now
+# default to ``scope="local"``. These suites exercise the ADMIN /
+# Global path, so every call is explicit about it. The Local path
+# has its own suite: tests/phase_50/test_skill_install_local_scope.py
+
+
 def _install(kl, cl, **kwargs):
     manifest = parse_manifest(MANIFEST_PATH)
+    kwargs.setdefault("scope", "global")
     return install_skill(
         manifest, kl=kl, cl=cl, current_phase=50, **kwargs
     )
@@ -228,6 +235,7 @@ class TestIdempotency:
                 kl=kl,
                 cl=cl,
                 current_phase=50,
+                scope="global",
                 audit_conn=audit_conn,
             )
         assert "digest-mismatch" in str(excinfo.value)
@@ -245,7 +253,11 @@ class TestIdempotency:
         )
         with pytest.raises(SkillInstallRejectedError) as excinfo:
             install_skill(
-                parse_manifest(bumped), kl=kl, cl=cl, current_phase=50
+                parse_manifest(bumped),
+                kl=kl,
+                cl=cl,
+                current_phase=50,
+                scope="global",
             )
         assert "version-change" in str(excinfo.value)
 
@@ -260,7 +272,11 @@ class TestIdempotency:
         )
         with pytest.raises(SkillInstallError):
             install_skill(
-                parse_manifest(broken), kl=kl, cl=cl, current_phase=50
+                parse_manifest(broken),
+                kl=kl,
+                cl=cl,
+                current_phase=50,
+                scope="global",
             )
         view = latest_records_by_bundle(kl)["ref-skill"]
         assert view.status == "failed"
@@ -308,7 +324,16 @@ class TestPreflight:
             f.code == "missing-required-bundle" for f in report.findings
         )
 
-    def test_non_global_tier_rejects(self, kl, cl, tmp_path) -> None:
+    def test_local_tier_on_a_global_only_role_rejects(
+        self, kl, cl, tmp_path
+    ) -> None:
+        """S3 as amended (CORE-C2R1, ADR-0183 §am-6).
+
+        v1 refused every non-Global tier outright. Now the tier says
+        which realm the content wants and the **role** says which realms
+        can hold it — so ``tier = "local"`` on ``concepts``, a
+        Global-only role, is still refused, but for the honest reason.
+        """
         p = tmp_path / "manifest.toml"
         p.write_text(
             MANIFEST_PATH.read_text().replace(
@@ -318,7 +343,42 @@ class TestPreflight:
         report = run_preflight(
             parse_manifest(p), kl=kl, cl=cl, current_phase=50
         )
-        assert any(f.code == "tier-not-global" for f in report.findings)
+        assert any(
+            f.code == "role-cannot-hold-tier" for f in report.findings
+        )
+
+    def test_local_tier_on_a_dual_scope_role_is_accepted(
+        self, kl, cl
+    ) -> None:
+        """The point of the amendment: a user-installable bundle exists.
+
+        ``request-patterns`` is dual-scope (ADR-0150 §am-8), so it can
+        hold Local content. Without this, ADR-0150 §am-11's Local
+        install record had no bundle it could ever carry.
+        """
+        from tests.fixtures.skill_bundle_local import (
+            MANIFEST_PATH as LOCAL_MANIFEST_PATH,
+        )
+
+        report = run_preflight(
+            parse_manifest(LOCAL_MANIFEST_PATH),
+            kl=kl,
+            cl=cl,
+            current_phase=50,
+        )
+        assert report.ok, [f.code for f in report.findings]
+
+    def test_unknown_tier_rejects(self, kl, cl, tmp_path) -> None:
+        p = tmp_path / "manifest.toml"
+        p.write_text(
+            MANIFEST_PATH.read_text().replace(
+                'tier = "global"', 'tier = "regional"', 1
+            )
+        )
+        report = run_preflight(
+            parse_manifest(p), kl=kl, cl=cl, current_phase=50
+        )
+        assert any(f.code == "unknown-tier" for f in report.findings)
 
     def test_unknown_role_rejects(self, kl, cl, tmp_path) -> None:
         p = tmp_path / "manifest.toml"
@@ -331,10 +391,12 @@ class TestPreflight:
             parse_manifest(p), kl=kl, cl=cl, current_phase=50
         )
         assert any(
-            f.code == "unknown-or-non-global-role" for f in report.findings
+            f.code == "role-cannot-hold-tier" for f in report.findings
         )
 
-    def test_local_only_role_rejects(self, kl, cl, tmp_path) -> None:
+    def test_local_only_role_at_global_tier_rejects(
+        self, kl, cl, tmp_path
+    ) -> None:
         p = tmp_path / "manifest.toml"
         p.write_text(
             MANIFEST_PATH.read_text().replace(
@@ -345,7 +407,7 @@ class TestPreflight:
             parse_manifest(p), kl=kl, cl=cl, current_phase=50
         )
         assert any(
-            f.code == "unknown-or-non-global-role" for f in report.findings
+            f.code == "role-cannot-hold-tier" for f in report.findings
         )
 
     def test_foreign_capacity_collision_rejects(self, kl, cl, tmp_path) -> None:
@@ -409,6 +471,7 @@ class TestPreflight:
                 kl=kl,
                 cl=cl,
                 current_phase=50,
+                scope="global",
                 audit_conn=audit_conn,
             )
         assert _audit_events(audit_conn) == [EVT_SKILL_INSTALL_REJECTED]
@@ -421,7 +484,7 @@ class TestPreflight:
 class TestUninstall:
     def test_uninstall_deprecates_and_records(self, kl, cl, audit_conn) -> None:
         _install(kl, cl)
-        result = uninstall_skill("ref-skill", kl=kl, audit_conn=audit_conn)
+        result = uninstall_skill("ref-skill", scope="global", kl=kl, audit_conn=audit_conn)
         assert len(result.deprecated_node_ids) == 3
         # G1 marker-only: nodes still present, visible-but-marked.
         g = next(
@@ -438,13 +501,13 @@ class TestUninstall:
 
     def test_uninstall_absent_bundle_refused(self, kl) -> None:
         with pytest.raises(SkillUninstallRefusedError):
-            uninstall_skill("ghost", kl=kl)
+            uninstall_skill("ghost", scope="global", kl=kl)
 
     def test_double_uninstall_refused(self, kl, cl) -> None:
         _install(kl, cl)
-        uninstall_skill("ref-skill", kl=kl)
+        uninstall_skill("ref-skill", scope="global", kl=kl)
         with pytest.raises(SkillUninstallRefusedError):
-            uninstall_skill("ref-skill", kl=kl)
+            uninstall_skill("ref-skill", scope="global", kl=kl)
 
     def test_reverse_dependency_refuses(self, kl, cl, tmp_path) -> None:
         _install(kl, cl)
@@ -454,15 +517,19 @@ class TestUninstall:
             'requires_bundles = ["ref-skill"]\n'
         )
         install_skill(
-            parse_manifest(dependant), kl=kl, cl=cl, current_phase=50
+            parse_manifest(dependant),
+            kl=kl,
+            cl=cl,
+            current_phase=50,
+            scope="global",
         )
         with pytest.raises(SkillUninstallRefusedError) as excinfo:
-            uninstall_skill("ref-skill", kl=kl)
+            uninstall_skill("ref-skill", scope="global", kl=kl)
         assert "reverse-dependency" in str(excinfo.value)
 
     def test_reinstall_after_uninstall_reclaims(self, kl, cl) -> None:
         _install(kl, cl)
-        uninstall_skill("ref-skill", kl=kl)
+        uninstall_skill("ref-skill", scope="global", kl=kl)
         result = _install(kl, cl)
         assert result.no_op is False
         g = next(
@@ -497,7 +564,7 @@ class TestActivation:
 
     def test_activation_skips_uninstalled(self, kl, cl) -> None:
         _install(kl, cl)
-        uninstall_skill("ref-skill", kl=kl)
+        uninstall_skill("ref-skill", scope="global", kl=kl)
         fresh = CapacityLayer()
         install_text_capacities(fresh)
         assert apply_installed_skills(fresh, kl) == ()

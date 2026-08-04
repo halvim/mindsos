@@ -56,9 +56,14 @@ class TestRoleConstant:
         # forward, mirroring how Phase 50 updated the Phase-43 12 → 13.
         assert len(ALL_ROLES) == 16
 
-    def test_global_only_scope(self) -> None:
+    def test_dual_scope(self) -> None:
+        """CORE-C2R1 (ADR-0150 §am-11) — was Global-only at §am-6.
+
+        A user installs a Skill into their own realm; an admin promotes
+        to Global. The §am-6 Global form is untouched.
+        """
         assert ROLE_INSTALLED_SKILLS in _GLOBAL_NAMED_ROLES
-        assert ROLE_INSTALLED_SKILLS not in _LOCAL_NAMED_ROLES
+        assert ROLE_INSTALLED_SKILLS in _LOCAL_NAMED_ROLES
 
     def test_applies_after_declared_empty(self) -> None:
         assert _APPLIES_AFTER_BY_ROLE[ROLE_INSTALLED_SKILLS] == frozenset()
@@ -145,11 +150,12 @@ class TestBootstrap:
         roles = {g.role for g in kl.global_metagraph().graphs.values()}
         assert ROLE_INSTALLED_SKILLS in roles
 
-    def test_not_in_lazy_local(self) -> None:
+    def test_in_lazy_local(self) -> None:
+        """CORE-C2R1 — the lazy Local now ensures installed-skills too."""
         kl = KnowledgeLayer.bootstrap()
         local = kl.local_metagraph("alice")
         roles = {g.role for g in local.graphs.values()}
-        assert ROLE_INSTALLED_SKILLS not in roles
+        assert ROLE_INSTALLED_SKILLS in roles
 
     def test_ensure_global_idempotent(self) -> None:
         kl = KnowledgeLayer.bootstrap()
@@ -158,11 +164,19 @@ class TestBootstrap:
         g2 = ensure_global_role_graph(mg, ROLE_INSTALLED_SKILLS)
         assert g1 is g2
 
-    def test_ensure_local_rejects(self) -> None:
+    def test_ensure_local_idempotent(self) -> None:
+        """CORE-C2R1 — ensure_local no longer rejects; it is idempotent.
+
+        Before §am-11 this raised ``KnowledgeError`` because the role was
+        exclusively Global. Dual-scope roles pass the
+        ``_GLOBAL_ONLY_ROLES`` set-difference check, as
+        ``request-patterns`` has since §am-8.
+        """
         kl = KnowledgeLayer.bootstrap()
         local = kl.local_metagraph("alice")
-        with pytest.raises(KnowledgeError):
-            ensure_local_role_graph(local, ROLE_INSTALLED_SKILLS)
+        g1 = ensure_local_role_graph(local, ROLE_INSTALLED_SKILLS)
+        g2 = ensure_local_role_graph(local, ROLE_INSTALLED_SKILLS)
+        assert g1 is g2
 
 
 # ── capabilities + audit constants (Phase-44 S8 additive pattern) ─────
@@ -178,19 +192,32 @@ class TestCapabilitiesAndAudit:
         assert CAN_INSTALL_SKILL == "CAN_INSTALL_SKILL"
         assert CAN_UNINSTALL_SKILL == "CAN_UNINSTALL_SKILL"
 
-    def test_capabilities_admin_bundled_user_denied(self) -> None:
+    def test_capabilities_held_by_users_and_admins(self) -> None:
+        """CORE-C2R1 (ADR-0002 §am-3) — both bundles hold the pair.
+
+        Shipped at Phase 50 as admin-only. Under ADR-0205 §8 a *user*
+        installs a Skill, so the capability moved into ``USER_CAPS``.
+        Admin-only *Global* install is preserved by the ADR-0180 gate's
+        ``CAN_WRITE_GLOBAL`` requirement, not by withholding these.
+        """
         from mindsos_server.capabilities import (
             ADMIN_CAPS,
             ALL_CAPABILITIES,
             CAN_INSTALL_SKILL,
             CAN_UNINSTALL_SKILL,
+            CAN_WRITE_GLOBAL,
             USER_CAPS,
         )
 
         for cap in (CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL):
             assert cap in ALL_CAPABILITIES
             assert cap in ADMIN_CAPS
-            assert cap not in USER_CAPS
+            assert cap in USER_CAPS
+
+        # The scope gate, not the capability, is what keeps Global
+        # install admin-only.
+        assert CAN_WRITE_GLOBAL in ADMIN_CAPS
+        assert CAN_WRITE_GLOBAL not in USER_CAPS
 
     def test_audit_event_values_and_roster(self) -> None:
         from mindsos_server.audit import (
