@@ -15,6 +15,7 @@ from mindsos_capacity.tiers import TierEnum
 from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.resources import ResourceLedger
 from mindsos_intelligence.submind_arbiter import SubMindArbiter
+from mindsos_capacity import FIND_NO_SATISFIABLE_PRODUCER, FindVerdict
 
 
 # ── fakes ─────────────────────────────────────────────────────────────
@@ -83,10 +84,6 @@ class _Step:
         self.output_datastates = ()
 
 
-class PNF(Exception):
-    pass
-
-
 class _Sig:
     def __init__(self, name, tier, score, reading=0.0):
         self.submind_name = name
@@ -106,7 +103,10 @@ class _Defn:
 
 
 def _ok_plan(s, g):
-    return _Pipeline(steps=(_Step("cap.charge"),))
+    # CORE-C3R1: ``plan_fn`` returns a ``FindVerdict``; the arbiter reads
+    # ``.pipeline`` and treats ``None`` as don't-know. It no longer raises, so
+    # the ``pipeline_not_found`` injection is gone.
+    return FindVerdict(pipeline=_Pipeline(steps=(_Step("cap.charge"),)))
 
 
 def _arb(executor, dispatcher, ledger, plan=_ok_plan, mm=None, **kw):
@@ -115,8 +115,7 @@ def _arb(executor, dispatcher, ledger, plan=_ok_plan, mm=None, **kw):
     # contract; the resolver path writes into it harmlessly where it runs.
     if mm is None:
         mm = MentalModel(session_id="s", user_id="u")
-    a = SubMindArbiter(executor, dispatcher, ledger, mm=mm, plan_fn=plan,
-                       pipeline_not_found=PNF, **kw)
+    a = SubMindArbiter(executor, dispatcher, ledger, mm=mm, plan_fn=plan, **kw)
     a.install_on_ledger()
     return a
 
@@ -172,7 +171,10 @@ def test_unreachable_goal_fires_dont_know_fallback():
     led, ex, dp = ResourceLedger(), _Exec(), _Dispatcher()
 
     def fail_plan(s, g):
-        raise PNF("no capacity reaches the goal")
+        return FindVerdict(
+            reason=FIND_NO_SATISFIABLE_PRODUCER,
+            detail="no capacity reaches the goal",
+        )
 
     a = _arb(ex, dp, led, plan=fail_plan)
     a.on_need(_Sig("energy", TierEnum.CRITICAL, 9000), TierEnum.CRITICAL,
