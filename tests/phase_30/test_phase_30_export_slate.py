@@ -22,7 +22,6 @@ PHASE_30_NEW_EXPORTS = {
     "DAGStep",
     "DAGEdge",
     "find_pipeline",
-    "PipelineNotFoundError",
     "ProblemTraceError",
 }
 

@@ -27,7 +27,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Mapping, Optional
 
-from mindsos_capacity.exceptions import PipelineNotFoundError
 from mindsos_capacity.identifiers import (
     CATEGORY_DECISION,
     CATEGORY_HINT,
@@ -160,17 +159,21 @@ def _resolve_reference(
     if start == target:
         # Reference is already canonical — 0-step pipeline / pass-through.
         return reference
-    try:
-        pipeline = find_pipeline(
-            dispatcher.capacity_layer,
-            session=dispatcher.session,
-            start_datastate=start,
-            target_datastate=target,
-        )
-    except PipelineNotFoundError as exc:  # no route → interpretation dead-end
+    # CORE-C3R1: the finder returns a verdict; no route is a don't-know about
+    # the world, not a raise. Interpretation still treats it as a dead-end —
+    # faithful conversion, no new failure mode — but now names the reason.
+    verdict = find_pipeline(
+        dispatcher.capacity_layer,
+        session=dispatcher.session,
+        start_datastate=start,
+        target_datastate=target,
+    )
+    if not verdict.found:
         raise InterpretationError(
-            f"no resolve pipeline from {start!r} to {target!r}"
-        ) from exc
+            f"no resolve pipeline from {start!r} to {target!r} "
+            f"[{verdict.reason}]: {verdict.detail}"
+        )
+    pipeline = verdict.pipeline
     exec_result = execute_pipeline(
         dispatcher, pipeline, {start: reference}, request_id=request_id
     )

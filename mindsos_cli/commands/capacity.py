@@ -34,7 +34,8 @@ Sub-subgroup shape:
 
 * exit 0 — success (and ALWAYS when ``--json`` is supplied — R0 PB-7
   hybrid lock; the envelope's ``success`` bool carries failure)
-* exit 1 — L3 invariant raise (``PipelineNotFoundError`` from ``find``;
+* exit 1 — a not-found ``FindVerdict`` from ``find`` (its ``reason``
+  is the payload's ``error``);
   ``CapacityRegistrationError`` from ``invoke`` for unknown IRI)
 * exit 2 — Typer usage error (missing arg, mutex flag conflict)
 * exit 3 — invoke envelope failure on --human (``InvocationResult.success
@@ -56,7 +57,6 @@ from mindsos_capacity import (
     CapacityRegistrationError,
     InvocationResult,
     Pipeline,
-    PipelineNotFoundError,
     ProblemTraceRecord,
     find_pipeline,
 )
@@ -183,25 +183,39 @@ def find_cmd(
 
     Constructs a fresh in-memory Global ``CapacityLayer`` per invocation
     (Phase 30 CLI is programmer-facing this phase). On an empty layer
-    the BFS will exhaust immediately — exit 1 + ``PipelineNotFoundError``.
+    the BFS will exhaust immediately — exit 1 + a ``bfs_exhausted`` verdict.
 
     Exit 0 on success; exit 1 on no path found.
     """
     layer = _construct_global_layer()
-    try:
-        pipeline = find_pipeline(
-            layer,
-            start_datastate=start,
-            target_datastate=target,
-            max_depth=max_depth,
-        )
-    except PipelineNotFoundError as exc:
+    verdict = find_pipeline(
+        layer,
+        start_datastate=start,
+        target_datastate=target,
+        max_depth=max_depth,
+    )
+    if not verdict.found:
+        # CORE-C3R1: the payload's ``error`` is now the closed-set reason, not
+        # an exception class name — consumers branch on it and never parse
+        # ``message``. Exit code is unchanged.
         if json_out:
-            print(json.dumps({"error": "PipelineNotFoundError", "message": str(exc)}))
+            print(
+                json.dumps(
+                    {
+                        "error": verdict.reason,
+                        "message": verdict.detail,
+                        "unproducible": {
+                            cap: list(dss)
+                            for cap, dss in verdict.unproducible.items()
+                        },
+                    }
+                )
+            )
         else:
-            print(f"PipelineNotFoundError: {exc}", file=sys.stderr)
+            print(f"{verdict.reason}: {verdict.detail}", file=sys.stderr)
         raise typer.Exit(code=1)
 
+    pipeline = verdict.pipeline
     if json_out:
         print(json.dumps(_pipeline_to_dict(pipeline)))
     else:

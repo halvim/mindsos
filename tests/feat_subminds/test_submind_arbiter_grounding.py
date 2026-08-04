@@ -32,6 +32,7 @@ from mindsos_intelligence.pipeline_execution import execute_pipeline
 from mindsos_intelligence.resources import ResourceLedger
 from mindsos_intelligence.submind_arbiter import SubMindArbiter
 from mindsos_intelligence.capacity_mm_writer import RUN_GRAPH_ROLE_PREFIX
+from mindsos_capacity import FindVerdict
 
 
 # ── fakes ─────────────────────────────────────────────────────────────
@@ -117,12 +118,14 @@ class _Defn:
 
 def _charge_plan(start, goal):
     # reading -(charge)-> energy
-    return _Pipeline([_Step("capacity:charge", inputs=("datastate:reading",))])
+    # CORE-C3R1: ``plan_fn`` returns a ``FindVerdict``, not a bare pipeline.
+    return FindVerdict(
+        pipeline=_Pipeline([_Step("capacity:charge", inputs=("datastate:reading",))])
+    )
 
 
 def _arb(mm, executor, dispatcher, ledger, plan=_charge_plan):
-    a = SubMindArbiter(executor, dispatcher, ledger, mm=mm, plan_fn=plan,
-                       pipeline_not_found=Exception)
+    a = SubMindArbiter(executor, dispatcher, ledger, mm=mm, plan_fn=plan)
     a.install_on_ledger()
     return a
 

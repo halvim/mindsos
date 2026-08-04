@@ -216,6 +216,37 @@ def _select_finder(starts: Tuple[str, ...], explicit, where: str) -> str:
     return explicit
 
 
+class LeafPipelineNotFound(RuntimeError):
+    """Both views failed to yield a pipeline for a leaf.
+
+    **Why an exception here, when the finder stopped raising.** L3 no longer
+    raises for "no route" — that is a verdict about the world (shim S4,
+    ADR-0206 §3). What L4 does with a don't-know is a separate question, and
+    what ``execution.py`` does today is fail the leaf, because nothing here
+    catches. Converting that to a returned failure would be **new behaviour**,
+    which CORE-C3R1 is explicitly not (faithful conversion, no new failure
+    modes). So the propagation is preserved and the diagnosis improves.
+
+    **Replacement:** the planning loop at **C4R3**, which moves this caller.
+    Composing a pipeline per leaf is itself the defect ADR-0206 §3 names —
+    finding belongs to planning, not execution — so this class dies with the
+    call site rather than being fixed in place.
+
+    Carries **both** verdicts: composition tries the session's Local view then
+    Global, and each failure has its own reason and its own ``unproducible``
+    grouping.
+    """
+
+    def __init__(self, local, global_, starts, target) -> None:
+        self.local = local
+        self.global_ = global_
+        super().__init__(
+            f"no pipeline to {target!r} from {list(starts)!r}: "
+            f"local[{local.reason}] {local.detail}; "
+            f"global[{global_.reason}] {global_.detail}"
+        )
+
+
 def _compose_pipeline(dispatcher, starts: Tuple[str, ...], target: str, finder_name: str):
     """Compose one pipeline from the currently-registered capacities.
 
@@ -225,26 +256,32 @@ def _compose_pipeline(dispatcher, starts: Tuple[str, ...], target: str, finder_n
     session's Local view first and fall back to Global. With one start and the
     ``bfs`` strategy this is exactly what ``find_pipeline`` did — the back-compat
     free function is ``BFSFinder().find(start_datastates=(start,), …)``."""
-    from mindsos_capacity.exceptions import PipelineNotFoundError
     from mindsos_capacity.pipeline import BFSFinder, ConjunctionFinder
 
     finder = (
         ConjunctionFinder() if finder_name == FINDER_CONJUNCTION else BFSFinder()
     )
-    try:
-        return finder.find(
-            dispatcher.capacity_layer,
-            session=dispatcher.session,
-            start_datastates=starts,
-            target_datastate=target,
-        )
-    except PipelineNotFoundError:
-        return finder.find(
-            dispatcher.capacity_layer,
-            session=None,
-            start_datastates=starts,
-            target_datastate=target,
-        )
+    local = finder.find(
+        dispatcher.capacity_layer,
+        session=dispatcher.session,
+        start_datastates=starts,
+        target_datastate=target,
+    )
+    if local.found:
+        return local
+    glob = finder.find(
+        dispatcher.capacity_layer,
+        session=None,
+        start_datastates=starts,
+        target_datastate=target,
+    )
+    if glob.found:
+        return glob
+    # CORE-C3R1 D5: BOTH attempts are kept, and they are kept HERE rather than
+    # inside ``FindVerdict``. The finder answers one question per call — "is
+    # there a route in this view?" — and knows nothing about views. Only this
+    # function makes two calls, so only this function holds two verdicts.
+    raise LeafPipelineNotFound(local, glob, starts, target)
 
 
 def _resolve_shared_inputs(spec, blackboard, leaf_ref: str) -> Dict[str, Any]:
@@ -503,7 +540,7 @@ def _run_leaf_pipeline(
     )
     # A fresh per-run ref per leaf gives each run its own isolated grounding
     # graph (Slice A: replan / concurrent isolation).
-    pipeline = _compose_pipeline(dispatcher, starts, target, finder_name)
+    pipeline = _compose_pipeline(dispatcher, starts, target, finder_name).pipeline
     # Slice 1a — seed only the values the pipeline declares as starts, drawn from
     # the shared blackboard (an upstream stage may have produced them). Filtering
     # to ``start_datastates`` keeps ``execute_pipeline`` from minting unrelated
@@ -739,7 +776,9 @@ def _run_member_pipeline(
             (spec or {}).get("finder"),
             f"map {leaf_ref!r} member",
         )
-        pipeline = _compose_pipeline(dispatcher, starts, target_ds, finder_name)
+        pipeline = _compose_pipeline(
+            dispatcher, starts, target_ds, finder_name
+        ).pipeline
         if compose_cache is not None:
             compose_cache["pipeline"] = pipeline
     available = {**shared, start_ds: seed_value}

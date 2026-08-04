@@ -29,7 +29,7 @@ def test_find_pipeline_returns_pipeline_dag():
     cl = layer("in", "mid", "out")
     cl.register_capacity(cap("s1", ("in",), ("mid",)))
     cl.register_capacity(cap("s2", ("mid",), ("out",)))
-    dag = find_pipeline(cl, start_datastate=IRI("in"), target_datastate=IRI("out"))
+    dag = find_pipeline(cl, start_datastate=IRI("in"), target_datastate=IRI("out")).pipeline
     assert isinstance(dag, Pipeline)
     assert [s.capacity_iri.split(":")[-1] for s in dag.steps] == ["s1", "s2"]
 
@@ -40,7 +40,7 @@ def test_bfs_emits_degenerate_linear_edges():
     cl.register_capacity(cap("s2", ("mid",), ("out",)))
     dag = BFSFinder().find(
         cl, start_datastates=(IRI("in"),), target_datastate=IRI("out")
-    )
+    ).pipeline
     # one edge per step, chained: START->0 (in), 0->1 (mid)
     assert [(e.producer, e.consumer, e.datastate.split(".")[-1]) for e in dag.edges] == [
         (START, 0, "in"),
@@ -57,7 +57,7 @@ def test_bfs_only_wires_via_input_not_other_declared_inputs():
     cl.register_capacity(cap("two_in", ("in", "side"), ("out",)))
     dag = BFSFinder().find(
         cl, start_datastates=(IRI("in"),), target_datastate=IRI("out")
-    )
+    ).pipeline
     ti = step_index(dag, "two_in")
     # full declared inputs recorded on the step…
     assert set(dag.steps[ti].input_datastates) == {IRI("in"), IRI("side")}

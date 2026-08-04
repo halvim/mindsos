@@ -278,7 +278,7 @@ def test_execute_pipeline_exposes_capacity_graph():
     disp = L4Dispatcher(layer, session=sess)
     pipeline = find_pipeline(
         layer, session=sess, start_datastate=DS_RAW, target_datastate=DS_ANSWER
-    )
+    ).pipeline
     res = execute_pipeline(
         disp, pipeline, {DS_RAW: {"grid": [[1]]}},
         request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:0:0",

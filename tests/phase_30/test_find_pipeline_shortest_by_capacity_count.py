@@ -26,7 +26,7 @@ def test_bfs_picks_shortest_capacity_count_path():
         start_datastate=DS_INPUT_IRI,
         target_datastate=DS_OUTPUT_IRI,
         max_depth=8,
-    )
+    ).pipeline
     # 2-capacity path: test.multi → fork → test.fork_to_output → output
     assert len(pipeline) == 2
     iris = [step.capacity_iri for step in pipeline.steps]

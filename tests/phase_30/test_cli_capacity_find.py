@@ -14,6 +14,7 @@ import json
 from typer.testing import CliRunner
 
 from mindsos_cli.app import app
+from mindsos_capacity import FIND_BFS_EXHAUSTED
 
 
 runner = CliRunner()
@@ -49,7 +50,10 @@ def test_find_against_empty_layer_json_emits_error_payload():
     )
     assert result.exit_code == 1
     payload = json.loads(result.stdout.strip())
-    assert payload["error"] == "PipelineNotFoundError"
+    # CORE-C3R1: ``error`` is the closed-set verdict reason, not an exception
+    # class name. Consumers branch on it; nothing parses ``message``.
+    assert payload["error"] == FIND_BFS_EXHAUSTED
+    assert payload["unproducible"] == {}
 
 
 def test_find_start_equals_target_exits_0():

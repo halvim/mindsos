@@ -386,18 +386,17 @@ class BrainREPL:
             return f"no such datastate: {start!r}"
         if not any(v.get_datastate(target) is not None for v in views):
             return f"no such datastate: {target!r}"
-        from mindsos_capacity.exceptions import PipelineNotFoundError
         from mindsos_capacity.pipeline import find_pipeline
 
-        try:
-            pipe = find_pipeline(
-                self.stack.cl,
-                session=None,
-                start_datastate=start,
-                target_datastate=target,
-            )
-        except PipelineNotFoundError as e:
-            return f"no pipeline: {e}"
+        verdict = find_pipeline(
+            self.stack.cl,
+            session=None,
+            start_datastate=start,
+            target_datastate=target,
+        )
+        if not verdict.found:
+            return f"no pipeline [{verdict.reason}]: {verdict.detail}"
+        pipe = verdict.pipeline
         n = len(pipe)
         if n == 0:
             return f"{target} already available at {start} (no-op)"
@@ -668,7 +667,6 @@ class BrainREPL:
         return f"pipeline -> {pipe.target_datastate} = {out!r}"
 
     def _do_execute(self, args: List[str]) -> str:
-        from mindsos_capacity.exceptions import PipelineNotFoundError
         from mindsos_capacity.pipeline import ConjunctionFinder
         from mindsos_server.pipeline_runner import run_pipeline
         from mindsos_server.skills.records import skill_entries
@@ -687,15 +685,18 @@ class BrainREPL:
         if not pos:
             return f"usage: execute <input>   (runs {name}: {start} -> {target})"
         value = self._coerce(pos[0]) if len(pos) == 1 else " ".join(pos)
-        try:
-            pipe = ConjunctionFinder().find(
-                self.stack.cl,
-                session=None,
-                start_datastates=(start,),
-                target_datastate=target,
+        verdict = ConjunctionFinder().find(
+            self.stack.cl,
+            session=None,
+            start_datastates=(start,),
+            target_datastate=target,
+        )
+        if not verdict.found:
+            return (
+                f"execute: no pipeline {start} -> {target} "
+                f"[{verdict.reason}]: {verdict.detail}"
             )
-        except PipelineNotFoundError as e:
-            return f"execute: no pipeline {start} -> {target}: {e}"
+        pipe = verdict.pipeline
         state, rerr = run_pipeline(self.stack.dispatcher, pipe, {start: value})
         if rerr:
             return f"execute failed: {rerr}"

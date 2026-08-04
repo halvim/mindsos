@@ -64,12 +64,14 @@ the invocation runtime + BFS pipeline finder + problem-trace primitives
   producing a target DataState from the available start DataStates, over
   the bipartite PRODUCES/CONSUMES edge set (ADR-0071 §am-2 + ADR-0156).
   ``find_pipeline`` is the BFS back-compat entry point; ``BFSFinder`` /
-  ``ConjunctionFinder`` are the strategies (L4 selects). Raises
-  ``PipelineNotFoundError`` on exhaustion; ignores constraints (L4
+  ``ConjunctionFinder`` are the strategies (L4 selects). Every strategy
+  returns a ``FindVerdict`` — a route or an honest don't-know, never a
+  raise (CORE-C3R1, shim S4); ignores constraints (L4
   filters post-hoc). (Was ``PipelineDAG`` through Slice 1; renamed to
   ``Pipeline`` — the converging plan is the pipeline, "DAG" was a
   migration-only marker.)
-- ``PipelineNotFoundError`` + ``ProblemTraceError`` — Phase 30 raisers.
+- ``ProblemTraceError`` — Phase 30 raiser. ``PipelineNotFoundError`` is
+  retired (shim S4): see ``FindVerdict`` + ``FIND_REASONS``.
 - Monitor lifecycle (the Phase 31 descriptive subscription handle +
   per-layer registry + lifecycle methods) **relocated to the L4
   substrate in Phase 41** per ADR-0155. L3 now ships only the
@@ -155,7 +157,6 @@ from .exceptions import (
     CapacityRegistrationError,
     ConstraintViolationError,
     DataStateError,
-    PipelineNotFoundError,
     ProblemTraceError,
     WriteHandleNotWiredError,
 )
@@ -171,6 +172,13 @@ from .pipeline import (
     ConjunctionFinder,
     DAGEdge,
     DAGStep,
+    FIND_BFS_EXHAUSTED,
+    FIND_MAX_DEPTH_EXCEEDED,
+    FIND_NO_SATISFIABLE_PRODUCER,
+    FIND_REASONS,
+    FIND_REQUIRED_INPUT_UNPRODUCIBLE,
+    FIND_UNREGISTERED_TARGET,
+    FindVerdict,
     Finder,
     Pipeline,
     find_pipeline,
@@ -308,7 +316,6 @@ __all__ = [
     "CapacityRegistrationError",
     "ConstraintViolationError",
     "DataStateError",
-    "PipelineNotFoundError",
     "ProblemTraceError",
     "WriteHandleNotWiredError",
     "CapabilityDeniedError",
@@ -358,6 +365,13 @@ __all__ = [
     "BFSFinder",
     "ConjunctionFinder",
     "find_pipeline",
+    "FindVerdict",
+    "FIND_REASONS",
+    "FIND_BFS_EXHAUSTED",
+    "FIND_NO_SATISFIABLE_PRODUCER",
+    "FIND_MAX_DEPTH_EXCEEDED",
+    "FIND_REQUIRED_INPUT_UNPRODUCIBLE",
+    "FIND_UNREGISTERED_TARGET",
     # Phase 33 — write-outcome substrate (ADR-0146 §amendment-1)
     "WriteResult",
     "WriteOutcome",
