@@ -419,3 +419,95 @@ sandbox — its `.git` file points at a Mac path — but file writes work, which
 split. **The Linux gate host and the Mac are different machines: a `docker.sock` under
 `/Users/` means the gate was run on the Mac, which RULES §5 forbids and which will silently
 gate the wrong branch.**
+
+---
+
+## 13. Round-4 findings (2026-08-04, CORE-C2R2 pre-build read-through @ `3591add`)
+
+Every claim in §§1–12 held except **§12.7**, which is withdrawn (below). What the re-read
+**added** — all four read from the code, not inferred.
+
+### 13.1 An ordered hyperedge's member order does NOT survive persistence
+
+This is the finding that changed C2R4's design (ADR-0205 §amendment-3.2).
+
+- `mindsos_core/cypher/builders.py` — `build_unwind_create_intergraph_hyperedges` writes
+  `MERGE (ih)-[:MEMBER]->(n)` with **no ordinal property**. `MERGE` is idempotent, so a member
+  appearing twice collapses to one relationship.
+- `mindsos_core/reconstruction/metagraph_loader.py` — `_load_intergraph_hyperedges` reads them
+  back with `collect(DISTINCT {node_id, graph_id})`. Arbitrary order, duplicates already gone.
+- The loader **selects `ih.ordered`** in its `RETURN` clause and **never passes it** to the
+  reconstruction call.
+- Reconstruction goes through `mg.add_intergraph_hyperedge`, which derives `ordered` from the
+  **schema type** — and a loaded metagraph has no schema (`MetagraphLoader` restores
+  `schema_name` only, PB-11 A), so P9-A's permissive default applies and every reloaded
+  hyperedge is treated as `ordered=True` regardless of what it was.
+
+`FalkorDBLocalPersister.save` / `.load` (`mindsos_server/persistence/local_persister.py`) go
+through `MetagraphRepository` / `MetagraphLoader`, so this is the durable path, not a corner.
+
+⟹ **Member order and duplicates are destroyed on every durable round-trip.** Phase 05c's own
+`cat = c + a + t` fixture does not survive a reload today. **No test asserts otherwise**, so the
+gate is silent about it.
+
+**Reachability: DECLARED, not live.** `IntergraphHyperEdge` still has zero consumers above
+`mindsos_core` (§12.1), so nothing writes one into a persisted store today. C2R4 would have
+been the first. It is a defect in `mindsos_core` independent of CORE-C2, and C2R4 avoids
+depending on it by deriving order instead of storing it.
+
+### 13.2 The L2 knowledge layer cannot READ a link either — §12.1 named only the write half
+
+§12.1 records that `KLWriteHandle` is node-operations-only. The read half is missing too:
+`MetagraphView` (`mindsos_knowledge/metagraph_view.py`) exposes `graphs_by_role`,
+`alignment_graph`, `get_node`, `iter_nodes`, `get_edges`, `step` and `versions_in_role` —
+**and no intergraph accessor at all**. `get_edges` and `step` walk `Graph.edges`, which is
+intra-graph.
+
+⟹ `CORE_RECONCILIATION_PLAN.md` §3.1 specifies the traversal primitive as
+`walk(start, *, direction, view, …)`. The `view` it is meant to read through cannot see the
+links it must walk. **C2R3's scope is the read path as well as the write path.**
+
+### 13.3 A zero-step `Pipeline` is storable, and is not representable as a composition
+
+- `mindsos_capacity/pipeline.py` — both finders return `Pipeline(steps=(), edges=())` when the
+  target DataState is already in the start set (`BFSFinder` and `ConjunctionFinder`, each with
+  an unconditional early return before their search phases).
+- `mindsos_server/pipelines.py::learn_pipeline` validates only the ADR-0182
+  `to_dict`/`from_dict` round-trip before persisting. An empty pipeline round-trips perfectly,
+  so **it is storable today** and would carry into C2R4's migration.
+- `add_intergraph_hyperedge` refuses `m < 1`; the single-member `IntergraphEdge` (§am-1.2) needs
+  a target node. **There is no composition with zero members**, so under ADR-0205 §2 an empty
+  pipeline is not at the pipeline level at all.
+
+Downstream, confirmed by the dream lane: `mindsos_intelligence/capacity_persister.py`
+`build_capacity_index` returns `None` when no run graph has nodes, so a request served by an
+empty pipeline closes **successfully with `capacity_root_ref = None`** — the same shape a
+crashed request has. Four consumers infer "already held" from an absence: the store, the episode
+corpus, `viz_spec.SEGMENTS`, and the planning loop (satisfied vs unreachable milestone).
+
+⟹ Ruled at ADR-0205 §amendment-3.4; the fix is requested of CORE-C3 as an `already_held`
+distinction on `FindVerdict`.
+
+### 13.4 §12.7 is WITHDRAWN — `input_group` blocks nothing
+
+§12.7 records the graph form of `input_group` as unowned and blocking the pipeline level.
+CORE-C3R1 retired the **concept**, so the deferred item has no subject (ADR-0156 §am's deferral
+is withdrawn, not deferred). Measured across every repo: **`Arc3` 0 · `nilm` 0 · core 0 ·
+`arc1-brain` 1** (`arc_capacities.py:841`, being moved to `all_required` ahead of its merge).
+
+⚠ **Two corrections to how that number was reached, worth keeping because both were wrong in
+the same way.** The first sweep claimed "zero declarations anywhere" having searched only the
+mono-repo. A later table then listed `projects/amii_study/ondevice_profile.py:62` as a core
+declaration; it is **untracked**, absent from `origin/main`, and was **deleted** at `0943d4b`
+on the only two branches that ever held it — residue of a deletion, read out of a working tree.
+
+> **The rule both misses point at: a claim about "the repo" is a claim about refs.** Use
+> `git grep <ref>` / `git ls-files`, never `grep -rn` over a checkout — a checkout contains
+> deleted files and other lanes' leftovers. And run `git log --all -- <path>` before calling a
+> path absent, because a deletion commit changes the answer.
+
+### 13.5 Environment
+
+The shared `MindsOS` clone carries an **untracked `projects/amii_study/` tree** inside the
+`main` checkout. It has already misled two cross-repo sweeps into reading it as tracked
+content. Clear it or ignore it.
