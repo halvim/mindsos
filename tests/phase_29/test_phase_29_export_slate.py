@@ -72,9 +72,9 @@ def test_phase_30_surface_exported_at_phase_30():
     )
 
 
-def test_export_count_is_145():
+def test_export_count_is_146():
     """Sentinel-flip ledger: 95 (P30) -> 97 (P31) -> 110 (P33) -> 114 (P40)
-    -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9) -> 139 -> 145
+    -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9) -> 139 -> 145 -> 146
     (composition-lifecycle).
 
     composition-lifecycle (ADR-0071 §am-2 + ADR-0159 §am-1) net +11:
@@ -87,8 +87,8 @@ def test_export_count_is_145():
     """
     import mindsos_capacity
     n = len(mindsos_capacity.__all__)
-    assert n == 145, (
-        f"__all__ count {n} != expected 145 "
+    assert n == 146, (
+        f"__all__ count {n} != expected 146 "
         f"(F9 baseline 128 + 11 composition-lifecycle net = 139; then "
         f"CORE-C3R1: -PipelineNotFoundError, +FindVerdict + 6 FIND_* reasons)"
     )

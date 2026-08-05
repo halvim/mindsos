@@ -54,11 +54,26 @@ class InputContractError(CapacityRegistrationError):
     """Invoke inputs violate the declared ``CONSUMES`` contract (ADR-0072
     §amendment-2 / composition-lifecycle Slice 2 Part 6).
 
-    ``kind`` is ``"missing_required"`` (an ``all_required`` input absent,
-    or ``any_of`` satisfied by none) or ``"unexpected_input"`` (a key not
-    in the declared inputs). Validated against the declaration's input
-    set, respecting ``input_group``; ``fold`` is not enforced at v1 (its
-    operand multiplicity is Slice 2 Part 5).
+    ``kind`` is a **closed set of three**, raised by ``_validate_inputs``
+    (``capacity.py``). An L4 consumer branches on it, so all three must be
+    handled:
+
+    - ``"missing_required"`` — a declared input is absent (``all_required``
+      with a gap, or ``any_of`` satisfied by none).
+    - ``"unexpected_input"`` — a supplied key is not a declared input.
+    - ``"operand_arity"`` — a present input declares ``operand_arity=N`` and
+      the supplied value is not a length-N list (ADR-0198 §5a).
+
+    Documented as two until CORE-C3R1. ``operand_arity`` is the omitted one,
+    and it is precisely what the shared step-admission predicate makes
+    load-bearing — a consumer that branches on two values silently
+    mis-handles the third.
+
+    ``input_group=fold`` short-circuits the entire check: ``_validate_inputs``
+    returns before any of the three, so a capacity declaring it runs on a
+    subset of its declared inputs and reports success. That is the second
+    half of defect **D-A**; it closes with the ``input_group`` retirement,
+    which deletes the field.
 
     On the ``invoke`` path it is caught into the ADR-0072 envelope
     (``success=False``) and the problem-trace record is tagged
