@@ -2439,8 +2439,9 @@ def add_intergraph_hyperedge_cmd(
         False, "--compositional",
         help="P05b Pushback 2-A precedent: identity-bearing flag. "
              "Default False; immutable post-create (P2-refined). "
-             "Refused alongside ordered=False types at validation step "
-             "10 (P8-A).",
+             "Legal alongside --unordered types since CORE-C2R2 (the "
+             "P8-A refusal at validation step 10 is retired; ADR-0205 "
+             "amendment-3.1).",
     ),
     intergraph_hyperedge_id: Optional[str] = typer.Option(
         None, "--intergraph-hyperedge-id",
@@ -2455,7 +2456,8 @@ def add_intergraph_hyperedge_cmd(
     counts refuse with exit 2 BEFORE any mutation. Graph names are
     translated to graph_ids at this CLI boundary; the factory does the
     rest (canonicalization per ``type.ordered``, cardinality on canonical,
-    overlap, P8-A refusal, schema validation when attached).
+    overlap, schema validation when attached). Step 10's P8-A refusal is
+    retired at CORE-C2R2 — ADR-0205 §amendment-3.1.
     """
     mg = _load_or_die(name)
     # P4-A — pair the repeated flags BEFORE name-resolution so the

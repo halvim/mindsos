@@ -1,7 +1,8 @@
 """CLI tests for intergraph-hyperedge subcommands on ``mindsos metagraph`` (Phase 05c).
 
 Covers (P14-A 16-step + P4-A paired-flags + P10-C replace-only update +
-P19-A cardinality collapse refusal + P8-A compositional+ordered refusal +
+P19-A cardinality collapse refusal (P8-A's compositional+ordered refusal is
+retired at CORE-C2R2 — ADR-0205 amendment-3.1) +
 the 5-way set-prop mutex extension + P12-A schema-mutation footgun
 warning + P31 P13-B workaround regression coverage on the binary primitive).
 
