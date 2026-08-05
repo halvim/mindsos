@@ -195,3 +195,56 @@ def test_cli_invoke_wrong_input_iri_surfaces_input_contract():
     parsed = json.loads(result.output)
     assert parsed["success"] is False
     assert parsed["error"]["type"] == "InputContractError"
+
+
+# ── CORE-C3R1 signature sweep — the `kind` set is closed and documented ──
+#
+# `exceptions.py` documented two `kind` values where `_validate_inputs` raises
+# three; the omitted one, ``operand_arity``, is precisely the one the shared
+# step-admission predicate makes load-bearing, and an L4 consumer branches on
+# `kind` to decide whether the finder wired it wrong. A docstring cannot be
+# gated, so gate the set instead: the raisers, the docstring and this test move
+# together or the gate goes red.
+
+KIND_VALUES = frozenset({"missing_required", "unexpected_input", "operand_arity"})
+
+
+def test_input_contract_error_is_exported_from_the_package():
+    """arc1 and SubMind import it from the package, not from `.exceptions`."""
+    import mindsos_capacity
+
+    assert mindsos_capacity.InputContractError is InputContractError
+    assert "InputContractError" in mindsos_capacity.__all__
+
+
+def test_kind_set_matches_what_validate_inputs_actually_raises():
+    """AST over the raiser — a different method than reading the docstring."""
+    import ast
+    import inspect
+
+    from mindsos_capacity import capacity as capacity_mod
+
+    tree = ast.parse(inspect.getsource(capacity_mod))
+    raised = set()
+    for node in ast.walk(tree):
+        if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Name)):
+            continue
+        if node.func.id != "InputContractError":
+            continue
+        for kw in node.keywords:
+            if kw.arg == "kind" and isinstance(kw.value, ast.Constant):
+                raised.add(kw.value.value)
+    assert raised == set(KIND_VALUES), (
+        f"`kind` values raised by capacity.py are {sorted(raised)}; this test "
+        f"and InputContractError's docstring say {sorted(KIND_VALUES)}. "
+        "Adding or removing a kind is an L4-visible contract change."
+    )
+
+
+def test_kind_set_is_documented_in_the_exception_docstring():
+    doc = InputContractError.__doc__ or ""
+    missing = sorted(k for k in KIND_VALUES if f'"{k}"' not in doc)
+    assert not missing, (
+        f"InputContractError's docstring omits {missing}. It is the closed set "
+        "an L4 consumer branches on; the two-value version shipped at ae63aa2."
+    )

@@ -491,7 +491,7 @@ class ConjunctionFinder(Finder):
     ``confirmation_docs/finder_variants_model.py`` reproduces both phases
     exactly and swaps only the phase-2 admission rule. Over 20,000
     generated capacity graphs: shipped-with-empty-stack and
-    threaded-stack-alone leave **369 max_depth blowups + 20 duplicate-step
+    threaded-stack-alone leave **369 max_depth blowups + 25 duplicate-step
     pipelines**; with the ``in_flight`` guard, **0 and 0**. The three
     conformance shapes (``all_required`` AND, diamond convergence, fold
     fan-in) are byte-identical across all variants.
@@ -506,9 +506,13 @@ class ConjunctionFinder(Finder):
     *What a subsystem must do differently.* Nothing is added to any
     capacity declaration. Catalogs that composed only because of the leak
     will now report the input as unproducible, which is the honest answer.
-    nilm and arc1 should run the divergence sweep
-    (``mindsos_capacity.catalog_check``) over their own catalogs before
-    declaring a ``shared_inputs`` map.
+    **There is no divergence sweep to run.** This paragraph used to point
+    nilm and arc1 at ``mindsos_capacity.catalog_check``; that module
+    computes source / sink / orphan structure only and contains no
+    divergence function, so both brains would have run a structural check,
+    got ``ok``, and believed they had swept. Building it is owed to
+    **CORE-C3R1** and lands in ``catalog_check.py`` — not ``tools/``,
+    which is outside ``pyproject.toml``'s ``include``.
 
     *Where this is going.* This is a **patch, not the design.** Both
     defects exist because the walk is a top-down recursion that needs
@@ -728,7 +732,7 @@ def find_pipeline(
     start_datastate: str,
     target_datastate: str,
     max_depth: int = 8,
-) -> Pipeline:
+) -> FindVerdict:
     """Find the shortest capacity chain from ``start_datastate`` to
     ``target_datastate`` (the ADR-0071 BFS strategy).
 

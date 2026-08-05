@@ -12,13 +12,13 @@ import mindsos_capacity
 import mindsos_knowledge
 
 
-def test_phase_34_export_count_stable_at_145():
+def test_phase_34_export_count_stable_at_146():
     """Forward-anchor sentinel: 114 (P40 X1) -> 112 (P41 X2) -> 117 (P42 X3)
-    -> 118 (P45 Rail D) -> 128 (F9) -> 139 -> 145 (composition-lifecycle:
+    -> 118 (P45 Rail D) -> 128 (F9) -> 139 -> 145 -> 146 (composition-lifecycle:
     ADR-0071 §am-2 + ADR-0159 §am-1, net +11)."""
     n = len(mindsos_capacity.__all__)
-    assert n == 145, (
-        f"__all__ count {n} != 145 (139 after composition-lifecycle; 139 -> 145 (CORE-C3R1: -PipelineNotFoundError, +FindVerdict + 6 FIND_* reasons))."
+    assert n == 146, (
+        f"__all__ count {n} != 146 (139 after composition-lifecycle; 139 -> 145 (CORE-C3R1: -PipelineNotFoundError, +FindVerdict + 6 FIND_* reasons) -> 146 (+InputContractError))."
     )
 
 
