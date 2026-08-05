@@ -32,14 +32,14 @@ def test_each_retired_resident_export_unresolvable():
         )
 
 
-def test_export_count_is_145():
+def test_export_count_is_146():
     """Count-equals sentinel — 95 (P30) -> 97 (P31) -> 110 (P33) ->
-    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9) -> 139 -> 145
+    114 (P40) -> 112 (P41) -> 117 (P42) -> 118 (P45) -> 128 (F9) -> 139 -> 145 -> 146
     (composition-lifecycle: ADR-0071 §am-2 + ADR-0159 §am-1, net +11 —
     see the phase_29 slate ledger for the breakdown).
     """
-    assert len(mindsos_capacity.__all__) == 145, (
-        f"Expected 145 exports (139 -> 145 (CORE-C3R1: -PipelineNotFoundError, +FindVerdict + 6 FIND_* reasons)); " 
+    assert len(mindsos_capacity.__all__) == 146, (
+        f"Expected 146 exports (139 -> 145 (CORE-C3R1: -PipelineNotFoundError, +FindVerdict + 6 FIND_* reasons) -> 146 (+InputContractError)); " 
         f"found {len(mindsos_capacity.__all__)}"
     )
 

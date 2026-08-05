@@ -157,6 +157,7 @@ from .exceptions import (
     CapacityRegistrationError,
     ConstraintViolationError,
     DataStateError,
+    InputContractError,
     ProblemTraceError,
     WriteHandleNotWiredError,
 )
@@ -311,11 +312,13 @@ __all__ = [
     "list_of_compat",
     "validate_datastate",
     # Exceptions (base + 8 raisers; monitor-lifecycle exception retired
-    # Phase 41 per ADR-0155)
+    # Phase 41 per ADR-0155, PipelineNotFoundError retired at CORE-C3R1
+    # shim S4, InputContractError exported at CORE-C3R1's signature sweep)
     "CapacityLayerError",
     "CapacityRegistrationError",
     "ConstraintViolationError",
     "DataStateError",
+    "InputContractError",
     "ProblemTraceError",
     "WriteHandleNotWiredError",
     "CapabilityDeniedError",
