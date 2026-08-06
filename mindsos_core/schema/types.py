@@ -163,9 +163,11 @@ class IntergraphHyperEdgeType:
       repeated characters.
     * ``ordered=False`` (opt-in via CLI ``--unordered``): canonicalize
       at construction (sort lexicographically by ``(graph_id, node_id)``
-      then dedup). Set semantics. Refused alongside ``compositional=True``
-      at the factory's validation step 10 (P8-A) — compositional implies
-      identity-bearing composition, incompatible with set semantics.
+      then dedup). Set semantics. **Legal alongside ``compositional=True``
+      since CORE-C2R2** — the P8-A refusal at the factory's validation
+      step 10 is retired (ADR-0205 §amendment-3.1). Note the dedup runs
+      BEFORE the cardinality check, so a set collapsing to 1-1 still
+      refuses; use ``IntergraphEdge`` for the binary case.
 
     Per P9-A (no-schema default): when no MetagraphSchema is attached
     OR no IntergraphHyperEdgeType is registered for the ``type_name``,

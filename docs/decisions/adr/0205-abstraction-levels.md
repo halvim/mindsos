@@ -227,7 +227,11 @@ and never duplicates it.
 
 ## §amendment-1 (feat/adr-sweep — 2026-08-01): composition primitives, criterion scope, and four corrections
 
-**Amendment status:** Proposed. Flips to Accepted with **CORE-C2R1**.
+**Amendment status:** **Accepted** at **CORE-C2R2** (the composition-primitive item).
+The original line read *"Flips to Accepted with CORE-C2R1"*, using the pre-renumbering
+ids; under `CORE_RECONCILIATION_PLAN.md` §3 that item is **C2R2**, and C2R1
+(`installed-skills` dual-scope) shipped without touching the primitive. Corrected here
+rather than left as a stale `Proposed` on the amendment C2R2 builds from.
 
 Produced by the CORE-C1R4 contradiction sweep. Coverage record and evidence:
 `confirmation_docs/CORE_ADR_CONTRADICTION_SWEEP.md`. The canonical source for everything
@@ -484,3 +488,156 @@ is therefore chosen **per level**:
 
 `cat = c + a + t` keeps working: `ordered=True` compositional links remain expressible and
 are what the pipeline level uses.
+
+> ⚠ **The `pipeline → its capacity steps` row is SUPERSEDED by §amendment-3.2.** It becomes
+> `ordered=False`, with step order **derived** from the steps' declarations rather than held
+> in the member list. Every other row stands. `ordered=True` compositional links remain
+> expressible — `cat = c + a + t` is unaffected — but no rung of the ladder uses one.
+
+---
+
+## §amendment-3 (CORE-C2R2 — 2026-08-04): P8-A lifted, ordering derived, and where confidence does not live
+
+**Amendment status:** Accepted at CORE-C2R2 for §am-3.1 and §am-3.2 (both ship in this item).
+**Proposed** for §am-3.3 and §am-3.4, which record rulings whose consumers arrive at C2R4 and
+C2R5.
+
+Produced by the CORE-C2R2 pre-build read-through, reconciled at `origin/main` `3591add`
+against the CORE-C3R1 ship (`ae63aa2`, `find-verdict-confirmed`) and the decisions recorded in
+`confirmation_docs/CORE_C2_DECISIONS.md`. **This amendment does not restate §am-1 or §am-2.**
+
+### am-3.1 — P8-A is lifted. `compositional=True` with `ordered=False` is permitted.
+
+`Metagraph.add_intergraph_hyperedge` validation **step 10** refused the combination
+(`compositional and not ordered`). It is removed, along with the dead defence-in-depth copy in
+`update_intergraph_hyperedge` — the early compositional refusal there means `ihe.compositional`
+is always `False` by the time that check runs.
+
+**This is a deliberate override of a recorded and sound argument, not the restoration of a
+lost contract.** §am-1.1 located the rationale in `INTERGRAPH_EDGES_DESIGN.md`
+(*"compositional implies identity-bearing composition (cat=c+a+t — order/duplicates matter);
+set semantics is incompatible"*), and §am-2.3 established that **no** citation of ADR-0148
+supports the override — ADR-0148's own claim that `ordered=False` is the compositional default
+was a reconstruction error, corrected at ADR-0148 §amendment-1. The override must be argued on
+its merits, and the merit is narrow and specific:
+
+> `ordered` on a compositional link expresses a **total** order over its members. A plan's
+> milestones are a **set** with a **partial** order over them, carried by sibling dependency
+> links so that *parallel* is the **absence** of a link (ADR-0206 §2). An `ordered=True` member
+> list cannot express a partial order, so without this lift **a plan with two parallel
+> milestones is inexpressible.**
+
+The identity argument survives untouched for the cases it was written about: an
+identity-bearing composition whose members genuinely form a sequence still declares
+`ordered=True`, and `cat = c + a + t` still constructs.
+
+**Two behaviours callers must know**, neither of them new:
+
+- `ordered=False` **sorts and dedups** at construction (`mindsos_core/schema/types.py`), not
+  merely dedups. §am-2.3 records this correction to §2.
+- Dedup happens **before** the cardinality check (P14-A), so a set that collapses to one
+  anchor and one member still raises at step 8. That is correct — a single-member composition
+  is an `IntergraphEdge` (§am-1.2).
+
+**`ordered` is a property of the hyperedge *type*, not of the link**, and a reloaded metagraph
+carries no schema (`MetagraphLoader` restores `schema_name` only), so on reload the factory
+treats every hyperedge as `ordered=True` under P9-A. This is not a defect introduced here, and
+§am-3.2 removes the ladder's exposure to it.
+
+**Amends:** §2 (P8-A paragraph), Phase 05c pushback **P8-A**, `docs/concepts/glossary.md`.
+
+### am-3.2 — A pipeline's step order is DERIVED, not stored
+
+§am-2.3 assigned `pipeline → its capacity steps` the hyperedge with `ordered=True`, on the
+ground that *"the sequence is the pipeline"*. That row is superseded. The link becomes
+**`ordered=False`**, and the execution order is **recomputed** from the members' own
+`CONSUMES` / `PRODUCES` declarations plus the pipeline's start DataStates — a topological sort
+over the bipartite topology of ADR-0156, with a **first-by-IRI tie-break** where the order is
+genuinely free.
+
+**Ground — §1's own requirement, applied to itself.** Every level must be *verifiable by the
+level below*. A stored member order is an assertion **that can contradict the level below**:
+nothing prevents a persisted order from disagreeing with what the steps' declarations allow,
+and the model has no way to detect it. A derived order **cannot** disagree, because it is
+those declarations read in sequence. This is the criterion ADR-0192 used to reject a stored
+`fundamental` boolean — *"it duplicates information the PRODUCES topology already encodes"* —
+and §3 already states that sequence-versus-parallel is read from data flow and is *"an output
+of planning, not an input."* Holding it in a member list feeds it back in as an input.
+
+**What this deliberately gives up.** A capacity appearing **twice** in one stored pipeline
+becomes inexpressible, because `ordered=False` dedups. That is intended, not a cost:
+`execute_pipeline` holds one blackboard slot per DataState IRI, so a second firing overwrites
+the first — the shape recorded as defect **D-E** — and repeated application is served by a
+collection DataState with a map, one `PipelineRun` per member (ADR-0199, ADR-0204). Making it
+structurally impossible is the point.
+
+**What does not change, and must not be re-planned against.** This governs the **stored** form
+only. The `Pipeline` dataclass keeps `steps: Tuple[DAGStep, ...]`; `execute_pipeline` keeps
+walking it in tuple order; finders keep returning steps in the order they built them. **No
+runtime behaviour and no brain-facing call changes.** What changes is what C2R4's `pipelines`
+store writes, and the reconstruction that reads it.
+
+**Consequence for the store:** the tie-break must be fixed and recorded, or `Pipeline` equality
+and `Pipeline.to_dict()` stop being stable across a store round-trip. First-by-IRI is the
+convention `ConjunctionFinder` already uses for producer selection.
+
+**Amends:** §am-2.3's ordering table (one row). **Consumers:** C2R4.
+
+### am-3.3 — Confidence does not reach a compositional link, so §am-1.5 is not amended
+
+`CORE_C2_DECISIONS.md` §2 (**D1**) asked whether compositional links must gain editable
+properties so confidence and an `in_force` flag could move. **Neither consumer exists**, so
+§am-1.5's terminality is left exactly as recorded:
+
+- **Pipelines carry no confidence.** ADR-0206 §5's *"fitness for this task"* moves to the
+  map's **targeting** confidence — decided when a task's final DataState is chosen, not when a
+  pipeline is. A pipeline is deterministic; once the target is right there is nothing left to
+  be uncertain about. ⟹ `StepExecutionRecord.confidence`, populated as
+  `1.0 if success else 0.0`, is a **restated success flag**, not a measurement. It is deleted.
+- **The milestone confidence is *appropriateness*, child → parent.** Both endpoints are
+  milestone nodes in the milestone graph, so the link is **same-graph 1-1** — and
+  `add_intergraph_edge` refuses same-graph at step 3, the intra-graph `Edge` has no
+  `compositional` flag, and the hyperedge refuses 1-1 at step 8. This is precisely the
+  situation §am-1.3 (Ruling A) already ruled for C11's `SPECIALIZES`, and the same ruling
+  applies: **a plain typed intra-graph `Edge`**, whose properties are freely mutable.
+- **`in_force` must not exist.** §6 runs verification on read and §am-1.5 states that §8's
+  dormancy is **derived**, not recorded. A stored flag restating a derived fact is ADR-0192's
+  rejected pattern again.
+
+⟹ **D1 is closed by having no consumer, not by a ruling on the mechanism**, and the question
+re-opens at **C2R5** with the first item that writes. Deciding it now would be building a
+mechanism ahead of its consumer, which §Alternatives item 5 already rejects.
+
+⚠ **One consequence this hands to the plan-level item.** If child → parent is a plain edge,
+then **decomposition is not a composition** — which `CORE_C2_DECISIONS.md` §1.2 and ADR-0206 §2
+both assume it is. **C2R6 owns reconciling that**; it is not settled here.
+
+### am-3.4 — A pipeline with no steps is not a pipeline
+
+Both shipped finders return `Pipeline(steps=(), edges=())` when the target DataState is already
+in the start set, and `learn_pipeline` validates only the ADR-0182 codec round-trip, which an
+empty pipeline passes — so empty pipelines are **storable today**.
+
+Under §2 as amended by §am-1.2 a pipeline node's steps are its compositional **members**, and
+neither primitive expresses zero of them: `add_intergraph_hyperedge` refuses `m < 1`, and the
+single-member `IntergraphEdge` has no target. The declaration rule closes it from the other
+side — *a node with no link is not at any level.*
+
+**Ruling: an empty pipeline is not a pipeline.** *"I already hold the target"* and *"here is a
+route"* are different answers, and returning an empty collection for the first leaves **four**
+consumers to infer it from an absence — the pipeline store, the episode corpus (an empty
+capacity index closes a request with no grounding, the same shape as a crash), `viz_spec`, and
+the planning loop, which otherwise cannot distinguish a **satisfied** milestone from an
+unreachable one.
+
+The fix belongs where the type is defined: **`FindVerdict` should distinguish *routed* from
+*already held*.** That is CORE-C3's surface, and the request is filed to the C3 continuation.
+**`already_held` is not transitional** — it survives the forward walk of
+`CORE_CAPACITY_GRAPH_TRAVERSAL.md`, where it is the walk terminating at step zero.
+
+**If C3 declines**, C2R4 refuses an empty pipeline at the store and the caller carries the
+distinction. That is strictly worse — it makes `learn_pipeline` reject something the finders
+legitimately return, and it leaves the episode and `viz_spec` halves unfixed — but it is
+C2-local and C2R4 will take it rather than wait.
+
+**Consumers:** C2R4, and CORE-C3.

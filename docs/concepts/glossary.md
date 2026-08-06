@@ -116,9 +116,13 @@ identity-bearing composition (cat = c + a + t). Shipped Phase 05b.
 See [Intergraph edges](intergraph-edges.md).
 
 **IntergraphHyperEdge.** N-ary cross-graph link; not 1-1; carries
-both `compositional` and `ordered: bool` flags. Refuses
-`compositional=True, ordered=False` per ADR-0148 amendment.
-Shipped Phase 05c.
+both `compositional` and `ordered: bool` flags. Shipped Phase 05c.
+`compositional=True` with `ordered=False` was refused at validation
+step 10 (Phase 05c P8-A); that refusal is **lifted** at CORE-C2R2 —
+see ADR-0205 §amendment-3.1. `ordered=False` **sorts and dedups** at
+construction, and the dedup runs before the cardinality check, so a
+set collapsing to 1-1 still refuses (use `IntergraphEdge`).
+`ordered` is a property of the hyperedge **type**, not of the link.
 
 **IRI.** Internationalized Resource Identifier. Every L2 / L3
 entity (concept, capacity, datastate, alignment, memory, …) has a

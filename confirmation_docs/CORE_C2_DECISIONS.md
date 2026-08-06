@@ -103,7 +103,24 @@ demote verb so an identity could not be unwound after dependents existed.
 **The reason is sound and it is narrow.** It constrains *membership*. It says nothing about
 a number attached to the link, and nothing about whether the assertion is still in force.
 
-> ⚠ **REOPENED at `2c56246`.** The C1R4 sweep (ADR-0205 §am-1.5) independently confirmed
+> ✅ **CLOSED at CORE-C2R2 (2026-08-04) — by having no consumer, not by a ruling on the
+> mechanism.** Neither candidate consumer survives contact with the code. **Pipelines carry no
+> confidence** (CORE-C3R1: ADR-0206 §5's *fitness for this task* moves to the map's
+> **targeting** confidence, decided when a task's final DataState is chosen), so
+> `StepExecutionRecord.confidence` — `1.0 if success else 0.0` — is a restated success flag and
+> is deleted. **The milestone confidence is *appropriateness*, child → parent**; both endpoints
+> are milestone nodes in one graph, so the link is **same-graph 1-1**, which
+> `add_intergraph_edge` refuses at step 3, the intra-graph `Edge` cannot mark compositional, and
+> the hyperedge refuses at step 8 — exactly the case ADR-0205 §am-1.3 (Ruling A) already ruled a
+> **plain typed intra-graph `Edge`**, freely mutable. **`in_force` must not exist**: dormancy is
+> derived on read (ADR-0205 §6 + §am-1.5), so storing it is ADR-0192's rejected pattern.
+> ⟹ **nothing in C2R2–C2R5 writes a property to a compositional link**, the core amendment
+> proposed below is **not made**, and §am-1.5's terminality stands untouched. Re-opens at
+> **C2R5**, with the first item that writes. Full statement: ADR-0205 §amendment-3.3.
+> ⚠ **Handed to C2R6:** if child → parent is a plain edge, **decomposition is not a
+> composition** — which §1.2 below and ADR-0206 §2 both assume it is.
+>
+> *(Historical — the reopening that C2R2 closed.)* ⚠ **REOPENED at `2c56246`.** The C1R4 sweep (ADR-0205 §am-1.5) independently confirmed
 > compositional terminality and resolved it the other way — leave the primitive alone, and
 > note that **node** properties (`Pipeline.status`, provenance) are unaffected. That works
 > only if confidence lives on nodes, which ADR-0206 §5 rejects by name. A third option
@@ -531,7 +548,7 @@ ADR-0205 §3: sequence versus parallel is *"an output of planning, not an input.
 
 | Link | `ordered` | Why |
 |---|---|---|
-| pipeline → its capacity steps | **`True`** | the sequence *is* the pipeline; duplicates legal (a capacity may fire twice) |
+| pipeline → its capacity steps | ~~`True`~~ → **`False`** | **Superseded at C2R2** (ADR-0205 §am-3.2). *"The sequence is the pipeline"* does not survive the level test: a **stored** order can contradict the steps' `CONSUMES`/`PRODUCES` declarations and the model cannot detect it, while a **derived** order cannot. Order is recomputed by topological sort with a first-by-IRI tie-break; a capacity firing twice becomes inexpressible, which is intended (defect D-E; repeated application is collection → map) |
 | milestone → a pipeline reaching it | moot | single-member links (§8 A2.3) |
 | plan → its milestones | **`False`** | the **set** of milestones in the plan; the partial order over them lives in sibling→sibling dependency links, and their absence is what *parallel* means |
 | request → its plan | moot | single-member |
