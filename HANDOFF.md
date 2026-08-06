@@ -1,5 +1,33 @@
 # MindsOS — HANDOFF
 
+> **⚠️ 2026-08-04 — CORE-C2R2 shipped: P8-A lifted.** Squash `92d7421` (PR #114), tag
+> `compositional-unordered-confirmed`, merged-state gate **4492/0**, `test_cli` 256.
+> `compositional=True` with `ordered=False` is now permitted — a **deliberate override** of the
+> identity-bearing argument in `INTERGRAPH_EDGES_DESIGN.md`, **not** a restoration of an
+> ADR-0148 contract. Ground: `ordered` is a **total** order, a plan's milestones are a **set**
+> whose **partial** order lives in sibling links, so the refusal made a plan with two parallel
+> milestones inexpressible. `cat = c + a + t` is unaffected and pinned by a test.
+>
+> **Three rulings recorded, built later — read ADR-0205 §amendment-3 before C2R4 or C2R5.**
+> **(1)** A pipeline's step order is **DERIVED**, never stored — a stored order can contradict
+> the steps' declarations and the model cannot detect it. **Stored form only: `Pipeline.steps`,
+> `execute_pipeline` and every brain-facing call are unchanged.** **(2)** **D1 is closed by
+> having no consumer**, so `mindsos_core` is *not* amended and compositional links stay
+> terminal — pipelines carry no confidence, the milestone confidence is child→parent and
+> therefore same-graph 1-1 (a plain intra-graph `Edge`), and `in_force` must not exist. It
+> re-opens at **C2R5**. **(3)** A pipeline with **no steps is not a pipeline**; the fix is
+> requested of CORE-C3 as an `already_held` verdict.
+>
+> **Two things C2R3 must know** (`CORE_VERIFIED_FINDINGS.md` §13): `MetagraphView` has **no
+> intergraph accessor at all**, so C2R3's scope is the **read** path as well as the write path;
+> and an ordered hyperedge's **member order does not survive persistence** (no ordinal on
+> `:MEMBER`, `collect(DISTINCT …)` on load, schema-less reload) — declared, not live, and the
+> reason step order is derived rather than stored.
+>
+> **`input_group` is struck, not owned** — CORE-C3R1 retired the concept; `arc1-brain` holds
+> the only declaration anywhere. **C2R4 is not blocked.** **C2R3 is next**, and the **resource
+> graph** ships immediately after it as its first consumer (plan §12.2), not inside it.
+
 > **⚠️ 2026-08-01 — CORE-C2 substrate opened: A0 + C2R1 shipped.** Squash `0496e7f` (PR #107),
 > tag `installed-skills-dual-scope-confirmed`, merged-state gate **4472/0**, `test_cli` 256.
 >
