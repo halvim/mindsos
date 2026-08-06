@@ -640,4 +640,13 @@ distinction. That is strictly worse — it makes `learn_pipeline` reject somethi
 legitimately return, and it leaves the episode and `viz_spec` halves unfixed — but it is
 C2-local and C2R4 will take it rather than wait.
 
+**C3 did not decline.** `FindVerdict.already_held` ships at CORE-C3R1 as a **derived**
+property — `found and not pipeline.steps` — so there is no field beside the steps that can
+disagree with them. That is this ADR's own §5 ground and the one ADR-0192 used to refuse a
+stored `fundamental` flag, and it is why `found` is derived too. It is **not** a sixth
+`FIND_REASONS` value: `reason` is `None` whenever a route was found, and *already held* **is**
+a route, of length zero. The finders still return `Pipeline(steps=())`, so nothing any brain
+calls changes — C2R4 reads `already_held` rather than inferring zero members, and the fallback
+above is not needed.
+
 **Consumers:** C2R4, and CORE-C3.
