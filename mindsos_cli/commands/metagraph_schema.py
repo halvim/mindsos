@@ -778,7 +778,8 @@ def add_intergraph_hyperedge_type_cmd(
         help="P18-A: ordered=True (default) preserves insertion order + "
              "allows duplicates within a side (cat=c+a+t case). "
              "--unordered canonicalizes at construction (sort+dedup); "
-             "refused alongside compositional=True per P8-A.",
+             "legal alongside compositional=True since CORE-C2R2 (the "
+             "P8-A refusal is retired; ADR-0205 amendment-3.1).",
     ),
     prop_type: List[str] = typer.Option(
         [], "--prop-type",

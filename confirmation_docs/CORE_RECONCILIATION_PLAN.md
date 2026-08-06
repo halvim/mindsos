@@ -3,8 +3,11 @@
 **Filed:** 2026-07-31. **Revised** after the abstraction-levels conclusion.
 **Status:** approved. **C1 shipped** (`df8d3a5`). **C3R1 half-shipped** (`4fd8baa`) — see §4.
 **C2: A0 + C2R1 SHIPPED** — squash `0496e7f` (PR #107), tag
-`installed-skills-dual-scope-confirmed`, merged-state gate 4472/0. **C2R2 is next and opens
-with a reopened decision** — see the note under §3's table.
+`installed-skills-dual-scope-confirmed`, merged-state gate 4472/0. **C3R1 SHIPPED** —
+`ae63aa2`, tag `find-verdict-confirmed` (`FindVerdict` replaces `PipelineNotFoundError`,
+shim S4 retired). **C2R2 is BUILT** on `feat/core-c2r2` off `3591add` — P8-A lifted, **D1
+closed by having no consumer**, ADR-0205 §amendment-3 filed and §amendment-1 flipped to
+Accepted. **C2R3 is next.**
 **Revised** 2026-07-31 by the CORE-C2 pre-build read-through (§0, §3, §3.1, §7, §9, §10, §12),
 then reconciled at `60fe2ae` with the C3R1 chat's corrections (§2, §4, §9, §11) and at
 `2c56246` with the C1R4 sweep (ADR-0205 §amendment-1) — both verified against the code and
@@ -107,9 +110,9 @@ links.
 |---|---|---|
 | **A0** ✅ | **[SHIPPED `1e45067`]** **The four ADR amendments** — ADR-0205 §am-1/2/3, ADR-0206 §am-1, ADR-0148 §am-1, plus these plan corrections and `CORE_VERIFIED_FINDINGS.md` §12. **Docs only, lands before every code item.** Not bundled with C2R2: bundling doc corrections with a code change makes the gate result unattributable. Docs-only is still **gated** — `tests/test_adr_status_consistency.py`, and the test image copies `docs/` and `confirmation_docs/` into `/app` | — |
 | **C2R1** ✅ | **[SHIPPED — `df3af56`…`fa5e18d`, gate 4472/0]** **`installed-skills` became dual-scope.** Also amended **ADR-0183 S3** so a user-installable bundle can exist at all, and added the first one (`tests/fixtures/skill_bundle_local`). Four design corrections came out of building it — `CORE_C2_DECISIONS.md` §12.1. Originally scoped as: Today it is Global-only (ADR-0150 §am-6) while `installed-capacities` is Local-only — an asymmetry that makes skill install effectively **admin-only**. Under the model a **user installs a Skill Local**; an admin promotes it to Global. Role bootstrap + `CAN_INSTALL_SKILL` semantics. **Cheapest high-value item in the plan**, and it depends on nothing — runs in parallel with A0 | — |
-| **C2R2** | **The composition primitive.** ⚠ **Two open items land here** — see §12.7 and the note under this table. (a) Permit `compositional=True` with `ordered=False` — a deliberate override of P8-A's argument, per ADR-0205 §am-1, **not** a restoration of an ADR-0148 contract. (b) **Membership frozen, properties editable**: `members`/`anchors` and existence stay immutable (ADR-0148 identity-bearing; PB 6-A), `properties` become writable so confidence and an `in_force` flag can move. Retirement, supersession, dormancy and uninstall become a **property flip, never a delete**. Also updates `docs/concepts/glossary.md` | A0 |
-| **C2R3** | **The link mechanism — what creates levels at all.** Write and read compositional and ordinary intergraph links between L2 role-graphs; **persister round-trip in the gate**, covering the link kinds every later item needs. Plus **the traversal primitive**, **attribution** (the DOWN walk + `installed_by`; must return *which* dependencies are missing, not a boolean) and **invalidation** (the UP walk — a level node becomes unsupported when its last member link is flipped out of force) | C2R2 |
-| **C2R4** | **The pipeline level** — one store named **`pipelines`**; retire `learned-pipelines` and `promoted-pipelines`; steps convert to the composition primitive (`ordered=True`, holding only the capacity steps; start and end DataStates are separate links); `edge_sequence` retired; **migration of shipped `promoted-pipelines` data**. Supersedes Phase 13 **PB-9** | C2R3, **C3R1** |
+| **C2R2** ✅ | **[BUILT — the composition primitive]** (a) **P8-A lifted** — `compositional=True` with `ordered=False` is permitted; validation step 10 is retired in both `add_intergraph_hyperedge` and `update_intergraph_hyperedge` (the update copy was already unreachable). A deliberate override of the recorded identity-bearing argument, argued on the plan level's need for a **partial** order, **not** a restoration of an ADR-0148 contract. (b) **D1 is CLOSED by having no consumer** — the properties-editable amendment is **not** made; see the resolved note under this table. Also: ADR-0205 §amendment-3 filed, §amendment-1 flipped to Accepted, `docs/concepts/glossary.md` updated, and the §am-2.3 ordering table amended (pipeline steps become `ordered=False`, order derived) | A0 |
+| **C2R3** | **The link mechanism — what creates levels at all.** Write and read compositional and ordinary intergraph links between L2 role-graphs; **persister round-trip in the gate**, covering the link kinds every later item needs. ⚠ **The READ half is missing too, not only the write half** — `MetagraphView` has **no intergraph accessor at all**; `get_edges` / `step` are intra-graph. §12.1 and `CORE_VERIFIED_FINDINGS.md` §12.1 named only `KLWriteHandle`. Plus **the traversal primitive**, **attribution** (the DOWN walk + `installed_by`; must return *which* dependencies are missing, not a boolean) and **invalidation** (the UP walk — a level node becomes unsupported when its last member link is flipped out of force) | C2R2 |
+| **C2R4** | **The pipeline level** — one store named **`pipelines`**; retire `learned-pipelines` and `promoted-pipelines`; steps convert to the composition primitive (**`ordered=False`**, holding only the capacity steps; start and end DataStates are separate links); `edge_sequence` retired; **migration of shipped `promoted-pipelines` data**. Supersedes Phase 13 **PB-9**. **Three rulings from C2R2 land here** (ADR-0205 §am-3.2 / §am-3.4): step order is **derived** from the steps' `CONSUMES`/`PRODUCES` + start DataStates with a **first-by-IRI tie-break**, never stored; the store **must not persist a finder choice** (no `finder` field, no `selection_policy` — #99's start-arity `_select_finder` is transitional by construction); and an **empty pipeline is not a pipeline** — refuse it at the store unless CORE-C3 lands the `already_held` verdict first. Also carries a gate assertion that no registered capacity declares `fold` or `any_of` | C2R3 |
 | **C2R5** | **The milestone level** — a node that *references* its target DataState and *composes* the pipelines reaching it, **one link per pipeline** (alternatives, per ADR-0205 §3); hub discovery; the **taught-milestone write capacity**. Moved **after** the pipeline level: a milestone links over pipelines and cannot exist first | C2R4, ADR-0206 §am-1 |
 | **C2R6** | **The plan level** — the milestone tree lives here: parent→child is decomposition, sibling→sibling is dependency, and the plan's composition over its milestones is `ordered=False`. `PlanResult`'s endpoint dicts, `sequence_index`, `parent_ref` and `children_refs` all become links; `MAX_DEPTH` retired. **Send the dream chat the trace-reshape notice before this lands** | C2R5 |
 | **C2R7** | **The request level** — `request_knowledge`, renamed from `request_patterns`. `relevant_hints` becomes links with confidence on them; **`paired_pipelines` is retired, not converted** — pipelines are reached through plan → milestone → pipeline, and a direct request→pipeline link would recreate the duplication this plan removes. `SubgoalTemplate` retired | C2R6 |
@@ -126,10 +129,18 @@ links.
 > graphs stay removable and run state stays mutable. What *durable* structure may be
 > compositional is **open** and belongs to the milestone-level item.
 >
-> **[open] Where confidence lives.** ADR-0206 §5 puts it on the link; compositional links are
-> terminal (§am-1.5). Either the core is amended so link properties are editable, or
-> confidence and `in_force` ride a **separate ordinary link** beside the compositional one.
-> **Not decided.** C2R2's subject; A0 deliberately does not carry it.
+> **[RESOLVED at C2R2 — D1 is closed by having no consumer]** Neither candidate consumer
+> exists. **Pipelines carry no confidence** (ADR-0206 §5's *fitness for this task* moves to the
+> map's **targeting** confidence), so `StepExecutionRecord.confidence` is a restated success
+> flag and is deleted. **The milestone confidence is *appropriateness*, child → parent** — both
+> endpoints are milestone nodes in one graph, so it is **same-graph 1-1**, which no shipped
+> primitive expresses as a composition; ADR-0205 §am-1.3 (Ruling A) already rules that case a
+> **plain typed intra-graph `Edge`**, freely mutable. And **`in_force` must not exist** —
+> dormancy is derived on read (§6 + §am-1.5), so storing it is ADR-0192's rejected pattern.
+> ⟹ nothing in C2R2–C2R5 writes a property to a compositional link; **§am-1.5's terminality is
+> left untouched** and the question re-opens at **C2R5** with the first item that writes.
+> ⚠ One consequence handed to **C2R6**: if child → parent is a plain edge, **decomposition is
+> not a composition**, which `CORE_C2_DECISIONS.md` §1.2 and ADR-0206 §2 both assume it is.
 
 **Skill attribution is no longer a core item.** The **skill ledger** — the sole source of
 truth for *what a skill added* (which nodes, which links; install-time, append-only, never
@@ -311,7 +322,7 @@ named to replace it. Anything failing either test is a defect.
 | S1 | `find_pipeline` | the old singular keyword; 7 call sites | the find capacity | C3R4 |
 | S2 | `BFSFinder` | a search that cannot wire >1 input | **a `selection_policy` value**, not a method — `CORE_CR_FINDER_AS_CAPACITIES.md` | C3R3 |
 | S3 | `mindsos_server/pipeline_runner.py` | REPL pipeline running, in L0 | `execute_pipeline` | C3R4 |
-| S4 | `PipelineNotFoundError` | a technical failure that isn't one | an honest don't-know verdict | C3R1 |
+| ~~S4~~ | ~~`PipelineNotFoundError`~~ | **[RETIRED]** replaced by `FindVerdict` — CORE-C3R1, squash `ae63aa2`, tag `find-verdict-confirmed`. Struck here at C2R2 as register bookkeeping (§9's rule: updated on every ship); the ship is C3's | — |
 | S5 | `learned-pipelines` + opaque blob | taught-pipeline storage | one normalised pipeline store | C2R4 |
 | S6 | `SubgoalTemplate` | a milestone set | links from `request_knowledge` | C2R7 |
 | S7 | `Milestone.sequence_index` | sibling ordering | dependency links on the plan | C2R6 |
@@ -400,11 +411,8 @@ does not exist** and was never written. The concept questions it stood for are c
 **A0 and C2R1 are built** on `feat/core-c2` (`1e45067`, `df3af56`, `4df01fc`), not yet
 gated. **C3R1 half-shipped** at `4fd8baa`.
 
-⚠ **`input_group` is unowned again.** It was assigned to C3R1; **C3R1's half-ship did not
-include it**, and the remaining C3R1/C3R3 scope is the finder-as-capacities CR, which does
-not name it either. **It blocks C2R4.** Someone must take it — fold it into the
-finder-as-capacities CR, or make it its own item before C2R4 starts. Recorded as
-`CORE_VERIFIED_FINDINGS.md` §12.7.
+~~⚠ **`input_group` is unowned again.**~~ **STRUCK at C2R2.** See the updated §12.1 below —
+the concept is retired, so the deferred graph form has no subject and blocks nothing.
 
 6. **[re-filed 2026-08-01 — dropped by an intervening rewrite] `ADR-0205 §amendment-1.6`
    blocks C2R2.** `Metagraph.remove_graph` refuses if any incident intergraph edge or hyperedge
@@ -412,21 +420,66 @@ finder-as-capacities CR, or make it its own item before C2R4 starts. Recorded as
    If per-request plan structure is compositional, every task's graph becomes permanently
    unremovable. Compositional is **terminal** — remove, mutate **and deprecate** all raise
    `CompositionalImmutableError`, and the flag cannot flip; the only recovery on record is
-   `mindsos metagraph reset --force`. Three options are recorded in the amendment; **none is
-   chosen.** §12.1 says C2R2 is next — decide this before the milestone graph is built.
+   `mindsos metagraph reset --force`. **[C2R2] Half-resolved.** ADR-0205 §am-2.2 already ruled
+   the **per-request** half: the trace links with **ordinary, non-compositional** intergraph
+   edges, so task graphs stay removable. C2R2 adds that nothing it ships makes a *durable*
+   compositional link either — D1 is closed by having no consumer, so no compositional link is
+   written before **C2R5**. **The durable half stays open and moves to C2R5**, which writes the
+   first one.
 7. **[re-filed 2026-08-01] Four orphaned deferrals.**
    `_source_backup/root/mindsos_future_plans.md` no longer exists. It is the filed home of
    Pushback 6-A's compositional escape hatch, the `IntergraphEdge` endpoint-update verb, the
    in-place hyperedge→edge downgrade (P19-A), and Pushbacks 25-B / 31-B / 33-B / 34-B. No
    record survives anywhere.
 
-### 12.1 Start order — updated 2026-08-01
+### 12.1 Start order — updated 2026-08-04
 
-**A0 ✅ and C2R1 ✅ are shipped** (squash `0496e7f`, tag
-`installed-skills-dual-scope-confirmed`, gate 4472/0). **C2R2 is next**, and it opens with the
-reopened D1 decision — where confidence lives (`CORE_C2_DECISIONS.md` §2).
+**A0 ✅, C2R1 ✅ and C2R2 ✅ are done.** A0 + C2R1 shipped at squash `0496e7f`, tag
+`installed-skills-dual-scope-confirmed`, gate 4472/0. **C2R2 is built** on `feat/core-c2r2`
+off `3591add` — P8-A lifted, D1 closed by having no consumer, ADR-0205 §am-3 filed.
+**C2R3 is next.**
 
-⚠ **`input_group`'s graph form is UNOWNED.** It was assigned to C3R1; **C3R1's half-ship
-(`4fd8baa`) did not include it**, and the finder-as-capacities CR does not name it either.
-**It blocks C2R4 (the pipeline level).** Someone must take it — fold it into that CR, or make
-it its own item — before C2R4 starts.
+✅ **`input_group`'s graph form is STRUCK, not owned.** CORE-C3R1 retired the **concept**
+entirely — `fold` and `any_of` measured across every repo as **`Arc3` 0 · `nilm` 0 · core 0 ·
+`arc1-brain` 1** (`arc_capacities.py:841`, arc1 is moving it to `all_required` ahead of its
+merge), leaving `all_required` as the only legal value, which is simply what declaring inputs
+means. ADR-0159 §am-1 is superseded and **ADR-0156 §am's deferred graph form is withdrawn, not
+deferred — it has no subject.** ⟹ **C2R4 is not blocked.** The retirement is agreed and not yet
+built, so **C2R4 does not wait on it**: it builds on "all declared inputs are required" and
+carries a gate assertion that no registered capacity declares `fold` or `any_of`, which gives
+the retirement a green pre-condition to land against. Withdraws
+`CORE_VERIFIED_FINDINGS.md` §12.7.
+
+### 12.2 New item — the resource graph (from CORE-C3R1)
+
+Resources (a hand, a burner, an input channel) are a **separate axis** from DataStates and must
+not enter the graph the walk searches: the walk answers *can it be done*, a resource constrains
+*when*. Agreed with the C3R1 chat:
+
+- an **L2 resource graph**, capacities linked to resources by a **`REQUIRES_RESOURCE`** edge —
+  chosen over a declaration field because ADR-0205 forbids topology in properties, and over a
+  filtered DataState realm, which is how `input_group` failed;
+- two independent flags per resource: **exclusive/shareable** and **attended/unattended**;
+- criterion for what *is* a resource: **it is given back**; a DataState is transformed or
+  consumed. Declared per capacity;
+- **duration is a learned parameter** — the shipped `learn_parameter` + `learned-parameters`
+  role, not a declared field and not a new mechanism;
+- **`REQUIRES_RESOURCE` is NON-compositional.** Capacity and resource both sit at or below the
+  capacity level, so this is not a part-whole reading — same class as C11's `SPECIALIZES` under
+  ADR-0205 §am-1.3 (Ruling A). Compositional would also pin the resource graph permanently
+  unremovable (§am-1.6);
+- **dual-scope, both realms bootstrapped up front.** *"This kitchen has two burners"* is user
+  knowledge, and adding the second realm later changes a closed role set and forces a migration
+  (`CORE_C2_DECISIONS.md` §6, the same call made for milestones). Role count **16 → 17** —
+  asserted in six test files (`tests/phase_07/test_bootstrap.py:30`,
+  `tests/dataset_role/test_dataset_role_core.py:73,74`, `tests/phase_13/test_dispatch.py:100`,
+  `tests/learned_pipelines/test_learned_pipelines_core.py:76`,
+  `tests/phase_50/test_installed_skills_substrate.py:57`,
+  `tests/phase_50/test_skill_install_local_scope.py:130`);
+- **an unrunnable-but-reachable route is L4's to filter**, after the verdict. The walk stays
+  resource-blind and returns `found=True`; scheduling defers or rejects. No sixth verdict reason.
+
+**It ships as its own item immediately after C2R3, not inside it** — C2R3's scope is the link
+read/write path plus the traversal primitive, and bundling a new role, a new edge type and a
+resource criterion into it makes the C2R3 gate result unattributable (`CORE_C2_DECISIONS.md`
+§12.4). It is C2R3's **first consumer**, which is what ADR-0205 §Alternatives item 5 asks for.

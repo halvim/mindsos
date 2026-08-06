@@ -36,12 +36,15 @@ Locked Phase 05c design picks reflected here (PHASE_MAP §5 row appendix):
   dataclass receives already-canonicalized data. Direct-construction
   paths (rehydration / tests) bypass canonicalization and store
   whatever-was-passed.
-* **P8-A** — the ``compositional=True`` + ``ordered=False`` refusal is
-  enforced at the factory boundary (validation step 10 in the 16-step
-  order), NOT at the dataclass boundary (the type's ``ordered`` setting
-  is invisible to the dataclass — only the factory has the schema
-  context to refuse). The dataclass always accepts ``compositional=True``
-  on construction; the factory gates.
+* **P8-A — RETIRED at CORE-C2R2** (ADR-0205 §amendment-3.1). The
+  ``compositional=True`` + ``ordered=False`` refusal used to be enforced
+  at the factory boundary (validation step 10 of the 16-step order); it is
+  lifted, and the combination is now legal. The ground: ``ordered``
+  expresses a TOTAL order over members, while a plan's milestones are a
+  SET whose PARTIAL order lives in sibling dependency links (ADR-0206 §2),
+  so the refusal made a plan with two parallel milestones inexpressible.
+  The dataclass boundary is unchanged and always accepted
+  ``compositional=True``; there is simply no factory gate now.
 * **P19-A** — refusal of ``update_intergraph_hyperedge`` calls that
   would collapse to 1-to-1 cardinality is enforced at the factory's
   step 8 cardinality check on the resolved replacement values. The
@@ -120,10 +123,10 @@ class IntergraphHyperEdge:
         compositional: Identity-bearing composition flag. Default
             ``False``. Immutable post-construction. When ``True``,
             removal/structural-mutation/property-mutation/deprecation raise
-            :class:`CompositionalImmutableError`. The factory refuses
-            ``compositional=True`` + ``type.ordered=False`` at validation
-            step 10 (P8-A — compositional implies identity-bearing
-            composition; set semantics is incompatible).
+            :class:`CompositionalImmutableError`. ``compositional=True``
+            with ``type.ordered=False`` is **legal since CORE-C2R2** — the
+            P8-A refusal at validation step 10 is retired (ADR-0205
+            §amendment-3.1).
         edge_id: Auto-minted UUID4 if not supplied. Factory
             ``Metagraph.add_intergraph_hyperedge`` mints via
             ``mg.mint_id("intergraph_hyperedge")`` (carry-forward from

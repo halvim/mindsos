@@ -1,8 +1,13 @@
 """Phase 05c — P14-A 16-step validation order at Metagraph.add_intergraph_hyperedge.
 
 Canonicalize-BEFORE-cardinality (P14-A) catches dedup-collapse-to-1-1
-under ordered=False types. Compositional+ordered=False refusal at
-step 10 (P8-A). First-failure most-specific error.
+under ordered=False types. First-failure most-specific error.
+
+Step 10 held the P8-A refusal of compositional=True + ordered=False. It is
+**retired at CORE-C2R2** (ADR-0205 §amendment-3.1) and the class below now
+pins the lift instead of the refusal — including the interaction P14-A
+still enforces: dedup runs BEFORE the cardinality check, so a compositional
+set that collapses to 1-1 still refuses.
 """
 
 from __future__ import annotations
@@ -206,22 +211,66 @@ class TestStep9AnchorMemberOverlap:
             )
 
 
-class TestStep10CompositionalOrderedFalseRefusal:
-    """P8-A — compositional=True + ordered=False refused at step 10."""
+class TestStep10CompositionalOrderedFalsePermitted:
+    """CORE-C2R2 — the P8-A refusal is retired (ADR-0205 §amendment-3.1).
 
-    def test_p8a_refusal(self, mg_with_schema):
+    ``ordered`` expresses a TOTAL order over members. A plan's milestones
+    are a SET whose PARTIAL order lives in sibling dependency links
+    (ADR-0206 §2), so the refusal made a plan with two parallel milestones
+    inexpressible. These tests pin the lift and the two behaviours that
+    survive it.
+    """
+
+    def test_compositional_unordered_now_constructs(self, mg_with_schema):
         mg = mg_with_schema["mg"]
         g_letter = mg_with_schema["g_letter"]
-        with pytest.raises(
-            SchemaError, match="compositional.*require ordered=True"
-        ):
+        ihe = mg.add_intergraph_hyperedge(
+            anchors=[(g_letter.graph_id, "c")],
+            members=[
+                (g_letter.graph_id, "a"),
+                (g_letter.graph_id, "t"),
+            ],
+            type_name="UNORDERED",  # ordered=False
+            compositional=True,
+        )
+        assert ihe.compositional is True
+        assert ihe.edge_id in mg.intergraph_hyperedges
+
+    def test_set_semantics_still_apply_under_compositional(self, mg_with_schema):
+        """ordered=False sorts AND dedups — the lift does not change that."""
+        mg = mg_with_schema["mg"]
+        g_letter = mg_with_schema["g_letter"]
+        ihe = mg.add_intergraph_hyperedge(
+            anchors=[(g_letter.graph_id, "c")],
+            members=[
+                (g_letter.graph_id, "t"),
+                (g_letter.graph_id, "a"),
+                (g_letter.graph_id, "t"),
+            ],
+            type_name="UNORDERED",
+            compositional=True,
+        )
+        assert ihe.members == (
+            (g_letter.graph_id, "a"),
+            (g_letter.graph_id, "t"),
+        )
+
+    def test_compositional_dedup_collapse_to_1_1_still_refuses(
+        self, mg_with_schema
+    ):
+        """P14-A survives the lift: dedup runs BEFORE the cardinality check.
+
+        A single-member composition is an ``IntergraphEdge``
+        (ADR-0205 §amendment-1.2), so 1-1 must stay refused here even now
+        that compositional+unordered is legal.
+        """
+        mg = mg_with_schema["mg"]
+        g_letter = mg_with_schema["g_letter"]
+        with pytest.raises(SchemaError, match="NOT 1-to-1"):
             mg.add_intergraph_hyperedge(
-                anchors=[(g_letter.graph_id, "c")],
-                members=[
-                    (g_letter.graph_id, "a"),
-                    (g_letter.graph_id, "t"),
-                ],
-                type_name="UNORDERED",  # ordered=False
+                anchors=[(g_letter.graph_id, "c"), (g_letter.graph_id, "c")],
+                members=[(g_letter.graph_id, "a"), (g_letter.graph_id, "a")],
+                type_name="UNORDERED",
                 compositional=True,
             )
 

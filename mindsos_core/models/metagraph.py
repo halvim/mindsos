@@ -1785,8 +1785,10 @@ class Metagraph:
                (P19-A: collapse to 1-1 under ordered=False refused
                here.)
             9. **Anchor-member overlap check** on canonical.
-            10. **P8-A refusal**: compositional=True + ordered=False
-                → SchemaError.
+            10. *(retired at CORE-C2R2 — was the P8-A refusal of
+                compositional=True + ordered=False. The slot is kept so
+                the P14-A order stays legible; nothing runs here. See
+                ADR-0205 §amendment-3.1.)*
             11. ``validate_user_properties(scope="intergraph_hyperedge")``.
             12. (if attached) ``schema.validate_intergraph_hyperedge``.
             13. (if attached and strict)
@@ -1810,9 +1812,10 @@ class Metagraph:
 
         Raises:
             IdentityError: graph or node not found, or id collision.
-            SchemaError: cardinality violation (1-1 / n=0 / m=0),
-                anchor-member overlap, or compositional+ordered=False
-                (P8-A).
+            SchemaError: cardinality violation (1-1 / n=0 / m=0), or
+                anchor-member overlap. **Not** compositional+ordered=False
+                — that refusal (P8-A) is retired at CORE-C2R2; see
+                ADR-0205 §amendment-3.1.
             CypherError: invalid type_name.
             UnknownTypeError: schema attached but type_name not in vocab,
                 or any allowed-* constraint violated.
@@ -1912,15 +1915,18 @@ class Metagraph:
                 f"members (post-canonicalization, ordered={ordered})."
             )
 
-        # Step 10 — P8-A refusal: compositional=True + ordered=False.
-        if compositional and not ordered:
-            raise SchemaError(
-                f"compositional hyperedges require ordered=True types "
-                f"(P8-A): IntergraphHyperEdge type {type_name!r} has "
-                f"ordered=False; refusing add. Either rebuild the type "
-                f"with ordered=True OR call add_intergraph_hyperedge "
-                f"with compositional=False."
-            )
+        # Step 10 — RETIRED at CORE-C2R2 (ADR-0205 §amendment-3.1).
+        # This slot held the P8-A refusal of compositional=True +
+        # ordered=False. Lifted deliberately, overriding the recorded
+        # identity-bearing argument in INTERGRAPH_EDGES_DESIGN.md — NOT
+        # restoring a lost ADR-0148 contract (ADR-0205 §am-2.3 shows no
+        # citation of 0148 supports the override). The ground: ``ordered``
+        # expresses a TOTAL order over members, while a plan's milestones
+        # are a SET carrying a PARTIAL order in sibling dependency links
+        # (ADR-0206 §2), so without the lift a plan with two parallel
+        # milestones is inexpressible. ``ordered=True`` compositional
+        # links stay expressible — cat = c + a + t is unaffected.
+        # The slot is kept empty so the P14-A 16-step order stays legible.
 
         # Step 11 — property bag validation (reserved + primitive).
         props = validate_user_properties(
@@ -2177,14 +2183,11 @@ class Metagraph:
                 f"forbidden: {sorted(overlap)!r} appear(s) in both "
                 f"sides (post-canonicalization, ordered={ordered})."
             )
-        # Step 10 — P8-A refusal (compositional=True + ordered=False).
-        # ihe.compositional is False here (the early refusal above
-        # rejects compositional updates), but defense-in-depth.
-        if ihe.compositional and not ordered:
-            raise SchemaError(
-                f"IntergraphHyperEdge update: compositional+ordered=False "
-                f"refused (P8-A)."
-            )
+        # Step 10 — RETIRED at CORE-C2R2 (ADR-0205 §amendment-3.1).
+        # Held a defence-in-depth copy of the P8-A refusal. It was already
+        # unreachable — the early compositional refusal above means
+        # ``ihe.compositional`` is always False by the time control gets
+        # here — and the rule it defended no longer exists.
         # Step 11 — property bag validation.
         new_props = validate_user_properties(
             new_props_in, scope="intergraph_hyperedge"
