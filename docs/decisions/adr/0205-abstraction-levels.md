@@ -326,7 +326,12 @@ Per `INTERGRAPH_EDGES_DESIGN.md` §4.3, when `compositional=True`:
 
 - `remove_intergraph_edge` / `remove_intergraph_hyperedge` raise `CompositionalImmutableError`
 - the mutation API raises the same
-- `deprecate_intergraph_edge` (Phase 10) raises the same
+- ~~`deprecate_intergraph_edge` (Phase 10) raises the same~~ — **this method does not
+  exist.** Corrected at §amendment-4; `INTERGRAPH_EDGES_DESIGN.md` §4.3 carries the same
+  error. The three real refusals are `remove_intergraph_edge`,
+  `update_intergraph_edge_properties` and the `compositional` `__setattr__` gate
+  (Pushback 22-A). Terminality is unaffected — one of four citations was to a method
+  that was planned and never built
 - the flag itself cannot flip, deliberately: *"a `True` edge can't be removed, so flipping in
   error wedges the metagraph"*
 
@@ -641,3 +646,264 @@ legitimately return, and it leaves the episode and `viz_spec` halves unfixed —
 C2-local and C2R4 will take it rather than wait.
 
 **Consumers:** C2R4, and CORE-C3.
+
+---
+
+## §amendment-4 (CORE-C2R3 — 2026-08-06): the substrate boundary — a composition cannot cross a `Metagraph`
+
+**Amendment status:** Proposed. Flips to Accepted with **CORE-C2R3**.
+
+Produced by the CORE-C2R3 pre-build read-through, **read against the code at `origin/main`
+`1063fd1`** (plan §0: *an ADR does not reach Accepted until someone has read it against the code
+it governs*). Every line reference in §am-4.7 was verified, not inferred. **This amendment
+does not restate §am-1, §am-2 or §am-3.** It records a constraint none of them saw: the
+composition primitive §2 selects cannot express three of the five rungs of §1's ladder, for a
+reason that is structural and not a defect in any one module.
+
+---
+
+### am-4.1 — A compositional link cannot cross a `Metagraph`
+
+`Metagraph.add_intergraph_edge` **steps 1–2** (`mindsos_core/models/metagraph.py:1602-1611`)
+require **both** endpoint graphs to be present in `self.graphs` — the graphs of **one**
+`Metagraph` instance:
+
+```
+if source_graph_id not in self.graphs:  raise IdentityError(...)
+if target_graph_id not in self.graphs:  raise IdentityError(...)
+```
+
+`add_intergraph_hyperedge` applies the same containment rule to anchors and members.
+`IntergraphEdge` and `IntergraphHyperEdge` address their endpoints as `(graph_id, node_id)`
+pairs, and `intergraph_edges` / `intergraph_hyperedges` are dictionaries **on the `Metagraph`**
+(`metagraph.py:374,380`). There is no representation for an endpoint in another metagraph.
+
+The name is misleading and has misled this plan: *inter**graph*** means *between two graphs*,
+**not** *between two metagraphs*.
+
+### am-4.2 — A running brain holds four `Metagraph` objects, and shares none of them
+
+| Instance | Constructed at |
+|---|---|
+| KnowledgeLayer Global | `mindsos_knowledge/knowledge_layer.py:208` |
+| KnowledgeLayer Local(user) | `knowledge_layer.py:243` — lazy auto-create |
+| CapacityLayer Global | `mindsos_capacity/capacity_layer.py:160` — its **own** `create_global()` |
+| CapacityLayer Local(user) | `capacity_layer.py:192` — `create_local(user_id)` |
+
+`mindsos_server/boot.py:211,222` construct `CapacityLayer(kl=kl)`. The `kl` argument is injected
+so **write-capacity bodies** can reach the KnowledgeLayer through `CapacityContext`
+(`capacity_layer.py:137-158`). **No metagraph is shared.** `CapacityLayer` builds its own
+Global whenever `global_metagraph` is not supplied, which is every caller in the repo.
+
+### am-4.3 — Consequence: three of five rungs are inexpressible
+
+§1's ladder is `capacity → pipeline → milestone → plan → request`. §2, as amended by §am-1.2,
+makes each rung a compositional `IntergraphEdge` or `IntergraphHyperEdge`.
+
+| Rung | Anchor lives in | Members live in | Expressible |
+|---|---|---|---|
+| pipeline → its capacity steps | KL metagraph (`pipelines` role, C2R4) | **Capacity metagraph** | **NO** |
+| milestone → a pipeline reaching it | KL metagraph | KL metagraph | yes, **same realm only** |
+| plan → its milestones | KL metagraph | KL metagraph | yes, **same realm only** |
+| request → its plan | KL metagraph | KL metagraph | yes, **same realm only** |
+
+And the realm qualifier is not cosmetic. The two shipped realm decisions both produce
+cross-realm links immediately:
+
+- A user teaches a pipeline **Local** (ADR-0203, `learned-pipelines`) over capacities that are
+  **Global**. Cross-layer *and* cross-realm.
+- `CORE_C2_DECISIONS.md` §6 and `CORE_RECONCILIATION_PLAN.md` §12.2 both bootstrap **both
+  realms up front** — for milestones and for the resource graph — precisely so a Local node can
+  compose over Global content. That is the link this constraint forbids.
+
+⟹ **C2R4, C2R5, C2R6, C2R7 and the resource graph all require a link the substrate cannot
+create.** C2R3 is where the mechanism is chosen, so it is where this is settled; discovering it
+at C2R4 means rebuilding the substrate after three items have been designed against it.
+
+**No prior record.** Not §Consequences, not §am-1.6 (which asks whether a composition *pins* a
+graph, having assumed it can *reach* one), not `CORE_C2_DECISIONS.md` §4, not
+`CORE_VERIFIED_FINDINGS.md` §12 or §13. §am-1.7 measured that the primitive has no consumers
+and read that as *scale of work*; it is also *why the constraint was never hit*.
+
+### am-4.4 — Ruling: one `Metagraph` per user. Realm becomes a node property.
+
+**§1 says there is one graph. Four `Metagraph` objects are four graphs.** Under §0 of
+`CORE_RECONCILIATION_PLAN.md` — *concepts are the source of truth, code matches concepts* — the
+containers change, not the ladder.
+
+1. **The layer split collapses.** `CapacityLayer` stops constructing its own metagraph and takes
+   the `KnowledgeLayer`'s. The capacity category-graphs and the `capacity:datastates` graph
+   become graphs **in the same `Metagraph`** as the L2 role-graphs. This is a change of
+   *container*, not of *ownership*: `CapacityLayer` still owns capacity registration,
+   `KnowledgeLayer` still owns roles and IRI minting. Nothing about RULES §8 changes.
+
+2. **The realm split collapses.** One `Metagraph` per user, holding the Global content and that
+   user's Local content. **Realm becomes a property of a node**, not a property of which object
+   the node is stored in.
+
+**Why realm must be a property.** §9 already states that *Global is what the system ships by
+default* and *Local is everything that differs*, and that an admin **promotes** Local to Global.
+Under two metagraphs, promotion is a **move between objects** — a delete and a re-mint, which
+§am-1.5 terminality forbids for anything a composition points at, and which changes the node's
+identity out from under every link that references it. Under one metagraph, promotion is a
+property change on a node whose identity and links are untouched. The concept in §9 is only
+implementable the second way.
+
+**The identifiers already agree.** Only four IRI kinds embed a `user_id` —
+`episode_iri`, `memory_composite_iri`, `capacity_snapshot_iri`, `staged_evidence_iri`
+(`mindsos_knowledge/identifiers.py:264,278,299,327`), all per-user *records*. Everything the
+ladder is made of does not: `learned_pipeline_iri` (`:439`) mints
+`learned-pipelines-<v>:pipeline:<name>:<seq>` with **no user in it** and is Local-only by
+**role**, not by identity. Same for `pipeline_iri`, `request_pattern_iri`,
+`learned_parameter_iri`. **A ladder node's identity is already realm-independent** — the realm
+lives only in which object currently holds it. Making it a property records a fact the IRIs
+already imply.
+
+**Sub-ruling: realm is a property of the NODE, inside one role-graph — not a graph per realm.**
+Both realms' content for a role live in the **same** `Graph`. This keeps ADR-0150 §amendment-3's
+lock — *one graph per role per metagraph* — intact, keeps `graphs_by_role` and the closed
+16-role set unchanged, and keeps promotion a property change. **It also is not what makes the
+ladder work:** a pipeline node and a capacity node are in different *graphs* regardless of
+realm (`pipelines` vs `capacity:<category>`), so `add_intergraph_edge`'s step 3 — *source and
+target graphs must differ* — is satisfied by the **layer** distinction alone. Realm never
+enters the link rule. The cost lands entirely on persistence (§am-4.7 item 2).
+
+**Consequence for §5's criterion.** Realm-as-a-property is **not** an instance of
+*topology stored as properties*. Realm is not topology — it is an **approval fact about one
+node**, per §9, and it relates that node to nothing else. §am-1.4's test applies: if the realm
+flag disappeared the system would have lost a way to record approval, not forgotten something it
+knows. Substrate, not ladder.
+
+### am-4.5 — Rejected
+
+1. **Extend `XRef` with a `compositional` flag.** `XRef` (ADR-0128,
+   `mindsos_core/models/xref.py:40`) is the one shipped primitive that spans metagraphs, and it
+   already carries mutable `properties` and inverse indexes (`_xrefs_by_source`,
+   `_xrefs_by_target`). **Rejected on three grounds.** §am-1.4's scope clause names `XRef` as
+   **substrate**, explicitly outside the ladder — making it a ladder primitive reverses a ruling
+   one amendment old. It would give the system **two** composition primitives with different
+   rules, which is §Alternatives item 2 (a per-level registry) in a new form: the same
+   relationship read two ways depending on which side of a container boundary it lands on. And
+   its `target_stale` field is a **stored** dormancy flag — the exact pattern §am-3.3 and
+   ADR-0192 reject — which would arrive as the by-product of a storage decision rather than as a
+   decision anyone made.
+2. **Mirror Global nodes into each Local metagraph** so compositions stay intra-metagraph.
+   **Rejected — this is §5 verbatim.** A mirror is a parallel copy of graph structure, and the
+   copy can disagree with the original with nothing able to detect it. It is also the failure
+   §Context lists first: *a plan exists twice*.
+3. **Narrow the ladder to one realm and one layer** — Local-only, capacities moved into the L2
+   metagraph. **Rejected on the concept.** It makes Global pipelines, milestones and plans
+   permanently impossible, so *"an admin promotes Local to Global"* (§9) has no referent above
+   the capacity level, and a Skill (§8) could never ship a pipeline or a milestone — which
+   §Consequences requires it to.
+4. **One metagraph, but a separate `Graph` per realm** — a Global `pipelines` graph beside a
+   per-user Local one. This is the cheaper option on machinery: `MetagraphRepository.persist`
+   iterates `metagraph.graphs.values()` and `FalkorDBLocalPersister.delete` keys on
+   `g.id IN $gids`, so realm-as-a-graph would need **no persistence change at all**.
+   **Rejected on the concept.** It reopens ADR-0150 §amendment-3's explicit lock (*one graph per
+   role per metagraph*, whose own alternatives table already rejected `(role, version)` keying),
+   and — decisively — it makes promotion a **move between graphs**, which is the delete-and-re-mint
+   §am-4.4 rejects two metagraphs for. Choosing it would buy back the persistence work by
+   reintroducing the defect the ruling exists to remove.
+5. **Leave the containers and let each level item work around it.** Rejected — that is
+   §Alternatives item 1 (*reconcile pairwise*), and it is what produced the duplications this
+   ADR removes.
+
+### am-4.6 — What this does **not** change
+
+- **Not a merge of the layers.** L2 and L3 keep their façades, their APIs and their ownership.
+  What is shared is the **substrate object**, the same way two roles already share one.
+- **Not a change to the primitive.** `add_intergraph_edge` / `add_intergraph_hyperedge` are
+  untouched. Steps 1–2 remain correct; what changes is that both endpoints are now inside the
+  same metagraph, which is what the steps have always required.
+- **Not a change to §am-1.5.** Compositional links stay terminal. §am-3.3 stands: dormancy is
+  derived on read, nothing is stored.
+- **Not a change to `XRef`.** Cross-metagraph references remain available for the cases they were
+  built for. What is removed is the *need* for one inside the ladder.
+- **Not a change to persistence semantics.** Global and Local content must still be **saved and
+  loaded separately** — a user's Local content is per-user and Global content is shared. That
+  becomes a **partition of one metagraph by node realm** rather than two whole objects. This is
+  the largest piece of work in the ruling and is named in §am-4.7.
+
+### am-4.7 — Consequences, measured
+
+The five below were read from the code at `1063fd1`. They are the ruling's blast radius. Ranked
+by cost, not by order of discovery.
+
+1. **Realm resolution — 76 call sites, and this is the bulk of the work.**
+   `global_metagraph()` / `local_metagraph(user)` / `global_view()` / `local_view(user)` are
+   called 76 times outside their own definitions across `mindsos_capacity`, `mindsos_knowledge`,
+   `mindsos_server`, `mindsos_intelligence` and `mindsos_cli`. **Every one currently answers
+   "which realm?" by which object it is holding.** Each becomes either a property filter or an
+   unfiltered read of the single metagraph. Two shapes recur and should be converted first:
+   the ten `builtins/*.py` bodies that take `capacity_layer.global_metagraph()`, and the
+   Global-then-Local overlay in `learned_parameters_snapshot.py:64`, which becomes an ordering
+   over one node set rather than over two objects.
+
+2. **The persistence partition — the one genuinely new mechanism.**
+   `MetagraphRepository.persist(metagraph)` (`metagraph_repository.py:113`) iterates
+   `metagraph.graphs.values()` and persists **whole graphs**;
+   `FalkorDBLocalPersister.delete(user_id)` DETACH-DELETEs by `g.id IN $gids` over every graph in
+   the metagraph; `MetagraphLoader.load(metagraph_id)` reconstructs the whole object. Under one
+   metagraph with realm as a node property, **all three would touch Global content on a Local
+   operation** — `delete` most dangerously. Partitioning must move from **graph granularity to
+   node-realm granularity**, and the loader must reconstruct Global + one user's Local into one
+   object. An intergraph link straddling realms is written with the **Local** half.
+   ⚠ **This is the cost §am-4.5 item 4 would have bought back, and the reason that option is
+   worth re-reading before this ships.**
+
+3. **`CapacityLayer` construction — six non-test sites.** `capacity_layer.py:160` must stop
+   defaulting to `create_global()`; `mindsos_server/boot.py:211,222`,
+   `mindsos_cli/commands/capacity.py:95,288` and `mindsos_cli/commands/skill.py:70,79` must
+   supply the KnowledgeLayer's metagraph. `_capacity_index` is keyed by `metagraph_id`
+   (`capacity_layer.py:171`) and collapses to a single key.
+
+4. **Role and graph-id collision — NONE. Verified, no work.** Capacity roles are namespaced:
+   `capacity:datastates` and `capacity:<category>` (`mindsos_capacity/identifiers.py:64,67`).
+   L2 roles are bare names (`ontology`, `lexicon`, `learned-pipelines`, …). No overlap; the
+   nearest pair is L2's `capacity-state` / `capacity-gaps`, hyphen not colon.
+   **The six "role count 16→17" assertions are unaffected** — they assert
+   `len(ALL_ROLES)` and `len(_ROLE_SCHEMA_BUILDERS)`, module constants in
+   `mindsos_knowledge/identifiers.py`, not roles present in a metagraph. The only consumer of a
+   live metagraph's role set is `mindsos_cli/commands/knowledge.py:635`
+   (`sorted(view.roles())` for a scan), which would newly enumerate the `capacity:*` roles and
+   needs a filter or a documented widening.
+
+5. **Bootstrap ordering — the old hazard dissolves, a worse one replaces it.**
+   `local_metagraph(user_id)` lazy-creates, which is what `CORE_C2_DECISIONS.md` §12.1 item 3
+   caught (*a read must never create* — consulting a roster materialised an empty Local ahead of
+   the durable boot that restores one). Under one metagraph there is no Local object to
+   materialise and that specific hazard goes. **Its replacement is deletion scope** — item 2's
+   `delete(user_id)`. The failure mode moves from *silently creating nothing* to *silently
+   deleting everything*, so it must be closed with a test that makes it go RED (RULES §9).
+
+### am-4.8 — Amends, and consumers
+
+**Amends:** §1 (one graph — states the substrate consequence it implies), §2 (the primitive's
+endpoints are in one metagraph), §9 (realm is a node property; promotion is a property change),
+§am-1.4 (the scope clause gains `realm` as an explicit substrate example), and
+`CORE_C2_DECISIONS.md` §4 (*"the link mechanism does not exist"* — see the correction below).
+
+**Correction to §am-1.7 and to `CORE_C2_DECISIONS.md` §4.** §am-1.7 reports zero consumers for
+`IntergraphHyperEdge` and `compositional` outside `mindsos_instances` and core. That holds. It
+does **not** hold for the ordinary `IntergraphEdge`, which has a live writer and a live reader:
+
+- **writer** — `mindsos_capacity/capacity_layer.py:425,432` emit `PRODUCES` / `CONSUMES`
+  (ADR-0156's bipartite topology) on every capacity registration.
+- **reader** — `mindsos_capacity/views.py:144` `_iter_edges`, feeding `outputs_of`, `inputs_of`
+  and `producers_of`.
+
+⟹ *"The L2 knowledge write path cannot write a link"* is true of `KLWriteHandle` and
+`MetagraphView` only. **A link write path and a link read path already ship and are in
+production use at the capacity level.** Under §10 — *one traversal primitive* — C2R3 must route
+`CapacityLayerView`'s walk through the accessor it adds to `MetagraphView`, not add a second
+reader beside it. Two readers of the same relation is the defect §10 exists to prevent.
+
+**Consumers:** CORE-C2R3 (which cannot build `walk()` across realms until this lands), the
+resource graph, C2R4, C2R5, C2R6, C2R7.
+
+**Rationale record (plan §0.1).** Beyond this amendment, the reasoning is owed at the point of
+use: the module docstrings of `mindsos_capacity/capacity_layer.py` (why it no longer builds a
+metagraph), `mindsos_knowledge/knowledge_layer.py` (why one object holds both realms) and
+`mindsos_core/models/metagraph.py`'s intergraph section (why *intergraph* is not
+*inter-metagraph*), plus the CORE-C phase map. A central document alone does not work.

@@ -511,3 +511,109 @@ on the only two branches that ever held it — residue of a deletion, read out o
 The shared `MindsOS` clone carries an **untracked `projects/amii_study/` tree** inside the
 `main` checkout. It has already misled two cross-repo sweeps into reading it as tracked
 content. Clear it or ignore it.
+
+---
+
+## 14. Round-5 findings (2026-08-06, CORE-C2R3 pre-build read-through @ `1063fd1`)
+
+Every claim in §13 held. §12.1's *"the L2 knowledge layer cannot write a link"* holds **for
+`KLWriteHandle`** and is **too narrow as a statement about the repo** — see §14.5. All six
+findings below were read from the code, not inferred.
+
+### 14.1 A compositional link cannot cross a `Metagraph`, and a brain holds four
+
+`Metagraph.add_intergraph_edge` steps 1–2 (`mindsos_core/models/metagraph.py:1602-1611`) require
+both endpoint graphs in `self.graphs` — one `Metagraph` instance. `add_intergraph_hyperedge`
+applies the same rule to anchors and members. Endpoints are `(graph_id, node_id)` pairs; the
+link dictionaries hang off the `Metagraph` (`metagraph.py:374,380`). There is no representation
+for an endpoint in another metagraph.
+
+Four instances exist in a running brain, none shared: KnowledgeLayer Global
+(`knowledge_layer.py:208`), KnowledgeLayer Local(user) (`:243`, lazy), CapacityLayer Global
+(`capacity_layer.py:160`, its own `create_global()`), CapacityLayer Local(user) (`:192`).
+`boot.py:211,222` pass `kl` into `CapacityLayer` **for write-capacity bodies only** — no
+metagraph crosses.
+
+⟹ `pipeline → capacity` (C2R4's central link) is **inexpressible**, and so is every Local→Global
+composition — which C2R5, C2R7 and the dual-scope resource graph all require.
+
+**Reachability: DECLARED.** Nothing above the capacity level writes a compositional link today,
+which is why the constraint has never been hit. **Ruled at ADR-0205 §amendment-4** — one
+`Metagraph` per user; realm becomes a node property.
+
+### 14.2 `Graph.remove_node` cannot see intergraph links
+
+`mindsos_core/models/graph.py:483`. It collects `incident_edge_ids` from `self.edges` and
+`incident_he_ids` from `self.hyperedges` — **intra-graph only**. A `Graph` holds no reference to
+its containing `Metagraph`.
+
+⟹ A node that is a **member of a compositional link can be removed**, and the link survives
+pointing at nothing. No refusal, no cascade, no detection, at any `cascade` setting.
+`mindsos_capacity/builtins/learn_parameter.py:139` already calls `handle.graph().remove_node`.
+
+Two consequences, opposite in sign:
+
+- ADR-0205 §8-as-amended and §am-1.5 state that taught **structure can never be removed**. That
+  is false in practice — a composition can be gutted one member at a time. `remove_graph` guards
+  compositional links (`metagraph.py:1055-1079`); `remove_node` does not.
+- It is nonetheless **the only trigger derived dormancy has**. §am-3.3 requires dormancy to be
+  computed on read rather than stored; a DOWN walk that finds a member gone is that computation.
+  **C2R3 owns the detection**, since it owns the walk.
+
+### 14.3 There is no adjacency index for intergraph links
+
+`intergraph_edges` and `intergraph_hyperedges` are flat dicts whose only accessors are
+`iter_intergraph_edges` / `iter_intergraph_hyperedges` (`metagraph.py:2233,2263`), both full
+scans. `XRef` — a lower-traffic primitive — **does** have inverse indexes (`_xrefs_by_source`,
+`_xrefs_by_target`, `metagraph.py:434-435`).
+
+⟹ `CORE_RECONCILIATION_PLAN.md` §3.1's `walk(start, *, direction, ...)` is **O(all links) per
+hop** as the substrate stands, in both directions. The existing consumer already pays it:
+`mindsos_capacity/views.py:144` `_iter_edges` scans every intergraph edge per call, and
+`outputs_of` / `inputs_of` / `producers_of` each call it. **C2R3 adds the index**, mirroring the
+`XRef` pattern; `add_*` / `remove_*` / the loader maintain it.
+
+### 14.4 `deprecate_intergraph_edge` does not exist
+
+ADR-0205 §am-1.5 lists it — *"`deprecate_intergraph_edge` (Phase 10) raises the same"* — and
+`confirmation_docs/INTERGRAPH_EDGES_DESIGN.md:296` says the same. `git grep deprecate_intergraph`
+returns **documentation only**; no such method is defined anywhere in `mindsos_core`.
+
+The three real refusals are `remove_intergraph_edge` (`metagraph.py:1676`),
+`update_intergraph_edge_properties` (`:1701`) and the `__setattr__` gate on the `compositional`
+field itself (`intergraph_edge.py:110-125`, Pushback 22-A). Terminality holds on those three; the
+fourth citation is to a method that was planned and never built. Correct both documents.
+
+### 14.5 §am-1.7's "zero consumers" is right about the hyperedge and wrong about the edge
+
+§am-1.7 and `CORE_C2_DECISIONS.md` §4 read as *nothing outside core reads or writes an
+intergraph link*. For `IntergraphHyperEdge` and the `compositional` flag that holds. For the
+ordinary `IntergraphEdge` it does not:
+
+- **writer** — `mindsos_capacity/capacity_layer.py:425,432` emit `PRODUCES` (capacity→DataState)
+  and `CONSUMES` (DataState→capacity) on every registration, idempotently, guarded by
+  `_has_intergraph_edge` (`:98-112`). This is ADR-0156's bipartite topology and it is **LIVE-WRITE**.
+- **reader** — `mindsos_capacity/views.py:138-175` `_iter_edges` → `outputs_of`, `inputs_of`,
+  `producers_of`. **LIVE-READ**, and it is the substrate the finder walks.
+
+⟹ **C2R3 is not building a link mechanism from nothing.** It is unifying an existing one and
+raising it to L2. Under ADR-0205 §10 — *one traversal primitive* — `CapacityLayerView` must
+delegate to whatever `MetagraphView` gains, not keep a parallel scan. A second reader of the same
+relation is the defect §10 was written to prevent, arriving from the direction nobody watched.
+
+### 14.6 ADR-0206's status is `Accepted` on main; three artifacts say `Proposed`
+
+`docs/decisions/adr/0206-planning-decomposition-confidence.md` front-matter `status:` and its
+prose `**Status:**` line both read **`Accepted`**. `STATE.json` `pending_designs`
+→ `core-c-reconciliation`, `confirmation_docs/CORE_C2R2_CONFIRMED.md` §5 and the C2R3 handoff
+all state it is `Proposed` with §3 and §5 contradicted.
+
+RULES §9: *"An ADR-level status change is FOUR edits."* None was made — the flip was recorded as
+an intention in three downstream places and never executed in the ADR. This is the shape §13's
+method note names: *an intention written in the past tense is indistinguishable from a fact.*
+
+Separately, **ADR-0206 §amendment-1 carries no `**Amendment status:**` label**, which RULES §9
+requires. ADR-0148 §amendment-1 is reported to have the same gap and is not re-verified here.
+
+⟹ Two mechanical repairs, no design content, and they belong to whichever item next touches ADR
+status truth.

@@ -1,6 +1,6 @@
 ---
 title: Planning as a loop — milestones, decomposition, and confidence
-status: Accepted
+status: Proposed
 date: 2026-07-31
 layer: L4
 related: [0094, 0152, 0156, 0171, 0172, 0195, 0198, 0199, 0203, 0205]
@@ -8,7 +8,7 @@ related: [0094, 0152, 0156, 0171, 0172, 0195, 0198, 0199, 0203, 0205]
 
 # ADR-0206: Planning as a loop — milestones, decomposition, and confidence
 
-**Status:** Accepted
+**Status:** Proposed
 
 **Date:** 2026-07-31
 
@@ -288,6 +288,9 @@ it was written for and every other brain would shadow it.
 ## Amendments
 
 ### amendment-1 (2026-07-31, CORE-C2 pre-build read-through) — §1's milestone is corrected
+
+**Amendment status:** Accepted. §1's correction is agreed and is not among the
+contradicted sections; it is built by the milestone-level item (CORE-C2R5).
 
 **Trigger.** The CORE-C2 chat read this ADR against ADR-0205 and against the code before
 building the milestone level. §1 makes three statements that do not survive.
