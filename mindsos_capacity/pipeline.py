@@ -65,7 +65,7 @@ from typing import (
     Tuple,
 )
 
-from .admission import unavailable_inputs
+from .admission import declaration_refusals, unavailable_inputs
 from .identifiers import (
     INPUT_GROUP_ALL_REQUIRED,
     INPUT_GROUP_ANY_OF,
@@ -426,6 +426,9 @@ class BFSFinder(Finder):
         max_depth: int = 8,
     ) -> FindVerdict:
         view = _view_for(capacity_layer, session)
+        # Shared half of step admission: declaration-only refusals, answered
+        # once for the whole view because they do not depend on the walk.
+        refused = declaration_refusals(capacity_layer, view, session=session)
 
         if target_datastate in set(start_datastates):
             return FindVerdict(
@@ -458,6 +461,8 @@ class BFSFinder(Finder):
                 available.update(taken.output_datastates)
             for cap in view.consumers_of(current_ds):
                 cap_iri = cap.node_id
+                if cap_iri in refused:
+                    continue
                 declared_inputs = tuple(view.inputs_of(cap_iri))
                 if unavailable_inputs(declared_inputs, available):
                     # D-A. This walk wires only `current_ds`, so a capacity
@@ -599,6 +604,22 @@ class ConjunctionFinder(Finder):
     ``confirmation_docs/CORE_CR_FINDER_AS_CAPACITIES.md`` — §8 lists eight
     already-rejected alternatives; read it before proposing a ninth.
 
+    **Shared step admission (CORE-C3R1).** Before any of the above, a capacity
+    refused by :func:`~mindsos_capacity.admission.declaration_refusals` is
+    unsatisfiable. Today that means one rule: a consumer declaring
+    ``operand_arity=N>1`` on a **scalar** input cannot be fed by route-finding,
+    because a capacity emits one value per output DataState — so the route
+    composed, and then raised ``InputContractError(kind="operand_arity")`` at
+    dispatch. Measured **arc3 14 of 27, arc1 16 of 45**, on both finders; inert
+    on core, which declares no arity. The check sits in ``cap_satisfiable`` and
+    not in ``eligible`` so that it governs **phase 1** as well: a capacity no
+    route can feed must not make its output look reachable either.
+
+    Arity on a **collection** input is *not* refused — after ADR-0205's shape-2
+    migration that is the sanctioned many-into-one form, and whether the
+    collection carries N members is a run-time property of the value, which the
+    executor still checks. Refusing it would delete the migration's own target.
+
     *ADRs.* Amends **ADR-0071 §am-2** (§am-3, this change). Supersedes the
     fix shape in ``CORE_CR_FINDER_CYCLE_SOUNDNESS.md``; its D8, D9 and D11
     stand, D10 is retired with ``max_depth``.
@@ -614,6 +635,7 @@ class ConjunctionFinder(Finder):
         max_depth: int = 8,
     ) -> FindVerdict:
         view = _view_for(capacity_layer, session)
+        refused = declaration_refusals(capacity_layer, view, session=session)
         starts: FrozenSet[str] = frozenset(start_datastates)
 
         if target_datastate in starts:
@@ -638,6 +660,12 @@ class ConjunctionFinder(Finder):
             )
 
         def cap_satisfiable(cap_iri: str, stack: FrozenSet[str]) -> bool:
+            # Declaration refusal is checked here, not in ``eligible``, so it
+            # governs phase 1's reachability as well as phase 2's admission —
+            # ``eligible`` falls through to this predicate. A capacity no route
+            # can feed must not make a DataState look reachable either.
+            if cap_iri in refused:
+                return False
             inputs = view.inputs_of(cap_iri)
             if not inputs:
                 return True
