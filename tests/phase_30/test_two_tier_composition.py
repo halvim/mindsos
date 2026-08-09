@@ -13,6 +13,8 @@ pick cannot reach back to the shadowed Global one.
 
 from __future__ import annotations
 
+import pytest
+
 from mindsos_capacity import (
     CATEGORY_PERCEPTION,
     Capacity,
@@ -195,3 +197,81 @@ def test_a_find_for_a_user_with_no_local_does_not_mint_one():
         "composing a pipeline lazily created an empty Local metagraph — a "
         "read must not create state (ADR-0183 §am-6)"
     )
+
+
+# ── the override is authoritative even when it is broken (ADR-0071 §am-5) ──
+
+
+class _FakeDispatcher:
+    """``_compose_pipeline`` reads exactly two attributes off a dispatcher."""
+
+    def __init__(self, capacity_layer, session) -> None:
+        self.capacity_layer = capacity_layer
+        self.session = session
+
+
+def _refused_step2_override():
+    """Same IRI as Global ``test.step2``, but unroutable by step admission.
+
+    ``operand_arity`` of 2 on a SCALAR input can never be fed by route-finding
+    — a producer supplies one value — so ``declaration_refusals`` refuses it.
+    """
+    return Capacity(
+        name="test.step2",
+        category=CATEGORY_PERCEPTION,
+        inputs=(DS_MID_IRI,),
+        outputs=(DS_OUTPUT_IRI,),
+        operand_arity={DS_MID_IRI: 2},
+        implementation=lambda **kw: {DS_OUTPUT_IRI: kw[DS_MID_IRI]},
+    )
+
+
+def _layer_with_refused_override():
+    cl = build_linear_pipeline_layer()  # Global: step1 in→mid, step2 mid→out
+    sess = build_session("alice")
+    _mirror_datastates_local(cl, sess, "input", "mid", "output")
+    cl.register_capacity(_refused_step2_override(), session=sess)
+    return cl, sess
+
+
+def test_a_refused_local_override_is_not_papered_over_by_global():
+    """The union reports no route rather than quietly using the Global step2."""
+    cl, sess = _layer_with_refused_override()
+
+    view = LocalPreferringView(cl.global_view(), cl.local_view("alice"))
+    refusals = declaration_refusals(cl, view, session=sess)
+    assert any(k.endswith("step2") for k in refusals)
+
+    verdict = find_pipeline(
+        cl,
+        session=sess,
+        start_datastate=DS_INPUT_IRI,
+        target_datastate=DS_OUTPUT_IRI,
+    )
+    assert not verdict.found
+
+    # ...while the Global catalog on its own still routes. That gap is exactly
+    # what the retired second find() used to paper over.
+    sessionless = find_pipeline(
+        cl, start_datastate=DS_INPUT_IRI, target_datastate=DS_OUTPUT_IRI
+    )
+    assert sessionless.found
+
+
+def test_compose_pipeline_raises_instead_of_retrying_global():
+    """CORE-C3R1 D5's Local-then-Global retry is gone (ADR-0071 §am-5)."""
+    from mindsos_intelligence.execution import (
+        LeafPipelineNotFound,
+        _compose_pipeline,
+    )
+
+    cl, sess = _layer_with_refused_override()
+    dispatcher = _FakeDispatcher(cl, sess)
+
+    with pytest.raises(LeafPipelineNotFound) as exc:
+        _compose_pipeline(dispatcher, (DS_INPUT_IRI,), DS_OUTPUT_IRI, "bfs")
+
+    # One verdict, not two — the old signature took (local, global_, ...).
+    assert exc.value.verdict is not None
+    assert not exc.value.verdict.found
+    assert not hasattr(exc.value, "global_")

@@ -217,7 +217,7 @@ def _select_finder(starts: Tuple[str, ...], explicit, where: str) -> str:
 
 
 class LeafPipelineNotFound(RuntimeError):
-    """Both views failed to yield a pipeline for a leaf.
+    """Composition yielded no pipeline for a leaf.
 
     **Why an exception here, when the finder stopped raising.** L3 no longer
     raises for "no route" — that is a verdict about the world (shim S4,
@@ -232,56 +232,57 @@ class LeafPipelineNotFound(RuntimeError):
     finding belongs to planning, not execution — so this class dies with the
     call site rather than being fixed in place.
 
-    Carries **both** verdicts: composition tries the session's Local view then
-    Global, and each failure has its own reason and its own ``unproducible``
-    grouping.
+    Carries **one** verdict. It used to carry two — see
+    :func:`_compose_pipeline` for why there is now only one call to hold a
+    verdict for.
     """
 
-    def __init__(self, local, global_, starts, target) -> None:
-        self.local = local
-        self.global_ = global_
+    def __init__(self, verdict, starts, target) -> None:
+        self.verdict = verdict
         super().__init__(
             f"no pipeline to {target!r} from {list(starts)!r}: "
-            f"local[{local.reason}] {local.detail}; "
-            f"global[{global_.reason}] {global_.detail}"
+            f"[{verdict.reason}] {verdict.detail}"
         )
 
 
 def _compose_pipeline(dispatcher, starts: Tuple[str, ...], target: str, finder_name: str):
     """Compose one pipeline from the currently-registered capacities.
 
-    The finder is role-blind; L4 binds operands at dispatch (ADR-0071/0156). It
-    sees a single view (Local OR Global, never unioned — ``pipeline.py``
-    ``_view_for``); a consumer's solve caps are typically Local (arc), so try the
-    session's Local view first and fall back to Global. With one start and the
-    ``bfs`` strategy this is exactly what ``find_pipeline`` did — the back-compat
-    free function is ``BFSFinder().find(start_datastates=(start,), …)``."""
+    The finder is role-blind; L4 binds operands at dispatch (ADR-0071/0156).
+    **One session-scoped find.** ``pipeline._view_for`` now hands the finder a
+    Local-preferring UNION of Global and the session's Local, so a single call
+    already searches both realms and a Local override composes inside an
+    otherwise-Global chain.
+
+    **This supersedes CORE-C3R1 D5** (ADR-0071 §amendment-5). D5 had this
+    function call ``find`` twice — Local view, then Global — and hold both
+    verdicts, because ``_view_for`` returned one realm at a time and a
+    consumer's solve capacities are typically Local. With a union view the
+    second call is not a fallback, it is a **bypass**: when a Local override is
+    refused by step admission (say its ``operand_arity`` is unroutable), the
+    union correctly reports no route, and re-running Global-only then composes
+    the very chain the user overrode — silently, with no signal that their
+    capacity was skipped. Local-over-Global has to mean the Local one is
+    authoritative *including when it is broken*; anything else makes an
+    override advisory. So the retry goes, and with it D5's second verdict.
+
+    ``session=None`` callers are unaffected: ``_view_for`` still resolves them
+    to Global alone.
+    """
     from mindsos_capacity.pipeline import BFSFinder, ConjunctionFinder
 
     finder = (
         ConjunctionFinder() if finder_name == FINDER_CONJUNCTION else BFSFinder()
     )
-    local = finder.find(
+    verdict = finder.find(
         dispatcher.capacity_layer,
         session=dispatcher.session,
         start_datastates=starts,
         target_datastate=target,
     )
-    if local.found:
-        return local
-    glob = finder.find(
-        dispatcher.capacity_layer,
-        session=None,
-        start_datastates=starts,
-        target_datastate=target,
-    )
-    if glob.found:
-        return glob
-    # CORE-C3R1 D5: BOTH attempts are kept, and they are kept HERE rather than
-    # inside ``FindVerdict``. The finder answers one question per call — "is
-    # there a route in this view?" — and knows nothing about views. Only this
-    # function makes two calls, so only this function holds two verdicts.
-    raise LeafPipelineNotFound(local, glob, starts, target)
+    if verdict.found:
+        return verdict
+    raise LeafPipelineNotFound(verdict, starts, target)
 
 
 def _resolve_shared_inputs(spec, blackboard, leaf_ref: str) -> Dict[str, Any]:
