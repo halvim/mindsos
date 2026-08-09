@@ -87,6 +87,42 @@ class CapacityLayerHandle(Protocol):
 
 
 @runtime_checkable
+class LLMHandle(Protocol):
+    """External-model consultation surface exposed to a capacity body.
+
+    The **narrowed capability** through which a ``comprehension.*`` body
+    consults an external language model. It follows ``context.writeable``
+    (ADR-0180): the body receives a callable, never a client, never
+    credentials and never a principal, and the capability is injected by
+    L4 dispatch rather than imported.
+
+    Injection is **structural**, not ambient — ``dispatch.build_context``
+    supplies it only to capacities whose **category** is in
+    ``dispatch.LLM_CATEGORIES`` (``comprehension`` by default). Capacities
+    already live in per-category graphs (``ensure_category_graph``), so
+    membership of that graph IS the declaration and no per-capacity field
+    is needed. A capacity outside those categories is handed nothing and
+    cannot reach a model; the set that may is one registry query.
+
+    The concrete implementation ships in ``mindsos_llm`` (named here
+    only, never imported — the same import-isolation discipline the
+    KL / MM / CL handles use). The return is a plain ``Mapping`` so
+    neither package depends on the other's types; the body validates the
+    shape, and the body — not the substrate — decides whether a reading
+    is admissible.
+    """
+
+    def read(
+        self,
+        *,
+        prompt_iri: str,
+        prompt_version: int,
+        source_text: str,
+        extraction_schema: Optional[Mapping[str, Any]] = None,
+    ) -> Mapping[str, Any]: ...
+
+
+@runtime_checkable
 class CancelToken(Protocol):
     """Full cancellation token — held by the L4 substrate, never the body."""
 
@@ -111,7 +147,7 @@ class CancelTokenView:
         return self._token.is_set()
 
 
-# ── CapacityContext (ADR-0159 + ADR-0180 — 11 fields, frozen) ──────────
+# ── CapacityContext (ADR-0159 + ADR-0180 — 12 fields, frozen) ──────────
 
 
 @dataclass(frozen=True)
@@ -143,6 +179,11 @@ class CapacityContext:
     kl: Optional[KLHandle] = None
     cl: Optional[CapacityLayerHandle] = None
     writeable: Optional[Callable[..., Any]] = None
+    #: External-model consultation capability. Injected by L4 dispatch
+    #: ONLY for capacities whose category is in ``LLM_CATEGORIES``;
+    #: ``None`` for every other body, so "in the category == may reach a
+    #: model" is structurally true. See :class:`LLMHandle`.
+    llm: Optional[LLMHandle] = None
 
     def __post_init__(self) -> None:
         # Defense-in-depth read-only views (frozen dataclass → bypass via
@@ -244,6 +285,7 @@ __all__ = [
     "CapacityContext",
     "MMHandle",
     "KLHandle",
+    "LLMHandle",
     "CapacityLayerHandle",
     "CancelToken",
     "CancelTokenView",

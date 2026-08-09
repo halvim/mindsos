@@ -31,7 +31,19 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Mapping, Optional
 
 from mindsos_capacity.context import CancelTokenView, CapacityContext, make_writeable
+from mindsos_capacity.identifiers import CATEGORY_COMPREHENSION, parse_capacity_iri
 from mindsos_capacity.runtime import invoke as _runtime_invoke
+
+#: Capacity categories permitted to consult an external language model.
+#: Membership of the category IS the declaration — a capacity outside
+#: these categories is handed nothing and cannot reach a model. The
+#: category graph already exists (``ensure_category_graph``), so this
+#: needs no new field on every capacity declaration.
+LLM_CATEGORIES = frozenset({CATEGORY_COMPREHENSION})
+
+
+class LLMUnavailableError(RuntimeError):
+    """A capacity in an LLM-consulting category ran with no LLM bound."""
 
 if TYPE_CHECKING:  # pragma: no cover — typing only
     from .phase1_profile import Phase1Profile
@@ -58,6 +70,8 @@ class L4Dispatcher:
         version_snapshot: Optional[Mapping[str, int]] = None,
         phase1_profile: "Optional[Phase1Profile]" = None,
         modality_profiles: "Optional[Mapping[str, Phase1Profile]]" = None,
+        llm: Any = None,
+        llm_categories: "Optional[frozenset]" = None,
     ) -> None:
         self._cl = capacity_layer
         self._session = session
@@ -69,6 +83,13 @@ class L4Dispatcher:
         # ADR-0197 §3 — runtime {modality (ingress DataState IRI) ->
         # Phase1Profile} table, selected per input by the stamped modality.
         self._modality_profiles = dict(modality_profiles or {})
+        # External-model consultation capability (``mindsos_llm``).
+        # Held here, handed to a body only when its declaration asks for
+        # it; ``None`` when the deployment consults no model at all.
+        self._llm = llm
+        self._llm_categories = frozenset(
+            LLM_CATEGORIES if llm_categories is None else llm_categories
+        )
 
     # ── read-only accessors (used by ``phase_1.interpret`` for
     #    find_pipeline composition + the map-resolution KL check) ─────────
@@ -90,6 +111,10 @@ class L4Dispatcher:
         return self._phase1_profile
 
     @property
+    def llm(self) -> Any:
+        return self._llm
+
+    @property
     def modality_profiles(self) -> "Mapping[str, Phase1Profile]":
         return self._modality_profiles
 
@@ -100,6 +125,7 @@ class L4Dispatcher:
         request_iri: Optional[str] = None,
         pattern_iri: Optional[str] = None,
         reads_mm: bool = False,
+        consults_llm: bool = False,
     ) -> CapacityContext:
         # ADR-0200 (C3) — the body-facing MM read handle is injected only
         # when the declaration sets ``reads_mm=True``. A ``reads_mm=False``
@@ -123,6 +149,7 @@ class L4Dispatcher:
             kl=self._kl,
             cl=self._cl,
             writeable=make_writeable(self._kl, self._session),
+            llm=self._llm if consults_llm else None,
         )
 
     def dispatch(
@@ -137,11 +164,27 @@ class L4Dispatcher:
         step_id: Optional[str] = None,
     ):
         declaration = self._cl.resolve_declaration(capacity_iri, session=self._session)
+        try:
+            category, _ = parse_capacity_iri(capacity_iri)
+        except Exception:
+            category = None
+        consults_llm = category in self._llm_categories
+        if consults_llm and self._llm is None:
+            raise LLMUnavailableError(
+                f"{capacity_iri} is in an LLM-consulting category "
+                f"{sorted(self._llm_categories)!r} but this dispatcher was "
+                f"built with no LLM. A missing LLM is a "
+                f"deployment error, not a don't-know about the world: a body "
+                f"that silently declined here would put an unexplained refusal "
+                f"in a Decision Record. Construct the L4Dispatcher with "
+                f"`llm=` (mindsos_llm.LiveLLM, or RecordedLLM for a recorded set)."
+            )
         ctx = self.build_context(
             cancel_token=cancel_token,
             request_iri=request_iri,
             pattern_iri=pattern_iri,
             reads_mm=bool(getattr(declaration, "reads_mm", False)),
+            consults_llm=consults_llm,
         )
         return _runtime_invoke(
             declaration,
@@ -153,4 +196,4 @@ class L4Dispatcher:
         )
 
 
-__all__ = ["L4Dispatcher"]
+__all__ = ["L4Dispatcher", "LLMUnavailableError"]

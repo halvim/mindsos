@@ -50,6 +50,14 @@ FAMILY_RULES: Dict[str, FamilyDontKnowShape] = {
     "process": FamilyDontKnowShape.DATASTATE_MARKER,
     "consolidate": FamilyDontKnowShape.DATASTATE_MARKER,
     "trace": FamilyDontKnowShape.DATASTATE_MARKER,
+    # Ratified by the comprehension-family installation (the external-model
+    # reading seam, mindsos_capacity/builtins/comprehension_v0.py), which is
+    # the "owning installation chat" PHASE_27_DONT_KNOW_AUDIT §4 names for
+    # this category. A reader's don't-know is a null value on its declared
+    # value output, with the reason carried on its paired reading record —
+    # never a verdict, because a reading capacity must not be able to state
+    # an outcome.
+    "comprehension": FamilyDontKnowShape.OPTIONAL_RETURN,
     "hint": FamilyDontKnowShape.OPTIONAL_RETURN,
     "planning": FamilyDontKnowShape.OPTIONAL_RETURN,
     "dream": FamilyDontKnowShape.OPTIONAL_RETURN,
@@ -65,13 +73,14 @@ FAMILY_RULES: Dict[str, FamilyDontKnowShape] = {
 
 
 #: FUNCTIONAL_CATEGORIES (ADR-0065) that intentionally resolve via the
+#: (``comprehension`` left this set when the external-model reading
+#: family shipped and took an explicit OPTIONAL_RETURN key.)
 #: permissive ``DATASTATE_MARKER`` default rather than an explicit
 #: FAMILY_RULES key — their shape is ratified at the owning installation
 #: chat (WSD / FOL / code-skill / adapter), not guessed here. Pinned by
 #: tests/phase_42/test_phase_27_audit_doc.py so the list cannot grow
 #: silently. See confirmation_docs/PHASE_27_DONT_KNOW_AUDIT.md (L3-57).
 DEFERRED_DEFAULT_CATEGORIES = frozenset({
-    "comprehension",
     "decomposition",
     "path-finding",
     "interaction",

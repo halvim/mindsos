@@ -152,6 +152,12 @@ COPY mindsos_capacity ./mindsos_capacity
 # Phase 46: NEW top-level package — `mindsos_intelligence/` ships the
 # first L4 (Intelligence) substrate per PHASE_MAP §46 + ADRs 0163-0170.
 COPY mindsos_intelligence ./mindsos_intelligence
+# Decision Records: NEW top-level package — `mindsos_llm/` ships the
+# external-model consultation substrate (transport / recording / replay)
+# per the same new-top-level-package checklist. It holds no cognition and
+# imports no other mindsos_* package; a capacity body reaches it only via
+# the injected ``context.llm`` capability.
+COPY mindsos_llm ./mindsos_llm
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -219,6 +225,8 @@ COPY mindsos_server ./mindsos_server
 COPY mindsos_capacity ./mindsos_capacity
 # Phase 46: mirror of prod-stage COPY for `mindsos_intelligence/`.
 COPY mindsos_intelligence ./mindsos_intelligence
+# Decision Records: mirror of prod-stage COPY for `mindsos_llm/`.
+COPY mindsos_llm ./mindsos_llm
 COPY tests ./tests
 # Phase 39: tools/ contains check_rename_state.py — Phase 39 data-state
 # detector tested by tests/phase_39/test_check_rename_state_script.py

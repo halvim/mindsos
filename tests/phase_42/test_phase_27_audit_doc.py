@@ -41,9 +41,11 @@ def test_audit_doc_has_required_sections():
         assert anchor in text, f"audit doc missing anchor: {anchor!r}"
 
 
-def test_deferred_categories_pinned_at_five():
+def test_deferred_categories_pinned_at_four():
+    # Was five. ``comprehension`` left the set when the external-model
+    # reading family shipped and took an explicit OPTIONAL_RETURN key,
+    # which is the exit the audit doc §4 prescribes.
     assert DEFERRED_DEFAULT_CATEGORIES == frozenset({
-        "comprehension",
         "decomposition",
         "path-finding",
         "interaction",
@@ -60,6 +62,11 @@ def test_doc_lists_every_deferred_category():
 def test_deferred_categories_are_not_keyed_in_family_rules():
     # Deferred categories resolve via the permissive default, not a key.
     assert DEFERRED_DEFAULT_CATEGORIES.isdisjoint(set(FAMILY_RULES))
+
+
+def test_comprehension_ratified_out_of_the_deferred_set():
+    assert "comprehension" not in DEFERRED_DEFAULT_CATEGORIES
+    assert FAMILY_RULES["comprehension"] is not None
 
 
 def test_reconciled_keys_present_old_keys_gone():

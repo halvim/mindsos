@@ -50,7 +50,10 @@ mindsos = "mindsos_cli.__main__:main"
 # Capacity) package per PHASE_MAP §27 + ADRs 0062/0063/0066/0067.
 # Phase 46 — added "mindsos_intelligence*" per same checklist. First L4
 # (Intelligence) package per PHASE_MAP §46 + ADRs 0163-0170.
-include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*", "mindsos_capacity*", "mindsos_intelligence*"]
+# Decision Records — added "mindsos_llm*" per the same new-top-level-
+# package checklist. The external-model consultation substrate (transport,
+# recording, replay); holds no cognition and imports no other mindsos_*.
+include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*", "mindsos_capacity*", "mindsos_intelligence*", "mindsos_llm*"]
 
 [tool.setuptools.package-data]
 mindsos_cli = ["manifest.toml", "commands/*.html"]
