@@ -783,6 +783,13 @@ node**, per §9, and it relates that node to nothing else. §am-1.4's test appli
 flag disappeared the system would have lost a way to record approval, not forgotten something it
 knows. Substrate, not ladder.
 
+**And it is not the pattern §am-3.4 re-applies.** That ruling makes `already_held` **derived**
+(`found and not pipeline.steps`) so no stored field can disagree with the steps, on the same
+ground ADR-0192 used to refuse a stored `fundamental` flag. The test both share is *does the
+graph already encode this?* For realm the answer is **no** — no topology, declaration or run
+record says who approved a node, so there is nothing for a stored flag to contradict. A stored
+fact is the rejected pattern only when it restates one the structure already carries.
+
 ### am-4.5 — Rejected
 
 1. **Extend `XRef` with a `compositional` flag.** `XRef` (ADR-0128,
