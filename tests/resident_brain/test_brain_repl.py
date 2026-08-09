@@ -215,3 +215,34 @@ def test_pl_finds_real_chain(repl):
     out = repl.dispatch(f"pl {DS_RAW_TEXT} {target}")
     assert out.startswith("pipeline:")
     assert "space_split" in out
+
+
+# ── finder scope (ADR-0071 §am-5) ─────────────────────────────────────
+
+
+def test_finder_session_is_none_only_for_scope_global(repl):
+    """``--scope global`` searches the shared catalog; everything else unions."""
+    assert repl._finder_session("global") is None
+    assert repl._finder_session("local") is repl.stack.session
+    assert repl._finder_session("") is repl.stack.session
+
+
+def test_pl_and_execute_no_longer_hardcode_session_none():
+    """Regression: both verbs passed ``session=None`` as a pre-am-5 workaround.
+
+    That workaround escaped a ``_view_for`` which returned Local ALONE for any
+    session and so hid the global builtins. Under the union view it has the
+    opposite effect — it discards the user's Local overrides — which would
+    leave the two-tier feature unreachable from the only shipped surface that
+    reaches the sound finder.
+    """
+    import inspect
+
+    from mindsos_cli.commands.brain import BrainREPL
+
+    for verb in ("_do_pl", "_do_execute"):
+        src = inspect.getsource(getattr(BrainREPL, verb))
+        assert "session=None" not in src, (
+            f"BrainREPL.{verb} hard-codes session=None; the finder would "
+            f"search Global alone and skip this user's Local capacities"
+        )

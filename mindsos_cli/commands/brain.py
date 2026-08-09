@@ -168,6 +168,30 @@ class BrainREPL:
             return [self.stack.global_view()]
         return [self.stack.global_view(), self.stack.local_view()]
 
+    def _finder_session(self, scope: str) -> Any:
+        """Which session the FINDER gets for ``scope`` (ADR-0071 §am-5).
+
+        ``--scope global`` searches the shared catalog alone, so it passes
+        ``None``. Every other scope passes the live session, which
+        ``pipeline._view_for`` resolves to a Local-preferring UNION of Global
+        and this user's Local.
+
+        **``--scope local`` therefore does NOT mean "Local only" here**, and
+        that asymmetry with :meth:`_views` is deliberate: a Local-only
+        pipeline search is exactly the defect §am-5 removed. A user who taught
+        one step lost the entire pre-installed catalog for that find, because
+        composition needs both realms even when the *listing* the flag
+        governs is one realm. Local-preferring is the strongest honest reading
+        of "local" for a search that has to compose.
+
+        Both call sites previously hard-coded ``session=None`` as a workaround
+        for the pre-§am-5 view, which returned Local ALONE for any session and
+        so hid the global builtins (2026-07-05: it silently broke ``pl`` and
+        ``execute``). That workaround now has the opposite effect — it
+        discards the user's Local overrides — so it is retired here.
+        """
+        return None if scope == "global" else self.stack.session
+
     @staticmethod
     def _section(title: str, iris: List[str]) -> str:
         iris = list(iris)
@@ -390,7 +414,7 @@ class BrainREPL:
 
         verdict = find_pipeline(
             self.stack.cl,
-            session=None,
+            session=self._finder_session(scope),
             start_datastate=start,
             target_datastate=target,
         )
@@ -687,7 +711,7 @@ class BrainREPL:
         value = self._coerce(pos[0]) if len(pos) == 1 else " ".join(pos)
         verdict = ConjunctionFinder().find(
             self.stack.cl,
-            session=None,
+            session=self.stack.session,
             start_datastates=(start,),
             target_datastate=target,
         )
