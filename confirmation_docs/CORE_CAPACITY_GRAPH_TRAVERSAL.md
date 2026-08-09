@@ -299,10 +299,20 @@ produces **25** on the population those documents describe.
    wrong-answer-reported-as-right class as D-A and D-C. Executed in two catalogs:
    **arc3 14 of 27, arc1 16 of 45**, on **both** finders.
 
-   **Both predicates go in a shared step-admission check that BOTH finders read** —
-   not `ConjunctionFinder`'s local `eligible` (`pipeline.py:489`), which `BFSFinder`
-   never calls. Under #99's `_select_finder` a single start selects `BFSFinder`, so
-   predicates on `eligible` alone would miss every single-start brain.
+   **[BUILT 2026-08-05 — `arity-admission-confirmed`.]** This one is **shared**: it is
+   answered from the declaration alone, so it is computed once per `CapacityLayerView`
+   (`admission.declaration_refusals`, scope-correct) and read by both finders. It is
+   checked in `ConjunctionFinder`'s `cap_satisfiable`, not in its local `eligible`, so it
+   governs **phase 1** as well — a capacity no route can feed must not make its output
+   look reachable either. `BFSFinder` has no producer-selection stage at all, and under
+   #99's `_select_finder` a single start selects it, so a predicate on `eligible` alone
+   would miss every single-start brain.
+
+   **Arity on a *collection* input is NOT refused.** After ADR-0205 §amendment-3's
+   shape-2 ruling that is the sanctioned many-into-one form; whether the collection
+   carries N members is a property of the value at run time, and the executor keeps the
+   length check. A rule that refused every capacity declaring arity would delete the
+   migration's own target.
 
    **Form B is not routable over scalars** — a type-level walk cannot decide *which
    two* components to pair, exactly as it cannot decide which shape to rotate (§8's
@@ -311,6 +321,28 @@ produces **25** on the population those documents describe.
    is contingent on `COLLECTION_ITERATION_ADOPTION_GUIDE.md` §14.1(a), unanswered
    since 2026-07-30; until it is answered, brain-side dispatch bridges are the only
    available shape and are correct.
+
+1c. **A step is not admissible unless its other declared inputs are already on the
+   path.** **[BUILT 2026-08-05 — `bfs-step-admission-confirmed`.]** `BFSFinder` fires each
+   capacity off the single `via` DataState it arrived on and draws one `DAGEdge`, while
+   `DAGStep.input_datastates` lists them all. The deciding fact is one line of the
+   executor: `execute_pipeline` builds a step's inputs as
+   `{ds: blackboard[ds] for ds in step.input_datastates if ds in blackboard}` and **never
+   consults `DAGEdge`**. So the rule is **path availability** — the starts plus the
+   outputs of the steps already taken — and **not** reachability from the starts, which
+   is over-permissive: an input can be reachable and still not produced on the branch the
+   walk is on, and such a route composes and dies at dispatch exactly as before.
+
+   **This one is `BFSFinder`-local, not shared.** `ConjunctionFinder` answers the same
+   case by *wiring* the missing input as another step, so refusing it there would delete
+   routes it correctly builds. It is defect **D-A**'s first half; the second half closes
+   with the `input_group` retirement (`capacity.py`'s early return for `fold`).
+   arc1 measured twelve capacities in the class and executed three; arc1 §28.1 priced and
+   accepted the consequence.
+
+   **Nothing that ran stops running** — all four `execute_pipeline` call sites seed the
+   blackboard filtered to `pipeline.start_datastates`, so the refused condition **is** the
+   condition `_validate_inputs` would have raised on.
 
 2. **No capacity outside CGT may consume a `core.*` traversal DataState.** If one
    ever does, domain searches begin routing through the traversal itself. This is
@@ -381,9 +413,19 @@ rule nobody proposed.
 
 ## 9. Owed
 
+> **Status 2026-08-05.** Three of this section's items are discharged and are struck
+> below. §7.1 (C3R1b) is **not built** — it is last by measured value and, per §8.3 plus
+> arc3's later correction, closes nothing. `input_group`'s retirement is **not built**;
+> the owner resolved its ownership as staying with the C3 lane, so C2R4 inherits nothing.
+
+
 - CR §2 edited in place with §8 above added as a ninth rejected alternative.
-- `20` → `25` in CR §1, ADR-0071 §am-3, and the `ConjunctionFinder` docstring.
-- An ADR amending ADR-0071 §am-2 and §am-3 once built.
+- ~~`20` → `25` in CR §1, ADR-0071 §am-3, and the `ConjunctionFinder` docstring.~~
+  **Done** — all three, 2026-08-05.
+- ~~An ADR amending ADR-0071 §am-2 and §am-3 once built.~~ **Done** — ADR-0071
+  **§amendment-4** records the shipped seam (which predicate lives where, and why that is
+  not one function). §am-3 also gained the `**Amendment status:**` label `RULES.md` §9
+  requires and it never carried.
 - The §7.3 floor rule as an ADR-0205 amendment when C2R1 lands Local install.
 - The §2.5 pipeline-level cycle class, to whichever item owns the pipeline store.
 - arc3: invariant §7.1 and its `grouped` self-loop.

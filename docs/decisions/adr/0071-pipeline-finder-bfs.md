@@ -91,6 +91,13 @@ The BFS now walks the bipartite `PRODUCES`/`CONSUMES` edges (`consumers_of` via 
 
 ## §amendment-3 (feat/finder-verdict — 2026-07-31): the two phase-2 cycle guards
 
+**Amendment status:** Accepted. **Implemented by:** `finder-cycle-guards-confirmed`.
+*(Label added 2026-08-05: `RULES.md` §9 requires an in-file amendment to carry
+`**Amendment status:**`, never `**Status:**`, and this one carried neither. The
+duplicate-step figure below was **20** and is corrected to **25** — the delivered
+`finder_variants_model.py` produces 25 on the population this paragraph describes.
+`CORE_CR_FINDER_AS_CAPACITIES.md` §1 is corrected with it.)*
+
 **Context.** §amendment-2 shipped `ConjunctionFinder` as a two-phase walk: a pure reachability check, then construction over admissible producers. The two phases make the same claim at two resolutions — *"a route exists"* and *"here is the route"* — so they must agree. They did not, in two independent ways, and both were live on the CLI `execute` verb (`mindsos_cli/commands/brain.py:687`, the only shipped path reaching this finder).
 
 **D-B — phase 2 discarded phase 1's cycle stack.** Phase 1 threads a `stack` of DataStates under resolution and refuses a capacity that would need one already on it. Phase 2 re-tested producers with `frozenset()` (`pipeline.py:430`, `:462`), so a producer phase 1 had refused could still be selected during construction, including to feed itself, then recursed to `max_depth` and raised. Composition was **non-monotonic in the start set**: adding an available input could make a compose *fail*.
@@ -99,8 +106,98 @@ The BFS now walks the bipartite `PRODUCES`/`CONSUMES` edges (`consumers_of` via 
 
 **What changes.** Phase-2 producer admission moves into a single predicate with three clauses, in order: refuse a capacity that is **in flight**; admit a capacity that has **already fired** (reusing its step index); otherwise fall through to phase 1's own predicate **with the live cycle stack**. `fire` carries the stack and maintains an `in_flight` set. No declaration, signature or result shape changes; no capacity gains a field.
 
-**Evidence, not argument.** `confirmation_docs/finder_variants_model.py` reproduces both phases exactly and swaps only the admission rule. Over 20,000 generated capacity graphs: the shipped rule and a stack-only fix both leave **369 `max_depth` blowups and 20 duplicate-step pipelines**; with the `in_flight` guard, **zero and zero**. The three §amendment-2 conformance shapes (`all_required` AND, diamond convergence, fold fan-in) are byte-identical across all variants. The `fired` short-circuit was separately measured to be a **cost optimisation, not a correctness clause** — identical results with and without it in all 20,000 graphs — and is documented as such rather than defended as one.
+**Evidence, not argument.** `confirmation_docs/finder_variants_model.py` reproduces both phases exactly and swaps only the admission rule. Over 20,000 generated capacity graphs: the shipped rule and a stack-only fix both leave **369 `max_depth` blowups and 25 duplicate-step pipelines**; with the `in_flight` guard, **zero and zero**. The three §amendment-2 conformance shapes (`all_required` AND, diamond convergence, fold fan-in) are byte-identical across all variants. The `fired` short-circuit was separately measured to be a **cost optimisation, not a correctness clause** — identical results with and without it in all 20,000 graphs — and is documented as such rather than defended as one.
 
 **This is a patch, not the design.** Both defects exist because the walk is a top-down recursion needing ad-hoc guards. The agreed replacement computes reachability **bottom-up as a fixpoint** across four dispatched capacities (`path-finding.reachable_strata` → `path-finding.producer_candidates` → `decision.select_producers` → `path-finding.construct_dag`), which makes both defects impossible by construction and retires the cycle stack, `in_flight` **and** `max_depth`. `BFSFinder` is deleted there and BFS becomes a `selection_policy` **value** — which discharges §amendment-2's "BFS is one registered strategy" as a value rather than a class. Spec: `confirmation_docs/CORE_CR_FINDER_AS_CAPACITIES.md`; its §8 lists eight already-rejected alternatives.
 
 **Supersedes.** The fix shape in `confirmation_docs/CORE_CR_FINDER_CYCLE_SOUNDNESS.md` (threading the stack alone). That CR's D8, D9 and D11 stand; **D10 is retired** — `max_depth` is removed, not parameterised. Status remains Accepted.
+
+---
+
+## §amendment-4 (feat/finder-admission — 2026-08-05): step admission — three predicates, and where each of them lives
+
+**Amendment status:** Accepted. **Implemented by:** `signature-sweep-confirmed`,
+`bfs-step-admission-confirmed`, `arity-admission-confirmed`.
+
+**Context.** §amendment-3 fixed the two ways the two phases disagreed *with each other*.
+This amendment fixes the two ways **either finder disagreed with the executor**: it
+returned a route the executor could not run. Both were reported as a right answer, which
+is the same class as **D-A** and **D-C** — the failure surfaced one dispatch later, as
+`InputContractError`, with nothing between the finder and the executor able to see it.
+
+**The deciding fact, and it is one line of the executor.** `execute_pipeline` builds a
+step's inputs as `{ds: blackboard[ds] for ds in step.input_datastates if ds in
+blackboard}` and **never consults `DAGEdge`**. So what decides whether a step runs is
+what is on the blackboard when it is reached, not how the DAG is drawn. Everything below
+follows from that.
+
+**Predicate 1 — path availability. `BFSFinder`-local.** `BFSFinder` fires each capacity
+off the single `via` DataState it arrived on and draws one edge, while
+`DAGStep.input_datastates` still lists every declared input. It now refuses a capacity
+unless every *other* declared input is on this path — the starts plus the outputs of the
+steps already taken — which is exactly the blackboard the executor will build. arc1
+measured twelve capacities in that class on its own catalog and executed three.
+
+*It is availability and not reachability, and the distinction is load-bearing.* An input
+can be reachable from the catalog and still not have been produced on the branch the walk
+is on; a route admitted on reachability composes and dies at dispatch exactly as before.
+*It is `BFSFinder`-local* because `ConjunctionFinder` answers the same case by **wiring**
+the missing input as another step — refusing it there would delete routes it correctly
+builds.
+
+**Predicate 2 — `operand_arity` on a scalar. Shared by both finders.** A capacity emits
+one value per output DataState, so a consumer declaring `operand_arity=N>1` on a scalar
+input can never be fed by route-finding. `operand_arity` lives only on the declaration and
+is never written to the graph node, which is why both finders were blind to it. Measured
+**arc3 14 of 27, arc1 16 of 45**, on both finders; **inert on core**, which declares no
+arity anywhere. Arity on a **collection** input is *not* refused: after ADR-0205
+§amendment-3's shape-2 ruling that is the sanctioned many-into-one form, whether the
+collection carries N members is a property of the value at run time, and the executor
+keeps the length check.
+
+**Predicate 3 — outputs meeting inputs (C3R1b) is NOT built.** It is last by measured
+value and ships labelled as hygiene: its original ground was withdrawn when arc3 showed it
+does not fix arc3's case, and the surviving grounds argue *blanket over narrow* rather
+than *rule over no rule*.
+
+**Where they live, and why that is not one function.** Predicate 2 is answered from a
+declaration alone — the same answer for every start set — so it is computed once per
+`CapacityLayerView` (`admission.declaration_refusals`, scope-correct, because a Local
+override may declare different arity than Global). Predicate 1 depends on the walk, so it
+is evaluated per candidate. Both are **module-level functions over plain values** in
+`mindsos_capacity/admission.py`: `ConjunctionFinder`'s checks are closures inside `find()`,
+and that is the recorded reason **D-B and D-E survived to a tagged commit** — a closure
+cannot be called from a test.
+
+In `ConjunctionFinder` the declaration refusal sits in `cap_satisfiable`, not in
+`eligible`, so it governs **phase 1** as well as phase 2: a capacity no route can feed must
+not make its output look reachable either.
+
+**Two of the three are transitional.** Under the Capacity Graph Traversal rewrite a
+capacity cannot feed itself and the walk only uses DataStates it already holds, so
+predicates 1 and 3 have nothing left to refuse. Only the arity rule survives. Do not build
+a three-way structure that must be unpicked — the same warning the five `FIND_REASONS`
+carry.
+
+**This gains refusals, not capabilities, and nothing that ran stops running.** Reachability
+is deliberately narrower than the Phase 30/42 BFS. Verified at all four `execute_pipeline`
+call sites: each seeds the blackboard filtered to `pipeline.start_datastates`, so the
+condition refused by a finder **is** the condition `_validate_inputs` would have raised on.
+What moves is where the failure surfaces — an honest no-route instead of a crash. A brain
+that needs those inputs wired must name `ConjunctionFinder` for the leaf, or put them on
+the blackboard before dispatch.
+
+**Also in this amendment's ships.** `find_pipeline` was annotated `-> Pipeline` while
+returning a `FindVerdict` on the tagged `ae63aa2`; corrected, and guarded **structurally**
+by `tests/architecture/test_finder_return_annotations.py` so a future finder is covered the
+day it is written. `InputContractError` is exported and its `kind` set documented as the
+three it actually raises, pinned by an AST scan of the raiser plus a docstring check.
+`FindVerdict.already_held` answers **ADR-0205 §amendment-3.4** as a derived property, so
+C2R4 does not build the fallback that amendment carries.
+
+**Known and out of scope.** `BFSFinder` still draws `DAGEdge` for the `via` input only,
+including for a step admitted because its other inputs are on the path. Inert today —
+`Pipeline.edges` is read only by `to_dict()` — but the pipeline store reads edges as the
+composition links. Completing them is DAG construction, which is `ConjunctionFinder`'s.
+
+**Not superseded.** §amendment-3 stands in full; this adds a seam it did not have.
