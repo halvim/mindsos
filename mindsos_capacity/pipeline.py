@@ -65,6 +65,7 @@ from typing import (
     Tuple,
 )
 
+from .admission import declaration_refusals, unavailable_inputs
 from .identifiers import (
     INPUT_GROUP_ALL_REQUIRED,
     INPUT_GROUP_ANY_OF,
@@ -293,6 +294,32 @@ class FindVerdict:
         """True when a route was found."""
         return self.pipeline is not None
 
+    @property
+    def already_held(self) -> bool:
+        """True when the target was **already in the start set**.
+
+        Both finders answer that case with a *found* verdict carrying an
+        empty ``Pipeline`` (``steps=()``, ``edges=()``). That is a correct
+        answer in a shape that cannot state itself, and four consumers were
+        each inferring it from an absence: the pipeline store cannot express
+        a composition with zero members, the episode corpus records a
+        ``None`` capacity root — the same shape a crash leaves — the
+        visualiser drops the segment silently, and the planning loop cannot
+        tell a **satisfied** milestone from an unreachable one.
+
+        **Derived, never stored.** A zero-step pipeline already *is* the
+        statement; a field beside it would be a second copy that can
+        disagree — the ground ADR-0192 used to refuse a stored
+        ``fundamental`` flag, and the same reason :attr:`found` is derived.
+
+        Not a sixth :data:`FIND_REASONS` value: ``reason`` is ``None``
+        whenever a route was found, and this **is** a route — of length
+        zero. Unlike two of the five reasons this does **not** retire at the
+        Capacity Graph Traversal rewrite; there it is the forward walk
+        terminating at step zero.
+        """
+        return self.found and not self.pipeline.steps
+
 
 
 def _view_for(
@@ -353,13 +380,40 @@ class Finder(ABC):
 class BFSFinder(Finder):
     """Shortest-by-capacity-count forward walk → degenerate-linear DAG.
 
-    Identical reachability to the Phase 30/42 BFS: frontier is keyed on
-    DataState IRIs; ``consumers_of`` advances by CONSUMES, ``outputs_of``
-    by PRODUCES (ADR-0156). It fires each capacity off the **single**
-    ``via`` datastate it arrived on and wires only that one input — the
-    capacity's other declared inputs are recorded on the
-    :class:`DAGStep` but left unwired. That single-input composition is
-    the latent unsoundness :class:`ConjunctionFinder` exists to fix.
+    Frontier is keyed on DataState IRIs; ``consumers_of`` advances by
+    CONSUMES, ``outputs_of`` by PRODUCES (ADR-0156). It fires each capacity
+    off the **single** ``via`` datastate it arrived on and wires only that
+    one input — the capacity's other declared inputs are recorded on the
+    :class:`DAGStep` but left unwired. That single-input composition is the
+    unsoundness :class:`ConjunctionFinder` exists to fix, and it is defect
+    **D-A**.
+
+    **It no longer composes a route it cannot run.** Before taking a
+    capacity this walk asks :func:`~mindsos_capacity.admission.
+    unavailable_inputs` whether the capacity's *other* declared inputs are
+    already on this path — the starts plus the outputs of the steps taken so
+    far, which is precisely the blackboard ``execute_pipeline`` will hand it.
+    If any is absent the capacity is refused and the walk continues, so the
+    answer is an honest no-route instead of a pipeline that dispatches
+    without an operand and raises ``InputContractError``. Measured on the
+    arc1 catalog: twelve capacities in that class, three executed.
+
+    **This gains refusals, not capabilities.** It does not learn to *wire*
+    the missing inputs — that is :class:`ConjunctionFinder`'s DAG
+    construction and stays there — so reachability is now narrower than the
+    Phase 30/42 BFS, deliberately. Nothing that previously *ran* stops
+    running: every ``execute_pipeline`` call site seeds the blackboard
+    filtered to ``pipeline.start_datastates``, so the condition refused here
+    is the condition ``_validate_inputs`` would have raised on. A brain that
+    needs those inputs wired must name :class:`ConjunctionFinder` for the
+    leaf, or put them on the blackboard before dispatch.
+
+    **Known and out of scope:** the ``DAGEdge`` record is still drawn for
+    ``via`` only, so a step admitted because its other inputs are on the path
+    carries no edge for them. Inert today — ``Pipeline.edges`` is read only
+    by ``to_dict()`` and ``execute_pipeline`` consults the blackboard, not
+    the edges — but the pipeline store reads edges as the composition links.
+    Flagged to whichever item builds that store.
     """
 
     def find(
@@ -372,6 +426,9 @@ class BFSFinder(Finder):
         max_depth: int = 8,
     ) -> FindVerdict:
         view = _view_for(capacity_layer, session)
+        # Shared half of step admission: declaration-only refusals, answered
+        # once for the whole view because they do not depend on the walk.
+        refused = declaration_refusals(capacity_layer, view, session=session)
 
         if target_datastate in set(start_datastates):
             return FindVerdict(
@@ -395,13 +452,32 @@ class BFSFinder(Finder):
             current_ds, steps, edges, prod_idx = queue.popleft()
             if len(steps) >= max_depth:
                 continue
+            # What `execute_pipeline` will have on the blackboard when it
+            # reaches the next step of THIS path: the starts, plus every
+            # output produced so far along this branch. Not the catalog's
+            # reachable set — see `admission.unavailable_inputs`.
+            available: Set[str] = set(start_datastates)
+            for taken in steps:
+                available.update(taken.output_datastates)
             for cap in view.consumers_of(current_ds):
                 cap_iri = cap.node_id
+                if cap_iri in refused:
+                    continue
+                declared_inputs = tuple(view.inputs_of(cap_iri))
+                if unavailable_inputs(declared_inputs, available):
+                    # D-A. This walk wires only `current_ds`, so a capacity
+                    # whose other declared inputs are not already on the path
+                    # would dispatch without them and raise
+                    # InputContractError(missing_required). Refusing it here
+                    # turns a run-time crash into an honest no-route; it
+                    # loses nothing that ran, because the condition above is
+                    # the condition `_validate_inputs` applies.
+                    continue
                 outputs = tuple(view.outputs_of(cap_iri))
                 new_idx = len(steps)
                 new_step = DAGStep(
                     capacity_iri=cap_iri,
-                    input_datastates=tuple(view.inputs_of(cap_iri)),
+                    input_datastates=declared_inputs,
                     output_datastates=outputs,
                 )
                 new_steps = steps + (new_step,)
@@ -528,6 +604,22 @@ class ConjunctionFinder(Finder):
     ``confirmation_docs/CORE_CR_FINDER_AS_CAPACITIES.md`` — §8 lists eight
     already-rejected alternatives; read it before proposing a ninth.
 
+    **Shared step admission (CORE-C3R1).** Before any of the above, a capacity
+    refused by :func:`~mindsos_capacity.admission.declaration_refusals` is
+    unsatisfiable. Today that means one rule: a consumer declaring
+    ``operand_arity=N>1`` on a **scalar** input cannot be fed by route-finding,
+    because a capacity emits one value per output DataState — so the route
+    composed, and then raised ``InputContractError(kind="operand_arity")`` at
+    dispatch. Measured **arc3 14 of 27, arc1 16 of 45**, on both finders; inert
+    on core, which declares no arity. The check sits in ``cap_satisfiable`` and
+    not in ``eligible`` so that it governs **phase 1** as well: a capacity no
+    route can feed must not make its output look reachable either.
+
+    Arity on a **collection** input is *not* refused — after ADR-0205's shape-2
+    migration that is the sanctioned many-into-one form, and whether the
+    collection carries N members is a run-time property of the value, which the
+    executor still checks. Refusing it would delete the migration's own target.
+
     *ADRs.* Amends **ADR-0071 §am-2** (§am-3, this change). Supersedes the
     fix shape in ``CORE_CR_FINDER_CYCLE_SOUNDNESS.md``; its D8, D9 and D11
     stand, D10 is retired with ``max_depth``.
@@ -543,6 +635,7 @@ class ConjunctionFinder(Finder):
         max_depth: int = 8,
     ) -> FindVerdict:
         view = _view_for(capacity_layer, session)
+        refused = declaration_refusals(capacity_layer, view, session=session)
         starts: FrozenSet[str] = frozenset(start_datastates)
 
         if target_datastate in starts:
@@ -567,6 +660,12 @@ class ConjunctionFinder(Finder):
             )
 
         def cap_satisfiable(cap_iri: str, stack: FrozenSet[str]) -> bool:
+            # Declaration refusal is checked here, not in ``eligible``, so it
+            # governs phase 1's reachability as well as phase 2's admission —
+            # ``eligible`` falls through to this predicate. A capacity no route
+            # can feed must not make a DataState look reachable either.
+            if cap_iri in refused:
+                return False
             inputs = view.inputs_of(cap_iri)
             if not inputs:
                 return True
