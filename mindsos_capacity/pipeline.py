@@ -72,6 +72,7 @@ from .identifiers import (
     INPUT_GROUP_FOLD,
 )
 from .types import SessionArg
+from .views import LocalPreferringView
 
 if TYPE_CHECKING:  # pragma: no cover — circular-import guard
     from .capacity_layer import CapacityLayer
@@ -322,27 +323,50 @@ class FindVerdict:
 
 
 
-def _view_for(
-    capacity_layer: "CapacityLayer", session: SessionArg
-) -> "CapacityLayerView":
-    """Resolve the Global or per-user Local view (R3 PB-44(a) inline)."""
+def _view_for(capacity_layer: "CapacityLayer", session: SessionArg):
+    """Resolve the finder's read surface for this call.
+
+    Sessionless → Global, unchanged: a ``session=None`` caller is asking
+    about the shared catalog and must not see any user's Local capacities.
+
+    With a session → a :class:`~mindsos_capacity.views.LocalPreferringView`
+    UNION of Global and that user's Local, Local shadowing Global at a
+    colliding IRI. Before this, the finder saw Global **or** Local and never
+    both, so a Local-registered capacity could not compose with a Global one
+    at all — a user who taught one step lost the entire pre-installed
+    catalog for that find.
+
+    Falls back to Global when the user has no Local metagraph, via
+    ``has_local`` rather than ``local_view``: the latter lazily MINTS an
+    empty Local, and reading a catalog must not create state.
+    """
     target_uid = session.user_id if session is not None else None
-    return (
-        capacity_layer.global_view()
-        if target_uid is None
-        else capacity_layer.local_view(target_uid)
+    if target_uid is None or not capacity_layer.has_local(target_uid):
+        return capacity_layer.global_view()
+    return LocalPreferringView(
+        capacity_layer.global_view(), capacity_layer.local_view(target_uid)
     )
 
 
-def _input_group_of(capacity_layer: "CapacityLayer", capacity_iri: str) -> str:
+def _input_group_of(
+    capacity_layer: "CapacityLayer", capacity_iri: str, session: SessionArg = None
+) -> str:
     """Read a capacity's ``input_group`` from the declaration registry.
 
     Decision 8: the finder reads the declaration, not the graph. Defaults
     to ``all_required`` when no declaration is registered (a graph-only
     node, e.g. a bare reference) — the sound-composer default.
+
+    **Scope-correct, for the same reason ``declaration_refusals`` is:** a
+    Local override may declare a different ``input_group`` from the Global
+    capacity of that IRI, and the union view can now surface either. Reading
+    the merged, sessionless ``get_declaration`` here would answer from the
+    wrong side of a shadowed pair. This stays a per-call lookup rather than
+    joining the once-per-find refusal map because it resolves to two dict
+    lookups, and unlike a refusal it is not a whole-view predicate.
     """
     try:
-        decl = capacity_layer.get_declaration(capacity_iri)
+        decl = capacity_layer.resolve_declaration(capacity_iri, session=session)
     except Exception:  # noqa: BLE001 — missing declaration → default
         return INPUT_GROUP_ALL_REQUIRED
     return getattr(decl, "input_group", INPUT_GROUP_ALL_REQUIRED)
@@ -669,7 +693,7 @@ class ConjunctionFinder(Finder):
             inputs = view.inputs_of(cap_iri)
             if not inputs:
                 return True
-            mode = _input_group_of(capacity_layer, cap_iri)
+            mode = _input_group_of(capacity_layer, cap_iri, session)
             if mode == INPUT_GROUP_ANY_OF:
                 return any(ds_reachable(ds, stack) for ds in inputs)
             # all_required and fold both need every declared input producible
@@ -738,7 +762,7 @@ class ConjunctionFinder(Finder):
             in_flight.add(cap_iri)
             inputs = tuple(view.inputs_of(cap_iri))
             outputs = tuple(view.outputs_of(cap_iri))
-            mode = _input_group_of(capacity_layer, cap_iri)
+            mode = _input_group_of(capacity_layer, cap_iri, session)
             incoming: List[Tuple[int, str]] = []
             for ds in inputs:
                 if ds in starts:
