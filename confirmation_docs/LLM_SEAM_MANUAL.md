@@ -348,6 +348,10 @@ And the origin record:
  "origin_producer_kind": "document_reading",
  "supplied_fields": ["origin_party", "origin_party_phrase",
                      "expected_basis", "quote_verified"],
+ "possible_refusal_reasons": ["model_declined", "field_absent",
+                              "quote_not_found_in_source",
+                              "malformed_response", "model_unreachable",
+                              "value_not_coercible"],
  "origin_method": "read_by_model",
  "origin_method_phrase": "read by a language model",
  "source_identity_phrase": "their submission email",
@@ -726,9 +730,29 @@ provenance and the graph would wire the wrong producer.
 
 ### 7.12 The closed set of refusal reasons **[BUILT]**
 
-`model_declined`, `field_absent`, `quote_not_found_in_source`,
-`malformed_response`. Closed because consumers branch on them; a free-text
-reason means something downstream parses English.
+**Seven, and the vocabulary is global rather than per-producer.**
+
+*Reading failures:* `model_declined`, `field_absent`,
+`quote_not_found_in_source`, `malformed_response`, `value_not_coercible`.
+*Environment faults:* `model_unreachable`, `source_unreachable`.
+*A finding about the case:* `no_source_in_force` — a versioned source was
+consulted and holds no edition covering that date.
+
+Closed because consumers branch on them, and a free-text reason means
+something downstream parses English.
+
+**Global, not per-producer, for the same reason `supplied_fields` exists.**
+The renderer must branch on **one** vocabulary, not one whose meaning depends
+on who wrote the record. So every record also carries
+`possible_refusal_reasons` — the subset its producer could ever emit — and
+`build_origin_record` **raises** if a producer emits a reason it did not
+declare. That lets a renderer tell *"a lookup would never say
+`quote_not_found_in_source`"* from *"this lookup happened not to"*.
+
+**Environment faults are not findings.** `environment_fault` is derived from
+the reason inside the builder, never passed, so a producer cannot label its
+own outage as a fact about the customer's case. *"No policy in force at that
+date"* belongs in their refusal list; *"our store was down"* does not.
 
 ### 7.13 Structural uncertainty, no confidence score **[BUILT]**
 
@@ -792,10 +816,11 @@ differ.
 
 ### The spine
 
-Eleven fields every producer writes, whatever it is: `origin_producer_kind`,
-`supplied_fields`, `origin_method`, `origin_method_phrase`,
-`source_identity_phrase`, `source_datastate`, `question`, `admitted`,
-`refusal_reason`, `refusal_detail`, `environment_fault`.
+Twelve fields every producer writes, whatever it is: `origin_producer_kind`,
+`supplied_fields`, `possible_refusal_reasons`, `origin_method`,
+`origin_method_phrase`, `source_identity_phrase`, `source_datastate`,
+`question`, `admitted`, `refusal_reason`, `refusal_detail`,
+`environment_fault`.
 
 ### Never infer from absence
 
@@ -819,7 +844,7 @@ source; only some supply a party.
 
 ### The union is v0 and not frozen
 
-Twenty-nine fields today. It is closed **by agreement** — `build_origin_record`
+Thirty fields today. It is closed **by agreement** — `build_origin_record`
 raises if a producer invents a field, because two producers is where invention
 starts and the renderer would end up reading keys nobody declared. But it is
 not frozen: neither consumer exists yet, and a field set frozen before its

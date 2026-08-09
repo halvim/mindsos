@@ -130,6 +130,21 @@ registration defect and belongs in the batch report.
 **D22 — `origin_method` is `read_by_model`.** ~~`inferred_by_model`.~~ It sat beside
 `basis: stated` and read as a contradiction.
 
+**D23 — The refusal vocabulary is global, and each producer declares its subset.**
+~~A comprehension-only set of four reasons.~~ The renderer branches on `refusal_reason`, so
+it must branch on one vocabulary rather than one whose meaning depends on the writer — the
+`supplied_fields` argument applied to reasons. `possible_refusal_reasons` joins the spine
+(now twelve fields; union 30), and `build_origin_record` raises if a producer emits a reason
+it did not declare, so "could never say this" is distinguishable from "happened not to".
+
+**D24 — Two reasons added for the lookup, and the environment/finding split holds.**
+`no_source_in_force` — a versioned source consulted, no edition covering that date. A
+**finding about the customer's case**: a gap in their own policy set that nobody reviewed,
+so it belongs in the refusal list and `environment_fault` stays false.
+`source_unreachable` — the store itself is down, the exact analogue of `model_unreachable`
+and an environment fault for the same reason. `REFUSAL_NO_VERSION_IN_FORCE` was renamed
+`REFUSAL_NO_SOURCE_IN_FORCE` for consistency with the `source_*` field family.
+
 ---
 
 ## 4. Why provenance is a declared output

@@ -58,12 +58,14 @@ values match and only the origins differ.
 
 ### What the shape is
 
-- **A spine of eleven fields every producer writes**, including
-  `origin_producer_kind` and `supplied_fields`.
+- **A spine of twelve fields every producer writes**, including
+  `origin_producer_kind`, `supplied_fields` and `possible_refusal_reasons`.
 - **Producer-declared fields** — quote and basis for a reading, version and
   in-force window for a lookup — that some producers supply and others do
   not.
-- **A closed union**, `ORIGIN_UNION`, currently 29 fields.
+- **A closed union**, `ORIGIN_UNION`, currently 30 fields.
+- **A global refusal vocabulary** of seven reasons, with each producer
+  declaring the subset it could ever emit.
 
 ### Three rules that carry the design
 
@@ -94,6 +96,20 @@ email", "the claims policy"). They were one welded string until the money
 sentence was assembled from the union and would not come out: a lookup
 consults an authority and has no asserting party. Every producer supplies
 the source; only some supply a party.
+
+### The refusal vocabulary is global, not per-producer
+
+The renderer branches on `refusal_reason`, so it must branch on **one**
+vocabulary rather than one whose meaning depends on who wrote the record —
+the same argument that produced `supplied_fields`. Each record therefore
+carries `possible_refusal_reasons`, and `build_origin_record` raises if a
+producer emits a reason it did not declare.
+
+The set was comprehension-only until the policy lookup was described: *"no
+policy in force at that date"* is one of the slice's five runs and had no
+reason at all. `no_source_in_force` (a finding about the customer's case) and
+`source_unreachable` (an environment fault, the exact analogue of
+`model_unreachable`) close it.
 
 ### Environment faults are not findings
 
