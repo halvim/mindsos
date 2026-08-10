@@ -216,7 +216,7 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0203](0203-learned-pipelines-local-persistence.md) | ADR-0203 — Learned pipelines get a first-class Local persistence surface | Accepted | L2 | — |
 | [0204](0204-reduction-capability-family.md) | Reduction capability family (L4-support) — argmin / argmax / top_k / bottom_k / majority_vote | Accepted | L4-support | reduction-family, argmax, top_k, bottom_k, majority-vote, CR-reduction |
 | [0205](0205-abstraction-levels.md) | Abstraction levels — one graph at several resolutions | Accepted | L3 | — |
-| [0206](0206-planning-decomposition-confidence.md) | Planning as a loop — milestones, decomposition, and confidence | Accepted | L4 | — |
+| [0206](0206-planning-decomposition-confidence.md) | Planning as a loop — milestones, decomposition, and confidence | Proposed | L4 | — |
 
 !!! note "ADRs 0058, 0059, 0113, 0116, 0117, 0119 — numbers not in use"
     ADR-0117 (compositional metaedge) was **Withdrawn** in Phase 05a; the concept became the `compositional` flag on `IntergraphEdge` / `IntergraphHyperEdge` (see `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`, the canonical source for both primitives). The Server Layer pivot shipped 0114, 0115, 0118 and 0120. The remaining numbers (0058, 0059, 0113, 0116, 0119) were reserved and never drafted; they are not re-used.
