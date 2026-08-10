@@ -79,14 +79,28 @@ class _FakeMetagraph:
 
 
 class _FakeKL:
-    def __init__(self, global_graphs, local_graphs):
+    """Models the real KL's guard surface.
+
+    ``has_local`` defaults True so every existing call site keeps its
+    behaviour; ``local_metagraph_calls`` counts materialisations, because
+    ``local_metagraph`` lazily CREATES on the real layer and a read must
+    never trigger that (ADR-0183 §am-6).
+    """
+
+    def __init__(self, global_graphs, local_graphs, *, has_local=True):
         self._g = _FakeMetagraph(global_graphs)
         self._l = _FakeMetagraph(local_graphs)
+        self._has_local = has_local
+        self.local_metagraph_calls = 0
 
     def global_metagraph(self):
         return self._g
 
+    def has_local(self, user):
+        return self._has_local
+
     def local_metagraph(self, user):
+        self.local_metagraph_calls += 1
         return self._l
 
 
@@ -215,3 +229,43 @@ def test_reader_returns_empty_when_kl_is_none():
     # L4 dispatch may build a context with no KL (some lifecycle paths);
     # the snapshot fill must degrade to empty, not crash.
     assert read_learned_parameter_snapshot(None, "u1") == {}
+
+
+def test_reader_does_not_mint_a_local_for_a_user_who_has_none():
+    """A read must never materialise a Local (ADR-0183 §am-6).
+
+    ``local_metagraph`` lazily CREATES. This reader runs on the L4 dispatch
+    path — the snapshot is frozen into every request — so it is a hotter path
+    than the roster read that was already guarded for the same reason
+    (``mindsos_server/skills/records.py``). Before the guard it materialised an
+    empty Local for every user who had none, ahead of the durable boot that
+    restores one.
+    """
+    gg = _FakeGraph(ROLE_LEARNED_PARAMETERS)
+    n = _param_node("s", "a", 1)
+    gg.nodes[n.node_id] = n
+    lg = _FakeGraph(ROLE_LEARNED_PARAMETERS)
+    ln = _param_node("s", "a", 99)
+    lg.nodes[ln.node_id] = ln
+
+    kl = _FakeKL([gg], [lg], has_local=False)
+    snap = read_learned_parameter_snapshot(kl, "u1")
+
+    assert kl.local_metagraph_calls == 0, "reading the snapshot minted a Local"
+    assert snap == {"s": {"a": 1}}
+
+
+def test_reader_still_applies_local_when_one_exists():
+    """The guard must not cost the override when the Local is real."""
+    gg = _FakeGraph(ROLE_LEARNED_PARAMETERS)
+    n = _param_node("s", "a", 1)
+    gg.nodes[n.node_id] = n
+    lg = _FakeGraph(ROLE_LEARNED_PARAMETERS)
+    ln = _param_node("s", "a", 99)
+    lg.nodes[ln.node_id] = ln
+
+    kl = _FakeKL([gg], [lg], has_local=True)
+    snap = read_learned_parameter_snapshot(kl, "u1")
+
+    assert kl.local_metagraph_calls == 1
+    assert snap == {"s": {"a": 99}}

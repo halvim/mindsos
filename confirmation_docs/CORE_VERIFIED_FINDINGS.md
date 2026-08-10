@@ -622,7 +622,7 @@ requires. ADR-0148 §amendment-1 is reported to have the same gap and is not re-
 ⟹ Two mechanical repairs, no design content, and they belong to whichever item next touches ADR
 status truth.
 
-### 14.7 A read that mints a Local, on the L4 dispatch path — NO OWNER
+### 14.7 A read that mints a Local, on the L4 dispatch path — ✅ FIXED
 
 `mindsos_knowledge/learned_parameters_snapshot.py:64` —
 `read_learned_parameter_snapshot` calls `kl.local_metagraph(user)` with **no `has_local`
@@ -638,8 +638,19 @@ ADR-0183 §am-6 hazard that broke `test_durable_roundtrip`, and the same finding
 request's `learned_parameters_snapshot` by `L4Dispatcher`, so this is the dispatch path — not a
 roster read.
 
-⟹ Two-line fix, precedent in the repo, **independent of ADR-0205 §amendment-4**, and in **no
-lane**. Recorded here so it is met rather than rediscovered. **It has a home, not an owner.**
+⟹ Two-line fix, precedent in the repo, **independent of ADR-0205 §amendment-4**.
+
+✅ **FIXED** by the two-tier lane. `read_learned_parameter_snapshot` now guards with
+`has_local`, using the same `getattr(kl, "has_local", lambda _u: False)` form `records.py`
+uses. `_FakeKL` in `tests/learned_parameters/` gained `has_local` (defaulted `True`, so no
+existing call site changed) plus a `local_metagraph_calls` counter — the fake did not model
+the guard surface at all, so without that the guard would have silently skipped the Local
+overlay and broken `test_reader_local_overrides_global_per_knob`. Two tests: no-mint, and
+still-applies-local-when-one-exists.
+
+*(This section read "NO OWNER" when §14 landed in #119. It was accurate at the time and is
+struck here rather than deleted, because the reasoning for why it was homeless is what stopped
+it staying homeless.)*
 
 ⚠ Related but distinct from §am-4.7 item 5, which says the lazy-create hazard *dissolves* under
 one metagraph because no Local object remains to materialise. That is true of the future and
@@ -682,3 +693,44 @@ node in place"*; under one metagraph that promise inverts for three Global roles
 
 ⟹ Same class as the `delete` hazard in §am-4.7 item 2, in a **second** method. Both deletion
 paths need a RED test before the substrate is unified.
+
+### 14.10 A FOURTH collision reader — the flat `_declarations` mirror, leaking Local into sessionless reads — ✅ FIXED
+
+§14.8 names three collision readers. There is a fourth, and it is not a **view**, which is why
+three separate reads missed it: `CapacityLayer._declarations` is a **realm-blind, IRI-keyed,
+last-write-wins dict**. `self._declarations[declaration.iri] = declaration` at
+`capacity_layer.py:409` and `:423`, inside `register_capacity`, **with no realm branch** — so a
+Local registration overwrites the Global entry at the same IRI.
+
+**Reachability: LIVE-READ, and it was leaking.** `get_declaration(capacity_iri)` takes **no
+session** and read that mirror, so a sessionless caller could be handed **a user's Local
+declaration**. That contradicts the invariant the view layer maintains and ADR-0071
+§amendment-5 restates: *a sessionless caller is asking about the shared catalog and must not see
+any user's Local realm.* `pipeline._view_for` enforces it; this registry did not.
+
+Readers of the mirror: `mindsos_cli/commands/brain.py:356`,
+`mindsos_intelligence/consolidation.py:54`, and `iter_monitors()` via
+`mindsos_intelligence/monitor_subscription.py:52`.
+
+✅ **FIXED** by the two-tier lane. `get_declaration` now reads the **Global capacity index**,
+routed through `_maybe_build_lazy` so a metadata-only skill capability (ADR-0183 §am-5) still has
+its function built on first resolve — reading the index raw would return an unbound declaration
+and leave it unbound. It is now exactly the sessionless case of `_resolve_declaration`.
+
+**Not a contract change, verified rather than assumed.** No public test pinned the merged
+behaviour: `tests/phase_28/test_capacity_layer_register_capacity.py:64` asserts
+`get_declaration(cap.iri) is cap` on a **Global** registration, and
+`test_capacity_layer_local_wins.py` — the only test pinning Local-overwrites-Global — asserts on
+the **private** `cl._declarations` dict, which the fix does not touch. Its docstring calls that a
+"doc" of an internal consequence (R3 PB-36), not a public contract. **The mirror is unchanged**
+and remains a non-authoritative Local-wins merge for enumeration (`iter_declarations` /
+`iter_monitors`); only the sessionless lookup stops reading it.
+
+⚠ Same shape as §am-4.7 item 5 and §14.7: **under one metagraph the mirror stops being a merge**
+(one declaration per IRI) and the leak dissolves on its own. Item 5 is right about the future and
+was silent about the present — this instance was live.
+
+⟹ Under ADR-0205 §amendment-4, `_declarations` is a **fourth conversion site**, and the two tests
+that pin the collision as executable contract —
+`tests/phase_28/test_capacity_layer_local_wins.py` and
+`tests/phase_30/test_invoke_local_wins_resolution.py` — convert with it.
