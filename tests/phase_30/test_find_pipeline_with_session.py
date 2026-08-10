@@ -30,12 +30,22 @@ def test_find_pipeline_no_session_walks_global():
     assert len(pipeline) == 2
 
 
-def test_find_pipeline_with_unpopulated_session_local_raises():
-    """When session points to a Local that has no capacities, BFS fails."""
+def test_find_pipeline_with_unpopulated_session_local_composes_global():
+    """A session whose Local holds no capacities still gets the Global chain.
+
+    **This assertion is inverted from what it was**, deliberately. It used to
+    read ``assert not verdict.found``: ``_view_for`` returned the Local view
+    *instead of* Global, so a user with an empty Local saw an empty catalog.
+    With the Local-preferring union view, Local contributes nothing here and
+    the Global 2-capacity pipeline composes — which is the whole point of the
+    two-tier change. The old expectation was the defect, not the contract.
+    """
     cl = build_linear_pipeline_layer()  # Global has 2 caps
     sess = build_session("alice")  # alice has no Local capacities
 
-    # Need DataState nodes in Local for the view's iter_capacities walks.
+    # Registering Local DataStates is what mints alice's Local metagraph, so
+    # `has_local` is True below and the union view (not the Global fallback)
+    # is the path under test.
     cl.register_datastate(
         DataState(
             name="test.input",
@@ -59,7 +69,9 @@ def test_find_pipeline_with_unpopulated_session_local_raises():
         start_datastate=DS_INPUT_IRI,
         target_datastate=DS_OUTPUT_IRI,
     )
-    assert not verdict.found
+    assert cl.has_local("alice")
+    assert verdict.found
+    assert len(verdict.pipeline) == 2
 
 
 def test_find_pipeline_with_local_capacity_succeeds():

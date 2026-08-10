@@ -77,7 +77,7 @@ generated capacity graphs:
 | variant | `max_depth` blowups | duplicate steps |
 |---|---|---|
 | shipped (`frozenset()`) | — | — |
-| threaded cycle stack | **369** | **20** |
+| threaded cycle stack | **369** | **25** |
 | threaded stack + in-flight guard | **0** | **0** |
 
 The three shipped conformance scenarios (all_required AND, diamond convergence,
@@ -294,7 +294,7 @@ C3R2, C4R1 and C4R2.
 
 `CORE_CR_FINDER_CYCLE_SOUNDNESS.md` D8–D11 stand. What changes is the **fix shape**:
 that CR proposed threading the cycle stack through phase 2. The model shows that
-closes D-B but leaves D-E — 369 blowups and 20 corrupt pipelines per 20,000 graphs.
+closes D-B but leaves D-E — 369 blowups and 25 corrupt pipelines per 20,000 graphs.
 The bottom-up reformulation closes both without either guard.
 
 D10 (optional `max_depth` on the map spec) is **superseded**: `max_depth` is retired,

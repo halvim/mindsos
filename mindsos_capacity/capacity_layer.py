@@ -189,6 +189,17 @@ class CapacityLayer:
     def global_view(self) -> CapacityLayerView:
         return CapacityLayerView(self._global)
 
+    def has_local(self, user_id: str) -> bool:
+        """True if a Local Metagraph already exists for ``user_id``.
+
+        Read-only: unlike :meth:`local_metagraph` this does NOT create one.
+        Callers that only want to *know* must use this — a lazy mint ahead
+        of the durable restore is what broke ``test_durable_roundtrip`` on
+        the KL side (ADR-0183 §am-6), and the same hazard applies here.
+        Mirrors ``KnowledgeLayer.has_local``.
+        """
+        return user_id in self._locals
+
     def local_metagraph(self, user_id: str) -> Metagraph:
         """Return (creating lazily) the Local Metagraph for ``user_id``.
 
