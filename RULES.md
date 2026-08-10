@@ -132,13 +132,25 @@ exactly the drift they were then unable to see: the ADR guard silently checked z
 
 ## 10. Closing a lane (MANDATORY — run it before the chat ends)
 
-**Order matters.** `gh pr merge --delete-branch` refuses while a worktree holds the branch,
-and a `git worktree remove` after the branch is gone leaves a registered stale worktree. So:
-**merge → remove the worktree → delete the branch, local and remote → prune.**
+**Order matters, and it is the opposite of what looks natural.** `gh pr merge --delete-branch`
+deletes the **local** branch as well as the remote one, and git refuses to delete a branch a
+worktree still holds. So the worktree goes **first**:
+
+**remove the worktree → merge → pull → prune.**
 
 ```
-cd ~/Documents/Claude/Projects/MindsOS && gh pr merge <N> --squash --delete-branch && git worktree remove ../_MindsOS-<slice> && git branch -D <branch> && git pull --ff-only && git worktree prune && git worktree list && git branch --list
+cd ~/Documents/Claude/Projects/MindsOS && git worktree remove ../_MindsOS-<slice> && gh pr merge <N> --squash --delete-branch && git pull --ff-only && git worktree prune && git worktree list && git branch --list
 ```
+
+If you merged first and it refused, recover with:
+
+```
+cd ~/Documents/Claude/Projects/MindsOS && git worktree remove ../_MindsOS-<slice> && git branch -D <branch> && git pull --ff-only && git worktree prune
+```
+
+*(The first version of this section had the order backwards — merge first — and failed on its
+own first use, PR #130. The sequence is written the way it is because it was run, not because
+it reads well.)*
 
 `git worktree list` and `git branch --list` at the end are the point: **look at them.** If your
 lane is still there, you are not done.
