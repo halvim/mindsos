@@ -28,7 +28,9 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 
 ## 2. Branches
 - Off `main`, squash-merge back, then delete: `phase-NN`, `wsd-NN`, `dwf-NN`,
-  `fol-NN`, `feat/*`, `fix/*`, `chore/*`.
+  `fol-NN`, `feat/*`, `fix/*`, `chore/*`. **Deleting is §10, and it is not optional** —
+  this line has existed since the beginning and the sweep of 2026-08-10 still had to
+  remove 31 branches and 6 orphaned worktrees.
 - Long-lived: `main` (the product), `demo/*` (installs on top of main).
 - Shipped core changes are **tags**, not branches: phases → `phase-NN-confirmed`;
   non-phase feats/fixes → `<name>-confirmed`. **Every** core ship is tagged (§7).
@@ -94,6 +96,9 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
   `docker compose -p mindsos-core --profile test run --rm --build mindsos-test pytest --collect-only -q | grep -c test_cli`
   must be `> 0`. A broken CLI import must surface as gate errors, never hide silently
   (it did on Slice 1 — see §4 + `STATE.recent`).
+- **Close the lane.** A ship is not done when the PR merges. It is done when the branch
+  and the worktree are gone — **§10**. A chat that ends without doing this has left work
+  for someone else.
 
 ---
 
@@ -123,4 +128,82 @@ exactly the drift they were then unable to see: the ADR guard silently checked z
 
 > **A green guard that cannot fail is worse than no guard.** When you add or change one, write
 > a test that makes it go RED — assert the failure behaviour, not only the passing state.
+---
 
+## 10. Closing a lane (MANDATORY — run it before the chat ends)
+
+**Order matters, and it is the opposite of what looks natural.** `gh pr merge --delete-branch`
+deletes the **local** branch as well as the remote one, and git refuses to delete a branch a
+worktree still holds. So the worktree goes **first**:
+
+**remove the worktree → merge → pull → prune.**
+
+```
+cd ~/Documents/Claude/Projects/MindsOS && git worktree remove ../_MindsOS-<slice> && gh pr merge <N> --squash --delete-branch && git pull --ff-only && git worktree prune && git worktree list && git branch --list
+```
+
+If you merged first and it refused, recover with:
+
+```
+cd ~/Documents/Claude/Projects/MindsOS && git worktree remove ../_MindsOS-<slice> && git branch -D <branch> && git pull --ff-only && git worktree prune
+```
+
+*(The first version of this section had the order backwards — merge first — and failed on its
+own first use, PR #130. The sequence is written the way it is because it was run, not because
+it reads well.)*
+
+`git worktree list` and `git branch --list` at the end are the point: **look at them.** If your
+lane is still there, you are not done.
+
+### 10.1 Work that will never merge — `archive/<name>`, never an orphan branch
+
+A branch whose code exists nowhere else must not be left behind "in case". **Tag it, then
+delete it:**
+
+```
+git tag -a archive/<name> <branch> -m "Archived <date>. <what it holds>. <why it died>." && git push origin archive/<name> && git branch -D <branch> && git push origin --delete <branch>
+```
+
+The commits survive and are fully recoverable; the branch list stays readable. **Plain deletion
+is only for work provably already on `main`.**
+
+**How to prove that**, because `git branch --merged` is useless here — everything is
+squash-merged, so no branch is ever an ancestor of `main`:
+
+```
+mb=$(git merge-base main "$b"); for f in $(git diff-tree -r --name-only "$mb" "$b"); do git cat-file -e main:"$f" 2>/dev/null || echo "MISSING $f"; done
+```
+
+Nothing missing, plus a known ship record ⟹ delete. Anything missing ⟹ `archive/` tag.
+
+⚠ **Do not** intersect "files the branch touched" with "files that differ from `main`". It
+over-reports wildly on old branches — a file differs because *`main`* changed it later, not
+because the branch is unmerged. That method reported 200 files for a branch that touched one.
+
+⚠ **Verify against the tree, never from a note.** Project memory recorded two branches as
+"gate-green, NOT merged" on 2026-08-10; both were on `main`.
+
+### 10.2 Worktrees created from the Cowork sandbox
+
+`git worktree add` run from the sandbox bakes the sandbox path (`/sessions/…`) into **both**
+pointer files and registers the worktree under it. On the Mac, `git worktree remove ../<name>`
+then fails with *"not a working tree"* even though the folder is right there. Recovery:
+
+```
+cd ~/Documents/Claude/Projects/MindsOS && rm -rf .git/worktrees/<name> && git worktree prune && git branch -D <branch> && rm -rf ../<name>
+```
+
+**Create worktrees on the Mac, not from the sandbox.** File edits from the sandbox are fine;
+git operations are not (§5).
+
+### 10.3 Enforcement
+
+`.github/workflows/stale-branches.yml` runs weekly and **fails** when a branch's tip is older
+than **14 days** with no open PR, excluding `main` and the long-lived set (`demo/*`,
+`arc-solver*`, `wsd-*`, `nilm_brain`, `chore/amii-study`). The allowlist lives in the workflow.
+
+**When it goes red, close the lane or archive the branch.** Do not raise the threshold and do
+not add an exclusion to make it green — that is how §2 decayed into a 43-branch cleanup.
+
+> **A rule with no enforcement is a rule that has already decayed.** §2 said "then delete"
+> from the start. It was never checked, so it was never followed.

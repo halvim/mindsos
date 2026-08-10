@@ -1,7 +1,9 @@
 # CORE reconciliation plan (CORE-C chains)
 
 **Filed:** 2026-07-31. **Revised** after the abstraction-levels conclusion.
-**Status:** approved. **C1 shipped** (`df8d3a5`). **C3R1 half-shipped** (`4fd8baa`) — see §4.
+**Status:** approved. **C1R1–C1R3 shipped** (`df8d3a5`); **C1R4 part 1** at `2c56246` and
+**part 2 is now C1R5** (§13.5) — an earlier version of this line said "C1 shipped", which was
+false. **C3R1 half-shipped** (`4fd8baa`) — see §4.
 **C2: A0 + C2R1 SHIPPED** — squash `0496e7f` (PR #107), tag
 `installed-skills-dual-scope-confirmed`, merged-state gate 4472/0. **C3R1 SHIPPED** —
 `ae63aa2`, tag `find-verdict-confirmed` (`FindVerdict` replaces `PipelineNotFoundError`,
@@ -12,6 +14,10 @@ Accepted. **C2R3 is next.**
 then reconciled at `60fe2ae` with the C3R1 chat's corrections (§2, §4, §9, §11) and at
 `2c56246` with the C1R4 sweep (ADR-0205 §amendment-1) — both verified against the code and
 carried through here.
+**[2026-08-10] §13 opens five items this plan did not own** — C2R3a (atomic whole-composition
+delete), C2R3b (attribution as a provenance edge; the skill ledger is deleted), the
+Global-update migration, the ADR status split, and C1R5. **None is built and none has an
+owner.** Each is a consequence of a ruling made elsewhere, which is why none had a home.
 **Reads with:** `CORE_CONCEPT_PLANNING_AND_CONFIDENCE.md` (the model),
 `CORE_VERIFIED_FINDINGS.md` (the evidence, incl. §12) and
 **`CORE_C2_DECISIONS.md`** (what changed after reading the ADRs against the code).
@@ -87,7 +93,8 @@ pencilled for 57+. Use `feat/*` branches and `<name>-confirmed` tags (RULES §2)
 | **C1R1** | Extract the `MindsOS-core` rows out of WSD slots 51–56; fix the 16 wrong `mindsos_*` docstrings; land these documents + the shim register. ~~delete dead `mindsos_capacity/types.py`~~ — **not done, and correctly so** (C3R1 chat): `types.py` holds the live `SessionArg` / `SessionProtocol` that domain layers accept. Not dead code, must not be deleted; **shim S14 is struck** (§9). C5R1's session primitive lands in `mindsos_server`; `types.py` keeps the protocol |
 | **C1R2** | **ADR — abstraction levels.** The governing idea: one graph at several resolutions, each composed of the level below and verifiable by it. Fixes the vocabulary (*abstraction level*; `capacity / pipeline / milestone / plan / request`) |
 | **C1R3** | **ADR — planning, decomposition and confidence.** The loop, the stopping rule, relational confidence, "I'm not sure". Closes POST_PHASE_38 q4 |
-| **C1R4** | **ADR contradiction sweep.** **[part 1 SHIPPED 2026-08-01 — `2c56246` PR #104, record `f7be926` PR #105]** Six passes; the per-ADR framing did not converge, an exhaustive code sweep did. Output = **ADR-0205 §amendment-1** (Proposed → Accepted at C2R1) + the coverage ledger `CORE_ADR_CONTRADICTION_SWEEP.md`. Criterion gained a **scope clause**; the composition primitive is **arity-selected** (`IntergraphEdge` for one member, `IntergraphHyperEdge` for several — already shipped, no core change); subsumption is **not** composition; compositional is **terminal**. **Part 2 OWED:** the per-ADR amendments — 21 `contradicts` + 9 `contradicts-if-built`, each listed in the ledger with evidence and reachability (LIVE-WRITE / LIVE-READ / DECLARED) |
+| **C1R4** | **ADR contradiction sweep.** **[part 1 SHIPPED 2026-08-01 — `2c56246` PR #104, record `f7be926` PR #105]** Six passes; the per-ADR framing did not converge, an exhaustive code sweep did. Output = **ADR-0205 §amendment-1** (**Accepted at C2R2**, `92d7421` — its "flips at C2R1" line used the pre-renumbering ids) + the coverage ledger `CORE_ADR_CONTRADICTION_SWEEP.md`. Criterion gained a **scope clause**; the composition primitive is **arity-selected** (`IntergraphEdge` for one member, `IntergraphHyperEdge` for several — already shipped, no core change); subsumption is **not** composition; compositional is **terminal**. **Part 2 is now its own item — C1R5** (§13.5). It was owed to no chat: §11 says C1 ends after C1R1 |
+| **C1R5** | **[OPENED 2026-08-10]** **C1R4 part 2, split by kind** — the 21 `contradicts` + 9 `contradicts-if-built` in `CORE_ADR_CONTRADICTION_SWEEP.md`. §13.5 |
 
 ---
 
@@ -108,10 +115,12 @@ links.
 
 | ID | Scope | Depends on |
 |---|---|---|
-| **A0** ✅ | **[SHIPPED `1e45067`]** **The four ADR amendments** — ADR-0205 §am-1/2/3, ADR-0206 §am-1, ADR-0148 §am-1, plus these plan corrections and `CORE_VERIFIED_FINDINGS.md` §12. **Docs only, lands before every code item.** Not bundled with C2R2: bundling doc corrections with a code change makes the gate result unattributable. Docs-only is still **gated** — `tests/test_adr_status_consistency.py`, and the test image copies `docs/` and `confirmation_docs/` into `/app` | — |
+| **A0** ✅ | **[SHIPPED `1e45067`]** **The three ADR amendments** — ADR-0205 §am-2, ADR-0206 §am-1, ADR-0148 §am-1 (§am-1 came from **C1R4** and §am-3 was filed at **C2R2** — neither was A0's; an earlier version of this row claimed all three and called them four), plus these plan corrections and `CORE_VERIFIED_FINDINGS.md` §12. **Docs only, lands before every code item.** Not bundled with C2R2: bundling doc corrections with a code change makes the gate result unattributable. Docs-only is still **gated** — `tests/test_adr_status_consistency.py`, and the test image copies `docs/` and `confirmation_docs/` into `/app` | — |
 | **C2R1** ✅ | **[SHIPPED — `df3af56`…`fa5e18d`, gate 4472/0]** **`installed-skills` became dual-scope.** Also amended **ADR-0183 S3** so a user-installable bundle can exist at all, and added the first one (`tests/fixtures/skill_bundle_local`). Four design corrections came out of building it — `CORE_C2_DECISIONS.md` §12.1. Originally scoped as: Today it is Global-only (ADR-0150 §am-6) while `installed-capacities` is Local-only — an asymmetry that makes skill install effectively **admin-only**. Under the model a **user installs a Skill Local**; an admin promotes it to Global. Role bootstrap + `CAN_INSTALL_SKILL` semantics. **Cheapest high-value item in the plan**, and it depends on nothing — runs in parallel with A0 | — |
 | **C2R2** ✅ | **[BUILT — the composition primitive]** (a) **P8-A lifted** — `compositional=True` with `ordered=False` is permitted; validation step 10 is retired in both `add_intergraph_hyperedge` and `update_intergraph_hyperedge` (the update copy was already unreachable). A deliberate override of the recorded identity-bearing argument, argued on the plan level's need for a **partial** order, **not** a restoration of an ADR-0148 contract. (b) **D1 is CLOSED by having no consumer** — the properties-editable amendment is **not** made; see the resolved note under this table. Also: ADR-0205 §amendment-3 filed, §amendment-1 flipped to Accepted, `docs/concepts/glossary.md` updated, and the §am-2.3 ordering table amended (pipeline steps become `ordered=False`, order derived) | A0 |
-| **C2R3** | **The link mechanism — what creates levels at all.** Write and read compositional and ordinary intergraph links between L2 role-graphs; **persister round-trip in the gate**, covering the link kinds every later item needs. ⚠ **The READ half is missing too, not only the write half** — `MetagraphView` has **no intergraph accessor at all**; `get_edges` / `step` are intra-graph. §12.1 and `CORE_VERIFIED_FINDINGS.md` §12.1 named only `KLWriteHandle`. Plus **the traversal primitive**, **attribution** (the DOWN walk + `installed_by`; must return *which* dependencies are missing, not a boolean) and **invalidation** (the UP walk — a level node becomes unsupported when its last member link is flipped out of force) | C2R2 |
+| **C2R3** | **The link mechanism — what creates levels at all.** Write and read compositional and ordinary intergraph links between L2 role-graphs; **persister round-trip in the gate**, covering the link kinds every later item needs. ⚠ **The READ half is missing too, not only the write half** — `MetagraphView` has **no intergraph accessor at all**; `get_edges` / `step` are intra-graph. §12.1 and `CORE_VERIFIED_FINDINGS.md` §12.1 named only `KLWriteHandle`. Plus **the traversal primitive**, **attribution** (the DOWN walk + `installed_by`; must return *which* dependencies are missing, not a boolean) and **invalidation** (the UP walk — a level node becomes unsupported when its last member link is flipped out of force). ⚠ **Attribution moves out to C2R3b** (§13.3): as written it reads `installed-capacities.installed_by`, and that role has a schema, IRI minting and **no writer** — `driver.py:324` stamps `installed_by` on Global L2 content nodes instead | C2R2 |
+| **C2R3a** | **[OPENED 2026-08-10]** **Atomic whole-composition delete** + the `remove_graph` **crossing-only** precheck + the §am-1.5 withdrawal. Accepted by the C2R3 chat as a consequence of its walk, explicitly **not** C2R3 scope. §13.1 | C2R3 |
+| **C2R3b** | **[OPENED 2026-08-10]** **Attribution is a provenance edge**; `CORE_RECONCILIATION_PLAN.md` §8a item 7 (the skill ledger) is deleted and attribution becomes **core-owned**. §13.2 | C2R3 |
 | **C2R4** | **The pipeline level** — one store named **`pipelines`**; retire `learned-pipelines` and `promoted-pipelines`; steps convert to the composition primitive (**`ordered=False`**, holding only the capacity steps; start and end DataStates are separate links); `edge_sequence` retired; **migration of shipped `promoted-pipelines` data**. Supersedes Phase 13 **PB-9**. **Three rulings from C2R2 land here** (ADR-0205 §am-3.2 / §am-3.4): step order is **derived** from the steps' `CONSUMES`/`PRODUCES` + start DataStates with a **first-by-IRI tie-break**, never stored; the store **must not persist a finder choice** (no `finder` field, no `selection_policy` — #99's start-arity `_select_finder` is transitional by construction); and an **empty pipeline is not a pipeline** — refuse it at the store unless CORE-C3 lands the `already_held` verdict first. Also carries a gate assertion that no registered capacity declares `fold` or `any_of` | C2R3 |
 | **C2R5** | **The milestone level** — a node that *references* its target DataState and *composes* the pipelines reaching it, **one link per pipeline** (alternatives, per ADR-0205 §3); hub discovery; the **taught-milestone write capacity**. Moved **after** the pipeline level: a milestone links over pipelines and cannot exist first | C2R4, ADR-0206 §am-1 |
 | **C2R6** | **The plan level** — the milestone tree lives here: parent→child is decomposition, sibling→sibling is dependency, and the plan's composition over its milestones is `ordered=False`. `PlanResult`'s endpoint dicts, `sequence_index`, `parent_ref` and `children_refs` all become links; `MAX_DEPTH` retired. **Send the dream chat the trace-reshape notice before this lands** | C2R5 |
@@ -193,6 +202,12 @@ upward, would have been the same mistake in a new form.
 
 ## 4. CORE-C3 — search and find
 
+> **The ranked, per-item handoff for this chain is `CORE_C3R1_ADMISSION_CONFIRMED.md` §9**
+> (opened 2026-08-10). It states, per item, what is broken, what was decided and why, what it
+> blocks and what it does not, and what to verify first. Its live items are in `STATE.json`
+> `pending_designs` alongside §13's — **one queue, two documents holding the reasoning.**
+> §9.6 and §9.7 are deliberately not owed to a chat; §9.7 is the owner's.
+
 | ID | Scope | Depends on |
 |---|---|---|
 | **C3R1** | **[HALF SHIPPED 2026-07-31 — `4fd8baa`, tag `finder-cycle-guards-confirmed`, gate 4450/0]** Done: the two phase-2 cycle guards — **D-B** (self-feeding producer) and **D-E** (a capacity under construction, *new* — returned a Pipeline naming one capacity as two steps and reported success). ADR-0071 §am-3. **[find_verdict SHIPPED 2026-08-04 — `ae63aa2`, tag `find-verdict-confirmed`, gate 4479/0.]** **Still not done:** the divergence sweep in `catalog_check.py` — `pipeline.py`'s docstring used to point brains at a function that does not exist and now says so, naming this item. The graph form of `input_group` is **struck, not owed** — see §12.1 | — |
@@ -237,7 +252,8 @@ upward, would have been the same mistake in a new form.
   C3R3. **Corrected 2026-07-31 — the "no file overlap with C1–C3" claim was false.** From
   **C2R5** onward every item touches `chain_artifacts.py`, `phase_1.py`,
   `plan_construction.py` and `orchestrator.py`. The per-request trace is being renamed to
-  `<Level>Run` and stripped to references plus run state (ADR-0205 §am-3), so dream's reader
+  `<Level>Run` and stripped to references plus run state (ADR-0205 §am-2.2 — an earlier version of
+  this line cited §am-3, which is C2R2's and about step order), so dream's reader
   will either break or silently read nothing. **Coordination is continuous from C2R5, and the
   notice must go out before C2R6 lands.**
 - **A future WSD chat:** §8.
@@ -288,7 +304,9 @@ scenario until the core catalogs land.
 6. **Brains package as Skills** — but *after* you ship, not during core's work. Runtime
    `register_capacity` shadows are structural change outside a Skill and need a ruling
    (Q16). Sequencing: core (this plan) → skill packaging (you) → brains.
-7. **Skill isolation is yours, and so is the skill ledger.** Core provides the traversal
+7. ~~**Skill isolation is yours, and so is the skill ledger.**~~ **THE LEDGER IS DELETED —
+   2026-08-10, §13.2.** Skill isolation stays yours; **attribution does not**. The rest of this
+   item is struck and kept only so the argument is recoverable: Core provides the traversal
    primitive and the dormant state (C2R3). **You build the ledger** — the sole source of
    truth for *what a skill added*: which nodes and which links, written at install, append
    only, entries being modification events. It must **not** hold confidence (relational,
@@ -406,15 +424,7 @@ does not exist** and was never written. The concept questions it stood for are c
    the run is on the Mac — and it will gate whatever branch that clone happens to be on,
    which has already produced one green belonging to a different lane.
 
-### 12.1 Start order
-
-**A0 and C2R1 are built** on `feat/core-c2` (`1e45067`, `df3af56`, `4df01fc`), not yet
-gated. **C3R1 half-shipped** at `4fd8baa`.
-
-~~⚠ **`input_group` is unowned again.**~~ **STRUCK at C2R2.** See the updated §12.1 below —
-the concept is retired, so the deferred graph form has no subject and blocks nothing.
-
-6. **[re-filed 2026-08-01 — dropped by an intervening rewrite] `ADR-0205 §amendment-1.6`
+7. **[re-filed 2026-08-01 — dropped by an intervening rewrite] `ADR-0205 §amendment-1.6`
    blocks C2R2.** `Metagraph.remove_graph` refuses if any incident intergraph edge or hyperedge
    is `compositional=True` (Pushback 17-A), and ADR-0202 persists **one chain graph per task**.
    If per-request plan structure is compositional, every task's graph becomes permanently
@@ -426,13 +436,16 @@ the concept is retired, so the deferred graph form has no subject and blocks not
    compositional link either — D1 is closed by having no consumer, so no compositional link is
    written before **C2R5**. **The durable half stays open and moves to C2R5**, which writes the
    first one.
-7. **[re-filed 2026-08-01] Four orphaned deferrals.**
+8. **[re-filed 2026-08-01] Four orphaned deferrals.**
    `_source_backup/root/mindsos_future_plans.md` no longer exists. It is the filed home of
    Pushback 6-A's compositional escape hatch, the `IntergraphEdge` endpoint-update verb, the
    in-place hyperedge→edge downgrade (P19-A), and Pushbacks 25-B / 31-B / 33-B / 34-B. No
    record survives anywhere.
 
 ### 12.1 Start order — updated 2026-08-04
+
+~~⚠ **`input_group` is unowned again.**~~ **STRUCK at C2R2** — the concept is retired, so the
+deferred graph form has no subject and blocks nothing. Detail below.
 
 **A0 ✅, C2R1 ✅ and C2R2 ✅ are done.** A0 + C2R1 shipped at squash `0496e7f`, tag
 `installed-skills-dual-scope-confirmed`, gate 4472/0. **C2R2 is built** on `feat/core-c2r2`
@@ -490,3 +503,207 @@ not enter the graph the walk searches: the walk answers *can it be done*, a reso
 read/write path plus the traversal primitive, and bundling a new role, a new edge type and a
 resource criterion into it makes the C2R3 gate result unattributable (`CORE_C2_DECISIONS.md`
 §12.4). It is C2R3's **first consumer**, which is what ADR-0205 §Alternatives item 5 asks for.
+
+---
+
+## 13. Items opened 2026-08-10 (plan-audit lane)
+
+Five things this plan did not own. Each was agreed with the owner; none is built. The pattern
+they share is the one this project keeps logging — **work that is a consequence of a ruling, and
+therefore in nobody's scope**. Evidence: `confirmation_docs/_to_delete/` boundary coordination
+(chat scratch, never committed) and the two decision records named per item.
+
+### 13.1 C2R3a — atomic whole-composition delete
+
+**The problem.** `remove_intergraph_edge` / `remove_intergraph_hyperedge` refuse every removal
+when `compositional=True`. That guard exists for Pushback 6-A's reason: an identity must not be
+**unwound** after dependents exist. It also blocks **destroying a composition whole**, which is a
+different operation. So today a pipeline, milestone or plan can never be deleted — only hidden —
+and Local grows monotonically.
+
+**The ruling.** §am-1.5's *"taught structure can never be removed"* conflates the two.
+`INTERGRAPH_EDGES_DESIGN.md` §4.3 and 6-A both describe the composition **surviving in an altered
+form** while something points at it. Destroying it whole, when nothing anchors its members, is not
+that operation and 6-A's ground does not reach it.
+
+Replacement text for §am-1.5:
+
+> A composition's membership can never change, and a composition cannot be unwound while anything
+> depends on it. A composition **can** be destroyed, but only whole, and only when nothing else
+> anchors any of its members.
+
+**Scope.**
+
+- One operation: remove a compositional link **and the members no other composition anchors**, in
+  a single transaction. Refuse if any member is anchored elsewhere, or if the composition is
+  itself a member of one not also being removed.
+- `remove_intergraph_hyperedge` keeps refusing piecemeal removal. **6-A stays closed.**
+- The exclusivity check **is `walk(UP)`** — C2R3's invalidation walk, one more consumer, not a
+  second implementation.
+- Provenance links (§13.2) are anchored on the deleted element and go with it.
+- `remove_graph`'s compositional precheck refuses only when a compositional edge **crosses the
+  graph boundary**, not on any incident one. A fully contained composition is coherent to remove.
+
+**Why derived dormancy is untouched.** §am-3.3's dormancy triggers on a member that cannot be
+resolved. This is the one removal that provably never produces one — it refuses when a member is
+anchored elsewhere, so nothing is left pointing at nothing, and after deletion there is no
+composition left to be dormant. Dormancy's *current* trigger is the `Graph.remove_node` defect
+(`CORE_VERIFIED_FINDINGS.md` §14.2) — an accident, not the mechanism.
+
+**Depends on:** C2R3 (the walk and its index). **Owner: unassigned.**
+Accepted as a consequence by the C2R3 chat, which declined it as C2R3 scope and stated that
+**whoever builds it owns the §am-1.5 withdrawal**, with the argument written, not just the
+capability. That argument is the two paragraphs above.
+
+### 13.2 C2R3b — attribution is a provenance edge; the ledger is deleted
+
+**The problem.** §8a item 7 hands skill-packaging a **ledger**: a record of every node and link
+each Skill installed, so uninstall can subtract it. A ledger is a parallel copy of graph structure
+held outside the graph — the shape ADR-0205 §5 prohibits — and §8a granted it an exemption nobody
+argued for.
+
+Its stated justification is wrong twice. *"The ledger is what makes uninstall work across realms,
+which the walk cannot do"* — but a ledger records what a Skill **added**, not what the user
+**built on top of it**, so it answers a different question than the one used to justify it. And
+ADR-0205 §am-4 rules one `Metagraph` per user, so the realm boundary the argument rests on no
+longer exists.
+
+**The ruling.** Every node and link a Skill installs carries a **provenance link to the Skill
+record**. Attribution is a link read. Uninstall walks those links. **Provenance links are not
+themselves provenanced** — they are created by the same install as their subject, so a second one
+carries no information.
+
+Same criterion as ADR-0192, which refused a stored `fundamental` boolean because the `PRODUCES`
+topology already encoded it.
+
+**Consequences.** §8a item 7 is struck. **Attribution is core-owned, not skill-packaging's** —
+§8a item 5 and item 9 stand. `installed-capacities` stops being the attribution mechanism;
+`driver.py:324`'s `installed_by` stamp on Global L2 content nodes is superseded, not extended.
+C2R3's attribution clause moves here.
+
+**Depends on:** C2R3. **Owner: unassigned.**
+
+### 13.3 The Global-update migration
+
+**The problem.** Nobody owns what happens to a user's work when Global updates. A user teaches a
+pipeline over capacities the system shipped; the system replaces those capacities; nothing in this
+plan says what becomes of the pipeline. Today it breaks silently.
+
+**The ruling.** Global **prunes** — it is the shipped baseline and must not accumulate every
+version ever released, or every installation pays for elements it never used. The user carries
+their own legacy, not the platform.
+
+The copy must precede the prune, so **the update package carries the outgoing versions as well as
+the new ones**. It is a transient input, discarded when the update completes; **Global retains
+nothing**.
+
+Migration is **version-driven and idempotent**, not event-driven. Global carries a baseline
+version; each Local records the version it was last migrated to. One mechanism, two callers — the
+update, and boot as the catch-up. Crash-safe and resumable.
+
+1. The package carries the new elements **and** the outgoing versions of everything it replaces.
+2. Replace Global; bump the baseline version.
+3. Run the migration for each reachable Local.
+4. Discard the artifact.
+
+Per Local, idempotent and safe to re-run:
+
+5. If the Local's recorded version equals Global's, **stop**. The normal case, one read.
+6. Walk that Local **upward** from each replaced element, collecting the affected chain.
+7. **Copy** each replaced element into that Local as a **new** element from the artifact,
+   recording the original identity and version for provenance. Under ADR-0205 §am-4's one
+   metagraph this is minting a node with `realm=local`, not a transfer between stores.
+8. **Rebuild** each affected Local ancestor as a **new** element over the copies, bottom-up —
+   members are frozen, so an existing composition can never be repointed.
+9. **Atomically delete** the old chain top-down, with §13.1's exclusivity check.
+10. Record Global's baseline version on the Local.
+11. Notify the user that newer versions exist in Global.
+
+At boot: run step 5. Normally a no-op; catches an interrupted or missed update.
+
+**Copy downward, rebuild upward, delete the old chain whole.** Local-on-Local structure is
+untouched. Updates apply **in sequence**, each package self-contained — a cumulative artifact and
+a minimum-supported-version floor were both rejected.
+
+**Use deterministic identity for migration copies** — derived from the original identity plus the
+version migrated from, not minted fresh. Without it a crash between steps 8 and 9 re-runs the
+whole migration and produces a second set of copies, so step 5's idempotency is nominal rather
+than real.
+
+**Rejected: append-only Global.** It costs nothing at update time but makes every installation
+carry every superseded element forever, and it leaves the user's obsolete dependency working
+silently with no forcing function. **Rejected: copying at Global-update time by checking each
+user.** It requires reading every Local during an admin action, cannot reach a Local that is not
+resident, and writes into private user stores from an admin operation.
+
+**Depends on:** C2R3a, C2R4. **Must land before the first Global release that replaces anything.**
+**Owner: unassigned.**
+
+### 13.4 ADR status is two fields
+
+**The problem.** `status:` answers two uncorrelated questions at once — *is this decision agreed*
+and *is it built*. 154 ADRs read `Accepted` while almost nothing above the capacity level exists,
+so `Accepted` already means *agreed*, de facto, and there is no word left for *built*.
+
+The concrete failure: ADR-0205 §am-1 said *"flips to Accepted with CORE-C2R1"*, C2R1 shipped
+without touching the primitive, and the flip was missed until C2R2 caught it. **The instance is
+fixed; the pattern is still in §am-2 and §am-4**, both of which say "flips to Accepted with
+`<item>`".
+
+**The ruling.**
+
+- **`status:`** records agreement only — `Proposed` → `Accepted` → `Superseded` / `Withdrawn`. It
+  flips when someone has read the ADR against the code it governs. **Never on a ship.**
+  ⟹ **Delete the "flips to Accepted with `<CR>`" pattern.**
+- **`implemented:`** is a new front-matter field: a tag, or `none (<CR id>)`.
+- Amendments carry `**Amendment status:**` and `**Implemented by:**`.
+- Shipped = `status: Accepted` + `implemented: <tag>`.
+- **Guard:** `tests/test_adr_status_consistency.py` gains a check — if `implemented:` names a CR
+  it must exist in this plan; if it names a tag, the tag must exist. Per RULES §9 the check ships
+  with a test that makes it go **red**.
+
+**Two side findings.** `Deferred` is in use on 13 ADRs and is defined nowhere — RULES §9 lists
+only `Proposed` and `Superseded`. And the checker enforces README-row agreement only, so **any
+status string passes today**.
+
+**Depends on:** nothing. **Can start immediately. Owner: unassigned.**
+
+### 13.5 C1R5 — C1R4 part 2, split by kind
+
+**The problem.** `CORE_ADR_CONTRADICTION_SWEEP.md` lists 21 ADRs that contradict ADR-0205 and 9
+that would if built. Writing the per-ADR amendments is "part 2" and is unstarted. §11 says the C1
+chat ends after C1R1, so no chat owns it, and the header's "C1 shipped" is false.
+
+**The ruling.** Two different things were bundled:
+
+- **Status truth** — an ADR that contradicts the governing ADR must not read `Accepted`. Mechanical,
+  no reasoning, one commit, all 21.
+- **The replacement design** — lands in the ADR with the item that builds the new form, per §0.1.
+
+A batched 30-amendment docs commit reproduces the failure that created this: text written without
+being read against the code it governs.
+
+⚠ **The mechanical sweep must skip any ADR whose Decision is *replaced* rather than *qualified*.**
+Those are `Superseded` and need a successor ADR, and a mechanical pass cannot tell them apart.
+**ADR-0148 is one of them** — §am-4 rules against metagraph-qualified endpoints and the primitive
+question is being settled at C2R3, so its Decision paragraph does not survive as written.
+
+**Depends on:** nothing. **Can start immediately. Owner: unassigned.**
+
+---
+
+### 13.6 Two code findings, verified 2026-08-09
+
+1. **`_has_intergraph_edge` (`mindsos_capacity/capacity_layer.py:98`) scans
+   `iter_intergraph_edges()` linearly on every edge write** — O(E) per edge, O(E²) per
+   registration batch, in the only live writer of intergraph edges (`:415-433`, the ADR-0156
+   bipartite `PRODUCES`/`CONSUMES` topology the finder walks). C2R3's index removes it; the new
+   existence check must not inherit it. Same root as `CORE_VERIFIED_FINDINGS.md` §14.3.
+2. **`feat/capacity-two-tier-resolution` overrides by IRI collision** — `resolve_declaration`
+   (`:547`) returns *"the owner's Local override when one exists, else Global"*, and `invoke`'s
+   docstring says Local wins *"on a collision"*. **Under §am-4's one metagraph the same IRI cannot
+   exist twice, so neither half survives** — there is nothing to shadow and no two stores to
+   union. `LocalPreferringView` (`8400d6f`, ADR-0071 §am-5) has no referent. **The requirement
+   survives, the class does not**, and what replaces it is ruled by §am-4 §3: *an override is
+   topology, never identity* — owner-qualified IRIs refused, and an override never redirects an
+   existing composition.
