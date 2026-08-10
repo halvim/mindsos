@@ -107,3 +107,35 @@ def test_local_registration_overwrites_global_in_declarations():
     local_node, _, _ = alice_idx[gcap.iri]
     assert local_node.properties[REF_GLOBAL_CAPACITY] == gcap.iri
     assert local_node.properties[REF_TYPE_KEY] == "SPECIALISES"
+
+
+def test_sessionless_get_declaration_never_returns_a_local():
+    """ADR-0071 §am-5: a sessionless caller must not see any user's Local.
+
+    ``_declarations`` is written on every registration regardless of realm, so
+    a Local registration overwrites the Global entry at the same IRI. Reading
+    that mirror from the sessionless ``get_declaration`` therefore leaked a
+    user's Local declaration to callers asking about the shared catalog.
+    The mirror is unchanged — only the lookup stops reading it.
+    """
+    cl, gcap = _layer_with_global_capacity()
+    alice = Session.for_testing("alice", is_admin=False)
+    cl.register_datastate(text_raw_datastate(), session=alice)
+    cl.register_datastate(text_tokens_datastate(), session=alice)
+    local_cap = text_demo_v2_capacity()
+    cl.register_capacity(
+        local_cap,
+        session=alice,
+        ref_to_global=gcap.iri,
+        ref_type="SPECIALISES",
+    )
+
+    # The flat mirror still merges, Local-last — R3 PB-36, deliberately kept.
+    assert cl._declarations[gcap.iri] is local_cap
+
+    # ...but the sessionless public surface answers from Global only.
+    assert cl.get_declaration(gcap.iri) is gcap
+
+    # Scope-correct resolution is unchanged in both directions.
+    assert cl.resolve_declaration(gcap.iri, session=None) is gcap
+    assert cl.resolve_declaration(gcap.iri, session=alice) is local_cap

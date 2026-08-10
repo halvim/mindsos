@@ -554,13 +554,41 @@ class CapacityLayer:
         return out
 
     def get_declaration(self, capacity_iri: str) -> _CapacityBase:
-        """Return the Python declaration registered for ``capacity_iri``."""
-        try:
-            return self._declarations[capacity_iri]
-        except KeyError as exc:
-            raise CapacityRegistrationError(
-                f"No declaration registered for {capacity_iri!r}"
-            ) from exc
+        """Return the **Global** declaration registered for ``capacity_iri``.
+
+        Sessionless, and therefore Global-only. This reads the Global
+        capacity index, NOT the flat ``_declarations`` mirror.
+
+        **Why that is a fix and not a narrowing.** ``_declarations`` is written
+        on every registration regardless of realm (``register_capacity``), so
+        a Local registration overwrites the Global entry at the same IRI. A
+        sessionless caller reading that mirror could therefore be handed *a
+        user's Local declaration* — which contradicts the invariant the view
+        layer maintains and ADR-0071 §amendment-5 restates: a sessionless
+        caller is asking about the shared catalog and must not see any user's
+        Local realm. ``_view_for`` enforces it; this registry did not.
+
+        The mirror itself is unchanged — it remains a non-authoritative
+        Local-wins merge for enumeration (``iter_declarations`` /
+        ``iter_monitors``), which is what ``R3 PB-36`` documents. Only this
+        sessionless *lookup* stops reading it.
+
+        Callers wanting scope-correct resolution use
+        :meth:`resolve_declaration`, which takes a session and applies
+        Local-over-Global properly.
+
+        Routed through ``_maybe_build_lazy`` so a metadata-only skill
+        capability (ADR-0183 §am-5) still has its function built on first
+        resolve — reading the index raw would return an unbound declaration
+        and leave it unbound. This makes ``get_declaration`` exactly the
+        sessionless case of :meth:`_resolve_declaration`.
+        """
+        global_index = self._capacity_index[self._global.metagraph_id]
+        if capacity_iri in global_index:
+            return self._maybe_build_lazy(capacity_iri, global_index)
+        raise CapacityRegistrationError(
+            f"No declaration registered for {capacity_iri!r}"
+        )
 
     def resolve_declaration(
         self, capacity_iri: str, *, session: SessionArg = None
