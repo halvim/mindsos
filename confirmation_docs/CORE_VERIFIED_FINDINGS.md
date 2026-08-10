@@ -734,3 +734,55 @@ was silent about the present — this instance was live.
 that pin the collision as executable contract —
 `tests/phase_28/test_capacity_layer_local_wins.py` and
 `tests/phase_30/test_invoke_local_wins_resolution.py` — convert with it.
+
+### 14.11 The override mechanism §am-4 §3 declined to rule ALREADY SHIPS — as node properties
+
+ADR-0205 §amendment-4 §3 rules the *principle* for what replaces override-by-IRI-collision
+under one metagraph — **an override is topology, never identity**; owner-qualified IRIs are
+rejected as location-encoded-in-a-reference — but declines to rule a *mechanism* on the
+ground that no candidate has a consumer in C2R3.
+
+**That ground does not hold. A mechanism is on `main` today:**
+
+- `REF_GLOBAL_CAPACITY = "ref:global_capacity"` — `mindsos_capacity/identifiers.py:424`
+- `"SPECIALISES"` is a declared ref type — `identifiers.py:438`
+- `CapacityLayer.register_capacity(..., ref_to_global=<iri>, ref_type="SPECIALISES")` writes
+  both — `capacity_layer.py:386`
+- exercised by `tests/phase_28/test_capacity_layer_local_wins.py`, which asserts
+  `local_node.properties[REF_GLOBAL_CAPACITY] == gcap.iri` and
+  `properties[REF_TYPE_KEY] == "SPECIALISES"`
+
+⟹ **The override-as-topology mechanism is half-built, and the built half is in the wrong
+form: node PROPERTIES, not edges.** It satisfies the principle's *intent* — the override is
+recorded as a relation to the thing it overrides — and violates its *mechanism*: **a walk
+cannot traverse a property.**
+
+That is ADR-0205's own anti-pattern — topology stored in properties rather than edges — and
+the **third** shipped instance, after the missing `SPECIALIZES` DataState edge
+(`C11`/`c11-datastate-subsumption`) and the pre-ADR-0156 `inputs`/`outputs` node properties
+that the bipartite reframe retired.
+
+⟹ The open item is therefore not *"choose a mechanism for a future override"* but
+**"promote an existing property-encoded reference to an edge"** — which has a consumer
+today, a test today, and a migration precedent in ADR-0156. Whoever rules it must also state
+that such an edge **does not redirect existing compositions**: members are frozen, so using
+an override means a **new composition on the same anchor**, never a repoint.
+
+**Also unrecorded: §am-4.7 is missing two measurements it acknowledged.** Both were verified
+in the C2R3 lane at `b041ebe` and confirmed in the metagraph-boundary coordination thread as
+making §am-4.7 items 3 and 4 *cheaper than priced*; neither reached `main`:
+
+1. **The injection seam already exists on BOTH sides for Global.**
+   `CapacityLayer.__init__` takes `global_metagraph=` (`capacity_layer.py:134`, used verbatim
+   at `:166`) and `KnowledgeLayer.bootstrap()` constructs via
+   `cls(global_metagraph=global_mg, id_strategy=strategy)` (`knowledge_layer.py:204`).
+   **Sharing one Global metagraph is boot wiring, not a core change.** Local has no such
+   seam — `create_local(user_id)` is internal on both layers — and that is the real work.
+2. **Roles are ENSURED, not GATED.** Nothing rejects an unknown role on a `Metagraph`;
+   `_GLOBAL_NAMED_ROLES` / `_LOCAL_NAMED_ROLES` drive `kahn_sort` *ensure* loops, and
+   `UnknownRoleError` is a `schema_for_role` **lookup miss**, not an add-time gate. Capacity
+   roles are `capacity:`-namespaced. **The L2 closed role-set is not an obstacle to
+   unification** — it is not even a check.
+
+§am-4.7's claim is that it is *measured rather than estimated*. Recorded here so the two
+measurements exist somewhere on `main`; amending §am-4.7 itself belongs to the C2R3 lane.
