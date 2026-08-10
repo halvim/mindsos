@@ -1,0 +1,62 @@
+name: stale-branches
+
+on:
+  schedule:
+    - cron: "0 13 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Report branches idle > 14 days with no open PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAX_AGE_DAYS: "14"
+        run: |
+          set -euo pipefail
+
+          gh pr list --state open --limit 200 --json headRefName -q '.[].headRefName' \
+            | sort -u > /tmp/open_prs.txt
+
+          cutoff=$(( $(date +%s) - MAX_AGE_DAYS * 86400 ))
+          : > /tmp/stale.txt
+
+          while IFS='|' read -r branch ts; do
+            case "$branch" in
+              main|demo/*|arc-solver|arc-solver-viz|wsd-*|nilm_brain|chore/amii-study) continue ;;
+            esac
+            grep -qxF "$branch" /tmp/open_prs.txt && continue
+            [ "$ts" -ge "$cutoff" ] && continue
+            days=$(( ( $(date +%s) - ts ) / 86400 ))
+            printf '%s (idle %s days)\n' "$branch" "$days" >> /tmp/stale.txt
+          done < <(git for-each-ref --format='%(refname:strip=3)|%(committerdate:unix)' refs/remotes/origin \
+                     | grep -v '^HEAD|')
+
+          if [ ! -s /tmp/stale.txt ]; then
+            echo "No stale branches. $(git for-each-ref --format=' ' refs/remotes/origin | wc -l) remote refs."
+            exit 0
+          fi
+
+          {
+            echo "## Stale branches"
+            echo
+            echo "Idle more than ${MAX_AGE_DAYS} days with no open PR."
+            echo
+            sed 's/^/- /' /tmp/stale.txt
+            echo
+            echo "Close the lane (RULES §10) or archive it (RULES §10.1)."
+            echo "Do NOT raise the threshold or add an exclusion to make this green."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          echo "Stale branches found:"
+          cat /tmp/stale.txt
+          exit 1
