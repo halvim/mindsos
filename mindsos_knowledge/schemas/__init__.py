@@ -48,6 +48,7 @@ from ..identifiers import (
     ROLE_ONTOLOGY,
     ROLE_PARAMETER_STAGING,
     ROLE_PENDING_PROMOTIONS,
+    ROLE_POLICIES,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_SUBMINDS,
@@ -67,6 +68,7 @@ from .learned_pipelines import build_learned_pipelines_schema
 from .ontology import build_ontology_schema
 from .parameter_staging import build_parameter_staging_schema
 from .pending_promotions import build_pending_promotions_schema
+from .policies import build_policies_schema
 from .problem_trace import build_problem_trace_schema
 from .promoted_pipelines import build_promoted_pipelines_schema
 from .subminds import build_subminds_schema
@@ -98,6 +100,8 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     ROLE_INSTALLED_SKILLS: build_installed_skills_schema,
     # feat/subminds addition per ADR-0150 §am-7.
     ROLE_SUBMINDS: build_subminds_schema,
+    # CORE CR: the policy role.
+    ROLE_POLICIES: build_policies_schema,
     # feat/learned-pipeline-persistence addition per ADR-0203.
     ROLE_LEARNED_PIPELINES: build_learned_pipelines_schema,
 }

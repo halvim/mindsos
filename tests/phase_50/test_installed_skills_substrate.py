@@ -54,7 +54,7 @@ class TestRoleConstant:
         # feat/subminds grew the closed role-set 13 → 14 per ADR-0150
         # §amendment-7 (subminds). The Phase-50 closure sentinel updates
         # forward, mirroring how Phase 50 updated the Phase-43 12 → 13.
-        assert len(ALL_ROLES) == 16
+        assert len(ALL_ROLES) == 17
 
     def test_dual_scope(self) -> None:
         """CORE-C2R1 (ADR-0150 §am-11) — was Global-only at §am-6.

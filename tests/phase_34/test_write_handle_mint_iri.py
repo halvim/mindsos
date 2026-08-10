@@ -103,6 +103,7 @@ def test_iri_builders_registry_phase_39_three_entries():
         ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
+        ROLE_POLICIES,
         ROLE_SUBMINDS,
     )
     assert set(_IRI_BUILDERS.keys()) == {
@@ -122,4 +123,6 @@ def test_iri_builders_registry_phase_39_three_entries():
         (ROLE_LEARNED_PIPELINES, "LearnedPipeline"),
         # ADR-0183 §am-5 addition.
         (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"),
+        # CORE CR: the policy role.
+        (ROLE_POLICIES, "PolicyEdition"),
     }

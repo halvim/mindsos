@@ -52,7 +52,7 @@ def test_bootstrap_creates_fresh_global() -> None:
     # base + 3 dual-scope additions; Phase 50 §am-6: + installed-skills;
     # feat/subminds §am-7: + subminds); no alignment-pair graphs
     # (Phase 15 importers do those).
-    assert len(g.graphs) == 11
+    assert len(g.graphs) == 12
 
 
 def test_bootstrap_with_id_strategy_override() -> None:

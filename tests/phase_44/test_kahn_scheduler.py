@@ -73,6 +73,7 @@ def test_real_declarations_order_per_scope() -> None:
         "learned-pipelines",
         "parameter-staging",
         "pending-promotions",
+        "policies",
         "request-patterns",
         "episodic_memories",
     )

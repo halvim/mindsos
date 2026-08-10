@@ -142,7 +142,7 @@ class ImporterProtocol(Protocol):
 # ── §3 bootstrap_global ────────────────────────────────────────────────
 
 
-# Ordering of the 9 Global named roles (Phase 14 PB-9 baseline 6 +
+# Ordering of the Global named roles (Phase 14 PB-9 baseline 6 +
 # Phase 43 ADR-0150 §amendment-5 additions). Order matches the
 # ``KnowledgeLayer.bootstrap()`` walk order for deterministic Metagraph
 # state. The 3 importer-driven roles come first; the 3 Phase-13
@@ -164,6 +164,9 @@ _GLOBAL_ROLE_ORDER: tuple[str, ...] = (
     # feat/subminds (ADR-0150 §am-7) — SubMind definition records; Global
     # form bootstrapped at Slice 1.
     "subminds",
+    # CORE CR: the policy role — dated, versioned authority editions. Last,
+    # and independent: it has no bootstrap-order dependency on any role above.
+    "policies",
 )
 # Sanity: matches mindsos_knowledge.bootstrap's frozenset content.
 assert frozenset(_GLOBAL_ROLE_ORDER) == _GLOBAL_NAMED_ROLES, (

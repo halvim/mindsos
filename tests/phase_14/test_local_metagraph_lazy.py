@@ -26,6 +26,7 @@ def test_lazy_local_creates_on_first_access() -> None:
         ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
+    ROLE_POLICIES,
         ROLE_REQUEST_PATTERNS,
     )
     kl = KnowledgeLayer.bootstrap()
@@ -42,6 +43,8 @@ def test_lazy_local_creates_on_first_access() -> None:
         ROLE_INSTALLED_CAPACITIES,
         # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is dual-scope.
         ROLE_INSTALLED_SKILLS,
+        # CORE CR: the policy role — dual-scope.
+        ROLE_POLICIES,
     }
 
 

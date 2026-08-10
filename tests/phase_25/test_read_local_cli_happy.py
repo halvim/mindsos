@@ -99,4 +99,6 @@ def test_read_local_happy_path_json_output(runner, env_setup) -> None:
         "installed-capacities",
         # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is dual-scope.
         "installed-skills",
+        # CORE CR: the policy role — dual-scope.
+        "policies",
     }

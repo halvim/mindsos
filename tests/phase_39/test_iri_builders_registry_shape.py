@@ -47,6 +47,7 @@ def test_registry_contains_three_entries_post_rename() -> None:
         ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
+        ROLE_POLICIES,
         ROLE_SUBMINDS,
     )
     assert set(_IRI_BUILDERS.keys()) == {
@@ -66,6 +67,8 @@ def test_registry_contains_three_entries_post_rename() -> None:
         (ROLE_LEARNED_PIPELINES, "LearnedPipeline"),
         # ADR-0183 §am-5 addition.
         (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"),
+        # CORE CR: the policy role.
+        (ROLE_POLICIES, "PolicyEdition"),
     }
 
 

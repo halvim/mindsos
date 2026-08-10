@@ -206,6 +206,8 @@ def test_roles_list_all_json() -> None:
         "learned-pipelines",
         # ADR-0183 §am-5 addition — installed Local capabilities.
         "installed-capacities",
+        # CORE CR: the policy role.
+        "policies",
     }
 
 
@@ -240,6 +242,8 @@ def test_roles_list_upper_only() -> None:
         "learned-pipelines",
         # ADR-0183 §am-5 addition — installed Local capabilities.
         "installed-capacities",
+        # CORE CR: the policy role.
+        "policies",
     }
 
 
