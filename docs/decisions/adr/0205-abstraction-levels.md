@@ -663,7 +663,8 @@ above is not needed.
 **Amendment status:** Proposed. Flips to Accepted with **CORE-C2R3**.
 
 Produced by the CORE-C2R3 pre-build read-through, **read against the code at `origin/main`
-`1063fd1`** (plan §0: *an ADR does not reach Accepted until someone has read it against the code
+`1063fd1`** and **re-verified line by line at `fe529c1`** after merging
+`origin/main` through `c97d99a` (plan §0: *an ADR does not reach Accepted until someone has read it against the code
 it governs*). Every line reference in §am-4.7 was verified, not inferred. **This amendment
 does not restate §am-1, §am-2 or §am-3.** It records a constraint none of them saw: the
 composition primitive §2 selects cannot express three of the five rungs of §1's ladder, for a
@@ -697,7 +698,7 @@ The name is misleading and has misled this plan: *inter**graph*** means *between
 | KnowledgeLayer Global | `mindsos_knowledge/knowledge_layer.py:208` |
 | KnowledgeLayer Local(user) | `knowledge_layer.py:243` — lazy auto-create |
 | CapacityLayer Global | `mindsos_capacity/capacity_layer.py:160` — its **own** `create_global()` |
-| CapacityLayer Local(user) | `capacity_layer.py:192` — `create_local(user_id)` |
+| CapacityLayer Local(user) | `capacity_layer.py:203` — `create_local(user_id)` |
 
 `mindsos_server/boot.py:211,222` construct `CapacityLayer(kl=kl)`. The `kl` argument is injected
 so **write-capacity bodies** can reach the KnowledgeLayer through `CapacityContext`
@@ -750,13 +751,25 @@ containers change, not the ladder.
    user's Local content. **Realm becomes a property of a node**, not a property of which object
    the node is stored in.
 
-**Why realm must be a property.** §9 already states that *Global is what the system ships by
-default* and *Local is everything that differs*, and that an admin **promotes** Local to Global.
-Under two metagraphs, promotion is a **move between objects** — a delete and a re-mint, which
-§am-1.5 terminality forbids for anything a composition points at, and which changes the node's
-identity out from under every link that references it. Under one metagraph, promotion is a
-property change on a node whose identity and links are untouched. The concept in §9 is only
-implementable the second way.
+**Why realm must be a property: location in a reference is the fault.** §9 already states that
+*Global is what the system ships by default* and *Local is everything that differs*, and that an
+admin **promotes** Local to Global. Under two metagraphs an endpoint is the tuple
+`(metagraph, graph, element)` — it encodes **where the thing lives** — and promotion changes
+where it lives, so **every link naming it is wrong**.
+
+Preserving `node_id` across the move does not save it: the metagraph component still changes.
+That is what makes this a property of the *reference model* rather than of registration
+behaviour, and it is why the objection cannot be answered by making promotion identity-preserving.
+Under one metagraph, promotion touches neither the identity nor any reference to it. The concept
+in §9 is only implementable the second way.
+
+**This is one principle, stated twice.** Realm-in-a-container is location-in-a-reference one
+level down. The same test disposes of a metagraph-qualified endpoint and of a realm that is
+inferred from which object holds a node.
+
+*(Recorded correction: this subsection first argued that promotion is "a delete and a re-mint."
+That form is refutable — nothing forces a re-mint. The location argument above replaces it, and
+came from the two-tier / union-view lane's review of this amendment.)*
 
 **The identifiers already agree.** Only four IRI kinds embed a `user_id` —
 `episode_iri`, `memory_composite_iri`, `capacity_snapshot_iri`, `staged_evidence_iri`
@@ -776,6 +789,14 @@ ladder work:** a pipeline node and a capacity node are in different *graphs* reg
 realm (`pipelines` vs `capacity:<category>`), so `add_intergraph_edge`'s step 3 — *source and
 target graphs must differ* — is satisfied by the **layer** distinction alone. Realm never
 enters the link rule. The cost lands entirely on persistence (§am-4.7 item 2).
+
+⚠ **This sub-ruling is load-bearing for §am-4.9, not merely tidy.** Node uniqueness is enforced
+**per-`Graph`** — `Graph.nodes` is a per-graph dict, and `capacity_layer.py` already guards with
+`if declaration.iri in category_graph.nodes`. **One metagraph does not by itself make a
+same-IRI collision impossible; one role-graph per role does.** If any role is later split into
+per-realm graphs — for persistence partitioning, say — same-IRI returns and §am-4.9's ruling
+silently reopens with nobody deciding to reopen it. Treat this as a **dependency of the
+override ruling**, and re-read §am-4.9 before any future per-realm graph split.
 
 **Consequence for §5's criterion.** Realm-as-a-property is **not** an instance of
 *topology stored as properties*. Realm is not topology — it is an **approval fact about one
@@ -802,7 +823,9 @@ fact is the rejected pattern only when it restates one the structure already car
    relationship read two ways depending on which side of a container boundary it lands on. And
    its `target_stale` field is a **stored** dormancy flag — the exact pattern §am-3.3 and
    ADR-0192 reject — which would arrive as the by-product of a storage decision rather than as a
-   decision anyone made.
+   decision anyone made. **And the principled ground, added after §am-4.4's correction:** an
+   `XRef` names a target by `target_metagraph_id` — **location inside the reference**, which is
+   the fault §am-4.4 rejects. That kills it independently of scope clauses and `target_stale`.
 2. **Mirror Global nodes into each Local metagraph** so compositions stay intra-metagraph.
    **Rejected — this is §5 verbatim.** A mirror is a parallel copy of graph structure, and the
    copy can disagree with the original with nothing able to detect it. It is also the failure
@@ -819,8 +842,10 @@ fact is the rejected pattern only when it restates one the structure already car
    **Rejected on the concept.** It reopens ADR-0150 §amendment-3's explicit lock (*one graph per
    role per metagraph*, whose own alternatives table already rejected `(role, version)` keying),
    and — decisively — it makes promotion a **move between graphs**, which is the delete-and-re-mint
-   §am-4.4 rejects two metagraphs for. Choosing it would buy back the persistence work by
-   reintroducing the defect the ruling exists to remove.
+   §am-4.4 rejects two metagraphs for. **And it is fatal, not merely inconsistent:** uniqueness
+   is enforced per-`Graph`, so two graphs for one role **restore same-IRI collision** and
+   silently undo §am-4.9's override ruling. Choosing it would buy back the persistence work by
+   reintroducing two defects the ruling exists to remove, one of them invisibly.
 5. **Leave the containers and let each level item work around it.** Rejected — that is
    §Alternatives item 1 (*reconcile pairwise*), and it is what produced the duplications this
    ADR removes.
@@ -843,7 +868,8 @@ fact is the rejected pattern only when it restates one the structure already car
 
 ### am-4.7 — Consequences, measured
 
-The five below were read from the code at `1063fd1`. They are the ruling's blast radius. Ranked
+The five below were read at `1063fd1` and re-verified at `fe529c1`; every line reference
+below is the post-merge one. They are the ruling's blast radius. Ranked
 by cost, not by order of discovery.
 
 1. **Realm resolution — 76 call sites, and this is the bulk of the work.**
@@ -853,8 +879,15 @@ by cost, not by order of discovery.
    "which realm?" by which object it is holding.** Each becomes either a property filter or an
    unfiltered read of the single metagraph. Two shapes recur and should be converted first:
    the ten `builtins/*.py` bodies that take `capacity_layer.global_metagraph()`, and the
-   Global-then-Local overlay in `learned_parameters_snapshot.py:64`, which becomes an ordering
-   over one node set rather than over two objects.
+   Global-then-Local overlay in `learned_parameters_snapshot.py:63-64`.
+
+   ⚠ **That overlay is a correctness hazard, not a conversion.** `_overlay` keys on
+   `(parameter_set_iri, target_parameter_iri)` read from node **properties**, not on `node_id`,
+   so it does not depend on two nodes sharing an IRI at all. Its precedence comes from calling
+   `_overlay` **twice over two containers**, later-call-wins. ⟹ it **survives the identity
+   change and breaks on the container change**, silently returning Global values with the suite
+   still green. It needs an explicit realm sort key and a test that goes RED.
+   `CORE_VERIFIED_FINDINGS.md` §14.8.
 
 2. **The persistence partition — the one genuinely new mechanism.**
    `MetagraphRepository.persist(metagraph)` (`metagraph_repository.py:113`) iterates
@@ -862,7 +895,14 @@ by cost, not by order of discovery.
    `FalkorDBLocalPersister.delete(user_id)` DETACH-DELETEs by `g.id IN $gids` over every graph in
    the metagraph; `MetagraphLoader.load(metagraph_id)` reconstructs the whole object. Under one
    metagraph with realm as a node property, **all three would touch Global content on a Local
-   operation** — `delete` most dangerously. Partitioning must move from **graph granularity to
+   operation** — `delete` most dangerously.
+
+   ⚠ **There is a second deletion path, and it is worse.** The run-state wipe in the same module
+   matches `(m:Metagraph {id: $mid})<-[:IN_METAGRAPH]-(g:Graph) WHERE g.role IN $roles` over
+   `episodic_memories`, `parameter-staging` and `pending-promotions` — so under one metagraph it
+   reaches the **Global** graphs of those roles, inverting its own docstring promise to leave
+   durable role-graphs in place. **Both deletion paths need a RED test**, not one.
+   `CORE_VERIFIED_FINDINGS.md` §14.9. Partitioning must move from **graph granularity to
    node-realm granularity**, and the loader must reconstruct Global + one user's Local into one
    object. An intergraph link straddling realms is written with the **Local** half.
    ⚠ **This is the cost §am-4.5 item 4 would have bought back, and the reason that option is
@@ -904,10 +944,13 @@ endpoints are in one metagraph), §9 (realm is a node property; promotion is a p
 `IntergraphHyperEdge` and `compositional` outside `mindsos_instances` and core. That holds. It
 does **not** hold for the ordinary `IntergraphEdge`, which has a live writer and a live reader:
 
-- **writer** — `mindsos_capacity/capacity_layer.py:425,432` emit `PRODUCES` / `CONSUMES`
+- **writer** — `mindsos_capacity/capacity_layer.py:436,443` emit `PRODUCES` / `CONSUMES`
   (ADR-0156's bipartite topology) on every capacity registration.
 - **reader** — `mindsos_capacity/views.py:144` `_iter_edges`, feeding `outputs_of`, `inputs_of`
-  and `producers_of`.
+  and `producers_of`. ⚠ **And now a SECOND reader**: `LocalPreferringView` (`views.py:213`,
+  shipped `8400d6f`) re-implements `inputs_of` / `outputs_of` / `producers_of` at `:337-345`.
+  The one-reader problem got worse while this amendment was in review, which is the argument
+  for settling it in C2R3 rather than later.
 
 ⟹ *"The L2 knowledge write path cannot write a link"* is true of `KLWriteHandle` and
 `MetagraphView` only. **A link write path and a link read path already ship and are in
@@ -916,10 +959,44 @@ production use at the capacity level.** Under §10 — *one traversal primitive*
 reader beside it. Two readers of the same relation is the defect §10 exists to prevent.
 
 **Consumers:** CORE-C2R3 (which cannot build `walk()` across realms until this lands), the
-resource graph, C2R4, C2R5, C2R6, C2R7.
+resource graph, C2R4, C2R5, C2R6, C2R7 — and, for §am-4.9, C2R1's dual-scope `installed-skills`
+and whatever replaces the two-tier resolution path.
+
+**Produced with** the two-tier / union-view and plan-audit lanes, which supplied §am-4.4's
+location-in-a-reference correction, the per-`Graph` uniqueness dependency, and the third
+collision reader in `CORE_VERIFIED_FINDINGS.md` §14.8.
 
 **Rationale record (plan §0.1).** Beyond this amendment, the reasoning is owed at the point of
 use: the module docstrings of `mindsos_capacity/capacity_layer.py` (why it no longer builds a
 metagraph), `mindsos_knowledge/knowledge_layer.py` (why one object holds both realms) and
 `mindsos_core/models/metagraph.py`'s intergraph section (why *intergraph* is not
 *inter-metagraph*), plus the CORE-C phase map. A central document alone does not work.
+
+### am-4.9 — What replaces override-by-IRI-collision: an override is topology, never identity
+
+**This ruling is part of §am-4, not downstream of it.** One node per IRI leaves nothing to shadow
+and nothing to union, so the two-tier Local-over-Global mechanism has no referent. **The
+requirement survives — a user's version wins for that user — the mechanism does not.** Ruling one
+metagraph without ruling this would delete a shipped behaviour and leave no replacement.
+
+> **An override is a relation the walk can see. It is never encoded in an identifier.**
+
+**Owner-qualified IRIs are rejected** — that is location encoded in a reference, which is
+§am-4.4's fault a third time, and adopting it in the same amendment that rejects
+metagraph-qualified endpoints would be a direct self-contradiction. An override expressed as
+topology can be traversed by the finder, checked by verification against the level below, and
+carry confidence **on the relation** rather than on either node. An override expressed in a name
+is invisible to every walk.
+
+**The mechanism is not ruled here.** A `specializes` edge — paralleling C11's unbuilt DataState
+design (§am-1.3) — is the only candidate on the table that satisfies the principle, but it has no
+consumer in C2R3, and ruling a mechanism ahead of its consumer is what §Alternatives item 5
+refuses. What is ruled is the principle and the exclusion.
+
+**Binding constraint on whatever satisfies it:** an override **does not redirect existing
+compositions**. Members are frozen (§am-1.5), so using an override means a **new composition on
+the same anchor** — never a repoint of an existing one. A mechanism that silently redirects an
+existing composition is refused by this ruling, not merely discouraged.
+
+**Consumers:** the item that unifies the substrate, C2R1's dual-scope `installed-skills`, and
+whatever replaces the two-tier resolution path.
