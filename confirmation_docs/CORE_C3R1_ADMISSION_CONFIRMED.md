@@ -175,23 +175,26 @@ violation before it is trusted.**
 
 ### 9.2 `ADR-0206 → Proposed`
 
-**The problem.** ADR-0206 is contradicted in four places by
-`CORE_REQUEST_RESOLUTION_SCENARIO.md` §8, and nothing has been built from it. It currently
-reads `Accepted` on `main` while at least three artifacts describe it as `Proposed`.
+> ⚠ **STRUCK 2026-08-10 — ALREADY DONE ON ANOTHER BRANCH. Do not write this.**
+> **`feat/c2r3` (PR #119) has ADR-0206 flipped to `Proposed`** in both the front-matter
+> `status:` and the prose `**Status:**` line. `main` still reads `Accepted` only because #119
+> has not merged. **Verify it landed; do not re-do it.**
+>
+> This entry was written without reading the C2R3 branch tip, and it would have put two lanes
+> on the same four edits to the same ADR — the second time in a week two lanes independently
+> produced the same artifact (the first was a duplicate ADR-0205 §amendment-4). **Read the
+> branch tips, not just `main`, before deriving anything.**
 
-**The decision.** Flip it, per `RULES.md` §9: a contradicted ADR whose new form is decided
-but unbuilt becomes `Proposed`.
+**The original problem, kept because the reasoning is still correct.** ADR-0206 is
+contradicted in four places by `CORE_REQUEST_RESOLUTION_SCENARIO.md` §8 and nothing has been
+built from it, while it reads `Accepted`. A governing ADR that reads `Accepted` while its
+content is superseded is how a later chat builds against the wrong contract. Per `RULES.md`
+§9 it becomes `Proposed`, which is a **four-edit** change — front-matter, prose, the
+`docs/decisions/adr/README.md` row, and any summary-table cell.
 
-**Why it matters now.** ADR-0206 governs the planning-loop concepts the demo's L4 path sits
-on. A governing ADR that reads `Accepted` while its content is superseded is how a later
-chat builds against the wrong contract.
-
-**What to verify first.** RULES §9 makes a status change **four edits** — front-matter
-`status:`, the prose `**Status:**` line, the `docs/decisions/adr/README.md` row, and any
-summary-table cell. `tools/check_adr_status_consistency.py` is the pre-filter; it must stay
-green. Note that a separate proposal to split `status:` into two fields
-(`status:` = agreement, `implemented:` = tag or CR) is agreed but **not in the repo** — if it
-lands first, this flip changes shape. Check before editing.
+**One live interaction.** The `status:` / `implemented:` split (plan §13.4 — `status:` records
+agreement, `implemented:` records a tag or CR, and status **never** flips on a ship) is agreed
+and **not in the repo**. It changes what this flip means. Whichever lands second reconciles.
 
 ---
 
@@ -232,8 +235,10 @@ behaviour. It is core hygiene that closes a genuine defect — worth doing, not 
 **What to verify first — a hard precondition.** The **last `fold` declaration in the world**
 is arc1's `eliminate_bg_colour` (`arc_capacities.py:841`). arc1 holds moving it as its own
 item, ahead of any core merge. **Deleting the constant before arc1 lands that breaks arc1's
-catalog build.** With the brains deferred, either sequence this behind arc1 or accept and
-state that arc1 will need a fix when it resumes. Also: this moves the export slate a
+catalog build.** **Decided 2026-08-10 by the owner: accept the break.** Core does not wait on a paused lane.
+arc1 fixes `eliminate_bg_colour` when it resumes — it already holds that as its own item — and
+this entry is the record that it must. Holding core hygiene behind a deferred brain is how
+work becomes unowned, which is the failure this refocus exists to stop. Also: this moves the export slate a
 **second** time (146 → 143) across the same four count sentinels, so check no other lane is
 mid-edit on them.
 

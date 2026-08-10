@@ -202,6 +202,12 @@ upward, would have been the same mistake in a new form.
 
 ## 4. CORE-C3 — search and find
 
+> **The ranked, per-item handoff for this chain is `CORE_C3R1_ADMISSION_CONFIRMED.md` §9**
+> (opened 2026-08-10). It states, per item, what is broken, what was decided and why, what it
+> blocks and what it does not, and what to verify first. Its live items are in `STATE.json`
+> `pending_designs` alongside §13's — **one queue, two documents holding the reasoning.**
+> §9.6 and §9.7 are deliberately not owed to a chat; §9.7 is the owner's.
+
 | ID | Scope | Depends on |
 |---|---|---|
 | **C3R1** | **[HALF SHIPPED 2026-07-31 — `4fd8baa`, tag `finder-cycle-guards-confirmed`, gate 4450/0]** Done: the two phase-2 cycle guards — **D-B** (self-feeding producer) and **D-E** (a capacity under construction, *new* — returned a Pipeline naming one capacity as two steps and reported success). ADR-0071 §am-3. **[find_verdict SHIPPED 2026-08-04 — `ae63aa2`, tag `find-verdict-confirmed`, gate 4479/0.]** **Still not done:** the divergence sweep in `catalog_check.py` — `pipeline.py`'s docstring used to point brains at a function that does not exist and now says so, naming this item. The graph form of `input_group` is **struck, not owed** — see §12.1 | — |
