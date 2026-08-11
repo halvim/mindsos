@@ -1,0 +1,261 @@
+---
+title: Decision Records v0 — the single-lane plan
+status: Proposed. Owner-agreed D1–D6 on 2026-08-11. Not built.
+date: 2026-08-11
+pin: origin/main af329eb · seam feat/decision-records f7cb857 (23 commits behind)
+replaces: confirmation_docs/CORE_RECONCILIATION_PLAN.md as this lane's build order
+reads with: confirmation_docs/DECISION_RECORDS_V0_HANDOFF.md (its §3 is amended here),
+  CORE_CR_POLICY_ROLE.md, CORE_CR_EXTERNAL_MODEL_SEAM.md + LLM_SEAM_MANUAL.md (on the seam branch)
+---
+
+# Decision Records v0 — the single-lane plan
+
+One lane owns core reconciliation and the Decision Records demo. This document is its build
+order. It replaces `DECISION_RECORDS_V0_SLICE_PLAN.md` outright and amends
+`DECISION_RECORDS_V0_HANDOFF.md` §3 where §1 below says so.
+
+**Everything in §1 was read in the tree at `af329eb`, not inherited.** The handoff asked for
+exactly that and said its own claims might not survive it. Two did not.
+
+---
+
+## 0. The ordering principle, and it is the thing that changed
+
+**v0's critical path runs entirely on `main`.** The ungated LLM package is a later swap, not a
+prerequisite.
+
+The previous ordering put v0 behind `feat/decision-records` — a branch that has never been
+gated, sits 23 commits behind, edits three core modules `main` has been moving, and depends on
+a transport that does not exist. Nothing v0 must prove requires it.
+
+---
+
+## 1. What was verified at `af329eb`, and what it changes
+
+### 1.1 HANDOFF §3.1 — the mechanism is real; the blocking claim is false
+
+**True and confirmed.** `mindsos_intelligence/plan_construction.py::_read_solve_target` (:100)
+and `::_read_leaf_target` (:188) each rebuild a dict holding only the singular
+`start_datastate`, so a **planner-emitted** plan drops plural before `_select_finder` is
+reached.
+
+**False.** The handoff, `STATE.json`'s `decision-records-l4-multi-input-start` entry, project
+memory, and `tests/decision_records/test_route_probe.py`'s own docstring all say the plural
+`start_datastates` key has *no caller of any kind* — the docstring's exact words are
+*"`_endpoint_starts` accepts plural; nothing can hand it any."*
+
+`tests/phase_48/test_map_member_multiinput.py::test_plain_leaf_plural_starts_composes_multi_input`
+hands it plural. It constructs a `PlanResult` directly with
+`leaf_targets={"mLeaf": {"start_datastates": [DS_POS, DS_SIG_A, DS_SIG_B], ...}}`, calls
+`execution.run(..., mm=mm, ...)`, and asserts the three-input capacity received all three. That
+path is `_endpoint_starts` (`execution.py:164`) → `_select_finder` (:191) → `_compose_pipeline`
+→ `ConjunctionFinder` → `_run_leaf_pipeline`, which passes `mm` to `execute_pipeline` and
+therefore **grounds**. Three further tests in the same module exercise the plural key through
+`shared_inputs` and a Slice-2 sub-plan. All are shipped and gated.
+
+**Consequence for v0.** The run driver builds a `PlanResult` and calls `execution.run`. It needs
+no core change, and it never calls the finder directly — so the RULES §8 objection the handoff
+raised ("the GTM lane would own an L4 mechanism") does not arise. §3.1 is a real gap in the
+*planner* path and is deferred; it blocks nothing here.
+
+### 1.2 HANDOFF §3.2 — the mechanism is real; landed alone it breaks run 2
+
+**True and confirmed, on both sides.** `mindsos_capacity/capacity.py::_validate_inputs` checks
+declared-input presence, rejects unexpected keys, and validates `operand_arity` **length only** —
+its own comment says *"core never inspects operand value types."* The output side is no better:
+`call_capacity` reduces a returned mapping to `{iri: result[iri] for iri in outputs}` and checks
+key presence alone. There is no value validation anywhere on either side, and no caller of
+`ShapeDescriptor` performs one.
+
+**But the proposed end state is unsafe in isolation.** In
+`mindsos_intelligence/pipeline_execution.py::execute_pipeline`, the step loop calls
+`writer.record(...)` **only after** the `if not result.success` early return. A cancelled step, a
+failed step and a `needs_input` step all return before any write. So if core refuses `None` at
+dispatch, the decision capacity never runs, the step fails, and **nothing reaches `capacity_mm`** —
+the refusal becomes unrenderable. §3.2 would remove a confidently-wrong Record by replacing it
+with no Record at all.
+
+**Its true prerequisite is L-2** (§1.3). §3.2 is deferred and re-filed as blocked-on-L-2.
+
+### 1.3 L-2 — the gap that is in no queue
+
+*A capacity failure writes no node to the grounding graph.* Verified above. It appears in
+`LLM_SEAM_MANUAL.md` §11.1 as **L-2**, in `DECISION_RECORDS_DEMO_PLAN.md` Phase 0 item 1, and in
+project memory `decision-records-slice` item 6 — and in **none** of the handoff's six problems
+and **none** of the six `pending_designs` entries opened 2026-08-10.
+
+The seam closed the *reading* half by making a decline an ordinary successful return carrying an
+empty value plus a filled origin record. The general half is open: any genuine failure — lookup,
+decision, cancel — still leaves nothing. It is the largest v0-relevant core gap and it is
+unowned. This plan owns it, as item 2.
+
+### 1.4 The seam branch splits, and the origin half is free
+
+`mindsos_capacity/builtins/origin_v0.py` (473 lines) imports exactly two things:
+`typing`, and `..identifiers.parse_capacity_iri`. It is not exported from
+`mindsos_capacity/__init__.py`. **Landing it edits no existing core module.**
+
+`comprehension_v0.py` imports `origin_v0`; the dependency is one-directional. Everything with
+sentinel risk lives in the other half — `context.py`'s 12th field (against
+`tests/phase_42/test_typed_capacity_context.py::test_capacity_context_has_eleven_fields`),
+`family_rules.py` moving `comprehension` out of `DEFERRED_DEFAULT_CATEGORIES` (5→4, pinned by
+`test_phase_27_audit_doc.py`), `dispatch.py`'s category-based injection, and a new top-level
+package `mindsos_llm` across `pyproject.toml`, `Dockerfile` and `mindsos_cli/manifest.toml`.
+
+`CORE_CR_EXTERNAL_MODEL_SEAM.md` D16/S12 already ruled origin is core and *"core surface arriving
+from a GTM branch is what RULES §8 exists to stop."* The split was never sequenced. It is item 1.
+
+### 1.5 Two more corrections to the record
+
+- **"48 cases hand-verified, no pytest" is misleading.** `tests/llm_seam/` is six pytest modules,
+  1117 lines, 46 cases per the manual, including `test_reading_reaches_the_grounding_graph.py`.
+  What has never happened is a **gate run**, and pytest has never been the runner. The first gate
+  is a verification step, not an authoring job.
+- **`CORE_CR_EXTERNAL_MODEL_SEAM.md` §5 is stale.** It states `pipeline._view_for` *"returns
+  Global or Local and never both, so a Local trial means the whole path must be Local."* #122's
+  union view killed that. It must not be cited when Layer B merges.
+
+### 1.6 Unchanged, and still true
+
+- **§3.3** — `capacity_layer.py::_mirror_global_datastates` (:742) copies Global→Local only, and
+  runs only on the Local registration branch. A Global capacity cannot declare a Local DataState.
+  The mixed-realm table is unbuildable as written; v0 registers all-Local.
+- **§3.4** — `validate_mutation_discipline` is uncalled system-wide. `append_only` on the
+  `policies` role is declared, not enforced. **Nobody writes "append-only policy store" in
+  anything a customer reads.**
+- **§3.5, §3.6** — as filed. Neither blocks v0.
+
+---
+
+## 2. Build order
+
+**Pin: `origin/main` `af329eb`.** Assert it in the same command box as any gate run or worktree
+creation. Re-pin only between items, never mid-item.
+
+| # | Item | Acceptance |
+|---|---|---|
+| **1** | **Lift `origin_v0` to `main`** as its own core CR — the module, its ADR (number assigned, `Proposed`), and its tests. Trim `tests/llm_seam/test_origin_contract_and_scope.py` of anything importing `comprehension_v0`; what it loses moves to Layer B. Correct the route-probe docstring in the same commit (§4). | Gate green. No existing `mindsos_*` module edited. `parse_capacity_iri` is the only core import. |
+| **2** | **L-2 — a terminal node on every non-success.** `execute_pipeline` writes one node before every non-success return: failure, decline, cancellation. One node type carrying the capacity IRI, a closed reason and a detail. | A deliberately failing step leaves a node naming it. Shown red first. Gate green. |
+| **3** | **The lookup capacity + the decision capacity.** Lookup: `capacity:decision:<name>`, as-of selection by **window containment**, two outputs (the limit and the policy version) as separate DataStates, refusals `no_source_in_force` (`environment_fault` false) and `source_unreachable` (true). Decision: family `decision`, VERDICT shape, typed to this criterion — never a generic comparator. Both emit origin records via item 1. | The `policies` role gains its first reader. One lookup, two outputs, fires once. |
+| **4** | **The run driver.** Mints the document as the grounding root **before** the find; builds a `PlanResult` with plural `leaf_targets[...]["start_datastates"]`; calls `execution.run(..., mm=...)`. | The route is *found* and *grounded* — not hand-assembled, not a script calling capacities in order. Precedent: `tests/phase_48/test_map_member_multiinput.py`. |
+| **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
+| **6** | **Guards G2, G3, G7, G8′**, each shown red before it is trusted. | Below. |
+| **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. | One page a non-technical reader understands with no glossary, rendered from the persisted `capacity_mm` graph and nothing else. |
+| **8** | **Layer B.** Merge `origin/main` into `feat/decision-records`, reconcile the three core modules, gate it, merge, then swap item 5's reader for `comprehension_v0`'s. | First gate of the LLM seam. A verification step, not a blocker. |
+
+### The rule that decides whether this succeeded
+
+**The route must be composed by the finder and executed through `execute_pipeline`.** Not a
+script that calls capacities in order. Not a hand-assembled `Pipeline`. `BRAIN_ARCHITECTURE_AUDIT.md`
+records arc1 registering a 1,032-line capacity topology over a 3,756-line solver that never
+executed through it; a hand-wired slice reproduces that exactly and every downstream number is a
+lie about the one thing being sold.
+
+### The five runs
+
+v0 is **runs 1 and 2**. Runs 3, 4 and 5 follow item 2 landing, not before.
+
+| # | Run | Status |
+|---|---|---|
+| 1 | Clean outcome — the Record names value, limit, version | **v0** |
+| 2 | Value absent — reading refusal, graph-resident, names the missing item in prose | **v0** |
+| 3 | No policy in force at that date — lookup refusal | after item 2 |
+| 4 | Target unreachable — `FindVerdict`, no pipeline, no grounding graph unless the root is pre-minted | after item 2 + 4 |
+| 5 | Same case, two dates — different limits, different versions, both named | after item 3 |
+
+**Run 5's trap, carried forward:** the recorded-reading replay key hashes the exact source text.
+**The as-of date stays out of the document** and enters as its own DataState into the lookup, or
+run 5 silently becomes *"different documents give different limits"* — the opposite of the point.
+
+---
+
+## 3. Guards
+
+- **G1** Renderer imports none of: blackboard, capacity context, L2 snapshot, `Pipeline`,
+  `chain_artifacts`.
+- **G2** Remove one capacity instance from the graph → the renderer raises, never fills the gap.
+- **G3** No Record without the capacities having executed and written.
+- **G7** *(restated — the original wording was unsatisfiable with three starts)* The parentless
+  `DataStateInstance` set is **exactly** the declared starts. Still catches the real failure: a
+  value that should have been derived arriving via `seed()`, which mints with no incoming edge.
+- **G8′** Assert nothing is registered Global at the lookup or decision IRIs. **Labelled as a
+  gap-pin, not a guard** — the same class as
+  `tests/policy_role/test_policy_role_core.py::test_append_only_is_declared_but_not_enforced`. It
+  pins the all-Local reality §1.6 forces, and it is **deleted the day DataStates go realm-free**.
+  Say so in its docstring.
+- **G4, G6** land with the renderer / after item 2.
+
+Three incompatible G8 rulings existed on record — build against `SPECIALISES` (slice plan), do
+not build it (project memory), G8′ (handoff). Under §1.6's all-Local reality only G8′ is
+satisfiable. This document is the ruling.
+
+---
+
+## 4. Corrections owed regardless of this plan
+
+1. **`tests/decision_records/test_route_probe.py`** — the docstring of
+   `test_l4_cannot_express_plural_starts_this_is_D_A` says *"`_endpoint_starts` accepts plural;
+   nothing can hand it any."* False (§1.1). The test's assertions are still correct and still go
+   red the day the planner path lands, so **correct the docstring, do not delete the test.**
+2. **`STATE.json` `decision-records-l4-multi-input-start`** — carries the same false sentence.
+   Replace with the narrower true one: no *planner-emitted* plan can express plural;
+   `execution.run` over a directly-constructed `PlanResult` can, and is gated.
+3. **`STATE.json` `core-dispatch-value-validation`** — add the L-2 dependency, so the next lane
+   cannot build it first.
+4. **`STATE.json` `pending_designs`** — add **`core-terminal-node-on-non-success`** (L-2). It is
+   item 2 here; the entry exists so it stays owned if this lane closes.
+
+Also unowned and worth an entry when someone touches it: the `register_capacity` half of D15's
+opaque-into-decision rule, which `CORE_CR_EXTERNAL_MODEL_SEAM.md` D15 filed as "a separate CR"
+that was never opened.
+
+---
+
+## 5. Deferred, with reasons
+
+| Item | Why not now |
+|---|---|
+| §3.1 planner plural starts | Not blocking (§1.1). Its end state is finding moving into planning (ADR-0206 §3, C4R3) with selection at `decision.select_producers`. A passthrough patch extends `_select_finder`, which `CORE_RECONCILIATION_PLAN.md` C2R4 already rules *"transitional by construction"*. |
+| §3.2 dispatch value validation | Unsafe before L-2 (§1.2). |
+| §3.3 realm-free DataStates | v0 registers all-Local and works. Closing it deletes G8′ and makes #122's union view testable. |
+| §3.4 append-only enforcement | v0 writes one edition. It constrains what we **say**, not what we build. |
+| §3.5 recorded producer choice | One producer per DataState in v0. It is a claim-1 integrity hole, not finder hygiene — file it as one. |
+| §3.6 executor unification | v0 uses the one that grounds. Retiring `mindsos_server.pipeline_runner.run_pipeline` is C3R4. |
+| Everything in `CORE_C3R1_ADMISSION_CONFIRMED.md` §9 | The `.found` architecture guard (§9.1) and the `input_group` retirement (§9.3) are both correct and neither blocks. §9.1 rises the moment item 4 puts a new consumer on the finder's output. |
+
+**Out of scope entirely:** the other five decision ops · any claims content · SARA's nine sections ·
+the batch harness · an HTTP API · a web UI · the CORE-C abstraction-levels build-out (the grounding
+graph uses intra-graph edges, so the C2R3 metagraph boundary does not apply).
+
+---
+
+## 6. Standing risks
+
+- **No transport exists** (`LLM_SEAM_MANUAL.md` S-3). No plan can produce a live run today; v0 is
+  replay-only by construction. Fine for a gate, fatal for a demo.
+- **S-2 has a real deadline** — whether the transport or `mindsos_llm` parses the model's output
+  must be settled **before a transport is written**, or it becomes a rewrite instead of a decision.
+- **All 13 L4 catalog capacities are placeholders**, so `run_lifecycle` yields one milestone and
+  one pipeline. That bounds what any demonstration may honestly claim about planning.
+- **One value per DataState IRI** (`L-1`). Every distinct value needs its own type. If you find
+  yourself reusing a type for two values, stop — that is the nilm blocker.
+- **A guard authored after the renderer** will pass and will mean nothing.
+
+---
+
+## 7. Method
+
+- **A claim about state is a claim you have READ.** `origin/main` for main, the branch tip for a
+  branch, the gate for green. A gate clone's local `main` is stale. `origin/main` moved five times
+  in one recent session.
+- **Assert the SHA in the same command box** as any gate run or worktree creation.
+- **Cowork edits files; the Mac runs git; Linux runs every test, in docker, with `--build`**
+  (RULES §4/§5). A container or device pre-filter is a prediction, never a result.
+- **The container pre-filter predicts the gate exactly if built right** — `uv venv --python 3.12`,
+  install `pytest tomli argon2-cffi typer`, diff against a pristine copy **by name, never by
+  count**. A `ModuleNotFoundError` is a silently unrun test file, not background noise.
+- **STATE.json is edited by many lanes at once and the device bridge can serve a stale snapshot.**
+  Apply STATE edits with a small idempotent script run **on the Mac**, guarded to abort rather than
+  clobber if its anchor is absent. Never commit a sandbox-staged copy over the live file.
+- **Four stub capacities falsified three plan claims in an afternoon**, and reading two modules
+  falsified two handoff claims in this one. Both beat further correspondence.
