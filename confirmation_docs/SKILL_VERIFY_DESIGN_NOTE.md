@@ -1,6 +1,27 @@
 # `skill verify` — design note (read-only cross-layer component verifier)
 
-Status: **design settled** (this chat). Not yet built.
+> **2026-08-11 correction — state-source premise is STALE. Read before implementing.**
+>
+> This note's **D3 = approach C ("L3 is persistent (F9); read the persisted Global +
+> Local graph directly")** and its **§9 gating probe (PRODUCES/CONSUMES IntergraphEdge
+> round-trip through `FalkorDBLocalPersister`)** are **superseded by shipped behavior.**
+> The resident-brain runtime (`mindsos_server/boot.py::boot_brain`, shipped) boots L3 by
+> **reactivating capacities from code** (`v0 builtins → apply_installed_skills`), not by
+> reading them back from FalkorDB. So:
+>
+> - **Use C′, not C:** boot/reactivate the stack, then read the **live view** (exactly
+>   what `mindsos_capacity/catalog_check.py` already does). Drop the IntergraphEdge
+>   round-trip probe — it gates nothing real.
+> - **Reverse-L3 drift = a ledger-roster reverse-lookup**, symmetric to the forward-drift
+>   advisory already shipped in `activation.py::_warn_missing_declared_capacities`
+>   (ADR-0183 §am-2). No L3 reorg ("B") is needed for it.
+> - **Deferred "B" (skill-as-graph) is kept-deferred** — see the 2026-08-11 block in
+>   `SKILL_AS_GRAPH_L3_DESIGN_SEED.md`.
+>
+> The rest of the note (7-check catalog, severities, Falkor-refuse, tests) stands; only
+> the state-source model and its gate change.
+
+Status: **design settled** (2026-07-02); **state-source model corrected 2026-08-11**. Not yet built.
 Placement: **maintenance / downstream — no numbered phase, no version bump** (D10).
 Companion doc: `SKILL_AS_GRAPH_L3_DESIGN_SEED.md` (deferred "B").
 
@@ -146,11 +167,41 @@ reactivation). This is a decision-reopener, not a test tweak.
 
 ## 10. Deferred work
 
-- **A — task→capacity mapping in the architecture.** Registration (or the bundle
-  manifest) records the task a capacity serves, so check 5 stops being "none" for
-  all. Own chat; contract-adjacent. Hook: a `serves_task`/`task_iri` on the
-  capacity declaration OR a manifest `[l3]` task binding → a stored
-  `task-pattern → pipeline → capacity` chain.
+- **A — request→capacity mapping in the architecture.** *(Reanalyzed 2026-08-11
+  against current `main` — outcome: **keep deferred**, owner = the promotion-loop
+  chat, not a standalone contract chat. Terminology updated: `task-patterns` role
+  was renamed `request-patterns`; the field is `request_patterns.paired_pipelines`.)*
+
+  **R0 consumer gate: no active consumer needs a stored designated binding.**
+  Re-verified on `main`: `paired_pipelines` has **zero readers** (schema only);
+  `promoted-pipelines` (the reusable L2 catalog) is still **writer-less**; the L5
+  lifecycle now runs tasks end-to-end but selects capacities **goal-directed** via
+  `find_pipeline(start_datastate, target_datastate)` — `request_pattern_iri` flows
+  only as provenance. Check 5 is neutral by design and needs zero rework.
+
+  **The key distinction earlier passes conflated** (now explicit in `pipeline.py`):
+  two unrelated "Pipeline" concepts exist —
+  1. **L5 chain-artifact Pipeline** (`chain_artifacts.py`): a *per-run* execution
+     record retained on the Episode, keyed by `request_pattern_iri`. **Shipped.**
+  2. **L2 promoted-pipelines Pipeline**: a *reusable, learned* catalog entry. **Absent.**
+
+  Therefore A splits:
+  - **A-observed** — "which capacities *ran for* a request pattern" is already
+    recoverable **today** from retained Episodes (`request_pattern_iri → PipelineRun
+    → capacity steps`). Buildable now with no new storage; it reports *usage
+    history*, not *design intent*. If wanted, surface it as a **separate**
+    observational rollup — do **not** overload neutral check 5.
+  - **A-designated** — "this capacity *is for* this request" needs a writer. Its
+    natural producer is the **promotion loop** (writes an L2 promoted-pipelines
+    Pipeline node; the finder's deferred *promoted-path-lookup* strategy reads it).
+    Ship it **with** that loop or not at all.
+
+  **Killed hooks** (do not build): a `serves_task`/`task_iri` field on the capacity
+  declaration (inverts L3→L2 ownership, stores unread data) and a manifest `[l3]`
+  task binding (no consumer). **`paired_pipelines` may be dead schema** — the
+  promoted-path cache would be **goal-keyed** (DataState signature), like the finder,
+  so it may never need a request-pattern pairing. Flag it "no known consumer —
+  candidate for removal" when the promotion-loop chat next touches `request_patterns.py`.
 - **B — skill-as-graph L3 reorganization.** See `SKILL_AS_GRAPH_L3_DESIGN_SEED.md`.
   Makes bundle attribution structural; simplifies checks 1–3 and enables
   reverse-L3 drift.

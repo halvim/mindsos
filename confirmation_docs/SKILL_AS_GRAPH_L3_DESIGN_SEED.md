@@ -1,7 +1,21 @@
 # Skill-as-graph L3 reorganization — design seed (deferred "B")
 
-Status: **not started.** Surfaced during the `skill verify` design chat. Own chat
-when the time comes.
+Status: **KEPT-DEFERRED (ratified 2026-08-11).** Not on the active queue. Owned by
+the main SAP lane from here.
+
+> **2026-08-11 reanalysis vs current main — read this before acting on the body below.**
+>
+> Re-decided after re-checking the code. The conclusion is **keep-deferred, do not build**, on stronger grounds than "not started":
+>
+> - **L3 is reactivate-from-code, not persisted.** `boot_brain` rebuilds capacities each boot by re-running each installed bundle's installer (`apply_installed_skills`); the durable install fact is the L2 `installed-skills` ledger, which records each bundle's `l3_capacities` roster. A per-skill L3 graph would only be an in-memory copy each boot of what the ledger already states durably — **zero durable gain.**
+> - **Attribution/enumeration/reverse-drift need no L3 change.** Build `{IRI → bundle}` from the ledger rosters; unrostered-registered (and non-builtin) = reverse drift. **Forward-drift already shipped** (`mindsos_server/skills/activation.py::_warn_missing_declared_capacities`, ADR-0183 §am-2) using exactly this substrate.
+> - **The reorg is high blast-radius for no payoff:** it changes the registration contract (declarations carry no `bundle` today), the bootstrap (builtins have no skill → unsolved home graph), forces a state migration of every bipartite edge's source graph_id, and collides with the IRI/family-rule coupling — **category is baked into every capacity IRI** (`capacity:<category>:<name>`, parsed back by `family_rules.py`), so the seed's "category becomes just a tag" cannot be cleanly honored.
+> - **Payoff #1 in the body ("attribution becomes structural — the containing graph IS the skill") rests on a false premise** (L3 as durable home) — disregard it. **Scope list below is overstated:** finders (`pipeline.py`) and views walk bipartite edges by node_id, so they're organization-agnostic; `catalog_check` is already bundle-agnostic.
+> - **Sole reopen trigger:** L3 becoming persisted-at-rest **AND** a live in-process uninstall requirement (uninstall-without-restart). Neither exists. Absent both, do not open this.
+>
+> The original seed is retained below for history.
+
+Original status: **not started.** Surfaced during the `skill verify` design chat.
 
 ## Intent
 
