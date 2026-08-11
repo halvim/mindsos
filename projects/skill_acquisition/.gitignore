@@ -1,0 +1,10 @@
+# generated / regenerable — not source
+__pycache__/
+*.pyc
+SAP_CHATGPT_PASTE.md
+*_report.md
+*_report.json
+arc_input.json
+arc_blind.yaml
+arc_gpt.yaml
+icecuber.yaml

@@ -1,0 +1,224 @@
+skill: arc
+ground: arc.raw_task
+datastates:
+- arc.task
+- arc.pair
+- arc.raw_grid
+- arc.grid
+- arc.perceived_grid
+- arc.palette
+- arc.object
+- arc.shape
+- arc.point
+- arc.dimension_delta
+- arc.palette_delta
+- arc.same_object
+- arc.same_shape
+- arc.same_point
+- arc.same_cell_count
+- arc.same_bbox_area
+- arc.move_transform
+- arc.touching
+- arc.inside
+- arc.inset
+- arc.region
+- arc.background_candidate
+- arc.background
+- arc.background_set
+- arc.correspondence
+- arc.state_change
+- arc.selector
+- arc.color
+- arc.recolor_transform
+- arc.rotate_transform
+- arc.reflect_transform
+capabilities:
+- name: comprehend_task
+  family: perceiver
+  reads:
+  - arc.raw_task
+  writes:
+  - arc.task
+  - arc.pair
+  - arc.raw_grid
+- name: build_grid
+  family: perceiver
+  reads:
+  - arc.raw_grid
+  writes:
+  - arc.grid
+- name: extract_palette
+  family: perceiver
+  reads:
+  - arc.grid
+  writes:
+  - arc.palette
+- name: extract_objects
+  family: perceiver
+  reads:
+  - arc.grid
+  writes:
+  - arc.object
+- name: extract_shapes
+  family: perceiver
+  reads:
+  - arc.object
+  writes:
+  - arc.shape
+- name: extract_points
+  family: perceiver
+  reads:
+  - arc.grid
+  writes:
+  - arc.point
+- name: compare_grid_dimension
+  family: profiler
+  reads:
+  - arc.grid
+  writes:
+  - arc.dimension_delta
+- name: compare_palette
+  family: profiler
+  reads:
+  - arc.palette
+  writes:
+  - arc.palette_delta
+- name: same_object
+  family: profiler
+  reads:
+  - arc.object
+  writes:
+  - arc.same_object
+- name: same_shape
+  family: profiler
+  reads:
+  - arc.shape
+  writes:
+  - arc.same_shape
+- name: same_cell_count
+  family: profiler
+  reads:
+  - arc.shape
+  writes:
+  - arc.same_cell_count
+- name: same_bbox_area
+  family: profiler
+  reads:
+  - arc.shape
+  writes:
+  - arc.same_bbox_area
+- name: same_point
+  family: profiler
+  reads:
+  - arc.point
+  writes:
+  - arc.same_point
+- name: moved
+  family: detector
+  reads:
+  - arc.object
+  writes:
+  - arc.move_transform
+- name: inset
+  family: predicate
+  reads:
+  - arc.object
+  writes:
+  - arc.inset
+- name: union
+  family: operator
+  reads:
+  - arc.object
+  writes:
+  - arc.region
+- name: touching
+  family: predicate
+  reads:
+  - arc.object
+  writes:
+  - arc.touching
+- name: inside
+  family: predicate
+  reads:
+  - arc.perceived_grid
+  writes:
+  - arc.inside
+- name: build_correspondence
+  family: reasoning
+  reads:
+  - arc.same_object
+  - arc.move_transform
+  - arc.same_point
+  writes:
+  - arc.correspondence
+- name: touching_delta
+  family: detector
+  reads:
+  - arc.touching
+  - arc.correspondence
+  writes:
+  - arc.state_change
+- name: synthesize_selector
+  family: reasoning
+  reads:
+  - arc.state_change
+  - arc.object
+  writes:
+  - arc.selector
+- name: bg_deduction
+  family: reasoning
+  reads:
+  - arc.palette
+  - arc.same_object
+  - arc.same_point
+  writes:
+  - arc.background_set
+- name: recolor
+  family: generator
+  reads:
+  - arc.object
+  - arc.color
+  writes:
+  - arc.object
+- name: rotate
+  family: generator
+  reads:
+  - arc.shape
+  - arc.rotate_transform
+  writes:
+  - arc.shape
+- name: reflect
+  family: generator
+  reads:
+  - arc.shape
+  - arc.reflect_transform
+  writes:
+  - arc.shape
+- name: move
+  family: generator
+  reads:
+  - arc.object
+  - arc.move_transform
+  writes:
+  - arc.object
+- name: recolored
+  family: detector
+  reads:
+  - arc.object
+  writes:
+  - arc.recolor_transform
+- name: rotated
+  family: detector
+  reads:
+  - arc.shape
+  writes:
+  - arc.rotate_transform
+- name: reflected
+  family: detector
+  reads:
+  - arc.shape
+  writes:
+  - arc.reflect_transform
+tasks:
+- id: 05f2a901
+  status: solved
