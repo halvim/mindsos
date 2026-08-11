@@ -13,7 +13,18 @@ lane that hard-selected ``ConjunctionFinder`` would be a subsystem owning a
 core mechanism (RULES §8, ADR-0205). So this file owns nothing: it is a
 diagnostic that reports on core's open defect **D-A**
 (``CORE_VERIFIED_FINDINGS.md``: *"the sound finder was never wired to
-anything that executes"*), and the real driver waits on the L4 change.
+anything that executes"* — a sentence that is itself stale; see the
+handoff §1.3).
+
+⚠ CORRECTED 2026-08-11 — an earlier revision ended *"and the real driver
+waits on the L4 change."* **It does not.** A caller may construct a
+``PlanResult`` carrying plural ``leaf_targets[...]["start_datastates"]``
+and hand it to ``execution.run(..., mm=...)``, which selects
+``ConjunctionFinder`` by arity and grounds the run —
+``tests/phase_48/test_map_member_multiinput.py`` does exactly that and is
+gated. The run driver therefore needs no core change and does not call
+the finder directly. Detail:
+``confirmation_docs/DECISION_RECORDS_V0_PLAN.md`` §1.1.
 
 **Realms.** Everything Local (owner decision, 2026-08-09), superseding the
 slice plan's mixed-realm table — that table is unbuildable as written:
@@ -558,17 +569,32 @@ def test_l4_selects_conjunction_on_plural_starts():
 
 
 def test_l4_cannot_express_plural_starts_this_is_D_A():
-    """...and cannot EXPRESS it. This pair is the whole CR request.
+    """...and the PLANNER cannot EXPRESS it.
 
     ``_read_solve_target`` and ``_read_leaf_target`` each rebuild a dict
     holding only the singular ``start_datastate``, so a planner emitting
     plural starts has them dropped before ``_select_finder`` is ever
-    reached. ``_endpoint_starts`` accepts plural; nothing can hand it any.
-    That is core defect **D-A** — *"the sound finder was never wired to
-    anything that executes"* — at the planning layer.
+    reached. That gap is real and this test pins it.
 
-    When core lands the passthrough, this test goes red. That is the
-    signal to retire the probe and build the real run driver.
+    ⚠ CORRECTED 2026-08-11 — an earlier revision of this docstring said
+    *"``_endpoint_starts`` accepts plural; nothing can hand it any."*
+    **That sentence is false**, and ``STATE.json`` and the v0 handoff both
+    inherited it. ``tests/phase_48/test_map_member_multiinput.py``
+    (``test_plain_leaf_plural_starts_composes_multi_input`` and three
+    others) constructs a ``PlanResult`` directly with plural
+    ``leaf_targets[...]["start_datastates"]`` and runs it through
+    ``execution.run(..., mm=...)`` — ``_endpoint_starts`` →
+    ``_select_finder`` → ``ConjunctionFinder`` → ``execute_pipeline``
+    WITH grounding. Shipped and gated.
+
+    So the accurate statement is narrower: **no planner-emitted plan can
+    express plural starts.** A caller that builds its own ``PlanResult``
+    can, which is why the Decision Records run driver needs no core change
+    and never calls the finder directly
+    (``confirmation_docs/DECISION_RECORDS_V0_PLAN.md`` §1.1).
+
+    When core lands the planner passthrough, this test goes red. That is
+    the signal to retire the probe.
     """
     from mindsos_intelligence.plan_construction import (
         _read_leaf_target,
