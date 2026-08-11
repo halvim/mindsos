@@ -117,6 +117,39 @@ id, the scalar value, its origin record, the limit, the policy version, the verd
 
 ### Registration scope — **mixed realms, and they compose** (rewritten 2026-08-08, #122)
 
+> ⚠ **AMENDED 2026-08-10 by ADR-0205 §amendment-4** (squash `50c0cbb`, tag
+> `metagraph-boundary-confirmed`). Read this box before following the section below.
+>
+> **Still stands — the realm table.** Reader `comprehension.*` **Local**, policy store and
+> decision capacity **Global**. §am-4.4 makes realm a **node property**, which expresses those
+> approval facts exactly. Keeping scope a parameter is still right.
+>
+> **Still stands — one session-scoped find.** With one `Metagraph` a find sees both realms
+> without a union view at all, so `ComposeFailed` still carries one verdict.
+>
+> ⚠ **G8's INTENT stands; its IMPLEMENTATION must change.** As written G8 detects a Local
+> capacity registered at the **same IRI** as the Global policy lookup, hiding it via
+> `LocalPreferringView`'s SHADOW rule (`views.py:213`). §am-4.9 removes that case — one node per
+> IRI means nothing can shadow anything. **But a Local override still exists**, in a different
+> form: `register_capacity(..., ref_to_global=<global iri>, ref_type="SPECIALISES")`
+> (`capacity_layer.py:386`, `CORE_VERIFIED_FINDINGS.md` §14.11). So the risk G8 was written for
+> — *a local override silently replaces the policy authority* — **does not go away**.
+>
+> ⟹ **Build G8 against specialisation, not against IRI collision:** assert that nothing
+> specialises the policy-lookup or decision capacity IRI, and fail loudly if something does.
+> Do not write shadow-detection or cite the "SHADOW, not merge" paragraph — both are scheduled
+> for removal.
+>
+> ⚠ **Unrelated to §am-4 and NOT fixed:** `learned_parameters_snapshot.py` overlays Global then
+> Local and lets the later call win. That is **not** an IRI collision — it keys on node
+> *properties* — so it survives §am-4 and breaks on the container change instead
+> (`CORE_VERIFIED_FINDINGS.md` §14.8). A further reason not to put a policy limit in
+> `learned-parameters`. (Its separate lazy-create leak **was** fixed, #134.)
+>
+> **Sequencing is NOT ruled.** This slice does not depend on `core-substrate-unification`;
+> written as above it is forward-compatible either way.
+
+
 **The Local-only constraint is dead.** The Local-preferring union view shipped, so a Local
 reader composes with a Global lookup in the same run. The earlier instruction — *register
 the whole slice Local* — is superseded and should not be followed.
