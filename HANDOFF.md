@@ -1,5 +1,46 @@
 # MindsOS — HANDOFF
 
+> **⚠️ 2026-08-10 — REFOCUS, ONE QUEUE, AND A BRANCH SWEEP. Read this before anything below.**
+>
+> **Priority, set by the owner:** fix the core and build the **Decision Records demo**. Brains,
+> dream and skill packaging come **after**. Anything below that assumes brains are live
+> consumers is scheduled against the old focus.
+>
+> **The queue is `STATE.json` `pending_designs` — one queue, and it is the index.** Nine core
+> items are open and **none has an owner**. Five come from `CORE_RECONCILIATION_PLAN.md` **§13**
+> (`bdad9d0` #127, entries `df10146` #128): atomic whole-composition delete, attribution as a
+> provenance edge (**the skill ledger is deleted**), the Global-update migration, the ADR
+> `status:`/`implemented:` split, and C1R5. Four come from
+> `CORE_C3R1_ADMISSION_CONFIRMED.md` **§9** (`c97d99a` #132): the `.found` architecture guard
+> (**ranked first, no deps**), the `input_group` retirement (**no deps**), C3R1b's
+> outputs-meet-inputs predicate, and the `catalog_check` divergence sweep (deferred with the
+> brains). The two documents hold the reasoning; STATE holds the list.
+>
+> **Closing a lane is now `RULES.md` §10** (`084708a` #130, order corrected `ab65d6a` #131).
+> A ship is **not** done when the PR merges — it is done when the branch and worktree are gone.
+> **Remove the worktree first**: `gh pr merge --delete-branch` deletes the local branch too and
+> git refuses while a worktree holds it. Work that will never merge gets an **`archive/<name>`
+> tag**, never an orphan branch. `.github/workflows/stale-branches.yml` runs weekly and **fails**
+> on any branch idle over 14 days with no open PR.
+>
+> **The sweep:** 43 local / 44 remote branches → 12 mirrored pairs, six `archive/*` tags.
+> ⚠ **`archive/full-snapshot-2026-06-20` holds 483 files that exist nowhere on `main`**,
+> including `MINDSOS_VS_ROS_EVALUATION.md` and `ROBOTICS_PITCH_HANDOFF.md` — **never reviewed
+> for what should have landed.** `archive/l0-27-adr-sentinel-cleanup` records that **~9
+> `test_adr_amendment_sentinels.py` files always skip in the gate** (legacy ADR path) — most of
+> the standing 11-skip baseline. Harvest that row when C1R5 starts.
+>
+> **The lesson that cost the most:** four times in two days a chat produced work another branch
+> had already done — two duplicate ADR-0205 §amendment-4 drafts, a full session re-deriving a
+> ruling sitting on `feat/c2r3`, and a handoff assigning an ADR-0206 flip that PR #119 had
+> already made. Every one came from reading `main` and stopping there.
+> **Read the branch tips, not just `main`, before deriving anything.** Verify merge status
+> against the tree, never from a note — project memory had two branches wrong.
+>
+> **Next chat: the single-lane CORE + Decision Records chat.** ~~WSD_INSTALLATION_CHAT~~ — WSD is
+> deferred under the refocus; the pointer at the end of this file is stale and superseded by this
+> banner.
+
 > **⚠️ 2026-08-04 — CORE-C2R2 shipped: P8-A lifted.** Squash `92d7421` (PR #114), tag
 > `compositional-unordered-confirmed`, merged-state gate **4492/0**, `test_cli` 256.
 > `compositional=True` with `ordered=False` is now permitted — a **deliberate override** of the
@@ -1187,4 +1228,4 @@ This handoff is the snapshot of where things stand entering Phase 39+. Per Phase
 *L4 architecture resolved at Chat A (2026-05-28). L5 architecture + retention model resolved at Chat B (2026-05-31). L1/L3 reframe ratified 2026-06-01. L2 schema-v2 ratified 2026-06-01. Phase map for Phases 39-49 authored at Chat C (2026-06-02).*
 
 ═══════════════════════════════════════════════════════════════════════
-*End of HANDOFF.md. Last reviewed 2026-06-10 (Phase 50 ship closure — SA-1 skill-install lifecycle; first downstream phase after the completed 39-49 plan). Update when WSD installation confirms, or when any §6 carry-forward closes. **Next chat: WSD_INSTALLATION_CHAT** — see `projects/wsd/FUTURE_CHAT_PROMPT.md` + `SKILL_ACQUISITION_PROCESS_PHASE_MAP.md §5`. DWF parallelizable (L2-only).*
+*End of HANDOFF.md. Last reviewed 2026-06-10 (Phase 50 ship closure — SA-1 skill-install lifecycle; first downstream phase after the completed 39-49 plan). **SUPERSEDED 2026-08-10 — see the banner at the top of this file.** WSD is deferred under the refocus; the next chat is the single-lane CORE + Decision Records chat, and the live queue is `STATE.json` `pending_designs`, not this line.*
