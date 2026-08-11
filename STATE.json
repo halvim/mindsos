@@ -156,7 +156,7 @@
       "name": "subminds-slice-3",
       "status": "PENDING — SubMind Slice 2 SHIPPED to main 2026-06-25 (squash 66315f3; tag feat-subminds-s2-confirmed; gate 4090/11/1xpass/0). Slice 3 = the Reflex path: declared non-reconcilable predicate → single fast capacity; the net-new write-hook/arbiter feed over MonitorSubscriptionRegistry (today a passive lookup, not a feed); supersede-not-cancel seizure (arbiter override / drain); cognitive-Reflex floor. REUSES the Slice-2 ResourceLedger/ResourceHold as-is — add a forcible `seize` hook alongside the cooperative `cancel` hook (the record was designed to host it; ADR-0188 amendment-trail).",
       "branch_to_open": "feat/subminds-s3 off main",
-      "spec": "confirmation_docs/SUBMIND_DESIGN_LOG.md §10 (Reflex) + §19.1 (Slice 3 row) + §20 (resource model) + ADR-0188 Decision 3.",
+      "spec": "confirmation_docs/SUBMIND_SLICE3_REFLEX_DESIGN_HANDOFF.md (settled HOW-design + 2 OPEN owner decisions; verified vs af329eb) — reads with SUBMIND_DESIGN_LOG.md §10 (Reflex) + §19.1 (Slice 3 row) + §20 (resource model) + ADR-0188 Decision 3.",
       "reopens": "ADR-0188 Decision 3 (forcible seizure); the Phase-46 MonitorSubscriptionRegistry (passive→reactive feed).",
       "what": "Reflex bypass: declared predicate at endowment fires a pre-wired single capacity that bypasses the queue + L4 deliberation, notifying L4 after; forcible resource seizure via arbiter override (actuators) / drain (compute) on the shared ResourceHold; cognitive-Reflex hard floor that never starves the monitoring layer.",
       "consumer": "SubMind Reflex-eligible vitals",
