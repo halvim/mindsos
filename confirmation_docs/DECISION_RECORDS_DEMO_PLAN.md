@@ -3,9 +3,38 @@ title: Decision Records — Demonstration Plan
 status: Proposed
 basis: origin/main 5c6c5db (audited), confirmation_docs/marketing/, BRAIN_ARCHITECTURE_AUDIT.md
 date: 2026-08-08
+amended: 2026-08-11 — the routing beat, and SARA narrowed. See §0.1.
 ---
 
 # Decision Records — Demonstration Plan
+
+## 0.1 Amendments, 2026-08-11
+
+Four decisions, owner-agreed. Each is recorded in the section it changes; this is
+the index. Occasioned by two field conversations (Mauricio, claims, by phone;
+Elisandro Porto, S4A, 2026-08-11) and by one verification against the SARA
+dataset that killed the version of the beat everyone preferred.
+
+1. **The routing beat is taken, and it is Phase 7 content — claims, synthetic,
+   demonstration-only.** Two people in unrelated industries described the same
+   intake-triage problem unprompted, which nothing else in the field notes has
+   done. §1, §2.5, Phase 7.
+2. **Routing cannot be evidenced by any dataset in scope, and the deck must say
+   so.** Verified, not assumed — §2.1. It buys credibility in the room, not in
+   the pack.
+3. **SARA narrows to §152 and §7703 for Phases 1–2.** Nine sections was the
+   largest uncosted line item; those two are the ones this plan itself calls
+   "the product's shape". The numeric half follows if it earns its place. §2.1,
+   Phases 1–2.
+4. **Route-as-decomposition is rejected** — the attractive version, where the
+   system works out which statutes a question depends on. §2.1.
+
+**Sequencing is deliberately NOT changed.** The 2026-08-11 assessment argued for
+pulling Phase 7 ahead of Phases 1–6, and the argument is a fair one: those phases
+serve a deck and Phase 7 serves the two people actually waiting. It is moot until
+Decision Records v0 exists — nothing in Phase 7 can start before runs 1 and 2
+render — so the question is left open and revisited when v0 lands, rather than
+re-planned now against a build that does not exist. §6, open decision 6.
 
 ## 0. What this plan is, and what it is not
 
@@ -41,8 +70,15 @@ Every external claim, and the one thing that tests it.
 | 5 | The model reads, it does not decide | SARA run **twice** — structured input, then adapter — same answers, different origins | Evidence pack |
 | — | Policy identity and version | SARA in-force windows + dated cases | Evidence pack |
 | — | Policy *replaced* between submission and assessment | Synthetic only | Live demo |
+| — | **Intake routing** — this belongs to a department, and here is why | **Nothing. No dataset in scope supplies routing ground truth** (§2.1) | **Live demo only** |
 
-Claim 1 has no dataset row on purpose.
+Claim 1 has no dataset row on purpose. **The routing row has none for a different
+reason, and the difference matters:** claim 1 is tested by a mechanical guard
+instead of data; routing is tested by *nothing*, and is shown rather than
+measured. It is checkable on the spot by one person watching one case, which is
+real and is why the beat is worth taking. If routing ever appears in the evidence
+pack, or a routing number appears in the deck, that is the arc1 substitution in a
+new costume.
 
 ---
 
@@ -57,6 +93,53 @@ Johns Hopkins StAtutory Reasoning Assessment. Nine IRC sections (§1, §2, §63,
 - Prose fact patterns mean SARA exercises the **reading stage** as well as the decision stage. Errors are attributable to a stage — which is itself a demonstration of claim 2.
 
 **Known and to be stated up front:** a hand-built Prolog system already scores well on SARA, and SARA is in LegalBench so any LLM baseline is contamination-inflated. **Accuracy is not the claim.** Do not publish a head-to-head table.
+
+#### Amended 2026-08-11 — scope, and what SARA cannot do
+
+**Phases 1–2 encode §152 and §7703 only, not nine sections.** They are the two
+this plan already names as the product's shape — multi-condition eligibility
+producing a yes/no with a determining condition. Nine sections is named in §7 as
+the largest uncosted line item, and most of that cost buys the numeric half,
+which is the lesser one. The remaining sections are added when a specific gate
+needs them, not up front.
+
+**SARA cannot carry the routing beat, and this was verified rather than
+reasoned.** The proposal was appealing: route *within* SARA — which section
+governs this case — where the labels are already in the data and the shape is the
+same "which specialist handles this". It fails, because the governing section is
+stated three times over in every case:
+
+- the `id` encodes it — `s151_a_neg`;
+- the `text` names it — *"She gets one exemption of $2000 for the year 2015 under
+  section 151(c)"*;
+- the `question` names it — *"Alice's total exemption for 2015 under section
+  151(a) is equal to $6000"*.
+
+A router reading the question already has the answer; regex scores ~100%. SARA's
+task is *apply the named statute*, not *find it*. Routing between two datasets
+(SARA versus LegalBench) fails for a different reason — the label is free but the
+task is a corpus classifier over prose by different authors, and nobody has an
+intake queue mixing IRC §152 with federal diversity jurisdiction.
+
+**Two salvage paths, both recorded and neither taken for the demo:**
+
+- **Ablate the section reference** — strip it from question and text, route on
+  facts alone. Legitimate, and it is the same mechanically-derived, publish-the-
+  rule method §2.2 already accepts for refusal. But it is a set we built, so it is
+  weaker than third-party. Available if a routing number is ever genuinely needed.
+- **Route as decomposition** — *which sections must be consulted*, where §63 pulls
+  in §151. Genuinely non-trivial, and SARA's `facts` / `test` Prolog fields encode
+  which predicates fire, so the true dependency set is **derivable per case**: a
+  real third-party label. **Rejected for the demo, kept as a future test for
+  CORE-C4R3.** The wiring exists — `plan_construction._decompose_recursive`
+  dispatches and recurses to `MAX_DEPTH` — and only two bodies are stubs
+  (`decompose` returns `[]`, `predicate.is_leaf` is always True). But they are
+  **Global placeholders**, so giving them real bodies changes `run_lifecycle` for
+  nilm, arc1 and arc3, all of which assume one milestone and one pipeline; that is
+  CORE-C4R7's, not a demo's. The additive alternative — Local shadows of the
+  placeholders, the arc1 precedent — is the mechanism ADR-0205 §amendment-4.9
+  retires. There is no small path, and it answers *which statutes* when the field
+  evidence asked *which human*.
 
 ### 2.2 SARA-ablation — refusal
 Derived, not sourced. For each case with a known answer, delete one input field and re-run; the correct answer becomes *"cannot be decided; missing X"*, labelled by construction with the missing item named.
@@ -78,7 +161,54 @@ Its "not mentioned" class is a *second* refusal flavour — keep it, but ablatio
 ### 2.5 Synthetic claims — the live demo
 Five seeded cases per the GTM prompt: clean approval, clean denial, needs a policy exception, missing a required document, policy changed between submission and assessment. The fourth is the punchline. The fifth is the only thing no sourced dataset provides.
 
-**Held until the claims-practitioner conversation.** Domain-independent work does not wait on it.
+~~**Held until the claims-practitioner conversation.** Domain-independent work does not wait on it.~~
+
+**Amended 2026-08-11 — the hold is satisfied, and a routing stage opens the
+flow.** The claims-practitioner conversation happened (Mauricio, by phone,
+unrecorded). The demo stays claims, which answers open decision 3.
+
+**A sixth element, and it comes first: intake routing.** A case arrives and is
+classified to a department or specialist before anything is adjudicated, giving
+one continuous story — intake → route → validate → decide or escalate — rather
+than two demos. Grounds, and they are field evidence rather than invention:
+Mauricio described a human deciding which department handles a claim, and
+Elisandro Porto (S4A, SAP integrator) described a ticket arriving by email and a
+person paid to analyse it. Nothing else volunteered twice, from two industries,
+unprompted. By contrast the adjudication scenario in the market documents was
+written for illustration and has never been checked by anyone who does the work.
+
+**Why routing is the stronger opening, not merely a cheaper one.** A smaller claim
+is more checkable — *"this system knew it was liability, not property, and can
+show why"* invites verification where *"this system approved a claim"* invites
+an audit of its judgement. And it is the best stage for the refusal: *"I cannot
+tell whether this is property or liability, and here is what is missing"* reads
+as strength at intake, where at adjudication "I don't know" reads as failure.
+
+**Two costs the beat's own assessment did not carry, and they are binding.**
+
+1. **The no-route refusal has no machinery behind it yet.** It is the beat's whole
+   credibility argument, and a find-time refusal has no grounding graph at all
+   while a capacity-level refusal writes no node — `execute_pipeline` records only
+   after its success check. **The beat waits on `core-terminal-node-on-non-success`
+   (L-2)**, item 2 of `DECISION_RECORDS_V0_PLAN.md`.
+2. **A reducer is needed and was uncosted.** Model routing as N single-verdict
+   `capacity:decision:*` capacities — one per department, each answering *"does
+   this belong here?"* — so each department's answer is a citable node in the
+   Record. But N verdicts must then collapse into one routing decision, and that
+   collapse is where *ambiguous between two departments* and *unroutable* actually
+   live. Either `reduction.*` over a collection or an (N+1)-th decision capacity
+   consuming N verdict DataStates. **Whichever is chosen, check it against Gate 4
+   first**: if routing needs an op adjudication did not, *"no new decision op was
+   needed"* fails inside the demo, in front of the room.
+
+⚠ **Do not invent a department taxonomy.** Insurance lines of business are
+standardised and public. An invented taxonomy re-creates exactly what makes the
+adjudication scenario weak — a scenario we wrote ourselves.
+
+**Open, and it is what kills the beat if anything does:** is routing perceived as
+valuable, or as something a junior does? Ask Mauricio on the demo call, before any
+capacity is written: *"when a claim gets routed to the wrong desk, how long until
+anyone notices, and what does it cost?"*
 
 ---
 
@@ -136,12 +266,14 @@ Everything here is mechanism and is not blocked on any conversation.
 **Gate 0:** guards red on a deliberately broken build, green on a correct one. Nothing rendered yet.
 
 ### Phase 1 — SARA entailment, structured input
-Encode §152 and §7703. Values supplied structured; no adapter.
+Encode §152 and §7703 — **and, amended 2026-08-11, only those two** (§2.1). Values supplied structured; no adapter.
 
 **Gate 1:** entailment cases answered; confidently-wrong = 0; every Record names the determining condition; G1–G4 green.
 
 ### Phase 2 — SARA numeric and in-force windows
 Encode §1, §63, §68, §151. Dated cases select limits through the policy store.
+
+**Amended 2026-08-11.** This is the half the nine-section cost mostly buys, and it is the lesser half. Encode the **minimum** that makes Gate 2 fire — one section with a year-dependent dollar amount and two in-force windows — and add the rest only when a named gate needs them.
 
 **Gate 2:** G5 green — two cases differing only in date name different limits and windows. This is the money sentence, on third-party data.
 
@@ -167,20 +299,26 @@ Span agreement on extraction provenance.
 
 **Gate 6:** the origin a Record asserts points at the labelled sentence.
 
-### Phase 7 — Live demo *(blocked on the practitioner conversation)*
-Five synthetic claims cases; batch pass; one Record per case plus the refusal list on page one.
+### Phase 7 — Live demo *(~~blocked on the practitioner conversation~~ — the hold is satisfied, 2026-08-11)*
+**Intake routing opens the flow** (§2.5), then five synthetic claims cases; batch pass; one Record per case plus the refusal list on page one.
+
+**Depends on `core-terminal-node-on-non-success` (L-2)** — without it neither the no-route refusal nor the unroutable case leaves a node to render.
 
 **Gate 7:** run cold on a laptop three times with no operator intervention. The refusal case fires on cue.
+
+⚠ **Gate 7 has a dependency nobody has costed: there is no transport.** `LLM_SEAM_MANUAL.md` S-3 — the one piece that touches the network does not exist. So a cold laptop run is replay-only today, and `CORE_CR_EXTERNAL_MODEL_SEAM.md` D9 rules that a demo running from saved answers is a scripted demo and deserves to be called one. Two consequences: **the transport is a Phase-7 blocker, not a nicety**, and **S-2 — whether the transport or `mindsos_llm` parses the model's output — must be settled before anyone writes one**, because afterwards it is a rewrite rather than a decision. Note also that routing from a *structured* intake record would need no model at all; it is routing from Elisandro's actual inbox that puts the seam on the critical path.
 
 ---
 
 ## 6. Open decisions
 
-1. **Which half of SARA leads.** Recommend entailment. It is the product's shape; numeric is the arithmetic proof.
+1. ~~**Which half of SARA leads.**~~ **CLOSED 2026-08-11 — entailment, and only §152 + §7703** (§2.1). Numeric narrows to the minimum that fires Gate 2.
 2. **Whether the evidence pack ships publicly.** A published SARA result invites the accuracy comparison we do not want. Recommend: cited in the deck, method reproducible on request, no leaderboard entry.
-3. **Domain of the live demo.** SARA is tax; the scheduled practitioner is claims. Confirm the demo stays claims and the evidence pack stays tax — or move the practitioner.
+3. ~~**Domain of the live demo.**~~ **CLOSED 2026-08-11 — the demo stays claims, the evidence pack stays tax**, and the practitioner conversation that gated it has happened (§2.5).
 4. **Time-box.** Phases 0–4 are the defensible minimum. Set the box before starting, not after Phase 2.
 5. **Prior art review before any novelty claim.** A Prolog system solves SARA; "Explainable OpenFisca" exists. Neither has the grounding graph, but both need to be read before the deck asserts novelty.
+6. **[OPENED 2026-08-11] Does Phase 7 move ahead of Phases 1–6?** The argument for: those phases serve a deck and pay nothing, this plan's own §7 names "the benchmark becomes the product" as its highest risk, and the only two people waiting are waiting for Phase 7. The argument against: skipping Phases 1–6 leaves Gate 4 — the composition claim's only test — with nothing behind it but the demo's own questions, and the demo's cases are ones we wrote. **Deliberately not decided.** Nothing in Phase 7 can start before Decision Records v0 renders runs 1 and 2, so deciding now would be planning against a build that does not exist. **Revisit when v0 lands.**
+7. **[OPENED 2026-08-11] Who owns the transport, and who parses the model's output?** Phase 7's gate cannot be met without one, and S-2 stops being a decision the moment a transport exists.
 
 ---
 
@@ -190,4 +328,6 @@ Five synthetic claims cases; batch pass; one Record per case plus the refusal li
 - **A guard authored after the renderer.** It will pass and it will mean nothing.
 - **Encoding cost underestimated.** Nine IRC sections is the largest uncosted line item; the ontology cannot be shortcut because the finder is type-directed and a generic comparator would wire itself everywhere.
 - **Reporting accuracy.** Every time it appears without the refusal rate beside it, we compete on the axis we lose.
-- **Domain fork.** Running tax and claims in parallel doubles the ontology. One is evidence, one is demo — neither is a product line.
+- **Domain fork.** Running tax and claims in parallel doubles the ontology. One is evidence, one is demo — neither is a product line. **Sharpened 2026-08-11:** the routing beat is claims and the evidence pack is tax, and they share the *ops* and nothing else. **The moment they share a DataState type, this risk has landed.**
+- **[2026-08-11] Routing presented as evidence.** It has no dataset support and cannot acquire any (§2.1). It is shown, not measured. A routing accuracy number in the deck is this plan's §0 failure — a green benchmark standing in for a green guard — wearing a different hat.
+- **[2026-08-11] The demo depending on a component that does not exist.** No transport, and Gate 7 needs one. Named here because the routing beat's own assessment costed the beat and not this.
