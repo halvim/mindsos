@@ -511,3 +511,278 @@ on the only two branches that ever held it — residue of a deletion, read out o
 The shared `MindsOS` clone carries an **untracked `projects/amii_study/` tree** inside the
 `main` checkout. It has already misled two cross-repo sweeps into reading it as tracked
 content. Clear it or ignore it.
+
+---
+
+## 14. Round-5 findings (2026-08-06, CORE-C2R3 pre-build read-through @ `1063fd1`)
+
+> **Re-verified at `fe529c1`** (merge of `origin/main` through `c97d99a`, which shipped the
+> two-tier union view). **Every claim below held.** Line references are the post-merge ones;
+> three drifted in `capacity_layer.py` and are corrected in place.
+
+Every claim in §13 held. §12.1's *"the L2 knowledge layer cannot write a link"* holds **for
+`KLWriteHandle`** and is **too narrow as a statement about the repo** — see §14.5. All six
+findings below were read from the code, not inferred.
+
+### 14.1 A compositional link cannot cross a `Metagraph`, and a brain holds four
+
+`Metagraph.add_intergraph_edge` steps 1–2 (`mindsos_core/models/metagraph.py:1602-1611`) require
+both endpoint graphs in `self.graphs` — one `Metagraph` instance. `add_intergraph_hyperedge`
+applies the same rule to anchors and members. Endpoints are `(graph_id, node_id)` pairs; the
+link dictionaries hang off the `Metagraph` (`metagraph.py:374,380`). There is no representation
+for an endpoint in another metagraph.
+
+Four instances exist in a running brain, none shared: KnowledgeLayer Global
+(`knowledge_layer.py:208`), KnowledgeLayer Local(user) (`:243`, lazy), CapacityLayer Global
+(`capacity_layer.py:160`, its own `create_global()`), CapacityLayer Local(user) (`:203`).
+`boot.py:211,222` pass `kl` into `CapacityLayer` **for write-capacity bodies only** — no
+metagraph crosses.
+
+⟹ `pipeline → capacity` (C2R4's central link) is **inexpressible**, and so is every Local→Global
+composition — which C2R5, C2R7 and the dual-scope resource graph all require.
+
+**Reachability: DECLARED.** Nothing above the capacity level writes a compositional link today,
+which is why the constraint has never been hit. **Ruled at ADR-0205 §amendment-4** — one
+`Metagraph` per user; realm becomes a node property.
+
+### 14.2 `Graph.remove_node` cannot see intergraph links
+
+`mindsos_core/models/graph.py:483`. It collects `incident_edge_ids` from `self.edges` and
+`incident_he_ids` from `self.hyperedges` — **intra-graph only**. A `Graph` holds no reference to
+its containing `Metagraph`.
+
+⟹ A node that is a **member of a compositional link can be removed**, and the link survives
+pointing at nothing. No refusal, no cascade, no detection, at any `cascade` setting.
+`mindsos_capacity/builtins/learn_parameter.py:139` already calls `handle.graph().remove_node`.
+
+Two consequences, opposite in sign:
+
+- ADR-0205 §8-as-amended and §am-1.5 state that taught **structure can never be removed**. That
+  is false in practice — a composition can be gutted one member at a time. `remove_graph` guards
+  compositional links (`metagraph.py:1055-1079`); `remove_node` does not.
+- It is nonetheless **the only trigger derived dormancy has**. §am-3.3 requires dormancy to be
+  computed on read rather than stored; a DOWN walk that finds a member gone is that computation.
+  **C2R3 owns the detection**, since it owns the walk.
+
+### 14.3 There is no adjacency index for intergraph links
+
+`intergraph_edges` and `intergraph_hyperedges` are flat dicts whose only accessors are
+`iter_intergraph_edges` / `iter_intergraph_hyperedges` (`metagraph.py:2233,2263`), both full
+scans. `XRef` — a lower-traffic primitive — **does** have inverse indexes (`_xrefs_by_source`,
+`_xrefs_by_target`, `metagraph.py:434-435`).
+
+⟹ `CORE_RECONCILIATION_PLAN.md` §3.1's `walk(start, *, direction, ...)` is **O(all links) per
+hop** as the substrate stands, in both directions. The existing consumer already pays it:
+`mindsos_capacity/views.py:144` `_iter_edges` scans every intergraph edge per call, and
+`outputs_of` / `inputs_of` / `producers_of` each call it. **C2R3 adds the index**, mirroring the
+`XRef` pattern; `add_*` / `remove_*` / the loader maintain it.
+
+### 14.4 `deprecate_intergraph_edge` does not exist
+
+ADR-0205 §am-1.5 lists it — *"`deprecate_intergraph_edge` (Phase 10) raises the same"* — and
+`confirmation_docs/INTERGRAPH_EDGES_DESIGN.md:296` says the same. `git grep deprecate_intergraph`
+returns **documentation only**; no such method is defined anywhere in `mindsos_core`.
+
+The three real refusals are `remove_intergraph_edge` (`metagraph.py:1676`),
+`update_intergraph_edge_properties` (`:1701`) and the `__setattr__` gate on the `compositional`
+field itself (`intergraph_edge.py:110-125`, Pushback 22-A). Terminality holds on those three; the
+fourth citation is to a method that was planned and never built. Correct both documents.
+
+### 14.5 §am-1.7's "zero consumers" is right about the hyperedge and wrong about the edge
+
+§am-1.7 and `CORE_C2_DECISIONS.md` §4 read as *nothing outside core reads or writes an
+intergraph link*. For `IntergraphHyperEdge` and the `compositional` flag that holds. For the
+ordinary `IntergraphEdge` it does not:
+
+- **writer** — `mindsos_capacity/capacity_layer.py:436,443` emit `PRODUCES` (capacity→DataState)
+  and `CONSUMES` (DataState→capacity) on every registration, idempotently, guarded by
+  `_has_intergraph_edge` (`:98-112`). This is ADR-0156's bipartite topology and it is **LIVE-WRITE**.
+- **reader** — `mindsos_capacity/views.py:138-175` `_iter_edges` → `outputs_of`, `inputs_of`,
+  `producers_of`. **LIVE-READ**, and it is the substrate the finder walks.
+
+⟹ **C2R3 is not building a link mechanism from nothing.** It is unifying an existing one and
+raising it to L2. Under ADR-0205 §10 — *one traversal primitive* — `CapacityLayerView` must
+delegate to whatever `MetagraphView` gains, not keep a parallel scan. A second reader of the same
+relation is the defect §10 was written to prevent, arriving from the direction nobody watched.
+
+### 14.6 ADR-0206's status is `Accepted` on main; three artifacts say `Proposed`
+
+`docs/decisions/adr/0206-planning-decomposition-confidence.md` front-matter `status:` and its
+prose `**Status:**` line both read **`Accepted`**. `STATE.json` `pending_designs`
+→ `core-c-reconciliation`, `confirmation_docs/CORE_C2R2_CONFIRMED.md` §5 and the C2R3 handoff
+all state it is `Proposed` with §3 and §5 contradicted.
+
+RULES §9: *"An ADR-level status change is FOUR edits."* None was made — the flip was recorded as
+an intention in three downstream places and never executed in the ADR. This is the shape §13's
+method note names: *an intention written in the past tense is indistinguishable from a fact.*
+
+Separately, **ADR-0206 §amendment-1 carries no `**Amendment status:**` label**, which RULES §9
+requires. ADR-0148 §amendment-1 is reported to have the same gap and is not re-verified here.
+
+⟹ Two mechanical repairs, no design content, and they belong to whichever item next touches ADR
+status truth.
+
+### 14.7 A read that mints a Local, on the L4 dispatch path — ✅ FIXED
+
+`mindsos_knowledge/learned_parameters_snapshot.py:64` —
+`read_learned_parameter_snapshot` calls `kl.local_metagraph(user)` with **no `has_local`
+guard**. `local_metagraph` lazily creates.
+
+`mindsos_server/skills/records.py:111` guards the identical call and documents why:
+*"``local_metagraph`` LAZILY CREATES, and materialising an empty Local while reading a roster
+would run ahead of the durable boot that restores one. Reading must never mint state."* — the
+ADR-0183 §am-6 hazard that broke `test_durable_roundtrip`, and the same finding
+`CORE_C2_DECISIONS.md` §12.1 item 3 recorded from building C2R1.
+
+**Reachability: LIVE-READ, and hotter than the guarded site.** The snapshot is frozen into every
+request's `learned_parameters_snapshot` by `L4Dispatcher`, so this is the dispatch path — not a
+roster read.
+
+⟹ Two-line fix, precedent in the repo, **independent of ADR-0205 §amendment-4**.
+
+✅ **FIXED** by the two-tier lane. `read_learned_parameter_snapshot` now guards with
+`has_local`, using the same `getattr(kl, "has_local", lambda _u: False)` form `records.py`
+uses. `_FakeKL` in `tests/learned_parameters/` gained `has_local` (defaulted `True`, so no
+existing call site changed) plus a `local_metagraph_calls` counter — the fake did not model
+the guard surface at all, so without that the guard would have silently skipped the Local
+overlay and broken `test_reader_local_overrides_global_per_knob`. Two tests: no-mint, and
+still-applies-local-when-one-exists.
+
+*(This section read "NO OWNER" when §14 landed in #119. It was accurate at the time and is
+struck here rather than deleted, because the reasoning for why it was homeless is what stopped
+it staying homeless.)*
+
+⚠ Related but distinct from §am-4.7 item 5, which says the lazy-create hazard *dissolves* under
+one metagraph because no Local object remains to materialise. That is true of the future and
+silent about the present: this instance is live today.
+
+### 14.8 The two-tier override reads the collision in three places, and one is not an IRI collision
+
+Established with the two-tier / union-view lane. **All three re-verified here at `fe529c1`**,
+after `8400d6f` merged — items 1 and 2 are no longer second-hand.
+
+1. `LocalPreferringView` (`mindsos_capacity/views.py:213`) — node-IRI collision.
+2. `CapacityLayer._resolve_declaration` (`capacity_layer.py:752`) — node-IRI collision.
+3. ⚠ **`read_learned_parameter_snapshot` (`learned_parameters_snapshot.py:63-64`) — NOT an IRI
+   collision.** `_overlay` keys on `(parameter_set_iri, target_parameter_iri)` read from node
+   **properties**, so two nodes with different IRIs can carry the same knob. Precedence comes
+   from **calling `_overlay` twice over two containers** — `global_metagraph()` then
+   `local_metagraph(user)` — with later-call-wins.
+
+⟹ 1 and 2 die on the identity change. **3 survives the identity change and breaks on the
+container change**, silently returning Global values with the suite still green. It needs an
+explicit realm sort key and a test that goes RED.
+
+Bounding the blast radius, verified: **`pending-promotions` does not resolve a collision**
+(minting, role-prefix and allow-list references only); **C2R1's dual-scope `installed-skills`
+unions rather than resolves** (`records.py:122` appends from both role-graphs, no same-IRI step);
+and the **KL read path never did collision resolution at all** —
+`mindsos_knowledge/metagraph_view.py:254` states *"Per Phase 14 PB-10: NO Local-specialisation
+overlay"*. Collision-based override was only ever a capacity-layer mechanism plus this overlay.
+
+### 14.9 A second persister method assumes realm == metagraph
+
+`mindsos_server/persistence/local_persister.py` — the run-state wipe resolves the user's Local by
+`find_by_name(self._metagraph_name(user_id))`, then matches
+`(m:Metagraph {id: $mid})<-[:IN_METAGRAPH]-(g:Graph) WHERE g.role IN $roles` over
+`episodic_memories`, `parameter-staging`, `pending-promotions`.
+
+Under one metagraph the name has no referent, **and the role match reaches the Global graphs of
+those same roles.** Its docstring promises *"leaving the durable role-graphs and the Metagraph
+node in place"*; under one metagraph that promise inverts for three Global roles.
+
+⟹ Same class as the `delete` hazard in §am-4.7 item 2, in a **second** method. Both deletion
+paths need a RED test before the substrate is unified.
+
+### 14.10 A FOURTH collision reader — the flat `_declarations` mirror, leaking Local into sessionless reads — ✅ FIXED
+
+§14.8 names three collision readers. There is a fourth, and it is not a **view**, which is why
+three separate reads missed it: `CapacityLayer._declarations` is a **realm-blind, IRI-keyed,
+last-write-wins dict**. `self._declarations[declaration.iri] = declaration` at
+`capacity_layer.py:409` and `:423`, inside `register_capacity`, **with no realm branch** — so a
+Local registration overwrites the Global entry at the same IRI.
+
+**Reachability: LIVE-READ, and it was leaking.** `get_declaration(capacity_iri)` takes **no
+session** and read that mirror, so a sessionless caller could be handed **a user's Local
+declaration**. That contradicts the invariant the view layer maintains and ADR-0071
+§amendment-5 restates: *a sessionless caller is asking about the shared catalog and must not see
+any user's Local realm.* `pipeline._view_for` enforces it; this registry did not.
+
+Readers of the mirror: `mindsos_cli/commands/brain.py:356`,
+`mindsos_intelligence/consolidation.py:54`, and `iter_monitors()` via
+`mindsos_intelligence/monitor_subscription.py:52`.
+
+✅ **FIXED** by the two-tier lane. `get_declaration` now reads the **Global capacity index**,
+routed through `_maybe_build_lazy` so a metadata-only skill capability (ADR-0183 §am-5) still has
+its function built on first resolve — reading the index raw would return an unbound declaration
+and leave it unbound. It is now exactly the sessionless case of `_resolve_declaration`.
+
+**Not a contract change, verified rather than assumed.** No public test pinned the merged
+behaviour: `tests/phase_28/test_capacity_layer_register_capacity.py:64` asserts
+`get_declaration(cap.iri) is cap` on a **Global** registration, and
+`test_capacity_layer_local_wins.py` — the only test pinning Local-overwrites-Global — asserts on
+the **private** `cl._declarations` dict, which the fix does not touch. Its docstring calls that a
+"doc" of an internal consequence (R3 PB-36), not a public contract. **The mirror is unchanged**
+and remains a non-authoritative Local-wins merge for enumeration (`iter_declarations` /
+`iter_monitors`); only the sessionless lookup stops reading it.
+
+⚠ Same shape as §am-4.7 item 5 and §14.7: **under one metagraph the mirror stops being a merge**
+(one declaration per IRI) and the leak dissolves on its own. Item 5 is right about the future and
+was silent about the present — this instance was live.
+
+⟹ Under ADR-0205 §amendment-4, `_declarations` is a **fourth conversion site**, and the two tests
+that pin the collision as executable contract —
+`tests/phase_28/test_capacity_layer_local_wins.py` and
+`tests/phase_30/test_invoke_local_wins_resolution.py` — convert with it.
+
+### 14.11 The override mechanism §am-4 §3 declined to rule ALREADY SHIPS — as node properties
+
+ADR-0205 §amendment-4 §3 rules the *principle* for what replaces override-by-IRI-collision
+under one metagraph — **an override is topology, never identity**; owner-qualified IRIs are
+rejected as location-encoded-in-a-reference — but declines to rule a *mechanism* on the
+ground that no candidate has a consumer in C2R3.
+
+**That ground does not hold. A mechanism is on `main` today:**
+
+- `REF_GLOBAL_CAPACITY = "ref:global_capacity"` — `mindsos_capacity/identifiers.py:424`
+- `"SPECIALISES"` is a declared ref type — `identifiers.py:438`
+- `CapacityLayer.register_capacity(..., ref_to_global=<iri>, ref_type="SPECIALISES")` writes
+  both — `capacity_layer.py:386`
+- exercised by `tests/phase_28/test_capacity_layer_local_wins.py`, which asserts
+  `local_node.properties[REF_GLOBAL_CAPACITY] == gcap.iri` and
+  `properties[REF_TYPE_KEY] == "SPECIALISES"`
+
+⟹ **The override-as-topology mechanism is half-built, and the built half is in the wrong
+form: node PROPERTIES, not edges.** It satisfies the principle's *intent* — the override is
+recorded as a relation to the thing it overrides — and violates its *mechanism*: **a walk
+cannot traverse a property.**
+
+That is ADR-0205's own anti-pattern — topology stored in properties rather than edges — and
+the **third** shipped instance, after the missing `SPECIALIZES` DataState edge
+(`C11`/`c11-datastate-subsumption`) and the pre-ADR-0156 `inputs`/`outputs` node properties
+that the bipartite reframe retired.
+
+⟹ The open item is therefore not *"choose a mechanism for a future override"* but
+**"promote an existing property-encoded reference to an edge"** — which has a consumer
+today, a test today, and a migration precedent in ADR-0156. Whoever rules it must also state
+that such an edge **does not redirect existing compositions**: members are frozen, so using
+an override means a **new composition on the same anchor**, never a repoint.
+
+**Also unrecorded: §am-4.7 is missing two measurements it acknowledged.** Both were verified
+in the C2R3 lane at `b041ebe` and confirmed in the metagraph-boundary coordination thread as
+making §am-4.7 items 3 and 4 *cheaper than priced*; neither reached `main`:
+
+1. **The injection seam already exists on BOTH sides for Global.**
+   `CapacityLayer.__init__` takes `global_metagraph=` (`capacity_layer.py:134`, used verbatim
+   at `:166`) and `KnowledgeLayer.bootstrap()` constructs via
+   `cls(global_metagraph=global_mg, id_strategy=strategy)` (`knowledge_layer.py:204`).
+   **Sharing one Global metagraph is boot wiring, not a core change.** Local has no such
+   seam — `create_local(user_id)` is internal on both layers — and that is the real work.
+2. **Roles are ENSURED, not GATED.** Nothing rejects an unknown role on a `Metagraph`;
+   `_GLOBAL_NAMED_ROLES` / `_LOCAL_NAMED_ROLES` drive `kahn_sort` *ensure* loops, and
+   `UnknownRoleError` is a `schema_for_role` **lookup miss**, not an add-time gate. Capacity
+   roles are `capacity:`-namespaced. **The L2 closed role-set is not an obstacle to
+   unification** — it is not even a check.
+
+§am-4.7's claim is that it is *measured rather than estimated*. Recorded here so the two
+measurements exist somewhere on `main`; amending §am-4.7 itself belongs to the C2R3 lane.

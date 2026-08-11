@@ -56,12 +56,22 @@ def read_learned_parameter_snapshot(
     Global first, then Local — so Local values override Global per knob. Feed
     the result to ``L4Dispatcher(learned_parameters=...)``; it becomes each
     request's frozen ``learned_parameters_snapshot``.
+
+    **A read must never mint a Local.** ``local_metagraph`` lazily CREATES, so
+    calling it unguarded materialises an empty Local for any user who has none
+    — and this runs on the L4 dispatch path, where the snapshot is frozen into
+    every request, so it is a hotter path than the roster read that was already
+    guarded for this reason. Materialising ahead of the durable boot that
+    restores a Local is what broke ``test_durable_roundtrip`` (ADR-0183
+    §am-6); ``mindsos_server/skills/records.py`` guards the identical call and
+    documents the same ground.
     """
     if kl is None:
         return {}
     snapshot: Dict[str, Dict[str, Any]] = {}
     _overlay(snapshot, kl.global_metagraph())
-    _overlay(snapshot, kl.local_metagraph(user))
+    if user and getattr(kl, "has_local", lambda _u: False)(user):
+        _overlay(snapshot, kl.local_metagraph(user))
     return snapshot
 
 

@@ -293,7 +293,10 @@ All of 4.1 plus:
 When `compositional=True`:
 - `Metagraph.remove_intergraph_edge` (and `remove_intergraph_hyperedge`) raises `CompositionalImmutableError`.
 - `set_intergraph_edge_properties` (mutation API) raises same.
-- `deprecate_intergraph_edge` (Phase 10) raises same.
+- ~~`deprecate_intergraph_edge` (Phase 10) raises same.~~ **No such method exists** — it
+  was planned at Phase 10 and never built (`git grep deprecate_intergraph` returns
+  documentation only). Recorded at ADR-0205 §amendment-4 / `CORE_VERIFIED_FINDINGS.md`
+  §14.4. The line above it and the flag immutability below it are both real.
 - The flag itself is immutable post-create (Push6-A). `False → True` flip not allowed (catch-22: a `True` edge can't be removed, so flipping in error wedges the metagraph).
 
 To "promote" a non-compositional edge to compositional: `remove` (allowed for non-compositional) + `add_intergraph_edge(..., compositional=True)`.
