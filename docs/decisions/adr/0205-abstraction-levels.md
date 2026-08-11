@@ -914,7 +914,19 @@ by cost, not by order of discovery.
    supply the KnowledgeLayer's metagraph. `_capacity_index` is keyed by `metagraph_id`
    (`capacity_layer.py:171`) and collapses to a single key.
 
-4. **Role and graph-id collision — NONE. Verified, no work.** Capacity roles are namespaced:
+   ✅ **Cheaper than priced, verified.** The injection seam **already exists on both sides for
+   Global**: `CapacityLayer.__init__` takes `global_metagraph=` (`capacity_layer.py:134`, used
+   verbatim at `:166`) and `KnowledgeLayer.bootstrap()` ends
+   `cls(global_metagraph=global_mg, id_strategy=strategy)` (`knowledge_layer.py:204`).
+   **Sharing one Global metagraph is boot wiring, not a core change.** **Local has no such
+   seam** — `create_local(user_id)` is internal on both layers — **and that is the real work.**
+   (`CORE_VERIFIED_FINDINGS.md` §14.11.)
+
+4. **Role and graph-id collision — NONE, and the closed role-set is not even a check.**
+   Roles are **ensured, not gated**: `_GLOBAL_NAMED_ROLES` / `_LOCAL_NAMED_ROLES` drive
+   `kahn_sort` *ensure* loops and `UnknownRoleError` is a `schema_for_role` **lookup miss**, not
+   an add-time refusal — so nothing rejects an unknown role on a `Metagraph`
+   (`CORE_VERIFIED_FINDINGS.md` §14.11). Capacity roles are namespaced:
    `capacity:datastates` and `capacity:<category>` (`mindsos_capacity/identifiers.py:64,67`).
    L2 roles are bare names (`ontology`, `lexicon`, `learned-pipelines`, …). No overlap; the
    nearest pair is L2's `capacity-state` / `capacity-gaps`, hyphen not colon.
@@ -988,10 +1000,25 @@ topology can be traversed by the finder, checked by verification against the lev
 carry confidence **on the relation** rather than on either node. An override expressed in a name
 is invisible to every walk.
 
-**The mechanism is not ruled here.** A `specializes` edge — paralleling C11's unbuilt DataState
-design (§am-1.3) — is the only candidate on the table that satisfies the principle, but it has no
-consumer in C2R3, and ruling a mechanism ahead of its consumer is what §Alternatives item 5
-refuses. What is ruled is the principle and the exclusion.
+**The mechanism is not ruled here — but the ground for not ruling it has been withdrawn.**
+As first written this subsection said a `specializes` edge *"has no consumer in C2R3"*, and
+declined on §Alternatives item 5. **That is false on `main`**, and
+`CORE_VERIFIED_FINDINGS.md` §14.11 shows why: a mechanism **already ships**.
+`CapacityLayer.register_capacity(..., ref_to_global=<iri>, ref_type="SPECIALISES")` writes
+`REF_GLOBAL_CAPACITY` and `REF_TYPE_KEY` (`capacity_layer.py:386`;
+`mindsos_capacity/identifiers.py:424,438`), pinned by
+`tests/phase_28/test_capacity_layer_local_wins.py`.
+
+It is **half-built, and the built half is in the wrong form: node PROPERTIES, not edges.** It
+satisfies this ruling's *intent* — the override is recorded as a relation to the thing it
+overrides — and violates its *mechanism*, because **a walk cannot traverse a property**. That is
+this ADR's own topology-in-properties anti-pattern, third shipped instance after C11's missing
+`SPECIALIZES` DataState edge and the pre-ADR-0156 `inputs`/`outputs` properties.
+
+⟹ **The open item is not "choose a mechanism". It is "promote a property-encoded reference to
+an edge"** — which has a consumer today, a test today, and ADR-0156's migration as precedent.
+§Alternatives item 5 does not bar it; consumer discipline is satisfied. What is still ruled here
+is the **principle** and the **exclusion** of owner-qualified IRIs.
 
 **Binding constraint on whatever satisfies it:** an override **does not redirect existing
 compositions**. Members are frozen (§am-1.5), so using an override means a **new composition on
