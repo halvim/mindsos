@@ -96,6 +96,20 @@ ROLE_LEARNED_PIPELINES = "learned-pipelines"
 # first use).
 ROLE_INSTALLED_CAPACITIES = "installed-capacities"
 
+# CORE CR: the policy role (Decision Records) — dated, versioned editions of
+# an AUTHORITY per ADR-0150 §amendment-<N> (closed set 16 -> 17; Global +
+# Local, append-only).
+#
+# **Why a role and not ``dataset:<name>``.** A dataset is a corpus a brain
+# owns; a policy is an authority a decision cites. That is not cosmetic here:
+# a Decision Record states *which authority, which edition, in force when*, so
+# the store's identity is part of the claim being made. The parametric
+# ``dataset:`` prefix also exists because dataset SHAPES differ per brain
+# (ADR-0150 §am-9: "core owns no dataset shape") — whereas an in-force window
+# is the SAME shape for a statutory threshold and for a versioned prompt body,
+# which is the whole argument for core owning this one.
+ROLE_POLICIES = "policies"
+
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
@@ -116,6 +130,8 @@ UPPER_LAYER_ROLES = frozenset({
     ROLE_LEARNED_PIPELINES,
     # ADR-0183 §am-5 addition — installed-skill Local capability descriptors.
     ROLE_INSTALLED_CAPACITIES,
+    # CORE CR: the policy role — dated, versioned authority editions.
+    ROLE_POLICIES,
 })
 ALL_ROLES = SEED_ROLES | UPPER_LAYER_ROLES
 
@@ -470,6 +486,30 @@ def installed_capability_iri(version: str, capacity_name: str) -> str:
     return f"installed-capacities-{v}:cap:{cn}"
 
 
+def policy_edition_iri(version: str, policy_id: str, edition_id: str) -> str:
+    """Policy-edition node (Global + Local; CORE CR: the policy role):
+    ``policies-<v>:edition:<policy_id>:<edition_id>``.
+
+    One append-only immutable node per **edition** of an authority. The
+    current edition for a date is not "the latest" — it is the one whose
+    ``in_force_from``/``in_force_to`` window contains that date, which is why
+    an edition is never rewritten and never superseded in place: a Decision
+    Record rendered a year later must still resolve the edition that was in
+    force when it ran.
+
+    ``policy_id`` names the authority (``policy:filing_threshold``);
+    ``edition_id`` names the edition within it (``2024.1``). Both are
+    normalised fragments, and like ``learned_pipeline_iri`` /
+    ``skill_install_record_iri`` (PB-8 precedent) the trailing body may carry
+    colons — the parser leaves it opaque after the ``edition:`` kind and
+    full-string round-trip holds.
+    """
+    v = _ensure_version(version)
+    pid = _normalise_fragment(policy_id)
+    eid = _normalise_fragment(edition_id)
+    return f"policies-{v}:edition:{pid}:{eid}"
+
+
 # ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
 # Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
@@ -561,6 +601,19 @@ def _mint_learned_pipeline(version: str, /, **content: object) -> str:
     )
 
 
+def _mint_policy_edition(version: str, /, **content: object) -> str:
+    """Adapter: ``policy_edition_iri`` <- ``mint_iri`` kwargs (CORE CR: policy role).
+
+    Requires ``policy_id`` + ``edition_id``. ``KeyError`` on missing per
+    ADR-0146 §Decision (programmer error).
+    """
+    return policy_edition_iri(
+        version,
+        policy_id=str(content["policy_id"]),
+        edition_id=str(content["edition_id"]),
+    )
+
+
 def _mint_installed_capability(version: str, /, **content: object) -> str:
     """Adapter: ``installed_capability_iri`` <- ``mint_iri`` kwargs (ADR-0183 §am-5).
 
@@ -622,6 +675,8 @@ _IRI_BUILDERS: dict[tuple[str, str], object] = {
     (ROLE_LEARNED_PIPELINES, "LearnedPipeline"): _mint_learned_pipeline,
     # ADR-0183 §am-5 addition.
     (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"): _mint_installed_capability,
+    # CORE CR: the policy role.
+    (ROLE_POLICIES, "PolicyEdition"): _mint_policy_edition,
 }
 
 
@@ -671,6 +726,8 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("learned-pipelines-", ROLE_LEARNED_PIPELINES),
     # ADR-0183 §am-5 addition.
     ("installed-capacities-", ROLE_INSTALLED_CAPACITIES),
+    # CORE CR: the policy role.
+    ("policies-", ROLE_POLICIES),
 )
 
 # Per-role kind-extraction whitelist. The parser strips the kind
@@ -698,6 +755,8 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_LEARNED_PIPELINES: frozenset({"pipeline"}),
     # ADR-0183 §am-5 addition.
     ROLE_INSTALLED_CAPACITIES: frozenset({"cap"}),
+    # CORE CR: the policy role.
+    ROLE_POLICIES: frozenset({"edition"}),
 }
 
 

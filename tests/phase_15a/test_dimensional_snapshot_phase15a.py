@@ -102,7 +102,7 @@ def test_bootstrap_global_six_role_graphs() -> None:
     """PB-21: bootstrap_global([]) ensures all Global named role-graphs
     (11 since feat/subminds ADR-0150 §am-7; was 10 at Phase 50 §am-6)."""
     mg = bootstrap_global(importers=())
-    assert len(mg.graphs) == 11
+    assert len(mg.graphs) == 12
 
 
 def test_bootstrap_global_three_importer_combined_shape() -> None:
@@ -112,7 +112,7 @@ def test_bootstrap_global_three_importer_combined_shape() -> None:
         OewnImporter(source=OEWN_FIXTURE),
         FrameNetImporter(source=FRAMENET_FIXTURE),
     ])
-    assert len(mg.graphs) == 11
+    assert len(mg.graphs) == 12
     populated_roles = {
         g.role for g in mg.graphs.values() if len(g.nodes) > 0
     }

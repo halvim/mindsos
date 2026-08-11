@@ -59,6 +59,7 @@ def test_install_auto_ensures_missing_local_roles() -> None:
         ROLE_LEARNED_PIPELINES,
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
+    ROLE_POLICIES,
         ROLE_REQUEST_PATTERNS,
     )
     kl = KnowledgeLayer.bootstrap()
@@ -78,20 +79,23 @@ def test_install_auto_ensures_missing_local_roles() -> None:
         ROLE_INSTALLED_CAPACITIES,
         # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is dual-scope.
         ROLE_INSTALLED_SKILLS,
+        # CORE CR: the policy role — dual-scope.
+        ROLE_POLICIES,
     }
 
 
 def test_install_idempotent_on_already_ensured_local() -> None:
-    """Pre-ensured Local install doesn't duplicate role-graphs; auto-ensures the rest (2 pre-ensured + 3 §am-5 dual-scope + request-patterns §am-8 auto)."""
+    """Pre-ensured Local install doesn't duplicate role-graphs; auto-ensures the rest (2 pre-ensured + 3 §am-5 dual-scope + request-patterns §am-8 auto + policies)."""
     kl = KnowledgeLayer.bootstrap()
     pre = Metagraph(name="pre")
     ensure_local_role_graph(pre, ROLE_EPISODIC_MEMORIES)
     ensure_local_role_graph(pre, ROLE_CAPACITY_STATE)
     assert len(pre.graphs) == 2
     kl.install_local_metagraph("alice", pre)
-    # 9 Local-named role-graphs after install; 2 pre-ensured + 7 auto
-    # (installed-skills joined at CORE-C2R1, ADR-0150 §am-11).
-    assert len(pre.graphs) == 9
+    # 10 Local-named role-graphs after install; 2 pre-ensured + 8 auto
+    # (installed-skills joined at CORE-C2R1, ADR-0150 §am-11; policies at the
+    # policy-role CR).
+    assert len(pre.graphs) == 10
 
 
 def test_extract_pops_user_id() -> None:

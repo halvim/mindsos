@@ -31,6 +31,7 @@ from mindsos_knowledge import (
     ROLE_ONTOLOGY,
     ROLE_PARAMETER_STAGING,
     ROLE_PENDING_PROMOTIONS,
+    ROLE_POLICIES,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_SUBMINDS,
@@ -53,6 +54,8 @@ _EXPECTED_BOOTSTRAP_GLOBAL_ROLES = {
     ROLE_INSTALLED_SKILLS,
     # feat/subminds (ADR-0150 §am-7) addition — Global form (Slice 1).
     ROLE_SUBMINDS,
+    # CORE CR: the policy role — Global form.
+    ROLE_POLICIES,
 }
 
 _EXPECTED_LAZY_LOCAL_ROLES = {
@@ -70,13 +73,15 @@ _EXPECTED_LAZY_LOCAL_ROLES = {
     ROLE_INSTALLED_CAPACITIES,
     # CORE-C2R1 (ADR-0150 §am-11) — installed-skills gained a Local form.
     ROLE_INSTALLED_SKILLS,
+    # CORE CR: the policy role — Local form.
+    ROLE_POLICIES,
 }
 
 
 def test_bootstrap_global_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     g = kl.global_metagraph()
-    assert len(g.graphs) == 11
+    assert len(g.graphs) == 12
     observed = {gr.role for gr in g.graphs.values()}
     assert observed == _EXPECTED_BOOTSTRAP_GLOBAL_ROLES
 
@@ -84,7 +89,7 @@ def test_bootstrap_global_dimensional_snapshot() -> None:
 def test_lazy_local_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
-    assert len(local.graphs) == 9
+    assert len(local.graphs) == 10
     observed = {gr.role for gr in local.graphs.values()}
     assert observed == _EXPECTED_LAZY_LOCAL_ROLES
 

@@ -127,7 +127,7 @@ class TestRoleIsDualScope:
 
         ``alignment:`` and ``dataset:`` are prefixes, not members.
         """
-        assert len(_GLOBAL_NAMED_ROLES | _LOCAL_NAMED_ROLES) == 16
+        assert len(_GLOBAL_NAMED_ROLES | _LOCAL_NAMED_ROLES) == 17
 
 
 # ── a user installs Local ──────────────────────────────────────────────

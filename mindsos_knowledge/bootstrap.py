@@ -63,6 +63,7 @@ from .identifiers import (
     ROLE_ONTOLOGY,
     ROLE_PARAMETER_STAGING,
     ROLE_PENDING_PROMOTIONS,
+    ROLE_POLICIES,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_SUBMINDS,
@@ -98,6 +99,9 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     # only (authored, admin-gated endowment). The Local form lands with
     # the taught-endowment slice.
     ROLE_SUBMINDS,
+    # CORE CR: the policy role — an authority is Global by default; the
+    # Local form exists for a per-user trial before anything is shared.
+    ROLE_POLICIES,
 })
 
 #: Roles that live in Local-per-user metagraph per ADR-0044
@@ -131,6 +135,9 @@ _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     # by §am-6. Same ``append_only`` schema serves both scopes — the
     # record is an action record either way, only its realm differs.
     ROLE_INSTALLED_SKILLS,
+    # CORE CR: the policy role — dual-scope, same append_only schema both
+    # realms. A Local edition set is a trial, not a private override.
+    ROLE_POLICIES,
 })
 
 #: Alignment role-prefix per ADR-0150. Per §amendment-1 (Phase 14
@@ -186,6 +193,8 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_LEARNED_PIPELINES: frozenset(),
     # ADR-0183 §am-5 — independent.
     ROLE_INSTALLED_CAPACITIES: frozenset(),
+    # CORE CR: the policy role — independent.
+    ROLE_POLICIES: frozenset(),
 }
 
 
