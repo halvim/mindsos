@@ -192,11 +192,15 @@ simplify this.** It is why a 17th role cannot be added quietly.
 
 ## 5. Not built
 
-- **The lookup capacity** — `capacity:decision:*`, as-of selection by window containment, and
-  two refusal reasons: `no_source_in_force` (a finding about the customer's own policy set,
-  `environment_fault` **false**) and `source_unreachable` (an environment fault).
-- **The decision capacity, the run driver, the renderer.**
-- **Runs 3, 4, 5** and guards G1, G4, G6.
+- ✅ **BUILT 2026-08-12 — the lookup capacity and the criterion** (plan item 3, **ADR-0208**).
+  As-of selection by window containment, and the two refusal reasons — but the IRI is
+  `capacity:retrieval:*`, **not** `capacity:decision:*` (§6 below is corrected), and the two
+  reasons behave differently on purpose: `no_source_in_force` **returns** so the run stays
+  renderable, `source_unreachable` **raises** so L-2 records it as our outage.
+- **The run driver and the renderer** — plan items 4 and 7.
+- **Runs 3 and 5 now execute** end to end; **run 2** waits on item 5's structured-ingest
+  reader (item 3 ships a marked stand-in). Guards **G3, G7, G8′ landed with item 3**; **G1,
+  G2, G4, G6** wait for the renderer.
 - **The seam package has never been gated** — `feat/decision-records`, 48 cases hand-verified,
   no pytest. Its first gate may move things.
 
@@ -204,12 +208,24 @@ simplify this.** It is why a 17th role cannot be added quietly.
 
 ## 6. Settled and worth not re-opening
 
-- **`capacity:decision:<name>`** is the only IRI shape where both rules agree: `family_rule_for`
-  returns VERDICT via the category key, and `origin_v0.DECISION_SHAPED_CATEGORIES` matches on
-  **category only** so the D15 opaque guard can fire. `capacity:dec_rec:*` was rejected — it
-  silently gets `DATASTATE_MARKER` **and** the guard passes vacuously. Cost: a 14th category
-  graph, outside ADR-0065's thirteen.
-- **One lookup, two outputs.** §1.
+- ⚠ **`capacity:decision:<name>` — REOPENED AND REVERSED FOR THE LOOKUP, 2026-08-12
+  (ADR-0208 §D1).** The argument was that it is the only shape where both rules agree:
+  `family_rule_for` returns VERDICT via the category key, and
+  `origin_v0.DECISION_SHAPED_CATEGORIES` matches on **category only** so the D15 opaque guard
+  can fire. Reading the tree killed both halves. **`family_rule_for` has no caller in any
+  shipped module** — it is an export and a test — so what it returns for an IRI is a fact
+  about nothing; and `DECISION_SHAPED_CATEGORIES` guards the capacity that *compares* a value,
+  which is the **criterion**, not the lookup. The shipped lookup is `capacity:retrieval:*` and
+  gets `OPTIONAL_RETURN`, which is what a lookup that may find nothing needs. **The criterion
+  stays `capacity:decision:*`**, so `capacity:dec_rec:*` is still rejected for the reason
+  given, and the cost — a category graph outside ADR-0065's thirteen, minted lazily as
+  `phase1_v0` and `orchestration_v0` already do — is still paid, once, by the criterion.
+  *This bullet is the reason "settled and worth not re-opening" is not the same as "true".*
+- **One lookup, two outputs — still true, different two.** The limit and **its origin record**,
+  not the limit and the version: the criterion does not compute with the version, so wiring it
+  in as a third input put provenance in the position of an operand. It is `source_version`
+  inside the limit's origin record, which is a declared output and therefore graph-resident
+  either way (ADR-0208 §D2).
 - **G7 restated, G8 → G8′.** §2.
 
 ---
