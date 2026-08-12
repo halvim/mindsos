@@ -148,11 +148,12 @@ local and remote, both lists checked).
 | #149 | `5f9c5cb` | **Item 4 ✅** — the run driver, through `execution.run`. **No tag: no `mindsos_*` touched** | **4645 / 11 / 1x / 0** |
 | #150 | `fd6cefc` | The three probes, and RULES §10's close-a-lane command split in two | none — docs |
 | #151 | `1dad532` | **Probe D**, and the three prose leaks it found. Tag **`prose-leaks-confirmed`** | **4652 / 11 / 1x / 0** |
-| #152 | *(squash)* | **`printable_phrase`** on the capacity declaration + ADR-0207 am-1. Tag **`capacity-printable-phrase-confirmed`** | **4666 / 11 / 1x / 0** |
+| #152 | `49e3eda` | **`printable_phrase`** on the capacity declaration + ADR-0207 am-1. Tag **`capacity-printable-phrase-confirmed`** | **4666 / 11 / 1x / 0** |
+| #153 | *(squash)* | **The run manifest** (item 4c), absorbing item 4a. Tag **`run-manifest-confirmed`** | **4677 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4666 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#152's tip `538bc16`.** It is carryable — #152 was a **merged-state** gate (`merge-base
---is-ancestor` proved the tip contained `origin/main`, which had not moved from `1dad532`),
+**Baseline for the next item: 4677 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#153's tip `124421b`.** It is carryable — #153 was a **merged-state** gate (`merge-base
+--is-ancestor` proved the tip contained `origin/main`, which had not moved from `49e3eda`),
 unlike `#138`'s 4551, which was a branch gate and is not. **This line has been stale twice:
 it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
 table, in the same commit.**
@@ -357,7 +358,12 @@ interpolated an arbitrary upstream exception into customer-facing text.
 
 #### Order
 
-~~`printable_phrase`~~ ✅ → **run manifest (+ G2 as its acceptance) ← NEXT** → item 5 → item 7.
+~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → **item 5 ← NEXT** → item 7.
+
+**The pre-filter halves from here.** The baseline is always `main` and every merge is gated, so
+**the previous item's change-tree run IS the next item's baseline** — keep its log and tarball
+rather than re-deriving a pristine tree. Re-run the base only when `main` moved for a reason
+other than this lane's own gated merge, and say so when you do.
 
 **Item 6 is deleted.** Its only content was G2, which §3 already said waits for the renderer,
 and which probe D proved is unimplementable until the manifest lands. G3, G7 and G8′ shipped
@@ -378,9 +384,9 @@ mid-item.
 | **2** ✅ | **[SHIPPED `c9754ac`]** **L-2 — a terminal node on every non-success.** `execute_pipeline` writes one node before every non-success return: failure, decline, cancellation. One node type carrying the capacity IRI, a closed reason and a detail. | A deliberately failing step leaves a node naming it. Shown red first. Gate green. |
 | **3** ✅ | **[SHIPPED — ADR-0208]** **The lookup capacity + the criterion.** Lookup: `capacity:retrieval:<name>` (**not** `decision` — §2.0), as-of selection by **window containment**, two outputs (the limit and **its origin record**, not the version) as separate DataStates, refusals `no_source_in_force` (`environment_fault` false, **returns**) and `source_unreachable` (true, **raises**). Criterion: family `decision`, typed to this criterion — never a generic comparator — and it **checks for a missing operand**, because `core-dispatch-value-validation` is deferred and core will not. Only the lookup emits an origin record. | The `policies` role gains its first reader **and its first writer**. One lookup, two outputs, fires once. |
 | **4** ✅ | **[SHIPPED]** **The run driver.** Builds a `PlanResult` with plural `leaf_targets[...]["start_datastates"]` and calls `execution.run(..., mm=..., solve_seed=...)`. **The pre-minted grounding root is REMOVED from this item** — see above; it is item 4a. The driver states endpoints and nothing else: L4 derives the finder from start arity, and an AST guard pins that the driver references no finder name and no `finder` plan key. | The route is *found* and *grounded* — not hand-assembled, not a script calling capacities in order. Precedent: `tests/phase_48/test_map_member_multiinput.py`. |
-| **4a** | ~~**The pre-minted grounding root, for run 4 only.**~~ **ABSORBED 2026-08-12 into the run manifest (§2.3 decision 4)** — the manifest is minted above the find, so run 4 has a graph by construction and this is no longer a separate item. | — |
+| **4a** ✅ | ~~**The pre-minted grounding root, for run 4 only.**~~ **ABSORBED and SHIPPED in PR #153** — the manifest is minted above the find, so run 4 has a graph by construction. | Run 4 renders from a graph rather than from a caught exception. |
 | **4b** ✅ | **[SHIPPED — PR #152, ADR-0207 am-1]** **`printable_phrase` on the capacity declaration** (§2.3 decision 2). Optional; validated at `register_capacity` only when supplied; the rule now lives in `mindsos_capacity/printable.py`. | Gate green. Every previously-registered capacity is byte-identical on its node. |
-| **4c** | **The run manifest** (§2.3 decisions 1, 3, 4). Hoist the writer above `_compose_pipeline`, mint starts + capacity phrases + stop-reason phrases, optional `writer=` on `execute_pipeline`, append the graph on the `LeafPipelineNotFound` path. | **G2 is the acceptance**, shown red with probe D's exact mutation. Run 4 renders. G7 becomes checkable from the graph. |
+| **4c** ✅ | **[SHIPPED — PR #153, tag `run-manifest-confirmed`]** **The run manifest.** Writer hoisted above `_compose_pipeline`; starts + capacity phrases + stop-reason phrases in the node **value** (`add_node` validates properties as primitives only); graph appended on the `LeafPipelineNotFound` path. ⚠ **`execute_pipeline` is UNCHANGED** — the optional `writer=` was drafted, its double-mint rationale was **tested and falsified**, and removing it reddened nothing. | Gate green. G2 shown red with probe D's exact mutation. Run 4 renders. **Item 4a absorbed.** |
 | **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
 | ~~**6**~~ | **DELETED 2026-08-12** — its only content was G2, now item 4c's acceptance (§2.3). **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
 | **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. Form is **question → answer → therefore** (§2.3), not composed statements. | One page a non-technical reader understands with no glossary, rendered from the **persisted** `capacity_mm` graph and nothing else — and *persisted* means **a real FalkorDB round-trip** (§2.3 decision 5), not the live `Graph` objects the driver hands back. |
@@ -403,7 +409,7 @@ v0 is **runs 1 and 2**. Runs 3, 4 and 5 follow item 2 landing, not before.
 | 1 | Clean outcome — the Record names value, limit, version | **v0** |
 | 2 | Value absent — reading refusal, graph-resident, names the missing item in prose | **v0** |
 | 3 | No policy in force at that date — lookup refusal | after item 2 |
-| 4 | Target unreachable — **`execution.run` RAISES `LeafPipelineNotFound`** and writes nothing at all, so there is no graph and no `RunStopped`. Verified 2026-08-12, `tests/decision_records/test_run_driver.py::test_a_single_start_plan_raises_rather_than_under_wiring` | **item 4a** |
+| 4 | Target unreachable — `execution.run` still **raises `LeafPipelineNotFound`**, because the route really is unfindable, but the run manifest is minted **before** the find, so the run now leaves a manifest-only graph. | **✅ PR #153** |
 | 5 | Same case, two dates — different limits, different versions, both named | after item 3 |
 
 **Run 5's trap, carried forward:** the recorded-reading replay key hashes the exact source text.
