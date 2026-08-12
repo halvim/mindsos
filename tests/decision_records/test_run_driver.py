@@ -19,6 +19,7 @@ import pytest
 
 from mindsos_capacity.builtins.origin_v0 import (
     FIELD_ADMITTED,
+    FIELD_REFUSAL_DETAIL,
     FIELD_REFUSAL_REASON,
     FIELD_SOURCE_VERSION,
     REFUSAL_FIELD_ABSENT,
@@ -52,6 +53,7 @@ from ._dr_fixtures import (
     INITIAL_2023,
     INITIAL_2024,
     INITIAL_NO_INCOME,
+    INITIAL_UNREADABLE_INCOME,
     INITIAL_UNCOVERED,
     POLICY_PHRASE,
     STARTS,
@@ -241,6 +243,37 @@ def test_run_2_the_income_instance_exists_and_carries_nothing():
     which is also why ``value_of`` raises rather than returning None."""
     run = run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2c")
     assert run.value_of(DS_GROSS_INCOME) is None
+
+
+def test_three_not_determined_runs_are_told_apart_by_the_graph():
+    """**D4, step one.** Income absent, income unreadable, and no policy in
+    force all produce the SAME verdict string — ``not determined``. The graph
+    distinguishes them; the word does not. A page that prints the verdict
+    without the reason flattens three different facts into one, and that is the
+    page someone builds first because it is the easy one.
+
+    Step two lands with the renderer: the three must produce three different
+    pages. This is the precondition — that the material to tell them apart is
+    in the graph at all."""
+    runs = {
+        "absent": run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="d4a"),
+        "unreadable": run_decision_record(build_kl_with_both(), INITIAL_UNREADABLE_INCOME, request_id="d4b"),
+        "no_policy": run_decision_record(build_kl_with_both(), INITIAL_UNCOVERED, request_id="d4c"),
+    }
+    assert {r.value_of(DS_FILING_VERDICT) for r in runs.values()} == {VERDICT_NOT_DETERMINED}
+
+    told_apart = set()
+    for run in runs.values():
+        income = run.value_of(DS_GROSS_INCOME_ORIGIN)
+        limit = run.value_of(DS_FILING_THRESHOLD_ORIGIN)
+        told_apart.add((
+            income[FIELD_REFUSAL_REASON], income[FIELD_REFUSAL_DETAIL],
+            limit[FIELD_REFUSAL_REASON], limit[FIELD_REFUSAL_DETAIL],
+        ))
+    assert len(told_apart) == 3, (
+        "three different outcomes must leave three different graphs, or no "
+        "renderer can ever tell them apart"
+    )
 
 
 def test_run_3_a_gap_in_the_policy_set_still_produces_a_record():

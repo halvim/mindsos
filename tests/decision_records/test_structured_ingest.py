@@ -183,12 +183,27 @@ def test_an_opaque_element_type_is_refused():
         )
 
 
-def test_an_identifier_in_a_printed_phrase_is_refused_at_build_time():
+@pytest.mark.parametrize("bad", ["source_identity_phrase", "value_phrase", "question"])
+def test_an_identifier_in_any_printed_phrase_is_refused_at_build_time(bad):
+    """All three are printed by a Record, so all three are validated. Catching
+    an identifier at registration beats catching it in front of a lawyer."""
+    kwargs = dict(
+        name="probe", field="x",
+        value_datastate_iri="datastate:dr.probe_value", value_elem="int",
+        source_datastate_iri=DS_FILING_RECORD,
+        source_identity_phrase="their filed return",
+        value_phrase="a probe value",
+        question="What does the record state?",
+    )
+    kwargs[bad] = "datastate:dr.filing_record"
     with pytest.raises(OriginContractError):
-        build_structured_ingest_reader(
-            name="probe", field="x",
-            value_datastate_iri="datastate:dr.probe_value", value_elem="int",
-            source_datastate_iri=DS_FILING_RECORD,
-            source_identity_phrase="datastate:dr.filing_record",
-            question="What does it state?",
-        )
+        build_structured_ingest_reader(**kwargs)
+
+
+def test_a_refusal_detail_names_what_was_missing_not_a_bare_pronoun():
+    """Before ``value_phrase`` the detail read *"their filed return does not
+    state it."* — and "it" means nothing unless the question happens to be
+    printed directly above, which a renderer must not be forced to guarantee."""
+    detail = _run({})[DS_GROSS_INCOME_ORIGIN]["refusal_detail"]
+    assert "a gross income" in detail
+    assert not detail.endswith("state it.")

@@ -144,6 +144,7 @@ def build_structured_ingest_reader(
     value_elem: str,
     source_datastate_iri: str,
     source_identity_phrase: str,
+    value_phrase: str,
     question: str,
     printable_phrase: str = "",
     description: str = "",
@@ -155,12 +156,18 @@ def build_structured_ingest_reader(
             never taken as a runtime input — a reader whose field varied per
             run could not declare what it produces, and the grounding graph
             would record a value nothing explains.
+        value_phrase: The noun phrase for what is being read ("a gross
+            income"), so a refusal has an antecedent. Without it the detail
+            reads *"their filed return does not state it."* — and "it" means
+            nothing unless the question happens to be printed directly above,
+            which a renderer must not be forced to guarantee.
         source_identity_phrase: Registered prose naming the source, printed by
             the Record ("their filed return"). Validated here, because
             catching an identifier at registration beats catching it in front
             of a lawyer.
     """
     assert_printable_phrase(source_identity_phrase, "source_identity_phrase")
+    assert_printable_phrase(value_phrase, "value_phrase")
     assert_printable_phrase(question, "question")
     printable_phrase = printable_phrase or f"reading {source_identity_phrase}"
     assert_printable_phrase(printable_phrase, "printable_phrase")
@@ -199,7 +206,7 @@ def build_structured_ingest_reader(
         if field not in source or source[field] is None:
             return _refused(
                 REFUSAL_FIELD_ABSENT,
-                f"{source_identity_phrase} does not state it.",
+                f"{source_identity_phrase} does not state {value_phrase}.",
             )
         raw = source[field]
         try:
@@ -207,8 +214,8 @@ def build_structured_ingest_reader(
         except (TypeError, ValueError):
             return _refused(
                 REFUSAL_VALUE_NOT_COERCIBLE,
-                f"{source_identity_phrase} states something that could not be "
-                f"read as a number.",
+                f"{source_identity_phrase} states {value_phrase} in a form "
+                f"that could not be read.",
             )
         return {
             value_datastate_iri: value,
