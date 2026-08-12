@@ -36,6 +36,7 @@ from mindsos_capacity.builtins.policy_lookup_v0 import (
     CATEGORY,
     PolicyStoreUnreachableError,
     build_policy_limit_lookup,
+    policy_limit_datastates,
 )
 from mindsos_capacity.family_rules import FamilyDontKnowShape
 from mindsos_knowledge.policies import AmbiguousEditionsError
@@ -223,7 +224,7 @@ def test_an_unreadable_store_raises_and_never_becomes_a_finding():
     customer's policy set — that Record would be false."""
     with pytest.raises(PolicyStoreUnreachableError) as excinfo:
         _run(None, "2024-04-15")
-    assert REFUSAL_SOURCE_UNREACHABLE in str(excinfo.value)
+    assert excinfo.value.refusal_reason == REFUSAL_SOURCE_UNREACHABLE
 
 
 def test_overlapping_editions_propagate_rather_than_being_called_a_gap():
@@ -270,3 +271,113 @@ def test_the_d15_walk_would_catch_an_opaque_operand():
     )
     offenders = opaque_into_decision(cl, user_id=session.user_id)
     assert (DS_FILING_THRESHOLD_ORIGIN, "capacity:decision:dr_offender") in offenders
+
+
+# ── the prose a reader is shown ───────────────────────────────────────
+#
+# ``execute_pipeline`` writes ``str(exc)`` onto L-2's ``RunStopped`` node as
+# ``stopped_detail`` (``pipeline_execution.py``, the ``not result.success``
+# branch), and a Decision Record prints that node. So every message raised out
+# of a lookup body is customer-facing text and is held to G6's bar, the same as
+# registered prose. Vocabulary from ``DECISION_RECORDS_DEMO_PLAN.md`` §4.
+
+RECORD_FORBIDDEN = (
+    "capacity", "pipeline", "datastate", "metagraph",
+    "layer", "verdict", "iri", "blackboard",
+)
+
+
+def _assert_printable_to_a_reader(text: object) -> None:
+    rendered = str(text)
+    leaked = [w for w in RECORD_FORBIDDEN if w in rendered.lower()]
+    assert leaked == [], f"{rendered!r} leaks MindsOS vocabulary {leaked}"
+    assert REFUSAL_SOURCE_UNREACHABLE not in rendered, (
+        f"{rendered!r} carries the refusal token; the token belongs on the "
+        f"exception, not in the sentence a reader is shown"
+    )
+    assert ":" not in rendered, f"{rendered!r} contains an identifier-shaped token"
+
+
+class _UnreadableStore:
+    """A store whose read fails with a message nobody in this module wrote."""
+
+    def global_view(self):
+        raise RuntimeError(
+            "falkordb: capacity graph layer unreachable at datastate:x"
+        )
+
+
+def test_the_no_store_message_is_prose_a_reader_can_be_shown():
+    with pytest.raises(PolicyStoreUnreachableError) as excinfo:
+        _run(None, "2024-04-15")
+    _assert_printable_to_a_reader(excinfo.value)
+    assert POLICY_PHRASE in str(excinfo.value)
+
+
+def test_an_upstream_message_never_reaches_the_record():
+    """An upstream exception's text is arbitrary and nobody here has read it.
+    It stays on ``__cause__`` for a traceback and never reaches the page."""
+    with pytest.raises(PolicyStoreUnreachableError) as excinfo:
+        _run(_UnreadableStore(), "2024-04-15")
+    _assert_printable_to_a_reader(excinfo.value)
+    assert POLICY_PHRASE in str(excinfo.value)
+    assert isinstance(excinfo.value.__cause__, RuntimeError)
+    assert "falkordb" in str(excinfo.value.__cause__)
+
+
+def test_an_unreadable_date_message_is_prose_a_reader_can_be_shown():
+    with pytest.raises(PolicyStoreUnreachableError) as excinfo:
+        _run(build_kl_with_both(), "the fifteenth of April")
+    _assert_printable_to_a_reader(excinfo.value)
+    assert POLICY_PHRASE in str(excinfo.value)
+
+
+def test_every_raise_path_carries_the_token_on_the_exception_not_in_the_text():
+    for kl, as_of in (
+        (None, "2024-04-15"),
+        (_UnreadableStore(), "2024-04-15"),
+        (build_kl_with_both(), "the fifteenth of April"),
+    ):
+        with pytest.raises(PolicyStoreUnreachableError) as excinfo:
+            _run(kl, as_of)
+        assert excinfo.value.refusal_reason == REFUSAL_SOURCE_UNREACHABLE
+
+
+# ── descriptions, the surface assert_printable_phrase never guarded ───
+
+
+def test_a_generated_origin_description_never_names_its_datastate():
+    """Red before this CR: the generated default read *"where the value of
+    dr.filing_threshold came from"* — a DataState name in prose a Record
+    prints. ``assert_printable_phrase`` did not catch it, and could not: a
+    DataState name is ``<realm>.<name>`` and carries no colon."""
+    limit, origin = policy_limit_datastates(
+        limit_name="dr.filing_threshold",
+        limit_elem="int",
+        limit_description="the gross income at which a return must be filed",
+    )
+    assert "dr.filing_threshold" not in origin.description
+    _assert_printable_to_a_reader(origin.description)
+    _assert_printable_to_a_reader(limit.description)
+
+
+def test_a_description_naming_its_own_datastate_is_refused():
+    """The guard shown red by the exact string that shipped. Deleting the
+    ``assert_printable_description`` calls in ``policy_limit_datastates`` turns
+    this test and the one above red together."""
+    with pytest.raises(OriginContractError):
+        policy_limit_datastates(
+            limit_name="dr.filing_threshold",
+            limit_elem="int",
+            limit_description="the gross income at which a return must be filed",
+            origin_description="where the value of dr.filing_threshold came from",
+        )
+
+
+def test_a_description_carrying_an_iri_is_refused():
+    with pytest.raises(OriginContractError):
+        policy_limit_datastates(
+            limit_name="dr.filing_threshold",
+            limit_elem="int",
+            limit_description="the limit stated at datastate:dr.filing_threshold",
+        )

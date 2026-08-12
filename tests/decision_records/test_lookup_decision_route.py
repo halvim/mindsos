@@ -57,6 +57,7 @@ from ._dr_fixtures import (
     INITIAL_2023,
     INITIAL_2024,
     INITIAL_UNCOVERED,
+    POLICY_PHRASE,
     STARTS,
     VERDICT_MUST_FILE,
     VERDICT_NOT_DETERMINED,
@@ -298,8 +299,11 @@ def test_g3_an_unreadable_store_leaves_no_verdict_and_says_which_step_stopped():
     ]
     assert len(stopped) == 1
     assert stopped[0].value == RUN_STOPPED_STEP_FAILED
-    assert "source_unreachable" in str(
-        (stopped[0].properties or {}).get(PROP_RUN_STOPPED_DETAIL)
+    detail = str((stopped[0].properties or {}).get(PROP_RUN_STOPPED_DETAIL))
+    assert POLICY_PHRASE in detail
+    assert "source_unreachable" not in detail, (
+        "stopped_detail is printed by a Decision Record; the refusal token "
+        "lives on PolicyStoreUnreachableError.refusal_reason, not in the text"
     )
     stopped_at = [
         e
