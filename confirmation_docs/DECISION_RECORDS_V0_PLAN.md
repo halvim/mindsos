@@ -143,14 +143,37 @@ local and remote, both lists checked).
 | #145 | `c9754ac` | **Item 2 ✅** — L-2, the terminal node. Tag **`terminal-node-confirmed`** | **4591 / 11 / 1x / 0** |
 | #146 | `cfc1795` | Demo beat: route **exposures**, not the claim | none — docs + STATE |
 | #147 | `e7fd779` | Close-out: the plan doc had no progress markers | none — docs |
-| TBD | TBD | **Item 3 ✅** — the policy lookup + the criterion, ADR-0208. Tag **`policy-lookup-confirmed`** | TBD |
+| #148 | `7c4c313` | **Item 3 ✅** — the policy lookup + the criterion, ADR-0208. Tag **`policy-lookup-confirmed`** | **4634 / 11 / 1x / 0** |
+| TBD | TBD | **Item 4 ✅** — the run driver, through `execution.run` | TBD |
 
 **Baseline for the next item: 4591 passed / 11 skipped / 1 xpassed / 0 failed at
 `c9754ac`.** It is carryable — `#145` was a **merged-state** gate (`merge-base
 --is-ancestor` proved the tip contained `origin/main`), unlike `#138`'s 4551, which was a
 branch gate and is not.
 
-**⏭ NEXT IS ITEM 4**, the run driver. Items 1, 2 and 3 are done; do not rebuild them.
+**⏭ NEXT IS ITEM 5**, the structured-ingest reader — which is what run 2 waits on.
+Items 1 through 4 are done; do not rebuild them.
+
+**Item 4's acceptance was wrong and is corrected below.** *"Mints the document as
+the grounding root before the find"* is not buildable through `execution.run`,
+for three reasons read in the code at `7c4c313`: `CapacityMMWriter.index` is
+per-instance and in-memory and `execute_pipeline` builds its **own** writer, so a
+root minted elsewhere is invisible to its re-seed guard and a document that is
+also a start gets minted **twice**, both parentless; a caller cannot construct a
+matching writer anyway, because `_run_leaf_pipeline` composes its `run_ref` from
+a private format string; and `root()` mints an **isolated node** — the only
+linking method, `link_provenance`, writes an XRef *out* to `knowledge_mm`, not an
+edge *down* to the run. **`CapacityMMWriter.root()` and `link_provenance` have no
+production caller at all** — only `tests/phase_48/test_knowledge_mm_writer.py`.
+That is the third time in this lane a document has built an argument on a
+mechanism nothing calls (`family_rule_for` was the first two). **Grep before
+quoting a mechanism.**
+
+Pre-minting is meaningful in exactly one place and it is **run 4**: `execution.run`
+**raises `LeafPipelineNotFound`** when no route is found — it does not fall back
+— so an unreachable target leaves **no grounding graph at all**, not even a
+`RunStopped`. There the pre-mint is the only thing that would exist; here it
+would duplicate a seeded start. It is now item **4a**.
 
 **Item 3 changed shape after the code was read, as items 1 and 2 both did — the
 detail is ADR-0208 and the four that matter are these.** (a) The lookup is
@@ -200,7 +223,8 @@ mid-item.
 | **1** ✅ | **[SHIPPED `a310958`]** **Lift `origin_v0` to `main`** as its own core CR — the module, its ADR (number assigned, `Proposed`), and its tests. Trim `tests/llm_seam/test_origin_contract_and_scope.py` of anything importing `comprehension_v0`; what it loses moves to Layer B. Correct the route-probe docstring in the same commit (§4). | Gate green. No existing `mindsos_*` module edited. `parse_capacity_iri` is the only core import. |
 | **2** ✅ | **[SHIPPED `c9754ac`]** **L-2 — a terminal node on every non-success.** `execute_pipeline` writes one node before every non-success return: failure, decline, cancellation. One node type carrying the capacity IRI, a closed reason and a detail. | A deliberately failing step leaves a node naming it. Shown red first. Gate green. |
 | **3** ✅ | **[SHIPPED — ADR-0208]** **The lookup capacity + the criterion.** Lookup: `capacity:retrieval:<name>` (**not** `decision` — §2.0), as-of selection by **window containment**, two outputs (the limit and **its origin record**, not the version) as separate DataStates, refusals `no_source_in_force` (`environment_fault` false, **returns**) and `source_unreachable` (true, **raises**). Criterion: family `decision`, typed to this criterion — never a generic comparator — and it **checks for a missing operand**, because `core-dispatch-value-validation` is deferred and core will not. Only the lookup emits an origin record. | The `policies` role gains its first reader **and its first writer**. One lookup, two outputs, fires once. |
-| **4** | **The run driver.** Mints the document as the grounding root **before** the find; builds a `PlanResult` with plural `leaf_targets[...]["start_datastates"]`; calls `execution.run(..., mm=...)`. | The route is *found* and *grounded* — not hand-assembled, not a script calling capacities in order. Precedent: `tests/phase_48/test_map_member_multiinput.py`. |
+| **4** ✅ | **[SHIPPED]** **The run driver.** Builds a `PlanResult` with plural `leaf_targets[...]["start_datastates"]` and calls `execution.run(..., mm=..., solve_seed=...)`. **The pre-minted grounding root is REMOVED from this item** — see above; it is item 4a. The driver states endpoints and nothing else: L4 derives the finder from start arity, and an AST guard pins that the driver references no finder name and no `finder` plan key. | The route is *found* and *grounded* — not hand-assembled, not a script calling capacities in order. Precedent: `tests/phase_48/test_map_member_multiinput.py`. |
+| **4a** | **The pre-minted grounding root, for run 4 only.** An unfindable route raises `LeafPipelineNotFound` out of `execution.run` and writes nothing, so run 4 has no graph to render. Needs a decision first: pre-mint outside `execution.run` (the caller owns the writer and the run ref), or a core CR threading a caller-supplied root in. `root()` having no caller means neither is a small edit to an established path. | Run 4 renders from a graph rather than from a caught exception. |
 | **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
 | **6** | **Guard G2**, shown red before it is trusted. **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
 | **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. | One page a non-technical reader understands with no glossary, rendered from the persisted `capacity_mm` graph and nothing else. |
@@ -223,7 +247,7 @@ v0 is **runs 1 and 2**. Runs 3, 4 and 5 follow item 2 landing, not before.
 | 1 | Clean outcome — the Record names value, limit, version | **v0** |
 | 2 | Value absent — reading refusal, graph-resident, names the missing item in prose | **v0** |
 | 3 | No policy in force at that date — lookup refusal | after item 2 |
-| 4 | Target unreachable — `FindVerdict`, no pipeline, no grounding graph unless the root is pre-minted | after item 2 + 4 |
+| 4 | Target unreachable — **`execution.run` RAISES `LeafPipelineNotFound`** and writes nothing at all, so there is no graph and no `RunStopped`. Verified 2026-08-12, `tests/decision_records/test_run_driver.py::test_a_single_start_plan_raises_rather_than_under_wiring` | **item 4a** |
 | 5 | Same case, two dates — different limits, different versions, both named | after item 3 |
 
 **Run 5's trap, carried forward:** the recorded-reading replay key hashes the exact source text.

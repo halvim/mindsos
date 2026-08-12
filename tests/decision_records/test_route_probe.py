@@ -1,5 +1,26 @@
 """Decision Records v0 — the day-one route probe.
 
+⚠ **RETIREMENT ASSESSED 2026-08-12 (item 4) — DO NOT DELETE YET, and here is
+why, so the next lane decides on facts rather than an impression.** Items 3 and 4
+duplicate most of this file: composition, end-to-end execution, the grounding
+edges, **G7** and **G8′** are all now asserted in
+``test_lookup_decision_route.py`` and ``test_run_driver.py`` against the shipped
+topology. What is left **only here**, checked by grep at ``7c4c313``:
+
+* **Three-start ``ConjunctionFinder`` composition.** Everywhere else in the suite
+  the finder is called with at most two starts (``tests/composition_lifecycle/
+  test_step_admission.py`` is the widest, at two). Config B's three-producer
+  variant is likewise unique. Deleting this file today removes the only 3-start
+  coverage there is.
+* **``test_l4_cannot_express_plural_starts_this_is_D_A``**, which is still true:
+  no planner-emitted plan can express plural starts, and this goes red the day
+  that changes. STATE names that as the signal to delete the file — it has not
+  fired.
+
+⟹ Retire it when the planner path lands, and move the three-start case somewhere
+that owns finder behaviour first (``tests/composition_lifecycle/``), rather than
+losing it with the file.
+
 **This is a probe, not the run driver.** It calls ``ConjunctionFinder``
 directly on purpose, to answer one question both lanes are blocked on and
 that nothing in either lane has ever tested: *can the finder wire a
