@@ -19,6 +19,9 @@ dataset that killed the version of the beat everyone preferred.
    demonstration-only.** Two people in unrelated industries described the same
    intake-triage problem unprompted, which nothing else in the field notes has
    done. §1, §2.5, Phase 7.
+   ⚠ **Its SUBJECT changed later the same day — route EXPOSURES, not the claim.**
+   Classifying an arriving claim to a line of business dramatises a decision the
+   policy number already made. §2.5.
 2. **Routing cannot be evidenced by any dataset in scope, and the deck must say
    so.** Verified, not assumed — §2.1. It buys credibility in the room, not in
    the pack.
@@ -70,7 +73,7 @@ Every external claim, and the one thing that tests it.
 | 5 | The model reads, it does not decide | SARA run **twice** — structured input, then adapter — same answers, different origins | Evidence pack |
 | — | Policy identity and version | SARA in-force windows + dated cases | Evidence pack |
 | — | Policy *replaced* between submission and assessment | Synthetic only | Live demo |
-| — | **Intake routing** — this belongs to a department, and here is why | **Nothing. No dataset in scope supplies routing ground truth** (§2.1) | **Live demo only** |
+| — | **Exposure routing** — this exposure goes to that desk, and here is why | **Nothing. No dataset in scope supplies routing ground truth** (§2.1) | **Live demo only** |
 
 Claim 1 has no dataset row on purpose. **The routing row has none for a different
 reason, and the difference matters:** claim 1 is tested by a mechanical guard
@@ -167,48 +170,94 @@ Five seeded cases per the GTM prompt: clean approval, clean denial, needs a poli
 flow.** The claims-practitioner conversation happened (Mauricio, by phone,
 unrecorded). The demo stays claims, which answers open decision 3.
 
-**A sixth element, and it comes first: intake routing.** A case arrives and is
-classified to a department or specialist before anything is adjudicated, giving
-one continuous story — intake → route → validate → decide or escalate — rather
-than two demos. Grounds, and they are field evidence rather than invention:
-Mauricio described a human deciding which department handles a claim, and
-Elisandro Porto (S4A, SAP integrator) described a ticket arriving by email and a
-person paid to analyse it. Nothing else volunteered twice, from two industries,
-unprompted. By contrast the adjudication scenario in the market documents was
-written for illustration and has never been checked by anyone who does the work.
+**A sixth element, and it comes first: routing.** A case arrives and is routed
+before anything is adjudicated, giving one continuous story — intake → route →
+validate → decide or escalate — rather than two demos. Grounds, and they are
+field evidence rather than invention: Mauricio described a human deciding which
+department handles a claim, and Elisandro Porto (S4A, SAP integrator) described a
+ticket arriving by email and a person paid to analyse it. Nothing else
+volunteered twice, from two industries, unprompted. By contrast the adjudication
+scenario in the market documents was written for illustration and has never been
+checked by anyone who does the work.
 
-**Why routing is the stronger opening, not merely a cheaper one.** A smaller claim
-is more checkable — *"this system knew it was liability, not property, and can
-show why"* invites verification where *"this system approved a claim"* invites
-an audit of its judgement. And it is the best stage for the refusal: *"I cannot
-tell whether this is property or liability, and here is what is missing"* reads
-as strength at intake, where at adjudication "I don't know" reads as failure.
+#### ⚠ Amended again 2026-08-11 — the beat's SUBJECT was wrong
 
-**Two costs the beat's own assessment did not carry, and they are binding.**
+The version written earlier the same day said *"a case arrives and is **classified
+to a department**"*, and argued the beat on *"this system knew it was liability,
+not property, and can show why."* **That is falsified**, by
+`projects/decision_records_demo/INSURANCE_LINES_TAXONOMY.md` §3 — the demo lane's
+sourced research, commissioned to support the beat and returning against it.
 
-1. **The no-route refusal has no machinery behind it yet.** It is the beat's whole
-   credibility argument, and a find-time refusal has no grounding graph at all
-   while a capacity-level refusal writes no node — `execute_pipeline` records only
-   after its success check. **The beat waits on `core-terminal-node-on-non-success`
-   (L-2)**, item 2 of `DECISION_RECORDS_V0_PLAN.md`.
-2. **A reducer is needed and was uncosted.** Model routing as N single-verdict
-   `capacity:decision:*` capacities — one per department, each answering *"does
-   this belong here?"* — so each department's answer is a citable node in the
-   Record. But N verdicts must then collapse into one routing decision, and that
-   collapse is where *ambiguous between two departments* and *unroutable* actually
-   live. Either `reduction.*` over a collection or an (N+1)-th decision capacity
-   consuming N verdict DataStates. **Whichever is chosen, check it against Gate 4
-   first**: if routing needs an op adjudication did not, *"no new decision op was
-   needed"* fails inside the demo, in front of the room.
+**Why it is wrong.** In Guidewire ClaimCenter, which Intact runs, **FNOL requires
+a policy before the claim opens, so the line of business is inherited from the
+policy — not decided at intake.** Nor are claims units the statutory classes:
+*Auto Physical Damage*, *Bodily Injury* and *Accident Benefits* are coverages
+*inside* one line, *Casualty* collapses several, **severity tier dominates**
+(Wawanesa's numbered levels, Travelers' "Mid-Loss"), and SIU / subrogation /
+catastrophe / total-loss cut across everything. Ontario auto splits Accident
+Benefits from Bodily Injury *within the single statutory line "Automobile"*.
+⟹ **A demo classifying an arriving claim into a line of business dramatises a
+decision the policy number already made.** In front of a claims manager that is
+worse than showing nothing.
 
-⚠ **Do not invent a department taxonomy.** Insurance lines of business are
-standardised and public. An invented taxonomy re-creates exactly what makes the
-adjudication scenario weak — a scenario we wrote ourselves.
+**The replacement, and it is a better beat: route EXPOSURES, not the claim.** An
+exposure is *one claimant × one coverage*, and it is the assignable atom.
+Guidewire's own documentation gives the case: one auto loss, the vehicle
+exposures to a routine group and the injury exposure to a group *"that specialize
+in fatalities"* — **one claim, one line of business, two departments.** Three
+gains over the classification version:
+
+- The decision is genuinely **post-FNOL and genuinely unautomated** — the two
+  properties the classification version lacked.
+- **One document yields several routing decisions with different answers.** More
+  striking in a room than a single classification, and it is the product's actual
+  shape rather than a shape borrowed for the demo.
+- The refusal lands where it is strongest: *"I cannot tell whether this exposure
+  needs the specialty unit, and here is what is missing"* — a per-exposure refusal
+  standing **beside** a per-exposure answer, on the same claim.
+
+**Caveat on the evidence, recorded rather than glossed.** No carrier publishes a
+claims org chart. §3's finding is reconstructed from job titles (strong that a
+unit exists, weak on hierarchy) plus Guidewire's routing documentation (strong,
+but one vendor — Duck Creek, Sapiens and Origami were not checked). It is enough
+to abandon the classification framing; it is not enough to assert what every
+carrier does. One question to Mauricio settles it.
+
+**The taxonomy survives the subject change.** OSFI/CCIR Section III — nineteen
+classes, mirrored on Alberta's licensing side by the Classes of Insurance
+Regulation — is the right vocabulary for naming the **coverages** exposures are
+made of, and its ambiguous pair transfers unchanged: **Automobile vs Liability**,
+where the CGL auto exclusion, *mobile equipment* and the *loading and unloading*
+doctrine make the boundary *"necessarily a fact-intensive inquiry"* decided case
+by case. NAIC's lines were rejected for Canada — workers' compensation is a
+provincial WCB monopoly, so putting it on the board says the deck was written for
+someone else.
+
+**Two costs, restated. The second one I have now had wrong twice.**
+
+1. ~~**The no-route refusal has no machinery behind it.**~~ **CLOSED** —
+   `core-terminal-node-on-non-success` (L-2) shipped as `c9754ac`, tag
+   `terminal-node-confirmed`. A stopped run now leaves a `RunStopped` node wired
+   to the values that led to it.
+2. **Per-exposure routing is a MAP over a collection, not N flat capacities.**
+   The earlier text called it *"N registrations of a shape already exercised"* and
+   then corrected itself to add a reducer. Both undercounted. Fanning over the
+   exposures of one claim is the collection-iteration path — shipped, and already
+   carrying a known defect (`execution.py` composes a pipeline **per map member**,
+   whose caller moves at C4R3) — plus the reducer that collapses per-exposure
+   verdicts where *ambiguous* and *unroutable* live. **Check any new op against
+   Gate 4 first**: if routing needs one adjudication did not, *"no new decision op
+   was needed"* fails inside the demo, in front of the room.
+
+⚠ **Do not invent a department taxonomy or an exposure taxonomy.** Both are
+sourced above. An invented one re-creates exactly what makes the adjudication
+scenario weak — a scenario we wrote ourselves.
 
 **Open, and it is what kills the beat if anything does:** is routing perceived as
 valuable, or as something a junior does? Ask Mauricio on the demo call, before any
 capacity is written: *"when a claim gets routed to the wrong desk, how long until
-anyone notices, and what does it cost?"*
+anyone notices, and what does it cost?"* — and, now, *"when a claim has several
+exposures, who decides which desk each one goes to?"*
 
 ---
 
@@ -300,9 +349,9 @@ Span agreement on extraction provenance.
 **Gate 6:** the origin a Record asserts points at the labelled sentence.
 
 ### Phase 7 — Live demo *(~~blocked on the practitioner conversation~~ — the hold is satisfied, 2026-08-11)*
-**Intake routing opens the flow** (§2.5), then five synthetic claims cases; batch pass; one Record per case plus the refusal list on page one.
+**Exposure routing opens the flow** (§2.5) — one claim, several exposures, each routed on severity and specialty — then five synthetic claims cases; batch pass; one Record per case plus the refusal list on page one.
 
-**Depends on `core-terminal-node-on-non-success` (L-2)** — without it neither the no-route refusal nor the unroutable case leaves a node to render.
+~~**Depends on `core-terminal-node-on-non-success` (L-2)**~~ — **closed 2026-08-11**, shipped as `c9754ac`, tag `terminal-node-confirmed`. A stopped run now leaves a `RunStopped` node, so the unroutable case renders.
 
 **Gate 7:** run cold on a laptop three times with no operator intervention. The refusal case fires on cue.
 
@@ -319,6 +368,7 @@ Span agreement on extraction provenance.
 5. **Prior art review before any novelty claim.** A Prolog system solves SARA; "Explainable OpenFisca" exists. Neither has the grounding graph, but both need to be read before the deck asserts novelty.
 6. **[OPENED 2026-08-11] Does Phase 7 move ahead of Phases 1–6?** The argument for: those phases serve a deck and pay nothing, this plan's own §7 names "the benchmark becomes the product" as its highest risk, and the only two people waiting are waiting for Phase 7. The argument against: skipping Phases 1–6 leaves Gate 4 — the composition claim's only test — with nothing behind it but the demo's own questions, and the demo's cases are ones we wrote. **Deliberately not decided.** Nothing in Phase 7 can start before Decision Records v0 renders runs 1 and 2, so deciding now would be planning against a build that does not exist. **Revisit when v0 lands.**
 7. **[OPENED 2026-08-11] Who owns the transport, and who parses the model's output?** Phase 7's gate cannot be met without one, and S-2 stops being a decision the moment a transport exists.
+8. **[OPENED 2026-08-11] Is exposure-level routing what a claims manager actually recognises as the hard call?** §2.5's subject change rests on Guidewire's routing model — strong, but one vendor, and no carrier publishes an org chart. Two questions to Mauricio settle it: *"when a claim has several exposures, who decides which desk each one goes to?"* and *"is that a judgement call or a rule?"* **Ask before any capacity is written** — this is the second time the beat has been redesigned around evidence that arrived after the design.
 
 ---
 
