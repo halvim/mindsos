@@ -73,6 +73,7 @@ from .bootstrap import (
 from .capabilities import CAN_WRITE_GLOBAL
 from .capacity import InvocationResult, Monitor, _CapacityBase
 from .datastate import DataState, validate_datastate
+from .printable import printable_phrase_problem
 from .exceptions import (
     CapacityRegistrationError,
     ConstraintViolationError,
@@ -454,6 +455,14 @@ class CapacityLayer:
         the IRI resolves to an already-registered declaration — the
         ``predicate.*`` family ships downstream of v1 per ADR-0157).
         """
+        if declaration.printable_phrase:
+            problem = printable_phrase_problem(
+                declaration.printable_phrase, "printable_phrase"
+            )
+            if problem is not None:
+                raise CapacityRegistrationError(
+                    f"Capacity {declaration.iri!r}: {problem}"
+                )
         if declaration.inline and declaration.max_latency_ms is None:
             raise CapacityRegistrationError(
                 f"Capacity {declaration.iri!r}: inline=True requires "

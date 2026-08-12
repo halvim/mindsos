@@ -72,6 +72,18 @@ class _CapacityBase:
     outputs: Tuple[str, ...]          # DataState IRIs produced
     implementation: Optional[CapacityCallable] = None
     description: str = ""
+    # Decision Records — the phrase a Record prints when it has to NAME this
+    # capacity: "decided by the filing-requirement test", "stopped at
+    # consulting the filing-threshold policy". Deliberately NOT ``description``:
+    # a description answers *what does this do* for a developer and is written
+    # as a question ("whether the stated income reaches the threshold in
+    # force"), which renders as "decided by whether the stated income
+    # reaches…". One field cannot be both. Optional, so every existing
+    # capacity is unchanged; validated by ``register_capacity`` only when
+    # supplied, against the same rule origin records use
+    # (``mindsos_capacity.printable``). A run graph carries only a capacity's
+    # IRI, so without this the Record has nothing to call it.
+    printable_phrase: str = ""
     cost_prior: float = 1.0
     latency_ms_prior: float = 0.0
     node_type: str = NODE_TYPE_CAPACITY
@@ -119,6 +131,8 @@ class _CapacityBase:
         }
         if self.description:
             props["description"] = self.description
+        if self.printable_phrase:
+            props["printable_phrase"] = self.printable_phrase
         if self.placeholder:
             props["placeholder"] = True
         return props
