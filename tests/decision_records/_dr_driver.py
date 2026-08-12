@@ -57,7 +57,7 @@ from mindsos_intelligence.plan_construction import PlanResult
 
 from ._dr_fixtures import (
     DS_AS_OF_DATE,
-    DS_DOCUMENT,
+    DS_FILING_RECORD,
     DS_FILING_VERDICT,
     Session,
     build_capacity_layer,
@@ -69,7 +69,7 @@ LEAF_REF = "mDecisionRecord"
 
 def decision_record_plan(
     *,
-    starts: Tuple[str, ...] = (DS_DOCUMENT, DS_AS_OF_DATE),
+    starts: Tuple[str, ...] = (DS_FILING_RECORD, DS_AS_OF_DATE),
     target: str = DS_FILING_VERDICT,
 ) -> PlanResult:
     """The plan for one Decision Record.

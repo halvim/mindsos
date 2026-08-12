@@ -228,7 +228,7 @@ def test_g8_prime_nothing_is_registered_global():
         assert global_view.get_capacity(iri) is None
 
 
-def test_two_dates_over_one_store_produce_two_limits_and_two_versions():
+def test_g5_two_dates_over_one_store_produce_two_limits_and_two_versions():
     """Run 5 end to end. The date is a start DataState, so this stays "one case
     asked about two dates" instead of "two documents disagreeing"."""
     kl = build_kl_with_both()

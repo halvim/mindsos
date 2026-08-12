@@ -21,6 +21,7 @@ from mindsos_capacity.builtins.origin_v0 import (
     FIELD_ADMITTED,
     FIELD_REFUSAL_REASON,
     FIELD_SOURCE_VERSION,
+    REFUSAL_FIELD_ABSENT,
     REFUSAL_NO_SOURCE_IN_FORCE,
 )
 from mindsos_capacity.identifiers import (
@@ -41,14 +42,16 @@ from ._dr_fixtures import (
     CAP_LOOKUP,
     CAP_READER,
     DS_AS_OF_DATE,
-    DS_DOCUMENT,
+    DS_FILING_RECORD,
     DS_FILING_THRESHOLD,
     DS_FILING_THRESHOLD_ORIGIN,
     DS_FILING_VERDICT,
     DS_GROSS_INCOME,
+    DS_GROSS_INCOME_ORIGIN,
     EDITION_2023,
     INITIAL_2023,
     INITIAL_2024,
+    INITIAL_NO_INCOME,
     INITIAL_UNCOVERED,
     POLICY_PHRASE,
     STARTS,
@@ -187,7 +190,7 @@ def test_no_grounding_root_was_pre_minted():
         ) == 1, f"{start} has more than one instance — a pre-minted root duplicates a seeded start"
 
 
-def test_two_dates_over_one_store_give_two_records():
+def test_g5_two_dates_over_one_store_give_two_records():
     """Run 5, driven. The as-of date is a start DataState, never read out of the
     document, or this silently becomes "two documents disagree"."""
     kl = build_kl_with_both()
@@ -201,6 +204,43 @@ def test_two_dates_over_one_store_give_two_records():
 
 
 # ── the two refusals, driven ──────────────────────────────────────────
+
+
+def test_run_2_a_return_that_states_no_income_still_produces_a_record():
+    """**RUN 2, and until this test it had never been executed.** v0 is
+    defined as runs 1 and 2; every seed in this module carried an income, so
+    the reader's refusal branch was unreachable from any committed test. The
+    plan claimed probe B had run it end to end — that was a throwaway that was
+    never committed, which is the fourth time in this lane a claim rested on
+    something not in the tree."""
+    run = run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2")
+    assert run.value_of(DS_FILING_VERDICT) == VERDICT_NOT_DETERMINED
+    record = run.value_of(DS_GROSS_INCOME_ORIGIN)
+    assert record[FIELD_REFUSAL_REASON] == REFUSAL_FIELD_ABSENT
+    assert record[FIELD_ADMITTED] is False
+
+
+def test_run_2_the_refusal_is_graph_resident_and_names_the_missing_item():
+    """**G4's reading half.** The plan's acceptance for run 2 is that the
+    refusal is *graph-resident* and *names the missing item in prose* — both
+    asserted structurally here rather than by string-matching a rendering."""
+    run = run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2b")
+    graph = run.graph
+    produced = _instances(
+        graph, NODE_TYPE_DATASTATE_INSTANCE, PROP_DATASTATE_INSTANCE_TYPE,
+        DS_GROSS_INCOME_ORIGIN,
+    )
+    assert len(produced) == 1, "the refusal must be IN the graph, not beside it"
+    detail = run.value_of(DS_GROSS_INCOME_ORIGIN)["refusal_detail"]
+    assert "their filed return" in detail and ":" not in detail
+
+
+def test_run_2_the_income_instance_exists_and_carries_nothing():
+    """A refused value is present-and-empty, never absent. A missing instance
+    and a refused one are different facts and a Record must not confuse them —
+    which is also why ``value_of`` raises rather than returning None."""
+    run = run_decision_record(build_kl_with_both(), INITIAL_NO_INCOME, request_id="dr-run2c")
+    assert run.value_of(DS_GROSS_INCOME) is None
 
 
 def test_run_3_a_gap_in_the_policy_set_still_produces_a_record():
@@ -252,11 +292,11 @@ def test_a_single_start_plan_raises_rather_than_under_wiring():
     """
     from mindsos_intelligence.execution import LeafPipelineNotFound
 
-    plan = decision_record_plan(starts=(DS_DOCUMENT,))
+    plan = decision_record_plan(starts=(DS_FILING_RECORD,))
     with pytest.raises(LeafPipelineNotFound) as excinfo:
         run_decision_record(
             build_kl_with_both(),
-            {DS_DOCUMENT: INITIAL_2024[DS_DOCUMENT]},
+            {DS_FILING_RECORD: INITIAL_2024[DS_FILING_RECORD]},
             plan=plan,
         )
     assert "bfs_exhausted" in str(excinfo.value)

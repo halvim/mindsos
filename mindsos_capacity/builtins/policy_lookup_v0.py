@@ -67,6 +67,7 @@ from typing import Any, Dict, List, Optional
 from ..capacity import Capacity
 from ..datastate import DataState, ShapeDescriptor
 from ..identifiers import CATEGORY_RETRIEVAL, capacity_iri
+from ..printable import PhraseNotPrintable, describes_without_naming
 from .origin_v0 import (
     FIELD_SOURCE_IN_FORCE_FROM,
     FIELD_SOURCE_IN_FORCE_TO,
@@ -74,6 +75,7 @@ from .origin_v0 import (
     ORIGIN_READ_FROM_SOURCE,
     PRODUCER_POLICY_LOOKUP,
     REFUSAL_NO_SOURCE_IN_FORCE,
+    ORIGIN_SHAPE_TAG,
     REFUSAL_SOURCE_UNREACHABLE,
     OriginContractError,
     assert_printable_phrase,
@@ -83,14 +85,6 @@ from .origin_v0 import (
 
 #: The category every lookup built here registers into.
 CATEGORY = CATEGORY_RETRIEVAL
-
-#: Opaque tag for an origin-record DataState. Opaque is correct and is not a
-#: shortcut: the union is closed by agreement and deliberately not frozen
-#: (``origin_v0``), so a record shape pinned today would pin a guess. It is safe
-#: here for the reason ``DECISION_SHAPED_CATEGORIES`` exists — an origin record
-#: is never consumed by a capacity that compares it against a limit. The
-#: **limit** carries a real shape; that one is never opaque.
-ORIGIN_SHAPE_TAG = "origin.record.v0"
 
 #: Everything a policy lookup could ever refuse with. Declared on every record,
 #: admitted or not, so a renderer can tell "this producer could never say that"
@@ -138,14 +132,10 @@ def assert_printable_description(
     being exactly the leak this refuses. Descriptions are the surface a Record
     prints, and ``assert_printable_phrase`` has never guarded them.
     """
-    assert_printable_phrase(description, field_name)
-    for token in (f"{datastate_name}_origin", datastate_name):
-        if token in str(description):
-            raise OriginContractError(
-                f"{field_name} must be prose a reader can be shown, not a "
-                f"description that names its own DataState: {description!r} "
-                f"contains {token!r}."
-            )
+    try:
+        describes_without_naming(description, field_name, datastate_name)
+    except PhraseNotPrintable as exc:
+        raise OriginContractError(str(exc)) from exc
 
 
 def policy_limit_datastates(

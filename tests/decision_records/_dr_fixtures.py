@@ -7,10 +7,19 @@ here is one authority, one criterion and one prose vocabulary — a particular
 question somebody is asking, which core does not own and must not ship. When the
 Decision Records demo gains a home of its own, this moves there unchanged.
 
-The reader is a **stand-in**. Item 5 of ``DECISION_RECORDS_V0_PLAN.md`` builds
-the real structured-ingest reader with a declared shape and a ``field_absent``
-refusal; until then this returns a fixed value so the route has two producers to
-compose. It is marked so nobody mistakes it for the shipped one.
+**The reader is the shipped one, since item 5.** It is built by
+``structured_ingest_v0.build_structured_ingest_reader`` — a real declared shape,
+``field_absent`` and ``value_not_coercible`` refusals, and
+``origin_method=read_from_source``. What it replaced stamped
+``read_by_model`` on every record while no model existed anywhere in the
+system, which put false provenance on three of the five runs and was found by
+rendering the graph rather than by reading the code.
+
+The start is ``dr.filing_record``, a **record of stated values** — not prose.
+Nothing here reads prose, so calling the start a document would be the same
+class of small untruth. ``dr.document`` is left unused for the model reader the
+LLM seam brings, which is the other half of claim 5: the same cases run twice,
+structured then read, with identical answers and different origins.
 """
 
 from __future__ import annotations
@@ -24,14 +33,11 @@ from mindsos_capacity import (
     INPUT_GROUP_ALL_REQUIRED,
     ShapeDescriptor,
 )
-from mindsos_capacity.builtins.origin_v0 import (
-    BASIS_STATED,
-    FIELD_BASIS,
-    ORIGIN_READ_BY_MODEL,
-    PRODUCER_DOCUMENT_READING,
-    REFUSAL_FIELD_ABSENT,
-    build_origin_record,
-    origin_record_iri,
+from mindsos_capacity.builtins.origin_v0 import origin_record_iri
+from mindsos_capacity.builtins.structured_ingest_v0 import (
+    build_structured_ingest_reader,
+    structured_reader_iri,
+    structured_value_datastates,
 )
 from mindsos_capacity.builtins.policy_lookup_v0 import (
     build_policy_limit_lookup,
@@ -69,7 +75,7 @@ EDITION_2024 = dict(
 # ``CapacityMMWriter.index`` overwrites, so a type reused for two values loses
 # one of them and the grounding graph wires the wrong producer.
 
-DS_DOCUMENT = "datastate:dr.document"
+DS_FILING_RECORD = "datastate:dr.filing_record"
 DS_AS_OF_DATE = "datastate:dr.as_of_date"
 DS_GROSS_INCOME = "datastate:dr.gross_income"
 DS_GROSS_INCOME_ORIGIN = origin_record_iri(DS_GROSS_INCOME)
@@ -77,11 +83,12 @@ DS_FILING_THRESHOLD = "datastate:dr.filing_threshold"
 DS_FILING_THRESHOLD_ORIGIN = origin_record_iri(DS_FILING_THRESHOLD)
 DS_FILING_VERDICT = "datastate:dr.filing_verdict"
 
-STARTS = (DS_DOCUMENT, DS_AS_OF_DATE)
+STARTS = (DS_FILING_RECORD, DS_AS_OF_DATE)
 
 LOOKUP_NAME = "dr_lookup_filing_threshold"
 CAP_LOOKUP = policy_lookup_iri(LOOKUP_NAME)
-CAP_READER = "capacity:comprehension:dr_read_gross_income"
+READER_NAME = "dr_read_gross_income"
+CAP_READER = structured_reader_iri(READER_NAME)
 CAP_DECISION = "capacity:decision:dr_filing_requirement"
 
 # ── The criterion's outcomes ───────────────────────────────────────────
@@ -146,41 +153,6 @@ def build_kl_with_both() -> KnowledgeLayer:
 # ── The capacities ─────────────────────────────────────────────────────
 
 
-def _reader_body(context: Any = None, **inputs: Any) -> Dict[str, Any]:
-    """STAND-IN for item 5's structured-ingest reader. Not the shipped one."""
-    document = inputs.get(DS_DOCUMENT)
-    if document is None or "gross income" not in str(document):
-        return {
-            DS_GROSS_INCOME: None,
-            DS_GROSS_INCOME_ORIGIN: build_origin_record(
-                producer_kind=PRODUCER_DOCUMENT_READING,
-                origin_method=ORIGIN_READ_BY_MODEL,
-                source_identity_phrase="their filed return",
-                source_datastate=DS_DOCUMENT,
-                question="What gross income does the return state?",
-                admitted=False,
-                supplied_fields=(),
-                possible_refusal_reasons=(REFUSAL_FIELD_ABSENT,),
-                refusal_reason=REFUSAL_FIELD_ABSENT,
-                refusal_detail="their filed return does not state a gross income.",
-            ),
-        }
-    return {
-        DS_GROSS_INCOME: 61000,
-        DS_GROSS_INCOME_ORIGIN: build_origin_record(
-            producer_kind=PRODUCER_DOCUMENT_READING,
-            origin_method=ORIGIN_READ_BY_MODEL,
-            source_identity_phrase="their filed return",
-            source_datastate=DS_DOCUMENT,
-            question="What gross income does the return state?",
-            admitted=True,
-            supplied_fields=(FIELD_BASIS,),
-            possible_refusal_reasons=(REFUSAL_FIELD_ABSENT,),
-            **{FIELD_BASIS: BASIS_STATED},
-        ),
-    }
-
-
 def _decision_body(context: Any = None, **inputs: Any) -> Dict[str, Any]:
     """Typed to this criterion, deliberately not a reusable comparator.
 
@@ -209,8 +181,8 @@ def _datastates() -> list:
     )
     return [
         DataState(
-            name="dr.document",
-            shape=ShapeDescriptor.scalar("str"),
+            name="dr.filing_record",
+            shape=ShapeDescriptor.record({INCOME_FIELD: "int"}),
             description="the return as filed",
         ),
         DataState(
@@ -218,15 +190,11 @@ def _datastates() -> list:
             shape=ShapeDescriptor.scalar("str"),
             description="the date the question is asked about",
         ),
-        DataState(
-            name="dr.gross_income",
-            shape=ShapeDescriptor.scalar("int"),
-            description="the gross income the return states",
-        ),
-        DataState(
-            name="dr.gross_income_origin",
-            shape=ShapeDescriptor.opaque("origin.record.v0"),
-            description="where the gross income came from",
+        *structured_value_datastates(
+            value_name="dr.gross_income",
+            value_elem="int",
+            value_description="the gross income the return states",
+            origin_description="where the gross income came from",
         ),
         limit,
         limit_origin,
@@ -262,16 +230,21 @@ def decision_declaration() -> Capacity:
     )
 
 
+#: The field read out of the record. Bound at build time — a reader whose
+#: field varied per run could not declare what it produces.
+INCOME_FIELD = "gross_income"
+
+
 def reader_declaration() -> Capacity:
-    return Capacity(
-        name="dr_read_gross_income",
-        category="comprehension",
-        inputs=(DS_DOCUMENT,),
-        outputs=(DS_GROSS_INCOME, DS_GROSS_INCOME_ORIGIN),
-        input_group=INPUT_GROUP_ALL_REQUIRED,
-        description="reads the gross income the return states",
+    return build_structured_ingest_reader(
+        name=READER_NAME,
+        field=INCOME_FIELD,
+        value_datastate_iri=DS_GROSS_INCOME,
+        value_elem="int",
+        source_datastate_iri=DS_FILING_RECORD,
+        source_identity_phrase="their filed return",
+        question="What gross income does the return state?",
         printable_phrase="reading the return as filed",
-        implementation=_reader_body,
     )
 
 
@@ -299,14 +272,26 @@ def build_capacity_layer(session: Optional[Session] = None) -> "tuple":
 
 
 INITIAL_2024 = {
-    DS_DOCUMENT: "gross income of 61,000 for tax year 2024",
+    DS_FILING_RECORD: {INCOME_FIELD: 61000},
     DS_AS_OF_DATE: "2024-04-15",
 }
 INITIAL_2023 = {
-    DS_DOCUMENT: "gross income of 61,000 for tax year 2023",
+    DS_FILING_RECORD: {INCOME_FIELD: 61000},
     DS_AS_OF_DATE: "2023-04-15",
 }
 INITIAL_UNCOVERED = {
-    DS_DOCUMENT: "gross income of 61,000 for tax year 2019",
+    DS_FILING_RECORD: {INCOME_FIELD: 61000},
     DS_AS_OF_DATE: "2019-04-15",
+}
+#: RUN 2 — the return states no income. Half of what v0 is defined as, and
+#: until now no committed test drove it: every seed above carried an income, so
+#: the reader's refusal branch was never once executed.
+INITIAL_NO_INCOME = {
+    DS_FILING_RECORD: {},
+    DS_AS_OF_DATE: "2024-04-15",
+}
+#: RUN 2, the other shape — stated, and not a number.
+INITIAL_UNREADABLE_INCOME = {
+    DS_FILING_RECORD: {INCOME_FIELD: "not stated"},
+    DS_AS_OF_DATE: "2024-04-15",
 }

@@ -179,7 +179,7 @@ def test_the_question_names_the_date_that_was_asked_about():
     assert "datastate:" not in record[FIELD_QUESTION]
 
 
-def test_two_dates_over_one_store_give_two_limits_and_two_versions():
+def test_g5_two_dates_over_one_store_give_two_limits_and_two_versions():
     """Run 5, and the trap it carries: the as-of date is an INPUT, never
     something read out of the document. Otherwise this silently becomes
     "different documents give different limits", which is the opposite of the
