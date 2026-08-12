@@ -225,3 +225,68 @@ catalog: `decision-records-run-manifest` **snapshots the phrase into the run
 graph when the run starts**, and the Record renders from that snapshot. The
 registered property exists so the manifest has something to copy, not so a
 renderer can reach back for it.
+
+---
+
+## Amendment 2 — the union is frozen by classification (2026-08-12)
+
+**Amendment status:** Proposed. **Opened by:** the first RULES §12 check.
+
+This ADR says the union is *"closed by agreement… freeze after the second
+producer proves it."* **Three producers have shipped** — document reading, the
+policy lookup (ADR-0208), structured ingest (PR #154) — **and the freeze never
+happened.** A §12 check found what that cost: the system writes **16 of 30**
+fields, and one of them can never carry information at all. Neither fact was
+recorded anywhere, because an unclassified union cannot distinguish *"nobody
+has built that producer yet"* from *"that field is dead"*.
+
+**The freeze is a classification, not a deletion.** Nothing is removed. Every
+field is now exactly one of:
+
+- **`FIELDS_WRITTEN_TODAY`** — some shipped producer emits it, on some path.
+- **`FIELDS_RESERVED`** — declared for a producer that does not exist, **each
+  naming that producer**. Fourteen fields, twelve of them the LLM seam's.
+  Anonymity is forbidden: *"someone might need it"* is how a union stops
+  meaning anything.
+- **`FIELDS_DEGENERATE`** — written on every record, but whose informative
+  value is unreachable. Worse than an unwritten field, because it looks live
+  and reads as evidence.
+
+Orthogonally, every field is **`FIELDS_PRINTED`** or **`FIELDS_STRUCTURAL`** —
+rendered, or read only to walk the graph and branch.
+
+### The one degenerate field, and why it is pinned rather than deleted
+
+`environment_fault` is **always False, structurally**. It is derived from
+`ENVIRONMENT_FAULT_REASONS`, and *both* of those reasons — `model_unreachable`
+and `source_unreachable` — are on **raising** paths. A raising step writes no
+origin record at all: `execute_pipeline` records the stop, not an output. So no
+record carrying this field can ever have been produced by an outage.
+
+**A renderer must take *"was this our fault"* from L-2's `RunStopped` node, and
+never from this field.** It is pinned by a test that fails the day the hole
+closes — the same shape as `test_append_only_is_declared_but_not_enforced` —
+rather than deleted, because removing a field from a union this ADR declares
+closed is a negotiation and the pin buys the time to have it.
+
+### Two contract changes that came with the freeze
+
+**A refusal must carry prose.** `refusal_detail` was optional, so a producer
+could refuse with a bare token and leave a Record with nothing to print.
+`build_origin_record` now refuses that. All three shipped producers already
+supplied one, so this pins a contract rather than changing it. It also removes
+the reason a `refusal_reason_phrase` field looked necessary: the **token
+branches, the detail is the prose**, and adding a generic phrase would have
+duplicated the specific one worse.
+
+**`source_datastate` is structural and must never be printed.** It holds a
+DataState IRI and rides on every record both shipped producers write. Its prose
+counterpart already exists and is `source_identity_phrase`.
+
+### What makes this a freeze rather than a comment
+
+The classification is **checked by running the producers**, not by reading the
+lists: every field called live must actually appear in an emitted record, no
+reserved field may appear in one, and `environment_fault` must never be `True`.
+A producer that stops writing a field, or a new field added without a
+classification, turns the gate red. Shown red by mutation on all four paths.

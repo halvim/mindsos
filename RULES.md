@@ -290,8 +290,19 @@ numbering. Before picking up the next item:
    - What did the dump show that the plan does not mention?
    - What in the plan is now false?
    - What did this ship's mutations fail to redden?
+   - **When this ship introduced a classification, a guard or a contract — what
+     else in the same module is of the same kind and did not get it?** *(Added
+     after #155, which froze the origin union's FIELDS and left its
+     VOCABULARIES unclassified. The other six questions did not find it: a fix
+     can have the same hole it is fixing, and nothing was asking.)*
 3. **Append a dated block to the plan** naming what changed. **The item table may
    not advance until the previous ship has one.**
+
+**Answer the questions against a dump I ran, not one you ran.** The first §12
+check found seven things — four real defects and one reversal of something
+asserted confidently two messages earlier — and every one was found by reading
+your own output. A check whose evidence you produced and whose questions you
+answered is the self-grading the rule exists to stop.
 
 **Two stop conditions.** A re-evaluation may reorder, absorb or delete items — if
 it never does, it is not working. And **two consecutive re-evaluations that change

@@ -243,6 +243,7 @@ def reader_declaration() -> Capacity:
         value_elem="int",
         source_datastate_iri=DS_FILING_RECORD,
         source_identity_phrase="their filed return",
+        value_phrase="a gross income",
         question="What gross income does the return state?",
         printable_phrase="reading the return as filed",
     )

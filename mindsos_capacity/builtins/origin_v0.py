@@ -221,6 +221,89 @@ PRODUCER_DECLARED: Tuple[str, ...] = (
 ORIGIN_UNION: Tuple[str, ...] = SPINE + PRODUCER_DECLARED
 
 
+# ── The freeze (ADR-0207 amendment 2) ──────────────────────────────────
+#
+# This module has said from the start that the union is *"closed by agreement…
+# freeze after the second producer proves it."* Three producers have shipped —
+# document reading, the policy lookup, structured ingest — and nobody froze it.
+# A §12 check on 2026-08-12 found what that cost: **the system writes 16 of
+# these 30 fields**, and one of them can never carry information at all. None
+# of that was visible anywhere, because a union with no classification cannot
+# tell "nobody has built that producer yet" from "that field is dead".
+#
+# The freeze is a CLASSIFICATION, not a deletion. Nothing is removed: the model
+# fields are real and the seam will write them. What changes is that every
+# field now has to say which of three things it is, and a test enforces it.
+
+#: Written by at least one shipped producer, on at least one path. The
+#: enforcement test **runs the producers and checks** — so this list going
+#: stale is a red gate, not a stale comment.
+FIELDS_WRITTEN_TODAY: Tuple[str, ...] = SPINE + (
+    FIELD_BASIS,
+    FIELD_SOURCE_VERSION,
+    FIELD_SOURCE_IN_FORCE_FROM,
+    FIELD_SOURCE_IN_FORCE_TO,
+)
+
+#: Declared for a producer that does not exist yet, each naming the one that
+#: will write it. A field may not sit here anonymously: *"someone might need
+#: it"* is how a union stops meaning anything.
+FIELDS_RESERVED: Mapping[str, str] = {
+    FIELD_ORIGIN_PARTY: "a party-assertion producer (asserted_by_party)",
+    FIELD_ORIGIN_PARTY_PHRASE: "a party-assertion producer (asserted_by_party)",
+    FIELD_EXPECTED_BASIS: "the model reader (comprehension_v0, LLM seam)",
+    FIELD_QUOTE: "the model reader (comprehension_v0, LLM seam)",
+    FIELD_CLAIMED_QUOTE: "the model reader (comprehension_v0, LLM seam)",
+    FIELD_QUOTE_VERIFIED: "the model reader (comprehension_v0, LLM seam)",
+    FIELD_QUOTE_OFFSETS: "the model reader (comprehension_v0, LLM seam)",
+    FIELD_MODEL_ID: "the model adapter (LLM seam)",
+    FIELD_MODEL_VERSION: "the model adapter (LLM seam)",
+    FIELD_PROMPT_IRI: "the model adapter (LLM seam)",
+    FIELD_PROMPT_VERSION: "the model adapter (LLM seam)",
+    FIELD_TEMPERATURE: "the model adapter (LLM seam)",
+    FIELD_REQUEST_KEY: "the model adapter (LLM seam)",
+    FIELD_RECORDED: "the model adapter (LLM seam)",
+}
+
+#: Written on every record, but whose **informative value is unreachable** —
+#: worse than an unwritten field, because it looks live and reads as evidence.
+FIELDS_DEGENERATE: Mapping[str, str] = {
+    FIELD_ENVIRONMENT_FAULT: (
+        "always False, and structurally so. It is derived from "
+        "ENVIRONMENT_FAULT_REASONS, and BOTH of those reasons — "
+        "model_unreachable and source_unreachable — are on RAISING paths. A "
+        "raising step writes no origin record at all (execute_pipeline records "
+        "the stop, not an output), so no record that carries this field can "
+        "ever have been produced by an outage. A renderer must take 'was this "
+        "our fault' from L-2's RunStopped node, NEVER from this field. Deleted "
+        "the day a non-raising outage exists; until then it is pinned."
+    ),
+}
+
+#: Printed by a Record. Everything else in the union is **structural** — read
+#: to walk the graph or to branch, never rendered.
+FIELDS_PRINTED: Tuple[str, ...] = (
+    FIELD_ORIGIN_METHOD_PHRASE,
+    FIELD_SOURCE_IDENTITY_PHRASE,
+    FIELD_ORIGIN_PARTY_PHRASE,
+    FIELD_QUESTION,
+    FIELD_REFUSAL_DETAIL,
+    FIELD_QUOTE,
+    FIELD_SOURCE_VERSION,
+    FIELD_SOURCE_IN_FORCE_FROM,
+    FIELD_SOURCE_IN_FORCE_TO,
+)
+
+#: Read, never rendered. ``source_datastate`` is the one that bites: it holds a
+#: DataState **IRI**, it is on every record both shipped producers write, and
+#: printing it is a G6 leak. Its prose counterpart already exists and is
+#: ``source_identity_phrase``. The refusal **tokens** are here for the same
+#: reason — code branches on them, ``refusal_detail`` is what a reader is shown.
+FIELDS_STRUCTURAL: Tuple[str, ...] = tuple(
+    f for f in ORIGIN_UNION if f not in FIELDS_PRINTED
+)
+
+
 class OriginContractError(ValueError):
     """A record does not satisfy the origin contract."""
 
@@ -299,6 +382,17 @@ def build_origin_record(
     if refusal_reason is not None and refusal_reason not in REFUSAL_REASONS:
         raise OriginContractError(
             f"refusal_reason must be one of {REFUSAL_REASONS!r}, got {refusal_reason!r}"
+        )
+    if refusal_reason is not None and not str(refusal_detail or "").strip():
+        # A refusal with no prose is unrenderable. The TOKEN is for branching;
+        # ``refusal_detail`` is the only thing a reader is ever shown, and it
+        # was optional — so a producer could refuse and leave a Record with
+        # nothing to say. Every shipped producer already supplies one, so this
+        # pins the contract rather than changing it.
+        raise OriginContractError(
+            f"a refusal must carry prose: refusal_reason={refusal_reason!r} was "
+            f"given with no refusal_detail. The token branches; the detail is "
+            f"what the Record prints."
         )
     unknown = sorted(f for f in producer_fields if f not in PRODUCER_DECLARED)
     if unknown:
@@ -473,6 +567,8 @@ __all__ = [
     "REFUSAL_FIELD_ABSENT", "REFUSAL_MALFORMED_RESPONSE",
     "REFUSAL_MODEL_DECLINED", "REFUSAL_MODEL_UNREACHABLE",
     "REFUSAL_NO_SOURCE_IN_FORCE", "REFUSAL_QUOTE_NOT_IN_SOURCE",
+    "FIELDS_DEGENERATE", "FIELDS_PRINTED", "FIELDS_RESERVED",
+    "FIELDS_STRUCTURAL", "FIELDS_WRITTEN_TODAY",
     "REFUSAL_REASONS", "REFUSAL_SOURCE_UNREACHABLE",
     "REFUSAL_VALUE_NOT_COERCIBLE", "SPINE",
     "ORIGIN_SHAPE_TAG",
