@@ -1121,11 +1121,16 @@ MindsOS/
 │   │   └── use_cases_text_realm.md
 │   ├── concepts/, usage/, api/, getting-started/, knowledge-sources/, changelog/
 │   └── (other end-user docs)
-└── projects/                      ← 3 sister-project intake
+└── projects/                      ← 3 sister-project intake + non-sister lanes
     ├── README.md
     ├── dwf_mapping/
     ├── wsd/
-    └── fol/
+    ├── fol/
+    ├── decision_records_demo/     ← Decision Records demo lane (sales evidence, not core)
+    ├── amii_study/                ← undocumented
+    ├── brain-viewer/              ← undocumented
+    ├── maintenance/               ← undocumented
+    └── skill_acquisition/         ← undocumented
 ```
 
 ═══════════════════════════════════════════════════════════════════════

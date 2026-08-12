@@ -2,6 +2,30 @@
 
 > Three sister projects intended for integration into MindsOS. Each was analyzed in the 2026-05-28 housekeeping + intake chat. Per-project folders contain (a) source materials, (b) an analysis document triaging propositions against shipped MindsOS, and (c) a future-chat prompt for the design-resolution chat that finalizes the project's installation.
 
+> [!NOTE]
+> **This index covers the three intake sister projects only.** `projects/` has since accumulated
+> other lanes — `amii_study/`, `brain-viewer/`, `maintenance/`, `skill_acquisition/`,
+> `decision_records_demo/` — that are not sister projects and are not tracked in the tables
+> below. Only `decision_records_demo/` is documented here; the rest are undocumented and
+> someone should say what they are.
+
+## Non-sister lanes
+
+**`decision_records_demo/`** — the **Decision Records demo** lane. Zero-revenue;
+sales evidence, not product. It owns no architectural mechanism (RULES §8) and nothing in
+`mindsos_*` imports it. Design decisions do not live there — they live in
+`confirmation_docs/DECISION_RECORDS_{DEMO_PLAN,V0_SLICE_PLAN,AGREED_CHANGES}.md`. The folder
+holds demo and evidence *research* only: domain material, sourced taxonomies, scenario notes.
+
+Two boundaries recorded there, both learned the hard way:
+
+- `Projects/Sanmyaku-GTM/` is **meeting operations with real humans** and is not this lane.
+  Demo and research artifacts never go there.
+- `DECISION_RECORDS_DEMO_PLAN.md` §2.5 is five seeded synthetic cases — **no intake-routing
+  beat, no claim-classification stage, no lines-of-business taxonomy.** A 2026-08-11 task
+  prompt quoted one; the quote is not in the file (md5 `83fe6c6b93f7a09ff4853f0aff43ec70`).
+  **Grep a cited file for a quoted §-reference before building on it.**
+
 ## Layout
 
 ```
