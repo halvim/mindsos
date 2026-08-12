@@ -165,6 +165,7 @@ def run_decision_record(
     request_id: str = "dr",
     session: Optional[Session] = None,
     plan: Optional[PlanResult] = None,
+    graphs: Optional[List[Any]] = None,
 ) -> DecisionRecordRun:
     """Drive one Decision Record end to end and return its grounding graphs.
 
@@ -186,7 +187,11 @@ def run_decision_record(
     dispatcher = L4Dispatcher(capacity_layer, session=session, kl=kl)
     writer = ChainArtifactWriter(mm, request_id)
     request_run = writer.emit_request_run()
-    graphs: List[Any] = []
+    # A caller may supply the list so it still holds the run's graph when this
+    # RAISES — run 4 leaves a manifest-only graph and then propagates
+    # ``LeafPipelineNotFound``, so the only way to see that graph is to own the
+    # list the executor appends to.
+    graphs = [] if graphs is None else graphs
 
     pipeline_run_iris = execution.run(
         dispatcher,
