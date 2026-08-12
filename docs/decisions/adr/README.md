@@ -5,7 +5,7 @@ teaser: The numbered log of load-bearing decisions across all layers.
 
 # Architectural Decision Records — MindsOS
 
-This directory is the single source of truth for all load-bearing architectural decisions in MindsOS. Every ADR is numbered globally and covers decisions across all layers: the Server Layer (ADR-0001–0013), Layer 1 Core (ADR-0014–0037), Layer 2 Knowledge (ADR-0038–0059), Layer 3 Capacity (ADR-0060–0083), L3 design questions (ADR-0084–0100), Layer 4 Intelligence (ADR-0101–0112), the Server Layer pivot and L1 redesign (ADR-0114–0144), Layer 2 Knowledge v2 (ADR-0145–0161), L4/L5 substrate (ADR-0162–0190), perception and interpretation (ADR-0191–0200), the abstraction-level model (ADR-0201–0206), and origin records (ADR-0207).
+This directory is the single source of truth for all load-bearing architectural decisions in MindsOS. Every ADR is numbered globally and covers decisions across all layers: the Server Layer (ADR-0001–0013), Layer 1 Core (ADR-0014–0037), Layer 2 Knowledge (ADR-0038–0059), Layer 3 Capacity (ADR-0060–0083), L3 design questions (ADR-0084–0100), Layer 4 Intelligence (ADR-0101–0112), the Server Layer pivot and L1 redesign (ADR-0114–0144), Layer 2 Knowledge v2 (ADR-0145–0161), L4/L5 substrate (ADR-0162–0190), perception and interpretation (ADR-0191–0200), the abstraction-level model (ADR-0201–0206), and origin records (ADR-0207–0208).
 
 ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, **Consequences**, and **Alternatives considered**. Each ADR is numbered, dated, and marked with a status: **Accepted** (shipped and load-bearing), **Proposed** (agreed but not yet implemented), **Deferred** (acknowledged but not scheduled), or **Superseded** (replaced by another ADR).
 
@@ -218,6 +218,7 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0205](0205-abstraction-levels.md) | Abstraction levels — one graph at several resolutions | Accepted | L3 | — |
 | [0206](0206-planning-decomposition-confidence.md) | Planning as a loop — milestones, decomposition, and confidence | Proposed | L4 | — |
 | [0207](0207-origin-records.md) | Origin records — where a value came from, for any producer | Proposed | L3 | origin, origin_v0, provenance-record, Decision Records |
+| [0208](0208-policy-lookup-and-criterion.md) | Reading a stored authority as of a date — the policy lookup and the criterion it feeds | Proposed | L3 | policy lookup, as-of, policies role, Decision Records |
 
 !!! note "ADRs 0058, 0059, 0113, 0116, 0117, 0119 — numbers not in use"
     ADR-0117 (compositional metaedge) was **Withdrawn** in Phase 05a; the concept became the `compositional` flag on `IntergraphEdge` / `IntergraphHyperEdge` (see `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`, the canonical source for both primitives). The Server Layer pivot shipped 0114, 0115, 0118 and 0120. The remaining numbers (0058, 0059, 0113, 0116, 0119) were reserved and never drafted; they are not re-used.

@@ -1,6 +1,6 @@
 ---
 title: Decision Records v0 — the single-lane plan
-status: IN BUILD. Owner-agreed D1–D6 on 2026-08-11. Items 1 and 2 SHIPPED — see §2.0.
+status: IN BUILD. Owner-agreed D1–D6 on 2026-08-11. Items 1, 2 and 3 SHIPPED — see §2.0.
 date: 2026-08-11
 pin: written against origin/main af329eb; items 1–2 shipped through cfc1795.
   seam feat/decision-records f7cb857 (23+ commits behind)
@@ -142,13 +142,31 @@ local and remote, both lists checked).
 | #144 | `b325607` | `DECISION_RECORDS_DEMO_PLAN.md` revision + the owed ship records | none — docs + STATE |
 | #145 | `c9754ac` | **Item 2 ✅** — L-2, the terminal node. Tag **`terminal-node-confirmed`** | **4591 / 11 / 1x / 0** |
 | #146 | `cfc1795` | Demo beat: route **exposures**, not the claim | none — docs + STATE |
+| #147 | `e7fd779` | Close-out: the plan doc had no progress markers | none — docs |
+| TBD | TBD | **Item 3 ✅** — the policy lookup + the criterion, ADR-0208. Tag **`policy-lookup-confirmed`** | TBD |
 
 **Baseline for the next item: 4591 passed / 11 skipped / 1 xpassed / 0 failed at
 `c9754ac`.** It is carryable — `#145` was a **merged-state** gate (`merge-base
 --is-ancestor` proved the tip contained `origin/main`), unlike `#138`'s 4551, which was a
 branch gate and is not.
 
-**⏭ NEXT IS ITEM 3.** Items 1 and 2 are done; do not rebuild them.
+**⏭ NEXT IS ITEM 4**, the run driver. Items 1, 2 and 3 are done; do not rebuild them.
+
+**Item 3 changed shape after the code was read, as items 1 and 2 both did — the
+detail is ADR-0208 and the four that matter are these.** (a) The lookup is
+`capacity:retrieval:*`, not `capacity:decision:*`: the 2026-08-09 ruling rested
+on `family_rule_for`, which **has no caller in any shipped module**, and on
+`DECISION_SHAPED_CATEGORIES`, which guards the capacity that *compares* a value
+— the criterion, not the lookup. (b) The **version is not a third input** to the
+criterion; it is `source_version` inside the limit's origin record, which is
+itself a declared output and therefore already graph-resident. So the lookup has
+two outputs — the limit and `<limit>_origin` — and the criterion has two inputs.
+(c) The criterion writes **no** origin record: a verdict did not enter from
+anywhere, and emitting one would need a fourth `producer_kind` in a union
+`origin_v0` says to freeze after its second producer, which this lane **is**.
+(d) `no_source_in_force` **returns** and `source_unreachable` **raises** — a
+finding keeps the run renderable, an outage is reported by L-2 as a stopped run,
+and a Record that confused the two would be false.
 
 **Two things items 1 and 2 both proved, and the next item should try the same trick first:**
 
@@ -181,10 +199,10 @@ mid-item.
 |---|---|---|
 | **1** ✅ | **[SHIPPED `a310958`]** **Lift `origin_v0` to `main`** as its own core CR — the module, its ADR (number assigned, `Proposed`), and its tests. Trim `tests/llm_seam/test_origin_contract_and_scope.py` of anything importing `comprehension_v0`; what it loses moves to Layer B. Correct the route-probe docstring in the same commit (§4). | Gate green. No existing `mindsos_*` module edited. `parse_capacity_iri` is the only core import. |
 | **2** ✅ | **[SHIPPED `c9754ac`]** **L-2 — a terminal node on every non-success.** `execute_pipeline` writes one node before every non-success return: failure, decline, cancellation. One node type carrying the capacity IRI, a closed reason and a detail. | A deliberately failing step leaves a node naming it. Shown red first. Gate green. |
-| **3** | **The lookup capacity + the decision capacity.** Lookup: `capacity:decision:<name>`, as-of selection by **window containment**, two outputs (the limit and the policy version) as separate DataStates, refusals `no_source_in_force` (`environment_fault` false) and `source_unreachable` (true). Decision: family `decision`, VERDICT shape, typed to this criterion — never a generic comparator. Both emit origin records via item 1. | The `policies` role gains its first reader. One lookup, two outputs, fires once. |
+| **3** ✅ | **[SHIPPED — ADR-0208]** **The lookup capacity + the criterion.** Lookup: `capacity:retrieval:<name>` (**not** `decision` — §2.0), as-of selection by **window containment**, two outputs (the limit and **its origin record**, not the version) as separate DataStates, refusals `no_source_in_force` (`environment_fault` false, **returns**) and `source_unreachable` (true, **raises**). Criterion: family `decision`, typed to this criterion — never a generic comparator — and it **checks for a missing operand**, because `core-dispatch-value-validation` is deferred and core will not. Only the lookup emits an origin record. | The `policies` role gains its first reader **and its first writer**. One lookup, two outputs, fires once. |
 | **4** | **The run driver.** Mints the document as the grounding root **before** the find; builds a `PlanResult` with plural `leaf_targets[...]["start_datastates"]`; calls `execution.run(..., mm=...)`. | The route is *found* and *grounded* — not hand-assembled, not a script calling capacities in order. Precedent: `tests/phase_48/test_map_member_multiinput.py`. |
 | **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
-| **6** | **Guards G2, G3, G7, G8′**, each shown red before it is trusted. | Below. |
+| **6** | **Guard G2**, shown red before it is trusted. **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
 | **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. | One page a non-technical reader understands with no glossary, rendered from the persisted `capacity_mm` graph and nothing else. |
 | **8** | **Layer B.** Merge `origin/main` into `feat/decision-records`, reconcile the three core modules, gate it, merge, then swap item 5's reader for `comprehension_v0`'s. | First gate of the LLM seam. A verification step, not a blocker. |
 
@@ -230,6 +248,13 @@ run 5 silently becomes *"different documents give different limits"* — the opp
   Say so in its docstring.
 - **G4, G6** land with the renderer / after item 2.
 
+**Where they live after item 3.** G3, G7 and G8′ are in
+`tests/decision_records/test_lookup_decision_route.py`; G7 and G8′ are also
+still in `test_route_probe.py`, which is correct — the probe pins the finder's
+own behaviour and the route test pins the shipped route. G2 and G1 wait for the
+renderer. All six of item 3's guards were **shown red by mutation**, not merely
+observed green.
+
 Three incompatible G8 rulings existed on record — build against `SPECIALISES` (slice plan), do
 not build it (project memory), G8′ (handoff). Under §1.6's all-Local reality only G8′ is
 satisfiable. This document is the ruling.
@@ -271,6 +296,7 @@ that was never opened.
 | §3.3 realm-free DataStates | v0 registers all-Local and works. Closing it deletes G8′ and makes #122's union view testable. |
 | §3.4 append-only enforcement | v0 writes one edition. It constrains what we **say**, not what we build. |
 | §3.5 recorded producer choice | One producer per DataState in v0. It is a claim-1 integrity hole, not finder hygiene — file it as one. |
+| §3.2 revisited after item 3 | Still deferred, and item 3 is why it matters: the criterion's own `None` check is the **only** thing standing between a refused lookup and a confidently wrong verdict. Every future criterion must remember. That is the argument for building it, not against. |
 | §3.6 executor unification | v0 uses the one that grounds. Retiring `mindsos_server.pipeline_runner.run_pipeline` is C3R4. |
 | Everything in `CORE_C3R1_ADMISSION_CONFIRMED.md` §9 | The `.found` architecture guard (§9.1) and the `input_group` retirement (§9.3) are both correct and neither blocks. §9.1 rises the moment item 4 puts a new consumer on the finder's output. |
 

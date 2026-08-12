@@ -73,9 +73,25 @@ class KLHandle(Protocol):
     implementation lands Phase 48 (L0-21 / `kl.read_at_version`). No v1
     capacity body calls it — write capacities use the Phase 34 write-
     handle methods, which conforming KL handles also expose.
+
+    ``global_view`` is declared because a body now calls it. The first
+    reader of the ``policies`` role selects an edition by scanning a
+    role-graph for the window containing a date, which
+    ``read_at_version(iri, version)`` cannot express — that resolves an
+    IRI the caller already knows, and here the edition's identity is the
+    answer rather than the question. Returns the read-only
+    ``mindsos_knowledge.metagraph_view.MetagraphView`` (named in a
+    docstring only — this module may not import L2, the Phase 28
+    invariant), whose ``iter_nodes(role, type_=...)`` is the scan surface.
+
+    Declared rather than reached for: without it the body would duck-type
+    past the protocol into the concrete ``KnowledgeLayer`` and nothing
+    would record that the dependency exists.
     """
 
     def read_at_version(self, iri: str, version: int) -> Any: ...
+
+    def global_view(self) -> Any: ...
 
 
 @runtime_checkable

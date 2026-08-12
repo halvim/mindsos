@@ -36,14 +36,23 @@ here by **G8′** — assert nothing is registered Global at the lookup or
 decision IRIs, so a later realm move fails loud instead of silently
 shadowing the authority.
 
-**IRI shape.** ``capacity:decision:*`` (owner decision, 2026-08-09). It is
-the only shape where both rules agree: ``family_rule_for`` returns VERDICT
-via the category key, and ``origin_v0.DECISION_SHAPED_CATEGORIES`` — which
-matches on **category only** — sees the capacity, so the D15 opaque guard
-can fire. ``capacity:dec_rec:*`` would silently get ``DATASTATE_MARKER``
-and the guard would pass vacuously. Cost: ``decision`` is not one of
-``FUNCTIONAL_CATEGORIES``' thirteen, so this mints a 14th category graph —
-flagged to the core lane, not decided here.
+**IRI shape.** ``capacity:decision:*`` (owner decision, 2026-08-09), on the
+grounds that it was the only shape where both rules agree: ``family_rule_for``
+returns VERDICT via the category key, and ``origin_v0.DECISION_SHAPED_CATEGORIES``
+— which matches on **category only** — sees the capacity, so the D15 opaque
+guard can fire. ``capacity:dec_rec:*`` would silently get ``DATASTATE_MARKER``
+and the guard would pass vacuously.
+
+⚠ PARTLY SUPERSEDED 2026-08-12 by **ADR-0208 §D1**, and only for the LOOKUP.
+``family_rule_for`` has no caller in any shipped module, so what it returns is
+not load-bearing; and ``DECISION_SHAPED_CATEGORIES`` guards the capacity that
+COMPARES a value, which is the criterion, not the lookup. The shipped lookup is
+``capacity:retrieval:*`` and gets ``OPTIONAL_RETURN``. **The criterion stays
+``capacity:decision:*`` and the assertions below are unchanged** — they are
+about this file's own constants, which are the probe's, not the ship's. Cost
+noted and unchanged for the criterion: ``decision`` is not one of
+``FUNCTIONAL_CATEGORIES``' thirteen, so registering one mints a category graph
+lazily (``phase1_v0`` and ``orchestration_v0`` already do).
 
 **The two configurations exist because the plan contradicts itself.** Its
 §Shape says *one* lookup capacity producing the limit and the version as
@@ -526,12 +535,13 @@ def test_decision_iris_are_visible_to_the_d15_opaque_guard():
     invisible to ``opaque_into_decision`` and the guard reports green having
     inspected nothing.
     """
-    # ``origin_v0`` lives on ``feat/decision-records`` and this worktree is
-    # off ``origin/main`` — skip rather than fail, and the assertion starts
-    # running the moment E/F branch off the seam.
+    # CORRECTED 2026-08-12 — ``origin_v0`` landed on ``main`` at ``a310958``
+    # (plan item 1), so this stopped being a skip and the assertion below has
+    # been running since. The guard is kept rather than turned into a plain
+    # import because the module is an opt-in builtin, not a bootstrapped one.
     origin_v0 = pytest.importorskip(
         "mindsos_capacity.builtins.origin_v0",
-        reason="origin_v0 ships on feat/decision-records; not on origin/main",
+        reason="origin_v0 is an opt-in builtin; absent only in a partial tree",
     )
     DECISION_SHAPED_CATEGORIES = origin_v0.DECISION_SHAPED_CATEGORIES
 
