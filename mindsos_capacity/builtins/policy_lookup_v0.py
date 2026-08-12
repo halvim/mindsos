@@ -75,6 +75,7 @@ from .origin_v0 import (
     PRODUCER_POLICY_LOOKUP,
     REFUSAL_NO_SOURCE_IN_FORCE,
     REFUSAL_SOURCE_UNREACHABLE,
+    OriginContractError,
     assert_printable_phrase,
     build_origin_record,
     origin_record_iri,
@@ -111,7 +112,40 @@ SUPPLIED_WHEN_ADMITTED = (
 
 class PolicyStoreUnreachableError(RuntimeError):
     """The policy store could not be read. An environment fault, never a
-    finding about the customer's case — see the module docstring."""
+    finding about the customer's case — see the module docstring.
+
+    **``str(exc)`` is customer-visible text.** ``execute_pipeline`` writes it
+    onto L-2's ``RunStopped`` node as ``stopped_detail``, and a Decision Record
+    prints that node. So the message is prose only: no refusal token, no
+    MindsOS vocabulary, and no interpolated upstream exception — an upstream
+    message is arbitrary text nobody here has read, and it reaches a reader
+    unfiltered. The machine-readable reason is :attr:`refusal_reason`; the
+    underlying failure stays on ``__cause__`` for a traceback.
+    """
+
+    #: The closed refusal token, on the exception rather than inside its text.
+    refusal_reason = REFUSAL_SOURCE_UNREACHABLE
+
+
+def assert_printable_description(
+    description: str, field_name: str, datastate_name: str
+) -> None:
+    """A DataState description a Record prints must not name the DataState.
+
+    ``assert_printable_phrase`` refuses IRIs and MindsOS terms, and that is not
+    enough here: a DataState *name* is ``<realm>.<name>`` and carries no colon,
+    so ``"where the value of dr.filing_threshold came from"`` passes it while
+    being exactly the leak this refuses. Descriptions are the surface a Record
+    prints, and ``assert_printable_phrase`` has never guarded them.
+    """
+    assert_printable_phrase(description, field_name)
+    for token in (f"{datastate_name}_origin", datastate_name):
+        if token in str(description):
+            raise OriginContractError(
+                f"{field_name} must be prose a reader can be shown, not a "
+                f"description that names its own DataState: {description!r} "
+                f"contains {token!r}."
+            )
 
 
 def policy_limit_datastates(
@@ -129,6 +163,14 @@ def policy_limit_datastates(
     comparison, and a value core cannot check must not reach a capacity that
     decides.
     """
+    resolved_origin_description = (
+        origin_description
+        or f"where {limit_description} came from, and as of when"
+    )
+    assert_printable_description(limit_description, "limit_description", limit_name)
+    assert_printable_description(
+        resolved_origin_description, "origin_description", limit_name
+    )
     limit = DataState(
         name=limit_name,
         shape=ShapeDescriptor.scalar(limit_elem),
@@ -137,10 +179,7 @@ def policy_limit_datastates(
     origin = DataState(
         name=f"{limit_name}_origin",
         shape=ShapeDescriptor.opaque(ORIGIN_SHAPE_TAG),
-        description=(
-            origin_description
-            or f"where the value of {limit_name} came from, and as of when"
-        ),
+        description=resolved_origin_description,
     )
     return [limit, origin]
 
@@ -194,17 +233,17 @@ def build_policy_limit_lookup(
         kl = getattr(context, "kl", None)
         if kl is None:
             raise PolicyStoreUnreachableError(
-                f"{REFUSAL_SOURCE_UNREACHABLE}: no knowledge layer is bound to "
-                f"this invocation, so {source_identity_phrase} could not be "
-                f"consulted. This is an environment fault and must never be "
-                f"rendered as a finding about the case."
+                f"{source_identity_phrase} could not be consulted, because the "
+                f"store holding it was not available. This is a fault on our "
+                f"side and is never a finding about the case."
             )
         try:
             view = kl.global_view()
         except Exception as exc:  # noqa: BLE001 — any read failure is an outage
             raise PolicyStoreUnreachableError(
-                f"{REFUSAL_SOURCE_UNREACHABLE}: {source_identity_phrase} could "
-                f"not be consulted ({exc})."
+                f"{source_identity_phrase} could not be consulted, because the "
+                f"store holding it could not be read. This is a fault on our "
+                f"side and is never a finding about the case."
             ) from exc
 
         try:
@@ -231,9 +270,17 @@ def build_policy_limit_lookup(
         except AmbiguousEditionsError:
             raise
         except ValueError as exc:
+            # NOTE: this branch catches BOTH a malformed stored window AND a
+            # malformed ``as_of``, and reports both as our fault. That is right
+            # for the stored half and arguable for the asked half — a bad
+            # as-of date is a bad input, not an outage. Splitting it adds a
+            # third refusal reason, which is an ADR-0208 decision rather than
+            # prose hygiene, so the message here states only what is true of
+            # both causes. Filed as ``decision-records-as-of-date-validity``.
             raise PolicyStoreUnreachableError(
-                f"{REFUSAL_SOURCE_UNREACHABLE}: {source_identity_phrase} holds "
-                f"an edition whose in-force window cannot be read ({exc})."
+                f"{source_identity_phrase} could not be consulted, because a "
+                f"date involved could not be read. This is a fault on our side "
+                f"and is never a finding about the case."
             ) from exc
 
         props = edition.properties or {}
@@ -277,6 +324,7 @@ def policy_lookup_iri(name: str) -> str:
 
 __all__ = [
     "CATEGORY",
+    "assert_printable_description",
     "ORIGIN_SHAPE_TAG",
     "POSSIBLE_REFUSAL_REASONS",
     "PolicyStoreUnreachableError",
