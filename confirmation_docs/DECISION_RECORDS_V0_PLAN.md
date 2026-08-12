@@ -1,8 +1,9 @@
 ---
 title: Decision Records v0 — the single-lane plan
-status: Proposed. Owner-agreed D1–D6 on 2026-08-11. Not built.
+status: IN BUILD. Owner-agreed D1–D6 on 2026-08-11. Items 1 and 2 SHIPPED — see §2.0.
 date: 2026-08-11
-pin: origin/main af329eb · seam feat/decision-records f7cb857 (23 commits behind)
+pin: written against origin/main af329eb; items 1–2 shipped through cfc1795.
+  seam feat/decision-records f7cb857 (23+ commits behind)
 replaces: confirmation_docs/CORE_RECONCILIATION_PLAN.md as this lane's build order
 reads with: confirmation_docs/DECISION_RECORDS_V0_HANDOFF.md (its §3 is amended here),
   CORE_CR_POLICY_ROLE.md, CORE_CR_EXTERNAL_MODEL_SEAM.md + LLM_SEAM_MANUAL.md (on the seam branch)
@@ -129,13 +130,57 @@ from a GTM branch is what RULES §8 exists to stop."* The split was never sequen
 
 ## 2. Build order
 
-**Pin: `origin/main` `af329eb`.** Assert it in the same command box as any gate run or worktree
-creation. Re-pin only between items, never mid-item.
+### 2.0 Progress — READ THIS BEFORE PICKING UP AN ITEM
+
+Five ships on 2026-08-11, every lane closed per RULES §10 (worktree removed, branch deleted
+local and remote, both lists checked).
+
+| PR | Squash | What | Gate |
+|---|---|---|---|
+| #142 | `512e975` | This plan, and the three corrections §4 owed | 4569 / 12 / 1x / 0 |
+| #143 | `a310958` | **Item 1 ✅** — `origin_v0` + ADR-0207. Tag **`origin-records-confirmed`** | 4580 / 11 / 1x / 0 |
+| #144 | `b325607` | `DECISION_RECORDS_DEMO_PLAN.md` revision + the owed ship records | none — docs + STATE |
+| #145 | `c9754ac` | **Item 2 ✅** — L-2, the terminal node. Tag **`terminal-node-confirmed`** | **4591 / 11 / 1x / 0** |
+| #146 | `cfc1795` | Demo beat: route **exposures**, not the claim | none — docs + STATE |
+
+**Baseline for the next item: 4591 passed / 11 skipped / 1 xpassed / 0 failed at
+`c9754ac`.** It is carryable — `#145` was a **merged-state** gate (`merge-base
+--is-ancestor` proved the tip contained `origin/main`), unlike `#138`'s 4551, which was a
+branch gate and is not.
+
+**⏭ NEXT IS ITEM 3.** Items 1 and 2 are done; do not rebuild them.
+
+**Two things items 1 and 2 both proved, and the next item should try the same trick first:**
+
+1. **Constants imported from `mindsos_capacity/identifiers.py` rather than exported from
+   `mindsos_capacity/__init__.py` cost nothing.** `NODE_TYPE_CAPACITY_INSTANCE` is the
+   precedent; both ships followed it, and `mindsos_capacity.__all__` stayed at **146** with
+   `test_export_count_is_146` untouched. The `policies` role's 22-sentinel blast radius is
+   what happens when you cannot avoid the export slate; this is how you can.
+2. **`capacity_mm` carries no schema** (`Metagraph.schema is None`) and
+   `capacity_persister`'s encoder dispatches only on `DataStateInstance`, passing everything
+   else through. So a new instance node type with a primitive value costs **no type
+   registration and no persister change**.
+
+**One design point L-2 settled that is easy to re-derive wrongly:** `record_stopped()` and
+`record_cancelled()` are **two methods on purpose**. Cancellation's check precedes
+`dispatcher.dispatch`, so the step never ran, so it mints the `RunStopped` node **alone** —
+no `CapacityInstance`. Minting one would claim a capacity executed when it did not, which is
+what guard **G3** exists to refuse, and `record_stopped()` raises if handed the cancelled
+reason. That distinction was found by reading the code *after* the shape had been agreed.
+
+---
+
+**Pin: `origin/main` `af329eb`** at the time of writing; **build item 3 against `cfc1795`
+or later.** Assert the sha in the same command box as any gate run or worktree creation, and
+**merge `origin/main` into the lane before gating** — `origin/main` moved four times during
+item 2 alone, and `merge-base --is-ancestor` refuses otherwise. Re-pin between items, never
+mid-item.
 
 | # | Item | Acceptance |
 |---|---|---|
-| **1** | **Lift `origin_v0` to `main`** as its own core CR — the module, its ADR (number assigned, `Proposed`), and its tests. Trim `tests/llm_seam/test_origin_contract_and_scope.py` of anything importing `comprehension_v0`; what it loses moves to Layer B. Correct the route-probe docstring in the same commit (§4). | Gate green. No existing `mindsos_*` module edited. `parse_capacity_iri` is the only core import. |
-| **2** | **L-2 — a terminal node on every non-success.** `execute_pipeline` writes one node before every non-success return: failure, decline, cancellation. One node type carrying the capacity IRI, a closed reason and a detail. | A deliberately failing step leaves a node naming it. Shown red first. Gate green. |
+| **1** ✅ | **[SHIPPED `a310958`]** **Lift `origin_v0` to `main`** as its own core CR — the module, its ADR (number assigned, `Proposed`), and its tests. Trim `tests/llm_seam/test_origin_contract_and_scope.py` of anything importing `comprehension_v0`; what it loses moves to Layer B. Correct the route-probe docstring in the same commit (§4). | Gate green. No existing `mindsos_*` module edited. `parse_capacity_iri` is the only core import. |
+| **2** ✅ | **[SHIPPED `c9754ac`]** **L-2 — a terminal node on every non-success.** `execute_pipeline` writes one node before every non-success return: failure, decline, cancellation. One node type carrying the capacity IRI, a closed reason and a detail. | A deliberately failing step leaves a node naming it. Shown red first. Gate green. |
 | **3** | **The lookup capacity + the decision capacity.** Lookup: `capacity:decision:<name>`, as-of selection by **window containment**, two outputs (the limit and the policy version) as separate DataStates, refusals `no_source_in_force` (`environment_fault` false) and `source_unreachable` (true). Decision: family `decision`, VERDICT shape, typed to this criterion — never a generic comparator. Both emit origin records via item 1. | The `policies` role gains its first reader. One lookup, two outputs, fires once. |
 | **4** | **The run driver.** Mints the document as the grounding root **before** the find; builds a `PlanResult` with plural `leaf_targets[...]["start_datastates"]`; calls `execution.run(..., mm=...)`. | The route is *found* and *grounded* — not hand-assembled, not a script calling capacities in order. Precedent: `tests/phase_48/test_map_member_multiinput.py`. |
 | **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
@@ -192,6 +237,12 @@ satisfiable. This document is the ruling.
 ---
 
 ## 4. Corrections owed regardless of this plan
+
+> ✅ **ALL FOUR ARE DONE.** 1–3 landed in `512e975` (#142); 4 opened
+> `core-terminal-node-on-non-success`, which then shipped as item 2 (`c9754ac`). The
+> `register_capacity` half of D15 was opened as
+> `pending_designs.core-register-capacity-opaque-into-decision` in `a310958` (#143). The
+> list is kept because the *reasoning* is why the corrections were needed.
 
 1. **`tests/decision_records/test_route_probe.py`** — the docstring of
    `test_l4_cannot_express_plural_starts_this_is_D_A` says *"`_endpoint_starts` accepts plural;
