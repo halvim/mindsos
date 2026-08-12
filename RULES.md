@@ -290,6 +290,11 @@ numbering. Before picking up the next item:
    - What did the dump show that the plan does not mention?
    - What in the plan is now false?
    - What did this ship's mutations fail to redden?
+   - **When this ship introduced a classification, a guard or a contract — what
+     else in the same module is of the same kind and did not get it?** *(Added
+     after #155, which froze the origin union's FIELDS and left its
+     VOCABULARIES unclassified. The other six questions did not find it: a fix
+     can have the same hole it is fixing, and nothing was asking.)*
 3. **Append a dated block to the plan** naming what changed. **The item table may
    not advance until the previous ship has one.**
 

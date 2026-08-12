@@ -150,11 +150,12 @@ local and remote, both lists checked).
 | #151 | `1dad532` | **Probe D**, and the three prose leaks it found. Tag **`prose-leaks-confirmed`** | **4652 / 11 / 1x / 0** |
 | #152 | `49e3eda` | **`printable_phrase`** on the capacity declaration + ADR-0207 am-1. Tag **`capacity-printable-phrase-confirmed`** | **4666 / 11 / 1x / 0** |
 | #153 | `a3751f2` | **The run manifest** (item 4c), absorbing item 4a. Tag **`run-manifest-confirmed`** | **4677 / 11 / 1x / 0** |
-| #154 | *(squash)* | **Item 5** — the structured-ingest reader, and **run 2's first test** | **4694 / 11 / 1x / 0** |
+| #154 | `93ff31b` | **Item 5** — the structured-ingest reader, and **run 2's first test** | **4694 / 11 / 1x / 0** |
+| #155 | *(squash)* | **The origin-union freeze** + ADR-0207 am-2. Tag **`origin-union-freeze-confirmed`** | **4711 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4694 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#154's tip `f17aed2`.** It is carryable — #154 was a **merged-state** gate (`merge-base
---is-ancestor` proved the tip contained `origin/main`, which had not moved from `a3751f2`),
+**Baseline for the next item: 4711 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#155's tip `480c748`.** It is carryable — #155 was a **merged-state** gate (`merge-base
+--is-ancestor` proved the tip contained `origin/main`, which had not moved from `93ff31b`),
 unlike `#138`'s 4551, which was a branch gate and is not. **This line has been stale twice:
 it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
 table, in the same commit.**
@@ -460,6 +461,42 @@ advance until the previous ship has one.** §2.4 is the first such block.
 **A green gate is not the check.** Seven consecutive gates were predicted exactly
 while run 2 sat untested — the gate proves the tests agree with the code, and it
 cannot see a case nobody wrote a test for.
+
+---
+
+### 2.6 §12 check after #155 — the fix had the same hole it was fixing
+
+**First check under RULES §12** found seven things on #154; four were real
+defects, one reversed something asserted two messages earlier, and all became
+#155. **The second check found #155 itself incomplete.**
+
+⚠ **The freeze classified the union's FIELDS and left its VOCABULARIES
+unclassified** — the same class of gap, in the same module, missed by the ship
+that built the mechanism for it. `REFUSAL_REASONS` declares **8** tokens; the
+system can emit **3**. Four of the rest are **reserved** for the LLM seam, and
+**`source_unreachable` is degenerate for exactly the reason `environment_fault`
+is**: advertised in every lookup's `possible_refusal_reasons`, never able to be
+an actual `refusal_reason`, because that path raises and a raising step writes
+no record. A renderer reading the possible list would tell a reader *"this
+lookup could have told you the store was unreachable"* — and no record could
+ever say it. ⟹ `origin-refusal-vocabulary-classification`.
+
+**Not the same problem:** `RUN_STOPPED_REASONS`' `cancelled` and `needs_input`
+are unreachable in *this lane's* path but genuinely reachable system-wide.
+
+**Confirmed green by the same check:** the `RunManifest` node value is codec-safe
+under `make_node_value_encoder({})` and survives a JSON round-trip. **Probe C
+predated the manifest** and never covered it.
+
+**§12 gains a seventh question**, because the six would not have found this:
+**when a ship introduces a classification, a guard or a contract, what else in
+the same module is of the same kind and did not get it?**
+
+**Process failure, recorded rather than glossed.** The ADR amendment was appended
+*after* the pre-filter tarball was taken, was never pre-filtered, and was
+nonetheless described as having passed it. Structure was verified before the gate
+and the gate then covered it — but the claim was false when made. **Tar after the
+last edit; never say the pre-filter covered a file that postdates the tarball.**
 
 ---
 
