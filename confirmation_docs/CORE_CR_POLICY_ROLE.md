@@ -143,11 +143,19 @@ counts above should be treated as a prediction until Linux says otherwise.
 
 ## 8. What is NOT in this CR
 
-- **The lookup capacity.** `capacity:decision:*`, as-of selection by window containment,
-  and the two refusal reasons (`no_source_in_force` — a finding about the customer's own
-  policy set, `environment_fault` false; `source_unreachable` — an environment fault). It
-  belongs to the Decision Records lane and lands on the slice branch.
-- **Any write path**, and therefore any append-only enforcement.
+- ~~**The lookup capacity.**~~ ✅ **BUILT 2026-08-12, ADR-0208** — but at
+  `capacity:retrieval:*`, **not** `capacity:decision:*` as written here. The reasoning is in
+  that ADR §D1; the short version is that the two rules said to agree on the `decision` shape
+  do not, because `family_rule_for` has no caller in any shipped module. As-of selection by
+  window containment lives in **`mindsos_knowledge/policies.py`**, beside this role rather
+  than inside the capacity, because the next consumer of the store must not re-derive it
+  (RULES §8).
+- ~~**Any write path**, and therefore any append-only enforcement.~~ ⚠ **PARTLY BUILT.**
+  `mindsos_knowledge.policies.write_policy_edition` is the store's writer and it **refuses to
+  replace an existing edition**, so append-only is real *at the only door there is*.
+  `validate_mutation_discipline` remains uncalled system-wide and §6's caveat below stands
+  unchanged — `handle.graph().remove_node()` still bypasses everything, and **"append-only
+  policy store" is still not a sentence anyone may put in front of a customer.**
 - **Seeding the seam's prompt bodies.** The role can hold them — a prompt body is authored
   text under a version with the same in-force semantics — but wiring that is the seam
   lane's.
