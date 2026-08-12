@@ -319,6 +319,45 @@ NODE_TYPE_CAPACITY_INSTANCE = "CapacityInstance"
 PROP_DATASTATE_INSTANCE_TYPE = "datastate_type"
 PROP_CAPACITY_INSTANCE_TYPE = "capacity"
 
+# ── Run-stopped vocabulary (L-2) ───────────────────────────────────────
+#
+# ``execute_pipeline`` used to write to ``capacity_mm`` ONLY on a successful
+# step: the cancelled / needs_input / failed returns all preceded
+# ``writer.record``. So a capacity failure left NO node in the grounding
+# graph, and a Decision Record renders from that graph and nothing else —
+# every refusal that is not a *reading* refusal was structurally
+# unrenderable. These are the vocabulary for the terminal node that closes
+# it. Like the instance markers above they are live-only and free-form:
+# ``capacity_mm`` carries no schema, so nothing here is type-registered.
+
+#: ``type_name`` marker for the terminal node a non-success run writes.
+NODE_TYPE_RUN_STOPPED = "RunStopped"
+
+#: ``RunStopped`` → ``CapacityInstance``. Read as *"this stop occurred at
+#: this invocation"*. Absent on a cancellation, because the step never
+#: dispatched and there is no invocation to point at — minting a
+#: CapacityInstance there would claim a capacity executed when it did not,
+#: which is exactly what guard G3 exists to catch.
+EDGE_STOPPED_AT = "STOPPED_AT"
+
+#: The step's body raised.
+RUN_STOPPED_STEP_FAILED = "step_failed"
+#: The cancel token was set; the step never dispatched.
+RUN_STOPPED_CANCELLED = "cancelled"
+#: ADR-0196 — the body ran and deliberately asked for clarification.
+RUN_STOPPED_NEEDS_INPUT = "needs_input"
+
+#: Closed set. Deliberately NOT the ``origin_v0`` refusal vocabulary: that
+#: answers *why a value has no origin*, this answers *why a run stopped*.
+RUN_STOPPED_REASONS = frozenset(
+    {RUN_STOPPED_STEP_FAILED, RUN_STOPPED_CANCELLED, RUN_STOPPED_NEEDS_INPUT}
+)
+
+#: Free-form human detail (an exception message, a NeedsInput summary).
+PROP_RUN_STOPPED_DETAIL = "stopped_detail"
+#: On a cancellation only: the capacity IRI the run stopped *before*.
+PROP_RUN_STOPPED_BEFORE = "stopped_before"
+
 
 def _require_nonempty(value, label: str) -> str:
     if not isinstance(value, str) or not value:
@@ -381,6 +420,23 @@ def capacity_instance_iri(
     _require_nonempty(request_id, "request_id")
     run = _sanitize_run_ref(pipeline_run_ref)
     return f"capacity:{name}{_INSTANCE_SEP}{request_id}.{run}.{int(seq)}"
+
+
+def run_stopped_iri(request_id: str, pipeline_run_ref: str) -> str:
+    """Return the terminal ``RunStopped`` node IRI for a run (L-2).
+
+    Format: ``runstopped:<request_id>.<run>``. **Deterministic and one per
+    run**, which is what makes *"exactly one run-stopped node per run"*
+    assertable structurally rather than by counting properties. Safe because
+    ``execute_pipeline`` returns on the first non-success, so at most one can
+    ever be written for a given run.
+
+    Live-only, like the instance builders above: never registered, never
+    routed through :func:`datastate_iri` or :func:`capacity_iri`.
+    """
+    _require_nonempty(request_id, "request_id")
+    run = _sanitize_run_ref(pipeline_run_ref)
+    return f"runstopped:{request_id}.{run}"
 
 
 def datastate_instance_root_iri(type_iri: str, request_id: str) -> str:
@@ -528,6 +584,16 @@ __all__ = [
     "PROP_CAPACITY_INSTANCE_TYPE",
     "datastate_instance_iri",
     "capacity_instance_iri",
+    # Run-stopped vocabulary (L-2)
+    "NODE_TYPE_RUN_STOPPED",
+    "EDGE_STOPPED_AT",
+    "RUN_STOPPED_STEP_FAILED",
+    "RUN_STOPPED_CANCELLED",
+    "RUN_STOPPED_NEEDS_INPUT",
+    "RUN_STOPPED_REASONS",
+    "PROP_RUN_STOPPED_DETAIL",
+    "PROP_RUN_STOPPED_BEFORE",
+    "run_stopped_iri",
     "datastate_instance_root_iri",
     # Ref keys
     "REF_GLOBAL_CAPACITY",

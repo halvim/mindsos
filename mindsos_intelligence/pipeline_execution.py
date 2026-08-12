@@ -38,6 +38,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Mapping, Optional
 
+# L-2 run-stopped reason tokens. ``identifiers`` is a leaf module (no upward
+# imports), so this is safe at module level — unlike ``capacity_mm_writer``,
+# which stays a local import inside the function to keep the graph light.
+from mindsos_capacity.identifiers import (
+    RUN_STOPPED_NEEDS_INPUT,
+    RUN_STOPPED_STEP_FAILED,
+)
+
 
 @dataclass(frozen=True)
 class PipelineExecutionResult:
@@ -154,6 +162,12 @@ def execute_pipeline(
 
     for idx, step in enumerate(steps):
         if _is_cancelled(cancel_token):
+            # L-2 — a terminal node on every non-success, so a stopped run is
+            # renderable from the grounding graph. Cancellation is the case
+            # where the step never dispatched, so it mints the RunStopped node
+            # ALONE: no CapacityInstance, because no capacity ran.
+            if writer is not None:
+                writer.record_cancelled(before_capacity_iri=step.capacity_iri)
             return PipelineExecutionResult(
                 success=False, outputs=blackboard, cancelled=True, steps_run=idx,
                 capacity_graph=_cap_graph(),
@@ -175,6 +189,15 @@ def execute_pipeline(
         # with empty outputs, but is not a completed step).
         step_needs_input = getattr(result, "needs_input", None)
         if step_needs_input is not None:
+            # L-2 — the body RAN and deliberately asked, so the invocation is
+            # real: CapacityInstance + CONSUMES, then the terminal node.
+            if writer is not None:
+                writer.record_stopped(
+                    step.capacity_iri,
+                    step.input_datastates,
+                    RUN_STOPPED_NEEDS_INPUT,
+                    detail=getattr(step_needs_input, "missing", None),
+                )
             return PipelineExecutionResult(
                 success=False,
                 outputs=blackboard,
@@ -183,11 +206,22 @@ def execute_pipeline(
                 capacity_graph=_cap_graph(),
             )
         if not getattr(result, "success", False):
+            # L-2 — the body ran and raised. Same shape as needs_input: the
+            # invocation happened, so it is in the graph, and the CONSUMES
+            # edges hang the failure off the values that led to it.
+            step_error = getattr(result, "error", None)
+            if writer is not None:
+                writer.record_stopped(
+                    step.capacity_iri,
+                    step.input_datastates,
+                    RUN_STOPPED_STEP_FAILED,
+                    detail=str(step_error) if step_error is not None else None,
+                )
             return PipelineExecutionResult(
                 success=False,
                 outputs=blackboard,
                 failed_step=step.capacity_iri,
-                error=getattr(result, "error", None),
+                error=step_error,
                 steps_run=idx,
                 capacity_graph=_cap_graph(),
             )

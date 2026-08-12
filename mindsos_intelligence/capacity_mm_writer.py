@@ -61,13 +61,20 @@ from mindsos_core import Graph
 from mindsos_capacity.identifiers import (
     EDGE_CONSUMES,
     EDGE_PRODUCES,
+    EDGE_STOPPED_AT,
     NODE_TYPE_CAPACITY_INSTANCE,
     NODE_TYPE_DATASTATE_INSTANCE,
+    NODE_TYPE_RUN_STOPPED,
     PROP_CAPACITY_INSTANCE_TYPE,
     PROP_DATASTATE_INSTANCE_TYPE,
+    PROP_RUN_STOPPED_BEFORE,
+    PROP_RUN_STOPPED_DETAIL,
+    RUN_STOPPED_CANCELLED,
+    RUN_STOPPED_REASONS,
     capacity_instance_iri,
     datastate_instance_iri,
     datastate_instance_root_iri,
+    run_stopped_iri,
 )
 
 from .mm import MentalModel
@@ -201,6 +208,107 @@ class CapacityMMWriter:
                 out_inst = self._mint_datastate(out_iri, value)
                 graph.add_edge(cap_node, graph.nodes[out_inst], EDGE_PRODUCES)
             return cap_inst
+
+    def record_stopped(
+        self,
+        capacity_iri: str,
+        input_datastate_iris: Iterable[str],
+        reason: str,
+        detail: Optional[str] = None,
+    ) -> str:
+        """Record a run that stopped **at an invocation that happened** (L-2).
+
+        For the two non-success returns where the body actually ran: it raised
+        (``step_failed``) or it deliberately asked (``needs_input``, ADR-0196).
+        Mints the :data:`NODE_TYPE_CAPACITY_INSTANCE` and its CONSUMES edges
+        exactly as :meth:`record` does — the invocation is real and belongs in
+        the graph — then mints the terminal :data:`NODE_TYPE_RUN_STOPPED` node
+        and wires ``RunStopped --STOPPED_AT--> CapacityInstance``.
+
+        **No DataStateInstance and no PRODUCES**: the step produced nothing.
+        The CONSUMES edges are the load-bearing part — they are what hangs the
+        stop off the values that led to it, which is what makes a refusal
+        renderable at all rather than a bare "something failed".
+
+        Returns the RunStopped IRI. Use :meth:`record_cancelled` when the step
+        never dispatched.
+        """
+        if reason not in RUN_STOPPED_REASONS:
+            raise ValueError(
+                f"unknown run-stopped reason {reason!r}; "
+                f"expected one of {sorted(RUN_STOPPED_REASONS)}"
+            )
+        if reason == RUN_STOPPED_CANCELLED:
+            raise ValueError(
+                "use record_cancelled() for a cancellation: the step never "
+                "dispatched, so minting a CapacityInstance would claim a "
+                "capacity executed when it did not"
+            )
+        with self._mm.lock.write_locked():
+            graph = self._run_graph()
+            cap_inst = capacity_instance_iri(
+                capacity_iri, self._request_id, self._run_ref,
+                self._next_seq(f"cap:{capacity_iri}"),
+            )
+            cap_node = graph.add_node(
+                value=capacity_iri,
+                type_name=NODE_TYPE_CAPACITY_INSTANCE,
+                properties={PROP_CAPACITY_INSTANCE_TYPE: capacity_iri},
+                node_id=cap_inst,
+            )
+            for in_iri in input_datastate_iris:
+                producer = self.index.get(in_iri)
+                if producer is not None:
+                    graph.add_edge(graph.nodes[producer], cap_node, EDGE_CONSUMES)
+            stop_node = self._mint_run_stopped(graph, reason, detail)
+            graph.add_edge(stop_node, cap_node, EDGE_STOPPED_AT)
+            return stop_node.node_id
+
+    def record_cancelled(
+        self, before_capacity_iri: Optional[str] = None, detail: Optional[str] = None
+    ) -> str:
+        """Record a run cancelled **before a step dispatched** (L-2).
+
+        Deliberately NOT a mode of :meth:`record_stopped`. The cancel check in
+        ``execute_pipeline`` runs *before* ``dispatcher.dispatch``, so no
+        invocation occurred: this mints the terminal
+        :data:`NODE_TYPE_RUN_STOPPED` node **alone**, with no CapacityInstance
+        and no ``STOPPED_AT`` edge, carrying the capacity it stopped before as
+        :data:`PROP_RUN_STOPPED_BEFORE`.
+
+        Hiding that behind an ``invoked=False`` flag would put a node in the
+        grounding graph for a capacity that never ran, which is the exact class
+        of claim guard G3 exists to refuse.
+        """
+        with self._mm.lock.write_locked():
+            graph = self._run_graph()
+            node = self._mint_run_stopped(
+                graph, RUN_STOPPED_CANCELLED, detail,
+                extra={PROP_RUN_STOPPED_BEFORE: before_capacity_iri}
+                if before_capacity_iri else None,
+            )
+            return node.node_id
+
+    def _mint_run_stopped(self, graph, reason: str, detail, extra=None):
+        """Mint the run's single terminal node. Caller holds the write lock.
+
+        The node's ``value`` is the reason **token**, a primitive — so the
+        Slice-B persister's default encoder takes it unchanged (it dispatches
+        only on ``DataStateInstance``) and no persister change is needed. The
+        IRI is deterministic per run, so *"exactly one RunStopped node per
+        run"* is a structural assertion.
+        """
+        props: Dict[str, Any] = {}
+        if detail is not None:
+            props[PROP_RUN_STOPPED_DETAIL] = str(detail)
+        if extra:
+            props.update({k: v for k, v in extra.items() if v is not None})
+        return graph.add_node(
+            value=reason,
+            type_name=NODE_TYPE_RUN_STOPPED,
+            properties=props or None,
+            node_id=run_stopped_iri(self._request_id, self._run_ref),
+        )
 
     def link_provenance(
         self,
