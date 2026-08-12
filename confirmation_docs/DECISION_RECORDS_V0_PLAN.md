@@ -144,15 +144,16 @@ local and remote, both lists checked).
 | #146 | `cfc1795` | Demo beat: route **exposures**, not the claim | none — docs + STATE |
 | #147 | `e7fd779` | Close-out: the plan doc had no progress markers | none — docs |
 | #148 | `7c4c313` | **Item 3 ✅** — the policy lookup + the criterion, ADR-0208. Tag **`policy-lookup-confirmed`** | **4634 / 11 / 1x / 0** |
-| TBD | TBD | **Item 4 ✅** — the run driver, through `execution.run` | TBD |
+| #149 | `5f9c5cb` | **Item 4 ✅** — the run driver, through `execution.run`. **No tag: no `mindsos_*` touched** | **4645 / 11 / 1x / 0** |
 
 **Baseline for the next item: 4591 passed / 11 skipped / 1 xpassed / 0 failed at
 `c9754ac`.** It is carryable — `#145` was a **merged-state** gate (`merge-base
 --is-ancestor` proved the tip contained `origin/main`), unlike `#138`'s 4551, which was a
 branch gate and is not.
 
-**⏭ NEXT IS ITEM 5**, the structured-ingest reader — which is what run 2 waits on.
-Items 1 through 4 are done; do not rebuild them.
+**⏭ NEXT IS §2.2's probe D, NOT item 5.** Items 1 through 4 are done; do not rebuild them.
+**Run 2 does not wait on item 5** — §2.1's probe B ran it end to end. Read §2.1 before
+scoping anything.
 
 **Item 4's acceptance was wrong and is corrected below.** *"Mints the document as
 the grounding root before the find"* is not buildable through `execution.run`,
@@ -209,6 +210,80 @@ and a Record that confused the two would be false.
 no `CapacityInstance`. Minting one would claim a capacity executed when it did not, which is
 what guard **G3** exists to refuse, and `record_stopped()` raises if handed the cancelled
 reason. That distinction was found by reading the code *after* the shape had been agreed.
+
+---
+
+### 2.1 What three probes established, 2026-08-12 — read this before scoping item 5
+
+Run as throwaway experiments against the shipped tree; **nothing here was committed as code**.
+Same method as the day-one route probe and the four stub capacities: run it, do not argue
+about it. All three changed the plan.
+
+**Probe A — the prose probe.** Dumped a driven run's grounding graph and hand-wrote the Record
+from *only* what is in it. **The graph is roughly 80% sufficient.** The clean run composes to:
+
+> *The return as filed states a gross income of 61,000, read by a language model from their
+> filed return. The filing-threshold policy, version 2024.1, in force since 2024-01-01, sets
+> the gross income at which a return must be filed at 29,200. Therefore: a return must be
+> filed.*
+
+Three defects, two of them in already-merged code — tracked as `pending_designs`
+**`decision-records-record-prose-convention`**:
+
+1. **Registered prose leaks an identifier.** `policy_limit_datastates`' generated default
+   description reads *"where the value of `dr.filing_threshold` came from"* — a DataState
+   **name** in prose the renderer prints. `assert_printable_phrase` guards
+   `source_identity_phrase` and `question` but **not descriptions**, which is the surface that
+   matters. One-line fix in `mindsos_capacity/builtins/policy_lookup_v0.py`; it is a code
+   change and needs its own gate.
+2. **The stand-in reader lies in the Record.** It stamps `origin_method=read_by_model` /
+   *"read by a language model"* and **no model exists**. False provenance, in the product whose
+   claim is provenance. Item 5 must stamp `structured_ingest` until a model is real.
+3. **The connective sentence — and it may need nothing.** Descriptions are registered as
+   labels and questions (*"whether the stated income reaches the threshold in force"*) where
+   the Record wants a statement. **But the verdict value is already prose and the threshold's
+   description already reads as one, so a GENERIC "Therefore:" template may be enough and the
+   per-criterion template — the hand-maintained mirror the audit warns about — may not be
+   needed at all.** That is §2.2's probe D, and it is the thing to settle first.
+
+**Probe B — the exposure probe. It reversed this lane's own largest push-back.** Three
+exposures on one claim, through a `map` milestone over the *existing* capacities, **no core
+change**: 61,000 → *a return must be filed*; 12,000 → *no return is required*; income absent →
+***not determined***. Three isolated grounding graphs, one per exposure. **L-1 does not
+collide** — members get isolated sub-blackboards and each member run grounds separately. So
+`DECISION_RECORDS_DEMO_PLAN.md`'s headline beat — *a per-exposure refusal standing beside a
+per-exposure answer, on the same claim* — **works today**. It also ran **run 2** end to end,
+which is why item 5 shrinks to *"make the stub honest"*.
+
+⚠ **What survives, and it is a guard rail rather than a blocker.** With the store unreachable
+the member capacity **raises**, and `MemberAbortError` kills the **whole claim** — observed:
+*"member 0 failed after 2 attempt(s) (all-or-nothing abort)"*, having retried twice on
+identical in-memory input first (which also confirms
+`COLLECTION_ITERATION_OPEN_REVIEW_FINDINGS.md` finding 1 for this path). Benign today, because
+our only raising path is a global outage. **The day anyone writes a member capacity that
+raises on a per-exposure problem, one bad exposure destroys the whole claim's Record.** Tracked
+as `pending_designs` **`core-collection-member-dont-know`** — and note that ADR-0208's refusal
+design *is* the "unenforced, undocumented convention" finding 2 names, shipped one level down.
+
+**Probe C — the persistence probe. Green.** Every node value this lane produces is codec-safe
+under `make_node_value_encoder({})` with **no encoders at all**: origin records persist as
+`dict`, `RunStopped` as `str`. Item 7's *"rendered from the **persisted** graph"* is reachable
+without a `DataState.encode`. **Caveat:** that is the value-codec half; a real FalkorDB
+round-trip was not runnable in the pre-filter container and is still unproven.
+
+### 2.2 Probe D — the next thing to do, and it is not a build
+
+**Sketch the generic renderer over the three graphs items 3 and 4 already produce** (clean,
+refusal, outage). No code committed. One question: **can a single template produce all three
+pages with no per-criterion knowledge?**
+
+- **Yes** ⟹ there is no prose-convention change. Item 7 is smaller than written and item 3's
+  declarations stand.
+- **No** ⟹ the convention change is real, it touches ADR-0208's declarations, and it must land
+  **before** item 5 adds a fourth capacity that inherits the wrong shape.
+
+It costs about an hour and it decides the scope of two items. Doing item 5 first risks building
+on a convention that turns out to be wrong.
 
 ---
 

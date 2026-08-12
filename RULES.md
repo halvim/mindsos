@@ -138,9 +138,25 @@ worktree still holds. So the worktree goes **first**:
 
 **remove the worktree → merge → pull → prune.**
 
+⚠ **This is TWO boxes, and it is not a style preference.** `gh pr merge --delete-branch` runs
+its own local git to delete the branch, and `&&` fires when `gh`'s *process* exits — not when
+its git work has released the index. Chaining `git pull` onto it races that and dies with
+*"Unable to create '.git/index.lock': File exists. Another git process seems to be running"*,
+which reads exactly like the sandbox lock-strand symptom and sends you diagnosing the wrong
+thing. It is a **race**: the byte-identical one-liner worked on PR #148 and failed on #149 an
+hour later. Recover with `find .git -name '*.lock' -print -delete`, then run box 2.
+
 ```
-cd ~/Documents/Claude/Projects/MindsOS && git worktree remove ../_MindsOS-<slice> && gh pr merge <N> --squash --delete-branch && git pull --ff-only && git worktree prune && git worktree list && git branch --list
+cd ~/Documents/Claude/Projects/MindsOS && git worktree remove ../_MindsOS-<slice> && gh pr merge <N> --squash --delete-branch
 ```
+
+```
+cd ~/Documents/Claude/Projects/MindsOS && git pull --ff-only && git worktree prune && git worktree list && git branch --list
+```
+
+**General form:** an `&&` chain is safe only while every step is a git call you control. The
+moment a *wrapper* is in it — `gh`, a script, anything that shells out to git — assume it is
+still working after it returns, and give the next step its own box.
 
 If you merged first and it refused, recover with:
 
