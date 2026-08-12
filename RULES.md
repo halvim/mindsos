@@ -22,9 +22,21 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - **Core-contributor projects** (edit core, merge phases to `main`) →
   `projects/{wsd,fol,dwf_mapping,skill_acquisition,maintenance}/`, own worktree
   + own test instance, branches `wsd-NN`/`fol-NN`/`dwf-NN`/`feat/*`.
-- **Demo projects** (built on top, never edit core) →
-  `projects/{robot_demo,arc_demo,bongard_demo}/` on `demo/*` branches, own
-  worktree (`MindsOS-robot`, `MindsOS-arc`, `MindsOS-bongard`) + own instance.
+- **Demo projects** (built on top, never edit core) → a **root-level** directory
+  (`robot_demo/`, `decision_records_demo/`) that exists **only on its own `demo/*`
+  branch**, never on `main`, with its own worktree (`MindsOS-robot`, `MindsOS-arc`,
+  `MindsOS-bongard`, `MindsOS-dr`), its own `requirements-demo.in` and its own
+  instance.
+  ⚠ **CORRECTED 2026-08-12.** This line used to say `projects/{robot_demo,arc_demo,
+  bongard_demo}/`. **That path exists on no branch** and it cost a week: a lane
+  built demo material under `projects/` because the rule said so. Verified against
+  the tree — `robot_demo/` is at the root of `demo/robot` and absent from `main`;
+  `projects/` on `main` holds **core-contributor** projects only (`wsd`, `fol`,
+  `dwf_mapping`, `skill_acquisition`, `maintenance`).
+  A demo is **not** in the core test image: `Dockerfile` and `docker-compose.yml`
+  are byte-identical between `main` and `demo/robot`, so a demo runs in its own
+  environment and its tests are **not** part of the core gate. That is the point —
+  a consumer that can break core's gate is not a consumer.
 
 ## 2. Branches
 - Off `main`, squash-merge back, then delete: `phase-NN`, `wsd-NN`, `dwf-NN`,
@@ -223,3 +235,64 @@ not add an exclusion to make it green — that is how §2 decayed into a 43-bran
 
 > **A rule with no enforcement is a rule that has already decayed.** §2 said "then delete"
 > from the start. It was never checked, so it was never followed.
+
+---
+
+## 11. Showing what the system does
+
+When I ask what the system can do, show me **what the system emits**, and give me
+a command I can run **myself** to get it. Anything you wrote to produce that
+output — a script, the formatting, the wording, the ordering — is labelled as
+yours **above the output**, not after I ask.
+
+- **Default to raw.** `repr()`, unmodified stdout, an unedited file. Ugly is fine;
+  ugly is information.
+- **The command must run in my environment** (the Linux gate box, the docker test
+  image, the demo's own env) and need nothing from Cowork. A result I can only get
+  through you is not a result I can check.
+- **Label the seam before the output** — which characters the system emitted,
+  which you composed.
+- **State what it cannot do in the same message.** A list of only successes is a
+  pitch.
+- **A probe or a sketch is never a capability.** Say which it is in the first
+  sentence.
+- **The standard: if this were shown in a room tomorrow and nobody edited it, what
+  appears?** Answer that — not what you could assemble from the parts.
+
+**Why this exists.** 2026-08-12: asked for an example of what the Decision Records
+demo could do, a throwaway renderer was written, run, and its output presented
+under headings as though the system had produced it. The claim *"every line is
+rendered from the graph alone"* was true of the **data** and false of the
+**presentation** — there is no renderer in MindsOS. The seam came out only when I
+asked *"how do I know you are not adding your interpretation?"*. **The disclosure
+has to come first, unprompted.**
+
+---
+
+## 12. After every ship: check the system, then re-check the plan
+
+**"Ship" means a merged, tagged item** — not a phase from a demo plan's own
+numbering. Before picking up the next item:
+
+1. **Run the system and dump what it produces**, raw, against the **merged**
+   state after the squash — never the branch tip, or the check certifies
+   something that never existed on `main`. Hand over the command (§11). **A green
+   gate is not the check**; the gate proves the tests agree with the code, and the
+   check is what audits both.
+2. **Answer these, in writing:**
+   - For every run/case the plan names — **name the test that gates it.** No name
+     means not gated. *(This question alone would have caught Decision Records run
+     2, which was half of v0's definition and had no test for four ships.)*
+   - For every guard — **name the test.** A guard whose test is not named after it
+     is unfindable and counts as missing.
+   - Every mechanism the plan cites — **grep for a caller.** Three plan arguments
+     have rested on mechanisms nothing calls.
+   - What did the dump show that the plan does not mention?
+   - What in the plan is now false?
+   - What did this ship's mutations fail to redden?
+3. **Append a dated block to the plan** naming what changed. **The item table may
+   not advance until the previous ship has one.**
+
+**Two stop conditions.** A re-evaluation may reorder, absorb or delete items — if
+it never does, it is not working. And **two consecutive re-evaluations that change
+nothing mean the check is too shallow**, not that the plan is right; deepen it.

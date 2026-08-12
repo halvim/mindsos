@@ -225,6 +225,19 @@ class OriginContractError(ValueError):
     """A record does not satisfy the origin contract."""
 
 
+#: Opaque tag every origin-record DataState carries, whoever produces it.
+#: **One tag, deliberately.** It moved here from ``policy_lookup_v0`` the
+#: moment a second producer needed it: two producers with two tags would give
+#: their origin DataStates two different shapes, and a renderer could no longer
+#: treat "the origin of this value" as one thing. Opaque is correct rather than
+#: a shortcut — the union above is closed by agreement and not frozen, so a
+#: record shape pinned today would pin a guess — and it is safe for the reason
+#: ``DECISION_SHAPED_CATEGORIES`` exists: an origin record is never consumed by
+#: a capacity that compares it against a limit. The **value** always carries a
+#: real shape; that one is never opaque.
+ORIGIN_SHAPE_TAG = "origin.record.v0"
+
+
 def origin_record_iri(value_datastate_iri: str) -> str:
     """The origin-record DataState paired with ``value_datastate_iri``.
 
@@ -462,6 +475,7 @@ __all__ = [
     "REFUSAL_NO_SOURCE_IN_FORCE", "REFUSAL_QUOTE_NOT_IN_SOURCE",
     "REFUSAL_REASONS", "REFUSAL_SOURCE_UNREACHABLE",
     "REFUSAL_VALUE_NOT_COERCIBLE", "SPINE",
+    "ORIGIN_SHAPE_TAG",
     "assert_printable_phrase", "build_origin_record",
     "decision_consumers_of", "decision_producers_of",
     "metagraphs_in_scope", "missing_declared_fields",

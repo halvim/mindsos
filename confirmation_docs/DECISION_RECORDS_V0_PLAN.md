@@ -149,11 +149,12 @@ local and remote, both lists checked).
 | #150 | `fd6cefc` | The three probes, and RULES §10's close-a-lane command split in two | none — docs |
 | #151 | `1dad532` | **Probe D**, and the three prose leaks it found. Tag **`prose-leaks-confirmed`** | **4652 / 11 / 1x / 0** |
 | #152 | `49e3eda` | **`printable_phrase`** on the capacity declaration + ADR-0207 am-1. Tag **`capacity-printable-phrase-confirmed`** | **4666 / 11 / 1x / 0** |
-| #153 | *(squash)* | **The run manifest** (item 4c), absorbing item 4a. Tag **`run-manifest-confirmed`** | **4677 / 11 / 1x / 0** |
+| #153 | `a3751f2` | **The run manifest** (item 4c), absorbing item 4a. Tag **`run-manifest-confirmed`** | **4677 / 11 / 1x / 0** |
+| #154 | *(squash)* | **Item 5** — the structured-ingest reader, and **run 2's first test** | **4694 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4677 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#153's tip `124421b`.** It is carryable — #153 was a **merged-state** gate (`merge-base
---is-ancestor` proved the tip contained `origin/main`, which had not moved from `49e3eda`),
+**Baseline for the next item: 4694 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#154's tip `f17aed2`.** It is carryable — #154 was a **merged-state** gate (`merge-base
+--is-ancestor` proved the tip contained `origin/main`, which had not moved from `a3751f2`),
 unlike `#138`'s 4551, which was a branch gate and is not. **This line has been stale twice:
 it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
 table, in the same commit.**
@@ -358,7 +359,7 @@ interpolated an arbitrary upstream exception into customer-facing text.
 
 #### Order
 
-~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → **item 5 ← NEXT** → item 7.
+~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → **the demo's own home ← NEXT** → persistence → item 7.
 
 **The pre-filter halves from here.** The baseline is always `main` and every merge is gated, so
 **the previous item's change-tree run IS the next item's baseline** — keep its log and tarball
@@ -415,6 +416,50 @@ v0 is **runs 1 and 2**. Runs 3, 4 and 5 follow item 2 landing, not before.
 **Run 5's trap, carried forward:** the recorded-reading replay key hashes the exact source text.
 **The as-of date stays out of the document** and enters as its own DataState into the lookup, or
 run 5 silently becomes *"different documents give different limits"* — the opposite of the point.
+
+---
+
+### 2.4 Where v0 actually stood, 2026-08-12 — read against the tree, not the plan
+
+**Expectations were not met, and one gap was worse than this document claimed.**
+
+⚠ **`G2` was overstated in §2.3 and in #153's own ship record.** G2 says *the
+renderer raises rather than filling the gap*. **There is no renderer.** What #153
+shipped is G2's **precondition** — the graph can now tell a premise from a gap.
+The guard cannot exist until item 7. Its test is named `test_g2_…` and overstates
+itself; the name is kept so the pairing is findable, and this line is the
+correction.
+
+⚠ **Run 2 — half of what v0 IS — had no committed test for four ships.** Every
+seed carried an income, so the reader's refusal branch was unreachable;
+`REFUSAL_FIELD_ABSENT` appeared only inside `_dr_fixtures.py`, never in an
+assertion. §2.1 said probe B *"ran run 2 end to end"* — a throwaway that was never
+committed. **Fourth time in this lane an argument rested on something not in the
+tree.** ✅ **Closed by #154**, in both shapes (absent, and stated-but-unreadable).
+
+**The rest of the audit, and what remains:**
+
+| | State after #154 |
+|---|---|
+| Runs 1, 2, 3, 4, 5 | ✅ all gated |
+| G3, G7, G8′ | ✅ named tests |
+| **G5** | ✅ — was real but **unnamed** in three modules, so unfindable. Named in #154. |
+| **G4** | ⚠ reading half closed by #154; both refusal shapes now structural |
+| **G2** | ⚠ precondition only, until item 7 |
+| **G1, G6** | ❌ need the renderer |
+| **Persistence** | ❌ **no code path.** `persist_capacity_mm` is reached only from `consolidation.consolidate_request` ← the orchestrator, and `_dr_driver` calls `execution.run` directly. "From the persisted graph" is unmet and unowned. |
+| **Two IRI leaks** | ❌ G6-red today: the manifest's `declared_starts` (bare IRIs, visible on the no-route page) and `source_datastate` inside every origin record |
+
+### 2.5 After every ship — the procedure
+
+**Canonical text is RULES §12; it is not duplicated here.** In this lane it means:
+run `decision_records_demo`'s dump against the **merged** state, answer §12's six
+questions in writing, and append a dated block to §2. **The item table may not
+advance until the previous ship has one.** §2.4 is the first such block.
+
+**A green gate is not the check.** Seven consecutive gates were predicted exactly
+while run 2 sat untested — the gate proves the tests agree with the code, and it
+cannot see a case nobody wrote a test for.
 
 ---
 

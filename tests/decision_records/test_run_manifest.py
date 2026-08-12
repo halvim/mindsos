@@ -42,7 +42,7 @@ from ._dr_fixtures import (
     CAP_DECISION,
     CAP_LOOKUP,
     CAP_READER,
-    DS_DOCUMENT,
+    DS_FILING_RECORD,
     DS_FILING_VERDICT,
     INITIAL_2024,
     STARTS,
@@ -139,7 +139,7 @@ def test_g2_a_deleted_producer_is_now_distinguishable_from_a_premise():
         "parentless AND not declared: a renderer can now call this a gap "
         "rather than printing a derived conclusion as a premise"
     )
-    assert DS_DOCUMENT in declared, "a real premise stays a premise"
+    assert DS_FILING_RECORD in declared, "a real premise stays a premise"
 
 
 # ── (2) what decided ──────────────────────────────────────────────────
@@ -196,13 +196,13 @@ def test_run_4_leaves_a_graph_instead_of_only_an_exception():
     with pytest.raises(LeafPipelineNotFound):
         run_decision_record(
             build_kl_with_both(), INITIAL_2024, request_id="mf-noroute",
-            plan=decision_record_plan(starts=(DS_DOCUMENT,)),
+            plan=decision_record_plan(starts=(DS_FILING_RECORD,)),
             graphs=graphs,
         )
     assert len(graphs) == 1, "an unroutable run must still leave its graph"
     graph = graphs[0]
     manifest = _the_manifest(graph)
-    assert manifest.value[MANIFEST_DECLARED_STARTS] == [DS_DOCUMENT]
+    assert manifest.value[MANIFEST_DECLARED_STARTS] == [DS_FILING_RECORD]
     assert manifest.value[MANIFEST_CAPACITY_PHRASES] == {}, (
         "no route means no capacity ran, so there is nothing to name — and a "
         "manifest that named one would be claiming an execution that did not "

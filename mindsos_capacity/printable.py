@@ -69,8 +69,36 @@ def assert_printable_phrase(phrase: Any, field_name: str) -> None:
         raise PhraseNotPrintable(problem)
 
 
+def describes_without_naming(
+    description: str, field_name: str, datastate_name: str
+) -> None:
+    """A DataState description a Record prints must not name the DataState.
+
+    Moved here from ``builtins/policy_lookup_v0`` when a second producer
+    family needed it: a rule two builtins share is not one builtin's. The
+    behaviour and the message are unchanged, and
+    ``policy_lookup_v0.assert_printable_description`` still exists as the
+    name that shipped.
+
+    :func:`printable_phrase_problem` is not enough on its own and cannot be:
+    a DataState name is ``<realm>.<name>`` and carries no colon, so
+    ``"where the value of dr.filing_threshold came from"`` passes it while
+    being exactly the leak PR #151 fixed. Catching that needs the name in
+    hand, which only the factory building the DataState has.
+    """
+    assert_printable_phrase(description, field_name)
+    for token in (f"{datastate_name}_origin", datastate_name):
+        if token in str(description):
+            raise PhraseNotPrintable(
+                f"{field_name} must be prose a reader can be shown, not a "
+                f"description that names its own DataState: {description!r} "
+                f"contains {token!r}."
+            )
+
+
 __all__ = [
     "IDENTIFIER_MARKERS",
+    "describes_without_naming",
     "PhraseNotPrintable",
     "assert_printable_phrase",
     "printable_phrase_problem",

@@ -10,6 +10,20 @@
   },
   "pending_designs": [
     {
+      "name": "decision-records-demo-project",
+      "status": "OPENED 2026-08-12, owner-ruled, NOT BUILT. The demo must be a USER of MindsOS, not main code. VERIFIED CONVENTION (the tree, not RULES): a demo is a ROOT-LEVEL directory that exists ONLY on its own demo/* branch and never on main - robot_demo/ is at the root of demo/robot and absent from main - with its own requirements-demo.in and its own env. Dockerfile and docker-compose.yml are BYTE-IDENTICAL between main and demo/robot, so a demo is NOT in the core test image and its tests are NOT part of the core gate. RULES section 1 said projects/{robot_demo,arc_demo,bongard_demo}/ - a path that exists on no branch - and that error cost a week; corrected in PR #154. SCOPE: branch demo/decision-records, worktree MindsOS-dr, directory decision_records_demo/ at root, pinning a core tag. It holds the claims vocabulary, the driver, dr_dump.py (the RULES section 12 check command), its own tests. NOTHING SHIPPED MOVES: origin_v0, policy_lookup_v0, structured_ingest_v0, the terminal node, printable_phrase and the manifest are all mechanism and stay core per RULES section 8. tests/decision_records/ keeps the TAX vocabulary as core's own test data - not duplication, because the demo's domain is CLAIMS and the demo plan already names sharing a DataState type between them as a risk. OPEN RULING: the renderer splits - graph-walk and manifest-phrase resolution are core-shaped, the page layout and vocabulary are demo.",
+      "branch_to_open": "demo/decision-records off main",
+      "spec": "confirmation_docs/DECISION_RECORDS_V0_PLAN.md section 2.5 + RULES.md sections 1, 11, 12",
+      "consumer": "the live demo (DECISION_RECORDS_DEMO_PLAN.md Phase 7)"
+    },
+    {
+      "name": "decision-records-persisted-render",
+      "status": "OPENED 2026-08-12, NOT BUILT, NO OWNER. Plan item 7's acceptance is 'rendered from the PERSISTED capacity_mm graph and nothing else', owner-ruled to mean a REAL FalkorDB round-trip. There is no code path: persist_capacity_mm is called only from consolidation.consolidate_request, i.e. the orchestrator, and _dr_driver calls execution.run directly, so the Decision Records path persists NOTHING today. Probe C proved the value codec is safe with no encoders; that is the codec half only, and a real round-trip has never been run. Blocks item 7's acceptance, not item 7's code.",
+      "branch_to_open": "feat/<slice> off main",
+      "spec": "confirmation_docs/DECISION_RECORDS_V0_PLAN.md section 2.4",
+      "consumer": "the Decision Records renderer (plan item 7)"
+    },
+    {
       "name": "decision-records-run-manifest",
       "status": "[BUILT AND SHIPPED 2026-08-12 — PR #153, tag run-manifest-confirmed, gate 4677.] One RunManifest node per run, minted in _run_leaf_pipeline ABOVE _compose_pipeline, carrying the declared start set, a snapshot of each composed capacity's printable_phrase, and the closed RUN_STOPPED_PHRASES vocabulary. Contents live in the node VALUE as a dict because Graph.add_node validates properties as PRIMITIVES ONLY and all three fields are collections - a constraint verified in the code, not assumed, and the dict value is the shape probe C proved codec-safe. GUARD G2 IS NOW IMPLEMENTABLE and is this CR's acceptance. TWO THINGS THE NEXT AUTHOR SHOULD NOT RE-DERIVE. (1) execute_pipeline is UNCHANGED. An earlier draft threaded the hoisted writer in to prevent a double-mint; that was TESTED AND FALSIFIED - both writers resolve the same per-run graph by role and the hoisted one mints only the manifest, which is neither indexed nor sequenced. Removing the parameter reddened nothing. (2) _capacity_phrases must use resolve_declaration(iri, session=), the call dispatch itself uses: get_declaration is sessionless and Global-only by design and the Decision Records capacities are all Local, so it returns nothing for exactly the run this serves.",
       "branch_to_open": "feat/<slice> off main",
@@ -291,13 +305,20 @@
     },
     {
       "name": "decision-records-record-prose-convention",
-      "status": "[PARTLY CLOSED 2026-08-12 by PROBE D.] Defect 1 (registered prose leaks a DataState name) is FIXED - PR #151, assert_printable_description in policy_lookup_v0. Defect 3 (descriptions are labels/questions where the Record wants statements) is WITHDRAWN: probe D rendered all four run graphs and DataState descriptions are NOT on the render path at all. The Record's derivation body renders from origin-record fields (question, source_identity_phrase, source_version, source_in_force_from, origin_method_phrase, refusal_detail) plus the verdict value, all of which are graph values. No 'descriptions become printable statements' convention is needed. STILL OPEN: defect 2 - the stand-in reader stamps origin_method=read_by_model with no model, which is false provenance on runs 1, 2 and 3 today. That is plan item 5 and nothing else.",
+      "status": "[CLOSED 2026-08-12 — all three defects resolved.] Defect 1 (registered prose leaked a DataState name) fixed in PR #151. Defect 3 (descriptions must become printable statements) WITHDRAWN by probe D — DataState descriptions are not on the render path at all. Defect 2 (the stand-in reader stamped read_by_model with no model) fixed in PR #154 by structured_ingest_v0, which stamps read_from_source. No page produced by this lane claims a model read anything.",
       "branch_to_open": "feat/<slice> off main",
       "spec": "confirmation_docs/DECISION_RECORDS_V0_PLAN.md items 3, 5 and 7",
       "consumer": "the Decision Records renderer (plan item 7)"
     }
   ],
   "recent": [
+    {
+      "kind": "feat",
+      "name": "A reader that does not use a model, and run 2 gets its first test (PR #154)",
+      "sha": "branch feat/dr-structured-ingest at f17aed2, PR #154, tag structured-ingest-confirmed. mindsos_capacity touched, so RULES section 7's tag IS owed.",
+      "gate": "4694 passed / 11 skipped / 1 xpassed / 0 failed (containerized full, Linux, 2026-08-12, 33m52s) at f17aed2, CLI collect 256. MERGED-STATE: origin/main had NOT moved from a3751f2. Baseline 4677; delta +17, exactly the container prediction - the SEVENTH consecutive exact call. The +17 was fully accounted rather than rounded: 20 ids added, 3 removed, the 3 being G5 renames. PRE-FILTER two trees: passed 4506 -> 4523, skipped held at 118, 64 environment failures identical by name in both directions. THREE MUTATIONS, each reddening exactly one of 113: restoring the read_by_model stamp; collapsing value_not_coercible into field_absent; returning a refusal instead of raising when the source is not a record.",
+      "what": "Item 5. The stand-in reader stamped origin_method=read_by_model on every record while no model existed anywhere in the system - false provenance on three of five runs, in the product whose whole claim is provenance, found by rendering a graph rather than by reading code. build_structured_ingest_reader is core (RULES section 8) at category RETRIEVAL, for ADR-0208 D1's reason: a reader that may find nothing needs OPTIONAL_RETURN, and comprehension would file the one producer that provably uses no model under a reading family. TWO REFUSALS KEPT DISTINCT - field_absent ('they did not state it') and value_not_coercible ('they stated something that is not a number') are different facts about the customer's material. A source that is not a record RAISES: our wiring defect, never a finding about the case. TWO PROMOTIONS forced by a second consumer: the description guard to printable.py, and ORIGIN_SHAPE_TAG to origin_v0 - the second is a CORRECTNESS fix, since two producers with two tags would give their origin DataStates different shapes and a renderer could no longer treat 'the origin of this value' as one thing. RUN 2 HAD NO COMMITTED TEST FOR FOUR SHIPS despite being half of what v0 IS; now covered in both shapes, closing G4's reading half. The start became dr.filing_record, a record of stated values - nothing here reads prose. G5 named in three modules. ALSO: RULES section 1 corrected (demos are root-level on demo/* branches; the path it named exists on no branch), and sections 11 and 12 added - show the system's own output with a command the owner can run, and check the system then re-check the plan after every ship."
+    },
     {
       "kind": "feat",
       "name": "A run states what it was given, what decided, and why it stopped - the run manifest, and run 4 becomes renderable (PR #153)",
