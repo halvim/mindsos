@@ -2,8 +2,9 @@
 title: Decision Records v0 — the single-lane plan
 status: IN BUILD. Owner-agreed D1–D6 on 2026-08-11. Items 1, 2 and 3 SHIPPED — see §2.0.
 date: 2026-08-11
-pin: written against origin/main af329eb; items 1–2 shipped through cfc1795.
-  seam feat/decision-records f7cb857 (23+ commits behind)
+pin: RE-PINNED 2026-08-12 to origin/main fd6cefc. Written against af329eb; items 1–4 shipped
+  through fd6cefc, and probe D ran against that tree (§2.3). Re-pin between items, never mid-item.
+  seam feat/decision-records f7cb857 — see §2.3 decision 6, it is being archive-tagged
 replaces: confirmation_docs/CORE_RECONCILIATION_PLAN.md as this lane's build order
 reads with: confirmation_docs/DECISION_RECORDS_V0_HANDOFF.md (its §3 is amended here),
   CORE_CR_POLICY_ROLE.md, CORE_CR_EXTERNAL_MODEL_SEAM.md + LLM_SEAM_MANUAL.md (on the seam branch)
@@ -145,15 +146,25 @@ local and remote, both lists checked).
 | #147 | `e7fd779` | Close-out: the plan doc had no progress markers | none — docs |
 | #148 | `7c4c313` | **Item 3 ✅** — the policy lookup + the criterion, ADR-0208. Tag **`policy-lookup-confirmed`** | **4634 / 11 / 1x / 0** |
 | #149 | `5f9c5cb` | **Item 4 ✅** — the run driver, through `execution.run`. **No tag: no `mindsos_*` touched** | **4645 / 11 / 1x / 0** |
+| #150 | `fd6cefc` | The three probes, and RULES §10's close-a-lane command split in two | none — docs |
+| #151 | *(squash)* | **Probe D**, and the three prose leaks it found. Tag **`prose-leaks-confirmed`** | **4652 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4591 passed / 11 skipped / 1 xpassed / 0 failed at
-`c9754ac`.** It is carryable — `#145` was a **merged-state** gate (`merge-base
---is-ancestor` proved the tip contained `origin/main`), unlike `#138`'s 4551, which was a
-branch gate and is not.
+**Baseline for the next item: 4652 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#151's tip `2560511`.** It is carryable — #151 was a **merged-state** gate (`merge-base
+--is-ancestor` proved the tip contained `origin/main`, which had not moved from `fd6cefc`),
+unlike `#138`'s 4551, which was a branch gate and is not. **This line has been stale twice:
+it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
+table, in the same commit.**
 
-**⏭ NEXT IS §2.2's probe D, NOT item 5.** Items 1 through 4 are done; do not rebuild them.
-**Run 2 does not wait on item 5** — §2.1's probe B ran it end to end. Read §2.1 before
-scoping anything.
+**⏭ PROBE D HAS RUN — read §2.3, then the item table below, which it changed.** Items 1
+through 4 are done; do not rebuild them. **Next is the capacity printable phrase, then the
+run manifest, then item 5.**
+
+⚠ **"Run 2 does not wait on item 5" was wrong, and ADR-0208's Consequences were right.**
+Probe B ran run 2's *machinery* end to end, which is true and is why item 5 is small. But the
+stand-in reader stamps `origin_method=read_by_model` on **both** its branches and no model
+exists, so runs 1, 2 and 3 all render **false provenance today** — in the product whose claim
+is provenance. Run 2 executes; it does not ship.
 
 **Item 4's acceptance was wrong and is corrected below.** *"Mints the document as
 the grounding root before the find"* is not buildable through `execution.run`,
@@ -239,12 +250,12 @@ Three defects, two of them in already-merged code — tracked as `pending_design
 2. **The stand-in reader lies in the Record.** It stamps `origin_method=read_by_model` /
    *"read by a language model"* and **no model exists**. False provenance, in the product whose
    claim is provenance. Item 5 must stamp `structured_ingest` until a model is real.
-3. **The connective sentence — and it may need nothing.** Descriptions are registered as
-   labels and questions (*"whether the stated income reaches the threshold in force"*) where
-   the Record wants a statement. **But the verdict value is already prose and the threshold's
-   description already reads as one, so a GENERIC "Therefore:" template may be enough and the
-   per-criterion template — the hand-maintained mirror the audit warns about — may not be
-   needed at all.** That is §2.2's probe D, and it is the thing to settle first.
+3. ~~**The connective sentence.**~~ **WITHDRAWN by probe D (§2.3).** The guess here was
+   that registered descriptions would have to become printable statements. They do not:
+   **DataState descriptions are not on the render path at all.** The generic "Therefore:"
+   template is enough, and the per-criterion template — the hand-maintained mirror the audit
+   warns about — is not needed. What survives is one field on the *capacity* declaration,
+   which is a different change; see §2.3 decision 2.
 
 **Probe B — the exposure probe. It reversed this lane's own largest push-back.** Three
 exposures on one claim, through a `map` milestone over the *existing* capacities, **no core
@@ -271,19 +282,82 @@ under `make_node_value_encoder({})` with **no encoders at all**: origin records 
 without a `DataState.encode`. **Caveat:** that is the value-codec half; a real FalkorDB
 round-trip was not runnable in the pre-filter container and is still unproven.
 
-### 2.2 Probe D — the next thing to do, and it is not a build
+### 2.3 Probe D — it ran, and it decided six things
 
-**Sketch the generic renderer over the three graphs items 3 and 4 already produce** (clean,
-refusal, outage). No code committed. One question: **can a single template produce all three
-pages with no per-criterion knowledge?**
+**Method: a generic renderer sketched over the four graphs items 3 and 4 already produce** —
+clean, no-edition-in-force, store-unreachable, and unroutable — with every symbol it could not
+turn into prose recorded rather than filled in. Nothing committed as code. Same rule as the
+other four probes: run it, do not argue about it.
 
-- **Yes** ⟹ there is no prose-convention change. Item 7 is smaller than written and item 3's
-  declarations stand.
-- **No** ⟹ the convention change is real, it touches ADR-0208's declarations, and it must land
-  **before** item 5 adds a fourth capacity that inherits the wrong shape.
+**Result 1 — the graph alone renders the derivation body.** In a **question → answer →
+therefore** form, run 1 composes with no external lookup of any kind:
 
-It costs about an hour and it decides the scope of two items. Doing item 5 first risks building
-on a convention that turns out to be wrong.
+> *Q. What gross income does the return state?* — **61000**, from *their filed return*.
+> *Q. What filing threshold was in force on 2024-04-15?* — **29200**, from *the
+> filing-threshold policy* (version 2024.1, in force from 2024-01-01).
+> **Therefore: a return must be filed.**
+
+Run 3's refusal renders too — *"Nothing. the filing-threshold policy has no edition covering
+2019-04-15."* Every word of that comes from **origin-record fields**, which are ordinary graph
+values because an origin record is a declared output.
+
+**Result 2 — exactly three things cannot be said, and that list IS the run manifest.**
+
+| Gap | Why | Bites |
+|---|---|---|
+| the declared start set | a parentless `DataStateInstance` is structurally identical to one whose producer was removed | every page |
+| a phrase per capacity | a `CapacityInstance`'s only content is its IRI, and the criterion writes no origin record (ADR-0208 D3) | *"Therefore… decided by"*, *"Stopped at"* |
+| a phrase per stop reason | `RunStopped.value` is the token `step_failed` | the outage page |
+
+**Result 3 — the G2 mutation produced a worse failure than G2 describes.** Deleting the
+criterion's `CapacityInstance` did **not** make the renderer raise. It printed
+***"Given: a return must be filed"*** — a derived conclusion silently reclassified as a
+premise. Nothing in today's graph would let any renderer catch that.
+
+**Result 4 — three corrections to this document's own guesses.** `origin_method_phrase`
+already exists in the record (*"read by a language model"*), so the How-line needed nothing.
+`environment_fault` is present, unused, and is the field that separates our outage from a
+finding about the case — a renderer must consume it. `source_datastate` holds an **IRI** and
+must be treated as a link, never printed.
+
+**Result 5 — two more shipped prose leaks**, both fixed in #151: the outage message carried
+the `source_unreachable` token and the G6-banned word *"layer"*, and two of three messages
+interpolated an arbitrary upstream exception into customer-facing text.
+
+#### The six decisions, owner-agreed 2026-08-12
+
+1. **The run manifest carries three things** — the declared start set, a phrase per capacity
+   IRI, a phrase per stop reason. Probe D's three unrenderables, and nothing speculative.
+2. **A `printable_phrase` field on the capacity declaration**, validated by
+   `assert_printable_phrase`. `description` is a *question* — *"whether the stated income
+   reaches the threshold in force"* renders as *"decided by whether the stated income
+   reaches…"*. **Lands before item 5.**
+3. **Phrases in the manifest, not IRIs.** Carrying IRIs would make the renderer read the
+   declarations graph, and *"from the graph and nothing else"* would stop being true.
+4. **Minted in `_run_leaf_pipeline`, above the find.** Verified at `fd6cefc`: `run_ref` is
+   composed at `execution.py:554`, **after** `_compose_pipeline` at `:544`, which is where
+   `LeafPipelineNotFound` raises (`:285`) — so at raise time no writer, no run ref and no
+   graph have ever existed. Hoist the writer, give `execute_pipeline` an optional `writer=`
+   (28 call sites, none affected by an optional kwarg), append `writer.graph` to
+   `capacity_graphs` on the raise path. **Item 4a is absorbed by this**, and item 4's three
+   objections dissolve because there is then only ever one writer.
+5. **"Persisted" in item 7 means a real FalkorDB round-trip.** The claim is that the Record is
+   reconstructible from stored evidence; a Record that only renders from objects still in
+   memory has not shown that. Note the driver reaches persistence through nothing today —
+   `persist_capacity_mm` is called only from `consolidation.consolidate_request`, i.e. the
+   orchestrator, and `_dr_driver` calls `execution.run` directly.
+6. **Item 5's reader is core** (`mindsos_capacity/builtins/`), content stays in
+   `_dr_fixtures.py`; it owes a tag. **`feat/decision-records` is archive-tagged now** per
+   RULES §10.1 and the seam re-lands from the tag at item 8.
+
+#### Order
+
+`printable_phrase` → run manifest (+ G2 as its acceptance) → item 5 → item 7.
+
+**Item 6 is deleted.** Its only content was G2, which §3 already said waits for the renderer,
+and which probe D proved is unimplementable until the manifest lands. G3, G7 and G8′ shipped
+with item 3.
+
 
 ---
 
@@ -299,10 +373,12 @@ mid-item.
 | **2** ✅ | **[SHIPPED `c9754ac`]** **L-2 — a terminal node on every non-success.** `execute_pipeline` writes one node before every non-success return: failure, decline, cancellation. One node type carrying the capacity IRI, a closed reason and a detail. | A deliberately failing step leaves a node naming it. Shown red first. Gate green. |
 | **3** ✅ | **[SHIPPED — ADR-0208]** **The lookup capacity + the criterion.** Lookup: `capacity:retrieval:<name>` (**not** `decision` — §2.0), as-of selection by **window containment**, two outputs (the limit and **its origin record**, not the version) as separate DataStates, refusals `no_source_in_force` (`environment_fault` false, **returns**) and `source_unreachable` (true, **raises**). Criterion: family `decision`, typed to this criterion — never a generic comparator — and it **checks for a missing operand**, because `core-dispatch-value-validation` is deferred and core will not. Only the lookup emits an origin record. | The `policies` role gains its first reader **and its first writer**. One lookup, two outputs, fires once. |
 | **4** ✅ | **[SHIPPED]** **The run driver.** Builds a `PlanResult` with plural `leaf_targets[...]["start_datastates"]` and calls `execution.run(..., mm=..., solve_seed=...)`. **The pre-minted grounding root is REMOVED from this item** — see above; it is item 4a. The driver states endpoints and nothing else: L4 derives the finder from start arity, and an AST guard pins that the driver references no finder name and no `finder` plan key. | The route is *found* and *grounded* — not hand-assembled, not a script calling capacities in order. Precedent: `tests/phase_48/test_map_member_multiinput.py`. |
-| **4a** | **The pre-minted grounding root, for run 4 only.** An unfindable route raises `LeafPipelineNotFound` out of `execution.run` and writes nothing, so run 4 has no graph to render. Needs a decision first: pre-mint outside `execution.run` (the caller owns the writer and the run ref), or a core CR threading a caller-supplied root in. `root()` having no caller means neither is a small edit to an established path. | Run 4 renders from a graph rather than from a caught exception. |
+| **4a** | ~~**The pre-minted grounding root, for run 4 only.**~~ **ABSORBED 2026-08-12 into the run manifest (§2.3 decision 4)** — the manifest is minted above the find, so run 4 has a graph by construction and this is no longer a separate item. | — |
+| **4b** | **A `printable_phrase` on the capacity declaration** (§2.3 decision 2), validated by `assert_printable_phrase`. | An instance can be named in prose without reading the declarations graph. **Lands before item 5.** |
+| **4c** | **The run manifest** (§2.3 decisions 1, 3, 4). Hoist the writer above `_compose_pipeline`, mint starts + capacity phrases + stop-reason phrases, optional `writer=` on `execute_pipeline`, append the graph on the `LeafPipelineNotFound` path. | **G2 is the acceptance**, shown red with probe D's exact mutation. Run 4 renders. G7 becomes checkable from the graph. |
 | **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
-| **6** | **Guard G2**, shown red before it is trusted. **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
-| **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. | One page a non-technical reader understands with no glossary, rendered from the persisted `capacity_mm` graph and nothing else. |
+| ~~**6**~~ | **DELETED 2026-08-12** — its only content was G2, now item 4c's acceptance (§2.3). **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
+| **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. Form is **question → answer → therefore** (§2.3), not composed statements. | One page a non-technical reader understands with no glossary, rendered from the **persisted** `capacity_mm` graph and nothing else — and *persisted* means **a real FalkorDB round-trip** (§2.3 decision 5), not the live `Graph` objects the driver hands back. |
 | **8** | **Layer B.** Merge `origin/main` into `feat/decision-records`, reconcile the three core modules, gate it, merge, then swap item 5's reader for `comprehension_v0`'s. | First gate of the LLM seam. A verification step, not a blocker. |
 
 ### The rule that decides whether this succeeded
@@ -336,6 +412,10 @@ run 5 silently becomes *"different documents give different limits"* — the opp
 - **G1** Renderer imports none of: blackboard, capacity context, L2 snapshot, `Pipeline`,
   `chain_artifacts`.
 - **G2** Remove one capacity instance from the graph → the renderer raises, never fills the gap.
+  **Acceptance on the run manifest, not on the renderer, and not its own item** — probe D ran
+  this mutation and the renderer printed *"Given: a return must be filed"* instead of raising,
+  because nothing in the graph distinguishes a gap from a start. It is unimplementable until
+  the manifest lands (§2.3).
 - **G3** No Record without the capacities having executed and written.
 - **G7** *(restated — the original wording was unsatisfiable with three starts)* The parentless
   `DataStateInstance` set is **exactly** the declared starts. Still catches the real failure: a
@@ -391,7 +471,7 @@ that was never opened.
 | Item | Why not now |
 |---|---|
 | §3.1 planner plural starts | Not blocking (§1.1). Its end state is finding moving into planning (ADR-0206 §3, C4R3) with selection at `decision.select_producers`. A passthrough patch extends `_select_finder`, which `CORE_RECONCILIATION_PLAN.md` C2R4 already rules *"transitional by construction"*. |
-| §3.2 dispatch value validation | Unsafe before L-2 (§1.2). |
+| §3.2 dispatch value validation | ~~Unsafe before L-2~~ — **that reason died when L-2 shipped as `c9754ac`**; STATE has read UNBLOCKED since 2026-08-11. Still unbuilt and unowned. ADR-0208 D5 is the argument *for* it. |
 | §3.3 realm-free DataStates | v0 registers all-Local and works. Closing it deletes G8′ and makes #122's union view testable. |
 | §3.4 append-only enforcement | v0 writes one edition. It constrains what we **say**, not what we build. |
 | §3.5 recorded producer choice | One producer per DataState in v0. It is a claim-1 integrity hole, not finder hygiene — file it as one. |
