@@ -59,6 +59,12 @@ from typing import Any, Dict, Iterable, Mapping, Optional
 from mindsos_core import Graph
 
 from mindsos_capacity.identifiers import (
+    MANIFEST_CAPACITY_PHRASES,
+    MANIFEST_DECLARED_STARTS,
+    MANIFEST_STOP_REASON_PHRASES,
+    NODE_TYPE_RUN_MANIFEST,
+    RUN_STOPPED_PHRASES,
+    run_manifest_iri,
     EDGE_CONSUMES,
     EDGE_PRODUCES,
     EDGE_STOPPED_AT,
@@ -174,6 +180,59 @@ class CapacityMMWriter:
             )
             self.index[raw_task_datastate_iri] = inst
             return inst
+
+    def manifest(
+        self,
+        *,
+        declared_starts: Iterable[str],
+        capacity_phrases: Mapping[str, str],
+    ) -> str:
+        """Mint this run's manifest node — the three things the run's own
+        nodes cannot say about it.
+
+        **Minted before anything else, including before the route is found.**
+        That ordering is the whole point: ``execution.run`` raises
+        ``LeafPipelineNotFound`` out of ``_compose_pipeline`` and writes
+        nothing, so an unroutable request had no graph at all — not even a
+        ``RunStopped``. With the manifest minted first, every run leaves a
+        graph, and run 4 of ``DECISION_RECORDS_V0_PLAN.md`` becomes
+        renderable without a caller-supplied grounding root (item 4a, which
+        this absorbs).
+
+        ``declared_starts`` is what makes a **parentless
+        ``DataStateInstance`` decidable**: inside the set it is a premise the
+        run was given, outside it, a gap where a producer should have been.
+        Without it a renderer prints a deleted conclusion as a premise —
+        observed, not theorised (guard **G2**).
+
+        ``capacity_phrases`` maps capacity IRI → its registered
+        ``printable_phrase`` (ADR-0207 amendment 1), for exactly the
+        capacities this run composed. **A snapshot, deliberately.** That
+        amendment rejects reading the phrase from the catalog at render
+        time: the catalog is mutable and separately persisted, so an
+        archived Episode would render prose that has since changed with no
+        drift signal. Empty when no route was found — there is nothing to
+        name.
+
+        The stop-reason phrases are written unconditionally from the closed
+        core set, because whether the run will stop is not known here and a
+        renderer must never translate a token itself.
+
+        Everything lives in the node's **value**, as a dict:
+        ``Graph.add_node`` validates ``properties`` as primitives only, and
+        all three fields are collections.
+        """
+        with self._mm.lock.write_locked():
+            graph = self._run_graph()
+            return graph.add_node(
+                value={
+                    MANIFEST_DECLARED_STARTS: sorted(declared_starts),
+                    MANIFEST_CAPACITY_PHRASES: dict(capacity_phrases),
+                    MANIFEST_STOP_REASON_PHRASES: dict(RUN_STOPPED_PHRASES),
+                },
+                type_name=NODE_TYPE_RUN_MANIFEST,
+                node_id=run_manifest_iri(self._request_id, self._run_ref),
+            ).node_id
 
     def record(
         self,

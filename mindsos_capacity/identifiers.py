@@ -358,6 +358,61 @@ PROP_RUN_STOPPED_DETAIL = "stopped_detail"
 #: On a cancellation only: the capacity IRI the run stopped *before*.
 PROP_RUN_STOPPED_BEFORE = "stopped_before"
 
+# ── Run manifest (Decision Records item 4c) ────────────────────────────
+#
+# Probe D rendered all four run graphs and recorded every symbol a generic
+# renderer could not turn into prose. There were exactly three, and they are
+# not values — they are facts *about the run* that the run's own nodes cannot
+# carry. (1) A parentless ``DataStateInstance`` is structurally identical to
+# one whose producer was removed, so a renderer cannot tell a premise from a
+# gap; the mutation proof was a Record printing *"Given: a return must be
+# filed"* after its criterion was deleted. (2) A ``CapacityInstance`` carries
+# only the capacity IRI and the criterion writes no origin record (ADR-0208
+# D3), so nothing can NAME what decided. (3) ``RunStopped.value`` is a token.
+#
+# The manifest is the run saying those three things about itself, once, at the
+# start. It is a SNAPSHOT on purpose: ADR-0207 amendment 1 rejects reading a
+# phrase from the capacity catalog at render time, because the catalog is
+# mutable and separately persisted and an archived Episode would render prose
+# that has since changed, with no drift signal.
+
+#: ``type_name`` marker for a run's manifest node. Live-only and free-form,
+#: like the instance markers above. **Not** a ``DataStateInstance``, so the
+#: G7 parentless-set count is unaffected by its presence.
+NODE_TYPE_RUN_MANIFEST = "RunManifest"
+
+#: The manifest's contents live in the node's **value**, as a dict, not in its
+#: properties. Not a style choice: ``Graph.add_node`` routes ``properties``
+#: through ``validate_user_properties``, which accepts **primitives only**,
+#: and all three fields are collections. A dict value is also the shape probe
+#: C proved codec-safe under ``make_node_value_encoder({})`` with no encoders,
+#: which is how origin records already persist.
+MANIFEST_DECLARED_STARTS = "declared_starts"
+MANIFEST_CAPACITY_PHRASES = "capacity_phrases"
+MANIFEST_STOP_REASON_PHRASES = "stop_reason_phrases"
+
+#: Registered prose for the closed run-stopped set. Core owns the tokens, so
+#: core owns their phrases — *tokens branch, phrases print* (ADR-0207 rule 2).
+#: A renderer that translated these itself would be a hand-maintained mirror
+#: of a closed set core can change.
+RUN_STOPPED_PHRASES = {
+    RUN_STOPPED_STEP_FAILED: "a step could not be completed",
+    RUN_STOPPED_CANCELLED: "the request was cancelled before this step ran",
+    RUN_STOPPED_NEEDS_INPUT: "more information was needed before going on",
+}
+
+
+def run_manifest_iri(request_id: str, pipeline_run_ref: str) -> str:
+    """Return the manifest node IRI for a run.
+
+    Format: ``runmanifest:<request_id>.<run>``. Deterministic and one per
+    run, mirroring :func:`run_stopped_iri`, so *"exactly one manifest per
+    run"* is a structural assertion rather than a count.
+    """
+    _require_nonempty(request_id, "request_id")
+    run = _sanitize_run_ref(pipeline_run_ref)
+    return f"runmanifest:{request_id}.{run}"
+
 
 def _require_nonempty(value, label: str) -> str:
     if not isinstance(value, str) or not value:

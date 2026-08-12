@@ -514,6 +514,40 @@ def _run_milestone_sequence(
     return pipeline_run_refs
 
 
+def _capacity_phrases(dispatcher, pipeline) -> dict:
+    """Snapshot ``printable_phrase`` for every capacity this run composed.
+
+    Resolution is **scope-correct** — ``resolve_declaration(..., session=)``,
+    the same call ``L4Dispatcher.dispatch`` uses. ``get_declaration`` is
+    sessionless and Global-only by design, and the Decision Records capacities
+    are all registered Local (``core-datastate-realm-free``), so it would
+    return nothing for exactly the run this exists to serve.
+
+    A capacity with no declared phrase is simply absent from the map: the
+    field is optional (ADR-0207 amendment 1) and a renderer that finds no
+    phrase must say so rather than invent one. A declaration that cannot be
+    resolved is skipped for the same reason — the manifest is a snapshot of
+    what was knowable when the run started, never a place to guess.
+    """
+    phrases: dict = {}
+    layer = getattr(dispatcher, "capacity_layer", None)
+    if layer is None:
+        return phrases
+    session = getattr(dispatcher, "session", None)
+    for step in getattr(pipeline, "steps", ()) or ():
+        iri = getattr(step, "capacity_iri", None)
+        if not iri or iri in phrases:
+            continue
+        try:
+            declaration = layer.resolve_declaration(iri, session=session)
+        except Exception:  # noqa: BLE001 — an unresolvable name is not a phrase
+            continue
+        phrase = getattr(declaration, "printable_phrase", "")
+        if phrase:
+            phrases[iri] = phrase
+    return phrases
+
+
 def _run_leaf_pipeline(
     dispatcher, writer, pr, leaf_ref, endpoints, blackboard,
     mm, request_id: str, leaf_path: str, run_attempt: int,
@@ -532,6 +566,7 @@ def _run_leaf_pipeline(
     ``ConjunctionFinder`` composes the leaf (arity-derived — see
     :func:`_select_finder`). With a single start this is the pre-CR path
     unchanged."""
+    from .capacity_mm_writer import CapacityMMWriter
     from .pipeline_execution import execute_pipeline
 
     starts = _endpoint_starts(endpoints)
@@ -541,7 +576,36 @@ def _run_leaf_pipeline(
     )
     # A fresh per-run ref per leaf gives each run its own isolated grounding
     # graph (Slice A: replan / concurrent isolation).
-    pipeline = _compose_pipeline(dispatcher, starts, target, finder_name).pipeline
+    #
+    # The ref and the writer are built HERE, above the find, and that ordering
+    # is the change. ``_compose_pipeline`` raises ``LeafPipelineNotFound`` when
+    # no route exists; before this, nothing had been written at that point, so
+    # an unroutable request left NO graph — not even L-2's ``RunStopped`` — and
+    # the only renderable artifact was a caught exception, which contradicts
+    # rendering from the graph and nothing else.
+    #
+    # ``execute_pipeline`` still builds its own writer and is UNCHANGED. An
+    # earlier draft threaded this one in, on the theory that two writers meant
+    # two indexes and a double-mint. That was tested and is false: both writers
+    # resolve the SAME per-run graph by role, and this one mints only the
+    # manifest, which is neither indexed nor sequenced. Removing that parameter
+    # again cost nothing and kept a core signature out of this change.
+    run_ref = f"pipelinerun:{request_id}:{leaf_path}:{run_attempt}"
+    # NOT ``writer``: that name is already this function's ChainArtifactWriter
+    # parameter, and shadowing it silently stripped emit_step_execution_record
+    # from every grounded run. The existing suite caught it on the first
+    # pre-filter, which is why the pre-filter runs the WHOLE tree.
+    mm_writer = CapacityMMWriter(mm, request_id, run_ref) if mm is not None else None
+    try:
+        pipeline = _compose_pipeline(dispatcher, starts, target, finder_name).pipeline
+    except LeafPipelineNotFound:
+        if mm_writer is not None:
+            # No route, so no capacity to name and no pipeline to read starts
+            # from — the endpoints are what the run was asked for.
+            mm_writer.manifest(declared_starts=starts, capacity_phrases={})
+            if capacity_graphs is not None and mm_writer.graph is not None:
+                capacity_graphs.append(mm_writer.graph)
+        raise
     # Slice 1a — seed only the values the pipeline declares as starts, drawn from
     # the shared blackboard (an upstream stage may have produced them). Filtering
     # to ``start_datastates`` keeps ``execute_pipeline`` from minting unrelated
@@ -551,7 +615,11 @@ def _run_leaf_pipeline(
         for ds in pipeline.start_datastates
         if ds in blackboard
     }
-    run_ref = f"pipelinerun:{request_id}:{leaf_path}:{run_attempt}"
+    if mm_writer is not None:
+        mm_writer.manifest(
+            declared_starts=getattr(pipeline, "start_datastates", starts),
+            capacity_phrases=_capacity_phrases(dispatcher, pipeline),
+        )
     result = execute_pipeline(
         dispatcher,
         pipeline,
