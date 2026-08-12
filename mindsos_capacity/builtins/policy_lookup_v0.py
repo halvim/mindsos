@@ -193,6 +193,7 @@ def build_policy_limit_lookup(
     limit_datastate_iri: str,
     as_of_datastate_iri: str,
     description: str = "",
+    printable_phrase: str = "",
 ) -> Capacity:
     """Build a lookup of one authority's stated limit, as of a date.
 
@@ -207,6 +208,11 @@ def build_policy_limit_lookup(
             here beats catching it in front of a lawyer.
         question: Prose stating what is being asked, with a single ``{as_of}``
             placeholder for the date.
+        printable_phrase: How a Record NAMES this step when it has to — on a
+            stopped run, *"stopped at consulting the filing-threshold
+            policy"*. Defaults to ``consulting <source_identity_phrase>``,
+            which is already validated prose. Never the description: that one
+            is written for a developer.
         limit_datastate_iri: Full IRI of the limit this lookup produces. Its
             origin record's IRI is derived, never passed.
         as_of_datastate_iri: Full IRI of the date DataState this lookup
@@ -214,6 +220,8 @@ def build_policy_limit_lookup(
     """
     assert_printable_phrase(source_identity_phrase, "source_identity_phrase")
     assert_printable_phrase(question, "question")
+    printable_phrase = printable_phrase or f"consulting {source_identity_phrase}"
+    assert_printable_phrase(printable_phrase, "printable_phrase")
     origin_iri = origin_record_iri(limit_datastate_iri)
 
     def _lookup(context: Any = None, **inputs: Any) -> Dict[str, Any]:
@@ -313,6 +321,7 @@ def build_policy_limit_lookup(
         inputs=(as_of_datastate_iri,),
         outputs=(limit_datastate_iri, origin_iri),
         description=description or f"consults {source_identity_phrase}",
+        printable_phrase=printable_phrase,
         implementation=_lookup,
     )
 

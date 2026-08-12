@@ -257,6 +257,7 @@ def decision_declaration() -> Capacity:
         outputs=(DS_FILING_VERDICT,),
         input_group=INPUT_GROUP_ALL_REQUIRED,
         description="whether the stated income reaches the threshold in force",
+        printable_phrase="the filing-requirement test",
         implementation=_decision_body,
     )
 
@@ -269,6 +270,7 @@ def reader_declaration() -> Capacity:
         outputs=(DS_GROSS_INCOME, DS_GROSS_INCOME_ORIGIN),
         input_group=INPUT_GROUP_ALL_REQUIRED,
         description="reads the gross income the return states",
+        printable_phrase="reading the return as filed",
         implementation=_reader_body,
     )
 

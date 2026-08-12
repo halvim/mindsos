@@ -48,6 +48,7 @@ from __future__ import annotations
 from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 from ..identifiers import parse_capacity_iri
+from ..printable import printable_phrase_problem
 
 # ── Producer kinds ─────────────────────────────────────────────────────
 
@@ -241,20 +242,15 @@ def origin_record_iri(value_datastate_iri: str) -> str:
 def assert_printable_phrase(phrase: Any, field_name: str) -> None:
     """A phrase the Record prints must be prose, never an identifier.
 
-    A Decision Record forbids every IRI and every MindsOS term. Catching it
-    at registration beats catching it in front of a lawyer.
+    The rule itself lives in :mod:`mindsos_capacity.printable` because
+    ``register_capacity`` enforces the same one on a capacity's
+    ``printable_phrase`` and core cannot import from ``builtins/``. This
+    wrapper exists so an origin-contract violation still raises
+    :class:`OriginContractError`; the message is unchanged.
     """
-    if not phrase or not str(phrase).strip():
-        raise OriginContractError(
-            f"{field_name} is required and must be prose the Record can print — "
-            f"'their submission email', 'the claims policy'."
-        )
-    for token in (":", "datastate:", "capacity:"):
-        if token in str(phrase):
-            raise OriginContractError(
-                f"{field_name} must be prose, not an identifier: {phrase!r} "
-                f"contains {token!r}."
-            )
+    problem = printable_phrase_problem(phrase, field_name)
+    if problem is not None:
+        raise OriginContractError(problem)
 
 
 def build_origin_record(

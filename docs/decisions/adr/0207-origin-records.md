@@ -186,3 +186,42 @@ beyond this module and is tracked as
 - **One slot for version and basis.** They answer different questions — *was the
   value present or derived* versus *which edition was consulted* — and a reader
   over a versioned document legitimately has both.
+
+---
+
+## Amendment 1 — a capacity carries the phrase that names it (2026-08-12)
+
+**Amendment status:** Proposed. **Opened by:** `decision-records-capacity-printable-phrase`.
+
+Rule 2 above — *tokens branch, phrases print* — was written for the values a
+producer reports on. It applies unchanged to the **producer itself**, and probe
+D showed the gap by rendering all four Decision Records run graphs and finding
+that nothing in a graph can name a capacity: a `CapacityInstance` carries the
+capacity IRI and nothing else, and the criterion writes no origin record (ADR-0208
+D3). So *"decided by…"* and *"stopped at…"* had no prose to use.
+
+**`_CapacityBase` gains `printable_phrase`.** Optional, so every capacity
+registered before it is unchanged. Validated by `CapacityLayer.register_capacity`
+only when supplied, against the same rule this ADR's `assert_printable_phrase`
+enforces — which now lives in `mindsos_capacity.printable` as a pure
+`printable_phrase_problem`, because core cannot import from `builtins/`.
+`assert_printable_phrase` keeps its name, its message and its
+`OriginContractError`; registration raises `CapacityRegistrationError` from the
+same rule. One rule, two exception types, each owned by its layer.
+
+**It is deliberately not `description`.** A description answers *what does this
+capacity do*, is written for a developer, and in the shipped criterion is a
+question — *"whether the stated income reaches the threshold in force"* — which
+renders as *"decided by whether the stated income reaches the threshold in
+force"*. One field cannot answer both that and *what is this called*.
+
+**One sentence in "Alternatives rejected" above is now half wrong, and the half
+that survives is the load-bearing half.** *"`Capacity.to_properties()` does not
+persist custom fields"* is no longer true: it persists `printable_phrase` when
+one is declared. The rejection itself **still stands** — *the catalog is mutable
+and separately persisted, so an archived Episode would render the wrong prose
+with no drift signal.* That is exactly why the renderer must never read the
+catalog: `decision-records-run-manifest` **snapshots the phrase into the run
+graph when the run starts**, and the Record renders from that snapshot. The
+registered property exists so the manifest has something to copy, not so a
+renderer can reach back for it.
