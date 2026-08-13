@@ -153,11 +153,13 @@ local and remote, both lists checked).
 | #154 | `93ff31b` | **Item 5** — the structured-ingest reader, and **run 2's first test** | **4694 / 11 / 1x / 0** |
 | #155 | `bbe63e4` | **The origin-union freeze** + ADR-0207 am-2. Tag **`origin-union-freeze-confirmed`** | **4711 / 11 / 1x / 0** |
 | #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
+| #157 | *(squash)* | **Map-member manifests** — minting moves into `execute_pipeline`; the sub-MM routing gap; ADR-0201 am-4 + ADR-0207 am-3. Tag **`dr-map-manifest-confirmed`** | **4731 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4716 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#156's tip `254a06c`.** It is carryable — #155 was a **merged-state** gate (`merge-base
---is-ancestor` proved the tip contained `origin/main`, which had not moved from `93ff31b`),
-unlike `#138`'s 4551, which was a branch gate and is not. **This line has been stale twice:
+**Baseline for the next item: 4731 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#157's tip `f878886`.** It is carryable — the gate ran on a tip whose parent **is**
+`origin/main` (`be7aa8a`, tag `refusal-vocabulary-confirmed`), so it is a **merged-state**
+gate; the `git merge origin/main` before it was a no-op for exactly that reason. Contrast
+`#138`'s 4551, a **branch** gate, which is not carryable. **This line has been stale twice:
 it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
 table, in the same commit.**
 
@@ -608,6 +610,82 @@ environment-only (no Falkor / no docker in the pre-filter container). The other
 **4 were mine, and one of them was the routing defect above** — the other three
 are node counts that moved by exactly one, because every run now leaves a
 manifest.
+
+### 2.9 §12 check after #157 — and the check itself is now the finding
+
+**Disposition is given for every finding, per RULES §12.**
+
+| Finding | Disposition |
+|---|---|
+| **A fold leaves NOTHING in the grounding graph** | **Filed `decision-records-fold-grounding`. Not fixed here** — pre-existing since Slice 1b, and folding it into a gating CR would have thrown away a 34-minute gate mid-flight |
+| Persistence round-trip of a manifest-bearing graph | **Clean, no action.** The manifest value survives `make_node_value_encoder({})` unchanged, including `case_label: None` and an undescribed start's `None` — no encoders needed |
+| **§12 itself produces a drip, not a check** | **Escalated to a second lane** — see below |
+
+**Surfaces examined this pass:** fold/reducer runs; the persistence codec.
+Previously examined: the leaf run, the member run, the sub-MM router, the refusal
+vocabulary, the origin union. **Still unexamined:** replan / targeted re-execution,
+a submind's grounding graph, and a real Falkor round-trip.
+
+#### The fold, in the system's own output
+
+A two-exposure map followed by a fold, every graph in `capacity_mm` dumped:
+
+```
+graphs collected: 2
+  [0] {'RunManifest': 1, 'DataStateInstance': 2, 'CapacityInstance': 1}
+  [1] {'RunManifest': 1, 'DataStateInstance': 2, 'CapacityInstance': 1}
+
+EVERY graph in capacity_mm, by role:   (the same two — nothing else exists)
+
+Does ANY graph mention the reducer capacity:derivation:fx_reduce ?
+  -> NO. The fold left nothing in the grounding graph.
+
+The claim-level conclusion the fold produced:
+  present in any grounding graph? False
+```
+
+`_run_fold_milestone` dispatches the reducer **directly** and its signature does
+not even take `mm`, so it has no way to ground anything. Consequences, worst
+first:
+
+1. **The claim-level answer is unrenderable.** It lives only on the in-memory
+   blackboard, which `execution.run` never hands back. Per-exposure Records
+   render; the conclusion they add up to does not.
+2. **The link is gone too** — no `CONSUMES` from the member verdicts to the
+   conclusion, so even rendering both, nothing says one came from the other.
+3. No manifest and no reducer `CapacityInstance`, so on the fold **G2 is
+   unavailable** and nothing can name what decided.
+
+Same defect as #157's, one layer up, and worse: #157's made *members*
+unrenderable; this makes the **answer** unrenderable.
+
+#### The process finding, which is bigger than the fold
+
+**Ten gaps, one per phase, each found after the work it invalidated was already
+built and gated.** §12 asks for *"a full check of the system"* after every ship
+and forbids repeating the last surface, and what that has produced in practice is
+**one nominated surface per ship** — a drip that guarantees a new gap every phase
+indefinitely. Each costs a ~35-minute gate to confirm a ~20-minute
+implementation, against a fixed demo date. It does not converge.
+
+Two facts from the record, both uncomfortable:
+
+- **Every gap was surfaced by RUNNING the system**, never by re-reading it.
+- **Most of them were reachable by reading** — a sibling function that had the
+  call and one that didn't; a prefix table versus the IRI builders. The reading
+  was not pointed at the right question.
+
+The build lane is not the right lane to grade its own method. **A second, critic
+lane is being opened** to answer *"how should this system be checked so the gap
+list converges in one pass"*, with `confirmation_docs/DR_CRITIC_COORDINATION.md`
+as the shared record. It gets no worktree and no git; it reads, probes, and
+proposes, and changes come back through this lane. The build lane's own
+hypotheses are in that file, **folded shut**, to be opened only after the critic
+has written its own answer.
+
+**⛔ Nothing further is built until that answer is in.** Building the fold fix
+first would be another 20 minutes of implementation defended by a method already
+known to be leaking.
 
 ---
 
