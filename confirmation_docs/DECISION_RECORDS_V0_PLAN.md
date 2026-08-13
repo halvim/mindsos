@@ -541,6 +541,74 @@ run leaves a graph"* and *"run 4 renders"*. Both are false for map runs, and bot
 were written without ever having run a map. Nine consecutive gates were predicted
 exactly across that period.
 
+### 2.8 The map-manifest CR — what it built, and the two decisions it inverted
+
+**Branch `feat/dr-map-manifest`, off `main` at `be7aa8a`.** It closes both
+halves of §2.7's finding, and the fix is deliberately *not* a second mint.
+
+**Minting moved into `execute_pipeline`.** That is the one function BOTH run
+paths call — `_run_leaf_pipeline` and `_run_member_pipeline` — so *"every graph
+carries a manifest"* is now a property of the executor instead of a thing each
+caller has to remember. #153 minted it in `_run_leaf_pipeline`, which is why the
+member path had none. `_run_leaf_pipeline` no longer mints anything and nothing
+replaces it there.
+
+**One no-route helper, two callers.** `execution._mint_no_route_graph` leaves a
+manifest-only graph and re-raises; it is called from the leaf path and from
+`_run_one_member`. It is caught in `_run_one_member` rather than inside
+`_run_member_pipeline` because that function is deliberately **pure** — the
+caller decides accept/reject, so a rejected retry persists nothing — and
+persisting a graph is a caller decision.
+
+**`declared_starts` became IRI → phrase**, and is keyed on what was actually
+**seeded** rather than on `pipeline.start_datastates`: a seeded value is exactly
+what becomes a parentless `DataStateInstance`, and a declared start with no
+value mints no node, so naming it would promise a renderer a premise that is not
+in the graph.
+
+**`case_label` was added**, threaded from `execution.run` through every path.
+Core never invents one; absent is recorded as `None` rather than as a missing
+key, so a renderer can tell *"no label"* from *"could not read the label"*.
+
+**Two decisions were inverted, and both inversions are mine to own.**
+
+| What was asserted before | What it is now |
+|---|---|
+| `execute_pipeline` must not take a writer, and `_run_leaf_pipeline` is the right place to mint (#153) | The right place is `execute_pipeline`. #153's reasoning about *writers* was correct and is unchanged — no writer is threaded; what moved is the **mint**, and the earlier version was only ever right for one of two run paths |
+| `source_unreachable` **is advertised** and can never be recorded — pinned as a gap to live with (#155/#156, ADR-0207 am-2's ⚠ OPEN) | It is **no longer advertised**. A producer must not advertise a refusal reason none of its records can carry. ADR-0207 **amendment 3**; the pin is inverted, keeps driving the raising path, and keeps its teeth |
+
+**ADR-0201 amendment 4 was owed and is now written.** #153 added a new node type
+to the L5 grounding vocabulary — `RunManifest` — and amended no ADR at all,
+though ADR-0201 is that vocabulary's home. The amendment records the node, its
+four fields, and both corrections above. **This is a §9 finding in its own
+right: a new node type shipped with no ADR row.**
+
+**Two more findings came out of the pre-filter, and both are older than this CR.**
+
+| Finding | Disposition |
+|---|---|
+| **`runstopped:` and `runmanifest:` are prefixes NO sub-MM owns** — `sub_mm_for_iri` raised `KeyError` on either, for nodes sitting inside a capacity run graph | **Fixed here.** Both join `CAPACITY_PREFIXES`. It survived because neither had met the router: `RunStopped` is written only on a non-success, and the guard that walks every node of a run graph only ever sees a successful one. Moving the mint into `execute_pipeline` reddened it in one step |
+| **`start_phrases` fell back to the start's own IRI** when no description was registered — this CR's own first version | **Corrected here** to `None`. The IRI fallback re-inserts the exact leak the phrase mapping replaced, on exactly the runs with no prose to dilute it. The key stays present, so the declared set is still structurally complete |
+
+**The §12 surface this check nominated:** the sub-MM router and the two
+run-scoped node types, neither previously examined. Surfaces still unexamined:
+fold/reducer runs, and a real persistence round-trip.
+
+**Shown red by mutation, eleven mutations, each reddening a distinct set:** no
+manifest at all; starts as bare IRIs; phrases dropped; a core-invented label;
+the label not threaded to members; not threaded to the leaf; the member no-route
+catch removed; the helper's `mm is None` guard removed; the lookup advertising
+`source_unreachable` again; the two run-scoped prefixes losing their room; an
+undescribed start falling back to its own IRI; and every member sharing one run
+ref.
+
+**Pre-filter, two trees, `main` at `be7aa8a` as the baseline.** 52 failed on the
+first change-tree run. **48 are identical by name in both trees** and are
+environment-only (no Falkor / no docker in the pre-filter container). The other
+**4 were mine, and one of them was the routing defect above** — the other three
+are node counts that moved by exactly one, because every run now leaves a
+manifest.
+
 ---
 
 ## 3. Guards

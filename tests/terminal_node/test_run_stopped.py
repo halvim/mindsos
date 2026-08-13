@@ -306,3 +306,23 @@ def test_no_mm_means_no_writes_and_no_crash():
     )
     assert res.success is False
     assert res.capacity_graph is None
+
+
+def test_every_node_a_stopped_run_leaves_routes_to_capacity_mm():
+    """**Driven, because the prefix table agreeing with itself proves nothing.**
+
+    ``runstopped:`` was a top-level prefix no sub-MM owned, so
+    ``mm.sub_mm_for_iri`` raised ``KeyError`` on the terminal node this whole
+    module is about — a node sitting in a capacity run graph that the router
+    said belonged nowhere. It survived because nothing had ever asked: the
+    equivalent guard in ``tests/phase_48/test_capacity_mm_writer.py`` only ever
+    sees a SUCCESSFUL run, which by construction has no RunStopped in it.
+
+    Found when the run manifest moved into ``execute_pipeline`` and reddened
+    that guard for ``runmanifest:``; the sibling was one line away.
+    """
+    mm = _mm()
+    _, graph = _failing_second_step(mm)
+    assert _nodes(graph, NODE_TYPE_RUN_STOPPED), "the run must actually have stopped"
+    for node_id in graph.nodes:
+        assert mm.sub_mm_for_iri(node_id) is mm.capacity_mm, node_id

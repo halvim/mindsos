@@ -290,3 +290,34 @@ lists: every field called live must actually appear in an emitted record, no
 reserved field may appear in one, and `environment_fault` must never be `True`.
 A producer that stops writing a field, or a new field added without a
 classification, turns the gate red. Shown red by mutation on all four paths.
+
+## Amendment 3 — a producer advertises only what a record can carry (2026-08-13)
+
+**Amendment status:** Proposed. **Opened by:** `decision-records-map-manifest`,
+closing the OPEN question amendment 2 left on `source_unreachable`.
+
+Amendment 2 classified `source_unreachable` as degenerate and then wrote:
+*"⚠ OPEN: whether a producer should stop ADVERTISING a reason it cannot
+record."* It should, and `policy_lookup_v0` no longer does.
+
+`possible_refusal_reasons` rides on **every** record a producer writes, admitted
+or refused, so that a renderer can tell *"this producer could never say that"*
+from *"this producer happened not to"*. That is its whole job, and it only works
+if the list is about **records**. The store-unreachable path **raises**
+(`PolicyStoreUnreachableError`), and a raising step writes no origin record at
+all — `execute_pipeline` records the stop, not an output. So a possible-list
+naming it told a renderer *"this lookup could have told you the store was
+unreachable"*, which is a sentence no record could ever be the evidence for.
+
+**The token is not deleted.** It remains in the closed `REFUSAL_REASONS` set,
+remains the machine-readable `refusal_reason` on the exception, and still
+reaches a reader — through L-2's `RunStopped` node, which is where *"was this
+our fault"* belongs. It also stays classified `REASONS_DEGENERATE`, because that
+classification is about what a **record** can carry, and no record can carry it.
+
+**This changes every record the lookup emits**, which is why amendment 2 filed
+it as a decision rather than doing it as a tidy-up. The rule it settles is
+general: *a producer must not advertise a refusal reason none of its records can
+carry.* The guard is the inverted pin — the test that asserted the reason WAS
+advertised now asserts it is not, over the records the shipped producers
+actually emit, and it still drives the raising path so the pin keeps its teeth.

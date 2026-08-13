@@ -41,6 +41,24 @@ def test_iri_namespace_dispatch():
         mm.sub_mm_for_iri("unknown:thing")
 
 
+def test_the_two_run_scoped_node_prefixes_have_a_room():
+    """Both live IN the per-run capacity graph, and neither was in the table.
+
+    ``sub_mm_for_iri`` raised ``KeyError`` on either — a node sitting in a
+    capacity graph that the router said belonged nowhere. It went unseen because
+    neither prefix had met the router: ``RunStopped`` is written only on a
+    non-success, and the manifest was minted a layer above ``execute_pipeline``
+    until the map-manifest CR moved it in.
+
+    Asserted here, at the table, AND driven over real graphs in
+    ``tests/phase_48/test_capacity_mm_writer.py`` and
+    ``tests/terminal_node/test_run_stopped.py`` — a prefix table that agrees
+    with itself is not evidence that anything routes."""
+    mm = _mm()
+    assert mm.sub_mm_for_iri("runmanifest:t1.t1-1") is mm.capacity_mm
+    assert mm.sub_mm_for_iri("runstopped:t1.t1-1") is mm.capacity_mm
+
+
 def test_deep_copy_is_independent():
     mm = _mm()
     mm.root.request_run_ref = "requestrun:orig"

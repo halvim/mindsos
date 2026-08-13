@@ -390,6 +390,11 @@ NODE_TYPE_RUN_MANIFEST = "RunManifest"
 MANIFEST_DECLARED_STARTS = "declared_starts"
 MANIFEST_CAPACITY_PHRASES = "capacity_phrases"
 MANIFEST_STOP_REASON_PHRASES = "stop_reason_phrases"
+#: Optional, caller-supplied: what this run is ABOUT, in prose. Absent unless a
+#: consumer sets it — core must never invent one, and a member index or a run ref
+#: is an identifier, not a label a reader can be shown. It exists because several
+#: Records from one claim are otherwise indistinguishable on the page.
+MANIFEST_CASE_LABEL = "case_label"
 
 #: Registered prose for the closed run-stopped set. Core owns the tokens, so
 #: core owns their phrases — *tokens branch, phrases print* (ADR-0207 rule 2).

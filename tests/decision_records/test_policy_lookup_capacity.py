@@ -209,13 +209,20 @@ def test_no_edition_in_force_returns_a_finding_and_does_not_raise():
     assert missing_declared_fields(record) == []
 
 
-def test_a_refusal_still_declares_both_reasons_it_could_ever_give():
+def test_a_refusal_declares_only_the_reason_a_record_could_ever_carry():
     """Lets a renderer tell "a lookup would never say quote_not_found_in_source"
-    from "this lookup happened not to"."""
+    from "this lookup happened not to" — and that only works if the list is
+    about RECORDS.
+
+    ``source_unreachable`` used to be in here and no longer is (ADR-0207
+    amendment 3). It raises, and a raising step writes no origin record at all,
+    so advertising it told a renderer *"this lookup could have told you the
+    store was unreachable"* — a sentence no record could ever be the evidence
+    for. The token still exists and still reaches a reader, through L-2's
+    ``RunStopped`` node; the test below drives that path."""
     record = _run(build_kl(EDITION_2023), "2019-04-15")[DS_FILING_THRESHOLD_ORIGIN]
     assert set(record[FIELD_POSSIBLE_REFUSAL_REASONS]) == {
         REFUSAL_NO_SOURCE_IN_FORCE,
-        REFUSAL_SOURCE_UNREACHABLE,
     }
 
 

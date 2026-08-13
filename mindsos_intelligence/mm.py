@@ -28,7 +28,16 @@ KNOWLEDGE_PREFIXES = (
     "episode:",
     "memory:",
 )
-CAPACITY_PREFIXES = ("capacity:", "datastate:")
+#: ``runstopped:`` / ``runmanifest:`` are here because both node types live IN
+#: the per-run capacity graph and had no room at all: ``sub_mm_for_iri`` raised
+#: ``KeyError`` on either. Instance IRIs keep the ``datastate:`` / ``capacity:``
+#: prefix ONLY so this routing works (see ``identifiers`` §Instance-IRI
+#: vocabulary), and the terminal node and the manifest each invented a new
+#: top-level prefix without joining the table. Neither had met the router:
+#: ``RunStopped`` is only written on a non-success, and the manifest was minted
+#: one layer above ``execute_pipeline`` until now. Found by the routing guard
+#: below going red the moment the manifest moved into the executor.
+CAPACITY_PREFIXES = ("capacity:", "datastate:", "runstopped:", "runmanifest:")
 INTELLIGENCE_PREFIXES = (
     "hintset:",
     "mappingresult:",

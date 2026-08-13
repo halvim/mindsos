@@ -25,6 +25,7 @@ import pytest
 
 from mindsos_capacity.identifiers import (
     MANIFEST_CAPACITY_PHRASES,
+    MANIFEST_CASE_LABEL,
     MANIFEST_DECLARED_STARTS,
     MANIFEST_STOP_REASON_PHRASES,
     NODE_TYPE_CAPACITY_INSTANCE,
@@ -39,6 +40,7 @@ from mindsos_intelligence.execution import LeafPipelineNotFound
 
 from ._dr_driver import decision_record_plan, run_decision_record
 from ._dr_fixtures import (
+    DS_AS_OF_DATE,
     CAP_DECISION,
     CAP_LOOKUP,
     CAP_READER,
@@ -84,6 +86,7 @@ def test_the_manifest_carries_its_contents_in_the_value_not_the_properties():
         MANIFEST_DECLARED_STARTS,
         MANIFEST_CAPACITY_PHRASES,
         MANIFEST_STOP_REASON_PHRASES,
+        MANIFEST_CASE_LABEL,
     }
 
 
@@ -108,6 +111,32 @@ def test_the_declared_starts_are_recorded():
     assert set(manifest.value[MANIFEST_DECLARED_STARTS]) == set(STARTS)
 
 
+def test_each_declared_start_is_recorded_as_prose_not_as_an_iri():
+    """It maps IRI → registered description, and the mapping is the point.
+
+    Bare IRIs were the first version, and they printed straight onto the
+    no-route page — where the starts are the only thing there is to say, so a
+    G6 leak lands on the one page with nothing else to dilute it."""
+    starts = _the_manifest(_clean().graph).value[MANIFEST_DECLARED_STARTS]
+    assert starts == {
+        DS_FILING_RECORD: "the return as filed",
+        DS_AS_OF_DATE: "the date the question is asked about",
+    }
+
+
+def test_a_leaf_run_carries_the_callers_case_label():
+    """Threaded from ``execution.run`` and never invented by core. Two runs of
+    the same plan over different dates are otherwise indistinguishable on the
+    page."""
+    run = run_decision_record(
+        build_kl_with_both(), INITIAL_2024, request_id="mf-label",
+        case_label="the 2024 return",
+    )
+    manifest = _the_manifest(run.graph)
+    assert manifest.value[MANIFEST_CASE_LABEL] == "the 2024 return"
+    assert _the_manifest(_clean().graph).value[MANIFEST_CASE_LABEL] is None
+
+
 def test_g2_a_deleted_producer_is_now_distinguishable_from_a_premise():
     """**G2.** Probe D's exact mutation: delete the criterion's
     CapacityInstance and the verdict's instance becomes parentless. Before the
@@ -116,7 +145,7 @@ def test_g2_a_deleted_producer_is_now_distinguishable_from_a_premise():
     manifest the two are separable — the verdict is parentless AND not a
     declared start, which is a gap.
 
-    Remove ``writer.manifest(...)`` from ``_run_leaf_pipeline`` and this test
+    Remove ``writer.manifest(...)`` from ``execute_pipeline`` and this test
     goes red, because there is nothing left to compare against.
     """
     run = _clean()
@@ -202,7 +231,9 @@ def test_run_4_leaves_a_graph_instead_of_only_an_exception():
     assert len(graphs) == 1, "an unroutable run must still leave its graph"
     graph = graphs[0]
     manifest = _the_manifest(graph)
-    assert manifest.value[MANIFEST_DECLARED_STARTS] == [DS_FILING_RECORD]
+    assert manifest.value[MANIFEST_DECLARED_STARTS] == {
+        DS_FILING_RECORD: "the return as filed"
+    }
     assert manifest.value[MANIFEST_CAPACITY_PHRASES] == {}, (
         "no route means no capacity ran, so there is nothing to name — and a "
         "manifest that named one would be claiming an execution that did not "

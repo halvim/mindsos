@@ -86,12 +86,21 @@ from .origin_v0 import (
 #: The category every lookup built here registers into.
 CATEGORY = CATEGORY_RETRIEVAL
 
-#: Everything a policy lookup could ever refuse with. Declared on every record,
-#: admitted or not, so a renderer can tell "this producer could never say that"
-#: from "this producer happened not to".
+#: Everything a policy lookup could ever refuse with **on a record**. Declared
+#: on every record, admitted or not, so a renderer can tell "this producer could
+#: never say that" from "this producer happened not to".
+#:
+#: ``source_unreachable`` is deliberately NOT here, and removing it is a
+#: correction. It raises (see the module docstring), and a raising step writes no
+#: record — so no record could ever carry it as ``refusal_reason``. Advertising
+#: it told a renderer "this lookup could have told you the store was
+#: unreachable", which is a sentence no record can ever be the evidence for. The
+#: token is not deleted: it stays the machine-readable reason on
+#: :class:`PolicyStoreUnreachableError` and reaches the reader through L-2's
+#: ``RunStopped`` node, which is where "was this our fault" belongs. This list is
+#: about the record, and on the record the reason is unreachable in both senses.
 POSSIBLE_REFUSAL_REASONS = (
     REFUSAL_NO_SOURCE_IN_FORCE,
-    REFUSAL_SOURCE_UNREACHABLE,
 )
 
 #: Producer-declared fields a lookup populates **when it admits a value**. On a
