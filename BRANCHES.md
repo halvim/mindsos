@@ -9,13 +9,28 @@ demos live on `demo/*` branches and never edit `mindsos_*`.
 
 ## Worktrees
 
-| Directory            | Branch        | Kind             | Project home             |
-|----------------------|---------------|------------------|--------------------------|
-| `MindsOS/`           | `main`        | core             | `mindsos_*` + `tests/` + `docs/` |
-| `MindsOS-wsd/`       | `wsd-51`      | core-contributor | `projects/wsd/`          |
-| `MindsOS-robot/`     | `demo/robot`  | demo             | `projects/robot_demo/`   |
-| `MindsOS-arc/`       | `demo/arc`    | demo             | `projects/arc_demo/`     |
-| `MindsOS-bongard/`   | `demo/bongard`| demo (new)       | `projects/bongard_demo/` |
+⚠ **Rebuilt 2026-08-13 from `git worktree list`, because it had drifted.** It listed
+`MindsOS-arc` on `demo/arc` when git says `arc-solver`, and omitted four live worktrees
+entirely. Homes are marked **unverified** where no such directory exists on `main` —
+`projects/{robot_demo,arc_demo,bongard_demo}/` are all in that category, which is the same
+drift RULES §1 was corrected for. Do not restore a home column entry without `ls`-ing it.
+
+| Directory                 | Branch             | Kind             | Project home                     |
+|---------------------------|--------------------|------------------|----------------------------------|
+| `MindsOS/`                | `main`             | core             | `mindsos_*` + `tests/` + `docs/` |
+| `MindsOS-wsd/`            | `wsd-51`           | core-contributor | `projects/wsd/` ✅               |
+| `mindsos-amii-study/`     | `chore/amii-study` | study            | `projects/amii_study/` ✅        |
+| `MindsOS-robot/`          | `demo/robot`       | demo             | `robot_demo/` at root ✅ (NOT `projects/robot_demo/`) |
+| `MindsOS-arc/`            | `arc-solver`       | demo             | unverified                       |
+| `MindsOS-arc-viz/`        | `arc-solver-viz`   | demo             | unverified                       |
+| `MindsOS-bongard/`        | `demo/bongard`     | demo             | unverified                       |
+| `nilm_brain/`             | `nilm_brain`       | long-lived       | unverified                       |
+| `_MindsOS-dr-critic/`     | `feat/dr-critic`   | critic lane      | `scripts/critic/` — **transient; owes §10.1**, its probe scripts exist nowhere else |
+
+**Decision Records** is a lane with **no worktree of its own yet**. Its research + docs home is
+`projects/decision_records_demo/` on `main`; its code home is still to be created
+(`demo/decision-records`, root-level `decision_records_demo/`) — see
+`confirmation_docs/DECISION_RECORDS_V0_PLAN.md`.
 
 On demand (create when the work starts):
 `git worktree add ../MindsOS-fol -b fol-1 main` (also dwf, skill_acquisition, maintenance).

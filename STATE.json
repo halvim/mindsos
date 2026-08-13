@@ -1,7 +1,7 @@
 {
   "_comment": "Machine-readable state. Chats read THIS first, not the 134KB HANDOFF.md. Bump as part of the ship ritual.",
   "core_version": "phase50",
-  "core_git_sha": "fd6cefc",
+  "core_git_sha": "daee411",
   "last_shipped_phase": 50,
   "in_progress": {
     "phase": 51,
