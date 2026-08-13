@@ -18,7 +18,10 @@ from __future__ import annotations
 import pytest
 
 from mindsos_capacity.builtins import origin_v0 as origin
-from mindsos_capacity.builtins.policy_lookup_v0 import build_policy_limit_lookup
+from mindsos_capacity.builtins.policy_lookup_v0 import (
+    PolicyStoreUnreachableError,
+    build_policy_limit_lookup,
+)
 from mindsos_capacity.builtins.structured_ingest_v0 import (
     build_structured_ingest_reader,
 )
@@ -126,6 +129,78 @@ def test_printed_and_structural_partition_the_union():
     printed, structural = set(origin.FIELDS_PRINTED), set(origin.FIELDS_STRUCTURAL)
     assert printed | structural == set(origin.ORIGIN_UNION)
     assert not (printed & structural)
+
+
+# ── the vocabulary, classified the same way and checked the same way ──
+
+
+def test_every_reason_is_classified_exactly_once():
+    """#155 froze the FIELDS and left the VOCABULARY unclassified — the same
+    class of gap, in the same module, missed by the ship that built the
+    mechanism for it. This is the other half."""
+    e = set(origin.REASONS_EMITTED_TODAY)
+    r, d = set(origin.REASONS_RESERVED), set(origin.REASONS_DEGENERATE)
+    assert e | r | d == set(origin.REFUSAL_REASONS)
+    assert len(e) + len(r) + len(d) == len(e | r | d), "a reason has two classes"
+
+
+def test_every_reason_called_emitted_is_actually_recorded(emitted):
+    """The teeth, again: run the producers and look."""
+    recorded = {
+        r[origin.FIELD_REFUSAL_REASON] for r in emitted
+        if r[origin.FIELD_REFUSAL_REASON] is not None
+    }
+    never = sorted(set(origin.REASONS_EMITTED_TODAY) - recorded)
+    assert never == [], f"classified emitted but never recorded: {never}"
+
+
+def test_no_reserved_or_degenerate_reason_is_ever_recorded(emitted):
+    recorded = {
+        r[origin.FIELD_REFUSAL_REASON] for r in emitted
+        if r[origin.FIELD_REFUSAL_REASON] is not None
+    }
+    leaked = sorted((set(origin.REASONS_RESERVED) | set(origin.REASONS_DEGENERATE)) & recorded)
+    assert leaked == [], f"recorded but classified as unavailable: {leaked}"
+
+
+def test_source_unreachable_is_advertised_but_can_never_be_recorded(emitted):
+    """**The gap-pin.** The lookup declares it in every record's possible list,
+    and the path that would use it RAISES — so no record can carry it. A
+    renderer reading the possible list would tell a reader *"this lookup could
+    have told you the store was unreachable"*, which no record could ever say.
+
+    Fails the day the hole closes, i.e. the day an unreachable store returns
+    instead of raising. Same class as the ``environment_fault`` pin, which is
+    derived from this very reason."""
+    advertised = {
+        reason for r in emitted
+        for reason in r[origin.FIELD_POSSIBLE_REFUSAL_REASONS]
+    }
+    assert origin.REFUSAL_SOURCE_UNREACHABLE in advertised, (
+        "the premise of this pin is that it IS advertised"
+    )
+    assert origin.REFUSAL_SOURCE_UNREACHABLE in origin.REASONS_DEGENERATE
+
+    # **Drive the unreachable path itself.** An earlier version of this test
+    # asserted the reason was absent from the RECORDED set — and the recorded
+    # set came from a fixture whose paths never reach the store failure, so
+    # making the reason recordable reddened nothing. An assertion over a set
+    # that cannot contain the forbidden thing is not a guard. The pin is that
+    # the path RAISES, which is why no record exists to carry the reason.
+    class _Unreadable:
+        def global_view(self):
+            raise RuntimeError("the store is down")
+
+    with pytest.raises(PolicyStoreUnreachableError):
+        _lookup_body()(context=_Ctx(_Unreadable()), **{DS_AS_OF: "2024-06-01"})
+
+    with pytest.raises(PolicyStoreUnreachableError):
+        _lookup_body()(context=_Ctx(None), **{DS_AS_OF: "2024-06-01"})
+
+
+def test_a_reserved_reason_names_the_producer_that_will_record_it():
+    for reason, owner in origin.REASONS_RESERVED.items():
+        assert owner.strip(), reason
 
 
 # ── and then it goes and looks ────────────────────────────────────────
