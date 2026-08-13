@@ -69,9 +69,14 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - Cowork builds; Mac commits + pushes; Linux runs/gates. Never run tests on the Mac.
 - Never mutate git from the Cowork sandbox (stale `index.lock` blocks the Mac).
 - Update `STATE.json` on every ship. Keep `HANDOFF.md` for narrative only.
-- **Never commit chat/next-chat prompts.** `*NEXT_CHAT_PROMPT*.md` and any
-  copy-paste handoff prompt are transient and local-only — they are gitignored
-  and must stay out of git. Hand them off by pasting into the next chat, not by
+- **Never commit chat/next-chat prompts, or cross-lane coordination files.**
+  `*NEXT_CHAT_PROMPT*.md`, `*COORDINATION*.md` and any copy-paste handoff prompt
+  are transient and local-only — they are gitignored and must stay out of git.
+  A coordination file lives in the **shared checkout**, not in a lane's worktree,
+  so it outlives the worktree (§10 deletes that folder). ⚠ **A finding recorded
+  only in a coordination file does not exist** — it must reach
+  `STATE.pending_designs` in the same ship, or it escapes exactly the way
+  `per-run-case-label` did. Hand them off by pasting into the next chat, not by
   pushing. Same for scratch/planning dirs (`_reorg/`).
 - **Never `git add -A`/`git add .`.** Stage explicit paths only — the shared
   tree accumulates untracked floaters that a blanket add will sweep onto the

@@ -47,3 +47,4 @@ node_modules/
 .fuse_hidden*
 .DS_Store
 *NEXT_CHAT_PROMPT*.md
+*COORDINATION*.md
