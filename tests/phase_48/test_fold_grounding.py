@@ -251,7 +251,14 @@ def test_the_reducer_consumes_the_ordered_member_verdicts():
     """One CONSUMES edge, from the collection whose value IS the ordered member
     verdicts. Which member produced which verdict is order-correlated with the
     member graphs — pinned here by value: the fold's seeded collection equals
-    the member graphs' verdict instances, in member order."""
+    the member graphs' verdict instances, in member order.
+
+    The full-sequence equality fails on COUNT drift (n verdicts vs n member
+    graphs), not only on permutation — critic §14 Q1 condition 1. ⚠ Recorded
+    hazard (§14): order-as-identity is sound ONLY while the ∀-abort barrier
+    makes member order total; the CR that lets a member refuse instead of
+    aborting (`core-collection-member-dont-know`) must revisit this ruling —
+    its STATE entry carries the same sentence."""
     graphs, _ = _run(["e1", "e2", "e3"])
     fold = _fold_graph(graphs)
     consumed = [
