@@ -153,11 +153,13 @@ local and remote, both lists checked).
 | #154 | `93ff31b` | **Item 5** — the structured-ingest reader, and **run 2's first test** | **4694 / 11 / 1x / 0** |
 | #155 | `bbe63e4` | **The origin-union freeze** + ADR-0207 am-2. Tag **`origin-union-freeze-confirmed`** | **4711 / 11 / 1x / 0** |
 | #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
+| #157 | *(squash)* | **Map-member manifests** — minting moves into `execute_pipeline`; the sub-MM routing gap; ADR-0201 am-4 + ADR-0207 am-3. Tag **`dr-map-manifest-confirmed`** | **4731 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4716 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#156's tip `254a06c`.** It is carryable — #155 was a **merged-state** gate (`merge-base
---is-ancestor` proved the tip contained `origin/main`, which had not moved from `93ff31b`),
-unlike `#138`'s 4551, which was a branch gate and is not. **This line has been stale twice:
+**Baseline for the next item: 4731 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#157's tip `f878886`.** It is carryable — the gate ran on a tip whose parent **is**
+`origin/main` (`be7aa8a`, tag `refusal-vocabulary-confirmed`), so it is a **merged-state**
+gate; the `git merge origin/main` before it was a no-op for exactly that reason. Contrast
+`#138`'s 4551, a **branch** gate, which is not carryable. **This line has been stale twice:
 it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
 table, in the same commit.**
 
@@ -389,7 +391,7 @@ mid-item.
 | **4** ✅ | **[SHIPPED]** **The run driver.** Builds a `PlanResult` with plural `leaf_targets[...]["start_datastates"]` and calls `execution.run(..., mm=..., solve_seed=...)`. **The pre-minted grounding root is REMOVED from this item** — see above; it is item 4a. The driver states endpoints and nothing else: L4 derives the finder from start arity, and an AST guard pins that the driver references no finder name and no `finder` plan key. | The route is *found* and *grounded* — not hand-assembled, not a script calling capacities in order. Precedent: `tests/phase_48/test_map_member_multiinput.py`. |
 | **4a** ✅ | ~~**The pre-minted grounding root, for run 4 only.**~~ **ABSORBED and SHIPPED in PR #153** — the manifest is minted above the find, so run 4 has a graph by construction. | Run 4 renders from a graph rather than from a caught exception. |
 | **4b** ✅ | **[SHIPPED — PR #152, ADR-0207 am-1]** **`printable_phrase` on the capacity declaration** (§2.3 decision 2). Optional; validated at `register_capacity` only when supplied; the rule now lives in `mindsos_capacity/printable.py`. | Gate green. Every previously-registered capacity is byte-identical on its node. |
-| **4c** ✅ | **[SHIPPED — PR #153, tag `run-manifest-confirmed`]** **The run manifest.** Writer hoisted above `_compose_pipeline`; starts + capacity phrases + stop-reason phrases in the node **value** (`add_node` validates properties as primitives only); graph appended on the `LeafPipelineNotFound` path. ⚠ **`execute_pipeline` is UNCHANGED** — the optional `writer=` was drafted, its double-mint rationale was **tested and falsified**, and removing it reddened nothing. | Gate green. G2 shown red with probe D's exact mutation. Run 4 renders. **Item 4a absorbed.** |
+| **4c** ✅ | **[SHIPPED — PR #153, tag `run-manifest-confirmed`]** **The run manifest.** Writer hoisted above `_compose_pipeline`; starts + capacity phrases + stop-reason phrases in the node **value** (`add_node` validates properties as primitives only); graph appended on the `LeafPipelineNotFound` path. ⚠ **CORRECTED BY PR #157 — read this row with §2.8.** The falsified-`writer=` finding **stands**: no writer is threaded into `execute_pipeline`, then or now. But *"`execute_pipeline` is UNCHANGED"* is **stale**: #157 moved the **mint** into it (a `case_label` keyword and the manifest call), because minting here covered only one of two run paths and left every map member with no manifest. Writer, no; mint, yes. | Gate green. G2 shown red with probe D's exact mutation. Run 4 renders. **Item 4a absorbed.** |
 | **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
 | ~~**6**~~ | **DELETED 2026-08-12** — its only content was G2, now item 4c's acceptance (§2.3). **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
 | **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. Form is **question → answer → therefore** (§2.3), not composed statements. | One page a non-technical reader understands with no glossary, rendered from the **persisted** `capacity_mm` graph and nothing else — and *persisted* means **a real FalkorDB round-trip** (§2.3 decision 5), not the live `Graph` objects the driver hands back. |
@@ -540,6 +542,152 @@ round-trip.
 run leaves a graph"* and *"run 4 renders"*. Both are false for map runs, and both
 were written without ever having run a map. Nine consecutive gates were predicted
 exactly across that period.
+
+### 2.8 The map-manifest CR — what it built, and the two decisions it inverted
+
+**Branch `feat/dr-map-manifest`, off `main` at `be7aa8a`.** It closes both
+halves of §2.7's finding, and the fix is deliberately *not* a second mint.
+
+**Minting moved into `execute_pipeline`.** That is the one function BOTH run
+paths call — `_run_leaf_pipeline` and `_run_member_pipeline` — so *"every graph
+carries a manifest"* is now a property of the executor instead of a thing each
+caller has to remember. #153 minted it in `_run_leaf_pipeline`, which is why the
+member path had none. `_run_leaf_pipeline` no longer mints anything and nothing
+replaces it there.
+
+**One no-route helper, two callers.** `execution._mint_no_route_graph` leaves a
+manifest-only graph and re-raises; it is called from the leaf path and from
+`_run_one_member`. It is caught in `_run_one_member` rather than inside
+`_run_member_pipeline` because that function is deliberately **pure** — the
+caller decides accept/reject, so a rejected retry persists nothing — and
+persisting a graph is a caller decision.
+
+**`declared_starts` became IRI → phrase**, and is keyed on what was actually
+**seeded** rather than on `pipeline.start_datastates`: a seeded value is exactly
+what becomes a parentless `DataStateInstance`, and a declared start with no
+value mints no node, so naming it would promise a renderer a premise that is not
+in the graph.
+
+**`case_label` was added**, threaded from `execution.run` through every path.
+Core never invents one; absent is recorded as `None` rather than as a missing
+key, so a renderer can tell *"no label"* from *"could not read the label"*.
+
+**Two decisions were inverted, and both inversions are mine to own.**
+
+| What was asserted before | What it is now |
+|---|---|
+| `execute_pipeline` must not take a writer, and `_run_leaf_pipeline` is the right place to mint (#153) | The right place is `execute_pipeline`. #153's reasoning about *writers* was correct and is unchanged — no writer is threaded; what moved is the **mint**, and the earlier version was only ever right for one of two run paths |
+| `source_unreachable` **is advertised** and can never be recorded — pinned as a gap to live with (#155/#156, ADR-0207 am-2's ⚠ OPEN) | It is **no longer advertised**. A producer must not advertise a refusal reason none of its records can carry. ADR-0207 **amendment 3**; the pin is inverted, keeps driving the raising path, and keeps its teeth |
+
+**ADR-0201 amendment 4 was owed and is now written.** #153 added a new node type
+to the L5 grounding vocabulary — `RunManifest` — and amended no ADR at all,
+though ADR-0201 is that vocabulary's home. The amendment records the node, its
+four fields, and both corrections above. **This is a §9 finding in its own
+right: a new node type shipped with no ADR row.**
+
+**Two more findings came out of the pre-filter, and both are older than this CR.**
+
+| Finding | Disposition |
+|---|---|
+| **`runstopped:` and `runmanifest:` are prefixes NO sub-MM owns** — `sub_mm_for_iri` raised `KeyError` on either, for nodes sitting inside a capacity run graph | **Fixed here.** Both join `CAPACITY_PREFIXES`. It survived because neither had met the router: `RunStopped` is written only on a non-success, and the guard that walks every node of a run graph only ever sees a successful one. Moving the mint into `execute_pipeline` reddened it in one step |
+| **`start_phrases` fell back to the start's own IRI** when no description was registered — this CR's own first version | **Corrected here** to `None`. The IRI fallback re-inserts the exact leak the phrase mapping replaced, on exactly the runs with no prose to dilute it. The key stays present, so the declared set is still structurally complete |
+
+**The §12 surface this check nominated:** the sub-MM router and the two
+run-scoped node types, neither previously examined. Surfaces still unexamined:
+fold/reducer runs, and a real persistence round-trip.
+
+**Shown red by mutation, eleven mutations, each reddening a distinct set:** no
+manifest at all; starts as bare IRIs; phrases dropped; a core-invented label;
+the label not threaded to members; not threaded to the leaf; the member no-route
+catch removed; the helper's `mm is None` guard removed; the lookup advertising
+`source_unreachable` again; the two run-scoped prefixes losing their room; an
+undescribed start falling back to its own IRI; and every member sharing one run
+ref.
+
+**Pre-filter, two trees, `main` at `be7aa8a` as the baseline.** 52 failed on the
+first change-tree run. **48 are identical by name in both trees** and are
+environment-only (no Falkor / no docker in the pre-filter container). The other
+**4 were mine, and one of them was the routing defect above** — the other three
+are node counts that moved by exactly one, because every run now leaves a
+manifest.
+
+### 2.9 §12 check after #157 — and the check itself is now the finding
+
+**Disposition is given for every finding, per RULES §12.**
+
+| Finding | Disposition |
+|---|---|
+| **A fold leaves NOTHING in the grounding graph** | **Filed `decision-records-fold-grounding`. Not fixed here** — pre-existing since Slice 1b, and folding it into a gating CR would have thrown away a 34-minute gate mid-flight |
+| Persistence round-trip of a manifest-bearing graph | **Clean, no action.** The manifest value survives `make_node_value_encoder({})` unchanged, including `case_label: None` and an undescribed start's `None` — no encoders needed |
+| **§12 itself produces a drip, not a check** | **Escalated to a second lane** — see below |
+
+**Surfaces examined this pass:** fold/reducer runs; the persistence codec.
+Previously examined: the leaf run, the member run, the sub-MM router, the refusal
+vocabulary, the origin union. **Still unexamined:** replan / targeted re-execution,
+a submind's grounding graph, and a real Falkor round-trip.
+
+#### The fold, in the system's own output
+
+A two-exposure map followed by a fold, every graph in `capacity_mm` dumped:
+
+```
+graphs collected: 2
+  [0] {'RunManifest': 1, 'DataStateInstance': 2, 'CapacityInstance': 1}
+  [1] {'RunManifest': 1, 'DataStateInstance': 2, 'CapacityInstance': 1}
+
+EVERY graph in capacity_mm, by role:   (the same two — nothing else exists)
+
+Does ANY graph mention the reducer capacity:derivation:fx_reduce ?
+  -> NO. The fold left nothing in the grounding graph.
+
+The claim-level conclusion the fold produced:
+  present in any grounding graph? False
+```
+
+`_run_fold_milestone` dispatches the reducer **directly** and its signature does
+not even take `mm`, so it has no way to ground anything. Consequences, worst
+first:
+
+1. **The claim-level answer is unrenderable.** It lives only on the in-memory
+   blackboard, which `execution.run` never hands back. Per-exposure Records
+   render; the conclusion they add up to does not.
+2. **The link is gone too** — no `CONSUMES` from the member verdicts to the
+   conclusion, so even rendering both, nothing says one came from the other.
+3. No manifest and no reducer `CapacityInstance`, so on the fold **G2 is
+   unavailable** and nothing can name what decided.
+
+Same defect as #157's, one layer up, and worse: #157's made *members*
+unrenderable; this makes the **answer** unrenderable.
+
+#### The process finding, which is bigger than the fold
+
+**Ten gaps, one per phase, each found after the work it invalidated was already
+built and gated.** §12 asks for *"a full check of the system"* after every ship
+and forbids repeating the last surface, and what that has produced in practice is
+**one nominated surface per ship** — a drip that guarantees a new gap every phase
+indefinitely. Each costs a ~35-minute gate to confirm a ~20-minute
+implementation, against a fixed demo date. It does not converge.
+
+Two facts from the record, both uncomfortable:
+
+- **Every gap was surfaced by RUNNING the system**, never by re-reading it.
+- **Most of them were reachable by reading** — a sibling function that had the
+  call and one that didn't; a prefix table versus the IRI builders. The reading
+  was not pointed at the right question.
+
+The build lane is not the right lane to grade its own method. **A second, critic
+lane is being opened** to answer *"how should this system be checked so the gap
+list converges in one pass"*, with `confirmation_docs/DR_CRITIC_COORDINATION.md`
+as the shared record — **untracked and gitignored, per RULES §5**, living in the
+shared checkout so it outlives any one lane's worktree. **A finding recorded only
+there does not exist: it must reach `STATE.pending_designs` in the same ship.** It gets no worktree and no git; it reads, probes, and
+proposes, and changes come back through this lane. The build lane's own
+hypotheses are in that file, **folded shut**, to be opened only after the critic
+has written its own answer.
+
+**⛔ Nothing further is built until that answer is in.** Building the fold fix
+first would be another 20 minutes of implementation defended by a method already
+known to be leaking.
 
 ---
 

@@ -24,8 +24,10 @@ from mindsos_intelligence.capacity_mm_writer import (
 from mindsos_capacity.identifiers import (
     EDGE_CONSUMES,
     EDGE_PRODUCES,
+    MANIFEST_DECLARED_STARTS,
     NODE_TYPE_CAPACITY_INSTANCE,
     NODE_TYPE_DATASTATE_INSTANCE,
+    NODE_TYPE_RUN_MANIFEST,
     PROP_DATASTATE_INSTANCE_TYPE,
 )
 
@@ -146,6 +148,16 @@ def test_datastate_instance_carries_payload_and_type():
 
 
 def test_minted_instance_iris_route_to_capacity_mm():
+    """**Every node in the run graph, not only the instances.**
+
+    This went red the moment the manifest moved into ``execute_pipeline``, and
+    what it caught is a real gap rather than a new one: ``runmanifest:`` and
+    ``runstopped:`` were both top-level prefixes **no sub-MM owned**, so
+    ``sub_mm_for_iri`` raised ``KeyError`` on either. Instance IRIs keep the
+    ``datastate:`` / ``capacity:`` prefix precisely so this routing works; the
+    terminal node and the manifest each invented a prefix without joining that
+    table. Neither had ever met the router — ``RunStopped`` is written only on a
+    non-success, and the manifest was minted a layer above this function."""
     mm = _mm()
     pipe, disp = _two_step()
     execute_pipeline(
@@ -212,9 +224,11 @@ def test_replan_second_run_does_not_overwrite_first():
     assert g1.graph_id != g2.graph_id
     # Two disjoint per-run graphs; node ids are run-scoped so they never collide.
     assert set(g1.nodes).isdisjoint(set(g2.nodes))
-    # First run intact: 3 DS instances + 2 cap instances, all run-1 scoped.
-    assert len(g1.nodes) == 5
-    assert len(g2.nodes) == 5
+    # First run intact: 3 DS instances + 2 cap instances + 1 manifest, all
+    # run-1 scoped. The manifest is per RUN, so a second run mints its own and
+    # the count moves together — which is the isolation this test is about.
+    assert len(g1.nodes) == 6
+    assert len(g2.nodes) == 6
     assert all("t1-1" in nid for nid in g1.nodes)
     assert all("t1-2" in nid for nid in g2.nodes)
 
@@ -271,3 +285,33 @@ def test_lock_never_held_across_dispatch():
     assert disp.held_at_dispatch == [False, False]
     # And the lock is free after the run.
     assert mm.lock._writer_active is False
+
+
+def test_a_start_with_no_registered_description_is_recorded_as_none_not_its_iri():
+    """**The fallback that would have put the leak back.**
+
+    ``declared_starts`` maps each start to its registered description precisely
+    so bare IRIs stop printing onto a Record. The first version of the fallback
+    mapped an undescribed start to *its own IRI*, which re-inserts the leak on
+    exactly the runs that have no prose to dilute it. ``None`` cannot leak and
+    is unambiguous: a renderer reads "given, and we have no words for it", which
+    it must say rather than paper over.
+
+    The **key is still present** — the start stays inside the declared set, so a
+    parentless instance is still decidable as a premise rather than as a gap.
+    This dispatcher has no ``capacity_layer`` at all, which is the shape every
+    core-level caller takes."""
+    mm = _mm()
+    pipe, disp = _two_step()
+    assert getattr(disp, "capacity_layer", None) is None
+    execute_pipeline(
+        disp, pipe, {"datastate:a": "A"},
+        request_id="t1", mm=mm, pipeline_run_ref="pipelinerun:t1:1",
+    )
+    graph = _run_graph(mm, "t1", "pipelinerun:t1:1")
+    manifest = next(
+        n for n in graph.nodes.values() if n.type_name == NODE_TYPE_RUN_MANIFEST
+    )
+    starts = manifest.value[MANIFEST_DECLARED_STARTS]
+    assert starts == {"datastate:a": None}
+    assert "datastate:a" in starts, "the key is the structural half; it stays"

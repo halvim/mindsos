@@ -194,7 +194,8 @@ def test_redispatch_same_submind_does_not_overwrite():
     assert len(graphs) == 2
     assert set(graphs[0].nodes).isdisjoint(set(graphs[1].nodes))
     for g in graphs:                               # both runs grounded their full DAG
-        assert len(g.nodes) == 3                   # 2 DataStateInstances + 1 CapacityInstance
+        assert len(g.nodes) == 4                   # 2 DataStateInstances + 1 CapacityInstance
+                                                   # + 1 RunManifest (one per run)
 
 
 def test_mm_less_interpret_carveout_unchanged():

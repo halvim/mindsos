@@ -60,6 +60,7 @@ from mindsos_core import Graph
 
 from mindsos_capacity.identifiers import (
     MANIFEST_CAPACITY_PHRASES,
+    MANIFEST_CASE_LABEL,
     MANIFEST_DECLARED_STARTS,
     MANIFEST_STOP_REASON_PHRASES,
     NODE_TYPE_RUN_MANIFEST,
@@ -184,8 +185,9 @@ class CapacityMMWriter:
     def manifest(
         self,
         *,
-        declared_starts: Iterable[str],
+        declared_starts: Mapping[str, Optional[str]],
         capacity_phrases: Mapping[str, str],
+        case_label: Optional[str] = None,
     ) -> str:
         """Mint this run's manifest node — the three things the run's own
         nodes cannot say about it.
@@ -199,8 +201,12 @@ class CapacityMMWriter:
         renderable without a caller-supplied grounding root (item 4a, which
         this absorbs).
 
-        ``declared_starts`` is what makes a **parentless
-        ``DataStateInstance`` decidable**: inside the set it is a premise the
+        ``declared_starts`` maps each start's DataState IRI to its **registered
+        phrase**, not to nothing. Bare IRIs were the first version and they
+        printed straight onto the no-route page, where the starts are the only
+        thing there is to say — a G6 leak on the one page with nothing else on
+        it. The mapping is what makes a **parentless ``DataStateInstance``
+        decidable**: inside the set it is a premise the
         run was given, outside it, a gap where a producer should have been.
         Without it a renderer prints a deleted conclusion as a premise —
         observed, not theorised (guard **G2**).
@@ -226,9 +232,10 @@ class CapacityMMWriter:
             graph = self._run_graph()
             return graph.add_node(
                 value={
-                    MANIFEST_DECLARED_STARTS: sorted(declared_starts),
+                    MANIFEST_DECLARED_STARTS: dict(declared_starts),
                     MANIFEST_CAPACITY_PHRASES: dict(capacity_phrases),
                     MANIFEST_STOP_REASON_PHRASES: dict(RUN_STOPPED_PHRASES),
+                    MANIFEST_CASE_LABEL: case_label,
                 },
                 type_name=NODE_TYPE_RUN_MANIFEST,
                 node_id=run_manifest_iri(self._request_id, self._run_ref),
@@ -427,3 +434,83 @@ __all__ = [
     "RUN_GRAPH_ROLE_PREFIX",
     "run_graph_role",
 ]
+
+# ── what a manifest is made of ─────────────────────────────────────────
+#
+# These live beside the writer rather than in the executor because both run
+# paths and the no-route path need them, and duplicating them is how
+# ``_run_member_pipeline`` came to have no manifest at all while
+# ``_run_leaf_pipeline`` did.
+
+
+def capacity_phrases(dispatcher: Any, pipeline: Any) -> Dict[str, str]:
+    """Snapshot ``printable_phrase`` for every capacity this run composed.
+
+    Resolution is **scope-correct** — ``resolve_declaration(..., session=)``,
+    the call ``L4Dispatcher.dispatch`` itself uses. ``get_declaration`` is
+    sessionless and Global-only *by design*, and a consumer's capacities are
+    routinely Local, so it would return nothing for exactly the runs this
+    serves.
+
+    A capacity with no declared phrase is simply absent: the field is optional
+    (ADR-0207 am-1) and a renderer that finds no phrase must say so rather than
+    invent one. Same for a declaration that will not resolve — the manifest is a
+    snapshot of what was knowable when the run started, never a place to guess.
+    """
+    phrases: Dict[str, str] = {}
+    layer = getattr(dispatcher, "capacity_layer", None)
+    if layer is None:
+        return phrases
+    session = getattr(dispatcher, "session", None)
+    for step in getattr(pipeline, "steps", ()) or ():
+        iri = getattr(step, "capacity_iri", None)
+        if not iri or iri in phrases:
+            continue
+        try:
+            declaration = layer.resolve_declaration(iri, session=session)
+        except Exception:  # noqa: BLE001 — an unresolvable name is not a phrase
+            continue
+        phrase = getattr(declaration, "printable_phrase", "")
+        if phrase:
+            phrases[iri] = phrase
+    return phrases
+
+
+def start_phrases(dispatcher: Any, start_iris: Iterable[str]) -> Dict[str, Optional[str]]:
+    """Snapshot each start's registered ``description``, Local before Global.
+
+    Local first for the same reason ``resolve_declaration`` is scope-correct: a
+    consumer's own DataStates are Local, and a Global-only read would return
+    nothing for them.
+
+    **A start with no description maps to ``None``, never to its own IRI.** The
+    IRI was the first version of this fallback and it was wrong for the reason
+    the whole mapping exists: bare IRIs printing onto the page is the leak this
+    replaced, and a fallback that re-inserts them puts the leak back on exactly
+    the runs that have no prose to dilute it. ``None`` cannot leak, and it is
+    unambiguous — a renderer reads "given, and we have no words for it", which
+    it must say rather than paper over. The **key is still present**, which is
+    what matters structurally: the start stays inside the declared set, so a
+    parentless instance is still decidable as a premise rather than a gap.
+    """
+    out: Dict[str, Optional[str]] = {}
+    layer = getattr(dispatcher, "capacity_layer", None)
+    views = []
+    if layer is not None:
+        session = getattr(dispatcher, "session", None)
+        user_id = getattr(session, "user_id", None)
+        try:
+            if user_id and layer.has_local(user_id):
+                views.append(layer.local_view(user_id))
+            views.append(layer.global_view())
+        except Exception:  # noqa: BLE001 — a view we cannot build is no phrase
+            views = []
+    for iri in start_iris:
+        phrase = None
+        for view in views:
+            node = view.get_datastate(iri)
+            if node is not None:
+                phrase = (node.properties or {}).get("description") or None
+                break
+        out[iri] = phrase
+    return out

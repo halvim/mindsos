@@ -266,17 +266,20 @@ REASONS_RESERVED: Mapping[str, str] = {
 #: Declared, advertised, and impossible to record.
 REASONS_DEGENERATE: Mapping[str, str] = {
     REFUSAL_SOURCE_UNREACHABLE: (
-        "advertised in every policy lookup's possible_refusal_reasons and NEVER "
-        "able to be an actual refusal_reason. The store-unreachable path RAISES "
-        "(PolicyStoreUnreachableError), and a raising step writes no origin "
-        "record at all — execute_pipeline records the stop, not an output. So a "
-        "renderer reading the possible list would tell a reader 'this lookup "
-        "could have told you the store was unreachable' when no record could "
-        "ever say it. Exactly the shape of environment_fault, which is derived "
-        "from this reason and its twin. ⚠ OPEN: whether a producer should stop "
-        "ADVERTISING a reason it cannot record. Removing it from "
-        "POSSIBLE_REFUSAL_REASONS changes every emitted record, so it is a "
-        "decision rather than a tidy-up — classified here, not silently changed."
+        "a real refusal reason that NO origin record can ever carry. The "
+        "store-unreachable path RAISES (PolicyStoreUnreachableError), and a "
+        "raising step writes no origin record at all — execute_pipeline records "
+        "the stop, not an output. Exactly the shape of environment_fault, which "
+        "is derived from this reason and its twin. RESOLVED 2026-08-13: the OPEN "
+        "question here was whether a producer should keep ADVERTISING a reason "
+        "it cannot record. It should not, and policy_lookup_v0 no longer does — "
+        "a possible-list naming it told a renderer 'this lookup could have told "
+        "you the store was unreachable', which is a sentence no record could "
+        "ever be the evidence for. The token is NOT deleted: it stays the "
+        "machine-readable reason on the exception and reaches a reader through "
+        "L-2's RunStopped node, which is where 'was this our fault' belongs. It "
+        "stays classified degenerate because that is still true of RECORDS — "
+        "which is what this whole classification is about."
     ),
 }
 

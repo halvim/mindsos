@@ -211,6 +211,7 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0201-am1](0201-amendment-1-slice2.md) | Slice 2 capacity writer (built) | Accepted | L5 | — |
 | [0201-am2](0201-amendment-2-slice-a.md) | per-run capacity graph + no run_ref default (Slice A) | Accepted | L5 | — |
 | [0201-am3](0201-amendment-3-slice-3.md) | knowledge-MM writer + DQ-1 provenance XRef (Slice 3) | Accepted | L5 | — |
+| [0201-am4](0201-amendment-4-run-manifest.md) | the run manifest, and where it is minted | Accepted | L5 | — |
 | [0201](0201-capacity-mm-instance-vocabulary.md) | ADR-0201 — capacity-MM instance vocabulary + minting (DQ-2) | Accepted | L5 | — |
 | [0202](0202-per-task-chain-graphs-persist.md) | ADR-0202 — per-task chain graphs, persisted at consolidation (DQ-8) | Proposed | L5 | — |
 | [0203](0203-learned-pipelines-local-persistence.md) | ADR-0203 — Learned pipelines get a first-class Local persistence surface | Accepted | L2 | — |

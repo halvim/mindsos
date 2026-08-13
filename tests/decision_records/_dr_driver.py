@@ -166,6 +166,7 @@ def run_decision_record(
     session: Optional[Session] = None,
     plan: Optional[PlanResult] = None,
     graphs: Optional[List[Any]] = None,
+    case_label: Optional[str] = None,
 ) -> DecisionRecordRun:
     """Drive one Decision Record end to end and return its grounding graphs.
 
@@ -180,6 +181,12 @@ def run_decision_record(
     the plan names an endpoint; a plan with none falls back to the notional
     record, which writes no grounding graph and would make every assertion below
     vacuous.
+
+    ``case_label`` is what this run is ABOUT, in prose, and it is the consumer's
+    to supply — core writes it onto the manifest verbatim and never invents one.
+    ``request_id`` is not a substitute: it is an identifier, it is used to build
+    grounding refs, and printing it on a page would be exactly the leak G6
+    refuses.
     """
     session = session or Session()
     capacity_layer, session = build_capacity_layer(session)
@@ -202,6 +209,7 @@ def run_decision_record(
         run_scope=request_id,
         solve_seed=dict(seed),
         capacity_graphs=graphs,
+        case_label=case_label,
     )
     return DecisionRecordRun(graphs, pipeline_run_iris, request_run, mm)
 

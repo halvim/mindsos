@@ -96,6 +96,7 @@ def execute_pipeline(
     cancel_token: Any = None,
     mm: Any = None,
     pipeline_run_ref: Optional[str] = None,
+    case_label: Optional[str] = None,
 ) -> PipelineExecutionResult:
     """Execute ``pipeline`` step-by-step via ``dispatcher``.
 
@@ -120,6 +121,13 @@ def execute_pipeline(
     ``pipeline_run_ref=None`` is a ``ValueError`` (CR: capacity_mm persist
     Slice A). ``mm=None`` leaves behavior byte-identical to the pre-Slice-2
     value-only path (``pipeline_run_ref`` is ignored).
+
+    ``case_label`` is written onto the run's manifest node verbatim and is
+    **never invented here**. Core has no way to know which of a consumer's cases
+    a run is, and a label core made up would print on the page as if the system
+    had recognised something. Absent (the default) means the manifest says the
+    run carried no label, which a renderer must be able to tell apart from a
+    label it failed to read.
     """
     blackboard: Dict[str, Any] = dict(initial_inputs or {})
 
@@ -137,9 +145,34 @@ def execute_pipeline(
                 "fresh per-run reference (a `pipelinerun:` IRI) — CR: capacity_mm "
                 "persist Slice A."
             )
-        from .capacity_mm_writer import CapacityMMWriter
+        from .capacity_mm_writer import (
+            CapacityMMWriter,
+            capacity_phrases,
+            start_phrases,
+        )
 
         writer = CapacityMMWriter(mm, request_id, pipeline_run_ref)
+        # The manifest is minted HERE, before any other node, and the placement
+        # is the change. It used to be minted by
+        # ``execution._run_leaf_pipeline``, which is one of TWO run paths: a map
+        # member goes through ``_run_member_pipeline`` instead, so every
+        # member's grounding graph carried no manifest at all. That was found by
+        # running a three-member map — 3 graphs, 3 capacity instances each, 0
+        # manifests — not by reading the code. Minting it in the one function
+        # BOTH paths call makes "every graph carries a manifest" a property of
+        # the executor rather than of whichever caller remembered to.
+        #
+        # ``declared_starts`` is keyed on what was actually SEEDED, not on
+        # ``pipeline.start_datastates``: a seeded value is exactly what becomes
+        # a parentless DataStateInstance, and a declared start with no value
+        # mints no node, so naming it would promise a renderer a premise that is
+        # not in the graph. ``blackboard`` is still the untouched
+        # ``initial_inputs`` at this point — the walk has not run.
+        writer.manifest(
+            declared_starts=start_phrases(dispatcher, tuple(blackboard)),
+            capacity_phrases=capacity_phrases(dispatcher, pipeline),
+            case_label=case_label,
+        )
         for ds, value in blackboard.items():
             # Idempotent seed: a start input already carried in the index (e.g.
             # a raw_task root the caller pre-minted) is not re-minted. Empty

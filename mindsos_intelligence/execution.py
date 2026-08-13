@@ -368,6 +368,7 @@ def run(
     run_attempt: int = 0,
     blackboard: Optional[dict] = None,
     targeted: Optional[tuple] = None,
+    case_label: Optional[str] = None,
 ) -> List[str]:
     """Run each leaf Pipeline; return the top-level PipelineRun IRIs.
 
@@ -387,7 +388,13 @@ def run(
 
     The per-leaf work is delegated to :func:`_run_milestone_sequence` (Slice 2),
     entered here with an empty ``ref_path`` so a top-level leaf's per-run ref is
-    ``{leaf_idx}`` — byte-identical to Slice 1a/1b."""
+    ``{leaf_idx}`` — byte-identical to Slice 1a/1b.
+
+    ``case_label`` is written verbatim onto every run manifest this call mints
+    (leaf, member, and no-route alike) and is **never invented by core**: which
+    of a consumer's cases a run is, is the consumer's fact. Absent — the default,
+    and every existing caller — means the manifest records no label, which a
+    renderer must be able to tell apart from a label it could not read."""
     solve_target = getattr(plan_result, "solve_target", None)
     leaf_targets = getattr(plan_result, "leaf_targets", None) or {}
     milestone_specs = getattr(plan_result, "milestone_specs", None) or {}
@@ -431,6 +438,7 @@ def run(
         real_mode=real_mode,
         start_idx=start_idx,
         target_member=target_member,
+        case_label=case_label,
     )
 
 
@@ -440,6 +448,7 @@ def _run_milestone_sequence(
     blackboard, mm, scope: str, ref_path: str, run_attempt: int,
     capacity_graphs: Optional[list], real_mode: bool,
     start_idx: int = 0, target_member: Optional[int] = None,
+    case_label: Optional[str] = None,
 ) -> List[str]:
     """Run one ordered sequence of milestones over a shared ``blackboard`` and
     return the emitted PipelineRun IRIs (collection-iteration Slice 2 factoring).
@@ -486,6 +495,7 @@ def _run_milestone_sequence(
                 dispatcher, writer, request_run, pr, leaf_ref, spec, blackboard,
                 mm, scope, leaf_path, run_attempt, capacity_graphs,
                 only_member=only_member,
+                case_label=case_label,
             )
         elif real_mode and kind == "fold":
             # Slice 1b — dispatch the L3 reducer over the ordered member outputs.
@@ -496,6 +506,7 @@ def _run_milestone_sequence(
             outputs = _run_leaf_pipeline(
                 dispatcher, writer, pr, leaf_ref, endpoints, blackboard,
                 mm, scope, leaf_path, run_attempt, capacity_graphs,
+                case_label,
             )
             # Thread this stage's produced values to downstream stages.
             blackboard.update(outputs)
@@ -514,44 +525,64 @@ def _run_milestone_sequence(
     return pipeline_run_refs
 
 
-def _capacity_phrases(dispatcher, pipeline) -> dict:
-    """Snapshot ``printable_phrase`` for every capacity this run composed.
+def _member_starts(member_ds: str, shared) -> Tuple[str, ...]:
+    """The start set one map member composes from.
 
-    Resolution is **scope-correct** — ``resolve_declaration(..., session=)``,
-    the same call ``L4Dispatcher.dispatch`` uses. ``get_declaration`` is
-    sessionless and Global-only by design, and the Decision Records capacities
-    are all registered Local (``core-datastate-realm-free``), so it would
-    return nothing for exactly the run this exists to serve.
-
-    A capacity with no declared phrase is simply absent from the map: the
-    field is optional (ADR-0207 amendment 1) and a renderer that finds no
-    phrase must say so rather than invent one. A declaration that cannot be
-    resolved is skipped for the same reason — the manifest is a snapshot of
-    what was knowable when the run started, never a place to guess.
+    Member value first, so a spec that (wrongly) also lists ``member_ds`` as a
+    shared input cannot shadow the member being iterated. Factored out because
+    :func:`_run_one_member` needs the same tuple to describe a member that found
+    no route, and re-deriving it in a second place is exactly how the member path
+    drifted from the leaf path to begin with.
     """
-    phrases: dict = {}
-    layer = getattr(dispatcher, "capacity_layer", None)
-    if layer is None:
-        return phrases
-    session = getattr(dispatcher, "session", None)
-    for step in getattr(pipeline, "steps", ()) or ():
-        iri = getattr(step, "capacity_iri", None)
-        if not iri or iri in phrases:
-            continue
-        try:
-            declaration = layer.resolve_declaration(iri, session=session)
-        except Exception:  # noqa: BLE001 — an unresolvable name is not a phrase
-            continue
-        phrase = getattr(declaration, "printable_phrase", "")
-        if phrase:
-            phrases[iri] = phrase
-    return phrases
+    shared = shared or {}
+    return (member_ds,) + tuple(ds for ds in shared if ds != member_ds)
+
+
+def _mint_no_route_graph(
+    dispatcher, mm, request_id: str, run_ref: str,
+    starts: Tuple[str, ...], capacity_graphs: Optional[list],
+    case_label: Optional[str],
+) -> None:
+    """Leave a manifest-only grounding graph for a run that found no route.
+
+    :func:`_compose_pipeline` raises :class:`LeafPipelineNotFound` before
+    anything is written, so without this an unroutable request leaves NO graph —
+    not even L-2's ``RunStopped`` — and the only renderable artifact is a caught
+    exception, which contradicts rendering from the graph and nothing else.
+
+    Called from **both** run paths. The leaf path had this inline and the member
+    path had nothing at all: ``_run_member_pipeline`` never caught the exception,
+    so an unroutable member left no graph and then ``MemberAbortError`` took the
+    whole request's Record with it. One helper, two callers, is the point of it.
+
+    There is no pipeline here, so there are no capacity phrases to snapshot and
+    the starts are what the run was **asked** for rather than what a composed
+    pipeline declared. On this page that is the entire content, which is why the
+    starts are phrases and not bare IRIs — bare IRIs printed straight onto the
+    one page that has nothing else on it.
+
+    ``mm=None`` returns without writing: the no-MM path is value-only and has no
+    graph to leave.
+    """
+    if mm is None:
+        return
+    from .capacity_mm_writer import CapacityMMWriter, start_phrases
+
+    mm_writer = CapacityMMWriter(mm, request_id, run_ref)
+    mm_writer.manifest(
+        declared_starts=start_phrases(dispatcher, starts),
+        capacity_phrases={},
+        case_label=case_label,
+    )
+    if capacity_graphs is not None and mm_writer.graph is not None:
+        capacity_graphs.append(mm_writer.graph)
 
 
 def _run_leaf_pipeline(
     dispatcher, writer, pr, leaf_ref, endpoints, blackboard,
     mm, request_id: str, leaf_path: str, run_attempt: int,
     capacity_graphs: Optional[list],
+    case_label: Optional[str] = None,
 ) -> dict:
     """Find + run the real leaf pipeline; ground it into ``capacity_mm``, collect
     its per-run graph, and return its outputs (for the caller to thread onto the
@@ -566,7 +597,6 @@ def _run_leaf_pipeline(
     ``ConjunctionFinder`` composes the leaf (arity-derived — see
     :func:`_select_finder`). With a single start this is the pre-CR path
     unchanged."""
-    from .capacity_mm_writer import CapacityMMWriter
     from .pipeline_execution import execute_pipeline
 
     starts = _endpoint_starts(endpoints)
@@ -576,35 +606,17 @@ def _run_leaf_pipeline(
     )
     # A fresh per-run ref per leaf gives each run its own isolated grounding
     # graph (Slice A: replan / concurrent isolation).
-    #
-    # The ref and the writer are built HERE, above the find, and that ordering
-    # is the change. ``_compose_pipeline`` raises ``LeafPipelineNotFound`` when
-    # no route exists; before this, nothing had been written at that point, so
-    # an unroutable request left NO graph — not even L-2's ``RunStopped`` — and
-    # the only renderable artifact was a caught exception, which contradicts
-    # rendering from the graph and nothing else.
-    #
-    # ``execute_pipeline`` still builds its own writer and is UNCHANGED. An
-    # earlier draft threaded this one in, on the theory that two writers meant
-    # two indexes and a double-mint. That was tested and is false: both writers
-    # resolve the SAME per-run graph by role, and this one mints only the
-    # manifest, which is neither indexed nor sequenced. Removing that parameter
-    # again cost nothing and kept a core signature out of this change.
     run_ref = f"pipelinerun:{request_id}:{leaf_path}:{run_attempt}"
-    # NOT ``writer``: that name is already this function's ChainArtifactWriter
-    # parameter, and shadowing it silently stripped emit_step_execution_record
-    # from every grounded run. The existing suite caught it on the first
-    # pre-filter, which is why the pre-filter runs the WHOLE tree.
-    mm_writer = CapacityMMWriter(mm, request_id, run_ref) if mm is not None else None
     try:
         pipeline = _compose_pipeline(dispatcher, starts, target, finder_name).pipeline
     except LeafPipelineNotFound:
-        if mm_writer is not None:
-            # No route, so no capacity to name and no pipeline to read starts
-            # from — the endpoints are what the run was asked for.
-            mm_writer.manifest(declared_starts=starts, capacity_phrases={})
-            if capacity_graphs is not None and mm_writer.graph is not None:
-                capacity_graphs.append(mm_writer.graph)
+        # No route, so no capacity to name and no pipeline to read starts from —
+        # the endpoints are what the run was asked for. Shared with the member
+        # path; see :func:`_mint_no_route_graph`.
+        _mint_no_route_graph(
+            dispatcher, mm, request_id, run_ref, starts, capacity_graphs,
+            case_label,
+        )
         raise
     # Slice 1a — seed only the values the pipeline declares as starts, drawn from
     # the shared blackboard (an upstream stage may have produced them). Filtering
@@ -615,11 +627,10 @@ def _run_leaf_pipeline(
         for ds in pipeline.start_datastates
         if ds in blackboard
     }
-    if mm_writer is not None:
-        mm_writer.manifest(
-            declared_starts=getattr(pipeline, "start_datastates", starts),
-            capacity_phrases=_capacity_phrases(dispatcher, pipeline),
-        )
+    # NOTE: this function no longer mints the manifest, and nothing here replaces
+    # it. Minting moved into ``execute_pipeline`` — the one function BOTH run
+    # paths call — because minting it here gave the leaf a manifest and left
+    # every map member without one.
     result = execute_pipeline(
         dispatcher,
         pipeline,
@@ -627,6 +638,7 @@ def _run_leaf_pipeline(
         request_id=request_id,
         mm=mm,
         pipeline_run_ref=run_ref,
+        case_label=case_label,
     )
     # Real provenance: one StepExecutionRecord per executed capacity step
     # (replaces the single notional record).
@@ -648,6 +660,7 @@ def _run_map_milestone(
     mm, request_id: str, leaf_path: str, run_attempt: int,
     capacity_graphs: Optional[list],
     only_member: Optional[int] = None,
+    case_label: Optional[str] = None,
 ) -> None:
     """Map fan-out (collection-iteration Slice 1b; nesting Slice 2).
 
@@ -696,7 +709,7 @@ def _run_map_milestone(
         output = _run_one_member(
             dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
             request_id, leaf_path, only_member, members[only_member],
-            run_attempt, capacity_graphs, shared, compose_cache,
+            run_attempt, capacity_graphs, shared, compose_cache, case_label,
         )
         if only_member < len(existing):
             existing[only_member] = output
@@ -711,7 +724,7 @@ def _run_map_milestone(
             _run_one_member(
                 dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
                 request_id, leaf_path, member_idx, member_value,
-                run_attempt, capacity_graphs, shared, compose_cache,
+                run_attempt, capacity_graphs, shared, compose_cache, case_label,
             )
         )
     blackboard[out_ds] = member_outputs
@@ -724,6 +737,7 @@ def _run_one_member(
     run_attempt: int, capacity_graphs: Optional[list],
     shared: Optional[Dict[str, Any]] = None,
     compose_cache: Optional[Dict[str, Any]] = None,
+    case_label: Optional[str] = None,
 ) -> Any:
     """Run one map member and return its ``sub_target`` output (Slice 3b factoring).
 
@@ -766,6 +780,7 @@ def _run_one_member(
             run_attempt=run_attempt,
             capacity_graphs=capacity_graphs,
             real_mode=True,
+            case_label=case_label,
         )
         return sub_blackboard.get(sub_target)
     # Flat 1b member (no sub_plan): bounded retry + accept-first-clean.
@@ -776,12 +791,27 @@ def _run_one_member(
             f"pipelinerun:{request_id}:{member_path}"
             f":{run_attempt}:r{retry_idx}"
         )
-        result, last_pipeline = _run_member_pipeline(
-            dispatcher, member_ds, member_value, sub_target,
-            request_id, run_ref, mm,
-            shared=shared, spec=spec, leaf_ref=leaf_ref,
-            compose_cache=compose_cache,
-        )
+        try:
+            result, last_pipeline = _run_member_pipeline(
+                dispatcher, member_ds, member_value, sub_target,
+                request_id, run_ref, mm,
+                shared=shared, spec=spec, leaf_ref=leaf_ref,
+                compose_cache=compose_cache, case_label=case_label,
+            )
+        except LeafPipelineNotFound:
+            # An unroutable member used to leave no graph at all, and then
+            # ``MemberAbortError`` took the whole request's Record with it — the
+            # reader got an exception where a page should have been. Caught HERE
+            # rather than inside ``_run_member_pipeline`` because that function
+            # is deliberately pure (the caller decides accept/reject, so a
+            # rejected retry persists nothing), and persisting a graph is a
+            # caller decision. No route is not retryable: the capacity set does
+            # not change between attempts, so this propagates on the first pass.
+            _mint_no_route_graph(
+                dispatcher, mm, request_id, run_ref,
+                _member_starts(member_ds, shared), capacity_graphs, case_label,
+            )
+            raise
         if result.success:
             accepted = result
             break  # accept the first clean attempt
@@ -817,6 +847,7 @@ def _run_member_pipeline(
     spec: Optional[dict] = None,
     leaf_ref: str = "",
     compose_cache: Optional[Dict[str, Any]] = None,
+    case_label: Optional[str] = None,
 ):
     """Find + run one member's sub-pipeline, isolated per member (Slice 1b).
 
@@ -835,9 +866,7 @@ def _run_member_pipeline(
     from .pipeline_execution import execute_pipeline
 
     shared = shared or {}
-    # Member value first so a spec that (wrongly) also lists ``member_ds`` as a
-    # shared input cannot shadow the member being iterated.
-    starts = (start_ds,) + tuple(ds for ds in shared if ds != start_ds)
+    starts = _member_starts(start_ds, shared)
     pipeline = compose_cache.get("pipeline") if compose_cache is not None else None
     if pipeline is None:
         finder_name = _select_finder(
@@ -863,6 +892,7 @@ def _run_member_pipeline(
         request_id=request_id,
         mm=mm,
         pipeline_run_ref=run_ref,
+        case_label=case_label,
     )
     return result, pipeline
 

@@ -163,21 +163,30 @@ def test_no_reserved_or_degenerate_reason_is_ever_recorded(emitted):
     assert leaked == [], f"recorded but classified as unavailable: {leaked}"
 
 
-def test_source_unreachable_is_advertised_but_can_never_be_recorded(emitted):
-    """**The gap-pin.** The lookup declares it in every record's possible list,
-    and the path that would use it RAISES — so no record can carry it. A
-    renderer reading the possible list would tell a reader *"this lookup could
-    have told you the store was unreachable"*, which no record could ever say.
+def test_source_unreachable_is_no_longer_advertised_because_no_record_can_carry_it(emitted):
+    """**The pin, inverted — and inverting it is the fix.**
 
-    Fails the day the hole closes, i.e. the day an unreachable store returns
-    instead of raising. Same class as the ``environment_fault`` pin, which is
-    derived from this very reason."""
+    The previous version of this test asserted the reason WAS advertised and
+    called that a gap to be lived with. It is not a gap to live with: the path
+    that would use it RAISES, a raising step writes no origin record, and so a
+    possible-list naming it told a renderer *"this lookup could have told you
+    the store was unreachable"* — a sentence no record could ever be the
+    evidence for. ``policy_lookup_v0.POSSIBLE_REFUSAL_REASONS`` no longer names
+    it, and this asserts that in the emitted records themselves rather than in
+    the constant.
+
+    The reason is **not** deleted. It is still the machine-readable token on
+    ``PolicyStoreUnreachableError`` and still reaches a reader — through L-2's
+    ``RunStopped`` node, which is where "was this our fault" belongs. It is
+    still classified degenerate, because that classification is about what a
+    RECORD can carry, and no record can carry this."""
     advertised = {
         reason for r in emitted
         for reason in r[origin.FIELD_POSSIBLE_REFUSAL_REASONS]
     }
-    assert origin.REFUSAL_SOURCE_UNREACHABLE in advertised, (
-        "the premise of this pin is that it IS advertised"
+    assert advertised, "the premise of this pin is that something IS advertised"
+    assert origin.REFUSAL_SOURCE_UNREACHABLE not in advertised, (
+        "a producer must not advertise a reason none of its records can carry"
     )
     assert origin.REFUSAL_SOURCE_UNREACHABLE in origin.REASONS_DEGENERATE
 
