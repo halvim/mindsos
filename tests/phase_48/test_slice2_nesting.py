@@ -215,8 +215,10 @@ def test_map_in_map_double_folds_in_order_with_isolated_nested_refs():
     ]]
     # Provenance: 2 top milestones (map+fold) + per grid 2 (map+fold) x2 = 6.
     assert len(request_run.pipeline_runs) == 6
-    # One grounding graph per innermost object member (4); folds dispatch, no graph.
-    assert len(graphs) == 4
+    # One grounding graph per innermost object member (4) PLUS one per fold —
+    # two inner folds + the outer fold (fold-grounding CR: a fold used to
+    # dispatch directly and leave nothing).
+    assert len(graphs) == 7
     # Core Slice-2 change: nested per-object grounding graphs carry DISTINCT role
     # tokens that ENCODE the nesting path (outer member m{g}, inner member m{o}),
     # so a nested run stays isolated + the tree is walkable by path.

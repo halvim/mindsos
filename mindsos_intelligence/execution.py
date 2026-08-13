@@ -498,9 +498,17 @@ def _run_milestone_sequence(
                 case_label=case_label,
             )
         elif real_mode and kind == "fold":
-            # Slice 1b — dispatch the L3 reducer over the ordered member outputs.
+            # Slice 1b — the L3 reducer over the ordered member outputs, routed
+            # through ``execute_pipeline`` (fold-grounding CR) so the fold run
+            # GROUNDS: before this it dispatched the reducer directly, took no
+            # ``mm``, and left NOTHING in the grounding graph — no manifest, no
+            # reducer CapacityInstance, no conclusion DataStateInstance — so the
+            # claim-level answer lived only on this in-memory blackboard and was
+            # unrenderable.
             _run_fold_milestone(
                 dispatcher, writer, pr, leaf_ref, spec, blackboard,
+                mm, scope, leaf_path, run_attempt, capacity_graphs,
+                case_label=case_label,
             )
         elif real_mode and endpoints is not None:
             outputs = _run_leaf_pipeline(
@@ -897,25 +905,102 @@ def _run_member_pipeline(
     return result, pipeline
 
 
+def _fold_pipeline(dispatcher, reducer_iri: str, in_ds: str):
+    """A single-step :class:`~mindsos_capacity.pipeline.Pipeline` for the
+    plan-named fold reducer (fold-grounding CR).
+
+    This is **not** a hand-assembled route, and it deliberately does not go
+    through a finder. The "composed by the finder" rule protects route
+    *finding*; a fold has no route to find — its reducer is **plan-named by
+    contract** (``spec["reducer_iri"]``, Slice 1b), and a finder run from
+    ``in_ds`` could substitute a different capacity for the one the plan named.
+    The single step IS the spec's own shape, expressed as the object
+    :func:`~mindsos_intelligence.pipeline_execution.execute_pipeline` grounds.
+
+    ``output_datastates`` are the reducer's **declared** outputs, resolved
+    scope-correctly (``resolve_declaration(..., session=)`` — the call
+    ``capacity_phrases`` itself uses; ``get_declaration`` is Global-only and a
+    consumer's reducer is routinely Local). An unresolvable declaration yields
+    ``()`` rather than raising here: the dispatch inside ``execute_pipeline``
+    will fail on its own terms and leave a ``RunStopped``, which is the
+    renderable failure — an exception from this helper would leave nothing.
+    """
+    from mindsos_capacity.pipeline import START, DAGEdge, DAGStep, Pipeline
+
+    declared_outputs: Tuple[str, ...] = ()
+    layer = getattr(dispatcher, "capacity_layer", None)
+    if layer is not None:
+        try:
+            declaration = layer.resolve_declaration(
+                reducer_iri, session=getattr(dispatcher, "session", None)
+            )
+        except Exception:  # noqa: BLE001 — unresolvable is the dispatcher's find
+            declaration = None
+        if declaration is not None:
+            declared_outputs = tuple(getattr(declaration, "outputs", ()) or ())
+    return Pipeline(
+        start_datastates=(in_ds,),
+        target_datastate=declared_outputs[0] if declared_outputs else in_ds,
+        steps=(DAGStep(reducer_iri, (in_ds,), declared_outputs),),
+        edges=(DAGEdge(START, 0, in_ds),),
+    )
+
+
 def _run_fold_milestone(
     dispatcher, writer, pr, leaf_ref, spec, blackboard,
+    mm, request_id: str, leaf_path: str, run_attempt: int,
+    capacity_graphs: Optional[list],
+    case_label: Optional[str] = None,
 ) -> None:
     """Fold / barrier-aggregate (collection-iteration Slice 1b).
 
     Reaching the fold means the map's ∀-abort barrier already passed (every
     member succeeded — a failed member would have raised before this milestone).
-    Dispatch the plan-named L3 **reducer** capacity over the ordered member
-    outputs on the blackboard (``in_ds`` = the map's ``out_ds``) and merge its
-    outputs back for downstream stages. This is the real aggregation the unused
-    ``planning_v0.aggregate_outputs`` stub only stood in for. A reducer that
-    concludes "no consistent rule" produces a legitimate value (→ ``dont_know``
-    via the existing ``sufficient_predicate`` path), NOT an abort."""
+    Run the plan-named L3 **reducer** capacity over the ordered member outputs
+    on the blackboard (``in_ds`` = the map's ``out_ds``) and merge its outputs
+    back for downstream stages. A reducer that concludes "no consistent rule"
+    produces a legitimate value (→ ``dont_know`` via the existing
+    ``sufficient_predicate`` path), NOT an abort.
+
+    **Fold-grounding CR: the reducer runs through ``execute_pipeline``**, under
+    a fresh per-fold run ref, so the fold grounds exactly the way a leaf and a
+    member do — manifest first, the ordered member outputs seeded as the fold's
+    one parentless ``DataStateInstance``, reducer ``CapacityInstance`` +
+    CONSUMES, conclusion ``DataStateInstance`` + PRODUCES, ``RunStopped`` on a
+    non-success, graph collected for persistence. Before this CR the function
+    dispatched the reducer directly and did not take ``mm``: the claim-level
+    conclusion existed only on the in-memory blackboard (unrenderable), a
+    failed reducer left no terminal node, and no edge tied the member verdicts
+    to the conclusion. The fix is the one #157 set the precedent for — route
+    through the ONE function that grounds; a hand-mint here would be a third
+    copy of the drift that made the member path differ from the leaf path.
+
+    L4-side semantics are unchanged: failure sets ``pr.status = "failed"`` and
+    the step record's confidence to ``0.0``, and never aborts the sequence.
+    Which member produced which verdict stays structural rather than becoming a
+    manifest field: the ref-path is the provenance tree (Slice 2) — member runs
+    ground under ``…:{map_idx}:m{i}:…``, the fold under its own milestone index,
+    same ``request_id`` — and the seeded collection's order is the members'
+    order."""
+    from .pipeline_execution import execute_pipeline
+
     reducer_iri = spec["reducer_iri"]
     in_ds = spec["in_ds"]
-    result = dispatcher.dispatch(reducer_iri, {in_ds: blackboard.get(in_ds)})
-    success = bool(getattr(result, "success", False))
+    run_ref = f"pipelinerun:{request_id}:{leaf_path}:{run_attempt}"
+    result = execute_pipeline(
+        dispatcher,
+        _fold_pipeline(dispatcher, reducer_iri, in_ds),
+        {in_ds: blackboard.get(in_ds)},
+        request_id=request_id,
+        mm=mm,
+        pipeline_run_ref=run_ref,
+        case_label=case_label,
+    )
+    success = bool(result.success)
     if success:
-        blackboard.update(dict(getattr(result, "outputs", {}) or {}))
+        blackboard.update(dict(result.outputs))
+    if capacity_graphs is not None and result.capacity_graph is not None:
+        capacity_graphs.append(result.capacity_graph)
     writer.emit_step_execution_record(
         reducer_iri,
         pipeline_run_ref=pr.iri,

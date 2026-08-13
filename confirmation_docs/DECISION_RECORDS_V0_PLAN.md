@@ -363,7 +363,7 @@ interpolated an arbitrary upstream exception into customer-facing text.
 
 #### Order
 
-~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → **the demo's own home ← NEXT** → persistence → item 7.
+~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → ~~map-member manifests (#157)~~ ✅ → **fold grounding ← NEXT** (`decision-records-fold-grounding`, ahead of the demo home for the same reason the map fix was: the dump must show the claim conclusion, and today nothing grounds it) → the demo's own home + `dr_dump.py` (leaf, map AND fold shapes) → demo-critical sweep rows → persistence smoke → item 7 → Layer B. *(This line was stale a third time — it still named the demo home NEXT while `STATE.pending_designs[0]` and the critic's §10.3 had moved the fold ahead of it. Corrected in the fold-grounding ship, per its own rule: update it with the table, in the same commit.)*
 
 **The pre-filter halves from here.** The baseline is always `main` and every merge is gated, so
 **the previous item's change-tree run IS the next item's baseline** — keep its log and tarball
