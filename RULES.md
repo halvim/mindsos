@@ -83,11 +83,12 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
   confirmation docs cite them by name; deleting them breaks those citations. The
   rule is about *live* coordination, and `.gitignore` cannot untrack what is
   already tracked — so this is a **closed set of two**, not an exception that
-  grows. ⚠ **This narrowing is currently unpinned** — `rules-coordination-file-pin`
-  in `STATE.pending_designs` owes it a guard (a third tracked
-  `*COORDINATION*.md` ⟹ red). Until that lands, the closed set is honoured by
-  hand, which §10.3 says is how a rule decays. Hand them off by pasting into the next chat, not by
-  pushing. Same for scratch/planning dirs (`_reorg/`).
+  grows. The narrowing is pinned by
+  `tests/architecture/test_coordination_files_closed_set.py` (a third tracked
+  `*COORDINATION*.md` ⟹ red; a vanished member ⟹ red), closing
+  `rules-coordination-file-pin`. Growing the set is a RULES §5 amendment plus
+  that guard's `CLOSED_SET`, in the same commit. Hand live files off by pasting
+  into the next chat, not by pushing. Same for scratch/planning dirs (`_reorg/`).
 - **Never `git add -A`/`git add .`.** Stage explicit paths only — the shared
   tree accumulates untracked floaters that a blanket add will sweep onto the
   wrong branch. Verify with `git diff --cached --name-only` before committing.
@@ -284,53 +285,62 @@ has to come first, unprompted.**
 
 ---
 
-## 12. After every ship: check the system, then re-check the plan
+## 12. After every ship: the sweep, then the plan
+
+*(Replaced 2026-08-13 by owner decision, adopting the critic lane's §8.3 text
+as amended by its §10.1.2 — see `DR_CRITIC_COORDINATION.md`, untracked, shared
+checkout. The previous §12 nominated one new surface per check, which produced
+a **drip**: ten gaps in one lane, one per phase, each found after the work it
+invalidated was built and gated. Every gap had the same shape — a quantified
+claim checked on ONE element of its domain, the shape nearest to hand. The fix
+is not more depth or better nomination; it is making the quantifier's domain
+mechanical, so "every" is checked on* every*, once.)*
 
 **"Ship" means a merged, tagged item** — not a phase from a demo plan's own
 numbering. Before picking up the next item:
 
-1. **Run the system and dump what it produces**, raw, against the **merged**
-   state after the squash — never the branch tip, or the check certifies
-   something that never existed on `main`. Hand over the command (§11). **A green
-   gate is not the check**; the gate proves the tests agree with the code, and the
-   check is what audits both.
-2. **Answer these, in writing:**
-   - For every run/case the plan names — **name the test that gates it.** No name
-     means not gated. *(This question alone would have caught Decision Records run
-     2, which was half of v0's definition and had no test for four ships.)*
-   - For every guard — **name the test.** A guard whose test is not named after it
-     is unfindable and counts as missing.
-   - Every mechanism the plan cites — **grep for a caller.** Three plan arguments
-     have rested on mechanisms nothing calls.
-   - What did the dump show that the plan does not mention?
-   - What in the plan is now false?
-   - What did this ship's mutations fail to redden?
-   - **When this ship introduced a classification, a guard or a contract — what
-     else in the same module is of the same kind and did not get it?**
-   - **Which surface is this check examining, and is it the same one as last
-     time?** *Name it before starting.* Three consecutive checks that re-read the
-     same path found progressively less; the first one to examine an unexamined
-     surface found more than the previous two combined — a shipped feature that
-     was missing entirely from the shape the demo depends on. *(Added
-     after #155, which froze the origin union's FIELDS and left its
-     VOCABULARIES unclassified. The other six questions did not find it: a fix
-     can have the same hole it is fixing, and nothing was asking.)*
-3. **Append a dated block to the plan**, and **give every finding a disposition**
-   — *fixed in this ship*, *filed as `<name>`*, or *rejected because `<reason>`*.
-   **The item table may not advance until the previous ship has one.**
+1. **A surface inventory exists as a fixture test** (the sentinel —
+   `tests/architecture/test_execution_surface_inventory.py`): every
+   `execute_pipeline` caller, every direct dispatch site bypassing it, every
+   executor, every persistence entry, every graph consumer — **derived by
+   recorded greps, never recalled.** Surfaces are call sites × execution
+   regimes (replan, outage, refusal, targeted re-exec), both derived from
+   code, UNIONed with the recalled seam list — neither axis alone closes; the
+   census caught call sites recall missed, and recall caught regimes the
+   census cannot see. A ship that adds a surface **reddens the sentinel** and
+   must add its matrix row in the same ship.
+2. **Every ship runs, in the container, against the merged tree** — never the
+   branch tip, or the check certifies something that never existed on `main`:
+   (a) the whole-tree pre-filter, diffed **by failure name** against the
+   baseline tree; (b) every matrix row whose claim or surface the ship
+   touched; (c) one mutation per new guard, parameter or classification — **a
+   mutation that reddens nothing is a finding.** A green gate is not the
+   check: the gate proves the tests agree with the code, and the check is what
+   audits both.
+3. **A quantified claim is checked on its full domain from the inventory**,
+   never on the nearest shape — and the claim must **state its domain**.
+   *"Every run leaves a graph"* is true only of runs *given an `mm`*
+   (`phase_1`'s carve-out is MM-less BY DESIGN); an unstated domain is how the
+   member-manifest gap hid, and a sweep that "fails" a mis-domained claim is
+   checking the claim's wording, not the system.
+4. **Every finding gets a disposition — in STATE, in the same commit**: *fixed
+   in this ship*, *filed as `<name>`*, or *rejected because `<reason>`*.
+   Discussion may live in coordination files; **findings may not** (§5: a
+   finding recorded only there does not exist). Append the dated block to the
+   plan; **the item table may not advance until the previous ship has one.**
+5. **Full-matrix re-run at milestone boundaries and before the demo.** Two
+   consecutive full runs that change nothing mean the matrix is **missing a
+   surface or a claim — add one; do not add depth to an old row.**
 
-   ⚠ **The disposition is not optional prose.** Two findings from the first §12
-   check were written up, sounded tracked, and were filed nowhere — they existed
-   only in the chat, which is the failure `no-commit-coordination-files` already
-   documents. A finding with no disposition shows up as a blank in the block
-   instead of evaporating.
+**Answer the questions against a dump I ran, not one you ran** (§11). A check
+whose evidence you produced and whose questions you answered is the
+self-grading the rule exists to stop.
 
-**Answer the questions against a dump I ran, not one you ran.** The first §12
-check found seven things — four real defects and one reversal of something
-asserted confidently two messages earlier — and every one was found by reading
-your own output. A check whose evidence you produced and whose questions you
-answered is the self-grading the rule exists to stop.
-
-**Two stop conditions.** A re-evaluation may reorder, absorb or delete items — if
-it never does, it is not working. And **two consecutive re-evaluations that change
-nothing mean the check is too shallow**, not that the plan is right; deepen it.
+**Kept from the replaced text, still binding:** the evidence standard is §11;
+a re-evaluation may reorder, absorb or delete items — if it never does, it is
+not working; and the eight audit questions of the previous §12 (test named per
+run/case, test named per guard, caller grepped per cited mechanism, dump-vs-
+plan, plan-now-false, mutations-that-reddened-nothing, same-kind-same-module,
+which-surface) remain the row-level checklist a sweep cell answers — what
+changed is that the rows now come from the inventory instead of from
+nomination.

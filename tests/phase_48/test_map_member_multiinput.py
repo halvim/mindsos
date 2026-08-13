@@ -256,9 +256,10 @@ def test_multi_input_member_fans_out_and_folds():
         {"feat": ["a@0ofA", "b@0ofB"], "harm": ["a@0ofA", 7]},
         {"feat": ["a@100ofA", "b@100ofB"], "harm": ["a@100ofA", 7]},
     ]]
-    # Two milestone PipelineRuns (map + fold); one grounding graph per member.
+    # Two milestone PipelineRuns (map + fold); one grounding graph per member
+    # PLUS the fold's own (fold-grounding CR — the fold used to leave nothing).
     assert len(request_run.pipeline_runs) == 2
-    assert len(graphs) == 2
+    assert len(graphs) == 3
 
 
 # ── back-compat: nothing new declared ⇒ the pre-CR path ───────────────

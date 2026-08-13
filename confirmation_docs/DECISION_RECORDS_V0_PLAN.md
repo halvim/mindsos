@@ -154,9 +154,17 @@ local and remote, both lists checked).
 | #155 | `bbe63e4` | **The origin-union freeze** + ADR-0207 am-2. Tag **`origin-union-freeze-confirmed`** | **4711 / 11 / 1x / 0** |
 | #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
 | #157 | *(squash)* | **Map-member manifests** — minting moves into `execute_pipeline`; the sub-MM routing gap; ADR-0201 am-4 + ADR-0207 am-3. Tag **`dr-map-manifest-confirmed`** | **4731 / 11 / 1x / 0** |
+| #158 | *(squash)* | **Fold grounding** — the reducer routes through `execute_pipeline`; RULES §12 replaced by the sweep; the coordination-file pin; the run-surface sentinel. Tag **`dr-fold-grounding-confirmed`** | **4747 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4731 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#157's tip `f878886`.** It is carryable — the gate ran on a tip whose parent **is**
+**Baseline for the next item: 4747 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#158's tip `714f4ee`** — carryable: the tip's parent chain sits on `origin/main`
+(`3dd151b`), the pre-gate `git merge origin/main` was a no-op for exactly that
+reason, so it is a **merged-state** gate. *(Predicted exactly — the eleventh
+consecutive exact call.)* The line below is the previous baseline, kept for the
+history of the rule that this line goes stale:
+
+**~~Baseline for the next item: 4731 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#157's tip `f878886`.~~** It is carryable — the gate ran on a tip whose parent **is**
 `origin/main` (`be7aa8a`, tag `refusal-vocabulary-confirmed`), so it is a **merged-state**
 gate; the `git merge origin/main` before it was a no-op for exactly that reason. Contrast
 `#138`'s 4551, a **branch** gate, which is not carryable. **This line has been stale twice:
@@ -363,7 +371,7 @@ interpolated an arbitrary upstream exception into customer-facing text.
 
 #### Order
 
-~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → **the demo's own home ← NEXT** → persistence → item 7.
+~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → ~~map-member manifests (#157)~~ ✅ → **fold grounding ← NEXT** (`decision-records-fold-grounding`, ahead of the demo home for the same reason the map fix was: the dump must show the claim conclusion, and today nothing grounds it) → the demo's own home + `dr_dump.py` (leaf, map AND fold shapes) → demo-critical sweep rows → persistence smoke → item 7 → Layer B. *(This line was stale a third time — it still named the demo home NEXT while `STATE.pending_designs[0]` and the critic's §10.3 had moved the fold ahead of it. Corrected in the fold-grounding ship, per its own rule: update it with the table, in the same commit.)*
 
 **The pre-filter halves from here.** The baseline is always `main` and every merge is gated, so
 **the previous item's change-tree run IS the next item's baseline** — keep its log and tarball
@@ -688,6 +696,43 @@ has written its own answer.
 **⛔ Nothing further is built until that answer is in.** Building the fold fix
 first would be another 20 minutes of implementation defended by a method already
 known to be leaking.
+
+---
+
+### 2.10 §12 check after #158 — the first check under the replaced §12
+
+**The rule itself changed in this ship**: the owner adopted the critic's §8.3
+(+§10.1.2) text as RULES §12 — the sweep — and this ship carried the edit and
+built its tier-1 instrument, the surface-inventory sentinel
+(`tests/architecture/test_execution_surface_inventory.py`). Design was
+critic-reviewed BEFORE the gate (coordination file §13–§15: Q1 one-CONSUMES
+ruling ACCEPTED, Q2 sentinel scope DEFERRED with an owner) — the first ship in
+this lane whose design was independently attacked before the expensive
+resource ran.
+
+**Disposition is given for every finding, per RULES §12.4.**
+
+| Finding | Disposition |
+|---|---|
+| **A mutation blanking the fold `DAGStep`'s declared outputs reddened NOTHING** — dead-but-wrong data on the constructed pipeline object, exactly where a future consumer (`dr_dump`, the renderer) would trust it | **Fixed in this ship** — made load-bearing by `test_the_fold_pipeline_object_declares_the_reducers_true_shape`, after which the mutation reds. §12.2c working as adopted |
+| **The fold's Slice-A freshness was unguarded** — no test failed when `run_attempt` was dropped from the fold's run ref, so a replan would have silently overwritten the prior fold graph | **Fixed in this ship** — `test_a_replan_reattempt_folds_into_a_fresh_graph`, shown red by that exact mutation |
+| **Order-as-identity hazard** (critic §14): member↔verdict correlation is by order, sound only while the ∀-abort barrier makes member order total | **Filed** into `core-collection-member-dont-know` — the CR that lets a member refuse must revisit the ruling; the consumes test's docstring carries the same sentence |
+| **The sentinel's first census corrected every recalled surface list** — `mindsos_cli/commands/brain.py` holds a direct dispatch no lane had named (the critic's §8.1 census missed it too; it swept `mindsos_intelligence` + the server, not the CLI) | **Recorded** in the sentinel's classification (`cli-direct`); no action — the census-over-recall argument, demonstrated on its own author |
+| **The demo-critical sweep has no queue entry** — it lived only in plan prose and the critic's §10.3 | **Filed** as `decision-records-demo-critical-sweep`, carrying §14 Q2's acceptance: the regime axis is DERIVED from branch conditions, never recalled |
+
+**Rows this check ran** (§12.2b): the fold/reducer surface (now grounded —
+nine tests drive the shape); the dispatch census (sentinel, exact); the
+coordination-file closed set (pin, red both directions by mutation). **Rows
+still unexamined, owned by the sweep item:** refusal regimes, replan/outage
+branches derived from code, a real FalkorDB round-trip.
+
+**Evidence** (§11 — the owner ran the gate; the pre-filter is the lane's):
+two-tree whole-suite pre-filter, failure sets identical by name (36, the known
+environment-only set), passed delta +16 = exactly the sixteen new tests; gate
+**4747 / 11 / 1x / 0 at `714f4ee`**, predicted before the run.
+
+**§12.5 status:** the matrix changed this ship (a surface classification was
+added, two claims gained rows) — the stop condition is not near.
 
 ---
 

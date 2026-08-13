@@ -148,9 +148,10 @@ def test_map_fans_out_and_fold_reduces_in_order():
     assert REDUCER_SEEN == [[
         {"solved": {"m": 0}}, {"solved": {"m": 1}}, {"solved": {"m": 2}},
     ]]
-    # Two milestone PipelineRuns (map + fold); one grounding graph per member.
+    # Two milestone PipelineRuns (map + fold); one grounding graph per member
+    # PLUS the fold's own (fold-grounding CR — the fold used to leave nothing).
     assert len(request_run.pipeline_runs) == 2
-    assert len(graphs) == 3
+    assert len(graphs) == 4
 
 
 def test_all_abort_on_member_failure_skips_rest_and_fold():
