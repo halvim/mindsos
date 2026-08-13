@@ -235,6 +235,51 @@ ORIGIN_UNION: Tuple[str, ...] = SPINE + PRODUCER_DECLARED
 # fields are real and the seam will write them. What changes is that every
 # field now has to say which of three things it is, and a test enforces it.
 
+# ── The vocabulary freeze (the second §12 check) ───────────────────────
+#
+# PR #155 froze this union's FIELDS and left its VOCABULARIES unclassified —
+# the same class of gap, in the same module, missed by the ship that built the
+# mechanism for it. ``REFUSAL_REASONS`` declares eight tokens; the shipped
+# system can put **three** of them in a record.
+#
+# Verified by grep across every call site, not inferred from the two producers
+# in this package: only ``structured_ingest_v0`` and ``policy_lookup_v0`` ever
+# pass a ``refusal_reason`` in production.
+
+#: A shipped producer can put these in a record.
+REASONS_EMITTED_TODAY: Tuple[str, ...] = (
+    REFUSAL_FIELD_ABSENT,
+    REFUSAL_VALUE_NOT_COERCIBLE,
+    REFUSAL_NO_SOURCE_IN_FORCE,
+)
+
+#: Declared for a producer that does not exist, each naming it.
+REASONS_RESERVED: Mapping[str, str] = {
+    REFUSAL_MODEL_DECLINED: "the model reader (comprehension_v0, LLM seam)",
+    REFUSAL_MALFORMED_RESPONSE: "the model reader (comprehension_v0, LLM seam)",
+    REFUSAL_QUOTE_NOT_IN_SOURCE: "the model reader (comprehension_v0, LLM seam)",
+    REFUSAL_MODEL_UNREACHABLE: "the model adapter (LLM seam) — and it will be "
+                               "DEGENERATE on arrival for the same reason "
+                               "source_unreachable is, if outages keep raising",
+}
+
+#: Declared, advertised, and impossible to record.
+REASONS_DEGENERATE: Mapping[str, str] = {
+    REFUSAL_SOURCE_UNREACHABLE: (
+        "advertised in every policy lookup's possible_refusal_reasons and NEVER "
+        "able to be an actual refusal_reason. The store-unreachable path RAISES "
+        "(PolicyStoreUnreachableError), and a raising step writes no origin "
+        "record at all — execute_pipeline records the stop, not an output. So a "
+        "renderer reading the possible list would tell a reader 'this lookup "
+        "could have told you the store was unreachable' when no record could "
+        "ever say it. Exactly the shape of environment_fault, which is derived "
+        "from this reason and its twin. ⚠ OPEN: whether a producer should stop "
+        "ADVERTISING a reason it cannot record. Removing it from "
+        "POSSIBLE_REFUSAL_REASONS changes every emitted record, so it is a "
+        "decision rather than a tidy-up — classified here, not silently changed."
+    ),
+}
+
 #: Written by at least one shipped producer, on at least one path. The
 #: enforcement test **runs the producers and checks** — so this list going
 #: stale is a red gate, not a stale comment.
@@ -568,6 +613,7 @@ __all__ = [
     "REFUSAL_MODEL_DECLINED", "REFUSAL_MODEL_UNREACHABLE",
     "REFUSAL_NO_SOURCE_IN_FORCE", "REFUSAL_QUOTE_NOT_IN_SOURCE",
     "FIELDS_DEGENERATE", "FIELDS_PRINTED", "FIELDS_RESERVED",
+    "REASONS_DEGENERATE", "REASONS_EMITTED_TODAY", "REASONS_RESERVED",
     "FIELDS_STRUCTURAL", "FIELDS_WRITTEN_TODAY",
     "REFUSAL_REASONS", "REFUSAL_SOURCE_UNREACHABLE",
     "REFUSAL_VALUE_NOT_COERCIBLE", "SPINE",

@@ -10,6 +10,20 @@
   },
   "pending_designs": [
     {
+      "name": "decision-records-claim2-span-dependency",
+      "status": "OPENED 2026-08-13, NOT BUILT, and it is a DEPENDENCY rather than a defect. **Also escaped its own check** - said to be 'recorded as claim 2's dependency' and then not recorded. DECISION_RECORDS_DEMO_PLAN.md claim 2 is 'every value keeps its origin', and its only dataset-level test is ContractNLI evidence-span agreement. The union freeze (ADR-0207 am-2) classifies quote, claimed_quote, quote_verified and quote_offsets as RESERVED for the model reader - so NO shipped producer can point at anything, and structured ingest correctly has nothing to point at. CONSEQUENCE: claim 2's span half rests entirely on comprehension_v0, which lives on an archived tag (archive/decision-records-llm-seam) and depends on a transport that does not exist. Do not let the evidence pack promise span agreement before that lands.",
+      "branch_to_open": "n/a — a dependency to track, not a slice",
+      "spec": "confirmation_docs/DECISION_RECORDS_DEMO_PLAN.md section 2.4 + docs/decisions/adr/0207 amendment 2",
+      "consumer": "the evidence pack (claim 2)"
+    },
+    {
+      "name": "decision-records-per-run-case-label",
+      "status": "OPENED 2026-08-13, NOT BUILT. **This finding escaped its own check once** - raised in the first section 12 pass, described as 'folding into the manifest-fields decision', and then filed nowhere; caught only because the owner asked whether the gaps were being carried. Nothing in a run graph says WHICH case it is about. Each exposure gets its own isolated grounding graph (probe B), so a Record is already per-case and the origin record's question does NOT need to disambiguate - the real need appears when several Records from ONE claim are shown side by side, which is exactly the demo's routing beat. Belongs with the manifest-fields ruling (declared_starts currently carries bare IRIs and is the other half of that decision), or in the demo's page header. Decide once, with decision-records-run-manifest's open field question.",
+      "branch_to_open": "feat/<slice> off main",
+      "spec": "confirmation_docs/DECISION_RECORDS_V0_PLAN.md section 2.4",
+      "consumer": "the Decision Records renderer, and the demo's routing beat"
+    },
+    {
       "name": "origin-refusal-vocabulary-classification",
       "status": "OPENED 2026-08-12 by the SECOND section 12 check, NOT BUILT. PR #155 froze the origin union's FIELDS and left its VOCABULARIES unclassified - the same class of gap, in the same module, missed by the very ship that built the mechanism for it. REFUSAL_REASONS declares 8 tokens and the shipped system can emit 3 (field_absent, value_not_coercible, no_source_in_force). The other five split two ways. RESERVED, awaiting the LLM seam: model_declined, malformed_response, quote_not_found_in_source, model_unreachable. DEGENERATE, for exactly the reason environment_fault is: source_unreachable is advertised in every policy lookup's possible_refusal_reasons and can NEVER be an actual refusal_reason, because that path raises and a raising step writes no record - so a renderer reading the possible list would tell a reader 'this lookup could have told you the store was unreachable' when no record could ever say it. FIX: the same three buckets, checked by the same producer-running test in tests/origin_records/test_origin_union_freeze.py. NOT the same problem: RUN_STOPPED_REASONS' cancelled and needs_input are unreachable in the Decision Records path but genuinely reachable system-wide by any consumer that cancels or returns needs_input.",
       "branch_to_open": "feat/<slice> off main",

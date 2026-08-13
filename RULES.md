@@ -295,8 +295,15 @@ numbering. Before picking up the next item:
      after #155, which froze the origin union's FIELDS and left its
      VOCABULARIES unclassified. The other six questions did not find it: a fix
      can have the same hole it is fixing, and nothing was asking.)*
-3. **Append a dated block to the plan** naming what changed. **The item table may
-   not advance until the previous ship has one.**
+3. **Append a dated block to the plan**, and **give every finding a disposition**
+   — *fixed in this ship*, *filed as `<name>`*, or *rejected because `<reason>`*.
+   **The item table may not advance until the previous ship has one.**
+
+   ⚠ **The disposition is not optional prose.** Two findings from the first §12
+   check were written up, sounded tracked, and were filed nowhere — they existed
+   only in the chat, which is the failure `no-commit-coordination-files` already
+   documents. A finding with no disposition shows up as a blank in the block
+   instead of evaporating.
 
 **Answer the questions against a dump I ran, not one you ran.** The first §12
 check found seven things — four real defects and one reversal of something
