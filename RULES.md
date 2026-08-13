@@ -291,7 +291,12 @@ numbering. Before picking up the next item:
    - What in the plan is now false?
    - What did this ship's mutations fail to redden?
    - **When this ship introduced a classification, a guard or a contract — what
-     else in the same module is of the same kind and did not get it?** *(Added
+     else in the same module is of the same kind and did not get it?**
+   - **Which surface is this check examining, and is it the same one as last
+     time?** *Name it before starting.* Three consecutive checks that re-read the
+     same path found progressively less; the first one to examine an unexamined
+     surface found more than the previous two combined — a shipped feature that
+     was missing entirely from the shape the demo depends on. *(Added
      after #155, which froze the origin union's FIELDS and left its
      VOCABULARIES unclassified. The other six questions did not find it: a fix
      can have the same hole it is fixing, and nothing was asking.)*

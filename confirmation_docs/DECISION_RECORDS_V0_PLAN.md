@@ -151,10 +151,11 @@ local and remote, both lists checked).
 | #152 | `49e3eda` | **`printable_phrase`** on the capacity declaration + ADR-0207 am-1. Tag **`capacity-printable-phrase-confirmed`** | **4666 / 11 / 1x / 0** |
 | #153 | `a3751f2` | **The run manifest** (item 4c), absorbing item 4a. Tag **`run-manifest-confirmed`** | **4677 / 11 / 1x / 0** |
 | #154 | `93ff31b` | **Item 5** — the structured-ingest reader, and **run 2's first test** | **4694 / 11 / 1x / 0** |
-| #155 | *(squash)* | **The origin-union freeze** + ADR-0207 am-2. Tag **`origin-union-freeze-confirmed`** | **4711 / 11 / 1x / 0** |
+| #155 | `bbe63e4` | **The origin-union freeze** + ADR-0207 am-2. Tag **`origin-union-freeze-confirmed`** | **4711 / 11 / 1x / 0** |
+| #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4711 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#155's tip `480c748`.** It is carryable — #155 was a **merged-state** gate (`merge-base
+**Baseline for the next item: 4716 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#156's tip `254a06c`.** It is carryable — #155 was a **merged-state** gate (`merge-base
 --is-ancestor` proved the tip contained `origin/main`, which had not moved from `93ff31b`),
 unlike `#138`'s 4551, which was a branch gate and is not. **This line has been stale twice:
 it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
@@ -497,6 +498,48 @@ the same module is of the same kind and did not get it?**
 nonetheless described as having passed it. Structure was verified before the gate
 and the gate then covered it — but the claim was false when made. **Tar after the
 last edit; never say the pre-filter covered a file that postdates the tarball.**
+
+---
+
+### 2.7 §12 check after #156 — a shipped feature is missing from the demo's own shape
+
+**Disposition is given for every finding, per RULES §12.**
+
+| Finding | Disposition |
+|---|---|
+| **A map member's graph has NO manifest** | **Filed `decision-records-map-manifest-gap`. Fix next, BEFORE the demo project.** |
+| **The member path never catches `LeafPipelineNotFound`** | Same entry — an unroutable member leaves no graph, and `MemberAbortError` destroys the whole claim's Record |
+| #153's ship record overstates its own coverage | **Corrected in STATE** this ship |
+| §12 checks were re-reading one surface | **Fixed here** — a check now nominates its surface (below) |
+
+⚠ **`_run_member_pipeline` is a SEPARATE FUNCTION from `_run_leaf_pipeline`, and
+#153 only touched the latter.** Proven by running a three-member map: three
+isolated graphs, three capacity instances each, **zero manifests**. So the
+manifest exists for the run shape v0's tests use and is **absent from the run
+shape the demo is built on** — the headline beat is one Record per exposure, and
+an exposure *is* a map member. On those graphs G2 is unavailable, nothing can
+name what decided, and no stop token can be translated.
+
+**The second half is worse.** Neither member function catches
+`LeafPipelineNotFound`, so an unroutable exposure leaves no graph at all — the
+hole #153 closed at leaf level — and `MemberAbortError` is all-or-nothing, so one
+bad exposure destroys the **whole claim's** Record. Compounds
+`core-collection-member-dont-know`.
+
+**⟹ the map fix moves AHEAD of the demo project.** `dr_dump.py` must dump the
+demo's real shape; shipped first, it would dump a leaf run and look healthy.
+
+**What this check changed about checking.** The previous two §12 passes re-read
+the same path and found progressively less. This one examined a surface nobody
+had looked at and found more than both combined. **A check nominates the surface
+it examines, and does not repeat the last one's.** Surfaces still unexamined:
+fold/reducer runs, a submind's grounding graph, and a real persistence
+round-trip.
+
+**And a correction to my own record.** #153's tag message certified that *"every
+run leaves a graph"* and *"run 4 renders"*. Both are false for map runs, and both
+were written without ever having run a map. Nine consecutive gates were predicted
+exactly across that period.
 
 ---
 
