@@ -69,14 +69,24 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - Cowork builds; Mac commits + pushes; Linux runs/gates. Never run tests on the Mac.
 - Never mutate git from the Cowork sandbox (stale `index.lock` blocks the Mac).
 - Update `STATE.json` on every ship. Keep `HANDOFF.md` for narrative only.
-- **Never commit chat/next-chat prompts, or cross-lane coordination files.**
+- **Never commit chat/next-chat prompts, or a LIVE cross-lane coordination file.**
   `*NEXT_CHAT_PROMPT*.md`, `*COORDINATION*.md` and any copy-paste handoff prompt
-  are transient and local-only — they are gitignored and must stay out of git.
-  A coordination file lives in the **shared checkout**, not in a lane's worktree,
+  are transient and local-only — they are gitignored and stay out of git. A live
+  coordination file lives in the **shared checkout**, not in a lane's worktree,
   so it outlives the worktree (§10 deletes that folder). ⚠ **A finding recorded
   only in a coordination file does not exist** — it must reach
   `STATE.pending_designs` in the same ship, or it escapes exactly the way
-  `per-run-case-label` did. Hand them off by pasting into the next chat, not by
+  `per-run-case-label` did.
+  **Two tracked coordination files are CLOSED HISTORY and stay where they are:**
+  `confirmation_docs/ARC_PACKAGING_RUNTIME_COORDINATION.md` and
+  `confirmation_docs/COLLECTION_MAP_FANOUT_COORDINATION.md`. Six committed
+  confirmation docs cite them by name; deleting them breaks those citations. The
+  rule is about *live* coordination, and `.gitignore` cannot untrack what is
+  already tracked — so this is a **closed set of two**, not an exception that
+  grows. ⚠ **This narrowing is currently unpinned** — `rules-coordination-file-pin`
+  in `STATE.pending_designs` owes it a guard (a third tracked
+  `*COORDINATION*.md` ⟹ red). Until that lands, the closed set is honoured by
+  hand, which §10.3 says is how a rule decays. Hand them off by pasting into the next chat, not by
   pushing. Same for scratch/planning dirs (`_reorg/`).
 - **Never `git add -A`/`git add .`.** Stage explicit paths only — the shared
   tree accumulates untracked floaters that a blanket add will sweep onto the
