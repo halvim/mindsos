@@ -173,7 +173,13 @@ gate by design): `demo/decision-records` @ `d94ca4f`, worktree `MindsOS-dr`
 command** — shapes `leaf` / `claim` / `noroute` / `all`, raw, zero third-party
 deps — and its output was verified **by the owner** on the Linux box,
 byte-identical to the build container's run. §12 checks in this lane now answer
-against a dump the owner ran, as the rule requires. It is carryable — the gate ran on a tip whose parent **is**
+against a dump the owner ran, as the rule requires.
+
+**The demo-critical sweep is DONE (2026-08-14)** — §2.11: demo instrument
+`69398b6` (8 new shapes + printer guard), all six rows answered against the
+OWNER'S Linux dump (sha-identical to the container's), findings F1–F8
+dispositioned in STATE in the same ship. **Next: persistence smoke, then item
+7** — after the critic's stage-1 re-test through `dr_dump`. It is carryable — the gate ran on a tip whose parent **is**
 `origin/main` (`be7aa8a`, tag `refusal-vocabulary-confirmed`), so it is a **merged-state**
 gate; the `git merge origin/main` before it was a no-op for exactly that reason. Contrast
 `#138`'s 4551, a **branch** gate, which is not carryable. **This line has been stale twice:
@@ -742,6 +748,65 @@ environment-only set), passed delta +16 = exactly the sixteen new tests; gate
 
 **§12.5 status:** the matrix changed this ship (a surface classification was
 added, two claims gained rows) — the stop condition is not near.
+
+---
+
+### 2.11 The demo-critical sweep — every row answered against a dump the owner ran
+
+*(Sweep lane, 2026-08-14. Instrument: demo commit `69398b6` — eight new
+`dr_dump` shapes, capacity_mm-delta reporting, the conclude-value trim, the
+printer-guard test (shown RED by two mutations before it was trusted). Evidence:
+the OWNER ran `dr_dump.py all` on the Linux box at `69398b6` — exit 0, sha256
+`f91cc15e…63df`, byte-identical to the container run — and the printer guard
+passed 3/3 there. Every cell below cites that file. Regime axis R1–R9 DERIVED
+from branch conditions (coordination §20.1, greps recorded), per the item's
+acceptance sentence; design pass by the critic BEFORE rows ran (§21), all
+conditions adopted (§22).*
+
+**The rows.**
+
+| Row | Answered by | What the dump shows |
+|---|---|---|
+| map | `claim`, `retry`, `memberabort`, `needsinput` | R1: 4 graphs, mm==collected. R3: member m1 rejected at `:r0` (RunStopped step_failed, mm-only), accepted at `:r1`. R4: `MemberAbortError` at cap, fold never ran, m2 never ran, 2 rejected graphs mm-only. R7: RunStopped `needs_input`, `stopped_detail` = the missing IRI. R5: EMPTY-WITH-REASON — `cancel_token` never threads through `execution.run` (F2) |
+| fold | `claim`, `replan`, `boundary` | R1: conclusion DSI `{'claim_decision': 'payable'}` (trimmed — F6), one CONSUMES from the seeded verdicts, PRODUCES to the conclusion. R2: 8 graphs across attempts 0/1, run_refs distinct, nothing overwritten. n=0: the reducer now REFUSES (F1) — RunStopped `'refusing to conclude a claim from zero exposure verdicts'`. n=1: 2 graphs, concludes |
+| no-route | `noroute` | R9: raises `LeafPipelineNotFound`, a manifest-only graph remains. Leaf and member no-route share ONE writer (`_mint_no_route_graph`, execution.py:624/:818) — once suffices per §21 Q2 (F7) |
+| refusal | `refusal` | R8, leaf level: the run SUCCEEDS, limit DSI value=None, and the origin record carries `refusal_reason='no_source_in_force'` + detail + `admitted=False` — in-band, never an exception. Member-level refusal remains THE WALL (§19): unbuilt until `core-collection-member-dont-know` |
+| replan / targeted re-exec | `replan`, `retry` stage B | R2 as above. R3 targeted: exactly 2 graphs added — member m1 fresh at `…m1-1-r0` and the fold at `…-1-1` whose consumed collection holds all three verdicts (spliced); siblings untouched |
+| persistence-codec | `codec` | Encoder-only, header says so: 31 graphs, 122 nodes, 0 rejected — and the encoder was shown ABLE to reject (raw `PersistenceError` on a non-codec-safe value), so 0 is a result, not a blind spot. Live round-trip = persistence smoke |
+
+**§12.3 quantified claim, domain stated:** *every run given an `mm` leaves at
+least one graph* — held on all eleven shapes, including both raising shapes
+(no-route leaves the manifest-only graph; the aborted map leaves the accepted
+member + the rejected attempts).
+
+**Findings, each with its disposition (RULES §12.4):**
+
+| Finding | Disposition |
+|---|---|
+| **F1** A zero-exposure claim concluded "payable from nothing" (critic §21, reproduced in the dump) | **Fixed in this ship** (instrument: the reducer refuses, `boundary` prints the refusal) + **filed as `core-empty-fold-domain`** — whether the fold milestone itself must stop on an empty collection is core's question |
+| **F2** R5 unreachable: no orchestrator threads `cancel_token` into `execution.run`; the token enters at `execute_pipeline`/the submind arbiter only | **Filed in this record** as empty-with-reason (critic §21 Q2 ruling: a shape bypassing `execution.run` would demonstrate the executor wearing the demo's name) |
+| **F3** Rejected attempts' graphs stay in `capacity_mm` while excluded from the collected/persisted list — the live MM and the persisted story diverge | **Rejected because deliberate** (accept-first-clean, docstring'd, Slice-A isolation) — and the dump now PRINTS the delta; renderer requirement banked: render from the PERSISTED set, never raw capacity_mm |
+| **F4** The `needs_input` derivation swept into `submind_arbiter.py` and hit two Slice-2 owed items that exist in NO STATE entry (the `.found` narrow; the escalation fix) plus Slice-3 §2.8 ruling `needs_input` the opposite way, unrecorded | **Filed as `submind-slice2-owed-tail`** — the register hole closes; the divergence gets an owner |
+| **F5** The dump printer was unguarded (§19 F1) | **Fixed in this ship** — `test_dr_dump_printer_guard.py`, 3 tests, TWO mutations shown red first (skip-a-node-type: 12≠16; hide-the-mm-delta) |
+| **F6** The conclusion value restated its provenance (`'from': [...]`, §19 F2) | **Fixed in this ship** — value trimmed to `{'claim_decision': 'payable'}`; the CONSUMES edge is the provenance |
+| **F7** Leaf and member no-route share one writer path | **Recorded** — no action; the census argument again (derived, not assumed: execution.py:624/:818) |
+| **F8** `needs_input` at the leaf records and halts; nothing escalates on the demo path | **Recorded** — escalation ownership is F4's second item; the DR demo renders the stop, it does not answer it |
+
+**Renderer requirements bank (now six):** per-exposure title from the start
+instance VALUE; manifest phrases are kinds only; `case_label` names the claim;
+render from the PERSISTED graph set, never raw `capacity_mm` (F3); the refusal
+page reads the origin record's `refusal_reason`/`refusal_detail`, the stop page
+reads `RunStopped.stopped_detail` + the manifest's `stop_reason_phrases`; the
+run's DATE is not in any dumped graph — it arrives from the Episode at
+persistence (`consolidated_at`, agreed-changes D14), so **the persistence smoke
+must show that field arriving** or item 7 discovers it missing the way probe D
+discovered the manifest (critic §24, added at the stage-1 PASS).
+
+**§12.5 status:** the matrix changed this ship (input-boundary axis added, R5
+and R6 cells resolved, two shapes' claims re-domained) — the stop condition is
+not near. **Next per §10.3: persistence smoke, then item 7 (renderer); the
+critic's stage-1 full re-test through `dr_dump` is owed NOW, at this item's
+completion (§17).**
 
 ---
 
