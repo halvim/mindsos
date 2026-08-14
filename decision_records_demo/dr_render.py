@@ -29,6 +29,15 @@ conclusion as a premise.
 values — never an IRI, never a reason token. A stop detail that IS an IRI is a
 link, not text, and is suppressed.
 
+**The Q-form source rule (owner ruling, 2026-08-14, after critic §33's Q3
+observation):** a "Q." line is EARNED by a stored question — the origin
+record's ``question`` field is the only source of interrogative voice on the
+page. Graphs that carry no question present the item and its outcome
+(``{value} — {description}``, then ``{phrase} → {verdict}``); the renderer
+never invents a question, because that is the §11 class — presentation
+implying the system asked something it did not. A future capacity that wants
+a Q-line earns it the ADR-0208 way: by producing an origin record.
+
 RULES §11 seam: the PAGE is composed output by design — the layout, the "Q."
 and "Therefore" framing and the sentence glue are this module's. The claim
 under test is that every FACT on the page is a stored graph value, and that
@@ -243,7 +252,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
             ]
             for start in start_nodes:
                 lines.append(
-                    f"Q. {match.start_description(start)} — {_fmt(start.value)}"
+                    f"{_fmt(start.value)} — {match.start_description(start)}"
                 )
             lines.append(f"   {match.phrase()} → {_verdict_text(entry)}")
             lines.append("")
@@ -261,7 +270,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         terminal = analysis
         for start in analysis.parentless:
             lines.append(
-                f"Q. {analysis.start_description(start)} — {_fmt(start.value)}"
+                f"{_fmt(start.value)} — {analysis.start_description(start)}"
             )
         refusals = analysis.origin_refusals()
         if analysis.stopped is not None:
@@ -269,7 +278,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         elif refusals:
             refusal = refusals[0]
             lines.append(
-                f"   {refusal.get('question')} — Nothing. "
+                f"Q. {refusal.get('question')} — Nothing. "
                 f"{refusal.get('refusal_detail')}"
             )
         else:

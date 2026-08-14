@@ -116,6 +116,7 @@ def test_page_renders_and_is_g6_clean():
     page = render_from_graphs(_claim_graphs(), EPISODE_COMPLETED)
     assert "Therefore:" in page and "payable" in page
     assert "A. Silva" in page and "B. Osei" in page
+    assert "Q." not in page, "no stored question exists here; Q. must be earned"
     banned = G6_BANNED + ("drdemo_",)
     low = page.lower()
     for token in banned:
@@ -185,8 +186,7 @@ def test_order_follows_the_verdicts_list_alone():
             node.value.reverse()
     page_reversed_list = render_from_graphs(mutated, EPISODE_COMPLETED)
     assert page != page_reversed_list
-    assert page_reversed_list.splitlines()[3].endswith("hail, 12 March")
-    assert "B. Osei" in page_reversed_list.splitlines()[3]
+    assert page_reversed_list.splitlines()[3].startswith("B. Osei")
 
 
 def test_missing_member_raises():
@@ -215,6 +215,9 @@ def test_refusal_page_is_in_band_and_g6_clean():
     """The refusal renders from origin-record fields with the run SUCCEEDED —
     and no IRI (source_datastate is a link) reaches the page."""
     page = render_from_graphs(_refusal_graphs(), EPISODE_COMPLETED)
+    assert "Q. What dwelling coverage limit was in force on 2026-07-01?" in page, (
+        "the stored question EARNS the Q. line (source rule)"
+    )
     assert "Nothing." in page
     assert "no edition covering 2026-07-01" in page
     low = page.lower()
