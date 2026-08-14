@@ -462,9 +462,14 @@ def test_member_pipeline_composed_once_and_reused(monkeypatch):
     assert len(calls) == 1
 
 
-def test_empty_collection_composes_nothing_and_still_folds(monkeypatch):
-    """Composition stays lazy: an empty collection must keep completing with an
-    empty output list rather than failing to find a member pipeline."""
+def test_empty_collection_composes_nothing_and_stops_at_the_fold(monkeypatch):
+    """Composition stays lazy: an empty collection composes no member pipeline
+    (``calls == []``, unchanged). RESTATED by ADR-0201 amendment 5: the run
+    used to "still fold" — the reducer received ``[]`` and could conclude
+    from nothing (`core-empty-fold-domain`, the confidently-wrong-from-zero
+    class). It now completes WITHOUT dispatching the reducer: the fold stops
+    pre-dispatch with ``empty_domain``. The lazy-composition half of the old
+    claim is kept; the reducer-receipt half was the defect."""
     _clear()
     import mindsos_capacity.pipeline as pipeline_mod
 
@@ -483,7 +488,7 @@ def test_empty_collection_composes_nothing_and_still_folds(monkeypatch):
         disp, writer, _multi_plan(), request_run,
         mm=mm, run_scope="t", solve_seed=_seed(positions=()),
     )
-    assert REDUCER_SEEN == [[]]
+    assert REDUCER_SEEN == []
     assert calls == []
 
 

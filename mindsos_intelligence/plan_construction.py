@@ -28,6 +28,105 @@ IS_LEAF_IRI = capacity_iri(CATEGORY_PLANNING, "is_leaf")
 MAX_DEPTH = 3
 
 
+class FoldReducerDecodeError(RuntimeError):
+    """A fold's reducer sits over a refusal-capable member set without
+    declaring it decodes in-band refusal values (ADR-0209, shape (a)).
+
+    Raised STATICALLY — at plan construction / plan intake, before any member
+    runs — because the failure it prevents is silent at run time: a reducer
+    that treats a refusal value as a substantive verdict concludes wrongly
+    and grounds the wrong conclusion, which is the confidently-wrong class
+    the refusal machinery exists to make impossible.
+    """
+
+
+def check_fold_reducer_decode(dispatcher, milestone_specs) -> None:
+    """Enforce the shape-(a) decode contract on every fold spec (ADR-0209).
+
+    For each ``fold`` spec (including inside nested ``sub_plan``\ s): resolve
+    ``in_ds``'s registered DataState node via the scope-correct views (Local
+    before Global — the ``start_phrases`` pattern); when it is a collection
+    whose ``member_ds`` is ``refusal_capable``, the reducer's declaration
+    must carry ``decodes_refusals=True`` — an unresolvable declaration counts
+    as NOT declaring, loudly, because the whole point is a static refusal.
+    A DataState node the views cannot see is skipped (this checker's tolerance
+    is ``start_phrases``'s: no view is no verdict), and every plan with no
+    refusal-capable member set — every plan that exists today — passes
+    untouched.
+
+    Called from ``_build_from_milestones`` (the planner path) AND from
+    ``execution.run`` (the direct-``PlanResult`` path consumers drive) so a
+    hand-built plan cannot slip past the check the planner path enforces.
+    Both call sites are static with respect to member VALUES: the check reads
+    declarations only.
+    """
+    if not milestone_specs:
+        return
+    views = []
+    layer = getattr(dispatcher, "capacity_layer", None)
+    if layer is not None:
+        session = getattr(dispatcher, "session", None)
+        user_id = getattr(session, "user_id", None)
+        try:
+            if user_id and layer.has_local(user_id):
+                views.append(layer.local_view(user_id))
+            views.append(layer.global_view())
+        except Exception:  # noqa: BLE001 — no view is no verdict
+            views = []
+    if not views:
+        return
+
+    def _ds_props(iri):
+        for view in views:
+            node = view.get_datastate(iri)
+            if node is not None:
+                return node.properties or {}
+        return None
+
+    def _walk(specs):
+        for spec in (specs or {}).values():
+            if not isinstance(spec, Mapping):
+                continue
+            kind = spec.get("kind")
+            if kind == "map":
+                sub_plan = spec.get("sub_plan")
+                if isinstance(sub_plan, Mapping):
+                    _walk(sub_plan.get("milestone_specs"))
+                continue
+            if kind != "fold":
+                continue
+            in_ds = spec.get("in_ds")
+            reducer_iri = spec.get("reducer_iri")
+            if not in_ds or not reducer_iri:
+                continue
+            props = _ds_props(in_ds)
+            if not props or not props.get("collection"):
+                continue
+            member_ds = props.get("member_ds")
+            member_props = _ds_props(member_ds) if member_ds else None
+            if not member_props or not member_props.get("refusal_capable"):
+                continue
+            declaration = None
+            if layer is not None:
+                try:
+                    declaration = layer.resolve_declaration(
+                        reducer_iri,
+                        session=getattr(dispatcher, "session", None),
+                    )
+                except Exception:  # noqa: BLE001 — unresolvable = not declared
+                    declaration = None
+            if not bool(getattr(declaration, "decodes_refusals", False)):
+                raise FoldReducerDecodeError(
+                    f"fold reducer {reducer_iri!r} consumes {in_ds!r}, whose "
+                    f"member type {member_ds!r} is refusal-capable, but its "
+                    "declaration does not carry decodes_refusals=True "
+                    "(ADR-0209): a reducer that cannot decode an in-band "
+                    "refusal would conclude from it as if it were a verdict"
+                )
+
+    _walk(milestone_specs)
+
+
 @dataclass
 class PlanResult:
     plan_ref: str
@@ -144,7 +243,8 @@ def build(
     milestones = _read_milestones(plan_out)
     if milestones is not None:
         return _build_from_milestones(
-            writer, mapping_result_ref, milestones, solve_target
+            writer, mapping_result_ref, milestones, solve_target,
+            dispatcher=dispatcher,
         )
 
     root = writer.emit_milestone("root", 0, is_leaf=True)
@@ -200,6 +300,7 @@ def _read_leaf_target(entry: Mapping) -> Optional[Dict[str, str]]:
 
 def _build_from_milestones(
     writer, mapping_result_ref, milestones, solve_target,
+    dispatcher=None,
 ) -> PlanResult:
     """Emit one leaf Milestone per planner ``milestones`` entry (in order) under a
     synthetic non-leaf root, keying ``milestone_specs`` / ``leaf_targets`` to the
@@ -233,6 +334,10 @@ def _build_from_milestones(
         leaf_target = _read_leaf_target(entry)
         if leaf_target is not None:
             leaf_targets[child.iri] = leaf_target
+    # ADR-0209 — the shape-(a) decode contract, enforced where reducer_iri
+    # and in_ds first coexist (the STATE-ruled site).
+    if dispatcher is not None:
+        check_fold_reducer_decode(dispatcher, milestone_specs)
     return PlanResult(
         plan_ref=plan.iri,
         root_milestone_ref=root.iri,

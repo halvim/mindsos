@@ -123,11 +123,60 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple
 
+from mindsos_capacity.identifiers import (
+    EDGE_PRODUCES,
+    NODE_TYPE_DATASTATE_INSTANCE,
+    PROP_DATASTATE_INSTANCE_TYPE,
+    RUN_STOPPED_EMPTY_DOMAIN,
+)
+
 #: Slice 1b — hard cap on per-member sub-run attempts (initial + retries) inside
 #: a map fan-out. Owner's call (CR §Bounded retry): 2 total attempts. A named
 #: constant (mirrors ``DEFAULT_PER_TASK_REPLAN_BUDGET``), trivially tunable. A
 #: member still failing (``success=False``) at the cap triggers the ∀-abort.
 MEMBER_RETRY_CAP = 2
+
+
+def member_graph_ids_key(out_ds: str) -> str:
+    """The blackboard key carrying a map's ordered member grounding-graph ids
+    for its fold (ADR-0201 amendment 5).
+
+    Blackboard-resident on purpose: a Slice-3b targeted re-run reuses the
+    RETAINED blackboard and re-executes only one member, so any carrier that
+    lives in a local would lose the untargeted siblings' ids — the ids must
+    survive exactly as long as the ``out_ds`` values they correlate to, which
+    is what riding the same blackboard guarantees. The ``__``-prefixed key
+    cannot collide with a DataState IRI, is never named by any pipeline's
+    ``start_datastates`` (so it never seeds a run), and ``run`` returns
+    PipelineRun IRIs, not the blackboard — it does not leak to consumers.
+    """
+    return f"__member_graph_ids__:{out_ds}"
+
+
+def _produced_graph_id(graphs, ds_iri: str) -> Optional[str]:
+    """The ``graph_id`` of the last graph in ``graphs`` whose run PRODUCED an
+    instance of ``ds_iri`` (ADR-0209 D3: a sub-plan member's id is the graph
+    of the run that produced its ``sub_target``).
+
+    Read off the graphs themselves — a PRODUCES edge into a
+    ``DataStateInstance`` of that type — never off a ref-path or role name
+    (S-F2). Last wins: a nested sequence may thread the value through more
+    than one stage, and the member's verdict is the one its final producer
+    grounded. ``None`` when no graph produced it (a seeded-only or misauthored
+    sub-plan) — the caller decides how loud that is.
+    """
+    for graph in reversed(list(graphs)):
+        for edge in graph.edges.values():
+            if edge.type_name != EDGE_PRODUCES:
+                continue
+            target = edge.target
+            if (
+                target.type_name == NODE_TYPE_DATASTATE_INSTANCE
+                and (target.properties or {}).get(PROP_DATASTATE_INSTANCE_TYPE)
+                == ds_iri
+            ):
+                return graph.graph_id
+    return None
 
 
 class MemberAbortError(Exception):
@@ -398,6 +447,14 @@ def run(
     solve_target = getattr(plan_result, "solve_target", None)
     leaf_targets = getattr(plan_result, "leaf_targets", None) or {}
     milestone_specs = getattr(plan_result, "milestone_specs", None) or {}
+    # ADR-0209 — the shape-(a) decode contract also holds on this path: a
+    # consumer that hand-builds a PlanResult (every current demo driver does)
+    # never passes through plan_construction.build, and a contract enforced on
+    # one of two entry roads is a convention. Static: reads declarations only.
+    if milestone_specs:
+        from .plan_construction import check_fold_reducer_decode
+
+        check_fold_reducer_decode(dispatcher, milestone_specs)
     # Real-solve mode is active when the orchestrator supplies the MM + seed and
     # the plan names at least one endpoint (a plan-global ``solve_target`` or any
     # per-leaf entry) or a map/fold milestone spec (Slice 1b). v0 / no-endpoint
@@ -714,7 +771,7 @@ def _run_map_milestone(
         # ``run_attempt`` for the re-run, so its grounding ref is fresh and never
         # overwrites the prior attempt's (Slice-A isolation).
         existing = list(blackboard.get(out_ds) or [])
-        output = _run_one_member(
+        output, member_gid = _run_one_member(
             dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
             request_id, leaf_path, only_member, members[only_member],
             run_attempt, capacity_graphs, shared, compose_cache, case_label,
@@ -724,18 +781,36 @@ def _run_map_milestone(
         else:
             existing.append(output)
         blackboard[out_ds] = existing
+        # ADR-0201 amendment 5 — the retained id list splices EXACTLY as the
+        # retained outputs do, so position i keeps correlating: the re-run
+        # member's fresh graph replaces its prior id, untargeted siblings keep
+        # theirs.
+        if mm is not None and capacity_graphs is not None:
+            ids = list(blackboard.get(member_graph_ids_key(out_ds)) or [])
+            if only_member < len(ids):
+                ids[only_member] = member_gid
+            else:
+                ids.append(member_gid)
+            blackboard[member_graph_ids_key(out_ds)] = ids
         pr.status = "completed"
         return
     member_outputs: List[Any] = []
+    member_gids: List[Optional[str]] = []
     for member_idx, member_value in enumerate(members):
-        member_outputs.append(
-            _run_one_member(
-                dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
-                request_id, leaf_path, member_idx, member_value,
-                run_attempt, capacity_graphs, shared, compose_cache, case_label,
-            )
+        output, member_gid = _run_one_member(
+            dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
+            request_id, leaf_path, member_idx, member_value,
+            run_attempt, capacity_graphs, shared, compose_cache, case_label,
         )
+        member_outputs.append(output)
+        member_gids.append(member_gid)
     blackboard[out_ds] = member_outputs
+    # ADR-0201 amendment 5 — the ordered member grounding-graph ids ride the
+    # same blackboard as the ordered outputs they correlate to, for the fold's
+    # manifest. Only when the run grounds AND collects graphs: an id pointing
+    # at a graph nobody keeps would be a reference into nothing.
+    if mm is not None and capacity_graphs is not None:
+        blackboard[member_graph_ids_key(out_ds)] = member_gids
     pr.status = "completed"
 
 
@@ -746,8 +821,15 @@ def _run_one_member(
     shared: Optional[Dict[str, Any]] = None,
     compose_cache: Optional[Dict[str, Any]] = None,
     case_label: Optional[str] = None,
-) -> Any:
-    """Run one map member and return its ``sub_target`` output (Slice 3b factoring).
+) -> Tuple[Any, Optional[str]]:
+    """Run one map member; return ``(sub_target output, grounding graph_id)``
+    (Slice 3b factoring; the id is ADR-0201 amendment 5).
+
+    The id is the member's grounding graph — flat member: the ACCEPTED
+    attempt's graph (rejected retries persist nothing); sub-plan member: the
+    graph of the run that PRODUCED ``sub_target`` (ADR-0209 D3), read off the
+    graphs appended during this member, never off a ref-path. ``None`` when
+    the run does not ground/collect (``mm`` or ``capacity_graphs`` absent).
 
     Extracted from the map loop so the full fan-out and a targeted single-member
     re-run (:func:`_run_map_milestone`) share one code path. A member's work is a
@@ -774,6 +856,7 @@ def _run_one_member(
         # map inside the sub-plan can see them (a nested map re-declares the ones
         # it needs — there is no implicit inheritance past the sub-blackboard).
         sub_blackboard: dict = {**shared, member_ds: member_value}
+        graphs_before = len(capacity_graphs) if capacity_graphs is not None else 0
         _run_milestone_sequence(
             dispatcher, writer, request_run,
             leaf_refs=sub_plan["leaf_milestone_refs"],
@@ -790,7 +873,12 @@ def _run_one_member(
             real_mode=True,
             case_label=case_label,
         )
-        return sub_blackboard.get(sub_target)
+        member_gid = (
+            _produced_graph_id(capacity_graphs[graphs_before:], sub_target)
+            if (mm is not None and capacity_graphs is not None)
+            else None
+        )
+        return sub_blackboard.get(sub_target), member_gid
     # Flat 1b member (no sub_plan): bounded retry + accept-first-clean.
     accepted = None
     last_pipeline = None
@@ -835,8 +923,10 @@ def _run_one_member(
             )
         raise MemberAbortError(leaf_ref, member_idx)
     # Accepted attempt only: persist its grounding graph + per-step records.
+    member_gid: Optional[str] = None
     if capacity_graphs is not None and accepted.capacity_graph is not None:
         capacity_graphs.append(accepted.capacity_graph)
+        member_gid = accepted.capacity_graph.graph_id
     for step in getattr(last_pipeline, "steps", ()) or ():
         writer.emit_step_execution_record(
             step.capacity_iri,
@@ -844,7 +934,7 @@ def _run_one_member(
             milestone_ref=leaf_ref,
             confidence=1.0,
         )
-    return accepted.outputs.get(sub_target)
+    return accepted.outputs.get(sub_target), member_gid
 
 
 def _run_member_pipeline(
@@ -977,16 +1067,47 @@ def _run_fold_milestone(
 
     L4-side semantics are unchanged: failure sets ``pr.status = "failed"`` and
     the step record's confidence to ``0.0``, and never aborts the sequence.
-    Which member produced which verdict stays structural rather than becoming a
-    manifest field: the ref-path is the provenance tree (Slice 2) — member runs
-    ground under ``…:{map_idx}:m{i}:…``, the fold under its own milestone index,
-    same ``request_id`` — and the seeded collection's order is the members'
-    order."""
+
+    **Which member produced which verdict is a manifest field** (ADR-0201
+    amendment 5): the fold's manifest carries ``member_graph_ids`` — the
+    ordered member grounding-graph ids the map recorded — so position *i* of
+    the seeded list correlates to member graph *i* structurally. This
+    REPLACES the earlier ruling that correlation "stays structural via the
+    ref-path": value-equality correlation is defeated by two identical
+    in-band refusals (shape (a) makes those legal — demo finding N-F2), and
+    ref-path parsing was already rejected as core-private (S-F2). The seeded
+    collection's order is still the members' order; the manifest is how a
+    reader may rely on it.
+
+    **An empty domain never reaches the reducer** (ADR-0201 amendment 5,
+    owner ruling on ``core-empty-fold-domain``): a fold whose ``in_ds`` has
+    no members stops BEFORE dispatch — the run still grounds (manifest with
+    ``member_graph_ids=[]``, seeded empty list, ``RunStopped`` alone with
+    reason ``empty_domain``) — because a reducer "concluding" from nothing
+    would manufacture an epistemic claim out of machinery state, and leaving
+    the refusal to each reducer body means the next consumer reintroduces
+    it. Ruled at the fold, not per reducer."""
     from .pipeline_execution import execute_pipeline
 
     reducer_iri = spec["reducer_iri"]
     in_ds = spec["in_ds"]
     run_ref = f"pipelinerun:{request_id}:{leaf_path}:{run_attempt}"
+    domain = blackboard.get(in_ds)
+    member_gids = (
+        blackboard.get(member_graph_ids_key(in_ds))
+        if (mm is not None and capacity_graphs is not None)
+        else None
+    )
+    stop_reason = None
+    stop_detail = None
+    if not domain:
+        stop_reason = RUN_STOPPED_EMPTY_DOMAIN
+        stop_detail = (
+            "the collection to decide from had no members, so no "
+            "conclusion was drawn"
+        )
+        if member_gids is None and mm is not None and capacity_graphs is not None:
+            member_gids = []
     result = execute_pipeline(
         dispatcher,
         _fold_pipeline(dispatcher, reducer_iri, in_ds),
@@ -995,6 +1116,9 @@ def _run_fold_milestone(
         mm=mm,
         pipeline_run_ref=run_ref,
         case_label=case_label,
+        member_graph_ids=member_gids,
+        stop_before_dispatch=stop_reason,
+        stop_detail=stop_detail,
     )
     success = bool(result.success)
     if success:

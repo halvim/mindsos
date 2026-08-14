@@ -346,11 +346,25 @@ RUN_STOPPED_STEP_FAILED = "step_failed"
 RUN_STOPPED_CANCELLED = "cancelled"
 #: ADR-0196 — the body ran and deliberately asked for clarification.
 RUN_STOPPED_NEEDS_INPUT = "needs_input"
+#: ADR-0201 amendment 5 — a fold milestone found its domain empty: the
+#: collection to decide from had no members, so the reducer was never
+#: dispatched. A structural fact about the RUN, never an epistemic verdict —
+#: a reducer "concluding" from nothing would manufacture an epistemic claim
+#: out of machinery state (the S2 / ADR-0208 inversion). Like ``cancelled``,
+#: the step never ran, so the stop is minted ALONE — no CapacityInstance
+#: (guard G3): use ``CapacityMMWriter.record_empty_domain``, never
+#: ``record_stopped``.
+RUN_STOPPED_EMPTY_DOMAIN = "empty_domain"
 
 #: Closed set. Deliberately NOT the ``origin_v0`` refusal vocabulary: that
 #: answers *why a value has no origin*, this answers *why a run stopped*.
 RUN_STOPPED_REASONS = frozenset(
-    {RUN_STOPPED_STEP_FAILED, RUN_STOPPED_CANCELLED, RUN_STOPPED_NEEDS_INPUT}
+    {
+        RUN_STOPPED_STEP_FAILED,
+        RUN_STOPPED_CANCELLED,
+        RUN_STOPPED_NEEDS_INPUT,
+        RUN_STOPPED_EMPTY_DOMAIN,
+    }
 )
 
 #: Free-form human detail (an exception message, a NeedsInput summary).
@@ -395,6 +409,20 @@ MANIFEST_STOP_REASON_PHRASES = "stop_reason_phrases"
 #: is an identifier, not a label a reader can be shown. It exists because several
 #: Records from one claim are otherwise indistinguishable on the page.
 MANIFEST_CASE_LABEL = "case_label"
+#: ADR-0201 amendment 5 — present on a FOLD run's manifest only: the ordered
+#: ``graph_id`` of each map member's grounding graph, in member order, so a
+#: renderer correlates member <-> verdict STRUCTURALLY (position i of the
+#: fold's seeded list <-> ``member_graph_ids[i]``) instead of by verdict-value
+#: equality, which two identical refusals defeat (demo finding N-F2). The
+#: manifest carries it because it is a fact about the run the run's own nodes
+#: cannot say (the am-4 argument), references resolve by ``graph_id`` never
+#: role or ref-path (S-F2), and a LIST in the node value survives the store
+#: in order (S-F1). Key ABSENT on every non-fold run — presence is also how a
+#: reader may recognise a fold run without the parentless-list heuristic.
+#: ⚠ Same spelling as the MetaHyperEdge persistence row key
+#: (``mindsos_core/cypher/builders.py``); different layer, different object —
+#: a grep for the bare string spans both.
+MANIFEST_MEMBER_GRAPH_IDS = "member_graph_ids"
 
 #: Registered prose for the closed run-stopped set. Core owns the tokens, so
 #: core owns their phrases — *tokens branch, phrases print* (ADR-0207 rule 2).
@@ -404,6 +432,9 @@ RUN_STOPPED_PHRASES = {
     RUN_STOPPED_STEP_FAILED: "a step could not be completed",
     RUN_STOPPED_CANCELLED: "the request was cancelled before this step ran",
     RUN_STOPPED_NEEDS_INPUT: "more information was needed before going on",
+    RUN_STOPPED_EMPTY_DOMAIN: (
+        "there was nothing to decide from - the collection had no members"
+    ),
 }
 
 
@@ -650,6 +681,7 @@ __all__ = [
     "RUN_STOPPED_STEP_FAILED",
     "RUN_STOPPED_CANCELLED",
     "RUN_STOPPED_NEEDS_INPUT",
+    "RUN_STOPPED_EMPTY_DOMAIN",
     "RUN_STOPPED_REASONS",
     "PROP_RUN_STOPPED_DETAIL",
     "PROP_RUN_STOPPED_BEFORE",

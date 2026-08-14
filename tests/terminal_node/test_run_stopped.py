@@ -254,6 +254,38 @@ def test_record_stopped_refuses_an_undeclared_reason():
     assert "went_sideways" not in RUN_STOPPED_REASONS
 
 
+def test_record_stopped_refuses_the_empty_domain_reason():
+    """ADR-0201 am-5: an empty fold domain means the reducer never
+    dispatched, so record_stopped's CapacityInstance would be a false
+    invocation — the record_cancelled argument verbatim (G3)."""
+    from mindsos_capacity.identifiers import RUN_STOPPED_EMPTY_DOMAIN
+
+    mm = _mm()
+    writer = CapacityMMWriter(mm, REQ, RUN)
+    with pytest.raises(ValueError, match="record_empty_domain"):
+        writer.record_stopped(CAP_ONE, (), RUN_STOPPED_EMPTY_DOMAIN)
+
+
+def test_record_empty_domain_mints_the_stop_alone():
+    """RunStopped alone: no CapacityInstance, no STOPPED_AT edge, the
+    stopped-before capacity carried as a property — record_cancelled's shape
+    with the empty-domain reason (ADR-0201 am-5)."""
+    from mindsos_capacity.identifiers import RUN_STOPPED_EMPTY_DOMAIN
+
+    mm = _mm()
+    writer = CapacityMMWriter(mm, REQ, RUN)
+    writer.record_empty_domain(
+        before_capacity_iri=CAP_ONE, detail="nothing to decide from"
+    )
+    graph = _graph(mm)
+    stops = _nodes(graph, NODE_TYPE_RUN_STOPPED)
+    assert len(stops) == 1
+    assert stops[0].value == RUN_STOPPED_EMPTY_DOMAIN
+    assert (stops[0].properties or {})[PROP_RUN_STOPPED_BEFORE] == CAP_ONE
+    assert _nodes(graph, NODE_TYPE_CAPACITY_INSTANCE) == []
+    assert _edges(graph, EDGE_STOPPED_AT) == []
+
+
 # ── one per run, and none on success ──────────────────────────────────────
 
 
