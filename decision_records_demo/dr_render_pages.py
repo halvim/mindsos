@@ -152,8 +152,25 @@ def _case_refusal(client):
     return kl, session, "drdemo-page-refusal"
 
 
+class _StoreDownKL:
+    """A KL whose READ side is down while Episode writes still land — the
+    outage under test is the POLICY store's, not the Episode store's (the
+    first cut passed kl=None and killed both; caught on the owner's run)."""
+
+    def __init__(self, real):
+        self._real = real
+
+    def writeable(self, *args, **kwargs):
+        return self._real.writeable(*args, **kwargs)
+
+    def global_view(self):
+        raise RuntimeError("simulated outage: the policy store cannot be read")
+
+
 def _case_outage(client):
-    session, kl, mm, dispatcher, writer, request_run = _policy_harness(None)
+    session, kl, mm, dispatcher, writer, request_run = _policy_harness(
+        _StoreDownKL(_build_kl())
+    )
     graphs: list = []
     execution.run(
         dispatcher, writer,
