@@ -900,12 +900,18 @@ by the critic in §30 before it was built wrong).
 | **R-F2** The G2 mutation (remove `check_declared_starts`) initially reddened NOTHING — the §30 Q2 check masked it on completed outcomes (§12.2c: a mutation that reddens nothing is a finding) | **Fixed** — `test_g2_isolated_under_stopped_outcome`: G2 is load-bearing on its own; shown red by the same mutation after |
 | **R-F3** The manifest-only page said only that the run stopped, not what it HAD | **Fixed** (`a10b58e`, owner-requested polish) — "In hand:" lines from declared-start descriptions |
 | **R-F4** Multi-attempt Episodes are out of the v0 page's domain (§31 scope declaration: two terminal-shaped graphs raise rather than guess) | **Filed as `decision-records-multi-attempt-render`** — the deferral gets an owner |
+| **R-F5 (critic §33 M-D)** G6 was test-time only — an IRI smuggled into a STORED manifest phrase rendered straight to the page; descriptions have no registration guard, so the class was one careless fixture away | **Fixed** (`<demo sha at close>`): render-time G6 — the renderer scans its own composed page against the ONE banned-pattern list (shared with the test) and raises; M-D is now `test_render_time_g6_refuses_a_tainted_store`, and disabling the scan reds it |
 
 **Queue effects, same ship:** `decision-records-persisted-render` CLOSES (its
 "no code path" premise went stale at the smoke; item 7 now renders from that
 path and nothing else); `decision-records-demo-project`'s OPEN RULING resolves
 (all-demo v0, §31); `decision-records-per-run-case-label`'s demo half closes
 (the page header IS the case_label) — the manifest-fields half stays open.
+
+**Stage-2 (critic §33):** three fresh mutations held (member-CapacityInstance
+delete, list reversal, corrupted entry); the M-D hole is R-F5 above, fixed as
+the merge condition. One observation left to the OWNER's Q3 judgement: the
+"Q." line is a noun phrase, not a question — readable, but read it cold.
 
 **§12.5 status:** the matrix changed again (three guard rows flipped to
 named tests; a render surface joined). **Next: the critic's stage-2 attack
