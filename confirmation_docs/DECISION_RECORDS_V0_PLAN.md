@@ -417,7 +417,7 @@ mid-item.
 | **4c** ✅ | **[SHIPPED — PR #153, tag `run-manifest-confirmed`]** **The run manifest.** Writer hoisted above `_compose_pipeline`; starts + capacity phrases + stop-reason phrases in the node **value** (`add_node` validates properties as primitives only); graph appended on the `LeafPipelineNotFound` path. ⚠ **CORRECTED BY PR #157 — read this row with §2.8.** The falsified-`writer=` finding **stands**: no writer is threaded into `execute_pipeline`, then or now. But *"`execute_pipeline` is UNCHANGED"* is **stale**: #157 moved the **mint** into it (a `case_label` keyword and the manifest call), because minting here covered only one of two run paths and left every map member with no manifest. Writer, no; mint, yes. | Gate green. G2 shown red with probe D's exact mutation. Run 4 renders. **Item 4a absorbed.** |
 | **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
 | ~~**6**~~ | **DELETED 2026-08-12** — its only content was G2, now item 4c's acceptance (§2.3). **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
-| **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. Form is **question → answer → therefore** (§2.3), not composed statements. | One page a non-technical reader understands with no glossary, rendered from the **persisted** `capacity_mm` graph and nothing else — and *persisted* means **a real FalkorDB round-trip** (§2.3 decision 5), not the live `Graph` objects the driver hands back. |
+| **7** ✅ | **[SHIPPED 2026-08-14 — §2.13; content re-ruled to the CLAIMS demo (§31), all-demo v0]** **The renderer**, plus **G1** and **G6**. Form is **question → answer → therefore** (§2.3). | One page a non-technical reader understands with no glossary, rendered from the **persisted** `capacity_mm` graph and nothing else — and *persisted* means **a real FalkorDB round-trip** (§2.3 decision 5), not the live `Graph` objects the driver hands back. |
 | **8** | **Layer B.** Merge `origin/main` into `feat/decision-records`, reconcile the three core modules, gate it, merge, then swap item 5's reader for `comprehension_v0`'s. | First gate of the LLM seam. A verification step, not a blocker. |
 
 ### The rule that decides whether this succeeded
@@ -862,6 +862,69 @@ the Linux box's port 6379 is held by a stray unnamed falkordb container
 port via `FALKORDB_PORT`.
 
 **Next: item 7, the renderer — input is the seven-requirement bank.**
+
+---
+
+### 2.13 Item 7 — the renderer, and the page the owner judged
+
+*(Renderer lane, 2026-08-14. Design critic-passed BEFORE build (§29–§31: the
+four §30 rulings are load-bearing code). Demo commits `2a139f6` (renderer +
+pages command + guards), `abde9d7` (outage-case fix), `a10b58e` (noroute
+polish), `9818a79` (render-time G6, the §33 merge condition), `f239e79` (the
+Q-form source rule). FINAL evidence: the OWNER ran the guard tests (12/12 on
+the Linux box at `f239e79`) and the §12 command — five pages rendered FROM
+the real Falkor store, exit 0, zero raises, artifact sha256
+`ed3c5f3f…9958`. Acceptance per §30 Q3 is the owner's judgement of that
+artifact.)*
+
+**What shipped.** `dr_render.py` — G1-pure by AST (stdlib + `mindsos_core`
+only): Q→A→therefore from the persisted graphs; every fact a stored value,
+every gap a `RendererGapError`. `dr_render_pages.py` — the §12 command: five
+cases (claim, refusal, outage, boundary, noroute), each run → consolidated to
+a real Falkor → rendered from the STORE. `test_dr_render_guards.py` — eleven
+guards, two renderer mutations shown red first.
+
+**Guard ledger moves (§2.4 table):** G1 ✅ (AST test); G2 ✅ — the REAL guard
+at last: probe D's exact mutation now RAISES where the sketch printed *"Given:
+a return must be filed"*, and the §2.4 overstatement is closed; G6 ✅ — no
+IRI or token on any page; the two known leaks are handled at the page layer
+(declared-start KEYS never print — descriptions only; `source_datastate` and
+IRI-shaped stop details are links, suppressed). §30 Q2's raise
+(completed-without-conclusion) and the §31 single-attempt scope are both
+tested. `environment_fault` is NOT consumed (ADR-0207 §am-2 conflict caught
+by the critic in §30 before it was built wrong).
+
+**Findings, dispositions (§12.4):**
+
+| Finding | Disposition |
+|---|---|
+| **R-F1** The pages driver's first outage case passed `kl=None`, killing the Episode store along with the policy store — two concerns, one handle; caught on the OWNER'S run, not the dev loop | **Fixed** (`abde9d7`) — a read-down KL wrapper: Episode writes land, policy reads fail; the vetted outage prose renders |
+| **R-F2** The G2 mutation (remove `check_declared_starts`) initially reddened NOTHING — the §30 Q2 check masked it on completed outcomes (§12.2c: a mutation that reddens nothing is a finding) | **Fixed** — `test_g2_isolated_under_stopped_outcome`: G2 is load-bearing on its own; shown red by the same mutation after |
+| **R-F3** The manifest-only page said only that the run stopped, not what it HAD | **Fixed** (`a10b58e`, owner-requested polish) — "In hand:" lines from declared-start descriptions |
+| **R-F4** Multi-attempt Episodes are out of the v0 page's domain (§31 scope declaration: two terminal-shaped graphs raise rather than guess) | **Filed as `decision-records-multi-attempt-render`** — the deferral gets an owner |
+| **R-F5 (critic §33 M-D)** G6 was test-time only — an IRI smuggled into a STORED manifest phrase rendered straight to the page; descriptions have no registration guard, so the class was one careless fixture away | **Fixed** (`9818a79`): render-time G6 — the renderer scans its own composed page against the ONE banned-pattern list (shared with the test) and raises; M-D is now `test_render_time_g6_refuses_a_tainted_store`, and disabling the scan reds it |
+
+**Queue effects, same ship:** `decision-records-persisted-render` CLOSES (its
+"no code path" premise went stale at the smoke; item 7 now renders from that
+path and nothing else); `decision-records-demo-project`'s OPEN RULING resolves
+(all-demo v0, §31); `decision-records-per-run-case-label`'s demo half closes
+(the page header IS the case_label) — the manifest-fields half stays open.
+
+**Stage-2 (critic §33):** three fresh mutations held (member-CapacityInstance
+delete, list reversal, corrupted entry); the M-D hole is R-F5 above, fixed as
+the merge condition. The Q3 observation is RESOLVED by owner ruling:
+**the Q-form source rule** — a "Q." line is EARNED by a stored question (the
+origin record's `question` field is the page's only interrogative voice);
+graphs without one present item-then-outcome (`{value} — {description}`,
+`{phrase} → {verdict}`). The renderer never invents a question — that is the
+§11 class — and a future capacity earns its Q-line the ADR-0208 way, by
+producing an origin record. Landed with a `Q.`-absence assertion on the claim
+page and a stored-question assertion on the refusal page.
+
+**§12.5 status:** the matrix changed again (three guard rows flipped to
+named tests; a render surface joined). **Next: the critic's stage-2 attack
+(G2/G6 mutations against the owner's pages artifact) at the PR hold; then
+Layer B (item 8) is the table's last row.**
 
 ---
 
