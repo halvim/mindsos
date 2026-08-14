@@ -175,20 +175,26 @@ deps — and its output was verified **by the owner** on the Linux box,
 byte-identical to the build container's run. §12 checks in this lane now answer
 against a dump the owner ran, as the rule requires.
 
-**The demo-critical sweep is DONE (2026-08-14)** — §2.11: demo instrument
-`69398b6` (8 new shapes + printer guard), all six rows answered against the
-OWNER'S Linux dump (sha-identical to the container's), findings F1–F8
-dispositioned in STATE in the same ship. **Next: persistence smoke, then item
-7** — after the critic's stage-1 re-test through `dr_dump`. It is carryable — the gate ran on a tip whose parent **is**
-`origin/main` (`be7aa8a`, tag `refusal-vocabulary-confirmed`), so it is a **merged-state**
-gate; the `git merge origin/main` before it was a no-op for exactly that reason. Contrast
-`#138`'s 4551, a **branch** gate, which is not carryable. **This line has been stale twice:
-it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
-table, in the same commit.**
+**Items 1–7 are DONE (§2.11 sweep, §2.12 smoke, §2.13 renderer, §2.14 the
+bijection fix). Do not rebuild them.** ⏭ **NEXT: the wall —
+`core-collection-member-dont-know`, owner-ruled 2026-08-14 to shape (a)** (an
+exposure that cannot be decided says so as an in-band value, not as a third
+member outcome), with **`core-empty-fold-domain`** and the newly filed
+**`core-member-machinery-failure-partial-record`** ruled alongside it. Layer B
+(item 8) is **re-filed as blocked** — see §2.14.
 
-**⏭ PROBE D HAS RUN — read §2.3, then the item table below, which it changed.** Items 1
-through 4 are done; do not rebuild them. **Next is the capacity printable phrase, then the
-run manifest, then item 5.**
+⚠ **THE PARAGRAPH THAT USED TO SIT HERE WAS A SPLICE, and it is the reason this
+correction is written out rather than made silently.** It carried a *"Next:
+persistence smoke, then item 7"* line that was three ships stale, welded onto
+orphaned text asserting a **`be7aa8a` / 4716** carryable baseline — directly
+beneath the **4747 / `714f4ee`** one above. A lane reading top-down could take
+the wrong baseline off the same page and predict a gate against it. The
+carryable baseline is **4747, and it is carryable onto `805553a`**: the only
+`mindsos_*` commit in `714f4ee..origin/main` is `9024c51`, #158's own squash.
+**The staleness rule this section states about itself has now failed four
+times.** It failed again at item 7, whose ship advanced the table and left this
+line untouched. Treat "move the line in the ship's own commit" as part of the
+§12.4 disposition, not as tidying that can follow.
 
 ⚠ **"Run 2 does not wait on item 5" was wrong, and ADR-0208's Consequences were right.**
 Probe B ran run 2's *machinery* end to end, which is true and is why item 5 is small. But the
@@ -386,7 +392,7 @@ interpolated an arbitrary upstream exception into customer-facing text.
 
 #### Order
 
-~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → ~~map-member manifests (#157)~~ ✅ → ~~fold grounding (#158, tag `dr-fold-grounding-confirmed`, critic PASS)~~ ✅ → ~~the demo's own home + `dr_dump.py` (`demo/decision-records` @ `d94ca4f`, dump **owner-verified** on the Linux box, all three shapes)~~ ✅ → **demo-critical sweep ← NEXT** (`decision-records-demo-critical-sweep` in `STATE.pending_designs` — its acceptance sentence, the regime axis DERIVED from branch conditions, lives there) → persistence smoke → item 7 → Layer B. *(This line has now been stale three times; per its own rule it moves with the table, in the same commit as the ship that advances it.)*
+~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → ~~map-member manifests (#157)~~ ✅ → ~~fold grounding (#158)~~ ✅ → ~~the demo's own home + `dr_dump.py`~~ ✅ → ~~demo-critical sweep (#159, §2.11)~~ ✅ → ~~persistence smoke (#160, §2.12)~~ ✅ → ~~item 7, the renderer (#161, §2.13)~~ ✅ → ~~the correlation bijection (`bd8e779`, §2.14)~~ ✅ → **the wall, shape (a) ← NEXT** (`core-collection-member-dont-know`, owner-ruled 2026-08-14; `core-empty-fold-domain` and `core-member-machinery-failure-partial-record` ruled alongside) → ~~Layer B~~ **re-filed as BLOCKED (§2.14)**. *(Stale four times. It moves with the table, in the ship's own commit — that is a §12.4 disposition, not tidying.)*
 
 **The pre-filter halves from here.** The baseline is always `main` and every merge is gated, so
 **the previous item's change-tree run IS the next item's baseline** — keep its log and tarball
@@ -415,7 +421,7 @@ mid-item.
 | **4a** ✅ | ~~**The pre-minted grounding root, for run 4 only.**~~ **ABSORBED and SHIPPED in PR #153** — the manifest is minted above the find, so run 4 has a graph by construction. | Run 4 renders from a graph rather than from a caught exception. |
 | **4b** ✅ | **[SHIPPED — PR #152, ADR-0207 am-1]** **`printable_phrase` on the capacity declaration** (§2.3 decision 2). Optional; validated at `register_capacity` only when supplied; the rule now lives in `mindsos_capacity/printable.py`. | Gate green. Every previously-registered capacity is byte-identical on its node. |
 | **4c** ✅ | **[SHIPPED — PR #153, tag `run-manifest-confirmed`]** **The run manifest.** Writer hoisted above `_compose_pipeline`; starts + capacity phrases + stop-reason phrases in the node **value** (`add_node` validates properties as primitives only); graph appended on the `LeafPipelineNotFound` path. ⚠ **CORRECTED BY PR #157 — read this row with §2.8.** The falsified-`writer=` finding **stands**: no writer is threaded into `execute_pipeline`, then or now. But *"`execute_pipeline` is UNCHANGED"* is **stale**: #157 moved the **mint** into it (a `case_label` keyword and the manifest call), because minting here covered only one of two run paths and left every map member with no manifest. Writer, no; mint, yes. | Gate green. G2 shown red with probe D's exact mutation. Run 4 renders. **Item 4a absorbed.** |
-| **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
+| **5** ✅ | **[SHIPPED — PR #154]** **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
 | ~~**6**~~ | **DELETED 2026-08-12** — its only content was G2, now item 4c's acceptance (§2.3). **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
 | **7** ✅ | **[SHIPPED 2026-08-14 — §2.13; content re-ruled to the CLAIMS demo (§31), all-demo v0]** **The renderer**, plus **G1** and **G6**. Form is **question → answer → therefore** (§2.3). | One page a non-technical reader understands with no glossary, rendered from the **persisted** `capacity_mm` graph and nothing else — and *persisted* means **a real FalkorDB round-trip** (§2.3 decision 5), not the live `Graph` objects the driver hands back. |
 | **8** | **Layer B.** Merge `origin/main` into `feat/decision-records`, reconcile the three core modules, gate it, merge, then swap item 5's reader for `comprehension_v0`'s. | First gate of the LLM seam. A verification step, not a blocker. |
@@ -926,6 +932,76 @@ named tests; a render surface joined). **Next: the critic's stage-2 attack
 (G2/G6 mutations against the owner's pages artifact) at the PR hold; then
 Layer B (item 8) is the table's last row.**
 
+### 2.14 The correlation bijection — two silent-omission defects in the shipped renderer
+
+*(bijection lane, 2026-08-14. Found by READING `dr_render.py` before picking up
+the next item — the same reason item 7 caught three stale premises. Confirmed
+BY RUNNING by the critic (coordination §37) before either was believed. Demo
+commit `bd8e779` on `demo/decision-records`; owner evidence on the Linux box at
+that sha: **15/15 PASS** (was 12), predicted exactly in writing beforehand.)*
+
+**What was wrong.** §30 Q1 ruled member↔verdict correlation by full
+verdict-value equality against the fold's seeded LIST, and the first cut
+implemented it **in one direction only**: for each list entry, scan the member
+graphs, take the first match, raise if none. Two consequences, both silent:
+
+| Finding | What it did |
+|---|---|
+| **N-F1** | A member graph matching **no** list entry rendered nothing and raised nothing — the exposure simply left the page. Critic probe: `drop last list entry → rendered, 'B. Osei' on page: False` |
+| **N-F2** | First-match-wins is not injective. With the exposure stripped out of the verdict VALUE every entry matches every member: `Silva-dwelling ×3, Silva-contents ×0, Osei ×0` — one exposure printed three times, two never rendered, no raise |
+
+**Why it was unreachable, and why that is not a defence.** The map's ∀-abort
+barrier guarantees every member that reaches the fold wrote a verdict into the
+list, so both probes had to hand-mutate to reach the state. That barrier is
+exactly what `core-collection-member-dont-know` removes. **The day a member may
+refuse instead of aborting, N-F1 deletes the refusal from the page** — and a
+per-exposure refusal standing beside a per-exposure answer is the demo's
+headline beat. A guard that only holds because a neighbouring invariant is in
+the way is the R-F2 shape one level up.
+
+**The fix (`bd8e779`).** Correlation is now a **bijection**. `_member_block` is
+extracted so the renderer can **compare** candidate members rather than take
+the first: §30's interchangeability argument is sound only where the candidate
+blocks render identically (a genuinely duplicated exposure), and the renderer
+must be able to tell that case from an ambiguous one instead of assuming it.
+Three raises: an entry matching nothing; an entry matching several graphs that
+do **not** render alike (naming the roles); and any member left unmatched at
+the end — **naming its graph role**, per the critic's §37 condition, so the
+failure is diagnosable from the error alone.
+
+**Guards, shown RED by mutation on the owner's box, each in isolation:**
+
+| Mutation | Result |
+|---|---|
+| `if unmatched:` → `if False:` | 14 PASS, then `test_unmatched_member_graph_raises` REDS alone |
+| the render-alike check → `if False:` | `test_identical_bare_verdicts_do_not_collapse_onto_one_member` REDS |
+| *(none — the positive control)* | `test_a_genuinely_duplicated_exposure_still_renders`: two identical exposures still render, so the bijection does not over-constrain (critic §37 Q1's care) |
+
+⚠ **Stated rather than glossed:** the runner stops at the first failure, so
+under the second mutation the tests sorted after it did not execute. Isolation
+is proven for the first mutation and asserted-not-proven for the second.
+
+**Findings, dispositions (§12.4):** N-F1 **fixed** (`bd8e779`); N-F2 **fixed**
+(same commit); the §39.2 claim that a per-capacity refusal declaration would
+freeze a rotten vocabulary is **WITHDRAWN — falsified** (coordination §40/§41):
+`REASONS_EMITTED_TODAY` / `REASONS_RESERVED` / `REASONS_DEGENERATE` shipped in
+#156 and `source_unreachable` was de-advertised by ADR-0207 am-3 in #157, so
+`origin-refusal-vocabulary-classification` **closes** as a register correction.
+That claim was read off a STATE entry's "NOT BUILT" without grepping the module
+it described — **grep-before-quoting applies to register entries too.**
+
+**Owner rulings recorded 2026-08-14, which set the next item:** the wall takes
+**shape (a)** — an undecidable exposure is an in-band refusal VALUE with its
+origin record, with refusal-capability **declared on the DataState** (the
+ADR-0199 `collection`/`member_ds` precedent) and the reducer declaring that it
+decodes it; the member **machinery**-failure half is split out as its own item
+(`core-member-machinery-failure-partial-record`) rather than being buried by
+that choice; `core-empty-fold-domain` is ruled at the fold, not per reducer;
+and **Layer B is re-filed as blocked** — its row names an archive-tagged
+branch, its *swap* would delete claim 5's control arm, and it waits on S-2 and
+a transport. The reader lands **beside** the structured one, never replacing it.
+
+---
 ---
 
 ## 3. Guards
