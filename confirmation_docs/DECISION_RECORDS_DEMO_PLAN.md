@@ -249,17 +249,31 @@ someone else.
    Gate 4 first**: if routing needs one adjudication did not, *"no new decision op
    was needed"* fails inside the demo, in front of the room.
 
-**A third undercount, found 2026-08-14 by reading the tree.** Routing needs a
-**decision op that has never been built.** v0 exercised exactly ONE of the
-`decision` family's six — the comparison criterion of ADR-0208 — and both this
-plan's sibling (`DECISION_RECORDS_V0_PLAN.md` §5) and the slice plan list *"the
-other five decision ops"* as explicitly out of v0 scope. Routing is a
-**selection**, not a comparison. This does **not** fail Gate 4, whose claim is
-that no op *beyond the family's six* was needed — but it means routing is not
-"a shape already exercised", which is now the **third** time this beat's cost
-has been undercounted: first *"N registrations of a shape already exercised"*,
-then *"plus a reducer"*, now the op itself. Scope it as a new op, and check it
-against Gate 4 in writing before it is registered.
+**A third undercount, and a broken gate — found 2026-08-14 by reading the
+tree, after a first draft of this paragraph got it wrong.** Routing is a
+**selection**; the only `decision`-family capacity v0 ever built is ADR-0208's
+**comparison** criterion. So routing needs a decision capacity of a kind never
+built — the third undercount of this beat, after *"N registrations of a shape
+already exercised"* and *"plus a reducer"*.
+
+⚠ **And the check this plan tells you to run cannot be run.** §5 Phase 0 item 5
+says *"all six ops in `decision`"*, and both v0 documents list *"the other five
+decision ops"* as out of scope — but **the six are enumerated nowhere**. In
+code: `origin_v0.DECISION_SHAPED_CATEGORIES` is a frozenset of **three
+categories** (`decision`, `comparator`, `predicate`), and `FAMILY_RULES` holds a
+single `decision: VERDICT` entry. In docs: no ADR names a set of six. The phrase
+exists only in planning prose, repeated across three documents.
+
+⟹ **Gate 4 is currently UNEVALUABLE.** Its pass condition is *"no new decision
+op was needed"*, and you cannot decide whether an op is *new* against a set that
+was never defined — so Gate 4 would pass or fail on whoever is reading it. Owed
+before routing is registered: either **enumerate the six in an ADR** (making
+Gate 4 checkable as written), or **restate Gate 4** against something that
+exists — e.g. *no new capacity **category** beyond `DECISION_SHAPED_CATEGORIES`,
+and no new `FAMILY_RULES` entry*. The first draft of this very paragraph
+asserted "one of the family's six" and inherited the same phantom set; it was
+caught by grepping instead of quoting. **Fourth instance in this lane, and the
+second in one day.**
 
 ⚠ **Do not invent a department taxonomy or an exposure taxonomy.** Both are
 sourced above. An invented one re-creates exactly what makes the adjudication
@@ -346,7 +360,7 @@ Exhaustive single-field ablation across Phase 1 and 2 cases.
 ### Phase 4 — `diversity_1..6`
 Second area of law. Reuse the ops; register new types only.
 
-**Gate 4:** transfer curve produced; **no new decision op was needed.** If one was, claim 4 is weaker than stated and the deck changes.
+**Gate 4:** transfer curve produced; **no new decision op was needed.** ⚠ **OWED BEFORE ROUTING IS REGISTERED (owner-agreed 2026-08-14):** this gate is **unevaluable as written** — the set of decision ops it measures against is enumerated nowhere (§2.5). Either enumerate the six in an ADR, or restate the gate against something that exists: *no new capacity category beyond `origin_v0.DECISION_SHAPED_CATEGORIES`, and no new `FAMILY_RULES` entry*. An unevaluable gate on the composition claim is worse than no gate. If one was, claim 4 is weaker than stated and the deck changes.
 
 ### Phase 5 — LLM adapter
 ADR first, code second. The adapter is fixed; the model is an external oracle it consults; its output is a typed DataState carrying provenance to the raw input and a recorded extraction uncertainty; it can decline.
@@ -378,9 +392,9 @@ Span agreement on extraction provenance.
 1. ~~**Which half of SARA leads.**~~ **CLOSED 2026-08-11 — entailment, and only §152 + §7703** (§2.1). Numeric narrows to the minimum that fires Gate 2.
 2. **Whether the evidence pack ships publicly.** A published SARA result invites the accuracy comparison we do not want. Recommend: cited in the deck, method reproducible on request, no leaderboard entry.
 3. ~~**Domain of the live demo.**~~ **CLOSED 2026-08-11 — the demo stays claims, the evidence pack stays tax**, and the practitioner conversation that gated it has happened (§2.5).
-4. **Time-box.** Phases 0–4 are the defensible minimum. Set the box before starting, not after Phase 2.
+4. **Time-box.** Phases 0–4 are the defensible minimum. Set the box before starting, not after Phase 2. ⚠ **2026-08-14: still unset, and decision 6 now depends on it** — that ruling chose Phase 7 first *on the condition* of a written box for it. An unset box converts decision 6 into the option it rejected.
 5. **Prior art review before any novelty claim.** A Prolog system solves SARA; "Explainable OpenFisca" exists. Neither has the grounding graph, but both need to be read before the deck asserts novelty.
-6. **[OPENED 2026-08-11 · LIVE 2026-08-14 — its condition is met]** **Does Phase 7 move ahead of Phases 1–6?** The argument for: those phases serve a deck and pay nothing, this plan's own §7 names "the benchmark becomes the product" as its highest risk, and the only two people waiting are waiting for Phase 7. The argument against: skipping Phases 1–6 leaves Gate 4 — the composition claim's only test — with nothing behind it but the demo's own questions, and the demo's cases are ones we wrote. The old text deferred this with *"nothing in Phase 7 can start before Decision Records v0 renders runs 1 and 2 — revisit when v0 lands."* **v0 HAS LANDED** (items 1–7 + the correlation bijection; five case shapes render from a real FalkorDB round-trip). **So this is live, and it is now at risk of being decided by DRIFT: building the routing capacities next IS choosing Phase 7 first.** Record the ruling before that work starts, not after.
+6. **[OPENED 2026-08-11 · RULED 2026-08-14] Does Phase 7 move ahead of Phases 1–6? YES — Phase 7 first, TIME-BOXED, with Phases 1–3 as the committed following block.** The condition the old text deferred on (*"revisit when v0 lands"*) is met: v0 landed (items 1–7 + the correlation bijection; five case shapes render from a real FalkorDB round-trip). **Three facts that were not true when this was written and that decided it.** (i) **Phases 5 and 6 are blocked regardless** — both need the transport, and Phase 6 also needs `comprehension_v0`, which is on `archive/decision-records-llm-seam`; deferring them costs nothing because they cannot run. (ii) **Gate 4 is UNEVALUABLE** as written (§2.5), so the against-argument — *"skipping 1–6 leaves Gate 4 with nothing behind it"* — is currently protecting nothing. (iii) Phase 7 is the only block with people waiting and **no blockers**. **Why not the alternatives:** deferring the evidence pack indefinitely leaves every number in the room coming from cases we wrote, which makes *"confidently wrong: zero"* unfalsifiable; running Phases 1–3 first delays the only thing anyone waits for by this plan's largest uncosted line item (SARA encoding) and is the ordering §7 names as the highest risk. **The demo must be believed in a room, and that needs the beat working AND at least one number that is not ours** — Phase 7 delivers the first, Phases 1–3 the second, in that order. ⚠ **THE TIME-BOX IS THE WHOLE RULING AND IT HAS NO NUMBER YET — OWED BY THE OWNER.** Open decision 4 says set it *before* starting, not after Phase 2. **Until a date is written here, this ruling is indistinguishable from deferring the evidence pack indefinitely**, which is the option that was rejected. Phases 1–3 begin when the box expires or Phase 7 gates, whichever is first.
 7. **[OPENED 2026-08-11 · S-2 RULED 2026-08-14] Who owns the transport, and who parses the model's output?** **OWNER RULING on S-2: ratify the fix already proposed in `LLM_SEAM_MANUAL.md` §11** — the transport may return EITHER raw text OR a mapping; if text, decoding happens inside `mindsos_llm`, and a decode failure becomes the `malformed_response` refusal rather than an exception from unowned code. Accepting a mapping keeps provider-native structured output usable. Compatible with shipped `main`: `malformed_response` is already classified in `origin_v0.REASONS_RESERVED` (#156). ⚠ **S-2 was never an open question — it carried a written proposed fix nobody had ruled on**, and the row was read as undecided for three days because the manual it lives in **was not on `main`** (see the correction below). Ratified BEFORE a transport exists, which is the whole point of the deadline. **The transport's ownership is still open**, and it is reclassified below.
 8. **[OPENED 2026-08-11 · RULED 2026-08-14] Is exposure-level routing what a claims manager actually recognises as the hard call?** §2.5's subject change rests on Guidewire's routing model — strong, but one vendor, and no carrier publishes an org chart. **OWNER RULING 2026-08-14: this does NOT gate the build.** Mauricio is an EXTERNAL RESOURCE WHO VALIDATES WHAT WE BUILD — not a decision-maker we wait on. The previous text (*"ask before any capacity is written"*) over-gated: §2.5 already forbids inventing a taxonomy **because both are sourced** — OSFI/CCIR Section III for the coverages exposures are made of, Guidewire's routing documentation for the exposure→desk model. The build needs neither answer. What his answer affects is whether routing is PERCEIVED as the hard call, which is a question about the pitch, not an input to the code. **The constraint that survives, and it is §2.5's own:** the org-chart evidence is reconstructed from job titles (strong that a unit exists, weak on hierarchy) plus one vendor, so the demo may show THAT routing happens and MUST NOT assert what every carrier does. Ask the two questions when convenient; do not schedule work around them.
 
