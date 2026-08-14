@@ -28,7 +28,10 @@ exposures, the reducer refuses):
     3. print the Episode node raw (properties included — the acceptance)
     4. `load_graph` the `capacity_root_ref` index BACK from Falkor, raw
     5. `load_graph` every referenced run graph BACK from Falkor, raw
-    6. print a live-vs-persisted count table per graph_id
+    6. ASSERT live==persisted per node id — value AND properties equality —
+       which pins the verdicts LIST order (member identity, §14), the refusal
+       wording and the trimmed conclusion; plus edge-set and count equality
+       (critic §27: a displayed value is not a checked value)
 
 A real FalkorDB is REQUIRED (`FALKORDB_HOST`/`FALKORDB_PORT`, default
 localhost:6379). If it is unreachable the smoke prints the raw probe error and
@@ -127,6 +130,36 @@ def _dump_loaded_graph(tag: str, graph) -> None:
         )
 
 
+def _graph_value_failures(live, loaded) -> int:
+    """Assert the loaded graph equals the live one where it matters (critic §27).
+
+    Per node id: value equality (pins LIST order — member identity under the
+    §14 ruling — plus the refusal wording and the trimmed conclusion) and
+    properties equality. Plus edge-set equality on (source, type, target).
+    Dict KEY order is legitimately not preserved by the store and dict ``==``
+    ignores it; list ``==`` does not — exactly the asymmetry S-F1 recorded.
+    Returns the number of failures, printing each raw.
+    """
+    failures = 0
+    if set(live.nodes.keys()) != set(loaded.nodes.keys()):
+        print(f"VALUE FAIL: node id sets differ live={sorted(live.nodes)!r} loaded={sorted(loaded.nodes)!r}")
+        return 1
+    for node_id, live_node in live.nodes.items():
+        loaded_node = loaded.nodes[node_id]
+        if (loaded_node.value != live_node.value
+                or (loaded_node.properties or {}) != (live_node.properties or {})):
+            print(f"VALUE FAIL node id={node_id!r} type={live_node.type_name!r}")
+            print(f"  live      value={live_node.value!r} properties={live_node.properties!r}")
+            print(f"  persisted value={loaded_node.value!r} properties={loaded_node.properties!r}")
+            failures += 1
+    live_edges = {(e.source.node_id, e.type_name, e.target.node_id) for e in live.edges.values()}
+    loaded_edges = {(e.source.node_id, e.type_name, e.target.node_id) for e in loaded.edges.values()}
+    if live_edges != loaded_edges:
+        print(f"VALUE FAIL: edge sets differ live={sorted(live_edges)!r} loaded={sorted(loaded_edges)!r}")
+        failures += 1
+    return failures
+
+
 def _run_case(name: str, exposures, episode_id: str, client) -> int:
     """Run one case end to end; return the number of acceptance failures."""
     print(f"== case: {name} ==")
@@ -197,7 +230,7 @@ def _run_case(name: str, exposures, episode_id: str, client) -> int:
         loaded = load_graph(client, graph_id)
         _dump_loaded_graph("persisted", loaded)
 
-    print("-- live vs persisted, per graph_id --")
+    print("-- live vs persisted, per graph_id (values ASSERTED, not displayed) --")
     for graph_id in run_graph_ids:
         live = live_by_id.get(graph_id)
         loaded = load_graph(client, graph_id)
@@ -207,6 +240,11 @@ def _run_case(name: str, exposures, episode_id: str, client) -> int:
         print(f"graph_id={graph_id!r} live={live_counts!r} persisted={loaded_counts!r}{marker}")
         if live_counts != loaded_counts:
             failures += 1
+        if live is None:
+            print(f"VALUE FAIL: index references a graph the live run never collected")
+            failures += 1
+        else:
+            failures += _graph_value_failures(live, loaded)
     persisted_only = [g for g in run_graph_ids if g not in live_by_id]
     live_only = [g for g in live_by_id if g not in run_graph_ids]
     print(f"index covers {len(run_graph_ids)} graphs; live collected {len(live_by_id)}; "
