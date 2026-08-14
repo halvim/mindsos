@@ -224,6 +224,29 @@ def test_refusal_page_is_in_band_and_g6_clean():
         assert token not in low, f"G6: {token!r} leaked:\n{page}"
 
 
+def test_noroute_page_names_what_was_in_hand():
+    """The manifest-only page still says what the run HAD (owner polish,
+    2026-08-14): the declared-start descriptions print above the stop line."""
+    from decision_records_demo.dr_dump import DS_EXPOSURE, DS_UNREACHED
+    from mindsos_intelligence.execution import LeafPipelineNotFound
+    mm, dispatcher, writer, request_run = _harness()
+    graphs: list = []
+    try:
+        execution.run(
+            dispatcher, writer,
+            _leaf_plan("plan:drdemo-noroute", DS_UNREACHED, start=DS_EXPOSURE),
+            request_run, mm=mm,
+            solve_seed={DS_EXPOSURE: EXPOSURES[0]},
+            capacity_graphs=graphs, case_label="claim CLM-2041, unroutable ask",
+        )
+    except LeafPipelineNotFound:
+        pass
+    page = render_from_graphs(graphs, EPISODE_STOPPED)
+    assert "In hand: one exposure, as filed" in page
+    assert "Stopped before any step could run" in page
+    assert "datastate:" not in page.lower()
+
+
 def test_boundary_stop_page():
     """n=0: the reducer's refusal renders as a stop with its prose detail."""
     page = render_from_graphs(_claim_graphs([]), EPISODE_STOPPED)

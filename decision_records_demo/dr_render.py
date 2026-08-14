@@ -270,6 +270,10 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                     f"   {analysis.phrase()} → {_verdict_text(produced[0].value)}"
                 )
             elif not analysis.graph.edges:
+                for description in (
+                    analysis.manifest.get("declared_starts") or {}
+                ).values():
+                    lines.append(f"In hand: {description}")
                 lines.append(
                     "Stopped before any step could run: no way to answer "
                     "this was found."
