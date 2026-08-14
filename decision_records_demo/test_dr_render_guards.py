@@ -330,6 +330,25 @@ def test_a_genuinely_duplicated_exposure_still_renders():
     assert page.count("A. Silva") == 2, page
 
 
+def test_missing_decided_date_is_stated_not_omitted():
+    """§52 condition 1 (owner-adopted §53): a page with no `consolidated_at`
+    STATES the absence in room-safe words — a silently missing date line is
+    indistinguishable from a renderer bug (G2's principle applied to the page
+    itself). This is the from-root page's shape: the Episode is not
+    store-resident (§51.1), so a store-only render has no date to prove."""
+    graphs = _claim_graphs()
+    dateless = {
+        "capacity_root_ref": "unused-by-render_from_graphs",
+        "consolidated_at": "",
+        "outcome_classification": None,
+    }
+    page = render_from_graphs(graphs, dateless)
+    assert "Decided date: not available from stored evidence" in page, page
+    dated = render_from_graphs(graphs, EPISODE_COMPLETED)
+    assert "Decided 2026-08-14" in dated
+    assert "not available from stored evidence" not in dated
+
+
 if __name__ == "__main__":
     for fn in sorted(
         (v for k, v in list(globals().items()) if k.startswith("test_")),

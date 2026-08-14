@@ -249,6 +249,14 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
     lines.append(f"Decision Record — {case_label}" if case_label else "Decision Record")
     if consolidated_at:
         lines.append(f"Decided {str(consolidated_at)[:10]}")
+    else:
+        # §52 condition 1 (adopted §53): a page that cannot prove its decided
+        # date STATES that, in room-safe words — a silently missing line is
+        # indistinguishable from a renderer bug (G2's principle, applied to
+        # the page itself). The date lives on the Episode, which is not
+        # store-resident (§51.1), so the from-root page always takes this
+        # branch.
+        lines.append("Decided date: not available from stored evidence")
     lines.append("")
 
     terminal: Optional[_Analysis] = None

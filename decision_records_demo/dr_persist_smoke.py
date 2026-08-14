@@ -39,10 +39,13 @@ exits 3 — an unreachable store is a result, not a skip. The smoke runs on the
 HOST (the test image deliberately does not bake `decision_records_demo/` — a
 demo is not in the core image, RULES §1 — and the compose falkordb service
 publishes no host port since the 2026-07-04 `-p` isolation fix), so on the
-Linux box it is a standalone container:
+Linux box it is a standalone container — on host port 6382, because 6379 is
+held by a stray container there and 6380/6381 by the arc demos (S-2,
+coordination §51.2: this box previously said 6379 and failed on the reference
+machine — docs that fail cold are operator intervention):
 
-    docker run --rm -d --name drdemo-falkor -p 6379:6379 falkordb/falkordb
-    PYTHONPATH=. <demo venv python> decision_records_demo/dr_persist_smoke.py
+    docker run --rm -d --name drdemo-falkor -p 6382:6379 falkordb/falkordb
+    PYTHONPATH=. FALKORDB_PORT=6382 /tmp/drdemo-venv/bin/python decision_records_demo/dr_persist_smoke.py
     docker rm -f drdemo-falkor
 
 This file is demo code (RULES §3): it registers its own vocabulary plus the
@@ -206,6 +209,19 @@ def _run_case(name: str, exposures, episode_id: str, client) -> int:
         props = node.properties or {}
         if not props.get("consolidated_at"):
             print("ACCEPTANCE FAIL: consolidated_at is absent or empty")
+            failures += 1
+        # S-1 (coordination §51.2/§52): displayed is not checked — the critic's
+        # §27 class, caught here a second time. The renderer CONSUMES
+        # outcome_classification (the §30 Q2 raise), so a wrong stored value
+        # reaches the page unchallenged unless this asserts it.
+        if props.get("outcome_classification") != outcome:
+            print(
+                f"ACCEPTANCE FAIL: outcome_classification "
+                f"{props.get('outcome_classification')!r} != expected {outcome!r}"
+            )
+            failures += 1
+        if props.get("state") != "closed":
+            print(f"ACCEPTANCE FAIL: state {props.get('state')!r} != 'closed'")
             failures += 1
         capacity_root_ref = props.get("capacity_root_ref") or capacity_root_ref
     if not episodes:

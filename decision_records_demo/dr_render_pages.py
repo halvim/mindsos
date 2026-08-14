@@ -12,13 +12,32 @@ reducer refuses), noroute (unroutable — manifest-only graph).
 RULES §11 seam: everything between the BEGIN/END PAGE markers is the
 renderer's composed page — layout and framing are `dr_render.py`'s, every fact
 on it is a stored graph value, and a gap raises instead of rendering. Text
-outside the markers is this driver's narration.
+outside the markers is this driver's narration. ⚠ ONE STATED EXCEPTION
+(coordination §51.1): the "Decided <date>" line comes from the Episode, which
+lives in the in-process KnowledgeLayer — KL persistence is the server's job
+(ADR-0042), so the date is NOT store-resident. The from-root mode below is the
+honest form of that limit: it renders with no live KL at all, and the page
+STATES the date's absence instead of omitting the line (§52 condition 1).
+
+Two modes:
+
+  (default)             run all five cases → consolidate → render each FROM
+                        THE STORE. Narration prints each case's
+                        capacity_root_ref so it can be fed to --from-root.
+  --from-root <ref>     NO cases are run and NO KnowledgeLayer exists in the
+                        process: the page is rendered from the store alone,
+                        given only the index graph's id. This is the
+                        reconstructibility proof (plan §2.3 decision 5) and a
+                        GATE-7 PREDECESSOR by owner ruling (coordination §54)
+                        — green before the gate may be attempted, not part of
+                        the cold-run set.
 
 Requires a reachable FalkorDB (`FALKORDB_HOST`/`FALKORDB_PORT`); unreachable →
-raw error, exit 3. Exit 1 if any case's render raises. On the Linux box:
+raw error, exit 3. Exit 1 if any render raises. On the Linux box:
 
     docker run --rm -d --name drdemo-falkor -p 6382:6379 falkordb/falkordb
     PYTHONPATH=. FALKORDB_PORT=6382 /tmp/drdemo-venv/bin/python decision_records_demo/dr_render_pages.py
+    PYTHONPATH=. FALKORDB_PORT=6382 /tmp/drdemo-venv/bin/python decision_records_demo/dr_render_pages.py --from-root <capacity_root_ref>
     docker rm -f drdemo-falkor
 """
 
@@ -211,19 +230,45 @@ CASES = {
 }
 
 
-def main() -> int:
+def _main_from_root(client, root: str) -> int:
+    """Render one page from the store ALONE (coordination §51.3 option c).
+
+    No case runs, no KnowledgeLayer exists in this code path: the only inputs
+    are the client and the index graph's id. The Episode's fields are absent
+    by construction, so the page states the decided date's absence (§52
+    condition 1) — that stated line IS the finding, on the artifact.
+    """
+    print(f"== from-root render — capacity_root_ref {root!r}, no live KL in process ==")
+    try:
+        page = render_record(client, {"capacity_root_ref": root})
+    except RendererGapError as exc:
+        print(f"RENDER RAISED: {type(exc).__name__}: {exc}")
+        return 1
+    print("-- BEGIN PAGE --")
+    print(page, end="")
+    print("-- END PAGE --")
+    return 0
+
+
+def main(argv) -> int:
     try:
         client = FalkorClient(FalkorConfig.from_env())
         client.run_query("RETURN 1 AS ok", {})
     except Exception as exc:  # noqa: BLE001 — the raw error IS the output
         print(f"FalkorDB unreachable: {type(exc).__name__}: {exc}")
         return 3
-    failures = 0
     try:
+        if len(argv) > 1 and argv[1] == "--from-root":
+            if len(argv) != 3:
+                print("usage: dr_render_pages.py [--from-root <capacity_root_ref>]")
+                return 2
+            return _main_from_root(client, argv[2])
+        failures = 0
         for name, case in CASES.items():
             kl, session, episode_id = case(client)
             props = _episode_props(kl, session, episode_id)
             print(f"== case: {name} — Episode {episode_id!r} ==")
+            print(f"capacity_root_ref: {props.get('capacity_root_ref')!r}")
             try:
                 page = render_record(client, props)
             except RendererGapError as exc:
@@ -242,4 +287,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv))
