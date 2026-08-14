@@ -810,6 +810,52 @@ completion (§17).**
 
 ---
 
+### 2.12 The persistence smoke — the graphs survive the store, and the date arrives
+
+*(Smoke lane, 2026-08-14. Instrument: demo `b32c05a` —
+`decision_records_demo/dr_persist_smoke.py` + `falkordb` into
+`requirements-demo.in` (`dr_dump.py` stays zero-dep). Evidence: the OWNER ran
+the smoke on the Linux box at `b32c05a` against a standalone FalkorDB
+container (host port 6382; the compose service publishes no host port and the
+test image deliberately excludes the demo dir) — **exit 0, acceptance
+failures 0**, 127 lines, sha256 `24d656b8…3b3a`. Every claim below cites that
+output. Write path dev-verified in the build container first (InMemoryClient);
+the read-back was deliberately left to the owner's run.)*
+
+**The acceptance (critic §24, bank #6) is met, shown raw:** both Episodes
+carry `consolidated_at` (`'2026-08-14T02:04:34.742986+00:00'` /
+`…856040+00:00'`) alongside `capacity_root_ref`, `outcome_classification`
+(`completed` / `stopped`), `state=closed` — the run's date exists nowhere in
+any grounding graph and arrives exactly where D14 said it would.
+
+**What round-tripped, per the owner's output:** the index graph loads by the
+Episode's `capacity_root_ref` and covers exactly the collected set (4 claim
+run graphs + 1 boundary graph; persisted-only=[] live-only=[]); every run
+graph loads back with live==persisted node/edge counts (4,2 each); the
+boundary `RunStopped` returns with `stopped_detail` verbatim ("refusing to
+conclude a claim from zero exposure verdicts"); the conclusion value is the
+trimmed `{'claim_decision': 'payable'}`. **The load-bearing order check:** the
+fold graph's `exposure_verdicts` LIST returns in seeded order (Silva/dwelling,
+Silva/contents, Osei/dwelling) — order-as-identity survives persistence.
+
+**Findings, dispositions per §12.4:**
+
+| Finding | Disposition |
+|---|---|
+| **S-F1** Iteration order does NOT survive the store: RunManifest dict keys come back alphabetized, node/edge order permuted, the index's CapacityRunRef order ≠ run order — while LIST values DO keep order | **Recorded + bank → SEVEN**: an order-sensitive fact must live in a LIST value; the renderer derives member order from the seeded collection value ALONE, never from node/dict/index iteration order |
+| **S-F2** Two tasks reusing one `request_id` (the demo fixture's `drdemo-task` in both cases) leave two index graphs with the SAME role in one store | **Recorded** — nothing collided because refs resolve by `graph_id` (`Episode.capacity_root_ref`), never by role; readers must do the same. Demo-fixture artifact, no core defect; a real orchestrator mints distinct request ids |
+
+**§12 note:** the sweep matrix's persistence-codec row upgrades from
+encoder-only to full round-trip — the matrix changed again this ship (§12.5
+stop condition not near). Environment facts that cost round-trips, recorded:
+the Linux box's port 6379 is held by a stray unnamed falkordb container
+(`priceless_antonelli`), 6380/6381 by the arc demos — the smoke pins its own
+port via `FALKORDB_PORT`.
+
+**Next: item 7, the renderer — input is the seven-requirement bank.**
+
+---
+
 ## 3. Guards
 
 - **G1** Renderer imports none of: blackboard, capacity context, L2 snapshot, `Pipeline`,
