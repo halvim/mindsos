@@ -792,11 +792,15 @@ member + the rejected attempts).
 | **F7** Leaf and member no-route share one writer path | **Recorded** — no action; the census argument again (derived, not assumed: execution.py:624/:818) |
 | **F8** `needs_input` at the leaf records and halts; nothing escalates on the demo path | **Recorded** — escalation ownership is F4's second item; the DR demo renders the stop, it does not answer it |
 
-**Renderer requirements bank (now five):** per-exposure title from the start
+**Renderer requirements bank (now six):** per-exposure title from the start
 instance VALUE; manifest phrases are kinds only; `case_label` names the claim;
 render from the PERSISTED graph set, never raw `capacity_mm` (F3); the refusal
 page reads the origin record's `refusal_reason`/`refusal_detail`, the stop page
-reads `RunStopped.stopped_detail` + the manifest's `stop_reason_phrases`.
+reads `RunStopped.stopped_detail` + the manifest's `stop_reason_phrases`; the
+run's DATE is not in any dumped graph — it arrives from the Episode at
+persistence (`consolidated_at`, agreed-changes D14), so **the persistence smoke
+must show that field arriving** or item 7 discovers it missing the way probe D
+discovered the manifest (critic §24, added at the stage-1 PASS).
 
 **§12.5 status:** the matrix changed this ship (input-boundary axis added, R5
 and R6 cells resolved, two shapes' claims re-domained) — the stop condition is
