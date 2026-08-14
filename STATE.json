@@ -1280,6 +1280,13 @@
       "worktree": "MindsOS-bongard",
       "pinned_core": "phase-50-confirmed",
       "status": "not started; PLAN.md at main commit 85115da"
+    },
+    "decision_records": {
+      "home": "decision_records_demo/ at repo root - exists ONLY on the demo branch, never on main (RULES 1)",
+      "branch": "demo/decision-records",
+      "worktree": "MindsOS-dr",
+      "pinned_core": "dr-fold-grounding-confirmed",
+      "status": "demo home + dr_dump.py landed (d94ca4f, 2026-08-13): dumps leaf, claim (map+fold) and noroute grounding graphs raw, zero third-party deps; the RULES 12 command for this lane. Next: decision-records-demo-critical-sweep, persistence smoke, item 7 renderer"
     }
   },
   "safety_net": {
