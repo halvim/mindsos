@@ -88,13 +88,21 @@ from decision_records_demo.dr_dump import (
 )
 
 
-def _harness_with_consolidation():
+def _harness_with_consolidation(scope: str = "drdemo-task"):
     """The dr_dump claim harness + the core consolidate builtin + a KL.
 
     Rebuilt here rather than reusing ``dr_dump._harness`` because consolidation
     needs the layer instance (to install the builtin family) and a
     KnowledgeLayer on the dispatcher (the Episode write handle comes from
     ``context.writeable``).
+
+    ``scope`` is the ChainArtifactWriter's request scope, and callers that
+    PERSIST must pass a case-unique value (the episode id): node ids in the
+    store are deterministic from ``(scope, run_ref, seq)`` and the persister
+    MERGEs nodes globally by id (``builders.py:164``), so two persisted cases
+    sharing a scope silently steal each other's nodes — coordination §55, found
+    by the first from-root render. Core's own contract says the caller passes a
+    task-unique scope (``chain_artifacts.py:198–201``).
     """
     session = _Session()
     layer = CapacityLayer()
@@ -116,7 +124,7 @@ def _harness_with_consolidation():
     kl = KnowledgeLayer.bootstrap()
     mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
     dispatcher = L4Dispatcher(layer, session=session, kl=kl)
-    writer = ChainArtifactWriter(mm, "drdemo-task")
+    writer = ChainArtifactWriter(mm, scope)
     return session, kl, mm, dispatcher, writer, writer.emit_request_run()
 
 
@@ -163,10 +171,15 @@ def _graph_value_failures(live, loaded) -> int:
     return failures
 
 
-def _run_case(name: str, exposures, episode_id: str, client) -> int:
-    """Run one case end to end; return the number of acceptance failures."""
+def _run_case(name: str, exposures, episode_id: str, client):
+    """Run one case end to end.
+
+    Returns ``(failures, capacity_root_ref, live_by_id)`` so ``main`` can run
+    the END-STATE re-verify (s55): a later case must not have stolen this
+    case's nodes, and only a reader that comes back AFTER the last write can
+    see that."""
     print(f"== case: {name} ==")
-    session, kl, mm, dispatcher, writer, request_run = _harness_with_consolidation()
+    session, kl, mm, dispatcher, writer, request_run = _harness_with_consolidation(scope=episode_id)
     graphs: list = []
     execution.run(
         dispatcher, writer, _claim_plan(), request_run,
@@ -231,7 +244,7 @@ def _run_case(name: str, exposures, episode_id: str, client) -> int:
         print("ACCEPTANCE FAIL: capacity_root_ref is absent - nothing to load back")
         failures += 1
         print()
-        return failures
+        return failures, None, {}
 
     print("-- the task index, loaded BACK from FalkorDB --")
     index_graph = load_graph(client, capacity_root_ref)
@@ -268,7 +281,7 @@ def _run_case(name: str, exposures, episode_id: str, client) -> int:
     if persisted_only or live_only:
         failures += 1
     print()
-    return failures
+    return failures, capacity_root_ref, live_by_id
 
 
 def main() -> int:
@@ -282,8 +295,35 @@ def main() -> int:
         return 3
     try:
         failures = 0
-        failures += _run_case("claim", EXPOSURES, "drdemo-episode-claim", client)
-        failures += _run_case("boundary n=0", [], "drdemo-episode-boundary", client)
+        cases = []
+        for name, exposures, episode_id in (
+            ("claim", EXPOSURES, "drdemo-episode-claim"),
+            ("boundary n=0", [], "drdemo-episode-boundary"),
+        ):
+            case_failures, root_ref, live_by_id = _run_case(
+                name, exposures, episode_id, client
+            )
+            failures += case_failures
+            cases.append((name, root_ref, live_by_id))
+        print("-- END-STATE re-verify (s55): every case re-loaded AFTER the last write --")
+        for name, root_ref, live_by_id in cases:
+            if not root_ref:
+                continue
+            index_graph = load_graph(client, root_ref)
+            run_graph_ids = [
+                node.value for node in index_graph.nodes.values()
+                if node.type_name == "CapacityRunRef"
+            ]
+            end_failures = 0
+            for graph_id in run_graph_ids:
+                live = live_by_id.get(graph_id)
+                if live is None:
+                    print(f"END-STATE FAIL {name!r}: index references {graph_id!r}, never collected live")
+                    end_failures += 1
+                    continue
+                end_failures += _graph_value_failures(live, load_graph(client, graph_id))
+            print(f"end-state {name!r}: {len(run_graph_ids)} graphs re-checked, {end_failures} failures")
+            failures += end_failures
         print(f"acceptance failures: {failures}")
         return 0 if failures == 0 else 1
     finally:

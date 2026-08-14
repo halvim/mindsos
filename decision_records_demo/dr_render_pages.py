@@ -72,9 +72,11 @@ from decision_records_demo.dr_persist_smoke import _harness_with_consolidation
 from decision_records_demo.dr_render import RendererGapError, render_record
 
 
-def _policy_harness(kl):
+def _policy_harness(kl, scope):
     """The consolidation harness with the LOOKUP capacity instead of the
-    decide/conclude pair (route: as-of date → dwelling limit)."""
+    decide/conclude pair (route: as-of date → dwelling limit). ``scope`` must
+    be case-unique — node ids derive from it and the store MERGEs nodes
+    globally by id (§55)."""
     from mindsos_capacity import CapacityLayer
     from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
     from mindsos_capacity.datastate import DataState, ShapeDescriptor
@@ -105,7 +107,7 @@ def _policy_harness(kl):
     install_consolidate_capacities(layer)
     mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
     dispatcher = L4Dispatcher(layer, session=session, kl=kl)
-    writer = ChainArtifactWriter(mm, "drdemo-task")
+    writer = ChainArtifactWriter(mm, scope)
     return session, kl, mm, dispatcher, writer, writer.emit_request_run()
 
 
@@ -131,7 +133,7 @@ def _close(dispatcher, mm, request_run, episode_id, outcome, client, graphs):
 
 
 def _case_claim(client):
-    session, kl, mm, dispatcher, writer, request_run = _harness_with_consolidation()
+    session, kl, mm, dispatcher, writer, request_run = _harness_with_consolidation(scope="drdemo-page-claim")
     graphs: list = []
     execution.run(
         dispatcher, writer, _claim_plan(), request_run, mm=mm,
@@ -143,7 +145,7 @@ def _case_claim(client):
 
 
 def _case_boundary(client):
-    session, kl, mm, dispatcher, writer, request_run = _harness_with_consolidation()
+    session, kl, mm, dispatcher, writer, request_run = _harness_with_consolidation(scope="drdemo-page-boundary")
     graphs: list = []
     execution.run(
         dispatcher, writer, _claim_plan(), request_run, mm=mm,
@@ -156,7 +158,7 @@ def _case_boundary(client):
 
 def _case_refusal(client):
     session, kl, mm, dispatcher, writer, request_run = _policy_harness(
-        _build_kl(EDITION_2023)
+        _build_kl(EDITION_2023), scope="drdemo-page-refusal"
     )
     graphs: list = []
     execution.run(
@@ -188,7 +190,7 @@ class _StoreDownKL:
 
 def _case_outage(client):
     session, kl, mm, dispatcher, writer, request_run = _policy_harness(
-        _StoreDownKL(_build_kl())
+        _StoreDownKL(_build_kl()), scope="drdemo-page-outage"
     )
     graphs: list = []
     execution.run(
@@ -204,7 +206,7 @@ def _case_outage(client):
 
 
 def _case_noroute(client):
-    session, kl, mm, dispatcher, writer, request_run = _harness_with_consolidation()
+    session, kl, mm, dispatcher, writer, request_run = _harness_with_consolidation(scope="drdemo-page-noroute")
     graphs: list = []
     try:
         execution.run(
@@ -264,11 +266,13 @@ def main(argv) -> int:
                 return 2
             return _main_from_root(client, argv[2])
         failures = 0
+        roots = []
         for name, case in CASES.items():
             kl, session, episode_id = case(client)
             props = _episode_props(kl, session, episode_id)
             print(f"== case: {name} — Episode {episode_id!r} ==")
             print(f"capacity_root_ref: {props.get('capacity_root_ref')!r}")
+            roots.append((name, props.get("capacity_root_ref")))
             try:
                 page = render_record(client, props)
             except RendererGapError as exc:
@@ -280,6 +284,18 @@ def main(argv) -> int:
             print(page, end="")
             print("-- END PAGE --")
             print()
+        print("== END-STATE re-verify (§55): every Episode re-rendered from the store ALONE, after the last write ==")
+        for name, root in roots:
+            if not root:
+                print(f"end-state {name!r}: no capacity_root_ref, nothing to render")
+                failures += 1
+                continue
+            try:
+                render_record(client, {"capacity_root_ref": root})
+                print(f"end-state {name!r}: rendered from root {root!r}")
+            except RendererGapError as exc:
+                failures += 1
+                print(f"end-state {name!r} RAISED: {exc}")
         print(f"cases that raised: {failures}")
         return 0 if failures == 0 else 1
     finally:
