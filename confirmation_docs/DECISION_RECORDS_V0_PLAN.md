@@ -1002,6 +1002,71 @@ branch, its *swap* would delete claim 5's control arm, and it waits on S-2 and
 a transport. The reader lands **beside** the structured one, never replacing it.
 
 ---
+### 2.15 The from-root render — reconstructibility proven to its actual boundary, and the boundary named
+
+*(from-root lane, 2026-08-14. Demo commits `7e422db` (the (c)+(a) build: the
+`--from-root` mode, the stated-absence rule, the S-1 smoke asserts, the README)
+and `32b8dbd` (the §55 fix: case-unique writer scopes + END-STATE re-verify in
+both drivers). Critic §52 verdict BEFORE build; §55 posted mid-lane when the
+first from-root render falsified its own prediction. Owner evidence at
+`32b8dbd`: guards **16/16**; smoke **0 acceptance failures** incl. the
+end-state block (claim 4 graphs + boundary 1, re-checked after the last write,
+0 failures); pages **5/5** + **all five Episodes re-rendered from the store
+ALONE** at end state; the from-root page rendered dateless with the
+stated-absence line. Every count predicted in writing; ONE prediction missed —
+§55 below — and the miss is the lane's largest finding.)*
+
+**What §51 established (critic-confirmed §52):** the run graphs round-trip;
+**the Episode never does.** `consolidate_request` writes it into the
+KnowledgeLayer, and the KL by design never touches persistence (ADR-0042 —
+the server's job). So `capacity_root_ref` (the only pointer from Record to
+evidence) and `consolidated_at` (the page's date line) live in process memory.
+⟹ **§2.3 decision 5's claim is hereby NARROWED to what is shown:** *the
+grounding evidence and its index are reconstructible from the store; the
+Episode — entry point and date — is not store-resident until a server persists
+the KL.* The pages driver's seam statement carries the same stated exception.
+The renderer's response is the **stated-absence rule** (critic §52 condition
+1): a page that cannot prove its decided date SAYS SO, in room-safe words —
+"Decided date: not available from stored evidence" — never omits the line. A
+Record that states what it cannot prove is the product, on the page.
+
+**§55 — the missed prediction, and what it caught.** The FIRST from-root
+render was predicted to produce the dateless claim page; it RAISED
+(`carries no manifest`, plus core's own `Cross-graph edge leak detected`
+lines). Mechanism, read at the source: `build_unwind_create_nodes` is
+**`MERGE (n:Node {id: row.id})`** (`builders.py:164`) — node identity is
+GLOBAL by id — and node ids are deterministic from `(scope, run_ref, seq)`,
+while every demo case passed the same writer scope `drdemo-task`. Later cases
+MERGE onto earlier cases' stored nodes and steal them: graphs stay distinct
+and quietly lose their organs. **Three instruments (dump, smoke, per-case
+pages) were green over a corrupted end state**, because every check read back
+its own case before the next case wrote. The §51.0 retraction had stopped one
+level too high (graph ids don't collide; node ids do), and S-F2 stands for
+what it measured.
+
+| Finding | Disposition |
+|---|---|
+| **F-§51.1** Episode not store-resident; decision-5 claim overstated | **Narrowed above**; stated-absence rule shipped (`7e422db`), pinned by `test_missing_decided_date_is_stated_not_omitted` |
+| **F-§55** cross-case node theft under a shared writer scope | **Fixed** (`32b8dbd`): case-unique scopes (the contract `chain_artifacts.py:198–201` always stated) + END-STATE re-verify in both drivers — the failed from-root render is the shown red, the five end-state re-renders the green |
+| **S-1** smoke displayed `outcome_classification`/`state` without asserting (the §27 class, second instance) | **Fixed** (`7e422db`): both asserted |
+| **S-2** README 4/11 shapes + stale "empty" claim; smoke run box named a port occupied on the reference box | **Fixed** (`7e422db`): README covers the directory; both boxes on 6382 |
+| **S-3** `_LINK_PREFIXES` narrower than `G6_BANNED` | **REJECTED as a code change** (critic §52 Q3): an internal ref in a stop detail is core leaking machinery into a prose-by-contract field; suppression would mask it forever — the render-time G6 raise IS the correct response. Zero code, recorded so it is not re-opened |
+| **Core hardening** a caller violating the scope contract gets SILENT cross-graph corruption, never a refusal | **FILED as `core-persist-node-id-cross-graph-guard`** — not built, demo obeys the contract instead |
+
+**The §54 ruling, recorded:** `--from-root` is a **GATE-7 PREDECESSOR** —
+green before the gate may be attempted; NOT in the cold-run set (the scope
+freeze holds; a good addition does not earn an unfreeze), NOT gateless (a
+differentiating claim with nothing that reddens rots silently). Two Gate-7
+predecessors now exist: RULES §12.5's full-matrix re-run, and this. Adding one
+is an owner ruling, never a lane choice. **§54 paid for itself the hour it was
+made** — the predecessor's first execution found §55.
+
+**Method note, standing:** per-case checks structurally cannot see cross-case
+theft; only a reader that comes back AFTER the last write has the corruption
+in its domain. That is what an end-state re-verify is for, and it is now
+permanent in both drivers.
+
+---
 ---
 
 ## 3. Guards
