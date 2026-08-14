@@ -57,6 +57,15 @@ CONCLUSION_FIELD = "claim_decision"
 #: a link, not text.
 _LINK_PREFIXES = ("datastate:", "capacity:", "runstopped:", "runmanifest:")
 
+#: The banned-pattern list, ONE source for the render-time scan and the guard
+#: test (critic §33 M-D: a G6 that only sees the fixtures it was written with
+#: is one careless stored phrase away from printing an IRI — so the renderer
+#: scans its OWN composed page and raises).
+G6_BANNED = (
+    "datastate:", "capacity:", "runstopped", "runmanifest",
+    "requestrun:", "pipelinerun:", "step_failed", "needs_input",
+)
+
 
 class RendererGapError(RuntimeError):
     """The graph cannot honestly support the page — raise, never fill (G2)."""
@@ -287,7 +296,15 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 "show (§30 Q2)"
             )
 
-    return "\n".join(lines).rstrip() + "\n"
+    page = "\n".join(lines).rstrip() + "\n"
+    low = page.lower()
+    for token in G6_BANNED:
+        if token in low:
+            raise RendererGapError(
+                f"an internal token reached the composed page: {token!r} — "
+                "refusing to publish (render-time G6, §33)"
+            )
+    return page
 
 
 def render_record(client: Any, episode_props: Dict[str, Any]) -> str:

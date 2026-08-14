@@ -34,6 +34,7 @@ from decision_records_demo.dr_dump import (
     _harness,
 )
 from decision_records_demo.dr_render import (
+    G6_BANNED,
     NODE_CAPACITY,
     RendererGapError,
     render_from_graphs,
@@ -115,10 +116,7 @@ def test_page_renders_and_is_g6_clean():
     page = render_from_graphs(_claim_graphs(), EPISODE_COMPLETED)
     assert "Therefore:" in page and "payable" in page
     assert "A. Silva" in page and "B. Osei" in page
-    banned = (
-        "datastate:", "capacity:", "step_failed", "needs_input",
-        "runstopped", "requestrun", "pipelinerun", "drdemo_",
-    )
+    banned = G6_BANNED + ("drdemo_",)
     low = page.lower()
     for token in banned:
         assert token not in low, f"G6: {token!r} leaked onto the page:\n{page}"
@@ -222,6 +220,25 @@ def test_refusal_page_is_in_band_and_g6_clean():
     low = page.lower()
     for token in ("datastate:", "capacity:", "read_from_source", "no_source_in_force"):
         assert token not in low, f"G6: {token!r} leaked:\n{page}"
+
+
+def test_render_time_g6_refuses_a_tainted_store():
+    """Critic §33 M-D, as a permanent guard: an IRI smuggled into a STORED
+    manifest phrase must never render — the renderer scans its own composed
+    page and raises. Test-time G6 only sees the fixtures it was written with;
+    this closes the class (bad fixture, tampered store, future producer)."""
+    graphs = [copy.deepcopy(g) for g in _claim_graphs()]
+    for graph in graphs:
+        for node in graph.nodes.values():
+            if node.type_name == "RunManifest":
+                phrases = node.value["capacity_phrases"]
+                for key in list(phrases):
+                    phrases[key] = phrases[key] + " (datastate:smuggled)"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError:
+        return
+    raise AssertionError("a tainted stored phrase rendered an IRI to the page")
 
 
 def test_noroute_page_names_what_was_in_hand():
