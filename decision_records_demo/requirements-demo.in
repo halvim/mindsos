@@ -1,5 +1,5 @@
 # Decision Records demo — own dependency set (RULES §1: a demo has its own env).
-# Empty by verification, not by omission: dr_dump.py runs on stdlib + the repo
-# packages alone (checked against a bare python 3.12 venv, 2026-08-13).
-# Future demo increments (persistence smoke -> falkordb; the renderer) add
-# their deps HERE, never to core's requirements.
+# dr_dump.py runs on stdlib + the repo packages alone (checked against a bare
+# python 3.12 venv, 2026-08-13) — keep it that way.
+# dr_persist_smoke.py needs the FalkorDB driver (persistence smoke, 2026-08-14):
+falkordb
