@@ -274,6 +274,62 @@ def test_boundary_stop_page():
     assert "refusing to conclude a claim from zero exposure verdicts" in page
 
 
+def test_unmatched_member_graph_raises():
+    """N-F1 (coordination §37, confirmed by the critic's probe): a member graph
+    whose verdict appears in NO list entry used to render nothing and raise
+    nothing — the exposure simply vanished from the page. The correlation now
+    runs both directions, so the leftover member is a gap."""
+    graphs = [copy.deepcopy(g) for g in _claim_graphs()]
+    fold = graphs[-1]
+    for node in fold.nodes.values():
+        if isinstance(node.value, list):
+            node.value.pop()
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "leaves a member out" in str(exc)
+        assert "'" in str(exc), "the raise must name the unmatched graph role"
+        return
+    raise AssertionError("a member graph was dropped from the page silently")
+
+
+def test_identical_bare_verdicts_do_not_collapse_onto_one_member():
+    """N-F2: with the exposure stripped out of the verdict VALUE, every entry
+    matches every member. The first cut took the first candidate and printed
+    one exposure three times while two never rendered. Distinct exposures do
+    not render alike, so this is ambiguity, not interchangeability — raise."""
+    graphs = [copy.deepcopy(g) for g in _claim_graphs()]
+    fold = graphs[-1]
+    for node in fold.nodes.values():
+        if isinstance(node.value, list):
+            node.value[:] = ["payable"] * len(node.value)
+    for member in graphs[:-1]:
+        produced = {
+            e.target.node_id for e in member.edges.values()
+            if e.type_name == "PRODUCES"
+        }
+        for node_id, node in member.nodes.items():
+            if node_id in produced and isinstance(node.value, dict) \
+                    and "decision" in node.value:
+                node.value = "payable"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "do not render alike" in str(exc)
+        return
+    raise AssertionError("identical verdict values collapsed onto one member")
+
+
+def test_a_genuinely_duplicated_exposure_still_renders():
+    """The bijection must not over-constrain (critic §37 Q1). Two IDENTICAL
+    exposures render byte-identical blocks, so the assignment is genuinely
+    interchangeable — §30's argument, and it must still hold."""
+    page = render_from_graphs(
+        _claim_graphs([EXPOSURES[0], EXPOSURES[0]]), EPISODE_COMPLETED
+    )
+    assert page.count("A. Silva") == 2, page
+
+
 if __name__ == "__main__":
     for fn in sorted(
         (v for k, v in list(globals().items()) if k.startswith("test_")),

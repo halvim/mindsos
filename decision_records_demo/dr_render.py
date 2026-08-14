@@ -5,7 +5,14 @@ The design was critic-reviewed before it was built (coordination §29–§31);
 the four §30 rulings are load-bearing here:
 
 * member↔verdict correlation is FULL verdict-value equality against the fold's
-  seeded LIST (bank #7); an entry matching no member graph RAISES;
+  seeded LIST (bank #7), and it is a BIJECTION (coordination §37/§39): an entry
+  matching no member graph RAISES, an entry matching several graphs that do not
+  render alike RAISES, and a member graph left unmatched at the end RAISES
+  naming its role. The first cut matched one direction only and took the first
+  candidate — so an unmatched member vanished from the page and two identical
+  verdict values printed one member twice. Both were silent, and the ∀-abort
+  barrier is the only reason they were unreachable; the day a member may refuse
+  instead of aborting, the page must not be able to drop the refusal;
 * `outcome_classification='completed'` with no produced conclusion in the
   terminal graph RAISES (the Episode asserting a success the graph cannot show);
 * `environment_fault` is NOT consumed (ADR-0207 §am-2: always False,
@@ -181,6 +188,23 @@ def _fmt(value: Any) -> str:
     return str(value)
 
 
+def _member_block(member: "_Analysis", entry: Any) -> List[str]:
+    """The lines one member contributes, for one list entry.
+
+    Extracted so correlation can COMPARE candidates instead of taking the
+    first: §30's interchangeability argument holds only where the rendered
+    blocks are identical (a genuinely duplicated exposure), and the renderer
+    must be able to tell that case from an ambiguous one rather than assume it.
+    """
+    lines = [
+        f"{_fmt(start.value)} — {member.start_description(start)}"
+        for start in member.parentless
+        if not isinstance(start.value, list)
+    ]
+    lines.append(f"   {member.phrase()} → {_verdict_text(entry)}")
+    return lines
+
+
 def _verdict_text(value: Any) -> str:
     if isinstance(value, dict):
         if VERDICT_FIELD in value:
@@ -235,27 +259,36 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
             node for node in fold.parentless if isinstance(node.value, list)
         )
         members = [a for a in analyses if a is not fold]
+        unmatched = list(members)
         for entry in verdicts_node.value:
-            match = None
-            for member in members:
-                if any(node.value == entry for node in member.plain_produced()):
-                    match = member
-                    break
-            if match is None:
+            candidates = [
+                member for member in unmatched
+                if any(node.value == entry for node in member.plain_produced())
+            ]
+            if not candidates:
                 raise RendererGapError(
                     "a recorded verdict matches no run graph — the list and "
                     "the members have diverged"
                 )
-            start_nodes = [
-                node for node in match.parentless
-                if not isinstance(node.value, list)
-            ]
-            for start in start_nodes:
-                lines.append(
-                    f"{_fmt(start.value)} — {match.start_description(start)}"
+            blocks = [_member_block(c, entry) for c in candidates]
+            if len({tuple(b) for b in blocks}) > 1:
+                raise RendererGapError(
+                    f"a recorded verdict matches {len(candidates)} run graphs "
+                    "that do not render alike ("
+                    + ", ".join(repr(c.graph.role) for c in candidates)
+                    + ") — refusing to guess which exposure it belongs to"
                 )
-            lines.append(f"   {match.phrase()} → {_verdict_text(entry)}")
+            match = candidates[0]
+            unmatched.remove(match)
+            lines.extend(blocks[0])
             lines.append("")
+        if unmatched:
+            raise RendererGapError(
+                "a run graph produced a verdict that appears nowhere in the "
+                "recorded list, so the page would omit it silently: "
+                + ", ".join(repr(m.graph.role) for m in unmatched)
+                + " — refusing to publish a Record that leaves a member out"
+            )
         if fold.stopped is not None:
             lines.extend(fold.stop_lines())
         else:
