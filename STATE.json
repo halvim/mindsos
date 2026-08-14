@@ -353,6 +353,13 @@
   ],
   "recent": [
     {
+      "kind": "demo",
+      "name": "Decision Records demo home + dr_dump.py (demo/decision-records)",
+      "sha": "d94ca4f on demo/decision-records (branch created off main 6ae88c1); registry commit 485eed0 on main (STATE.demos + BRANCHES.md).",
+      "gate": "none - demo branch, core untouched; demo tests are not part of the core gate (RULES 1, that is the point). VERIFICATION INSTEAD: dr_dump.py all was run by the OWNER on the Linux box at d94ca4f - leaf: 1 graph; claim: 4 graphs (3 members + the fold carrying the conclusion DSI and its PRODUCES edge); noroute: raises LeafPipelineNotFound and leaves a manifest-only graph - byte-identical to the build container run. Zero third-party dependencies, verified against a bare py3.12 venv.",
+      "what": "The demo lane's code home now exists: decision_records_demo/ at the repo root, ONLY on demo/decision-records (worktree MindsOS-dr, long-lived), pinning dr-fold-grounding-confirmed. It brings dr_dump.py - THE RULES 12 COMMAND for this lane: dumps every grounding graph a run leaves in capacity_mm, raw repr, s11 seam stated in the module docstring; shapes leaf / claim (map over three exposures + fold to the claim conclusion) / noroute / all. Until this existed every s12 check was the build lane reading its own output. requirements-demo.in is empty BY VERIFICATION (future increments - persistence smoke, renderer - add deps there, never to core). Research home stays projects/decision_records_demo/ on main. NEXT: decision-records-demo-critical-sweep (in pending_designs), then persistence smoke, then item 7; the critic re-engages after the sweep, through dr_dump."
+    },
+    {
       "kind": "feat",
       "name": "The fold grounds; RULES 12 becomes the sweep (PR #158)",
       "sha": "squash 9024c51 on main (branch feat/dr-fold-grounding, gated at 714f4ee), tag dr-fold-grounding-confirmed at 9024c51.",

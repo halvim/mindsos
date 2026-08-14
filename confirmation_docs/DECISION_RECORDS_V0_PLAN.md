@@ -164,7 +164,16 @@ consecutive exact call.)* The line below is the previous baseline, kept for the
 history of the rule that this line goes stale:
 
 **~~Baseline for the next item: 4731 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#157's tip `f878886`.~~** It is carryable — the gate ran on a tip whose parent **is**
+#157's tip `f878886`.~~**
+
+**The demo home is live** (not a PR row — it is a demo-branch ship, no core
+gate by design): `demo/decision-records` @ `d94ca4f`, worktree `MindsOS-dr`
+(long-lived), pins `dr-fold-grounding-confirmed`, registered in `STATE.demos` +
+`BRANCHES.md` (`485eed0`). `decision_records_demo/dr_dump.py` is **the §12
+command** — shapes `leaf` / `claim` / `noroute` / `all`, raw, zero third-party
+deps — and its output was verified **by the owner** on the Linux box,
+byte-identical to the build container's run. §12 checks in this lane now answer
+against a dump the owner ran, as the rule requires. It is carryable — the gate ran on a tip whose parent **is**
 `origin/main` (`be7aa8a`, tag `refusal-vocabulary-confirmed`), so it is a **merged-state**
 gate; the `git merge origin/main` before it was a no-op for exactly that reason. Contrast
 `#138`'s 4551, a **branch** gate, which is not carryable. **This line has been stale twice:
@@ -371,7 +380,7 @@ interpolated an arbitrary upstream exception into customer-facing text.
 
 #### Order
 
-~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → ~~map-member manifests (#157)~~ ✅ → **fold grounding ← NEXT** (`decision-records-fold-grounding`, ahead of the demo home for the same reason the map fix was: the dump must show the claim conclusion, and today nothing grounds it) → the demo's own home + `dr_dump.py` (leaf, map AND fold shapes) → demo-critical sweep rows → persistence smoke → item 7 → Layer B. *(This line was stale a third time — it still named the demo home NEXT while `STATE.pending_designs[0]` and the critic's §10.3 had moved the fold ahead of it. Corrected in the fold-grounding ship, per its own rule: update it with the table, in the same commit.)*
+~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → ~~map-member manifests (#157)~~ ✅ → ~~fold grounding (#158, tag `dr-fold-grounding-confirmed`, critic PASS)~~ ✅ → ~~the demo's own home + `dr_dump.py` (`demo/decision-records` @ `d94ca4f`, dump **owner-verified** on the Linux box, all three shapes)~~ ✅ → **demo-critical sweep ← NEXT** (`decision-records-demo-critical-sweep` in `STATE.pending_designs` — its acceptance sentence, the regime axis DERIVED from branch conditions, lives there) → persistence smoke → item 7 → Layer B. *(This line has now been stale three times; per its own rule it moves with the table, in the same commit as the ship that advances it.)*
 
 **The pre-filter halves from here.** The baseline is always `main` and every merge is gated, so
 **the previous item's change-tree run IS the next item's baseline** — keep its log and tarball
