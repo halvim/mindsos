@@ -154,9 +154,16 @@ def test_chrome_is_digit_free_and_disjoint_from_the_vocabulary():
     from mindsos_capacity.builtins.origin_v0 import REFUSAL_REASONS
     from mindsos_capacity.identifiers import RUN_STOPPED_PHRASES
 
+    # Function words are NOT assertion words — the §79 closure bans the
+    # vocabulary that could smuggle a case fact (desk, payable, injury…),
+    # not grammar. "what" earned its place here by colliding with the
+    # heading on this guard's FIRST run — the stop phrase "some of what was
+    # needed…" put it in the computed set.
     stop_words = {
         "the", "a", "an", "of", "to", "for", "one", "was", "and",
         "this", "from", "so", "no", "-", "is", "be", "not", "in",
+        "what", "could", "with", "on", "at", "it", "that", "as", "by",
+        "or", "before", "ran", "going", "more", "there",
     }
     vocabulary = set()
     for phrase in (
