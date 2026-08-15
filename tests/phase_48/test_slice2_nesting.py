@@ -231,7 +231,15 @@ def test_map_in_map_double_folds_in_order_with_isolated_nested_refs():
     assert len(expected) == 4         # and they are genuinely distinct
 
 
-def test_inner_member_abort_propagates_unretried_and_skips_rest():
+def test_inner_stop_makes_outer_member_a_stop_and_siblings_run():
+    """RESTATED by ADR-0201 am-6 (was test_inner_member_abort_propagates_
+    unretried_and_skips_rest) — the §63 Q5 pin: inner-stop ⟹
+    outer-stop-block, never a silent None and never an abort. KEPT: object 01
+    retries exactly to the cap; no fold at any level dispatches on the
+    truncated path. REVERSED: grid1's objects now RUN (the outer sibling
+    survives), the inner fold stops partial_domain (so grid0's sub-plan never
+    produces its grid fact — grid0 becomes a STOPPED outer member from its
+    own record), and the outer fold stops partial_domain in turn."""
     OBJ_SEEN.clear()
     OBJ_REDUCER_SEEN.clear()
     GRID_REDUCER_SEEN.clear()
@@ -244,17 +252,16 @@ def test_inner_member_abort_propagates_unretried_and_skips_rest():
         return {DS_OBJFACT: {"solved": v}}
 
     mm, disp, writer, request_run = _harness(_fail_obj_01)
-    with pytest.raises(execution.MemberAbortError) as ei:
-        execution.run(
-            disp, writer, _nested_plan(), request_run,
-            mm=mm, run_scope="t", solve_seed=SEED, capacity_graphs=[],
-        )
-    # The escaping abort names the innermost failing member (inner map index 1).
-    assert ei.value.member_index == 1
-    # Object 01 retried to the cap; grid1 never entered; no fold at any level ran.
+    execution.run(
+        disp, writer, _nested_plan(), request_run,
+        mm=mm, run_scope="t", solve_seed=SEED, capacity_graphs=[],
+    )
     assert OBJ_SEEN.count({"o": "01"}) == execution.MEMBER_RETRY_CAP
-    assert {"o": "10"} not in OBJ_SEEN and {"o": "11"} not in OBJ_SEEN
-    assert OBJ_REDUCER_SEEN == []
+    assert {"o": "10"} in OBJ_SEEN and {"o": "11"} in OBJ_SEEN
+    assert len(OBJ_REDUCER_SEEN) == 1, (
+        "grid1's inner fold (both objects completed) must run; grid0's "
+        "(truncated) must not"
+    )
     assert GRID_REDUCER_SEEN == []
 
 
