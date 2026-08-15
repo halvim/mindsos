@@ -20,11 +20,12 @@ from ``_run_leaf_pipeline`` in the first place. Everything asserted here then
 comes from the executor, unduplicated: manifest first, seeded starts, the
 invocation, the produced conclusion, ``RunStopped`` on a non-success.
 
-Which member produced which verdict stays **structural**, not a manifest field:
-the ref-path is the provenance tree (Slice 2) — member runs ground under
-``…:0:m{i}:…``, the fold under its own milestone index, same request id — and
-the fold's seeded collection preserves the members' order. One test here pins
-that correlation by value.
+Which member produced which verdict is, since ADR-0201 amendment 5, ALSO a
+manifest field (``member_graph_ids`` — see ``test_fold_member_graph_ids``):
+value-equality correlation is defeated by two identical in-band refusals
+(shape (a), ADR-0209). The fold's seeded collection still preserves the
+members' order — the test here that pins that correlation by value pins the
+ORDER invariant the manifest field itself relies on.
 
 Registrations carry real prose descriptions and ``printable_phrase``\\ s, as in
 ``test_map_member_manifest``: the thing under test is whether a page can be

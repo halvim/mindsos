@@ -130,6 +130,18 @@ class DataState:
     # (e.g. a palette) is NOT a collection.
     collection: bool = False
     member_ds: Optional[str] = None
+    # ADR-0209 (shape (a)) — member-level in-band refusal. ``True`` marks a
+    # DataState whose VALUES may be an in-band refusal (a value that says "this
+    # cannot be decided", carrying its origin record per ADR-0208) rather than
+    # only a substantive answer. Machinery outcomes stay binary; epistemic
+    # outcomes are values in the graph — this flag is how a value type SAYS so,
+    # instead of a consumer inferring it from values (the unenforced-convention
+    # class twice found insufficient). Deliberately FREE-STANDING: not tied to
+    # being some collection's ``member_ds`` (that tie would make registration
+    # order-dependent and block a future leaf consumer); the plan-construction
+    # decode check (ADR-0209) is the sole consumer today, and a coherence pair
+    # rule is added when a second consumer exists, not before.
+    refusal_capable: bool = False
     # PB-1 (CR: capacity_mm persist Slice B) — optional brain-supplied value
     # encoder for capacity_mm persistence. A DataStateInstance's runtime value
     # is an arbitrary domain object (a grid, a component set, …) that the
@@ -196,6 +208,12 @@ class DataState:
             props["collection"] = True
         if self.member_ds is not None:
             props["member_ds"] = self.member_ds
+        # ADR-0209 — emitted for inspectability, and because the
+        # plan-construction decode check reads it off the registered NODE via
+        # the scope-correct views (a declaration object is not retrievable at
+        # that site; the node is).
+        if self.refusal_capable:
+            props["refusal_capable"] = True
         return props
 
 

@@ -26,10 +26,11 @@ drift RULES §1 was corrected for. Do not restore a home column entry without `l
 | `MindsOS-bongard/`        | `demo/bongard`     | demo             | unverified                       |
 | `nilm_brain/`             | `nilm_brain`       | long-lived       | unverified                       |
 | `_MindsOS-dr-critic/`     | `feat/dr-critic`   | critic lane      | `scripts/critic/` — **transient; owes §10.1**, its probe scripts exist nowhere else |
+| `MindsOS-dr/`             | `demo/decision-records` | demo        | `decision_records_demo/` at root ✅ (demo branch only, created 2026-08-13 @ `d94ca4f`) |
 
-**Decision Records** is a lane with **no worktree of its own yet**. Its research + docs home is
-`projects/decision_records_demo/` on `main`; its code home is still to be created
-(`demo/decision-records`, root-level `decision_records_demo/`) — see
+**Decision Records** code home is `decision_records_demo/` at the repo root, **only on
+`demo/decision-records`** (worktree `MindsOS-dr`, pins `dr-fold-grounding-confirmed`). Its
+research + docs home stays `projects/decision_records_demo/` on `main`. Build order:
 `confirmation_docs/DECISION_RECORDS_V0_PLAN.md`.
 
 On demand (create when the work starts):
@@ -43,6 +44,7 @@ Then point that Cowork chat's project at the new folder.
 | `main`        | Operational system (the product)         | `mindsos_*`, `docs/`, `confirmation_docs/`, `projects/`, `tests/` | Always green on the Linux gate        |
 | `demo/robot`  | Robot demo, installed on top of main     | `robot_demo/ demo_ui/ sim/ web/ metagraph_visualizer/` + robot docs | NEVER edits `mindsos_*`; merges main in |
 | `demo/arc`    | ARC demo, installed on top of main       | `intelligence_demo/ run_spike`                                    | NEVER edits `mindsos_*`; merges main in |
+| `demo/decision-records` | Decision Records demo, installed on top of main | `decision_records_demo/`                          | NEVER edits `mindsos_*`; merges main in |
 
 ## Short-lived branches (off `main`, squash-merge back, then delete)
 

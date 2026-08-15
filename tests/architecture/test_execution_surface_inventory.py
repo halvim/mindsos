@@ -166,6 +166,20 @@ def test_executor_definition_census_is_exact():
     )
 
 
+#: Partial-record CR (ADR-0201 am-6): ``MemberAbortError`` is RETIRED as a
+#: raiser — a failing member stops in place and its siblings run. The class
+#: remains as API; this census pins the ABSENCE of raisers, so the day a
+#: raise reappears the sentinel names it (coordination §63 Q4 — the tripwire
+#: placed where truth lives, instead of a dead orchestrator catch).
+def test_nothing_raises_member_abort_error():
+    got = _census(r"raise MemberAbortError")
+    assert got == {}, (
+        "MemberAbortError is retired as a raiser (partial results, ADR-0201 "
+        "am-6): a failing member stops IN PLACE. A new raise reintroduces "
+        f"the all-or-nothing abort - classify or remove it. Got {got!r}"
+    )
+
+
 def test_census_regexes_are_load_bearing():
     """A census over a regex that matches nothing is the ADR-guard defect
     (green while silently checking zero rows). Each census must see at least

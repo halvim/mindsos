@@ -155,25 +155,65 @@ local and remote, both lists checked).
 | #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
 | #157 | *(squash)* | **Map-member manifests** — minting moves into `execute_pipeline`; the sub-MM routing gap; ADR-0201 am-4 + ADR-0207 am-3. Tag **`dr-map-manifest-confirmed`** | **4731 / 11 / 1x / 0** |
 | #158 | *(squash)* | **Fold grounding** — the reducer routes through `execute_pipeline`; RULES §12 replaced by the sweep; the coordination-file pin; the run-surface sentinel. Tag **`dr-fold-grounding-confirmed`** | **4747 / 11 / 1x / 0** |
+| #166 | *(squash at close-out)* | **The partial-record ship** — partial results (ADR-0201 am-6): a member stops in place, a truncated domain is a stop; `MemberAbortError` retired as a raiser; `conceded` from the record. Tag **`dr-partial-record-confirmed`** at close-out | **4783 / 11 / 1x / 0** |
+| #165 | `5db50d4` | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4747 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#158's tip `714f4ee`** — carryable: the tip's parent chain sits on `origin/main`
-(`3dd151b`), the pre-gate `git merge origin/main` was a no-op for exactly that
-reason, so it is a **merged-state** gate. *(Predicted exactly — the eleventh
-consecutive exact call.)* The line below is the previous baseline, kept for the
-history of the rule that this line goes stale:
+**Baseline for the next item: 4783 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#166's final tip** — merged-state (branch off `900e7f6` = `origin/main` tip,
+pre-gate merges no-ops). *(Gate attempt 1 was a 2-red MISS that IS the ship's
+finding F2 — the restate census spanned one exception symbol, not every
+changed behavior; attempt 2 exact after the two no-route pins were restated.
+The prediction record now reads: fourteen exact core calls and one gate-level
+miss whose miss was the finding.)* Carryable onto the #166 squash once it
+lands; re-verify with the one-`mindsos_*`-commit check as always. The line
+below is the previous baseline, kept for the history of the rule that this
+line goes stale:
 
-**~~Baseline for the next item: 4731 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#157's tip `f878886`.~~** It is carryable — the gate ran on a tip whose parent **is**
-`origin/main` (`be7aa8a`, tag `refusal-vocabulary-confirmed`), so it is a **merged-state**
-gate; the `git merge origin/main` before it was a no-op for exactly that reason. Contrast
-`#138`'s 4551, a **branch** gate, which is not carryable. **This line has been stale twice:
-it still read 4591 while the table above it recorded 4634 and 4645. Update it with the
-table, in the same commit.**
+**~~Baseline for the next item: 4770 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#165's final tip.~~**
 
-**⏭ PROBE D HAS RUN — read §2.3, then the item table below, which it changed.** Items 1
-through 4 are done; do not rebuild them. **Next is the capacity printable phrase, then the
-run manifest, then item 5.**
+
+
+**The demo home is live** (not a PR row — it is a demo-branch ship, no core
+gate by design): `demo/decision-records` @ `d94ca4f`, worktree `MindsOS-dr`
+(long-lived), pins `dr-fold-grounding-confirmed`, registered in `STATE.demos` +
+`BRANCHES.md` (`485eed0`). `decision_records_demo/dr_dump.py` is **the §12
+command** — shapes `leaf` / `claim` / `noroute` / `all`, raw, zero third-party
+deps — and its output was verified **by the owner** on the Linux box,
+byte-identical to the build container's run. §12 checks in this lane now answer
+against a dump the owner ran, as the rule requires.
+
+**Items 1–7 are DONE, the wall's substrate SHIPPED at #165 (§2.16), and the
+MACHINERY HALF SHIPPED at #166 (§2.17): the member wall is CLOSED —
+`core-collection-member-dont-know`, `core-empty-fold-domain` and
+`core-member-machinery-failure-partial-record` are all closed. THE CORE IS
+DONE FOR THE DEMO.** ⏭ **NEXT: the demo lane** — the deferred am-5/am-6
+consumption commit (renderer manifest-primary; the partial-fold and no-route
+page forms; the N-F2 and unmatched-member re-scopes, both conditions now met;
+heuristic retirement), then the Phase-7 build-out (routing capacities —
+Gate-4-checked in writing before registration — intake path, batch harness),
+then the two Gate-7 predecessors (§12.5 full-matrix re-run — STILL UNOWNED —
+and `--from-root` on final demo state). A parallel CORE lane (owner decision
+2026-08-15) may work the unowned register queue, ONE core lane at a time,
+with a MERGE FREEZE before the §12.5 predecessor run. Layer B (item 8) stays
+**re-filed as blocked** — see §2.14. *(Close-out 2026-08-15: #165 squash
+`5db50d4`, tag `dr-shape-a-confirmed`; baseline 4770 CARRYABLE onto `5db50d4`
+by construction — the only commit in `93af23f..5db50d4` IS the #165 squash.
+Final-tip gate 4770 was the THIRTEENTH consecutive exact call; the critic-§60
+guard rode the same PR after its mutation reddened the named test alone.)*
+
+⚠ **THE PARAGRAPH THAT USED TO SIT HERE WAS A SPLICE, and it is the reason this
+correction is written out rather than made silently.** It carried a *"Next:
+persistence smoke, then item 7"* line that was three ships stale, welded onto
+orphaned text asserting a **`be7aa8a` / 4716** carryable baseline — directly
+beneath the **4747 / `714f4ee`** one above. A lane reading top-down could take
+the wrong baseline off the same page and predict a gate against it. The
+carryable baseline is **4747, and it is carryable onto `805553a`**: the only
+`mindsos_*` commit in `714f4ee..origin/main` is `9024c51`, #158's own squash.
+**The staleness rule this section states about itself has now failed four
+times.** It failed again at item 7, whose ship advanced the table and left this
+line untouched. Treat "move the line in the ship's own commit" as part of the
+§12.4 disposition, not as tidying that can follow.
 
 ⚠ **"Run 2 does not wait on item 5" was wrong, and ADR-0208's Consequences were right.**
 Probe B ran run 2's *machinery* end to end, which is true and is why item 5 is small. But the
@@ -371,7 +411,7 @@ interpolated an arbitrary upstream exception into customer-facing text.
 
 #### Order
 
-~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → ~~map-member manifests (#157)~~ ✅ → **fold grounding ← NEXT** (`decision-records-fold-grounding`, ahead of the demo home for the same reason the map fix was: the dump must show the claim conclusion, and today nothing grounds it) → the demo's own home + `dr_dump.py` (leaf, map AND fold shapes) → demo-critical sweep rows → persistence smoke → item 7 → Layer B. *(This line was stale a third time — it still named the demo home NEXT while `STATE.pending_designs[0]` and the critic's §10.3 had moved the fold ahead of it. Corrected in the fold-grounding ship, per its own rule: update it with the table, in the same commit.)*
+~~`printable_phrase`~~ ✅ → ~~run manifest (+ G2)~~ ✅ → ~~item 5~~ ✅ → ~~map-member manifests (#157)~~ ✅ → ~~fold grounding (#158)~~ ✅ → ~~the demo's own home + `dr_dump.py`~~ ✅ → ~~demo-critical sweep (#159, §2.11)~~ ✅ → ~~persistence smoke (#160, §2.12)~~ ✅ → ~~item 7, the renderer (#161, §2.13)~~ ✅ → ~~the correlation bijection (`bd8e779`, §2.14)~~ ✅ → **the wall, shape (a) ← NEXT** (`core-collection-member-dont-know`, owner-ruled 2026-08-14; `core-empty-fold-domain` and `core-member-machinery-failure-partial-record` ruled alongside) → ~~Layer B~~ **re-filed as BLOCKED (§2.14)**. *(Stale four times. It moves with the table, in the ship's own commit — that is a §12.4 disposition, not tidying.)*
 
 **The pre-filter halves from here.** The baseline is always `main` and every merge is gated, so
 **the previous item's change-tree run IS the next item's baseline** — keep its log and tarball
@@ -400,9 +440,9 @@ mid-item.
 | **4a** ✅ | ~~**The pre-minted grounding root, for run 4 only.**~~ **ABSORBED and SHIPPED in PR #153** — the manifest is minted above the find, so run 4 has a graph by construction. | Run 4 renders from a graph rather than from a caught exception. |
 | **4b** ✅ | **[SHIPPED — PR #152, ADR-0207 am-1]** **`printable_phrase` on the capacity declaration** (§2.3 decision 2). Optional; validated at `register_capacity` only when supplied; the rule now lives in `mindsos_capacity/printable.py`. | Gate green. Every previously-registered capacity is byte-identical on its node. |
 | **4c** ✅ | **[SHIPPED — PR #153, tag `run-manifest-confirmed`]** **The run manifest.** Writer hoisted above `_compose_pipeline`; starts + capacity phrases + stop-reason phrases in the node **value** (`add_node` validates properties as primitives only); graph appended on the `LeafPipelineNotFound` path. ⚠ **CORRECTED BY PR #157 — read this row with §2.8.** The falsified-`writer=` finding **stands**: no writer is threaded into `execute_pipeline`, then or now. But *"`execute_pipeline` is UNCHANGED"* is **stale**: #157 moved the **mint** into it (a `case_label` keyword and the manifest call), because minting here covered only one of two run paths and left every map member with no manifest. Writer, no; mint, yes. | Gate green. G2 shown red with probe D's exact mutation. Run 4 renders. **Item 4a absorbed.** |
-| **5** | **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
+| **5** ✅ | **[SHIPPED — PR #154]** **A structured-ingest reader.** `PRODUCER_STRUCTURED_INGEST`, already a constant in `origin_v0`. Two declared outputs — the value with a real `ShapeDescriptor` (`scalar("int")`, never opaque) and its `<value>_origin`. Refuses with `field_absent`. No model, no transport. | Runs 1 and 2 execute end to end on `main`. This is also claim 5's control arm, so it is not throwaway. |
 | ~~**6**~~ | **DELETED 2026-08-12** — its only content was G2, now item 4c's acceptance (§2.3). **G3, G7 and G8′ landed with item 3** — G7 and G8′ were already gated in `test_route_probe.py` (#137) and are now **re-homed** into `tests/decision_records/test_lookup_decision_route.py`, because STATE marks the probe for deletion the day L4 gains plural-start expressiveness and deleting it must not take two guards with it. | Below. |
-| **7** | **The renderer**, against the real graph items 3–5 produce, plus **G1** and **G6**. Form is **question → answer → therefore** (§2.3), not composed statements. | One page a non-technical reader understands with no glossary, rendered from the **persisted** `capacity_mm` graph and nothing else — and *persisted* means **a real FalkorDB round-trip** (§2.3 decision 5), not the live `Graph` objects the driver hands back. |
+| **7** ✅ | **[SHIPPED 2026-08-14 — §2.13; content re-ruled to the CLAIMS demo (§31), all-demo v0]** **The renderer**, plus **G1** and **G6**. Form is **question → answer → therefore** (§2.3). | One page a non-technical reader understands with no glossary, rendered from the **persisted** `capacity_mm` graph and nothing else — and *persisted* means **a real FalkorDB round-trip** (§2.3 decision 5), not the live `Graph` objects the driver hands back. |
 | **8** | **Layer B.** Merge `origin/main` into `feat/decision-records`, reconcile the three core modules, gate it, merge, then swap item 5's reader for `comprehension_v0`'s. | First gate of the LLM seam. A verification step, not a blocker. |
 
 ### The rule that decides whether this succeeded
@@ -736,6 +776,474 @@ added, two claims gained rows) — the stop condition is not near.
 
 ---
 
+### 2.11 The demo-critical sweep — every row answered against a dump the owner ran
+
+*(Sweep lane, 2026-08-14. Instrument: demo commit `69398b6` — eight new
+`dr_dump` shapes, capacity_mm-delta reporting, the conclude-value trim, the
+printer-guard test (shown RED by two mutations before it was trusted). Evidence:
+the OWNER ran `dr_dump.py all` on the Linux box at `69398b6` — exit 0, sha256
+`f91cc15e…63df`, byte-identical to the container run — and the printer guard
+passed 3/3 there. Every cell below cites that file. Regime axis R1–R9 DERIVED
+from branch conditions (coordination §20.1, greps recorded), per the item's
+acceptance sentence; design pass by the critic BEFORE rows ran (§21), all
+conditions adopted (§22).*
+
+**The rows.**
+
+| Row | Answered by | What the dump shows |
+|---|---|---|
+| map | `claim`, `retry`, `memberabort`, `needsinput` | R1: 4 graphs, mm==collected. R3: member m1 rejected at `:r0` (RunStopped step_failed, mm-only), accepted at `:r1`. R4: `MemberAbortError` at cap, fold never ran, m2 never ran, 2 rejected graphs mm-only. R7: RunStopped `needs_input`, `stopped_detail` = the missing IRI. R5: EMPTY-WITH-REASON — `cancel_token` never threads through `execution.run` (F2) |
+| fold | `claim`, `replan`, `boundary` | R1: conclusion DSI `{'claim_decision': 'payable'}` (trimmed — F6), one CONSUMES from the seeded verdicts, PRODUCES to the conclusion. R2: 8 graphs across attempts 0/1, run_refs distinct, nothing overwritten. n=0: the reducer now REFUSES (F1) — RunStopped `'refusing to conclude a claim from zero exposure verdicts'`. n=1: 2 graphs, concludes |
+| no-route | `noroute` | R9: raises `LeafPipelineNotFound`, a manifest-only graph remains. Leaf and member no-route share ONE writer (`_mint_no_route_graph`, execution.py:624/:818) — once suffices per §21 Q2 (F7) |
+| refusal | `refusal` | R8, leaf level: the run SUCCEEDS, limit DSI value=None, and the origin record carries `refusal_reason='no_source_in_force'` + detail + `admitted=False` — in-band, never an exception. Member-level refusal remains THE WALL (§19): unbuilt until `core-collection-member-dont-know` |
+| replan / targeted re-exec | `replan`, `retry` stage B | R2 as above. R3 targeted: exactly 2 graphs added — member m1 fresh at `…m1-1-r0` and the fold at `…-1-1` whose consumed collection holds all three verdicts (spliced); siblings untouched |
+| persistence-codec | `codec` | Encoder-only, header says so: 31 graphs, 122 nodes, 0 rejected — and the encoder was shown ABLE to reject (raw `PersistenceError` on a non-codec-safe value), so 0 is a result, not a blind spot. Live round-trip = persistence smoke |
+
+**§12.3 quantified claim, domain stated:** *every run given an `mm` leaves at
+least one graph* — held on all eleven shapes, including both raising shapes
+(no-route leaves the manifest-only graph; the aborted map leaves the accepted
+member + the rejected attempts).
+
+**Findings, each with its disposition (RULES §12.4):**
+
+| Finding | Disposition |
+|---|---|
+| **F1** A zero-exposure claim concluded "payable from nothing" (critic §21, reproduced in the dump) | **Fixed in this ship** (instrument: the reducer refuses, `boundary` prints the refusal) + **filed as `core-empty-fold-domain`** — whether the fold milestone itself must stop on an empty collection is core's question |
+| **F2** R5 unreachable: no orchestrator threads `cancel_token` into `execution.run`; the token enters at `execute_pipeline`/the submind arbiter only | **Filed in this record** as empty-with-reason (critic §21 Q2 ruling: a shape bypassing `execution.run` would demonstrate the executor wearing the demo's name) |
+| **F3** Rejected attempts' graphs stay in `capacity_mm` while excluded from the collected/persisted list — the live MM and the persisted story diverge | **Rejected because deliberate** (accept-first-clean, docstring'd, Slice-A isolation) — and the dump now PRINTS the delta; renderer requirement banked: render from the PERSISTED set, never raw capacity_mm |
+| **F4** The `needs_input` derivation swept into `submind_arbiter.py` and hit two Slice-2 owed items that exist in NO STATE entry (the `.found` narrow; the escalation fix) plus Slice-3 §2.8 ruling `needs_input` the opposite way, unrecorded | **Filed as `submind-slice2-owed-tail`** — the register hole closes; the divergence gets an owner |
+| **F5** The dump printer was unguarded (§19 F1) | **Fixed in this ship** — `test_dr_dump_printer_guard.py`, 3 tests, TWO mutations shown red first (skip-a-node-type: 12≠16; hide-the-mm-delta) |
+| **F6** The conclusion value restated its provenance (`'from': [...]`, §19 F2) | **Fixed in this ship** — value trimmed to `{'claim_decision': 'payable'}`; the CONSUMES edge is the provenance |
+| **F7** Leaf and member no-route share one writer path | **Recorded** — no action; the census argument again (derived, not assumed: execution.py:624/:818) |
+| **F8** `needs_input` at the leaf records and halts; nothing escalates on the demo path | **Recorded** — escalation ownership is F4's second item; the DR demo renders the stop, it does not answer it |
+
+**Renderer requirements bank (now six):** per-exposure title from the start
+instance VALUE; manifest phrases are kinds only; `case_label` names the claim;
+render from the PERSISTED graph set, never raw `capacity_mm` (F3); the refusal
+page reads the origin record's `refusal_reason`/`refusal_detail`, the stop page
+reads `RunStopped.stopped_detail` + the manifest's `stop_reason_phrases`; the
+run's DATE is not in any dumped graph — it arrives from the Episode at
+persistence (`consolidated_at`, agreed-changes D14), so **the persistence smoke
+must show that field arriving** or item 7 discovers it missing the way probe D
+discovered the manifest (critic §24, added at the stage-1 PASS).
+
+**§12.5 status:** the matrix changed this ship (input-boundary axis added, R5
+and R6 cells resolved, two shapes' claims re-domained) — the stop condition is
+not near. **Next per §10.3: persistence smoke, then item 7 (renderer); the
+critic's stage-1 full re-test through `dr_dump` is owed NOW, at this item's
+completion (§17).**
+
+---
+
+### 2.12 The persistence smoke — the graphs survive the store, and the date arrives
+
+*(Smoke lane, 2026-08-14. Instrument: demo `b32c05a` —
+`decision_records_demo/dr_persist_smoke.py` + `falkordb` into
+`requirements-demo.in` (`dr_dump.py` stays zero-dep). Evidence: the OWNER ran
+the smoke on the Linux box at `b32c05a` against a standalone FalkorDB
+container (host port 6382; the compose service publishes no host port and the
+test image deliberately excludes the demo dir) — **exit 0, acceptance
+failures 0**, 127 lines, sha256 `24d656b8…3b3a`. Every claim below cites that
+output. Write path dev-verified in the build container first (InMemoryClient);
+the read-back was deliberately left to the owner's run.)*
+
+**The acceptance (critic §24, bank #6) is met, shown raw:** both Episodes
+carry `consolidated_at` (`'2026-08-14T02:04:34.742986+00:00'` /
+`…856040+00:00'`) alongside `capacity_root_ref`, `outcome_classification`
+(`completed` / `stopped`), `state=closed` — the run's date exists nowhere in
+any grounding graph and arrives exactly where D14 said it would.
+
+**What round-tripped, per the owner's output:** the index graph loads by the
+Episode's `capacity_root_ref` and covers exactly the collected set (4 claim
+run graphs + 1 boundary graph; persisted-only=[] live-only=[]); every run
+graph loads back with live==persisted node/edge counts (4,2 each); the
+boundary `RunStopped` returns with `stopped_detail` verbatim ("refusing to
+conclude a claim from zero exposure verdicts"); the conclusion value is the
+trimmed `{'claim_decision': 'payable'}`. **The order evidence:** the fold
+graph's `exposure_verdicts` LIST returned in seeded order (Silva/dwelling,
+Silva/contents, Osei/dwelling) — and the first cut of this section called that
+"the load-bearing order check" while the smoke only DISPLAYED it (critic §27,
+S-F3 below). As of demo `dbf99d0` it is ASSERTED: per-node value+properties
+equality and edge-set equality per loaded graph (subsuming the count check)
+pin the LIST order, the refusal wording and the trimmed conclusion. Owner
+re-run at `dbf99d0`: exit 0, `VALUE FAIL` count 0, acceptance failures 0,
+127 lines, sha256 `c92f6d9e…cfb6`. The clause was shown RED in the dev loop
+by a permuted verdicts list and a flipped edge type, and stays green on
+dict-key-order-only — the S-F1 asymmetry, by design.
+
+**Findings, dispositions per §12.4:**
+
+| Finding | Disposition |
+|---|---|
+| **S-F1** Iteration order does NOT survive the store: RunManifest dict keys come back alphabetized, node/edge order permuted, the index's CapacityRunRef order ≠ run order — while LIST values DO keep order | **Recorded + bank → SEVEN**: an order-sensitive fact must live in a LIST value; the renderer derives member order from the seeded collection value ALONE, never from node/dict/index iteration order |
+| **S-F2** Two tasks reusing one `request_id` (the demo fixture's `drdemo-task` in both cases) leave two index graphs with the SAME role in one store | **Recorded** — nothing collided because refs resolve by `graph_id` (`Episode.capacity_root_ref`), never by role; readers must do the same. Demo-fixture artifact, no core defect; a real orchestrator mints distinct request ids |
+| **S-F3 (critic §27)** The first cut of this section claimed "the load-bearing order check" while nothing fed the seeded-order return into the exit code — a wording stronger than the code, the defect this lane's own rules name | **Fixed in this ship** — demo `dbf99d0` adds the value-equality clause (asserted, mutation-red-verified) and this section's sentence is corrected in the same commit |
+
+**§12 note:** the sweep matrix's persistence-codec row upgrades from
+encoder-only to full round-trip — the matrix changed again this ship (§12.5
+stop condition not near). Environment facts that cost round-trips, recorded:
+the Linux box's port 6379 is held by a stray unnamed falkordb container
+(`priceless_antonelli`), 6380/6381 by the arc demos — the smoke pins its own
+port via `FALKORDB_PORT`.
+
+**Next: item 7, the renderer — input is the seven-requirement bank.**
+
+---
+
+### 2.13 Item 7 — the renderer, and the page the owner judged
+
+*(Renderer lane, 2026-08-14. Design critic-passed BEFORE build (§29–§31: the
+four §30 rulings are load-bearing code). Demo commits `2a139f6` (renderer +
+pages command + guards), `abde9d7` (outage-case fix), `a10b58e` (noroute
+polish), `9818a79` (render-time G6, the §33 merge condition), `f239e79` (the
+Q-form source rule). FINAL evidence: the OWNER ran the guard tests (12/12 on
+the Linux box at `f239e79`) and the §12 command — five pages rendered FROM
+the real Falkor store, exit 0, zero raises, artifact sha256
+`ed3c5f3f…9958`. Acceptance per §30 Q3 is the owner's judgement of that
+artifact.)*
+
+**What shipped.** `dr_render.py` — G1-pure by AST (stdlib + `mindsos_core`
+only): Q→A→therefore from the persisted graphs; every fact a stored value,
+every gap a `RendererGapError`. `dr_render_pages.py` — the §12 command: five
+cases (claim, refusal, outage, boundary, noroute), each run → consolidated to
+a real Falkor → rendered from the STORE. `test_dr_render_guards.py` — eleven
+guards, two renderer mutations shown red first.
+
+**Guard ledger moves (§2.4 table):** G1 ✅ (AST test); G2 ✅ — the REAL guard
+at last: probe D's exact mutation now RAISES where the sketch printed *"Given:
+a return must be filed"*, and the §2.4 overstatement is closed; G6 ✅ — no
+IRI or token on any page; the two known leaks are handled at the page layer
+(declared-start KEYS never print — descriptions only; `source_datastate` and
+IRI-shaped stop details are links, suppressed). §30 Q2's raise
+(completed-without-conclusion) and the §31 single-attempt scope are both
+tested. `environment_fault` is NOT consumed (ADR-0207 §am-2 conflict caught
+by the critic in §30 before it was built wrong).
+
+**Findings, dispositions (§12.4):**
+
+| Finding | Disposition |
+|---|---|
+| **R-F1** The pages driver's first outage case passed `kl=None`, killing the Episode store along with the policy store — two concerns, one handle; caught on the OWNER'S run, not the dev loop | **Fixed** (`abde9d7`) — a read-down KL wrapper: Episode writes land, policy reads fail; the vetted outage prose renders |
+| **R-F2** The G2 mutation (remove `check_declared_starts`) initially reddened NOTHING — the §30 Q2 check masked it on completed outcomes (§12.2c: a mutation that reddens nothing is a finding) | **Fixed** — `test_g2_isolated_under_stopped_outcome`: G2 is load-bearing on its own; shown red by the same mutation after |
+| **R-F3** The manifest-only page said only that the run stopped, not what it HAD | **Fixed** (`a10b58e`, owner-requested polish) — "In hand:" lines from declared-start descriptions |
+| **R-F4** Multi-attempt Episodes are out of the v0 page's domain (§31 scope declaration: two terminal-shaped graphs raise rather than guess) | **Filed as `decision-records-multi-attempt-render`** — the deferral gets an owner |
+| **R-F5 (critic §33 M-D)** G6 was test-time only — an IRI smuggled into a STORED manifest phrase rendered straight to the page; descriptions have no registration guard, so the class was one careless fixture away | **Fixed** (`9818a79`): render-time G6 — the renderer scans its own composed page against the ONE banned-pattern list (shared with the test) and raises; M-D is now `test_render_time_g6_refuses_a_tainted_store`, and disabling the scan reds it |
+
+**Queue effects, same ship:** `decision-records-persisted-render` CLOSES (its
+"no code path" premise went stale at the smoke; item 7 now renders from that
+path and nothing else); `decision-records-demo-project`'s OPEN RULING resolves
+(all-demo v0, §31); `decision-records-per-run-case-label`'s demo half closes
+(the page header IS the case_label) — the manifest-fields half stays open.
+
+**Stage-2 (critic §33):** three fresh mutations held (member-CapacityInstance
+delete, list reversal, corrupted entry); the M-D hole is R-F5 above, fixed as
+the merge condition. The Q3 observation is RESOLVED by owner ruling:
+**the Q-form source rule** — a "Q." line is EARNED by a stored question (the
+origin record's `question` field is the page's only interrogative voice);
+graphs without one present item-then-outcome (`{value} — {description}`,
+`{phrase} → {verdict}`). The renderer never invents a question — that is the
+§11 class — and a future capacity earns its Q-line the ADR-0208 way, by
+producing an origin record. Landed with a `Q.`-absence assertion on the claim
+page and a stored-question assertion on the refusal page.
+
+**§12.5 status:** the matrix changed again (three guard rows flipped to
+named tests; a render surface joined). **Next: the critic's stage-2 attack
+(G2/G6 mutations against the owner's pages artifact) at the PR hold; then
+Layer B (item 8) is the table's last row.**
+
+### 2.14 The correlation bijection — two silent-omission defects in the shipped renderer
+
+*(bijection lane, 2026-08-14. Found by READING `dr_render.py` before picking up
+the next item — the same reason item 7 caught three stale premises. Confirmed
+BY RUNNING by the critic (coordination §37) before either was believed. Demo
+commit `bd8e779` on `demo/decision-records`; owner evidence on the Linux box at
+that sha: **15/15 PASS** (was 12), predicted exactly in writing beforehand.)*
+
+**What was wrong.** §30 Q1 ruled member↔verdict correlation by full
+verdict-value equality against the fold's seeded LIST, and the first cut
+implemented it **in one direction only**: for each list entry, scan the member
+graphs, take the first match, raise if none. Two consequences, both silent:
+
+| Finding | What it did |
+|---|---|
+| **N-F1** | A member graph matching **no** list entry rendered nothing and raised nothing — the exposure simply left the page. Critic probe: `drop last list entry → rendered, 'B. Osei' on page: False` |
+| **N-F2** | First-match-wins is not injective. With the exposure stripped out of the verdict VALUE every entry matches every member: `Silva-dwelling ×3, Silva-contents ×0, Osei ×0` — one exposure printed three times, two never rendered, no raise |
+
+**Why it was unreachable, and why that is not a defence.** The map's ∀-abort
+barrier guarantees every member that reaches the fold wrote a verdict into the
+list, so both probes had to hand-mutate to reach the state. That barrier is
+exactly what `core-collection-member-dont-know` removes. **The day a member may
+refuse instead of aborting, N-F1 deletes the refusal from the page** — and a
+per-exposure refusal standing beside a per-exposure answer is the demo's
+headline beat. A guard that only holds because a neighbouring invariant is in
+the way is the R-F2 shape one level up.
+
+**The fix (`bd8e779`).** Correlation is now a **bijection**. `_member_block` is
+extracted so the renderer can **compare** candidate members rather than take
+the first: §30's interchangeability argument is sound only where the candidate
+blocks render identically (a genuinely duplicated exposure), and the renderer
+must be able to tell that case from an ambiguous one instead of assuming it.
+Three raises: an entry matching nothing; an entry matching several graphs that
+do **not** render alike (naming the roles); and any member left unmatched at
+the end — **naming its graph role**, per the critic's §37 condition, so the
+failure is diagnosable from the error alone.
+
+**Guards, shown RED by mutation on the owner's box, each in isolation:**
+
+| Mutation | Result |
+|---|---|
+| `if unmatched:` → `if False:` | 14 PASS, then `test_unmatched_member_graph_raises` REDS alone |
+| the render-alike check → `if False:` | `test_identical_bare_verdicts_do_not_collapse_onto_one_member` REDS |
+| *(none — the positive control)* | `test_a_genuinely_duplicated_exposure_still_renders`: two identical exposures still render, so the bijection does not over-constrain (critic §37 Q1's care) |
+
+⚠ **Stated rather than glossed:** the runner stops at the first failure, so
+under the second mutation the tests sorted after it did not execute. Isolation
+is proven for the first mutation and asserted-not-proven for the second.
+
+**Findings, dispositions (§12.4):** N-F1 **fixed** (`bd8e779`); N-F2 **fixed**
+(same commit); the §39.2 claim that a per-capacity refusal declaration would
+freeze a rotten vocabulary is **WITHDRAWN — falsified** (coordination §40/§41):
+`REASONS_EMITTED_TODAY` / `REASONS_RESERVED` / `REASONS_DEGENERATE` shipped in
+#156 and `source_unreachable` was de-advertised by ADR-0207 am-3 in #157, so
+`origin-refusal-vocabulary-classification` **closes** as a register correction.
+That claim was read off a STATE entry's "NOT BUILT" without grepping the module
+it described — **grep-before-quoting applies to register entries too.**
+
+**Owner rulings recorded 2026-08-14, which set the next item:** the wall takes
+**shape (a)** — an undecidable exposure is an in-band refusal VALUE with its
+origin record, with refusal-capability **declared on the DataState** (the
+ADR-0199 `collection`/`member_ds` precedent) and the reducer declaring that it
+decodes it; the member **machinery**-failure half is split out as its own item
+(`core-member-machinery-failure-partial-record`) rather than being buried by
+that choice; `core-empty-fold-domain` is ruled at the fold, not per reducer;
+and **Layer B is re-filed as blocked** — its row names an archive-tagged
+branch, its *swap* would delete claim 5's control arm, and it waits on S-2 and
+a transport. The reader lands **beside** the structured one, never replacing it.
+
+---
+### 2.15 The from-root render — reconstructibility proven to its actual boundary, and the boundary named
+
+*(from-root lane, 2026-08-14. Demo commits `7e422db` (the (c)+(a) build: the
+`--from-root` mode, the stated-absence rule, the S-1 smoke asserts, the README)
+and `32b8dbd` (the §55 fix: case-unique writer scopes + END-STATE re-verify in
+both drivers). Critic §52 verdict BEFORE build; §55 posted mid-lane when the
+first from-root render falsified its own prediction. Owner evidence at
+`32b8dbd`: guards **16/16**; smoke **0 acceptance failures** incl. the
+end-state block (claim 4 graphs + boundary 1, re-checked after the last write,
+0 failures); pages **5/5** + **all five Episodes re-rendered from the store
+ALONE** at end state; the from-root page rendered dateless with the
+stated-absence line. Every count predicted in writing; ONE prediction missed —
+§55 below — and the miss is the lane's largest finding.)*
+
+**What §51 established (critic-confirmed §52):** the run graphs round-trip;
+**the Episode never does.** `consolidate_request` writes it into the
+KnowledgeLayer, and the KL by design never touches persistence (ADR-0042 —
+the server's job). So `capacity_root_ref` (the only pointer from Record to
+evidence) and `consolidated_at` (the page's date line) live in process memory.
+⟹ **§2.3 decision 5's claim is hereby NARROWED to what is shown:** *the
+grounding evidence and its index are reconstructible from the store; the
+Episode — entry point and date — is not store-resident until a server persists
+the KL.* The pages driver's seam statement carries the same stated exception.
+The renderer's response is the **stated-absence rule** (critic §52 condition
+1): a page that cannot prove its decided date SAYS SO, in room-safe words —
+"Decided date: not available from stored evidence" — never omits the line. A
+Record that states what it cannot prove is the product, on the page.
+
+**§55 — the missed prediction, and what it caught.** The FIRST from-root
+render was predicted to produce the dateless claim page; it RAISED
+(`carries no manifest`, plus core's own `Cross-graph edge leak detected`
+lines). Mechanism, read at the source: `build_unwind_create_nodes` is
+**`MERGE (n:Node {id: row.id})`** (`builders.py:164`) — node identity is
+GLOBAL by id — and node ids are deterministic from `(scope, run_ref, seq)`,
+while every demo case passed the same writer scope `drdemo-task`. Later cases
+MERGE onto earlier cases' stored nodes and steal them: graphs stay distinct
+and quietly lose their organs. **Three instruments (dump, smoke, per-case
+pages) were green over a corrupted end state**, because every check read back
+its own case before the next case wrote. The §51.0 retraction had stopped one
+level too high (graph ids don't collide; node ids do), and S-F2 stands for
+what it measured.
+
+| Finding | Disposition |
+|---|---|
+| **F-§51.1** Episode not store-resident; decision-5 claim overstated | **Narrowed above**; stated-absence rule shipped (`7e422db`), pinned by `test_missing_decided_date_is_stated_not_omitted` |
+| **F-§55** cross-case node theft under a shared writer scope | **Fixed** (`32b8dbd`): case-unique scopes (the contract `chain_artifacts.py:198–201` always stated) + END-STATE re-verify in both drivers — the failed from-root render is the shown red, the five end-state re-renders the green |
+| **S-1** smoke displayed `outcome_classification`/`state` without asserting (the §27 class, second instance) | **Fixed** (`7e422db`): both asserted |
+| **S-2** README 4/11 shapes + stale "empty" claim; smoke run box named a port occupied on the reference box | **Fixed** (`7e422db`): README covers the directory; both boxes on 6382 |
+| **S-3** `_LINK_PREFIXES` narrower than `G6_BANNED` | **REJECTED as a code change** (critic §52 Q3): an internal ref in a stop detail is core leaking machinery into a prose-by-contract field; suppression would mask it forever — the render-time G6 raise IS the correct response. Zero code, recorded so it is not re-opened |
+| **Core hardening** a caller violating the scope contract gets SILENT cross-graph corruption, never a refusal | **FILED as `core-persist-node-id-cross-graph-guard`** — not built, demo obeys the contract instead |
+
+**The §54 ruling, recorded:** `--from-root` is a **GATE-7 PREDECESSOR** —
+green before the gate may be attempted; NOT in the cold-run set (the scope
+freeze holds; a good addition does not earn an unfreeze), NOT gateless (a
+differentiating claim with nothing that reddens rots silently). Two Gate-7
+predecessors now exist: RULES §12.5's full-matrix re-run, and this. Adding one
+is an owner ruling, never a lane choice. **§54 paid for itself the hour it was
+made** — the predecessor's first execution found §55.
+
+**Method note, standing:** per-case checks structurally cannot see cross-case
+theft; only a reader that comes back AFTER the last write has the corruption
+in its domain. That is what an end-state re-verify is for, and it is now
+permanent in both drivers.
+
+---
+---
+
+### 2.16 The (a) ship — shape (a) becomes code, and the empty domain becomes a stop
+
+*(shape-a lane, 2026-08-15. PR #165, branch `feat/dr-shape-a` off `93af23f`,
+build commit `feaf0a0` + this docs+STATE commit. Design pass §44/§45 three
+chats old — every premise RE-VERIFIED against the tree before building (§58):
+all anchors held ±1 line, and the re-verification surfaced five things the
+design pass did not carry. Owner rulings D1–D6 taken before building. Critic
+stage-2 at the PR hold, per the standing slot.)*
+
+**What shipped.** ADR-0201 **amendment 5**: `MANIFEST_MEMBER_GRAPH_IDS` — the
+fold manifest carries the ordered member grounding-graph ids, so member ↔
+verdict correlation is structural by position, not value equality (N-F2's
+class, made legal by shape (a), is defused at the substrate); and
+`RUN_STOPPED_EMPTY_DOMAIN` + its phrase, the fourth member of the closed set,
+whose vocabulary am-5 now owns (no other ADR did — grepped, §45).
+**ADR-0209**: `DataState.refusal_capable` (free-standing, emitted to node
+properties), `Capacity.decodes_refusals` (declaration-only, not emitted), and
+`check_fold_reducer_decode` — static, on BOTH entry roads (`build` and
+`execution.run` intake), because every current demo driver hand-builds its
+`PlanResult` and a contract enforced on one of two roads is a convention.
+**The empty domain stops at the fold** (owner ruling, `core-empty-fold-domain`):
+`_run_fold_milestone` never hands a reducer an empty domain — pre-dispatch stop
+through `execute_pipeline` (`stop_before_dispatch`), manifest +
+`member_graph_ids=[]` + `RunStopped` minted ALONE via `record_empty_domain`
+(G3; `record_stopped` refuses the token the way it refuses `cancelled`).
+Threading: `_run_one_member` returns `(output, graph_id)`; a sub-plan member's
+id is the graph that PRODUCED its `sub_target` (ruling D3); the id list rides
+the blackboard (`member_graph_ids_key`) so a Slice-3b targeted re-run splices
+ids exactly as it splices outputs.
+
+**Evidence (owner-run, Linux, §11/§12).** Gate **4769 / 11 / 1x / 0 —
+predicted exactly in writing** (4747 + 22; twelfth consecutive exact core
+call). Six mutations, EACH shown red by exactly the predicted named test(s), in
+isolation, tree reverted after each — including one where a *neighboring* guard
+caught the same leak from the other side (the unconditional-manifest-key
+mutation reddened the fold-ids absence test AND `test_run_manifest`'s exact
+key-set test, 2 red / 16 pass). END-STATE cell added per the §12 row class:
+`member_graph_ids` order re-read from the store alone AFTER a later unrelated
+write. CLI collect > 0 proven by chain construction (a zero count exits the
+`&&` chain before the gate).
+
+**Findings and dispositions (§12.4):**
+
+- **F1 — a live docstring contradicted the ship** (`_run_fold_milestone`:
+  *"stays structural rather than becoming a manifest field"*): **fixed in this
+  ship**, with `test_fold_grounding`'s header, which carried the same sentence.
+- **F2 — an existing test pinned the defect being removed**
+  (`test_empty_collection_composes_nothing_and_still_folds` asserted the
+  reducer RECEIVES `[]`): **fixed in this ship** — RESTATED as
+  `…_and_stops_at_the_fold`, lazy-composition half kept, reducer-receipt half
+  was `core-empty-fold-domain` itself. The one existing test whose meaning
+  changed; the gate delta (+22) is new tests only.
+- **F3 — the pre-dispatch stop is a new execution REGIME** (not a new caller —
+  the surface sentinel is green by construction, `execute_pipeline` call census
+  unchanged at 3): **filed as a sweep-matrix row** on `dr-sweep-rows-undeferred`
+  (row 4), answered today by the empty-domain suite; the 12.5 full re-run must
+  carry it.
+- **F4 — two dev-loop count misses, recorded**: the targeted-suite total (68,
+  not my stated 62/64) and `test_run_stopped.py`'s population (14, not 17) —
+  both RECALLED per-file populations instead of collected ones. The gate
+  prediction held because its delta was counted from the written tests. Rule
+  applied, not just noted: predict per-file counts only from a collect.
+- **F5 — `member_graph_ids` name collision** with the MetaHyperEdge persistence
+  row key (`builders.py:268/:284`): **rejected as a rename** (contexts
+  disjoint; the natural name); NOTED in am-5 so a bare-string grep is not
+  misread.
+
+**Critic §60 (stage-2 at the hold): merge conditioned on ONE fix, landed.**
+Points 1/3/4/5 held (carrier, fail-closed decode, run-intake widening, the F2
+restatement — behaviors re-verified by the critic RUNNING them); point 2 did
+not: the stop path coerced a missing carrier to `[]`, so a fold-ONLY plan's
+key presence flipped on emptiness — a lying fold marker on a legal plan shape.
+Fixed by deleting the coercion (key presence = A MAP SUPPLIED IDS, `[]` only
+when a map ran with zero members), pinned by
+`test_a_fold_only_plan_writes_no_member_ids_key_even_when_empty`, mutation
+(coerce back) shown red. am-5's absence sentence tightened with it.
+
+**Conditions riding the ship, all met:** the N-F2 re-scope sentence and the
+unmatched-member re-scope sentence both live in
+`core-member-machinery-failure-partial-record`'s STATE entry (this commit adds
+the N-F2 one — §45 promised both, and neither STATE entry carried the second);
+the fold-detection-heuristic retirement note is in am-5's Consequences (the
+manifest key's presence replaces the parentless-list heuristic when the demo
+consumes am-5 — deferred to the demo lane, ruling D5); §38's two conditions
+were met at filing (verified in STATE).
+
+### 2.17 The partial-record ship — a member stops in place, and the work that completed survives
+
+*(partial-record lane, 2026-08-15. PR #166, branch `feat/dr-partial-record`
+off `900e7f6`, commits `2a25a41` (build) + `0e90d19` (F1 fix) + `6dc04f9` (F2
+restatements) + the docs+STATE commit. Design pass §62–§64 — the item's FIRST
+— with owner rulings D1 (fold stops, no conclusion from a truncated domain),
+D2 (`partial_domain` via am-6), D5 (`conceded`, uniform incl. empty-domain
+reclassification, §65), D6 (needs_input stops in place, no re-ask); critic
+§63 adopted in full, its Q5 nested-propagation requirement redrawn into
+scope. Critic stage-2 at the PR hold.)*
+
+**What shipped.** ADR-0201 **amendment 6**. A member that crashes at
+`MEMBER_RETRY_CAP`, asks for input (FIRST ask — never re-asked), is
+cancelled, or finds no route STOPS IN PLACE: its final attempt's graph is
+retained (the stop the page names — a no-route member's manifest-only graph
+per the run-4 precedent) and its siblings run. `MemberAbortError` is retired
+as a raiser (class kept as API; absence census-pinned in the surface
+sentinel); `LeafPipelineNotFound` no longer propagates from the member path
+(top-level leaf unchanged). The map writes compact completed outputs + the
+full N-length id list + a completed MASK (ungated — execution state, not
+persistence state: gating it on collection would have let the reducer
+conclude from a gapped list on exactly the no-collection path, caught in
+self-review); Slice-3b targeted re-runs splice all three coherently and the
+carriers raise on disagreement. The fold stops `partial_domain` pre-dispatch
+on ANY truncation (all-failed included; `empty_domain` stays N==0);
+`record_partial_domain` mints RunStopped ALONE (G3). `PipelineRun.status`
+gains `"stopped"`; `conceded` is decided FROM THE RECORD
+(`terminal_attempt_stopped_short`: chain graph + the terminal attempt's live
+refs, CLOSED vocabulary, raises on unknown). A sub-plan member's completion
+is decided from its sub-run's terminal status cross-checked against
+`sub_target` presence, raising on disagreement — the silent-None conversion
+path (§63 Q5) is closed.
+
+**Evidence.** Final-tip gate **4783 / 11 / 1x / 0 — predicted exactly**;
+targeted suite 84 exact; EIGHT mutations, each red by exactly the predicted
+named test(s) in isolation, tree reverted after each.
+
+**Findings and dispositions (§12.4):**
+
+- **F1 — `manifest()` laundered None ids** (`str(gid)` → the truthy string
+  `"None"`, a fake id that would persist and render): found because mutation
+  M1's first pass MISSED (2 red vs 3 — the guard my third test relied on was
+  defeated by the laundering). **Fixed in this ship** (`0e90d19`): the writer
+  refuses non-string ids loudly, pinned by
+  `test_the_manifest_refuses_a_none_member_graph_id`; the same guard then
+  caught mutation M8's silent-None UPSTREAM of its predicted symptom —
+  defense-in-depth observed, not claimed.
+- **F2 — the restate census spanned one exception symbol, not every changed
+  behavior**: gate attempt 1 went red on the two no-route member pins
+  (`LeafPipelineNotFound` propagation — the second raise this ship retires),
+  which my `MemberAbortError`-only grep never enumerated. **Fixed in this
+  ship** (`6dc04f9`): both pins restated, kept halves verbatim; the census
+  rule — enumerate the restate set from the BEHAVIORS the ship changes — is
+  recorded here and in memory. The gate was the empirical census; the set is
+  closed.
+- **F3 — sweep regime rows**: the pre-dispatch stop regime (row 4) now
+  carries TWO tokens, and the stopped-member map state is a new regime
+  surface — **filed** as a row-4 addendum on `dr-sweep-rows-undeferred`.
+- **F4 — orchestrator-level partial e2e** is not directly tested (the
+  phase_47 harness runs a v0 notional plan; a map/fold plan through the full
+  Orchestrator needs planner support) — the classifier + wiring are
+  unit-pinned; the e2e cell is **filed into the §12.5 full-matrix re-run**,
+  where it belongs anyway.
+
+**Filed, not decided here:** `core-nested-cascade-policy`
+(partial-within-partial, nested retries; the minimum-viable propagation is
+in) and `core-member-transient-retry-mode` (COLLECTION_ITERATION finding 1).
+The demo re-scope sentences stay in place — both their conditions are now
+met, and the demo lane consumes them.
+
 ## 3. Guards
 
 - **G1** Renderer imports none of: blackboard, capacity context, L2 snapshot, `Pipeline`,
@@ -816,6 +1324,8 @@ graph uses intra-graph edges, so the C2R3 metagraph boundary does not apply).
 
 ## 6. Standing risks
 
+- ⚠ **`LLM_SEAM_MANUAL.md` WAS NOT ON `main`** when this section was written and for the three days it was cited — it lived only on `archive/decision-records-llm-seam`, so anyone following the citation from `main` found nothing. **Restored to `main` 2026-08-14.** `CORE_CR_EXTERNAL_MODEL_SEAM.md` is still tag-only; cite it by tag or not at all. Fifth instance in this lane of an argument resting on a document not in the tree — the first four were `family_rule_for` (twice), the 2026-08-12 sketch renderer, and a STATE entry reading NOT BUILT for work that had shipped.
+- **S-2 is RULED (2026-08-14), and it was never open** — the manual's §11 already carried the fix: the transport may return raw text OR a mapping; text is decoded inside `mindsos_llm`; a decode failure becomes the `malformed_response` refusal (already classified in `REASONS_RESERVED`, #156) instead of an exception from unowned code. Ratified before a transport exists, which is the deadline's entire purpose.
 - **No transport exists** (`LLM_SEAM_MANUAL.md` S-3). No plan can produce a live run today; v0 is
   replay-only by construction. Fine for a gate, fatal for a demo.
 - **S-2 has a real deadline** — whether the transport or `mindsos_llm` parses the model's output

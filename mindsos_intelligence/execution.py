@@ -46,11 +46,15 @@ provides only the kinds + executor + value bus). A map fans a uniform
 sub-pipeline out over the ordered members of a collection DataState (ADR-0199 —
 L4 owns the unpack loop), sequentially (v1), each member in an isolated
 sub-blackboard seeded with just the member value and under a fresh per-member
-run-ref (isolated grounding). It applies bounded retry (``MEMBER_RETRY_CAP``) and
-an all-or-nothing (``∀-abort``) barrier — an exhausted member raises
-``MemberAbortError`` — and writes the ordered member outputs to the blackboard. A
-fold dispatches an L3 reducer over that ordered list and merges the aggregate
-back. A milestone with no spec is a plain leaf (the 1a path, unchanged).
+run-ref (isolated grounding). It applies bounded retry (``MEMBER_RETRY_CAP``)
+and — since the partial-record CR (ADR-0201 am-6) — **partial results instead
+of an all-or-nothing barrier**: a member that still fails at the cap (or asks
+for input, or finds no route) STOPS IN PLACE — its final attempt's graph is
+retained so the page can name the stop — and its siblings run. The map writes
+the completed members' ordered outputs to the blackboard plus the full member
+grounding-id list; a fold over a truncated domain stops ``partial_domain``
+pre-dispatch rather than concluding from less than everything. A milestone
+with no spec is a plain leaf (the 1a path, unchanged).
 
 **Nesting (collection-iteration Slice 2).**
 
@@ -76,13 +80,15 @@ NOT resolved here: it would reverse the Slice-A per-run-graph / intra-graph-edge
 model and is deferred to its own slice. The ref-path gives isolation + a
 locatable tree, not connected cross-stage edges.)
 
-Bounded retry + ∀-abort apply at map-member granularity at **every** level: a
-nested map enforces its own retry cap and barrier over its members, and a nested
-``MemberAbortError`` propagates out unretried (a deterministic load failure that
-exhausted its own budget aborts the whole task). A sub-plan member itself is not
-retried (retry lives at the flat find+execute leaf where transient load failure
-actually occurs); a plain sub-plan stage fails soft exactly as a top-level plain
-stage does (1a behaviour, unchanged).
+Bounded retry + partial results apply at map-member granularity at **every**
+level: a nested map enforces its own retry cap over its members and stops its
+own fold ``partial_domain`` when truncated; a sub-plan member whose sub-run's
+terminal milestone stopped is a STOPPED member of ITS parent (minimum-viable
+propagation, coordination §63 Q5 — decided from the sub-run's own record,
+never from a ``None`` in the value channel). A sub-plan member itself is not
+retried (retry lives at the flat find+execute leaf where transient load
+failure actually occurs); a plain sub-plan stage fails soft exactly as a
+top-level plain stage does (1a behaviour, unchanged).
 
 **Multi-input members / leaves (map-member multi-input CR).**
 
@@ -121,30 +127,159 @@ stays sibling-sequential v1. (Unbuilt CORE work — ADR-0206, CORE-C4R4.)
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Tuple
+
+from mindsos_capacity.identifiers import (
+    EDGE_PRODUCES,
+    NODE_TYPE_DATASTATE_INSTANCE,
+    PROP_DATASTATE_INSTANCE_TYPE,
+    RUN_STOPPED_EMPTY_DOMAIN,
+    RUN_STOPPED_PARTIAL_DOMAIN,
+)
 
 #: Slice 1b — hard cap on per-member sub-run attempts (initial + retries) inside
 #: a map fan-out. Owner's call (CR §Bounded retry): 2 total attempts. A named
 #: constant (mirrors ``DEFAULT_PER_TASK_REPLAN_BUDGET``), trivially tunable. A
-#: member still failing (``success=False``) at the cap triggers the ∀-abort.
+#: member still failing (``success=False``) at the cap STOPS IN PLACE (partial
+#: results, ADR-0201 am-6 — was the ∀-abort trigger).
 MEMBER_RETRY_CAP = 2
 
 
+def member_graph_ids_key(out_ds: str) -> str:
+    """The blackboard key carrying a map's ordered member grounding-graph ids
+    for its fold (ADR-0201 amendment 5).
+
+    Blackboard-resident on purpose: a Slice-3b targeted re-run reuses the
+    RETAINED blackboard and re-executes only one member, so any carrier that
+    lives in a local would lose the untargeted siblings' ids — the ids must
+    survive exactly as long as the ``out_ds`` values they correlate to, which
+    is what riding the same blackboard guarantees. The ``__``-prefixed key
+    cannot collide with a DataState IRI, is never named by any pipeline's
+    ``start_datastates`` (so it never seeds a run), and ``run`` returns
+    PipelineRun IRIs, not the blackboard — it does not leak to consumers.
+    """
+    return f"__member_graph_ids__:{out_ds}"
+
+
+def member_completed_key(out_ds: str) -> str:
+    """The blackboard key carrying a map's per-member completed mask (ADR-0201
+    amendment 6), parallel to :func:`member_graph_ids_key` and with the same
+    lifetime argument: a Slice-3b targeted re-run must splice completion state
+    exactly as it splices outputs and ids. Needed because the completed
+    members' outputs list is COMPACT (stopped members contribute no value —
+    a machinery failure has no value, and a hole marker would be
+    absence-as-a-special-value), so positional re-alignment at splice time
+    requires knowing WHICH members completed."""
+    return f"__member_completed__:{out_ds}"
+
+
+class _MemberOutcome(NamedTuple):
+    """One map member's result (coordination §63 Q1: an explicit structural
+    flag, never a sentinel in the value channel). ``value`` is meaningful only
+    when ``completed`` is True; ``graph_id`` is the member's grounding graph —
+    the accepted attempt's when completed, the final (stopped) attempt's when
+    not (the ADR-0209 D3 definition as amended by am-6)."""
+
+    value: Any
+    graph_id: Optional[str]
+    completed: bool
+
+
+#: The closed PipelineRun status vocabulary the conceded classifier consumes
+#: (ADR-0201 am-6). ``stopped`` = a milestone that stopped pre-dispatch
+#: (empty/partial domain) or a map with >=1 stopped member. An unknown word
+#: RAISES in :func:`terminal_attempt_stopped_short` — never defaults — so a
+#: silent misclassification cannot happen quietly (§63 Q3).
+PIPELINE_RUN_STATUSES = frozenset({"running", "completed", "failed", "stopped"})
+
+
+def terminal_attempt_stopped_short(chain_graph, request_run) -> bool:
+    """True iff the TERMINAL attempt reached a stop-decision short of the ask:
+    at least one of its PipelineRuns is ``"stopped"`` and none is ``"failed"``
+    (ADR-0201 am-6 — the ``conceded`` rule, uniform over partial AND empty
+    domains by owner ruling, coordination §65).
+
+    Reads the RECORD, not shadow state: the chain graph holds the artifact
+    OBJECTS as node values, and ``replan_check.invalidate_at_and_below``
+    CLEARS invalidated refs from ``request_run.pipeline_runs``, so that list
+    is always exactly the terminal attempt's live runs. Raises on a ref the
+    chain graph does not hold or a status outside
+    :data:`PIPELINE_RUN_STATUSES`.
+    """
+    saw_stopped = False
+    for iri in request_run.pipeline_runs:
+        node = chain_graph.nodes.get(iri)
+        if node is None:
+            raise ValueError(
+                f"pipeline run {iri!r} is not in the chain graph - the record "
+                "and the RequestRun disagree"
+            )
+        status = getattr(node.value, "status", None)
+        if status not in PIPELINE_RUN_STATUSES:
+            raise ValueError(
+                f"unknown PipelineRun status {status!r} on {iri!r}; the "
+                f"classifier's vocabulary is closed: "
+                f"{sorted(PIPELINE_RUN_STATUSES)}"
+            )
+        if status == "failed":
+            return False
+        if status == "stopped":
+            saw_stopped = True
+    return saw_stopped
+
+
+def _stopped_graph_id(graphs) -> Optional[str]:
+    """The ``graph_id`` of the last graph in ``graphs`` carrying a terminal
+    ``RunStopped`` — the am-6 fallback for a stopped sub-plan member's id when
+    no ``sub_target`` producer exists (D3 as amended)."""
+    from mindsos_capacity.identifiers import NODE_TYPE_RUN_STOPPED
+
+    for graph in reversed(list(graphs)):
+        if any(
+            n.type_name == NODE_TYPE_RUN_STOPPED for n in graph.nodes.values()
+        ):
+            return graph.graph_id
+    return None
+
+
+def _produced_graph_id(graphs, ds_iri: str) -> Optional[str]:
+    """The ``graph_id`` of the last graph in ``graphs`` whose run PRODUCED an
+    instance of ``ds_iri`` (ADR-0209 D3: a sub-plan member's id is the graph
+    of the run that produced its ``sub_target``).
+
+    Read off the graphs themselves — a PRODUCES edge into a
+    ``DataStateInstance`` of that type — never off a ref-path or role name
+    (S-F2). Last wins: a nested sequence may thread the value through more
+    than one stage, and the member's verdict is the one its final producer
+    grounded. ``None`` when no graph produced it (a seeded-only or misauthored
+    sub-plan) — the caller decides how loud that is.
+    """
+    for graph in reversed(list(graphs)):
+        for edge in graph.edges.values():
+            if edge.type_name != EDGE_PRODUCES:
+                continue
+            target = edge.target
+            if (
+                target.type_name == NODE_TYPE_DATASTATE_INSTANCE
+                and (target.properties or {}).get(PROP_DATASTATE_INSTANCE_TYPE)
+                == ds_iri
+            ):
+                return graph.graph_id
+    return None
+
+
 class MemberAbortError(Exception):
-    """All-or-nothing abort signal (collection-iteration Slice 1b).
+    """RETIRED as a raiser (partial-record CR, ADR-0201 am-6) — kept as API.
 
-    Raised by a map milestone when one member's sub-run still returns
-    ``success=False`` after ``MEMBER_RETRY_CAP`` attempts (a load/compute failure
-    that survived retry). Remaining members are skipped and the fold never runs;
-    the orchestrator catches this and aborts the task. Deliberately distinct from
-    (a) a reducer concluding "no consistent rule" — a legitimate ``dont_know``
-    *value*, not an abort — and (b) a replan (a member load failure is not
-    retried at the whole-task level).
-
-    ``member_index`` names the failing member at its own level; with Slice 2
-    nesting the abort raised by a nested map propagates unretried through the
-    parent members, so the exception that escapes ``run`` names the innermost
-    failing member (the deterministic load failure that started the abort)."""
+    Was the all-or-nothing abort signal (Slice 1b): one exhausted member
+    skipped every sibling, the fold never ran, and the whole request aborted
+    — losing four correct answers because the fifth crashed, the opposite of
+    what the product claims. Under partial results NOTHING in ``mindsos_*``
+    raises it: a failing member stops IN PLACE and its siblings run. The
+    class remains so external callers' ``except`` clauses do not break; the
+    absence of raisers is PINNED by the census test
+    (``tests/architecture/test_execution_surface_inventory.py``) — reintroduce
+    a raise and the sentinel names it."""
 
     def __init__(self, leaf_ref: str, member_index: int, message: str = ""):
         self.leaf_ref = leaf_ref
@@ -152,7 +287,8 @@ class MemberAbortError(Exception):
         super().__init__(
             message
             or f"map {leaf_ref!r}: member {member_index} failed after "
-            f"{MEMBER_RETRY_CAP} attempt(s) (all-or-nothing abort)"
+            f"{MEMBER_RETRY_CAP} attempt(s) (legacy all-or-nothing abort - "
+            "retired as a raiser by ADR-0201 am-6)"
         )
 
 
@@ -383,8 +519,8 @@ def run(
     (the orchestrator's replan counter) makes each replan re-run's per-run ref
     fresh, so a re-dispatch grounds an isolated graph instead of overwriting the
     prior attempt's (Slice A isolation). A map milestone whose member exhausts
-    ``MEMBER_RETRY_CAP`` raises :class:`MemberAbortError` (the orchestrator turns
-    it into an aborted task).
+    ``MEMBER_RETRY_CAP`` stops IN PLACE (partial results, ADR-0201 am-6) — its
+    siblings run and the fold stops ``partial_domain``; nothing raises.
 
     The per-leaf work is delegated to :func:`_run_milestone_sequence` (Slice 2),
     entered here with an empty ``ref_path`` so a top-level leaf's per-run ref is
@@ -398,6 +534,14 @@ def run(
     solve_target = getattr(plan_result, "solve_target", None)
     leaf_targets = getattr(plan_result, "leaf_targets", None) or {}
     milestone_specs = getattr(plan_result, "milestone_specs", None) or {}
+    # ADR-0209 — the shape-(a) decode contract also holds on this path: a
+    # consumer that hand-builds a PlanResult (every current demo driver does)
+    # never passes through plan_construction.build, and a contract enforced on
+    # one of two entry roads is a convention. Static: reads declarations only.
+    if milestone_specs:
+        from .plan_construction import check_fold_reducer_decode
+
+        check_fold_reducer_decode(dispatcher, milestone_specs)
     # Real-solve mode is active when the orchestrator supplies the MM + seed and
     # the plan names at least one endpoint (a plan-global ``solve_target`` or any
     # per-leaf entry) or a map/fold milestone spec (Slice 1b). v0 / no-endpoint
@@ -422,7 +566,7 @@ def run(
     # from index 0 — byte-identical.
     bb: dict = blackboard if blackboard is not None else dict(solve_seed or {})
     start_idx, target_member = targeted if targeted is not None else (0, None)
-    return _run_milestone_sequence(
+    prs = _run_milestone_sequence(
         dispatcher, writer, request_run,
         leaf_refs=plan_result.leaf_milestone_refs,
         pipeline_refs=plan_result.pipeline_refs,
@@ -440,6 +584,7 @@ def run(
         target_member=target_member,
         case_label=case_label,
     )
+    return [pr.iri for pr in prs]
 
 
 def _run_milestone_sequence(
@@ -449,9 +594,12 @@ def _run_milestone_sequence(
     capacity_graphs: Optional[list], real_mode: bool,
     start_idx: int = 0, target_member: Optional[int] = None,
     case_label: Optional[str] = None,
-) -> List[str]:
+) -> list:
     """Run one ordered sequence of milestones over a shared ``blackboard`` and
-    return the emitted PipelineRun IRIs (collection-iteration Slice 2 factoring).
+    return the emitted PipelineRun OBJECTS, in order (collection-iteration
+    Slice 2 factoring; objects since am-6 — a sub-plan member's completion is
+    decided from its sub-run's terminal status, and ``run`` maps them to IRIs
+    for its public return, so no public signature changes).
 
     Shared by ``run`` (top level, ``ref_path=""``) and each map member's sub-plan
     (``ref_path`` = the member's path). Each milestone's per-run ref path is
@@ -462,7 +610,7 @@ def _run_milestone_sequence(
     sub-plan is inherently real — ``mm`` is present). Every emitted PipelineRun is
     appended to ``request_run.pipeline_runs`` (a flat list; the tree lives in the
     ref-path — Slice 2 decision)."""
-    pipeline_run_refs: List[str] = []
+    pipeline_runs: list = []
     for leaf_idx, leaf_ref in enumerate(leaf_refs):
         # Slice 3b — on a targeted re-execution the prefix milestones (before the
         # named map at ``start_idx``) already ran in the prior attempt and their
@@ -479,10 +627,10 @@ def _run_milestone_sequence(
         endpoints = leaf_targets.get(leaf_ref) or solve_target
         if real_mode and kind == "map":
             # Slice 1b/2 — fan out a uniform sub-plan over the collection's
-            # members (∀-abort barrier + bounded retry inside); a member's work
+            # members (bounded retry + stop-in-place, am-6); a member's work
             # is either the flat 1b leaf or a nested sub-plan (Slice 2). Writes
             # the ordered member outputs to the blackboard for the fold. Raises
-            # MemberAbortError on an exhausted member -> orchestrator aborts.
+            # An exhausted member stops in place; siblings run (am-6).
             # Slice 3b — when this is the targeted map (``leaf_idx == start_idx``
             # and a member was named) re-run only that one member; else the full
             # fan-out (``only_member=None`` → byte-identical).
@@ -528,9 +676,9 @@ def _run_milestone_sequence(
                 confidence=1.0,
             )
             pr.status = "completed"
-        pipeline_run_refs.append(pr.iri)
+        pipeline_runs.append(pr)
         request_run.pipeline_runs.append(pr.iri)
-    return pipeline_run_refs
+    return pipeline_runs
 
 
 def _member_starts(member_ds: str, shared) -> Tuple[str, ...]:
@@ -550,8 +698,10 @@ def _mint_no_route_graph(
     dispatcher, mm, request_id: str, run_ref: str,
     starts: Tuple[str, ...], capacity_graphs: Optional[list],
     case_label: Optional[str],
-) -> None:
-    """Leave a manifest-only grounding graph for a run that found no route.
+) -> Optional[str]:
+    """Leave a manifest-only grounding graph for a run that found no route;
+    return its ``graph_id`` (am-6: a no-route MEMBER's id in the fold
+    manifest), or ``None`` when nothing was written.
 
     :func:`_compose_pipeline` raises :class:`LeafPipelineNotFound` before
     anything is written, so without this an unroutable request leaves NO graph —
@@ -573,7 +723,7 @@ def _mint_no_route_graph(
     graph to leave.
     """
     if mm is None:
-        return
+        return None
     from .capacity_mm_writer import CapacityMMWriter, start_phrases
 
     mm_writer = CapacityMMWriter(mm, request_id, run_ref)
@@ -584,6 +734,8 @@ def _mint_no_route_graph(
     )
     if capacity_graphs is not None and mm_writer.graph is not None:
         capacity_graphs.append(mm_writer.graph)
+        return mm_writer.graph.graph_id
+    return None
 
 
 def _run_leaf_pipeline(
@@ -679,21 +831,27 @@ def _run_map_milestone(
     * **Flat leaf (1b)** — compose ``(member_ds, *shared_inputs) -> sub_target``
       and ``execute_pipeline`` in an isolated sub-blackboard seeded with the
       member value plus the shared inputs, under a fresh per-member run-ref so
-      its ``capacity_mm`` grounding graph stays isolated. Bounded retry: accept the first attempt
-      with ``success=True`` (only its grounding graph is persisted; rejected
-      attempts leave nothing in ``capacity_graphs``). ∀-abort: a member still
-      failing at ``MEMBER_RETRY_CAP`` raises :class:`MemberAbortError`.
+      its ``capacity_mm`` grounding graph stays isolated. Bounded retry on a
+      plain step failure only (a needs_input result is never re-asked and a
+      no-route member is deterministic — am-6); accept the first attempt with
+      ``success=True``. **Partial results (am-6, replacing ∀-abort):** a
+      member still failing at ``MEMBER_RETRY_CAP`` STOPS IN PLACE — its final
+      attempt's graph is retained (the stop the page names) — and its
+      siblings run.
     * **Sub-plan (Slice 2)** — when ``spec["sub_plan"]`` is present, the member
       runs that nested milestone sequence in its own isolated sub-blackboard
       (seeded with the member value) under the member's ref-path, and the map
       collects ``sub_target`` from that sub-blackboard. The sub-plan may itself
-      contain a nested map/fold; a nested ``MemberAbortError`` propagates
-      unretried (all-or-nothing at every level). The sub-plan member itself is
-      not retried — retry lives at the flat find+execute leaf inside it.
+      contain a nested map/fold; a sub-plan whose terminal milestone stopped
+      makes THIS member a stopped member of its parent (minimum-viable
+      propagation, §63 Q5). The sub-plan member itself is not retried — retry
+      lives at the flat find+execute leaf inside it.
 
-    On success, writes the ordered list of members' ``sub_target`` outputs to
-    ``blackboard[out_ds]`` for the fold. Remaining members are skipped once any
-    member aborts (the fold never runs).
+    Writes the COMPLETED members' ``sub_target`` outputs (ordered, compact) to
+    ``blackboard[out_ds]``, the full N-length grounding-id list and completed
+    mask to the am-5/am-6 carriers, and sets its PipelineRun status to
+    ``"stopped"`` when any member stopped (``"completed"`` otherwise). The
+    fold decides what a truncated domain means; the map never does.
 
     Multi-input CR: ``spec["shared_inputs"]`` (optional) names parent-blackboard
     keys copied into **every** member's sub-blackboard alongside the member
@@ -714,29 +872,89 @@ def _run_map_milestone(
         # ``run_attempt`` for the re-run, so its grounding ref is fresh and never
         # overwrites the prior attempt's (Slice-A isolation).
         existing = list(blackboard.get(out_ds) or [])
-        output = _run_one_member(
+        outcome = _run_one_member(
             dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
             request_id, leaf_path, only_member, members[only_member],
             run_attempt, capacity_graphs, shared, compose_cache, case_label,
         )
-        if only_member < len(existing):
-            existing[only_member] = output
+        mask = blackboard.get(member_completed_key(out_ds))
+        if mask is not None:
+            # ADR-0201 am-6 — the completed-outputs list is COMPACT, so the
+            # splice position is the count of completed members BEFORE this
+            # one; the retained mask says which those are. The record and the
+            # list must agree or this raises (the §63 Q3 discipline).
+            mask = list(mask)
+            if only_member >= len(mask):
+                mask.extend([False] * (only_member + 1 - len(mask)))
+            if len(existing) != sum(mask):
+                raise ValueError(
+                    f"retained outputs ({len(existing)}) disagree with the "
+                    f"completed mask ({sum(mask)}) for {out_ds!r}"
+                )
+            pos = sum(1 for c in mask[:only_member] if c)
+            was_completed = mask[only_member]
+            if outcome.completed and was_completed:
+                existing[pos] = outcome.value
+            elif outcome.completed and not was_completed:
+                existing.insert(pos, outcome.value)
+            elif not outcome.completed and was_completed:
+                del existing[pos]
+            mask[only_member] = outcome.completed
+            blackboard[member_completed_key(out_ds)] = mask
         else:
-            existing.append(output)
+            # Legacy positional splice (a retained blackboard from before the
+            # mask existed).
+            if only_member < len(existing):
+                existing[only_member] = outcome.value
+            else:
+                existing.append(outcome.value)
         blackboard[out_ds] = existing
-        pr.status = "completed"
+        # ADR-0201 amendment 5 — the retained id list splices EXACTLY as the
+        # retained outputs do, so position i keeps correlating: the re-run
+        # member's fresh graph replaces its prior id, untargeted siblings keep
+        # theirs.
+        if mm is not None and capacity_graphs is not None:
+            ids = list(blackboard.get(member_graph_ids_key(out_ds)) or [])
+            if only_member < len(ids):
+                ids[only_member] = outcome.graph_id
+            else:
+                ids.append(outcome.graph_id)
+            blackboard[member_graph_ids_key(out_ds)] = ids
+        pr.status = (
+            "completed" if (mask is None or all(mask)) else "stopped"
+        )
         return
     member_outputs: List[Any] = []
+    member_gids: List[Optional[str]] = []
+    member_mask: List[bool] = []
     for member_idx, member_value in enumerate(members):
-        member_outputs.append(
-            _run_one_member(
-                dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
-                request_id, leaf_path, member_idx, member_value,
-                run_attempt, capacity_graphs, shared, compose_cache, case_label,
-            )
+        outcome = _run_one_member(
+            dispatcher, writer, request_run, pr, leaf_ref, spec, mm,
+            request_id, leaf_path, member_idx, member_value,
+            run_attempt, capacity_graphs, shared, compose_cache, case_label,
         )
+        # ADR-0201 am-6 (partial results): a stopped member contributes NO
+        # output — a machinery failure has no value, and a hole marker would
+        # be absence-as-a-special-value (§63 Q1). Its grounding id still
+        # lands at its position, so the page can name the stop.
+        if outcome.completed:
+            member_outputs.append(outcome.value)
+        member_gids.append(outcome.graph_id)
+        member_mask.append(outcome.completed)
     blackboard[out_ds] = member_outputs
-    pr.status = "completed"
+    # ADR-0201 amendment 5 — the ordered member grounding-graph ids ride the
+    # same blackboard as the ordered outputs they correlate to, for the fold's
+    # manifest. Only when the run grounds AND collects graphs: an id pointing
+    # at a graph nobody keeps would be a reference into nothing. am-6 adds the
+    # parallel completed mask (see member_completed_key).
+    if mm is not None and capacity_graphs is not None:
+        blackboard[member_graph_ids_key(out_ds)] = member_gids
+    # The mask is EXECUTION state, not persistence state: the fold must see
+    # a truncation even on a run that collects no graphs, or the reducer
+    # would conclude from a gapped list on exactly that path. Written
+    # unconditionally by every real-mode map.
+    blackboard[member_completed_key(out_ds)] = member_mask
+    pr.status = "completed" if all(member_mask) else "stopped"
 
 
 def _run_one_member(
@@ -746,14 +964,29 @@ def _run_one_member(
     shared: Optional[Dict[str, Any]] = None,
     compose_cache: Optional[Dict[str, Any]] = None,
     case_label: Optional[str] = None,
-) -> Any:
-    """Run one map member and return its ``sub_target`` output (Slice 3b factoring).
+) -> "_MemberOutcome":
+    """Run one map member; return a :class:`_MemberOutcome`
+    ``(value, graph_id, completed)`` (Slice 3b factoring; the id is ADR-0201
+    am-5, the flag is am-6 / §63 Q1).
 
-    Extracted from the map loop so the full fan-out and a targeted single-member
-    re-run (:func:`_run_map_milestone`) share one code path. A member's work is a
-    nested sub-plan (Slice 2) or the flat 1b find + ``execute_pipeline`` leaf with
-    bounded retry + accept-first-clean; an exhausted member raises
-    :class:`MemberAbortError` (∀-abort).
+    The id is the member's grounding graph — completed flat member: the
+    ACCEPTED attempt's graph (rejected retries persist nothing); STOPPED flat
+    member: the FINAL attempt's graph, retained so the page can name the stop
+    (a no-route member's manifest-only graph included — the run-4 precedent:
+    manifest-only IS the no-route stop); completed sub-plan member: the graph
+    that PRODUCED ``sub_target`` (ADR-0209 D3); stopped sub-plan member: its
+    sub-run's last stopped graph (D3 as amended by am-6). ``None`` when the
+    run does not ground/collect (``mm`` or ``capacity_graphs`` absent).
+
+    Extracted from the map loop so the full fan-out and a targeted
+    single-member re-run (:func:`_run_map_milestone`) share one code path.
+    Retry policy (am-6): retry to ``MEMBER_RETRY_CAP`` on a plain step
+    failure ONLY. A needs_input result is stopped on the FIRST ask — inputs
+    do not change between attempts, so re-asking is re-asking; a cancelled
+    result is someone's decision, not a transient; a no-route member is
+    deterministic (the capacity set does not change between attempts).
+    Nothing raises: an exhausted or stopped member returns
+    ``completed=False`` and its siblings run.
 
     Multi-input CR: ``shared`` (the map's snapshotted ``shared_inputs``) is merged
     into the member's sub-blackboard **under** the member value — a spec that
@@ -769,12 +1002,14 @@ def _run_one_member(
     if sub_plan is not None:
         # Slice 2 — the member's work is a whole sub-plan (which may nest a
         # further map/fold). Run it once in an isolated sub-blackboard seeded with
-        # the member value; a nested ∀-abort raises and propagates unretried.
+        # the member value; a stopped sub-run makes this a stopped member
+        # (am-6 minimum-viable propagation, decided from the sub-run's record).
         # Multi-input CR: the shared inputs seed it too, so every leaf and nested
         # map inside the sub-plan can see them (a nested map re-declares the ones
         # it needs — there is no implicit inheritance past the sub-blackboard).
         sub_blackboard: dict = {**shared, member_ds: member_value}
-        _run_milestone_sequence(
+        graphs_before = len(capacity_graphs) if capacity_graphs is not None else 0
+        sub_prs = _run_milestone_sequence(
             dispatcher, writer, request_run,
             leaf_refs=sub_plan["leaf_milestone_refs"],
             pipeline_refs=sub_plan.get("pipeline_refs") or {},
@@ -790,9 +1025,40 @@ def _run_one_member(
             real_mode=True,
             case_label=case_label,
         )
-        return sub_blackboard.get(sub_target)
+        # am-6 / §63 Q5 (minimum-viable nested propagation): this member is
+        # COMPLETED iff its sub-run's terminal milestone completed AND the
+        # sub-plan actually produced ``sub_target`` — decided from the
+        # sub-run's own RECORD, never from a None in the value channel. The
+        # two signals must agree or this raises (§63 Q3's discipline).
+        terminal_ok = bool(sub_prs) and sub_prs[-1].status == "completed"
+        produced = sub_target in sub_blackboard
+        if terminal_ok != produced:
+            raise ValueError(
+                f"sub-plan member {member_path!r}: terminal milestone status "
+                f"({sub_prs[-1].status if sub_prs else 'none'!r}) and "
+                f"{sub_target!r} presence ({produced}) disagree - the record "
+                "and the value bus are out of step"
+            )
+        member_slice = (
+            capacity_graphs[graphs_before:]
+            if (mm is not None and capacity_graphs is not None)
+            else []
+        )
+        if terminal_ok:
+            return _MemberOutcome(
+                sub_blackboard.get(sub_target),
+                _produced_graph_id(member_slice, sub_target) or None,
+                True,
+            )
+        return _MemberOutcome(
+            None,
+            _stopped_graph_id(member_slice)
+            or (member_slice[-1].graph_id if member_slice else None),
+            False,
+        )
     # Flat 1b member (no sub_plan): bounded retry + accept-first-clean.
     accepted = None
+    result = None
     last_pipeline = None
     for retry_idx in range(MEMBER_RETRY_CAP):
         run_ref = (
@@ -807,25 +1073,33 @@ def _run_one_member(
                 compose_cache=compose_cache, case_label=case_label,
             )
         except LeafPipelineNotFound:
-            # An unroutable member used to leave no graph at all, and then
-            # ``MemberAbortError`` took the whole request's Record with it — the
-            # reader got an exception where a page should have been. Caught HERE
-            # rather than inside ``_run_member_pipeline`` because that function
-            # is deliberately pure (the caller decides accept/reject, so a
-            # rejected retry persists nothing), and persisting a graph is a
-            # caller decision. No route is not retryable: the capacity set does
-            # not change between attempts, so this propagates on the first pass.
-            _mint_no_route_graph(
+            # An unroutable member leaves its manifest-only graph (the run-4
+            # precedent: manifest-only IS the no-route stop) and — am-6 —
+            # STOPS IN PLACE instead of aborting the request. No route is not
+            # retryable: the capacity set does not change between attempts.
+            no_route_gid = _mint_no_route_graph(
                 dispatcher, mm, request_id, run_ref,
                 _member_starts(member_ds, shared), capacity_graphs, case_label,
             )
-            raise
+            return _MemberOutcome(None, no_route_gid, False)
         if result.success:
             accepted = result
             break  # accept the first clean attempt
+        if result.needs_input is not None or result.cancelled:
+            # am-6: never re-ask (inputs do not change between attempts —
+            # the rule is in the amendment's text), and a cancellation is a
+            # decision, not a transient. Stop on the first such terminal.
+            break
     if accepted is None:
-        # ∀-abort: this member exhausted the retry cap still failing.
-        pr.status = "failed"
+        # am-6 (partial results, replacing ∀-abort): this member STOPS IN
+        # PLACE. Its FINAL attempt's graph is retained — it grounded a
+        # manifest and a terminal ``RunStopped`` — so the page can name the
+        # stop at this member's position; siblings run.
+        member_gid = None
+        final_graph = result.capacity_graph if result is not None else None
+        if capacity_graphs is not None and final_graph is not None:
+            capacity_graphs.append(final_graph)
+            member_gid = final_graph.graph_id
         for step in getattr(last_pipeline, "steps", ()) or ():
             writer.emit_step_execution_record(
                 step.capacity_iri,
@@ -833,10 +1107,12 @@ def _run_one_member(
                 milestone_ref=leaf_ref,
                 confidence=0.0,
             )
-        raise MemberAbortError(leaf_ref, member_idx)
+        return _MemberOutcome(None, member_gid, False)
     # Accepted attempt only: persist its grounding graph + per-step records.
+    member_gid = None
     if capacity_graphs is not None and accepted.capacity_graph is not None:
         capacity_graphs.append(accepted.capacity_graph)
+        member_gid = accepted.capacity_graph.graph_id
     for step in getattr(last_pipeline, "steps", ()) or ():
         writer.emit_step_execution_record(
             step.capacity_iri,
@@ -844,7 +1120,7 @@ def _run_one_member(
             milestone_ref=leaf_ref,
             confidence=1.0,
         )
-    return accepted.outputs.get(sub_target)
+    return _MemberOutcome(accepted.outputs.get(sub_target), member_gid, True)
 
 
 def _run_member_pipeline(
@@ -952,15 +1228,15 @@ def _run_fold_milestone(
     capacity_graphs: Optional[list],
     case_label: Optional[str] = None,
 ) -> None:
-    """Fold / barrier-aggregate (collection-iteration Slice 1b).
+    """Fold / aggregate (collection-iteration Slice 1b; partial results am-6).
 
-    Reaching the fold means the map's ∀-abort barrier already passed (every
-    member succeeded — a failed member would have raised before this milestone).
-    Run the plan-named L3 **reducer** capacity over the ordered member outputs
-    on the blackboard (``in_ds`` = the map's ``out_ds``) and merge its outputs
-    back for downstream stages. A reducer that concludes "no consistent rule"
-    produces a legitimate value (→ ``dont_know`` via the existing
-    ``sufficient_predicate`` path), NOT an abort.
+    The fold is where a truncated domain is DECIDED, because the map never
+    decides it (am-6): when every member completed, run the plan-named L3
+    **reducer** capacity over the ordered member outputs on the blackboard
+    (``in_ds`` = the map's ``out_ds``) and merge its outputs back for
+    downstream stages. A reducer that concludes "no consistent rule" produces
+    a legitimate value (→ ``dont_know`` via the existing
+    ``sufficient_predicate`` path), NOT a stop.
 
     **Fold-grounding CR: the reducer runs through ``execute_pipeline``**, under
     a fresh per-fold run ref, so the fold grounds exactly the way a leaf and a
@@ -975,18 +1251,84 @@ def _run_fold_milestone(
     through the ONE function that grounds; a hand-mint here would be a third
     copy of the drift that made the member path differ from the leaf path.
 
-    L4-side semantics are unchanged: failure sets ``pr.status = "failed"`` and
-    the step record's confidence to ``0.0``, and never aborts the sequence.
-    Which member produced which verdict stays structural rather than becoming a
-    manifest field: the ref-path is the provenance tree (Slice 2) — member runs
-    ground under ``…:{map_idx}:m{i}:…``, the fold under its own milestone index,
-    same ``request_id`` — and the seeded collection's order is the members'
-    order."""
+    L4-side semantics: a crashed reducer sets ``pr.status = "failed"``; a
+    pre-dispatch stop (empty/partial domain) sets ``"stopped"`` — the closed
+    vocabulary the conceded classifier consumes
+    (:data:`PIPELINE_RUN_STATUSES`); the step record's confidence is ``0.0``
+    on any non-success; nothing aborts the sequence.
+
+    **Which member produced which verdict is a manifest field** (ADR-0201
+    amendment 5): the fold's manifest carries ``member_graph_ids`` — the
+    ordered member grounding-graph ids the map recorded — so position *i* of
+    the seeded list correlates to member graph *i* structurally. This
+    REPLACES the earlier ruling that correlation "stays structural via the
+    ref-path": value-equality correlation is defeated by two identical
+    in-band refusals (shape (a) makes those legal — demo finding N-F2), and
+    ref-path parsing was already rejected as core-private (S-F2). The seeded
+    collection's order is still the members' order; the manifest is how a
+    reader may rely on it.
+
+    **An empty domain never reaches the reducer** (ADR-0201 amendment 5,
+    owner ruling on ``core-empty-fold-domain``): a fold whose ``in_ds`` has
+    no members stops BEFORE dispatch — the run still grounds (manifest with
+    ``member_graph_ids=[]``, seeded empty list, ``RunStopped`` alone with
+    reason ``empty_domain``) — because a reducer "concluding" from nothing
+    would manufacture an epistemic claim out of machinery state, and leaving
+    the refusal to each reducer body means the next consumer reintroduces
+    it. Ruled at the fold, not per reducer.
+
+    **A TRUNCATED domain never reaches the reducer either** (ADR-0201
+    amendment 6, owner ruling on the machinery half): when the map's
+    completed mask says fewer members completed than exist — including NONE
+    of them — the fold stops ``partial_domain`` pre-dispatch, manifest
+    carrying the FULL N-length id list so every stopped member's position
+    renders its stop block. Concluding from a machinery-truncated domain is
+    the empty-domain doctrine generalized; the healing path is a Slice-3b
+    targeted re-exec of the stopped member. ``empty_domain`` stays "the map
+    had ZERO members"; the values list and the mask must agree or this
+    raises (§63 Q3)."""
     from .pipeline_execution import execute_pipeline
 
     reducer_iri = spec["reducer_iri"]
     in_ds = spec["in_ds"]
     run_ref = f"pipelinerun:{request_id}:{leaf_path}:{run_attempt}"
+    domain = blackboard.get(in_ds)
+    member_gids = (
+        blackboard.get(member_graph_ids_key(in_ds))
+        if (mm is not None and capacity_graphs is not None)
+        else None
+    )
+    member_mask = blackboard.get(member_completed_key(in_ds))
+    stop_reason = None
+    stop_detail = None
+    if member_mask is not None:
+        # am-6 coherence: the compact values list must match the mask's
+        # completed count — the record and the value bus in step, or loud.
+        values_count = len(domain or [])
+        if values_count != sum(1 for c in member_mask if c):
+            raise ValueError(
+                f"fold {leaf_ref!r}: {values_count} values in {in_ds!r} but "
+                f"the completed mask says {sum(1 for c in member_mask if c)} "
+                "members completed - the carriers are out of step"
+            )
+        if not all(member_mask):
+            stop_reason = RUN_STOPPED_PARTIAL_DOMAIN
+            stop_detail = (
+                "some of what was needed could not be completed, so no "
+                "overall conclusion was drawn"
+            )
+    if stop_reason is None and not domain:
+        stop_reason = RUN_STOPPED_EMPTY_DOMAIN
+        stop_detail = (
+            "the collection to decide from had no members, so no "
+            "conclusion was drawn"
+        )
+        # Deliberately NO coercion of a missing carrier to [] here (critic
+        # s60 point 2): key presence must mean exactly one thing - A MAP
+        # SUPPLIED IDS - with [] only when a map ran and yielded zero
+        # members. A fold-only plan (in_ds seeded directly, no map) gets no
+        # key on EITHER emptiness, so the key can serve as a fold-with-map
+        # marker without lying on a legal plan shape.
     result = execute_pipeline(
         dispatcher,
         _fold_pipeline(dispatcher, reducer_iri, in_ds),
@@ -995,6 +1337,9 @@ def _run_fold_milestone(
         mm=mm,
         pipeline_run_ref=run_ref,
         case_label=case_label,
+        member_graph_ids=member_gids,
+        stop_before_dispatch=stop_reason,
+        stop_detail=stop_detail,
     )
     success = bool(result.success)
     if success:
@@ -1007,12 +1352,22 @@ def _run_fold_milestone(
         milestone_ref=leaf_ref,
         confidence=1.0 if success else 0.0,
     )
-    pr.status = "completed" if success else "failed"
+    if success:
+        pr.status = "completed"
+    elif result.stopped_before_dispatch is not None:
+        # am-6: a pre-dispatch domain stop is a reached stop-DECISION, not a
+        # crash - the conceded classifier's "stopped" (never "failed": no
+        # capacity ran, nothing broke).
+        pr.status = "stopped"
+    else:
+        pr.status = "failed"
 
 
 __all__ = [
     "run",
     "MemberAbortError",
+    "PIPELINE_RUN_STATUSES",
+    "terminal_attempt_stopped_short",
     "MEMBER_RETRY_CAP",
     "resolve_member_target",
     "FINDER_BFS",

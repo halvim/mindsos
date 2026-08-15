@@ -197,6 +197,50 @@ def test_capacity_persist_round_trip(falkor_client):
     assert [n.value for n in refs] == [graph.graph_id]
 
 
+@pytest.mark.integration
+def test_member_graph_ids_order_survives_the_store_at_end_state(falkor_client):
+    """ADR-0201 am-5 end-state cell: the fold manifest's ordered id LIST
+    (S-F1) is re-read from the store ALONE, AFTER a later unrelated write —
+    the RULES 12 end-state-reader row class: a per-case read at persist time
+    structurally cannot see what a later write does to the end state."""
+    from mindsos_core.reconstruction import load_graph
+    from mindsos_intelligence.mm_persister import FalkorMMPersister
+    from mindsos_capacity.identifiers import (
+        MANIFEST_MEMBER_GRAPH_IDS,
+        NODE_TYPE_RUN_MANIFEST,
+    )
+
+    mm = MentalModel(session_id="s", user_id="u")
+    fold_writer = CapacityMMWriter(mm, "t3", "pipelinerun:t3:fold:0")
+    ids = ["gid-zulu", "gid-alpha", "gid-mike"]
+    fold_writer.manifest(
+        declared_starts={}, capacity_phrases={}, member_graph_ids=ids,
+    )
+    fold_writer.seed("datastate:t3in", [])
+    persister = FalkorMMPersister(falkor_client)
+    persist_capacity_mm(
+        persister, mm.capacity_mm, [fold_writer.graph], request_id="t3",
+        encoders={},
+    )
+
+    # The LATER write: a different run persists after the fold graph.
+    mm2 = MentalModel(session_id="s", user_id="u")
+    later = _writer_run_graph(mm2)
+    persist_capacity_mm(
+        persister, mm2.capacity_mm, [later], request_id="t3-later",
+        encoders={"datastate:b": lambda v: {"encoded": v}},
+    )
+
+    # End-state read: the store alone, after the last write.
+    loaded = load_graph(falkor_client, fold_writer.graph.graph_id)
+    manifests = [
+        n for n in loaded.nodes.values()
+        if n.type_name == NODE_TYPE_RUN_MANIFEST
+    ]
+    assert len(manifests) == 1
+    assert manifests[0].value[MANIFEST_MEMBER_GRAPH_IDS] == ids
+
+
 # ── Dream PRE-0 Slice 2: build_capacity_index (index-only) + streaming sink ──
 
 
