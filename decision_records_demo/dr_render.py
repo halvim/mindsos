@@ -76,7 +76,11 @@ layout knows are ``decision`` and ``claim_decision``.
 Refusals (ADR-0209 shape (a)): a verdict VALUE carrying ``refusal_reason``
 is a structural marker, branch-only, never printed; the prose comes from the
 origin record OF THE REFUSING VALUE (the produced origin-record dict whose
-``refusal_reason`` is set), rendered in the leaf refusal's Q-form.
+``refusal_reason`` is set), rendered in the leaf refusal's Q-form. A
+refusal-shaped record on a member whose verdict does NOT refuse is
+DELIBERATELY ignored (§76): a reader refusal on an input the decision never
+consulted is legitimate noise — a vehicle exposure needs no severity — and
+record↔verdict coherence is a demand this contract chooses not to impose.
 """
 
 from __future__ import annotations
