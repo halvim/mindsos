@@ -22,11 +22,16 @@ lives in the in-process KnowledgeLayer — KL persistence is the server's job
 honest form of that limit: it renders with no live KL at all, and the page
 STATES the date's absence instead of omitting the line (§52 condition 1).
 
-Two modes:
+Modes (combinable where sensible):
 
   (default)             run all five cases → consolidate → render each FROM
                         THE STORE. Narration prints each case's
                         capacity_root_ref so it can be fed to --from-root.
+  --screens <dir>       additionally compose each case's SCREEN (dr_screen:
+                        the "what arrived" panel + the styled Record; §78–§80)
+                        and write one self-contained HTML file per case. The
+                        raw pages between the markers stay the §12 evidence;
+                        the screens are what the room sees.
   --from-root <ref>     NO cases are run and NO KnowledgeLayer exists in the
                         process: the page is rendered from the store alone,
                         given only the index graph's id. This is the
@@ -46,6 +51,7 @@ raw error, exit 3. Exit 1 if any render raises. On the Linux box:
 
 from __future__ import annotations
 
+import os
 import sys
 
 from mindsos_capacity.context import make_writeable
@@ -73,6 +79,7 @@ from decision_records_demo.dr_dump import (
 )
 from decision_records_demo.dr_persist_smoke import _harness_with_consolidation
 from decision_records_demo.dr_render import RendererGapError, render_record
+from decision_records_demo.dr_screen import compare_pages, compose_screen
 
 
 def _policy_harness(kl, scope):
@@ -291,6 +298,25 @@ def _case_routingrefusal(client):
     )
 
 
+def _case_intake(name):
+    """The room-safe intake for each case — the same VALUES the case feeds
+    ``execution.run``, never the IRI-keyed seed (an IRI on the arrived panel
+    would be G6's sin on the other screen)."""
+    from decision_records_demo.dr_routing import (
+        CASE_A_EXPOSURES, CASE_B_EXPOSURES,
+    )
+
+    return {
+        "claim": list(EXPOSURES),
+        "refusal": "2026-07-01",
+        "outage": "2026-07-01",
+        "boundary": [],
+        "noroute": EXPOSURES[0],
+        "routing": CASE_A_EXPOSURES,
+        "routingrefusal": CASE_B_EXPOSURES,
+    }[name]
+
+
 CASES = {
     "claim": _case_claim,
     "refusal": _case_refusal,
@@ -335,8 +361,16 @@ def main(argv) -> int:
                 print("usage: dr_render_pages.py [--from-root <capacity_root_ref>]")
                 return 2
             return _main_from_root(client, argv[2])
+        screens_dir = None
+        if len(argv) > 1 and argv[1] == "--screens":
+            if len(argv) != 3:
+                print("usage: dr_render_pages.py [--screens <dir>] [--from-root <capacity_root_ref>]")
+                return 2
+            screens_dir = argv[2]
+            os.makedirs(screens_dir, exist_ok=True)
         failures = 0
         roots = []
+        pages = {}
         for name, case in CASES.items():
             kl, session, episode_id = case(client)
             props = _episode_props(kl, session, episode_id)
@@ -350,22 +384,46 @@ def main(argv) -> int:
                 print(f"RENDER RAISED: {type(exc).__name__}: {exc}")
                 print()
                 continue
+            pages[name] = page
             print("-- BEGIN PAGE --")
             print(page, end="")
             print("-- END PAGE --")
+            if screens_dir:
+                target = os.path.join(screens_dir, f"{name}.html")
+                with open(target, "w", encoding="utf-8") as fh:
+                    fh.write(compose_screen(page, intake=_case_intake(name)))
+                print(f"screen written: {target}")
             print()
-        print("== END-STATE re-verify (§55): every Episode re-rendered from the store ALONE, after the last write ==")
+        print(
+            "== END-STATE re-verify (§55 + §79-5): every Episode re-rendered "
+            "from the store ALONE, after the last write — and the store-alone "
+            "page must differ from the live page in EXACTLY the date line =="
+        )
         for name, root in roots:
             if not root:
                 print(f"end-state {name!r}: no capacity_root_ref, nothing to render")
                 failures += 1
                 continue
             try:
-                render_record(client, {"capacity_root_ref": root})
-                print(f"end-state {name!r}: rendered from root {root!r}")
+                page_root = render_record(client, {"capacity_root_ref": root})
             except RendererGapError as exc:
                 failures += 1
                 print(f"end-state {name!r} RAISED: {exc}")
+                continue
+            if name not in pages:
+                print(f"end-state {name!r}: rendered from root {root!r} (no live page to compare)")
+                continue
+            diffs = compare_pages(pages[name], page_root)
+            expected_absence = "Decided date: not available from stored evidence"
+            if (
+                len(diffs) == 1
+                and diffs[0][0].startswith("Decided ")
+                and diffs[0][1] == expected_absence
+            ):
+                print(f"end-state {name!r}: store-alone page matches except the date line")
+            else:
+                failures += 1
+                print(f"end-state {name!r}: UNEXPECTED differences: {diffs!r}")
         print(f"cases that raised: {failures}")
         return 0 if failures == 0 else 1
     finally:
