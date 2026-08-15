@@ -155,16 +155,19 @@ local and remote, both lists checked).
 | #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
 | #157 | *(squash)* | **Map-member manifests** — minting moves into `execute_pipeline`; the sub-MM routing gap; ADR-0201 am-4 + ADR-0207 am-3. Tag **`dr-map-manifest-confirmed`** | **4731 / 11 / 1x / 0** |
 | #158 | *(squash)* | **Fold grounding** — the reducer routes through `execute_pipeline`; RULES §12 replaced by the sweep; the coordination-file pin; the run-surface sentinel. Tag **`dr-fold-grounding-confirmed`** | **4747 / 11 / 1x / 0** |
+| #165 | *(squash at close-out)* | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4747 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#158's tip `714f4ee`** — carryable: the tip's parent chain sits on `origin/main`
-(`3dd151b`), the pre-gate `git merge origin/main` was a no-op for exactly that
-reason, so it is a **merged-state** gate. *(Predicted exactly — the eleventh
-consecutive exact call.)* The line below is the previous baseline, kept for the
-history of the rule that this line goes stale:
+**Baseline for the next item: 4769 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#165's tip** — a **merged-state** gate: the branch is off `93af23f` = `origin/main`
+tip, and the pre-gate `git merge origin/main` was a no-op. *(Predicted exactly —
+the twelfth consecutive exact core call: 4747 + 22 new tests, the delta counted
+from the written tests, not recalled.)* Carryable onto the #165 squash once it
+lands; re-verify with the one-`mindsos_*`-commit check as always. The line below
+is the previous baseline, kept for the history of the rule that this line goes
+stale:
 
-**~~Baseline for the next item: 4731 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#157's tip `f878886`.~~**
+**~~Baseline for the next item: 4747 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#158's tip `714f4ee`.~~**
 
 **The demo home is live** (not a PR row — it is a demo-branch ship, no core
 gate by design): `demo/decision-records` @ `d94ca4f`, worktree `MindsOS-dr`
@@ -176,12 +179,15 @@ byte-identical to the build container's run. §12 checks in this lane now answer
 against a dump the owner ran, as the rule requires.
 
 **Items 1–7 are DONE (§2.11 sweep, §2.12 smoke, §2.13 renderer, §2.14 the
-bijection fix). Do not rebuild them.** ⏭ **NEXT: the wall —
-`core-collection-member-dont-know`, owner-ruled 2026-08-14 to shape (a)** (an
-exposure that cannot be decided says so as an in-band value, not as a third
-member outcome), with **`core-empty-fold-domain`** and the newly filed
-**`core-member-machinery-failure-partial-record`** ruled alongside it. Layer B
-(item 8) is **re-filed as blocked** — see §2.14.
+bijection fix), and the wall's substrate SHIPPED at #165 (§2.16): shape (a) is
+code — `core-collection-member-dont-know` and `core-empty-fold-domain` are
+CLOSED.** ⏭ **NEXT: `core-member-machinery-failure-partial-record`** (the
+machinery half — partial results; it changes ∀-abort semantics and leans on the
+#165 substrate; both re-scope sentences live in its STATE entry), then the
+Phase-7 build-out (routing capacities — a new decision-capacity kind,
+Gate-4-checked in writing before registration — intake path, batch harness; the
+demo-side am-5 consumption rides that lane per ruling D5). Layer B (item 8)
+stays **re-filed as blocked** — see §2.14.
 
 ⚠ **THE PARAGRAPH THAT USED TO SIT HERE WAS A SPLICE, and it is the reason this
 correction is written out rather than made silently.** It carried a *"Next:
@@ -1068,6 +1074,82 @@ permanent in both drivers.
 
 ---
 ---
+
+### 2.16 The (a) ship — shape (a) becomes code, and the empty domain becomes a stop
+
+*(shape-a lane, 2026-08-15. PR #165, branch `feat/dr-shape-a` off `93af23f`,
+build commit `feaf0a0` + this docs+STATE commit. Design pass §44/§45 three
+chats old — every premise RE-VERIFIED against the tree before building (§58):
+all anchors held ±1 line, and the re-verification surfaced five things the
+design pass did not carry. Owner rulings D1–D6 taken before building. Critic
+stage-2 at the PR hold, per the standing slot.)*
+
+**What shipped.** ADR-0201 **amendment 5**: `MANIFEST_MEMBER_GRAPH_IDS` — the
+fold manifest carries the ordered member grounding-graph ids, so member ↔
+verdict correlation is structural by position, not value equality (N-F2's
+class, made legal by shape (a), is defused at the substrate); and
+`RUN_STOPPED_EMPTY_DOMAIN` + its phrase, the fourth member of the closed set,
+whose vocabulary am-5 now owns (no other ADR did — grepped, §45).
+**ADR-0209**: `DataState.refusal_capable` (free-standing, emitted to node
+properties), `Capacity.decodes_refusals` (declaration-only, not emitted), and
+`check_fold_reducer_decode` — static, on BOTH entry roads (`build` and
+`execution.run` intake), because every current demo driver hand-builds its
+`PlanResult` and a contract enforced on one of two roads is a convention.
+**The empty domain stops at the fold** (owner ruling, `core-empty-fold-domain`):
+`_run_fold_milestone` never hands a reducer an empty domain — pre-dispatch stop
+through `execute_pipeline` (`stop_before_dispatch`), manifest +
+`member_graph_ids=[]` + `RunStopped` minted ALONE via `record_empty_domain`
+(G3; `record_stopped` refuses the token the way it refuses `cancelled`).
+Threading: `_run_one_member` returns `(output, graph_id)`; a sub-plan member's
+id is the graph that PRODUCED its `sub_target` (ruling D3); the id list rides
+the blackboard (`member_graph_ids_key`) so a Slice-3b targeted re-run splices
+ids exactly as it splices outputs.
+
+**Evidence (owner-run, Linux, §11/§12).** Gate **4769 / 11 / 1x / 0 —
+predicted exactly in writing** (4747 + 22; twelfth consecutive exact core
+call). Six mutations, EACH shown red by exactly the predicted named test(s), in
+isolation, tree reverted after each — including one where a *neighboring* guard
+caught the same leak from the other side (the unconditional-manifest-key
+mutation reddened the fold-ids absence test AND `test_run_manifest`'s exact
+key-set test, 2 red / 16 pass). END-STATE cell added per the §12 row class:
+`member_graph_ids` order re-read from the store alone AFTER a later unrelated
+write. CLI collect > 0 proven by chain construction (a zero count exits the
+`&&` chain before the gate).
+
+**Findings and dispositions (§12.4):**
+
+- **F1 — a live docstring contradicted the ship** (`_run_fold_milestone`:
+  *"stays structural rather than becoming a manifest field"*): **fixed in this
+  ship**, with `test_fold_grounding`'s header, which carried the same sentence.
+- **F2 — an existing test pinned the defect being removed**
+  (`test_empty_collection_composes_nothing_and_still_folds` asserted the
+  reducer RECEIVES `[]`): **fixed in this ship** — RESTATED as
+  `…_and_stops_at_the_fold`, lazy-composition half kept, reducer-receipt half
+  was `core-empty-fold-domain` itself. The one existing test whose meaning
+  changed; the gate delta (+22) is new tests only.
+- **F3 — the pre-dispatch stop is a new execution REGIME** (not a new caller —
+  the surface sentinel is green by construction, `execute_pipeline` call census
+  unchanged at 3): **filed as a sweep-matrix row** on `dr-sweep-rows-undeferred`
+  (row 4), answered today by the empty-domain suite; the 12.5 full re-run must
+  carry it.
+- **F4 — two dev-loop count misses, recorded**: the targeted-suite total (68,
+  not my stated 62/64) and `test_run_stopped.py`'s population (14, not 17) —
+  both RECALLED per-file populations instead of collected ones. The gate
+  prediction held because its delta was counted from the written tests. Rule
+  applied, not just noted: predict per-file counts only from a collect.
+- **F5 — `member_graph_ids` name collision** with the MetaHyperEdge persistence
+  row key (`builders.py:268/:284`): **rejected as a rename** (contexts
+  disjoint; the natural name); NOTED in am-5 so a bare-string grep is not
+  misread.
+
+**Conditions riding the ship, all met:** the N-F2 re-scope sentence and the
+unmatched-member re-scope sentence both live in
+`core-member-machinery-failure-partial-record`'s STATE entry (this commit adds
+the N-F2 one — §45 promised both, and neither STATE entry carried the second);
+the fold-detection-heuristic retirement note is in am-5's Consequences (the
+manifest key's presence replaces the parentless-list heuristic when the demo
+consumes am-5 — deferred to the demo lane, ruling D5); §38's two conditions
+were met at filing (verified in STATE).
 
 ## 3. Guards
 
