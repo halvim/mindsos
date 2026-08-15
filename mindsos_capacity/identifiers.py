@@ -355,6 +355,17 @@ RUN_STOPPED_NEEDS_INPUT = "needs_input"
 #: (guard G3): use ``CapacityMMWriter.record_empty_domain``, never
 #: ``record_stopped``.
 RUN_STOPPED_EMPTY_DOMAIN = "empty_domain"
+#: ADR-0201 amendment 6 — a fold milestone found its domain TRUNCATED by
+#: machinery: one or more map members stopped (crashed at the retry cap,
+#: needed input, found no route, or their sub-plan stopped), so the ordered
+#: verdicts are fewer than the members and no overall conclusion is drawn.
+#: A structural fact about the RUN — concluding from a machinery-truncated
+#: domain is the empty-domain doctrine generalized. The reducer never
+#: dispatches: minted ALONE via ``CapacityMMWriter.record_partial_domain``
+#: (G3), never ``record_stopped``. ``empty_domain`` stays "the map had ZERO
+#: members"; this token is "some of N could not be completed" (including
+#: all of N — a truncated domain, not an empty one).
+RUN_STOPPED_PARTIAL_DOMAIN = "partial_domain"
 
 #: Closed set. Deliberately NOT the ``origin_v0`` refusal vocabulary: that
 #: answers *why a value has no origin*, this answers *why a run stopped*.
@@ -364,6 +375,7 @@ RUN_STOPPED_REASONS = frozenset(
         RUN_STOPPED_CANCELLED,
         RUN_STOPPED_NEEDS_INPUT,
         RUN_STOPPED_EMPTY_DOMAIN,
+        RUN_STOPPED_PARTIAL_DOMAIN,
     }
 )
 
@@ -434,6 +446,10 @@ RUN_STOPPED_PHRASES = {
     RUN_STOPPED_NEEDS_INPUT: "more information was needed before going on",
     RUN_STOPPED_EMPTY_DOMAIN: (
         "there was nothing to decide from - the collection had no members"
+    ),
+    RUN_STOPPED_PARTIAL_DOMAIN: (
+        "some of what was needed could not be completed, so no overall "
+        "conclusion was drawn"
     ),
 }
 
@@ -682,6 +698,7 @@ __all__ = [
     "RUN_STOPPED_CANCELLED",
     "RUN_STOPPED_NEEDS_INPUT",
     "RUN_STOPPED_EMPTY_DOMAIN",
+    "RUN_STOPPED_PARTIAL_DOMAIN",
     "RUN_STOPPED_REASONS",
     "PROP_RUN_STOPPED_DETAIL",
     "PROP_RUN_STOPPED_BEFORE",

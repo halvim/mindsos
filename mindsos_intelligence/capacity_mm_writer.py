@@ -79,6 +79,7 @@ from mindsos_capacity.identifiers import (
     PROP_RUN_STOPPED_DETAIL,
     RUN_STOPPED_CANCELLED,
     RUN_STOPPED_EMPTY_DOMAIN,
+    RUN_STOPPED_PARTIAL_DOMAIN,
     RUN_STOPPED_REASONS,
     capacity_instance_iri,
     datastate_instance_iri,
@@ -251,9 +252,21 @@ class CapacityMMWriter:
                 MANIFEST_CASE_LABEL: case_label,
             }
             if member_graph_ids is not None:
-                value[MANIFEST_MEMBER_GRAPH_IDS] = [
-                    str(gid) for gid in member_graph_ids
-                ]
+                ids = list(member_graph_ids)
+                bad = [g for g in ids if not isinstance(g, str) or not g]
+                if bad:
+                    # am-6 finding (caught by a mutation pass): ``str(gid)``
+                    # coercion laundered a None id into the truthy string
+                    # "None" - a fake-looking id that would persist and
+                    # render. Every position must carry a real graph id;
+                    # a hole here is an upstream contract violation and it
+                    # surfaces HERE, loudly, not on a page later.
+                    raise ValueError(
+                        f"member_graph_ids entries must be non-empty strings; "
+                        f"got {bad!r} - a member position with no grounding "
+                        "graph id is an upstream defect, not a value to coerce"
+                    )
+                value[MANIFEST_MEMBER_GRAPH_IDS] = ids
             return graph.add_node(
                 value=value,
                 type_name=NODE_TYPE_RUN_MANIFEST,
@@ -335,6 +348,12 @@ class CapacityMMWriter:
                 "reducer never dispatched, so minting a CapacityInstance "
                 "would claim a capacity executed when it did not"
             )
+        if reason == RUN_STOPPED_PARTIAL_DOMAIN:
+            raise ValueError(
+                "use record_partial_domain() for a truncated fold domain: "
+                "the reducer never dispatched, so minting a CapacityInstance "
+                "would claim a capacity executed when it did not"
+            )
         with self._mm.lock.write_locked():
             graph = self._run_graph()
             cap_inst = capacity_instance_iri(
@@ -405,6 +424,34 @@ class CapacityMMWriter:
             graph = self._run_graph()
             node = self._mint_run_stopped(
                 graph, RUN_STOPPED_EMPTY_DOMAIN, detail,
+                extra={PROP_RUN_STOPPED_BEFORE: before_capacity_iri}
+                if before_capacity_iri else None,
+            )
+            return node.node_id
+
+    def record_partial_domain(
+        self, before_capacity_iri: Optional[str] = None, detail: Optional[str] = None
+    ) -> str:
+        """Record a fold run stopped because its domain was TRUNCATED by
+        machinery (ADR-0201 amendment 6): one or more map members stopped, so
+        the ordered verdicts are fewer than the members and the reducer was
+        never dispatched.
+
+        Same shape as :meth:`record_empty_domain`, same G3 reason: no
+        invocation occurred, so the terminal :data:`NODE_TYPE_RUN_STOPPED`
+        node is minted **alone** — no CapacityInstance, no ``STOPPED_AT``
+        edge — carrying the reducer it stopped before as
+        :data:`PROP_RUN_STOPPED_BEFORE`. A separate method rather than a
+        reason flag on its neighbour: the two facts differ (nothing to decide
+        from vs. could not finish deciding), and :meth:`record_stopped`
+        refuses both tokens for the same false-invocation reason.
+
+        ``detail`` is prose-by-contract (S-3): no IRI, no internal ref.
+        """
+        with self._mm.lock.write_locked():
+            graph = self._run_graph()
+            node = self._mint_run_stopped(
+                graph, RUN_STOPPED_PARTIAL_DOMAIN, detail,
                 extra={PROP_RUN_STOPPED_BEFORE: before_capacity_iri}
                 if before_capacity_iri else None,
             )

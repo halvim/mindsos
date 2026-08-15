@@ -266,6 +266,38 @@ def test_record_stopped_refuses_the_empty_domain_reason():
         writer.record_stopped(CAP_ONE, (), RUN_STOPPED_EMPTY_DOMAIN)
 
 
+def test_record_stopped_refuses_the_partial_domain_reason():
+    """ADR-0201 am-6: a truncated fold domain means the reducer never
+    dispatched — record_stopped's CapacityInstance would be a false
+    invocation, the same G3 argument as its two sibling refusals."""
+    from mindsos_capacity.identifiers import RUN_STOPPED_PARTIAL_DOMAIN
+
+    mm = _mm()
+    writer = CapacityMMWriter(mm, REQ, RUN)
+    with pytest.raises(ValueError, match="record_partial_domain"):
+        writer.record_stopped(CAP_ONE, (), RUN_STOPPED_PARTIAL_DOMAIN)
+
+
+def test_record_partial_domain_mints_the_stop_alone():
+    """RunStopped alone — no CapacityInstance, no STOPPED_AT — with the
+    stopped-before capacity as a property (ADR-0201 am-6, the
+    record_empty_domain shape with the fifth token)."""
+    from mindsos_capacity.identifiers import RUN_STOPPED_PARTIAL_DOMAIN
+
+    mm = _mm()
+    writer = CapacityMMWriter(mm, REQ, RUN)
+    writer.record_partial_domain(
+        before_capacity_iri=CAP_ONE, detail="some members could not finish"
+    )
+    graph = _graph(mm)
+    stops = _nodes(graph, NODE_TYPE_RUN_STOPPED)
+    assert len(stops) == 1
+    assert stops[0].value == RUN_STOPPED_PARTIAL_DOMAIN
+    assert (stops[0].properties or {})[PROP_RUN_STOPPED_BEFORE] == CAP_ONE
+    assert _nodes(graph, NODE_TYPE_CAPACITY_INSTANCE) == []
+    assert _edges(graph, EDGE_STOPPED_AT) == []
+
+
 def test_record_empty_domain_mints_the_stop_alone():
     """RunStopped alone: no CapacityInstance, no STOPPED_AT edge, the
     stopped-before capacity carried as a property — record_cancelled's shape

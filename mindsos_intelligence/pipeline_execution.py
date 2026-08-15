@@ -44,7 +44,15 @@ from typing import Any, Dict, Mapping, Optional
 from mindsos_capacity.identifiers import (
     RUN_STOPPED_EMPTY_DOMAIN,
     RUN_STOPPED_NEEDS_INPUT,
+    RUN_STOPPED_PARTIAL_DOMAIN,
     RUN_STOPPED_STEP_FAILED,
+)
+
+#: The reasons a caller may order a stop BEFORE the first dispatch (ADR-0201
+#: am-5/am-6). Closed on purpose: an unknown token raises rather than minting
+#: an untranslatable stop.
+_PRE_DISPATCH_STOP_REASONS = frozenset(
+    {RUN_STOPPED_EMPTY_DOMAIN, RUN_STOPPED_PARTIAL_DOMAIN}
 )
 
 
@@ -149,14 +157,14 @@ def execute_pipeline(
     as its prose detail. The caller decides the stop (it is milestone-level
     policy, e.g. an empty fold domain); this function is where it grounds,
     because a hand-mint at the milestone would be a second copy of the drift
-    the fold-grounding CR removed. Closed to
-    :data:`~mindsos_capacity.identifiers.RUN_STOPPED_EMPTY_DOMAIN` today —
-    an unknown token raises rather than minting an untranslatable stop.
+    the fold-grounding CR removed. Closed to ``_PRE_DISPATCH_STOP_REASONS``
+    (``empty_domain``, am-5; ``partial_domain``, am-6) — an unknown token
+    raises rather than minting an untranslatable stop.
     """
-    if stop_before_dispatch is not None and stop_before_dispatch != RUN_STOPPED_EMPTY_DOMAIN:
+    if stop_before_dispatch is not None and stop_before_dispatch not in _PRE_DISPATCH_STOP_REASONS:
         raise ValueError(
-            f"stop_before_dispatch supports only {RUN_STOPPED_EMPTY_DOMAIN!r} "
-            f"(ADR-0201 amendment 5), got {stop_before_dispatch!r}"
+            f"stop_before_dispatch supports only {sorted(_PRE_DISPATCH_STOP_REASONS)} "
+            f"(ADR-0201 am-5/am-6), got {stop_before_dispatch!r}"
         )
     blackboard: Dict[str, Any] = dict(initial_inputs or {})
 
@@ -222,7 +230,12 @@ def execute_pipeline(
         # (manifest + seeds); the stop node is minted ALONE, before-capacity
         # = the step that would have run.
         if writer is not None:
-            writer.record_empty_domain(
+            recorder = (
+                writer.record_partial_domain
+                if stop_before_dispatch == RUN_STOPPED_PARTIAL_DOMAIN
+                else writer.record_empty_domain
+            )
+            recorder(
                 before_capacity_iri=(
                     steps[0].capacity_iri if steps else None
                 ),

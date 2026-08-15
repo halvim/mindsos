@@ -373,23 +373,19 @@ class Orchestrator:
         blackboard: dict = dict(solve_seed or {}) if solve_seed is not None else {}
         targeted = None
         while True:
-            try:
-                execution.run(
-                    self._dispatcher, writer, plan_result, request_run,
-                    mm=self._mm, run_scope=scope, solve_seed=solve_seed,
-                    capacity_graphs=capacity_graphs, run_attempt=replans,
-                    blackboard=blackboard, targeted=targeted,
-                )
-            except execution.MemberAbortError:
-                # Collection-iteration Slice 1b — a map member exhausted
-                # MEMBER_RETRY_CAP still failing (all-or-nothing abort). The
-                # fold did not run; close (conceded) what grounded. Dream Slice
-                # 1b (D4): a reached abort is a DECISION → conceded, not "failed".
-                request_run.status = "conceded"
-                self._consolidate(
-                    request_run, p1.request_pattern_iri, episode_id, writer, capacity_graphs
-                )
-                return RequestOutcome("conceded", request_run.iri, replans_used=replans)
+            # Partial-record CR (ADR-0201 am-6): ``MemberAbortError`` is no
+            # longer raised anywhere — a failing member stops IN PLACE, its
+            # siblings run, and the fold stops ``partial_domain``. The old
+            # catch-and-concede lived here; the conceded classification now
+            # happens below, from the RECORD (the terminal attempt's
+            # PipelineRun statuses). The absence of raisers is pinned by the
+            # census test in tests/architecture.
+            execution.run(
+                self._dispatcher, writer, plan_result, request_run,
+                mm=self._mm, run_scope=scope, solve_seed=solve_seed,
+                capacity_graphs=capacity_graphs, run_attempt=replans,
+                blackboard=blackboard, targeted=targeted,
+            )
             if self._simplified:
                 break
             sufficient = sufficient_predicate.evaluate(self._dispatcher)
@@ -449,6 +445,23 @@ class Orchestrator:
                 )
                 continue
             break
+
+        # Partial-record CR (ADR-0201 am-6): a terminal attempt that reached a
+        # stop-DECISION short of the ask — one or more milestones "stopped"
+        # (partial/empty domain, stopped members) and none crashed — is
+        # ``conceded`` (Dream D4: a reached stop is a decision), decided from
+        # the RECORD via the closed-vocabulary classifier, which RAISES on an
+        # unknown status rather than defaulting (coordination §63 Q3).
+        if not self._simplified and not sufficient:
+            chain = writer.chain_graph()
+            if chain is not None and execution.terminal_attempt_stopped_short(
+                chain, request_run
+            ):
+                request_run.status = "conceded"
+                self._consolidate(
+                    request_run, p1.request_pattern_iri, episode_id, writer, capacity_graphs
+                )
+                return RequestOutcome("conceded", request_run.iri, replans_used=replans)
 
         # Phase 6 — failure diagnosis on the dont-know path
         if not self._simplified and not sufficient:

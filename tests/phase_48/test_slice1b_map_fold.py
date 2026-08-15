@@ -1,4 +1,6 @@
-"""Collection-iteration Slice 1b — map fan-out + fold + ∀-abort barrier + retry.
+"""Collection-iteration Slice 1b — map fan-out + fold + bounded retry.
+(The ∀-abort barrier this header once named was RETIRED by ADR-0201 am-6 —
+partial results; the restated test below pins the replacement behavior.)
 
 Slice 1a threaded values across milestones; 1b adds the map/fold plan primitive
 on top of that bus. A ``map`` milestone fans a uniform sub-pipeline out over the
@@ -154,7 +156,13 @@ def test_map_fans_out_and_fold_reduces_in_order():
     assert len(graphs) == 4
 
 
-def test_all_abort_on_member_failure_skips_rest_and_fold():
+def test_member_failure_stops_in_place_siblings_run_fold_stops_partial():
+    """RESTATED by ADR-0201 am-6 (was test_all_abort_on_member_failure_skips_
+    rest_and_fold): the ∀-abort is retired. The KEPT halves: member 1 still
+    retries exactly to MEMBER_RETRY_CAP, and the reducer still never runs.
+    The REVERSED halves — the defect the old name pinned: member 2 now RUNS
+    (a sibling's crash no longer destroys its work), nothing raises, and the
+    fold stops partial_domain instead of silently never existing."""
     MEMBER_SEEN.clear()
     REDUCER_SEEN.clear()
 
@@ -166,17 +174,14 @@ def test_all_abort_on_member_failure_skips_rest_and_fold():
         return {DS_SUB: {"solved": v}}
 
     mm, disp, writer, request_run = _harness(_fail_member_1)
-    with pytest.raises(execution.MemberAbortError) as ei:
-        execution.run(
-            disp, writer, _map_fold_plan(), request_run,
-            mm=mm, run_scope="t",
-            solve_seed={DS_COLL: [{"m": 0}, {"m": 1}, {"m": 2}]},
-            capacity_graphs=[],
-        )
-    assert ei.value.member_index == 1
-    # Member 1 retried up to the cap; member 2 never ran; the fold never ran.
+    execution.run(
+        disp, writer, _map_fold_plan(), request_run,
+        mm=mm, run_scope="t",
+        solve_seed={DS_COLL: [{"m": 0}, {"m": 1}, {"m": 2}]},
+        capacity_graphs=[],
+    )
     assert MEMBER_SEEN.count({"m": 1}) == execution.MEMBER_RETRY_CAP
-    assert {"m": 2} not in MEMBER_SEEN
+    assert {"m": 2} in MEMBER_SEEN
     assert REDUCER_SEEN == []
 
 

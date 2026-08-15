@@ -518,10 +518,12 @@ def test_shared_inputs_reach_a_sub_plan_member():
     assert HARM_SEEN == [("a@0ofA", 7), ("a@5ofA", 7)]
 
 
-def test_all_abort_and_retry_cap_unchanged_with_shared_inputs():
-    """∀-abort and ``MEMBER_RETRY_CAP`` are untouched by this CR: a member that
-    still fails at the cap aborts the map, later members never run, and the fold
-    never runs."""
+def test_retry_cap_kept_and_stop_in_place_with_shared_inputs():
+    """RESTATED by ADR-0201 am-6 (was test_all_abort_and_retry_cap_unchanged_
+    with_shared_inputs). The retry-cap half is KEPT VERBATIM per the critic's
+    Q5 condition: a member still failing at MEMBER_RETRY_CAP stops. The abort
+    half is the retired defect: the later member now RUNS and nothing raises;
+    the reducer still never runs (the fold stops partial_domain)."""
     _clear()
 
     def _fail_second(**kw):
@@ -531,15 +533,13 @@ def test_all_abort_and_retry_cap_unchanged_with_shared_inputs():
         return {DS_FEAT: [kw[DS_WIN_A], kw[DS_WIN_B]]}
 
     mm, disp, writer, request_run = _harness(feature_impl=_fail_second)
-    with pytest.raises(execution.MemberAbortError) as ei:
-        execution.run(
-            disp, writer, _multi_plan(), request_run,
-            mm=mm, run_scope="t", solve_seed=_seed(positions=(0, 100, 200)),
-        )
-    assert ei.value.member_index == 1
+    execution.run(
+        disp, writer, _multi_plan(), request_run,
+        mm=mm, run_scope="t", solve_seed=_seed(positions=(0, 100, 200)),
+    )
     failing = [p for p in FEAT_SEEN if p[0].startswith("a@100")]
     assert len(failing) == execution.MEMBER_RETRY_CAP
-    assert not any(p[0].startswith("a@200") for p in FEAT_SEEN)
+    assert any(p[0].startswith("a@200") for p in FEAT_SEEN)
     assert REDUCER_SEEN == []
 
 
