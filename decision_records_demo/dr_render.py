@@ -126,9 +126,13 @@ class _Analysis:
     def __init__(self, graph: Any) -> None:
         self.graph = graph
         produced_ids = set()
+        self.produced_by: Dict[str, Any] = {}
         for edge in graph.edges.values():
             if edge.type_name == "PRODUCES":
                 produced_ids.add(edge.target.node_id)
+                self.produced_by[edge.target.node_id] = (
+                    edge.source.properties or {}
+                ).get("capacity")
         self.manifest: Optional[Dict[str, Any]] = None
         self.stopped: Optional[Any] = None
         self.capacity_iris: List[str] = []
@@ -179,6 +183,20 @@ class _Analysis:
             f"no phrase for any capacity on {self.graph.role!r}; an IRI is "
             "not a sentence"
         )
+
+    def phrase_for_value(self, value: Any) -> str:
+        """The phrase of the capacity that PRODUCED this value — on a
+        multi-capacity member graph (readers + a decision) the verdict line
+        must not wear a reader's phrase. Falls back to :meth:`phrase` (the
+        first phrased capacity), which is byte-identical on every
+        single-capacity graph."""
+        phrases = self.manifest.get("capacity_phrases") or {}
+        for node_id, node in self.graph.nodes.items():
+            if node.type_name == NODE_DSI and node.value == value:
+                iri = self.produced_by.get(node_id)
+                if iri in phrases:
+                    return phrases[iri]
+        return self.phrase()
 
     def stop_lines(self) -> List[str]:
         phrases = self.manifest.get("stop_reason_phrases") or {}
@@ -263,7 +281,7 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
         for start in member.parentless
         if not isinstance(start.value, list)
     ]
-    lines.append(f"   {member.phrase()} → {_verdict_text(entry)}")
+    lines.append(f"   {member.phrase_for_value(entry)} → {_verdict_text(entry)}")
     return lines
 
 
