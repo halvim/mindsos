@@ -231,10 +231,12 @@ class CapacityMMWriter:
         run only: the ordered ``graph_id`` of each map member's grounding
         graph, in member order, so a reader correlates member <-> verdict by
         position instead of by verdict-value equality (which two identical
-        refusals defeat). ``None`` — every non-fold caller — means the key is
-        ABSENT, which a reader must distinguish from an empty list: an empty
-        list is a fold over zero members (its run stops ``empty_domain``); an
-        absent key is not a fold this writer was told about.
+        refusals defeat). Key presence means exactly one thing — A MAP
+        SUPPLIED IDS: an empty list is a map that ran and yielded zero
+        members (its fold stops ``empty_domain``); ``None`` — every other
+        caller, including a fold-only plan whose ``in_ds`` was seeded
+        directly — leaves the key ABSENT (critic §60 point 2: presence must
+        never flip on emptiness).
 
         Everything lives in the node's **value**, as a dict:
         ``Graph.add_node`` validates ``properties`` as primitives only, and

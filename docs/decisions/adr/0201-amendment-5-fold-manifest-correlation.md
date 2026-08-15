@@ -51,10 +51,13 @@ precedent for a run-scoped fact arriving via `execute_pipeline`. A LIST in
 the node **value** survives the store in order (S-F1), which is what member
 order needs; the primitives-only rule binds properties, not the value.
 
-- The key is **absent** on every non-fold run. Absent ≠ empty: `[]` is a
-  fold over zero members; absence is a run that never had a member set.
-  Presence is also how a reader may recognise a fold run without the
-  parentless-list heuristic.
+- Key presence means exactly one thing: **a map supplied ids.** `[]` is a
+  map that ran and yielded zero members; ABSENT is every other run — a
+  non-fold run, a fold whose `in_ds` was seeded directly (fold-only plan, no
+  map), or a run that did not collect graphs. Presence is therefore a sound
+  fold-with-map marker (the heuristic's replacement) that cannot flip on
+  emptiness — the stop path deliberately does NOT coerce a missing carrier
+  to `[]` (critic §60 point 2, pinned by test).
 - A member's id is the graph of the run that **produced its `sub_target`**
   (ADR-0209 ruling D3): flat member — the accepted attempt's graph (rejected
   retries persist nothing); sub-plan member — the producing run's graph,
@@ -84,7 +87,9 @@ state — the S2 / ADR-0208 inversion. Mechanics:
 - `_run_fold_milestone` never hands a reducer an empty domain. It orders a
   **pre-dispatch stop** through `execute_pipeline`
   (`stop_before_dispatch=`), so the fold run still grounds: manifest (with
-  `member_graph_ids=[]`), seeded empty list, then the terminal `RunStopped`
+  `member_graph_ids=[]` when a map supplied the carrier; no key on a
+  fold-only plan — the presence rule above), seeded empty list, then the
+  terminal `RunStopped`
   minted **alone** — no `CapacityInstance`, because no capacity ran (guard
   G3, the `record_cancelled` argument verbatim). The writer method is
   `record_empty_domain`; `record_stopped` refuses the token exactly as it

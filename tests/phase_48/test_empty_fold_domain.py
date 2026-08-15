@@ -210,6 +210,40 @@ def test_the_manifest_snapshot_translates_the_empty_domain_token(empty_run):
     )
 
 
+def test_a_fold_only_plan_writes_no_member_ids_key_even_when_empty():
+    """Critic s60 point 2: key presence means A MAP SUPPLIED IDS - never a
+    fact about emptiness. A fold whose in_ds was seeded directly (no map)
+    gets NO key whether its domain is empty or not; [] appears only when a
+    map ran and yielded zero members. Without this pin, the stop path's old
+    None->[] coercion made key presence flip on emptiness for a legal plan
+    shape - a lying fold marker."""
+    REDUCER_CALLS.clear()
+    mm, dispatcher, writer, request_run = _harness()
+    graphs: list = []
+    fold_only = PlanResult(
+        plan_ref="plan:efd-foldonly",
+        root_milestone_ref="m0",
+        leaf_milestone_refs=["mFold"],
+        pipeline_refs={"mFold": "pFold"},
+        milestone_specs={
+            "mFold": {"kind": "fold", "reducer_iri": CAP_REDUCE, "in_ds": DS_OUT},
+        },
+    )
+    execution.run(
+        dispatcher, writer, fold_only, request_run,
+        mm=mm, solve_seed={DS_OUT: []},
+        capacity_graphs=graphs,
+    )
+    assert REDUCER_CALLS == []
+    assert len(graphs) == 1
+    stopped = _nodes(graphs[0], NODE_TYPE_RUN_STOPPED)
+    assert len(stopped) == 1
+    assert stopped[0].value == RUN_STOPPED_EMPTY_DOMAIN
+    manifests = _nodes(graphs[0], NODE_TYPE_RUN_MANIFEST)
+    assert len(manifests) == 1
+    assert MANIFEST_MEMBER_GRAPH_IDS not in manifests[0].value
+
+
 def test_a_nonempty_domain_still_reaches_the_reducer():
     """The control: two members fold exactly as before this amendment."""
     graphs, _ = _run(["e0", "e1"])

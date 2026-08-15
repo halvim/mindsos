@@ -157,8 +157,9 @@ local and remote, both lists checked).
 | #158 | *(squash)* | **Fold grounding** — the reducer routes through `execute_pipeline`; RULES §12 replaced by the sweep; the coordination-file pin; the run-surface sentinel. Tag **`dr-fold-grounding-confirmed`** | **4747 / 11 / 1x / 0** |
 | #165 | *(squash at close-out)* | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4769 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#165's tip** — a **merged-state** gate: the branch is off `93af23f` = `origin/main`
+**Baseline for the next item: 4770 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#165's final tip** (4769 at the build tip + the critic-§60 guard; the final-tip
+run is the baseline) — a **merged-state** gate: the branch is off `93af23f` = `origin/main`
 tip, and the pre-gate `git merge origin/main` was a no-op. *(Predicted exactly —
 the twelfth consecutive exact core call: 4747 + 22 new tests, the delta counted
 from the written tests, not recalled.)* Carryable onto the #165 squash once it
@@ -1141,6 +1142,16 @@ write. CLI collect > 0 proven by chain construction (a zero count exits the
   row key (`builders.py:268/:284`): **rejected as a rename** (contexts
   disjoint; the natural name); NOTED in am-5 so a bare-string grep is not
   misread.
+
+**Critic §60 (stage-2 at the hold): merge conditioned on ONE fix, landed.**
+Points 1/3/4/5 held (carrier, fail-closed decode, run-intake widening, the F2
+restatement — behaviors re-verified by the critic RUNNING them); point 2 did
+not: the stop path coerced a missing carrier to `[]`, so a fold-ONLY plan's
+key presence flipped on emptiness — a lying fold marker on a legal plan shape.
+Fixed by deleting the coercion (key presence = A MAP SUPPLIED IDS, `[]` only
+when a map ran with zero members), pinned by
+`test_a_fold_only_plan_writes_no_member_ids_key_even_when_empty`, mutation
+(coerce back) shown red. am-5's absence sentence tightened with it.
 
 **Conditions riding the ship, all met:** the N-F2 re-scope sentence and the
 unmatched-member re-scope sentence both live in

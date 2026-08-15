@@ -1106,8 +1106,12 @@ def _run_fold_milestone(
             "the collection to decide from had no members, so no "
             "conclusion was drawn"
         )
-        if member_gids is None and mm is not None and capacity_graphs is not None:
-            member_gids = []
+        # Deliberately NO coercion of a missing carrier to [] here (critic
+        # s60 point 2): key presence must mean exactly one thing - A MAP
+        # SUPPLIED IDS - with [] only when a map ran and yielded zero
+        # members. A fold-only plan (in_ds seeded directly, no map) gets no
+        # key on EITHER emptiness, so the key can serve as a fold-with-map
+        # marker without lying on a legal plan shape.
     result = execute_pipeline(
         dispatcher,
         _fold_pipeline(dispatcher, reducer_iri, in_ds),
