@@ -155,20 +155,24 @@ local and remote, both lists checked).
 | #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
 | #157 | *(squash)* | **Map-member manifests** — minting moves into `execute_pipeline`; the sub-MM routing gap; ADR-0201 am-4 + ADR-0207 am-3. Tag **`dr-map-manifest-confirmed`** | **4731 / 11 / 1x / 0** |
 | #158 | *(squash)* | **Fold grounding** — the reducer routes through `execute_pipeline`; RULES §12 replaced by the sweep; the coordination-file pin; the run-surface sentinel. Tag **`dr-fold-grounding-confirmed`** | **4747 / 11 / 1x / 0** |
+| #166 | *(squash at close-out)* | **The partial-record ship** — partial results (ADR-0201 am-6): a member stops in place, a truncated domain is a stop; `MemberAbortError` retired as a raiser; `conceded` from the record. Tag **`dr-partial-record-confirmed`** at close-out | **4783 / 11 / 1x / 0** |
 | #165 | `5db50d4` | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4770 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#165's final tip** (4769 at the build tip + the critic-§60 guard; the final-tip
-run is the baseline) — a **merged-state** gate: the branch is off `93af23f` = `origin/main`
-tip, and the pre-gate `git merge origin/main` was a no-op. *(Predicted exactly —
-the twelfth consecutive exact core call: 4747 + 22 new tests, the delta counted
-from the written tests, not recalled.)* Carryable onto the #165 squash once it
-lands; re-verify with the one-`mindsos_*`-commit check as always. The line below
-is the previous baseline, kept for the history of the rule that this line goes
-stale:
+**Baseline for the next item: 4783 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#166's final tip** — merged-state (branch off `900e7f6` = `origin/main` tip,
+pre-gate merges no-ops). *(Gate attempt 1 was a 2-red MISS that IS the ship's
+finding F2 — the restate census spanned one exception symbol, not every
+changed behavior; attempt 2 exact after the two no-route pins were restated.
+The prediction record now reads: fourteen exact core calls and one gate-level
+miss whose miss was the finding.)* Carryable onto the #166 squash once it
+lands; re-verify with the one-`mindsos_*`-commit check as always. The line
+below is the previous baseline, kept for the history of the rule that this
+line goes stale:
 
-**~~Baseline for the next item: 4747 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#158's tip `714f4ee`.~~**
+**~~Baseline for the next item: 4770 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#165's final tip.~~**
+
+
 
 **The demo home is live** (not a PR row — it is a demo-branch ship, no core
 gate by design): `demo/decision-records` @ `d94ca4f`, worktree `MindsOS-dr`
@@ -179,16 +183,20 @@ deps — and its output was verified **by the owner** on the Linux box,
 byte-identical to the build container's run. §12 checks in this lane now answer
 against a dump the owner ran, as the rule requires.
 
-**Items 1–7 are DONE (§2.11 sweep, §2.12 smoke, §2.13 renderer, §2.14 the
-bijection fix), and the wall's substrate SHIPPED at #165 (§2.16): shape (a) is
-code — `core-collection-member-dont-know` and `core-empty-fold-domain` are
-CLOSED.** ⏭ **NEXT: `core-member-machinery-failure-partial-record`** (the
-machinery half — partial results; it changes ∀-abort semantics and leans on the
-#165 substrate; both re-scope sentences live in its STATE entry), then the
-Phase-7 build-out (routing capacities — a new decision-capacity kind,
-Gate-4-checked in writing before registration — intake path, batch harness; the
-demo-side am-5 consumption rides that lane per ruling D5). Layer B (item 8)
-stays **re-filed as blocked** — see §2.14. *(Close-out 2026-08-15: #165 squash
+**Items 1–7 are DONE, the wall's substrate SHIPPED at #165 (§2.16), and the
+MACHINERY HALF SHIPPED at #166 (§2.17): the member wall is CLOSED —
+`core-collection-member-dont-know`, `core-empty-fold-domain` and
+`core-member-machinery-failure-partial-record` are all closed. THE CORE IS
+DONE FOR THE DEMO.** ⏭ **NEXT: the demo lane** — the deferred am-5/am-6
+consumption commit (renderer manifest-primary; the partial-fold and no-route
+page forms; the N-F2 and unmatched-member re-scopes, both conditions now met;
+heuristic retirement), then the Phase-7 build-out (routing capacities —
+Gate-4-checked in writing before registration — intake path, batch harness),
+then the two Gate-7 predecessors (§12.5 full-matrix re-run — STILL UNOWNED —
+and `--from-root` on final demo state). A parallel CORE lane (owner decision
+2026-08-15) may work the unowned register queue, ONE core lane at a time,
+with a MERGE FREEZE before the §12.5 predecessor run. Layer B (item 8) stays
+**re-filed as blocked** — see §2.14. *(Close-out 2026-08-15: #165 squash
 `5db50d4`, tag `dr-shape-a-confirmed`; baseline 4770 CARRYABLE onto `5db50d4`
 by construction — the only commit in `93af23f..5db50d4` IS the #165 squash.
 Final-tip gate 4770 was the THIRTEENTH consecutive exact call; the critic-§60
@@ -1165,6 +1173,76 @@ the fold-detection-heuristic retirement note is in am-5's Consequences (the
 manifest key's presence replaces the parentless-list heuristic when the demo
 consumes am-5 — deferred to the demo lane, ruling D5); §38's two conditions
 were met at filing (verified in STATE).
+
+### 2.17 The partial-record ship — a member stops in place, and the work that completed survives
+
+*(partial-record lane, 2026-08-15. PR #166, branch `feat/dr-partial-record`
+off `900e7f6`, commits `2a25a41` (build) + `0e90d19` (F1 fix) + `6dc04f9` (F2
+restatements) + the docs+STATE commit. Design pass §62–§64 — the item's FIRST
+— with owner rulings D1 (fold stops, no conclusion from a truncated domain),
+D2 (`partial_domain` via am-6), D5 (`conceded`, uniform incl. empty-domain
+reclassification, §65), D6 (needs_input stops in place, no re-ask); critic
+§63 adopted in full, its Q5 nested-propagation requirement redrawn into
+scope. Critic stage-2 at the PR hold.)*
+
+**What shipped.** ADR-0201 **amendment 6**. A member that crashes at
+`MEMBER_RETRY_CAP`, asks for input (FIRST ask — never re-asked), is
+cancelled, or finds no route STOPS IN PLACE: its final attempt's graph is
+retained (the stop the page names — a no-route member's manifest-only graph
+per the run-4 precedent) and its siblings run. `MemberAbortError` is retired
+as a raiser (class kept as API; absence census-pinned in the surface
+sentinel); `LeafPipelineNotFound` no longer propagates from the member path
+(top-level leaf unchanged). The map writes compact completed outputs + the
+full N-length id list + a completed MASK (ungated — execution state, not
+persistence state: gating it on collection would have let the reducer
+conclude from a gapped list on exactly the no-collection path, caught in
+self-review); Slice-3b targeted re-runs splice all three coherently and the
+carriers raise on disagreement. The fold stops `partial_domain` pre-dispatch
+on ANY truncation (all-failed included; `empty_domain` stays N==0);
+`record_partial_domain` mints RunStopped ALONE (G3). `PipelineRun.status`
+gains `"stopped"`; `conceded` is decided FROM THE RECORD
+(`terminal_attempt_stopped_short`: chain graph + the terminal attempt's live
+refs, CLOSED vocabulary, raises on unknown). A sub-plan member's completion
+is decided from its sub-run's terminal status cross-checked against
+`sub_target` presence, raising on disagreement — the silent-None conversion
+path (§63 Q5) is closed.
+
+**Evidence.** Final-tip gate **4783 / 11 / 1x / 0 — predicted exactly**;
+targeted suite 84 exact; EIGHT mutations, each red by exactly the predicted
+named test(s) in isolation, tree reverted after each.
+
+**Findings and dispositions (§12.4):**
+
+- **F1 — `manifest()` laundered None ids** (`str(gid)` → the truthy string
+  `"None"`, a fake id that would persist and render): found because mutation
+  M1's first pass MISSED (2 red vs 3 — the guard my third test relied on was
+  defeated by the laundering). **Fixed in this ship** (`0e90d19`): the writer
+  refuses non-string ids loudly, pinned by
+  `test_the_manifest_refuses_a_none_member_graph_id`; the same guard then
+  caught mutation M8's silent-None UPSTREAM of its predicted symptom —
+  defense-in-depth observed, not claimed.
+- **F2 — the restate census spanned one exception symbol, not every changed
+  behavior**: gate attempt 1 went red on the two no-route member pins
+  (`LeafPipelineNotFound` propagation — the second raise this ship retires),
+  which my `MemberAbortError`-only grep never enumerated. **Fixed in this
+  ship** (`6dc04f9`): both pins restated, kept halves verbatim; the census
+  rule — enumerate the restate set from the BEHAVIORS the ship changes — is
+  recorded here and in memory. The gate was the empirical census; the set is
+  closed.
+- **F3 — sweep regime rows**: the pre-dispatch stop regime (row 4) now
+  carries TWO tokens, and the stopped-member map state is a new regime
+  surface — **filed** as a row-4 addendum on `dr-sweep-rows-undeferred`.
+- **F4 — orchestrator-level partial e2e** is not directly tested (the
+  phase_47 harness runs a v0 notional plan; a map/fold plan through the full
+  Orchestrator needs planner support) — the classifier + wiring are
+  unit-pinned; the e2e cell is **filed into the §12.5 full-matrix re-run**,
+  where it belongs anyway.
+
+**Filed, not decided here:** `core-nested-cascade-policy`
+(partial-within-partial, nested retries; the minimum-viable propagation is
+in) and `core-member-transient-retry-mode` (COLLECTION_ITERATION finding 1).
+The demo re-scope sentences stay in place — both their conditions are now
+met, and the demo lane consumes them.
 
 ## 3. Guards
 
