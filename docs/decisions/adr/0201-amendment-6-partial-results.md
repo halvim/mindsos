@@ -94,6 +94,12 @@ never defaults. ⚠ Owner-ruled consequence (coordination §65): an
 EMPTY-domain run now also classifies `conceded` (previously `dont_know` via
 insufficiency) — one uniform rule for reached stop-decisions.
 
+**Domain statement (critic §67):** the partial/empty machinery exists on the
+``mm``-supplied road only. With ``mm=None`` the real milestone path does not
+run at all (``real_mode`` requires an mm — pre-existing v0 semantics, not
+this amendment's carve-out); every quantified claim above is therefore
+domain-scoped to grounded runs, stated here so it cannot hide.
+
 ## Consequences
 
 - The `#158` member-order hazard is DEFUSED rather than tripped: the fold
