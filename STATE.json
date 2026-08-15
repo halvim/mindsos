@@ -1,7 +1,7 @@
 {
   "_comment": "Machine-readable state. Chats read THIS first, not the 134KB HANDOFF.md. Bump as part of the ship ritual.",
   "core_version": "phase50",
-  "core_git_sha": "5db50d4",
+  "core_git_sha": "b276c63",
   "last_shipped_phase": 50,
   "in_progress": {
     "phase": 51,
@@ -415,8 +415,8 @@
     {
       "kind": "core",
       "name": "Decision Records - the partial-record ship: a member stops in place, and the work that completed survives",
-      "sha": "feat/dr-partial-record off 900e7f6: build 2a25a41 + F1 fix 0e90d19 + F2 restatements 6dc04f9 + docs+STATE (this one); PR #166 HELD for the critic stage-2; squash sha and tag dr-partial-record-confirmed at close-out",
-      "gate": "FINAL-TIP 4783/11/1x/0 - PREDICTED EXACTLY. Gate attempt 1 was a 2-red MISS that IS finding F2 (restate census spanned one exception symbol - MemberAbortError - while the ship retires TWO raise behaviors; the two no-route member pins restated, kept halves verbatim). Targeted suite 84 EXACT (by collect). EIGHT mutations, each red by exactly the predicted named test(s) in isolation; M1's first pass missed 2-vs-3 and the miss IS finding F1: manifest() str() coercion laundered None ids into the truthy string 'None' - writer now refuses non-string ids (pinned), and that guard then caught M8's silent-None upstream of its predicted symptom. Prediction record: fourteen exact core calls, one gate-level miss whose miss was the finding.",
+      "sha": "b276c63 (squash of feat/dr-partial-record: build 2a25a41 + F1 fix 0e90d19 + F2 restatements 6dc04f9 + docs+STATE + critic-s67 e2e 69a9aa8); merged 2026-08-15; tag dr-partial-record-confirmed; lane closed per RULES 10",
+      "gate": "FINAL-TIP 4785/11/1x/0 - PREDICTED EXACTLY (4783 at the pre-e2e tip, also exact, + the critic-s67 lifecycle e2e pair; NINTH mutation - the classifier read severed - red on the conceded e2e alone, falling to dont_know as predicted). Gate attempt 1 was a 2-red MISS that IS finding F2 (restate census spanned one exception symbol - MemberAbortError - while the ship retires TWO raise behaviors; the two no-route member pins restated, kept halves verbatim). Targeted suite 84 EXACT (by collect). EIGHT mutations, each red by exactly the predicted named test(s) in isolation; M1's first pass missed 2-vs-3 and the miss IS finding F1: manifest() str() coercion laundered None ids into the truthy string 'None' - writer now refuses non-string ids (pinned), and that guard then caught M8's silent-None upstream of its predicted symptom. Prediction record: fifteen exact core calls, one gate-level miss whose miss was the finding.",
       "what": "THE MEMBER WALL IS CLOSED - THE CORE IS DONE FOR THE DEMO. ADR-0201 am-6 (partial results): members stop IN PLACE with their final attempt's graph retained (needs_input on FIRST ask - the re-ask defect dies; no-route keeps its manifest-only graph, the run-4 precedent); MemberAbortError retired as a raiser, absence census-pinned; map writes compact outputs + N-length ids + UNGATED completed mask (gating it would let a no-collection run conclude from a gapped list); fold stops partial_domain on any truncation (empty_domain stays N==0); record_partial_domain (G3); PipelineRun.status gains 'stopped'; conceded FROM THE RECORD (terminal_attempt_stopped_short, closed vocabulary, raises on unknown; empty-domain runs reclassify conceded per owner s65); sub-plan members decided from their sub-run's record + sub_target coherence (silent-None closed). FILED: core-nested-cascade-policy, core-member-transient-retry-mode; sweep row-4 addendum + row 5 + the orchestrator-e2e cell on dr-sweep-rows-undeferred. Dispositions in plan s2.17. NEXT: the demo lane (am-5/am-6 consumption, then Phase-7 build-out); a parallel core lane may work the register queue with a merge freeze before the s12.5 predecessor run."
     },
     {

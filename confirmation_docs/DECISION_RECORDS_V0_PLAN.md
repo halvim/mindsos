@@ -155,22 +155,23 @@ local and remote, both lists checked).
 | #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
 | #157 | *(squash)* | **Map-member manifests** — minting moves into `execute_pipeline`; the sub-MM routing gap; ADR-0201 am-4 + ADR-0207 am-3. Tag **`dr-map-manifest-confirmed`** | **4731 / 11 / 1x / 0** |
 | #158 | *(squash)* | **Fold grounding** — the reducer routes through `execute_pipeline`; RULES §12 replaced by the sweep; the coordination-file pin; the run-surface sentinel. Tag **`dr-fold-grounding-confirmed`** | **4747 / 11 / 1x / 0** |
-| #166 | *(squash at close-out)* | **The partial-record ship** — partial results (ADR-0201 am-6): a member stops in place, a truncated domain is a stop; `MemberAbortError` retired as a raiser; `conceded` from the record. Tag **`dr-partial-record-confirmed`** at close-out | **4783 / 11 / 1x / 0** |
+| #166 | `b276c63` | **The partial-record ship** — partial results (ADR-0201 am-6): a member stops in place, a truncated domain is a stop; `MemberAbortError` retired as a raiser; `conceded` from the record; the critic-§67 lifecycle e2e landed pre-merge. Tag **`dr-partial-record-confirmed`** | **4785 / 11 / 1x / 0** |
 | #165 | `5db50d4` | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
 
-**Baseline for the next item: 4783 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#166's final tip** — merged-state (branch off `900e7f6` = `origin/main` tip,
-pre-gate merges no-ops). *(Gate attempt 1 was a 2-red MISS that IS the ship's
-finding F2 — the restate census spanned one exception symbol, not every
-changed behavior; attempt 2 exact after the two no-route pins were restated.
-The prediction record now reads: fourteen exact core calls and one gate-level
-miss whose miss was the finding.)* Carryable onto the #166 squash once it
-lands; re-verify with the one-`mindsos_*`-commit check as always. The line
-below is the previous baseline, kept for the history of the rule that this
-line goes stale:
+**Baseline for the next item: 4785 passed / 11 skipped / 1 xpassed / 0 failed,
+CARRYABLE onto the #166 squash `b276c63`** — the squash is the only
+`mindsos_*`-touching commit since the gated final tip (the critic-§67 e2e
+pair included: 4783 + 2, predicted in writing before the run; the wiring
+mutation red on the named conceded test alone). *(Gate attempt 1 of the
+pre-e2e tip was a 2-red MISS that IS the ship's finding F2 — the restate
+census spanned one exception symbol, not every changed behavior; the
+prediction record closed at fifteen exact core calls and one gate-level miss
+whose miss was the finding.)* Re-verify with the one-`mindsos_*`-commit
+check as always. The line below is the previous baseline, kept for the
+history of the rule that this line goes stale:
 
-**~~Baseline for the next item: 4770 passed / 11 skipped / 1 xpassed / 0 failed at PR
-#165's final tip.~~**
+**~~Baseline for the next item: 4783 passed / 11 skipped / 1 xpassed / 0 failed at PR
+#166's final tip.~~**
 
 
 
@@ -1207,9 +1208,12 @@ is decided from its sub-run's terminal status cross-checked against
 `sub_target` presence, raising on disagreement — the silent-None conversion
 path (§63 Q5) is closed.
 
-**Evidence.** Final-tip gate **4783 / 11 / 1x / 0 — predicted exactly**;
-targeted suite 84 exact; EIGHT mutations, each red by exactly the predicted
-named test(s) in isolation, tree reverted after each.
+**Evidence.** Final-tip gate **4785 / 11 / 1x / 0 — predicted exactly**
+(4783 at the pre-e2e tip, also exact, + the critic-§67 lifecycle pair);
+targeted suite 84 exact; NINE mutations — the eight ship mutations plus the
+§67 wiring mutation (classifier read severed → the conceded e2e alone falls
+to `dont_know`) — each red by exactly the predicted named test(s) in
+isolation, tree reverted after each.
 
 **Findings and dispositions (§12.4):**
 
@@ -1232,11 +1236,16 @@ named test(s) in isolation, tree reverted after each.
 - **F3 — sweep regime rows**: the pre-dispatch stop regime (row 4) now
   carries TWO tokens, and the stopped-member map state is a new regime
   surface — **filed** as a row-4 addendum on `dr-sweep-rows-undeferred`.
-- **F4 — orchestrator-level partial e2e** is not directly tested (the
-  phase_47 harness runs a v0 notional plan; a map/fold plan through the full
-  Orchestrator needs planner support) — the classifier + wiring are
-  unit-pinned; the e2e cell is **filed into the §12.5 full-matrix re-run**,
-  where it belongs anyway.
+- **F4 — orchestrator-level partial e2e** was first filed into the §12.5
+  re-run; the critic's stage-2 hold (§67) overruled the filing — the one
+  untested seam was exactly the wiring across the deleted catch — and the
+  e2e **landed pre-merge** (`tests/phase_48/test_partial_lifecycle_e2e.py`,
+  commit `69a9aa8`): `run_lifecycle` over a partial map classifies
+  `conceded` from the record, and a REPEATED targeted re-exec cycle heals to
+  `succeeded` with the reducer's one call in member order; shown red by the
+  wiring mutation. The am-6 domain statement (mm-supplied road only) landed
+  with it. The §12.5 e2e cell stays filed as the matrix re-run, not as the
+  seam's only coverage.
 
 **Filed, not decided here:** `core-nested-cascade-policy`
 (partial-within-partial, nested retries; the minimum-viable propagation is
