@@ -6,8 +6,11 @@ the Episode's properties and the client — the page is rendered FROM THE STORE
 (plan §2.3 decision 5) — → print the page raw between markers.
 
 Cases: claim (3 exposures + fold), refusal (no edition in force — in-band),
-outage (store unreachable — RunStopped), boundary (zero exposures — the
-reducer refuses), noroute (unroutable — manifest-only graph).
+outage (store unreachable — RunStopped), boundary (zero exposures — the FOLD
+stops pre-dispatch, empty_domain), noroute (unroutable — manifest-only
+graph), routing (beat 1: one claim, two desks, by position off the am-5
+manifest ids), routingrefusal (beat 2: an in-band member refusal BESIDE
+routed siblings, the missing item named from the stored record).
 
 RULES §11 seam: everything between the BEGIN/END PAGE markers is the
 renderer's composed page — layout and framing are `dr_render.py`'s, every fact
@@ -223,12 +226,79 @@ def _case_noroute(client):
     return kl, session, "drdemo-page-noroute"
 
 
+def _routing_page_harness(scope):
+    """The routing-content harness (dr_routing) + the consolidate builtin +
+    a KL — the beat-1/2 cases through the same production close as every
+    other case. ``scope`` case-unique (§55)."""
+    from mindsos_capacity import CapacityLayer
+    from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
+    from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
+    from mindsos_intelligence.dispatch import L4Dispatcher
+    from mindsos_intelligence.mm import MentalModel
+    from mindsos_knowledge.knowledge_layer import KnowledgeLayer
+
+    from decision_records_demo.dr_dump import _Session
+    from decision_records_demo.dr_routing import (
+        routing_capacities,
+        routing_datastates,
+    )
+
+    session = _Session()
+    layer = CapacityLayer()
+    for ds in routing_datastates():
+        layer.register_datastate(ds, session=session, allow_new_realm=True)
+    for cap in routing_capacities():
+        layer.register_capacity(cap, session=session)
+    install_consolidate_capacities(layer)
+    kl = KnowledgeLayer.bootstrap()
+    mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
+    dispatcher = L4Dispatcher(layer, session=session, kl=kl)
+    writer = ChainArtifactWriter(mm, scope)
+    return session, kl, mm, dispatcher, writer, writer.emit_request_run()
+
+
+def _run_routing_case(client, scope, exposures, label):
+    from decision_records_demo.dr_routing import (
+        DS_CLAIM_EXPOSURES as DS_ROUTED_EXPOSURES,
+        routing_plan,
+    )
+
+    session, kl, mm, dispatcher, writer, request_run = _routing_page_harness(scope)
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, routing_plan(), request_run, mm=mm,
+        solve_seed={DS_ROUTED_EXPOSURES: [dict(e) for e in exposures]},
+        capacity_graphs=graphs, case_label=label,
+    )
+    _close(dispatcher, mm, request_run, scope, "completed", client, graphs)
+    return kl, session, scope
+
+
+def _case_routing(client):
+    from decision_records_demo.dr_routing import CASE_A_EXPOSURES
+
+    return _run_routing_case(
+        client, "drdemo-page-routing", CASE_A_EXPOSURES, "claim CLM-3007"
+    )
+
+
+def _case_routingrefusal(client):
+    from decision_records_demo.dr_routing import CASE_B_EXPOSURES
+
+    return _run_routing_case(
+        client, "drdemo-page-routingrefusal", CASE_B_EXPOSURES,
+        "claim CLM-3007 (one more exposure filed)",
+    )
+
+
 CASES = {
     "claim": _case_claim,
     "refusal": _case_refusal,
     "outage": _case_outage,
     "boundary": _case_boundary,
     "noroute": _case_noroute,
+    "routing": _case_routing,
+    "routingrefusal": _case_routingrefusal,
 }
 
 
