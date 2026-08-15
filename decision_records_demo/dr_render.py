@@ -52,6 +52,31 @@ every gap raises instead of rendering.
 
 The demo's vocabulary (all-demo ruling, §31): the verdict field names this
 layout knows are ``decision`` and ``claim_decision``.
+
+**Two correlation roads (ADR-0201 am-5 consumption; coordination §71/§72):**
+
+* MANIFEST ROAD — the fold manifest carries ``member_graph_ids`` (key
+  presence means exactly: a map supplied ids). Member blocks render BY
+  POSITION over that list; the value-equality bijection is DEMOTED to a
+  per-position cross-check (a list entry must equal a value its named graph
+  produced, or the record and the value bus are out of step — raise). The
+  member-completedness predicate is the record itself: ``RunStopped``
+  present ⟹ stopped, REGARDLESS of produced values — and a graph carrying
+  both a ``RunStopped`` and a produced verdict-typed value RAISES as
+  incoherent, never classifies (§72 Q2). A stopped or manifest-only member
+  consumes NO list entry; its stop block renders in place.
+* NO-MANIFEST ROAD — key absent (a fold-only plan, or a degraded/stale
+  record). The shipped bijection stands here unchanged, identical-duplicates
+  refusal included (N-F2's re-scope). Its raise texts name the road's own
+  ambiguity: a parentless list marks a fold, or a list-valued start — this
+  record cannot say. KEEP THIS: two refusals with different named items on
+  this road raise via "do not render alike" — that is CORRECT for a
+  degraded record, not a defect to fix (§72 Q3).
+
+Refusals (ADR-0209 shape (a)): a verdict VALUE carrying ``refusal_reason``
+is a structural marker, branch-only, never printed; the prose comes from the
+origin record OF THE REFUSING VALUE (the produced origin-record dict whose
+``refusal_reason`` is set), rendered in the leaf refusal's Q-form.
 """
 
 from __future__ import annotations
@@ -64,6 +89,14 @@ NODE_CAPACITY = "CapacityInstance"
 NODE_STOPPED = "RunStopped"
 PROP_DS_TYPE = "datastate_type"
 PROP_STOP_DETAIL = "stopped_detail"
+
+#: am-5 manifest key (string literal by design — G1 bans the identifiers
+#: module; the spelling collision with the persistence row key is recorded in
+#: the amendment).
+MANIFEST_MEMBER_IDS = "member_graph_ids"
+
+#: ADR-0209 structural refusal marker on a verdict VALUE — branch-only.
+REFUSAL_MARKER = "refusal_reason"
 
 #: Demo (claims) vocabulary — the layout's knowledge, not the graph's.
 VERDICT_FIELD = "decision"
@@ -80,6 +113,8 @@ _LINK_PREFIXES = ("datastate:", "capacity:", "runstopped:", "runmanifest:")
 G6_BANNED = (
     "datastate:", "capacity:", "runstopped", "runmanifest",
     "requestrun:", "pipelinerun:", "step_failed", "needs_input",
+    "empty_domain", "partial_domain", "refusal_reason",
+    "field_absent", "value_not_coercible", "no_source_in_force",
 )
 
 
@@ -116,6 +151,8 @@ class _Analysis:
                 f"run graph {graph.role!r} carries no manifest; nothing on it "
                 "can be named"
             )
+        self.graph_id = getattr(graph, "graph_id", None)
+        self.manifest_only = not graph.edges
 
     def ds_type(self, node: Any) -> str:
         return (node.properties or {}).get(PROP_DS_TYPE, "")
@@ -163,6 +200,31 @@ class _Analysis:
             if isinstance(value, dict) and value.get("refusal_reason"):
                 out.append(value)
         return out
+
+    def refusing_records(self) -> List[Dict[str, Any]]:
+        """Origin records OF a refusing value (§72 Q3): produced dicts that
+        are origin-record-shaped (``origin_producer_kind`` present) AND carry
+        a set ``refusal_reason`` — the only source of refusal prose."""
+        return [
+            value for value in self.origin_refusals()
+            if "origin_producer_kind" in value
+        ]
+
+    def produced_values(self) -> List[Any]:
+        return [node.value for node in self.produced]
+
+    def no_route_lines(self) -> List[str]:
+        """The manifest-only member's block — run-4's shape, the leaf
+        no-route lines reused at member position."""
+        lines = [
+            f"In hand: {description}"
+            for description in (self.manifest.get("declared_starts") or {}).values()
+        ]
+        lines.append(
+            "Stopped before any step could run: no way to answer "
+            "this was found."
+        )
+        return lines
 
     def plain_produced(self) -> List[Any]:
         """Produced DSIs that are neither origin records nor refusal carriers."""
@@ -229,7 +291,8 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
 
     folds = [
         a for a in analyses
-        if any(isinstance(a_node.value, list) for a_node in a.parentless)
+        if MANIFEST_MEMBER_IDS in a.manifest
+        or any(isinstance(a_node.value, list) for a_node in a.parentless)
     ]
     if len(folds) > 1:
         raise RendererGapError(
@@ -237,6 +300,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
             "renders a single attempt and will not guess which one is the "
             "Record (§31 scope)"
         )
+    manifest_road = bool(folds) and MANIFEST_MEMBER_IDS in folds[0].manifest
 
     case_label = next(
         (a.manifest.get("case_label") for a in analyses if a.manifest.get("case_label")),
@@ -260,7 +324,116 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
     lines.append("")
 
     terminal: Optional[_Analysis] = None
-    if folds:
+    if folds and manifest_road:
+        fold = folds[0]
+        terminal = fold
+        ids = list(fold.manifest[MANIFEST_MEMBER_IDS])
+        verdicts_node = next(
+            (node for node in fold.parentless if isinstance(node.value, list)),
+            None,
+        )
+        entries = list(verdicts_node.value) if verdicts_node is not None else []
+        by_id = {a.graph_id: a for a in analyses if a is not fold}
+        named = set(ids)
+        extra = [a for a in analyses if a is not fold and a.graph_id not in named]
+        if extra:
+            raise RendererGapError(
+                "a run graph produced a verdict that appears nowhere in the "
+                "recorded list, so the page would omit it silently: "
+                + ", ".join(repr(m.graph.role) for m in extra)
+                + " — refusing to publish a Record that leaves a member out"
+            )
+        pos = 0
+        verdict_types: set = set()
+        stopped_members: List[_Analysis] = []
+        for gid in ids:
+            member = by_id.get(gid)
+            if member is None:
+                raise RendererGapError(
+                    "the manifest names a member graph that is not in this "
+                    "Episode — the record cannot show the member it promises"
+                )
+            if member.stopped is not None or member.manifest_only:
+                stopped_members.append(member)
+                block = [
+                    f"{_fmt(start.value)} — {member.start_description(start)}"
+                    for start in member.parentless
+                    if not isinstance(start.value, list)
+                ]
+                if member.stopped is not None:
+                    block.extend(member.stop_lines())
+                else:
+                    block = member.no_route_lines()
+                lines.extend(block)
+                lines.append("")
+                continue
+            if pos >= len(entries):
+                raise RendererGapError(
+                    "a run graph produced a verdict that appears nowhere in "
+                    "the recorded list, so the page would omit it silently: "
+                    + repr(member.graph.role)
+                    + " — refusing to publish a Record that leaves a member out"
+                )
+            entry = entries[pos]
+            pos += 1
+            if not any(value == entry for value in member.produced_values()):
+                raise RendererGapError(
+                    f"list position {pos - 1} does not match any value its "
+                    f"named member graph produced ({member.graph.role!r}) — "
+                    "the record and the value bus are out of step"
+                )
+            for node in member.produced:
+                if node.value == entry:
+                    verdict_types.add(member.ds_type(node))
+                    break
+            if isinstance(entry, dict) and entry.get(REFUSAL_MARKER):
+                records = member.refusing_records()
+                if not records:
+                    raise RendererGapError(
+                        f"a refusing verdict on {member.graph.role!r} has no "
+                        "origin record to speak from — refusing to render a "
+                        "refusal with no stored words"
+                    )
+                record = records[0]
+                block = [
+                    f"{_fmt(start.value)} — {member.start_description(start)}"
+                    for start in member.parentless
+                    if not isinstance(start.value, list)
+                ]
+                block.append(
+                    f"Q. {record.get('question')} — Nothing. "
+                    f"{record.get('refusal_detail')}"
+                )
+                lines.extend(block)
+                lines.append("")
+                continue
+            lines.extend(_member_block(member, entry))
+            lines.append("")
+        if pos != len(entries):
+            raise RendererGapError(
+                "the recorded list holds more verdicts than the manifest's "
+                "members supplied — the record and the value bus are out of "
+                "step"
+            )
+        for member in stopped_members:
+            if member.stopped is not None and verdict_types and any(
+                member.ds_type(node) in verdict_types for node in member.produced
+            ):
+                raise RendererGapError(
+                    f"member graph {member.graph.role!r} carries both a stop "
+                    "and a produced verdict — incoherent, refusing to "
+                    "classify (§72 Q2)"
+                )
+        if fold.stopped is not None:
+            lines.extend(fold.stop_lines())
+        else:
+            conclusions = fold.plain_produced()
+            if conclusions:
+                lines.append(
+                    f"Therefore: {fold.phrase()} → "
+                    f"{_verdict_text(conclusions[0].value)}"
+                )
+    elif folds:
         fold = folds[0]
         terminal = fold
         verdicts_node = next(
@@ -268,6 +441,10 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         )
         members = [a for a in analyses if a is not fold]
         unmatched = list(members)
+        _AMBIGUITY = (
+            " (no-manifest road: a parentless list marks a fold, or a "
+            "list-valued start — this record cannot say)"
+        )
         for entry in verdicts_node.value:
             candidates = [
                 member for member in unmatched
@@ -276,7 +453,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
             if not candidates:
                 raise RendererGapError(
                     "a recorded verdict matches no run graph — the list and "
-                    "the members have diverged"
+                    "the members have diverged" + _AMBIGUITY
                 )
             blocks = [_member_block(c, entry) for c in candidates]
             if len({tuple(b) for b in blocks}) > 1:
@@ -285,6 +462,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                     "that do not render alike ("
                     + ", ".join(repr(c.graph.role) for c in candidates)
                     + ") — refusing to guess which exposure it belongs to"
+                    + _AMBIGUITY
                 )
             match = candidates[0]
             unmatched.remove(match)
@@ -296,6 +474,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 "recorded list, so the page would omit it silently: "
                 + ", ".join(repr(m.graph.role) for m in unmatched)
                 + " — refusing to publish a Record that leaves a member out"
+                + _AMBIGUITY
             )
         if fold.stopped is not None:
             lines.extend(fold.stop_lines())
