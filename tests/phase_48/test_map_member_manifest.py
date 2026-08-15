@@ -50,7 +50,6 @@ from mindsos_capacity.identifiers import (
 from mindsos_intelligence import execution
 from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
 from mindsos_intelligence.dispatch import L4Dispatcher
-from mindsos_intelligence.execution import LeafPipelineNotFound
 from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.plan_construction import PlanResult
 
@@ -223,21 +222,21 @@ def test_no_case_label_records_absence_rather_than_an_invented_one():
 
 
 def test_a_member_with_no_route_still_leaves_a_graph():
-    """**The half that destroyed the whole Record.** ``_compose_pipeline``
-    raises, and it still raises — the route really is unfindable and pretending
-    otherwise would be worse. What changed is that the member leaves a
-    manifest-only graph on the way out, so there is something to render.
-
-    The graph must be reached through a caller-owned list: the call RAISES, so
-    a return value would never arrive."""
+    """**The half that destroyed the whole Record — now fully closed.**
+    RESTATED by ADR-0201 am-6: the no-route member used to leave its
+    manifest-only graph and then RAISE ``LeafPipelineNotFound``, aborting the
+    request anyway. Under partial results the member stops IN PLACE — no
+    raise, the run completes — and every graph assertion below is the KEPT
+    half, verbatim: the manifest-only graph with its prose starts and case
+    label is exactly what renders as the no-route stop (the run-4
+    precedent)."""
     mm, dispatcher, writer, request_run = _harness()
     graphs: list = []
-    with pytest.raises(LeafPipelineNotFound):
-        execution.run(
-            dispatcher, writer, _map_plan(DS_UNREACHED), request_run,
-            mm=mm, solve_seed={DS_COLL: ["r1"]},
-            capacity_graphs=graphs, case_label="unroutable",
-        )
+    execution.run(
+        dispatcher, writer, _map_plan(DS_UNREACHED), request_run,
+        mm=mm, solve_seed={DS_COLL: ["r1"]},
+        capacity_graphs=graphs, case_label="unroutable",
+    )
     assert len(graphs) == 1, "an unroutable member must still leave its graph"
     manifest = _manifests(graphs[0])[0]
     assert manifest.value[MANIFEST_DECLARED_STARTS] == {DS_MEMBER: MEMBER_START_PROSE}
@@ -246,14 +245,14 @@ def test_a_member_with_no_route_still_leaves_a_graph():
 
 def test_a_no_route_member_names_no_capacity_because_none_ran():
     """A manifest that named one would be claiming an execution that did not
-    happen."""
+    happen. (RESTATED by am-6: no raise — the member stops in place; the
+    manifest-only shape is the kept half, verbatim.)"""
     mm, dispatcher, writer, request_run = _harness()
     graphs: list = []
-    with pytest.raises(LeafPipelineNotFound):
-        execution.run(
-            dispatcher, writer, _map_plan(DS_UNREACHED), request_run,
-            mm=mm, solve_seed={DS_COLL: ["r1"]}, capacity_graphs=graphs,
-        )
+    execution.run(
+        dispatcher, writer, _map_plan(DS_UNREACHED), request_run,
+        mm=mm, solve_seed={DS_COLL: ["r1"]}, capacity_graphs=graphs,
+    )
     graph = graphs[0]
     assert _manifests(graph)[0].value[MANIFEST_CAPACITY_PHRASES] == {}
     assert [n for n in graph.nodes.values()
