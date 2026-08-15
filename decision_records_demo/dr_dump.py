@@ -574,7 +574,7 @@ def dump_outage(_collect_mms=None) -> None:
 
 
 def dump_boundary(_collect_mms=None) -> None:
-    print("== shape: boundary (the input-boundary axis: zero exposures REFUSED, one exposure decided) ==")
+    print("== shape: boundary (the input-boundary axis: zero exposures stop at the fold, one exposure decided) ==")
     for sublabel, exposures in (
         ("n=0 (the fold stops pre-dispatch: the reducer is never asked)", []),
         ("n=1", EXPOSURES[:1]),
