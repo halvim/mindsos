@@ -62,6 +62,7 @@ from mindsos_capacity.identifiers import (
     MANIFEST_CAPACITY_PHRASES,
     MANIFEST_CASE_LABEL,
     MANIFEST_DECLARED_STARTS,
+    MANIFEST_MEMBER_GRAPH_IDS,
     MANIFEST_STOP_REASON_PHRASES,
     NODE_TYPE_RUN_MANIFEST,
     RUN_STOPPED_PHRASES,
@@ -77,6 +78,7 @@ from mindsos_capacity.identifiers import (
     PROP_RUN_STOPPED_BEFORE,
     PROP_RUN_STOPPED_DETAIL,
     RUN_STOPPED_CANCELLED,
+    RUN_STOPPED_EMPTY_DOMAIN,
     RUN_STOPPED_REASONS,
     capacity_instance_iri,
     datastate_instance_iri,
@@ -188,6 +190,7 @@ class CapacityMMWriter:
         declared_starts: Mapping[str, Optional[str]],
         capacity_phrases: Mapping[str, str],
         case_label: Optional[str] = None,
+        member_graph_ids: Optional[Iterable[str]] = None,
     ) -> str:
         """Mint this run's manifest node — the three things the run's own
         nodes cannot say about it.
@@ -224,19 +227,35 @@ class CapacityMMWriter:
         core set, because whether the run will stop is not known here and a
         renderer must never translate a token itself.
 
+        ``member_graph_ids`` (ADR-0201 amendment 5) is supplied on a FOLD
+        run only: the ordered ``graph_id`` of each map member's grounding
+        graph, in member order, so a reader correlates member <-> verdict by
+        position instead of by verdict-value equality (which two identical
+        refusals defeat). Key presence means exactly one thing — A MAP
+        SUPPLIED IDS: an empty list is a map that ran and yielded zero
+        members (its fold stops ``empty_domain``); ``None`` — every other
+        caller, including a fold-only plan whose ``in_ds`` was seeded
+        directly — leaves the key ABSENT (critic §60 point 2: presence must
+        never flip on emptiness).
+
         Everything lives in the node's **value**, as a dict:
         ``Graph.add_node`` validates ``properties`` as primitives only, and
-        all three fields are collections.
+        all the fields are collections.
         """
         with self._mm.lock.write_locked():
             graph = self._run_graph()
+            value = {
+                MANIFEST_DECLARED_STARTS: dict(declared_starts),
+                MANIFEST_CAPACITY_PHRASES: dict(capacity_phrases),
+                MANIFEST_STOP_REASON_PHRASES: dict(RUN_STOPPED_PHRASES),
+                MANIFEST_CASE_LABEL: case_label,
+            }
+            if member_graph_ids is not None:
+                value[MANIFEST_MEMBER_GRAPH_IDS] = [
+                    str(gid) for gid in member_graph_ids
+                ]
             return graph.add_node(
-                value={
-                    MANIFEST_DECLARED_STARTS: dict(declared_starts),
-                    MANIFEST_CAPACITY_PHRASES: dict(capacity_phrases),
-                    MANIFEST_STOP_REASON_PHRASES: dict(RUN_STOPPED_PHRASES),
-                    MANIFEST_CASE_LABEL: case_label,
-                },
+                value=value,
                 type_name=NODE_TYPE_RUN_MANIFEST,
                 node_id=run_manifest_iri(self._request_id, self._run_ref),
             ).node_id
@@ -310,6 +329,12 @@ class CapacityMMWriter:
                 "dispatched, so minting a CapacityInstance would claim a "
                 "capacity executed when it did not"
             )
+        if reason == RUN_STOPPED_EMPTY_DOMAIN:
+            raise ValueError(
+                "use record_empty_domain() for an empty fold domain: the "
+                "reducer never dispatched, so minting a CapacityInstance "
+                "would claim a capacity executed when it did not"
+            )
         with self._mm.lock.write_locked():
             graph = self._run_graph()
             cap_inst = capacity_instance_iri(
@@ -350,6 +375,36 @@ class CapacityMMWriter:
             graph = self._run_graph()
             node = self._mint_run_stopped(
                 graph, RUN_STOPPED_CANCELLED, detail,
+                extra={PROP_RUN_STOPPED_BEFORE: before_capacity_iri}
+                if before_capacity_iri else None,
+            )
+            return node.node_id
+
+    def record_empty_domain(
+        self, before_capacity_iri: Optional[str] = None, detail: Optional[str] = None
+    ) -> str:
+        """Record a fold run stopped because its domain was EMPTY (ADR-0201
+        amendment 5): the collection to decide from had no members, so the
+        reducer was never dispatched.
+
+        Same shape as :meth:`record_cancelled`, for the same G3 reason: no
+        invocation occurred, so this mints the terminal
+        :data:`NODE_TYPE_RUN_STOPPED` node **alone** — no CapacityInstance, no
+        ``STOPPED_AT`` edge — carrying the reducer it stopped before as
+        :data:`PROP_RUN_STOPPED_BEFORE`. Deliberately its own method rather
+        than a mode of either neighbour: :meth:`record_stopped` refuses this
+        reason (it would mint a false invocation), and a cancellation is a
+        different fact (someone chose to stop; here there was nothing to
+        decide from).
+
+        ``detail`` is prose-by-contract (S-3): it renders on the page, so it
+        must carry no IRI and no internal ref — name the emptiness in words,
+        not the DataState that was empty.
+        """
+        with self._mm.lock.write_locked():
+            graph = self._run_graph()
+            node = self._mint_run_stopped(
+                graph, RUN_STOPPED_EMPTY_DOMAIN, detail,
                 extra={PROP_RUN_STOPPED_BEFORE: before_capacity_iri}
                 if before_capacity_iri else None,
             )
