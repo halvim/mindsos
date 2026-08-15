@@ -196,6 +196,26 @@ def test_the_phrase_is_snapshotted_not_looked_up_later():
 # ── (3) why a run stopped ─────────────────────────────────────────────
 
 
+def test_the_manifest_refuses_a_none_member_graph_id():
+    """am-6 finding, caught by a mutation pass: ``str(gid)`` coercion turned a
+    None id into the truthy string "None" - a fake id that would persist and
+    render, and that defeats any ``all(ids)`` guard downstream. A position
+    with no grounding graph id is an upstream defect; the writer refuses it
+    loudly instead of laundering it."""
+    import pytest as _pytest
+
+    from mindsos_intelligence.capacity_mm_writer import CapacityMMWriter
+    from mindsos_intelligence.mm import MentalModel
+
+    mm = MentalModel(session_id="s", user_id="u")
+    w = CapacityMMWriter(mm, "mfr", "pipelinerun:mfr:0")
+    with _pytest.raises(ValueError, match="non-empty strings"):
+        w.manifest(
+            declared_starts={}, capacity_phrases={},
+            member_graph_ids=["gid-a", None, "gid-c"],
+        )
+
+
 def test_the_closed_stop_vocabulary_is_carried_in_full():
     """Every reason, not only the one that fired — whether the run will stop
     is not known when the manifest is minted, and a renderer must never

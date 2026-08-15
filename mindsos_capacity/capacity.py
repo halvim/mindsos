@@ -103,6 +103,15 @@ class _CapacityBase:
     # it). Read off the declaration by the finder; not emitted to the graph
     # at v1 (Decision 8).
     input_group: str = INPUT_GROUP_ALL_REQUIRED
+    # ADR-0209 (shape (a)) — the reducer-side half of the member-refusal
+    # contract. ``True`` declares this capacity's body DECODES in-band refusal
+    # values (ADR-0208-shaped: a refusal value carrying its origin record) on
+    # its list input, so a fold may hand it a member set whose ``member_ds``
+    # is ``refusal_capable``. Read off the declaration by the plan-construction
+    # decode check; like ``input_group`` (Decision 8) it is NOT emitted to the
+    # graph — a registration-time fact, not run evidence. Default ``False``
+    # keeps every existing capacity unchanged.
+    decodes_refusals: bool = False
     # ADR-0198 (Part 5 / 5a) — same-type operand arity. Maps an input
     # DataState IRI to the number of operands of that type the body
     # consumes (``{DS_OBJECT: 2}`` for a binary comparator). Absent /

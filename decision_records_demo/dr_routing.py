@@ -1,0 +1,286 @@
+"""dr_routing — the routing content: exposures to desks, on the Guidewire-sourced model.
+
+Beat 1 of the demo script (one claim, two desks), and the shape-(a)
+consumption that makes beat 2 (a refusal beside an answer) renderable.
+Design: coordination §71 (this lane), §72 (critic), owner rulings D5 (demo
+consumption) and the §50.4 Gate-4 restatement.
+
+**Gate 4, checked in writing before anything registers (the restated form):**
+no new capacity CATEGORY beyond ``origin_v0.DECISION_SHAPED_CATEGORIES`` and
+no new ``FAMILY_RULES`` entry was needed. The routing decision registers in
+``decision`` — already in the frozenset — whose family dont-know shape is
+``VERDICT``, which is exactly shape (a)'s refusal-as-verdict (ADR-0209). The
+readers register in ``retrieval`` via the shipped structured-ingest factory.
+Nothing else is decision-shaped. PASS.
+
+**Sourcing (do-not-invent, plan §2.5):** the desks are Guidewire's own
+worked example — vehicle exposures to a routine group, the injury exposure
+to a specialty group; the coverage words are the taxonomy §3 unit names
+(Auto Physical Damage, Bodily Injury); severity as the deciding axis is
+§3's "severity tier dominates". The demo shows THAT routing happens and
+does not assert what every carrier does.
+
+**The member pipeline** (composed by the ConjunctionFinder — the map spec
+sets ``finder: conjunction`` because the decision is genuinely multi-input,
+a diamond from the one member start):
+
+    exposure ──> coverage reader ──> the coverage this exposure was filed under
+             └─> severity reader ──> an injury severity assessment
+                       both ──> the routing decision ──> desk verdict
+
+Each reader is the shipped ``structured_ingest_v0`` factory: on an absent
+field it refuses IN-BAND — value ``None`` plus an origin record naming the
+missing item — and the decision, seeing the ``None`` where it needed a
+value, returns the shape-(a) refusal verdict: ``decision: None`` plus the
+structural ``refusal_reason`` marker, NO prose. The prose lives in the
+reader's origin record (ADR-0209 D1: the type governs decoding; the record
+carries the words). A vehicle exposure routes on coverage alone, so the
+severity reader's refusal on it is recorded but decides nothing.
+
+``drdemo.desk_verdict`` is the first ``refusal_capable`` DataState anywhere;
+the reducer declares ``decodes_refusals`` and
+``plan_construction.check_fold_reducer_decode`` enforces the pair statically
+on the direct-``PlanResult`` road this module drives (ADR-0209 D4).
+
+Desk verdict VALUES are deliberately BARE (``{"decision": <desk>}``): two
+routine-desk verdicts are byte-identical, which is legal on the manifest
+road — position correlates them (ADR-0201 am-5, N-F2 defused). This module
+is demo code: it registers into its own layer and never edits ``mindsos_*``
+(RULES §3).
+"""
+
+from __future__ import annotations
+
+from mindsos_capacity import CapacityLayer
+from mindsos_capacity.builtins.origin_v0 import REFUSAL_FIELD_ABSENT
+from mindsos_capacity.builtins.structured_ingest_v0 import (
+    build_structured_ingest_reader,
+    structured_value_datastates,
+)
+from mindsos_capacity.capacity import Capacity
+from mindsos_capacity.datastate import DataState, ShapeDescriptor
+from mindsos_capacity.identifiers import (
+    CATEGORY_DECISION,
+    CATEGORY_DERIVATION,
+    capacity_iri,
+    datastate_iri,
+)
+from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
+from mindsos_intelligence.dispatch import L4Dispatcher
+from mindsos_intelligence.mm import MentalModel
+from mindsos_intelligence.plan_construction import PlanResult
+
+DS_CLAIM_EXPOSURES = datastate_iri("drdemo.routed_claim_exposures")
+DS_EXPOSURE = datastate_iri("drdemo.routed_exposure")
+DS_COVERAGE = datastate_iri("drdemo.exposure_coverage")
+DS_SEVERITY = datastate_iri("drdemo.injury_severity")
+DS_DESK = datastate_iri("drdemo.desk_verdict")
+DS_DESKS = datastate_iri("drdemo.desk_verdicts")
+DS_ROUTING = datastate_iri("drdemo.claim_routing")
+
+CAP_ROUTE = capacity_iri(CATEGORY_DECISION, "drdemo_route_exposure")
+CAP_ASSIGN = capacity_iri(CATEGORY_DERIVATION, "drdemo_assign_claim")
+
+ROUTINE_DESK = "the routine claims desk"
+SPECIALTY_UNIT = "the specialty injury unit"
+SOURCE_PHRASE = "the intake record for this exposure"
+
+#: Coverage words: taxonomy §3 unit names, verbatim.
+COVERAGE_VEHICLE = "Auto Physical Damage"
+COVERAGE_INJURY = "Bodily Injury"
+
+#: Beat 1 — one claim, three exposures, two desks (Guidewire's worked case).
+CASE_A_EXPOSURES = [
+    {"claimant": "A. Silva", "coverage": COVERAGE_VEHICLE,
+     "loss": "collision, 3 June"},
+    {"claimant": "B. Osei", "coverage": COVERAGE_VEHICLE,
+     "loss": "collision, 3 June"},
+    {"claimant": "C. Mensah", "coverage": COVERAGE_INJURY,
+     "loss": "collision, 3 June", "injury_severity": "severe"},
+]
+
+#: Beat 2 — the same claim, one more injury exposure whose severity
+#: assessment is ABSENT: a refusal beside answers on the same page.
+CASE_B_EXPOSURES = CASE_A_EXPOSURES + [
+    {"claimant": "D. Laurent", "coverage": COVERAGE_INJURY,
+     "loss": "collision, 3 June"},
+]
+
+
+class _Session:
+    session_id = "drdemo-session"
+    user_id = "drdemo-user"
+    actor_role = "user"
+    capabilities: set = set()
+
+    def has(self, capability: str) -> bool:
+        return False
+
+
+def _route(context=None, **inputs):
+    coverage = inputs.get(DS_COVERAGE)
+    severity = inputs.get(DS_SEVERITY)
+    if coverage == COVERAGE_VEHICLE:
+        return {DS_DESK: {"decision": ROUTINE_DESK}}
+    if severity is None:
+        # The reader refused; the desk cannot be chosen. Structural marker
+        # only — the words live in the reader's origin record.
+        return {DS_DESK: {"decision": None,
+                          "refusal_reason": REFUSAL_FIELD_ABSENT}}
+    desk = SPECIALTY_UNIT if severity == "severe" else ROUTINE_DESK
+    return {DS_DESK: {"decision": desk}}
+
+
+def _assign(context=None, **inputs):
+    verdicts = inputs.get(DS_DESKS) or []
+    if not verdicts:
+        raise ValueError(
+            "refusing to assign a claim from zero desk verdicts"
+        )
+    refused = [
+        v for v in verdicts
+        if isinstance(v, dict) and v.get("refusal_reason")
+    ]
+    routine = sum(
+        1 for v in verdicts
+        if isinstance(v, dict) and v.get("decision") == ROUTINE_DESK
+    )
+    specialty = sum(
+        1 for v in verdicts
+        if isinstance(v, dict) and v.get("decision") == SPECIALTY_UNIT
+    )
+    parts = []
+    if routine:
+        parts.append(f"{routine} exposure(s) to {ROUTINE_DESK}")
+    if specialty:
+        parts.append(f"{specialty} to {SPECIALTY_UNIT}")
+    if refused:
+        parts.append(
+            f"{len(refused)} cannot be assigned yet - see the exposure above"
+        )
+    return {DS_ROUTING: {"claim_decision": "; ".join(parts)}}
+
+
+def routing_datastates():
+    coverage_pair = structured_value_datastates(
+        value_name="drdemo.exposure_coverage",
+        value_elem="str",
+        value_description="the coverage this exposure was filed under",
+    )
+    severity_pair = structured_value_datastates(
+        value_name="drdemo.injury_severity",
+        value_elem="str",
+        value_description="the injury severity that was assessed",
+    )
+    return [
+        DataState(
+            name="drdemo.routed_claim_exposures",
+            shape=ShapeDescriptor.opaque("drdemo.routed_claim_exposures"),
+            description="the exposures the claim was split into",
+            collection=True,
+            member_ds=DS_EXPOSURE,
+        ),
+        DataState(
+            name="drdemo.routed_exposure",
+            shape=ShapeDescriptor.opaque("drdemo.routed_exposure"),
+            description="one exposure, as filed",
+        ),
+        DataState(
+            name="drdemo.desk_verdict",
+            shape=ShapeDescriptor.opaque("drdemo.desk_verdict"),
+            description="which desk this exposure goes to",
+            refusal_capable=True,
+        ),
+        DataState(
+            name="drdemo.desk_verdicts",
+            shape=ShapeDescriptor.opaque("drdemo.desk_verdicts"),
+            description="each exposure's desk, in order",
+            collection=True,
+            member_ds=DS_DESK,
+        ),
+        DataState(
+            name="drdemo.claim_routing",
+            shape=ShapeDescriptor.opaque("drdemo.claim_routing"),
+            description="where this claim's exposures were sent",
+        ),
+    ] + coverage_pair + severity_pair
+
+
+def routing_capacities(*, decodes_refusals: bool = True):
+    coverage_reader = build_structured_ingest_reader(
+        name="drdemo_read_coverage",
+        field="coverage",
+        value_datastate_iri=DS_COVERAGE,
+        value_elem="str",
+        source_datastate_iri=DS_EXPOSURE,
+        source_identity_phrase=SOURCE_PHRASE,
+        value_phrase="the coverage this exposure was filed under",
+        question="Which coverage was this exposure filed under?",
+    )
+    severity_reader = build_structured_ingest_reader(
+        name="drdemo_read_severity",
+        field="injury_severity",
+        value_datastate_iri=DS_SEVERITY,
+        value_elem="str",
+        source_datastate_iri=DS_EXPOSURE,
+        source_identity_phrase=SOURCE_PHRASE,
+        value_phrase="an injury severity assessment",
+        question="What injury severity was assessed for this exposure?",
+    )
+    route = Capacity(
+        name="drdemo_route_exposure",
+        category=CATEGORY_DECISION,
+        inputs=(DS_COVERAGE, DS_SEVERITY),
+        outputs=(DS_DESK,),
+        implementation=_route,
+        description="one exposure's read facts -> which desk handles it",
+        printable_phrase="choosing the desk for one exposure",
+    )
+    assign = Capacity(
+        name="drdemo_assign_claim",
+        category=CATEGORY_DERIVATION,
+        inputs=(DS_DESKS,),
+        outputs=(DS_ROUTING,),
+        implementation=_assign,
+        description="the ordered desk verdicts -> where the claim was sent",
+        printable_phrase="assigning each exposure to its desk",
+        decodes_refusals=decodes_refusals,
+    )
+    return [coverage_reader, severity_reader, route, assign]
+
+
+def routing_harness(*, decodes_refusals: bool = True):
+    session = _Session()
+    layer = CapacityLayer()
+    for ds in routing_datastates():
+        layer.register_datastate(ds, session=session, allow_new_realm=True)
+    for cap in routing_capacities(decodes_refusals=decodes_refusals):
+        layer.register_capacity(cap, session=session)
+    mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
+    dispatcher = L4Dispatcher(layer, session=session)
+    writer = ChainArtifactWriter(mm, "drdemo-task")
+    return mm, dispatcher, writer, writer.emit_request_run()
+
+
+def routing_plan() -> PlanResult:
+    return PlanResult(
+        plan_ref="plan:drdemo-routing",
+        root_milestone_ref="m0",
+        leaf_milestone_refs=["mMap", "mFold"],
+        pipeline_refs={"mMap": "pMap", "mFold": "pFold"},
+        milestone_specs={
+            "mMap": {
+                "kind": "map",
+                "collection_ds": DS_CLAIM_EXPOSURES,
+                "member_ds": DS_EXPOSURE,
+                "sub_target": DS_DESK,
+                "out_ds": DS_DESKS,
+                "finder": "conjunction",
+            },
+            "mFold": {
+                "kind": "fold",
+                "reducer_iri": CAP_ASSIGN,
+                "in_ds": DS_DESKS,
+            },
+        },
+    )

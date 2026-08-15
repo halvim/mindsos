@@ -29,7 +29,7 @@ and this branch merges the tag.
 ## Run commands (Linux box)
 
 `dr_dump.py` — all eleven shapes (`leaf`, `claim`, `noroute`, `replan`,
-`retry`, `memberabort`, `needsinput`, `refusal`, `outage`, `boundary`,
+`retry`, `memberpartial`, `needsinput`, `refusal`, `outage`, `boundary`,
 `codec`), or one by name:
 
 ```

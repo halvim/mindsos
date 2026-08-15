@@ -249,6 +249,32 @@ someone else.
    Gate 4 first**: if routing needs one adjudication did not, *"no new decision op
    was needed"* fails inside the demo, in front of the room.
 
+**A third undercount, and a broken gate — found 2026-08-14 by reading the
+tree, after a first draft of this paragraph got it wrong.** Routing is a
+**selection**; the only `decision`-family capacity v0 ever built is ADR-0208's
+**comparison** criterion. So routing needs a decision capacity of a kind never
+built — the third undercount of this beat, after *"N registrations of a shape
+already exercised"* and *"plus a reducer"*.
+
+⚠ **And the check this plan tells you to run cannot be run.** §5 Phase 0 item 5
+says *"all six ops in `decision`"*, and both v0 documents list *"the other five
+decision ops"* as out of scope — but **the six are enumerated nowhere**. In
+code: `origin_v0.DECISION_SHAPED_CATEGORIES` is a frozenset of **three
+categories** (`decision`, `comparator`, `predicate`), and `FAMILY_RULES` holds a
+single `decision: VERDICT` entry. In docs: no ADR names a set of six. The phrase
+exists only in planning prose, repeated across three documents.
+
+⟹ **Gate 4 is currently UNEVALUABLE.** Its pass condition is *"no new decision
+op was needed"*, and you cannot decide whether an op is *new* against a set that
+was never defined — so Gate 4 would pass or fail on whoever is reading it. Owed
+before routing is registered: either **enumerate the six in an ADR** (making
+Gate 4 checkable as written), or **restate Gate 4** against something that
+exists — e.g. *no new capacity **category** beyond `DECISION_SHAPED_CATEGORIES`,
+and no new `FAMILY_RULES` entry*. The first draft of this very paragraph
+asserted "one of the family's six" and inherited the same phantom set; it was
+caught by grepping instead of quoting. **Fourth instance in this lane, and the
+second in one day.**
+
 ⚠ **Do not invent a department taxonomy or an exposure taxonomy.** Both are
 sourced above. An invented one re-creates exactly what makes the adjudication
 scenario weak — a scenario we wrote ourselves.
@@ -334,7 +360,7 @@ Exhaustive single-field ablation across Phase 1 and 2 cases.
 ### Phase 4 — `diversity_1..6`
 Second area of law. Reuse the ops; register new types only.
 
-**Gate 4:** transfer curve produced; **no new decision op was needed.** If one was, claim 4 is weaker than stated and the deck changes.
+**Gate 4 — RESTATED 2026-08-14 (critic §48 condition 4; decided in this PR, not filed as an IOU):** transfer curve produced; **no new capacity CATEGORY beyond `origin_v0.DECISION_SHAPED_CATEGORIES` and no new `FAMILY_RULES` entry was needed.** ⚠ **The previous wording — *"no new decision op was needed"* — was UNEVALUABLE**: the set of decision ops it measured against is enumerated nowhere (§2.5). **Restated rather than enumerated, deliberately:** an ADR inventing six ops to rescue the sentence would promote the phantom instead of killing it. The new form names two things that exist in the tree and can be checked by grep, so the composition claim has a gate that can actually fail.
 
 ### Phase 5 — LLM adapter
 ADR first, code second. The adapter is fixed; the model is an external oracle it consults; its output is a typed DataState carrying provenance to the raw input and a recorded extraction uncertainty; it can decline.
@@ -353,7 +379,13 @@ Span agreement on extraction provenance.
 
 ~~**Depends on `core-terminal-node-on-non-success` (L-2)**~~ — **closed 2026-08-11**, shipped as `c9754ac`, tag `terminal-node-confirmed`. A stopped run now leaves a `RunStopped` node, so the unroutable case renders.
 
-**Gate 7:** run cold on a laptop three times with no operator intervention. The refusal case fires on cue.
+**Gate 7 — AMENDED 2026-08-14 (critic §48 conditions 1 + 2):** run cold on a laptop three times with no operator intervention. The refusal case fires on cue.
+
+**(a) NAME THE VARIANT IN THE ROOM.** The cold run is the **structured-intake** variant — **no model, no transport**. This is written into the gate so nobody presents inbox-reading that does not exist: §11's seam rule applied to the demo itself. A prose-intake run is a DIFFERENT gate and needs the transport (open decision 7).
+
+**(b) VALIDATION IS SCHEDULED, NOT EVAPORATED.** Open decision 8 removed Mauricio as a BUILD gate; his two questions move here, into Gate 7's acceptance, and are **asked before the demo is shown to anyone outside**: *"when a claim has several exposures, who decides which desk each one goes to?"* and *"is that a judgement call or a rule?"* A no on the second means the beat dramatises a rule, and the demo changes before it is shown — not after. Showing-risk stays owned; only the build was unblocked.
+
+⚠ **AMENDED 2026-08-14 — the transport is CONDITIONAL, not a flat Gate-7 blocker.** This paragraph's own last sentence always said so and was read past for three days: **routing from a STRUCTURED intake record needs no model at all**; it is routing from Elisandro's actual inbox that puts the seam on the critical path. So the transport gates Gate 7 **only if** the demo's intake is prose. Decide the intake shape first, and cost the transport from that — do not carry it as an unconditional blocker. S-2 is ruled either way (open decision 7), because settling it costs nothing now and becomes a rewrite later. ⚠ **CITATION CORRECTED:** this paragraph cited `LLM_SEAM_MANUAL.md` and `CORE_CR_EXTERNAL_MODEL_SEAM.md`, **neither of which was on `main`** — both live only on `archive/decision-records-llm-seam`. The manual is restored to `main` by this commit; the CR is not, and any citation of it must name the tag. Fifth instance in this lane of an argument resting on a document not in the tree.
 
 ⚠ **Gate 7 has a dependency nobody has costed: there is no transport.** `LLM_SEAM_MANUAL.md` S-3 — the one piece that touches the network does not exist. So a cold laptop run is replay-only today, and `CORE_CR_EXTERNAL_MODEL_SEAM.md` D9 rules that a demo running from saved answers is a scripted demo and deserves to be called one. Two consequences: **the transport is a Phase-7 blocker, not a nicety**, and **S-2 — whether the transport or `mindsos_llm` parses the model's output — must be settled before anyone writes one**, because afterwards it is a rewrite rather than a decision. Note also that routing from a *structured* intake record would need no model at all; it is routing from Elisandro's actual inbox that puts the seam on the critical path.
 
@@ -364,11 +396,11 @@ Span agreement on extraction provenance.
 1. ~~**Which half of SARA leads.**~~ **CLOSED 2026-08-11 — entailment, and only §152 + §7703** (§2.1). Numeric narrows to the minimum that fires Gate 2.
 2. **Whether the evidence pack ships publicly.** A published SARA result invites the accuracy comparison we do not want. Recommend: cited in the deck, method reproducible on request, no leaderboard entry.
 3. ~~**Domain of the live demo.**~~ **CLOSED 2026-08-11 — the demo stays claims, the evidence pack stays tax**, and the practitioner conversation that gated it has happened (§2.5).
-4. **Time-box.** Phases 0–4 are the defensible minimum. Set the box before starting, not after Phase 2.
+4. **Time-box — RESOLVED 2026-08-14 as a GATE, not a date.** Phases 0–4 are the defensible minimum. The original instruction (*set the box before starting*) was guarding against indefinite drift; the owner ruled that **the timeline is not the constraint, a proper demo is**, so the box became **gate-bound**: Phase 7 closes at a green Gate 7, its scope frozen, and Phases 1–3 begin there (decision 6). A concrete finish line does the guarding a date was meant to do — **and it only works because the scope is frozen**; unfreeze the scope and the gate recedes, which is the same drift by another route.
 5. **Prior art review before any novelty claim.** A Prolog system solves SARA; "Explainable OpenFisca" exists. Neither has the grounding graph, but both need to be read before the deck asserts novelty.
-6. **[OPENED 2026-08-11] Does Phase 7 move ahead of Phases 1–6?** The argument for: those phases serve a deck and pay nothing, this plan's own §7 names "the benchmark becomes the product" as its highest risk, and the only two people waiting are waiting for Phase 7. The argument against: skipping Phases 1–6 leaves Gate 4 — the composition claim's only test — with nothing behind it but the demo's own questions, and the demo's cases are ones we wrote. **Deliberately not decided.** Nothing in Phase 7 can start before Decision Records v0 renders runs 1 and 2, so deciding now would be planning against a build that does not exist. **Revisit when v0 lands.**
-7. **[OPENED 2026-08-11] Who owns the transport, and who parses the model's output?** Phase 7's gate cannot be met without one, and S-2 stops being a decision the moment a transport exists.
-8. **[OPENED 2026-08-11] Is exposure-level routing what a claims manager actually recognises as the hard call?** §2.5's subject change rests on Guidewire's routing model — strong, but one vendor, and no carrier publishes an org chart. Two questions to Mauricio settle it: *"when a claim has several exposures, who decides which desk each one goes to?"* and *"is that a judgement call or a rule?"* **Ask before any capacity is written** — this is the second time the beat has been redesigned around evidence that arrived after the design.
+6. **[OPENED 2026-08-11 · RULED 2026-08-14] Does Phase 7 move ahead of Phases 1–6? YES — Phase 7 first, GATE-BOUND, with Phases 1–3 as the committed following block.** The condition the old text deferred on (*"revisit when v0 lands"*) is met: v0 landed (items 1–7 + the correlation bijection; five case shapes render from a real FalkorDB round-trip). **Three facts that were not true when this was written and that decided it.** (i) **Phases 5 and 6 are blocked regardless** — both need the transport, and Phase 6 also needs `comprehension_v0`, which is on `archive/decision-records-llm-seam`; deferring them costs nothing because they cannot run. (ii) **Gate 4 is UNEVALUABLE** as written (§2.5), so the against-argument — *"skipping 1–6 leaves Gate 4 with nothing behind it"* — is currently protecting nothing. (iii) Phase 7 is the only block with people waiting and **no blockers**. **Why not the alternatives:** deferring the evidence pack indefinitely leaves every number in the room coming from cases we wrote, which makes *"confidently wrong: zero"* unfalsifiable; running Phases 1–3 first delays the only thing anyone waits for by this plan's largest uncosted line item (SARA encoding) and is the ordering §7 names as the highest risk. **The demo must be believed in a room, and that needs the beat working AND at least one number that is not ours** — Phase 7 delivers the first, Phases 1–3 the second, in that order. **THE BOX IS GATE-BOUND, not calendar-bound — owner ruling 2026-08-14: the timeline is not the constraint, a proper demo is; quality beats development speed.** The box **closes at a green Gate 7** — five pages rendered from the PERSISTED graph on a cold laptop, three times, refusal on cue, G1/G2/G6 green, and the page surviving the §11 room test unedited. **Phase 7's scope is FROZEN as written; any addition to it is an owner ruling, not a lane choice** — that freeze is what stops a gate-bound box from drifting the way an unset calendar box would. **Past a green Gate 7, further polish is refused like any other work past its gate: quality is gates passed, not time spent.** Phases 1–3 begin at that green gate. *(Supersedes the blank box this line first carried; the critic ruled — correctly — that a ruling whose operative term is blank is not a ruling.)* 
+7. **[OPENED 2026-08-11 · S-2 RULED 2026-08-14] Who owns the transport, and who parses the model's output?** **OWNER RULING on S-2: ratify the fix already proposed in `LLM_SEAM_MANUAL.md` §11** — the transport may return EITHER raw text OR a mapping; if text, decoding happens inside `mindsos_llm`, and a decode failure becomes the `malformed_response` refusal rather than an exception from unowned code. Accepting a mapping keeps provider-native structured output usable. Compatible with shipped `main`: `malformed_response` is already classified in `origin_v0.REASONS_RESERVED` (#156). ⚠ **S-2 was never an open question — it carried a written proposed fix nobody had ruled on**, and the row was read as undecided for three days because the manual it lives in **was not on `main`** (see the correction below). Ratified BEFORE a transport exists, which is the whole point of the deadline. **The transport's ownership is still open**, and it is reclassified below.
+8. **[OPENED 2026-08-11 · RULED 2026-08-14] Is exposure-level routing what a claims manager actually recognises as the hard call?** §2.5's subject change rests on Guidewire's routing model — strong, but one vendor, and no carrier publishes an org chart. **OWNER RULING 2026-08-14: this does NOT gate the build.** Mauricio is an EXTERNAL RESOURCE WHO VALIDATES WHAT WE BUILD — not a decision-maker we wait on. The previous text (*"ask before any capacity is written"*) over-gated: §2.5 already forbids inventing a taxonomy **because both are sourced** — OSFI/CCIR Section III for the coverages exposures are made of, Guidewire's routing documentation for the exposure→desk model. The build needs neither answer. What his answer affects is whether routing is PERCEIVED as the hard call, which is a question about the pitch, not an input to the code. **The constraint that survives, and it is §2.5's own:** the org-chart evidence is reconstructed from job titles (strong that a unit exists, weak on hierarchy) plus one vendor, so the demo may show THAT routing happens and MUST NOT assert what every carrier does. Ask the two questions when convenient; do not schedule work around them.
 
 ---
 

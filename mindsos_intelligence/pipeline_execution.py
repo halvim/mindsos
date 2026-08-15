@@ -42,8 +42,17 @@ from typing import Any, Dict, Mapping, Optional
 # imports), so this is safe at module level — unlike ``capacity_mm_writer``,
 # which stays a local import inside the function to keep the graph light.
 from mindsos_capacity.identifiers import (
+    RUN_STOPPED_EMPTY_DOMAIN,
     RUN_STOPPED_NEEDS_INPUT,
+    RUN_STOPPED_PARTIAL_DOMAIN,
     RUN_STOPPED_STEP_FAILED,
+)
+
+#: The reasons a caller may order a stop BEFORE the first dispatch (ADR-0201
+#: am-5/am-6). Closed on purpose: an unknown token raises rather than minting
+#: an untranslatable stop.
+_PRE_DISPATCH_STOP_REASONS = frozenset(
+    {RUN_STOPPED_EMPTY_DOMAIN, RUN_STOPPED_PARTIAL_DOMAIN}
 )
 
 
@@ -78,6 +87,11 @@ class PipelineExecutionResult:
     #: can hand the graph to ``consolidate_task`` for Slice-B persistence
     #: without re-reaching into the writer.
     capacity_graph: Optional[Any] = None
+    #: ADR-0201 amendment 5 — set to the stop reason token when the caller
+    #: ordered a stop BEFORE the first dispatch (``stop_before_dispatch``);
+    #: the run grounded (manifest + seeds + ``RunStopped`` alone) but no step
+    #: ran. ``None`` on every other path.
+    stopped_before_dispatch: Optional[str] = None
 
 
 def _is_cancelled(token: Any) -> bool:
@@ -97,6 +111,9 @@ def execute_pipeline(
     mm: Any = None,
     pipeline_run_ref: Optional[str] = None,
     case_label: Optional[str] = None,
+    member_graph_ids: Optional[Any] = None,
+    stop_before_dispatch: Optional[str] = None,
+    stop_detail: Optional[str] = None,
 ) -> PipelineExecutionResult:
     """Execute ``pipeline`` step-by-step via ``dispatcher``.
 
@@ -128,7 +145,27 @@ def execute_pipeline(
     had recognised something. Absent (the default) means the manifest says the
     run carried no label, which a renderer must be able to tell apart from a
     label it failed to read.
+
+    ``member_graph_ids`` (ADR-0201 amendment 5) rides onto the run's manifest
+    verbatim — supplied by ``_run_fold_milestone`` only (the ordered member
+    grounding-graph ids); ``None`` leaves the manifest key absent.
+
+    ``stop_before_dispatch`` (ADR-0201 amendment 5): when set to a stop
+    reason token, the run GROUNDS — manifest, seeded starts — and then stops
+    before the first dispatch, minting the terminal ``RunStopped`` node ALONE
+    (no CapacityInstance: no capacity ran — guard G3), with ``stop_detail``
+    as its prose detail. The caller decides the stop (it is milestone-level
+    policy, e.g. an empty fold domain); this function is where it grounds,
+    because a hand-mint at the milestone would be a second copy of the drift
+    the fold-grounding CR removed. Closed to ``_PRE_DISPATCH_STOP_REASONS``
+    (``empty_domain``, am-5; ``partial_domain``, am-6) — an unknown token
+    raises rather than minting an untranslatable stop.
     """
+    if stop_before_dispatch is not None and stop_before_dispatch not in _PRE_DISPATCH_STOP_REASONS:
+        raise ValueError(
+            f"stop_before_dispatch supports only {sorted(_PRE_DISPATCH_STOP_REASONS)} "
+            f"(ADR-0201 am-5/am-6), got {stop_before_dispatch!r}"
+        )
     blackboard: Dict[str, Any] = dict(initial_inputs or {})
 
     # CR#4 Slice 2 — optional L5 grounding writer (B2: write only when an MM
@@ -172,6 +209,7 @@ def execute_pipeline(
             declared_starts=start_phrases(dispatcher, tuple(blackboard)),
             capacity_phrases=capacity_phrases(dispatcher, pipeline),
             case_label=case_label,
+            member_graph_ids=member_graph_ids,
         )
         for ds, value in blackboard.items():
             # Idempotent seed: a start input already carried in the index (e.g.
@@ -185,6 +223,29 @@ def execute_pipeline(
         return writer.graph if writer is not None else None
 
     steps = tuple(getattr(pipeline, "steps", ()) or ())
+
+    if stop_before_dispatch is not None:
+        # ADR-0201 amendment 5 — the caller ruled the run must not reach its
+        # first dispatch (empty fold domain). The graph above is real
+        # (manifest + seeds); the stop node is minted ALONE, before-capacity
+        # = the step that would have run.
+        if writer is not None:
+            recorder = (
+                writer.record_partial_domain
+                if stop_before_dispatch == RUN_STOPPED_PARTIAL_DOMAIN
+                else writer.record_empty_domain
+            )
+            recorder(
+                before_capacity_iri=(
+                    steps[0].capacity_iri if steps else None
+                ),
+                detail=stop_detail,
+            )
+        return PipelineExecutionResult(
+            success=False, outputs=blackboard, steps_run=0,
+            capacity_graph=_cap_graph(),
+            stopped_before_dispatch=stop_before_dispatch,
+        )
 
     # No-op pipeline: the target is already available (target ∈ starts).
     if not steps:

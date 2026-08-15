@@ -25,21 +25,29 @@ Shapes (the demo-critical sweep's evidence set, coordination §20–§22):
                 fresh verdict and re-folds (R3). A rejected attempt's graph
                 stays in capacity_mm but not in the collected/persisted list —
                 the delta is printed, not hidden
-    memberabort a member fails at MEMBER_RETRY_CAP: MemberAbortError, the map
-                aborts, the fold never runs (R4)
+    memberpartial
+                a member fails at MEMBER_RETRY_CAP: it STOPS IN PLACE with its
+                final attempt's graph retained, its siblings run, and the fold
+                stops pre-dispatch with RunStopped(partial_domain) over the
+                full member-id list (ADR-0201 am-6, which retired
+                MemberAbortError as a raiser; this shape replaces the aborting
+                memberabort shape that pinned R4's old behaviour)
     needsinput  a step returns the NeedsInput verdict: the walk halts and the
                 graph records RunStopped(needs_input) with the missing IRI (R7)
     refusal     the policy lookup finds NO edition in force: the run SUCCEEDS
                 and the limit's origin record carries the refusal — in-band,
-                never an exception (R8, leaf level; member-level refusal is
-                unbuilt — core-collection-member-dont-know)
+                never an exception (R8, leaf level; member-level in-band
+                refusal is core-supported since ADR-0209 — its demo
+                consumption is the routing content, a later slice)
     outage      the store cannot be consulted: (a) no store at all, (b) the
                 store contradicts itself (AmbiguousEditionsError). Both RAISE
                 and the graph records RunStopped — an outage is never a
                 finding about the case (R6, both raising paths)
-    boundary    the input-boundary axis: a claim with ZERO exposures (the
-                demo reducer REFUSES to conclude from nothing) and a claim
-                with ONE exposure
+    boundary    the input-boundary axis: a claim with ZERO exposures — the
+                FOLD stops pre-dispatch with RunStopped(empty_domain), the
+                reducer is never asked (ADR-0201 am-5; the demo reducer's own
+                zero-verdict guard stays as defence in depth but no longer
+                fires here) — and a claim with ONE exposure
     codec       encoder-only; no round-trip. Walks EVERY graph every other
                 shape leaves and runs the persistence encoder over every node
                 value (the live FalkorDB round-trip is the persistence-smoke
@@ -74,7 +82,7 @@ from mindsos_intelligence import execution
 from mindsos_intelligence.capacity_persister import make_node_value_encoder
 from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
 from mindsos_intelligence.dispatch import L4Dispatcher
-from mindsos_intelligence.execution import LeafPipelineNotFound, MemberAbortError
+from mindsos_intelligence.execution import LeafPipelineNotFound
 from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.plan_construction import PlanResult
 from mindsos_knowledge.identifiers import ROLE_POLICIES
@@ -471,8 +479,8 @@ def dump_retry(_collect_mms=None) -> None:
     _dump_mm_delta(mm, graphs)
 
 
-def dump_memberabort(_collect_mms=None) -> None:
-    print("== shape: memberabort (member 2 fails at MEMBER_RETRY_CAP; the map aborts, the fold never runs) ==")
+def dump_memberpartial(_collect_mms=None) -> None:
+    print("== shape: memberpartial (member 2 fails at MEMBER_RETRY_CAP: it stops IN PLACE, siblings run, the fold stops partial_domain) ==")
     failures = {"A. Silva/contents": 99}
     mm, dispatcher, writer, request_run = _harness(
         capacities=[
@@ -482,16 +490,13 @@ def dump_memberabort(_collect_mms=None) -> None:
     )
     _note_mm(_collect_mms, mm)
     graphs: list = []
-    try:
-        execution.run(
-            dispatcher, writer, _claim_plan(), request_run,
-            mm=mm,
-            solve_seed={DS_CLAIM_EXPOSURES: list(EXPOSURES)},
-            capacity_graphs=graphs,
-            case_label="claim CLM-2041",
-        )
-    except MemberAbortError as exc:
-        print(f"raised (by design): {type(exc).__name__}: {exc}")
+    execution.run(
+        dispatcher, writer, _claim_plan(), request_run,
+        mm=mm,
+        solve_seed={DS_CLAIM_EXPOSURES: list(EXPOSURES)},
+        capacity_graphs=graphs,
+        case_label="claim CLM-2041",
+    )
     _dump_graphs(graphs)
     _dump_mm_delta(mm, graphs)
 
@@ -569,9 +574,9 @@ def dump_outage(_collect_mms=None) -> None:
 
 
 def dump_boundary(_collect_mms=None) -> None:
-    print("== shape: boundary (the input-boundary axis: zero exposures REFUSED, one exposure decided) ==")
+    print("== shape: boundary (the input-boundary axis: zero exposures stop at the fold, one exposure decided) ==")
     for sublabel, exposures in (
-        ("n=0 (the demo reducer refuses to conclude from nothing)", []),
+        ("n=0 (the fold stops pre-dispatch: the reducer is never asked)", []),
         ("n=1", EXPOSURES[:1]),
     ):
         print(f"-- boundary: {sublabel} --")
@@ -640,7 +645,7 @@ SHAPES = {
     "noroute": dump_noroute,
     "replan": dump_replan,
     "retry": dump_retry,
-    "memberabort": dump_memberabort,
+    "memberpartial": dump_memberpartial,
     "needsinput": dump_needsinput,
     "refusal": dump_refusal,
     "outage": dump_outage,

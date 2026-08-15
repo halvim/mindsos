@@ -35,10 +35,43 @@ from decision_records_demo.dr_dump import (
 )
 from decision_records_demo.dr_render import (
     G6_BANNED,
+    MANIFEST_MEMBER_IDS,
     NODE_CAPACITY,
     RendererGapError,
     render_from_graphs,
 )
+
+
+def _strip_member_ids(graphs):
+    """A no-manifest-road fixture: the same graphs with the am-5 key removed
+    from every manifest (a fold-only or degraded/stale record)."""
+    stripped = [copy.deepcopy(g) for g in graphs]
+    for graph in stripped:
+        for node in graph.nodes.values():
+            if node.type_name == "RunManifest":
+                node.value.pop(MANIFEST_MEMBER_IDS, None)
+    return stripped
+
+
+def _partial_graphs():
+    """The memberpartial shape: member 2 fails at MEMBER_RETRY_CAP, stops in
+    place, the fold stops partial_domain (ADR-0201 am-6)."""
+    from decision_records_demo.dr_dump import (
+        _conclude_declaration, _decide_declaration, _make_flaky_decide,
+    )
+    mm, dispatcher, writer, request_run = _harness(
+        capacities=[
+            _decide_declaration(_make_flaky_decide({"A. Silva/contents": 99})),
+            _conclude_declaration(),
+        ],
+    )
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, _claim_plan(), request_run, mm=mm,
+        solve_seed={DS_CLAIM_EXPOSURES: list(EXPOSURES)},
+        capacity_graphs=graphs, case_label="claim CLM-2041",
+    )
+    return graphs
 
 EPISODE_COMPLETED = {
     "capacity_root_ref": "unused-by-render_from_graphs",
@@ -171,22 +204,38 @@ def test_completed_without_conclusion_raises():
     raise AssertionError("a success was asserted that the graph cannot show")
 
 
-def test_order_follows_the_verdicts_list_alone():
-    """Bank #7: graph iteration order is irrelevant; the seeded LIST decides.
-    Reversing the graphs list changes nothing; reversing the LIST reverses
-    the page's member blocks."""
+def test_order_follows_the_record_alone():
+    """Bank #7 RESTATED on the manifest road: graph iteration order is
+    irrelevant (kept half, verbatim); the RECORD decides order — reversing
+    the ids AND the list together reverses the page, while reversing the
+    list ALONE is the record and the value bus out of step, and raises."""
     graphs = _claim_graphs()
     page = render_from_graphs(graphs, EPISODE_COMPLETED)
     page_reversed_graphs = render_from_graphs(list(reversed(graphs)), EPISODE_COMPLETED)
     assert page == page_reversed_graphs
-    mutated = [copy.deepcopy(g) for g in graphs]
-    fold = mutated[-1]
+    coherent = [copy.deepcopy(g) for g in graphs]
+    fold = coherent[-1]
     for node in fold.nodes.values():
         if isinstance(node.value, list):
             node.value.reverse()
-    page_reversed_list = render_from_graphs(mutated, EPISODE_COMPLETED)
-    assert page != page_reversed_list
-    assert page_reversed_list.splitlines()[3].startswith("B. Osei")
+        if node.type_name == "RunManifest":
+            node.value[MANIFEST_MEMBER_IDS] = list(
+                reversed(node.value[MANIFEST_MEMBER_IDS])
+            )
+    page_reversed_record = render_from_graphs(coherent, EPISODE_COMPLETED)
+    assert page != page_reversed_record
+    assert page_reversed_record.splitlines()[3].startswith("B. Osei")
+    tampered = [copy.deepcopy(g) for g in graphs]
+    fold = tampered[-1]
+    for node in fold.nodes.values():
+        if isinstance(node.value, list):
+            node.value.reverse()
+    try:
+        render_from_graphs(tampered, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "out of step" in str(exc)
+    else:
+        raise AssertionError("a list reversed against its ids rendered")
 
 
 def test_missing_member_raises():
@@ -268,10 +317,17 @@ def test_noroute_page_names_what_was_in_hand():
 
 
 def test_boundary_stop_page():
-    """n=0: the reducer's refusal renders as a stop with its prose detail."""
+    """n=0 RESTATED on the am-5 core: the FOLD stops pre-dispatch with
+    empty_domain — the reducer is never asked, so its refusal prose cannot
+    appear; the stop phrase comes from the manifest snapshot (tokens branch,
+    phrases print)."""
     page = render_from_graphs(_claim_graphs([]), EPISODE_STOPPED)
-    assert "Stopped: a step could not be completed." in page
-    assert "refusing to conclude a claim from zero exposure verdicts" in page
+    assert (
+        "Stopped: there was nothing to decide from - the collection had no "
+        "members." in page
+    ), page
+    assert "refusing to conclude" not in page, "the reducer never ran"
+    assert "empty_domain" not in page.lower()
 
 
 def test_unmatched_member_graph_raises():
@@ -294,11 +350,14 @@ def test_unmatched_member_graph_raises():
 
 
 def test_identical_bare_verdicts_do_not_collapse_onto_one_member():
-    """N-F2: with the exposure stripped out of the verdict VALUE, every entry
-    matches every member. The first cut took the first candidate and printed
-    one exposure three times while two never rendered. Distinct exposures do
-    not render alike, so this is ambiguity, not interchangeability — raise."""
-    graphs = [copy.deepcopy(g) for g in _claim_graphs()]
+    """N-F2, RE-SCOPED to the no-manifest road (am-5 consequence — never
+    deleted): with the am-5 key stripped and the exposure stripped out of the
+    verdict VALUE, every entry matches every member — ambiguity, not
+    interchangeability, and the raise names this road's own classification
+    ambiguity. On the manifest road identical bare verdicts are LEGAL
+    (position correlates them); test_identical_bare_verdicts_render_by_position
+    pins that half."""
+    graphs = _strip_member_ids(_claim_graphs())
     fold = graphs[-1]
     for node in fold.nodes.values():
         if isinstance(node.value, list):
@@ -316,6 +375,7 @@ def test_identical_bare_verdicts_do_not_collapse_onto_one_member():
         render_from_graphs(graphs, EPISODE_COMPLETED)
     except RendererGapError as exc:
         assert "do not render alike" in str(exc)
+        assert "no-manifest road" in str(exc), "the raise names the road"
         return
     raise AssertionError("identical verdict values collapsed onto one member")
 
@@ -347,6 +407,175 @@ def test_missing_decided_date_is_stated_not_omitted():
     dated = render_from_graphs(graphs, EPISODE_COMPLETED)
     assert "Decided 2026-08-14" in dated
     assert "not available from stored evidence" not in dated
+
+
+def test_identical_bare_verdicts_render_by_position():
+    """The manifest road's half of N-F2: identical bare verdict values are
+    LEGAL where a map supplied ids — position correlates them, and every
+    member block renders once."""
+    graphs = [copy.deepcopy(g) for g in _claim_graphs()]
+    fold = graphs[-1]
+    for node in fold.nodes.values():
+        if isinstance(node.value, list):
+            node.value[:] = ["payable"] * len(node.value)
+    for member in graphs[:-1]:
+        produced = {
+            e.target.node_id for e in member.edges.values()
+            if e.type_name == "PRODUCES"
+        }
+        for node_id, node in member.nodes.items():
+            if node_id in produced and isinstance(node.value, dict) \
+                    and "decision" in node.value:
+                node.value = "payable"
+    page = render_from_graphs(graphs, EPISODE_COMPLETED)
+    assert page.count("payable") >= 3
+    assert "A. Silva" in page and "B. Osei" in page
+
+
+def test_swapped_ids_raise_out_of_step():
+    """§72 Q4-1: order is a changed behaviour with its own red — two DISTINCT
+    members' ids swapped must fail the per-position cross-check, not render
+    swapped blocks."""
+    graphs = [copy.deepcopy(g) for g in _claim_graphs()]
+    fold = graphs[-1]
+    for node in fold.nodes.values():
+        if node.type_name == "RunManifest":
+            ids = node.value[MANIFEST_MEMBER_IDS]
+            ids[0], ids[2] = ids[2], ids[0]
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "out of step" in str(exc)
+        return
+    raise AssertionError("swapped ids rendered swapped members silently")
+
+
+def test_stop_graph_with_produced_verdict_is_incoherent():
+    """§72 Q2's precedence rule, the raise half: a member graph carrying BOTH
+    a RunStopped and a produced verdict-typed value never classifies — it
+    raises as incoherent."""
+    partial = [copy.deepcopy(g) for g in _partial_graphs()]
+    stopped_member = next(
+        g for g in partial
+        if any(n.type_name == "RunStopped" for n in g.nodes.values())
+        and any(isinstance(n.value, dict) for n in g.nodes.values())
+        and g is not partial[-1]
+    )
+    donor = partial[0]
+    verdict_nodes = [
+        (nid, n) for nid, n in donor.nodes.items()
+        if (n.properties or {}).get("datastate_type", "").endswith("exposure_verdict")
+    ]
+    assert verdict_nodes, "fixture: the donor member must carry a verdict"
+    nid, node = verdict_nodes[0]
+    stopped_member.nodes[nid] = copy.deepcopy(node)
+    donor_edge = next(
+        e for e in donor.edges.values()
+        if e.type_name == "PRODUCES" and e.target.node_id == nid
+    )
+    stopped_member.edges[f"forged-{nid}"] = copy.deepcopy(donor_edge)
+    try:
+        render_from_graphs(partial, EPISODE_STOPPED)
+    except RendererGapError as exc:
+        assert "incoherent" in str(exc)
+        return
+    raise AssertionError("a stopped member with a produced verdict classified")
+
+
+def test_partial_page_stop_block_in_place():
+    """am-6 rendered: the failed member's stop block sits at ITS position
+    between its siblings' blocks, and the fold's partial_domain stop line
+    closes the page — no conclusion, nothing dropped."""
+    page = render_from_graphs(_partial_graphs(), EPISODE_STOPPED)
+    first = page.find("A. Silva, hail, 12 March, dwelling".split(",")[0])
+    assert "Stopped: a step could not be completed." in page
+    assert (
+        "Stopped: some of what was needed could not be completed, so no "
+        "overall conclusion was drawn." in page
+    ), page
+    assert "Therefore:" not in page
+    assert "B. Osei" in page
+    stop_at = page.find("Stopped: a step could not be completed.")
+    osei_at = page.find("B. Osei")
+    assert first < stop_at < osei_at, "the stop block renders in place"
+    low = page.lower()
+    for token in G6_BANNED:
+        assert token not in low, f"G6: {token!r} leaked:\n{page}"
+
+
+def test_manifest_only_member_renders_no_route_block():
+    """am-5's clean form: a manifest-only member graph (run-4's no-route
+    shape) renders the no-route stop block at its position and consumes no
+    list entry."""
+    graphs = [copy.deepcopy(g) for g in _claim_graphs()]
+    fold = graphs[-1]
+    member = graphs[1]
+    for node_id in list(member.nodes):
+        if member.nodes[node_id].type_name != "RunManifest":
+            del member.nodes[node_id]
+    member.edges.clear()
+    for node in fold.nodes.values():
+        if isinstance(node.value, list):
+            del node.value[1]
+    page = render_from_graphs(graphs, EPISODE_STOPPED)
+    assert "Stopped before any step could run" in page
+    assert "A. Silva" in page and "B. Osei" in page
+
+
+def test_manifest_naming_a_missing_graph_raises():
+    """The id list promises a member the Episode cannot show — raise, the
+    manifest-road form of the missing-member gap."""
+    graphs = _claim_graphs()
+    without_member = [graphs[0]] + graphs[2:]
+    try:
+        render_from_graphs(without_member, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "not in this Episode" in str(exc)
+        return
+    raise AssertionError("a promised member graph was silently absent")
+
+
+def test_empty_list_with_member_graphs_raises():
+    """§72 Q4-3: key present, the list emptied, member graphs still in the
+    Episode — the short-list raise fires; nothing renders as if complete."""
+    graphs = [copy.deepcopy(g) for g in _claim_graphs()]
+    fold = graphs[-1]
+    for node in fold.nodes.values():
+        if isinstance(node.value, list):
+            node.value[:] = []
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "leaves a member out" in str(exc)
+        return
+    raise AssertionError("an emptied list rendered a complete-looking page")
+
+
+def test_old_reds_stay_red_on_the_no_manifest_road():
+    """§72 Q4-5 (the F2 census rule applied to a road move): the OLD
+    bijection mutation set re-run with the am-5 key stripped — every old red
+    stays red, and the genuinely-duplicated exposure still renders."""
+    stripped = _strip_member_ids(_claim_graphs())
+    without_member = [stripped[0]] + stripped[2:]
+    try:
+        render_from_graphs(without_member, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "matches no run graph" in str(exc)
+    else:
+        raise AssertionError("no-manifest road: missing member rendered")
+    popped = [copy.deepcopy(g) for g in stripped]
+    for node in popped[-1].nodes.values():
+        if isinstance(node.value, list):
+            node.value.pop()
+    try:
+        render_from_graphs(popped, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "leaves a member out" in str(exc)
+    else:
+        raise AssertionError("no-manifest road: unmatched member rendered")
+    dup = _strip_member_ids(_claim_graphs([EXPOSURES[0], EXPOSURES[0]]))
+    page = render_from_graphs(dup, EPISODE_COMPLETED)
+    assert page.count("A. Silva") == 2
 
 
 if __name__ == "__main__":
