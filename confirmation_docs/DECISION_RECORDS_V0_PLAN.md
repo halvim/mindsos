@@ -155,7 +155,7 @@ local and remote, both lists checked).
 | #156 | *(squash)* | **The refusal vocabulary** + the escaped findings. Tag **`refusal-vocabulary-confirmed`** | **4716 / 11 / 1x / 0** |
 | #157 | *(squash)* | **Map-member manifests** — minting moves into `execute_pipeline`; the sub-MM routing gap; ADR-0201 am-4 + ADR-0207 am-3. Tag **`dr-map-manifest-confirmed`** | **4731 / 11 / 1x / 0** |
 | #158 | *(squash)* | **Fold grounding** — the reducer routes through `execute_pipeline`; RULES §12 replaced by the sweep; the coordination-file pin; the run-surface sentinel. Tag **`dr-fold-grounding-confirmed`** | **4747 / 11 / 1x / 0** |
-| #165 | *(squash at close-out)* | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
+| #165 | `5db50d4` | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
 
 **Baseline for the next item: 4770 passed / 11 skipped / 1 xpassed / 0 failed at PR
 #165's final tip** (4769 at the build tip + the critic-§60 guard; the final-tip
@@ -188,7 +188,11 @@ machinery half — partial results; it changes ∀-abort semantics and leans on 
 Phase-7 build-out (routing capacities — a new decision-capacity kind,
 Gate-4-checked in writing before registration — intake path, batch harness; the
 demo-side am-5 consumption rides that lane per ruling D5). Layer B (item 8)
-stays **re-filed as blocked** — see §2.14.
+stays **re-filed as blocked** — see §2.14. *(Close-out 2026-08-15: #165 squash
+`5db50d4`, tag `dr-shape-a-confirmed`; baseline 4770 CARRYABLE onto `5db50d4`
+by construction — the only commit in `93af23f..5db50d4` IS the #165 squash.
+Final-tip gate 4770 was the THIRTEENTH consecutive exact call; the critic-§60
+guard rode the same PR after its mutation reddened the named test alone.)*
 
 ⚠ **THE PARAGRAPH THAT USED TO SIT HERE WAS A SPLICE, and it is the reason this
 correction is written out rather than made silently.** It carried a *"Next:
