@@ -157,6 +157,7 @@ local and remote, both lists checked).
 | #158 | *(squash)* | **Fold grounding** — the reducer routes through `execute_pipeline`; RULES §12 replaced by the sweep; the coordination-file pin; the run-surface sentinel. Tag **`dr-fold-grounding-confirmed`** | **4747 / 11 / 1x / 0** |
 | #166 | `b276c63` | **The partial-record ship** — partial results (ADR-0201 am-6): a member stops in place, a truncated domain is a stop; `MemberAbortError` retired as a raiser; `conceded` from the record; the critic-§67 lifecycle e2e landed pre-merge. Tag **`dr-partial-record-confirmed`** | **4785 / 11 / 1x / 0** |
 | #165 | `5db50d4` | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
+| #167 | `a4d4b0b` *(demo branch)* | **The prerequisite-0 demo ship** — pin bump to `dr-partial-record-confirmed`; the two-roads renderer (manifest road by position, bijection re-scoped to the no-manifest road, heuristic retired); routing beats 1–2 on the Guidewire-sourced model; the first `refusal_capable` DataState consumed end to end. Tag **`dr-prereq0-confirmed`**. Design §71, critic rules §72, build record §75, stage-2 PASS §76 | none by design — no `mindsos_*` diff vs gated `b276c63` (verified empty, twice) |
 
 **Baseline for the next item: 4785 passed / 11 skipped / 1 xpassed / 0 failed,
 CARRYABLE onto the #166 squash `b276c63`** — the squash is the only
@@ -1176,6 +1177,43 @@ consumes am-5 — deferred to the demo lane, ruling D5); §38's two conditions
 were met at filing (verified in STATE).
 
 ### 2.17 The partial-record ship — a member stops in place, and the work that completed survives
+
+## 2.18 — #167, the prerequisite-0 demo ship (2026-08-15)
+
+*(demo lane, same chat as #166's close. PR #167, branch `feat/dr-consume`
+off `demo/decision-records` @ `32b8dbd`, squash `a4d4b0b`, tag
+`dr-prereq0-confirmed`. Design pass coordination §71 with critic rules §72
+adopted in full; build record §75; critic stage-2 PASS §76 with one
+docstring condition, landed `fb3c568`.)*
+
+**What shipped.** The am-5/am-6 consumption plus the routing content the
+script's beats 1–2 need: dump truth (`memberpartial`; boundary =
+`empty_domain` pre-dispatch); the TWO-ROADS renderer — manifest road
+renders member blocks BY POSITION off `member_graph_ids` with stop/no-route
+blocks in place, a per-position value cross-check, the §72-Q2 precedence
+rule, and refusal blocks reading the record OF the refusing value; the
+bijection demoted there and intact on the no-manifest road (N-F2 re-scoped,
+never deleted; raises name the road); `dr_routing.py` — two shipped
+structured-ingest readers mint every origin record, the routing decision
+(category `decision`; Gate 4 restated, checked in writing) refuses in-band
+with the structural marker, `desk_verdict` is the first `refusal_capable`
+DataState anywhere, the reducer declares the decode and the static check
+fires on the demo's own road; pages `routing` + `routingrefusal` through
+the production close — 7/7 from the store, end-state re-verify 7/7.
+
+**Evidence.** 30 demo guard tests; mutations red by exactly the named tests
+in isolation: renderer 2/3/7, routing 2/1/1 (+ the critic's fresh
+transplanted-record mutation: no page change, correct by §72 Q3-1, the
+ignore now stated as chosen). **One mutation-construction miss recorded:**
+a dead-parameter mutation (default never consulted) returned 30 green;
+take-2 at the declaration site exact. Rule: mutate the CONSULTED site.
+Self-caught in-slice: `phrase_for_value` — the verdict line wore a reader's
+phrase on multi-capacity member graphs; fixed and pinned.
+
+**Deferred, named:** beat-3 fixture (owner D2 — "the medical report"
+recommended by both lanes); desk words D3 shipped as recommended;
+records[0] tolerance documented. Next per §68.3: the layout + left panel
+design pass, then transport/Layer B.
 
 *(partial-record lane, 2026-08-15. PR #166, branch `feat/dr-partial-record`
 off `900e7f6`, commits `2a25a41` (build) + `0e90d19` (F1 fix) + `6dc04f9` (F2
