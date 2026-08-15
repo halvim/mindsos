@@ -252,9 +252,21 @@ class CapacityMMWriter:
                 MANIFEST_CASE_LABEL: case_label,
             }
             if member_graph_ids is not None:
-                value[MANIFEST_MEMBER_GRAPH_IDS] = [
-                    str(gid) for gid in member_graph_ids
-                ]
+                ids = list(member_graph_ids)
+                bad = [g for g in ids if not isinstance(g, str) or not g]
+                if bad:
+                    # am-6 finding (caught by a mutation pass): ``str(gid)``
+                    # coercion laundered a None id into the truthy string
+                    # "None" - a fake-looking id that would persist and
+                    # render. Every position must carry a real graph id;
+                    # a hole here is an upstream contract violation and it
+                    # surfaces HERE, loudly, not on a page later.
+                    raise ValueError(
+                        f"member_graph_ids entries must be non-empty strings; "
+                        f"got {bad!r} - a member position with no grounding "
+                        "graph id is an upstream defect, not a value to coerce"
+                    )
+                value[MANIFEST_MEMBER_GRAPH_IDS] = ids
             return graph.add_node(
                 value=value,
                 type_name=NODE_TYPE_RUN_MANIFEST,
