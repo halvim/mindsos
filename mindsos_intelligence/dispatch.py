@@ -33,6 +33,27 @@ from typing import TYPE_CHECKING, Any, Mapping, Optional
 from mindsos_capacity.context import CancelTokenView, CapacityContext, make_writeable
 from mindsos_capacity.runtime import invoke as _runtime_invoke
 
+
+class LLMUnavailableError(RuntimeError):
+    """A capacity declaring ``consults_llm=True`` ran with no client bound.
+
+    **A deployment error, not a don't-know about the world.** A body that
+    silently declined here would put an unexplained refusal in a Decision
+    Record; a substrate that injected ``None`` and let the body crash on
+    it would put an unnamed step failure there instead.
+
+    **Deliberately FATAL, and that is why this message may name an IRI.**
+    It is raised before ``runtime.invoke``'s envelope and
+    ``pipeline_execution`` does not wrap the ``dispatch()`` call, so it
+    escapes ``execute_pipeline`` and no page renders — unlike every error
+    in ``mindsos_capacity.llm``, whose text reaches a customer through
+    ``stopped_detail`` and is therefore fixed prose. The escape is
+    intentional and pinned by a test: a dispatcher with no client bound
+    would fail identically for every member, so a partial Record would be
+    a Record of nothing (coordination §87 T-F9 / ruling 8).
+    """
+
+
 if TYPE_CHECKING:  # pragma: no cover — typing only
     from .phase1_profile import Phase1Profile
 
@@ -58,6 +79,7 @@ class L4Dispatcher:
         version_snapshot: Optional[Mapping[str, int]] = None,
         phase1_profile: "Optional[Phase1Profile]" = None,
         modality_profiles: "Optional[Mapping[str, Phase1Profile]]" = None,
+        llm: Any = None,
     ) -> None:
         self._cl = capacity_layer
         self._session = session
@@ -69,6 +91,10 @@ class L4Dispatcher:
         # ADR-0197 §3 — runtime {modality (ingress DataState IRI) ->
         # Phase1Profile} table, selected per input by the stamped modality.
         self._modality_profiles = dict(modality_profiles or {})
+        # The external-model client (``mindsos_capacity.llm``). Held
+        # here, handed to a body only when its declaration asks for it;
+        # ``None`` when the deployment consults no model at all.
+        self._llm = llm
 
     # ── read-only accessors (used by ``phase_1.interpret`` for
     #    find_pipeline composition + the map-resolution KL check) ─────────
@@ -90,6 +116,10 @@ class L4Dispatcher:
         return self._phase1_profile
 
     @property
+    def llm(self) -> Any:
+        return self._llm
+
+    @property
     def modality_profiles(self) -> "Mapping[str, Phase1Profile]":
         return self._modality_profiles
 
@@ -100,6 +130,7 @@ class L4Dispatcher:
         request_iri: Optional[str] = None,
         pattern_iri: Optional[str] = None,
         reads_mm: bool = False,
+        consults_llm: bool = False,
     ) -> CapacityContext:
         # ADR-0200 (C3) — the body-facing MM read handle is injected only
         # when the declaration sets ``reads_mm=True``. A ``reads_mm=False``
@@ -123,6 +154,10 @@ class L4Dispatcher:
             kl=self._kl,
             cl=self._cl,
             writeable=make_writeable(self._kl, self._session),
+            # ADR-0180 §am-3 — the external-model capability, injected
+            # only for a declaration that asked for it. Same shape as
+            # ``mm_handle`` above: undeclared bodies get ``None``.
+            llm=self._llm if consults_llm else None,
         )
 
     def dispatch(
@@ -137,11 +172,22 @@ class L4Dispatcher:
         step_id: Optional[str] = None,
     ):
         declaration = self._cl.resolve_declaration(capacity_iri, session=self._session)
+        consults_llm = bool(getattr(declaration, "consults_llm", False))
+        if consults_llm and self._llm is None:
+            raise LLMUnavailableError(
+                f"{capacity_iri} declares consults_llm=True but this "
+                f"dispatcher was built with no client. Construct the "
+                f"L4Dispatcher with `llm=` "
+                f"(mindsos_capacity.llm.LiveLLM, or RecordedLLM for a "
+                f"recorded set). See this class's docstring for why this "
+                f"is fatal rather than a refusal."
+            )
         ctx = self.build_context(
             cancel_token=cancel_token,
             request_iri=request_iri,
             pattern_iri=pattern_iri,
             reads_mm=bool(getattr(declaration, "reads_mm", False)),
+            consults_llm=consults_llm,
         )
         return _runtime_invoke(
             declaration,
@@ -153,4 +199,4 @@ class L4Dispatcher:
         )
 
 
-__all__ = ["L4Dispatcher"]
+__all__ = ["L4Dispatcher", "LLMUnavailableError"]

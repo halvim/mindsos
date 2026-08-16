@@ -95,6 +95,19 @@ class _CapacityBase:
     precondition_iri: Optional[str] = None
     effect_iri: Optional[str] = None
     reads_mm: bool = False
+    # The external-model reading seam — the DECLARATION half of the
+    # narrowed model capability on the context (mindsos_capacity/llm).
+    # Exactly
+    # the ``reads_mm`` discipline (ADR-0200 C3): a body that has not
+    # declared it consults a model is handed ``None`` and cannot reach
+    # one, so "declared == what the body reads" stays structurally true
+    # for this channel too, and the set of capacities that may consult a
+    # model is one registry query rather than an inference from category.
+    # (A category-membership rule was the archived seam's mechanism and
+    # was REJECTED at coordination §87/§89: category says what a capacity
+    # IS, a dependency says what it DOES, and the shipped precedent for
+    # the second is this flag.)
+    consults_llm: bool = False
     # ADR-0159 §amendment-1 — how the conjunction finder resolves this
     # capacity's multiple declared inputs: "all_required" (AND) | "any_of"
     # (optional-union) | "fold" (aggregate over N producers). The default

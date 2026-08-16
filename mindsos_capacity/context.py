@@ -103,6 +103,39 @@ class CapacityLayerHandle(Protocol):
 
 
 @runtime_checkable
+class LLMHandle(Protocol):
+    """External-model consultation surface exposed to a capacity body.
+
+    The **narrowed capability** through which a ``comprehension.*`` body
+    consults an external language model. It follows ``context.writeable``
+    (ADR-0180): the body receives a handle, never a client it constructed,
+    never credentials and never a principal, and the capability is
+    injected by L4 dispatch rather than imported.
+
+    **Injection is DECLARED.** ``dispatch.build_context`` supplies it only
+    when the capacity declaration sets ``consults_llm=True``; every other
+    body gets ``None``. See ``capacity.Capacity.consults_llm`` for why
+    that, and not category membership.
+
+    The concrete implementations ship in ``mindsos_capacity.llm``
+    (``LiveLLM`` / ``RecordedLLM`` / ``CapturingLLM``) and are named here
+    only — this module imports none of them, so the Protocol stays the
+    whole contract. The return is a plain ``Mapping``: the substrate
+    hands over what the model said plus the provenance the model cannot
+    forge, and the BODY decides whether that reading is admissible.
+    """
+
+    def read(
+        self,
+        *,
+        prompt_iri: str,
+        prompt_version: int,
+        source_text: str,
+        extraction_schema: Optional[Mapping[str, Any]] = None,
+    ) -> Mapping[str, Any]: ...
+
+
+@runtime_checkable
 class CancelToken(Protocol):
     """Full cancellation token — held by the L4 substrate, never the body."""
 
@@ -127,7 +160,7 @@ class CancelTokenView:
         return self._token.is_set()
 
 
-# ── CapacityContext (ADR-0159 + ADR-0180 — 11 fields, frozen) ──────────
+# ── CapacityContext (ADR-0159 + ADR-0180 §am-3 — 12 fields, frozen) ────
 
 
 @dataclass(frozen=True)
@@ -159,6 +192,11 @@ class CapacityContext:
     kl: Optional[KLHandle] = None
     cl: Optional[CapacityLayerHandle] = None
     writeable: Optional[Callable[..., Any]] = None
+    #: External-model consultation capability (ADR-0180 §am-3). Injected
+    #: by L4 dispatch ONLY for a declaration carrying
+    #: ``consults_llm=True``; ``None`` for every other body, so "declared
+    #: == may reach a model" is structurally true. See :class:`LLMHandle`.
+    llm: Optional[LLMHandle] = None
 
     def __post_init__(self) -> None:
         # Defense-in-depth read-only views (frozen dataclass → bypass via
@@ -260,6 +298,7 @@ __all__ = [
     "CapacityContext",
     "MMHandle",
     "KLHandle",
+    "LLMHandle",
     "CapacityLayerHandle",
     "CancelToken",
     "CancelTokenView",
