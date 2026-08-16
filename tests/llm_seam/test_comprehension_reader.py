@@ -241,7 +241,7 @@ def test_a_transport_failure_RAISES_and_never_reaches_a_record():
     LLMCallFailed(),
     LLMCallBudgetExceeded(max_calls=5),
     RecordedResponseMiss(request_key="sha256:x", set_size=3),
-    TransportContractError(returned_type="int"),
+    TransportContractError(violation="returned int"),
 ])
 def test_every_environment_failure_raises_and_none_is_caught(exc):
     """There is no catch-all left. Each of these means something different

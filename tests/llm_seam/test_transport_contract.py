@@ -109,7 +109,7 @@ def test_raise_if_failed_names_the_failures():
     report = _verify(WRONG_TYPE)
     with pytest.raises(TransportContractError) as exc:
         report.raise_if_failed()
-    assert "answer_is_text_or_a_mapping" in exc.value.returned_type
+    assert "answer_is_text_or_a_mapping" in exc.value.violation
 
 
 def test_raise_if_failed_is_quiet_when_the_contract_holds():
