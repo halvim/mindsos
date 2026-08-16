@@ -22,9 +22,14 @@ from mindsos_capacity import (
 )
 
 
-def test_capacity_context_has_eleven_fields():
-    # ADR-0180 (Phase 48) adds the 11th field ``writeable`` — the
+def test_capacity_context_has_twelve_fields():
+    # ADR-0180 (Phase 48) added the 11th field ``writeable`` — the
     # pre-authorized, session-bound write capability injected by L4 dispatch.
+    # ADR-0180 §am-3 adds the 12th, the external-model capability, on the
+    # same pattern: a narrowed handle injected by dispatch and ONLY for a
+    # declaration carrying ``consults_llm=True``. Renamed rather than
+    # edited in place: a test called ...has_eleven_fields asserting twelve
+    # is the stale-name class this suite exists to refuse.
     names = {f.name for f in dataclasses.fields(CapacityContext)}
     assert names == {
         "session_id",
@@ -38,6 +43,7 @@ def test_capacity_context_has_eleven_fields():
         "kl",
         "cl",
         "writeable",
+        "llm",
     }
 
 

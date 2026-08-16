@@ -22,9 +22,12 @@ from mindsos_capacity.builtins.policy_lookup_v0 import (
     PolicyStoreUnreachableError,
     build_policy_limit_lookup,
 )
+from mindsos_capacity.builtins.comprehension_v0 import build_reader
 from mindsos_capacity.builtins.structured_ingest_v0 import (
     build_structured_ingest_reader,
 )
+from mindsos_capacity.datastate import ShapeDescriptor
+from mindsos_capacity.llm import LiveLLM
 from mindsos_knowledge.identifiers import ROLE_POLICIES
 from mindsos_knowledge.knowledge_layer import KnowledgeLayer
 from mindsos_knowledge.policies import write_policy_edition
@@ -37,8 +40,9 @@ POLICY = "policy:probe"
 
 
 class _Ctx:
-    def __init__(self, kl):
+    def __init__(self, kl=None, llm=None):
         self.kl = kl
+        self.llm = llm
 
 
 def _kl(*editions):
@@ -56,6 +60,50 @@ _CLOSED = dict(version="1.0", in_force_from="2023-01-01", in_force_to="2023-12-3
                stated_value=10, text="ten")
 _OPEN = dict(version="2.0", in_force_from="2024-01-01", in_force_to=None,
              stated_value=20, text="twenty")
+
+
+DS_DOC = "datastate:probe.document"
+DS_DAYS = "datastate:probe.days"
+#: Deliberately contains a COLON inside the span a reading quotes. Until
+#: 2026-08-16 the leak guard below rejected any printed field containing
+#: one, as a proxy for "holds an IRI" — a proxy that was safe only while
+#: no producer put verbatim document text on a printed field. The model
+#: reader does exactly that, and real documents are full of colons.
+DOCUMENT = "Claim summary. Note: filed seven days later, inside the window."
+PROMPT = "prompt:probe.read_days"
+
+
+def _reading_body():
+    """One comprehension reader, shaped so every refusal path is reachable:
+    a scalar ``int`` value (so a non-numeric answer refuses
+    ``value_not_coercible``) read out of a real document (so a fabricated
+    quote refuses ``quote_not_found_in_source``)."""
+    return build_reader(
+        name="probe_reading",
+        source_datastate_iri=DS_DOC,
+        value_datastate_iri=DS_DAYS,
+        prompt_iri=PROMPT,
+        prompt_version=1,
+        field_name="days",
+        question="How many days passed before the claim was filed?",
+        description="How many days passed before the claim was filed",
+        origin_party_phrase="the customer",
+        source_identity_phrase="their submission email",
+        expected_basis=origin.BASIS_STATED,
+        value_shape=ShapeDescriptor.scalar("int"),
+    ).implementation
+
+
+def _llm(transport):
+    """A REAL client over a fake transport — so these paths exercise the
+    shipped decode (S-2) rather than a stand-in for it."""
+    return LiveLLM(
+        transport, model_id="probe-model", model_version="2026-01-01",
+    )
+
+
+def _answer(**field):
+    return lambda **_: {"fields": [dict(name="days", **field)]}
 
 
 def _lookup_body():
@@ -83,8 +131,12 @@ def _every_record_the_system_can_write():
     returns one. The raising paths are absent on purpose — a raising step
     writes no record at all, which is the whole reason
     ``environment_fault`` is degenerate."""
-    lookup, reader = _lookup_body(), _reader_body()
+    lookup, reader, reading = _lookup_body(), _reader_body(), _reading_body()
     both, open_only = _kl(_CLOSED, _OPEN), _kl(_OPEN)
+
+    def read(transport):
+        return reading(context=_Ctx(llm=_llm(transport)), **{DS_DOC: DOCUMENT})
+
     records = [
         lookup(context=_Ctx(both), **{DS_AS_OF: "2023-06-01"}),      # closed window
         lookup(context=_Ctx(open_only), **{DS_AS_OF: "2024-06-01"}),  # open window
@@ -92,15 +144,30 @@ def _every_record_the_system_can_write():
         reader(**{DS_RECORD: {"v": 7}}),
         reader(**{DS_RECORD: {}}),
         reader(**{DS_RECORD: {"v": "nope"}}),
+        # The model reader, one call per returning path. Its raising paths
+        # (an outage, a budget stop, a replay miss, an absent document) are
+        # absent on purpose and that is the point of ``model_unreachable``
+        # being degenerate: a raising step writes no record at all.
+        read(_answer(quote="Note: filed seven days later", value=7,
+                     basis=origin.BASIS_STATED)),
+        read(lambda **_: {"declined": True, "decline_reason": "the page is illegible"}),
+        read(lambda **_: {"fields": [{"name": "something_else"}]}),
+        read(_answer(quote="fourteen days later", value=14)),
+        read(_answer(quote="Note: filed seven days later", value="about seven weeks")),
+        read(lambda **_: "I think it was seven days"),
     ]
-    origin_iris = (origin.origin_record_iri(DS_LIMIT), origin.origin_record_iri(DS_VALUE))
+    origin_iris = (
+        origin.origin_record_iri(DS_LIMIT),
+        origin.origin_record_iri(DS_VALUE),
+        origin.origin_record_iri(DS_DAYS),
+    )
     return [r[i] for r in records for i in origin_iris if i in r]
 
 
 @pytest.fixture(scope="module")
 def emitted():
     records = _every_record_the_system_can_write()
-    assert len(records) == 6, "every returning path must yield exactly one record"
+    assert len(records) == 12, "every returning path must yield exactly one record"
     return records
 
 
@@ -287,14 +354,42 @@ def test_an_admitted_record_still_needs_no_detail():
     assert record[origin.FIELD_REFUSAL_DETAIL] is None
 
 
+#: The identifier schemes a printed field must never carry (G6). Mirrors
+#: the demo renderer's own banned list; the claim is "no IRI on a printed
+#: field", and these are what an IRI looks like here.
+_IRI_SCHEMES = (
+    "datastate:", "capacity:", "runstopped:", "runmanifest:",
+    "requestrun:", "pipelinerun:", "prompt:", "policy:",
+)
+
+
 def test_the_one_structural_field_that_leaks_is_the_one_we_classified(emitted):
     """``source_datastate`` holds a DataState IRI and is on records both
     producers write. It is STRUCTURAL — printing it is a G6 leak, and its prose
-    counterpart already exists as ``source_identity_phrase``."""
+    counterpart already exists as ``source_identity_phrase``.
+
+    **The check was ``":" in v`` until 2026-08-16, and that proxy is now
+    wrong** (coordination §87 T-F12). It stood in for "holds an IRI" and
+    was safe only while every printed field held phrasing WE wrote. The
+    model reader puts verbatim document text on ``quote`` — a printed
+    field — and on ``refusal_detail`` it puts the model's own undecodable
+    answer. Both legitimately contain colons; ``DOCUMENT`` above carries
+    one inside the quoted span precisely so this case is exercised rather
+    than imagined. Widening a guard to reach green is forbidden (RULES
+    §12); correcting a proxy that produces false positives by
+    construction is not the same act, and the difference is that this one
+    still fails on the thing the claim is about — an IRI."""
     assert origin.FIELD_SOURCE_DATASTATE in origin.FIELDS_STRUCTURAL
     assert origin.FIELD_SOURCE_IDENTITY_PHRASE in origin.FIELDS_PRINTED
+    quoted = [r for r in emitted if r.get(origin.FIELD_QUOTE)]
+    assert quoted, "the premise of the correction is that a quote IS printed"
+    assert any(":" in r[origin.FIELD_QUOTE] for r in quoted), (
+        "no emitted quote carries a colon, so this test would pass under the "
+        "old proxy too and proves nothing — fix the fixture, not the test"
+    )
     iri_valued = [
         f for r in emitted for f, v in r.items()
-        if isinstance(v, str) and ":" in v and f in origin.FIELDS_PRINTED
+        if isinstance(v, str) and f in origin.FIELDS_PRINTED
+        and any(scheme in v for scheme in _IRI_SCHEMES)
     ]
     assert iri_valued == [], f"printed fields holding identifiers: {iri_valued}"

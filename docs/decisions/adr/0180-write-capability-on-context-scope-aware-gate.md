@@ -59,3 +59,45 @@ Both write bodies migrate off dict `context` to `context.writeable`; production 
 ## §Implementation (Phase 48; pending ship)
 
 `mindsos_capacity/context.py` (11th `writeable` field + shared `make_writeable(kl, session)` factory); `mindsos_intelligence/dispatch.py` (`build_context` injects `make_writeable(...)`; **remove** `required_capability_for`/`check_write_permitted` — the blanket pre-gate — and the `mindsos_intelligence.__init__` re-export); `mindsos_capacity/capacity_layer.py` (write-body branch builds a `CapacityContext` with `make_writeable(...)`; read path keeps the dict — A1′); `consolidate.py`/`trace.py` body migration to `context.writeable`; test migration (`tests/phase_33` consolidate+trace → `L4Dispatcher`; `tests/phase_42` 10→11; `tests/phase_47` call-time gate; `tests/phase_36` precondition `CapacityContext`; `tests/phase_34` no-KL error-message). **Not** touched (A1): `runtime.py` union annotation (kept for the read-path dict); `tests/phase_30` + `tests/phase_33` context-injection tests + the `tests/phase_34` CLI/bypass tests (the write-branch keeps them green). Commit-group 2a. Write-gate coverage in `tests/phase_47/test_dispatch_gate.py` (Local write succeeds without `CAN_WRITE_GLOBAL`; Global write denied without it).
+
+## §amendment-3 — the external-model capability, and why the pattern generalises (2026-08-16)
+
+**Amendment status:** Accepted
+
+`CapacityContext` gains a **12th** field, `llm` (default `None`): the narrowed
+capability through which a `comprehension.*` body consults an external
+language model, typed by the new `LLMHandle` Protocol in
+`mindsos_capacity/context.py`. The concrete clients ship in
+`mindsos_capacity/llm/` and are named in the Protocol's docstring only.
+
+**This is §Decision-1's pattern re-used, not a new one.** The body receives a
+narrowed capability rather than a client it constructed; it holds no
+credentials, no session and no principal; the capability is injected by L4
+`dispatch.build_context`, which is the only place holding the live client.
+ADR-0170 is untouched — L3 still makes no authorization decision — and the
+field is `None` for every body that did not ask for it, exactly as
+`writeable` is `None` for read-bodies.
+
+**Injection is DECLARED, not ambient.** `Capacity` gains
+`consults_llm: bool = False`, and `build_context` injects the client only
+when the resolved declaration sets it — the discipline ADR-0200 (C3)
+established for `reads_mm`. A **category-membership** rule was the archived
+seam's mechanism and is REJECTED: a category says what a capacity *is*, a
+dependency says what it *does*, and only the second can be read off the
+registry per capacity. (Coordination §87 T-F7 / §89; the endorsement that
+briefly went the other way rested on a mis-stated premise about `reads_mm`.)
+
+**A declared-but-unbound client is FATAL.** `L4Dispatcher.dispatch` raises
+`LLMUnavailableError` before `runtime.invoke`'s envelope, so it escapes
+`execute_pipeline` rather than becoming a stopped member. That is deliberate
+and pinned: a dispatcher with no client bound fails identically for every
+member, so a partial Record would be a Record of nothing. It is also why that
+one message may name an IRI while every error in `mindsos_capacity/llm` is
+fixed prose — those reach a customer through `stopped_detail`, and this one
+reaches no page at all.
+
+**Consequences.** `tests/phase_42/test_typed_capacity_context.py`'s field pin
+is restated 11 → 12 and RENAMED (`...has_eleven_fields` asserting twelve is
+the stale-name class). `mindsos_capacity.__all__` is unchanged at 146:
+`LLMHandle` is exported from `context.py` and deliberately not re-exported at
+package level, since no consumer imports it — the two export-slate pins stand.

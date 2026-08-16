@@ -70,7 +70,7 @@ def _reduce_body(**kwargs):
     return {DS_AGG: {"conclusion": ordered}}
 
 
-def _register(layer, member_impl, *, session=None):
+def _register(layer, member_impl, *, session=None, retryable=True):
     specs = {
         "s1b.grids": dict(collection=True, member_ds=DS_MEMBER),
         "s1b.grid_facts": dict(collection=True, member_ds=DS_SUB),
@@ -93,6 +93,12 @@ def _register(layer, member_impl, *, session=None):
             name="s1b_member_solve", category=CATEGORY_DERIVATION,
             inputs=(DS_MEMBER,), outputs=(DS_SUB,), implementation=member_impl,
             description="member: grid -> grid_fact",
+            # Retry is DECLARED as of 2026-08-16 (Capacity.retryable,
+            # default False). This fixture declares it so the bounded-retry
+            # behaviour below is still the behaviour under test; without
+            # the flag a failing member now stops on its first attempt,
+            # which is the point of the change and is pinned below.
+            retryable=retryable,
         ),
         session=session,
     )
@@ -122,10 +128,10 @@ def _map_fold_plan():
     )
 
 
-def _harness(member_impl):
+def _harness(member_impl, *, retryable=True):
     sess = FakeSession()
     layer = CapacityLayer()
-    _register(layer, member_impl, session=sess)
+    _register(layer, member_impl, session=sess, retryable=retryable)
     mm = MentalModel(session_id="s", user_id="u")
     disp = L4Dispatcher(layer, session=sess)
     writer = ChainArtifactWriter(mm, "t")
@@ -235,3 +241,96 @@ def test_no_specs_plan_is_plain_leaf_unchanged():
     assert MEMBER_SEEN == [{"m": 9}]
     assert REDUCER_SEEN == []
     assert len(request_run.pipeline_runs) == 1
+
+
+# ── declared retry (ADR-0201 am-7) ─────────────────────────────────────
+
+
+def test_an_UNDECLARED_capacity_stops_on_its_first_failure():
+    """The new default, and the reason for the amendment. Until an outside
+    service existed there was no transient failure mode in this path at
+    all: a deterministic body fails identically on a second attempt, so
+    the retry only ever burned a duplicate attempt. It now takes a
+    declaration to get one — everything else about the stop is unchanged.
+    """
+    MEMBER_SEEN.clear()
+    REDUCER_SEEN.clear()
+
+    def _fail_member_1(**kwargs):
+        v = kwargs.get(DS_MEMBER)
+        MEMBER_SEEN.append(v)
+        if v == {"m": 1}:
+            raise RuntimeError("member 1 load failure")
+        return {DS_SUB: {"solved": v}}
+
+    mm, disp, writer, request_run = _harness(_fail_member_1, retryable=False)
+    execution.run(
+        disp, writer, _map_fold_plan(), request_run,
+        mm=mm, run_scope="t",
+        solve_seed={DS_COLL: [{"m": 0}, {"m": 1}, {"m": 2}]},
+        capacity_graphs=[],
+    )
+    assert MEMBER_SEEN.count({"m": 1}) == 1
+    # Everything am-6 decided about STOPPING is untouched.
+    assert {"m": 2} in MEMBER_SEEN
+    assert REDUCER_SEEN == []
+
+
+def test_a_fatal_failure_is_never_retried_even_by_a_declared_capacity():
+    """The fatal-set exemption (critic §88 Q3). Retrying past a spend
+    ceiling defeats the one thing the ceiling exists to do, and retrying a
+    replay miss cannot conjure a recording. Both declare themselves
+    non-transient, and that veto outranks the capacity's opt-in."""
+    from mindsos_capacity.llm.exceptions import (
+        LLMCallBudgetExceeded,
+        RecordedResponseMiss,
+    )
+
+    for fatal in (LLMCallBudgetExceeded(max_calls=5),
+                  RecordedResponseMiss(request_key="sha256:x", set_size=1)):
+        MEMBER_SEEN.clear()
+        REDUCER_SEEN.clear()
+
+        def _fatal_member_1(**kwargs):
+            v = kwargs.get(DS_MEMBER)
+            MEMBER_SEEN.append(v)
+            if v == {"m": 1}:
+                raise fatal
+            return {DS_SUB: {"solved": v}}
+
+        mm, disp, writer, request_run = _harness(_fatal_member_1, retryable=True)
+        execution.run(
+            disp, writer, _map_fold_plan(), request_run,
+            mm=mm, run_scope="t",
+            solve_seed={DS_COLL: [{"m": 0}, {"m": 1}, {"m": 2}]},
+            capacity_graphs=[],
+        )
+        assert MEMBER_SEEN.count({"m": 1}) == 1, (
+            f"{type(fatal).__name__} was retried inside a retryable capacity"
+        )
+
+
+def test_a_transient_failure_IS_retried_by_a_declared_capacity():
+    """The other side of the same rule: the failure that says it is
+    transient, inside a capacity that says it can be, still gets its
+    second attempt."""
+    from mindsos_capacity.llm.exceptions import LLMCallFailed
+
+    MEMBER_SEEN.clear()
+    REDUCER_SEEN.clear()
+
+    def _outage_member_1(**kwargs):
+        v = kwargs.get(DS_MEMBER)
+        MEMBER_SEEN.append(v)
+        if v == {"m": 1}:
+            raise LLMCallFailed()
+        return {DS_SUB: {"solved": v}}
+
+    mm, disp, writer, request_run = _harness(_outage_member_1, retryable=True)
+    execution.run(
+        disp, writer, _map_fold_plan(), request_run,
+        mm=mm, run_scope="t",
+        solve_seed={DS_COLL: [{"m": 0}, {"m": 1}, {"m": 2}]},
+        capacity_graphs=[],
+    )
+    assert MEMBER_SEEN.count({"m": 1}) == execution.MEMBER_RETRY_CAP

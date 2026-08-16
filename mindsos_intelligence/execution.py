@@ -980,13 +980,15 @@ def _run_one_member(
 
     Extracted from the map loop so the full fan-out and a targeted
     single-member re-run (:func:`_run_map_milestone`) share one code path.
-    Retry policy (am-6): retry to ``MEMBER_RETRY_CAP`` on a plain step
-    failure ONLY. A needs_input result is stopped on the FIRST ask — inputs
-    do not change between attempts, so re-asking is re-asking; a cancelled
-    result is someone's decision, not a transient; a no-route member is
-    deterministic (the capacity set does not change between attempts).
-    Nothing raises: an exhausted or stopped member returns
-    ``completed=False`` and its siblings run.
+    Retry policy (am-6, as amended 2026-08-16): retry to
+    ``MEMBER_RETRY_CAP`` on a plain step failure **that both the failing
+    capacity and the failure itself declare retryable** — see
+    :func:`_failure_is_retryable`. A needs_input result is stopped on the
+    FIRST ask (inputs do not change between attempts, so re-asking is
+    re-asking); a cancelled result is someone's decision, not a transient;
+    a no-route member is deterministic (the capacity set does not change
+    between attempts). Nothing raises: an exhausted or stopped member
+    returns ``completed=False`` and its siblings run.
 
     Multi-input CR: ``shared`` (the map's snapshotted ``shared_inputs``) is merged
     into the member's sub-blackboard **under** the member value — a spec that
@@ -1090,6 +1092,12 @@ def _run_one_member(
             # the rule is in the amendment's text), and a cancellation is a
             # decision, not a transient. Stop on the first such terminal.
             break
+        if not _failure_is_retryable(dispatcher, result):
+            # Retry is DECLARED, not blanket. Until an outside service
+            # existed there was no transient failure mode in this path at
+            # all, so the loop only ever burned a duplicate attempt on a
+            # body that fails identically twice.
+            break
     if accepted is None:
         # am-6 (partial results, replacing ∀-abort): this member STOPS IN
         # PLACE. Its FINAL attempt's graph is retained — it grounded a
@@ -1121,6 +1129,38 @@ def _run_one_member(
             confidence=1.0,
         )
     return _MemberOutcome(accepted.outputs.get(sub_target), member_gid, True)
+
+
+def _failure_is_retryable(dispatcher, result) -> bool:
+    """May this member be attempted again?
+
+    **Two declarations must agree.** The CAPACITY says whether it can fail
+    transiently at all (``Capacity.retryable``; default ``False`` — a
+    deterministic body fails identically on a second attempt). The FAILURE
+    says whether this particular one is transient (``retryable`` on the
+    exception; the fatal set — a spend ceiling, a replay miss, a transport
+    contract violation — says no even inside a retryable capacity, because
+    retrying past a ceiling defeats the ceiling).
+
+    Unknown on either side is treated as the safe answer for that side: an
+    exception carrying no opinion is allowed (the capacity already opted
+    in), a declaration we cannot resolve is not.
+    """
+    if not getattr(getattr(result, "error", None), "retryable", True):
+        return False
+    iri = getattr(result, "failed_step", None)
+    if not iri:
+        return False
+    layer = getattr(dispatcher, "capacity_layer", None)
+    if layer is None:
+        return False
+    try:
+        declaration = layer.resolve_declaration(
+            iri, session=getattr(dispatcher, "session", None)
+        )
+    except Exception:  # noqa: BLE001 — unresolvable is not retryable
+        return False
+    return bool(getattr(declaration, "retryable", False))
 
 
 def _run_member_pipeline(

@@ -214,6 +214,7 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0201-am4](0201-amendment-4-run-manifest.md) | the run manifest, and where it is minted | Accepted | L5 | — |
 | [0201-am5](0201-amendment-5-fold-manifest-correlation.md) | the fold manifest carries the member correlation; the empty domain is a stop | Accepted | L5 | member_graph_ids, empty_domain, Decision Records |
 | [0201-am6](0201-amendment-6-partial-results.md) | partial results — a member stops in place; a truncated domain is a stop | Accepted | L5 | partial_domain, stopped, conceded, Decision Records |
+| [0201-am7](0201-amendment-7-declared-retry.md) | bounded member retry becomes a declared capacity property; the fatal set is never retried | Accepted | L5 | retryable, MEMBER_RETRY_CAP, LLM seam |
 | [0201](0201-capacity-mm-instance-vocabulary.md) | ADR-0201 — capacity-MM instance vocabulary + minting (DQ-2) | Accepted | L5 | — |
 | [0202](0202-per-task-chain-graphs-persist.md) | ADR-0202 — per-task chain graphs, persisted at consolidation (DQ-8) | Proposed | L5 | — |
 | [0203](0203-learned-pipelines-local-persistence.md) | ADR-0203 — Learned pipelines get a first-class Local persistence surface | Accepted | L2 | — |

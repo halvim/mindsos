@@ -28,6 +28,7 @@ from mindsos_capacity.builtins.origin_v0 import (
     FIELD_REFUSAL_REASON,
     FIELD_SOURCE_VERSION,
     REFUSAL_NO_SOURCE_IN_FORCE,
+    REFUSAL_SOURCE_UNREACHABLE,
 )
 from mindsos_capacity.identifiers import (
     EDGE_CONSUMES,
@@ -39,6 +40,7 @@ from mindsos_capacity.identifiers import (
     PROP_CAPACITY_INSTANCE_TYPE,
     PROP_DATASTATE_INSTANCE_TYPE,
     PROP_RUN_STOPPED_DETAIL,
+    PROP_RUN_STOPPED_FAULT_REASON,
     RUN_STOPPED_STEP_FAILED,
 )
 from mindsos_intelligence.dispatch import L4Dispatcher
@@ -304,6 +306,18 @@ def test_g3_an_unreadable_store_leaves_no_verdict_and_says_which_step_stopped():
     assert "source_unreachable" not in detail, (
         "stopped_detail is printed by a Decision Record; the refusal token "
         "lives on PolicyStoreUnreachableError.refusal_reason, not in the text"
+    )
+    # **The other half of the same separation, added 2026-08-16.** Until
+    # now the token stayed on the exception and reached NOTHING: both this
+    # module's docstring and origin_v0's degenerate-entry said it "reaches
+    # a reader through L-2's RunStopped node", and that sentence was true
+    # of nobody — "was this our fault" was answerable by a human reading
+    # prose and by no code at all. It is now a property of its own, so the
+    # prose is true rather than edited (coordination §87 T-F2 / ruling 2).
+    assert (stopped[0].properties or {})[
+        PROP_RUN_STOPPED_FAULT_REASON
+    ] == REFUSAL_SOURCE_UNREACHABLE, (
+        "the machine-readable channel must carry what the printed one may not"
     )
     stopped_at = [
         e

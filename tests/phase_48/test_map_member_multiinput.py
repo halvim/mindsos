@@ -148,6 +148,11 @@ _DS_NAMES = (
 )
 
 
+#: The one fixture capacity that opts into bounded retry — see
+#: ``test_retry_cap_kept_and_stop_in_place_with_shared_inputs``.
+_RETRYABLE = frozenset({"m2i_features"})
+
+
 def _register(layer, *, session=None, feature_impl=None):
     for name in _DS_NAMES:
         layer.register_datastate(
@@ -178,6 +183,12 @@ def _register(layer, *, session=None, feature_impl=None):
                 name=name, category=CATEGORY_DERIVATION,
                 inputs=inputs, outputs=outputs, implementation=impl,
                 description=name,
+                # Retry became a declared property (2026-08-16,
+                # Capacity.retryable, default False). Only the capacity
+                # whose bounded retry a test below pins opts in — the
+                # others stay at the new default, so this fixture also
+                # covers the not-declared side.
+                retryable=(name in _RETRYABLE),
             ),
             session=session,
         )

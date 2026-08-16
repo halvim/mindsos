@@ -383,6 +383,20 @@ RUN_STOPPED_REASONS = frozenset(
 PROP_RUN_STOPPED_DETAIL = "stopped_detail"
 #: On a cancellation only: the capacity IRI the run stopped *before*.
 PROP_RUN_STOPPED_BEFORE = "stopped_before"
+#: The CLOSED, machine-readable token naming an OUR-FAULT stop, when the
+#: exception that stopped the run carried one (``refusal_reason``: the
+#: ``PolicyStoreUnreachableError`` / ``LLMCallFailed`` attribute). Absent
+#: when the failure carried none, which is most of them.
+#:
+#: **Why a second property instead of putting the token in the detail.**
+#: ``stopped_detail`` is PRINTED by a Decision Record and is prose; a
+#: reason token is vocabulary and is branched on. The store-outage
+#: precedent already pins that separation from the other side —
+#: ``test_lookup_decision_route`` asserts the token is NOT in the printed
+#: text — and until now the token reached no reader at all, so "was this
+#: our fault" was answerable by a human reading prose and by nothing
+#: else. (Coordination §87 T-F2 / ruling 2.)
+PROP_RUN_STOPPED_FAULT_REASON = "stopped_fault_reason"
 
 # ── Run manifest (Decision Records item 4c) ────────────────────────────
 #

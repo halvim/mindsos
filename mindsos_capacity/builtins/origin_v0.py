@@ -247,24 +247,50 @@ ORIGIN_UNION: Tuple[str, ...] = SPINE + PRODUCER_DECLARED
 # pass a ``refusal_reason`` in production.
 
 #: A shipped producer can put these in a record.
+#:
+#: The last three arrived with the model reader (``comprehension_v0``,
+#: 2026-08-16). They are the reasons a READING can fail as a finding about
+#: the document: the model declined, its answer would not decode, or the
+#: quote it offered is not in the source.
 REASONS_EMITTED_TODAY: Tuple[str, ...] = (
     REFUSAL_FIELD_ABSENT,
     REFUSAL_VALUE_NOT_COERCIBLE,
     REFUSAL_NO_SOURCE_IN_FORCE,
+    REFUSAL_MODEL_DECLINED,
+    REFUSAL_MALFORMED_RESPONSE,
+    REFUSAL_QUOTE_NOT_IN_SOURCE,
 )
 
 #: Declared for a producer that does not exist, each naming it.
-REASONS_RESERVED: Mapping[str, str] = {
-    REFUSAL_MODEL_DECLINED: "the model reader (comprehension_v0, LLM seam)",
-    REFUSAL_MALFORMED_RESPONSE: "the model reader (comprehension_v0, LLM seam)",
-    REFUSAL_QUOTE_NOT_IN_SOURCE: "the model reader (comprehension_v0, LLM seam)",
-    REFUSAL_MODEL_UNREACHABLE: "the model adapter (LLM seam) — and it will be "
-                               "DEGENERATE on arrival for the same reason "
-                               "source_unreachable is, if outages keep raising",
-}
+#:
+#: **Empty as of 2026-08-16, and that is a milestone rather than a
+#: deletion.** Every reason this vocabulary declares is now either
+#: recorded by a shipped producer or classified degenerate: the model
+#: reader was the last unbuilt producer this list was waiting for. The
+#: list stays because the next reason declared ahead of its producer
+#: belongs here — and the test that walks it stays too, going quiet
+#: rather than away.
+REASONS_RESERVED: Mapping[str, str] = {}
 
 #: Declared, advertised, and impossible to record.
 REASONS_DEGENERATE: Mapping[str, str] = {
+    REFUSAL_MODEL_UNREACHABLE: (
+        "a real refusal reason that NO origin record can ever carry, for "
+        "exactly the reason source_unreachable cannot: the path RAISES. "
+        "MOVED HERE FROM RESERVED 2026-08-16, when its named producer "
+        "shipped — the entry had said it would be 'DEGENERATE on arrival "
+        "if outages keep raising', and outages do. The seam originally "
+        "made a model outage an in-band refusal, because a raising member "
+        "reader then destroyed the whole claim's Record; ADR-0201 am-6 "
+        "removed that motivation (a raising member now STOPS IN PLACE and "
+        "its siblings run), so the model outage travels the same road the "
+        "store outage travels. comprehension_v0 does not advertise it "
+        "either, the am-3 rule applied a second time. The token is NOT "
+        "deleted: it stays the machine-readable reason on "
+        "mindsos_capacity.llm.LLMCallFailed and reaches a reader through "
+        "L-2's RunStopped node, which is where 'was this our fault' "
+        "belongs. (Coordination §85 Q3 / §86 / §87 T-F3.)"
+    ),
     REFUSAL_SOURCE_UNREACHABLE: (
         "a real refusal reason that NO origin record can ever carry. The "
         "store-unreachable path RAISES (PolicyStoreUnreachableError), and a "
@@ -286,32 +312,25 @@ REASONS_DEGENERATE: Mapping[str, str] = {
 #: Written by at least one shipped producer, on at least one path. The
 #: enforcement test **runs the producers and checks** — so this list going
 #: stale is a red gate, not a stale comment.
-FIELDS_WRITTEN_TODAY: Tuple[str, ...] = SPINE + (
-    FIELD_BASIS,
-    FIELD_SOURCE_VERSION,
-    FIELD_SOURCE_IN_FORCE_FROM,
-    FIELD_SOURCE_IN_FORCE_TO,
-)
+#: **30 of 30 as of 2026-08-16.** The freeze's original finding was that
+#: the system wrote 16 of these 30 and nothing said so. The model reader
+#: was the producer the other 14 were reserved for, and it writes every
+#: one of them: the party pair and expected_basis on every record it
+#: emits, the quote trio on every path that got as far as a quote, and
+#: the model/prompt/request identity on all of them. A union with no
+#: reserved fields left is the state this classification was built to
+#: reach — and the enforcement test still RUNS the producers, so the
+#: claim is checked rather than asserted.
+FIELDS_WRITTEN_TODAY: Tuple[str, ...] = SPINE + PRODUCER_DECLARED
 
 #: Declared for a producer that does not exist yet, each naming the one that
 #: will write it. A field may not sit here anonymously: *"someone might need
 #: it"* is how a union stops meaning anything.
-FIELDS_RESERVED: Mapping[str, str] = {
-    FIELD_ORIGIN_PARTY: "a party-assertion producer (asserted_by_party)",
-    FIELD_ORIGIN_PARTY_PHRASE: "a party-assertion producer (asserted_by_party)",
-    FIELD_EXPECTED_BASIS: "the model reader (comprehension_v0, LLM seam)",
-    FIELD_QUOTE: "the model reader (comprehension_v0, LLM seam)",
-    FIELD_CLAIMED_QUOTE: "the model reader (comprehension_v0, LLM seam)",
-    FIELD_QUOTE_VERIFIED: "the model reader (comprehension_v0, LLM seam)",
-    FIELD_QUOTE_OFFSETS: "the model reader (comprehension_v0, LLM seam)",
-    FIELD_MODEL_ID: "the model adapter (LLM seam)",
-    FIELD_MODEL_VERSION: "the model adapter (LLM seam)",
-    FIELD_PROMPT_IRI: "the model adapter (LLM seam)",
-    FIELD_PROMPT_VERSION: "the model adapter (LLM seam)",
-    FIELD_TEMPERATURE: "the model adapter (LLM seam)",
-    FIELD_REQUEST_KEY: "the model adapter (LLM seam)",
-    FIELD_RECORDED: "the model adapter (LLM seam)",
-}
+#: **Empty as of 2026-08-16** — see FIELDS_WRITTEN_TODAY. It stays for
+#: the next field declared ahead of its producer; the rule it enforces
+#: ("someone might need it" is how a union stops meaning anything) is
+#: unchanged and its guard still walks this dict.
+FIELDS_RESERVED: Mapping[str, str] = {}
 
 #: Written on every record, but whose **informative value is unreachable** —
 #: worse than an unwritten field, because it looks live and reads as evidence.
