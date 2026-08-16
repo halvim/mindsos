@@ -191,12 +191,15 @@ def test_css_lint_refuses_hiding_and_passes_the_shipped_sheet():
     module's own smoke run — pinned so it stays fixed)."""
     lint_stylesheet(STYLESHEET)
     lint_stylesheet("h2 { font-size: 0.9rem; }")
+    lint_stylesheet("p.watermark { opacity: 0.5; }")
     for bad in (
         "p.refusal { display:none }",
         "p.refusal { display : none }",
         "p.stop { visibility: hidden }",
         "p.stop { font-size: 0 }",
         "p.stop { font-size: 0px }",
+        "p.refusal { opacity: 0 }",
+        "p.refusal { opacity:0 }",
     ):
         try:
             lint_stylesheet(STYLESHEET + bad)

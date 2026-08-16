@@ -57,14 +57,19 @@ from typing import Any, List, Optional, Tuple
 #: Every word this layout may display that the renderer did not emit.
 CHROME: Tuple[str, ...] = ("What arrived",)
 
-#: Hiding declarations the lint refuses. The font-size pattern matches a
-#: TRUE zero only (``0``/``0px``/``0%``), never ``0.9rem`` — found by this
-#: module's own smoke run, where the naive substring red-flagged the
-#: legitimate ``font-size: 0.9rem``.
+#: Hiding declarations the lint refuses. The zero-valued patterns match a
+#: TRUE zero only (``0``/``0px``/``0%``), never ``0.9rem`` / ``0.5`` —
+#: found by this module's own smoke run, where the naive substring
+#: red-flagged the legitimate ``font-size: 0.9rem``. ``opacity`` joined by
+#: critic condition §82 (the hole was live past §79's list). This list is
+#: NOT exhaustive and cannot be: offscreen positioning, color-on-color and
+#: their kin remain — which is exactly why the stylesheet and the CHROME
+#: tuple stay review-listed at every PR hold that touches them (§79/§82).
 _BANNED_CSS_PATTERNS = (
     re.compile(r"display\s*:\s*none"),
     re.compile(r"visibility\s*:\s*hidden"),
     re.compile(r"font-size\s*:\s*0(?![.\d])"),
+    re.compile(r"opacity\s*:\s*0(?![.\d])"),
 )
 
 
