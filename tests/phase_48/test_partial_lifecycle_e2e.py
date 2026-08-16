@@ -225,7 +225,20 @@ def test_repeated_targeted_reexec_heals_the_partial_to_succeeded():
     def _heal_on_second_retarget(**kw):
         if kw.get(MEMBER) == "e1":
             calls["n"] += 1
-            if calls["n"] >= 5:
+            # Heal on the member's THIRD run — the initial cycle, then the
+            # first targeted re-exec, then this one — which is what "heals
+            # on the second targeted cycle" means and is all this test is
+            # about.
+            #
+            # **This threshold was 5, and 5 was two-attempts-per-cycle
+            # arithmetic** rather than a statement of intent: blanket
+            # member retry meant each cycle called e1 twice. ADR-0201 am-7
+            # made retry a declared property and this capacity does not
+            # declare it, so a cycle is now one call and the number is
+            # simply the cycle. The coupling was incidental — this test is
+            # about the replan splice, not about retry — so it is removed
+            # rather than restored by declaring the fixture retryable.
+            if calls["n"] >= 3:
                 FLAKY["broken"] = False
         return real_member(**kw)
 
