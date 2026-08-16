@@ -1424,7 +1424,7 @@
       "branch": "demo/decision-records",
       "worktree": "MindsOS-dr",
       "pinned_core": "dr-fold-grounding-confirmed",
-      "status": "ITEM 7 RENDERER landed (a10b58e, 2026-08-14): dr_render.py (G1-pure page, question->answer->therefore, raise-never-fill) + dr_render_pages.py (the s12 command: five cases from a real Falkor) + 11 guard tests. Also carries dr_dump.py (11 shapes, zero-dep) and dr_persist_smoke.py. Next: critic stage-2, then Layer B"
+      "status": "ITEM 7 RENDERER landed (a10b58e, 2026-08-14): dr_render.py (G1-pure page, question->answer->therefore, raise-never-fill) + dr_render_pages.py (the s12 command: five cases from a real Falkor) + 11 guard tests. Also carries dr_dump.py (11 shapes, zero-dep) and dr_persist_smoke.py. Next: critic stage-2, then Layer B. *** INTAKE SHAPE RULED 2026-08-16 (owner, demo plan open decision 9): STRUCTURED - the Phase 7 demo runs with NO MODEL AND NO TRANSPORT, which is what Gate 7 amendment (a) already specified. CONSEQUENCE: the transport (PR #169) is NOT a Phase-7 blocker; it is a Phase-5/6 prerequisite that arrived early, and Phase 7 now has no undecided input. The variant MUST be named in the room. Reversed only if Mauricio's scheduled Gate-7 question returns 'the hard part is reading the email, not routing the exposures', which would falsify the BEAT rather than the intake. ***"
     }
   },
   "safety_net": {
