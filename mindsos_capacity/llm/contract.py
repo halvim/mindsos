@@ -37,6 +37,7 @@ from .exceptions import (
     LLMCallFailed,
     MalformedResponse,
     TransportContractError,
+    TransportSignatureError,
 )
 from .live import LiveLLM
 
@@ -91,7 +92,7 @@ class TransportReport:
         if self.ok:
             return
         raise TransportContractError(
-            returned_type=", ".join(c.name for c in self.failures)
+            violation=", ".join(c.name for c in self.failures)
         )
 
 
@@ -125,10 +126,13 @@ def verify_transport(
             source_text=source_text,
             extraction_schema=extraction_schema,
         )
-    except TypeError as exc:
+    except TransportSignatureError as exc:
+        # Caught BEFORE its base class below — a transport that will not
+        # accept the call is a different defect from one that answers
+        # wrongly, and reporting the first as the second is what sent the
+        # earlier version of this harness green on a broken transport.
         checks.append(Check(
-            "accepts_the_five_keywords", FAILED,
-            f"the transport rejected the declared signature: {exc}",
+            "accepts_the_five_keywords", FAILED, exc.violation,
         ))
     except MalformedResponse:
         checks.append(Check("accepts_the_five_keywords", PASSED))
@@ -139,8 +143,7 @@ def verify_transport(
     except TransportContractError as exc:
         checks.append(Check("accepts_the_five_keywords", PASSED))
         checks.append(Check(
-            "answer_is_text_or_a_mapping", FAILED,
-            f"returned {exc.returned_type}, which is neither",
+            "answer_is_text_or_a_mapping", FAILED, exc.violation,
         ))
     except LLMCallFailed:
         checks.append(Check("accepts_the_five_keywords", PASSED))

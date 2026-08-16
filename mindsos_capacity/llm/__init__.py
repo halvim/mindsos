@@ -58,6 +58,7 @@ from .exceptions import (
     MalformedResponse,
     RecordedResponseMiss,
     TransportContractError,
+    TransportSignatureError,
 )
 from .live import CapturingLLM, LiveLLM, Transport, decode_response
 from .recording import RecordingStore, request_key
@@ -76,6 +77,7 @@ __all__ = [
     "Transport",
     "TransportContractError",
     "TransportReport",
+    "TransportSignatureError",
     "decode_response",
     "request_key",
     "verify_transport",

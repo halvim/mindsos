@@ -38,6 +38,7 @@ from mindsos_capacity.llm.exceptions import (
     MalformedResponse,
     RecordedResponseMiss,
     TransportContractError,
+    TransportSignatureError,
 )
 
 #: The critic's four markers, from the §88 re-run that reproduced the leak.
@@ -92,7 +93,7 @@ def test_a_return_that_is_neither_is_a_DEPLOYMENT_bug_and_says_so():
     archived seam collapsed it into the first."""
     with pytest.raises(TransportContractError) as exc:
         decode_response(7)
-    assert exc.value.returned_type == "int"
+    assert "returned int" in exc.value.violation
 
 
 # ── the leak, and the rule that closes it ──────────────────────────────
@@ -126,7 +127,7 @@ def test_a_provider_failure_never_reaches_the_customers_page():
     LLMCallBudgetExceeded(max_calls=200),
     RecordedResponseMiss(request_key="sha256:deadbeef", set_size=17),
     MalformedResponse(raw='{"days": 7'),
-    TransportContractError(returned_type="int"),
+    TransportContractError(violation="returned int"),
 ])
 def test_every_exception_here_says_only_what_we_wrote(exc):
     """The rule covers the whole module, not just the outage. Extended
@@ -146,7 +147,35 @@ def test_operator_detail_survives_on_attributes():
     miss = RecordedResponseMiss(request_key="sha256:x", set_size=17)
     assert (miss.request_key, miss.set_size) == ("sha256:x", 17)
     assert MalformedResponse(raw="junk").raw == "junk"
-    assert TransportContractError(returned_type="int").returned_type == "int"
+    assert TransportContractError(violation="returned int").violation == "returned int"
+
+
+def test_a_transport_that_will_not_ACCEPT_the_call_is_a_deployment_bug_too():
+    """**Found by the contract harness on its first run** (2026-08-16).
+
+    ``LiveLLM`` wrapped the call in a blanket ``except Exception``, so a
+    transport declared with the wrong parameters raised ``TypeError`` at
+    binding and came back as ``LLMCallFailed`` — ``model_unreachable``. A
+    deployment that mis-wrote its function would have watched every member
+    stop with "the reading service could not be reached" and gone looking
+    at the network. The line had been drawn for what a transport RETURNS
+    and not for how it is CALLED.
+    """
+    with pytest.raises(TransportSignatureError) as exc:
+        _read(_client(lambda prompt_iri: ANSWER))
+    assert "does not accept" in exc.value.violation
+    assert not isinstance(exc.value, LLMCallFailed)
+
+
+def test_a_TypeError_from_INSIDE_a_correct_transport_is_still_a_real_failure():
+    """The other side of the split, and the reason binding is checked
+    before the call rather than by catching ``TypeError`` around it: those
+    two are the same exception at the same catch."""
+    def _internally_broken(**_):
+        return None + 1  # noqa: E711 — deliberate TypeError inside the body
+
+    with pytest.raises(LLMCallFailed):
+        _read(_client(_internally_broken))
 
 
 def test_the_outage_token_agrees_with_the_origin_vocabulary():
@@ -169,6 +198,7 @@ def test_only_the_outage_is_transient():
     assert LLMCallBudgetExceeded.retryable is False
     assert RecordedResponseMiss.retryable is False
     assert TransportContractError.retryable is False
+    assert TransportSignatureError.retryable is False
     assert LLMError.retryable is False
 
 

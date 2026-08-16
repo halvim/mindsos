@@ -38,11 +38,14 @@ from __future__ import annotations
 import json
 from typing import Any, Callable, Mapping, Optional, Union
 
+import inspect
+
 from .exceptions import (
     LLMCallBudgetExceeded,
     LLMCallFailed,
     MalformedResponse,
     TransportContractError,
+    TransportSignatureError,
 )
 from .recording import RecordingStore, request_key
 
@@ -79,7 +82,34 @@ def decode_response(response: Union[Mapping[str, Any], str, Any]) -> Mapping[str
         if not isinstance(decoded, Mapping):
             raise MalformedResponse(raw=response)
         return decoded
-    raise TransportContractError(returned_type=type(response).__name__)
+    raise TransportContractError(
+        violation=f"returned {type(response).__name__}, expected text or a mapping"
+    )
+
+
+def _assert_binds(transport, kwargs) -> None:
+    """Refuse a transport that will not accept the specified call.
+
+    Checked BEFORE calling, so that a ``TypeError`` from a mis-declared
+    signature is a deployment bug and a ``TypeError`` from inside a
+    correct transport is a real failure. Without the split they are the
+    same exception at the same catch, and the first was reported as an
+    outage — see :class:`TransportSignatureError`.
+
+    A callable whose signature cannot be introspected at all (a C
+    builtin) is allowed through: unknown is not the same as wrong, and
+    the call itself is the next check.
+    """
+    try:
+        signature = inspect.signature(transport)
+    except (TypeError, ValueError):  # pragma: no cover — exotic callables
+        return
+    try:
+        signature.bind(**kwargs)
+    except TypeError as exc:
+        raise TransportSignatureError(
+            violation=f"does not accept the specified call ({exc})"
+        ) from exc
 
 
 class LiveLLM:
@@ -118,14 +148,16 @@ class LiveLLM:
         if self._calls >= self._max_calls:
             raise LLMCallBudgetExceeded(max_calls=self._max_calls)
         self._calls += 1
+        call = dict(
+            prompt_iri=prompt_iri,
+            prompt_version=prompt_version,
+            source_text=source_text,
+            extraction_schema=extraction_schema,
+            timeout_s=self._timeout_s,
+        )
+        _assert_binds(self._transport, call)
         try:
-            response = self._transport(
-                prompt_iri=prompt_iri,
-                prompt_version=prompt_version,
-                source_text=source_text,
-                extraction_schema=extraction_schema,
-                timeout_s=self._timeout_s,
-            )
+            response = self._transport(**call)
         except Exception as exc:
             # Fixed prose, provider exception on ``__cause__``. See
             # ``exceptions``' module docstring — this message is printed

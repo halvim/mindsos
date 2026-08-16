@@ -158,10 +158,33 @@ class TransportContractError(LLMError):
 
     MESSAGE = "the reading service is misconfigured"
 
-    def __init__(self, returned_type: str = "") -> None:
+    def __init__(self, violation: str = "") -> None:
         super().__init__()
-        #: The offending type's name. Operator-facing; never rendered.
-        self.returned_type = returned_type
+        #: What the transport did wrong. Operator-facing; never rendered.
+        self.violation = violation
+
+
+class TransportSignatureError(TransportContractError):
+    """The transport will not accept the call the contract specifies.
+
+    A subclass because it IS a contract violation, so anything catching
+    :class:`TransportContractError` still catches it — but it is worth
+    telling apart, and telling it apart is why this class exists.
+
+    **Found by the contract harness on its first run against a fake
+    (2026-08-16).** ``LiveLLM`` wrapped the transport call in a blanket
+    ``except Exception``, so a transport declared with the wrong
+    parameters raised ``TypeError`` at CALL BINDING and came back as
+    :class:`LLMCallFailed` — ``model_unreachable``. A deployment that
+    mis-wrote its fifty-line function would have watched every member stop
+    with "the reading service could not be reached" and gone looking at
+    the network. The deployment-bug-is-not-an-outage line had been drawn
+    for what a transport RETURNS and not for how it is CALLED.
+
+    Binding is therefore checked BEFORE the call, so a ``TypeError`` the
+    transport raises internally still reads as a real failure rather than
+    as this.
+    """
 
 
 __all__ = [
