@@ -614,10 +614,23 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 f"{_fmt(start.value)} — {analysis.start_description(start)}"
             )
         refusals = analysis.origin_refusals()
+        records = analysis.refusing_records()
         if analysis.stopped is not None:
             lines.extend(analysis.stop_lines())
         elif refusals:
-            refusal = refusals[0]
+            if not records:
+                # The member road has always raised here; the leaf road did
+                # not, because before a refusal-capable LEAF verdict existed
+                # the only refusing value on a leaf WAS its origin record.
+                # It is reachable now (beat 3), and the unguarded form
+                # printed the structural marker's absent fields — a page
+                # reading "Q. None — Nothing. None".
+                raise RendererGapError(
+                    f"a refusing value on {analysis.graph.role!r} has no "
+                    "origin record to speak from — refusing to render a "
+                    "refusal with no stored words"
+                )
+            refusal = records[0]
             lines.append(
                 f"Q. {refusal.get('question')} — Nothing. "
                 f"{refusal.get('refusal_detail')}"

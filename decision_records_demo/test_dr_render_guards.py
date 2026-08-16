@@ -133,6 +133,26 @@ def _admitted_policy_graphs(as_of):
     return graphs
 
 
+def _settlement_graphs():
+    """Beat 3: a claim filed without the document settlement depends on."""
+    from decision_records_demo.dr_settlement import (
+        CASE_MISSING_DOCUMENT, DS_CLAIM_INTAKE,
+        settlement_capacities, settlement_datastates, settlement_plan,
+    )
+
+    mm, dispatcher, writer, request_run = _harness(
+        capacities=settlement_capacities(),
+        extra_datastates=settlement_datastates(),
+    )
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, settlement_plan(), request_run, mm=mm,
+        solve_seed={DS_CLAIM_INTAKE: dict(CASE_MISSING_DOCUMENT)},
+        capacity_graphs=graphs, case_label="claim CLM-5093",
+    )
+    return graphs
+
+
 def _delete_node(graph, node_id):
     del graph.nodes[node_id]
     for edge_id in [
@@ -664,6 +684,45 @@ def test_the_origin_keys_the_page_reads_match_the_contract():
     assert origin_v0.FIELD_SOURCE_VERSION in policy_lookup_v0.SUPPLIED_WHEN_ADMITTED
 
 
+def test_beat3_missing_document_names_what_to_fetch():
+    """Beat 3: a claim that cannot be settled says WHICH document is missing,
+    in the reader\'s stored words — and does not decide anyway. A completed
+    run whose conclusion is a refusal is a Record, not a fault (ADR-0209
+    shape (a)); before this the completed check called it a missing
+    conclusion."""
+    page = render_from_graphs(_settlement_graphs(), EPISODE_COMPLETED)
+    assert "proof of loss" in page, page
+    assert "Q. Which proof of loss was filed for this claim?" in page, page
+    assert "Nothing." in page, page
+    assert "payable" not in page, "the page decided a claim it had no document for"
+    assert "None" not in page, "a structural marker\'s absent fields reached the page"
+    low = page.lower()
+    for token in G6_BANNED + ("drdemo_",):
+        assert token not in low, f"G6: {token!r} leaked onto the page:\n{page}"
+
+
+def test_a_leaf_refusal_with_no_stored_words_raises():
+    """Only an ORIGIN RECORD may speak a refusal. Strip it and the verdict\'s
+    structural marker is all that is left — which has no question and no
+    detail, so the page must raise rather than print its absent fields. The
+    member road always raised here; the leaf road could not, until a
+    refusal-capable leaf verdict existed."""
+    graphs = _settlement_graphs()
+    removed = 0
+    for graph in graphs:
+        for node_id in list(graph.nodes):
+            value = graph.nodes[node_id].value
+            if isinstance(value, dict) and "origin_producer_kind" in value:
+                _delete_node(graph, node_id)
+                removed += 1
+    assert removed == 1, f"fixture drifted: removed {removed} records, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError:
+        return
+    raise AssertionError("a refusal with no stored words rendered anyway")
+
+
 if __name__ == "__main__":
     for fn in sorted(
         (v for k, v in list(globals().items()) if k.startswith("test_")),
@@ -671,3 +730,4 @@ if __name__ == "__main__":
     ):
         fn()
         print(f"PASS {fn.__name__}")
+

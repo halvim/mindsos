@@ -12,7 +12,8 @@ graph), routing (beat 1: one claim, two desks, by position off the am-5
 manifest ids), routingrefusal (beat 2: an in-band member refusal BESIDE
 routed siblings, the missing item named from the stored record),
 policyprior + policycurrent (beat 4: the same claim asked as of two dates,
-naming two editions and two in-force windows — G5's pair).
+naming two editions and two in-force windows — G5's pair), settlement
+(beat 3: the claim cannot be settled until a named document arrives).
 
 ⚠ The case list above was stated as "five" for three ships while the tree
 held seven. It is derived from ``CASES`` by every count that matters (the
@@ -322,6 +323,56 @@ def _run_routing_case(client, scope, exposures, label):
     return kl, session, scope
 
 
+def _settlement_harness(scope):
+    """Beat 3's harness (dr_settlement) + the consolidate builtin + a KL,
+    through the same production close as every other case. ``scope``
+    case-unique (§55)."""
+    from mindsos_capacity import CapacityLayer
+    from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
+    from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
+    from mindsos_intelligence.dispatch import L4Dispatcher
+    from mindsos_intelligence.mm import MentalModel
+    from mindsos_knowledge.knowledge_layer import KnowledgeLayer
+
+    from decision_records_demo.dr_dump import _Session
+    from decision_records_demo.dr_settlement import (
+        settlement_capacities,
+        settlement_datastates,
+    )
+
+    session = _Session()
+    layer = CapacityLayer()
+    for ds in settlement_datastates():
+        layer.register_datastate(ds, session=session, allow_new_realm=True)
+    for cap in settlement_capacities():
+        layer.register_capacity(cap, session=session)
+    install_consolidate_capacities(layer)
+    kl = KnowledgeLayer.bootstrap()
+    mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
+    dispatcher = L4Dispatcher(layer, session=session, kl=kl)
+    writer = ChainArtifactWriter(mm, scope)
+    return session, kl, mm, dispatcher, writer, writer.emit_request_run()
+
+
+def _case_settlement(client):
+    """Beat 3: the claim cannot be settled until a document arrives, and the
+    Record names which one."""
+    from decision_records_demo.dr_settlement import (
+        CASE_MISSING_DOCUMENT, DS_CLAIM_INTAKE, settlement_plan,
+    )
+
+    scope = "drdemo-page-settlement"
+    session, kl, mm, dispatcher, writer, request_run = _settlement_harness(scope)
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, settlement_plan(), request_run, mm=mm,
+        solve_seed={DS_CLAIM_INTAKE: dict(CASE_MISSING_DOCUMENT)},
+        capacity_graphs=graphs, case_label="claim CLM-5093",
+    )
+    _close(dispatcher, mm, request_run, scope, "completed", client, graphs)
+    return kl, session, scope
+
+
 def _case_routing(client):
     from decision_records_demo.dr_routing import CASE_A_EXPOSURES
 
@@ -337,6 +388,11 @@ def _case_routingrefusal(client):
         client, "drdemo-page-routingrefusal", CASE_B_EXPOSURES,
         "claim CLM-3007 (one more exposure filed)",
     )
+
+
+from decision_records_demo.dr_settlement import (
+    CASE_MISSING_DOCUMENT as _SETTLEMENT_INTAKE,
+)
 
 
 def _case_intake(name):
@@ -355,6 +411,7 @@ def _case_intake(name):
         "noroute": EXPOSURES[0],
         "policyprior": "2023-06-01",
         "policycurrent": "2024-06-01",
+        "settlement": dict(_SETTLEMENT_INTAKE),
         "routing": CASE_A_EXPOSURES,
         "routingrefusal": CASE_B_EXPOSURES,
     }[name]
@@ -368,6 +425,7 @@ CASES = {
     "noroute": _case_noroute,
     "policyprior": _case_policy_prior,
     "policycurrent": _case_policy_current,
+    "settlement": _case_settlement,
     "routing": _case_routing,
     "routingrefusal": _case_routingrefusal,
 }
