@@ -414,6 +414,13 @@
   "recent": [
     {
       "kind": "demo",
+      "name": "Decision Records - the screen ship: Screen A as typography over the renderer's page + the what-arrived panel",
+      "sha": "ee95c5b (squash of feat/dr-screen onto demo/decision-records); PR #168; tag dr-screen-confirmed; critic stage-2 PASS s82, opacity condition landed and red-shown",
+      "gate": "none by design - NO mindsos_* diff vs dr-prereq0-confirmed (verified empty at PR open and by the critic). Demo evidence: 39 guard tests; SEVEN mutations red by exactly the named tests (drop/reorder/duplicate/entity/chrome 1 each; display:none 6; opacity 6); 7 cases + 7 screens from a real store, store-alone-vs-live date-line-only 7/7.",
+      "what": "SCREEN A EXISTS: one self-contained HTML per case, zero external resources (the cold laptop stays cold). dr_screen = typography over the renderer TEXT page, stdlib-only, with the escape rule (the renderer emits missing text; the layout never grows a graph reader). EQUALITY fact guard (chrome-stripped in-order text == the page); chrome digit-free + vocabulary-disjoint (function words filtered - the guard bit its author first); CSS lint on every compose, stated NON-exhaustive -> stylesheet+chrome review-listed at holds; classifier pins for REFUSAL/STOP/THEREFORE; what-arrived panel verbatim-values, ABSENT on from-root (beat-6 narration: a year later the store is all there is). Pages driver: --screens; end-state pin = store-alone page differs in EXACTLY the date line. NEXT per s68.3: the transport/Layer B design pass - the big one - posted as its own coordination section before any code."
+    },
+    {
+      "kind": "demo",
       "name": "Decision Records - the prerequisite-0 demo ship: the page consumes am-5/am-6, routing beats 1-2 on the Guidewire-sourced model",
       "sha": "a4d4b0b (squash of feat/dr-consume onto demo/decision-records: pin-bump 7a88404 + 74215e2/1a73528 dump truth + 7821dcf renderer + routing/pages + s76 sentence fb3c568); PR #167; tag dr-prereq0-confirmed; critic stage-2 PASS s76",
       "gate": "none by design - NO mindsos_* diff vs gated b276c63 (verified empty at PR open and independently by the critic). Demo evidence: 30 guard tests green; 7/7 pages from a real store incl. the s55 end-state re-verify; mutations red by exactly the named tests in isolation (renderer 2/3/7, routing 2/1/1); ONE mutation-construction miss recorded - a dead-parameter mutation returned all-green, take-2 at the declaration site exact; rule: mutate the CONSULTED site.",

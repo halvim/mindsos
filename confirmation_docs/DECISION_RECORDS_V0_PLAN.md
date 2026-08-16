@@ -158,6 +158,7 @@ local and remote, both lists checked).
 | #166 | `b276c63` | **The partial-record ship** — partial results (ADR-0201 am-6): a member stops in place, a truncated domain is a stop; `MemberAbortError` retired as a raiser; `conceded` from the record; the critic-§67 lifecycle e2e landed pre-merge. Tag **`dr-partial-record-confirmed`** | **4785 / 11 / 1x / 0** |
 | #165 | `5db50d4` | **The (a) ship** — shape-(a) substrate: ADR-0201 am-5 (`member_graph_ids` + `empty_domain`) + ADR-0209 (`refusal_capable`, `decodes_refusals`, the decode check on both entry roads); `core-empty-fold-domain` closed in the same gate. Tag **`dr-shape-a-confirmed`** at close-out | **4769 / 11 / 1x / 0** |
 | #167 | `a4d4b0b` *(demo branch)* | **The prerequisite-0 demo ship** — pin bump to `dr-partial-record-confirmed`; the two-roads renderer (manifest road by position, bijection re-scoped to the no-manifest road, heuristic retired); routing beats 1–2 on the Guidewire-sourced model; the first `refusal_capable` DataState consumed end to end. Tag **`dr-prereq0-confirmed`**. Design §71, critic rules §72, build record §75, stage-2 PASS §76 | none by design — no `mindsos_*` diff vs gated `b276c63` (verified empty, twice) |
+| #168 | `ee95c5b` *(demo branch)* | **The screen ship** (68.3 item 3) — `dr_screen.py`: the document layout as typography over the renderer's page (EQUALITY fact guard, chrome closures, CSS-channel lint, classifier pins) + the what-arrived panel; pages driver `--screens` + the §79-5 store-alone date-line pin. Tag **`dr-screen-confirmed`**. Design §78, critic corrections §79, build record §81, stage-2 PASS §82 (opacity condition landed) | none by design — no `mindsos_*` diff vs `dr-prereq0-confirmed` (verified empty, twice) |
 
 **Baseline for the next item: 4785 passed / 11 skipped / 1 xpassed / 0 failed,
 CARRYABLE onto the #166 squash `b276c63`** — the squash is the only
@@ -1177,6 +1178,34 @@ consumes am-5 — deferred to the demo lane, ruling D5); §38's two conditions
 were met at filing (verified in STATE).
 
 ### 2.17 The partial-record ship — a member stops in place, and the work that completed survives
+
+## 2.19 — #168, the screen ship (2026-08-15)
+
+*(demo lane, same chat. PR #168, `feat/dr-screen` off `a4d4b0b`, squash
+`ee95c5b`, tag `dr-screen-confirmed`. Design §78; the critic's §79
+CORRECTED the design before build — membership upgraded to in-order
+EQUALITY (drop/reorder/duplicate all one red), the CSS channel linted, the
+chrome carve-out closed by vocabulary disjointness; stage-2 §82 PASS with
+one condition (opacity true-zero joins the lint, red-shown), landed.)*
+
+**What shipped.** `dr_screen.py` — Screen A as typography over the
+renderer's TEXT page (stdlib only, AST-pinned; the escape rule: a styling
+need beyond the text means THE RENDERER EMITS THE MISSING TEXT). The
+equality fact guard; chrome digit-free + vocabulary-disjoint
+(case-insensitive, function-word filter earned on the guard's first run);
+the CSS lint on every compose (display:none / visibility:hidden /
+true-zero font-size / true-zero opacity; stated non-exhaustive →
+review-listed); classifier safety pins (REFUSAL/STOP/THEREFORE); the
+what-arrived panel with verbatim fixture values, ABSENT on from-root
+(narrated in beat 6: "a year later the store is all there is").
+`dr_render_pages.py` gains `--screens <dir>` and the §79-5 end-state pin:
+the store-alone page differs from the live page in EXACTLY the date line.
+
+**Evidence.** 39 demo tests; SEVEN mutations red by exactly the named tests
+(drop 1 / reorder 1 / duplicate 1 / entity-inject 1 / chrome-smuggle 1 /
+display:none 6 / opacity 6); 7 cases + 7 screens from a real store,
+date-line-only 7/7. Guard-shaped findings, both pinned: the font-size
+true-zero false positive; the guard catching its author's own chrome word.
 
 ## 2.18 — #167, the prerequisite-0 demo ship (2026-08-15)
 
