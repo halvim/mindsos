@@ -40,6 +40,10 @@ def _module_names_imported_by(path: Path):
 #: rule this guard enforces is about MODULE-level layering.
 _ISOLATED_SUBPACKAGES = ("llm",)
 
+#: Shipped subpackages deliberately OUTSIDE the walk, with the reason in
+#: _ISOLATED_SUBPACKAGES' comment above. Classified, not forgotten.
+_CARVED_OUT_SUBPACKAGES = frozenset({"builtins"})
+
 _SOURCE_FILES = sorted(
     [p for p in _PKG_DIR.glob("*.py") if not p.name.startswith("_")]
     + [
@@ -61,40 +65,57 @@ def test_no_upward_import(source_file, forbidden):
     )
 
 
-def test_every_shipped_subpackage_module_is_inside_this_guards_domain():
+def test_every_subpackage_is_CLASSIFIED_not_merely_listed():
     """**The widening's own guard.** ``_SOURCE_FILES`` was a flat glob, so
     ``mindsos_capacity/llm/`` sat outside the one architecture guard that
     could catch it importing upward (coordination §87 T-F11). Widening the
     domain fixed that — and nothing pinned the fix: reverting to the flat
     glob turned no test red, it just quietly checked ten fewer things,
-    which is the exact defect class this suite exists to refuse.
+    which is the defect class this suite exists to refuse.
 
-    ``builtins/`` stays out by decision, not by accident, so this asserts
-    the declared domain rather than "everything under the package".
+    The first version of this test walked ``_ISOLATED_SUBPACKAGES`` and
+    asserted its modules were in the domain. **Writing the mutation plan
+    killed it**: deleting ``"llm"`` from that tuple made the loop iterate
+    nothing and the test pass vacuously — a guard a mutation can silence
+    by emptying its own domain. So the question is asked from the
+    FILESYSTEM instead: every shipped subpackage must be classified,
+    either walked or carved out with a stated reason. A new one is a
+    decision, not a default.
     """
+    subpackages = {
+        p.name for p in _PKG_DIR.iterdir()
+        if p.is_dir() and (p / "__init__.py").exists()
+    }
+    assert subpackages, "no subpackages found - this test is checking nothing"
+    unclassified = sorted(
+        subpackages - set(_ISOLATED_SUBPACKAGES) - _CARVED_OUT_SUBPACKAGES
+    )
+    assert unclassified == [], (
+        f"{unclassified} ship inside mindsos_capacity but are neither walked "
+        f"by this guard nor carved out of it. Add them to "
+        f"_ISOLATED_SUBPACKAGES, or to _CARVED_OUT_SUBPACKAGES with the "
+        f"reason - silently outside is how llm/ nearly shipped unguarded."
+    )
     for sub in _ISOLATED_SUBPACKAGES:
         shipped = {
-            p for p in (_PKG_DIR / sub).glob("*.py")
-            if not p.name.startswith("_")
+            q for q in (_PKG_DIR / sub).glob("*.py")
+            if not q.name.startswith("_")
         }
         assert shipped, f"{sub!r} is declared isolated but has no modules"
-        missing = sorted(p.name for p in shipped - set(_SOURCE_FILES))
-        assert missing == [], (
-            f"{sub}/ is in _ISOLATED_SUBPACKAGES but {missing} are not walked"
-        )
+        missing = sorted(q.name for q in shipped - set(_SOURCE_FILES))
+        assert missing == [], f"{sub}/ is declared isolated but {missing} are not walked"
 
 
 def test_the_builtins_carve_out_is_deliberate_and_still_necessary():
-    """The other half: ``builtins/`` is excluded because L3 bodies reach L2
-    through function-local imports BY DESIGN. If that ever stops being
-    true the carve-out should go — so this fails when its reason expires,
-    rather than leaving a permanent hole nobody revisits."""
+    """The carve-out exists because L3 builtin bodies reach L2 through
+    function-local imports BY DESIGN. If that ever stops being true the
+    carve-out should go — so this fails when its reason expires, rather
+    than leaving a permanent hole nobody revisits."""
     offenders = [
-        p.name for p in (_PKG_DIR / "builtins").glob("*.py")
-        if "mindsos_knowledge" in _module_names_imported_by(p)
+        q.name for q in (_PKG_DIR / "builtins").glob("*.py")
+        if "mindsos_knowledge" in _module_names_imported_by(q)
     ]
     assert offenders, (
-        "no builtin imports mindsos_knowledge any more - the carve-out in "
-        "_ISOLATED_SUBPACKAGES' docstring has expired, so fold builtins/ "
-        "into the guarded domain and delete this test"
+        "no builtin imports mindsos_knowledge any more - the carve-out has "
+        "expired, so fold builtins/ into the guarded domain and delete this"
     )
