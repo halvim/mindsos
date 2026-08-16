@@ -140,6 +140,36 @@ def test_every_exception_here_says_only_what_we_wrote(exc):
         assert leaked not in message, f"{leaked!r} is operator detail, not prose"
 
 
+ALL_ERRORS = (
+    LLMCallFailed, LLMCallBudgetExceeded, RecordedResponseMiss,
+    MalformedResponse, TransportContractError, TransportSignatureError,
+)
+
+
+@pytest.mark.parametrize("cls", ALL_ERRORS, ids=lambda c: c.__name__)
+def test_every_fixed_message_is_prose_and_ONLY_prose(cls):
+    """**Added by a mutation that failed to redden** (2026-08-16). The
+    test above asserts ``str(exc) == cls.MESSAGE`` — which is a TAUTOLOGY
+    under a mutation of ``MESSAGE`` itself, so it guards interpolation at
+    the raise site and nothing at all about the constants. Mutating
+    ``LLMCallFailed.MESSAGE`` to a provider's error text reddened one test
+    where two were predicted, and the missing one was this.
+
+    The constants are what a customer reads. A number in one is a ceiling
+    or a set size; a ``://`` is an endpoint; a marker is a provider's own
+    words. None of those is prose we wrote.
+    """
+    message = cls.MESSAGE
+    assert message and message == message.strip()
+    for marker in MARKERS:
+        assert marker not in message, f"{marker!r} in a fixed message"
+    assert "://" not in message, "an endpoint in a fixed message"
+    assert not any(ch.isdigit() for ch in message), (
+        "a digit in a fixed message is operator detail - a ceiling, a size, "
+        "a version - and operator detail belongs on an attribute"
+    )
+
+
 def test_operator_detail_survives_on_attributes():
     """Fixed prose is not amnesia: everything the message no longer says is
     still reachable by whoever is debugging."""
