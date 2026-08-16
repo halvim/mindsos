@@ -29,7 +29,7 @@ categories.
 | Category | Dont-know shape | Resolves via |
 |---|---|---|
 | perception | DATASTATE_MARKER | explicit key |
-| comprehension | DATASTATE_MARKER | **deferred default** |
+| comprehension | OPTIONAL_RETURN | explicit key (ratified — see §amendment-2) |
 | derivation | DATASTATE_MARKER | explicit key (renamed from `derive`) |
 | decomposition | DATASTATE_MARKER | **deferred default** |
 | combination | OPTIONAL_RETURN | explicit key |
@@ -70,11 +70,10 @@ from a silent default into a documented, test-pinned deferral.
 
 ## 4. Deferred-by-design categories (shape ratified at owning chat)
 
-These five intentionally resolve via the permissive `DATASTATE_MARKER`
+These four intentionally resolve via the permissive `DATASTATE_MARKER`
 default until their owning installation chat ratifies a concrete shape.
 The list is frozen as `family_rules.DEFERRED_DEFAULT_CATEGORIES`:
 
-- `comprehension`
 - `decomposition`
 - `path-finding`
 - `interaction`
@@ -95,3 +94,27 @@ ADR-0065 categories (`combination`/method libraries, `predicate`,
 `phase6`, plus the `comparator`/`evaluator`/`metric`/`mechanism`
 method-library prefixes). These are resolved by the name-prefix tier and
 are out of scope for the category reconciliation above.
+
+## amendment-2 — `comprehension` ratified (external-model reading seam)
+
+`comprehension` leaves `DEFERRED_DEFAULT_CATEGORIES` and takes an explicit
+`OPTIONAL_RETURN` key. Four remain.
+
+The owning installation is the external-model reading family
+(`mindsos_capacity/builtins/comprehension_v0.py`), which ships the first
+capacities in this category. §4 prescribes exactly this exit: the owning
+chat adds the key and removes the category.
+
+**Why `OPTIONAL_RETURN` and not `VERDICT`.** A reading capacity's don't-know
+is a null value on its declared value output; the reason is carried on the
+reader's paired reading-record output, so it still reaches the run's
+grounding graph. `VERDICT` was rejected: verdict shapes belong to capacities
+that state an outcome, and the reader's registration guard exists precisely
+to keep a reading capacity from producing into `decision` / `comparator` /
+`predicate`. Giving the family a verdict shape would have argued the
+opposite of that guard.
+
+**Why not `NeedsInput`.** It short-circuits output validation, so a reader
+raising it would leave no node in the grounding graph saying why the value
+is missing. The escalation is instead raised by the decision step that finds
+it cannot evaluate its condition, which is also where the refusal belongs.

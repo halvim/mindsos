@@ -151,6 +151,21 @@ EXPECTED_OUTSIDE_SERVICE_IMPORTS = {
     "mindsos_core/persistence/metagraph_repository.py": 1,  # outside-service call: driver exceptions
 }
 
+#: Outside-service CONSUMPTION — every body that reaches an injected
+#: external client. This is the count that sees the seam itself: the
+#: import census above cannot, because the model client imports no
+#: network library at all (its transport is a callable the deployment
+#: supplies), which is exactly how a stub with live network IO dropped
+#: into the package left this file 6/6 green before the axis existed.
+#:
+#: A second entry means a second capacity consults an outside model.
+#: That is a design event — the declaration flag ``consults_llm`` was
+#: chosen over a category rule so this set stays enumerable — and it
+#: lands here with its row, not silently.
+EXPECTED_EXTERNAL_CLIENT_CONSUMERS = {
+    "mindsos_capacity/builtins/comprehension_v0.py": 1,  # outside-service call: the model reader
+}
+
 #: Executor definitions. Two exist; only one grounds.
 EXPECTED_EXECUTOR_DEFS = {
     "mindsos_intelligence/pipeline_execution.py": 1,  # grounding-executor
@@ -221,6 +236,16 @@ def test_outside_service_import_census_is_exact():
     )
 
 
+def test_external_client_consumer_census_is_exact():
+    got = _census(r"""context\.llm\b|getattr\(\s*context\s*,\s*["']llm["']""")
+    assert got == EXPECTED_EXTERNAL_CLIENT_CONSUMERS, (
+        "a body reaching an outside-service client is a run surface: it can "
+        "fail in ways no other step can (an outage, a ceiling, an answer that "
+        "will not decode), and each of those has a different meaning on a "
+        f"Decision Record. Classify it here with its row. Got {got!r}"
+    )
+
+
 def test_census_regexes_are_load_bearing():
     """A census over a regex that matches nothing is the ADR-guard defect
     (green while silently checking zero rows). Each census must see at least
@@ -229,3 +254,4 @@ def test_census_regexes_are_load_bearing():
     assert sum(EXPECTED_DIRECT_DISPATCH.values()) >= 10
     assert _census(r"dispatcher\.dispatch\(")  # non-empty by construction
     assert sum(EXPECTED_OUTSIDE_SERVICE_IMPORTS.values()) >= 2
+    assert sum(EXPECTED_EXTERNAL_CLIENT_CONSUMERS.values()) >= 1
