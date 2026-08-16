@@ -8,7 +8,18 @@
 > nothing, and S-2 was read as an undecided question when the manual's own §11
 > already carried a proposed fix. It is restored so the citations resolve.
 >
-> **The CODE this manual describes is NOT on `main`.** `mindsos_llm`, the
+> ⚠ **SUPERSEDED 2026-08-16 — PR #169 PUT THE CODE ON `main`.** The seam shipped
+> as **`mindsos_capacity/llm`** — a NAME CHANGE: every `mindsos_llm` reference
+> below is that package. `comprehension_v0` and `LiveLLM` ship with it, so the
+> archive tag is no longer the only home. **`REASONS_RESERVED` is now empty
+> (`{}`)** — the four reasons it reserved *awaiting the LLM seam* are emitted
+> (6/0/2), so **any citation of `malformed_response` as RESERVED is stale**,
+> including the two in the plan documents. ⚠ **§7's per-item `[BUILT]` markers
+> were NOT re-audited by #169** — each still means *built on the tag*, and a
+> reader who needs `main` must check the tree. The superseded paragraph follows,
+> struck rather than deleted.
+>
+> ~~**The CODE this manual describes is NOT on `main`.**~~ `mindsos_llm`, the
 > `comprehension` reader family and `LiveLLM` live only on the tag
 > `archive/decision-records-llm-seam`. Every `[BUILT]` marker below means
 > *built on that tag*, not *present on `main`*. `origin_v0` is the exception:
@@ -651,7 +662,7 @@ there is no way to test the reading path at all.
 ### 6.5 What it returns, and who parses it
 
 > **Limitation S-2 — the transport currently owns parsing, and nobody owns the
-> transport.**
+> transport.** ✅ **PARSING HALF CLOSED — see below.**
 > *Kind: correctness risk.*
 > `LiveLLM` today requires a `Mapping`. That means somebody's unwritten,
 > untested function decides what to do when a model returns malformed JSON, or
@@ -659,6 +670,15 @@ there is no way to test the reading path at all.
 > and it should not sit in unowned code — and a decode failure should become a
 > refusal, not an exception from outside the system.
 > **Proposed fix in §11.**
+>
+> ✅ **CLOSED 2026-08-16 (PR #169), parsing half only.** §11's proposal was ruled
+> 2026-08-14 and is now built: the transport may return raw text OR a mapping;
+> text is decoded **inside the package**; a decode failure becomes the
+> `malformed_response` refusal rather than an exception from unowned code. A
+> transport that will not *accept* the call is a **deployment bug, not an
+> outage**, and fails at bind time rather than looking like a provider fault.
+> ⚠ **The OWNERSHIP half is still open** — `llm-seam-s2-parse-ownership` in
+> `STATE.json`, and the owner still owes it a name. Only *parsing* closed.
 
 ### 6.6 What is not the transport's job
 
@@ -682,10 +702,15 @@ document to one provider asking for structured output; returns what came back;
 raises on anything else. Roughly fifty lines. What makes it honest rather than a
 placeholder is that it never invents an answer and never retries quietly.
 
-> **Limitation S-3 — no transport exists and no test covers one.**
-> *Kind: unbuilt.*
-> The one piece that touches the network is unwritten and ungated. Everything in
-> §6 is a specification, not a description.
+> ~~**Limitation S-3 — no transport exists and no test covers one.**~~
+> ✅ **CLOSED 2026-08-16 (PR #169).** *Was: the one piece that touches the
+> network is unwritten and ungated; everything in §6 is a specification, not a
+> description.* The transport contract is product code with a harness that gates
+> it, the seam is a parameter rather than a patch, and §6 now describes rather
+> than specifies.
+> ⚠ **What did NOT change: the build gate still has no network and no API key**
+> (§6.4). The *contract* is tested; a live provider call is not, and will not be,
+> on the gate. A green gate is not evidence that any provider ever answered.
 
 > **Limitation S-7 — there is no policy for a failed call inside a batch.**
 > *Kind: unbuilt.*
