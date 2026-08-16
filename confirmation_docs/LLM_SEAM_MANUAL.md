@@ -18,10 +18,35 @@
 > so §7.12 here is superseded by `origin_v0.REASONS_EMITTED_TODAY` /
 > `REASONS_RESERVED` / `REASONS_DEGENERATE` on `main`.
 >
-> **S-2 is RULED (2026-08-14):** §11's proposal is adopted — the transport may
-> return raw text or a mapping; text is decoded inside `mindsos_llm`; a decode
-> failure becomes the `malformed_response` refusal. The row below still reads
-> *(still open)*; this header is the ruling.
+> **S-2 is RULED (2026-08-14) and BUILT (2026-08-16):** §11's proposal is
+> adopted — the transport may return raw text or a mapping; text is decoded
+> inside the package; a decode failure becomes the `malformed_response`
+> refusal. The row below still reads *(still open)*; this header is the ruling.
+>
+> ⚠ **§5.5 IS OVERRULED (2026-08-16), and so is the sentence in this header's
+> paragraph above that describes an in-band outage refusal.** A model outage
+> now RAISES; it is never a refusal on a record. §5.5 chose in-band because a
+> raising member reader then destroyed the whole claim's Record — that
+> motivation died at ADR-0201 am-6: a raising member STOPS IN PLACE, its
+> siblings run, and the fold stops `partial_domain`. So our outage travels the
+> road the store outage already travels, `environment_fault` stays degenerate,
+> and `model_unreachable` is classified DEGENERATE rather than reserved.
+> (Coordination §85 Q3 / §86 / §87 T-F3.) The paragraph in §5.5 about
+> `LLMCallBudgetExceeded` and `RecordedResponseMiss` "deliberately still
+> raising" is also overruled in its REASONING: everything raises now, so
+> those two are no longer the exception — what distinguishes them is that
+> they are never RETRIED (ADR-0201 am-7's fatal set).
+>
+> ⚠ **The package is `mindsos_capacity.llm`, not a top-level `mindsos_llm`**
+> (coordination §87 placement ruling, critic §88 Q4). Read every `mindsos_llm`
+> in this manual as that path. It is a client for an outside service and lives
+> where the other one does (`mindsos_core/persistence/client.py`); promotion to
+> a top-level package is triggered by a consumer outside the capacity layer or
+> a vendor dependency arriving.
+>
+> ⚠ **Injection is by DECLARATION (`consults_llm=True`), not by category.**
+> Anything below describing `LLM_CATEGORIES` describes a mechanism that was
+> not built (§87 T-F7, critic §88 Q1).
 >
 > `CORE_CR_EXTERNAL_MODEL_SEAM.md`, cited by this manual and by the demo plan,
 > is **still tag-only**. Cite it by tag or not at all.
@@ -520,6 +545,16 @@ mode the product cannot have.
 
 ### 5.5 The same run, when the network is down
 
+> ⚠ **OVERRULED 2026-08-16 — this section describes behaviour that was
+> never built and will not be.** The text is kept because the manual is a
+> record of what was decided and why, and because the reasoning below is
+> still the right reasoning about REFUSAL LISTS; only its conclusion was
+> overtaken. What actually happens: **the transport raises, and the raise
+> propagates.** The reading is not refused, no record is written, and the
+> member stops in place with the outage named on L-2's `RunStopped` node —
+> in prose on `stopped_detail`, and as a token on `stopped_fault_reason`.
+> Siblings still run; the fold stops `partial_domain`. See the header.
+
 **The transport raises.** The reading is refused, `model_unreachable`, and the
 record carries `environment_fault: true`.
 
@@ -534,6 +569,17 @@ Two faults deliberately still raise rather than refusing:
 `RecordedResponseMiss` (a fault in our recorded set). A batch stopping loudly
 beats three hundred Records blaming the customer's documents for our
 configuration.
+
+> ⚠ **Also overtaken.** Every transport fault raises now, so these two are no
+> longer distinguished by raising. They are distinguished by being **never
+> retried**: ADR-0201 am-7 made bounded member retry a declared capacity
+> property, and these two declare themselves non-transient so that a retry
+> cannot spend past the very ceiling the first one exists to enforce. The
+> instinct in the paragraph above was right and is now enforced by a
+> different mechanism — and note that "a batch stopping loudly" is not what
+> happens either: under am-6 each member stops in place and its siblings
+> run, so the batch ends with every remaining member stopped rather than
+> with one exception in the operator's face.
 
 ---
 
