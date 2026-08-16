@@ -30,18 +30,18 @@ and this branch merges the tag.
 | `dr_dump.py` | The RULES §12 command: dumps every grounding graph a run leaves, raw. **Zero third-party deps** (bare Python 3.12 venv + repo packages; in-memory MM, no FalkorDB). |
 | `dr_persist_smoke.py` | The persistence smoke: runs real cases, closes them the production way (`consolidate_request` → FalkorDB), loads everything BACK and asserts live==persisted per node — plus the Episode's `consolidated_at`, `outcome_classification` and `state`. Needs `falkordb`. |
 | `dr_render.py` | Item 7's renderer: the Decision Record page from persisted graphs and nothing else. G1-pure (stdlib + `mindsos_core` only); every gap raises (`RendererGapError`); render-time G6 scans its own page. |
-| `dr_render_pages.py` | The §12 command for the renderer: seven cases → a real store → each page rendered FROM the store, then an end-state re-verify of every page from the store alone. `--from-root <capacity_root_ref>` renders from the store ALONE (no live KL) — the reconstructibility proof, a **Gate-7 predecessor**. `--screens <dir>` writes the Screen-A HTML per case. |
+| `dr_render_pages.py` | The §12 command for the renderer: nine cases → a real store → each page rendered FROM the store, then an end-state re-verify of every page from the store alone. `--from-root <capacity_root_ref>` renders from the store ALONE (no live KL) — the reconstructibility proof, a **Gate-7 predecessor**. `--screens <dir>` writes the Screen-A HTML per case. |
 | `dr_routing.py` | The routing content (plan §2.5): exposures → desks on the Guidewire-sourced model. Beat 1 (one claim, two desks) and beat 2 (a refusal beside an answer) — a MAP over the exposures of one claim plus the reducer that assigns the claim. |
 | `dr_screen.py` | Screen A: the document layout over the renderer's composed text page, plus the "what arrived" panel. Typography only — it never reads a graph; the fact guard is text EQUALITY against the renderer page, and the stylesheet is linted for hiding declarations on every compose. Stdlib only. |
 | `dr_demo_run.py` | **The Gate-7 driver: three cold runs, no operator intervention.** One command; each run gets its own container AND its own subprocess, the store is asserted empty before any case executes, teardown is unconditional, and the exit code is the gate's verdict. |
-| `test_dr_render_guards.py` | 24 guard tests (G1/G2/G6, the §30 rulings, the correlation bijection, the stated-absence rule). Plain python or pytest; no FalkorDB. |
+| `test_dr_render_guards.py` | 27 guard tests (G1/G2/G5/G6, the §30 rulings, the correlation bijection, the stated-absence rule, the policy source line and its contract pin). Plain python or pytest; no FalkorDB. |
 | `test_dr_routing_guards.py` | 3 guard tests on the routing content, including the static fold-reducer decode check firing before any member runs. |
 | `test_dr_screen_guards.py` | 9 guard tests on Screen A: chrome closure, the fact-equality channel, the stylesheet lint, the classification pins. |
 | `test_dr_run_guards.py` | 5 guard tests on the cold-run driver — the five ways it could report a green gate that means nothing. Fake backend; no docker, no FalkorDB. |
 | `test_dr_dump_printer_guard.py` | 3 tests pinning the dump instrument itself: printed counts equal object counts; the retry delta is reported, not hidden. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 44** (render 24, screen 9, run 5, routing 3, dump 3). These are
+**Guard total: 47** (render 27, screen 9, run 5, routing 3, dump 3). These are
 the demo's own guards and are **not** part of the core gate — a demo's tests are
 not in the core test image (RULES §1).
 

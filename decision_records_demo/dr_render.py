@@ -45,6 +45,13 @@ never invents a question, because that is the §11 class — presentation
 implying the system asked something it did not. A future capacity that wants
 a Q-line earns it the ADR-0208 way: by producing an origin record.
 
+**The source line (beat 4, *the policy changed mid-claim*):** where a value
+was admitted by a policy lookup, the page names the edition and the window it
+was in force — see :func:`_source_lines`. A missing field the producer
+declares it always supplies RAISES (it is a defect); a missing
+``source_in_force_to`` renders as *onwards* (it is an open edition, and the
+contract says so by leaving that field out of ``supplied_fields``).
+
 RULES §11 seam: the PAGE is composed output by design — the layout, the "Q."
 and "Therefore" framing and the sentence glue are this module's. The claim
 under test is that every FACT on the page is a stored graph value, and that
@@ -101,6 +108,21 @@ MANIFEST_MEMBER_IDS = "member_graph_ids"
 
 #: ADR-0209 structural refusal marker on a verdict VALUE — branch-only.
 REFUSAL_MARKER = "refusal_reason"
+
+#: Origin-record keys the page reads. String literals BY NECESSITY — G1 bans
+#: importing `mindsos_capacity`, where the contract defines them — so they are
+#: pinned against `origin_v0`'s own constants test-side
+#: (`test_the_origin_keys_the_page_reads_match_the_contract`). Without that pin
+#: a rename in the contract would silently stop the source line from rendering
+#: rather than fail, which is the "guard that cannot go red" shape.
+FIELD_PRODUCER_KIND = "origin_producer_kind"
+FIELD_SUPPLIED_FIELDS = "supplied_fields"
+FIELD_ADMITTED = "admitted"
+FIELD_SOURCE_PHRASE = "source_identity_phrase"
+FIELD_SOURCE_VERSION = "source_version"
+FIELD_IN_FORCE_FROM = "source_in_force_from"
+FIELD_IN_FORCE_TO = "source_in_force_to"
+PRODUCER_POLICY_LOOKUP = "policy_lookup"
 
 #: Demo (claims) vocabulary — the layout's knowledge, not the graph's.
 VERDICT_FIELD = "decision"
@@ -248,6 +270,38 @@ class _Analysis:
         )
         return lines
 
+    def _capacity_of(self, node: Any) -> Optional[str]:
+        for node_id, candidate in self.graph.nodes.items():
+            if candidate is node:
+                return self.produced_by.get(node_id)
+        return None
+
+    def policy_records_for(self, node: Any) -> List[Dict[str, Any]]:
+        """Admitted policy-lookup origin records produced by the SAME capacity
+        as ``node``.
+
+        Same-capacity is the association, not same-graph: a member graph can
+        carry several producers, and a value must never wear another
+        producer's provenance.
+        """
+        iri = self._capacity_of(node)
+        if iri is None:
+            return []
+        out = []
+        for node_id, candidate in self.graph.nodes.items():
+            if candidate.type_name != NODE_DSI:
+                continue
+            value = candidate.value
+            if not isinstance(value, dict):
+                continue
+            if value.get(FIELD_PRODUCER_KIND) != PRODUCER_POLICY_LOOKUP:
+                continue
+            if not value.get(FIELD_ADMITTED):
+                continue
+            if self.produced_by.get(node_id) == iri:
+                out.append(value)
+        return out
+
     def plain_produced(self) -> List[Any]:
         """Produced DSIs that are neither origin records nor refusal carriers."""
         out = []
@@ -272,6 +326,48 @@ def _fmt(value: Any) -> str:
     return str(value)
 
 
+def _source_lines(analysis: "_Analysis", node: Any) -> List[str]:
+    """The authority behind an admitted value: which edition, in force when.
+
+    Beat 4 of the demo script — *the policy changed mid-claim* — is two
+    Records naming different versions, so a page that prints only the number
+    (350,000 vs 375,000) shows the effect and hides the reason.
+
+    **Two absences, and the contract tells them apart.** ``supplied_fields``
+    names what this producer ALWAYS populates when it admits; a field missing
+    from that set is a DEFECT and raises (G2). ``source_in_force_to`` is
+    deliberately NOT in the set — an open-ended edition legitimately has no
+    end — so its absence renders as *onwards* rather than raising or
+    vanishing.
+
+    **Narrowed to `policy_lookup` on purpose.** Every reader produces an
+    origin record; a general provenance line for all of them is a bigger
+    design that would rewrite every page in the demo. This renders the one
+    beat 4 needs and leaves the rest untouched.
+    """
+    lines: List[str] = []
+    for record in analysis.policy_records_for(node):
+        missing = sorted(
+            field for field in (record.get(FIELD_SUPPLIED_FIELDS) or ())
+            if record.get(field) in (None, "")
+        )
+        if missing:
+            raise RendererGapError(
+                "a source record admits a value but is missing the field(s) "
+                f"its own producer declares it always supplies: {missing!r} — "
+                "refusing to name an authority the stored evidence cannot pin"
+            )
+        phrase = record.get(FIELD_SOURCE_PHRASE)
+        version = record.get(FIELD_SOURCE_VERSION)
+        if not phrase or not version:
+            continue
+        ends = record.get(FIELD_IN_FORCE_TO)
+        window = f"in force from {record.get(FIELD_IN_FORCE_FROM)}"
+        window += f" to {ends}" if ends not in (None, "") else " onwards"
+        lines.append(f"   Source: {phrase}, version {version}, {window}.")
+    return lines
+
+
 def _member_block(member: "_Analysis", entry: Any) -> List[str]:
     """The lines one member contributes, for one list entry.
 
@@ -286,6 +382,9 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
         if not isinstance(start.value, list)
     ]
     lines.append(f"   {member.phrase_for_value(entry)} → {_verdict_text(entry)}")
+    produced = next((n for n in member.produced if n.value == entry), None)
+    if produced is not None:
+        lines.extend(_source_lines(member, produced))
     return lines
 
 
@@ -529,6 +628,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 lines.append(
                     f"   {analysis.phrase()} → {_verdict_text(produced[0].value)}"
                 )
+                lines.extend(_source_lines(analysis, produced[0]))
             elif not analysis.graph.edges:
                 for description in (
                     analysis.manifest.get("declared_starts") or {}

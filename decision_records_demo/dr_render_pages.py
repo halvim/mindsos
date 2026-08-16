@@ -10,7 +10,14 @@ outage (store unreachable — RunStopped), boundary (zero exposures — the FOLD
 stops pre-dispatch, empty_domain), noroute (unroutable — manifest-only
 graph), routing (beat 1: one claim, two desks, by position off the am-5
 manifest ids), routingrefusal (beat 2: an in-band member refusal BESIDE
-routed siblings, the missing item named from the stored record).
+routed siblings, the missing item named from the stored record),
+policyprior + policycurrent (beat 4: the same claim asked as of two dates,
+naming two editions and two in-force windows — G5's pair).
+
+⚠ The case list above was stated as "five" for three ships while the tree
+held seven. It is derived from ``CASES`` by every count that matters (the
+loop below), so the prose is the only place it can drift — grep it, do not
+trust it.
 
 RULES §11 seam: everything between the BEGIN/END PAGE markers is the
 renderer's composed page — layout and framing are `dr_render.py`'s, every fact
@@ -24,7 +31,7 @@ STATES the date's absence instead of omitting the line (§52 condition 1).
 
 Modes (combinable where sensible):
 
-  (default)             run all five cases → consolidate → render each FROM
+  (default)             run every case in ``CASES`` → consolidate → render each FROM
                         THE STORE. Narration prints each case's
                         capacity_root_ref so it can be fed to --from-root.
   --screens <dir>       additionally compose each case's SCREEN (dr_screen:
@@ -71,6 +78,7 @@ from decision_records_demo.dr_dump import (
     DS_POLICY_AS_OF,
     DS_UNREACHED,
     EDITION_2023,
+    EDITION_2024,
     EXPOSURES,
     _claim_plan,
     _leaf_plan,
@@ -198,6 +206,39 @@ class _StoreDownKL:
         raise RuntimeError("simulated outage: the policy store cannot be read")
 
 
+def _policy_case(client, scope, as_of):
+    """One dated policy question against a store holding BOTH editions.
+
+    Beat 4's pair differ in the as-of date and in nothing else — same claim,
+    same plan, same store — so a difference between the two pages can only
+    have come from the date.
+    """
+    session, kl, mm, dispatcher, writer, request_run = _policy_harness(
+        _build_kl(EDITION_2023, EDITION_2024), scope=scope
+    )
+    graphs: list = []
+    execution.run(
+        dispatcher, writer,
+        _leaf_plan(f"plan:{scope}", DS_DWELLING_LIMIT, start=DS_POLICY_AS_OF),
+        request_run, mm=mm,
+        solve_seed={DS_POLICY_AS_OF: as_of},
+        capacity_graphs=graphs,
+        case_label=f"claim CLM-4188, dwelling limit as of {as_of}",
+    )
+    _close(dispatcher, mm, request_run, scope, "completed", client, graphs)
+    return kl, session, scope
+
+
+def _case_policy_prior(client):
+    """Submitted under the 2023 edition — 350,000, a window that has closed."""
+    return _policy_case(client, "drdemo-page-policyprior", "2023-06-01")
+
+
+def _case_policy_current(client):
+    """Assessed under the 2024 edition — 375,000, still open."""
+    return _policy_case(client, "drdemo-page-policycurrent", "2024-06-01")
+
+
 def _case_outage(client):
     session, kl, mm, dispatcher, writer, request_run = _policy_harness(
         _StoreDownKL(_build_kl()), scope="drdemo-page-outage"
@@ -312,6 +353,8 @@ def _case_intake(name):
         "outage": "2026-07-01",
         "boundary": [],
         "noroute": EXPOSURES[0],
+        "policyprior": "2023-06-01",
+        "policycurrent": "2024-06-01",
         "routing": CASE_A_EXPOSURES,
         "routingrefusal": CASE_B_EXPOSURES,
     }[name]
@@ -323,6 +366,8 @@ CASES = {
     "outage": _case_outage,
     "boundary": _case_boundary,
     "noroute": _case_noroute,
+    "policyprior": _case_policy_prior,
+    "policycurrent": _case_policy_current,
     "routing": _case_routing,
     "routingrefusal": _case_routingrefusal,
 }
