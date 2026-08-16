@@ -77,6 +77,7 @@ from mindsos_capacity.identifiers import (
     PROP_DATASTATE_INSTANCE_TYPE,
     PROP_RUN_STOPPED_BEFORE,
     PROP_RUN_STOPPED_DETAIL,
+    PROP_RUN_STOPPED_FAULT_REASON,
     RUN_STOPPED_CANCELLED,
     RUN_STOPPED_EMPTY_DOMAIN,
     RUN_STOPPED_PARTIAL_DOMAIN,
@@ -313,6 +314,7 @@ class CapacityMMWriter:
         input_datastate_iris: Iterable[str],
         reason: str,
         detail: Optional[str] = None,
+        fault_reason: Optional[str] = None,
     ) -> str:
         """Record a run that stopped **at an invocation that happened** (L-2).
 
@@ -370,7 +372,10 @@ class CapacityMMWriter:
                 producer = self.index.get(in_iri)
                 if producer is not None:
                     graph.add_edge(graph.nodes[producer], cap_node, EDGE_CONSUMES)
-            stop_node = self._mint_run_stopped(graph, reason, detail)
+            stop_node = self._mint_run_stopped(
+                graph, reason, detail,
+                extra={PROP_RUN_STOPPED_FAULT_REASON: fault_reason},
+            )
             graph.add_edge(stop_node, cap_node, EDGE_STOPPED_AT)
             return stop_node.node_id
 

@@ -310,6 +310,12 @@ def execute_pipeline(
                     step.input_datastates,
                     RUN_STOPPED_STEP_FAILED,
                     detail=str(step_error) if step_error is not None else None,
+                    # The two channels, kept apart: the detail is the prose a
+                    # Record prints, and this is the closed token code reads.
+                    # Only an OUR-FAULT exception carries one (an outage, a
+                    # ceiling); a body failing on the customer's data carries
+                    # none, and its absence is the answer to "was this ours".
+                    fault_reason=getattr(step_error, "refusal_reason", None),
                 )
             return PipelineExecutionResult(
                 success=False,

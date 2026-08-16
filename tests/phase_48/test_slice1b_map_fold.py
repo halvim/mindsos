@@ -93,6 +93,12 @@ def _register(layer, member_impl, *, session=None):
             name="s1b_member_solve", category=CATEGORY_DERIVATION,
             inputs=(DS_MEMBER,), outputs=(DS_SUB,), implementation=member_impl,
             description="member: grid -> grid_fact",
+            # Retry is DECLARED as of 2026-08-16 (Capacity.retryable,
+            # default False). This fixture declares it so the bounded-retry
+            # behaviour below is still the behaviour under test; without
+            # the flag a failing member now stops on its first attempt,
+            # which is the point of the change.
+            retryable=True,
         ),
         session=session,
     )

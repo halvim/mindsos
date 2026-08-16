@@ -114,6 +114,10 @@ def _register(layer, obj_impl, *, session=None):
         )
     layer.register_capacity(
         Capacity(
+            # ``retryable=True``: retry became a declared property
+            # (2026-08-16), and this fixture pins the bounded-retry
+            # behaviour, so it opts in.
+            retryable=True,
             name="s2_object_solve", category=CATEGORY_DERIVATION,
             inputs=(DS_OBJECT,), outputs=(DS_OBJFACT,), implementation=obj_impl,
             description="object -> object_fact",

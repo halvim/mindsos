@@ -108,6 +108,22 @@ class _CapacityBase:
     # IS, a dependency says what it DOES, and the shipped precedent for
     # the second is this flag.)
     consults_llm: bool = False
+    # Bounded member retry (ADR-0201 am-6 / MEMBER_RETRY_CAP) is now
+    # DECLARED rather than blanket. Default ``False``: a deterministic
+    # body fails identically on a second attempt, so retrying it only
+    # burns a duplicate graph attempt — which is all the retry loop has
+    # ever done, because until an external transport existed there was no
+    # transient failure mode in the deterministic path
+    # (``core-member-transient-retry-mode``, opened by the partial-record
+    # ship and closed here: "the mode it was built for arrives with the
+    # transport. Decide then.").
+    #
+    # ``True`` declares that this capacity CAN fail transiently — an
+    # outside service, flaky IO. Retry then also requires the FAILURE to
+    # be retryable: the fatal set (a spend ceiling, a replay miss, a
+    # transport contract violation) is never retried even here, because
+    # retrying past a ceiling defeats the ceiling (critic §88 Q3).
+    retryable: bool = False
     # ADR-0159 §amendment-1 — how the conjunction finder resolves this
     # capacity's multiple declared inputs: "all_required" (AND) | "any_of"
     # (optional-union) | "fold" (aggregate over N producers). The default

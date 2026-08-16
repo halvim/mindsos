@@ -34,6 +34,13 @@ from typing import Any
 class LLMError(Exception):
     """Base class for every model-client failure."""
 
+    #: May a member retry after this? Read by
+    #: ``mindsos_intelligence.execution`` alongside the capacity's own
+    #: ``retryable`` declaration — BOTH must say yes. Default ``False``
+    #: here: most failures in this module are ours and deterministic, and
+    #: the one transient failure says so explicitly.
+    retryable = False
+
     #: The one sentence a customer may see. Subclasses override it; no
     #: call site composes a message out of anything it did not write.
     MESSAGE = "the reading service failed"
@@ -101,6 +108,11 @@ class LLMCallFailed(LLMError):
     #: stay decoupled — agreement is pinned by a test instead, and drift
     #: is a red gate rather than an import.
     refusal_reason = "model_unreachable"
+
+    #: The one transient failure in this module: a network blip, a rate
+    #: limit, a provider hiccup. A second attempt is worth making, and a
+    #: capacity that declares itself retryable gets one.
+    retryable = True
 
     MESSAGE = "the reading service could not be reached"
 

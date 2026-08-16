@@ -575,6 +575,12 @@ def build_reader(
             extraction_schema=extraction_schema,
         ),
         description=description,
+        consults_llm=True,
+        # The first capacity in the tree that CAN fail transiently: a
+        # network blip, a rate limit, a provider hiccup. The failure side
+        # decides the rest — an outage is retried once, a spend ceiling
+        # and a replay miss never are.
+        retryable=True,
     )
 
 
