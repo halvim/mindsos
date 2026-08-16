@@ -39,10 +39,11 @@ and this branch merges the tag.
 | `test_dr_routing_guards.py` | 4 guard tests on the routing content: beats 1-2, the static fold-reducer decode check firing before any member runs, and the member road's refusal-with-no-stored-words raise. |
 | `test_dr_screen_guards.py` | 9 guard tests on Screen A: chrome closure, the fact-equality channel, the stylesheet lint, the classification pins. |
 | `test_dr_run_guards.py` | 5 guard tests on the cold-run driver — the five ways it could report a green gate that means nothing. Fake backend; no docker, no FalkorDB. |
+| `test_dr_no_model_guards.py` | 3 guard tests on beat 5's claim: the pinned core carries no model seam, no demo module imports it, and no case produces a value a model read. Neither check may pass vacuously. |
 | `test_dr_dump_printer_guard.py` | 3 tests pinning the dump instrument itself: printed counts equal object counts; the retry delta is reported, not hidden. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 50** (render 29, screen 9, run 5, routing 4, dump 3). These are
+**Guard total: 53** (render 29, screen 9, run 5, routing 4, no-model 3, dump 3). These are
 the demo's own guards and are **not** part of the core gate — a demo's tests are
 not in the core test image (RULES §1).
 
@@ -80,6 +81,7 @@ PYTHONPATH=. python3 decision_records_demo/test_dr_render_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_routing_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_screen_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_run_guards.py
+PYTHONPATH=. python3 decision_records_demo/test_dr_no_model_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_dump_printer_guard.py
 ```
 
