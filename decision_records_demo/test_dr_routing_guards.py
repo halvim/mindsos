@@ -104,6 +104,50 @@ def test_the_decode_check_fires_before_any_member_runs():
     )
 
 
+def test_a_member_refusal_with_no_stored_words_raises():
+    """The member road refuses to speak a refusal it has no words for. The
+    raise has been in the renderer since the routing ship and NOTHING
+    exercised it — found 2026-08-16 by removing it and watching every guard
+    stay green. Strip the refusing reader\'s origin record and the verdict\'s
+    structural marker is all that is left: no question, no detail."""
+    graphs = _routing_graphs(CASE_B_EXPOSURES)
+    removed = 0
+    for graph in graphs:
+        # Only the member whose VERDICT refuses: the severity reader also
+        # refuses on both vehicle exposures, where it decides nothing (§76 —
+        # a vehicle exposure needs no severity). Stripping those would test
+        # the noise, not the guard.
+        values = [n.value for n in graph.nodes.values()]
+        refuses = any(
+            isinstance(v, dict)
+            and v.get("refusal_reason")
+            and "origin_producer_kind" not in v
+            for v in values
+        )
+        if not refuses:
+            continue
+        for node_id in list(graph.nodes):
+            value = graph.nodes[node_id].value
+            if (
+                isinstance(value, dict)
+                and value.get("origin_producer_kind")
+                and value.get("refusal_reason")
+            ):
+                del graph.nodes[node_id]
+                for edge_id in [
+                    eid for eid, e in graph.edges.items()
+                    if e.source.node_id == node_id or e.target.node_id == node_id
+                ]:
+                    del graph.edges[edge_id]
+                removed += 1
+    assert removed == 1, f"fixture drifted: removed {removed} records, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError:
+        return
+    raise AssertionError("a member refusal with no stored words rendered anyway")
+
+
 if __name__ == "__main__":
     for fn in sorted(
         (v for k, v in list(globals().items()) if k.startswith("test_")),

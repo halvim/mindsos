@@ -25,6 +25,7 @@ from decision_records_demo.dr_dump import (
     DS_DWELLING_LIMIT,
     DS_POLICY_AS_OF,
     EDITION_2023,
+    EDITION_2024,
     EXPOSURES,
     _claim_plan,
     _leaf_plan,
@@ -106,6 +107,48 @@ def _refusal_graphs():
         solve_seed={DS_POLICY_AS_OF: "2026-07-01"},
         capacity_graphs=graphs,
         case_label="claim CLM-2041, dwelling limit as of 2026-07-01",
+    )
+    return graphs
+
+
+def _admitted_policy_graphs(as_of):
+    """A leaf policy question against a store holding BOTH editions — the
+    only shape in this file where a lookup ADMITS a value. Every case in the
+    tree before beat 4 either refused (no edition in force) or stopped (store
+    unreachable), so the admitted render path had never been exercised."""
+    mm, dispatcher, writer, request_run = _harness(
+        capacities=[_lookup_declaration()],
+        extra_datastates=_policy_datastates(),
+        kl=_build_kl(EDITION_2023, EDITION_2024),
+    )
+    graphs: list = []
+    execution.run(
+        dispatcher, writer,
+        _leaf_plan("plan:drdemo-policy", DS_DWELLING_LIMIT, start=DS_POLICY_AS_OF),
+        request_run, mm=mm,
+        solve_seed={DS_POLICY_AS_OF: as_of},
+        capacity_graphs=graphs,
+        case_label=f"claim CLM-4188, dwelling limit as of {as_of}",
+    )
+    return graphs
+
+
+def _settlement_graphs():
+    """Beat 3: a claim filed without the document settlement depends on."""
+    from decision_records_demo.dr_settlement import (
+        CASE_MISSING_DOCUMENT, DS_CLAIM_INTAKE,
+        settlement_capacities, settlement_datastates, settlement_plan,
+    )
+
+    mm, dispatcher, writer, request_run = _harness(
+        capacities=settlement_capacities(),
+        extra_datastates=settlement_datastates(),
+    )
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, settlement_plan(), request_run, mm=mm,
+        solve_seed={DS_CLAIM_INTAKE: dict(CASE_MISSING_DOCUMENT)},
+        capacity_graphs=graphs, case_label="claim CLM-5093",
     )
     return graphs
 
@@ -578,6 +621,108 @@ def test_old_reds_stay_red_on_the_no_manifest_road():
     assert page.count("A. Silva") == 2
 
 
+def test_g5_two_dates_name_different_limits_and_windows():
+    """G5 (plan §4), and beat 4\'s whole content: two cases differing ONLY in
+    the date name different limits AND different in-force windows. A page
+    printing 350,000 vs 375,000 and nothing else shows the effect and hides
+    the reason."""
+    prior = render_from_graphs(_admitted_policy_graphs("2023-06-01"), EPISODE_COMPLETED)
+    current = render_from_graphs(_admitted_policy_graphs("2024-06-01"), EPISODE_COMPLETED)
+    assert "350000" in prior and "375000" in current, (prior, current)
+    assert "2023.1" in prior and "2024.1" in current, (prior, current)
+    assert "in force from 2023-01-01 to 2023-12-31" in prior, prior
+    assert "in force from 2024-01-01 onwards" in current, current
+    assert "2024.1" not in prior and "2023.1" not in current, (prior, current)
+    low = (prior + current).lower()
+    for token in G6_BANNED + ("drdemo_",):
+        assert token not in low, f"G6: {token!r} leaked onto a source line"
+
+
+def test_a_missing_supplied_policy_version_raises():
+    """``supplied_fields`` is the contract\'s own way to tell a normal absence
+    from a defect: a field the producer declares it ALWAYS populates, absent,
+    is a defect — so the page raises rather than naming an authority the
+    evidence cannot pin. (``source_in_force_to`` is NOT in that set, which is
+    why an open edition renders \'onwards\' instead of raising — pinned by the
+    test above.)"""
+    graphs = _admitted_policy_graphs("2024-06-01")
+    stripped = 0
+    for graph in graphs:
+        for node in graph.nodes.values():
+            value = node.value
+            if isinstance(value, dict) and value.get("origin_producer_kind") == "policy_lookup":
+                if value.pop("source_version", None) is not None:
+                    stripped += 1
+    assert stripped == 1, f"fixture drifted: stripped {stripped} versions, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError:
+        return
+    raise AssertionError("a source record missing a declared field rendered anyway")
+
+
+def test_the_origin_keys_the_page_reads_match_the_contract():
+    """G1 forbids the renderer importing the contract, so it spells the origin
+    keys as literals. Unpinned, a rename in ``origin_v0`` would silently stop
+    the source line rendering instead of failing — a guard that cannot go red.
+    The test may import what the renderer may not."""
+    from mindsos_capacity.builtins import origin_v0
+    from mindsos_capacity.builtins import policy_lookup_v0
+    from decision_records_demo import dr_render
+
+    assert dr_render.FIELD_PRODUCER_KIND == origin_v0.FIELD_PRODUCER_KIND
+    assert dr_render.FIELD_SUPPLIED_FIELDS == origin_v0.FIELD_SUPPLIED_FIELDS
+    assert dr_render.FIELD_ADMITTED == origin_v0.FIELD_ADMITTED
+    assert dr_render.FIELD_SOURCE_PHRASE == origin_v0.FIELD_SOURCE_IDENTITY_PHRASE
+    assert dr_render.FIELD_SOURCE_VERSION == origin_v0.FIELD_SOURCE_VERSION
+    assert dr_render.FIELD_IN_FORCE_FROM == origin_v0.FIELD_SOURCE_IN_FORCE_FROM
+    assert dr_render.FIELD_IN_FORCE_TO == origin_v0.FIELD_SOURCE_IN_FORCE_TO
+    assert dr_render.PRODUCER_POLICY_LOOKUP == origin_v0.PRODUCER_POLICY_LOOKUP
+    # And the absence the page relies on: an open edition has no end, so
+    # in_force_to must stay OUT of the declared-supplied set.
+    assert origin_v0.FIELD_SOURCE_IN_FORCE_TO not in policy_lookup_v0.SUPPLIED_WHEN_ADMITTED
+    assert origin_v0.FIELD_SOURCE_VERSION in policy_lookup_v0.SUPPLIED_WHEN_ADMITTED
+
+
+def test_beat3_missing_document_names_what_to_fetch():
+    """Beat 3: a claim that cannot be settled says WHICH document is missing,
+    in the reader\'s stored words — and does not decide anyway. A completed
+    run whose conclusion is a refusal is a Record, not a fault (ADR-0209
+    shape (a)); before this the completed check called it a missing
+    conclusion."""
+    page = render_from_graphs(_settlement_graphs(), EPISODE_COMPLETED)
+    assert "proof of loss" in page, page
+    assert "Q. Which proof of loss was filed for this claim?" in page, page
+    assert "Nothing." in page, page
+    assert "payable" not in page, "the page decided a claim it had no document for"
+    assert "None" not in page, "a structural marker\'s absent fields reached the page"
+    low = page.lower()
+    for token in G6_BANNED + ("drdemo_",):
+        assert token not in low, f"G6: {token!r} leaked onto the page:\n{page}"
+
+
+def test_a_leaf_refusal_with_no_stored_words_raises():
+    """Only an ORIGIN RECORD may speak a refusal. Strip it and the verdict\'s
+    structural marker is all that is left — which has no question and no
+    detail, so the page must raise rather than print its absent fields. The
+    member road always raised here; the leaf road could not, until a
+    refusal-capable leaf verdict existed."""
+    graphs = _settlement_graphs()
+    removed = 0
+    for graph in graphs:
+        for node_id in list(graph.nodes):
+            value = graph.nodes[node_id].value
+            if isinstance(value, dict) and "origin_producer_kind" in value:
+                _delete_node(graph, node_id)
+                removed += 1
+    assert removed == 1, f"fixture drifted: removed {removed} records, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError:
+        return
+    raise AssertionError("a refusal with no stored words rendered anyway")
+
+
 if __name__ == "__main__":
     for fn in sorted(
         (v for k, v in list(globals().items()) if k.startswith("test_")),
@@ -585,3 +730,4 @@ if __name__ == "__main__":
     ):
         fn()
         print(f"PASS {fn.__name__}")
+

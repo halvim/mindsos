@@ -10,7 +10,15 @@ outage (store unreachable — RunStopped), boundary (zero exposures — the FOLD
 stops pre-dispatch, empty_domain), noroute (unroutable — manifest-only
 graph), routing (beat 1: one claim, two desks, by position off the am-5
 manifest ids), routingrefusal (beat 2: an in-band member refusal BESIDE
-routed siblings, the missing item named from the stored record).
+routed siblings, the missing item named from the stored record),
+policyprior + policycurrent (beat 4: the same claim asked as of two dates,
+naming two editions and two in-force windows — G5's pair), settlement
+(beat 3: the claim cannot be settled until a named document arrives).
+
+⚠ The case list above was stated as "five" for three ships while the tree
+held seven. It is derived from ``CASES`` by every count that matters (the
+loop below), so the prose is the only place it can drift — grep it, do not
+trust it.
 
 RULES §11 seam: everything between the BEGIN/END PAGE markers is the
 renderer's composed page — layout and framing are `dr_render.py`'s, every fact
@@ -24,7 +32,7 @@ STATES the date's absence instead of omitting the line (§52 condition 1).
 
 Modes (combinable where sensible):
 
-  (default)             run all five cases → consolidate → render each FROM
+  (default)             run every case in ``CASES`` → consolidate → render each FROM
                         THE STORE. Narration prints each case's
                         capacity_root_ref so it can be fed to --from-root.
   --screens <dir>       additionally compose each case's SCREEN (dr_screen:
@@ -71,6 +79,7 @@ from decision_records_demo.dr_dump import (
     DS_POLICY_AS_OF,
     DS_UNREACHED,
     EDITION_2023,
+    EDITION_2024,
     EXPOSURES,
     _claim_plan,
     _leaf_plan,
@@ -198,6 +207,39 @@ class _StoreDownKL:
         raise RuntimeError("simulated outage: the policy store cannot be read")
 
 
+def _policy_case(client, scope, as_of):
+    """One dated policy question against a store holding BOTH editions.
+
+    Beat 4's pair differ in the as-of date and in nothing else — same claim,
+    same plan, same store — so a difference between the two pages can only
+    have come from the date.
+    """
+    session, kl, mm, dispatcher, writer, request_run = _policy_harness(
+        _build_kl(EDITION_2023, EDITION_2024), scope=scope
+    )
+    graphs: list = []
+    execution.run(
+        dispatcher, writer,
+        _leaf_plan(f"plan:{scope}", DS_DWELLING_LIMIT, start=DS_POLICY_AS_OF),
+        request_run, mm=mm,
+        solve_seed={DS_POLICY_AS_OF: as_of},
+        capacity_graphs=graphs,
+        case_label=f"claim CLM-4188, dwelling limit as of {as_of}",
+    )
+    _close(dispatcher, mm, request_run, scope, "completed", client, graphs)
+    return kl, session, scope
+
+
+def _case_policy_prior(client):
+    """Submitted under the 2023 edition — 350,000, a window that has closed."""
+    return _policy_case(client, "drdemo-page-policyprior", "2023-06-01")
+
+
+def _case_policy_current(client):
+    """Assessed under the 2024 edition — 375,000, still open."""
+    return _policy_case(client, "drdemo-page-policycurrent", "2024-06-01")
+
+
 def _case_outage(client):
     session, kl, mm, dispatcher, writer, request_run = _policy_harness(
         _StoreDownKL(_build_kl()), scope="drdemo-page-outage"
@@ -281,6 +323,56 @@ def _run_routing_case(client, scope, exposures, label):
     return kl, session, scope
 
 
+def _settlement_harness(scope):
+    """Beat 3's harness (dr_settlement) + the consolidate builtin + a KL,
+    through the same production close as every other case. ``scope``
+    case-unique (§55)."""
+    from mindsos_capacity import CapacityLayer
+    from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
+    from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
+    from mindsos_intelligence.dispatch import L4Dispatcher
+    from mindsos_intelligence.mm import MentalModel
+    from mindsos_knowledge.knowledge_layer import KnowledgeLayer
+
+    from decision_records_demo.dr_dump import _Session
+    from decision_records_demo.dr_settlement import (
+        settlement_capacities,
+        settlement_datastates,
+    )
+
+    session = _Session()
+    layer = CapacityLayer()
+    for ds in settlement_datastates():
+        layer.register_datastate(ds, session=session, allow_new_realm=True)
+    for cap in settlement_capacities():
+        layer.register_capacity(cap, session=session)
+    install_consolidate_capacities(layer)
+    kl = KnowledgeLayer.bootstrap()
+    mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
+    dispatcher = L4Dispatcher(layer, session=session, kl=kl)
+    writer = ChainArtifactWriter(mm, scope)
+    return session, kl, mm, dispatcher, writer, writer.emit_request_run()
+
+
+def _case_settlement(client):
+    """Beat 3: the claim cannot be settled until a document arrives, and the
+    Record names which one."""
+    from decision_records_demo.dr_settlement import (
+        CASE_MISSING_DOCUMENT, DS_CLAIM_INTAKE, settlement_plan,
+    )
+
+    scope = "drdemo-page-settlement"
+    session, kl, mm, dispatcher, writer, request_run = _settlement_harness(scope)
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, settlement_plan(), request_run, mm=mm,
+        solve_seed={DS_CLAIM_INTAKE: dict(CASE_MISSING_DOCUMENT)},
+        capacity_graphs=graphs, case_label="claim CLM-5093",
+    )
+    _close(dispatcher, mm, request_run, scope, "completed", client, graphs)
+    return kl, session, scope
+
+
 def _case_routing(client):
     from decision_records_demo.dr_routing import CASE_A_EXPOSURES
 
@@ -298,6 +390,11 @@ def _case_routingrefusal(client):
     )
 
 
+from decision_records_demo.dr_settlement import (
+    CASE_MISSING_DOCUMENT as _SETTLEMENT_INTAKE,
+)
+
+
 def _case_intake(name):
     """The room-safe intake for each case — the same VALUES the case feeds
     ``execution.run``, never the IRI-keyed seed (an IRI on the arrived panel
@@ -312,6 +409,9 @@ def _case_intake(name):
         "outage": "2026-07-01",
         "boundary": [],
         "noroute": EXPOSURES[0],
+        "policyprior": "2023-06-01",
+        "policycurrent": "2024-06-01",
+        "settlement": dict(_SETTLEMENT_INTAKE),
         "routing": CASE_A_EXPOSURES,
         "routingrefusal": CASE_B_EXPOSURES,
     }[name]
@@ -323,6 +423,9 @@ CASES = {
     "outage": _case_outage,
     "boundary": _case_boundary,
     "noroute": _case_noroute,
+    "policyprior": _case_policy_prior,
+    "policycurrent": _case_policy_current,
+    "settlement": _case_settlement,
     "routing": _case_routing,
     "routingrefusal": _case_routingrefusal,
 }
