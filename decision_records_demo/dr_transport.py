@@ -104,9 +104,16 @@ no model. ``LiveLLM`` wraps whatever raises into ``LLMCallFailed`` with the
 provider exception on ``__cause__`` — the seam's design, and it makes the CAUSE
 chain a developer surface. Two obligations, guarded differently on purpose:
 
-* **the API key appears NOWHERE reachable from the exception chain** — not in a
-  return value, not in any link's message, and not in any frame local of any
-  link's traceback, *including what those locals expose*;
+* **the API key appears in nothing MindsOS composes or retains** — not in a
+  return value, not in any message this module writes, and not on any object
+  this module built once the call is over. ⚠ **NOT the same as "nowhere on the
+  exception chain", which is what this said until the critic lane ran the REAL
+  opener** (§127.2): `urllib`'s `do_open` builds a *copy* of the header dict and
+  hands it down through `request` → `_send_request` → `_send_output`, where it
+  becomes `msg`/`data` bytes. **Five provider frames hold the credential while
+  the request is in flight and no scrub can reach them** — a header that is sent
+  must be serialised. The claim is corrected rather than the mechanism, because
+  the mechanism is not wrong;
 * **the model id and the endpoint appear nowhere in the exception this module
   raises**, and that guard says in its own body that it does not follow the cause
   chain, because `urllib`'s `HTTPError` names the URL it failed on and
@@ -133,8 +140,14 @@ the promoted probe takes, and the new guard would have gone green over it.**
 3. ⚠ **The ``Request``'s credential header is SCRUBBED in a ``finally``**,
    before any exception leaves this function.
 
-⚠ **Round three, and it was caught by the widened guard on its first run —
-before the merge, not after.** The plan for (3) was *"never bind the
+⚠ **Round four, and each round narrowed a sentence rather than a mechanism.**
+Round three below was caught by the widened guard on its first run; **round four
+(§127.2) was caught by running the DEFAULT opener, which no guard in this file
+uses** — every credential guard injects a fake one, so the property was asserted
+in exactly the configuration where it holds. Not a road the guard misses, a
+CONFIGURATION it misses. What is guarded now is the claim that survives: **the
+`Request` this module composed carries no credential once the call is over**,
+asserted on both doors. The plan for (3) was *"never bind the
 ``Request``, so this frame's locals hold no object carrying the key."* That is
 worthless: **the opener binds it as a PARAMETER**, and the opener's frame is on
 the traceback when the opener raises. Not binding it here hides it from one
@@ -261,6 +274,15 @@ def build_transport(
         raise ValueError("resolve_api_key must be a callable, not a credential")
     if not tool_name or not tool_description:
         raise ValueError("the forced tool needs a name and a description")
+    if not str(endpoint).startswith("https://"):
+        # ⚠ BUILD TIME, and it is the same class as NO_SCHEMA and NO_PROPERTIES:
+        # a deployment bug made loud and deterministic. A schemeless endpoint
+        # reached ``Request()`` — constructed one line ABOVE the try, so the
+        # scrub never ran — and escaped as a bare ValueError NAMING THE
+        # ENDPOINT, through the one path that composes no fixed prose at all
+        # (critic §127.3). ``https`` rather than "has a scheme": this request
+        # carries a credential.
+        raise ValueError("the endpoint must be an https:// URL")
     open_url = opener or urllib.request.urlopen
 
     def _scrub(request):

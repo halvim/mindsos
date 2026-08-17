@@ -652,6 +652,29 @@ MUTATIONS = [
         "        if False:",
         ["test_a_schema_declaring_no_top_level_properties_RAISES_rather_than_refusing_every_reply"],
     ),
+    (
+        "the scrub moves out of the finally, so an ANSWERED call keeps the key",
+        TRANSPORT,
+        "        finally:\n            # \u26a0 Runs BEFORE the exception propagates, and on the success path",
+        "        except BaseException:\n            # MUTATION: failure door only\n            # \u26a0 Runs BEFORE the exception propagates, and on the success path",
+        # The finally is exactly the thing someone converts to an except.
+        # TWO reds, not one, and predicted BEFORE the run: on the FAILED door
+        # the sibling except never catches TransportCallFailed either, so
+        # transport's frame keeps a Request holding the key and the chain walk
+        # finds it as well. Predicting one here would have been the quiet
+        # direction of the RULES s12 error.
+        [
+            "test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain",
+            "test_the_composed_request_retains_no_credential_after_the_call",
+        ],
+    ),
+    (
+        "a non-https endpoint is accepted at build time",
+        TRANSPORT,
+        '        raise ValueError("the endpoint must be an https:// URL")',
+        "        pass",
+        ["test_a_non_https_endpoint_is_refused_at_BUILD_time"],
+    ),
 ]
 
 _RUNNER = (

@@ -276,8 +276,19 @@ def test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain():
     **This asserts the PROPERTY, not either mechanism:** the credential is
     absent from everything a crash reporter could render out of the chain —
     every link's message, every frame local of every traceback, and what those
-    locals expose through `repr`, `vars()` and `header_items()`. A future edit
-    that binds the `Request` to a name reddens here."""
+    locals expose through `repr`, `vars()` and `header_items()`.
+
+    ⚠ **WHAT THIS GUARD STRUCTURALLY CANNOT COVER, and it took a fourth round
+    to say (critic §127.2).** It runs against an INJECTED opener, which binds
+    the `Request` and copies nothing. The real `urllib.request.urlopen` builds a
+    COPY of the header dict in `do_open` and passes it down through `request`,
+    `_send_request` and `_send_output`, where it becomes bytes — **five provider
+    frames hold the credential while the request is in flight, found by `repr`,
+    the first road this guard walks.** No scrub can reach them: a header that is
+    sent must be serialised. So this guard proves the property for objects
+    MindsOS composes, in the configuration it runs in, and
+    `test_the_composed_request_retains_no_credential_after_the_call` pins the
+    half that is actually ours."""
     assert KEY not in json.dumps(_call(_build(_Opener())))
 
     boom = _Opener(raises=RuntimeError("connection reset by peer"))
@@ -452,6 +463,63 @@ def test_a_schema_declaring_no_top_level_properties_RAISES_rather_than_refusing_
             assert not opener.calls, (name, "it reached the network")
             continue
         raise AssertionError(f"{name}: no raise")
+
+
+# ── 13 ── the half that is actually ours ───────────────────────────────
+
+def test_the_composed_request_retains_no_credential_after_the_call():
+    """The claim that survives §127.2, and it is guarded rather than stated.
+
+    Provider frames hold the credential in flight and nothing here can change
+    that. **What IS ours is the object we composed**, and it must carry no
+    credential once the call is over — on the success path as well as the
+    failure one, because everything after the call can raise too and this
+    frame's `request` is on those tracebacks.
+
+    Both doors, because the scrub lives in a `finally` and a `finally` is
+    exactly the thing someone moves into an `except`."""
+    for door, opener in (
+        ("answered", _Opener()),
+        ("failed", _Opener(raises=RuntimeError("connection reset by peer"))),
+    ):
+        try:
+            _call(_build(opener))
+        except TransportCallFailed:
+            pass
+        assert opener.calls, (door, "the opener was never called")
+        request, _kwargs = opener.calls[0]
+        for store in (request.headers, request.unredirected_hdrs):
+            for name, value in store.items():
+                assert KEY not in str(value), (door, name, "credential retained")
+            assert not [k for k in store if k.lower() == "x-api-key"], (
+                door, "the credential header is still on the composed request"
+            )
+
+
+# ── 14 ── the endpoint ─────────────────────────────────────────────────
+
+def test_a_non_https_endpoint_is_refused_at_BUILD_time():
+    """Critic §127.3: a schemeless endpoint reached `Request()` — constructed
+    one line ABOVE the `try`, so the scrub never ran — and escaped as a bare
+    `ValueError` NAMING THE ENDPOINT, through the one path in this module that
+    composes no fixed prose at all. `LiveLLM` would have reported it as an
+    outage with the URL on the cause chain, and guard 5 could not see it
+    because guard 5 asserts about a sentence that path never writes.
+
+    `endpoint` is a build-time argument, so it is disposed of the way
+    `NO_SCHEMA` and `NO_PROPERTIES` already are: **loud, deterministic, before
+    anything runs.** `https` rather than merely "has a scheme", because this
+    request carries a credential."""
+    for bad in ("api.anthropic.com/v1/messages", "http://api.anthropic.com/v1/messages", ""):
+        try:
+            build_transport(
+                resolve_api_key=lambda: KEY, model_id=MODEL,
+                resolve_prompt=_resolver, tool_name=TOOL,
+                tool_description=TOOL_WORDS, endpoint=bad, opener=_Opener(),
+            )
+        except ValueError:
+            continue
+        raise AssertionError(f"{bad!r} was accepted as an endpoint")
 
 
 if __name__ == "__main__":
