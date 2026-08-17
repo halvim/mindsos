@@ -114,6 +114,16 @@ MUTATIONS = [
         ],
     ),
     (
+        # ⚠ A KNOWN, EXPLAINED PREDICTION MISS, and it is left that way on
+        # purpose. The marker's VALUE is ``datastate:...`` and ``datastate:``
+        # is itself in ``G6_BANNED``, so render-time G6 raises before the
+        # named guard can assert anything: EVERY guard that renders a page
+        # carrying a deciding fact goes red, in all three guard files. The
+        # prediction names the guard that OWNS the claim, because that is the
+        # useful sentence; the harness cannot express "and every guard that
+        # renders this page". The set grew again in ship B slice 1 when three
+        # page-rendering guards were added, and it will grow again. Filed as
+        # the instrument gap rather than maintained by hand.
         "the determining marker is printed on the page",
         RENDER,
         "        return (record.get(FIELD_QUESTION), answer_node.value)",
@@ -220,10 +230,16 @@ MUTATIONS = [
         ],
     ),
     (
-        "the pending name is emitted as the whole verdict mapping",
+        # The FIRST version of this row emitted ``str(verdict)``, whose repr
+        # carries ``refusal_reason`` and ``field_absent`` — both G6-banned —
+        # so render-time G6 raised and it reddened four screen guards on top
+        # of the three named. That was a bad MUTATION, not a bad prediction:
+        # the claim is "the field NAME never reaches the page", so the
+        # mutation is the smallest edit that makes exactly that false.
+        "the pending name is emitted as the FIELD NAME instead of the words",
         ROUTING,
         "        pending.append(ref)",
-        "        pending.append(str(verdict))",
+        "        pending.append(EXPOSURE_REF)",
         [
             "test_the_exposure_field_name_never_reaches_the_page",
             "test_the_claim_line_names_the_pending_exposure",
