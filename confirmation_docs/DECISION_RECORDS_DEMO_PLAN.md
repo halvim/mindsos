@@ -451,6 +451,103 @@ reorder them, and any proposal that makes v1 depend on SARA does.
 
 ---
 
+## 0.4 THE RE-FREEZE, 2026-08-17 — the first dry run against a live model, and §0.3's list is REPLACED
+
+**Read `projects/decision_records_demo/DR_DEMO_DRY_RUN_2026-08-17.md` before
+this section.** §0.3 stays as the record of what was frozen and why; **this
+section supersedes it on the scope question.**
+
+**1. THE FINDING: the demo does not demonstrate, it prints.** Owner, after
+running all beats with a live model beside MindsOS for the first time: *I paste
+something into the LLM and it shows intelligence; I paste something into MindsOS
+and it looks scripted, pre-made. Nothing should be paste-and-here-is-the-result
+— otherwise I don't need MindsOS for the presentation, I just have to print
+something correct on the screen.* A chat model streams and reads as thinking;
+we render instantly and read as a lookup. **The reasoning is produced and never
+witnessed.** Ships A and B put it on the page; ship C as scoped does not fix it
+either.
+
+**2. THE CLAIM, RESTATED (owner) — it is not a competition.** *MindsOS does the
+thinking; the LLM processes the text.* Screen B is not an opponent, it is the
+SAME COMPONENT used the way people use it today: alone, doing both jobs. ⟹ This
+is also the exact sentence ship D's four structural guards prove, where *"no
+model is present"* only ever proved a fact about a configuration.
+
+**3. THE SHAPE: the real-world pipeline, on both sides.** (i) an email arrives;
+(ii) a pre-made PROMPT extracts the components; (iii) the component set is
+stored; (iv) it is compared with the policy; (v) an artifact carries the
+components and the outcome. **Symmetric at i, ii, iii, v — and deliberately NOT
+at iv.** The model does ii AND iv; MindsOS uses the model for ii only. ⚠
+Presenting five identical steps is the failure mode: the room concludes *the
+difference is that one is code.*
+
+⚠ **THE PROMPT IS SHOWN ON SCREEN, IN FULL, NEVER PARAPHRASED**, and the room
+is invited to improve it. If the model's train of thought lives in a prompt we
+wrote, we chose how good the model is; disclosure is the only thing that makes
+that honest, and invitation is the strong form. Undisclosed it is the
+courted-refusal problem one level up and invisible.
+
+⚠ **DO NOT FAKE SYMMETRY AT STEP iii.** Their components land in a FILE; ours
+land in the STORE. A file is trusted; a Record is re-derived. **Show the
+asymmetry** — it is the closer.
+
+**4. FORM B is chosen (owner, after three mockups): ORIGIN-PER-FACT.** The
+message stays on screen; each fact is lifted out and marked with WHO produced it
+(`read_by_model` vs `read_from_source`); the decision cites which fact moved it.
+⚠ **Show the DELIBERATION, never the MACHINERY** — *"it asks what severity was
+assessed"* is intelligence; naming a capacity or a DataState is architecture and
+breaks G6 and the IP policy at once.
+
+**5. THE MODEL SPLIT: cheapest available extracts; best available runs Screen
+B.** A weak model on Screen B would rig the comparison. Cheap is safe on our
+side structurally: quote-verification locates the value in the source, so a weak
+extractor that invents something REFUSES rather than answering wrongly. ⟹ *the
+reading is done by the cheapest model on the market; the thinking is not done by
+a model at all.*
+
+**6. WHAT IS DROPPED OR NARROWED — named, because a re-freeze recorded as an
+accretion is how the refusal rule stops meaning anything.**
+
+- **Beat 6's memory argument: DELETED.** Opening a new chat and showing the
+  model unable to retrace is a gotcha — a competent operator saves the output.
+  The difference was never recall: a saved file is TRUSTED, the Record is
+  RE-DERIVED (`--from-root`). The closer keeps the mechanism and changes the
+  argument.
+- **Beat 5's *"there is no model"*: DELETED**, replaced by structural
+  incapacity (§0.3 item 10's four guards + the census).
+- **Gate 7 NARROWS to the cold structured set**, explicitly. Beat 1 moves under
+  ship D's weaker, honestly-named gate — *"live-provider, rehearsal-gated;
+  everything else you saw runs cold"* — which rides on the beat card. The
+  two-gate design is §0.3 item 10's; this makes it the spine rather than an
+  option.
+- **§0.3 item 8's three-ship freeze: REPLACED by item 7 below.**
+- **Ship C is RE-SCOPED:** the live edit becomes **the room changing the
+  EMAIL** — dictate a different severity, re-run, watch the desk and the reason
+  change. The amounts-only editable file demotes to the cold fallback when no
+  provider is available. §0.3 item 4's amounts-only ruling still governs that
+  fallback.
+
+**7. THE NEW ORDER, and nothing is built past its step.**
+
+| # | Ship | Gate |
+|---|---|---|
+| 1 | **The transport + ONE real call.** `LiveLLM` takes a deployment-supplied callable and the piece that touches the network was never written. It lands in `decision_records_demo/` — deployment-supplied by design, and a demo may not edit `mindsos_*`. | the owner sees a live answer return |
+| 2 | **Routing rules become STORED, DATED POLICY**, read the way the dwelling limit is, and printable as the file the model is given. Without it our side of step iv is source code and the comparison collapses. | cold, guards, mutations — Gate 7 unaffected |
+| 3 | **The five-step pipeline, both sides, NO presentation design.** One email. Then the owner judges. | cold set green + an honest weak one: ran N times live with the refusal branch seen once |
+| 4 | **Form B**, designed over something that has been watched behaving. | rehearsal |
+
+⚠ **Step 2's boundary holds:** stored and SHOWN is not editable on stage. §0.3
+item 4(a) bans logic from the EDITABLE file, not from the store; beat 7's *no
+live rule-authoring, ever* is unamended.
+
+**8. What this section does NOT change.** The renderer's voice (§0.3 item 11).
+The transfer line, ruled at two sentences (§0.3 item 13). The amended gate and
+fixture-design rule (§0.3 item 2). The refusal boundary — this system can refuse
+only for a reason a READER recorded. The owner-owned items: the RULES §12.5
+full-matrix re-run, and rehearsals.
+
+---
+
 ## 0. What this plan is, and what it is not
 
 It produces **two separate artifacts**. Merging them is the main way this goes wrong.
