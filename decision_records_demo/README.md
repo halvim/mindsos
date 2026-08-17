@@ -34,16 +34,18 @@ and this branch merges the tag.
 | `dr_routing.py` | The routing content (plan §2.5): exposures → desks on the Guidewire-sourced model. Beat 1 (one claim, two desks) and beat 2 (a refusal beside an answer) — a MAP over the exposures of one claim plus the reducer that assigns the claim. |
 | `dr_settlement.py` | Beat 3: the claim cannot be settled until a named document arrives. Same in-band refusal mechanism as beat 2, stated as such — the scope and the consequence differ (the claim, not one desk), the substrate does not. |
 | `dr_screen.py` | Screen A: the document layout over the renderer's composed text page, plus the "what arrived" panel. Typography only — it never reads a graph; the fact guard is text EQUALITY against the renderer page, and the stylesheet is linted for hiding declarations on every compose. Stdlib only. |
+| `dr_demo_beat.py` | **The demo, performed: one beat, live, on cue** (`up`, `1`-`6`, `down`, `list`). Prints the page raw and writes the screen; beat 6 rebuilds an earlier beat's Record from the store alone. Carries the ONLY map from the script's beats to the demo's cases. |
 | `dr_demo_run.py` | **The Gate-7 driver: three cold runs, no operator intervention.** One command; each run gets its own container AND its own subprocess, the store is asserted empty before any case executes, teardown is unconditional, and the exit code is the gate's verdict. |
 | `test_dr_render_guards.py` | 29 guard tests (G1/G2/G5/G6, the §30 rulings, the correlation bijection, the stated-absence rule, the policy source line and its contract pin, beat 3's refusal). Plain python or pytest; no FalkorDB. |
 | `test_dr_routing_guards.py` | 4 guard tests on the routing content: beats 1-2, the static fold-reducer decode check firing before any member runs, and the member road's refusal-with-no-stored-words raise. |
 | `test_dr_screen_guards.py` | 9 guard tests on Screen A: chrome closure, the fact-equality channel, the stylesheet lint, the classification pins. |
 | `test_dr_run_guards.py` | 5 guard tests on the cold-run driver — the five ways it could report a green gate that means nothing. Fake backend; no docker, no FalkorDB. |
 | `test_dr_no_model_guards.py` | 3 guard tests on beat 5's claim: the pinned core carries no model seam, no demo module imports it, and no case produces a value a model read. Neither check may pass vacuously. |
+| `test_dr_beat_guards.py` | 3 guard tests on the per-beat runner: every scripted beat resolves to a case that exists, the memo holds refs never pages (D9), and the closer refuses when no beat has run. |
 | `test_dr_dump_printer_guard.py` | 3 tests pinning the dump instrument itself: printed counts equal object counts; the retry delta is reported, not hidden. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 53** (render 29, screen 9, run 5, routing 4, no-model 3, dump 3). These are
+**Guard total: 56** (render 29, screen 9, run 5, routing 4, no-model 3, beat 3, dump 3). These are
 the demo's own guards and are **not** part of the core gate — a demo's tests are
 not in the core test image (RULES §1).
 
@@ -61,6 +63,32 @@ Exit 0 means three cold runs green. Exit 1 means a run failed (the reason is
 printed). Exit 3 means the store could not be started — an environment fault,
 not a demo verdict. `--cold-runs N`, `--port P` and `--screens DIR` are
 available; the defaults are the gate's.
+
+**Performing the demo — one beat at a time.** The Gate-7 command above runs
+everything in a batch and writes files; it measures the machine and cannot
+perform the script. In a room, use the beat runner:
+
+```
+PYTHONPATH=. /tmp/drdemo-venv/bin/python decision_records_demo/dr_demo_beat.py up
+PYTHONPATH=. /tmp/drdemo-venv/bin/python decision_records_demo/dr_demo_beat.py 1
+PYTHONPATH=. /tmp/drdemo-venv/bin/python decision_records_demo/dr_demo_beat.py down
+```
+
+**Which case is which beat** (`DR_DEMO_SCRIPT.md`, `projects/decision_records_demo/`
+on `main`). ⚠ **Five of the ten cases are NOT beats** — they are mechanism
+shapes that prove the renderer stops honestly, and the room never sees them:
+
+| Beat | Case(s) | What the room sees |
+|---|---|---|
+| 0 · the pain | — | spoken |
+| 1 · one claim, two desks | `routing` | CLM-3007: two vehicle exposures to the routine desk, one severe injury to the specialty unit |
+| 2 · the refusal beside an answer | `routingrefusal` | the same claim plus an injury exposure with no severity assessed |
+| 3 · the missing document | `settlement` | CLM-5093: no proof of loss, and the Record names it |
+| 4 · the policy changed | `policyprior` + `policycurrent` | CLM-4188 as of two dates: 350,000 under v2023.1, 375,000 under v2024.1 |
+| 5 · unplug the model | — | no case: there is no model. The runner checks the absence live |
+| 6 · a year later | — | rebuilds an earlier beat's Record from the store alone |
+| 7 · the ask | — | spoken |
+| — | `claim` `refusal` `outage` `boundary` `noroute` | **never shown** — gate evidence |
 
 `dr_dump.py` — all eleven shapes (`leaf`, `claim`, `noroute`, `replan`,
 `retry`, `memberpartial`, `needsinput`, `refusal`, `outage`, `boundary`,
@@ -82,6 +110,7 @@ PYTHONPATH=. python3 decision_records_demo/test_dr_routing_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_screen_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_run_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_no_model_guards.py
+PYTHONPATH=. python3 decision_records_demo/test_dr_beat_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_dump_printer_guard.py
 ```
 
