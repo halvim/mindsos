@@ -54,6 +54,13 @@ drives which beat is in `decision_records_demo/README.md` on
 it and decides which desk gets it. When it lands on the wrong desk, nobody
 notices for days — and a year later, nobody can say why it went there."
 
+⚠ **TRANSFER, one sentence, ruled 2026-08-17** (plan §0.3 item 13) — say it
+here and nowhere else: *"That's a claims example — the shape is the same
+wherever work arrives and a person decides where it goes."* This is a claim
+about the PROBLEM's generality, which two unrelated industries volunteered
+unprompted (plan §2.5). **It is not a claim that this system generalises** —
+that sentence does not exist and must not be improvised.
+
 **1 · One claim, two desks.** Multi-exposure case: vehicle exposures →
 routine desk; injury exposure → specialty unit. One document, several
 decisions, one Record each — *question → answer → therefore*.
@@ -77,6 +84,12 @@ verdict change ship C carries.** One claim of 400,000, assessed as of two
 dates: *exceeds the limit in force — 350,000 payable of 400,000 claimed* under
 the 2023 edition, and 375,000 payable under the 2024 one, each Record naming
 its edition and the window it was in force.
+
+⚠ **TRANSFER, the second and last one, ruled 2026-08-17** — and it is a
+QUESTION about their system, never a statement about ours: *"Your rules changed
+in March — could your system tell you which version it applied in February?"*
+Ask it, then run the beat and let the Record answer it. Versioned rules are the
+most universal thing this demo shows.
 
 ⚠ **Do NOT sell the arithmetic.** The room checking 400,000 against 350,000 is
 how they VERIFY the answer; it is not the claim, and a room that hears you
@@ -185,6 +198,13 @@ nothing else. **Until it is green, nobody says "the model reads" in a room**
   watch what each does."* Undisclosed, the beat is not run.
 
 ## Do not (from field evidence + plan)
+- **No third transfer line without a ruling.** Exactly two exist (beats 0 and
+  4), both are the owner's, and both are QUESTIONS or claims about the
+  PROBLEM — never claims that this system generalises. All thirteen L4 catalog
+  capacities are placeholders, so *"it could do this anywhere"* is an
+  over-claim the demo cannot show. If beats 2 or 3 visibly fail to land on a
+  non-claims room, that is evidence for a second ruling, not licence to
+  improvise one live.
 - No architecture, no edge/on-device, no "patch"/"layer" language.
 - No accuracy number without the refusal rate beside it; no routing
   accuracy numbers at all (routing is shown, not measured — plan §1).

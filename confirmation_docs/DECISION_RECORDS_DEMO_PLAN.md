@@ -395,19 +395,54 @@ input DECIDED, and the page re-crediting itself when the limit stops binding;
 and, a year later, which edition it decided under. A spreadsheet compares. It
 does not tell you which policy edition governed February.
 
-**13. OPEN, owner-owned: the TRANSFER LINE.** A room that does not do claims
-needs one sentence per beat naming what the beat is an INSTANCE of — versioned
-rules, a determining condition, an honest refusal. Critic §111.2's distinction
-is what keeps this section closed and is reusable: **walk gap 6 was re-wording
-EXISTING narration for quality, and stays refused; a transfer line changes what
-each beat CLAIMS TO BE, for an audience the owner named in a dated statement,
-which is new content with a new cause and enters by owner ruling** — the same
-door the live inputs console walked through. **Bounded in advance:** one
-sentence per beat, on the beat card beside the disclosure line, drafted at
-rehearsal against the dry run, **never in code, never a paragraph**. Ruled out,
-the transfer burden falls entirely on beat 7's ask, which was built to carry
-it. **The lane will not draft it before the ruling** — an undated drift into
-narration is the only wrong outcome.
+**13. THE TRANSFER LINE — RULED 2026-08-17 (owner). TWO SENTENCES, AND THE
+FORM IS PART OF THE RULING.**
+
+A room that does not do claims watches twelve minutes of someone else's
+industry unless something names what a beat is an INSTANCE of. Occasioned by a
+dated owner statement: *for an audience that deals with claims and routing this
+is easy; for one that does not, the presentation has to inspire them to see
+their own problems fixed.*
+
+**What was ruled IN, and it is deliberately smaller than the bound the critic
+lane offered (one line per beat, §111.2):**
+
+- **Beat 0 frames it once**, after the pain and before any product: *"That's a
+  claims example — the shape is the same wherever work arrives and a person
+  decides where it goes."* ⚠ **This is a claim about the PROBLEM's generality,
+  which is field-evidenced** (§2.5: two people in unrelated industries
+  described the same intake-triage problem unprompted, and nothing else in the
+  field notes has done that). It is **not** a claim about this system's
+  generality.
+- **Beat 4 carries ONE interrogative line**, because versioned rules are the
+  most universal thing the demo shows: *"Your rules changed in March — could
+  your system tell you which version it applied in February?"*
+
+**TWO CONSTRAINTS, and the first is why this is rulable at all:**
+
+1. **INTERROGATIVE FORM ONLY.** A transfer line asks a question about the
+   ROOM's system; it never asserts that ours generalises. ⚠ **The reason is
+   `DR_DEMO_CAPABILITIES.md`:** all thirteen L4 catalog capacities are
+   placeholders, so nothing said about composition or planning is supported by
+   what runs, and *"anywhere work gets split and assigned"* would be a
+   generality claim the demo cannot demonstrate — §11's over-claim, in one
+   sentence, on the beat card. A question about their system asserts nothing
+   about ours and the beat they just watched answers it by demonstration.
+   **If a candidate line cannot be phrased as a question about them, it does
+   not go in.**
+2. **WHICH BEATS IS DECIDED BY THE DRY RUN, NOT NOW.** Two lines to start.
+   Beats 2 and 3 — the refusal beside an answer, and telling your team what to
+   fetch — are arguably the most transferable moments in the demo and get
+   nothing; if they visibly fail to land on a non-claims audience that is
+   EVIDENCE, and a third line is a second ruling with a dated cause. It is not
+   drift.
+
+**What this does NOT reopen.** Walk gap 6 — re-wording existing narration for
+quality — **stays refused**, and the distinction is the reusable half (critic
+§111.2): *wording-without-a-dated-cause is the refused pass whatever argument
+it wears; changing what a beat CLAIMS TO BE, for an audience named in a dated
+statement, is new content and enters by owner ruling* — the same door the live
+inputs console walked through. **Never in code. Never a paragraph.**
 
 **14. What this section does NOT change.** Phase 7's intake stays STRUCTURED
 (open decision 9). The beats stay the operative scope text. Phases 1–3 remain
