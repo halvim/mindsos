@@ -42,6 +42,7 @@ ROOT = os.path.dirname(HERE)
 RENDER = "decision_records_demo/dr_render.py"
 SCREEN = "decision_records_demo/dr_screen.py"
 SETTLE = "decision_records_demo/dr_settlement.py"
+ROUTING = "decision_records_demo/dr_routing.py"
 
 GUARD_FILES = (
     "decision_records_demo/test_dr_render_guards.py",
@@ -188,6 +189,57 @@ MUTATIONS = [
             "test_the_leaf_road_shows_the_deciding_fact",
         ],
     ),
+    (
+        "the claim line COUNTS the pending exposures instead of naming them",
+        ROUTING,
+        """        parts.append(f"{len(pending)} not yet assigned: {'; '.join(pending)}")""",
+        """        parts.append(f"{len(pending)} cannot be assigned yet - see the exposure above")""",
+        [
+            "test_the_claim_line_names_the_pending_exposure",
+            "test_case_b_refusal_beside_answers_names_the_item",
+        ],
+    ),
+    (
+        "the exposure name rides on REFUSALS only - ship A's one-member shape",
+        ROUTING,
+        "        if ref:\n            fields[EXPOSURE_REF] = ref",
+        '        if ref and fields.get("decision") is None:\n'
+        "            fields[EXPOSURE_REF] = ref",
+        ["test_every_desk_verdict_names_its_exposure_answered_and_refused"],
+    ),
+    (
+        "the pluraliser is hardcoded plural - '1 exposures', in the room",
+        ROUTING,
+        """            f"{routine} exposure{'' if routine == 1 else 's'} to {ROUTINE_DESK}\"""",
+        '            f"{routine} exposures to {ROUTINE_DESK}"',
+        # The direct-call door of the raise guard reads the same line, so it
+        # reddens here too; predicted rather than discovered.
+        [
+            "test_the_claim_line_is_singular_at_one_and_plural_at_two",
+            "test_a_refusing_verdict_with_no_exposure_name_raises",
+        ],
+    ),
+    (
+        "the pending name is emitted as the whole verdict mapping",
+        ROUTING,
+        "        pending.append(ref)",
+        "        pending.append(str(verdict))",
+        [
+            "test_the_exposure_field_name_never_reaches_the_page",
+            "test_the_claim_line_names_the_pending_exposure",
+            "test_case_b_refusal_beside_answers_names_the_item",
+        ],
+    ),
+    (
+        "an unnameable refusal is FILLED with a placeholder instead of raising",
+        ROUTING,
+        '            raise ValueError(\n'
+        '                "a desk verdict refused without naming its exposure - "\n'
+        '                "refusing to publish a count where the page needs a name"\n'
+        "            )",
+        '            ref = "an exposure above"',
+        ["test_a_refusing_verdict_with_no_exposure_name_raises"],
+    ),
 ]
 
 _RUNNER = (
@@ -228,7 +280,7 @@ def _red_set() -> set:
 
 
 def main() -> int:
-    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE)}
+    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING)}
     print("== baseline: every guard file green with no mutation applied ==")
     baseline = _red_set()
     if baseline:
@@ -274,7 +326,7 @@ def main() -> int:
             print("  exact")
         print()
 
-    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE)}
+    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING)}
     print("== tree restored ==")
     for f in sorted(before):
         mark = "OK " if before[f] == after[f] else "⚠ NOT RESTORED "

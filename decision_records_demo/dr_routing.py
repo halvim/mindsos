@@ -42,16 +42,41 @@ the reducer declares ``decodes_refusals`` and
 ``plan_construction.check_fold_reducer_decode`` enforces the pair statically
 on the direct-``PlanResult`` road this module drives (ADR-0209 D4).
 
-Desk verdict VALUES carry the decision and the determining input and
-nothing else (``{"decision": <desk>, "determined_by": <input>}``): two
-routine-desk verdicts are STILL byte-identical — both were determined by
-coverage — which is legal on the manifest road, position correlates them
-(ADR-0201 am-5, N-F2 defused). ⚠ The determining field was added
-2026-08-17 and this paragraph was corrected WITH it: it read "deliberately
-BARE" and would have been a docstring describing code that no longer
-existed, which is the defect this lane has recorded seven times. This module
-is demo code: it registers into its own layer and never edits ``mindsos_*``
-(RULES §3).
+Desk verdict VALUES carry the decision, the determining input, and the
+words that NAME the exposure they are about
+(``{"decision": <desk>, "determined_by": <input>, "exposure_ref": <words>}``).
+⚠ **The third field was added 2026-08-17 (ship B slice 1) and this
+paragraph was corrected WITH it** — it previously said the values carried
+"nothing else", and shipping the field without the sentence is the
+docstring-describing-code-that-no-longer-exists defect this lane has now
+recorded eight times.
+
+**Why the field exists, and the premise that had to be corrected first.**
+The claim-level line said *"1 cannot be assigned yet - see the exposure
+above"*, which is ambiguous over four exposures (a §11 page defect, promoted
+into ship B by coordination §91 Q5). §91 proposed the fix on the premise
+that *"the verdict values embed the exposure"* — TRUE of ``dr_dump._decide``,
+**FALSE here**. The reducer's only input is the ordered desk verdicts, so
+before this field it could not name D. Laurent from anything it received.
+The premise was checked against the source before the fix was written.
+
+⚠ **A consequence, stated rather than discovered later: two routine-desk
+verdicts are no longer byte-identical**, because each now names its own
+exposure. That is a LOSS of fixture coverage, not a gain — the identical-bare-
+verdict correlation path (ADR-0201 am-5, N-F2 defused, position correlates
+them) was exercised live by this module and now is not. It stays covered by
+``test_identical_bare_verdicts_render_by_position`` on the ``dr_dump``
+fixtures, and that is now its ONLY cover.
+
+This module is demo code: it registers into its own layer and never edits
+``mindsos_*`` (RULES §3).
+
+**Gate 4, re-checked for THIS slice (the restated form).** It registers
+nothing new: no ``Capacity``, no ``DataState``, no capacity CATEGORY beyond
+``origin_v0.DECISION_SHAPED_CATEGORIES``, no ``FAMILY_RULES`` entry. What
+changes is two implementation bodies and one declared input tuple. PASS —
+and it is the weakest form of this check the lane has run, which is worth
+saying rather than letting a trivial pass read like a real one.
 """
 
 from __future__ import annotations
@@ -99,6 +124,13 @@ SOURCE_PHRASE = "the intake record for this exposure"
 #: category, no new ``FAMILY_RULES`` entry.
 DETERMINED_BY = "determined_by"
 
+#: The demo-owned field carrying the WORDS that name one exposure — the
+#: claimant as filed plus the coverage that was read. Unlike
+#: :data:`DETERMINED_BY` this one is **printed**: the claim-level line is
+#: built out of it. What must never print is the field NAME, exactly as for
+#: every other structural key, and a guard pins that.
+EXPOSURE_REF = "exposure_ref"
+
 #: Coverage words: taxonomy §3 unit names, verbatim.
 COVERAGE_VEHICLE = "Auto Physical Damage"
 COVERAGE_INJURY = "Bodily Injury"
@@ -131,26 +163,57 @@ class _Session:
         return False
 
 
+def _exposure_ref(exposure, coverage):
+    """The words that NAME one exposure, for the claim-level line.
+
+    Composed by the decision because the REDUCER never sees an exposure —
+    its only input is the ordered desk verdicts (see the module docstring
+    for the corrected §91 premise).
+
+    ``None`` when the exposure states no claimant. An exposure the record
+    cannot name is a thing the reducer must REFUSE over, not paper over with
+    a count — so the absence is returned rather than filled with a
+    placeholder, and :func:`_assign` raises on it.
+    """
+    if not isinstance(exposure, dict):
+        return None
+    claimant = exposure.get("claimant")
+    if not claimant:
+        return None
+    if coverage:
+        return f"{claimant}, {coverage}"
+    return str(claimant)
+
+
 def _route(context=None, **inputs):
     coverage = inputs.get(DS_COVERAGE)
     severity = inputs.get(DS_SEVERITY)
+    ref = _exposure_ref(inputs.get(DS_EXPOSURE), coverage)
+
+    def _verdict(**fields):
+        # The identity rides on EVERY branch, answered and refused alike.
+        # Carrying it only where the claim line happens to need it today —
+        # the refusals — is the shape that produced five of ship A's six
+        # findings: a rule unambiguous only while its domain has one member.
+        if ref:
+            fields[EXPOSURE_REF] = ref
+        return {DS_DESK: fields}
+
     if coverage == COVERAGE_VEHICLE:
         # A vehicle exposure routes on coverage alone: the severity reader's
         # refusal on it decides nothing (§76), so the coverage is what
         # determined this desk and the Record must say so and say only that.
-        return {DS_DESK: {"decision": ROUTINE_DESK,
-                          DETERMINED_BY: DS_COVERAGE}}
+        return _verdict(decision=ROUTINE_DESK, **{DETERMINED_BY: DS_COVERAGE})
     if severity is None:
         # The reader refused; the desk cannot be chosen. Structural marker
         # only — the words live in the reader's origin record. NO
         # determining input: nothing determined an outcome there is not one of.
-        return {DS_DESK: {"decision": None,
-                          "refusal_reason": REFUSAL_FIELD_ABSENT}}
+        return _verdict(decision=None, refusal_reason=REFUSAL_FIELD_ABSENT)
     desk = SPECIALTY_UNIT if severity == "severe" else ROUTINE_DESK
     # The coverage selected this branch; the SEVERITY chose the desk within it.
     # The determining input is the one that moved the answer, not every input
     # that was consulted — a page listing both is a data dump.
-    return {DS_DESK: {"decision": desk, DETERMINED_BY: DS_SEVERITY}}
+    return _verdict(decision=desk, **{DETERMINED_BY: DS_SEVERITY})
 
 
 def _assign(context=None, **inputs):
@@ -171,15 +234,29 @@ def _assign(context=None, **inputs):
         1 for v in verdicts
         if isinstance(v, dict) and v.get("decision") == SPECIALTY_UNIT
     )
+    pending = []
+    for verdict in refused:
+        ref = verdict.get(EXPOSURE_REF)
+        if not ref:
+            # G2's posture inside a capacity: a claim line that says only HOW
+            # MANY cannot be assigned, over a list of four, is the ambiguity
+            # this slice exists to remove. Refuse rather than emit the count.
+            raise ValueError(
+                "a desk verdict refused without naming its exposure - "
+                "refusing to publish a count where the page needs a name"
+            )
+        pending.append(ref)
     parts = []
     if routine:
-        parts.append(f"{routine} exposure(s) to {ROUTINE_DESK}")
+        # The "(s)" read as software on the buyer's screen (walk gap 6); it
+        # rides along here because this ship already edits this line.
+        parts.append(
+            f"{routine} exposure{'' if routine == 1 else 's'} to {ROUTINE_DESK}"
+        )
     if specialty:
         parts.append(f"{specialty} to {SPECIALTY_UNIT}")
-    if refused:
-        parts.append(
-            f"{len(refused)} cannot be assigned yet - see the exposure above"
-        )
+    if pending:
+        parts.append(f"{len(pending)} not yet assigned: {'; '.join(pending)}")
     return {DS_ROUTING: {"claim_decision": "; ".join(parts)}}
 
 
@@ -252,7 +329,12 @@ def routing_capacities(*, decodes_refusals: bool = True):
     route = Capacity(
         name="drdemo_route_exposure",
         category=CATEGORY_DECISION,
-        inputs=(DS_COVERAGE, DS_SEVERITY),
+        # DS_EXPOSURE is declared because the decision NAMES the exposure it
+        # decided about; it never DETERMINES the desk, and a guard pins that
+        # the determining input is never the exposure. Named fallback if the
+        # ConjunctionFinder will not satisfy a member start as a direct input:
+        # read the claimant with a third structured-ingest reader.
+        inputs=(DS_COVERAGE, DS_SEVERITY, DS_EXPOSURE),
         outputs=(DS_DESK,),
         implementation=_route,
         description="one exposure's read facts -> which desk handles it",
