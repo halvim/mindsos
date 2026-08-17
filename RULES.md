@@ -346,9 +346,25 @@ written the same afternoon a defect class was discovered still landed in it:**
   for a full afternoon; its designated mutation reddened fourteen other tests
   and not it.
 
-Both are practice, not code. They cost nothing and they close the gap between
-*"a guard that cannot go red is worse than none"* (§9) and the moment a guard
-is actually shown to go red.
+**Two more, added 2026-08-17 after a ship whose mutation harness produced
+nine prediction misses and zero code defects:**
+
+- **THE SMALLEST EDIT. A guard's mutation is the smallest edit that makes its
+  claim false** — not the largest edit that reddens it. A mutation that
+  emitted a whole mapping where the claim was *"the field NAME never reaches
+  the page"* tripped an unrelated render-time check and reddened four extra
+  guards; the honest answer was three. A wide red set hides which guard was
+  actually proved.
+- **A PREDICTION IS A CLAIM ABOUT THE TREE, in both directions.** The usual
+  error is predicting too few reds. The inverse is real and quieter:
+  predicting that a mutation breaks a path it does not touch, which passes
+  unnoticed because the row still "misses" in the direction everyone expects.
+  Both are findings about the prediction, and neither is fixed by copying the
+  actual set back.
+
+All four are practice, not code. They cost nothing and they close the gap
+between *"a guard that cannot go red is worse than none"* (§9) and the moment
+a guard is actually shown to go red.
 
 **Answer the questions against a dump I ran, not one you ran** (§11). A check
 whose evidence you produced and whose questions you answered is the

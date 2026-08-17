@@ -2,7 +2,7 @@
 title: Decision Records — what the demo does, and what it cannot do
 status: Current
 date: 2026-08-17
-basis: demo/decision-records `cfe1bd8` (tag `dr-beat-confirmed`), read off the tree
+basis: demo/decision-records `df57033` (tag `dr-ship-b-confirmed`), read off the tree
 lane: the answer to "what will we have at the end of the plan" — kept current on every demo ship
 ---
 
@@ -29,8 +29,13 @@ grep -c '^def test_' decision_records_demo/test_*.py
 
 Pinned core at the time of writing: **`dr-partial-record-confirmed`**, verified
 by the first command against the tree, matching `STATE.demos` and the demo
-README. Guard total **56** — render 29, screen 9, run 5, routing 4, no-model 3,
-beat 3, dump 3 — from the third.
+README — **unchanged by ships A and B**. Guard total **92** — render 37,
+routing 16, assessment 13, screen 10, run 5, no-model 3, beat 5, dump 3 —
+from the third.
+
+⚠ **This block said `cfe1bd8` / 56 for the length of a ship while §1 below
+already described ship A**, which is this file failing its own §4 rule. The
+derivation commands are the fix; running them is what this line now is.
 
 ---
 
@@ -50,7 +55,17 @@ Every line below is a thing the code performs, not a thing the design permits.
 - **Refuses one exposure in-band, beside siblings that routed.** The missing
   item is named in the reader's own stored words, on the same page as three
   answers. The refusal renders **at its position** among the exposures, not in
-  a footnote.
+  a footnote, and the claim-level line **NAMES the exposure it cannot assign**
+  rather than counting it. *(Ship B, `dr-ship-b-confirmed`.)*
+- **Decides a claimed amount against the limit in force on a date**, and names
+  the edition and window that limit came from. The same claim assessed as of
+  two dates pays two different amounts. **The room does the arithmetic before
+  the page renders** — 400,000 claimed, 350,000 payable under the 2023 edition
+  and 375,000 under the 2024 one. *(Ship B — beat 4, which until then was a
+  page titled Decision Record containing two lookups and no decision.)*
+- **Names the decision it could NOT make.** A refusing leaf carries the
+  capacity's own words for what could not be done — *"settling the claim on
+  what was filed → cannot be settled"* — never the renderer's. *(Ship B.)*
 - **Refuses a claim on a missing document, and names which one.**
 - **Answers a dated policy question against two editions**, naming the edition
   and the window it was in force. Two cases differing only in the as-of date
@@ -74,9 +89,20 @@ Every line below is a thing the code performs, not a thing the design permits.
   human did the reading. The honest sentence in the room is *"intake here is
   structured; reading prose is the next variant, and its seam shipped
   2026-08-16."*
-- **It cannot adjudicate anything.** No clean approval, no clean denial, no
-  policy exception. §2.5 specifies all three and none exists. Beat 4 is a page
-  titled *Decision Record* containing two lookups and no decision.
+- **It adjudicates ONE thing: an amount against a dated limit.** Narrowed
+  from *"it cannot adjudicate anything"* by ship B rather than removed, because
+  §2.5 specifies **clean approval, clean denial and policy exception** and only
+  the amount comparison exists. What the demo can say is *"this claim exceeds
+  the limit in force, by this much, under this edition"*; it cannot approve, it
+  cannot deny, and it has no exception path. Do not describe it as adjudication
+  in general.
+- **It can only REFUSE for a reason a reader recorded.** A refusal carries no
+  prose of its own (ADR-0209 D1) and the renderer raises on a refusing value
+  with no stored words, so *"the field is absent"* and *"the value is not a
+  number"* refuse honestly — while a well-formed NONSENSE value (a negative
+  claim, a date in 1850) has no refusal available to it and is decided on.
+  **This is the boundary any live-editing console inherits**, and it is ship
+  C's constraint before it is anyone else's.
 - **It cannot take a case or a policy chosen at the table.** Every input is a
   Python constant in a demo module. Nothing in the demo can be varied without
   editing source.
@@ -111,9 +137,9 @@ v1 scope, frozen 2026-08-17 (`DECISION_RECORDS_DEMO_PLAN.md` §0.3):
 
 | Ship | Closes | Entry above it removes |
 |---|---|---|
-| A | walk gap 1 | *cannot say WHY on a decision it answered* — replaced by: the page names **the fact that DECIDED**, from a stored field the deciding capacity writes |
-| B | walk gaps 2, 3, 5 | *cannot adjudicate anything* |
-| C | owner finding, 2026-08-17 | *cannot take a case or a policy chosen at the table* |
+| A ✅ `dr-deciding-fact-confirmed` | walk gap 1 | *cannot say WHY on a decision it answered* — replaced by: the page names **the fact that DECIDED**, from a stored field the deciding capacity writes |
+| B ✅ `dr-ship-b-confirmed` | walk gaps 2, 3, 5 + the §11 promotion out of 6 | *cannot adjudicate anything* — **narrowed, not removed**: one comparison against a dated limit exists; §2.5's three cases do not |
+| C — not started | owner finding, 2026-08-17 | *cannot take a case or a policy chosen at the table* |
 
 **Refused:** walk gap 6, the room-facing text pass — past the gate, with ONE
 promotion into ship B on a §11 ground (*"1 cannot be assigned yet — see the
