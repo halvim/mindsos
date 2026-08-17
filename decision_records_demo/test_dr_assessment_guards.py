@@ -66,7 +66,7 @@ def test_beat4_page_carries_a_decision_not_two_lookups():
     pays, in the capacity's own registered phrase."""
     page = _page(CASE_ASSESSED_PRIOR)
     assert "assessing the claimed amount against the limit in force" in page, page
-    assert "350000 payable, 50000 above the limit" in page, page
+    assert "400000 claimed, 350000 payable, 50000 above the limit" in page, page
     _g6_clean(page)
 
 
@@ -77,8 +77,8 @@ def test_the_two_dates_pay_different_amounts_and_name_their_editions():
     authority that changed is the defect `_source_lines` exists for."""
     prior = _page(CASE_ASSESSED_PRIOR)
     current = _page(CASE_ASSESSED_CURRENT)
-    assert "350000 payable, 50000 above the limit" in prior, prior
-    assert "375000 payable, 25000 above the limit" in current, current
+    assert "400000 claimed, 350000 payable, 50000 above the limit" in prior, prior
+    assert "400000 claimed, 375000 payable, 25000 above the limit" in current, current
     assert "version 2023.1" in prior and "2023-12-31" in prior, prior
     assert "version 2024.1" in current and "onwards" in current, current
     assert "2024.1" not in prior and "2023.1" not in current
@@ -102,7 +102,7 @@ def test_under_the_limit_the_amount_is_the_deciding_fact():
     branch credited the wrong input, and the under-limit branch is the one
     the room reaches by lowering the claimed amount live."""
     page = _page(dict(CASE_ASSESSED_PRIOR, claimed_amount=300000))
-    assert "300000 payable in full" in page, page
+    assert "300000 claimed, payable in full" in page, page
     assert "Q. What amount was claimed on this claim? — 300000." in page, page
     assert "What dwelling coverage limit was in force" not in page, page
     _g6_clean(page)
@@ -125,10 +125,10 @@ def test_what_is_payable_is_arithmetic_on_the_stored_values():
     number the values on screen do not produce fails the FIXTURE-DESIGN RULE
     silently — the room does the subtraction and gets a different answer."""
     cases = [
-        (400000, 350000, "350000 payable, 50000 above the limit", DS_DWELLING_LIMIT),
-        (400000, 375000, "375000 payable, 25000 above the limit", DS_DWELLING_LIMIT),
-        (300000, 375000, "300000 payable in full", DS_CLAIMED_AMOUNT),
-        (375000, 375000, "375000 payable in full", DS_CLAIMED_AMOUNT),
+        (400000, 350000, "400000 claimed, 350000 payable, 50000 above the limit", DS_DWELLING_LIMIT),
+        (400000, 375000, "400000 claimed, 375000 payable, 25000 above the limit", DS_DWELLING_LIMIT),
+        (300000, 375000, "300000 claimed, payable in full", DS_CLAIMED_AMOUNT),
+        (375000, 375000, "375000 claimed, payable in full", DS_CLAIMED_AMOUNT),
     ]
     for claimed, limit, expected, decider in cases:
         out = _assess(**{DS_CLAIMED_AMOUNT: claimed, DS_DWELLING_LIMIT: limit})
@@ -201,6 +201,59 @@ def test_the_two_pages_carry_the_SUBMISSION_and_ASSESSMENT_framing():
     assert "as assessed on 2024-06-01" in src, src
     assert "assessed as of" not in src, (
         "a page still frames both moments as the assessment:\n" + src
+    )
+
+
+def test_the_intake_line_does_not_echo_the_deciding_QUESTION():
+    """THE SECOND DOOR of the echo rule (coordination §101.3(1)). Ship A drops
+    a value echoed from the deciding ANSWER; beat 4 put the as-of date bare in
+    the intake line AND inside the deciding question — *"…in force on
+    2023-06-01?"* — so the same value stood twice, one of the copies saying
+    nothing to a cold reader."""
+    page = _page(CASE_ASSESSED_PRIOR)
+    intake = page.split(" — the claim as it arrived")[0].split("\n")[-1]
+    assert "2023-06-01" not in intake, (
+        "the as-of date is bare in the intake line and again in the question "
+        "below it:\n" + intake
+    )
+    assert "in force on 2023-06-01?" in page, (
+        "the question must still state the date it is asking about:\n" + page
+    )
+    assert "F. Okafor" in intake and "hail, 12 March" in intake, (
+        "context the decision needed but did not state was dropped with the "
+        "echo:\n" + intake
+    )
+
+
+def test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE():
+    """THE THIRD DOOR (coordination §102). The decision now names its own
+    operand — *"400000 claimed, 350000 payable…"* — so without this the same
+    number sits labelled on the verdict line and bare in the intake line
+    above it, which is the defect §101.3(2) was fixing, one door over."""
+    page = _page(CASE_ASSESSED_PRIOR)
+    intake = page.split(" — the claim as it arrived")[0].split("\n")[-1]
+    assert "400000" not in intake, (
+        "the claimed amount is stated twice, once unlabelled:\n" + intake
+    )
+    assert "400000 claimed" in page, (
+        "the amount must still be on the page, labelled:\n" + page
+    )
+
+
+def test_a_short_intake_value_survives_when_it_only_LOOKS_echoed():
+    """THE COLLISION DOOR, and the reason the match is whole-token. The echo
+    test asks whether an intake value appears in a line below it; a bare
+    substring test answers YES for `50` inside `50000` and would silently
+    delete an unrelated field from the page. A page quietly losing context is
+    the failure G2 refuses and the one no reader would ever spot.
+
+    Guard-only fixture: this is not a case and the room never sees it."""
+    page = _page(dict(CASE_ASSESSED_PRIOR, file_no="50"))
+    intake = page.split(" — the claim as it arrived")[0].split("\n")[-1]
+    assert "50000 above the limit" in page, page
+    assert "50" in intake, (
+        "an unrelated field vanished because a total happened to contain its "
+        "digits:\n" + intake
     )
 
 

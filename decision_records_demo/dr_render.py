@@ -109,15 +109,23 @@ MANIFEST_MEMBER_IDS = "member_graph_ids"
 #: ADR-0209 structural refusal marker on a verdict VALUE — branch-only.
 REFUSAL_MARKER = "refusal_reason"
 
-#: What a refusing LEAF's verdict line says on the right. Two words, composed
-#: here rather than stored, on the precedent of the shipped *"Decided date:
-#: not available from stored evidence"* — a stated absence in the renderer's
-#: own voice. Deliberately NOT *"not possible from stored evidence"*: the
-#: store is fine, the CLAIM lacked the item, and blaming the evidence is the
-#: same misattribution `policy_lookup_v0` makes when it reports a malformed
-#: date as an outage. The reason sits on the line directly above; this line
-#: names only WHAT could not be done.
-REFUSED_VERDICT_TEXT = "not possible"
+#: The field a refusing verdict carries its OWN words in.
+#:
+#: ⚠ **This replaced a renderer-composed string, on the rule coordination
+#: §100/§102 settled and which is worth more than the fix:** the renderer's
+#: voice may describe THE RECORD'S LIMITS — meta, case-invariant, true of
+#: every Record ever rendered from a store, which is what makes *"Decided
+#: date: not available from stored evidence"* chrome — and may NEVER describe
+#: THE CASE'S OUTCOME. *"not possible"* is an outcome statement, so the words
+#: belong to the capacity that could not decide, and this module only places
+#: them.
+#:
+#: ⚠ **The contract that comes with it:** a refusing value rendered on the
+#: LEAF road must carry this field, or the page RAISES (G2 — raise, never
+#: fill). Spelled as a literal here and in the producing module because
+#: ``dr_render`` may import neither (G1); the spellings are pinned equal
+#: test-side, exactly as the determining field's are.
+FIELD_REFUSAL_PHRASE = "refusal_phrase"
 
 #: Origin-record keys the page reads. String literals BY NECESSITY — G1 bans
 #: importing `mindsos_capacity`, where the contract defines them — so they are
@@ -573,7 +581,31 @@ def _fmt(value: Any) -> str:
     return str(value)
 
 
-def _fmt_without(value: Any, drop: Any) -> str:
+def _token_in(needle: str, haystack: str) -> bool:
+    """True iff ``needle`` occurs in ``haystack`` as a WHOLE TOKEN.
+
+    ⚠ **Bounded on purpose, and the reason is arithmetic.** The echo rule asks
+    whether an intake value already appears in a line below it, and a bare
+    ``in`` answers YES for ``"3"`` inside ``"350000"`` and for ``"50"`` inside
+    ``"50000"`` — so an unrelated number containing a value's digits would
+    silently delete that value from the page. A page quietly losing context is
+    the failure G2 exists to refuse, and no reader would ever spot it. A match
+    counts only where both edges are non-alphanumeric or the end of the text.
+    """
+    if not needle:
+        return False
+    start = haystack.find(needle)
+    while start != -1:
+        before = haystack[start - 1] if start else ""
+        end = start + len(needle)
+        after = haystack[end] if end < len(haystack) else ""
+        if not before.isalnum() and not after.isalnum():
+            return True
+        start = haystack.find(needle, start + 1)
+    return False
+
+
+def _fmt_without(value: Any, drop: Any, texts: Any = ()) -> str:
     """:func:`_fmt`, minus the value the deciding fact is about to state.
 
     **Why, from the first live read of the page, 2026-08-17.** The intake line
@@ -591,10 +623,23 @@ def _fmt_without(value: Any, drop: Any) -> str:
     name the reader read (an origin record carries ``source_datastate``, not a
     key). So two fields carrying the identical value both drop. The page cannot
     tell them apart, and dropping one arbitrarily would be a guess.
+
+    ⚠ **THREE DOORS since ship B, not one** (coordination §101.3, §102).
+    A value is duplicated whether it is echoed from the deciding ANSWER
+    (exact match, the original rule), from the text of the deciding QUESTION,
+    or from the composed VERDICT sentence — the third arrived the moment a
+    decision started naming its own operands, and two doors would have left
+    the same number labelled once and bare once on one page. Text matches are
+    WHOLE-TOKEN (:func:`_token_in`); a bare substring test would delete
+    ``"3"`` because some unrelated total contains ``350000``.
     """
-    if drop is None or not isinstance(value, dict):
+    if not isinstance(value, dict):
         return _fmt(value)
-    kept = {k: v for k, v in value.items() if v != drop}
+    kept = {
+        k: v for k, v in value.items()
+        if v != drop
+        and not any(_token_in(str(v), text) for text in texts if text)
+    }
     return _fmt(kept) if kept else _fmt(value)
 
 
@@ -662,8 +707,14 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
     """
     fact = member.deciding_fact(entry)
     echoed = fact[1] if fact else None
+    # The same three doors as the leaf road. Nothing on the routing pages
+    # matches today; applying it to one road only is the one-member-domain
+    # shape this lane has paid for five times.
+    texts = [str(fact[0])] if fact else []
+    texts.append(_verdict_text(entry))
     lines = [
-        f"{_fmt_without(start.value, echoed)} — {member.start_description(start)}"
+        f"{_fmt_without(start.value, echoed, texts)} — "
+        f"{member.start_description(start)}"
         for start in member.parentless
         if not isinstance(start.value, list)
     ]
@@ -904,14 +955,18 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         # terminal_produced() there would put a new raise on paths this ship
         # has no business touching.
         _leaf_echo = None
+        _leaf_texts: List[str] = []
         if analysis.stopped is None and not analysis.origin_refusals():
             _leaf_produced = analysis.terminal_produced()
             if _leaf_produced:
                 _leaf_fact = analysis.deciding_fact(_leaf_produced[0].value)
                 _leaf_echo = _leaf_fact[1] if _leaf_fact else None
+                if _leaf_fact:
+                    _leaf_texts.append(str(_leaf_fact[0]))
+                _leaf_texts.append(_verdict_text(_leaf_produced[0].value))
         for start in analysis.parentless:
             lines.append(
-                f"{_fmt_without(start.value, _leaf_echo)} — "
+                f"{_fmt_without(start.value, _leaf_echo, _leaf_texts)} — "
                 f"{analysis.start_description(start)}"
             )
         refusals = analysis.origin_refusals()
@@ -942,9 +997,16 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
             # the beat above it rather than a beat of its own.
             carriers = analysis.refusing_conclusions()
             if carriers:
+                said = carriers[0].value.get(FIELD_REFUSAL_PHRASE)
+                if not said:
+                    raise RendererGapError(
+                        f"a refusing value on {analysis.graph.role!r} names no "
+                        "words of its own for what could not be done, and this "
+                        "module does not speak for a capacity about its own "
+                        "outcome — refusing to compose one"
+                    )
                 lines.append(
-                    f"   {analysis.phrase_for_value(carriers[0].value)} → "
-                    f"{REFUSED_VERDICT_TEXT}"
+                    f"   {analysis.phrase_for_value(carriers[0].value)} → {said}"
                 )
         else:
             produced = analysis.terminal_produced()

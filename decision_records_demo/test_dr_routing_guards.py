@@ -248,7 +248,11 @@ def test_a_declared_deciding_fact_with_no_stored_question_raises():
     assert removed == 1, f"fixture drifted: removed {removed}, expected 1"
     try:
         render_from_graphs(graphs, EPISODE_COMPLETED)
-    except RendererGapError:
+    except RendererGapError as exc:
+        # ⚠ Was a bare `except RendererGapError` — §94 finding 5's shape in a
+        # guard that predates it: it could not tell its own gap from any other
+        # raise on this path. Named in coordination §101.1, tightened here.
+        assert "is not in this run's stored evidence" in str(exc), str(exc)
         return
     raise AssertionError("a verdict rendered a reason it could not show")
 
@@ -311,6 +315,9 @@ def test_the_field_name_is_spelled_the_same_in_all_three_places():
 
     assert dr_routing.DETERMINED_BY == dr_render.FIELD_DETERMINED_BY
     assert dr_settlement.DETERMINED_BY == dr_render.FIELD_DETERMINED_BY
+    # Second literal-in-three-files field, ship B: the words a refusing value
+    # carries for what could not be done.
+    assert dr_settlement.REFUSAL_PHRASE == dr_render.FIELD_REFUSAL_PHRASE
 
 
 

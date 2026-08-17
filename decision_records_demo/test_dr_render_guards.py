@@ -829,14 +829,14 @@ def test_a_refusing_leaf_names_the_decision_it_could_not_make():
     with a verdict the settle capacity produced (§94 finding 3)."""
     page = render_from_graphs(_settlement_graphs(), EPISODE_COMPLETED)
     assert "Q. Which proof of loss was filed for this claim? — Nothing." in page, page
-    assert "settling the claim on what was filed → not possible" in page, page
+    assert "settling the claim on what was filed → cannot be settled" in page, page
     q_at = page.find("Q. Which proof of loss")
-    verdict_at = page.find("settling the claim on what was filed → not possible")
+    verdict_at = page.find("settling the claim on what was filed → cannot be settled")
     assert q_at < verdict_at, (
         "the reason comes first and the line names only WHAT could not be "
         "done:\n" + page
     )
-    assert "reading the claim as filed → not possible" not in page, (
+    assert "reading the claim as filed → cannot be settled" not in page, (
         "the attempted decision wears the READER's phrase:\n" + page
     )
     for token in G6_BANNED:
@@ -847,7 +847,7 @@ def test_the_member_road_does_not_gain_the_refusal_verdict_line():
     """THE TWO-DOOR RULE on the asymmetry this slice creates. A member's
     refusal is already answered by the fold's claim-level line — *"1 not yet
     assigned: D. Laurent, Bodily Injury"* — so a member road that also
-    printed *"not possible"* per exposure would say the same thing twice on
+    printed *"cannot be settled"* per exposure would say the same thing twice on
     the demo's longest page. The leaf has no fold, and that is the entire
     reason the two roads differ here.
 
@@ -865,11 +865,44 @@ def test_the_member_road_does_not_gain_the_refusal_verdict_line():
         capacity_graphs=graphs, case_label="claim CLM-3007",
     )
     page = render_from_graphs(graphs, EPISODE_COMPLETED)
-    assert "not possible" not in page, page
+    # Structural, not string-matched: the refusing member block carries NO
+    # verdict line at all, so three answered exposures yield three and the
+    # fourth yields none. A string test would pass on a leaked line that
+    # happened to say something else.
+    assert page.count("choosing the desk for one exposure →") == 3, (
+        "the refusing member gained a verdict line:\n" + page
+    )
+    assert "cannot be settled" not in page, page
     assert "1 not yet assigned: D. Laurent, Bodily Injury" in page, (
         "the member road states the consequence through the claim line, and "
         "that is why it needs no per-member line:\n" + page
     )
+
+
+def test_a_refusing_leaf_with_no_words_of_its_own_raises():
+    """THE OTHER DOOR of coordination §100 Q2's contract. The renderer may
+    describe the Record's LIMITS and never the case's OUTCOME, so a refusing
+    value carrying no words for what could not be done leaves the page with
+    nothing honest to print — and composing some is exactly what this ship
+    stopped doing. It raises.
+
+    Without this the field could be dropped from the producer and the page
+    would fall silent, which is the shorter, weaker beat 3 the walk found."""
+    graphs = _settlement_graphs()
+    stripped = 0
+    for graph in graphs:
+        for node in graph.nodes.values():
+            value = node.value
+            if isinstance(value, dict) and value.get("refusal_phrase"):
+                del value["refusal_phrase"]
+                stripped += 1
+    assert stripped == 1, f"fixture drifted: stripped {stripped}, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "names no words of its own" in str(exc), str(exc)
+        return
+    raise AssertionError("the renderer spoke for a capacity about its outcome")
 
 
 def test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one():

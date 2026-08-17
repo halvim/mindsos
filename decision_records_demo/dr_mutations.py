@@ -64,9 +64,17 @@ MUTATIONS = [
     (
         "the intake line echoes the deciding fact again",
         RENDER,
-        "    kept = {k: v for k, v in value.items() if v != drop}",
-        "    kept = dict(value)",
-        ["test_the_intake_line_does_not_echo_the_deciding_fact"],
+        # ⚠ RE-ANCHORED in ship B: the comprehension gained the two text
+        # doors, so the one-line form this row pointed at stopped existing.
+        # Caught as DEAD before the run rather than by a shorter table.
+        "        if v != drop\n"
+        "        and not any(_token_in(str(v), text) for text in texts if text)",
+        "        if True",
+        [
+            "test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE",
+            "test_the_intake_line_does_not_echo_the_deciding_QUESTION",
+            "test_the_intake_line_does_not_echo_the_deciding_fact",
+        ],
     ),
     (
         "a NON-DICT verdict is punished for naming no deciding fact",
@@ -383,8 +391,8 @@ MUTATIONS = [
     (
         "the payable numbers are formatted with an invented separator",
         ASSESS,
-        'f"{limit} payable,',
-        'f"{limit:,} payable,',
+        'f"{claimed} claimed, {limit} payable, "',
+        'f"{claimed:,} claimed, {limit:,} payable, "',
         [
             "test_beat4_page_carries_a_decision_not_two_lookups",
             "test_no_invented_currency_reaches_the_page",
@@ -424,7 +432,7 @@ MUTATIONS = [
                     f"Q. {record.get('question')} — Nothing. "
                     f"{record.get('refusal_detail')}"
                 )
-                block.append(f"   {member.phrase_for_value(entry)} → {REFUSED_VERDICT_TEXT}")
+                block.append(f"   {member.phrase_for_value(entry)} → placed")
                 lines.extend(block)""",
         ["test_the_member_road_does_not_gain_the_refusal_verdict_line"],
     ),
@@ -434,6 +442,61 @@ MUTATIONS = [
         "        if len(out) > 1:\n            raise RendererGapError(\n                f\"{self.graph.role!r} produced more than one refusing value \"",
         "        if False:\n            raise RendererGapError(\n                f\"{self.graph.role!r} produced more than one refusing value \"",
         ["test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one"],
+    ),
+    (
+        "the refusing leaf's own words go missing",
+        SETTLE,
+        'CANNOT_SETTLE = "cannot be settled"',
+        'CANNOT_SETTLE = ""',
+        ["test_a_refusing_leaf_names_the_decision_it_could_not_make"],
+    ),
+    (
+        "the renderer COMPOSES for the capacity again instead of raising",
+        RENDER,
+        "                if not said:",
+        "                if False:",
+        [
+            "test_a_refusing_leaf_names_the_decision_it_could_not_make",
+            "test_a_refusing_leaf_with_no_words_of_its_own_raises",
+        ],
+    ),
+    (
+        "the refusal-phrase field is spelled differently by its producer",
+        SETTLE,
+        'REFUSAL_PHRASE = "refusal_phrase"',
+        'REFUSAL_PHRASE = "refusal_phrase_x"',
+        [
+            "test_a_refusing_leaf_names_the_decision_it_could_not_make",
+            "test_the_field_name_is_spelled_the_same_in_all_three_places",
+        ],
+    ),
+    (
+        "the echo rule loses its SECOND door - the deciding question",
+        RENDER,
+        "                    _leaf_texts.append(str(_leaf_fact[0]))",
+        "                    pass",
+        ["test_the_intake_line_does_not_echo_the_deciding_QUESTION"],
+    ),
+    (
+        "the echo rule loses its THIRD door - the verdict sentence",
+        RENDER,
+        "                _leaf_texts.append(_verdict_text(_leaf_produced[0].value))",
+        "                pass",
+        ["test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE"],
+    ),
+    (
+        "the echo match relaxes to a bare substring - 50 inside 50000",
+        RENDER,
+        "        if not before.isalnum() and not after.isalnum():",
+        "        if True:",
+        ["test_a_short_intake_value_survives_when_it_only_LOOKS_echoed"],
+    ),
+    (
+        "the unfindable-pair raise stops saying which gap it is",
+        RENDER,
+        'f"it, but {missing} is not in this run\'s stored evidence — "',
+        'f"it, but {missing} is unavailable — "',
+        ["test_a_declared_deciding_fact_with_no_stored_question_raises"],
     ),
 ]
 

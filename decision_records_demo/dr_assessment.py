@@ -116,13 +116,23 @@ def _assess(context=None, **inputs):
         # The LIMIT is what capped it: had the limit been higher, the answer
         # would have been higher. The amount was merely the thing measured.
         return {DS_ASSESSMENT: {
-            "decision": f"{limit} payable, {claimed - limit} above the limit",
+            # NAMES ITS OWN OPERAND (coordination §101.3(2)). The room is
+            # asked to check 400000 - 350000 = 50000, and the page said
+            # 400000 only as an unlabelled item in the intake line. The whole
+            # arithmetic now sits on the line the room reads, in the words of
+            # the capacity that did it — outcome content belongs to the
+            # capacity (§100 Q2), and the bare copy above drops out by the
+            # echo rule's third door.
+            "decision": (
+                f"{claimed} claimed, {limit} payable, "
+                f"{claimed - limit} above the limit"
+            ),
             DETERMINED_BY: DS_DWELLING_LIMIT,
         }}
     # Under the limit the limit is not doing any work: the claim is paid
     # because of what was CLAIMED, and the Record must credit that input.
     return {DS_ASSESSMENT: {
-        "decision": f"{claimed} payable in full",
+        "decision": f"{claimed} claimed, payable in full",
         DETERMINED_BY: DS_CLAIMED_AMOUNT,
     }}
 
