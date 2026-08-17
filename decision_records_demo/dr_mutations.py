@@ -143,13 +143,7 @@ MUTATIONS = [
         # it is quieter.
         '        return [f"   Q. {question} — {_fmt(answer)}."]',
         '        return [f"   Q. {verdict.get(FIELD_DETERMINED_BY)} {question} — {_fmt(answer)}."]',
-        ["test_the_determining_marker_never_reaches_the_page"            "test_beat4_page_carries_a_decision_not_two_lookups",
-            "test_no_invented_currency_reaches_the_page",
-            "test_over_the_limit_the_limit_is_the_deciding_fact",
-            "test_the_deciding_fact_carries_the_authority_behind_it",
-            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
-            "test_under_the_limit_the_amount_is_the_deciding_fact",
-],
+        ["test_the_determining_marker_never_reaches_the_page"],
     ),
     (
         "a verdict with NO determining input is punished instead of rendered",
@@ -185,31 +179,31 @@ MUTATIONS = [
         "        out = self._unconsumed(self.plain_produced())",
         "        out = self.plain_produced()[:1]",
         [
-            "test_the_leaf_road_shows_the_deciding_fact",
-            "test_two_unconsumed_values_raise_rather_than_pick_one",
-                    "test_beat4_page_carries_a_decision_not_two_lookups",
-            "test_no_invented_currency_reaches_the_page",
+            "test_beat4_page_carries_a_decision_not_two_lookups",
             "test_over_the_limit_the_limit_is_the_deciding_fact",
             "test_the_deciding_fact_carries_the_authority_behind_it",
+            "test_the_leaf_road_shows_the_deciding_fact",
             "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_two_unconsumed_values_raise_rather_than_pick_one",
             "test_under_the_limit_the_amount_is_the_deciding_fact",
-],
+        ],
     ),
     (
         "the completed check asks plain_produced again (a refusal stops counting)",
         RENDER,
         "not terminal.terminal_outcomes():",
         "not terminal.plain_produced():",
-        ["test_a_refusing_leaf_is_a_conclusion_not_a_missing_one"            "test_a_claim_with_no_amount_refuses_in_the_readers_words",
-],
+        ["test_a_refusing_leaf_is_a_conclusion_not_a_missing_one"],
     ),
     (
         "the leaf verdict line wears the first capacity's phrase again",
         RENDER,
         'f"   {analysis.phrase_for_value(produced[0].value)} → "',
         'f"   {analysis.phrase()} → "',
-        ["test_the_leaf_road_shows_the_deciding_fact"            "test_beat4_page_carries_a_decision_not_two_lookups",
-],
+        [
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_the_leaf_road_shows_the_deciding_fact",
+        ],
     ),
     (
         "every Q line classifies as a refusal on the screen",
@@ -427,7 +421,40 @@ def _red_set() -> set:
     return red
 
 
+def _declared_test_names() -> set:
+    """Every test name the guard files define, by source scan.
+
+    **Why this exists, and it is the harness auditing its own input.** On
+    2026-08-17 three rows had two test names spliced into ONE by an editing
+    slip — Python concatenates adjacent string literals silently, so
+    ``["test_a"  "test_b"]`` is the single name ``"test_atest_b"``, which no
+    run can ever produce. All three printed as PREDICTION MISS and looked
+    like findings about the CODE. A prediction naming a test that does not
+    exist is a finding about the PREDICTION, and it is now caught before a
+    single mutation is applied.
+    """
+    names = set()
+    for guard_file in GUARD_FILES:
+        with io.open(os.path.join(ROOT, guard_file), encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("def test_"):
+                    names.add(line[4:].split("(")[0].strip())
+    return names
+
+
 def main() -> int:
+    declared = _declared_test_names()
+    phantom = sorted(
+        (name, row[0]) for row in MUTATIONS for name in row[4]
+        if name not in declared
+    )
+    if phantom:
+        print("== predictions naming tests that do not exist ==")
+        for name, row in phantom:
+            print("  %r  (row: %s)" % (name, row))
+        print("  A prediction no run can satisfy is not a prediction. Fix "
+              "these before reading anything below.")
+        return 5
     before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS)}
     print("== baseline: every guard file green with no mutation applied ==")
     baseline = _red_set()
