@@ -745,7 +745,7 @@ MUTATIONS = [
             "test_the_deciding_fact_stays_the_persons_fact_and_the_rule_is_a_second_line",
             "test_the_page_names_the_rule_it_was_measured_against_and_its_window",
             "test_two_editions_route_the_SAME_exposure_to_different_desks",
-            "test_a_REFUSAL_carries_no_rule_line_because_no_rule_was_applied",
+            "test_an_exposure_that_consulted_no_rule_cites_none",
             "test_the_deciding_fact_carries_the_authority_behind_it",
         ],
     ),
