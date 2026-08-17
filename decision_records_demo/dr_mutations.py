@@ -58,10 +58,17 @@ MUTATIONS = [
         '        if not isinstance(verdict, dict):\n            raise RendererGapError("not a dict")',
         # The SECOND door out of deciding_lines, and the one the asymmetry
         # guard used to test by accident instead of on purpose.
+        # Every fixture whose verdict is NOT a dict: the policy leaf's bare
+        # limit and the bare-verdict correlation pair. The policy-version
+        # guard is here too, and only because it was tightened to assert its
+        # own message — before that it caught this unrelated raise and stayed
+        # green, which is how the harness found it.
         [
             "test_a_capacity_that_records_no_deciding_fact_is_not_punished",
             "test_a_missing_supplied_policy_version_raises",
             "test_g5_two_dates_name_different_limits_and_windows",
+            "test_identical_bare_verdicts_do_not_collapse_onto_one_member",
+            "test_identical_bare_verdicts_render_by_position",
         ],
     ),
     (

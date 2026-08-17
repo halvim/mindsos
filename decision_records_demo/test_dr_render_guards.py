@@ -656,7 +656,13 @@ def test_a_missing_supplied_policy_version_raises():
     assert stripped == 1, f"fixture drifted: stripped {stripped} versions, expected 1"
     try:
         render_from_graphs(graphs, EPISODE_COMPLETED)
-    except RendererGapError:
+    except RendererGapError as exc:
+        # ⚠ The MESSAGE, not merely the type. Found 2026-08-17 by the mutation
+        # harness: an unrelated mutation elsewhere in the renderer raised a
+        # different RendererGapError and this test stayed green, so it could
+        # not tell its own gap from any other. Third instance in this ship of
+        # a guard passing for a reason unrelated to its claim.
+        assert "declares it always supplies" in str(exc), str(exc)
         return
     raise AssertionError("a source record missing a declared field rendered anyway")
 
