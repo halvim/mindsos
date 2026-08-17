@@ -149,17 +149,31 @@ ANTHROPIC_API_KEY=... PYTHONPATH=. python3 decision_records_demo/dr_transport_sm
 Exit 0 = an answer came back. Exit 2 = no credential. Exit 1 = the call failed,
 with the reason printed.
 
-⚠ **The conformance harness runs from the `main` checkout, and the same command
-does it.** `contract.verify_transport` is product code written so a deployment
-can prove its own transport, and `mindsos_capacity/llm/` is ABSENT from this
-branch's pinned core — so the smoke tries the import, prints its report when the
-package is there, and says NOT RUN with the reason when it is not (RULES §11: a
-list of only successes is a pitch). Run it a second time from `main`, with this
-directory on the path, and the report appears:
+⚠ **THE CONFORMANCE HARNESS RUNS FROM `main`, AND NOTHING ON THIS BRANCH MAY
+IMPORT IT.** `contract.verify_transport` is product code written so a deployment
+can prove its own transport (S-3), and `mindsos_capacity/llm/` is ABSENT from
+this branch's pinned core. The first draft of `dr_transport_smoke.py` imported
+it inside a `try/ImportError` for convenience and **reddened
+`test_no_demo_module_imports_the_model_seam`** — an AST scan, so a
+function-level import trips it exactly like a module-level one. That guard is
+one of the three that survive until step 3's pin bump, and it is right. The
+procedure copies the transport out of git and runs the harness against it from
+`main`, leaving no seam import in the tree:
 
 ```
-ANTHROPIC_API_KEY=... PYTHONPATH=.:/path/to/_MindsOS-dr-transport python3 /path/to/_MindsOS-dr-transport/decision_records_demo/dr_transport_smoke.py
+cd /home/sanmyaku/mindsos && git show demo/dr-transport:decision_records_demo/dr_transport.py > /tmp/dr_transport.py && git checkout main
 ```
+
+```
+cd /home/sanmyaku/mindsos && ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY PYTHONPATH=.:/tmp python3 -c 'import os,dr_transport;from mindsos_capacity.llm.contract import verify_transport;t=dr_transport.build_transport(api_key=os.environ["ANTHROPIC_API_KEY"],model_id="claude-haiku-4-5-20251001",resolve_prompt=lambda **k:"Report only what the message states, with a verbatim quote for each value.");print(verify_transport(t,prompt_iri="prompt:drdemo/step1_smoke",prompt_version=1,source_text="The operator was off work for at least six weeks."))'
+```
+
+⚠ **Read the report's `unverifiable` lines, not only its passes.** `contract.py`
+names four §6.3 properties no external observer can establish — no silent retry,
+no substituted default, timeout honoured, document not logged elsewhere — and
+reports them by name rather than omitting them. Only one of the four is
+checkable from inside the transport, and that one has a guard here
+(`test_the_timeout_reaches_the_opener`).
 
 Smoke and pages can also be driven by hand. **Host port 6382** — on the
 reference Linux box 6379 is held by a stray container and 6380/6381 by the arc

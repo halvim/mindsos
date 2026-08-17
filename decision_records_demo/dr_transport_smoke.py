@@ -20,6 +20,16 @@ it.
 ⚠ **The owner's fixture (email B) is NOT used here.** Putting it in the tree is
 part of step 3, and nothing is built past its step.
 
+⚠ **THE CONFORMANCE HARNESS IS NOT IMPORTED HERE, and the first draft of this
+file imported it.** A convenience import of
+``mindsos_capacity.llm.contract.verify_transport`` — even inside a function,
+even guarded by ``try/ImportError`` — reddened
+``test_no_demo_module_imports_the_model_seam``, one of the three no-model guards
+that must survive until step 3's pin bump. **Caught by running the whole guard
+set, which running only this ship's new guard file would not have done**
+(RULES §12.2). The harness runs from the ``main`` checkout; the procedure is in
+``decision_records_demo/README.md``.
+
     ANTHROPIC_API_KEY=... PYTHONPATH=. python3 decision_records_demo/dr_transport_smoke.py
 
 Exit 0 means an answer came back. Exit 2 means no credential in the
@@ -104,23 +114,11 @@ def main() -> int:
           "(text, undecoded — S-2 decodes in mindsos_capacity.llm)")
 
     print()
-    print("== conformance harness ==")
-    try:
-        from mindsos_capacity.llm.contract import verify_transport
-    except ImportError:
-        print("NOT RUN — mindsos_capacity.llm is absent from the core this "
-              "branch pins, which is why plan §0.5 item 9 makes this the "
-              "owner's evidence. Run this same command from the `main` "
-              "checkout with this directory on PYTHONPATH and the report "
-              "prints here.")
-        return 0
-    report = verify_transport(
-        transport,
-        prompt_iri="prompt:drdemo/step1_smoke",
-        prompt_version=1,
-        source_text=SMOKE_SOURCE,
-    )
-    print(report)
+    print("== conformance harness: NOT RUN HERE, and it cannot be ==")
+    print("mindsos_capacity.llm.contract.verify_transport is the harness for")
+    print("this, and importing it ANYWHERE on this branch reddens")
+    print("test_no_demo_module_imports_the_model_seam. Run it from the `main`")
+    print("checkout - decision_records_demo/README.md carries the procedure.")
     return 0
 
 
