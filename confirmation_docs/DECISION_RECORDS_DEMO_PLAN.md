@@ -206,6 +206,74 @@ path.** Escalated by the critic lane (§91) and owner-accepted 2026-08-17:
 Neither is engineering, and no amount of building closes them. Gate 7 is green
 with the hole it was worded to close until both are done.
 
+**11. SHIP D — THE LIVE PROSE BEAT. Owner ruling 2026-08-17, and it does NOT
+gate v1.** The pitch is *the model reads, MindsOS decides*; the demo shows
+MindsOS deciding with no model present anywhere. Those are different claims and
+Gate 7 (a) exists to stop the first being said over the second. Ship D closes
+that: `comprehension_v0` reads a claim EMAIL live, and the rest of the pipeline
+is untouched.
+
+- **Reuse beat 2, swap ONE reader** — structured ingest → comprehension, over a
+  prose email stating the injury. Same routing, same desks, same page. **The two
+  pages differ in ORIGIN and in nothing else**, which is claim 5's artifact
+  (§3, the adapter delta) performed live instead of tabulated. A new case would
+  prove less, by having nothing to be identical to.
+- ⚠ **IT REQUIRES A PIN BUMP, and that kills all three no-model guards.**
+  `mindsos_capacity/llm/` and `builtins/comprehension_v0.py` are on `main` and
+  **absent from `dr-partial-record-confirmed`** (checked with `git ls-tree`).
+  After the bump, *the pinned core carries no model seam* is false, *no demo
+  module imports the seam* is false, and *no case produces a value a model
+  read* is false. **Deleting them to make the beat build would destroy the
+  proof of the strongest claim in order to demonstrate the second-strongest.**
+- **They are REPLACED by four structural guards, and the claim gets stronger.**
+  The old set proves *no model is present* — a fact about a configuration that
+  stops being true the moment the product does what it is sold as doing. The
+  replacement proves *the model cannot decide*: (i) no capacity in
+  `origin_v0.DECISION_SHAPED_CATEGORIES` declares `consults_llm`; (ii) no
+  verdict carries `read_by_model`; (iii) every model reading is quote-verified
+  against the source or refused — `comprehension_v0` locates the quote in the
+  source text, so a fabricated value becomes a refusal by construction; and
+  (iv) **the CENSUS** — the set of capacities declaring `consults_llm` is
+  pinned to exactly the enumerated readers and reddens when anything joins it.
+  ⚠ **(iv) exists because (i) has a hole the critic lane found: a REDUCER sits
+  in family `derivation`, outside the decision set, while shaping the
+  claim-level conclusion** — `dr_routing._assign` is one keyword away from
+  being it. Verified on the tree: `consults_llm=True` appears on **exactly one
+  capacity in the repo** (`comprehension_v0`), so the census's correct value
+  today is 1. Beat 5's line becomes *"the model read this line, and here is why
+  it could not have decided it."*
+- **TWO GATES, each stating what it covers.** Gate 7 keeps its scope and says
+  so — it covers the structured cases, which stay the demo's spine. Ship D gets
+  its own weaker, honestly-named gate: *it ran N times against a live provider
+  in rehearsal, with the refusal branch observed at least once.* **The weaker
+  gate's name rides IN the script on the beat card** — *"live-provider,
+  rehearsal-gated; everything else you saw runs cold"* — so the room's
+  description of the demo is the script's own words rather than an inference
+  from the stronger gate.
+- **Fallback.** `recording.py` / `replay.py` exist. Open decision 9's D9 rule
+  governs: a demo running from saved answers is a scripted demo **and deserves
+  to be called one**, out loud, in the room.
+- **PRECONDITION, not advice: first provider contact happens at the owner's
+  desk before any rehearsal.** The transport has never met a provider; the
+  build gate has neither network nor key.
+- **D DOES NOT GATE v1.** It is the only item in this plan with an external,
+  non-deterministic dependency, and putting the finish line behind it is open
+  decision 6's drift warning in a new costume. **Claim discipline in the
+  interval, and it is a rule: until D is green, nobody says "the model reads"
+  in a room.**
+- **OPEN, owner-owned: is the quote-verification refusal COURTED?** Choosing a
+  source that genuinely lacks the fact, so the model overreaches and is caught
+  live, is the strongest moment available in this demo. It is honest **if and
+  only if the gap is disclosed BEFORE the run** — *"this email never states the
+  severity; watch what each does"* — because the line between rigged and
+  designed is concealment. Undisclosed it is a gotcha and the lane will not
+  build it. Ruling outstanding; the plan text stands either way.
+- Second rehearsal case, never the room's first prose contact: a source with
+  MULTIPLE candidate values (a prior injury in the history), where
+  disambiguation is the work.
+
+Reasoning and the critic round: `DR_CRITIC_COORDINATION.md` §95–§97.
+
 **10. What this section does NOT change.** Phase 7's intake stays STRUCTURED
 (open decision 9). The beats stay the operative scope text. Phases 1–3 remain
 the committed following block at a green Gate 7 (open decision 6) — v1 does not

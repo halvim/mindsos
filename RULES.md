@@ -332,6 +332,24 @@ numbering. Before picking up the next item:
    consecutive full runs that change nothing mean the matrix is **missing a
    surface or a claim — add one; do not add depth to an old row.**
 
+**Two rules about WHEN a guard is written, added 2026-08-17 after a guard
+written the same afternoon a defect class was discovered still landed in it:**
+
+- **MUTATION-FIRST. A guard's designated mutation is observed RED before the
+  guard is committed** — not the same afternoon, after. The red is the guard's
+  birth certificate. A lane that commits eleven guards and runs their mutations
+  later will find one of them was green for a reason unrelated to its claim,
+  because that is exactly what happened.
+- **THE TWO-DOOR RULE. A guard over a branching predicate gets a fixture on
+  EACH side of the branch at birth.** `test_a_capacity_that_records_no_deciding_fact_is_not_punished`
+  exercised one of its predicate's two exits and passed for the wrong reason
+  for a full afternoon; its designated mutation reddened fourteen other tests
+  and not it.
+
+Both are practice, not code. They cost nothing and they close the gap between
+*"a guard that cannot go red is worse than none"* (§9) and the moment a guard
+is actually shown to go red.
+
 **Answer the questions against a dump I ran, not one you ran** (§11). A check
 whose evidence you produced and whose questions you answered is the
 self-grading the rule exists to stop.
