@@ -174,6 +174,14 @@ MUTATIONS = [
         ["test_the_determining_marker_never_reaches_the_page"],
     ),
     (
+        # ⚠ **THE SECOND MEMBER OF `dr-mutation-harness-domain-expression`, and
+        # a second member is that item's stated GENERALIZATION TRIGGER.** This
+        # row's honest red set is "every guard that renders a page carrying a
+        # verdict without a determining marker" — unbounded, and it grew from
+        # 15 to 41 in step 2 without the row's claim changing at all. Pasting
+        # 41 names back would make the row rot on the next ship, which is what
+        # the filed item says about the row above it. Left as a KNOWN miss and
+        # reported, rather than papered over with a copied list.
         "a verdict with NO determining input is punished instead of rendered",
         RENDER,
         "        if not marker:\n            return None",
@@ -770,7 +778,20 @@ MUTATIONS = [
         # the claim is structurally true. A VEHICLE exposure goes through the
         # member-lines road, consults no rule, and is where citing one can
         # actually happen.
-        ["test_an_exposure_that_consulted_no_rule_cites_none"],
+        #
+        # THREE reds, and the other two were predicted at one first. (i) the
+        # assessment guard's re-cut door asserts a vehicle exposure carries no
+        # Source line — the same claim from the beat-4 side. (ii) the no-edition
+        # guard reddens for a better reason than it looks: with no edition in
+        # force the threshold record is NOT ADMITTED, so a vehicle verdict
+        # pointing at it makes the renderer raise on a verdict standing on a
+        # refusing record. **The marker discipline catches its own misuse**,
+        # and that is worth a row's comment rather than a silent widening.
+        [
+            "test_an_exposure_that_consulted_no_rule_cites_none",
+            "test_no_edition_in_force_REFUSES_IN_BAND_in_the_lookups_own_words",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+        ],
     ),
     (
         "no edition in force is not noticed, and the comparison runs on None",
