@@ -206,16 +206,16 @@ COVERAGE_INJURY = "Bodily Injury"
 #: Beat 1 — one claim, three exposures, two desks (Guidewire's worked case).
 CASE_A_EXPOSURES = [
     {"claimant": "A. Silva", "coverage": COVERAGE_VEHICLE,
-     "loss": "collision, 3 June", "routed_as_of": "2026-06-03"},
+     "loss": "collision", "routed_as_of": "2026-06-03"},
     {"claimant": "B. Osei", "coverage": COVERAGE_VEHICLE,
-     "loss": "collision, 3 June", "routed_as_of": "2026-06-03"},
+     "loss": "collision", "routed_as_of": "2026-06-03"},
     # ⚠ SIX WEEKS, a STATED FACT, not "severe" — a conclusion (plan §0.4 item
     # 3a). The stored policy tiers it. Six is deliberately between the two
     # editions' thresholds (8 in 2023, 4 in 2024), so the SAME exposure reaches
     # different desks under different editions and the routing beats gain
     # beat 4's "which edition governed" without a second fixture.
     {"claimant": "C. Mensah", "coverage": COVERAGE_INJURY,
-     "loss": "collision, 3 June", "routed_as_of": "2026-06-03",
+     "loss": "collision", "routed_as_of": "2026-06-03",
      "off_work_weeks": 6},
 ]
 
@@ -234,7 +234,7 @@ CASE_A_EXPOSURES_2023 = [
 #: exists BECAUSE of the extraction contract rather than in spite of it.
 CASE_B_EXPOSURES = CASE_A_EXPOSURES + [
     {"claimant": "D. Laurent", "coverage": COVERAGE_INJURY,
-     "loss": "collision, 3 June", "routed_as_of": "2026-06-03"},
+     "loss": "collision", "routed_as_of": "2026-06-03"},
 ]
 
 

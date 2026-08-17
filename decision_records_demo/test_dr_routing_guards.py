@@ -96,7 +96,7 @@ def test_case_b_refusal_beside_answers_names_the_item():
     page = render_from_graphs(_routing_graphs(CASE_B_EXPOSURES), EPISODE_COMPLETED)
     assert (
         "Q. How many weeks off work does this exposure state? — Nothing. "
-        "the intake record for this exposure does not state an injury "
+        "the intake record for this exposure does not state a "
         "period off work." in page
     ), page
     assert "D. Laurent" in page, "the refusing exposure's own facts print"
