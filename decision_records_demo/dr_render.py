@@ -321,6 +321,14 @@ class _Analysis:
                 out.append(value)
         return out
 
+    def deciding_lines(self, verdict: Any) -> List[str]:
+        """:meth:`deciding_fact`, rendered."""
+        fact = self.deciding_fact(verdict)
+        if fact is None:
+            return []
+        question, answer = fact
+        return [f"   Q. {question} — {_fmt(answer)}."]
+
     def _node_by_type(self, ds_type: str) -> Optional[Any]:
         """The PRODUCED node of this type, or None. Raises on two."""
         found = [n for n in self.produced if self.ds_type(n) == ds_type]
@@ -331,7 +339,7 @@ class _Analysis:
             )
         return found[0] if found else None
 
-    def deciding_lines(self, verdict: Any) -> List[str]:
+    def deciding_fact(self, verdict: Any):
         """The one read that DECIDED this verdict, as its stored question and
         its stored answer.
 
@@ -352,10 +360,10 @@ class _Analysis:
         RAISES: that is a gap, and G2 is raise, never fill.
         """
         if not isinstance(verdict, dict):
-            return []
+            return None
         marker = verdict.get(FIELD_DETERMINED_BY)
         if not marker:
-            return []
+            return None
         answer_node = self._node_by_type(marker)
         record_node = self._node_by_type(marker + ORIGIN_SUFFIX)
         if answer_node is None or record_node is None:
@@ -381,7 +389,7 @@ class _Analysis:
                 "whose own record does not admit it — a verdict standing on a "
                 "refusal is incoherent, and the page will not carry it"
             )
-        return [f"   Q. {record.get(FIELD_QUESTION)} — {_fmt(answer_node.value)}."]
+        return (record.get(FIELD_QUESTION), answer_node.value)
 
     def _unconsumed(self, nodes: List[Any]) -> List[Any]:
         """Of ``nodes``, those with no outgoing ``CONSUMES`` edge."""
@@ -476,6 +484,31 @@ def _fmt(value: Any) -> str:
     return str(value)
 
 
+def _fmt_without(value: Any, drop: Any) -> str:
+    """:func:`_fmt`, minus the value the deciding fact is about to state.
+
+    **Why, from the first live read of the page, 2026-08-17.** The intake line
+    prints every field of the exposure, so the answer to the deciding question
+    stood one line above the question — and Screen A's left panel prints the
+    same intake a third time. What the deciding fact ADDS is *which* fact was
+    decisive, not what it was; the answer half was already on screen and read
+    as filler on the exposures whose coverage alone decided them.
+
+    Narrow on purpose: only the echoed value goes. C. Mensah keeps *Bodily
+    Injury* — that is context the decision needed and did not state — and loses
+    only the duplicated *severe*.
+
+    **Stated limit:** the renderer knows the deciding VALUE, never the field
+    name the reader read (an origin record carries ``source_datastate``, not a
+    key). So two fields carrying the identical value both drop. The page cannot
+    tell them apart, and dropping one arbitrarily would be a guess.
+    """
+    if drop is None or not isinstance(value, dict):
+        return _fmt(value)
+    kept = {k: v for k, v in value.items() if v != drop}
+    return _fmt(kept) if kept else _fmt(value)
+
+
 def _source_lines(analysis: "_Analysis", node: Any) -> List[str]:
     """The authority behind an admitted value: which edition, in force when.
 
@@ -526,8 +559,10 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
     blocks are identical (a genuinely duplicated exposure), and the renderer
     must be able to tell that case from an ambiguous one rather than assume it.
     """
+    fact = member.deciding_fact(entry)
+    echoed = fact[1] if fact else None
     lines = [
-        f"{_fmt(start.value)} — {member.start_description(start)}"
+        f"{_fmt_without(start.value, echoed)} — {member.start_description(start)}"
         for start in member.parentless
         if not isinstance(start.value, list)
     ]
@@ -760,9 +795,20 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
     else:
         analysis = analyses[0]
         terminal = analysis
+        # Only where a conclusion is what this page will show. A stopped or
+        # refusing leaf takes a different branch below, and asking
+        # terminal_produced() there would put a new raise on paths this ship
+        # has no business touching.
+        _leaf_echo = None
+        if analysis.stopped is None and not analysis.origin_refusals():
+            _leaf_produced = analysis.terminal_produced()
+            if _leaf_produced:
+                _leaf_fact = analysis.deciding_fact(_leaf_produced[0].value)
+                _leaf_echo = _leaf_fact[1] if _leaf_fact else None
         for start in analysis.parentless:
             lines.append(
-                f"{_fmt(start.value)} — {analysis.start_description(start)}"
+                f"{_fmt_without(start.value, _leaf_echo)} — "
+                f"{analysis.start_description(start)}"
             )
         refusals = analysis.origin_refusals()
         records = analysis.refusing_records()
