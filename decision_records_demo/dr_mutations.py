@@ -228,8 +228,9 @@ MUTATIONS = [
         """        parts.append(f"{len(pending)} not yet assigned: {'; '.join(pending)}")""",
         """        parts.append(f"{len(pending)} cannot be assigned yet - see the exposure above")""",
         [
-            "test_the_claim_line_names_the_pending_exposure",
             "test_case_b_refusal_beside_answers_names_the_item",
+            "test_the_claim_line_names_the_pending_exposure",
+            "test_the_member_road_does_not_gain_the_refusal_verdict_line",
         ],
     ),
     (
@@ -264,9 +265,10 @@ MUTATIONS = [
         "        pending.append(ref)",
         "        pending.append(EXPOSURE_REF)",
         [
-            "test_the_exposure_field_name_never_reaches_the_page",
-            "test_the_claim_line_names_the_pending_exposure",
             "test_case_b_refusal_beside_answers_names_the_item",
+            "test_the_claim_line_names_the_pending_exposure",
+            "test_the_exposure_field_name_never_reaches_the_page",
+            "test_the_member_road_does_not_gain_the_refusal_verdict_line",
         ],
     ),
     (
@@ -387,14 +389,35 @@ MUTATIONS = [
         RENDER,
         "            carriers = analysis.refusing_conclusions()",
         "            carriers = []",
-        ["test_a_refusing_leaf_names_the_decision_it_could_not_make"],
+        [
+            # The mutation stops `refusing_conclusions()` being CALLED, so its
+            # two-carrier raise never fires either: the two guards share one
+            # call site.
+            "test_a_refusing_leaf_names_the_decision_it_could_not_make",
+            "test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one",
+        ],
     ),
     (
         "the refusal verdict line LEAKS onto the member road",
         RENDER,
-        "                lines.extend(block)\n                lines.append(\"\")\n                continue",
-        '                block.append(f"   {member.phrase_for_value(entry)} → {REFUSED_VERDICT_TEXT}")\n'
-        '                lines.extend(block)\n                lines.append("")\n                continue',
+        # ⚠ The first anchor was the three lines `lines.extend(block)` /
+        # `lines.append("")` / `continue`, which occur TWICE — the member
+        # refusal block and the no-route block. `.replace(old, new, 1)` took
+        # the earlier one, so the mutation edited a path this row never meant:
+        # it reddened `test_manifest_only_member_renders_no_route_block` while
+        # the guard it exists for stayed green. The harness now refuses an
+        # ambiguous anchor outright.
+        """                block.append(
+                    f"Q. {record.get('question')} — Nothing. "
+                    f"{record.get('refusal_detail')}"
+                )
+                lines.extend(block)""",
+        """                block.append(
+                    f"Q. {record.get('question')} — Nothing. "
+                    f"{record.get('refusal_detail')}"
+                )
+                block.append(f"   {member.phrase_for_value(entry)} → {REFUSED_VERDICT_TEXT}")
+                lines.extend(block)""",
         ["test_the_member_road_does_not_gain_the_refusal_verdict_line"],
     ),
     (
@@ -470,6 +493,19 @@ def main() -> int:
         (name, row[0]) for row in MUTATIONS for name in row[4]
         if name not in declared
     )
+    ambiguous = []
+    for name, path, old_text, _new, _pred in MUTATIONS:
+        body = io.open(os.path.join(ROOT, path), encoding="utf-8").read()
+        if body.count(old_text) > 1:
+            ambiguous.append((name, path, body.count(old_text)))
+    if ambiguous:
+        print("== anchors that occur more than once ==")
+        for name, path, count in ambiguous:
+            print("  %s  (%s, %d occurrences)" % (name, path, count))
+        print("  `.replace(old, new, 1)` picks the FIRST, so the mutation "
+              "edits a site the row may not mean — it reddens the wrong guard "
+              "and the right one stays green. Narrow the anchor.")
+        return 5
     if phantom:
         print("== predictions naming tests that do not exist ==")
         for name, row in phantom:
