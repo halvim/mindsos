@@ -39,19 +39,14 @@ research + docs home stays `projects/decision_records_demo/` on `main`. Build or
 for t in $(git tag --list '*-confirmed'); do git diff --quiet "$t" origin/demo/decision-records -- 'mindsos_*' && echo "$t"; done
 ```
 
-⚠ **THE DECISION RECORDS CRITIC LANE IS CLOSED, 2026-08-17.**
-`_MindsOS-dr-critic` / `feat/dr-critic` are gone and RULES §10.1 is satisfied:
-its probe scripts existed nowhere else and are preserved at tag
-**`dr-critic-probes-archive`** (`13e2ba2`). `probe_gate_diff.py` there is the
-probe that RAN the equality edit and found the v1 gate's wording unsatisfiable
-before ship C's guard was written — start there if you are reconstructing why
-that gate reads the way it does.
-
-**Consequence, recorded rather than discovered:** the Decision Records demo has
-no independent reviewer. Every ship from `dr-prereq0-confirmed` to
-`dr-ship-b-confirmed` passed a stage-2 hold. **To restore one, branch a fresh
-critic worktree from `dr-critic-probes-archive`** — the probes return with it.
-Reasoning of record: `confirmation_docs/DR_CRITIC_COORDINATION.md` §114
+⚠ **THE DECISION RECORDS CRITIC LANE IS RE-CREATED, 2026-08-17** — owner
+ruling, plan §0.4 item 8(a): an independent reviewer exists and no ship past
+step 1 merges without a stage-2 hold. Worktree `_MindsOS-dr-critic` on
+**`feat/dr-critic-2`**, branched from tag `dr-critic-probes-archive`
+(`13e2ba2`) so the probes returned with it — `probe_gate_diff.py` included.
+First round: coordination §117.1, verify-only. The closure this block replaces
+(2026-08-17, RULES §10.1 satisfied, probes archived at the same tag) remains
+true as history; reasoning of record: §114–§117 of the coordination file
 (untracked, shared checkout).
 
 On demand (create when the work starts):
