@@ -814,6 +814,33 @@ def test_two_unconsumed_values_raise_rather_than_pick_one():
     raise AssertionError("a Record picked its conclusion by iteration order")
 
 
+
+def test_a_refusing_leaf_is_a_conclusion_not_a_missing_one():
+    """§30 Q2 asked against the RIGHT set. Beat 3's shipped case refuses, and
+    a completed run whose conclusion is a refusal is a Record (ADR-0209 shape
+    (a)). Until 2026-08-17 this check passed because the value the decision
+    CONSUMED was still counted — a premise standing in for a conclusion — so
+    it was green for a reason unrelated to its own claim. Strip the refusing
+    verdict and the check must fire; leave it and the page must render."""
+    page = render_from_graphs(_settlement_graphs(), EPISODE_COMPLETED)
+    assert "Q. Which proof of loss was filed for this claim?" in page, page
+    graphs = _settlement_graphs()
+    removed = 0
+    for graph in graphs:
+        for node_id in list(graph.nodes):
+            value = graph.nodes[node_id].value
+            if (isinstance(value, dict) and value.get("refusal_reason")
+                    and "origin_producer_kind" not in value):
+                _delete_node(graph, node_id)
+                removed += 1
+    assert removed == 1, f"fixture drifted: removed {removed}, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError:
+        return
+    raise AssertionError("a completed Episode with no outcome at all rendered")
+
+
 if __name__ == "__main__":
     for fn in sorted(
         (v for k, v in list(globals().items()) if k.startswith("test_")),

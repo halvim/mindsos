@@ -383,6 +383,42 @@ class _Analysis:
             )
         return [f"   Q. {record.get(FIELD_QUESTION)} — {_fmt(answer_node.value)}."]
 
+    def _unconsumed(self, nodes: List[Any]) -> List[Any]:
+        """Of ``nodes``, those with no outgoing ``CONSUMES`` edge."""
+        consumed = {
+            edge.source.node_id for edge in self.graph.edges.values()
+            if edge.type_name == "CONSUMES"
+        }
+        out = []
+        for node in nodes:
+            node_id = next(
+                (nid for nid, c in self.graph.nodes.items() if c is node), None
+            )
+            if node_id not in consumed:
+                out.append(node)
+        return out
+
+    def terminal_outcomes(self) -> List[Any]:
+        """Unconsumed produced values INCLUDING refusal carriers.
+
+        **A refusal is a conclusion** (ADR-0209 shape (a)): a completed run
+        that refused is a Record, not a fault. ``plain_produced`` filters
+        refusal carriers out because they render through a different form, so
+        the completed-vs-conclusion check must not be asked in those terms.
+
+        Found 2026-08-17, and it is the more interesting half of that day's
+        conclusion fix: the §30 Q2 check had been satisfied on the refusing
+        settlement leaf by the value the decision CONSUMED — a premise standing
+        in for a conclusion. It passed for a reason unrelated to what it
+        asserts, which is a green guard that was not checking its own claim.
+        """
+        candidates = [
+            node for node in self.produced
+            if not (isinstance(node.value, dict)
+                    and "origin_producer_kind" in node.value)
+        ]
+        return self._unconsumed(candidates)
+
     def terminal_produced(self) -> List[Any]:
         """The produced values NOTHING consumed — the graph's own conclusions.
 
@@ -407,17 +443,7 @@ class _Analysis:
         cannot say which is the Record's conclusion, and G2 is raise, never
         fill.
         """
-        consumed = {
-            edge.source.node_id for edge in self.graph.edges.values()
-            if edge.type_name == "CONSUMES"
-        }
-        out = []
-        for node in self.plain_produced():
-            node_id = next(
-                (nid for nid, c in self.graph.nodes.items() if c is node), None
-            )
-            if node_id not in consumed:
-                out.append(node)
+        out = self._unconsumed(self.plain_produced())
         if len(out) > 1:
             raise RendererGapError(
                 f"{self.graph.role!r} produced more than one value that nothing "
@@ -779,7 +805,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 )
 
     if outcome == "completed" and terminal is not None:
-        if terminal.stopped is not None or not terminal.terminal_produced():
+        if terminal.stopped is not None or not terminal.terminal_outcomes():
             raise RendererGapError(
                 "the Episode says completed but the terminal graph shows no "
                 "conclusion — refusing to assert a success the graph cannot "
