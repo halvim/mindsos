@@ -546,11 +546,14 @@ MUTATIONS = [
         'f"it, but {missing} is unavailable — "',
         ["test_a_declared_deciding_fact_with_no_stored_question_raises"],
     ),
-    # ── STEP 1 — the transport. Seven rows, one per new guard.
+    # ── STEP 1 — the transport. Nine rows, one per new guard.
     # Every anchor is in dr_transport.py, which NO other guard file imports,
     # so each predicted red set is exactly one test. That is a claim in BOTH
-    # directions (RULES §12): not only "these reddens", but "nothing in
-    # render, routing, screen, assessment or beat is touched by any of them".
+    # directions (RULES §12): not only "these redden", but "nothing in render,
+    # routing, screen, assessment or beat is touched by any of them".
+    # ⚠ Two rows are re-cut from the free-text design a LIVE PROVIDER
+    # falsified: the answer is now a FORCED TOOL reply, so the row that
+    # mutated "decode the text" is gone and two rows pin the forcing instead.
     (
         "a transport parameter carries a default, so a caller can omit the document",
         TRANSPORT,
@@ -559,12 +562,14 @@ MUTATIONS = [
         ["test_the_callable_binds_the_call_LiveLLM_makes_and_requires_all_five"],
     ),
     (
-        "the transport DECODES the model's answer instead of returning text (S-2)",
+        "the tool reply is ALTERED on the way out - one field added",
         TRANSPORT,
-        '        return "".join(parts)',
-        '        return json.loads("".join(parts))',
-        # Guard 4's first assertion survives: `KEY not in <dict>` tests keys.
-        ["test_a_successful_call_returns_the_models_text_undecoded"],
+        "            return answer",
+        "            return dict(answer, checked=True)",
+        # Deliberately NOT "return the commentary block": that raises, which
+        # reddens every guard that calls the transport and hides which one was
+        # proved. The smallest edit that falsifies "unaltered" is a field.
+        ["test_a_forced_tool_reply_is_returned_unaltered"],
     ),
     (
         "a non-2xx is treated as an answer instead of a failure",
@@ -602,6 +607,20 @@ MUTATIONS = [
         "        system = resolve_prompt(prompt_iri=prompt_iri, prompt_version=prompt_version)",
         '        system = "read the message and report what it states"',
         ["test_the_prompt_comes_from_the_injected_resolver"],
+    ),
+    (
+        "the tool stops being FORCED - the fence comes back through prose",
+        TRANSPORT,
+        '                "tool_choice": {"type": "tool", "name": tool_name},',
+        '                "tool_choice": {"type": "auto"},',
+        ["test_the_request_FORCES_the_tool_and_sends_the_injected_schema"],
+    ),
+    (
+        "a call with no schema falls back to free text instead of raising",
+        TRANSPORT,
+        "            raise TransportSchemaRequired(NO_SCHEMA)",
+        '            extraction_schema = {"type": "object"}',
+        ["test_a_call_with_no_schema_raises_instead_of_falling_back_to_free_text"],
     ),
 ]
 

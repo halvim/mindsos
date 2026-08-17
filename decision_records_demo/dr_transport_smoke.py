@@ -63,14 +63,37 @@ SMOKE_SOURCE = (
     "off work for at least six weeks."
 )
 
+#: JSON Schema, because it is sent as a FORCED TOOL's ``input_schema``. The
+#: first version of this script asked for JSON in prose and the provider
+#: answered fenced in a markdown block anyway - see dr_transport's docstring.
 SMOKE_SCHEMA = {
-    "fields": [
-        {"name": "hospital_transfer", "value": "<what the message says>",
-         "quote": "<verbatim from the message>"},
-        {"name": "off_work_period", "value": "<what the message says>",
-         "quote": "<verbatim from the message>"},
-    ]
+    "type": "object",
+    "properties": {
+        "fields": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string"},
+                    "value": {"type": "string",
+                              "description": "the words the message uses"},
+                    "quote": {"type": "string",
+                              "description": "verbatim from the message"},
+                },
+                "required": ["name", "value", "quote"],
+            },
+        }
+    },
+    "required": ["fields"],
 }
+
+SMOKE_TOOL = "record_stated_facts"
+
+#: Composed by this lane. Injected because no words live in dr_transport.
+SMOKE_TOOL_WORDS = (
+    "Record each fact the message states, with the verbatim words the message "
+    "uses for it and the quote it sits in."
+)
 
 
 def _resolve(*, prompt_iri, prompt_version):
@@ -87,11 +110,16 @@ def main() -> int:
     print("model    :", MODEL_ID)
     print("prompt   :", SMOKE_PROMPT)
     print("source   :", SMOKE_SOURCE)
+    print("tool     :", SMOKE_TOOL, "-", SMOKE_TOOL_WORDS)
     print("schema   :", SMOKE_SCHEMA)
     print()
 
     transport = build_transport(
-        api_key=key, model_id=MODEL_ID, resolve_prompt=_resolve
+        api_key=key,
+        model_id=MODEL_ID,
+        resolve_prompt=_resolve,
+        tool_name=SMOKE_TOOL,
+        tool_description=SMOKE_TOOL_WORDS,
     )
     try:
         answer = transport(
@@ -107,11 +135,11 @@ def main() -> int:
         print("cause:", repr(exc.__cause__))
         return 1
 
-    print("> ANSWER — the provider's bytes, unmodified")
+    print("> ANSWER — the model's tool input, unaltered")
     print(answer)
     print()
     print("type returned:", type(answer).__name__,
-          "(text, undecoded — S-2 decodes in mindsos_capacity.llm)")
+          "(a mapping — Transport permits it, and a forced tool cannot fence)")
 
     print()
     print("== conformance harness: NOT RUN HERE, and it cannot be ==")
