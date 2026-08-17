@@ -61,7 +61,7 @@ MUTATIONS = [
     (
         "a NON-DICT verdict is punished for naming no deciding fact",
         RENDER,
-        "        if not isinstance(verdict, dict):\n            return []",
+        "        if not isinstance(verdict, dict):\n            return None",
         '        if not isinstance(verdict, dict):\n            raise RendererGapError("not a dict")',
         # The SECOND door out of deciding_lines, and the one the asymmetry
         # guard used to test by accident instead of on purpose.
@@ -109,19 +109,20 @@ MUTATIONS = [
             "test_case_a_one_claim_two_desks",
             "test_case_b_refusal_beside_answers_names_the_item",
             "test_the_deciding_fact_and_the_refusal_do_not_share_a_style",
+            "test_the_intake_line_does_not_echo_the_deciding_fact",
         ],
     ),
     (
         "the determining marker is printed on the page",
         RENDER,
-        '        return [f"   Q. {record.get(FIELD_QUESTION)} — {_fmt(answer_node.value)}."]',
-        '        return [f"   Q. {record.get(FIELD_QUESTION)} — {_fmt(answer_node.value)}. [{marker}]"]',
+        "        return (record.get(FIELD_QUESTION), answer_node.value)",
+        '        return (str(marker) + " " + str(record.get(FIELD_QUESTION)), answer_node.value)',
         ["test_the_determining_marker_never_reaches_the_page"],
     ),
     (
         "a verdict with NO determining input is punished instead of rendered",
         RENDER,
-        "        if not marker:\n            return []",
+        "        if not marker:\n            return None",
         '        if not marker:\n            raise RendererGapError("no determining input")',
         # EVERY fixture whose verdicts are dicts without the field — the
         # decide/conclude family and the partial/noroute/boundary shapes built
@@ -238,13 +239,21 @@ def main() -> int:
     print("baseline green\n")
 
     findings = 0
+    dead = 0
     for name, path, old, new, predicted in MUTATIONS:
         full = os.path.join(ROOT, path)
         original = io.open(full, encoding="utf-8").read()
         if old not in original:
-            print("== %s ==\n  MUTATION DID NOT APPLY — its anchor is not in %s"
-                  % (name, path))
-            findings += 1
+            # A DEAD MUTATION IS THE WORST OUTCOME THIS FILE HAS, and it is
+            # not a row in a table. It means a guard's only proof of failure
+            # silently stopped existing — which happened on the first refactor
+            # after this harness was written (``deciding_lines`` split into
+            # ``deciding_fact``, 2026-08-17, three anchors dead at once). A
+            # dead mutation reports NOTHING and reads like a shorter run.
+            print("== %s ==\n  ⚠ MUTATION DID NOT APPLY — its anchor is not in %s.\n"
+                  "     The guard it proves has no proof. Fix the anchor before "
+                  "reading anything else here." % (name, path))
+            dead += 1
             continue
         try:
             io.open(full, "w", encoding="utf-8").write(original.replace(old, new, 1))
@@ -277,8 +286,8 @@ def main() -> int:
     print("red after revert: %s" % (", ".join(sorted(residue)) or "none"))
     if residue:
         return 3
-    print("\nmutations: %d, findings: %d" % (len(MUTATIONS), findings))
-    return 0
+    print("\nmutations: %d, findings: %d, DEAD: %d" % (len(MUTATIONS), findings, dead))
+    return 4 if dead else 0
 
 
 if __name__ == "__main__":
