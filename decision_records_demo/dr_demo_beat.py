@@ -117,6 +117,28 @@ def remember(case: str, root: str, path: str = MEMO_PATH) -> None:
     memo_write(memo, path)
 
 
+#: WHICH Record the closer rebuilds, richest page first — walk gap 5, ship B.
+#:
+#: The walk found beat 6 rebuilding the WEAKEST page: the preference read
+#: ``("settlement", "routing")``, and settlement is three lines with no
+#: decision, while the routing-refusal page is four exposures, three
+#: verdicts, a refusal rendered at its position, and a claim-level therefore
+#: that (since slice 1) NAMES the exposure it could not assign. *"Every line
+#: traces"* is beat 6's whole argument and it needs lines to trace.
+#:
+#: It is a NAMED ORDERED CONSTANT rather than a "prefer the strongest page"
+#: rule, because "strongest" is an adjective a later ship re-argues. Ship B
+#: makes settlement stronger too, so a heuristic would have reopened this
+#: question the moment slice 3 lands. The order is a decision; changing it is
+#: editing this tuple, and a guard pins every position in it.
+#:
+#: ⚠ **The trade, stated rather than discovered in a room:** the closer now
+#: rebuilds a claim that was NOT fully assigned. That is the stronger story —
+#: a year later the Record still says exactly what it could not decide and
+#: why — but it is a judgement, and flipping it is one tuple.
+CLOSER_PREFERENCE = ("routingrefusal", "routing", "settlement")
+
+
 def closer_ref(memo: Dict[str, str]) -> Tuple[str, str]:
     """The Record beat 6 rebuilds. NO fallback: if nothing has run, the
     closer says so. A default ref would rebuild a Record from a meeting that
@@ -127,7 +149,7 @@ def closer_ref(memo: Dict[str, str]) -> Tuple[str, str]:
             "rebuild. Run beat 1 or 3 first — the closer rebuilds what the "
             "room already watched being produced."
         )
-    for preferred in ("settlement", "routing"):
+    for preferred in CLOSER_PREFERENCE:
         if preferred in memo:
             return preferred, memo[preferred]
     case = sorted(memo)[0]

@@ -41,12 +41,12 @@ and this branch merges the tag.
 | `test_dr_screen_guards.py` | 10 guard tests on Screen A: chrome closure, the fact-equality channel, the stylesheet lint, the classification pins. |
 | `test_dr_run_guards.py` | 5 guard tests on the cold-run driver — the five ways it could report a green gate that means nothing. Fake backend; no docker, no FalkorDB. |
 | `test_dr_no_model_guards.py` | 3 guard tests on beat 5's claim: the pinned core carries no model seam, no demo module imports it, and no case produces a value a model read. Neither check may pass vacuously. |
-| `test_dr_beat_guards.py` | 3 guard tests on the per-beat runner: every scripted beat resolves to a case that exists, the memo holds refs never pages (D9), and the closer refuses when no beat has run. |
+| `test_dr_beat_guards.py` | 5 guard tests on the per-beat runner: every scripted beat resolves to a case that exists, the memo holds refs never pages (D9), the closer refuses when no beat has run, the closer rebuilds the RICHEST Record the room watched (every position in `CLOSER_PREFERENCE`, not just the walk's pair), and every preferred case is one a beat actually runs. |
 | `test_dr_dump_printer_guard.py` | 3 tests pinning the dump instrument itself: printed counts equal object counts; the retry delta is reported, not hidden. |
 | `dr_mutations.py` | **The mutation harness: every new guard shown RED by a named mutation, then reverted.** One command instead of eleven hand-cycles. Applies an exact string replacement, runs every guard file in a fresh subprocess, restores in a `finally`, hashes all three sources before and after, and re-runs the guards to prove the tree came back. A mutation that reddens NOTHING prints FINDING; so does one whose red set differs from the prediction recorded beside it. Ship discipline, not demo content — the room never sees it. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 73** (render 33, routing 16, screen 10, run 5, no-model 3, beat 3, dump 3) — 68 before ship B slice 1, 56 before the deciding-fact ship.
+**Guard total: 75** (render 33, routing 16, screen 10, run 5, no-model 3, beat 5, dump 3) — 68 before ship B, 56 before the deciding-fact ship.
 ⚠ **Counted with `grep -c '^def test_'`, never recalled.** This line said 67 for
 the length of one ship because the last guard landed after it was written — the
 eighth instance in this lane of a document disagreeing with the tree it

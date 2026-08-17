@@ -43,11 +43,17 @@ RENDER = "decision_records_demo/dr_render.py"
 SCREEN = "decision_records_demo/dr_screen.py"
 SETTLE = "decision_records_demo/dr_settlement.py"
 ROUTING = "decision_records_demo/dr_routing.py"
+BEAT = "decision_records_demo/dr_demo_beat.py"
 
 GUARD_FILES = (
     "decision_records_demo/test_dr_render_guards.py",
     "decision_records_demo/test_dr_routing_guards.py",
     "decision_records_demo/test_dr_screen_guards.py",
+    # Added by ship B slice 2, which mutates the beat runner. These guards
+    # render NO page (no store, no docker), so no existing row's red set
+    # should move; that prediction is the reason to say it here rather than
+    # to notice it afterwards.
+    "decision_records_demo/test_dr_beat_guards.py",
 )
 
 #: (name, file, old, new, predicted-red test names)
@@ -256,6 +262,26 @@ MUTATIONS = [
         '            ref = "an exposure above"',
         ["test_a_refusing_verdict_with_no_exposure_name_raises"],
     ),
+    (
+        "the closer prefers the WEAKEST page again - the walk gap 5 defect",
+        BEAT,
+        'CLOSER_PREFERENCE = ("routingrefusal", "routing", "settlement")',
+        'CLOSER_PREFERENCE = ("settlement", "routing", "routingrefusal")',
+        [
+            "test_the_closer_rebuilds_the_richest_record_the_room_watched",
+            "test_the_closer_refuses_when_no_beat_has_run",
+        ],
+    ),
+    (
+        "a preferred case NO BEAT RUNS is accepted, and silently demotes",
+        BEAT,
+        'CLOSER_PREFERENCE = ("routingrefusal"',
+        'CLOSER_PREFERENCE = ("routing_refusal"',
+        [
+            "test_every_closer_preference_is_a_case_a_beat_actually_runs",
+            "test_the_closer_rebuilds_the_richest_record_the_room_watched",
+        ],
+    ),
 ]
 
 _RUNNER = (
@@ -296,7 +322,7 @@ def _red_set() -> set:
 
 
 def main() -> int:
-    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING)}
+    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT)}
     print("== baseline: every guard file green with no mutation applied ==")
     baseline = _red_set()
     if baseline:
@@ -342,7 +368,7 @@ def main() -> int:
             print("  exact")
         print()
 
-    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING)}
+    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT)}
     print("== tree restored ==")
     for f in sorted(before):
         mark = "OK " if before[f] == after[f] else "⚠ NOT RESTORED "

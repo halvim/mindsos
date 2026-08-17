@@ -17,6 +17,7 @@ import tempfile
 
 from decision_records_demo.dr_demo_beat import (
     BEATS,
+    CLOSER_PREFERENCE,
     BeatError,
     beat,
     closer_ref,
@@ -91,7 +92,44 @@ def test_the_closer_refuses_when_no_beat_has_run():
         raise AssertionError("the closer invented a Record to rebuild")
     # With beats run, the closer prefers a Record the room saw produced.
     assert closer_ref({"routing": "r1"}) == ("routing", "r1")
-    assert closer_ref({"routing": "r1", "settlement": "s1"}) == ("settlement", "s1")
+    # ⚠ INVERTED BY SHIP B SLICE 2 (walk gap 5). This line asserted that
+    # settlement won over routing, which is the defect the walk found: the
+    # closer rebuilt the weakest page in the demo.
+    assert closer_ref({"routing": "r1", "settlement": "s1"}) == ("routing", "r1")
+
+
+def test_the_closer_rebuilds_the_richest_record_the_room_watched():
+    """WALK GAP 5, ship B slice 2. Beat 6's argument is *"every line
+    traces"*, so it must rebuild the page with the most lines that trace —
+    the routing refusal (four exposures, three verdicts, a refusal at its
+    position, and a therefore that names what it could not assign), never
+    settlement (three lines, no decision).
+
+    Every position in the order is exercised, not just the pair the walk
+    happened to look at: a one-line preference change that satisfied the
+    walk's example while leaving position three wrong would pass a guard
+    written to the example."""
+    memo = {"routingrefusal": "rr", "routing": "r1", "settlement": "s1"}
+    assert closer_ref(memo) == ("routingrefusal", "rr")
+    assert closer_ref({"routing": "r1", "settlement": "s1"}) == ("routing", "r1")
+    assert closer_ref({"settlement": "s1"}) == ("settlement", "s1")
+    # And the tail: a case outside the preference still rebuilds rather than
+    # raising — the closer refuses only when NOTHING has run.
+    assert closer_ref({"policyprior": "p1"}) == ("policyprior", "p1")
+
+
+def test_every_closer_preference_is_a_case_a_beat_actually_runs():
+    """A typo in the preference does not fail — it silently DEMOTES that
+    entry, and the closer falls through to `sorted(memo)[0]` in front of the
+    room. The order is only load-bearing while every name in it is a case
+    some beat writes to the memo, so both halves are checked here."""
+    runnable = {case for spec in BEATS.values() for case in spec.cases}
+    for name in CLOSER_PREFERENCE:
+        assert name in CASES, f"{name!r} is not a case in dr_render_pages.CASES"
+        assert name in runnable, (
+            f"{name!r} is preferred by the closer but no beat runs it, so it "
+            f"can never be in the memo (beats run {sorted(runnable)})"
+        )
 
 
 if __name__ == "__main__":
