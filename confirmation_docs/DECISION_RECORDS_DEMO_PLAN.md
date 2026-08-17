@@ -63,6 +63,156 @@ re-planned now against a build that does not exist. §6, open decision 6.
    (question -> answer -> therefore) is achieved only when the system
    *refuses*. Do not scope v1 without reading the walk document.
 
+## 0.3 Amendments, 2026-08-17 — THE v1 FREEZE
+
+**Read `projects/decision_records_demo/DR_DEMO_CAPABILITIES.md` beside this
+section.** It states what the demo does and cannot do, off the tree, and it is
+the answer this plan has never carried.
+
+Phase 7 is built and was walked end to end for the first time on 2026-08-17
+(§0.2 amendment 4). This section freezes what v1 is. **Reasoning, the refused
+alternatives and the critic lane's conditions are in
+`DR_CRITIC_COORDINATION.md` §90–§93** (untracked, shared checkout — RULES §5);
+what is operative is here.
+
+**1. Gate 7 (b) is AMENDED — Mauricio leaves the acceptance.** Owner ruling:
+his two questions are no longer asked before the demo is shown, because the
+call is unscheduled and the demo must be shown to other people. They become
+**post-hoc validation**. ⚠ **The showing-risk does not disappear with the
+clause** — §2.5's open question, *is routing PERCEIVED as the hard call*, is now
+unmeasured at showing time, so §2.5's own constraint hardens: **the demo shows
+THAT routing happens and MUST NOT assert what any carrier does.** See §5
+Phase 7 (b).
+
+**2. The v1 acceptance criterion, and it is TWO THINGS because one sentence was
+not evaluable.** The first draft read *"the room knows the answer in advance,
+an input is changed in front of them, and the Record reacts"* — half gate, half
+wish. Split, on the critic lane's condition (§91 Q1), the same move that
+rescued Gate 4:
+
+- **THE GATE — mechanical, and it can go red.** *An input edit made in front of
+  the room changes the rendered Record, and the changed page NAMES the changed
+  value and its source.* Checked by re-running with the edited input and
+  diffing the pages: the diff must be non-empty and must contain the new value
+  and its named edition or source. Ship C carries this as a guard; a mutation
+  that makes the edit inert reddens it.
+- **THE FIXTURE-DESIGN RULE — enforced at rehearsal, not by a test.** *Every
+  live case's expected outcome must be derivable by mental arithmetic from
+  values visible on screen.* This is a property of the CASES, so no test can
+  assert it; it is checked in the rehearsal walkthrough (prereq 4).
+
+**3. SARA on the live screen is REJECTED** — open decision 10 records the four
+reasons. The need underneath it is real and unchanged: Phases 1–3 supply the
+number that is not ours, offline, in the evidence pack.
+
+**4. The live inputs console is ADDED to Phase 7's frozen scope**, owner ruling
+— the same class of addition as the per-beat runner. Cases and the policy store
+move out of Python constants into an editable file, so an input can be changed
+in front of the room and the beat re-run.
+
+⚠ **THE BOUNDARY IS THE WHOLE OF IT, and narration does not carry it.** Policy
+DATA and the CLAIM are editable live; routing and decision LOGIC are not
+(`DR_DEMO_SCRIPT.md` beat 7 stands unamended — *"no live rule-authoring,
+ever"*). Three layers, two mandatory:
+
+- **(a) MANDATORY — the editable file must LOOK like a record.** `key: value`
+  lines, a claim form, an edition with dates. Never `if/then`, never a
+  threshold paired with an action. **This is ship C's acceptance condition, and
+  its failure branch is named in advance:** if the file cannot be made
+  record-shaped, ship C drops to the HYBRID — prepared cases, room-chosen
+  values only. A lane that discovers this mid-build takes the hybrid; it does
+  not make the file logic-shaped and narrate around it.
+- **(b) MANDATORY — one narration line at the edit**, verbatim in the script:
+  *"you are changing what arrived and what the policy says — not how it
+  decides; that is expert work, and it is beat 7's ask."*
+- **(c) REHEARSED — the planned parry.** When the room proposes a rule change
+  (*"send severe injuries to the routine desk"*), **the demo DECLINES, live.**
+  Performing the product's own refusal at the meta-level is what makes the
+  data/logic line legible by demonstration rather than by assertion.
+
+**5. THE DETERMINING FACT — what a Record shows on a decision it ANSWERED.**
+Owner ruling 2026-08-17, and it supersedes the two-step form this lane
+proposed earlier (*"every admitted read now, narrow later"*). **The page shows
+the fact that DECIDED, not every fact that was read.**
+
+- A four-exposure page listing every read is a data dump the room stops
+  following; *"the specialty injury unit, because the assessed severity is
+  severe"* is a decision, and it is what §2.3's *question → answer →
+  therefore* was always describing.
+- ⟹ **The deciding capacity must RECORD which of its inputs determined the
+  outcome**, as a stored structural field on the verdict value, exactly as
+  ADR-0209's `refusal_reason` marker already is: **branch-only, never
+  printed** (it names a DataState, and G6 bans IRIs from the page). The
+  renderer uses it to SELECT which stored question and answer to show.
+- **Gate 1's own words are the reason** — *"every Record names the determining
+  condition"*. This makes the live demo satisfy in claims what Phase 1 was
+  going to have to satisfy in SARA, and it does so on the beat the room can
+  check.
+- ⚠ **A capacity that records no determining input renders `item → verdict` as
+  it does today, and is NOT punished for it** — the policy criterion writes no
+  origin record by design (ADR-0208 (c)). What raises is a capacity that
+  DECLARES a determining input whose stored question or answer cannot be
+  found: that is a gap, and G2 says raise, never fill.
+
+**6. THE COMPARISON — what Screen B actually tests.** Owner ruling: **not
+accuracy.** On a case a claims manager can check, a frontier model will also be
+right, and a correct-answer contest is one this plan says on its own terms is
+lost (§2.1, §3). What is compared is **reaction to a change**: alter the policy
+edition or the claimed amount in front of the room and re-run BOTH. The Record
+names the edition and the in-force window it decided under; the model changes
+its answer and cannot say which policy it used or that anything changed. **This
+comparison holds even when the model's answer is right**, which is the property
+every other framing lacks. Written into `DR_DEMO_SCRIPT.md`.
+
+**7. The room does NOT bring its own claim at v1.** Owner ruling. An
+unrehearsed claim can land on a refusal or a no-route path, and the meeting is
+then spent explaining rather than demonstrating. The room chooses **a value
+inside a case we control** — the claimed amount — which buys the same
+credibility with none of the risk. A claim of their own stays beat 7's ask,
+where it is already the close.
+
+**8. v1 is THREE SHIPS, and the fourth is refused.**
+
+| Ship | Closes | Why it is in |
+|---|---|---|
+| **A** — the determining fact on the page | walk gap 1 | without it the refusals are documented better than the answers, and claim 1 is asserted rather than shown |
+| **B** — claimed amount vs the dated limit, the settlement reducer, and the routing reducer naming its pending exposure | walk gaps 2, 3, 5, and one promotion out of 6 | the only beat whose answer the room computes before the page renders |
+| **C** — the live inputs console | the *"looks pre-made"* finding | a value the ROOM chooses is the only evidence the demo is not a lookup table; prepared variants are pre-made by definition |
+
+**REFUSED: walk gap 6, the room-facing text pass**, with ONE promotion out of
+it on a stated §11 ground (critic §91 Q5): *"1 cannot be assigned yet — see the
+exposure above"* over a four-exposure list is AMBIGUOUS to a cold reader, which
+is a page defect rather than formatting, so the routing reducer NAMES the
+pending exposure and that line joins ship B. **Currency formatting stays
+refused:** a `$` the layout invents is a fact-channel violation in miniature —
+if the room needs it, the number's UNIT becomes stored content in v2, not
+chrome. Two strings ride along only where a ship already edits that line.
+Walk gap 4 is a SCRIPT fix, already amended in `DR_DEMO_SCRIPT.md` beat 5.
+
+**⟹ THE REFUSAL RULE, and it is the point of this section: anything not on
+that table is past the gate and is refused like any other work past its gate.**
+Adding to it is an owner ruling, not a lane choice.
+
+**9. Two things are owed that are NOT code, and they are the demo's critical
+path.** Escalated by the critic lane (§91) and owner-accepted 2026-08-17:
+
+- the **RULES §12.5 full-matrix re-run** is a Gate-7 predecessor with **no
+  owner**, and is in none of v1's three ships. **Owner-owned; run before the
+  demo is shown outside.**
+- **Screen B has never been run at any beat** and beats 0 and 7 have never been
+  rehearsed. **Owner-owned; five rehearsals per beat, both screens**, including
+  §0.3 amendment 4(c)'s parry.
+
+Neither is engineering, and no amount of building closes them. Gate 7 is green
+with the hole it was worded to close until both are done.
+
+**10. What this section does NOT change.** Phase 7's intake stays STRUCTURED
+(open decision 9). The beats stay the operative scope text. Phases 1–3 remain
+the committed following block at a green Gate 7 (open decision 6) — v1 does not
+reorder them, and any proposal that makes v1 depend on SARA does.
+
+---
+
 ## 0. What this plan is, and what it is not
 
 It produces **two separate artifacts**. Merging them is the main way this goes wrong.
@@ -409,6 +559,8 @@ that exist are the beats' cases plus five mechanism shapes the room never
 sees. Shipped: `310bfe3` (tag `dr-phase7-confirmed`) and `cfe1bd8` (tag
 `dr-beat-confirmed`) on `demo/decision-records`; 56 demo guards.
 
+⚠ **AMENDED 2026-08-17 (§0.3 amendment 1): what is still owed is the BEATS ALONE.** Mauricio's two questions have left this acceptance. The three ships that close the walk's gaps are named in §0.3 amendment 5, and the list is closed.
+
 **Gate 7's mechanical clause is GREEN, and Gate 7 is NOT.** Verified
 2026-08-16 on the Linux box at `310bfe3`: `dr_demo_run.py` -> *cold runs: 3,
 failed: 0*, exit 0. Still owed: **(b) below — Mauricio's two questions** — and
@@ -422,6 +574,8 @@ proves no gap reached a page; it says nothing about whether the beats land.
 **Gate 7 — AMENDED 2026-08-14 (critic §48 conditions 1 + 2):** run cold on a laptop three times with no operator intervention. The refusal case fires on cue.
 
 **(a) NAME THE VARIANT IN THE ROOM.** The cold run is the **structured-intake** variant — **no model, no transport**. This is written into the gate so nobody presents inbox-reading that does not exist: §11's seam rule applied to the demo itself. A prose-intake run is a DIFFERENT gate and needs the transport (open decision 7). ⚠ **AMENDED 2026-08-16 — this is no longer *a* variant, it is THE demo:** open decision 9 rules the intake STRUCTURED. Naming it in the room stays mandatory — say that intake is structured and that prose reading is the next variant, because the gap between what is shown and what is claimed is the only thing that cannot be repaired afterwards.
+
+⚠ **AMENDED 2026-08-17 - Mauricio leaves this clause.** OWNER RULING: the call is unscheduled and the demo must be shown to other people, so his two questions are **no longer asked before the demo is shown** and no longer sit inside Gate 7's acceptance. They become POST-HOC VALIDATION - asked when the call happens, and capable of falsifying the BEAT afterwards rather than gating it beforehand. **The showing-risk did not evaporate with the clause, and this is the part that must survive the amendment:** §2.5's open question - is exposure-level routing PERCEIVED as the hard call - is now UNMEASURED at showing time, so §2.5's own constraint hardens rather than relaxes. The demo may show THAT routing happens and **must not assert what any carrier does**, and the room is told the cases are ours. The paragraph below is kept because its reasoning is why the questions exist at all.
 
 **(b) VALIDATION IS SCHEDULED, NOT EVAPORATED.** Open decision 8 removed Mauricio as a BUILD gate; his two questions move here, into Gate 7's acceptance, and are **asked before the demo is shown to anyone outside**: *"when a claim has several exposures, who decides which desk each one goes to?"* and *"is that a judgement call or a rule?"* A no on the second means the beat dramatises a rule, and the demo changes before it is shown — not after. Showing-risk stays owned; only the build was unblocked.
 
@@ -442,6 +596,8 @@ proves no gap reached a page; it says nothing about whether the beats land.
 7. **[OPENED 2026-08-11 · S-2 RULED 2026-08-14 · S-2 BUILT 2026-08-16, PR #169 · OWNERSHIP STILL OPEN] Who owns the transport, and who parses the model's output?** **OWNER RULING on S-2: ratify the fix already proposed in `LLM_SEAM_MANUAL.md` §11** — the transport may return EITHER raw text OR a mapping; if text, decoding happens inside `mindsos_llm`, and a decode failure becomes the `malformed_response` refusal rather than an exception from unowned code. Accepting a mapping keeps provider-native structured output usable. ~~Compatible with shipped `main`: `malformed_response` is already classified in `origin_v0.REASONS_RESERVED` (#156).~~ ⚠ **STALE AS OF 2026-08-16 (PR #169): `REASONS_RESERVED` is now EMPTY (`{}`).** The four reasons it held *awaiting the LLM seam* are emitted (6/0/2) — the seam arrived, so `malformed_response` is a reason the shipped system EMITS, not one it reserves. **S-2 is now BUILT, not merely ruled**; the transport's OWNERSHIP is the half that stays open. ⚠ **S-2 was never an open question — it carried a written proposed fix nobody had ruled on**, and the row was read as undecided for three days because the manual it lives in **was not on `main`** (see the correction below). Ratified BEFORE a transport exists, which is the whole point of the deadline. **The transport's ownership is still open**, and it is reclassified below.
 8. **[OPENED 2026-08-11 · RULED 2026-08-14] Is exposure-level routing what a claims manager actually recognises as the hard call?** §2.5's subject change rests on Guidewire's routing model — strong, but one vendor, and no carrier publishes an org chart. **OWNER RULING 2026-08-14: this does NOT gate the build.** Mauricio is an EXTERNAL RESOURCE WHO VALIDATES WHAT WE BUILD — not a decision-maker we wait on. The previous text (*"ask before any capacity is written"*) over-gated: §2.5 already forbids inventing a taxonomy **because both are sourced** — OSFI/CCIR Section III for the coverages exposures are made of, Guidewire's routing documentation for the exposure→desk model. The build needs neither answer. What his answer affects is whether routing is PERCEIVED as the hard call, which is a question about the pitch, not an input to the code. **The constraint that survives, and it is §2.5's own:** the org-chart evidence is reconstructed from job titles (strong that a unit exists, weak on hierarchy) plus one vendor, so the demo may show THAT routing happens and MUST NOT assert what every carrier does. Ask the two questions when convenient; do not schedule work around them.
 9. **[OPENED + RULED 2026-08-16] Is Phase 7's intake PROSE or STRUCTURED? — STRUCTURED.** **OWNER RULING 2026-08-16**, taken on the transport lane's recommendation at the close of PR #169, and recorded here so Phase 7 begins with no undecided input. **The demo's intake is a structured record; the demo runs with NO MODEL AND NO TRANSPORT.** **Why, and the first reason is the only one that would settle it alone:** Gate 7 amendment (a) ALREADY specified this — *"the cold run is the structured-intake variant"* — so the ruling is compliance with a gate written 2026-08-14, not a fresh choice, and the box is gate-bound with Phase 7's scope FROZEN, which is exactly what stops the question reopening. Beyond that: three cold runs with no operator intervention is Gate 7's hardest clause and a live provider call fights it directly — the build gate has no network and no API key (`LLM_SEAM_MANUAL.md` §6.4), so a contract-tested transport has still never met a provider and first contact would be in the room; replay does not rescue it, because D9 rules a demo running from saved answers is a scripted demo and deserves to be called one. **And the largest gain is a claim rather than a cost:** with no model present at all, *"the model reads, it does not decide"* (claim 5) stops being asserted and becomes structurally unarguable. **What it costs, stated rather than glossed.** The field evidence was PROSE — Elisandro's ticket arriving by email is the thing two industries volunteered unprompted — so a structured record means a human already did the reading, and *"you automated the easy half"* is a fair question in the room. Answer it honestly and without defence: *intake here is structured; reading prose is the next variant, and its seam shipped 2026-08-16.* It also leaves claim 2 thin in the live demo — origins show `asserted_by_party` and `read_from_source`, never `read_by_model`, so the origin taxonomy shows smaller than it is. That is what the evidence pack is for. **What reverses this — and it is not cost or appetite:** Mauricio's already-scheduled Gate-7 question. If *"is that a judgement call or a rule?"* returns *the hard part is reading the email, not routing the exposures*, then the BEAT is wrong rather than the intake — a larger change than prose-versus-structured, and §2.5's open question rather than this one. ⟹ **The transport is therefore NOT a Phase-7 blocker.** It is a Phase-5/6 prerequisite that arrived early.
+
+10. **[OPENED + RULED 2026-08-17] Does v1 succeed by running a case from a third-party dataset against a live LLM in the room? — NO, and SARA in particular is rejected for the live screen.** The proposal: *"I will consider v1 successful when I can choose a SARA case, give it to an LLM and to MindsOS, and check both results."* **Four reasons, in descending order of force.** (i) **Contamination inverts the beat.** SARA is inside LegalBench, and §2.1 already records the consequence — *"any LLM baseline is contamination-inflated… Accuracy is not the claim. Do not publish a head-to-head table."* On a memorised case the model answers correctly and confidently and MindsOS produces the same answer with more ceremony; every beat in the script is built to win on PROVENANCE and REFUSAL, so this criterion moves the contest onto the one axis this plan says is lost. (ii) **Open decision 9 makes paste-identical input impossible.** SARA cases are prose fact patterns; the demo's intake is ruled STRUCTURED, no model, no transport. The model would read the prose while a human hand-structured the same pattern for MindsOS — which is not `DR_DEMO_SCRIPT.md` prereq 3, and it puts *"you automated the easy half"* on screen as evidence. (iii) **It reverses open decision 6.** Encoding §152 + §7703 is this plan's largest uncosted line item (§7); making v1 depend on it re-plans the ordering ruled 2026-08-14, and does so by unfreezing Phase 7 — the drift mechanism that ruling names in its own text. (iv) **Domain.** §0's table is explicit — evidence pack: US federal tax law; live demo: synthetic claims — and open decision 3 closed on it. SARA has cases, not claims. **What is RIGHT about the proposal, and is kept unchanged:** open decision 6's own sentence — *"the demo must be believed in a room, and that needs the beat working AND at least one number that is not ours."* The disagreement was never whether, only **when** and **on which screen**. The number that is not ours stays Phases 1–3, offline, in the evidence pack. **The live replacement, adopted:** choose the case so **the ROOM holds the ground truth** — arithmetic against a stated policy limit is computed in every head before the page renders. No dataset, no contamination, in domain. That is §0.3's ship B.
 
 ---
 

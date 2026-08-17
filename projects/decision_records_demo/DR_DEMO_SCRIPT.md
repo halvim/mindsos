@@ -99,6 +99,53 @@ deliverable, priced into onboarding, never faked live.
 
 ---
 
+## Live edits, and what the comparison actually is
+
+⚠ **ADDED 2026-08-17 by owner ruling** (demo plan §0.3 amendments 4, 5, 6, 7).
+This section governs every beat above; where it and a beat's *Screen B* line
+disagree, this section wins.
+
+**What the room may change, and what it may not.** The claim and the policy are
+DATA and are edited live, in front of them, in a file that reads like a record
+(`key: value`, a claim form, an edition with dates). Routing and decision LOGIC
+are not editable and never will be live — beat 7's rule is unamended.
+
+**Say this at the edit, once:** *"You are changing what arrived and what the
+policy says — not how it decides. That is expert work, and it is what we ask
+for at the end."*
+
+**The parry — rehearse it, it is the strongest moment available.** When someone
+asks for a rule change (*"make severe injuries go to the routine desk"*),
+**decline, live**: that is not an input, it is rule-authoring, and it is done by
+your people offline and delivered as the pilot's first work. A system that
+refuses on stage is the whole product argument, performed instead of claimed.
+
+**The comparison is NOT accuracy.** On a claim this room can check, the model
+will also be right, and a correct-answer contest is one we lose on our own
+terms (plan §2.1, §3 — no accuracy number without the refusal rate beside it;
+no routing numbers at all). **Compare reaction to a change:**
+
+1. Run the beat. Both screens answer.
+2. Change the policy edition — or let them pick the claimed amount.
+3. Re-run BOTH.
+4. **The Record names the edition and the in-force window it decided under.**
+   The model gives a different answer and cannot tell you which policy it used,
+   or that anything changed at all.
+
+This holds **even when the model is right**, which is the property every other
+framing lacks. Do not reach for a case the model gets wrong; that is luck, and
+the room can smell it.
+
+**The room does not supply its own claim in this meeting.** They choose a VALUE
+inside a case we control. Their own claim is beat 7's ask, run next meeting,
+rehearsed against their rules.
+
+**What every answered Record shows.** The fact that DECIDED — *"the specialty
+injury unit, because the assessed severity is severe"* — not every fact read. A
+page that lists every read is a page the room stops following.
+
+---
+
 ## Do not (from field evidence + plan)
 - No architecture, no edge/on-device, no "patch"/"layer" language.
 - No accuracy number without the refusal rate beside it; no routing

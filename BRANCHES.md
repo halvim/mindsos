@@ -29,9 +29,16 @@ drift RULES §1 was corrected for. Do not restore a home column entry without `l
 | `MindsOS-dr/`             | `demo/decision-records` | demo        | `decision_records_demo/` at root ✅ (demo branch only, created 2026-08-13 @ `d94ca4f`) |
 
 **Decision Records** code home is `decision_records_demo/` at the repo root, **only on
-`demo/decision-records`** (worktree `MindsOS-dr`, pins `dr-fold-grounding-confirmed`). Its
+`demo/decision-records`** (worktree `MindsOS-dr`, pins `dr-partial-record-confirmed`). Its
 research + docs home stays `projects/decision_records_demo/` on `main`. Build order:
 `confirmation_docs/DECISION_RECORDS_V0_PLAN.md`.
+
+⚠ **PIN CORRECTED 2026-08-17.** The line above said `dr-fold-grounding-confirmed` — **three ships stale**, and the fourth instance in this lane of a document's pin disagreeing with the tree. The lane's gate condition is
+`git diff --stat <pin>..HEAD -- 'mindsos_*'` printing nothing, so a stale pin makes a green lane report red. **Read the pin off the TREE, never off this file:**
+
+```
+for t in $(git tag --list '*-confirmed'); do git diff --quiet "$t" origin/demo/decision-records -- 'mindsos_*' && echo "$t"; done
+```
 
 On demand (create when the work starts):
 `git worktree add ../MindsOS-fol -b fol-1 main` (also dwf, skill_acquisition, maintenance).
