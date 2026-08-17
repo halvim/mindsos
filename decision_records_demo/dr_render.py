@@ -383,6 +383,49 @@ class _Analysis:
             )
         return [f"   Q. {record.get(FIELD_QUESTION)} — {_fmt(answer_node.value)}."]
 
+    def terminal_produced(self) -> List[Any]:
+        """The produced values NOTHING consumed — the graph's own conclusions.
+
+        **Why this exists, found 2026-08-17 by a fixture rather than by
+        reading.** The page used to take ``plain_produced()[0]``, which is
+        node-iteration order and is not a stored fact. It was unambiguous only
+        because every leaf shipped until now produced exactly ONE plain value.
+        The first leaf with two — a reader that admits a value plus the
+        decision that consumes it — published this:
+
+            E. Nakamura, ... — the claim as it arrived
+               reading the claim as filed → sworn statement of loss, filed 9 June
+
+        A premise, printed as the conclusion, with the verdict absent. G2
+        refuses to render a derived value as a premise; this is the same error
+        inverted, and nothing could see it.
+
+        **The record answers it.** A value the run went on to use carries an
+        outgoing ``CONSUMES`` edge; a conclusion does not. That is structure in
+        the graph, not an accident of ordering. Two unconsumed values is
+        genuine ambiguity and RAISES rather than picking one — the record
+        cannot say which is the Record's conclusion, and G2 is raise, never
+        fill.
+        """
+        consumed = {
+            edge.source.node_id for edge in self.graph.edges.values()
+            if edge.type_name == "CONSUMES"
+        }
+        out = []
+        for node in self.plain_produced():
+            node_id = next(
+                (nid for nid, c in self.graph.nodes.items() if c is node), None
+            )
+            if node_id not in consumed:
+                out.append(node)
+        if len(out) > 1:
+            raise RendererGapError(
+                f"{self.graph.role!r} produced more than one value that nothing "
+                "consumed, so the record cannot say which one is this Record's "
+                "conclusion — refusing to pick by iteration order"
+            )
+        return out
+
     def plain_produced(self) -> List[Any]:
         """Produced DSIs that are neither origin records nor refusal carriers."""
         out = []
@@ -630,7 +673,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         if fold.stopped is not None:
             lines.extend(fold.stop_lines())
         else:
-            conclusions = fold.plain_produced()
+            conclusions = fold.terminal_produced()
             if conclusions:
                 lines.append(
                     f"Therefore: {fold.phrase()} → "
@@ -682,7 +725,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         if fold.stopped is not None:
             lines.extend(fold.stop_lines())
         else:
-            conclusions = fold.plain_produced()
+            conclusions = fold.terminal_produced()
             if conclusions:
                 lines.append(
                     f"Therefore: {fold.phrase()} → "
@@ -718,7 +761,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 f"{refusal.get('refusal_detail')}"
             )
         else:
-            produced = analysis.plain_produced()
+            produced = analysis.terminal_produced()
             if produced:
                 lines.extend(analysis.deciding_lines(produced[0].value))
                 lines.append(
@@ -736,7 +779,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 )
 
     if outcome == "completed" and terminal is not None:
-        if terminal.stopped is not None or not terminal.plain_produced():
+        if terminal.stopped is not None or not terminal.terminal_produced():
             raise RendererGapError(
                 "the Episode says completed but the terminal graph shows no "
                 "conclusion — refusing to assert a success the graph cannot "

@@ -763,6 +763,9 @@ def test_the_leaf_road_shows_the_deciding_fact():
     page = render_from_graphs(_settlement_graphs_with_document(), EPISODE_COMPLETED)
     assert "Q. Which proof of loss was filed for this claim? — sworn statement of loss, filed 9 June." in page, page
     assert "payable under the policy" in page, page
+    assert "reading the claim as filed →" not in page, (
+        "the value the decision CONSUMED was printed as the conclusion:\n" + page
+    )
     assert "determined_by" not in page, page
     low = page.lower()
     for token in G6_BANNED + ("drdemo_",):
@@ -779,6 +782,36 @@ def test_a_capacity_that_records_no_deciding_fact_is_not_punished():
     page = render_from_graphs(_admitted_policy_graphs("2024-06-01"), EPISODE_COMPLETED)
     assert "Q." not in page, ("a capacity that claims no deciding fact grew one:\n" + page)
     assert "375000" in page and "2024.1" in page, page
+
+
+
+def test_two_unconsumed_values_raise_rather_than_pick_one():
+    """The conclusion is the produced value NOTHING consumed. Sever the
+    CONSUMES edge into the settle capacity and the graph then carries two
+    unconsumed values — the read and the verdict — and the record cannot say
+    which is the Record's conclusion. It must raise, not pick by iteration
+    order, which is the defect this rule replaced.
+
+    Without this test the rule could be silently weakened back to "take the
+    first unconsumed one" and every other guard would stay green."""
+    graphs = _settlement_graphs_with_document()
+    cut = 0
+    for graph in graphs:
+        for edge_id in list(graph.edges):
+            edge = graph.edges[edge_id]
+            if edge.type_name == "CONSUMES" and edge.target.type_name == NODE_CAPACITY:
+                if (edge.target.properties or {}).get("capacity", "").endswith(
+                    "drdemo_settle_claim"
+                ):
+                    del graph.edges[edge_id]
+                    cut += 1
+    assert cut == 1, f"fixture drifted: cut {cut} edges, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "which one is this Record's conclusion" in str(exc), str(exc)
+        return
+    raise AssertionError("a Record picked its conclusion by iteration order")
 
 
 if __name__ == "__main__":
