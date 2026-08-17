@@ -42,21 +42,46 @@ ROOT = os.path.dirname(HERE)
 RENDER = "decision_records_demo/dr_render.py"
 SCREEN = "decision_records_demo/dr_screen.py"
 SETTLE = "decision_records_demo/dr_settlement.py"
+ROUTING = "decision_records_demo/dr_routing.py"
+BEAT = "decision_records_demo/dr_demo_beat.py"
+ASSESS = "decision_records_demo/dr_assessment.py"
+PAGES = "decision_records_demo/dr_render_pages.py"
 
 GUARD_FILES = (
     "decision_records_demo/test_dr_render_guards.py",
     "decision_records_demo/test_dr_routing_guards.py",
     "decision_records_demo/test_dr_screen_guards.py",
+    # Added by ship B slice 2, which mutates the beat runner. These guards
+    # render NO page (no store, no docker), so no existing row's red set
+    # should move; that prediction is the reason to say it here rather than
+    # to notice it afterwards.
+    "decision_records_demo/test_dr_beat_guards.py",
+    "decision_records_demo/test_dr_assessment_guards.py",
 )
 
+#: ⚠ **THE ECHO RULE COUPLED TWO REGIONS OF THE PAGE (ship B).** The intake
+#: line now drops values that appear in the deciding QUESTION or the VERDICT
+#: sentence, so a mutation that changes either of those changes the intake
+#: line as well. Eight predictions written before that coupling existed were
+#: wrong in the same direction on the first run after it landed — they are
+#: widened below, each because the mutation genuinely disturbs a second
+#: region, not because the output was copied back.
 #: (name, file, old, new, predicted-red test names)
 MUTATIONS = [
     (
         "the intake line echoes the deciding fact again",
         RENDER,
-        "    kept = {k: v for k, v in value.items() if v != drop}",
-        "    kept = dict(value)",
-        ["test_the_intake_line_does_not_echo_the_deciding_fact"],
+        # ⚠ RE-ANCHORED in ship B: the comprehension gained the two text
+        # doors, so the one-line form this row pointed at stopped existing.
+        # Caught as DEAD before the run rather than by a shorter table.
+        "        if v != drop\n"
+        "        and not any(_token_in(str(v), text) for text in texts if text)",
+        "        if True",
+        [
+            "test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE",
+            "test_the_intake_line_does_not_echo_the_deciding_QUESTION",
+            "test_the_intake_line_does_not_echo_the_deciding_fact",
+        ],
     ),
     (
         "a NON-DICT verdict is punished for naming no deciding fact",
@@ -113,10 +138,27 @@ MUTATIONS = [
         ],
     ),
     (
+        # ⚠ A KNOWN, EXPLAINED PREDICTION MISS, and it is left that way on
+        # purpose. The marker's VALUE is ``datastate:...`` and ``datastate:``
+        # is itself in ``G6_BANNED``, so render-time G6 raises before the
+        # named guard can assert anything: EVERY guard that renders a page
+        # carrying a deciding fact goes red, in all three guard files. The
+        # prediction names the guard that OWNS the claim, because that is the
+        # useful sentence; the harness cannot express "and every guard that
+        # renders this page". The set grew again in ship B slice 1 when three
+        # page-rendering guards were added, and it will grow again. Filed as
+        # the instrument gap rather than maintained by hand.
         "the determining marker is printed on the page",
         RENDER,
-        "        return (record.get(FIELD_QUESTION), answer_node.value)",
-        '        return (str(marker) + " " + str(record.get(FIELD_QUESTION)), answer_node.value)',
+        # ⚠ RETARGETED in ship B. `deciding_fact` was split so the deciding
+        # fact's SOURCE could reuse its pairing, and `marker` left that
+        # scope — the anchor stayed ALIVE while its meaning moved, so the
+        # mutation would have raised NameError and reddened by accident
+        # instead of by printing the marker. The harness detects DEAD
+        # anchors, not DISPLACED ones; this is the second failure mode and
+        # it is quieter.
+        '        return [f"   Q. {question} — {_fmt(answer)}."]',
+        '        return [f"   Q. {verdict.get(FIELD_DETERMINED_BY)} {question} — {_fmt(answer)}."]',
         ["test_the_determining_marker_never_reaches_the_page"],
     ),
     (
@@ -153,8 +195,16 @@ MUTATIONS = [
         "        out = self._unconsumed(self.plain_produced())",
         "        out = self.plain_produced()[:1]",
         [
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_over_the_limit_the_limit_is_the_deciding_fact",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
             "test_the_leaf_road_shows_the_deciding_fact",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
             "test_two_unconsumed_values_raise_rather_than_pick_one",
+            "test_under_the_limit_the_amount_is_the_deciding_fact",
+            "test_a_short_intake_value_survives_when_it_only_LOOKS_echoed",
+            "test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE",
+            "test_the_intake_line_does_not_echo_the_deciding_QUESTION",
         ],
     ),
     (
@@ -169,7 +219,10 @@ MUTATIONS = [
         RENDER,
         'f"   {analysis.phrase_for_value(produced[0].value)} → "',
         'f"   {analysis.phrase()} → "',
-        ["test_the_leaf_road_shows_the_deciding_fact"],
+        [
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_the_leaf_road_shows_the_deciding_fact",
+        ],
     ),
     (
         "every Q line classifies as a refusal on the screen",
@@ -187,6 +240,305 @@ MUTATIONS = [
             "test_the_field_name_is_spelled_the_same_in_all_three_places",
             "test_the_leaf_road_shows_the_deciding_fact",
         ],
+    ),
+    (
+        "the claim line COUNTS the pending exposures instead of naming them",
+        ROUTING,
+        """        parts.append(f"{len(pending)} not yet assigned: {'; '.join(pending)}")""",
+        """        parts.append(f"{len(pending)} cannot be assigned yet - see the exposure above")""",
+        [
+            "test_case_b_refusal_beside_answers_names_the_item",
+            "test_the_claim_line_names_the_pending_exposure",
+            "test_the_member_road_does_not_gain_the_refusal_verdict_line",
+        ],
+    ),
+    (
+        "the exposure name rides on REFUSALS only - ship A's one-member shape",
+        ROUTING,
+        "        if ref:\n            fields[EXPOSURE_REF] = ref",
+        '        if ref and fields.get("decision") is None:\n'
+        "            fields[EXPOSURE_REF] = ref",
+        ["test_every_desk_verdict_names_its_exposure_answered_and_refused"],
+    ),
+    (
+        "the pluraliser is hardcoded plural - '1 exposures', in the room",
+        ROUTING,
+        """            f"{routine} exposure{'' if routine == 1 else 's'} to {ROUTINE_DESK}\"""",
+        '            f"{routine} exposures to {ROUTINE_DESK}"',
+        # The direct-call door of the raise guard reads the same line, so it
+        # reddens here too; predicted rather than discovered.
+        [
+            "test_the_claim_line_is_singular_at_one_and_plural_at_two",
+            "test_a_refusing_verdict_with_no_exposure_name_raises",
+        ],
+    ),
+    (
+        # The FIRST version of this row emitted ``str(verdict)``, whose repr
+        # carries ``refusal_reason`` and ``field_absent`` — both G6-banned —
+        # so render-time G6 raised and it reddened four screen guards on top
+        # of the three named. That was a bad MUTATION, not a bad prediction:
+        # the claim is "the field NAME never reaches the page", so the
+        # mutation is the smallest edit that makes exactly that false.
+        "the pending name is emitted as the FIELD NAME instead of the words",
+        ROUTING,
+        "        pending.append(ref)",
+        "        pending.append(EXPOSURE_REF)",
+        [
+            "test_case_b_refusal_beside_answers_names_the_item",
+            "test_the_claim_line_names_the_pending_exposure",
+            "test_the_exposure_field_name_never_reaches_the_page",
+            "test_the_member_road_does_not_gain_the_refusal_verdict_line",
+        ],
+    ),
+    (
+        "an unnameable refusal is FILLED with a placeholder instead of raising",
+        ROUTING,
+        '            raise ValueError(\n'
+        '                "a desk verdict refused without naming its exposure - "\n'
+        '                "refusing to publish a count where the page needs a name"\n'
+        "            )",
+        '            ref = "an exposure above"',
+        ["test_a_refusing_verdict_with_no_exposure_name_raises"],
+    ),
+    (
+        "the closer prefers the WEAKEST page again - the walk gap 5 defect",
+        BEAT,
+        'CLOSER_PREFERENCE = ("routingrefusal", "routing", "settlement")',
+        'CLOSER_PREFERENCE = ("settlement", "routing", "routingrefusal")',
+        [
+            "test_the_closer_rebuilds_the_richest_record_the_room_watched",
+            "test_the_closer_refuses_when_no_beat_has_run",
+        ],
+    ),
+    (
+        "a preferred case NO BEAT RUNS is accepted, and silently demotes",
+        BEAT,
+        'CLOSER_PREFERENCE = ("routingrefusal"',
+        'CLOSER_PREFERENCE = ("routing_refusal"',
+        [
+            "test_every_closer_preference_is_a_case_a_beat_actually_runs",
+            "test_the_closer_rebuilds_the_richest_record_the_room_watched",
+        ],
+    ),
+    (
+        "the assessment loses its registered phrase",
+        ASSESS,
+        'printable_phrase="assessing the claimed amount against the limit in force"',
+        'printable_phrase="looking the limit up"',
+        [
+            # The refusal guard asserts the whole verdict line, phrase
+            # included, since the cannot-phrase contract landed.
+            "test_a_claim_with_no_amount_refuses_in_the_readers_words",
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+        ],
+    ),
+    (
+        "beat 4's two cases collapse onto ONE date",
+        ASSESS,
+        'CASE_ASSESSED_CURRENT = dict(CASE_ASSESSED_PRIOR, assessed_as_of="2024-06-01")',
+        "CASE_ASSESSED_CURRENT = dict(CASE_ASSESSED_PRIOR)",
+        ["test_the_two_dates_pay_different_amounts_and_name_their_editions"],
+    ),
+    (
+        "over the limit, the page credits the AMOUNT for capping the payment",
+        ASSESS,
+        "            DETERMINED_BY: DS_DWELLING_LIMIT,",
+        "            DETERMINED_BY: DS_CLAIMED_AMOUNT,",
+        [
+            "test_over_the_limit_the_limit_is_the_deciding_fact",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_what_is_payable_is_arithmetic_on_the_stored_values",
+            "test_the_intake_line_does_not_echo_the_deciding_QUESTION",
+        ],
+    ),
+    (
+        "under the limit, the page credits the LIMIT - the two-door other side",
+        ASSESS,
+        "        DETERMINED_BY: DS_CLAIMED_AMOUNT,",
+        "        DETERMINED_BY: DS_DWELLING_LIMIT,",
+        [
+            "test_under_the_limit_the_amount_is_the_deciding_fact",
+            "test_what_is_payable_is_arithmetic_on_the_stored_values",
+        ],
+    ),
+    (
+        "a claim with no amount is DECIDED on instead of refused",
+        ASSESS,
+        "    if claimed is None or limit is None:",
+        "    if limit is None:",
+        ["test_a_claim_with_no_amount_refuses_in_the_readers_words"],
+    ),
+    (
+        "the subtraction is inverted - the room's arithmetic stops matching",
+        ASSESS,
+        "{claimed - limit} above the limit",
+        "{limit - claimed} above the limit",
+        [
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_what_is_payable_is_arithmetic_on_the_stored_values",
+        ],
+    ),
+    (
+        "the as-of date is read under a question the store cannot show",
+        ASSESS,
+        'question="As of what date is this claim being considered?"',
+        'question="Which date applies?"',
+        ["test_the_as_of_date_is_a_read_fact_with_its_own_stored_question"],
+    ),
+    (
+        "both beat-4 pages frame themselves as the ASSESSMENT again",
+        PAGES,
+        '"claim CLM-4188, as submitted on 2023-06-01",',
+        '"claim CLM-4188, assessed as of 2023-06-01",',
+        ["test_the_two_pages_carry_the_SUBMISSION_and_ASSESSMENT_framing"],
+    ),
+    (
+        "the deciding fact loses the authority behind it",
+        RENDER,
+        "        if record.get(FIELD_PRODUCER_KIND) != PRODUCER_POLICY_LOOKUP:\n            return []",
+        "        if True:\n            return []",
+        [
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+        ],
+    ),
+    (
+        "the payable numbers are formatted with an invented separator",
+        ASSESS,
+        'f"{claimed} claimed, {limit} payable, "',
+        'f"{claimed:,} claimed, {limit:,} payable, "',
+        [
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_no_invented_currency_reaches_the_page",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_what_is_payable_is_arithmetic_on_the_stored_values",
+            "test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE",
+        ],
+    ),
+    (
+        "a refusing leaf hides the decision it could not make",
+        RENDER,
+        "            carriers = analysis.refusing_conclusions()",
+        "            carriers = []",
+        [
+            # The mutation stops `refusing_conclusions()` being CALLED, so its
+            # two-carrier raise never fires either: the two guards share one
+            # call site.
+            "test_a_refusing_leaf_names_the_decision_it_could_not_make",
+            "test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one",
+            "test_a_claim_with_no_amount_refuses_in_the_readers_words",
+            "test_a_refusing_leaf_with_no_words_of_its_own_raises",
+        ],
+    ),
+    (
+        "the refusal verdict line LEAKS onto the member road",
+        RENDER,
+        # ⚠ The first anchor was the three lines `lines.extend(block)` /
+        # `lines.append("")` / `continue`, which occur TWICE — the member
+        # refusal block and the no-route block. `.replace(old, new, 1)` took
+        # the earlier one, so the mutation edited a path this row never meant:
+        # it reddened `test_manifest_only_member_renders_no_route_block` while
+        # the guard it exists for stayed green. The harness now refuses an
+        # ambiguous anchor outright.
+        """                block.append(
+                    f"Q. {record.get('question')} — Nothing. "
+                    f"{record.get('refusal_detail')}"
+                )
+                lines.extend(block)""",
+        """                block.append(
+                    f"Q. {record.get('question')} — Nothing. "
+                    f"{record.get('refusal_detail')}"
+                )
+                block.append(f"   {member.phrase_for_value(entry)} → placed")
+                lines.extend(block)""",
+        ["test_the_member_road_does_not_gain_the_refusal_verdict_line"],
+    ),
+    (
+        "two unconsumed refusal carriers are picked from by iteration order",
+        RENDER,
+        "        if len(out) > 1:\n            raise RendererGapError(\n                f\"{self.graph.role!r} produced more than one refusing value \"",
+        "        if False:\n            raise RendererGapError(\n                f\"{self.graph.role!r} produced more than one refusing value \"",
+        ["test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one"],
+    ),
+    (
+        "the refusing leaf's own words go missing",
+        SETTLE,
+        'CANNOT_SETTLE = "cannot be settled"',
+        'CANNOT_SETTLE = ""',
+        [
+            # An EMPTY phrase is not a MISSING one: the field is still there
+            # and falsy, so the strip-fixture finds nothing and its
+            # `stripped == 1` drift assertion fires. That is the fixture
+            # refusing to pass on a premise that stopped being true.
+            "test_a_refusing_leaf_is_a_conclusion_not_a_missing_one",
+            "test_a_refusing_leaf_names_the_decision_it_could_not_make",
+            "test_a_refusing_leaf_with_no_words_of_its_own_raises",
+            "test_beat3_missing_document_names_what_to_fetch",
+        ],
+    ),
+    (
+        "the ASSESSMENT loses its own words - the contract's second member",
+        ASSESS,
+        'CANNOT_ASSESS = "cannot be assessed"',
+        'CANNOT_ASSESS = ""',
+        ["test_a_claim_with_no_amount_refuses_in_the_readers_words"],
+    ),
+    (
+        "the renderer COMPOSES for the capacity again instead of raising",
+        RENDER,
+        "                if not said:",
+        "                if False:",
+        [
+            # ⚠ ONE name, not three. `if False:` only reaches the path where a
+            # phrase is MISSING; every shipped producer supplies one, so the
+            # line renders normally and only the strip-fixture guard notices.
+            # The first prediction assumed a mutation broke a path it does
+            # not touch.
+            "test_a_refusing_leaf_with_no_words_of_its_own_raises",
+        ],
+    ),
+    (
+        "the refusal-phrase field is spelled differently by its producer",
+        SETTLE,
+        'REFUSAL_PHRASE = "refusal_phrase"',
+        'REFUSAL_PHRASE = "refusal_phrase_x"',
+        [
+            "test_a_refusing_leaf_names_the_decision_it_could_not_make",
+            "test_the_field_name_is_spelled_the_same_in_all_three_places",
+            "test_a_refusing_leaf_is_a_conclusion_not_a_missing_one",
+            "test_a_refusing_leaf_with_no_words_of_its_own_raises",
+            "test_beat3_missing_document_names_what_to_fetch",
+        ],
+    ),
+    (
+        "the echo rule loses its SECOND door - the deciding question",
+        RENDER,
+        "                    _leaf_texts.append(str(_leaf_fact[0]))",
+        "                    pass",
+        ["test_the_intake_line_does_not_echo_the_deciding_QUESTION"],
+    ),
+    (
+        "the echo rule loses its THIRD door - the verdict sentence",
+        RENDER,
+        "                _leaf_texts.append(_verdict_text(_leaf_produced[0].value))",
+        "                pass",
+        ["test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE"],
+    ),
+    (
+        "the echo match relaxes to a bare substring - 50 inside 50000",
+        RENDER,
+        "        if not before.isalnum() and not after.isalnum():",
+        "        if True:",
+        ["test_a_short_intake_value_survives_when_it_only_LOOKS_echoed"],
+    ),
+    (
+        "the unfindable-pair raise stops saying which gap it is",
+        RENDER,
+        'f"it, but {missing} is not in this run\'s stored evidence — "',
+        'f"it, but {missing} is unavailable — "',
+        ["test_a_declared_deciding_fact_with_no_stored_question_raises"],
     ),
 ]
 
@@ -227,8 +579,54 @@ def _red_set() -> set:
     return red
 
 
+def _declared_test_names() -> set:
+    """Every test name the guard files define, by source scan.
+
+    **Why this exists, and it is the harness auditing its own input.** On
+    2026-08-17 three rows had two test names spliced into ONE by an editing
+    slip — Python concatenates adjacent string literals silently, so
+    ``["test_a"  "test_b"]`` is the single name ``"test_atest_b"``, which no
+    run can ever produce. All three printed as PREDICTION MISS and looked
+    like findings about the CODE. A prediction naming a test that does not
+    exist is a finding about the PREDICTION, and it is now caught before a
+    single mutation is applied.
+    """
+    names = set()
+    for guard_file in GUARD_FILES:
+        with io.open(os.path.join(ROOT, guard_file), encoding="utf-8") as fh:
+            for line in fh:
+                if line.startswith("def test_"):
+                    names.add(line[4:].split("(")[0].strip())
+    return names
+
+
 def main() -> int:
-    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE)}
+    declared = _declared_test_names()
+    phantom = sorted(
+        (name, row[0]) for row in MUTATIONS for name in row[4]
+        if name not in declared
+    )
+    ambiguous = []
+    for name, path, old_text, _new, _pred in MUTATIONS:
+        body = io.open(os.path.join(ROOT, path), encoding="utf-8").read()
+        if body.count(old_text) > 1:
+            ambiguous.append((name, path, body.count(old_text)))
+    if ambiguous:
+        print("== anchors that occur more than once ==")
+        for name, path, count in ambiguous:
+            print("  %s  (%s, %d occurrences)" % (name, path, count))
+        print("  `.replace(old, new, 1)` picks the FIRST, so the mutation "
+              "edits a site the row may not mean — it reddens the wrong guard "
+              "and the right one stays green. Narrow the anchor.")
+        return 5
+    if phantom:
+        print("== predictions naming tests that do not exist ==")
+        for name, row in phantom:
+            print("  %r  (row: %s)" % (name, row))
+        print("  A prediction no run can satisfy is not a prediction. Fix "
+              "these before reading anything below.")
+        return 5
+    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS, PAGES)}
     print("== baseline: every guard file green with no mutation applied ==")
     baseline = _red_set()
     if baseline:
@@ -274,7 +672,7 @@ def main() -> int:
             print("  exact")
         print()
 
-    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE)}
+    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS, PAGES)}
     print("== tree restored ==")
     for f in sorted(before):
         mark = "OK " if before[f] == after[f] else "⚠ NOT RESTORED "

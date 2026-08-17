@@ -109,6 +109,24 @@ MANIFEST_MEMBER_IDS = "member_graph_ids"
 #: ADR-0209 structural refusal marker on a verdict VALUE — branch-only.
 REFUSAL_MARKER = "refusal_reason"
 
+#: The field a refusing verdict carries its OWN words in.
+#:
+#: ⚠ **This replaced a renderer-composed string, on the rule coordination
+#: §100/§102 settled and which is worth more than the fix:** the renderer's
+#: voice may describe THE RECORD'S LIMITS — meta, case-invariant, true of
+#: every Record ever rendered from a store, which is what makes *"Decided
+#: date: not available from stored evidence"* chrome — and may NEVER describe
+#: THE CASE'S OUTCOME. *"not possible"* is an outcome statement, so the words
+#: belong to the capacity that could not decide, and this module only places
+#: them.
+#:
+#: ⚠ **The contract that comes with it:** a refusing value rendered on the
+#: LEAF road must carry this field, or the page RAISES (G2 — raise, never
+#: fill). Spelled as a literal here and in the producing module because
+#: ``dr_render`` may import neither (G1); the spellings are pinned equal
+#: test-side, exactly as the determining field's are.
+FIELD_REFUSAL_PHRASE = "refusal_phrase"
+
 #: Origin-record keys the page reads. String literals BY NECESSITY — G1 bans
 #: importing `mindsos_capacity`, where the contract defines them — so they are
 #: pinned against `origin_v0`'s own constants test-side
@@ -359,6 +377,20 @@ class _Analysis:
         verdict that DECLARES one whose question or answer cannot be found
         RAISES: that is a gap, and G2 is raise, never fill.
         """
+        nodes = self._deciding_nodes(verdict)
+        if nodes is None:
+            return None
+        answer_node, record_node = nodes
+        record = record_node.value
+        return (record.get(FIELD_QUESTION), answer_node.value)
+
+    def _deciding_nodes(self, verdict: Any):
+        """The (answer, record) node pair the determining marker names, with
+        every check :meth:`deciding_fact` documents. Split out 2026-08-17
+        (ship B) so the SOURCE of the deciding fact can be rendered beside it
+        without re-deriving the pairing — two callers deriving the same pair
+        by different routes is how a page ends up citing one record's
+        authority over another record's answer."""
         if not isinstance(verdict, dict):
             return None
         marker = verdict.get(FIELD_DETERMINED_BY)
@@ -389,7 +421,37 @@ class _Analysis:
                 "whose own record does not admit it — a verdict standing on a "
                 "refusal is incoherent, and the page will not carry it"
             )
-        return (record.get(FIELD_QUESTION), answer_node.value)
+        return (answer_node, record_node)
+
+    def deciding_source_lines(self, verdict: Any) -> List[str]:
+        """The authority behind the fact that DECIDED, when it has one.
+
+        **Why this exists.** :func:`_source_lines` associates a record with a
+        value by SAME CAPACITY, which is right and which means beat 4's
+        assessment page named no edition at all: the limit is produced by the
+        policy lookup, the conclusion by the capacity that decided against
+        it, and nothing joined them. A Record that prints *"350000 payable"*
+        without saying which edition said 350000 shows the effect and hides
+        the reason — the exact defect :func:`_source_lines` was written for,
+        one hop further out.
+
+        **It reuses the marker's own pairing**, so the authority printed is
+        the authority of the answer printed directly above it, never a
+        record that merely happens to be in the graph. A deciding fact whose
+        record is not a policy record renders nothing: routing's readers
+        cite no edition, and inventing a line for them is not this method's
+        business.
+        """
+        nodes = self._deciding_nodes(verdict)
+        if nodes is None:
+            return []
+        record = nodes[1].value
+        if not isinstance(record, dict):
+            return []
+        if record.get(FIELD_PRODUCER_KIND) != PRODUCER_POLICY_LOOKUP:
+            return []
+        line = _source_line_from_record(record)
+        return [line] if line else []
 
     def _unconsumed(self, nodes: List[Any]) -> List[Any]:
         """Of ``nodes``, those with no outgoing ``CONSUMES`` edge."""
@@ -460,6 +522,41 @@ class _Analysis:
             )
         return out
 
+    def refusing_conclusions(self) -> List[Any]:
+        """The refusal CARRIERS nothing consumed — a refusing leaf's own
+        conclusion, the counterpart of :meth:`terminal_produced`.
+
+        **Why a refusing leaf needs one at all.** Every answered page carries
+        ``<what was being done> → <what came of it>``; a refusing leaf carried
+        only the reader's Q line, so the page never named the decision that
+        was ATTEMPTED. Beat 3 is where that shows — a page about a missing
+        document that never says the claim cannot be settled — but it is true
+        of every refusing leaf.
+
+        **The member road is deliberately NOT changed.** There the fold's
+        claim-level line already names the consequence (*"1 not yet assigned:
+        D. Laurent, Bodily Injury"*), so the attempted decision is not
+        hidden. A leaf has no fold, and that is the whole asymmetry.
+
+        Two unconsumed carriers RAISE, exactly as two unconsumed plain values
+        do: the record cannot say which one is this Record's conclusion, and
+        picking by iteration order is the defect that rule replaced.
+        """
+        candidates = [
+            node for node in self.produced
+            if isinstance(node.value, dict)
+            and node.value.get(REFUSAL_MARKER)
+            and FIELD_PRODUCER_KIND not in node.value
+        ]
+        out = self._unconsumed(candidates)
+        if len(out) > 1:
+            raise RendererGapError(
+                f"{self.graph.role!r} produced more than one refusing value "
+                "that nothing consumed, so the record cannot say which one is "
+                "this Record's conclusion — refusing to pick by iteration order"
+            )
+        return out
+
     def plain_produced(self) -> List[Any]:
         """Produced DSIs that are neither origin records nor refusal carriers."""
         out = []
@@ -484,7 +581,31 @@ def _fmt(value: Any) -> str:
     return str(value)
 
 
-def _fmt_without(value: Any, drop: Any) -> str:
+def _token_in(needle: str, haystack: str) -> bool:
+    """True iff ``needle`` occurs in ``haystack`` as a WHOLE TOKEN.
+
+    ⚠ **Bounded on purpose, and the reason is arithmetic.** The echo rule asks
+    whether an intake value already appears in a line below it, and a bare
+    ``in`` answers YES for ``"3"`` inside ``"350000"`` and for ``"50"`` inside
+    ``"50000"`` — so an unrelated number containing a value's digits would
+    silently delete that value from the page. A page quietly losing context is
+    the failure G2 exists to refuse, and no reader would ever spot it. A match
+    counts only where both edges are non-alphanumeric or the end of the text.
+    """
+    if not needle:
+        return False
+    start = haystack.find(needle)
+    while start != -1:
+        before = haystack[start - 1] if start else ""
+        end = start + len(needle)
+        after = haystack[end] if end < len(haystack) else ""
+        if not before.isalnum() and not after.isalnum():
+            return True
+        start = haystack.find(needle, start + 1)
+    return False
+
+
+def _fmt_without(value: Any, drop: Any, texts: Any = ()) -> str:
     """:func:`_fmt`, minus the value the deciding fact is about to state.
 
     **Why, from the first live read of the page, 2026-08-17.** The intake line
@@ -502,10 +623,23 @@ def _fmt_without(value: Any, drop: Any) -> str:
     name the reader read (an origin record carries ``source_datastate``, not a
     key). So two fields carrying the identical value both drop. The page cannot
     tell them apart, and dropping one arbitrarily would be a guess.
+
+    ⚠ **THREE DOORS since ship B, not one** (coordination §101.3, §102).
+    A value is duplicated whether it is echoed from the deciding ANSWER
+    (exact match, the original rule), from the text of the deciding QUESTION,
+    or from the composed VERDICT sentence — the third arrived the moment a
+    decision started naming its own operands, and two doors would have left
+    the same number labelled once and bare once on one page. Text matches are
+    WHOLE-TOKEN (:func:`_token_in`); a bare substring test would delete
+    ``"3"`` because some unrelated total contains ``350000``.
     """
-    if drop is None or not isinstance(value, dict):
+    if not isinstance(value, dict):
         return _fmt(value)
-    kept = {k: v for k, v in value.items() if v != drop}
+    kept = {
+        k: v for k, v in value.items()
+        if v != drop
+        and not any(_token_in(str(v), text) for text in texts if text)
+    }
     return _fmt(kept) if kept else _fmt(value)
 
 
@@ -530,25 +664,37 @@ def _source_lines(analysis: "_Analysis", node: Any) -> List[str]:
     """
     lines: List[str] = []
     for record in analysis.policy_records_for(node):
-        missing = sorted(
-            field for field in (record.get(FIELD_SUPPLIED_FIELDS) or ())
-            if record.get(field) in (None, "")
-        )
-        if missing:
-            raise RendererGapError(
-                "a source record admits a value but is missing the field(s) "
-                f"its own producer declares it always supplies: {missing!r} — "
-                "refusing to name an authority the stored evidence cannot pin"
-            )
-        phrase = record.get(FIELD_SOURCE_PHRASE)
-        version = record.get(FIELD_SOURCE_VERSION)
-        if not phrase or not version:
-            continue
-        ends = record.get(FIELD_IN_FORCE_TO)
-        window = f"in force from {record.get(FIELD_IN_FORCE_FROM)}"
-        window += f" to {ends}" if ends not in (None, "") else " onwards"
-        lines.append(f"   Source: {phrase}, version {version}, {window}.")
+        line = _source_line_from_record(record)
+        if line:
+            lines.append(line)
     return lines
+
+
+def _source_line_from_record(record: Dict[str, Any]) -> Optional[str]:
+    """One admitted policy record -> its Source line, or ``None``.
+
+    Extracted 2026-08-17 (ship B) so :meth:`_Analysis.deciding_source_lines`
+    renders the SAME sentence from the SAME fields; a second formatter would
+    drift from this one on the first edition that has no end date.
+    """
+    missing = sorted(
+        field for field in (record.get(FIELD_SUPPLIED_FIELDS) or ())
+        if record.get(field) in (None, "")
+    )
+    if missing:
+        raise RendererGapError(
+            "a source record admits a value but is missing the field(s) "
+            f"its own producer declares it always supplies: {missing!r} — "
+            "refusing to name an authority the stored evidence cannot pin"
+        )
+    phrase = record.get(FIELD_SOURCE_PHRASE)
+    version = record.get(FIELD_SOURCE_VERSION)
+    if not phrase or not version:
+        return None
+    ends = record.get(FIELD_IN_FORCE_TO)
+    window = f"in force from {record.get(FIELD_IN_FORCE_FROM)}"
+    window += f" to {ends}" if ends not in (None, "") else " onwards"
+    return f"   Source: {phrase}, version {version}, {window}."
 
 
 def _member_block(member: "_Analysis", entry: Any) -> List[str]:
@@ -561,8 +707,14 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
     """
     fact = member.deciding_fact(entry)
     echoed = fact[1] if fact else None
+    # The same three doors as the leaf road. Nothing on the routing pages
+    # matches today; applying it to one road only is the one-member-domain
+    # shape this lane has paid for five times.
+    texts = [str(fact[0])] if fact else []
+    texts.append(_verdict_text(entry))
     lines = [
-        f"{_fmt_without(start.value, echoed)} — {member.start_description(start)}"
+        f"{_fmt_without(start.value, echoed, texts)} — "
+        f"{member.start_description(start)}"
         for start in member.parentless
         if not isinstance(start.value, list)
     ]
@@ -571,6 +723,9 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
     produced = next((n for n in member.produced if n.value == entry), None)
     if produced is not None:
         lines.extend(_source_lines(member, produced))
+    for line in member.deciding_source_lines(entry):
+        if line not in lines:
+            lines.append(line)
     return lines
 
 
@@ -800,14 +955,18 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         # terminal_produced() there would put a new raise on paths this ship
         # has no business touching.
         _leaf_echo = None
+        _leaf_texts: List[str] = []
         if analysis.stopped is None and not analysis.origin_refusals():
             _leaf_produced = analysis.terminal_produced()
             if _leaf_produced:
                 _leaf_fact = analysis.deciding_fact(_leaf_produced[0].value)
                 _leaf_echo = _leaf_fact[1] if _leaf_fact else None
+                if _leaf_fact:
+                    _leaf_texts.append(str(_leaf_fact[0]))
+                _leaf_texts.append(_verdict_text(_leaf_produced[0].value))
         for start in analysis.parentless:
             lines.append(
-                f"{_fmt_without(start.value, _leaf_echo)} — "
+                f"{_fmt_without(start.value, _leaf_echo, _leaf_texts)} — "
                 f"{analysis.start_description(start)}"
             )
         refusals = analysis.origin_refusals()
@@ -832,6 +991,23 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 f"Q. {refusal.get('question')} — Nothing. "
                 f"{refusal.get('refusal_detail')}"
             )
+            # The decision that was ATTEMPTED, in its own registered phrase.
+            # Without this the page states a missing item and never says what
+            # could not be done because of it, which is a shorter version of
+            # the beat above it rather than a beat of its own.
+            carriers = analysis.refusing_conclusions()
+            if carriers:
+                said = carriers[0].value.get(FIELD_REFUSAL_PHRASE)
+                if not said:
+                    raise RendererGapError(
+                        f"a refusing value on {analysis.graph.role!r} names no "
+                        "words of its own for what could not be done, and this "
+                        "module does not speak for a capacity about its own "
+                        "outcome — refusing to compose one"
+                    )
+                lines.append(
+                    f"   {analysis.phrase_for_value(carriers[0].value)} → {said}"
+                )
         else:
             produced = analysis.terminal_produced()
             if produced:
@@ -847,6 +1023,9 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                     f"{_verdict_text(produced[0].value)}"
                 )
                 lines.extend(_source_lines(analysis, produced[0]))
+                for line in analysis.deciding_source_lines(produced[0].value):
+                    if line not in lines:
+                        lines.append(line)
             elif not analysis.graph.edges:
                 for description in (
                     analysis.manifest.get("declared_starts") or {}

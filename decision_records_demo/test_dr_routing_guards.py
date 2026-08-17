@@ -21,11 +21,16 @@ from decision_records_demo.dr_routing import (
     CASE_A_EXPOSURES,
     DETERMINED_BY,
     DS_COVERAGE,
+    DS_DESK,
+    DS_DESKS,
+    DS_EXPOSURE,
     DS_SEVERITY,
+    EXPOSURE_REF,
     CASE_B_EXPOSURES,
     DS_CLAIM_EXPOSURES,
     ROUTINE_DESK,
     SPECIALTY_UNIT,
+    _assign,
     routing_harness,
     routing_plan,
 )
@@ -66,7 +71,7 @@ def test_case_a_one_claim_two_desks():
         "the verdict line wears the DECISION's phrase, not a reader's"
     )
     assert "Therefore: assigning each exposure to its desk" in page
-    assert "2 exposure(s) to the routine claims desk" in page
+    assert "2 exposures to the routine claims desk" in page
     assert "1 to the specialty injury unit" in page
     assert (
         "Q. Which coverage was this exposure filed under? — Auto Physical Damage."
@@ -97,7 +102,7 @@ def test_case_b_refusal_beside_answers_names_the_item():
     assert "D. Laurent" in page, "the refusing exposure's own facts print"
     assert page.count(ROUTINE_DESK) >= 2
     assert SPECIALTY_UNIT in page
-    assert "1 cannot be assigned yet" in page
+    assert "1 not yet assigned: D. Laurent, Bodily Injury" in page
     # ⚠ THE SAME QUESTION IS NOW ON THE PAGE TWICE, and that is the point of
     # beat 2 rather than a collision to work around: C. Mensah's severity was
     # ASSESSED and decided her desk, D. Laurent's was not stated at all. Before
@@ -243,7 +248,11 @@ def test_a_declared_deciding_fact_with_no_stored_question_raises():
     assert removed == 1, f"fixture drifted: removed {removed}, expected 1"
     try:
         render_from_graphs(graphs, EPISODE_COMPLETED)
-    except RendererGapError:
+    except RendererGapError as exc:
+        # ⚠ Was a bare `except RendererGapError` — §94 finding 5's shape in a
+        # guard that predates it: it could not tell its own gap from any other
+        # raise on this path. Named in coordination §101.1, tightened here.
+        assert "is not in this run's stored evidence" in str(exc), str(exc)
         return
     raise AssertionError("a verdict rendered a reason it could not show")
 
@@ -306,6 +315,12 @@ def test_the_field_name_is_spelled_the_same_in_all_three_places():
 
     assert dr_routing.DETERMINED_BY == dr_render.FIELD_DETERMINED_BY
     assert dr_settlement.DETERMINED_BY == dr_render.FIELD_DETERMINED_BY
+    # Second literal-in-three-files field, ship B: the words a refusing value
+    # carries for what could not be done.
+    assert dr_settlement.REFUSAL_PHRASE == dr_render.FIELD_REFUSAL_PHRASE
+    from decision_records_demo import dr_assessment
+
+    assert dr_assessment.REFUSAL_PHRASE == dr_render.FIELD_REFUSAL_PHRASE
 
 
 
@@ -335,6 +350,106 @@ def test_the_intake_line_does_not_echo_the_deciding_fact():
         "context the decision needed but did not state was dropped with the "
         "echo:\n" + mensah
     )
+
+
+def _desk_verdicts(graphs):
+    """Every desk verdict VALUE the member graphs produced."""
+    out = []
+    for graph in _member_graphs(graphs):
+        for node in graph.nodes.values():
+            if (node.properties or {}).get("datastate_type") == DS_DESK:
+                out.append(node.value)
+    return out
+
+
+def test_the_claim_line_names_the_pending_exposure():
+    """SHIP B SLICE 1 (plan §0.3 item 8 ship B, the §11 promotion out of walk
+    gap 6, coordination §91 Q5). The claim-level line said *"1 cannot be
+    assigned yet - see the exposure above"* with FOUR exposures above it —
+    ambiguous to a cold reader, which is a page defect and not formatting.
+
+    It now names the one it means, in the same words the block above used."""
+    page = render_from_graphs(_routing_graphs(CASE_B_EXPOSURES), EPISODE_COMPLETED)
+    therefore = page.split("Therefore:")[1]
+    assert "1 not yet assigned: D. Laurent, Bodily Injury" in therefore, (
+        "the claim line must NAME the exposure it cannot assign, not count "
+        "it:\n" + therefore
+    )
+    assert "see the exposure above" not in page, (
+        "the ambiguous phrasing survived somewhere on the page"
+    )
+    _g6_clean(page)
+
+
+def test_every_desk_verdict_names_its_exposure_answered_and_refused():
+    """THE TWO-DOOR RULE (RULES §12, 2026-08-17) on the branch this slice
+    adds. The claim line only needs the name on REFUSED verdicts, so carrying
+    it there alone would pass the guard above — and that is exactly the shape
+    that produced five of ship A's six findings: a rule unambiguous only while
+    its domain has one member.
+
+    Beat 2's case puts both doors in one run: two answered vehicle verdicts,
+    one answered injury verdict, one refusal. Every one names its exposure,
+    and NONE of them lets the exposure be the fact that decided."""
+    verdicts = _desk_verdicts(_routing_graphs(CASE_B_EXPOSURES))
+    assert len(verdicts) == 4, verdicts
+    answered = [v for v in verdicts if v.get("decision")]
+    refused = [v for v in verdicts if v.get("refusal_reason")]
+    assert len(answered) == 3 and len(refused) == 1, verdicts
+    for verdict in verdicts:
+        assert verdict.get(EXPOSURE_REF), (
+            "a desk verdict does not name its exposure: " + repr(verdict)
+        )
+        assert verdict.get(DETERMINED_BY) != DS_EXPOSURE, (
+            "the exposure is declared so the decision can NAME it, never so "
+            "it can decide: " + repr(verdict)
+        )
+
+
+def test_the_claim_line_is_singular_at_one_and_plural_at_two():
+    """The other door of the pluraliser, and the reason the string changed at
+    all: *"2 exposure(s)"* read as software on the buyer's screen (walk gap
+    6). A hardcoded plural passes the two-exposure case and says
+    *"1 exposures"* in the room."""
+    two = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
+    assert "2 exposures to the routine claims desk" in two, two
+    one = render_from_graphs(
+        _routing_graphs([CASE_A_EXPOSURES[0], CASE_A_EXPOSURES[2]]),
+        EPISODE_COMPLETED,
+    )
+    assert "1 exposure to the routine claims desk" in one, one
+    assert "1 exposures" not in one, one
+    _g6_clean(one)
+
+
+def test_the_exposure_field_name_never_reaches_the_page():
+    """Same discipline as the determining marker: the field's VALUE is meant
+    for the page, its NAME is not. The field is spelled so that this can be
+    asserted — ``exposure_ref`` rather than ``exposure``, which the page says
+    in its own words several times."""
+    page = render_from_graphs(_routing_graphs(CASE_B_EXPOSURES), EPISODE_COMPLETED)
+    assert EXPOSURE_REF not in page, page
+    assert "refusal_reason" not in page, page
+
+
+def test_a_refusing_verdict_with_no_exposure_name_raises():
+    """G2's posture — raise, never fill — inside the reducer, and BOTH doors.
+
+    A refusal the record cannot name would silently become *"1 not yet
+    assigned: "* or fall back to the count this slice removed. It raises. An
+    ANSWERED verdict with no name does not, because the claim line never
+    names those and punishing it would be inventing a requirement."""
+    anonymous_refusal = {"decision": None, "refusal_reason": "field_absent"}
+    try:
+        _assign(**{DS_DESKS: [anonymous_refusal]})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(
+            "the reducer published a claim line for a refusal it could not name"
+        )
+    out = _assign(**{DS_DESKS: [{"decision": ROUTINE_DESK}]})
+    assert "1 exposure to " + ROUTINE_DESK in str(out), out
 
 
 if __name__ == "__main__":

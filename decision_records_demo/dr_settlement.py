@@ -74,6 +74,16 @@ SETTLEMENT_PAYABLE = "payable under the policy"
 #: the guard-that-cannot-go-red shape.
 DETERMINED_BY = "determined_by"
 
+#: The words THIS capacity uses for what it could not do. Coordination §100
+#: Q2: the renderer may describe the Record's limits and never the case's
+#: outcome, so *"cannot be settled"* is ours to say, not the page layout's.
+#: Spelled as a literal here and in ``dr_render`` (G1 forbids the import);
+#: pinned equal test-side.
+REFUSAL_PHRASE = "refusal_phrase"
+
+#: What this capacity says when the document it needs was not filed.
+CANNOT_SETTLE = "cannot be settled"
+
 #: Beat 3 — the claim arrives without the document settlement depends on.
 CASE_MISSING_DOCUMENT = {
     "claimant": "E. Nakamura",
@@ -87,7 +97,8 @@ def _settle(context=None, **inputs):
         # The reader refused; nothing can be settled. Structural marker
         # only — the words live in the reader's origin record.
         return {DS_SETTLEMENT: {"decision": None,
-                                "refusal_reason": REFUSAL_FIELD_ABSENT}}
+                                "refusal_reason": REFUSAL_FIELD_ABSENT,
+                                REFUSAL_PHRASE: CANNOT_SETTLE}}
     # The filed document is what allows the claim to be settled, so it is
     # the determining input. Beat 3's shipped case never reaches here — it
     # refuses — but a refusal carries no determining input by design, and
