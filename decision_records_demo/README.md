@@ -46,9 +46,12 @@ and this branch merges the tag.
 | `test_dr_beat_guards.py` | 5 guard tests on the per-beat runner: every scripted beat resolves to a case that exists, the memo holds refs never pages (D9), the closer refuses when no beat has run, the closer rebuilds the RICHEST Record the room watched (every position in `CLOSER_PREFERENCE`, not just the walk's pair), and every preferred case is one a beat actually runs. |
 | `test_dr_dump_printer_guard.py` | 3 tests pinning the dump instrument itself: printed counts equal object counts; the retry delta is reported, not hidden. |
 | `dr_mutations.py` | **The mutation harness: every new guard shown RED by a named mutation, then reverted.** One command instead of eleven hand-cycles. Applies an exact string replacement, runs every guard file in a fresh subprocess, restores in a `finally`, hashes all three sources before and after, and re-runs the guards to prove the tree came back. A mutation that reddens NOTHING prints FINDING; so does one whose red set differs from the prediction recorded beside it. Ship discipline, not demo content — the room never sees it. |
+| `dr_transport.py` | **Step 1: the piece that touches the network** (plan §0.4 item 7 step 1). `LiveLLM` takes a deployment-supplied callable and it was never written; this is that callable. Stdlib `urllib`, no new dependency, registers nothing. ⚠ **This branch cannot import `mindsos_capacity.llm`** — it is on `main` and ABSENT from the pinned core — so `contract.verify_transport` is run by the OWNER from the `main` checkout as evidence, never as a guard here. Unwraps the PROVIDER ENVELOPE and returns the model's answer as TEXT, undecoded (S-2 decodes in the package). No prompt words live in it: the prompt arrives through an injected resolver. |
+| `dr_transport_smoke.py` | **The step-1 gate: one real call, and the owner watches the answer come back.** Prints what this lane composed above what the provider returned (RULES §11). Its prompt is a step-1 throwaway; the demo's stored, printable prompt lands with step 3. The owner's fixture (email B) is deliberately NOT here — that is step 3. |
+| `test_dr_transport_guards.py` | 7 guard tests on the transport: all five of `LiveLLM`'s keyword args are required (bind fails with any one removed), a 2xx returns the model's text UNDECODED, a non-2xx raises instead of handing back an error body, the credential appears nowhere in a return value or anywhere in the exception chain, the model id and endpoint appear nowhere in the exception THIS module raises, the per-call timeout reaches the opener, and the prompt on the wire came from the injected resolver. Fake opener throughout — no network, no key. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 92** (render 37, routing 16, screen 10, assessment 13, run 5, no-model 3, beat 5, dump 3) — 68 before ship B, 56 before the deciding-fact ship.
+**Guard total: 99** (render 37, routing 16, assessment 13, screen 10, transport 7, run 5, beat 5, no-model 3, dump 3) — 92 before step 1, 68 before ship B, 56 before the deciding-fact ship.
 ⚠ **Counted with `grep -c '^def test_'`, never recalled.** This line said 67 for
 the length of one ship because the last guard landed after it was written — the
 eighth instance in this lane of a document disagreeing with the tree it
@@ -113,8 +116,8 @@ green again" silently re-runs the mutation. Same defect as a `docker compose`
 run without `--build`:
 
 The mutation harness — the §12.2 obligation, mechanically. It writes to
-`dr_render.py`, `dr_screen.py`, `dr_settlement.py`, `dr_routing.py`, `dr_demo_beat.py` and
-`dr_assessment.py` and restores them in a
+`dr_render.py`, `dr_screen.py`, `dr_settlement.py`, `dr_routing.py`, `dr_demo_beat.py`,
+`dr_assessment.py` and `dr_transport.py` and restores them in a
 `finally`; if it ever reports NOT RESTORED, recover with
 `git checkout -- decision_records_demo/`:
 
@@ -131,6 +134,31 @@ PYTHONPATH=. python3 decision_records_demo/test_dr_run_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_no_model_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_beat_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_dump_printer_guard.py
+PYTHONPATH=. python3 decision_records_demo/test_dr_transport_guards.py
+```
+
+**Step 1's gate — the one real call.** Not a test: the callable is bound at
+boot and is outside any tree check by design, so the gate is the owner seeing an
+answer return. Needs a credential in the environment and reaches the network;
+the build gate has neither:
+
+```
+ANTHROPIC_API_KEY=... PYTHONPATH=. python3 decision_records_demo/dr_transport_smoke.py
+```
+
+Exit 0 = an answer came back. Exit 2 = no credential. Exit 1 = the call failed,
+with the reason printed.
+
+⚠ **The conformance harness runs from the `main` checkout, and the same command
+does it.** `contract.verify_transport` is product code written so a deployment
+can prove its own transport, and `mindsos_capacity/llm/` is ABSENT from this
+branch's pinned core — so the smoke tries the import, prints its report when the
+package is there, and says NOT RUN with the reason when it is not (RULES §11: a
+list of only successes is a pitch). Run it a second time from `main`, with this
+directory on the path, and the report appears:
+
+```
+ANTHROPIC_API_KEY=... PYTHONPATH=.:/path/to/_MindsOS-dr-transport python3 /path/to/_MindsOS-dr-transport/decision_records_demo/dr_transport_smoke.py
 ```
 
 Smoke and pages can also be driven by hand. **Host port 6382** — on the
