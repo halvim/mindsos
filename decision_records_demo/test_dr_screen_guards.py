@@ -133,7 +133,7 @@ def test_refusal_stop_and_therefore_classify_as_themselves():
     is the presentation sin in CSS form — classifier regression is red."""
     cases = (
         (_routing_refusal_page(),
-         "Q. What injury severity was assessed for this exposure? — Nothing.",
+         "Q. How many weeks off work does this exposure state? — Nothing.",
          "refusal"),
         (_partial_page(), "Stopped:", "stop"),
         (_claim_page(), "Therefore:", "therefore"),
