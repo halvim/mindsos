@@ -60,11 +60,16 @@ refuses → ask both "what exactly is missing?" — generic prose vs the named
 item. Either branch wins.
 
 **3 · The missing document.** The punchline case: refusal that names what to
-go fetch. Framed as work-routing: "it tells your team what to get, not just
-that it can't."
+go fetch, **and says what it could not do because of it** — *"settling the
+claim on what was filed → cannot be settled"* (ship B). Framed as
+work-routing: "it tells your team what to get, not just that it can't."
 
-**4 · The policy changed mid-claim.** Two Records naming different policy
-versions for submission vs assessment. Quiet beat; the compliance buyer
+**4 · The policy changed mid-claim.** ⚠ **RE-CUT by ship B — this beat now
+DECIDES.** One claim of 400,000, assessed as of two dates: 350,000 payable
+under the 2023 edition, 375,000 under the 2024 one, each Record naming its
+edition and the window it was in force. **Let the room do the subtraction
+before the page renders** — it is the only beat whose answer they can check in
+their heads, and that is the point of it. Quiet beat; the compliance buyer
 retells this one.
 
 **5 · Unplug the model.** ⚠ **RE-CUT 2026-08-16/17 — there is nothing on OUR

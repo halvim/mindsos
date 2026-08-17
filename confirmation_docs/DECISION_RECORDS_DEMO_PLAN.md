@@ -193,6 +193,18 @@ Walk gap 4 is a SCRIPT fix, already amended in `DR_DEMO_SCRIPT.md` beat 5.
 that table is past the gate and is refused like any other work past its gate.**
 Adding to it is an owner ruling, not a lane choice.
 
+⚠ **SHIPPED 2026-08-17: A (`dr-deciding-fact-confirmed`) and B
+(`dr-ship-b-confirmed`, squash `df57033`, PR #180).** Ship B in five slices —
+the claim-level line NAMES the exposure it cannot assign; beat 6 rebuilds the
+richest Record; a refusing LEAF names the decision it could not make, in the
+capacity's own words; beat 4 decides the claimed amount against the dated
+limit and carries the edition behind it; the two beat-4 pages say **submitted**
+and **assessed**. 68 → 92 guards, 13 → 41 mutations. **C is not started**, and
+its editable surface is the open owner ruling (see §0.3 item 4 and
+`DR_DEMO_CAPABILITIES.md`'s refusal boundary). ⚠ **The item numbering of this
+section ran 1–9, 11, 10 for a ship** while being the text refusals are made by
+citing; corrected here.
+
 **9. Two things are owed that are NOT code, and they are the demo's critical
 path.** Escalated by the critic lane (§91) and owner-accepted 2026-08-17:
 
@@ -206,7 +218,7 @@ path.** Escalated by the critic lane (§91) and owner-accepted 2026-08-17:
 Neither is engineering, and no amount of building closes them. Gate 7 is green
 with the hole it was worded to close until both are done.
 
-**11. SHIP D — THE LIVE PROSE BEAT. Owner ruling 2026-08-17, and it does NOT
+**10. SHIP D — THE LIVE PROSE BEAT. Owner ruling 2026-08-17, and it does NOT
 gate v1.** The pitch is *the model reads, MindsOS decides*; the demo shows
 MindsOS deciding with no model present anywhere. Those are different claims and
 Gate 7 (a) exists to stop the first being said over the second. Ship D closes
@@ -274,7 +286,7 @@ is untouched.
 
 Reasoning and the critic round: `DR_CRITIC_COORDINATION.md` §95–§97.
 
-**10. What this section does NOT change.** Phase 7's intake stays STRUCTURED
+**11. What this section does NOT change.** Phase 7's intake stays STRUCTURED
 (open decision 9). The beats stay the operative scope text. Phases 1–3 remain
 the committed following block at a green Gate 7 (open decision 6) — v1 does not
 reorder them, and any proposal that makes v1 depend on SARA does.
