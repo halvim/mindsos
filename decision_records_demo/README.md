@@ -92,8 +92,8 @@ shapes that prove the renderer stops honestly, and the room never sees them:
 | Beat | Case(s) | What the room sees |
 |---|---|---|
 | 0 · the pain | — | spoken |
-| 1 · one claim, two desks | `routing` | CLM-3007: two vehicle exposures to the routine desk, one severe injury to the specialty unit |
-| 2 · the refusal beside an answer | `routingrefusal` | the same claim plus an injury exposure with no severity assessed |
+| 1 · one claim, two desks | `routing` | CLM-3007: two vehicle exposures to the routine desk; one injured operator off work **six weeks** to the specialty unit — and the page names the **edition** whose four-week threshold sent him there |
+| 2 · the refusal beside an answer | `routingrefusal` | the same claim plus an injury exposure stating **no off-work period** — the policy cannot tier a fact that was never stated, and that block cites no rule at all |
 | 3 · the missing document | `settlement` | CLM-5093: no proof of loss, and the Record names it |
 | 4 · the policy changed | `assessprior` + `assesscurrent` | CLM-4188, 400,000 claimed, as SUBMITTED and as ASSESSED: 350,000 payable under v2023.1, 375,000 under v2024.1 — the room does both subtractions before the page appears |
 | 5 · unplug the model | — | no case: there is no model. The runner checks the absence live |
