@@ -479,16 +479,28 @@ def test_the_routing_rule_is_not_a_literal_in_this_module():
     is source code.* The comparison stays; the NUMBER it compares against comes
     out of a dated store. Checked on `_route`'s own source, because a threshold
     that crept back as a constant would still pass every page assertion below —
-    they would just be asserting about a hardcoded 4."""
+    they would just be asserting about a hardcoded 4.
+
+    ⚠ **Checked on the AST, not on the source text.** The first version
+    scanned characters and reddened on `§76` in a comment — a guard that
+    cannot tell a citation from a threshold would have been silenced by
+    deleting a comment, which is the worst way for a guard to go green.
+    """
+    import ast
     import inspect
+    import textwrap
 
     from decision_records_demo import dr_routing
 
-    body = inspect.getsource(dr_routing._route)
-    digits = [ch for ch in body if ch.isdigit()]
-    assert not digits, (
+    tree = ast.parse(textwrap.dedent(inspect.getsource(dr_routing._route)))
+    numbers = [
+        node.value for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float))
+        and not isinstance(node.value, bool)
+    ]
+    assert not numbers, (
         "a numeric literal is back inside the routing decision — the rule "
-        f"belongs in the store: {body}"
+        f"belongs in the store, and this one does not: {numbers}"
     )
 
 
