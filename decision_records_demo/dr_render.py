@@ -790,8 +790,15 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
             produced = analysis.terminal_produced()
             if produced:
                 lines.extend(analysis.deciding_lines(produced[0].value))
+                # phrase_for_value, not phrase(): the leaf road carries the
+                # SAME defect the member road fixed and nobody carried the fix
+                # across — phrase() returns the first phrased capacity, which
+                # on a reader+decision leaf is the READER, so the page credited
+                # "reading the claim as filed" with a verdict the settle
+                # capacity produced. Invisible until a leaf had two capacities.
                 lines.append(
-                    f"   {analysis.phrase()} → {_verdict_text(produced[0].value)}"
+                    f"   {analysis.phrase_for_value(produced[0].value)} → "
+                    f"{_verdict_text(produced[0].value)}"
                 )
                 lines.extend(_source_lines(analysis, produced[0]))
             elif not analysis.graph.edges:

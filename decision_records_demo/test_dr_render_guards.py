@@ -763,8 +763,12 @@ def test_the_leaf_road_shows_the_deciding_fact():
     page = render_from_graphs(_settlement_graphs_with_document(), EPISODE_COMPLETED)
     assert "Q. Which proof of loss was filed for this claim? — sworn statement of loss, filed 9 June." in page, page
     assert "payable under the policy" in page, page
+    assert "settling the claim on what was filed → payable under the policy" in page, (
+        "the verdict line must wear the DECIDING capacity's phrase, not the "
+        "reader's — the leaf road's version of the member road's fix:\n" + page
+    )
     assert "reading the claim as filed →" not in page, (
-        "the value the decision CONSUMED was printed as the conclusion:\n" + page
+        "a reader was credited with the verdict:\n" + page
     )
     assert "determined_by" not in page, page
     low = page.lower()
