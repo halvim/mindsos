@@ -432,7 +432,7 @@ def _case_assess_prior(client):
 
     return _assessment_case(
         client, "drdemo-page-assessprior", CASE_ASSESSED_PRIOR,
-        "claim CLM-4188, assessed as of 2023-06-01",
+        "claim CLM-4188, as submitted on 2023-06-01",
     )
 
 
@@ -442,7 +442,7 @@ def _case_assess_current(client):
 
     return _assessment_case(
         client, "drdemo-page-assesscurrent", CASE_ASSESSED_CURRENT,
-        "claim CLM-4188, assessed as of 2024-06-01",
+        "claim CLM-4188, as assessed on 2024-06-01",
     )
 
 

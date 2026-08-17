@@ -42,13 +42,13 @@ and this branch merges the tag.
 | `test_dr_screen_guards.py` | 10 guard tests on Screen A: chrome closure, the fact-equality channel, the stylesheet lint, the classification pins. |
 | `test_dr_run_guards.py` | 5 guard tests on the cold-run driver — the five ways it could report a green gate that means nothing. Fake backend; no docker, no FalkorDB. |
 | `test_dr_no_model_guards.py` | 3 guard tests on beat 5's claim: the pinned core carries no model seam, no demo module imports it, and no case produces a value a model read. Neither check may pass vacuously. |
-| `test_dr_assessment_guards.py` | 9 guard tests on beat 4: the page carries a DECISION and not two lookups, the two dates pay different amounts and name their editions, the limit decides when the claim is over it and the AMOUNT decides when it is under (both doors), a claim with no amount refuses in the reader's own words, what is payable is arithmetic on stored values, the as-of date is a read fact with its own stored question, the deciding fact carries the authority behind it, and no invented currency reaches the page. |
+| `test_dr_assessment_guards.py` | 10 guard tests on beat 4: the page carries a DECISION and not two lookups, the two dates pay different amounts and name their editions, the limit decides when the claim is over it and the AMOUNT decides when it is under (both doors), a claim with no amount refuses in the reader's own words, what is payable is arithmetic on stored values, the as-of date is a read fact with its own stored question, the deciding fact carries the authority behind it, and no invented currency reaches the page. |
 | `test_dr_beat_guards.py` | 5 guard tests on the per-beat runner: every scripted beat resolves to a case that exists, the memo holds refs never pages (D9), the closer refuses when no beat has run, the closer rebuilds the RICHEST Record the room watched (every position in `CLOSER_PREFERENCE`, not just the walk's pair), and every preferred case is one a beat actually runs. |
 | `test_dr_dump_printer_guard.py` | 3 tests pinning the dump instrument itself: printed counts equal object counts; the retry delta is reported, not hidden. |
 | `dr_mutations.py` | **The mutation harness: every new guard shown RED by a named mutation, then reverted.** One command instead of eleven hand-cycles. Applies an exact string replacement, runs every guard file in a fresh subprocess, restores in a `finally`, hashes all three sources before and after, and re-runs the guards to prove the tree came back. A mutation that reddens NOTHING prints FINDING; so does one whose red set differs from the prediction recorded beside it. Ship discipline, not demo content — the room never sees it. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 87** (render 36, routing 16, screen 10, assessment 9, run 5, no-model 3, beat 5, dump 3) — 68 before ship B, 56 before the deciding-fact ship.
+**Guard total: 88** (render 36, routing 16, screen 10, assessment 10, run 5, no-model 3, beat 5, dump 3) — 68 before ship B, 56 before the deciding-fact ship.
 ⚠ **Counted with `grep -c '^def test_'`, never recalled.** This line said 67 for
 the length of one ship because the last guard landed after it was written — the
 eighth instance in this lane of a document disagreeing with the tree it
@@ -92,7 +92,7 @@ shapes that prove the renderer stops honestly, and the room never sees them:
 | 1 · one claim, two desks | `routing` | CLM-3007: two vehicle exposures to the routine desk, one severe injury to the specialty unit |
 | 2 · the refusal beside an answer | `routingrefusal` | the same claim plus an injury exposure with no severity assessed |
 | 3 · the missing document | `settlement` | CLM-5093: no proof of loss, and the Record names it |
-| 4 · the policy changed | `assessprior` + `assesscurrent` | CLM-4188, 400,000 claimed, as of two dates: 350,000 payable under v2023.1, 375,000 under v2024.1 — the room does both subtractions before the page appears |
+| 4 · the policy changed | `assessprior` + `assesscurrent` | CLM-4188, 400,000 claimed, as SUBMITTED and as ASSESSED: 350,000 payable under v2023.1, 375,000 under v2024.1 — the room does both subtractions before the page appears |
 | 5 · unplug the model | — | no case: there is no model. The runner checks the absence live |
 | 6 · a year later | — | rebuilds an earlier beat's Record from the store alone |
 | 7 · the ask | — | spoken |

@@ -177,7 +177,13 @@ def assessment_capacities():
         source_datastate_iri=DS_ASSESSED_CLAIM,
         source_identity_phrase=SOURCE_PHRASE,
         value_phrase="a date this claim is assessed as of",
-        question="As of what date is this claim assessed?",
+        # ⚠ NEUTRAL BETWEEN THE TWO CASES BY NECESSITY. One reader asks one
+        # question, and beat 4's pair are the SAME claim at two moments —
+        # when it was submitted and when it was assessed. A question naming
+        # either moment would be false on the other page, so the question
+        # names neither and the CASE LABEL carries the framing (walk gap 2's
+        # second sentence, ship B).
+        question="As of what date is this claim being considered?",
     )
     lookup = build_policy_limit_lookup(
         name="drdemo_lookup_limit_for_assessment",

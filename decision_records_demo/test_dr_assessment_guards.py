@@ -148,7 +148,7 @@ def test_the_as_of_date_is_a_read_fact_with_its_own_stored_question():
             value = node.value
             if isinstance(value, dict) and value.get("question"):
                 stored.append(value["question"])
-    assert "As of what date is this claim assessed?" in stored, stored
+    assert "As of what date is this claim being considered?" in stored, stored
     assert "What amount was claimed on this claim?" in stored, stored
 
 
@@ -178,6 +178,30 @@ def test_the_deciding_fact_carries_the_authority_behind_it():
         capacity_graphs=graphs, case_label="claim CLM-3007",
     )
     assert "Source:" not in render_from_graphs(graphs, EPISODE_COMPLETED)
+
+
+def test_the_two_pages_carry_the_SUBMISSION_and_ASSESSMENT_framing():
+    """WALK GAP 2's second sentence. The beat's story is *the policy changed
+    between submission and assessment*; before this the two pages both said
+    *assessed as of*, so the page showed two dates and left the story to the
+    narration. The case label carries it, because one reader asks one
+    question and a question naming either moment is false on the other page.
+
+    Guarded on BOTH pages: a label fixed on one case would tell half a story
+    and this fixture is the half that would have been missed."""
+    from decision_records_demo.dr_render_pages import CASES
+
+    assert set(CASES) >= {"assessprior", "assesscurrent"}, sorted(CASES)
+    import inspect
+
+    src = inspect.getsource(CASES["assessprior"]) + inspect.getsource(
+        CASES["assesscurrent"]
+    )
+    assert "as submitted on 2023-06-01" in src, src
+    assert "as assessed on 2024-06-01" in src, src
+    assert "assessed as of" not in src, (
+        "a page still frames both moments as the assessment:\n" + src
+    )
 
 
 def test_no_invented_currency_reaches_the_page():

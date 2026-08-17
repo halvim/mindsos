@@ -45,6 +45,7 @@ SETTLE = "decision_records_demo/dr_settlement.py"
 ROUTING = "decision_records_demo/dr_routing.py"
 BEAT = "decision_records_demo/dr_demo_beat.py"
 ASSESS = "decision_records_demo/dr_assessment.py"
+PAGES = "decision_records_demo/dr_render_pages.py"
 
 GUARD_FILES = (
     "decision_records_demo/test_dr_render_guards.py",
@@ -358,9 +359,16 @@ MUTATIONS = [
     (
         "the as-of date is read under a question the store cannot show",
         ASSESS,
-        'question="As of what date is this claim assessed?"',
+        'question="As of what date is this claim being considered?"',
         'question="Which date applies?"',
         ["test_the_as_of_date_is_a_read_fact_with_its_own_stored_question"],
+    ),
+    (
+        "both beat-4 pages frame themselves as the ASSESSMENT again",
+        PAGES,
+        '"claim CLM-4188, as submitted on 2023-06-01",',
+        '"claim CLM-4188, assessed as of 2023-06-01",',
+        ["test_the_two_pages_carry_the_SUBMISSION_and_ASSESSMENT_framing"],
     ),
     (
         "the deciding fact loses the authority behind it",
@@ -513,7 +521,7 @@ def main() -> int:
         print("  A prediction no run can satisfy is not a prediction. Fix "
               "these before reading anything below.")
         return 5
-    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS)}
+    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS, PAGES)}
     print("== baseline: every guard file green with no mutation applied ==")
     baseline = _red_set()
     if baseline:
@@ -559,7 +567,7 @@ def main() -> int:
             print("  exact")
         print()
 
-    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS)}
+    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS, PAGES)}
     print("== tree restored ==")
     for f in sorted(before):
         mark = "OK " if before[f] == after[f] else "⚠ NOT RESTORED "
