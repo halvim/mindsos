@@ -49,7 +49,12 @@ def test_every_scripted_beat_has_a_runner():
     # And the split the module exists to record: the mechanism shapes are
     # NOT beats. If one of them ever becomes one, this reddens and the
     # docstring gets rewritten rather than quietly becoming wrong.
-    for shape in ("claim", "refusal", "outage", "boundary", "noroute"):
+    # ⚠ policyprior/policycurrent JOINED this list in ship B: beat 4 now runs
+    # the cases that DECIDE against the limit, and the pure lookups stayed as
+    # G5's evidence. A case demoted out of the beats and left in the beat map
+    # is exactly what this loop exists to catch.
+    for shape in ("claim", "refusal", "outage", "boundary", "noroute",
+                  "policyprior", "policycurrent"):
         assert shape in CASES, f"{shape!r} vanished from CASES"
         assert shape not in named, f"{shape!r} is a mechanism shape, not a beat"
     try:

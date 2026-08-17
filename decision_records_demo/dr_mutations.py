@@ -44,6 +44,7 @@ SCREEN = "decision_records_demo/dr_screen.py"
 SETTLE = "decision_records_demo/dr_settlement.py"
 ROUTING = "decision_records_demo/dr_routing.py"
 BEAT = "decision_records_demo/dr_demo_beat.py"
+ASSESS = "decision_records_demo/dr_assessment.py"
 
 GUARD_FILES = (
     "decision_records_demo/test_dr_render_guards.py",
@@ -54,6 +55,7 @@ GUARD_FILES = (
     # should move; that prediction is the reason to say it here rather than
     # to notice it afterwards.
     "decision_records_demo/test_dr_beat_guards.py",
+    "decision_records_demo/test_dr_assessment_guards.py",
 )
 
 #: (name, file, old, new, predicted-red test names)
@@ -132,9 +134,22 @@ MUTATIONS = [
         # the instrument gap rather than maintained by hand.
         "the determining marker is printed on the page",
         RENDER,
-        "        return (record.get(FIELD_QUESTION), answer_node.value)",
-        '        return (str(marker) + " " + str(record.get(FIELD_QUESTION)), answer_node.value)',
-        ["test_the_determining_marker_never_reaches_the_page"],
+        # ⚠ RETARGETED in ship B. `deciding_fact` was split so the deciding
+        # fact's SOURCE could reuse its pairing, and `marker` left that
+        # scope — the anchor stayed ALIVE while its meaning moved, so the
+        # mutation would have raised NameError and reddened by accident
+        # instead of by printing the marker. The harness detects DEAD
+        # anchors, not DISPLACED ones; this is the second failure mode and
+        # it is quieter.
+        '        return [f"   Q. {question} — {_fmt(answer)}."]',
+        '        return [f"   Q. {verdict.get(FIELD_DETERMINED_BY)} {question} — {_fmt(answer)}."]',
+        ["test_the_determining_marker_never_reaches_the_page"            "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_no_invented_currency_reaches_the_page",
+            "test_over_the_limit_the_limit_is_the_deciding_fact",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_under_the_limit_the_amount_is_the_deciding_fact",
+],
     ),
     (
         "a verdict with NO determining input is punished instead of rendered",
@@ -172,21 +187,29 @@ MUTATIONS = [
         [
             "test_the_leaf_road_shows_the_deciding_fact",
             "test_two_unconsumed_values_raise_rather_than_pick_one",
-        ],
+                    "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_no_invented_currency_reaches_the_page",
+            "test_over_the_limit_the_limit_is_the_deciding_fact",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_under_the_limit_the_amount_is_the_deciding_fact",
+],
     ),
     (
         "the completed check asks plain_produced again (a refusal stops counting)",
         RENDER,
         "not terminal.terminal_outcomes():",
         "not terminal.plain_produced():",
-        ["test_a_refusing_leaf_is_a_conclusion_not_a_missing_one"],
+        ["test_a_refusing_leaf_is_a_conclusion_not_a_missing_one"            "test_a_claim_with_no_amount_refuses_in_the_readers_words",
+],
     ),
     (
         "the leaf verdict line wears the first capacity's phrase again",
         RENDER,
         'f"   {analysis.phrase_for_value(produced[0].value)} → "',
         'f"   {analysis.phrase()} → "',
-        ["test_the_leaf_road_shows_the_deciding_fact"],
+        ["test_the_leaf_road_shows_the_deciding_fact"            "test_beat4_page_carries_a_decision_not_two_lookups",
+],
     ),
     (
         "every Q line classifies as a refusal on the screen",
@@ -282,6 +305,89 @@ MUTATIONS = [
             "test_the_closer_rebuilds_the_richest_record_the_room_watched",
         ],
     ),
+    (
+        "the assessment loses its registered phrase",
+        ASSESS,
+        'printable_phrase="assessing the claimed amount against the limit in force"',
+        'printable_phrase="looking the limit up"',
+        ["test_beat4_page_carries_a_decision_not_two_lookups"],
+    ),
+    (
+        "beat 4's two cases collapse onto ONE date",
+        ASSESS,
+        'CASE_ASSESSED_CURRENT = dict(CASE_ASSESSED_PRIOR, assessed_as_of="2024-06-01")',
+        "CASE_ASSESSED_CURRENT = dict(CASE_ASSESSED_PRIOR)",
+        ["test_the_two_dates_pay_different_amounts_and_name_their_editions"],
+    ),
+    (
+        "over the limit, the page credits the AMOUNT for capping the payment",
+        ASSESS,
+        "            DETERMINED_BY: DS_DWELLING_LIMIT,",
+        "            DETERMINED_BY: DS_CLAIMED_AMOUNT,",
+        [
+            "test_over_the_limit_the_limit_is_the_deciding_fact",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_what_is_payable_is_arithmetic_on_the_stored_values",
+        ],
+    ),
+    (
+        "under the limit, the page credits the LIMIT - the two-door other side",
+        ASSESS,
+        "        DETERMINED_BY: DS_CLAIMED_AMOUNT,",
+        "        DETERMINED_BY: DS_DWELLING_LIMIT,",
+        [
+            "test_under_the_limit_the_amount_is_the_deciding_fact",
+            "test_what_is_payable_is_arithmetic_on_the_stored_values",
+        ],
+    ),
+    (
+        "a claim with no amount is DECIDED on instead of refused",
+        ASSESS,
+        "    if claimed is None or limit is None:",
+        "    if limit is None:",
+        ["test_a_claim_with_no_amount_refuses_in_the_readers_words"],
+    ),
+    (
+        "the subtraction is inverted - the room's arithmetic stops matching",
+        ASSESS,
+        "{claimed - limit} above the limit",
+        "{limit - claimed} above the limit",
+        [
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_what_is_payable_is_arithmetic_on_the_stored_values",
+        ],
+    ),
+    (
+        "the as-of date is read under a question the store cannot show",
+        ASSESS,
+        'question="As of what date is this claim assessed?"',
+        'question="Which date applies?"',
+        ["test_the_as_of_date_is_a_read_fact_with_its_own_stored_question"],
+    ),
+    (
+        "the deciding fact loses the authority behind it",
+        RENDER,
+        "        if record.get(FIELD_PRODUCER_KIND) != PRODUCER_POLICY_LOOKUP:\n            return []",
+        "        if True:\n            return []",
+        [
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+        ],
+    ),
+    (
+        "the payable numbers are formatted with an invented separator",
+        ASSESS,
+        'f"{limit} payable,',
+        'f"{limit:,} payable,',
+        [
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+            "test_no_invented_currency_reaches_the_page",
+            "test_the_two_dates_pay_different_amounts_and_name_their_editions",
+            "test_what_is_payable_is_arithmetic_on_the_stored_values",
+        ],
+    ),
 ]
 
 _RUNNER = (
@@ -322,7 +428,7 @@ def _red_set() -> set:
 
 
 def main() -> int:
-    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT)}
+    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS)}
     print("== baseline: every guard file green with no mutation applied ==")
     baseline = _red_set()
     if baseline:
@@ -368,7 +474,7 @@ def main() -> int:
             print("  exact")
         print()
 
-    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT)}
+    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS)}
     print("== tree restored ==")
     for f in sorted(before):
         mark = "OK " if before[f] == after[f] else "⚠ NOT RESTORED "

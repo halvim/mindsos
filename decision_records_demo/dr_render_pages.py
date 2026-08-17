@@ -11,9 +11,13 @@ stops pre-dispatch, empty_domain), noroute (unroutable — manifest-only
 graph), routing (beat 1: one claim, two desks, by position off the am-5
 manifest ids), routingrefusal (beat 2: an in-band member refusal BESIDE
 routed siblings, the missing item named from the stored record),
-policyprior + policycurrent (beat 4: the same claim asked as of two dates,
-naming two editions and two in-force windows — G5's pair), settlement
-(beat 3: the claim cannot be settled until a named document arrives).
+policyprior + policycurrent (the same date question asked against two
+editions — G5's pair, and NO LONGER a beat since ship B gave beat 4 a
+decision), assessprior + assesscurrent (beat 4: one claim of 400,000
+assessed as of two dates, paying 350,000 under the 2023 edition and 375,000
+under the 2024 one — the only decision in this demo the room finishes
+before the page renders), settlement (beat 3: the claim cannot be settled
+until a named document arrives).
 
 ⚠ The case list above was stated as "five" for three ships while the tree
 held seven. It is derived from ``CASES`` by every count that matters (the
@@ -373,6 +377,75 @@ def _case_settlement(client):
     return kl, session, scope
 
 
+def _assessment_harness(scope):
+    """Beat 4's harness: the assessment capacities over a KL holding BOTH
+    editions, through the same production close as every other case.
+    ``scope`` case-unique (§55)."""
+    from mindsos_capacity import CapacityLayer
+    from mindsos_capacity.builtins.consolidate import install_consolidate_capacities
+    from mindsos_intelligence.chain_artifacts import ChainArtifactWriter
+    from mindsos_intelligence.dispatch import L4Dispatcher
+    from mindsos_intelligence.mm import MentalModel
+
+    from decision_records_demo.dr_assessment import (
+        assessment_capacities,
+        assessment_datastates,
+    )
+    from decision_records_demo.dr_dump import _Session
+
+    session = _Session()
+    layer = CapacityLayer()
+    for ds in assessment_datastates():
+        layer.register_datastate(ds, session=session, allow_new_realm=True)
+    for cap in assessment_capacities():
+        layer.register_capacity(cap, session=session)
+    install_consolidate_capacities(layer)
+    kl = _build_kl(EDITION_2023, EDITION_2024)
+    mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
+    dispatcher = L4Dispatcher(layer, session=session, kl=kl)
+    writer = ChainArtifactWriter(mm, scope)
+    return session, kl, mm, dispatcher, writer, writer.emit_request_run()
+
+
+def _assessment_case(client, scope, claim, label):
+    """One claim, assessed as of one date, against a store holding BOTH
+    editions. The pair differ in the as-of date and in nothing else, so a
+    difference between the two pages can only have come from the date."""
+    from decision_records_demo.dr_assessment import (
+        DS_ASSESSED_CLAIM, assessment_plan,
+    )
+
+    session, kl, mm, dispatcher, writer, request_run = _assessment_harness(scope)
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, assessment_plan(), request_run, mm=mm,
+        solve_seed={DS_ASSESSED_CLAIM: dict(claim)},
+        capacity_graphs=graphs, case_label=label,
+    )
+    _close(dispatcher, mm, request_run, scope, "completed", client, graphs)
+    return kl, session, scope
+
+
+def _case_assess_prior(client):
+    """Assessed under the 2023 edition — 350,000 payable, 50,000 above."""
+    from decision_records_demo.dr_assessment import CASE_ASSESSED_PRIOR
+
+    return _assessment_case(
+        client, "drdemo-page-assessprior", CASE_ASSESSED_PRIOR,
+        "claim CLM-4188, assessed as of 2023-06-01",
+    )
+
+
+def _case_assess_current(client):
+    """Assessed under the 2024 edition — 375,000 payable, 25,000 above."""
+    from decision_records_demo.dr_assessment import CASE_ASSESSED_CURRENT
+
+    return _assessment_case(
+        client, "drdemo-page-assesscurrent", CASE_ASSESSED_CURRENT,
+        "claim CLM-4188, assessed as of 2024-06-01",
+    )
+
+
 def _case_routing(client):
     from decision_records_demo.dr_routing import CASE_A_EXPOSURES
 
@@ -393,6 +466,12 @@ def _case_routingrefusal(client):
 from decision_records_demo.dr_settlement import (
     CASE_MISSING_DOCUMENT as _SETTLEMENT_INTAKE,
 )
+from decision_records_demo.dr_assessment import (
+    CASE_ASSESSED_CURRENT as _ASSESS_CURRENT,
+)
+from decision_records_demo.dr_assessment import (
+    CASE_ASSESSED_PRIOR as _ASSESS_PRIOR,
+)
 
 
 def _case_intake(name):
@@ -412,6 +491,8 @@ def _case_intake(name):
         "policyprior": "2023-06-01",
         "policycurrent": "2024-06-01",
         "settlement": dict(_SETTLEMENT_INTAKE),
+        "assessprior": dict(_ASSESS_PRIOR),
+        "assesscurrent": dict(_ASSESS_CURRENT),
         "routing": CASE_A_EXPOSURES,
         "routingrefusal": CASE_B_EXPOSURES,
     }[name]
@@ -425,6 +506,8 @@ CASES = {
     "noroute": _case_noroute,
     "policyprior": _case_policy_prior,
     "policycurrent": _case_policy_current,
+    "assessprior": _case_assess_prior,
+    "assesscurrent": _case_assess_current,
     "settlement": _case_settlement,
     "routing": _case_routing,
     "routingrefusal": _case_routingrefusal,

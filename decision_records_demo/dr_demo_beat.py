@@ -16,9 +16,13 @@ time, against a store that stands for the length of the meeting.
     PYTHONPATH=. python decision_records_demo/dr_demo_beat.py 6
     PYTHONPATH=. python decision_records_demo/dr_demo_beat.py down
 
-**Five of the ten cases are not beats.** `claim`, `refusal`, `outage`,
+**Seven of the twelve cases are not beats.** `claim`, `refusal`, `outage`,
 `boundary` and `noroute` are mechanism shapes — evidence that the renderer
-stops honestly — and the room never sees them. That split was written
+stops honestly — and the room never sees them. ⚠ `policyprior` and
+`policycurrent` JOINED them in ship B: they are the pure dated lookup, and
+beat 4 moved to `assessprior`/`assesscurrent`, which decide something
+against the limit those lookups return. The pair stays in `CASES` because
+G5's guard is written on it; it is no longer shown. That split was written
 nowhere until this module; :data:`BEATS` is now the only place the mapping
 lives, and its case names are checked against `dr_render_pages.CASES`
 test-side so a rename cannot leave a beat pointing at nothing.
@@ -72,7 +76,7 @@ BEATS: Dict[int, Beat] = {
     1: Beat("One claim, two desks.", ("routing",)),
     2: Beat("The refusal, beside an answer.", ("routingrefusal",)),
     3: Beat("The missing document.", ("settlement",)),
-    4: Beat("The policy changed mid-claim.", ("policyprior", "policycurrent")),
+    4: Beat("The policy changed mid-claim.", ("assessprior", "assesscurrent")),
     5: Beat("Unplug the model.", (), kind="guards"),
     6: Beat("A year later.", (), kind="closer"),
 }

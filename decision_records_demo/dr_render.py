@@ -359,6 +359,20 @@ class _Analysis:
         verdict that DECLARES one whose question or answer cannot be found
         RAISES: that is a gap, and G2 is raise, never fill.
         """
+        nodes = self._deciding_nodes(verdict)
+        if nodes is None:
+            return None
+        answer_node, record_node = nodes
+        record = record_node.value
+        return (record.get(FIELD_QUESTION), answer_node.value)
+
+    def _deciding_nodes(self, verdict: Any):
+        """The (answer, record) node pair the determining marker names, with
+        every check :meth:`deciding_fact` documents. Split out 2026-08-17
+        (ship B) so the SOURCE of the deciding fact can be rendered beside it
+        without re-deriving the pairing — two callers deriving the same pair
+        by different routes is how a page ends up citing one record's
+        authority over another record's answer."""
         if not isinstance(verdict, dict):
             return None
         marker = verdict.get(FIELD_DETERMINED_BY)
@@ -389,7 +403,37 @@ class _Analysis:
                 "whose own record does not admit it — a verdict standing on a "
                 "refusal is incoherent, and the page will not carry it"
             )
-        return (record.get(FIELD_QUESTION), answer_node.value)
+        return (answer_node, record_node)
+
+    def deciding_source_lines(self, verdict: Any) -> List[str]:
+        """The authority behind the fact that DECIDED, when it has one.
+
+        **Why this exists.** :func:`_source_lines` associates a record with a
+        value by SAME CAPACITY, which is right and which means beat 4's
+        assessment page named no edition at all: the limit is produced by the
+        policy lookup, the conclusion by the capacity that decided against
+        it, and nothing joined them. A Record that prints *"350000 payable"*
+        without saying which edition said 350000 shows the effect and hides
+        the reason — the exact defect :func:`_source_lines` was written for,
+        one hop further out.
+
+        **It reuses the marker's own pairing**, so the authority printed is
+        the authority of the answer printed directly above it, never a
+        record that merely happens to be in the graph. A deciding fact whose
+        record is not a policy record renders nothing: routing's readers
+        cite no edition, and inventing a line for them is not this method's
+        business.
+        """
+        nodes = self._deciding_nodes(verdict)
+        if nodes is None:
+            return []
+        record = nodes[1].value
+        if not isinstance(record, dict):
+            return []
+        if record.get(FIELD_PRODUCER_KIND) != PRODUCER_POLICY_LOOKUP:
+            return []
+        line = _source_line_from_record(record)
+        return [line] if line else []
 
     def _unconsumed(self, nodes: List[Any]) -> List[Any]:
         """Of ``nodes``, those with no outgoing ``CONSUMES`` edge."""
@@ -530,25 +574,37 @@ def _source_lines(analysis: "_Analysis", node: Any) -> List[str]:
     """
     lines: List[str] = []
     for record in analysis.policy_records_for(node):
-        missing = sorted(
-            field for field in (record.get(FIELD_SUPPLIED_FIELDS) or ())
-            if record.get(field) in (None, "")
-        )
-        if missing:
-            raise RendererGapError(
-                "a source record admits a value but is missing the field(s) "
-                f"its own producer declares it always supplies: {missing!r} — "
-                "refusing to name an authority the stored evidence cannot pin"
-            )
-        phrase = record.get(FIELD_SOURCE_PHRASE)
-        version = record.get(FIELD_SOURCE_VERSION)
-        if not phrase or not version:
-            continue
-        ends = record.get(FIELD_IN_FORCE_TO)
-        window = f"in force from {record.get(FIELD_IN_FORCE_FROM)}"
-        window += f" to {ends}" if ends not in (None, "") else " onwards"
-        lines.append(f"   Source: {phrase}, version {version}, {window}.")
+        line = _source_line_from_record(record)
+        if line:
+            lines.append(line)
     return lines
+
+
+def _source_line_from_record(record: Dict[str, Any]) -> Optional[str]:
+    """One admitted policy record -> its Source line, or ``None``.
+
+    Extracted 2026-08-17 (ship B) so :meth:`_Analysis.deciding_source_lines`
+    renders the SAME sentence from the SAME fields; a second formatter would
+    drift from this one on the first edition that has no end date.
+    """
+    missing = sorted(
+        field for field in (record.get(FIELD_SUPPLIED_FIELDS) or ())
+        if record.get(field) in (None, "")
+    )
+    if missing:
+        raise RendererGapError(
+            "a source record admits a value but is missing the field(s) "
+            f"its own producer declares it always supplies: {missing!r} — "
+            "refusing to name an authority the stored evidence cannot pin"
+        )
+    phrase = record.get(FIELD_SOURCE_PHRASE)
+    version = record.get(FIELD_SOURCE_VERSION)
+    if not phrase or not version:
+        return None
+    ends = record.get(FIELD_IN_FORCE_TO)
+    window = f"in force from {record.get(FIELD_IN_FORCE_FROM)}"
+    window += f" to {ends}" if ends not in (None, "") else " onwards"
+    return f"   Source: {phrase}, version {version}, {window}."
 
 
 def _member_block(member: "_Analysis", entry: Any) -> List[str]:
@@ -571,6 +627,9 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
     produced = next((n for n in member.produced if n.value == entry), None)
     if produced is not None:
         lines.extend(_source_lines(member, produced))
+    for line in member.deciding_source_lines(entry):
+        if line not in lines:
+            lines.append(line)
     return lines
 
 
@@ -847,6 +906,9 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                     f"{_verdict_text(produced[0].value)}"
                 )
                 lines.extend(_source_lines(analysis, produced[0]))
+                for line in analysis.deciding_source_lines(produced[0].value):
+                    if line not in lines:
+                        lines.append(line)
             elif not analysis.graph.edges:
                 for description in (
                     analysis.manifest.get("declared_starts") or {}
