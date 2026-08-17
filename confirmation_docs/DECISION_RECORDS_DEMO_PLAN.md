@@ -90,16 +90,41 @@ an input is changed in front of them, and the Record reacts"* — half gate, hal
 wish. Split, on the critic lane's condition (§91 Q1), the same move that
 rescued Gate 4:
 
-- **THE GATE — mechanical, and it can go red.** *An input edit made in front of
-  the room changes the rendered Record, and the changed page NAMES the changed
-  value and its source.* Checked by re-running with the edited input and
-  diffing the pages: the diff must be non-empty and must contain the new value
-  and its named edition or source. Ship C carries this as a guard; a mutation
-  that makes the edit inert reddens it.
-- **THE FIXTURE-DESIGN RULE — enforced at rehearsal, not by a test.** *Every
-  live case's expected outcome must be derivable by mental arithmetic from
-  values visible on screen.* This is a property of the CASES, so no test can
-  assert it; it is checked in the rehearsal walkthrough (prereq 4).
+- **THE GATE — mechanical, and it can go red. AMENDED 2026-08-17 (owner),
+  after the critic lane RAN the edits instead of reading the sentence.** *An
+  input edit made in front of the room changes the rendered Record, and the
+  changed page NAMES the changed value and its source.* Checked by re-running
+  with the edited input and diffing the pages: **the diff must be non-empty
+  and must contain the new value; the changed page must name that value's
+  source WHERE THE STORE HOLDS ONE.** The guard's rehearsed edit is chosen so
+  the **determining fact does not move**; the **equality edit** — where the
+  limit stops binding, the page re-credits the claimed amount and stops citing
+  the edition — is pinned as its own guard, **behavior shown, not gated**.
+  Ship C carries both; a mutation that makes the edit inert reddens the first.
+
+  ⚠ **Why the original wording could not be met.** It required the diff to
+  contain the new value *and its named edition or source*. On an amounts-only
+  edit the Source line does not move, so it is context and never enters the
+  diff — and on the equality edit it leaves the page altogether. Read
+  literally, the gate was unsatisfiable on the surface §0.3 item 4 rules
+  editable, which would have made ship C depend on
+  `decision-records-as-of-date-validity`. **That dependency does not exist
+  under this wording.**
+
+- **THE FIXTURE-DESIGN RULE — enforced at rehearsal, not by a test. RE-WORDED
+  2026-08-17 (owner).** *Every case whose OUTCOME the room is asked to
+  anticipate must be derivable from values visible on screen; a case shown for
+  refusal or rule-following must instead make the deciding or missing item
+  visible on screen before the page renders.* This is a property of the CASES,
+  so no test can assert it; it is checked in the rehearsal walkthrough
+  (prereq 4).
+
+  ⚠ **The one-clause original — *"every live case's expected outcome must be
+  derivable by mental arithmetic"* — condemned beats 1, 2 and 3**, which
+  contain no arithmetic and never will. Half of an acceptance criterion that
+  cannot be met is the drift the Gate-4 split exists to remove. The second
+  clause is not a softening: it is what ships A and B already built, so it
+  costs nothing to satisfy and it would have caught the walk's own gaps.
 
 **3. SARA on the live screen is REJECTED** — open decision 10 records the four
 reasons. The need underneath it is real and unchanged: Phases 1–3 supply the
@@ -299,20 +324,92 @@ is untouched.
   decision 6's drift warning in a new costume. **Claim discipline in the
   interval, and it is a rule: until D is green, nobody says "the model reads"
   in a room.**
-- **OPEN, owner-owned: is the quote-verification refusal COURTED?** Choosing a
-  source that genuinely lacks the fact, so the model overreaches and is caught
-  live, is the strongest moment available in this demo. It is honest **if and
-  only if the gap is disclosed BEFORE the run** — *"this email never states the
-  severity; watch what each does"* — because the line between rigged and
-  designed is concealment. Undisclosed it is a gotcha and the lane will not
-  build it. Ruling outstanding; the plan text stands either way.
+- ⚠ **RULED 2026-08-17 (owner): the quote-verification refusal IS COURTED,
+  and it is DISCLOSED BEFORE THE RUN.** Choosing a source that genuinely lacks
+  the fact, so the model overreaches and is caught live, is the strongest
+  moment available in this demo — and it is honest **if and only if** the room
+  is told first: *"this email never states the severity; watch what each
+  does."* The line between rigged and designed is concealment, so the
+  disclosure is not a courtesy, it is the condition. **Undisclosed, the lane
+  will not build it and the beat is not run.** The disclosure line rides in
+  the script on the beat card beside the weaker gate's name.
 - Second rehearsal case, never the room's first prose contact: a source with
   MULTIPLE candidate values (a prior injury in the history), where
   disambiguation is the work.
 
 Reasoning and the critic round: `DR_CRITIC_COORDINATION.md` §95–§97.
 
-**11. What this section does NOT change.** Phase 7's intake stays STRUCTURED
+**11. THE RENDERER'S VOICE — where it ends. Owner-ratified 2026-08-17
+(coordination §100 Q2, §109.3), and it is general rather than a fix.**
+
+> The renderer may describe **the Record's LIMITS** — meta, case-invariant,
+> true of every Record rendered from a store, which is what makes *"Decided
+> date: not available from stored evidence"* chrome. It may **never describe
+> the case's OUTCOME**. Outcome words belong to the capacity that decided, or
+> failed to; a refusal-capable producer owes registered words for what it
+> could not do, and a refusing leaf without them RAISES.
+
+The one-sentence form is in `RULES.md` §11 so it binds every lane, not this
+one. ⚠ **It has a live consequence in ship C:** the comparison words the
+beat-4 verdict adopts (item 12, step 5) are minted in the deciding capacity
+and never in the renderer — a comparison word arriving from layout chrome is
+exactly what this rule reddens.
+
+**12. THE ROAD TO v1 — the ordered steps, owner-approved 2026-08-17.** Recorded
+here because a plan of record that states gates and never states the sequence
+is how the two owner-owned items sat unowned for a week.
+
+| # | Step | Owner | Done when |
+|---|---|---|---|
+| 1 | **This ship** — the acceptance re-wordings, the gate amendment, ship D's ruling, the renderer's voice, this table | lane | merged to `main` |
+| 2 | **Ship D's courted refusal** — nothing built; rides in the script on the beat card | lane (text), owner (delivery) | in the script |
+| 3 | **The §12.5 full-matrix re-run** — a SEPARATE lane costs it and produces the exact commands and nothing else; **the OWNER runs them** and reads the output (§11: the dump is the owner's); findings get dispositioned in STATE in the same ship | owner, scoped by a lane | commands run, findings dispositioned |
+| 4 | **Screen B and the rehearsals** — prereq 3 ruled (below), the paste files built with ship C, then ONE full dry run both screens beats 0–7 with nothing fixed mid-run, then per-beat reps aimed at what it exposed, with the parry drilled separately | owner | dry run done, reps logged |
+| 5 | **Ship C** — amounts only, dates SHOWN LOCKED, the gate guard in the shape item 2 now specifies, the comparison-led verdict, and the paste files step 4 needs | lane | merged + tagged |
+
+**Step 4's prereq 3 is RULED (owner 2026-08-17):** with intake structured,
+*paste-identical* means **pasting the structured record to the model
+verbatim** — satisfiable for claims, unlike SARA where open decision 10
+correctly calls it impossible. It sharpens beat 5 for free: the model reads
+the same intake the system reads and still cannot say which edition governed.
+
+**Step 5's verdict change, and the pushback that caused it.** Owner, 2026-08-17:
+*arithmetic can be done by anything and may not read as intelligence — it will
+be confused with an algorithm; a comparison could show some intelligence.*
+Correct, and it names a real failure mode: `400000 − 350000 = 50000` is the
+CHECK, not the claim, and it is the one operation a room can dismiss as a
+spreadsheet. **The verdict leads with the comparison and keeps the operands as
+evidence** — *"exceeds the limit in force — 350000 payable of 400000 claimed"*,
+and *"within the limit in force — 300000 payable in full"*. The room does the
+arithmetic; the system does the judgment. Four conditions (critic §111.1): the
+comparison words are minted in the deciding capacity; three guard re-cuts land
+in the same ship, including the §103 collision fixture whose assert keys on the
+removed token; the equality guard is drafted against the NEW phrasing from the
+start; and beat 4's magnitude movement survives in the two editions' operands
+(350,000 vs 375,000) without the difference token.
+
+⚠ **What is NOT the intelligence, stated so nobody defends the wrong thing in
+a room:** the subtraction. **What IS, and it is already built:** which limit
+applied — two editions, selected by a date, the in-force window named; which
+input DECIDED, and the page re-crediting itself when the limit stops binding;
+and, a year later, which edition it decided under. A spreadsheet compares. It
+does not tell you which policy edition governed February.
+
+**13. OPEN, owner-owned: the TRANSFER LINE.** A room that does not do claims
+needs one sentence per beat naming what the beat is an INSTANCE of — versioned
+rules, a determining condition, an honest refusal. Critic §111.2's distinction
+is what keeps this section closed and is reusable: **walk gap 6 was re-wording
+EXISTING narration for quality, and stays refused; a transfer line changes what
+each beat CLAIMS TO BE, for an audience the owner named in a dated statement,
+which is new content with a new cause and enters by owner ruling** — the same
+door the live inputs console walked through. **Bounded in advance:** one
+sentence per beat, on the beat card beside the disclosure line, drafted at
+rehearsal against the dry run, **never in code, never a paragraph**. Ruled out,
+the transfer burden falls entirely on beat 7's ask, which was built to carry
+it. **The lane will not draft it before the ruling** — an undated drift into
+narration is the only wrong outcome.
+
+**14. What this section does NOT change.** Phase 7's intake stays STRUCTURED
 (open decision 9). The beats stay the operative scope text. Phases 1–3 remain
 the committed following block at a green Gate 7 (open decision 6) — v1 does not
 reorder them, and any proposal that makes v1 depend on SARA does.
