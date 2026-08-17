@@ -410,9 +410,44 @@
       "branch_to_open": "feat/<slice> off main",
       "spec": "mindsos_intelligence/execution.py MEMBER_RETRY_CAP / _run_one_member retry loop",
       "consumer": "any transport-backed member capacity (Phase 5+)"
+    },
+    {
+      "name": "dr-needs-input-missing-item-translation",
+      "status": "OPENED 2026-08-16 by the Phase 7 demo lane, NOT BUILT. A needs_input stop renders 'Stopped: more information was needed before going on' and CANNOT SAY WHAT. NeedsInput.missing is a DataState IRI; dr_render suppresses IRI-valued stop details (G6, correctly - printing datastate:... in a room is the sin); and the run manifest carries only declared_starts / capacity_phrases / stop_reason_phrases / case_label, with declared_starts covering STARTS only - the missing item is not a start. So NO manifest field maps an arbitrary DataState IRI to its registered description. Demo plan Gate 3 filed this as a Phase-3 concern ('NeedsInput.missing is a DataState IRI today - G6 covers the translation'); it is a PHASE-7 blocker for the substrate version of beat 3. THIS IS THE ONLY VERSION OF BEAT 3 THAT DIFFERS IN SUBSTRATE FROM BEAT 2 (stop-and-ask vs refuse-in-band); the shipped beat 3 is the in-band form and says so.",
+      "branch_to_open": "feat/<slice> off main",
+      "spec": "mindsos_intelligence/capacity_mm_writer.py (manifest fields); decision_records_demo/dr_render.py stop_lines",
+      "consumer": "the Decision Records demo (beat 3, the substrate version)"
+    },
+    {
+      "name": "dr-leaf-member-refusal-divergence",
+      "status": "OPENED 2026-08-16 by the Phase 7 demo lane, NOT BUILT, and it is a CONTRACT question rather than a defect to patch. The MEMBER road ignores a refusal-shaped record beside a verdict that does NOT refuse (coordination s76: a reader refusal on an input the decision never consulted is legitimate noise - a vehicle exposure needs no severity). The LEAF road does the opposite: it renders the refusal and the produced verdict is never shown. CONSEQUENCE: on the leaf road a decision that ANSWERS despite a refusing reader is invisible on the page, so 'confidently wrong' is not observable there. An alignment was WRITTEN and REVERTED in the beat-3 ship because no guard could distinguish it from the prior behaviour - inert code that looks load-bearing is worse than none. Ruling needed before it is written again.",
+      "branch_to_open": "feat/<slice> off main",
+      "spec": "decision_records_demo/dr_render.py leaf road vs manifest road; coordination s76",
+      "consumer": "the Decision Records demo (any leaf whose decision consults a refusing reader)"
+    },
+    {
+      "name": "dr-demo-v1-gaps",
+      "status": "OPENED 2026-08-17 by the FIRST end-to-end walk of the demo (owner + chat, beats 1-6 live on the Linux box at cfe1bd8). NOT a defect list - it is the v1 scope input, and every item was found by LOOKING at pages while 56 guards were green. THE ONE FINDING: the pages show WHAT, not WHY - demo plan section 2.3's form (question -> answer -> therefore) is achieved ONLY WHEN THE SYSTEM REFUSES; successful decisions render item -> verdict with no question and no reason, so refusals are better documented than answers, backwards for a product whose claim 1 is 'the reasoning IS the record'. The reasoning is ALREADY IN THE GRAPH (the routing readers store their questions and answers with origins); dr_render consults origin records only when refusing. FULL RANKED LIST + the room-facing text defects: projects/decision_records_demo/DR_DEMO_WALK_2026-08-17.md. Gaps 1-3 stand between this and a v1; 4-6 are an afternoon.",
+      "branch_to_open": "feat/<slice> off main",
+      "spec": "projects/decision_records_demo/DR_DEMO_WALK_2026-08-17.md",
+      "consumer": "the Decision Records demo v1"
     }
   ],
   "recent": [
+    {
+      "kind": "demo",
+      "name": "Decision Records - the per-beat runner, and the beat-to-case map",
+      "sha": "cfe1bd8 (squash of demo/dr-beat onto demo/decision-records, PR #174; 3 files +381/-1); tag dr-beat-confirmed",
+      "gate": "none by design - NO mindsos_* diff vs dr-partial-record-confirmed. Demo guards 53 -> 56; four mutations, each reddening exactly one test.",
+      "what": "OWNER RULING 2026-08-17, an addition to Phase 7's frozen scope. The Gate-7 driver runs every case in a batch and writes files: it measures the machine and CANNOT PERFORM THE SCRIPT. The script says Screen A shows the Record 'as it is produced', and clicking pre-rendered HTML while saying that is the RULES 11 sin in a new costume; beat 6 (kill the app, rerun from the store alone) is a command run in the room and no screen can stand in for it. dr_demo_beat.py: up / 1-6 / down / list. One beat, live, against a standing store - prints the page raw between markers, writes the screen, reports the path. THE BEAT-TO-CASE MAP is now in decision_records_demo/README.md and is the ONLY place it exists: FIVE OF THE TEN CASES ARE NOT BEATS (claim, refusal, outage, boundary, noroute are mechanism shapes the room never sees). Missing that split is why ten rendered screens did not read as a demo. The memo carried between beats holds a capacity_root_ref and NOTHING ELSE (guarded): the closer physically cannot print a page it saved rather than one the store rebuilt (D9). The closer refuses on an empty memo instead of falling back - rebuilding a Record from a different meeting looks identical to rebuilding this one."
+    },
+    {
+      "kind": "demo",
+      "name": "Decision Records - Phase 7 build: the Gate-7 cold-run driver, and beats 3, 4, 5",
+      "sha": "310bfe3 (squash of demo/dr-phase7 onto demo/decision-records, PR #173; 4 commits; 9 files +1247/-17); tag dr-phase7-confirmed",
+      "gate": "none by design - NO mindsos_* diff vs dr-partial-record-confirmed (verified empty). Demo guards 39 -> 53, each new guard shown RED by a named mutation.",
+      "what": "Gate 7's operative clause - 'run cold on a laptop three times with no operator intervention' - existed in NO scope text and was four operator commands plus a human judgement. dr_demo_run.py makes it one command: each run its own container AND its own subprocess, the store asserted EMPTY before any case executes, unconditional teardown, exit code = verdict. Beat 4 (the policy source line: edition + in-force window; two cases differing only in the as-of date) - the ADMITTED policy-lookup path had never been rendered, every prior policy case refused or stopped. Beat 3 (the missing document) - same in-band refusal mechanism as beat 2, said so in the docstring. Beat 5 (the model's absence, checked). FINDINGS: the member road's refusal-with-no-stored-words raise had NEVER been exercised (found by removing it and watching every guard stay green) - now guarded. pinned_core was THREE SHIPS STALE here and in the demo README, and the lane's gate check reads against it, so a green branch reported 8 core files / 842 insertions - read the pin off the TREE. TWO renderer changes were written, found INERT (no guard could tell them from the prior behaviour) and REVERTED rather than shipped. Mutation runs need PYTHONDONTWRITEBYTECODE=1: a same-length mutation reverted inside one second leaves the mutated .pyc cached (mtime+size unchanged), so 'reverted, green again' silently re-runs the mutation - the --build trap in Python form. GATE 7 RUN 2026-08-16 on the Linux box: 53 guards passed (predicted exactly), then 'cold runs: 3, failed: 0', exit 0."
+    },
     {
       "kind": "core",
       "name": "Decision Records - the model seam: a transport, and the catch-all that told customers their document was unreadable",
@@ -1423,8 +1458,8 @@
       "home": "decision_records_demo/ at repo root - exists ONLY on the demo branch, never on main (RULES 1)",
       "branch": "demo/decision-records",
       "worktree": "MindsOS-dr",
-      "pinned_core": "dr-fold-grounding-confirmed",
-      "status": "ITEM 7 RENDERER landed (a10b58e, 2026-08-14): dr_render.py (G1-pure page, question->answer->therefore, raise-never-fill) + dr_render_pages.py (the s12 command: five cases from a real Falkor) + 11 guard tests. Also carries dr_dump.py (11 shapes, zero-dep) and dr_persist_smoke.py. Next: critic stage-2, then Layer B. *** INTAKE SHAPE RULED 2026-08-16 (owner, demo plan open decision 9): STRUCTURED - the Phase 7 demo runs with NO MODEL AND NO TRANSPORT, which is what Gate 7 amendment (a) already specified. CONSEQUENCE: the transport (PR #169) is NOT a Phase-7 blocker; it is a Phase-5/6 prerequisite that arrived early, and Phase 7 now has no undecided input. The variant MUST be named in the room. Reversed only if Mauricio's scheduled Gate-7 question returns 'the hard part is reading the email, not routing the exposures', which would falsify the BEAT rather than the intake. *** *** READ confirmation_docs/DECISION_RECORDS_PHASE_7_HANDOFF.md FIRST for the Phase 7 lane - it carries the 2026-08-16 rulings, what Phase 7 still has to build, the Gate 4 / Gate 7 conditions verified against the tree, and the traps this lane has actually fallen into. ***"
+      "pinned_core": "dr-partial-record-confirmed",
+      "status": "PHASE 7 BUILD COMPLETE, 2026-08-17. Two ships onto demo/decision-records: 310bfe3 (tag dr-phase7-confirmed, PR #173) = the Gate-7 cold-run driver + beats 3/4/5; cfe1bd8 (tag dr-beat-confirmed, PR #174) = the per-beat runner + the beat-to-case map. 56 demo guards (render 29, screen 9, run 5, routing 4, no-model 3, beat 3, dump 3); no mindsos_* diff vs the pinned core. *** GATE 7: THE MECHANICAL CLAUSE IS GREEN (2026-08-16, Linux box /home/sanmyaku/mindsos): three cold runs, no operator intervention, exit 0. STILL OWED: (i) Mauricio's two questions, inside Gate 7's acceptance, asked BEFORE the demo is shown outside; (ii) the demo is not v1 - the first end-to-end WALK happened 2026-08-17 and found six ranked gaps, recorded in projects/decision_records_demo/DR_DEMO_WALK_2026-08-17.md. READ THAT FILE before scoping v1. *** SCOPE RULING 2026-08-16 (owner): Phase 7's freeze is the demo script's SEVEN BEATS (projects/decision_records_demo/DR_DEMO_SCRIPT.md), not demo plan section 5's 'five synthetic cases; batch pass'. The per-beat runner (2026-08-17) is an owner-ruled addition to that freeze. *** INTAKE: STRUCTURED, no model, no transport (open decision 9)."
     }
   },
   "safety_net": {

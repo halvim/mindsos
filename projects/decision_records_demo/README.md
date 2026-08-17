@@ -7,6 +7,18 @@ Governing plan: `confirmation_docs/DECISION_RECORDS_DEMO_PLAN.md` (the record of
 Build order: `confirmation_docs/DECISION_RECORDS_V0_PLAN.md`, which **replaces `DECISION_RECORDS_V0_SLICE_PLAN.md` outright** — the older file is still on disk and must not be built from.
 Cross-lane agreements: `confirmation_docs/DECISION_RECORDS_AGREED_CHANGES.md`.
 
+⚠ **START HERE, 2026-08-17.** Phase 7 is BUILT and the demo has been walked
+once. Read in this order:
+
+1. `STATE.json` `demos.decision_records` — what shipped, and Gate 7's real status.
+2. `DR_DEMO_WALK_2026-08-17.md` (this folder) — the first end-to-end walk: what
+   each beat put on screen, and the six gaps that define v1.
+3. `DR_DEMO_SCRIPT.md` (this folder) — the beats. **It is the operative text for
+   Phase 7's frozen scope** (demo plan §0.2), amended 2026-08-17.
+4. `decision_records_demo/README.md` on `demo/decision-records` — the code, the
+   run commands, and the beat-to-case map. **Five of the ten cases are not
+   beats.**
+
 This folder holds **demo and evidence research** — domain material, sourced taxonomies,
 scenario notes. Design decisions do not live here; they go in the confirmation docs.
 

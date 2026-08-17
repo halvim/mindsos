@@ -8,6 +8,14 @@ lane: demo/decision-records (worktree MindsOS-dr) — NOT a core lane
 
 # Phase 7 handoff — what was decided 2026-08-16, and where to read the rest
 
+⚠ **SUPERSEDED IN PART, 2026-08-17 — PHASE 7 IS BUILT.** §2 below (*"what
+Phase 7 still has to build"*) is **stale**: items 1 and 2 had already shipped
+when this was written (`a4d4b0b`, `dr_routing.py`), and item 3 shipped as beats
+3–5. Its §3 (the gates) and §4 (the traps) still stand. **Current state:**
+`STATE.json` `demos.decision_records`, then
+`projects/decision_records_demo/DR_DEMO_WALK_2026-08-17.md`. **Gate 7's
+mechanical clause is GREEN; Gate 7 is not** — see demo plan §5 Phase 7.
+
 **This document does not restate the plan.** It records what changed on
 2026-08-16, names the files that hold everything else, and lists the traps this
 lane has actually fallen into. Read `DECISION_RECORDS_DEMO_PLAN.md` for the plan
