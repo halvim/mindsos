@@ -491,6 +491,47 @@ courted-refusal problem one level up and invisible.
 land in the STORE. A file is trusted; a Record is re-derived. **Show the
 asymmetry** — it is the closer.
 
+⚠ **3a. THE EXTRACTION CONTRACT — the model returns STATED FACTS, never
+CONCLUSIONS. Owner ruling 2026-08-17, and it is the difference between a demo
+that runs and one that refuses everything.**
+
+*Inference from language is the model's conclusion; it is not ours.* So the
+extractor is asked for what the message SAYS — `hospital_transfer: yes`,
+`off_work_weeks: 6`, `paramedic_assessment: yes` — and **never for
+`severity: severe`**, which is a conclusion. The stored routing policy (item 7
+step 2) then TIERS those facts: *transferred from scene, or off work four weeks
+or more → the specialty injury unit.*
+
+**Three consequences, and the second one was a live defect in this lane's own
+reasoning:**
+
+- **The conclusion moves to our side of the line, where it is checkable.**
+  MindsOS still concludes — deriving *severe* from *six weeks* IS the thinking —
+  but only by applying a stored rule to a stated fact. The line is **language
+  versus rules**, not inference versus none: the model interprets prose, we apply
+  a rule that can be read and argued with.
+- ⚠ **It rescues quote-verification, and the build lane's earlier argument for
+  the cheap extractor was WRONG in its reasoning even though its conclusion
+  held.** `comprehension_v0` locates the value's quote in the source, which works
+  only for values LITERALLY PRESENT. Asked for `severity: severe`, no quote
+  exists and it would refuse **every single time** — the demo would not run at
+  all. Under this contract every component is quotable (*"at least six weeks"*,
+  *"transferred from scene"*), so a weak extractor that invents something still
+  degrades to a refusal rather than to a wrong answer. **Recorded because the
+  right answer for the wrong reason is the shape RULES §12 keeps charging this
+  lane for.**
+- **The stored routing policy gains real content.** It stops being
+  *"severe → specialty"* — a restatement of a Python conditional — and becomes
+  the tier thresholds, which is a policy a claims manager can read, disagree
+  with, and ask to have changed. That is also what makes the staged parry land:
+  there is now something specific to decline changing.
+
+**The refusal gets sharper, not weaker.** A person mentioned with a paramedic
+assessment and NO off-work period and NO transfer cannot be tiered, so the Record
+names the missing component — while a model asked for a conclusion will very
+likely supply *"minor, routine desk"* and be confidently wrong. That is beat 1's
+contrast, and it exists because of this contract rather than in spite of it.
+
 **4. FORM B is chosen (owner, after three mockups): ORIGIN-PER-FACT.** The
 message stays on screen; each fact is lifted out and marked with WHO produced it
 (`read_by_model` vs `read_from_source`); the decision cites which fact moved it.
