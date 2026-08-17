@@ -21,6 +21,12 @@ from decision_records_demo.dr_render import (
 )
 from decision_records_demo.dr_routing import (
     CASE_A_EXPOSURES,
+    CASE_A_EXPOSURES_2023,
+    MEASURED_AGAINST,
+    ROUTING_EDITION_2023,
+    ROUTING_EDITION_2024,
+    DS_THRESHOLD,
+    routing_policy_file,
     DETERMINED_BY,
     DS_COVERAGE,
     DS_DESK,
@@ -44,7 +50,7 @@ EPISODE_COMPLETED = {
 }
 
 
-def _routing_graphs(exposures, **harness_kw):
+def _routing_graphs(exposures, **harness_kw):  # noqa: D401
     mm, dispatcher, writer, request_run = routing_harness(**harness_kw)
     graphs: list = []
     execution.run(
@@ -464,6 +470,146 @@ def test_a_refusing_verdict_with_no_exposure_name_raises():
         )
     out = _assign(**{DS_DESKS: [{"decision": ROUTINE_DESK}]})
     assert "1 exposure to " + ROUTINE_DESK in str(out), out
+
+
+# ── step 2: the rule is stored, dated, and SHOWN ───────────────────────
+
+def test_the_routing_rule_is_not_a_literal_in_this_module():
+    """Plan §0.4 item 7 step 2's whole point: *without it our side of step iv
+    is source code.* The comparison stays; the NUMBER it compares against comes
+    out of a dated store. Checked on `_route`'s own source, because a threshold
+    that crept back as a constant would still pass every page assertion below —
+    they would just be asserting about a hardcoded 4."""
+    import inspect
+
+    from decision_records_demo import dr_routing
+
+    body = inspect.getsource(dr_routing._route)
+    digits = [ch for ch in body if ch.isdigit()]
+    assert not digits, (
+        "a numeric literal is back inside the routing decision — the rule "
+        f"belongs in the store: {body}"
+    )
+
+
+def test_two_editions_route_the_SAME_exposure_to_different_desks():
+    """Beat 4's claim, on the routing beats: **which edition governed.** Six
+    weeks off work clears the 2024 threshold of four and does NOT clear the
+    2023 threshold of eight, so one fixture and two dates produce two desks —
+    and each page names the edition that sent him there. Nothing about the
+    claim changed; only the rule in force did."""
+    now = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
+    then = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES_2023), EPISODE_COMPLETED)
+    now_block = now.split("C. Mensah")[1].split("Therefore")[0]
+    then_block = then.split("C. Mensah")[1].split("Therefore")[0]
+    assert SPECIALTY_UNIT in now_block and ROUTINE_DESK in then_block, (
+        now_block + "\n----\n" + then_block
+    )
+    assert "v2024.1" in now_block and "v2023.1" in then_block, (
+        "a page decided under an edition it does not name:\n"
+        + now_block + "\n----\n" + then_block
+    )
+    assert "— 6." in now_block and "— 6." in then_block, (
+        "the claimant's fact moved between the two runs; only the rule may"
+    )
+
+
+def test_the_page_names_the_rule_it_was_measured_against_and_its_window():
+    """**Stored is not shown**, and this is the guard that says so. Found by a
+    probe: with the threshold in the store and no rule line, the page named the
+    claimant's six weeks and nothing about the policy at all — the lookup ran,
+    reached the decision, and never reached the page."""
+    page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
+    mensah = page.split("C. Mensah")[1].split("Therefore")[0]
+    assert "Q. What off-work threshold" in mensah, mensah
+    assert "— 4." in mensah, mensah
+    assert "Source: the injury-routing policy, version v2024.1" in mensah, mensah
+    assert "in force from 2024-01-01" in mensah, (
+        "the edition is named without the window it was in force:\n" + mensah
+    )
+
+
+def test_the_deciding_fact_stays_the_persons_fact_and_the_rule_is_a_second_line():
+    """⚠ **The threshold is not the deciding fact.** *"Because he is off work
+    six weeks"* is what a room hears; *"because the threshold is four"* is the
+    rule. Two structural fields, two lines, and the ORDER is the argument: the
+    claimant's fact, then what it was tested against, then where he went."""
+    graphs = _routing_graphs(CASE_A_EXPOSURES)
+    verdicts = [
+        node.value for graph in graphs for node in graph.nodes.values()
+        if isinstance(getattr(node, "value", None), dict)
+        and node.value.get("decision") == SPECIALTY_UNIT
+    ]
+    assert verdicts, "no specialty verdict was produced"
+    for verdict in verdicts:
+        assert verdict.get(DETERMINED_BY) == DS_OFF_WORK, verdict
+        assert verdict.get(MEASURED_AGAINST) == DS_THRESHOLD, verdict
+    page = render_from_graphs(graphs, EPISODE_COMPLETED)
+    mensah = page.split("C. Mensah")[1].split("Therefore")[0]
+    fact_at = mensah.find("Q. How many weeks off work")
+    rule_at = mensah.find("Q. What off-work threshold")
+    verdict_at = mensah.find("choosing the desk")
+    assert -1 < fact_at < rule_at < verdict_at, mensah
+
+
+def test_the_boundary_routes_at_EXACTLY_the_threshold_and_below_it_does_not():
+    """Both doors of the comparison the whole ship exists to move into the
+    store. Four weeks is the threshold: four goes to the specialty unit, three
+    does not. A guard that only exercised six would pass on `>` and on `>=`
+    alike."""
+    for weeks, desk in ((4, SPECIALTY_UNIT), (3, ROUTINE_DESK)):
+        case = [dict(CASE_A_EXPOSURES[2], off_work_weeks=weeks)]
+        page = render_from_graphs(_routing_graphs(case), EPISODE_COMPLETED)
+        assert desk in page, (weeks, page)
+
+
+def test_a_REFUSAL_carries_no_rule_line_because_no_rule_was_applied():
+    """**A page citing an authority it did not consult is the same defect as a
+    renderer composing an outcome word** (§0.3 item 11), one hop further out.
+    D. Laurent states no off-work period, so the comparison never happened and
+    the policy must not appear on his block — even though it appears twice on
+    the same page for other exposures."""
+    page = render_from_graphs(_routing_graphs(CASE_B_EXPOSURES), EPISODE_COMPLETED)
+    laurent = page.split("D. Laurent")[1].split("Therefore")[0]
+    assert "the injury-routing policy" not in laurent, laurent
+    assert "Q. What off-work threshold" not in laurent, laurent
+    assert "Source:" in page, (
+        "the fixture stopped citing the policy anywhere, so this guard would "
+        "pass on a page that lost the rule line entirely"
+    )
+
+
+def test_no_edition_in_force_REFUSES_IN_BAND_in_the_lookups_own_words():
+    """A DIFFERENT refusal from a missing fact, and the distinction is the
+    product: the claimant's document was complete and OUR policy set was not.
+    `policy_lookup_v0` returns None with its own origin record rather than
+    raising, so the page carries the lookup's words and the run stays
+    renderable."""
+    page = render_from_graphs(
+        _routing_graphs(CASE_A_EXPOSURES, editions=(ROUTING_EDITION_2023,)),
+        EPISODE_COMPLETED,
+    )
+    assert SPECIALTY_UNIT not in page, (
+        "an exposure routed with no rule in force:\n" + page
+    )
+    assert "the injury-routing policy" in page, (
+        "the page does not say which authority could not be consulted:\n" + page
+    )
+    assert "not yet assigned: C. Mensah" in page, page
+
+
+def test_the_policy_FILE_is_stored_words_only():
+    """*Printable as the file the model is given* (step 2). Every line of it is
+    the edition's own — version, window, threshold, text. A file this lane
+    composed out of prose we wrote would be the renderer's-voice defect with a
+    filename on it."""
+    text = routing_policy_file("2026-06-03")
+    assert "v2024.1" in text and "2024-01-01" in text, text
+    assert ROUTING_EDITION_2024["text"] in text, text
+    assert "8" not in text, ("the 2023 threshold leaked into the 2024 file:\n" + text)
+    assert routing_policy_file("2019-01-01") == "", (
+        "a file was invented for a date no edition covers"
+    )
 
 
 if __name__ == "__main__":

@@ -528,6 +528,44 @@ def routing_harness(*, decodes_refusals: bool = True, editions=None):
     return mm, dispatcher, writer, writer.emit_request_run()
 
 
+def routing_policy_file(as_of: str, *editions) -> str:
+    """The stored routing policy, as the FILE a room is shown and a model is
+    given (plan §0.4 item 7 step 2).
+
+    ⚠ **It is composed of stored words only.** The edition's own text, its
+    version and its window — nothing this function writes. A "policy file" the
+    demo assembled out of prose we wrote would be the renderer's-voice defect
+    (§0.3 item 11) wearing a filename.
+
+    Returns the empty string when no edition covers the date, because that is
+    also the truth and a file invented for an uncovered date is worse than
+    none.
+    """
+    from mindsos_knowledge.policies import (
+        NoEditionInForceError,
+        PROP_IN_FORCE_FROM,
+        PROP_IN_FORCE_TO,
+        PROP_STATED_VALUE,
+        PROP_VERSION,
+        edition_in_force,
+    )
+
+    kl = routing_kl(*editions)
+    try:
+        node = edition_in_force(kl.global_view(), policy_id=ROUTING_POLICY_ID,
+                                as_of=as_of)
+    except NoEditionInForceError:
+        return ""
+    props = node.properties or {}
+    until = props.get(PROP_IN_FORCE_TO) or "onwards"
+    return (
+        f"{ROUTING_POLICY_PHRASE}, version {props.get(PROP_VERSION)}\n"
+        f"in force {props.get(PROP_IN_FORCE_FROM)} to {until}\n"
+        f"threshold: {props.get(PROP_STATED_VALUE)}\n"
+        f"{node.payload}"
+    )
+
+
 def routing_plan() -> PlanResult:
     return PlanResult(
         plan_ref="plan:drdemo-routing",
