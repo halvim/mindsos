@@ -59,6 +59,13 @@ GUARD_FILES = (
     "decision_records_demo/test_dr_assessment_guards.py",
 )
 
+#: ⚠ **THE ECHO RULE COUPLED TWO REGIONS OF THE PAGE (ship B).** The intake
+#: line now drops values that appear in the deciding QUESTION or the VERDICT
+#: sentence, so a mutation that changes either of those changes the intake
+#: line as well. Eight predictions written before that coupling existed were
+#: wrong in the same direction on the first run after it landed — they are
+#: widened below, each because the mutation genuinely disturbs a second
+#: region, not because the output was copied back.
 #: (name, file, old, new, predicted-red test names)
 MUTATIONS = [
     (
@@ -195,6 +202,9 @@ MUTATIONS = [
             "test_the_two_dates_pay_different_amounts_and_name_their_editions",
             "test_two_unconsumed_values_raise_rather_than_pick_one",
             "test_under_the_limit_the_amount_is_the_deciding_fact",
+            "test_a_short_intake_value_survives_when_it_only_LOOKS_echoed",
+            "test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE",
+            "test_the_intake_line_does_not_echo_the_deciding_QUESTION",
         ],
     ),
     (
@@ -315,7 +325,12 @@ MUTATIONS = [
         ASSESS,
         'printable_phrase="assessing the claimed amount against the limit in force"',
         'printable_phrase="looking the limit up"',
-        ["test_beat4_page_carries_a_decision_not_two_lookups"],
+        [
+            # The refusal guard asserts the whole verdict line, phrase
+            # included, since the cannot-phrase contract landed.
+            "test_a_claim_with_no_amount_refuses_in_the_readers_words",
+            "test_beat4_page_carries_a_decision_not_two_lookups",
+        ],
     ),
     (
         "beat 4's two cases collapse onto ONE date",
@@ -334,6 +349,7 @@ MUTATIONS = [
             "test_the_deciding_fact_carries_the_authority_behind_it",
             "test_the_two_dates_pay_different_amounts_and_name_their_editions",
             "test_what_is_payable_is_arithmetic_on_the_stored_values",
+            "test_the_intake_line_does_not_echo_the_deciding_QUESTION",
         ],
     ),
     (
@@ -398,6 +414,7 @@ MUTATIONS = [
             "test_no_invented_currency_reaches_the_page",
             "test_the_two_dates_pay_different_amounts_and_name_their_editions",
             "test_what_is_payable_is_arithmetic_on_the_stored_values",
+            "test_the_intake_line_does_not_echo_the_VERDICT_SENTENCE",
         ],
     ),
     (
@@ -411,6 +428,8 @@ MUTATIONS = [
             # call site.
             "test_a_refusing_leaf_names_the_decision_it_could_not_make",
             "test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one",
+            "test_a_claim_with_no_amount_refuses_in_the_readers_words",
+            "test_a_refusing_leaf_with_no_words_of_its_own_raises",
         ],
     ),
     (
@@ -448,7 +467,16 @@ MUTATIONS = [
         SETTLE,
         'CANNOT_SETTLE = "cannot be settled"',
         'CANNOT_SETTLE = ""',
-        ["test_a_refusing_leaf_names_the_decision_it_could_not_make"],
+        [
+            # An EMPTY phrase is not a MISSING one: the field is still there
+            # and falsy, so the strip-fixture finds nothing and its
+            # `stripped == 1` drift assertion fires. That is the fixture
+            # refusing to pass on a premise that stopped being true.
+            "test_a_refusing_leaf_is_a_conclusion_not_a_missing_one",
+            "test_a_refusing_leaf_names_the_decision_it_could_not_make",
+            "test_a_refusing_leaf_with_no_words_of_its_own_raises",
+            "test_beat3_missing_document_names_what_to_fetch",
+        ],
     ),
     (
         "the ASSESSMENT loses its own words - the contract's second member",
@@ -463,8 +491,11 @@ MUTATIONS = [
         "                if not said:",
         "                if False:",
         [
-            "test_a_claim_with_no_amount_refuses_in_the_readers_words",
-            "test_a_refusing_leaf_names_the_decision_it_could_not_make",
+            # ⚠ ONE name, not three. `if False:` only reaches the path where a
+            # phrase is MISSING; every shipped producer supplies one, so the
+            # line renders normally and only the strip-fixture guard notices.
+            # The first prediction assumed a mutation broke a path it does
+            # not touch.
             "test_a_refusing_leaf_with_no_words_of_its_own_raises",
         ],
     ),
@@ -476,6 +507,9 @@ MUTATIONS = [
         [
             "test_a_refusing_leaf_names_the_decision_it_could_not_make",
             "test_the_field_name_is_spelled_the_same_in_all_three_places",
+            "test_a_refusing_leaf_is_a_conclusion_not_a_missing_one",
+            "test_a_refusing_leaf_with_no_words_of_its_own_raises",
+            "test_beat3_missing_document_names_what_to_fetch",
         ],
     ),
     (
