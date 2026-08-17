@@ -373,7 +373,25 @@ nine prediction misses and zero code defects:**
   Both are findings about the prediction, and neither is fixed by copying the
   actual set back.
 
-All four are practice, not code. They cost nothing and they close the gap
+**And a fifth, added 2026-08-17 after a mutation row predicted one guard and
+reddened two:**
+
+- **A NEW GUARD SHARING AN EXISTING ROW'S CLAIM WIDENS THAT ROW.** *"One
+  mutation per new guard"* silently assumes rows and guards stay one-to-one.
+  They stop being one-to-one the moment two guards assert the same claim from
+  different angles — which is exactly what a review round asks for when it says
+  *"that sentence is wider than its check, so guard the half that is true."*
+  The row written first is the one left behind: it was correct when it was
+  written and nothing in the harness can know that a later guard now shares its
+  claim. **When a ship adds a guard, re-read the rows that already touch its
+  code, not only the row it is adding.** *(Earned in the Decision Records
+  transport: deleting a credential scrub broke both the exception-chain claim
+  and the composed-request claim; the row added in the same commit predicted two
+  and came back exact, while the older row predicted one. The miss was in the
+  ordinary direction — too few reds — and it was only visible because the
+  prediction was written in BOTH directions.)*
+
+All five are practice, not code. They cost nothing and they close the gap
 between *"a guard that cannot go red is worse than none"* (§9) and the moment
 a guard is actually shown to go red.
 
