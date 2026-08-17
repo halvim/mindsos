@@ -581,7 +581,52 @@ accretion is how the refusal rule stops meaning anything.**
 item 4(a) bans logic from the EDITABLE file, not from the store; beat 7's *no
 live rule-authoring, ever* is unamended.
 
-**8. What this section does NOT change.** The renderer's voice (§0.3 item 11).
+**8. FOUR RULINGS, 2026-08-17, taken before step 1 — and each is chosen for the
+OUTCOME rather than for what the code currently is.**
+
+**(a) AN INDEPENDENT REVIEWER EXISTS.** The critic lane is re-created from tag
+`dr-critic-probes-archive` and is given the §116 claims before anything else.
+**Reason, and it is not procedural:** that lane found the guard that passed for
+the wrong reason, the census hole a reducer in family `derivation` could walk
+through, and both acceptance clauses that could not be met — and the two largest
+errors of 2026-08-17 were the build lane's own, both caught by someone reading
+them back rather than by the lane that wrote them. **The demo's credibility rests
+on claims about what the system can PROVE**, and this lane has now been wrong
+twice about exactly that. ⟹ **No ship past step 1 merges without a stage-2 hold.**
+
+**(b) THE CLAIM BECOMES STRUCTURAL INCAPACITY, AND THE FOUR GUARDS LAND IN THE
+SAME SHIP AS THE PIN BUMP.** After step 3 a model is inside the demo, so
+`test_dr_no_model_guards.py`'s three assertions — the pinned core carries no
+model seam, no demo module imports it, no case produces a value a model read —
+are all false. They are replaced, in the same ship, by the four of §0.3 item 10:
+no capacity in `origin_v0.DECISION_SHAPED_CATEGORIES` declares `consults_llm`;
+no verdict carries `read_by_model`; every model reading is quote-verified or
+refused; and **the CENSUS** pins the set declaring `consults_llm` to exactly the
+enumerated readers. **Not after.** Bumping first and guarding later ships an
+interval in which the demo can support NEITHER claim. Beat 5's line becomes
+*"the model read this line, and here is why it could not have decided it"* —
+stronger than an absence, and the only version compatible with an email beat.
+
+**(c) EVERY SHOWN BEAT STARTS FROM A DOCUMENT.** Beat 4 currently starts from
+`CASE_ASSESSED_PRIOR`, a Python mapping carrying `assessed_as_of` and
+`claimed_amount`. Its input becomes an **assessment note** stating the date and
+the claimed amount in prose; the same extractor reads it; the `policy_lookup_v0`
+lookup and the tier comparison work unchanged. **Reason:** a room that watches
+one beat read a real document and the others start from values it cannot see
+discounts all of them — the same defect §0.4 item 1 records, arriving by a
+different door. One canned beat costs more than it saves.
+
+**(d) SCREEN A IS A BROWSER PAGE, NOT A TERMINAL.** `dr_demo_beat.py` prints the
+page raw AND writes an HTML screen through `dr_screen`; which one the room sees
+was never decided. **It is the page.** Form B — the message with highlighted
+spans beside fact cards marked `read_by_model` or `read_from_source` — cannot be
+rendered in a terminal, and the medium is what made the dry run read as a slide
+show. ⚠ **The constraint is unchanged and it is what keeps the page evidence:**
+the screen is TYPOGRAPHY OVER THE RENDERER'S FACTS, `dr_screen`'s fact-equality
+guard stays intact, and the page never becomes a second source of facts. **Raw
+terminal output remains the evidence offered if challenged, never the show.**
+
+**9. What this section does NOT change.** The renderer's voice (§0.3 item 11).
 The transfer line, ruled at two sentences (§0.3 item 13). The amended gate and
 fixture-design rule (§0.3 item 2). The refusal boundary — this system can refuse
 only for a reason a READER recorded. The owner-owned items: the RULES §12.5
