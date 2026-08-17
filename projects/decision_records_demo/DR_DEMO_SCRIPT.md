@@ -191,8 +191,17 @@ Reuses beat 2 with ONE reader swapped, so the two pages differ in origin and
 nothing else. **Until it is green, nobody says "the model reads" in a room**
 (plan §0.3 item 10).
 
-- **Beat card, verbatim when it runs:** *"live-provider, rehearsal-gated;
-  everything else you saw runs cold."*
+- ⚠ **Beat card, REPLACED 2026-08-17** (plan §0.5 item 6). The withdrawn line
+  was *"live-provider, rehearsal-gated; everything else you saw runs cold."*
+  Ruling 8(c) makes every shown beat start from a document read by the model,
+  so **nothing the room watches runs cold** and that sentence would be untrue,
+  spoken out loud, in the room. **Verbatim when it runs:** *"every beat you saw
+  read a real document, live."*
+- **The fallback is `replay.py`, and it is ANNOUNCED** — out loud, when used.
+  Open decision 9's D9 rule is unamended: a demo running from saved answers is
+  a scripted demo and deserves to be called one. **Gate 7 no longer covers any
+  shown beat**; it covers the cases the room never sees, and this line says so
+  rather than leaving the inference to whoever reads the stronger gate.
 - **The disclosure, spoken BEFORE the run and never after** (owner ruling
   2026-08-17, the courted refusal): *"this email never states the severity;
   watch what each does."* Undisclosed, the beat is not run.
