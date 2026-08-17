@@ -575,16 +575,29 @@ def test_the_boundary_routes_at_EXACTLY_the_threshold_and_below_it_does_not():
         assert desk in page, (weeks, page)
 
 
-def test_a_REFUSAL_carries_no_rule_line_because_no_rule_was_applied():
+def test_an_exposure_that_consulted_no_rule_cites_none():
     """**A page citing an authority it did not consult is the same defect as a
     renderer composing an outcome word** (§0.3 item 11), one hop further out.
-    D. Laurent states no off-work period, so the comparison never happened and
-    the policy must not appear on his block — even though it appears twice on
-    the same page for other exposures."""
+
+    ⚠ **This guard was first written on the REFUSAL and COULD NOT FAIL.** Its
+    mutation reddened nothing: the refusal road never calls ``rule_lines`` at
+    all, so D. Laurent's block is rule-free structurally, whatever the verdict
+    carries. The claim was right and the SUBJECT was wrong. **A. Silva is where
+    it can fail** — a vehicle exposure routes on coverage alone, goes through
+    the same member-lines road that renders the rule, and would cite the policy
+    the moment the marker appeared on that branch.
+
+    Both are checked, and the refusal is kept as the weaker half rather than
+    dropped: it is still true, and its truth now has a stated reason."""
     page = render_from_graphs(_routing_graphs(CASE_B_EXPOSURES), EPISODE_COMPLETED)
+    silva = page.split("A. Silva")[1].split("B. Osei")[0]
+    assert "the injury-routing policy" not in silva, (
+        "an exposure routed on coverage alone cites a rule it never "
+        "consulted:\n" + silva
+    )
+    assert "Q. What off-work threshold" not in silva, silva
     laurent = page.split("D. Laurent")[1].split("Therefore")[0]
     assert "the injury-routing policy" not in laurent, laurent
-    assert "Q. What off-work threshold" not in laurent, laurent
     assert "Source:" in page, (
         "the fixture stopped citing the policy anywhere, so this guard would "
         "pass on a page that lost the rule line entirely"

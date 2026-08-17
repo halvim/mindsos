@@ -135,12 +135,18 @@ MUTATIONS = [
         RENDER,
         "    lines.extend(member.deciding_lines(entry))\n",
         "",
+        # WIDENED in step 2, and the reason is RULES §12's fifth practice
+        # rule: two new guards assert this row's claim from a second angle —
+        # the deciding fact's POSITION beside the rule line, and both editions'
+        # pages carrying it. The style guard left the set: the refusal road no
+        # longer reaches that comparison.
         [
             "test_only_the_deciding_read_reaches_the_page",
             "test_case_a_one_claim_two_desks",
             "test_case_b_refusal_beside_answers_names_the_item",
-            "test_the_deciding_fact_and_the_refusal_do_not_share_a_style",
+            "test_the_deciding_fact_stays_the_persons_fact_and_the_rule_is_a_second_line",
             "test_the_intake_line_does_not_echo_the_deciding_fact",
+            "test_two_editions_route_the_SAME_exposure_to_different_desks",
         ],
     ),
     (
@@ -252,8 +258,12 @@ MUTATIONS = [
         ROUTING,
         """        parts.append(f"{len(pending)} not yet assigned: {'; '.join(pending)}")""",
         """        parts.append(f"{len(pending)} cannot be assigned yet - see the exposure above")""",
+        # WIDENED in step 2: the no-edition guard reads the CLAIM LINE to
+        # prove a rule-less exposure lands in "not yet assigned", so it shares
+        # this row's claim from the other end of the page.
         [
             "test_case_b_refusal_beside_answers_names_the_item",
+            "test_no_edition_in_force_REFUSES_IN_BAND_in_the_lookups_own_words",
             "test_the_claim_line_names_the_pending_exposure",
             "test_the_member_road_does_not_gain_the_refusal_verdict_line",
         ],
@@ -289,8 +299,10 @@ MUTATIONS = [
         ROUTING,
         "        pending.append(ref)",
         "        pending.append(EXPOSURE_REF)",
+        # WIDENED in step 2, same reason as the row above.
         [
             "test_case_b_refusal_beside_answers_names_the_item",
+            "test_no_edition_in_force_REFUSES_IN_BAND_in_the_lookups_own_words",
             "test_the_claim_line_names_the_pending_exposure",
             "test_the_exposure_field_name_never_reaches_the_page",
             "test_the_member_road_does_not_gain_the_refusal_verdict_line",
@@ -712,9 +724,13 @@ MUTATIONS = [
         RENDER,
         "        if record.get(FIELD_PRODUCER_KIND) == PRODUCER_POLICY_LOOKUP:",
         "        if False:",
-        # Three claims read the Source line: the window, the two editions, and
-        # the assessment guard's re-cut door.
+        # FOUR claims read the Source line, not three. ⚠ The fourth is the
+        # refusal guard's own VACUITY CHECK — it asserts "Source:" appears
+        # SOMEWHERE so that it cannot pass on a page that lost the rule line
+        # entirely. **A vacuity check is a claim too**, and it belongs in the
+        # prediction like any other.
         [
+            "test_an_exposure_that_consulted_no_rule_cites_none",
             "test_the_page_names_the_rule_it_was_measured_against_and_its_window",
             "test_two_editions_route_the_SAME_exposure_to_different_desks",
             "test_the_deciding_fact_carries_the_authority_behind_it",
@@ -741,12 +757,20 @@ MUTATIONS = [
         ["test_the_boundary_routes_at_EXACTLY_the_threshold_and_below_it_does_not"],
     ),
     (
-        "a REFUSAL cites the policy it never reached",
+        "an exposure that consulted NO rule cites one anyway",
         ROUTING,
-        "        return _verdict(decision=None, refusal_reason=REFUSAL_FIELD_ABSENT)",
-        "        return _verdict(decision=None, refusal_reason=REFUSAL_FIELD_ABSENT,\n"
-        "                        **{MEASURED_AGAINST: DS_THRESHOLD})",
-        ["test_a_REFUSAL_carries_no_rule_line_because_no_rule_was_applied"],
+        "        return _verdict(decision=ROUTINE_DESK, **{DETERMINED_BY: DS_COVERAGE})",
+        "        return _verdict(decision=ROUTINE_DESK,\n"
+        "                        **{DETERMINED_BY: DS_COVERAGE,\n"
+        "                           MEASURED_AGAINST: DS_THRESHOLD})",
+        # ⚠ RE-AIMED after the first version REDDENED NOTHING. It put the
+        # marker on the REFUSAL branch — and the refusal road never calls
+        # ``rule_lines`` at all, so the guard could not fail whatever the
+        # verdict carried. The claim was right; the LEVER was on a road where
+        # the claim is structurally true. A VEHICLE exposure goes through the
+        # member-lines road, consults no rule, and is where citing one can
+        # actually happen.
+        ["test_an_exposure_that_consulted_no_rule_cites_none"],
     ),
     (
         "no edition in force is not noticed, and the comparison runs on None",
