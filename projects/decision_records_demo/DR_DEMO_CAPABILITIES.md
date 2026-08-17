@@ -89,6 +89,29 @@ Every line below is a thing the code performs, not a thing the design permits.
   human did the reading. The honest sentence in the room is *"intake here is
   structured; reading prose is the next variant, and its seam shipped
   2026-08-16."*
+- ⚠ **When it does read prose, it cannot establish that a read VALUE follows
+  from its quote.** Added 2026-08-17 from RUNS, not from reading:
+  `comprehension_v0.locate_quote` binds **quote → source** only. Nothing binds
+  **value → quote**, nothing binds the quote to the field or the question, and
+  `expected_basis` is recorded (`:345`) and compared nowhere. Critic probe
+  `probe_reader_weak_model.py`: value `2` under the true quote *"off work for
+  at least six weeks"* is **admitted with `quote_verified: True`**; value `6`
+  under the quote *"Dear team,"* is **admitted**. ⟹ the mechanism catches
+  **fabrication**, not **misreading**. **The sentence that must never be said
+  again** — and it was in the plan until this ship — is *"a cheap extractor
+  degrades to a refusal rather than a wrong answer"*. Filed as
+  `dr-value-span-binding`; the ruling is plan §0.5 item 2.
+- ⚠ **It cannot extract a COLLECTION from a document with per-member
+  verification.** `build_reader` is one reader per DataState IRI with one quote
+  per value, and `coerce_to_shape` returns `opaque`, `list` and `record` shapes
+  untouched (`:257`) — a `record` shape's declared fields are never compared to
+  the members, and `extraction_schema` reaches the transport (`:411`) unchecked
+  against the reply. Critic probe `probe_collection_reader.py`: a reply carrying
+  an invented claimant *"K. Invented"* and an invented peril *"flood damage"*,
+  under the true quote *"Two of our people"*, is **admitted with
+  `quote_verified: True`**. ⟹ **the step that decides which exposures exist has
+  no check, and every checked step is downstream of it.** Filed as
+  `dr-collection-extraction-per-member`; the ruling is plan §0.5 item 3.
 - **It adjudicates ONE thing: an amount against a dated limit.** Narrowed
   from *"it cannot adjudicate anything"* by ship B rather than removed, because
   §2.5 specifies **clean approval, clean denial and policy exception** and only
@@ -155,6 +178,15 @@ both screens. Neither is closed by building anything.
 **Not addressed by any ship, and staying on the "cannot" list:** prose intake,
 the decided date, the stop-and-ask translation, planning, and any number that is
 not ours.
+
+⚠ **Two entries were ADDED to the cannot list on 2026-08-17 without any ship
+touching the code** (plan §0.5 items 2 and 3): the value↔quote binding and
+per-member collection verification. **That is this file working as designed and
+it is worth naming.** Both were believed closed — the plan asserted a cheap
+extractor was *"safe structurally"* — and both were opened by the critic lane
+RUNNING the mechanism the build lane had only read. A capability list derived
+from prose would still say the opposite. Reasoning of record:
+`DR_CRITIC_COORDINATION.md` §118, §120, §121 (untracked, shared checkout).
 
 ## 3a. Instruments — not demo, never shown
 

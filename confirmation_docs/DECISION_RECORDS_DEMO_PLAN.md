@@ -634,6 +634,249 @@ full-matrix re-run, and rehearsals.
 
 ---
 
+## 0.5 THE EIGHT RULINGS, 2026-08-17 — after the critic round, and §0.4 is CORRECTED rather than extended
+
+**Read `DR_CRITIC_COORDINATION.md` §118, §120 and §121 before this section**
+(untracked, shared checkout). §0.4 stays as the record of the re-freeze; **this
+section supersedes it on items 3a, 5, 6 and 8(b)**, and everything else in §0.4
+and §0.3 stands.
+
+⚠ **Why a correction and not an amendment.** Two sentences of §0.4 were
+statements about what the code PROVES, and both were falsified by runs the
+build lane could not perform. A plan of record that accretes around a false
+sentence is how the demo ends up asserting something in a room that no guard
+supports. The withdrawn text is quoted here so nobody re-derives it from the
+older section.
+
+---
+
+**1. WITHDRAWN — §0.4 item 3a's second consequence, and item 5's *"cheap is
+safe structurally"*.** The withdrawn claim, verbatim: *"a weak extractor that
+invents something still degrades to a refusal rather than to a wrong answer"*,
+and *"asked for `severity: severe`, no quote exists and it would refuse every
+single time."*
+
+**Falsified by run**, critic lane, `probe_reader_weak_model.py` (§118.1) and
+`probe_collection_reader.py` (§120.1), on the `ead3bd1` extract:
+
+- `locate_quote` binds **quote → source**. Nothing binds **value → quote**,
+  nothing binds the quote to the field or the question, and `expected_basis` is
+  recorded at `comprehension_v0.py:345` and compared nowhere.
+- Run C: value `2` under the true quote *"off work for at least six weeks"* —
+  **admitted, `quote_verified: True`**.
+- Run D: value `6` under the quote *"Dear team,"* — **admitted**. Any substring
+  certifies any value.
+
+⟹ The mechanism catches **fabrication** and not **misreading**, and misreading
+is the commoner failure. The extraction contract still stands, but on its FIRST
+consequence only: *the conclusion moves to our side of the line, where it is
+checkable.* **Nothing in this plan may again describe the cheap extractor as
+structurally safe.**
+
+---
+
+**2. THE READER CONTRACT — a comprehension reader may return only WORDS THAT
+ARE IN THE DOCUMENT. Owner ruling 2026-08-17.**
+
+The reader asks for the **surface form** — `off_work_period: "at least six
+weeks"`, `str`-shaped — and the span check is then exact: the value IS the
+verified quote. **The conversion is ours**, by a stored, dated, printable table
+read the way the dwelling limit is (`policy_lookup_v0`), sitting beside item 4's
+tier threshold in the same file the room is shown.
+
+⚠ **This is §0.4 item 3a applied one level down, and the level below was where
+it leaked.** `off_work_weeks: 6` is not in the document — it is a conversion,
+and the model was doing it. Under the contract the model returns what the
+message SAYS and MindsOS applies the stored rule; a normalised integer already
+breaks that.
+
+**The rejected repair, recorded because it was this lane's and it was wrong.**
+*"A value is admitted only if it appears inside its verified span"* was refuted
+by its own baseline case (§120.4): `A_correct → value_in_span: False`, because
+documents write *"six weeks"* and decisions compare `6`. As stated it would have
+refused every honest prose number — the exact failure §0.4 3a was ruled to
+prevent, proposed by the lane that had just written that it must not recur.
+
+**Cost, priced rather than glossed:** a room edit rephrasing a true fact outside
+the stored table (*"brought straight from the crash site"*) **refuses on a
+truth**. That lands on ship C's email-edit surface, so the phrase inventory is a
+REHEARSAL artifact and not only a test fixture. `coerce_to_shape`'s `int` path
+stops being the guard for these fields; `str` shape plus span-equality is.
+
+Filed as `dr-value-span-binding`.
+
+---
+
+**3. THE EXPOSURE SPLIT — span-per-member, or structured and shown. NEVER one
+opaque reader. Owner ruling 2026-08-17.**
+
+`build_reader` is one reader per DataState IRI with one quote per value, and
+`coerce_to_shape` returns `opaque`, `list` and `record` shapes **untouched**
+(`comprehension_v0.py:257`); a `record` shape's declared fields are never
+compared to the members, and `extraction_schema` reaches the transport
+(`:411`) and is never checked against the reply.
+
+**Run (§120.1):** a scripted reply carrying an invented claimant *"K. Invented"*
+and an invented peril *"flood damage"*, under the true quote *"Two of our
+people"* — **admitted, `quote_verified: True`.**
+
+⟹ **The step that decides WHICH EXPOSURES EXIST has no check, and every checked
+step is downstream of it.** The ruling:
+
+- **Preferred:** the model marks **spans** — one text range per exposure — and
+  each range becomes the source document for that exposure's readers, so each
+  reader carries its own located quote.
+- **Fallback if span-marking proves unreliable at step 3:** the split is
+  structured and SHOWN on screen. Visible structure is honest; unverifiable
+  extraction is not.
+- **Refused outright:** a single reader returning a list or record of members.
+
+Filed as `dr-collection-extraction-per-member`. **No step-3 slice whose
+collection comes from an opaque or `record`-shaped reply may be proposed.**
+
+---
+
+**4. THE TIER POLICY IS ONE THRESHOLD AT v1 — *off work four weeks or more →
+the specialty injury unit*. Owner ruling 2026-08-17.**
+
+§0.4 item 3a's disjunction — *transferred from scene, **or** off work four weeks
+or more* — is withdrawn for v1. **The reason is ship A, not simplicity:** the
+chosen fixture states BOTH for C. Mensah, `DETERMINED_BY` (`dr_routing.py:125`)
+holds exactly one DataState, and `dr_render.deciding_fact` renders that one — so
+the page would state a reason that is not counterfactually the reason. Removing
+the named fact would change no outcome.
+
+⚠ **The deciding-fact line is the sharpest sentence the demo says**, and a
+satisfied disjunction has no single read that decided. A second trigger returns
+when `DETERMINED_BY` can carry a set and the renderer can state *"either of
+these was sufficient"* — new content, a second ruling, with a dated cause.
+
+*"Transferred from scene"* stays in the fixture as a stated fact the Record
+shows and the policy does not tier on.
+
+---
+
+**5. THE DATE — a malformed date is a finding about the INPUT, never our
+outage. Owner-taken 2026-08-17, and it is now on the critical path for 8(c).**
+
+Run (§120.2), the real `edition_in_force` plus the real `policy_lookup_v0`
+exception routing. **The sentence the room gets today, verbatim:**
+
+> *"the dwelling-coverage limit policy could not be consulted, because a date
+> involved could not be read. This is a fault on our side and is never a finding
+> about the case."*
+
+`edition_in_force` (`mindsos_knowledge/policies.py:139`) parses ISO and raises
+`ValueError`; `policy_lookup_v0.py:279` catches it and raises the our-fault
+stop. **`2023/06/01` — a reasonable model rendering — also raises**, and
+`coerce_to_shape` has no date shape at all.
+
+⟹ §0.4 item 8(c) puts beat 4's `assessed_as_of` on a path where **the model's
+formatting produces a page blaming our own store**. This is
+`decision-records-as-of-date-validity`, already owner-taken, and it now blocks
+8(c) rather than only ship C's editable surface. **Until it closes, beat 4's
+assessment note states the date in the exact form the reader admits.** Console
+validation remains a stopgap and never the fix.
+
+---
+
+**6. EVERY SHOWN BEAT IS LIVE, AND THE BEAT CARD SAYS SO. Owner ruling
+2026-08-17. This replaces §0.4 item 6's narrowing.**
+
+The withdrawn card, verbatim: *"live-provider, rehearsal-gated; everything else
+you saw runs cold."* Under 8(c) every shown beat starts from a document read by
+the model, so **nothing the room watches runs cold** and that sentence is untrue,
+spoken out loud, in the room.
+
+**The replacement, verbatim on the beat card:** *"every beat you saw read a real
+document, live."*
+
+**The fallback is `replay.py` and it is ANNOUNCED**, out loud, when used — open
+decision 9's D9 rule unamended: a demo running from saved answers is a scripted
+demo and deserves to be called one. Gate 7 keeps its scope and covers the cases
+the room never sees; it no longer covers any shown beat, and the plan says so
+here rather than leaving the inference to a reader.
+
+---
+
+**7. THE CENSUS COUNTS THE REGISTERED SET. §0.3 item 10 (iv) and §0.4 item 8(b)
+are RE-WORDED HERE, before the ship that carries them.**
+
+The withdrawn evidence, verbatim: *"`consults_llm=True` appears on exactly one
+capacity in the repo, so the census's correct value today is 1."*
+
+**That counted `comprehension_v0.py:578` — a line inside `build_reader`, which
+is a FACTORY, not a capacity. The registered set at the time was EMPTY.**
+Demonstrated by run (§120.3, `probe_census_and_fix.py`): two `build_reader`
+calls give `count_with_flag: 2` while the source grep still returns one line.
+
+**Two guards, two numbers, and never one standing for both:**
+
+- **THE CENSUS** — the **registered catalog's** `consults_llm` set, across
+  **Global and the caller's Local** (the scope `assert_not_an_outcome` already
+  defends, for the same reason), pinned to the enumerated reader NAMES. Red when
+  anything joins it, reader or not.
+- **THE TRIPWIRE** — a separate one-line check over source text for new
+  DECLARING CODE SITES. Its correct value is *exactly one `consults_llm=True`
+  literal: the factory* — a constant, and stated as one.
+
+⚠ **This section exists so that the ship implementing 8(b) implements a correct
+sentence.** A ship that silently fixes the text it was told to build is the
+shaped-to-pass ordering RULES §12 refuses. Filed as
+`dr-consults-llm-census-measurement`.
+
+---
+
+**8. THE MODEL'S IDENTITY IS STORED AND NEVER RENDERED. Owner ruling
+2026-08-17.**
+
+`LiveLLM.read` stamps `model_id` and `model_version` into every payload
+(*"Provenance is stamped here, never taken from the response"*); `origin_v0`
+carries `FIELD_MODEL_ID` / `FIELD_MODEL_VERSION`; and
+`dr_render._Analysis.deciding_source_lines` (`:426`) renders the deciding fact's
+origin record. **Nothing between them excludes a provider, model, endpoint or
+key from the page** — §88's T-F1 finding, one render path away at step 3.
+
+- **The Record STORES it.** An auditor may ask which model read the email, and a
+  Record that cannot answer is worse than one that can.
+- **The page NEVER shows it**, pinned by a guard whose designated mutation is
+  adding the field to the rendered set.
+
+Filed as `dr-model-identity-never-rendered`.
+
+---
+
+**9. STEP 1 TAKES NO PIN BUMP. Owner ruling 2026-08-17.**
+
+`verify_transport` (`mindsos_capacity/llm/contract.py`) is product code written
+so a deployment can prove its own transport, and it is **absent from `df57033`**
+— the demo's pinned core carries no `llm/` package at all (§118.4 / §120,
+AST-clean on both trees). Step 1 therefore ships with `verify_transport` run
+from the **`main` checkout, by the owner, as evidence**, and the ship record says
+so.
+
+⚠ **Not the alternative.** Bumping the pin at step 1 imports §0.4 8(b)'s whole
+obligation — the four structural guards in that same ship — into a network
+spike. Step 1's gate is *"the owner sees a live answer return"*; the bump lands
+with step 3, where it is earned.
+
+---
+
+**10. What this section does NOT change.** §0.4 items 1, 2, 3 (the shape), 4
+(Form B), 7 (the order), 8(a), 8(c) and 8(d). The renderer's voice (§0.3 item
+11). The transfer line (§0.3 item 13). The amended gate and the fixture-design
+rule (§0.3 item 2). The amounts-only editable surface (§0.3 item 4). The
+owner-owned items: the RULES §12.5 full-matrix re-run, and rehearsals.
+
+**11. Provenance of this section.** Every falsification above is a RUN by the
+critic lane (`feat/dr-critic-2`, probes at `a0653f5`), reported in
+`DR_CRITIC_COORDINATION.md` §118 and §120; the build lane's contribution was
+reading and position and is labelled as such in §119 and §121. Findings reach
+`STATE.pending_designs` in this same ship (RULES §5).
+
+---
+
+
 ## 0. What this plan is, and what it is not
 
 It produces **two separate artifacts**. Merging them is the main way this goes wrong.
