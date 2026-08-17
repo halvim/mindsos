@@ -16,17 +16,31 @@ Nothing else is decision-shaped. PASS.
 **Sourcing (do-not-invent, plan §2.5):** the desks are Guidewire's own
 worked example — vehicle exposures to a routine group, the injury exposure
 to a specialty group; the coverage words are the taxonomy §3 unit names
-(Auto Physical Damage, Bodily Injury); severity as the deciding axis is
-§3's "severity tier dominates". The demo shows THAT routing happens and
-does not assert what every carrier does.
+(Auto Physical Damage, Bodily Injury); an off-work TIER as the deciding axis
+is §3's "severity tier dominates", expressed as the stated fact the tier is
+computed from rather than as the conclusion. The demo shows THAT routing
+happens and does not assert what every carrier does.
+
+⚠ **THE RULE LIVES IN THE STORE, NOT IN THIS FILE** (plan §0.4 item 7 step 2).
+``_route`` compares a claimant's stated weeks off work against a THRESHOLD read
+from a dated policy edition by ``policy_lookup_v0`` — the same capacity beat 4
+uses for the dwelling limit. There is no threshold literal in this module, and
+a guard pins that. **Two editions ship**: eight weeks in 2023, four from 2024,
+so the same exposure reaches different desks under different editions and the
+routing beats gain beat 4's *"which edition governed"* without a second
+fixture.
 
 **The member pipeline** (composed by the ConjunctionFinder — the map spec
 sets ``finder: conjunction`` because the decision is genuinely multi-input,
 a diamond from the one member start):
 
     exposure ──> coverage reader ──> the coverage this exposure was filed under
-             └─> severity reader ──> an injury severity assessment
-                       both ──> the routing decision ──> desk verdict
+             ├─> off-work reader ──> the weeks this exposure states
+             └─> as-of reader ──> a date ──> threshold lookup ──> the rule
+                       all three ──> the routing decision ──> desk verdict
+
+⚠ The third branch is TWO DEEP, which no member pipeline in this demo had ever
+been. It was PROBED before a guard was written — it composes.
 
 Each reader is the shipped ``structured_ingest_v0`` factory: on an absent
 field it refuses IN-BAND — value ``None`` plus an origin record naming the
@@ -35,7 +49,7 @@ value, returns the shape-(a) refusal verdict: ``decision: None`` plus the
 structural ``refusal_reason`` marker, NO prose. The prose lives in the
 reader's origin record (ADR-0209 D1: the type governs decoding; the record
 carries the words). A vehicle exposure routes on coverage alone, so the
-severity reader's refusal on it is recorded but decides nothing.
+off-work reader's refusal on it is recorded but decides nothing.
 
 ``drdemo.desk_verdict`` is the first ``refusal_capable`` DataState anywhere;
 the reducer declares ``decodes_refusals`` and
@@ -82,7 +96,14 @@ saying rather than letting a trivial pass read like a real one.
 from __future__ import annotations
 
 from mindsos_capacity import CapacityLayer
-from mindsos_capacity.builtins.origin_v0 import REFUSAL_FIELD_ABSENT
+from mindsos_capacity.builtins.origin_v0 import (
+    REFUSAL_FIELD_ABSENT,
+    REFUSAL_NO_SOURCE_IN_FORCE,
+)
+from mindsos_capacity.builtins.policy_lookup_v0 import (
+    build_policy_limit_lookup,
+    policy_limit_datastates,
+)
 from mindsos_capacity.builtins.structured_ingest_v0 import (
     build_structured_ingest_reader,
     structured_value_datastates,
@@ -103,13 +124,45 @@ from mindsos_intelligence.plan_construction import PlanResult
 DS_CLAIM_EXPOSURES = datastate_iri("drdemo.routed_claim_exposures")
 DS_EXPOSURE = datastate_iri("drdemo.routed_exposure")
 DS_COVERAGE = datastate_iri("drdemo.exposure_coverage")
-DS_SEVERITY = datastate_iri("drdemo.injury_severity")
+DS_OFF_WORK = datastate_iri("drdemo.off_work_weeks")
+DS_ROUTING_AS_OF = datastate_iri("drdemo.routing_as_of")
+DS_THRESHOLD = datastate_iri("drdemo.specialty_threshold_weeks")
 DS_DESK = datastate_iri("drdemo.desk_verdict")
 DS_DESKS = datastate_iri("drdemo.desk_verdicts")
 DS_ROUTING = datastate_iri("drdemo.claim_routing")
 
 CAP_ROUTE = capacity_iri(CATEGORY_DECISION, "drdemo_route_exposure")
 CAP_ASSIGN = capacity_iri(CATEGORY_DERIVATION, "drdemo_assign_claim")
+
+#: The routing policy, stored in the ``policies`` L2 role and read the way the
+#: dwelling limit is (plan §0.4 item 7 step 2). ⚠ **It is not "severe →
+#: specialty", which would restate a Python conditional.** It is a THRESHOLD a
+#: claims manager can read, disagree with, and ask to have changed — which is
+#: also what gives the staged parry something specific to decline.
+ROUTING_POLICY_ID = "policy:drdemo.injury_routing"
+ROUTING_POLICY_PHRASE = "the injury-routing policy"
+
+#: ⚠ **ONE threshold, not the disjunction** (plan §0.5 item 4). *"Transferred
+#: from scene, OR off work four weeks or more"* is withdrawn for v1 because the
+#: chosen fixture satisfies BOTH for the same claimant, ``DETERMINED_BY`` holds
+#: exactly one DataState, and the page would have stated a reason that is not
+#: counterfactually the reason.
+ROUTING_EDITION_2023 = dict(
+    version="v2023.1",
+    in_force_from="2023-01-01",
+    in_force_to="2023-12-31",
+    stated_value=8,
+    text="An injury exposure whose claimant is off work eight weeks or more "
+         "goes to the specialty injury unit.",
+)
+ROUTING_EDITION_2024 = dict(
+    version="v2024.1",
+    in_force_from="2024-01-01",
+    in_force_to=None,
+    stated_value=4,
+    text="An injury exposure whose claimant is off work four weeks or more "
+         "goes to the specialty injury unit.",
+)
 
 ROUTINE_DESK = "the routine claims desk"
 SPECIALTY_UNIT = "the specialty injury unit"
@@ -131,6 +184,21 @@ DETERMINED_BY = "determined_by"
 #: every other structural key, and a guard pins that.
 EXPOSURE_REF = "exposure_ref"
 
+#: The demo-owned structural field naming WHICH STORED RULE a verdict was
+#: measured against. Same shape and discipline as :data:`DETERMINED_BY` — it
+#: names a DataState, so it is **branch-only and never printed**. The renderer
+#: uses it to select the rule's stored question, its answer, and the EDITION
+#: behind it.
+#:
+#: ⚠ **Why it exists, and it was found by a probe rather than by design.**
+#: Moving the rule into the store made the page say NOTHING about it: the
+#: renderer surfaces the deciding fact and THAT fact's source, and the deciding
+#: fact is the claimant's weeks off work, whose source is the intake record.
+#: The threshold reached the decision and never reached the page. **Stored is
+#: not shown**, and a step that only stores changes nothing a room can see —
+#: beat 4's transfer line would have had nothing to point at on beats 1 and 2.
+MEASURED_AGAINST = "measured_against"
+
 #: Coverage words: taxonomy §3 unit names, verbatim.
 COVERAGE_VEHICLE = "Auto Physical Damage"
 COVERAGE_INJURY = "Bodily Injury"
@@ -138,18 +206,35 @@ COVERAGE_INJURY = "Bodily Injury"
 #: Beat 1 — one claim, three exposures, two desks (Guidewire's worked case).
 CASE_A_EXPOSURES = [
     {"claimant": "A. Silva", "coverage": COVERAGE_VEHICLE,
-     "loss": "collision, 3 June"},
+     "loss": "collision, 3 June", "routed_as_of": "2026-06-03"},
     {"claimant": "B. Osei", "coverage": COVERAGE_VEHICLE,
-     "loss": "collision, 3 June"},
+     "loss": "collision, 3 June", "routed_as_of": "2026-06-03"},
+    # ⚠ SIX WEEKS, a STATED FACT, not "severe" — a conclusion (plan §0.4 item
+    # 3a). The stored policy tiers it. Six is deliberately between the two
+    # editions' thresholds (8 in 2023, 4 in 2024), so the SAME exposure reaches
+    # different desks under different editions and the routing beats gain
+    # beat 4's "which edition governed" without a second fixture.
     {"claimant": "C. Mensah", "coverage": COVERAGE_INJURY,
-     "loss": "collision, 3 June", "injury_severity": "severe"},
+     "loss": "collision, 3 June", "routed_as_of": "2026-06-03",
+     "off_work_weeks": 6},
 ]
 
-#: Beat 2 — the same claim, one more injury exposure whose severity
-#: assessment is ABSENT: a refusal beside answers on the same page.
+#: The same claim routed as of a date the OLDER edition was in force. Six weeks
+#: cleared the 2024 threshold of four; it does not clear the 2023 threshold of
+#: eight, so C. Mensah goes to the ROUTINE desk and the page says which edition
+#: sent him there.
+CASE_A_EXPOSURES_2023 = [
+    dict(exposure, routed_as_of="2023-06-03") for exposure in CASE_A_EXPOSURES
+]
+
+#: Beat 2 — the same claim, one more injury exposure whose off-work period is
+#: ABSENT: a refusal beside answers on the same page. ⚠ The policy cannot tier
+#: a fact that was never stated, and the Record names the MISSING COMPONENT
+#: rather than supplying one — which is the contrast plan §0.4 item 3a says
+#: exists BECAUSE of the extraction contract rather than in spite of it.
 CASE_B_EXPOSURES = CASE_A_EXPOSURES + [
     {"claimant": "D. Laurent", "coverage": COVERAGE_INJURY,
-     "loss": "collision, 3 June"},
+     "loss": "collision, 3 June", "routed_as_of": "2026-06-03"},
 ]
 
 
@@ -187,7 +272,8 @@ def _exposure_ref(exposure, coverage):
 
 def _route(context=None, **inputs):
     coverage = inputs.get(DS_COVERAGE)
-    severity = inputs.get(DS_SEVERITY)
+    weeks = inputs.get(DS_OFF_WORK)
+    threshold = inputs.get(DS_THRESHOLD)
     ref = _exposure_ref(inputs.get(DS_EXPOSURE), coverage)
 
     def _verdict(**fields):
@@ -200,20 +286,38 @@ def _route(context=None, **inputs):
         return {DS_DESK: fields}
 
     if coverage == COVERAGE_VEHICLE:
-        # A vehicle exposure routes on coverage alone: the severity reader's
+        # A vehicle exposure routes on coverage alone: the off-work reader's
         # refusal on it decides nothing (§76), so the coverage is what
         # determined this desk and the Record must say so and say only that.
+        # ⚠ NO rule line here either — no stored rule was applied, and a page
+        # citing an authority it did not consult is the same defect as a
+        # renderer composing an outcome word.
         return _verdict(decision=ROUTINE_DESK, **{DETERMINED_BY: DS_COVERAGE})
-    if severity is None:
+    if weeks is None:
         # The reader refused; the desk cannot be chosen. Structural marker
         # only — the words live in the reader's origin record. NO
         # determining input: nothing determined an outcome there is not one of.
         return _verdict(decision=None, refusal_reason=REFUSAL_FIELD_ABSENT)
-    desk = SPECIALTY_UNIT if severity == "severe" else ROUTINE_DESK
-    # The coverage selected this branch; the SEVERITY chose the desk within it.
-    # The determining input is the one that moved the answer, not every input
-    # that was consulted — a page listing both is a data dump.
-    return _verdict(decision=desk, **{DETERMINED_BY: DS_SEVERITY})
+    if threshold is None:
+        # A DIFFERENT refusal with a DIFFERENT reason: the fact arrived and the
+        # RULE did not. ``policy_lookup_v0`` returns None with its own origin
+        # record when no edition covers the date, so the words are the lookup's
+        # and never ours. Collapsing this into field_absent would tell a room
+        # their document was incomplete when it was our policy set that was.
+        return _verdict(decision=None,
+                        refusal_reason=REFUSAL_NO_SOURCE_IN_FORCE)
+    desk = SPECIALTY_UNIT if int(weeks) >= int(threshold) else ROUTINE_DESK
+    # The coverage selected this branch; the claimant's WEEKS OFF WORK chose
+    # the desk within it. The determining input is the one that moved the
+    # answer, not every input that was consulted.
+    #
+    # ⚠ **The threshold is NOT the deciding fact, and it is not nothing
+    # either.** *"Because he is off work six weeks"* is what a room hears;
+    # *"because the threshold is four"* is the RULE, and it belongs on its own
+    # line with the edition that stated it. Two fields, two lines, one page.
+    return _verdict(decision=desk,
+                    **{DETERMINED_BY: DS_OFF_WORK,
+                       MEASURED_AGAINST: DS_THRESHOLD})
 
 
 def _assign(context=None, **inputs):
@@ -266,10 +370,20 @@ def routing_datastates():
         value_elem="str",
         value_description="the coverage this exposure was filed under",
     )
-    severity_pair = structured_value_datastates(
-        value_name="drdemo.injury_severity",
+    off_work_pair = structured_value_datastates(
+        value_name="drdemo.off_work_weeks",
+        value_elem="int",
+        value_description="the weeks off work this exposure states",
+    )
+    as_of_pair = structured_value_datastates(
+        value_name="drdemo.routing_as_of",
         value_elem="str",
-        value_description="the injury severity that was assessed",
+        value_description="the date this exposure is routed as of",
+    )
+    threshold_pair = policy_limit_datastates(
+        limit_name="drdemo.specialty_threshold_weeks",
+        limit_elem="int",
+        limit_description="the off-work threshold in force",
     )
     return [
         DataState(
@@ -302,7 +416,7 @@ def routing_datastates():
             shape=ShapeDescriptor.opaque("drdemo.claim_routing"),
             description="where this claim's exposures were sent",
         ),
-    ] + coverage_pair + severity_pair
+    ] + coverage_pair + off_work_pair + as_of_pair + threshold_pair
 
 
 def routing_capacities(*, decodes_refusals: bool = True):
@@ -316,15 +430,40 @@ def routing_capacities(*, decodes_refusals: bool = True):
         value_phrase="the coverage this exposure was filed under",
         question="Which coverage was this exposure filed under?",
     )
-    severity_reader = build_structured_ingest_reader(
-        name="drdemo_read_severity",
-        field="injury_severity",
-        value_datastate_iri=DS_SEVERITY,
+    off_work_reader = build_structured_ingest_reader(
+        name="drdemo_read_off_work",
+        field="off_work_weeks",
+        value_datastate_iri=DS_OFF_WORK,
+        value_elem="int",
+        source_datastate_iri=DS_EXPOSURE,
+        source_identity_phrase=SOURCE_PHRASE,
+        value_phrase="a period off work",
+        question="How many weeks off work does this exposure state?",
+    )
+    as_of_reader = build_structured_ingest_reader(
+        name="drdemo_read_routed_as_of",
+        field="routed_as_of",
+        value_datastate_iri=DS_ROUTING_AS_OF,
         value_elem="str",
         source_datastate_iri=DS_EXPOSURE,
         source_identity_phrase=SOURCE_PHRASE,
-        value_phrase="an injury severity assessment",
-        question="What injury severity was assessed for this exposure?",
+        value_phrase="a date to route as of",
+        question="As of what date is this exposure being routed?",
+    )
+    # ⚠ A TWO-DEEP MEMBER BRANCH — exposure -> as-of reader -> lookup -> the
+    # threshold — and it was PROBED before a guard was written. Every other
+    # member branch in this module is one level; two-deep was known to work on
+    # the LEAF road (dr_assessment) and had never run inside a map. It
+    # composes: `_probe_member_depth.py`, run on the gate box 2026-08-17,
+    # removed from the tree in the same ship that made it unnecessary.
+    threshold_lookup = build_policy_limit_lookup(
+        name="drdemo_lookup_off_work_threshold",
+        policy_id=ROUTING_POLICY_ID,
+        source_identity_phrase=ROUTING_POLICY_PHRASE,
+        question="What off-work threshold sent an injury exposure to the "
+                 "specialty unit on {as_of}?",
+        limit_datastate_iri=DS_THRESHOLD,
+        as_of_datastate_iri=DS_ROUTING_AS_OF,
     )
     route = Capacity(
         name="drdemo_route_exposure",
@@ -334,7 +473,7 @@ def routing_capacities(*, decodes_refusals: bool = True):
         # the determining input is never the exposure. Named fallback if the
         # ConjunctionFinder will not satisfy a member start as a direct input:
         # read the claimant with a third structured-ingest reader.
-        inputs=(DS_COVERAGE, DS_SEVERITY, DS_EXPOSURE),
+        inputs=(DS_COVERAGE, DS_OFF_WORK, DS_THRESHOLD, DS_EXPOSURE),
         outputs=(DS_DESK,),
         implementation=_route,
         description="one exposure's read facts -> which desk handles it",
@@ -350,10 +489,28 @@ def routing_capacities(*, decodes_refusals: bool = True):
         printable_phrase="assigning each exposure to its desk",
         decodes_refusals=decodes_refusals,
     )
-    return [coverage_reader, severity_reader, route, assign]
+    return [coverage_reader, off_work_reader, as_of_reader,
+            threshold_lookup, route, assign]
 
 
-def routing_harness(*, decodes_refusals: bool = True):
+def routing_kl(*editions):
+    """A KnowledgeLayer holding whichever routing editions the caller names.
+
+    Defaults to BOTH, because the demo's routing claim is now the same one
+    beat 4 makes about the dwelling limit: which edition governed. A harness
+    holding one edition can never show that.
+    """
+    from mindsos_knowledge.knowledge_layer import KnowledgeLayer
+    from mindsos_knowledge.policies import ROLE_POLICIES, write_policy_edition
+
+    kl = KnowledgeLayer.bootstrap()
+    handle = kl.writeable(None, ROLE_POLICIES, "global")
+    for edition in editions or (ROUTING_EDITION_2023, ROUTING_EDITION_2024):
+        write_policy_edition(handle, policy_id=ROUTING_POLICY_ID, **edition)
+    return kl
+
+
+def routing_harness(*, decodes_refusals: bool = True, editions=None):
     session = _Session()
     layer = CapacityLayer()
     for ds in routing_datastates():
@@ -361,7 +518,12 @@ def routing_harness(*, decodes_refusals: bool = True):
     for cap in routing_capacities(decodes_refusals=decodes_refusals):
         layer.register_capacity(cap, session=session)
     mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
-    dispatcher = L4Dispatcher(layer, session=session)
+    # ⚠ The dispatcher now carries a KL. Without one ``policy_lookup_v0``
+    # raises ``PolicyStoreUnreachableError`` — our outage — and every injury
+    # exposure would stop rather than route. That is the correct behaviour and
+    # it is why the harness gained an argument rather than a default of None.
+    dispatcher = L4Dispatcher(layer, session=session,
+                              kl=routing_kl(*(editions or ())))
     writer = ChainArtifactWriter(mm, "drdemo-task")
     return mm, dispatcher, writer, writer.emit_request_run()
 

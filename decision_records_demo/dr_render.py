@@ -154,6 +154,12 @@ CONCLUSION_FIELD = "claim_decision"
 #: the three spellings are pinned equal test-side.
 FIELD_DETERMINED_BY = "determined_by"
 
+#: The demo-owned structural field naming WHICH STORED RULE a verdict was
+#: measured against (``dr_routing.MEASURED_AGAINST``). Same discipline as
+#: :data:`FIELD_DETERMINED_BY`: it names a DataState, it SELECTS, and it never
+#: appears on the page.
+FIELD_MEASURED_AGAINST = "measured_against"
+
 #: How an origin record's DataState type is named from its value's:
 #: ``origin_v0.origin_record_iri(value_iri) == value_iri + "_origin"``, and
 #: EVERY producer that exists calls it (structured ingest, policy lookup,
@@ -385,15 +391,26 @@ class _Analysis:
         return (record.get(FIELD_QUESTION), answer_node.value)
 
     def _deciding_nodes(self, verdict: Any):
-        """The (answer, record) node pair the determining marker names, with
+        """The (answer, record) pair the DETERMINING marker names."""
+        return self._marked_nodes(verdict, FIELD_DETERMINED_BY)
+
+    def _marked_nodes(self, verdict: Any, field: str):
+        """The (answer, record) node pair a structural marker names, with
         every check :meth:`deciding_fact` documents. Split out 2026-08-17
         (ship B) so the SOURCE of the deciding fact can be rendered beside it
         without re-deriving the pairing — two callers deriving the same pair
         by different routes is how a page ends up citing one record's
-        authority over another record's answer."""
+        authority over another record's answer.
+
+        ⚠ **Generalised over the FIELD in step 2**, when a second marker
+        appeared (:data:`FIELD_MEASURED_AGAINST`, the stored rule a verdict was
+        measured against). Giving the second marker its own resolver would have
+        been the smaller diff and exactly the defect the paragraph above
+        describes — **the reason to share this is the reason it was extracted
+        in the first place.**"""
         if not isinstance(verdict, dict):
             return None
-        marker = verdict.get(FIELD_DETERMINED_BY)
+        marker = verdict.get(field)
         if not marker:
             return None
         answer_node = self._node_by_type(marker)
@@ -452,6 +469,43 @@ class _Analysis:
             return []
         line = _source_line_from_record(record)
         return [line] if line else []
+
+    def rule_lines(self, verdict: Any) -> List[str]:
+        """The stored RULE a verdict was measured against, and its edition.
+
+        **Why the page needs this and the deciding fact is not enough.** Step 2
+        moved routing's threshold out of a Python conditional and into a dated
+        policy edition — and the page said NOTHING about it. The deciding fact
+        is the claimant's weeks off work, whose source is the intake record; the
+        threshold reached the decision and never reached the page. **Stored is
+        not shown.** Found by a probe before a guard was written.
+
+        **Two lines, in the record's own words.** The rule's stored question
+        with its stored answer, then the edition and window that stated it —
+        the same ``_source_line_from_record`` beat 4's limit already uses. The
+        renderer composes neither: a capacity that measured against a rule says
+        which DataState held it, and everything printed comes out of that
+        DataState's own record.
+
+        **Nothing is rendered where nothing was applied.** A vehicle exposure
+        routed on coverage alone and a refusal that never reached the
+        comparison both carry no marker, so both get no rule line. **A page
+        citing an authority it did not consult is the same defect as a renderer
+        composing an outcome word** (§0.3 item 11), one hop further out.
+        """
+        nodes = self._marked_nodes(verdict, FIELD_MEASURED_AGAINST)
+        if nodes is None:
+            return []
+        answer_node, record_node = nodes
+        record = record_node.value
+        if not isinstance(record, dict):
+            return []
+        out = [f"   Q. {record.get(FIELD_QUESTION)} — {_fmt(answer_node.value)}."]
+        if record.get(FIELD_PRODUCER_KIND) == PRODUCER_POLICY_LOOKUP:
+            line = _source_line_from_record(record)
+            if line:
+                out.append(line)
+        return out
 
     def _unconsumed(self, nodes: List[Any]) -> List[Any]:
         """Of ``nodes``, those with no outgoing ``CONSUMES`` edge."""
@@ -719,6 +773,10 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
         if not isinstance(start.value, list)
     ]
     lines.extend(member.deciding_lines(entry))
+    # The rule comes AFTER the fact it measured and BEFORE the verdict: the
+    # room reads the claimant's fact, then what it was tested against, then
+    # where the exposure went.
+    lines.extend(member.rule_lines(entry))
     lines.append(f"   {member.phrase_for_value(entry)} → {_verdict_text(entry)}")
     produced = next((n for n in member.produced if n.value == entry), None)
     if produced is not None:
@@ -1012,6 +1070,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
             produced = analysis.terminal_produced()
             if produced:
                 lines.extend(analysis.deciding_lines(produced[0].value))
+                lines.extend(analysis.rule_lines(produced[0].value))
                 # phrase_for_value, not phrase(): the leaf road carries the
                 # SAME defect the member road fixed and nobody carried the fix
                 # across — phrase() returns the first phrased capacity, which
