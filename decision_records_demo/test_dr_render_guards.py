@@ -888,9 +888,24 @@ def test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one():
             value = node.value
             if (isinstance(value, dict) and value.get("refusal_reason")
                     and "origin_producer_kind" not in value):
+                # ⚠ The node ALONE is not enough, and the first version of
+                # this fixture proved it: a DSI with no PRODUCES edge is a
+                # premise, so `check_declared_starts` raised first and this
+                # guard caught a raise that was not its own. It only passed
+                # because the assertion checks the MESSAGE — §94 finding 5,
+                # avoided rather than repeated. The clone is produced by the
+                # same capacity and consumed by nothing.
+                new_id = node_id + ":injected"
                 clone = copy.copy(node)
-                graph.nodes[node_id + ":injected"] = clone
-                injected += 1
+                object.__setattr__(clone, "node_id", new_id)
+                graph.nodes[new_id] = clone
+                for edge_id, edge in list(graph.edges.items()):
+                    if edge.type_name == "PRODUCES" and edge.target is node:
+                        clone_edge = copy.copy(edge)
+                        object.__setattr__(clone_edge, "target", clone)
+                        graph.edges[edge_id + ":injected"] = clone_edge
+                        injected += 1
+                        break
                 break
     assert injected == 1, f"fixture drifted: injected {injected}, expected 1"
     try:
