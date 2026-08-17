@@ -139,7 +139,7 @@ v1 scope, frozen 2026-08-17 (`DECISION_RECORDS_DEMO_PLAN.md` §0.3):
 |---|---|---|
 | A ✅ `dr-deciding-fact-confirmed` | walk gap 1 | *cannot say WHY on a decision it answered* — replaced by: the page names **the fact that DECIDED**, from a stored field the deciding capacity writes |
 | B ✅ `dr-ship-b-confirmed` | walk gaps 2, 3, 5 + the §11 promotion out of 6 | *cannot adjudicate anything* — **narrowed, not removed**: one comparison against a dated limit exists; §2.5's three cases do not |
-| C — not started | owner finding, 2026-08-17 | *cannot take a case or a policy chosen at the table* |
+| C — not started | owner finding, 2026-08-17 | *cannot take a case or a policy chosen at the table* — **AMOUNTS ONLY** when it lands (owner ruling 2026-08-17): the edition's stated limit and the claimed amount. **Dates stay off the editable surface** until `decision-records-as-of-date-validity` closes, because a malformed date is reported as our outage rather than as their input |
 
 **Refused:** walk gap 6, the room-facing text pass — past the gate, with ONE
 promotion into ship B on a §11 ground (*"1 cannot be assigned yet — see the

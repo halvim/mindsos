@@ -110,6 +110,32 @@ number that is not ours, offline, in the evidence pack.
 move out of Python constants into an editable file, so an input can be changed
 in front of the room and the beat re-run.
 
+⚠ **THE EDITABLE SURFACE IS RULED — AMOUNTS ONLY at v1. Owner ruling
+2026-08-17**, taken on both lanes' recommendation (coordination §99.4, §100,
+§101.4) after ship B mapped what this system can and cannot refuse.
+
+- **EDITABLE: the edition's stated limit, and the claimed amount.** Both are
+  integers read by `structured_ingest_v0`, whose `value_not_coercible` refusal
+  is shipped and honest — so a wrong value in the room lands on a refusal this
+  demo was built to show.
+- **NOT EDITABLE at v1: dates.** Not the as-of date, not an edition's in-force
+  window. **The reason is a defect, not a preference:** `policy_lookup_v0`
+  reports a malformed `as_of` as `source_unreachable`, so a typo renders *"the
+  policy store cannot be read"* — the demo blaming our own system for the
+  room's keystroke, in front of a buyer. Filed as
+  `decision-records-as-of-date-validity`, unowned since 2026-08-12 and **now
+  owner-taken**. Editable windows additionally reach the *boundary* shape this
+  plan classifies as gate evidence the room never sees.
+- ⟹ **Dates join the editable surface when that item closes, not before.**
+  **Console validation is NOT the fix** and may only ever be a stopgap: no
+  validation makes a misclassification true, it only hides it from the one
+  path that happens to be validated.
+- **What this costs, stated rather than glossed:** the room cannot re-drive
+  *"the policy changed mid-claim"* by hand at v1 — beat 4's pair stay
+  prepared, and only the amounts move. The gate is unaffected: an edition-limit
+  edit changes the rendered Record and the changed page names the new value
+  and its edition, which is the gate in full.
+
 ⚠ **THE BOUNDARY IS THE WHOLE OF IT, and narration does not carry it.** Policy
 DATA and the CLAIM are editable live; routing and decision LOGIC are not
 (`DR_DEMO_SCRIPT.md` beat 7 stands unamended — *"no live rule-authoring,
