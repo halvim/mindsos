@@ -100,6 +100,7 @@ p.title { font-size: 1.3rem; font-weight: bold; margin-bottom: 0.2rem; }
 p.date { color: #6b675f; font-size: 0.95rem; margin-bottom: 1rem; }
 p.fact { }
 p.verdict { padding-left: 1rem; }
+p.reason { padding-left: 1rem; color: #3f3b33; font-style: italic; }
 p.refusal { border-left: 3px solid #8a1c1c; padding: 0.4rem 0 0.4rem 0.8rem;
             background: #faf5f3; }
 p.stop { border-left: 3px solid #8a6d1c; padding: 0.4rem 0 0.4rem 0.8rem;
@@ -136,8 +137,18 @@ def classify_line(line: str) -> str:
         return "title"
     if line.startswith("Decided"):
         return "date"
-    if line.startswith("Q. "):
-        return "refusal"
+    if line.strip().startswith("Q. "):
+        # TWO Q-forms since the deciding-fact ship, and they must not share a
+        # style. The REFUSAL renders flush-left as a block-level statement
+        # about the item; the DECIDING FACT renders indented as a sub-line of
+        # the item it explains. Indentation is the only structural signal a
+        # line-classifier has, and that is tolerable here for the reason §79
+        # Q3 gives: the fact channel is owned by the equality guard, and this
+        # classifier is permissive by design. What is NOT tolerable is the
+        # deciding fact falling through to the generic indent rule, which is
+        # what it did before this branch existed — the most important line on
+        # an answered page, styled by a catch-all.
+        return "refusal" if line.startswith("Q. ") else "reason"
     if line.startswith("Stopped"):
         return "stop"
     if line.startswith("In hand:"):

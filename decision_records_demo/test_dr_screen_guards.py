@@ -132,7 +132,9 @@ def test_refusal_stop_and_therefore_classify_as_themselves():
     """§79 Q3's safety pins: de-emphasising the one line the room must see
     is the presentation sin in CSS form — classifier regression is red."""
     cases = (
-        (_routing_refusal_page(), "Q. ", "refusal"),
+        (_routing_refusal_page(),
+         "Q. What injury severity was assessed for this exposure? — Nothing.",
+         "refusal"),
         (_partial_page(), "Stopped:", "stop"),
         (_claim_page(), "Therefore:", "therefore"),
     )
@@ -255,6 +257,27 @@ def test_an_empty_page_raises():
     except ScreenGapError:
         return
     raise AssertionError("a screen composed over no page at all")
+
+
+
+def test_the_deciding_fact_and_the_refusal_do_not_share_a_style():
+    """Beat 2's page carries the SAME question twice — answered under
+    C. Mensah, unanswerable under D. Laurent. They must not wear the same
+    style: the red-bordered refusal treatment on an answered line would tell
+    the room a decision failed when it did not, which is the §11 sin in CSS
+    form that §79 Q3's pins exist to catch. Before the deciding-fact ship
+    there was only one Q-form and this could not be got wrong."""
+    screen = compose_screen(_routing_refusal_page())
+    q_lines = [
+        (cls, text.strip()) for (sec, cls, text) in text_nodes(screen)
+        if sec == "record" and text.strip().startswith("Q. ")
+    ]
+    assert len(q_lines) >= 2, q_lines
+    refusals = {cls for cls, text in q_lines if "— Nothing." in text}
+    answers = {cls for cls, text in q_lines if "— Nothing." not in text}
+    assert refusals == {"refusal"}, q_lines
+    assert answers == {"reason"}, q_lines
+    assert refusals.isdisjoint(answers), q_lines
 
 
 if __name__ == "__main__":
