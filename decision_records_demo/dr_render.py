@@ -118,6 +118,7 @@ REFUSAL_MARKER = "refusal_reason"
 FIELD_PRODUCER_KIND = "origin_producer_kind"
 FIELD_SUPPLIED_FIELDS = "supplied_fields"
 FIELD_ADMITTED = "admitted"
+FIELD_QUESTION = "question"
 FIELD_SOURCE_PHRASE = "source_identity_phrase"
 FIELD_SOURCE_VERSION = "source_version"
 FIELD_IN_FORCE_FROM = "source_in_force_from"
@@ -127,6 +128,24 @@ PRODUCER_POLICY_LOOKUP = "policy_lookup"
 #: Demo (claims) vocabulary — the layout's knowledge, not the graph's.
 VERDICT_FIELD = "decision"
 CONCLUSION_FIELD = "claim_decision"
+
+#: The demo-owned structural field naming WHICH INPUT decided a verdict.
+#: Branch-only and NEVER printed — it holds a DataState IRI and G6 bans those
+#: from the page. Same discipline as ``refusal_reason`` (ADR-0209). Spelled as
+#: a literal here because G1 forbids importing the demo modules that write it;
+#: the three spellings are pinned equal test-side.
+FIELD_DETERMINED_BY = "determined_by"
+
+#: How an origin record's DataState type is named from its value's:
+#: ``origin_v0.origin_record_iri(value_iri) == value_iri + "_origin"``, and
+#: EVERY producer that exists calls it (structured ingest, policy lookup,
+#: comprehension). Verified on a dump the owner ran, 2026-08-17: a lookup graph
+#: carries ``datastate:drdemo.dwelling_limit`` beside
+#: ``datastate:drdemo.dwelling_limit_origin``. This is the PRIMARY pairing
+#: axis; same-producing-capacity is the cross-check, because one capacity emits
+#: both and a name match across two producers is incoherent rather than
+#: ambiguous. Pinned test-side against the contract.
+ORIGIN_SUFFIX = "_origin"
 
 #: IRI prefixes that must never reach the page (G6): a detail carrying one is
 #: a link, not text.
@@ -302,6 +321,145 @@ class _Analysis:
                 out.append(value)
         return out
 
+    def deciding_lines(self, verdict: Any) -> List[str]:
+        """:meth:`deciding_fact`, rendered."""
+        fact = self.deciding_fact(verdict)
+        if fact is None:
+            return []
+        question, answer = fact
+        return [f"   Q. {question} — {_fmt(answer)}."]
+
+    def _node_by_type(self, ds_type: str) -> Optional[Any]:
+        """The PRODUCED node of this type, or None. Raises on two."""
+        found = [n for n in self.produced if self.ds_type(n) == ds_type]
+        if len(found) > 1:
+            raise RendererGapError(
+                f"two produced values share the type {ds_type!r} on "
+                f"{self.graph.role!r} — the page cannot say which one was read"
+            )
+        return found[0] if found else None
+
+    def deciding_fact(self, verdict: Any):
+        """The one read that DECIDED this verdict, as its stored question and
+        its stored answer.
+
+        **Not every read.** A page carrying every fact a decision consulted is
+        a data dump; the fact that MOVED the answer is the decision. The
+        producing capacity records which input that was
+        (:data:`FIELD_DETERMINED_BY`), and this method renders THAT stored
+        question with THAT stored answer — inventing neither.
+
+        **The marker is never printed.** It names a DataState; G6 bans IRIs
+        from the page. It selects, it does not appear.
+
+        **Two asymmetries, and both are deliberate.** A verdict carrying no
+        marker returns nothing and is NOT punished — the policy criterion
+        writes no origin record by design (ADR-0208 (c)), and a capacity that
+        does not claim a determining input has not failed to supply one. A
+        verdict that DECLARES one whose question or answer cannot be found
+        RAISES: that is a gap, and G2 is raise, never fill.
+        """
+        if not isinstance(verdict, dict):
+            return None
+        marker = verdict.get(FIELD_DETERMINED_BY)
+        if not marker:
+            return None
+        answer_node = self._node_by_type(marker)
+        record_node = self._node_by_type(marker + ORIGIN_SUFFIX)
+        if answer_node is None or record_node is None:
+            missing = "its answer" if answer_node is None else "its question"
+            raise RendererGapError(
+                f"a decision on {self.graph.role!r} names the fact that decided "
+                f"it, but {missing} is not in this run's stored evidence — "
+                "refusing to publish a Record that cannot show its own reason"
+            )
+        answer_by = self._capacity_of(answer_node)
+        record_by = self._capacity_of(record_node)
+        if answer_by is None or answer_by != record_by:
+            raise RendererGapError(
+                f"on {self.graph.role!r} the deciding value and the question it "
+                "is supposed to answer were produced by different capacities — "
+                "refusing to print a question over an answer that did not come "
+                "from it"
+            )
+        record = record_node.value
+        if not isinstance(record, dict) or not record.get(FIELD_ADMITTED):
+            raise RendererGapError(
+                f"a decision on {self.graph.role!r} was determined by a value "
+                "whose own record does not admit it — a verdict standing on a "
+                "refusal is incoherent, and the page will not carry it"
+            )
+        return (record.get(FIELD_QUESTION), answer_node.value)
+
+    def _unconsumed(self, nodes: List[Any]) -> List[Any]:
+        """Of ``nodes``, those with no outgoing ``CONSUMES`` edge."""
+        consumed = {
+            edge.source.node_id for edge in self.graph.edges.values()
+            if edge.type_name == "CONSUMES"
+        }
+        out = []
+        for node in nodes:
+            node_id = next(
+                (nid for nid, c in self.graph.nodes.items() if c is node), None
+            )
+            if node_id not in consumed:
+                out.append(node)
+        return out
+
+    def terminal_outcomes(self) -> List[Any]:
+        """Unconsumed produced values INCLUDING refusal carriers.
+
+        **A refusal is a conclusion** (ADR-0209 shape (a)): a completed run
+        that refused is a Record, not a fault. ``plain_produced`` filters
+        refusal carriers out because they render through a different form, so
+        the completed-vs-conclusion check must not be asked in those terms.
+
+        Found 2026-08-17, and it is the more interesting half of that day's
+        conclusion fix: the §30 Q2 check had been satisfied on the refusing
+        settlement leaf by the value the decision CONSUMED — a premise standing
+        in for a conclusion. It passed for a reason unrelated to what it
+        asserts, which is a green guard that was not checking its own claim.
+        """
+        candidates = [
+            node for node in self.produced
+            if not (isinstance(node.value, dict)
+                    and "origin_producer_kind" in node.value)
+        ]
+        return self._unconsumed(candidates)
+
+    def terminal_produced(self) -> List[Any]:
+        """The produced values NOTHING consumed — the graph's own conclusions.
+
+        **Why this exists, found 2026-08-17 by a fixture rather than by
+        reading.** The page used to take ``plain_produced()[0]``, which is
+        node-iteration order and is not a stored fact. It was unambiguous only
+        because every leaf shipped until now produced exactly ONE plain value.
+        The first leaf with two — a reader that admits a value plus the
+        decision that consumes it — published this:
+
+            E. Nakamura, ... — the claim as it arrived
+               reading the claim as filed → sworn statement of loss, filed 9 June
+
+        A premise, printed as the conclusion, with the verdict absent. G2
+        refuses to render a derived value as a premise; this is the same error
+        inverted, and nothing could see it.
+
+        **The record answers it.** A value the run went on to use carries an
+        outgoing ``CONSUMES`` edge; a conclusion does not. That is structure in
+        the graph, not an accident of ordering. Two unconsumed values is
+        genuine ambiguity and RAISES rather than picking one — the record
+        cannot say which is the Record's conclusion, and G2 is raise, never
+        fill.
+        """
+        out = self._unconsumed(self.plain_produced())
+        if len(out) > 1:
+            raise RendererGapError(
+                f"{self.graph.role!r} produced more than one value that nothing "
+                "consumed, so the record cannot say which one is this Record's "
+                "conclusion — refusing to pick by iteration order"
+            )
+        return out
+
     def plain_produced(self) -> List[Any]:
         """Produced DSIs that are neither origin records nor refusal carriers."""
         out = []
@@ -324,6 +482,31 @@ def _fmt(value: Any) -> str:
     if isinstance(value, list):
         return "; ".join(_fmt(v) for v in value)
     return str(value)
+
+
+def _fmt_without(value: Any, drop: Any) -> str:
+    """:func:`_fmt`, minus the value the deciding fact is about to state.
+
+    **Why, from the first live read of the page, 2026-08-17.** The intake line
+    prints every field of the exposure, so the answer to the deciding question
+    stood one line above the question — and Screen A's left panel prints the
+    same intake a third time. What the deciding fact ADDS is *which* fact was
+    decisive, not what it was; the answer half was already on screen and read
+    as filler on the exposures whose coverage alone decided them.
+
+    Narrow on purpose: only the echoed value goes. C. Mensah keeps *Bodily
+    Injury* — that is context the decision needed and did not state — and loses
+    only the duplicated *severe*.
+
+    **Stated limit:** the renderer knows the deciding VALUE, never the field
+    name the reader read (an origin record carries ``source_datastate``, not a
+    key). So two fields carrying the identical value both drop. The page cannot
+    tell them apart, and dropping one arbitrarily would be a guess.
+    """
+    if drop is None or not isinstance(value, dict):
+        return _fmt(value)
+    kept = {k: v for k, v in value.items() if v != drop}
+    return _fmt(kept) if kept else _fmt(value)
 
 
 def _source_lines(analysis: "_Analysis", node: Any) -> List[str]:
@@ -376,11 +559,14 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
     blocks are identical (a genuinely duplicated exposure), and the renderer
     must be able to tell that case from an ambiguous one rather than assume it.
     """
+    fact = member.deciding_fact(entry)
+    echoed = fact[1] if fact else None
     lines = [
-        f"{_fmt(start.value)} — {member.start_description(start)}"
+        f"{_fmt_without(start.value, echoed)} — {member.start_description(start)}"
         for start in member.parentless
         if not isinstance(start.value, list)
     ]
+    lines.extend(member.deciding_lines(entry))
     lines.append(f"   {member.phrase_for_value(entry)} → {_verdict_text(entry)}")
     produced = next((n for n in member.produced if n.value == entry), None)
     if produced is not None:
@@ -548,7 +734,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         if fold.stopped is not None:
             lines.extend(fold.stop_lines())
         else:
-            conclusions = fold.plain_produced()
+            conclusions = fold.terminal_produced()
             if conclusions:
                 lines.append(
                     f"Therefore: {fold.phrase()} → "
@@ -600,7 +786,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         if fold.stopped is not None:
             lines.extend(fold.stop_lines())
         else:
-            conclusions = fold.plain_produced()
+            conclusions = fold.terminal_produced()
             if conclusions:
                 lines.append(
                     f"Therefore: {fold.phrase()} → "
@@ -609,9 +795,20 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
     else:
         analysis = analyses[0]
         terminal = analysis
+        # Only where a conclusion is what this page will show. A stopped or
+        # refusing leaf takes a different branch below, and asking
+        # terminal_produced() there would put a new raise on paths this ship
+        # has no business touching.
+        _leaf_echo = None
+        if analysis.stopped is None and not analysis.origin_refusals():
+            _leaf_produced = analysis.terminal_produced()
+            if _leaf_produced:
+                _leaf_fact = analysis.deciding_fact(_leaf_produced[0].value)
+                _leaf_echo = _leaf_fact[1] if _leaf_fact else None
         for start in analysis.parentless:
             lines.append(
-                f"{_fmt(start.value)} — {analysis.start_description(start)}"
+                f"{_fmt_without(start.value, _leaf_echo)} — "
+                f"{analysis.start_description(start)}"
             )
         refusals = analysis.origin_refusals()
         records = analysis.refusing_records()
@@ -636,10 +833,18 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 f"{refusal.get('refusal_detail')}"
             )
         else:
-            produced = analysis.plain_produced()
+            produced = analysis.terminal_produced()
             if produced:
+                lines.extend(analysis.deciding_lines(produced[0].value))
+                # phrase_for_value, not phrase(): the leaf road carries the
+                # SAME defect the member road fixed and nobody carried the fix
+                # across — phrase() returns the first phrased capacity, which
+                # on a reader+decision leaf is the READER, so the page credited
+                # "reading the claim as filed" with a verdict the settle
+                # capacity produced. Invisible until a leaf had two capacities.
                 lines.append(
-                    f"   {analysis.phrase()} → {_verdict_text(produced[0].value)}"
+                    f"   {analysis.phrase_for_value(produced[0].value)} → "
+                    f"{_verdict_text(produced[0].value)}"
                 )
                 lines.extend(_source_lines(analysis, produced[0]))
             elif not analysis.graph.edges:
@@ -653,7 +858,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 )
 
     if outcome == "completed" and terminal is not None:
-        if terminal.stopped is not None or not terminal.plain_produced():
+        if terminal.stopped is not None or not terminal.terminal_outcomes():
             raise RendererGapError(
                 "the Episode says completed but the terminal graph shows no "
                 "conclusion — refusing to assert a success the graph cannot "

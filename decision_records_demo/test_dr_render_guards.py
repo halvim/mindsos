@@ -656,7 +656,13 @@ def test_a_missing_supplied_policy_version_raises():
     assert stripped == 1, f"fixture drifted: stripped {stripped} versions, expected 1"
     try:
         render_from_graphs(graphs, EPISODE_COMPLETED)
-    except RendererGapError:
+    except RendererGapError as exc:
+        # ⚠ The MESSAGE, not merely the type. Found 2026-08-17 by the mutation
+        # harness: an unrelated mutation elsewhere in the renderer raised a
+        # different RendererGapError and this test stayed green, so it could
+        # not tell its own gap from any other. Third instance in this ship of
+        # a guard passing for a reason unrelated to its claim.
+        assert "declares it always supplies" in str(exc), str(exc)
         return
     raise AssertionError("a source record missing a declared field rendered anyway")
 
@@ -678,6 +684,11 @@ def test_the_origin_keys_the_page_reads_match_the_contract():
     assert dr_render.FIELD_IN_FORCE_FROM == origin_v0.FIELD_SOURCE_IN_FORCE_FROM
     assert dr_render.FIELD_IN_FORCE_TO == origin_v0.FIELD_SOURCE_IN_FORCE_TO
     assert dr_render.PRODUCER_POLICY_LOOKUP == origin_v0.PRODUCER_POLICY_LOOKUP
+    assert dr_render.FIELD_QUESTION == origin_v0.FIELD_QUESTION
+    # The pairing axis: the renderer spells the suffix, the contract computes
+    # it. A change to `origin_record_iri` that this literal did not follow
+    # would stop the deciding fact rendering SILENTLY.
+    assert origin_v0.origin_record_iri("datastate:x") == "datastate:x" + dr_render.ORIGIN_SUFFIX
     # And the absence the page relies on: an open edition has no end, so
     # in_force_to must stay OUT of the declared-supplied set.
     assert origin_v0.FIELD_SOURCE_IN_FORCE_TO not in policy_lookup_v0.SUPPLIED_WHEN_ADMITTED
@@ -721,6 +732,144 @@ def test_a_leaf_refusal_with_no_stored_words_raises():
     except RendererGapError:
         return
     raise AssertionError("a refusal with no stored words rendered anyway")
+
+
+
+def _settlement_graphs_with_document():
+    """Beat 3's ANSWERING branch, which the shipped case never reaches — it
+    refuses. The leaf road's deciding-fact path is otherwise untested, and an
+    untested branch on the road that renders every single-capacity Record is
+    not a branch anyone should trust."""
+    from decision_records_demo.dr_settlement import (
+        DS_CLAIM_INTAKE, settlement_capacities, settlement_datastates,
+        settlement_plan,
+    )
+
+    mm, dispatcher, writer, request_run = _harness(
+        capacities=settlement_capacities(),
+        extra_datastates=settlement_datastates(),
+    )
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, settlement_plan(), request_run, mm=mm,
+        solve_seed={DS_CLAIM_INTAKE: {
+            "claimant": "E. Nakamura",
+            "loss": "water damage, 2 June",
+            "proof_of_loss": "sworn statement of loss, filed 9 June",
+        }},
+        capacity_graphs=graphs, case_label="claim CLM-5093",
+    )
+    return graphs
+
+
+def test_the_leaf_road_shows_the_deciding_fact():
+    """The leaf road carries the same rule as the member road: a decision that
+    records what determined it prints that stored question and that stored
+    answer, and nothing else it happened to read."""
+    page = render_from_graphs(_settlement_graphs_with_document(), EPISODE_COMPLETED)
+    assert "Q. Which proof of loss was filed for this claim? — sworn statement of loss, filed 9 June." in page, page
+    assert "payable under the policy" in page, page
+    assert "settling the claim on what was filed → payable under the policy" in page, (
+        "the verdict line must wear the DECIDING capacity's phrase, not the "
+        "reader's — the leaf road's version of the member road's fix:\n" + page
+    )
+    assert "reading the claim as filed →" not in page, (
+        "a reader was credited with the verdict:\n" + page
+    )
+    assert "determined_by" not in page, page
+    low = page.lower()
+    for token in G6_BANNED + ("drdemo_",):
+        assert token not in low, f"G6: {token!r} leaked onto the page:\n{page}"
+
+
+def test_a_capacity_that_records_no_deciding_fact_is_not_punished():
+    """The asymmetry, tested on BOTH shapes it has — and it took a mutation to
+    find that it previously had only one.
+
+    A verdict may decline to name a deciding fact in two different ways, and
+    they leave ``deciding_lines`` by two different doors: a DICT verdict with
+    no marker (the claim fixture's decide/conclude pair, which predates the
+    field), and a NON-DICT verdict (the policy criterion's bare limit, which
+    writes no origin record at all BY DESIGN — ADR-0208 (c)). Neither is a
+    gap; only a DECLARED deciding fact that cannot be shown is.
+
+    ⚠ **This test used to assert the second door only**, and the mutation
+    harness caught it: punishing the marker-less branch reddened fourteen
+    tests and NOT this one, because the policy verdict is an int and returns
+    before that branch is ever reached. It was green for a reason unrelated to
+    its own claim — the §30 Q2 defect, in a guard written the same afternoon
+    that one was found.
+    """
+    dict_verdicts = render_from_graphs(_claim_graphs(), EPISODE_COMPLETED)
+    assert "payable" in dict_verdicts, dict_verdicts
+    assert "Q." not in dict_verdicts, (
+        "a dict verdict that names no deciding fact grew one, or was "
+        "punished for not having one:\n" + dict_verdicts
+    )
+    bare_verdict = render_from_graphs(
+        _admitted_policy_graphs("2024-06-01"), EPISODE_COMPLETED
+    )
+    assert "Q." not in bare_verdict, (
+        "the policy criterion writes no record by design and must not be "
+        "asked for one:\n" + bare_verdict
+    )
+    assert "375000" in bare_verdict and "2024.1" in bare_verdict, bare_verdict
+
+
+def test_two_unconsumed_values_raise_rather_than_pick_one():
+    """The conclusion is the produced value NOTHING consumed. Sever the
+    CONSUMES edge into the settle capacity and the graph then carries two
+    unconsumed values — the read and the verdict — and the record cannot say
+    which is the Record's conclusion. It must raise, not pick by iteration
+    order, which is the defect this rule replaced.
+
+    Without this test the rule could be silently weakened back to "take the
+    first unconsumed one" and every other guard would stay green."""
+    graphs = _settlement_graphs_with_document()
+    cut = 0
+    for graph in graphs:
+        for edge_id in list(graph.edges):
+            edge = graph.edges[edge_id]
+            if edge.type_name == "CONSUMES" and edge.target.type_name == NODE_CAPACITY:
+                if (edge.target.properties or {}).get("capacity", "").endswith(
+                    "drdemo_settle_claim"
+                ):
+                    del graph.edges[edge_id]
+                    cut += 1
+    assert cut == 1, f"fixture drifted: cut {cut} edges, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "which one is this Record's conclusion" in str(exc), str(exc)
+        return
+    raise AssertionError("a Record picked its conclusion by iteration order")
+
+
+
+def test_a_refusing_leaf_is_a_conclusion_not_a_missing_one():
+    """§30 Q2 asked against the RIGHT set. Beat 3's shipped case refuses, and
+    a completed run whose conclusion is a refusal is a Record (ADR-0209 shape
+    (a)). Until 2026-08-17 this check passed because the value the decision
+    CONSUMED was still counted — a premise standing in for a conclusion — so
+    it was green for a reason unrelated to its own claim. Strip the refusing
+    verdict and the check must fire; leave it and the page must render."""
+    page = render_from_graphs(_settlement_graphs(), EPISODE_COMPLETED)
+    assert "Q. Which proof of loss was filed for this claim?" in page, page
+    graphs = _settlement_graphs()
+    removed = 0
+    for graph in graphs:
+        for node_id in list(graph.nodes):
+            value = graph.nodes[node_id].value
+            if (isinstance(value, dict) and value.get("refusal_reason")
+                    and "origin_producer_kind" not in value):
+                _delete_node(graph, node_id)
+                removed += 1
+    assert removed == 1, f"fixture drifted: removed {removed}, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError:
+        return
+    raise AssertionError("a completed Episode with no outcome at all rendered")
 
 
 if __name__ == "__main__":

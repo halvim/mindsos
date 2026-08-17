@@ -36,16 +36,17 @@ and this branch merges the tag.
 | `dr_screen.py` | Screen A: the document layout over the renderer's composed text page, plus the "what arrived" panel. Typography only — it never reads a graph; the fact guard is text EQUALITY against the renderer page, and the stylesheet is linted for hiding declarations on every compose. Stdlib only. |
 | `dr_demo_beat.py` | **The demo, performed: one beat, live, on cue** (`up`, `1`-`6`, `down`, `list`). Prints the page raw and writes the screen; beat 6 rebuilds an earlier beat's Record from the store alone. Carries the ONLY map from the script's beats to the demo's cases. |
 | `dr_demo_run.py` | **The Gate-7 driver: three cold runs, no operator intervention.** One command; each run gets its own container AND its own subprocess, the store is asserted empty before any case executes, teardown is unconditional, and the exit code is the gate's verdict. |
-| `test_dr_render_guards.py` | 29 guard tests (G1/G2/G5/G6, the §30 rulings, the correlation bijection, the stated-absence rule, the policy source line and its contract pin, beat 3's refusal). Plain python or pytest; no FalkorDB. |
-| `test_dr_routing_guards.py` | 4 guard tests on the routing content: beats 1-2, the static fold-reducer decode check firing before any member runs, and the member road's refusal-with-no-stored-words raise. |
-| `test_dr_screen_guards.py` | 9 guard tests on Screen A: chrome closure, the fact-equality channel, the stylesheet lint, the classification pins. |
+| `test_dr_render_guards.py` | 33 guard tests (G1/G2/G5/G6, the §30 rulings, the correlation bijection, the stated-absence rule, the policy source line and its contract pin, beat 3's refusal). Plain python or pytest; no FalkorDB. |
+| `test_dr_routing_guards.py` | 10 guard tests on the routing content: beats 1-2, the static fold-reducer decode check firing before any member runs, and the member road's refusal-with-no-stored-words raise. |
+| `test_dr_screen_guards.py` | 10 guard tests on Screen A: chrome closure, the fact-equality channel, the stylesheet lint, the classification pins. |
 | `test_dr_run_guards.py` | 5 guard tests on the cold-run driver — the five ways it could report a green gate that means nothing. Fake backend; no docker, no FalkorDB. |
 | `test_dr_no_model_guards.py` | 3 guard tests on beat 5's claim: the pinned core carries no model seam, no demo module imports it, and no case produces a value a model read. Neither check may pass vacuously. |
 | `test_dr_beat_guards.py` | 3 guard tests on the per-beat runner: every scripted beat resolves to a case that exists, the memo holds refs never pages (D9), and the closer refuses when no beat has run. |
 | `test_dr_dump_printer_guard.py` | 3 tests pinning the dump instrument itself: printed counts equal object counts; the retry delta is reported, not hidden. |
+| `dr_mutations.py` | **The mutation harness: every new guard shown RED by a named mutation, then reverted.** One command instead of eleven hand-cycles. Applies an exact string replacement, runs every guard file in a fresh subprocess, restores in a `finally`, hashes all three sources before and after, and re-runs the guards to prove the tree came back. A mutation that reddens NOTHING prints FINDING; so does one whose red set differs from the prediction recorded beside it. Ship discipline, not demo content — the room never sees it. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 56** (render 29, screen 9, run 5, routing 4, no-model 3, beat 3, dump 3). These are
+**Guard total: 67** (render 33, screen 10, run 5, routing 10, no-model 3, beat 3, dump 3) — 56 before the deciding-fact ship. These are
 the demo's own guards and are **not** part of the core gate — a demo's tests are
 not in the core test image (RULES §1).
 
@@ -103,6 +104,15 @@ with `PYTHONDONTWRITEBYTECODE=1`** — a same-length mutation reverted inside on
 second leaves the mutated `.pyc` cached (mtime+size unchanged), so "reverted,
 green again" silently re-runs the mutation. Same defect as a `docker compose`
 run without `--build`:
+
+The mutation harness — the §12.2 obligation, mechanically. It writes to
+`dr_render.py`, `dr_screen.py` and `dr_settlement.py` and restores them in a
+`finally`; if it ever reports NOT RESTORED, recover with
+`git checkout -- decision_records_demo/`:
+
+```
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 decision_records_demo/dr_mutations.py
+```
 
 ```
 PYTHONPATH=. python3 decision_records_demo/test_dr_render_guards.py

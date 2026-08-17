@@ -42,9 +42,14 @@ the reducer declares ``decodes_refusals`` and
 ``plan_construction.check_fold_reducer_decode`` enforces the pair statically
 on the direct-``PlanResult`` road this module drives (ADR-0209 D4).
 
-Desk verdict VALUES are deliberately BARE (``{"decision": <desk>}``): two
-routine-desk verdicts are byte-identical, which is legal on the manifest
-road — position correlates them (ADR-0201 am-5, N-F2 defused). This module
+Desk verdict VALUES carry the decision and the determining input and
+nothing else (``{"decision": <desk>, "determined_by": <input>}``): two
+routine-desk verdicts are STILL byte-identical — both were determined by
+coverage — which is legal on the manifest road, position correlates them
+(ADR-0201 am-5, N-F2 defused). ⚠ The determining field was added
+2026-08-17 and this paragraph was corrected WITH it: it read "deliberately
+BARE" and would have been a docstring describing code that no longer
+existed, which is the defect this lane has recorded seven times. This module
 is demo code: it registers into its own layer and never edits ``mindsos_*``
 (RULES §3).
 """
@@ -85,6 +90,15 @@ ROUTINE_DESK = "the routine claims desk"
 SPECIALTY_UNIT = "the specialty injury unit"
 SOURCE_PHRASE = "the intake record for this exposure"
 
+#: The demo-owned structural field naming WHICH INPUT determined a verdict.
+#: Same shape and same discipline as ADR-0209's ``refusal_reason``: it names a
+#: DataState, so it is **branch-only and never printed** (G6 bans IRIs from the
+#: page). The renderer uses it to SELECT which stored question and answer to
+#: show. Demo vocabulary on an opaque demo DataState — core is untouched
+#: (RULES §3), and Gate 4's restated form is unaffected: no new capacity
+#: category, no new ``FAMILY_RULES`` entry.
+DETERMINED_BY = "determined_by"
+
 #: Coverage words: taxonomy §3 unit names, verbatim.
 COVERAGE_VEHICLE = "Auto Physical Damage"
 COVERAGE_INJURY = "Bodily Injury"
@@ -121,14 +135,22 @@ def _route(context=None, **inputs):
     coverage = inputs.get(DS_COVERAGE)
     severity = inputs.get(DS_SEVERITY)
     if coverage == COVERAGE_VEHICLE:
-        return {DS_DESK: {"decision": ROUTINE_DESK}}
+        # A vehicle exposure routes on coverage alone: the severity reader's
+        # refusal on it decides nothing (§76), so the coverage is what
+        # determined this desk and the Record must say so and say only that.
+        return {DS_DESK: {"decision": ROUTINE_DESK,
+                          DETERMINED_BY: DS_COVERAGE}}
     if severity is None:
         # The reader refused; the desk cannot be chosen. Structural marker
-        # only — the words live in the reader's origin record.
+        # only — the words live in the reader's origin record. NO
+        # determining input: nothing determined an outcome there is not one of.
         return {DS_DESK: {"decision": None,
                           "refusal_reason": REFUSAL_FIELD_ABSENT}}
     desk = SPECIALTY_UNIT if severity == "severe" else ROUTINE_DESK
-    return {DS_DESK: {"decision": desk}}
+    # The coverage selected this branch; the SEVERITY chose the desk within it.
+    # The determining input is the one that moved the answer, not every input
+    # that was consulted — a page listing both is a data dump.
+    return {DS_DESK: {"decision": desk, DETERMINED_BY: DS_SEVERITY}}
 
 
 def _assign(context=None, **inputs):
