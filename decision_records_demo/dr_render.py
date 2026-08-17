@@ -118,6 +118,7 @@ REFUSAL_MARKER = "refusal_reason"
 FIELD_PRODUCER_KIND = "origin_producer_kind"
 FIELD_SUPPLIED_FIELDS = "supplied_fields"
 FIELD_ADMITTED = "admitted"
+FIELD_QUESTION = "question"
 FIELD_SOURCE_PHRASE = "source_identity_phrase"
 FIELD_SOURCE_VERSION = "source_version"
 FIELD_IN_FORCE_FROM = "source_in_force_from"
@@ -127,6 +128,24 @@ PRODUCER_POLICY_LOOKUP = "policy_lookup"
 #: Demo (claims) vocabulary — the layout's knowledge, not the graph's.
 VERDICT_FIELD = "decision"
 CONCLUSION_FIELD = "claim_decision"
+
+#: The demo-owned structural field naming WHICH INPUT decided a verdict.
+#: Branch-only and NEVER printed — it holds a DataState IRI and G6 bans those
+#: from the page. Same discipline as ``refusal_reason`` (ADR-0209). Spelled as
+#: a literal here because G1 forbids importing the demo modules that write it;
+#: the three spellings are pinned equal test-side.
+FIELD_DETERMINED_BY = "determined_by"
+
+#: How an origin record's DataState type is named from its value's:
+#: ``origin_v0.origin_record_iri(value_iri) == value_iri + "_origin"``, and
+#: EVERY producer that exists calls it (structured ingest, policy lookup,
+#: comprehension). Verified on a dump the owner ran, 2026-08-17: a lookup graph
+#: carries ``datastate:drdemo.dwelling_limit`` beside
+#: ``datastate:drdemo.dwelling_limit_origin``. This is the PRIMARY pairing
+#: axis; same-producing-capacity is the cross-check, because one capacity emits
+#: both and a name match across two producers is incoherent rather than
+#: ambiguous. Pinned test-side against the contract.
+ORIGIN_SUFFIX = "_origin"
 
 #: IRI prefixes that must never reach the page (G6): a detail carrying one is
 #: a link, not text.
@@ -302,6 +321,68 @@ class _Analysis:
                 out.append(value)
         return out
 
+    def _node_by_type(self, ds_type: str) -> Optional[Any]:
+        """The PRODUCED node of this type, or None. Raises on two."""
+        found = [n for n in self.produced if self.ds_type(n) == ds_type]
+        if len(found) > 1:
+            raise RendererGapError(
+                f"two produced values share the type {ds_type!r} on "
+                f"{self.graph.role!r} — the page cannot say which one was read"
+            )
+        return found[0] if found else None
+
+    def deciding_lines(self, verdict: Any) -> List[str]:
+        """The one read that DECIDED this verdict, as its stored question and
+        its stored answer.
+
+        **Not every read.** A page carrying every fact a decision consulted is
+        a data dump; the fact that MOVED the answer is the decision. The
+        producing capacity records which input that was
+        (:data:`FIELD_DETERMINED_BY`), and this method renders THAT stored
+        question with THAT stored answer — inventing neither.
+
+        **The marker is never printed.** It names a DataState; G6 bans IRIs
+        from the page. It selects, it does not appear.
+
+        **Two asymmetries, and both are deliberate.** A verdict carrying no
+        marker returns nothing and is NOT punished — the policy criterion
+        writes no origin record by design (ADR-0208 (c)), and a capacity that
+        does not claim a determining input has not failed to supply one. A
+        verdict that DECLARES one whose question or answer cannot be found
+        RAISES: that is a gap, and G2 is raise, never fill.
+        """
+        if not isinstance(verdict, dict):
+            return []
+        marker = verdict.get(FIELD_DETERMINED_BY)
+        if not marker:
+            return []
+        answer_node = self._node_by_type(marker)
+        record_node = self._node_by_type(marker + ORIGIN_SUFFIX)
+        if answer_node is None or record_node is None:
+            missing = "its answer" if answer_node is None else "its question"
+            raise RendererGapError(
+                f"a decision on {self.graph.role!r} names the fact that decided "
+                f"it, but {missing} is not in this run's stored evidence — "
+                "refusing to publish a Record that cannot show its own reason"
+            )
+        answer_by = self._capacity_of(answer_node)
+        record_by = self._capacity_of(record_node)
+        if answer_by is None or answer_by != record_by:
+            raise RendererGapError(
+                f"on {self.graph.role!r} the deciding value and the question it "
+                "is supposed to answer were produced by different capacities — "
+                "refusing to print a question over an answer that did not come "
+                "from it"
+            )
+        record = record_node.value
+        if not isinstance(record, dict) or not record.get(FIELD_ADMITTED):
+            raise RendererGapError(
+                f"a decision on {self.graph.role!r} was determined by a value "
+                "whose own record does not admit it — a verdict standing on a "
+                "refusal is incoherent, and the page will not carry it"
+            )
+        return [f"   Q. {record.get(FIELD_QUESTION)} — {_fmt(answer_node.value)}."]
+
     def plain_produced(self) -> List[Any]:
         """Produced DSIs that are neither origin records nor refusal carriers."""
         out = []
@@ -381,6 +462,7 @@ def _member_block(member: "_Analysis", entry: Any) -> List[str]:
         for start in member.parentless
         if not isinstance(start.value, list)
     ]
+    lines.extend(member.deciding_lines(entry))
     lines.append(f"   {member.phrase_for_value(entry)} → {_verdict_text(entry)}")
     produced = next((n for n in member.produced if n.value == entry), None)
     if produced is not None:
@@ -638,6 +720,7 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
         else:
             produced = analysis.plain_produced()
             if produced:
+                lines.extend(analysis.deciding_lines(produced[0].value))
                 lines.append(
                     f"   {analysis.phrase()} → {_verdict_text(produced[0].value)}"
                 )

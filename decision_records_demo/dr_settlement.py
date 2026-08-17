@@ -64,6 +64,16 @@ CAP_SETTLE = capacity_iri(CATEGORY_DECISION, "drdemo_settle_claim")
 SOURCE_PHRASE = "the claim as filed"
 SETTLEMENT_PAYABLE = "payable under the policy"
 
+#: The demo-owned structural field naming WHICH INPUT determined a verdict —
+#: the same field ``dr_routing`` and ``dr_render`` declare. It is spelled as a
+#: literal in all THREE places by necessity, not by sloppiness: ``dr_render``
+#: may import neither demo module (G1 allows stdlib + ``mindsos_core`` only),
+#: so a shared constant is impossible. The three spellings are pinned EQUAL
+#: test-side, exactly as the origin field names are — unpinned, a rename here
+#: would silently stop the deciding fact rendering instead of failing, which is
+#: the guard-that-cannot-go-red shape.
+DETERMINED_BY = "determined_by"
+
 #: Beat 3 — the claim arrives without the document settlement depends on.
 CASE_MISSING_DOCUMENT = {
     "claimant": "E. Nakamura",
@@ -78,7 +88,12 @@ def _settle(context=None, **inputs):
         # only — the words live in the reader's origin record.
         return {DS_SETTLEMENT: {"decision": None,
                                 "refusal_reason": REFUSAL_FIELD_ABSENT}}
-    return {DS_SETTLEMENT: {"decision": SETTLEMENT_PAYABLE}}
+    # The filed document is what allows the claim to be settled, so it is
+    # the determining input. Beat 3's shipped case never reaches here — it
+    # refuses — but a refusal carries no determining input by design, and
+    # the answering branch must not be the one that is untested.
+    return {DS_SETTLEMENT: {"decision": SETTLEMENT_PAYABLE,
+                            DETERMINED_BY: DS_PROOF_OF_LOSS}}
 
 
 def settlement_datastates():

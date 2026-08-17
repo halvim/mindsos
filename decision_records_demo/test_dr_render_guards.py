@@ -678,6 +678,11 @@ def test_the_origin_keys_the_page_reads_match_the_contract():
     assert dr_render.FIELD_IN_FORCE_FROM == origin_v0.FIELD_SOURCE_IN_FORCE_FROM
     assert dr_render.FIELD_IN_FORCE_TO == origin_v0.FIELD_SOURCE_IN_FORCE_TO
     assert dr_render.PRODUCER_POLICY_LOOKUP == origin_v0.PRODUCER_POLICY_LOOKUP
+    assert dr_render.FIELD_QUESTION == origin_v0.FIELD_QUESTION
+    # The pairing axis: the renderer spells the suffix, the contract computes
+    # it. A change to `origin_record_iri` that this literal did not follow
+    # would stop the deciding fact rendering SILENTLY.
+    assert origin_v0.origin_record_iri("datastate:x") == "datastate:x" + dr_render.ORIGIN_SUFFIX
     # And the absence the page relies on: an open edition has no end, so
     # in_force_to must stay OUT of the declared-supplied set.
     assert origin_v0.FIELD_SOURCE_IN_FORCE_TO not in policy_lookup_v0.SUPPLIED_WHEN_ADMITTED
@@ -721,6 +726,59 @@ def test_a_leaf_refusal_with_no_stored_words_raises():
     except RendererGapError:
         return
     raise AssertionError("a refusal with no stored words rendered anyway")
+
+
+
+def _settlement_graphs_with_document():
+    """Beat 3's ANSWERING branch, which the shipped case never reaches — it
+    refuses. The leaf road's deciding-fact path is otherwise untested, and an
+    untested branch on the road that renders every single-capacity Record is
+    not a branch anyone should trust."""
+    from decision_records_demo.dr_settlement import (
+        DS_CLAIM_INTAKE, settlement_capacities, settlement_datastates,
+        settlement_plan,
+    )
+
+    mm, dispatcher, writer, request_run = _harness(
+        capacities=settlement_capacities(),
+        extra_datastates=settlement_datastates(),
+    )
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, settlement_plan(), request_run, mm=mm,
+        solve_seed={DS_CLAIM_INTAKE: {
+            "claimant": "E. Nakamura",
+            "loss": "water damage, 2 June",
+            "proof_of_loss": "sworn statement of loss, filed 9 June",
+        }},
+        capacity_graphs=graphs, case_label="claim CLM-5093",
+    )
+    return graphs
+
+
+def test_the_leaf_road_shows_the_deciding_fact():
+    """The leaf road carries the same rule as the member road: a decision that
+    records what determined it prints that stored question and that stored
+    answer, and nothing else it happened to read."""
+    page = render_from_graphs(_settlement_graphs_with_document(), EPISODE_COMPLETED)
+    assert "Q. Which proof of loss was filed for this claim? — sworn statement of loss, filed 9 June." in page, page
+    assert "payable under the policy" in page, page
+    assert "determined_by" not in page, page
+    low = page.lower()
+    for token in G6_BANNED + ("drdemo_",):
+        assert token not in low, f"G6: {token!r} leaked onto the page:\n{page}"
+
+
+def test_a_capacity_that_records_no_deciding_fact_is_not_punished():
+    """The asymmetry, and it is deliberate: the policy criterion writes no
+    origin record BY DESIGN (ADR-0208 (c)) and claims no determining input, so
+    its page renders item -> verdict exactly as before this ship. Only a
+    DECLARED determining input that cannot be shown is a gap. Without this
+    test, tightening the rule to 'every verdict must name its reason' would
+    look correct and would redden nothing here."""
+    page = render_from_graphs(_admitted_policy_graphs("2024-06-01"), EPISODE_COMPLETED)
+    assert "Q." not in page, ("a capacity that claims no deciding fact grew one:\n" + page)
+    assert "375000" in page and "2024.1" in page, page
 
 
 if __name__ == "__main__":
