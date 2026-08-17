@@ -629,7 +629,16 @@ MUTATIONS = [
         "            pass",
         # The mechanism critic s125.1 forced. Not-binding-the-Request was the
         # first plan and it was worthless - the OPENER binds it as a parameter.
-        ["test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain"],
+        # WIDENED after a MISS: this row predicted one guard, written before
+        # guard 13 existed, and was not revisited when guard 13 was added in
+        # the same commit that added the row below. Deleting the scrub breaks
+        # BOTH claims - the chain walk and the composed request - and the miss
+        # was in the usual direction. The row below was predicted at two and
+        # came back exact; this one was left behind.
+        [
+            "test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain",
+            "test_the_composed_request_retains_no_credential_after_the_call",
+        ],
     ),
     (
         "an unasked TOP-LEVEL key is accepted instead of refused",
