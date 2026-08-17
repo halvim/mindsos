@@ -98,10 +98,25 @@ def test_case_b_refusal_beside_answers_names_the_item():
     assert page.count(ROUTINE_DESK) >= 2
     assert SPECIALTY_UNIT in page
     assert "1 cannot be assigned yet" in page
+    # ⚠ THE SAME QUESTION IS NOW ON THE PAGE TWICE, and that is the point of
+    # beat 2 rather than a collision to work around: C. Mensah's severity was
+    # ASSESSED and decided her desk, D. Laurent's was not stated at all. Before
+    # the deciding-fact ship this string appeared once, so locating the refusal
+    # by the question alone was unambiguous; it is not any more, and a test
+    # that kept doing it would silently point at the answered one.
+    answered_at = page.find(
+        "Q. What injury severity was assessed for this exposure? — severe."
+    )
+    refused_at = page.find(
+        "Q. What injury severity was assessed for this exposure? — Nothing."
+    )
+    assert answered_at != -1 and refused_at != -1, page
     laurent_at = page.find("D. Laurent")
-    q_at = page.find("Q. What injury severity")
     mensah_at = page.find("C. Mensah")
-    assert mensah_at < laurent_at < q_at, "the refusal block sits in place"
+    assert mensah_at < answered_at < laurent_at < refused_at, (
+        "the same question must read ANSWERED under C. Mensah and UNANSWERED "
+        "under D. Laurent, each in its own block:\n" + page
+    )
     _g6_clean(page)
 
 
