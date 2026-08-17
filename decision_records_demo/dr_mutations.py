@@ -684,6 +684,84 @@ MUTATIONS = [
         "        pass",
         ["test_a_non_https_endpoint_is_refused_at_BUILD_time"],
     ),
+    # ── STEP 2 — the routing rule becomes a stored, dated policy.
+    # ⚠ These eight are ENTANGLED on purpose and the predictions say so. The
+    # deciding fact, the rule line, the edition and the desk are four claims
+    # about ONE decision, so an edit that falsifies one usually falsifies more.
+    # RULES §12's fifth practice rule is exactly this shape, and predicting one
+    # red where four are honest is the error it was written after.
+    (
+        "the threshold is a literal again - the rule leaves the store",
+        ROUTING,
+        "    desk = SPECIALTY_UNIT if int(weeks) >= int(threshold) else ROUTINE_DESK",
+        "    desk = SPECIALTY_UNIT if int(weeks) >= 4 else ROUTINE_DESK",
+        [
+            "test_the_routing_rule_is_not_a_literal_in_this_module",
+            "test_two_editions_route_the_SAME_exposure_to_different_desks",
+        ],
+    ),
+    (
+        "the two editions state the same threshold - the dated claim dies quietly",
+        ROUTING,
+        "    stated_value=8,",
+        "    stated_value=4,",
+        ["test_two_editions_route_the_SAME_exposure_to_different_desks"],
+    ),
+    (
+        "the rule line loses the EDITION behind it and keeps the number",
+        RENDER,
+        "        if record.get(FIELD_PRODUCER_KIND) == PRODUCER_POLICY_LOOKUP:",
+        "        if False:",
+        # Three claims read the Source line: the window, the two editions, and
+        # the assessment guard's re-cut door.
+        [
+            "test_the_page_names_the_rule_it_was_measured_against_and_its_window",
+            "test_two_editions_route_the_SAME_exposure_to_different_desks",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+        ],
+    ),
+    (
+        "the verdict stops naming the rule it was measured against",
+        ROUTING,
+        "                       MEASURED_AGAINST: DS_THRESHOLD})",
+        "                       })",
+        [
+            "test_the_deciding_fact_stays_the_persons_fact_and_the_rule_is_a_second_line",
+            "test_the_page_names_the_rule_it_was_measured_against_and_its_window",
+            "test_two_editions_route_the_SAME_exposure_to_different_desks",
+            "test_a_REFUSAL_carries_no_rule_line_because_no_rule_was_applied",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+        ],
+    ),
+    (
+        "the boundary opens - AT the threshold no longer reaches the specialty unit",
+        ROUTING,
+        "    desk = SPECIALTY_UNIT if int(weeks) >= int(threshold) else ROUTINE_DESK",
+        "    desk = SPECIALTY_UNIT if int(weeks) > int(threshold) else ROUTINE_DESK",
+        ["test_the_boundary_routes_at_EXACTLY_the_threshold_and_below_it_does_not"],
+    ),
+    (
+        "a REFUSAL cites the policy it never reached",
+        ROUTING,
+        "        return _verdict(decision=None, refusal_reason=REFUSAL_FIELD_ABSENT)",
+        "        return _verdict(decision=None, refusal_reason=REFUSAL_FIELD_ABSENT,\n"
+        "                        **{MEASURED_AGAINST: DS_THRESHOLD})",
+        ["test_a_REFUSAL_carries_no_rule_line_because_no_rule_was_applied"],
+    ),
+    (
+        "no edition in force is not noticed, and the comparison runs on None",
+        ROUTING,
+        "    if threshold is None:",
+        "    if False:",
+        ["test_no_edition_in_force_REFUSES_IN_BAND_in_the_lookups_own_words"],
+    ),
+    (
+        "the policy FILE is composed by this lane instead of read from the store",
+        ROUTING,
+        '        f"{node.value}"',
+        '        "the injury-routing policy says what it says"',
+        ["test_the_policy_FILE_is_stored_words_only"],
+    ),
 ]
 
 _RUNNER = (
