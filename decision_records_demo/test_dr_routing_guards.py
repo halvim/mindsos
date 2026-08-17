@@ -308,6 +308,35 @@ def test_the_field_name_is_spelled_the_same_in_all_three_places():
     assert dr_settlement.DETERMINED_BY == dr_render.FIELD_DETERMINED_BY
 
 
+
+def test_the_intake_line_does_not_echo_the_deciding_fact():
+    """Read live on 2026-08-17 and ruled by the owner: the intake line printed
+    every field of the exposure, so the ANSWER to the deciding question stood
+    one line above the question asking for it — and Screen A's left panel
+    prints the same intake a third time. The deciding fact's value is WHICH
+    fact was decisive; the answer was already on screen and read as filler.
+
+    Narrow by design, and this test pins the narrowness in both directions:
+    the echoed value goes, and CONTEXT the decision needed but did not state
+    stays. C. Mensah keeps *Bodily Injury* and loses only the duplicated
+    *severe*."""
+    page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
+    silva = page.split("A. Silva")[1].split("B. Osei")[0]
+    assert silva.count("Auto Physical Damage") == 1, (
+        "the coverage is on Silva's block twice — intake line and deciding "
+        "fact:\n" + silva
+    )
+    assert "Q. Which coverage" in silva, silva
+    mensah = page.split("C. Mensah")[1].split("Therefore")[0]
+    assert mensah.count("severe") == 1, (
+        "the severity is on Mensah's block twice:\n" + mensah
+    )
+    assert "Bodily Injury" in mensah, (
+        "context the decision needed but did not state was dropped with the "
+        "echo:\n" + mensah
+    )
+
+
 if __name__ == "__main__":
     for fn in sorted(
         (v for k, v in list(globals().items()) if k.startswith("test_")),

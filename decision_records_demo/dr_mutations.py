@@ -52,6 +52,13 @@ GUARD_FILES = (
 #: (name, file, old, new, predicted-red test names)
 MUTATIONS = [
     (
+        "the intake line echoes the deciding fact again",
+        RENDER,
+        "    kept = {k: v for k, v in value.items() if v != drop}",
+        "    kept = dict(value)",
+        ["test_the_intake_line_does_not_echo_the_deciding_fact"],
+    ),
+    (
         "a NON-DICT verdict is punished for naming no deciding fact",
         RENDER,
         "        if not isinstance(verdict, dict):\n            return []",
