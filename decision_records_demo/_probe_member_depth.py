@@ -212,13 +212,23 @@ def main():
         return 1
     print("> TWO-DEEP MEMBER BRANCH: COMPOSED")
     print("> graphs:", len(graphs))
-    for graph in graphs:
-        for node in getattr(graph, "nodes", []) or []:
-            value = getattr(node, "value", None)
-            if isinstance(value, dict) and (
-                "decision" in value or "claim_decision" in value
-            ):
-                print("> verdict:", value)
+    # ⚠ COMPOSED alone proves only that nothing raised. It would print the same
+    # if every exposure had REFUSED — which is what a failed reader looks like
+    # from here. The page is the answer: it names the desks, the deciding fact
+    # and the edition, or it does not.
+    from decision_records_demo.dr_render import render_from_graphs
+
+    page = render_from_graphs(graphs, {
+        "capacity_root_ref": "unused-by-render_from_graphs",
+        "consolidated_at": "2026-08-17T12:00:00.000000+00:00",
+        "outcome_classification": "completed",
+    })
+    print("> ---- PAGE, rendered from the graphs, verbatim ----")
+    print(page)
+    print("> ---- end ----")
+    print("> specialty reached:", SPECIALTY_UNIT in page)
+    print("> routine reached:", ROUTINE_DESK in page)
+    print("> edition named:", "v2024.1" in page)
     return 0
 
 
