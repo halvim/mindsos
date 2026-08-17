@@ -25,7 +25,6 @@ drift RULES §1 was corrected for. Do not restore a home column entry without `l
 | `MindsOS-arc-viz/`        | `arc-solver-viz`   | demo             | unverified                       |
 | `MindsOS-bongard/`        | `demo/bongard`     | demo             | unverified                       |
 | `nilm_brain/`             | `nilm_brain`       | long-lived       | unverified                       |
-| `_MindsOS-dr-critic/`     | `feat/dr-critic`   | critic lane      | `scripts/critic/` — **transient; owes §10.1**, its probe scripts exist nowhere else |
 | `MindsOS-dr/`             | `demo/decision-records` | demo        | `decision_records_demo/` at root ✅ (demo branch only, created 2026-08-13 @ `d94ca4f`) |
 
 **Decision Records** code home is `decision_records_demo/` at the repo root, **only on
@@ -39,6 +38,21 @@ research + docs home stays `projects/decision_records_demo/` on `main`. Build or
 ```
 for t in $(git tag --list '*-confirmed'); do git diff --quiet "$t" origin/demo/decision-records -- 'mindsos_*' && echo "$t"; done
 ```
+
+⚠ **THE DECISION RECORDS CRITIC LANE IS CLOSED, 2026-08-17.**
+`_MindsOS-dr-critic` / `feat/dr-critic` are gone and RULES §10.1 is satisfied:
+its probe scripts existed nowhere else and are preserved at tag
+**`dr-critic-probes-archive`** (`13e2ba2`). `probe_gate_diff.py` there is the
+probe that RAN the equality edit and found the v1 gate's wording unsatisfiable
+before ship C's guard was written — start there if you are reconstructing why
+that gate reads the way it does.
+
+**Consequence, recorded rather than discovered:** the Decision Records demo has
+no independent reviewer. Every ship from `dr-prereq0-confirmed` to
+`dr-ship-b-confirmed` passed a stage-2 hold. **To restore one, branch a fresh
+critic worktree from `dr-critic-probes-archive`** — the probes return with it.
+Reasoning of record: `confirmation_docs/DR_CRITIC_COORDINATION.md` §114
+(untracked, shared checkout).
 
 On demand (create when the work starts):
 `git worktree add ../MindsOS-fol -b fol-1 main` (also dwf, skill_acquisition, maintenance).
