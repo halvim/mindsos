@@ -564,8 +564,8 @@ MUTATIONS = [
     (
         "the tool reply is ALTERED on the way out - one field added",
         TRANSPORT,
-        "            return answer",
-        "            return dict(answer, checked=True)",
+        "        return answer",
+        "        return dict(answer, checked=True)",
         # Deliberately NOT "return the commentary block": that raises, which
         # reddens every guard that calls the transport and hides which one was
         # proved. The smallest edit that falsifies "unaltered" is a field.
@@ -582,10 +582,10 @@ MUTATIONS = [
         "the credential is appended to the outage message",
         TRANSPORT,
         "            raise TransportCallFailed(UNREACHABLE) from exc",
-        '            raise TransportCallFailed(UNREACHABLE + " " + api_key) from exc',
+        '            raise TransportCallFailed(UNREACHABLE + " " + resolve_api_key()) from exc',
         # NOT guard 5 as well: the test key contains "ant" and not
         # "anthropic", and carries neither the model id nor the endpoint.
-        ["test_the_api_key_reaches_no_return_value_and_no_exception_in_the_chain"],
+        ["test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain"],
     ),
     (
         "the model id is appended to the outage message",
@@ -619,8 +619,38 @@ MUTATIONS = [
         "a call with no schema falls back to free text instead of raising",
         TRANSPORT,
         "            raise TransportSchemaRequired(NO_SCHEMA)",
-        '            extraction_schema = {"type": "object"}',
+        '            extraction_schema = {"fields": 1}',
         ["test_a_call_with_no_schema_raises_instead_of_falling_back_to_free_text"],
+    ),
+    (
+        "the credential is left on the Request that every frame still holds",
+        TRANSPORT,
+        "            _scrub(request)",
+        "            pass",
+        # The mechanism critic s125.1 forced. Not-binding-the-Request was the
+        # first plan and it was worthless - the OPENER binds it as a parameter.
+        ["test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain"],
+    ),
+    (
+        "an unasked TOP-LEVEL key is accepted instead of refused",
+        TRANSPORT,
+        "        unasked = sorted(set(answer) - set(declared))",
+        "        unasked = []",
+        ["test_an_unasked_TOP_LEVEL_key_is_REFUSED_and_never_stripped"],
+    ),
+    (
+        "two blocks with the forced tool's name - the FIRST wins silently",
+        TRANSPORT,
+        "        if len(blocks) > 1:",
+        "        if False:",
+        ["test_two_blocks_with_the_forced_tools_name_RAISE_rather_than_the_first_winning"],
+    ),
+    (
+        "a schema declaring no properties is let through, and refuses every reply",
+        TRANSPORT,
+        "        if not isinstance(declared, Mapping) or not declared:",
+        "        if False:",
+        ["test_a_schema_declaring_no_top_level_properties_RAISES_rather_than_refusing_every_reply"],
     ),
 ]
 

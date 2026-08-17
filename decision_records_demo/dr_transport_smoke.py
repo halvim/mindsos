@@ -123,7 +123,7 @@ def main() -> int:
     print()
 
     transport = build_transport(
-        api_key=key,
+        resolve_api_key=lambda: os.environ["ANTHROPIC_API_KEY"],
         model_id=MODEL_ID,
         resolve_prompt=_resolve,
         tool_name=SMOKE_TOOL,

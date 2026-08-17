@@ -54,13 +54,41 @@ format noise.
   return *"a mapping it decoded itself"*. **S-2 is not violated:** S-2 puts the
   decoding of an ambiguous TEXT reply in the package where the failure is typed,
   and a forced tool reply is not an ambiguous text reply.
-* `MalformedResponse` can therefore no longer fire from decoding. That case is
+* `MalformedResponse` can therefore no longer fire from decoding. ⚠ **That is a
+  claim about `main`, not about this ship** (critic §123.4): `decode_response`
+  and `MalformedResponse` live in `mindsos_capacity.llm`, which this branch
+  cannot import and no guard here can touch. It is checkable only in the
+  README's owner-run conformance procedure, and it is marked there. The case is
   **eliminated at source, not hidden**: a tool reply missing a field reaches
-  `comprehension_v0` and becomes `REFUSAL_FIELD_ABSENT`, which is where a finding
-  about the answer belongs.
+  `comprehension_v0` and becomes `REFUSAL_FIELD_ABSENT`. **What it costs, named:**
+  the harness's `undecodable_text_is_a_malformed_answer` now needs a
+  `garbage_transport=` fixture to mean anything, so a report run without the
+  three fixtures reads greener than it is.
 * **There is no free-text fallback.** A call with no `extraction_schema` has
   nothing to force, and falling back would silently reintroduce the fence on
   exactly the path nobody is watching. It raises, and a guard pins it.
+* ⚠ **The schema must DECLARE its top-level `properties`, and a schema that does
+  not is refused LOUDLY rather than accepted weakly** (critic §125.2).
+  ``{"type": "object"}`` and a ``$ref``-only schema are both legal and both
+  declare nothing, so the *"only what was asked for"* check below would have
+  computed *every* key as unasked and **refused every reply** — the fourth
+  appearance in this lane of the would-refuse-every-time shape, and the first in
+  a REFUSAL path where it fails closed and looks principled. The offered
+  alternative — engage the check only when `properties` exist — is a guarantee
+  that silently disappears on exactly the schemas that need it.
+* **Only what was asked for.** A tool reply whose TOP-LEVEL keys are not among
+  the schema's declared `properties` is **refused, never stripped**: stripping is
+  the repair layer §122.3 rejected, and it would hide the one event worth seeing.
+  `comprehension_v0` searches `fields` for its name and ignores the rest, so an
+  unasked key — `confidence`, which that module's own docstring names as a value
+  that must never be stored as evidence — would otherwise ride into the payload
+  and live as long as the payload does. ⚠ **Stated limit:** the check is on
+  TOP-LEVEL keys. A key added inside `fields[]` items is not caught, and a
+  caller wanting `additionalProperties: false` puts it in its own schema — this
+  module does not edit an injected schema.
+* **Two blocks carrying the forced tool's name RAISE.** The first winning
+  silently is the same defect `dr_render` already refuses when it finds two
+  unconsumed refusal carriers.
 
 **NO WORDS LIVE IN THIS MODULE.** Not the prompt, not the tool's description.
 `prompt_iri` is carried for provenance only — `grep -rn 'prompt_iri'
@@ -76,13 +104,43 @@ no model. ``LiveLLM`` wraps whatever raises into ``LLMCallFailed`` with the
 provider exception on ``__cause__`` — the seam's design, and it makes the CAUSE
 chain a developer surface. Two obligations, guarded differently on purpose:
 
-* **the API key appears NOWHERE** — not in a return value, not in this module's
-  exception, not anywhere in its ``__cause__`` chain;
+* **the API key appears NOWHERE reachable from the exception chain** — not in a
+  return value, not in any link's message, and not in any frame local of any
+  link's traceback, *including what those locals expose*;
 * **the model id and the endpoint appear nowhere in the exception this module
   raises**, and that guard says in its own body that it does not follow the cause
   chain, because `urllib`'s `HTTPError` names the URL it failed on and
   suppressing it would destroy the only debugging surface there is. Plan §0.5
   item 8 is about a RENDERED PAGE; a traceback is not one.
+
+⚠ **THE CREDENTIAL SENTENCE WAS TWICE WIDER THAN ITS CHECK, and the second time
+was inside the fix for the first.** Round one (critic §123.2): the key was a
+bare closure free variable, live in ``transport``'s frame locals on every raised
+link — the guard walked ``str()`` of each link and found nothing, so it passed
+while the key sat one road over. Round two (critic §125.1): the proposed fix
+read the key through a callable, and the guard was going to be *"the critic's
+own probe, promoted"* — which walks ``str(local)``, and
+``repr(urllib.request.Request)`` is ``<urllib.request.Request object at 0x…>``.
+**The key would have been on ``request.headers``, one attribute hop off the road
+the promoted probe takes, and the new guard would have gone green over it.**
+
+**Three mechanisms, and none of them is the guard:**
+
+1. ``resolve_api_key`` is a **callable**, so no frame binds the credential as a
+   free variable.
+2. The headers are built by a helper that **always returns**, so the frame that
+   does hold the key is off every traceback before anything can raise.
+3. ⚠ **The ``Request``'s credential header is SCRUBBED in a ``finally``**,
+   before any exception leaves this function.
+
+⚠ **Round three, and it was caught by the widened guard on its first run —
+before the merge, not after.** The plan for (3) was *"never bind the
+``Request``, so this frame's locals hold no object carrying the key."* That is
+worthless: **the opener binds it as a PARAMETER**, and the opener's frame is on
+the traceback when the opener raises. Not binding it here hides it from one
+frame out of every frame that touches it. Hiding the object was never the
+property; **removing the credential from it is**, and because every frame holds
+the SAME object, scrubbing once clears all of them.
 """
 
 from __future__ import annotations
@@ -121,9 +179,37 @@ NO_SCHEMA = (
     "on our side and is never a finding about the case."
 )
 
+#: Also a deployment bug. A schema that declares no top-level ``properties``
+#: cannot support the only-what-was-asked-for check, and engaging that check
+#: anyway refuses every reply (critic §125.2).
+NO_PROPERTIES = (
+    "a reading was requested against a shape that names no fields. This is a "
+    "fault on our side and is never a finding about the case."
+)
+
+#: A finding about the ANSWER, not about us. ⚠ ``LiveLLM`` will classify it as
+#: an outage, which is wrong; ``MalformedResponse`` is the right class and it
+#: lives in ``mindsos_capacity.llm``, unimportable here. Recorded rather than
+#: papered over; it becomes reachable at step 3's pin bump.
+UNASKED_KEYS = (
+    "the reading came back carrying something that was not asked for, so it "
+    "was not accepted."
+)
+
 
 class TransportCallFailed(RuntimeError):
     """The call did not produce an answer. ``LiveLLM`` turns this into an outage."""
+
+
+class TransportUnaskedKeys(TransportCallFailed):
+    """The reply carried top-level keys outside the declared schema.
+
+    **Refused, not stripped.** See the module docstring: dropping them is a
+    repair layer, and it hides the one event worth seeing. Same
+    misclassification note as :class:`TransportSchemaRequired` — this is a
+    finding about the ANSWER and ``LiveLLM`` will report it as an outage until
+    step 3's pin bump makes ``MalformedResponse`` reachable.
+    """
 
 
 class TransportSchemaRequired(TransportCallFailed):
@@ -140,7 +226,7 @@ class TransportSchemaRequired(TransportCallFailed):
 
 def build_transport(
     *,
-    api_key: str,
+    resolve_api_key: Callable[[], str],
     model_id: str,
     resolve_prompt: Callable[..., str],
     tool_name: str,
@@ -153,9 +239,11 @@ def build_transport(
     """Build the callable ``LiveLLM`` will hold.
 
     Args:
-        api_key: The credential. Kept in the closure and never returned,
-            printed, or placed on an exception — the reason the seam takes a
-            callable rather than a config block (§6.4).
+        resolve_api_key: ``() -> str``. ⚠ **A callable, not the credential.**
+            A bare string would be a free variable of ``transport`` and would
+            therefore be live in the frame locals of every raised link — the
+            exposure critic §123.2 found. Supply
+            ``lambda: os.environ["ANTHROPIC_API_KEY"]``.
         model_id: Passed to the provider. ``LiveLLM`` stamps its own copy onto
             the payload for provenance; this one only reaches the wire.
         resolve_prompt: ``(prompt_iri, prompt_version) -> str``. **The only
@@ -169,11 +257,36 @@ def build_transport(
             guard runs with no network — the build gate has neither network
             nor key.
     """
-    if not api_key:
-        raise ValueError("no credential was supplied to the transport")
+    if not callable(resolve_api_key):
+        raise ValueError("resolve_api_key must be a callable, not a credential")
     if not tool_name or not tool_description:
         raise ValueError("the forced tool needs a name and a description")
     open_url = opener or urllib.request.urlopen
+
+    def _scrub(request):
+        """Remove the credential from a Request that frames still hold.
+
+        Every frame on every traceback holds the SAME object, so one removal
+        clears them all — which is why this works where not-binding-it did not.
+        ``Request`` title-cases header names and keeps a second dict for
+        unredirected headers; both are cleared.
+        """
+        for store in (request.headers, request.unredirected_hdrs):
+            for name in [k for k in store if k.lower() == "x-api-key"]:
+                del store[name]
+
+    def _headers():
+        """Build the headers and RETURN.
+
+        The credential is a local of THIS frame and of no other. Because this
+        function always returns, its frame is off every traceback before
+        anything downstream can raise (critic §123.2, §125.1).
+        """
+        return {
+            "content-type": "application/json",
+            "anthropic-version": API_VERSION,
+            "x-api-key": resolve_api_key(),
+        }
 
     def transport(
         *,
@@ -193,6 +306,10 @@ def build_transport(
         if not extraction_schema:
             # No fallback. See the module docstring.
             raise TransportSchemaRequired(NO_SCHEMA)
+        declared = extraction_schema.get("properties")
+        if not isinstance(declared, Mapping) or not declared:
+            # Loud once, rather than a check that silently refuses every reply.
+            raise TransportSchemaRequired(NO_PROPERTIES)
         body = json.dumps(
             {
                 "model": model_id,
@@ -213,14 +330,7 @@ def build_transport(
             }
         ).encode("utf-8")
         request = urllib.request.Request(
-            endpoint,
-            data=body,
-            method="POST",
-            headers={
-                "content-type": "application/json",
-                "anthropic-version": API_VERSION,
-                "x-api-key": api_key,
-            },
+            endpoint, data=body, method="POST", headers=_headers(),
         )
         try:
             response = open_url(request, timeout=timeout_s)
@@ -229,6 +339,11 @@ def build_transport(
             # developer. The credential is in neither, and a guard walks the
             # whole chain to say so.
             raise TransportCallFailed(UNREACHABLE) from exc
+        finally:
+            # ⚠ Runs BEFORE the exception propagates, and on the success path
+            # too — everything below this line can also raise, and this frame's
+            # ``request`` is on those tracebacks as well.
+            _scrub(request)
         status = getattr(response, "status", None)
         if status is None:
             status = getattr(response, "code", 200)
@@ -240,19 +355,29 @@ def build_transport(
             envelope = json.loads(response.read().decode("utf-8"))
         except Exception as exc:
             raise TransportCallFailed(NO_ANSWER) from exc
-        for block in envelope.get("content") or []:
-            if not isinstance(block, Mapping):
-                continue
-            if block.get("type") != "tool_use" or block.get("name") != tool_name:
-                # A model may emit commentary beside the tool call. It is not
-                # the answer and it is never returned as one.
-                continue
-            answer = block.get("input")
-            if not isinstance(answer, Mapping):
-                raise TransportCallFailed(NO_ANSWER)
-            # Unaltered: no key renamed, no field added, no value coerced.
-            return answer
-        raise TransportCallFailed(NO_ANSWER)
+        blocks = [
+            block for block in envelope.get("content") or []
+            # A model may emit commentary beside the tool call. It is not the
+            # answer and it is never returned as one.
+            if isinstance(block, Mapping)
+            and block.get("type") == "tool_use"
+            and block.get("name") == tool_name
+        ]
+        if len(blocks) > 1:
+            # Two carriers, no tie-break the reply supports. dr_render already
+            # refuses to pick from two unconsumed refusal carriers.
+            raise TransportCallFailed(NO_ANSWER)
+        if not blocks:
+            raise TransportCallFailed(NO_ANSWER)
+        answer = blocks[0].get("input")
+        if not isinstance(answer, Mapping):
+            raise TransportCallFailed(NO_ANSWER)
+        unasked = sorted(set(answer) - set(declared))
+        if unasked:
+            # REFUSED, never stripped. See the module docstring.
+            raise TransportUnaskedKeys(UNASKED_KEYS)
+        # Unaltered: no key renamed, no field added, no value coerced.
+        return answer
 
     return transport
 
@@ -261,9 +386,12 @@ __all__ = [
     "API_VERSION",
     "ENDPOINT",
     "NO_ANSWER",
+    "NO_PROPERTIES",
     "NO_SCHEMA",
     "UNREACHABLE",
     "TransportCallFailed",
     "TransportSchemaRequired",
+    "TransportUnaskedKeys",
+    "UNASKED_KEYS",
     "build_transport",
 ]

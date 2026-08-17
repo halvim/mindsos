@@ -48,10 +48,10 @@ and this branch merges the tag.
 | `dr_mutations.py` | **The mutation harness: every new guard shown RED by a named mutation, then reverted.** One command instead of eleven hand-cycles. Applies an exact string replacement, runs every guard file in a fresh subprocess, restores in a `finally`, hashes all three sources before and after, and re-runs the guards to prove the tree came back. A mutation that reddens NOTHING prints FINDING; so does one whose red set differs from the prediction recorded beside it. Ship discipline, not demo content — the room never sees it. |
 | `dr_transport.py` | **Step 1: the piece that touches the network** (plan §0.4 item 7 step 1). `LiveLLM` takes a deployment-supplied callable and it was never written; this is that callable. Stdlib `urllib`, no new dependency, registers nothing. ⚠ **This branch cannot import `mindsos_capacity.llm`** — it is on `main` and ABSENT from the pinned core — so `contract.verify_transport` is run by the OWNER from the `main` checkout, never as a guard here. ⚠ **The answer is FORCED into a shape, not repaired into one:** the extraction schema is sent as a tool with `tool_choice` forced, because a live provider returned JSON fenced in a markdown block despite two instructions not to, and repairing that in the transport would edit the model's output before anything checks it. Returns the tool input as a `Mapping`, unaltered. No free-text fallback. No words live in it — the prompt and the tool description are both injected. |
 | `dr_transport_smoke.py` | **The step-1 gate: one real call, and the owner watches the answer come back.** Prints what this lane composed above what the model produced (RULES §11). Its prompt is a step-1 throwaway; the demo's stored, printable prompt lands with step 3. The owner's fixture (email B) is deliberately NOT here — that is step 3. |
-| `test_dr_transport_guards.py` | 9 guard tests on the transport: all five of `LiveLLM`'s keyword args are required (bind fails with any one removed), a forced tool reply is returned UNALTERED with the model's commentary never mistaken for the answer, a non-2xx raises as an OUTAGE rather than handing back an error body, the credential appears nowhere in a return value or anywhere in the exception chain, the model id and endpoint appear nowhere in the exception THIS module raises, the per-call timeout reaches the opener, the prompt on the wire came from the injected resolver, the request FORCES the tool and sends the injected schema, and a call with no schema RAISES instead of falling back to free text. Fake opener throughout — no network, no key. |
+| `test_dr_transport_guards.py` | 12 guard tests on the transport: all five of `LiveLLM`'s keyword args are required (bind fails with any one removed), a forced tool reply is returned UNALTERED with the model's commentary never mistaken for the answer, a non-2xx raises as an OUTAGE rather than handing back an error body, **the credential appears in nothing a crash reporter could render from the exception chain** — every link's message, every frame local of every traceback, and what those locals expose through `repr`, `vars()` and `header_items()` — the model id and endpoint appear nowhere in the exception THIS module raises, the per-call timeout reaches the opener, the prompt on the wire came from the injected resolver, the request FORCES the tool and sends the injected schema, a call with no schema RAISES instead of falling back to free text, an unasked TOP-LEVEL key is REFUSED and never stripped, two blocks carrying the forced tool's name RAISE rather than the first winning, and a schema declaring no top-level `properties` RAISES rather than refusing every reply. Fake opener throughout — no network, no key. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 101** (render 37, routing 16, assessment 13, screen 10, transport 9, run 5, beat 5, no-model 3, dump 3) — 92 before step 1, 68 before ship B, 56 before the deciding-fact ship.
+**Guard total: 104** (render 37, routing 16, assessment 13, transport 12, screen 10, run 5, beat 5, no-model 3, dump 3) — 92 before step 1, 68 before ship B, 56 before the deciding-fact ship.
 ⚠ **Counted with `grep -c '^def test_'`, never recalled.** This line said 67 for
 the length of one ship because the last guard landed after it was written — the
 eighth instance in this lane of a document disagreeing with the tree it
@@ -114,6 +114,15 @@ with `PYTHONDONTWRITEBYTECODE=1`** — a same-length mutation reverted inside on
 second leaves the mutated `.pyc` cached (mtime+size unchanged), so "reverted,
 green again" silently re-runs the mutation. Same defect as a `docker compose`
 run without `--build`:
+
+⚠ **A mutation run killed mid-row leaves the tree MUTATED** — the `finally` that
+restores it never runs — so the next reader sees a red that belongs to nobody.
+Observed 2026-08-17 by the critic lane against its own working copy: twelve
+consecutive reds on `test_a_short_intake_value_survives_when_it_only_LOOKS_echoed`
+across four `PYTHONHASHSEED`s, which was not flaky and was not the ship, but
+`dr_render.py:602` left sitting as `if True:`. **Re-run from a clean extract
+before concluding a red is real**, and read the source hashes this harness
+prints before and after.
 
 The mutation harness — the §12.2 obligation, mechanically. It writes to
 `dr_render.py`, `dr_screen.py`, `dr_settlement.py`, `dr_routing.py`, `dr_demo_beat.py`,
@@ -194,6 +203,15 @@ and schema and calls `verify_transport` with `failing_transport=`,
 `garbage_transport=` and `wrong_type_transport=` supplied — **without them three
 of the contract's checks report SKIPPED and the report reads greener than it
 is.** None of those three touch the network.
+
+⚠ **Pass all three fixture transports — `failing_transport=`,
+`garbage_transport=`, `wrong_type_transport=` — or three checks report SKIPPED
+and the report reads greener than it is.** None of them touches the network.
+`undecodable_text_is_a_malformed_answer` in particular can no longer be produced
+by the live transport at all: a forced tool reply is a mapping, so
+`decode_response` never fails. **That is the one place the module's
+`MalformedResponse` claim is checkable** — it is a claim about `main`, not about
+this branch, which cannot import the package (critic §123.4).
 
 ⚠ **Read the report's `unverifiable` lines, not only its passes.** `contract.py`
 names four §6.3 properties no external observer can establish — no silent retry,
