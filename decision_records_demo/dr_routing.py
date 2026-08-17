@@ -562,7 +562,10 @@ def routing_policy_file(as_of: str, *editions) -> str:
         f"{ROUTING_POLICY_PHRASE}, version {props.get(PROP_VERSION)}\n"
         f"in force {props.get(PROP_IN_FORCE_FROM)} to {until}\n"
         f"threshold: {props.get(PROP_STATED_VALUE)}\n"
-        f"{node.payload}"
+        # ``write_policy_edition`` writes the edition's TEXT as the node's
+        # value (``value=text``), not as a payload attribute. The docstring
+        # calls it the payload; the tree calls it the value, and the tree wins.
+        f"{node.value}"
     )
 
 
