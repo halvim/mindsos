@@ -318,6 +318,9 @@ def test_the_field_name_is_spelled_the_same_in_all_three_places():
     # Second literal-in-three-files field, ship B: the words a refusing value
     # carries for what could not be done.
     assert dr_settlement.REFUSAL_PHRASE == dr_render.FIELD_REFUSAL_PHRASE
+    from decision_records_demo import dr_assessment
+
+    assert dr_assessment.REFUSAL_PHRASE == dr_render.FIELD_REFUSAL_PHRASE
 
 
 

@@ -87,6 +87,16 @@ SOURCE_PHRASE = "the claim as filed"
 #: module (G1). The four spellings are pinned EQUAL test-side.
 DETERMINED_BY = "determined_by"
 
+#: The words THIS capacity uses for what it could not do — coordination §100
+#: Q2's contract, and this module is its SECOND member. The first ship gave
+#: the field to `dr_settlement` alone and this leaf raised on its first run:
+#: the contract is *every* refusal-capable producer, and a rule with one
+#: member is the shape RULES §12.3 keeps charging this lane for.
+REFUSAL_PHRASE = "refusal_phrase"
+
+#: What this capacity says when a reader gave it nothing to decide on.
+CANNOT_ASSESS = "cannot be assessed"
+
 #: Beat 4 — one claim, one amount, two dates. 400,000 against 350,000 and
 #: against 375,000: both over, and both subtractions are done in the room
 #: before the page appears.
@@ -111,7 +121,8 @@ def _assess(context=None, **inputs):
         from mindsos_capacity.builtins.origin_v0 import REFUSAL_FIELD_ABSENT
 
         return {DS_ASSESSMENT: {"decision": None,
-                                "refusal_reason": REFUSAL_FIELD_ABSENT}}
+                                "refusal_reason": REFUSAL_FIELD_ABSENT,
+                                REFUSAL_PHRASE: CANNOT_ASSESS}}
     if claimed > limit:
         # The LIMIT is what capped it: had the limit been higher, the answer
         # would have been higher. The amount was merely the thing measured.

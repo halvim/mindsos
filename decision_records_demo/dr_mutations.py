@@ -451,11 +451,19 @@ MUTATIONS = [
         ["test_a_refusing_leaf_names_the_decision_it_could_not_make"],
     ),
     (
+        "the ASSESSMENT loses its own words - the contract's second member",
+        ASSESS,
+        'CANNOT_ASSESS = "cannot be assessed"',
+        'CANNOT_ASSESS = ""',
+        ["test_a_claim_with_no_amount_refuses_in_the_readers_words"],
+    ),
+    (
         "the renderer COMPOSES for the capacity again instead of raising",
         RENDER,
         "                if not said:",
         "                if False:",
         [
+            "test_a_claim_with_no_amount_refuses_in_the_readers_words",
             "test_a_refusing_leaf_names_the_decision_it_could_not_make",
             "test_a_refusing_leaf_with_no_words_of_its_own_raises",
         ],

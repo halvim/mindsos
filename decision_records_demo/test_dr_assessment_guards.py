@@ -117,6 +117,13 @@ def test_a_claim_with_no_amount_refuses_in_the_readers_words():
     assert "Q. What amount was claimed on this claim? — Nothing." in page, page
     assert "the claim as filed does not state an amount claimed" in page, page
     assert "payable" not in page, page
+    assert (
+        "assessing the claimed amount against the limit in force → "
+        "cannot be assessed" in page
+    ), (
+        "the refusing leaf must name what it could not do, in the capacity's "
+        "own words:\n" + page
+    )
     _g6_clean(page)
 
 
