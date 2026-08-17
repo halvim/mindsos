@@ -777,16 +777,37 @@ def test_the_leaf_road_shows_the_deciding_fact():
 
 
 def test_a_capacity_that_records_no_deciding_fact_is_not_punished():
-    """The asymmetry, and it is deliberate: the policy criterion writes no
-    origin record BY DESIGN (ADR-0208 (c)) and claims no determining input, so
-    its page renders item -> verdict exactly as before this ship. Only a
-    DECLARED determining input that cannot be shown is a gap. Without this
-    test, tightening the rule to 'every verdict must name its reason' would
-    look correct and would redden nothing here."""
-    page = render_from_graphs(_admitted_policy_graphs("2024-06-01"), EPISODE_COMPLETED)
-    assert "Q." not in page, ("a capacity that claims no deciding fact grew one:\n" + page)
-    assert "375000" in page and "2024.1" in page, page
+    """The asymmetry, tested on BOTH shapes it has — and it took a mutation to
+    find that it previously had only one.
 
+    A verdict may decline to name a deciding fact in two different ways, and
+    they leave ``deciding_lines`` by two different doors: a DICT verdict with
+    no marker (the claim fixture's decide/conclude pair, which predates the
+    field), and a NON-DICT verdict (the policy criterion's bare limit, which
+    writes no origin record at all BY DESIGN — ADR-0208 (c)). Neither is a
+    gap; only a DECLARED deciding fact that cannot be shown is.
+
+    ⚠ **This test used to assert the second door only**, and the mutation
+    harness caught it: punishing the marker-less branch reddened fourteen
+    tests and NOT this one, because the policy verdict is an int and returns
+    before that branch is ever reached. It was green for a reason unrelated to
+    its own claim — the §30 Q2 defect, in a guard written the same afternoon
+    that one was found.
+    """
+    dict_verdicts = render_from_graphs(_claim_graphs(), EPISODE_COMPLETED)
+    assert "payable" in dict_verdicts, dict_verdicts
+    assert "Q." not in dict_verdicts, (
+        "a dict verdict that names no deciding fact grew one, or was "
+        "punished for not having one:\n" + dict_verdicts
+    )
+    bare_verdict = render_from_graphs(
+        _admitted_policy_graphs("2024-06-01"), EPISODE_COMPLETED
+    )
+    assert "Q." not in bare_verdict, (
+        "the policy criterion writes no record by design and must not be "
+        "asked for one:\n" + bare_verdict
+    )
+    assert "375000" in bare_verdict and "2024.1" in bare_verdict, bare_verdict
 
 
 def test_two_unconsumed_values_raise_rather_than_pick_one():

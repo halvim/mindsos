@@ -52,6 +52,19 @@ GUARD_FILES = (
 #: (name, file, old, new, predicted-red test names)
 MUTATIONS = [
     (
+        "a NON-DICT verdict is punished for naming no deciding fact",
+        RENDER,
+        "        if not isinstance(verdict, dict):\n            return []",
+        '        if not isinstance(verdict, dict):\n            raise RendererGapError("not a dict")',
+        # The SECOND door out of deciding_lines, and the one the asymmetry
+        # guard used to test by accident instead of on purpose.
+        [
+            "test_a_capacity_that_records_no_deciding_fact_is_not_punished",
+            "test_a_missing_supplied_policy_version_raises",
+            "test_g5_two_dates_name_different_limits_and_windows",
+        ],
+    ),
+    (
         "deciding_lines returns [] instead of raising on an unfindable pair",
         RENDER,
         "        if answer_node is None or record_node is None:\n",
@@ -96,7 +109,28 @@ MUTATIONS = [
         RENDER,
         "        if not marker:\n            return []",
         '        if not marker:\n            raise RendererGapError("no determining input")',
-        ["test_a_capacity_that_records_no_deciding_fact_is_not_punished"],
+        # EVERY fixture whose verdicts are dicts without the field — the
+        # decide/conclude family and the partial/noroute/boundary shapes built
+        # on it — plus the screen tests that compose those pages. The wide set
+        # is the point: this branch is load-bearing for every page that
+        # predates the deciding fact.
+        [
+            "test_a_capacity_that_records_no_deciding_fact_is_not_punished",
+            "test_a_from_root_page_differs_in_exactly_the_date_line",
+            "test_a_genuinely_duplicated_exposure_still_renders",
+            "test_a_screen_without_intake_omits_the_panel",
+            "test_fact_channel_equals_the_page_on_every_known_form",
+            "test_manifest_naming_a_missing_graph_raises",
+            "test_manifest_only_member_renders_no_route_block",
+            "test_missing_decided_date_is_stated_not_omitted",
+            "test_old_reds_stay_red_on_the_no_manifest_road",
+            "test_order_follows_the_record_alone",
+            "test_page_renders_and_is_g6_clean",
+            "test_partial_page_stop_block_in_place",
+            "test_refusal_stop_and_therefore_classify_as_themselves",
+            "test_stop_graph_with_produced_verdict_is_incoherent",
+            "test_unmatched_member_graph_raises",
+        ],
     ),
     (
         "the conclusion is picked by iteration order again",
