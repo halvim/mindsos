@@ -74,7 +74,15 @@ SMOKE_SCHEMA = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "name": {"type": "string"},
+                    # ⚠ ENUM, not a bare string. The first live run left this
+                    # unconstrained and the model returned names it invented -
+                    # "Operator destination", "Expected time off work".
+                    # comprehension_v0 finds its field by EXACT match
+                    # (candidate.get("name") == field_name), so unconstrained
+                    # names mean REFUSAL_FIELD_ABSENT on every reading. Third
+                    # time this lane has met the would-refuse-every-time shape.
+                    "name": {"type": "string",
+                             "enum": ["hospital_transfer", "off_work_period"]},
                     "value": {"type": "string",
                               "description": "the words the message uses"},
                     "quote": {"type": "string",
