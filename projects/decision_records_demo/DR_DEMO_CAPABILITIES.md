@@ -42,6 +42,11 @@ Every line below is a thing the code performs, not a thing the design permits.
   decisions: one Record per exposure plus a claim-level assignment line, on the
   Guidewire-sourced model (plan §2.5). Rendered from a real FalkorDB round
   trip, never from live objects.
+- **Names the fact that DECIDED each verdict** — the deciding capacity records
+  which of its inputs determined the outcome, and the page prints that stored
+  question with that stored answer. Not every fact read: the one that moved the
+  answer. *(Ship A, `dr-deciding-fact-confirmed`, 2026-08-17. Beats 1 and 2
+  only — beat 4 has no decision yet.)*
 - **Refuses one exposure in-band, beside siblings that routed.** The missing
   item is named in the reader's own stored words, on the same page as three
   answers. The refusal renders **at its position** among the exposures, not in
@@ -72,10 +77,6 @@ Every line below is a thing the code performs, not a thing the design permits.
 - **It cannot adjudicate anything.** No clean approval, no clean denial, no
   policy exception. §2.5 specifies all three and none exists. Beat 4 is a page
   titled *Decision Record* containing two lookups and no decision.
-- **It cannot say WHY on a decision it answered.** §2.3's form — question →
-  answer → therefore — is achieved **only when the system refuses**. Successful
-  decisions render item → verdict. The refusals are better documented than the
-  answers.
 - **It cannot take a case or a policy chosen at the table.** Every input is a
   Python constant in a demo module. Nothing in the demo can be varied without
   editing source.
@@ -128,6 +129,19 @@ both screens. Neither is closed by building anything.
 **Not addressed by any ship, and staying on the "cannot" list:** prose intake,
 the decided date, the stop-and-ask translation, planning, and any number that is
 not ours.
+
+## 3a. Instruments — not demo, never shown
+
+These exist to make a RULES obligation mechanical. They render nothing, register
+nothing, and the room never sees them.
+
+| Instrument | The rule it makes mechanical |
+|---|---|
+| `dr_dump.py` | RULES §12's *"answer against a dump the owner ran"* — every grounding graph a run leaves, raw, zero third-party deps. |
+| `dr_mutations.py` | RULES §12.2's *"one mutation per new guard; a mutation that reddens nothing is a finding"*. Applies each mutation, runs every guard file in a fresh subprocess, reverts in a `finally`, hashes the sources before and after, re-runs to prove the tree came back. A **dead** mutation — one whose anchor no longer exists — exits non-zero, because a guard whose only proof of failure has silently stopped existing reads as a shorter run. Three went dead on the first refactor after it was written. |
+
+If a second consumer appears core-side, `dr_mutations.py` generalizes then, not
+now.
 
 ## 4. The rule this file exists to enforce
 
