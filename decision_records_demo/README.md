@@ -164,6 +164,27 @@ procedure copies the transport out of git and runs the harness against it from
 cd /home/sanmyaku/mindsos && git show demo/dr-transport:decision_records_demo/dr_transport.py > /tmp/dr_transport.py && git checkout main
 ```
 
+⚠ **COMING BACK IS NOT JUST `git checkout`, and this procedure is what makes it
+matter.** Checking out `main` creates `mindsos_capacity/llm/`; checking the demo
+branch back out removes the tracked `.py` files and **leaves the untracked
+`__pycache__`**, so the directory survives. Python 3 treats a directory with no
+code in it as a **namespace package**, `importlib.util.find_spec` returns a spec
+with `loader=None`, and
+`test_the_pinned_core_carries_no_model_seam` reads that as the seam being
+present and goes RED on a tree that contains no seam at all. Observed
+2026-08-17, on the first use of this procedure. Return with:
+
+```
+cd /home/sanmyaku/mindsos && git checkout demo/dr-transport && rm -rf mindsos_capacity/llm && python3 -c "import importlib.util;print(importlib.util.find_spec('mindsos_capacity.llm'))"
+```
+
+That must print `None`. ⚠ **The guard's predicate is also weaker than its
+name** — it claims something about the PINNED CORE and measures what this
+checkout can import, counting a codeless directory as code. Not fixed here:
+it is not step 1's slice, and plan §0.5 item 7 replaces all three no-model
+guards with the four structural ones at step 3's pin bump. Filed as a finding
+against that ship.
+
 ```
 cd /home/sanmyaku/mindsos && PYTHONPATH=.:/tmp python3 /tmp/conformance.py
 ```
