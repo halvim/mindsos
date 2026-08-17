@@ -230,12 +230,23 @@ def assessment_plan() -> PlanResult:
     """One start, two levels of composition.
 
     The claim is the only start: the amount and the as-of date are READ from
-    it, and the limit is looked up from the date. ⚠ **Named fallback if the
-    ConjunctionFinder will not compose two levels** — seed the as-of date as
-    a second start (``start_datastates``, which the direct-``PlanResult`` road
-    supports per ``decision-records-l4-multi-input-start``) and drop the
-    as-of reader. That costs the page its *"As of what date is this claim
-    assessed?"* line and is taken only if the finder refuses.
+    it, and the limit is looked up from the date.
+
+    ⚠ **``finder`` IS DECLARED, and the default would be wrong here.**
+    ``execution._select_finder`` derives the strategy from START ARITY — one
+    start yields ``BFSFinder``, which wires a single chain and cannot fan
+    in — so this leaf composed nothing at all until the key was added
+    (*bfs_exhausted*, on a 3-hop route against ``max_depth=8``; the depth in
+    that message is a red herring). ``dr_routing``'s map spec declares the
+    same key for the same reason. **The arity rule is right and the surprise
+    is real:** a leaf with ONE start and a MULTI-INPUT decision is a shape
+    the derivation cannot see, because arity describes the entry point and
+    the fan-in happens downstream of it.
+
+    The fallback this docstring used to name — seed the as-of date as a
+    second start and drop its reader — is NOT taken: it was written against
+    the wrong diagnosis, and it would have cost the page its *"As of what
+    date is this claim assessed?"* line to work around a missing keyword.
     """
     return PlanResult(
         plan_ref="plan:drdemo-assessment",
@@ -245,5 +256,6 @@ def assessment_plan() -> PlanResult:
         leaf_targets={"mLeaf": {
             "start_datastate": DS_ASSESSED_CLAIM,
             "target_datastate": DS_ASSESSMENT,
+            "finder": "conjunction",
         }},
     )
