@@ -46,6 +46,7 @@ ROUTING = "decision_records_demo/dr_routing.py"
 BEAT = "decision_records_demo/dr_demo_beat.py"
 ASSESS = "decision_records_demo/dr_assessment.py"
 PAGES = "decision_records_demo/dr_render_pages.py"
+TRANSPORT = "decision_records_demo/dr_transport.py"
 
 GUARD_FILES = (
     "decision_records_demo/test_dr_render_guards.py",
@@ -57,6 +58,11 @@ GUARD_FILES = (
     # to notice it afterwards.
     "decision_records_demo/test_dr_beat_guards.py",
     "decision_records_demo/test_dr_assessment_guards.py",
+    # Added by step 1, which mutates the transport. These guards import
+    # ONLY dr_transport — no store, no renderer, no docker — so the
+    # prediction that comes with them is that NO existing row's red set
+    # moves. Said here rather than noticed on the first run.
+    "decision_records_demo/test_dr_transport_guards.py",
 )
 
 #: ⚠ **THE ECHO RULE COUPLED TWO REGIONS OF THE PAGE (ship B).** The intake
@@ -540,6 +546,144 @@ MUTATIONS = [
         'f"it, but {missing} is unavailable — "',
         ["test_a_declared_deciding_fact_with_no_stored_question_raises"],
     ),
+    # ── STEP 1 — the transport. Nine rows, one per new guard.
+    # Every anchor is in dr_transport.py, which NO other guard file imports,
+    # so each predicted red set is exactly one test. That is a claim in BOTH
+    # directions (RULES §12): not only "these redden", but "nothing in render,
+    # routing, screen, assessment or beat is touched by any of them".
+    # ⚠ Two rows are re-cut from the free-text design a LIVE PROVIDER
+    # falsified: the answer is now a FORCED TOOL reply, so the row that
+    # mutated "decode the text" is gone and two rows pin the forcing instead.
+    (
+        "a transport parameter carries a default, so a caller can omit the document",
+        TRANSPORT,
+        "        source_text: str,",
+        '        source_text: str = "",',
+        ["test_the_callable_binds_the_call_LiveLLM_makes_and_requires_all_five"],
+    ),
+    (
+        "the tool reply is ALTERED on the way out - one field added",
+        TRANSPORT,
+        "        return answer",
+        "        return dict(answer, checked=True)",
+        # Deliberately NOT "return the commentary block": that raises, which
+        # reddens every guard that calls the transport and hides which one was
+        # proved. The smallest edit that falsifies "unaltered" is a field.
+        ["test_a_forced_tool_reply_is_returned_unaltered"],
+    ),
+    (
+        "a non-2xx is treated as an answer instead of a failure",
+        TRANSPORT,
+        "        if not 200 <= int(status) < 300:",
+        "        if False:",
+        ["test_a_non_2xx_raises_as_an_OUTAGE_and_returns_nothing"],
+    ),
+    (
+        "the credential is appended to the outage message",
+        TRANSPORT,
+        "            raise TransportCallFailed(UNREACHABLE) from exc",
+        '            raise TransportCallFailed(UNREACHABLE + " " + resolve_api_key()) from exc',
+        # NOT guard 5 as well: the test key contains "ant" and not
+        # "anthropic", and carries neither the model id nor the endpoint.
+        ["test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain"],
+    ),
+    (
+        "the model id is appended to the outage message",
+        TRANSPORT,
+        "            raise TransportCallFailed(UNREACHABLE) from exc",
+        '            raise TransportCallFailed(UNREACHABLE + " " + model_id) from exc',
+        ["test_the_model_id_and_endpoint_reach_no_exception_this_module_raises"],
+    ),
+    (
+        "the per-call timeout is dropped and the opener's default is used",
+        TRANSPORT,
+        "            response = open_url(request, timeout=timeout_s)",
+        "            response = open_url(request)",
+        ["test_the_timeout_reaches_the_opener"],
+    ),
+    (
+        "a prompt is inlined in the module instead of coming from the resolver",
+        TRANSPORT,
+        "        system = resolve_prompt(prompt_iri=prompt_iri, prompt_version=prompt_version)",
+        '        system = "read the message and report what it states"',
+        ["test_the_prompt_comes_from_the_injected_resolver"],
+    ),
+    (
+        "the tool stops being FORCED - the fence comes back through prose",
+        TRANSPORT,
+        '                "tool_choice": {"type": "tool", "name": tool_name},',
+        '                "tool_choice": {"type": "auto"},',
+        ["test_the_request_FORCES_the_tool_and_sends_the_injected_schema"],
+    ),
+    (
+        "a call with no schema falls back to free text instead of raising",
+        TRANSPORT,
+        "            raise TransportSchemaRequired(NO_SCHEMA)",
+        '            extraction_schema = {"fields": 1}',
+        ["test_a_call_with_no_schema_raises_instead_of_falling_back_to_free_text"],
+    ),
+    (
+        "the credential is left on the Request that every frame still holds",
+        TRANSPORT,
+        "            _scrub(request)",
+        "            pass",
+        # The mechanism critic s125.1 forced. Not-binding-the-Request was the
+        # first plan and it was worthless - the OPENER binds it as a parameter.
+        # WIDENED after a MISS: this row predicted one guard, written before
+        # guard 13 existed, and was not revisited when guard 13 was added in
+        # the same commit that added the row below. Deleting the scrub breaks
+        # BOTH claims - the chain walk and the composed request - and the miss
+        # was in the usual direction. The row below was predicted at two and
+        # came back exact; this one was left behind.
+        [
+            "test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain",
+            "test_the_composed_request_retains_no_credential_after_the_call",
+        ],
+    ),
+    (
+        "an unasked TOP-LEVEL key is accepted instead of refused",
+        TRANSPORT,
+        "        unasked = sorted(set(answer) - set(declared))",
+        "        unasked = []",
+        ["test_an_unasked_TOP_LEVEL_key_is_REFUSED_and_never_stripped"],
+    ),
+    (
+        "two blocks with the forced tool's name - the FIRST wins silently",
+        TRANSPORT,
+        "        if len(blocks) > 1:",
+        "        if False:",
+        ["test_two_blocks_with_the_forced_tools_name_RAISE_rather_than_the_first_winning"],
+    ),
+    (
+        "a schema declaring no properties is let through, and refuses every reply",
+        TRANSPORT,
+        "        if not isinstance(declared, Mapping) or not declared:",
+        "        if False:",
+        ["test_a_schema_declaring_no_top_level_properties_RAISES_rather_than_refusing_every_reply"],
+    ),
+    (
+        "the scrub moves out of the finally, so an ANSWERED call keeps the key",
+        TRANSPORT,
+        "        finally:\n            # \u26a0 Runs BEFORE the exception propagates, and on the success path",
+        "        except BaseException:\n            # MUTATION: failure door only\n            # \u26a0 Runs BEFORE the exception propagates, and on the success path",
+        # The finally is exactly the thing someone converts to an except.
+        # TWO reds, not one, and predicted BEFORE the run: on the FAILED door
+        # the sibling except never catches TransportCallFailed either, so
+        # transport's frame keeps a Request holding the key and the chain walk
+        # finds it as well. Predicting one here would have been the quiet
+        # direction of the RULES s12 error.
+        [
+            "test_the_api_key_reaches_nothing_a_reporter_could_render_from_the_chain",
+            "test_the_composed_request_retains_no_credential_after_the_call",
+        ],
+    ),
+    (
+        "a non-https endpoint is accepted at build time",
+        TRANSPORT,
+        '        raise ValueError("the endpoint must be an https:// URL")',
+        "        pass",
+        ["test_a_non_https_endpoint_is_refused_at_BUILD_time"],
+    ),
 ]
 
 _RUNNER = (
@@ -626,7 +770,7 @@ def main() -> int:
         print("  A prediction no run can satisfy is not a prediction. Fix "
               "these before reading anything below.")
         return 5
-    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS, PAGES)}
+    before = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS, PAGES, TRANSPORT)}
     print("== baseline: every guard file green with no mutation applied ==")
     baseline = _red_set()
     if baseline:
@@ -672,7 +816,7 @@ def main() -> int:
             print("  exact")
         print()
 
-    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS, PAGES)}
+    after = {f: _hash(f) for f in (RENDER, SCREEN, SETTLE, ROUTING, BEAT, ASSESS, PAGES, TRANSPORT)}
     print("== tree restored ==")
     for f in sorted(before):
         mark = "OK " if before[f] == after[f] else "⚠ NOT RESTORED "

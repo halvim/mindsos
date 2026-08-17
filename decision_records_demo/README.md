@@ -46,9 +46,12 @@ and this branch merges the tag.
 | `test_dr_beat_guards.py` | 5 guard tests on the per-beat runner: every scripted beat resolves to a case that exists, the memo holds refs never pages (D9), the closer refuses when no beat has run, the closer rebuilds the RICHEST Record the room watched (every position in `CLOSER_PREFERENCE`, not just the walk's pair), and every preferred case is one a beat actually runs. |
 | `test_dr_dump_printer_guard.py` | 3 tests pinning the dump instrument itself: printed counts equal object counts; the retry delta is reported, not hidden. |
 | `dr_mutations.py` | **The mutation harness: every new guard shown RED by a named mutation, then reverted.** One command instead of eleven hand-cycles. Applies an exact string replacement, runs every guard file in a fresh subprocess, restores in a `finally`, hashes all three sources before and after, and re-runs the guards to prove the tree came back. A mutation that reddens NOTHING prints FINDING; so does one whose red set differs from the prediction recorded beside it. Ship discipline, not demo content — the room never sees it. |
+| `dr_transport.py` | **Step 1: the piece that touches the network** (plan §0.4 item 7 step 1). `LiveLLM` takes a deployment-supplied callable and it was never written; this is that callable. Stdlib `urllib`, no new dependency, registers nothing. ⚠ **This branch cannot import `mindsos_capacity.llm`** — it is on `main` and ABSENT from the pinned core — so `contract.verify_transport` is run by the OWNER from the `main` checkout, never as a guard here. ⚠ **The answer is FORCED into a shape, not repaired into one:** the extraction schema is sent as a tool with `tool_choice` forced, because a live provider returned JSON fenced in a markdown block despite two instructions not to, and repairing that in the transport would edit the model's output before anything checks it. Returns the tool input as a `Mapping`, unaltered. No free-text fallback. No words live in it — the prompt and the tool description are both injected. |
+| `dr_transport_smoke.py` | **The step-1 gate: one real call, and the owner watches the answer come back.** Prints what this lane composed above what the model produced (RULES §11). Its prompt is a step-1 throwaway; the demo's stored, printable prompt lands with step 3. The owner's fixture (email B) is deliberately NOT here — that is step 3. |
+| `test_dr_transport_guards.py` | 14 guard tests on the transport: all five of `LiveLLM`'s keyword args are required, a forced tool reply is returned UNALTERED with the model's commentary never mistaken for the answer, a non-2xx raises as an OUTAGE, the credential appears in nothing a crash reporter could render from the exception chain, **the `Request` this module composed retains no credential once the call is over — on both doors**, the model id and endpoint appear nowhere in the exception THIS module raises, the timeout reaches the opener, the prompt came from the injected resolver, the request FORCES the tool and sends the injected schema, a call with no schema RAISES, an unasked TOP-LEVEL key is REFUSED and never stripped, two blocks carrying the forced tool's name RAISE, a schema declaring no top-level `properties` RAISES, and **a non-https endpoint is refused at BUILD time**. ⚠ **Every credential guard runs against an INJECTED opener and that is a structural limit, not an oversight:** the real `urllib` copies the header dict in `do_open` and serialises it onward, so five provider frames hold the credential in flight and no scrub can reach them. A header that is sent must be serialised. Fake opener throughout — no network, no key. |
 | `requirements-demo.in` | The demo's own dependency set (RULES §1). `falkordb` for the smoke, the pages and the driver; `dr_dump.py` stays zero-dep. |
 
-**Guard total: 92** (render 37, routing 16, screen 10, assessment 13, run 5, no-model 3, beat 5, dump 3) — 68 before ship B, 56 before the deciding-fact ship.
+**Guard total: 106** (render 37, routing 16, transport 14, assessment 13, screen 10, run 5, beat 5, no-model 3, dump 3) — 92 before step 1, 68 before ship B, 56 before the deciding-fact ship.
 ⚠ **Counted with `grep -c '^def test_'`, never recalled.** This line said 67 for
 the length of one ship because the last guard landed after it was written — the
 eighth instance in this lane of a document disagreeing with the tree it
@@ -112,9 +115,18 @@ second leaves the mutated `.pyc` cached (mtime+size unchanged), so "reverted,
 green again" silently re-runs the mutation. Same defect as a `docker compose`
 run without `--build`:
 
+⚠ **A mutation run killed mid-row leaves the tree MUTATED** — the `finally` that
+restores it never runs — so the next reader sees a red that belongs to nobody.
+Observed 2026-08-17 by the critic lane against its own working copy: twelve
+consecutive reds on `test_a_short_intake_value_survives_when_it_only_LOOKS_echoed`
+across four `PYTHONHASHSEED`s, which was not flaky and was not the ship, but
+`dr_render.py:602` left sitting as `if True:`. **Re-run from a clean extract
+before concluding a red is real**, and read the source hashes this harness
+prints before and after.
+
 The mutation harness — the §12.2 obligation, mechanically. It writes to
-`dr_render.py`, `dr_screen.py`, `dr_settlement.py`, `dr_routing.py`, `dr_demo_beat.py` and
-`dr_assessment.py` and restores them in a
+`dr_render.py`, `dr_screen.py`, `dr_settlement.py`, `dr_routing.py`, `dr_demo_beat.py`,
+`dr_assessment.py` and `dr_transport.py` and restores them in a
 `finally`; if it ever reports NOT RESTORED, recover with
 `git checkout -- decision_records_demo/`:
 
@@ -131,7 +143,82 @@ PYTHONPATH=. python3 decision_records_demo/test_dr_run_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_no_model_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_beat_guards.py
 PYTHONPATH=. python3 decision_records_demo/test_dr_dump_printer_guard.py
+PYTHONPATH=. python3 decision_records_demo/test_dr_transport_guards.py
 ```
+
+**Step 1's gate — the one real call.** Not a test: the callable is bound at
+boot and is outside any tree check by design, so the gate is the owner seeing an
+answer return. Needs a credential in the environment and reaches the network;
+the build gate has neither:
+
+```
+ANTHROPIC_API_KEY=... PYTHONPATH=. python3 decision_records_demo/dr_transport_smoke.py
+```
+
+Exit 0 = an answer came back. Exit 2 = no credential. Exit 1 = the call failed,
+with the reason printed.
+
+⚠ **THE CONFORMANCE HARNESS RUNS FROM `main`, AND NOTHING ON THIS BRANCH MAY
+IMPORT IT.** `contract.verify_transport` is product code written so a deployment
+can prove its own transport (S-3), and `mindsos_capacity/llm/` is ABSENT from
+this branch's pinned core. The first draft of `dr_transport_smoke.py` imported
+it inside a `try/ImportError` for convenience and **reddened
+`test_no_demo_module_imports_the_model_seam`** — an AST scan, so a
+function-level import trips it exactly like a module-level one. That guard is
+one of the three that survive until step 3's pin bump, and it is right. The
+procedure copies the transport out of git and runs the harness against it from
+`main`, leaving no seam import in the tree:
+
+```
+cd /home/sanmyaku/mindsos && git show demo/dr-transport:decision_records_demo/dr_transport.py > /tmp/dr_transport.py && git checkout main
+```
+
+⚠ **COMING BACK IS NOT JUST `git checkout`, and this procedure is what makes it
+matter.** Checking out `main` creates `mindsos_capacity/llm/`; checking the demo
+branch back out removes the tracked `.py` files and **leaves the untracked
+`__pycache__`**, so the directory survives. Python 3 treats a directory with no
+code in it as a **namespace package**, `importlib.util.find_spec` returns a spec
+with `loader=None`, and
+`test_the_pinned_core_carries_no_model_seam` reads that as the seam being
+present and goes RED on a tree that contains no seam at all. Observed
+2026-08-17, on the first use of this procedure. Return with:
+
+```
+cd /home/sanmyaku/mindsos && git checkout demo/dr-transport && rm -rf mindsos_capacity/llm && python3 -c "import importlib.util;print(importlib.util.find_spec('mindsos_capacity.llm'))"
+```
+
+That must print `None`. ⚠ **The guard's predicate is also weaker than its
+name** — it claims something about the PINNED CORE and measures what this
+checkout can import, counting a codeless directory as code. Not fixed here:
+it is not step 1's slice, and plan §0.5 item 7 replaces all three no-model
+guards with the four structural ones at step 3's pin bump. Filed as a finding
+against that ship.
+
+```
+cd /home/sanmyaku/mindsos && PYTHONPATH=.:/tmp python3 /tmp/conformance.py
+```
+
+where `/tmp/conformance.py` builds the transport with the smoke's prompt, tool
+and schema and calls `verify_transport` with `failing_transport=`,
+`garbage_transport=` and `wrong_type_transport=` supplied — **without them three
+of the contract's checks report SKIPPED and the report reads greener than it
+is.** None of those three touch the network.
+
+⚠ **Pass all three fixture transports — `failing_transport=`,
+`garbage_transport=`, `wrong_type_transport=` — or three checks report SKIPPED
+and the report reads greener than it is.** None of them touches the network.
+`undecodable_text_is_a_malformed_answer` in particular can no longer be produced
+by the live transport at all: a forced tool reply is a mapping, so
+`decode_response` never fails. **That is the one place the module's
+`MalformedResponse` claim is checkable** — it is a claim about `main`, not about
+this branch, which cannot import the package (critic §123.4).
+
+⚠ **Read the report's `unverifiable` lines, not only its passes.** `contract.py`
+names four §6.3 properties no external observer can establish — no silent retry,
+no substituted default, timeout honoured, document not logged elsewhere — and
+reports them by name rather than omitting them. Only one of the four is
+checkable from inside the transport, and that one has a guard here
+(`test_the_timeout_reaches_the_opener`).
 
 Smoke and pages can also be driven by hand. **Host port 6382** — on the
 reference Linux box 6379 is held by a stray container and 6380/6381 by the arc
