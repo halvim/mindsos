@@ -571,7 +571,7 @@ MUTATIONS = [
         TRANSPORT,
         "        if not 200 <= int(status) < 300:",
         "        if False:",
-        ["test_a_non_2xx_raises_and_returns_nothing"],
+        ["test_a_non_2xx_raises_as_an_OUTAGE_and_returns_nothing"],
     ),
     (
         "the credential is appended to the outage message",

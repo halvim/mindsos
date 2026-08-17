@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from decision_records_demo.dr_transport import (  # noqa: E402
     ENDPOINT,
+    UNREACHABLE,
     TransportCallFailed,
     build_transport,
 )
@@ -147,16 +148,38 @@ def test_a_successful_call_returns_the_models_text_undecoded():
 
 # ── 3 ── the other door ────────────────────────────────────────────────
 
-def test_a_non_2xx_raises_and_returns_nothing():
-    """A provider error body is not an answer. Returning it would hand a
-    reader a vendor's error page to quote-verify against a claim email."""
-    opener = _Opener(payload={"error": {"message": "overloaded"}}, status=529)
+def test_a_non_2xx_raises_as_an_OUTAGE_and_returns_nothing():
+    """A provider error body is not an answer. Returning it would hand a reader
+    a vendor's error page to quote-verify against a claim email.
+
+    ⚠ **Two things in this guard are deliberately adversarial, and the first
+    version of it had neither — it PASSED ITS OWN MUTATION and the harness
+    caught it.**
+
+    * **The 529 fixture carries a well-formed `content` block.** A realistic
+      error body has none, so with the status check deleted the transport still
+      raised — through the ENVELOPE door — and the guard was green while
+      proving nothing about the status. The fixture is shaped to isolate the
+      one predicate this guard is about.
+    * **The message is asserted, not just the exception type.** A non-2xx is
+      OUR OUTAGE (``UNREACHABLE``); a reply with no answer inside it is a
+      different failure (``NO_ANSWER``). ``live.py`` classifies three failure
+      kinds on purpose and collapsing them is how a page ends up blaming a
+      customer's document for our configuration."""
+    opener = _Opener(
+        payload={"content": [{"type": "text", "text": "overloaded, try later"}]},
+        status=529,
+    )
     transport = build_transport(
         api_key=KEY, model_id=MODEL, resolve_prompt=_resolver, opener=opener
     )
     try:
         out = _call(transport)
-    except TransportCallFailed:
+    except TransportCallFailed as exc:
+        assert str(exc) == UNREACHABLE, (
+            f"a 529 raised {str(exc)!r} — a non-2xx is our outage, not a "
+            "reply we could not find an answer in"
+        )
         return
     raise AssertionError(f"a 529 returned {out!r} instead of raising")
 
