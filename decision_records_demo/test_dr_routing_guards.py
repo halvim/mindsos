@@ -24,7 +24,7 @@ from decision_records_demo.dr_routing import (
     DS_DESK,
     DS_DESKS,
     DS_EXPOSURE,
-    DS_SEVERITY,
+    DS_OFF_WORK,
     EXPOSURE_REF,
     CASE_B_EXPOSURES,
     DS_CLAIM_EXPOSURES,
@@ -78,42 +78,42 @@ def test_case_a_one_claim_two_desks():
         in page
     ), "a vehicle exposure routes on coverage, and the page says so"
     assert (
-        "Q. What injury severity was assessed for this exposure? — severe."
+        "Q. How many weeks off work does this exposure state? — 6."
         in page
-    ), "the injury exposure was decided by its severity, and the page says so"
+    ), "the injury exposure was decided by its off-work period, and the page says so"
     assert page.count("Q. Which coverage") == 2, (
         "exactly the two vehicle exposures show the coverage question — "
-        "C. Mensah was decided by severity and must not show it too"
+        "C. Mensah was decided by his off-work period and must not show it twice"
     )
     _g6_clean(page)
 
 
 def test_case_b_refusal_beside_answers_names_the_item():
-    """Beat 2: the same claim plus an injury exposure with no severity
+    """Beat 2: the same claim plus an injury exposure with no off-work
     assessment — the refusal block renders AT ITS POSITION, its words coming
     from the reader's stored origin record (question + the named missing
     item), while every sibling still routes."""
     page = render_from_graphs(_routing_graphs(CASE_B_EXPOSURES), EPISODE_COMPLETED)
     assert (
-        "Q. What injury severity was assessed for this exposure? — Nothing. "
+        "Q. How many weeks off work does this exposure state? — Nothing. "
         "the intake record for this exposure does not state an injury "
-        "severity assessment." in page
+        "period off work." in page
     ), page
     assert "D. Laurent" in page, "the refusing exposure's own facts print"
     assert page.count(ROUTINE_DESK) >= 2
     assert SPECIALTY_UNIT in page
     assert "1 not yet assigned: D. Laurent, Bodily Injury" in page
     # ⚠ THE SAME QUESTION IS NOW ON THE PAGE TWICE, and that is the point of
-    # beat 2 rather than a collision to work around: C. Mensah's severity was
+    # beat 2 rather than a collision to work around: C. Mensah's off-work was
     # ASSESSED and decided her desk, D. Laurent's was not stated at all. Before
     # the deciding-fact ship this string appeared once, so locating the refusal
     # by the question alone was unambiguous; it is not any more, and a test
     # that kept doing it would silently point at the answered one.
     answered_at = page.find(
-        "Q. What injury severity was assessed for this exposure? — severe."
+        "Q. How many weeks off work does this exposure state? — 6."
     )
     refused_at = page.find(
-        "Q. What injury severity was assessed for this exposure? — Nothing."
+        "Q. How many weeks off work does this exposure state? — Nothing."
     )
     assert answered_at != -1 and refused_at != -1, page
     laurent_at = page.find("D. Laurent")
@@ -147,9 +147,9 @@ def test_a_member_refusal_with_no_stored_words_raises():
     graphs = _routing_graphs(CASE_B_EXPOSURES)
     removed = 0
     for graph in graphs:
-        # Only the member whose VERDICT refuses: the severity reader also
+        # Only the member whose VERDICT refuses: the off-work reader also
         # refuses on both vehicle exposures, where it decides nothing (§76 —
-        # a vehicle exposure needs no severity). Stripping those would test
+        # a vehicle exposure needs no off-work period). Stripping those would test
         # the noise, not the guard.
         values = [n.value for n in graph.nodes.values()]
         refuses = any(
@@ -206,13 +206,13 @@ def _find(graph, ds_type):
 
 def test_only_the_deciding_read_reaches_the_page():
     """THE RULING, 2026-08-17: the page shows the fact that DECIDED, not every
-    fact read. C. Mensah's exposure was read for BOTH coverage and severity —
-    both admitted, both stored — and only the severity decided the desk. The
+    fact read. C. Mensah's exposure was read for coverage, off-work and a date —
+    all admitted, all stored — and only the off-work period decided the desk. The
     coverage question must be absent from that block, or the page is a data
     dump and the room stops following it."""
     page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
     mensah = page.split("C. Mensah")[1].split("Therefore")[0]
-    assert "Q. What injury severity" in mensah, mensah
+    assert "Q. How many weeks off work" in mensah, mensah
     assert "Q. Which coverage" not in mensah, (
         "a read that did not decide is on the page: " + mensah
     )
@@ -224,7 +224,7 @@ def test_the_determining_marker_never_reaches_the_page():
     ``refusal_reason`` (ADR-0209)."""
     page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
     assert DETERMINED_BY not in page, page
-    assert DS_COVERAGE not in page and DS_SEVERITY not in page, page
+    assert DS_COVERAGE not in page and DS_OFF_WORK not in page, page
     _g6_clean(page)
 
 
@@ -267,7 +267,7 @@ def test_a_question_and_an_answer_from_different_capacities_raise():
     rewired = 0
     for graph in _member_graphs(graphs):
         rec_id, _ = _find(graph, DS_COVERAGE + "_origin")
-        sev_id, _ = _find(graph, DS_SEVERITY + "_origin")
+        sev_id, _ = _find(graph, DS_OFF_WORK + "_origin")
         if rec_id is None or sev_id is None:
             continue
         rec_edge = _produced_by(graph, rec_id)
@@ -334,7 +334,7 @@ def test_the_intake_line_does_not_echo_the_deciding_fact():
     Narrow by design, and this test pins the narrowness in both directions:
     the echoed value goes, and CONTEXT the decision needed but did not state
     stays. C. Mensah keeps *Bodily Injury* and loses only the duplicated
-    *severe*."""
+    *6*."""
     page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
     silva = page.split("A. Silva")[1].split("B. Osei")[0]
     assert silva.count("Auto Physical Damage") == 1, (
@@ -343,8 +343,8 @@ def test_the_intake_line_does_not_echo_the_deciding_fact():
     )
     assert "Q. Which coverage" in silva, silva
     mensah = page.split("C. Mensah")[1].split("Therefore")[0]
-    assert mensah.count("severe") == 1, (
-        "the severity is on Mensah's block twice:\n" + mensah
+    assert mensah.count("6") == 1, (
+        "the off-work period is on Mensah's block twice:\n" + mensah
     )
     assert "Bodily Injury" in mensah, (
         "context the decision needed but did not state was dropped with the "
