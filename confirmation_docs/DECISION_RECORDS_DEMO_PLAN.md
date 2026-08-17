@@ -39,6 +39,30 @@ Decision Records v0 exists — nothing in Phase 7 can start before runs 1 and 2
 render — so the question is left open and revisited when v0 lands, rather than
 re-planned now against a build that does not exist. §6, open decision 6.
 
+## 0.2 Amendments, 2026-08-16 -> 2026-08-17 — PHASE 7 IS BUILT
+
+**Read `STATE.json` `demos.decision_records` before this plan**, then
+`projects/decision_records_demo/DR_DEMO_WALK_2026-08-17.md`. Four changes:
+
+1. **Phase 7's freeze is the demo script's SEVEN BEATS** — owner ruling
+   2026-08-16 — **not** §5 Phase 7's *"five synthetic claims cases; batch
+   pass; refusal list on page one"*. Three documents defined Phase 7
+   differently (§5, open decision 6's close condition, and
+   `DR_DEMO_SCRIPT.md`), which made *"the scope is FROZEN as written"*
+   unevaluable — the Gate-4 failure mode, on Gate 7. §5 Phase 7 below is
+   amended to match; the script is the operative text.
+2. **Gate 7's MECHANICAL clause is GREEN** (2026-08-16, Linux box, three cold
+   runs, no operator intervention, exit 0). What is still owed is in §5
+   Phase 7. **The tag is not a green gate.**
+3. **A per-beat runner** (`dr_demo_beat.py`) was added to the frozen scope by
+   owner ruling 2026-08-17: the batch driver measures the machine and cannot
+   *perform* the script.
+4. **The demo was walked end to end for the first time on 2026-08-17 and it is
+   NOT a v1.** Six ranked gaps, found by looking at pages while 56 guards were
+   green. The one finding: **the pages show WHAT, not WHY** — §2.3's form
+   (question -> answer -> therefore) is achieved only when the system
+   *refuses*. Do not scope v1 without reading the walk document.
+
 ## 0. What this plan is, and what it is not
 
 It produces **two separate artifacts**. Merging them is the main way this goes wrong.
@@ -375,6 +399,22 @@ Span agreement on extraction provenance.
 **Gate 6:** the origin a Record asserts points at the labelled sentence.
 
 ### Phase 7 — Live demo *(~~blocked on the practitioner conversation~~ — the hold is satisfied, 2026-08-11)*
+
+⚠ **STATUS 2026-08-17 — BUILT, AND THE SCOPE SENTENCE BELOW IS AMENDED.**
+**The freeze is `DR_DEMO_SCRIPT.md`'s seven beats** (§0.2 amendment 1), so the
+paragraph below — *"five synthetic claims cases; batch pass; one Record per
+case plus the refusal list on page one"* — is **superseded on the scope
+question**: there is no batch pass and no page-one refusal list, and the cases
+that exist are the beats' cases plus five mechanism shapes the room never
+sees. Shipped: `310bfe3` (tag `dr-phase7-confirmed`) and `cfe1bd8` (tag
+`dr-beat-confirmed`) on `demo/decision-records`; 56 demo guards.
+
+**Gate 7's mechanical clause is GREEN, and Gate 7 is NOT.** Verified
+2026-08-16 on the Linux box at `310bfe3`: `dr_demo_run.py` -> *cold runs: 3,
+failed: 0*, exit 0. Still owed: **(b) below — Mauricio's two questions** — and
+the beats themselves, which the 2026-08-17 walk found are not yet a v1
+(`projects/decision_records_demo/DR_DEMO_WALK_2026-08-17.md`). A green exit
+proves no gap reached a page; it says nothing about whether the beats land.
 **Exposure routing opens the flow** (§2.5) — one claim, several exposures, each routed on severity and specialty — then five synthetic claims cases; batch pass; one Record per case plus the refusal list on page one.
 
 ~~**Depends on `core-terminal-node-on-non-success` (L-2)**~~ — **closed 2026-08-11**, shipped as `c9754ac`, tag `terminal-node-confirmed`. A stopped run now leaves a `RunStopped` node, so the unroutable case renders.
