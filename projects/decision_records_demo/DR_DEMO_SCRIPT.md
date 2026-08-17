@@ -35,6 +35,14 @@ drives which beat is in `decision_records_demo/README.md` on
    on the core this demo pins**. D9 still governs any future prose variant.
 2. Record page document layout (consumes the text renderer's facts).
 3. Comparison harness: paste-identical data to the LLM at each beat.
+   ⚠ **RULED 2026-08-17 (owner): "identical" means PASTING THE STRUCTURED
+   RECORD TO THE MODEL VERBATIM.** With intake structured (decision 9) there is
+   no prose to hand it, and this is satisfiable for claims — unlike SARA, where
+   open decision 10 correctly calls paste-identical input impossible, because
+   those are prose fact patterns. **It sharpens beat 5 for free:** the model
+   reads the same intake the system reads, and still cannot say which edition
+   governed. The paste files are BUILT WITH SHIP C, one per beat, generated
+   from the same fixture the case runs so the two screens cannot drift.
 4. Rehearse Screen B ≥5 runs per beat; beats are designed so EITHER LLM
    branch proves the point, but narration must be ready for both.
 
@@ -64,13 +72,18 @@ go fetch, **and says what it could not do because of it** — *"settling the
 claim on what was filed → cannot be settled"* (ship B). Framed as
 work-routing: "it tells your team what to get, not just that it can't."
 
-**4 · The policy changed mid-claim.** ⚠ **RE-CUT by ship B — this beat now
-DECIDES.** One claim of 400,000, assessed as of two dates: 350,000 payable
-under the 2023 edition, 375,000 under the 2024 one, each Record naming its
-edition and the window it was in force. **Let the room do the subtraction
-before the page renders** — it is the only beat whose answer they can check in
-their heads, and that is the point of it. Quiet beat; the compliance buyer
-retells this one.
+**4 · The policy changed mid-claim.** ⚠ **RE-CUT by ship B, and again by the
+verdict change ship C carries.** One claim of 400,000, assessed as of two
+dates: *exceeds the limit in force — 350,000 payable of 400,000 claimed* under
+the 2023 edition, and 375,000 payable under the 2024 one, each Record naming
+its edition and the window it was in force.
+
+⚠ **Do NOT sell the arithmetic.** The room checking 400,000 against 350,000 is
+how they VERIFY the answer; it is not the claim, and a room that hears you
+praise the subtraction has been told a spreadsheet could do this. **The claim
+is which limit applied** — two editions, selected by a date, the window named —
+**which input decided**, and, a year later, which edition it decided under.
+Quiet beat; the compliance buyer retells this one.
 
 **5 · Unplug the model.** ⚠ **RE-CUT 2026-08-16/17 — there is nothing on OUR
 side to unplug** (decision 9). The visible action lives on **Screen B**: close
@@ -131,11 +144,19 @@ terms (plan §2.1, §3 — no accuracy number without the refusal rate beside it
 no routing numbers at all). **Compare reaction to a change:**
 
 1. Run the beat. Both screens answer.
-2. Change the policy edition — or let them pick the claimed amount.
+2. **Change an AMOUNT** — the edition's stated limit, or let them pick the
+   claimed amount. ⚠ **RE-CUT 2026-08-17: dates are NOT editable** (plan §0.3
+   item 4), so this is not "change the policy edition" and must not be said
+   that way; you are changing what an edition SAYS, not which edition applies.
 3. Re-run BOTH.
-4. **The Record names the edition and the in-force window it decided under.**
-   The model gives a different answer and cannot tell you which policy it used,
-   or that anything changed at all.
+4. **What actually changes on our side, and say only this:** the limit on the
+   Q line, the payable line, and — if they set the limit at or above the claim
+   — **which fact the page says decided it**, because the limit stops binding
+   and the Record starts crediting the claimed amount instead. **The edition
+   line does not move on an amount edit**, and on that equality edit it leaves
+   the page: the Record only cites a source where the store holds one, and
+   nothing sourced decided. The model gives a different answer and cannot tell
+   you which policy it used, or that anything changed at all.
 
 This holds **even when the model is right**, which is the property every other
 framing lacks. Do not reach for a case the model gets wrong; that is luck, and
@@ -150,6 +171,18 @@ injury unit, because the assessed severity is severe"* — not every fact read. 
 page that lists every read is a page the room stops following.
 
 ---
+
+## Ship D — the live prose beat. NOT BUILT; do not speak it
+
+Reuses beat 2 with ONE reader swapped, so the two pages differ in origin and
+nothing else. **Until it is green, nobody says "the model reads" in a room**
+(plan §0.3 item 10).
+
+- **Beat card, verbatim when it runs:** *"live-provider, rehearsal-gated;
+  everything else you saw runs cold."*
+- **The disclosure, spoken BEFORE the run and never after** (owner ruling
+  2026-08-17, the courted refusal): *"this email never states the severity;
+  watch what each does."* Undisclosed, the beat is not run.
 
 ## Do not (from field evidence + plan)
 - No architecture, no edge/on-device, no "patch"/"layer" language.

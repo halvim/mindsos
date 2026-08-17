@@ -275,6 +275,17 @@ yours **above the output**, not after I ask.
 - **The standard: if this were shown in a room tomorrow and nobody edited it, what
   appears?** Answer that — not what you could assemble from the parts.
 
+**A RENDERER'S OWN VOICE — added 2026-08-17, owner-ratified.** A renderer's own
+voice may state only **case-invariant limits of the record it renders**; every
+**case-outcome** word must be a stored, produced phrase — where the phrase is
+absent, **raise, never fill**. *(Earned in the Decision Records lane: a page
+composed the words "not possible" for a decision that could not be made, which
+is the renderer speaking for a capacity about its own outcome. It reads exactly
+like the stated-absence line that IS legitimate — "Decided date: not available
+from stored evidence" — and the difference is that the legitimate one is true
+of every Record ever rendered from a store. Full form: that lane's plan §0.3
+item 11.)*
+
 **Why this exists.** 2026-08-12: asked for an example of what the Decision Records
 demo could do, a throwaway renderer was written, run, and its output presented
 under headings as though the system had produced it. The claim *"every line is
