@@ -9,6 +9,8 @@ Run under pytest, or with no dependencies at all:
 
 from __future__ import annotations
 
+import re
+
 from mindsos_intelligence import execution
 from mindsos_intelligence.plan_construction import FoldReducerDecodeError
 
@@ -334,7 +336,14 @@ def test_the_intake_line_does_not_echo_the_deciding_fact():
     Narrow by design, and this test pins the narrowness in both directions:
     the echoed value goes, and CONTEXT the decision needed but did not state
     stays. C. Mensah keeps *Bodily Injury* and loses only the duplicated
-    *6*."""
+    *6*.
+
+    ⚠ **The first re-cut of this guard counted the bare string `"6"`, which
+    also occurs twice inside the as-of date `2026-06-03`** — the exact
+    relaxed-substring defect `test_a_short_intake_value_survives_when_it_only_LOOKS_echoed`
+    exists to refuse, reintroduced by a mechanical rename in the guard that
+    refuses it. **The claim is about the INTAKE LINE**, so the check is now on
+    that line alone and on a whole token, not on the block and a substring."""
     page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
     silva = page.split("A. Silva")[1].split("B. Osei")[0]
     assert silva.count("Auto Physical Damage") == 1, (
@@ -343,8 +352,13 @@ def test_the_intake_line_does_not_echo_the_deciding_fact():
     )
     assert "Q. Which coverage" in silva, silva
     mensah = page.split("C. Mensah")[1].split("Therefore")[0]
-    assert mensah.count("6") == 1, (
-        "the off-work period is on Mensah's block twice:\n" + mensah
+    intake = mensah.splitlines()[0]
+    assert re.search(r"(?<!\d)6(?!\d)", intake) is None, (
+        "the off-work period is echoed on Mensah's intake line, one line above "
+        "the question that asks for it:\n" + intake
+    )
+    assert "— 6." in mensah, (
+        "the deciding answer itself went missing with the echo:\n" + mensah
     )
     assert "Bodily Injury" in mensah, (
         "context the decision needed but did not state was dropped with the "
