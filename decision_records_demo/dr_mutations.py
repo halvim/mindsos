@@ -382,6 +382,28 @@ MUTATIONS = [
             "test_what_is_payable_is_arithmetic_on_the_stored_values",
         ],
     ),
+    (
+        "a refusing leaf hides the decision it could not make",
+        RENDER,
+        "            carriers = analysis.refusing_conclusions()",
+        "            carriers = []",
+        ["test_a_refusing_leaf_names_the_decision_it_could_not_make"],
+    ),
+    (
+        "the refusal verdict line LEAKS onto the member road",
+        RENDER,
+        "                lines.extend(block)\n                lines.append(\"\")\n                continue",
+        '                block.append(f"   {member.phrase_for_value(entry)} → {REFUSED_VERDICT_TEXT}")\n'
+        '                lines.extend(block)\n                lines.append("")\n                continue',
+        ["test_the_member_road_does_not_gain_the_refusal_verdict_line"],
+    ),
+    (
+        "two unconsumed refusal carriers are picked from by iteration order",
+        RENDER,
+        "        if len(out) > 1:\n            raise RendererGapError(\n                f\"{self.graph.role!r} produced more than one refusing value \"",
+        "        if False:\n            raise RendererGapError(\n                f\"{self.graph.role!r} produced more than one refusing value \"",
+        ["test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one"],
+    ),
 ]
 
 _RUNNER = (

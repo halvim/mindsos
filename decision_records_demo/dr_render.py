@@ -109,6 +109,16 @@ MANIFEST_MEMBER_IDS = "member_graph_ids"
 #: ADR-0209 structural refusal marker on a verdict VALUE — branch-only.
 REFUSAL_MARKER = "refusal_reason"
 
+#: What a refusing LEAF's verdict line says on the right. Two words, composed
+#: here rather than stored, on the precedent of the shipped *"Decided date:
+#: not available from stored evidence"* — a stated absence in the renderer's
+#: own voice. Deliberately NOT *"not possible from stored evidence"*: the
+#: store is fine, the CLAIM lacked the item, and blaming the evidence is the
+#: same misattribution `policy_lookup_v0` makes when it reports a malformed
+#: date as an outage. The reason sits on the line directly above; this line
+#: names only WHAT could not be done.
+REFUSED_VERDICT_TEXT = "not possible"
+
 #: Origin-record keys the page reads. String literals BY NECESSITY — G1 bans
 #: importing `mindsos_capacity`, where the contract defines them — so they are
 #: pinned against `origin_v0`'s own constants test-side
@@ -504,6 +514,41 @@ class _Analysis:
             )
         return out
 
+    def refusing_conclusions(self) -> List[Any]:
+        """The refusal CARRIERS nothing consumed — a refusing leaf's own
+        conclusion, the counterpart of :meth:`terminal_produced`.
+
+        **Why a refusing leaf needs one at all.** Every answered page carries
+        ``<what was being done> → <what came of it>``; a refusing leaf carried
+        only the reader's Q line, so the page never named the decision that
+        was ATTEMPTED. Beat 3 is where that shows — a page about a missing
+        document that never says the claim cannot be settled — but it is true
+        of every refusing leaf.
+
+        **The member road is deliberately NOT changed.** There the fold's
+        claim-level line already names the consequence (*"1 not yet assigned:
+        D. Laurent, Bodily Injury"*), so the attempted decision is not
+        hidden. A leaf has no fold, and that is the whole asymmetry.
+
+        Two unconsumed carriers RAISE, exactly as two unconsumed plain values
+        do: the record cannot say which one is this Record's conclusion, and
+        picking by iteration order is the defect that rule replaced.
+        """
+        candidates = [
+            node for node in self.produced
+            if isinstance(node.value, dict)
+            and node.value.get(REFUSAL_MARKER)
+            and FIELD_PRODUCER_KIND not in node.value
+        ]
+        out = self._unconsumed(candidates)
+        if len(out) > 1:
+            raise RendererGapError(
+                f"{self.graph.role!r} produced more than one refusing value "
+                "that nothing consumed, so the record cannot say which one is "
+                "this Record's conclusion — refusing to pick by iteration order"
+            )
+        return out
+
     def plain_produced(self) -> List[Any]:
         """Produced DSIs that are neither origin records nor refusal carriers."""
         out = []
@@ -891,6 +936,16 @@ def render_from_graphs(graphs: List[Any], episode_props: Dict[str, Any]) -> str:
                 f"Q. {refusal.get('question')} — Nothing. "
                 f"{refusal.get('refusal_detail')}"
             )
+            # The decision that was ATTEMPTED, in its own registered phrase.
+            # Without this the page states a missing item and never says what
+            # could not be done because of it, which is a shorter version of
+            # the beat above it rather than a beat of its own.
+            carriers = analysis.refusing_conclusions()
+            if carriers:
+                lines.append(
+                    f"   {analysis.phrase_for_value(carriers[0].value)} → "
+                    f"{REFUSED_VERDICT_TEXT}"
+                )
         else:
             produced = analysis.terminal_produced()
             if produced:

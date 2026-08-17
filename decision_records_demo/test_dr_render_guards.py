@@ -816,6 +816,91 @@ def test_a_capacity_that_records_no_deciding_fact_is_not_punished():
     assert "375000" in bare_verdict and "2024.1" in bare_verdict, bare_verdict
 
 
+def test_a_refusing_leaf_names_the_decision_it_could_not_make():
+    """WALK GAP 3, ship B slice 3 (owner ruling D4-A). Beat 3's page named a
+    missing document and never said what could not be done about it, so it
+    landed as a shorter beat 2 with the same mechanism. The page now carries
+    the attempted decision in the settle capacity's OWN registered phrase,
+    with a two-word stated absence — the shape the shipped *"Decided date:
+    not available from stored evidence"* line already established.
+
+    The phrase must be the DECISION's, not the reader's: `phrase_for_value`
+    exists because the leaf road once credited *"reading the claim as filed"*
+    with a verdict the settle capacity produced (§94 finding 3)."""
+    page = render_from_graphs(_settlement_graphs(), EPISODE_COMPLETED)
+    assert "Q. Which proof of loss was filed for this claim? — Nothing." in page, page
+    assert "settling the claim on what was filed → not possible" in page, page
+    q_at = page.find("Q. Which proof of loss")
+    verdict_at = page.find("settling the claim on what was filed → not possible")
+    assert q_at < verdict_at, (
+        "the reason comes first and the line names only WHAT could not be "
+        "done:\n" + page
+    )
+    assert "reading the claim as filed → not possible" not in page, (
+        "the attempted decision wears the READER's phrase:\n" + page
+    )
+    for token in G6_BANNED:
+        assert token not in page.lower(), page
+
+
+def test_the_member_road_does_not_gain_the_refusal_verdict_line():
+    """THE TWO-DOOR RULE on the asymmetry this slice creates. A member's
+    refusal is already answered by the fold's claim-level line — *"1 not yet
+    assigned: D. Laurent, Bodily Injury"* — so a member road that also
+    printed *"not possible"* per exposure would say the same thing twice on
+    the demo's longest page. The leaf has no fold, and that is the entire
+    reason the two roads differ here.
+
+    Written because a guard on the leaf alone would stay green while the line
+    leaked onto every member block."""
+    from decision_records_demo.dr_routing import (
+        CASE_B_EXPOSURES, DS_CLAIM_EXPOSURES, routing_harness, routing_plan,
+    )
+
+    mm, dispatcher, writer, request_run = routing_harness()
+    graphs: list = []
+    execution.run(
+        dispatcher, writer, routing_plan(), request_run, mm=mm,
+        solve_seed={DS_CLAIM_EXPOSURES: [dict(e) for e in CASE_B_EXPOSURES]},
+        capacity_graphs=graphs, case_label="claim CLM-3007",
+    )
+    page = render_from_graphs(graphs, EPISODE_COMPLETED)
+    assert "not possible" not in page, page
+    assert "1 not yet assigned: D. Laurent, Bodily Injury" in page, (
+        "the member road states the consequence through the claim line, and "
+        "that is why it needs no per-member line:\n" + page
+    )
+
+
+def test_two_unconsumed_refusal_carriers_raise_rather_than_pick_one():
+    """The same posture as `test_two_unconsumed_values_raise_rather_than_pick_one`,
+    on the branch this slice adds. Inject a second unconsumed refusal carrier
+    and the record cannot say which one is the Record's conclusion.
+
+    Without it the new selection could be silently weakened to *"take the
+    first one"* and every other guard would stay green — which is the exact
+    sentence the plain-value rule was written under, and the defect it
+    replaced (§94 finding 1)."""
+    graphs = _settlement_graphs()
+    injected = 0
+    for graph in graphs:
+        for node_id, node in list(graph.nodes.items()):
+            value = node.value
+            if (isinstance(value, dict) and value.get("refusal_reason")
+                    and "origin_producer_kind" not in value):
+                clone = copy.copy(node)
+                graph.nodes[node_id + ":injected"] = clone
+                injected += 1
+                break
+    assert injected == 1, f"fixture drifted: injected {injected}, expected 1"
+    try:
+        render_from_graphs(graphs, EPISODE_COMPLETED)
+    except RendererGapError as exc:
+        assert "which one is this Record's conclusion" in str(exc), str(exc)
+        return
+    raise AssertionError("two unconsumed refusal carriers rendered anyway")
+
+
 def test_two_unconsumed_values_raise_rather_than_pick_one():
     """The conclusion is the produced value NOTHING consumed. Sever the
     CONSUMES edge into the settle capacity and the graph then carries two
