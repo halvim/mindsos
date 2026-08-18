@@ -64,12 +64,22 @@ that sentence does not exist and must not be improvised.
 **1 · One claim, two desks.** Multi-exposure case: vehicle exposures →
 routine desk; injury exposure → specialty unit. One document, several
 decisions, one Record each — *question → answer → therefore*.
+⚠ **AMENDED 2026-08-18 by step 2, and it is a fact about the page rather than a
+new claim:** the injury exposure routes because the claimant is **off work six
+weeks** — a stated fact, not a severity someone concluded — and the Record
+names the **stored policy edition** whose four-week threshold sent him there,
+with the window it was in force. The vehicle exposures name no rule, because
+none was applied.
 *Screen B:* same case to the LLM. It will likely route plausibly — say so:
 "Both look right. Keep watching."
 
 **2 · The refusal, beside an answer.** Same claim, one more exposure:
 "Cannot tell whether this needs the specialty unit — missing: [named item,
 plain words]." A routed sibling and a refusal on the same page.
+⚠ **AMENDED 2026-08-18 by step 2:** the missing item is now the **off-work
+period the message never states** — the policy cannot tier a fact nobody
+supplied — and that block cites **no rule at all**, because the comparison
+never happened.
 *Screen B:* if the LLM answers → confidently wrong, on screen. If it
 refuses → ask both "what exactly is missing?" — generic prose vs the named
 item. Either branch wins.
