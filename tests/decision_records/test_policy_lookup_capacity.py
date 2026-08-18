@@ -20,6 +20,7 @@ from mindsos_capacity.builtins.origin_v0 import (
     FIELD_POSSIBLE_REFUSAL_REASONS,
     FIELD_PRODUCER_KIND,
     FIELD_QUESTION,
+    FIELD_REFUSAL_DETAIL,
     FIELD_REFUSAL_REASON,
     FIELD_SOURCE_IDENTITY_PHRASE,
     FIELD_SOURCE_IN_FORCE_FROM,
@@ -27,6 +28,7 @@ from mindsos_capacity.builtins.origin_v0 import (
     FIELD_SOURCE_VERSION,
     OriginContractError,
     PRODUCER_POLICY_LOOKUP,
+    REFUSAL_AS_OF_NOT_A_DATE,
     REFUSAL_NO_SOURCE_IN_FORCE,
     REFUSAL_SOURCE_UNREACHABLE,
     missing_declared_fields,
@@ -39,7 +41,16 @@ from mindsos_capacity.builtins.policy_lookup_v0 import (
     policy_limit_datastates,
 )
 from mindsos_capacity.family_rules import FamilyDontKnowShape
-from mindsos_knowledge.policies import AmbiguousEditionsError
+from mindsos_knowledge.knowledge_layer import KnowledgeLayer
+from mindsos_knowledge.policies import (
+    AmbiguousEditionsError,
+    NODE_POLICY_EDITION,
+    PROP_IN_FORCE_FROM,
+    PROP_POLICY_ID,
+    PROP_STATED_VALUE,
+    PROP_VERSION,
+    ROLE_POLICIES,
+)
 
 from ._dr_fixtures import (
     CAP_DECISION,
@@ -223,7 +234,84 @@ def test_a_refusal_declares_only_the_reason_a_record_could_ever_carry():
     record = _run(build_kl(EDITION_2023), "2019-04-15")[DS_FILING_THRESHOLD_ORIGIN]
     assert set(record[FIELD_POSSIBLE_REFUSAL_REASONS]) == {
         REFUSAL_NO_SOURCE_IN_FORCE,
+        # ⚠ Added 2026-08-18. A lookup CAN now record "the date you asked about
+        # is not a date", so a record could carry it and advertising it is
+        # honest by this test's own criterion — the list is about RECORDS.
+        REFUSAL_AS_OF_NOT_A_DATE,
     }
+
+
+def test_a_malformed_as_of_is_a_FINDING_and_never_our_outage():
+    """⚠ **The split, and the sentence it removes from a page.** Until
+    2026-08-18 this returned ``source_unreachable`` — a Record telling a room
+    *"this is a fault on our side"* about a date THEY supplied. The store is
+    fine; the question was not answerable as put.
+
+    It RETURNS, like ``no_source_in_force``: the criterion sees a ``None``, the
+    run stays renderable, and the claim keeps its conclusion. Raising would stop
+    the member and cost the page its *Therefore* line."""
+    outputs = _run(build_kl(EDITION_2023), "3 June 2026")
+    assert outputs[DS_FILING_THRESHOLD] is None
+    record = outputs[DS_FILING_THRESHOLD_ORIGIN]
+    assert record[FIELD_ADMITTED] is False
+    assert record[FIELD_REFUSAL_REASON] == REFUSAL_AS_OF_NOT_A_DATE
+    assert record[FIELD_ENVIRONMENT_FAULT] is False, (
+        "a bad input was classified as our environment being at fault"
+    )
+    assert missing_declared_fields(record) == []
+
+
+def test_an_ABSENT_as_of_is_the_same_finding_and_this_is_the_observed_case():
+    """The one that was actually seen on a page. A reader that refuses produces
+    ``None``, ``None`` flows into the lookup, and before the split that took
+    the outage road — so a member with no date printed *"this is a fault on our
+    side"* on the beats every showing traverses.
+
+    Both doors of the parse: ``None`` is not a string, ``"3 June 2026"`` is a
+    string that is not a date, and they must classify the same."""
+    outputs = _run(build_kl(EDITION_2023), None)
+    record = outputs[DS_FILING_THRESHOLD_ORIGIN]
+    assert outputs[DS_FILING_THRESHOLD] is None
+    assert record[FIELD_REFUSAL_REASON] == REFUSAL_AS_OF_NOT_A_DATE
+    assert record[FIELD_ENVIRONMENT_FAULT] is False
+
+
+def test_the_as_of_refusal_names_the_value_AS_GIVEN():
+    """The page has to state a fact about the INPUT. A detail that said only
+    *"a date could not be read"* would leave a reader unable to tell whose date
+    it was — which is the ambiguity the whole split exists to remove."""
+    record = _run(build_kl(EDITION_2023), "3 June 2026")[DS_FILING_THRESHOLD_ORIGIN]
+    detail = record[FIELD_REFUSAL_DETAIL]
+    assert "3 June 2026" in detail, detail
+    assert "fault on our side" not in detail, detail
+
+
+def test_a_malformed_STORED_window_STILL_raises_as_our_outage():
+    """⚠ **The other door, and without it the split is not a split.** A bound
+    the STORE holds that will not parse is our fault in the strict sense —
+    nothing about the caller's question is wrong — so it must keep raising.
+
+    The edition is written past ``write_policy_edition``, which validates its
+    dates, because a store can only reach this state through a migration or a
+    direct write. That is exactly the state this door is about."""
+    kl = KnowledgeLayer.bootstrap()
+    handle = kl.writeable(None, ROLE_POLICIES, "global")
+    handle.write_and_validate(
+        value="A return must be filed where gross income reaches 27,700.",
+        type_=NODE_POLICY_EDITION,
+        properties={
+            PROP_POLICY_ID: POLICY_ID,
+            PROP_VERSION: "broken.1",
+            PROP_IN_FORCE_FROM: "not-a-date",
+            PROP_STATED_VALUE: 27700,
+        },
+        policy_id=POLICY_ID,
+        edition_id="broken.1",
+    )
+    with pytest.raises(PolicyStoreUnreachableError) as excinfo:
+        _run(kl, "2024-04-15")
+    assert excinfo.value.refusal_reason == REFUSAL_SOURCE_UNREACHABLE
+    assert "a date it holds" in str(excinfo.value), str(excinfo.value)
 
 
 def test_an_unreadable_store_raises_and_never_becomes_a_finding():

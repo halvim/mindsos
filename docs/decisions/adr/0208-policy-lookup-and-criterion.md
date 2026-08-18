@@ -179,3 +179,71 @@ store" in anything a customer reads** on the strength of this.
 - `mindsos_capacity.__all__` and `mindsos_knowledge.__all__` are **unchanged** —
   new constants are imported from their modules, per the technique items 1 and 2
   proved.
+
+---
+
+## Amendment 1 — D4 gains a third refusal: the date the caller ASKED ABOUT is not a date
+
+**Amendment status:** Accepted
+**Date:** 2026-08-18
+
+### What D4 said, and why this is not a contradiction of it
+
+D4 is titled *"Two refusals, two mechanisms, and the split is the point"*, and
+its own text already carries a third mechanism — `AmbiguousEditionsError`,
+*"deliberately not mapped to `no_source_in_force`, which means there is no
+edition"*. **The number in the title was never the decision. The rule was**, and
+D4 states it plainly:
+
+> A Record that reported an outage as a gap in a customer's policy set would be
+> false.
+
+**This amendment applies that rule to a cause D4 did not enumerate**, by reading
+it in the mirror: *a Record that reports a bad INPUT as our outage is false in
+the same way.*
+
+### The defect
+
+`edition_in_force` parses two kinds of date — the `as_of` its caller asks about,
+and the in-force window bounds the store holds. Both raised `ValueError`, and
+`policy_lookup_v0` caught them together and reported both as
+`PolicyStoreUnreachableError` / `source_unreachable`. The module said so about
+itself in a standing NOTE and filed it as `decision-records-as-of-date-validity`.
+
+⟹ **A caller supplying a date that is not a date, or no date at all, was told
+"this is a fault on our side and is never a finding about the case"** — a
+sentence that is false about their input, on a page.
+
+### The decision
+
+- **`as_of_not_a_date` joins the vocabulary** (`origin_v0.REFUSAL_REASONS`,
+  and `REASONS_EMITTED_TODAY` because a producer emits it). It is **not** an
+  `ENVIRONMENT_FAULT_REASON`: the store is fine.
+- **It RETURNS, exactly as `no_source_in_force` does.** The limit is `None`, the
+  origin record carries the words, the criterion sees the `None` and returns a
+  not-determined verdict, and the run stays renderable. Raising would stop the
+  member and cost a claim its conclusion — which is the same reasoning D4 gives
+  for the gap case.
+- **The origin record names the value AS GIVEN**, so the page states a fact
+  about the input.
+- **A malformed date the STORE holds still raises**, unchanged. Then nothing
+  about the question was wrong and the outage classification is correct.
+- **The two are told apart by WHICH FIELD failed to parse, never by re-parsing.**
+  `policies._parse` now raises `PolicyDateError` carrying its `field`, and
+  `policies.AS_OF_FIELD` is the one constant both modules compare against. A
+  second implementation of "what is a date" in the lookup would be free to
+  disagree with the role's, silently.
+
+### What it does not decide
+
+It does not type any DataState as a date. A reader refusing a non-date at read
+time is defence in depth and is a separate change; **it would not have fixed
+this defect**, because a refused read produces `None` and `None` is what took
+the outage road.
+
+### Why it was found
+
+The Decision Records demo put a dated policy lookup behind its routing rule, so
+an exposure stating no date printed the outage sentence on the two beats every
+showing traverses. Recorded because the ADR's rule was already sufficient to
+forbid it and nobody had read it in the mirror.

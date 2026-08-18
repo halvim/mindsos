@@ -99,16 +99,50 @@ class EditionExistsError(PolicyStoreError):
     """
 
 
+#: The field name :func:`edition_in_force` parses the CALLER's date under. ⚠ A
+#: constant rather than a literal because two modules now compare against it —
+#: this role raises it and ``policy_lookup_v0`` classifies on it — and a
+#: literal in both places is a drift that would silently re-collapse the split.
+AS_OF_FIELD = "as_of"
+
+
+class PolicyDateError(ValueError):
+    """A date this role was given is not a date, and it names WHICH one.
+
+    ⚠ **The field is the whole point.** ``edition_in_force`` parses two kinds
+    of date: the ``as_of`` its CALLER asked about, and the in-force window
+    bounds its own STORE holds. A caller's bad date is a finding about the
+    input; a stored bound that will not parse is a fault in our own store.
+    Collapsing them means a Record can report the customer's typo as our
+    outage, which ADR-0208 D4's own principle forbids — *"a Record that
+    reported an outage as a gap in a customer's policy set would be false"*
+    reads the same in the mirror.
+
+    Subclasses :class:`ValueError` so every existing caller and every existing
+    ``except ValueError`` keeps working unchanged; what is added is the ability
+    to ask which field failed.
+    """
+
+    def __init__(self, message: str, *, field: str, value: Any) -> None:
+        super().__init__(message)
+        self.field = field
+        self.value = value
+
+
 def _parse(value: Any, field: str) -> date:
     if isinstance(value, date):
         return value
     if not isinstance(value, str) or not value:
-        raise ValueError(f"{field} must be an ISO date string, got {value!r}")
+        raise PolicyDateError(
+            f"{field} must be an ISO date string, got {value!r}",
+            field=field, value=value,
+        )
     try:
         return date.fromisoformat(value)
     except ValueError as exc:
-        raise ValueError(
-            f"{field} must be an ISO date (YYYY-MM-DD), got {value!r}"
+        raise PolicyDateError(
+            f"{field} must be an ISO date (YYYY-MM-DD), got {value!r}",
+            field=field, value=value,
         ) from exc
 
 
@@ -144,7 +178,7 @@ def edition_in_force(view: Any, *, policy_id: str, as_of: str) -> Any:
         NoEditionInForceError: no edition covers the date.
         AmbiguousEditionsError: more than one does.
     """
-    when = _parse(as_of, "as_of")
+    when = _parse(as_of, AS_OF_FIELD)
     candidates = editions_of(view, policy_id)
     covering = [node for node in candidates if _covers(node, when)]
     if not covering:
@@ -234,7 +268,9 @@ def write_policy_edition(
 
 
 __all__ = [
+    "AS_OF_FIELD",
     "AmbiguousEditionsError",
+    "PolicyDateError",
     "EditionExistsError",
     "NoEditionInForceError",
     "PROP_IN_FORCE_FROM",

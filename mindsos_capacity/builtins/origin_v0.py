@@ -118,6 +118,16 @@ REFUSAL_NO_SOURCE_IN_FORCE = "no_source_in_force"
 #: ``model_unreachable``, and an environment fault for the same reason.
 REFUSAL_SOURCE_UNREACHABLE = "source_unreachable"
 
+#: The date a lookup was ASKED ABOUT is not a date. ⚠ **A finding about the
+#: INPUT, never an environment fault** — the store is fine and says what it
+#: says; what arrived was not a date. It is deliberately NOT
+#: :data:`REFUSAL_SOURCE_UNREACHABLE`, which would report the asker's own value
+#: as our outage, and deliberately NOT :data:`REFUSAL_NO_SOURCE_IN_FORCE`,
+#: which means *there is no edition covering this date* and is false when the
+#: thing supplied was never a date at all. ADR-0208 D4's own rule — distinct
+#: causes are not collapsed — applied to a cause D4 did not enumerate.
+REFUSAL_AS_OF_NOT_A_DATE = "as_of_not_a_date"
+
 REFUSAL_REASONS: Tuple[str, ...] = (
     REFUSAL_MODEL_DECLINED,
     REFUSAL_FIELD_ABSENT,
@@ -127,6 +137,7 @@ REFUSAL_REASONS: Tuple[str, ...] = (
     REFUSAL_VALUE_NOT_COERCIBLE,
     REFUSAL_NO_SOURCE_IN_FORCE,
     REFUSAL_SOURCE_UNREACHABLE,
+    REFUSAL_AS_OF_NOT_A_DATE,
 )
 
 #: Reasons that are a fault in **our** environment, not a fact about the
@@ -259,6 +270,7 @@ REASONS_EMITTED_TODAY: Tuple[str, ...] = (
     REFUSAL_MODEL_DECLINED,
     REFUSAL_MALFORMED_RESPONSE,
     REFUSAL_QUOTE_NOT_IN_SOURCE,
+    REFUSAL_AS_OF_NOT_A_DATE,
 )
 
 #: Declared for a producer that does not exist, each naming it.
@@ -637,6 +649,7 @@ __all__ = [
     "FIELDS_DEGENERATE", "FIELDS_PRINTED", "FIELDS_RESERVED",
     "REASONS_DEGENERATE", "REASONS_EMITTED_TODAY", "REASONS_RESERVED",
     "FIELDS_STRUCTURAL", "FIELDS_WRITTEN_TODAY",
+    "REFUSAL_AS_OF_NOT_A_DATE",
     "REFUSAL_REASONS", "REFUSAL_SOURCE_UNREACHABLE",
     "REFUSAL_VALUE_NOT_COERCIBLE", "SPINE",
     "ORIGIN_SHAPE_TAG",
