@@ -328,9 +328,22 @@ def build_policy_limit_lookup(
                     refusal_reason=REFUSAL_AS_OF_NOT_A_DATE,
                     # Names the value AS GIVEN, so the page states a fact about
                     # the input rather than about our store.
+                    #
+                    # ⚠ **ABSENT and UNREADABLE are not the same sentence, and
+                    # the first version said they were.** With no date at all
+                    # the detail read *"was asked about None, which could not be
+                    # read as a date"* — a Python literal on a buyer's page, and
+                    # a claim that someone supplied something when nobody did.
+                    # The demo's own wiring never shows it (its reader refuses
+                    # first and the reader's words win the line), which is
+                    # exactly the *true for this caller, not guaranteed for the
+                    # next* shape. Found by the stage-2 hold.
                     refusal_detail=(
-                        f"{source_identity_phrase} was asked about "
-                        f"{exc.value!r}, which could not be read as a date."
+                        f"{source_identity_phrase} was asked about no date "
+                        f"at all."
+                        if exc.value in (None, "")
+                        else f"{source_identity_phrase} was asked about "
+                             f"{exc.value!r}, which could not be read as a date."
                     ),
                 ),
             }

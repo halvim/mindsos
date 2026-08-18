@@ -225,7 +225,9 @@ sentence that is false about their input, on a page.
   member and cost a claim its conclusion — which is the same reasoning D4 gives
   for the gap case.
 - **The origin record names the value AS GIVEN**, so the page states a fact
-  about the input.
+  about the input — and **an ABSENT date says so instead**, because *"was asked
+  about `None`"* puts a Python literal on a page and claims someone supplied
+  something when nobody did.
 - **A malformed date the STORE holds still raises**, unchanged. Then nothing
   about the question was wrong and the outage classification is correct.
 - **The two are told apart by WHICH FIELD failed to parse, never by re-parsing.**

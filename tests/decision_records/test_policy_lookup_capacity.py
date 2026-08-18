@@ -299,6 +299,24 @@ def test_an_ABSENT_as_of_is_the_same_finding_and_this_is_the_observed_case():
     assert record[FIELD_ENVIRONMENT_FAULT] is False
 
 
+def test_an_ABSENT_as_of_says_SO_and_never_names_a_python_literal():
+    """⚠ **Absent and unreadable are not the same sentence.** The first version
+    of this amendment said they were: with no date at all the detail read *"was
+    asked about None, which could not be read as a date"* — a Python literal on
+    a buyer's page, and a claim that someone supplied something when nobody did.
+
+    Both doors, because the two branches are one `if`: an ABSENT date says so,
+    a PRESENT one that will not parse is still named as given."""
+    for absent in (None, ""):
+        detail = _run(build_kl(EDITION_2023), absent)[DS_FILING_THRESHOLD_ORIGIN][
+            FIELD_REFUSAL_DETAIL
+        ]
+        assert "None" not in detail, (absent, detail)
+        assert "no date at all" in detail, (absent, detail)
+    present = _run(build_kl(EDITION_2023), "3 June 2026")[DS_FILING_THRESHOLD_ORIGIN]
+    assert "3 June 2026" in present[FIELD_REFUSAL_DETAIL]
+
+
 def test_the_as_of_refusal_names_the_value_AS_GIVEN():
     """The page has to state a fact about the INPUT. A detail that said only
     *"a date could not be read"* would leave a reader unable to tell whose date
