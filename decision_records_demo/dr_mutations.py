@@ -807,6 +807,22 @@ MUTATIONS = [
         '        "the injury-routing policy says what it says"',
         ["test_the_policy_FILE_is_stored_words_only"],
     ),
+    (
+        "a shipped exposure loses its date, and the demo prints our own outage",
+        ROUTING,
+        '     "loss": "collision", "routed_as_of": "2026-06-03",',
+        '     "loss": "collision",',
+        # The injury exposure of CASE_A - the one the fixture guard exists to
+        # protect. Removing its date is exactly the road the stage-2 hold walked.
+        ["test_every_shipped_exposure_STATES_a_date_to_route_as_of"],
+    ),
+    (
+        "the policy FILE phrases the window its own way again",
+        ROUTING,
+        '    window = f"to {to}" if to else "onwards"',
+        '    window = f"to {to}" if to else "to onwards"',
+        ["test_the_policy_FILE_and_the_PAGE_phrase_one_stored_window_the_same_way"],
+    ),
 ]
 
 _RUNNER = (

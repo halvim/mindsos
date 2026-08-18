@@ -21,6 +21,33 @@ is §3's "severity tier dominates", expressed as the stated fact the tier is
 computed from rather than as the conclusion. The demo shows THAT routing
 happens and does not assert what every carrier does.
 
+⚠ **THE MISSING-DATE ROAD IS OUT OF THE DEMO BY FIXTURE, AND THE REAL FIX IS
+CORE.** An exposure that states no ``routed_as_of`` reaches
+``policy_lookup_v0`` with ``None``, which classifies it as
+``source_unreachable`` and puts *"the injury-routing policy could not be
+consulted, because a date involved could not be read. This is a fault on our
+side"* **on beats 1 and 2, in the room** — the exact sentence
+``decision-records-as-of-date-validity`` exists to remove, and the reason
+§0.3 item 4 took dates off ship C's editable surface. Found by the stage-2
+hold, on the one door this lane said it had not tested.
+
+**What this ship does and does not do about it.** It does NOT fake a fix: the
+classification lives in ``mindsos_capacity/builtins/policy_lookup_v0.py`` and a
+demo may not edit ``mindsos_*`` (RULES §3). It closes the road by FIXTURE —
+every shipped exposure states a date, pinned by a guard so a fixture cannot
+drift into it — and it says the rest out loud: **the core item now BLOCKS step
+3**, because §0.4 item 8(c) makes every beat start from a document, which makes
+``routed_as_of`` a MODEL-READ date, and §120.2 already demonstrated that
+``2023/06/01`` — an ordinary rendering — takes this same road. ⟹ Its
+probability goes UP at the next step, not down.
+
+**Two consequences of that road, unreachable while it is closed and named
+because they were observed rather than reasoned about:** a stopped member
+leaves the claim with **no *Therefore* line at all**, and its intake line
+prints the bare unlabelled ``6`` — the echo rule working exactly as built, on
+the one road where the deciding line that would have absorbed it does not
+exist.
+
 ⚠ **THE RULE LIVES IN THE STORE, NOT IN THIS FILE** (plan §0.4 item 7 step 2).
 ``_route`` compares a claimant's stated weeks off work against a THRESHOLD read
 from a dated policy edition by ``policy_lookup_v0`` — the same capacity beat 4
@@ -537,9 +564,19 @@ def routing_policy_file(as_of: str, *editions) -> str:
     demo assembled out of prose we wrote would be the renderer's-voice defect
     (§0.3 item 11) wearing a filename.
 
-    Returns the empty string when no edition covers the date, because that is
-    also the truth and a file invented for an uncovered date is worse than
-    none.
+    ⚠ **The window is phrased the way the PAGE phrases it, and the first cut
+    was not.** It read ``in force 2024-01-01 to onwards`` while
+    ``_source_line_from_record`` rendered the same stored window as ``in force
+    from 2024-01-01 onwards``. **Two surfaces, one stored window, two
+    renderings** — and the ungrammatical one was the file the room is handed
+    and the model is given at step 3. Caught by the stage-2 hold; a guard now
+    pins the two surfaces to one phrasing.
+
+    **Three behaviours, all three stated:** an edition covers the date and its
+    file is returned; no edition covers it and ``''`` is returned, because a
+    file invented for an uncovered date is worse than none; the date is not a
+    date at all and :class:`ValueError` is raised naming what was passed —
+    a caller bug, not a finding about anyone's case.
     """
     from mindsos_knowledge.policies import (
         NoEditionInForceError,
@@ -556,11 +593,17 @@ def routing_policy_file(as_of: str, *editions) -> str:
                                 as_of=as_of)
     except NoEditionInForceError:
         return ""
+    except ValueError as exc:
+        raise ValueError(
+            f"routing_policy_file was asked for {as_of!r}, which is not a date"
+        ) from exc
     props = node.properties or {}
-    until = props.get(PROP_IN_FORCE_TO) or "onwards"
+    to = props.get(PROP_IN_FORCE_TO)
+    # The page's phrasing, not a second one. See the docstring.
+    window = f"to {to}" if to else "onwards"
     return (
         f"{ROUTING_POLICY_PHRASE}, version {props.get(PROP_VERSION)}\n"
-        f"in force {props.get(PROP_IN_FORCE_FROM)} to {until}\n"
+        f"in force from {props.get(PROP_IN_FORCE_FROM)} {window}\n"
         f"threshold: {props.get(PROP_STATED_VALUE)}\n"
         # ``write_policy_edition`` writes the edition's TEXT as the node's
         # value (``value=text``), not as a payload attribute. The docstring

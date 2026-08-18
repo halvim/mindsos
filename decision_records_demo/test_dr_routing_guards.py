@@ -637,6 +637,62 @@ def test_the_policy_FILE_is_stored_words_only():
     )
 
 
+# ── the road the stage-2 hold found, closed by fixture and named ───────
+
+def test_every_shipped_exposure_STATES_a_date_to_route_as_of():
+    """⚠ **This guard exists because of what happens when one does not**, and
+    the machinery is not at fault. A missing `routed_as_of` reaches
+    `policy_lookup_v0` as None, which classifies it `source_unreachable` and
+    puts *"the injury-routing policy could not be consulted, because a date
+    involved could not be read. This is a fault on our side"* **on beats 1 and
+    2, in the room** — the exact sentence `decision-records-as-of-date-validity`
+    exists to remove.
+
+    **The fix is core and a demo may not edit `mindsos_*`.** So the road is
+    closed by fixture, and this guard is what stops a fixture drifting into it.
+    It is not a substitute for the core item, which now BLOCKS step 3: §0.4 item
+    8(c) makes the date MODEL-READ, and §120.2 showed `2023/06/01` takes the
+    same road."""
+    from decision_records_demo import dr_routing
+
+    fixtures = {
+        "CASE_A_EXPOSURES": dr_routing.CASE_A_EXPOSURES,
+        "CASE_A_EXPOSURES_2023": dr_routing.CASE_A_EXPOSURES_2023,
+        "CASE_B_EXPOSURES": dr_routing.CASE_B_EXPOSURES,
+    }
+    assert len(fixtures) >= 3, "the fixture list went vacuous"
+    for name, exposures in fixtures.items():
+        assert exposures, name
+        for exposure in exposures:
+            assert exposure.get("routed_as_of"), (
+                f"{name} carries an exposure with no date to route as of, and "
+                f"that road prints our own outage on a buyer's screen: {exposure}"
+            )
+
+
+def test_the_policy_FILE_and_the_PAGE_phrase_one_stored_window_the_same_way():
+    """Two surfaces, one stored window. The file first rendered it *"in force
+    2024-01-01 to onwards"* while the page rendered *"in force from 2024-01-01
+    onwards"* — and the ungrammatical one was the file the room is handed and
+    the model is given at step 3. Small, and precisely against
+    `routing_policy_file`'s own claim that it writes nothing."""
+    text = routing_policy_file("2026-06-03")
+    page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
+    window = "in force from 2024-01-01 onwards"
+    assert window in text, ("the FILE phrases the window its own way:\n" + text)
+    assert window in page, ("the PAGE phrases the window its own way:\n" + page)
+    closed = routing_policy_file("2023-06-03")
+    assert "in force from 2023-01-01 to 2023-12-31" in closed, closed
+    # The third behaviour, stated in the docstring and pinned here: a value
+    # that is not a date at all is a CALLER bug and says so.
+    try:
+        routing_policy_file("the third of June")
+    except ValueError as exc:
+        assert "not a date" in str(exc), str(exc)
+    else:
+        raise AssertionError("a non-date was accepted as an as-of")
+
+
 if __name__ == "__main__":
     for fn in sorted(
         (v for k, v in list(globals().items()) if k.startswith("test_")),
