@@ -172,10 +172,16 @@ def test_the_deciding_fact_carries_the_authority_behind_it():
     assert page.count("Source: the dwelling-coverage limit policy") == 1, (
         "the authority is stated once, not once per association route:\n" + page
     )
-    # The other door: a deciding fact with NO policy record behind it prints
-    # no Source line, and routing is the case that has one.
-    from decision_records_demo.dr_routing import CASE_A_EXPOSURES, routing_harness
-    from decision_records_demo.dr_routing import DS_CLAIM_EXPOSURES, routing_plan
+    # ⚠ **THE OTHER DOOR MOVED IN STEP 2, and it is stronger where it landed.**
+    # It used to read "the whole routing page carries no Source line", which was
+    # true only while routing consulted no stored authority. Routing now reads a
+    # dated threshold, so that assertion was FALSE BY DESIGN — the correct claim
+    # is not that routing cites nothing, it is that **a Source appears exactly
+    # where a stored rule was applied and nowhere else.** A vehicle exposure
+    # routes on coverage alone and must still carry none.
+    from decision_records_demo.dr_routing import (
+        CASE_A_EXPOSURES, DS_CLAIM_EXPOSURES, routing_harness, routing_plan,
+    )
 
     mm, dispatcher, writer, request_run = routing_harness()
     graphs: list = []
@@ -184,7 +190,17 @@ def test_the_deciding_fact_carries_the_authority_behind_it():
         solve_seed={DS_CLAIM_EXPOSURES: [dict(e) for e in CASE_A_EXPOSURES]},
         capacity_graphs=graphs, case_label="claim CLM-3007",
     )
-    assert "Source:" not in render_from_graphs(graphs, EPISODE_COMPLETED)
+    routed = render_from_graphs(graphs, EPISODE_COMPLETED)
+    silva = routed.split("A. Silva")[1].split("B. Osei")[0]
+    mensah = routed.split("C. Mensah")[1].split("Therefore")[0]
+    assert "Source:" not in silva, (
+        "a vehicle exposure routed on coverage alone cites an authority it "
+        "never consulted:\n" + silva
+    )
+    assert "Source: the injury-routing policy" in mensah, (
+        "the exposure decided against a stored threshold does not say which "
+        "edition stated it:\n" + mensah
+    )
 
 
 def test_the_two_pages_carry_the_SUBMISSION_and_ASSESSMENT_framing():

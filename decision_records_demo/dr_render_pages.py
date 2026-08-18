@@ -292,9 +292,13 @@ def _routing_page_harness(scope):
 
     from decision_records_demo.dr_dump import _Session
     from decision_records_demo.dr_routing import (
+        ROUTING_EDITION_2023,
+        ROUTING_EDITION_2024,
+        ROUTING_POLICY_ID,
         routing_capacities,
         routing_datastates,
     )
+    from mindsos_knowledge.policies import ROLE_POLICIES, write_policy_edition
 
     session = _Session()
     layer = CapacityLayer()
@@ -304,6 +308,13 @@ def _routing_page_harness(scope):
         layer.register_capacity(cap, session=session)
     install_consolidate_capacities(layer)
     kl = KnowledgeLayer.bootstrap()
+    # ⚠ The routing rule is now STORED (step 2). Without these editions every
+    # injury exposure stops on PolicyStoreUnreachableError — our outage — and
+    # the cold run reports an environment fault rather than a demo verdict.
+    _routing_handle = kl.writeable(None, ROLE_POLICIES, "global")
+    for _edition in (ROUTING_EDITION_2023, ROUTING_EDITION_2024):
+        write_policy_edition(_routing_handle, policy_id=ROUTING_POLICY_ID,
+                             **_edition)
     mm = MentalModel(session_id="drdemo-session", user_id="drdemo-user")
     dispatcher = L4Dispatcher(layer, session=session, kl=kl)
     writer = ChainArtifactWriter(mm, scope)

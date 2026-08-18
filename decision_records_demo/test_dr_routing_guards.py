@@ -9,6 +9,8 @@ Run under pytest, or with no dependencies at all:
 
 from __future__ import annotations
 
+import re
+
 from mindsos_intelligence import execution
 from mindsos_intelligence.plan_construction import FoldReducerDecodeError
 
@@ -19,12 +21,18 @@ from decision_records_demo.dr_render import (
 )
 from decision_records_demo.dr_routing import (
     CASE_A_EXPOSURES,
+    CASE_A_EXPOSURES_2023,
+    MEASURED_AGAINST,
+    ROUTING_EDITION_2023,
+    ROUTING_EDITION_2024,
+    DS_THRESHOLD,
+    routing_policy_file,
     DETERMINED_BY,
     DS_COVERAGE,
     DS_DESK,
     DS_DESKS,
     DS_EXPOSURE,
-    DS_SEVERITY,
+    DS_OFF_WORK,
     EXPOSURE_REF,
     CASE_B_EXPOSURES,
     DS_CLAIM_EXPOSURES,
@@ -42,7 +50,7 @@ EPISODE_COMPLETED = {
 }
 
 
-def _routing_graphs(exposures, **harness_kw):
+def _routing_graphs(exposures, **harness_kw):  # noqa: D401
     mm, dispatcher, writer, request_run = routing_harness(**harness_kw)
     graphs: list = []
     execution.run(
@@ -78,42 +86,42 @@ def test_case_a_one_claim_two_desks():
         in page
     ), "a vehicle exposure routes on coverage, and the page says so"
     assert (
-        "Q. What injury severity was assessed for this exposure? — severe."
+        "Q. How many weeks off work does this exposure state? — 6."
         in page
-    ), "the injury exposure was decided by its severity, and the page says so"
+    ), "the injury exposure was decided by its off-work period, and the page says so"
     assert page.count("Q. Which coverage") == 2, (
         "exactly the two vehicle exposures show the coverage question — "
-        "C. Mensah was decided by severity and must not show it too"
+        "C. Mensah was decided by his off-work period and must not show it twice"
     )
     _g6_clean(page)
 
 
 def test_case_b_refusal_beside_answers_names_the_item():
-    """Beat 2: the same claim plus an injury exposure with no severity
+    """Beat 2: the same claim plus an injury exposure with no off-work
     assessment — the refusal block renders AT ITS POSITION, its words coming
     from the reader's stored origin record (question + the named missing
     item), while every sibling still routes."""
     page = render_from_graphs(_routing_graphs(CASE_B_EXPOSURES), EPISODE_COMPLETED)
     assert (
-        "Q. What injury severity was assessed for this exposure? — Nothing. "
-        "the intake record for this exposure does not state an injury "
-        "severity assessment." in page
+        "Q. How many weeks off work does this exposure state? — Nothing. "
+        "the intake record for this exposure does not state a "
+        "period off work." in page
     ), page
     assert "D. Laurent" in page, "the refusing exposure's own facts print"
     assert page.count(ROUTINE_DESK) >= 2
     assert SPECIALTY_UNIT in page
     assert "1 not yet assigned: D. Laurent, Bodily Injury" in page
     # ⚠ THE SAME QUESTION IS NOW ON THE PAGE TWICE, and that is the point of
-    # beat 2 rather than a collision to work around: C. Mensah's severity was
+    # beat 2 rather than a collision to work around: C. Mensah's off-work was
     # ASSESSED and decided her desk, D. Laurent's was not stated at all. Before
     # the deciding-fact ship this string appeared once, so locating the refusal
     # by the question alone was unambiguous; it is not any more, and a test
     # that kept doing it would silently point at the answered one.
     answered_at = page.find(
-        "Q. What injury severity was assessed for this exposure? — severe."
+        "Q. How many weeks off work does this exposure state? — 6."
     )
     refused_at = page.find(
-        "Q. What injury severity was assessed for this exposure? — Nothing."
+        "Q. How many weeks off work does this exposure state? — Nothing."
     )
     assert answered_at != -1 and refused_at != -1, page
     laurent_at = page.find("D. Laurent")
@@ -147,9 +155,9 @@ def test_a_member_refusal_with_no_stored_words_raises():
     graphs = _routing_graphs(CASE_B_EXPOSURES)
     removed = 0
     for graph in graphs:
-        # Only the member whose VERDICT refuses: the severity reader also
+        # Only the member whose VERDICT refuses: the off-work reader also
         # refuses on both vehicle exposures, where it decides nothing (§76 —
-        # a vehicle exposure needs no severity). Stripping those would test
+        # a vehicle exposure needs no off-work period). Stripping those would test
         # the noise, not the guard.
         values = [n.value for n in graph.nodes.values()]
         refuses = any(
@@ -206,13 +214,13 @@ def _find(graph, ds_type):
 
 def test_only_the_deciding_read_reaches_the_page():
     """THE RULING, 2026-08-17: the page shows the fact that DECIDED, not every
-    fact read. C. Mensah's exposure was read for BOTH coverage and severity —
-    both admitted, both stored — and only the severity decided the desk. The
+    fact read. C. Mensah's exposure was read for coverage, off-work and a date —
+    all admitted, all stored — and only the off-work period decided the desk. The
     coverage question must be absent from that block, or the page is a data
     dump and the room stops following it."""
     page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
     mensah = page.split("C. Mensah")[1].split("Therefore")[0]
-    assert "Q. What injury severity" in mensah, mensah
+    assert "Q. How many weeks off work" in mensah, mensah
     assert "Q. Which coverage" not in mensah, (
         "a read that did not decide is on the page: " + mensah
     )
@@ -224,7 +232,7 @@ def test_the_determining_marker_never_reaches_the_page():
     ``refusal_reason`` (ADR-0209)."""
     page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
     assert DETERMINED_BY not in page, page
-    assert DS_COVERAGE not in page and DS_SEVERITY not in page, page
+    assert DS_COVERAGE not in page and DS_OFF_WORK not in page, page
     _g6_clean(page)
 
 
@@ -267,7 +275,7 @@ def test_a_question_and_an_answer_from_different_capacities_raise():
     rewired = 0
     for graph in _member_graphs(graphs):
         rec_id, _ = _find(graph, DS_COVERAGE + "_origin")
-        sev_id, _ = _find(graph, DS_SEVERITY + "_origin")
+        sev_id, _ = _find(graph, DS_OFF_WORK + "_origin")
         if rec_id is None or sev_id is None:
             continue
         rec_edge = _produced_by(graph, rec_id)
@@ -334,7 +342,14 @@ def test_the_intake_line_does_not_echo_the_deciding_fact():
     Narrow by design, and this test pins the narrowness in both directions:
     the echoed value goes, and CONTEXT the decision needed but did not state
     stays. C. Mensah keeps *Bodily Injury* and loses only the duplicated
-    *severe*."""
+    *6*.
+
+    ⚠ **The first re-cut of this guard counted the bare string `"6"`, which
+    also occurs twice inside the as-of date `2026-06-03`** — the exact
+    relaxed-substring defect `test_a_short_intake_value_survives_when_it_only_LOOKS_echoed`
+    exists to refuse, reintroduced by a mechanical rename in the guard that
+    refuses it. **The claim is about the INTAKE LINE**, so the check is now on
+    that line alone and on a whole token, not on the block and a substring."""
     page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
     silva = page.split("A. Silva")[1].split("B. Osei")[0]
     assert silva.count("Auto Physical Damage") == 1, (
@@ -343,8 +358,13 @@ def test_the_intake_line_does_not_echo_the_deciding_fact():
     )
     assert "Q. Which coverage" in silva, silva
     mensah = page.split("C. Mensah")[1].split("Therefore")[0]
-    assert mensah.count("severe") == 1, (
-        "the severity is on Mensah's block twice:\n" + mensah
+    intake = mensah.splitlines()[0]
+    assert re.search(r"(?<!\d)6(?!\d)", intake) is None, (
+        "the off-work period is echoed on Mensah's intake line, one line above "
+        "the question that asks for it:\n" + intake
+    )
+    assert "— 6." in mensah, (
+        "the deciding answer itself went missing with the echo:\n" + mensah
     )
     assert "Bodily Injury" in mensah, (
         "context the decision needed but did not state was dropped with the "
@@ -450,6 +470,243 @@ def test_a_refusing_verdict_with_no_exposure_name_raises():
         )
     out = _assign(**{DS_DESKS: [{"decision": ROUTINE_DESK}]})
     assert "1 exposure to " + ROUTINE_DESK in str(out), out
+
+
+# ── step 2: the rule is stored, dated, and SHOWN ───────────────────────
+
+def test_the_routing_rule_is_not_a_literal_in_this_module():
+    """Plan §0.4 item 7 step 2's whole point: *without it our side of step iv
+    is source code.* The comparison stays; the NUMBER it compares against comes
+    out of a dated store. Checked on `_route`'s own source, because a threshold
+    that crept back as a constant would still pass every page assertion below —
+    they would just be asserting about a hardcoded 4.
+
+    ⚠ **Checked on the AST, not on the source text.** The first version
+    scanned characters and reddened on `§76` in a comment — a guard that
+    cannot tell a citation from a threshold would have been silenced by
+    deleting a comment, which is the worst way for a guard to go green.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    from decision_records_demo import dr_routing
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(dr_routing._route)))
+    numbers = [
+        node.value for node in ast.walk(tree)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float))
+        and not isinstance(node.value, bool)
+    ]
+    assert not numbers, (
+        "a numeric literal is back inside the routing decision — the rule "
+        f"belongs in the store, and this one does not: {numbers}"
+    )
+
+
+def test_two_editions_route_the_SAME_exposure_to_different_desks():
+    """Beat 4's claim, on the routing beats: **which edition governed.** Six
+    weeks off work clears the 2024 threshold of four and does NOT clear the
+    2023 threshold of eight, so one fixture and two dates produce two desks —
+    and each page names the edition that sent him there. Nothing about the
+    claim changed; only the rule in force did."""
+    now = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
+    then = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES_2023), EPISODE_COMPLETED)
+    now_block = now.split("C. Mensah")[1].split("Therefore")[0]
+    then_block = then.split("C. Mensah")[1].split("Therefore")[0]
+    assert SPECIALTY_UNIT in now_block and ROUTINE_DESK in then_block, (
+        now_block + "\n----\n" + then_block
+    )
+    assert "v2024.1" in now_block and "v2023.1" in then_block, (
+        "a page decided under an edition it does not name:\n"
+        + now_block + "\n----\n" + then_block
+    )
+    assert "— 6." in now_block and "— 6." in then_block, (
+        "the claimant's fact moved between the two runs; only the rule may"
+    )
+
+
+def test_the_page_names_the_rule_it_was_measured_against_and_its_window():
+    """**Stored is not shown**, and this is the guard that says so. Found by a
+    probe: with the threshold in the store and no rule line, the page named the
+    claimant's six weeks and nothing about the policy at all — the lookup ran,
+    reached the decision, and never reached the page."""
+    page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
+    mensah = page.split("C. Mensah")[1].split("Therefore")[0]
+    assert "Q. What off-work threshold" in mensah, mensah
+    assert "— 4." in mensah, mensah
+    assert "Source: the injury-routing policy, version v2024.1" in mensah, mensah
+    assert "in force from 2024-01-01" in mensah, (
+        "the edition is named without the window it was in force:\n" + mensah
+    )
+
+
+def test_the_deciding_fact_stays_the_persons_fact_and_the_rule_is_a_second_line():
+    """⚠ **The threshold is not the deciding fact.** *"Because he is off work
+    six weeks"* is what a room hears; *"because the threshold is four"* is the
+    rule. Two structural fields, two lines, and the ORDER is the argument: the
+    claimant's fact, then what it was tested against, then where he went."""
+    graphs = _routing_graphs(CASE_A_EXPOSURES)
+    verdicts = [
+        node.value for graph in graphs for node in graph.nodes.values()
+        if isinstance(getattr(node, "value", None), dict)
+        and node.value.get("decision") == SPECIALTY_UNIT
+    ]
+    assert verdicts, "no specialty verdict was produced"
+    for verdict in verdicts:
+        assert verdict.get(DETERMINED_BY) == DS_OFF_WORK, verdict
+        assert verdict.get(MEASURED_AGAINST) == DS_THRESHOLD, verdict
+    page = render_from_graphs(graphs, EPISODE_COMPLETED)
+    mensah = page.split("C. Mensah")[1].split("Therefore")[0]
+    fact_at = mensah.find("Q. How many weeks off work")
+    rule_at = mensah.find("Q. What off-work threshold")
+    verdict_at = mensah.find("choosing the desk")
+    assert -1 < fact_at < rule_at < verdict_at, mensah
+
+
+def test_the_boundary_routes_at_EXACTLY_the_threshold_and_below_it_does_not():
+    """Both doors of the comparison the whole ship exists to move into the
+    store. Four weeks is the threshold: four goes to the specialty unit, three
+    does not. A guard that only exercised six would pass on `>` and on `>=`
+    alike."""
+    for weeks, desk in ((4, SPECIALTY_UNIT), (3, ROUTINE_DESK)):
+        case = [dict(CASE_A_EXPOSURES[2], off_work_weeks=weeks)]
+        page = render_from_graphs(_routing_graphs(case), EPISODE_COMPLETED)
+        assert desk in page, (weeks, page)
+
+
+def test_an_exposure_that_consulted_no_rule_cites_none():
+    """**A page citing an authority it did not consult is the same defect as a
+    renderer composing an outcome word** (§0.3 item 11), one hop further out.
+
+    ⚠ **This guard was first written on the REFUSAL and COULD NOT FAIL.** Its
+    mutation reddened nothing: the refusal road never calls ``rule_lines`` at
+    all, so D. Laurent's block is rule-free structurally, whatever the verdict
+    carries. The claim was right and the SUBJECT was wrong. **A. Silva is where
+    it can fail** — a vehicle exposure routes on coverage alone, goes through
+    the same member-lines road that renders the rule, and would cite the policy
+    the moment the marker appeared on that branch.
+
+    Both are checked, and the refusal is kept as the weaker half rather than
+    dropped: it is still true, and its truth now has a stated reason."""
+    page = render_from_graphs(_routing_graphs(CASE_B_EXPOSURES), EPISODE_COMPLETED)
+    silva = page.split("A. Silva")[1].split("B. Osei")[0]
+    assert "the injury-routing policy" not in silva, (
+        "an exposure routed on coverage alone cites a rule it never "
+        "consulted:\n" + silva
+    )
+    assert "Q. What off-work threshold" not in silva, silva
+    laurent = page.split("D. Laurent")[1].split("Therefore")[0]
+    assert "the injury-routing policy" not in laurent, laurent
+    assert "Source:" in page, (
+        "the fixture stopped citing the policy anywhere, so this guard would "
+        "pass on a page that lost the rule line entirely"
+    )
+
+
+def test_no_edition_in_force_REFUSES_IN_BAND_in_the_lookups_own_words():
+    """A DIFFERENT refusal from a missing fact, and the distinction is the
+    product: the claimant's document was complete and OUR policy set was not.
+    `policy_lookup_v0` returns None with its own origin record rather than
+    raising, so the page carries the lookup's words and the run stays
+    renderable."""
+    page = render_from_graphs(
+        _routing_graphs(CASE_A_EXPOSURES, editions=(ROUTING_EDITION_2023,)),
+        EPISODE_COMPLETED,
+    )
+    assert SPECIALTY_UNIT not in page, (
+        "an exposure routed with no rule in force:\n" + page
+    )
+    assert "the injury-routing policy" in page, (
+        "the page does not say which authority could not be consulted:\n" + page
+    )
+    assert "not yet assigned: C. Mensah" in page, page
+
+
+def test_the_policy_FILE_is_stored_words_only():
+    """*Printable as the file the model is given* (step 2). Every line of it is
+    the edition's own — version, window, threshold, text. A file this lane
+    composed out of prose we wrote would be the renderer's-voice defect with a
+    filename on it."""
+    text = routing_policy_file("2026-06-03")
+    assert "v2024.1" in text and "2024-01-01" in text, text
+    assert ROUTING_EDITION_2024["text"] in text, text
+    assert "8" not in text, ("the 2023 threshold leaked into the 2024 file:\n" + text)
+    assert routing_policy_file("2019-01-01") == "", (
+        "a file was invented for a date no edition covers"
+    )
+
+
+# ── the road the stage-2 hold found, closed by fixture and named ───────
+
+def test_every_shipped_exposure_STATES_a_date_to_route_as_of():
+    """⚠ **This guard exists because of what happens when one does not**, and
+    the machinery is not at fault. A missing `routed_as_of` reaches
+    `policy_lookup_v0` as None, which classifies it `source_unreachable` and
+    puts *"the injury-routing policy could not be consulted, because a date
+    involved could not be read. This is a fault on our side"* **on beats 1 and
+    2, in the room** — the exact sentence `decision-records-as-of-date-validity`
+    exists to remove.
+
+    **The fix is core and a demo may not edit `mindsos_*`.** So the road is
+    closed by fixture, and this guard is what stops a fixture drifting into it.
+    It is not a substitute for the core item, which now BLOCKS step 3: §0.4 item
+    8(c) makes the date MODEL-READ, and §120.2 showed `2023/06/01` takes the
+    same road.
+
+    ⚠ **The domain is DERIVED, not enumerated, and the first version was
+    enumerated.** It named three fixtures in a dict, and a fourth — the shape a
+    later ship adds without thinking about this road — walked straight past it
+    while the guard stayed green. Demonstrated by the stage-2 hold with a
+    dateless `CASE_C_EXPOSURES` set on the module. **This is RULES §12.1's own
+    sentence turned on this guard** (*a ship that adds a surface reddens the
+    sentinel*) and §120.3's census lesson a second time: **a guard pinned to a
+    hand-written list goes stale the ship after it is written** — and this one
+    stands in for a core fix, so its staleness is the road reopening in
+    silence. The old vacuity check guarded the dict against being emptied, not
+    the module against gaining a fixture."""
+    from decision_records_demo import dr_routing
+
+    fixtures = {
+        name: value for name, value in vars(dr_routing).items()
+        if isinstance(value, list) and value
+        and all(isinstance(entry, dict) for entry in value)
+        and any("coverage" in entry for entry in value)
+    }
+    assert len(fixtures) >= 3, (
+        f"the derived scan found only {sorted(fixtures)} — it stopped seeing "
+        "the fixtures and would pass on a module full of dateless ones"
+    )
+    for name, exposures in fixtures.items():
+        assert exposures, name
+        for exposure in exposures:
+            assert exposure.get("routed_as_of"), (
+                f"{name} carries an exposure with no date to route as of, and "
+                f"that road prints our own outage on a buyer's screen: {exposure}"
+            )
+
+
+def test_the_policy_FILE_and_the_PAGE_phrase_one_stored_window_the_same_way():
+    """Two surfaces, one stored window. The file first rendered it *"in force
+    2024-01-01 to onwards"* while the page rendered *"in force from 2024-01-01
+    onwards"* — and the ungrammatical one was the file the room is handed and
+    the model is given at step 3. Small, and precisely against
+    `routing_policy_file`'s own claim that it writes nothing."""
+    text = routing_policy_file("2026-06-03")
+    page = render_from_graphs(_routing_graphs(CASE_A_EXPOSURES), EPISODE_COMPLETED)
+    window = "in force from 2024-01-01 onwards"
+    assert window in text, ("the FILE phrases the window its own way:\n" + text)
+    assert window in page, ("the PAGE phrases the window its own way:\n" + page)
+    closed = routing_policy_file("2023-06-03")
+    assert "in force from 2023-01-01 to 2023-12-31" in closed, closed
+    # The third behaviour, stated in the docstring and pinned here: a value
+    # that is not a date at all is a CALLER bug and says so.
+    try:
+        routing_policy_file("the third of June")
+    except ValueError as exc:
+        assert "not a date" in str(exc), str(exc)
+    else:
+        raise AssertionError("a non-date was accepted as an as-of")
 
 
 if __name__ == "__main__":
