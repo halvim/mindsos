@@ -652,15 +652,31 @@ def test_every_shipped_exposure_STATES_a_date_to_route_as_of():
     closed by fixture, and this guard is what stops a fixture drifting into it.
     It is not a substitute for the core item, which now BLOCKS step 3: §0.4 item
     8(c) makes the date MODEL-READ, and §120.2 showed `2023/06/01` takes the
-    same road."""
+    same road.
+
+    ⚠ **The domain is DERIVED, not enumerated, and the first version was
+    enumerated.** It named three fixtures in a dict, and a fourth — the shape a
+    later ship adds without thinking about this road — walked straight past it
+    while the guard stayed green. Demonstrated by the stage-2 hold with a
+    dateless `CASE_C_EXPOSURES` set on the module. **This is RULES §12.1's own
+    sentence turned on this guard** (*a ship that adds a surface reddens the
+    sentinel*) and §120.3's census lesson a second time: **a guard pinned to a
+    hand-written list goes stale the ship after it is written** — and this one
+    stands in for a core fix, so its staleness is the road reopening in
+    silence. The old vacuity check guarded the dict against being emptied, not
+    the module against gaining a fixture."""
     from decision_records_demo import dr_routing
 
     fixtures = {
-        "CASE_A_EXPOSURES": dr_routing.CASE_A_EXPOSURES,
-        "CASE_A_EXPOSURES_2023": dr_routing.CASE_A_EXPOSURES_2023,
-        "CASE_B_EXPOSURES": dr_routing.CASE_B_EXPOSURES,
+        name: value for name, value in vars(dr_routing).items()
+        if isinstance(value, list) and value
+        and all(isinstance(entry, dict) for entry in value)
+        and any("coverage" in entry for entry in value)
     }
-    assert len(fixtures) >= 3, "the fixture list went vacuous"
+    assert len(fixtures) >= 3, (
+        f"the derived scan found only {sorted(fixtures)} — it stopped seeing "
+        "the fixtures and would pass on a module full of dateless ones"
+    )
     for name, exposures in fixtures.items():
         assert exposures, name
         for exposure in exposures:
