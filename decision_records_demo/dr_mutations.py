@@ -749,9 +749,14 @@ MUTATIONS = [
         ROUTING,
         "                       MEASURED_AGAINST: DS_THRESHOLD})",
         "                       })",
+        # ⚠ The window guard reads BOTH surfaces, so it joins every row that
+        # removes the Source line from the page. Third row it has widened in
+        # one ship — RULES §12's fifth practice rule again, and this time the
+        # new guard arrived from a REVIEW CONDITION rather than from the slice.
         [
             "test_the_deciding_fact_stays_the_persons_fact_and_the_rule_is_a_second_line",
             "test_the_page_names_the_rule_it_was_measured_against_and_its_window",
+            "test_the_policy_FILE_and_the_PAGE_phrase_one_stored_window_the_same_way",
             "test_two_editions_route_the_SAME_exposure_to_different_desks",
             "test_an_exposure_that_consulted_no_rule_cites_none",
             "test_the_deciding_fact_carries_the_authority_behind_it",
@@ -812,9 +817,39 @@ MUTATIONS = [
         ROUTING,
         '     "loss": "collision", "routed_as_of": "2026-06-03",',
         '     "loss": "collision",',
-        # The injury exposure of CASE_A - the one the fixture guard exists to
-        # protect. Removing its date is exactly the road the stage-2 hold walked.
-        ["test_every_shipped_exposure_STATES_a_date_to_route_as_of"],
+        # ⚠ PREDICTED AT ONE AND IT IS TWENTY-THREE, and the width is the
+        # POINT rather than an embarrassment. Removing ONE date from ONE
+        # exposure stops that member, stops the fold, costs the claim its
+        # Therefore line and changes the page's shape — so most of the routing
+        # and screen suite reddens. **That is the finding demonstrating
+        # itself:** the stage-2 hold called this road a defect a room would
+        # see, and this is what "a room would see" looks like from inside the
+        # suite. Recorded at full width rather than trimmed to look tidy.
+        [
+            "test_an_exposure_that_consulted_no_rule_cites_none",
+            "test_case_a_one_claim_two_desks",
+            "test_case_b_refusal_beside_answers_names_the_item",
+            "test_every_desk_verdict_names_its_exposure_answered_and_refused",
+            "test_every_shipped_exposure_STATES_a_date_to_route_as_of",
+            "test_fact_channel_equals_the_page_on_every_known_form",
+            "test_left_panel_values_are_the_fixtures_verbatim",
+            "test_no_edition_in_force_REFUSES_IN_BAND_in_the_lookups_own_words",
+            "test_only_the_deciding_read_reaches_the_page",
+            "test_refusal_stop_and_therefore_classify_as_themselves",
+            "test_the_boundary_routes_at_EXACTLY_the_threshold_and_below_it_does_not",
+            "test_the_claim_line_is_singular_at_one_and_plural_at_two",
+            "test_the_claim_line_names_the_pending_exposure",
+            "test_the_deciding_fact_and_the_refusal_do_not_share_a_style",
+            "test_the_deciding_fact_carries_the_authority_behind_it",
+            "test_the_deciding_fact_stays_the_persons_fact_and_the_rule_is_a_second_line",
+            "test_the_determining_marker_never_reaches_the_page",
+            "test_the_exposure_field_name_never_reaches_the_page",
+            "test_the_intake_line_does_not_echo_the_deciding_fact",
+            "test_the_member_road_does_not_gain_the_refusal_verdict_line",
+            "test_the_page_names_the_rule_it_was_measured_against_and_its_window",
+            "test_the_policy_FILE_and_the_PAGE_phrase_one_stored_window_the_same_way",
+            "test_two_editions_route_the_SAME_exposure_to_different_desks",
+        ],
     ),
     (
         "the policy FILE phrases the window its own way again",
