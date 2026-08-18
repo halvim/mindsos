@@ -70,6 +70,17 @@ Every line below is a thing the code performs, not a thing the design permits.
 - **Answers a dated policy question against two editions**, naming the edition
   and the window it was in force. Two cases differing only in the as-of date
   select different limits (G5).
+- **ROUTES on a stored, dated rule, and names the edition that decided.**
+  *(Step 2, 2026-08-18.)* The routing threshold is not a Python conditional: an
+  exposure's stated weeks off work are compared against a threshold read from a
+  dated policy edition by the same capacity beat 4 uses for the dwelling limit,
+  and **the page carries the claimant's fact, then the rule, then the desk**,
+  with the edition and its window beside the rule. Two editions ship — eight
+  weeks in 2023, four from 2024 — so **the same exposure reaches different desks
+  as of different dates**, which is beat 4's *which edition governed* on beats 1
+  and 2. **Nothing is cited where nothing was applied:** a vehicle exposure
+  routes on coverage alone and names no rule. There is no threshold literal in
+  the routing module, pinned on the AST rather than on its source text.
 - **Rebuilds any of those Records from the store alone**, given only a
   `capacity_root_ref`, after the application is killed — no live knowledge
   layer in the code path at all.
@@ -126,6 +137,19 @@ Every line below is a thing the code performs, not a thing the design permits.
   claim, a date in 1850) has no refusal available to it and is decided on.
   **This is the boundary any live-editing console inherits**, and it is ship
   C's constraint before it is anyone else's.
+- ⚠ **It cannot route an exposure that states no date, and the page blames US
+  when one does.** *(Found by step 2's stage-2 hold, 2026-08-18.)* A missing
+  `routed_as_of` reaches `policy_lookup_v0` as `None`, which classifies it
+  `source_unreachable`, so the page reads *"the injury-routing policy could not
+  be consulted, because a date involved could not be read. This is a fault on
+  our side"* — **on beats 1 and 2, which every showing traverses.** The
+  machinery is correct; the PAGE is the defect, and it is
+  `decision-records-as-of-date-validity`. **The fix is core and a demo may not
+  take it** (RULES §3), so the road is closed by fixture with a derived-domain
+  guard and the item now **BLOCKS step 3**, where §0.4 item 8(c) makes the date
+  model-read. Two consequences of the same road are named and unrepaired: a
+  stopped member leaves the claim with **no *Therefore* line**, and its intake
+  line prints a bare unlabelled value.
 - **It cannot take a case or a policy chosen at the table.** Every input is a
   Python constant in a demo module. Nothing in the demo can be varied without
   editing source.
