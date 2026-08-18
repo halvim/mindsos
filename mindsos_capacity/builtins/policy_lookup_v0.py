@@ -29,7 +29,7 @@ the prose. The as-of date is the opposite — it is the question being asked, it
 varies per run, and it must enter as its own DataState or the same document
 asked about two dates silently becomes two documents.
 
-**Two failures, two mechanisms, and the split is deliberate.**
+**THREE failures, three mechanisms, and every split is deliberate.**
 
 * ``no_source_in_force`` — the store holds no edition covering the date. That is
   a finding about the customer's own policy set, so it **returns**: the limit is
@@ -41,7 +41,18 @@ asked about two dates silently becomes two documents.
   L-2's ``RunStopped`` node records it. A Record that reported an outage as a
   gap in a customer's policy set would be false.
 
-Overlapping in-force windows raise for a third reason: the store contradicts
+* ``as_of_not_a_date`` — the date the caller ASKED ABOUT is not a date. That
+  is a finding about the INPUT, so it **returns** exactly as
+  ``no_source_in_force`` does, and the origin record names the value as given.
+  ⚠ **Added 2026-08-18, and it is ADR-0208 D4's own rule applied to a cause D4
+  did not enumerate.** It was reported as ``source_unreachable`` until then —
+  a Record telling a room *"this is a fault on our side"* about their own bad
+  date, which is the mirror of the sentence D4 forbids. **A malformed date the
+  STORE holds is still an outage**, because then nothing about the question was
+  wrong; the two are told apart by which field failed to parse, not by
+  re-parsing (``policies.AS_OF_FIELD``, ``policies.PolicyDateError.field``).
+
+Overlapping in-force windows raise for a fourth reason: the store contradicts
 itself and there is no tie-break that would not state an authority the store
 does not carry. ``AmbiguousEditionsError`` is deliberately not mapped to
 ``no_source_in_force``, which means *there is no edition*.
@@ -74,6 +85,7 @@ from .origin_v0 import (
     FIELD_SOURCE_VERSION,
     ORIGIN_READ_FROM_SOURCE,
     PRODUCER_POLICY_LOOKUP,
+    REFUSAL_AS_OF_NOT_A_DATE,
     REFUSAL_NO_SOURCE_IN_FORCE,
     ORIGIN_SHAPE_TAG,
     REFUSAL_SOURCE_UNREACHABLE,
@@ -101,6 +113,7 @@ CATEGORY = CATEGORY_RETRIEVAL
 #: about the record, and on the record the reason is unreachable in both senses.
 POSSIBLE_REFUSAL_REASONS = (
     REFUSAL_NO_SOURCE_IN_FORCE,
+    REFUSAL_AS_OF_NOT_A_DATE,
 )
 
 #: Producer-declared fields a lookup populates **when it admits a value**. On a
@@ -225,8 +238,10 @@ def build_policy_limit_lookup(
 
     def _lookup(context: Any = None, **inputs: Any) -> Dict[str, Any]:
         from mindsos_knowledge.policies import (  # local: L3 declares no L2 dep
+            AS_OF_FIELD,
             AmbiguousEditionsError,
             NoEditionInForceError,
+            PolicyDateError,
             PROP_IN_FORCE_FROM,
             PROP_IN_FORCE_TO,
             PROP_STATED_VALUE,
@@ -276,19 +291,62 @@ def build_policy_limit_lookup(
             }
         except AmbiguousEditionsError:
             raise
-        except ValueError as exc:
-            # NOTE: this branch catches BOTH a malformed stored window AND a
-            # malformed ``as_of``, and reports both as our fault. That is right
-            # for the stored half and arguable for the asked half — a bad
-            # as-of date is a bad input, not an outage. Splitting it adds a
-            # third refusal reason, which is an ADR-0208 decision rather than
-            # prose hygiene, so the message here states only what is true of
-            # both causes. Filed as ``decision-records-as-of-date-validity``.
-            raise PolicyStoreUnreachableError(
-                f"{source_identity_phrase} could not be consulted, because a "
-                f"date involved could not be read. This is a fault on our side "
-                f"and is never a finding about the case."
-            ) from exc
+        except PolicyDateError as exc:
+            if exc.field != AS_OF_FIELD:
+                # A stored in-force bound will not parse. **Our store is
+                # broken**, and that is an outage in the strict sense: nothing
+                # about the asker's question is wrong.
+                raise PolicyStoreUnreachableError(
+                    f"{source_identity_phrase} could not be consulted, because "
+                    f"a date it holds could not be read. This is a fault on "
+                    f"our side and is never a finding about the case."
+                ) from exc
+            # ⚠ **THE SPLIT, and it is ADR-0208 D4's own rule applied to a
+            # cause D4 did not enumerate.** The date the caller ASKED ABOUT is
+            # not a date. The store is fine; the question was not answerable as
+            # put. Reporting that as ``source_unreachable`` tells a room their
+            # document was fine and our system was down, when the opposite is
+            # true — the mirror of D4's *"a Record that reported an outage as a
+            # gap in a customer's policy set would be false"*.
+            #
+            # It RETURNS, like ``no_source_in_force``: the limit is ``None``,
+            # the origin record carries the words, the criterion sees the
+            # ``None`` and returns a not-determined verdict, and the whole run
+            # stays renderable. Raising here would stop the member and cost the
+            # claim its conclusion.
+            return {
+                limit_datastate_iri: None,
+                origin_iri: build_origin_record(
+                    producer_kind=PRODUCER_POLICY_LOOKUP,
+                    origin_method=ORIGIN_READ_FROM_SOURCE,
+                    source_identity_phrase=source_identity_phrase,
+                    source_datastate=None,
+                    question=asked,
+                    admitted=False,
+                    supplied_fields=(),
+                    possible_refusal_reasons=POSSIBLE_REFUSAL_REASONS,
+                    refusal_reason=REFUSAL_AS_OF_NOT_A_DATE,
+                    # Names the value AS GIVEN, so the page states a fact about
+                    # the input rather than about our store.
+                    #
+                    # ⚠ **ABSENT and UNREADABLE are not the same sentence, and
+                    # the first version said they were.** With no date at all
+                    # the detail read *"was asked about None, which could not be
+                    # read as a date"* — a Python literal on a buyer's page, and
+                    # a claim that someone supplied something when nobody did.
+                    # The demo's own wiring never shows it (its reader refuses
+                    # first and the reader's words win the line), which is
+                    # exactly the *true for this caller, not guaranteed for the
+                    # next* shape. Found by the stage-2 hold.
+                    refusal_detail=(
+                        f"{source_identity_phrase} was asked about no date "
+                        f"at all."
+                        if exc.value in (None, "")
+                        else f"{source_identity_phrase} was asked about "
+                             f"{exc.value!r}, which could not be read as a date."
+                    ),
+                ),
+            }
 
         props = edition.properties or {}
         producer_fields: Dict[str, Any] = {

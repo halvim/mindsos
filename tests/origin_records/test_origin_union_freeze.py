@@ -141,6 +141,12 @@ def _every_record_the_system_can_write():
         lookup(context=_Ctx(both), **{DS_AS_OF: "2023-06-01"}),      # closed window
         lookup(context=_Ctx(open_only), **{DS_AS_OF: "2024-06-01"}),  # open window
         lookup(context=_Ctx(open_only), **{DS_AS_OF: "1999-01-01"}),  # no edition
+        # ⚠ Added 2026-08-18 with ``as_of_not_a_date``. A reason called EMITTED
+        # is checked by RUNNING the producer, so a new one that no path here
+        # exercises would make this file's own standard vacuous — which is the
+        # gap #155 opened and this file was written to close.
+        lookup(context=_Ctx(open_only), **{DS_AS_OF: "3 June 2026"}),  # not a date
+        lookup(context=_Ctx(open_only), **{DS_AS_OF: None}),           # absent
         reader(**{DS_RECORD: {"v": 7}}),
         reader(**{DS_RECORD: {}}),
         reader(**{DS_RECORD: {"v": "nope"}}),
@@ -167,7 +173,7 @@ def _every_record_the_system_can_write():
 @pytest.fixture(scope="module")
 def emitted():
     records = _every_record_the_system_can_write()
-    assert len(records) == 12, "every returning path must yield exactly one record"
+    assert len(records) == 14, "every returning path must yield exactly one record"
     return records
 
 
