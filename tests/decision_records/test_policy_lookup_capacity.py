@@ -401,7 +401,10 @@ def test_the_d15_walk_would_catch_an_opaque_operand():
 # ``stopped_detail`` (``pipeline_execution.py``, the ``not result.success``
 # branch), and a Decision Record prints that node. So every message raised out
 # of a lookup body is customer-facing text and is held to G6's bar, the same as
-# registered prose. Vocabulary from ``DECISION_RECORDS_DEMO_PLAN.md`` §4.
+# registered prose. Vocabulary from ``DECISION_RECORDS_DEMO_PLAN.md`` §4 —
+# which lives in the demo's own repo since 2026-08-18
+# (``github.com/halvim/mindsos-decision-records``, ``docs/``). The list below
+# is CORE's, copied deliberately: this test must not need that file to run.
 
 RECORD_FORBIDDEN = (
     "capacity", "pipeline", "datastate", "metagraph",
