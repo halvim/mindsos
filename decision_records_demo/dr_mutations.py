@@ -737,9 +737,12 @@ MUTATIONS = [
         # SOMEWHERE so that it cannot pass on a page that lost the rule line
         # entirely. **A vacuity check is a claim too**, and it belongs in the
         # prediction like any other.
+        # FIVE, not four: the window guard reads the Source line on BOTH
+        # surfaces, so it joins every row that removes that line from the page.
         [
             "test_an_exposure_that_consulted_no_rule_cites_none",
             "test_the_page_names_the_rule_it_was_measured_against_and_its_window",
+            "test_the_policy_FILE_and_the_PAGE_phrase_one_stored_window_the_same_way",
             "test_two_editions_route_the_SAME_exposure_to_different_desks",
             "test_the_deciding_fact_carries_the_authority_behind_it",
         ],
