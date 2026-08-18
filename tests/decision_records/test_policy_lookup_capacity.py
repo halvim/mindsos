@@ -241,6 +241,29 @@ def test_a_refusal_declares_only_the_reason_a_record_could_ever_carry():
     }
 
 
+def _kl_with_a_broken_stored_window():
+    """A store holding an edition whose in-force bound will not parse.
+
+    Written PAST ``write_policy_edition``, which validates its dates, because a
+    store can only reach this state through a migration or a direct write —
+    which is exactly the state this door is about."""
+    kl = KnowledgeLayer.bootstrap()
+    handle = kl.writeable(None, ROLE_POLICIES, "global")
+    handle.write_and_validate(
+        value="A return must be filed where gross income reaches 27,700.",
+        type_=NODE_POLICY_EDITION,
+        properties={
+            PROP_POLICY_ID: POLICY_ID,
+            PROP_VERSION: "broken.1",
+            PROP_IN_FORCE_FROM: "not-a-date",
+            PROP_STATED_VALUE: 27700,
+        },
+        policy_id=POLICY_ID,
+        edition_id="broken.1",
+    )
+    return kl
+
+
 def test_a_malformed_as_of_is_a_FINDING_and_never_our_outage():
     """⚠ **The split, and the sentence it removes from a page.** Until
     2026-08-18 this returned ``source_unreachable`` — a Record telling a room
@@ -294,22 +317,8 @@ def test_a_malformed_STORED_window_STILL_raises_as_our_outage():
     The edition is written past ``write_policy_edition``, which validates its
     dates, because a store can only reach this state through a migration or a
     direct write. That is exactly the state this door is about."""
-    kl = KnowledgeLayer.bootstrap()
-    handle = kl.writeable(None, ROLE_POLICIES, "global")
-    handle.write_and_validate(
-        value="A return must be filed where gross income reaches 27,700.",
-        type_=NODE_POLICY_EDITION,
-        properties={
-            PROP_POLICY_ID: POLICY_ID,
-            PROP_VERSION: "broken.1",
-            PROP_IN_FORCE_FROM: "not-a-date",
-            PROP_STATED_VALUE: 27700,
-        },
-        policy_id=POLICY_ID,
-        edition_id="broken.1",
-    )
     with pytest.raises(PolicyStoreUnreachableError) as excinfo:
-        _run(kl, "2024-04-15")
+        _run(_kl_with_a_broken_stored_window(), "2024-04-15")
     assert excinfo.value.refusal_reason == REFUSAL_SOURCE_UNREACHABLE
     assert "a date it holds" in str(excinfo.value), str(excinfo.value)
 
@@ -421,8 +430,14 @@ def test_an_upstream_message_never_reaches_the_record():
 
 
 def test_an_unreadable_date_message_is_prose_a_reader_can_be_shown():
+    """⚠ **RE-CUT 2026-08-18, and it was FALSIFIED BY DESIGN rather than
+    broken.** It drove a malformed ``as_of`` and asserted the outage prose — the
+    exact classification amendment 1 removes. The claim it was making is about
+    the STOP's prose, so it moves to the raise path that still exists: a date the
+    STORE holds that will not parse."""
+    kl = _kl_with_a_broken_stored_window()
     with pytest.raises(PolicyStoreUnreachableError) as excinfo:
-        _run(build_kl_with_both(), "the fifteenth of April")
+        _run(kl, "2024-04-15")
     _assert_printable_to_a_reader(excinfo.value)
     assert POLICY_PHRASE in str(excinfo.value)
 
@@ -431,7 +446,10 @@ def test_every_raise_path_carries_the_token_on_the_exception_not_in_the_text():
     for kl, as_of in (
         (None, "2024-04-15"),
         (_UnreadableStore(), "2024-04-15"),
-        (build_kl_with_both(), "the fifteenth of April"),
+        # ⚠ The third row was a malformed ``as_of`` until 2026-08-18. That path
+        # RETURNS a finding now (amendment 1), so the row that still belongs
+        # here is the one that still raises: a bound the STORE holds.
+        (_kl_with_a_broken_stored_window(), "2024-04-15"),
     ):
         with pytest.raises(PolicyStoreUnreachableError) as excinfo:
             _run(kl, as_of)
