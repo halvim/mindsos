@@ -5,7 +5,7 @@
 > A chat must claim its lane here before pushing.
 
 Every project lives under `projects/<name>/`. Core-contributors merge to `main`;
-demos live on `demo/*` branches and never edit `mindsos_*`.
+demos live on `demo/*` branches and never edit `mindsos_*` — **except Decision Records, which became its own repository on 2026-08-18 (RULES §1)**.
 
 ## Worktrees
 
@@ -25,19 +25,25 @@ drift RULES §1 was corrected for. Do not restore a home column entry without `l
 | `MindsOS-arc-viz/`        | `arc-solver-viz`   | demo             | unverified                       |
 | `MindsOS-bongard/`        | `demo/bongard`     | demo             | unverified                       |
 | `nilm_brain/`             | `nilm_brain`       | long-lived       | unverified                       |
-| `MindsOS-dr/`             | `demo/decision-records` | demo        | `decision_records_demo/` at root ✅ (demo branch only, created 2026-08-13 @ `d94ca4f`) |
+| ~~`MindsOS-dr/`~~        | ~~`demo/decision-records`~~ | **RETIRED 2026-08-18** | the demo left the repo — `github.com/halvim/mindsos-decision-records` |
 
-**Decision Records** code home is `decision_records_demo/` at the repo root, **only on
-`demo/decision-records`** (worktree `MindsOS-dr`, pins `dr-partial-record-confirmed`). Its
-research + docs home stays `projects/decision_records_demo/` on `main`. Build order:
+**Decision Records LEFT THIS REPO on 2026-08-18** (owner ruling, RULES §1). Code, docs and
+the demo plan now live in `github.com/halvim/mindsos-decision-records`, which installs core
+as a distribution pinned by TAG in its `requirements.txt`. Nothing of the demo remains on
+`main`, `demo/decision-records` is retired, and its `dr-*-confirmed` tags stay as the
+history. Core's build order for the lane's PREREQUISITES stays here:
 `confirmation_docs/DECISION_RECORDS_V0_PLAN.md`.
 
-⚠ **PIN CORRECTED 2026-08-17.** The line above said `dr-fold-grounding-confirmed` — **three ships stale**, and the fourth instance in this lane of a document's pin disagreeing with the tree. The lane's gate condition is
-`git diff --stat <pin>..HEAD -- 'mindsos_*'` printing nothing, so a stale pin makes a green lane report red. **Read the pin off the TREE, never off this file:**
-
-```
-for t in $(git tag --list '*-confirmed'); do git diff --quiet "$t" origin/demo/decision-records -- 'mindsos_*' && echo "$t"; done
-```
+⚠ **THE PIN MECHANISM CHANGED WITH IT, and the old failure is why.** The pin used to be a
+line in this file and in `STATE.json`, checked by `git diff --stat <pin>..HEAD -- 'mindsos_*'`.
+On 2026-08-17 it was found **three ships stale** — the fourth instance in this lane of a
+document's pin disagreeing with the tree — and the check run against it reported 8 core files
+and 842 insertions on a branch that had edited none of them. **There is no such diff now.**
+The pin is the tag in the demo repo's `requirements.txt`, the answer is what is INSTALLED
+(`pip show mindsos-runtime`), and the demo's own guard
+`test_core_is_the_INSTALLED_distribution_not_a_source_checkout` reddens if core ever resolves
+to a checkout instead. A pin that IS a dependency cannot go stale without the install going
+stale with it.
 
 ⚠ **THE DECISION RECORDS CRITIC LANE IS RE-CREATED, 2026-08-17** — owner
 ruling, plan §0.4 item 8(a): an independent reviewer exists and no ship past
@@ -60,7 +66,7 @@ Then point that Cowork chat's project at the new folder.
 | `main`        | Operational system (the product)         | `mindsos_*`, `docs/`, `confirmation_docs/`, `projects/`, `tests/` | Always green on the Linux gate        |
 | `demo/robot`  | Robot demo, installed on top of main     | `robot_demo/ demo_ui/ sim/ web/ metagraph_visualizer/` + robot docs | NEVER edits `mindsos_*`; merges main in |
 | `demo/arc`    | ARC demo, installed on top of main       | `intelligence_demo/ run_spike`                                    | NEVER edits `mindsos_*`; merges main in |
-| `demo/decision-records` | Decision Records demo, installed on top of main | `decision_records_demo/`                          | NEVER edits `mindsos_*`; merges main in |
+| ~~`demo/decision-records`~~ | **RETIRED 2026-08-18** — the demo is its own repository | — | tags `dr-*-confirmed` remain as history |
 
 ## Short-lived branches (off `main`, squash-merge back, then delete)
 

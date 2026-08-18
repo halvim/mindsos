@@ -32,7 +32,7 @@ Persistence layout: graphs live in **FalkorDB** (per ADR-0121); non-graph state 
 
 **Sister projects:** `projects/dwf_mapping/` (knowledge acquisition), `projects/wsd/` + `projects/fol/` (skill acquisition). Each has an `ANALYSIS.md` + `FUTURE_CHAT_PROMPT.md` + `source/`. See `projects/README.md` for the recommended chat ordering.
 
-**Non-sister lanes:** `projects/` also holds lanes that are not sister projects. `projects/decision_records_demo/` is the **Decision Records demo** lane — zero-revenue sales evidence, owns nothing architectural, imported by nothing. It holds demo/evidence *research* only; the design decisions stay in `confirmation_docs/DECISION_RECORDS_*.md`. Do not call it "the GTM lane" — `Projects/Sanmyaku-GTM/` is a different thing (real-human meeting ops, never demo artifacts). See `projects/README.md`.
+**Non-sister lanes:** `projects/` also holds lanes that are not sister projects. The **Decision Records demo** lane is no longer one of them — it LEFT THIS REPO on 2026-08-18 (RULES §1) and lives at `github.com/halvim/mindsos-decision-records`, installing core as a distribution pinned by tag. Zero-revenue sales evidence, owns nothing architectural, imported by nothing. Core keeps only what is core's: `confirmation_docs/DECISION_RECORDS_V0_PLAN.md` (build order for the lane's prerequisites), `DECISION_RECORDS_AGREED_CHANGES.md` (cross-lane agreements), and the ADRs. Do not call it "the GTM lane" — `Projects/Sanmyaku-GTM/` is a different thing (real-human meeting ops, never demo artifacts). See `projects/README.md`.
 
 **Folder structure:** See `HANDOFF.md` §7.3 for the canonical layout.
 

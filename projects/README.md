@@ -4,27 +4,28 @@
 
 > [!NOTE]
 > **This index covers the three intake sister projects only.** `projects/` has since accumulated
-> other lanes — `amii_study/`, `brain-viewer/`, `maintenance/`, `skill_acquisition/`,
-> `decision_records_demo/` — that are not sister projects and are not tracked in the tables
-> below. Only `decision_records_demo/` is documented here; the rest are undocumented and
-> someone should say what they are.
+> other lanes — `amii_study/`, `brain-viewer/`, `maintenance/`, `skill_acquisition/` — that are
+> not sister projects and are not tracked in the tables below. **None of them is documented
+> here** and someone should say what they are. The one lane that was, `decision_records_demo/`,
+> left this repository on 2026-08-18 (RULES §1).
 
 ## Non-sister lanes
 
-**`decision_records_demo/`** — the **Decision Records demo** lane. Zero-revenue;
-sales evidence, not product. It owns no architectural mechanism (RULES §8) and nothing in
-`mindsos_*` imports it. Design decisions do not live there — they live in
-`confirmation_docs/DECISION_RECORDS_{DEMO_PLAN,V0_SLICE_PLAN,AGREED_CHANGES}.md`. The folder
-holds demo and evidence *research* only: domain material, sourced taxonomies, scenario notes.
+**The Decision Records demo left this repository on 2026-08-18** (owner ruling, RULES §1).
+It is its own repo — `github.com/halvim/mindsos-decision-records` — installing core as a
+distribution pinned by tag. Zero-revenue: sales evidence, not product. It owns no
+architectural mechanism (RULES §8) and nothing in `mindsos_*` imports it.
 
-Two boundaries recorded there, both learned the hard way:
+Two boundaries were recorded here. Both are kept, because both were learned the hard way and
+neither is about where the files live:
 
-- `Projects/Sanmyaku-GTM/` is **meeting operations with real humans** and is not this lane.
+- `Projects/Sanmyaku-GTM/` is **meeting operations with real humans** and is not that lane.
   Demo and research artifacts never go there.
-- `DECISION_RECORDS_DEMO_PLAN.md` §2.5 is five seeded synthetic cases — **no intake-routing
-  beat, no claim-classification stage, no lines-of-business taxonomy.** A 2026-08-11 task
-  prompt quoted one; the quote is not in the file (md5 `83fe6c6b93f7a09ff4853f0aff43ec70`).
-  **Grep a cited file for a quoted §-reference before building on it.**
+- A 2026-08-11 task prompt quoted `DECISION_RECORDS_DEMO_PLAN.md` §2.5 for a claim that **was
+  not in the file** (md5 `83fe6c6b93f7a09ff4853f0aff43ec70` at the time). **Grep a cited file
+  for a quoted §-reference before building on it.** §2.5 has since been amended twice and the
+  lane does now have an intake-routing beat — the rule the incident earned is the durable part,
+  not the claim it was made about.
 
 ## Layout
 

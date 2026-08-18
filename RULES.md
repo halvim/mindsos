@@ -22,21 +22,32 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - **Core-contributor projects** (edit core, merge phases to `main`) →
   `projects/{wsd,fol,dwf_mapping,skill_acquisition,maintenance}/`, own worktree
   + own test instance, branches `wsd-NN`/`fol-NN`/`dwf-NN`/`feat/*`.
-- **Demo projects** (built on top, never edit core) → a **root-level** directory
-  (`robot_demo/`, `decision_records_demo/`) that exists **only on its own `demo/*`
-  branch**, never on `main`, with its own worktree (`MindsOS-robot`, `MindsOS-arc`,
-  `MindsOS-bongard`, `MindsOS-dr`), its own `requirements-demo.in` and its own
-  instance.
-  ⚠ **CORRECTED 2026-08-12.** This line used to say `projects/{robot_demo,arc_demo,
-  bongard_demo}/`. **That path exists on no branch** and it cost a week: a lane
-  built demo material under `projects/` because the rule said so. Verified against
-  the tree — `robot_demo/` is at the root of `demo/robot` and absent from `main`;
-  `projects/` on `main` holds **core-contributor** projects only (`wsd`, `fol`,
-  `dwf_mapping`, `skill_acquisition`, `maintenance`).
-  A demo is **not** in the core test image: `Dockerfile` and `docker-compose.yml`
-  are byte-identical between `main` and `demo/robot`, so a demo runs in its own
-  environment and its tests are **not** part of the core gate. That is the point —
-  a consumer that can break core's gate is not a consumer.
+- **Demo projects** (built on top, never edit core) → **their own repository**,
+  consuming core as an **installed distribution**
+  (`mindsos-runtime @ git+ssh://…@<core-tag>` in the demo's `requirements.txt`),
+  with its own env and its own instance. The pin is that tag.
+  ⚠ **AMENDED 2026-08-18 (owner).** This rule used to say a **root-level**
+  directory existing only on the demo's own `demo/*` branch. That bought the
+  property below and paid for it in history: **a branch of the core repo carries
+  all of core.** On 2026-08-18 the Decision Records demo went to take one core
+  fix and it cost a 39-commit merge with nine conflicts, none of them demo work,
+  with the same bill due at every future core ship. **A consumer that has to
+  merge its supplier is not a consumer.** Decision Records is the first demo in
+  the new shape — `github.com/halvim/mindsos-decision-records`. `robot_demo/`
+  and the arc and bongard demos are **still** root-level on their `demo/*`
+  branches; the old paragraph still governs them until they move, and nothing
+  here moves them.
+  ⚠ **The 2026-08-12 correction still stands, and it is why `projects/` was not
+  the answer either.** `projects/` on `main` holds **core-contributor** projects
+  only (`wsd`, `fol`, `dwf_mapping`, `skill_acquisition`, `maintenance`). A lane
+  once built demo material under `projects/` because the rule said so, and it
+  cost a week.
+  A demo is **not** in the core test image — the `Dockerfile` copies the
+  packages and `tests/` into `/app` and **not** `projects/` — so a demo runs in
+  its own environment and its tests are **not** part of the core gate. **That is
+  the point: a consumer that can break core's gate is not a consumer.** In a
+  separate repository that stopped being a rule someone has to keep and became a
+  property of the topology.
 
 ## 2. Branches
 - Off `main`, squash-merge back, then delete: `phase-NN`, `wsd-NN`, `dwf-NN`,
