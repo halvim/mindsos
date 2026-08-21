@@ -171,5 +171,26 @@ work on `feat/dr-fields`; if that work becomes ADR-0206's first consumer and mov
 
 ## 8. Gate
 
-Linux, in the container, against the merged tree, with `--build`; `test_cli` collected `> 0`
-(RULES §7). Recorded on the ship commit.
+Linux (`/home/sanmyaku/mindsos`), in the container, `docker compose --build`, branch tip
+`1bfcb50` with `origin/main` at `c475a80`:
+
+**4907 passed, 11 skipped, 1 xpassed, 0 failed**, 112 warnings, 2037s. RULES §7 CLI check:
+**256** `test_cli` collected. The new guard alone: **10 passed**.
+
+**The check that matters for a ship that adds tests is the collection diff**, and it was run
+rather than reasoned about: `origin/main` collects **4908**, this branch collects **4918**,
+**added = exactly the 10** tests of `test_retired_design_pointer.py`, **removed = none**. No
+existing test changed identity, and no parametrized test gained a case from the two new files
+— every file-globbing parametrized test in the tree globs a `mindsos_*` package, a specific
+ADR number, or `confirmation_docs/*COORDINATION*.md`, none of which the new files match.
+
+⚠ **Two counts do not reconcile, and are recorded rather than smoothed.** The run reports
+4907 + 11 + 1 = **4919 outcomes** against **4918** collected, and a fresh collect of
+`c475a80` gives **4908** where that commit's own ship record says **4907**. No rerun / flaky /
+repeat / xdist / subtests plugin is pinned, there is no `pytest_generate_tests`, no
+`pytest_collection_modifyitems` and no `addopts`, so the usual explanations are excluded. The
+reading under which both sides behave identically is that the **baseline pass count is 4897,
+not 4896** — which would mean the previous record's own correction went the wrong way. Not
+asserted: the experiment that settles it is a full-gate run of `c475a80` reading its pass
+count directly (~34 min). Filed as `gate-baseline-count-off-by-one`; it does not gate this
+ship, because the collection diff already proves what this ship adds.
