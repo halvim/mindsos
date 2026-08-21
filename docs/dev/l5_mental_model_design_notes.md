@@ -166,6 +166,9 @@ Milestone (intelligence-MM CompositeInstance):
 **Aggregator default = last-child-output-is-parent-output** when no aggregator declared. Optional declared `planning.aggregate_outputs(milestone, children_outputs) → DataState` capacity for cases that genuinely combine.
 
 **Cold-start max-depth = 3.** Admin-tunable per task-pattern. v2 lifts the cap if needed.
+⚠ **Retired by [ADR-0206](../decisions/adr/0206-planning-decomposition-confidence.md) §4**
+— confidence, not depth, is the stopping rule, and lazy DFS becomes a loop that emits one
+layer at a time. Proposed and unbuilt; CORE-C2R6 retires the constant.
 
 ### 2.4 Level 4 — Pipeline
 
@@ -264,7 +267,7 @@ The task's initial flow value is a DataStateInstance in capacity-MM, XRef'd to t
 
 **Vocabulary note.** "LifecyclePhase 1-6" here is Chat A's task-execution lifecycle (`docs/_workbench/CHAT_A_DECISIONS.md` D12). Distinct from Plan-tree Milestones.
 
-- **LifecyclePhase 1:** Task interpretation (5-step refactor per Chat A R3 — receive → process → extract_hints → derive_goal → map_to_task_pattern). Produces HintSet + MappingResult.
+- **LifecyclePhase 1:** Task interpretation (5-step refactor per Chat A R3 — receive → process → extract_hints → derive_goal → map_to_task_pattern). Produces HintSet + MappingResult. ⚠ **[ADR-0206](../decisions/adr/0206-planning-decomposition-confidence.md) §3 revises this:** the steps are request → hint → map → plan; `derive_goal` is gone.
 - **LifecyclePhase 2:** Plan + Pipeline construction. Produces Plan (root + lazy children) and per-leaf Pipelines as they materialize.
 - **LifecyclePhase 3-5:** Execution. PipelineRuns spawn in DFS Milestone order. MSUR + SCMS run as L3 orchestration capacities.
 - **LifecyclePhase 6:** Failure diagnosis (per Chat A R4 D13). `phase6.attribute_blame` produces a **BlameVerdict** carrying `chain_level: Literal["hint","map","plan","plan_subtree","pipeline"]` + `milestone_ref` + `capacity_step_ref` + `blame_score` + `rationale`.

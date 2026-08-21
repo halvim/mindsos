@@ -16,7 +16,17 @@ control paths (including the replan + dont-know branches) are exercised:
 (``set_should_replan_decision`` / ``set_sufficient_result``) so the
 ReplanRecord-emit + invalidate-at-and-below path and the dont-know path
 are exercisable — constant stubs would dead-ship those paths. All carry
-``placeholder=True``; install is opt-in; CORE-C4R1/C4R9 replaces.
+``placeholder=True``; install is opt-in.
+
+The real bodies are core work, per ``confirmation_docs/CORE_RECONCILIATION_PLAN.md``
+§5, whose CORE-C4 table declares items **C4R1 through C4R8 only** — an id above that
+range in any docstring is a typo, and this module carried one. **CORE-C4R7** ships
+the real ``decision.should_replan`` + ``predicate.sufficient``; **CORE-C4R8** ships
+``decision.signal_to_tier`` / ``scoring.attention_score`` / ``phase6.attribute_blame``
+(blame descends the reconciled ladder). The design is **ADR-0206** — §6 makes the
+dont-know path distinguish *"I'm not sure"* from *"I don't know"* and routes the
+former to the dream, so ``predicate.sufficient`` is not simply a truer boolean.
+ADR-0206 is Proposed and unbuilt.
 """
 
 from __future__ import annotations

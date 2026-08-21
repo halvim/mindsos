@@ -1,5 +1,15 @@
 """LifecyclePhase 1 — task interpretation (ADR-0172 + ADR-0195 seam).
 
+⚠ **This module implements the SUPERSEDED interpretation design.** The current
+design is **ADR-0206 §3**: the steps are ``request -> hint -> map -> plan`` with
+*plan* a loop (``search -> find -> decompose -> repeat``); ``derive_goal`` is
+**deleted**, not reimplemented, and ADR-0206 §8 ships interpretation as *contract
+only* (bodies arrive in skill packages). ADR-0206 is **Proposed and unbuilt** —
+**CORE-C4R7** is the item that replaces what is below — so this flow is what runs
+today and is **not** the design. A 2026-08-20 consumer lane read this module, the
+shipped code and ADR-0172, and answered a design question one generation out of
+date. See ADR-0172 §amendment-2 for the clause-by-clause.
+
 The interpretation flow — ``process -> extract_hints -> derive_goal ->
 map_to_task_pattern`` (+ optional reference ``resolve``) — is factored into
 a **standalone** :func:`interpret` decoupled from the orchestrator's

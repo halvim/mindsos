@@ -4,6 +4,7 @@ status: Proposed
 date: 2026-07-31
 layer: L4
 related: [0094, 0152, 0156, 0171, 0172, 0195, 0198, 0199, 0203, 0205]
+amends: [0172]
 ---
 
 # ADR-0206: Planning as a loop — milestones, decomposition, and confidence
@@ -13,7 +14,8 @@ related: [0094, 0152, 0156, 0171, 0172, 0195, 0198, 0199, 0203, 0205]
 **Date:** 2026-07-31
 
 **Related:** ADR-0205 (abstraction levels — this builds on it), ADR-0171 (orchestrator),
-ADR-0172 (lifecycle phases), ADR-0195 (Phase-1 seam), ADR-0152 §2 (`request-patterns`
+ADR-0172 (Phase-1 five-step interpretation — **this ADR amends it**; see ADR-0172
+§amendment-2 for the clause-by-clause), ADR-0195 (Phase-1 seam), ADR-0152 §2 (`request-patterns`
 schema), ADR-0094 §am-1 (per-pipeline confidence moved to ALS — **not reopened**),
 ADR-0199 (collection map/fold).
 

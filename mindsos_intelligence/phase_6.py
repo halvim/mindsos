@@ -3,7 +3,9 @@
 On the failure path L4 dispatches the L3 ``phase6.attribute_blame``
 capacity, which returns a BlameVerdict locating blame at a chain level +
 step. At Phase 47 the body is a v0 skeleton; the concrete cross-validation
-body is unbuilt CORE work (ADR-0206; CORE-C4R9).
+body is unbuilt CORE work (ADR-0206; **CORE-C4R8** — blame descends the
+reconciled abstraction ladder). ⚠ ADR-0206 also retires the ``plan_subtree``
+chain level: the planning loop covers it.
 """
 
 from __future__ import annotations

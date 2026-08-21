@@ -7,6 +7,11 @@ consume ``text.tokens`` as this modality's *structured* input. That closes
 the phase1↔text disconnect: ``text.tokens`` is now consumed **inside**
 interpretation, by a capacity, instead of being produced and dropped.
 
+⚠ **The ``derive_goal`` body below implements a step ADR-0206 §3 deletes** — the
+current steps are ``request -> hint -> map -> plan``. It survives only while the
+shipped four-step ``interpret`` does (**CORE-C4R7**); ADR-0206 is Proposed and
+unbuilt. The modality wiring itself is unaffected. See ADR-0172 §amendment-2.
+
 The downstream bodies are intentionally trivial — they exist to prove the
 modality wiring, not to do language understanding (a real consumer, e.g.
 arc, supplies its own ``hint`` / ``map`` per ADR-0195). The ``hint`` body
