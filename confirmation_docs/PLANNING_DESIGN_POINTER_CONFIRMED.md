@@ -234,6 +234,20 @@ flip list is therefore **enforced** rather than merely written down.
 
 ### Verification
 
+Gate (Linux, `--build`, branch tip `c8727d8`, `origin/main` at `6169ce5`): **4908 passed, 11
+skipped, 1 xpassed, 0 failed**, 2066s; `test_cli` **256**; the guard alone **11 passed**.
+Collection diff: `origin/main` **4918** -> branch **4919**, added = exactly
+`test_a_dead_schema_mention_without_the_pointer_is_reported`, removed = none. Every number was
+**predicted in writing before the run** and every one matched.
+
+⚠ **Including the off-by-one, which is the point.** Round 2 runs 4908 + 11 + 1 = **4920
+outcomes** against **4919** collected — the same **+1** as round 1. The offset is therefore a
+standing property of this tree, not something round 1 introduced, which leaves the
+DR-leaves-the-repo record as the only data point showing a zero offset *and* the only one whose
+collection number is independently known to be wrong. See `gate-baseline-count-off-by-one`; the
+cheap next experiment is now `pytest -q tests_server/` against
+`pytest --collect-only -q tests_server/`, which halves the search in about a minute.
+
 Guard claims after the ship: **claim 1 = 0 violations, claim 2 = 0 dangling** over 348 scanned
 files; exclusions still load-bearing (`docs/decisions/adr/**` now exempts 5 files,
 `docs/_workbench/**` exempts 2). `tools/check_adr_status_consistency.py` exits 0 across 211 ADRs
