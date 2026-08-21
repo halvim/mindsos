@@ -194,3 +194,83 @@ not 4896** — which would mean the previous record's own correction went the wr
 asserted: the experiment that settles it is a full-gate run of `c475a80` reading its pass
 count directly (~34 min). Filed as `gate-baseline-count-off-by-one`; it does not gate this
 ship, because the collection diff already proves what this ship adds.
+
+---
+
+## 9. Round 2 (2026-08-21) — the decomposition half, which §5's guard was blind to
+
+**§5's guard went green on a tree that still contained the decoy this lane exists to remove.**
+Its token set — `derive_goal` and plan-level `MAX_DEPTH` — covers the **interpretation** half of
+the design ADR-0206 supersedes and not the **decomposition** half. So
+`docs/usage/knowledge/task-patterns.md`, the *published* page documenting `SubgoalTemplate` and
+`DECOMPOSES_INTO`, was left telling readers that schema is how decomposition works. That page is
+the actual home of the misreading recorded in §2, and a ship whose entire subject was that
+misreading passed over it and certified itself green.
+
+The derived axis of a domain cannot know which vocabulary is retired; the recalled axis is only
+as complete as the recall (RULES §12.3). Both were needed and only one was checked. It surfaced
+because the owner asked whether the documentation was fully updated — **not** from the lane's own
+sweep, which is the part worth remembering. The lesson is written into the guard's module
+docstring rather than a commit message: **when adding a row to `RETIRED`, ask what else the same
+ADR retires.**
+
+### What round 2 changed
+
+**A third retired token** — `SubgoalTemplate | DECOMPOSES_INTO | PREREQUISITE_OF |
+subgoal_template` — with its own mutation observed RED before the ship. It pulls five surfaces
+into the pointer obligation: `mindsos_knowledge/identifiers.py` (the `subgoal_template_iri`
+builder), `mindsos_knowledge/__init__.py`, `mindsos_cli/commands/knowledge.py` (the CLI still
+mints subgoal IRIs), `docs/concepts/role-graphs.md`, and the rewritten usage page.
+
+**ADR-0206 was undiscoverable from the L4 index.** `docs/decisions/summary/intelligence.md`
+listed ADR-0172 and had **no row for 0205 or 0206 at all**. It gains a section carrying both,
+and the 0172 row now names 0206 as amending it. **The new table has a `Status` column**, so
+`tests/test_adr_status_consistency.py` now gates ADR-0206's status on that page — verified by
+mutation: flipping the 0206 cell to `Accepted` makes the checker report
+*"cell 'Accepted' != file status 'proposed'"*. One of the five sites in ADR-0172 §amendment-2's
+flip list is therefore **enforced** rather than merely written down.
+
+**Two published documents named things that do not exist** — see §10.
+
+### Verification
+
+Gate (Linux, `--build`, branch tip `c8727d8`, `origin/main` at `6169ce5`): **4908 passed, 11
+skipped, 1 xpassed, 0 failed**, 2066s; `test_cli` **256**; the guard alone **11 passed**.
+Collection diff: `origin/main` **4918** -> branch **4919**, added = exactly
+`test_a_dead_schema_mention_without_the_pointer_is_reported`, removed = none. Every number was
+**predicted in writing before the run** and every one matched.
+
+⚠ **Including the off-by-one, which is the point.** Round 2 runs 4908 + 11 + 1 = **4920
+outcomes** against **4919** collected — the same **+1** as round 1. The offset is therefore a
+standing property of this tree, not something round 1 introduced, which leaves the
+DR-leaves-the-repo record as the only data point showing a zero offset *and* the only one whose
+collection number is independently known to be wrong. See `gate-baseline-count-off-by-one`; the
+cheap next experiment is now `pytest -q tests_server/` against
+`pytest --collect-only -q tests_server/`, which halves the search in about a minute.
+
+Guard claims after the ship: **claim 1 = 0 violations, claim 2 = 0 dangling** over 348 scanned
+files; exclusions still load-bearing (`docs/decisions/adr/**` now exempts 5 files,
+`docs/_workbench/**` exempts 2). `tools/check_adr_status_consistency.py` exits 0 across 211 ADRs
+with the new Status table in scope.
+
+## 10. Round 2 finding — the docs name a role and a function that do not exist
+
+The role is **`request-patterns`** (`ROLE_REQUEST_PATTERNS`,
+`mindsos_knowledge/identifiers.py:66`) and the node type is **`RequestPattern`**. Not one
+published document said so: **20 occurrences across 16 files** use `task-patterns` /
+`TaskPattern`, names the code has not used since Phase 43, and `TaskPattern` appears **nowhere**
+in `mindsos_*`. The code is clean, so this is a completed rename that never reached the docs.
+
+| Where | What was wrong | Round 2 |
+|---|---|---|
+| `docs/concepts/role-graphs.md` | The **closed set** of role-graphs — the page a reader treats as authoritative — named a role and a node type that do not exist. | Fixed, and the row now says the schema is dead and not the decomposition mechanism. |
+| `docs/usage/knowledge/overview.md` | Pointed at **`build_task_patterns_schema`** — a function that does not exist. | Fixed to `build_request_patterns_schema`. |
+| `docs/usage/knowledge/task-patterns.md` | Stamped `last_confirmed_phase: 13`; listed **3** properties where ADR-0152 §2 gave the node **13** in Phase 43; presented the dead schema as usable. | Rewritten against the code. |
+| `docs/dev/l4_intelligence_design_notes.md` | *"decomposition templates learned from experience"* — wrong twice: zero writers, and not the decomposition mechanism. | Fixed. |
+
+**Not fixed, filed as `docs-name-a-role-that-does-not-exist`:** ~11 published files still carry
+the stale name, plus the **file name** `docs/usage/knowledge/task-patterns.md`, its `mkdocs.yml`
+nav entry, and the inbound link from `overview.md`. That is a doc-wide rename with a nav change,
+and it wants its own guard — *"no published doc names `task-patterns` or `TaskPattern`"* — which
+belongs **with** that rename, not ahead of it: written today it would be red on eleven files
+nobody has scheduled. It is scope the owner did not approve, so it is recorded rather than taken.

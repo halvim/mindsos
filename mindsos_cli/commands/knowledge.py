@@ -130,6 +130,10 @@ _BUILDERS = {
     },
     ROLE_REQUEST_PATTERNS: {
         "pattern": (request_pattern_iri, ("version", "pattern-id")),
+        # ⚠ ``subgoal`` mints an IRI for a DEAD node type: ``SubgoalTemplate``
+        # (with ``DECOMPOSES_INTO`` / ``PREREQUISITE_OF``) has zero writers and
+        # zero readers and is NOT the decomposition mechanism — ADR-0206 §4 is,
+        # unbuilt (CORE-C4R3). CORE-C2R7 retires it.
         "subgoal": (
             subgoal_template_iri,
             ("version", "pattern-id", "subgoal-id"),
