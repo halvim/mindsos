@@ -25,7 +25,7 @@ Layer 4 is the orchestrator and learner — the part of the system that improves
 | [0169](../adr/0169-tier-enum-home-and-signal-triage.md) | TierEnum home (L3) + signal-triage worker thread | Tier enum lives in L3; triage thread placement |
 | [0170](../adr/0170-write-body-session-gating-boundary.md) | Write-body capability gating — boundary resolution | Reconciles ADR-0146 / ADR-0159 write gating |
 | [0171](../adr/0171-six-phase-task-lifecycle.md) | Six-phase task lifecycle — orchestrator, worker-per-task | The core orchestrator control flow |
-| [0172](../adr/0172-phase-1-five-step-task-interpretation.md) | Phase-1 five-step task interpretation + v0 catalog discipline | Task interpretation front-half |
+| [0172](../adr/0172-phase-1-five-step-task-interpretation.md) | Phase-1 five-step task interpretation + v0 catalog discipline | Task interpretation front-half. ⚠ **Amended by [0206](../adr/0206-planning-decomposition-confidence.md)** — `derive_goal` is deleted there and the v0 catalog is removed; read ADR-0172 §amendment-2 before treating it as current |
 | [0173](../adr/0173-replan-check-dispatch-and-invalidation.md) | Replan-check dispatch + invalidate-at-and-below | Replan trigger + ReplanRecord sparsity |
 | [0174](../adr/0174-sufficient-predicate-and-phase6-blame-dispatch.md) | Sufficient-predicate evaluator + Phase-6 BlameVerdict dispatch | Completion + blame assignment |
 | [0175](../adr/0175-invoke-capacity-context-flip-and-write-gate.md) | `invoke`→CapacityContext flip + write-body gate enforcement | Capacity invocation contract v2 |
@@ -35,6 +35,22 @@ Layer 4 is the orchestrator and learner — the part of the system that improves
 | [0179](../adr/0179-crash-recovery-checkpoint-and-startup-scan.md) | Crash recovery — checkpoint trigger set + tombstone + startup scan | Durability on crash |
 | [0180](../adr/0180-write-capability-on-context-scope-aware-gate.md) | Write-half close — pre-authorized `writeable` capability + scope-aware gate | S12 write-half closure |
 | [0181](../adr/0181-falkor-index-strategy-cross-sub-mm-queries.md) | Falkor index strategy for cross-sub-MM hyperedge queries | Decide-and-document (physical creation → WSD) |
+
+## The next design generation (ADRs 0205–0206) — NOT in the shipped set above
+
+> ⚠ **The shipped table above is not the current design of planning or of task
+> interpretation.** ADR-0206 amends ADR-0172: the interpretation steps become
+> `request → hint → map → plan` (**`derive_goal` is deleted**), *plan* becomes a loop
+> (`search → find → decompose → repeat`), `MAX_DEPTH` is retired in favour of a
+> per-transition confidence threshold, and the thirteen `placeholder=True` v0 capacities
+> are deleted rather than replaced. It is **Proposed and unbuilt** — CORE-C4 has not
+> started — so the shipped set is what runs. This section exists because a reader who
+> oriented from this page alone could not previously discover that ADR-0206 exists.
+
+| ADR # | Title | Status | Summary |
+|-------|-------|--------|---------|
+| [0205](../adr/0205-abstraction-levels.md) | Abstraction levels — one graph at several resolutions | Accepted | The level ladder ADR-0206 sits on: capacity → pipeline → milestone → plan → request |
+| [0206](../adr/0206-planning-decomposition-confidence.md) | Planning as a loop — milestones, decomposition, and confidence | Proposed | Amends [0172](../adr/0172-phase-1-five-step-task-interpretation.md). Confidence is the stopping rule; decomposition emits one layer at a time; `request_knowledge` replaces `request-patterns` |
 
 ## Design-phase menu (ADRs 0101–0112 — historical)
 

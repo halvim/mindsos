@@ -67,7 +67,13 @@ Only synthetic micro-tasks (e.g., "invoke this single capacity with these inputs
 ## New L2 role-graphs implied by L4's responsibilities
 
 - `promoted-pipelines` — library of named compound techniques, stored as reference-chains into L3 node ids. **Carries pipeline-level confidence per task type** (the only confidence store in the system).
-- `task-patterns` — decomposition templates learned from experience.
+- `request-patterns` — what the system knows about a *kind* of request. ⚠ This line said
+  `task-patterns` (a name the code has not used since Phase 43) and *"decomposition
+  templates learned from experience"*, which is wrong twice: the role has **zero writers**,
+  so nothing has ever been learned into it, and its `SubgoalTemplate` / `DECOMPOSES_INTO`
+  schema is **not** the decomposition mechanism. Decomposition is
+  [ADR-0206](../decisions/adr/0206-planning-decomposition-confidence.md) §4 and is unbuilt
+  (CORE-C4R3); ADR-0206 §7 renames the role `request_knowledge` (CORE-C2R7).
 - `memories` — consolidated Mental Models from completed tasks (see §"L5's role — live working memory and default retention" below, and `l5_mental_model_design_notes.md`). Retained by default; opt-out per task. Read by L3 `capacity:retrieval` capacities.
 - `problem-trace` — thin structured entries emitted when a capacity invocation fails or raises an anomaly. Not a general trace log — only the problematic cases. Referenced from the MM root via `ref:problem_trace` when a task encounters problems.
 - `capacity-state` — optional snapshots of resident-capacity internal state worth preserving across restarts (e.g. a long-lived monitor's rolling window).

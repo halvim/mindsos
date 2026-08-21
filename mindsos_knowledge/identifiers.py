@@ -269,8 +269,16 @@ def request_pattern_iri(version: str, pattern_id: str) -> str:
 
 
 def subgoal_template_iri(version: str, pattern_id: str, subgoal_id: str) -> str:
-    """Task-pattern subgoal template:
-    ``request-patterns-<v>:subgoal:<pid>:<sid>``."""
+    """Subgoal template: ``request-patterns-<v>:subgoal:<pid>:<sid>``.
+
+    ⚠ **Mints an IRI for a DEAD node type.** ``SubgoalTemplate`` (with
+    ``DECOMPOSES_INTO`` / ``PREREQUISITE_OF``) has **zero writers and zero
+    readers** in the tree and is **not** the decomposition mechanism — that is
+    ADR-0206 §4 (``planning.decompose`` + ``decision.select_decomposition``,
+    unbuilt, CORE-C4R3). CORE-C2R7 retires the node type and renames the role
+    ``request-patterns`` -> ``request_knowledge`` (ADR-0206 §7); this builder
+    goes with it.
+    """
     v = _ensure_version(version)
     pid = _normalise_fragment(pattern_id)
     sid = _normalise_fragment(subgoal_id)

@@ -16,7 +16,10 @@ Phase 12 shipped:
 * IRI builders covering ADR-0045: 7 seed-role builders ported from
   the v3 `mindsos_knowledge/identifiers.py` (DOLCE / OEWN / FrameNet)
   plus 7 upper-layer builders (`pipeline_iri`, `pipeline_step_iri`,
-  `request_pattern_iri`, `subgoal_template_iri`, `episode_iri`,
+  `request_pattern_iri`, `subgoal_template_iri` (⚠ mints a DEAD node type —
+  `SubgoalTemplate` has zero writers and zero readers and is not the
+  decomposition mechanism; ADR-0206 §4 is, and CORE-C2R7 retires it),
+  `episode_iri`,
   `memory_composite_iri`, `problem_trace_iri`, `capacity_snapshot_iri`).
   Per ADR-0044 §amendment-3 + ADR-0146 §amendment-3 (Phase 39), the
   pre-rename upper-layer memory builder was split into two minters

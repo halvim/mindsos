@@ -13,7 +13,7 @@ L2 Knowledge content is partitioned across **role-graphs** — each a typed grap
 | `concepts` | Global | `admin_authored` | FrameNet (Frame / FE / LU / SemanticType) | Conceptual frames. |
 | `alignment:<a>:<b>` | Global | `admin_authored` | `AlignmentAnchor` (parametric) | Cross-role mappings. |
 | `promoted-pipelines` | Global | `immutable_successor` | Pipeline + PipelineStep | Promoted procedural skills. |
-| `task-patterns` | Global | `immutable_successor` | TaskPattern + SubgoalTemplate | Task structure + paired-pipelines source-of-truth. |
+| `request-patterns` | Global + Local | `immutable_successor` | RequestPattern (+ `SubgoalTemplate`, **dead**) | Request structure + paired-pipelines source-of-truth. ⚠ **Zero writers.** Dual-scope since ADR-0150 §am-8. `SubgoalTemplate` / `DECOMPOSES_INTO` / `PREREQUISITE_OF` are dead and are **not** the decomposition mechanism — that is [ADR-0206](../decisions/adr/0206-planning-decomposition-confidence.md) §4, unbuilt. CORE-C2R7 retires them and renames the role `request_knowledge` (ADR-0206 §7). |
 | `problem-trace` | Global | `append_only` | ProblemTraceEntry | Failure records. |
 | `capacity-state` | Local | `mutable_with_retention` | CapacitySnapshot | Per-user capacity state. |
 | `episodic_memories` | Local | `append_only_with_lazy_inline` | Episode + Memory | Per-task entries + clustering composites. |

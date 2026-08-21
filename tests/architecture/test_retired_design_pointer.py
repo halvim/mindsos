@@ -29,6 +29,14 @@ read-through: ``CORE-C4R9`` was cited in four modules and **has never existed** 
 §5 declares C4R1 through C4R8. A reader who did follow the pointer landed nowhere.
 A pointer that does not resolve is the same defect as a pointer that is missing.
 
+**Round 2 (2026-08-21) added the third token, and how it was missed is the lesson.**
+The first two tokens (``derive_goal``, plan-level ``MAX_DEPTH``) cover the *interpretation*
+half of the superseded design and not the *decomposition* half, so five surfaces naming the
+dead ``SubgoalTemplate`` / ``DECOMPOSES_INTO`` schema — including the published usage page
+that is the decoy's actual home — stayed green through a ship whose whole subject was that
+decoy. The derived axis cannot know which vocabulary is retired; the recalled axis is only
+as complete as the recall. **When adding a row here, ask what else the same ADR retires.**
+
 **What this guard cannot do.** It cannot notice that a *new* design has superseded
 an old one — that judgement is a human act, and ``RULES.md`` §9 is where it is
 recorded (status flip, or an amendment carrying ``Proposed``). This guard enforces
@@ -44,6 +52,12 @@ Three guards were costed for this ship and two were refused, on measurement:
   not this lane's work. It also could not have caught the actual failure: ADR-0206
   never declared that it revised ADR-0172, and a symmetry check has nothing to
   check until someone declares it.
+* *"no published doc names ``task-patterns`` or ``TaskPattern``"* — the role is
+  ``request-patterns`` and the node type is ``RequestPattern``, but 20 occurrences across 16
+  published files still use the pre-Phase-43 names, and the *file name*
+  ``docs/usage/knowledge/task-patterns.md`` plus its ``mkdocs.yml`` nav entry are two of
+  them. That guard belongs with the rename that fixes them, not ahead of it. Filed as
+  ``docs-name-a-role-that-does-not-exist``.
 * *"every ``placeholder=True`` capacity is named in the ADR that retires it"* —
   ADR-0206 §8 deletes thirteen and names eight. ``planning.derive_initial_plan``,
   ``planning.aggregate_outputs``, ``decision.signal_to_tier``,
@@ -101,6 +115,13 @@ _DOCS_EXCLUDED: tuple[tuple[str, str], ...] = (
 #: fourth phrasing would slip past, which is the honest limit of a text guard
 #: and the reason claim 1 is not the whole fix.
 RETIRED: tuple[tuple[str, str, str], ...] = (
+    (
+        "the dead request-patterns decomposition schema — SubgoalTemplate, "
+        "DECOMPOSES_INTO, PREREQUISITE_OF (ADR-0206 §4 — decomposition is "
+        "planning.decompose; §7 renames the role request_knowledge)",
+        r"SubgoalTemplate|DECOMPOSES_INTO|PREREQUISITE_OF|subgoal_template",
+        "ADR-0206",
+    ),
     (
         "the MAX_DEPTH plan-depth bound (ADR-0206 §4 — confidence is the "
         "stopping rule)",
@@ -238,7 +259,7 @@ def test_scan_is_not_empty() -> None:
     sources = _sources()
     assert len(sources) > 200, f"only {len(sources)} files scanned — the roots have moved"
     assert any(
-        re.search(RETIRED[1][1], text) for text in sources.values()
+        re.search(RETIRED[2][1], text) for text in sources.values()
     ), "no scanned file mentions derive_goal — the scan or the token has drifted"
 
 
@@ -279,7 +300,7 @@ def test_exclusions_are_load_bearing() -> None:
     ("MAX_DEPTH = 3\n", "Cold-start max-depth is 3, admin-tunable per pattern.\n"),
 )
 def test_a_max_depth_mention_without_the_pointer_is_reported(body: str) -> None:
-    row = RETIRED[0]
+    row = RETIRED[1]
     assert _missing_pointers({"fake/module.py": body}, retired=(row,)), (
         f"the guard does not report {body!r} with no ADR-0206"
     )
@@ -288,8 +309,17 @@ def test_a_max_depth_mention_without_the_pointer_is_reported(body: str) -> None:
     ), "adding the pointer does not clear the violation"
 
 
+def test_a_dead_schema_mention_without_the_pointer_is_reported() -> None:
+    row = RETIRED[0]
+    body = "RequestPattern -DECOMPOSES_INTO-> SubgoalTemplate is the decomposition\n"
+    assert _missing_pointers({"fake/module.py": body}, retired=(row,))
+    assert not _missing_pointers(
+        {"fake/module.py": body + "Dead; decomposition is ADR-0206 §4.\n"}, retired=(row,)
+    ), "adding the pointer does not clear the violation"
+
+
 def test_a_derive_goal_mention_without_the_pointer_is_reported() -> None:
-    row = RETIRED[1]
+    row = RETIRED[2]
     body = "step 4 dispatches ``decision.derive_goal`` and returns a goal\n"
     assert _missing_pointers({"fake/module.py": body}, retired=(row,))
     assert not _missing_pointers(

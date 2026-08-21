@@ -104,7 +104,7 @@ list:
 | `concepts` | `build_concepts_schema` | seed | [concepts.md](concepts.md) |
 | `alignment:<a>:<b>` | `build_alignment_schema` | seed (parametric) | [alignment.md](alignment.md) |
 | `promoted-pipelines` | `build_promoted_pipelines_schema` | upper | [promoted-pipelines.md](promoted-pipelines.md) |
-| `task-patterns` | `build_task_patterns_schema` | upper | [task-patterns.md](task-patterns.md) |
+| `request-patterns` | `build_request_patterns_schema` | upper (Global + Local) | [task-patterns.md](task-patterns.md) |
 | `episodic_memories` | `build_episodic_memories_schema` | upper (Local) | [episodic-memories.md](episodic-memories.md) |
 | `problem-trace` | `build_problem_trace_schema` | upper | [problem-trace.md](problem-trace.md) |
 | `capacity-state` | `build_capacity_state_schema` | upper (Local) | [capacity-state.md](capacity-state.md) |
