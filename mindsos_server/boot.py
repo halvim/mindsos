@@ -164,6 +164,9 @@ def build_skill_l4_tables(records, skipped_bundles):
                 (r.bundle_name, verb, f"modality {modality!r} already claimed")
             )
             continue
+        # ⚠ ``derive_goal`` is a step ADR-0206 §3 deletes (the current steps are
+        # request -> hint -> map -> plan). The slot survives only while the shipped
+        # four-step ``interpret`` does — CORE-C4R7. ADR-0206 is Proposed and unbuilt.
         modality_profiles[modality] = Phase1Profile(
             process=slots.get("process"),
             hint=slots.get("hint"),

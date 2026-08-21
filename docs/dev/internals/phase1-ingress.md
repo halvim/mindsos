@@ -9,6 +9,14 @@ sits on top of it.
 `mindsos_capacity/builtins/phase1_v0.py` (the placeholder fallback) and
 `.../phase1_text.py` (the worked text modality).
 
+> ⚠ **`derive_goal` is deleted by the current design.** The four steps below are
+> ADR-0195's, as shipped.
+> **[ADR-0206](../../decisions/adr/0206-planning-decomposition-confidence.md) §3** states
+> the steps as `request → hint → map → plan` — **without `derive_goal`** — and §8 ships
+> interpretation as *contract only*, with bodies arriving in skill packages. ADR-0206 is
+> **Proposed and unbuilt**; the seam itself and the modality table below are unaffected by
+> it. See ADR-0172 §amendment-2.
+
 ## The two axes
 
 - **Modality** = the *type* of the input (text / image / action). It drives

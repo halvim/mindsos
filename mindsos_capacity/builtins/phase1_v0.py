@@ -11,8 +11,17 @@ placeholders so the trivial-task smoke runs the real 5-step control path:
 - ``decision.derive_goal``       → a fixed trivial goal.
 - ``decision.map_to_task_pattern`` → a fixed request-pattern + confidence 1.0.
 
-All carry ``placeholder=True``; install is opt-in; CORE-C4R8 replaces. Bodies
-are pure and context-agnostic.
+All carry ``placeholder=True``; install is opt-in. Bodies are pure and
+context-agnostic.
+
+⚠ **``decision.derive_goal`` is DELETED by ADR-0206 §3, not reimplemented** — the
+current steps are ``request -> hint -> map -> plan``, and the goal this stub
+computes is already read by nothing (``plan_construction.build`` is called without
+it). ADR-0206 §8 removes all thirteen placeholders and ships interpretation as
+**contract only**, with bodies arriving in skill packages; the Phase-50 reference
+bundle becomes the canonical fixture. The item is **CORE-C4R7**
+(``confirmation_docs/CORE_RECONCILIATION_PLAN.md`` §5) — not a subsystem's
+(RULES §8). ADR-0206 is Proposed and unbuilt. See ADR-0172 §amendment-2.
 """
 
 from __future__ import annotations

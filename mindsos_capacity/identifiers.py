@@ -109,7 +109,10 @@ CATEGORY_DREAM = "dream"
 #: first register, NOT pre-bootstrapped by ``create_global`` and NOT
 #: members of ``FUNCTIONAL_CATEGORIES`` (the count invariant stays 13).
 #: Phase 47 ships them as placeholder v0 catalogs (``placeholder=True``);
-#: CORE-C4R4 / C4R8 / C4R9 replace them with real catalogs (RULES §8).
+#: CORE-C4R3 (planning) / C4R7 (interpretation contracts + deletion of every
+#: ``placeholder=True``) / C4R8 (scoring, tiering, blame) replace them with real
+#: catalogs (RULES §8; the design is ADR-0206, and
+#: ``confirmation_docs/CORE_RECONCILIATION_PLAN.md`` §5 is the item table).
 CATEGORY_PLANNING = "planning"
 CATEGORY_PROCESS = "process"
 CATEGORY_HINT = "hint"

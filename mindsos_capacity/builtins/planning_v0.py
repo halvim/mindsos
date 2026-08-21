@@ -10,8 +10,17 @@ Plan tree before the real planning catalog exists:
 
 Every capacity carries ``placeholder=True``. The install is **opt-in**
 (never called by ``create_global`` bootstrap) — that opt-in discipline IS
-the production guard: a bare system never holds these. CORE-C4R4
-atomically replaces this catalog with the real ``planning.*`` family.
+the production guard: a bare system never holds these.
+
+⚠ **The design these four stand in for is ADR-0206, not their own shape.** There,
+planning is a loop (§3), a plan is a DAG of milestones (§2), ``decompose`` emits
+**one layer at a time** under a confidence rule and ``is_leaf`` / ``MAX_DEPTH`` are
+**retired** (§4), and these placeholders are **deleted, not replaced in place**
+(§8: *"they are how the placeholders came to be mistaken for the plan"*).
+**CORE-C4R3** builds the real family (``planning.decompose`` +
+``decision.select_decomposition``); **CORE-C4R7** deletes every
+``placeholder=True`` capacity — ``confirmation_docs/CORE_RECONCILIATION_PLAN.md``
+§5. ADR-0206 is Proposed and unbuilt. See ADR-0172 §amendment-2.
 
 The bodies are pure and context-agnostic (they ignore ``context``), so
 they run identically whether dispatched with a legacy dict context or a

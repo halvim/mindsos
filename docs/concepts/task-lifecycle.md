@@ -6,6 +6,15 @@ control flow only — every decision is an L3 capacity it dispatches through the
 L4 `L4Dispatcher`, and every reasoning step emits an immutable chain artifact
 into intelligence-MM under the MM writer lock.
 
+> ⚠ **Phases 1 and 2 below are the SHIPPED design, not the current one.**
+> **[ADR-0206](../decisions/adr/0206-planning-decomposition-confidence.md)** revises both:
+> the interpretation steps become `request → hint → map → plan` (**`derive_goal` is
+> deleted**), *plan* becomes a loop (`search → find → decompose → repeat`), `MAX_DEPTH` is
+> retired in favour of a per-transition confidence threshold, and the thirteen
+> `placeholder=True` v0 capacities are deleted rather than replaced in place. ADR-0206 is
+> **Proposed and unbuilt** (CORE-C4 has not started), so what follows is what runs today —
+> read it as the implementation, not as the design. See ADR-0172 §amendment-2.
+
 ## Where the lifecycle runs
 
 The Phase-46 substrate is **worker-per-task**: `IntelligenceLayer.enqueue`
@@ -20,7 +29,9 @@ replan are local to its per-task `cancel_token`.
 **LifecyclePhase 1 — task interpretation.** A five-step flow (ADR-0172):
 receive → `process.*` → `hint.*` extract → `decision.derive_goal` →
 `map_to_task_pattern`. It emits a **HintSet** (step 3) and a **MappingResult**
-(step 5) into intelligence-MM.
+(step 5) into intelligence-MM. ⚠ **`decision.derive_goal` is deleted by ADR-0206
+§3** — the current steps are `request → hint → map → plan`. The goal it computes is
+already read by nothing: `plan_construction.build` is called without it.
 
 The flow is factored into a standalone `interpret()` decoupled from the
 lifecycle (ADR-0195): the orchestrator is one caller, an interpretation-only
@@ -49,19 +60,23 @@ returns a `dont_know`, not a v0-trivial mapping (ADR-0197 am-1).
 **LifecyclePhase 2 — Plan + Pipeline construction.** `planning.derive_initial_
 plan` seeds a **Plan**; the Plan is a recursive **Milestone** tree decomposed
 lazily (`planning.decompose`) with a leaf predicate (`planning.is_leaf`) and a
-cold-start max-depth of 3. A v0 pipeline-finder emits one **Pipeline** per leaf
+cold-start max-depth of 3 (⚠ **retired by ADR-0206 §4** — confidence is the
+stopping rule; and `planning.is_leaf` returns `True` at v0, so **no plan has ever
+been decomposed** and the depth bound is unreachable). A v0 pipeline-finder emits one **Pipeline** per leaf
 Milestone. The whole-task **TaskRun** (Level 6 of the chain) wraps the run.
 
 **LifecyclePhase 3–5 — execution.** Leaf Milestones run in DFS order
 (sibling-sequential v1, child-failure fail-fast v1). Each leaf emits a
 **PipelineRun** and a **StepExecutionRecord** per L3 invocation. MSUR and SCMS
-are L3 orchestration capacities whose bodies ship in WSD installation; their
-hooks are absent at Phase 47 and the loop tolerates that.
+are L3 orchestration capacities whose bodies are unbuilt **core** work
+(`RULES.md` §8); their hooks are absent at Phase 47 and the loop tolerates that.
 
 **LifecyclePhase 6 — failure diagnosis.** On the dont-know path, L4 dispatches
 `phase6.attribute_blame`, which returns a **BlameVerdict** locating blame at a
-chain level (hint / map / plan / plan_subtree / pipeline) and step. The concrete
-cross-validation body ships in WSD installation.
+chain level (hint / map / plan / plan_subtree / pipeline) and step. ⚠ ADR-0206
+retires `plan_subtree` — the planning loop covers it — and blame descends the
+reconciled ladder (CORE-C4R8). The concrete cross-validation body is **core** work,
+not a subsystem's (`RULES.md` §8).
 
 ## Goal verification, replan, and outcome
 
@@ -81,6 +96,7 @@ consolidation, and ALS emission (Chat A D12 dev/test mode). The CLI surface
 ## v0 catalog and consolidation seam
 
 Phase 47 runs over **placeholder v0 catalogs** (`planning_v0` / `phase1_v0` /
-`orchestration_v0`); WSD installation atomically replaces them with the real
-families. The Phase-5→completion **consolidation** hook is a stub seam here; the
+`orchestration_v0`). ⚠ **They are deleted, not replaced in place, and by core, not
+by a subsystem** (`RULES.md` §8): ADR-0206 §8 removes all thirteen and makes the
+Phase-50 reference bundle the canonical fixture — CORE-C4R3 / C4R7 / C4R8. The Phase-5→completion **consolidation** hook is a stub seam here; the
 real MM-freeze + Episode write lands at Phase 48.

@@ -3,6 +3,21 @@
 Per DESIGN_UPPER_LAYER_ROLES.md §2.1.
 
 ``strict=False`` per PB-3 / ADR-0149. Advisory properties per PB-8.
+
+⚠ **``SubgoalTemplate``, ``DECOMPOSES_INTO`` and ``PREREQUISITE_OF`` are DEAD, and
+they are NOT the decomposition mechanism.** Declared here since Phase 13, they have
+**zero writers and zero readers** in the tree — only these declarations, the
+``subgoal_template_iri`` builder and their own schema tests. On 2026-08-20 a lane
+read this file and concluded ``RequestPattern -DECOMPOSES_INTO-> SubgoalTemplate``
+was how the system decomposes a request. It is not. Decomposition is **ADR-0206 §4**
+(``planning.decompose`` emitting one layer at a time + ``decision.select_decomposition``
+choosing one, under a confidence rule) and is **unbuilt** — CORE-C4R3.
+
+``confirmation_docs/CORE_RECONCILIATION_PLAN.md`` §5 **CORE-C2R7** retires
+``SubgoalTemplate`` and renames this role ``request_patterns`` -> ``request_knowledge``
+(ADR-0206 §7), where ``relevant_hints`` becomes edges carrying confidence and
+``paired_pipelines`` is **retired, not converted**. Deleting them here is that item's
+work — an L2 role-schema change with a migration — not a docstring's.
 """
 
 from __future__ import annotations

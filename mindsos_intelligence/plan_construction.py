@@ -5,6 +5,15 @@ Milestone + Plan, lazily decomposes (``planning.decompose`` -> [] at v0)
 and tests leaves (``planning.is_leaf`` -> True at v0), then a v0
 pipeline-finder emits one Pipeline per leaf Milestone. Cold-start
 max-depth=3 (admin-tunable); v0's single-Milestone Plan never reaches it.
+
+⚠ **This module implements the SUPERSEDED planning design.** The current design
+is **ADR-0206**: planning is a **loop** (``search -> find -> decompose -> repeat``,
+§3), a plan is a **DAG of milestones** rather than a DFS tree (§2), decomposition
+emits **one layer at a time** and recurses only where confidence is missing (§4),
+and ``MAX_DEPTH`` is **retired** in favour of a per-transition confidence threshold
+(§4). ADR-0206 is **Proposed and unbuilt** — **CORE-C4R3** builds the real
+decomposition and **CORE-C2R6** the plan level — so the tree built below is what
+runs today and is **not** the design. See ADR-0172 §amendment-2.
 """
 
 from __future__ import annotations
@@ -25,6 +34,14 @@ DERIVE_PLAN_IRI = capacity_iri(CATEGORY_PLANNING, "derive_initial_plan")
 DECOMPOSE_IRI = capacity_iri(CATEGORY_PLANNING, "decompose")
 IS_LEAF_IRI = capacity_iri(CATEGORY_PLANNING, "is_leaf")
 
+#: ⚠ **Retired by ADR-0206 §4.** A breakdown is always possible — a capacity is a
+#: one-step pipeline at confidence 1.0 — so the confidence threshold is the stopping
+#: rule and a depth bound is unnecessary. It survives only because CORE-C2R6 (the
+#: plan level) retires it and has not run. It is also **unreachable today**:
+#: ``planning.is_leaf`` is a placeholder returning ``True``, so
+#: :func:`_decompose_recursive` returns on its first call and ``depth`` never
+#: reaches 3. ADR-0206 §Context names this constant *"a brain's test artifact
+#: standing in for a stopping rule that was never designed."*
 MAX_DEPTH = 3
 
 
@@ -350,6 +367,16 @@ def _build_from_milestones(
 
 
 def _decompose_recursive(dispatcher, writer, milestone, *, depth: int) -> List[str]:
+    """Walk the Milestone tree, returning the leaf IRIs.
+
+    ⚠ **Terminates on the first call, every time.** ``planning.is_leaf`` is a
+    placeholder returning ``True`` (``mindsos_capacity/builtins/planning_v0.py``),
+    so **no plan has ever been decomposed** and ``MAX_DEPTH`` is never consulted.
+    That is not a defect to work around: real decomposition is ADR-0206 §4 —
+    ``planning.decompose`` emitting one layer at a time plus
+    ``decision.select_decomposition`` choosing one, under a confidence rule
+    (**CORE-C4R3**), which replaces this recursion rather than filling it in.
+    """
     is_leaf = dispatcher.dispatch(IS_LEAF_IRI, {DS_MILESTONE: {}}).outputs[DS_IS_LEAF]
     if is_leaf or depth >= MAX_DEPTH:
         return [milestone.iri]

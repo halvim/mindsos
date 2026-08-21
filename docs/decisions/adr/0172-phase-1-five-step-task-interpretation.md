@@ -4,7 +4,7 @@ status: Accepted
 date: 2026-06-08
 accepted_date: 2026-06-08
 layer: L4
-related: [0171, 0159]
+related: [0171, 0159, 0195, 0197, 0206]
 ---
 
 # ADR-0172: Phase-1 five-step task interpretation
@@ -13,7 +13,19 @@ related: [0171, 0159]
 
 **Date:** 2026-06-08
 
-**Related:** ADR-0171 (six-phase lifecycle), ADR-0159 (capacity registration contract v2).
+**Related:** ADR-0171 (six-phase lifecycle), ADR-0159 (capacity registration contract v2),
+[ADR-0206](0206-planning-decomposition-confidence.md) (**amends this ADR** — see
+§amendment-2), ADR-0195 (interpretation seam), ADR-0197 (modality ingress).
+
+> ⚠ **The current design of this flow is
+> [ADR-0206](0206-planning-decomposition-confidence.md), not this ADR.**
+> ADR-0206 §3 states the steps as **request → hint → map → plan** — `derive_goal` is
+> **gone** — and makes *plan* a loop (`search → find → decompose → repeat`). §4 retires
+> the `MAX_DEPTH` bound. §8 **deletes** the thirteen `placeholder=True` capacities that
+> §3 below ships. This ADR stays **Accepted** because its five-step flow is what
+> `mindsos_intelligence/phase_1.py` runs today and ADR-0206 is **Proposed and unbuilt**
+> (CORE-C4 has not started). **Read §amendment-2 before treating anything below as
+> current.**
 
 ## Context
 
@@ -78,3 +90,64 @@ Every v0 capacity carries a `placeholder=True` registration marker and a guard t
 ## §Implementation (Phase 47; pending ship)
 
 `phase_1.py` (5-step) + the three v0 builtin modules + `tests/phase_47/test_phase_1_5_step.py` + `test_planning_v0_catalog.py`.
+
+---
+
+## Amendments
+
+### amendment-2 (2026-08-21, planning-design-pointer lane) — ADR-0206 amends this ADR
+
+**Amendment status:** Proposed. It flips with ADR-0206 itself. The items that build it are
+**CORE-C4R3** (`planning.decompose` + `decision.select_decomposition`) and **CORE-C4R7**
+(interpretation contracts; every `placeholder=True` deleted), per
+`confirmation_docs/CORE_RECONCILIATION_PLAN.md` §5.
+
+**Trigger.** On 2026-08-20 a consumer lane asked how an input enters MindsOS and what
+decides what to do with it. It searched the tree thoroughly and answered, with file:line
+evidence, `process → hint → derive_goal → map` — this ADR's flow, as implemented in
+`phase_1.py`. The answer was shipped, coherent, Accepted, and one design generation out of
+date; the lane acted on it. Nothing in the code or in the published concept docs said so.
+This amendment is the pointer that was missing.
+
+**What ADR-0206 does to each clause above.**
+
+| This ADR | ADR-0206 |
+|---|---|
+| §1 five steps | **Revised.** §3 makes the steps `request → hint → map → plan`; `derive_goal` is deleted and *plan* becomes a loop. §1's step-5 internals — 5a shape-index candidate lookup, 5b per-candidate declared hints, 5c mapping confidence, 5d dont-know-on-low-confidence — are neither kept nor named: §7 inverts the matching (*"requests do not match patterns — hints are patterns and are what get matched"*), §5 replaces the single `mapping_confidence` with a confidence **per transition**, and §6 splits *"I'm not sure"* from *"I don't know"*. |
+| §2 Method δ | **Not named by ADR-0206** — it contains no "Method δ". §8 ships interpretation as **contract only** (bodies arrive in skill packages), which moves δ's owner without deciding δ. Treat δ as open, not retired. |
+| §3 v0 catalog discipline | **Deleted.** §8: the thirteen `placeholder=True` capacities are removed, not kept as fixtures; the Phase-50 reference bundle becomes the canonical test fixture. Alternative 6 rejects keeping them and names this catalog as *"how the placeholders came to be mistaken for the plan."* |
+| §v2-reservations (methods α/β/γ/ε) | Untouched. |
+| `0172-amendment-1` (separate file, Accepted, shipped) | Untouched by ADR-0206. Its `PlanResult.solve_target` endpoint dict is collapsed into the milestone tree by **CORE-C2R6**, not by ADR-0206's text. |
+
+**Why the status is not `Superseded`.** `RULES.md` §9 allows two words and states the rule:
+a contradicted ADR flips to `Proposed` (new form decided, not built) or `Superseded`
+(decision wholly replaced), and *"where an ADR is shipped and only partly wrong, leave it
+`Accepted` and let the amendment carry `Proposed`, naming the CR that flips it."* Three
+facts put this ADR there:
+
+1. **The replacement is unbuilt.** ADR-0206 is `Proposed`; CORE-C4 has not started; the
+   thirteen placeholders are registered and running the gate. Marking this `Superseded`
+   today would leave **no Accepted ADR describing the code that runs** — the same defect
+   this amendment closes, pointing the other way. The tree's precedent is to flip on ship:
+   ADR-0007 (*"2026-05-22 — Phase 24 ship … close the supersession in code"*) and ADR-0037.
+2. **The flow is jointly owned.** ADR-0195 (Accepted, shipped) factored it into
+   `interpret()`; ADR-0197 (Accepted, shipped, `amends: [0195]`) re-specified ingress on top
+   of it. ADR-0206 supersedes neither — ADR-0197 is not even in its `related:` list.
+   Superseding this ADR orphans two Accepted, shipped ADRs that build on it.
+3. **§2 survives.** A clause the replacement never names is not wholly replaced.
+
+**The flip list — what changes when ADR-0206 becomes `Accepted`.** Recorded here so the
+flip is one commit and not another archaeology pass:
+
+1. this ADR — front-matter `status:`, the prose `**Status:**` line, the ⚠ note above, and
+   this amendment's status. (RULES §9: an ADR-level status change is **four** edits —
+   front-matter, prose, the `docs/decisions/adr/README.md` row, and any summary-table cell.)
+2. `docs/decisions/superseded.md` — the 0172 row moves from *Amendments in flight* to
+   *Effective supersessions*.
+3. `docs/concepts/planning.md` and `docs/concepts/task-lifecycle.md` — the banners stop
+   saying "not yet built".
+4. the module docstrings naming this ADR as the shipped-but-amended implementation:
+   `phase_1.py`, `plan_construction.py`, `planning_v0.py`, `phase1_v0.py`,
+   `orchestration_v0.py`, `phase1_profile.py`, `phase1_text.py`.
+5. `tests/architecture/test_retired_design_pointer.py` — `RETIRED` loses any token whose
+   code is gone by then.

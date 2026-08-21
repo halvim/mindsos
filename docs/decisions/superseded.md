@@ -62,6 +62,7 @@ These ADRs are not superseded but are *amended* — the original decision stands
 | [0006](adr/0006-promotion-locking.md) | Accepted | [0118](adr/0118-per-user-transactional-promotion.md) | Per-user mutex retained; `GLOBAL_PROMOTE_LOCK` renamed `RELEASE_SHIP_LOCK` and used only at release-ship. |
 | [0016](adr/0016-cross-graph-references-via-property-prefix.md) | Accepted | [0128](adr/0128-hybrid-xref-cross-metagraph-refs.md) | `ref:<role>` retained for intra-metagraph; XRef takes over cross-metagraph. |
 | [0083](adr/0083-pipeline-promotion-transitive.md) | Proposed | [0118](adr/0118-per-user-transactional-promotion.md) | Capacity-layer ADR-0083 (transitive promotion of pipeline dependencies, formerly capacity-ADR-024) is superseded by the unified release manifest. |
+| [0172](adr/0172-phase-1-five-step-task-interpretation.md) | Accepted | [0206](adr/0206-planning-decomposition-confidence.md) | The five-step interpretation flow and the v0 catalog stand as **shipped**. ADR-0206 §3 drops `derive_goal` and makes planning a loop, §4 retires `MAX_DEPTH`, §8 deletes the thirteen `placeholder=True` capacities — but ADR-0206 is **Proposed and unbuilt**, so 0172 stays Accepted and flips only when CORE-C4 lands. Clause-by-clause + the flip list: ADR-0172 §amendment-2. |
 
 ---
 

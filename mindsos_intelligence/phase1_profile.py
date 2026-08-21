@@ -6,6 +6,11 @@ falls back to the shipped v0 placeholder (``phase1_v0.py``) when the
 corresponding slot is unset. A real consumer supplies at least ``hint`` +
 ``map`` (the only generic default is v0 → trivial).
 
+⚠ **``derive_goal`` is a step ADR-0206 §3 deletes** — the current steps are
+``request -> hint -> map -> plan``. The slot survives only while the shipped
+four-step ``interpret`` does (**CORE-C4R7**). ADR-0206 is Proposed and unbuilt;
+the seam itself is unaffected. See ADR-0172 §amendment-2.
+
 **Dispatcher-level binding, no metagraph scope-mix (ADR-0195 hard
 constraint a).** A profile is a *dispatch-time selection of which capacity
 IRI to invoke*, held on the :class:`~mindsos_intelligence.dispatch.L4Dispatcher`.
