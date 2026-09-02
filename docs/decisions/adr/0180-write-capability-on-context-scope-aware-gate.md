@@ -68,7 +68,9 @@ Both write bodies migrate off dict `context` to `context.writeable`; production 
 capability through which a `comprehension.*` body consults an external
 language model, typed by the new `LLMHandle` Protocol in
 `mindsos_capacity/context.py`. The concrete clients ship in
-`mindsos_capacity/llm/` and are named in the Protocol's docstring only.
+`mindsos_llm/` (relocated there by ADR-0210 slice 1a, 2026-09-02; it was
+`mindsos_capacity/llm/` when this ADR was accepted) and are named in the
+Protocol's docstring only.
 
 **This is §Decision-1's pattern re-used, not a new one.** The body receives a
 narrowed capability rather than a client it constructed; it holds no
@@ -92,7 +94,7 @@ briefly went the other way rested on a mis-stated premise about `reads_mm`.)
 `execute_pipeline` rather than becoming a stopped member. That is deliberate
 and pinned: a dispatcher with no client bound fails identically for every
 member, so a partial Record would be a Record of nothing. It is also why that
-one message may name an IRI while every error in `mindsos_capacity/llm` is
+one message may name an IRI while every error in `mindsos_llm` is
 fixed prose — those reach a customer through `stopped_detail`, and this one
 reaches no page at all.
 

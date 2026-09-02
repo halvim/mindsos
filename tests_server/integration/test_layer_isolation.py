@@ -57,6 +57,7 @@ _DOMAIN_PACKAGES = (
     "mindsos_capacity",
     "mindsos_instances",
     "mindsos_intelligence",
+    "mindsos_llm",
 )
 
 # Patterns that violate I-S1: any top-level import of mindsos_server.

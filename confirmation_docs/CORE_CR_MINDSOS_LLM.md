@@ -206,16 +206,88 @@ also makes it the **9th `__version__` site** — 8 packages carry one today —
 which touches the doctor parity tests (`tests/phase_18/test_doctor_6pkg_parity.py`
 and the phase 02/07/08/09/11/12 doctors).
 
-⚠ **The gate expectation here is the OPPOSITE of the usual one.** A pure
-relocation adds no tests, so **the pass count must NOT move**. The standing
-rule — *"the count must move or the new tests did not run"* — does not apply
-to 1a, and a flat count is the correct result rather than the tell of a stale
-image. Verify instead that `--collect-only` still collects the same ids and
-that `grep -c test_cli` is > 0.
+⚠ **CORRECTED 2026-09-02 WHILE DOING IT — this CR's own earlier claim that
+"the pass count must NOT move" was WRONG, and it was wrong for the most
+interesting possible reason.**
 
-**Why it is split out:** mixing a 13-file rename with new behaviour means a
-red gate cannot be attributed to either. 1a is behaviour-free and therefore
-cheap to prove.
+`tests/phase_28/test_import_isolation_phase_28.py` walked the seam's modules
+through `_ISOLATED_SUBPACKAGES = ("llm",)`. The rename empties that tuple, so
+its glob returns nothing and **10 parametrized tests silently vanish** (5
+non-underscore modules × 2 forbidden roots) — and its
+`test_every_subpackage_is_CLASSIFIED_not_merely_listed` goes **RED** on
+`assert shipped, f"{sub!r} is declared isolated but has no modules"`. That
+file's own docstring predicted this to the digit: *"reverting to the flat glob
+turned no test red, it just quietly checked **ten fewer things**."*
+
+**So a "pure relocation" is not behaviour-free at the guard layer**, and a
+flat count would have meant a guard had been switched off by a rename. The
+guard is re-established in the same ship at
+`tests/llm_seam/test_import_isolation_mindsos_llm.py`, **wider than the one it
+replaces**: 5 modules × 4 forbidden roots (`mindsos_server`,
+`mindsos_knowledge`, plus `mindsos_capacity` and `mindsos_intelligence` —
+substrate does not depend on the layers that consume it), plus a
+domain-not-empty guard and the credential-owner-unreachable guard from §7c.
+
+**Predicted delta: −10 + 22 = +12**, counted from the written test functions
+and the module list, never recalled (`feedback-grep-before-quoting-any-prose`,
+numeric corollary). Baseline ~4896 ⟹ expect ~4908. **A delta of anything but
++12 means something else moved — investigate before merging.**
+
+⚠⚠ **TWO SITES THE 9-SITE CHECKLIST DOES NOT COVER, both found by the gate
+and by running rather than by reading (2026-09-02).**
+
+**(a) The Dockerfile needs a `COPY` in BOTH stages.** The image bakes source
+via `COPY <pkg> ./<pkg>`, one explicit line per package, in the prod stage and
+mirrored in the test stage. A package with no `COPY` line simply is not in the
+image. The 9-site checklist is about *version* sites and says nothing about
+this. **Every previous new-top-level package left a comment about it and the
+lesson still did not carry.**
+
+**(b) A RELATIVE import the absolute-path sweep could not see.**
+`comprehension_v0.py:88` read `from ..llm.exceptions import MalformedResponse`.
+Nothing matching `mindsos_capacity.llm` or `mindsos_capacity/llm` appears in
+that line, so a text sweep for the old path found nothing, **and an AST scan
+that filtered module names on `startswith("mindsos")` also found nothing** —
+a relative `ImportFrom` carries `module="llm.exceptions"` and `level=2`. The
+scan reported a clean `[]` and was wrong. ⟹ **After any package move, scan for
+relative imports by `node.level`, never by the module string.** It is now the
+only L3 → `mindsos_llm` import in the tree and is absolute.
+
+⚠ **Both gaps were invisible to every local check that passed** — parity green,
+ADR checker green, everything compiling, zero residual references. The suite is
+what found them.
+
+### Measured, not predicted
+
+Run in the container pre-filter (uv venv 3.12, `pytest --collect-only`):
+
+* `tests/phase_28` collected **145** with `llm/` restored and
+  `_ISOLATED_SUBPACKAGES = ("llm",)`, and collects **135** now — the **−10** is
+  measured against a simulated pre-move tree, not computed.
+* `tests/llm_seam/test_import_isolation_mindsos_llm.py` collects **22**.
+* Whole suite: **4932 collected, zero collection errors**; the affected suites
+  (`llm_seam`, `origin_records`, `phase_28`, `architecture`, `phase_18`,
+  `phase_02`, the server layer-isolation test) run **456 passed, 1 skipped, 0
+  failed**.
+
+⟹ **Net +12 confirmed. `origin/main` should collect 4920; this branch collects
+4932.** Report container numbers as a prediction, never as a result (RULES §4).
+
+**Why 1a is still split out:** mixing a 30-file rename with new behaviour
+means a red gate cannot be attributed to either.
+
+**The rest of the checklist, all done:** 21 Python references and the live
+markdown ones rewritten; `pyproject` `include` and `manifest.toml` `packages`
+extended; `mindsos_llm/__init__.py` given the 9th `__version__` (parity
+verified across all 9 packages); `mindsos_llm` added to the package tuples in
+`test_execution_surface_inventory`, `test_finder_return_annotations`,
+`test_no_subsystem_ownership`, `test_retired_design_pointer`,
+`test_rename_atomic`, `test_metagraph_snapshot_zero_consumers`, and
+`_DOMAIN_PACKAGES` in `tests_server/integration/test_layer_isolation.py`.
+`LLM_SEAM_MANUAL.md`'s name-redirect banner is **cancelled** — that ruling had
+named its own expiry and the expiry fired — and ADR-0180's two path references
+are updated with provenance. Three residual `mindsos_capacity/llm` strings
+remain on purpose, all of them prose describing the move itself.
 
 **Slice 1b — seam + level 1 + Anthropic adapter + L3 factory. TAGGED.**
 The credential seam, credential-agnostic. The Anthropic adapter, level 1,
@@ -264,6 +336,80 @@ each an addition to slice 1 rather than a reversal:
 3. **The gate has no user.** Replay tests need a Local scope, so gate
    fixtures need a test session. Small, but it must exist before slice 1 can
    test replay at all.
+
+---
+
+## 7b. ⚠ Two exact censuses will fire, and both must fire DELIBERATELY
+
+**Found 2026-09-02 while sizing slice 1a**, in
+`tests/architecture/test_execution_surface_inventory.py`. Two pinned sets there
+are aimed squarely at this ship, and neither the CR nor the ADR anticipated
+them.
+
+### `EXPECTED_OUTSIDE_SERVICE_IMPORTS` — slice 1b reddens it, correctly
+
+The census holds exactly two entries, both FalkorDB, and its comment names our
+case by name:
+
+> *"A third entry means a second one arrived; classify it or route it through a
+> deployment-supplied seam, **the way the model client does** (the transport is
+> a callable the deployment passes, so `mindsos_capacity/llm` imports **no
+> network library at all** and is deliberately ABSENT from this census)."*
+
+⟹ **The moment the Anthropic adapter imports `urllib.request` inside
+`mindsos_llm`, `test_outside_service_import_census_is_exact` goes red.** That is
+the guard working, not a break. Slice 1b **adds the row with its
+classification**, in the same ship, per RULES §12.1 — and rewrites that comment,
+because the sentence it rests on stops being true.
+
+⚠ **The axis exists because of exactly this failure mode:** the file's own note
+records *"a stub with live network IO dropped into the package left this file
+6/6 green before the axis existed."* Do not silence it; classify it.
+
+### `EXPECTED_EXTERNAL_CLIENT_CONSUMERS` — slice 1b reddens it too
+
+One entry today: `comprehension_v0.py`. Its comment:
+
+> *"A second entry means a second capacity consults an outside model. That is a
+> design event — the declaration flag `consults_llm` was chosen over a category
+> rule so this set stays enumerable — and it lands here with its row, not
+> silently."*
+
+⟹ If the L3 reading factory lands in a **new file**, that is a second entry and
+a declared design event. If it extends `comprehension_v0`, the census is
+unchanged. **Decide which before writing the factory**, because the census is
+how that decision becomes visible.
+
+### The relocation itself
+
+`mindsos_llm` must be added to `_PACKAGES` in
+`test_execution_surface_inventory.py` and `test_finder_return_annotations.py`,
+to the scan tuples in `test_no_subsystem_ownership.py`,
+`test_retired_design_pointer.py`, `test_rename_atomic.py` and
+`test_metagraph_snapshot_zero_consumers.py`, and to `_DOMAIN_PACKAGES` in
+`tests_server/integration/test_layer_isolation.py`. **This is the cost
+`llm/__init__.py` warned about** — *"being a subpackage puts it automatically
+inside the architecture guards' package tuples rather than requiring six hand
+edits to be seen by them."* Miss one and the new package escapes that guard
+silently.
+
+---
+
+## 7c. ⚠ `mindsos_llm` is a DOMAIN package: it never imports L0
+
+`tests_server/integration/test_layer_isolation.py` enforces ADR-0010 §I-S1 — no
+domain-stack package may import `mindsos_server`. `mindsos_llm` joins
+`_DOMAIN_PACKAGES`, so:
+
+> **L0 pushes into `mindsos_llm`; `mindsos_llm` never reaches into L0.** The
+> session's vendor id, credential level, mode and credential **resolver** are
+> injected at client construction. The LLM package cannot reach the server's
+> secret store — it only ever receives a callable.
+
+This was not stated in §3 and someone building slice 2 would reach for
+`from mindsos_server import …` inside the adapter registry within an hour. It
+also strengthens §5: the package that makes the call structurally cannot read
+the store the credential came from.
 
 ---
 
@@ -319,8 +465,10 @@ docker compose -p mindsos-core --profile test run --rm --build mindsos-test pyte
 ```
 
 `--build` is mandatory (the image bakes source via `COPY`). Baseline ~4896;
-**the pass count must move by the number of new tests or they did not run** —
-**except slice 1a, where a flat count is the correct result** (see §6).
+**the pass count must move by the number of new tests or they did not run.**
+Slice 1a's predicted delta is **+12** and is derived in §6 — a flat count there
+would mean a guard was switched off by the rename, which is exactly what
+`tests/phase_28`'s docstring warns about.
 
 ⚠ `feat/mindsos-llm` was created with `git worktree add -b … origin/main` and
 therefore **tracks `origin/main`**. The first push must be

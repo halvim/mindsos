@@ -16,6 +16,7 @@ _SOURCE_DIRS = (
     "mindsos_core",
     "mindsos_knowledge",
     "mindsos_capacity",
+    "mindsos_llm",
     "mindsos_cli",
     "mindsos_server",
     "mindsos_admin",

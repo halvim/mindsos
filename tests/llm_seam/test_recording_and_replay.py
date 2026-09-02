@@ -1,4 +1,4 @@
-"""``mindsos_capacity.llm`` — request key, replay, and the provenance stamp.
+"""``mindsos_llm`` — request key, replay, and the provenance stamp.
 
 The substrate half of the external-model seam. Everything asserted here
 is about *not* letting a Decision Record misrepresent where a reading
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from mindsos_capacity.llm import RecordedResponseMiss, RecordingStore, RecordedLLM, request_key
+from mindsos_llm import RecordedResponseMiss, RecordingStore, RecordedLLM, request_key
 
 
 def _key(**over):

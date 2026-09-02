@@ -50,7 +50,11 @@ mindsos = "mindsos_cli.__main__:main"
 # Capacity) package per PHASE_MAP §27 + ADRs 0062/0063/0066/0067.
 # Phase 46 — added "mindsos_intelligence*" per same checklist. First L4
 # (Intelligence) package per PHASE_MAP §46 + ADRs 0163-0170.
-include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*", "mindsos_capacity*", "mindsos_intelligence*"]
+# Phase 50 / ADR-0210 slice 1a — added "mindsos_llm*" per same checklist.
+# The external-model client was promoted out of mindsos_capacity/llm/ on its
+# own docstring's stated trigger ("a vendor dependency arriving"); it is
+# substrate for the whole stack, not L3-private.
+include = ["mindsos_cli*", "mindsos_core*", "mindsos_instances*", "mindsos_knowledge*", "mindsos_admin*", "mindsos_server*", "mindsos_capacity*", "mindsos_intelligence*", "mindsos_llm*"]
 
 [tool.setuptools.package-data]
 mindsos_cli = ["manifest.toml", "commands/*.html"]

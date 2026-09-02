@@ -35,7 +35,7 @@ from mindsos_capacity.identifiers import (
 )
 from mindsos_intelligence.mm import MentalModel
 from mindsos_intelligence.pipeline_execution import execute_pipeline
-from mindsos_capacity.llm import RecordingStore, RecordedLLM, request_key
+from mindsos_llm import RecordingStore, RecordedLLM, request_key
 
 SOURCE_DS = datastate_iri("claims.submission_email")
 VALUE_DS = datastate_iri("claims.hospital_stay_asserted")

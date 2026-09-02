@@ -152,6 +152,16 @@ COPY mindsos_capacity ./mindsos_capacity
 # Phase 46: NEW top-level package — `mindsos_intelligence/` ships the
 # first L4 (Intelligence) substrate per PHASE_MAP §46 + ADRs 0163-0170.
 COPY mindsos_intelligence ./mindsos_intelligence
+# ADR-0210 slice 1a: NEW top-level package - `mindsos_llm/` is the
+# external-model client, promoted out of `mindsos_capacity/llm/` on that
+# package's own stated trigger. It is substrate for the whole stack, not
+# L3-private, so it ships alongside the layer packages rather than inside
+# one. Needs a COPY in BOTH prod and test stages: the 9-site version
+# checklist does not cover the image, and omitting it here is exactly what
+# turned 9 test files into collection errors on the first gate attempt
+# (2026-09-02) - the image bakes source via COPY, so a package with no
+# COPY line simply is not there.
+COPY mindsos_llm ./mindsos_llm
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -219,6 +229,8 @@ COPY mindsos_server ./mindsos_server
 COPY mindsos_capacity ./mindsos_capacity
 # Phase 46: mirror of prod-stage COPY for `mindsos_intelligence/`.
 COPY mindsos_intelligence ./mindsos_intelligence
+# ADR-0210 slice 1a: mirror of the prod-stage COPY for `mindsos_llm/`.
+COPY mindsos_llm ./mindsos_llm
 COPY tests ./tests
 # Phase 39: tools/ contains check_rename_state.py — Phase 39 data-state
 # detector tested by tests/phase_39/test_check_rename_state_script.py

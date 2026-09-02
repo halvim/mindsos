@@ -117,7 +117,7 @@ class LLMHandle(Protocol):
     body gets ``None``. See ``capacity.Capacity.consults_llm`` for why
     that, and not category membership.
 
-    The concrete implementations ship in ``mindsos_capacity.llm``
+    The concrete implementations ship in ``mindsos_llm``
     (``LiveLLM`` / ``RecordedLLM`` / ``CapturingLLM``) and are named here
     only — this module imports none of them, so the Protocol stays the
     whole contract. The return is a plain ``Mapping``: the substrate

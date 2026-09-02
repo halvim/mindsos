@@ -31,7 +31,7 @@ Classifications used below:
 * **outside-service call** — a path that hands control to code MindsOS does
   not own (a database driver, a model provider). Added 2026-08-16: the four
   censuses above are all about RUN shape, and a stub client doing live
-  network IO dropped into ``mindsos_capacity/llm/`` left this file 6/6 GREEN
+  network IO dropped into ``mindsos_llm/`` left this file 6/6 GREEN
   (critic re-run, coordination §88). The first code path that leaves the
   machine was invisible to every axis.
 
@@ -56,6 +56,7 @@ _PACKAGES = (
     "mindsos_knowledge",
     "mindsos_capacity",
     "mindsos_intelligence",
+    "mindsos_llm",
     "mindsos_instances",
     "mindsos_admin",
     "mindsos_server",
@@ -142,7 +143,7 @@ EXPECTED_PERSISTENCE_CALLERS = {
 #:
 #: A third entry means a second one arrived; classify it or route it through
 #: a deployment-supplied seam, the way the model client does (the transport
-#: is a callable the deployment passes, so ``mindsos_capacity/llm`` imports
+#: is a callable the deployment passes, so ``mindsos_llm`` imports
 #: no network library at all and is deliberately ABSENT from this census —
 #: its own axis is the consumption census, which arrives with its first
 #: consumer).

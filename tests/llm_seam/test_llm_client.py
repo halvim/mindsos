@@ -25,13 +25,13 @@ from __future__ import annotations
 import pytest
 
 from mindsos_capacity.builtins import origin_v0
-from mindsos_capacity.llm import (
+from mindsos_llm import (
     LiveLLM,
     RecordedLLM,
     RecordingStore,
     decode_response,
 )
-from mindsos_capacity.llm.exceptions import (
+from mindsos_llm.exceptions import (
     LLMCallBudgetExceeded,
     LLMCallFailed,
     LLMError,

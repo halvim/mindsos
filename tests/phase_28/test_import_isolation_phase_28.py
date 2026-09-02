@@ -32,13 +32,22 @@ def _module_names_imported_by(path: Path):
 #: ``llm/`` landed (coordination §87 T-F11) and would otherwise have been
 #: the only architecture guard that could not see it.
 #:
+#: ⚠ **EMPTY since ADR-0210 slice 1a (2026-09-02), and that is a state,
+#: not a regression.** ``llm/`` was the one entry; it has been promoted to
+#: the top-level package ``mindsos_llm``, so the modules it held are now
+#: guarded by ``tests/llm_seam/test_import_isolation_mindsos_llm.py``
+#: against a WIDER forbidden set (a substrate package must not reach the
+#: capacity or intelligence layers either). Leaving the entry here after
+#: the move would have failed the "declared isolated but has no modules"
+#: assertion below — which is the assertion doing its job.
+#:
 #: ``builtins/`` is EXCLUDED, and that is a decision, not an oversight:
 #: L3 builtin bodies reach L2 through **function-local** imports by
 #: design (``policy_lookup_v0`` says so at its import site — "local: L3
 #: declares no L2 dep"), and this walker is an AST walk that sees nested
 #: imports too, so including them would redden six shipped files. The
 #: rule this guard enforces is about MODULE-level layering.
-_ISOLATED_SUBPACKAGES = ("llm",)
+_ISOLATED_SUBPACKAGES: tuple[str, ...] = ()
 
 #: Shipped subpackages deliberately OUTSIDE the walk, with the reason in
 #: _ISOLATED_SUBPACKAGES' comment above. Classified, not forgotten.
@@ -67,11 +76,15 @@ def test_no_upward_import(source_file, forbidden):
 
 def test_every_subpackage_is_CLASSIFIED_not_merely_listed():
     """**The widening's own guard.** ``_SOURCE_FILES`` was a flat glob, so
-    ``mindsos_capacity/llm/`` sat outside the one architecture guard that
-    could catch it importing upward (coordination §87 T-F11). Widening the
-    domain fixed that — and nothing pinned the fix: reverting to the flat
-    glob turned no test red, it just quietly checked ten fewer things,
-    which is the defect class this suite exists to refuse.
+    ``llm/`` sat outside the one architecture guard that could catch it
+    importing upward (coordination §87 T-F11). Widening the domain fixed
+    that — and nothing pinned the fix: reverting to the flat glob turned no
+    test red, it just quietly checked ten fewer things, which is the defect
+    class this suite exists to refuse.
+
+    ⚠ ``llm/`` has since been promoted OUT of this package (ADR-0210 slice
+    1a). The classification question below is the part that still bites: a
+    NEW subpackage must be walked or carved out, never defaulted.
 
     The first version of this test walked ``_ISOLATED_SUBPACKAGES`` and
     asserted its modules were in the domain. **Writing the mutation plan

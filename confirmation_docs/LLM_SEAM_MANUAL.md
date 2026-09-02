@@ -1,3 +1,15 @@
+> ⚠⚠ **NAME REDIRECT REVERSED 2026-09-02 — ADR-0210 slice 1a.**
+>
+> The 2026-08-16 banner below says *"every `mindsos_llm` reference in this
+> manual is `mindsos_capacity/llm`"*. **That redirect is now cancelled: the
+> package IS top-level `mindsos_llm` again**, promoted on its own docstring's
+> stated trigger (*a vendor dependency arriving*) under owner ruling 2026-09-02.
+> **Read every `mindsos_llm` below as itself.** The manual's original name was
+> right; the intervening placement was the detour. See
+> `confirmation_docs/CORE_CR_MINDSOS_LLM.md` and ADR-0210 — and note that
+> ADR-0210 also RESTATES the "no vendor inside MindsOS" invariant this manual
+> leans on, so §6.4's wording is superseded there rather than here.
+>
 > ⚠ **RESTORED TO `main` 2026-08-14, AND READ THIS FIRST.**
 >
 > This manual was written on `feat/decision-records`, which was archive-tagged
@@ -48,12 +60,13 @@
 > those two are no longer the exception — what distinguishes them is that
 > they are never RETRIED (ADR-0201 am-7's fatal set).
 >
-> ⚠ **The package is `mindsos_capacity.llm`, not a top-level `mindsos_llm`**
+> ⚠ ~~**The package is `mindsos_capacity.llm`, not a top-level `mindsos_llm`**
 > (coordination §87 placement ruling, critic §88 Q4). Read every `mindsos_llm`
-> in this manual as that path. It is a client for an outside service and lives
-> where the other one does (`mindsos_core/persistence/client.py`); promotion to
-> a top-level package is triggered by a consumer outside the capacity layer or
-> a vendor dependency arriving.
+> in this manual as that path.~~ **CANCELLED 2026-09-02 — the stated trigger
+> fired.** That ruling named its own expiry: *"promotion to a top-level package
+> is triggered by a consumer outside the capacity layer or a vendor dependency
+> arriving."* Both arrived (a second consumer, and an in-core adapter), so the
+> package is `mindsos_llm` and the redirect above is void. ADR-0210 slice 1a.
 >
 > ⚠ **Injection is by DECLARATION (`consults_llm=True`), not by category.**
 > Anything below describing `LLM_CATEGORIES` describes a mechanism that was
