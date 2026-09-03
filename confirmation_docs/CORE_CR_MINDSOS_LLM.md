@@ -414,9 +414,60 @@ demonstrated the failure mode by predicting from a remembered baseline.
 Outcomes 4981 against 4980 collected — the known
 `gate-baseline-count-off-by-one`, unchanged.
 
-**Still owed inside 1b, and NOT in this gate:** the recorded-set export/import
-path and the gate test session (§7 items 1 and 3). They are a separate commit
-on the same slice; the tag waits for them.
+**Still owed inside 1b at that gate:** the recorded-set export/import path and
+the gate test session (§7 items 1 and 3). Both are settled below.
+
+### The export/import path, and what it turned out to actually fix
+
+`mindsos_llm/recorded_sets.py` + `tests/llm_seam/test_recorded_set_export.py`.
+
+⚠ **The bug is not the scope, it is the KEY.** "Never Global" is not what stops
+a third party replaying a set; `request_key` is. It hashes the prompt IRI and
+version, **the model id and version**, the temperature and the exact source
+text — so somebody handed a bare `{key: response}` file cannot replay it. They
+must construct `RecordedLLM(store, model_id=…, model_version=…, temperature=…)`
+with the *same* values, and **nothing in that file tells them what they were.**
+Every read misses, and a total miss reads as *"the set is broken"* rather than
+*"you configured the client differently"*. An exported set therefore carries a
+manifest and `ImportedSet.replay_config()` hands back the exact kwargs.
+
+**The manifest is DERIVED from the payloads, never supplied.** A manifest a
+caller fills in by hand is a claim about a recording rather than a property of
+it. Consequences, each guarded: a payload missing the provenance a client
+stamps is refused; a payload filed under a key that is not its own
+`request_key` is refused (the key is the question — filed elsewhere it answers
+something else); and **an edited file is refused, because the declared manifest
+no longer matches the derived one.** That last one cannot make forgery
+impossible — a determined author can synthesise payloads — it makes it visible,
+and `live.py` already names hand-writing a recording as the failure mode the
+seam exists to prevent.
+
+⚠ **A set holding TWO model identities refuses to hand out one config.** The
+keys were computed with different model ids, so one client would hit some and
+miss others, and a partial replay looks like a corrupt recording rather than a
+misconfiguration. It refuses at the point of asking, not at the point of
+missing.
+
+### §7 item 3 (the gate test session) MOVES TO SLICE 2 — with a reason
+
+**`mindsos_llm` may not import `mindsos_knowledge`.** That is this ship's own
+guard (`test_import_isolation_mindsos_llm.py`): substrate does not depend on
+the layers that consume it. ⟹ **the L2 Local pointer and its provenance row
+cannot live in `mindsos_llm`**, so nothing in 1b touches L2, and the test
+session that L2-scoped replay would need has nothing to test yet.
+
+**That leaves a real open question, and it is a design question rather than an
+oversight: which layer owns the L2 pointer?** A capacity (L3) writing it as a
+declared output is the obvious candidate and matches the origin-record
+precedent; L0 writing it alongside the credential is the other. **Decide it in
+slice 2**, where L0 custody is built and both halves are on the table at once.
+A file is the interchange format; a pointer to a file is somebody else's
+record.
+
+**Measured:** affected suites **247 passed, 0 failed**; export guards collect
+**11**; the isolation guard goes **36 → 40** (`recorded_sets.py` × 4 forbidden
+roots); full collect **4995**. **Delta from the 1b gate: +15.**
+⟹ **Predicted gate: 4984 passed / 11 skipped / 1 xpassed / 0 failed.**
 
 **Slice 2 — L0 custody.** Vendor id, level, mode and credential per user;
 the capability that releases them; first-run and change-vendor flows. The

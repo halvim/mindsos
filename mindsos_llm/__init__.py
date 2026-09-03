@@ -89,6 +89,7 @@ from .exceptions import (
     TransportSignatureError,
 )
 from .live import CapturingLLM, LiveLLM, Transport, decode_response
+from .recorded_sets import ImportedSet, RecordedSetRefused, export_set, import_set
 from .recording import RecordingStore, request_key
 from .replay import RecordedLLM
 
@@ -99,6 +100,7 @@ __all__ = [
     "LEVEL_SHORT_LIVED",
     "CapturingLLM",
     "CredentialUnavailable",
+    "ImportedSet",
     "Resolver",
     "LLMCallBudgetExceeded",
     "LLMCallFailed",
@@ -107,6 +109,7 @@ __all__ = [
     "MalformedResponse",
     "RecordedLLM",
     "RecordedResponseMiss",
+    "RecordedSetRefused",
     "RecordingStore",
     "Transport",
     "TransportContractError",
@@ -114,6 +117,8 @@ __all__ = [
     "TransportSignatureError",
     "adapters",
     "decode_response",
+    "export_set",
+    "import_set",
     "request_key",
     "static_resolver",
     "verify_transport",
