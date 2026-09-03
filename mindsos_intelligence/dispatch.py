@@ -46,7 +46,7 @@ class LLMUnavailableError(RuntimeError):
     It is raised before ``runtime.invoke``'s envelope and
     ``pipeline_execution`` does not wrap the ``dispatch()`` call, so it
     escapes ``execute_pipeline`` and no page renders — unlike every error
-    in ``mindsos_capacity.llm``, whose text reaches a customer through
+    in ``mindsos_llm``, whose text reaches a customer through
     ``stopped_detail`` and is therefore fixed prose. The escape is
     intentional and pinned by a test: a dispatcher with no client bound
     would fail identically for every member, so a partial Record would be
@@ -91,7 +91,7 @@ class L4Dispatcher:
         # ADR-0197 §3 — runtime {modality (ingress DataState IRI) ->
         # Phase1Profile} table, selected per input by the stamped modality.
         self._modality_profiles = dict(modality_profiles or {})
-        # The external-model client (``mindsos_capacity.llm``). Held
+        # The external-model client (``mindsos_llm``). Held
         # here, handed to a body only when its declaration asks for it;
         # ``None`` when the deployment consults no model at all.
         self._llm = llm
@@ -178,7 +178,7 @@ class L4Dispatcher:
                 f"{capacity_iri} declares consults_llm=True but this "
                 f"dispatcher was built with no client. Construct the "
                 f"L4Dispatcher with `llm=` "
-                f"(mindsos_capacity.llm.LiveLLM, or RecordedLLM for a "
+                f"(mindsos_llm.LiveLLM, or RecordedLLM for a "
                 f"recorded set). See this class's docstring for why this "
                 f"is fatal rather than a refusal."
             )

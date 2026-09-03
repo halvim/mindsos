@@ -299,7 +299,7 @@ REASONS_DEGENERATE: Mapping[str, str] = {
         "store outage travels. comprehension_v0 does not advertise it "
         "either, the am-3 rule applied a second time. The token is NOT "
         "deleted: it stays the machine-readable reason on "
-        "mindsos_capacity.llm.LLMCallFailed and reaches a reader through "
+        "mindsos_llm.LLMCallFailed and reaches a reader through "
         "L-2's RunStopped node, which is where 'was this our fault' "
         "belongs. (Coordination §85 Q3 / §86 / §87 T-F3.)"
     ),

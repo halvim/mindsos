@@ -4,7 +4,7 @@ The transport is written by the DEPLOYMENT (§6.4: no vendor inside
 MindsOS, credentials in the transport's closure, the gate has no network).
 "Your transport behaves correctly" therefore has to be checkable where the
 transport lives, by someone who does not have this repo's test tree — so
-the harness ships in ``mindsos_capacity.llm.contract`` and this file runs
+the harness ships in ``mindsos_llm.contract`` and this file runs
 the same function the demo will run against a live provider (critic §85
 Q1's condition, owner ruling 7).
 
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import pytest
 
-from mindsos_capacity.llm.contract import (
+from mindsos_llm.contract import (
     FAILED,
     PASSED,
     SKIPPED,
@@ -25,7 +25,7 @@ from mindsos_capacity.llm.contract import (
     UNVERIFIABLE_PROPERTIES,
     verify_transport,
 )
-from mindsos_capacity.llm.exceptions import TransportContractError
+from mindsos_llm.exceptions import TransportContractError
 
 ANSWER = {"fields": [{"name": "days", "value": 7, "quote": "seven days"}]}
 

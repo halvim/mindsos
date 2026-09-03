@@ -59,6 +59,7 @@ _PACKAGES = (
     "mindsos_core",
     "mindsos_instances",
     "mindsos_intelligence",
+    "mindsos_llm",
     "mindsos_knowledge",
     "mindsos_server",
 )

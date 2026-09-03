@@ -281,7 +281,7 @@ def test_a_fatal_failure_is_never_retried_even_by_a_declared_capacity():
     ceiling defeats the one thing the ceiling exists to do, and retrying a
     replay miss cannot conjure a recording. Both declare themselves
     non-transient, and that veto outranks the capacity's opt-in."""
-    from mindsos_capacity.llm.exceptions import (
+    from mindsos_llm.exceptions import (
         LLMCallBudgetExceeded,
         RecordedResponseMiss,
     )
@@ -314,7 +314,7 @@ def test_a_transient_failure_IS_retried_by_a_declared_capacity():
     """The other side of the same rule: the failure that says it is
     transient, inside a capacity that says it can be, still gets its
     second attempt."""
-    from mindsos_capacity.llm.exceptions import LLMCallFailed
+    from mindsos_llm.exceptions import LLMCallFailed
 
     MEMBER_SEEN.clear()
     REDUCER_SEEN.clear()

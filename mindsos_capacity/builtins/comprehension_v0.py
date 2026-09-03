@@ -55,7 +55,7 @@ policy-store outage already travels, no record carries it, and
 §86; the manual's §5.5 is overruled by it.)
 
 **The ONE exception caught here is a bad ANSWER, not a bad environment.**
-:class:`~mindsos_capacity.llm.exceptions.MalformedResponse` means the
+:class:`~mindsos_llm.exceptions.MalformedResponse` means the
 model replied and its reply could not be decoded — a finding about the
 answer, so it becomes a ``malformed_response`` refusal carrying the raw
 words. There is no catch-all: budget exhaustion, a replay miss, a
@@ -85,7 +85,13 @@ from ..capacity import Capacity
 from ..datastate import DataState, ShapeDescriptor
 from ..exceptions import CapacityRegistrationError
 from ..identifiers import CATEGORY_COMPREHENSION, datastate_iri
-from ..llm.exceptions import MalformedResponse
+
+# ADR-0210 slice 1a: was ``from ..llm.exceptions`` while the client was a
+# subpackage of this one. It is now the top-level ``mindsos_llm``, so this
+# is an ABSOLUTE import and it is the ONLY L3 -> mindsos_llm import in the
+# tree. The dependency direction is unchanged (L3 reads the substrate's
+# error type); only the path moved.
+from mindsos_llm.exceptions import MalformedResponse
 from .origin_v0 import (
     BASES,
     BASIS_INFERRED,
@@ -231,7 +237,7 @@ class SourceTextUnavailable(RuntimeError):
     ``str(exc)`` is FIXED PROSE: ``execute_pipeline`` writes it onto L-2's
     ``RunStopped`` node and a Decision Record prints it, so it names no
     DataState, no IRI and no internal token (the rule
-    ``mindsos_capacity.llm.exceptions`` states for the client's errors,
+    ``mindsos_llm.exceptions`` states for the client's errors,
     and the reason ``PolicyStoreUnreachableError`` states it too).
 
     A raise rather than a refusal: nothing was read because nothing

@@ -37,6 +37,7 @@ def _scan_for_metagraph_snapshot_use() -> list[tuple[Path, int, str]]:
     for pkg in (
         "mindsos_admin",
         "mindsos_capacity",
+    "mindsos_llm",
         "mindsos_cli",
         "mindsos_core",
         "mindsos_instances",

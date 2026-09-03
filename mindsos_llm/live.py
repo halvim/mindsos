@@ -52,7 +52,7 @@ from .recording import RecordingStore, request_key
 #: ``(prompt_iri, prompt_version, source_text, extraction_schema,
 #: timeout_s)`` -> the model's answer, EITHER already decoded into a
 #: mapping OR the raw text the model produced (S-2). Supplied by the
-#: deployment; see :mod:`mindsos_capacity.llm.contract` for the checks a
+#: deployment; see :mod:`mindsos_llm.contract` for the checks a
 #: transport has to pass.
 Transport = Callable[..., Union[Mapping[str, Any], str]]
 

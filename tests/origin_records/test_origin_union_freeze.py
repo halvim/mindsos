@@ -27,7 +27,7 @@ from mindsos_capacity.builtins.structured_ingest_v0 import (
     build_structured_ingest_reader,
 )
 from mindsos_capacity.datastate import ShapeDescriptor
-from mindsos_capacity.llm import LiveLLM
+from mindsos_llm import LiveLLM
 from mindsos_knowledge.identifiers import ROLE_POLICIES
 from mindsos_knowledge.knowledge_layer import KnowledgeLayer
 from mindsos_knowledge.policies import write_policy_edition

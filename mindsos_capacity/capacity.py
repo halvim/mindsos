@@ -96,7 +96,7 @@ class _CapacityBase:
     effect_iri: Optional[str] = None
     reads_mm: bool = False
     # The external-model reading seam — the DECLARATION half of the
-    # narrowed model capability on the context (mindsos_capacity/llm).
+    # narrowed model capability on the context (mindsos_llm).
     # Exactly
     # the ``reads_mm`` discipline (ADR-0200 C3): a body that has not
     # declared it consults a model is handed ``None`` and cannot reach

@@ -31,7 +31,7 @@ Classifications used below:
 * **outside-service call** — a path that hands control to code MindsOS does
   not own (a database driver, a model provider). Added 2026-08-16: the four
   censuses above are all about RUN shape, and a stub client doing live
-  network IO dropped into ``mindsos_capacity/llm/`` left this file 6/6 GREEN
+  network IO dropped into ``mindsos_llm/`` left this file 6/6 GREEN
   (critic re-run, coordination §88). The first code path that leaves the
   machine was invisible to every axis.
 
@@ -56,6 +56,7 @@ _PACKAGES = (
     "mindsos_knowledge",
     "mindsos_capacity",
     "mindsos_intelligence",
+    "mindsos_llm",
     "mindsos_instances",
     "mindsos_admin",
     "mindsos_server",
@@ -137,18 +138,45 @@ EXPECTED_PERSISTENCE_CALLERS = {
 }
 
 #: Outside-service imports — every place a ``mindsos_*`` module reaches for
-#: a driver or the network directly. Both entries are the persistence layer
-#: talking to FalkorDB, which is the ONE outside service core has ever had.
+#: a driver or the network directly.
 #:
-#: A third entry means a second one arrived; classify it or route it through
-#: a deployment-supplied seam, the way the model client does (the transport
-#: is a callable the deployment passes, so ``mindsos_capacity/llm`` imports
-#: no network library at all and is deliberately ABSENT from this census —
-#: its own axis is the consumption census, which arrives with its first
-#: consumer).
+#: ⚠ **THIS COMMENT USED TO SAY THE MODEL CLIENT WAS DELIBERATELY ABSENT FROM
+#: THIS CENSUS, AND THAT IS NO LONGER TRUE.** It read: *"the transport is a
+#: callable the deployment passes, so the model client imports no network
+#: library at all."* **ADR-0210 reversed that** — a project that wants MindsOS
+#: to read a document had to write the network-touching piece itself, and by
+#: the time a second project needed one, the same 400 lines were about to be
+#: copied a third time. Core now ships the wire, and the two new rows below are
+#: that decision becoming visible **here, in the same ship**, rather than a
+#: guard being widened quietly (RULES §12.1).
+#:
+#: What replaced the old guarantee is NOT "no network in core" — it is:
+#:
+#:   **No provider is baked in.** The adapter is selected at RUNTIME from the
+#:   user's stored vendor id (``mindsos_llm.adapters``), so a second provider
+#:   is a new row here rather than a change to any caller. Credentials are
+#:   resolved at call time through a callable and scrubbed from the composed
+#:   request in a ``finally``; the gate acquires no network, no credential and
+#:   no vendor dependency — every guard injects an opener.
+#:
+#: ⚠ **A FIFTH ENTRY IS STILL A DESIGN EVENT.** The bar did not move because
+#: two rows were added deliberately: this census exists because a stub with
+#: live network IO once dropped into the model-client package and left this
+#: file 6/6 green before the axis existed. Classify a new one here, in its own
+#: ship, or route it through a seam.
 EXPECTED_OUTSIDE_SERVICE_IMPORTS = {
     "mindsos_core/persistence/client.py": 1,             # outside-service call: FalkorDB driver
     "mindsos_core/persistence/metagraph_repository.py": 1,  # outside-service call: driver exceptions
+    # ADR-0210 slice 1b. ``seam.py`` holds the default opener
+    # (``urllib.request.urlopen``) so that ONE module owns the network policy
+    # and every adapter inherits the scrub, the https check and the fixed
+    # prose. It composes no request of its own.
+    "mindsos_llm/seam.py": 1,                            # outside-service call: the default opener
+    # The wire itself: endpoint, version header, credential header, body
+    # shape, response walk. Level 1 credentials only — the provider has no
+    # expiring-credential flow, and the adapter declares that rather than
+    # advertising a guarantee its wire cannot keep.
+    "mindsos_llm/adapters/anthropic.py": 1,              # outside-service call: Anthropic Messages
 }
 
 #: Outside-service CONSUMPTION — every body that reaches an injected

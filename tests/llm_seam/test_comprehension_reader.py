@@ -34,7 +34,7 @@ from mindsos_capacity.builtins.origin_v0 import (
 )
 from mindsos_capacity.datastate import ShapeDescriptor
 from mindsos_capacity.exceptions import CapacityRegistrationError
-from mindsos_capacity.llm.exceptions import (
+from mindsos_llm.exceptions import (
     LLMCallBudgetExceeded,
     LLMCallFailed,
     MalformedResponse,
