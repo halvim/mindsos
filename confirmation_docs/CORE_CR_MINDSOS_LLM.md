@@ -317,7 +317,35 @@ named its own expiry and the expiry fired — and ADR-0180's two path references
 are updated with provenance. Three residual `mindsos_capacity/llm` strings
 remain on purpose, all of them prose describing the move itself.
 
-**Slice 1b — seam + level 1 + Anthropic adapter + L3 factory. TAGGED.**
+**Slice 1b — seam + level 1 + Anthropic adapter. TAGGED.**
+
+⚠ **REVERSAL, owner-confirmed 2026-09-02, before any 1b code was written.**
+This CR and its ADR both said 1b mints a new L3 reading factory, and the
+census question above was settled "new file". **Both were wrong, and neither
+checked the premise against the tree.** `comprehension_v0.build_reader`
+ALREADY mints one capacity per reading — per-call `prompt_iri` /
+`prompt_version` / `extraction_schema`, `consults_llm=True`,
+`retryable=True` — and its own docstring states decision 1's rationale
+verbatim: *"One reader per extracted value, not one general extractor. A
+single 'read the whole document' capacity would produce one opaque payload:
+the finder would have nothing to compose through and a Decision Record
+nothing to cite."*
+
+⟹ **Decision 1 is satisfied by shipped code. 1b adds NO L3 capacity**, and
+`EXPECTED_EXTERNAL_CLIENT_CONSUMERS` therefore stays at one entry — no census
+event there. `EXPECTED_OUTSIDE_SERVICE_IMPORTS` still gains its row for the
+adapter's `urllib` import.
+
+This is `feedback-convergence-passes-ground-premise` biting the lane that
+cites it: passes stabilise DECISIONS, not PREMISES. Grep who already reaches
+a path before agreeing on how to build it.
+
+**The module split** (owner-ruled 2026-09-02): `dr_transport.py` is not
+ported as one file. `mindsos_llm/seam.py` takes the generic half AND the
+rejected-designs record and the four credential rounds, **because those are
+the rules a SECOND adapter must also obey**;
+`mindsos_llm/adapters/anthropic.py` takes only the wire-shape notes.
+
 The credential seam, credential-agnostic. The Anthropic adapter, level 1,
 ported from `dr_transport.py` **with its docstring intact** — that docstring
 is the record of what was tried and rejected, and a shortened version invites
@@ -325,6 +353,54 @@ the rejected designs straight back. Its 14 guards come with it, running with
 an injected opener: no network, no key. The L3 capacity factory. The
 export/import path and the gate's test session from §7. Tagged
 `mindsos-llm-slice-1-confirmed` so the second consumer unblocks here.
+
+### 1b as built (2026-09-02), and the two things it caught in itself
+
+**Modules.** `mindsos_llm/credentials.py` (the level model, credential-agnostic
+— a resolver returning a static key and one returning a rotating token are the
+same callable to everything above), `mindsos_llm/seam.py` (the generic half
+plus the rejected-designs record and the four credential rounds),
+`mindsos_llm/adapters/anthropic.py` (wire only, `SUPPORTED_LEVELS = (1,)`),
+`mindsos_llm/adapters/__init__.py` (the runtime registry — explicit
+registration, duplicate ids refused, no entry-point scanning, so `git grep`
+answers "which vendors can core speak to").
+
+**Two defects this ship found in its own guards, both of the same family:**
+
+1. **A guard that scanned its own source as TEXT** — `assert
+   "default_opener()" not in source` matched its own assertion string and
+   failed on first run. Rewritten as an AST walk over `ast.Call` nodes. **Same
+   class as the relative import that slipped through slice 1a's path sweep:
+   ask the structure, not the characters.**
+2. ⚠ **The isolation guard globbed `mindsos_llm/*.py`, leaving
+   `adapters/anthropic.py` — the one module that actually opens a socket —
+   outside the walk.** Found by counting the collect delta, not by reading.
+   **This is precisely the defect `tests/phase_28` was built to refuse,
+   reproduced by the ship that cites it.** Now `rglob`, plus a
+   `test_every_subpackage_is_WALKED_not_merely_shipped` asked from the
+   filesystem (phase_28's lesson: a guard walking a hand-listed tuple is
+   silenced by emptying the tuple) and a named test that the adapter is in the
+   walk.
+
+**The census fired and was answered, not silenced.**
+`test_outside_service_import_census_is_exact` went red on
+`mindsos_llm/seam.py` and `mindsos_llm/adapters/anthropic.py`. Both rows added
+with their classification, and **the comment that said the model client was
+"deliberately ABSENT from this census" is rewritten** — it was the load-bearing
+sentence ADR-0210 reverses. The bar did not move: a **fifth** entry is still a
+design event.
+
+`EXPECTED_EXTERNAL_CLIENT_CONSUMERS` is untouched at one entry, per the
+reversal above.
+
+**Measured in the container pre-filter:** affected suites **368 passed, 0
+failed**; new guard file collects **34**; the isolation guard goes **22 → 36**
+(+14, because `rglob` now reaches `credentials.py`, `seam.py` and
+`adapters/anthropic.py` × 4 forbidden roots); full collect **4980**, zero
+collection errors. **Delta from 1a: +48 (34 + 14).**
+
+⟹ **Predicted gate: 4969 passed / 11 skipped / 1 xpassed / 0 failed**
+(4921 + 48). Outcomes 4981 against 4980 collected, the known off-by-one.
 
 **Slice 2 — L0 custody.** Vendor id, level, mode and credential per user;
 the capability that releases them; first-run and change-vendor flows. The

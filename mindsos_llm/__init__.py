@@ -68,7 +68,17 @@ from __future__ import annotations
 #: string; the doctor parity loop asserts it (tests/phase_18).
 __version__ = "0.0.0+phase50"
 
+from . import adapters
 from .contract import TransportReport, verify_transport
+from .credentials import (
+    LEVEL_NEVER_KNOWN,
+    LEVEL_NEVER_STORED,
+    LEVEL_SHORT_LIVED,
+    LEVELS,
+    CredentialUnavailable,
+    Resolver,
+    static_resolver,
+)
 from .exceptions import (
     LLMCallBudgetExceeded,
     LLMCallFailed,
@@ -83,7 +93,13 @@ from .recording import RecordingStore, request_key
 from .replay import RecordedLLM
 
 __all__ = [
+    "LEVELS",
+    "LEVEL_NEVER_KNOWN",
+    "LEVEL_NEVER_STORED",
+    "LEVEL_SHORT_LIVED",
     "CapturingLLM",
+    "CredentialUnavailable",
+    "Resolver",
     "LLMCallBudgetExceeded",
     "LLMCallFailed",
     "LLMError",
@@ -96,7 +112,9 @@ __all__ = [
     "TransportContractError",
     "TransportReport",
     "TransportSignatureError",
+    "adapters",
     "decode_response",
     "request_key",
+    "static_resolver",
     "verify_transport",
 ]
