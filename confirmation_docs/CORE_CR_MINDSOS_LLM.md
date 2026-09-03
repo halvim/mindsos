@@ -467,7 +467,22 @@ record.
 **Measured:** affected suites **247 passed, 0 failed**; export guards collect
 **11**; the isolation guard goes **36 → 40** (`recorded_sets.py` × 4 forbidden
 roots); full collect **4995**. **Delta from the 1b gate: +15.**
-⟹ **Predicted gate: 4984 passed / 11 skipped / 1 xpassed / 0 failed.**
+⟹ Predicted gate: 4984 passed / 11 skipped / 1 xpassed / 0 failed.
+
+### GATE RESULT — SLICE 1b IS COMPLETE AND GREEN (2026-09-02)
+
+> **4984 passed, 11 skipped, 1 xpassed, 0 failed** in 34:01.
+
+**Predicted exactly, twice running.** Both predictions came from the container's
+own collect and from counting the written test functions on each side of every
+guard change. Slice 1a predicted from a recalled baseline and was wrong about
+the arithmetic while being right about the ship; 1b and the 1b remainder
+predicted from the tree and hit the number both times. That is the whole of the
+numeric corollary, demonstrated in one CR: **a number derived from a collect is
+a prediction; a number from memory is a guess wearing a prediction's clothes.**
+
+**Slice 1 (1a + 1b) is done.** Ready to tag `mindsos-llm-slice-1-confirmed`,
+which is what unblocks the second consumer.
 
 **Slice 2 — L0 custody.** Vendor id, level, mode and credential per user;
 the capability that releases them; first-run and change-vendor flows. The
