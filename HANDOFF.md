@@ -239,6 +239,39 @@ The L0-L3 numbered-phase rollout shipped Phase 00 → Phase 38 from 2026-05-03 t
 - **Write capacities — `consolidate:mm` + `trace:problem`** (Phase 33): first L3 write surface; KLWriteHandle stub at L2 per ADRs 0145+0146+0147.
 - **Per-flow build pattern + symmetric write contract** (Phase 34+35): ADR-0146 + ADR-0147 ship.
 
+### 2.4b `mindsos_llm` — LLM communication (ADR-0210 slice 1, `4f54f3d`, 2026-09-02)
+
+**A ninth top-level package, and a reversed invariant.** Calling an external
+model is core machinery, not a project's local concern: `mindsos_llm` ships
+the credential seam, a runtime vendor-adapter registry, the first adapter
+(Anthropic Messages), and recorded-set export/import. It was promoted out of
+`mindsos_capacity/llm/` on that package's own stated trigger — *"a vendor
+dependency arriving"* — so **`mindsos_capacity/llm/` no longer exists.**
+
+⚠ **"No vendor inside MindsOS" is now FALSE in the tree**, and was replaced
+rather than quietly dropped: *no provider is baked in — the adapter is selected
+at runtime from the user's stored vendor id; credentials are resolved at call
+time and scrubbed after; the gate acquires no network, no credential and no
+vendor dependency.* **Any external material still using the old line is
+refutable by one grep.**
+
+Layering: **L0** owns the user's vendor id, credential level, mode and
+credential custody; **`mindsos_llm`** owns the wire; **L2 Local** owns prompt
+versions and the pointer to a recorded set (payloads stay a file, never
+Global); **L3**'s `comprehension_v0.build_reader` is the reading capacity —
+**no new one was added**, because it already mints one per reading.
+`mindsos_llm` never imports `mindsos_server` (ADR-0010 §I-S1), so the module
+that makes the call cannot read the store the credential came from.
+
+Slices 2–5 remain: L0 custody, credential level 3 (a hosted adapter — the
+Anthropic-direct wire has no expiring credential), the level-2 broker contract
+plus a reference broker, and the `verify_transport` properties. **Slice 2 opens
+with an open question: which layer owns the L2 pointer to a recorded set.**
+
+Full record: `confirmation_docs/CORE_CR_MINDSOS_LLM.md`,
+`docs/decisions/adr/0210-llm-communication-layering.md`, and `STATE.recent[0]`
+— which also carries the four traps this ship hit past a clean local check.
+
 ### 2.5 Integration phases
 
 - **Integration A** (Phase 26a + 26b): FalkorDB persistence wiring + L0+L1+L2 read-side scenario.

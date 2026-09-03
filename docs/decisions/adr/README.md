@@ -224,7 +224,7 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0207](0207-origin-records.md) | Origin records — where a value came from, for any producer | Proposed | L3 | origin, origin_v0, provenance-record, Decision Records |
 | [0208](0208-policy-lookup-and-criterion.md) | Reading a stored authority as of a date — the policy lookup and the criterion it feeds | Proposed | L3 | policy lookup, as-of, policies role, Decision Records |
 | [0209](0209-member-level-in-band-refusal.md) | Member-level in-band refusal (shape (a)) — the type declares, the reducer decodes, plan construction enforces | Accepted | L3 | refusal_capable, decodes_refusals, shape (a), Decision Records |
-| [0210](0210-llm-communication-layering.md) | LLM communication as a cross-layer core capability — L0 holds the credential, `mindsos_llm` holds the wire, L3 mints one capacity per reading | Proposed | cross-layer | mindsos_llm, adapters, credential levels, vendor registry, replay |
+| [0210](0210-llm-communication-layering.md) | LLM communication as a cross-layer core capability — L0 holds the credential, `mindsos_llm` holds the wire, L3 mints one capacity per reading | Accepted | cross-layer | mindsos_llm, adapters, credential levels, vendor registry, replay |
 
 !!! note "ADRs 0058, 0059, 0113, 0116, 0117, 0119 — numbers not in use"
     ADR-0117 (compositional metaedge) was **Withdrawn** in Phase 05a; the concept became the `compositional` flag on `IntergraphEdge` / `IntergraphHyperEdge` (see `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`, the canonical source for both primitives). The Server Layer pivot shipped 0114, 0115, 0118 and 0120. The remaining numbers (0058, 0059, 0113, 0116, 0119) were reserved and never drafted; they are not re-used.

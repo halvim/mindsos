@@ -1,6 +1,20 @@
 # ADR-0210 — LLM communication is a cross-layer core capability: L0 holds the credential, `mindsos_llm` holds the wire, L3 mints one capacity per reading
 
-**Status:** Proposed (2026-09-02). Owner-ruled 2026-09-02. Supersedes the
+**Status:** Accepted (2026-09-02). Owner-ruled 2026-09-02; **slice 1 merged at
+`4f54f3d` (PR #199), tagged `mindsos-llm-slice-1-confirmed`, gate 4984/11/1x/0.**
+
+⚠ **Accepted names the DECISION, not the build.** Slice 1 (the relocation, the
+credential seam, the Anthropic adapter, the runtime registry, recorded-set
+export/import) is in the tree. **Slices 2–5 are NOT built**: L0 credential
+custody, credential level 3 (which needs a hosted adapter — the Anthropic-direct
+wire has no expiring credential), the level-2 broker contract plus a reference
+broker, and the `verify_transport` properties. Implementation state lives in
+`STATE.json` (`pending_designs` → `core-mindsos-llm-communication`, and
+`recent[0]`), never here — this repo has no `status:`/`implemented:` split yet,
+and that split is itself an open core item. **Slice 2 opens with a question this
+ADR does not answer: which layer owns the L2 pointer to a recorded set.**
+
+Supersedes the
 placement half of the `mindsos_capacity/llm` package docstring, whose own
 promotion trigger this ADR fires. CR:
 `confirmation_docs/CORE_CR_MINDSOS_LLM.md`.
