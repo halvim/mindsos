@@ -273,6 +273,34 @@ Run in the container pre-filter (uv venv 3.12, `pytest --collect-only`):
 ⟹ **Net +12 confirmed. `origin/main` should collect 4920; this branch collects
 4932.** Report container numbers as a prediction, never as a result (RULES §4).
 
+### GATE RESULT — slice 1a is GREEN (2026-09-02)
+
+`docker compose -p mindsos-llm --profile test run --rm --build mindsos-test pytest -q`
+on `feat/mindsos-llm`:
+
+> **4921 passed, 11 skipped, 1 xpassed, 0 failed** in 32:58.
+
+4921 + 11 + 1 = **4933 outcomes** against the container's **4932 collected** —
+the run is one ahead of the collect, which is the already-filed
+`gate-baseline-count-off-by-one` item, not a new defect.
+
+⚠ **What is NOT verified, stated plainly.** The `+12` is confirmed on both
+sides of the move (`phase_28` collected 145 against a simulated pre-move tree
+and 135 after it; the new guard collects 22) and the branch's own numbers are
+internally consistent. It is **NOT** confirmed against a measured `main` gate:
+the "~4896" baseline this CR first predicted from was a RECALLED number, which
+is exactly what `feedback-grep-before-quoting-any-prose`'s numeric corollary
+forbids — and `STATE.pending_designs` already carries
+`gate-baseline-count-off-by-one`, whose own text says a recorded gate number
+"is wrong by one and nobody can currently say which". **A green gate with zero
+failures is the result; the delta arithmetic against `main` is not evidence
+until `main` is collected.** One command closes it, and closing it also closes
+that older item — expected **4920**, and whatever it says goes into `STATE`
+either way:
+
+    cd ~/mindsos-base && docker compose -p mindsos-base --profile test \
+      run --rm --build mindsos-test pytest --collect-only -q | tail -2
+
 **Why 1a is still split out:** mixing a 30-file rename with new behaviour
 means a red gate cannot be attributed to either.
 
