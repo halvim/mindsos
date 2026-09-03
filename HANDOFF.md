@@ -272,6 +272,10 @@ Full record: `confirmation_docs/CORE_CR_MINDSOS_LLM.md`,
 `docs/decisions/adr/0210-llm-communication-layering.md`, and `STATE.recent[0]`
 — which also carries the four traps this ship hit past a clean local check.
 
+⚠ **Not yet swept.** Every slice-1 gate ran on the *branch tip*; the RULES §12.2
+run against the **merged** tree is owed and unowned —
+`STATE.pending_designs` → `core-mindsos-llm-merged-tree-sweep`.
+
 ### 2.5 Integration phases
 
 - **Integration A** (Phase 26a + 26b): FalkorDB persistence wiring + L0+L1+L2 read-side scenario.

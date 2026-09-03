@@ -1,10 +1,18 @@
 # CORE CR — `mindsos_llm`: LLM communication as a cross-layer core capability
 
 **Branch:** `feat/mindsos-llm` (off `origin/main` @ `bb8614c`).
-**ADR:** `docs/decisions/adr/0210-llm-communication-layering.md` (Proposed).
+**ADR:** `docs/decisions/adr/0210-llm-communication-layering.md` (**Accepted** 2026-09-02).
 **STATE:** `pending_designs` entry `core-mindsos-llm-communication`.
 **Version:** no bump. `core_version` stays `phase50` — the release-train
 integer moves only on a numbered-phase ship.
+
+> ⚠ **Status corrected 2026-09-03.** The ADR line above said `Proposed`; ADR-0210 was
+> accepted on 2026-09-02, where *"Accepted names the DECISION, not the build"* — slice 1
+> merged at `4f54f3d` (PR #199, tag `mindsos-llm-slice-1-confirmed`), **slices 2–5 are not
+> built**, and the RULES §12.2 sweep against the merged tree is still owed. Decision row
+> **11** below still reads `Proposed` and is **left as written**: it records what this CR
+> *asked for*, not what the owner ruled. Implementation state lives in `STATE.json` →
+> `pending_designs` → `core-mindsos-llm-communication`, never in this file.
 
 ---
 
