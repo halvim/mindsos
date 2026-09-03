@@ -399,8 +399,24 @@ failed**; new guard file collects **34**; the isolation guard goes **22 → 36**
 `adapters/anthropic.py` × 4 forbidden roots); full collect **4980**, zero
 collection errors. **Delta from 1a: +48 (34 + 14).**
 
-⟹ **Predicted gate: 4969 passed / 11 skipped / 1 xpassed / 0 failed**
-(4921 + 48). Outcomes 4981 against 4980 collected, the known off-by-one.
+⟹ Predicted gate: 4969 passed / 11 skipped / 1 xpassed / 0 failed (4921 + 48).
+
+### GATE RESULT — slice 1b is GREEN (2026-09-02)
+
+> **4969 passed, 11 skipped, 1 xpassed, 0 failed** in 33:48.
+
+**Predicted exactly.** The prediction was derived from the container's own
+collect and from counting the written test functions on both sides of each
+guard change — never from a recalled number. That is the numeric corollary of
+`feedback-grep-before-quoting-any-prose` working as intended, after slice 1a
+demonstrated the failure mode by predicting from a remembered baseline.
+
+Outcomes 4981 against 4980 collected — the known
+`gate-baseline-count-off-by-one`, unchanged.
+
+**Still owed inside 1b, and NOT in this gate:** the recorded-set export/import
+path and the gate test session (§7 items 1 and 3). They are a separate commit
+on the same slice; the tag waits for them.
 
 **Slice 2 — L0 custody.** Vendor id, level, mode and credential per user;
 the capability that releases them; first-run and change-vendor flows. The
