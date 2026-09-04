@@ -405,6 +405,11 @@ class Metagraph:
         # remove-observer subscription. ``add_graph`` fires this list so
         # the registry can wire itself to newcomers.
         self._graph_added_observers: List[Callable[[Graph], None]] = []
+        # R38 — one handle per contained graph, so the guard can be
+        # revoked when the graph leaves. A subscription that outlives its
+        # graph would hold a reference to a graph this metagraph no longer
+        # contains and would answer for it.
+        self._composition_guards: Dict[str, ObserverHandle] = {}
 
         # Phase 07 (M9 + P96 A) — persist observer plumbing for
         # sibling-side instance persistence. ``MetagraphRepository.persist``
@@ -958,11 +963,116 @@ class Metagraph:
                 )
 
         self.graphs[graph.graph_id] = graph
+        # ⚠ **R38 — THE IDENTITY CONTRACT, ENFORCED AT THE NODE.** See
+        # :meth:`_refuse_node_bearing_composition`. Subscribed HERE because
+        # this is the one moment a metagraph learns of a graph, and the
+        # invariant is the metagraph's, not the graph's.
+        self._composition_guards[graph.graph_id] = graph.register_remove_observer(
+            self._composition_guard_for(graph.graph_id)
+        )
         # Phase 06 round-7 P66 — notify subscribed registries so they
         # can wire their per-Graph remove-observer to the newcomer.
         for cb in self._graph_added_observers:
             cb(graph)
         return graph
+
+    # ── R38 · the identity contract, one level below where it was ───────
+
+    def _composition_guard_for(self, graph_id: str) -> RemoveCallback:
+        """The remove-observer this metagraph puts on one contained graph.
+
+        A closure rather than a bound method because
+        :meth:`Graph.register_remove_observer` hands the callback only the id
+        being removed, and the guard must know WHICH graph it is speaking
+        for — two graphs in one metagraph can hold the same node id only by
+        accident, but the guard must not depend on that.
+        """
+        def _guard(element_id: str) -> None:
+            self._refuse_node_bearing_composition(graph_id, element_id)
+        return _guard
+
+    def _refuse_node_bearing_composition(
+        self, graph_id: str, element_id: str
+    ) -> None:
+        """Refuse the removal of a NODE that a compositional edge rests on.
+
+        ⚠ **R38 — THE HOLE THIS CLOSES, AND WHY IT EXISTED.**
+        :meth:`remove_graph` prechecks incident compositional intergraph
+        edges and hyperedges (Pushback 17-A), and
+        :meth:`remove_intergraph_edge` refuses on ``compositional``. But
+        ``Graph.remove_node`` is GRAPH-level and **a Graph holds no reference
+        to its metagraph**, so a probe removed a frame node carrying four
+        incident compositional edges and left seven edges pointing at a node
+        that no longer existed. **The guarantee was bypassable one level
+        below where it was enforced.**
+
+        ⚠ **THE FIX DOES NOT GIVE A GRAPH A BACK-REFERENCE**, which is what
+        made this look unfixable. ``Graph`` already carries a precheck-style
+        remove-observer seam (Phase 06, P31 A + round-7 P65 A) whose whole
+        contract is that *a callback that raises aborts the remove and the
+        graph state stays intact*, and whose docstring already names a
+        registry rejecting a remove as the case it exists for. **The
+        metagraph subscribes to that seam for the graphs it contains.** The
+        graph stays metagraph-ignorant; the invariant stays the metagraph's.
+
+        ⚠ **THE RULE IS `remove_graph`'S, ONE LEVEL DOWN — deliberately the
+        same, including the member side.** Both the anchor and the member
+        pairs of a compositional ``IntergraphHyperEdge`` bar a graph's
+        removal, so both bar the removal of the node they name. A narrower
+        rule here would mean the guarantee changed with the level, which is
+        the class of defect R38 is.
+
+        ⚠ **IT ANSWERS ONLY FOR NODES.** The seam dispatches node, edge and
+        hyperedge removals through one callback that receives a bare id, so
+        the first thing this does is establish that the id is a node of the
+        graph it is guarding. An intragraph edge is not what a compositional
+        IntergraphEdge points at and is already covered by
+        ``remove_intergraph_edge``.
+
+        Args:
+            graph_id: The contained graph this guard speaks for.
+            element_id: The id ``Graph`` is about to remove — a node id, an
+                edge id or a hyperedge id.
+
+        Raises:
+            CompositionalImmutableError: ``element_id`` is a node of
+                ``graph_id`` and some compositional IntergraphEdge or
+                IntergraphHyperEdge names it.
+        """
+        graph = self.graphs.get(graph_id)
+        if graph is None or element_id not in graph.nodes:
+            return
+
+        for ie in self.intergraph_edges.values():
+            if not ie.compositional:
+                continue
+            for side, gid, nid in (
+                ("source", ie.source_graph_id, ie.source_node_id),
+                ("target", ie.target_graph_id, ie.target_node_id),
+            ):
+                if gid == graph_id and nid == element_id:
+                    raise CompositionalImmutableError(
+                        f"Cannot remove node {element_id!r} from graph "
+                        f"{graph_id!r}: incident intergraph_edge "
+                        f"{ie.edge_id} is compositional=True "
+                        f"(edge_kind=intergraph_edge; {side} side). Remove "
+                        f"the composition before the node it rests on."
+                    )
+
+        for ihe in self.intergraph_hyperedges.values():
+            if not ihe.compositional:
+                continue
+            for side, pairs in (("anchor", ihe.anchors),
+                                ("member", ihe.members)):
+                if (graph_id, element_id) in pairs:
+                    raise CompositionalImmutableError(
+                        f"Cannot remove node {element_id!r} from graph "
+                        f"{graph_id!r}: incident intergraph_hyperedge "
+                        f"{ihe.edge_id} is compositional=True "
+                        f"(edge_kind=intergraph_hyperedge; {side} side). "
+                        f"Remove the composition before the node it rests "
+                        f"on."
+                    )
 
     def remove_graph(
         self,
@@ -1174,6 +1284,10 @@ class Metagraph:
         owned_ids.update(graph.hyperedges.keys())
         for uid in owned_ids:
             self.identity.unregister(uid)
+        # R38 — revoke this metagraph's node guard before the graph leaves.
+        handle = self._composition_guards.pop(graph_id, None)
+        if handle is not None:
+            handle.unsubscribe()
         del self.graphs[graph_id]
 
         # Phase 10 ADR-0135 return path — proceeded=True; impact carries

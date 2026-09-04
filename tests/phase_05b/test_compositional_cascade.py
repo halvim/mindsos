@@ -143,3 +143,113 @@ class TestRemoveGraphCascadeAtomicPrecheck:
         f = mg_with_two_graphs
         with pytest.raises(IdentityError):
             f["mg"].remove_graph("nonexistent")
+
+
+class TestR38NodeRemovalRespectsComposition:
+    """R38 — the identity contract, enforced one level below where it was.
+
+    ``remove_graph`` prechecks incident compositional edges and
+    ``remove_intergraph_edge`` refuses on the flag, but ``Graph.remove_node``
+    is graph-level and a Graph holds no reference to its metagraph — so a
+    probe removed a node carrying four compositional edges and left seven
+    edges pointing at a node that no longer existed. The metagraph now
+    subscribes to the Graph remove-observer seam for the graphs it contains.
+    """
+
+    def test_compositional_edge_blocks_removing_the_node_it_rests_on(
+        self, mg_with_two_graphs
+    ):
+        f = mg_with_two_graphs
+        ie = f["mg"].add_intergraph_edge(
+            f["g_lex"].graph_id, f["n_lex"].node_id,
+            f["g_cpt"].graph_id, f["n_cpt"].node_id, "X",
+            compositional=True,
+        )
+        with pytest.raises(CompositionalImmutableError) as exc:
+            f["g_lex"].remove_node(f["n_lex"].node_id)
+        # Precheck-style: nothing moved.
+        assert f["n_lex"].node_id in f["g_lex"].nodes
+        assert ie.edge_id in f["mg"].intergraph_edges
+        # The message names the edge, as remove_graph's does.
+        assert ie.edge_id in str(exc.value)
+        assert "source" in str(exc.value)
+
+    def test_the_target_side_blocks_too(self, mg_with_two_graphs):
+        f = mg_with_two_graphs
+        f["mg"].add_intergraph_edge(
+            f["g_lex"].graph_id, f["n_lex"].node_id,
+            f["g_cpt"].graph_id, f["n_cpt"].node_id, "X",
+            compositional=True,
+        )
+        with pytest.raises(CompositionalImmutableError) as exc:
+            f["g_cpt"].remove_node(f["n_cpt"].node_id)
+        assert "target" in str(exc.value)
+        assert f["n_cpt"].node_id in f["g_cpt"].nodes
+
+    def test_a_NON_compositional_edge_does_not_block_the_node(
+        self, mg_with_two_graphs
+    ):
+        """The guard is the composition's, not every intergraph edge's."""
+        f = mg_with_two_graphs
+        f["mg"].add_intergraph_edge(
+            f["g_lex"].graph_id, f["n_lex"].node_id,
+            f["g_cpt"].graph_id, f["n_cpt"].node_id, "X",
+        )
+        f["g_lex"].remove_node(f["n_lex"].node_id)
+        assert f["n_lex"].node_id not in f["g_lex"].nodes
+
+    def test_an_unrelated_node_in_the_same_graph_still_removes(
+        self, mg_with_two_graphs
+    ):
+        """⚠ The guard answers for ONE node, never for the graph."""
+        f = mg_with_two_graphs
+        f["mg"].add_intergraph_edge(
+            f["g_lex"].graph_id, f["n_lex"].node_id,
+            f["g_cpt"].graph_id, f["n_cpt"].node_id, "X",
+            compositional=True,
+        )
+        other = f["g_lex"].add_node("dog", type_name="Word")
+        f["g_lex"].remove_node(other.node_id)
+        assert other.node_id not in f["g_lex"].nodes
+        assert f["n_lex"].node_id in f["g_lex"].nodes
+
+    def test_a_compositional_HYPEREDGE_blocks_both_of_its_sides(
+        self, mg_with_two_graphs
+    ):
+        """⚠ **The same rule as remove_graph, including the member side.**
+        A narrower rule here would mean the guarantee changed with the level,
+        which is the class of defect R38 is."""
+        f = mg_with_two_graphs
+        # ⚠ A hyperedge may not be 1-to-1 — that is what IntergraphEdge is
+        # for — so the member side carries two.
+        second = f["g_cpt"].add_node("Cat#2", type_name="Concept")
+        f["mg"].add_intergraph_hyperedge(
+            anchors=[(f["g_lex"].graph_id, f["n_lex"].node_id)],
+            members=[(f["g_cpt"].graph_id, f["n_cpt"].node_id),
+                     (f["g_cpt"].graph_id, second.node_id)],
+            type_name="COMPOSED_OF",
+            compositional=True,
+        )
+        with pytest.raises(CompositionalImmutableError) as anchor_side:
+            f["g_lex"].remove_node(f["n_lex"].node_id)
+        assert "anchor" in str(anchor_side.value)
+        with pytest.raises(CompositionalImmutableError) as member_side:
+            f["g_cpt"].remove_node(f["n_cpt"].node_id)
+        assert "member" in str(member_side.value)
+
+    def test_the_guard_answers_for_NODES_and_not_for_intragraph_edges(
+        self, mg_with_two_graphs
+    ):
+        """The seam dispatches node, edge and hyperedge removals through one
+        callback carrying a bare id. An intragraph edge is not what a
+        compositional IntergraphEdge points at."""
+        f = mg_with_two_graphs
+        f["mg"].add_intergraph_edge(
+            f["g_lex"].graph_id, f["n_lex"].node_id,
+            f["g_cpt"].graph_id, f["n_cpt"].node_id, "X",
+            compositional=True,
+        )
+        other = f["g_lex"].add_node("dog", type_name="Word")
+        edge = f["g_lex"].add_edge(f["n_lex"], other, "NEAR")
+        f["g_lex"].remove_edge(edge.edge_id)
+        assert edge.edge_id not in f["g_lex"].edges

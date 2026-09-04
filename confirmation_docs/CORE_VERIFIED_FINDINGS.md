@@ -564,6 +564,30 @@ Two consequences, opposite in sign:
   computed on read rather than stored; a DOWN walk that finds a member gone is that computation.
   **C2R3 owns the detection**, since it owns the walk.
 
+⚠ **CLOSED 2026-09-04 — and read the second bullet again before celebrating.**
+`Metagraph.add_graph` now subscribes a remove-observer on every graph it contains
+(`metagraph.py`, `_refuse_node_bearing_composition`), so removing a node that a compositional
+IntergraphEdge or IntergraphHyperEdge names raises `CompositionalImmutableError` and nothing
+mutates. **The Graph still holds no reference to its Metagraph** — the fix uses the Phase 06
+precheck seam whose contract is exactly *a callback that raises aborts the remove*, so the graph
+stays metagraph-ignorant and the invariant stays the metagraph's. The rule is `remove_graph`'s
+one level down, member side included, because a guarantee that changes with the level is the
+defect this is.
+
+⟹ **The first bullet is repaired: §am-1.5's *structure can never be removed* is true again.**
+⟹ ⚠ **THE SECOND BULLET IS THE COST, AND IT IS PAID DELIBERATELY. Derived dormancy now has NO
+trigger at all.** It had exactly one and it was this defect — which `STATE.pending_designs`
+already calls *an accident, not the mechanism*. Nothing regresses today, because nothing was
+computing dormancy; but **`core-c2r3a-atomic-composition-delete` is now the only path that can
+ever produce a dormant composition**, and it is unbuilt and unowned. Recorded there in the same
+ship.
+
+⚠ **THE THREE LIVE `remove_node` CALLERS CANNOT REACH THE NEW REFUSAL TODAY**, measured rather
+than assumed: `learn_parameter.py:141`, `promotion.py:562` and `release.py:721` all remove nodes
+in role graphs, and **no `mindsos_*` writer creates a compositional intergraph edge at all** —
+`capacity_layer.py:437,444` emit PRODUCES/CONSUMES with the flag defaulted False, and the only
+other producers are the CLI and the loader rehydrating what a store already held.
+
 ### 14.3 There is no adjacency index for intergraph links
 
 `intergraph_edges` and `intergraph_hyperedges` are flat dicts whose only accessors are
