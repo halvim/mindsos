@@ -1,7 +1,7 @@
 {
   "_comment": "Machine-readable state. Chats read THIS first, not the 134KB HANDOFF.md. Bump as part of the ship ritual.",
   "core_version": "phase50",
-  "core_git_sha": "4f54f3d",
+  "core_git_sha": "b21a2af",
   "last_shipped_phase": 50,
   "in_progress": {
     "phase": 51,
@@ -560,9 +560,9 @@
     {
       "kind": "fix",
       "name": "The identity contract is enforced at the node, not only at the graph (R38)",
-      "sha": "<FILL AT SHIP>",
-      "tag": "compositional-node-removal-confirmed -> <FILL AT SHIP>",
-      "gate": "<FILL AT SHIP - docker compose --build, Linux box>",
+      "sha": "b21a2af (squash of fix/compositional-node-removal onto main)",
+      "tag": "compositional-node-removal-confirmed -> b21a2af",
+      "gate": "Linux box, docker compose -p mindsos-core-r38 --profile test --build: 4990 passed, 11 skipped, 1 xpassed, 0 failed, 37:40. The baseline was 4984 (mindsos-llm slice 1b remainder) and this adds 6 tests, so the total is the baseline plus the ship and nothing else moved.",
       "what": "Graph.remove_node removed a node carrying incident compositional IntergraphEdges and left them dangling. remove_graph prechecks incident compositional edges (Pushback 17-A) and remove_intergraph_edge refuses on the flag, but remove_node is GRAPH-level and a Graph holds no reference to its Metagraph - so the guarantee was bypassable one level below where it was enforced. Found by a probe on the Decision Records demo lane (its register R38), never by core's own suite. THE FIX DOES NOT GIVE A GRAPH A BACK-REFERENCE, which is what made this look unfixable: Graph already carries the Phase 06 precheck remove-observer seam (P31 A + round-7 P65 A) whose contract is that a callback which raises aborts the remove with the graph state intact, and whose docstring already names a registry rejecting a remove as the case it exists for. Metagraph.add_graph now subscribes one guard per contained graph and remove_graph revokes it. The rule is remove_graph's one level down, DELIBERATELY THE SAME including the hyperedge member side - a guarantee that changes with the level is the class of defect this is. The guard answers only for NODES: the seam dispatches node, edge and hyperedge removals through one callback carrying a bare id, so it first establishes the id is a node of the graph it speaks for. 16 tests in tests/phase_05b/test_compositional_cascade.py; 102 green across the intergraph/compositional model suites and 90 across phase_06 including the cascade-observer tests. TWO CONSEQUENCES RECORDED IN THE SAME SHIP: ADR-0205 am-1.5's 'structure can never be removed' is TRUE AGAIN, and derived dormancy (am-3.3) now has NO trigger at all - this defect was its only one, which STATE already called an accident rather than the mechanism, so core-c2r3a-atomic-composition-delete becomes the only path to a dormant composition and its entry says so. NO LIVE CALLER CAN REACH THE REFUSAL TODAY, measured: learn_parameter.py:141, promotion.py:562 and release.py:721 all remove role-graph nodes, and no mindsos_* writer creates a compositional intergraph edge - capacity_layer.py:437,444 emit PRODUCES/CONSUMES with the flag defaulted False, and the only other producers are the CLI and the loader rehydrating stored rows.",
       "adr": "No new ADR. Repairs ADR-0205 am-1.5 in fact rather than amending it; CORE_VERIFIED_FINDINGS section 14.2 is marked closed with the dormancy cost stated.",
       "consumer": "The Decision Records demo, which cannot bump its pinned core until this ships (its AB174: no external run and no shipping claim until the pin bumps)."
