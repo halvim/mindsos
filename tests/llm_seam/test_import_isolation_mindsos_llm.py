@@ -93,8 +93,12 @@ def _module_names_imported_by(path: Path) -> set[str]:
 _SOURCE_FILES = sorted(_PKG_DIR.rglob("*.py"))
 
 
+#: ⚠ The id is the PACKAGE-RELATIVE PATH, not ``p.name``. With ``__init__.py``
+#: in the walk two modules share a bare name, so pytest disambiguates them as
+#: ``__init__.py0`` / ``__init__.py1`` and the red stops naming the offending
+#: file. Observed on this guard's own designated mutation, 2026-09-03.
 @pytest.mark.parametrize(
-    "source_file", _SOURCE_FILES, ids=lambda p: p.name
+    "source_file", _SOURCE_FILES, ids=lambda p: str(p.relative_to(_PKG_DIR))
 )
 @pytest.mark.parametrize("forbidden", FORBIDDEN_ROOTS)
 def test_no_upward_import(source_file: Path, forbidden: str) -> None:
