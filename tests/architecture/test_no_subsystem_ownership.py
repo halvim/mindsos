@@ -296,3 +296,43 @@ def test_scan_reads_a_plausible_number_of_files() -> None:
 def test_package_is_scanned(pkg: str) -> None:
     """Fail loudly if a package moved or was renamed, rather than scanning zero."""
     assert (_source_root() / pkg).is_dir(), f"{pkg} not found — update _PACKAGES"
+
+
+def test_every_mindsos_package_present_is_LISTED_not_merely_scanned() -> None:
+    """The inverse of :func:`test_package_is_scanned` — the half that was missing.
+
+    :func:`test_package_is_scanned` asks *"does each LISTED package exist?"*. It
+    is parametrized over :data:`_PACKAGES`, so **deleting a name from that tuple
+    deletes the question along with it.**
+
+    Measured 2026-09-03 by the RULES §12.2 sweep of ADR-0210 slice 1: removing
+    ``"mindsos_llm"`` from :data:`_PACKAGES` reddened **nothing** — the guard
+    simply stopped scanning the newest package, ``test_package_is_scanned``
+    collected one case fewer, and :func:`test_scan_reads_a_plausible_number_of_files`
+    was far too loose to notice one package's worth of files. The same shape ran
+    the other way in the same ship: adding ``mindsos_llm`` widened this file by a
+    silent ``+1`` that the ship's own collect arithmetic never accounted for.
+
+    A hand-listed domain that can be silenced by shrinking it is the shape filed
+    as ``dr-guard-domains-pinned-to-lists`` — this was its fourth instance and
+    its first in core. So the question is asked from the FILESYSTEM too, which is
+    the same repair ``tests/phase_28`` and
+    ``tests/llm_seam/test_import_isolation_mindsos_llm.py`` already carry.
+
+    The tuple is kept rather than derived, because it also documents intent
+    (``projects/`` and the brains are subsystems and are deliberately out of
+    scope). What changes is that it can no longer be quietly narrowed.
+    """
+    present = {
+        d.name
+        for d in _source_root().iterdir()
+        if d.is_dir()
+        and d.name.startswith("mindsos_")
+        and (d / "__init__.py").exists()
+    }
+    missing = sorted(present - set(_PACKAGES))
+    assert missing == [], (
+        f"{missing} ship as mindsos_* packages and are absent from _PACKAGES, so "
+        "this guard does not scan them at all. Add them. A domain nobody widened "
+        "is a domain that silently stopped asking."
+    )
