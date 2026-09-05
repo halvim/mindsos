@@ -272,9 +272,13 @@ Full record: `confirmation_docs/CORE_CR_MINDSOS_LLM.md`,
 `docs/decisions/adr/0210-llm-communication-layering.md`, and `STATE.recent[0]`
 — which also carries the four traps this ship hit past a clean local check.
 
-⚠ **Not yet swept.** Every slice-1 gate ran on the *branch tip*; the RULES §12.2
-run against the **merged** tree is owed and unowned —
-`STATE.pending_designs` → `core-mindsos-llm-merged-tree-sweep`.
+**Swept 2026-09-03.** Every slice-1 gate ran on the *branch tip*, so the RULES §12.2
+run against the **merged** tree was owed; it ran and is closed
+(`STATE.pending_designs` → `core-mindsos-llm-merged-tree-sweep`). **The merge itself
+changed nothing** — the merged tree gates identically to the branch tip. The sweep's two
+findings were guard defects, not product defects, and both are fixed on `main` (`2c8b784`).
+⚠ It also corrected this ship's own arithmetic: slice 1a's collected delta is **+13**, not
+the +12 recorded, and `origin/main` at `bb8614c` collects **4919**. See `STATE.recent`.
 
 ### 2.5 Integration phases
 

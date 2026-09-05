@@ -9,7 +9,9 @@ integer moves only on a numbered-phase ship.
 > ⚠ **Status corrected 2026-09-03.** The ADR line above said `Proposed`; ADR-0210 was
 > accepted on 2026-09-02, where *"Accepted names the DECISION, not the build"* — slice 1
 > merged at `4f54f3d` (PR #199, tag `mindsos-llm-slice-1-confirmed`), **slices 2–5 are not
-> built**, and the RULES §12.2 sweep against the merged tree is still owed. Decision row
+> built**. ⚠ The RULES §12.2 sweep against the merged tree **ran on 2026-09-03 and is
+> closed** — the merge changed nothing, and its two findings were guard defects fixed on
+> `main` at `2c8b784`. Decision row
 > **11** below still reads `Proposed` and is **left as written**: it records what this CR
 > *asked for*, not what the owner ruled. Implementation state lives in `STATE.json` →
 > `pending_designs` → `core-mindsos-llm-communication`, never in this file.

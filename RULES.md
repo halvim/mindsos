@@ -238,6 +238,23 @@ because the branch is unmerged. That method reported 200 files for a branch that
 ⚠ **Verify against the tree, never from a note.** Project memory recorded two branches as
 "gate-green, NOT merged" on 2026-08-10; both were on `main`.
 
+⚠ **The proof above INVERTS on a DELETION branch — run as written it will tell you to archive a
+shipped one.** `chore/dr-demo-leaves-the-repo` (merged as `c475a80`) deleted seven files; the loop
+reported all seven `MISSING`, which was the merged **outcome**, not evidence of unmerged work. When
+a branch's own commit deletes files, *"absent from `main`"* is the pass condition, not the failure.
+
+**Use patch-id instead — direction-free, and it settles any branch in one comparison:**
+
+```
+b=<branch>; s=<squash sha on main>
+git diff-tree -p $(git merge-base main "$b") "$b" | git patch-id --stable
+git diff-tree -p "$s^" "$s"                       | git patch-id --stable
+```
+
+Identical ids ⟹ the branch's change is on `main` **byte for byte** ⟹ plain delete. Different ids
+⟹ fall back to the file loop above, and read its `MISSING` list against what the branch actually
+did (`git diff-tree -r --name-status`) before concluding anything. *(Earned 2026-09-03.)*
+
 ### 10.2 Worktrees created from the Cowork sandbox
 
 `git worktree add` run from the sandbox bakes the sandbox path (`/sessions/…`) into **both**
