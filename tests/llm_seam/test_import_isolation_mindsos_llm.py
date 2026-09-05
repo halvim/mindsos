@@ -77,9 +77,20 @@ def _module_names_imported_by(path: Path) -> set[str]:
 #: was caught by counting the collect delta, not by reading. This is the same
 #: defect ``tests/phase_28`` was built to refuse, reproduced by the ship that
 #: cites it: a walk whose domain silently excludes the interesting part.
-_SOURCE_FILES = sorted(
-    p for p in _PKG_DIR.rglob("*.py") if not p.name.startswith("_")
-)
+#:
+#: ⚠⚠ **AND NO ``startswith("_")`` FILTER — the SAME defect, one level up,
+#: found by the RULES §12.2 sweep of ADR-0210 slice 1 (2026-09-03).** The
+#: filter was there to skip dunder files and it silently excluded
+#: ``__init__.py`` — including ``adapters/__init__.py``, **the runtime
+#: registry that decides which vendors core can speak to**. Measured, not
+#: reasoned: appending ``import mindsos_capacity`` to ``mindsos_llm/__init__``
+#: left this file, ``tests/architecture`` and ``tests/phase_28`` all green
+#: (355 passed). Only ``mindsos_server`` was caught, and by a different guard
+#: (``tests_server/integration/test_layer_isolation.py``) that names that one
+#: root — so three of this file's four forbidden roots were unguarded in both
+#: ``__init__`` files. A package's ``__init__`` is code, and the one place an
+#: import is most likely to be added.
+_SOURCE_FILES = sorted(_PKG_DIR.rglob("*.py"))
 
 
 @pytest.mark.parametrize(
@@ -109,7 +120,10 @@ def test_every_subpackage_is_WALKED_not_merely_shipped():
         if d.is_dir() and (d / "__init__.py").exists()
     }
     for sub in subpackages:
-        shipped = {q for q in sub.glob("*.py") if not q.name.startswith("_")}
+        # No ``_``-filter here either, and it must match ``_SOURCE_FILES``
+        # above: filtering here would let this test declare a subpackage
+        # fully walked while its ``__init__`` sat outside the walk.
+        shipped = set(sub.glob("*.py"))
         missing = sorted(q.name for q in shipped - set(_SOURCE_FILES))
         assert missing == [], (
             f"{sub.name}/ ships {missing} which this guard does not walk - "
