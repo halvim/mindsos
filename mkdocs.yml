@@ -73,6 +73,7 @@ nav:
           - Retrieval: usage/capacity/retrieval.md
       - Runtime:
           - Resident brain — mindsos brain: usage/runtime/resident-brain.md
+          - LLM capability contract: usage/runtime/llm-capability-contract.md
       - Cookbook (Phase 38):
           - Text realm — vertical slice: usage/cookbook/text-realm.md
           - End-to-end — L0→L5 trivial-task slice: usage/cookbook/end-to-end.md

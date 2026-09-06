@@ -57,6 +57,15 @@ UNVERIFIABLE_PROPERTIES: Tuple[Tuple[str, str], ...] = (
      "requires controlling the provider's latency"),
     ("document_not_logged_elsewhere",
      "where the document goes is a contractual question, not a code one"),
+    # ADR-0210 §5. The scrub is ENFORCED in ``seam.send``'s ``finally`` and
+    # guarded on both the success and failure paths — but only against the
+    # object THIS repo composed. A harness that merely calls a transport
+    # cannot reach the request that transport built, and one that injects an
+    # opener to reach it asserts the property in the one configuration where
+    # it holds. That is round four, and naming it is the honest move.
+    ("credential_not_retained_on_the_composed_request",
+     "requires reaching inside the transport; a harness that injects an "
+     "opener asserts it in the one configuration where it holds"),
 )
 
 
