@@ -71,6 +71,13 @@ __version__ = "0.0.0+phase50"
 from . import adapters
 from . import credential_kinds
 from .contract import TransportReport, verify_transport
+from .client import (
+    MODE_CAPTURE,
+    MODE_LIVE,
+    MODE_REPLAY,
+    MODES,
+    build_client,
+)
 from .credentials import (
     LEVEL_NEVER_KNOWN,
     LEVEL_NEVER_STORED,
@@ -118,6 +125,11 @@ __all__ = [
     "TransportSignatureError",
     "adapters",
     "credential_kinds",
+    "MODES",
+    "MODE_CAPTURE",
+    "MODE_LIVE",
+    "MODE_REPLAY",
+    "build_client",
     "decode_response",
     "export_set",
     "import_set",
