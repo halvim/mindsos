@@ -5,14 +5,30 @@
 
 ⚠ **Accepted names the DECISION, not the build.** Slice 1 (the relocation, the
 credential seam, the Anthropic adapter, the runtime registry, recorded-set
-export/import) is in the tree. **Slices 2–5 are NOT built**: L0 credential
-custody, credential level 3 (which needs a hosted adapter — the Anthropic-direct
-wire has no expiring credential), the level-2 broker contract plus a reference
-broker, and the `verify_transport` properties. Implementation state lives in
-`STATE.json` (`pending_designs` → `core-mindsos-llm-communication`, and
-`recent[0]`), never here — this repo has no `status:`/`implemented:` split yet,
-and that split is itself an open core item. **Slice 2 opens with a question this
-ADR does not answer: which layer owns the L2 pointer to a recorded set.**
+export/import) is in the tree. **Slice 5 is now in the tree too** — `511b999`
+(PR #202), tag `llm-capability-contract-confirmed`, gate 5003/11/1x/0.
+**Slices 2 and 4 are NOT built**; **slice 3 is DEFERRED** with a named re-open
+trigger, because level 3 is a property of the ADAPTER and core ships one adapter
+declaring level 1 only (`core-llm-level-3-awaits-a-hosted-adapter`). The slice
+order is now **5 → 2 → 4 → 3** (owner ruling 2026-09-05).
+
+⚠ **THE DEFINITION OF DONE IS NOT THIS SLICE LIST.** Owner ruling 2026-09-05:
+"complete" for `mindsos_llm` means the nine-row pass/fail table in
+`docs/usage/runtime/llm-capability-contract.md` — what a consuming project can
+do with `pip install mindsos-runtime` and no change to core, each row naming the
+module that answers it and the guard that pins it. All nine are green at
+`511b999`.
+
+Implementation state lives in `STATE.json` (`pending_designs` →
+`core-mindsos-llm-communication`, and `recent`), never here — this repo has no
+`status:`/`implemented:` split yet, and that split is itself an open core item.
+
+⚠ **CORRECTED 2026-09-05: this ADR used to say slice 2 opens with the question
+of which layer owns the L2 pointer to a recorded set. It does not.** L0
+credential custody and a recorded-set pointer share nothing but the word "L2",
+and §7.2 of the CR already rules that L2 Local holds the pointer — only *which
+layer writes it* is open. Refiled as `core-llm-recorded-set-l2-pointer-owner`;
+it does **not** gate slice 2.
 
 Supersedes the
 placement half of the `mindsos_capacity/llm` package docstring, whose own

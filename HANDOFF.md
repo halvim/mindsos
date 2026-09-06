@@ -263,10 +263,23 @@ Global); **L3**'s `comprehension_v0.build_reader` is the reading capacity —
 `mindsos_llm` never imports `mindsos_server` (ADR-0010 §I-S1), so the module
 that makes the call cannot read the store the credential came from.
 
-Slices 2–5 remain: L0 custody, credential level 3 (a hosted adapter — the
-Anthropic-direct wire has no expiring credential), the level-2 broker contract
-plus a reference broker, and the `verify_transport` properties. **Slice 2 opens
-with an open question: which layer owns the L2 pointer to a recorded set.**
+**Slice 5 shipped 2026-09-05** — `511b999` (PR #202), tag
+`llm-capability-contract-confirmed`, gate 5003/11/1x/0: the published
+`verify_transport` harness now runs against the **shipped** Anthropic adapter on
+the **default opener path**, and `credential_not_retained_on_the_composed_request`
+is named unverifiable per ADR-0210 §5. Order is now **5 → 2 → 4 → 3**.
+
+⚠ **The definition of done is `docs/usage/runtime/llm-capability-contract.md`**,
+a nine-row pass/fail table of what a consuming project can do with
+`pip install mindsos-runtime` and no change to core — not the CR's slice list.
+All nine green at `511b999`.
+
+**Slice 2 (L0 custody) is next and is NOT blocked.** ⚠ The line that used to
+stand here — *"slice 2 opens with an open question: which layer owns the L2
+pointer"* — was wrong: that question is refiled as
+`core-llm-recorded-set-l2-pointer-owner` and gates nothing. Slice 4 (the level-2
+broker plus its reference broker) follows; **slice 3 is deferred** on the named
+trigger in `core-llm-level-3-awaits-a-hosted-adapter`.
 
 Full record: `confirmation_docs/CORE_CR_MINDSOS_LLM.md`,
 `docs/decisions/adr/0210-llm-communication-layering.md`, and `STATE.recent[0]`

@@ -505,12 +505,34 @@ pre-call refresh, 401-is-a-failure, and the guards pinning both.
 **Slice 4 — level 2.** The broker contract, versioned, plus a reference
 broker. The largest slice and the only one others implement against.
 
-**Slice 5 — `verify_transport` properties.** No free-text fallback; a schema
-declaring no top-level `properties` refuses loudly rather than refusing every
-reply; unasked top-level keys refused, never stripped. Plus the
-`unverifiable` entry from §5. **The core gate runs the harness against the
-real shipped adapter with the network stubbed**, which no committed gate
-anywhere has ever done.
+**Slice 5 — `verify_transport` properties. ✅ SHIPPED `511b999` (PR #202), tag
+`llm-capability-contract-confirmed`, gate 5003/11/1x/0.**
+
+⚠ **THE PARAGRAPH THAT USED TO STAND HERE WAS STALE, AND IT COST A LANE A WRONG
+PLAN.** It listed three unbuilt properties — no free-text fallback; a schema
+declaring no top-level `properties` refuses loudly; unasked top-level keys
+refused, never stripped. **All three shipped in slice 1b and all three were
+guarded** (`TransportSchemaRequired`; `declared_properties` raising;
+`refuse_unasked_keys` + `TransportUnaskedKeys`; guards
+`test_a_call_with_no_schema_raises_instead_of_falling_back_to_free_text`,
+`test_a_schema_declaring_no_properties_RAISES_rather_than_refusing_every_reply`,
+`test_an_unasked_TOP_LEVEL_key_is_REFUSED_and_never_stripped`). This text
+predated 1b and was never corrected; a 2026-09-05 lane sized the slice from it
+before grepping. **Never size a slice from this document's prose — grep the
+tree.**
+
+**What slice 5 actually was, and what shipped:**
+
+1. `credential_not_retained_on_the_composed_request` added to
+   `UNVERIFIABLE_PROPERTIES` per §5 (four entries → five).
+2. `tests/llm_seam/test_contract_against_the_shipped_adapter.py` — the published
+   harness runs against `adapters.anthropic`, **on the DEFAULT opener path**.
+   ⚠ **The stub goes at `urllib.request.urlopen`, never the `opener` kwarg**:
+   passing `opener=` re-runs the configuration round four was found in, and
+   `test_adapter_and_seam_guards.py` says so in its own banner.
+
+⚠ **This did NOT close `dr-transport-never-watched-a-real-provider-failure`.**
+The guard stubs the network; nothing has watched a real provider fail.
 
 ---
 
