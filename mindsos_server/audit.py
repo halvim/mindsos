@@ -148,6 +148,20 @@ EVT_SKILL_UNINSTALLED = "EVT_SKILL_UNINSTALLED"
 #:     reasons: list[str] }``
 EVT_SKILL_INSTALL_REJECTED = "EVT_SKILL_INSTALL_REJECTED"
 
+#: A user's stored LLM credential was RESOLVED for a session (ADR-0210
+#: slice 2, gated on ``CAN_USE_LLM_CREDENTIAL``).
+#:
+#: ⚠ **The spec's FIELDS are deliberately absent.** The stored value is a
+#: pointer, not a secret — but an environment-variable name, a keychain
+#: item or a file path is a fingerprint of the deployment, and this table
+#: is the one an operator hands to an auditor. What is recorded is which
+#: SOURCE was used (``credential_kind``), never where that source points.
+#:
+#: ``extra_json`` shape:
+#: ``{ vendor_id: str, credential_level: int, mode: str,
+#:     credential_kind: str }``
+EVT_LLM_CREDENTIAL_RELEASED = "EVT_LLM_CREDENTIAL_RELEASED"
+
 # Promotion + release events (Phase 24 — ADR-0118 + ADR-0114 + ADR-0115).
 #
 # Phase 24 design log PB-11(a) shrank PIVOT §7.6's 8-event slate to 4
@@ -247,6 +261,8 @@ ALL_AUDIT_EVENTS: tuple[str, ...] = (
     EVT_SKILL_INSTALLED,
     EVT_SKILL_UNINSTALLED,
     EVT_SKILL_INSTALL_REJECTED,
+    # ADR-0210 slice 2 — L0 credential custody.
+    EVT_LLM_CREDENTIAL_RELEASED,
 )
 
 
