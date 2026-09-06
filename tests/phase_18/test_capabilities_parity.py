@@ -24,6 +24,7 @@ from mindsos_server.capabilities import (
     CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
     CAN_READ_OTHER_LOCALS,
     CAN_UNINSTALL_SKILL,
+    CAN_USE_LLM_CREDENTIAL,
     CAN_VIEW_AUDIT_LOG,
     CAN_WRITE_GLOBAL,
     USER_CAPS,
@@ -38,8 +39,16 @@ class TestRosterPerADR0002:
         # CAN_APPROVE_RELEASE; roster 7 → 9. Phase 44 L2-39 added
         # CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY; roster 9 → 10.
         # Phase 50 ADR-0183 added CAN_INSTALL_SKILL +
-        # CAN_UNINSTALL_SKILL; roster 10 → 12.
-        assert len(ALL_CAPABILITIES) == 12
+        # CAN_UNINSTALL_SKILL; roster 10 → 12. ADR-0210 slice 2 added
+        # CAN_USE_LLM_CREDENTIAL; roster 12 → 13.
+        #
+        # ⚠ This literal and the set below are the ONLY mechanical
+        # inverse the roster has: measured 2026-09-06, NOTHING in this
+        # repo parametrizes over ALL_CAPABILITIES, ADMIN_CAPS or
+        # USER_CAPS, so a capability added without editing this file
+        # adds no test and silences nothing — it simply is not checked.
+        # Keep both, and keep them literal.
+        assert len(ALL_CAPABILITIES) == 13
 
     def test_all_capabilities_listed(self) -> None:
         assert set(ALL_CAPABILITIES) == {
@@ -55,6 +64,7 @@ class TestRosterPerADR0002:
             CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,  # Phase 44 +L2-39
             CAN_INSTALL_SKILL,       # Phase 50 +ADR-0183
             CAN_UNINSTALL_SKILL,     # Phase 50 +ADR-0183
+            CAN_USE_LLM_CREDENTIAL,  # ADR-0210 slice 2
         }
 
 
@@ -86,14 +96,30 @@ class TestBundlesPerPB12:
     """
 
     def test_user_caps_are_the_skill_lifecycle_pair(self) -> None:
+        """⚠ No longer only the pair — ADR-0210 slice 2 added a third.
+
+        The name is kept so the test id does not churn; the claim it
+        actually carries is *``USER_CAPS`` is exactly this enumerated
+        set*, which is what stops a capability drifting into every
+        user's bundle unannounced.
+        """
         assert USER_CAPS == frozenset(
-            {CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL}
+            {CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL, CAN_USE_LLM_CREDENTIAL}
         )
 
     def test_user_caps_hold_no_write_or_admin_capability(self) -> None:
-        """The point of §am-3: install, and nothing else."""
+        """Every user-default capability acts on the holder's OWN realm.
+
+        §am-3 used to phrase this as "install, and nothing else"; a
+        third member makes that wording false without making the claim
+        false. The claim is the one in this test's name: nothing here
+        reaches another user or the Global scope.
+        """
         assert CAN_WRITE_GLOBAL not in USER_CAPS
-        assert not (USER_CAPS - {CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL})
+        assert not (
+            USER_CAPS
+            - {CAN_INSTALL_SKILL, CAN_UNINSTALL_SKILL, CAN_USE_LLM_CREDENTIAL}
+        )
 
     def test_admin_caps_all(self) -> None:
         assert ADMIN_CAPS == frozenset(ALL_CAPABILITIES)
