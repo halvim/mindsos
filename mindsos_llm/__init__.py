@@ -69,6 +69,7 @@ from __future__ import annotations
 __version__ = "0.0.0+phase50"
 
 from . import adapters
+from . import credential_kinds
 from .contract import TransportReport, verify_transport
 from .credentials import (
     LEVEL_NEVER_KNOWN,
@@ -116,6 +117,7 @@ __all__ = [
     "TransportReport",
     "TransportSignatureError",
     "adapters",
+    "credential_kinds",
     "decode_response",
     "export_set",
     "import_set",
