@@ -27,7 +27,9 @@ class TestSchemaVersion:
         # Phase 21: bumped 2 → 3 (idx_audit_target).
         # Phase 24: bumped 3 → 4 (pending_mutations + releases tables
         # per ADR-0114 §1+§2).
-        assert _SCHEMA_VERSION == 4
+        # ADR-0210 slice 2: bumped 4 → 5 (llm_config — L0 credential
+        # custody). ⚠ Not a numbered phase; core_version stays phase50.
+        assert _SCHEMA_VERSION == 5
 
 
 class TestWalPragma:
