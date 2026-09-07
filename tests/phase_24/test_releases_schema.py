@@ -74,13 +74,21 @@ def test_releases_indexes_exist(tmp_server_db):
     assert "idx_releases_parent" in names
 
 
-def test_schema_version_is_4(tmp_server_db):
-    """_SCHEMA_VERSION bumped to 4 at Phase 24."""
+def test_schema_version_at_least_phase_24_baseline(tmp_server_db):
+    """Phase 24's baseline was v4; later slices may bump (ADR-0210 → v5).
+
+    The original assertion ``== 4`` decayed the moment a later ship bumped
+    the ladder, exactly as ``tests/phase_22/test_no_schema_bump.py``'s
+    ``== 3`` did at Phase 24. Phase 24's load-bearing claim was never "the
+    schema is at 4" — it was "a migrated DB reached the version that ships
+    ``releases`` + ``pending_mutations``", and the tables' own tests above
+    check they are there. Monotonic is the honest domain.
+    """
     cur = tmp_server_db.execute(
         "SELECT version FROM schema_version WHERE key='schema_version'"
     )
     row = cur.fetchone()
-    assert row[0] == 4
+    assert row[0] >= 4
 
 
 def test_releases_v1_v2_columns_null_at_default(seeded_admin):

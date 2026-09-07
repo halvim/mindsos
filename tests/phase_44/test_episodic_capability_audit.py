@@ -36,7 +36,7 @@ def test_capability_in_roster_and_admin_bundle() -> None:
     assert CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY in ALL_CAPABILITIES
     assert CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY in ADMIN_CAPS
     # Phase 50 (ADR-0183) added CAN_INSTALL_SKILL + CAN_UNINSTALL_SKILL.
-    assert len(ALL_CAPABILITIES) == 12
+    assert len(ALL_CAPABILITIES) == 13
 
 
 def test_capability_default_deny_for_users() -> None:

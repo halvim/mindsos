@@ -1,7 +1,7 @@
 """
 Capability roster for the Server Layer.
 
-The canonical seven capability constants per ADR-0002 + ADR-0010 +
+The capability roster per ADR-0002 + ADR-0010 +
 ADR-0046, locked at Phase 18 per PB-4 (UPPER casing) + PB-12 (strict
 ADR-0002 roster; Proposed-status caps from ADR-0118 / ADR-0137 wait
 for their Accept-flip phase).
@@ -104,6 +104,24 @@ CAN_INSTALL_SKILL = "CAN_INSTALL_SKILL"
 #: remove it.
 CAN_UNINSTALL_SKILL = "CAN_UNINSTALL_SKILL"
 
+#: Cause this session's own stored LLM credential to be RESOLVED — the
+#: gate on :func:`mindsos_server.llm_custody.release_credential`
+#: (ADR-0210 slice 2). Held by ordinary users, on the
+#: ``CAN_INSTALL_SKILL`` precedent: a principal acts on their own realm,
+#: and the point of a capability here is that it can be WITHHELD.
+#:
+#: ⚠ **What it gates is the resolution, not the storage.** Setting a
+#: vendor, level, mode and credential spec needs no capability — those
+#: verbs are keyed by ``session.user_id`` and reach no other user by
+#: construction, which is a stronger guarantee than a check. This one
+#: gates the moment a stored POINTER is turned into a live credential,
+#: because that is the moment worth being able to refuse and the moment
+#: worth an audit row.
+#:
+#: An admin withholding it leaves the user configured and unable to
+#: read — a deliberate, visible state, not a silent failure.
+CAN_USE_LLM_CREDENTIAL = "CAN_USE_LLM_CREDENTIAL"
+
 
 #: User default capability bundle. Empty from v1 through Phase 50 per
 #: ADR-0002 + Phase 18 PB-12; **CORE-C2R1 (ADR-0002 §am-3) adds the two
@@ -115,10 +133,16 @@ CAN_UNINSTALL_SKILL = "CAN_UNINSTALL_SKILL"
 #: "global"``. A user therefore installs Local and an admin promotes.
 #: Proposed-status caps from ADR-0137 add here at their Accept-flip
 #: phase, not before.
+#:
+#: **ADR-0210 slice 2 adds a third**, ``CAN_USE_LLM_CREDENTIAL``, on the
+#: same reasoning: a user resolves their OWN credential, so the default
+#: is held rather than withheld, and the value of the capability is that
+#: an admin can take it away.
 USER_CAPS: frozenset[str] = frozenset(
     {
         CAN_INSTALL_SKILL,
         CAN_UNINSTALL_SKILL,
+        CAN_USE_LLM_CREDENTIAL,
     }
 )
 
@@ -126,8 +150,9 @@ USER_CAPS: frozenset[str] = frozenset(
 #: §am2 (Phase 24 ship; +CAN_PROPOSE_MUTATION + CAN_APPROVE_RELEASE per
 #: PB-23(a)) + Phase 44 (+CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY per
 #: L2-39) + Phase 50 (+CAN_INSTALL_SKILL + CAN_UNINSTALL_SKILL per
-#: ADR-0183). ``CAN_READ_PENDING_GLOBAL`` deferred to first direct-read
-#: consumer phase per PB-23(a).
+#: ADR-0183) + ADR-0210 slice 2 (+CAN_USE_LLM_CREDENTIAL). Thirteen.
+#: ``CAN_READ_PENDING_GLOBAL`` deferred to first direct-read consumer
+#: phase per PB-23(a).
 ADMIN_CAPS: frozenset[str] = frozenset(
     {
         CAN_READ_OTHER_LOCALS,
@@ -142,6 +167,7 @@ ADMIN_CAPS: frozenset[str] = frozenset(
         CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
         CAN_INSTALL_SKILL,
         CAN_UNINSTALL_SKILL,
+        CAN_USE_LLM_CREDENTIAL,
     }
 )
 
@@ -163,4 +189,5 @@ ALL_CAPABILITIES: tuple[str, ...] = (
     CAN_READ_OTHER_LOCAL_EPISODIC_MEMORY,
     CAN_INSTALL_SKILL,
     CAN_UNINSTALL_SKILL,
+    CAN_USE_LLM_CREDENTIAL,
 )

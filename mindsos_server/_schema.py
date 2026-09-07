@@ -42,8 +42,12 @@ import sqlite3
 #: ADR-0114 §1+§2+§am3 for admin-direct ATOM promotion + release
 #: lifecycle; CHECK constraints enforce v1 narrow scope —
 #: ``mutation_type IN ('PROMOTION')`` + ``status IN ('SHIPPED',
-#: 'FAILED')``).
-_SCHEMA_VERSION: int = 4
+#: 'FAILED')``). ADR-0210 slice 2 = 5 (adds ``llm_config`` — one row per
+#: user holding that user's vendor id, credential level, mode and a
+#: credential resolver SPEC). ⚠ **The first bump that is not a numbered
+#: phase**: ``core_version`` stays ``phase50`` per CR decision 12, so a
+#: reader who expects version-to-phase parity here will not find it.
+_SCHEMA_VERSION: int = 5
 
 
 # ---------------------------------------------------------------------------
@@ -338,6 +342,70 @@ _DDL_PENDING_MUTATIONS_INDEXES = [
 
 
 # ---------------------------------------------------------------------------
+# DDL — schema v5 (ADR-0210 slice 2) — L0 credential custody
+# ---------------------------------------------------------------------------
+
+#: ``llm_config`` — one row per user, per ADR-0210 decisions 5, 6 and 7.
+#:
+#: **What this table holds is a POINTER, never a secret.** Level 1 means the
+#: credential is never STORED: it lives in the user's keychain or environment
+#: and MindsOS holds it for the duration of one request. What is stored here is
+#: the *way to get it* — a resolver spec — which is why the column below is
+#: named ``credential_spec_json`` and not anything with "key" in it. A row that
+#: ever holds a credential value is a defect, not a configuration.
+#:
+#: Columns:
+#:
+#: * ``user_id`` — PK **and** the only access path. One user, one model
+#:   configuration; the client is per session (decision 7) and a session has
+#:   exactly one user.
+#: * ``vendor_id`` — the stored choice resolved at call time through
+#:   ``mindsos_llm.adapters`` (decision 3). Deliberately **not** FK'd or
+#:   CHECK-constrained against a vendor list: the registry is runtime data and
+#:   a DDL constraint would freeze at migration time the very thing decision 3
+#:   made late-bound. An unregistered id raises ``UnknownVendor`` loudly at
+#:   client construction, which is the designed failure.
+#: * ``credential_level`` — 1/2/3 per ADR-0210 §4, recorded because it
+#:   determines how reproducible the answer is (decision 6). CHECK-constrained
+#:   because the level set is closed by the ADR, unlike the vendor set.
+#: * ``mode`` — live / capture / replay, stamped on every answer (decision 5).
+#:   "A mode chosen in code is a mode nothing records."
+#: * ``credential_kind`` — the registered kind id (``env`` is the one core
+#:   ships). **This is the discriminator L0 reads**, and it is a column rather
+#:   than a JSON field precisely so the boundary is visible in the schema: L0
+#:   dispatches on this and opens nothing else.
+#: * ``credential_spec_json`` — the kind's OWN fields, a JSON object. **L0
+#:   never interprets it.** It is handed to the registered kind, which
+#:   validates it when it is set and builds a resolver from it at call time.
+#:   Splitting the kind out of the JSON also removes the duplicate-source
+#:   problem a ``{"kind": ...}`` key inside the blob would have created.
+#: * ``updated_at`` — TEXT ISO-8601 UTC ms per PB-35, as everywhere else.
+#:
+#: ⚠ **``ON DELETE CASCADE``, and it is the OPPOSITE of ``audit``'s choice.**
+#: Audit rows carry no FK because they MUST outlive their subjects (ADR-0013
+#: §Consequences). A credential pointer must NOT: it names a place a secret
+#: lives, and a hard-deleted user's row surviving would leave that name behind
+#: with no one to own it. :func:`mindsos_server.admin.hard_delete_user` deletes
+#: only from ``users`` and relies on the cascade, exactly as ``sessions`` does.
+#:
+#: **No index, deliberately.** The primary key IS the access path — every read
+#: and every write is one row by ``user_id``. An index on a covered column is
+#: drift, and this file has a comment budget for justifying indexes, not for
+#: apologising for them.
+_DDL_LLM_CONFIG = """
+CREATE TABLE IF NOT EXISTS llm_config (
+    user_id               TEXT PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
+    vendor_id             TEXT NOT NULL,
+    credential_level      INTEGER NOT NULL CHECK (credential_level IN (1, 2, 3)),
+    mode                  TEXT NOT NULL CHECK (mode IN ('live', 'capture', 'replay')),
+    credential_kind       TEXT NOT NULL,
+    credential_spec_json  TEXT NOT NULL,
+    updated_at            TEXT NOT NULL
+)
+"""
+
+
+# ---------------------------------------------------------------------------
 # Migration framework
 # ---------------------------------------------------------------------------
 
@@ -431,6 +499,26 @@ def init_or_migrate(conn: sqlite3.Connection) -> int:
         _write_version(conn, 4)
         conn.commit()
         current = 4
+
+    # v4 → v5: ship the ADR-0210 slice 2 ``llm_config`` table — L0 credential
+    # custody. One row per user: vendor id, credential level, mode, and the
+    # credential resolver SPEC (a pointer to where a credential lives, never
+    # a credential).
+    #
+    # No data migration needed — the table starts empty and every existing
+    # row in every other table is untouched. **A user with no row here has
+    # not configured a model, which is a normal state and not an error**:
+    # core acquires no vendor, no credential and no network by shipping this
+    # table, which is the same property ADR-0210 asserts everywhere else.
+    #
+    # ⚠ This is the first bump driven by a SLICE rather than a numbered
+    # phase. The ladder is still append-only and still forward-only; only the
+    # naming of the reason changed.
+    if current < 5:
+        conn.execute(_DDL_LLM_CONFIG)
+        _write_version(conn, 5)
+        conn.commit()
+        current = 5
 
     return current
 

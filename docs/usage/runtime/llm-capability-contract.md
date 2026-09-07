@@ -23,27 +23,29 @@ it in the same commit.
 | 4 | Make a live call and get a classified refusal, never an exception carrying the customer's material | `live.LiveLLM`, `seam` exception family | `tests/llm_seam/test_llm_client.py` | **PASS** |
 | 5 | Record what it called and replay it later with no credential and no network | `recording.RecordingStore`, `replay.RecordedLLM` | `tests/llm_seam/test_recording_and_replay.py` | **PASS** |
 | 6 | Export a recorded set and have a third party replay it — including the refusal when the set holds two model identities | `recorded_sets` | `tests/llm_seam/test_recorded_set_export.py` | **PASS** |
-| 7 | Verify its own transport against the contract, and be told **by name** which properties core cannot verify | `contract.verify_transport`, `contract.UNVERIFIABLE_PROPERTIES` | `tests/llm_seam/test_transport_contract.py` | **PARTIAL** — ADR-0210 §5 names `credential_not_retained_on_the_composed_request` as unverifiable; it is not in the tuple |
+| 7 | Verify its own transport against the contract, and be told **by name** which properties core cannot verify | `contract.verify_transport`, `contract.UNVERIFIABLE_PROPERTIES` | `tests/llm_seam/test_transport_contract.py`, `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** — `credential_not_retained_on_the_composed_request` is the fifth entry in the tuple per ADR-0210 §5 (`511b999`) |
 | 8 | Do all of the above without core acquiring a network dependency, a credential, or a vendor SDK | `pyproject.toml` declares none; `adapters/anthropic.py` is `urllib` only | `tests/phase_28/test_import_isolation_phase_28.py`, `tests/llm_seam/test_import_isolation_mindsos_llm.py` | **PASS** |
-| 9 | Trust that core proved **its own shipped adapter** against the contract it publishes | — | — | **FAIL** |
+| 9 | Trust that core proved **its own shipped adapter** against the contract it publishes | `contract.verify_transport` against `adapters.anthropic.build_transport` | `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** |
 
-## Row 9, which is the one that matters
+## Row 9, and how it was closed
 
 `verify_transport` is the harness core hands a consumer to check *their*
-transport. `tests/llm_seam/test_transport_contract.py` never mentions
-`adapters` or `build_transport`: core publishes a contract and has only ever
-pointed it at test doubles. A project adopting `mindsos_llm` inherits an
-adapter no contract check has been aimed at.
+transport. Until `511b999`, `tests/llm_seam/test_transport_contract.py` never
+mentioned `adapters` or `build_transport`: core published a contract, shipped
+one wire implementation, and pointed the first at the second nowhere. A project
+adopting `mindsos_llm` inherited an adapter no contract check had been aimed at.
 
-⚠ **And the guards that do cover the adapter say so themselves.**
+⚠ **The configuration mattered as much as the check.**
 `tests/llm_seam/test_adapter_and_seam_guards.py` opens with *"Every guard
-injects an opener, so none of them exercises the DEFAULT opener."* That is
-round four of the credential review, recorded in the file and still standing:
-a property asserted only in the configuration where it holds.
+injects an opener, so none of them exercises the DEFAULT opener."* That is round
+four of the credential review, and a check that closed row 9 by passing
+`opener=` would have re-run it. So
+`tests/llm_seam/test_contract_against_the_shipped_adapter.py` stubs
+`urllib.request.urlopen` instead and calls `build_transport` with no `opener`,
+which is the path a deployment actually takes.
 
-Closing row 9 means running `verify_transport` against
-`adapters.anthropic.build_transport(...)` with the network stubbed at the
-default opener — the configuration every existing guard steps around.
+⚠ **This did not close `dr-transport-never-watched-a-real-provider-failure`.**
+The guard stubs the network. Nothing has watched a real provider fail.
 
 ## What this document does NOT claim
 
@@ -53,4 +55,7 @@ default opener — the configuration every existing guard steps around.
   ships one adapter, `SUPPORTED_LEVELS = (LEVEL_NEVER_STORED,)`. A level is
   reachable when an adapter that serves it exists, not when core declares it.
 - L0 credential custody (which user, which vendor, which mode) is **not**
-  here. It is the next slice, and no row above depends on it.
+  here, and gets no row. Every row above is something a consuming project can
+  do with `pip install mindsos-runtime` and no change to core; custody is
+  *deployment* configuration, owned by `mindsos_server` and guarded there
+  (ADR-0210 slice 2). No row above depends on it.
