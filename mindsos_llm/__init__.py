@@ -70,6 +70,10 @@ __version__ = "0.0.0+phase50"
 
 from . import adapters
 from . import credential_kinds
+from .broker import (
+    BROKER_PROTOCOL_VERSION,
+    BrokerContractViolated,
+)
 from .contract import TransportReport, verify_transport
 from .client import (
     MODE_CAPTURE,
@@ -102,6 +106,8 @@ from .recording import RecordingStore, request_key
 from .replay import RecordedLLM
 
 __all__ = [
+    "BROKER_PROTOCOL_VERSION",
+    "BrokerContractViolated",
     "LEVELS",
     "LEVEL_NEVER_KNOWN",
     "LEVEL_NEVER_STORED",

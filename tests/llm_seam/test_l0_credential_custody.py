@@ -30,7 +30,7 @@ import pytest
 from mindsos_server import llm_custody as LC
 from mindsos_server.audit import ALL_AUDIT_EVENTS, EVT_LLM_CREDENTIAL_RELEASED
 from mindsos_llm.adapters import UnknownVendor
-from mindsos_llm.credential_kinds import UnknownCredentialKind
+from mindsos_llm.credential_kinds import CredentialLevelUnsupported, UnknownCredentialKind
 from mindsos_llm.credential_kinds.env import EnvSpecInvalid
 from mindsos_server.errors import PermissionDeniedError
 
@@ -92,7 +92,8 @@ def test_an_unconfigured_user_is_a_normal_state_not_a_broken_one(tmp_server_db, 
     [
         ({"mode": "lve"}, ValueError, "mode must be one of"),
         ({"vendor_id": "a-vendor-nobody-registered"}, UnknownVendor, ""),
-        ({"credential_level": 3}, ValueError, "serves credential levels"),
+        ({"credential_level": 3}, ValueError, "can be configured at credential"),
+        ({"credential_level": 2}, CredentialLevelUnsupported, "serves levels"),
         ({"credential_kind": "a-kind-nobody-registered"}, UnknownCredentialKind, ""),
         ({"credential_spec": {"var": "not a name"}}, EnvSpecInvalid, "portable"),
         (
@@ -101,7 +102,8 @@ def test_an_unconfigured_user_is_a_normal_state_not_a_broken_one(tmp_server_db, 
             "did not ask",
         ),
     ],
-    ids=["mode", "vendor", "level-vs-wire", "kind", "spec-shape", "spec-carries-a-secret"],
+    ids=["mode", "vendor", "level-vs-offerable", "level-vs-SOURCE", "kind",
+         "spec-shape", "spec-carries-a-secret"],
 )
 def test_a_configuration_that_cannot_work_is_refused_when_it_is_SET(
     tmp_server_db, alice, over, exc, match
@@ -129,9 +131,24 @@ def test_a_configuration_that_cannot_work_is_refused_when_it_is_SET(
       ``credential_kinds.validate`` refuses level 3 too. That one is real
       redundancy rather than a bad test: with only ``env`` and ``anthropic``
       in the tree, SOURCE and WIRE serve exactly the same levels, so the two
-      checks are separable only by the message they raise. They stop being
-      redundant the moment a kind serves a level some vendor does not — which
-      is what slice 4's broker and a hosted adapter will do.
+      checks are separable only by the message they raise.
+
+    ⚠⚠ **THAT REDUNDANCY IS OVER, AND THE ``level-vs-SOURCE`` CASE IS WHERE.**
+    Slice 4 gives the Anthropic adapter a brokered level, so
+    ``adapters.offerable_levels`` is now ``(1, 2)`` while ``env`` still serves
+    ``(1,)`` — a credential source cannot produce a level-2 credential, because
+    at level 2 there IS no credential to produce. So:
+
+    * ``level 3`` is refused by the OFFERABLE check, at ``set_llm_config``;
+    * ``level 2`` PASSES it and is refused by the SOURCE check, inside
+      ``credential_kinds.validate``.
+
+    The two now redden on different inputs and raise different classes, and the
+    mutation that came back green in slice 2 — dropping the kind check — reddens
+    the second case. ⚠ It is also, read plainly, the guard that says **L0 cannot
+    store a level-2 configuration today**: every kind refuses level 2, and a
+    broker is deliberately not a kind. That is the deferral in
+    ``core-llm-level-2-l0-custody``, pinned rather than asserted in prose.
     """
     with pytest.raises(exc, match=match or None):
         LC.set_llm_config(tmp_server_db, alice, **{**GOOD, **over})

@@ -57,6 +57,7 @@ _PACKAGES = (
     "mindsos_capacity",
     "mindsos_intelligence",
     "mindsos_llm",
+    "mindsos_broker",
     "mindsos_instances",
     "mindsos_admin",
     "mindsos_server",
@@ -177,6 +178,20 @@ EXPECTED_OUTSIDE_SERVICE_IMPORTS = {
     # expiring-credential flow, and the adapter declares that rather than
     # advertising a guarantee its wire cannot keep.
     "mindsos_llm/adapters/anthropic.py": 1,              # outside-service call: Anthropic Messages
+    # ADR-0210 slice 4. The reference credential broker: it BINDS a socket
+    # (``http.server``) and FORWARDS to the vendor (``urllib.request``), which
+    # is two surfaces in one module and therefore a count of two. It is a
+    # separate package precisely because it holds a credential — the one
+    # program here that does — and ``mindsos_llm`` may not import it
+    # (``tests/llm_seam/test_import_isolation_mindsos_llm.py``).
+    #
+    # ⚠ THE PATTERN ABOVE WAS WIDENED IN THIS SHIP to include
+    # ``http.server``. It matched only OUTBOUND reaches, so the first module in
+    # the tree to LISTEN would have been classified by a census that could not
+    # see it — the same shape as the stub with live network IO that left this
+    # file 6/6 green before the axis existed. A listening socket is an outside
+    # -service surface in both directions.
+    "mindsos_broker/reference.py": 2,                    # outside-service call: bind + the brokered forward
 }
 
 #: Outside-service CONSUMPTION — every body that reaches an injected
@@ -253,7 +268,7 @@ def test_nothing_raises_member_abort_error():
 def test_outside_service_import_census_is_exact():
     got = _census(
         r"(?:^|\n)\s*(?:import|from)\s+"
-        r"(?:falkordb|urllib|socket|http\.client|requests)\b"
+        r"(?:falkordb|urllib|socket|http\.client|http\.server|requests)\b"
     )
     assert got == EXPECTED_OUTSIDE_SERVICE_IMPORTS, (
         "a mindsos_* module reaches an outside service directly. That is a "

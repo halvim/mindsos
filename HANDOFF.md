@@ -283,10 +283,23 @@ the thirteenth capability and gates the *resolution*, not the storage.
 ⚠ **It created the first `mindsos_server` → `mindsos_llm` import**, which is
 legal and unavoidable, and is paid for by `test_L0_builds_no_transport_and_no_client`.
 
-**What remains is slice 4 (the level-2 broker plus its reference broker), then
-slice 3**, which stays deferred on the named trigger in
+**Slice 4 (credential level 2) is BUILT** — the versioned broker contract in
+`mindsos_llm/broker.py`, a second adapter entry point
+(`build_brokered_transport`, declared by `BROKERED_LEVELS` rather than by
+widening `SUPPORTED_LEVELS`), and the reference broker as a **new top-level
+package `mindsos_broker`** that `mindsos_llm` is forbidden to import. It is the
+first work in this package whose guards make a real loopback HTTP call through
+the DEFAULT opener. **L0 storage of a level-2 configuration is deliberately not
+in it** and is filed with a trigger (`core-llm-level-2-l0-custody`): every
+credential kind declares the levels its SOURCE can produce, and at level 2 there
+is no credential for a source to produce.
+
+**What remains is slice 3**, which stays deferred on the named trigger in
 `core-llm-level-3-awaits-a-hosted-adapter`. ⚠ The L2-pointer question is refiled
-as `core-llm-recorded-set-l2-pointer-owner` and gates nothing.
+as `core-llm-recorded-set-l2-pointer-owner` and gates nothing. ⚠ Slice 4 also
+found that ADR-0210 decisions 5 and 6 — *mode and credential level are stamped
+on every answer* — are **not built**; filed as
+`core-llm-answer-carries-no-mode-or-level`.
 
 Full record: `confirmation_docs/CORE_CR_MINDSOS_LLM.md`,
 `docs/decisions/adr/0210-llm-communication-layering.md`, and `STATE.recent[0]`

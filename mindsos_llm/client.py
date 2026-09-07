@@ -11,7 +11,7 @@ takes plain arguments rather than an L0 object.** ``mindsos_llm`` is a domain
 package (ADR-0010 §I-S1) and never imports ``mindsos_server``, so the module
 that makes the network call is structurally unable to read the store the
 credential came from. Naming an L0 type in this signature would end that,
-which is why the signature is four scalars and a callable.
+which is why the signature is scalars and a callable.
 
 ⚠ **This function never CALLS the resolver.** It hands the callable to the
 transport, which asks for a credential inside one request and lets the frame
@@ -25,7 +25,14 @@ so passing a resolver is refused. The refusal is the point — a resolver
 reaching this path means somebody released a credential through L0's
 capability gate and wrote an audit row for a run that never went near a
 provider. That is not harmless; it is a false entry in the record of when
-credentials were used.
+credentials were used. A broker endpoint on that path is refused for the same
+reason, one step further out: it names a service the run will never contact.
+
+**Level 2 is the one level with no resolver at all** (ADR-0210 slice 4), and
+:data:`~mindsos_llm.credentials.LEVEL_NEVER_KNOWN` is what selects the path
+here — not the presence of a broker URL. The level is what L0 stores and what
+is stamped on the answer, so it is the thing that decides; a URL is
+deployment configuration that the chosen level then requires.
 """
 
 from __future__ import annotations
@@ -33,7 +40,7 @@ from __future__ import annotations
 from typing import Any, Callable, Optional
 
 from . import adapters
-from .credentials import Resolver
+from .credentials import LEVEL_NEVER_KNOWN, Resolver
 from .live import CapturingLLM, LiveLLM
 from .recording import RecordingStore
 from .replay import RecordedLLM
@@ -69,7 +76,7 @@ class ModeRequiresStore(ValueError):
 
 
 class ReplayNeedsNoCredential(ValueError):
-    """A resolver reached the one path that answers from a file.
+    """A resolver, or a broker, reached the one path that answers from a file.
 
     See the module docstring: this is a false entry in the record of when
     credentials were released, not a harmless extra argument.
@@ -77,12 +84,22 @@ class ReplayNeedsNoCredential(ValueError):
 
 
 class CredentialLevelUnsupportedByVendor(ValueError):
-    """The stored level is one this vendor's WIRE cannot honour.
+    """The stored level is one this vendor can neither present nor broker.
 
-    The twin of ``credential_kinds.CredentialLevelUnsupported``, which asks
-    whether the SOURCE can produce such a credential. Both must hold: a
-    configuration can name a source that mints expiring tokens and a wire with
-    no way to present one.
+    Checked against ``adapters.offerable_levels`` — the union of the wire's
+    levels and the brokered ones — because a picker offers that union and a
+    stored level is only ever one of the two halves.
+    """
+
+
+class LevelTwoIsBrokered(ValueError):
+    """Level 2 means a broker holds the credential, and three things deny it.
+
+    A resolver passed at level 2 (there is nothing for MindsOS to resolve); a
+    missing broker endpoint at level 2 (the credential has nowhere to be added);
+    and a broker endpoint at any other level (the credential is already being
+    presented on the wire, so a broker in front of it would add a second one).
+    One class, three sentences: the fixes differ, and the message names which.
     """
 
 
@@ -92,6 +109,7 @@ def build_client(
     mode: str,
     resolver: Optional[Resolver] = None,
     credential_level: Optional[int] = None,
+    broker_url: Optional[str] = None,
     model_id: str,
     model_version: str,
     store: Optional[RecordingStore] = None,
@@ -106,13 +124,18 @@ def build_client(
         vendor_id: L0's stored choice, resolved through :mod:`.adapters`.
         mode: one of :data:`MODES`.
         resolver: the callable L0 released. Required for ``live`` and
-            ``capture``; **refused** for ``replay``.
+            ``capture`` at levels 1 and 3; **refused** at level 2 and for
+            ``replay``.
         credential_level: L0's stored level, checked against the vendor's
-            ``SUPPORTED_LEVELS``. Defaults to the resolver's own level.
+            ``offerable_levels``. Defaults to the resolver's own level, and is
+            therefore **required** at level 2, where there is no resolver to
+            take it from.
+        broker_url: the level-2 broker this deployment runs. Required at level
+            2, refused at every other level.
         store: the recorded set. Required for ``capture`` and ``replay``;
             refused for ``live``, because a store passed to a live client is
             silently unused and the caller meant ``capture``.
-        **transport_kwargs: passed to the adapter's ``build_transport``
+        **transport_kwargs: passed to the adapter's builder
             (``resolve_prompt``, ``tool_name``, ``tool_description``, …).
     """
     if mode not in MODES:
@@ -125,6 +148,11 @@ def build_client(
                 "releasing a credential for it writes an audit row for a "
                 "credential that was never used"
             )
+        if broker_url is not None:
+            raise ReplayNeedsNoCredential(
+                "a replay client answers from a file and contacts no broker; "
+                "naming one records a service this run will never reach"
+            )
         if store is None:
             raise ModeRequiresStore("replay needs the recorded set to replay")
         return RecordedLLM(
@@ -134,8 +162,37 @@ def build_client(
             temperature=temperature,
         )
 
-    if resolver is None:
-        raise ValueError(f"mode {mode!r} calls a provider and needs a resolver")
+    level = credential_level
+    if level is None:
+        if resolver is None:
+            raise ValueError(
+                f"mode {mode!r} calls a provider and needs either a resolver "
+                "or an explicit credential_level"
+            )
+        level = resolver.level
+
+    if level == LEVEL_NEVER_KNOWN:
+        if resolver is not None:
+            raise LevelTwoIsBrokered(
+                "level 2 means the broker holds the credential and MindsOS "
+                "never sees it; a resolver here is a credential this process "
+                "was not meant to be able to obtain"
+            )
+        if broker_url is None:
+            raise LevelTwoIsBrokered(
+                "level 2 needs the broker endpoint that adds the credential; "
+                "without one the request would reach the provider unsigned"
+            )
+    else:
+        if resolver is None:
+            raise ValueError(f"mode {mode!r} calls a provider and needs a resolver")
+        if broker_url is not None:
+            raise LevelTwoIsBrokered(
+                f"a broker endpoint is level {LEVEL_NEVER_KNOWN}; at level "
+                f"{level!r} the credential is presented on the wire, and a "
+                "broker in front of that would add a second one"
+            )
+
     if mode == MODE_CAPTURE and store is None:
         raise ModeRequiresStore("capture needs the store it captures into")
     if mode == MODE_LIVE and store is not None:
@@ -144,20 +201,28 @@ def build_client(
             "meant capture, and silently ignoring it would lose the recording"
         )
 
-    level = credential_level if credential_level is not None else resolver.level
-    serves = adapters.supported_levels(vendor_id)
+    serves = adapters.offerable_levels(vendor_id)
     if level not in serves:
         raise CredentialLevelUnsupportedByVendor(
-            f"vendor {vendor_id!r} serves credential levels {serves!r}, "
-            f"not {level!r}"
+            f"vendor {vendor_id!r} can be configured at credential levels "
+            f"{serves!r}, not {level!r}"
         )
 
-    transport: Callable[..., Any] = adapters.build_transport(
-        vendor_id,
-        resolve_credential=resolver,
-        model_id=model_id,
-        **transport_kwargs,
-    )
+    transport: Callable[..., Any]
+    if level == LEVEL_NEVER_KNOWN:
+        transport = adapters.build_brokered_transport(
+            vendor_id,
+            broker_url=broker_url,
+            model_id=model_id,
+            **transport_kwargs,
+        )
+    else:
+        transport = adapters.build_transport(
+            vendor_id,
+            resolve_credential=resolver,
+            model_id=model_id,
+            **transport_kwargs,
+        )
     live = LiveLLM(
         transport,
         model_id=model_id,
@@ -177,6 +242,7 @@ __all__ = [
     "MODE_LIVE",
     "MODE_REPLAY",
     "CredentialLevelUnsupportedByVendor",
+    "LevelTwoIsBrokered",
     "ModeRequiresStore",
     "ReplayNeedsNoCredential",
     "UnknownMode",

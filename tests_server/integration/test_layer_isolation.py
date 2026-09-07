@@ -58,6 +58,7 @@ _DOMAIN_PACKAGES = (
     "mindsos_instances",
     "mindsos_intelligence",
     "mindsos_llm",
+    "mindsos_broker",
 )
 
 # Patterns that violate I-S1: any top-level import of mindsos_server.

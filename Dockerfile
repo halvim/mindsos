@@ -162,6 +162,14 @@ COPY mindsos_intelligence ./mindsos_intelligence
 # (2026-09-02) - the image bakes source via COPY, so a package with no
 # COPY line simply is not there.
 COPY mindsos_llm ./mindsos_llm
+# ADR-0210 slice 4: NEW top-level package - `mindsos_broker/` is the
+# reference credential broker (level 2). It is a separate package on
+# purpose: it is the one program here that deliberately HOLDS a
+# credential, and `mindsos_llm` is forbidden from importing it. Same
+# BOTH-STAGES rule as the line above, for the same reason - a package
+# with no COPY is simply not in the image, and its tests become
+# collection errors on the first gate.
+COPY mindsos_broker ./mindsos_broker
 # Phase 01: doctor --self-test (workflow + compose drift checks) and
 # confirm-phase --init-notes need these static inputs at runtime.
 # Phase 03 / 04 / 04-v2 / 05a / 05b: tests/test_image_completeness.py
@@ -231,6 +239,14 @@ COPY mindsos_capacity ./mindsos_capacity
 COPY mindsos_intelligence ./mindsos_intelligence
 # ADR-0210 slice 1a: mirror of the prod-stage COPY for `mindsos_llm/`.
 COPY mindsos_llm ./mindsos_llm
+# ADR-0210 slice 4: NEW top-level package - `mindsos_broker/` is the
+# reference credential broker (level 2). It is a separate package on
+# purpose: it is the one program here that deliberately HOLDS a
+# credential, and `mindsos_llm` is forbidden from importing it. Same
+# BOTH-STAGES rule as the line above, for the same reason - a package
+# with no COPY is simply not in the image, and its tests become
+# collection errors on the first gate.
+COPY mindsos_broker ./mindsos_broker
 COPY tests ./tests
 # Phase 39: tools/ contains check_rename_state.py — Phase 39 data-state
 # detector tested by tests/phase_39/test_check_rename_state_script.py
