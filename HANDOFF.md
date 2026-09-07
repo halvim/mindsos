@@ -239,7 +239,7 @@ The L0-L3 numbered-phase rollout shipped Phase 00 → Phase 38 from 2026-05-03 t
 - **Write capacities — `consolidate:mm` + `trace:problem`** (Phase 33): first L3 write surface; KLWriteHandle stub at L2 per ADRs 0145+0146+0147.
 - **Per-flow build pattern + symmetric write contract** (Phase 34+35): ADR-0146 + ADR-0147 ship.
 
-### 2.4b `mindsos_llm` — LLM communication (ADR-0210 slice 1, `4f54f3d`, 2026-09-02)
+### 2.4b `mindsos_llm` — LLM communication (ADR-0210 slices 1, 5 and 2; `329ffa7`, 2026-09-06)
 
 **A ninth top-level package, and a reversed invariant.** Calling an external
 model is core machinery, not a project's local concern: `mindsos_llm` ships
@@ -274,12 +274,19 @@ a nine-row pass/fail table of what a consuming project can do with
 `pip install mindsos-runtime` and no change to core — not the CR's slice list.
 All nine green at `511b999`.
 
-**Slice 2 (L0 custody) is next and is NOT blocked.** ⚠ The line that used to
-stand here — *"slice 2 opens with an open question: which layer owns the L2
-pointer"* — was wrong: that question is refiled as
-`core-llm-recorded-set-l2-pointer-owner` and gates nothing. Slice 4 (the level-2
-broker plus its reference broker) follows; **slice 3 is deferred** on the named
-trigger in `core-llm-level-3-awaits-a-hosted-adapter`.
+**Slice 2 shipped 2026-09-06** — `329ffa7` (PR #203), tag
+`mindsos-llm-slice-2-confirmed`, gate 5076/11/1x/0. L0 now owns a per-user row
+(schema v5 `llm_config`) holding vendor id, credential level, mode and a
+credential **pointer** — a typed resolver spec whose kinds the deployment
+registers, with `env` as the one kind core ships. `CAN_USE_LLM_CREDENTIAL` is
+the thirteenth capability and gates the *resolution*, not the storage.
+⚠ **It created the first `mindsos_server` → `mindsos_llm` import**, which is
+legal and unavoidable, and is paid for by `test_L0_builds_no_transport_and_no_client`.
+
+**What remains is slice 4 (the level-2 broker plus its reference broker), then
+slice 3**, which stays deferred on the named trigger in
+`core-llm-level-3-awaits-a-hosted-adapter`. ⚠ The L2-pointer question is refiled
+as `core-llm-recorded-set-l2-pointer-owner` and gates nothing.
 
 Full record: `confirmation_docs/CORE_CR_MINDSOS_LLM.md`,
 `docs/decisions/adr/0210-llm-communication-layering.md`, and `STATE.recent[0]`

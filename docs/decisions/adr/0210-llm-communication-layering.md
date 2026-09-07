@@ -5,19 +5,45 @@
 
 ⚠ **Accepted names the DECISION, not the build.** Slice 1 (the relocation, the
 credential seam, the Anthropic adapter, the runtime registry, recorded-set
-export/import) is in the tree. **Slice 5 is now in the tree too** — `511b999`
-(PR #202), tag `llm-capability-contract-confirmed`, gate 5003/11/1x/0.
-**Slices 2 and 4 are NOT built**; **slice 3 is DEFERRED** with a named re-open
-trigger, because level 3 is a property of the ADAPTER and core ships one adapter
-declaring level 1 only (`core-llm-level-3-awaits-a-hosted-adapter`). The slice
-order is now **5 → 2 → 4 → 3** (owner ruling 2026-09-05).
+export/import), **slice 5** (`511b999`, PR #202, tag
+`llm-capability-contract-confirmed`, gate 5003/11/1x/0) and **slice 2** (L0
+credential custody and the per-session client — `329ffa7`, PR #203, tag
+`mindsos-llm-slice-2-confirmed`, gate 5076/11/1x/0) are all in the tree.
+**Slice 4 is NOT built**; **slice 3 is DEFERRED** with a named re-open trigger,
+because level 3 is a property of the ADAPTER and core ships one adapter
+declaring level 1 only (`core-llm-level-3-awaits-a-hosted-adapter`). What
+remains is **4, then 3**.
+
+⚠ **SLICE 2 CREATED THE FIRST `mindsos_server` → `mindsos_llm` IMPORT, and this
+ADR did not name it.** It is legal — §I-S1 forbids the domain package importing
+L0, not the reverse — and it is unavoidable: `seam.require_resolver` is an
+`isinstance` check, so whoever builds a `Resolver` imports
+`mindsos_llm.credentials`, and `mindsos_llm/__init__.py` does
+`from . import adapters`, so there is no narrow import. **Decision 2 ("L0 holds
+the choice and the credential, nothing else") is therefore held by a guard
+rather than by structure:** `test_L0_builds_no_transport_and_no_client` walks
+every module in `mindsos_server` by AST, from the filesystem, and refuses
+`build_transport` / `build_client` / `LiveLLM` / `CapturingLLM` / `RecordedLLM`.
+
+⚠ **What L0 stores for a credential (owner ruling 2026-09-05, built in slice 2):
+a TYPED RESOLVER SPEC whose KINDS THE DEPLOYMENT REGISTERS**, symmetric with
+`adapters.register`, so `git grep` answers *which credential sources can this
+deployment use*. A kind is a module exposing `KIND_ID`, `SUPPORTED_LEVELS`,
+`validate(spec)` and `build(spec) -> Resolver`; core ships exactly one, `env`.
+**The stored value is a POINTER, never a secret** — level 1 is never STORED,
+level 2 is never KNOWN, and only level 2 is "never sees it".
 
 ⚠ **THE DEFINITION OF DONE IS NOT THIS SLICE LIST.** Owner ruling 2026-09-05:
 "complete" for `mindsos_llm` means the nine-row pass/fail table in
 `docs/usage/runtime/llm-capability-contract.md` — what a consuming project can
 do with `pip install mindsos-runtime` and no change to core, each row naming the
-module that answers it and the guard that pins it. All nine are green at
-`511b999`.
+module that answers it and the guard that pins it. All nine PASS.
+
+⚠ **That table's own status column was stale from birth and is fixed at
+`36a2c59`:** rows 7 and 9 read PARTIAL and FAIL while `511b999` — the commit
+that added the document — closed both. L0 custody gets **no row**, ruled in
+slice 2: every row is what a *consumer* can do with no change to core, and
+custody is *deployment* configuration guarded in `mindsos_server`.
 
 Implementation state lives in `STATE.json` (`pending_designs` →
 `core-mindsos-llm-communication`, and `recent`), never here — this repo has no

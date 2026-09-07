@@ -494,10 +494,28 @@ a prediction; a number from memory is a guess wearing a prediction's clothes.**
 **Slice 1 (1a + 1b) is done.** Ready to tag `mindsos-llm-slice-1-confirmed`,
 which is what unblocks the second consumer.
 
-**Slice 2 — L0 custody.** Vendor id, level, mode and credential per user;
-the capability that releases them; first-run and change-vendor flows. The
-credential never enters the audit trail. Per-session client construction
-lands here (decision 7).
+**Slice 2 — L0 custody. ✅ SHIPPED `329ffa7` (PR #203), tag
+`mindsos-llm-slice-2-confirmed`, gate 5076/11/1x/0.** Vendor id, level, mode and
+a credential POINTER per user (schema v5, `llm_config`);
+`CAN_USE_LLM_CREDENTIAL` as the thirteenth capability; the credential-kind
+registry with `env` as the one reference kind; per-session client construction
+(decision 7). The credential never enters the audit trail — and neither do the
+kind's FIELDS, because an environment-variable name fingerprints the deployment.
+
+⚠ **THREE THINGS THIS SLICE SETTLED THAT THIS SECTION DID NOT ANTICIPATE.**
+(a) `SUPPORTED_LEVELS` now exists on BOTH sides — the adapter's says an expiring
+credential can be SENT, the kind's says one can be OBTAINED, and the pairing was
+unguarded anywhere. The two checks are **redundant today** (with only `env` and
+`anthropic`, source and wire serve the same levels) and separate the moment
+slice 4 lands. (b) **Replay resolves nothing, enforced**: a resolver on the
+replay path means a credential was released through the capability gate and an
+audit row written for a run that reached no provider. (c) **Set and get need no
+capability** — they are keyed by `session.user_id` and no verb takes a
+`user_id`, so cross-user reach is absent by construction.
+
+⚠ **§7 item 3 (the gate test session) was MOOT and was not built** — it was
+premised on the L2 pointer, which was refiled out of this slice, and
+`Session.for_testing` has shipped since Phase 18.
 
 **Slice 3 — level 3.** A hosted adapter with expiring credentials, explicit
 pre-call refresh, 401-is-a-failure, and the guards pinning both.
