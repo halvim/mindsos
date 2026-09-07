@@ -27,9 +27,16 @@ from mindsos_server._schema import (
 class TestSchemaVersion:
     def test_schema_version_constant_is_current(self) -> None:
         # Phase 21 shipped v3; Phase 24 bumped to v4 (pending_mutations +
-        # releases). init_or_migrate always migrates to the current
-        # ``_SCHEMA_VERSION`` constant.
-        assert _SCHEMA_VERSION == 4
+        # releases); ADR-0210 slice 2 bumped to v5 (llm_config).
+        # MONOTONIC, not a literal: Phase 21's claim is that the ladder
+        # moved PAST v3 and idx_audit_target came with it, which the
+        # tests below check directly. Pinning the exact current version
+        # is tests/phase_18/test_db_schema.py's job, and duplicating it
+        # here only produced four decayed assertions - the same decay
+        # tests/phase_22/test_no_schema_bump.py already records having
+        # gone through at Phase 24. The three row reads below compare
+        # against the CONSTANT, the way tests/phase_19 was generalized.
+        assert _SCHEMA_VERSION >= 4
 
     def test_fresh_install_lands_at_current(self, tmp_server_db_path) -> None:
         with open_db(tmp_server_db_path) as conn:
@@ -38,7 +45,7 @@ class TestSchemaVersion:
                 "SELECT version FROM schema_version WHERE key = ?",
                 ("schema_version",),
             ).fetchone()
-            assert int(row[0]) == 4
+            assert int(row[0]) == _SCHEMA_VERSION
 
 
 class TestIdxAuditTarget:
@@ -90,7 +97,7 @@ class TestIdempotency:
                 "SELECT version FROM schema_version WHERE key = ?",
                 ("schema_version",),
             ).fetchone()
-            assert int(row[0]) == 4
+            assert int(row[0]) == _SCHEMA_VERSION
 
     def test_index_creation_idempotent(
         self, tmp_server_db
@@ -134,7 +141,7 @@ class TestMigrationFromV2:
                 "SELECT version FROM schema_version WHERE key = ?",
                 ("schema_version",),
             ).fetchone()
-            assert int(row[0]) == 4
+            assert int(row[0]) == _SCHEMA_VERSION
 
             idx_rows = conn.execute(
                 "SELECT name FROM sqlite_master "
