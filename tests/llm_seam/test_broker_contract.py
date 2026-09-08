@@ -48,7 +48,7 @@ from mindsos_llm.broker import (
     require_broker_endpoint,
     verify_broker_response,
 )
-from mindsos_llm.credentials import LEVEL_NEVER_KNOWN, LEVEL_NEVER_STORED
+from mindsos_llm.credentials import LEVEL_NEVER_KNOWN, LEVEL_NEVER_STORED, static_resolver
 from mindsos_llm.seam import UNREACHABLE, TransportCallFailed
 from mindsos_broker.reference import BrokerConfig, serve
 
@@ -342,8 +342,22 @@ def test_a_vendor_with_no_broker_is_refused_by_NAME_not_by_AttributeError(restor
         adapters.build_brokered_transport("no-broker", broker_url="https://x/y")
 
 
-def test_exactly_one_of_a_resolver_or_a_broker():
-    """MUTATION: turn the exclusive-or in ``_build`` into ``or``.
+@pytest.mark.parametrize(
+    "over",
+    [
+        {"resolver": None, "broker_url": None},
+        {"resolver": static_resolver(lambda: "sk-x"), "broker_url": "https://b.example/x"},
+    ],
+    ids=["neither", "both"],
+)
+def test_exactly_one_of_a_resolver_or_a_broker(over):
+    """MUTATION: turn the exclusive-or in ``_build`` into ``and``.
+
+    ⚠ **Both doors, and the second one is why this is parametrized.** A guard
+    that only supplied NEITHER would stay green under that mutation: the
+    neither-case still raises, and the case the mutation actually admits — both
+    supplied — is never tried. That is the two-door rule, and the mutation is
+    what exposed the single-door version of this test.
 
     Neither would compose an unauthenticated request straight to the provider;
     both would put a credential on a request aimed at a machine never meant to
@@ -352,9 +366,9 @@ def test_exactly_one_of_a_resolver_or_a_broker():
     """
     with pytest.raises(ValueError, match="exactly one of"):
         anthropic._build(
-            resolver=None, broker_url=None, model_id="m", max_tokens=1,
-            temperature=0.0, endpoint=anthropic.ENDPOINT, opener=lambda *a, **k: None,
-            **WIRE,
+            model_id="m", max_tokens=1, temperature=0.0,
+            endpoint=anthropic.ENDPOINT, opener=lambda *a, **k: None,
+            **over, **WIRE,
         )
 
 
