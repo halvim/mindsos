@@ -154,8 +154,8 @@ def set_llm_config(
     serves = adapters.offerable_levels(vendor_id)  # raises UnknownVendor
     if credential_level not in serves:
         raise ValueError(
-            f"vendor {vendor_id!r} serves credential levels {serves!r}, "
-            f"not {credential_level!r}"
+            f"vendor {vendor_id!r} can be configured at credential levels "
+            f"{serves!r}, not {credential_level!r}"
         )
     credential_kinds.validate(
         credential_kind, credential_spec, level=credential_level
