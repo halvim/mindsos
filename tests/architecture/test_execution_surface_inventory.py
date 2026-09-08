@@ -178,7 +178,17 @@ EXPECTED_OUTSIDE_SERVICE_IMPORTS = {
     # expiring-credential flow, and the adapter declares that rather than
     # advertising a guarantee its wire cannot keep.
     "mindsos_llm/adapters/anthropic.py": 1,              # outside-service call: Anthropic Messages
-    # ADR-0210 slice 4. The reference credential broker: it BINDS a socket
+    # ADR-0210 slice 4. ⚠ NOT a reach: ``broker.py`` imports
+    # ``urllib.parse.urlsplit`` to READ a URL, and parsing a string contacts
+    # nothing. It is here because the pattern matches the PACKAGE name rather
+    # than the reaching submodule, and that coarseness is deliberate — a
+    # pattern precise enough to exempt ``urllib.parse`` is one edit away from
+    # exempting ``urllib.request``, and this census exists because a stub with
+    # live network IO once sat in this package unseen. A row that has to say
+    # "this one does not reach" costs a comment; a guard narrowed to let it
+    # through costs the axis.
+    "mindsos_llm/broker.py": 1,                          # url parsing only: NO outside-service call
+    # The reference credential broker: it BINDS a socket
     # (``http.server``) and FORWARDS to the vendor (``urllib.request``), which
     # is two surfaces in one module and therefore a count of two. It is a
     # separate package precisely because it holds a credential — the one
