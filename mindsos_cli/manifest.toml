@@ -29,6 +29,7 @@ packages = [
     "mindsos_capacity",
     "mindsos_intelligence",
     "mindsos_llm",
+    "mindsos_broker",
 ]
 
 [runtime.falkordb]

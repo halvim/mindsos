@@ -520,8 +520,92 @@ premised on the L2 pointer, which was refiled out of this slice, and
 **Slice 3 — level 3.** A hosted adapter with expiring credentials, explicit
 pre-call refresh, 401-is-a-failure, and the guards pinning both.
 
-**Slice 4 — level 2.** The broker contract, versioned, plus a reference
-broker. The largest slice and the only one others implement against.
+**Slice 4 — level 2. ✅ BUILT on `feat/llm-broker`.** The broker contract,
+versioned, plus a reference broker. The only slice others implement against.
+
+### Slice 4 as built, and the four things this prose did not say
+
+⚠ **Sized from the tree, not from this section** — which is the rule this
+document earned twice. What it said above was one sentence; each item below was
+a fork the tree forced.
+
+1. **Level 2 is NOT a widening of `SUPPORTED_LEVELS`.** That tuple is
+   documented as a promise about the provider's wire and the provider never
+   learns a broker exists, so level 2 is declared in a separate
+   `BROKERED_LEVELS` with its own entry point `build_brokered_transport`.
+   `adapters.offerable_levels` — the union — is what a picker offers and what
+   L0 validates against. ⚠ **The payoff is that every existing literal stays
+   true**: `test_the_anthropic_adapter_serves_level_1_ONLY` and the
+   `[LEVEL_NEVER_KNOWN, LEVEL_SHORT_LIVED]` refusal parametrization are
+   **unchanged and still green**, predicted in writing before the run.
+2. **The reference broker is a new top-level package `mindsos_broker`.** It is
+   the one program here that deliberately holds a credential; making it a
+   package means `mindsos_llm` cannot import it, enforced by the guard already
+   watching that package (`FORBIDDEN_ROOTS`) rather than by a new bespoke one.
+   Cost paid in full: manifest, `__version__`, `pyproject` include, **a `COPY`
+   in BOTH Dockerfile stages** (trap 1), and the six hand-listed package tuples
+   plus `_DOMAIN_PACKAGES`.
+3. **The broker endpoint rule is not `require_https`** — `https` anywhere, or
+   `http` on a loopback literal, because that hop carries no credential and
+   does carry the source text. `localhost` is refused: a name resolves.
+4. **L0 custody of a level-2 row is deferred with a trigger**
+   (`core-llm-level-2-l0-custody`), and the deferral is *pinned* by
+   `set_llm_config` refusing `level=2, kind=env` — which is also what makes
+   slice 2's two level checks stop being redundant.
+
+**Findings, each with a disposition (RULES §12.4):**
+
+* **FIXED HERE.** `EXPECTED_OUTSIDE_SERVICE_IMPORTS`' pattern matched only
+  OUTBOUND reaches (`falkordb|urllib|socket|http.client|requests`), so the
+  first module in the tree to **LISTEN** would have been classified by a census
+  structurally unable to see it — the same shape as the stub with live network
+  IO that left that file 6/6 green before the axis existed. Pattern widened to
+  include `http.server` in this ship, with the row.
+* **FIXED HERE.** `test_a_provider_mode_without_a_resolver_is_refused` was a
+  bare `pytest.raises(ValueError)` — trap 8, in a file this slice edits. It now
+  matches its message and gained the second door: a stored level with no
+  resolver is a different input reaching a different arm.
+* **FILED.** `core-llm-answer-carries-no-mode-or-level` — ADR-0210 decisions 5
+  and 6 say mode and credential level are stamped on every answer; measured,
+  neither is. Not adopted: it moves `recorded_sets`' derived manifest and
+  `contract`'s seven-field identity check, which is its own ship.
+* **WORSENED, NOT TAKEN.** `tests/_shared/sentinel_paths.py` held zero paths
+  for `mindsos_llm` at 14 modules; it now holds zero for an additional package
+  as well. Fifth instance of `dr-guard-domains-pinned-to-lists`, still unowned,
+  and still a sweep across the shape rather than a line — the same reason slice
+  2 declined it.
+
+### GATE RESULT — SLICE 4 IS GREEN (2026-09-09)
+
+> **5152 passed, 11 skipped, 1 xpassed, 0 failed** in 34:41, at `b782d7f`.
+
+**Predicted exactly**, from the branch's own two-tree collect rather than from
+any recalled number: `origin/main` (`4adca6a`) collects **5087**, the branch
+**5163**, **+76**, with the id diff non-empty in the removal direction as
+predicted — exactly one id removed (`[level-vs-wire]`, renamed) and 76 added.
+
+**26 designated mutations, ALL 26 EXACT, ZERO green findings.** Every guard's
+mutation was observed red on the box before this landed on `main`.
+
+⚠ **Two of the three first-pass misses were the fifth-practice shape** — a
+newer guard sharing an older row's claim — and the third was **the mutation
+being wrong rather than the guard**: importing `mindsos_broker` from
+`mindsos_llm/broker.py` at module level is a *circular* import, so it broke
+collection in 16 files instead of making the guard's claim false. RULES §12's
+smallest-edit rule, earned again: the claim is *no module here imports that
+package*, and a function-local import falsifies it without making the package
+unimportable.
+
+⚠ **THREE PROCESS FAILURES, recorded because each one silently certified the
+wrong thing.** A `device_commit_files` result of `written` is **not** proof the
+bytes changed — one file in a two-file call kept its old content, so `git add`
+staged nothing and the ship gated a fix that was never in the tree. A
+`git checkout --detach origin/<branch>` **without a fetch** resolves the box's
+stale remote-tracking ref — a 35-minute gate and a whole mutation run certified
+the previous commit. And the gate image **installs** the packages, so an
+edit to `/app` is invisible to `import`: patching the checkout for a mutation is
+a silent no-op that would have returned green for every row. The harness aborted
+on that one rather than reporting it.
 
 **Slice 5 — `verify_transport` properties. ✅ SHIPPED `511b999` (PR #202), tag
 `llm-capability-contract-confirmed`, gate 5003/11/1x/0.**

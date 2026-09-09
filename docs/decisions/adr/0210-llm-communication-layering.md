@@ -203,3 +203,68 @@ blindness exactly. `contract.py` already established this pattern for four
   path.
 * **A core guard asserting the credential property.** Rejected: see above —
   it would repeat round four's configuration blindness.
+
+---
+
+## Amendment 1 — level 2 as built (slice 4, 2026-09-07)
+
+**Amendment status:** Accepted. The decision above stands; this records the
+four shapes it did not fix, each settled against the tree rather than reasoned
+from this document's prose.
+
+**1. Level 2 is declared SEPARATELY from the wire's levels.** The obvious build
+— widen the Anthropic adapter's `SUPPORTED_LEVELS` to `(1, 2)` — was rejected.
+That tuple is documented as a promise about the *provider's wire*, and the
+provider never learns a broker exists; level 2 is a fact about the adapter's
+code, namely that it can compose its request without a credential. One tuple
+carrying both meanings would also have forced the resolver to become optional
+in `build_transport`, which is the one function that must never take a
+credential optionally. ⟹ `BROKERED_LEVELS` alongside `SUPPORTED_LEVELS`,
+`build_brokered_transport` alongside `build_transport`, and
+`adapters.offerable_levels` — the union — as what a picker offers and what L0
+validates a stored level against. The registry refuses an adapter that declares
+one half without the other.
+
+**2. The reference broker is a NEW TOP-LEVEL PACKAGE, `mindsos_broker`.** It is
+the one program in this tree that deliberately holds a credential, and
+`mindsos_llm` is designed to be structurally unable to. Putting it inside that
+package would have needed a bespoke guard to say nothing imports it; as a
+separate package the property is enforced by the guard already there —
+`mindsos_broker` joins `FORBIDDEN_ROOTS` in
+`tests/llm_seam/test_import_isolation_mindsos_llm.py`. The dependency runs one
+way: the broker imports the contract, the contract never imports the broker.
+
+**3. The broker endpoint rule is NOT `require_https`.** That function states its
+own reason — *"`https` rather than 'has a scheme': this request carries a
+credential."* A brokered request carries none, so the rule that applies is
+about the customer's source text leaving the machine: `https` anywhere, or
+`http` on a loopback **literal**. Not `localhost`: a name is resolved, and what
+it resolves to is not core's to promise. The broker's own *upstream* hop does
+carry the credential and keeps `require_https` unchanged.
+
+**4. L0 custody of a level-2 configuration is DEFERRED with a named trigger**
+(`core-llm-level-2-l0-custody`). `llm_config.credential_kind` is `NOT NULL`,
+every kind declares the levels its SOURCE can produce, and at level 2 there is
+no credential for a source to produce — a broker is a wrapper around an
+adapter, not a kind, and modelling it as one is what this ADR already rejects.
+So a level-2 row cannot be stored today, deliberately, and level 2 is
+configured by the deployment at client construction. Re-open when a first-run
+picker must offer it. ⚠ The deferral is *pinned rather than asserted*: the
+`level-vs-SOURCE` case in `tests/llm_seam/test_l0_credential_custody.py` is
+`set_llm_config` refusing exactly that configuration.
+
+⚠ **A FINDING AGAINST THIS ADR, MEASURED NOT RECALLED.** The Decision section
+above says *"Mode and credential level are stamped on every answer."* **They are
+not.** `LiveLLM.read` stamps `model_id`, `model_version`, `prompt_iri`,
+`prompt_version`, `temperature`, `request_key` and `recorded`, and nothing
+else; `credential_level` appears once in the tree, as an *optional supplied*
+field of `recorded_sets.export_set`'s manifest — in the module whose own rule
+is that a manifest is derived, never supplied. So decisions 5 and 6 are
+unbuilt, and the argument `credential_kinds`' docstring makes for the
+level/kind pairing check — *"the level is stamped on answers, so an unchecked
+pairing corrupts provenance"* — currently rests on a property the payload does
+not have. The line above is left standing because it is the DECISION and the
+decision is not withdrawn; the gap is filed as
+`core-llm-answer-carries-no-mode-or-level` and was **not** adopted into slice 4,
+because adding payload fields moves `recorded_sets`' derived manifest and every
+guard asserting a payload's key set — its own ship, not a rider on this one.

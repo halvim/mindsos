@@ -29,6 +29,18 @@ either:
   ``replay.RecordedLLM`` satisfies ``mindsos_capacity.context.LLMHandle``
   **structurally** (the Protocol is ``runtime_checkable``) precisely so no
   import has to cross.
+* ``mindsos_broker`` — ADR-0210 slice 4, and it is here for the OPPOSITE
+  reason to the four above. Those are layers this package must not reach
+  upward into. ``mindsos_broker`` is the reference credential broker: the
+  one program in this tree that deliberately **holds** a credential, so
+  that MindsOS never has to. This package is designed to be structurally
+  unable to hold one — L0 pushes a callable in, the header helper always
+  returns, the composed request is scrubbed in a ``finally``. An import
+  from here to there would put the credential holder back inside the
+  process the whole design keeps it out of. **Level 2's guarantee is this
+  line, not a check over it.** The dependency runs one way only: the
+  broker imports the contract in ``mindsos_llm.broker``, and the contract
+  never imports the broker.
 
 The walk is an AST walk, so a function-local import is caught too. There is
 no carve-out here and there should not be one: a body in this package that
@@ -54,6 +66,7 @@ FORBIDDEN_ROOTS = (
     "mindsos_knowledge",
     "mindsos_capacity",
     "mindsos_intelligence",
+    "mindsos_broker",
 )
 
 

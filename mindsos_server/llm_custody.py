@@ -134,8 +134,11 @@ def set_llm_config(
     checks, and they are three because a configuration can pass any two:
 
     1. the mode is one ``mindsos_llm`` serves;
-    2. the vendor is registered, and its WIRE can present a credential of this
-       level (``adapters.supported_levels``);
+    2. the vendor is registered and can be CONFIGURED at this level
+       (``adapters.offerable_levels`` — the union of the levels its wire
+       can present a credential at and the levels it serves with a broker
+       in front of it; a picker offers that union, so it is the set a
+       stored level is checked against);
     3. the credential kind is registered, its SOURCE can produce a credential
        of this level, and the spec is one that kind accepts.
 
@@ -148,11 +151,11 @@ def set_llm_config(
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES!r}, got {mode!r}")
 
-    serves = adapters.supported_levels(vendor_id)  # raises UnknownVendor
+    serves = adapters.offerable_levels(vendor_id)  # raises UnknownVendor
     if credential_level not in serves:
         raise ValueError(
-            f"vendor {vendor_id!r} serves credential levels {serves!r}, "
-            f"not {credential_level!r}"
+            f"vendor {vendor_id!r} can be configured at credential levels "
+            f"{serves!r}, not {credential_level!r}"
         )
     credential_kinds.validate(
         credential_kind, credential_spec, level=credential_level

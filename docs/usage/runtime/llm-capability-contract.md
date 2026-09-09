@@ -26,6 +26,7 @@ it in the same commit.
 | 7 | Verify its own transport against the contract, and be told **by name** which properties core cannot verify | `contract.verify_transport`, `contract.UNVERIFIABLE_PROPERTIES` | `tests/llm_seam/test_transport_contract.py`, `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** — `credential_not_retained_on_the_composed_request` is the fifth entry in the tuple per ADR-0210 §5 (`511b999`) |
 | 8 | Do all of the above without core acquiring a network dependency, a credential, or a vendor SDK | `pyproject.toml` declares none; `adapters/anthropic.py` is `urllib` only | `tests/phase_28/test_import_isolation_phase_28.py`, `tests/llm_seam/test_import_isolation_mindsos_llm.py` | **PASS** |
 | 9 | Trust that core proved **its own shipped adapter** against the contract it publishes | `contract.verify_transport` against `adapters.anthropic.build_transport` | `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** |
+| 10 | Route its calls through a **broker it runs**, so core never holds the credential at all — and run the broker core ships rather than writing one | `broker`, `adapters.build_brokered_transport`, `mindsos_broker` | `tests/llm_seam/test_broker_contract.py`, `tests/llm_seam/test_reference_broker.py` | **PASS** |
 
 ## Row 9, and how it was closed
 
@@ -47,13 +48,44 @@ which is the path a deployment actually takes.
 ⚠ **This did not close `dr-transport-never-watched-a-real-provider-failure`.**
 The guard stubs the network. Nothing has watched a real provider fail.
 
+## Row 10, and the configuration it is checked in
+
+⚠ **Slice 4's guards are the first in this package to run over a real socket
+through the DEFAULT opener.** `test_adapter_and_seam_guards.py` opens with
+*"Every guard injects an opener, so none of them exercises the DEFAULT
+opener"*; the level-2 round trip makes a genuine loopback HTTP call to the
+reference broker with no `opener=` anywhere on the MindsOS side. The opener
+that IS injected is the **broker's upstream** one — the hop *after* the
+credential is added, which is the far side of the property being claimed.
+
+The level-2 claim itself is asserted **structurally**, not by observation:
+`build_brokered_transport` has no `resolve_credential` parameter and
+`broker_headers` has no credential parameter, so there is no argument a caller
+could pass and no branch a maintainer could forget. A guard that only observed
+*"no credential header was sent this time"* would assert the property in the
+one configuration it happened to run, which is round four restated.
+
+⚠ It still does **not** close `dr-transport-never-watched-a-real-provider-failure`:
+the upstream is a stub. What is real is the hop MindsOS makes.
+
 ## What this document does NOT claim
 
 - It says nothing about extraction **quality**. Every row is structural. A
   model that returns a well-shaped wrong answer passes all nine.
-- Rows 1–8 are about level 1. Levels 2 and 3 are adapter properties: core
-  ships one adapter, `SUPPORTED_LEVELS = (LEVEL_NEVER_STORED,)`. A level is
-  reachable when an adapter that serves it exists, not when core declares it.
+- Rows 1–9 are about level 1; **row 10 is level 2** (ADR-0210 slice 4).
+  Level 3 remains an adapter property core cannot honestly offer: the shipped
+  adapter keeps `SUPPORTED_LEVELS = (LEVEL_NEVER_STORED,)` because the Messages
+  API has no expiring credential, and level 3 arrives with a hosted adapter
+  (`core-llm-level-3-awaits-a-hosted-adapter`).
+- ⚠ **Level 2 is declared separately from the wire's levels**, in
+  `BROKERED_LEVELS`, because it is a fact about the adapter's code rather than
+  about the provider — the provider never learns a broker exists. A picker
+  reads `adapters.offerable_levels`, the union.
+- Row 10 is what a consuming project can DO. **Storing a level-2 configuration
+  in `mindsos_server` is deliberately not part of it** and has no row, on the
+  same ruling that keeps L0 custody off this table: every row is what a
+  consumer can do with `pip install mindsos-runtime` and no change to core, and
+  custody is deployment configuration (`core-llm-level-2-l0-custody`).
 - L0 credential custody (which user, which vendor, which mode) is **not**
   here, and gets no row. Every row above is something a consuming project can
   do with `pip install mindsos-runtime` and no change to core; custody is

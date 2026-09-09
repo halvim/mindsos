@@ -147,11 +147,29 @@ def test_the_source_and_the_wire_answer_DIFFERENT_questions():
     read as two separate promises: the adapter's tuple says an expiring
     credential could be SENT, the kind's says one could be OBTAINED. A
     deployment can satisfy one and not the other, and only checking both
-    catches it."""
+    catches it.
+
+    ⚠ **ADR-0210 slice 4 made that concrete, and this test is where it shows.**
+    When it was written the two promises were the same tuple, so "a deployment
+    can satisfy one and not the other" was an argument rather than an
+    observation — and slice 2 measured the consequence: the designated mutation
+    dropping the WIRE check came back GREEN, because with only ``env`` and
+    ``anthropic`` in the tree SOURCE and WIRE served exactly the same levels.
+
+    Level 2 separates them, and note WHICH WAY ROUND. The adapter gains a
+    brokered level, so what a picker may offer is ``(1, 2)``. No kind gains
+    one: at level 2 there is no credential for a source to produce, because the
+    broker holds it — which is why a broker is a wrapper around an adapter and
+    never a kind. So the offerable set now strictly contains the source set,
+    and the configuration in between — level 2 with a credential kind — is
+    exactly what ``set_llm_config``'s ``level-vs-SOURCE`` case refuses.
+    """
     from mindsos_llm import adapters
 
     assert ck.supported_levels(env.KIND_ID) == (1,)
     assert adapters.supported_levels("anthropic") == (1,)
+    assert adapters.offerable_levels("anthropic") == (1, 2)
+    assert 2 not in ck.supported_levels(env.KIND_ID)
 
 
 def test_build_revalidates_rather_than_trusting_storage():

@@ -54,6 +54,7 @@ import pytest
 #: brains are subsystems and may name themselves freely.
 _PACKAGES = (
     "mindsos_admin",
+    "mindsos_broker",
     "mindsos_capacity",
     "mindsos_cli",
     "mindsos_core",

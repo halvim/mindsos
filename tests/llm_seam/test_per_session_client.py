@@ -38,6 +38,14 @@ class _CountingResolver(Resolver):
         return "sk-not-a-real-key"
 
 
+def _brokered(**over):
+    """A level-2 client: no resolver, a broker endpoint, an explicit level."""
+    kw = dict(vendor_id="anthropic", mode=C.MODE_LIVE, credential_level=2,
+              broker_url="http://127.0.0.1:8787", **MODEL, **WIRE)
+    kw.update(over)
+    return C.build_client(**kw)
+
+
 def _live(**over):
     kw = dict(vendor_id="anthropic", mode=C.MODE_LIVE, resolver=_CountingResolver(),
               **MODEL, **WIRE)
@@ -128,8 +136,28 @@ def test_live_WITH_a_store_is_refused_rather_than_ignored():
 
 
 def test_a_provider_mode_without_a_resolver_is_refused():
-    with pytest.raises(ValueError):
+    """MUTATION: drop the ``resolver is None`` arm reached with no stored level.
+
+    ⚠ The ``match`` is a correction rather than thoroughness: a bare
+    ``pytest.raises(ValueError)`` here could not tell this refusal from any
+    other ``ValueError`` raised further down — and slice 2 recorded two
+    designated mutations that came back green for exactly that reason.
+    """
+    with pytest.raises(ValueError, match="either a resolver or an explicit"):
         C.build_client(vendor_id="anthropic", mode=C.MODE_LIVE, **MODEL, **WIRE)
+
+
+def test_a_STORED_level_without_a_resolver_is_refused_too():
+    """The second door of the same requirement, and a different input.
+
+    With no stored level the refusal comes from the level-derivation arm above;
+    with one, that arm is satisfied and it is the provider arm that must
+    refuse. A configuration reaching the wire with neither a credential nor a
+    broker would compose an unsigned request to the provider.
+    """
+    with pytest.raises(ValueError, match="needs a resolver"):
+        C.build_client(vendor_id="anthropic", mode=C.MODE_LIVE, credential_level=1,
+                       **MODEL, **WIRE)
 
 
 # ---------------------------------------------------------------------------
@@ -141,10 +169,12 @@ def test_a_level_the_vendors_wire_cannot_honour_is_refused():
     """MUTATION: delete the ``level not in serves`` branch.
 
     The twin of ``credential_kinds``' check. That one asks whether the SOURCE
-    can produce such a credential; this asks whether the WIRE can present one.
-    A configuration can satisfy either alone — the Anthropic direct API has no
-    expiring-credential flow at all, so level 3 here is a promise nothing on
-    the wire keeps.
+    can produce such a credential; this asks whether the vendor can be
+    CONFIGURED at the level at all — ``offerable_levels``, the union of the
+    levels its wire can present a credential at and the levels it serves with a
+    broker in front of it. A configuration can satisfy either alone: the
+    Anthropic direct API has no expiring-credential flow, so level 3 is a
+    promise neither half keeps.
     """
     with pytest.raises(C.CredentialLevelUnsupportedByVendor):
         _live(credential_level=3)
@@ -184,3 +214,69 @@ def test_building_a_client_NEVER_asks_the_resolver_for_a_credential():
             vendor_id="anthropic", mode=mode, resolver=r, store=store, **MODEL, **WIRE
         )
         assert r.calls == 0, f"{mode} fetched the credential at construction"
+
+
+# ---------------------------------------------------------------------------
+# Level 2 — the one level with no resolver at all (ADR-0210 slice 4)
+# ---------------------------------------------------------------------------
+
+
+def test_level_2_REFUSES_a_resolver():
+    """MUTATION: drop the ``resolver is not None`` arm of the level-2 branch.
+
+    ⚠ Not a tidiness rule, and not the same refusal as replay's. Level 2 means
+    the broker holds the credential and MindsOS never sees it. A resolver here
+    is a credential this process was not meant to be ABLE to obtain — so the
+    configuration is claiming a guarantee it is simultaneously breaking, and
+    every answer recorded under it would carry a level that was not true.
+    """
+    with pytest.raises(C.LevelTwoIsBrokered, match="never sees it"):
+        _brokered(resolver=_CountingResolver())
+
+
+def test_level_2_without_a_broker_endpoint_is_refused():
+    """MUTATION: drop the ``broker_url is None`` arm.
+
+    Without one there is nowhere for the credential to be added, and the
+    request would reach the provider unsigned — a failure at the vendor, about
+    authentication, from a client that believed it was brokered.
+    """
+    with pytest.raises(C.LevelTwoIsBrokered, match="needs the broker endpoint"):
+        _brokered(broker_url=None)
+
+
+@pytest.mark.parametrize("level", [1, 3], ids=["level-1", "level-3"])
+def test_a_broker_at_any_OTHER_level_is_refused(level):
+    """The third door of the same class, and the one a two-case guard misses.
+
+    At any level but 2 the credential is presented on the wire; a broker in
+    front of that would add a second one. Parametrized over both remaining
+    levels so the check cannot be satisfied by the level-1 case alone.
+    """
+    with pytest.raises(C.LevelTwoIsBrokered, match="is level 2"):
+        _live(credential_level=level, broker_url="http://127.0.0.1:8787")
+
+
+def test_level_2_builds_a_live_client_and_asks_for_no_credential():
+    """The permitting door. ⚠ It is also the whole point of the level: the
+    client is built, it will call a provider, and nothing in this process ever
+    had a way to obtain the key."""
+    client = _brokered(resolver=None)
+    assert isinstance(client, LiveLLM)
+
+
+def test_replay_REFUSES_a_broker_too():
+    """MUTATION: drop the ``broker_url is not None`` arm of the replay branch.
+
+    The twin of ``test_replay_REFUSES_a_resolver`` one level out: a replay
+    client answers from a file and contacts nothing, so naming a broker records
+    a service this run will never reach.
+    """
+    with pytest.raises(C.ReplayNeedsNoCredential, match="contacts no broker"):
+        C.build_client(
+            vendor_id="anthropic",
+            mode=C.MODE_REPLAY,
+            broker_url="http://127.0.0.1:8787",
+            store=RecordingStore(),
+            **MODEL,
+        )
