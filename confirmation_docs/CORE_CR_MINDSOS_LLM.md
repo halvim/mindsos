@@ -575,6 +575,38 @@ a fork the tree forced.
   and still a sweep across the shape rather than a line — the same reason slice
   2 declined it.
 
+### GATE RESULT — SLICE 4 IS GREEN (2026-09-09)
+
+> **5152 passed, 11 skipped, 1 xpassed, 0 failed** in 34:41, at `b782d7f`.
+
+**Predicted exactly**, from the branch's own two-tree collect rather than from
+any recalled number: `origin/main` (`4adca6a`) collects **5087**, the branch
+**5163**, **+76**, with the id diff non-empty in the removal direction as
+predicted — exactly one id removed (`[level-vs-wire]`, renamed) and 76 added.
+
+**26 designated mutations, ALL 26 EXACT, ZERO green findings.** Every guard's
+mutation was observed red on the box before this landed on `main`.
+
+⚠ **Two of the three first-pass misses were the fifth-practice shape** — a
+newer guard sharing an older row's claim — and the third was **the mutation
+being wrong rather than the guard**: importing `mindsos_broker` from
+`mindsos_llm/broker.py` at module level is a *circular* import, so it broke
+collection in 16 files instead of making the guard's claim false. RULES §12's
+smallest-edit rule, earned again: the claim is *no module here imports that
+package*, and a function-local import falsifies it without making the package
+unimportable.
+
+⚠ **THREE PROCESS FAILURES, recorded because each one silently certified the
+wrong thing.** A `device_commit_files` result of `written` is **not** proof the
+bytes changed — one file in a two-file call kept its old content, so `git add`
+staged nothing and the ship gated a fix that was never in the tree. A
+`git checkout --detach origin/<branch>` **without a fetch** resolves the box's
+stale remote-tracking ref — a 35-minute gate and a whole mutation run certified
+the previous commit. And the gate image **installs** the packages, so an
+edit to `/app` is invisible to `import`: patching the checkout for a mutation is
+a silent no-op that would have returned green for every row. The harness aborted
+on that one rather than reporting it.
+
 **Slice 5 — `verify_transport` properties. ✅ SHIPPED `511b999` (PR #202), tag
 `llm-capability-contract-confirmed`, gate 5003/11/1x/0.**
 
