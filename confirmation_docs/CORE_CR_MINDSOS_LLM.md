@@ -709,6 +709,60 @@ predicate, not the sentence** (this document's third stale-prose finding).
   abort and an anchor-count abort are what make the table evidence. Same family
   as slice 4's three failures, in a new place.
 
+### GATE RESULT — answer provenance IS GREEN (2026-09-10)
+
+> **5168 passed, 11 skipped, 1 xpassed, 0 failed** in 34:21, at `2402525`,
+> worktree `/home/sanmyaku/mindsos-s5`, `docker compose -p mindsos-sweepc
+> --profile test run --rm --build mindsos-test pytest -q`.
+> **RULES §7 CLI check: 256** `test_cli` from the branch collect.
+
+⚠ **The summary alone was not accepted as green.** The gate box's own
+verification lines scrolled off — this terminal returns only the last line or
+two — so `GATED_HEAD`, the CLI count and `FAILED=0` were re-asked in a separate
+box before the ship was called green. A summary with no confirmation of *which
+commit produced it* is the shape that cost slice 4 thirty-five minutes.
+
+**DELTA: EXACT IN BOTH DIRECTIONS.** Predicted **+16 with zero ids removed**,
+in writing, before the run. Two-tree collected-id diff, `--build` on both legs,
+`--no-deps`: `origin/main` (`b539595`) collects **5163**, branch collects
+**5179**, **+16 added / 0 removed**. Outcomes 5180 = 5179 + 1, the filed
+`gate-baseline-count-off-by-one`. ⚠ The 5163 baseline was **measured here**,
+not carried over from slice 4's record of the same number.
+
+**NINE DESIGNATED MUTATIONS, ALL NINE RED ON THE BOX, ZERO GREEN FINDINGS.**
+Target set derived rather than nominated — every test file naming the package,
+454 tests. Aborts carried: import resolves inside `/app`, `/app` and
+site-packages agree for all six files, baseline green, every anchor matches
+exactly once, bytecode disabled and purged per row.
+
+| Row | Predicted | Measured | Note |
+| --- | --- | --- | --- |
+| M1 drop the mode stamp | wide | **11** | six are CONTRACT-HARNESS guards |
+| M2 drop the replay level | 1 | **1** | exact |
+| M3 override AFTER `store.put` | 1, stored door only | **1** | exact; the two-door row |
+| M4 `recorded` True→False | 2 | **5** | short by three |
+| M5 drop capture from `MODES` | ≥3 | **8** | every capture path in `build_client` |
+| M6 a 7th `request_key` input | 1 | **1** | exact |
+| M7 drop `credential_level` from the contract | 1 | **1** | exact |
+| M8 default the level | 1, alone | **1** | exact — the row nothing else notices |
+| M9 refuse only the mixed case | 1, disagreeing door only | **1** | exact; the second two-door row |
+
+⚠ **Every miss is in the ORDINARY direction** — too few reds predicted, never a
+predicted red that did not happen. All three wide rows are RULES §12's fifth
+practice: a pre-existing guard already shared the claim. M4 reddens
+`test_a_replayed_reading_cannot_present_as_live` and
+`test_the_reading_record_is_a_node_in_the_run_graph`; M5 reddens the capture
+paths, because `build_client` refuses a mode absent from `MODES`.
+
+⚠ **M1 IS THE EVIDENCE THAT ROW 11 IS REAL.** Deleting one line in `live.py`
+reddens six guards in `test_transport_contract.py` and
+`test_contract_against_the_shipped_adapter.py` — including
+`test_the_shipped_adapter_passes_every_runnable_contract_check` and the
+brokered-transport check. The PUBLISHED harness now depends on the stamp, which
+it would not have done had the identity check been left at seven fields. The
+decision to widen it was argued from the check's own name; the mutation is what
+shows the argument had teeth.
+
 ## 7. Three additions to slice 1 that "never Global" forces
 
 Decision 8 scopes recorded sets to a user's L2 Local. Three consequences,
