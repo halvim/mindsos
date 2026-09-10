@@ -96,9 +96,18 @@ def _reading_body():
 
 def _llm(transport):
     """A REAL client over a fake transport — so these paths exercise the
-    shipped decode (S-2) rather than a stand-in for it."""
+    shipped decode (S-2) rather than a stand-in for it.
+
+    ⚠ ``credential_level`` is required and has no default (ADR-0210 decision
+    6). It is stated here rather than defaulted, and it does NOT appear in
+    ``PRODUCER_DECLARED``: ``mindsos_llm`` stamps mode and level on the ANSWER,
+    and whether this layer declares them as origin-record fields is this
+    layer's decision, filed as ``core-llm-l3-may-declare-answer-mode-and-level``
+    and deliberately not taken by the ship that added the stamps.
+    """
     return LiveLLM(
         transport, model_id="probe-model", model_version="2026-01-01",
+        credential_level=1,
     )
 
 

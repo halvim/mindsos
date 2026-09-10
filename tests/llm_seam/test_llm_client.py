@@ -50,7 +50,10 @@ ANSWER = {"fields": [{"name": "days", "value": 7, "quote": "seven days"}]}
 
 
 def _client(transport, **over):
-    kwargs = dict(model_id="m", model_version="2026-01-01")
+    # ``credential_level`` has no default (ADR-0210 decision 6): every
+    # construction site states the terms the answer will be stamped with, and
+    # level 1 is what this file's fixtures represent.
+    kwargs = dict(model_id="m", model_version="2026-01-01", credential_level=1)
     kwargs.update(over)
     return LiveLLM(transport, **kwargs)
 

@@ -46,19 +46,26 @@ from .recording import RecordingStore
 from .replay import RecordedLLM
 
 #: Answer from the provider.
-MODE_LIVE = "live"
+MODE_LIVE = LiveLLM.MODE
 
 #: Answer from the provider and save every answer into the store, so a set can
 #: be recorded from a real run rather than hand-written.
-MODE_CAPTURE = "capture"
+MODE_CAPTURE = CapturingLLM.MODE
 
 #: Answer from a recorded set. No vendor, no credential, no network.
-MODE_REPLAY = "replay"
+MODE_REPLAY = RecordedLLM.MODE
 
-#: The closed set, stamped on every answer (ADR-0210 decision 5). ⚠ It is
-#: duplicated as a SQL ``CHECK`` on ``mindsos_server``'s ``llm_config`` table,
-#: because a constraint cannot import Python; a parity guard pins the two
-#: together so the pair cannot drift the way a hand-copied roster does.
+#: The closed set, stamped on every answer (ADR-0210 decision 5).
+#:
+#: ⚠ **Derived from the classes, not hand-listed.** Each client declares the
+#: mode it stamps, and this is the union — so a mode this module offers that no
+#: class serves, or a class stamping a mode this module does not offer, cannot
+#: be written. It used to be three literals beside three other literals, which
+#: is the hand-copied-roster shape a guard has to compensate for.
+#:
+#: ⚠ It is still duplicated as a SQL ``CHECK`` on ``mindsos_server``'s
+#: ``llm_config`` table, because a constraint cannot import Python; a parity
+#: guard pins the two together, and now pins the classes with them.
 MODES = (MODE_LIVE, MODE_CAPTURE, MODE_REPLAY)
 
 
@@ -227,6 +234,10 @@ def build_client(
         transport,
         model_id=model_id,
         model_version=model_version,
+        # The resolved level, not the argument: at levels 1 and 3 it may have
+        # come from the resolver rather than from an explicit keyword, and the
+        # answer must state the level actually in force.
+        credential_level=level,
         temperature=temperature,
         timeout_s=timeout_s,
         max_calls=max_calls,

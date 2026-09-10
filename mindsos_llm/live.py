@@ -31,6 +31,26 @@ typed and tested, rather than in somebody's unwritten, unowned function.
 **A call ceiling is mandatory.** ``max_calls`` bounds one client's
 lifetime. Without it a batch over a few hundred historical decisions can
 spend without limit before anyone notices.
+
+**Mode is a property of the CLASS, never an argument** (ADR-0210
+decision 5). ``recorded`` has always been stamped this way — hardcoded
+``False`` here and ``True`` in :mod:`.replay`, never passed in — and mode
+follows the same rule for the same reason: a mode a caller can pass is a
+mode a caller can forge, and an answer stamped ``replay`` by a client
+that just called a provider is a lie no later check can catch. Each
+client declares its own :attr:`MODE` and :data:`~.client.MODES` is the
+union of the three, so the closed set cannot drift from the classes that
+serve it.
+
+**The credential level is pushed in, and there is no default** (ADR-0210
+decision 6). L0 owns the level and hands it down at client construction
+(:mod:`.client`); this class re-publishes it onto the answer so the
+answer states the terms it was obtained under. It is ``Optional`` because
+``None`` is a real value — a probe over somebody's transport
+(:mod:`.contract`) genuinely has no level — but it has **no default**,
+because a level nobody chose is the "optional supplied" shape this
+package refuses everywhere else. A caller must decide; it may decide
+``None``.
 """
 
 from __future__ import annotations
@@ -115,12 +135,17 @@ def _assert_binds(transport, kwargs) -> None:
 class LiveLLM:
     """Consult a real model through a deployment-supplied transport."""
 
+    #: Stamped on every answer this class produces. A class attribute
+    #: rather than an argument — see the module docstring.
+    MODE = "live"
+
     def __init__(
         self,
         transport: Transport,
         *,
         model_id: str,
         model_version: str,
+        credential_level: Optional[int],
         temperature: float = 0.0,
         timeout_s: float = 30.0,
         max_calls: int = 200,
@@ -128,6 +153,7 @@ class LiveLLM:
         self._transport = transport
         self._model_id = model_id
         self._model_version = model_version
+        self._credential_level = credential_level
         self._temperature = float(temperature)
         self._timeout_s = float(timeout_s)
         self._max_calls = int(max_calls)
@@ -179,16 +205,37 @@ class LiveLLM:
             source_text=source_text,
         )
         payload["recorded"] = False
+        payload["mode"] = self.MODE
+        payload["credential_level"] = self._credential_level
         return payload
 
 
 class CapturingLLM:
     """Wrap a client and save every answer into a :class:`RecordingStore`.
 
-    Used to build a recorded set from a real run. Answers pass through
-    unchanged — including ``recorded: False``, because *this* run was
-    live. The saved copy is what a later ``RecordedLLM`` replays.
+    Used to build a recorded set from a real run. The saved copy is what a
+    later ``RecordedLLM`` replays.
+
+    ⚠ **Two provenance fields, deliberately opposite treatment.**
+    ``recorded`` passes through unchanged as ``False``, because it answers
+    *"was this answer replayed?"* and this one was not — it came off a
+    provider a moment ago. ``mode`` answers a different question, *"which
+    of the three modes produced this?"*, and the answer is ``capture``:
+    the run was a capture run, and no other object in the tree knows that
+    (:class:`LiveLLM` cannot — it is the same class whether or not it is
+    wrapped). So this class overrides ``mode`` and only ``mode``.
+
+    ⚠ **The override happens BEFORE the store write, and the order is the
+    claim.** The saved copy is the artifact a third party replays and
+    exports; a copy stamped ``live`` would say a capture run never
+    happened, while the caller's returned copy said otherwise. Two copies
+    of one answer disagreeing about how it was obtained is exactly the
+    provenance defect this module exists to prevent, so the ordering is
+    guarded on both doors rather than left to reading order.
     """
+
+    #: Stamped on every answer that passes through — see above.
+    MODE = "capture"
 
     def __init__(self, inner: Any, store: RecordingStore) -> None:
         self._inner = inner
@@ -199,7 +246,8 @@ class CapturingLLM:
         return self._store
 
     def read(self, **kwargs: Any) -> Mapping[str, Any]:
-        response = self._inner.read(**kwargs)
+        response = dict(self._inner.read(**kwargs))
+        response["mode"] = self.MODE
         key = response.get("request_key")
         if key:
             self._store.put(key, response)
