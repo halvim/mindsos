@@ -9,10 +9,14 @@ export/import), **slice 5** (`511b999`, PR #202, tag
 `llm-capability-contract-confirmed`, gate 5003/11/1x/0) and **slice 2** (L0
 credential custody and the per-session client — `329ffa7`, PR #203, tag
 `mindsos-llm-slice-2-confirmed`, gate 5076/11/1x/0) are all in the tree.
-**Slice 4 is NOT built**; **slice 3 is DEFERRED** with a named re-open trigger,
-because level 3 is a property of the ADAPTER and core ships one adapter
-declaring level 1 only (`core-llm-level-3-awaits-a-hosted-adapter`). What
-remains is **4, then 3**.
+**Slice 4** (credential level 2 — the broker contract and a reference broker,
+`5e97985`, PR #204, tag `mindsos-llm-slice-4-confirmed`, gate 5152/11/1x/0) is
+in the tree as well; see amendment 1. **Slice 3 is DEFERRED** with a named
+re-open trigger, because level 3 is a property of the ADAPTER and core ships
+one adapter declaring level 1 only (`core-llm-level-3-awaits-a-hosted-adapter`).
+**Slice 3 is all that remains of the slice list.** ⚠ The sentence this replaced
+said *"slice 4 is NOT built"* and survived the ship that built it — an ADR
+header is a surface like any other and goes stale the same way.
 
 ⚠ **SLICE 2 CREATED THE FIRST `mindsos_server` → `mindsos_llm` IMPORT, and this
 ADR did not name it.** It is legal — §I-S1 forbids the domain package importing
@@ -34,10 +38,13 @@ deployment use*. A kind is a module exposing `KIND_ID`, `SUPPORTED_LEVELS`,
 level 2 is never KNOWN, and only level 2 is "never sees it".
 
 ⚠ **THE DEFINITION OF DONE IS NOT THIS SLICE LIST.** Owner ruling 2026-09-05:
-"complete" for `mindsos_llm` means the nine-row pass/fail table in
+"complete" for `mindsos_llm` means the pass/fail table in
 `docs/usage/runtime/llm-capability-contract.md` — what a consuming project can
 do with `pip install mindsos-runtime` and no change to core, each row naming the
-module that answers it and the guard that pins it. All nine PASS.
+module that answers it and the guard that pins it. **ELEVEN rows as of
+2026-09-10** (nine at the ruling, a tenth with slice 4, an eleventh with
+amendment 2); all PASS. ⚠ The row count is stated here because it has been
+wrong in this file twice — quote the table, do not recall its size.
 
 ⚠ **That table's own status column was stale from birth and is fixed at
 `36a2c59`:** rows 7 and 9 read PARTIAL and FAIL while `511b999` — the commit
@@ -268,3 +275,96 @@ decision is not withdrawn; the gap is filed as
 `core-llm-answer-carries-no-mode-or-level` and was **not** adopted into slice 4,
 because adding payload fields moves `recorded_sets`' derived manifest and every
 guard asserting a payload's key set — its own ship, not a rider on this one.
+
+⚠ **CLOSED by amendment 2 below.** The paragraph above is kept as written
+because it is the measurement that found the gap, and because one clause of it
+turned out to be wrong in a way worth keeping visible — see amendment 2's first
+correction.
+
+---
+
+## Amendment 2 — decisions 5 and 6 as built (2026-09-10)
+
+**Amendment status:** Accepted. The decision is unchanged; the tree has caught
+up with it. `core-llm-answer-carries-no-mode-or-level` is closed.
+
+**Two corrections to amendment 1's own prose, both measured.**
+
+1. *"Every guard asserting a payload's key set"* — **there are none.** No check
+   in the tree asserts a payload's exact keys: `recorded_sets.REQUIRED_PROVENANCE`
+   and `contract`'s identity check are both SUBSET checks, and `import_set`
+   compares the derived *manifest*, not payload keys. Adding fields was
+   therefore additive, and the cost that had been used to defer this was
+   largely imaginary. **Grep the predicate, not the sentence.**
+2. *"`credential_level` appears exactly once in the tree"* — it appears in
+   `client.build_client`, `mindsos_server/llm_custody.py`, `_schema.py` (a
+   `NOT NULL CHECK (… IN (1,2,3))`) and `audit.py`'s
+   `EVT_LLM_CREDENTIAL_RELEASED` payload. What appears once is the *stamped
+   payload field*, which is the claim that mattered.
+
+**1. Mode is stamped by the CLASS, never by an argument.** `LiveLLM.MODE`,
+`CapturingLLM.MODE`, `RecordedLLM.MODE`. This is the rule `recorded` has
+followed since slice 1 — hardcoded `False` and `True`, never passed in — and it
+is adopted for the same reason: *a mode a caller can pass is a mode a caller
+can forge*, and an answer stamped `replay` by a client that just called a
+provider is a lie no later check can catch. ⟹ `client.MODES` is no longer three
+literals beside three other literals; it is **derived from the three classes**,
+so a mode this package offers that no class serves is unwritable. The SQL
+`CHECK` parity guard is now a three-way check through that derivation.
+
+**2. `CapturingLLM` overrides `mode` and only `mode`, before the store write.**
+`recorded` still passes through as `False` — it answers *"was this replayed?"*,
+and a capture was not. `mode` answers *"which of the three produced it?"*, and
+only this object knows the answer is `capture`. ⚠ **The ordering is a claim:**
+the saved copy is the artifact a third party replays, so a stored payload
+stamped `live` beside a returned payload stamped `capture` would be two copies
+of one answer disagreeing about how it was obtained. Guarded on both doors.
+
+**3. The credential level is pushed in and has NO DEFAULT.** L0 owns it;
+`build_client` passes the *resolved* level, which at levels 1 and 3 may come
+from `resolver.level` rather than from a keyword. `LiveLLM` takes it as a
+required keyword-only `Optional[int]`: `None` is a real value — a
+`contract.verify_transport` probe genuinely has no level and says so — but a
+default would let a level nobody chose reach an answer, which is the
+*optional-supplied* shape this ADR criticises two paragraphs up.
+
+**4. A replayed answer reports `credential_level = None`.** Not the level the
+answers were captured under: that would be this class making a claim about a
+run it is not serving, and `replay.py`'s standing rule is that provenance is
+stamped, never read out of the recorded blob. The capture-time level is a
+property of the recorded SET and lives in its export manifest.
+
+**5. `export_set`'s supplied `credential_level` is now CHECKED, not trusted.**
+It was supplied *because the payloads did not carry it*; they do now, so the
+value stopped being redundant and became **falsifiable** — an export could
+declare a level its own responses deny. It is refused on two doors: a
+disagreeing single level, and a mixed set no single value describes (mirroring
+`replay_config`'s multi-identity refusal). ⚠ A set recorded *before* this
+amendment carries no such key and is exported unchecked — an absent key is not
+the same as a key whose value is `None`, and collapsing the two would have
+refused every pre-existing set for no verification gain. `credential_level` is
+deliberately **not** added to `REQUIRED_PROVENANCE`, exactly as `recorded`
+never was.
+
+**6. Neither field enters `request_key`, and that is now pinned by asking the
+function's SIGNATURE.** The key is documented as *"everything that materially
+determines a reading"*, and neither does: a set captured at level 1 must replay
+to a client configured at level 2, and a captured answer must replay at all.
+Nothing pinned the key's input set before this ship.
+
+**What this amendment does NOT do.** It does not carry the two fields into
+`mindsos_capacity`'s origin records. That is not a scope choice: `mindsos_llm`
+may not import `mindsos_capacity` (`FORBIDDEN_ROOTS`), so this package is
+structurally unable to make that change, and which payload fields L3 declares
+is L3's decision. Filed as `core-llm-l3-may-declare-answer-mode-and-level`.
+
+⚠ **A FINDING AGAINST THE HARNESS THIS SHIP PUBLISHES.**
+`contract.verify_transport`'s `identity_is_stamped_above_the_transport` asks
+**presence, not override**. A consumer's transport that returns its own
+`model_id` *is* overridden — `LiveLLM` stamps after decoding — but the shipped
+harness never tries it and reports PASS, while the in-repo guard
+`test_identity_is_stamped_above_the_transport_and_overrides_it` does try it. The
+published check is the weaker of the two, and has been since slice 1. Closing it
+means a `forging_transport=` alongside the three fixture transports, which is a
+change to a published signature and not this ship's ruling. Filed as
+`core-llm-contract-identity-check-asks-presence-not-override`.

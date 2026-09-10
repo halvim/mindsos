@@ -638,6 +638,77 @@ The guard stubs the network; nothing has watched a real provider fail.
 
 ---
 
+### ⚠ NOT A SLICE — `core-llm-answer-carries-no-mode-or-level`, as built (2026-09-10)
+
+**This is not "slice 5".** Slice 5 shipped at `511b999` and is the capability
+contract; the section above records it. This is the FILED ITEM slice 4 opened,
+on branch `feat/llm-answer-provenance` as `STATE.pending_designs` records —
+naming it by a slice number would collide with a shipped section of this
+document. *(The next-chat prompt for this lane called it slice 5; the tree did
+not.)*
+
+**Sized from the tree, and the tree contradicted this document's own deferral
+reasoning.** Slice 4 declined to adopt it because *"adding payload keys moves
+`recorded_sets`' derived manifest and every guard asserting a payload's exact
+key set."* **There is no such guard.** `REQUIRED_PROVENANCE` and `contract`'s
+identity check are both SUBSET checks; `import_set` compares the derived
+*manifest*, not payload keys. The deferral was sound on other grounds — it is
+its own ship — but the cost that justified it was largely imaginary. **Grep the
+predicate, not the sentence** (this document's third stale-prose finding).
+
+**What was built** — see ADR-0210 amendment 2 for the reasoning:
+
+1. **Mode is stamped by the CLASS**, the rule `recorded` has followed since
+   slice 1. `MODES` is now DERIVED from the three clients rather than
+   hand-listed, and the SQL `CHECK` parity guard became three-way through it.
+2. **`CapturingLLM` overrides `mode` and only `mode`, BEFORE the store write** —
+   the ordering is a claim, guarded on both doors.
+3. **`credential_level` is pushed in with NO DEFAULT**; `build_client` passes
+   the RESOLVED level, which at levels 1 and 3 may come from `resolver.level`.
+4. **Replay reports `credential_level = None`** — the true value, not the
+   capture-time one.
+5. **`export_set`'s supplied level is CHECKED against the payloads**, on two
+   doors, with pre-existing sets exported unchecked (an absent key is not a
+   `None` value).
+6. **`request_key`'s input set is pinned by SIGNATURE** — nothing pinned it
+   before.
+
+**Findings, each with a disposition (RULES §12.4):**
+
+* **FIXED HERE.** This ADR's header still said *"slice 4 is NOT built"* and its
+  definition-of-done paragraph still said *"nine-row table"* — both falsified by
+  ships that did not update them. Corrected, with the row count quoted rather
+  than recalled.
+* **FILED.** `core-llm-contract-identity-check-asks-presence-not-override` —
+  `verify_transport`'s identity check asks presence, not override, and has since
+  slice 1; the in-repo guard is stronger than the published harness. Closing it
+  means a `forging_transport=` parameter on a published signature, which is a
+  contract change and not this ship's ruling.
+* **FILED.** `core-llm-l3-may-declare-answer-mode-and-level` — whether
+  `mindsos_capacity` declares the two fields in `PRODUCER_DECLARED`. Not a scope
+  choice: `mindsos_llm` may not import that package, so this ship is
+  structurally unable to make the change. ⚠ It also carries a guard finding: the
+  freeze suite's `test_every_field_called_live_is_actually_emitted` tests **key
+  presence, not value**, over an `_llm()` helper that builds a bare `LiveLLM` —
+  so the two fields would go green as all-`None`. That must be fixed *before*
+  the fields are added, not after.
+* **FILED, NOT TAKEN.** Two more bare `pytest.raises(ValueError)` (trap 8) in
+  `test_adapter_and_seam_guards.py` — `test_registering_a_duplicate_id_is_
+  refused_rather_than_overwriting` and `test_an_incomplete_adapter_is_refused`.
+  Slice 4's precedent was to fix these *in a file the slice edits*; this ship
+  does not edit that file, and dragging a 508-line guard file with its own
+  mutation rows into the diff to fix two lines is the trade slice 2 and 4 both
+  declined for the sentinel sweep.
+* **METHOD, recorded because it nearly became evidence.** The container
+  mutation harness produced FOUR PHANTOM REDS on its first run — a module
+  rewritten and re-imported fast enough that a cached `.pyc` survived, so rows
+  were graded against **stale bytecode**. It fails toward *extra* reds, which
+  makes a guard look stronger than it is, and it is invisible without a control:
+  the phantom did not reproduce when the same mutation was run alone.
+  `PYTHONDONTWRITEBYTECODE=1`, a `__pycache__` purge per row, a green-baseline
+  abort and an anchor-count abort are what make the table evidence. Same family
+  as slice 4's three failures, in a new place.
+
 ## 7. Three additions to slice 1 that "never Global" forces
 
 Decision 8 scopes recorded sets to a user's L2 Local. Three consequences,

@@ -27,6 +27,7 @@ it in the same commit.
 | 8 | Do all of the above without core acquiring a network dependency, a credential, or a vendor SDK | `pyproject.toml` declares none; `adapters/anthropic.py` is `urllib` only | `tests/phase_28/test_import_isolation_phase_28.py`, `tests/llm_seam/test_import_isolation_mindsos_llm.py` | **PASS** |
 | 9 | Trust that core proved **its own shipped adapter** against the contract it publishes | `contract.verify_transport` against `adapters.anthropic.build_transport` | `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** |
 | 10 | Route its calls through a **broker it runs**, so core never holds the credential at all — and run the broker core ships rather than writing one | `broker`, `adapters.build_brokered_transport`, `mindsos_broker` | `tests/llm_seam/test_broker_contract.py`, `tests/llm_seam/test_reference_broker.py` | **PASS** |
+| 11 | Read **off any answer** which mode produced it and at which credential level, without knowing how the client was built — and never be handed a replayed answer that claims to be live | `live.LiveLLM`, `live.CapturingLLM`, `replay.RecordedLLM`, `client.MODES` | `tests/llm_seam/test_answer_provenance.py` | **PASS** — ADR-0210 decisions 5 and 6, amendment 2 |
 
 ## Row 9, and how it was closed
 
@@ -68,11 +69,46 @@ one configuration it happened to run, which is round four restated.
 ⚠ It still does **not** close `dr-transport-never-watched-a-real-provider-failure`:
 the upstream is a stub. What is real is the hop MindsOS makes.
 
+## Row 11, and why it took a separate ship
+
+ADR-0210 has said since 2026-09-02 that *"mode and credential level are stamped
+on every answer"*. Slice 4 measured that **neither was**, and filed it rather
+than riding it: `LiveLLM.read` stamped seven fields, and `credential_level`
+existed in this package only as an *optional supplied* manifest key on
+`recorded_sets.export_set` — in the module whose own rule is that a manifest is
+derived. So `credential_kinds`' argument for its level/kind pairing check
+(*"the level is stamped on answers, so an unchecked pairing corrupts
+provenance"*) rested on a property the payload did not have. Amendment 2 closes
+it.
+
+⚠ **The two fields are stamped by different mechanisms, and the difference is
+the design.** Mode comes from the **class** — the rule `recorded` has followed
+since slice 1 — because a mode a caller can pass is a mode a caller can forge.
+The credential level is **pushed in from L0** with **no default**, because no
+class can know it and a default would let a level nobody chose reach an answer.
+A replayed answer reports `credential_level: null`, which is the true value: it
+reached no provider.
+
+⚠ **This row does not reach a consumer's own records.** `mindsos_llm` may not
+import `mindsos_capacity` (`FORBIDDEN_ROOTS`), so whether a layer above declares
+these fields as outputs of its records is that layer's decision, not core's
+(`core-llm-l3-may-declare-answer-mode-and-level`). The row is what a consumer
+can read **off the answer**.
+
 ## What this document does NOT claim
 
 - It says nothing about extraction **quality**. Every row is structural. A
-  model that returns a well-shaped wrong answer passes all nine.
-- Rows 1–9 are about level 1; **row 10 is level 2** (ADR-0210 slice 4).
+  model that returns a well-shaped wrong answer passes all eleven.
+- ⚠ **Row 7's harness is weaker than the guard beside it.**
+  `verify_transport`'s `identity_is_stamped_above_the_transport` asks
+  **presence**, not **override**: a consumer's transport returning its own
+  `model_id` is in fact overridden, but the shipped harness never tries it and
+  reports PASS. The in-repo guard does try it. Filed as
+  `core-llm-contract-identity-check-asks-presence-not-override`; named here
+  because a row that reads PASS while its check is narrower than its name is
+  exactly what this table exists to prevent.
+- Rows 1–9 are about level 1; **row 10 is level 2** (ADR-0210 slice 4); **row
+  11 is about every mode and every level**.
   Level 3 remains an adapter property core cannot honestly offer: the shipped
   adapter keeps `SUPPORTED_LEVELS = (LEVEL_NEVER_STORED,)` because the Messages
   API has no expiring credential, and level 3 arrives with a hosted adapter
