@@ -419,7 +419,22 @@ reddened two:**
   ordinary direction — too few reds — and it was only visible because the
   prediction was written in BOTH directions.)*
 
-All five are practice, not code. They cost nothing and they close the gap
+**And a sixth, added 2026-09-11 after a census measured 104 of them:**
+
+- **A GUARD'S EXCEPTION MUST DISCRIMINATE.** `pytest.raises(ValueError)` with no
+  `match=` passes if *anything* of that class is raised anywhere in the block —
+  a typo in a fixture, an unrelated argument check, a helper three frames down.
+  A designated mutation against such a guard comes back **green for the wrong
+  reason**, which is the worst outcome a mutation run has: it certifies a claim
+  nothing tested. Raise a bespoke exception, or pass `match=` with a fragment of
+  the real message. The occurrences already in the tree are declared — and
+  shrinking — in `tests/architecture/test_generic_raises_declares_a_message.py`,
+  which refuses a new one. *(A bespoke class raised in one place is the message;
+  a builtin is not. The builtin set is derived from `builtins` at test time,
+  because a hand-written list of "generic" names is the same defect one level
+  up.)*
+
+All six are practice, not code. They cost nothing and they close the gap
 between *"a guard that cannot go red is worse than none"* (§9) and the moment
 a guard is actually shown to go red.
 
