@@ -348,14 +348,25 @@ def test_the_sql_CHECK_and_the_python_MODES_are_the_same_set():
     once as :data:`mindsos_llm.MODES` and once as a SQL ``CHECK`` on
     ``llm_config``. A hand-copied roster that drifts is this repo's most
     repeated defect; this is its mechanical inverse.
+
+    ⚠ **Now a THREE-way parity, not two** (ADR-0210 decisions 5 and 6). A mode
+    is stamped on every answer by the CLASS that produced it, so there is a
+    third place the set is written: the clients themselves. ``MODES`` is
+    derived from them, and this asserts the DDL against that derivation — so a
+    class stamping a mode no constraint admits is caught here rather than at
+    the first insert.
     """
     from mindsos_llm import MODES
+    from mindsos_llm.live import CapturingLLM, LiveLLM
+    from mindsos_llm.replay import RecordedLLM
     from mindsos_server._schema import _DDL_LLM_CONFIG
 
     clause = re.search(r"mode\s+TEXT NOT NULL CHECK \(mode IN \(([^)]*)\)\)", _DDL_LLM_CONFIG)
     assert clause, _DDL_LLM_CONFIG
     in_sql = {m.strip().strip("'") for m in clause.group(1).split(",")}
+    stamped = {LiveLLM.MODE, CapturingLLM.MODE, RecordedLLM.MODE}
     assert in_sql == set(MODES), f"SQL CHECK {in_sql!r} vs MODES {set(MODES)!r}"
+    assert in_sql == stamped, f"SQL CHECK {in_sql!r} vs the classes {stamped!r}"
 
 
 # ---------------------------------------------------------------------------

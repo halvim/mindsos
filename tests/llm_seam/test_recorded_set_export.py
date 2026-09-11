@@ -28,14 +28,22 @@ from mindsos_llm.replay import RecordedLLM
 ANSWER = {"fields": [{"name": "days", "value": 7, "quote": "seven days"}]}
 
 
-def _captured(model_id="m-1", model_version="v-1", temperature=0.0, text="the doc"):
-    """Produce a set the honest way: run a client and keep what came back."""
+def _captured(model_id="m-1", model_version="v-1", temperature=0.0, text="the doc",
+              credential_level=1):
+    """Produce a set the honest way: run a client and keep what came back.
+
+    ⚠ ``credential_level`` is a parameter here because the payloads now carry
+    it (ADR-0210 decisions 5 and 6) and ``export_set`` checks a supplied value
+    against them — so a fixture that hardcoded it would make the disagreement
+    door unreachable from this file.
+    """
     store = RecordingStore()
     client = CapturingLLM(
         LiveLLM(
             lambda **_: dict(ANSWER),
             model_id=model_id,
             model_version=model_version,
+            credential_level=credential_level,
             temperature=temperature,
         ),
         store,

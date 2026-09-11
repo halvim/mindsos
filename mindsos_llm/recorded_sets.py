@@ -93,6 +93,34 @@ def _payloads(store: RecordingStore) -> Tuple[Tuple[str, Mapping[str, Any]], ...
     )
 
 
+#: Returned by :func:`_declared_levels` for a payload that has no
+#: ``credential_level`` key at all. ⚠ **Not ``None``** — a replayed answer
+#: carries the key WITH the value ``None``, which is a client stating that no
+#: credential was in force, while an absent key is a payload recorded before
+#: ADR-0210 decisions 5 and 6 that states nothing. Collapsing the two with
+#: ``.get()`` would make every pre-decision set unexportable with the supplied
+#: ``credential_level`` its operator has always passed — a compatibility break
+#: bought for no verification, since a set that says nothing cannot contradict
+#: anything.
+_UNSTAMPED = "<unstamped>"
+
+
+def _declared_levels(store: RecordingStore) -> set:
+    """The credential levels the responses themselves carry.
+
+    ⚠ **Read from the payloads, never supplied** — that is the whole point of
+    the check it feeds. ``credential_level`` is deliberately NOT added to
+    :data:`REQUIRED_PROVENANCE` (as ``recorded`` never was), so a set recorded
+    before decisions 5 and 6 still imports; it reports :data:`_UNSTAMPED`
+    instead.
+    """
+    return {
+        payload["credential_level"] if "credential_level" in payload
+        else _UNSTAMPED
+        for _, payload in _payloads(store)
+    }
+
+
 def _derive_manifest(store: RecordingStore) -> Dict[str, Any]:
     """Read the manifest OUT of the payloads. Nothing here is supplied."""
     identities = set()
@@ -145,15 +173,55 @@ def export_set(
 ) -> str:
     """Serialise a set with a derived manifest. Returns JSON text.
 
-    ``vendor_id`` and ``credential_level`` are the only supplied fields, and
-    they are supplied because **the payloads do not carry them** — the client
-    stamps the model, not the wire it came over. They are recorded as context,
-    never as something replay depends on: a replay reaches no vendor and needs
-    no credential, which is the entire point of handing someone a set.
+    ``vendor_id`` and ``credential_level`` are the only supplied fields. They
+    are recorded as context, never as something replay depends on: a replay
+    reaches no vendor and needs no credential, which is the entire point of
+    handing someone a set.
+
+    ⚠ **CORRECTED with ADR-0210 decisions 5 and 6.** This docstring used to say
+    they were supplied *because the payloads do not carry them*. The payloads
+    now carry ``credential_level``, so that reason has expired for one of the
+    two — and a supplied value is no longer merely redundant, it is
+    **falsifiable**: an export could declare a level its own responses
+    contradict, which is a file that disproves itself. So the field stays
+    supplied (a caller may still want to record which of several levels a
+    mixed set was gathered under) and is **checked against the payloads**
+    rather than trusted. ``vendor_id`` has no such check because nothing
+    stamps it; that asymmetry is real and is why the check is per-field rather
+    than over ``captured_over`` as a whole.
+
+    Raises :class:`RecordedSetRefused` when a supplied ``credential_level``
+    is not what the responses say, on either of two doors: the responses agree
+    on one level and it is a different one, or they hold more than one and a
+    single value cannot describe them. The second mirrors
+    :meth:`ImportedSet.replay_config`'s refusal on multiple model identities,
+    for the same reason — a manifest half-true of its file reads as a broken
+    recording rather than as a wrong declaration.
+
+    A set whose responses were all recorded before decisions 5 and 6 stamps
+    nothing, contradicts nothing, and is exported unchecked — see
+    :data:`_UNSTAMPED`.
     """
+    manifest = _derive_manifest(store)
+    levels = _declared_levels(store)
+    if (
+        credential_level is not None
+        and levels != {_UNSTAMPED}
+        and levels != {credential_level}
+    ):
+        raise RecordedSetRefused(
+            f"credential_level={credential_level!r} was supplied, but the "
+            f"responses in this set carry {sorted(levels, key=repr)!r}. The "
+            "client stamps the level it called at onto every answer, so a "
+            "supplied value that disagrees would export a file that "
+            "contradicts itself - and a set carrying more than one level "
+            "cannot be described by a single value at all. Export the "
+            "level the responses actually carry, split the set, or omit "
+            "credential_level and let the responses speak."
+        )
     envelope = {
         "format": EXPORT_FORMAT,
-        "manifest": _derive_manifest(store),
+        "manifest": manifest,
         "captured_over": {"vendor_id": vendor_id, "credential_level": credential_level},
         "note": note,
         "responses": json.loads(store.to_json()),

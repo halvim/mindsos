@@ -106,10 +106,15 @@ class TransportReport:
 
 
 def _client(transport: Any) -> LiveLLM:
+    # ``credential_level=None`` is a decision, not an omission: this harness
+    # probes somebody else's transport and cannot know the terms its
+    # credential was obtained under. ``LiveLLM`` takes no default precisely so
+    # that this line has to say so.
     return LiveLLM(
         transport,
         model_id="contract-probe",
         model_version="contract-probe",
+        credential_level=None,
         max_calls=8,
     )
 
@@ -163,12 +168,28 @@ def verify_transport(
     else:
         checks.append(Check("accepts_the_five_keywords", PASSED))
         checks.append(Check("answer_is_text_or_a_mapping", PASSED))
+        # ⚠ ``mode`` and ``credential_level`` joined this list with ADR-0210
+        # decisions 5 and 6. They belong to THIS check by its own name: both
+        # are stamped above the transport — one from the class that answered,
+        # one from what L0 pushed into it — so a transport cannot supply
+        # either, which is the property the check is named for.
         missing = [
             f for f in ("model_id", "model_version", "prompt_iri",
                         "prompt_version", "temperature", "request_key",
-                        "recorded")
+                        "recorded", "mode", "credential_level")
             if f not in payload
         ]
+        # ⚠ This check asks PRESENCE, not OVERRIDE. A transport that returns
+        # ``model_id`` of its own is in fact overridden — ``LiveLLM`` stamps
+        # after decoding — but nothing here demonstrates that, so a consumer's
+        # report says PASS without the harness ever having tried it. The
+        # in-repo guard
+        # ``test_identity_is_stamped_above_the_transport_and_overrides_it``
+        # does try it; the shipped harness is the weaker of the two. Closing it
+        # means a ``forging_transport=`` alongside the three fixture
+        # transports below, which is a change to a published signature and not
+        # this ship's ruling. Filed: ``core-llm-contract-identity-check-asks-
+        # presence-not-override``.
         checks.append(Check(
             "identity_is_stamped_above_the_transport",
             FAILED if missing else PASSED,

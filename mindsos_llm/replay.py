@@ -5,11 +5,22 @@ Protocol is ``runtime_checkable``); no import crosses between the two
 packages in either direction.
 
 The returned payload is a plain ``Mapping`` carrying, alongside whatever
-the model produced, the facts a Decision Record has to be able to state:
-which model answered, which prompt and version asked, at what
-temperature, under which request key, and **whether the reading was
-replayed or live**. Those travel to the capacity body, which emits them
-as a reading-record DataState so they land in the run's grounding graph.
+the model produced, the facts a reader of the answer has to be able to
+state without being told how the client was built: which model answered,
+which prompt and version asked, at what temperature, under which request
+key, **whether the reading was replayed or live**, **which mode produced
+it**, and **at which credential level**. A layer above may declare any of
+them as an output so they reach that layer's own records; this package
+neither knows nor cares which does.
+
+**Replay's credential level is ``None``, and that is the true value.**
+A replay reaches no provider and needs no credential (:mod:`.client`
+refuses one on this path), so there is no level to report. Reporting the
+level the answers were *captured* under would be this class making a
+claim about a run that is not the one it is serving — the same reason the
+model identity below is configured rather than read out of the file. The
+capture-time level is a property of the recorded SET and lives in its
+export manifest, not on a replayed answer.
 """
 
 from __future__ import annotations
@@ -26,6 +37,10 @@ class RecordedLLM:
     answers were recorded — they are reported, not consulted, so a Record
     names the model that actually produced the reading.
     """
+
+    #: Stamped on every answer this class produces. A class attribute
+    #: rather than an argument — see :mod:`.live`'s module docstring.
+    MODE = "replay"
 
     def __init__(
         self,
@@ -68,6 +83,9 @@ class RecordedLLM:
         payload["temperature"] = self._temperature
         payload["request_key"] = key
         payload["recorded"] = True
+        payload["mode"] = self.MODE
+        # None, not the capture-time level: this run used no credential.
+        payload["credential_level"] = None
         return payload
 
 
