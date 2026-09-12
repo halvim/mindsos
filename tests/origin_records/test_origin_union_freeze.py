@@ -304,6 +304,94 @@ def test_every_field_called_live_is_actually_emitted(emitted):
     assert never == [], f"classified live but never emitted: {never}"
 
 
+def _fields_carrying_a_value(records) -> set:
+    """Fields at least one record gives a VALUE to - not merely a key.
+
+    ``set(record)`` is the record's KEY set, and every producer-declared field
+    reaches :func:`build_origin_record` as a keyword whose value may be
+    ``None``: ``comprehension_v0._record`` writes ``FIELD_TEMPERATURE:
+    resp.get("temperature")``. So a field can be *emitted* on every record and
+    still carry nothing - a dead column wearing a live classification, which
+    is the one state this file's classification exists to make impossible.
+
+    ``None`` is the only shape that counts as absent. ``False`` and ``[]`` are
+    values a producer chose; a field whose value is real but uninformative is
+    :data:`FIELDS_DEGENERATE`'s business and is guarded there.
+    """
+    return {f for r in records for f, v in r.items() if v is not None}
+
+
+def test_every_field_called_live_actually_carries_a_value(emitted):
+    """The teeth the test above does not have, and the gap is the whole point.
+
+    ``FIELDS_WRITTEN_TODAY`` is ``SPINE + PRODUCER_DECLARED`` - **derived** -
+    so a field added to the union is classified *live* with no human act. That
+    is safe only while *live* is checked by VALUE. Under a key-presence check a
+    new field goes green as an all-``None`` column and the freeze certifies it.
+
+    Measured at ``0d4445c``: all 30 live fields carry a value in at least one
+    of the 14 records, so nothing is grandfathered here.
+
+    The quantifier is *some* record, deliberately. :data:`FIELDS_RESERVED`
+    means *"no producer writes it yet"*, so its inverse is *"some producer
+    does"*; ``source_in_force_to`` is written only by an edition that HAS an
+    end date. A per-producer claim would be a classification this module does
+    not have.
+
+    Opened as the prerequisite named inside
+    ``core-llm-l3-may-declare-answer-mode-and-level``: adding ``mode`` and
+    ``credential_level`` to ``PRODUCER_DECLARED`` would have gone green as two
+    all-``None`` columns, inside the guard whose whole standard is that it RUNS
+    the producers and looks.
+
+    There is no floor on ``emitted``: the fixture asserts ``len(records) ==
+    14`` before this test runs, so an assertion here could never fail, and a
+    line that cannot go red is what RULES section 9 forbids. The floor that
+    CAN fail is the domain's - deriving ``FIELDS_WRITTEN_TODAY`` from the
+    union makes emptying it reachable, and both directions go vacuous if it is.
+    """
+    live = set(origin.FIELDS_WRITTEN_TODAY)
+    assert live, "the live classification emptied - both directions go vacuous"
+    dead = sorted(live - _fields_carrying_a_value(emitted))
+    assert dead == [], (
+        f"classified live but no record carries a value for {dead}. The key is "
+        "written and the column is empty, which looks live and reads as "
+        "evidence. Either the producer stopped supplying it, or it belongs in "
+        "FIELDS_RESERVED naming the producer that will write it, or in "
+        "FIELDS_DEGENERATE with the reason its value is unreachable."
+    )
+
+
+def test_the_value_check_flags_a_key_written_with_no_value():
+    """RULES section 9's red, on FABRICATED records: no dead column is
+    committed to this repo and no producer is broken to prove the check
+    fires. This is the exact shape the presence check above passes."""
+    records = [
+        {origin.FIELD_QUESTION: "q", origin.FIELD_TEMPERATURE: None},
+        {origin.FIELD_QUESTION: "q", origin.FIELD_TEMPERATURE: None},
+    ]
+    valued = _fields_carrying_a_value(records)
+    assert origin.FIELD_QUESTION in valued
+    assert origin.FIELD_TEMPERATURE not in valued, (
+        "a key present on every record with a None value must not count as "
+        "carried - the presence check cannot tell these two records from "
+        "records that carry a temperature"
+    )
+
+
+def test_the_value_check_accepts_a_field_valued_on_one_path_only():
+    """The other door, and it is the quantifier's door. A field valued on one
+    record out of many is normal - ``source_in_force_to`` is written only by a
+    closed edition - so a check demanding it on every record would be wrong in
+    the opposite direction."""
+    records = [
+        {origin.FIELD_SOURCE_IN_FORCE_TO: None},
+        {origin.FIELD_SOURCE_IN_FORCE_TO: "2023-12-31"},
+        {origin.FIELD_SOURCE_IN_FORCE_TO: None},
+    ]
+    assert origin.FIELD_SOURCE_IN_FORCE_TO in _fields_carrying_a_value(records)
+
+
 def test_no_reserved_field_is_emitted_by_anything_shipped(emitted):
     seen = set().union(*(set(r) for r in emitted))
     leaked = sorted(set(origin.FIELDS_RESERVED) & seen)
