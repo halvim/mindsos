@@ -95,6 +95,14 @@ STAMPED_ABOVE_THE_TRANSPORT: Tuple[str, ...] = (
 
 _FORGED = "forged-by-the-contract-probe"
 
+#: Why a check that needs an answer reports SKIPPED rather than vanishing.
+#: The three optional probes below have always said why they did not run;
+#: the checks that depend on the call did not, and simply left the report.
+#: **An absent check is a silence the report does not own** — a consumer
+#: reads this to learn what was and was not established, and `ok` counts
+#: only failures, so nothing else notices.
+_NO_ANSWER_TO_INSPECT = "the call returned no answer, so there was nothing to inspect"
+
 
 def _forging_transport(**_: Any) -> Mapping[str, Any]:
     """A transport that answers with every stamped field filled in wrongly.
@@ -174,6 +182,7 @@ def verify_transport(
 ) -> TransportReport:
     """Run every contract check that can be run against ``transport``."""
     checks = []
+    payload = None
 
     try:
         payload = _client(transport).read(
@@ -189,6 +198,13 @@ def verify_transport(
         # earlier version of this harness green on a broken transport.
         checks.append(Check(
             "accepts_the_five_keywords", FAILED, exc.violation,
+        ))
+        # ⚠ SKIPPED, NEVER FAILED, and for the reason the comment above
+        # gives: a transport that would not accept the call has not
+        # answered wrongly, it has not answered. Reporting the first as the
+        # second is what sent an earlier version of this harness green.
+        checks.append(Check(
+            "answer_is_text_or_a_mapping", SKIPPED, _NO_ANSWER_TO_INSPECT,
         ))
     except MalformedResponse:
         checks.append(Check("accepts_the_five_keywords", PASSED))
@@ -228,6 +244,12 @@ def verify_transport(
             "identity_is_stamped_above_the_transport",
             FAILED if missing else PASSED,
             f"absent: {missing}" if missing else "",
+        ))
+
+    if payload is None:
+        checks.append(Check(
+            "identity_is_stamped_above_the_transport", SKIPPED,
+            _NO_ANSWER_TO_INSPECT,
         ))
 
     # ⚠ CORE'S OWN PROPERTY, AND IT ALWAYS RUNS. The check above asks whether

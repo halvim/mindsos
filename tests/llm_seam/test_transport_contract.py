@@ -51,6 +51,20 @@ def _status(report, name):
     return {c.name: c.status for c in report.checks}[name]
 
 
+def _names(report):
+    return {c.name for c in report.checks}
+
+
+#: One transport per arm of ``verify_transport``'s try/except. The DOMAIN of
+#: the claim below is these four, not the nearest one (RULES §12.3).
+BAD_TRANSPORTS = [
+    (lambda prompt_iri: ANSWER, "TransportSignatureError"),
+    (GARBAGE, "MalformedResponse"),
+    (WRONG_TYPE, "TransportContractError"),
+    (RAISES, "LLMCallFailed"),
+]
+
+
 def test_a_correct_transport_passes_every_runnable_check():
     report = _verify(GOOD, failing_transport=RAISES, garbage_transport=GARBAGE,
                      wrong_type_transport=WRONG_TYPE)
@@ -162,6 +176,39 @@ def test_the_override_check_goes_RED_when_the_client_stops_stamping(monkeypatch)
     for field in contract.STAMPED_ABOVE_THE_TRANSPORT:
         assert field in check.detail, f"{field} survived unnamed"
     assert _status(report, "identity_is_stamped_above_the_transport") == PASSED
+
+
+@pytest.mark.parametrize("transport, arm",
+                         BAD_TRANSPORTS,
+                         ids=[arm for _, arm in BAD_TRANSPORTS])
+def test_no_check_ever_vanishes_from_the_report(transport, arm):
+    """A check that cannot run says so; it does not leave.
+
+    ``test_the_optional_checks_are_reported_SKIPPED_not_omitted`` states this
+    for the three probes a caller opts into. It was NOT true of the checks
+    that depend on the call itself: on every arm below
+    ``identity_is_stamped_above_the_transport`` was simply absent, and on the
+    signature arm so was ``answer_is_text_or_a_mapping``. ``report.ok``
+    counts failures, so an absent check is invisible — the consumer reads a
+    report that never mentions what it did not establish.
+
+    The domain is all four arms of the try/except, because the claim is
+    *every* path (RULES §12.3: a quantified claim is checked on its full
+    domain, never on the nearest shape).
+    """
+    assert _names(_verify(transport)) == _names(_verify(GOOD)), (
+        f"{arm} dropped: "
+        f"{_names(_verify(GOOD)) - _names(_verify(transport))}"
+    )
+
+
+def test_a_call_that_returned_nothing_reports_identity_SKIPPED_WITH_A_REASON():
+    """SKIPPED alone would satisfy the guard above while saying nothing. The
+    report is meant to be read unedited, so the reason is part of the check."""
+    check = {c.name: c for c in _verify(RAISES).checks}[
+        "identity_is_stamped_above_the_transport"]
+    assert check.status == SKIPPED
+    assert "nothing to inspect" in check.detail
 
 
 def test_the_declared_stamped_set_is_what_a_live_call_actually_stamps():
