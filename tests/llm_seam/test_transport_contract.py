@@ -8,15 +8,18 @@ the harness ships in ``mindsos_llm.contract`` and this file runs
 the same function the demo will run against a live provider (critic §85
 Q1's condition, owner ruling 7).
 
-The second thing it must do is SAY WHAT IT CANNOT CHECK. Four §6.3
-properties are unobservable from outside a transport, and a harness that
-quietly omitted them would read as a clean bill of health.
+The second thing it must do is SAY WHAT IT CANNOT CHECK. The §6.3
+properties named in ``UNVERIFIABLE_PROPERTIES`` are unobservable from
+outside a transport, and a harness that quietly omitted them would read as
+a clean bill of health. *The tuple is the list; no count is written here,
+because a count in prose beside a tuple is what went stale twice.*
 """
 
 from __future__ import annotations
 
 import pytest
 
+from mindsos_llm import contract
 from mindsos_llm.contract import (
     FAILED,
     PASSED,
@@ -26,6 +29,7 @@ from mindsos_llm.contract import (
     verify_transport,
 )
 from mindsos_llm.exceptions import TransportContractError
+from mindsos_llm.live import LiveLLM
 
 ANSWER = {"fields": [{"name": "days", "value": 7, "quote": "seven days"}]}
 
@@ -89,9 +93,10 @@ def test_the_optional_checks_are_reported_SKIPPED_not_omitted():
 
 
 def test_the_unverifiable_properties_are_always_named():
-    """RULES §11: a list of only successes is a pitch. These four cannot
-    be established from outside a transport and the report says so every
-    time, including when everything else passes."""
+    """RULES §11: a list of only successes is a pitch. The properties in
+    ``UNVERIFIABLE_PROPERTIES`` cannot be established from outside a
+    transport and the report names every one of them every time, including
+    when everything else passes."""
     report = _verify(GOOD, failing_transport=RAISES, garbage_transport=GARBAGE,
                      wrong_type_transport=WRONG_TYPE)
     reported = {c.name for c in report.checks if c.status == UNVERIFIABLE}
@@ -114,3 +119,63 @@ def test_raise_if_failed_names_the_failures():
 
 def test_raise_if_failed_is_quiet_when_the_contract_holds():
     _verify(GOOD).raise_if_failed()
+
+
+# ── identity: PRESENCE and OVERRIDE are two checks, not one ────────────
+
+
+OVERRIDE = "identity_overrides_a_transport_that_supplies_its_own"
+
+
+def test_a_transport_that_supplies_its_own_identity_is_overridden():
+    """The probe answers with every stamped field filled in wrongly and the
+    client stamps over all of them. Unlike the three failure probes this
+    one takes no keyword: it is fabricated, so it runs for every consumer
+    rather than only for the ones who knew to ask."""
+    report = _verify(GOOD)
+    assert _status(report, OVERRIDE) == PASSED
+    assert report.ok
+
+
+def test_the_override_check_goes_RED_when_the_client_stops_stamping(monkeypatch):
+    """RULES §9: a guard is born red. The failure is fabricated — a client
+    that hands back the transport's answer untouched — so no offence has to
+    be committed to the tree to prove the check can see one.
+
+    It also shows why this is TWO checks: the same report reads PASS on
+    ``identity_is_stamped_above_the_transport``, because every field is
+    present. Presence-green with override-red is a client that stopped
+    stamping; both red is a payload that never carried the fields."""
+
+    class _NoStamp(LiveLLM):
+        def read(self, **kwargs):
+            return dict(contract._forging_transport(**kwargs))
+
+    monkeypatch.setattr(
+        contract, "_client",
+        lambda t: _NoStamp(t, model_id="probe", model_version="probe",
+                           credential_level=None, max_calls=8),
+    )
+    report = _verify(GOOD)
+    check = {c.name: c for c in report.checks}[OVERRIDE]
+    assert check.status == FAILED
+    for field in contract.STAMPED_ABOVE_THE_TRANSPORT:
+        assert field in check.detail, f"{field} survived unnamed"
+    assert _status(report, "identity_is_stamped_above_the_transport") == PASSED
+
+
+def test_the_declared_stamped_set_is_what_a_live_call_actually_stamps():
+    """``STAMPED_ABOVE_THE_TRANSPORT`` is stated by the harness rather than
+    imported from the client, because a list derived from the code under
+    test cannot notice a field that code stopped writing. The two are
+    reconciled HERE, and BY BEHAVIOUR — what a real client puts on an answer
+    over a transport that supplied none of it — which is RULES §12's seventh
+    practice: check the claim at its strongest reading, not by declaration.
+
+    A field added to the client's stamp and not to the tuple reddens this;
+    so does one removed from the client and left in the tuple."""
+    bare = LiveLLM(lambda **_: {"answer": "42"}, model_id="m",
+                   model_version="v", credential_level=None, max_calls=2)
+    payload = bare.read(prompt_iri="prompt:p", prompt_version=1,
+                        source_text="doc")
+    assert set(contract.STAMPED_ABOVE_THE_TRANSPORT) == set(payload) - {"answer"}
