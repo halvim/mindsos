@@ -631,6 +631,13 @@
       "branch_to_open": "chore/llm-docs-reconcile - done here, no separate branch",
       "spec": "RULES.md section 12; STATE.recent[] docs field",
       "consumer": "every lane that reads RULES section 12 before writing a guard"
+    },
+    {
+      "name": "core-docs-one-owner-per-fact",
+      "status": "OPENED 2026-09-13 by the chore/llm-docs-reconcile session, which spent most of itself on this and shipped a7062bb as one instance of it. *** THE PROBLEM: the same fact is RESTATED in up to six places with no owner and no mechanical check - STATE.pending_designs prose, STATE.recent[].docs, RULES.md, an ADR's body, docs/usage/runtime/llm-capability-contract.md, a guard's docstring, and the project memory files. Any one can go stale silently, and this session found five that had: pending_designs[79] on its own build state (the SECOND time), [86] on a discharged prerequisite, ADR-0210 on a cost nobody had read the def for, contract.py's docstring counting its own five-entry tuple as four, and fe0e19a's docs field announcing a RULES amendment its commit did not contain. *** THE SHAPE OF A FIX, not ruled: ONE OWNER PER FACT, everyone else POINTS. Candidate assignment - the capability contract table owns capability claims; a guard's docstring owns its design; STATE.recent[] owns what shipped; pending_designs owns what is open; memory owns pointers and measured traps and nothing else. *** WHAT MAKES IT HARD, and why it is not a rider on a code lane: the restating is mostly in PROSE, so no guard can see it, and the one mechanical foothold this session found is that a ship's docs field can be checked against git show --stat --name-only <sha>. That single check would have caught the worst instance. Start there rather than with a taxonomy. *** RELATED: dr-guard-domains-pinned-to-lists is the same disease one level down - a domain restated as a hand list instead of derived - and its fix shape (delete the hand list, derive it) is the shape to copy wherever a fact CAN be derived.",
+      "branch_to_open": "no branch yet - the ownership assignment is a decision before it is code, and the first buildable piece is the docs-field-vs-diff check",
+      "spec": "STATE.json (pending_designs prose, recent[].docs); RULES.md; docs/usage/runtime/llm-capability-contract.md; the guard docstrings; project memory",
+      "consumer": "every chat that reads a filed claim and builds on it - five did so wrongly in the two weeks before this was filed"
     }
   ],
   "recent": [
