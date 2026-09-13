@@ -10,13 +10,14 @@ by someone who does not have this repo's test tree. A harness under
 there. So it ships here, and the core gate runs the very same function
 against fakes (critic §85 Q1's condition, owner ruling 7).
 
-**It states what it cannot check.** Four properties of §6.3 — no silent
-retry, no substituted default, the timeout honoured, the document not
-logged where MindsOS cannot see it — are not observable from outside a
+**It states what it cannot check.** The §6.3 properties named in
+:data:`UNVERIFIABLE_PROPERTIES` are not observable from outside a
 transport, and a harness that quietly omitted them would read as a
 clean bill of health. They are reported as ``unverifiable`` by name, in
 the same report as the passes (RULES §11: a list of only successes is a
-pitch).
+pitch). *The tuple is the list; this sentence does not carry a count,
+because a count written in prose beside a tuple goes stale and this one
+twice did.*
 
 **Usage.** The failure checks need transports that fail on purpose, which
 a live provider will not do on demand — pass them and they run, omit them
@@ -67,6 +68,47 @@ UNVERIFIABLE_PROPERTIES: Tuple[Tuple[str, str], ...] = (
      "requires reaching inside the transport; a harness that injects an "
      "opener asserts it in the one configuration where it holds"),
 )
+
+
+#: The fields the client stamps over whatever the transport returned.
+#: This harness states them ITSELF rather than importing the client's own
+#: list: a copy DERIVED from the code under test cannot notice a field that
+#: code stopped writing, which is the silent under-check this one list can
+#: produce. ``tests/llm_seam/test_transport_contract.py`` reconciles the two
+#: BY BEHAVIOUR — it reads what a live call actually stamps — so the
+#: independence costs nothing and the drift is still caught (RULES §12's
+#: seventh practice: check the claim at its strongest reading).
+#: ⚠ NAMES ONLY, NEVER VALUES. A declaration that can carry a value is one a
+#: caller can pass, and that is the defect ADR-0210 decision 5 closed for
+#: ``mode``.
+STAMPED_ABOVE_THE_TRANSPORT: Tuple[str, ...] = (
+    "model_id",
+    "model_version",
+    "prompt_iri",
+    "prompt_version",
+    "temperature",
+    "request_key",
+    "recorded",
+    "mode",
+    "credential_level",
+)
+
+_FORGED = "forged-by-the-contract-probe"
+
+
+def _forging_transport(**_: Any) -> Mapping[str, Any]:
+    """A transport that answers with every stamped field filled in wrongly.
+
+    ⚠ **Fabricated here, never a parameter.** The property under test —
+    *identity is stamped ABOVE the transport* — is a property of THIS
+    repo's client, not of the consumer's transport. A ``forging_transport=``
+    keyword would report SKIPPED for every consumer who did not know to pass
+    one, which is the same silence this check exists to end, and it would ask
+    the deployment to supply the fixture that proves our claim.
+    """
+    forged = {name: _FORGED for name in STAMPED_ABOVE_THE_TRANSPORT}
+    forged["answer"] = "a forged answer"
+    return forged
 
 
 @dataclass(frozen=True)
@@ -173,27 +215,48 @@ def verify_transport(
         # are stamped above the transport — one from the class that answered,
         # one from what L0 pushed into it — so a transport cannot supply
         # either, which is the property the check is named for.
-        missing = [
-            f for f in ("model_id", "model_version", "prompt_iri",
-                        "prompt_version", "temperature", "request_key",
-                        "recorded", "mode", "credential_level")
-            if f not in payload
-        ]
-        # ⚠ This check asks PRESENCE, not OVERRIDE. A transport that returns
-        # ``model_id`` of its own is in fact overridden — ``LiveLLM`` stamps
-        # after decoding — but nothing here demonstrates that, so a consumer's
-        # report says PASS without the harness ever having tried it. The
-        # in-repo guard
-        # ``test_identity_is_stamped_above_the_transport_and_overrides_it``
-        # does try it; the shipped harness is the weaker of the two. Closing it
-        # means a ``forging_transport=`` alongside the three fixture
-        # transports below, which is a change to a published signature and not
-        # this ship's ruling. Filed: ``core-llm-contract-identity-check-asks-
-        # presence-not-override``.
+        missing = [f for f in STAMPED_ABOVE_THE_TRANSPORT if f not in payload]
+        # ⚠ This check asks PRESENCE, and that is now deliberate rather than
+        # a gap: OVERRIDE is asked separately, below, against a probe this
+        # module fabricates. TWO CHECKS, NOT ONE, because the two reds are
+        # different diagnoses — presence-red is a payload that never carried
+        # the fields, override-red is a client that stopped stamping them.
+        # (Until that second check existed this one stood alone and a
+        # consumer's report read PASS on a transport that forges identity:
+        # ``core-llm-contract-identity-check-asks-presence-not-override``.)
         checks.append(Check(
             "identity_is_stamped_above_the_transport",
             FAILED if missing else PASSED,
             f"absent: {missing}" if missing else "",
+        ))
+
+    # ⚠ CORE'S OWN PROPERTY, AND IT ALWAYS RUNS. The check above asks whether
+    # the stamped fields are PRESENT on the consumer's answer; this one asks
+    # whether they are OURS. The probe is fabricated (see
+    # :func:`_forging_transport`) rather than supplied, because an optional
+    # ``forging_transport=`` would read SKIPPED for everyone who did not know
+    # to pass one — the same silence the check exists to end.
+    try:
+        forged = _client(_forging_transport).read(
+            prompt_iri=prompt_iri,
+            prompt_version=prompt_version,
+            source_text=source_text,
+            extraction_schema=extraction_schema,
+        )
+    except Exception as exc:  # noqa: BLE001 — the probe answers; anything else is the finding
+        checks.append(Check(
+            "identity_overrides_a_transport_that_supplies_its_own", FAILED,
+            f"the fabricated probe raised {type(exc).__name__}",
+        ))
+    else:
+        survived = [
+            f for f in STAMPED_ABOVE_THE_TRANSPORT if forged.get(f) == _FORGED
+        ]
+        checks.append(Check(
+            "identity_overrides_a_transport_that_supplies_its_own",
+            FAILED if survived else PASSED,
+            f"the transport's own value survived on: {survived}"
+            if survived else "",
         ))
 
     if failing_transport is None:
@@ -280,6 +343,7 @@ def verify_transport(
 
 __all__ = [
     "Check",
+    "STAMPED_ABOVE_THE_TRANSPORT",
     "TransportReport",
     "UNVERIFIABLE_PROPERTIES",
     "verify_transport",

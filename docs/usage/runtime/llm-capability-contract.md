@@ -23,7 +23,7 @@ it in the same commit.
 | 4 | Make a live call and get a classified refusal, never an exception carrying the customer's material | `live.LiveLLM`, `seam` exception family | `tests/llm_seam/test_llm_client.py` | **PASS** |
 | 5 | Record what it called and replay it later with no credential and no network | `recording.RecordingStore`, `replay.RecordedLLM` | `tests/llm_seam/test_recording_and_replay.py` | **PASS** |
 | 6 | Export a recorded set and have a third party replay it — including the refusal when the set holds two model identities | `recorded_sets` | `tests/llm_seam/test_recorded_set_export.py` | **PASS** |
-| 7 | Verify its own transport against the contract, and be told **by name** which properties core cannot verify | `contract.verify_transport`, `contract.UNVERIFIABLE_PROPERTIES` | `tests/llm_seam/test_transport_contract.py`, `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** — `credential_not_retained_on_the_composed_request` is the fifth entry in the tuple per ADR-0210 §5 (`511b999`) |
+| 7 | Verify its own transport against the contract, and be told **by name** which properties core cannot verify | `contract.verify_transport`, `contract.UNVERIFIABLE_PROPERTIES` | `tests/llm_seam/test_transport_contract.py`, `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** — **two checks**: `identity_is_stamped_above_the_transport` (presence, against the consumer's transport) and `identity_overrides_a_transport_that_supplies_its_own` (override, against a probe the harness fabricates). `credential_not_retained_on_the_composed_request` is named in the tuple per ADR-0210 §5 (`511b999`) |
 | 8 | Do all of the above without core acquiring a network dependency, a credential, or a vendor SDK | `pyproject.toml` declares none; `adapters/anthropic.py` is `urllib` only | `tests/phase_28/test_import_isolation_phase_28.py`, `tests/llm_seam/test_import_isolation_mindsos_llm.py` | **PASS** |
 | 9 | Trust that core proved **its own shipped adapter** against the contract it publishes | `contract.verify_transport` against `adapters.anthropic.build_transport` | `tests/llm_seam/test_contract_against_the_shipped_adapter.py` | **PASS** |
 | 10 | Route its calls through a **broker it runs**, so core never holds the credential at all — and run the broker core ships rather than writing one | `broker`, `adapters.build_brokered_transport`, `mindsos_broker` | `tests/llm_seam/test_broker_contract.py`, `tests/llm_seam/test_reference_broker.py` | **PASS** |
@@ -99,14 +99,19 @@ can read **off the answer**.
 
 - It says nothing about extraction **quality**. Every row is structural. A
   model that returns a well-shaped wrong answer passes all eleven.
-- ⚠ **Row 7's harness is weaker than the guard beside it.**
-  `verify_transport`'s `identity_is_stamped_above_the_transport` asks
-  **presence**, not **override**: a consumer's transport returning its own
-  `model_id` is in fact overridden, but the shipped harness never tries it and
-  reports PASS. The in-repo guard does try it. Filed as
-  `core-llm-contract-identity-check-asks-presence-not-override`; named here
-  because a row that reads PASS while its check is narrower than its name is
-  exactly what this table exists to prevent.
+- ⚠ **Row 7 is two checks, and the pair still has an edge it does not
+  claim.** `identity_is_stamped_above_the_transport` asks only whether the
+  stamped fields are **present** on the consumer's answer;
+  `identity_overrides_a_transport_that_supplies_its_own` asks whether they are
+  **core's**, against a probe the harness fabricates rather than one the
+  deployment supplies — so it runs for every consumer, not only the ones who
+  knew to ask. *(The earlier gap, override reported PASS while never tried, is
+  closed: `core-llm-contract-identity-check-asks-presence-not-override`.)*
+  **What the pair does NOT claim:** that a transport's *other* keys are
+  discarded. The client stamps its own fields over the decoded answer and
+  leaves everything else the transport returned in place, so a transport can
+  add keys of its own to an answer. Nothing downstream reads them, and nothing
+  here checks them.
 - Rows 1–9 are about level 1; **row 10 is level 2** (ADR-0210 slice 4); **row
   11 is about every mode and every level**.
   Level 3 remains an adapter property core cannot honestly offer: the shipped

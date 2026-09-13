@@ -258,10 +258,12 @@ def test_verify_transport_reports_both_fields_as_stamped_above_the_transport():
     supply neither — which is the property ``identity_is_stamped_above_the_
     transport`` is named for.
 
-    ⚠ The check asks PRESENCE, not OVERRIDE, and that weakness is older than
-    this ship and wider than these two fields — filed as
-    ``core-llm-contract-identity-check-asks-presence-not-override``. Named here
-    so this file is not read as proof the harness is strong.
+    ⚠ This check asks PRESENCE, not OVERRIDE. That is now a division of
+    labour rather than a weakness: OVERRIDE is asked by
+    ``identity_overrides_a_transport_that_supplies_its_own``, against a probe
+    the harness fabricates, and the two reds are different diagnoses. Named
+    here so this file is not read as proof of more than it shows — it shows
+    the two fields reach the payload, not that they are core's.
     """
     report = contract.verify_transport(_transport, prompt_iri=PROMPT,
                                        prompt_version=1, source_text="s")

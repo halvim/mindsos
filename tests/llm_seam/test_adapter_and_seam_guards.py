@@ -370,8 +370,9 @@ def test_an_empty_prompt_is_a_fault_not_an_empty_system_message():
 
 
 def test_the_timeout_reaches_the_opener():
-    """One of the four properties the conformance harness calls unverifiable
-    from outside — checkable here only because we are inside the transport."""
+    """One of the properties the conformance harness names in
+    ``UNVERIFIABLE_PROPERTIES`` — checkable here only because we are inside
+    the transport."""
     transport, seen = _build()
     _call(transport, timeout_s=3.25)
     assert seen[0][1] == 3.25
