@@ -60,7 +60,7 @@ from .als_subsystems import register_als_subsystems
 __all__ = [
     "L4Dispatcher",
     "Orchestrator",
-    "TaskOutcome",
+    "RequestOutcome",
     "LifecyclePhase",
     "ChainArtifactWriter",
     # ADR-0195 — Phase-1 interpretation seam.
