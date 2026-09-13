@@ -434,7 +434,30 @@ reddened two:**
   because a hand-written list of "generic" names is the same defect one level
   up.)*
 
-All six are practice, not code. They cost nothing and they close the gap
+**And a seventh, added 2026-09-12 after a guard's central claim turned out to be
+checkable by nothing:**
+
+- **A DERIVED DOMAIN IS SAFE EXACTLY TO THE STRENGTH OF THE CHECK THAT ENFORCES
+  IT.** §12.1 and `dr-guard-domains-pinned-to-lists` say to derive a guard's
+  domain rather than pin it to a hand-written list, and that is right. This is
+  the **opposite pole of the same shape**: a derived domain admits a new member
+  **with no human act**, so whatever the classification then claims about that
+  member is claimed by nobody. `origin_v0.FIELDS_WRITTEN_TODAY` is
+  `SPINE + PRODUCER_DECLARED` with `FIELDS_RESERVED` empty, so a field added to
+  the union was classified *live* automatically — and the only test of that
+  classification asked whether the field was a **key** on some emitted record,
+  which every producer writes whether or not it has a value. Two fields could
+  have been certified live while permanently `None`. **When you derive a domain,
+  say what membership CLAIMS, and check that claim at its strongest reading — by
+  value, not by presence; by behaviour, not by declaration.** The derivation
+  stays; what has to be earned is the check. *(Shipped as
+  `guard-origin-live-value-confirmed`, `fe0e19a`. The same ship is the cleanest
+  example of the two rules above working: deriving the mutation set is what
+  found an assertion in the new guard that could never have gone red, because a
+  fixture asserted the same thing first — RULES §9 caught by the mutation
+  derivation rather than by review.)*
+
+All seven are practice, not code. They cost nothing and they close the gap
 between *"a guard that cannot go red is worse than none"* (§9) and the moment
 a guard is actually shown to go red.
 
