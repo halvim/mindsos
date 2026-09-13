@@ -1,4 +1,5 @@
-# MindsOS Phase CI — runs on every push to a phase-* branch.
+# MindsOS Phase CI — runs on every push to main or a phase-* branch, and on
+# every pull request into main.
 #
 # Steps:
 #   1. Build the test image (multi-stage; pulls pinned Python + FalkorDB).
@@ -16,7 +17,11 @@ name: phase-ci
 on:
   push:
     branches:
+      - main
       - 'phase-*'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
