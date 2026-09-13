@@ -368,3 +368,12 @@ published check is the weaker of the two, and has been since slice 1. Closing it
 means a `forging_transport=` alongside the three fixture transports, which is a
 change to a published signature and not this ship's ruling. Filed as
 `core-llm-contract-identity-check-asks-presence-not-override`.
+
+⚠ **CORRECTION 2026-09-13, and the correction is the point.** *"a change to a
+published signature"* above is **FALSE**, and it was repeated into a
+`pending_designs` entry and a next-chat prompt before anyone read the `def`.
+`verify_transport` already takes `failing_transport`, `garbage_transport` and
+`wrong_type_transport`, each `Any = None`, so a fourth probe keyword is
+**additive and backward compatible**. The real cost is a new check NAME in a
+report consumers read. The finding above stands as written — it is a dated
+record of what this ship saw; only its COSTING was wrong.
