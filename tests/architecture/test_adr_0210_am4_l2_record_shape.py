@@ -18,10 +18,18 @@ enforcement, and each test pins ONE measured claim:
   checker reads the FIRST ``**Status:**`` line as the ADR's own (RULES §9), so
   an amendment that uses the bare label shadows the ADR's real status.
 
-⚠ **The checker is itself tested against a FABRICATED source**, so this file
-cannot be a green guard that never fails: ``_seam_call_keys`` is shown
-refusing a transport call that carries prompt text, without that text existing
-anywhere in the tree.
+⚠ **Two of the checkers are tested against FABRICATED input**, so this file
+cannot be a green guard that never fails: ``_seam_call_keys`` is shown refusing
+a transport call that carries prompt text, and ``_missing_realms`` is shown
+refusing a single-scope role — neither offence existing anywhere in the tree.
+
+⚠ **Why the dual-scope claim is born red by FABRICATION and not by a tree
+mutation.** ``_LOCAL_NAMED_ROLES`` is consumed by every local-bootstrap path,
+so *any* edit to it reddens the whole of ``tests/phase_14`` — a designated
+mutation over it predicted 4 reds and produced 21, and no honest prediction can
+be derived from the constant because the blast radius is the bootstrap, not the
+claim. The smallest edit that makes *this* claim false is a fabricated pair of
+scope sets (RULES §12, SMALLEST EDIT).
 """
 
 from __future__ import annotations
@@ -105,16 +113,30 @@ def test_the_checker_refuses_a_fabricated_call_that_carries_prompt_text():
     assert [k for k in got if k in PROMPT_TEXT_SPELLINGS] == ["prompt_text"]
 
 
+def _missing_realms(role: str, global_roles, local_roles) -> tuple[str, ...]:
+    """The realms ``role`` is absent from. Empty means dual-scope."""
+    return tuple(
+        realm
+        for realm, roles in (("global", global_roles), ("local", local_roles))
+        if role not in roles
+    )
+
+
 def test_policies_is_dual_scope_so_a_prompt_edition_can_be_global():
-    assert ROLE_POLICIES in _GLOBAL_NAMED_ROLES, (
+    assert _missing_realms(ROLE_POLICIES, _GLOBAL_NAMED_ROLES, _LOCAL_NAMED_ROLES) == (), (
         "the owner ruled 2026-09-14 that prompt editions are NOT Local-only "
         "(ADR-0210 am-4): a prompt held Local-only cannot be shown to anyone "
-        "but the user whose reading produced it."
+        "but the user whose reading produced it, and the Local form is the "
+        "per-user trial an L3 write targets - L3 cannot write Global, so "
+        "without it nothing below admin can author a prompt at all."
     )
-    assert ROLE_POLICIES in _LOCAL_NAMED_ROLES, (
-        "the Local form is the per-user trial an L3 write targets; L3 cannot "
-        "write Global, so without it nothing below admin can author a prompt."
-    )
+
+
+def test_the_checker_refuses_a_fabricated_single_scope_role():
+    assert _missing_realms("r", frozenset({"r"}), frozenset()) == ("local",)
+    assert _missing_realms("r", frozenset(), frozenset({"r"})) == ("global",)
+    assert _missing_realms("r", frozenset(), frozenset()) == ("global", "local")
+    assert _missing_realms("r", frozenset({"r"}), frozenset({"r"})) == ()
 
 
 def test_comprehension_is_a_family_and_keeps_its_dont_know_shape():
