@@ -269,6 +269,12 @@ that makes the call cannot read the store the credential came from.
 the **default opener path**, and `credential_not_retained_on_the_composed_request`
 is named unverifiable per ADR-0210 §5. Order is now **5 → 2 → 4 → 3**.
 
+⚠⚠ **SUPERSEDED 2026-09-13: the scope of `mindsos_llm` is
+`docs/plans/MINDSOS_LLM_PLAN.md`, and nothing else states it.** The paragraph
+below is the 2026-09-05 position, kept as a dated record. The capability table is
+a consumer-capability contract — all eleven of its rows pass and the module is not
+finished. *Original follows.*
+
 ⚠ **The definition of done is `docs/usage/runtime/llm-capability-contract.md`**,
 a nine-row pass/fail table of what a consuming project can do with
 `pip install mindsos-runtime` and no change to core — not the CR's slice list.

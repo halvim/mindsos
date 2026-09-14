@@ -37,6 +37,11 @@ deployment use*. A kind is a module exposing `KIND_ID`, `SUPPORTED_LEVELS`,
 **The stored value is a POINTER, never a secret** — level 1 is never STORED,
 level 2 is never KNOWN, and only level 2 is "never sees it".
 
+⚠⚠ **SUPERSEDED 2026-09-13 BY `docs/plans/MINDSOS_LLM_PLAN.md` — SEE AMENDMENT 3.**
+The paragraph below records the 2026-09-05 ruling as it stood. The capability
+table is a *consumer capability* contract, not the scope of the work; **the plan
+file owns the scope now.** *Original paragraph follows.*
+
 ⚠ **THE DEFINITION OF DONE IS NOT THIS SLICE LIST.** Owner ruling 2026-09-05:
 "complete" for `mindsos_llm` means the pass/fail table in
 `docs/usage/runtime/llm-capability-contract.md` — what a consuming project can
@@ -62,6 +67,8 @@ credential custody and a recorded-set pointer share nothing but the word "L2",
 and §7.2 of the CR already rules that L2 Local holds the pointer — only *which
 layer writes it* is open. Refiled as `core-llm-recorded-set-l2-pointer-owner`;
 it does **not** gate slice 2.
+⚠⚠ **RULED 2026-09-13 — SEE AMENDMENT 3.** *Which layer writes it* is no longer
+open: **L3 writes it.** `docs/plans/MINDSOS_LLM_PLAN.md` carries the ruling.
 
 Supersedes the
 placement half of the `mindsos_capacity/llm` package docstring, whose own
@@ -377,3 +384,40 @@ published signature"* above is **FALSE**, and it was repeated into a
 **additive and backward compatible**. The real cost is a new check NAME in a
 report consumers read. The finding above stands as written — it is a dated
 record of what this ship saw; only its COSTING was wrong.
+
+
+## Amendment 3 — the scope is a plan file, and L3 writes the L2 record (2026-09-13)
+
+**Amendment status:** Accepted. The decision above stands. This records two owner
+rulings that change *what is left to build* and *who owns that question*.
+
+**The scope of `mindsos_llm` now lives in `docs/plans/MINDSOS_LLM_PLAN.md`**, and
+nothing else may state it — pinned by
+`tests/architecture/test_mindsos_llm_plan_is_the_scope.py`. The 2026-09-05 ruling
+that "complete" means the capability table is **superseded**: all eleven of its
+rows pass, and the module is not finished, because that table answers *what a
+consumer can DO* rather than *what is left*. The end state the owner chose is **a
+removable stand-in** — every conclusion that leaned on the borrowed model can be
+identified as such, shown (including what was asked), and re-run without the model
+once MindsOS reads text itself.
+
+**`core-llm-recorded-set-l2-pointer-owner` is RULED: L3 writes the L2 record**, in
+the owner's words, *"this is part of the reading text intelligence, not L0 server
+code."* L0-writes-it is rejected. Four rulings follow from it and are recorded in
+full in the plan's §2:
+
+* `mindsos_knowledge` **holds** the record; `mindsos_capacity` **writes** it;
+  `mindsos_llm` is in neither and may not import either.
+* The capacities join the existing **`comprehension`** family, **not** a new `llm`
+  family — a family named for the borrowed model names the crutch rather than the
+  work, and goes wrong the day the stand-in is removed.
+* **L4 decides when a record is needed**, so recording is a capacity L4 routes to,
+  not a declared output of every reading: a recorded set spans sessions.
+* ⚠ **The recorder consumes the reader's ANSWER, never the vendor.** It must never
+  build a client. `EXPECTED_EXTERNAL_CLIENT_CONSUMERS` holds exactly one entry; a
+  second would give a bookkeeping step the failure modes of a model call — an
+  outage, a ceiling, an answer that will not decode.
+
+⚠ **Why this sat open for eight days:** Rule 1 turns a question with no present
+consumer into a *trigger*, and every chat after 2026-09-05 was therefore required
+not to decide it. **A question the OWNER must answer is not subject to Rule 1.**

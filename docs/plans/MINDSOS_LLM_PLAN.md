@@ -1,0 +1,151 @@
+# `mindsos_llm` — THE PLAN
+
+**Owner: Henrique Alvim. Created 2026-09-13 from owner rulings taken that day.**
+**This file is the ONLY plan for this module, and it owns the scope.**
+
+---
+
+## 0. HOW THIS FILE IS USED — read before doing anything here
+
+1. **This file is the plan.** A chat works items from §3, in order. It does not invent
+   scope, re-derive the item list, or reinterpret "done".
+2. **Disagreeing means AMENDING, never replacing.** A chat that thinks an item is wrong
+   writes the amendment into §6, in the same PR as the work, with the owner's decision
+   recorded. **Deleting a plan, or working outside it and explaining afterwards, is a
+   process violation.** (RULES §5.)
+3. **"Done" is mechanical.** Every item's state is exactly one of `TODO`,
+   `DONE(<sha>)`, `OUT(<reason>)`. Not a judgement call, and no chat may redefine it.
+4. **One owner per fact.** This file owns the item list, the order and the scope.
+   `STATE.recent[]` owns what shipped. `STATE.pending_designs` owns the measured detail
+   behind an open item. `docs/usage/runtime/llm-capability-contract.md` owns what a
+   consumer can DO. Project memory owns pointers and traps. **Nothing else owns scope**
+   — pinned by `tests/architecture/test_mindsos_llm_plan_is_the_scope.py`.
+
+---
+
+## 1. SCOPE — OWNER RULING 2026-09-13
+
+`mindsos_llm` is a **STAND-IN**: MindsOS cannot yet read text with its own intelligence,
+so it borrows a language model for that one job **until it can**.
+
+**END STATE — "a removable stand-in":**
+
+> Every conclusion that leaned on the borrowed model can be **identified as such**,
+> **shown** (including what was asked), and **re-run without the borrowed model** once
+> MindsOS reads text itself.
+
+⚠ **THE CAPABILITY CONTRACT TABLE IS NOT THE SCOPE.** All eleven of its rows already
+pass. It answers *"what can a consumer DO"*, which is a different question from *"what
+is left to build"*. The 2026-09-05 ruling that made it the completion criterion is
+**SUPERSEDED** by this file.
+
+---
+
+## 2. THE DESIGN RULINGS — OWNER, 2026-09-13
+
+**R1 — L3 writes the L2 record, not L0.** *"it should be L3 as this is part of the
+reading text intelligence, not L0 server code."* Settles
+`core-llm-recorded-set-l2-pointer-owner`, open and unowned since 2026-09-05. Candidate B
+(L0 writes it beside the credential) is **REJECTED**.
+
+**R2 — the work splits across two packages, and `mindsos_llm` is in neither.**
+`mindsos_knowledge` (L2) HOLDS prompt text and versions, and the pointer + provenance of
+a recorded set — **Local only, never Global**, payloads stay a FILE the pointer names.
+`mindsos_capacity` (L3) WRITES it. ⚠ `mindsos_llm` may not import either. **A chat that
+opens a branch expecting to edit `mindsos_llm` has misread this plan.**
+
+**R3 — the family is `comprehension`, NOT `llm`.** `FAMILY_RULES` already carries a
+`comprehension` family and `comprehension_v0` belongs to it. A family named for the
+borrowed model names **the crutch, not the work**, and goes wrong the day the stand-in
+is removed — which is the scope in §1.
+
+**R4 — L4 decides when a record is needed**, so recording is **a capacity L4 routes
+to**, not a declared output fired by every reading. A recorded set spans sessions; a
+per-reading output could never cover it.
+
+**R5 — the recorder consumes the READER'S ANSWER, never the vendor.** The answer already
+carries `model_id`, `model_version`, `prompt_iri`, `prompt_version`, `temperature`,
+`request_key`, `recorded`, `mode`, `credential_level`. ⚠ **The recorder must never build
+a client.** `EXPECTED_EXTERNAL_CLIENT_CONSUMERS` holds exactly one entry
+(`comprehension_v0`); a second is a declared design event, and it would give a
+bookkeeping step the failure modes of a model call — outage, ceiling, undecodable
+answer. It also keeps the recorder honest: it records what **was** produced, not what it
+can ask for again.
+
+**R6 — loading answers into L5 is ALREADY DONE.** `comprehension_v0` declares
+`outputs=(value_datastate_iri, origin_record_iri(...))` and declared outputs reach the
+grounding graph. **No item, no work.**
+
+---
+
+## 3. THE ITEM LIST
+
+| id | item | filed as | state |
+|---|---|---|---|
+| I-1 | relocation, seam, level 1, Anthropic adapter, record / replay / export | core-mindsos-llm-communication | DONE(4f54f3d) |
+| I-2 | the capability contract harness | core-mindsos-llm-communication | DONE(511b999) |
+| I-3 | L0 credential custody + per-session client | core-mindsos-llm-communication | DONE(329ffa7) |
+| I-4 | level-2 broker contract + reference broker | core-mindsos-llm-communication | DONE(5e97985) |
+| I-5 | an answer carries its mode and credential level | core-mindsos-llm-communication | DONE(3fe37db) |
+| I-6 | `verify_transport` asks OVERRIDE, not only presence | core-llm-contract-identity-check-asks-presence-not-override | DONE(f2310ae) |
+| I-7 | a contract check never vanishes from the report | core-llm-contract-identity-check-asks-presence-not-override | DONE(44059f7) |
+| I-0 | this plan, tracked; RULES §5 plan rules; the scope guard; and the prose corrections at the eight sites that contradicted §1 and §2 | core-docs-one-owner-per-fact | TODO |
+| I-8 | the L2 record shape and the recorder's contract — what `mindsos_knowledge` stores and which `comprehension`-family capacity writes it (R3, R4, R5). ADR-0210 amendment, no code | core-llm-recorded-set-l2-pointer-owner | TODO |
+| I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | TODO |
+| I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | TODO |
+| I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a` | core-llm-l3-may-declare-answer-mode-and-level | TODO |
+| I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Not yet specified, and must not be guessed at before I-9/I-10/I-11 exist** | core-llm-excision-capability | TODO |
+| I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
+| I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
+
+**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12.**
+
+**ORDER: I-0 → I-8 → I-9, I-10, I-11 → I-12.** I-9, I-10 and I-11 are all blocked by
+I-8 and may ship in any order among themselves.
+
+---
+
+## 4. STANDING CONSTRAINTS — do not re-derive
+
+- `mindsos_llm` may not import `mindsos_capacity`, `mindsos_knowledge`,
+  `mindsos_server`, `mindsos_intelligence` or `mindsos_broker`.
+- L2 Local, **never Global** — reproducibility needs an explicit export/import.
+- No silent repair layer anywhere, including inside a broker.
+- No credential in the L0 audit trail. A token refresh is never a reaction to a rejection.
+- `mindsos_llm` is **not** a subsystem (RULES §8; a guard scans for the word).
+- Every change to `mindsos_*` takes the full RULES §7 ceremony: gate, CLI check, tag.
+
+---
+
+## 5. WHY THIS FILE EXISTS
+
+Scope lived in four documents that each restated it and each went stale: the CR (written
+before slices 1b–5 existed), ADR-0210, `STATE.pending_designs[79]` (stale about its own
+build state **twice**), and a capability table promoted to "definition of done" by a
+ruling in a chat. Every chat reconstructed the plan from fragments, and reconstruction
+is where opinion entered.
+
+⚠ **Separately, `core-llm-recorded-set-l2-pointer-owner` sat open for eight days because
+Rule 1 turns a consumer-less question into a trigger — the rule that stops premature
+building also stopped the decision.** R1 closes it. **A question the OWNER must answer is
+not subject to Rule 1; put it to him instead of filing it.**
+
+### ⚠ Known gap in the guard
+`tests/architecture/test_mindsos_llm_plan_is_the_scope.py` cannot cross-check this file
+against `STATE.pending_designs`, because **`STATE.json` is not COPYed into the test
+image** (measured: zero occurrences in the `Dockerfile`; `docs` is copied at line 289).
+Adding it would let any other lane's STATE edit redden this guard, which is worse.
+**Re-open trigger: `STATE.json` enters the image for some other reason.**
+
+---
+
+## 6. AMENDMENT LOG
+
+*(date — what changed — who approved. An entry without an approval line is not an
+amendment.)*
+
+- **2026-09-13** — file created. **Owner ruled:** scope = "a removable stand-in" (§1),
+  superseding the 2026-09-05 capability-table criterion; R1 L3 writes, not L0; R3 the
+  family is `comprehension`, not `llm`; R4 L4 decides when a record is needed; R5 the
+  recorder consumes the answer, never the vendor. R2 and R6 measured from the tree and
+  confirmed by the owner.

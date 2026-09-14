@@ -1,10 +1,16 @@
 # The `mindsos_llm` capability contract
 
 **What this document is.** `mindsos_llm` is a cross-layer core capability
-(ADR-0210), not a subsystem and not a demo's private code. "Complete" for a
-capability offered to *any* project cannot mean "the CR's slice list is
-exhausted" — it has to mean a new project can do a stated set of things with
-`pip install mindsos-runtime` and no change to core.
+(ADR-0210), not a subsystem and not a demo's private code. This table states what
+a consuming project can do with `pip install mindsos-runtime` and no change to
+core.
+
+⚠⚠ **THIS TABLE IS NOT THE SCOPE OF THE WORK, and a 2026-09-05 ruling that made
+it so was superseded on 2026-09-13.** All eleven rows pass and the module is not
+finished, because *what a consumer can DO* is a different question from *what is
+left to build*. **The scope lives in `docs/plans/MINDSOS_LLM_PLAN.md` and nowhere
+else** (ADR-0210 amendment 3). A row here is a capability claim; it is not an
+item, and closing every row does not close the plan.
 
 This is that set. Every row is a claim about the tree, with the module that
 answers it and the guard that pins it. **A row with no guard is not a

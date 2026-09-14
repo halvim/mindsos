@@ -103,6 +103,28 @@ Read this + `STATE.json` before doing anything. They are the source of truth.
 - **Never `git add -A`/`git add .`.** Stage explicit paths only — the shared
   tree accumulates untracked floaters that a blanket add will sweep onto the
   wrong branch. Verify with `git diff --cached --name-only` before committing.
+- ⚠⚠ **A PLAN UNDER `docs/plans/` IS TRACKED, AND IS NOT A COORDINATION FILE.**
+  The ban above is on *transient* handoff material — chat prompts, live
+  cross-lane coordination, scratch dirs. A **plan** is the opposite: it is the
+  thing a lane is answerable to, and it is worthless if it dies with the chat
+  that wrote it. **Commit it.**
+  - **A chat may not work outside a plan that exists.** If it disagrees, it
+    **amends** the plan — in the same PR as the work, with the owner's decision
+    recorded in the plan's amendment log. **Deleting a plan, replacing it, or
+    working around it and explaining afterwards, is a process violation.**
+  - **An item's state is `TODO`, `DONE(<sha>)` or `OUT(<reason>)` and nothing
+    else.** "Done" is then mechanical; a state column a chat can write prose into
+    is a judgement column, and judgement is what drifts.
+  - ⚠ **A question the OWNER must answer is not subject to §1's
+    no-consumer-means-a-trigger rule.** Put it to him. `mindsos_llm`'s L2-writer
+    question sat open for eight days because filing it was the compliant move and
+    every chat after took it — the rule that stops premature *building* also
+    stopped the *decision*.
+  - *(Earned 2026-09-13: `mindsos_llm`'s scope lived in four documents that each
+    restated it and each went stale, so every chat reconstructed it from prose
+    and reconstruction is where opinion enters. `docs/plans/MINDSOS_LLM_PLAN.md`
+    is the first plan under this rule and
+    `tests/architecture/test_mindsos_llm_plan_is_the_scope.py` pins it.)*
 
 ## 6. State lookup
 - Current version, last shipped phase, what each demo pins → `STATE.json`.
