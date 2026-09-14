@@ -50,7 +50,12 @@ reading text intelligence, not L0 server code."* Settles
 
 **R2 — the work splits across two packages, and `mindsos_llm` is in neither.**
 `mindsos_knowledge` (L2) HOLDS prompt text and versions, and the pointer + provenance of
-a recorded set — **Local only, never Global**, payloads stay a FILE the pointer names.
+a recorded set; payloads stay a FILE the pointer names. ⚠ **CORRECTED 2026-09-14 by owner
+ruling (ADR-0210 am-4): "Local only, never Global" is the RECORDED SET's rule, not the
+prompt's.** Prompt editions are **dual-scope** — Global `admin_authored` (the curated
+library), Local a per-user trial — because a prompt held Local-only cannot be shown to
+anyone but the user whose reading produced it, which defeats §1 for every shared
+conclusion. L3 cannot write Global, so the asymmetry needs no new gate.
 `mindsos_capacity` (L3) WRITES it. ⚠ `mindsos_llm` may not import either. **A chat that
 opens a branch expecting to edit `mindsos_llm` has misread this plan.**
 
@@ -90,7 +95,7 @@ grounding graph. **No item, no work.**
 | I-6 | `verify_transport` asks OVERRIDE, not only presence | core-llm-contract-identity-check-asks-presence-not-override | DONE(f2310ae) |
 | I-7 | a contract check never vanishes from the report | core-llm-contract-identity-check-asks-presence-not-override | DONE(44059f7) |
 | I-0 | this plan, tracked; RULES §5 plan rules; the scope guard; and the prose corrections at the eight sites that contradicted §1 and §2 | core-docs-one-owner-per-fact | DONE(76b17e4) |
-| I-8 | the L2 record shape and the recorder's contract — what `mindsos_knowledge` stores and which `comprehension`-family capacity writes it (R3, R4, R5). ADR-0210 amendment, no code | core-llm-recorded-set-l2-pointer-owner | TODO |
+| I-8 | the L2 record shapeS — **two records, different authors**: the prompt edition (authored, reuses the existing `policies` role graph, dual-scope) and the recorded-set pointer (new Local-only `recorded-sets` role) — plus the recorder's contract, `capacity:comprehension:record_reading_set` (R3, R4, R5). ADR-0210 amendment + a sentinel; no product code | core-llm-recorded-set-l2-pointer-owner | TODO |
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | TODO |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | TODO |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | TODO |
@@ -102,7 +107,9 @@ grounding graph. **No item, no work.**
 
 **ORDER: I-0 ✅ → { I-8 → I-9, I-10 } and I-11 IN PARALLEL → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
-it is ruled. ⚠ **I-11 is NOT blocked by anything and can start today** — see its row.
+it is ruled. ⚠ **I-9's dependency is the ROLE decision only, not the recorder** — measured
+(ADR-0210 am-4): no prompt text crosses the transport seam, so no run and no recorder can
+ever write a prompt edition; it is authored. ⚠ **I-11 is NOT blocked by anything and can start today** — see its row.
 I-12 needs all three.
 
 ---
@@ -151,6 +158,20 @@ amendment.)*
   family is `comprehension`, not `llm`; R4 L4 decides when a record is needed; R5 the
   recorder consumes the answer, never the vendor. R2 and R6 measured from the tree and
   confirmed by the owner.
+- **2026-09-14** — **I-8 ruled and recorded as ADR-0210 amendment 4**, **approved by the
+  owner** ("agreed with D2... proceed"). Three things it settles, each measured before it
+  was written. **(a) TWO L2 records, not one.** The prompt edition is AUTHORED and reuses
+  the existing `policies` role graph — `schemas/policies.py` already argues that a
+  versioned prompt body is the same shape as a statutory threshold — and the recorded set
+  is a pointer node in a NEW Local-only `recorded-sets` role. **(b) OWNER RULING: prompt
+  editions are DUAL-SCOPE**, correcting §2 R2 above and ADR-0210 amendment 3; only recorded
+  sets are Local-only. **(c) the recorder DECLARES its pointer IRI as an output** rather
+  than being a write terminator, because the ruling that rejected L0 did so on the ground
+  that nothing in the run graph would then name the set. ⚠ Two gaps were FILED rather than
+  guessed: `append_only` is declared-not-enforced so a shown prompt is retrievable but not
+  verifiable, and the shipped manifest carries no `request_key`s — which is why the
+  `RecordedSet` payload must carry them, or I-12 cannot get from a conclusion to its set.
+
 - **2026-09-14** — two corrections to this file, found by the post-ship passes on
   `76b17e4` and **approved by the owner** ("amend"). **(a) I-0 shipped as `76b17e4` and
   was still recorded `TODO`** — the plan's first item was to commit itself and it did not

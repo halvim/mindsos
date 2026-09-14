@@ -421,3 +421,105 @@ full in the plan's §2:
 ⚠ **Why this sat open for eight days:** Rule 1 turns a question with no present
 consumer into a *trigger*, and every chat after 2026-09-05 was therefore required
 not to decide it. **A question the OWNER must answer is not subject to Rule 1.**
+
+## Amendment 4 — the L2 record shape and the recorder's contract (2026-09-14)
+
+**Amendment status:** Accepted. The decision above stands. This records plan item
+I-8 — what `mindsos_knowledge` stores, who writes it, and one correction to
+amendment 3's scope wording. The item list and the order live in
+`docs/plans/MINDSOS_LLM_PLAN.md`.
+
+**THERE ARE TWO L2 RECORDS AND THEY ARE NOT WRITTEN BY THE SAME PATH.** Amendment 3
+named one owner for both. Measured, they have different authors and different
+lifetimes.
+
+**1. The prompt edition is AUTHORED, not recorded — and it reuses the `policies`
+role graph.** No new role. `mindsos_knowledge/schemas/policies.py` already makes the
+argument in its own words: *"`in_force_from` / `in_force_to` / version / text is the
+**same** shape for a statutory dollar threshold and for a versioned prompt body, and
+that generality is the entire argument for the role existing."* A prompt edition is a
+`PolicyEdition` whose `policy_id` is the `prompt_iri`, whose `edition_id` and
+`version` carry the `prompt_version`, and whose node payload (`value`) is the prompt
+text. A conclusion stamped `prompt_iri` + `prompt_version` resolves against exactly
+that node.
+
+⚠ **The recorder cannot write it, and no run can.** Measured: the transport signature
+is `(prompt_iri, prompt_version, source_text, extraction_schema, timeout_s)` — **no
+prompt text crosses the seam**, so it is in no answer and reaches no L3 body. A prompt
+edition enters L2 the way every other authority does: authored, admin-gated in Global,
+or written Local as a trial. **I-9 is an authoring-and-resolution path, not a recorder
+concern**, and it depends on this amendment only for the role decision.
+
+**2. CORRECTION to amendment 3 — prompt editions are DUAL-SCOPE; only recorded sets
+are Local-only.** Owner ruling, 2026-09-14. The Decision section's *"Local only, never
+Global"* attaches to the recorded set — as the Consequences section already states it,
+*"Recorded sets are never Global"* — and **not** to prompt text. A prompt body held
+Local-only cannot be shown to anyone but the user whose own reading produced it, which
+defeats this module's end state for every shared or exported conclusion. `policies` is
+already bootstrapped in **both** realms under one `append_only` schema: Global
+`admin_authored` (a curated prompt library), Local a per-user trial before anything is
+shared. **L3 cannot write Global**, so the asymmetry needs no new gate.
+
+⚠ **`append_only` is DECLARED, NOT ENFORCED** — `schemas/policies.py` says so outright
+(`validate_mutation_discipline` is uncalled system-wide). A prompt edition can be
+overwritten today, so *shown* currently means **retrievable, not verifiable**. ⚠ **A
+digest cannot close this from the answer side**: the text never crosses the seam, so no
+client can stamp one, and a digest stored beside the text it describes proves nothing.
+Filed rather than guessed, as `core-llm-prompt-edition-append-only-unenforced`.
+**Re-open trigger: a consumer must prove a shown prompt is the one that ran.**
+
+**3. The recorded set is a POINTER NODE in a new Local-only role, `recorded-sets`.**
+One NodeType, `RecordedSet`; no edge types — the `learned-parameters` /
+`learned-pipelines` / `policies` zero-edge shape. Discipline `append_only`: a capture
+is never rewritten, and a re-export is a new node.
+
+* **Properties**, the queryable scalars: `set_id`, `file_uri`, `sha256`, `responses`,
+  `key_schema_version`, `captured_at`, `recorded_by`, `credential_level`, `vendor_id`.
+* **Payload** (`value`, `StorageMode.FALKOR_BLOB`): the **derived manifest** plus the
+  sorted `request_keys`. ⚠ **The keys are load-bearing.** A stored conclusion carries
+  `request_key`; the manifest as shipped carries counts, identities and prompts and
+  **no keys at all**, so without them a pointer cannot be resolved *from a conclusion*
+  and I-12 has nothing to stand on. Keys are hashes and a set of any size exceeds
+  `INLINE`'s ~4 KB, which is what `FALKOR_BLOB` exists for (ADR-0151).
+* **Never Global**, unchanged — one user's readings are not another's knowledge.
+  Reproducibility stays with `export_set` / `import_set`.
+
+**4. The recorder's contract.** `capacity:comprehension:record_reading_set` — the
+**`comprehension`** family per amendment 3, never an `llm` one.
+
+* **Input** — one record DataState, `core.reading_set_record`: `set_path` (str),
+  `recorded_by` (str), optional `note`, optional `credential_level`.
+* **Output** — `(recorded_set_iri,)`. **Declared, NOT a write terminator.**
+  `learn_parameter`'s `outputs=()` is the write-terminator precedent and it is the
+  wrong one here: the question this ADR carried for eight days rejected L0 precisely
+  because *"nothing in the run graph then names the set"*. A declared output grounds
+  the pointer the way `origin_record_iri` grounds a reading.
+* **The manifest is DERIVED in the body, never supplied** — `RecordingStore.from_path`
+  then `mindsos_llm.recorded_sets`' deriver. ⚠ **This IS amendment 3's "consumes the
+  reader's answer", not a way around it:** a recorded set's payloads *are* the answers,
+  stamped by the client at capture time. What the rule forbids is asking the vendor
+  again, and nothing on this path can — the deriver opens a file. A supplied manifest is a claim about a
+  recording instead of a property of it, which that module refuses by design.
+* ⚠ **This does not make the recorder an external-client consumer.** Measured:
+  `test_external_client_consumer_census_is_exact` keys on `context.llm`, not on
+  importing `mindsos_llm`. `comprehension_v0.py` is already the one legal
+  `L3 -> mindsos_llm` import; a second, to `recorded_sets`, builds no client and
+  reaches no vendor. `EXPECTED_EXTERNAL_CLIENT_CONSUMERS` stays at one entry, and
+  amendment 3's rule holds in substance — the recorder records what **was** produced,
+  not what it can ask for again.
+* **Write path** — `context.writeable(...)` -> `KLWriteHandle` per ADR-0180, exactly
+  `learn_parameter`'s shape: the body holds no session and makes no authorization
+  decision. **Always `scope="local"`.**
+* **L4 routes it** (amendment 3): not a declared output of a reading, because a set
+  spans sessions.
+* **Don't-know** — the `comprehension` family's shape is `OPTIONAL_RETURN`, which the
+  declared output makes coherent: nothing to record is a null `recorded_set_iri` with
+  the reason on the paired record. ⚠ **`family_rule_for` has no caller in any shipped
+  module**, so this is a documented contract and not a gate; this amendment does not
+  pretend otherwise.
+
+**Against the end state.** *Identified*: already — `origin_producer_kind`
+`document_reading` and `origin_method` `read_by_model`, widened by I-11. *Shown*: the
+`PolicyEdition` the conclusion's `prompt_iri` + `prompt_version` name. *Re-run without
+the model*: the conclusion's `request_key`, the `RecordedSet` payload that lists it,
+and `ImportedSet.replay_config` off the file the pointer names.
