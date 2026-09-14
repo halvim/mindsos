@@ -89,19 +89,21 @@ grounding graph. **No item, no work.**
 | I-5 | an answer carries its mode and credential level | core-mindsos-llm-communication | DONE(3fe37db) |
 | I-6 | `verify_transport` asks OVERRIDE, not only presence | core-llm-contract-identity-check-asks-presence-not-override | DONE(f2310ae) |
 | I-7 | a contract check never vanishes from the report | core-llm-contract-identity-check-asks-presence-not-override | DONE(44059f7) |
-| I-0 | this plan, tracked; RULES §5 plan rules; the scope guard; and the prose corrections at the eight sites that contradicted §1 and §2 | core-docs-one-owner-per-fact | TODO |
+| I-0 | this plan, tracked; RULES §5 plan rules; the scope guard; and the prose corrections at the eight sites that contradicted §1 and §2 | core-docs-one-owner-per-fact | DONE(76b17e4) |
 | I-8 | the L2 record shape and the recorder's contract — what `mindsos_knowledge` stores and which `comprehension`-family capacity writes it (R3, R4, R5). ADR-0210 amendment, no code | core-llm-recorded-set-l2-pointer-owner | TODO |
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | TODO |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | TODO |
-| I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a` | core-llm-l3-may-declare-answer-mode-and-level | TODO |
+| I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | TODO |
 | I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Not yet specified, and must not be guessed at before I-9/I-10/I-11 exist** | core-llm-excision-capability | TODO |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12.**
 
-**ORDER: I-0 → I-8 → I-9, I-10, I-11 → I-12.** I-9, I-10 and I-11 are all blocked by
-I-8 and may ship in any order among themselves.
+**ORDER: I-0 ✅ → { I-8 → I-9, I-10 } and I-11 IN PARALLEL → I-12.**
+I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
+it is ruled. ⚠ **I-11 is NOT blocked by anything and can start today** — see its row.
+I-12 needs all three.
 
 ---
 
@@ -149,3 +151,13 @@ amendment.)*
   family is `comprehension`, not `llm`; R4 L4 decides when a record is needed; R5 the
   recorder consumes the answer, never the vendor. R2 and R6 measured from the tree and
   confirmed by the owner.
+- **2026-09-14** — two corrections to this file, found by the post-ship passes on
+  `76b17e4` and **approved by the owner** ("amend"). **(a) I-0 shipped as `76b17e4` and
+  was still recorded `TODO`** — the plan's first item was to commit itself and it did not
+  record its own commit. ⚠ The scope guard cannot catch this: a `TODO` listed in
+  `DONE WHEN` is legal, which is correct for the guard and was a gap in the editing.
+  **(b) I-11 was placed behind I-8 and is not blocked by it** — measured:
+  `mindsos_capacity/builtins/origin_v0.py` imports only `..identifiers` and
+  `..printable`, so the origin record has no L2 dependency whatever, and I-11 is two
+  names in `PRODUCER_DECLARED` plus two lines in `_record` reading fields the answer
+  already carries. It was holding a cheap, ready item behind a ruling it never needed.
