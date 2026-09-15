@@ -170,3 +170,12 @@ ADR moves from Proposed to Accepted when soft-delete properties land on Core edg
 ## Revisions
 
 1. **2026-05-16 (Phase 10 — M5 + M6 + M11; D1-rev compositional clause strip).** Substrate + iterator/loader filter ship together (P68 merge of original Phase 10 substrate scope with Phase 11 filter pass). Soft-delete fields land on `Edge` / `HyperEdge` / `MetaEdge` / `MetaHyperEdge` (4 edge variants per SOFT_DELETE_AUDIT_NOTE; IntergraphEdge / IntergraphHyperEdge are out of scope per P83). XRef restores `target_stale` + `deprecated_at` (Phase 09 P53 reversal). 20 setter methods on Graph / Metagraph quartet + XRef PX2 quartet. State-file v=4 → v=5 bumps (metagraph + graph). 22 cypher builders (PB-4a per-method). The original "CompositionalMetaEdge rejects soft-delete with CompositionalImmutableError" clause is **stripped** (D1-rev): halvim slim port dropped CompositionalMetaEdge entirely (N3-D); the class survives per ADR-0148 IntergraphEdge consumer, but its consumer is `IntergraphEdge.compositional` checks, not soft-delete refusal. Status flips Proposed → Accepted.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_soft_delete.py` — covered by `tests/phase_10/test_dataclass_soft_delete_fields.py`, `tests/phase_10/test_iter_metagraph_filter.py`.
+- `tests/unit/core/test_iter_edges_filter.py` — covered by `tests/phase_10/test_iter_graph_filter.py`.

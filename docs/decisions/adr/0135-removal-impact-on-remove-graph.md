@@ -149,3 +149,11 @@ ADR moves from Proposed to Accepted when `remove_graph` returns `RemovalImpact`,
 2. **2026-05-16 (Phase 10 — PA1 raise-on-block).** When `force=False` AND impact non-empty, `remove_graph` **raises** `RemoveGraphBlockedError` (carrying `.impact`) rather than returning `RemovalImpact(proceeded=False, ...)` per the original Decision step 2. Rationale: raise is API-friendlier — callers cannot silently miss `proceeded=False`. The `proceeded` field on `RemovalImpact` is retained for the success-path return.
 
 3. **2026-05-16 (Phase 10 — P75 unified exception + P81 cascade-vs-force independence).** Two block paths collapse to a single exception class with a `BlockedReason` enum: `DANGLING_REFS` (force gate) and `INCIDENT_META_EDGES_CASCADE_FALSE` (cascade gate). Per P81, the cascade gate raises **regardless of `force`** — `force=True` overrides only the dangling-refs gate, not the cascade gate (v3 verbatim). The in-memory `_xrefs_by_target` compound index drives impact computation per PB-5a; cross-metagraph reverse-dangling cleanup is the upper-layer setter `mark_xref_stale` (ADR-0128 §Revisions amendment-3) with the firing trigger deferred to Server first-start (Phase 18+).
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_remove_graph_impact.py` — covered by `tests/phase_10/test_remove_graph_compute_impact.py`, `tests/phase_10/test_remove_graph_blocked_error.py`.

@@ -93,3 +93,11 @@ PRE-1 ships a reader (`load_request_input`) — the Dream's reload anchor is pro
 ## §Implementation (Phase 48; pending ship)
 
 `mindsos_intelligence/consolidation.py` (NEW); `mindsos_capacity/builtins/consolidate.py` (finalize body + Memory materialize); `mindsos_knowledge/schemas/episodic_memories.py` (Episode/Memory write helpers — S10); orchestrator Phase-5→complete seam wired (commit-group 3). Tests: `tests/phase_48/test_consolidation_write_path.py`, `test_memory_composite_materialization.py`, `test_memory_contains_episode_edge.py`, `test_consolidate_capacity_v2.py`.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/phase_48/test_consolidation_write_path.py` — covered by `tests/phase_48/test_consolidation_seam.py`, `tests/phase_48/test_consolidation_memory.py`.

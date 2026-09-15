@@ -342,3 +342,12 @@ above).
 See `halvim_mindsos/confirmation_docs/PHASE_15b_DESIGN_LOG.md` §1
 Round 3.5 + Round 4 PB-13 / PB-14 / PB-16 for the multi-round
 rationale chain.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_schema_migration.py` — covered by `tests/phase_11/test_migrate_from_unit.py`.
+- `tests/integration/test_loader_unknown_edge.py` — covered by `tests/phase_11/test_loader_policy_integration.py`.

@@ -290,3 +290,11 @@ ADR-0009 status flips Accepted → Superseded at this ship (per
 §"Supersedes" header).
 
 ADR moves Proposed → Accepted at Phase 24 ship (this row).
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/phase_24/test_release_update_audit_gate_intra_pending.py` — covered by `tests/phase_24/test_release_update_audit_gate_blocking.py` (`test_audit_gate_blocking_writes_failed_row`: two near-identical pending nodes, intra-pending blocking).

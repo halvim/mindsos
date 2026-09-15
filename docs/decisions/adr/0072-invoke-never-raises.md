@@ -67,3 +67,11 @@ Status remains Accepted as amended (§amendment-1).
 ## §Amendment (Phase 42 — ADR-0159)
 
 The invoke envelope context transitions toward the typed `CapacityContext` (ADR-0159). v1 invoke plumbing keeps the dict shape; the typed-context conversion + capacity-body `context["kl"]`→`context.kl` migration are deferred to Phase 46 (PB-23). Envelope semantics (never raises for impl errors) unchanged.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/phase_28/test_invocation_not_exported.py` — covered by `tests/phase_28/test_invocation_exported_phase_30.py` — the Phase 30 rename §Implementation itself records.

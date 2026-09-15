@@ -122,3 +122,11 @@ The thread-pool wrapper is the standard pattern for sync-to-async adaptation. If
 - Documentation: `docs/api/core/client.md` (new "Async surface" section), `docs/dev/internals/core.md` (gotchas section).
 
 **Acceptance criteria (Phase 07 P27 C amendment):** *Accepted when L1 mechanism ships + `core.md` documents the surface; consumer integration tracked separately.* Met by Phase 07: `AsyncClient` Protocol + `ThreadPoolAsyncClient` ship in `mindsos_core/persistence/async_client.py` (~100 LOC); `docs/api/core/client.md` documents the async surface + thread-pool starvation + cancellation gotcha.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_async_client.py` — covered by `tests/phase_07/test_async_client.py`.

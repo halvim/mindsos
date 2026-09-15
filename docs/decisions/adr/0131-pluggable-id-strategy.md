@@ -193,3 +193,11 @@ The alternative strategies are *opt-in*. No layer's existing behaviour changes i
 - `tests/conftest.py` — add `deterministic_metagraph` fixture.
 
 ADR moves from Proposed to Accepted when code lands and `docs/concepts/identity.md` reflects the decision.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_id_strategy.py` — covered by `tests/phase_02/test_identity_mint.py` (exercises every `IdStrategy`).

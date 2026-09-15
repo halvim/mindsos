@@ -510,3 +510,13 @@ The gap was not enumerated in Phase 24's design log §3 forward dependencies. It
 **Phase 24 retroactive note:** This closure is the seventh Phase 24 carry-forward NOT enumerated in Phase 24's design log §3 — discovered during Phase 25 PB-30 probe.
 
 **Phase 25 design log:** `halvim_mindsos/confirmation_docs/PHASE_25_DESIGN_LOG.md` §1 Round 3 PB-30 (UNION pre-check + UserHasPromotionHistoryError) + Round 3 Probe A (FK definition probe) + §4 ADR delta.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/phase_24/test_manifest_json_shipped_shape.py` — covered by `tests/phase_24/test_manifest_json_shapes.py` (SHIPPED and FAILED shapes were merged into one file).
+- `tests/phase_24/test_manifest_json_failed_shape.py` — covered by `tests/phase_24/test_manifest_json_shapes.py`, including `failed_release_canonical_node_ids`.
+- `tests/phase_24/test_release_update_empty_comparison_propagates.py` — untested — filed as `ATG-2`. `mindsos_server/release.py` maps `EmptyComparisonError` to a FAILED row; no test drives that path.

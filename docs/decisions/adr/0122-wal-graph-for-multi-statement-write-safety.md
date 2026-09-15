@@ -130,3 +130,11 @@ The "idempotent everywhere" half handles the common case cheaply. WAL is reserve
 - Tests: `tests/unit/core/test_wal.py` + integration test that crashes mid-promote and verifies recovery.
 
 **Acceptance criteria (Phase 07 P27 C amendment):** *Accepted when L1 mechanism ships + `docs/dev/internals/core.md` documents the pattern; consumer integration (KL `propose_for_promotion`, server `release_update`) tracked separately.* Met by Phase 07: `WriteAheadLog` + `recover()` + `register_replayer()` ship in `mindsos_core/persistence/wal.py`; primary context-manager API `with wal.entry(...)` per P50 B; `docs/dev/internals/core.md` "Persistence layer" §WAL documents the pattern.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_wal.py` — covered by `tests/phase_07/test_wal.py`.

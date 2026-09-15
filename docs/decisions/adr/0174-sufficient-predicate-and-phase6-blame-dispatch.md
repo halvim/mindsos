@@ -63,3 +63,11 @@ Full Phase 6 v1 (D13) includes cross-validation by sub-path substitution with an
 ## §Implementation (Phase 47; pending ship)
 
 `sufficient_predicate.py` + `phase_6.py` (skeleton dispatch → BlameVerdict) + `tests/phase_47/test_phase_6_hookup.py`.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/phase_47/test_phase_6_hookup.py` — covered by `tests/phase_47/test_six_phase_lifecycle.py` (`test_dont_know_when_insufficient` asserts the Phase 6 blame; end-to-end only).

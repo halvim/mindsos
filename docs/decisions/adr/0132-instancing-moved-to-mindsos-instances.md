@@ -158,3 +158,11 @@ ADR moves from Proposed to Accepted when the corresponding code lands and at lea
 ## §Amendment (Phase 42 — ADR-0156)
 
 The `mindsos_instances` Phase 06 instance catalog expands 8→10 with `IntergraphEdgeInstance` + `IntergraphHyperEdgeInstance` (the latter driven by Chat B D-B41 Pipeline composition). `materialise` support for both is deferred to Phase 46 (capacity-MM instantiation; PB-24); instantiation + persistence/reconstruction dispatch ship now.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_instances.py` — covered by `tests/phase_06/test_composite.py` and the other `mindsos_instances` tests under phase_06 / phase_07.

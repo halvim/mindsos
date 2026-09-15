@@ -68,3 +68,11 @@ per ADR-0040 + this ADR's original §Decision.
 
 See `halvim_mindsos/confirmation_docs/PHASE_18_DESIGN_LOG.md` §1
 rounds 1-2 PB-4 for the casing decision.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/knowledge/test_session_seam.py` — untested — filed as `ATG-1`. `mindsos_knowledge/capabilities.py`, the module the parity test would compare, is not in this tree, so `tests/phase_18/test_capabilities_parity.py` skips the KL subtest.

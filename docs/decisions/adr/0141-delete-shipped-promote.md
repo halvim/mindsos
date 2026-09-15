@@ -140,3 +140,11 @@ ships. No P24 implementation.
 **Phase 24 design log:** `halvim_mindsos/confirmation_docs/PHASE_24_
 DESIGN_LOG.md` §1 Round 2 PB-8 (surface location lock) + §4 ADR
 delta (this ADR + ADR-0118 §am1 + ADR-0144 §am2 batch).
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/knowledge/test_promotion.py` — retired: `mindsos_knowledge/promotion.py` is deleted by this decision; the test was never ported (amendment-1 above).
