@@ -659,9 +659,25 @@
       "branch_to_open": "not until a consumer needs the proof; enforcement belongs to the L2 write path, not to mindsos_llm",
       "spec": "mindsos_knowledge/schemas/policies.py (the append_only caveat); docs/decisions/adr/0210-llm-communication-layering.md amendment 4",
       "consumer": "none today - the trigger above is the gate"
+    },
+    {
+      "name": "adr-0134-sentinel-never-runs",
+      "status": "OPEN 2026-09-15, found by doc-fix #4. NOT BUILT.",
+      "what": "tests/phase_11/test_adr_0134_amendments.py looks for ADR-0134 at <repo-root>/../docs/decisions/adr/ (the pre-Model-C layout), so all 4 tests pytest.skip in every checkout and in the image. It is a guard that cannot fail (RULES 9). If it did run, test_adr_0134_stays_proposed would go RED: ADR-0134 is Accepted.",
+      "spec": "Point the candidate path at the repo's docs/decisions/adr, then either delete the stays_proposed assertion (the ADR was accepted) or replace it with the current status; observe the file run, not skip.",
+      "consumer": "none - defect in an already-published guard (Rule 1 does not gate it)."
     }
   ],
   "recent": [
+    {
+      "kind": "docs",
+      "name": "Doc-fix mechanism #4 - every dead test citation in an Accepted ADR is accounted for, and a guard keeps it so",
+      "sha": "8e93e97 (squash of feat/adr-impl-paths, PR #217). Guard-first commit 5aa0844 (RED), sweep 9071e3f (GREEN). main did not move during the ship: HEAD == origin/main == 8e93e97 after pull.",
+      "tag": "none",
+      "gate": "CI on PR #217 (test: pass). LINUX box, targeted: guard RED at 5aa0844 = 1 failed / 2 passed, 36 problems in 20 ADRs (guard's own count, matched the static prediction). GREEN at 9071e3f = 157 passed / 4 skipped / 0 failed across the new guard, test_doc_role_count, test_doc_capacity_api, test_retired_design_pointer, test_mindsos_llm_plan_is_the_scope, test_adr_status_consistency and every test_adr_amendment_sentinels. The 4 skips are tests/phase_11/test_adr_0134_amendments.py, pre-existing (see pending_designs adr-0134-sentinel-never-runs). No Docker: the guard imports no mindsos_* package.",
+      "what": "The audit said 30 ADR test citations pointed at a reorganised layout. Measured: 28 of the 29 distinct dead paths NEVER EXISTED in this repo (git log --all = 0) - they were names written when each ADR was drafted. Owner ruling: the citation is a claim that the decision is tested, so each dead path gets a coverage disposition, not a path rewrite. Each of 20 Accepted ADRs gets an append-only amendment 'test citations not in this repo' (0 lines deleted) with 27 dispositions: 23 covered by an existing test (read, not name-matched), 2 retired (0129, 0141 promote), 2 untested and filed in the new tracked plan docs/plans/ADR_TEST_GAPS.md (ATG-1 ADR-0041: the module the parity test compares is not in this tree; ATG-2 ADR-0114: EmptyComparisonError -> FAILED row untested). Guard tests/architecture/test_adr_test_citations.py: status read with the ADR checker's own loader; covered-by pointers must resolve; filed ids must be plan rows; a listed path that exists reddens. FLOOR: bare test_*.py names, Deferred/Proposed ADRs, scripts/ (not copied into the image), and a covered-by target that auto-skips are not checked.",
+      "docs": "20 ADR in-file amendments (0041, 0072, 0114, 0115, 0122, 0123, 0126, 0128, 0129, 0131, 0132, 0133, 0134, 0135, 0141, 0144, 0172, 0173, 0174, 0176) - no status change, no README row; NEW docs/plans/ADR_TEST_GAPS.md. HANDOFF/CLAUDE.md: none."
+    },
     {
       "kind": "feat",
       "name": "mode and credential_level reach the origin record (I-11)",
