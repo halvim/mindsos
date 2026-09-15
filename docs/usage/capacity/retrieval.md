@@ -4,9 +4,17 @@ last_confirmed_phase: 30
 
 # Retrieving Pipelines (L3)
 
-This page covers the Phase 30 BFS pipeline finder per ADR-0071. See
-the companion [Building](building.md) page for capacity registration
-and invocation.
+This page covers the BFS pipeline finder per ADR-0071. See the
+companion [Building](building.md) page for capacity registration and
+invocation.
+
+**Amendment status:** the Phase 30 surface this page originally described
+is **superseded**. CORE-C3R1 (ADR-0071 §am-2, ADR-0206 §3) replaced the
+linear pipeline with a converging DAG and replaced the no-route exception
+with a returned `FindVerdict`; the snippets below are the amended surface.
+The `last_confirmed_phase` marker in the front-matter predates that work
+and is not bumped — core work since Phase 50 ships on `feat/*` branches
+with `<name>-confirmed` tags, not phase numbers.
 
 ## What `find_pipeline` does
 

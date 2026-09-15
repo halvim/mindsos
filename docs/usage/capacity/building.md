@@ -8,6 +8,8 @@ This page walks through the Phase 28+30 capacity-building API end-to-end:
 construct a `CapacityLayer`, register `DataState` nodes, register
 `Capacity` declarations, and invoke them through the L3 façade. The
 companion page [Retrieval](retrieval.md) covers the BFS pipeline finder
+(amended at CORE-C3R1; `invoke` on this page takes `request_id`, and the
+front-matter `last_confirmed_phase` marker predates that work)
 shipped at Phase 30.
 
 !!! note "Phase 30 scope"
@@ -229,6 +231,6 @@ When `session=None`, lookup goes straight to Global.
 
 ## Next
 
-See [Retrieval](retrieval.md) for the Phase 30 BFS pipeline finder
+See [Retrieval](retrieval.md) for the BFS pipeline finder
 that locates the shortest capacity chain from a `start_datastate` to a
 `target_datastate`.
