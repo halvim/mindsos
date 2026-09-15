@@ -99,11 +99,12 @@ def _llm(transport):
     shipped decode (S-2) rather than a stand-in for it.
 
     ⚠ ``credential_level`` is required and has no default (ADR-0210 decision
-    6). It is stated here rather than defaulted, and it does NOT appear in
-    ``PRODUCER_DECLARED``: ``mindsos_llm`` stamps mode and level on the ANSWER,
-    and whether this layer declares them as origin-record fields is this
-    layer's decision, filed as ``core-llm-l3-may-declare-answer-mode-and-level``
-    and deliberately not taken by the ship that added the stamps.
+    6). It is stated here rather than defaulted, and **the value stated here is
+    what makes the two newest live fields checkable**: as of plan item I-11,
+    ``mode`` and ``credential_level`` ARE in ``PRODUCER_DECLARED``, so they are
+    classified live by derivation and the value check below runs against them.
+    A fixture that passed ``credential_level=None`` would turn one of them into
+    the all-``None`` column that check exists to catch.
     """
     return LiveLLM(
         transport, model_id="probe-model", model_version="2026-01-01",
@@ -329,8 +330,12 @@ def test_every_field_called_live_actually_carries_a_value(emitted):
     is safe only while *live* is checked by VALUE. Under a key-presence check a
     new field goes green as an all-``None`` column and the freeze certifies it.
 
-    Measured at ``0d4445c``: all 30 live fields carry a value in at least one
-    of the 14 records, so nothing is grandfathered here.
+    Measured at ``0d4445c``: all 30 live fields carried a value in at least one
+    of the 14 records, so nothing was grandfathered. ⚠ **The union is 32 as of
+    plan item I-11** - ``mode`` and ``credential_level`` - and the count is
+    written here as a measurement with its date, never as an assertion: the
+    domain is DERIVED from ``SPINE + PRODUCER_DECLARED`` and a number typed
+    into a test would be a second place to update.
 
     The quantifier is *some* record, deliberately. :data:`FIELDS_RESERVED`
     means *"no producer writes it yet"*, so its inverse is *"some producer
