@@ -98,9 +98,11 @@ from .origin_v0 import (
     BASIS_STATED,
     FIELD_BASIS,
     FIELD_CLAIMED_QUOTE,
+    FIELD_CREDENTIAL_LEVEL,
     FIELD_EXPECTED_BASIS,
     FIELD_MODEL_ID,
     FIELD_MODEL_VERSION,
+    FIELD_MODE,
     FIELD_ORIGIN_PARTY,
     FIELD_ORIGIN_PARTY_PHRASE,
     FIELD_PROMPT_IRI,
@@ -357,6 +359,8 @@ def _make_impl(
             FIELD_TEMPERATURE: resp.get("temperature"),
             FIELD_REQUEST_KEY: resp.get("request_key"),
             FIELD_RECORDED: resp.get("recorded"),
+            FIELD_MODE: resp.get("mode"),
+            FIELD_CREDENTIAL_LEVEL: resp.get("credential_level"),
         }
         fields.update(extra)
         return build_origin_record(

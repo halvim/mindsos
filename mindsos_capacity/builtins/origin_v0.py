@@ -206,6 +206,17 @@ FIELD_PROMPT_VERSION = "prompt_version"
 FIELD_TEMPERATURE = "temperature"
 FIELD_REQUEST_KEY = "request_key"
 FIELD_RECORDED = "recorded"
+#: Which of the three clients produced the answer - ``live``, ``capture`` or
+#: ``replay`` - and the credential level the deployment ran at. Both are
+#: stamped on every answer by ``mindsos_llm`` (ADR-0210 decisions 5 and 6) and
+#: reach a record only because THIS layer declares them; plan item I-11.
+#: ⚠ ``recorded`` is NOT the same question. It answers *"was this answer
+#: replayed?"*; ``mode`` answers *"which of the three produced it?"*, and a
+#: CAPTURE run is a live call that was also saved - ``recorded`` is ``False``
+#: on it. The excision capability (I-12) has to tell those apart to re-run a
+#: conclusion without the model.
+FIELD_MODE = "mode"
+FIELD_CREDENTIAL_LEVEL = "credential_level"
 
 PRODUCER_DECLARED: Tuple[str, ...] = (
     FIELD_ORIGIN_PARTY,
@@ -226,6 +237,8 @@ PRODUCER_DECLARED: Tuple[str, ...] = (
     FIELD_TEMPERATURE,
     FIELD_REQUEST_KEY,
     FIELD_RECORDED,
+    FIELD_MODE,
+    FIELD_CREDENTIAL_LEVEL,
 )
 
 #: Everything a producer may write. v0 — closed by agreement, not frozen.
