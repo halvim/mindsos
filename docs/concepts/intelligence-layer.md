@@ -22,7 +22,7 @@ A custom Executor (ADR-0163) over a priority heap keyed
 BACKGROUND, DREAM — come from the L3 `TierEnum` (ADR-0169), imported downward.
 Within a tier, ordering is by descending `attention_score` (cold-start
 constants at v1; the L3 `scoring.attention_score` capacity lands Phase 47). The
-single mutation primitive is `write_priority(task_id, score=None, tier=None)`;
+single mutation primitive is `write_priority(request_id, score=None, tier=None)`;
 `score=None` with a `tier` is the "top of new tier" elevate default. Ordering is
 queue-level; running-task preemption is cooperative — a higher-priority arrival
 that outranks a running task by more than the hysteresis margin calls

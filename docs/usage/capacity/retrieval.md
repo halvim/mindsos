@@ -32,12 +32,14 @@ exists for a different use case).
 ```python
 from mindsos_capacity import find_pipeline
 
-pipeline = find_pipeline(
+verdict = find_pipeline(
     cl,
     start_datastate="datastate:text.raw",
     target_datastate="datastate:text.tokens",
 )
 
+assert verdict.found
+pipeline = verdict.pipeline
 assert len(pipeline) == 1
 print(pipeline.steps[0].capacity_iri)
 # capacity:perception:text.space_split
@@ -45,19 +47,24 @@ print(pipeline.steps[0].capacity_iri)
 
 When `start_datastate == target_datastate`, the BFS short-circuits and
 returns an empty-steps `Pipeline` — the requested target is already
-present.
+present, which `verdict.already_held` reports directly.
 
-When no chain exists within `max_depth` steps (default 8):
+When no chain exists within `max_depth` steps (default 8) the finder
+returns a don't-know verdict rather than raising — no route is a fact
+about the world, not a technical failure (ADR-0206 §3):
 
 ```python
-from mindsos_capacity import PipelineNotFoundError
+from mindsos_capacity import FIND_BFS_EXHAUSTED
 
-with pytest.raises(PipelineNotFoundError):
-    find_pipeline(
-        cl,
-        start_datastate="datastate:nothing.here",
-        target_datastate="datastate:text.tokens",
-    )
+verdict = find_pipeline(
+    cl,
+    start_datastate="datastate:nothing.here",
+    target_datastate="datastate:text.tokens",
+)
+
+assert not verdict.found
+assert verdict.pipeline is None
+assert verdict.reason == FIND_BFS_EXHAUSTED
 ```
 
 ## Session-scoped finding
@@ -66,7 +73,7 @@ Pass a `session` to walk the user's Local metagraph view; with no
 session the BFS walks the Global view:
 
 ```python
-pipeline = find_pipeline(
+verdict = find_pipeline(
     cl,
     session=session,
     start_datastate="datastate:text.raw",
@@ -82,30 +89,42 @@ supplied.
 `find_pipeline` returns the shortest path by **capacity count**, not by
 edge count. The distinction matters when a capacity has multiple
 outputs: BFS may enqueue several frontiers per capacity step, but each
-frontier records exactly one `PipelineStep`. The test
+frontier records exactly one `DAGStep`. The test
 `tests/phase_30/test_find_pipeline_shortest_by_capacity_count.py` locks
 this invariant against a branching-capacity fixture where capacity-count
 and edge-count diverge.
 
-## `Pipeline` and `PipelineStep`
+## `Pipeline`, `DAGStep` and `DAGEdge`
+
+CORE-C3R1 replaced the linear pipeline with a converging DAG: a step
+carries its full declared input set, and the dataflow between steps is
+carried by explicit edges rather than by a per-step `via`.
 
 ```python
 @dataclass(frozen=True)
-class PipelineStep:
+class DAGStep:
     capacity_iri: str
     input_datastates: Tuple[str, ...]
     output_datastates: Tuple[str, ...]
-    via_datastate: Optional[str]  # source DataState entering this step
+
+@dataclass(frozen=True)
+class DAGEdge:
+    producer: int   # producing step index, or START (-1) for a start DataState
+    consumer: int
+    datastate: str
 
 @dataclass(frozen=True)
 class Pipeline:
-    start_datastate: str
+    start_datastates: Tuple[str, ...]
     target_datastate: str
-    steps: Tuple[PipelineStep, ...]
+    steps: Tuple[DAGStep, ...]
+    edges: Tuple[DAGEdge, ...] = ()
 ```
 
-Both are frozen — pipelines are values, not in-place-mutable plans.
-Iteration over `Pipeline` yields its steps in execution order.
+All three are frozen — pipelines are values, not in-place-mutable plans.
+`steps` is topologically ordered: every step appears after the steps that
+produce its inputs, and iterating a `Pipeline` yields them in that order.
+An empty `steps` tuple means the target was already available.
 
 ## What this slice does NOT do
 
@@ -130,7 +149,7 @@ mindsos capacity find --start datastate:text.raw \
 
 The CLI builds a fresh in-memory `CapacityLayer` per invocation (no
 persistence at Phase 30) — on an empty layer, BFS exhausts
-immediately and the CLI exits 1 with `PipelineNotFoundError`. The
+immediately and the CLI exits 1 with a `bfs_exhausted` verdict. The
 verb exists to lock the CLI surface; real-user workflows arrive at
 Phase 31 when text builtins auto-register on layer construction.
 
@@ -140,15 +159,21 @@ flag emits the verbose `Pipeline` shape:
 
 ```json
 {
-  "start_datastate": "datastate:text.raw",
+  "start_datastates": ["datastate:text.raw"],
   "target_datastate": "datastate:text.tokens",
   "length": 1,
   "steps": [
     {
       "capacity_iri": "capacity:perception:text.space_split",
       "input_datastates": ["datastate:text.raw"],
-      "output_datastates": ["datastate:text.tokens"],
-      "via_datastate": "datastate:text.raw"
+      "output_datastates": ["datastate:text.tokens"]
+    }
+  ],
+  "edges": [
+    {
+      "producer": -1,
+      "consumer": 0,
+      "datastate": "datastate:text.raw"
     }
   ]
 }
@@ -157,7 +182,9 @@ flag emits the verbose `Pipeline` shape:
 ### Exit codes
 
 - `0` — pipeline found (or `start == target`).
-- `1` — `PipelineNotFoundError` (no path within `max_depth`).
+- `1` — no route found. The `--json` payload's `error` is the verdict
+  reason (a closed-set `FIND_*` constant, e.g. `bfs_exhausted`), never an
+  exception class name; `message` is `verdict.detail` and is not parsed.
 - `2` — usage error (missing `--start` or `--target`).
 
 The Phase 30 CLI does **not** define exit 3 (invocation-envelope

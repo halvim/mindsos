@@ -139,7 +139,7 @@ ADR-0072. It returns an `InvocationResult` envelope:
 result = cl.invoke(
     space_split.iri,
     inputs={raw_text.iri: "the quick brown fox"},
-    task_id="task-1",
+    request_id="request-1",
 )
 
 assert result.success is True
@@ -165,7 +165,7 @@ cl.register_capacity(bad)
 result = cl.invoke(
     bad.iri,
     inputs={raw_text.iri: "x"},
-    task_id="task-2",
+    request_id="request-2",
     step_id="step-1",
 )
 
@@ -178,12 +178,12 @@ assert len(records) == 1
 assert records[0].error_kind == "exception:RuntimeError"
 ```
 
-### Foot-gun — `task_id=None`
+### Foot-gun — `request_id=None`
 
-If you omit `task_id`, the envelope is still returned with
+If you omit `request_id`, the envelope is still returned with
 `success=False` on exception, **but no ProblemTraceRecord is emitted**.
 L4's lifecycle process is the canonical caller and will always supply
-`task_id`; pre-L4 callers should too if they want anomaly forensics.
+`request_id`; pre-L4 callers should too if they want anomaly forensics.
 
 ### Unknown IRI raises
 

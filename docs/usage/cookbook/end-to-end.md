@@ -97,8 +97,8 @@ for install in (install_planning_v0, install_phase1_v0, install_orchestration_v0
     install(layer)
 reset_v0_verdicts()
 
-pipeline = find_pipeline(layer, start_datastate=DS_RAW_TEXT, target_datastate=DS_TOKENS)
-# pipeline.steps[0].capacity_iri == "capacity:perception:text.space_split"
+verdict = find_pipeline(layer, start_datastate=DS_RAW_TEXT, target_datastate=DS_TOKENS)
+# verdict.pipeline.steps[0].capacity_iri == "capacity:perception:text.space_split"
 ```
 
 The read-side invoke goes through the L4 dispatcher (same path the lifecycle
@@ -126,7 +126,7 @@ from mindsos_intelligence.orchestrator import Orchestrator
 
 mm = MentalModel(session_id="scenario-alice", user_id="alice")
 orch = Orchestrator(dispatcher, mm, task_scope="integration-c")
-outcome = orch.run_lifecycle({"text": "the cat sat"}, task_id="T1")
+outcome = orch.run_lifecycle({"text": "the cat sat"}, request_id="T1")
 # outcome.status == "succeeded"; outcome.outcome == "task-pattern:v0:trivial"
 ```
 
