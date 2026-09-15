@@ -212,3 +212,12 @@ which was added under the same rationale.
 
 **Phase 26a design log:** `halvim_mindsos/confirmation_docs/PHASE_26a_
 DESIGN_LOG.md` §1 R6-PB-1 (a) pick.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_integrity.py` — covered by `tests/phase_07/test_integrity.py`.
+- `tests/integration/test_fsck.py` — covered by `tests/phase_08/test_cli_persistence_verify_metagraph.py` — the `fsck` subcommand shipped as `mindsos persistence verify` in `mindsos_cli`.

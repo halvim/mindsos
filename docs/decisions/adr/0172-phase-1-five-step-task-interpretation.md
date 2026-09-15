@@ -151,3 +151,11 @@ flip is one commit and not another archaeology pass:
    `orchestration_v0.py`, `phase1_profile.py`, `phase1_text.py`.
 5. `tests/architecture/test_retired_design_pointer.py` — `RETIRED` loses any token whose
    code is gone by then.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/phase_47/test_phase_1_5_step.py` — covered by `tests/phase1_seam/test_interpret_seam.py` (drives `mindsos_intelligence.phase_1`).

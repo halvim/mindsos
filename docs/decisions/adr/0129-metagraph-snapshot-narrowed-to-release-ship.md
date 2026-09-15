@@ -285,3 +285,12 @@ DESIGN_LOG.md` §1 Round 1 PB-1 (multi-role rollback flaw surface) +
 Round 2 PB-7 (probe-pending snapshot drop) + Round 3 PB-13 (probe-
 confirmed + module retained + lint rule dropped) + §8 Phase 23
 retirement §7 carry-forward disposition table.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/test_layer_isolation.py` — covered by `tests/phase_24/test_metagraph_snapshot_zero_consumers.py` — the lint rule was dropped in favour of that zero-consumer test (its docstring, PB-Z4(b)).
+- `tests/unit/knowledge/test_promotion.py` — retired: legacy `kl.promote()` was never ported, so there is nothing to test (§am-2 above).

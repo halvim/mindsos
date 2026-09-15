@@ -224,3 +224,12 @@ Five amendments dated 2026-05-15 (Phase 09 row lock + design log RR-9 + P58 amen
 3. **Phase 09 dataclass deviates from v3 by dropping `target_stale` + `deprecated_at`.** Both fields + their setters ship together in Phase 10 alongside the soft-delete substrate (ADR-0133); shipping inert fields without setters in Phase 09 was rejected as a state-file injection trap.
 4. **Migration flag key is `mg.properties["xref:migrated_at"]`.** Renames v3's `server:xref_migrated_at` (wrong namespace — `server:` implies Server-set but the L1 migration code itself sets it) and ADR-0128 prose's draft `xref:migrated_from_strings_at` (verbose). The `xref:` namespace is added to ADR-0130's namespacing convention by Phase 09.
 5. **Validation is opt-in via `add_xref(target_metagraph: Metagraph | None = None, ...)` kwarg.** When `target_metagraph` is supplied, the target id must exist under the named role; otherwise `XRefIntegrityError(PersistenceError)`. When absent, the XRef is "soft" — Core accepts the write. Validation runs BEFORE the WAL entry opens (P59) so rejected writes never resurrect on `recover()`. Server-side registry-hook resolver path deferred to Phase 18+.
+
+## Amendment — test citations not in this repo (2026-09-15, doc-fix #4)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
+
+- `tests/unit/core/test_xref.py` — covered by `tests/phase_09/test_metagraph_xref_api.py`.
+- `tests/integration/test_xref_migration.py` — covered by `tests/phase_09/test_xref_migration_integration.py`.
