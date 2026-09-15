@@ -138,12 +138,13 @@ In-process via Python:
 from mindsos_capacity import find_pipeline
 from mindsos_capacity.builtins.text import DS_RAW_TEXT, DS_TOKENS
 
-pipeline = find_pipeline(
+verdict = find_pipeline(
     layer,
     start_datastate=DS_RAW_TEXT,
     target_datastate=DS_TOKENS,
 )
-# pipeline.steps == [Step(capacity_iri="capacity:perception:text.space_split", ...)]
+# verdict.found is True
+# verdict.pipeline.steps == [DAGStep(capacity_iri="capacity:perception:text.space_split", ...)]
 ```
 
 Or via the CLI smoke (note: today the `mindsos capacity find` verb
@@ -156,8 +157,8 @@ $ mindsos capacity find \
     --start datastate:text.raw \
     --target datastate:text.tokens \
     --json
-# exit 1 — PipelineNotFoundError against the empty CLI layer
-# {"error": "PipelineNotFoundError", "message": "no pipeline ..."}
+# exit 1 — a bfs_exhausted verdict against the empty CLI layer
+# {"error": "bfs_exhausted", "message": "...", "unproducible": {}}
 ```
 
 A positive-path CLI `find` (matching `invoke`'s auto-install
