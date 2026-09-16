@@ -74,6 +74,8 @@ def test_real_declarations_order_per_scope() -> None:
         "parameter-staging",
         "pending-promotions",
         "policies",
+        # mindsos_llm plan item I-9 - alphabetical, no dependency edge.
+        "prompts",
         "request-patterns",
         "episodic_memories",
     )
