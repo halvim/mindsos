@@ -519,4 +519,4 @@ The test files below are cited above but no file by that name exists. They are n
 
 - `tests/phase_24/test_manifest_json_shipped_shape.py` — covered by `tests/phase_24/test_manifest_json_shapes.py` (SHIPPED and FAILED shapes were merged into one file).
 - `tests/phase_24/test_manifest_json_failed_shape.py` — covered by `tests/phase_24/test_manifest_json_shapes.py`, including `failed_release_canonical_node_ids`.
-- `tests/phase_24/test_release_update_empty_comparison_propagates.py` — untested — filed as `ATG-2`. `mindsos_server/release.py` maps `EmptyComparisonError` to a FAILED row; no test drives that path.
+Resolved since: `tests/phase_24/test_release_update_empty_comparison_propagates.py` was written under the cited name by ATG-2, so that citation above is true again.
