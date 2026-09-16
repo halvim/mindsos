@@ -66,6 +66,7 @@ from .identifiers import (
     ROLE_POLICIES,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
+    ROLE_PROMPTS,
     ROLE_SUBMINDS,
     ROLE_REQUEST_PATTERNS,
 )
@@ -102,6 +103,9 @@ _GLOBAL_NAMED_ROLES: frozenset[str] = frozenset({
     # CORE CR: the policy role — an authority is Global by default; the
     # Local form exists for a per-user trial before anything is shared.
     ROLE_POLICIES,
+    # mindsos_llm I-9 (plan R2) — the curated prompt library is Global;
+    # owner ruling 2026-09-14 made the role dual-scope.
+    ROLE_PROMPTS,
 })
 
 #: Roles that live in Local-per-user metagraph per ADR-0044
@@ -138,6 +142,9 @@ _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     # CORE CR: the policy role — dual-scope, same append_only schema both
     # realms. A Local edition set is a trial, not a private override.
     ROLE_POLICIES,
+    # mindsos_llm I-9 (plan R2) — the Local form is the per-user trial an L3
+    # write capacity targets; L3 cannot write Global.
+    ROLE_PROMPTS,
 })
 
 #: Alignment role-prefix per ADR-0150. Per §amendment-1 (Phase 14
@@ -195,6 +202,8 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_INSTALLED_CAPACITIES: frozenset(),
     # CORE CR: the policy role — independent.
     ROLE_POLICIES: frozenset(),
+    # mindsos_llm I-9 (plan R2) — independent.
+    ROLE_PROMPTS: frozenset(),
 }
 
 

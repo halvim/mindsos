@@ -5,7 +5,7 @@ Measured 2026-09-13: `docs/concepts/role-graphs.md` said 15,
 `docs/api/knowledge/identifiers.md` said "15 (3 seed + 12 upper)",
 `docs/dev/repo-layout.md` said 15 in three places, and `CLAUDE.md` carried a
 growth chain that stopped at 16 — while `ALL_ROLES` had been 17 since the
-policy role shipped. Five tests already assert `len(ALL_ROLES) == 17`; nothing
+policy role shipped. Five tests already assert `len(ALL_ROLES) == 18`; nothing
 asserted that the pages a reader opens agree with it.
 
 ⚠ **The number is DERIVED, never written here.** A guard with the count typed

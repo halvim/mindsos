@@ -110,6 +110,28 @@ ROLE_INSTALLED_CAPACITIES = "installed-capacities"
 # which is the whole argument for core owning this one.
 ROLE_POLICIES = "policies"
 
+# ``mindsos_llm`` plan item I-9, ruling R2 (docs/plans/MINDSOS_LLM_PLAN.md):
+# **L2 HOLDS prompt text and versions; L3 WRITES it.**
+#
+# **Why a role of its own.** A conclusion reached with the borrowed model is
+# stamped ``prompt_iri`` + ``prompt_version`` and nothing in the system held
+# what either named — the text lived in deployment code, so a stored
+# conclusion said *"read under prompt P v3"* and P v3 could not be shown. The
+# module's end state is that such a conclusion can be identified, SHOWN, and
+# re-run without the model, and a pointer with no referent defeats the middle
+# one.
+#
+# ⚠ **Not a reuse of another role.** The shape of a versioned body is shared
+# with ``policies``, but a policy is an authority a decision CITES and a
+# prompt is an instrument a reading USED; ``policies`` exists for a consumer
+# of this system, and a module generic to any text interpretation does not
+# borrow a consumer's store. Same shape, different claim, separate role.
+#
+# Dual-scope by owner ruling 2026-09-14: Global is the curated library, Local
+# a per-user trial. A prompt held Local-only could not be shown to anyone but
+# the user whose own reading produced it.
+ROLE_PROMPTS = "prompts"
+
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
@@ -132,6 +154,8 @@ UPPER_LAYER_ROLES = frozenset({
     ROLE_INSTALLED_CAPACITIES,
     # CORE CR: the policy role — dated, versioned authority editions.
     ROLE_POLICIES,
+    # mindsos_llm I-9 (plan R2) — versioned prompt text, dual-scope.
+    ROLE_PROMPTS,
 })
 ALL_ROLES = SEED_ROLES | UPPER_LAYER_ROLES
 
@@ -518,6 +542,30 @@ def policy_edition_iri(version: str, policy_id: str, edition_id: str) -> str:
     return f"policies-{v}:edition:{pid}:{eid}"
 
 
+def prompt_edition_iri(version: str, prompt_iri: str, prompt_version: str) -> str:
+    """Prompt-edition node (Global + Local; ``mindsos_llm`` I-9, plan R2):
+    ``prompts-<v>:edition:<prompt_iri>:<prompt_version>``.
+
+    One append-only immutable node per VERSION of a prompt. ``prompt_iri`` and
+    ``prompt_version`` are the two fields a reader already stamps on every
+    conclusion, so the node's address is derivable from a stored conclusion
+    with nothing else to look up — which is the whole point of the role.
+
+    ⚠ **``prompt_version`` is a STRING here and an ``int`` on the answer.**
+    One conversion, at :func:`mindsos_knowledge.prompts.edition_id_for`, used
+    by both the writer and the reader — a second ``str()`` somewhere else is
+    how a write of ``3`` and a read of ``"3"`` come to miss silently.
+
+    Like ``policy_edition_iri`` / ``learned_pipeline_iri`` the trailing body
+    may carry colons — ``prompt_iri`` normally does — and the parser leaves it
+    opaque after the ``edition:`` kind; full-string round-trip holds.
+    """
+    v = _ensure_version(version)
+    pid = _normalise_fragment(prompt_iri)
+    pv = _normalise_fragment(prompt_version)
+    return f"prompts-{v}:edition:{pid}:{pv}"
+
+
 # ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
 # Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
@@ -609,6 +657,19 @@ def _mint_learned_pipeline(version: str, /, **content: object) -> str:
     )
 
 
+def _mint_prompt_edition(version: str, /, **content: object) -> str:
+    """Adapter: ``prompt_edition_iri`` <- ``mint_iri`` kwargs (I-9, plan R2).
+
+    Requires ``prompt_iri`` + ``prompt_version``. ``KeyError`` on missing per
+    ADR-0146 §Decision (programmer error).
+    """
+    return prompt_edition_iri(
+        version,
+        prompt_iri=str(content["prompt_iri"]),
+        prompt_version=str(content["prompt_version"]),
+    )
+
+
 def _mint_policy_edition(version: str, /, **content: object) -> str:
     """Adapter: ``policy_edition_iri`` <- ``mint_iri`` kwargs (CORE CR: policy role).
 
@@ -685,6 +746,8 @@ _IRI_BUILDERS: dict[tuple[str, str], object] = {
     (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"): _mint_installed_capability,
     # CORE CR: the policy role.
     (ROLE_POLICIES, "PolicyEdition"): _mint_policy_edition,
+    # mindsos_llm I-9 (plan R2).
+    (ROLE_PROMPTS, "PromptEdition"): _mint_prompt_edition,
 }
 
 
@@ -736,6 +799,8 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("installed-capacities-", ROLE_INSTALLED_CAPACITIES),
     # CORE CR: the policy role.
     ("policies-", ROLE_POLICIES),
+    # mindsos_llm I-9 (plan R2).
+    ("prompts-", ROLE_PROMPTS),
 )
 
 # Per-role kind-extraction whitelist. The parser strips the kind
@@ -765,6 +830,8 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_INSTALLED_CAPACITIES: frozenset({"cap"}),
     # CORE CR: the policy role.
     ROLE_POLICIES: frozenset({"edition"}),
+    # mindsos_llm I-9 (plan R2).
+    ROLE_PROMPTS: frozenset({"edition"}),
 }
 
 

@@ -51,6 +51,7 @@ from ..identifiers import (
     ROLE_POLICIES,
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
+    ROLE_PROMPTS,
     ROLE_SUBMINDS,
     ROLE_REQUEST_PATTERNS,
 )
@@ -69,6 +70,7 @@ from .ontology import build_ontology_schema
 from .parameter_staging import build_parameter_staging_schema
 from .pending_promotions import build_pending_promotions_schema
 from .policies import build_policies_schema
+from .prompts import build_prompts_schema
 from .problem_trace import build_problem_trace_schema
 from .promoted_pipelines import build_promoted_pipelines_schema
 from .subminds import build_subminds_schema
@@ -102,6 +104,7 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     ROLE_SUBMINDS: build_subminds_schema,
     # CORE CR: the policy role.
     ROLE_POLICIES: build_policies_schema,
+    ROLE_PROMPTS: build_prompts_schema,
     # feat/learned-pipeline-persistence addition per ADR-0203.
     ROLE_LEARNED_PIPELINES: build_learned_pipelines_schema,
 }

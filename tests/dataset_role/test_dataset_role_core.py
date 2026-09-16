@@ -71,4 +71,4 @@ def test_role_count_sentinel_unchanged():
     # ADR-0150 §am-9 adds a PREFIX, not a named role. The named count
     # must stay 14 (a prefix is in neither table).
     assert len(_ROLE_SCHEMA_BUILDERS) == 17
-    assert len(ALL_ROLES) == 17
+    assert len(ALL_ROLES) == 18
