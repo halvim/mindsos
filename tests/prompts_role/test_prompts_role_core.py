@@ -131,7 +131,11 @@ def test_mint_iri_raises_on_a_missing_key() -> None:
     from mindsos_knowledge.identifiers import _IRI_BUILDERS
 
     minter = _IRI_BUILDERS[(ROLE_PROMPTS, NODE_PROMPT_EDITION)]
-    with pytest.raises(KeyError):
+    # ``match=`` is required by test_generic_raises_declares_a_message: a bare
+    # raises on a builtin passes if ANYTHING of that class is raised anywhere
+    # in the block, which is how a designated mutation comes back green for
+    # the wrong reason. The fragment is the missing key's own name.
+    with pytest.raises(KeyError, match="prompt_version"):
         minter("v1", prompt_iri=PROMPT_IRI)
 
 

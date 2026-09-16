@@ -89,6 +89,7 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
     """Phase 43 (ADR-0150 §am-5) added 4 upper-layer role-graphs;
     Phase 50 (ADR-0150 §am-6) added installed-skills."""
     from mindsos_knowledge import (
+        ROLE_PROMPTS,
         ROLE_CAPACITY_GAPS,
         ROLE_INSTALLED_SKILLS,
         ROLE_LEARNED_PARAMETERS,
@@ -121,6 +122,14 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
         # ADR-0183 §am-5 addition — installed Local capabilities.
         ROLE_INSTALLED_CAPACITIES,
         ROLE_POLICIES,
+        # mindsos_llm plan item I-9 — versioned prompt text.
+        #
+        # ⚠ THIS LIST STAYS HAND-WRITTEN ON PURPOSE. Every other role set in
+        # the suite now derives from the constants, because its claim is that
+        # the code agrees with itself. This one's claim is that the code
+        # agrees with ADR-0045, which is a different document — deriving it
+        # would make it pass by construction and check nothing.
+        ROLE_PROMPTS,
     })
 
 
