@@ -17,5 +17,5 @@ guard reddens on a listed path that exists).
 
 | Id | ADR | Behaviour with no test | Note | State |
 |---|---|---|---|---|
-| ATG-1 | ADR-0041 | Knowledge-layer capability constants equal the server's (parity) | Not a test to write yet: `mindsos_knowledge/capabilities.py` is not in this tree, so the parity subtest in `tests/phase_18/test_capabilities_parity.py` skips. The ADR describes a module that does not exist — decide whether the decision or the tree is wrong first. | TODO |
+| ATG-1 | ADR-0041 | Knowledge-layer capability constants equal the server's (parity) | The module was never built: ADR-0138 removed KL's capability checks, so there is nothing to compare. ADR-0041 is now Superseded by ADR-0138; the always-skipping KL subtest was deleted. | OUT(ADR-0041 superseded by ADR-0138 - KL consults no capability) |
 | ATG-2 | ADR-0114 | `release_update` turns an `EmptyComparisonError` from the audit gate into a FAILED row with manifest forensics | `mindsos_server/release.py` handles it; phase_16 tests only that similarity raises. Written as `tests/phase_24/test_release_update_empty_comparison_propagates.py` (the name ADR-0114 cites); each of its three claims observed RED under a designated mutation. | DONE(4dd08b6) |

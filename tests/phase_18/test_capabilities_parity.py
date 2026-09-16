@@ -1,10 +1,11 @@
 """
 Tests for ``mindsos_server.capabilities`` — Phase 18 PB-4 + PB-12.
 
-ADR-0041 parity test: this test STOPS auto-skipping at Phase 18 (the
-server-side roster ships now). The KL-side parity comparison activates
-at Phase 25 when ``mindsos_knowledge/capabilities.py`` lands; until
-then, those subtests skip gracefully.
+The KL-side parity comparison ADR-0041 planned was removed on 2026-09-16:
+``mindsos_knowledge/capabilities.py`` was never built, because ADR-0138
+took KL's capability checks away (ADR-0041 is Superseded). It could only
+ever skip. The live parity test for a layer-local capability copy is
+``tests/phase_28/test_capabilities_parity.py`` (ADR-0078).
 """
 
 from __future__ import annotations
@@ -128,27 +129,3 @@ class TestBundlesPerPB12:
         assert isinstance(USER_CAPS, frozenset)
         assert isinstance(ADMIN_CAPS, frozenset)
 
-
-class TestKLSideParity:
-    """
-    ADR-0041 parity comparison.
-
-    KL ships ``mindsos_knowledge/capabilities.py`` at Phase 25 per
-    ADR-0040 + ADR-0041; until then this subtest auto-skips on
-    ``ImportError``. Once KL ships its constants, the test enforces
-    that ``KL_CAPABILITIES ⊆ ALL_CAPABILITIES`` (KL ships only the four
-    it consults; subset of the seven).
-    """
-
-    def test_kl_caps_subset_of_server_caps(self) -> None:
-        try:
-            from mindsos_knowledge.capabilities import KL_CAPABILITIES
-        except ImportError:
-            pytest.skip("mindsos_knowledge.capabilities not shipped yet (Phase 25)")
-
-        kl_set = set(KL_CAPABILITIES)
-        server_set = set(ALL_CAPABILITIES)
-        assert kl_set.issubset(server_set), (
-            f"KL capabilities not a subset of server roster: "
-            f"missing in server = {kl_set - server_set}"
-        )

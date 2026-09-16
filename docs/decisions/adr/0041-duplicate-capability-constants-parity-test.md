@@ -1,6 +1,7 @@
 ---
 title: Duplicate capability string constants in KL with parity test
-status: Accepted
+status: Superseded
+superseded_by: ADR-0138
 date: 2026-04-22
 layer: L2
 aliases: [kl-ADR-004]
@@ -8,7 +9,7 @@ aliases: [kl-ADR-004]
 
 # ADR-0041: Duplicate capability string constants in KL with parity test
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0138](0138-kl-drops-write-api.md) (recorded 2026-09-16; see §Supersession below)
 
 **Date:** 2026-04-22
 
@@ -75,4 +76,14 @@ rounds 1-2 PB-4 for the casing decision.
 
 The test files below are cited above but no file by that name exists. They are names written when this ADR was drafted; the behaviour they stood for is accounted for here, one disposition each. Guarded by `tests/architecture/test_adr_test_citations.py`; gaps are tracked in `docs/plans/ADR_TEST_GAPS.md`.
 
-- `tests/unit/knowledge/test_session_seam.py` — untested — filed as `ATG-1`. `mindsos_knowledge/capabilities.py`, the module the parity test would compare, is not in this tree, so `tests/phase_18/test_capabilities_parity.py` skips the KL subtest.
+- `tests/unit/knowledge/test_session_seam.py` — retired: the decision was superseded by ADR-0138 (see §Supersession below), so there is no KL constant set to compare. Filed as ATG-1, now `OUT`.
+
+## Supersession (2026-09-16)
+
+**Amendment status:** Accepted. Records why this ADR is Superseded; the text above is left as written.
+
+The KL-side deliverable of this decision — `mindsos_knowledge/capabilities.py` with four duplicated capability constants and a `KL_CAPABILITIES` tuple — was never built in this repo (`git log --all -- mindsos_knowledge/capabilities.py` is empty; nothing in `mindsos_knowledge` ever imported it). Amendment-1 deferred it to Phase 25; Phase 25 shipped `SessionProtocol` (ADR-0040) without it.
+
+The reason is [ADR-0138](0138-kl-drops-write-api.md): KL's write API was deleted, and with it every capability check KL made — "capability checks consolidate at the L3 invocation boundary". KL now consults no capability, so there is nothing for a duplicated constant set to serve. The pattern this ADR chose (a local copy of a server capability string, pinned by a parity test, no upward import) lives on one layer up in [ADR-0078](0078-l3-capability-local-copy.md): `mindsos_capacity/capabilities.py` and `tests/phase_28/test_capabilities_parity.py`.
+
+Removed with this supersession: the `TestKLSideParity` subtest in `tests/phase_18/test_capabilities_parity.py`, which could only ever skip. Gap ATG-1 in `docs/plans/ADR_TEST_GAPS.md` is `OUT`.
