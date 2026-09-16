@@ -11,9 +11,11 @@ not a row here.
 
 **State** is exactly one of `TODO`, `DONE(<sha>)`, `OUT(<reason>)` (RULES §5).
 Closing a row: write the test (or record why not), set the state, and change that ADR's
-bullet to `covered by` the new test in the same commit.
+bullet to `covered by` the new test in the same commit — or, when the test is written under the
+exact name the ADR cites, replace the bullet with a note that the citation now resolves (the
+guard reddens on a listed path that exists).
 
 | Id | ADR | Behaviour with no test | Note | State |
 |---|---|---|---|---|
 | ATG-1 | ADR-0041 | Knowledge-layer capability constants equal the server's (parity) | Not a test to write yet: `mindsos_knowledge/capabilities.py` is not in this tree, so the parity subtest in `tests/phase_18/test_capabilities_parity.py` skips. The ADR describes a module that does not exist — decide whether the decision or the tree is wrong first. | TODO |
-| ATG-2 | ADR-0114 | `release_update` turns an `EmptyComparisonError` from the audit gate into a FAILED row with manifest forensics | `mindsos_server/release.py` handles it; phase_16 tests only that similarity raises. | TODO |
+| ATG-2 | ADR-0114 | `release_update` turns an `EmptyComparisonError` from the audit gate into a FAILED row with manifest forensics | `mindsos_server/release.py` handles it; phase_16 tests only that similarity raises. Written as `tests/phase_24/test_release_update_empty_comparison_propagates.py` (the name ADR-0114 cites); each of its three claims observed RED under a designated mutation. | DONE(4dd08b6) |

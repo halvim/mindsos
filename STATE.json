@@ -670,6 +670,15 @@
   ],
   "recent": [
     {
+      "kind": "test",
+      "name": "ATG-2 - EmptyComparisonError from the audit gate becomes a FAILED release row (ADR-0114)",
+      "sha": "4dd08b6 (squash of feat/atg2-empty-comparison, PR #218). Branch commit 1ce937c. main did not move during the ship: HEAD == origin/main == 4dd08b6 after pull.",
+      "tag": "none",
+      "gate": "CI on PR #218 (test: pass). LINUX box: new test + doc guards 4 passed. tests/phase_24 + doc guards: 71 passed / 2 failed - test_cli_release_subgroup.py::test_release_ship_empty_exits_7 and ::test_release_propose_and_ship_happy_path fail IDENTICALLY BY NAME on main 9531c58 on the box (assert 1 == 7) and pass in CI, so they are box-environment, not this ship. Mutations, each restored from git, interpreter proven to import the worktree: M1 error_class value -> RED at manifest error_class assert; M2 `from exc` -> `from None` -> RED at __cause__ assert; M3 promotion to BlockingFindingError disabled -> RED with raw EmptyComparisonError. No Docker.",
+      "what": "First gap closed from docs/plans/ADR_TEST_GAPS.md. The test is written under the exact name ADR-0114 amendment-1 cites, so that citation is true again; the error comes from the REAL gate (node ids with empty IRI tails make all three similarity components undefined), not a patch. It pins the full shipped behaviour, which is more than the ADR states: FAILED row with error_class=empty_comparison, EVT_RELEASE_FAILED audit, pending left unshipped, and the caller sees BlockingFindingError(blocking_findings=[]) chained from EmptyComparisonError. Owner ruling this ship: a test is not mocked for approval - it is proven by running it green and red. *** Box finding, not chased: `mindsos` IS on PATH on the Linux box now (older memory says not), and two phase_24 CLI tests fail there while CI passes them - likely a stale installed CLI.",
+      "docs": "ADR-0114 doc-fix #4 amendment: ATG-2 bullet replaced by a resolved note. docs/plans/ADR_TEST_GAPS.md: ATG-2 DONE(4dd08b6), closing rule extended for tests written under the cited name (this closeout commit)."
+    },
+    {
       "kind": "docs",
       "name": "Doc-fix mechanism #4 - every dead test citation in an Accepted ADR is accounted for, and a guard keeps it so",
       "sha": "8e93e97 (squash of feat/adr-impl-paths, PR #217). Guard-first commit 5aa0844 (RED), sweep 9071e3f (GREEN). main did not move during the ship: HEAD == origin/main == 8e93e97 after pull.",
