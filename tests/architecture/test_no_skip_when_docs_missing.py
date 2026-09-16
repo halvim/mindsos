@@ -25,6 +25,12 @@ branch.
 found in the wild; a skip worded some other way is missed. Phase 12's
 "not reachable from" escaped the first grep for this class, which is how the
 list was widened. Add a phrase when a new one is found.
+
+⚠ **NARROW ON PURPOSE.** A first version also matched the bare words
+"unreachable" and "in-container". It reddened on two LEGITIMATE skips —
+``tests/_shared/falkordb_fixture.py`` ("FalkorDB unreachable at ...") and
+``tests/phase_06/test_cli_instances.py`` (a Python-version skipif). Both are
+pinned below as negative corners, so widening the list back fails here first.
 """
 
 from __future__ import annotations
@@ -38,12 +44,9 @@ _THIS = Path(__file__).resolve()
 
 _PHRASES = (
     "model c",
-    "in-container",
-    "not reachable",
-    "unreachable",
-    "not copyed",
+    "not reachable from",
+    "not copyed into test image",
     "not present in this environment",
-    "parent project",
 )
 
 
@@ -107,13 +110,19 @@ def test_no_test_skips_because_a_doc_is_missing():
 
 
 def test_fabricated_modules_exercise_every_corner():
-    skip = 'import pytest\ndef t():\n    pytest.skip(f"ADR dir {d} unreachable (in-container run)")\n'
+    skip = 'import pytest\ndef t():\n    pytest.skip(f"ADR dir {d} unreachable (in-container run); per Model C")\n'
     mark = 'import pytest\npytestmark = pytest.mark.skipif(True, reason="not reachable per Model C")\n'
     fail = 'import pytest\ndef t():\n    pytest.fail("ADR dir missing")\n'
     other = 'import pytest\ndef t():\n    pytest.skip("mkdocs not installed")\n'
-    attr = 'import x\ndef t():\n    x.skip("unreachable")\n'
+    attr = 'import x\ndef t():\n    x.skip("not reachable from here")\n'
+    falkor = 'import pytest\ndef t():\n    pytest.skip(f"FalkorDB unreachable at {h}:{p}: {e}")\n'
+    sandbox = 'import pytest\npytestmark = pytest.mark.skipif(S, reason="CLI subprocess tests require Python 3.11+ (tomllib); in-container sandbox")\n'
+    phase30 = 'import pytest\ndef t():\n    pytest.skip(f"ADR file {p} not COPYed into test image")\n'
     assert len(find_offences(skip, "a")) == 1
     assert len(find_offences(mark, "b")) == 1
     assert find_offences(fail, "c") == []
     assert find_offences(other, "d") == []
     assert find_offences(attr, "e") == []
+    assert find_offences(falkor, "f") == []
+    assert find_offences(sandbox, "g") == []
+    assert len(find_offences(phase30, "h")) == 1
