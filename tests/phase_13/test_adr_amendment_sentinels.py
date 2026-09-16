@@ -1,5 +1,10 @@
 """Phase 13 — ADR-0017 §Revisions amendment + ADR-0149 sentinels.
 
+**Current behaviour (2026-09-16):** ``docs/`` is in this repo and is copied into
+the test image, so a missing ADR is a FAILURE here, never a skip. The Model C
+layout described below is historical;
+``tests/architecture/test_no_skip_when_docs_missing.py`` keeps it that way.
+
 Mirrors Phase 12's ``test_adr_0044_amendment_1_user_id_charset``
 4-skip pattern (and Phase 11's ``test_adr_0134_amendments.py``):
 the ADR files live in the parent project tree
@@ -26,21 +31,6 @@ import pytest
 # halvim_mindsos/tests/ → halvim_mindsos/ → /Layered Intelligence/.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _ADR_DIR = _REPO_ROOT / "docs" / "decisions" / "adr"
-
-
-def _adr_dir_reachable() -> bool:
-    return _ADR_DIR.exists()
-
-
-pytestmark = pytest.mark.skipif(
-    not _adr_dir_reachable(),
-    reason=(
-        "Parent-project ADR dir not reachable from this filesystem "
-        "(expected in the runtime container per Model C — ADR files "
-        "live in /Layered Intelligence/docs/decisions/adr/ outside "
-        "the halvim_mindsos/ subtree)."
-    ),
-)
 
 
 def _find_adr(num: int) -> Path | None:

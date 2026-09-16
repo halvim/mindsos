@@ -1,5 +1,10 @@
 """Phase 17 retirement — sentinels that catch reintroduction of vacated surfaces.
 
+**Current behaviour (2026-09-16):** ``docs/`` is in this repo and is copied into
+the test image, so a missing ADR is a FAILURE here, never a skip. The Model C
+layout described below is historical;
+``tests/architecture/test_no_skip_when_docs_missing.py`` keeps it that way.
+
 Per ADR-0150 §amendment-3 (parent tree):
 
 * `MetagraphView.step` MUST NOT grow a `version=` kwarg.
@@ -126,9 +131,9 @@ _ADR_DIR = _REPO_ROOT / "docs" / "decisions" / "adr"
 
 def _skip_if_adr_dir_missing() -> None:
     if not _ADR_DIR.exists():
-        pytest.skip(
-            f"ADR directory {_ADR_DIR!r} unreachable (in-container run); "
-            f"ADRs live in parent project tree per Model C."
+        pytest.fail(
+            f"ADR directory {_ADR_DIR!r} is missing; docs/ is in the repo "
+            f"and copied into the test image, so this is a real failure."
         )
 
 

@@ -171,23 +171,18 @@ def test_adr_0045_all_builders_present_and_exported() -> None:
 # ── ADR-0044 §amendment-1 sentinel (user_id charset documented) ───────
 
 
-_ADR_PATH_CANDIDATES = [
-    Path(__file__).resolve().parents[2].parent
-        / "docs" / "decisions" / "adr"
-        / "0044-memories-move-to-local-per-user.md",
-    Path("../docs/decisions/adr/0044-memories-move-to-local-per-user.md"),
-]
+# The ADR lives in this repo's docs/ (copied into the test image). This used to
+# look one level ABOVE the repo root and skip on every run; a missing ADR now fails.
+_ADR_0044 = (
+    Path(__file__).resolve().parents[2]
+    / "docs" / "decisions" / "adr" / "0044-memories-move-to-local-per-user.md"
+)
 
 
 def _read_adr_0044() -> str:
-    for candidate in _ADR_PATH_CANDIDATES:
-        try:
-            return candidate.read_text(encoding="utf-8")
-        except FileNotFoundError:
-            continue
-    pytest.skip(
-        f"ADR-0044 not reachable from {[str(p) for p in _ADR_PATH_CANDIDATES]}"
-    )
+    if not _ADR_0044.is_file():
+        pytest.fail(f"ADR-0044 is missing: {_ADR_0044}")
+    return _ADR_0044.read_text(encoding="utf-8")
 
 
 def test_adr_0044_amendment_1_user_id_charset() -> None:
