@@ -14,6 +14,7 @@ from mindsos_knowledge import (
     ROLE_CAPACITY_STATE,
     ROLE_EPISODIC_MEMORIES,
 )
+from mindsos_knowledge.bootstrap import _LOCAL_NAMED_ROLES
 
 
 def test_lazy_local_creates_on_first_access() -> None:
@@ -32,20 +33,7 @@ def test_lazy_local_creates_on_first_access() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
     observed_roles = {g.role for g in local.graphs.values()}
-    assert observed_roles == {
-        ROLE_EPISODIC_MEMORIES,
-        ROLE_CAPACITY_STATE,
-        ROLE_PARAMETER_STAGING,
-        ROLE_PENDING_PROMOTIONS,
-        ROLE_LEARNED_PARAMETERS,
-        ROLE_REQUEST_PATTERNS,
-        ROLE_LEARNED_PIPELINES,
-        ROLE_INSTALLED_CAPACITIES,
-        # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is dual-scope.
-        ROLE_INSTALLED_SKILLS,
-        # CORE CR: the policy role — dual-scope.
-        ROLE_POLICIES,
-    }
+    assert observed_roles == set(_LOCAL_NAMED_ROLES)
 
 
 def test_lazy_local_canonical_name() -> None:

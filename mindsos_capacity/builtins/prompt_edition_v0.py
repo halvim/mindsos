@@ -20,10 +20,10 @@ so no answer contains it and no reading can produce it. The text comes from
 whoever authored the prompt, through this capacity's input record, exactly as
 ``learn_parameter`` receives a value it did not compute.
 
-⚠ **This capacity consults no model.** It reaches ``context.writeable`` and
-never ``context.llm``, so ``EXPECTED_EXTERNAL_CLIENT_CONSUMERS`` stays at its
-one entry: a bookkeeping step must not inherit the failure modes of a model
-call.
+⚠ **This capacity consults no model.** It reaches the write capability and
+no model client, so ``EXPECTED_EXTERNAL_CLIENT_CONSUMERS`` stays at its one
+entry: a bookkeeping step must not inherit the failure modes of a model call
+- an outage, a ceiling, an answer that will not decode.
 
 **Realm: always ``scope="local"``.** The Global prompt library is
 admin-authored; L3 cannot write Global, and that asymmetry is the ruling, not
@@ -91,10 +91,12 @@ def _write_prompt_edition_impl(**kwargs: Any) -> Any:
     from mindsos_knowledge.identifiers import ROLE_PROMPTS
     from mindsos_knowledge.prompts import write_prompt_edition
 
+    from ..exceptions import WriteHandleNotWiredError
+
     context = kwargs.get("context")
     writeable = getattr(context, "writeable", None)
     if writeable is None:
-        raise RuntimeError(
+        raise WriteHandleNotWiredError(
             "capacity:comprehension:write_prompt_edition requires L4 dispatch: "
             "the CapacityContext must carry a pre-authorized `writeable` "
             "capability (ADR-0180). Write capacities are not invocable via the "

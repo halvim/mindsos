@@ -50,11 +50,14 @@ class TestRoleConstant:
         assert ROLE_INSTALLED_SKILLS in UPPER_LAYER_ROLES
         assert ROLE_INSTALLED_SKILLS in ALL_ROLES
 
-    def test_closed_set_is_13(self) -> None:
-        # feat/subminds grew the closed role-set 13 → 14 per ADR-0150
-        # §amendment-7 (subminds). The Phase-50 closure sentinel updates
-        # forward, mirroring how Phase 50 updated the Phase-43 12 → 13.
-        assert len(ALL_ROLES) == 18
+    def test_every_named_role_has_a_schema_builder(self) -> None:
+        """Was a hand-written closure count, which is now asserted in exactly
+        one place (``tests/dataset_role/test_dataset_role_core.py``). The
+        claim worth keeping here is the one a count was standing in for: the
+        role set and the dispatch table do not drift apart."""
+        from mindsos_knowledge.schemas import _ROLE_SCHEMA_BUILDERS
+
+        assert set(_ROLE_SCHEMA_BUILDERS) == set(ALL_ROLES)
 
     def test_dual_scope(self) -> None:
         """CORE-C2R1 (ADR-0150 §am-11) — was Global-only at §am-6.

@@ -55,6 +55,7 @@ from tests.fixtures.skill_bundle_local import (
     MANIFEST_PATH as LOCAL_MANIFEST_PATH,
 )
 from tests.fixtures.skill_bundle_ref import MANIFEST_PATH as REF_MANIFEST_PATH
+from mindsos_knowledge import ALL_ROLES
 
 USER = "alice"
 
@@ -127,7 +128,7 @@ class TestRoleIsDualScope:
 
         ``alignment:`` and ``dataset:`` are prefixes, not members.
         """
-        assert len(_GLOBAL_NAMED_ROLES | _LOCAL_NAMED_ROLES) == 17
+        assert (_GLOBAL_NAMED_ROLES | _LOCAL_NAMED_ROLES) == set(ALL_ROLES)
 
 
 # ── a user installs Local ──────────────────────────────────────────────

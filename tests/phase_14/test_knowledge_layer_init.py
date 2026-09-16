@@ -17,6 +17,7 @@ from mindsos_core import Metagraph
 from mindsos_core.models.identity import UUID4Strategy, IRIPassthroughStrategy
 
 from mindsos_knowledge import KnowledgeLayer
+from mindsos_knowledge.bootstrap import _GLOBAL_NAMED_ROLES
 
 
 def test_empty_kl_constructible() -> None:
@@ -52,7 +53,7 @@ def test_bootstrap_creates_fresh_global() -> None:
     # base + 3 dual-scope additions; Phase 50 §am-6: + installed-skills;
     # feat/subminds §am-7: + subminds); no alignment-pair graphs
     # (Phase 15 importers do those).
-    assert len(g.graphs) == 12
+    assert len(g.graphs) == len(_GLOBAL_NAMED_ROLES)
 
 
 def test_bootstrap_with_id_strategy_override() -> None:

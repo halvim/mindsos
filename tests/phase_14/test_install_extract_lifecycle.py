@@ -24,6 +24,7 @@ from mindsos_knowledge import (
     ROLE_EPISODIC_MEMORIES,
     ensure_local_role_graph,
 )
+from mindsos_knowledge.bootstrap import _LOCAL_NAMED_ROLES
 
 
 def test_install_then_extract_round_trip_preserves_identity() -> None:
@@ -68,20 +69,7 @@ def test_install_auto_ensures_missing_local_roles() -> None:
     kl.install_local_metagraph("alice", bare)
     # All 6 Local-named role-graphs now present.
     observed = {g.role for g in bare.graphs.values()}
-    assert observed == {
-        ROLE_EPISODIC_MEMORIES,
-        ROLE_CAPACITY_STATE,
-        ROLE_PARAMETER_STAGING,
-        ROLE_PENDING_PROMOTIONS,
-        ROLE_LEARNED_PARAMETERS,
-        ROLE_REQUEST_PATTERNS,
-        ROLE_LEARNED_PIPELINES,
-        ROLE_INSTALLED_CAPACITIES,
-        # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is dual-scope.
-        ROLE_INSTALLED_SKILLS,
-        # CORE CR: the policy role — dual-scope.
-        ROLE_POLICIES,
-    }
+    assert observed == set(_LOCAL_NAMED_ROLES)
 
 
 def test_install_idempotent_on_already_ensured_local() -> None:
@@ -95,7 +83,7 @@ def test_install_idempotent_on_already_ensured_local() -> None:
     # 10 Local-named role-graphs after install; 2 pre-ensured + 8 auto
     # (installed-skills joined at CORE-C2R1, ADR-0150 §am-11; policies at the
     # policy-role CR).
-    assert len(pre.graphs) == 10
+    assert len(pre.graphs) == len(_LOCAL_NAMED_ROLES)
 
 
 def test_extract_pops_user_id() -> None:

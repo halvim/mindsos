@@ -29,25 +29,13 @@ from mindsos_knowledge import (
     ROLE_SUBMINDS,
     ROLE_REQUEST_PATTERNS,
 )
+from mindsos_knowledge.bootstrap import _GLOBAL_NAMED_ROLES
 
 
-_EXPECTED_GLOBAL_ROLES = frozenset({
-    ROLE_ONTOLOGY,
-    ROLE_LEXICON,
-    ROLE_CONCEPTS,
-    ROLE_PROMOTED_PIPELINES,
-    ROLE_REQUEST_PATTERNS,
-    ROLE_PROBLEM_TRACE,
-    # Phase 43 (ADR-0150 §am-5) Global-form additions.
-    ROLE_PENDING_PROMOTIONS,
-    ROLE_CAPACITY_GAPS,
-    ROLE_LEARNED_PARAMETERS,
-    # Phase 50 (ADR-0150 §am-6) addition — Global-only.
-    ROLE_INSTALLED_SKILLS,
-    # feat/subminds (ADR-0150 §am-7) addition — Global form (Slice 1).
-    ROLE_SUBMINDS,
-    ROLE_POLICIES,
-})
+# DERIVED, not listed: the Global role set lives in mindsos_knowledge.bootstrap.
+# The claim below is that bootstrap PRODUCES exactly it, which is what this
+# suite is for; a second hand-written copy here only ever drifted.
+_EXPECTED_GLOBAL_ROLES = frozenset(_GLOBAL_NAMED_ROLES)
 
 
 def test_bootstrap_global_has_6_named_role_graphs() -> None:

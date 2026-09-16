@@ -54,10 +54,10 @@ PROMPT_IRI = "prompt:extract_purchase_date"
 
 
 def test_role_is_in_closed_set_and_dual_scope() -> None:
-    """18th role. The count is asserted in five other suites and derived by
-    the doc guard — bumping it is meant to be a deliberate act."""
+    """Membership and both realms. The closed-set COUNT is asserted in
+    exactly one place — ``tests/dataset_role/test_dataset_role_core.py`` —
+    and derived everywhere else, so adding a role is one deliberate edit."""
     assert ROLE_PROMPTS in ALL_ROLES
-    assert len(ALL_ROLES) == 18
     assert ROLE_PROMPTS in _GLOBAL_NAMED_ROLES
     assert ROLE_PROMPTS in _LOCAL_NAMED_ROLES
 
