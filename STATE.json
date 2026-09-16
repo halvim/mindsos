@@ -662,13 +662,22 @@
     },
     {
       "name": "adr-0134-sentinel-never-runs",
-      "status": "OPEN 2026-09-15, found by doc-fix #4. NOT BUILT.",
+      "status": "CLOSED by PR #219 (squash 5039dbe, 2026-09-16). ORIGINAL STATUS FOLLOWS: OPEN 2026-09-15, found by doc-fix #4. NOT BUILT.",
       "what": "tests/phase_11/test_adr_0134_amendments.py looks for ADR-0134 at <repo-root>/../docs/decisions/adr/ (the pre-Model-C layout), so all 4 tests pytest.skip in every checkout and in the image. It is a guard that cannot fail (RULES 9). If it did run, test_adr_0134_stays_proposed would go RED: ADR-0134 is Accepted.",
       "spec": "Point the candidate path at the repo's docs/decisions/adr, then either delete the stays_proposed assertion (the ADR was accepted) or replace it with the current status; observe the file run, not skip.",
       "consumer": "none - defect in an already-published guard (Rule 1 does not gate it)."
     }
   ],
   "recent": [
+    {
+      "kind": "test",
+      "name": "ADR sentinels fail on a missing ADR instead of skipping; two that skipped on every run now run",
+      "sha": "5039dbe (squash of feat/adr-sentinels-never-skip, PR #219). Guard-first 6b0c151 (RED 15), narrowed 97eb17c (RED 13), sweep d91e7a2 (GREEN). main did not move: HEAD == origin/main == 5039dbe after pull.",
+      "tag": "none",
+      "gate": "CI on PR #219 (test: pass). LINUX box: guard RED at 13 offences in exactly the 13 intended modules; GREEN 87 passed / 0 skipped across the new guard, test_adr_test_citations, test_doc_role_count, test_adr_status_consistency and the 13 modules. Break-it: ADR-0134 moved away -> phase_11 3 failed / 0 skipped ('ADR-0134 is missing'), restored. No Docker.",
+      "what": "13 test modules (phase_11..36 ADR sentinels) skipped when an ADR could not be found - a branch from the Model C layout, when ADRs lived outside the repo and the image did not copy docs/. docs/ is now in the repo and COPYed, so the skip could only hide a wrong path, and did twice: tests/phase_11/test_adr_0134_amendments.py (4 tests) and tests/phase_12/test_ref_types_and_roles.py::test_adr_0044_amendment_1_user_id_charset looked one level ABOVE the repo root and skipped on every run. Both paths fixed and now run green; phase_11's test_adr_0134_stays_proposed deleted (ADR-0134 accepted at Phase 15b, already asserted by phase_15b). All 13 now pytest.fail on a missing doc; docstrings marked historical. New guard tests/architecture/test_no_skip_when_docs_missing.py (AST, phrase list is a FLOOR). ⚠ GUARD-DOMAIN LESSON REPEATED: the first draft matched the bare words 'unreachable' / 'in-container' and reddened on two LEGITIMATE skips (tests/_shared/falkordb_fixture.py FalkorDB-down, phase_06 Python-version skipif) - 15 not 13; narrowed to the branch's exact phrasings and both pinned as negative corners.",
+      "docs": "none (test-only). pending_designs adr-0134-sentinel-never-runs CLOSED."
+    },
     {
       "kind": "test",
       "name": "ATG-2 - EmptyComparisonError from the audit gate becomes a FAILED release row (ADR-0114)",
