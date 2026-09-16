@@ -2,6 +2,11 @@
 + PHASE_MAP §36 §inline-amendment + knowledge.md + review-checklist
 sentinels.
 
+**Current behaviour (2026-09-16):** ``docs/`` is in this repo and is copied into
+the test image, so a missing ADR is a FAILURE here, never a skip. The Model C
+layout described below is historical;
+``tests/architecture/test_no_skip_when_docs_missing.py`` keeps it that way.
+
 Extends the Phase 14a → 15a → 15b → 35 → **36** sentinel chain (R3
 PB-B3 wording extended at Phase 36). ADRs + ``docs/dev/internals/
 knowledge.md`` live in the parent project tree
@@ -27,9 +32,9 @@ _INTERNALS_DIR = _REPO_ROOT / "docs" / "dev" / "internals"
 
 def _skip_if_parent_dir_missing(p: Path) -> None:
     if not p.exists():
-        pytest.skip(
-            f"parent project path {p!r} unreachable (in-container run); "
-            f"parent tree per Model C."
+        pytest.fail(
+            f"path {p!r} is missing; docs/ is in the repo and copied into "
+            f"the test image, so this is a real failure."
         )
 
 

@@ -1,4 +1,9 @@
-"""Phase 31 — ADR amendment sentinels (Model C; parent ADR dir not COPYed into image).
+"""Phase 31 — ADR amendment sentinels.
+
+**Current behaviour (2026-09-16):** ``docs/`` is in this repo and is copied into
+the test image, so a missing ADR is a FAILURE here, never a skip. The Model C
+layout described below is historical;
+``tests/architecture/test_no_skip_when_docs_missing.py`` keeps it that way.
 
 4 ADR amendments per R5 ship-lock + R3 PB-30:
 
@@ -59,7 +64,6 @@ def test_adr_amendment_sentinel(adr_num, slug, marker):
     """Sentinel: the ADR file contains the Phase 31 §amendment / §Implementation marker."""
     path = _adr_path(adr_num, slug)
     if not path.exists():
-        # Model C — parent ADR dir not COPYed into docker image.
-        pytest.skip(f"parent ADR file not present in this environment: {path}")
+        pytest.fail(f"ADR file is missing: {path}")
     text = path.read_text(encoding="utf-8")
     assert marker in text, f"missing {marker!r} in {path}"

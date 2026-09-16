@@ -1,5 +1,10 @@
 """Phase 35 — ADR-0147 §amendment-1 sentinels + PHASE_MAP / tracker anchors.
 
+**Current behaviour (2026-09-16):** ``docs/`` is in this repo and is copied into
+the test image, so a missing ADR is a FAILURE here, never a skip. The Model C
+layout described below is historical;
+``tests/architecture/test_no_skip_when_docs_missing.py`` keeps it that way.
+
 Mirrors the Phase 14a → 15a → 15b → **35** sentinel-chain pattern: ADRs
 live in the parent project tree
 (``/Layered Intelligence/docs/decisions/adr/``) per Model C
@@ -31,9 +36,9 @@ _ADR_DIR = _REPO_ROOT / "docs" / "decisions" / "adr"
 
 def _skip_if_adr_dir_missing() -> None:
     if not _ADR_DIR.exists():
-        pytest.skip(
-            f"ADR directory {_ADR_DIR!r} unreachable (in-container run); "
-            f"ADRs live in parent project tree per Model C."
+        pytest.fail(
+            f"ADR directory {_ADR_DIR!r} is missing; docs/ is in the repo "
+            f"and copied into the test image, so this is a real failure."
         )
 
 
