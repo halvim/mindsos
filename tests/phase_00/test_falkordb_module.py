@@ -10,7 +10,11 @@ from __future__ import annotations
 
 import os
 
+import pytest
 import redis
+
+# The whole module talks to the running FalkorDB sidecar.
+pytestmark = pytest.mark.integration
 
 
 def _module_names(modules: list) -> list[str]:

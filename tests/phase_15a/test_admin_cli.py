@@ -41,6 +41,7 @@ def test_admin_import_dolce_help() -> None:
     assert "--json" in result.stdout
 
 
+@pytest.mark.integration  # needs a live FalkorDB (measured on the host, 2026-09-17)
 def test_admin_import_dolce_text_output() -> None:
     """Text output covers role / version / source / stats."""
     result = runner.invoke(app, [
@@ -55,6 +56,7 @@ def test_admin_import_dolce_text_output() -> None:
     assert "stats:" in result.stdout
 
 
+@pytest.mark.integration  # needs a live FalkorDB (measured on the host, 2026-09-17)
 def test_admin_import_dolce_json_output_is_valid() -> None:
     """JSON output parses as valid ImportResult shape."""
     result = runner.invoke(app, [
@@ -72,6 +74,7 @@ def test_admin_import_dolce_json_output_is_valid() -> None:
     assert isinstance(payload["stats"], dict)
 
 
+@pytest.mark.integration  # needs a live FalkorDB (measured on the host, 2026-09-17)
 def test_admin_import_oewn_json_output() -> None:
     result = runner.invoke(app, [
         "admin", "import", "oewn",
@@ -84,6 +87,7 @@ def test_admin_import_oewn_json_output() -> None:
     assert payload["source"] == "oewn"
 
 
+@pytest.mark.integration  # needs a live FalkorDB (measured on the host, 2026-09-17)
 def test_admin_import_framenet_json_output() -> None:
     result = runner.invoke(app, [
         "admin", "import", "framenet",

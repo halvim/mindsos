@@ -2,7 +2,8 @@
 
 Per `feedback_new_top_level_package.md` site 3 (sentinel paths) +
 Phase 12 PB-13 image-completeness pattern. Verifies that the new
-sub-package files exist at ``/app/`` in the runtime image.
+sub-package files exist in the tree under test (``/app/`` in the runtime
+image; the checkout on a host run, or ``MINDSOS_REPO_ROOT`` when set).
 
 A new top-level package was NOT added in Phase 13 (subpackage of
 existing `mindsos_knowledge`), so Dockerfile COPY discipline is
@@ -13,7 +14,14 @@ both prod + test stages — verified by Step 0 probe #4.
 from __future__ import annotations
 
 import os
+import pathlib
+
 import pytest
+
+# Default to the tree this test runs in. Inside the image that IS ``/app``, so
+# the Dockerfile COPY check is unchanged; on a host checkout it is the
+# checkout, where the old ``/app`` default made all ten cases fail.
+_DEFAULT_ROOT = str(pathlib.Path(__file__).resolve().parents[2])
 
 
 _PHASE_13_NEW_FILES = (
@@ -32,7 +40,7 @@ _PHASE_13_NEW_FILES = (
 
 @pytest.mark.parametrize("rel", _PHASE_13_NEW_FILES)
 def test_phase_13_new_modules_present_at_repo_root(rel: str) -> None:
-    repo_root = os.environ.get("MINDSOS_REPO_ROOT", "/app")
+    repo_root = os.environ.get("MINDSOS_REPO_ROOT", _DEFAULT_ROOT)
     full = os.path.join(repo_root, rel)
     assert os.path.exists(full), (
         f"Expected {full} to exist; check Dockerfile COPY discipline + "

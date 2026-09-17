@@ -63,6 +63,7 @@ def test_release_subgroup_shows_help(cli_runner, cli_db_path):
     assert "ship" in result.output
 
 
+@pytest.mark.integration  # needs a live FalkorDB (measured on the host, 2026-09-17)
 def test_release_ship_empty_exits_7(
     cli_runner, cli_db_path, monkeypatch, tmp_path,
 ):
@@ -73,6 +74,7 @@ def test_release_ship_empty_exits_7(
     assert "No unshipped pending mutations" in result.output
 
 
+@pytest.mark.integration  # needs a live FalkorDB (measured on the host, 2026-09-17)
 def test_release_propose_and_ship_happy_path(
     cli_runner, cli_db_path, monkeypatch, tmp_path,
 ):
