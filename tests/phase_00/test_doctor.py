@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 
 def test_doctor_exits_zero_and_reports_pins(cli):
     proc = cli("doctor")
@@ -15,6 +17,7 @@ def test_doctor_exits_zero_and_reports_pins(cli):
     assert "FalkorDB ping" in out + proc.stderr
 
 
+@pytest.mark.integration  # needs a live FalkorDB (measured on the host, 2026-09-17)
 def test_doctor_falkordb_reachable(cli):
     proc = cli("doctor", "--json")
     assert proc.returncode == 0, proc.stderr
@@ -23,6 +26,7 @@ def test_doctor_falkordb_reachable(cli):
     assert state["reachable"] is True, f"FalkorDB unreachable: {state}"
 
 
+@pytest.mark.integration  # needs a live FalkorDB (measured on the host, 2026-09-17)
 def test_self_test_passes(cli):
     """`doctor --self-test` exits 0 when manifest is fully populated.
 
