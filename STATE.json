@@ -670,6 +670,15 @@
   ],
   "recent": [
     {
+      "kind": "test",
+      "name": "The host run is honest again: 9 FalkorDB-dependent tests marked integration, phase_13's image check defaults to the tree under test",
+      "sha": "69c4a8f (squash of feat/host-run-markers, PR #222). Branch commit 84c9a74.",
+      "tag": "none",
+      "gate": "CI on PR #222 (test: pass). LINUX box, BEFORE at 0a9a6bf: pytest tests -m 'not integration' = 19 failed / 5095 passed / 5 skipped / 104 deselected in 38:47. AFTER at 84c9a74: 5105 passed / 0 failed / 4 skipped / 113 deselected in 30:57. The +9 deselected are the new marks; the +10 passed are phase_13's cases, which used to fail.",
+      "what": "Found while chasing two phase_24 CLI failures on the box. ⚠ MY FIRST DIAGNOSIS WAS WRONG: I blamed a stale `mindsos` on PATH, but those tests drive CliRunner IN-PROCESS - the real cause is PersistenceError, FalkorDB at localhost:6379 refused. A full host run then showed 19 environmental failures in two classes. (1) NINE tests need a live FalkorDB and carried no marker: phase_00 doctor-reachable + doctor --self-test, phase_00/test_falkordb_module.py (module-level; it talks to the sidecar), phase_15a admin importer verbs (4), phase_24 release CLI (2). tests/conftest.py registers `integration` for exactly this and nothing deselects it by default, so marking only makes `-m 'not integration'` honest; CI and the Docker gate are unchanged. (2) TEN phase_13 image-completeness cases defaulted their root to '/app' unless MINDSOS_REPO_ROOT was set, so on a host checkout they asserted a path that cannot exist; the default is now the tree the test runs in, which IS /app inside the image. ⚠ A test that only passes inside the image is not a test the box can run - and the 19 had been masking each other's diagnosis for weeks.",
+      "docs": "none (test-only)."
+    },
+    {
       "kind": "feat",
       "name": "prompt text has a home - the prompts role (I-9), and ADR-0210 am-5 withdraws am-4 clause 1",
       "sha": "a1687f2 (squash of feat/llm-prompt-home onto main, PR #221). Branch tip bfc9f0c, rebased onto 0a9a6bf immediately before its gate. ⚠ git diff bfc9f0c a1687f2 is NINE FILES - PR #220 landed during the gate, the THIRD ship running - so RULES 12.2(a) was discharged by gating the MERGED TREE after measuring the two ships' file overlap EMPTY.",
