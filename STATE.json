@@ -670,6 +670,15 @@
   ],
   "recent": [
     {
+      "kind": "docs",
+      "name": "ADR-0041 Superseded by ADR-0138; ATG-1 OUT; the KL parity subtest that could only skip is gone",
+      "sha": "a4002fe (squash of feat/adr-0041-superseded, PR #220). Branch commit 8e2ea3c.",
+      "tag": "none",
+      "gate": "CI on PR #220 (test: pass). LINUX box: 35 passed / 0 skipped (test_adr_status_consistency, test_adr_test_citations, test_no_skip_when_docs_missing, test_doc_role_count, test_retired_design_pointer, phase_18 + phase_28 parity). Break-it: README row put back to Accepted -> test_adr_status_consistency FAILED naming 0041; restored.",
+      "what": "ATG-1's finding, run to ground in the history. ADR-0041 (2026-04-22, pre-repo) decided KL would duplicate four capability constants with a parity test; its Phase 18 amendment deferred the module to Phase 25. mindsos_knowledge/capabilities.py NEVER EXISTED here (git log --all empty; nothing imported it) and Phase 25 shipped without it. Cause: ADR-0138 deleted KL's write API and with it every capability check KL made - 'capability checks consolidate at the L3 invocation boundary' - so there was nothing left for the constants to serve. The pattern lives one layer up as ADR-0078 (mindsos_capacity/capabilities.py + tests/phase_28/test_capabilities_parity.py). ⚠ An ADR can be false because its CONSUMER was removed by a later ADR that never cites it: 0138 named 0041 nowhere, and the audit read the ADR as merely stale.",
+      "docs": "ADR-0041: status Superseded + superseded_by: ADR-0138 (front-matter, prose Status, README row, summary/knowledge.md row - RULES §9) + a §Supersession amendment; ADR-0138 Related names 0041; new row in docs/decisions/superseded.md; docs/plans/ADR_TEST_GAPS.md ATG-1 OUT; mindsos_knowledge/types.py SessionProtocol.has docstring corrected; tests/phase_18/test_capabilities_parity.py TestKLSideParity deleted."
+    },
+    {
       "kind": "test",
       "name": "ADR sentinels fail on a missing ADR instead of skipping; two that skipped on every run now run",
       "sha": "5039dbe (squash of feat/adr-sentinels-never-skip, PR #219). Guard-first 6b0c151 (RED 15), narrowed 97eb17c (RED 13), sweep d91e7a2 (GREEN). main did not move: HEAD == origin/main == 5039dbe after pull.",
