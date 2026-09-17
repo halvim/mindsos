@@ -57,8 +57,9 @@ class SessionProtocol(Protocol):
             (e.g., L3 test doubles) aren't forced to a frozenset.
 
     Methods:
-        has: Membership check against ``capabilities``. KL write-API
-            gates call ``session.has(CAN_WRITE_*)`` — the actor_role
+        has: Membership check against ``capabilities``. KL itself calls
+            no gate: ADR-0138 removed its write API, and capability checks
+            run at the L3 invocation boundary (ADR-0078). The actor_role
             field is never the gate per ADR-0046.
     """
 
