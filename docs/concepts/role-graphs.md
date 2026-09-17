@@ -4,7 +4,7 @@ L2 Knowledge content is partitioned across **role-graphs** — each a typed grap
 
 ## v2 closed role-set
 
-**17 named role-graphs** + an alignment-prefix family (`alignment:<a>:<b>`). Each carries an `L2Schema(Schema)` instance declaring its `mutation_discipline` per ADR-0153 §1. The set grew 8 → 12 (Phase 43, ADR-0150 §am-5) → 13 (Phase 50, `installed-skills`, ADR-0150 §am-6) → 14 (`subminds`, ADR-0150 §am-7) → 15 (`learned-pipelines`, ADR-0203).
+**18 named role-graphs** + an alignment-prefix family (`alignment:<a>:<b>`). Each carries an `L2Schema(Schema)` instance declaring its `mutation_discipline` per ADR-0153 §1. The set grew 8 → 12 (Phase 43, ADR-0150 §am-5) → 13 (Phase 50, `installed-skills`, ADR-0150 §am-6) → 14 (`subminds`, ADR-0150 §am-7) → 15 (`learned-pipelines`, ADR-0203) → 16 (`installed-capacities`, ADR-0183 §am-5) → 17 (`policies`, the CORE policy CR) → 18 (`prompts`, `mindsos_llm` plan item I-9 — versioned prompt text, so a conclusion stamped `prompt_iri` + `prompt_version` can be shown what was asked).
 
 | Role | Scope | Discipline | NodeTypes | Purpose |
 |---|---|---|---|---|

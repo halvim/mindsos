@@ -16,6 +16,7 @@ import pytest
 from typer.testing import CliRunner
 
 from mindsos_cli.app import app
+from mindsos_knowledge.bootstrap import _LOCAL_NAMED_ROLES
 
 
 @pytest.fixture()
@@ -88,17 +89,5 @@ def test_read_local_happy_path_json_output(runner, env_setup) -> None:
     # Phase 43 (ADR-0150 §am-5): Local-named role-graphs grew from 2 to
     # 5 (parameter-staging + pending-promotions + learned-parameters
     # dual-scope additions). ADR-0150 §am-8: + dual-scope request-patterns → 6.
-    assert roles == {
-        "episodic_memories",
-        "capacity-state",
-        "parameter-staging",
-        "pending-promotions",
-        "learned-parameters",
-        "request-patterns",
-        "learned-pipelines",
-        "installed-capacities",
-        # CORE-C2R1 (ADR-0150 §am-11) — installed-skills is dual-scope.
-        "installed-skills",
-        # CORE CR: the policy role — dual-scope.
-        "policies",
-    }
+    # DERIVED: the CLI's claim is that it reports every Local role-graph.
+    assert roles == set(_LOCAL_NAMED_ROLES)

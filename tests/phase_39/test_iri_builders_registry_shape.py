@@ -48,6 +48,7 @@ def test_registry_contains_three_entries_post_rename() -> None:
         ROLE_PARAMETER_STAGING,
         ROLE_PENDING_PROMOTIONS,
         ROLE_POLICIES,
+        ROLE_PROMPTS,
         ROLE_SUBMINDS,
     )
     assert set(_IRI_BUILDERS.keys()) == {
@@ -69,6 +70,13 @@ def test_registry_contains_three_entries_post_rename() -> None:
         (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"),
         # CORE CR: the policy role.
         (ROLE_POLICIES, "PolicyEdition"),
+        # mindsos_llm plan item I-9 - versioned prompt text.
+        #
+        # ⚠ THIS IS THE ONE HAND-WRITTEN COPY OF THE REGISTRY. The same
+        # table used to be listed again in tests/phase_34; that copy is gone,
+        # and phase_34 now asserts what it is actually about - that mint_iri
+        # dispatches for every REGISTERED pair.
+        (ROLE_PROMPTS, "PromptEdition"),
     }
 
 

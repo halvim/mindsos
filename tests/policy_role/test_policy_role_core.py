@@ -47,9 +47,12 @@ POLICY_ID = "policy:filing_threshold"
 
 def test_role_is_in_closed_set_and_dual_scope() -> None:
     """17th role. The count is asserted in four other suites too — that is
-    the closed-set guard, and bumping it is meant to be a deliberate act."""
+    the closed-set guard, and bumping it is meant to be a deliberate act.
+
+    ⚠ The COUNT is no longer asserted here — it lives in exactly one place,
+    ``tests/dataset_role/test_dataset_role_core.py``, and every other suite
+    derives it. This suite's claim is membership and dual scope."""
     assert ROLE_POLICIES in ALL_ROLES
-    assert len(ALL_ROLES) == 17
     assert ROLE_POLICIES in _GLOBAL_NAMED_ROLES
     assert ROLE_POLICIES in _LOCAL_NAMED_ROLES
 

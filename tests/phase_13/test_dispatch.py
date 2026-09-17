@@ -32,33 +32,11 @@ from mindsos_knowledge import (
     schema_for_role,
 )
 from mindsos_knowledge.schemas import _ROLE_SCHEMA_BUILDERS
+from mindsos_knowledge import ALL_ROLES
 
 
-_ALL_NAMED_ROLES = (
-    ROLE_ONTOLOGY,
-    ROLE_LEXICON,
-    ROLE_CONCEPTS,
-    ROLE_PROMOTED_PIPELINES,
-    ROLE_REQUEST_PATTERNS,
-    ROLE_EPISODIC_MEMORIES,
-    ROLE_PROBLEM_TRACE,
-    ROLE_CAPACITY_STATE,
-    # Phase 43 additions per ADR-0150 §am-5.
-    ROLE_PARAMETER_STAGING,
-    ROLE_PENDING_PROMOTIONS,
-    ROLE_CAPACITY_GAPS,
-    ROLE_LEARNED_PARAMETERS,
-    # Phase 50 addition per ADR-0150 §am-6.
-    ROLE_INSTALLED_SKILLS,
-    # feat/subminds addition per ADR-0150 §am-7.
-    ROLE_SUBMINDS,
-    # feat/learned-pipeline-persistence addition per ADR-0203.
-    ROLE_LEARNED_PIPELINES,
-    # ADR-0183 §am-5 addition.
-    ROLE_INSTALLED_CAPACITIES,
-    # CORE CR: the policy role.
-    ROLE_POLICIES,
-)
+# DERIVED - the parametrised role list is the closed set itself.
+_ALL_NAMED_ROLES = tuple(sorted(ALL_ROLES))
 
 
 @pytest.mark.parametrize("role", _ALL_NAMED_ROLES)
@@ -92,19 +70,16 @@ def test_unknown_role_raises_unknown_role_error() -> None:
     assert "alignment:" in msg
 
 
-def test_dispatch_table_size_equals_named_role_count() -> None:
-    # Closure sentinel — Phase 14+ adding a role must extend the table.
-    # Alignment is NOT in the dispatch dict (prefix-keyed, not name-keyed).
-    # Phase 43 PR2 commit 1 expanded the closed role-set from 8 to 12 per
-    # ADR-0150 §amendment-5 (parameter-staging, pending-promotions,
-    # capacity-gaps, learned-parameters). Phase 50 expanded 12 to 13 per
-    # ADR-0150 §amendment-6 (installed-skills). feat/subminds expanded 13
-    # to 14 per ADR-0150 §amendment-7 (subminds).
-    assert len(_ROLE_SCHEMA_BUILDERS) == 17
-
-
 def test_dispatch_table_keys_equal_named_roles() -> None:
-    assert set(_ROLE_SCHEMA_BUILDERS) == set(_ALL_NAMED_ROLES)
+    """The table and the closed role-set do not drift apart.
+
+    A separate size assertion used to sit here, written as a number. It said
+    nothing this does not: two sets that are equal have the same size. The
+    COUNT is asserted once, in
+    ``tests/dataset_role/test_dataset_role_core.py``, and nowhere else.
+    Alignment is NOT in the dispatch dict - it is prefix-keyed.
+    """
+    assert set(_ROLE_SCHEMA_BUILDERS) == set(ALL_ROLES)
 
 
 def test_schema_for_role_strict_kwarg_plumbed() -> None:

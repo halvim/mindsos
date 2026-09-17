@@ -48,6 +48,7 @@ assumed.
 
 from __future__ import annotations
 
+import ast
 import re
 from pathlib import Path
 
@@ -85,6 +86,52 @@ def _source_root() -> Path:
         "source root not found: no directory above this test contains all of "
         f"{list(_PACKAGES)}"
     )
+
+
+def _llm_attr_census() -> dict[str, int]:
+    """``{repo-relative path: count}`` of real ``context.llm`` accesses.
+
+    ⚠ **BY THE SYNTAX TREE, NOT BY GREP, AND THE REASON IS MEASURED.** This
+    census asserts the system's strongest published safety claim — *exactly
+    one body in this tree reaches an outside model* — and a text search
+    cannot tell an access from a sentence about one. The regex version
+    counted ``capacity:comprehension:write_prompt_edition``'s docstring,
+    which says the capacity never touches ``context`` dot ``llm``, and
+    reported a second consumer that does not exist. The same weakness runs
+    the other way: prose can hide an access a grep is not spelled for.
+
+    Counted: attribute access ``<name>.llm`` where ``<name>`` is ``context``
+    or ``ctx``, and ``getattr(<name>, "llm", ...)``. Both are how a body
+    reaches the injected client; neither can be written in a comment.
+    """
+    root = _source_root()
+    counts: dict[str, int] = {}
+    for pkg in _PACKAGES:
+        for path in sorted((root / pkg).rglob("*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            n = 0
+            for node in ast.walk(tree):
+                if (
+                    isinstance(node, ast.Attribute)
+                    and node.attr == "llm"
+                    and isinstance(node.value, ast.Name)
+                    and node.value.id in ("context", "ctx")
+                ):
+                    n += 1
+                elif (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Name)
+                    and node.func.id == "getattr"
+                    and len(node.args) >= 2
+                    and isinstance(node.args[0], ast.Name)
+                    and node.args[0].id in ("context", "ctx")
+                    and isinstance(node.args[1], ast.Constant)
+                    and node.args[1].value == "llm"
+                ):
+                    n += 1
+            if n:
+                counts[str(path.relative_to(root))] = n
+    return counts
 
 
 def _census(pattern: str) -> dict[str, int]:
@@ -290,7 +337,7 @@ def test_outside_service_import_census_is_exact():
 
 
 def test_external_client_consumer_census_is_exact():
-    got = _census(r"""context\.llm\b|getattr\(\s*context\s*,\s*["']llm["']""")
+    got = _llm_attr_census()
     assert got == EXPECTED_EXTERNAL_CLIENT_CONSUMERS, (
         "a body reaching an outside-service client is a run surface: it can "
         "fail in ways no other step can (an outage, a ceiling, an answer that "

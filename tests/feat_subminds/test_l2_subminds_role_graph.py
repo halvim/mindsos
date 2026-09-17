@@ -34,14 +34,15 @@ def test_role_constant_value():
     assert ROLE_SUBMINDS == "subminds"
 
 
-def test_closed_role_set_is_14():
+def test_closed_role_set_membership():
+    # Membership is this suite's claim; the COUNT is the sentinel's
+    # (tests/dataset_role/test_dataset_role_core.py).
     assert ROLE_SUBMINDS in UPPER_LAYER_ROLES
     assert ROLE_SUBMINDS in ALL_ROLES
-    assert len(ALL_ROLES) == 17
 
 
 def test_dispatch_table_includes_subminds():
-    assert len(_ROLE_SCHEMA_BUILDERS) == 17
+    assert ROLE_SUBMINDS in _ROLE_SCHEMA_BUILDERS
     assert _ROLE_SCHEMA_BUILDERS[ROLE_SUBMINDS] is build_subminds_schema
 
 

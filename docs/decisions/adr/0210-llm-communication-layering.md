@@ -523,3 +523,66 @@ is never rewritten, and a re-export is a new node.
 `PolicyEdition` the conclusion's `prompt_iri` + `prompt_version` name. *Re-run without
 the model*: the conclusion's `request_key`, the `RecordedSet` payload that lists it,
 and `ImportedSet.replay_config` off the file the pointer names.
+
+## Amendment 5 — the prompt store is its own role; amendment 4 clause 1 is WITHDRAWN (2026-09-16)
+
+**Amendment status:** Accepted. The decision above stands. This corrects amendment
+4, which is otherwise unchanged: its recorded-set half, its recorder contract and
+its dual-scope ruling all hold.
+
+**WHAT IS WITHDRAWN.** Amendment 4's clause 1 said a prompt edition reuses the
+existing `policies` role graph and is *"AUTHORED, not recorded — the recorder
+cannot write it, and no run can"*. **Both halves are withdrawn.**
+
+**(a) `policies` is a consumer's store, and this module is generic.** The policy
+role was created by the Decision Records CR, and `identifiers.py` states in the
+same breath as the shape argument that *"a policy is an authority a decision
+cites. That is not cosmetic here: a Decision Record states which authority, which
+edition, in force when, so the store's identity is part of the claim being
+made."* `mindsos_llm` is a stand-in for reading text with a borrowed model, for
+**any** consumer; borrowing a store whose identity belongs to one of them leaves
+a prompt indistinguishable from an authority to anything enumerating that graph,
+with an id prefix as the only separation. Amendment 4 took the shape argument and
+ignored the identity argument on the same page.
+
+**(b) "no run can write it" does not follow from the measurement.** It is true and
+remains true that **no prompt text crosses the transport seam** — the call carries
+`prompt_iri`, `prompt_version`, `source_text`, `extraction_schema`, `timeout_s`.
+What follows is only that the text is in no ANSWER. **Plan ruling R2 says L3
+writes what L2 holds**, and an L3 write capacity receives the text as an INPUT
+record, exactly as `learn_parameter` receives a value it did not compute.
+
+⚠ **Why this is recorded rather than quietly fixed.** Amendment 4's clause 1 cited
+nothing. Each of R1–R6 is a plan ruling with an owner and a date; that clause was
+neither, and it was written because a design question was answered by looking for
+a matching shape in the tree instead of by reading the plan. **Measurement
+verifies a claim; it cannot generate a decision.** The plan already held the
+answer.
+
+**THE SHAPE, per R2 and R3.**
+
+* **`prompts` — a role of its own**, dual-scope (Global the curated library,
+  Local a per-user trial, per amendment 4's owner ruling, which stands). One
+  NodeType `PromptEdition`, no edge types, `append_only`. The node's **payload is
+  the text**; `prompt_iri` and `prompt_version` are properties **and** the node's
+  address, so a stored conclusion resolves its own prompt with no other lookup.
+  The closed role-set moves **17 → 18**.
+* ⚠ **One conversion, named once.** `prompt_version` is an `int` on every answer
+  and a string inside an IRI. `mindsos_knowledge.prompts.edition_id_for` is the
+  only crossing, used by both the writer and the reader; a second `str()`
+  elsewhere is how a write of `3` and a read of `"3"` come to miss silently, and
+  the miss reads as *"never stored"* rather than as *"asked in a different
+  alphabet"*.
+* **`capacity:comprehension:write_prompt_edition`** — the `comprehension` family
+  per R3, input `core.reading_set_record`'s sibling `core.prompt_edition_write`,
+  `outputs=()` (the `learn_parameter` write-terminator precedent), writing through
+  `context.writeable` at `scope="local"`. It never touches `context.llm`.
+* **A missing edition REFUSES.** Every conclusion written before this role existed
+  names a version that was never stored; the store says so rather than returning
+  the nearest version. A reader shown a prompt that is not the one that ran has
+  been told something false.
+
+⚠ **`append_only` is still DECLARED, NOT ENFORCED** — unchanged from amendment 4,
+still filed as `core-llm-prompt-edition-append-only-unenforced`. The writer's
+duplicate refusal is the only enforcement there is, so *shown* means retrievable,
+not verifiable.

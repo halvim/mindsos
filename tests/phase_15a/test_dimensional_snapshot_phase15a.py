@@ -26,6 +26,7 @@ from mindsos_admin import (
 from mindsos_admin.importers.dolce import _parse_dolce
 from mindsos_admin.importers.framenet import _parse_framenet
 from mindsos_admin.importers.oewn import _parse_oewn
+from mindsos_knowledge.bootstrap import _GLOBAL_NAMED_ROLES
 
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
@@ -99,10 +100,14 @@ def test_framenet_builder_dimensions() -> None:
 
 
 def test_bootstrap_global_six_role_graphs() -> None:
-    """PB-21: bootstrap_global([]) ensures all Global named role-graphs
-    (11 since feat/subminds ADR-0150 §am-7; was 10 at Phase 50 §am-6)."""
+    """PB-21: bootstrap_global([]) ensures ALL Global named role-graphs.
+
+    The count is DERIVED from ``_GLOBAL_NAMED_ROLES`` rather than written
+    here. The left side is what bootstrap actually produced, so this still
+    fails if bootstrap skips a role - what it no longer does is fail because
+    somebody added one."""
     mg = bootstrap_global(importers=())
-    assert len(mg.graphs) == 12
+    assert len(mg.graphs) == len(_GLOBAL_NAMED_ROLES)
 
 
 def test_bootstrap_global_three_importer_combined_shape() -> None:
@@ -112,7 +117,7 @@ def test_bootstrap_global_three_importer_combined_shape() -> None:
         OewnImporter(source=OEWN_FIXTURE),
         FrameNetImporter(source=FRAMENET_FIXTURE),
     ])
-    assert len(mg.graphs) == 12
+    assert len(mg.graphs) == len(_GLOBAL_NAMED_ROLES)
     populated_roles = {
         g.role for g in mg.graphs.values() if len(g.nodes) > 0
     }

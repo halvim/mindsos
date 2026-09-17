@@ -24,6 +24,7 @@ from mindsos_knowledge import (
     ROLE_ONTOLOGY,
     ensure_global_role_graph,
 )
+from mindsos_knowledge.bootstrap import _GLOBAL_NAMED_ROLES, _LOCAL_NAMED_ROLES
 
 
 def _bootstrapped_view() -> MetagraphView:
@@ -44,7 +45,7 @@ def test_metagraph_view_roles_returns_distinct_roles() -> None:
     """``roles()`` reflects the bootstrapped 11 Global named roles
     (Phase 43 §am-5 + Phase 50 §am-6 + feat/subminds §am-7)."""
     view = _bootstrapped_view()
-    assert len(view.roles()) == 12
+    assert len(view.roles()) == len(_GLOBAL_NAMED_ROLES)
     assert ROLE_ONTOLOGY in view.roles()
     assert ROLE_LEXICON in view.roles()
 
@@ -171,4 +172,4 @@ def test_metagraph_view_over_local() -> None:
     # 2 base + 3 Phase 43 dual-scope + request-patterns (§am-8)
     # + learned-pipelines (ADR-0203) + installed-capacities (§am-5)
     # + installed-skills (CORE-C2R1, §am-11).
-    assert len(view.roles()) == 10
+    assert len(view.roles()) == len(_LOCAL_NAMED_ROLES)

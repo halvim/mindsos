@@ -167,6 +167,16 @@ _GLOBAL_ROLE_ORDER: tuple[str, ...] = (
     # CORE CR: the policy role — dated, versioned authority editions. Last,
     # and independent: it has no bootstrap-order dependency on any role above.
     "policies",
+    # ``mindsos_llm`` plan item I-9 — versioned prompt text. Independent, so
+    # it goes last for the same reason ``policies`` does.
+    #
+    # ⚠ THIS TUPLE IS A SECOND PLACE THE GLOBAL ROLE SET LIVES, and the
+    # assert below is the only thing that says so. A role added to
+    # ``mindsos_knowledge.bootstrap._GLOBAL_NAMED_ROLES`` and not here fails
+    # AT IMPORT, so every suite that touches this package errors during
+    # COLLECTION rather than failing a test — which is how it presents, and
+    # it is not a bug in whatever suite reports it first.
+    "prompts",
 )
 # Sanity: matches mindsos_knowledge.bootstrap's frozenset content.
 assert frozenset(_GLOBAL_ROLE_ORDER) == _GLOBAL_NAMED_ROLES, (

@@ -37,51 +37,19 @@ from mindsos_knowledge import (
     ROLE_SUBMINDS,
     ROLE_REQUEST_PATTERNS,
 )
+from mindsos_knowledge.bootstrap import _GLOBAL_NAMED_ROLES, _LOCAL_NAMED_ROLES
 
 
-_EXPECTED_BOOTSTRAP_GLOBAL_ROLES = {
-    ROLE_ONTOLOGY,
-    ROLE_LEXICON,
-    ROLE_CONCEPTS,
-    ROLE_PROMOTED_PIPELINES,
-    ROLE_REQUEST_PATTERNS,
-    ROLE_PROBLEM_TRACE,
-    # Phase 43 (ADR-0150 §am-5) Global-form additions.
-    ROLE_PENDING_PROMOTIONS,
-    ROLE_CAPACITY_GAPS,
-    ROLE_LEARNED_PARAMETERS,
-    # Phase 50 (ADR-0150 §am-6) addition — Global-only.
-    ROLE_INSTALLED_SKILLS,
-    # feat/subminds (ADR-0150 §am-7) addition — Global form (Slice 1).
-    ROLE_SUBMINDS,
-    # CORE CR: the policy role — Global form.
-    ROLE_POLICIES,
-}
+# DERIVED from mindsos_knowledge.bootstrap - see the note in test_bootstrap.py.
+_EXPECTED_BOOTSTRAP_GLOBAL_ROLES = set(_GLOBAL_NAMED_ROLES)
 
-_EXPECTED_LAZY_LOCAL_ROLES = {
-    ROLE_EPISODIC_MEMORIES,
-    ROLE_CAPACITY_STATE,
-    # Phase 43 (ADR-0150 §am-5) Local-form additions.
-    ROLE_PARAMETER_STAGING,
-    ROLE_PENDING_PROMOTIONS,
-    ROLE_LEARNED_PARAMETERS,
-    # feat/phase1-seam (ADR-0150 §am-8) — request-patterns dual-scope.
-    ROLE_REQUEST_PATTERNS,
-    # feat/learned-pipeline-persistence (ADR-0203) — Local-only.
-    ROLE_LEARNED_PIPELINES,
-    # ADR-0183 §am-5 — installed Local capabilities.
-    ROLE_INSTALLED_CAPACITIES,
-    # CORE-C2R1 (ADR-0150 §am-11) — installed-skills gained a Local form.
-    ROLE_INSTALLED_SKILLS,
-    # CORE CR: the policy role — Local form.
-    ROLE_POLICIES,
-}
+_EXPECTED_LAZY_LOCAL_ROLES = set(_LOCAL_NAMED_ROLES)
 
 
 def test_bootstrap_global_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     g = kl.global_metagraph()
-    assert len(g.graphs) == 12
+    assert len(g.graphs) == len(_GLOBAL_NAMED_ROLES)
     observed = {gr.role for gr in g.graphs.values()}
     assert observed == _EXPECTED_BOOTSTRAP_GLOBAL_ROLES
 
@@ -89,7 +57,7 @@ def test_bootstrap_global_dimensional_snapshot() -> None:
 def test_lazy_local_dimensional_snapshot() -> None:
     kl = KnowledgeLayer.bootstrap()
     local = kl.local_metagraph("alice")
-    assert len(local.graphs) == 10
+    assert len(local.graphs) == len(_LOCAL_NAMED_ROLES)
     observed = {gr.role for gr in local.graphs.values()}
     assert observed == _EXPECTED_LAZY_LOCAL_ROLES
 

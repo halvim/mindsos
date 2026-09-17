@@ -8,9 +8,11 @@ enforcement, and each test pins ONE measured claim:
 * **No prompt text crosses the transport seam.** This is why a prompt edition
   is AUTHORED rather than recorded — no run can write text it never sees. The
   claim is read off the call ``LiveLLM.read`` builds, by AST, never from prose.
-* **``policies`` is dual-scope.** This is the role a prompt edition reuses, and
-  the owner's 2026-09-14 ruling (prompt editions are not Local-only) needs both
-  realms to exist. Narrow it and the ruling is unimplementable.
+* **``prompts`` is dual-scope.** ⚠ **Repointed by ADR-0210 am-5**: this test used
+  to assert it of ``policies``, which am-4 wrongly had prompt editions reusing.
+  The owner's 2026-09-14 ruling (prompt editions are not Local-only) needs both
+  realms of the role that actually holds them. Narrow it and the ruling is
+  unimplementable.
 * **``comprehension`` is a FAMILY_RULES key.** Amendment 3 places the recorder
   in that family rather than an ``llm`` one; a family that stops existing turns
   the recorder's don't-know contract into the permissive default silently.
@@ -39,7 +41,7 @@ from pathlib import Path
 
 from mindsos_capacity import FAMILY_RULES, FamilyDontKnowShape
 from mindsos_knowledge.bootstrap import _GLOBAL_NAMED_ROLES, _LOCAL_NAMED_ROLES
-from mindsos_knowledge.identifiers import ROLE_POLICIES
+from mindsos_knowledge.identifiers import ROLE_PROMPTS
 
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -122,8 +124,8 @@ def _missing_realms(role: str, global_roles, local_roles) -> tuple[str, ...]:
     )
 
 
-def test_policies_is_dual_scope_so_a_prompt_edition_can_be_global():
-    assert _missing_realms(ROLE_POLICIES, _GLOBAL_NAMED_ROLES, _LOCAL_NAMED_ROLES) == (), (
+def test_prompts_is_dual_scope_so_a_prompt_edition_can_be_global():
+    assert _missing_realms(ROLE_PROMPTS, _GLOBAL_NAMED_ROLES, _LOCAL_NAMED_ROLES) == (), (
         "the owner ruled 2026-09-14 that prompt editions are NOT Local-only "
         "(ADR-0210 am-4): a prompt held Local-only cannot be shown to anyone "
         "but the user whose reading produced it, and the Local form is the "
@@ -150,6 +152,7 @@ def test_comprehension_is_a_family_and_keeps_its_dont_know_shape():
 def test_amendment_4_uses_the_amendment_status_label():
     text = _ADR.read_text(encoding="utf-8")
     assert "## Amendment 4" in text, "ADR-0210 amendment 4 is missing"
+    assert "## Amendment 5" in text, "ADR-0210 amendment 5 is missing"
     head = text.split("## Amendment 4", 1)[1]
     assert "**Amendment status:**" in head, (
         "RULES §9: an in-file amendment labels its status '**Amendment "

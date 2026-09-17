@@ -18,6 +18,7 @@ import json
 from typer.testing import CliRunner
 
 from mindsos_cli.app import app
+from mindsos_knowledge import ALL_ROLES, UPPER_LAYER_ROLES
 
 
 runner = CliRunner()
@@ -191,24 +192,9 @@ def test_roles_list_all_json() -> None:
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     names = {r["name"] for r in payload["roles"]}
-    assert names == {
-        "ontology", "lexicon", "concepts",
-        "promoted-pipelines", "request-patterns", "episodic_memories",
-        "problem-trace", "capacity-state",
-        # Phase 43 (ADR-0150 §am-5) additions.
-        "parameter-staging", "pending-promotions",
-        "capacity-gaps", "learned-parameters",
-        # Phase 50 (ADR-0150 §am-6) addition.
-        "installed-skills",
-        # feat/subminds (ADR-0150 §am-7) addition.
-        "subminds",
-        # feat/learned-pipeline-persistence (ADR-0203) addition.
-        "learned-pipelines",
-        # ADR-0183 §am-5 addition — installed Local capabilities.
-        "installed-capacities",
-        # CORE CR: the policy role.
-        "policies",
-    }
+    # DERIVED: the CLI's job is to print the closed set, so the claim is
+    # that it prints ALL of it. A hand-copied list here only ever drifted.
+    assert names == set(ALL_ROLES)
 
 
 def test_roles_list_seed_only() -> None:
@@ -228,23 +214,7 @@ def test_roles_list_upper_only() -> None:
     assert result.exit_code == 0
     payload = json.loads(result.stdout)
     names = {r["name"] for r in payload["roles"]}
-    assert names == {
-        "promoted-pipelines", "request-patterns", "episodic_memories",
-        "problem-trace", "capacity-state",
-        # Phase 43 (ADR-0150 §am-5) upper-layer additions.
-        "parameter-staging", "pending-promotions",
-        "capacity-gaps", "learned-parameters",
-        # Phase 50 (ADR-0150 §am-6) addition.
-        "installed-skills",
-        # feat/subminds (ADR-0150 §am-7) addition.
-        "subminds",
-        # feat/learned-pipeline-persistence (ADR-0203) addition.
-        "learned-pipelines",
-        # ADR-0183 §am-5 addition — installed Local capabilities.
-        "installed-capacities",
-        # CORE CR: the policy role.
-        "policies",
-    }
+    assert names == set(UPPER_LAYER_ROLES)
 
 
 def test_roles_list_mutex_exit_2() -> None:

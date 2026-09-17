@@ -95,7 +95,7 @@ grounding graph. **No item, no work.**
 | I-6 | `verify_transport` asks OVERRIDE, not only presence | core-llm-contract-identity-check-asks-presence-not-override | DONE(f2310ae) |
 | I-7 | a contract check never vanishes from the report | core-llm-contract-identity-check-asks-presence-not-override | DONE(44059f7) |
 | I-0 | this plan, tracked; RULES §5 plan rules; the scope guard; and the prose corrections at the eight sites that contradicted §1 and §2 | core-docs-one-owner-per-fact | DONE(76b17e4) |
-| I-8 | the L2 record shapeS — **two records, different authors**: the prompt edition (authored, reuses the existing `policies` role graph, dual-scope) and the recorded-set pointer (new Local-only `recorded-sets` role) — plus the recorder's contract, `capacity:comprehension:record_reading_set` (R3, R4, R5). ADR-0210 amendment + a sentinel; no product code | core-llm-recorded-set-l2-pointer-owner | DONE(711dc16) |
+| I-8 | the L2 record shapeS — **two records, different authors**: the prompt edition (a `prompts` role of its own, dual-scope — ⚠ **the `policies` reuse is WITHDRAWN by ADR-0210 am-5**) and the recorded-set pointer (new Local-only `recorded-sets` role) — plus the recorder's contract, `capacity:comprehension:record_reading_set` (R3, R4, R5). ADR-0210 amendment + a sentinel; no product code | core-llm-recorded-set-l2-pointer-owner | DONE(711dc16) |
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | TODO |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | TODO |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
@@ -107,9 +107,10 @@ grounding graph. **No item, no work.**
 
 **ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → { I-9, I-10 } → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
-it is ruled. ⚠ **I-9's dependency is the ROLE decision only, not the recorder** — measured
-(ADR-0210 am-4): no prompt text crosses the transport seam, so no run and no recorder can
-ever write a prompt edition; it is authored. ⚠ **I-11 is NOT blocked by anything and can start today** — see its row.
+it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
+transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
+(ADR-0210 am-5 withdraws that): per R2 an L3 write capacity takes the text as an INPUT
+record, as `learn_parameter` takes a value it did not compute. ⚠ **I-11 is NOT blocked by anything and can start today** — see its row.
 I-12 needs all three.
 
 ---
@@ -158,6 +159,17 @@ amendment.)*
   family is `comprehension`, not `llm`; R4 L4 decides when a record is needed; R5 the
   recorder consumes the answer, never the vendor. R2 and R6 measured from the tree and
   confirmed by the owner.
+- **2026-09-16** — **ADR-0210 amendment 5 WITHDRAWS amendment 4's clause 1**, approved by
+  the owner. (a) A prompt edition does **not** reuse `policies`: that role was created by a
+  CONSUMER of this system (Decision Records) and its own file says the store's identity is
+  part of the claim a Record makes, so a module generic to any text interpretation does not
+  borrow it. `prompts` is a role of its own, dual-scope, closed set 17 → 18. (b) *"No run
+  can write a prompt edition"* does not follow from *"no prompt text crosses the seam"* —
+  R2 says L3 writes what L2 holds, and the text arrives as an input record.
+  ⚠ **Both errors have one cause: a design question answered by looking for a matching
+  shape in the tree instead of by reading the plan.** Measurement verifies a claim; it
+  cannot generate a decision. R2 already held the answer.
+
 - **2026-09-14** — **I-8 ruled and recorded as ADR-0210 amendment 4**, **approved by the
   owner** ("agreed with D2... proceed"). Three things it settles, each measured before it
   was written. **(a) TWO L2 records, not one.** The prompt edition is AUTHORED and reuses

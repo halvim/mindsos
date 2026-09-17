@@ -87,42 +87,15 @@ def test_mint_iri_unsupported_role_type_pair_raises_keyerror():
         handle.mint_iri("Concept", some_kwarg="x")
 
 
-def test_iri_builders_registry_phase_39_three_entries():
-    """ADR-0146 §amendment-3 tuple-key registry. Phase 39 shipped 3
-    entries (Episode + Memory under ROLE_EPISODIC_MEMORIES;
-    ProblemTraceEntry under ROLE_PROBLEM_TRACE). Phase 43 PR2 commit 1
-    grew to 7 by adding the 4 new role-graphs' minters per
-    ADR-0150 §am-5. Phase 50 grew to 8 (SkillInstallRecord per
-    ADR-0150 §am-6).
+def test_mint_iri_dispatches_for_every_registered_pair():
+    """Every ``(role, NodeType)`` in the registry has a callable minter.
+
+    ⚠ This used to be a second hand-copied list of the registry's contents,
+    which is what the phase_39 shape suite is for. Two copies of one closed
+    set means adding an entry fails twice and can be fixed in one place and
+    not the other. The claim that belongs HERE is about ``mint_iri``: every
+    registered pair dispatches.
     """
-    from mindsos_knowledge.identifiers import (
-        ROLE_CAPACITY_GAPS,
-        ROLE_INSTALLED_CAPACITIES,
-        ROLE_INSTALLED_SKILLS,
-        ROLE_LEARNED_PARAMETERS,
-        ROLE_LEARNED_PIPELINES,
-        ROLE_PARAMETER_STAGING,
-        ROLE_PENDING_PROMOTIONS,
-        ROLE_POLICIES,
-        ROLE_SUBMINDS,
-    )
-    assert set(_IRI_BUILDERS.keys()) == {
-        (ROLE_EPISODIC_MEMORIES, "Episode"),
-        (ROLE_EPISODIC_MEMORIES, "Memory"),
-        (ROLE_PROBLEM_TRACE, "ProblemTraceEntry"),
-        # Phase 43 PR2 commit 1 additions per ADR-0150 §am-5.
-        (ROLE_PARAMETER_STAGING, "StagedEvidence"),
-        (ROLE_PENDING_PROMOTIONS, "PendingPromotion"),
-        (ROLE_CAPACITY_GAPS, "CapacityGap"),
-        (ROLE_LEARNED_PARAMETERS, "LearnedParameter"),
-        # Phase 50 addition per ADR-0150 §am-6.
-        (ROLE_INSTALLED_SKILLS, "SkillInstallRecord"),
-        # feat/subminds addition per ADR-0150 §am-7.
-        (ROLE_SUBMINDS, "SubMindDefinition"),
-        # feat/learned-pipeline-persistence addition per ADR-0203.
-        (ROLE_LEARNED_PIPELINES, "LearnedPipeline"),
-        # ADR-0183 §am-5 addition.
-        (ROLE_INSTALLED_CAPACITIES, "InstalledCapability"),
-        # CORE CR: the policy role.
-        (ROLE_POLICIES, "PolicyEdition"),
-    }
+    assert _IRI_BUILDERS, "the registry is empty - nothing to dispatch"
+    for (role, type_name), minter in _IRI_BUILDERS.items():
+        assert callable(minter), (role, type_name)

@@ -68,7 +68,14 @@ def test_register_then_schema_for_role_returns_it():
 
 
 def test_role_count_sentinel_unchanged():
-    # ADR-0150 §am-9 adds a PREFIX, not a named role. The named count
-    # must stay 14 (a prefix is in neither table).
-    assert len(_ROLE_SCHEMA_BUILDERS) == 17
-    assert len(ALL_ROLES) == 17
+    # ADR-0150 §am-9 adds a PREFIX, not a named role: a prefix is in
+    # neither table.
+    #
+    # ⚠ THIS IS THE ONLY PLACE THE CLOSED-SET COUNT IS WRITTEN BY HAND.
+    # It used to be written in six suites, so adding one role meant editing
+    # six numbers and every one of them was a chance to edit it wrong. Every
+    # other suite now derives its count from ALL_ROLES / _GLOBAL_NAMED_ROLES
+    # / _LOCAL_NAMED_ROLES, which leaves this line as the deliberate act:
+    # adding a role is meant to fail HERE, once, and nowhere else.
+    assert len(_ROLE_SCHEMA_BUILDERS) == 18
+    assert len(ALL_ROLES) == 18
