@@ -96,7 +96,7 @@ grounding graph. **No item, no work.**
 | I-7 | a contract check never vanishes from the report | core-llm-contract-identity-check-asks-presence-not-override | DONE(44059f7) |
 | I-0 | this plan, tracked; RULES §5 plan rules; the scope guard; and the prose corrections at the eight sites that contradicted §1 and §2 | core-docs-one-owner-per-fact | DONE(76b17e4) |
 | I-8 | the L2 record shapeS — **two records, different authors**: the prompt edition (a `prompts` role of its own, dual-scope — ⚠ **the `policies` reuse is WITHDRAWN by ADR-0210 am-5**) and the recorded-set pointer (new Local-only `recorded-sets` role) — plus the recorder's contract, `capacity:comprehension:record_reading_set` (R3, R4, R5). ADR-0210 amendment + a sentinel; no product code | core-llm-recorded-set-l2-pointer-owner | DONE(711dc16) |
-| I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | TODO |
+| I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | DONE(a1687f2) |
 | I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | TODO |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
 | I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Not yet specified, and must not be guessed at before I-9/I-10/I-11 exist** | core-llm-excision-capability | TODO |
@@ -105,7 +105,7 @@ grounding graph. **No item, no work.**
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → { I-9, I-10 } → I-12.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-10 → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
