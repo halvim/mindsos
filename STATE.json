@@ -687,9 +687,25 @@
       "branch_to_open": "feat/<slice> off main; it is a corpus migration, not a design question",
       "spec": "docs/decisions/adr/0180-write-capability-on-context-scope-aware-gate.md am-1 (the A1 boundary) + am-4; mindsos_capacity/capacity_layer.py invoke",
       "consumer": "none today - the trigger above is the gate"
+    },
+    {
+      "name": "claim-inventory-owner-rulings",
+      "status": "OPEN 2026-09-19, raised by PR #226. OWNER'S CALL - RULES 5: not subject to Rule 1.",
+      "what": "Three rulings the inventory needs before the stopping rule can close. (1) confirmation_docs partition: 133 of 256 files are neither dated nor known-live (218 false claims). Proposed: record by default, with an explicit live list in tools/claim_inventory.py (candidates CORE_RECONCILIATION_PLAN.md, DECISION_RECORDS_V0_PLAN.md, DECISION_RECORDS_AGREED_CHANGES.md). (2) RESIDUAL: 88% of live prose carries no checkable reference. Proposed: every live page either is guarded or carries an 'as of <sha>' header, enforced by a test. (3) D8: owner of out-of-repo runbooks.",
+      "spec": "Rule, then edit partition() and the tests' corners. Next mechanism regardless of the rulings: one guard 'a reference in a live doc resolves' over the 27 live+index false (guard first RED at 27, then the sweep).",
+      "consumer": "none - the doc-fix program's own stopping rule."
     }
   ],
   "recent": [
+    {
+      "kind": "tools",
+      "name": "The claim inventory: the doc-fix program's stopping rule is now a tracked, tested script",
+      "sha": "c088a4d (squash of feat/claim-inventory @ 67bc3b7, PR #226). Parent d40620c - #225 (I-15) merged during the ship, so RULES 12.2(a) could not be discharged by an empty diff. Discharged BY NAME + a merged-tree run: the 21 differing files are #225's; its one new guard tests/architecture/test_write_is_declared.py has 0 doc-reading hits so the registry census cannot see it; LINUX at c088a4d: 46 passed in 4.05s (test_claim_inventory + the six doc guards).",
+      "tag": "none",
+      "gate": "CI on PR #226: SUCCESS. LINUX box, worktree /home/sanmyaku/mindsos-claiminv, no Docker: 23 passed in 1.36s at 67bc3b7. Designated mutation (path-citation existence check -> False, 1 line): exactly test_fabricated_tree_is_counted_exactly RED, predicted beforehand; restored clean.",
+      "what": "tools/claim_inventory.py + tests/architecture/test_claim_inventory.py. Per (claim class x partition): sites / false / GUARDED|UNGUARDED|NOT-IN-IMAGE|NEEDS-RULING|RECORD, plus RESIDUAL prose no class reaches; --check exits 1 while any row is open (NOT in CI - it is the finish line). Guarded classes are a REGISTRY (10 guards) checked both ways; the four unguarded extractors (path-citation, python-symbol, adr-reference, relative-link) are counted exactly over a fabricated tree. ONE definition of 'live' (partition()); it treats docs/decisions index pages as LIVE on purpose. *** MEASURED AT 67bc3b7: live+index false = 27, all real (18 dangling paths, 6 ADR numbers that do not exist - 0058, 0059, 0117 - 3 broken links); confirmation_docs has 133 of 256 files NEEDS-RULING carrying 218 false; not-in-image docs 44 false paths; RESIDUAL = 5808 of 6618 live prose lines (88%) carry no checkable reference. *** TWO FALSE-POSITIVE CLASSES FOUND BY READING THE SITES BACK, both now pinned by the fabricated tree: template paths (PHASE_NN_CONFIRMED.md, tests/phase_NN/, NNNN-slug) were 8 of the first 26 live/index 'false' paths; filenames like mindsos_core_handoff.md were all 32 not-in-image 'false' python symbols. *** First Linux run hit a collection error: @dataclass needs the module in sys.modules when loaded via spec_from_file_location.",
+      "docs": "WRITTEN FROM git show --stat c088a4d: 2 files, both NEW - tools/claim_inventory.py, tests/architecture/test_claim_inventory.py. No doc edited."
+    },
     {
       "kind": "feat",
       "name": "a capacity DECLARES that it writes - plan item I-15, ruling R7 (ADR-0146 am-4 + ADR-0180 am-4)",
