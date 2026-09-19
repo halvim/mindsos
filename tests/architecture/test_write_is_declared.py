@@ -284,6 +284,33 @@ def test_a_reactive_capacity_that_neither_produces_nor_writes_is_refused():
         )
 
 
+def test_l4_withholds_the_write_capability_from_an_undeclared_body():
+    """The OTHER dispatch path, and the half R7 nearly left open.
+
+    ``build_context`` supplied ``writeable`` unconditionally while
+    ``capacity_layer.invoke`` inferred it from ``outputs == ()``: two paths,
+    two different answers to *"may this body write"*, and neither of them
+    the declaration.
+    """
+    from mindsos_intelligence.dispatch import L4Dispatcher
+
+    kl = KnowledgeLayer.bootstrap()
+    dispatcher = L4Dispatcher(
+        CapacityLayer(kl=kl), session=build_admin_session("admin"), kl=kl
+    )
+    assert dispatcher.build_context().writeable is None
+
+
+def test_l4_injects_the_write_capability_for_a_declared_body():
+    from mindsos_intelligence.dispatch import L4Dispatcher
+
+    kl = KnowledgeLayer.bootstrap()
+    dispatcher = L4Dispatcher(
+        CapacityLayer(kl=kl), session=build_admin_session("admin"), kl=kl
+    )
+    assert dispatcher.build_context(writes=True).writeable is not None
+
+
 def test_a_monitor_with_no_outputs_is_still_legal():
     """The other door of the same predicate. A Monitor produces no DataState
     and writes nothing BY DEFINITION - the first cut of the refusal above was
