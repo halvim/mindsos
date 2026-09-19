@@ -669,7 +669,7 @@
     },
     {
       "name": "adr-0041-supersession-leaves-two-forward-references",
-      "status": "OPEN 2026-09-17, found while shipping PR #220. NOT BUILT.",
+      "status": "CLOSED 2026-09-19 by PR #224 (a4a2afb): 0038 and 0039 Superseded by 0138, 0002 am-4. ORIGINAL ENTRY FOLLOWS: OPEN 2026-09-17, found while shipping PR #220. NOT BUILT.",
       "what": "ADR-0041 is now Superseded by ADR-0138 (a4002fe), but two Accepted ADRs still speak of its deliverable as coming. docs/decisions/adr/0002-session-and-capability-model.md:95-97 §Out-of-scope says the four KL-side constants land 'when mindsos_knowledge/capabilities.py lands' - that module will never land. docs/decisions/adr/0038-session-write-api.md:31 says 'KL must now agree with the server on what capabilities exist - see ADR-0041'; KL consults no capability since ADR-0138 deleted its write API, so ADR-0038's own decision (a session-gated KL write API) may itself be Superseded by ADR-0138 - that is the question, not a given.",
       "spec": "Add an in-file amendment to ADR-0002 marking the §Out-of-scope clause superseded by ADR-0138 (label **Amendment status:**, no README row per RULES §9). Then decide ADR-0038: read it against ADR-0138 and either amend it or flip it to Superseded with the four RULES §9 edits. Docs-only; gate is CI on the PR.",
       "consumer": "none - defect in already-published ADRs (Rule 1 does not gate it)."
@@ -678,11 +678,20 @@
       "name": "proposed-md-lists-shipped-adrs-as-unscheduled",
       "status": "OPEN 2026-09-19, found while shipping PR #223. NOT BUILT.",
       "what": "docs/decisions/proposed.md says it holds decisions 'acknowledged, understood, and have a known path forward - but are not yet scheduled for implementation'. It names 29 ADRs. Measured with tools/check_adr_status_consistency.py's own loader: 20 are Accepted, 3 Superseded, 4 Deferred, 2 unresolved. The page's premise is false for 23 of 29 entries, and nothing checks it - test_adr_status_consistency reads the README index and front-matter, never this page. The doc audit never raised it.",
-      "spec": "Its own doc-fix mechanism, guard first: a guard over docs/decisions/proposed.md asserting every ADR it names is Proposed or Deferred, statuses read with the checker's loader so the number is derived; then the sweep that removes or re-homes the Accepted and Superseded entries. Docs-only; gate is CI on the PR. Note the fix may be a move rather than a delete - some entries carry rationale worth keeping on the ADR itself.",
+      "spec": "WIDENED 2026-09-19 (PR #224): superseded.md is the SAME CLASS - an index page claiming a status, unchecked by tools/check_adr_status_consistency.py (README + summary only). One guard over both pages, statuses from the checker loader. ORIGINAL SPEC FOLLOWS: Its own doc-fix mechanism, guard first: a guard over docs/decisions/proposed.md asserting every ADR it names is Proposed or Deferred, statuses read with the checker's loader so the number is derived; then the sweep that removes or re-homes the Accepted and Superseded entries. Docs-only; gate is CI on the PR. Note the fix may be a move rather than a delete - some entries carry rationale worth keeping on the ADR itself.",
       "consumer": "none - defect in an already-published surface (Rule 1 does not gate it)."
     }
   ],
   "recent": [
+    {
+      "kind": "docs",
+      "name": "ADR-0038 and ADR-0039 Superseded by ADR-0138; ADR-0002 am-4 retires the KL-side constants clause",
+      "sha": "a4a2afb (squash of feat/adr-0038-superseded @ 8f4a74e, PR #224). RULES 12.2(a) discharged by git diff 8f4a74e a4a2afb EMPTY; parent 2bf0a48, nothing landed after.",
+      "tag": "none",
+      "gate": "CI on PR #224: SUCCESS. LINUX box, worktree /home/sanmyaku/mindsos-adr0038 @ 8f4a74e, no Docker: 31 passed in 2.63s across tests/test_adr_status_consistency.py + the five tests/architecture doc guards + tests/phase_18/test_capabilities_parity.py. Designated mutation (0038 README row back to Accepted, 1 line changed): test_adr_status_consistency 1 failed / 6 passed, the failure names 0038; restored clean.",
+      "what": "Closes pending_designs adr-0041-supersession-leaves-two-forward-references as ruled 2026-09-17 - THREE ADRs, not two. *** RE-VERIFIED AT 2bf0a48 AND ONE FACT WAS SHARPER THAN THE RULING: _coerce_session and def add_local_node NEVER EXISTED in this repo's code - git log --all -S finds _coerce_session only in the ADR-0038/0039 texts vendored at 40fd643. So the amendments say 'never built in this repo; the DESIGN was superseded by 0138', not 'deleted by 0138'. *** 0038 recorded as superseded by 0138 AND replaced by 0143 (writeable(session, role, scope) keeps the routing guarantee, not the capability check). *** _LocalTestSession is NOT 0 in the tree: it survives as an unrelated L3 test fixture (tests/phase_30/_fixtures.py) and the 0039 amendment says so. *** 0039 took Superseded, not Withdrawn (RULES 9 + the 0041 precedent). *** THE MEMORY'S OPEN QUESTION ANSWERED: tools/check_adr_status_consistency.py reads the README and summary/*.md, NOT superseded.md. Folded into the proposed-md mechanism as one index-page class - see that entry. No new guard in this ship.",
+      "docs": "WRITTEN FROM git show --pretty= --name-only 8f4a74e: 7 files. ADR-0038 and ADR-0039 status flipped (front-matter status + superseded_by, prose Status, README row, summary/knowledge.md row) + appended Supersession sections; ADR-0002 appended amendment-4; ADR-0138 Related line; docs/decisions/superseded.md +2 rows. No ADR added, no count changed."
+    },
     {
       "kind": "docs",
       "name": "A shipped phase is no longer advertised as pending: 18 ADR status headers, plus ADR-0123's fsck amendment",
