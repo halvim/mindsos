@@ -67,6 +67,6 @@ Each instance stores its source reference as an `(iri, version_int)` tuple captu
 
 - (none beyond the Phase-48 inline-on-retire, which is scheduled, not reserved.)
 
-## §Implementation (Phase 46 — convergence; pending ship)
+## §Implementation (Phase 46 — convergence; shipped, see confirmation_docs/PHASE_46_CONFIRMED.md)
 
 PR-A: `mindsos_intelligence/mm_resolver.py` + `materialise` on the two `mindsos_instances` intergraph subclasses. Test `tests/phase_46/test_mm_resolver.py` (lazy single-node + monotone-grow + IRI-namespace dispatch + pin-at-instantiation). Inline-on-retire deferred to Phase 48.

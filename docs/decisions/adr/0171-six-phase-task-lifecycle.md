@@ -71,6 +71,6 @@ The Phase-5→completion consolidation hook ships as a **stub/no-op** at Phase 4
 - Parallel sibling Milestones + cross-validation fan-out across the worker pool.
 - `--bypass-lifecycle` CLI verb when an interactive consumer lands.
 
-## §Implementation (Phase 47; pending ship)
+## §Implementation (Phase 47; shipped, see confirmation_docs/PHASE_47_CONFIRMED.md)
 
 `orchestrator.py` (LifecyclePhase enum + transition table + `run_lifecycle` closure) + `phase_1.py`/`plan_construction.py`/`execution.py`/`phase_6.py`/`replan_check.py`/`sufficient_predicate.py`. Lifecycle enqueued via `IntelligenceLayer.enqueue`; runs on the dequeuing worker. Tested by `tests/phase_47/test_six_phase_lifecycle.py` + `test_trivial_task_smoke.py`.

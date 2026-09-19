@@ -59,6 +59,6 @@ Phase 46 ships the registry + the `iter_monitors` inversion + lazy instantiation
 
 - (none — the contract is fully specified by §D36.)
 
-## §Implementation (Phase 46 — convergence; pending ship)
+## §Implementation (Phase 46 — convergence; shipped, see confirmation_docs/PHASE_46_CONFIRMED.md)
 
 PR-A: `mindsos_intelligence/monitor_subscription.py` (registry + `subscribes_to` inversion + lazy-instantiation hook + thread guard). Test `tests/phase_46/test_monitor_subscription_registry.py` (session-scope registry + `cl.iter_monitors()` consumption + inversion correctness + orchestrator-thread guard). Signal-driven lookup lands Phase 47.

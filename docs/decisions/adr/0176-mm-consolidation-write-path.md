@@ -90,7 +90,7 @@ wired, or when a non-codec-safe input has no `encode` (swallowed — a non-persi
 fail the solve). The field count reads as **8** from this amendment on. Unlike `capacity_root_ref`,
 PRE-1 ships a reader (`load_request_input`) — the Dream's reload anchor is proven to round-trip.
 
-## §Implementation (Phase 48; pending ship)
+## §Implementation (Phase 48; shipped, see confirmation_docs/PHASE_48_CONFIRMED.md)
 
 `mindsos_intelligence/consolidation.py` (NEW); `mindsos_capacity/builtins/consolidate.py` (finalize body + Memory materialize); `mindsos_knowledge/schemas/episodic_memories.py` (Episode/Memory write helpers — S10); orchestrator Phase-5→complete seam wired (commit-group 3). Tests: `tests/phase_48/test_consolidation_write_path.py`, `test_memory_composite_materialization.py`, `test_memory_contains_episode_edge.py`, `test_consolidate_capacity_v2.py`.
 

@@ -70,6 +70,6 @@ Phase 46 ships the **container + thin root + the three (initially empty) sub-MM 
 
 - Composite-collapse physical layout (post-Phase-49, benchmark-gated).
 
-## §Implementation (Phase 46 — convergence; pending ship)
+## §Implementation (Phase 46 — convergence; shipped, see confirmation_docs/PHASE_46_CONFIRMED.md)
 
 PR-A: MM container + thin root + three sub-MM shells in `mindsos_intelligence/` (with ADR-0164 lock). Tests `tests/phase_46/test_three_sub_mm.py` (root + three sub-MM refs + cross-MM XRefs) and the no-shadow-state invariant test. Chain-artifact authoring (Phase 47) and consolidation (Phase 48) out of scope.

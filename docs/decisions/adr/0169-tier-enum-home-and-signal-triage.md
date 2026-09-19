@@ -60,6 +60,6 @@ A constant-tier fallback (e.g. always FOREGROUND) was rejected: it would mean CR
 
 - (none — `decision.signal_to_tier` is scheduled for Phase 47, not reserved.)
 
-## §Implementation (Phase 46 — convergence; pending ship)
+## §Implementation (Phase 46 — convergence; shipped, see confirmation_docs/PHASE_46_CONFIRMED.md)
 
 PR-A (L3 part): `TierEnum` + defaults in `mindsos_capacity`; narrow `TierVerdict.tier`. PR-B (L4 part): `mindsos_intelligence/signal_triage.py` (thread + passthrough stub). Test `tests/phase_46/test_signal_triage_worker.py` (always-on thread + classification path via the stub). Real classifier wiring at Phase 47.

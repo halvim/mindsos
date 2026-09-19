@@ -56,7 +56,7 @@ Both write bodies migrate off dict `context` to `context.writeable`; production 
 2. **L4 performs the KL write; body assembles only.** Rejected — breaks ADR-0146 (L3 is the write surface) + double-validation seam.
 3. **Declare write-scope on `_CapacityBase` + keep pre-invocation gate (PB-10 Opt B).** Rejected — registration-contract touch (post-Phase-42 v2) for 2 consumers; heavier than the call-time gate.
 
-## §Implementation (Phase 48; pending ship)
+## §Implementation (Phase 48; shipped, see confirmation_docs/PHASE_48_CONFIRMED.md)
 
 `mindsos_capacity/context.py` (11th `writeable` field + shared `make_writeable(kl, session)` factory); `mindsos_intelligence/dispatch.py` (`build_context` injects `make_writeable(...)`; **remove** `required_capability_for`/`check_write_permitted` — the blanket pre-gate — and the `mindsos_intelligence.__init__` re-export); `mindsos_capacity/capacity_layer.py` (write-body branch builds a `CapacityContext` with `make_writeable(...)`; read path keeps the dict — A1′); `consolidate.py`/`trace.py` body migration to `context.writeable`; test migration (`tests/phase_33` consolidate+trace → `L4Dispatcher`; `tests/phase_42` 10→11; `tests/phase_47` call-time gate; `tests/phase_36` precondition `CapacityContext`; `tests/phase_34` no-KL error-message). **Not** touched (A1): `runtime.py` union annotation (kept for the read-path dict); `tests/phase_30` + `tests/phase_33` context-injection tests + the `tests/phase_34` CLI/bypass tests (the write-branch keeps them green). Commit-group 2a. Write-gate coverage in `tests/phase_47/test_dispatch_gate.py` (Local write succeeds without `CAN_WRITE_GLOBAL`; Global write denied without it).
 

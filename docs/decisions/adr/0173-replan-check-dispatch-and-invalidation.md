@@ -55,7 +55,7 @@ A **ReplanRecord** is emitted to intelligence-MM **only on `replan` or `abort` v
 
 - Per-Milestone declared `on_child_failure` policy (currently fail-fast v1).
 
-## §Implementation (Phase 47; pending ship)
+## §Implementation (Phase 47; shipped, see confirmation_docs/PHASE_47_CONFIRMED.md)
 
 `replan_check.py` (dispatch + ReplanRecord emit + invalidate-at-and-below) + `tests/phase_47/test_replan_check_dispatch.py` (forces `replan`/`abort` via the v0 stub).
 
