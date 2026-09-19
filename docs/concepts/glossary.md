@@ -253,6 +253,12 @@ host, hand-edits the generated `PHASE_<NN>_CONFIRMED.md`, and
 records ship metadata. See `confirmation_docs/PHASE_MAP.md` §1
 "Two-machine workflow."
 
+**writes.** A capacity-declaration flag. When `True` the body receives the
+pre-authorized write capability (`context.writeable`); when `False` (default)
+it gets `None` and cannot reach a store. Gated at both invocation sites (plan
+R7, ADR-0146 §am-4 + ADR-0180 §am-4). ⚠ Not the same as `outputs == ()`, which
+says only that a capacity produces no DataState.
+
 **WAL (Write-Ahead Log).** L1's append-only operation log used for
 crash recovery. One WAL graph per metagraph. Shipped Phase 07
 (ADR-0122).

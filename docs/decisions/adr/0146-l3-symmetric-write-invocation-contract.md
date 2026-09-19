@@ -294,3 +294,53 @@ The symmetric write invocation contract is unchanged; only the access path becom
 ## §Amendment (Phase 48 — write handle from `context.writeable`; ADR-0180)
 
 The symmetric validate-then-write contract remains **unchanged** — the L3 body still validates then writes through a `KLWriteHandle`. What changes is **how the body obtains the handle**: instead of `kl.writeable(session, role, scope, version)` (which required a Session object on the body), the body calls **`context.writeable(role, scope, version)`** — a pre-authorized, session-bound capability that L4 `dispatch.py` injects onto `CapacityContext` and gates at call-time (scope-aware) per ADR-0180. L3 is still the write surface; it no longer holds a principal. `consolidate`/`trace` migrate at Phase 48; PB-23 closes. See ADR-0180.
+
+
+## §amendment-4 — `outputs == ()` is NOT the write marker (2026-09-18)
+
+**Amendment status:** Accepted. The write contract above is unchanged; what
+changes is how a write is RECOGNISED. (Numbered after §amendment-3; the two
+unnumbered Phase-42 / Phase-48 amendments between them are untouched.)
+
+**What this ADR actually ruled**, and what the tree inferred on top of it. The
+symmetric contract says a write body returns `WriteResult | ProblemTraceRecord`,
+and R2 PB-K says a write capacity is a pipeline terminator. Neither says that
+zero declared outputs MEANS write - but that inference became load-bearing in
+two places, measured before this amendment was written:
+
+* `mindsos_capacity/runtime.py` branched on `not declaration.outputs` to pick
+  the RETURN contract. Correct, and it stays: a capacity with nothing to return
+  cannot be held to the outputs mapping.
+* `mindsos_capacity/capacity_layer.py` branched on the same expression to pick
+  the CONTEXT - legacy dict for reads, `CapacityContext` with `writeable` for
+  writes. That one is the defect: *produces no DataState* and *mutates L2* are
+  orthogonal, and they coincided only because every write shipped so far
+  happened to be a terminator.
+
+ADR-0210 §amendment-4 then ruled a recorder that **writes AND declares its
+pointer as an output**, on the ground that nothing in the run graph would
+otherwise name the recorded set. Under the inference that declaration is
+unreachable on the direct path - `getattr(context, "writeable")` is `None` and
+the body raises - while working under `L4Dispatcher`, which supplied the
+capability unconditionally. One declaration, two dispatch paths, two answers,
+and no error message that named the cause.
+
+**The decision.** `mindsos_llm` plan ruling **R7** (OWNER 2026-09-18): a
+capacity DECLARES that it writes - `writes: bool = False` on the declaration.
+The return-contract branch keeps the output count and now says why; the context
+branch moves to `writes`. See ADR-0180 §amendment-4 for the injection half.
+
+**A new registration refusal, deliberately narrow.** A **reactive** capacity
+that declares no outputs and no write is refused: nothing it does is
+observable, it can ground no value and reach no store, and before R7 it was
+silently treated as a write and handed a write context. ⚠ Scoped to
+`KIND_REACTIVE` - a Monitor produces no DataState and writes nothing BY
+DEFINITION, and the first cut of this check was unscoped and would have
+outlawed every Monitor in the tree.
+
+**Enforcement.** `tests/architecture/test_write_is_declared.py` reconciles the
+declarations against the bodies in BOTH directions by AST - an undeclared write
+and an overclaiming declaration are each named - and pins the behaviour the
+census cannot see. Both checkers are shown refusing FABRICATED input, since
+neither offence exists in the tree to mutate. Four designated mutations, one per
+claim, each observed RED at exactly one test.

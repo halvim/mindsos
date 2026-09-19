@@ -54,10 +54,13 @@ ADR-0146 §amendment-1 enumerates 5 clauses. Summary:
 3. **Input shapes deferred via opaque placeholder DataStates.**
    `datastate:mm.composite_instance` + `datastate:problem_trace.record`
    are opaque-tag placeholders. Phase 34 / first L4 flow tightens.
-4. **Write capacities have `outputs=()` (pipeline terminators).** They
-   consume but emit nothing into the DataState flow graph. Phase 30's
-   BFS pipeline-finder skips them as dead-ends; L4 invokes writes
-   directly.
+4. **A write capacity DECLARES itself — `writes=True`** (plan R7,
+   ADR-0146 §am-4). Most are also terminators (`outputs=()`): they consume
+   and emit nothing into the DataState flow graph, and Phase 30's BFS
+   pipeline-finder skips them as dead-ends. ⚠ **The two are no longer the
+   same statement.** A write may declare an output — ADR-0210 §am-4's
+   recorded-set pointer does — and `outputs == ()` never meant "write", it
+   meant "produces no DataState".
 5. **`KLWriteHandle` stub-phase home is L2** at
    `mindsos_knowledge/write_handle.py`. `writeable()` returns a real
    handle; `metagraph()` returns the real L1 Metagraph; `graph()` +
@@ -102,8 +105,9 @@ changed in this package:
 
 ### `runtime.invoke` write-capacity bypass (R1 PB-A)
 
-When `declaration.outputs == ()` (write-capacity terminator semantic
-locked at Phase 33 R2 PB-K), `runtime.invoke` BYPASSES `call_capacity`'s
+When `declaration.writes` is set AND `declaration.outputs == ()` — a
+write TERMINATOR, the Phase 33 R2 PB-K semantic narrowed by plan R7 —
+`runtime.invoke` BYPASSES `call_capacity`'s
 output-validation contract and calls the bound implementation directly.
 The return value must be `WriteResult` or `ProblemTraceRecord`
 (R5 PB-G; any other shape raises `CapacityRegistrationError` which the
@@ -163,9 +167,15 @@ keeps `type_="Memory"` per design log PB-3 (semantic retarget to
   `CapacityContext` construction site every L4 invocation funnels through)
   injects `mm_handle` only when the declaration sets `reads_mm=True`; otherwise
   `None`. This activates the previously-dead `reads_mm` field so a
-  `reads_mm=False` body can only read declared inputs. `kl` and `writeable` are
-  untouched; the `capacity_layer.invoke` L3/CLI path carries no `mm_handle` at
-  all (L3 has no MM).
+  `reads_mm=False` body can only read declared inputs. `kl` is untouched; the
+  `capacity_layer.invoke` L3/CLI path carries no `mm_handle` at all (L3 has no
+  MM).
+
+- **Write gate (plan R7, ADR-0180 §am-4).** The same site injects `writeable`
+  only when the declaration sets `writes=True`, and `capacity_layer.invoke`
+  builds the typed context on the same flag. Before R7 one path inferred it
+  from `outputs == ()` and the other supplied it unconditionally — two answers
+  to *may this body write*, neither of them the declaration.
 
 ## See also
 
