@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import importlib.util
 import re
+import sys
 from pathlib import Path
 
 import pytest
@@ -40,6 +41,9 @@ _READS_DOCS = re.compile(r"[\"'/]docs[\"'/]|confirmation_docs|\.md[\"']")
 def _load():
     spec = importlib.util.spec_from_file_location("claim_inventory_t", _TOOL)
     mod = importlib.util.module_from_spec(spec)
+    # dataclasses resolves a class's module through sys.modules; unregistered,
+    # @dataclass raises AttributeError on 'NoneType'.__dict__ (measured).
+    sys.modules[spec.name] = mod
     spec.loader.exec_module(mod)
     return mod
 
