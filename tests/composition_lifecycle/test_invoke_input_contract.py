@@ -62,6 +62,7 @@ def _write_capacity() -> Capacity:
         category=CATEGORY_PERCEPTION,
         inputs=(DS_INPUT_IRI,),
         outputs=(),
+        writes=True,
         implementation=lambda **kw: None,
     )
 

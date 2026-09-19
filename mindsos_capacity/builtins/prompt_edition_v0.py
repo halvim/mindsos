@@ -125,6 +125,7 @@ def build_write_prompt_edition() -> Capacity:
         category=CATEGORY_COMPREHENSION,
         inputs=(DS_PROMPT_EDITION_WRITE,),
         outputs=(),
+        writes=True,
         implementation=_write_prompt_edition_impl,
         description=(
             "Append one prompt edition to the user's Local prompts "

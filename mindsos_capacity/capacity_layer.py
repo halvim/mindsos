@@ -88,6 +88,7 @@ from .identifiers import (
     EDGE_CONSUMES,
     EDGE_PRODUCES,
     INPUT_GROUPS,
+    KIND_REACTIVE,
     REF_GLOBAL_CAPACITY,
     REF_TYPE_KEY,
     REF_TYPES,
@@ -455,6 +456,29 @@ class CapacityLayer:
         the IRI resolves to an already-registered declaration — the
         ``predicate.*`` family ships downstream of v1 per ADR-0157).
         """
+        # Plan R7 (OWNER 2026-09-18) — with ``writes`` declared, a capacity
+        # that produces no DataState and declares no write does nothing
+        # observable: it cannot ground a value and cannot reach a store.
+        # Before R7 such a declaration was silently treated as a write and
+        # handed a write context. Refused at registration rather than at the
+        # first puzzling invocation.
+        # ⚠ REACTIVE ONLY. A Monitor produces no DataState and writes
+        # nothing BY DEFINITION - it watches - and an Adapter's contract is
+        # its own. The first cut of this check was unscoped and would have
+        # outlawed every Monitor in the tree; found by reading the
+        # declarations, not by the gate.
+        if (
+            declaration.node_kind == KIND_REACTIVE
+            and not declaration.outputs
+            and not declaration.writes
+        ):
+            raise CapacityRegistrationError(
+                f"Capacity {declaration.iri!r} is reactive, declares no "
+                "outputs and declares writes=False, so nothing it does is "
+                "observable: it can ground no value and reach no store. A "
+                "write declares writes=True (plan R7); a capacity that "
+                "produces a value declares it in outputs."
+            )
         if declaration.printable_phrase:
             problem = printable_phrase_problem(
                 declaration.printable_phrase, "printable_phrase"
@@ -667,14 +691,23 @@ class CapacityLayer:
         declaration = self._resolve_declaration(
             capacity_iri, user_id=target_uid
         )
-        # ADR-0180 (Phase 48): write-bodies (zero declared outputs) receive a
-        # typed CapacityContext carrying the pre-authorized, session-bound
-        # ``writeable`` capability (the gate travels with the capability,
-        # built here by the session-holder for the CLI / direct-invoke path —
-        # the L4 task path builds it in ``mindsos_intelligence.dispatch``).
-        # Read-bodies keep the legacy dict context (A1 scope boundary — no
-        # read-corpus churn; the transitional union annotation is retained).
-        if not declaration.outputs:
+        # ADR-0180 (Phase 48): a write-body receives a typed CapacityContext
+        # carrying the pre-authorized, session-bound ``writeable`` capability
+        # (the gate travels with the capability, built here by the
+        # session-holder for the CLI / direct-invoke path — the L4 task path
+        # builds it in ``mindsos_intelligence.dispatch``). Read-bodies keep
+        # the legacy dict context (A1 scope boundary — no read-corpus churn;
+        # the transitional union annotation is retained).
+        #
+        # ⚠ **GATED ON THE DECLARATION, NOT ON ``outputs == ()``** (plan R7,
+        # OWNER 2026-09-18). Zero outputs was a proxy for "writes", and a
+        # capacity that writes AND declares an output — ADR-0210 §am-4's
+        # recorder — fell through to the dict context here and raised
+        # ``WriteHandleNotWiredError`` on every direct invocation while
+        # working under ``L4Dispatcher``, which builds ``writeable``
+        # unconditionally. One asymmetry, two dispatch paths, no error
+        # message that named the cause.
+        if declaration.writes:
             from .context import CapacityContext, make_writeable
 
             write_ctx = CapacityContext(

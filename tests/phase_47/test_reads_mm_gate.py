@@ -124,7 +124,8 @@ def test_capacity_layer_write_path_has_no_mm_handle():
             name="write_probe",
             category=CATEGORY_PERCEPTION,
             inputs=("datastate:test.win",),
-            outputs=(),  # write-body → CapacityContext path
+            outputs=(),
+            writes=True,  # the declaration, not outputs==(), is what routes it
             reads_mm=True,  # even when declared, L3 path has no MM to give
             implementation=_write_probe,
         )

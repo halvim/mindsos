@@ -64,6 +64,7 @@ def test_bypass_raises_on_wrong_return_type():
         category=CATEGORY_TRACE,
         inputs=(),
         outputs=(),
+        writes=True,
         implementation=_wrong_return_impl,
         description="test",
     )
@@ -84,6 +85,7 @@ def test_bypass_accepts_problem_trace_record_return():
         category=CATEGORY_TRACE,
         inputs=(),
         outputs=(),
+        writes=True,
         implementation=_ptr_return_impl,
         description="test",
     )

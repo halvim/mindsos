@@ -108,6 +108,28 @@ class _CapacityBase:
     # IS, a dependency says what it DOES, and the shipped precedent for
     # the second is this flag.)
     consults_llm: bool = False
+    # ``mindsos_llm`` plan ruling **R7** (OWNER 2026-09-18) — a capacity
+    # DECLARES that it writes to L2.
+    #
+    # ⚠ **``outputs == ()`` IS NOT A WRITE MARKER.** It means *"produces no
+    # DataState"*, and *"produces no DataState"* and *"mutates L2"* are
+    # orthogonal: the first is about the run graph, the second about a
+    # store. They coincided only because every write capacity shipped so
+    # far happened to be a terminator, and the proxy became load-bearing in
+    # two places — both invoke sites gated the ``writeable`` injection on
+    # it. ADR-0210 §am-4 then ruled a recorder that writes AND declares its
+    # pointer as an output, which the proxy makes unreachable.
+    #
+    # Same discipline as ``reads_mm`` (ADR-0200 §C3) and ``consults_llm``
+    # (ADR-0180 §am-3): a body that has not declared it writes is handed a
+    # context with no ``writeable`` and cannot reach one, so
+    # "declared == what the body does" stays structurally true for this
+    # channel too. Reconciled against the bodies by
+    # ``tests/architecture/test_write_is_declared.py``.
+    #
+    # Like ``input_group`` and ``decodes_refusals``, a registration-time
+    # fact and NOT emitted to the graph.
+    writes: bool = False
     # Bounded member retry (ADR-0201 am-6 / MEMBER_RETRY_CAP) is now
     # DECLARED rather than blanket. Default ``False``: a deterministic
     # body fails identically on a second attempt, so retrying it only
@@ -322,16 +344,20 @@ class InvocationResult:
 
     Attributes:
         outputs: Mapping of output-DataState IRI → produced value.
-            EMPTY for write capacities (``outputs=()`` terminators);
-            see :attr:`write_outcome`.
+            EMPTY for a write TERMINATOR (``writes=True`` with no
+            declared outputs); see :attr:`write_outcome`. A write that
+            DOES declare an output (plan R7) returns it here like any
+            other capacity.
         duration_ms: Observed execution time.
         success: ``True`` if the callable returned without raising.
         error: ``None`` on success; an exception instance on failure.
         signals: Signals emitted during execution (reserved for
             future resident/reactive integration).
         trace: Auxiliary trace-record fields (free-form).
-        write_outcome: Phase 34 (ADR-0146) — populated by write
-            capacities (``outputs=()``); ``None`` for read capacities.
+        write_outcome: Phase 34 (ADR-0146) — populated by a write
+            TERMINATOR (``writes=True``, no declared outputs); ``None``
+            otherwise, INCLUDING for a write that declares an output,
+            whose result travels in ``outputs`` (plan R7).
             Holds the typed ``WriteResult | ProblemTraceRecord`` the
             write body returned. ``runtime.invoke``'s bypass branch
             stashes it here; read paths leave ``None``.

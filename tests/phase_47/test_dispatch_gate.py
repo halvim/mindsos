@@ -68,6 +68,7 @@ def _layer_with_write(body, name):
             category=CATEGORY_CONSOLIDATE,
             inputs=(),
             outputs=(),
+            writes=True,
             implementation=body,
         )
     )
