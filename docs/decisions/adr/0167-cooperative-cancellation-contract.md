@@ -58,6 +58,6 @@ L4 dispatch passes a `cancel_token` (as a `CancelTokenView`) into each worker in
 - `decision.preempt_target` L3 capacity (v1 = hardcoded "lowest-priority running").
 - `ProcessPoolExecutor` escape hatch (D32.7) for known non-yielding capacities.
 
-## §Implementation (Phase 46 — convergence; pending ship)
+## §Implementation (Phase 46 — convergence; shipped, see confirmation_docs/PHASE_46_CONFIRMED.md)
 
 PR-A: `mindsos_intelligence/cancellation.py` (concrete `threading.Event` token + `cancel()` + re-export of `CancelTokenView`). Test `tests/phase_46/test_cancellation_framework.py` (cooperative cancellation + `CancelTokenView` read-only enforcement + Protocol satisfaction). Dispatch plumbing rides with the IntelligenceLayer lifecycle.

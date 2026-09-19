@@ -60,7 +60,7 @@ Full Phase 6 v1 (D13) includes cross-validation by sub-path substitution with an
 
 - Cross-validation budget K tuning + multi-segment substitution strategies.
 
-## §Implementation (Phase 47; pending ship)
+## §Implementation (Phase 47; shipped, see confirmation_docs/PHASE_47_CONFIRMED.md)
 
 `sufficient_predicate.py` + `phase_6.py` (skeleton dispatch → BlameVerdict) + `tests/phase_47/test_phase_6_hookup.py`.
 

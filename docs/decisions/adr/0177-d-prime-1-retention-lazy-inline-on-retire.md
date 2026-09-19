@@ -55,7 +55,7 @@ The v1 dream driver re-runs from the episode's `task_input` (ADR-0178), **not** 
 2. **Eager inline on retire (walk all episodes).** Rejected — unbounded write amplification on retire; D'1 is explicitly lazy.
 3. **Re-defer to a later phase.** Rejected — the forward-contract has already slipped once; the design is frozen and the read-consumer is testable.
 
-## §Implementation (Phase 48; pending ship)
+## §Implementation (Phase 48; shipped, see confirmation_docs/PHASE_48_CONFIRMED.md)
 
 `mindsos_knowledge` `read_at_version`/`retire_version` + `RESERVED_PROPERTY_KEYS` entry (commit-group 1); `mindsos_intelligence/retention.py` (NEW, read consumer — commit-group 4). Tests: `tests/phase_48/test_kl_version_hooks.py` (S6 — marker write + read + reserved-key), `test_d_prime_1_retention.py`, `test_episode_immutability_invariant.py`.
 

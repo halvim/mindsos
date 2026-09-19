@@ -52,6 +52,6 @@ Kept as the live-MM deep-copy primitive (its v1 use is reconstruction-side, defe
 1. **Full episode→MM reconstruction at v1 (PB-9 Opt A).** Rejected — a whole reconstruction path mirroring consolidation, with no v1 consumer besides dream; belongs with the regression-replay mechanism (WSD).
 2. **Defer the driver wholesale to WSD.** Rejected — the timer→capacity→orchestrator→ALS wiring is genuine L4 substrate, testable now that episodes exist; only the reconstruction/replay half lacks a v1 consumer.
 
-## §Implementation (Phase 48; pending ship)
+## §Implementation (Phase 48; shipped, see confirmation_docs/PHASE_48_CONFIRMED.md)
 
 `mindsos_intelligence/dream_cycle.py` (NEW — timer callback + capacity dispatch + episode `task_input` re-run + ReplanInjection); `intelligence_layer.py` (wire the `DreamCycleTimer` callback). Tests: `tests/phase_48/test_dream_pipeline_hookup.py` (timer invokes the 3 capacities; `dream_source_episode_iri` provenance; `dream.retry` replan injection).

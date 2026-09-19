@@ -87,7 +87,7 @@ Every v0 capacity carries a `placeholder=True` registration marker and a guard t
 
 - Methods α/β/γ/ε hint-extraction strategies.
 
-## §Implementation (Phase 47; pending ship)
+## §Implementation (Phase 47; shipped, see confirmation_docs/PHASE_47_CONFIRMED.md)
 
 `phase_1.py` (5-step) + the three v0 builtin modules + `tests/phase_47/test_phase_1_5_step.py` + `test_planning_v0_catalog.py`.
 

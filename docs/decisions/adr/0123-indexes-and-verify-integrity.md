@@ -221,3 +221,11 @@ The test files below are cited above but no file by that name exists. They are n
 
 - `tests/unit/core/test_integrity.py` — covered by `tests/phase_07/test_integrity.py`.
 - `tests/integration/test_fsck.py` — covered by `tests/phase_08/test_cli_persistence_verify_metagraph.py` — the `fsck` subcommand shipped as `mindsos persistence verify` in `mindsos_cli`.
+
+## Amendment — the `fsck` subcommand shipped under another name (2026-09-19, doc-fix status headers)
+
+**Amendment status:** Accepted. Records a fact; the decision above is unchanged, and the text above is left as written.
+
+This ADR names an `fsck` subcommand on `mindsos_server/cli.py` in its CLI sketch, its §Consequences and its modules-touched lists. No `fsck` exists anywhere: the verb shipped as **`mindsos persistence verify`** in `mindsos_cli` (`mindsos_cli/commands/persistence.py::verify_cmd`, registered by `register_persistence_app`), and `fsck` is 0 occurrences across `mindsos_cli` and `mindsos_server`. The decision itself — FalkorDB indexes, a persist-time check, and per-layer `verify_integrity` scanners reachable from one operator verb — shipped; only the verb's spelling and its home differ. The same fact is already recorded for this ADR's `tests/integration/test_fsck.py` citation in the doc-fix #4 amendment above.
+
+⚠ ADR-0135 §Consequences also writes `mindsos-server fsck`. That line sits inside a dated decision record and is deliberately left as written — rewriting a record falsifies it.

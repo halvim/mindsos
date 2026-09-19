@@ -57,6 +57,6 @@ D32.3 rejected per-instance locks (alternative B) for deadlock risk under multi-
 
 - Per-sub-MM RWLock with a fixed lock-ordering protocol, if benchmarks show root-lock contention post-Phase-49.
 
-## §Implementation (Phase 46 — convergence; pending ship)
+## §Implementation (Phase 46 — convergence; shipped, see confirmation_docs/PHASE_46_CONFIRMED.md)
 
 PR-A: writer-preferred RWLock owned by the MM container (`mindsos_intelligence/`, with ADR-0165). Test `tests/phase_46/test_mm_rwlock.py` (reader/writer exclusion + writer-preferred fairness under contention). The `attention_score` write-through that exercises it end-to-end lands Phase 48.

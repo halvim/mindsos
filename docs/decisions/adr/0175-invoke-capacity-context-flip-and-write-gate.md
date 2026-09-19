@@ -71,7 +71,7 @@ Grounding the write-bodies at Phase 47 (PR-A) revealed the R0 census undercounte
 
 PB-23's **read half closes at 47**; its **write half closes at 48**. ADR-0170 §Decision-1's "authorization-free context" is preserved for the *read* path now; the write-path reconciliation (whether the principal lives on the context, or L4 performs the gated write) is deferred to Phase 48 with the real consumer.
 
-## §Implementation (Phase 47; pending ship)
+## §Implementation (Phase 47; shipped, see confirmation_docs/PHASE_47_CONFIRMED.md)
 
 PR-A ships: `runtime.py` + `capacity.py` annotation widening (transitional union); `_CapacityBase.placeholder` marker; `mindsos_capacity/builtins/{planning_v0,phase1_v0,orchestration_v0}.py` (read v0 catalogs); `mindsos_intelligence/dispatch.py` (builder + `effect_iri` gate); `tests/phase_47/` (v0 catalogs + synthetic gate). The `consolidate`/`trace` body migration + `tests/phase_30`/`phase_33` migration move to **Phase 48** per §amendment-1.
 

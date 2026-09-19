@@ -52,7 +52,7 @@ The L1 redesign pass (see `docs/HANDOFF_L1_REDESIGN_2026-04-27.md`) drafted seve
 |-------|-------|--------|---------|
 | [0121](../adr/0121-substrate-falkordb-for-graphs-sqlite-for-non-graph.md) | Substrate — FalkorDB for graphs, SQLite for non-graph state | Accepted | Commits to FalkorDB; six paired weakness mitigations land as ADRs 0122–0127 |
 | [0122](../adr/0122-wal-graph-for-multi-statement-write-safety.md) | WAL graph for multi-statement write safety | Accepted | Sibling `:WAL` graph per Metagraph; replays uncommitted entries on crash |
-| [0123](../adr/0123-indexes-and-verify-integrity.md) | Indexes + persist-time check + per-layer `verify_integrity` | Accepted | FalkorDB indexes for cheap dup detection; `mindsos-server fsck` CLI |
+| [0123](../adr/0123-indexes-and-verify-integrity.md) | Indexes + persist-time check + per-layer `verify_integrity` | Accepted | FalkorDB indexes for cheap dup detection; `mindsos persistence verify` CLI |
 | [0124](../adr/0124-streaming-loader-iter-load-and-refresh.md) | Streaming loader: `iter_load` and `MetagraphLoader.refresh` | Accepted | Pagination via SKIP/LIMIT; per-role refresh for L4 delta reloads |
 | [0126](../adr/0126-async-client-via-thread-pool-wrapper.md) | `AsyncClient` Protocol via `asyncio.to_thread` | Accepted | Thread-pool wrapper around sync Client; ~50 LOC |
 | [0127](../adr/0127-optimistic-concurrency-on-global-writes.md) | Optimistic concurrency on Global writes (`_version` property) | Accepted | Conditional MERGE; retry-on-conflict; `_version` reserved property |

@@ -58,7 +58,7 @@ Phase 46 ratifies this **boundary contract** (gate lives in L4 dispatch, reads t
 
 - (none.)
 
-## §Implementation (Phase 46 — convergence; pending ship)
+## §Implementation (Phase 46 — convergence; shipped, see confirmation_docs/PHASE_46_CONFIRMED.md)
 
 Phase 46 ships **this ADR only** (the boundary contract) + the ADR-0146/0159 amendment footers. The `invoke`→`CapacityContext` signature change, the `consolidate`/`trace` body migration, and the dispatch-boundary gate enforcement all land at **Phase 47** (grounding-driven defer; their caller is the Phase 47 orchestrator). PB-23 closes at Phase 47, not 46.
 

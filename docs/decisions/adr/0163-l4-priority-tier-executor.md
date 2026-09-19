@@ -85,6 +85,6 @@ The Executor backs a worker pool of default size `min(8, cpu_count())`, per-depl
 - `decision.preempt_target` L3 capacity (v1 cancel-target = hardcoded "lowest-priority running").
 - `scoring.initial_priority` hook beyond the Phase 47 `scoring.attention_score`.
 
-## §Implementation (Phase 46 — convergence; pending ship)
+## §Implementation (Phase 46 — convergence; shipped, see confirmation_docs/PHASE_46_CONFIRMED.md)
 
 PR-A: `mindsos_intelligence/executor.py` (Executor + `PriorityQueue` + `write_priority` + worker pool). Tests `tests/phase_46/test_priority_tier_executor.py` (4-tier ordering + within-tier score + auto-preempt-on-elevation + hysteresis). `update_priority` wrapper, L3 `scoring.attention_score`, MM write-through, and ALS S9 emission deferred to Phase 47/48.

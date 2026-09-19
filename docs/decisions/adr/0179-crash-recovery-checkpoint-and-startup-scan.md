@@ -52,6 +52,6 @@ Recovering the *partial MM content* (flush the live MM to Falkor staging per tri
 1. **Flush the live MM to Falkor staging per trigger (Opt A).** Rejected for v1 — per-trigger MM serialization cost + low value of partial-MM recovery + LOC budget; deferred to v1.5.
 2. **Defer the mechanism entirely (hooks + no-op).** Rejected — cannot satisfy the "simulated crash → consolidated Episode" pass-criterion.
 
-## §Implementation (Phase 48; pending ship)
+## §Implementation (Phase 48; shipped, see confirmation_docs/PHASE_48_CONFIRMED.md)
 
 `mindsos_intelligence/crash_recovery.py` (NEW — trigger-marker writer + startup scan); trigger calls wired into the orchestrator lifecycle (commit-group 3); `IntelligenceLayer.start()` invokes the scan. Tests: `tests/phase_48/test_crash_recovery.py` (marker fires at triggers; startup scan consolidates with `crash_marker`; idempotency on existing Episode).
