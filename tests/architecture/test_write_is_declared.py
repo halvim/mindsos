@@ -44,6 +44,7 @@ from mindsos_capacity import (
     ShapeDescriptor,
 )
 from mindsos_capacity.identifiers import CATEGORY_PERCEPTION, capacity_iri
+from mindsos_capacity.runtime import invoke as runtime_invoke
 from mindsos_knowledge import KnowledgeLayer
 from mindsos_knowledge.identifiers import ROLE_PROMPTS
 
@@ -266,6 +267,32 @@ def test_a_write_that_declares_an_output_still_gets_the_handle():
     assert result.write_outcome is None, (
         "a write that declares an output returns it in outputs; "
         "write_outcome is the TERMINATOR channel"
+    )
+
+
+def test_the_terminator_bypass_is_the_return_shape_not_the_write_test():
+    """``runtime.invoke``'s branch answers *what may this body return*; the
+    context branch answers *may it write*. Conflating them is what R7 undid,
+    so each is pinned separately: a declaration with no outputs and no write
+    does not get the WriteResult contract - it is held to the ordinary one.
+
+    WARNING: both rules refuse this declaration, with DIFFERENT messages.
+    The message IS the assertion - without it, the mutation that reverts the
+    branch comes back green for the wrong reason.
+    """
+    declaration = Capacity(
+        name="not_a_write",
+        category=CATEGORY_PERCEPTION,
+        inputs=(),
+        outputs=(),
+        implementation=lambda **kw: None,
+    )
+    result = runtime_invoke(declaration, inputs={})
+    assert result.success is False
+    assert isinstance(result.error, CapacityRegistrationError)
+    assert "declares 0 outputs" in str(result.error), (
+        "this went down the write-terminator bypass, the branch R7 "
+        f"re-keyed: {result.error}"
     )
 
 
