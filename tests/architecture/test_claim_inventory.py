@@ -124,6 +124,7 @@ See `mindsos_x/mod.py` and `mindsos_x/gone.py` and `tests/t_gone.py:12`.
 Call `mindsos_x.mod.Thing.run` or `mindsos_x.mod.helper()` or `mindsos_x.Thing`.
 Not `mindsos_x.mod.Thing.stop`, not `mindsos_x.nothere`.
 Per ADR-0001 and ADR-0002.
+A template `confirmation_docs/PHASE_NN_CONFIRMED.md` or `tests/phase_NN/` is not a claim.
 Links: [ok](../decisions/adr/0001-a.md), [bad](missing.md), [web](https://x.org), [anchor](#h).
 
 ```
@@ -166,9 +167,9 @@ def test_fabricated_tree_is_counted_exactly(tmp_path):
     false_symbols = sorted(s.text for s in rep["_sites"] if s.cls == "python-symbol" and s.false)
     assert false_symbols == ["mindsos_x.mod.Thing.stop", "mindsos_x.nothere"]
     # prose lines outside fences, headings, blanks, front-matter, table rules:
-    # "Plain prose", See, Call, Not, Per, Links, 2 table rows = 8 lines;
-    # See..Links carry a claim, so 3 are unreached.
-    assert rep["residual"]["live"] == {"prose_lines": 8, "unreached": 3}
+    # "Plain prose", See, Call, Not, Per, Template, Links, 2 table rows = 9
+    # lines; See..Links bar Template carry a claim, so 4 are unreached.
+    assert rep["residual"]["live"] == {"prose_lines": 9, "unreached": 4}
 
 
 def test_check_is_open_while_anything_is_unguarded(tmp_path):

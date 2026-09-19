@@ -131,6 +131,10 @@ _CODESPAN = re.compile(r"`([^`\n]+)`")
 _PATH_TOPS = r"(?:mindsos_\w+|tests_server|tests|tools|docs|confirmation_docs|projects|\.github)"
 _PATH = re.compile(rf"^{_PATH_TOPS}/[\w./-]*[\w/]$")
 _PATH_SUFFIX = re.compile(r"(::[\w.\[\]-]+|:\d+(?:-\d+)?|#L?\d+)$")
+#: A template, not a claim: `PHASE_NN_CONFIRMED.md`, `tests/phase_NN/`,
+#: `NNNN-short-slug.md`. Measured 2026-09-19: 8 of the first 26 "false" live
+#: and index paths were these.
+_PLACEHOLDER = re.compile(r"(?:^|[/_.-])N{2,}(?:[/_.-]|$)")
 _DOTTED = re.compile(r"^(mindsos_\w+(?:\.\w+)+)(?:\(\))?$")
 _ADR_REF = re.compile(r"\bADR[- ]?(\d{3,4})\b")
 _MDLINK = re.compile(r"(?<!!)\[[^\]\n]*\]\(([^)\s]+)\)")
@@ -296,6 +300,8 @@ def scan(tree: Tree) -> list[Site]:
             for span in _CODESPAN.findall(line):
                 span = span.strip()
                 cand = _PATH_SUFFIX.sub("", span)
+                if _PLACEHOLDER.search(cand):
+                    continue
                 if _PATH.match(cand) and not re.search(r"[*{}<>]|\.\.\.", cand):
                     sites.append(Site("path-citation", rel, n, span, not tree.exists(cand)))
                     continue
