@@ -1,6 +1,7 @@
 ---
 title: Session-based write API replaces bare user_id string
-status: Accepted
+status: Superseded
+superseded_by: ADR-0138
 date: 2026-04-22
 layer: L2
 aliases: [kl-ADR-001]
@@ -8,7 +9,7 @@ aliases: [kl-ADR-001]
 
 # ADR-0038: Session-based write API replaces bare user_id string
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0138](0138-kl-drops-write-api.md) (recorded 2026-09-19; see §Supersession below)
 
 **Date:** 2026-04-22
 
@@ -33,3 +34,15 @@ The KL write API accepts `session: Union[SessionProtocol, str]` as its first pos
 ## Alternatives considered
 
 None recorded; this was the consensus choice during the 2026-04-22 design session.
+
+## Supersession (2026-09-19)
+
+**Amendment status:** Accepted. Records why this ADR is Superseded; the text above is left as written.
+
+[ADR-0138](0138-kl-drops-write-api.md) answers this ADR's question the other way. This ADR puts the capability check at the KL boundary; ADR-0138 (five days later) deletes the KL write API and says "capability checks consolidate at the L3 invocation boundary". Five of the six methods named in §Decision are deleted by ADR-0138 by name; the sixth, `step()`, survives on `MetagraphView` and takes no session.
+
+The mechanism this ADR mandates was never built in this repo: `_coerce_session`, `session: Union[SessionProtocol, str]` and `def add_local_node` appear in this repo's history only in the text of this ADR and ADR-0039 (vendored at `40fd643`), and `session.has(` is absent from `mindsos_knowledge`.
+
+**What survived, relocated.** A session object still crosses into KL — through `KnowledgeLayer.writeable(session, role, scope)` → `KLWriteHandle.session`, per [ADR-0143](0143-kl-write-handle-pattern.md). ADR-0143 keeps this ADR's *routing* guarantee (the principal travels with the write) and not its *capability-check* guarantee. Read this ADR as superseded by ADR-0138 and replaced by ADR-0143 — not as "KL takes a bare `user_id` again", which is false.
+
+The Consequences line "KL must now agree with the server on what capabilities exist — see ADR-0041" is void with it: ADR-0041 is itself Superseded by ADR-0138 (recorded 2026-09-16).

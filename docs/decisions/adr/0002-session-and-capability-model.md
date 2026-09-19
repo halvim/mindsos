@@ -182,3 +182,9 @@ argument that writing your own Local store needs no permission. Rejected: it wou
 "this user may not install software" inexpressible, and the check costs nothing.
 
 **`ADMIN_CAPS` is unchanged** — admins already held both. The roster stays at 12.
+
+### amendment-4 (2026-09-19) — the §amendment-1 KL-side constants never land
+
+**Amendment status:** Accepted. Supersedes one clause of §amendment-1; the text above is left as written.
+
+§amendment-1's **Out-of-scope** paragraph says the four KL-side capability constants of ADR-0041 "ship at Phase 25 when `mindsos_knowledge/capabilities.py` lands", and that the KL-side subtests of `tests/phase_18/test_capabilities_parity.py` skip until then. Neither will happen. [ADR-0041](0041-duplicate-capability-constants-parity-test.md) is Superseded by [ADR-0138](0138-kl-drops-write-api.md) (recorded 2026-09-16): KL no longer has a write API and consults no capability, so `mindsos_knowledge/capabilities.py` has no consumer and is not coming. The KL-side subtest was removed from `tests/phase_18/test_capabilities_parity.py` with that supersession; the server-side parity test is unaffected.

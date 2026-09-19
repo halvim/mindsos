@@ -11,7 +11,7 @@ layer: L2
 
 **Date:** 2026-04-27
 
-**Related:** ADR-0041 (superseded by this ADR — KL no longer consults capabilities; recorded 2026-09-16), ADR-0010 (layer isolation), ADR-0139 (hybrid invariant home), ADR-0140 (server owns admin), ADR-0141 (delete `promote()`), ADR-0143 (`KLWriteHandle`). Closes most of `docs/HANDOFF_L2_DESIGN_CONTINUATION.md` §5 Tier-1 list (5.1, 5.4, 5.5, 5.6, 5.7).
+**Related:** ADR-0038 and ADR-0039 (superseded by this ADR — the session-gated KL write API and its `str` shim; recorded 2026-09-19), ADR-0041 (superseded by this ADR — KL no longer consults capabilities; recorded 2026-09-16), ADR-0010 (layer isolation), ADR-0139 (hybrid invariant home), ADR-0140 (server owns admin), ADR-0141 (delete `promote()`), ADR-0143 (`KLWriteHandle`). Closes most of `docs/HANDOFF_L2_DESIGN_CONTINUATION.md` §5 Tier-1 list (5.1, 5.4, 5.5, 5.6, 5.7).
 
 ## Context
 

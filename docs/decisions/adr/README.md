@@ -50,8 +50,8 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
 | [0035](0035-uuid-generation-non-deterministic.md) | UUID generation non-deterministic | Accepted | L1 | core-ADR-022 |
 | [0036](0036-no-multi-writer-concurrency-control.md) | No multi-writer concurrency control | Accepted | L1 | core-ADR-023 |
 | [0037](0037-instancing-vocabulary-in-core.md) | Instancing vocabulary in core | Superseded by [ADR-0132](0132-instancing-moved-to-mindsos-instances.md) | L1 | core-ADR-024 |
-| [0038](0038-session-write-api.md) | Session-based write API replaces bare user_id string | Accepted | L2 | kl-ADR-001 |
-| [0039](0039-transitional-str-shim-deprecation.md) | Transitional str shim with deprecation | Accepted | L2 | kl-ADR-002 |
+| [0038](0038-session-write-api.md) | Session-based write API replaces bare user_id string | Superseded by [ADR-0138](0138-kl-drops-write-api.md) | L2 | kl-ADR-001 |
+| [0039](0039-transitional-str-shim-deprecation.md) | Transitional str shim with deprecation | Superseded by [ADR-0138](0138-kl-drops-write-api.md) | L2 | kl-ADR-002 |
 | [0040](0040-session-protocol-duck-typing.md) | Session protocol duck typing | Accepted | L2 | kl-ADR-003 |
 | [0041](0041-duplicate-capability-constants-parity-test.md) | Duplicate capability constants + parity test | Superseded by [ADR-0138](0138-kl-drops-write-api.md) | L2 | kl-ADR-004 |
 | [0042](0042-kl-install-extract-hooks.md) | KL install/extract hooks for server lifecycle | Accepted | L2 | kl-ADR-005 |

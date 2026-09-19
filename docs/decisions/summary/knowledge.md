@@ -11,8 +11,8 @@ Knowledge is MindsOS's long-term memory: a Global metagraph of versioned, role-t
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|
-| [0038](../adr/0038-session-write-api.md) | Session-based write API replaces bare `user_id` string | Accepted | Write methods take `session: SessionProtocol` for defense-in-depth and capability checks |
-| [0039](../adr/0039-transitional-str-shim-deprecation.md) | Backward-compat `str` shim with `DeprecationWarning` during migration | Accepted | Legacy callers emit warnings; removed once Server Phase 1 lands |
+| [0038](../adr/0038-session-write-api.md) | Session-based write API replaces bare `user_id` string | Superseded by [0138](../adr/0138-kl-drops-write-api.md) | Write methods take `session: SessionProtocol` for defense-in-depth and capability checks |
+| [0039](../adr/0039-transitional-str-shim-deprecation.md) | Backward-compat `str` shim with `DeprecationWarning` during migration | Superseded by [0138](../adr/0138-kl-drops-write-api.md) | Legacy callers emit warnings; removed once Server Phase 1 lands |
 | [0040](../adr/0040-session-protocol-duck-typing.md) | `SessionProtocol` via duck-typing, not `TYPE_CHECKING` import | Accepted | Structurally-typed Protocol preserves layer isolation (I-S1) |
 | [0041](../adr/0041-duplicate-capability-constants-parity-test.md) | Duplicate capability strings in KL; parity enforced by test | Superseded by [0138](../adr/0138-kl-drops-write-api.md) | Four capabilities (`can_read_other_locals`, `can_write_global`, `can_promote`, `can_hard_delete_archived`) with parity test to detect drift |
 | [0042](../adr/0042-kl-install-extract-hooks.md) | Server-driven hydration via explicit `install_local_metagraph` / `extract_local_metagraph` | Accepted | Strict preconditions prevent double-hydration; server owns persistence lifecycle |
