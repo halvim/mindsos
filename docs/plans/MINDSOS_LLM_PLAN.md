@@ -41,7 +41,7 @@ is left to build"*. The 2026-09-05 ruling that made it the completion criterion 
 
 ---
 
-## 2. THE DESIGN RULINGS — OWNER, 2026-09-13
+## 2. THE DESIGN RULINGS — OWNER, 2026-09-13 and 2026-09-18
 
 **R1 — L3 writes the L2 record, not L0.** *"it should be L3 as this is part of the
 reading text intelligence, not L0 server code."* Settles
@@ -83,6 +83,56 @@ grounding graph. **No item, no work.**
 
 ---
 
+**R7 — a capacity DECLARES that it writes.** `outputs == ()` is not a write marker: it
+means *"produces no DataState"*, and *"produces no DataState"* and *"mutates L2"* are
+orthogonal. Measured — **both** invoke sites branch on `not declaration.outputs` to
+decide whether the body gets a `CapacityContext` carrying `writeable`
+(`mindsos_capacity/runtime.py:201`, `mindsos_capacity/capacity_layer.py:677`), so a
+capacity that writes AND declares an output is unreachable on the direct path and
+leaves `InvocationResult.write_outcome` empty. The fix is the pattern the tree already
+uses twice — `reads_mm` (ADR-0200 §C3) and `consults_llm` (ADR-0180 §am-3) are
+declaration flags that gate a context capability. `writes=True` completes it, and an
+AST guard reconciles declaration against body exactly as the `context.llm` census does.
+⚠ This does **not** converge the two context types; the legacy dict path is a separate
+item. **OWNER 2026-09-18.**
+
+**R8 — a recorded set's identity is its file's `sha256`.** The pointer is therefore
+verifiable against the file it names: a re-capture of the same bytes refuses as a
+duplicate, and an appended set gets its own pointer. ⚠ **So *shown* means VERIFIABLE for
+a recorded set and only RETRIEVABLE for a prompt edition** (whose `append_only` is
+declared-not-enforced, `core-llm-prompt-edition-append-only-unenforced`). The asymmetry
+is recorded, not smoothed over. **OWNER 2026-09-18.**
+
+**R9 — nothing unverifiable is stored.** `vendor_id` is **dropped** from the pointer:
+nothing stamps it on a payload and nothing can check it, so storing it would be a claim
+about a recording rather than a property of it — which `mindsos_llm/recorded_sets.py`
+refuses by design. It stays available on the exported envelope's `captured_over`, which
+the pointer names. `credential_level` is **derived from the payloads** and refused on
+contradiction or multiplicity, the rule `export_set` already enforces.
+**OWNER 2026-09-18.**
+
+**R10 — the recorder has no don't-know.** The `comprehension` family's `OPTIONAL_RETURN`
+is a *reader's* shape — a reading that cannot answer returns a null value. The recorder
+reads nothing: every failure is *"this file is not a recorded set"*, which refuses. The
+reason is not lost — `runtime.invoke` emits a problem-trace record carrying the
+exception message. ⚠ Amendment 4's *"the reason on the paired record"* named a record
+its own output list does not have. **OWNER 2026-09-18.**
+
+**R11 — every named L2 role is recorded in ADR-0150**, enforced by a sentinel deriving
+from `ALL_ROLES`. Measured: §am-5's escape clause requires a §Revisions entry per new
+**named** role, and it has been skipped twice — `policies` carries the literal
+placeholder `§amendment-<N>` in `identifiers.py`, and `prompts` appears nowhere in
+ADR-0150. **OWNER 2026-09-18.**
+
+**R12 — `set_path` may name a bare recording OR an exported set**, detected by the
+`format` key, because refusing the export format would point L2 at the one artifact a
+third party cannot replay. The deriver producing the pointer payload — the manifest
+**plus the sorted `request_keys`** — is **public** in `mindsos_llm.recorded_sets`;
+`_derive_manifest` is private and computes no keys. ⚠ Adding a function to an existing
+module is not the edit R2 forbids: R2 says the RECORDS are not held in `mindsos_llm`.
+**OWNER 2026-09-18.**
+
+
 ## 3. THE ITEM LIST
 
 | id | item | filed as | state |
@@ -102,10 +152,12 @@ grounding graph. **No item, no work.**
 | I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Not yet specified, and must not be guessed at before I-9/I-10/I-11 exist** | core-llm-excision-capability | TODO |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
+| I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | TODO |
+| I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | TODO |
 
-**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12.**
+**DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-10 → I-12.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 → I-16 → I-10 → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -194,3 +246,18 @@ amendment.)*
   `..printable`, so the origin record has no L2 dependency whatever, and I-11 is two
   names in `PRODUCER_DECLARED` plus two lines in `_record` reading fields the answer
   already carries. It was holding a cheap, ready item behind a ruling it never needed.
+
+- **2026-09-18** — **six rulings, R7–R12 in §2, and two new items, I-15 and I-16**,
+  **approved by the owner** ("confirmed... proceed"), after a convergence round run on
+  final quality rather than on remaining time — the owner's instruction was explicit:
+  *"do not recommend anything based on time... otherwise we will have to fix it in the
+  future and that become even longer."* ⚠ **The round REVERSED two of this chat's own
+  earlier recommendations**, which were argued from elapsed time and are wrong on the
+  merits: keeping amendment 4's declared output as an L4-only capability (now R7's
+  explicit declaration), and amending ADR-0150 for the new role without backfilling the
+  two roles that skipped it (now R11's sentinel plus the backfill).
+  **Two measurements produced R7 and I-16, and neither was known when I-8 was ruled:**
+  both invoke sites key the write-context injection on `not declaration.outputs`, and
+  `build_write_prompt_edition` has no caller anywhere in the tree.
+  ⚠ **I-15 is ordered BEFORE I-10 rather than folded into it** — two claims in one gate
+  is a ship the RULES §12 sweep cannot audit.

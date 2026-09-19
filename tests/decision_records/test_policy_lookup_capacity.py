@@ -58,6 +58,7 @@ from ._dr_fixtures import (
     DS_AS_OF_DATE,
     DS_FILING_THRESHOLD,
     DS_FILING_THRESHOLD_ORIGIN,
+    DS_FILING_VERDICT,
     EDITION_2023,
     POLICY_ID,
     POLICY_PHRASE,
@@ -386,7 +387,12 @@ def test_the_d15_walk_would_catch_an_opaque_operand():
             name="dr_offender",
             category="decision",
             inputs=(DS_FILING_THRESHOLD_ORIGIN,),
-            outputs=(),
+            # Plan R7: a reactive capacity that produces nothing and
+            # declares no write is refused at registration. The offence
+            # under test is the opaque INPUT, so the declaration gains the
+            # verdict it would really produce rather than a writes=True it
+            # does not do.
+            outputs=(DS_FILING_VERDICT,),
             implementation=lambda **kw: {},
         ),
         session=session,

@@ -103,3 +103,36 @@ is restated 11 → 12 and RENAMED (`...has_eleven_fields` asserting twelve is
 the stale-name class). `mindsos_capacity.__all__` is unchanged at 146:
 `LLMHandle` is exported from `context.py` and deliberately not re-exported at
 package level, since no consumer imports it — the two export-slate pins stand.
+
+
+## §amendment-4 — the write capability is gated by a declaration, like the other two (2026-09-18)
+
+**Amendment status:** Accepted. The scope-aware gate and the Local/Global
+asymmetry are unchanged; what changes is WHEN the capability is injected.
+
+**§amendment-3 set the rule and `writeable` was the exception.** That amendment
+generalised the pattern ADR-0200 §C3 established with `reads_mm`: a narrowed
+context capability is injected **only for a declaration that asks for it**, so
+an undeclared body is handed `None` and cannot reach the thing. `llm` follows
+it; `mm_handle` follows it. `writeable` did not - it was inferred from
+`outputs == ()` in `capacity_layer.invoke` and supplied **unconditionally** in
+`L4Dispatcher.build_context`. Two paths, two different answers to *may this
+body write*, and neither of them the declaration.
+
+**The decision.** Per `mindsos_llm` plan ruling **R7** (OWNER 2026-09-18), both
+sites gate on `declaration.writes`. `build_context` gains a `writes` parameter
+defaulting to `False`, and `dispatch` threads the declaration's flag into it
+exactly as it already threads `reads_mm` and `consults_llm`.
+
+**What this does NOT change.** `make_writeable` still enforces the scope-aware
+gate - Local writes need no capability, Global needs `CAN_WRITE_GLOBAL` - so
+the declaration narrows WHO IS HANDED the capability and never widens what the
+capability permits. The legacy dict context for read bodies is untouched (the
+§am-1 A1 boundary): converging the two context types is a separate item, and
+this amendment does not pretend to close it.
+
+**Enforcement.** A test on each side of the new branch - `build_context()`
+withholds the capability, `build_context(writes=True)` supplies it - plus the
+declaration-vs-body reconciliation in
+`tests/architecture/test_write_is_declared.py`. Designated mutation: dropping
+the `if writes` guard reddens the withholding test alone.

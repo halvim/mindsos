@@ -164,6 +164,7 @@ def build_learn_parameter() -> Capacity:
         category=CATEGORY_LEARNING_METHODS,
         inputs=(DS_LEARNED_PARAMETER_WRITE,),
         outputs=(),
+        writes=True,
         implementation=_learn_parameter_impl,
         description=(
             "Persist/update one probabilistically-learned parameter in the "

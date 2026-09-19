@@ -327,6 +327,7 @@ def build_consolidate_mm() -> Capacity:
         category=CATEGORY_CONSOLIDATE,
         inputs=(DS_MM_COMPOSITE_INSTANCE,),
         outputs=(),
+        writes=True,
         implementation=_consolidate_mm_impl,
         description=(
             "Consolidate an MM record into the user's Local "

@@ -143,6 +143,7 @@ def build_trace_problem() -> Capacity:
         category=CATEGORY_TRACE,
         inputs=(DS_PROBLEM_TRACE_RECORD,),
         outputs=(),
+        writes=True,
         implementation=_trace_problem_impl,
         description=(
             "Write a single ProblemTraceEntry into the Global problem-"

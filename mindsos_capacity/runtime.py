@@ -191,14 +191,20 @@ def invoke(
     start = time.perf_counter()
     try:
         # Phase 34 (ADR-0146 §am-1 clause 4 closed; R1 PB-A) — write-
-        # capacity terminator bypass. When the declaration has zero
-        # output DataStates, the capacity is a write (pipeline terminator
-        # per R2 PB-K). ``call_capacity``'s output-validation contract
+        # TERMINATOR bypass. ``call_capacity``'s output-validation contract
         # (mapping-of-declared-DS-or-sole-value) is incompatible with
-        # returning a typed ``WriteResult`` / ``ProblemTraceRecord``.
-        # Bypass ``call_capacity`` for writes; validate return type
-        # explicitly (R5 PB-G); stash in ``InvocationResult.write_outcome``.
-        if not declaration.outputs:
+        # returning a typed ``WriteResult`` / ``ProblemTraceRecord``, so a
+        # capacity with nothing to return bypasses it; validate the return
+        # type explicitly (R5 PB-G) and stash it in
+        # ``InvocationResult.write_outcome``.
+        #
+        # ⚠ **THE CONDITION IS THE RETURN SHAPE, NOT "IS THIS A WRITE"**
+        # (plan R7, OWNER 2026-09-18). A write that DECLARES an output has
+        # something to return and goes down the ordinary path; its handle
+        # comes from the context, which is gated on ``writes`` where the
+        # context is built. Reading this branch as the write test is what
+        # made ADR-0210 §am-4's recorder unreachable.
+        if declaration.writes and not declaration.outputs:
             _validate_inputs(declaration, inputs)
             # Lazy import to avoid the write_outcome ↔ runtime cycle.
             from .write_outcome import WriteResult

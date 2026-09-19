@@ -131,6 +131,7 @@ class L4Dispatcher:
         pattern_iri: Optional[str] = None,
         reads_mm: bool = False,
         consults_llm: bool = False,
+        writes: bool = False,
     ) -> CapacityContext:
         # ADR-0200 (C3) — the body-facing MM read handle is injected only
         # when the declaration sets ``reads_mm=True``. A ``reads_mm=False``
@@ -153,7 +154,13 @@ class L4Dispatcher:
             version_snapshot=dict(self._version_snapshot),
             kl=self._kl,
             cl=self._cl,
-            writeable=make_writeable(self._kl, self._session),
+            # Plan R7 (OWNER 2026-09-18) — the write capability is injected
+            # only for a declaration that asks, the same discipline as
+            # ``mm_handle`` and ``llm`` above. It was unconditional here
+            # while the OTHER dispatch path inferred it from
+            # ``outputs == ()``: two paths, two different answers to "may
+            # this body write", and neither of them the declaration.
+            writeable=make_writeable(self._kl, self._session) if writes else None,
             # ADR-0180 §am-3 — the external-model capability, injected
             # only for a declaration that asked for it. Same shape as
             # ``mm_handle`` above: undeclared bodies get ``None``.
@@ -188,6 +195,7 @@ class L4Dispatcher:
             pattern_iri=pattern_iri,
             reads_mm=bool(getattr(declaration, "reads_mm", False)),
             consults_llm=consults_llm,
+            writes=bool(getattr(declaration, "writes", False)),
         )
         return _runtime_invoke(
             declaration,

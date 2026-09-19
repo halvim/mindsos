@@ -69,6 +69,14 @@ def _register_datastate(layer, iri, kind, session=None):
 
 
 def _register_decision(layer, *, inputs=(), outputs=(), session=None, name="assess_window"):
+    # Plan R7: a reactive capacity that produces nothing and declares no
+    # write is refused at registration - nothing it does is observable. A
+    # decision that states no outcome is exactly that, and the walks under
+    # test here are about a decision's INPUTS, so the helper supplies the
+    # outcome rather than each caller repeating it.
+    if not outputs:
+        _register_datastate(layer, OUTCOME_DS, "str", session=session)
+        outputs = (OUTCOME_DS,)
     layer.register_capacity(
         Capacity(name=name, category=CATEGORY_DECISION, inputs=tuple(inputs),
                  outputs=tuple(outputs), implementation=lambda **kw: {},
