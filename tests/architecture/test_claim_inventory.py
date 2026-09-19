@@ -122,7 +122,7 @@ title: page
 Plain prose that no class reaches.
 See `mindsos_x/mod.py` and `mindsos_x/gone.py` and `tests/t_gone.py:12`.
 Call `mindsos_x.mod.Thing.run` or `mindsos_x.mod.helper()` or `mindsos_x.Thing`.
-Not `mindsos_x.mod.Thing.stop`, not `mindsos_x.nothere`.
+Not `mindsos_x.mod.Thing.stop`, not `mindsos_x.nothere`; `mindsos_x_notes.md` is a file name.
 Per ADR-0001 and ADR-0002.
 A template `confirmation_docs/PHASE_NN_CONFIRMED.md` or `tests/phase_NN/` is not a claim.
 Links: [ok](../decisions/adr/0001-a.md), [bad](missing.md), [web](https://x.org), [anchor](#h).

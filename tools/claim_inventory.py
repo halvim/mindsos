@@ -135,6 +135,9 @@ _PATH_SUFFIX = re.compile(r"(::[\w.\[\]-]+|:\d+(?:-\d+)?|#L?\d+)$")
 #: `NNNN-short-slug.md`. Measured 2026-09-19: 8 of the first 26 "false" live
 #: and index paths were these.
 _PLACEHOLDER = re.compile(r"(?:^|[/_.-])N{2,}(?:[/_.-]|$)")
+#: `mindsos_core_handoff.md` is a filename, not `module.attr`. Measured
+#: 2026-09-19: all 32 "false" not-in-image symbols were such filenames.
+_FILE_EXT = re.compile(r"\.(md|py|txt|json|ya?ml|toml|sh|html|csv|tsv|ipynb)$")
 _DOTTED = re.compile(r"^(mindsos_\w+(?:\.\w+)+)(?:\(\))?$")
 _ADR_REF = re.compile(r"\bADR[- ]?(\d{3,4})\b")
 _MDLINK = re.compile(r"(?<!!)\[[^\]\n]*\]\(([^)\s]+)\)")
@@ -306,7 +309,7 @@ def scan(tree: Tree) -> list[Site]:
                     sites.append(Site("path-citation", rel, n, span, not tree.exists(cand)))
                     continue
                 m = _DOTTED.match(span)
-                if m:
+                if m and not _FILE_EXT.search(span):
                     sites.append(Site("python-symbol", rel, n, span, not resolver.dotted_ok(m.group(1))))
             for m in _ADR_REF.finditer(line):
                 sites.append(Site("adr-reference", rel, n, m.group(0), int(m.group(1)) not in adr_numbers))
