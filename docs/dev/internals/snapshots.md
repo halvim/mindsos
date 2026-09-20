@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 10
-verified_at: unverified
+verified_at: c8f26d9
 ---
 
 # Snapshot — internals

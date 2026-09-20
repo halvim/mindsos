@@ -1,5 +1,5 @@
 ---
-verified_at: unverified
+verified_at: c8f26d9
 ---
 
 # Internals — Phase-1 interpretation seam + modality ingress
@@ -13,8 +13,9 @@ sits on top of it.
 `mindsos_capacity/builtins/phase1_v0.py` (the placeholder fallback) and
 `.../phase1_text.py` (the worked text modality).
 
-> ⚠ **`derive_goal` is deleted by the current design.** The four steps below are
-> ADR-0195's, as shipped.
+> ⚠ **`derive_goal` is on the way out, but it still runs.** The four steps below
+> are ADR-0195's, as shipped: `derive_goal` is a live `Phase1Profile` slot and
+> `interpret` invokes it.
 > **[ADR-0206](../../decisions/adr/0206-planning-decomposition-confidence.md) §3** states
 > the steps as `request → hint → map → plan` — **without `derive_goal`** — and §8 ships
 > interpretation as *contract only*, with bodies arriving in skill packages. ADR-0206 is
@@ -139,8 +140,8 @@ contract exists, but no bodies ship until a consumer needs them (RULES §8).
 ## Gotchas
 
 - **A real `map` slot triggers the map-target-resolves check.** `interpret`
-  verifies the returned `task_pattern_iri` resolves in the `task-patterns`
-  role-graph (Local → Global). A consumer authors its pattern in its own Local
+  verifies the returned `request_pattern_iri` resolves in the
+  `request-patterns` role-graph (Local → Global; `_map_target_resolves`). A consumer authors its pattern in its own Local
   scope; a Global demonstration must register the pattern (see the text test
   fixture). The all-v0 path skips this — its trivial pattern is not KL-registered
   and the check is gated on a supplied `map` slot.

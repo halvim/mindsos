@@ -1,17 +1,19 @@
 ---
 title: Capacity Layer — internals (halvim)
 last_confirmed_phase: 34
-verified_at: unverified
+verified_at: c8f26d9
 ---
 
 # Capacity Layer — internals (halvim)
 
-This page documents halvim's `mindsos_capacity` package internals.
-Parent tree (`/Layered Intelligence/docs/dev/internals/capacity.md`)
-holds the canonical cross-layer contract; halvim's page covers the
-package-local details + Phase-by-phase divergences (Model C — halvim
-and parent share design intent; halvim diverges in implementation
-detail where noted).
+This page documents the `mindsos_capacity` package internals. It is the
+canonical page: the "parent tree" arrangement it used to defer to (a
+second copy of this page outside the repo, under the retired Model C
+layout) no longer exists. The cross-layer contract itself lives in the
+ADRs listed under *See also*.
+
+Sections dated by phase below are the record of what that phase shipped;
+the current contract is the one the ADRs and the guards state.
 
 ## L3 write capacities — symmetric invocation contract (Phase 33; ADR-0146)
 
@@ -72,7 +74,9 @@ ADR-0146 §amendment-1 enumerates 5 clauses. Summary:
 ### Phase 33 shipped capacities
 
 - `capacity:consolidate:mm` (`mindsos_capacity/builtins/consolidate.py`)
-  — Local write to `memories` role-graph; first occupant of the new
+  — Local write to the episodic-memories role-graph (`memories` at
+  Phase 33; renamed `episodic_memories` at Phase 39, ADR-0044 §am-3, and
+  the capacity reads `ROLE_EPISODIC_MEMORIES` today); first occupant of the new
   `CATEGORY_CONSOLIDATE` category.
 - `capacity:trace:problem` (`mindsos_capacity/builtins/trace.py`) —
   Global write to `problem-trace` role-graph; first *write* occupant of
@@ -187,8 +191,6 @@ keeps `type_="Memory"` per design log PB-3 (semantic retarget to
 - ADR-0147: Per-flow build pattern for L3 write capacities.
 - `docs/dev/coordinated-changes/L3-capacity-write-flows.md` — per-flow
   tracker (which capacity is built, deferred, or in-progress).
-- `docs/dev/review-checklist.md` — Phase 34 code-review checklist
-  enforcing the ADR-0143 §Constraint ("never mutates") + 2 recurring
-  rules.
-- Parent tree `docs/dev/internals/capacity.md` — canonical
-  cross-layer contract.
+- `docs/dev/review-checklist.md` — the code-review checklist, opened at
+  Phase 34 with the ADR-0143 §Constraint ("never mutates") and appended
+  to by later ships.
