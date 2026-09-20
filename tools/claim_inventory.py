@@ -339,11 +339,11 @@ def scan(tree: Tree) -> list[Site]:
                 cand = _PATH_SUFFIX.sub("", span)
                 if _PLACEHOLDER.search(cand):
                     continue
-                if cand.split("/")[0] not in tops:
-                    # the whole top is absent (the test image does not copy
-                    # projects/): unjudgeable here, so not counted -- a floor
-                    continue
                 if _PATH.match(cand) and not re.search(r"[*{}<>]|\.\.\.", cand):
+                    if cand.split("/")[0] not in tops:
+                        # the whole top is absent (the test image does not
+                        # copy projects/): unjudgeable here -- a floor
+                        continue
                     sites.append(Site("path-citation", rel, n, span, not tree.exists(cand)))
                     continue
                 m = _DOTTED.match(span)
