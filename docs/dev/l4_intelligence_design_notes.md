@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # MindsOS Layer 4 — Intelligence Layer: Design Notes
 
 **Purpose.** Ideas and decisions surfaced during Layer 3 design that belong to Layer 4. This is not a specification — it is a running catalog of things the L4 design session should treat as load-bearing. Append as further decisions land.

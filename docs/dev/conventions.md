@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 02
+verified_at: unverified
 ---
 
 # CLI conventions

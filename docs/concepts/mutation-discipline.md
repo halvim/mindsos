@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Mutation discipline
 
 Per-role-graph mutation discipline + per-field content/metadata partitioning is the L2 contract that governs how role-graph contents may change after the initial write. ADR-0153 ratifies the framework; ADR-0153 §amendment-1 (Phase 43 ship) locks the `L2Schema(Schema)` subclass placement.

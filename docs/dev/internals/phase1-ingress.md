@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Internals — Phase-1 interpretation seam + modality ingress
 
 How task input is interpreted, and how to add a new input **modality**. Covers

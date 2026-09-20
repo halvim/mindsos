@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 43
+verified_at: unverified
 ---
 
 # `request-patterns` role schema

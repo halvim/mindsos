@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # The five layers (Phase 48)
 
 MindsOS is a five-layer intelligence system on FalkorDB metagraphs, plus an

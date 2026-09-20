@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # The `mindsos_llm` capability contract
 
 **What this document is.** `mindsos_llm` is a cross-layer core capability

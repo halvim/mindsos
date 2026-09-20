@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 04-v2
+verified_at: unverified
 ---
 
 # `mindsos_core.HyperEdge`

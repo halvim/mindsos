@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 09
+verified_at: unverified
 ---
 
 # References — hybrid model (intra-metagraph strings + cross-metagraph XRef)

@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Task lifecycle (six phases)
 
 Layer 4 drives every task through a **six-phase lifecycle** (Chat A D12). The

@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Intelligence Layer (L4 substrate)
 
 Layer 4 is the runtime that drives a session. It is **substrate and control

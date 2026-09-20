@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 28
+verified_at: unverified
 ---
 
 # Capacity Layer (L3) — overview

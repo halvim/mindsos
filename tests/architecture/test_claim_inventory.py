@@ -202,7 +202,8 @@ def test_check_closes_when_every_class_is_guarded(tmp_path):
         (tmp_path / g).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / g).write_text("")
     (tmp_path / "docs").mkdir()
-    (tmp_path / "docs" / "index.md").write_text("# Only a heading\n\nProse with no claim.\n")
+    (tmp_path / "docs" / "index.md").write_text(
+        "---\nverified_at: 8cb83d8\n---\n\n# Only a heading\n\nProse with no claim.\n")
     assert inv.main(["--root", str(tmp_path), "--check"]) == 0
 
 

@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Dreaming (Phase 45)
 
 Dreaming is MindsOS's corpus-replay mechanism. It re-runs past episodes so

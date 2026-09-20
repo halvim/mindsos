@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Role-graphs
 
 L2 Knowledge content is partitioned across **role-graphs** — each a typed graph with a fixed schema, registered in a Metagraph by its role name. ADR-0044 (Local-per-user invariant), ADR-0150 (closed role-set + lifecycle), ADR-0152 (schema-v2), and ADR-0153 (mutation discipline) define the contract.

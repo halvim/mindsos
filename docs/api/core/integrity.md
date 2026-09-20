@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 07
+verified_at: unverified
 ---
 
 # Integrity scanner — `verify_invariants` + `verify_invariants_graph`

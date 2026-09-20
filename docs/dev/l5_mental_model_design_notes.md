@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # MindsOS Layer 5 — Mental Model Layer: Design Notes
 
 **Purpose.** Design notes for Layer 5 (Mental Model Layer).

@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 15b
+verified_at: unverified
 ---
 
 # Knowledge addition lifecycle (L2)

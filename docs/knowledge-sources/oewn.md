@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 15a
+verified_at: unverified
 ---
 
 # Open English WordNet (OEWN) lexicon source

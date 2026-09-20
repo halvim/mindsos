@@ -8,6 +8,7 @@ pin: RE-PINNED 2026-08-12 to origin/main fd6cefc. Written against af329eb; items
 replaces: confirmation_docs/CORE_RECONCILIATION_PLAN.md as this lane's build order
 reads with: confirmation_docs/DECISION_RECORDS_V0_HANDOFF.md (its §3 is amended here),
   CORE_CR_POLICY_ROLE.md, CORE_CR_EXTERNAL_MODEL_SEAM.md + LLM_SEAM_MANUAL.md (on the seam branch)
+verified_at: unverified
 ---
 
 # Decision Records v0 — the single-lane plan

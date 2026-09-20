@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 13
+verified_at: unverified
 ---
 
 # Lexicon role schema

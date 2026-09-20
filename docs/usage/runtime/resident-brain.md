@@ -1,6 +1,7 @@
 ---
 title: Resident brain — mindsos brain
 last_confirmed_phase: 50
+verified_at: unverified
 ---
 
 # Resident brain — `mindsos brain`

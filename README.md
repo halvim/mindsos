@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # MindsOS
 
 A 5-layer intelligence system on FalkorDB metagraphs.

@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # `mindsos_llm` — THE PLAN
 
 **Owner: Henrique Alvim. Created 2026-09-13 from owner rulings taken that day.**
