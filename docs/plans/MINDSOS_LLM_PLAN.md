@@ -153,11 +153,11 @@ module is not the edit R2 forbids: R2 says the RECORDS are not held in `mindsos_
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
 | I-14 | level 3 / hosted adapter, the old "slice 3" | core-llm-level-3-awaits-a-hosted-adapter | OUT(trigger: a consumer wants Bedrock, Vertex or Azure) |
 | I-15 | a capacity **declares** that it writes (R7): `writes=True` on the declaration, both invoke sites gate the `writeable` injection on it instead of on `outputs == ()`, and an AST guard reconciles the declaration against the body — the `context.llm` census shape. **Blocks I-10**, whose ruled declared output is unreachable without it | core-capacity-write-is-declared-not-inferred | DONE(8f1f7d4) |
-| I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | TODO |
+| I-16 | I-9's writer gets its installer. Measured 2026-09-17: nothing in the tree calls `build_write_prompt_edition`, and `install_learn_parameter_capacities` is the precedent it skipped — so a `DONE` item is a declaration L4 cannot route to | core-llm-prompt-edition-has-no-installer | DONE(6e6514e) |
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 → I-10 → I-12.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -272,3 +272,16 @@ amendment.)*
   claim it was missing was written — RULES §12.2(c), a mutation that reddens
   nothing is a finding, not a pass. One item filed rather than absorbed:
   `core-capacity-two-context-types`.
+
+- **2026-09-18 (post-ship)** — **I-16 SHIPPED `6e6514e`** (PR #227, tag
+  `prompt-edition-installer-confirmed`), gate 5257 passed / 0 failed, id diff
+  **+9 / −0**, three mutations each one red at the predicted test. I-9's
+  writer is now installable, and a **zero-argument capacity factory whose
+  module defines no installer is a red test** — the class, with no allowlist,
+  because every installer-less factory in the tree is parameterised.
+  ⚠ **Two findings about the INSTRUMENTATION, not the tree:** a prediction
+  was built on a literal this chat echoed instead of counted (+10 predicted,
+  +9 measured, the tree right), and a box reported `failed=0` from grepping a
+  crash dump that contained no results at all. Both are in
+  `STATE.recent[0]`. **I-10 is next, and it is now unblocked in the way R7
+  intended: its recorder may declare its pointer as an output AND write.**
