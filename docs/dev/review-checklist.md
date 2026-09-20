@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 36
-verified_at: unverified
+verified_at: 5172b3c
 ---
 
 # Code review checklist
@@ -8,7 +8,7 @@ verified_at: unverified
 Phase 34 ship (R1 PB-D). Closes ADR-0143 §Accept criterion (c) — the
 "never mutates" rule on `KLWriteHandle` lives here.
 
-Three items. Future phases append.
+Each ship appends an item when it adds a rule a reviewer must apply by hand.
 
 ## 1. `KLWriteHandle` never mutates (ADR-0143 §Constraint)
 
@@ -25,6 +25,8 @@ The handle exposes accessors + validators only:
   carry-forward).
 * `write_and_validate(...)` — composite that calls `graph().add_node`
   through L1; the handle still does not own a mutation method.
+* `update_and_validate(...)` — the same shape for an update; it too reaches
+  L1 through `graph()`.
 
 **Reject** any PR that adds `KLWriteHandle.add_node`, `.add_xref`,
 `.set_property`, or any method that calls a L1 mutation primitive
