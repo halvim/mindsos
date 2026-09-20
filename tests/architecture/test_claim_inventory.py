@@ -103,7 +103,10 @@ def test_every_doc_reading_architecture_guard_is_registered():
     ("confirmation_docs/PHASE_46_CONFIRMED.md", "record"),
     ("confirmation_docs/PHASE_46_DESIGN_LOG.md", "record"),
     ("confirmation_docs/X_2026-09-12.md", "record"),
-    ("confirmation_docs/CORE_RECONCILIATION_PLAN.md", "unclassified"),
+    ("confirmation_docs/CORE_RECONCILIATION_PLAN.md", "live"),
+    ("confirmation_docs/DECISION_RECORDS_V0_PLAN.md", "live"),
+    ("confirmation_docs/INTERGRAPH_EDGES_DESIGN.md", "record"),
+    ("confirmation_docs/sub/CORE_RECONCILIATION_PLAN.md", "record"),
     ("projects/wsd/ANALYSIS.md", "not-in-image"),
 ])
 def test_partition_corners(rel, part):
@@ -126,6 +129,7 @@ Not `mindsos_x.mod.Thing.stop`, not `mindsos_x.nothere`; `mindsos_x_notes.md` is
 Per ADR-0001 and ADR-0002.
 A template `confirmation_docs/PHASE_NN_CONFIRMED.md` or `tests/phase_NN/` is not a claim.
 Links: [ok](../decisions/adr/0001-a.md), [bad](missing.md), [web](https://x.org), [anchor](#h).
+Unjudgeable here, its top is absent: `projects/demo/X.md`.
 
 ```
 `mindsos_x/also_gone.py` inside a fence is still a claim
@@ -142,6 +146,8 @@ def _fabricate(root: Path) -> Path:
     (root / "mindsos_x" / "__init__.py").write_text("from .mod import Thing\n")
     (root / "mindsos_x" / "mod.py").write_text(
         "class Thing:\n    def run(self):\n        pass\n\ndef helper():\n    pass\n")
+    (root / "tests").mkdir()
+    (root / "tests" / "t_live.py").write_text("")
     (root / "docs" / "decisions" / "adr").mkdir(parents=True)
     (root / "docs" / "decisions" / "adr" / "0001-a.md").write_text("---\nstatus: Accepted\n---\n# ADR\n")
     (root / "docs" / "usage").mkdir()
@@ -159,17 +165,28 @@ def test_fabricated_tree_is_counted_exactly(tmp_path):
     rep = inv.build_report(_fabricate(tmp_path))
     assert rep["mode"] == "walk"
     rows = _rows(rep)
-    assert rows[("path-citation", "live")] == (4, 3, "UNGUARDED")
-    assert rows[("python-symbol", "live")] == (5, 2, "UNGUARDED")
-    assert rows[("adr-reference", "live")] == (2, 1, "UNGUARDED")
-    assert rows[("relative-link", "live")] == (2, 1, "UNGUARDED")
+    # live rows belong to the live-doc guard, whose file this tree lacks
+    assert rows[("path-citation", "live")] == (4, 3, "GUARD-MISSING")
+    assert rows[("python-symbol", "live")] == (5, 2, "GUARD-MISSING")
+    assert rows[("adr-reference", "live")] == (2, 1, "GUARD-MISSING")
+    assert rows[("relative-link", "live")] == (2, 1, "GUARD-MISSING")
     assert rows[("adr-reference", "not-in-image")] == (1, 1, "NOT-IN-IMAGE")
     false_symbols = sorted(s.text for s in rep["_sites"] if s.cls == "python-symbol" and s.false)
     assert false_symbols == ["mindsos_x.mod.Thing.stop", "mindsos_x.nothere"]
     # prose lines outside fences, headings, blanks, front-matter, table rules:
-    # "Plain prose", See, Call, Not, Per, Template, Links, 2 table rows = 9
-    # lines; See..Links bar Template carry a claim, so 4 are unreached.
-    assert rep["residual"]["live"] == {"prose_lines": 9, "unreached": 4}
+    # "Plain prose", See, Call, Not, Per, Template, Links, Unjudgeable, 2 table
+    # rows = 10 lines; See..Links bar Template carry a claim, so 5 are unreached.
+    assert rep["residual"]["live"] == {"prose_lines": 10, "unreached": 5}
+
+
+def test_live_rows_are_guarded_once_the_guard_exists(tmp_path):
+    root = _fabricate(tmp_path)
+    g = root / inv.GUARDED["live-doc-references-resolve"][0]
+    g.parent.mkdir(parents=True, exist_ok=True)
+    g.write_text("")
+    rows = _rows(inv.build_report(root))
+    assert {rows[(c, "live")][2] for c in inv.UNGUARDED_CLASSES} == {"GUARDED"}
+    assert rows[("adr-reference", "not-in-image")][2] == "NOT-IN-IMAGE"
 
 
 def test_check_is_open_while_anything_is_unguarded(tmp_path):

@@ -71,7 +71,14 @@ SCRATCH = "scratch"              # docs/_workbench -- another chat's
 UNCLASSIFIED = "unclassified"    # in-image, but nothing says live or record
 OUT_OF_IMAGE = "not-in-image"    # tracked, but no test image copies it
 
-_DATED = re.compile(r"(_CONFIRMED|_DESIGN_LOG|\d{4}-\d{2}-\d{2})")
+#: confirmation_docs is a folder of dated records EXCEPT these plans, which
+#: are still acted on. Owner ruling 2026-09-19 (pending_designs
+#: claim-inventory-owner-rulings, ruling 1). A new live plan is added HERE.
+LIVE_CONFIRMATION_DOCS = frozenset({
+    "CORE_RECONCILIATION_PLAN.md",
+    "DECISION_RECORDS_V0_PLAN.md",
+    "DECISION_RECORDS_AGREED_CHANGES.md",
+})
 
 
 def partition(rel: str) -> str:
@@ -89,7 +96,7 @@ def partition(rel: str) -> str:
             return ADR if len(parts) > 2 and parts[2] == "adr" and parts[-1] != "README.md" else INDEX
         return LIVE
     if top == "confirmation_docs":
-        return RECORD if _DATED.search(parts[-1]) else UNCLASSIFIED
+        return LIVE if len(parts) == 2 and parts[1] in LIVE_CONFIRMATION_DOCS else RECORD
     return OUT_OF_IMAGE
 
 
@@ -120,6 +127,14 @@ GUARDED: dict[str, tuple[str, str]] = {
                        "docs/plans/MINDSOS_LLM_PLAN.md owns mindsos_llm's scope"),
     "adr-0210-am4-record-shape": ("tests/architecture/test_adr_0210_am4_l2_record_shape.py",
                                   "ADR-0210 am-4's L2 record shape matches the code"),
+    "live-doc-references-resolve": ("tests/architecture/test_live_doc_references_resolve.py",
+                                    "every path / ADR number / link / symbol a live or index doc names resolves"),
+}
+
+#: The extractor classes below that a guard holds at 0 false, and in which
+#: partitions. Rows outside these stay UNGUARDED (or RECORD / NOT-IN-IMAGE).
+GUARDED_EXTRACTED: dict[str, frozenset[str]] = {
+    "live-doc-references-resolve": frozenset({"live", "index"}),
 }
 
 # --------------------------------------------------------------------------
@@ -140,6 +155,11 @@ _PLACEHOLDER = re.compile(r"(?:^|[/_.-])N{2,}(?:[/_.-]|$)")
 _FILE_EXT = re.compile(r"\.(md|py|txt|json|ya?ml|toml|sh|html|csv|tsv|ipynb)$")
 _DOTTED = re.compile(r"^(mindsos_\w+(?:\.\w+)+)(?:\(\))?$")
 _ADR_REF = re.compile(r"\bADR[- ]?(\d{3,4})\b")
+#: The ADR index declares retired numbers in one note, e.g.
+#: `!!! note "ADRs 0058, 0059, 0117 — numbers not in use"`. Read, never typed.
+_NOT_IN_USE = re.compile(r"numbers? not in use", re.IGNORECASE)
+#: A reference to a retired number is TRUE when its own line says so.
+_SAYS_RETIRED = re.compile(r"withdrawn|not in use", re.IGNORECASE)
 _MDLINK = re.compile(r"(?<!!)\[[^\]\n]*\]\(([^)\s]+)\)")
 _HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
 _TABLE_SEP = re.compile(r"^\s*\|?[\s:|-]+\|?\s*$")
@@ -285,12 +305,26 @@ class _Resolver:
         return False
 
 
+def retired_adr_numbers(tree: Tree) -> set[int]:
+    """Numbers the ADR index declares not in use (its own note, not a list here)."""
+    idx = tree.root / "docs" / "decisions" / "adr" / "README.md"
+    if not idx.is_file():
+        return set()
+    out: set[int] = set()
+    for line in idx.read_text(encoding="utf-8", errors="replace").splitlines():
+        if _NOT_IN_USE.search(line):
+            out.update(int(n) for n in re.findall(r"\b(\d{4})\b", line.split("not in use")[0]))
+    return out
+
+
 def scan(tree: Tree) -> list[Site]:
     sites: list[Site] = []
     adr_numbers = {
         int(m.group(1)) for f in tree.files
         if (m := re.match(r"docs/decisions/adr/(\d{4})-.*\.md$", f))
     }
+    retired = retired_adr_numbers(tree)
+    tops = {f.split("/")[0] for f in tree.files}
     resolver = _Resolver(tree)
     for rel in tree.files:
         if not rel.endswith(".md"):
@@ -305,6 +339,10 @@ def scan(tree: Tree) -> list[Site]:
                 cand = _PATH_SUFFIX.sub("", span)
                 if _PLACEHOLDER.search(cand):
                     continue
+                if cand.split("/")[0] not in tops:
+                    # the whole top is absent (the test image does not copy
+                    # projects/): unjudgeable here, so not counted -- a floor
+                    continue
                 if _PATH.match(cand) and not re.search(r"[*{}<>]|\.\.\.", cand):
                     sites.append(Site("path-citation", rel, n, span, not tree.exists(cand)))
                     continue
@@ -312,7 +350,9 @@ def scan(tree: Tree) -> list[Site]:
                 if m and not _FILE_EXT.search(span):
                     sites.append(Site("python-symbol", rel, n, span, not resolver.dotted_ok(m.group(1))))
             for m in _ADR_REF.finditer(line):
-                sites.append(Site("adr-reference", rel, n, m.group(0), int(m.group(1)) not in adr_numbers))
+                num = int(m.group(1))
+                false = num not in adr_numbers and not (num in retired and _SAYS_RETIRED.search(line))
+                sites.append(Site("adr-reference", rel, n, m.group(0), false))
             for m in _MDLINK.finditer(line):
                 target = m.group(1).split("#")[0]
                 if not target or re.match(r"^[a-z][a-z0-9+.-]*:", target) or target.startswith("/"):
@@ -386,12 +426,19 @@ def build_report(root: Path = ROOT) -> dict:
         grouped.setdefault((s.cls, partition(s.file)), []).append(s)
     for (cls, part), ss in sorted(grouped.items()):
         state = _state(part)
+        guard = next((g for g, parts in GUARDED_EXTRACTED.items() if part in parts), None)
+        if guard is not None:
+            gpath = GUARDED[guard][0]
+            state = "GUARDED" if tree.exists(gpath) or (root / gpath).exists() else "GUARD-MISSING"
         if part in (ADR, RECORD):
             # a false claim in a dated record is history, not a defect; the
             # count is still reported so a later ruling can use it
             state = "RECORD"
-        rows.append({"class": cls, "partition": part, "sites": len(ss),
-                     "false": sum(s.false for s in ss), "state": state})
+        row = {"class": cls, "partition": part, "sites": len(ss),
+               "false": sum(s.false for s in ss), "state": state}
+        if guard is not None:
+            row["by"] = GUARDED[guard][0]
+        rows.append(row)
     files_by_part: dict[str, int] = {}
     for f in tree.files:
         if f.endswith(".md"):
