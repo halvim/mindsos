@@ -76,7 +76,11 @@ per ADR-0002 / ADR-0019.
 Per
 [ADR-0146](../decisions/adr/0146-l3-symmetric-write-invocation-contract.md),
 write capacities return `WriteResult | ProblemTraceRecord` — they never
-raise for business-logic failure. Failure modes:
+raise for business-logic failure. ⚠ **NARROWED 2026-09-18 by plan ruling
+R7** (ADR-0146 §am-4): that return contract is the **write TERMINATOR's**
+— a write that declares an output returns the output, and its
+`write_outcome` is `None`. The failure modes below are unchanged for
+both. Failure modes:
 
 - `CAPABILITY_DENIED` — session lacks the required cap.
 - `VALIDATION_FAILED` — KL semantic validator rejected the write.

@@ -35,17 +35,40 @@ The handle is a `@dataclass(frozen=True)` — that prevents field
 mutation but does NOT prevent method accretion. The discipline is
 social; this checklist is the enforcement.
 
-## 2. Write capacities have `outputs=()` (pipeline terminators)
+## 2. A write capacity DECLARES itself — `writes=True`
 
-Per ADR-0146 §amendment-1 clause 4 + Phase 33 R2 PB-K. Write capacities
-consume but emit no DataState into the flow graph; Phase 30's BFS
-pipeline finder treats them as dead-ends; `runtime.invoke`'s Phase 34
-bypass branch surfaces the `WriteResult` via
-`InvocationResult.write_outcome` instead of `.outputs`.
+⚠ **SUPERSEDED IN PART, 2026-09-18 — `mindsos_llm` plan ruling R7**
+(ADR-0146 §amendment-4, ADR-0180 §amendment-4). The text below is kept
+because the reject rule it states was followed for a year and a reviewer
+who remembers it needs to see what replaced it.
 
-**Reject** any PR that registers a write capacity with non-empty
-`outputs=(...)`. Use the bypass; L4 invokes writes directly, not via
-pipeline discovery.
+> **SUPERSEDED:** *"Write capacities have `outputs=()` (pipeline
+> terminators) … **Reject** any PR that registers a write capacity with
+> non-empty `outputs=(...)`."*
+
+`outputs == ()` says *produces no DataState*. It never said *writes*, and
+the two are orthogonal — they coincided only because every write capacity
+that shipped before R7 happened to be a terminator. ADR-0210 §amendment-4
+rules a recorder that writes AND declares its pointer as an output, so
+that a run graph names what was written.
+
+**The rule now:**
+
+* A capacity that mutates L2 declares **`writes=True`**. That declaration,
+  not the output count, is what puts `context.writeable` on its context —
+  at `capacity_layer.invoke` and at `L4Dispatcher.build_context` alike.
+* A write **MAY** declare outputs. A write with none is a *terminator*:
+  `runtime.invoke` bypasses output validation and surfaces the
+  `WriteResult` via `InvocationResult.write_outcome`. A write WITH a
+  declared output returns it in `.outputs` like any other capacity, and
+  `write_outcome` stays `None`.
+* Phase 30's BFS pipeline finder still treats a terminator as a dead-end.
+
+**Reject** any PR that reaches `context.writeable` from a body whose
+declaration does not say `writes=True`, or that declares `writes=True`
+in a module no body of which writes. Both directions are gate-enforced by
+`tests/architecture/test_write_is_declared.py`; the checklist is the
+explanation, the guard is the enforcement.
 
 ## 3. Capacity bodies extract `session` + `kl` via `context.get(...)`
 

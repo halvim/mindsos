@@ -132,6 +132,27 @@ only if its declaration sets `reads_mm=True`. The default (`False`) yields
 `reads_mm=True` only for capacities that legitimately navigate the MM
 (retrieval, trace).
 
+### Writes must be declared (plan R7)
+
+Same discipline, one layer over: a body receives the write capability
+(`context.writeable`) only if its declaration sets **`writes=True`**
+(ADR-0146 §amendment-4 + ADR-0180 §amendment-4). An undeclared body is
+handed `None` and cannot reach a store, at `capacity_layer.invoke` and at
+`L4Dispatcher.build_context` alike.
+
+⚠ **`outputs=()` means *produces no DataState*, never *writes*.** A write
+MAY declare an output — ADR-0210 §amendment-4's recorded-set pointer does,
+so that a run graph names what was written — and a write with no output is
+a *terminator*, whose `WriteResult` arrives on
+`InvocationResult.write_outcome`. A REACTIVE capacity that declares
+neither an output nor a write is refused at registration: nothing it does
+is observable. Monitors are exempt by definition.
+
+Both directions are reconciled against the bodies by
+`tests/architecture/test_write_is_declared.py`, and every zero-argument
+capacity factory must ship an installer
+(`tests/architecture/test_registry_capacity_has_an_installer.py`).
+
 ## 4. Invoke (Phase 30)
 
 `CapacityLayer.invoke` is the reactive invocation entry point per
