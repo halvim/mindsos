@@ -1,7 +1,7 @@
 ---
 title: Internals — Resident-brain runtime
 last_confirmed_phase: 50
-verified_at: unverified
+verified_at: c8f26d9
 ---
 
 # Internals — Resident-brain runtime
@@ -30,7 +30,9 @@ def boot_brain(client=None, *, user, install_builtins=True, session=None) -> Sta
 ```
 
 `Stack` is a dataclass holding `kl`, `cl`, `mm`, `dispatcher`, `orch`, `session`,
-`persister`, `user`, plus `global_view()` and `save()`.
+`persister`, `user`, plus the boot-report fields `activation`, `skill_verbs`,
+`corpus_imports_failed` and `local_caps_failed`, and the methods
+`global_view()`, `local_view()` and `save()`.
 
 **Durable path** (`client` supplied) composes existing server functions:
 
@@ -133,7 +135,8 @@ skill-verify chat can extend it.
 `mindsos_cli/commands/brain.py` keeps verb dispatch pure — `BrainREPL.dispatch(
 line) -> str` — so the whole verb surface is unit-testable without a TTY. `loop()`
 is the thin stdin front end; `quit` calls `save` then exits. Being an interactive
-REPL, `brain` is the documented exception to the `--json`-universal convention.
+REPL, `brain` is one of the documented exceptions to the `--json` convention
+(see `docs/dev/conventions.md`).
 
 Verbs take Linux-style flags. Two support modules sit beside `brain.py`:
 `_replparse.py` tokenizes with `shlex` (quoting works) and parses flags without
@@ -177,13 +180,13 @@ ship one yet; ARC-packaging is the first consumer, so `task` is retained.
 
 ## Tests
 
-`tests/resident_brain/`: `test_replparse.py` (the flag parser, pure),
-`test_catalog_check.py` (fake-view unit cases + an ephemeral orphan-free smoke),
-`test_boot_brain.py` (ephemeral shape / task / save), `test_brain_repl.py`
-(every verb, headless), `test_execute.py` (the step-runner + `execute` +
-invoke-pipeline over synthetic install-record / promoted-pipeline fixtures), and
-`test_durable_roundtrip.py` (`@pytest.mark.integration`, live-Falkor Episode
-save→load). All but the last run without a sidecar.
+`tests/resident_brain/` holds them. The sidecar-free ones cover the flag parser
+(`test_replparse.py`), `catalog_check` (fake-view cases plus an ephemeral
+orphan-free smoke), the ephemeral boot shape, every REPL verb headless, the
+skill verbs, and the step-runner behind `execute` / invoke-pipeline over
+synthetic fixtures. The `*_durable*` tests are `@pytest.mark.integration` and
+need a live Falkor sidecar — that is what separates the two sets, not any one
+filename.
 
 ## Deferred
 

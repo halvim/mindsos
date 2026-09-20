@@ -4,51 +4,51 @@ tag: shipped
 teaser: Metagraph-of-role-graphs, importers, and Global/Local architecture.
 source: mindsos_knowledge_developer_guide.md + mindsos_knowledge_architecture.md
 next: dev/internals/capacity.md
-verified_at: unverified
+verified_at: c8f26d9
 ---
 
 # L2 Knowledge internals
 
-!!! note "Scope: this page is a Phase-13-era module map"
-    The architecture (Global metagraph + per-user Locals; the importer/schema/validator layering) is still accurate, but the **counts and role list below predate later phases**. The closed role-set is now **14** (not the original 8/9), the `memories` role was renamed **`episodic_memories`** (Phase 39, ADR-0044 §am-3), and the L2-write/`value_codec` surface is not covered here. For the current role-set see [role-graphs.md](../../concepts/role-graphs.md).
+!!! note "Scope: the shape is current; the module map was re-measured 2026-09-20"
+    The architecture — one Global metagraph plus per-user Locals, schemas per role, proxies for Local→Global endpoints — still holds. The Phase-13 module map did not: `views.py`, `proxies.py` and `versions.py` no longer exist as modules, and the importers moved out of this package. Both were replaced below. The closed role-set has grown since Phase 13 and its size is guarded, not stated here — see [role-graphs.md](../../concepts/role-graphs.md); `memories` was renamed **`episodic_memories`** (Phase 39, ADR-0044 §am-3).
 
 The Knowledge Layer wraps one **Global metagraph** (ontology, lexicon, concepts, alignments) plus **N Local metagraphs**, one per user, that accumulate the user's private knowledge and episodic memories.
 
 !!! info "Quick facts"
     - Layer: **L2 Knowledge**
     - Package: `mindsos_knowledge/`
-    - Scope: ~3.4k LOC across 20 files
+    - Scope: 12 modules plus `schemas/` (measured 2026-09-20)
     - Tests: under `tests/phase_*` (e.g. `tests/phase_14/test_knowledge_layer_init.py`); the unit-test directory this page once named was never in this repo
-    - Invariants: I1–I8 (section 5 below)
-    - Design reference: `knowledge_layer_design.md` (§4)
+    - Invariants: I1–I5 (below)
+    - Design reference: ADR-0143 (the write handle) + ADR-0150 (the role set)
 
 ## Overview
 
 Knowledge Layer depends only on Core. Nothing inside this package may import from layer 3+.
 
-The package is **in-memory first**. FalkorDB persistence adapters are not yet wired in. After an importer's `run()` returns, the `ImportResult.graph` is a populated in-memory Graph. Downstream code is responsible for calling `GraphRepository.persist(...)` from Core.
+The package is **in-memory first**: L2 builds and validates graphs in memory, and persistence is Core's (`mindsos_core/persistence/` — `graph_repository.py`, `metagraph_repository.py`, `xref_repository.py`, `value_codec.py`, over FalkorDB per ADR-0121). Downstream code calls `GraphRepository.persist(...)` from Core; L2 does not persist for you.
 
 ## Architectural organization
 
+Module list measured 2026-09-20 (`ls mindsos_knowledge`), rather than a
+hand-maintained map that rots on the next ship:
+
 ```
-identifiers.py ──┐
-                 ├──► schemas/           (per-role type catalogues)
-exceptions.py ───┤
-                 ├──► bootstrap.py       (metagraph constructors)
-versions.py   ───┤         ▲
-                 │         │
-                 ├──► proxies.py
-                 │         ▲
-                 ├──► views.py           ◄── read surface
-                 │         ▲
-                 ├──► knowledge_layer.py ◄── façade
-                 │
-                 └──► importers/         (parse → build)
-                        base.py
-                        dolce.py   oewn.py   framenet.py   alignments.py
+identifiers.py   ── stable-IRI toolkit, role constants, REF_TYPES (a leaf)
+exceptions.py    ── the error hierarchy (a leaf)
+types.py         ── SessionProtocol, the structural shape L2 accepts
+schemas/         ── one schema builder per named role + schema_for_role dispatch
+bootstrap.py     ── metagraph constructors and role-graph ensure
+metagraph_view.py── the read surface (MetagraphView)
+validators.py    ── semantic validators + _VALIDATORS_BY_ROLE
+write_handle.py  ── KLWriteHandle, the write path L3 capacities use (ADR-0143)
+knowledge_layer.py ── the façade (writeable(), views, bootstrap)
+policies.py / prompts.py / learned_parameters_snapshot.py ── role-specific surfaces
 ```
 
-`identifiers.py` and `exceptions.py` are leaves. Everything depends on them. `knowledge_layer.py` depends on everything else. Importers are siblings of the façade.
+`identifiers.py` and `exceptions.py` are leaves; `knowledge_layer.py` depends on
+everything else. **Importers are not in this package** — the DOLCE, OEWN and
+FrameNet importers live at `mindsos_admin/importers/`.
 
 ### The dual metagraph model
 
@@ -57,67 +57,48 @@ Two Python `Metagraph` instances represent the whole system:
 - `self._global: Metagraph` — created at `KnowledgeLayer.__init__`.
 - `self._locals: Dict[user_id, Metagraph]` — lazy per-user.
 
-Every read path goes through a `MetagraphView(metagraph)` which enforces the active-pointer convention. Every write path goes through the `KnowledgeLayer` façade, which enforces ref invariants.
+Every read path goes through a `MetagraphView(metagraph)` which enforces the
+active-pointer convention. Writes go through the façade's `writeable(session,
+role, scope)` → `KLWriteHandle` (ADR-0143); the handle validates and reaches L1
+for the mutation itself.
 
-The only place a graph crosses boundaries is via the **proxy pattern** in `proxies.py`: a Local edge wanting a Global endpoint creates a proxy node inside Local. Proxies carry `ref:global_<role>` + `ref_type=PROXY` and are filtered out of `get_node()`.
-
-## Module map
-
-| Module | LOC | Job | Depends on |
-|---|---|---|---|
-| `exceptions.py` | ~30 | Error hierarchy | — |
-| `identifiers.py` | ~240 | Stable-IRI toolkit + role/ref-key constants | `exceptions` |
-| `versions.py` | ~65 | Active-pointer helpers attached to Metagraph | Core, `exceptions` |
-| `schemas/ontology.py` | ~130 | Full-OWL node/edge/hyperedge types | Core |
-| `schemas/lexicon.py` | ~90 | OEWN types | Core |
-| `schemas/concepts.py` | ~55 | FrameNet types | Core |
-| `schemas/alignment.py` | ~60 | Alignment-anchor + mapping vocabulary | Core |
-| `bootstrap.py` | ~160 | `create_global`, `create_local`, `ensure_role_graph`, slugify | Core, `identifiers`, `schemas` |
-| `proxies.py` | ~120 | Proxy lifecycle + dedupe cache | Core, `bootstrap`, `identifiers` |
-| `views.py` | ~230 | `MetagraphView` + `WalkResult` | Core, `identifiers`, `versions` |
-| `knowledge_layer.py` | ~380 | `KnowledgeLayer` façade | everything above |
-| `importers/base.py` | ~170 | `Importer` ABC + pipeline | Core, `exceptions`, `versions` |
-| `importers/dolce.py` | ~900 | Full-OWL support | `base`, `schemas/ontology`, `identifiers`, `rdflib` |
-| `importers/oewn.py` | ~440 | WN-LMF XML + mapping | `base`, `schemas/lexicon`, `identifiers` |
-| `importers/framenet.py` | ~360 | FrameNet JSON + mapping | `base`, `schemas/concepts`, `identifiers` |
-| `importers/alignments.py` | ~260 | Shared-anchor pattern | `base`, `schemas/alignment`, `identifiers` |
+The only place a graph crosses boundaries is the **proxy pattern**: a Local edge
+wanting a Global endpoint creates a proxy node inside Local, carrying
+`ref:global_<role>` + `ref_type=PROXY`, filtered out of `get_node()`.
 
 ## Key invariants
 
-These must hold at all times. Tests exist to prove each.
+These are the ref-shape rules that still have an enforcement site in this
+package. (The Phase-13 list also named `_check_global_target_exists`,
+`set_active`, `_ensure_map` and a proxy dedupe cache; none of those symbols is
+in the tree any more, and the invariants that rested on them were dropped rather
+than restated from memory.)
 
-**I1.** A `ref_to_global` property on a Local node resolves to an existing node in the active Global graph for the same role. Enforced at write time by `_check_global_target_exists`.
+**I1.** `ref_to_global` and `ref_type` are both-or-neither. A Local node either
+is standalone (neither set) or specialises something in Global (both set). The
+XOR state is malformed and raises `RefTypeError`.
 
-**I2.** `ref_to_global` and `ref_type` are both-or-neither. A Local node either is standalone (neither set) or specialises something in Global (both set). The XOR state is malformed and raises `RefTypeError`.
+**I2.** `ref_to_global` is a version-qualified IRI — bare fragments
+(`PhysicalObject`) are not allowed. Use the stable-IRI builders;
+`is_version_qualified_iri` in `identifiers.py` is the check.
 
-**I3.** `ref_to_global` is a version-qualified IRI. Bare fragments (`PhysicalObject`) are not allowed. Use the stable-IRI builders. Enforcement at write time via `is_version_qualified_iri`.
+**I3.** `ref_type` is drawn from `REF_TYPES` (`identifiers.py`). Extend that set
+and document the semantics rather than passing an arbitrary string.
 
-**I4.** `ref_type` is drawn from `REF_TYPES`. If you need a new `ref_type`, extend `REF_TYPES` in `identifiers.py` and document the semantics. Do not silently accept arbitrary strings.
+**I4.** An alignment graph's role is `alignment_role(role_a, role_b)` for exactly
+one sorted pair (`identifiers.py`, checked in `validators.py`).
 
-**I5.** Proxy node ids are unique per `(metagraph_id, role, global_target_id)`. Multiple Local edges to the same Global target share the same proxy. The dedupe cache is a performance helper; correctness is re-checked by scanning the graph on cache miss.
+**I5.** A metagraph keeps its active-graph pointers in
+`_kl_active_graph_ids`, which lives on Core's `Metagraph`
+(`mindsos_core/models/metagraph.py`), not here.
 
-**I6.** An alignment graph's `role` equals `alignment_role(role_a, role_b)` for exactly one sorted pair. The `AlignmentsImporter` overrides `graph.role` to the canonical name during `_build`.
+## Importers — not in this package
 
-**I7.** A metagraph has at most one active graph per role at any time. `set_active` overwrites. To swap versions, activate the new graph — the old one stays archived.
-
-**I8.** `Metagraph._kl_active_graph_ids` is a `Dict[str, str]` or absent. It is never a list, tuple, or None. `_ensure_map` enforces this.
-
-## Importers
-
-The `Importer` ABC is a six-stage pipeline:
-
-1. `_parse(source)` — stage 1; subclass responsibility.
-2. `_resolve_version(parsed)` — stage 2-adjacent; default reads `parsed.version`.
-3. `_build(parsed, version, graph)` — stage 3; subclass responsibility.
-4. Align (stage 4) — specific to `AlignmentsImporter`.
-5. Persist (stage 5) — lives outside the importer.
-6. Verify (stage 6) — lives outside the importer.
-
-`run()` orchestrates. Version resolution can be overridden by the caller passing `version=`, which is the escape hatch for sources that don't self-declare.
-
-Every node creation inside a subclass should call `_stamp_provenance` to attach `imported_from` and `imported_version` to the properties dict.
-
-Each importer defines a `@dataclass` that isolates the on-disk format from the build stage, allowing unit tests to construct test data directly without touching XML/JSON/RDF.
+The importers moved to `mindsos_admin/importers/` (`dolce.py`, `oewn.py`,
+`framenet.py`). The `Importer` pipeline, its provenance stamping and the
+alignment build live there; read that package rather than this page for their
+current shape. `AlignmentsImporter` was scheduled and never built — see
+`docs/concepts/admin-global-shipping.md`.
 
 ## Testing philosophy
 
