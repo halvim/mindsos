@@ -1,66 +1,48 @@
 ---
 last_confirmed_phase: 07
-verified_at: unverified
+verified_at: 5172b3c
 ---
 
 # Repo layout
 
-After Phase 02, the repository contains:
+The repository contains (root listing, 2026-09-20):
 
 ```
 .
-├── .github/workflows/    # CI and Release workflows (Phase 01).
-│   ├── phase-ci.yml      # On push to phase-* → build + tests + mkdocs build.
-│   └── release.yml       # On tag phase-NN-confirmed → tarball + GitHub Release.
-├── confirmation_docs/    # PHASE_MAP.md + per-phase confirmation docs + templates.
-├── docs/                 # mkdocs source tree.
-├── mindsos_cli/          # CLI package (Typer-based).
-│   ├── manifest.toml     # Canonical truth file: pinned versions and digests.
-│   ├── _retention.py     # Pure-Python retention-window selector (Phase 01).
-│   └── commands/
-│       ├── confirm_phase.py  # `mindsos confirm-phase` (Phase 01; preflight in Phase 02).
-│       ├── doctor.py         # `mindsos doctor` (Phase 00; extended in 01 + 02).
-│       ├── identity.py       # `mindsos identity` (Phase 02 — mint, registry, strategies).
-│       └── version.py        # `mindsos version` (Phase 00).
-├── mindsos_core/         # Domain Layer 1 — slim Phase 02 surface (identity only).
-│   ├── exceptions.py     # CoreError, IdentityError (more land per phase).
-│   └── models/identity.py    # generate_uuid, IdStrategy, IdentityRegistry.
-├── mindsos_knowledge/    # Domain Layer 2 — IRIs + REF_TYPES + 18 role-schema builders (closed set, ADR-0150).
-│   ├── exceptions.py     # KnowledgeError, RefFormatError, UnknownRoleError.
-│   ├── identifiers.py    # ~24 IRI builders + parser + 18 role constants + ref-key helpers.
-│   └── schemas/         # 18 role-graph schema builders + schema_for_role dispatch.
-│       ├── ontology.py        # 10 N / 13 E / 7 HE (HyperEdgeType lift per PB-4).
-│       ├── lexicon.py         # 4 N / 21 E.
-│       ├── concepts.py        # 4 N / 11 E.
-│       ├── alignment.py       # 1 N / 8 E (open via extra_edge_types kwarg).
-│       ├── promoted_pipelines.py
-│       ├── task_patterns.py
-│       ├── episodic_memories.py   # was memories.py — renamed Phase 39 (ADR-0044 §am-3).
-│       ├── problem_trace.py
-│       ├── capacity_state.py
-│       ├── parameter_staging.py    # Phase 43 (ADR-0150 §am-5).
-│       ├── pending_promotions.py   # Phase 43.
-│       ├── capacity_gaps.py        # Phase 43.
-│       ├── learned_parameters.py   # Phase 43.
-│       ├── installed_skills.py     # Phase 50 (ADR-0183, §am-6).
-│       └── subminds.py             # SubMind Slice 1 (ADR-0190, §am-7).
-├── tests/phase_00/       # Phase 00 automated test suite.
-├── tests/phase_01/       # Phase 01 automated test suite.
-├── tests/phase_02/       # Phase 02 automated test suite.
-├── tests/unit/           # Pre-existing unit tests (preserved per PHASE_MAP §1).
-│   └── test_identity.py  # Ported in Phase 02.
-├── tools/                # Helper scripts (lock.sh, ...).
-├── .mindsos/             # Host-mounted volumes (gitignored).
-├── Dockerfile            # Multi-stage: base / prod / test.
-├── docker-compose.yml    # Stack: falkordb + mindsos + mindsos-test.
-├── entrypoint.sh         # Container entrypoint (chowns volumes, drops to mindsos user).
+├── .github/workflows/    # phase-ci.yml (gates main + PRs), release.yml (tag-driven).
+├── confirmation_docs/    # PHASE_MAP.md, per-phase confirmation docs, live plans.
+├── docs/                 # mkdocs source tree, including docs/decisions/ (ADRs).
+├── projects/             # sister projects and lanes (not copied into the test image).
+├── scripts/              # dataset fetchers.
+├── tools/                # helper scripts and checkers (lock.sh, check_*.py, claim_inventory.py).
+├── tests/                # the suite: tests/phase_NN/, tests/unit/, tests/architecture/, ...
+├── tests_server/         # separate top-level server suite (legacy layout).
+├── mindsos_core/         # L1 Core — graphs, metagraphs, identity, persistence.
+├── mindsos_instances/    # instancing vocabulary (ADR-0132).
+├── mindsos_knowledge/    # L2 Knowledge — IRIs, REF_TYPES, one schema builder per named role.
+├── mindsos_capacity/     # L3 Capacity.
+├── mindsos_intelligence/ # L4 Intelligence.
+├── mindsos_llm/          # the LLM seam (top-level; see docs/plans/MINDSOS_LLM_PLAN.md).
+├── mindsos_admin/        # admin surfaces (promotion, importers).
+├── mindsos_broker/       # broker package.
+├── mindsos_server/       # Server layer — auth, sessions, audit, lifecycle (ADR-0010: orthogonal).
+├── mindsos_cli/          # CLI package (Typer), with manifest.toml and commands/.
+├── STATE.json            # current state + the recent[] ship log.
+├── RULES.md              # the lane rules (NOT copied into the test image).
+├── HANDOFF.md            # canonical entry point for a fresh chat.
+├── CLAUDE.md             # project instructions.
+├── BRANCHES.md           # branch inventory.
+├── Dockerfile            # multi-stage: base / prod / test.
+├── docker-compose.yml    # stack: falkordb + mindsos + mindsos-test (profiles: cli, test).
+├── entrypoint.sh         # container entrypoint.
 ├── mkdocs.yml            # mkdocs config.
-├── pyproject.toml        # Python package definition.
-├── requirements.in       # Top-level CLI deps (hand-edited).
-├── requirements.txt      # Locked deps with hashes (regenerated by tools/lock.sh).
-├── requirements-test.in  # Test-stage deps (hand-edited; references requirements.in).
-└── requirements-test.txt # Locked test-stage deps with hashes.
+├── pyproject.toml        # package definition.
+└── requirements*.in/.txt # hand-edited inputs and their locked outputs (tools/lock.sh).
 ```
+
+The per-file listing this section once carried (schema builders, individual
+command modules) is not reproduced: it rots on every ship, and `ls` answers
+it exactly.
 
 ## Adding a package
 
@@ -73,26 +55,26 @@ Later phases bring additional packages online inside this same repo:
 | `mindsos_knowledge`  | Phases 12–17 (L2)                 |
 | `mindsos_server`     | Phases 18–25 (L0)                 |
 | `mindsos_capacity`   | Phases 27–35 (L3)                 |
+| `mindsos_intelligence` | Phases 46–47 (L4)               |
+| `mindsos_admin`      | admin surfaces (promotion, importers) |
+| `mindsos_llm`        | the LLM seam — scope lives in `docs/plans/MINDSOS_LLM_PLAN.md` |
+| `mindsos_broker`     | broker package                    |
 
 Each phase keeps its scope tight to the row in
 `confirmation_docs/PHASE_MAP.md`. Cross-cutting decisions live in §1 of that
 file; per-phase implementation notes live in `confirmation_docs/PHASE_NN_CONFIRMED.md`.
 
-## ADR locations (Model C hybrid — Phase 07 P30 A)
+## ADR locations
 
-**Architecture Decision Records live at the project root**
-(`/Layered Intelligence/docs/decisions/adr/`), NOT inside
-`halvim_mindsos/`. The Model C hybrid documented in
-`feedback_docs_source_of_truth.md` (memory) is:
+**ADRs live in this repo**, at `docs/decisions/adr/`, one file per decision,
+with `docs/decisions/adr/README.md` as the full index and
+`docs/decisions/summary/*.md` as the per-layer partial tables.
+`tools/check_adr_status_consistency.py` (run by
+`tests/test_adr_status_consistency.py`) asserts an ADR's front-matter status,
+its prose `**Status:**` line, its README row and any summary cell all agree.
+RULES §9 states the four edits a status change needs, and that an in-file
+amendment uses `**Amendment status:**` so it does not shadow the ADR's own.
 
-| Doc kind | Lives in | Tracked under |
-|---------|----------|---------------|
-| ADRs | `/Layered Intelligence/docs/decisions/adr/` | Project-root filesystem (Model C). |
-| Shipped concepts / API / usage | `halvim_mindsos/docs/` | `halvim_mindsos` git. |
-| Per-phase confirmation docs | `halvim_mindsos/confirmation_docs/` | `halvim_mindsos` git. |
-
-When editing an ADR, edit the canonical project-root copy. Phase 07
-is the first phase to flip ADRs `Proposed → Accepted` inline (ADRs
-0122 / 0123 / 0126 / 0127 per M3 A). Semantic ADR edits beyond
-status flips still defer to Phase 38 per the Phase 06 P45 B
-precedent.
+The "Model C hybrid" this section used to describe — ADRs kept outside the
+repo, at a project-root path, tracked by the filesystem rather than by git —
+is retired; nothing in the tree reads that layout any more.

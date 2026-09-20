@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 01
-verified_at: unverified
+verified_at: 5172b3c
 ---
 
 # Testing
@@ -34,14 +34,17 @@ cumulatively — every shipped phase's tests run on every push.
 
 ## What `phase-ci.yml` runs
 
-1. `docker compose build mindsos-test` — pulls pinned images, installs
-   locked deps.
-2. `docker compose up -d falkordb` — waits up to 30s for the healthcheck.
+1. `docker compose --profile test build mindsos-test` — pulls pinned
+   images, installs locked deps.
+2. `docker compose up -d --wait falkordb` — `--wait` blocks until the
+   healthcheck passes (`redis-cli ping`, 5s interval, 10 retries after a
+   10s start period).
 3. `docker compose run --rm mindsos-test pytest tests/ -v` — cumulative
    suite.
-4. `pip install --user 'mkdocs==1.6.1'` (pinned in `manifest.toml [ci]
-   mkdocs_version`).
-5. `mkdocs build --quiet` — verifies the docs tree.
+4. `python3 -m pip install --user mkdocs==<pin>` — the workflow reads the
+   pin from `mindsos_cli/manifest.toml` `[ci] mkdocs_version`; it is not
+   hardcoded in the workflow.
+5. `python3 -m mkdocs build --quiet` — verifies the docs tree.
 
 ## What the release workflow adds
 
@@ -59,4 +62,5 @@ To keep the `mindsos:phaseNN-test` image lean. mkdocs has a sizable
 dependency tree (Markdown, Jinja2, watchdog, ghp-import, ...) and is only
 needed for the docs build step in CI. It's installed ad-hoc in the
 workflow. If you want to run `tests/phase_01/test_mkdocs_buildable.py`
-locally on the host, `pip install mkdocs==1.6.1`.
+locally on the host, install the version pinned at
+`mindsos_cli/manifest.toml` `[ci] mkdocs_version`.

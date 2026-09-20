@@ -1,11 +1,11 @@
 ---
 last_confirmed_phase: 01
-verified_at: unverified
+verified_at: 5172b3c
 ---
 
 # Release flow
 
-Releases are tag-driven. Pushing a tag matching `phase-NN-confirmed` to
+Releases are tag-driven. Pushing a tag matching `phase-*-confirmed` to
 `origin` triggers `.github/workflows/release.yml`, which builds, tests,
 exports a tarball, and creates a GitHub Release with the tarball + lockfile
 snapshots + checksums.
@@ -84,5 +84,5 @@ mindsos confirm-phase --phase NN --notes-file notes-phase-NN.md
 ## Permissions
 
 `release.yml` declares `permissions: contents: write` at the job level —
-needed for `gh release create`/`upload`. `phase-ci.yml` runs at default
-`contents: read`. No other scopes are requested.
+needed for `gh release create`/`upload`. `phase-ci.yml` declares
+`contents: read` at workflow scope. No other scopes are requested.

@@ -1,35 +1,35 @@
 ---
 last_confirmed_phase: 02
-verified_at: unverified
+verified_at: 5172b3c
 ---
 
 # Contributing
 
-MindsOS is built incrementally via the phased rollout in
-`confirmation_docs/PHASE_MAP.md`. Every change lives on a `phase-NN` branch
-that maps to one row in §3 / §4 / §5 of that file.
+MindsOS was built through the numbered rollout in
+`confirmation_docs/PHASE_MAP.md`, which ran to Phase 50. **Core work no longer
+uses phase numbers**: it lands on `feat/*` branches and ships under a
+`<name>-confirmed` tag (RULES §2 and §7).
 
 ## Branching policy
 
-```
-main                ─── always reflects the most-recent confirmed phase
-└── phase-00        ─── implementation branch for Phase 00 (merged + tagged)
-└── phase-01        ─── implementation branch for Phase 01 (merged + tagged)
-└── phase-02        ─── implementation branch for Phase 02 (current)
-└── phase-NN        ─── one branch per phase
-```
+Per RULES §2:
 
-- A phase chat opens `phase-NN` off **`origin/main`**, never off the prior
-  phase's branch. Phase 01 hit a merge issue because its first PR was rooted
-  in phase-00's history; the squash-merge required a force-rebase. Don't
-  repeat.
-- When implementation is complete and tests pass, the tester opens a PR
-  against `main` and squash-merges.
-- The tester then tags the **squash-merge commit on `main`** (not the
-  phase-NN branch's HEAD) `phase-NN-confirmed` and pushes the tag, which
-  triggers `.github/workflows/release.yml`.
+- Cut the branch off **`origin/main`**, never off another lane's branch.
+  Short-lived branch names are `feat/*`, `fix/*`, `chore/*` — plus the
+  historical `phase-NN`, `wsd-NN`, `dwf-NN`, `fol-NN`.
+- Open a PR against `main` and squash-merge. `phase-ci.yml` gates both `main`
+  and pull requests into it, so **a PR gates itself**.
+- Delete the branch and its worktree afterwards — RULES §10, not optional.
+- A shipped core change is recorded as a **tag**, not a branch: a phase as
+  `phase-NN-confirmed`, anything else as `<name>-confirmed`. A
+  `phase-*-confirmed` tag additionally triggers
+  `.github/workflows/release.yml`.
 
-## Per-phase workflow (Mac + Linux split)
+## Per-phase workflow (Mac + Linux split) — the PHASE ritual
+
+The steps below are the ritual for a numbered phase. They still describe how
+a phase was shipped, and `mindsos confirm-phase` still works; a non-phase core
+ship skips the confirmation doc and the tag is `<name>-confirmed`.
 
 MindsOS development happens on two machines synchronised via git:
 
@@ -79,7 +79,7 @@ workflow" + "Two-machine workflow"). Summary:
 
 ```sh
 # [Linux] one-time setup
-cd halvim_mindsos
+cd <the repo checkout>
 python3 --version           # must report 3.12+
 python3 -m venv .venv
 source .venv/bin/activate
@@ -105,7 +105,9 @@ supersession" for the full policy.
 - Python 3.12+. Type hints throughout. `from __future__ import annotations`
   in every file.
 - Errors go to stderr; structured success goes to stdout. Every CLI command
-  supports `--json` for test-friendly output.
+  that reports state supports `--json` for test-friendly output; the
+  exceptions are the `brain` REPL and the `instances` / `persistence` write
+  verbs (see `conventions.md`).
 - No emojis in source files unless the user explicitly asks.
 - Pre-existing tests must continue to pass on every phase.
 

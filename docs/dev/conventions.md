@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 02
-verified_at: unverified
+verified_at: 5172b3c
 ---
 
 # CLI conventions
@@ -24,9 +24,12 @@ Every `mindsos` subcommand (Phase 01 onward) follows these rules.
 | `1`  | Command-level failure (e.g., `doctor --self-test` saw drift).    |
 | `2`  | Usage error (bad arguments, missing required option).            |
 
-## `--json` is universal
+## `--json` on every command that reports
 
-Every command exposes a `--json` flag that emits a JSON object on stdout:
+Every command that reports state exposes a `--json` flag emitting a JSON
+object on stdout. The exceptions are the ones with nothing to report: the
+`brain` REPL, the `instances` instantiate/compose verbs, and the
+`persistence` sync/diagnose/verify verbs.
 
 ```json
 {
@@ -79,7 +82,7 @@ The `mindsos-test` service keeps the bare entrypoint
 (`/usr/local/bin/entrypoint.sh`) so that `docker compose run --rm
 mindsos-test pytest tests/` works without a `mindsos` prefix.
 
-## `--json` is universal: identity command examples
+## `--json`: identity command examples
 
 ```json
 $ docker compose run --rm mindsos identity strategies --json
