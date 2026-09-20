@@ -40,7 +40,7 @@ from typing import Any, List
 
 from ..capacity import Capacity
 from ..datastate import DataState, ShapeDescriptor
-from ..identifiers import CATEGORY_COMPREHENSION, datastate_iri
+from ..identifiers import CATEGORY_COMPREHENSION, capacity_iri, datastate_iri
 
 
 # ── DataState IRI (record shape) ───────────────────────────────────────
@@ -138,8 +138,66 @@ def build_write_prompt_edition() -> Capacity:
     )
 
 
+# ── Idempotent installer (learn_parameter / consolidate precedent) ────
+
+
+_WRITE_PROMPT_EDITION_IRI = capacity_iri(
+    CATEGORY_COMPREHENSION, "write_prompt_edition"
+)
+_DS_IRIS = (DS_PROMPT_EDITION_WRITE,)
+_CAP_IRIS = (_WRITE_PROMPT_EDITION_IRI,)
+_FAMILY_IRIS = _DS_IRIS + _CAP_IRIS
+
+
+def install_prompt_edition_capacities(capacity_layer) -> None:
+    """Register the prompt-edition DataState + capacity on ``capacity_layer``.
+
+    ⚠ **PLAN ITEM I-16, AND IT EXISTS BECAUSE I-9 SHIPPED WITHOUT IT.**
+    Measured 2026-09-17: nothing in the tree called
+    :func:`build_write_prompt_edition`, so the capacity was a declaration no
+    registry held — and L4 can only route to what the registry holds. The
+    plan recorded I-9 as ``DONE``, which is mechanical and was true of the
+    commit; what it could not say is that the writer was unreachable. A
+    ``build_*`` with no installer is that gap's shape, and the three
+    write capacities that shipped before it all carry one.
+
+    Idempotent with partial-state detection, per the
+    ``install_text_capacities`` precedent. Targets **Global** — the capacity
+    registry is Global; the WRITE targets Local at invoke time through the
+    ``scope="local"`` handle, which is the ruling (ADR-0210 §am-4) and not a
+    limitation of this function.
+
+    Raises:
+        CapacityRegistrationError: partial install state detected.
+    """
+    from ..bootstrap import ensure_datastate_graph
+    from ..exceptions import CapacityRegistrationError
+
+    mg = capacity_layer.global_metagraph()
+    cap_index = capacity_layer._capacity_index[mg.metagraph_id]
+    ds_graph = ensure_datastate_graph(mg, strict=capacity_layer._strict)
+
+    ds_present = {iri for iri in _DS_IRIS if iri in ds_graph.nodes}
+    cap_present = {iri for iri in _CAP_IRIS if iri in cap_index}
+    present_total = len(ds_present) + len(cap_present)
+
+    if present_total == len(_FAMILY_IRIS):
+        return
+    if present_total > 0:
+        raise CapacityRegistrationError(
+            "install_prompt_edition_capacities: partial install state - "
+            f"datastates_present={sorted(ds_present)}, "
+            f"capacities_present={sorted(cap_present)}, "
+            f"missing={sorted(set(_FAMILY_IRIS) - ds_present - cap_present)}"
+        )
+    for ds in prompt_edition_datastates():
+        capacity_layer.register_datastate(ds)
+    capacity_layer.register_capacity(build_write_prompt_edition())
+
+
 __all__ = [
     "DS_PROMPT_EDITION_WRITE",
     "build_write_prompt_edition",
+    "install_prompt_edition_capacities",
     "prompt_edition_datastates",
 ]
