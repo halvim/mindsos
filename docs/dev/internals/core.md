@@ -6,9 +6,8 @@ verified_at: unverified
 # Core layer internals — Persistence + Reconstruction (Phase 10)
 
 This page documents the persistence-layer mechanics for `mindsos_core`.
-The substrate decisions live in the ADRs at the project-root location
-`docs/decisions/adr/` (not under `halvim_mindsos/`, per Model C hybrid
-documented in [Repo layout](../repo-layout.md)).
+The substrate decisions live in the ADRs under `docs/decisions/adr/` in this
+repo (see [Repo layout](../repo-layout.md)).
 
 Cross-references:
 

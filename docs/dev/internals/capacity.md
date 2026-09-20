@@ -7,9 +7,8 @@ verified_at: c8f26d9
 # Capacity Layer — internals (halvim)
 
 This page documents the `mindsos_capacity` package internals. It is the
-canonical page: the "parent tree" arrangement it used to defer to (a
-second copy of this page outside the repo, under the retired Model C
-layout) no longer exists. The cross-layer contract itself lives in the
+canonical page. The retired "parent tree" arrangement it used to defer to —
+a second copy of this page outside the repo — no longer exists. The cross-layer contract itself lives in the
 ADRs listed under *See also*.
 
 Sections dated by phase below are the record of what that phase shipped;
