@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # ADR test gaps — decisions whose cited test was never written
 
 **Owns:** the list of Accepted-ADR behaviours that an ADR cites a test for, where no test in

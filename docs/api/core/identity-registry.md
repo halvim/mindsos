@@ -3,6 +3,7 @@ title: IdentityRegistry — API
 tag: shipped (partial — Phase 02 introduction)
 last_confirmed_phase: 02
 source: mindsos_core/models/identity.py
+verified_at: unverified
 ---
 
 # IdentityRegistry — API (Phase 02 introduction)

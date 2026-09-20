@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # L2 storage tiers
 
 L2 large-payload field handling per ADR-0151. Three tiers absorb the size variance v1 will see — small structured outputs through neural-model artifacts — without forcing every field into the same storage path.

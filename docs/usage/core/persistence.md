@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 08
+verified_at: unverified
 ---
 
 # `mindsos persistence` — Phase 08

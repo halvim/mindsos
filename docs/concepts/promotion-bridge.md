@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 14a
+verified_at: unverified
 ---
 
 # Local↔Global promotion bridge (L2)

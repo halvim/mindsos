@@ -1,6 +1,7 @@
 ---
 title: Text realm — vertical slice
 last_confirmed_phase: 38
+verified_at: unverified
 ---
 
 # Text realm — vertical slice

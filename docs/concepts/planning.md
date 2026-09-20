@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Planning (the shipped `planning.*` v0 catalog)
 
 > ⚠ **This page describes the SHIPPED PLACEHOLDER CATALOG, not the current design.**

@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 08
+verified_at: unverified
 ---
 
 # Core Loaders — `mindsos_core.reconstruction`

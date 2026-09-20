@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Society of Mind (Phase 48)
 
 MindsOS borrows Minsky's framing: intelligence is not one monolithic process

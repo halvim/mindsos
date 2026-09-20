@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 09
+verified_at: unverified
 ---
 
 # `mindsos_core` — XRef API

@@ -1,6 +1,7 @@
 ---
 title: Internals — Resident-brain runtime
 last_confirmed_phase: 50
+verified_at: unverified
 ---
 
 # Internals — Resident-brain runtime

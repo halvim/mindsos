@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # The LLM credential broker contract (level 2)
 
 **What this document is.** The wire a credential broker must speak so that

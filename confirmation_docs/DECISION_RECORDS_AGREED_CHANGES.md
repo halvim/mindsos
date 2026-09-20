@@ -3,6 +3,7 @@ title: Decision Records — agreed changes across the seam/planning exchange
 status: Agreed between chats — the record of record for both lanes
 date: 2026-08-08
 source: cross-chat exchange, 15 replies (channel file is scratch and never committed)
+verified_at: unverified
 ---
 
 # Agreed changes — LLM seam chat ↔ Decision Records planning chat

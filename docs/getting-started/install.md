@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 00
+verified_at: unverified
 ---
 
 # Install

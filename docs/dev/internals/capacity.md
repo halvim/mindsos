@@ -1,6 +1,7 @@
 ---
 title: Capacity Layer — internals (halvim)
 last_confirmed_phase: 34
+verified_at: unverified
 ---
 
 # Capacity Layer — internals (halvim)

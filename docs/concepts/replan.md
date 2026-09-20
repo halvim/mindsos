@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Replan
 
 Replanning lets a task recover from a step that diverges from expectation

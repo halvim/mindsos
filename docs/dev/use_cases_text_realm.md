@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # MindsOS Use Cases — Text Realm
 
 **Purpose.** Concrete end-to-end use cases exercising all five layers of the MindsOS system in the text domain. Two realms are covered: **natural language understanding (NLU)** and **code understanding**. A cross-realm use case ties them together. These use cases are the test suite against which L3 implementation, L4 design, and L5 retention policy are validated.

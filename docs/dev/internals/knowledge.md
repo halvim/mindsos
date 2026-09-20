@@ -4,6 +4,7 @@ tag: shipped
 teaser: Metagraph-of-role-graphs, importers, and Global/Local architecture.
 source: mindsos_knowledge_developer_guide.md + mindsos_knowledge_architecture.md
 next: dev/internals/capacity.md
+verified_at: unverified
 ---
 
 # L2 Knowledge internals

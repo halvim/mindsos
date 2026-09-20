@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Mental Model substrate (L4)
 
 The Mental Model (MM) is a task's complete working state. L4 reads only from the

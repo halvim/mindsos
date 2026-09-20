@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # CORE reconciliation plan (CORE-C chains)
 
 **Filed:** 2026-07-31. **Revised** after the abstraction-levels conclusion.

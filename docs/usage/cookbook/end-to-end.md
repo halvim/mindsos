@@ -1,6 +1,7 @@
 ---
 title: End-to-end — L0→L5 trivial-task slice
 last_confirmed_phase: 49
+verified_at: unverified
 ---
 
 # End-to-end — L0→L5 trivial-task slice

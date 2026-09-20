@@ -5,6 +5,7 @@ last_confirmed_phase: 02
 teaser: IdentityRegistry scope, stable version-qualified IRIs, and why this matters.
 source: mindsos_core/models/identity.py
 next: concepts/mm-substrate.md
+verified_at: unverified
 ---
 
 # Identity and IRIs

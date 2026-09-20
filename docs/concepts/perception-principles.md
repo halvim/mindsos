@@ -1,3 +1,7 @@
+---
+verified_at: unverified
+---
+
 # Perception Principles
 
 **Scope:** MindsOS-GENERAL. Foundational principles that govern *anything* MindsOS perceives —

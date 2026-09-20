@@ -1,5 +1,6 @@
 ---
 last_confirmed_phase: 12
+verified_at: unverified
 ---
 
 # `mindsos_knowledge.identifiers`

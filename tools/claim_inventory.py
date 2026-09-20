@@ -129,6 +129,8 @@ GUARDED: dict[str, tuple[str, str]] = {
                                   "ADR-0210 am-4's L2 record shape matches the code"),
     "live-doc-references-resolve": ("tests/architecture/test_live_doc_references_resolve.py",
                                     "every path / ADR number / link / symbol a live or index doc names resolves"),
+    "live-page-verified-at": ("tests/architecture/test_live_pages_declare_verified_at.py",
+                              "every live page declares verified_at: <sha> | unverified"),
 }
 
 #: The extractor classes below that a guard holds at 0 false, and in which
@@ -161,6 +163,14 @@ _NOT_IN_USE = re.compile(r"numbers? not in use", re.IGNORECASE)
 #: A reference to a retired number is TRUE when its own line says so.
 _SAYS_RETIRED = re.compile(r"withdrawn|not in use", re.IGNORECASE)
 _MDLINK = re.compile(r"(?<!!)\[[^\]\n]*\]\(([^)\s]+)\)")
+#: Owner ruling 2 (2026-09-19): a live page states what its prose was last
+#: read against. `unverified` is the honest value for a page nobody has read
+#: yet -- 88% of live prose carries no reference any extractor can check, so
+#: presence is guarded and verification is COUNTED, never assumed.
+VERIFIED_AT = "verified_at"
+_VERIFIED_AT = re.compile(r"^verified_at:\s*(\S+)\s*$", re.MULTILINE)
+_SHA = re.compile(r"^[0-9a-f]{7,40}$")
+UNVERIFIED = "unverified"
 _HEADING = re.compile(r"^\s{0,3}#{1,6}\s")
 _TABLE_SEP = re.compile(r"^\s*\|?[\s:|-]+\|?\s*$")
 
@@ -305,6 +315,35 @@ class _Resolver:
         return False
 
 
+def front_matter(text: str) -> str:
+    """The YAML front-matter block, or "" when the file has none."""
+    if not text.startswith("---\n"):
+        return ""
+    end = text.find("\n---", 4)
+    return text[4:end] if end != -1 else ""
+
+
+def verified_at(text: str) -> str | None:
+    """``verified_at`` as declared in the front matter, or None."""
+    m = _VERIFIED_AT.search(front_matter(text))
+    return m.group(1) if m else None
+
+
+def verification(tree: Tree) -> dict:
+    """Live pages by verification state. ``bad`` = key missing or malformed."""
+    live = [f for f in tree.files if f.endswith(".md") and partition(f) == LIVE]
+    out = {"live_pages": len(live), "verified": 0, "unverified": 0, "bad": []}
+    for rel in live:
+        v = verified_at((tree.root / rel).read_text(encoding="utf-8", errors="replace"))
+        if v == UNVERIFIED:
+            out["unverified"] += 1
+        elif v is not None and _SHA.match(v):
+            out["verified"] += 1
+        else:
+            out["bad"].append(rel)
+    return out
+
+
 def retired_adr_numbers(tree: Tree) -> set[int]:
     """Numbers the ADR index declares not in use (its own note, not a list here)."""
     idx = tree.root / "docs" / "decisions" / "adr" / "README.md"
@@ -443,8 +482,17 @@ def build_report(root: Path = ROOT) -> dict:
     for f in tree.files:
         if f.endswith(".md"):
             files_by_part[partition(f)] = files_by_part.get(partition(f), 0) + 1
+    ver = verification(tree)
+    vguard = GUARDED["live-page-verified-at"][0]
+    rows.append({"class": "live-page-verified-at", "partition": LIVE,
+                 "sites": ver["live_pages"], "false": len(ver["bad"]) + ver["unverified"],
+                 "state": ("GUARD-MISSING" if not (tree.exists(vguard) or (root / vguard).exists())
+                           else "GUARDED" if not ver["bad"] and not ver["unverified"]
+                           else "UNVERIFIED-PROSE"),
+                 "by": vguard})
     res = residual(tree, sites)
     return {
+        "verification": ver,
         "root": str(root), "mode": tree.mode,
         "md_files_by_partition": dict(sorted(files_by_part.items())),
         "rows": rows,
@@ -458,7 +506,8 @@ def open_rows(report: dict) -> list[dict]:
     in-image doc nobody has classified, a missing guard, or a tracked doc no
     test image copies (it needs an OWNER, which this tool cannot see)."""
     return [r for r in report["rows"]
-            if r["state"] in ("UNGUARDED", "NEEDS-RULING", "NOT-IN-IMAGE", "GUARD-MISSING")
+            if r["state"] in ("UNGUARDED", "NEEDS-RULING", "NOT-IN-IMAGE",
+                              "GUARD-MISSING", "UNVERIFIED-PROSE")
             and (r["sites"] is None or r["sites"] > 0)]
 
 
@@ -486,6 +535,9 @@ def main(argv: list[str] | None = None) -> int:
             f = "-" if r["false"] is None else r["false"]
             by = f" {r['by']}" if "by" in r else ""
             print(f"{r['class']:30} {r['partition']:14} {s!s:>6} {f!s:>6}  {r['state']}{by}")
+        v = rep["verification"]
+        print(f"verification: {v['verified']} verified / {v['unverified']} unverified"
+              f" / {len(v['bad'])} missing-or-malformed of {v['live_pages']} live pages")
         print("residual prose (lines no class reaches):")
         for k, v in rep["residual"].items():
             print(f"  {k:14} {v['unreached']:>6} of {v['prose_lines']}")
