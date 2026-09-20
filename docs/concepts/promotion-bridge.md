@@ -137,8 +137,8 @@ Per Phase 14a round-3 PB-M1:
 
 - **This page** owns bridge mechanics (propose → pending → audit-gate →
   ship → migrate).
-- **`docs/concepts/release-model.md`** (Phase 24's deliverable;
-  forthcoming) owns per-user release semantics
+- **Release model** (a `release-model.md` page was planned as Phase 24's
+  deliverable and never written; ADR-0118 is the record) owns per-user release semantics
   (`last_synced_release_id`, lazy migration logic, version-graph
   routing post-ship).
 - **[admin-global-shipping.md](admin-global-shipping.md)** owns

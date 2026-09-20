@@ -53,7 +53,7 @@ The 2026-04-27 design pass relocates KL's write API into L3 as named capacities 
 | [0143](../adr/0143-kl-write-handle-pattern.md) | `KLWriteHandle` pattern for L3 write capacities | Accepted | `kl.writeable(session, role, scope)` returns a non-mutating accessor; capacities call L1 through `handle.graph()` |
 | [0144](../adr/0144-similarity-at-release-ship-audit-gate.md) | Similarity at release-ship audit gate; restore spec | Accepted | Similarity moves to ADR-0115 audit step; restored Levenshtein + structural overlap + reference Jaccard; supersedes ADR-0049 + ADR-0052 + ADR-0055 |
 
-See `docs/HANDOFF_L2_CLOSURE_2026-04-27.md` for the full closure handoff.
+See `HANDOFF_L2_CLOSURE_2026-04-27.md` (never committed to this repo) for the full closure handoff.
 
 ## L2 knowledge lifecycle — SHIPPED (Phases 39–50)
 

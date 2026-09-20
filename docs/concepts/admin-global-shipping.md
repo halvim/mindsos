@@ -36,7 +36,7 @@ from Local promotion, not importers — see
 
 Importers live at
 `mindsos_admin/importers/{dolce,oewn,framenet}.py` (Phase 15a). The
-`AlignmentsImporter` (`mindsos_admin/importers/alignments.py`) was
+`AlignmentsImporter` (planned as `alignments.py` in the importers package; never created) was
 originally scheduled for Phase 15b but **re-deferred to a closure
 phase TBD per PHASE_MAP §Phase 28 design review** (the alignment-lookup
 read consumer's natural home). Per ADR-0140 §amendment-1 (Phase 15a):
@@ -169,7 +169,7 @@ promotion path per Phase 14a round-3 PB-M1 ownership lock:
   comes from when admin runs an importer.
 - **[promotion-bridge.md](promotion-bridge.md)** = how Local-originated
   content reaches canonical Global via release.
-- **`docs/concepts/release-model.md`** (forthcoming; Phase 24 owns) =
+- **Release model** (a `release-model.md` concept page was planned as Phase 24's deliverable and never written; ADR-0118 is the record) =
   per-user release semantics (`last_synced_release_id`, lazy migration,
   version-graph routing post-ship).
 

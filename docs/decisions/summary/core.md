@@ -46,7 +46,7 @@ Core carries several design tradeoffs that are not yet shipped but have known pa
 
 ## L1 redesign decisions (2026-04-27)
 
-The L1 redesign pass (see `docs/HANDOFF_L1_REDESIGN_2026-04-27.md`) drafted seventeen ADRs covering substrate commitment, FalkorDB-weakness mitigations, the hybrid XRef model, soft-delete representation, and the package move for instancing. **These have since shipped** (FalkorDB substrate, XRef, soft-delete, and the `mindsos_instances` move are all live) and are marked Accepted below.
+The L1 redesign pass (see `HANDOFF_L1_REDESIGN_2026-04-27.md` (never committed to this repo)) drafted seventeen ADRs covering substrate commitment, FalkorDB-weakness mitigations, the hybrid XRef model, soft-delete representation, and the package move for instancing. **These have since shipped** (FalkorDB substrate, XRef, soft-delete, and the `mindsos_instances` move are all live) and are marked Accepted below.
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|

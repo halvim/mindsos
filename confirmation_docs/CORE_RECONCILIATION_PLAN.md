@@ -510,7 +510,7 @@ resource criterion into it makes the C2R3 gate result unattributable (`CORE_C2_D
 
 Five things this plan did not own. Each was agreed with the owner; none is built. The pattern
 they share is the one this project keeps logging — **work that is a consequence of a ruling, and
-therefore in nobody's scope**. Evidence: `confirmation_docs/_to_delete/` boundary coordination
+therefore in nobody's scope**. Evidence: `_to_delete/` (under `confirmation_docs`) boundary coordination
 (chat scratch, never committed) and the two decision records named per item.
 
 ### 13.1 C2R3a — atomic whole-composition delete

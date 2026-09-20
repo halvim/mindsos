@@ -230,7 +230,7 @@ ADRs follow a lightweight Nygard/MADR-style format: **Context**, **Decision**, *
     ADR-0117 (compositional metaedge) was **Withdrawn** in Phase 05a; the concept became the `compositional` flag on `IntergraphEdge` / `IntergraphHyperEdge` (see `confirmation_docs/INTERGRAPH_EDGES_DESIGN.md`, the canonical source for both primitives). The Server Layer pivot shipped 0114, 0115, 0118 and 0120. The remaining numbers (0058, 0059, 0113, 0116, 0119) were reserved and never drafted; they are not re-used.
 
 !!! note "ADRs 0121–0137 — L1 redesign (2026-04-27)"
-    Seventeen ADRs drafted in the L1 Core redesign pass. They formalise the substrate commitment (0121), six FalkorDB-weakness mitigations (0122–0127), the hybrid XRef model (0128), MetagraphSnapshot scope narrowing (0129), property bag (0130), pluggable IdStrategy (0131), instancing-package move (0132), soft-delete representation (0133), schema migration scanner (0134), removal-impact reporting (0135), server orthogonal placement (0136), and user-facing promotion request (0137). See `docs/HANDOFF_L1_REDESIGN_2026-04-27.md` for the migration plan.
+    Seventeen ADRs drafted in the L1 Core redesign pass. They formalise the substrate commitment (0121), six FalkorDB-weakness mitigations (0122–0127), the hybrid XRef model (0128), MetagraphSnapshot scope narrowing (0129), property bag (0130), pluggable IdStrategy (0131), instancing-package move (0132), soft-delete representation (0133), schema migration scanner (0134), removal-impact reporting (0135), server orthogonal placement (0136), and user-facing promotion request (0137). The migration plan was the handoff `HANDOFF_L1_REDESIGN_2026-04-27.md` (never committed to this repo).
 
 ## Per-layer summary pages
 
@@ -251,5 +251,5 @@ See [Proposed / deferred decisions](../proposed.md) for design questions that ha
 
 - [About ADRs](../about.md) — what an ADR is, the format we use, how to propose one.
 - [Superseded decisions](../superseded.md) — ADRs that have been replaced.
-- `docs/DESIGN_SERVER_AUTH.md` — full 17-section server design.
+- `DESIGN_SERVER_AUTH.md` — the 17-section server design (never committed to this repo).
 - `dev/handoffs/<layer>.md` — public API contracts for each layer.
