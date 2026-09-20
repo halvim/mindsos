@@ -70,7 +70,7 @@ The 2026-04-27 L2 redesign relocates KL's write API into L3 as named capacities.
 | [0146](../adr/0146-l3-symmetric-write-invocation-contract.md) | L3 symmetric write invocation contract | Accepted | `WriteResult \| ProblemTraceRecord` return; capability check at entry + handle methods; L1 errors caught and wrapped; programmer errors propagate |
 | [0147](../adr/0147-l3-per-flow-write-capacity-build-pattern.md) | Per-flow build pattern for L3 write capacities | Accepted | Each capacity built when its L4 flow closes design; KL `DeprecationWarning`s stay until relocation lands per-flow |
 
-See `docs/HANDOFF_L3_WRITE_DESIGN_2026-04-27.md` for the full L3 write-side handoff and the 6 minimum capacities for L4 v1.
+See `HANDOFF_L3_WRITE_DESIGN_2026-04-27.md` (never committed to this repo) for the full L3 write-side handoff and the 6 minimum capacities for L4 v1.
 
 ## L3 reframe + dream family — SHIPPED (Phases 40–45)
 

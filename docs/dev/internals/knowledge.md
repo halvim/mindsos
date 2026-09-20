@@ -17,7 +17,7 @@ The Knowledge Layer wraps one **Global metagraph** (ontology, lexicon, concepts,
     - Layer: **L2 Knowledge**
     - Package: `mindsos_knowledge/`
     - Scope: ~3.4k LOC across 20 files
-    - Tests: `tests/unit/knowledge` (~73 tests, <500 ms)
+    - Tests: under `tests/phase_*` (e.g. `tests/phase_14/test_knowledge_layer_init.py`); the unit-test directory this page once named was never in this repo
     - Invariants: I1–I8 (section 5 below)
     - Design reference: `knowledge_layer_design.md` (§4)
 

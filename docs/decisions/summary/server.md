@@ -17,7 +17,7 @@ The Server Layer is **orthogonal** to the domain stack (per ADR-0136) — it pro
     - **ADR-0001, 0002, 0004** — to receive amendments documenting release-management responsibilities and the new `releases` table in the SQLite schema.
     - **ADR-0005** (refuse concurrent login) and **ADR-0006** (promotion locking) — to be revisited in a v2 follow-up. Per-user mutex stays in v1; concurrent-login relaxation is v2.
 
-    Until ADRs 0113–0120 land, the table below describes the **shipped** model. New work should reference [the pivot scope contract](../../PIVOT_V1_SCOPE_2026-04-26.md) and [the release-model concept page](../../concepts/release-model.md). The handoff for the next implementation session is at [docs/HANDOFF_SERVER_PIVOT_2026-04-26.md](../../HANDOFF_SERVER_PIVOT_2026-04-26.md).
+    Until ADRs 0113–0120 land, the table below describes the **shipped** model. The pivot scope contract (`PIVOT_V1_SCOPE_2026-04-26.md`) and the next-session handoff (`HANDOFF_SERVER_PIVOT_2026-04-26.md`) were never committed to this repo, and the planned release-model concept page was never written; ADR-0118 is the record of the shipped model.
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|
@@ -39,7 +39,7 @@ The Server Layer is **orthogonal** to the domain stack (per ADR-0136) — it pro
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|
-| [0118](../adr/0118-per-user-transactional-promotion.md) | Per-user transactional promotion + release-boundary atomicity | Accepted | Supersedes ADR-0007 in full. Two independent atomicity boundaries: per-user `propose_for_promotion` and admin-triggered `release_update`. Lazy per-user migration runs separately. Slice ships ATOM-only; STRUCTURE/SUBGRAPH/PIPELINE land with ADR-0117/0119/0120. |
+| [0118](../adr/0118-per-user-transactional-promotion.md) | Per-user transactional promotion + release-boundary atomicity | Accepted | Supersedes ADR-0007 in full. Two independent atomicity boundaries: per-user `propose_for_promotion` and admin-triggered `release_update`. Lazy per-user migration runs separately. Slice ships ATOM-only; STRUCTURE/SUBGRAPH/PIPELINE were slated to land with ADR-0120 and with 0117/0119 — both numbers since retired (not in use; see the ADR index). |
 | 0113 | Mutation model — Resolution A | Reserved | Mutation auto-bumps version under the hood; admin UX is "edit," storage is append-only. |
 | 0114 | Release manifest + version DB schema (SQLite) | Reserved | Schema for `pending_mutations`, `releases`, `node_versions`, `peer_deps`. |
 | 0115 | Audit gate + impact report format | Reserved | Supersedes ADR-0009. Pre-ship audit; structured `ImpactReport`; no override in v1. |
@@ -50,7 +50,7 @@ The Server Layer is **orthogonal** to the domain stack (per ADR-0136) — it pro
 
 ### L1 redesign — server-touching ADRs (drafted 2026-04-27)
 
-The L1 redesign pass produced two server-layer ADRs in addition to its L1 Core surface. See `docs/HANDOFF_L1_REDESIGN_2026-04-27.md` for the full context.
+The L1 redesign pass produced two server-layer ADRs in addition to its L1 Core surface. See `HANDOFF_L1_REDESIGN_2026-04-27.md` (never committed to this repo) for the full context.
 
 | ADR # | Title | Status | Summary |
 |-------|-------|--------|---------|

@@ -6,11 +6,11 @@ because that is where they surfaced (the Bongard-LOGO faithful diagnostic, 2026-
 principles are substrate-neutral.
 
 **Provenance.** Part I (P1–P11) is the converged doctrine handed off from the bongard demo
-chat (`projects/bongard_demo/PERCEPTION_PRINCIPLES.md`, Part A) and landed here verbatim. Part
+chat (`PERCEPTION_PRINCIPLES.md` in the bongard lane, Part A; never on `main`) and landed here verbatim. Part
 II (P12–P17) records the probabilistic/learned extensions developed and empirically validated
 in a core perception chat (2026-06-27); the full pre-registration, experiments, and five
-independent adversarial audits are in `docs/_workbench/PERCEPTION_LEARNING_NOTES.md` +
-`PERCEPTION_LEARNING_PREREG.md`, and the confidence contract is ADR-0191.
+independent adversarial audits are in `PERCEPTION_LEARNING_NOTES.md` +
+`PERCEPTION_LEARNING_PREREG.md` (workbench scratch, never committed), and the confidence contract is ADR-0191.
 
 ---
 

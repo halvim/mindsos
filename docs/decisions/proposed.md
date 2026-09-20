@@ -15,7 +15,7 @@ Most deferred decisions carry a known tradeoff. The system works well even thoug
 
 ## L1 Core Layer — redesign 2026-04-27
 
-The 2026-04-27 L1 redesign pass turned the long-deferred items below into Proposed ADRs (0121–0137) plus their downstream coordinated changes. See `docs/HANDOFF_L1_REDESIGN_2026-04-27.md` for the migration plan.
+The 2026-04-27 L1 redesign pass turned the long-deferred items below into Proposed ADRs (0121–0137) plus their downstream coordinated changes. See `HANDOFF_L1_REDESIGN_2026-04-27.md` (never committed to this repo) for the migration plan.
 
 ### Property bag on `Metagraph` / `Graph` — Proposed (ADR-0130)
 
@@ -91,11 +91,11 @@ User-initiated promotion request; admin reviews and approves/rejects. Coexists w
 
 ### Authoring and deletion methods — Proposed
 
-Future methods: `list_authored`, `inspect_authored`, `hard_delete`. Will accept `session: SessionProtocol` from day one (no migration shim). See **ADR-0058**.
+Future methods: `list_authored`, `inspect_authored`, `hard_delete`. Will accept `session: SessionProtocol` from day one (no migration shim). No ADR was written: 0058 is a number not in use (see the ADR index).
 
 ### Pruning promoted drafts — Proposed
 
-Current topology keeps Local drafts as breadcrumbs after promotion. Bulk cleanup is future admin surface. See **ADR-0059**.
+Current topology keeps Local drafts as breadcrumbs after promotion. Bulk cleanup is future admin surface. No ADR was written: 0059 is a number not in use (see the ADR index).
 
 ## L3 Capacity Layer
 
@@ -115,7 +115,7 @@ The Phase 46–48 convergence **shipped** Layers 4 and 5. The original design-ph
 
 A multi-session design conversation in April 2026 produced a model pivot for how Globals are curated and released. The pivot moves the system from real-time-shared Globals with cross-user atomic promotion → admin-curated Globals shipped via discrete releases, with per-user transactional promotion into a `pending_global` buffer.
 
-The pivot's full scope is captured in `docs/PIVOT_V1_SCOPE_2026-04-26.md`. The model itself is described in the release-model design notes. The handoff for the next implementation session is `docs/HANDOFF_SERVER_PIVOT_2026-04-26.md`. **This pivot has since shipped** (Phase 24 and later); the entry is retained for historical context.
+The pivot's full scope is captured in `PIVOT_V1_SCOPE_2026-04-26.md` (never committed to this repo). The model itself is described in the release-model design notes. The handoff for the next implementation session is `HANDOFF_SERVER_PIVOT_2026-04-26.md` (never committed to this repo). **This pivot has since shipped** (Phase 24 and later); the entry is retained for historical context.
 
 Eight ADRs cover the model. All are **Proposed** until both code and a user-facing doc reflect them. Drafting begins with ADR-0118 (highest priority — supersedes ADR-0007).
 

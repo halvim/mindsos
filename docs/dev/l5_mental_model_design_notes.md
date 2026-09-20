@@ -1,7 +1,7 @@
 # MindsOS Layer 5 — Mental Model Layer: Design Notes
 
 **Purpose.** Design notes for Layer 5 (Mental Model Layer).
-**Status.** Substantially rewritten 2026-05-31 to reflect Chat B closure (`docs/_workbench/CHAT_B_DECISIONS.md`). Supersedes the 2026-04-21 baseline + 2026-04-26 §3.4 amendment.
+**Status.** Substantially rewritten 2026-05-31 to reflect Chat B closure (`confirmation_docs/CHAT_B_DECISIONS.md`). Supersedes the 2026-04-21 baseline + 2026-04-26 §3.4 amendment.
 **Companion documents:** `l4_intelligence_design_notes.md`, `use_cases_text_realm.md`, `_workbench/CHAT_A_DECISIONS.md` (L4 contract), `_workbench/CHAT_B_DECISIONS.md` (this layer's settlement).
 **Frame.** A Mental Model is **the live working memory of a task in progress** — the minimum coherent instance-graph the system needs to think about a specific task. Retention as an **episode** at task completion is a downstream consequence, not the defining feature.
 
@@ -265,7 +265,7 @@ The task's initial flow value is a DataStateInstance in capacity-MM, XRef'd to t
 
 ## 3. Lifecycle phases (Chat A's six-phase lifecycle, preserved)
 
-**Vocabulary note.** "LifecyclePhase 1-6" here is Chat A's task-execution lifecycle (`docs/_workbench/CHAT_A_DECISIONS.md` D12). Distinct from Plan-tree Milestones.
+**Vocabulary note.** "LifecyclePhase 1-6" here is Chat A's task-execution lifecycle (`confirmation_docs/CHAT_A_DECISIONS.md` D12). Distinct from Plan-tree Milestones.
 
 - **LifecyclePhase 1:** Task interpretation (5-step refactor per Chat A R3 — receive → process → extract_hints → derive_goal → map_to_task_pattern). Produces HintSet + MappingResult. ⚠ **[ADR-0206](../decisions/adr/0206-planning-decomposition-confidence.md) §3 revises this:** the steps are request → hint → map → plan; `derive_goal` is gone.
 - **LifecyclePhase 2:** Plan + Pipeline construction. Produces Plan (root + lazy children) and per-leaf Pipelines as they materialize.
@@ -463,7 +463,7 @@ Chat B (2026-05-31) substantially restructured the layer:
 - **Dream-as-live + ALS as sole learning track** — dream is corpus replay, not a parallel learning loop.
 - **Vocabulary cleanup** — episode / memory / episodic_memories; Milestone (not "phase"); TaskRun (new) / PipelineRun (rename of Chat A's PlanRun); worker pool (L4 substrate, not L3).
 
-Full settlement: `docs/_workbench/CHAT_B_DECISIONS.md`.
+Full settlement: `confirmation_docs/CHAT_B_DECISIONS.md`.
 
 ---
 
