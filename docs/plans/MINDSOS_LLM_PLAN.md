@@ -188,7 +188,7 @@ and hash another.
 | I-0 | this plan, tracked; RULES §5 plan rules; the scope guard; and the prose corrections at the eight sites that contradicted §1 and §2 | core-docs-one-owner-per-fact | DONE(76b17e4) |
 | I-8 | the L2 record shapeS — **two records, different authors**: the prompt edition (a `prompts` role of its own, dual-scope — ⚠ **the `policies` reuse is WITHDRAWN by ADR-0210 am-5**) and the recorded-set pointer (new Local-only `recorded-sets` role) — plus the recorder's contract, `capacity:comprehension:record_reading_set` (R3, R4, R5). ADR-0210 amendment + a sentinel; no product code | core-llm-recorded-set-l2-pointer-owner | DONE(711dc16) |
 | I-9 | prompt bodies have a home: a conclusion stamped `prompt_iri` + `prompt_version` can show the text it names | core-llm-prompt-text-has-no-home | DONE(a1687f2) |
-| I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | TODO |
+| I-10 | a recorded set has a home in the graph: pointer + provenance in L2 Local, payloads stay a FILE | core-llm-recorded-set-l2-pointer-owner | DONE(780ee1b) |
 | I-11 | `mode` and `credential_level` reach the origin record. Required under §1, no longer deferred; prerequisite discharged at `fe0e19a`. ⚠ **NOT blocked by I-8** — measured: `origin_v0.py` imports only `..identifiers` and `..printable`, so it has no L2 dependency, and the change is two names in `PRODUCER_DECLARED` plus two lines in `comprehension_v0._record` reading fields the answer already carries beside the seven at lines 353-359 | core-llm-l3-may-declare-answer-mode-and-level | DONE(44889a9) |
 | I-12 | the excision capability: identify a conclusion as model-produced, show what was asked, re-run it without the model. Becomes the twelfth contract row. **Not yet specified, and must not be guessed at before I-9/I-10/I-11 exist** | core-llm-excision-capability | TODO |
 | I-13 | a transport's other keys survive into the answer | core-llm-transport-extra-keys-survive-into-the-answer | OUT(trigger: a consumer iterates an answer's keys, or a third-party transport's output is stored) |
@@ -198,7 +198,7 @@ and hash another.
 
 **DONE WHEN: I-0, I-8, I-9, I-10, I-11, I-12, I-15, I-16.**
 
-**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 → I-12.**
+**ORDER: I-0 ✅ → I-8 ✅ → I-11 ✅ → I-9 ✅ → I-15 ✅ → I-16 ✅ → I-10 ✅ → I-12.**
 I-9 and I-10 are blocked by I-8, the L2 record shape, and may ship in either order once
 it is ruled. ⚠ **I-9's dependency is the ROLE decision only** — measured: no prompt text crosses the
 transport seam, so the text is in no ANSWER. ⚠ **It does NOT follow that no run writes it**
@@ -340,3 +340,18 @@ amendment.)*
   (*"some of them you can make yourself based on the final goal"*) and confirmed with
   *"go"* / *"proceed"*. Filed: `core-llm-recorded-set-has-no-file-writer` — nothing
   in the tree writes the file a pointer names.
+
+- **2026-09-21 (post-ship)** — **I-10 SHIPPED `780ee1b`** (PR #237, tag
+  `recorded-set-home-confirmed`), after its prerequisite PR #233 (`537fd82`, R11).
+  Gate at `c285793`: 5375 passed / 0 failed; collected ids **+41 / −0, predicted and
+  read back file by file**; six single-line mutations, each red exactly where
+  predicted. CI then gated `d19103d`, rebased over PR #236 — another lane's
+  widening of the role-count guard, measured to couple to no numbered claim — and
+  the squash equals that tree. ⚠ **One design tightening during the build, recorded
+  as R18:** `file_uri` comes from the path `describe_set` hashed, never from the
+  caller, so a pointer cannot name one file and carry another's identity. ⚠ **Two
+  instrumentation faults, both caught by their own fields:** a mutation row whose
+  anchor never matched ran green on an unmutated tree (its empty bytes-changed
+  field exposed it), and a tag box read a FAILED diff as "0 files differ" — a
+  failed check must never read as a passing one. **I-12 is next and last**: every
+  prerequisite it names now exists.
