@@ -705,7 +705,7 @@
     },
     {
       "name": "role-count-guard-misses-closed-role-set-phrasing",
-      "status": "OPEN 2026-09-20, found by verification batch 2 (PR #231). NOT BUILT.",
+      "status": "CLOSED 2026-09-21 by PR #236 (b1f2b31) - see recent[]. PRIOR STATUS FOLLOWS: OPEN 2026-09-20, found by verification batch 2 (PR #231). NOT BUILT.",
       "what": "tests/architecture/test_doc_role_count.py matches a fixed list of phrasings. docs/dev/internals/knowledge.md carried a stale role count as 'closed role-set is now N' - a phrasing the list MISSES, so the guard stayed green on a false count. Fixed on that page by reading; the guard hole remains.",
       "spec": "Guard first: add the phrasing, RED on a fabricated line (the real tree may already be 0 - then the RED is the designated mutation), derive the number from ALL_ROLES as the guard already does. Measure the other live pages for any further phrasing before closing - read sites, do not trust a regex count.",
       "consumer": "none - the doc-fix program's guard floor."
@@ -713,12 +713,21 @@
     {
       "name": "slice-land-removes-its-own-cwd",
       "status": "OPEN 2026-09-21, found by running it on PR #235. NOT BUILT.",
-      "what": "tools/slice_land.sh computes repo=$(git rev-parse --show-toplevel). Run from inside the slice worktree (the natural place), that IS the worktree; the script then removes ../_MindsOS-<slice> = its own cwd BEFORE gh pr merge, so the merge, fetch, pull and ANSWER all die ('fatal: Unable to read current working directory'). PR #235 stayed OPEN with CI green; landed by re-running from the shared checkout.",
+      "what": "SECOND DEFECT (PR #236): run right after gh pr create, gh pr checks --watch returns before any check is registered, so the script reports ci= empty / merged=n and exits; the fix spec below should also wait for at least one check to exist. FIRST DEFECT FOLLOWS: tools/slice_land.sh computes repo=$(git rev-parse --show-toplevel). Run from inside the slice worktree (the natural place), that IS the worktree; the script then removes ../_MindsOS-<slice> = its own cwd BEFORE gh pr merge, so the merge, fetch, pull and ANSWER all die ('fatal: Unable to read current working directory'). PR #235 stayed OPEN with CI green; landed by re-running from the shared checkout.",
       "spec": "Guard first in tests/architecture/test_lane_scripts.py: slice_land.sh must resolve the MAIN checkout (dirname of git rev-parse --path-format=absolute --git-common-dir) before any worktree removal - RED on the current script, then the one-line fix; designated mutation = revert to --show-toplevel. Also: gate.sh's fetch failure is a box SSH problem, not a script defect.",
       "consumer": "none - every ship's landing step (Rule 1 does not gate a defect)."
     }
   ],
   "recent": [
+    {
+      "kind": "docs",
+      "name": "The role-count guard's phrase list is a measured floor: three missed phrasings added, each pinned on a fabricated line; two stale counts fixed",
+      "sha": "b1f2b31 (squash of feat/role-count-phrasing @ 14be417, PR #236). Parent 2eb002b; RULES 12.2(a) discharged by an EMPTY git diff 14be417 b1f2b31 (slice_land diff_lines=0).",
+      "tag": "none",
+      "gate": "CI on PR #236: SUCCESS. LINUX box, tools/gate.sh, no Docker. GUARD-FIRST RED at ddd5661: 1 failed / 181 passed across tests/architecture, naming exactly the 2 PREDICTED sites (concepts/knowledge-lifecycle.md:8 claims 15; concepts/user-local-authoring.md:101 claims 9) - predicted by a static run of the test's own code with the role count stubbed. Sweep 14be417 GREEN: tests/architecture + test_adr_status_consistency 189 passed / 0 failed. Designated mutation (restore 'all 9 L2 role-graph schemas', 1 line, throwaway worktree): 1 failed / 3 passed, 1 site - predicted.",
+      "what": "Closes pending_designs role-count-guard-misses-closed-role-set-phrasing. tests/architecture/test_doc_role_count.py matched a fixed phrase list; a census of the live docs found TWO more misses than the one batch 2 filed ('closed at **15 named entries**', 'all 9 L2 role-graph schemas'), both false. Added all three phrasings; lifted the per-line check into _claimed_counts(); test_every_phrasing_is_caught_on_a_fabricated_line pins every pattern on a fabricated line (so a phrasing with no live site is still proven to fire; the row count must equal the pattern count); test_subset_and_category_lines_are_not_claims pins the realm-subset and category lines as non-claims. Both doc lines rephrased WITHOUT a number. *** Found in passing, NOT fixed (other mechanism): user-local-authoring.md cites `strict_support.py`, which is not in the repo, and test_live_doc_references_resolve did not catch it - bare filenames look unchecked. *** Second slice_land defect: run right after gh pr create, `gh pr checks --watch` returns before any check registers, so it reports ci= (empty) merged=n; a 60s wait then a re-run landed it.",
+      "docs": "tests/architecture/test_doc_role_count.py (docstring); docs/concepts/knowledge-lifecycle.md; docs/concepts/user-local-authoring.md"
+    },
     {
       "kind": "docs",
       "name": "Verification batch 3: docs/dev/internals/core.md read against the tree (verified_at f0acd7f) - 20 false claims",
