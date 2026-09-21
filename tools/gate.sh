@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Gate a SHA in a throwaway worktree. LINUX BOX ONLY (all code runs there).
+#
+# Usage:  tools/gate.sh <sha> [pytest-path...]
+# Default paths: tests/architecture tests/test_adr_status_consistency.py
+#
+# THREE THINGS THIS LEARNED BY BEING RUN (2026-09-20):
+#  * an EXIT TRAP prints an ANSWER line on every path, including an early
+#    abort -- a box that prints nothing tells the owner nothing;
+#  * the log name carries the RUN, not just the sha: a second run at the same
+#    sha used to overwrite the first one's evidence;
+#  * a failed worktree removal is REPORTED, never swallowed by `|| true` --
+#    two stale gate worktrees is how that was found. The run leaves root-owned
+#    files under `<wt>/.mindsos` and the box has NO PASSWORDLESS SUDO, so the
+#    DIRECTORY can survive: the registration is pruned either way, and the
+#    leftover path is printed as `rm_me=` for one interactive `sudo rm -rf`.
+set -euo pipefail
+
+sha="${1:?usage: gate.sh <sha> [pytest-path...]}"; shift || true
+paths=("$@")
+(( ${#paths[@]} )) || paths=(tests/architecture tests/test_adr_status_consistency.py)
+
+main="${MINDSOS_MAIN:-/home/sanmyaku/mindsos}"
+stamp="$(date +%Y%m%d-%H%M%S)-$$"
+# A ref may contain "/" (origin/main); a log path may not.
+slug="${sha//\//-}"
+out="${HOME}/gate-${slug}-${stamp}.txt"
+wt="${main}-gate-${stamp}"
+step="start"; rc=99; tail_line=""; fails=""; inv=""; real_head=""
+
+answer() {
+  local gone="unknown"
+  [[ -n "${wt}" ]] && gone="$(test -d "${wt}" && echo n || echo y)"
+  local stale
+  stale="$(git -C "${main}" worktree list 2>/dev/null | grep -c -- "-gate-" || true)"
+  local rm_me="none"
+  [[ "${gone}" == "n" ]] && rm_me="${wt}"
+  echo "ANSWER gate host=$(hostname -s) step=${step} sha=${real_head:-${sha}} rc=${rc}" \
+       "result=[${tail_line}] fails=[${fails}] ${inv:-verification: n/a}" \
+       "log=${out} wt_gone=${gone} registered=${stale} rm_me=${rm_me}"
+}
+trap answer EXIT
+
+step="fetch";     cd "${main}"; git fetch -q origin
+step="worktree";  git worktree add -q --detach "${wt}" "${sha}"
+step="pytest";    cd "${wt}"
+set +e
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=. python3 -m pytest -q -p no:cacheprovider -rf "${paths[@]}" > "${out}" 2>&1
+rc=$?
+set -e
+real_head="$(git rev-parse --short HEAD)"
+tail_line="$(tail -1 "${out}")"
+fails="$(grep '^FAILED' "${out}" | sed 's/.*:://;s/ .*//' | paste -sd, -)"
+step="inventory"; inv="$(python3 tools/claim_inventory.py 2>/dev/null | grep -m1 verification || echo 'verification: n/a')"
+# Cleanup is VERIFIED, not attempted: `worktree remove` can fail (a file the
+# checkout itself modifies), and swallowing that is how stale worktrees
+# accumulated. Fall back to rm -rf + prune, then let the trap report the state.
+step="cleanup";   cd "${main}"
+git worktree remove --force "${wt}" >/dev/null 2>&1 || true
+if [[ -d "${wt}" ]]; then
+  rm -rf "${wt}" >/dev/null 2>&1 || true
+fi
+# Prune regardless: a directory that survives root-owned files must not also
+# survive as a registration, or `git worktree list` stops being readable.
+git worktree prune >/dev/null 2>&1 || true
+step="done"

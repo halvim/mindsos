@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 02
-verified_at: 5172b3c
+verified_at: 52bc1c2
 ---
 
 # Contributing
@@ -70,6 +70,25 @@ workflow" + "Two-machine workflow"). Summary:
 8. **[Mac] Push branch, open PR, merge.**
 9. **[Mac, on `main`] Tag the squash-merge commit** `phase-NN-confirmed`
    and push the tag.
+
+## The lane scripts — one paste per step
+
+The three-machine split (Cowork edits files, the Mac runs git, the Linux box
+runs code) is a rule, not a preference, so a ship is a sequence of pasted
+commands. Four tracked scripts collapse that sequence; each prints one
+`ANSWER` line computed from the end state, and each aborts on the first
+failure rather than rolling on.
+
+| Script | Machine | What it does |
+|---|---|---|
+| `tools/slice_start.sh <name>` | Mac | branch `feat/<name>` + worktree `../_MindsOS-<name>` off `origin/main` |
+| `tools/slice_commit.sh "<msg>" <path>...` | Mac | stage those paths (never `-A`), commit with attribution, push; `--pr <title> <body-file>` also opens the PR |
+| `tools/gate.sh <sha> [pytest-path...]` | Linux | throwaway worktree at that sha, run, print counts + failing names + the inventory line, remove the worktree |
+| `tools/slice_land.sh <pr> [--merge]` | Mac | watch CI and report; with `--merge`, squash-merge, clean up, pull, and print the branch-tip↔squash diff line count |
+
+`slice_land.sh` stops at green unless `--merge` is passed, and refuses to merge
+on anything but a SUCCESS rollup. `tests/architecture/test_lane_scripts.py`
+pins the properties that make them safe to paste.
 
 ## Host setup (Linux box, Phase 02+)
 
