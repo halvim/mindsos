@@ -72,6 +72,23 @@ def test_no_script_stages_everything(name):
     )
 
 
+def test_gate_always_answers_and_never_hides_a_stale_worktree():
+    """Found by running it: an early abort printed nothing, a second run at the
+    same sha overwrote the first one's log, and a failed cleanup was swallowed."""
+    text = _path("gate.sh").read_text(encoding="utf-8")
+    assert "trap answer EXIT" in text, (
+        "gate.sh has no EXIT trap - an aborted run would print no ANSWER line"
+    )
+    assert "stale_gate_wts=" in text, (
+        "gate.sh does not report leftover gate worktrees - a swallowed cleanup "
+        "failure is how two of them accumulated"
+    )
+    assert re.search(r'out="\$\{HOME\}/gate-\$\{sha\}-\$\{stamp\}', text), (
+        "gate.sh's log name does not carry the run - a re-run at the same sha "
+        "would overwrite the earlier run's evidence"
+    )
+
+
 def test_land_refuses_to_merge_without_a_green_rollup():
     text = _path("slice_land.sh").read_text(encoding="utf-8")
     assert "--merge" in text, "slice_land.sh has no explicit merge opt-in"
