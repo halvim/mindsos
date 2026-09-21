@@ -126,7 +126,7 @@ GUARDED: dict[str, tuple[str, str]] = {
     "llm-plan-scope": ("tests/architecture/test_mindsos_llm_plan_is_the_scope.py",
                        "docs/plans/MINDSOS_LLM_PLAN.md owns mindsos_llm's scope"),
     "adr-0210-am4-record-shape": ("tests/architecture/test_adr_0210_am4_l2_record_shape.py",
-                                  "ADR-0210 am-4's L2 record shape matches the code"),
+                                  "ADR-0210 am-4/am-6's L2 record shape matches the code"),
     "live-doc-references-resolve": ("tests/architecture/test_live_doc_references_resolve.py",
                                     "every path / ADR number / link / symbol a live or index doc names resolves"),
     "live-page-verified-at": ("tests/architecture/test_live_pages_declare_verified_at.py",

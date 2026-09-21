@@ -889,6 +889,33 @@ untouched; no scope, builder or discipline of any listed role changes; and no
 claim is made that the four entries above were correct when they shipped — only
 that the register now names them.
 
+### amendment-13 (`mindsos_llm` plan item I-10 — 2026-09-21) — `recorded-sets` role-graph
+
+**Amendment status:** Accepted. The decision above stands.
+
+Adds one **named** Local role, `recorded-sets`: the pointer and provenance of a
+recorded response set, whose payloads stay a FILE. Consumer: `mindsos_llm`'s end
+state — a conclusion that leaned on the borrowed model carries a `request_key`,
+and this role is what gets from that key to the file whose replay re-runs it
+without the model (plan §1; rulings R1, R2, R8). Shape in
+[ADR-0210](0210-llm-communication-layering.md) amendments 4 and 6.
+
+* **Scope: Local-only, never Global** (plan §4). One user's readings are not
+  another's knowledge; reproducibility for a third party is the export's job.
+* **Builder** `build_recorded_sets_schema(strict)`; **discipline** `append_only`;
+  one NodeType `RecordedSet`, no edge types.
+* **Identity** is the recorded file's `sha256`, which is the node's address
+  (`recorded-sets-<v>:set:<sha256>`), so the pointer is verifiable against the
+  file it names. A re-capture of the same bytes is refused, not rewritten.
+* **Writer** `capacity:comprehension:record_reading_set` (L3), through
+  `context.writeable` at `scope="local"`.
+
+**Closed role-set update.** Named count **18 → 19**; prefixes unchanged
+(`alignment:`, `dataset:`). The one hand-written count is
+`tests/dataset_role/test_dataset_role_core.py`; the register is held by
+`tests/architecture/test_every_named_role_is_registered_in_adr_0150.py`, which
+reddened for this role until this entry existed.
+
 ## Source
 Phase 13 design log §1 PB-19 (Flavor A vs Flavor B closure question);
 Phase 13 PB-23 (number reserved for Phase 14a content drafting); Phase

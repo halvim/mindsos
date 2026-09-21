@@ -67,6 +67,7 @@ from .identifiers import (
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_PROMPTS,
+    ROLE_RECORDED_SETS,
     ROLE_SUBMINDS,
     ROLE_REQUEST_PATTERNS,
 )
@@ -145,6 +146,9 @@ _LOCAL_NAMED_ROLES: frozenset[str] = frozenset({
     # mindsos_llm I-9 (plan R2) — the Local form is the per-user trial an L3
     # write capacity targets; L3 cannot write Global.
     ROLE_PROMPTS,
+    # mindsos_llm I-10 (plan R1, R2) — recorded-set pointers. LOCAL-ONLY, never
+    # Global (plan §4): one user's readings are not another's knowledge.
+    ROLE_RECORDED_SETS,
 })
 
 #: Alignment role-prefix per ADR-0150. Per §amendment-1 (Phase 14
@@ -204,6 +208,8 @@ _APPLIES_AFTER_BY_ROLE: dict[str, frozenset[str]] = {
     ROLE_POLICIES: frozenset(),
     # mindsos_llm I-9 (plan R2) — independent.
     ROLE_PROMPTS: frozenset(),
+    # mindsos_llm I-10 — independent.
+    ROLE_RECORDED_SETS: frozenset(),
 }
 
 

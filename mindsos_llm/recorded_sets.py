@@ -37,9 +37,10 @@ is more than one and names what to do about it.
 import ``mindsos_knowledge`` (pinned by
 ``tests/llm_seam/test_import_isolation_mindsos_llm.py``): substrate does not
 depend on the layers that consume it. **The L2 Local pointer and its provenance
-row are therefore owned by a layer above this one, and that is an open design
-question, not an oversight** — see the CR. A file is the interchange format; a
-pointer to a file is somebody else's record.
+row are therefore owned by a layer above this one** — settled by plan ruling R1
+(L3 writes it) and built as plan item I-10. :func:`describe_set` is the one thing
+that layer asks of this one. A file is the interchange format; a pointer to a
+file is somebody else's record.
 
 **Hand-written sets.** ``RecordingStore.from_path`` accepts any JSON object,
 which means a set can be typed by hand — and hand-writing a recording file is
@@ -54,6 +55,7 @@ possible and remains dishonest.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple
@@ -328,11 +330,90 @@ def import_set(source: Any) -> ImportedSet:
     )
 
 
+def describe_set(path: Any) -> Dict[str, Any]:
+    """What a recorded-set FILE is, derived from its bytes — plan rulings R12, R13.
+
+    Reads the file **once**, hashes exactly those bytes, and derives every other
+    field from the same bytes, so the identity and the description cannot come
+    from two different reads of a file that changed in between. ``format``
+    decides the door (R12): an exported envelope goes through :func:`import_set`,
+    which refuses a manifest that no longer describes its responses; a bare
+    ``{request_key: response}`` map goes through :class:`RecordingStore`.
+
+    Returns exactly: ``path`` (the resolved absolute path that was opened —
+    so the caller cannot name one file and hash another), ``sha256`` (bare
+    hex, so ``sha256sum`` output compares directly), ``responses``, ``key_schema_version``, ``identities``,
+    ``prompts``, the sorted ``request_keys``, and ``credential_level``.
+
+    ⚠ **Named for what it describes, never for the L2 record it feeds** (R13).
+    This package may not import ``mindsos_knowledge``; a function here that
+    spoke the pointer's vocabulary would be the same layering error pointing
+    the other way. What is stored, and as what, is the caller's decision.
+
+    ⚠ **Nothing unverifiable is returned** (R9): no vendor, and no capture time
+    — no payload carries one. ``credential_level`` is the one level every
+    payload states, or ``None`` when none states one. A set whose payloads state
+    ``None`` (no credential in force) describes the same as an unstamped one;
+    the FILE still tells them apart, and the hash makes the file verifiable.
+
+    Raises:
+        RecordedSetRefused: the file is not a recorded set (R10 — the recorder
+            has no don't-know): not JSON, not an object, an export this
+            package would not import, a payload no client produced, NO
+            responses, or credential levels that no single value describes
+            — more than one level, or some payloads stamped and some not. That
+            last rule is new here: :func:`export_set` refuses only a SUPPLIED
+            level that disagrees, and exports a multi-level set silently.
+    """
+    opened = Path(path).resolve()
+    data = opened.read_bytes()
+    digest = hashlib.sha256(data).hexdigest()
+    try:
+        raw = json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as exc:
+        raise RecordedSetRefused(
+            f"{str(path)!r} is not a recorded set: it does not parse as UTF-8 "
+            f"JSON ({exc})."
+        ) from exc
+    if not isinstance(raw, Mapping):
+        raise RecordedSetRefused(
+            f"{str(path)!r} is not a recorded set: a set is a JSON object, got "
+            f"{type(raw).__name__}."
+        )
+    store = import_set(raw).store if "format" in raw else RecordingStore(raw)
+    if len(store) == 0:
+        raise RecordedSetRefused(
+            f"{str(path)!r} holds no responses. A pointer to it would name no "
+            "request_key, so no conclusion could ever be traced to it."
+        )
+    manifest = _derive_manifest(store)
+    levels = _declared_levels(store)
+    stamped = levels - {_UNSTAMPED}
+    if len(stamped) > 1 or (stamped and _UNSTAMPED in levels):
+        raise RecordedSetRefused(
+            f"{str(path)!r} carries credential levels "
+            f"{sorted(levels, key=repr)!r}. One value cannot describe them, "
+            "and a description half-true of its file reads as a broken "
+            "recording rather than as a mixed one - split the set."
+        )
+    return {
+        "path": str(opened),
+        "sha256": digest,
+        "responses": manifest["responses"],
+        "key_schema_version": manifest["key_schema_version"],
+        "identities": manifest["identities"],
+        "prompts": manifest["prompts"],
+        "request_keys": sorted(json.loads(store.to_json())),
+        "credential_level": next(iter(stamped)) if stamped else None,
+    }
+
+
 __all__ = [
     "EXPORT_FORMAT",
     "REQUIRED_PROVENANCE",
     "ImportedSet",
     "RecordedSetRefused",
+    "describe_set",
     "export_set",
     "import_set",
 ]

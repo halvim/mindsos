@@ -90,6 +90,7 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
     Phase 50 (ADR-0150 §am-6) added installed-skills."""
     from mindsos_knowledge import (
         ROLE_PROMPTS,
+        ROLE_RECORDED_SETS,
         ROLE_CAPACITY_GAPS,
         ROLE_INSTALLED_SKILLS,
         ROLE_LEARNED_PARAMETERS,
@@ -130,6 +131,8 @@ def test_upper_layer_roles_matches_adr_0045() -> None:
         # agrees with ADR-0045, which is a different document — deriving it
         # would make it pass by construction and check nothing.
         ROLE_PROMPTS,
+        # mindsos_llm plan item I-10 - recorded-set pointers, Local-only.
+        ROLE_RECORDED_SETS,
     })
 
 

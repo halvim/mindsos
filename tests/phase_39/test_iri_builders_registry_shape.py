@@ -49,6 +49,7 @@ def test_registry_contains_three_entries_post_rename() -> None:
         ROLE_PENDING_PROMOTIONS,
         ROLE_POLICIES,
         ROLE_PROMPTS,
+        ROLE_RECORDED_SETS,
         ROLE_SUBMINDS,
     )
     assert set(_IRI_BUILDERS.keys()) == {
@@ -77,6 +78,8 @@ def test_registry_contains_three_entries_post_rename() -> None:
         # and phase_34 now asserts what it is actually about - that mint_iri
         # dispatches for every REGISTERED pair.
         (ROLE_PROMPTS, "PromptEdition"),
+        # mindsos_llm plan item I-10 - recorded-set pointers.
+        (ROLE_RECORDED_SETS, "RecordedSet"),
     }
 
 

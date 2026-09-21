@@ -140,6 +140,7 @@ from .identifiers import (
     ROLE_INSTALLED_CAPACITIES,
     ROLE_POLICIES,
     ROLE_PROMPTS,
+    ROLE_RECORDED_SETS,
     ROLE_INSTALLED_SKILLS,
     ROLE_LEARNED_PARAMETERS,
     ROLE_LEARNED_PIPELINES,
@@ -169,6 +170,7 @@ from .identifiers import (
     installed_capability_iri,
     policy_edition_iri,
     prompt_edition_iri,
+    recorded_set_iri,
     learned_pipeline_iri,
     local_ref_key,
     memory_composite_iri,
@@ -203,6 +205,7 @@ from .schemas import (
     build_installed_capacities_schema,
     build_policies_schema,
     build_prompts_schema,
+    build_recorded_sets_schema,
     build_learned_pipelines_schema,
     build_lexicon_schema,
     build_ontology_schema,
@@ -246,6 +249,7 @@ __all__ = [
     "ROLE_INSTALLED_CAPACITIES",
     "ROLE_POLICIES",
     "ROLE_PROMPTS",
+    "ROLE_RECORDED_SETS",
     "ROLE_INSTALLED_SKILLS",
     # feat/subminds role-graph (ADR-0150 §am-7).
     "ROLE_SUBMINDS",
@@ -279,6 +283,7 @@ __all__ = [
     "installed_capability_iri",
     "policy_edition_iri",
     "prompt_edition_iri",
+    "recorded_set_iri",
     "learned_pipeline_iri",
     # Phase 50 IRI builder (ADR-0150 §am-6).
     "skill_install_record_iri",
@@ -311,6 +316,7 @@ __all__ = [
     "build_installed_capacities_schema",
     "build_policies_schema",
     "build_prompts_schema",
+    "build_recorded_sets_schema",
     "build_learned_pipelines_schema",
     # Phase 50 builder (ADR-0150 §am-6).
     "build_installed_skills_schema",

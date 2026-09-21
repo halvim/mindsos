@@ -132,6 +132,17 @@ ROLE_POLICIES = "policies"
 # the user whose own reading produced it.
 ROLE_PROMPTS = "prompts"
 
+# ``mindsos_llm`` plan item I-10, rulings R1, R2, R8 (docs/plans/MINDSOS_LLM_PLAN.md):
+# **L2 Local HOLDS the pointer and provenance of a recorded set; the payloads
+# stay a FILE.** A conclusion reached with the borrowed model carries a
+# ``request_key``; this role is what gets from that key to the file whose
+# replay re-runs it without the model.
+#
+# **Local-only, never Global** (plan §4, ADR-0210): one user's readings are
+# not another's knowledge, and reproducibility for a third party is the
+# export's job, not a shared store's. Registered in ADR-0150 §amendment-13.
+ROLE_RECORDED_SETS = "recorded-sets"
+
 SEED_ROLES = frozenset({ROLE_ONTOLOGY, ROLE_LEXICON, ROLE_CONCEPTS})
 UPPER_LAYER_ROLES = frozenset({
     ROLE_PROMOTED_PIPELINES,
@@ -156,6 +167,8 @@ UPPER_LAYER_ROLES = frozenset({
     ROLE_POLICIES,
     # mindsos_llm I-9 (plan R2) — versioned prompt text, dual-scope.
     ROLE_PROMPTS,
+    # mindsos_llm I-10 (plan R1, R2, R8) — recorded-set pointers, Local-only.
+    ROLE_RECORDED_SETS,
 })
 ALL_ROLES = SEED_ROLES | UPPER_LAYER_ROLES
 
@@ -566,6 +579,33 @@ def prompt_edition_iri(version: str, prompt_iri: str, prompt_version: str) -> st
     return f"prompts-{v}:edition:{pid}:{pv}"
 
 
+_SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
+
+
+def recorded_set_iri(version: str, sha256: str) -> str:
+    """Recorded-set pointer (Local only; ``mindsos_llm`` I-10, plan R8, R14):
+    ``recorded-sets-<v>:set:<sha256>``.
+
+    The address IS the identity: the hex ``sha256`` of the file's bytes, bare so
+    that ``sha256sum`` output compares directly. A re-capture of the same bytes
+    therefore lands on the same address and is refused as a duplicate by the
+    store; an appended or re-exported set is different bytes and a new node.
+
+    Raises:
+        RefFormatError: ``sha256`` is not 64 lowercase hex characters. An
+            address that is not a hash would be an identity nothing can
+            verify, which is the one thing R8 rules out.
+    """
+    v = _ensure_version(version)
+    sha = str(sha256)
+    if not _SHA256_HEX_RE.match(sha):
+        raise RefFormatError(
+            f"recorded-set identity must be 64 lowercase hex characters (the "
+            f"file's sha256), got {sha!r}"
+        )
+    return f"recorded-sets-{v}:set:{sha}"
+
+
 # ── §4b Per-(role,NodeType) IRI-builder registry (ADR-0146 §am-3) ─────
 
 # Phase 39 reshape per ADR-0146 §amendment-3: tuple-key registry keyed
@@ -670,6 +710,15 @@ def _mint_prompt_edition(version: str, /, **content: object) -> str:
     )
 
 
+def _mint_recorded_set(version: str, /, **content: object) -> str:
+    """Adapter: ``recorded_set_iri`` <- ``mint_iri`` kwargs (I-10, plan R8).
+
+    Requires ``sha256``. ``KeyError`` on missing per ADR-0146 §Decision
+    (programmer error).
+    """
+    return recorded_set_iri(version, sha256=str(content["sha256"]))
+
+
 def _mint_policy_edition(version: str, /, **content: object) -> str:
     """Adapter: ``policy_edition_iri`` <- ``mint_iri`` kwargs (CORE CR: policy role).
 
@@ -748,6 +797,8 @@ _IRI_BUILDERS: dict[tuple[str, str], object] = {
     (ROLE_POLICIES, "PolicyEdition"): _mint_policy_edition,
     # mindsos_llm I-9 (plan R2).
     (ROLE_PROMPTS, "PromptEdition"): _mint_prompt_edition,
+    # mindsos_llm I-10 (plan R8).
+    (ROLE_RECORDED_SETS, "RecordedSet"): _mint_recorded_set,
 }
 
 
@@ -801,6 +852,8 @@ _PREFIXES: tuple[tuple[str, str], ...] = (
     ("policies-", ROLE_POLICIES),
     # mindsos_llm I-9 (plan R2).
     ("prompts-", ROLE_PROMPTS),
+    # mindsos_llm I-10 (plan R8).
+    ("recorded-sets-", ROLE_RECORDED_SETS),
 )
 
 # Per-role kind-extraction whitelist. The parser strips the kind
@@ -832,6 +885,8 @@ _KINDS_PER_ROLE: dict[str, frozenset[str]] = {
     ROLE_POLICIES: frozenset({"edition"}),
     # mindsos_llm I-9 (plan R2).
     ROLE_PROMPTS: frozenset({"edition"}),
+    # mindsos_llm I-10 (plan R8).
+    ROLE_RECORDED_SETS: frozenset({"set"}),
 }
 
 

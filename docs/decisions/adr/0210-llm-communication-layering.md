@@ -586,3 +586,85 @@ answer.
 still filed as `core-llm-prompt-edition-append-only-unenforced`. The writer's
 duplicate refusal is the only enforcement there is, so *shown* means retrievable,
 not verifiable.
+
+## Amendment 6 — the recorded set as I-10 builds it; amendment 4 clauses 3 and 4 CORRECTED (2026-09-20)
+
+**Amendment status:** Accepted. The decision above stands. This transcribes plan
+rulings **R8, R9, R10, R12** (OWNER 2026-09-18) and **R13–R18** (delegated by the
+owner 2026-09-20) into the ADR that amendment 4 left contradicting them. Amendment
+4's recorded-set half otherwise holds: a Local-only `recorded-sets` role, one
+NodeType `RecordedSet`, zero edges, `append_only`, the sorted `request_keys` in the
+payload, and a recorder that declares its pointer as an output.
+
+**WHAT IS CORRECTED IN AMENDMENT 4** — superseded here, not rewritten there; the
+record of what was ruled first stays readable.
+
+1. **Clause 3's property list.** `set_id`, `vendor_id` and `captured_at` are gone.
+   `set_id` would be a second spelling of the identity R8 makes the file's
+   `sha256`; `vendor_id` is stamped by nothing and checkable by nothing (R9);
+   `captured_at` is a claim about the recording that no payload carries, where
+   `recorded_at` is a fact about the write (R16, R9's rule). The properties are
+   `sha256`, `file_uri`, `responses`, `key_schema_version`, `recorded_at`,
+   `recorded_by`, `storage_mode`, and — only when present — `credential_level`
+   and `note`.
+2. **Clause 4's input.** `credential_level` leaves `core.reading_set_record`
+   (R15): it is DERIVED from the payloads (R9), and a supplied value beside a
+   derived one is the falsifiable field R9 removed `vendor_id` for.
+3. **Clause 4's don't-know is WITHDRAWN** (R10). A file that is not a recorded set
+   refuses; the recorder reads nothing, so it has nothing to be unsure of. The
+   `comprehension` family keeps `OPTIONAL_RETURN` — that is the READER's shape,
+   and this amendment does not touch it. ⚠ R10's *"the reason is not lost"* holds
+   on one condition, measured: `runtime.invoke` emits the problem-trace record only
+   when both a sink and a `request_id` are present.
+4. **Clause 4's derivation path.** Not `RecordingStore.from_path` in the body, but
+   **`mindsos_llm.recorded_sets.describe_set(path)`**, public (R12, R13). It reads
+   the file ONCE, hashes those bytes, detects `format` (R12), loads a bare map
+   through `RecordingStore` or an export through `import_set` — which already
+   refuses a manifest that does not describe its responses — and returns the
+   derived facts. It is named for what it DESCRIBES, a file, not for the L2 record
+   that file feeds. The capacity body makes no filesystem call: measured before
+   I-10, `mindsos_capacity` and `mindsos_knowledge` contained none, and they still
+   do not.
+
+**THE SHAPE, AS BUILT.**
+
+* **Identity** (R8, R14): the node address is `recorded-sets-<v>:set:<sha256>`
+  and `sha256` is also a property — the `prompts` precedent, where the address
+  fields are properties too. The hash is over the FILE's bytes, so the same
+  responses held as a bare map and as an export are two files and two pointers.
+  A re-capture of the same bytes REFUSES (R18, `PromptEditionExistsError`'s
+  shape): `append_only`, and the identity is the content.
+* **`file_uri`** (R18) is the resolved absolute path `describe_set` opened — never
+  a caller's argument, so a pointer cannot name one file and hash another — with
+  no scheme: nothing parses it, and a scheme would imply a resolver that does not exist. Portability
+  is the export's job, not the pointer's.
+* **`credential_level`** (R9, R15) is derived and refused on contradiction or
+  multiplicity. ⚠ **This is new work, not reuse:** R9 called it *"the rule
+  `export_set` already enforces"*, and measured that is half true — `export_set`
+  refuses only a SUPPLIED level that disagrees; with none supplied, a multi-level
+  set exports silently. `describe_set` refuses it. A set whose every payload
+  predates decisions 5 and 6 stamps nothing, and the property is omitted.
+* **Payload** (R17): a `dict` — the derived manifest (`responses`,
+  `key_schema_version`, `identities`, `prompts`) plus the sorted `request_keys` —
+  which ADR-0182's codec encodes into `_value_json`. `storage_mode` is declared in
+  `STORAGE_MODE_FIELDS` AND written on the node; `prompts` declared it and never
+  wrote it.
+* **The recorder** (R7, amendment 4): `capacity:comprehension:record_reading_set`,
+  `writes=True`, `outputs=(core.recorded_set_pointer,)`, writing through
+  `context.writeable` at `scope="local"`, with its installer in the same module
+  (I-16's guard requires it).
+
+**What *shown* means here** (R8): **verifiable.** Re-hash the file `file_uri`
+names and compare it with `sha256`. A prompt edition is only retrievable, because
+its `append_only` is declared and not enforced
+(`core-llm-prompt-edition-append-only-unenforced`).
+
+**For I-12 — measured, and forced by the shape.** Getting from a conclusion to its
+set is a DECODE SCAN. Property bags are primitives-only, so the sorted keys cannot
+be lifted out of the payload, and ADR-0182 rule 5 makes a JSON-encoded value
+opaque to Cypher. I-12 scans the role's nodes and binary-searches each decoded key
+list; the role is Local and per-user, which bounds it.
+
+**Filed, not built:** `core-llm-recorded-set-has-no-file-writer` — nothing in the
+tree writes a recorded-set file (`CapturingLLM` fills a store in memory; `export_set`
+has no caller outside tests), so the file a pointer names is operator-produced today.
