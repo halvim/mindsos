@@ -113,20 +113,25 @@ about a recording rather than a property of it — which `mindsos_llm/recorded_s
 refuses by design. It stays available on the exported envelope's `captured_over`, which
 the pointer names. `credential_level` is **derived from the payloads** and refused on
 contradiction or multiplicity, the rule `export_set` already enforces.
-**OWNER 2026-09-18.**
+**OWNER 2026-09-18.** ⚠ **Premise CORRECTED 2026-09-20 by measurement, ruling unchanged:**
+`export_set` refuses only a SUPPLIED level that disagrees; with none supplied it exports a
+multi-level set silently. The refusal is new work, built in `describe_set` (R13).
 
 **R10 — the recorder has no don't-know.** The `comprehension` family's `OPTIONAL_RETURN`
 is a *reader's* shape — a reading that cannot answer returns a null value. The recorder
 reads nothing: every failure is *"this file is not a recorded set"*, which refuses. The
 reason is not lost — `runtime.invoke` emits a problem-trace record carrying the
 exception message. ⚠ Amendment 4's *"the reason on the paired record"* named a record
-its own output list does not have. **OWNER 2026-09-18.**
+its own output list does not have. **OWNER 2026-09-18.** ⚠ **Premise NARROWED 2026-09-20:**
+the trace record is emitted only when a sink AND a `request_id` are both present.
 
 **R11 — every named L2 role is recorded in ADR-0150**, enforced by a sentinel deriving
 from `ALL_ROLES`. Measured: §am-5's escape clause requires a §Revisions entry per new
 **named** role, and it has been skipped twice — `policies` carries the literal
 placeholder `§amendment-<N>` in `identifiers.py`, and `prompts` appears nowhere in
-ADR-0150. **OWNER 2026-09-18.**
+ADR-0150. **OWNER 2026-09-18.** ⚠ **Count CORRECTED 2026-09-20:** FOUR roles were
+unregistered, not two — also `learned-pipelines`, and `request-patterns`, whose rename
+never reached the ADR. All four registered by ADR-0150 amendment-12 (`537fd82`).
 
 **R12 — `set_path` may name a bare recording OR an exported set**, detected by the
 `format` key, because refusing the export format would point L2 at the one artifact a

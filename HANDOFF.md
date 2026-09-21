@@ -258,7 +258,10 @@ refutable by one grep.**
 Layering: **L0** owns the user's vendor id, credential level, mode and
 credential custody; **`mindsos_llm`** owns the wire; **L2 Local** owns prompt
 versions and the pointer to a recorded set (payloads stay a file, never
-Global); **L3**'s `comprehension_v0.build_reader` is the reading capacity —
+Global); ⚠ **SUPERSEDED IN PART:** prompt editions are DUAL-SCOPE, the `prompts`
+role (owner ruling 2026-09-14, ADR-0210 am-4/am-5, built `a1687f2`); only recorded
+sets are Local-only (`recorded-sets`, built `780ee1b`). **For current state read the
+plan, `docs/plans/MINDSOS_LLM_PLAN.md` — as of 2026-09-21 only I-12 is open.** **L3**'s `comprehension_v0.build_reader` is the reading capacity —
 **no new one was added**, because it already mints one per reading.
 `mindsos_llm` never imports `mindsos_server` (ADR-0010 §I-S1), so the module
 that makes the call cannot read the store the credential came from.

@@ -469,6 +469,8 @@ Filed rather than guessed, as `core-llm-prompt-edition-append-only-unenforced`.
 **Re-open trigger: a consumer must prove a shown prompt is the one that ran.**
 
 **3. The recorded set is a POINTER NODE in a new Local-only role, `recorded-sets`.**
+⚠ **Its property list is SUPERSEDED by amendment 6** (no `set_id`, `vendor_id` or
+`captured_at`; `credential_level` derived). The role and the payload stand.
 One NodeType, `RecordedSet`; no edge types — the `learned-parameters` /
 `learned-pipelines` / `policies` zero-edge shape. Discipline `append_only`: a capture
 is never rewritten, and a re-export is a new node.
@@ -484,7 +486,10 @@ is never rewritten, and a re-export is a new node.
 * **Never Global**, unchanged — one user's readings are not another's knowledge.
   Reproducibility stays with `export_set` / `import_set`.
 
-**4. The recorder's contract.** `capacity:comprehension:record_reading_set` — the
+**4. The recorder's contract.** ⚠ **Its input, derivation path and don't-know are
+SUPERSEDED by amendment 6** (`credential_level` leaves the input; the file is read by
+`describe_set`; the recorder refuses and has no don't-know). The rest stands.
+`capacity:comprehension:record_reading_set` — the
 **`comprehension`** family per amendment 3, never an `llm` one.
 
 * **Input** — one record DataState, `core.reading_set_record`: `set_path` (str),
@@ -518,7 +523,8 @@ is never rewritten, and a re-export is a new node.
   module**, so this is a documented contract and not a gate; this amendment does not
   pretend otherwise.
 
-**Against the end state.** *Identified*: already — `origin_producer_kind`
+**Against the end state.** ⚠ *Shown* below names a `PolicyEdition` — **withdrawn by
+amendment 5**: a prompt is a `PromptEdition` in the `prompts` role. *Identified*: already — `origin_producer_kind`
 `document_reading` and `origin_method` `read_by_model`, widened by I-11. *Shown*: the
 `PolicyEdition` the conclusion's `prompt_iri` + `prompt_version` name. *Re-run without
 the model*: the conclusion's `request_key`, the `RecordedSet` payload that lists it,

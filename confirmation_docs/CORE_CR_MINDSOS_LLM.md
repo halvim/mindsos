@@ -778,6 +778,9 @@ each an addition to slice 1 rather than a reversal:
    answer into graph nodes. **L2 Local holds the pointer and provenance** —
    which set, when recorded, vendor, model and prompt versions — and the
    payloads stay a file the pointer names.
+   ⚠ **SUPERSEDED IN PART 2026-09-21:** the pointer stores no `vendor_id` — nothing
+   stamps it, nothing can check it (plan R9). Shape as built: ADR-0210 amendment 6,
+   shipped as plan item I-10 (`780ee1b`).
 3. **The gate has no user.** Replay tests need a Local scope, so gate
    fixtures need a test session. Small, but it must exist before slice 1 can
    test replay at all.
