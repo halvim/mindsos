@@ -75,6 +75,6 @@ its prose `**Status:**` line, its README row and any summary cell all agree.
 RULES §9 states the four edits a status change needs, and that an in-file
 amendment uses `**Amendment status:**` so it does not shadow the ADR's own.
 
-The "Model C hybrid" this section used to describe — ADRs kept outside the
-repo, at a project-root path, tracked by the filesystem rather than by git —
-is retired; nothing in the tree reads that layout any more.
+The retired "Model C hybrid" this section used to describe kept ADRs outside
+the repo, at a project-root path, tracked by the filesystem rather than by git.
+Nothing in the tree reads that layout any more.

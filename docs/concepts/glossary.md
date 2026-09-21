@@ -15,8 +15,8 @@ codebase. Each definition cross-links to the page(s) that elaborate.
 **ADR (Architecture Decision Record).** A versioned decision document
 under `docs/decisions/adr/`. ADRs carry a Status (Proposed →
 Accepted → Superseded / Withdrawn) and §amendment-N blocks for
-non-overriding clarifications. ADRs live in the parent project tree
-per Model C; halvim references them by number.
+non-overriding clarifications. ADRs live in this repo, under
+`docs/decisions/adr/` (the retired Model C layout once kept them outside it).
 
 **Alignment.** An L2 role-graph that records cross-source links
 between concepts and lexical units (e.g., FrameNet frame → WordNet
@@ -172,10 +172,9 @@ MetaEdges + MetaHyperEdges (connecting graphs) and IntergraphEdges
 (connecting Nodes across contained graphs). The MindsOS "5-layer
 metagraph system" name comes from this structure.
 
-**Model C.** The arrangement where ADRs + parent-tree
-coordinated-changes live in `Layered Intelligence/`, separately
-from halvim's git repo. Halvim references parent artifacts but
-doesn't track them. See `[[feedback-docs-source-of-truth]]`.
+**Model C (retired).** The pre-Phase-38 layout that kept ADRs and coordinated-changes docs outside this repo, in a separate project tree (retired).
+Nothing reads it any more: ADRs live in `docs/decisions/adr/`, coordinated-changes in
+`docs/dev/coordinated-changes/`.
 
 **Node.** The L1 primitive — a named record with `value` + `type` +
 properties + identity, belonging to one Graph.

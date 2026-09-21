@@ -131,6 +131,8 @@ GUARDED: dict[str, tuple[str, str]] = {
                                     "every path / ADR number / link / symbol a live or index doc names resolves"),
     "live-page-verified-at": ("tests/architecture/test_live_pages_declare_verified_at.py",
                               "every live page declares verified_at: <sha> | unverified"),
+    "retired-layout-frame": ("tests/architecture/test_no_retired_layout_frame.py",
+                             "no live line presents the retired Model C layout as current"),
 }
 
 #: The extractor classes below that a guard holds at 0 false, and in which

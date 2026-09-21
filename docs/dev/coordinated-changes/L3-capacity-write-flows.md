@@ -65,6 +65,6 @@ canonical wording.
 - ADR-0145, ADR-0146, ADR-0143, ADR-0147.
 - `docs/dev/internals/capacity.md` — internals doc with the
   stub-phase carve-out details.
-- Historical: `/Layered Intelligence/docs/dev/coordinated-changes/L3-capacity.md`
+- Historical, outside this repo under the retired Model C layout: `L3-capacity.md`
   (frozen 2026-04-22) documents the L0 server-seam refactor that ran
   Phase 18+; not the write-capacity scope.

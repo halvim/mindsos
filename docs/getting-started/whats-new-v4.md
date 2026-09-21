@@ -96,8 +96,9 @@ with the L4 session orchestrator:
 - `include_deprecated` parameter discipline across L3 walks.
 - `--install-builtins=<family>` CLI flag on `invoke` (waits for a
   second builtins family).
-- `mkdocs build --strict` lift — depends on Model C remediation
-  (Phase 38 R4-PB-A).
+- `mkdocs build --strict` lift — its blocker, the retired Model C layout, is
+  gone; the lift itself is still open (`mkdocs.yml` has `strict: false`, and
+  CI runs `mkdocs build --quiet`). Phase 38 R4-PB-A.
 - 4 unconsumed L2 validators (`validate_local_to_global_ref`,
   `validate_alignment_role_naming`, `validate_ref_type`,
   `validate_promotion_candidate`) — await per-flow consumer
