@@ -707,6 +707,22 @@
   "recent": [
     {
       "kind": "docs",
+      "name": "Lane scripts - one paste per step: tools/slice_start.sh, slice_commit.sh, gate.sh, slice_land.sh, each ending in one ANSWER line",
+      "sha": "8ffd6b2 (squash of feat/lane-scripts @ 6de6539, PR #234). Parent 537fd82 (PR #233 landed after this branch's base 52bc1c2), so the empty-diff route is closed: RULES 12.2(a) discharged by a MERGED-TREE run at ef40b11.",
+      "tag": "none",
+      "gate": "CI on PR #234: SUCCESS. LINUX box, gate.sh itself: branch tip 6de6539 -> 182 passed / 0 failed across tests/architecture + test_adr_status_consistency; merged tree ef40b11 (includes #233) -> 187 passed / 0 failed. tests/architecture/test_lane_scripts.py (7 tests) pins: exists+executable, bash -n parses, set -euo pipefail, prints ANSWER, never git add -A, gate.sh has an EXIT trap + per-run log stamp + ref slug + worktree cleanup reporting (wt_gone / registered / rm_me), slice_land.sh merges only on a SUCCESS rollup and measures tip-vs-squash.",
+      "what": "The owner asked why verifying pages took many pasted boxes. The recurring sequences (start a slice worktree, commit explicit paths, gate a sha in a throwaway worktree, land a PR) are now four tracked scripts, each one paste with the ANSWER line last; docs/dev/contributing.md has the table (verified_at 52bc1c2). *** FOUR DEFECTS IN gate.sh WERE FOUND ONLY BY RUNNING IT: (1) no ANSWER on an early abort -> EXIT trap; (2) the per-sha log was overwritten by a later run -> per-run stamp; (3) a swallowed cleanup failure left stale worktrees -> reported, not hidden; (4) a '/' in a ref (origin/main) broke the log path -> slug. A FIFTH is a box fact, not a script bug: the gated run leaves root-owned <wt>/.mindsos files and the Linux box has no passwordless sudo, so the worktree DIRECTORY survives; gate.sh prunes the registration and prints rm_me=<dir> for one interactive sudo rm -rf. *** Not guarded: that the scripts do the right thing end to end - the shape guard is a floor; the real proof is the two gate runs above.",
+      "docs": [
+        "tools/slice_start.sh",
+        "tools/slice_commit.sh",
+        "tools/gate.sh",
+        "tools/slice_land.sh",
+        "tests/architecture/test_lane_scripts.py",
+        "docs/dev/contributing.md"
+      ]
+    },
+    {
+      "kind": "docs",
       "name": "Every named L2 role is registered in ADR-0150 - plan R11 enforced (amendment-12 + a sentinel); the prerequisite ship for I-10",
       "sha": "537fd82 (squash of feat/recorded-set-home @ c13e677, PR #233). Parent 52bc1c2 is the base c13e677 was rebased onto, so RULES 12.2(a) is discharged by an EMPTY git diff c13e677 537fd82 (0 files).",
       "tag": "role-register-confirmed -> 537fd82, annotated, verified local and remote by dereferencing '<tag>^{}'.",
