@@ -58,7 +58,20 @@ README = ADR_DIR / "README.md"
 CANON = {"accepted", "proposed", "superseded", "deferred", "withdrawn"}
 #: Pull the ADR filename out of a markdown link target, with or without
 #: a ``../adr/`` prefix (the summary pages use one, the README does not).
-_ADR_HREF = re.compile(r"\]\((?:\.\./adr/)?([0-9]{4}[-A-Za-z0-9]*\.md)\)")
+_ADR_HREF = re.compile(r"\]\((?:\.\./adr/|adr/)?([0-9]{4}[-A-Za-z0-9]*\.md)\)")
+
+#: The two decision pages that claim a status for the ADRs they list, which
+#: nothing checked until 2026-09-21: ``proposed.md`` said its entries were
+#: "not yet scheduled" while most had shipped, and ``superseded.md``'s
+#: "in flight" table called two long-superseded ADRs Accepted. Their links
+#: are ``adr/NNNN-*.md`` (relative to ``docs/decisions/``), a form
+#: ``_ADR_HREF`` did not accept, so ``check_index`` saw zero rows there.
+DECISIONS_DIR = ADR_DIR.parent
+PROPOSED_PAGE = DECISIONS_DIR / "proposed.md"
+SUPERSEDED_PAGE = DECISIONS_DIR / "superseded.md"
+INDEX_PAGES = (PROPOSED_PAGE, SUPERSEDED_PAGE)
+_OPEN = {"proposed", "deferred"}
+_BARE_NUMBER_CELL = re.compile(r"^([0-9]{4})$")
 
 
 def _canon(text: str) -> str | None:
@@ -122,6 +135,16 @@ def _iter_table_rows(md: str):
     containing "adr", which no shipped table has — so no row was ever
     yielded. See the module docstring.
     """
+    for first, status in _status_table_rows(md):
+        m = _ADR_HREF.search(first)
+        if not m:
+            continue
+        yield status, m.group(1)
+
+
+def _status_table_rows(md: str):
+    """Yield ``(first_cell, status_cell)`` for every data row of a table
+    whose header has a cell that is exactly ``status``."""
     status_col = None
     for line in md.splitlines():
         if not line.lstrip().startswith("|"):
@@ -136,10 +159,7 @@ def _iter_table_rows(md: str):
             continue
         if set(cells[0]) <= {"-", ":", " "}:  # separator row
             continue
-        m = _ADR_HREF.search(cells[0])
-        if not m:
-            continue
-        yield cells[status_col], m.group(1)
+        yield cells[0], cells[status_col]
 
 
 def check_index(
@@ -186,6 +206,86 @@ def check_index(
     return problems
 
 
+def _statuses_by_number(adr_status: dict[str, str]) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {}
+    for fname, status in adr_status.items():
+        out.setdefault(fname[:4], set()).add(status)
+    return out
+
+
+def check_index_page(
+    path: Path,
+    adr_status: dict[str, str],
+    *,
+    headings_claim_open: bool = False,
+    superseded_section: str | None = None,
+) -> list[str]:
+    """Every status an index page states must be the ADR file's status.
+
+    Four claims, each checked against ``load_adr_statuses`` (never typed):
+
+    1. a Status-column cell on a linked row — ``check_index``;
+    2. a Status-column row that names a bare number without linking the
+       file makes a status claim nothing can check — reported, unless its
+       status cell carries no status word (e.g. "number not in use");
+    3. ``headings_claim_open``: a heading that names an ADR presents it as
+       open, so the ADR must be Proposed or Deferred — except under a
+       ``##`` section whose title says "Resolved", or a heading that itself
+       says "Resolved";
+    4. ``superseded_section``: every linked row under the ``##`` section
+       with that title must be Superseded.
+    """
+    md = path.read_text(encoding="utf-8")
+    problems = check_index(path, adr_status)
+    by_number = _statuses_by_number(adr_status)
+
+    for first, status in _status_table_rows(md):
+        m = _BARE_NUMBER_CELL.match(first)
+        if m and _canon(status) is not None:
+            problems.append(
+                f"{path.name}: row '{m.group(1)}' states status '{status}' "
+                "without linking the ADR file, so nothing checks it"
+            )
+
+    section = ""
+    for line in md.splitlines():
+        if line.startswith("## "):
+            section = line[3:]
+        if headings_claim_open and line.startswith("#") and "ADR" in line:
+            if "resolved" in section.lower() or "resolved" in line.lower():
+                continue
+            for num in re.findall(r"\b([0-9]{4})\b", line):
+                truth = by_number.get(num)
+                if truth is None:
+                    problems.append(
+                        f"{path.name}: heading names ADR-{num}, which is not an ADR file"
+                    )
+                elif not truth & _OPEN:
+                    problems.append(
+                        f"{path.name}: heading presents ADR-{num} as open but it is "
+                        f"{'/'.join(sorted(truth))}: {line.strip()}"
+                    )
+        if superseded_section and section.startswith(superseded_section):
+            if line.startswith("|"):
+                m = _ADR_HREF.search(line.split("|")[1] if line.count("|") > 1 else "")
+                if m and adr_status.get(m.group(1)) != "superseded":
+                    problems.append(
+                        f"{path.name}: '{superseded_section}' lists {m.group(1)}, "
+                        f"which is {adr_status.get(m.group(1))}"
+                    )
+    return problems
+
+
+def check_index_pages(adr_status: dict[str, str]) -> list[str]:
+    """``check_index_page`` over the two decision index pages, each with the
+    claims its own text makes."""
+    return check_index_page(
+        PROPOSED_PAGE, adr_status, headings_claim_open=True
+    ) + check_index_page(
+        SUPERSEDED_PAGE, adr_status, superseded_section="Effective supersessions"
+    )
+
+
 def main() -> int:
     print("ADR status-consistency check")
     adr_status, adr_problems = load_adr_statuses()
@@ -203,6 +303,10 @@ def main() -> int:
         for p in check_index(path, adr_status):
             print(f"  [summary]    {p}")
             all_problems.append(p)
+
+    for p in check_index_pages(adr_status):
+        print(f"  [page]       {p}")
+        all_problems.append(p)
 
     n = len(adr_status)
     from collections import Counter

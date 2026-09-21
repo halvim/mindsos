@@ -153,3 +153,79 @@ def test_phantom_row_is_reported(tmp_path):
     )
     problems = mod.check_index(readme, adr_status, require_complete=True)
     assert any("9999-not-an-adr.md" in p for p in problems), problems
+
+
+# --------------------------------------------------------------------------
+# The two decision index pages (2026-09-21, STATE.pending_designs
+# proposed-md-lists-shipped-adrs-as-unscheduled). proposed.md said its
+# entries were "not yet scheduled" while most had shipped; superseded.md
+# called two long-superseded ADRs Accepted. Nothing read either page.
+# --------------------------------------------------------------------------
+
+
+def test_index_pages_state_true_statuses():
+    mod = _load()
+    adr_status, _ = mod.load_adr_statuses()
+    for page in mod.INDEX_PAGES:
+        assert page.is_file(), f"{page} missing - the guard would pass vacuously"
+        rows = list(mod._iter_table_rows(page.read_text("utf-8")))
+        assert rows, f"{page.name}: no linked status rows parsed - the guard is disarmed"
+    problems = mod.check_index_pages(adr_status)
+    assert not problems, (
+        "a decision index page states a status the ADR file does not have:\n  "
+        + "\n  ".join(problems)
+    )
+
+
+def _page(tmp_path, text):
+    p = tmp_path / "page.md"
+    p.write_text(text, "utf-8")
+    return p
+
+
+#: fabricated statuses, so every corner below is independent of the real tree
+_FAKE = {
+    "0001-a.md": "accepted",
+    "0002-b.md": "proposed",
+    "0003-c.md": "superseded",
+    "0004-d.md": "deferred",
+}
+
+
+def test_linked_status_cell_in_adr_relative_form_is_checked(tmp_path):
+    mod = _load()
+    page = _page(tmp_path, "| ADR # | Status |\n|---|---|\n| [0001](adr/0001-a.md) | Proposed |\n")
+    assert any("0001-a.md" in p for p in mod.check_index_page(page, _FAKE))
+
+
+def test_bare_number_row_with_a_status_is_reported_and_not_in_use_is_not(tmp_path):
+    mod = _load()
+    page = _page(
+        tmp_path,
+        "| ADR # | Status |\n|---|---|\n| 0001 | Proposed |\n| 0009 | never written (number not in use) |\n",
+    )
+    problems = mod.check_index_page(page, _FAKE)
+    assert len(problems) == 1 and "'0001'" in problems[0], problems
+
+
+def test_open_heading_rule(tmp_path):
+    mod = _load()
+    page = _page(
+        tmp_path,
+        "## Open\n### Thing — ADR-0001\n### Other — ADR-0002\n### Later — ADR-0004\n"
+        "### Done — Resolved by ADR-0001\n## Resolved — record\n### Old — ADR-0003\n",
+    )
+    problems = mod.check_index_page(page, _FAKE, headings_claim_open=True)
+    assert len(problems) == 1 and "ADR-0001" in problems[0], problems
+
+
+def test_effective_supersession_rows_must_be_superseded(tmp_path):
+    mod = _load()
+    page = _page(
+        tmp_path,
+        "## Effective supersessions\n| Original | Superseded by |\n|---|---|\n"
+        "| [0003](adr/0003-c.md) | [0001](adr/0001-a.md) |\n| [0001](adr/0001-a.md) | [0002](adr/0002-b.md) |\n"
+        "## Supersessions in flight\n| Original | Superseded by |\n|---|---|\n| [0001](adr/0001-a.md) | x |\n",
+    )
+    problems = mod.check_index_page(page, _FAKE, superseded_section="Effective supersessions")
+    assert len(problems) == 1 and "0001-a.md" in problems[0], problems
