@@ -101,7 +101,13 @@ from .exceptions import (
     TransportSignatureError,
 )
 from .live import CapturingLLM, LiveLLM, Transport, decode_response
-from .recorded_sets import ImportedSet, RecordedSetRefused, export_set, import_set
+from .recorded_sets import (
+    ImportedSet,
+    RecordedSetRefused,
+    describe_set,
+    export_set,
+    import_set,
+)
 from .recording import RecordingStore, request_key
 from .replay import RecordedLLM
 
@@ -137,6 +143,7 @@ __all__ = [
     "MODE_REPLAY",
     "build_client",
     "decode_response",
+    "describe_set",
     "export_set",
     "import_set",
     "request_key",
