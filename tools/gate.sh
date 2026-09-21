@@ -19,7 +19,9 @@ paths=("$@")
 
 main="${MINDSOS_MAIN:-/home/sanmyaku/mindsos}"
 stamp="$(date +%Y%m%d-%H%M%S)-$$"
-out="${HOME}/gate-${sha}-${stamp}.txt"
+# A ref may contain "/" (origin/main); a log path may not.
+slug="${sha//\//-}"
+out="${HOME}/gate-${slug}-${stamp}.txt"
 wt="${main}-gate-${stamp}"
 step="start"; rc=99; tail_line=""; fails=""; inv=""; real_head=""
 
@@ -45,6 +47,13 @@ real_head="$(git rev-parse --short HEAD)"
 tail_line="$(tail -1 "${out}")"
 fails="$(grep '^FAILED' "${out}" | sed 's/.*:://;s/ .*//' | paste -sd, -)"
 step="inventory"; inv="$(python3 tools/claim_inventory.py 2>/dev/null | grep -m1 verification || echo 'verification: n/a')"
+# Cleanup is VERIFIED, not attempted: `worktree remove` can fail (a file the
+# checkout itself modifies), and swallowing that is how stale worktrees
+# accumulated. Fall back to rm -rf + prune, then let the trap report the state.
 step="cleanup";   cd "${main}"
 git worktree remove --force "${wt}" >/dev/null 2>&1 || true
+if [[ -d "${wt}" ]]; then
+  rm -rf "${wt}" >/dev/null 2>&1 || true
+  git worktree prune >/dev/null 2>&1 || true
+fi
 step="done"

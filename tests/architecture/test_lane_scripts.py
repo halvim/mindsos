@@ -83,7 +83,14 @@ def test_gate_always_answers_and_never_hides_a_stale_worktree():
         "gate.sh does not report leftover gate worktrees - a swallowed cleanup "
         "failure is how two of them accumulated"
     )
-    assert re.search(r'out="\$\{HOME\}/gate-\$\{sha\}-\$\{stamp\}', text), (
+    assert 'slug="${sha//\\//-}"' in text, (
+        "gate.sh does not sanitize the ref for the log path - `origin/main` "
+        "made it write into a directory that does not exist"
+    )
+    assert re.search(r'if \[\[ -d "\$\{wt\}" \]\]; then', text), (
+        "gate.sh does not verify the worktree actually went away"
+    )
+    assert re.search(r'out="\$\{HOME\}/gate-\$\{slug\}-\$\{stamp\}', text), (
         "gate.sh's log name does not carry the run - a re-run at the same sha "
         "would overwrite the earlier run's evidence"
     )
