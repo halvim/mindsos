@@ -45,7 +45,7 @@ is left to build"*. The 2026-09-05 ruling that made it the completion criterion 
 
 ---
 
-## 2. THE DESIGN RULINGS — OWNER, 2026-09-13 and 2026-09-18
+## 2. THE DESIGN RULINGS — OWNER, 2026-09-13 and 2026-09-18; DELEGATED, 2026-09-20
 
 **R1 — L3 writes the L2 record, not L0.** *"it should be L3 as this is part of the
 reading text intelligence, not L0 server code."* Settles
@@ -136,6 +136,40 @@ third party cannot replay. The deriver producing the pointer payload — the man
 module is not the edit R2 forbids: R2 says the RECORDS are not held in `mindsos_llm`.
 **OWNER 2026-09-18.**
 
+
+---
+
+**R13–R18 are I-10's build rulings, DELEGATED BY THE OWNER 2026-09-20** — *"some of
+them you can make yourself based on the final goal instead of having me answering
+them"* — ruled by the I-10 chat after convergence passes scored against §1, and
+confirmed with *"go"*. Each is recorded as ADR-0210 amendment 6.
+
+**R13 — one public `describe_set(path)` in `mindsos_llm.recorded_sets` owns the
+file read.** It reads the file ONCE, hashes those bytes, detects `format` (R12),
+loads bare-or-exported, and returns the derived facts — `sha256`, `responses`,
+`key_schema_version`, `identities`, `prompts`, the sorted `request_keys`,
+`credential_level` — refusing on contradiction or multiplicity (R9). Named for the
+file it DESCRIBES, never for the L2 record it feeds: L2 vocabulary inside
+`mindsos_llm` would be am-4 clause 1's error pointing the other way. The L3 body
+makes no filesystem call; measured 2026-09-20, `mindsos_capacity` and
+`mindsos_knowledge` contained none.
+
+**R14 — one identity.** Address `recorded-sets-<v>:set:<sha256>`; `sha256` is the
+property and the address (the `prompts` precedent). `set_id` is not stored (R8 makes
+it a second spelling), nor `vendor_id` (R9).
+
+**R15 — `credential_level` leaves the input record.** Derived (R9), and omitted
+when every payload is unstamped.
+
+**R16 — `captured_at` is `recorded_at`.** No payload carries a capture time, so
+`captured_at` would be a claim about the recording; the write time is a fact about
+the write. R9's rule applied to a field R9 did not name.
+
+**R17 — the payload is a `dict`** (ADR-0182's codec encodes it), and
+`storage_mode` is declared AND written — `prompts` declared it and never wrote it.
+
+**R18 — a re-capture of the same bytes REFUSES** (`PromptEditionExistsError`'s
+shape), and `file_uri` is the resolved absolute path with no scheme.
 
 ## 3. THE ITEM LIST
 
@@ -289,3 +323,17 @@ amendment.)*
   crash dump that contained no results at all. Both are in
   `STATE.recent[0]`. **I-10 is next, and it is now unblocked in the way R7
   intended: its recorder may declare its pointer as an output AND write.**
+
+- **2026-09-20** — **R11 ENFORCED AS I-10's PREREQUISITE, and R13–R18 delegated.**
+  PR #233 (`537fd82`, tag `role-register-confirmed`) shipped ADR-0150 amendment-12
+  and the sentinel that derives the register's domain from `ALL_ROLES`. It shipped
+  BEFORE I-10 rather than inside it for the reason I-15 did — one claim per gate —
+  and needed no plan amendment, since R11 already authorised it. ⚠ **Three rulings'
+  premises were corrected by measurement, none reversed:** R11 undercounted the
+  unregistered roles by two (`learned-pipelines`, and `request-patterns`, whose
+  rename never reached the ADR); R9's *"the rule `export_set` already enforces"* is
+  half true (it checks only a SUPPLIED level); R10's problem trace needs a sink AND
+  a `request_id`. **R13–R18** are I-10's build rulings, **delegated by the owner**
+  (*"some of them you can make yourself based on the final goal"*) and confirmed with
+  *"go"* / *"proceed"*. Filed: `core-llm-recorded-set-has-no-file-writer` — nothing
+  in the tree writes the file a pointer names.

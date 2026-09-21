@@ -14,8 +14,10 @@ enforcement, and each test pins ONE measured claim:
   realms of the role that actually holds them. Narrow it and the ruling is
   unimplementable.
 * **``comprehension`` is a FAMILY_RULES key.** Amendment 3 places the recorder
-  in that family rather than an ``llm`` one; a family that stops existing turns
-  the recorder's don't-know contract into the permissive default silently.
+  in that family rather than an ``llm`` one. ⚠ **Amendment 6 (plan R10) withdrew
+  the recorder's don't-know**: ``OPTIONAL_RETURN`` is the READER's shape, and the
+  recorder refuses. The family must still exist, or every reader's contract falls
+  to the permissive default silently.
 * **The amendment is labelled ``**Amendment status:**``.** ADR-0157/0210's
   checker reads the FIRST ``**Status:**`` line as the ADR's own (RULES §9), so
   an amendment that uses the bare label shadows the ADR's real status.
@@ -143,9 +145,10 @@ def test_the_checker_refuses_a_fabricated_single_scope_role():
 
 def test_comprehension_is_a_family_and_keeps_its_dont_know_shape():
     assert FAMILY_RULES.get("comprehension") is FamilyDontKnowShape.OPTIONAL_RETURN, (
-        "ADR-0210 am-3 places the recorder in the 'comprehension' family and "
-        "am-4 reads its don't-know as a null on the declared pointer output. "
-        "A changed shape changes the recorder's contract."
+        "ADR-0210 am-3 places the recorder in the 'comprehension' family; "
+        "OPTIONAL_RETURN is the READER's don't-know shape. (am-4 read it as "
+        "the recorder's too - WITHDRAWN by am-6 / plan R10: the recorder "
+        "refuses.) A changed shape changes every reader's contract."
     )
 
 
@@ -153,11 +156,13 @@ def test_amendment_4_uses_the_amendment_status_label():
     text = _ADR.read_text(encoding="utf-8")
     assert "## Amendment 4" in text, "ADR-0210 amendment 4 is missing"
     assert "## Amendment 5" in text, "ADR-0210 amendment 5 is missing"
-    head = text.split("## Amendment 4", 1)[1]
-    assert "**Amendment status:**" in head, (
-        "RULES §9: an in-file amendment labels its status '**Amendment "
-        "status:**'. The bare label shadows the ADR's own status line."
-    )
+    assert "## Amendment 6" in text, "ADR-0210 amendment 6 is missing"
+    for n in ("4", "6"):
+        head = text.split("## Amendment " + n, 1)[1].split("\n## ", 1)[0]
+        assert "**Amendment status:**" in head, (
+            f"RULES §9: amendment {n} must label its status '**Amendment "
+            "status:**'. The bare label shadows the ADR's own status line."
+        )
     assert text.count("\n**Status:**") == 1, (
         "an amendment used the bare '**Status:**' label — the ADR checker "
         "reads the FIRST one as the ADR's own status."
