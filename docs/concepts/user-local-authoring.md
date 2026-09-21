@@ -98,7 +98,8 @@ business-logic failure → record; programmer error → exception.
 ## Schema strictness
 
 Per [ADR-0149](../decisions/adr/0149-l2-role-schemas-strict-false-and-tightening-rule.md)
-(Accepted): all 9 L2 role-graph schemas ship at `strict=False` until a
+(Accepted): every L2 role-graph schema ships at `strict=False`
+(`schema_for_role`'s default) until a
 per-role tightening ADR amendment runs (`strict_support.py` inventory
 output + 2-week-no-edit observation + ADR amendment naming the flip).
 The 2-week rule applies symmetrically to Local-authored content;

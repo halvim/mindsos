@@ -5,8 +5,8 @@ verified_at: unverified
 
 # Knowledge addition lifecycle (L2)
 
-L2's role-set is closed at **15 named entries + 1 parametric alignment
-template** per
+L2's role-set is closed — a fixed list of named roles plus the
+parametric `alignment:` and `dataset:` prefixes — per
 [ADR-0150](../decisions/adr/0150-l2-knowledge-lifecycle.md) and its
 amendments (§am-5 Phase-43 +4, §am-6 `installed-skills`, §am-7
 `subminds`). See [role-graphs.md](role-graphs.md) for the full set.
