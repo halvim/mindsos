@@ -17,7 +17,7 @@ When an ADR becomes superseded:
 
 ## Effective supersessions
 
-These supersessions are **in effect** — the superseding ADR's code has shipped. Each original ADR's front-matter is `status: Superseded`; the prose Status line names the replacement.
+These supersessions are **in effect** — the superseding ADR's code has shipped. Each original ADR's status is Superseded, and `tests/test_adr_status_consistency.py` fails if a row here is not; the prose Status line names the replacement.
 
 | Original | Superseded by | Effective | Notes |
 |----------|---------------|-----------|-------|
@@ -36,6 +36,8 @@ These supersessions are **in effect** — the superseding ADR's code has shipped
 | [0104](adr/0104-l4-replan-always-on.md) | [0173](adr/0173-replan-check-dispatch-and-invalidation.md) | Phase 47 | Always-on replan shipped as replan-check dispatch. |
 | [0105](adr/0105-l4-replan-atomicity-discard.md) | [0173](adr/0173-replan-check-dispatch-and-invalidation.md) | Phase 47 | Discard-and-regenerate replan atomicity shipped with 0173. |
 | [0106](adr/0106-l4-planning-ownership.md) | [0172](adr/0172-phase-1-five-step-task-interpretation.md) | Phase 47 | Planning-ownership (L4 orchestrates; planning is an L3 capacity) shipped via the v0 planning catalog. |
+| [0007](adr/0007-metagraph-snapshot-rollback.md) | [0118](adr/0118-per-user-transactional-promotion.md) | server pivot | Cross-user atomic promotion model replaced by per-user transactional + release-boundary atomicity. The `MetagraphSnapshot` machinery itself is retained; only its use for cross-user rollback is superseded. ADR-0129 documents the narrowed scope. |
+| [0037](adr/0037-instancing-vocabulary-in-core.md) | [0132](adr/0132-instancing-moved-to-mindsos-instances.md) | L1 redesign | Instancing vocabulary moves out of Core to a sibling `mindsos_instances` package. |
 
 The remaining design-phase L4 menu ADRs (0102, 0107–0112) plus 0082/0083 were **not** carried into v1 as specced and are marked **Deferred** on their own files (revisit post-v1 / WSD); the live L4/L5 architecture is [ADRs 0163–0181](summary/intelligence.md).
 
@@ -45,9 +47,7 @@ These supersessions have been **proposed** by later ADRs and become effective wh
 
 | Original | Status | Superseded by | Notes |
 |----------|--------|---------------|-------|
-| [0007](adr/0007-metagraph-snapshot-rollback.md) | Accepted *(supersession proposed)* | [0118](adr/0118-per-user-transactional-promotion.md) | Cross-user atomic promotion model replaced by per-user transactional + release-boundary atomicity. The `MetagraphSnapshot` machinery itself is retained; only its use for cross-user rollback is superseded. ADR-0129 documents the narrowed scope. |
 | [0029](adr/0029-piggyback-metadata-via-metagraph-settings.md) | Accepted *(supersession proposed)* | [0130](adr/0130-property-bag-on-metagraph-graph.md) | `:MetagraphSettings` JSON-singleton interim mechanism replaced by typed `properties: Dict` on `Metagraph` / `Graph`. Existing settings migrate on first load. |
-| [0037](adr/0037-instancing-vocabulary-in-core.md) | Accepted *(supersession proposed)* | [0132](adr/0132-instancing-moved-to-mindsos-instances.md) | Instancing vocabulary moves out of Core to a sibling `mindsos_instances` package. |
 
 ## Amendments in flight
 
@@ -64,7 +64,7 @@ These ADRs are not superseded but are *amended* — the original decision stands
 | [0001](adr/0001-dedicated-server-layer.md) | Accepted | [0136](adr/0136-server-as-orthogonal-layer.md) | Server-as-separate-package decision unchanged; placement clarified from "Layer 0" to "orthogonal." |
 | [0006](adr/0006-promotion-locking.md) | Accepted | [0118](adr/0118-per-user-transactional-promotion.md) | Per-user mutex retained; `GLOBAL_PROMOTE_LOCK` renamed `RELEASE_SHIP_LOCK` and used only at release-ship. |
 | [0016](adr/0016-cross-graph-references-via-property-prefix.md) | Accepted | [0128](adr/0128-hybrid-xref-cross-metagraph-refs.md) | `ref:<role>` retained for intra-metagraph; XRef takes over cross-metagraph. |
-| [0083](adr/0083-pipeline-promotion-transitive.md) | Proposed | [0118](adr/0118-per-user-transactional-promotion.md) | Capacity-layer ADR-0083 (transitive promotion of pipeline dependencies, formerly capacity-ADR-024) is superseded by the unified release manifest. |
+| [0083](adr/0083-pipeline-promotion-transitive.md) | Deferred | [0118](adr/0118-per-user-transactional-promotion.md) | Capacity-layer ADR-0083 (transitive promotion of pipeline dependencies, formerly capacity-ADR-024) is superseded by the unified release manifest. |
 | [0172](adr/0172-phase-1-five-step-task-interpretation.md) | Accepted | [0206](adr/0206-planning-decomposition-confidence.md) | The five-step interpretation flow and the v0 catalog stand as **shipped**. ADR-0206 §3 drops `derive_goal` and makes planning a loop, §4 retires `MAX_DEPTH`, §8 deletes the thirteen `placeholder=True` capacities — but ADR-0206 is **Proposed and unbuilt**, so 0172 stays Accepted and flips only when CORE-C4 lands. Clause-by-clause + the flip list: ADR-0172 §amendment-2. |
 
 ---
