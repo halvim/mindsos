@@ -9,8 +9,11 @@
 #    abort -- a box that prints nothing tells the owner nothing;
 #  * the log name carries the RUN, not just the sha: a second run at the same
 #    sha used to overwrite the first one's evidence;
-#  * a failed worktree removal is REPORTED (wt_gone=n), never swallowed by
-#    `|| true` -- two stale gate worktrees is how that was found.
+#  * a failed worktree removal is REPORTED, never swallowed by `|| true` --
+#    two stale gate worktrees is how that was found. The run leaves root-owned
+#    files under `<wt>/.mindsos` and the box has NO PASSWORDLESS SUDO, so the
+#    DIRECTORY can survive: the registration is pruned either way, and the
+#    leftover path is printed as `rm_me=` for one interactive `sudo rm -rf`.
 set -euo pipefail
 
 sha="${1:?usage: gate.sh <sha> [pytest-path...]}"; shift || true
@@ -30,9 +33,11 @@ answer() {
   [[ -n "${wt}" ]] && gone="$(test -d "${wt}" && echo n || echo y)"
   local stale
   stale="$(git -C "${main}" worktree list 2>/dev/null | grep -c -- "-gate-" || true)"
+  local rm_me="none"
+  [[ "${gone}" == "n" ]] && rm_me="${wt}"
   echo "ANSWER gate host=$(hostname -s) step=${step} sha=${real_head:-${sha}} rc=${rc}" \
        "result=[${tail_line}] fails=[${fails}] ${inv:-verification: n/a}" \
-       "log=${out} wt_gone=${gone} stale_gate_wts=${stale}"
+       "log=${out} wt_gone=${gone} registered=${stale} rm_me=${rm_me}"
 }
 trap answer EXIT
 
@@ -54,6 +59,8 @@ step="cleanup";   cd "${main}"
 git worktree remove --force "${wt}" >/dev/null 2>&1 || true
 if [[ -d "${wt}" ]]; then
   rm -rf "${wt}" >/dev/null 2>&1 || true
-  git worktree prune >/dev/null 2>&1 || true
 fi
+# Prune regardless: a directory that survives root-owned files must not also
+# survive as a registration, or `git worktree list` stops being readable.
+git worktree prune >/dev/null 2>&1 || true
 step="done"

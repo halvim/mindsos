@@ -79,7 +79,12 @@ def test_gate_always_answers_and_never_hides_a_stale_worktree():
     assert "trap answer EXIT" in text, (
         "gate.sh has no EXIT trap - an aborted run would print no ANSWER line"
     )
-    assert "stale_gate_wts=" in text, (
+    assert "rm_me=" in text and "git worktree prune" in text, (
+        "gate.sh must prune the registration and NAME the leftover directory: "
+        "the box has no passwordless sudo, so root-owned .mindsos files can "
+        "outlive the run and only the owner can delete them"
+    )
+    assert "registered=" in text, (
         "gate.sh does not report leftover gate worktrees - a swallowed cleanup "
         "failure is how two of them accumulated"
     )
