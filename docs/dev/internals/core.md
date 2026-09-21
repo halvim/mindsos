@@ -1,11 +1,15 @@
 ---
 last_confirmed_phase: 10
-verified_at: unverified
+verified_at: f0acd7f
 ---
 
-# Core layer internals — Persistence + Reconstruction (Phase 10)
+# Core layer internals — persistence + reconstruction
 
-This page documents the persistence-layer mechanics for `mindsos_core`.
+This page documents the persistence and reconstruction mechanics for
+`mindsos_core`. It is organised by the phase that shipped each piece
+(07–11); a sentence under a phase heading that says what that phase
+shipped is a dated record, and anything stated in the present tense is
+checked against the tree at `verified_at`.
 The substrate decisions live in the ADRs under `docs/decisions/adr/` in this
 repo (see [Repo layout](../repo-layout.md)).
 
@@ -18,7 +22,7 @@ Cross-references:
 - [ADR-0126](../../decisions/adr/0126-async-client-via-thread-pool-wrapper.md) — AsyncClient via `asyncio.to_thread`.
 - [ADR-0127](../../decisions/adr/0127-optimistic-concurrency-on-global-writes.md) — OCC on Global writes.
 - [ADR-0130](../../decisions/adr/0130-property-bag-on-metagraph-graph.md) — `_props_json` encoding (Accepted in Phase 09).
-- [ADR-0128](../../decisions/adr/0128-hybrid-xref-cross-metagraph-refs.md) — hybrid XRef primitive (Phase 09; Proposed until Phase 14 L2 consumer).
+- [ADR-0128](../../decisions/adr/0128-hybrid-xref-cross-metagraph-refs.md) — hybrid XRef primitive (Phase 09).
 - [ADR-0142](../../decisions/adr/0142-xref-cutover-for-ref-global.md) — XRef cutover (Phase 09 ships L1 commitment).
 
 ## Phase 10 — Snapshot + soft-delete substrate + RemovalImpact + XRef setters
@@ -69,8 +73,8 @@ in WAL is a real bug; the exception now propagates as
 
 **Dirty-tracking on `Metagraph`.** `mg._xrefs_dirty: Set[str]` tracks
 XRefs added programmatically without a `_persist_client` attached.
-`MetagraphRepository.persist(mg)` drains this set after the standard
-4-step lifecycle; atomic clear at end-of-loop survives partial-crash
+`MetagraphRepository.persist(mg)` drains this set inside step 1 of the
+4-step lifecycle (step 1g, before the WAL and observer steps); atomic clear at end-of-loop survives partial-crash
 retries (MERGE idempotency makes duplicate writes safe).
 
 **State-file v=3 → v=4.** Adds `xrefs[]` array. `_v3_to_v4(state)`
@@ -89,35 +93,41 @@ extend the same line; tests assert by key, not by position.
 **XRefLoader subscription.** `attach_xref_loader(mg)` is the
 idempotent helper that subscribes the loader to `mg`'s after-load
 observer queue. The callback reads `mg._persist_client` at fire time
-(set transiently by `MetagraphLoader.load` line 226 +
-`.refresh` line 324). PB-9 clear-first semantics: every refresh
+(set transiently by `MetagraphLoader.load` and
+`MetagraphLoader.refresh`). PB-9 clear-first semantics: every refresh
 clears `mg.xrefs` + inverse indexes + identity registrations +
 `_xrefs_dirty` BEFORE re-populating from the DB.
 
 ## Persistence layer
 
-The persistence package lives at `mindsos_core/persistence/` and ships
-five modules + a `reconstruction/graph_loader.py` sibling for the
-single-Graph load path:
+The persistence package lives at `mindsos_core/persistence/`; the
+reconstruction (load) side lives at `mindsos_core/reconstruction/`.
+The modules this page covers (not the full listing — `ls` answers
+that):
 
 | Module | Surface |
 |--------|---------|
 | `client.py`         | `Client` Protocol, `FalkorClient`, `InMemoryClient`, `QueryResult` |
 | `async_client.py`   | `AsyncClient` Protocol, `ThreadPoolAsyncClient` |
-| `bootstrap.py`      | `bootstrap(client)`, `DEFAULT_INDEXES` (14 entries) |
+| `bootstrap.py`      | `bootstrap(client)`, `DEFAULT_INDEXES`, `register_all_l1_replayers(client)` |
 | `graph_repository.py`     | `GraphRepository.persist` / `update_*_properties` / `remove_*` |
 | `metagraph_repository.py` | `MetagraphRepository.persist` (4-step lifecycle) |
 | `wal.py`            | `WriteAheadLog.entry(...)` context manager + raw `begin`/`commit`/`recover` |
 | `integrity.py`      | `verify_invariants(mg)` (5 buckets) + `verify_invariants_graph(g)` (3 buckets) |
+| `xref_repository.py` | XRef persistence + the six XRef WAL replayers |
+| `soft_delete.py`    | soft-delete drain + the four element-side WAL replayers |
 | `reconstruction/graph_loader.py` | `load_graph(client, graph_id) -> Graph` |
 
 ### Substrate
 
 FalkorDB for graphs (per ADR-0121); SQLite for non-graph state (per
-ADR-0004 amended). The Phase 07 persistence layer touches FalkorDB
-only. JSON state files at `~/.mindsos/<kind>-<name>.json` remain the
-authoritative tester surface (M0 B); FalkorDB is a queryable
-projection populated by `mindsos persistence sync --graph X`.
+ADR-0004 amended). The persistence layer touches FalkorDB only. The
+L1 `graph` / `metagraph` CLI commands work on JSON state files at
+`${MINDSOS_STATE_DIR or ~/.mindsos}/<kind>-<name>.json` (M0 B), and
+`mindsos persistence sync --graph X | --metagraph M` projects them into
+FalkorDB. The server boots the knowledge layer from FalkorDB
+(`bootstrap_kl_from_falkordb` in `mindsos_server/persistence/bootstrap.py`),
+not from the state files.
 
 The `Client` Protocol per ADR-0030 is intentionally minimal: three
 methods (`run_query` / `run_batch` / `close`), no transactions, no
@@ -145,12 +155,16 @@ Raw `begin` / `commit` / `list_uncommitted` / `count_uncommitted` /
 `gc` accessible for failure-injection tests (`RaisesOnNthCall` per
 P20 B → P41 B → P82 A). Recovery: `recover(client, metagraph_id)`
 iterates uncommitted entries and dispatches to replayers registered
-via `register_replayer(kind, cb)`. Phase 07 ships the mechanism only —
-no L1 consumer; L0/L2 wire replayers later.
+via `register_replayer(kind, cb)`. Phase 07 shipped the mechanism
+only; L1 consumers arrived in Phase 09 (XRef) and Phase 10
+(soft-delete) — `register_all_l1_replayers` registers ten kinds on
+every `FalkorClient`.
 
 ### Indexes (ADR-0123)
 
-`bootstrap(client)` creates 14 indexes idempotently per Phase 07 P95 B:
+`bootstrap(client)` creates every entry of `DEFAULT_INDEXES`
+idempotently (Phase 07 P95 B) — 19, pinned by
+`tests/phase_26a/test_default_indexes_19.py`:
 
 - **10 node-label `id` indexes**: `:Metagraph`, `:Graph`, `:Node`,
   `:HyperEdge`, `:MetaHyperEdge`, `:IntergraphHyperEdge`,
@@ -159,11 +173,14 @@ no L1 consumer; L0/L2 wire replayers later.
 - **3 relationship-type `id` indexes** per ADR-0021: `:Edge`,
   `:MetaEdge`, `:IntergraphEdge`. Uses FalkorDB relationship-index
   syntax `CREATE INDEX FOR ()-[r:RelType]-() ON (r.id)`.
-- **1 hot-path index** `:Node {graph_id}` for the persist-time check
-  per ADR-0123 §2.
+- **2 hot-path indexes**: `:Node {graph_id}` for the persist-time check
+  per ADR-0123 §2, and `:Metagraph {name}` for
+  `MetagraphLoader.find_by_name` (Phase 26a, ADR-0123 §am1).
+- **4 `:XRef` indexes** (Phase 09) — see the XRef table above.
 
-`FalkorClient.__init__` fires `bootstrap(self)` lazily (per P2 A) so
-testers never see a "you forgot to bootstrap" error.
+`FalkorClient.__init__` fires `bootstrap(self)` and then
+`register_all_l1_replayers(self)` (per P2 A) so testers never see a
+"you forgot to bootstrap" error.
 
 ### Persist-time check (ADR-0123 §2)
 
@@ -184,17 +201,19 @@ in-memory and emits 5 buckets:
 3. `orphan_hyperedges` — HyperEdges with zero members.
 4. `orphan_metaedges` — MetaEdge / MetaHyperEdge referencing graphs
    not present.
-5. `dangling_tombstones` — Phase 10 territory; empty in Phase 07.
+5. `dangling_tombstones` — reserved; the scanner always reports it
+   empty (nothing populates it).
 
 Sibling `verify_invariants_graph(graph) -> PartialIntegrityReport`
 runs the 3 graph-internal buckets (Phase 07 P98 A) and powers
-`mindsos persistence verify --source=db --graph G` until Phase 08's
-metagraph_loader unblocks the full scanner against FalkorDB.
+`mindsos persistence verify --source=db --graph G`;
+`--source=db --metagraph M` loads via `load_metagraph` and runs the full
+scanner (Phase 08 PB-7 A).
 
 ### AsyncClient (ADR-0126)
 
 `ThreadPoolAsyncClient` wraps a sync `Client` via `asyncio.to_thread`.
-~50 LOC. Two gotchas documented in ADR-0126:
+Two gotchas documented in ADR-0126:
 
 - **Thread-pool starvation** under high concurrency. Default asyncio
   pool is small (CPU count). Callers needing more parallelism should
@@ -206,8 +225,10 @@ metagraph_loader unblocks the full scanner against FalkorDB.
 
 ### OCC (ADR-0127)
 
-Every persistable Core element + the 2 instance classes carry a
-`_version: int = 1` field. `GraphRepository.update_*_properties`
+`Node`, `Edge`, `HyperEdge`, `MetaEdge`, `MetaHyperEdge`,
+`IntergraphEdge`, `IntergraphHyperEdge`, `ElementInstance` and
+`CompositeInstance` carry a `_version: int = 1` field (`XRef` does not;
+the `:Graph` anchor row gets `_version = 1` on first MERGE). `GraphRepository.update_*_properties`
 always bumps `_version` on the update path (P7 C); OCC enforcement
 is opt-in via the `expected_version` parameter:
 
@@ -249,9 +270,9 @@ except (redis.exceptions.ResponseError,
     raise PersistenceError(f"...") from e
 ```
 
-Graph `.properties` writer is NOT shipped at Phase 07 (P9 C; deferred
-per PHASE_MAP §7 Q4). When the writer ships (Phase 10 likely),
-`build_create_graph_anchor` gains a `props_json` parameter additively.
+The Graph `.properties` writer was deferred at Phase 07 (P9 C) and has
+not shipped: `build_create_graph_anchor` writes only
+id / name / role / `_version` and the parent link.
 
 ### 4-step persist lifecycle (P96 A)
 
@@ -276,9 +297,11 @@ persistence may be partial. Tester convention (P33 A): re-run
 Per-(graph, element) shape:
 `(:Tombstone {graph_id, element_id, element_kind, removed_at, removed_by?})`.
 
-Tombstone-write primitives ship in Phase 07 (P16-pre); the read-path
-filter that excludes tombstoned elements lands in Phase 10
-(soft-delete read-filter per ADR-0133).
+Tombstone-write primitives shipped in Phase 07 (P16-pre). No read
+path consults `:Tombstone` rows — the Phase 10 soft-delete read-filter
+(ADR-0133) keys on `deprecated_at` (`include_deprecated=`), and the
+only readers of `:Tombstone` are clean-up deletes (`persistence sync
+--replace`, the server's local persister).
 
 ## Single-Graph load (Phase 07 M14)
 
@@ -294,8 +317,10 @@ Accepted in Phase 08 (M3 A — flip-inline on consumer ship; acceptance
 criterion per P27 C; impl-refs amended per RR-6 A; signature shrinks
 per PB-3 A; `RefreshUnsafeError` enforcement deferred per PB-5 B).
 
-The package `mindsos_core.reconstruction/` exposes six load-side
-symbols + three re-exported exception classes (R4-12 A). See
+Phase 08 shipped `mindsos_core.reconstruction/` with six load-side
+symbols + three re-exported exception classes (R4-12 A); Phases 09 and
+11 added the XRef loader and the report-returning siblings (its
+`__all__` is the current list). See
 [the API reference](../../api/core/loaders.md) for signatures + raise
 paths.
 
@@ -331,8 +356,9 @@ sub-loader handle.
 **Locked load sequence** (R4-1 A / R4-8 A / M12):
 
 1. `recover(client, metagraph_id)` — first L1 WAL consumer (PB-6 B).
-   Narrow-catches `WALReplayerMissingError` (RPB-3 C); other failures
-   propagate as `PersistenceError`.
+   A WAL kind with no registered replayer raises
+   `WALReplayerMissingError` (Phase 09 P62 removed Phase 08's RPB-3 C
+   narrow-catch); driver failures propagate as `PersistenceError`.
 2. Anchor row + property bag + `schema_name` plain property (PB-11 A
    — name only; vocab content NOT auto-attached).
 3. Contained graphs via `load_graph` (default) or `iter_load_graph`
@@ -349,10 +375,9 @@ sub-loader handle.
 ### WAL recover-on-load (PB-6 B — first L1 consumer)
 
 `load_metagraph` ALWAYS calls `recover()` as step 0 of the locked
-sequence. The narrow-catch on `WALReplayerMissingError` (RPB-3 C)
-means Phase 08 loads with no registered replayers are silent no-ops;
-once L0/L2 (Phase 18+) register replayers, the same call becomes
-meaningful. Driver-level errors continue to propagate as
+sequence. In Phase 08 an unregistered kind was swallowed (RPB-3 C); since
+Phase 09 (P62) it raises `WALReplayerMissingError`, because L1 now
+registers its own replayers on every `FalkorClient`. Driver-level errors continue to propagate as
 `PersistenceError`. `load_graph` does NOT call `recover()` (RPB-5 A
 asymmetry — standalone Graph has no metagraph recovery context).
 
@@ -405,8 +430,8 @@ dropping dependent state per RPB-4 C).
 ### Exception hierarchy additions (R4-3 A)
 
 * `RefreshUnsafeError` ← `PersistenceError` (PB-5 B class only).
-* `WALReplayerMissingError` ← `PersistenceError` (RPB-3 C narrow-catch
-  sentinel).
+* `WALReplayerMissingError` ← `PersistenceError` (raised by `recover()`
+  on an unregistered WAL kind since Phase 09 P62).
 * `RoleMismatchError` ← `PersistenceError` (R4-2 D refresh corruption
   signal).
 
@@ -437,8 +462,7 @@ amendments-1 and -2:
   class grows a parallel `load_with_report(...)` method.
 * Per-call kwarg `unknown_edge_type_policy="warn"|"error"|"ignore"`.
   When `None`, resolves via env var `MINDSOS_UNKNOWN_EDGE_POLICY`,
-  then to `"warn"` (PB-14 A precedence; per
-  `feedback_cli_config_manifest_fallback.md`).
+  then to `"warn"` (PB-14 A precedence).
 * **No-op when no schema attached** (PB-11 lock). A graph loaded
   without a schema bypasses the filter entirely.
 * WARN granularity: one log per **distinct unknown type** with a
@@ -462,8 +486,9 @@ new=None, detail="summary", old_schema_name=None)`. Detection-only
 per ADR-0134's "What it does NOT do" section.
 
 * **Coverage** (PB-7 C) — `Schema`-level only: `NodeType`,
-  `EdgeType`, `HyperEdgeType`. `MetagraphSchema` migration
-  (MetaEdge / IntergraphEdge / etc.) deferred to Phase 12+.
+  `EdgeType`, `HyperEdgeType`. A `MetagraphSchema` scanner
+  (MetaEdge / IntergraphEdge / etc.) was deferred and has not been
+  built.
 * **Dispatch** (PB-17 C) — one entry; `target: Graph | Metagraph`.
   Per-Metagraph path walks every contained graph with an attached
   schema. `old_schema_name` opt-in emits a logger WARNING (NOT a
@@ -495,9 +520,7 @@ CLI: `mindsos schema migrate-check --old <name> | --old-file <path>
 
 ### ADR-0134 acceptance contract
 
-Stays **Proposed** at Phase 11 ship. Flips to **Accepted** when a
-KL importer (Phase 12+) consumes scanner output for at least one
-role-graph schema bump and `docs/dev/migration-playbook.md`
-documents the cross-layer pattern. Phase 11 ships the L1 mechanism
-+ amendments-1 + 2; the playbook ships as a stub awaiting first
-real consumer.
+ADR-0134 is **Accepted**. It stayed Proposed at Phase 11 ship, with
+acceptance gated on a KL consumer of the scanner output and on
+`docs/dev/migration-playbook.md` documenting the cross-layer pattern;
+the playbook records the ratification (Phase 15b).
