@@ -97,7 +97,7 @@ ROLE_LEARNED_PIPELINES = "learned-pipelines"
 ROLE_INSTALLED_CAPACITIES = "installed-capacities"
 
 # CORE CR: the policy role (Decision Records) — dated, versioned editions of
-# an AUTHORITY per ADR-0150 §amendment-<N> (closed set 16 -> 17; Global +
+# an AUTHORITY per ADR-0150 §amendment-12 (closed set 16 -> 17; Global +
 # Local, append-only).
 #
 # **Why a role and not ``dataset:<name>``.** A dataset is a corpus a brain

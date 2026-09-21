@@ -133,6 +133,8 @@ GUARDED: dict[str, tuple[str, str]] = {
                               "every live page declares verified_at: <sha> | unverified"),
     "retired-layout-frame": ("tests/architecture/test_no_retired_layout_frame.py",
                              "no live line presents the retired Model C layout as current"),
+    "adr-role-registration": ("tests/architecture/test_every_named_role_is_registered_in_adr_0150.py",
+                              "every named L2 role in ALL_ROLES is registered in ADR-0150"),
 }
 
 #: The extractor classes below that a guard holds at 0 false, and in which

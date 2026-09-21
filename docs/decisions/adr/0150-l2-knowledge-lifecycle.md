@@ -768,16 +768,6 @@ and the ALL_ROLES / dispatch-table count assertions across
 not reopen §am-6's Global-only install-record scope — only the capability
 descriptors are Local.
 
-## Source
-
-Phase 13 design log §1 PB-19 (Flavor A vs Flavor B closure question);
-Phase 13 PB-23 (number reserved for Phase 14a content drafting); Phase
-14a chat transcript rounds 1-3 — PB-A (synthesis-vs-structural
-narrowing → A2), PB-E (title rename → E2), PB-Q (Decision wording
-option (a) — amendment escape hatch retained). See
-`halvim_mindsos/confirmation_docs/PHASE_13_DESIGN_LOG.md` §1 +
-Phase 14a chat transcript captured by Phase 14a's PR.
-
 ### amendment-11 (CORE-C2R1 — 2026-07-31) — `installed-skills` gains a Local form
 
 **Trigger.** ADR-0205 §8 makes the **Skill** the unit of structural change and states that
@@ -831,3 +821,79 @@ ADR-0002 §amendment-3. `USER_CAPS` is non-empty for the first time.
 path exists as `scope="global"`, but *promotion of an existing Local record* is skill-packaging
 work); Local-artifact reverse-dependency on uninstall (the guard still covers
 `requires_bundles` only); and the **skill ledger**, which the skill-packaging chat owns.
+
+### amendment-12 (`mindsos_llm` plan R11 — 2026-09-20) — the register catches up: `learned-pipelines`, `policies`, `prompts`, and the `task-patterns` rename
+
+**Amendment status:** Accepted. The decision above stands. **This amendment adds
+no role and changes no behaviour.** It records four entries the register was owed
+and never received, and ships the sentinel that makes the omission impossible to
+repeat.
+
+**Trigger.** Plan ruling **R11** (OWNER 2026-09-18,
+`docs/plans/MINDSOS_LLM_PLAN.md` §2): every named L2 role is recorded in this
+ADR, enforced by a sentinel deriving from `ALL_ROLES`. The §am-5 escape clause
+(restated by §am-9) already required a §Revisions entry per new **named** role.
+Measured 2026-09-20: `schema_for_role` dispatched eighteen named roles and this
+register named fourteen of them. The rule existed; nothing read it.
+
+**1. `learned-pipelines` — Local-only.** Builder
+`build_learned_pipelines_schema(strict)`; discipline `immutable_successor`.
+Consumer: taught pipelines persisted per user, added by
+[ADR-0203](0203-learned-pipelines-local-persistence.md), which is the decision
+record — what it skipped is this register's row.
+
+**2. `policies` — dual-scope (Global + Local).** Builder
+`build_policies_schema(strict, scope)`; discipline `append_only`. Consumer: a
+Decision Record states which authority, which edition, in force when, so dated
+versioned editions need a store of their own. ⚠ **This resolves a live
+placeholder:** `mindsos_knowledge/identifiers.py` carried the literal
+`§amendment-<N>` beside `ROLE_POLICIES` because the number was never assigned.
+It is **§am-12**.
+
+**3. `prompts` — dual-scope (Global the curated library, Local a per-user
+trial).** Builder `build_prompts_schema(strict, scope)`; discipline
+`append_only`. Consumer: `mindsos_llm` plan item I-9 — a conclusion stamped
+`prompt_iri` + `prompt_version` must be able to show the text it names, and the
+text lived in deployment code. Scope ruled by the owner 2026-09-14
+([ADR-0210](0210-llm-communication-layering.md) §am-4, §am-5 for the role
+decision).
+
+**4. `task-patterns` is `request-patterns`.** Renamed in code at `84e741f`
+(PR #76, 2026-07-26) as part of the task → request wire/IRI vocabulary change.
+The §Decision table row and §am-8's title and body predate it and are **left as
+the dated record they are** — the §am-4 treatment of `memories` →
+`episodic_memories`, not a rewrite of history. This row is the register's
+current name for that role. No scope, builder or discipline changes:
+`build_request_patterns_schema(strict)`, dual-scope since §am-8.
+
+**Closed role-set.** **Unchanged — 18 named + 2 prefixes (`alignment:`,
+`dataset:`).** Nothing is added here; the four entries describe roles the code
+already dispatches. The next addition is `recorded-sets` (`mindsos_llm` plan
+item I-10), which lands with its own entry.
+
+**Enforcement.**
+`tests/architecture/test_every_named_role_is_registered_in_adr_0150.py` derives
+the role set from `ALL_ROLES` and requires each name, backticked, inside this
+ADR's §Decision table or its §Revisions block. It was born RED against this file
+naming exactly these four. ⚠ **A FLOOR:** presence of the name says the register
+mentions the role, never that the entry is right — that is read, as every claim
+of this class is.
+
+**Placement.** §am-11 was appended **below the `## Source` footer**, outside the
+§Revisions block every other amendment lives in. It is moved back above `## Source`
+here — a relocation with no content change — so the register is contiguous and a
+future amendment appended after the footer reddens the sentinel.
+
+**Out of scope.** The §am-5 exclusion list (`world-axioms`, `training-runs`) is
+untouched; no scope, builder or discipline of any listed role changes; and no
+claim is made that the four entries above were correct when they shipped — only
+that the register now names them.
+
+## Source
+Phase 13 design log §1 PB-19 (Flavor A vs Flavor B closure question);
+Phase 13 PB-23 (number reserved for Phase 14a content drafting); Phase
+14a chat transcript rounds 1-3 — PB-A (synthesis-vs-structural
+narrowing → A2), PB-E (title rename → E2), PB-Q (Decision wording
+option (a) — amendment escape hatch retained). See
+`halvim_mindsos/confirmation_docs/PHASE_13_DESIGN_LOG.md` §1 +
+Phase 14a chat transcript captured by Phase 14a's PR.
