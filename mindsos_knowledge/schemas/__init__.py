@@ -52,6 +52,7 @@ from ..identifiers import (
     ROLE_PROBLEM_TRACE,
     ROLE_PROMOTED_PIPELINES,
     ROLE_PROMPTS,
+    ROLE_RECORDED_SETS,
     ROLE_SUBMINDS,
     ROLE_REQUEST_PATTERNS,
 )
@@ -71,6 +72,7 @@ from .parameter_staging import build_parameter_staging_schema
 from .pending_promotions import build_pending_promotions_schema
 from .policies import build_policies_schema
 from .prompts import build_prompts_schema
+from .recorded_sets import build_recorded_sets_schema
 from .problem_trace import build_problem_trace_schema
 from .promoted_pipelines import build_promoted_pipelines_schema
 from .subminds import build_subminds_schema
@@ -105,6 +107,8 @@ _ROLE_SCHEMA_BUILDERS: dict[str, Callable[..., Schema]] = {
     # CORE CR: the policy role.
     ROLE_POLICIES: build_policies_schema,
     ROLE_PROMPTS: build_prompts_schema,
+    # mindsos_llm I-10 (plan R1, R2, R8) - Local-only recorded-set pointers.
+    ROLE_RECORDED_SETS: build_recorded_sets_schema,
     # feat/learned-pipeline-persistence addition per ADR-0203.
     ROLE_LEARNED_PIPELINES: build_learned_pipelines_schema,
 }
@@ -206,6 +210,8 @@ __all__ = [
     "build_subminds_schema",
     # feat/learned-pipeline-persistence builder (ADR-0203).
     "build_learned_pipelines_schema",
+    # mindsos_llm I-10 builder (ADR-0150 §am-13).
+    "build_recorded_sets_schema",
     # Dispatch surface.
     "schema_for_role",
     "_ROLE_SCHEMA_BUILDERS",

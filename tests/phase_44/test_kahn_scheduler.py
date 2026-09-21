@@ -76,6 +76,8 @@ def test_real_declarations_order_per_scope() -> None:
         "policies",
         # mindsos_llm plan item I-9 - alphabetical, no dependency edge.
         "prompts",
+        # mindsos_llm plan item I-10 - alphabetical, no dependency edge.
+        "recorded-sets",
         "request-patterns",
         "episodic_memories",
     )

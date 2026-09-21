@@ -77,5 +77,5 @@ def test_role_count_sentinel_unchanged():
     # other suite now derives its count from ALL_ROLES / _GLOBAL_NAMED_ROLES
     # / _LOCAL_NAMED_ROLES, which leaves this line as the deliberate act:
     # adding a role is meant to fail HERE, once, and nowhere else.
-    assert len(_ROLE_SCHEMA_BUILDERS) == 18
-    assert len(ALL_ROLES) == 18
+    assert len(_ROLE_SCHEMA_BUILDERS) == 19
+    assert len(ALL_ROLES) == 19

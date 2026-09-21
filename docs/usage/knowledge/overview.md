@@ -121,7 +121,7 @@ the *schema* is identical.
 ```python
 from mindsos_knowledge import schema_for_role
 
-s = schema_for_role("lexicon")          # one of the 18 named roles
+s = schema_for_role("lexicon")          # one of the 19 named roles
 s = schema_for_role("alignment:a:b")    # alignment-prefix branch
 s = schema_for_role("unknown")          # raises UnknownRoleError
 ```
