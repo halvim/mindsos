@@ -709,9 +709,25 @@
       "what": "tests/architecture/test_doc_role_count.py matches a fixed list of phrasings. docs/dev/internals/knowledge.md carried a stale role count as 'closed role-set is now N' - a phrasing the list MISSES, so the guard stayed green on a false count. Fixed on that page by reading; the guard hole remains.",
       "spec": "Guard first: add the phrasing, RED on a fabricated line (the real tree may already be 0 - then the RED is the designated mutation), derive the number from ALL_ROLES as the guard already does. Measure the other live pages for any further phrasing before closing - read sites, do not trust a regex count.",
       "consumer": "none - the doc-fix program's guard floor."
+    },
+    {
+      "name": "slice-land-removes-its-own-cwd",
+      "status": "OPEN 2026-09-21, found by running it on PR #235. NOT BUILT.",
+      "what": "tools/slice_land.sh computes repo=$(git rev-parse --show-toplevel). Run from inside the slice worktree (the natural place), that IS the worktree; the script then removes ../_MindsOS-<slice> = its own cwd BEFORE gh pr merge, so the merge, fetch, pull and ANSWER all die ('fatal: Unable to read current working directory'). PR #235 stayed OPEN with CI green; landed by re-running from the shared checkout.",
+      "spec": "Guard first in tests/architecture/test_lane_scripts.py: slice_land.sh must resolve the MAIN checkout (dirname of git rev-parse --path-format=absolute --git-common-dir) before any worktree removal - RED on the current script, then the one-line fix; designated mutation = revert to --show-toplevel. Also: gate.sh's fetch failure is a box SSH problem, not a script defect.",
+      "consumer": "none - every ship's landing step (Rule 1 does not gate a defect)."
     }
   ],
   "recent": [
+    {
+      "kind": "docs",
+      "name": "Verification batch 3: docs/dev/internals/core.md read against the tree (verified_at f0acd7f) - 20 false claims",
+      "sha": "da623dc (squash of feat/verify-core @ 0a9eb50, PR #235). Parent f0acd7f; RULES 12.2(a) discharged by an EMPTY git diff 0a9eb50 da623dc (slice_land diff_lines=0).",
+      "tag": "none",
+      "gate": "CI on PR #235: SUCCESS. LINUX box, tools/gate.sh at 0a9eb50 with its fetch line disabled (the box's GitHub SSH fails: 'Could not read from remote repository'; commit presence proved by git cat-file -e): tests/architecture + test_adr_status_consistency + 12 covering unit tests (phase_07 occ/wal, phase_08 recovery/observer-dispatcher/exceptions, phase_09 replayer-registration/indexes, phase_26a default_indexes_19, phase_11 loader-policy/migrate_from), -m 'not integration': 265 passed / 0 failed / 1 deselected. Integration-marked covering tests (refresh identity, role mismatch) ran in CI.",
+      "what": "12 of 106 live pages verified. Every claim was checked by a STATIC RUN over the worktree (grep / AST) or tied to its covering test. 20 false: DEFAULT_INDEXES is 19 not 14 and there are 2 hot-path indexes (19 written because tests/phase_26a/test_default_indexes_19.py pins it); 'five modules' (the package has 11); the Phase 08 section still said an unknown WAL kind is swallowed (Phase 09 P62 made it raise; L1 registers 10 replayer kinds on every FalkorClient); 'the Phase 10 read-filter excludes tombstoned elements' - nothing reads :Tombstone except clean-up deletes, and dangling_tombstones is always []; ADR-0134 'stays Proposed' and ADR-0128 'Proposed until Phase 14' (both Accepted); the Graph .properties writer 'Phase 10 likely' never shipped; loader line numbers 226/324 (now 283/446 - dropped); a cited feedback_*.md not in the repo; 'every persistable element carries _version' (XRef does not); the XRef dirty drain runs INSIDE step 1 (1g), not after the lifecycle; verify --source=db --metagraph is unblocked; the playbook is not a stub; JSON state files are the L1 CLI surface only - the server boots KL from FalkorDB; the title's 'Phase 10' frame. Rule used: a 'Phase NN shipped' sentence under a phase heading is a dated record and is left; present tense is checked. *** TWO BOX FINDINGS: (1) tools/slice_land.sh RUN FROM THE SLICE WORKTREE REMOVES ITS OWN CWD before gh pr merge - repo resolves to the worktree, then 'git worktree remove ../_MindsOS-<slice>' is itself; merge and all later steps die with no ANSWER (fatal: Unable to read current working directory). Workaround: run it from the shared checkout. Filed as pending_designs slice-land-removes-its-own-cwd. (2) The Linux box cannot fetch from GitHub; gate.sh aborts at step=fetch. (3) git ls-remote on the Mac returned 0 for a branch that existed (gh api confirmed it) - a remote check goes through gh api.",
+      "docs": "docs/dev/internals/core.md (verified_at f0acd7f; 78+/55-)"
+    },
     {
       "kind": "docs",
       "name": "Lane scripts - one paste per step: tools/slice_start.sh, slice_commit.sh, gate.sh, slice_land.sh, each ending in one ANSWER line",
