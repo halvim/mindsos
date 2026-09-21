@@ -33,7 +33,7 @@ ANSWER = {"fields": [{"name": "days", "value": 7, "quote": "seven days"}]}
 
 #: Exactly what R13 names. A key added here is a claim the pointer may store.
 EXPECTED_KEYS = frozenset({
-    "sha256", "responses", "key_schema_version", "identities", "prompts",
+    "path", "sha256", "responses", "key_schema_version", "identities", "prompts",
     "request_keys", "credential_level",
 })
 
@@ -74,6 +74,7 @@ def test_a_bare_set_is_described_from_its_own_bytes(tmp_path):
     store = _store(("a", 1), ("b", 1))
     f = _write(tmp_path, "bare.json", store.to_json())
     d = describe_set(f)
+    assert d["path"] == str(f.resolve())
     assert d["sha256"] == hashlib.sha256(f.read_bytes()).hexdigest()
     assert d["request_keys"] == sorted(json.loads(store.to_json()))
     assert len(d["request_keys"]) == 2 and d["responses"] == 2

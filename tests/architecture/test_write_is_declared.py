@@ -72,6 +72,7 @@ EXPECTED_WRITE_BODIES = {
     "mindsos_capacity/builtins/trace.py": 1,            # problem trace
     "mindsos_capacity/builtins/learn_parameter.py": 1,  # learned parameters
     "mindsos_capacity/builtins/prompt_edition_v0.py": 1,  # prompts (I-9)
+    "mindsos_capacity/builtins/recorded_set_v0.py": 1,  # recorded-sets (I-10)
 }
 
 

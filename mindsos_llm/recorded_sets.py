@@ -340,8 +340,9 @@ def describe_set(path: Any) -> Dict[str, Any]:
     which refuses a manifest that no longer describes its responses; a bare
     ``{request_key: response}`` map goes through :class:`RecordingStore`.
 
-    Returns exactly: ``sha256`` (bare hex, so ``sha256sum`` output compares
-    directly), ``responses``, ``key_schema_version``, ``identities``,
+    Returns exactly: ``path`` (the resolved absolute path that was opened —
+    so the caller cannot name one file and hash another), ``sha256`` (bare
+    hex, so ``sha256sum`` output compares directly), ``responses``, ``key_schema_version``, ``identities``,
     ``prompts``, the sorted ``request_keys``, and ``credential_level``.
 
     ⚠ **Named for what it describes, never for the L2 record it feeds** (R13).
@@ -364,7 +365,8 @@ def describe_set(path: Any) -> Dict[str, Any]:
             last rule is new here: :func:`export_set` refuses only a SUPPLIED
             level that disagrees, and exports a multi-level set silently.
     """
-    data = Path(path).read_bytes()
+    opened = Path(path).resolve()
+    data = opened.read_bytes()
     digest = hashlib.sha256(data).hexdigest()
     try:
         raw = json.loads(data.decode("utf-8"))
@@ -395,6 +397,7 @@ def describe_set(path: Any) -> Dict[str, Any]:
             "recording rather than as a mixed one - split the set."
         )
     return {
+        "path": str(opened),
         "sha256": digest,
         "responses": manifest["responses"],
         "key_schema_version": manifest["key_schema_version"],

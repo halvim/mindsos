@@ -146,7 +146,8 @@ confirmed with *"go"*. Each is recorded as ADR-0210 amendment 6.
 
 **R13 — one public `describe_set(path)` in `mindsos_llm.recorded_sets` owns the
 file read.** It reads the file ONCE, hashes those bytes, detects `format` (R12),
-loads bare-or-exported, and returns the derived facts — `sha256`, `responses`,
+loads bare-or-exported, and returns the derived facts — the resolved `path` it
+opened, `sha256`, `responses`,
 `key_schema_version`, `identities`, `prompts`, the sorted `request_keys`,
 `credential_level` — refusing on contradiction or multiplicity (R9). Named for the
 file it DESCRIBES, never for the L2 record it feeds: L2 vocabulary inside
@@ -169,7 +170,9 @@ the write. R9's rule applied to a field R9 did not name.
 `storage_mode` is declared AND written — `prompts` declared it and never wrote it.
 
 **R18 — a re-capture of the same bytes REFUSES** (`PromptEditionExistsError`'s
-shape), and `file_uri` is the resolved absolute path with no scheme.
+shape), and `file_uri` is the resolved absolute path with no scheme — taken from
+`describe_set`'s `path`, never from the caller, so a pointer cannot name one file
+and hash another.
 
 ## 3. THE ITEM LIST
 

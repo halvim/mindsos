@@ -634,8 +634,9 @@ record of what was ruled first stays readable.
   responses held as a bare map and as an export are two files and two pointers.
   A re-capture of the same bytes REFUSES (R18, `PromptEditionExistsError`'s
   shape): `append_only`, and the identity is the content.
-* **`file_uri`** (R18) is the resolved absolute path, with no scheme — nothing
-  parses it, and a scheme would imply a resolver that does not exist. Portability
+* **`file_uri`** (R18) is the resolved absolute path `describe_set` opened — never
+  a caller's argument, so a pointer cannot name one file and hash another — with
+  no scheme: nothing parses it, and a scheme would imply a resolver that does not exist. Portability
   is the export's job, not the pointer's.
 * **`credential_level`** (R9, R15) is derived and refused on contradiction or
   multiplicity. ⚠ **This is new work, not reuse:** R9 called it *"the rule
