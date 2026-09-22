@@ -1,6 +1,6 @@
 ---
 last_confirmed_phase: 08
-verified_at: unverified
+verified_at: 4aac114
 ---
 
 # Core Loaders — `mindsos_core.reconstruction`
@@ -18,6 +18,7 @@ def load_graph(
     *,
     identity: Optional[IdentityRegistry] = None,
     schema: Any = None,
+    include_deprecated: bool = False,
 ) -> Graph
 ```
 
@@ -53,6 +54,9 @@ def iter_load_graph(
     identity: Optional[IdentityRegistry] = None,
     schema: Any = None,
     batch_size: int = 10_000,
+    include_deprecated: bool = False,
+    report: Optional[LoadReport] = None,
+    unknown_edge_type_policy: Optional[str] = None,
 ) -> Iterator[Graph]
 ```
 
@@ -93,6 +97,7 @@ class MetagraphLoader:
         batch_size: Optional[int] = None,
         identity: Optional[IdentityRegistry] = None,
         schema: Any = None,
+        include_deprecated: bool = False,
     ) -> Metagraph: ...
     def refresh(
         self,
@@ -100,6 +105,7 @@ class MetagraphLoader:
         role: str,
         *,
         schema: Any = None,
+        include_deprecated: bool = False,
     ) -> None: ...
 ```
 
@@ -107,7 +113,7 @@ Phase 08 orchestrator (RR-8 A — no sub-loader handles; siblings
 subscribe via `register_after_load_observer`). Minimal constructor
 (R4-11 A — `client` only); all other kwargs are per-call.
 
-### `MetagraphLoader.load(metagraph_id, *, batch_size, identity, schema)`
+### `MetagraphLoader.load(metagraph_id, *, batch_size, identity, schema, include_deprecated)`
 
 Locked R4-1 A / R4-8 A read sequence:
 
@@ -136,7 +142,7 @@ observer.
 
 **Raises:** `PersistenceError` on anchor / sub-read failure.
 
-### `MetagraphLoader.refresh(mg, role, *, schema)`
+### `MetagraphLoader.refresh(mg, role, *, schema, include_deprecated)`
 
 Reloads role-graph(s) of `role` in `mg` in place (RPB-2 A — proper
 `mg.remove_graph(gid)` API; Phase 06 remove-observer cascade fires
@@ -161,6 +167,7 @@ def load_metagraph(
     batch_size: Optional[int] = None,
     identity: Optional[IdentityRegistry] = None,
     schema: Any = None,
+    include_deprecated: bool = False,
 ) -> Metagraph
 ```
 
