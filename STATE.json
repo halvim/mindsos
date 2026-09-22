@@ -734,6 +734,15 @@
   ],
   "recent": [
     {
+      "kind": "docs+test",
+      "name": "I-12 specified - plan rulings R19-R28, new item I-17, ADR-0210 am-7 (Proposed), and the premise guard: a stored reading reaches its source text",
+      "sha": "feat/llm-excision (squash sha recorded at merge)",
+      "tag": "none - no mindsos_* module changed",
+      "gate": "LINUX box, worktree /home/sanmyaku/wt-excision at 2e00973, compose -p mindsos-excision: new guard + plan-scope + ADR-0210 am-4 + ADR status + doc role-count suites 32 passed / 0 failed; all 3 new ids passed, INCLUDING the FalkorDB integration test. Collected-id delta +3/-0 by construction (the only test file changed is the new one; its 3 ids read back by name). MUTATION-FIRST, one line, predicted before running: capacity_mm_writer.py:304 CONSUMES edge retyped PRODUCES -> exactly the live-walk and stored-walk tests red, the other-door key check green; module path printed as /app, abort-on-no-change held (changed=1). CI gates the PR.",
+      "what": "Owner rulings 2026-09-21: Q1 re-run = RE-DERIVE with a non-model producer, not replay (R19); Q2 shown = VERIFIABLE for everything asked, by content (R20, supersedes R8's prompt half); P1 split I-17 out of I-12; P2 the client hands the transport everything the model receives (R21). R22-R28 ruled against plan section 1 with authorities cited. MEASURED FIRST: a stored conclusion carries request_key but not its source text - the text is reachable only through the persisted grounding graph, now PROVEN at runtime (R27); the prompt words sent come from a deployment-injected resolve_prompt nothing ties to the prompts role; the extraction schema is recorded nowhere; LiveLLM and the adapter each hold their own model and temperature. Superseded in place: plan R8's prompt half, the plan's 'I-12 needs all three', ADR-0210 am-4's re-run clause and am-6's 'For I-12' scan prescription. Filed: core-llm-answer-names-what-was-asked (I-17, next).",
+      "docs": "docs/plans/MINDSOS_LLM_PLAN.md (R19-R28, R8 marker, I-12 row, I-17 row, DONE WHEN, ORDER, section 3 correction, section 6 entry); docs/decisions/adr/0210-llm-communication-layering.md (amendment 7 Proposed; supersede markers in am-4 and am-6); STATE.json (this entry; pending_designs core-llm-excision-capability updated, core-llm-answer-names-what-was-asked added); tests/llm_seam/test_a_reading_reaches_its_source_text.py (new)."
+    },
+    {
       "kind": "docs",
       "name": "The two decision index pages now state true ADR statuses: proposed.md lists only open decisions, superseded.md rows match the files - guarded",
       "sha": "af44b76 (squash of feat/index-pages @ b07e1c6, PR #238). Parent 5fb197e, NOT the branch base acc3027: PR #237 (another lane, feat/recorded-set-role - a new L2 role, role-count docs, claim_inventory) landed in between, so the empty-diff route was closed and RULES 12.2(a) was discharged by a MERGED-TREE run at af44b76.",
